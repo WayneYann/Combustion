@@ -19,6 +19,7 @@
   y_offset = -0.01288
   flametracval = 5.e-8
   V_in = .2
+  nchemdiag = 10
  /
  &heattransin
   pamb = 101325.0
