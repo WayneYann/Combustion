@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.1 2003-09-09 20:51:31 lijewski Exp $
+# $Id: Make.package,v 1.2 2003-09-15 18:22:39 lijewski Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -10,5 +10,6 @@ CEXE_headers += ArrayViewEXT.H
 
 FEXE_headers += probdata.H PROB_F.H
 
-fEXE_sources += drm19soln.f
+#fEXE_sources += drm19soln.f
 fEXE_sources +=  postPB-lutz.f
+fEXE_sources +=  pmf_H.f

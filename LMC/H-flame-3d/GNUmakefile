@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.1 2003-09-09 20:51:31 lijewski Exp $
+# $Id: GNUmakefile,v 1.2 2003-09-15 18:22:39 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -27,6 +27,7 @@ USE_HGPROJ_SERIAL := FALSE
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=CHEMH
 #
 # Packages below are of the form dir/lib. dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding

@@ -229,6 +229,7 @@
 #endif
 
 /*function declarations */
+extern "C" {
 void molecularWeight(double * wt);
 void gibbs(double * species, double * tc);
 void helmholtz(double * species, double * tc);
@@ -243,6 +244,7 @@ void progressRate(double * qdot, double * speciesConc, double T);
 void CKINDX(int * iwrk, double *rwrk, int * mm, int * kk, int * ii, int * nfit );
 void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * rval, int * kerr, int lenline);
 void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * knum, int * nval, double * rval, int * kerr, int lenline, int lenkray);
+void CKSYME(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int lenkname);
 void CKSYMS(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int lenkname);
 void CKRP(int * ickwrk, double * rckwrk, double * ru, double * ruc, double * pa);
 void CKPX(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * P);
@@ -323,6 +325,7 @@ int feznddim_();
 char* femechfile_();
 char* fesymname_(int sn);
 int fesymnum_(const char* s1);
+}
 
 
 /*A few mechanism parameters */

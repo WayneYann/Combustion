@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.4 2003-08-11 20:33:17 lijewski Exp $
+# $Id: Make.package,v 1.5 2003-09-15 18:26:08 lijewski Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -24,6 +24,10 @@ ifeq ($(REACTION_MECHANISM),GRI12)
 else
 ifeq ($(REACTION_MECHANISM),GRI30)
   C$(HT_BASE)_sources += gri30.cpp
+else
+ifeq ($(REACTION_MECHANISM),CHEMH)
+  C$(HT_BASE)_sources += chem-H.cpp
+endif
 endif
 endif
 endif

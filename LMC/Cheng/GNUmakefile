@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.2 2003-08-12 19:40:00 lijewski Exp $
+# $Id: GNUmakefile,v 1.3 2003-09-15 18:23:35 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -27,6 +27,7 @@ USE_HGPROJ_SERIAL := FALSE
 #
 # Choose your reaction mechanism & thermal properties.
 #
+REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=DRM19

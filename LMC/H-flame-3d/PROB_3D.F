@@ -22,6 +22,9 @@
 
 #define SDIM 3
 
+#define USE_PMF_CH4
+#undef  USE_PMF_CH4
+
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
      &                     datc, DIMS(datc), nc, mapO2N, lenmap, ratio)
       implicit none
@@ -207,7 +210,12 @@ c     set convection velocity
 c
       y = 0.0d0
       yEval = (y-pmf_offset)*1.d2
+
+#ifdef USE_MPF_CH4
       call pmf_CH4(yEval,yEval,pmf_H_vals,n)
+#else
+      call pmf_H(yEval,pmf_H_vals,n)
+#endif
 
       if (n .ne. Nspec+3) call bl_abort('PROBINIT: n .ne. Nspec+3')
 
@@ -282,7 +290,11 @@ c     z direction
 
          zEval = (x-pmf_offset)*1.d2
 
+#ifdef USE_PMF_CH4
          call pmf_CH4(zEval,zEval,pmf_H_vals,n)
+#else
+         call pmf_H(zEval,pmf_H_vals,n)
+#endif
 
          if (n .ne. Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
 
@@ -985,9 +997,13 @@ c     Make a platter of data in XY, will march over z
 
             zEval = (z-pmf_offset)*1.d2
 
+#ifdef USE_PMF_CH4
             zlo = (    k*delta(3) + domnlo(3) - pmf_offset)*1.d2
             zhi = ((k+1)*delta(3) + domnlo(3) - pmf_offset)*1.d2
             call pmf_CH4(zlo,zhi,pmf_H_vals,n)
+#else
+            call pmf_H(zEval,pmf_H_vals,n)
+#endif
 
             if (n .ne. Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
 
@@ -1054,9 +1070,13 @@ c     &                 +                   press(i,j+1) + press(i+1,j+1))
             
             zEval = (z-pmf_offset)*1.d2  
 
+#ifdef USE_PMF_CH4
             zlo = (    k*delta(3) + domnlo(3) - pmf_offset)*1.d2
             zhi = ((k+1)*delta(3) + domnlo(3) - pmf_offset)*1.d2
             call pmf_CH4(zlo,zhi,pmf_H_vals,n)
+#else
+            call pmf_H(zEval,pmf_H_vals,n)
+#endif
 
             if (n .ne. Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
 
