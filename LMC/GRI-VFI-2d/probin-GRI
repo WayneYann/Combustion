@@ -21,5 +21,7 @@
   pamb = 101325.0
   dpdt_factor = 0.3
  /
+ &flctin
+ /
  &control
  /

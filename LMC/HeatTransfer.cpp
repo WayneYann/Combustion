@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.10 2003-10-17 16:42:39 marc Exp $
+// $Id: HeatTransfer.cpp,v 1.11 2003-10-17 20:43:02 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -144,6 +144,7 @@ bool      HeatTransfer::plot_auxDiags             = false;
 
 static int  max_grid_size_chem   = 16;
 static bool do_not_use_funccount = false;
+static bool do_active_control    = false;
 static Real crse_dt = -1;
 
 #ifdef BL_USE_FLOAT
@@ -327,6 +328,7 @@ HeatTransfer::read_params ()
     BL_ASSERT(dpdt_option >= 0 && dpdt_option <= 2);
     pp.query("max_grid_size_chem",max_grid_size_chem);
     BL_ASSERT(max_grid_size_chem > 0);
+    pp.query("do_active_control",do_active_control);
 
     verbose = pp.contains("v");
 
@@ -1560,7 +1562,8 @@ HeatTransfer::sum_integrated_quantities ()
 
         int MyProc = ParallelDescriptor::MyProc();
 
-        FORT_ACTIVECONTROL(&fuelmass,&time,&crse_dt,&MyProc);
+        if (do_active_control)
+            FORT_ACTIVECONTROL(&fuelmass,&time,&crse_dt,&MyProc);
     }
 
     if (ParallelDescriptor::IOProcessor())

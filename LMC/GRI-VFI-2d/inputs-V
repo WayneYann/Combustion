@@ -14,6 +14,8 @@ ns.fuelName        = CH4
 ns.oxidizerName    = O2
 ns.flameTracName   = HCO
 
+ns.do_active_control = false
+
 amr.n_cell = 96 96
 
 amr.max_level = 0

@@ -1,5 +1,6 @@
 #amr.restart=chk0156
 #ns.hack_nochem=1
+ns.do_active_control = false
 
 max_step  =  10000
 stop_time =  10000000.0

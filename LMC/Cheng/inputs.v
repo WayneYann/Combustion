@@ -12,6 +12,7 @@ ns.num_divu_iters =3
 ns.max_grid_size_chem = 64
 ns.max_grid_size_chem = 32
 ns.max_grid_size_chem = 16
+ns.do_active_control = false
 ht.plot_rhoY=0
 #ht.plot_molefrac=1
 ht.plot_molefrac=0
