@@ -12,4 +12,9 @@ c     Note: Requires ckdwrk.H to obtain the value of maxspec
       
       common / bcs / u_bc, v_bc, rho_bc, Y_bc, T_bc, h_bc
       
-      
+      REAL_T tau_control, cfix, coft_old, sest, V_in_old, corr,
+     &     changeMax_control, tbase_control, dV_control, scale_control
+      common / control1 / tau_control, cfix, coft_old, sest, V_in_old,
+     &     corr, changeMax_control, tbase_control, dV_control, scale_control
+
+      save /bcs/, /control1/

@@ -22,6 +22,45 @@
 #define SETRHO_CALCT
 #define SDIM 2
 
+      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc)
+      implicit none
+#include "probdata.H"
+#include "cdwrk.H"
+#include "bc.H"
+      REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
+      integer myproc
+      if (myproc.eq.0) then
+
+         if (coft_old .lt. zero) coft_old = coft
+
+         V_in_old = V_in
+         V_in = V_in + dt*dV_control
+
+         slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
+         sest = (one - corr)*sest + corr*slocal
+         vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+
+         V_new = V_in + dt*vslope
+         dVmax = changeMax_control * one
+         V_new = MIN(MAX(V_new,V_in-dVmax),V_in+dVmax)
+         V_new = MAX(zero,V_new)
+
+         tbase_control = time
+         dV_control = (V_new - V_in)/dt
+
+         print *
+         print *,'****************** control:'
+         print *,'time,coft,V_new:',time,coft,V_new
+         print *,'changeMax_control: ', changeMax_control
+         print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
+         print *,'coft_old,V_in_old:',coft_old,V_in_old
+
+         coft_old = coft
+         
+      endif
+
+      end
+
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
      &                     datc, DIMS(datc), nc, mapO2N, lenmap, ratio)
       implicit none
@@ -80,8 +119,9 @@ c ::: -----------------------------------------------------------
 #endif
 
       REAL_T species(maxspec)
-      integer lo(2), hi(2), i
-      integer ifreq
+      integer lo(2), hi(2), n
+      integer ifreq,zone,i,iCH4,getZone
+      character*(maxspnml) spName
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, flametracval, probtype,
      &			max_temp_lev, max_vort_lev, splitx, splity, traceSpecVal,
@@ -96,12 +136,13 @@ c ::: -----------------------------------------------------------
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
-     &     strmwse_dir, flct_file
+     &     strmwse_dir, nCompInflow, flct_file
 #endif
+      namelist /control/ tau_control, sest, cfix, changeMax_control
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen
+      integer maxlen, nCompFile
       parameter (maxlen=256)
 
       character probin*(maxlen)
@@ -174,6 +215,9 @@ c
       T_in = 300.d0
 
 #if defined(BL_DO_FLCT)
+c
+c     Don't need to default 'nCompInflow' as it is block data'd to /3/
+c
       forceInflow = .FALSE.
       numInflPlanesStore = -1
       forceLo = .TRUE.
@@ -182,9 +226,19 @@ c
       flct_file = ""
       turb_scale = 1
 #endif
+
+      tau_control = one
+      sest = zero
+      corr = one
+      changeMax_control = .05
       
       read(untin,fortin)
 c      write(6,fortin)
+
+c     Initialize control variables
+      V_in_old = V_in
+      coft_old = -one
+      cfix = zero
       
 c      if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       
@@ -194,6 +248,8 @@ c      write(6,heattransin)
 #if defined(BL_DO_FLCT)
       read(untin,flctin)
 #endif
+
+      read(untin,control)
 
    10 close(unit=untin)
 
@@ -206,7 +262,7 @@ c      write(6,heattransin)
 #define FF_UNIT 20
             write(6,*) '...initializing turbulence, reading header info'
             open(FF_UNIT, file=flct_file, form='unformatted')
-            call RD_FLCTHD(FF_UNIT, dimFile, probSizeFile, dxFile)
+            call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
          endif
       endif
@@ -221,6 +277,14 @@ c     Load domain dimensions into common, and set up boundary functions
 
       call setupbc()
       bcinit = .true.
+
+      iCH4 = -1
+      do n = 1,Nspec
+         call get_spec_name(spName,n)
+         if (spName .eq. 'CH4') iCH4 = n-1
+      end do
+      zone = getZone(half*(domnlo(1)+domnhi(1)),domnlo(2))
+      scale_control = Y_bc(iCH4,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))
       
       end
 
@@ -425,11 +489,13 @@ c     size of sub-lengths, there are M of them
 
          if (x1.lt.Rf) then
             Vincy = v_bc(M_FUEL)*TANH(two*(one - x1/Rf)/pipeBL)
-            if (x1.le.half*stTh) then
-               Vincy = zero
-            else
-               Vincy =
-     &          Vincy*TANH(two*(one - (Rf-x1)/((Rf-half*stTh)))/stBL)
+            if (stTh.gt.0) then
+               if (x1.le.half*stTh) then
+                  Vincy = zero
+               else
+                  Vincy =
+     &                 Vincy*TANH(two*(one - (Rf-x1)/((Rf-half*stTh)))/stBL)
+               endif
             endif
          else if (x1.gt.Rf+pipeTh) then
             Vincy =
@@ -471,8 +537,11 @@ c ::: -----------------------------------------------------------
          T = T_bc(zone)
          h = h_bc(zone)
 
-c     Shut down velocity if over stick or pipe-end
-         if (probtype.eq.2) then
+         if (probtype.eq.1) then
+
+            v_bc(M_FUEL) = V_in + (time-tbase_control)*dV_control
+
+         else if (probtype.eq.2) then
 
 c     Set fueling velocity as a function of time
             if (time .le. tV_in_l) then
