@@ -1969,7 +1969,7 @@ void productionRate(double * wdot, double * sc, double T)
     wdot[1] += 4 * qdot;
 
     /*reaction 2: 2 CO + O2 => 2 CO2 */
-    phi_f = sc[3]*pow(sc[3],0.5)*pow(sc[0],0.25);
+    phi_f = sc[3]*pow(sc[1],0.5)*pow(sc[0],0.25);
     k_f = 3.16228e-5 * 1.991e+14*exp(-20130.9/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
@@ -2041,7 +2041,7 @@ void progressRate(double * qdot, double * sc, double T)
     qdot[0] = q_f - q_r;
 
     /*reaction 2: 2 CO + O2 => 2 CO2 */
-    phi_f = sc[3]*pow(sc[3],0.5)*pow(sc[0],0.25);
+    phi_f = sc[3]*pow(sc[1],0.5)*pow(sc[0],0.25);
     k_f = 3.16228e-5 * 1.991e+14*exp(-20130.9/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
