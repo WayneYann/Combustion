@@ -318,7 +318,7 @@ extern "C" {
 		       const Real* Yold, ARLIM_P(Yolo), ARLIM_P(Yohi),
 		       const Real* Told, ARLIM_P(Tolo), ARLIM_P(Tohi),
 		       Real* FuncCount, ARLIM_P(FuncCountlo), ARLIM_P(FuncCounthi),
-		       const Real* p, const Real* dt);
+		       const Real* p, const Real* dt, Real* diag, const int* do_diag);
 
     void FORT_CHEMEQ(const int* lo, const int* hi,
                      Real* Ynew, ARLIM_P(Ynlo), ARLIM_P(Ynhi),
