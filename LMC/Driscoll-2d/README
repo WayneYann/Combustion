@@ -1,5 +1,11 @@
-Parallel/LMC/Driscoll-2D
+Parallel/LMC/Driscoll-2d
 
 Created by Joe in October 2004 as a 2D version of the 3D Driscoll problem.
 Rather than add files to the existing Driscoll directory, a new directory
 was used to avoid confusion while Joe is learning how all of this works.
+
+DERIVE_2D.F 
+
+This is a slightly modified version of ../../iamrlib/DERIVE_2D.F. The
+changes parallel those by which ../../iamrlib/DERIVE_3D.F was converted
+to give ../Driscoll/DERIVE_3D.F
