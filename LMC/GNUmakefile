@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.1 2003-08-08 20:09:41 lijewski Exp $
+# $Id: GNUmakefile,v 1.2 2004-07-13 21:16:37 lijewski Exp $
 #
 PBOXLIB_HOME = ..
 
@@ -17,7 +17,6 @@ PROFILE       = FALSE
 DIM	      = 3
 COMP          = KCC
 USE_TENSOR    = FALSE
-USE_RAD       = FALSE
 USE_WINDOWS   = FALSE
 USE_MPI       = TRUE
 #
@@ -34,10 +33,6 @@ PRVERSION = v9
 
 ifeq ($(USE_HGPROJ_SERIAL),TRUE)
 DEFINES += -DBL_USE_HGPROJ_SERIAL
-endif
-
-ifeq ($(USE_RAD),TRUE)
-DEFINES += -DBL_USE_RADIATION
 endif
 #
 # The base name of the library we're building.

@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.7 2004-02-12 18:19:17 lijewski Exp $
+# $Id: GNUmakefile,v 1.8 2004-07-13 21:16:37 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -17,7 +17,6 @@ COMP           = mpCC
 COMP           = Intel
 COMP           = g++
 FCOMP          = Intel
-USE_RAD        = FALSE
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
 USE_MPI        = TRUE
