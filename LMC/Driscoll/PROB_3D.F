@@ -333,7 +333,8 @@ c     Initialize control variables that depend on fortin variables
             close(FF_UNIT)
          endif
       endif
-      convVel = Vin
+c      convVel = Vin
+      convVel = one
 #endif
 
 c     Load domain dimensions into common, and set up boundary functions
