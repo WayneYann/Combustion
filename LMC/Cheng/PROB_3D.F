@@ -1069,6 +1069,10 @@ c
                      do n = 1,Nspec+3
                         pmf_vals(n) = bg_vals(n)
                      enddo
+                  else if (Nspec.eq.3) then
+                     do n = 1,Nspec+3
+                        pmf_vals(n) = bg_vals(n)
+                     enddo
                   else
                      call pmf(y1,y1,pmf_vals,n)
                      if (n.ne.Nspec+3) then
