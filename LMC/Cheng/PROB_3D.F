@@ -217,8 +217,6 @@ c     Load domain dimensions into common, and set up boundary functions
       
       end
 
-c ::: -----------------------------------------------------------
-
 #define XLO 0
 #define YLO 1
 #define XHI 2
@@ -278,8 +276,7 @@ c     data X_O2  /   0.194669756663d0,  0.21d0, 0.194669756663d0,  0.21d0,  0.21
          call get_spec_name(name, n)
          if (name .eq. 'N2' ) iN2 = n
       end do
-         
-c     Initialize zone values
+
       do zone = 1,Nzones
          sum = zero
          do n = 1,Nspec
@@ -303,8 +300,6 @@ c     Initialize zone values
       end do
 
       end
-         
-c ::: -----------------------------------------------------------
 
       integer function getZone(x, y, z)
       implicit none
@@ -312,8 +307,10 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
       REAL_T x, y, z, r, x1
+c
 c     ZONE DEF:
 c     BL_FUELPIPE, BL_COFLOW, BL_STICK, BL_WALL, BL_AMBIENT, BL_VOLUME
+c
       getZone = BL_VOLUME
       if ( ((direction.eq."z") .and. (z.le.domnlo(3))).or.
      &     ((direction.eq."y") .and. (y.le.domnlo(2))).or.
@@ -370,8 +367,9 @@ c
       REAL_T Vincx,Vincy,Vincz,Vswirl,Vin,r
       integer i,j,M
       parameter (M=10)
-
+c
 c     size of subvolumes, there are M*M of them
+c
       incx = dx(1) / M
       incy = dx(2) / M
       V(1) = 0.d0
@@ -679,7 +677,6 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 #include "INFL_FORCE_F.H"
 
-c     ::::: local variables
       integer i, j, k, n, iN2, iO2
       REAL_T x, y, z, zt, u, v, w, rho, Yl(maxspec), Xl(maxspec), T, h, Patm
       REAL_T turbSclX, turbSclY, turbSclZ, convVelSAVE
@@ -699,8 +696,9 @@ c     ::::: local variables
       end do
       fileDataZLO = half*(domnhi(3)+domnlo(3)-probSizeFile(3))
       fileDataZHI = half*(domnhi(3)+domnlo(3)+probSizeFile(3))
-         
+c         
 c     Make a platter of data in XY, will march over z
+c
       do i = 1, SDIM
          loFlctArray(i) = lo(i)
          hiFlctArray(i) = hi(i)
@@ -852,9 +850,7 @@ c
                   else
                      call pmf(y1,y2,pmf_vals,n)
                      if (n.ne.Nspec+3) then
-                        write(6,*) 'INITDATA:  Wrong no. of species'
-                        write(6,*) '           pmf file has  ',n-3
-                        write(6,*) '           chem file has ',Nspec
+                        call bl_abort('INITDATA: n .ne. Nspec+3')
                      endif
                   endif
 
@@ -922,9 +918,7 @@ c
                   else
                      call pmf(y1,y1,pmf_vals,n)
                      if (n.ne.Nspec+3) then
-                        write(6,*) 'INITDATA:  Wrong no. of species'
-                        write(6,*) '           pmf file has  ',n-3
-                        write(6,*) '           chem file has ',Nspec
+                        call bl_abort('INITDATA: n .ne. Nspec+3')
                      endif
                   endif
 
@@ -1029,8 +1023,9 @@ c ::: -----------------------------------------------------------
       ys = MAX(YSid,1)
       ye = MIN(YEid,ncomp)
       do_Y = (ye - ys + 1) .GE. 1
-
+c
 c     Do species, Temp, rhoH
+c
       if ((idir.EQ.2) .AND. (lo(3) .LE. domlo(3))
      &        .AND. (do_T .OR. do_RH .OR. do_Y) ) then
 
@@ -1118,7 +1113,7 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      call bl_abort('DENERROR: should no be here for H-flame problem')
+      call bl_abort('DENERROR: should no be here')
       
       end
 
@@ -1283,23 +1278,24 @@ c ::: -----------------------------------------------------------
          write(6,*) "TEMPERR cannot compute gradient, ng = ",ng
          call bl_abort(" ")
       endif
-
+c
 c     ::::: refine where there is temperature gradient
+c
       if (level .lt. max_temp_lev) then
-      do k = lo(3), hi(3)
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-            ax = abs(temperature(i+1,j,k,1) - temperature(i,j,k,1))
-            ay = abs(temperature(i,j+1,k,1) - temperature(i,j,k,1))
-            az = abs(temperature(i,j,k+1,1) - temperature(i,j,k,1))
-            ax = MAX(ax,abs(temperature(i,j,k,1) - temperature(i-1,j,k,1)))
-            ay = MAX(ay,abs(temperature(i,j,k,1) - temperature(i,j-1,k,1)))
-            az = MAX(az,abs(temperature(i,j,k,1) - temperature(i,j,k-1,1)))
-            aerr = max(ax,ay,az)
-            tag(i,j,k) = cvmgt(set,tag(i,j,k),aerr.ge.tempgrad)
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  ax = abs(temperature(i+1,j,k,1) - temperature(i,j,k,1))
+                  ay = abs(temperature(i,j+1,k,1) - temperature(i,j,k,1))
+                  az = abs(temperature(i,j,k+1,1) - temperature(i,j,k,1))
+                  ax = MAX(ax,abs(temperature(i,j,k,1) - temperature(i-1,j,k,1)))
+                  ay = MAX(ay,abs(temperature(i,j,k,1) - temperature(i,j-1,k,1)))
+                  az = MAX(az,abs(temperature(i,j,k,1) - temperature(i,j,k-1,1)))
+                  aerr = max(ax,ay,az)
+                  tag(i,j,k) = cvmgt(set,tag(i,j,k),aerr.ge.tempgrad)
+               enddo
+            enddo
          enddo
-      enddo
-      enddo
       endif
 
       end
@@ -4203,17 +4199,12 @@ c*****************************************************************************
 
       end if            
 
-c*****************************************************************************
-
       end
 
-
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
       subroutine FORT_CALCDIVU(divu,DIMS(divu),plo,phi,xlo,dx,time)
-
-c ... This routine is for user defined divu, for debugging purposes
-c     only.
+c
+c ... This routine is for user defined divu, for debugging purposes only.
+c
       implicit none
 
       integer    DIMDEC(divu)
@@ -4320,9 +4311,10 @@ c     divu(i,j,k) = min(two,one+time/.05)
             yy = float(j)*dx(2)+domnlo(2)
             do i = lo(1),hi(1)
                xx = float(i)*dx(1)+domnlo(1)
-
+c
 c  Compute the distance to a disk at z=hotspot_z, radius hotspot_r and thickness
 c     of hotspot_dz
+c
                dr = SQRT(xx*xx+yy*yy) - hotspot_r
                if (dr .LT. zero) then
                   if (zz.GT.hotspot_z+hotspot_dz) then
@@ -4411,8 +4403,9 @@ c     ::::: lets punt if not in domain interior
       integer    i,j,k,n
       integer    nxlo, nxhi, nylo, nyhi, nzlo,nzhi
       REAL_T     x,y,r
-      
+c      
 c     ::::: lets punt if not in domain interior
+c
       nxlo = max(0,domlo(1)-lo(1))
       nxhi = max(0,hi(1)-domhi(1))
       nylo = max(0,domlo(2)-lo(2))
