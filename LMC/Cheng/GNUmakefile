@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.5 2003-10-30 00:16:49 marc Exp $
+# $Id: GNUmakefile,v 1.6 2003-12-18 19:15:00 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,20 +7,20 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION      = DOUBLE
-DEBUG	       = TRUE
 DEBUG	       = FALSE
+DEBUG	       = TRUE
 PROFILE        = FALSE
 DIM	       = 3
 PRVERSION      = v7
 COMP           = KCC
-COMP           = g++
 COMP           = mpCC
-#FCOMP          = Intel
+COMP           = g++
+FCOMP          = Intel
 USE_RAD        = FALSE
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
-USE_MPI        = FALSE
 USE_MPI        = TRUE
+USE_MPI        = FALSE
 BUILD_IN_PLACE = TRUE
 EBASE          = amr
 USE_SWIRL      = FALSE
@@ -32,6 +32,7 @@ REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=INERT30
 #
 # Packages below are of the form dir/lib. dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding
