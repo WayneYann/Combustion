@@ -1120,11 +1120,17 @@ c
                   scal(i,j,k,Trac) = zero
 
                   zt = domnlo(3) - half*delta(3)
-                  if (z-domnlo(3) .LT. vheight) then
-                     vel(i,j,k,1) = zero
-                     vel(i,j,k,2) = zero
-                     vel(i,j,k,3) = zero
-                  end if
+
+c     Propagate mean inflow profiles through domain
+                  call bcfunction(XLO,x,y,zt,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  vel(i,j,k,1) = u
+                  vel(i,j,k,2) = v
+                  vel(i,j,k,3) = w                  
+c                  if (z-domnlo(3) .LT. vheight) then
+c                     vel(i,j,k,1) = zero
+c                     vel(i,j,k,2) = zero
+c                     vel(i,j,k,3) = zero
+c                  end if
                end do
             end do
          end do
