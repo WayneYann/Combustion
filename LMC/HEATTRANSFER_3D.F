@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.2 2003-08-11 19:34:00 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.3 2003-08-12 19:40:34 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -31,8 +31,6 @@ c
 
       implicit none
 
-c ... inputs
-
       integer lo(SDIM), hi(SDIM)
       REAL_T  dx(SDIM)
       integer DIMDEC(species)
@@ -47,17 +45,12 @@ c ... inputs
       REAL_T betaz(DIMV(betaz))
       integer DIMDEC(rdghdgy)
 
-c ... outputs
-
       REAL_T rdghdgy(DIMV(rdghdgy))
-
-c ... local
 
       integer i,j,k
       REAL_T  betaxcen, betaycen, betazcen, dxsqr, dysqr, dzsqr
       REAL_T  betadotxlo, betadotxhi, betadotylo, betadotyhi
       REAL_T  betadotzlo, betadotzhi
-c -------------------- begin here ----------------------------
 
       dxsqr = dx(1)**2
       dysqr = dx(2)**2
@@ -97,32 +90,20 @@ c -------------------- begin here ----------------------------
           enddo
         enddo
       enddo
-      return
       end
-
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
       subroutine FORT_FLOOR_AND_SCALE_SPEC(nspecies,lo,hi,
      &  DIMS(spec),sum,spec)
 
       implicit none
 
-c ... inputs
-
       integer nspecies
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(spec)
       REAL_T  sum(DIMV(spec))      
-
-c ... in/outputs
-
       REAL_T  spec(DIMV(spec),nspecies)      
 
-c ... local
-
       integer i,j,k,n
-
-c------------------------ begin here -----------------------------
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -150,11 +131,8 @@ c------------------------ begin here -----------------------------
             enddo
          enddo
       enddo
-
-      return
       end
 
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine FORT_VELVISC(lo,hi,
      &                        DIMS(T), T,
      &                        DIMS(Y), Y,
@@ -173,16 +151,10 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       integer i, j, k, n
 
       if (.not.use_constant_mu) then
-         
          if (.not. LeEQ1) then
-            
-c     The following computes the mixture averaged viscosity using tranlib
             call FORT_MIX_SHEAR_VISC(lo, hi, mu, DIMS(mu),
      &                               T, DIMS(T), Y, DIMS(Y))       
-
          else 
-            
-c     Note: the following is used for unity Lewis number
             do k=lo(3), hi(3)
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
@@ -191,7 +163,6 @@ c     Note: the following is used for unity Lewis number
                end do
             end do
          end if
-         
       else
          do k=lo(3), hi(3)
             do j=lo(2), hi(2)
@@ -202,8 +173,6 @@ c     Note: the following is used for unity Lewis number
          end do
       end if
       end
-
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
       subroutine FORT_TEMPVISC(lo,hi,
      &                         DIMS(T), T,
@@ -229,19 +198,12 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       data hi_chem /1,1,1/
       
       if (.not.use_constant_lambda) then
-         
          if (.not. LeEQ1) then
-
-c     The following compute the mixture thermal conductivity using tranlib         
             call FORT_MIX_COND(lo, hi, lambda, DIMS(lambda),
-     &                         T, DIMS(T), Y, DIMS(Y))
-
+     &           T, DIMS(T), Y, DIMS(Y))
          else
-            
-c     The following is for unity Lewis number
             call FORT_VELVISC(lo,hi,DIMS(T),T,DIMS(Y),Y,
      &           DIMS(lambda),lambda)
-            
             do k=lo(3), hi(3)
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
@@ -268,7 +230,87 @@ c     The following is for unity Lewis number
       end if
       end
 
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      subroutine FORT_SPECTEMPVISC(lo,hi,
+     &     DIMS(T), T,
+     &     DIMS(Y), Y,
+     &     DIMS(rhoD), rhoD,
+     &     ncompd, P1ATM_MKS, do_temp, do_VelVisc)
+      implicit none
+#include "visc.H"
+#include "htdata.H"
+#include "cdwrk.H"
+      integer lo(SDIM),hi(SDIM)
+      integer DIMDEC(T)
+      integer DIMDEC(Y)
+      integer DIMDEC(rhoD)
+      integer ncompd, do_temp, do_VelVisc
+      REAL_T  T(DIMV(T))
+      REAL_T  Y(DIMV(Y),1)
+      REAL_T  rhoD(DIMV(rhoD),ncompd)
+ 
+      integer i, j, k, n, nspecies
+      REAL_T P1ATM_MKS, Ptmp, val, Patm
+      REAL_T Yt(maxspec)
+      REAL_T cpmix
+      integer lo_chem(SDIM),hi_chem(SDIM)
+      data lo_chem /1,1,1/
+      data hi_chem /1,1,1/
+
+      nspecies = ncompd - 2
+
+c     ncompd-1 is Temp stuff
+c     ncompd   is velocity stuff 
+
+      if (.not.use_constant_rhoD) then
+         if (.not. LeEQ1) then
+            Patm = pamb / P1ATM_MKS
+            call FORT_MIXAVG_RHODIFF_TEMP(lo, hi, rhoD, DIMS(rhoD),
+     &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
+         else
+            call FORT_VELVISC(lo,hi,DIMS(T),T,DIMS(Y),Y,
+     &           DIMS(rhoD),rhoD)
+            do k=lo(3), hi(3)
+               do j=lo(2), hi(2)
+                  do i=lo(1), hi(1)
+                     rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,1)
+                     rhoD(i,j,k,ncompd  ) = rhoD(i,j,k,1)
+                     val = rhoD(i,j,k,1) / Sc
+                     do n=1,nspecies
+                        rhoD(i,j,k,n) = val
+                     end do
+                  end do
+               end do
+            end do
+
+            if (do_temp .ne. 0) then
+               do k=lo(3), hi(3)
+                  do j=lo(2), hi(2)
+                     do i=lo(1), hi(1)
+                        do n=1,Nspec
+                           Yt(n) = Y(i,j,k,n)
+                        end do
+                        CALL FORT_CPMIXfromTY(lo_chem, hi_chem, 
+     &                       CPMIX,    ARLIM(lo_chem), ARLIM(hi_chem),
+     &                       T(i,j,k), ARLIM(lo_chem), ARLIM(hi_chem),
+     &                       Yt,       ARLIM(lo_chem), ARLIM(hi_chem))
+                        rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,ncompd-1) * cpmix / Pr
+                     end do
+                  end do
+               end do
+            endif
+         end if
+      else
+         do k=lo(3), hi(3)
+            do j=lo(2), hi(2)
+               do i=lo(1), hi(1)
+                  do n=1,nspecies
+                     rhoD(i,j,k,n) = constant_rhoD_val
+                  end do
+               end do
+            end do
+         end do
+      end if
+      end
 
       subroutine FORT_SPECVISC(lo,hi,
      &                         DIMS(T), T,
@@ -293,19 +335,11 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       REAL_T P1ATM_MKS, Ptmp, val, Patm
 
       if (.not.use_constant_rhoD) then
-         
          if (.not. LeEQ1) then
-            
-c     --- The following computes the species diffusivities using tranlib
-
             Patm = pamb / P1ATM_MKS
             call FORT_MIXAVG_RHODIFF(lo, hi, rhoD, DIMS(rhoD), T, DIMS(T),
      &                               Y, DIMS(Y), Patm)
-
          else
-         
-c     --- Note: the following is used for unity Lewis number
-c         Note: using first comp of rhoD to store visc here
             call FORT_VELVISC(lo,hi,DIMS(T),T,DIMS(Y),Y,
      &           DIMS(rhoD),rhoD)
             do k=lo(3), hi(3)
@@ -318,7 +352,6 @@ c         Note: using first comp of rhoD to store visc here
                   end do
                end do
             end do
-c     ---         
          end if
       else
          do k=lo(3), hi(3)
@@ -333,7 +366,6 @@ c     ---
       end if
       end
 
-C NOTE I think this is right
       subroutine FORT_EST_DIVU_DT(flag, dtfactor, delta, divu, DIMS(divu), 
      &                           dsdt, rho, DIMS(rho), 
      &                           u, DIMS(u), 
@@ -344,8 +376,6 @@ C NOTE I think this is right
      &                           lo, hi, dt, rhomin)
 
       implicit none
-
-c ... inputs
 
       integer flag
       integer lo(SDIM), hi(SDIM)
@@ -368,18 +398,12 @@ c ... inputs
       REAL_T  areay(DIMV(areay))
       REAL_T  areaz(DIMV(areaz))
 
-c ... output
-
       REAL_T dt
-
-c ... local
 
       integer i,j,k
       REAL_T  dtcell, dtcell2, denom, rhominij, rhoij
       REAL_T  fluxxlo, fluxxhi, fluxylo, fluxyhi, fluxzlo, fluxzhi
       REAL_T  a,b,c
-
-c------------------------ begin here -----------------------------
 
       dt = 1.0e20
       do k=lo(3),hi(3)
@@ -465,12 +489,8 @@ c     We use the latter because it is more robust
             enddo
          enddo
       enddo
-      
-c      call flush(6)
-      return
       end
 
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine FORT_CHECK_DIVU_DT(flag, dtfactor, delta, divu, DIMS(divu), 
      &                           dsdt, rho, DIMS(rho), 
      &                           u, DIMS(u), 
@@ -482,8 +502,6 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
      &                           dt, rhomin)
 
       implicit none
-
-c ... inputs
 
       integer flag
       integer lo(SDIM), hi(SDIM)
@@ -507,14 +525,10 @@ c ... inputs
       REAL_T  areay(DIMV(areay))
       REAL_T  areaz(DIMV(areaz))
 
-c ... local
-
       integer i,j,k
       REAL_T  dtcell, denom
       REAL_T  fluxxlo,fluxxhi,fluxylo,fluxyhi,fluxzlo,fluxzhi
       REAL_T  a,b,c,dtcell2,rhominij,rhoij
-
-c------------------------ begin here -----------------------------
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -597,8 +611,6 @@ c     We use the latter because it is more robust
             enddo
          enddo
       enddo
-
-      return
       end
 
 c===================================================================
@@ -620,13 +632,9 @@ c===================================================================
       REAL_T     dqrad(DIMV(dqrad))
 
       call filcc (dqrad,DIMS(dqrad),domlo,domhi,delta,xlo,bc)
-
       call fillEdges(dqrad,DIMS(dqrad),domlo,domhi,bc)
-
-      return
       end
 
-c===================================================================
       subroutine FORT_DIVUFILL (divu,DIMS(divu),domlo,domhi,delta,
      &                        xlo,time,bc )
 
@@ -640,10 +648,7 @@ c===================================================================
 
       call fillEdges(divu,DIMS(divu),domlo,domhi,bc)
 
-      return
       end
-
-c===================================================================
 
       subroutine FORT_DSDTFILL (dsdt,DIMS(dsdt),domlo,domhi,delta,
      &                         xlo,time,bc )
@@ -658,10 +663,7 @@ c===================================================================
 
       call fillWithZeros(dsdt,DIMS(dsdt),domlo,domhi,bc)
 
-      return
       end
-
-c===================================================================
 
       subroutine FORT_YDOTFILL (ydot,DIMS(ydot),domlo,domhi,delta,
      &                          xlo,time,bc)
@@ -675,7 +677,6 @@ c===================================================================
 
       call fillWithZeros(ydot,DIMS(ydot),domlo,domhi,bc)
 
-      return
       end
 
       subroutine FORT_FABMINMAX(lo, hi, 
@@ -1572,12 +1573,10 @@ c  interior cell.
             enddo
          endif
       endif            
-
-      return
       end
 
       subroutine fillWithZeros(dat,DIMS(dat),domlo,domhi,bc)
-c  This routine fills ghost cells with zeros..
+
       integer    DIMDEC(dat)
       integer    bc(SDIM,2)
       integer    domlo(SDIM), domhi(SDIM)
@@ -1652,8 +1651,6 @@ c  This routine fills ghost cells with zeros..
             enddo
          enddo
       endif            
-        
-      return
       end
 
       subroutine  FORT_COMPUTE_UGRADP(p, DIMS(p), ugradp, DIMS(ugp),
@@ -1701,4 +1698,3 @@ c  This routine fills ghost cells with zeros..
       end do
       end do
       end
-

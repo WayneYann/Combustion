@@ -111,7 +111,11 @@
                endif
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),Xt)
 #endif
+#ifdef MIKE
                CALL CKKFKR(Pdyne,T(i,j,k),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt,RevKt)
+#else
+               call bl_abort('FORT_FRrateXTP: CKKFKR not available')
+#endif
                do n=1,Nrxns
                   FwdK(i,j,k,n) = FwdKt(rxns(n)+1)*scale
                   RevK(i,j,k,n) = RevKt(rxns(n)+1)*scale
@@ -425,7 +429,11 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
                   Ct(n) = C(i,j,k,n)*millionth
                end do
                CALL CKQC(T(i,j,k),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+#ifdef MIKE
                CALL CKCONT(id,Qt,IWRK(ckbi),RWRK(ckbr),Qkt)
+#else
+               call bl_abort('FORT_MOLPROD: CKCONT not available')
+#endif
                do n = 1,Nreac
                   Q(i,j,k,n) = Qkt(n)*million
                end do
@@ -449,7 +457,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       character eltnam*(maxlen)
       character*(maxspnml) thenames(maxelts), thename
       logical errflag
-      integer i, j, k, theidx, n
+      integer i, j, k, theidx, n, lout
       integer NCF(Nelt,Nspec)
       if (namlen.GT.maxlen) then
          call bl_abort('FORT_GETELTMOLES: element name too long')
@@ -459,7 +467,12 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
          end do
          thename = eltnam(1:namlen)
 c     Find index of desired element
-         CALL CKSYME(CWRK,LOUTCK,thenames,errflag)
+#ifdef MIKE
+         lout = 6
+         CALL CKSYME(CWRK,lout,thenames,errflag)
+#else
+         call bl_abort("FORT_GETELTMOLES not implemented")
+#endif
          if (errflag) then
             call bl_abort('FORT_GETELTMOLES: error finding element')
          end if
@@ -511,8 +524,9 @@ c     Get the matrix of elements versus species
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE
       REAL_T TT1, TT2, RU, RUC, P1atm
-      integer i, j, k, n, MF, ISTATE
+      integer i, j, k, n, MF, ISTATE, LOUTCK
       character*(maxspnml) name
+      parameter (LOUTCK=6)
 
       REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,atoln
 #if defined(MOLAR_CONC)
@@ -893,13 +907,11 @@ c     Set molecular weights and pressure in area accessible by conpF
       
       end
  
-      subroutine FORT_MIXAVG_RHODIFF(lo, hi, RD, DIMS(RD), T, DIMS(T),
-     &                               Y, DIMS(Y), Patm)
+      subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,
+     &     DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
       implicit none
-#
-include "cdwrk.H"
- 
-      integer lo(SDIM), hi(SDIM)
+#include "cdwrk.H"
+      integer lo(SDIM), hi(SDIM), do_temp, do_VelVisc
       integer DIMDEC(RD)
       integer DIMDEC(T)
       integer DIMDEC(Y)
@@ -910,7 +922,70 @@ include "cdwrk.H"
 
       integer i, j, k, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec)
-      REAL_T scal, Wavg, RHO, Tt, invmwt(maxspec)
+      REAL_T scal, tscal, Wavg, RHO, Tt, invmwt(maxspec)
+      REAL_T alpha, l1, l2, X(maxspec), CPMS(maxspec)
+
+      CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
+      Ptmp = Patm * P1ATM
+      call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
+
+      do n=1,Nspec
+         invmwt(n) = one / invmwt(n)
+      end do
+
+      scal  = tenth
+      tscal = one / 100000
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,k,n)
+               end do
+               Tt = MAX(T(i,j,k),TMIN_TRANS)
+               CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
+               CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
+               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+               CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+               CALL EGSV1(Ptmp,Tt,Yt,Wavg,RWRK(egbr),Dt)
+               CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
+               do n=1,Nspec
+                  RD(i,j,k,n) = RHO * Wavg * invmwt(n) * Dt(n) * scal
+               end do
+
+               if (do_temp .ne. 0) then
+                  alpha = 1
+                  CALL EGSL1(alpha,Tt,X,RWRK(egbr),l1)
+                  alpha = -1
+                  CALL EGSL1(alpha,Tt,X,RWRK(egbr),l2)
+                  RD(i,j,k,Nspec+1) = half * (l1 + l2) * tscal
+               endif
+
+               if (do_VelVisc .ne. 0) then
+                  CALL EGSE3(Tt,Yt,RWRK(egbr),RD(i,j,k,Nspec+2))
+                  RD(i,j,k,Nspec+2) = RD(i,j,k,Nspec+2) * scal
+               endif
+
+            end do
+         end do
+      end do
+      end
+
+      subroutine FORT_MIXAVG_RHODIFF(lo, hi, RD, DIMS(RD), T, DIMS(T),
+     &                               Y, DIMS(Y), Patm)
+      implicit none
+#include "cdwrk.H"
+      integer lo(SDIM), hi(SDIM)
+      integer DIMDEC(RD)
+      integer DIMDEC(T)
+      integer DIMDEC(Y)
+      REAL_T RD(DIMV(RD),*)
+      REAL_T T(DIMV(T))
+      REAL_T Y(DIMV(Y),*)
+      REAL_T Patm
+
+      integer i, j, k, n
+      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec), X(maxspec)
+      REAL_T scal, Wavg, RHO, Tt, invmwt(maxspec), CPMS(maxspec)
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
@@ -933,8 +1008,11 @@ c
                end do
                Tt = MAX(T(i,j,k),TMIN_TRANS)
                CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
+               CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
+               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+               CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
                CALL EGSV1(Ptmp,Tt,Yt,Wavg,RWRK(egbr),Dt)
-               CALL CKRHOY(Ptmp,T(i,j,k),Yt,IWRK(ckbi),RWRK(ckbr),RHO)
+               CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
                do n=1,Nspec
                   RD(i,j,k,n) = RHO * Wavg * invmwt(n) * Dt(n) * scal
                end do
@@ -946,9 +1024,7 @@ c
       subroutine FORT_MIXAVG_RHODIFF_P(lo, hi, RD, DIMS(RD), T, DIMS(T),
      &                                 Y, DIMS(Y), Pmks, DIMS(Pmks))
       implicit none
-
 #include "cdwrk.H"
-
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(RD)
       integer DIMDEC(T)
@@ -961,7 +1037,7 @@ c
       
       integer i, j, k, n
       REAL_T Ptmp, Yt(maxspec), Dt(maxspec), invmwt(maxspec)
-      REAL_T RHO, Tt, scal, Wavg
+      REAL_T RHO, Tt, scal, Wavg, CPMS(maxspec), X(maxspec)
 
       call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
 c
@@ -983,8 +1059,11 @@ c             also, Pmks needs to be converted from MKS to cgs (10dyne/cm2 = 1Pa
                Ptmp = Pmks(i,j,k)*ten
                Tt = MAX(T(i,j,k),TMIN_TRANS)
                CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
+               CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
+               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+               CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
                CALL EGSV1(Ptmp,Tt,Yt,Wavg,RWRK(egbr),Dt)
-               CALL CKRHOY(Ptmp,T(i,j,k),Yt,IWRK(ckbi),RWRK(ckbr),RHO)
+               CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
                do n=1,Nspec
                   RD(i,j,k,n) = RHO * Wavg * invmwt(n) * Dt(n) * scal
                end do
@@ -1007,7 +1086,7 @@ c             also, Pmks needs to be converted from MKS to cgs (10dyne/cm2 = 1Pa
       REAL_T scal
       
       integer i, j, k, n
-      REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), Tt
+      REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), Tt, alpha, l1, l2
 c
 c     The following computes the mixture conductivity using EGLib
 c     scal converts result to MKS ( 1 erg/cm*K*s =  1.e-5 J/m*K*s )
@@ -1019,12 +1098,15 @@ c
                do n=1,Nspec
                   Yt(n) = Y(i,j,k,n)
                end do
-               CALL CKCPMS(T(i,j,k),IWRK(ckbi),RWRK(ckbr),CPMS)
-               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
                Tt = MAX(T(i,j,k),TMIN_TRANS)
+               CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
+               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
                CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-               CALL EGSL5(Tt,Yt,RWRK(egbr),IWRK(egbi),lambda(i,j,k))
-               lambda(i,j,k) = lambda(i,j,k) * scal
+               alpha = 1
+               CALL EGSL1(alpha,Tt,Yt,RWRK(egbr),IWRK(egbi),l1)
+               alpha = -1
+               CALL EGSL1(alpha,Tt,Yt,RWRK(egbr),IWRK(egbi),l2)
+               lambda(i,j,k) = half * (l1 + l2) * scal
             end do
          end do
       end do
@@ -1056,9 +1138,9 @@ c
                do n=1,Nspec
                   Yt(n) = Y(i,j,k,n)
                end do
-               CALL CKCPMS(T(i,j,k),IWRK(ckbi),RWRK(ckbr),CPMS)
+               Tt = MAX(T(i,j,k),TMIN_TRANS) 
+               CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               Tt = MAX(T(i,j,k),TMIN_TRANS)
                CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
                CALL EGSE3(Tt,Yt,RWRK(egbr),eta(i,j,k))
                eta(i,j,k) = eta(i,j,k) * scal
@@ -1081,7 +1163,7 @@ c
       REAL_T scal
 
       integer i, j, k, n
-      REAL_T X(maxspec), CPMS(maxspec), Yt(maxspec), Tt
+      REAL_T X(maxspec), CPMS(maxspec), Yt(maxspec), Tt, alpha, k1, k2
 c
 c     The following computes the mixture averaged bulk viscosity using eglib
 c     Note that scal converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
@@ -1097,12 +1179,15 @@ c
                do n=1,Nspec
                   Yt(n) = Y(i,j,k,n)
                end do
-               CALL CKCPMS(T(i,j,k),IWRK(ckbi),RWRK(ckbr),CPMS)
+               Tt = MAX(T(i,j,k),TMIN_TRANS) 
+               CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               Tt = MAX(T(i,j,k),TMIN_TRANS)
-               CALL EGSPAR(T(i,j,k),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-               CALL EGSK5(T(i,j,k),Yt,RWRK(egbr),kappa(i,j,k))
-               kappa(i,j,k) = kappa(i,j,k) * scal
+               CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+               alpha = 1
+               CALL EGSK1(alpha,Tt,Yt,RWRK(egbr),k1)
+               alpha = -1
+               CALL EGSK1(alpha,Tt,Yt,RWRK(egbr),k2)
+               kappa(i,j,k) = half * (k1 + k2) * scal
             end do
          end do
       end do

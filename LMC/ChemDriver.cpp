@@ -82,9 +82,6 @@ ChemDriver::getSpeciesNames()
     int max_len = FORT_GETCKMAXNAMELEN();
     int* coded = new int[max_len];
     int Nspec = FORT_GETCKNUMSPEC();
-
-    std::cout << "max_len: " << max_len << std::endl;
-    std::cout << "Nspec: " << Nspec << std::endl;
     
     mSpeciesNames.clear();
     mSpeciesNames.resize(Nspec);

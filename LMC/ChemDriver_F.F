@@ -702,58 +702,6 @@ c     Error condition....dump state and bail out
       call bl_abort('conpJC: what are you doing calling me?')
       end
 
-      subroutine cellCenteredFDJacobianC(N, TN, C, SAVF, NFE, FTEM, ML,
-     &                  MU, PD, NRPD, RPAR, IPAR)
-      implicit none
-      REAL_T SAVF
-      REAL_T PD, RPAR(*), TN, C
-      dimension SAVF(*)
-      integer N, NRPD, ML, MU, IPAR(*)
-      dimension C(N), PD(NRPD,N)
-      REAL_T FTEM
-      dimension FTEM(*)
-      integer NFE
-#include "cdwrk.H"
-#include "conp.H"
-#include "ckstrt.h"
-      REAL_T STORAGE(maxspec+1)
-      REAL_T spec_scalC(maxspec)
-      REAL_T Told
-
-      REAL_T FAC,R,CJ
-      INTEGER I,J,L
-      integer NY
-      REAL_T RU,RUC,P1atm
-      
-      Told = C(1)
-      call CKYTCP(RWRK(NP),Told,spec_scalY,
-     &     IWRK(ckbi),RWRK(ckbr),spec_scalC)
-
-      DO J = 2,N
-         CJ = C(J)
-
-         R = 0.001d0*spec_scalC(J-1)
-         if (R .lt. ten2minus18) R= ten2minus18
-
-         C(J) = CJ + R
-         CALL conpFC(N, TN, C, FTEM, RPAR, IPAR)
-         do i = 1,n
-            storage(i) = ftem(i)
-            ftem(i) = zero
-         enddo
-
-         C(J) = CJ - R
-         CALL conpFC(N, TN, C, FTEM, RPAR, IPAR)
-
-         FAC = one/(two*R)
-         DO I = 1,N
-            PD(I,J) = (storage(I) - FTEM(I))*FAC
-         END DO
-         C(J) = CJ
-         NFE = NFE+2
-      END DO
-      END
-
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
       implicit none
@@ -767,7 +715,6 @@ c     Error condition....dump state and bail out
       integer NFE
 #include "cdwrk.H"
 #include "conp.H"
-#include "ckstrt.h"
       call bl_abort("conpJY: SHOULD NOT BE HERE!")
       END
 

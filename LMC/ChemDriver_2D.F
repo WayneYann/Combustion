@@ -1456,7 +1456,7 @@ c
       REAL_T kappa(DIMV(kappa))
       REAL_T T(DIMV(T))
       REAL_T Y(DIMV(Y),*)
-      REAL_T scal
+      REAL_T scal, Tt
       
       integer i, j, n
       REAL_T X(maxspec), CPMS(maxspec), Yt(maxspec), alpha, k1, k2
@@ -1474,13 +1474,14 @@ c
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
             end do
-            CALL CKCPMS(T(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
+            Tt = MAX(T(i,j),TMIN_TRANS) 
+            CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL EGSPAR(T(i,j),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+            CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
             alpha = 1
-            CALL EGSK1(alpha,T(i,j),Yt,RWRK(egbr),k1)
+            CALL EGSK1(alpha,Tt,Yt,RWRK(egbr),k1)
             alpha = -1
-            CALL EGSK1(alpha,T(i,j),Yt,RWRK(egbr),k2)
+            CALL EGSK1(alpha,Tt,Yt,RWRK(egbr),k2)
             kappa(i,j) = half * (k1 + k2) * scal
          end do
       end do
