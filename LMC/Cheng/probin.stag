@@ -1,0 +1,57 @@
+ &fortin
+  probtype = 3
+  flct_file = "Turb.c0100.bin"
+  flct_file = ""
+  forceInflow = .TRUE.
+  forceInflow = .FALSE.
+  nCompInflow = 3
+  zstandoff = -0.03
+  zstandoff = -0.028
+  zBL = .0008
+  vheight = 0.0
+
+  Vco_l  = 2.5
+  Vco_r  = 2.5
+  tVco_l = 0.0
+  tVco_r = 1.0
+
+  rhot = .006
+  zhot = .003
+  Vin = 3.0
+  Vin = 5.0
+  Vin = 0.5
+
+  turb_scale=1.
+
+  tVco_l = -1.0
+  tVco_r =  0.0
+  Vco_r  =  0.1
+
+  flametracval = 1.e-9
+  max_temp_lev = 0
+  temperr = 100
+  max_vort_lev = 0
+  refine_stick = 1
+  max_stick_lev = 2
+  refine_stick_x = 0.003
+  refine_stick_z = 0.003
+  refine_nozzle = 1
+  max_nozzle_lev = 2
+  refine_nozzle_x = 0.03
+  refine_nozzle_z = 0.12
+  refine_nozzle_z = 0.04
+  tempgrad = 300.0
+
+  swK = 0.0
+  stBL = .002
+  stBL = .004
+  wallTh = 0.0
+  Ro = .0064
+  stTh = 0.001
+  stTh = 0.003
+  stTh = -0.003
+ /
+ &heattransin
+  pamb = 101325.
+  dpdt_factor = .3
+ /

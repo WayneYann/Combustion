@@ -368,7 +368,7 @@ c
       REAL_T Vf,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW
 
       REAL_T incx,incy,x1,x2,eta
-      REAL_T Vincx,Vincy,Vincz,Vswirl,Vin,r
+      REAL_T Vincx,Vincy,Vincz,Vswirl,r
       integer i,j,M
       parameter (M=10)
 c
@@ -394,7 +394,7 @@ c               Vincz = Vf*(0.63336d0 - 2.3529d0*eta + 25.595d0*eta**2 - 115.84d
 c     $              + 255.47d0*eta**4 - 260.06d0*eta**5+ 99.786d0*eta**6)
 
 #else
-               Vincz = Vin*TANH(two*(one - r/Ro)/dBL)
+               Vincz = Vf*TANH(two*(one - r/Ro)/dBL)
 #endif
             else if (r.ge.Ro+wallTh) then
                if (time .le. tVco_l) then
@@ -432,9 +432,9 @@ c                 Vincy = Vswirl*( x1/r)
 c              end if
 c
 c     Fit from averaged EBHC calc
-c              Vswirl = Vin*(-0.067641d0 + 2.0113d0*eta - 19.305d0*eta**2 + 72.404d0*eta**3
+c              Vswirl = Vf*(-0.067641d0 + 2.0113d0*eta - 19.305d0*eta**2 + 72.404d0*eta**3
 c     &                     - 126.14d0*eta**4 + 111.66d0*eta**5 - 31.098d0*eta**6)
-c              Vradial =Vin*(-0.0022569d0 + 0.3562d0*eta - 0.84751d0*eta**2 + 1.8533d0*eta**3
+c              Vradial =Vf*(-0.0022569d0 + 0.3562d0*eta - 0.84751d0*eta**2 + 1.8533d0*eta**3
 c     &                    - 5.1925d0*eta**4 + 7.7047d0*eta**5 - 3.8714d0*eta**6)
 c              Vincx = Vswirl*(-x2/r) + Vradial*x1/r
 c              Vincy = Vswirl*( x1/r) + Vradial*x2/r
@@ -511,11 +511,7 @@ c     $           3.0126d0*r**4 - 1.9876d0*r**5 + 0.52246d0*r**6
 c
             eta = min(max(eta,0.d0),1.d0)
 #else
-            if (stTh.gt.0.d0) then
-               eta = 1.d0
-            else
-               eta = 0.5d0*(1 - TANH((r - 0.02d0)/.002d0))
-            endif
+            eta = one
 #endif
             do n = 0, Nspec-1
                Yl(n) = (1.d0-eta)*Y_bc(n,BL_COFLOW) + eta*Y_bc(n,BL_FUELPIPE)
@@ -858,7 +854,8 @@ c
                      endif
                   endif
 
-                  eta = half*(one + TANH(two*(r-rhot)/zBL))
+                  eta = one
+                  if (rhot .gt. zero) eta = half*(one + TANH(two*(r-rhot)/zBL))
 
                   scal(i,j,k,Temp) = (one - eta)*pmf_vals(1) + eta*bg_vals(1)
                   do n = 1,Nspec
@@ -926,7 +923,8 @@ c
                      endif
                   endif
 
-                  eta = half*(one + TANH(two*(r-rhot)/zBL))
+                  eta = zero
+                  if (rhot .gt. zero) eta = half*(one + TANH(two*(r-rhot)/zBL))
 
                   scal(i,j,k,Temp) = (one - eta)*pmf_vals(1) + eta*bg_vals(1)
                   do n = 1,Nspec
