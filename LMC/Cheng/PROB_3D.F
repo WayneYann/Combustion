@@ -250,6 +250,8 @@ c
       dpdt_factor = 0.3d0
       direction = "z"
       vheight = zero
+      max_nogrid_lev = 0
+      nogrid_radius = 1.e10
 
       add_turb = .FALSE.
       forceInflow = .FALSE.
@@ -498,11 +500,12 @@ c     F      flux of flux (cm**2/s)
 c     r0     radius where log-law is replaced by parabola
 c
       subroutine VAvg(V,x,y,dx,Rf,wallTh,Ro,stTh,dBL,stBL,
-     &     Vf,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW)
+     &     Vf,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW,probtype,coCUTOFF)
       implicit none
       REAL_T V(SDIM)
       REAL_T x,y,dx(SDIM),Rf,wallTh,Ro,stTh,dBL,stBL
-      REAL_T Vf,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW
+      REAL_T Vf,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW,coCUTOFF
+      integer probtype
 
       REAL_T incx,incy,x1,x2,eta
       REAL_T Vincx,Vincy,Vincz,Vswirl,r
@@ -541,6 +544,12 @@ c     $              + 255.47d0*eta**4 - 260.06d0*eta**5+ 99.786d0*eta**6)
                else
                   Vincz = Vco_l+(time-tVco_l)*(Vco_r-Vco_l)/(tVco_r-tVco_l)
                endif
+
+c     For stagnation case, ramp co-flow to zero at coCUTOFF
+               if (probtype.eq.3) then
+                  Vincz = Vincz*MAX(zero,(coCUTOFF-r)/coCUTOFF)
+               endif
+
             endif
 
             if (stTh.gt.zero) then
@@ -671,7 +680,7 @@ c
             w =  Vin + (time-tbase_control)*dV_control
          else
             call VAvg(Vbndry,x,y,dx,Rf,wallTh,Ro,stTh,dBL,stBL,
-     &           Vin,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW)
+     &           Vin,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW,probtype,domnhi(1))
             u = Vbndry(1)
             v = Vbndry(2)
             w = Vbndry(3)
@@ -1352,6 +1361,19 @@ c ::: -----------------------------------------------------------
                   in_refine_zone = in_refine_zone .and.
      &                  (z - problo(3)) .le. refine_stick_z
                   tag(i,j,k) = cvmgt(set,tag(i,j,k),in_refine_zone)
+               end do
+            end do
+         end do
+      end if
+      if (level.lt.max_nogrid_lev) then
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               y = (float(j)+.5)*dx(2)+problo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*dx(1)+problo(1)
+                  r = SQRT(x*x+y*y)
+                  in_refine_zone = (r.gt.nogrid_radius)
+                  tag(i,j,k) = cvmgt(clear,tag(i,j,k),in_refine_zone)
                end do
             end do
          end do

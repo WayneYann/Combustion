@@ -15,14 +15,14 @@
       save /prob1/,/prob2/,/prob3/,/prob4/
 
       integer refine_nozzle, max_nozzle_lev,
-     &         refine_stick, max_stick_lev, max_trac_lev
+     &         refine_stick, max_stick_lev, max_trac_lev, max_nogrid_lev
       REAL_T refine_nozzle_x, refine_nozzle_y, refine_nozzle_z, 
-     &         nozzle_width, refine_stick_x, refine_stick_z
+     &         nozzle_width, refine_stick_x, refine_stick_z, nogrid_radius
       common /myprob1/ refine_nozzle, max_nozzle_lev,
-     &         refine_stick, max_stick_lev, max_trac_lev
+     &         refine_stick, max_stick_lev, max_trac_lev, max_nogrid_lev
       common /myprob2/ refine_nozzle_x, refine_nozzle_y, 
      &                 refine_nozzle_z, nozzle_width,
-     &                 refine_stick_x, refine_stick_z
+     &                 refine_stick_x, refine_stick_z, nogrid_radius
 
       save /myprob1/,/myprob2/
 
