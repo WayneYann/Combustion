@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.15 2003-12-16 00:53:44 marc Exp $
+// $Id: HeatTransfer.cpp,v 1.16 2003-12-18 18:28:33 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -449,11 +449,11 @@ HeatTransfer::HeatTransfer ()
     if (!init_once_done)
         init_once();
 
-    EdgeState             = 0;
-    SpecDiffusionFluxn    = 0;
-    SpecDiffusionFluxnp1  = 0;
-    FillPatchedOldState_ok  = true;
-    auxDiag = 0;
+    EdgeState              = 0;
+    SpecDiffusionFluxn     = 0;
+    SpecDiffusionFluxnp1   = 0;
+    FillPatchedOldState_ok = true;
+    auxDiag                = 0;
 }
 
 HeatTransfer::HeatTransfer (Amr&            papa,
@@ -503,8 +503,12 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
-    auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
-    auxDiag->setVal(0);
+    if (plot_auxDiags)
+    {
+        BL_ASSERT(auxDiag_names.size() > 0);
+        auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
+        auxDiag->setVal(0);
+    }
 }
 
 HeatTransfer::~HeatTransfer ()
@@ -769,8 +773,12 @@ HeatTransfer::restart (Amr&          papa,
     }
 
     BL_ASSERT(auxDiag==0);
-    auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
-    auxDiag->setVal(0);
+    if (plot_auxDiags)
+    {
+        BL_ASSERT(auxDiag_names.size() > 0);
+        auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
+        auxDiag->setVal(0);
+    }
 }
 
 Real
@@ -3860,15 +3868,10 @@ HeatTransfer::advance (Real time,
     if (plot_auxDiags)
     {
         MultiFab tmp(auxDiag->boxArray(),1,0);
-
         tmp.setVal(0);
-
         tmp.copy(S_old,fuelComp,0,1);
-
         for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
-        {
             (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);
-        }
     }
 
     if (do_temp)
@@ -4014,15 +4017,10 @@ HeatTransfer::advance (Real time,
     if (plot_auxDiags)
     {
         MultiFab tmp(auxDiag->boxArray(),1,0);
-
         tmp.setVal(0);
-
         tmp.copy(S_new,fuelComp,0,1);
-
         for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
-        {
             (*auxDiag)[mfi].plus(tmp[mfi],0,0,1);
-        }
     }
 
     strang_chem(S_new,dt,HT_EstimateYdotNew);
@@ -4030,11 +4028,8 @@ HeatTransfer::advance (Real time,
     if (plot_auxDiags)
     {
         MultiFab tmp(auxDiag->boxArray(),1,0);
-
         tmp.setVal(0);
-
         tmp.copy(S_new,fuelComp,0,1);
-
         for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
         {
             (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);
