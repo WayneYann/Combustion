@@ -68,7 +68,8 @@ c ::: -----------------------------------------------------------
      &     max_vort_lev, flametracval, y_wall2, y_wall3, T_wall1,
      &     T_wall2, T_wall3, Trad_bg, time_rad, dt_rad,
      &     refine_nozzle, nozzlerefwidth, nozzlerefheight, 
-     &     nozzlerefloc, probtype, max_nozzle_lev
+     &     nozzlerefloc, probtype, max_nozzle_lev,
+     &     thickFacTR, thickFacCH
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build 'probin' filename -- the name of file containing fortin namelist.

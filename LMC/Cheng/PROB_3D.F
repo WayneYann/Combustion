@@ -175,6 +175,7 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "INFL_FORCE_F.H"
+#include "visc.H"
 
       integer lo(SDIM), hi(SDIM), i, j, zone, iCH4, getZone
       character*(maxspnml) spName
@@ -197,7 +198,8 @@ c ::: -----------------------------------------------------------
      &                  zBL, dBL, stBL, hotspot_r, hotspot_z, hotspot_dz,
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
-     &                  tau_control, sest, cfix, changeMax_control
+     &                  tau_control, sest, cfix, changeMax_control,
+     &                  thickFacTR, thickFacCH
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -1355,7 +1357,7 @@ c ::: -----------------------------------------------------------
          enddo
       endif
 
-      if ((probtype.lt.4).and.(level.lt.max_nozzle_lev).and.(refine_nozzle.eq.1)) then
+      if ((level.lt.max_nozzle_lev).and.(refine_nozzle.eq.1)) then
          do k = lo(3), hi(3)
             z = (float(k)+.5)*dx(3)+problo(3)
             do j = lo(2), hi(2)
@@ -4553,7 +4555,7 @@ c
                dr = SQRT(xx*xx+yy*yy) - hotspot_r
                if (dr .LT. zero) then
                   if (zz.GT.hotspot_z+hotspot_dz) then
-                     r = zz - hotspot_z+hotspot_dz
+                     r = zz - (hotspot_z+hotspot_dz)
                   else if (zz.LT.hotspot_z) then
                      r = hotspot_z - zz
                   else
@@ -4562,7 +4564,7 @@ c
                else if ((zz.GT.hotspot_z).AND.(zz.LT.hotspot_z+hotspot_dz)) then
                   r = MAX(dr,zero)
                else
-                  dz = MIN(ABS(hotspot_z+hotspot_dz-zz),ABS(hotspot_z-zz))
+                  dz = MIN(ABS(zz-hotspot_z-hotspot_dz),ABS(hotspot_z-zz))
                   r = SQRT(dr*dr+dz*dz)                  
                end if
                rad(i,j,k) = half*(one-tanh(two*(r-1.5*hotspot_w)/hotspot_w))
