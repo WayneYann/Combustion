@@ -1103,9 +1103,9 @@ c
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
                CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
                alpha = 1
-               CALL EGSL1(alpha,Tt,Yt,RWRK(egbr),IWRK(egbi),l1)
+               CALL EGSL1(alpha,Tt,Yt,RWRK(egbr),l1)
                alpha = -1
-               CALL EGSL1(alpha,Tt,Yt,RWRK(egbr),IWRK(egbi),l2)
+               CALL EGSL1(alpha,Tt,Yt,RWRK(egbr),l2)
                lambda(i,j,k) = half * (l1 + l2) * scal
             end do
          end do
