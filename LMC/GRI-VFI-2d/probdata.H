@@ -23,8 +23,8 @@
       REAL_T v_strength,v_width,v_xcen,v_ycen, v_cl_x
       common /myprob3/ v_strength,v_width,v_xcen,v_ycen,v_cl_x
 
-      REAL_T v_blob_r, v_blob_T, v_blob_airfrac, turb_scale
-      common /myprob4/ v_blob_r, v_blob_T, v_blob_airfrac, turb_scale
+      REAL_T v_blob_r, v_blob_T, v_blob_airfrac, turb_scale,phi_in
+      common /myprob4/ v_blob_r, v_blob_T, v_blob_airfrac, turb_scale,phi_in
 
       REAL_T stTh, Rf, V_in, V_co, T_in, R_hot, R_hotBL, stBL, pipeTh, pipeBL
       REAL_T tV_in_l, tV_in_r, V_in_new, tV_co_l, tV_co_r, V_co_new

@@ -192,7 +192,7 @@ c ::: -----------------------------------------------------------
      &                  stTh, Rf, R_hot, R_hotBL, twall, turb_scale, stBL,
      &                  max_trac_lev, max_nozzle_lev, pipeTh, pipeBL,
      &                  tV_in_l,tV_in_r,V_in_new,tV_co_l,tV_co_r,V_co_new,
-     &                  T_stick, T_in
+     &                  T_stick, T_in,phi_in
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -273,6 +273,7 @@ c
       V_co_new = -100.d0
       T_stick = -300.d0
       T_in = 300.d0
+      phi_in = 1.d0
 
 #if defined(BL_DO_FLCT)
 c
@@ -372,6 +373,8 @@ c     Load domain dimensions into common, and set up boundary functions
       REAL_T Patm, y, pmf_GRI_vals(maxspec+3), sum, Y_pmf(maxspec), yEval
       REAL_T Yfu(maxspec), Yox(maxspec)
       REAL_T Y_FU_CH4, Y_FU_O2, Y_OX_CH4, Y_OX_O2
+      REAL_T X_FU_CH4, X_FU_O2, X_FU_N2, Xsum
+      REAL_T Xfu(maxspec)
       integer i, zone, n, lo(SDIM), hi(SDIM), iN2, iCH4, iO2, getZone
       character*(maxspnml) name
       data lo / 1, 1 /
@@ -496,14 +499,6 @@ c     Get something reasonable for stick
 
       elseif (probtype .eq. 3) then
 c     For probtype == 3, set boundary conditions as constants
-
-c     phi = 1.0
-         Y_FU_CH4 = 0.0551670662321d0
-         Y_FU_O2  = 0.220068142419d0
-c     phi = 0.7
-c         Y_FU_CH4 = 0.0392668168889d0
-c         Y_FU_O2  = 0.223771589041d0
-
          iN2 = -1
          iCH4 = -1
          iO2 = -1
@@ -514,12 +509,44 @@ c         Y_FU_O2  = 0.223771589041d0
             if (name .eq. 'O2' ) iO2  = n
          end do
 
+         if(phi_in.ge.zero)then
+
+         do n=1,Nspec
+            Xfu(n) = zero
+         enddo
+
+         X_FU_CH4 = .5d0*phi_in
+         X_FU_O2 = 1.d0
+         X_FU_N2 = .79d0/.21d0
+
+         Xsum = X_FU_CH4 + X_FU_O2 + X_FU_N2
+
+         Xfu(iCH4) = X_FU_CH4/ Xsum
+         Xfu(iO2) = X_FU_O2/ Xsum
+         Xfu(iN2) = X_FU_N2/ Xsum
+
+         call FORT_MOLETOMASS(lo,hi,
+     &        Xfu, ARLIM(lo),ARLIM(hi),
+     &        Yfu,         ARLIM(lo),ARLIM(hi))
+
+         else
+
+c     phi = 1.0
+         Y_FU_CH4 = 0.0551670662321d0
+         Y_FU_O2  = 0.220068142419d0
+c     phi = 0.7
+c         Y_FU_CH4 = 0.0392668168889d0
+c         Y_FU_O2  = 0.223771589041d0
+
+
          do n=1,Nspec
             Yfu(n) = zero
          enddo
          Yfu(iCH4) = Y_FU_CH4
          Yfu(iO2)  = Y_FU_O2
          Yfu(iN2)  = one - Y_FU_CH4 - Y_FU_O2
+
+         endif
 
          zone = M_FUEL
          do n=1,Nspec
@@ -1176,10 +1203,11 @@ c
       if (level .lt. max_temp_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               ax = abs(temperature(i+1,j,1) - temperature(i-1,j,1))
-               ay = abs(temperature(i,j+1,1) - temperature(i,j-1,1))
-               aerr = max(ax,ay)
-               tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
+c              ax = abs(temperature(i+1,j,1) - temperature(i-1,j,1))
+c              ay = abs(temperature(i,j+1,1) - temperature(i,j-1,1))
+c              aerr = max(ax,ay)
+c              tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
+               tag(i,j) = cvmgt(set,tag(i,j),temperature(i,j,1).le.tempgrad)
             enddo
          enddo
       endif
