@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.1 2003-08-08 20:09:41 lijewski Exp $
+# $Id: Make.package,v 1.2 2003-08-08 22:13:53 lijewski Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -25,4 +25,3 @@ C$(HT_BASE)_headers += ChemDriver.H
 F$(HT_BASE)_sources += ChemDriver_F.F ChemDriver_$(DIM)D.F
 F$(HT_BASE)_headers += ChemDriver_F.H cdwrk.H
 f$(HT_BASE)_sources += vode.f xerror.f mach.f math.f EGSlib.f EGini.f
-
