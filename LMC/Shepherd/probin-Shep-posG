@@ -1,0 +1,43 @@
+ &fortin
+  probtype=1
+  flowrate_fu_O2  = .089
+  flowrate_fu_N2  = .335
+  flowrate_fu_CH4 = .036
+  flowrate_ox_N2 = 1.00000
+  flowrate_ox_O2 = 0.26582
+  T_fu = 300.0
+  R_fu = .01031875
+  T_ox = 300.0
+  R_ox_1 = .0125
+  R_ox_2 = .32
+  ystandoff=.017
+  T_lip =  1500.0
+  T_hot =  1500.0
+  T_wall1 = 300.0
+  T_wall2 = 300.0
+  T_wall3 = 300.0
+  y_wall2 = 0.06
+  y_wall3 = 0.5
+  flBL = 0.02
+  refine_nozzle = 1
+  nozzlerefwidth = .025
+  nozzlerefheight = .025
+  max_vort_lev = 0
+  max_nozzle_lev = 2
+  vorterr = .4
+  flametracval = 1.e-10
+  flametracval = 1.e-4
+  x_hot = .02
+  y_hot_lo = -.1
+  y_hot_hi = .03
+  thickFacTR=1
+  thickFacCH=1
+
+  T_air = 300
+  v_air = -.2
+  v_air = -.4
+ /
+ &heattransin
+  dpdt_factor = 0.3
+ /
+
