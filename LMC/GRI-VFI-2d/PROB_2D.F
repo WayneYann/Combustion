@@ -316,9 +316,6 @@ c      write(6,heattransin)
 #endif
 
       read(untin,control)
-      if (h_control .lt. zero) then
-         cfix = xxx
-      endif
 
    10 close(unit=untin)
 
@@ -355,6 +352,9 @@ c     Load domain dimensions into common, and set up boundary functions
       end do
       zone = getZone(half*(domnlo(1)+domnhi(1)),domnlo(2))
       scale_control = Y_bc(iCH4,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))
+      if (h_control .gt. zero) then
+         cfix = scale_control * h_control
+      endif
       
       end
 
