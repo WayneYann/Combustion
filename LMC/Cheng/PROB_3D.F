@@ -23,7 +23,6 @@
 
 #define SDIM 3
 #define USE_PMF_AVG
-c#define SWIRL
 
       subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
 
