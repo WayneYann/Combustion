@@ -2,6 +2,7 @@
   probtype = 3
   flct_file = ""
   flct_file = "../TurbBin_plt0620"
+  flct_file = "../Turb_plt0620.rev.bin"
   forceInflow = .FALSE.
   forceInflow = .TRUE.
   zstandoff = -0.03
@@ -12,9 +13,9 @@
   numInflPlanesStore = 16
 
   Vco_l  = 1.
-  Vco_r  = 1.
-  tVco_l = 0.0
-  tVco_r = 1.0
+  Vco_r  = 2.
+  tVco_l = 0.0388528664
+  tVco_r = 0.04
 
   rhot = .025
   Vin = 1.5
@@ -26,7 +27,7 @@
   turb_scale=1.0
   turb_scale=1.5
 
-  flametracval = 1.e-9
+  flametracval = 1.e-7
   max_temp_lev = 0
   temperr = 100
   max_vort_lev = 0
@@ -37,8 +38,8 @@
   refine_nozzle = 1
   max_nozzle_lev = 1
   refine_nozzle_x = 0.03
-  refine_nozzle_z = 0.04
   refine_nozzle_z = 0.07
+  refine_nozzle_z = 0.04
   tempgrad = 300.0
 
   swK = 0.0
@@ -63,8 +64,9 @@
   wire_z = .002
   wire_w = .000125
   wire_h = 1.0e8
-  wire_T = 1500.0
   wire_T = 1300.0
+  wire_T = 1500.0
+  wire_T = 1600.0
   wire_r = .00035
  /
  &heattransin
