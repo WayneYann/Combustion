@@ -1,0 +1,49 @@
+ &fortin
+  blobx = -1.e6
+  bloby = 2.0
+  blobr = .02
+  xcen = .02
+  splitx = 2.0
+  xfrontw = .005
+  probtype = 2
+  v_strength = -4000.
+  v_strength = 0.
+  v_width = .00125
+  v_xcen = 0.00675
+  v_ycen = 0.008
+  flametracval = .0001
+  vorterr = .2
+  max_vort_lev = 0
+  vorterr = 1.e3
+  y_offset = -0.02
+  y_offset = -0.025
+  y_offset = -0.02937
+  flametracval = 1.e-8
+  V_in = 1.0
+  V_in = 0.75
+  V_in = 1.5
+  V_co = 0.5
+  stTh = .003
+  Rf = .025
+  R_hot = .04
+  R_hotBL = .005
+  twall = 300.
+  max_trac_lev = 1
+  max_trac_lev = 0
+  max_nozzle_lev = 2
+  refine_nozzle_y = .01
+  refine_nozzle_x = .005
+  xcen = 0.
+  pipeTh = .003
+  pipeBL = .08
+  stBL = .01
+  stBL = .15
+  T_stick = 2000.0
+  R_hot = -.1
+ /
+ &heattransin
+  pamb = 101325.0
+  dpdt_factor = 0.3
+ /
+ &flctin
+ /
