@@ -394,14 +394,14 @@ c     phi = 0.8
       data T     /        3.d2,          3.d2,         3.d2,        3.d2,    3.d2,   3.d2 ,   3.d2 /
 #else
 c     phi = 1.0
-      data X_CH4 /  0.095023d0,   zero,  0.095023d0,   zero,   zero,   zero  , zero   /
-      data X_O2  /  0.190045d0, 0.21d0,  0.190045d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
+c     data X_CH4 /  0.095023d0,   zero,  0.095023d0,   zero,   zero,   zero  , zero   /
+c     data X_O2  /  0.190045d0, 0.21d0,  0.190045d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
 c     phi = 0.6
 c     data X_CH4 /  0.0592662276576d0,   zero, 0.0592662276576d0,   zero,    zero,   zero , zero  /
 c     data X_O2  /   0.197554092192d0,  0.21d0, 0.197554092192d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0/
 c     phi = 0.7
-c     data X_CH4 /  0.0684676292501d0,   zero, 0.0684676292501d0,   zero,    zero,   zero , zero   /
-c     data X_O2  /   0.195621797857d0,  0.21d0, 0.195621797857d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
+      data X_CH4 /  0.0684676292501d0,   zero, 0.0684676292501d0,   zero,    zero,   zero , zero   /
+      data X_O2  /   0.195621797857d0,  0.21d0, 0.195621797857d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
 c     phi = 0.75
 c     data X_CH4 /  0.0730011587486d0,   zero, 0.0730011587486d0,   zero,    zero,   zero , zero   /
 c     data X_O2  /   0.194669756663d0,  0.21d0, 0.194669756663d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
@@ -551,10 +551,10 @@ c     $              + 255.47d0*eta**4 - 260.06d0*eta**5+ 99.786d0*eta**6)
                endif
 
 c     For stagnation case, ramp co-flow to zero at coCUTOFF
-               if (probtype.eq.3) then
-                  coCUTOFF = coCUTOFFp - Ro - wallTh
-                  Vincz = Vincz*MAX(zero,(coCUTOFF-r+Ro+wallTh)/coCUTOFF)
-               endif
+c              if (probtype.eq.3) then
+c                 coCUTOFF = coCUTOFFp - Ro - wallTh
+c                 Vincz = Vincz*MAX(zero,(coCUTOFF-r+Ro+wallTh)/coCUTOFF)
+c              endif
 
             endif
 
@@ -1266,8 +1266,8 @@ c
      &                 (getZone(xh,yt,z).eq.BL_PIPEEND) .OR.
      &                 (getZone(xr,yt,z).eq.BL_PIPEEND) ) then
                      
-                     if (do_T)  diff(i,j,k,Tid ) = 0.d0
-                     if (do_RH) diff(i,j,k,RHid) = 0.d0
+c                    if (do_T)  diff(i,j,k,Tid ) = 0.d0
+c                    if (do_RH) diff(i,j,k,RHid) = 0.d0
                      if (do_Y) then
                         do n=ys,ye
                            diff(i,j,k,n) = 0.d0
