@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.17 2004-01-12 19:21:39 marc Exp $
+// $Id: HeatTransfer.cpp,v 1.18 2004-02-13 21:13:01 marc Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -6565,7 +6565,8 @@ HeatTransfer::calcDiffusivity (const Real time,
 
             BL_ASSERT(box == (*rhospec)[idx].box());
 
-            bcen.resize(box,nspecies+2);
+            const int nc_bcen = nspecies+2;
+            bcen.resize(box,nc_bcen);
 
             FORT_SPECTEMPVISC(box.loVect(),box.hiVect(),
                               ARLIM(tempFab.loVect()),ARLIM(tempFab.hiVect()),
@@ -6573,7 +6574,7 @@ HeatTransfer::calcDiffusivity (const Real time,
                               ARLIM((*rhospec)[idx].loVect()),ARLIM((*rhospec)[idx].hiVect()),
                               (*rhospec)[idx].dataPtr(1),
                               ARLIM(bcen.loVect()),ARLIM(bcen.hiVect()),bcen.dataPtr(),
-                              &nspecies, &P1atm_MKS, &do_temp, &vflag);
+                              &nc_bcen, &P1atm_MKS, &do_temp, &vflag);
 
             (*visc)[idx].copy(bcen,0,first_spec-offset,nspecies);
 
