@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.23 2004-06-21 21:47:23 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.24 2004-06-29 19:15:48 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -723,13 +723,12 @@ HeatTransfer::init_once ()
         auxDiag_names.resize(getChemSolve().numReactions());
         for (int i = 0; i < auxDiag_names.size(); ++i)
             auxDiag_names[i] = BoxLib::Concatenate("R",i+1);
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "***** Make sure to increase amr.regrid_int !!!!!" << std::endl;
 #elif defined(BL_PLOT_CONSUMPTION)
         auxDiag_names.resize(1);
         auxDiag_names[0] = "FuelConsumptionRate";
 #endif
-
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "***** Make sure to increase amr.regrid_int !!!!!" << std::endl;
     }
 
     init_once_done = 1;
