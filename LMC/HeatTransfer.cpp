@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.8 2003-09-26 19:33:43 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.9 2003-10-15 18:00:36 marc Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -139,6 +139,8 @@ Real      HeatTransfer::trac_diff_coef            = 0.0;
 Real      HeatTransfer::P1atm_MKS                 = -1.0;
 std::string   HeatTransfer::turbFile                  ="";
 ChemDriver::Chem_Evolve HeatTransfer::chem_integrator = ChemDriver::CKD_Vode;
+Array<std::string> HeatTransfer::auxDiag_names(0);
+bool      HeatTransfer::plot_auxDiags             = false;
 
 static int  max_grid_size_chem   = 16;
 static bool do_not_use_funccount = false;
@@ -449,6 +451,7 @@ HeatTransfer::HeatTransfer ()
     SpecDiffusionFluxn    = 0;
     SpecDiffusionFluxnp1  = 0;
     FillPatchedOldState_ok  = true;
+    auxDiag = 0;
 }
 
 HeatTransfer::HeatTransfer (Amr&            papa,
@@ -497,6 +500,8 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1,nGrow,nspecies);
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
+
+    auxDiag = 0;
 }
 
 HeatTransfer::~HeatTransfer ()
@@ -507,6 +512,7 @@ HeatTransfer::~HeatTransfer ()
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxn);    
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxnp1);    
     }
+    delete auxDiag;
 }
 
 void
@@ -694,6 +700,14 @@ HeatTransfer::init_once ()
     //
     nEdgeStates = desc_lst[State_Type].nComp();
     
+    ParmParse pp("ht");
+    pp.query("plot_auxDiags",plot_auxDiags);
+    if (plot_auxDiags)
+    {
+        auxDiag_names.resize(1);
+        auxDiag_names[0] = "FuelConsumptionRate";
+    }
+
     init_once_done = 1;
 }
 
@@ -1255,6 +1269,23 @@ HeatTransfer::post_timestep (int crse_iteration)
 
             if (do_DO_radiation && ParallelDescriptor::IOProcessor())
                 std::cout << "Radiation sync solve done\n";
+        }
+    }
+
+    if (plot_auxDiags && level==0)
+    {
+        for (int i=parent->finestLevel(); i>0; --i)
+        {
+            HeatTransfer& clev = getLevel(i-1);
+            HeatTransfer& flev = getLevel(i);
+
+            MultiFab& Ydot_crse = *(clev.auxDiag);
+            MultiFab& Ydot_fine = *(flev.auxDiag);
+            
+            NavierStokes::avgDown(clev.boxArray(),flev.boxArray(),
+                                  Ydot_crse,Ydot_fine,
+                                  clev.volume,flev.volume,
+                                  i-1,i,0,1,parent->refRatio(i-1));
         }
     }
 }
@@ -3662,6 +3693,12 @@ HeatTransfer::advance_setup (Real time,
     //
     for (int i = 0; i < spec_diffusion_flux_computed.size(); ++i)
 	spec_diffusion_flux_computed[i] = HT_None;
+
+    if (plot_auxDiags && ncycle==parent->nCycle(level))
+    {
+        delete auxDiag;
+        auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
+    }
 }
 
 void
@@ -3754,6 +3791,11 @@ HeatTransfer::advance (Real time,
     BL_ASSERT(S_new.boxArray() == S_old.boxArray());
 
     const int nComp = NUM_STATE - BL_SPACEDIM;
+
+    // Save off a copy of the pre-chem state
+    const int fuelComp = getChemSolve().index(fuelName) + first_spec;
+    if (plot_auxDiags)
+        auxDiag->copy(S_old,fuelComp,0,1);
     //
     // Build a MultiFab parallel to "fabs".  Force it to have the
     // same distribution as aux_boundary_data_old.  This'll cut out a
@@ -3798,6 +3840,16 @@ HeatTransfer::advance (Real time,
         strang_chem(tmpFABs,dt,HT_LeaveYdotAlone);
 
         aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
+    }
+
+    // Find change due to first Strang step
+    if (plot_auxDiags)
+    {
+        for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
+        {
+            const int i=mfi.index();
+            (*auxDiag)[i].minus(S_old[i],fuelComp,0,1);
+        }
     }
 
     if (do_temp)
@@ -3937,8 +3989,26 @@ HeatTransfer::advance (Real time,
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... advancing chem\n";
-    
+
+    // Adjust chemistry diagnostic before and after reactions
+    if (plot_auxDiags)
+    {
+        for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
+        {
+            const int i=mfi.index();
+            (*auxDiag)[i].plus(S_new[i],fuelComp,0,1);
+        }
+    }
     strang_chem(S_new,dt,HT_EstimateYdotNew);
+    if (plot_auxDiags)
+    {
+        for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
+        {
+            const int i=mfi.index();
+            (*auxDiag)[i].minus(S_new[i],fuelComp,0,1);
+            (*auxDiag)[i].mult(1.0/dt);
+        }
+    }
     //
     //  HACK!!  What are we really supposed to do here?
     //  Deactivate hook in FillPatch hack so that old data really is old data again
@@ -7594,6 +7664,232 @@ HeatTransfer::setPlotVariables ()
             std::cout << *li << ' ';
         std::cout << '\n';
     }
+}
+
+void
+HeatTransfer::writePlotFile (const std::string& dir,
+                             std::ostream&  os,
+                             VisMF::How     how)
+{
+    //
+    // Note that this is really the same as its NavierStokes counterpart,
+    // but in order to add diagnostic MultiFabs into the plotfile, code had
+    // to be interspersed within this function.
+    //
+    int i, n;
+    //
+    // The list of indices of State to write to plotfile.
+    // first component of pair is state_type,
+    // second component of pair is component # within the state_type
+    //
+    std::vector<std::pair<int,int> > plot_var_map;
+    for (int typ = 0; typ < desc_lst.size(); typ++)
+        for (int comp = 0; comp < desc_lst[typ].nComp();comp++)
+            if (parent->isStatePlotVar(desc_lst[typ].name(comp)) &&
+                desc_lst[typ].getType() == IndexType::TheCellType())
+                plot_var_map.push_back(std::pair<int,int>(typ,comp));
+
+    int num_derive = 0;
+    std::list<std::string> derive_names;
+    const std::list<DeriveRec>& dlist = derive_lst.dlist();
+
+    for (std::list<DeriveRec>::const_iterator it = dlist.begin();
+         it != dlist.end();
+         ++it)
+    {
+        if (parent->isDerivePlotVar(it->name()))
+	{
+            derive_names.push_back(it->name());
+            num_derive += it->numDerive();
+	}
+    }
+
+    int num_auxDiag = 0;
+    if (plot_auxDiags)
+        num_auxDiag = auxDiag_names.size();
+    int n_data_items = plot_var_map.size() + num_derive + num_auxDiag;
+    Real cur_time = state[State_Type].curTime();
+
+    if (level == 0 && ParallelDescriptor::IOProcessor())
+    {
+        //
+        // The first thing we write out is the plotfile type.
+        //
+        os << thePlotFileType() << '\n';
+
+        if (n_data_items == 0)
+            BoxLib::Error("Must specify at least one valid data item to plot");
+
+        os << n_data_items << '\n';
+
+	//
+	// Names of variables -- first state, then derived
+	//
+	for (i =0; i < plot_var_map.size(); i++)
+        {
+	    int typ  = plot_var_map[i].first;
+	    int comp = plot_var_map[i].second;
+	    os << desc_lst[typ].name(comp) << '\n';
+        }
+
+	for (std::list<std::string>::const_iterator it = derive_names.begin();
+             it != derive_names.end();
+             ++it)
+        {
+	    const DeriveRec* rec = derive_lst.get(*it);
+	    for (i = 0; i < rec->numDerive(); i++)
+                os << rec->variableName(i) << '\n';
+        }
+        // Hack in additional diagnostics
+        if (plot_auxDiags)
+            for (i=0; i<auxDiag_names.size(); ++i)
+                os << auxDiag_names[i] << '\n';
+
+        os << BL_SPACEDIM << '\n';
+        os << parent->cumTime() << '\n';
+        int f_lev = parent->finestLevel();
+        os << f_lev << '\n';
+        for (i = 0; i < BL_SPACEDIM; i++)
+            os << Geometry::ProbLo(i) << ' ';
+        os << '\n';
+        for (i = 0; i < BL_SPACEDIM; i++)
+            os << Geometry::ProbHi(i) << ' ';
+        os << '\n';
+        for (i = 0; i < f_lev; i++)
+            os << parent->refRatio(i)[0] << ' ';
+        os << '\n';
+        for (i = 0; i <= f_lev; i++)
+            os << parent->Geom(i).Domain() << ' ';
+        os << '\n';
+        for (i = 0; i <= f_lev; i++)
+            os << parent->levelSteps(i) << ' ';
+        os << '\n';
+        for (i = 0; i <= f_lev; i++)
+        {
+            for (int k = 0; k < BL_SPACEDIM; k++)
+                os << parent->Geom(i).CellSize()[k] << ' ';
+            os << '\n';
+        }
+        os << (int) CoordSys::Coord() << '\n';
+        os << "0\n"; // Write bndry data.
+    }
+    // Build the directory to hold the MultiFab at this level.
+    // The name is relative to the directory containing the Header file.
+    //
+    static const std::string BaseName = "/Cell";
+    char buf[64];
+    sprintf(buf, "Level_%d", level);
+    std::string Level = buf;
+    //
+    // Now for the full pathname of that directory.
+    //
+    std::string FullPath = dir;
+    if (!FullPath.empty() && FullPath[FullPath.length()-1] != '/')
+        FullPath += '/';
+    FullPath += Level;
+    //
+    // Only the I/O processor makes the directory if it doesn't already exist.
+    //
+    if (ParallelDescriptor::IOProcessor())
+        if (!BoxLib::UtilCreateDirectory(FullPath, 0755))
+            BoxLib::CreateDirectoryFailed(FullPath);
+    //
+    // Force other processors to wait till directory is built.
+    //
+    ParallelDescriptor::Barrier();
+
+    if (ParallelDescriptor::IOProcessor())
+    {
+        os << level << ' ' << grids.size() << ' ' << cur_time << '\n';
+        os << parent->levelSteps(level) << '\n';
+
+        for (i = 0; i < grids.size(); ++i)
+        {
+            for (n = 0; n < BL_SPACEDIM; n++)
+                os << grid_loc[i].lo(n) << ' ' << grid_loc[i].hi(n) << '\n';
+        }
+        //
+        // The full relative pathname of the MultiFabs at this level.
+        // The name is relative to the Header file containing this name.
+        // It's the name that gets written into the Header.
+        //
+        if (n_data_items > 0)
+        {
+            std::string PathNameInHeader = Level;
+            PathNameInHeader += BaseName;
+            os << PathNameInHeader << '\n';
+        }
+    }
+    //
+    // We combine all of the multifabs -- state, derived, etc -- into one
+    // multifab -- plotMF.
+    // NOTE: we are assuming that each state variable has one component,
+    // but a derived variable is allowed to have multiple components.
+    int       cnt   = 0;
+    int       ncomp = 1;
+    const int nGrow = 0;
+    MultiFab  plotMF(grids,n_data_items,nGrow);
+    MultiFab* this_dat = 0;
+    //
+    // Cull data from state variables -- use no ghost cells.
+    //
+    for (i = 0; i < plot_var_map.size(); i++)
+    {
+	int typ  = plot_var_map[i].first;
+	int comp = plot_var_map[i].second;
+	this_dat = &state[typ].newData();
+	MultiFab::Copy(plotMF,*this_dat,comp,cnt,ncomp,nGrow);
+	cnt+= ncomp;
+    }
+    //
+    // Cull data from derived variables.
+    // 
+    Real plot_time;
+
+    if (derive_names.size() > 0)
+    {
+	for (std::list<std::string>::const_iterator it = derive_names.begin();
+             it != derive_names.end();
+             ++it) 
+	{
+            if (*it == "avg_pressure" ||
+                *it == "gradpx"       ||
+                *it == "gradpy"       ||
+                *it == "gradpz") 
+            {
+                if (state[Press_Type].descriptor()->timeType() == 
+                    StateDescriptor::Interval) 
+                {
+                    plot_time = cur_time;
+                }
+                else
+                {
+                    int f_lev = parent->finestLevel();
+                    plot_time = getLevel(f_lev).state[Press_Type].curTime();
+                }
+            }
+            else
+            {
+                plot_time = cur_time;
+            } 
+	    const DeriveRec* rec = derive_lst.get(*it);
+	    ncomp = rec->numDerive();
+	    MultiFab* derive_dat = derive(*it,plot_time,nGrow);
+	    MultiFab::Copy(plotMF,*derive_dat,0,cnt,ncomp,nGrow);
+	    delete derive_dat;
+	    cnt += ncomp;
+	}
+    }
+    // Cull data from diagnostic multifabs
+    if (plot_auxDiags)
+        MultiFab::Copy(plotMF,*auxDiag,0,cnt,num_auxDiag,nGrow);
+
+    //
+    // Use the Full pathname when naming the MultiFab.
+    //
+    std::string TheFullPath = FullPath;
+    TheFullPath += BaseName;
+    VisMF::Write(plotMF,TheFullPath,how,true);
 }
 
 AuxBoundaryData::AuxBoundaryData ()

@@ -3,7 +3,7 @@
 #define _HeatTransfer_H_
 
 //
-// $Id: HeatTransfer.H,v 1.1 2003-08-08 20:09:41 lijewski Exp $
+// $Id: HeatTransfer.H,v 1.2 2003-10-15 18:00:36 marc Exp $
 //
 
 #include <NavierStokes.H>
@@ -550,6 +550,12 @@ protected:
     //
     virtual void setPlotVariables ();
     //
+    // Write plot file stuff to specified directory.
+    //
+    virtual void writePlotFile (const std::string& dir,
+                                std::ostream&  os,
+                                VisMF::How     how);
+    //
     // Functions for interpolating from cell centers to cell edges
     //
     enum FPLoc { HT_Edge = 0, HT_Center };
@@ -585,6 +591,10 @@ protected:
     AuxBoundaryData aux_boundary_data_new;
     bool FillPatchedOldState_ok;
     PArray<MultiFab> derive_mfs;
+
+    static bool plot_auxDiags;
+    MultiFab* auxDiag;
+    static Array<std::string> auxDiag_names;
     //
     // Protected static data.
     //
