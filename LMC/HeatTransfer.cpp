@@ -12,7 +12,6 @@
 #include <cstdio>
 #include <cfloat>
 #include <fstream>
-#include <strstream>
 #include <vector>
 
 #include <CoordSys.H>
