@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.13 2003-10-17 23:34:03 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.14 2003-11-24 19:20:24 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -3711,6 +3711,7 @@ HeatTransfer::advance_setup (Real time,
     {
         delete auxDiag;
         auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
+        auxDiag->setVal(0);
     }
 }
 
@@ -3854,14 +3855,20 @@ HeatTransfer::advance (Real time,
 
         aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
     }
-
-    // Find change due to first Strang step
+    //
+    // Find change due to first Strang step.
+    //
     if (plot_auxDiags)
     {
-        for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
+        MultiFab tmp(auxDiag->boxArray(),1,0);
+
+        tmp.setVal(0);
+
+        tmp.copy(S_old,fuelComp,0,1);
+
+        for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
         {
-            const int i=mfi.index();
-            (*auxDiag)[i].minus(S_old[i],fuelComp,0,1);
+            (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);
         }
     }
 
@@ -4002,24 +4009,37 @@ HeatTransfer::advance (Real time,
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... advancing chem\n";
-
-    // Adjust chemistry diagnostic before and after reactions
+    //
+    // Adjust chemistry diagnostic before and after reactions.
+    //
     if (plot_auxDiags)
     {
-        for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
+        MultiFab tmp(auxDiag->boxArray(),1,0);
+
+        tmp.setVal(0);
+
+        tmp.copy(S_new,fuelComp,0,1);
+
+        for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
         {
-            const int i=mfi.index();
-            (*auxDiag)[i].plus(S_new[i],fuelComp,0,1);
+            (*auxDiag)[mfi].plus(tmp[mfi],0,0,1);
         }
     }
+
     strang_chem(S_new,dt,HT_EstimateYdotNew);
+
     if (plot_auxDiags)
     {
-        for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
+        MultiFab tmp(auxDiag->boxArray(),1,0);
+
+        tmp.setVal(0);
+
+        tmp.copy(S_new,fuelComp,0,1);
+
+        for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
         {
-            const int i=mfi.index();
-            (*auxDiag)[i].minus(S_new[i],fuelComp,0,1);
-            (*auxDiag)[i].mult(1.0/dt);
+            (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);
+            (*auxDiag)[mfi].mult(1.0/dt);
         }
     }
     //
@@ -7753,7 +7773,9 @@ HeatTransfer::writePlotFile (const std::string& dir,
 	    for (i = 0; i < rec->numDerive(); i++)
                 os << rec->variableName(i) << '\n';
         }
-        // Hack in additional diagnostics
+        //
+        // Hack in additional diagnostics.
+        //
         if (plot_auxDiags)
             for (i=0; i<auxDiag_names.size(); ++i)
                 os << auxDiag_names[i] << '\n';
@@ -7893,10 +7915,11 @@ HeatTransfer::writePlotFile (const std::string& dir,
 	    cnt += ncomp;
 	}
     }
-    // Cull data from diagnostic multifabs
+    //
+    // Cull data from diagnostic multifabs.
+    //
     if (plot_auxDiags)
         MultiFab::Copy(plotMF,*auxDiag,0,cnt,num_auxDiag,nGrow);
-
     //
     // Use the Full pathname when naming the MultiFab.
     //
