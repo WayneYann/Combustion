@@ -1,4 +1,4 @@
-C     CVS $Revision: 1.1 $ reposited $Date: 2003-08-08 20:09:40 $
+C     CVS $Revision: 1.2 $ reposited $Date: 2003-08-08 21:38:51 $
 
 C///////////////////////////////////////////////////////////////////////
 C
@@ -572,6 +572,8 @@ C
 C/6S
 C/7S
       SAVE IMACH, SANITY
+
+      DATA SANITY /0/
 C/
       REAL RMACH
 C
