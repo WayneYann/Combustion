@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.7 2003-09-18 20:51:03 marc Exp $
+// $Id: HeatTransfer.cpp,v 1.8 2003-09-26 19:33:43 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -5907,8 +5907,9 @@ HeatTransfer::mac_sync ()
                 //            be adjusted as well.  Note yet sure how to do this correctly.
                 //            Punt for now...
                 //
-                const int which_interp = 3;
-                const int nComp        = (do_temp ? 2+nspecies : nspecies);
+                const SyncInterpType which_interp = CellConsProt_T;
+
+                const int nComp = (do_temp ? 2+nspecies : nspecies);
 
                 SyncInterp(*Ssync, level, increment, lev, ratio, 
                            Density-BL_SPACEDIM, Density-BL_SPACEDIM, nComp, 1, mult, 
