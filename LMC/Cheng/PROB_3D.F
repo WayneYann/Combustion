@@ -1913,327 +1913,279 @@ c
       call filcc (vel(ARG_L1(vel),ARG_L2(vel),ARG_L3(vel),3),
      $            DIMS(vel),domlo,domhi,delta,xlo,bc(1,1,3))
 
-      do i = lo(1), domlo(1)-1
-         x = (float(i)+.5)*delta(1)+domnlo(1)
-         do k = lo(3),hi(3)
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+      if (lo(1).lt.domlo(1)) then
+         do i = lo(1), domlo(1)-1
+            x = (float(i)+.5)*delta(1)+domnlo(1)
+            do k = lo(3),hi(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
+               do j = lo(2), hi(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
 
-               call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
-               if (bc(1,1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 1) then
-                     vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
-                  else
+                  if (bc(1,1,1).eq.EXT_DIR) then
                      vel(i,j,k,1) = u
-                  endif
-#else
-                  vel(i,j,k,1) = u
-#endif
-               endif
-
-               if (bc(1,1,2).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
 #if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 1) then
-                     vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
-                  else
+                     if (forceLo .and. strmwse_dir .eq. 1) then
+                        vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
+                     endif
+#endif
+                  endif
+
+                  if (bc(1,1,2).eq.EXT_DIR) then
                      vel(i,j,k,2) = v
-                  endif
-#else
-                  vel(i,j,k,2) = v
-#endif
-               endif
-
-               if (bc(1,1,3).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
 #if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 1) then
-                     vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,3) = w
-                  endif
-#else
-                  vel(i,j,k,3) = w
+                     if (forceLo .and. strmwse_dir .eq. 1) then
+                        vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
+                     endif
 #endif
-               endif
+                  endif
 
+                  if (bc(1,1,3).eq.EXT_DIR) then
+                     vel(i,j,k,3) = w
+#if defined(BL_DO_FLCT)
+                     if (forceLo .and. strmwse_dir .eq. 1) then
+                        vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
+                     endif
+#endif
+                  endif
+               enddo
             enddo
          enddo
-      enddo
+      endif
 
-      do i = domhi(1)+1, hi(1)
-         x = (float(i)+.5)*delta(1)+domnlo(1)
-         do k = lo(3),hi(3)
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+      if (hi(1).gt.domhi(1)) then
+         do i = domhi(1)+1, hi(1)
+            x = (float(i)+.5)*delta(1)+domnlo(1)
+            do k = lo(3),hi(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
+               do j = lo(2), hi(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
 
-               call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
-               if (bc(1,2,1).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 1) then
-                     vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
-                  else
+                  if (bc(1,2,1).eq.EXT_DIR) then
                      vel(i,j,k,1) = u
-                  endif
-#else
-                  vel(i,j,k,1) = u
-#endif
-               endif
-
-               if (bc(1,2,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
 #if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 1) then
-                     vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
-                  else
+                     if (forceHi .and. strmwse_dir .eq. 1) then
+                        vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
+                     endif
+#endif
+                  endif
+
+                  if (bc(1,2,2).eq.EXT_DIR) then
                      vel(i,j,k,2) = v
-                  endif
-#else
-                  vel(i,j,k,2) = v
-#endif
-               endif
-
-               if (bc(1,2,3).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
 #if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 1) then
-                     vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,3) = w
-                  endif
-#else
-                  vel(i,j,k,3) = w
+                     if (forceHi .and. strmwse_dir .eq. 1) then
+                        vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
+                     endif
 #endif
-               endif
+                  endif
 
+                  if (bc(1,2,3).eq.EXT_DIR) then
+                     vel(i,j,k,3) = w
+#if defined(BL_DO_FLCT)
+                     if (forceHi .and. strmwse_dir .eq. 1) then
+                        vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
+                     endif
+#endif
+                  endif
+               enddo
             enddo
          enddo
-      enddo
+      endif
 
-      do j = lo(2), domlo(2)-1
-         y = (float(j)+.5)*delta(2)+domnlo(2)
-         do k = lo(3),hi(3)
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
-
-               call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-
-               if (bc(2,1,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 2) then
-                     vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,1) = u
-                  endif
-#else
-                  vel(i,j,k,1) = u
-#endif
-               endif
-
-               if (bc(2,1,2).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 2) then
-                     vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,2) = v
-                  endif
-#else
-                  vel(i,j,k,2) = v
-#endif
-               endif
-
-               if (bc(2,1,3).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 2) then
-                     vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,3) = w
-                  endif
-#else
-                  vel(i,j,k,3) = w
-#endif
-               endif
-
-            enddo
-         enddo
-      enddo
-
-      do j = domhi(2)+1, hi(2)
-         y = (float(j)+.5)*delta(2)+domnlo(2)
-         do k = lo(3),hi(3)
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
-
-               call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-
-               if (bc(2,2,1).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 2) then
-                     vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,1) = u
-                  endif
-#else
-                  vel(i,j,k,1) = u
-#endif
-               endif
-
-               if (bc(2,2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 2) then
-                     vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,2) = v
-                  endif
-#else
-                  vel(i,j,k,2) = v
-#endif
-               endif
-
-               if (bc(2,2,3).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 2) then
-                     vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,3) = w
-                  endif
-#else
-                  vel(i,j,k,3) = w
-#endif
-               endif
-
-            enddo
-         enddo
-      enddo
-
-      do k = lo(3), domlo(3)-1
-         z = (float(k)+.5)*delta(3)+domnlo(3)
-         do j = lo(2),hi(2)
+      if (lo(2).lt.domlo(2)) then
+         do j = lo(2), domlo(2)-1
             y = (float(j)+.5)*delta(2)+domnlo(2)
-            do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+            do k = lo(3),hi(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
 
-               call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
-               if (bc(3,1,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 3) then
-#ifdef SWIRL
-                     vel(i,j,k,1) = u + uflct(i,j,1)
-#else
-                     r = sqrt(x**2+y**2)
-                     cs = x/r
-                     sg = y/r
-                     scaler = turbSclR(r)
-                     scalet = turbSclT(r)
-                     vel(i,j,k,1) = u + turb_scale*turbSclX(x,y,z)*
-     &                 ((scaler*cs**2+scalet*sg**2)*uflct(i,j,1) +
-     &                  (scaler*sg*cs-scalet*sg*cs)*vflct(i,j,1))
-#endif
-                  else
+                  if (bc(2,1,1).eq.EXT_DIR) then
                      vel(i,j,k,1) = u
-                  endif
-#else
-                  vel(i,j,k,1) = u
-#endif
-               endif
-
-               if (bc(3,1,2).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
 #if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 3) then
-#ifdef SWIRL
-                     vel(i,j,k,2) = v + vflct(i,j,1)
-#else
-                     r = sqrt(x**2+y**2)
-                     cs = x/r
-                     sg = y/r
-                     scaler = turbSclR(r)
-                     scalet = turbSclT(r)
-                     vel(i,j,k,2) = v + turb_scale*turbSclY(x,y,z)*
-     &                 ((scaler*sg**2+scalet*cs**2)*vflct(i,j,1) +
-     &                  (scaler*sg*cs- scalet*sg*cs)*uflct(i,j,1))
+                     if (forceLo .and. strmwse_dir .eq. 2) then
+                        vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
+                     endif
 #endif
-                  else
+                  endif
+
+                  if (bc(2,1,2).eq.EXT_DIR) then
                      vel(i,j,k,2) = v
-                  endif
-#else
-                  vel(i,j,k,2) = v
-#endif
-               endif
-
-               if (bc(3,1,3).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
 #if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 3) then
-#ifdef SWIRL
-                     vel(i,j,k,3) = w + wflct(i,j,1)
-#else
-                     vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
-     &                      * anisotsc
+                     if (forceLo .and. strmwse_dir .eq. 2) then
+                        vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
+                     endif
 #endif
-                  else
-                     vel(i,j,k,3) = w
                   endif
-#else
-                  vel(i,j,k,3) = w
-#endif
-               endif
 
+                  if (bc(2,1,3).eq.EXT_DIR) then
+                        vel(i,j,k,3) = w
+#if defined(BL_DO_FLCT)
+                     if (forceLo .and. strmwse_dir .eq. 2) then
+                        vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
+                     endif
+
+#endif
+                  endif
+               enddo
             enddo
          enddo
-      enddo
+      endif
 
-      do k = domhi(3)+1, hi(3)
-         z = (float(k)+.5)*delta(3)+domnlo(3)
-         do j = lo(2),hi(2)
+      if (hi(2).gt.domhi(2)) then
+         do j = domhi(2)+1, hi(2)
             y = (float(j)+.5)*delta(2)+domnlo(2)
-            do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+            do k = lo(3),hi(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
 
-               call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
-               if (bc(3,2,1).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
+                  if (bc(2,2,1).eq.EXT_DIR) then
+                        vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 3) then
-                     vel(i,j,k,1) = u + uflct(i,j,1)*turbSclX(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,1) = u
-                  endif
-#else
-                  vel(i,j,k,1) = u
+                     if (forceHi .and. strmwse_dir .eq. 2) then
+                        vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
+                     endif
 #endif
-               endif
+                  endif
 
-               if (bc(3,2,2).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 3) then
-                     vel(i,j,k,2) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
-                  else
+                  if (bc(2,2,2).eq.EXT_DIR) then
                      vel(i,j,k,2) = v
-                  endif
-#else
-                  vel(i,j,k,2) = v
-#endif
-               endif
-
-               if (bc(3,2,3).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
 #if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 3) then
-                     vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
-                  else
-                     vel(i,j,k,3) = w
-                  endif
-#else
-                  vel(i,j,k,3) = w
+                     if (forceHi .and. strmwse_dir .eq. 2) then
+                        vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
+                     endif
 #endif
-               endif
+                  endif
 
+                  if (bc(2,2,3).eq.EXT_DIR) then
+                     vel(i,j,k,3) = w
+#if defined(BL_DO_FLCT)
+                     if (forceHi .and. strmwse_dir .eq. 2) then
+                        vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
+                     endif
+#endif
+                  endif
+               enddo
             enddo
          enddo
-      enddo
+      endif
 
+      if (lo(3).lt.domlo(3)) then
+         do k = lo(3), domlo(3)-1
+            z = (float(k)+.5)*delta(3)+domnlo(3)
+            do j = lo(2),hi(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
+
+                  call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+
+                  if (bc(3,1,1).eq.EXT_DIR) then
+                     vel(i,j,k,1) = u
+#if defined(BL_DO_FLCT)
+                     if (forceLo .and. strmwse_dir .eq. 3) then
+#ifdef SWIRL
+                        vel(i,j,k,1) = u + uflct(i,j,1)
+#else
+                        r = sqrt(x**2+y**2)
+                        cs = x/r
+                        sg = y/r
+                        scaler = turbSclR(r)
+                        scalet = turbSclT(r)
+                        vel(i,j,k,1) = u + turb_scale*turbSclX(x,y,z)*
+     &                       ((scaler*cs**2+scalet*sg**2)*uflct(i,j,1) +
+     &                       (scaler*sg*cs-scalet*sg*cs)*vflct(i,j,1))
+#endif
+                     endif
+#endif
+                  endif
+
+                  if (bc(3,1,2).eq.EXT_DIR) then
+                     vel(i,j,k,2) = v
+#if defined(BL_DO_FLCT)
+                     if (forceLo .and. strmwse_dir .eq. 3) then
+#ifdef SWIRL
+                        vel(i,j,k,2) = v + vflct(i,j,1)
+#else
+                        r = sqrt(x**2+y**2)
+                        cs = x/r
+                        sg = y/r
+                        scaler = turbSclR(r)
+                        scalet = turbSclT(r)
+                        vel(i,j,k,2) = v + turb_scale*turbSclY(x,y,z)*
+     &                       ((scaler*sg**2+scalet*cs**2)*vflct(i,j,1) +
+     &                       (scaler*sg*cs- scalet*sg*cs)*uflct(i,j,1))
+#endif
+                     endif
+#endif
+                  endif
+
+                  if (bc(3,1,3).eq.EXT_DIR) then
+                     vel(i,j,k,3) = w
+#if defined(BL_DO_FLCT)
+                     if (forceLo .and. strmwse_dir .eq. 3) then
+#ifdef SWIRL
+                        vel(i,j,k,3) = w + wflct(i,j,1)
+#else
+                        vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
+     &                       * anisotsc
+#endif
+                     endif
+#endif
+                  endif
+               enddo
+            enddo
+         enddo
+      endif
+
+      if (hi(3).gt.domhi(3)) then
+         do k = domhi(3)+1, hi(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
+            do j = lo(2),hi(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
+
+                  call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+
+                  if (bc(3,2,1).eq.EXT_DIR) then
+                     vel(i,j,k,1) = u
+#if defined(BL_DO_FLCT)
+                     if (forceHi .and. strmwse_dir .eq. 3) then
+                        vel(i,j,k,1) = u + uflct(i,j,1)*turbSclX(x,y,z)*turb_scale
+                     endif
+#endif
+                  endif
+
+                  if (bc(3,2,2).eq.EXT_DIR) then
+                     vel(i,j,k,2) = v
+#if defined(BL_DO_FLCT)
+                     if (forceHi .and. strmwse_dir .eq. 3) then
+                        vel(i,j,k,2) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
+                     endif
+#endif
+                  endif
+
+                  if (bc(3,2,3).eq.EXT_DIR) then
+                     vel(i,j,k,3) = w
+#if defined(BL_DO_FLCT)
+                     if (forceHi .and. strmwse_dir .eq. 3) then
+                        vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
+                     endif
+#endif
+                  endif
+               enddo
+            enddo
+         enddo
+      endif
 
 #if defined(BL_DO_FLCT)
       if (forceInflow) then
