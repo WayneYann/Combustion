@@ -1958,8 +1958,8 @@ void productionRate(double * wdot, double * sc, double T)
     }
 
     /*reaction 1: 2 CH4 + 3 O2 => 2 CO + 4 H2O */
-    phi_f = sc[2]*sc[2]*sc[0]*sc[0]*sc[0];
-    k_f = 1e-24 * 1.545e+14*exp(0.5*tc[0]-20078/tc[1]);
+    phi_f = sc[2]*sc[0];
+    k_f = 1e-6 * 1.545e+14*exp(0.5*tc[0]-20078/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
     qdot = q_f - q_r;
@@ -1969,8 +1969,8 @@ void productionRate(double * wdot, double * sc, double T)
     wdot[1] += 4 * qdot;
 
     /*reaction 2: 2 CO + O2 => 2 CO2 */
-    phi_f = sc[3]*sc[3]*sc[0];
-    k_f = 1e-12 * 1.991e+14*exp(-20130.9/tc[1]);
+    phi_f = sc[3]*pow(sc[3],0.5)*pow(sc[0],0.25);
+    k_f = 3.16228e-5 * 1.991e+14*exp(-20130.9/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
     qdot = q_f - q_r;
@@ -1979,8 +1979,8 @@ void productionRate(double * wdot, double * sc, double T)
     wdot[4] += 2 * qdot;
 
     /*reaction 3: 2 CO2 => 2 CO + O2 */
-    phi_f = sc[4]*sc[4];
-    k_f = 1e-06 * 2.5e+08*exp(-20130.9/tc[1]);
+    phi_f = sc[4];
+    k_f = 2.5e+08*exp(-20130.9/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
     qdot = q_f - q_r;
@@ -2034,22 +2034,22 @@ void progressRate(double * qdot, double * sc, double T)
     gibbs(g_RT, tc);
 
     /*reaction 1: 2 CH4 + 3 O2 => 2 CO + 4 H2O */
-    phi_f = sc[2]*sc[2]*sc[0]*sc[0]*sc[0];
-    k_f = 1e-24 * 1.545e+14*exp(0.5*tc[0]-20078/tc[1]);
+    phi_f = sc[2]*sc[0];
+    k_f = 1e-6 * 1.545e+14*exp(0.5*tc[0]-20078/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
     qdot[0] = q_f - q_r;
 
     /*reaction 2: 2 CO + O2 => 2 CO2 */
-    phi_f = sc[3]*sc[3]*sc[0];
-    k_f = 1e-12 * 1.991e+14*exp(-20130.9/tc[1]);
+    phi_f = sc[3]*pow(sc[3],0.5)*pow(sc[0],0.25);
+    k_f = 3.16228e-5 * 1.991e+14*exp(-20130.9/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
     qdot[1] = q_f - q_r;
 
     /*reaction 3: 2 CO2 => 2 CO + O2 */
-    phi_f = sc[4]*sc[4];
-    k_f = 1e-06 * 2.5e+08*exp(-20130.9/tc[1]);
+    phi_f = sc[4];
+    k_f = 2.5e+08*exp(-20130.9/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
     qdot[2] = q_f - q_r;
@@ -2065,13 +2065,16 @@ void equilibriumConstants(double *kc, double * g_RT, double T)
     double refC = 101325 / 8.314 / T;
 
     /*reaction 1: 2 CH4 + 3 O2 => 2 CO + 4 H2O */
-    kc[0] = refC * exp((2 * g_RT[2] + 3 * g_RT[0]) - (2 * g_RT[3] + 4 * g_RT[1]));
+    //kc[0] = refC * exp((2 * g_RT[2] + 3 * g_RT[0]) - (2 * g_RT[3] + 4 * g_RT[1]));
+    kc[0] = 0.0;
 
     /*reaction 2: 2 CO + O2 => 2 CO2 */
-    kc[1] = 1.0 / (refC) * exp((2 * g_RT[3] + g_RT[0]) - (2 * g_RT[4]));
+    //kc[1] = 1.0 / (refC) * exp((2 * g_RT[3] + g_RT[0]) - (2 * g_RT[4]));
+    kc[1] = 0.0;
 
     /*reaction 3: 2 CO2 => 2 CO + O2 */
-    kc[2] = refC * exp((2 * g_RT[4]) - (2 * g_RT[3] + g_RT[0]));
+    //kc[2] = refC * exp((2 * g_RT[4]) - (2 * g_RT[3] + g_RT[0]));
+    kc[2] = 0.0;
 
     return;
 }
