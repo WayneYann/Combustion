@@ -26,7 +26,8 @@ public:
                          int               sCompT,
                          Real              dt,
                          Real              Patm,
-                         const Chem_Evolve solver=CKD_Vode) const;
+                         const Chem_Evolve solver=CKD_Vode,
+                         FArrayBox*        chemDiag=0) const;
 
     void set_verbose_vode ();
     void set_max_vode_subcycles (int max_cyc);
