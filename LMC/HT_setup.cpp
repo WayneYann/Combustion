@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.2 2003-08-21 16:29:23 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.3 2004-07-13 21:14:25 lijewski Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -22,7 +22,6 @@
 //
 // "Divu_Type" means S, where divergence U = S
 // "Dsdt_Type" means pd S/pd t, where S is as above
-// "Dqrad_Type" means diver q_rad, i.e., the divergence of the radiative heat flux
 //
 // see variableSetUp on how to use or not use these types in the state
 //
@@ -722,7 +721,7 @@ HeatTransfer::variableSetUp ()
     // that dsdt can be used only if divu is used
     //
     // If everything going into divu is zero, don't need to make space for divu
-    bool zero_divu = (do_temp && is_diffusive[Temp]) && !do_DO_radiation
+    bool zero_divu = (do_temp && is_diffusive[Temp])
 	&& !do_OT_radiation && (have_spec && is_diffusive[FirstSpec]);
     //
     // If zerodivu != 0, then we're going to hardwire something into divu
@@ -755,26 +754,9 @@ HeatTransfer::variableSetUp ()
 	    desc_lst.setComponent(Dsdt_Type,Dsdt,"dsdt",bc,BndryFunc(FORT_DSDTFILL));
 	}
     }
-    
-    if (do_DO_radiation)
-    {
-	BL_ASSERT(do_temp);
-	//
-	// Stick Dqrad_Type on the end of the descriptor list.
-        //
-	Dqrad_Type = desc_lst.size();
-        //
-	// Note: there must be a component Temp in State_Type if
-	// you are going to use radiation.
-        //
-	ngrow = 0;
-	desc_lst.addDescriptor(Dqrad_Type,IndexType::TheCellType(),StateDescriptor::Point,ngrow,1,
-			       &cell_cons_interp);
-	set_dqrad_bc(bc,phys_bc);
-	desc_lst.setComponent(Dqrad_Type,Dqrad,"dqrad",bc,BndryFunc(FORT_DQRADFILL));
-    }
-
+    //
     // Add in the fcncall tracer type quantity FIXME???
+    //
     FuncCount_Type = desc_lst.size();
     desc_lst.addDescriptor(FuncCount_Type, IndexType::TheCellType(),StateDescriptor::Point,0, 1, &cell_cons_interp);
     desc_lst.setComponent(FuncCount_Type, 0, "FuncCount", bc, BndryFunc(FORT_DQRADFILL));

@@ -2,19 +2,11 @@
 #ifndef _HeatTransfer_H_
 #define _HeatTransfer_H_
 
-//
-// $Id: HeatTransfer.H,v 1.2 2003-10-15 18:00:36 marc Exp $
-//
-
 #include <NavierStokes.H>
 #include <ChemDriver.H>
 
 #include <list>
 #include <utility>
-//
-// Forward declaration.
-//
-class Rad_driver;
 
 //
 // Note: define TEMPERATURE if you want a variable T in the 
@@ -163,8 +155,6 @@ class HeatTransfer
 
 public:
 
-    enum DqradNames { Dqrad = 0 };
-
     HeatTransfer ();
     HeatTransfer (Amr&            papa,
                   int             lev,
@@ -178,7 +168,7 @@ public:
                           std::istream& is,
                           bool          bReadSpecial = false);
     //
-    // Timestep estimation functions follow
+    // Timestep estimation functions follow.
     //
     virtual Real estTimeStep ();
 
@@ -320,6 +310,7 @@ public:
     // Compute timesteps.
     //
     virtual void post_timestep (int iteration);
+
     virtual void post_init_press (Real&        dt_init,
                                   Array<int>&  nc_save,
                                   Array<Real>& dt_save);
@@ -332,9 +323,6 @@ public:
     virtual void post_init (Real stop_time);
 
     void init_once ();
-
-    MultiFab* getDqrad (int  ngrow,
-                        Real time);
     //
     // Static member functions.
     //
@@ -386,14 +374,6 @@ protected:
                             MultiFab& dpdt,
                             MultiFab* u_mac);
 
-    void rad_multi_solve_driver (int lradbase,
-                                 int iteration,
-                                 int ncycle); 
-
-    void rad_sync_solve_driver (int level,
-                                int iteration,
-                                int ncycle);
-
     virtual void compute_vel_visc (Real      time,
                                    MultiFab* beta);
 
@@ -403,9 +383,6 @@ protected:
                         MultiFab&       P,
                         int             pComp,
                         const MultiFab* T = 0);
-
-    void compute_dqradn (int iteration,
-                         int ncycle);
 
     void compute_rhoh_new (Real time,
                            Real dt);
@@ -581,7 +558,6 @@ protected:
     MultiFab*   Spec_visc_sync;   // Species diffusive sync update storage
     MultiFab*   RhoH_adv_sync;    // RhoH advective sync update storage
     MultiFab*   RhoH_visc_sync;   // RhoH diffusive sync update storage
-    MultiFab*   dqrad;
     MultiFab**  EdgeState;
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
@@ -602,15 +578,11 @@ protected:
     static int         init_once_done;
     static int         have_temp;
     static int         RhoH;
-    static int         do_DO_radiation;
     static int         do_OT_radiation;
     static int         do_heat_sink;
     static ChemDriver::Chem_Evolve chem_integrator;
     static int         unity_Le;
-    static int         Dqrad_Type;
     static int         FuncCount_Type;
-    static int         have_dqrad;
-    static Rad_driver* rad_driver;
     static int         Ydot_Type;
     static int         have_ydot;
     static int         htt_floor_spec;

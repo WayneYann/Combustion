@@ -1,11 +1,6 @@
 //
-// $Id: HeatTransfer.cpp,v 1.25 2004-06-30 16:33:48 lijewski Exp $
-//
-//
 // "Divu_Type" means S, where divergence U = S
 // "Dsdt_Type" means pd S/pd t, where S is as above
-// "Dqrad_Type" means diver q_rad, i.e., the divergence of the radiative heat flux
-//                  +ve for heat loss
 // "Ydot_Type" means -omega_l/rho, i.e., the mass rate of decrease of species l due
 //             to kinetics divided by rho
 //
@@ -34,12 +29,6 @@
 #include <Interpolater.H>
 #include <Profiler.H>
 #include <ccse-mpi.H>
-
-#ifdef BL_USE_RADIATION
-#include <Rad.H>
-#else
-class Rad_driver;
-#endif
 
 #ifndef NDEBUG
 void inspectFAB (FArrayBox& unfab);
@@ -83,7 +72,6 @@ const int LinOp_grow = 1;
 //
 int       HeatTransfer::num_divu_iters        = 1;
 int       HeatTransfer::init_once_done        = 0;
-int       HeatTransfer::do_DO_radiation       = 0;
 int       HeatTransfer::do_OT_radiation       = 0;
 int       HeatTransfer::do_heat_sink          = 0;
 int       HeatTransfer::have_temp             = 0;
@@ -93,10 +81,7 @@ int       HeatTransfer::do_reflux_visc        = 1;
 int       HeatTransfer::dpdt_option           = 0;
 int       HeatTransfer::Ydot_Type             = -1;
 int       HeatTransfer::have_ydot             = 0;
-int       HeatTransfer::Dqrad_Type            = -1;
 int       HeatTransfer::FuncCount_Type           = -1;
-int       HeatTransfer::have_dqrad            = 0;
-Rad_driver* HeatTransfer::rad_driver          = 0;
 int       HeatTransfer::htt_floor_spec        = 0;
 int       HeatTransfer::divu_ceiling          = 0;
 Real      HeatTransfer::divu_dt_factor        = .5;
@@ -289,20 +274,6 @@ HeatTransfer::variableCleanUp ()
 {
     NavierStokes::variableCleanUp();
 
-#ifdef BL_USE_RADIATION
-
-    if (ParallelDescriptor::IOProcessor())
-        std::cout << "Deleting rad_driver in variableCleanUp ... " << std::flush;
-
-    delete rad_driver;
-
-    if (ParallelDescriptor::IOProcessor())
-        std::cout << "done\n";
-
-    rad_driver = 0;
-
-#endif /*BL_USE_RADIATION*/
-
     if (ParallelDescriptor::IOProcessor())
         std::cout << "Deleting chemSolver in variableCleanUp ... " << std::flush;
 
@@ -407,8 +378,6 @@ HeatTransfer::read_params ()
     pp.query("hack_noavgdivu",hack_noavgdivu);
     pp.query("do_check_divudt",do_check_divudt);
 
-    pp.query("do_DO_radiation",do_DO_radiation);
-    do_DO_radiation = (do_DO_radiation ? 1 : 0);
     pp.query("do_OT_radiation",do_OT_radiation);
     do_OT_radiation = (do_OT_radiation ? 1 : 0);
     pp.query("do_heat_sink",do_heat_sink);
@@ -416,11 +385,6 @@ HeatTransfer::read_params ()
 
     int use_chemeq2 = 0; pp.query("use_chemeq2",use_chemeq2);
     chem_integrator = (use_chemeq2 ? ChemDriver::CKD_ChemEQ2 : ChemDriver::CKD_Vode );
-
-#ifndef BL_USE_RADIATION
-    BL_ASSERT(do_DO_radiation == 0);
-#endif
-    BL_ASSERT(!(do_DO_radiation && do_OT_radiation));
 
     std::string tranfile=""; pp.query("tranfile",tranfile);
     chemSolve = new ChemDriver(tranfile);
@@ -479,24 +443,6 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 {
     if (!init_once_done)
         init_once();
-
-#ifdef BL_USE_RADIATION
-
-    if (do_DO_radiation)
-    {
-        if (rad_driver == 0)
-            rad_driver = new Rad_driver(parent);
-
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "Regridding rad_driver object ... " << std::flush;
-
-        rad_driver->regrid(level, grids);
-
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "done\n";
-    }
-
-#endif /*BL_USE_RADIATION*/
 
     const int nGrow = 0;
     diffusion->allocFluxBoxesLevel(EdgeState,nGrow,nEdgeStates);
@@ -573,27 +519,6 @@ HeatTransfer::init_once ()
 
         if (advectionType[RhoH] != Conservative)
             BoxLib::Abort("HeatTransfer::init_once(): RhoH must be conservative");
-        //
-        // Radiation checks.
-        //
-        int _Dqrad = -1;
-        have_dqrad = 0;
-        have_dqrad = isStateVariable("dqrad", Dqrad_Type, _Dqrad);
-
-#ifndef BL_USE_RADIATION
-        BL_ASSERT(have_dqrad == 0);
-#endif
-        if (ParallelDescriptor::IOProcessor())
-        {
-            std::cout << "HeatTransfer::init_once()::have_dqrad = "
-                      << have_dqrad
-                      << '\n';
-        }
-        if (have_dqrad && _Dqrad != Dqrad)
-            BoxLib::Abort("HeatTransfer::init_once(): dqrad must be 0-th, Dqrad_Type component in the state");
-
-        if (!have_dqrad && do_DO_radiation)
-            BoxLib::Abort("HeatTransfer::init_once(): must have Dqrad_Type < num_state_type if do_DO_radiation = 1");
     }
     //
     // Species checks.
@@ -614,9 +539,6 @@ HeatTransfer::init_once ()
         have_spec = nonTracScalars > 1; // One for Density
     }
 
-    if (!do_temp && do_DO_radiation)
-        BoxLib::Error("HeatTransfer::init_once(): Need do_temp if do_DO_radiation");
-    
     if (have_spec)
     {
         first_spec =  Density + 1;
@@ -673,7 +595,6 @@ HeatTransfer::init_once ()
     int ydot_good = Ydot_Type >= 0 && Ydot_Type <desc_lst.size()
         && !(Ydot_Type == Divu_Type && have_divu) 
         && !(Ydot_Type == Dsdt_Type && have_dsdt) 
-        && !(Ydot_Type == Dqrad_Type && have_dqrad)
         && Ydot_Type != State_Type;
     
     if (!ydot_good)
@@ -753,27 +674,6 @@ HeatTransfer::restart (Amr&          papa,
     FillPatchedOldState_ok = true;
 
     set_overdetermined_boundary_cells(state[State_Type].curTime());
-
-#ifdef BL_USE_RADIATION
-
-    if (do_DO_radiation)
-    {
-        //
-        // rad_driver is a static object, only alloc if not already there.
-        //
-        if (rad_driver == 0)
-            rad_driver = new Rad_driver(parent);
-
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "Regridding rad_driver object ... " << std::flush;
-
-        rad_driver->regrid(level, grids);
-
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "done\n";
-    }
-
-#endif /*BL_USE_RADIATION*/
 
     BL_ASSERT(EdgeState == 0);
     const int nGrow = 0;
@@ -948,9 +848,6 @@ HeatTransfer::setTimeLevel (Real time,
                             Real dt_new)
 {
     NavierStokes::setTimeLevel(time, dt_old, dt_new);    
-
-    if (have_dqrad)
-        state[Dqrad_Type].setTimeLevel(time,dt_old,dt_new);
 
     if (have_ydot)
         state[Ydot_Type].setTimeLevel(time,dt_old,dt_new);
@@ -1180,12 +1077,6 @@ HeatTransfer::initDataOtherTypes ()
         MultiFab rhoh(grids,1,0);
         compute_rhohmix(cur_time,rhoh);
         get_new_data(State_Type).copy(rhoh,0,RhoH,1);
-        //
-        // We do not know enough yet to do a full radiation multi solve,
-        // so just set dqrad to zero for now.
-        //
-        if (have_dqrad)
-            get_new_data(Dqrad_Type).setVal(0);
     }
     //
     // Set up diffusivities, viscosities (need for initial divu compute)
@@ -1221,7 +1112,7 @@ HeatTransfer::init (AmrLevel& old)
     HeatTransfer* oldht    = (HeatTransfer*) &old;
     const Real    cur_time = oldht->state[State_Type].curTime();
     //
-    // Get best ydot data.  Note: dqrad is taken care of elsewhere.
+    // Get best ydot data.
     //
     if (have_ydot)
     {
@@ -1262,7 +1153,7 @@ HeatTransfer::init ()
     HeatTransfer& old      = getLevel(level-1);
     const Real    cur_time = old.state[State_Type].curTime();
     //
-    // Get best ydot data.  Note: dqrad is taken care of elsewhere.
+    // Get best ydot data.
     //
     if (have_ydot)
         FillCoarsePatch(get_new_data(Ydot_Type),0,cur_time,Ydot_Type,0,nspecies);
@@ -1279,30 +1170,6 @@ HeatTransfer::post_timestep (int crse_iteration)
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::post_timestep()");
 
     NavierStokes::post_timestep(crse_iteration);
-
-    if (have_dqrad && level < parent->finestLevel())
-    {
-        //
-        // Do radiation synchronization on coarsest level ending at this time.
-        //
-        int iteration = 1, ncycle = 1;
-
-        if (level > 0)
-        {
-            ncycle    = parent->nCycle(level);
-            iteration = parent->levelSteps(level) % ncycle;
-        }
-        if (iteration > 0)
-        {
-            if (do_DO_radiation && ParallelDescriptor::IOProcessor())
-                std::cout << "Radiation sync solve from level " << level << '\n';
-
-            rad_sync_solve_driver(level, iteration, ncycle);
-
-            if (do_DO_radiation && ParallelDescriptor::IOProcessor())
-                std::cout << "Radiation sync solve done\n";
-        }
-    }
 
     if (plot_auxDiags && level == 0)
     {
@@ -1338,22 +1205,6 @@ void
 HeatTransfer::post_restart ()
 {
     NavierStokes::post_restart();
-    //
-    // Build any additional data structures after restart.
-    //
-    if (have_dqrad && level == 0)
-    {
-        //
-        // Do an instantaneous sync solve on all the levels.
-        //
-        if (do_DO_radiation && ParallelDescriptor::IOProcessor())
-            std::cout << "Radiation restart multilevel solve\n";
-
-        rad_multi_solve_driver(0,0,1);
-
-        if (do_DO_radiation && ParallelDescriptor::IOProcessor())
-            std::cout << "Radiation restart multilevel solve done\n";
-    }
 
     Real dummy  = 0;
     int MyProc  = ParallelDescriptor::MyProc();
@@ -1371,44 +1222,6 @@ HeatTransfer::post_regrid (int lbase,
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::post_regrid()");
 
     NavierStokes::post_regrid(lbase, new_finest);
-
-    if (have_dqrad && level == lbase && level < new_finest)
-    {
-        //
-        // Do an instantaneous multilevel solve covering the new levels
-        //
-        // (This routine is also called by bldFineLevels before initialization,
-        //  so we check levelSteps to see if this is a "real" regrid.)
-        //
-        if (parent->levelSteps(0) > 0)
-        {
-            //
-            // We solve not from lbase, but from the (possibly lower) level
-            // that is starting a timestep and called for a regrid.  That
-            // information is not available directly, so we take a stab at
-            // figuring out which lower levels are in mid-timestep:
-            //
-            int lradbase = lbase;
-            while (lradbase > 0 &&
-                   parent->levelSteps(lradbase) % parent->nCycle(lradbase) == 0)
-                lradbase--;
-
-            int iteration = 1, ncycle = 1;
-            if (lradbase > 0)
-            {
-                ncycle    = parent->nCycle(lradbase);
-                iteration = parent->levelSteps(lradbase) % ncycle;
-            }
-
-            if (do_DO_radiation && ParallelDescriptor::IOProcessor())
-                std::cout << "Radiation regrid multi solve from level " << lradbase << '\n';
-
-            rad_multi_solve_driver(lradbase, iteration, ncycle);
-
-            if (do_DO_radiation && ParallelDescriptor::IOProcessor())
-                std::cout << "Radiation regrid multi solve done\n";
-        }
-    }
     //
     // FIXME: This may be necessary regardless, unless the interpolation
     //        to fine from coarse data preserves rho=sum(rho.Y)
@@ -1448,17 +1261,6 @@ HeatTransfer::post_init (Real stop_time)
     //
     post_init_state();
     //
-    // Instantaneous sync solve can only now be done because all the
-    // levels did not exist until now. (note do_DO_radiation=>do_temp)
-    // Sync up the radiation now, since state modified by post_init_state
-    //
-    if (do_DO_radiation)
-    {
-        BL_PROFILE(BL_PROFILE_THIS_NAME() + "::radiation:multi_solve");
-
-        rad_multi_solve_driver(0, 0, 1);
-    }
-    //
     // Estimate the initial timestepping.
     //
     post_init_estDT(dt_init,nc_save,dt_save,stop_time);
@@ -1495,7 +1297,7 @@ HeatTransfer::post_init (Real stop_time)
         // Recompute the velocity to obey constraint with chemistry and
         // divqrad and then average that down.
         //
-        if (have_divu && (do_DO_radiation || nspecies > 0))
+        if (have_divu && nspecies > 0)
         {
             for (int k = 0; k <= finest_level; k++)
             {
@@ -1852,12 +1654,6 @@ HeatTransfer::resetState (Real time,
 {
     NavierStokes::resetState(time,dt_old,dt_new);
 
-    if (have_dqrad)
-    {
-        state[Dqrad_Type].reset();
-        state[Dqrad_Type].setTimeLevel(time,dt_old,dt_new);
-    }
-
     if (have_ydot)
     {
         state[Ydot_Type].reset();
@@ -1984,69 +1780,6 @@ HeatTransfer::avgDown ()
                                   level,level+1,0,1,fine_ratio);
         }
     }
-}
-
-void
-HeatTransfer::compute_dqradn (int iteration,
-                              int ncycle)
-{
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_dqradn()");
-    //
-    // Compute div q_rad using the latest temperature
-    // WARNING: This should only be called once per advance!!
-    //
-    BL_ASSERT(do_temp);
-
-    if (have_dqrad)
-    {
-        MultiFab& dqradn = get_new_data(Dqrad_Type);
-
-        if (!do_DO_radiation)
-        {
-            dqradn.setVal(0);
-        }
-
-#ifdef BL_USE_RADIATION
-
-        else
-        {
-            BL_PROFILER_TIMER(radp, BL_PROFILER_THIS_NAME() + "::radiation:multi_solve");
-            //
-            // Do a radiation level solve.
-            //
-            if (ParallelDescriptor::IOProcessor())
-                std::cout << "Radiation level solve on level " << level << '\n';
-
-	    BL_PROFILER_START(radp);
-            rad_driver->level_solve(level, iteration, ncycle, dqradn);
-	    BL_PROFILER_STOP(radp);
-
-            if (ParallelDescriptor::IOProcessor())
-                std::cout << "Radiation level solve done\n";
-        }
-
-#endif /*BL_USE_RADIATION*/
-    }
-}
-
-MultiFab*
-HeatTransfer::getDqrad (int  ngrow, 
-                        Real time)
-{
-    MultiFab* dqrad;
-
-    if (have_dqrad && do_DO_radiation)
-    {
-        dqrad = getState(ngrow, Dqrad_Type, 0, 1, time);
-    }
-    else
-    {
-        dqrad = new MultiFab(grids,1,ngrow);
-        
-        dqrad->setVal(0);
-    }
-
-    return dqrad;
 }
 
 void
@@ -2709,25 +2442,7 @@ HeatTransfer::diffuse_rhoh_setup (Real       time,
     delta_rhs->setVal(0);
     const int nGrow = 0;
 
-    if (do_DO_radiation)
-    {
-        MultiFab& dqrad  = get_old_data(Dqrad_Type);
-        MultiFab& dqradn = get_new_data(Dqrad_Type);
-	
-        FArrayBox deltadeltarhs;
-
-        for (MFIter mfi(dqrad); mfi.isValid(); ++mfi)
-        {
-            const int i = mfi.index();
-            (*delta_rhs)[i].copy(dqrad[i]);
-            (*delta_rhs)[i].mult(1.0-be_cn_theta);
-            deltadeltarhs.resize(grids[i],1);
-            deltadeltarhs.copy(dqradn[i]);
-            deltadeltarhs.mult(be_cn_theta);  
-            (*delta_rhs)[i].plus(deltadeltarhs);      
-        }
-    }
-    else if (do_OT_radiation || do_heat_sink)
+    if (do_OT_radiation || do_heat_sink)
     {
         MultiFab dqrad(grids,1,nGrow);
 
@@ -2763,25 +2478,7 @@ HeatTransfer::diffuse_temp_setup (Real       prev_time,
     delta_rhs->setVal(0);
     const int nGrow = 0;
 
-    if (do_DO_radiation)
-    {
-        MultiFab& dqrad  = get_old_data(Dqrad_Type);
-        MultiFab& dqradn = get_new_data(Dqrad_Type);
-
-        FArrayBox deltadeltarhs;
-    
-        for (MFIter mfi(dqrad); mfi.isValid(); ++mfi)
-        {
-            const int i = mfi.index();
-            (*delta_rhs)[i].copy(dqrad[i]);
-            (*delta_rhs)[i].mult(1.0-be_cn_theta);
-            deltadeltarhs.resize(grids[i],1);
-            deltadeltarhs.copy(dqradn[i]);
-            deltadeltarhs.mult(be_cn_theta);  
-            (*delta_rhs)[i].plus(deltadeltarhs);      
-        }
-    }
-    else if (do_OT_radiation || do_heat_sink)
+    if (do_OT_radiation || do_heat_sink)
     {
         MultiFab dqrad(grids,1,nGrow);
 
@@ -3240,19 +2937,7 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     // (see note at top of file on sign convention at top of file)
     // - div q rad
     //
-    if (do_DO_radiation)
-    {
-        MultiFab* dqrad = getDqrad(nGrow,time);
-
-        for (MFIter mfi(visc_terms); mfi.isValid(); ++mfi)
-        {
-            const int i = mfi.index();
-            visc_terms[mfi].plus((*dqrad)[mfi],grids[i],0,Temp-src_comp,1);
-        }
-
-        delete dqrad;
-    }
-    else if (do_OT_radiation || do_heat_sink)
+    if (do_OT_radiation || do_heat_sink)
     {
         MultiFab dqrad(grids,1,nGrow);
         compute_OT_radloss(time,nGrow,dqrad);
@@ -3325,16 +3010,7 @@ HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
 
     diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,0,beta);
 
-    if (do_DO_radiation)
-    {
-        MultiFab* dqrad = getDqrad(nGrow,time);
-        for (MFIter vt_mfi(visc_terms); vt_mfi.isValid(); ++vt_mfi)
-        {
-            visc_terms[vt_mfi].plus((*dqrad)[vt_mfi],vt_mfi.validbox(),0,RhoH-src_comp,1);
-        }
-        delete dqrad;
-    }
-    else if (do_OT_radiation || do_heat_sink)
+    if (do_OT_radiation || do_heat_sink)
     {
         MultiFab dqrad(grids,1,nGrow);
         compute_OT_radloss(time,nGrow,dqrad);
@@ -4003,9 +3679,6 @@ HeatTransfer::advance (Real time,
     rhoh_update(time,dt,corrector);
     RhoH_to_Temp(S_new);
     temperature_stats(S_new);
-
-    if (do_DO_radiation)
-      compute_dqradn(iteration, ncycle);
 
     BL_PROFILE_STOP(ptimer);
     //
@@ -6363,123 +6036,6 @@ HeatTransfer::reflux ()
             }
         }
     }
-}
-
-void
-HeatTransfer::rad_multi_solve_driver (int lradbase,
-                                      int iteration,
-                                      int ncycle)
-{
-    BL_ASSERT(do_temp);
-    BL_ASSERT(have_dqrad);
-
-#ifdef BL_USE_RADIATION
-
-    const int finest_level = parent->finestLevel();
-
-    PArray<MultiFab> dqradn(finest_level+1, PArrayNoManage);
-
-    for (int lev = 0; lev <= finest_level; lev++)
-    {
-        HeatTransfer& ht_level = getLevel(lev);
-
-        dqradn.set(lev,&ht_level.get_new_data(Dqrad_Type));
-    }
-
-    if (do_DO_radiation)
-    {
-        rad_driver->multi_solve(lradbase, iteration, ncycle, dqradn);
-    }
-    else
-    {
-        for (int lev = 0; lev <= finest_level; lev++)
-            dqradn[lev].setVal(0);
-    }
-
-    for (int lev = lradbase; lev <= finest_level; lev++)
-    {
-        HeatTransfer& ht_level = getLevel(lev);
-
-        if (ht_level.state[Dqrad_Type].hasOldData())
-        {
-            MultiFab& dqrad = ht_level.get_old_data(Dqrad_Type);
-            dqrad.setVal(0);
-            dqrad.copy(dqradn[lev]);
-        }
-    }
-#endif /*BL_USE_RADIATION*/
-}
-
-void
-HeatTransfer::rad_sync_solve_driver (int level,
-                                     int iteration,
-                                     int ncycle)
-{
-    BL_ASSERT(do_temp);
-    BL_ASSERT(have_dqrad);
-
-#ifdef BL_USE_RADIATION
-
-    const int finest_level = parent->finestLevel();
-
-    PArray<MultiFab> dqrad(finest_level+1, PArrayNoManage);
-    PArray<MultiFab> dqradcorr(finest_level+1, PArrayNoManage);
-
-    for (int lev = 0; lev <= finest_level; lev++)
-    {
-        HeatTransfer& ht_level = getLevel(lev);
-        dqrad.set(lev,&(ht_level.get_old_data(Dqrad_Type)));
-        dqradcorr.set(lev,&(ht_level.get_new_data(Dqrad_Type)));
-    }
-
-    if (do_DO_radiation)
-    {
-        //
-        // Note: at this point, we no longer need the actual dqrad new and old
-        // data.  To make our life easier, we use the dqrad "slots" in the
-        // state data.
-        //
-        rad_driver->sync_solve(level, iteration, ncycle, dqrad, dqradcorr);
-
-        Real dt = parent->dtLevel(level);
-
-        if (have_temp == 0)
-            BoxLib::Abort("HeatTransfer::rad_sync_solve_driver(): using radiation, but temperature not found");
-
-        for (int lev = level; lev <= finest_level; lev++)
-        {
-            HeatTransfer& ht_level = getLevel(lev);
-            MultiFab& S_new        = ht_level.get_new_data(State_Type);
-
-            MultiFab delta_rhoh(ht_level.boxArray(),1,0);
-            delta_rhoh.copy(dqradcorr[lev]);
-
-            for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
-            {
-                const int k = mfi.index();
-
-                delta_rhoh[k].mult(dt);
-                S_new[k].plus(delta_rhoh[k],0,RhoH,1);
-                delta_rhoh[k].divide(S_new[k],Density,0,1);
-                S_new[k].plus(delta_rhoh[k],0,Temp,1);
-            }
-
-            RhoH_to_Temp(S_new);
-        }
-        for (int lev = level; lev <= finest_level; lev++)
-        {
-            getLevel(lev).get_new_data(Dqrad_Type).copy(dqrad[lev]);
-        }
-    }
-    else
-    {
-        for (int lev = level;lev <= finest_level; lev++)
-        {
-            dqradcorr[lev].setVal(0);
-            dqrad[lev].setVal(0);
-        }
-    }
-#endif /*BL_USE_RADIATION*/
 }
 
 void
