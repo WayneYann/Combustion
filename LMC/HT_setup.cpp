@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.4 2004-07-13 22:25:53 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.5 2004-07-14 21:29:55 lijewski Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -142,15 +142,6 @@ species_bc[] =
 {
     INT_DIR, EXT_DIR, FOEXTRAP, REFLECT_EVEN, REFLECT_EVEN, REFLECT_EVEN
 };
-
-#if 0
-static
-RegType
-project_bc[] =
-{
-    interior, inflow, outflow, refWall, refWall, refWall
-};
-#endif
 
 static
 void
@@ -434,16 +425,16 @@ protected:
 private:
 
     ChemBndryFunc_FortBndryFunc m_func;
-    std::string       m_stateName;
-    int           m_stateID;
+    std::string                 m_stateName;
+    int                         m_stateID;
 };
 
 //
 // Indices of fuel and oxidizer -- ParmParsed in & used in a couple places.
 //
 std::string HeatTransfer::fuelName = "CH4";
-static std::string oxidizerName = "O2";
-static std::string productName  = "CO2";
+static std::string oxidizerName    = "O2";
+static std::string productName     = "CO2";
 
 void
 HeatTransfer::variableSetUp ()
@@ -472,16 +463,12 @@ HeatTransfer::variableSetUp ()
     FirstSpec = ++counter;
     nspecies  = getChemSolve().numSpecies();
     counter  += nspecies - 1;
-    if (do_temp)
-	RhoH = ++counter;
+    RhoH = ++counter;
     Trac = ++counter;
-    if (do_temp)
-    {
-	Temp = ++counter;
+    Temp = ++counter;
 #ifndef BL_RHORT_IN_TRACER
-        RhoRT = ++counter;
+    RhoRT = ++counter;
 #endif
-    }
     NUM_STATE = ++counter;
     NUM_SCALARS = NUM_STATE - Density;
 
@@ -576,29 +563,26 @@ HeatTransfer::variableSetUp ()
     set_scalar_bc(bc,phys_bc);
     desc_lst.setComponent(State_Type,Density,"density",bc,BndryFunc(FORT_DENFILL),
                           &cell_cons_interp);
-    if (do_temp)
+    //
+    // **************  DEFINE RHO*H  ********************
+    //
+    set_rhoh_bc(bc,phys_bc);
+    desc_lst.setComponent(State_Type,RhoH,"rhoh",bc,BndryFunc(FORT_RHOHFILL),
+                          &cell_cons_interp);
+    //
+    // **************  DEFINE TEMPERATURE  ********************
+    //
+    set_temp_bc(bc,phys_bc);
+    desc_lst.setComponent(State_Type,Temp,"temp",bc,BndryFunc(FORT_TEMPFILL));
+    //
+    // **************  DEFINE RhoRT  ********************
+    //
+    // Force Trac BCs to be REFLECT_EVEN for RhoRT ghost cells in UGRADP.
+    //
+    if (RhoRT > 0)
     {
-        //
-	// **************  DEFINE RHO*H  ********************
-        //
-	set_rhoh_bc(bc,phys_bc);
-	desc_lst.setComponent(State_Type,RhoH,"rhoh",bc,BndryFunc(FORT_RHOHFILL),
-                              &cell_cons_interp);
-	//
-	// **************  DEFINE TEMPERATURE  ********************
-        //
-	set_temp_bc(bc,phys_bc);
-	desc_lst.setComponent(State_Type,Temp,"temp",bc,BndryFunc(FORT_TEMPFILL));
-	//
-	// **************  DEFINE RhoRT  ********************
-        //
-        // Force Trac BCs to be REFLECT_EVEN for RhoRT ghost cells in UGRADP.
-        //
-        if (RhoRT > 0)
-        {
-            set_reflect_bc(bc,phys_bc);
-            desc_lst.setComponent(State_Type,RhoRT,"RhoRT",bc,BndryFunc(FORT_ADVFILL));
-        }
+        set_reflect_bc(bc,phys_bc);
+        desc_lst.setComponent(State_Type,RhoRT,"RhoRT",bc,BndryFunc(FORT_ADVFILL));
     }
     //
     // ***************  DEFINE SPECIES **************************
@@ -681,13 +665,11 @@ HeatTransfer::variableSetUp ()
 
     advectionType[Density] = Conservative;
     diffusionType[Density] = Laplacian_SoverRho;
-    if (do_temp)
-    {
-	advectionType[Temp] = NonConservative;
-	diffusionType[Temp] = RhoInverse_Laplacian_S;
-	advectionType[RhoH] = Conservative;
-	diffusionType[RhoH] = Laplacian_SoverRho;
-    }
+    advectionType[Temp] = NonConservative;
+    diffusionType[Temp] = RhoInverse_Laplacian_S;
+    advectionType[RhoH] = Conservative;
+    diffusionType[RhoH] = Laplacian_SoverRho;
+
     for (int i = 0; i < nspecies; ++i)
     {
 	advectionType[FirstSpec + i] = Conservative;
@@ -725,91 +707,64 @@ HeatTransfer::variableSetUp ()
     set_pressure_bc(bc,phys_bc);
     desc_lst.setComponent(Dpdt_Type,Dpdt,"dpdt",bc,BndryFunc(FORT_PRESFILL));
 #endif
-
     //
     // ---- right hand side of divergence constraint.
     //
     int ngrow;
     //
-    // Descriptors for divu, dsdt, dqrad
-    // you can leave these out or mix and match with the contraint
-    // that dsdt can be used only if divu is used
+    // stick Divu_Type on the end of the descriptor list.
     //
-    // If everything going into divu is zero, don't need to make space for divu
-    bool zero_divu = (do_temp && is_diffusive[Temp])
-	&& !do_OT_radiation && (have_spec && is_diffusive[FirstSpec]);
+    Divu_Type = desc_lst.size();
+    ngrow = 1;
+    desc_lst.addDescriptor(Divu_Type,IndexType::TheCellType(),StateDescriptor::Point,ngrow,1,
+                           &cell_cons_interp);
+    set_divu_bc(bc,phys_bc);
+    desc_lst.setComponent(Divu_Type,Divu,"divu",bc,BndryFunc(FORT_DIVUFILL));
     //
-    // If zerodivu != 0, then we're going to hardwire something into divu
-    // (if zerodivu == 1, hardwire zero, so don't need it)
+    // Stick Dsdt_Type on the end of the descriptor list.
     //
-    bool hard_zero_divu = zerodivu == 1;
-
-    if (!(zero_divu || hard_zero_divu))
-    {
-        //
-	// stick Divu_Type on the end of the descriptor list.
-        //
-	Divu_Type = desc_lst.size();
-	ngrow = 1;
-	desc_lst.addDescriptor(Divu_Type,IndexType::TheCellType(),StateDescriptor::Point,ngrow,1,
-			       &cell_cons_interp);
-	set_divu_bc(bc,phys_bc);
-	desc_lst.setComponent(Divu_Type,Divu,"divu",bc,BndryFunc(FORT_DIVUFILL));
-	//
-	// Stick Dsdt_Type on the end of the descriptor list.
-        //
-	if (usedsdt == 1)
-	{
-	    Dsdt_Type = desc_lst.size();
+    Dsdt_Type = desc_lst.size();
 	    
-	    ngrow = 0;
-	    desc_lst.addDescriptor(Dsdt_Type,IndexType::TheCellType(),StateDescriptor::Point,ngrow,1,
-				   &cell_cons_interp);
-	    set_dsdt_bc(bc,phys_bc);
-	    desc_lst.setComponent(Dsdt_Type,Dsdt,"dsdt",bc,BndryFunc(FORT_DSDTFILL));
-	}
-    }
+    ngrow = 0;
+    desc_lst.addDescriptor(Dsdt_Type,IndexType::TheCellType(),StateDescriptor::Point,ngrow,1,
+                           &cell_cons_interp);
+    set_dsdt_bc(bc,phys_bc);
+    desc_lst.setComponent(Dsdt_Type,Dsdt,"dsdt",bc,BndryFunc(FORT_DSDTFILL));
     //
-    // Add in the fcncall tracer type quantity FIXME???
+    // Add in the fcncall tracer type quantity.
     //
     FuncCount_Type = desc_lst.size();
     desc_lst.addDescriptor(FuncCount_Type, IndexType::TheCellType(),StateDescriptor::Point,0, 1, &cell_cons_interp);
     desc_lst.setComponent(FuncCount_Type, 0, "FuncCount", bc, BndryFunc(FORT_DQRADFILL));
     ydotSetUp();
-
-    if (do_temp)
-    {
-        //
-	// rho_temp
-        //
-	derive_lst.add("rho_temp",IndexType::TheCellType(),1,FORT_DERMPRHO,the_same_box);
-	derive_lst.addComponent("rho_temp",desc_lst,State_Type,Density,1);
-	derive_lst.addComponent("rho_temp",desc_lst,State_Type,Temp,1);
-	//
-	// enthalpy
-        //
-	derive_lst.add("enthalpy",IndexType::TheCellType(),1,FORT_DERDVRHO,the_same_box);
-	derive_lst.addComponent("enthalpy",desc_lst,State_Type,Density,1);
-	derive_lst.addComponent("enthalpy",desc_lst,State_Type,RhoH,1);
-    }
+    //
+    // rho_temp
+    //
+    derive_lst.add("rho_temp",IndexType::TheCellType(),1,FORT_DERMPRHO,the_same_box);
+    derive_lst.addComponent("rho_temp",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("rho_temp",desc_lst,State_Type,Temp,1);
+    //
+    // enthalpy
+    //
+    derive_lst.add("enthalpy",IndexType::TheCellType(),1,FORT_DERDVRHO,the_same_box);
+    derive_lst.addComponent("enthalpy",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("enthalpy",desc_lst,State_Type,RhoH,1);
     //
     // Species mass fractions.
     //
     for (i = 0; i < nspecies; i++)
-      {
+    {
 	const std::string name = "Y("+names[i]+")";
 	derive_lst.add(name,IndexType::TheCellType(),1,FORT_DERDVRHO,the_same_box);
 	derive_lst.addComponent(name,desc_lst,State_Type,Density,1);
 	derive_lst.addComponent(name,desc_lst,State_Type,FirstSpec + i,1);
-      }
-
-
+    }
     //
     // Species mole fractions
     //
     Array<std::string> var_names_molefrac(nspecies);
     for (i = 0; i < nspecies; i++)
-      var_names_molefrac[i] = "X("+names[i]+")";
+        var_names_molefrac[i] = "X("+names[i]+")";
     derive_lst.add("molefrac",IndexType::TheCellType(),nspecies,
 		   var_names_molefrac,FORT_DERMOLEFRAC,the_same_box);
     derive_lst.addComponent("molefrac",desc_lst,State_Type,Density,1);
@@ -820,7 +775,7 @@ HeatTransfer::variableSetUp ()
     //
     Array<std::string> var_names_conc(nspecies);
     for (i = 0; i < nspecies; i++)
-      var_names_conc[i] = "C("+names[i]+")";
+        var_names_conc[i] = "C("+names[i]+")";
     derive_lst.add("concentration",IndexType::TheCellType(),nspecies,
 		   var_names_conc,FORT_DERCONCENTRATION,the_same_box);
     derive_lst.addComponent("concentration",desc_lst,State_Type,Density,1);
@@ -841,17 +796,13 @@ HeatTransfer::variableSetUp ()
 	    derive_lst.addComponent("rhominsumrhoY",desc_lst,State_Type,comp,1);
 	}
     }
-    
-    if (have_ydot)
+    //
+    // Sum Ydot.
+    //
+    derive_lst.add("sumYdot",IndexType::TheCellType(),1,FORT_DERSUMYDOT,the_same_box);
+    for (i = 0; i < nspecies; i++)
     {
-        //
-	// Sum Ydot.
-        //
-	derive_lst.add("sumYdot",IndexType::TheCellType(),1,FORT_DERSUMYDOT,the_same_box);
-	for (i = 0; i < nspecies; i++)
-	{
-	    derive_lst.addComponent("sumYdot",desc_lst,Ydot_Type,i,1);
-	}
+        derive_lst.addComponent("sumYdot",desc_lst,Ydot_Type,i,1);
     }
     //
     // **************  DEFINE DERIVED QUANTITIES ********************
@@ -895,12 +846,9 @@ HeatTransfer::variableSetUp ()
     const int nGrowErr = 1;
     //err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_ADVERROR);
 
-    if (do_temp)
-	err_list.add("temp", nGrowErr, ErrorRec::Special, FORT_TEMPERROR);
-    
+    err_list.add("temp", nGrowErr, ErrorRec::Special, FORT_TEMPERROR);
     err_list.add("mag_vort", nGrowErr, ErrorRec::Special, FORT_MVERROR);
     err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_MVERROR);
-
     //
     // Tag region of interesting chemistry.
     //
@@ -912,7 +860,6 @@ HeatTransfer::variableSetUp ()
         const std::string name = "Y("+flameTracName+")";
         err_list.add(name,nGrowErr,ErrorRec::Special,FORT_FLAMETRACERROR);
     }
-
     //
     // Set up the running statistics
     //
@@ -964,92 +911,7 @@ HeatTransfer::variableSetUp ()
                                              FORT_HT_BASICSTATS_NCTRAC);
         }
     }
-
-
-
-#if 0
-    {
-        ParmParse pp1;
-        std::string hack_data_inp; pp1.query("hack_data_inp",hack_data_inp);
-        if (!(hack_data_inp.empty()))
-        {
-            std::string hack_chem_inp; pp.query("chemfile",hack_chem_inp);
-            pp1.query("hack_chem_inp",hack_chem_inp);
-            ifstream is(hack_chem_inp.c_str(),ios::in);
-            bool ok = true;
-            bool readingNames = false;
-            std::string buf;
-            Array<std::string> oldNames;
-            while (ok)
-            {
-                is >> buf;
-                if (readingNames)
-                {
-                    const int len = oldNames.size();
-                    oldNames.resize(len+1);
-                    oldNames[len] = buf;
-                }
-                if (buf == "SPECIES") readingNames = true;
-                if (readingNames && buf == "END")
-                {
-                    oldNames.resize(oldNames.size()-1);
-                    ok = false;
-                }
-            }
-            is.close();
-
-            const int NoldNames = oldNames.size();
-            Array<int> mapOldToNew(NoldNames);
-            for (int i=0; i<NoldNames; ++i)
-                mapOldToNew[i] = getChemSolve().index(oldNames[i]); // defaults to -1
-
-            ifstream is1(hack_data_inp.c_str(),ios::in);
-            FArrayBox t_fab(is1);
-            is1.close();
-
-            Array<int> hack_boxlo(BL_SPACEDIM);
-            pp1.getarr("hack_boxlo",hack_boxlo,0,BL_SPACEDIM);
-            Array<int> hack_boxhi(BL_SPACEDIM);
-            pp1.getarr("hack_boxhi",hack_boxhi,0,BL_SPACEDIM);
-
-            const Box hbox_1(IntVect(hack_boxlo.dataPtr()),
-                             IntVect(hack_boxhi.dataPtr()),
-                             IndexType::TheCellType());
-            ParmParse ppamr("amr");
-            Array<int> rat(1,1);
-            ppamr.getarr("ref_ratio",rat,0,1); // get ref ratio from 0 to 1
-            IntVect ratio(D_DECL(rat[0],rat[0],rat[0]));
-            const Box hbox_0 = ::coarsen(hbox_1,ratio);
-            const Geometry geom_1(hbox_1);
-            const Geometry geom_0(hbox_0);
-            FArrayBox vol_1, vol_0;
-            static_cast<CoordSys>(geom_1).GetVolume(vol_1,hbox_1);
-            static_cast<CoordSys>(geom_0).GetVolume(vol_0,hbox_0);
-
-            FArrayBox t_fab_0(hbox_0,t_fab.nComp());
-            NavierStokes::avgDown_doit(t_fab,t_fab_0,vol_1,vol_0,1,0,
-                                       hbox_0,0,t_fab.nComp(),ratio);
-
-            const int nComp_hack = t_fab.nComp();
-            FORT_HACK(hack_boxlo.dataPtr(),hack_boxhi.dataPtr(),
-                      t_fab.dataPtr(),ARLIM(t_fab.loVect()),ARLIM(t_fab.hiVect()),
-                      t_fab_0.dataPtr(),ARLIM(t_fab_0.loVect()),ARLIM(t_fab_0.hiVect()),
-                      &nComp_hack,mapOldToNew.dataPtr(),&NoldNames,rat.dataPtr());
-        }
-    }
-#endif
 }
-
-#if 0
-//
-// For testing ...
-//
-void
-HeatTransfer::initData ()
-{
-      NavierStokes::initData();
-}
-#endif
 
 class HTBld
     :
@@ -1148,6 +1010,4 @@ HeatTransfer::ydotSetUp()
 	desc_lst.setComponent(Ydot_Type, i, name.c_str(), bc,
 			      BndryFunc(FORT_YDOTFILL), &lincc_interp, 0, nydot-1);
     }
-	
-    have_ydot = 1;
 }

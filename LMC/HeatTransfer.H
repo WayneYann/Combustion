@@ -530,8 +530,8 @@ protected:
     // Write plot file stuff to specified directory.
     //
     virtual void writePlotFile (const std::string& dir,
-                                std::ostream&  os,
-                                VisMF::How     how);
+                                std::ostream&      os,
+                                VisMF::How         how);
     //
     // Functions for interpolating from cell centers to cell edges
     //
@@ -561,22 +561,23 @@ protected:
     MultiFab**  EdgeState;
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
-    enum CurrentFluxType {HT_None, HT_Diffusion, HT_SyncDiffusion, HT_ExplicitDiffusion};
-    Array<CurrentFluxType> spec_diffusion_flux_computed;
-    AuxBoundaryData aux_boundary_data_old;
-    AuxBoundaryData aux_boundary_data_new;
-    bool FillPatchedOldState_ok;
-    PArray<MultiFab> derive_mfs;
 
-    static bool plot_auxDiags;
-    MultiFab* auxDiag;
+    enum CurrentFluxType {HT_None, HT_Diffusion, HT_SyncDiffusion, HT_ExplicitDiffusion};
+
+    Array<CurrentFluxType> spec_diffusion_flux_computed;
+    AuxBoundaryData        aux_boundary_data_old;
+    AuxBoundaryData        aux_boundary_data_new;
+    bool                   FillPatchedOldState_ok;
+    PArray<MultiFab>       derive_mfs;
+
+    static bool               plot_auxDiags;
+    MultiFab*                 auxDiag;
     static Array<std::string> auxDiag_names;
     //
     // Protected static data.
     //
     static int         num_divu_iters;
     static int         init_once_done;
-    static int         have_temp;
     static int         RhoH;
     static int         do_OT_radiation;
     static int         do_heat_sink;
@@ -584,15 +585,9 @@ protected:
     static int         unity_Le;
     static int         FuncCount_Type;
     static int         Ydot_Type;
-    static int         have_ydot;
-    static int         htt_floor_spec;
     static int         divu_ceiling;
     static Real        min_rho_divu_ceiling;
     static Real        divu_dt_factor;
-    static int         zerodivu;
-    static int         usedsdt;
-    static int         htt_maxiters;
-    static Real        htt_tol;
     static Real        htt_tempmin;
     static Real        htt_tempmax;
     static int         Trac;
@@ -601,7 +596,6 @@ protected:
     static int         have_rhort;
     static int         first_spec;
     static int         last_spec;
-    static int         have_spec;
     static int         nspecies;
     static int         floor_species;
     static ChemDriver* chemSolve;
@@ -611,15 +605,12 @@ protected:
     static Real        constant_mu_val;
     static Real        constant_rhoD_val;
     static Real        constant_lambda_val;
-    static int         partialInFlow;
-    static Real        XpartialInFlow;
     static int         do_diffuse_sync;
     static int         do_reflux_visc;
     static int         dpdt_option;
     static int         do_set_rho_to_species_sum;
     static int         siegel_test;
     static int         zeroBndryVisc;
-    static int         nEdgeStates;
     static int         do_add_nonunityLe_corr_to_rhoh_adv_flux;
     static int         do_check_divudt;
     static int         hack_nochem;
@@ -627,11 +618,8 @@ protected:
     static int         hack_noavgdivu;
     static Real        trac_diff_coef;
     static Real        P1atm_MKS;
-    static std::string     turbFile;
+    static std::string turbFile;
     static std::string fuelName;
 };
 
 #endif /*_HeatTransfer_H_*/
-
-
-
