@@ -360,6 +360,11 @@ c     Set species pointers
       zone = getZone(half*(domnlo(1)+domnhi(1)),half*(domnlo(2)+domnhi(2)),domnlo(3))
       scale_control = Y_bc(iCH4,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))*(domnhi(2)-domnlo(2))
 
+c     Initialize the control parameters...even if we are not controlling, as they are
+c     used in the calculation of the time offset into the turbulence file
+      zbase_control = zero
+      dV_control = zero
+
       end
 
 #define XLO 0
@@ -418,6 +423,9 @@ c     Zone definitions
                u_bc(zone) = zero
                v_bc(zone) = zero
                w_bc(zone) = Vin*pmfF(3)/pmfP(3)
+               if (zone.eq.BL_PILOT) then
+                  Vco_l = w_bc(zone)
+               endif
             endif
          else
             call bl_abort('setupbc: I only know about four bc zones')
@@ -515,6 +523,15 @@ c :::
             u = u_bc(zone)
             v = v_bc(zone)
             w = w_bc(zone)
+            if (zone.eq.BL_PILOT) then
+               if (time .le. tVco_l) then
+                  w = Vco_l
+               else if (time .ge. tVco_r) then
+                  w = Vco_r
+               else
+                  w = Vco_l+(time-tVco_l)*(Vco_r-Vco_l)/(tVco_r-tVco_l)
+               endif
+            endif
          endif
       else
          write(6,*) 'No boundary condition for orientation = ', orient
