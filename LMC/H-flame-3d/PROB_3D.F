@@ -211,13 +211,13 @@ c
       y = 0.0d0
       yEval = (y-pmf_offset)*1.d2
 
-#ifdef USE_MPF_CH4
+#ifdef USE_PMF_CH4
       call pmf_CH4(yEval,yEval,pmf_H_vals,n)
 #else
       call pmf_H(yEval,pmf_H_vals,n)
 #endif
 
-      if (n .ne. Nspec+3) call bl_abort('PROBINIT: n .ne. Nspec+3')
+      if (n.ne.Nspec+3) call bl_abort('PROBINIT: n .ne. Nspec+3')
 
       convVel = pmf_H_vals(2)/1.d2 - vel_frame
 
@@ -231,8 +231,9 @@ c     Load domain dimensions into common, and set up boundary functions
       
       call setupbc_H()
       bcinit = .true.
-      
+c      
 c     Set random numbers for Ylm perts
+c
       do j = lmodemin,lmodemax
          do i = 0,j
             call blutilrand(alphalm(i,j))
@@ -296,7 +297,7 @@ c     z direction
          call pmf_H(zEval,pmf_H_vals,n)
 #endif
 
-         if (n .ne. Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
+         if (n.ne.Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
 
          call FORT_MOLETOMASS(lo,hi,
      &        pmf_H_vals(4), ARLIM(lo), ARLIM(hi),
@@ -573,7 +574,6 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 #include "INFL_FORCE_F.H"
 
-c     ::::: local variables
       integer i, j, k, n
       REAL_T  x, y, z, r
       integer slo(SDIM), shi(SDIM)
@@ -1005,7 +1005,7 @@ c     Make a platter of data in XY, will march over z
             call pmf_H(zEval,pmf_H_vals,n)
 #endif
 
-            if (n .ne. Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
+            if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
 
             call FORT_MOLETOMASS(lo_chem,hi_chem,
      &           pmf_H_vals(4), ARLIM(lo_chem), ARLIM(hi_chem),
@@ -1078,7 +1078,7 @@ c     &                 +                   press(i,j+1) + press(i+1,j+1))
             call pmf_H(zEval,pmf_H_vals,n)
 #endif
 
-            if (n .ne. Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
+            if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
 
             call FORT_MOLETOMASS(lo_chem,hi_chem,
      &           pmf_H_vals(4), ARLIM(lo_chem), ARLIM(hi_chem),
@@ -1409,8 +1409,9 @@ c     HACK!!    make up some boundary conditions
       REAL_T x
       INTEGER i,ll
       REAL_T fact,pll,pmm,pmmp1,somx2
-      if(m.lt.0.or.m.gt.l.or.abs(x).gt.1.)pause
-     *'bad arguments in plgndr'
+      if(m.lt.0.or.m.gt.l.or.abs(x).gt.1.) then
+         call bl_abort('bad arguments in plgndr')
+      endif
       pmm=1.
       if(m.gt.0) then
         somx2=sqrt((1.-x)*(1.+x))
@@ -1512,7 +1513,7 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      call bl_abort('DENERROR: should no be here for H-flame problem')
+      call bl_abort('DENERROR: should no be here')
       
       end
 
@@ -1662,20 +1663,21 @@ c ::: -----------------------------------------------------------
          write(6,*) "TEMPERR cannot compute gradient, ng = ",ng
          call bl_abort(" ")
       endif
-
+c
 c     ::::: refine where there is temperature gradient
+c
       if (level .lt. max_temp_lev) then
-      do k = lo(3), hi(3)
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-            ax = abs(temperature(i+1,j,k,1) - temperature(i-1,j,k,1))
-            ay = abs(temperature(i,j+1,k,1) - temperature(i,j-1,k,1))
-            az = abs(temperature(i,j,k+1,1) - temperature(i,j,k-1,1))
-            aerr = max(ax,ay,az)
-            tag(i,j,k) = cvmgt(set,tag(i,j,k),aerr.ge.tempgrad)
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  ax = abs(temperature(i+1,j,k,1) - temperature(i-1,j,k,1))
+                  ay = abs(temperature(i,j+1,k,1) - temperature(i,j-1,k,1))
+                  az = abs(temperature(i,j,k+1,1) - temperature(i,j,k-1,1))
+                  aerr = max(ax,ay,az)
+                  tag(i,j,k) = cvmgt(set,tag(i,j,k),aerr.ge.tempgrad)
+               enddo
+            enddo
          enddo
-      enddo
-      enddo
       endif
 
       end
@@ -4295,17 +4297,12 @@ c*****************************************************************************
 
       end if            
 
-c*****************************************************************************
-
       end
 
-
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
       subroutine FORT_CALCDIVU(divu,DIMS(divu),plo,phi,xlo,dx,time)
-
-c ... This routine is for user defined divu, for debugging purposes
-c     only.
+c
+c     This routine is for user defined divu, for debugging purposes only.
+c
       implicit none
 
       integer    DIMDEC(divu)
