@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_F.F,v 1.1 2003-08-08 20:09:40 lijewski Exp $
+c $Id: HEATTRANSFER_F.F,v 1.2 2004-02-13 18:29:58 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -97,6 +97,8 @@ c     -- rbp
       data constant_rhoD_val   /1.85e-5/
       data Pr / one /
       data Sc / one /
+      data thickFacTR / one /
+      data thickFacCH / one /
       end
 
 

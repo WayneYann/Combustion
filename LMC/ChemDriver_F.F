@@ -529,10 +529,11 @@ c     Result in kg/kmole
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
+#include "visc.H"
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
-      REAL_T RHO, CPB, SUM, H, WDOT, WT
+      REAL_T RHO, CPB, SUM, H, WDOT, WT, THFAC
       integer K
 C
 C     Variables in Z are:  Z(1)   = T
@@ -561,10 +562,11 @@ c      end do
 C
 C     Form governing equation
 C
+      THFAC = one / thickFacCH
       SUM = zero
       DO K = 1, Nspec
          H    = RPAR(NH    + K - 1)
-         WDOT = RPAR(NWDOT + K - 1)
+         WDOT = RPAR(NWDOT + K - 1) * THFAC
          WT   = RPAR(NWT   + K - 1)
          ZP(K+1) = WDOT * WT / RHO
          SUM = SUM + H * WDOT * WT

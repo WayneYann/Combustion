@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.2 2003-08-12 19:40:34 lijewski Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.3 2004-02-13 18:31:19 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -175,6 +175,9 @@ c -------------------- begin here ----------------------------
       data lo_chem /1,1/
       data hi_chem /1,1/
 
+      print *,'**** in FORT_TEMPVISC'
+      call bl_abort()
+
       if (.not. LeEQ1) then
          call FORT_MIX_COND(lo, hi, lambda, DIMS(lambda),
      &        T, DIMS(T), Y, DIMS(Y))
@@ -217,6 +220,9 @@ c -------------------- begin here ----------------------------
       integer i, j
       integer n
       REAL_T P1ATM_MKS, Ptmp, val, Patm
+
+      print *,'**** in FORT_SPECVISC'
+      call bl_abort()
 
       if (.not.use_constant_rhoD) then
          if (.not. LeEQ1) then
@@ -268,7 +274,7 @@ c -------------------- begin here ----------------------------
       integer n, nspecies
       REAL_T P1ATM_MKS, Ptmp, val, Patm
       REAL_T Yt(maxspec)
-      REAL_T cpmix
+      REAL_T cpmix, Tfac, Yfac
       integer lo_chem(SDIM),hi_chem(SDIM)
       data lo_chem /1,1/
       data hi_chem /1,1/
@@ -277,6 +283,11 @@ c -------------------- begin here ----------------------------
 
 c     ncompd-1 is Temp stuff
 c     ncompd   is Velocity stuff 
+
+c     Warning, FORT_VELVISC is called separately from this routine, so if there's
+c     any hacking to be done on viscosity, be sure to catch it there as well.
+      Tfac = thickFacTR / Pr
+      Yfac = thickFacTR / Sc
 
       if (.not.use_constant_rhoD) then
          if (.not. LeEQ1) then
@@ -290,7 +301,7 @@ c     ncompd   is Velocity stuff
                do i=lo(1), hi(1)
                   rhoD(i,j,ncompd-1) = rhoD(i,j,1)
                   rhoD(i,j,ncompd  ) = rhoD(i,j,1)
-                  val = rhoD(i,j,1) / Sc
+                  val = rhoD(i,j,1) * Yfac
                   do n=1,nspecies
                      rhoD(i,j,n) = val
                   end do
@@ -307,7 +318,7 @@ c     ncompd   is Velocity stuff
      &                    cpmix,  ARLIM(lo_chem), ARLIM(hi_chem),
      &                    T(i,j), ARLIM(lo_chem), ARLIM(hi_chem),
      &                    Yt,     ARLIM(lo_chem), ARLIM(hi_chem))
-                     rhoD(i,j,ncompd-1) = rhoD(i,j,ncompd-1)*cpmix/Pr
+                     rhoD(i,j,ncompd-1) = rhoD(i,j,ncompd-1)*cpmix*Tfac
                   end do
                end do
             end if

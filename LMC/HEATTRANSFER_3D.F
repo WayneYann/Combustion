@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.3 2003-08-12 19:40:34 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.4 2004-02-13 18:36:08 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -197,6 +197,9 @@ c
       data lo_chem /1,1,1/
       data hi_chem /1,1,1/
       
+      print *,'**** in FORT_TEMPVISC'
+      call bl_abort()
+
       if (.not.use_constant_lambda) then
          if (.not. LeEQ1) then
             call FORT_MIX_COND(lo, hi, lambda, DIMS(lambda),
@@ -251,7 +254,7 @@ c
       integer i, j, k, n, nspecies
       REAL_T P1ATM_MKS, Ptmp, val, Patm
       REAL_T Yt(maxspec)
-      REAL_T cpmix
+      REAL_T cpmix, Tfac, Yfac
       integer lo_chem(SDIM),hi_chem(SDIM)
       data lo_chem /1,1,1/
       data hi_chem /1,1,1/
@@ -260,6 +263,11 @@ c
 
 c     ncompd-1 is Temp stuff
 c     ncompd   is velocity stuff 
+
+c     Warning, FORT_VELVISC is called separately from this routine, so if there's
+c     any hacking to be done on viscosity, be sure to catch it there as well.
+      Tfac = thickFacTR / Pr
+      Yfac = thickFacTR / Sc
 
       if (.not.use_constant_rhoD) then
          if (.not. LeEQ1) then
@@ -274,7 +282,7 @@ c     ncompd   is velocity stuff
                   do i=lo(1), hi(1)
                      rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,1)
                      rhoD(i,j,k,ncompd  ) = rhoD(i,j,k,1)
-                     val = rhoD(i,j,k,1) / Sc
+                     val = rhoD(i,j,k,1) * Yfac
                      do n=1,nspecies
                         rhoD(i,j,k,n) = val
                      end do
@@ -293,7 +301,7 @@ c     ncompd   is velocity stuff
      &                       CPMIX,    ARLIM(lo_chem), ARLIM(hi_chem),
      &                       T(i,j,k), ARLIM(lo_chem), ARLIM(hi_chem),
      &                       Yt,       ARLIM(lo_chem), ARLIM(hi_chem))
-                        rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,ncompd-1) * cpmix / Pr
+                        rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,ncompd-1)cpmix*Tfac
                      end do
                   end do
                end do
@@ -333,6 +341,9 @@ c     ncompd   is velocity stuff
       integer i, j, k
       integer n
       REAL_T P1ATM_MKS, Ptmp, val, Patm
+
+      print *,'**** in FORT_SPECVISC'
+      call bl_abort()
 
       if (.not.use_constant_rhoD) then
          if (.not. LeEQ1) then
