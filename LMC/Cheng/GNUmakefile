@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.9 2004-07-13 22:29:35 lijewski Exp $
+# $Id: GNUmakefile,v 1.10 2004-09-29 19:29:42 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -24,6 +24,7 @@ USE_MPI        = FALSE
 BUILD_IN_PLACE = TRUE
 EBASE          = amr
 USE_SWIRL      = TRUE
+USE_SWIRL      = FALSE
 USE_HGPROJ_SERIAL := FALSE
 #DEFINES      += -static
 #
@@ -47,6 +48,7 @@ REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=CH4-2STEP
+REACTION_MECHANISM=GRI30NON
 #
 # Packages below are of the form dir/lib. dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding

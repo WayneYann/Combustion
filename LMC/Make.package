@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.7 2004-02-12 18:17:34 lijewski Exp $
+# $Id: Make.package,v 1.8 2004-09-29 19:29:42 lijewski Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -18,25 +18,24 @@ F$(HT_BASE)_sources += HEATTRANSFER_F.F HEATTRANSFER_$(DIM)D.F \
 #
 ifeq ($(REACTION_MECHANISM),DRM19)
   C$(HT_BASE)_sources += drm19.cpp
-else
+endif
 ifeq ($(REACTION_MECHANISM),GRI12)
   C$(HT_BASE)_sources += gri12.cpp
-else
+endif
 ifeq ($(REACTION_MECHANISM),GRI30)
   C$(HT_BASE)_sources += gri30.cpp
-else
+endif
+ifeq ($(REACTION_MECHANISM),GRI30NON)
+  C$(HT_BASE)_sources += gri30-noN.cpp
+endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
   C$(HT_BASE)_sources += chem-H.cpp
-else
+endif
 ifeq ($(REACTION_MECHANISM),INERT30)
   C$(HT_BASE)_sources += inert30.cpp
 endif
 ifeq ($(REACTION_MECHANISM),CH4-2STEP)
   C$(HT_BASE)_sources += chem-CH4-2step.cpp
-endif
-endif
-endif
-endif
 endif
 
 C$(HT_BASE)_sources += ChemDriver.cpp
