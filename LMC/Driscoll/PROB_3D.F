@@ -670,9 +670,9 @@ c         if (flct_file.ne.'') then
                scal(i,j,k,Trac) = zero
                scal(i,j,k,Temp) = T_bc(zone)
 
-               vel(i,j,k,1) = u_bc(zone)
-               vel(i,j,k,2) = v_bc(zone)
-               vel(i,j,k,3) = w_bc(zone)
+c              vel(i,j,k,1) = u_bc(zone)
+c              vel(i,j,k,2) = v_bc(zone)
+c              vel(i,j,k,3) = w_bc(zone)
 
             end do
          end do
@@ -850,8 +850,19 @@ c ::: -----------------------------------------------------------
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
+#if 0
+c     Use flame tracker to expand region being tagged
                   tag(i,j,k) = cvmgt(set,tag(i,j,k),
      &                 ftrac(i,j,k,1).gt.flametracval)
+#else
+c     Use flame tracker to limit region being tagged if lev lt. max_vort_lev
+                  if (level.lt.max_vort_lev) then
+                     if (tag(i,j,k).eq.set .and. ftrac(i,j,k,1).le.flametracval) tag(i,j,k) = clear
+                  else
+                     tag(i,j,k) = cvmgt(set,tag(i,j,k),ftrac(i,j,k,1).gt.flametracval)
+                  endif
+#endif
+
                enddo
             enddo
          enddo
