@@ -348,12 +348,18 @@ c      write(6,heattransin)
             close(FF_UNIT)
          endif
 #endif
+
       endif
 
 c     We build our our "time" value in VELFILL for stepping through the
 c     turbulence file.  The routine relies on time not being further scaled
 c     by convVel within the INFL stuff....set convVel = 1.0     
       convVel = one
+
+c     Initialize the control parameters...even if we are not controlling, as they are
+c     used in the calculation of the time offset into the turbulence file
+      zbase_control = zero
+      dV_control = zero
 
 c     Load domain dimensions into common, and set up boundary functions
       domnlo(1) = problo(1)
