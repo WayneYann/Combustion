@@ -1,4 +1,4 @@
- $fortin
+ &fortin
   blobx = -1.e6
   bloby = 2.0
   blobr = .02
@@ -16,8 +16,10 @@
   vorterr = 1.e3
   y_offset = -0.004
   flametracval = 5.e-8
- $end
- $heattransin
+ /
+ &heattransin
   pamb = 101325.0
   dpdt_factor = 0.3
- $
+ /
+ &control
+ /
