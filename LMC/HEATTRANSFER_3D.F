@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.5 2004-02-13 20:14:06 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.6 2004-02-13 23:03:46 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -301,7 +301,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
      &                       CPMIX,    ARLIM(lo_chem), ARLIM(hi_chem),
      &                       T(i,j,k), ARLIM(lo_chem), ARLIM(hi_chem),
      &                       Yt,       ARLIM(lo_chem), ARLIM(hi_chem))
-                        rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,ncompd-1)cpmix*Tfac
+                        rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,ncompd-1)*cpmix*Tfac
                      end do
                   end do
                end do
