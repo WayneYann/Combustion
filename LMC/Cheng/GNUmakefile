@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.8 2004-07-13 21:16:37 lijewski Exp $
+# $Id: GNUmakefile,v 1.9 2004-07-13 22:29:35 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -26,6 +26,18 @@ EBASE          = amr
 USE_SWIRL      = TRUE
 USE_HGPROJ_SERIAL := FALSE
 #DEFINES      += -static
+#
+# Uncomment the following if you want RhoRT stored in Tracer slot.
+#
+#DEFINES += -DBL_RHORT_IN_TRACER
+#
+# If you want to plot reaction rates uncomment the following
+#
+#DEFINES += -DBL_PLOT_REACS 
+#
+# If you want to plot fuel consumption rates uncomment the following
+#
+#DEFINES += -DBL_PLOT_CONSUMPTION
 #
 # Choose your reaction mechanism & thermal properties.
 #
