@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.3 2004-02-13 18:31:19 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.4 2004-02-13 20:14:06 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -126,7 +126,7 @@ c -------------------- begin here ----------------------------
       integer DIMDEC(T)
       integer DIMDEC(Y)
       REAL_T  T(DIMV(T))      
-      REAL_T  Y(DIMV(Y),1)      
+      REAL_T  Y(DIMV(Y),*)      
       integer DIMDEC(mu)
       REAL_T  mu(DIMV(mu))
 
@@ -165,7 +165,7 @@ c -------------------- begin here ----------------------------
       integer DIMDEC(Y)
       integer DIMDEC(lambda)
       REAL_T  T(DIMV(T))
-      REAL_T  Y(DIMV(Y),1)
+      REAL_T  Y(DIMV(Y),*)
       REAL_T  lambda(DIMV(lambda))
       
       integer i, j, n
@@ -214,7 +214,7 @@ c -------------------- begin here ----------------------------
       integer DIMDEC(rhoD)
       integer ncompd
       REAL_T  T(DIMV(T))
-      REAL_T  Y(DIMV(Y),1)
+      REAL_T  Y(DIMV(Y),*)
       REAL_T  rhoD(DIMV(rhoD),ncompd)
       
       integer i, j
@@ -267,7 +267,7 @@ c -------------------- begin here ----------------------------
       integer DIMDEC(rhoD)
       integer ncompd, do_temp, do_VelVisc
       REAL_T  T(DIMV(T))
-      REAL_T  Y(DIMV(Y),1)
+      REAL_T  Y(DIMV(Y),*)
       REAL_T  rhoD(DIMV(rhoD),ncompd)
       
       integer i, j
