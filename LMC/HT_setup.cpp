@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.3 2004-07-13 21:14:25 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.4 2004-07-13 22:25:53 lijewski Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -463,21 +463,24 @@ HeatTransfer::variableSetUp ()
     //
     // Set state variable Id's (Density, velocities and Temp set already).
     //
-    int counter = Density;
-    int RhoH = -1;
+    int counter   = Density;
+    int RhoH      = -1;
     int FirstSpec = -1;
-    int Trac = -1;
-    int RhoRT = -1;
+    int Trac      = -1;
+    int RhoRT     = -1;
+
     FirstSpec = ++counter;
-    nspecies = getChemSolve().numSpecies();
-    counter += nspecies - 1;
+    nspecies  = getChemSolve().numSpecies();
+    counter  += nspecies - 1;
     if (do_temp)
 	RhoH = ++counter;
     Trac = ++counter;
     if (do_temp)
     {
 	Temp = ++counter;
+#ifndef BL_RHORT_IN_TRACER
         RhoRT = ++counter;
+#endif
     }
     NUM_STATE = ++counter;
     NUM_SCALARS = NUM_STATE - Density;
@@ -591,8 +594,11 @@ HeatTransfer::variableSetUp ()
         //
         // Force Trac BCs to be REFLECT_EVEN for RhoRT ghost cells in UGRADP.
         //
-        set_reflect_bc(bc,phys_bc);
-        desc_lst.setComponent(State_Type,RhoRT,"RhoRT",bc,BndryFunc(FORT_ADVFILL));
+        if (RhoRT > 0)
+        {
+            set_reflect_bc(bc,phys_bc);
+            desc_lst.setComponent(State_Type,RhoRT,"RhoRT",bc,BndryFunc(FORT_ADVFILL));
+        }
     }
     //
     // ***************  DEFINE SPECIES **************************
@@ -639,29 +645,38 @@ HeatTransfer::variableSetUp ()
     diffusionType.resize(NUM_STATE);
     is_diffusive.resize(NUM_STATE);
     visc_coef.resize(NUM_STATE);
-    // assume everything is diffusive and then change it if it is not.
+    //
+    // Assume everything is diffusive and then change it if it is not.
+    //
     for (i = 0; i < NUM_STATE; i++)
     {
 	advectionType[i] = NonConservative;
 	diffusionType[i] = RhoInverse_Laplacian_S;
-	is_diffusive[i] = true;
+	is_diffusive[i]  = true;
     }
 
     if (do_mom_diff == 1)
       for (int d = 0; d < BL_SPACEDIM; d++)
         advectionType[Xvel+d] = Conservative;
 
-    is_diffusive[Density]=false;
+    is_diffusive[Density] = false;
 
     if (RhoRT > 0)
         is_diffusive[RhoRT] = false;
 
     if (Trac > 0)
     {
-	advectionType[Trac] = NonConservative;
-	diffusionType[Trac] = Laplacian_S;
-        if (trac_diff_coef <= 0.0)
+        if (RhoRT > 0)
+        {
+            advectionType[Trac] = NonConservative;
+            diffusionType[Trac] = Laplacian_S;
+            if (trac_diff_coef <= 0.0)
+                is_diffusive[Trac] = false;
+        }
+        else
+        {
             is_diffusive[Trac] = false;
+        }
     }
 
     advectionType[Density] = Conservative;
