@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.6 2003-12-18 19:15:00 lijewski Exp $
+# $Id: GNUmakefile,v 1.7 2004-02-12 18:19:17 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -14,6 +14,7 @@ DIM	       = 3
 PRVERSION      = v7
 COMP           = KCC
 COMP           = mpCC
+COMP           = Intel
 COMP           = g++
 FCOMP          = Intel
 USE_RAD        = FALSE
@@ -23,16 +24,18 @@ USE_MPI        = TRUE
 USE_MPI        = FALSE
 BUILD_IN_PLACE = TRUE
 EBASE          = amr
-USE_SWIRL      = FALSE
+USE_SWIRL      = TRUE
 USE_HGPROJ_SERIAL := FALSE
+#DEFINES      += -static
 #
 # Choose your reaction mechanism & thermal properties.
 #
 REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
-REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=INERT30
+REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=CH4-2STEP
 #
 # Packages below are of the form dir/lib. dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding

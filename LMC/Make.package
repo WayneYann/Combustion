@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.6 2003-12-18 18:51:27 lijewski Exp $
+# $Id: Make.package,v 1.7 2004-02-12 18:17:34 lijewski Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -30,6 +30,9 @@ ifeq ($(REACTION_MECHANISM),CHEMH)
 else
 ifeq ($(REACTION_MECHANISM),INERT30)
   C$(HT_BASE)_sources += inert30.cpp
+endif
+ifeq ($(REACTION_MECHANISM),CH4-2STEP)
+  C$(HT_BASE)_sources += chem-CH4-2step.cpp
 endif
 endif
 endif

@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.7 2003-12-18 18:51:58 lijewski Exp $
+# $Id: GNUmakefile,v 1.8 2004-02-12 18:19:17 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -26,6 +26,7 @@ USE_FLCTS         = TRUE
 #
 # Choose your reaction mechanism & thermal properties.
 #
+REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=DRM19
