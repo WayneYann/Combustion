@@ -1608,13 +1608,36 @@ c
       call filcc (vel(ARG_L1(vel),ARG_L2(vel),ARG_L3(vel),3),
      $            DIMS(vel),domlo,domhi,delta,xlo,bc(1,1,3))
 
-      if (lo(1).lt.domlo(1) .and. 
-     &     (bc(1,1,1).eq.EXT_DIR .or. bc(1,1,2).eq.EXT_DIR  .or. bc(1,1,3).eq.EXT_DIR)) then
+c
+c We intend that the bc's will be slipwall in X, periodic in Y and in/out in Z
+c  so that we only need to set dirichlet conditions for xvel on xlo,xhi, and
+c  all comps on xlow.  filcc whould cover the reflect even stuff
+c
+      if (lo(1).lt.domlo(1)) then
+         if (bc(1,1,1).eq.EXT_DIR) then
+            do i = lo(1), domlo(1)-1
+               do k = lo(3), hi(3)
+                  do j = lo(2),hi(2)
+                     vel(i,j,k,1) = zero
+                  enddo
+               enddo
+            enddo
+         else if (bc(1,1,2).eq.EXT_DIR  .or. bc(1,1,3).eq.EXT_DIR) then
             call bl_abort('should not be in dirch bc for xlo')
+         endif
       endif
-      if (hi(1).gt.domhi(1) .and. 
-     &     (bc(1,2,1).eq.EXT_DIR .or. bc(1,2,2).eq.EXT_DIR  .or. bc(1,2,3).eq.EXT_DIR)) then
+      if (hi(1).gt.domhi(1)) then
+         if (bc(1,2,1).eq.EXT_DIR) then
+            do i = domnhi(1)+1,hi(1)
+               do k = lo(3), hi(3)
+                  do j = lo(2),hi(2)
+                     vel(i,j,k,1) = zero
+                  enddo
+               enddo
+            enddo
+         else if (bc(1,2,2).eq.EXT_DIR  .or. bc(1,2,3).eq.EXT_DIR) then
             call bl_abort('should not be in dirch bc for xhi')
+         endif
       endif
 
       if (lo(2).lt.domlo(2) .and. 

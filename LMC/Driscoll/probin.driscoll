@@ -1,25 +1,22 @@
  &fortin
   probtype = 1
 
-  flct_file = "../TurbBin_plt0620"
-  flct_file = ""
-  forceInflow = .TRUE.
+  flct_file = "Turb_dris_rev"
   forceInflow = .FALSE.
+  forceInflow = .TRUE.
   vheight = 0.0
   numInflPlanesStore = 16
 
-  flametracval = 1.e-9
+  flametracval = 1.e-7
   max_temp_lev = 0
   temperr = 100
   max_vort_lev = 0
   tempgrad = 300.0
 
   anisotsc = 1.0
-  turb_scale=1.5
+  turb_scale=1.0
 
-  Vin = 3.9
-  Thot = 1500
-  Tinit = 298
+  Vin = 3.0
   slotL = .0254
   slotR = .0508
 

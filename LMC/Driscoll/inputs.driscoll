@@ -65,6 +65,7 @@ mg.cg_solver=1
 cg.cg_solver=1
 
 amr.v=1
+amr.max_level =  1            # maximum level number allowed
 amr.max_level =  2            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
@@ -87,7 +88,7 @@ ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
 ns.visc_tol        = 1.0e-14  # tolerence for viscous solves
 ns.visc_abs_tol    = 1.0e-14  # tolerence for viscous solves
 ns.cfl            = 0.7       # cfl number for hyperbolic system
-ns.init_shrink    = 0.3       # scale back initial timestep
+ns.init_shrink    = 1.0       # scale back initial timestep
 ns.change_max     = 1.1       # scale back initial timestep
 ns.vel_visc_coef   = 1.983e-5
 ns.temp_cond_coef  = 2.6091e-5
