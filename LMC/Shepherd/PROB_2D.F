@@ -62,7 +62,7 @@ c ::: -----------------------------------------------------------
 #include "visc.H"
 
       namelist /fortin/ flowrate_fu_CH4, flowrate_fu_N2,
-     &     flowrate_fu_O2,T_fu, flowrate_fu_H2, flowrate_fu_NO, R_fu,
+     &     flowrate_fu_O2,T_fu, T_bg, flowrate_fu_H2, flowrate_fu_NO, R_fu,
      &     flowrate_ox_O2, flowrate_ox_N2, T_ox, R_ox_1, R_ox_2,
      &     x_hot, y_hot_lo, y_hot_hi, T_lip, bgBL, flBL, ystandoff,
      &     T_hot, temperr, adverr, vorterr, tempgrad, max_temp_lev,
@@ -101,6 +101,7 @@ c     Set defaults
       flowrate_fu_H2 = zero
       flowrate_fu_NO = zero
       T_fu = 300d0
+      T_bg = 300d0
       R_fu = .01d0
       flowrate_ox_O2 = one
       flowrate_ox_N2 = one
@@ -199,7 +200,7 @@ c
 c	Glarborg and Bessler cases:
 c
 c	Boundary is divided into 5 zones
-      if (probtype.eq.0) then	      
+      if ((probtype.eq.0).or.(probtype.eq.2)) then	      
 c     Compute inlet mass fracs based on input flowrates
 c
 c     ZONE 1: Fuel stream
@@ -286,6 +287,18 @@ c
          T_bc(zone) = T_wall3
          u_bc(zone) = zero
          v_bc(zone) = zero
+c
+c     ZONE 6: Upper boundary
+c
+         if (probtype.eq.6) then
+            zone = 6
+            do n = 0,Nspec-1
+               Y_bc(n,zone) = Y_bc(n,2)
+            end do
+            T_bc(zone) = T_lip
+            u_bc(zone) = zero
+            v_bc(zone) = zero
+         endif
       else
          write(*,*) 'PROB_2D::setupbc: Dont know about probtype = ',
      &        probtype
@@ -512,7 +525,7 @@ c     ::::: local variables
                x = (float(i)+.5)*delta(1)+domnlo(1)
 
                scal(i,j,Trac) = zero
-               scal(i,j,Temp) = T_fu
+               scal(i,j,Temp) = T_bg
                do n = 1,Nspec
                   Xl(n) = zero
                end do 
