@@ -707,6 +707,7 @@ c            print *, "JACOB",sum,newJ_triggered
             FIRST = .TRUE.
 #endif
             if (do_diag.eq.1) then
+               FuncCount(i,j) = 0
                CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
                CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                do n=1,Nreac
@@ -715,133 +716,130 @@ c            print *, "JACOB",sum,newJ_triggered
             endif
 
             do node = 1,nsub
-
-            if(node.lt.nsub)then
-               weight = one
-            else
-               weight = half
-            endif
-
-            TT1save = TT1
-            TT2 = TT1 + dtloc
-
-c            print*, 'DVODE(',i,',',j,'):'
-
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
-            CALL SVODE
-#else
-            CALL DVODE
-#endif
-     &                (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
-     &                 ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &                 dvi, CONPJ_FILE, MF, RWRK, IWRK)
-
-c   If the step was bad, and we reused an old Jacobian, try again from scratch
-#if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
-            if (newJ_triggered .EQV. .FALSE.) then
-               bad_soln = .FALSE.
-               do n=1,Nspec
-#  if defined(MASS_FRAC)
-                  if (RWRK(NZ+n) .lt. -1.e-6*spec_scalY(n))
-     &                 bad_soln = .TRUE.             
-#  elif defined(MOLAR_CONC)
-                  if (RWRK(NZ+n) .lt. -1.e-6*spec_scalC(n))
-     &                 bad_soln = .TRUE.             
-#  endif
-               end do
-               if (bad_soln .EQV. .TRUE.) then
-                  TT1 = TT1SAVE
-                  FIRST = .TRUE.
-                  RWRK(NZ) = Told(i,j)
-                  do n=1,Nspec
-#  if defined(MASS_FRAC)
-                     RWRK(NZ+n) = Ytemp(n)
-#  elif defined(MOLAR_CONC)
-                     RWRK(NZ+n) = Ctemp(n)
-#  endif
-                  end do
-
-                  ISTATE = 1
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
-                  CALL SVODE
-#else 
-                  CALL DVODE
-#endif
-     &                 (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
-     &                 ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &                 dvi, CONPJ_FILE, MF, RWRK, IWRK)
+               if (node.lt.nsub) then
+                  weight = one
+               else
+                  weight = half
                endif
-            endif
 
-            TT1 = TT2
+               TT1save = TT1
+               TT2 = TT1 + dtloc
 
-            if (do_diag.eq.1) then
-               CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
-               CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
-               do n=1,Nreac
-                  diag(i,j,n) = diag(i,j,n)+weight*dtloc*Qt(n)*million
-               enddo
-            endif
+#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+               CALL SVODE
+#else
+               CALL DVODE
+#endif
+     &              (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
+     &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
+     &              dvi, CONPJ_FILE, MF, RWRK, IWRK)
+c
+c   If the step was bad, and we reused an old Jacobian, try again from scratch.
+c               
+#if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
+               if (newJ_triggered .EQV. .FALSE.) then
+                  bad_soln = .FALSE.
+                  do n=1,Nspec
+#if defined(MASS_FRAC)
+                     if (RWRK(NZ+n) .lt. -1.e-6*spec_scalY(n))
+     &                    bad_soln = .TRUE.             
+#elif defined(MOLAR_CONC)
+                     if (RWRK(NZ+n) .lt. -1.e-6*spec_scalC(n))
+     &                    bad_soln = .TRUE.             
+#endif
+                  end do
+                  if (bad_soln .EQV. .TRUE.) then
+                     TT1 = TT1SAVE
+                     FIRST = .TRUE.
+                     RWRK(NZ) = Told(i,j)
+                     do n=1,Nspec
+#if defined(MASS_FRAC)
+                        RWRK(NZ+n) = Ytemp(n)
+#elif defined(MOLAR_CONC)
+                        RWRK(NZ+n) = Ctemp(n)
+#endif
+                     end do
 
-            FuncCount(i,j) = IWRK(dvbi+11)
-            if (verbose_vode .eq. 1) then
-               write(6,*) '......dvode done:'
-               write(6,*) ' last successful step size = ',RWRK(dvbr+10)
-               write(6,*) '          next step to try = ',RWRK(dvbr+11)
-               write(6,*) '   integrated time reached = ',RWRK(dvbr+12)
-               write(6,*) '      number of time steps = ',IWRK(dvbi+10)
-               write(6,*) '              number of fs = ',IWRK(dvbi+11)
-               write(6,*) '              number of Js = ',IWRK(dvbi+12)
-               write(6,*) '    method order last used = ',IWRK(dvbi+13)
-               write(6,*) '   method order to be used = ',IWRK(dvbi+14)
-               write(6,*) '            number of LUDs = ',IWRK(dvbi+18)
-               write(6,*) ' number of Newton iterations ',IWRK(dvbi+19)
-               write(6,*) ' number of Newton failures = ',IWRK(dvbi+20)
-               if (ISTATE.eq.-4 .or. ISTATE.eq.-5) then
-                  call get_spec_name(name,IWRK(dvbi+15))
-                  write(6,*) '   spec with largest error = ', name
+                     ISTATE = 1
+#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+                     CALL SVODE
+#else 
+                     CALL DVODE
+#endif
+     &                    (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
+     &                    ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
+     &                    dvi, CONPJ_FILE, MF, RWRK, IWRK)
+                  endif
+               endif
+
+               TT1 = TT2
+
+               if (do_diag.eq.1) then
+                  CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
+                  CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                  do n=1,Nreac
+                     diag(i,j,n) = diag(i,j,n)+weight*dtloc*Qt(n)*million
+                  enddo
+                  FuncCount(i,j) = FuncCount(i,j) + IWRK(dvbi+11)
+               else
+                  FuncCount(i,j) = IWRK(dvbi+11)
+               endif
+
+               if (verbose_vode .eq. 1) then
+                  write(6,*) '......dvode done:'
+                  write(6,*) ' last successful step size = ',RWRK(dvbr+10)
+                  write(6,*) '          next step to try = ',RWRK(dvbr+11)
+                  write(6,*) '   integrated time reached = ',RWRK(dvbr+12)
+                  write(6,*) '      number of time steps = ',IWRK(dvbi+10)
+                  write(6,*) '              number of fs = ',IWRK(dvbi+11)
+                  write(6,*) '              number of Js = ',IWRK(dvbi+12)
+                  write(6,*) '    method order last used = ',IWRK(dvbi+13)
+                  write(6,*) '   method order to be used = ',IWRK(dvbi+14)
+                  write(6,*) '            number of LUDs = ',IWRK(dvbi+18)
+                  write(6,*) ' number of Newton iterations ',IWRK(dvbi+19)
+                  write(6,*) ' number of Newton failures = ',IWRK(dvbi+20)
+                  if (ISTATE.eq.-4 .or. ISTATE.eq.-5) then
+                     call get_spec_name(name,IWRK(dvbi+15))
+                     write(6,*) '   spec with largest error = ', name
+                  end if
                end if
-            end if
-            
+               
 #undef DIE_ON_MAXSTEP
 #ifdef DIE_ON_MAXSTEP
-      if (ISTATE .LE. -1) goto 500
+               if (ISTATE .LE. -1) goto 500
 #endif
-            if (ISTATE .LE. -1) then
-
-               call CONPF_FILE(NEQ, TT1, RWRK(NZ), zp, RWRK, IWRK)
-
-               lout = 6
-               write(lout,*)
-               write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
-     &              '),   Return code = ',ISTATE
-               write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-               write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
-               write(lout,996) 'T               ',
-     &              Told(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
-               do n=1,Nspec
-                  call get_spec_name(name,n)
-                  write(lout,996) name,Yold(i,j,n),
-     &                 RWRK(NZ+n),zp(1+n),zp(1+n)*(dt-TT1)
-               end do
-
- 995           format(a,3(i4,a))
- 996           format(a16,1x,4e30.22)
-               
-               if (ISTATE .LE. -4) then
-                  RWRK(NZ) = Told(i,j)
+               if (ISTATE .LE. -1) then
+                  call CONPF_FILE(NEQ, TT1, RWRK(NZ), zp, RWRK, IWRK)
+                  lout = 6
+                  write(lout,*)
+                  write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
+     &                 '),   Return code = ',ISTATE
+                  write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
+                  write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
+                  write(lout,996) 'T               ',
+     &                 Told(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
                   do n=1,Nspec
-                     RWRK(NZ+n) = Ytemp(n)
+                     call get_spec_name(name,n)
+                     write(lout,996) name,Yold(i,j,n),
+     &                    RWRK(NZ+n),zp(1+n),zp(1+n)*(dt-TT1)
                   end do
+
+995               format(a,3(i4,a))
+996               format(a16,1x,4e30.22)
+                  
+                  if (ISTATE .LE. -4) then
+                     RWRK(NZ) = Told(i,j)
+                     do n=1,Nspec
+                        RWRK(NZ+n) = Ytemp(n)
+                     end do
+                  end if
+
+                  do n=1,100
+                     write(lout,*) 'forcing a flush of above data'
+                  end do
+
+                  call bl_abort('VODE failed...see drop file...exiting...')
                end if
-
-               do n=1,100
-                  write(lout,*) 'forcing a flush of above data'
-               end do
-
-               call bl_abort('VODE failed...see drop file...exiting...')
-            end if
-
             enddo
 
             Tnew(i,j) = RWRK(NZ)
@@ -868,14 +866,14 @@ c
 #endif
 
 #ifdef SOLN_IS_1D
-            endif
-#endif
          endif
-         end do
+#endif
+      endif
+      end do
       end do
       return
 #if 0
- 500  continue 
+500   continue 
       call CONPF_FILE(NEQ, TT1, RWRK(NZ), RWRK(NWDOT), RWRK, IWRK)
 
       write(lout,*)
@@ -891,8 +889,8 @@ c
      &        RWRK(NZ+n),RWRK(NWDOT+n),RWRK(NWDOT+n)*(dt-TT1)
       end do
 
- 995  format(a,3(i4,a))
- 996  format(a16,1x,4e20.12)
+995   format(a,3(i4,a))
+996   format(a16,1x,4e20.12)
 
       call bl_abort('VODE failed...see drop file...exiting...')
 #endif
