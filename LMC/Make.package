@@ -1,0 +1,28 @@
+#
+# $Id: Make.package,v 1.1 2003-08-08 20:09:41 lijewski Exp $
+#
+HT_BASE=EXE
+ifeq ($(LBASE),ht)
+  HT_BASE=LIB
+endif
+#
+# The base LMC stuff ...
+#
+C$(HT_BASE)_sources += HeatTransfer.cpp
+C$(HT_BASE)_headers += HeatTransfer.H
+F$(HT_BASE)_headers += HEATTRANSFER_F.H htdata.H visc.H SLABSTAT_HT_F.H
+F$(HT_BASE)_sources += HEATTRANSFER_F.F HEATTRANSFER_$(DIM)D.F \
+  			DERIVE_HT_$(DIM)D.F SLABSTAT_HT_$(DIM)D.F
+#
+# The chemistry-specific stuff ...
+#
+#C$(HT_BASE)_sources += drm19.cpp
+#C$(HT_BASE)_sources += gri12.cpp
+C$(HT_BASE)_sources += gri30.cpp
+
+C$(HT_BASE)_sources += ChemDriver.cpp
+C$(HT_BASE)_headers += ChemDriver.H
+F$(HT_BASE)_sources += ChemDriver_F.F ChemDriver_$(DIM)D.F
+F$(HT_BASE)_headers += ChemDriver_F.H cdwrk.H
+f$(HT_BASE)_sources += vode.f xerror.f mach.f math.f EGSlib.f EGini.f
+
