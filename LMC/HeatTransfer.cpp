@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.16 2003-12-18 18:28:33 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.17 2004-01-12 19:21:39 marc Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -503,6 +503,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
+    auxDiag = 0;
     if (plot_auxDiags)
     {
         BL_ASSERT(auxDiag_names.size() > 0);
@@ -772,7 +773,7 @@ HeatTransfer::restart (Amr&          papa,
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
-    BL_ASSERT(auxDiag==0);
+    auxDiag = 0;
     if (plot_auxDiags)
     {
         BL_ASSERT(auxDiag_names.size() > 0);
