@@ -1,0 +1,33 @@
+ $fortin
+  blobx = -1.e6
+  bloby = 2.0
+  blobr = .02
+  xcen = .02
+  splitx = 2.0
+  xfrontw = .005
+  probtype = 1
+  v_strength = -135000.
+  v_width = 3.5e-4
+  v_xcen = 0.00275
+  v_ycen = 0.0035
+  flametracval = .000005
+  flametracval = .0001
+  vorterr = .2
+  max_vort_lev = 1
+  v_xcen = 0.00675
+  v_strength = -10000.
+  v_width = 8.e-4
+  v_strength = -5300.
+  v_strength = -7880.
+  v_width = 1.e-3
+  v_ycen = 0.01
+  vorterr = 1.e3
+  y_offset = 0.
+  flametracval = .0003
+  flametracval = 5.e-8
+ $end
+ $heattransin
+  pamb = 101325.0
+  dpdt_factor = 0.3
+ $
+
