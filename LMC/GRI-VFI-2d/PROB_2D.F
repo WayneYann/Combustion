@@ -74,6 +74,10 @@ c ::: -----------------------------------------------------------
 #include "htdata.H"
 #include "cdwrk.H"
 #include "bc.H"
+#if defined(BL_DO_FLCT)
+#include "infl_frc.H"
+#include "INFL_FORCE_F.H"
+#endif
 
       REAL_T species(maxspec)
       integer lo(2), hi(2), i
@@ -81,11 +85,19 @@ c ::: -----------------------------------------------------------
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, flametracval, probtype,
      &			max_temp_lev, max_vort_lev, splitx, splity, traceSpecVal,
-     &                  xfrontw, yfrontw, refine_nozzle, refine_nozzle_x,
-     &                  refine_nozzle_y, nozzle_width, blobx, bloby,
+     &                  xfrontw, yfrontw, refine_nozzle_x,
+     &                  refine_nozzle_y, blobx, bloby,
      &                  blobr, xcen, v_strength,v_width,v_xcen,v_ycen,v_cl_x,
-     &                  y_offset, v_blob_r, v_blob_T, v_blob_airfrac
+     &                  y_offset, v_blob_r, v_blob_T, v_blob_airfrac, V_in, V_co,
+     &                  stTh, Rf, R_hot, R_hotBL, twall, turb_scale, stBL,
+     &                  max_trac_lev, max_nozzle_lev, pipeTh, pipeBL,
+     &                  tV_in_l,tV_in_r,V_in_new,tV_co_l,tV_co_r,V_co_new,
+     &                  T_stick
       namelist /heattransin/ pamb, dpdt_factor
+#if defined(BL_DO_FLCT)
+      namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
+     &     strmwse_dir, flct_file
+#endif
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
@@ -119,15 +131,15 @@ c
       probtype = 1
       max_temp_lev = 0
       max_vort_lev = 0
+      max_trac_lev = 100
       splitx = zero
       splity = zero
       traceSpecVal = 1.d-14
       xfrontw = fourth*half*(problo(1)+probhi(1))
       yfrontw = xfrontw
-      refine_nozzle = 0
       refine_nozzle_y = zero
       refine_nozzle_x = zero
-      nozzle_width = -one
+      max_nozzle_lev = 0
       blobx = -one
       bloby = -one
       blobr = -one
@@ -140,19 +152,65 @@ c
       y_offset = zero
       pamb = 101325.d0
       dpdt_factor = 0.3d0
-      v_blob_r = 0.d0
+      v_blob_r = zero
       v_blob_T = 2000.d0
-      v_blob_airfrac = 0.d0
+      v_blob_airfrac = zero
+      V_in = zero
+      V_co = zero
+      stTh = zero
+      Rf = zero
+      R_hot = half*probhi(1)
+      R_hotBL = .1*probhi(1)
+      twall = 298.d0
+      stBL = R_hotBL
+      pipeTh = zero
+      tV_in_l = 1.e6
+      tV_in_r = 2.e6
+      V_in_new = -100.d0
+      tV_co_l = 1.e6
+      tV_co_r = 2.e6
+      V_co_new = -100.d0
+      T_stick = 300.d0
+
+#if defined(BL_DO_FLCT)
+      forceInflow = .FALSE.
+      numInflPlanesStore = -1
+      forceLo = .TRUE.
+      forceHi = .FALSE.
+      strmwse_dir = FLCT_ZVEL
+      flct_file = ""
+      turb_scale = 1
+#endif
       
       read(untin,fortin)
 c      write(6,fortin)
       
-      if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
+c      if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       
       read(untin,heattransin)
 c      write(6,heattransin)
 
+#if defined(BL_DO_FLCT)
+      read(untin,flctin)
+#endif
+
    10 close(unit=untin)
+
+#if defined(BL_DO_FLCT)
+      if (forceInflow .eqv. .FALSE.) then
+         forceLo = .FALSE.
+         forceHi = .FALSE.
+      else
+         if (flct_file.ne."") then
+#define FF_UNIT 20
+            write(6,*) '...initializing turbulence, reading header info'
+            open(FF_UNIT, file=flct_file, form='unformatted')
+            call RD_FLCTHD(FF_UNIT, dimFile, probSizeFile, dxFile)
+            close(FF_UNIT)
+         endif
+      endif
+      convVel = V_in
+#endif
 
 c     Load domain dimensions into common, and set up boundary functions
       domnlo(1) = problo(1)
@@ -169,6 +227,10 @@ c     Load domain dimensions into common, and set up boundary functions
 #define YLO 1
 #define XHI 2
 #define YHI 3
+
+#define M_FUEL  1
+#define M_CO    2
+#define M_WALL  3
       
       subroutine setupbc()
       implicit none
@@ -178,12 +240,19 @@ c     Load domain dimensions into common, and set up boundary functions
 #include "htdata.H"
       
       REAL_T Patm, y, pmf_GRI_vals(maxspec+3), sum, Y_pmf(maxspec), yEval
-      integer i, zone, n, lo(SDIM), hi(SDIM), iN2, getZone
+      REAL_T Yfu(maxspec), Yox(maxspec)
+      REAL_T Y_FU_CH4, Y_FU_O2, Y_OX_CH4, Y_OX_O2
+      integer i, zone, n, lo(SDIM), hi(SDIM), iN2, iCH4, iO2, getZone
       character*(maxspnml) name
       data lo / 1, 1 /
       data hi / 1, 1 /
+      data Y_FU_CH4 / 0.0392668168889d0 /
+      data Y_FU_O2  / 0.223771589041d0 /
+      data Y_OX_CH4 / zero /
+      data Y_OX_O2  / 0.232917518594d0 /
+      data T_in / 300.d0 /
       
-      Patm = pamb / 101325.0
+      Patm = pamb / 101325.d0
       
       if (probtype .eq. 1) then
 c     For probtype == 1, set boundary conditions from premixed flame profile in y
@@ -196,7 +265,6 @@ c     For probtype == 1, set boundary conditions from premixed flame profile in 
          end do
 
          yEval = y*100. - y_offset*100.
-c          call pmf_GRI(yEval,pmf_GRI_vals,n)
          call pmf_GRI(yEval,yEval,pmf_GRI_vals,n)
 
          if (n.ne.Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
@@ -217,7 +285,7 @@ c          call pmf_GRI(yEval,pmf_GRI_vals,n)
          end if
          T_bc(zone) = pmf_GRI_vals(1)
          u_bc(zone) = zero
-         v_bc(zone) = pmf_GRI_vals(2) / 1.d2
+         v_bc(zone) = V_in
          call FORT_RHOfromPTY(lo,hi,
      &                        rho_bc(zone),ARLIM(lo),ARLIM(hi),
      &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
@@ -227,41 +295,165 @@ c          call pmf_GRI(yEval,pmf_GRI_vals,n)
      &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
      &                        Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
 
+      else if (probtype .eq. 2) then
+         iN2 = -1
+         iCH4 = -1
+         iO2 = -1
+         do n = 1,Nspec
+            call get_spec_name(name,n)
+            if (name .eq. 'N2' ) iN2  = n
+            if (name .eq. 'CH4') iCH4 = n
+            if (name .eq. 'O2' ) iO2  = n
+         end do
+
+         do n=1,Nspec
+            Yfu(n) = zero
+            Yox(n) = zero
+         enddo
+         Yfu(iCH4) = Y_FU_CH4
+         Yfu(iO2)  = Y_FU_O2
+         Yfu(iN2)  = one - Y_FU_CH4 - Y_FU_O2
+
+         Yox(iCH4) = Y_OX_CH4
+         Yox(iO2)  = Y_OX_O2
+         Yox(iN2)  = one - Y_OX_CH4 - Y_OX_O2
+
+         zone = M_FUEL
+         do n=1,Nspec
+            Y_bc(n-1,zone) = Yfu(n)
+         end do
+         T_bc(zone) = T_in
+         u_bc(zone) = zero
+         v_bc(zone) = V_in
+
+         zone = M_CO
+         do n=1,Nspec
+            Y_bc(n-1,zone) = Yox(n)
+         end do
+         T_bc(zone) = T_in
+         u_bc(zone) = zero
+         v_bc(zone) = V_co
+
+         zone = M_WALL
+         do n=1,Nspec
+            Y_bc(n-1,zone) = Yox(n)
+         end do
+         T_bc(zone) = twall
+         u_bc(zone) = zero
+         v_bc(zone) = V_co
+
+         do zone=1,3
+            call FORT_RHOfromPTY(lo,hi,
+     &                           rho_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                           T_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                           Y_bc(0,zone),ARLIM(lo),ARLIM(hi), Patm)
+            call FORT_HMIXfromTY(lo,hi,
+     &                           h_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                           T_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                           Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
+         enddo
+
+c     Get something reasonable for stick
+         call FORT_RHOfromPTY(lo,hi,
+     &                        rho_stick,ARLIM(lo),ARLIM(hi),
+     &                        T_stick,ARLIM(lo),ARLIM(hi),
+     &                        Y_bc(0,M_FUEL),ARLIM(lo),ARLIM(hi), Patm)
+         call FORT_HMIXfromTY(lo,hi,
+     &                        h_stick,ARLIM(lo),ARLIM(hi),
+     &                        T_stick,ARLIM(lo),ARLIM(hi),
+     &                        Y_bc(0,M_FUEL),ARLIM(lo),ARLIM(hi))
+
       else
          call bl_abort('No boundary init yet for probtype != 1')
       end if
       
       end
 
+         
+c ::: -----------------------------------------------------------
+      
       integer function getZone(x, y)
       implicit none
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
-      REAL_T x, y
+      REAL_T x, y, eps, absx
+      data eps / 1.d-8 /
+
+      if (probtype.eq.1) then
+         getZone = 1
+      else
+         if (y.gt.domnlo(2)+eps) then
+            getZone = M_WALL
+         else
+            absx = ABS(x)
+            if (absx .lt. Rf + pipeTh) then
+               getZone = M_FUEL
+            else
+               getZone = M_CO
+            endif
+         endif
+      endif
+
+
+      end
       
-      getZone = 1
+
+      subroutine VAvg(V,x,y,dx)
+      implicit none
+#include "probdata.H"
+#include "cdwrk.H"
+#include "bc.H"
+      REAL_T V(SDIM)
+      REAL_T x,y,dx(SDIM)
+
+      REAL_T incx,x1,eta
+      REAL_T Vincx,Vincy
+      integer i,M
+      parameter (M=10)
+
+c     size of sub-lengths, there are M of them
+      incx = dx(1) / M
+      V(1) = zero
+      V(2) = zero
+      do i=1,M
+         x1 = ABS(x - half*dx(1) + (i-half)*incx)
+         Vincx = zero
+         Vincy = zero
+
+         if (x1.lt.Rf) then
+            Vincy = v_bc(M_FUEL)*TANH(two*(one - x1/Rf)/pipeBL)
+            if (x1.le.half*stTh) then
+               Vincy = zero
+            else
+               Vincy =
+     &          Vincy*TANH(two*(one - (Rf-x1)/((Rf-half*stTh)))/stBL)
+            endif
+         else if (x1.gt.Rf+pipeTh) then
+            Vincy =
+     &         v_bc(M_CO)*TANH(two*(one-MAX(zero,2*Rf+pipeTh-x1)/Rf)/pipeBL)
+         endif
+
+         V(1) = V(1) + Vincx
+         V(2) = V(2) + Vincy
+      enddo
+      V(1) = V(1)/M
+      V(2) = V(2)/M
       end
 
-      subroutine bcfunction(orient, x, y, time, u, v, rho, Yl, T, h)
+c ::: -----------------------------------------------------------
+      
+      subroutine bcfunction(orient, x, y, time, u, v, rho, Yl, T, h, dx)
       implicit none
       integer orient
-      REAL_T x, y, time, u, v, rho, Yl(0:*), T, h
+      REAL_T x, y, time, u, v, rho, Yl(0:*), T, h, dx(SDIM)
 #include "htdata.H"
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
-      REAL_T Patm, eta, mdotL, mdotR, mdotb
-      integer n, getZone, zone, lo(SDIM), hi(SDIM), zL, zR
-      data lo / 1, 1 /
-      data hi / 1, 1 /
-c      
-c     Some boundary conditions may not be not time-dependent, but rather
-c     just constant values for each orientation.  We can precompute
-c     then (in setupbc), here just retrieve the appropriate values.
-c     However, we do not know the size of the domain here, so we cannot
-c     call setupbc values ourselves.  Need to assume someone else did it.
-c
+
+      REAL_T Va(SDIM)
+      integer n, getZone, zone
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
       end if
@@ -276,6 +468,39 @@ c
          end do
          T = T_bc(zone)
          h = h_bc(zone)
+
+c     Shut down velocity if over stick or pipe-end
+         if (probtype.eq.2) then
+
+c     Set fueling velocity as a function of time
+            if (time .le. tV_in_l) then
+               v_bc(M_FUEL) = V_in
+            else if (time .ge. tV_in_r) then
+               v_bc(M_FUEL) = V_in_new
+            else
+               v_bc(M_FUEL) = V_in+(time-tV_in_l)*(V_in_new-V_in)/(tV_in_r-tV_in_l)
+            endif
+
+c     Set coflow velocity as a function of time
+            if (time .le. tV_co_l) then
+               v_bc(M_CO) = V_co
+            else if (time .ge. tV_co_r) then
+               v_bc(M_CO) = V_co_new
+            else
+               v_bc(M_CO) = V_co+(time-tV_co_l)*(V_co_new-V_co)/(tV_co_r-tV_co_l)
+            endif
+
+            call VAvg(Va,x,y,dx)
+            u = Va(1)
+            v = Va(2)
+
+c     Set stick temperature
+            if (zone.eq.M_FUEL  .and.  ABS(x).le..5*stTh) then
+               T = T_stick
+               rho = rho_stick
+               h = h_stick
+            endif
+         endif
       else
           print*, 'No boundary condition for orientation = ', orient
           call bl_abort(' ')
@@ -337,7 +562,7 @@ c ::: -----------------------------------------------------------
       
       integer zL, zR, zH
       REAL_T eta, xi, xblend, mdotb, mdotL, mdotR, r1sq, r2sq, ylo, yhi
-      REAL_T pmf_GRI_vals(maxspec+3), sum, Y_pmf(maxspec), yEval, rblob
+      REAL_T pmf_GRI_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
       REAL_T Y_air(maxspec), X_air(maxspec)
       integer iN2, iAr, iO2
       integer lo_chem(SDIM),hi_chem(SDIM)
@@ -363,14 +588,17 @@ c ::: -----------------------------------------------------------
       end do
 
       do n=1,Nspec
-         X_air(n) = 0.d0
+         X_air(n) = zero
       enddo
       X_air(iN2) = 0.79d0
       X_air(iO2) = 0.21d0
       call FORT_MOLETOMASS(lo_chem,hi_chem,
      &     X_air, ARLIM(lo_chem),ARLIM(hi_chem),
      &     Y_air, ARLIM(lo_chem),ARLIM(hi_chem))
-c      
+
+c     Set initial flame angle for probtype=2
+      theta = Pi / 6.d0
+
 c     Set vorticity into pressure field
 c
       do j = ARG_L2(press),ARG_H2(press)
@@ -385,30 +613,30 @@ c
       end do
       
       do j = lo(2), hi(2)
-         y = (float(j)+.5)*delta(2)+domnlo(2)
-         
-         yEval = y*100. - y_offset
-         
-         ylo = (    j*delta(2) + domnlo(2) - y_offset)*1.d2
-         yhi = ((j+1)*delta(2) + domnlo(2) - y_offset)*1.d2
-
-         call pmf_GRI(ylo,yhi,pmf_GRI_vals,n)
-
-         if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
-
-         call FORT_MOLETOMASS(lo_chem,hi_chem,
-     &        pmf_GRI_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
-     &        Y_pmf,         ARLIM(lo_chem),ARLIM(hi_chem))
-         
+         y = (float(j)+.5)*delta(2)+domnlo(2)         
          do i = lo(1), hi(1)
             x = (float(i)+.5)*delta(1)+domnlo(1)
+
+            ylo =   j  *delta(2)+domnlo(2)-y_offset
+            yhi = (j+1)*delta(2)+domnlo(2)-y_offset
+            if (probtype.eq.2) then
+               ylo = ylo - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
+               yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
+            endif
+            
+            call pmf_GRI(ylo*100,yhi*100,pmf_GRI_vals,n)
+            if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
+            call FORT_MOLETOMASS(lo_chem,hi_chem,
+     &                           pmf_GRI_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
+     &                           Y_pmf,         ARLIM(lo_chem),ARLIM(hi_chem))
+         
 
             rblob = sqrt( (v_xcen-x)**2 + (v_ycen-y)**2 )
 
             scal(i,j,Trac) = fourth*(press(i,j  ) + press(i+1,j)
      &           +                   press(i,j+1) + press(i+1,j+1))
 
-            if (v_blob_r .le. 0.d0) then
+            if (v_blob_r .le. zero) then
                scal(i,j,Temp) = pmf_GRI_vals(1)
                do n = 1,Nspec
                   scal(i,j,firstSpec+n-1) = Y_pmf(n)
@@ -429,6 +657,7 @@ c
      &                 +(1.d0-eta)*(v_blob_airfrac   *    Y_air(n)
      &                 +            (1.d0-v_blob_airfrac)*Y_pmf(n))
                end do
+
                if (iN2.gt.0) then
                   sum = zero
                   do n = 1,Nspec
@@ -437,8 +666,22 @@ c
                   scal(i,j,firstSpec+iN2-1) = one - sum
                endif
             end if
+
+c     Cut off initial pmf at R_hot so that air along wall
+            if (probtype.eq.2) then
+               eta = half*(one + TANH(two*(ABS(x)-R_hot)/R_hotBL))                  
+               scal(i,j,Temp) = (one - eta)*scal(i,j,Temp) + eta*T_in
+               do n = 1,Nspec
+                  scal(i,j,firstSpec+n-1) =
+     &                 (one - eta)*scal(i,j,firstSpec+n-1) + eta*Y_air(n)
+               end do 
+            endif
+
             vel(i,j,1) = zero
             vel(i,j,2) = pmf_GRI_vals(2) / 1.d2
+            if (probtype.eq.2) then
+               vel(i,j,2) = zero
+            endif
          enddo
       enddo
       Patm = pamb / 101325.0
@@ -479,16 +722,88 @@ c :::                   in BC_TYPES::physicalBndryTypes
 c ::: problo     => phys loc of lower left corner of prob domain
 c ::: -----------------------------------------------------------
       subroutine FORT_ZEROVISC(diff,DIMS(diff),lo,hi,domlo,domhi,
-     &                         dx,problo,bc,idir,isrz)
+     &                         dx,problo,bc,idir,isrz,id,ncomp)
       implicit none
       integer DIMDEC(diff)
       integer lo(SDIM), hi(SDIM)
       integer domlo(SDIM), domhi(SDIM)
       integer bc(2*SDIM)
-      integer idir, isrz
-      REAL_T  diff(DIMV(diff))
+      integer idir, isrz, id, ncomp
+      REAL_T  diff(DIMV(diff),*)
       REAL_T  dx(SDIM)
       REAL_T  problo(SDIM)
+      
+#include "probdata.H"
+#include "htdata.H"
+      integer i, j, n, Tid, RHid, YSid, YEid, ys, ye
+      integer getZone
+      logical do_T, do_RH, do_Y
+      REAL_T xl, xr, xh, y, ap
+
+      if (probtype.eq.2) then
+         Tid  = Temp      - id + SDIM
+         RHid = RhoH      - id + SDIM
+         YSid = FirstSpec - id + SDIM
+         YEid = LastSpec  - id + SDIM
+         
+         do_T  = (Tid  .GE. 1) .AND. (Tid  .LE. ncomp)
+         do_RH = (RHid .GE. 1) .AND. (RHid .LE. ncomp)
+         ys = MAX(YSid,1)
+         ye = MIN(YEid,ncomp)
+         do_Y = (ye - ys + 1) .GE. 1
+            
+c     Do species, Temp, rhoH
+         if ((idir.EQ.1) .AND. (lo(2) .LE. domlo(2))
+     &           .AND. (do_T .OR. do_RH .OR. do_Y) ) then
+               
+            j = lo(2)
+            y = float(j)*dx(2)+domnlo(2)
+            do i = lo(1), hi(1)
+               
+               xl = float(i)*dx(1)+domnlo(1) 
+               xr = (float(i)+1.d0)*dx(1)+domnlo(1) 
+               xh = 0.5d0*(xl+xr)
+               
+               if ( (getZone(xl,y).eq.M_FUEL) .OR.
+     &              (getZone(xh,y).eq.M_FUEL) .OR.
+     &              (getZone(xr,y).eq.M_FUEL) ) then
+                  
+#if 0
+                  ap = zero
+                  if (xl.ge.-half*stTh) then
+                     ap = ap + (MIN(Rf,xr)-MAX(xl,half*stTh))/dx(1)
+                  else if (xr.le.half*stTh) then
+                     ap = ap + (MIN(xr,-half*stTh)-MAX(-Rf,xl))/dx(1)
+                  else
+                     call bl_abort("cell spans zero")
+                  endif
+#else
+                  ap = zero
+#endif
+
+#if 0
+                  if (do_T)  diff(i,j,Tid ) = diff(i,j,Tid )*ap
+                  if (do_RH) diff(i,j,RHid) = diff(i,j,RHid)*ap
+#else
+c     Conducting stick: only zero conduction if not on stick
+                  if ( (ABS(xl).gt..5*stTh) .and.
+     &                 (ABS(xh).gt..5*stTh) .and.
+     &                 (ABS(xr).gt..5*stTh) ) then
+
+                     if (do_T)  diff(i,j,Tid ) = diff(i,j,Tid )*ap
+                     if (do_RH) diff(i,j,RHid) = diff(i,j,RHid)*ap
+
+                  endif
+#endif
+                  if (do_Y) then
+                     do n=ys,ye
+                        diff(i,j,n) = diff(i,j,n)*ap
+                     enddo
+                  endif
+               endif
+            enddo
+         endif
+      endif
       
       end
 
@@ -557,13 +872,15 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-            tag(i,j) = cvmgt(set,tag(i,j),ftrac(i,j,1).gt.flametracval)
-	 enddo
-      enddo
+      if (level .lt. max_trac_lev) then
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               tag(i,j) = cvmgt(set,tag(i,j),ftrac(i,j,1).gt.flametracval)
+            enddo
+         enddo
+      endif
 
-      if (refine_nozzle .eq. 1) then
+      if (level .lt. max_nozzle_lev) then
          do j = lo(2), hi(2)
             y = (float(j)+.5)*dx(2)+problo(2)
             do i = lo(1), hi(1)
@@ -616,7 +933,7 @@ c ::: -----------------------------------------------------------
       
       integer i, j
 
-      if ((probtype .eq. 1) .and. (time .eq. zero)) then
+      if (time .eq. zero) then
          call FORT_MVERROR(tag,DIMS(tag),set,clear,
      &                     adv,DIMS(adv),lo,hi,nvar,
      &                     domlo,domhi,delta,xlo,
@@ -728,7 +1045,7 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      if (probtype.eq.1 .and. time.eq.zero .and. level.lt.max_vort_lev) then
+      if (time.eq.zero .and. level.lt.max_vort_lev) then
          do j = lo(2), hi(2)
             y = float(j)*dx(2)+domnlo(2)
             do i = lo(1), hi(1)
@@ -742,7 +1059,7 @@ c ::: -----------------------------------------------------------
          end do
       endif
 
-      if ((probtype.eq.1) .and. (level .lt. max_vort_lev)) then
+      if (level .lt. max_vort_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                tag(i,j) = cvmgt(set,tag(i,j),ABS(vort(i,j,1)).ge.vorterr)
@@ -822,7 +1139,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h, delta)
                den(i,j) = rho
             enddo
          enddo
@@ -833,7 +1150,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h, delta)
                den(i,j) = rho
             enddo
          enddo
@@ -844,7 +1161,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h, delta)
                den(i,j) = rho
             enddo
          enddo
@@ -855,7 +1172,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h, delta)
                den(i,j) = rho
             enddo
          enddo
@@ -1030,7 +1347,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h, delta)
                temp(i,j) = T
             enddo
          enddo
@@ -1041,7 +1358,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h, delta)
                temp(i,j) = T
             enddo
          enddo
@@ -1052,7 +1369,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h, delta)
                temp(i,j) = T
             enddo
          enddo
@@ -1063,7 +1380,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h, delta)
                temp(i,j) = T
             enddo
          enddo
@@ -1140,7 +1457,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h, delta)
                rhoh(i,j) = rho*h
             enddo
          enddo
@@ -1151,7 +1468,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h, delta)
                rhoh(i,j) = rho*h
             enddo
          enddo
@@ -1162,7 +1479,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h, delta)
                rhoh(i,j) = rho*h
             enddo
          enddo
@@ -1173,7 +1490,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h, delta)
                rhoh(i,j) = rho*h
             enddo
          enddo
@@ -1224,6 +1541,49 @@ c
       enddo
       end
 
+
+      REAL_T function shapet(r)
+      REAL_T r
+      if(r.le.1.d0)then
+         shapet = tanh(100.d0*(1-r))
+      else
+         shapet = 0.d0
+      endif
+      end
+
+      REAL_T function shapen(r)
+      REAL_T r
+      if(r.le.1.d0)then
+         shapen = tanh(100.d0*(1-r))
+      else
+         shapen = 0.d0
+      endif
+      end
+
+      REAL_T function turbSclX(x,y)
+#include "probdata.H"
+      REAL_T x, y, shapet, eta
+      eta = ABS(x)/Rf
+      turbSclX = shapet(eta)
+      if (stBL.gt.zero) then
+         turbSclX = turbSclX*TANH(4.d0*MAX(0.d0,ABS(x)-0.5d0*stTh)/stBL)
+      end if
+      end
+
+      REAL_T function turbSclY(x,y)
+#include "probdata.H"
+      REAL_T x, y, shapen, eta
+      turbSclY = zero
+      eta = ABS(x)/Rf
+      if(eta.lt.one)then
+         turbSclY = 2.d0 -1.d0 * tanh((1-eta)/.0428222042d0)
+      endif
+      if (stBL.gt.zero) then
+         turbSclY = turbSclY*TANH(4.d0*MAX(0.d0,ABS(x)-0.5d0*stTh)/stBL)
+      end if
+      end
+
+
 c ::: -----------------------------------------------------------
 c ::: This routine is called during a filpatch operation when
 c ::: the patch to be filled falls outside the interior
@@ -1258,6 +1618,15 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
+
+#if defined(BL_DO_FLCT)
+#include "INFL_FORCE_F.H"
+      REAL_T turbSclX
+      integer DIMDEC(uflct)
+      integer loFlctArray(SDIM), hiFlctArray(SDIM)
+      REAL_T uflct(:,:)
+      allocatable uflct
+#endif
       
       integer i, j
       integer ilo, ihi, jlo, jhi
@@ -1277,6 +1646,21 @@ c ::: -----------------------------------------------------------
       jlo = max(lo(2),domlo(2))
       jhi = min(hi(2),domhi(2))
       
+#if defined(BL_DO_FLCT)
+      if (forceInflow) then
+         do i = 1, SDIM
+            loFlctArray(i) = lo(i)
+            hiFlctArray(i) = hi(i)
+         enddo
+         loFlctArray(strmwse_dir) = 1
+         hiFlctArray(strmwse_dir) = 1
+         call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
+         allocate(uflct(DIMV(uflct)))
+         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, time,
+     $                  bc, domnlo, domnhi)
+      endif
+#endif
+
       call filcc (xvel,DIMS(xvel),domlo,domhi,delta,xlo,bc)
       
 c     NOTE:
@@ -1293,8 +1677,13 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h, delta)
                xvel(i,j) = u
+#if defined(BL_DO_FLCT)
+               if (forceLo .and. strmwse_dir .eq. 1) then
+                  xvel(i,j) = xvel(i,j) + uflct(1,j)*turb_scale
+               endif
+#endif
             enddo
          enddo
       endif
@@ -1304,8 +1693,13 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h, delta)
                xvel(i,j) = u
+#if defined(BL_DO_FLCT)
+               if (forceHi .and. strmwse_dir .eq. 1) then
+                  xvel(i,j) = xvel(i,j) + uflct(1,j)*turb_scale
+               endif
+#endif
             enddo
          enddo
       endif    
@@ -1315,8 +1709,13 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h, delta)
                xvel(i,j) = u
+#if defined(BL_DO_FLCT)
+               if (forceLo .and. strmwse_dir .eq. 2) then
+                  xvel(i,j) = xvel(i,j) + uflct(i,1)*turb_scale*turbSclX(x,y)
+               endif
+#endif
             enddo
          enddo
       endif    
@@ -1326,12 +1725,22 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h, delta)
                xvel(i,j) = u
+#if defined(BL_DO_FLCT)
+               if (forceHi .and. strmwse_dir .eq. 2) then
+                  xvel(i,j) = xvel(i,j) + uflct(i,1)*turb_scale
+               endif
+#endif
             enddo
          enddo
       endif
       
+#if defined(BL_DO_FLCT)
+      if (forceInflow) then
+         deallocate(uflct)
+      endif
+#endif
       end
 
 c ::: -----------------------------------------------------------
@@ -1369,6 +1778,15 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
       
+#if defined(BL_DO_FLCT)
+#include "INFL_FORCE_F.H"
+      REAL_T turbSclY
+      integer DIMDEC(vflct)
+      integer loFlctArray(SDIM), hiFlctArray(SDIM)
+      REAL_T vflct(:,:)
+      allocatable vflct
+#endif
+
       integer i, j
       integer ilo, ihi, jlo, jhi
       REAL_T  y, x, hx, xhi(SDIM)
@@ -1387,8 +1805,23 @@ c ::: -----------------------------------------------------------
       jlo = max(lo(2),domlo(2))
       jhi = min(hi(2),domhi(2))
       
+#if defined(BL_DO_FLCT)
+      if (forceInflow) then
+         do i = 1, SDIM
+            loFlctArray(i) = lo(i)
+            hiFlctArray(i) = hi(i)
+         enddo
+         loFlctArray(strmwse_dir) = 1
+         hiFlctArray(strmwse_dir) = 1
+         call SET_ARGS(DIMS(vflct), loFlctArray, hiFlctArray)
+         allocate(vflct(DIMV(vflct)))
+         call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, time,
+     $                  bc, domnlo, domnhi)
+      endif
+#endif
+
       call filcc (yvel,DIMS(yvel),domlo,domhi,delta,xlo,bc)
-      
+
 c     NOTE:
 c     In order to set Dirichlet boundary conditions in a mulitspecies
 c     problem, we have to know all the state values, in a sense.  For
@@ -1403,8 +1836,13 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h, delta)
                yvel(i,j) = v
+#if defined(BL_DO_FLCT)
+               if (forceLo .and. strmwse_dir .eq. 1) then
+                  yvel(i,j) = yvel(i,j) + vflct(1,j)*turb_scale
+               endif
+#endif
             enddo
          enddo
       endif
@@ -1414,8 +1852,13 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h, delta)
                yvel(i,j) = v
+#if defined(BL_DO_FLCT)
+               if (forceHi .and. strmwse_dir .eq. 1) then
+                  yvel(i,j) = yvel(i,j) + vflct(1,j)*turb_scale
+               endif
+#endif
             enddo
          enddo
       endif    
@@ -1425,8 +1868,13 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h, delta)
                yvel(i,j) = v
+#if defined(BL_DO_FLCT)
+               if (forceLo .and. strmwse_dir .eq. 2) then
+                  yvel(i,j) = yvel(i,j) + vflct(i,1)*turb_scale*turbSclY(x,y)
+               endif
+#endif
             enddo
          enddo
       endif    
@@ -1436,12 +1884,22 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h, delta)
                yvel(i,j) = v
+#if defined(BL_DO_FLCT)
+               if (forceHi .and. strmwse_dir .eq. 2) then
+                  yvel(i,j) = yvel(i,j) + vflct(i,1)*turb_scale
+               endif
+#endif
             enddo
          enddo
       endif
       
+#if defined(BL_DO_FLCT)
+      if (forceInflow) then
+         deallocate(vflct)
+      endif
+#endif
       end
       
 c ::: -----------------------------------------------------------
@@ -1514,7 +1972,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h, delta)
                rhoY(i,j) = rho*Yl(id)
             enddo
          enddo
@@ -1525,7 +1983,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(XHI, x, y, time, u, v, rho, Yl, T, h, delta)
                rhoY(i,j) = rho*Yl(id)
             enddo
          enddo
@@ -1536,7 +1994,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h, delta)
                rhoY(i,j) = rho*Yl(id)
             enddo
          enddo
@@ -1547,7 +2005,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h)
+               call bcfunction(YHI, x, y, time, u, v, rho, Yl, T, h, delta)
                rhoY(i,j) = rho*Yl(id)
             enddo
          enddo

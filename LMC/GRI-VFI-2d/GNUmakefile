@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.5 2003-09-15 18:25:49 lijewski Exp $
+# $Id: GNUmakefile,v 1.6 2003-10-01 22:02:36 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -11,20 +11,25 @@ DEBUG	          = FALSE
 PROFILE           = FALSE
 DIM    	          = 2
 PRVERSION         = v5
-FCOMP             = Intel
+#FCOMP             = Intel
 COMP              = g++
 USE_RAD           = FALSE
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
 USE_HGPROJ_SERIAL = FALSE
+HGDEBUG           = TRUE
+HGDEBUG           = FALSE
+USE_FLCTS         = FALSE
+USE_FLCTS         = TRUE
+
 #
 # Choose your reaction mechanism & thermal properties.
 #
 REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=DRM19
-REACTION_MECHANISM=GRI12
-REACTION_MECHANISM=GRI30
+#REACTION_MECHANISM=GRI12
+#REACTION_MECHANISM=GRI30
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
@@ -79,6 +84,15 @@ else
   LIBRARY_LOCATIONS += $(TOP)/lib/$(machineSuffix)
 endif
 include $(addsuffix /Make.package, $(MySrcDirs))
+
+ifeq ($(HGDEBUG),TRUE)
+  DEFINES+=-DHG_DEBUG
+endif
+ifeq (${USE_FLCTS}, TRUE)
+  DEFINES += -DBL_DO_FLCT
+  INCLUDE_LOCATIONS += $(TOP)/iamrlib/InflowForce
+  MySrcDirs += $(TOP)/iamrlib/InflowForce
+endif
 
 vpath %.cpp $(MySrcDirs) ..
 vpath %.F   $(MySrcDirs) ..

@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.4 2003-09-15 18:25:49 lijewski Exp $
+# $Id: Make.package,v 1.5 2003-10-01 22:02:36 marc Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -9,8 +9,12 @@ CEXE_headers += ArrayViewEXT.H
 
 FEXE_headers += probdata.H PROB_F.H
 
+ifeq (${USE_FLCTS}, TRUE)
+   FEXE_sources += FLUCTFILE.F INFL_FORCE_$(DIM)D.F INFL_FORCE_F.F
+endif
+
 #fEXE_sources += pmf_30_0.8.f
-fEXE_sources += pmf_30_1.2.f
+#fEXE_sources += pmf_30_1.2.f
 #fEXE_sources += pmf_gri12.f
-#fEXE_sources += drmSoln0.75.f
+fEXE_sources += drmSoln0.75.f
 #fEXE_sources += GRI-drm19_4cm_1.19.f
