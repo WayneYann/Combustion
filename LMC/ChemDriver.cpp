@@ -10,7 +10,7 @@ const Real HtoTerrMAX_DEF = 1.e-8;
 const int HtoTiterMAX_DEF = 20;
 const Real Tmin_trans_DEF = 0.;
 
-ChemDriver::ChemDriver()			     
+ChemDriver::ChemDriver (const std::string& TransportFile)
     :
     mHtoTerrMAX(HtoTerrMAX_DEF),
     mHtoTiterMAX(HtoTiterMAX_DEF)
@@ -21,17 +21,17 @@ ChemDriver::ChemDriver()
 
     if (!mInitialized)
     {
-        initOnce();
+        initOnce(TransportFile);
         mInitialized = true;
     }
     mTmpData.resize(mHtoTiterMAX);
 }
 
 void
-ChemDriver::initOnce ()
+ChemDriver::initOnce (const std::string& TransportFile)
 {
-    const int NPROCS   = ParallelDescriptor::NProcs();
-    const int MYPROC   = ParallelDescriptor::MyProc();
+    const int NPROCS = ParallelDescriptor::NProcs();
+    const int MYPROC = ParallelDescriptor::MyProc();
     //
     // Serialize access to ChemKin files.
     // Some systems have severe limits on # of files open at any one time.
@@ -40,7 +40,10 @@ ChemDriver::initOnce ()
     {
         if (i == MYPROC)
         {
-            FORT_SETUPCKIO();
+            Array<int> tranFile = encodeStringForFortran(TransportFile);
+            int        lentran  = TransportFile.size();
+
+            FORT_SETUPCKIO(tranFile.dataPtr(), &lentran);
             FORT_INTERPCHEM();
             FORT_CLOSECKIO();
         }

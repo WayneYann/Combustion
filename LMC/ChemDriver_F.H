@@ -235,7 +235,7 @@
 
 extern "C" {
 
-    void FORT_SETUPCKIO();			
+    void FORT_SETUPCKIO(const int* nametran,  const int* nametranlen);
     void FORT_SETTMINTRANS(const Real* Tmin);
     void FORT_SETVERBOSEVODE();
     void FORT_SETVODESUBCYC(const int* maxcyc);

@@ -29,7 +29,7 @@ ns.v = 1
 mac.v = 1
 proj.v = 0
 
-amr.n_cell    = 64 256 
+amr.n_cell = 64 256 
 
 amr.v=1
 amr.max_level =  2            # maximum level number allowed
@@ -71,55 +71,25 @@ ns.gravity        = 0        # body force  (gravity in MKS units)
 ns.sum_interval   = 1        # timesteps between computing mass
 ns.do_reflux      = 1        # 1 => do refluxing
 ns.do_mac_proj    = 1        # 1 => do MAC projection
-ns.do_radiation   = 0        # 1 => do discrete-ordinates radiation
-
 ns.do_sync_proj   = 1        # 1 => do Sync Project
 ns.do_MLsync_proj = 1
-
 ns.divu_relax_factor   = 0.0
-
 ns.be_cn_theta = 0.5
-ns.do_predictor = 1
-ns.do_predict_edge_rhoh = 0
-ns.explicit_rhoh = 0
 ns.S_in_vel_diffusion = 1
-ns.use_rhoDgradhdotgradY = 1
-
-ns.conservative_sync_fix = 1
-
 ns.do_temp = 1
-ns.do_rhoh_advection = 1
-ns.do_rhoh_reflux = 1
-
 ns.do_diffuse_sync = 1
 ns.do_reflux_visc  = 1
-
-ns.zeroViscOnInAndOutFlow = 0
-ns.zeroViscOnInFlow = 0
-
 ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
-
-ns.bg_spec         = -1
-ns.chemfile        = grimech30.dat
-ns.chemoutfile     = grimech30.out
-ns.thermfile       = thermo30.dat
-ns.tranfile        = transport30.dat
+ns.tranfile        = ../tran.asc.grimech30
 ns.fuelName        = CH4
 ns.oxidizerName    = O2
 ns.flameTracName   = HCO
 ns.unity_Le = 0
-
 ns.dpdt_option = 2
-
-ns.do_chemistry = 1
-ns.split_chem   = 1
-ns.theta_chem   = 1.0
-
 ns.partialInFlow = 1
 ns.XpartialInFlow = 1.e4
-
 ns.prandtl = .75
 ns.schmidt = .75
 

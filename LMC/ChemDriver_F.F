@@ -19,27 +19,33 @@
 #define ten2minus18 1.0d-18
 #endif
       
-      subroutine FORT_SETUPCKIO ()
+      subroutine FORT_SETUPCKIO (nametr,nametrlen)
       implicit none
-c      integer nameilen, nameolen, nametlen, nametrlen
-c      integer namei(nameilen), nameo(nameolen), namet(nametlen)
-c      integer nametr(nametrlen)
+      integer nametrlen
+      integer nametr(nametrlen)
 #include "cdwrk.H"
 #include "conp.H"
       integer maxlen, i
       parameter (maxlen=256)
       character filet*(maxlen)
-      character*20 filename
-      integer filename_length
 c
-c     Open tran.asc file for EGlib.
+c     Convert encoded name to a Fortran string.
 c
-      LLINKMC = 51
-      filename = "tran.asc"
-      filename_length = 9
-      open(unit=LLINKMC,status='UNKNOWN',form='FORMATTED',
-     &     file=filename(1:filename_length))
-      
+      if (nametrlen.GT.maxlen) then
+         call bl_abort('FORT_CKINTERP: tran file name too long')
+      else if (nametrlen.NE.0) then
+         do i = 1, nametrlen
+            filet(i:i) = char(nametr(i))
+         end do
+c
+c        Open problem-specific transport file for EGlib.
+c
+         LLINKMC = 51
+         open(unit=LLINKMC,status='UNKNOWN',form='FORMATTED',
+     &        file=filet(1:nametrlen))
+      else
+         call bl_abort('FORT_CKINTERP: transport file must be provided')
+      endif
       end
 
       subroutine FORT_LINKCKDB()

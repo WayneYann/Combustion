@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.1 2003-08-08 20:09:40 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.2 2003-08-08 21:15:57 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -414,7 +414,8 @@ HeatTransfer::read_params ()
 #endif
     BL_ASSERT(!(do_DO_radiation && do_OT_radiation));
 
-    chemSolve = new ChemDriver();
+    std::string tranfile=""; pp.query("tranfile",tranfile);
+    chemSolve = new ChemDriver(tranfile);
 
     pp.query("turbFile",turbFile);
 
