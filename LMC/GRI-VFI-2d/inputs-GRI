@@ -1,20 +1,27 @@
-# ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step  =  500 # maximum timestep
+
+max_step  =  500
 stop_time = 5.00
+
+geometry.coord_sys = 0  # 0 => cart, 1 => RZ
+geometry.prob_lo   =   0.  0. # m
+geometry.prob_hi   =  .008 .032
+
+ns.tranfile        = ../../../../tran.asc.grimech30
+ns.tranfile        = ../../../../tran.asc.grimech12
+ns.tranfile        = ../../../../tran.asc.drm19
+ns.fuelName        = CH4
+ns.oxidizerName    = O2
+ns.flameTracName   = HCO
+
+amr.n_cell = 32 128
+
+amr.max_level = 0
 
 proj.proj_2 = 1
 ns.do_init_vort_proj = 1
 proj.add_vort_proj = 1
 ns.hack_nochem = 0
 
-# ------------------  INPUTS TO CLASS AMR ---------------------
-# set up for bubble
-geometry.coord_sys = 0  # 0 => cart, 1 => RZ
-
-geometry.prob_lo   =   0.  0. # m
-geometry.prob_hi   =  .012 .048
-
-# multigrid class
 mg.usecg = 1
 cg.v = 0
 mg.v = 0
@@ -25,22 +32,18 @@ mg.nu_1 = 4
 mg.nu_2 = 4
 mg.nu_f = 40
 
-ns.v = 1
-mac.v = 1
+ns.v   = 1
+amr.v  = 1
+mac.v  = 1
 proj.v = 0
 
-amr.n_cell = 64 256 
-
-amr.v=1
-amr.max_level =  0            # maximum level number allowed
-amr.max_level =  2            # maximum level number allowed
-amr.ref_ratio       = 2 2     # refinement ratio
+amr.ref_ratio       = 2 2 2 2   # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.grid_eff        = 0.9     # what constitutes an efficient grid
 amr.blocking_factor = 8       # block factor in grid generation
-amr.check_file      = chk     # root name of checkpoint file
+amr.check_file      = chk
 amr.check_int       = 10     # number of timesteps between checkpoints
 amr.plot_file       = plt
 amr.plot_int        = 10
@@ -82,11 +85,7 @@ ns.do_reflux_visc  = 1
 ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
-ns.tranfile        = ../tran.asc.grimech30
-ns.tranfile        = ../tran.asc.grimech12
-ns.fuelName        = CH4
-ns.oxidizerName    = O2
-ns.flameTracName   = HCO
+
 ns.unity_Le = 0
 ns.dpdt_option = 2
 ns.partialInFlow = 1
