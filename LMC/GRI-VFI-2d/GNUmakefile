@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.12 2004-07-13 22:29:35 lijewski Exp $
+# $Id: GNUmakefile,v 1.13 2004-07-13 22:30:33 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -24,7 +24,7 @@ USE_FLCTS         = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
-DEFINES += -DBL_RHORT_IN_TRACER
+#DEFINES += -DBL_RHORT_IN_TRACER
 #
 # If you want to plot reaction rates uncomment the following
 #
