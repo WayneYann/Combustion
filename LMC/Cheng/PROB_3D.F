@@ -2102,7 +2102,7 @@ c
          allocate(vflct(DIMV(uflct)))
          allocate(wflct(DIMV(uflct)))
          dt_flct = time - tbase_control
-         t_flct = tbase_control + Vin*dt_flct + dV_control*dt_flct**2
+         t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
          call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
      $                  bc(1,1,1), domnlo, domnhi)
          call INFL_FILL(FLCT_YVEL, DIMS(uflct), vflct, xlo, delta, t_flct,
