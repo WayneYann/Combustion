@@ -685,7 +685,7 @@ c ::: -----------------------------------------------------------
             if (stTh.gt.zero) then
 
 c     bin is the blend from the stick center T to T of the pipe end over stLw
-               bin = one - half*(one+TANH((y-half*stL)/(fourth*stLw)))
+               bin = one - half*(one+TANH((ABS(y)-half*stL)/(fourth*stLw)))
                T = T_bc(BL_STICK)*bin + T_bc(BL_PIPEEND)*(one-bin)
 
 c           now, bin is the blend from the stick to the fuel or pipe end over stBL
@@ -695,7 +695,7 @@ c           now, bin is the blend from the stick to the fuel or pipe end over st
                   else
                      Tout = T_bc(BL_PIPEEND)
                   endif
-                  bin = one - half*(one+TANH((x-half*stTh)/(fourth*stBL)))
+                  bin = one - half*(one+TANH((ABS(x)-half*stTh)/(fourth*stBL)))
                   T = T*bin + Tout*(one - bin)
                endif
 
