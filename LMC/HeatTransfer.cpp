@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.14 2003-11-24 19:20:24 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.15 2003-12-16 00:53:44 marc Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -503,7 +503,8 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
-    auxDiag = 0;
+    auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
+    auxDiag->setVal(0);
 }
 
 HeatTransfer::~HeatTransfer ()
@@ -766,6 +767,10 @@ HeatTransfer::restart (Amr&          papa,
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1,nGrow,nspecies);
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
+
+    BL_ASSERT(auxDiag==0);
+    auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
+    auxDiag->setVal(0);
 }
 
 Real
@@ -3707,12 +3712,6 @@ HeatTransfer::advance_setup (Real time,
     for (int i = 0; i < spec_diffusion_flux_computed.size(); ++i)
 	spec_diffusion_flux_computed[i] = HT_None;
 
-    if (plot_auxDiags && ncycle==parent->nCycle(level))
-    {
-        delete auxDiag;
-        auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
-        auxDiag->setVal(0);
-    }
 }
 
 void
