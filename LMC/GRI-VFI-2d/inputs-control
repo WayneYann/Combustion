@@ -1,4 +1,4 @@
-ht.plot_auxDiags = 1
+ht.plot_auxDiags = 0
 
 max_step  =  500
 stop_time = 5.00
