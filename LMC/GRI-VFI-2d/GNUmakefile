@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.8 2004-02-12 18:19:17 lijewski Exp $
+# $Id: GNUmakefile,v 1.9 2004-06-16 21:10:41 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -22,7 +22,14 @@ HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_FLCTS         = TRUE
-
+#
+# If you want to plot reaction rates uncomment the following
+#
+DEFINES += -DBL_PLOT_REACS
+#
+# If you want to plot fuel consumption rates uncomment the following
+#
+#DEFINES += -DBL_PLOT_CONSUMPTION
 #
 # Choose your reaction mechanism & thermal properties.
 #
