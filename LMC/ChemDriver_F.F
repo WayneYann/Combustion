@@ -550,8 +550,8 @@ c      do k=1,Nspec
 c         if (RPAR(NC-1+k) .lt. zero) write(6,*) '.....negative C',k
 c      end do
       
-#undef MAKE_C_POS
 #define MAKE_C_POS
+#undef MAKE_C_POS
 #ifdef MAKE_C_POS
       do k=1,Nspec
          RPAR(NC-1+k) = MAX(RPAR(NC-1+k),zero)
