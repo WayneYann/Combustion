@@ -406,7 +406,7 @@ void CKSYME(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int
 {
     int i; /*Loop Counter */
     /*clear kname */
-    for (i=0; i<lenkname*5; i++) {
+    for (i=0; i<lenkname*4; i++) {
         kname[i] = ' ';
     }
 
