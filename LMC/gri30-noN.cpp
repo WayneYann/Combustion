@@ -425,10 +425,6 @@ void CKSYME(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int
     /* N  */
     kname[ 3*lenkname + 0 ] = 'N';
     kname[ 3*lenkname + 1 ] = ' ';
-
-    /* AR  */
-    kname[ 4*lenkname + 0 ] = 'A';
-    kname[ 4*lenkname + 1 ] = 'R';
 }
 
 
