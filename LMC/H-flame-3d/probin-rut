@@ -1,0 +1,31 @@
+ &fortin
+  probtype = 8
+  pmf_offset = -0.01
+  pmf_offset = -0.010317
+  pmf_offset = -0.014317
+  xcen = .02
+  flametracval = .005
+  flametracval = 1.e-6
+  vorterr = 10000.
+  max_vort_lev = 3
+  max_temp_lev = 0
+  tempgrad = 0.1
+  splitz = 1.57
+  zfrontw =.3
+  flct_file = "Turb.bin"
+  forceInflow = .TRUE.
+  forceLo = .TRUE.
+  forceHi = .FALSE.
+  strmwse_dir = 3
+  numInflPlanesStore = -1
+  vel_frame = -.0675
+  vel_frame = -.1125
+  vel_frame = -.1264
+  turbr = 0.007
+  turbr = 0.003
+  turbw = 0.001
+ /
+ &heattransin
+  pamb = 101325
+  dpdt_factor = 0.3
+ /

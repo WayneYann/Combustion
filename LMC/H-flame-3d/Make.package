@@ -1,0 +1,14 @@
+#
+# $Id: Make.package,v 1.1 2003-09-09 20:51:31 lijewski Exp $
+#
+CEXE_sources += HT_setup.cpp
+
+FEXE_sources += PROB_$(DIM)D.F FLUCTFILE.F INFL_FORCE_$(DIM)D.F \
+ 		INFL_FORCE_F.F
+
+CEXE_headers += ArrayViewEXT.H
+
+FEXE_headers += probdata.H PROB_F.H
+
+fEXE_sources += drm19soln.f
+fEXE_sources +=  postPB-lutz.f
