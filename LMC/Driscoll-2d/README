@@ -9,3 +9,8 @@ DERIVE_2D.F
 This is a slightly modified version of ../../iamrlib/DERIVE_2D.F. The
 changes parallel those by which ../../iamrlib/DERIVE_3D.F was converted
 to give ../Driscoll/DERIVE_3D.F
+
+GODUNOV_2D.F
+
+This is a slightly modified version of ../../iamrlib/GODUNOV_2D.F that
+was copied from ../Shepherd/GODUNOV_2D.F
