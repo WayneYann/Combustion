@@ -24,11 +24,10 @@
      &                 refine_nozzle_z, nozzle_width,
      &                 blobx, bloby, blobr, blobz, xcen      
 
-      logical active_control
       REAL_T v_strength,v_width,v_xcen,v_ycen,v_zcen,v_cl_x, vel_frame,
      &  pmf_offset
       common /myprob3/ v_strength,v_width,v_xcen,v_ycen,v_zcen,v_cl_x,
-     &  vel_frame,pmf_offset,active_control
+     &  vel_frame,pmf_offset
 
       save /myprob1/,/myprob2/,/myprob3/
 

@@ -25,10 +25,10 @@
 #define USE_PMF_AVG
 c#define SWIRL
 
-      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc)
+      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step)
       implicit none
       REAL_T coft,time,dt
-      integer myproc
+      integer myproc,step
       end
 
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),

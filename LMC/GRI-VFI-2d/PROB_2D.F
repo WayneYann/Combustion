@@ -22,14 +22,53 @@
 #define SETRHO_CALCT
 #define SDIM 2
 
-      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc)
+      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step)
+
       implicit none
+
 #include "probdata.H"
 #include "cdwrk.H"
 #include "bc.H"
+
       REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
-      integer myproc
+      integer myproc,step,ierr
+      REAL_T r1,r2,r3,r4,r5,r6,r7
+      integer i1
+
       if (myproc.eq.0) then
+
+         if (.not. ac_init) then
+            print*, 'Initializing active control variables ...'
+            ac_init = .true.
+            if (step .gt. 0) then
+               open(13,file=ac_hist_file,form='formatted',
+     &              status='old',iostat=ierr)
+               if (ierr .eq. 0) then
+                  print*, 'Setting active control from history file ...'
+                  rewind(13)
+                  do
+c
+c                    This read(13) must correspond to the below write(13)
+c
+                     read(13,*,iostat=ierr) i1,r1,r2,r3,r4,r5,r6,r7
+                     if (ierr.ne.0) goto 100
+                     if (i1.eq.step-1) then
+                        print*, 'Got It: ', i1,r1,r2,r3,r4,r5,r6,r7
+c
+c                       Set previous values ...
+c
+                     endif
+                  enddo
+100               continue
+               else
+                  print*, 'Setting active control to defaults ...'
+               endif
+            else
+               open(13,file=ac_hist_file,form='formatted',
+     &              status='replace')
+            end if
+            close(13)
+         end if
 
          if (coft_old .lt. zero) coft_old = coft
 
@@ -57,9 +96,12 @@
          print *,'coft_old,V_in_old:',coft_old,V_in_old
 
          coft_old = coft
-         
-      endif
 
+         open(13,file=ac_hist_file,form='formatted',position='append')
+         write(13,*) step,time,V_in,tbase_control,zbase_control,
+     &               dV_control,sest,coft_old
+         close(13)
+      endif
       end
 
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
@@ -235,6 +277,8 @@ c     Initialize control variables
       changeMax_control = .05
       coft_old = -one
       cfix = zero
+      ac_hist_file = 'AC_History'
+      ac_init = .false.
       
       read(untin,fortin)
 c      write(6,fortin)

@@ -1,5 +1,5 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.3 2003-10-17 16:42:39 marc Exp $
+#define _PROB_F_H_ $Id: PROB_F.H,v 1.4 2003-10-17 22:56:47 lijewski Exp $
 
 #include <PROB_NS_F.H>
 
@@ -97,7 +97,8 @@
       void FORT_ACTIVECONTROL(const Real* fuelmass,
 			      const Real* time,
 			      const Real* crsedt,
-                              const int*  myproc);
+                              const int*  myproc,
+                              const int*  step);
 
      void FORT_CENTERLINE_TEMP_STATS(ARLIM_P(templo), ARLIM_P(temphi),
 				     const Real* tempdat, const Real* zcen,

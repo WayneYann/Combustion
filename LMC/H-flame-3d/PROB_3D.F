@@ -25,10 +25,10 @@
 #define USE_PMF_CH4
 #undef  USE_PMF_CH4
 
-      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc)
+      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step)
       implicit none
       REAL_T coft,time,dt
-      integer myproc
+      integer myproc,step
       end
 
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
@@ -101,7 +101,7 @@ c ::: -----------------------------------------------------------
      &                  forceInflow, numInflPlanesStore, strmwse_dir,
      $                  forceLo, forceHi, flct_file, 
      $                  T_in, XH2_in, XO2_in, T_out, XH2_out, XO2_out,
-     $                  blobrc, blobs, turbr, turbw, active_control
+     $                  blobrc, blobs, turbr, turbw
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -168,7 +168,6 @@ c
       vel_frame = zero
       pmf_offset = zero
       add_turb = .false.
-      active_control = .false.
       direction = "z"
       turbr = one
       turbw = one
@@ -428,27 +427,6 @@ c
          if (direction .eq. "y" .and. y .ge. splitx) getZone = 2
          if (direction .eq. "x" .and. x .ge. splitx) getZone = 2
       end if
-      end
-
-      subroutine FORT_ACTIVECONTROL(fuelmass,crsedt,myproc)
-
-      implicit none
-
-      integer myproc
-      REAL_T fuelmass,crsedt
-
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
-
-      if (active_control) then
-
-         if (myproc.eq.0) then
-            print*, '*** active_control is ON !!!'
-         endif
-
-      endif
-
       end
 
       subroutine bcfunction(orient, x, y, z, time, u, v, w, rho, Yl, T, h)
