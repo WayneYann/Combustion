@@ -499,7 +499,8 @@ c     Get the matrix of elements versus species
      &                         Yold, DIMS(Yold), Told, DIMS(Told),
      &                         FuncCount, DIMS(FuncCount),
      &                         Patm,
-     &                         dt)
+     &                         dt,
+     &                         diag,do_diag)
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
@@ -509,12 +510,14 @@ c     Get the matrix of elements versus species
       integer DIMDEC(Ynew)
       integer DIMDEC(Tnew)
       integer DIMDEC(FuncCount)
+      integer do_diag
       REAL_T Yold(DIMV(Yold),*)
       REAL_T Told(DIMV(Told))
       REAL_T Ynew(DIMV(Ynew),*)
       REAL_T Tnew(DIMV(Tnew))
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
+      REAL_T diag(DIMV(FuncCount),*)
       
       integer ITOL, IOPT, ITASK
       parameter (ITOL=1, IOPT=1, ITASK=1)
@@ -583,6 +586,13 @@ c     Set up ATOL
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
+
+               if (do_diag.eq.1) then
+                  do n=1,Nreac
+                     diag(i,j,k,n) = diag(i,j,k,n) + 1
+                  enddo
+               endif
+
                TT1 = zero
                ISTATE = 1
 
