@@ -190,7 +190,7 @@ c ::: -----------------------------------------------------------
      &                  max_nozzle_lev, refine_nozzle, refine_nozzle_x, 
      &                  refine_nozzle_y, refine_nozzle_z, nozzle_width,
      &                  max_stick_lev, refine_stick, refine_stick_x, 
-     &                  refine_stick_z, direction,
+     &                  refine_stick_z, direction, min_nogrid_lev, nogrid_radius,
      &                  forceInflow, numInflPlanesStore, strmwse_dir,
      $                  forceLo, forceHi, nCompInflow, flct_file,
      $                  turb_scale,Vin, rhot, zhot,
@@ -235,6 +235,7 @@ c
       probtype = 1
       max_temp_lev = 0
       max_vort_lev = 0
+      max_trac_lev = 100
       traceSpecVal = 1.d-10
       refine_nozzle = 0
       refine_nozzle_z = zero
@@ -250,7 +251,7 @@ c
       dpdt_factor = 0.3d0
       direction = "z"
       vheight = zero
-      max_nogrid_lev = 0
+      min_nogrid_lev = 100
       nogrid_radius = 1.e10
 
       add_turb = .FALSE.
@@ -295,6 +296,8 @@ c     Initialize control variables
       coft_old = -one
       cfix = zero
       ac_hist_file = 'AC_History'
+      dV_control = zero
+      tbase_control = zero
       
       read(untin,fortin)
 c      write(6,fortin)
@@ -324,7 +327,7 @@ c      write(6,heattransin)
 #endif
       endif
       convVel = Vin
-      if (probtype.eq.4) then
+      if (probtype.ge.3) then
          convVel = one
       endif
 
@@ -500,11 +503,11 @@ c     F      flux of flux (cm**2/s)
 c     r0     radius where log-law is replaced by parabola
 c
       subroutine VAvg(V,x,y,dx,Rf,wallTh,Ro,stTh,dBL,stBL,
-     &     Vf,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW,probtype,coCUTOFF)
+     &     Vf,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW,probtype,coCUTOFFp)
       implicit none
       REAL_T V(SDIM)
       REAL_T x,y,dx(SDIM),Rf,wallTh,Ro,stTh,dBL,stBL
-      REAL_T Vf,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW,coCUTOFF
+      REAL_T Vf,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW,coCUTOFFp,coCUTOFF
       integer probtype
 
       REAL_T incx,incy,x1,x2,eta
@@ -547,7 +550,8 @@ c     $              + 255.47d0*eta**4 - 260.06d0*eta**5+ 99.786d0*eta**6)
 
 c     For stagnation case, ramp co-flow to zero at coCUTOFF
                if (probtype.eq.3) then
-                  Vincz = Vincz*MAX(zero,(coCUTOFF-r)/coCUTOFF)
+                  coCUTOFF = coCUTOFFp - Ro - wallTh
+                  Vincz = Vincz*MAX(zero,(coCUTOFF-r+Ro+wallTh)/coCUTOFF)
                endif
 
             endif
@@ -1365,7 +1369,7 @@ c ::: -----------------------------------------------------------
             end do
          end do
       end if
-      if (level.lt.max_nogrid_lev) then
+      if (level.ge.min_nogrid_lev-1) then
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*dx(2)+problo(2)
