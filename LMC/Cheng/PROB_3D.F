@@ -26,9 +26,104 @@
 c#define SWIRL
 
       subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
+
       implicit none
-      REAL_T coft,time,dt
-      integer myproc,step,restart
+
+#include "probdata.H"
+#include "cdwrk.H"
+#include "bc.H"
+
+      REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
+      integer myproc,step,ierr,restart
+      REAL_T r1,r2,r3,r4,r5,r6,r7
+      integer i1
+      logical found_it
+
+      if (restart.ne.0) then
+         open(13,file=ac_hist_file,form='formatted',
+     &        status='old',iostat=ierr)
+         found_it = .false.
+         if (ierr .eq. 0) then
+            if (myproc.eq.0) then
+               print*, 'Setting active control from history file ...'
+            endif
+            rewind(13)
+            do
+c
+c                 This read(13) must correspond to the below write(13)
+c
+               read(13,1000,iostat=ierr) i1,r1,r2,r3,r4,r5,r6,r7
+               if (ierr.ne.0) goto 100
+               if (i1.eq.step) then
+
+                  found_it = .true.
+                  Vin = r2
+                  tbase_control = r3
+                  zbase_control = r4
+                  dV_control = r5
+                  sest = r6
+                  coft_old = r7
+
+               endif
+            enddo
+
+         else
+
+            if (myproc.eq.0) then
+               open(13,file=ac_hist_file,form='formatted', status='new')
+            endif
+
+         endif
+
+ 100     if (found_it .eqv. .false.) then
+
+            if (myproc.eq.0) then
+               print*, 'Setting active control to defaults ...'
+            endif
+
+         end if
+         close(13)
+         return
+      end if
+
+      if (coft_old.lt.zero) coft_old = coft
+
+      if (dt.gt.zero) then
+         zbase_control = zbase_control + Vin*dt + dV_control*dt**2
+         V_in_old = Vin
+         Vin = Vin + dt*dV_control
+
+         slocal = half*(V_in_old + Vin) - (coft - coft_old)/(dt*scale_control)
+         sest = (one - corr)*sest + corr*slocal
+         vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - Vin)/tau_control
+         
+         V_new = Vin + dt*vslope
+         dVmax = changeMax_control * one
+         V_new = MIN(MAX(V_new,Vin-dVmax),Vin+dVmax)
+         V_new = MAX(zero,V_new)
+         
+         tbase_control = time
+         dV_control = (V_new - Vin)/dt
+         
+         if (myproc.eq.0) then
+            print *
+            print *,'****************** control:'
+            print *,'time,dt,coft,V_new:',time,dt,coft,V_new
+            print *,'changeMax_control: ', changeMax_control
+            print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
+            print *,'coft_old,V_in_old:',coft_old,V_in_old
+         endif
+         
+         coft_old = coft
+         
+         if (myproc.eq.0) then
+            open(13,file=ac_hist_file,form='formatted',position='append')
+            write(13,1000) step,time,Vin,tbase_control,zbase_control,
+     &           dV_control,sest,coft_old
+            close(13)
+         endif
+      endif
+ 1000 format(i7,7g26.18)
       end
 
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
@@ -82,14 +177,15 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "INFL_FORCE_F.H"
 
-      integer lo(SDIM), hi(SDIM), i, j
+      integer lo(SDIM), hi(SDIM), i, j, zone, iCH4, getZone
+      character*(maxspnml) spName
       INTEGER dimFile(3)
       REAL_T dxFile(3)
       REAL_T rand
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, 
      &                  flametracval, probtype,
-     &		          max_temp_lev, max_vort_lev, 
+     &		        max_temp_lev, max_vort_lev, max_trac_lev,
      &                  traceSpecVal,
      &                  max_nozzle_lev, refine_nozzle, refine_nozzle_x, 
      &                  refine_nozzle_y, refine_nozzle_z, nozzle_width,
@@ -101,7 +197,8 @@ c ::: -----------------------------------------------------------
      $                  zstandoff, Thot, swK, swW, stTh, Ro, Rf, wallTh,
      &                  zBL, dBL, stBL, hotspot_r, hotspot_z, hotspot_dz,
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
-     &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc
+     &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
+     &                  tau_control, sest, cfix, changeMax_control
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -188,9 +285,21 @@ c     Note: for setup with no coflow, set Ro=Rf+wallth
       swK = zero
       swW = 0.6d0
 
+c     Initialize control variables
+      tau_control = one
+      sest = zero
+      corr = one
+      changeMax_control = .05
+      coft_old = -one
+      cfix = zero
+      ac_hist_file = 'AC_History'
+      
       read(untin,fortin)
 c      write(6,fortin)
       
+c     Initialize control variables that depend on fortin variables
+      V_in_old = Vin
+
       if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       
       read(untin,heattransin)
@@ -225,6 +334,14 @@ c     Load domain dimensions into common, and set up boundary functions
       call setupbc()
       bcinit = .true.
       
+      iCH4 = -1
+      do n = 1,Nspec
+         call get_spec_name(spName,n)
+         if (spName .eq. 'CH4') iCH4 = n-1
+      end do
+      zone = getZone(half*(domnlo(1)+domnhi(1)),half*(domnlo(2)+domnhi(2)),domnlo(3))
+      scale_control = Y_bc(iCH4,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))*(domnhi(2)-domnlo(2))
+
       end
 
 #define XLO 0
@@ -278,6 +395,9 @@ c     phi = 0.7
 c     phi = 0.75
 c     data X_CH4 /  0.0730011587486d0,   zero, 0.0730011587486d0,   zero,    zero,   zero , zero   /
 c     data X_O2  /   0.194669756663d0,  0.21d0, 0.194669756663d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
+c     phi = 0.8
+c     data X_CH4 /  0.0774907749077d0,   zero, 0.0774907749077d0,   zero,    zero,   zero ,   zero /
+c     data X_O2  /   0.193726937269d0,  0.21d0, 0.193726937269d0,  0.21d0,  0.21d0, 0.21d0,  0.21d0 /
       data T     /        3.d2,          3.d2,         3.d2,        3.d2,    3.d2,   3.d2,   3.d2  /
 #endif
       Patm = pamb / 101325.0d0
@@ -326,28 +446,36 @@ c
      &     ((direction.eq."y") .and. (y.le.domnlo(2))).or.
      &     ((direction.eq."x") .and. (x.le.domnlo(1)))) then
 
-         if (direction.eq."z") then
-            r = SQRT(x*x + y*y)
-            x1 = x
-         else if (direction.eq."y") then
-            r = SQRT(x*x + z*z)
-            x1 = x
-         else
-            r = SQRT(y*y + z*z)
-            x1 = y
-         end if
+         if (probtype.ge.4) then
 
-         if (r.le.Rf) then
-            getZone = BL_FUELPIPE         
-            if (ABS(x1).lt.half*stTh) getZone = BL_STICK
-         else if (r.le.Rf+wallTh) then
-            getZone = BL_PIPEEND
-         else if (r.le.Ro) then
-            getZone = BL_COFLOW
-         else if (r.ge.Ro+wallTh) then
-            getZone = BL_AMBIENT
+            getZone = BL_FUELPIPE
+
          else
-            getZone = BL_WALL
+
+            if (direction.eq."z") then
+               r = SQRT(x*x + y*y)
+               x1 = x
+            else if (direction.eq."y") then
+               r = SQRT(x*x + z*z)
+               x1 = x
+            else
+               r = SQRT(y*y + z*z)
+               x1 = y
+            end if
+            
+            if (r.le.Rf) then
+               getZone = BL_FUELPIPE         
+               if (ABS(x1).lt.half*stTh) getZone = BL_STICK
+            else if (r.le.Rf+wallTh) then
+               getZone = BL_PIPEEND
+            else if (r.le.Ro) then
+               getZone = BL_COFLOW
+            else if (r.ge.Ro+wallTh) then
+               getZone = BL_AMBIENT
+            else
+               getZone = BL_WALL
+            end if
+
          end if
 
       end if
@@ -533,10 +661,10 @@ c
      &           Yl,ARLIM(lo),ARLIM(hi))
          endif
 
-         if (getuvw) then
-            u = zero
-            v = zero
-            w = zero
+         u = zero
+         v = zero
+         w = zero
+         if (probtype.lt.4 .and. getuvw) then
             call VAvg(Vbndry,x,y,dx,Rf,wallTh,Ro,stTh,dBL,stBL,
      &           Vin,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW)
             u = Vbndry(1)
@@ -741,8 +869,8 @@ c
             
          z = (float(k)+.5)*delta(3)+domnlo(3)
 #if defined(BL_DO_FLCT)
-c         if (.false. .and. flct_file.ne."") then      
-         if (flct_file.ne."") then      
+         if (.false. .and. flct_file.ne."") then      
+c         if (flct_file.ne."") then      
             call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo,
      &           delta, z, bc, domnlo, domnhi)
             do j = lo(2), hi(2)
@@ -952,6 +1080,36 @@ c
                end do
             end do
          end do
+      else if (probtype .eq. 4) then
+         do k= lo(3),hi(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)            
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+
+                  y1 = (z-half*delta(3)-zstandoff)*100.d0
+                  y2 = (z+half*delta(3)-zstandoff)*100.d0
+
+                  call pmf(y1,y2,pmf_vals,n)
+
+                  if (n.ne.Nspec+3) then
+                     call bl_abort('INITDATA: n .ne. Nspec+3')
+                  endif
+
+                  scal(i,j,k,Temp) = pmf_vals(1)
+                  do n = 1,Nspec
+                     Xl(n) = pmf_vals(3+n)
+                  end do 
+
+                  CALL CKXTY (Xl, IWRK, RWRK, Yl)
+
+                  do n = 1,Nspec
+                     scal(i,j,k,FirstSpec+n-1) = Yl(n)
+                  end do
+                  scal(i,j,k,Trac) = zero
+
+               end do
+            end do
+         end do
       end if
 
       Patm = pamb / 101325.0d0
@@ -1021,64 +1179,66 @@ c ::: -----------------------------------------------------------
       logical do_T, do_RH, do_Y
       REAL_T xl, xr, xh, yb, yt, yh, z
 
-      Tid  = Temp      - id + SDIM
-      RHid = RhoH      - id + SDIM
-      YSid = FirstSpec - id + SDIM
-      YEid = LastSpec  - id + SDIM
-      
-      do_T  = (Tid  .GE. 1) .AND. (Tid  .LE. ncomp)
-      do_RH = (RHid .GE. 1) .AND. (RHid .LE. ncomp)
-      ys = MAX(YSid,1)
-      ye = MIN(YEid,ncomp)
-      do_Y = (ye - ys + 1) .GE. 1
-c
+      if (probtype.lt.4) then
+         Tid  = Temp      - id + SDIM
+         RHid = RhoH      - id + SDIM
+         YSid = FirstSpec - id + SDIM
+         YEid = LastSpec  - id + SDIM
+         
+         do_T  = (Tid  .GE. 1) .AND. (Tid  .LE. ncomp)
+         do_RH = (RHid .GE. 1) .AND. (RHid .LE. ncomp)
+         ys = MAX(YSid,1)
+         ye = MIN(YEid,ncomp)
+         do_Y = (ye - ys + 1) .GE. 1
+c     
 c     Do species, Temp, rhoH
-c
-      if ((idir.EQ.2) .AND. (lo(3) .LE. domlo(3))
-     &        .AND. (do_T .OR. do_RH .OR. do_Y) ) then
-
-         k = lo(3)
-         z = float(k)*dx(3)+domnlo(3)
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-
-               xl = float(i)*dx(1)+domnlo(1) 
-               xr = (float(i)+1.d0)*dx(1)+domnlo(1) 
-               xh = 0.5d0*(xl+xh)
-               yb = float(j)*dx(2)+domnlo(2) 
-               yt = (float(j)+1.d0)*dx(2)+domnlo(2) 
-               yh = 0.5d0*(yb+yt)
+c     
+         if ((idir.EQ.2) .AND. (lo(3) .LE. domlo(3))
+     &           .AND. (do_T .OR. do_RH .OR. do_Y) ) then
                
-               if ( (getZone(xl,yb,z).eq.BL_STICK) .OR.
-     &              (getZone(xh,yb,z).eq.BL_STICK) .OR.
-     &              (getZone(xr,yb,z).eq.BL_STICK) .OR.
-     &              (getZone(xl,yh,z).eq.BL_STICK) .OR.
-     &              (getZone(xh,yh,z).eq.BL_STICK) .OR.
-     &              (getZone(xr,yh,z).eq.BL_STICK) .OR.
-     &              (getZone(xl,yt,z).eq.BL_STICK) .OR.
-     &              (getZone(xh,yt,z).eq.BL_STICK) .OR.
-     &              (getZone(xr,yt,z).eq.BL_STICK) .OR.
-     &              (getZone(xl,yb,z).eq.BL_PIPEEND) .OR.
-     &              (getZone(xh,yb,z).eq.BL_PIPEEND) .OR.
-     &              (getZone(xr,yb,z).eq.BL_PIPEEND) .OR.
-     &              (getZone(xl,yh,z).eq.BL_PIPEEND) .OR.
-     &              (getZone(xh,yh,z).eq.BL_PIPEEND) .OR.
-     &              (getZone(xr,yh,z).eq.BL_PIPEEND) .OR.
-     &              (getZone(xl,yt,z).eq.BL_PIPEEND) .OR.
-     &              (getZone(xh,yt,z).eq.BL_PIPEEND) .OR.
-     &              (getZone(xr,yt,z).eq.BL_PIPEEND) ) then
-
-                  if (do_T)  diff(i,j,k,Tid ) = 0.d0
-                  if (do_RH) diff(i,j,k,RHid) = 0.d0
-                  if (do_Y) then
-                     do n=ys,ye
-                        diff(i,j,k,n) = 0.d0
-                     enddo
+            k = lo(3)
+            z = float(k)*dx(3)+domnlo(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  
+                  xl = float(i)*dx(1)+domnlo(1) 
+                  xr = (float(i)+1.d0)*dx(1)+domnlo(1) 
+                  xh = 0.5d0*(xl+xh)
+                  yb = float(j)*dx(2)+domnlo(2) 
+                  yt = (float(j)+1.d0)*dx(2)+domnlo(2) 
+                  yh = 0.5d0*(yb+yt)
+                  
+                  if ( (getZone(xl,yb,z).eq.BL_STICK) .OR.
+     &                 (getZone(xh,yb,z).eq.BL_STICK) .OR.
+     &                 (getZone(xr,yb,z).eq.BL_STICK) .OR.
+     &                 (getZone(xl,yh,z).eq.BL_STICK) .OR.
+     &                 (getZone(xh,yh,z).eq.BL_STICK) .OR.
+     &                 (getZone(xr,yh,z).eq.BL_STICK) .OR.
+     &                 (getZone(xl,yt,z).eq.BL_STICK) .OR.
+     &                 (getZone(xh,yt,z).eq.BL_STICK) .OR.
+     &                 (getZone(xr,yt,z).eq.BL_STICK) .OR.
+     &                 (getZone(xl,yb,z).eq.BL_PIPEEND) .OR.
+     &                 (getZone(xh,yb,z).eq.BL_PIPEEND) .OR.
+     &                 (getZone(xr,yb,z).eq.BL_PIPEEND) .OR.
+     &                 (getZone(xl,yh,z).eq.BL_PIPEEND) .OR.
+     &                 (getZone(xh,yh,z).eq.BL_PIPEEND) .OR.
+     &                 (getZone(xr,yh,z).eq.BL_PIPEEND) .OR.
+     &                 (getZone(xl,yt,z).eq.BL_PIPEEND) .OR.
+     &                 (getZone(xh,yt,z).eq.BL_PIPEEND) .OR.
+     &                 (getZone(xr,yt,z).eq.BL_PIPEEND) ) then
+                     
+                     if (do_T)  diff(i,j,k,Tid ) = 0.d0
+                     if (do_RH) diff(i,j,k,RHid) = 0.d0
+                     if (do_Y) then
+                        do n=ys,ye
+                           diff(i,j,k,n) = 0.d0
+                        enddo
+                     endif
+                     
                   endif
-
-               endif
+               end do
             end do
-         end do
+         endif
       end if
       end
 
@@ -1147,16 +1307,18 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      do k = lo(3), hi(3)
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-               tag(i,j,k) = cvmgt(set,tag(i,j,k),
-     &                            ftrac(i,j,k,1).gt.flametracval)
+      if (level.lt.max_trac_lev) then
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  tag(i,j,k) = cvmgt(set,tag(i,j,k),
+     &                 ftrac(i,j,k,1).gt.flametracval)
+               enddo
             enddo
          enddo
-      enddo
+      endif
 
-      if ((level.lt.max_nozzle_lev).and.(refine_nozzle.eq.1)) then
+      if ((probtype.lt.4).and.(level.lt.max_nozzle_lev).and.(refine_nozzle.eq.1)) then
          do k = lo(3), hi(3)
             z = (float(k)+.5)*dx(3)+problo(3)
             do j = lo(2), hi(2)
@@ -1172,7 +1334,7 @@ c ::: -----------------------------------------------------------
             end do
          end do
       end if
-      if ((level.lt.max_stick_lev).and.(refine_stick.eq.1)) then
+      if ((probtype.lt.4).and.(level.lt.max_stick_lev).and.(refine_stick.eq.1)) then
          do k = lo(3), hi(3)
             z = (float(k)+.5)*dx(3)+problo(3)
             do j = lo(2), hi(2)

@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.3 2003-09-15 18:23:35 lijewski Exp $
+# $Id: GNUmakefile,v 1.4 2003-10-24 20:23:21 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -14,7 +14,7 @@ DIM	       = 3
 PRVERSION      = v7
 COMP           = KCC
 COMP           = g++
-FCOMP          = Intel
+#FCOMP          = Intel
 USE_RAD        = FALSE
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
