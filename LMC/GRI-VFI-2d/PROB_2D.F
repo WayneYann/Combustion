@@ -33,6 +33,7 @@
 
          if (coft_old .lt. zero) coft_old = coft
 
+         zbase_control = zbase_control + V_in*dt + dV_control*dt**2
          V_in_old = V_in
          V_in = V_in + dt*dV_control
 
@@ -227,18 +228,19 @@ c
       turb_scale = 1
 #endif
 
+c     Initialize control variables
       tau_control = one
       sest = zero
       corr = one
       changeMax_control = .05
+      coft_old = -one
+      cfix = zero
       
       read(untin,fortin)
 c      write(6,fortin)
 
-c     Initialize control variables
+c     Initialize control variables that depend on fortin variables
       V_in_old = V_in
-      coft_old = -one
-      cfix = zero
       
 c      if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       
@@ -1694,7 +1696,7 @@ c ::: -----------------------------------------------------------
 
 #if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
-      REAL_T turbSclX
+      REAL_T turbSclX, t_flct, dt_flct
       integer DIMDEC(uflct)
       integer loFlctArray(SDIM), hiFlctArray(SDIM)
       REAL_T uflct(:,:)
@@ -1729,7 +1731,11 @@ c ::: -----------------------------------------------------------
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
          allocate(uflct(DIMV(uflct)))
-         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, time,
+         dt_flct = time - tbase_control
+         t_flct = tbase_control + V_in*dt_flct + dV_control*dt_flct**2
+
+         print *,'********* XVELFILL: time, dt_flct, t_flct',time, dt_flct, t_flct
+         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
      $                  bc, domnlo, domnhi)
       endif
 #endif
@@ -1853,7 +1859,7 @@ c ::: -----------------------------------------------------------
       
 #if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
-      REAL_T turbSclY
+      REAL_T turbSclY, t_flct, dt_flct
       integer DIMDEC(vflct)
       integer loFlctArray(SDIM), hiFlctArray(SDIM)
       REAL_T vflct(:,:)
@@ -1888,7 +1894,9 @@ c ::: -----------------------------------------------------------
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(vflct), loFlctArray, hiFlctArray)
          allocate(vflct(DIMV(vflct)))
-         call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, time,
+         dt_flct = time - tbase_control
+         t_flct = tbase_control + V_in*dt_flct + dV_control*dt_flct**2
+         call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, t_flct,
      $                  bc, domnlo, domnhi)
       endif
 #endif
