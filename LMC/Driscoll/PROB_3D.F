@@ -464,9 +464,13 @@ c :::
          
       else
          getZone = BL_VOLUME
-         if (x.ge.xhot .and. x.le.xhot+dxhot .and.
-     &        y.ge.yhot .and. y.le.yhot+dyhot .and.
-     &        z.ge.zhot .and. z.le.zhot+dzhot ) getZone = BL_HOTSPOT
+c        if (x.ge.xhot .and. x.le.xhot+dxhot .and.
+c    &        y.ge.yhot .and. y.le.yhot+dyhot .and.
+c    &        z.ge.zhot .and. z.le.zhot+dzhot ) then
+         if (x1.ge.slotL .and. x1.le.slotR .and. z.le.zhot)then
+              getZone = BL_FUELDUCT	
+         endif
+            
          
       endif
       end
@@ -732,7 +736,49 @@ c ::: -----------------------------------------------------------
       REAL_T  diff(DIMV(diff),*)
       REAL_T  dx(SDIM)
       REAL_T  problo(SDIM)
-      call bl_abort('should not be in FORT_ZEROVISC')
+
+#if 1
+#include "probdata.H"
+#include "htdata.H"
+      integer i, j, k, n, Tid, RHid, YSid, YEid, ys, ye
+      integer getZone
+      logical do_T, do_RH, do_Y
+
+      if (probtype.lt.4) then
+         Tid  = Temp      - id + SDIM
+         RHid = RhoH      - id + SDIM
+         YSid = FirstSpec - id + SDIM
+         YEid = LastSpec  - id + SDIM
+
+         do_T  = (Tid  .GE. 1) .AND. (Tid  .LE. ncomp)
+         do_RH = (RHid .GE. 1) .AND. (RHid .LE. ncomp)
+         ys = MAX(YSid,1)
+         ye = MIN(YEid,ncomp)
+         do_Y = (ye - ys + 1) .GE. 1
+c
+c     Do species, Temp, rhoH
+c    
+         if ((idir.EQ.2) .AND. (lo(3) .LE. domlo(3))
+     &           .AND. (do_T .OR. do_RH .OR. do_Y) ) then
+
+            k = lo(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                     if (do_T)  diff(i,j,k,Tid ) = 0.d0
+                     if (do_RH) diff(i,j,k,RHid) = 0.d0
+                     if (do_Y) then
+                        do n=ys,ye
+                           diff(i,j,k,n) = 0.d0
+                        enddo
+                     endif
+               end do
+            end do
+         endif
+      end if
+c     call bl_abort('should not be in FORT_ZEROVISC')
+#else
+c     call bl_abort('should not be in FORT_ZEROVISC')
+#endif
       end
 
 c ::: -----------------------------------------------------------
@@ -1527,7 +1573,7 @@ c ::: -----------------------------------------------------------
             Wh = half*(slotR-slotL)
             L = ABS(x-xmid)
          endif
-         velocityBL = one - half*(one+TANH(L/(fourth*velBL)))
+         velocityBL = one - half*(one+TANH((L-Wh)/(fourth*velBL)))
       endif
       end
 c
