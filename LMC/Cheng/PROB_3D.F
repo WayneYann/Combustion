@@ -198,10 +198,10 @@ c ::: -----------------------------------------------------------
      &                  zBL, dBL, stBL, hotspot_r, hotspot_z, hotspot_dz,
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
-     &                  tau_control, sest, cfix, changeMax_control,
+     &                  tau_control, sest, cfix, changeMax_control, h_control,
      &                  thickFacTR, thickFacCH,
      &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r,
-     &                  Tpipe, Tstick, stL, stLw
+     &                  Tpipe, Tstick, stL, stLw, zInletEval
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -229,6 +229,7 @@ c
       untin = 9
       open(untin,file=probin(1:namlen),form='formatted',status='old')
       
+      zInletEval = zero
       anisotsc = 1.3d0
       vorterr = 1.e20
       temperr = zero
@@ -302,6 +303,7 @@ c     Initialize control variables
       ac_hist_file = 'AC_History'
       dV_control = zero
       tbase_control = zero
+      h_control = -1
 
       wire_x = -1.0
       wire_y = -1.0
@@ -370,6 +372,9 @@ c     Load domain dimensions into common, and set up boundary functions
       end do
       zone = getZone(half*(domnlo(1)+domnhi(1)),half*(domnlo(2)+domnhi(2)),domnlo(3))
       scale_control = Y_bc(iCH4,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))*(domnhi(2)-domnlo(2))
+      if (h_control .gt. zero) then
+         cfix = scale_control * h_control
+      endif
 
       end
 
@@ -440,17 +445,28 @@ c     data X_O2  /   0.193726937269d0,  0.21d0, 0.193726937269d0,  0.21d0,  0.21
       if (Tstick.gt.0) T(BL_STICK) = Tstick
 
       do zone = 1,Nzones
-         sum = zero
-         do n = 1,Nspec
-            Xt(n) = zero
-            call get_spec_name(name, n)
-            if (name .EQ. 'CH4') Xt(n) = X_CH4(zone)
-            if (name .EQ. 'O2')  Xt(n) = X_O2(zone)
-            if (name .NE. 'N2')  sum = sum + Xt(n)
-         end do
-         Xt(iN2) = one - sum
+         if (zone.eq.BL_FUELPIPE .and. probtype.eq.4) then
+            call pmf(zInletEval,zInletEval,pmf_vals,n)
+            if (n.ne.Nspec+3) then
+               call bl_abort('setupbc: n .ne. Nspec+3')
+            endif
+            do n =1,Nspec
+               Xt(n) = pmf_vals(3+n)
+            enddo
+            T_bc(zone) = pmf_vals(1)
+         else
+            sum = zero
+            do n = 1,Nspec
+               Xt(n) = zero
+               call get_spec_name(name, n)
+               if (name .EQ. 'CH4') Xt(n) = X_CH4(zone)
+               if (name .EQ. 'O2')  Xt(n) = X_O2(zone)
+               if (name .NE. 'N2')  sum = sum + Xt(n)
+            end do
+            Xt(iN2) = one - sum
+            T_bc(zone) = T(zone)
+         endif
          CALL CKXTY (Xt, IWRK, RWRK, Y_bc(0,zone))
-         T_bc(zone) = T(zone)
          call FORT_RHOfromPTY(lo,hi,
      &        rho_bc(zone),ARLIM(lo),ARLIM(hi),
      &        T_bc(zone),ARLIM(lo),ARLIM(hi),
@@ -662,7 +678,7 @@ c ::: -----------------------------------------------------------
 
          r = SQRT(x**2 + y**2)
 
-         if (zone.eq.BL_FUELPIPE.or.zone.eq.BL_PIPEEND.or.zone.eq.BL_COFLOW.or.zone.eq.BL_STICK) then
+         if (probtype.ne.4 .and. zone.eq.BL_FUELPIPE.or.zone.eq.BL_PIPEEND.or.zone.eq.BL_COFLOW.or.zone.eq.BL_STICK) then
 
             T = T_bc(BL_FUELPIPE)
 

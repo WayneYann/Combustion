@@ -41,12 +41,12 @@
      &            dBL, stBL, Thot, rhot, zhot, zstandoff, swK, swW,
      &            hotspot_r, hotspot_z, hotspot_dz, hotspot_T, hotspot_htc,
      &            hotspot_w, vheight, Vco_l, Vco_r, tVco_l, tVco_r,
-     &             Tpipe, Tstick, stL, stLw
+     &             Tpipe, Tstick, stL, stLw, zInletEval
       common /myprob3/ Rf, wallTh, Ro, stTh, Vin, zBL,
      &            dBL, stBL, Thot, rhot, zhot, zstandoff, swK, swW,
      &            hotspot_r, hotspot_z, hotspot_dz, hotspot_T, hotspot_htc,
      &            hotspot_w, vheight, Vco_l, Vco_r, tVco_l, tVco_r,
-     &            Tpipe, Tstick, stL, stLw
+     &            Tpipe, Tstick, stL, stLw, zInletEval
       save /myprob3/
 
       REAL_T wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r, wire_l, wire_lw
