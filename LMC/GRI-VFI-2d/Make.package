@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.1 2003-08-08 19:35:10 lijewski Exp $
+# $Id: Make.package,v 1.2 2003-08-11 21:13:59 lijewski Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -9,16 +9,6 @@ CEXE_headers += ArrayViewEXT.H
 
 FEXE_headers += probdata.H PROB_F.H
 
-#fEXE_sources += pmf_GRI.f
-#fEXE_sources += CH4_080_O2_150_N2_770_AR_000.f
-#fEXE_sources += CH4_080_O2_150_N2_770_AR_000_small.f
-#fEXE_sources += drmSoln0.75.f
-fEXE_sources += pmf_30_0.8.f
-#fEXE_sources += CH4_phi_1.01.f
-#fEXE_sources += CH4_phi_0.76.f
-#fEXE_sources += GRI-full_2cm.f
-#fEXE_sources += GRI-drm22_2cm.f
-#fEXE_sources += GRI-drm19_2cm.f
-#fEXE_sources += GRI-c1_2cm.f
-#fEXE_sources += pmf_GRI_Habib.f
-#fEXE_sources += CH4_075_O2_126_N2_793_AR_006.f
+#fEXE_sources += pmf_30_0.8.f
+fEXE_sources += pmf_gri12.f
+
