@@ -1,7 +1,7 @@
  &fortin
   probtype = 3
   flct_file = ""
-  flct_file = "../Turb.c0100.bin"
+  flct_file = "./Turb.c0100.bin"
   forceInflow = .FALSE.
   forceInflow = .TRUE.
   zstandoff = -0.03

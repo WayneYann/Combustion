@@ -1,0 +1,18 @@
+#
+# $Id: Make.package,v 1.1 2003-08-12 19:40:00 lijewski Exp $
+#
+CEXE_sources += HT_setup.cpp
+
+FEXE_sources += PROB_$(DIM)D.F
+
+ifeq (${USE_FLCTS}, TRUE)
+   FEXE_sources += FLUCTFILE.F INFL_FORCE_$(DIM)D.F INFL_FORCE_F.F
+endif
+
+CEXE_headers += ArrayViewEXT.H
+
+FEXE_headers += probdata.H PROB_F.H
+
+#fEXE_sources += 2stepSoln.f
+fEXE_sources += drmSoln0.75.f
+#fEXE_sources += 2stepSoln0.75.f

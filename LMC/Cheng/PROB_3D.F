@@ -9,7 +9,7 @@
 #include "PROB_AMR_F.H"
 #include "PROB_F.H"
 #include "ArrayLim.H"
-#include "ChemKinDriver_F.H"
+#include "ChemDriver_F.H"
 #include "HEATTRANSFER_F.H"
 #include "infl_frc.H"
 
@@ -72,7 +72,7 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 #include "htdata.H"
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "INFL_FORCE_F.H"
 
@@ -228,7 +228,7 @@ c ::: -----------------------------------------------------------
 
       subroutine setupbc()
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 #include "htdata.H"
@@ -308,7 +308,7 @@ c ::: -----------------------------------------------------------
 
       integer function getZone(x, y, z)
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       REAL_T x, y, z, r, x1
@@ -460,7 +460,7 @@ c ::: -----------------------------------------------------------
       logical getuvw
 
 #include "htdata.H"
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -674,7 +674,7 @@ c ::: -----------------------------------------------------------
       REAL_T   press(DIMV(press))
 
 #include "htdata.H"
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 #include "INFL_FORCE_F.H"
@@ -1393,7 +1393,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  den(DIMV(den))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -1580,7 +1580,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  temp(DIMV(temp))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -1726,7 +1726,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  rhoh(DIMV(rhoh))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -1851,7 +1851,7 @@ c
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  vel(DIMV(vel),SDIM)
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 #include "INFL_FORCE_F.H"
@@ -2278,7 +2278,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  xvel(DIMV(xvel))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 #include "INFL_FORCE_F.H"
@@ -2512,7 +2512,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  yvel(DIMV(yvel))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 #include "INFL_FORCE_F.H"
@@ -2749,7 +2749,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  zvel(DIMV(zvel))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 #include "INFL_FORCE_F.H"
@@ -2945,7 +2945,7 @@ c ::: -----------------------------------------------------------
 
       implicit none
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -3114,7 +3114,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  rhoY(DIMV(rhoY))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -4348,7 +4348,7 @@ c     divu(i,j,k) = min(two,one+time/.05)
       subroutine FORT_RADLOSS(lo,hi,rad,DIMS(rad),
      &                        T,DIMS(T),Y,DIMS(Y),dx,Patm,time)
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "probdata.H"
       integer DIMDEC(rad)
       integer DIMDEC(T)

@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.1 2003-08-12 17:14:05 lijewski Exp $
+# $Id: GNUmakefile,v 1.2 2003-08-12 19:40:00 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -18,8 +18,8 @@ FCOMP          = Intel
 USE_RAD        = FALSE
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
-USE_MPI        = FALSE
 USE_MPI        = TRUE
+USE_MPI        = FALSE
 BUILD_IN_PLACE = TRUE
 EBASE          = amr
 USE_SWIRL      = FALSE
