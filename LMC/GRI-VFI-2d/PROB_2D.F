@@ -92,7 +92,7 @@ c ::: -----------------------------------------------------------
      &                  stTh, Rf, R_hot, R_hotBL, twall, turb_scale, stBL,
      &                  max_trac_lev, max_nozzle_lev, pipeTh, pipeBL,
      &                  tV_in_l,tV_in_r,V_in_new,tV_co_l,tV_co_r,V_co_new,
-     &                  T_stick
+     &                  T_stick, T_in
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -171,6 +171,7 @@ c
       tV_co_r = 2.e6
       V_co_new = -100.d0
       T_stick = -300.d0
+      T_in = 300.d0
 
 #if defined(BL_DO_FLCT)
       forceInflow = .FALSE.
@@ -250,7 +251,6 @@ c     Load domain dimensions into common, and set up boundary functions
       data Y_FU_O2  / 0.223771589041d0 /
       data Y_OX_CH4 / zero /
       data Y_OX_O2  / 0.232917518594d0 /
-      data T_in / 300.d0 /
       
       Patm = pamb / 101325.d0
       
