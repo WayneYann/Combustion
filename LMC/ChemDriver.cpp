@@ -33,7 +33,7 @@ ChemDriver::initOnce (const std::string& TransportFile)
     const int NPROCS = ParallelDescriptor::NProcs();
     const int MYPROC = ParallelDescriptor::MyProc();
     //
-    // Serialize access to ChemKin files.
+    // Serialize access to files.
     // Some systems have severe limits on # of files open at any one time.
     //
     for (int i = 0; i < NPROCS; i++)

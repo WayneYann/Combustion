@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.1 2003-08-08 20:09:40 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.2 2003-08-11 19:34:00 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -10,7 +10,7 @@ c
 #include "CONSTANTS.H"
 #include "BC_TYPES.H"
 #include "HEATTRANSFER_F.H"
-#include "ChemKinDriver_F.H"
+#include "ChemDriver_F.H"
 #include "ArrayLim.H"
 
 #   if   BL_SPACEDIM==1

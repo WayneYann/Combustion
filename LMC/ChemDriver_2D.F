@@ -573,10 +573,10 @@ c     Set molecular weights and pressure in area accessible by conpF
       TT2 = dt
 
 #if defined(MASS_FRAC)
-c   chemkin provided finite difference jacobian
+c     finite difference jacobian
       MF = 22
 #elif defined(MOLAR_CONC)
-c   user supplied jacobian, in this case an analytic one
+c     user supplied jacobian, in this case an analytic one
       MF = 21
 c      MF = 22
 #endif

@@ -8,7 +8,7 @@
 #include "BC_TYPES.H"
 #include "PROB_F.H"
 #include "ArrayLim.H"
-#include "ChemKinDriver_F.H"
+#include "ChemDriver_F.H"
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
