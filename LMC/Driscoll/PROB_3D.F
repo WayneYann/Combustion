@@ -1793,7 +1793,7 @@ c
       integer domlo(SDIM), domhi(SDIM)
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  zvel(DIMV(zvel))
-      call bl_abort('should not be in YVELFILL')
+      call bl_abort('should not be in ZVELFILL')
       end
 
       subroutine FORT_ALLCHEMFILL (rhoY,DIMS(rhoY),domlo,domhi,delta,
