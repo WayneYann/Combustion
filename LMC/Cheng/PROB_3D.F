@@ -193,7 +193,7 @@ c ::: -----------------------------------------------------------
      &                  refine_stick_z, direction, min_nogrid_lev, nogrid_radius,
      &                  forceInflow, numInflPlanesStore, strmwse_dir,
      $                  forceLo, forceHi, nCompInflow, flct_file,
-     $                  turb_scale,Vin, rhot, zhot,
+     $                  turb_scale, tstart_turb, Vin, rhot, zhot,
      $                  zstandoff, Thot, swK, swW, stTh, Ro, Rf, wallTh,
      &                  zBL, dBL, stBL, hotspot_r, hotspot_z, hotspot_dz,
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
@@ -257,6 +257,7 @@ c
       add_turb = .FALSE.
       forceInflow = .FALSE.
       numInflPlanesStore = -1
+      numInflPlanesStore = 30
 c
 c     Don't need to default 'nCompInflow' as it is block data'd to /3/
 c
