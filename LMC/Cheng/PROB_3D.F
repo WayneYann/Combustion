@@ -199,7 +199,8 @@ c ::: -----------------------------------------------------------
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
      &                  tau_control, sest, cfix, changeMax_control,
-     &                  thickFacTR, thickFacCH
+     &                  thickFacTR, thickFacCH,
+     &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -300,6 +301,14 @@ c     Initialize control variables
       ac_hist_file = 'AC_History'
       dV_control = zero
       tbase_control = zero
+
+      wire_x = -1.0
+      wire_y = -1.0
+      wire_z = -1.0
+      wire_w = -1.0
+      wire_h = zero
+      wire_T = -1.0
+      wire_r = -1.0
       
       read(untin,fortin)
 c      write(6,fortin)
@@ -4540,14 +4549,19 @@ c     divu(i,j,k) = min(two,one+time/.05)
       REAL_T  dx(SDIM), Patm, time
 
       integer i, j, k
-      REAL_T xx, yy, zz, r, dr, dz
+      REAL_T xx, yy, zz, r, dr, dz, blend
       
+c     Blend goes from 1 to 0 in r at wire_r, over a width of wire_w  
+      blend(r) = one - half*(one+TANH((r-wire_r)/(fourth*wire_w)))
+
       do k = lo(3),hi(3)
          zz = float(k)*dx(3)+domnlo(3)
          do j = lo(2),hi(2)
             yy = float(j)*dx(2)+domnlo(2)
             do i = lo(1),hi(1)
                xx = float(i)*dx(1)+domnlo(1)
+
+#if 0
 c
 c  Compute the distance to a disk at z=hotspot_z, radius hotspot_r and thickness
 c     of hotspot_dz
@@ -4569,6 +4583,11 @@ c
                end if
                rad(i,j,k) = half*(one-tanh(two*(r-1.5*hotspot_w)/hotspot_w))
      &                                       *hotspot_htc*(hotspot_T - T(i,j,k))
+
+#else
+               r = SQRT((xx-wire_x)**2 + (zz-wire_z)**2 + MAX(zero,ABS(yy)-wire_y)**2)
+               rad(i,j,k) = -blend(r)*wire_h*MAX(zero,(wire_T - T(i,j,k)))
+#endif
             end do
          end do
       end do

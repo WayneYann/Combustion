@@ -46,3 +46,7 @@
      &            hotspot_r, hotspot_z, hotspot_dz, hotspot_T, hotspot_htc,
      &            hotspot_w, vheight, Vco_l, Vco_r, tVco_l, tVco_r
       save /myprob3/
+
+      REAL_T wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r
+      common /wirecom/ wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r
+      save /wirecom/
