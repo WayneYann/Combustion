@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.3 2003-08-15 16:44:56 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.4 2003-08-21 16:29:23 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -435,19 +435,9 @@ HeatTransfer::read_params ()
     // Read in scalar value and use it as tracer.
     //
     pp.query("scal_diff_coefs",trac_diff_coef);
-    //
-    // For added safety, set constatn val to garbage to make sure we don't
-    // use it
-    //
-    const int Nspecies        = getChemSolve().numSpecies();
-    const int n_var_scal_diff = pp.countval("variable_scal_diff");
 
-    int n_visc = BL_SPACEDIM + 1 + n_var_scal_diff + Nspecies;
-    if (do_temp) 
-      n_visc = n_visc+2;
-
-    Array<Real> new_visc(n_visc,bogus_value);
-    visc_coef = new_visc;
+    for (int i = 0; i < visc_coef.size(); i++)
+        visc_coef[i] = bogus_value;
 }
 
 HeatTransfer::HeatTransfer ()
@@ -4066,6 +4056,7 @@ HeatTransfer::create_mac_rhs (Real time, Real dt)
        for (MFIter mfi(dpdt); mfi.isValid(); ++mfi)
            (*mac_rhs)[mfi].plus(dpdt[mfi], grids[mfi.index()], 0,0,1);
    }
+
    return mac_rhs;
 }
 
@@ -5369,6 +5360,8 @@ HeatTransfer::tracer_update (Real dt,
     //
     if (have_trac)
         scalar_update(dt,Trac,Trac,corrector);
+    if (have_rhort)
+        scalar_update(dt,RhoRT,RhoRT,corrector);
 }
 
 void
@@ -5921,6 +5914,11 @@ HeatTransfer::mac_sync ()
                 if (have_trac)
                     SyncInterp(*Ssync, level, increment, lev, ratio, 
                                Trac-BL_SPACEDIM, Trac-BL_SPACEDIM, 1, 1, mult, 
+                               sync_bc.dataPtr());
+
+                if (have_rhort)
+                    SyncInterp(*Ssync, level, increment, lev, ratio, 
+                               RhoRT-BL_SPACEDIM, RhoRT-BL_SPACEDIM, 1, 1, mult, 
                                sync_bc.dataPtr());
                 if (do_temp)
                     SyncInterp(*Ssync, level, increment, lev, ratio, 
@@ -6518,7 +6516,7 @@ HeatTransfer::calcDiffusivity (const Real time,
                     (*visc)[idx].divide(cpmix,0,RhoH-offset,1);
                 }
             }
-            else if (icomp == Trac)
+            else if (icomp == Trac || icomp == RhoRT)
             {
                 visc->setVal(trac_diff_coef, icomp-offset, 1, nGrow);
             }

@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.1 2003-08-08 20:09:40 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.2 2003-08-21 16:29:23 lijewski Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -478,7 +478,7 @@ HeatTransfer::variableSetUp ()
     if (do_temp)
     {
 	Temp = ++counter;
-        //RhoRT = ++counter;
+        RhoRT = ++counter;
     }
     NUM_STATE = ++counter;
     NUM_SCALARS = NUM_STATE - Density;
@@ -590,8 +590,10 @@ HeatTransfer::variableSetUp ()
 	//
 	// **************  DEFINE RhoRT  ********************
         //
-        //set_scalar_bc(bc,phys_bc);
-        //desc_lst.setComponent(State_Type,RhoRT,"RhoRT",bc,BndryFunc(FORT_ADVFILL));
+        // Force Trac BCs to be REFLECT_EVEN for RhoRT ghost cells in UGRADP.
+        //
+        set_reflect_bc(bc,phys_bc);
+        desc_lst.setComponent(State_Type,RhoRT,"RhoRT",bc,BndryFunc(FORT_ADVFILL));
     }
     //
     // ***************  DEFINE SPECIES **************************
@@ -631,22 +633,13 @@ HeatTransfer::variableSetUp ()
     //
     // ***************  DEFINE TRACER **************************
     //
-    if (RhoRT > 0)
-    {
-        set_scalar_bc(bc,phys_bc);
-    }
-    else
-    {
-        //
-        // Force Trac BCs to be REFLECT_EVEN for RhoRT ghost cells in UGRADP.
-        //
-        set_reflect_bc(bc,phys_bc);
-    }
+    set_scalar_bc(bc,phys_bc);
     desc_lst.setComponent(State_Type,Trac,"tracer",bc,BndryFunc(FORT_ADVFILL));
 
     advectionType.resize(NUM_STATE);
     diffusionType.resize(NUM_STATE);
     is_diffusive.resize(NUM_STATE);
+    visc_coef.resize(NUM_STATE);
     // assume everything is diffusive and then change it if it is not.
     for (i = 0; i < NUM_STATE; i++)
     {
@@ -661,7 +654,9 @@ HeatTransfer::variableSetUp ()
 
     is_diffusive[Density]=false;
 
-    // check to see if diffuse tracer
+    if (RhoRT > 0)
+        is_diffusive[RhoRT] = false;
+
     if (Trac > 0)
     {
 	advectionType[Trac] = NonConservative;
@@ -799,18 +794,6 @@ HeatTransfer::variableSetUp ()
 	derive_lst.add("enthalpy",IndexType::TheCellType(),1,FORT_DERDVRHO,the_same_box);
 	derive_lst.addComponent("enthalpy",desc_lst,State_Type,Density,1);
 	derive_lst.addComponent("enthalpy",desc_lst,State_Type,RhoH,1);
-        //
-	// rho*R*T
-        //
-	derive_lst.add("rhoRT",IndexType::TheCellType(),1,FORT_DERRHORT,the_same_box);
-	derive_lst.addComponent("rhoRT",desc_lst,State_Type,Density,1);
-	derive_lst.addComponent("rhoRT",desc_lst,State_Type,Temp,1);
-
-        for (i = 0; i < nspecies; i++)
-        {
-            const int comp = FirstSpec + i;
-            derive_lst.addComponent("rhoRT",desc_lst,State_Type,comp,1);
-        }
     }
     //
     // Species mass fractions.
