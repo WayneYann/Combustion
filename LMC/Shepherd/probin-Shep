@@ -1,10 +1,10 @@
  &fortin
   probtype=0
-  flowrate_fu_O2 = 8136.53
-  flowrate_fu_N2 = 30608.9
-  flowrate_fu_CH4 = 3254.61
-  flowrate_ox_N2 = 15800.0
-  flowrate_ox_O2 = 4200.0
+  flowrate_fu_O2 = 0.089
+  flowrate_fu_N2 = .335
+  flowrate_fu_CH4 = .036
+  flowrate_ox_N2 = 1.
+  flowrate_ox_O2 = 0.26582
   T_fu = 300.0
   R_fu = .0127
   T_ox = 300.0
