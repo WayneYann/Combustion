@@ -771,9 +771,8 @@ c
      &                    dvi, CONPJ_FILE, MF, RWRK, IWRK)
                   endif
                endif
-
-               TT1 = TT2
 #endif
+               TT1 = TT2
 
                if (do_diag.eq.1) then
                   CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
