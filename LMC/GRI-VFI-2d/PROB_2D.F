@@ -34,43 +34,54 @@
       integer myproc,step,ierr,restart
       REAL_T r1,r2,r3,r4,r5,r6,r7
       integer i1
+      logical found_it
 
       if (restart.ne.0) then
-         if (step .gt. 0) then
-            open(13,file=ac_hist_file,form='formatted',
-     &           status='old',iostat=ierr)
-            if (ierr .eq. 0) then
-               if (myproc.eq.0) then
-                  print*, 'Setting active control from history file ...'
-               endif
-               rewind(13)
-               do
+         open(13,file=ac_hist_file,form='formatted',
+     &        status='old',iostat=ierr)
+         found_it = .false.
+         if (ierr .eq. 0) then
+            if (myproc.eq.0) then
+               print*, 'Setting active control from history file ...'
+            endif
+            rewind(13)
+            do
 c
 c                 This read(13) must correspond to the below write(13)
 c
-                  read(13,*,iostat=ierr) i1,r1,r2,r3,r4,r5,r6,r7
-                  if (ierr.ne.0) goto 100
-                  if (i1.eq.step-1) then
-                     if (myproc.eq.0) then
-                        print*, 'Got It: ', i1,r1,r2,r3,r4,r5,r6,r7
-                     endif
-c
-c                    Set previous values ...
-c
-                  endif
-               enddo
+               read(13,1000,iostat=ierr) i1,r1,r2,r3,r4,r5,r6,r7
+               if (ierr.ne.0) goto 100
+               if (i1.eq.step) then
+
+                  found_it = .true.
+                  V_in = r2
+                  tbase_control = r3
+                  zbase_control = r4
+                  dV_control = r5
+                  sest = r6
+                  coft_old = r7
+
+               endif
+            enddo
+
+         else
+
+            if (myproc.eq.0) then
+               open(13,file=ac_hist_file,form='formatted', status='new')
             endif
-100         close(13)
+
+         endif
+
+ 100     if (found_it .eqv. .false.) then
+
+            if (myproc.eq.0) then
+               print*, 'Setting active control to defaults ...'
+            endif
+
          end if
+         close(13)
          return
       end if
-
-      if (step .eq. 0) then
-c
-c        Null out previous history file (if one exists).
-c
-         open(13,file=ac_hist_file,form='formatted',status='replace')
-      endif
 
       if (coft_old .lt. zero) coft_old = coft
 
@@ -93,7 +104,7 @@ c
       if (myproc.eq.0) then
          print *
          print *,'****************** control:'
-         print *,'time,coft,V_new:',time,coft,V_new
+         print *,'time,dt,coft,V_new:',time,dt,coft,V_new
          print *,'changeMax_control: ', changeMax_control
          print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
          print *,'coft_old,V_in_old:',coft_old,V_in_old
@@ -103,11 +114,11 @@ c
 
       if (myproc.eq.0) then
          open(13,file=ac_hist_file,form='formatted',position='append')
-         write(13,*) step,time,V_in,tbase_control,zbase_control,
+         write(13,1000) step,time,V_in,tbase_control,zbase_control,
      &        dV_control,sest,coft_old
          close(13)
       endif
-
+ 1000 format(i7,7g26.18)
       end
 
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
@@ -298,6 +309,8 @@ c      write(6,heattransin)
 
 #if defined(BL_DO_FLCT)
       read(untin,flctin)
+
+      write(6,flctin)
 #endif
 
       read(untin,control)
@@ -317,7 +330,8 @@ c      write(6,heattransin)
             close(FF_UNIT)
          endif
       endif
-      convVel = V_in
+c      convVel = V_in
+      convVel = one
 #endif
 
 c     Load domain dimensions into common, and set up boundary functions
@@ -480,8 +494,52 @@ c     Get something reasonable for stick
      &                           Y_bc(0,M_FUEL),ARLIM(lo),ARLIM(hi))
          endif
 
+      elseif (probtype .eq. 3) then
+c     For probtype == 3, set boundary conditions as constants
+
+c     phi = 1.0
+         Y_FU_CH4 = 0.0551670662321d0
+         Y_FU_O2  = 0.220068142419d0
+c     phi = 0.7
+c         Y_FU_CH4 = 0.0392668168889d0
+c         Y_FU_O2  = 0.223771589041d0
+
+         iN2 = -1
+         iCH4 = -1
+         iO2 = -1
+         do n = 1,Nspec
+            call get_spec_name(name,n)
+            if (name .eq. 'N2' ) iN2  = n
+            if (name .eq. 'CH4') iCH4 = n
+            if (name .eq. 'O2' ) iO2  = n
+         end do
+
+         do n=1,Nspec
+            Yfu(n) = zero
+         enddo
+         Yfu(iCH4) = Y_FU_CH4
+         Yfu(iO2)  = Y_FU_O2
+         Yfu(iN2)  = one - Y_FU_CH4 - Y_FU_O2
+
+         zone = M_FUEL
+         do n=1,Nspec
+            Y_bc(n-1,zone) = Yfu(n)
+         end do
+         T_bc(zone) = T_in
+         u_bc(zone) = zero
+         v_bc(zone) = V_in
+
+         call FORT_RHOfromPTY(lo,hi,
+     &                        rho_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                        Y_bc(0,zone),ARLIM(lo),ARLIM(hi), Patm)
+         call FORT_HMIXfromTY(lo,hi,
+     &                        h_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                        Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
+
       else
-         call bl_abort('No boundary init yet for probtype != 1')
+         call bl_abort('No boundary init yet for this probtype')
       end if
       
       end
@@ -497,7 +555,7 @@ c ::: -----------------------------------------------------------
       REAL_T x, y, eps, absx
       data eps / 1.d-8 /
 
-      if (probtype.eq.1) then
+      if ((probtype.eq.1).or.(probtype.eq.3)) then
          getZone = 1
       else
          if (y.gt.domnlo(2)+eps) then
@@ -588,7 +646,7 @@ c ::: -----------------------------------------------------------
          T = T_bc(zone)
          h = h_bc(zone)
 
-         if (probtype.eq.1) then
+         if ((probtype.eq.1).or.(probtype.eq.3)) then
 
             v_bc(M_FUEL) = V_in + (time-tbase_control)*dV_control
 
@@ -1687,10 +1745,14 @@ c
       REAL_T function turbSclX(x,y)
 #include "probdata.H"
       REAL_T x, y, shapet, eta
-      eta = ABS(x)/Rf
-      turbSclX = shapet(eta)
-      if (stBL.gt.zero) then
-         turbSclX = turbSclX*TANH(4.d0*MAX(0.d0,ABS(x)-0.5d0*stTh)/stBL)
+      if ((probtype.eq.1).or.(probtype.eq.3)) then
+         turbSclX = one
+      else
+         eta = ABS(x)/Rf
+         turbSclX = shapet(eta)
+         if (stBL.gt.zero) then
+            turbSclX = turbSclX*TANH(4.d0*MAX(0.d0,ABS(x)-0.5d0*stTh)/stBL)
+         end if
       end if
       end
 
@@ -1698,13 +1760,17 @@ c
 #include "probdata.H"
       REAL_T x, y, shapen, eta
       turbSclY = zero
-      eta = ABS(x)/Rf
-      if(eta.lt.one)then
-         turbSclY = 2.d0 -1.d0 * tanh((1-eta)/.0428222042d0)
+      if ((probtype.eq.1).or.(probtype.eq.3)) then
+         turbSclY = one
+      else
+         eta = ABS(x)/Rf
+         if(eta.lt.one)then
+            turbSclY = 2.d0 -1.d0 * tanh((1-eta)/.0428222042d0)
+         endif
+         if (stBL.gt.zero) then
+            turbSclY = turbSclY*TANH(4.d0*MAX(0.d0,ABS(x)-0.5d0*stTh)/stBL)
+         end if
       endif
-      if (stBL.gt.zero) then
-         turbSclY = turbSclY*TANH(4.d0*MAX(0.d0,ABS(x)-0.5d0*stTh)/stBL)
-      end if
       end
 
 
@@ -1782,8 +1848,7 @@ c ::: -----------------------------------------------------------
          allocate(uflct(DIMV(uflct)))
          dt_flct = time - tbase_control
          t_flct = tbase_control + V_in*dt_flct + dV_control*dt_flct**2
-
-         print *,'********* XVELFILL: time, dt_flct, t_flct',time, dt_flct, t_flct
+c         write(*,*) 'time,dt_flct,t_flct,tbase_control:',time,dt_flct,t_flct,tbase_control
          call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
      $                  bc, domnlo, domnhi)
       endif
