@@ -1879,7 +1879,7 @@ c ::: -----------------------------------------------------------
          call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
          allocate(uflct(DIMV(uflct)))
          dt_flct = time - tbase_control
-         t_flct = tbase_control + V_in*dt_flct + dV_control*dt_flct**2
+         t_flct = zbase_control + V_in*dt_flct + dV_control*dt_flct**2
 c         write(*,*) 'time,dt_flct,t_flct,tbase_control:',time,dt_flct,t_flct,tbase_control
          call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
      $                  bc, domnlo, domnhi)
@@ -2041,7 +2041,7 @@ c ::: -----------------------------------------------------------
          call SET_ARGS(DIMS(vflct), loFlctArray, hiFlctArray)
          allocate(vflct(DIMV(vflct)))
          dt_flct = time - tbase_control
-         t_flct = tbase_control + V_in*dt_flct + dV_control*dt_flct**2
+         t_flct = zbase_control + V_in*dt_flct + dV_control*dt_flct**2
          call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, t_flct,
      $                  bc, domnlo, domnhi)
       endif
