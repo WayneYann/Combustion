@@ -407,9 +407,13 @@ void CKSYME(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int
     kname[ 1*lenkname + 0 ] = 'H';
     kname[ 1*lenkname + 1 ] = ' ';
 
-    /* N  */
-    kname[ 2*lenkname + 0 ] = 'N';
+    /* C  */
+    kname[ 2*lenkname + 0 ] = 'C';
     kname[ 2*lenkname + 1 ] = ' ';
+
+    /* N  */
+    kname[ 3*lenkname + 0 ] = 'N';
+    kname[ 3*lenkname + 1 ] = ' ';
 }
 
 
@@ -2077,15 +2081,15 @@ void equilibriumConstants(double *kc, double * g_RT, double T)
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 void gibbs(double * species, double * tc)
 {
-
     /*temperature */
-    double T = tc[1];
+    double T    = tc[1];
+    double Tinv = 1.0/T;
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
         /*species 0: O2 */
         species[0] =
-            -1.06394356e+03 / tc[1]
+            -1.06394356e+03 * Tinv
             +1.24780630e-01
             -3.78245636e+00 * tc[0]
             +1.49836708e-03 * tc[1]
@@ -2094,7 +2098,7 @@ void gibbs(double * species, double * tc)
             -1.62186418e-13 * tc[4];
         /*species 1: H2O */
         species[1] =
-            -3.02937267e+04 / tc[1]
+            -3.02937267e+04 * Tinv
             +5.04767277e+00
             -4.19864056e+00 * tc[0]
             +1.01821705e-03 * tc[1]
@@ -2103,7 +2107,7 @@ void gibbs(double * species, double * tc)
             -8.85989085e-14 * tc[4];
         /*species 2: CH4 */
         species[2] =
-            -1.02466476e+04 / tc[1]
+            -1.02466476e+04 * Tinv
             +9.79117989e+00
             -5.14987613e+00 * tc[0]
             +6.83548940e-03 * tc[1]
@@ -2112,7 +2116,7 @@ void gibbs(double * species, double * tc)
             -8.33469780e-13 * tc[4];
         /*species 3: CO */
         species[3] =
-            -1.43440860e+04 / tc[1]
+            -1.43440860e+04 * Tinv
             +7.11241900e-02
             -3.57953347e+00 * tc[0]
             +3.05176840e-04 * tc[1]
@@ -2121,7 +2125,7 @@ void gibbs(double * species, double * tc)
             +4.52212249e-14 * tc[4];
         /*species 4: CO2 */
         species[4] =
-            -4.83719697e+04 / tc[1]
+            -4.83719697e+04 * Tinv
             -7.54427870e+00
             -2.35677352e+00 * tc[0]
             -4.49229839e-03 * tc[1]
@@ -2130,7 +2134,7 @@ void gibbs(double * species, double * tc)
             +7.18497740e-15 * tc[4];
         /*species 5: N2 */
         species[5] =
-            -1.02089990e+03 / tc[1]
+            -1.02089990e+03 * Tinv
             -6.51695000e-01
             -3.29867700e+00 * tc[0]
             -7.04120200e-04 * tc[1]
@@ -2140,7 +2144,7 @@ void gibbs(double * species, double * tc)
     } else {
         /*species 0: O2 */
         species[0] =
-            -1.08845772e+03 / tc[1]
+            -1.08845772e+03 * Tinv
             -2.17069345e+00
             -3.28253784e+00 * tc[0]
             -7.41543770e-04 * tc[1]
@@ -2149,7 +2153,7 @@ void gibbs(double * species, double * tc)
             +1.08358897e-15 * tc[4];
         /*species 1: H2O */
         species[1] =
-            -3.00042971e+04 / tc[1]
+            -3.00042971e+04 * Tinv
             -1.93277761e+00
             -3.03399249e+00 * tc[0]
             -1.08845902e-03 * tc[1]
@@ -2158,7 +2162,7 @@ void gibbs(double * species, double * tc)
             -8.41004960e-16 * tc[4];
         /*species 2: CH4 */
         species[2] =
-            -9.46834459e+03 / tc[1]
+            -9.46834459e+03 * Tinv
             -1.83624665e+01
             -7.48514950e-02 * tc[0]
             -6.69547335e-03 * tc[1]
@@ -2167,7 +2171,7 @@ void gibbs(double * species, double * tc)
             +5.09076150e-15 * tc[4];
         /*species 3: CO */
         species[3] =
-            -1.41518724e+04 / tc[1]
+            -1.41518724e+04 * Tinv
             -5.10350211e+00
             -2.71518561e+00 * tc[0]
             -1.03126372e-03 * tc[1]
@@ -2176,7 +2180,7 @@ void gibbs(double * species, double * tc)
             +1.01823858e-15 * tc[4];
         /*species 4: CO2 */
         species[4] =
-            -4.87591660e+04 / tc[1]
+            -4.87591660e+04 * Tinv
             +1.58582223e+00
             -3.85746029e+00 * tc[0]
             -2.20718513e-03 * tc[1]
@@ -2185,7 +2189,7 @@ void gibbs(double * species, double * tc)
             +2.36042082e-15 * tc[4];
         /*species 5: N2 */
         species[5] =
-            -9.22797700e+02 / tc[1]
+            -9.22797700e+02 * Tinv
             -3.05388800e+00
             -2.92664000e+00 * tc[0]
             -7.43988400e-04 * tc[1]
@@ -2193,6 +2197,7 @@ void gibbs(double * species, double * tc)
             -8.41419833e-12 * tc[3]
             +3.37667550e-16 * tc[4];
     }
+
     return;
 }
 
