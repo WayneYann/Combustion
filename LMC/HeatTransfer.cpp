@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.2 2003-08-08 21:15:57 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.3 2003-08-15 16:44:56 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -4236,28 +4236,64 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba)
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getFuncCountDM()");
 
     DistributionMapping rr;
-
     rr.RoundRobinProcessorMap(bxba.size(),ParallelDescriptor::NProcs());
 
     MultiFab fctmpnew;
-
     fctmpnew.define(bxba, 1, 0, rr, Fab_allocate);
-
     fctmpnew.setVal(1);
-
     fctmpnew.copy(get_new_data(FuncCount_Type));  // Parallel copy.
 
-    std::vector<long> vwrk(bxba.size());
-
+    int count = 0;
+    Array<long> vwrk(bxba.size());
     for (MFIter mfi(fctmpnew); mfi.isValid(); ++mfi)
-        vwrk[mfi.index()] = static_cast<long>(fctmpnew[mfi].sum(0));
-    //
-    // We now must broadcast those fabs we've updated to others.
-    //
+        vwrk[count++] = static_cast<long>(fctmpnew[mfi].sum(0));
+
+#if BL_USE_MPI
+    const int IOProc = ParallelDescriptor::IOProcessorNumber();
+
+    Array<int> nmtags(ParallelDescriptor::NProcs(),0);
+    Array<int> offset(ParallelDescriptor::NProcs(),0);
+
     for (int i = 0; i < vwrk.size(); i++)
+        nmtags[rr.ProcessorMap()[i]]++;
+
+    BL_ASSERT(nmtags[ParallelDescriptor::MyProc()] == count);
+
+    for (int i = 1; i < offset.size(); i++)
+        offset[i] = offset[i-1] + nmtags[i-1];
+
+    Array<long> vwrktmp = vwrk;
+
+    MPI_Gatherv(vwrk.dataPtr(),
+                count,
+                ParallelDescriptor::Mpi_typemap<long>::type(),
+                vwrktmp.dataPtr(),
+                nmtags.dataPtr(),
+                offset.dataPtr(),
+                ParallelDescriptor::Mpi_typemap<long>::type(),
+                IOProc,
+                ParallelDescriptor::Communicator());
+
+    if (ParallelDescriptor::IOProcessor())
     {
-        ParallelDescriptor::Bcast(&vwrk[i], 1, fctmpnew.DistributionMap()[i]);
+        //
+        // We must now assemble vwrk in the proper order.
+        //
+        std::vector< std::vector<int> > table(ParallelDescriptor::NProcs());
+
+        for (int i = 0; i < vwrk.size(); i++)
+            table[rr.ProcessorMap()[i]].push_back(i);
+
+        int idx = 0;
+        for (int i = 0; i < table.size(); i++)
+            for (int j = 0; j < table[i].size(); j++)
+                vwrk[table[i][j]] = vwrktmp[idx++]; 
     }
+    //
+    // Send the properly-ordered vwrk to all processors.
+    //
+    ParallelDescriptor::Bcast(vwrk.dataPtr(), vwrk.size(), IOProc);
+#endif
 
     DistributionMapping res;
     //
