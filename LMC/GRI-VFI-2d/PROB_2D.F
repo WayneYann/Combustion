@@ -198,7 +198,7 @@ c ::: -----------------------------------------------------------
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
 #endif
-      namelist /control/ tau_control, sest, cfix, changeMax_control
+      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
