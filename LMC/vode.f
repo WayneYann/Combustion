@@ -1,19 +1,1276 @@
-C   CVS $Revision: 1.1 $  created $Date: 2003-08-08 20:09:40 $
-C	this is CHEMKIN-III file vode.f V.3.1 October 1997;
-C	it contains a set of public-domain math software 
-C       used for ODE solutions by some of the programs.
+      INTEGER FUNCTION LUNSAV (IVALUE, ISET)
+      LOGICAL ISET
+      INTEGER IVALUE
+C-----------------------------------------------------------------------
+C LUNSAV saves and recalls the parameter LUNIT which is the logical
+C unit number to which error messages are printed.
 C
-C   v.3.3 (E. Meeks)
-C     1. Action#0172: Added initialization of ETAQ and ETAQM1 to
-C        ONE in routine DVSTEP to avoid use of unitialized variable.
-C   v.3.2 (E. Meeks)
-C     1. Action#0155: Remove XERRWV, MFLGSV, LUNSAV routines to
-C        avoid duplication of routines in xerror.f
-C   v.3.1 (E. Meeks)
-C     1.  remove internal D1MACH function; replace by that in mach.f.
-C     2.  remove internal R1MACH function; replace by that in mach.f.
+C Saved local variable..
 C
-C*****precision > double
+C  LUNIT   = Logical unit number for messages.
+C            The default is 6 (machine-dependent).
+C
+C On input..
+C
+C   IVALUE = The value to be set for the LUNIT parameter,
+C            if ISET is .TRUE. .
+C
+C   ISET   = Logical flag to indicate whether to read or write.
+C            If ISET=.TRUE., the LUNIT parameter will be given
+C            the value IVALUE.  If ISET=.FALSE., the LUNIT
+C            parameter will be unchanged, and IVALUE is a dummy
+C            parameter.
+C
+C On return..
+C
+C   The (old) value of the LUNIT parameter will be returned
+C   in the function value, LUNSAV.
+C
+C This is a modification of the SLATEC library routine J4SAVE.
+C
+C Subroutines/functions called by LUNSAV.. None
+C-----------------------------------------------------------------------
+      INTEGER LUNIT
+C-----------------------------------------------------------------------
+C The following Fortran-77 declaration is to cause the values of the
+C listed (local) variables to be saved between calls to this integrator.
+C-----------------------------------------------------------------------
+      SAVE LUNIT
+      DATA LUNIT /6/
+C
+      LUNSAV = LUNIT
+      IF (ISET) LUNIT = IVALUE
+      END
+
+      INTEGER FUNCTION MFLGSV (IVALUE, ISET)
+      LOGICAL ISET
+      INTEGER IVALUE
+C-----------------------------------------------------------------------
+C MFLGSV saves and recalls the parameter MESFLG which controls the
+C printing of the error messages.
+C
+C Saved local variable..
+C
+C   MESFLG = Print control flag..
+C            1 means print all messages (the default).
+C            0 means no printing.
+C
+C On input..
+C
+C   IVALUE = The value to be set for the MESFLG parameter,
+C            if ISET is .TRUE. .
+C
+C   ISET   = Logical flag to indicate whether to read or write.
+C            If ISET=.TRUE., the MESFLG parameter will be given
+C            the value IVALUE.  If ISET=.FALSE., the MESFLG
+C            parameter will be unchanged, and IVALUE is a dummy
+C            parameter.
+C
+C On return..
+C
+C   The (old) value of the MESFLG parameter will be returned
+C   in the function value, MFLGSV.
+C
+C This is a modification of the SLATEC library routine J4SAVE.
+C
+C Subroutines/functions called by MFLGSV.. None
+C-----------------------------------------------------------------------
+      INTEGER MESFLG
+C-----------------------------------------------------------------------
+C The following Fortran-77 declaration is to cause the values of the
+C listed (local) variables to be saved between calls to this integrator.
+C-----------------------------------------------------------------------
+      SAVE MESFLG
+      DATA MESFLG /1/
+C
+      MFLGSV = MESFLG
+      IF (ISET) MESFLG = IVALUE
+      END
+
+      subroutine dcopy(n,dx,incx,dy,incy)
+c
+c     copies a vector, x, to a vector, y.
+c     uses unrolled loops for increments equal to one.
+c     jack dongarra, linpack, 3/11/78.
+c
+      double precision dx(*),dy(*)
+      integer i,incx,incy,ix,iy,m,mp1,n
+c
+      if (n.le.0) return
+      if (incx.eq.1.and.incy.eq.1) goto 20
+c
+c     code for unequal increments or equal increments not equal to 1
+c
+      ix = 1
+      iy = 1
+      if (incx.lt.0) ix = (-n+1)*incx + 1
+      if (incy.lt.0) iy = (-n+1)*incy + 1
+      do i = 1,n
+        dy(iy) = dx(ix)
+        ix = ix + incx
+        iy = iy + incy
+      enddo
+      return
+c
+c     code for both increments equal to 1
+c
+c
+c     clean-up loop
+c
+   20 m = mod(n,7)
+      if( m .eq. 0 ) goto 40
+      do i = 1,m
+        dy(i) = dx(i)
+      enddo
+      if( n .lt. 7 ) return
+   40 mp1 = m + 1
+      do i = mp1,n,7
+        dy(i) = dx(i)
+        dy(i + 1) = dx(i + 1)
+        dy(i + 2) = dx(i + 2)
+        dy(i + 3) = dx(i + 3)
+        dy(i + 4) = dx(i + 4)
+        dy(i + 5) = dx(i + 5)
+        dy(i + 6) = dx(i + 6)
+      enddo
+      end
+
+      double precision function ddot (n,dx,incx,dy,incy)
+c
+c     forms the dot product of two vectors.
+c     uses unrolled loops for increments equal to one.
+c     jack dongarra, linpack, 3/11/78.
+c
+      double precision dx(*),dy(*),dtemp
+      integer i,incx,incy,ix,iy,m,mp1,n
+c
+      ddot = 0.0d0
+      dtemp = 0.0d0
+      if (n.le.0) return
+      if (incx.eq.1.and.incy.eq.1) goto 20
+c
+c     code for unequal increments or equal increments not equal to 1
+c
+      ix = 1
+      iy = 1
+      if (incx.lt.0) ix = (-n+1)*incx + 1
+      if (incy.lt.0) iy = (-n+1)*incy + 1
+      do i = 1,n
+        dtemp = dtemp + dx(ix)*dy(iy)
+        ix = ix + incx
+        iy = iy + incy
+      enddo
+      ddot = dtemp
+      return
+c
+c     code for both increments equal to 1
+c
+c
+c     clean-up loop
+c
+   20 m = mod(n,5)
+      if ( m .eq. 0 ) goto 40
+      do i = 1,m
+        dtemp = dtemp + dx(i)*dy(i)
+      enddo
+      if( n .lt. 5 ) go to 60
+   40 mp1 = m + 1
+      do i = mp1,n,5
+        dtemp = dtemp + dx(i)*dy(i) + dx(i + 1)*dy(i + 1) +
+     *   dx(i + 2)*dy(i + 2) + dx(i + 3)*dy(i + 3) + dx(i + 4)*dy(i + 4)
+      enddo
+   60 ddot = dtemp
+      end
+
+      subroutine dscal (n,da,dx,incx)
+c
+c     scales a vector by a constant.
+c     uses unrolled loops for increment equal to one.
+c     jack dongarra, linpack, 3/11/78.
+c     modified 3/93 to return if incx .le. 0.
+c
+      double precision da,dx(*)
+      integer i,incx,m,mp1,n,nincx
+c
+      if ( n.le.0 .or. incx.le.0 ) return
+      if (incx.eq.1) goto 20
+c
+c     code for increment not equal to 1
+c
+      nincx = n*incx
+      do i = 1,nincx,incx
+        dx(i) = da*dx(i)
+      enddo
+      return
+c
+c     code for increment equal to 1
+c
+c
+c     clean-up loop
+c
+   20 m = mod(n,5)
+      if( m .eq. 0 ) go to 40
+      do i = 1,m
+        dx(i) = da*dx(i)
+      enddo
+      if( n .lt. 5 ) return
+   40 mp1 = m + 1
+      do i = mp1,n,5
+        dx(i) = da*dx(i)
+        dx(i + 1) = da*dx(i + 1)
+        dx(i + 2) = da*dx(i + 2)
+        dx(i + 3) = da*dx(i + 3)
+        dx(i + 4) = da*dx(i + 4)
+      enddo
+      end
+
+      subroutine daxpy (n,da,dx,incx,dy,incy)
+c
+c     constant times a vector plus a vector.
+c     uses unrolled loops for increments equal to one.
+c     jack dongarra, linpack, 3/11/78.
+c
+      double precision dx(*),dy(*),da
+      integer i,incx,incy,ix,iy,m,mp1,n
+c
+      if (n.le.0) return
+      if (da .eq. 0.0d0) return
+      if (incx.eq.1.and.incy.eq.1) goto 20
+c
+c     code for unequal increments or equal increments not equal to 1
+c
+      ix = 1
+      iy = 1
+      if (incx.lt.0) ix = (-n+1)*incx + 1
+      if (incy.lt.0) iy = (-n+1)*incy + 1
+      do i = 1,n
+        dy(iy) = dy(iy) + da*dx(ix)
+        ix = ix + incx
+        iy = iy + incy
+      enddo
+      return
+c
+c     code for both increments equal to 1
+c
+c
+c     clean-up loop
+c
+   20 m = mod(n,4)
+      if ( m .eq. 0 ) goto 40
+      do i = 1,m
+        dy(i) = dy(i) + da*dx(i)
+      enddo
+      if ( n .lt. 4 ) return
+   40 mp1 = m + 1
+      do i = mp1,n,4
+        dy(i) = dy(i) + da*dx(i)
+        dy(i + 1) = dy(i + 1) + da*dx(i + 1)
+        dy(i + 2) = dy(i + 2) + da*dx(i + 2)
+        dy(i + 3) = dy(i + 3) + da*dx(i + 3)
+      enddo
+      end
+
+      subroutine dgesl (a,lda,n,ipvt,b,job)
+      integer lda,n,ipvt(*),job
+      double precision a(lda,n),b(*)
+c
+c     dgesl solves the double precision system
+c     a * x = b  or  trans(a) * x = b
+c     using the factors computed by dgeco or dgefa.
+c
+c     on entry
+c
+c        a       double precision(lda, n)
+c                the output from dgeco or dgefa.
+c
+c        lda     integer
+c                the leading dimension of the array  a .
+c
+c        n       integer
+c                the order of the matrix  a .
+c
+c        ipvt    integer(n)
+c                the pivot vector from dgeco or dgefa.
+c
+c        b       double precision(n)
+c                the right hand side vector.
+c
+c        job     integer
+c                = 0         to solve  a*x = b ,
+c                = nonzero   to solve  trans(a)*x = b  where
+c                            trans(a)  is the transpose.
+c
+c     on return
+c
+c        b       the solution vector  x .
+c
+c     error condition
+c
+c        a division by zero will occur if the input factor contains a
+c        zero on the diagonal.  technically this indicates singularity
+c        but it is often caused by improper arguments or improper
+c        setting of lda .  it will not occur if the subroutines are
+c        called correctly and if dgeco has set rcond .gt. 0.0
+c        or dgefa has set info .eq. 0 .
+c
+c     to compute  inverse(a) * c  where  c  is a matrix
+c     with  p  columns
+c           call dgeco(a,lda,n,ipvt,rcond,z)
+c           if (rcond is too small) go to ...
+c           do 10 j = 1, p
+c              call dgesl(a,lda,n,ipvt,c(1,j),0)
+c        10 continue
+c
+c     linpack. this version dated 08/14/78 .
+c     cleve moler, university of new mexico, argonne national lab.
+c
+c     subroutines and functions
+c
+c     blas daxpy,ddot
+c
+c     internal variables
+c
+      double precision ddot,t
+      integer k,kb,l,nm1
+c
+      nm1 = n - 1
+      if (job .ne. 0) goto 50
+c
+c        job = 0 , solve  a * x = b
+c        first solve  l*y = b
+c
+         if (nm1 .lt. 1) goto 30
+         do k = 1, nm1
+            l = ipvt(k)
+            t = b(l)
+            if (l .eq. k) goto 10
+               b(l) = b(k)
+               b(k) = t
+   10       continue
+            call daxpy(n-k,t,a(k+1,k),1,b(k+1),1)
+         enddo
+   30    continue
+c
+c        now solve  u*x = y
+c
+         do kb = 1, n
+            k = n + 1 - kb
+            b(k) = b(k)/a(k,k)
+            t = -b(k)
+            call daxpy(k-1,t,a(1,k),1,b(1),1)
+         enddo
+      go to 100
+   50 continue
+c
+c        job = nonzero, solve  trans(a) * x = b
+c        first solve  trans(u)*y = b
+c
+         do k = 1, n
+            t = ddot(k-1,a(1,k),1,b(1),1)
+            b(k) = (b(k) - t)/a(k,k)
+         enddo
+c
+c        now solve trans(l)*x = y
+c
+         if (nm1 .lt. 1) goto 90
+         do kb = 1, nm1
+            k = n - kb
+            b(k) = b(k) + ddot(n-k,a(k+1,k),1,b(k+1),1)
+            l = ipvt(k)
+            if (l .eq. k) go to 70
+               t = b(l)
+               b(l) = b(k)
+               b(k) = t
+   70       continue
+         enddo
+   90    continue
+  100 continue
+      end
+
+      subroutine dgbsl (abd,lda,n,ml,mu,ipvt,b,job)
+      integer lda,n,ml,mu,ipvt(*),job
+      double precision abd(lda,*),b(*)
+c
+c     dgbsl solves the double precision band system
+c     a * x = b  or  trans(a) * x = b
+c     using the factors computed by dgbco or dgbfa.
+c
+c     on entry
+c
+c        abd     double precision(lda, n)
+c                the output from dgbco or dgbfa.
+c
+c        lda     integer
+c                the leading dimension of the array  abd .
+c
+c        n       integer
+c                the order of the original matrix.
+c
+c        ml      integer
+c                number of diagonals below the main diagonal.
+c
+c        mu      integer
+c                number of diagonals above the main diagonal.
+c
+c        ipvt    integer(n)
+c                the pivot vector from dgbco or dgbfa.
+c
+c        b       double precision(n)
+c                the right hand side vector.
+c
+c        job     integer
+c                = 0         to solve  a*x = b ,
+c                = nonzero   to solve  trans(a)*x = b , where
+c                            trans(a)  is the transpose.
+c
+c     on return
+c
+c        b       the solution vector  x .
+c
+c     error condition
+c
+c        a division by zero will occur if the input factor contains a
+c        zero on the diagonal.  technically this indicates singularity
+c        but it is often caused by improper arguments or improper
+c        setting of lda .  it will not occur if the subroutines are
+c        called correctly and if dgbco has set rcond .gt. 0.0
+c        or dgbfa has set info .eq. 0 .
+c
+c     to compute  inverse(a) * c  where  c  is a matrix
+c     with  p  columns
+c           call dgbco(abd,lda,n,ml,mu,ipvt,rcond,z)
+c           if (rcond is too small) go to ...
+c           do 10 j = 1, p
+c              call dgbsl(abd,lda,n,ml,mu,ipvt,c(1,j),0)
+c        10 continue
+c
+c     linpack. this version dated 08/14/78 .
+c     cleve moler, university of new mexico, argonne national lab.
+c
+c     subroutines and functions
+c
+c     blas daxpy,ddot
+c     fortran min0
+c
+c     internal variables
+c
+      double precision ddot,t
+      integer k,kb,l,la,lb,lm,m,nm1
+c
+      m = mu + ml + 1
+      nm1 = n - 1
+      if (job .ne. 0) goto 50
+c
+c        job = 0 , solve  a * x = b
+c        first solve l*y = b
+c
+         if (ml .eq. 0) goto 30
+         if (nm1 .lt. 1) goto 30
+            do k = 1, nm1
+               lm = min0(ml,n-k)
+               l = ipvt(k)
+               t = b(l)
+               if (l .eq. k) goto 10
+                  b(l) = b(k)
+                  b(k) = t
+   10          continue
+               call daxpy(lm,t,abd(m+1,k),1,b(k+1),1)
+            enddo
+   30    continue
+c
+c        now solve  u*x = y
+c
+         do kb = 1, n
+            k = n + 1 - kb
+            b(k) = b(k)/abd(m,k)
+            lm = min0(k,m) - 1
+            la = m - lm
+            lb = k - lm
+            t = -b(k)
+            call daxpy(lm,t,abd(la,k),1,b(lb),1)
+         enddo
+      goto 100
+   50 continue
+c
+c        job = nonzero, solve  trans(a) * x = b
+c        first solve  trans(u)*y = b
+c
+         do k = 1, n
+            lm = min0(k,m) - 1
+            la = m - lm
+            lb = k - lm
+            t = ddot(lm,abd(la,k),1,b(lb),1)
+            b(k) = (b(k) - t)/abd(m,k)
+         enddo
+c
+c        now solve trans(l)*x = y
+c
+         if (ml .eq. 0) goto 90
+         if (nm1 .lt. 1) goto 90
+            do kb = 1, nm1
+               k = n - kb
+               lm = min0(ml,n-k)
+               b(k) = b(k) + ddot(lm,abd(m+1,k),1,b(k+1),1)
+               l = ipvt(k)
+               if (l .eq. k) goto 70
+                  t = b(l)
+                  b(l) = b(k)
+                  b(k) = t
+   70          continue
+            enddo
+   90    continue
+  100 continue
+      end
+
+      subroutine dgbfa (abd,lda,n,ml,mu,ipvt,info)
+      integer lda,n,ml,mu,ipvt(*),info
+      double precision abd(lda,*)
+c
+c     dgbfa factors a double precision band matrix by elimination.
+c
+c     dgbfa is usually called by dgbco, but it can be called
+c     directly with a saving in time if  rcond  is not needed.
+c
+c     on entry
+c
+c        abd     double precision(lda, n)
+c                contains the matrix in band storage.  the columns
+c                of the matrix are stored in the columns of  abd  and
+c                the diagonals of the matrix are stored in rows
+c                ml+1 through 2*ml+mu+1 of  abd .
+c                see the comments below for details.
+c
+c        lda     integer
+c                the leading dimension of the array  abd .
+c                lda must be .ge. 2*ml + mu + 1 .
+c
+c        n       integer
+c                the order of the original matrix.
+c
+c        ml      integer
+c                number of diagonals below the main diagonal.
+c                0 .le. ml .lt. n .
+c
+c        mu      integer
+c                number of diagonals above the main diagonal.
+c                0 .le. mu .lt. n .
+c                more efficient if  ml .le. mu .
+c     on return
+c
+c        abd     an upper triangular matrix in band storage and
+c                the multipliers which were used to obtain it.
+c                the factorization can be written  a = l*u  where
+c                l  is a product of permutation and unit lower
+c                triangular matrices and  u  is upper triangular.
+c
+c        ipvt    integer(n)
+c                an integer vector of pivot indices.
+c
+c        info    integer
+c                = 0  normal value.
+c                = k  if  u(k,k) .eq. 0.0 .  this is not an error
+c                     condition for this subroutine, but it does
+c                     indicate that dgbsl will divide by zero if
+c                     called.  use  rcond  in dgbco for a reliable
+c                     indication of singularity.
+c
+c     band storage
+c
+c           if  a  is a band matrix, the following program segment
+c           will set up the input.
+c
+c                   ml = (band width below the diagonal)
+c                   mu = (band width above the diagonal)
+c                   m = ml + mu + 1
+c                   do 20 j = 1, n
+c                      i1 = max0(1, j-mu)
+c                      i2 = min0(n, j+ml)
+c                      do 10 i = i1, i2
+c                         k = i - j + m
+c                         abd(k,j) = a(i,j)
+c                10    continue
+c                20 continue
+c
+c           this uses rows  ml+1  through  2*ml+mu+1  of  abd .
+c           in addition, the first  ml  rows in  abd  are used for
+c           elements generated during the triangularization.
+c           the total number of rows needed in  abd  is  2*ml+mu+1 .
+c           the  ml+mu by ml+mu  upper left triangle and the
+c           ml by ml  lower right triangle are not referenced.
+c
+c     linpack. this version dated 08/14/78 .
+c     cleve moler, university of new mexico, argonne national lab.
+c
+c     subroutines and functions
+c
+c     blas daxpy,dscal,idamax
+c     fortran max0,min0
+c
+c     internal variables
+c
+      double precision t
+      integer i,idamax,i0,j,ju,jz,j0,j1,k,kp1,l,lm,m,mm,nm1
+c
+c
+      m = ml + mu + 1
+      info = 0
+c
+c     zero initial fill-in columns
+c
+      j0 = mu + 2
+      j1 = min0(n,m) - 1
+      if (j1 .lt. j0) goto 30
+      do jz = j0, j1
+         i0 = m + 1 - jz
+         do i = i0, ml
+            abd(i,jz) = 0.0d0
+         enddo
+      enddo
+   30 continue
+      jz = j1
+      ju = 0
+c
+c     gaussian elimination with partial pivoting
+c
+      nm1 = n - 1
+      if (nm1 .lt. 1) goto 130
+      do k = 1, nm1
+         kp1 = k + 1
+c
+c        zero next fill-in column
+c
+         jz = jz + 1
+         if (jz .gt. n) goto 50
+         if (ml .lt. 1) goto 50
+            do i = 1, ml
+               abd(i,jz) = 0.0d0
+            enddo
+   50    continue
+c
+c        find l = pivot index
+c
+         lm = min0(ml,n-k)
+         l = idamax(lm+1,abd(m,k),1) + m - 1
+         ipvt(k) = l + k - m
+c
+c        zero pivot implies this column already triangularized
+c
+         if (abd(l,k) .eq. 0.0d0) goto 100
+c
+c           interchange if necessary
+c
+            if (l .eq. m) goto 60
+               t = abd(l,k)
+               abd(l,k) = abd(m,k)
+               abd(m,k) = t
+   60       continue
+c
+c           compute multipliers
+c
+            t = -1.0d0/abd(m,k)
+            call dscal(lm,t,abd(m+1,k),1)
+c
+c           row elimination with column indexing
+c
+            ju = min0(max0(ju,mu+ipvt(k)),n)
+            mm = m
+            if (ju .lt. kp1) goto 90
+            do j = kp1, ju
+               l = l - 1
+               mm = mm - 1
+               t = abd(l,j)
+               if (l .eq. mm) goto 70
+                  abd(l,j) = abd(mm,j)
+                  abd(mm,j) = t
+   70          continue
+               call daxpy(lm,t,abd(m+1,k),1,abd(mm+1,j),1)
+            enddo
+   90       continue
+         goto 110
+  100    continue
+            info = k
+  110    continue
+      enddo
+  130 continue
+      ipvt(n) = n
+      if (abd(m,n) .eq. 0.0d0) info = n
+      end
+
+      integer function idamax (n,dx,incx)
+c
+c     finds the index of element having max. absolute value.
+c     jack dongarra, linpack, 3/11/78.
+c     modified 3/93 to return if incx .le. 0.
+c
+      double precision dx(*),dmax
+      integer i,incx,ix,n
+c
+      idamax = 0
+      if ( n.lt.1 .or. incx.le.0 ) return
+      idamax = 1
+      if (n.eq.1) return
+      if (incx.eq.1) goto 20
+c
+c        code for increment not equal to 1
+c
+      ix = 1
+      dmax = dabs(dx(1))
+      ix = ix + incx
+      do i = 2,n
+         if(dabs(dx(ix)).le.dmax) goto 5
+         idamax = i
+         dmax = dabs(dx(ix))
+    5    ix = ix + incx
+      enddo
+      return
+c
+c     code for increment equal to 1
+c
+   20 dmax = dabs(dx(1))
+      do 30 i = 2,n
+         if(dabs(dx(i)).le.dmax) goto 30
+         idamax = i
+         dmax = dabs(dx(i))
+   30 continue
+      end
+
+      subroutine dgefa (a,lda,n,ipvt,info)
+      integer lda,n,ipvt(*),info
+      double precision a(lda,*)
+c
+c     dgefa factors a double precision matrix by gaussian elimination.
+c
+c     dgefa is usually called by dgeco, but it can be called
+c     directly with a saving in time if  rcond  is not needed.
+c     (time for dgeco) = (1 + 9/n)*(time for dgefa) .
+c
+c     on entry
+c
+c        a       double precision(lda, n)
+c                the matrix to be factored.
+c
+c        lda     integer
+c                the leading dimension of the array  a .
+c
+c        n       integer
+c                the order of the matrix  a .
+c
+c     on return
+c
+c        a       an upper triangular matrix and the multipliers
+c                which were used to obtain it.
+c                the factorization can be written  a = l*u  where
+c                l  is a product of permutation and unit lower
+c                triangular matrices and  u  is upper triangular.
+c
+c        ipvt    integer(n)
+c                an integer vector of pivot indices.
+c
+c        info    integer
+c                = 0  normal value.
+c                = k  if  u(k,k) .eq. 0.0 .  this is not an error
+c                     condition for this subroutine, but it does
+c                     indicate that dgesl or dgedi will divide by zero
+c                     if called.  use  rcond  in dgeco for a reliable
+c                     indication of singularity.
+c
+c     linpack. this version dated 08/14/78 .
+c     cleve moler, university of new mexico, argonne national lab.
+c
+c     subroutines and functions
+c
+c     blas daxpy,dscal,idamax
+c
+c     internal variables
+c
+      double precision t
+      integer idamax,j,k,kp1,l,nm1
+c
+c
+c     gaussian elimination with partial pivoting
+c
+      info = 0
+      nm1 = n - 1
+      if (nm1 .lt. 1) goto 70
+      do k = 1, nm1
+         kp1 = k + 1
+c
+c        find l = pivot index
+c
+         l = idamax(n-k+1,a(k,k),1) + k - 1
+         ipvt(k) = l
+c
+c        zero pivot implies this column already triangularized
+c
+         if (a(l,k) .eq. 0.0d0) goto 40
+c
+c           interchange if necessary
+c
+            if (l .eq. k) goto 10
+               t = a(l,k)
+               a(l,k) = a(k,k)
+               a(k,k) = t
+   10       continue
+c
+c           compute multipliers
+c
+            t = -1.0d0/a(k,k)
+            call dscal(n-k,t,a(k+1,k),1)
+c
+c           row elimination with column indexing
+c
+            do j = kp1, n
+               t = a(l,j)
+               if (l .eq. k) goto 20
+                  a(l,j) = a(k,j)
+                  a(k,j) = t
+   20          continue
+               call daxpy(n-k,t,a(k+1,k),1,a(k+1,j),1)
+            enddo
+         goto 50
+   40    continue
+            info = k
+   50    continue
+      enddo
+   70 continue
+      ipvt(n) = n
+      if (a(n,n) .eq. 0.0d0) info = n
+      end
+
+      DOUBLE PRECISION FUNCTION D1MACH(I)
+C
+C  DOUBLE-PRECISION MACHINE CONSTANTS
+C
+C  D1MACH( 1) = B**(EMIN-1), THE SMALLEST POSITIVE MAGNITUDE.
+C
+C  D1MACH( 2) = B**EMAX*(1 - B**(-T)), THE LARGEST MAGNITUDE.
+C
+C  D1MACH( 3) = B**(-T), THE SMALLEST RELATIVE SPACING.
+C
+C  D1MACH( 4) = B**(1-T), THE LARGEST RELATIVE SPACING.
+C
+C  D1MACH( 5) = LOG10(B)
+C
+C  TO ALTER THIS FUNCTION FOR A PARTICULAR ENVIRONMENT,
+C  THE DESIRED SET OF DATA STATEMENTS SHOULD BE ACTIVATED BY
+C  REMOVING THE C FROM COLUMN 1.
+C  ON RARE MACHINES A STATIC STATEMENT MAY NEED TO BE ADDED.
+C  (BUT PROBABLY MORE SYSTEMS PROHIBIT IT THAN REQUIRE IT.)
+C
+C  FOR IEEE-ARITHMETIC MACHINES (BINARY STANDARD), ONE OF THE FIRST
+C  TWO SETS OF CONSTANTS BELOW SHOULD BE APPROPRIATE.  IF YOU DO NOT
+C  KNOW WHICH SET TO USE, TRY BOTH AND SEE WHICH GIVES PLAUSIBLE
+C  VALUES.
+C
+C  WHERE POSSIBLE, DECIMAL, OCTAL OR HEXADECIMAL CONSTANTS ARE USED
+C  TO SPECIFY THE CONSTANTS EXACTLY.  SOMETIMES THIS REQUIRES USING
+C  EQUIVALENT INTEGER ARRAYS.  IF YOUR COMPILER USES HALF-WORD
+C  INTEGERS BY DEFAULT (SOMETIMES CALLED INTEGER*2), YOU MAY NEED TO
+C  CHANGE INTEGER TO INTEGER*4 OR OTHERWISE INSTRUCT YOUR COMPILER
+C  TO USE FULL-WORD INTEGERS IN THE NEXT 5 DECLARATIONS.
+C
+C  COMMENTS JUST BEFORE THE END STATEMENT (LINES STARTING WITH *)
+C  GIVE C SOURCE FOR D1MACH.
+C
+      INTEGER SMALL(2)
+      INTEGER LARGE(2)
+      INTEGER RIGHT(2)
+      INTEGER DIVER(2)
+      INTEGER LOG10(2)
+      INTEGER SC, I
+C/6S
+C/7S
+      SAVE SMALL, LARGE, RIGHT, DIVER, LOG10, SC
+
+      DATA SC /0/
+C/
+      DOUBLE PRECISION DMACH(5)
+C
+      EQUIVALENCE (DMACH(1),SMALL(1))
+      EQUIVALENCE (DMACH(2),LARGE(1))
+      EQUIVALENCE (DMACH(3),RIGHT(1))
+      EQUIVALENCE (DMACH(4),DIVER(1))
+      EQUIVALENCE (DMACH(5),LOG10(1))
+C
+C     MACHINE CONSTANTS FOR BIG-ENDIAN IEEE ARITHMETIC (BINARY FORMAT)
+C     MACHINES IN WHICH THE MOST SIGNIFICANT BYTE IS STORED FIRST,
+C     SUCH AS THE AT&T 3B SERIES, MOTOROLA 68000 BASED MACHINES (E.G.
+C     SUN 3), AND MACHINES THAT USE SPARC, HP, OR IBM RISC CHIPS.
+C
+C      DATA SMALL(1),SMALL(2) /    1048576,          0 /
+C      DATA LARGE(1),LARGE(2) / 2146435071,         -1 /
+C      DATA RIGHT(1),RIGHT(2) / 1017118720,          0 /
+C      DATA DIVER(1),DIVER(2) / 1018167296,          0 /
+C      DATA LOG10(1),LOG10(2) / 1070810131, 1352628735 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR LITTLE-ENDIAN (BINARY) IEEE ARITHMETIC
+C     MACHINES IN WHICH THE LEAST SIGNIFICANT BYTE IS STORED FIRST,
+C     E.G. IBM PCS AND OTHER MACHINES THAT USE INTEL 80X87 OR DEC
+C     ALPHA CHIPS.
+C
+C      DATA SMALL(1),SMALL(2) /          0,    1048576 /
+C      DATA LARGE(1),LARGE(2) /         -1, 2146435071 /
+C      DATA RIGHT(1),RIGHT(2) /          0, 1017118720 /
+C      DATA DIVER(1),DIVER(2) /          0, 1018167296 /
+C      DATA LOG10(1),LOG10(2) / 1352628735, 1070810131 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR AMDAHL MACHINES.
+C
+C      DATA SMALL(1),SMALL(2) /    1048576,          0 /
+C      DATA LARGE(1),LARGE(2) / 2147483647,         -1 /
+C      DATA RIGHT(1),RIGHT(2) /  856686592,          0 /
+C      DATA DIVER(1),DIVER(2) /  873463808,          0 /
+C      DATA LOG10(1),LOG10(2) / 1091781651, 1352628735 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE BURROUGHS 1700 SYSTEM.
+C
+C      DATA SMALL(1) / ZC00800000 /
+C      DATA SMALL(2) / Z000000000 /
+C
+C      DATA LARGE(1) / ZDFFFFFFFF /
+C      DATA LARGE(2) / ZFFFFFFFFF /
+C
+C      DATA RIGHT(1) / ZCC5800000 /
+C      DATA RIGHT(2) / Z000000000 /
+C
+C      DATA DIVER(1) / ZCC6800000 /
+C      DATA DIVER(2) / Z000000000 /
+C
+C      DATA LOG10(1) / ZD00E730E7 /
+C      DATA LOG10(2) / ZC77800DC0 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE BURROUGHS 5700 SYSTEM.
+C
+C      DATA SMALL(1) / O1771000000000000 /
+C      DATA SMALL(2) / O0000000000000000 /
+C
+C      DATA LARGE(1) / O0777777777777777 /
+C      DATA LARGE(2) / O0007777777777777 /
+C
+C      DATA RIGHT(1) / O1461000000000000 /
+C      DATA RIGHT(2) / O0000000000000000 /
+C
+C      DATA DIVER(1) / O1451000000000000 /
+C      DATA DIVER(2) / O0000000000000000 /
+C
+C      DATA LOG10(1) / O1157163034761674 /
+C      DATA LOG10(2) / O0006677466732724 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE BURROUGHS 6700/7700 SYSTEMS.
+C
+C      DATA SMALL(1) / O1771000000000000 /
+C      DATA SMALL(2) / O7770000000000000 /
+C
+C      DATA LARGE(1) / O0777777777777777 /
+C      DATA LARGE(2) / O7777777777777777 /
+C
+C      DATA RIGHT(1) / O1461000000000000 /
+C      DATA RIGHT(2) / O0000000000000000 /
+C
+C      DATA DIVER(1) / O1451000000000000 /
+C      DATA DIVER(2) / O0000000000000000 /
+C
+C      DATA LOG10(1) / O1157163034761674 /
+C      DATA LOG10(2) / O0006677466732724 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR FTN4 ON THE CDC 6000/7000 SERIES.
+C
+C      DATA SMALL(1) / 00564000000000000000B /
+C      DATA SMALL(2) / 00000000000000000000B /
+C
+C      DATA LARGE(1) / 37757777777777777777B /
+C      DATA LARGE(2) / 37157777777777777774B /
+C
+C      DATA RIGHT(1) / 15624000000000000000B /
+C      DATA RIGHT(2) / 00000000000000000000B /
+C
+C      DATA DIVER(1) / 15634000000000000000B /
+C      DATA DIVER(2) / 00000000000000000000B /
+C
+C      DATA LOG10(1) / 17164642023241175717B /
+C      DATA LOG10(2) / 16367571421742254654B /, SC/987/
+C
+C     MACHINE CONSTANTS FOR FTN5 ON THE CDC 6000/7000 SERIES.
+C
+C      DATA SMALL(1) / O"00564000000000000000" /
+C      DATA SMALL(2) / O"00000000000000000000" /
+C
+C      DATA LARGE(1) / O"37757777777777777777" /
+C      DATA LARGE(2) / O"37157777777777777774" /
+C
+C      DATA RIGHT(1) / O"15624000000000000000" /
+C      DATA RIGHT(2) / O"00000000000000000000" /
+C
+C      DATA DIVER(1) / O"15634000000000000000" /
+C      DATA DIVER(2) / O"00000000000000000000" /
+C
+C      DATA LOG10(1) / O"17164642023241175717" /
+C      DATA LOG10(2) / O"16367571421742254654" /, SC/987/
+C
+C     MACHINE CONSTANTS FOR CONVEX C-1
+C
+C      DATA SMALL(1),SMALL(2) / '00100000'X, '00000000'X /
+C      DATA LARGE(1),LARGE(2) / '7FFFFFFF'X, 'FFFFFFFF'X /
+C      DATA RIGHT(1),RIGHT(2) / '3CC00000'X, '00000000'X /
+C      DATA DIVER(1),DIVER(2) / '3CD00000'X, '00000000'X /
+C      DATA LOG10(1),LOG10(2) / '3FF34413'X, '509F79FF'X /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE CRAY 1, XMP, 2, AND 3.
+C
+C      DATA SMALL(1) / 201354000000000000000B /
+C      DATA SMALL(2) / 000000000000000000000B /
+C
+C      DATA LARGE(1) / 577767777777777777777B /
+C      DATA LARGE(2) / 000007777777777777776B /
+C
+C      DATA RIGHT(1) / 376434000000000000000B /
+C      DATA RIGHT(2) / 000000000000000000000B /
+C
+C      DATA DIVER(1) / 376444000000000000000B /
+C      DATA DIVER(2) / 000000000000000000000B /
+C
+C      DATA LOG10(1) / 377774642023241175717B /
+C      DATA LOG10(2) / 000007571421742254654B /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE DATA GENERAL ECLIPSE S/200
+C
+C     SMALL, LARGE, RIGHT, DIVER, LOG10 SHOULD BE DECLARED
+C     INTEGER SMALL(4), LARGE(4), RIGHT(4), DIVER(4), LOG10(4)
+C
+C     NOTE - IT MAY BE APPROPRIATE TO INCLUDE THE FOLLOWING LINE -
+C     STATIC DMACH(5)
+C
+C      DATA SMALL/20K,3*0/,LARGE/77777K,3*177777K/
+C      DATA RIGHT/31420K,3*0/,DIVER/32020K,3*0/
+C      DATA LOG10/40423K,42023K,50237K,74776K/, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE HARRIS SLASH 6 AND SLASH 7
+C
+C      DATA SMALL(1),SMALL(2) / '20000000, '00000201 /
+C      DATA LARGE(1),LARGE(2) / '37777777, '37777577 /
+C      DATA RIGHT(1),RIGHT(2) / '20000000, '00000333 /
+C      DATA DIVER(1),DIVER(2) / '20000000, '00000334 /
+C      DATA LOG10(1),LOG10(2) / '23210115, '10237777 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE HONEYWELL DPS 8/70 SERIES.
+C
+C      DATA SMALL(1),SMALL(2) / O402400000000, O000000000000 /
+C      DATA LARGE(1),LARGE(2) / O376777777777, O777777777777 /
+C      DATA RIGHT(1),RIGHT(2) / O604400000000, O000000000000 /
+C      DATA DIVER(1),DIVER(2) / O606400000000, O000000000000 /
+C      DATA LOG10(1),LOG10(2) / O776464202324, O117571775714 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE IBM 360/370 SERIES,
+C     THE XEROX SIGMA 5/7/9 AND THE SEL SYSTEMS 85/86.
+C
+C      DATA SMALL(1),SMALL(2) / Z00100000, Z00000000 /
+C      DATA LARGE(1),LARGE(2) / Z7FFFFFFF, ZFFFFFFFF /
+C      DATA RIGHT(1),RIGHT(2) / Z33100000, Z00000000 /
+C      DATA DIVER(1),DIVER(2) / Z34100000, Z00000000 /
+C      DATA LOG10(1),LOG10(2) / Z41134413, Z509F79FF /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE INTERDATA 8/32
+C     WITH THE UNIX SYSTEM FORTRAN 77 COMPILER.
+C
+C     FOR THE INTERDATA FORTRAN VII COMPILER REPLACE
+C     THE Z'S SPECIFYING HEX CONSTANTS WITH Y'S.
+C
+C      DATA SMALL(1),SMALL(2) / Z'00100000', Z'00000000' /
+C      DATA LARGE(1),LARGE(2) / Z'7EFFFFFF', Z'FFFFFFFF' /
+C      DATA RIGHT(1),RIGHT(2) / Z'33100000', Z'00000000' /
+C      DATA DIVER(1),DIVER(2) / Z'34100000', Z'00000000' /
+C      DATA LOG10(1),LOG10(2) / Z'41134413', Z'509F79FF' /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE PDP-10 (KA PROCESSOR).
+C
+C      DATA SMALL(1),SMALL(2) / "033400000000, "000000000000 /
+C      DATA LARGE(1),LARGE(2) / "377777777777, "344777777777 /
+C      DATA RIGHT(1),RIGHT(2) / "113400000000, "000000000000 /
+C      DATA DIVER(1),DIVER(2) / "114400000000, "000000000000 /
+C      DATA LOG10(1),LOG10(2) / "177464202324, "144117571776 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE PDP-10 (KI PROCESSOR).
+C
+C      DATA SMALL(1),SMALL(2) / "000400000000, "000000000000 /
+C      DATA LARGE(1),LARGE(2) / "377777777777, "377777777777 /
+C      DATA RIGHT(1),RIGHT(2) / "103400000000, "000000000000 /
+C      DATA DIVER(1),DIVER(2) / "104400000000, "000000000000 /
+C      DATA LOG10(1),LOG10(2) / "177464202324, "047674776746 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR PDP-11 FORTRANS SUPPORTING
+C     32-BIT INTEGERS (EXPRESSED IN INTEGER AND OCTAL).
+C
+C      DATA SMALL(1),SMALL(2) /    8388608,           0 /
+C      DATA LARGE(1),LARGE(2) / 2147483647,          -1 /
+C      DATA RIGHT(1),RIGHT(2) /  612368384,           0 /
+C      DATA DIVER(1),DIVER(2) /  620756992,           0 /
+C      DATA LOG10(1),LOG10(2) / 1067065498, -2063872008 /, SC/987/
+C
+C      DATA SMALL(1),SMALL(2) / O00040000000, O00000000000 /
+C      DATA LARGE(1),LARGE(2) / O17777777777, O37777777777 /
+C      DATA RIGHT(1),RIGHT(2) / O04440000000, O00000000000 /
+C      DATA DIVER(1),DIVER(2) / O04500000000, O00000000000 /
+C      DATA LOG10(1),LOG10(2) / O07746420232, O20476747770 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR PDP-11 FORTRANS SUPPORTING
+C     16-BIT INTEGERS (EXPRESSED IN INTEGER AND OCTAL).
+C
+C     SMALL, LARGE, RIGHT, DIVER, LOG10 SHOULD BE DECLARED
+C     INTEGER SMALL(4), LARGE(4), RIGHT(4), DIVER(4), LOG10(4)
+C
+C      DATA SMALL(1),SMALL(2) /    128,      0 /
+C      DATA SMALL(3),SMALL(4) /      0,      0 /
+C
+C      DATA LARGE(1),LARGE(2) /  32767,     -1 /
+C      DATA LARGE(3),LARGE(4) /     -1,     -1 /
+C
+C      DATA RIGHT(1),RIGHT(2) /   9344,      0 /
+C      DATA RIGHT(3),RIGHT(4) /      0,      0 /
+C
+C      DATA DIVER(1),DIVER(2) /   9472,      0 /
+C      DATA DIVER(3),DIVER(4) /      0,      0 /
+C
+C      DATA LOG10(1),LOG10(2) /  16282,   8346 /
+C      DATA LOG10(3),LOG10(4) / -31493, -12296 /, SC/987/
+C
+C      DATA SMALL(1),SMALL(2) / O000200, O000000 /
+C      DATA SMALL(3),SMALL(4) / O000000, O000000 /
+C
+C      DATA LARGE(1),LARGE(2) / O077777, O177777 /
+C      DATA LARGE(3),LARGE(4) / O177777, O177777 /
+C
+C      DATA RIGHT(1),RIGHT(2) / O022200, O000000 /
+C      DATA RIGHT(3),RIGHT(4) / O000000, O000000 /
+C
+C      DATA DIVER(1),DIVER(2) / O022400, O000000 /
+C      DATA DIVER(3),DIVER(4) / O000000, O000000 /
+C
+C      DATA LOG10(1),LOG10(2) / O037632, O020232 /
+C      DATA LOG10(3),LOG10(4) / O102373, O147770 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE PRIME 50 SERIES SYSTEMS
+C     WITH 32-BIT INTEGERS AND 64V MODE INSTRUCTIONS,
+C     SUPPLIED BY IGOR BRAY.
+C
+C      DATA SMALL(1),SMALL(2) / :10000000000, :00000100001 /
+C      DATA LARGE(1),LARGE(2) / :17777777777, :37777677775 /
+C      DATA RIGHT(1),RIGHT(2) / :10000000000, :00000000122 /
+C      DATA DIVER(1),DIVER(2) / :10000000000, :00000000123 /
+C      DATA LOG10(1),LOG10(2) / :11504046501, :07674600177 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE SEQUENT BALANCE 8000
+C
+C      DATA SMALL(1),SMALL(2) / $00000000,  $00100000 /
+C      DATA LARGE(1),LARGE(2) / $FFFFFFFF,  $7FEFFFFF /
+C      DATA RIGHT(1),RIGHT(2) / $00000000,  $3CA00000 /
+C      DATA DIVER(1),DIVER(2) / $00000000,  $3CB00000 /
+C      DATA LOG10(1),LOG10(2) / $509F79FF,  $3FD34413 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE UNIVAC 1100 SERIES.
+C
+C      DATA SMALL(1),SMALL(2) / O000040000000, O000000000000 /
+C      DATA LARGE(1),LARGE(2) / O377777777777, O777777777777 /
+C      DATA RIGHT(1),RIGHT(2) / O170540000000, O000000000000 /
+C      DATA DIVER(1),DIVER(2) / O170640000000, O000000000000 /
+C      DATA LOG10(1),LOG10(2) / O177746420232, O411757177572 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE VAX UNIX F77 COMPILER
+C
+C      DATA SMALL(1),SMALL(2) /        128,           0 /
+C      DATA LARGE(1),LARGE(2) /     -32769,          -1 /
+C      DATA RIGHT(1),RIGHT(2) /       9344,           0 /
+C      DATA DIVER(1),DIVER(2) /       9472,           0 /
+C      DATA LOG10(1),LOG10(2) /  546979738,  -805796613 /, SC/987/
+C
+C     MACHINE CONSTANTS FOR THE VAX-11 WITH
+C     FORTRAN IV-PLUS COMPILER
+C
+C      DATA SMALL(1),SMALL(2) / Z00000080, Z00000000 /
+C      DATA LARGE(1),LARGE(2) / ZFFFF7FFF, ZFFFFFFFF /
+C      DATA RIGHT(1),RIGHT(2) / Z00002480, Z00000000 /
+C      DATA DIVER(1),DIVER(2) / Z00002500, Z00000000 /
+C      DATA LOG10(1),LOG10(2) / Z209A3F9A, ZCFF884FB /, SC/987/
+C
+C     MACHINE CONSTANTS FOR VAX/VMS VERSION 2.2
+C
+C      DATA SMALL(1),SMALL(2) /       '80'X,        '0'X /
+C      DATA LARGE(1),LARGE(2) / 'FFFF7FFF'X, 'FFFFFFFF'X /
+C      DATA RIGHT(1),RIGHT(2) /     '2480'X,        '0'X /
+C      DATA DIVER(1),DIVER(2) /     '2500'X,        '0'X /
+C      DATA LOG10(1),LOG10(2) / '209A3F9A'X, 'CFF884FB'X /, SC/987/
+C
+C  ***  ISSUE STOP 779 IF ALL DATA STATEMENTS ARE COMMENTED...
+      IF (SC .NE. 987) THEN
+         DMACH(1) = 1.D13
+         IF (      SMALL(1) .EQ. 1117925532
+     *       .AND. SMALL(2) .EQ. -448790528) THEN
+*           *** IEEE BIG ENDIAN ***
+            SMALL(1) = 1048576
+            SMALL(2) = 0
+            LARGE(1) = 2146435071
+            LARGE(2) = -1
+            RIGHT(1) = 1017118720
+            RIGHT(2) = 0
+            DIVER(1) = 1018167296
+            DIVER(2) = 0
+            LOG10(1) = 1070810131
+            LOG10(2) = 1352628735
+         ELSE IF ( SMALL(2) .EQ. 1117925532
+     *       .AND. SMALL(1) .EQ. -448790528) THEN
+*           *** IEEE LITTLE ENDIAN ***
+            SMALL(2) = 1048576
+            SMALL(1) = 0
+            LARGE(2) = 2146435071
+            LARGE(1) = -1
+            RIGHT(2) = 1017118720
+            RIGHT(1) = 0
+            DIVER(2) = 1018167296
+            DIVER(1) = 0
+            LOG10(2) = 1070810131
+            LOG10(1) = 1352628735
+         ELSE IF ( SMALL(1) .EQ. -2065213935
+     *       .AND. SMALL(2) .EQ. 10752) THEN
+*               *** VAX WITH D_FLOATING ***
+            SMALL(1) = 128
+            SMALL(2) = 0
+            LARGE(1) = -32769
+            LARGE(2) = -1
+            RIGHT(1) = 9344
+            RIGHT(2) = 0
+            DIVER(1) = 9472
+            DIVER(2) = 0
+            LOG10(1) = 546979738
+            LOG10(2) = -805796613
+         ELSE IF ( SMALL(1) .EQ. 1267827943
+     *       .AND. SMALL(2) .EQ. 704643072) THEN
+*               *** IBM MAINFRAME ***
+            SMALL(1) = 1048576
+            SMALL(2) = 0
+            LARGE(1) = 2147483647
+            LARGE(2) = -1
+            RIGHT(1) = 856686592
+            RIGHT(2) = 0
+            DIVER(1) = 873463808
+            DIVER(2) = 0
+            LOG10(1) = 1091781651
+            LOG10(2) = 1352628735
+         ELSE
+               WRITE(*,*)'Adjust D1MACH by uncommenting'
+               WRITE(*,*)'data statements appropriate for your machine.'
+            STOP 779
+            END IF
+         SC = 987
+         END IF
+C
+C  ***  ISSUE STOP 778 IF ALL DATA STATEMENTS ARE OBVIOUSLY WRONG...
+      IF (DMACH(4) .GE. 1.0D0) STOP 778
+      IF (I .LT. 1 .OR. I .GT. 5) THEN
+         WRITE(*,*) 'D1MACH(I): I =',I,' is out of bounds.'
+         STOP
+         END IF
+      D1MACH = DMACH(I)
+      END
+
       SUBROUTINE DACOPY (NROW, NCOL, A, NROWA, B, NROWB)
       DOUBLE PRECISION A, B
       INTEGER NROW, NCOL, NROWA, NROWB
@@ -31,14 +1288,12 @@ C where A and B may have different row dimensions, NROWA and NROWB.
 C The data copied consists of NROW rows and NCOL columns.
 C-----------------------------------------------------------------------
       INTEGER IC
-C
-      DO 20 IC = 1,NCOL
+
+      DO IC = 1,NCOL
         CALL DCOPY (NROW, A(1,IC), 1, B(1,IC), 1)
- 20     CONTINUE
-C
-      RETURN
-C----------------------- End of Subroutine DACOPY ----------------------
+      ENDDO
       END
+
       SUBROUTINE DEWSET (N, ITOL, RTOL, ATOL, YCUR, EWT)
       DOUBLE PRECISION RTOL, ATOL, YCUR, EWT
       INTEGER N, ITOL
@@ -74,8 +1329,8 @@ C
       DO 45 I = 1, N
  45     EWT(I) = RTOL(I)*ABS(YCUR(I)) + ATOL(I)
       RETURN
-C----------------------- End of Subroutine DEWSET ----------------------
       END
+
       SUBROUTINE DVHIN (N, T0, Y0, YDOT, F, RPAR, IPAR, TOUT, UROUND,
      1   EWT, ITOL, ATOL, Y, TEMP, H0, NITER, IER)
       EXTERNAL F
@@ -213,9 +1468,8 @@ C Iteration done.  Apply bounds, bias factor, and sign.  Then exit. ----
       RETURN
 C Error return for TOUT - T0 too small. --------------------------------
  100  IER = -1
-      RETURN
-C----------------------- End of Subroutine DVHIN -----------------------
       END
+
       SUBROUTINE DVINDY (T, K, YH, LDYH, DKY, IFLAG)
       DOUBLE PRECISION T, YH, DKY
       INTEGER K, LDYH, IFLAG
@@ -335,9 +1589,8 @@ C
       MSG='      T not in interval TCUR - HU (= R1) to TCUR (=R2)      '
       CALL XERRWD (MSG, 60, 52, 1, 0, 0, 0, 2, TP, TN)
       IFLAG = -2
-      RETURN
-C----------------------- End of Subroutine DVINDY ----------------------
       END
+
       SUBROUTINE DVJAC (Y, YH, LDYH, EWT, FTEM, SAVF, WM, IWM, F, JAC,
      1                 IERPJ, RPAR, IPAR)
       EXTERNAL F, JAC
@@ -612,11 +1865,8 @@ C Multiply Jacobian by scalar, add identity, and do LU decomposition.
       NLU = NLU + 1
       CALL DGBFA (WM(3), MEBAND, N, ML, MU, IWM(31), IER)
       IF (IER .NE. 0) IERPJ = 1
-      RETURN
-C End of code block for MITER = 4 or 5. --------------------------------
-C
-C----------------------- End of Subroutine DVJAC -----------------------
       END
+
       SUBROUTINE DVJUST (YH, LDYH, IORD)
       DOUBLE PRECISION YH
       INTEGER LDYH, IORD
@@ -773,9 +2023,8 @@ C Add correction terms to YH array. ------------------------------------
       DO 370 J = 3, NQP1
         CALL DAXPY (N, EL(J), YH(1,LP1), 1, YH(1,J), 1 )
  370  CONTINUE
-      RETURN
-C----------------------- End of Subroutine DVJUST ----------------------
       END
+
       SUBROUTINE DVNLSD (Y, YH, LDYH, VSAV, SAVF, EWT, ACOR, IWM, WM,
      1                 F, JAC, PDUM, NFLAG, RPAR, IPAR)
       EXTERNAL F, JAC, PDUM
@@ -1031,9 +2280,8 @@ C Return for successful step. ------------------------------------------
       ICF = 0
       IF (M .EQ. 0) ACNRM = DEL
       IF (M .GT. 0) ACNRM = DVNORM (N, ACOR, EWT)
-      RETURN
-C----------------------- End of Subroutine DVNLSD ----------------------
       END
+
       DOUBLE PRECISION FUNCTION DVNORM (N, V, W)
       DOUBLE PRECISION V, W
       INTEGER N
@@ -1057,9 +2305,8 @@ C
       DO 10 I = 1, N
  10     SUM = SUM + (V(I)*W(I))**2
       DVNORM = SQRT(SUM/REAL(N))
-      RETURN
-C----------------------- End of Function DVNORM ------------------------
       END
+
       SUBROUTINE DVODE (F, NEQ, Y, T, TOUT, ITOL, RTOL, ATOL, ITASK,
      1            ISTATE, IOPT, RWORK, LRW, IWORK, LIW, JAC, MF,
      2            RPAR, IPAR)
@@ -2739,9 +3986,8 @@ C
 C
  800  MSG = 'DVODE--  Run aborted.. apparent infinite loop     '
       CALL XERRWD (MSG, 50, 303, 2, 0, 0, 0, 0, ZERO, ZERO)
-      RETURN
-C----------------------- End of Subroutine DVODE -----------------------
       END
+
       SUBROUTINE DVSET
 C-----------------------------------------------------------------------
 C Call sequence communication.. None
@@ -2937,9 +4183,8 @@ C In EL, construct coefficients of (1+x/xi(1))*...*(1+x/xi(j+1)). ------
       ELP = T2/(ONE - T6 + T5)
       TQ(3) = ABS(ELP*RXI*(FLOTL + ONE)*T5)
  300  TQ(4) = CORTES*TQ(2)
-      RETURN
-C----------------------- End of Subroutine DVSET -----------------------
       END
+
       SUBROUTINE DVSOL (WM, IWM, X, IERSL)
       DOUBLE PRECISION WM, X
       INTEGER IWM, IERSL
@@ -3032,9 +4277,8 @@ C
       MU = IWM(2)
       MEBAND = 2*ML + MU + 1
       CALL DGBSL (WM(3), MEBAND, N, ML, MU, IWM(31), X, 0)
-      RETURN
-C----------------------- End of Subroutine DVSOL -----------------------
       END
+
       SUBROUTINE DVSRCO (RSAV, ISAV, JOB)
       DOUBLE PRECISION RSAV
       INTEGER ISAV, JOB
@@ -3092,10 +4336,8 @@ C
  120     IVOD1(I) = ISAV(I)
       DO 125 I = 1,LENIV2
  125     IVOD2(I) = ISAV(LENIV1+I)
-C
-      RETURN
-C----------------------- End of Subroutine DVSRCO ----------------------
       END
+
       SUBROUTINE DVSTEP (Y, YH, LDYH, YH1, EWT, SAVF, VSAV, ACOR,
      1                  WM, IWM, F, JAC, PSOL, VNLS, RPAR, IPAR)
       EXTERNAL F, JAC, PSOL, VNLS
@@ -3213,9 +4455,7 @@ C
      3     ETAMX3 /10.0D0/,    ONEPSM /1.00001D0/, THRESH /1.5D0/
       DATA ONE/1.0D0/, ZERO/0.0D0/
 C
-CEM: added following initializations for ETAQ and ETAQM1 to avoid use
-CEM: of uninitialized variables 04/17/98
-      ETAQ = ONE
+      ETAQ   = ONE
       ETAQM1 = ONE
 C
       KFLAG = 0
@@ -3532,3484 +4772,8 @@ C-----------------------------------------------------------------------
  700  R = ONE/TQ(2)
       CALL DSCAL (N, R, ACOR, 1)
  720  JSTART = 1
-      RETURN
       END
-C----------------------- End of Subroutine DVSTEP ----------------------
-C*****END precision > double
-C
-C*****precision > single
-C      SUBROUTINE SACOPY (NROW, NCOL, A, NROWA, B, NROWB)
-C      REAL A, B
-C      INTEGER NROW, NCOL, NROWA, NROWB
-C      DIMENSION A(NROWA,NCOL), B(NROWB,NCOL)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- NROW, NCOL, A, NROWA, NROWB
-CC Call sequence output -- B
-CC COMMON block variables accessed -- None
-CC
-CC Subroutines called by SACOPY.. SCOPY
-CC Function routines called by SACOPY.. None
-CC-----------------------------------------------------------------------
-CC This routine copies one rectangular array, A, to another, B,
-CC where A and B may have different row dimensions, NROWA and NROWB.
-CC The data copied consists of NROW rows and NCOL columns.
-CC-----------------------------------------------------------------------
-C      INTEGER IC
-CC
-C      DO 20 IC = 1,NCOL
-C        CALL SCOPY (NROW, A(1,IC), 1, B(1,IC), 1)
-C 20     CONTINUE
-CC
-C      RETURN
-CC----------------------- End of Subroutine SACOPY ----------------------
-C      END
-C      SUBROUTINE SEWSET (N, ITOL, RTOL, ATOL, YCUR, EWT)
-C      REAL RTOL, ATOL, YCUR, EWT
-C      INTEGER N, ITOL
-C      DIMENSION RTOL(*), ATOL(*), YCUR(N), EWT(N)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- N, ITOL, RTOL, ATOL, YCUR
-CC Call sequence output -- EWT
-CC COMMON block variables accessed -- None
-CC
-CC Subroutines/functions called by SEWSET.. None
-CC-----------------------------------------------------------------------
-CC This subroutine sets the error weight vector EWT according to
-CC     EWT(i) = RTOL(i)*abs(YCUR(i)) + ATOL(i),  i = 1,...,N,
-CC with the subscript on RTOL and/or ATOL possibly replaced by 1 above,
-CC depending on the value of ITOL.
-CC-----------------------------------------------------------------------
-C      INTEGER I
-CC
-C      GO TO (10, 20, 30, 40), ITOL
-C 10   CONTINUE
-C      DO 15 I = 1, N
-C 15     EWT(I) = RTOL(1)*ABS(YCUR(I)) + ATOL(1)
-C      RETURN
-C 20   CONTINUE
-C      DO 25 I = 1, N
-C 25     EWT(I) = RTOL(1)*ABS(YCUR(I)) + ATOL(I)
-C      RETURN
-C 30   CONTINUE
-C      DO 35 I = 1, N
-C 35     EWT(I) = RTOL(I)*ABS(YCUR(I)) + ATOL(1)
-C      RETURN
-C 40   CONTINUE
-C      DO 45 I = 1, N
-C 45     EWT(I) = RTOL(I)*ABS(YCUR(I)) + ATOL(I)
-C      RETURN
-CC----------------------- End of Subroutine SEWSET ----------------------
-C      END
-C      SUBROUTINE SVHIN (N, T0, Y0, YDOT, F, RPAR, IPAR, TOUT, UROUND,
-C     1   EWT, ITOL, ATOL, Y, TEMP, H0, NITER, IER)
-C      EXTERNAL F
-C      REAL T0, Y0, YDOT, RPAR, TOUT, UROUND, EWT, ATOL, Y,
-C     1   TEMP, H0
-C      INTEGER N, IPAR, ITOL, NITER, IER
-C      DIMENSION Y0(*), YDOT(*), EWT(*), ATOL(*), Y(*),
-C     1   TEMP(*), RPAR(*), IPAR(*)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- N, T0, Y0, YDOT, F, RPAR, IPAR, TOUT, UROUND,
-CC                        EWT, ITOL, ATOL, Y, TEMP
-CC Call sequence output -- H0, NITER, IER
-CC COMMON block variables accessed -- None
-CC
-CC Subroutines called by SVHIN.. F
-CC Function routines called by SVHIN.. SVNORM
-CC-----------------------------------------------------------------------
-CC This routine computes the step size, H0, to be attempted on the
-CC first step, when the user has not supplied a value for this.
-CC
-CC First we check that TOUT - T0 differs significantly from zero.  Then
-CC an iteration is done to approximate the initial second derivative
-CC and this is used to define h from w.r.m.s.norm(h**2 * yddot / 2) = 1.
-CC A bias factor of 1/2 is applied to the resulting h.
-CC The sign of H0 is inferred from the initial values of TOUT and T0.
-CC
-CC Communication with SVHIN is done with the following variables..
-CC
-CC N      = Size of ODE system, input.
-CC T0     = Initial value of independent variable, input.
-CC Y0     = Vector of initial conditions, input.
-CC YDOT   = Vector of initial first derivatives, input.
-CC F      = Name of subroutine for right-hand side f(t,y), input.
-CC RPAR, IPAR = Dummy names for user's real and integer work arrays.
-CC TOUT   = First output value of independent variable
-CC UROUND = Machine unit roundoff
-CC EWT, ITOL, ATOL = Error weights and tolerance parameters
-CC                   as described in the driver routine, input.
-CC Y, TEMP = Work arrays of length N.
-CC H0     = Step size to be attempted, output.
-CC NITER  = Number of iterations (and of f evaluations) to compute H0,
-CC          output.
-CC IER    = The error flag, returned with the value
-CC          IER = 0  if no trouble occurred, or
-CC          IER = -1 if TOUT and T0 are considered too close to proceed.
-CC-----------------------------------------------------------------------
-CC
-CC Type declarations for local variables --------------------------------
-CC
-C      REAL AFI, ATOLI, DELYI, HALF, HG, HLB, HNEW, HRAT,
-C     1     HUB, HUN, PT1, T1, TDIST, TROUND, TWO, YDDNRM
-C      INTEGER I, ITER
-CC
-CC Type declaration for function subroutines called ---------------------
-CC
-C      REAL SVNORM
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to this integrator.
-CC-----------------------------------------------------------------------
-C      SAVE HALF, HUN, PT1, TWO
-C      DATA HALF /0.5E0/, HUN /100.0E0/, PT1 /0.1E0/, TWO /2.0E0/
-CC
-C      NITER = 0
-C      TDIST = ABS(TOUT - T0)
-C      TROUND = UROUND*MAX(ABS(T0),ABS(TOUT))
-C      IF (TDIST .LT. TWO*TROUND) GO TO 100
-CC
-CC Set a lower bound on h based on the roundoff level in T0 and TOUT. ---
-C      HLB = HUN*TROUND
-CC Set an upper bound on h based on TOUT-T0 and the initial Y and YDOT. -
-C      HUB = PT1*TDIST
-C      ATOLI = ATOL(1)
-C      DO 10 I = 1, N
-C        IF (ITOL .EQ. 2 .OR. ITOL .EQ. 4) ATOLI = ATOL(I)
-C        DELYI = PT1*ABS(Y0(I)) + ATOLI
-C        AFI = ABS(YDOT(I))
-C        IF (AFI*HUB .GT. DELYI) HUB = DELYI/AFI
-C 10     CONTINUE
-CC
-CC Set initial guess for h as geometric mean of upper and lower bounds. -
-C      ITER = 0
-C      HG = SQRT(HLB*HUB)
-CC If the bounds have crossed, exit with the mean value. ----------------
-C      IF (HUB .LT. HLB) THEN
-C        H0 = HG
-C        GO TO 90
-C      ENDIF
-CC
-CC Looping point for iteration. -----------------------------------------
-C 50   CONTINUE
-CC Estimate the second derivative as a difference quotient in f. --------
-C      T1 = T0 + HG
-C      DO 60 I = 1, N
-C 60     Y(I) = Y0(I) + HG*YDOT(I)
-C      CALL F (N, T1, Y, TEMP, RPAR, IPAR)
-C      DO 70 I = 1, N
-C 70     TEMP(I) = (TEMP(I) - YDOT(I))/HG
-C      YDDNRM = SVNORM (N, TEMP, EWT)
-CC Get the corresponding new value of h. --------------------------------
-C      IF (YDDNRM*HUB*HUB .GT. TWO) THEN
-C        HNEW = SQRT(TWO/YDDNRM)
-C      ELSE
-C        HNEW = SQRT(HG*HUB)
-C      ENDIF
-C      ITER = ITER + 1
-CC-----------------------------------------------------------------------
-CC Test the stopping conditions.
-CC Stop if the new and previous h values differ by a factor of .lt. 2.
-CC Stop if four iterations have been done.  Also, stop with previous h
-CC if HNEW/HG .gt. 2 after first iteration, as this probably means that
-CC the second derivative value is bad because of cancellation error.
-CC-----------------------------------------------------------------------
-C      IF (ITER .GE. 4) GO TO 80
-C      HRAT = HNEW/HG
-C      IF ( (HRAT .GT. HALF) .AND. (HRAT .LT. TWO) ) GO TO 80
-C      IF ( (ITER .GE. 2) .AND. (HNEW .GT. TWO*HG) ) THEN
-C        HNEW = HG
-C        GO TO 80
-C      ENDIF
-C      HG = HNEW
-C      GO TO 50
-CC
-CC Iteration done.  Apply bounds, bias factor, and sign.  Then exit. ----
-C 80   H0 = HNEW*HALF
-C      IF (H0 .LT. HLB) H0 = HLB
-C      IF (H0 .GT. HUB) H0 = HUB
-C 90   H0 = SIGN(H0, TOUT - T0)
-C      NITER = ITER
-C      IER = 0
-C      RETURN
-CC Error return for TOUT - T0 too small. --------------------------------
-C 100  IER = -1
-C      RETURN
-CC----------------------- End of Subroutine SVHIN -----------------------
-C      END
-C      SUBROUTINE SVINDY (T, K, YH, LDYH, DKY, IFLAG)
-C      REAL T, YH, DKY
-C      INTEGER K, LDYH, IFLAG
-C      DIMENSION YH(LDYH,*), DKY(*)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- T, K, YH, LDYH
-CC Call sequence output -- DKY, IFLAG
-CC COMMON block variables accessed..
-CC     /SVOD01/ --  H, TN, UROUND, L, N, NQ
-CC     /SVOD02/ --  HU
-CC
-CC Subroutines called by SVINDY.. SSCAL, XERRWV
-CC Function routines called by SVINDY.. None
-CC-----------------------------------------------------------------------
-CC SVINDY computes interpolated values of the K-th derivative of the
-CC dependent variable vector y, and stores it in DKY.  This routine
-CC is called within the package with K = 0 and T = TOUT, but may
-CC also be called by the user for any K up to the current order.
-CC (See detailed instructions in the usage documentation.)
-CC-----------------------------------------------------------------------
-CC The computed values in DKY are gotten by interpolation using the
-CC Nordsieck history array YH.  This array corresponds uniquely to a
-CC vector-valued polynomial of degree NQCUR or less, and DKY is set
-CC to the K-th derivative of this polynomial at T.
-CC The formula for DKY is..
-CC              q
-CC  DKY(i)  =  sum  c(j,K) * (T - TN)**(j-K) * H**(-j) * YH(i,j+1)
-CC             j=K
-CC where  c(j,K) = j*(j-1)*...*(j-K+1), q = NQCUR, TN = TCUR, H = HCUR.
-CC The quantities  NQ = NQCUR, L = NQ+1, N, TN, and H are
-CC communicated by COMMON.  The above sum is done in reverse order.
-CC IFLAG is returned negative if either K or T is out of bounds.
-CC
-CC Discussion above and comments in driver explain all variables.
-CC-----------------------------------------------------------------------
-CC
-CC Type declarations for labeled COMMON block SVOD01 --------------------
-CC
-C      REAL ACNRM, CCMXJ, CONP, CRATE, DRC, EL,
-C     1     ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2     RC, RL1, TAU, TQ, TN, UROUND
-C      INTEGER ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     1        L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     2        LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     3        N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     4        NSLP, NYH
-CC
-CC Type declarations for labeled COMMON block SVOD02 --------------------
-CC
-C      REAL HU
-C      INTEGER NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-CC Type declarations for local variables --------------------------------
-CC
-C      REAL C, HUN, R, S, TFUZZ, TN1, TP, ZERO
-C      INTEGER I, IC, J, JB, JB2, JJ, JJ1, JP1
-C      CHARACTER*80 MSG
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to this integrator.
-CC-----------------------------------------------------------------------
-C      SAVE HUN, ZERO
-CC
-C      COMMON /SVOD01/ ACNRM, CCMXJ, CONP, CRATE, DRC, EL(13),
-C     1                ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2                RC, RL1, TAU(13), TQ(5), TN, UROUND,
-C     3                ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     4                L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     5                LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     6                N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     7                NSLP, NYH
-C      COMMON /SVOD02/ HU, NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-C      DATA HUN /100.0E0/, ZERO /0.0E0/
-CC
-C      IFLAG = 0
-C      IF (K .LT. 0 .OR. K .GT. NQ) GO TO 80
-C      TFUZZ = HUN*UROUND*(TN + HU)
-C      TP = TN - HU - TFUZZ
-C      TN1 = TN + TFUZZ
-C      IF ((T-TP)*(T-TN1) .GT. ZERO) GO TO 90
-CC
-C      S = (T - TN)/H
-C      IC = 1
-C      IF (K .EQ. 0) GO TO 15
-C      JJ1 = L - K
-C      DO 10 JJ = JJ1, NQ
-C 10     IC = IC*JJ
-C 15   C = REAL(IC)
-C      DO 20 I = 1, N
-C 20     DKY(I) = C*YH(I,L)
-C      IF (K .EQ. NQ) GO TO 55
-C      JB2 = NQ - K
-C      DO 50 JB = 1, JB2
-C        J = NQ - JB
-C        JP1 = J + 1
-C        IC = 1
-C        IF (K .EQ. 0) GO TO 35
-C        JJ1 = JP1 - K
-C        DO 30 JJ = JJ1, J
-C 30       IC = IC*JJ
-C 35     C = REAL(IC)
-C        DO 40 I = 1, N
-C 40       DKY(I) = C*YH(I,JP1) + S*DKY(I)
-C 50     CONTINUE
-C      IF (K .EQ. 0) RETURN
-C 55   R = H**(-K)
-C      CALL SSCAL (N, R, DKY, 1)
-C      RETURN
-CC
-C 80   MSG = 'SVINDY-- K (=I1) illegal      '
-C      CALL XERRWV (MSG, 30, 51, 1, 1, K, 0, 0, ZERO, ZERO)
-C      IFLAG = -1
-C      RETURN
-C 90   MSG = 'SVINDY-- T (=R1) illegal      '
-C      CALL XERRWV (MSG, 30, 52, 1, 0, 0, 0, 1, T, ZERO)
-C      MSG='      T not in interval TCUR - HU (= R1) to TCUR (=R2)      '
-C      CALL XERRWV (MSG, 60, 52, 1, 0, 0, 0, 2, TP, TN)
-C      IFLAG = -2
-C      RETURN
-CC----------------------- End of Subroutine SVINDY ----------------------
-C      END
-C      SUBROUTINE SVJAC (Y, YH, LDYH, EWT, FTEM, SAVF, WM, IWM, F, JAC,
-C     1                 IERPJ, RPAR, IPAR)
-C      EXTERNAL F, JAC
-C      REAL Y, YH, EWT, FTEM, SAVF, WM, RPAR
-C      INTEGER LDYH, IWM, IERPJ, IPAR
-C      DIMENSION Y(*), YH(LDYH,*), EWT(*), FTEM(*), SAVF(*),
-C     1   WM(*), IWM(*), RPAR(*), IPAR(*)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- Y, YH, LDYH, EWT, FTEM, SAVF, WM, IWM,
-CC                        F, JAC, RPAR, IPAR
-CC Call sequence output -- WM, IWM, IERPJ
-CC COMMON block variables accessed..
-CC     /SVOD01/  CCMXJ, DRC, H, RL1, TN, UROUND, ICF, JCUR, LOCJS,
-CC               MSBJ, NSLJ
-CC     /SVOD02/  NFE, NST, NJE, NLU
-CC
-CC Subroutines called by SVJAC.. F, JAC, SACOPY, SCOPY, SGBFA, SGEFA,
-CC                              SSCAL
-CC Function routines called by SVJAC.. SVNORM
-CC-----------------------------------------------------------------------
-CC SVJAC is called by SVSTEP to compute and process the matrix
-CC P = I - h*rl1*J , where J is an approximation to the Jacobian.
-CC Here J is computed by the user-supplied routine JAC if
-CC MITER = 1 or 4, or by finite differencing if MITER = 2, 3, or 5.
-CC If MITER = 3, a diagonal approximation to J is used.
-CC If JSV = -1, J is computed from scratch in all cases.
-CC If JSV = 1 and MITER = 1, 2, 4, or 5, and if the saved value of J is
-CC considered acceptable, then P is constructed from the saved J.
-CC J is stored in wm and replaced by P.  If MITER .ne. 3, P is then
-CC subjected to LU decomposition in preparation for later solution
-CC of linear systems with P as coefficient matrix. This is done
-CC by SGEFA if MITER = 1 or 2, and by SGBFA if MITER = 4 or 5.
-CC
-CC Communication with SVJAC is done with the following variables.  (For
-CC more details, please see the comments in the driver subroutine.)
-CC Y          = Vector containing predicted values on entry.
-CC YH         = The Nordsieck array, an LDYH by LMAX array, input.
-CC LDYH       = A constant .ge. N, the first dimension of YH, input.
-CC EWT        = An error weight vector of length N.
-CC SAVF       = Array containing f evaluated at predicted y, input.
-CC WM         = Real work space for matrices.  In the output, it containS
-CC              the inverse diagonal matrix if MITER = 3 and the LU
-CC              decomposition of P if MITER is 1, 2 , 4, or 5.
-CC              Storage of matrix elements starts at WM(3).
-CC              Storage of the saved Jacobian starts at WM(LOCJS).
-CC              WM also contains the following matrix-related data..
-CC              WM(1) = SQRT(UROUND), used in numerical Jacobian step.
-CC              WM(2) = H*RL1, saved for later use if MITER = 3.
-CC IWM        = Integer work space containing pivot information,
-CC              starting at IWM(31), if MITER is 1, 2, 4, or 5.
-CC              IWM also contains band parameters ML = IWM(1) and
-CC              MU = IWM(2) if MITER is 4 or 5.
-CC F          = Dummy name for the user supplied subroutine for f.
-CC JAC        = Dummy name for the user supplied Jacobian subroutine.
-CC RPAR, IPAR = Dummy names for user's real and integer work arrays.
-CC RL1        = 1/EL(2) (input).
-CC IERPJ      = Output error flag,  = 0 if no trouble, 1 if the P
-CC              matrix is found to be singular.
-CC JCUR       = Output flag to indicate whether the Jacobian matrix
-CC              (or approximation) is now current.
-CC              JCUR = 0 means J is not current.
-CC              JCUR = 1 means J is current.
-CC-----------------------------------------------------------------------
-CC
-CC Type declarations for labeled COMMON block SVOD01 --------------------
-CC
-C      REAL ACNRM, CCMXJ, CONP, CRATE, DRC, EL,
-C     1     ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2     RC, RL1, TAU, TQ, TN, UROUND
-C      INTEGER ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     1        L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     2        LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     3        N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     4        NSLP, NYH
-CC
-CC Type declarations for labeled COMMON block SVOD02 --------------------
-CC
-C      REAL HU
-C      INTEGER NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-CC Type declarations for local variables --------------------------------
-CC
-C      REAL CON, DI, FAC, HRL1, ONE, PT1, R, R0, SRUR, THOU,
-C     1     YI, YJ, YJJ, ZERO
-C      INTEGER I, I1, I2, IER, II, J, J1, JJ, JOK, LENP, MBA, MBAND,
-C     1        MEB1, MEBAND, ML, ML3, MU, NP1
-CC
-CC Type declaration for function subroutines called ---------------------
-CC
-C      REAL SVNORM
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to this subroutine.
-CC-----------------------------------------------------------------------
-C      SAVE ONE, PT1, THOU, ZERO
-CC-----------------------------------------------------------------------
-C      COMMON /SVOD01/ ACNRM, CCMXJ, CONP, CRATE, DRC, EL(13),
-C     1                ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2                RC, RL1, TAU(13), TQ(5), TN, UROUND,
-C     3                ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     4                L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     5                LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     6                N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     7                NSLP, NYH
-C      COMMON /SVOD02/ HU, NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-C      DATA ONE /1.0E0/, THOU /1000.0E0/, ZERO /0.0E0/, PT1 /0.1E0/
-CC
-C      IERPJ = 0
-C      HRL1 = H*RL1
-CC See whether J should be evaluated (JOK = -1) or not (JOK = 1). -------
-C      JOK = JSV
-C      IF (JSV .EQ. 1) THEN
-C        IF (NST .EQ. 0 .OR. NST .GT. NSLJ+MSBJ) JOK = -1
-C        IF (ICF .EQ. 1 .AND. DRC .LT. CCMXJ) JOK = -1
-C        IF (ICF .EQ. 2) JOK = -1
-C      ENDIF
-CC End of setting JOK. --------------------------------------------------
-CC
-C      IF (JOK .EQ. -1 .AND. MITER .EQ. 1) THEN
-CC If JOK = -1 and MITER = 1, call JAC to evaluate Jacobian. ------------
-C      NJE = NJE + 1
-C      NSLJ = NST
-C      JCUR = 1
-C      LENP = N*N
-C      DO 110 I = 1,LENP
-C 110    WM(I+2) = ZERO
-C      CALL JAC (N, TN, Y, 0, 0, WM(3), N, RPAR, IPAR)
-C      IF (JSV .EQ. 1) CALL SCOPY (LENP, WM(3), 1, WM(LOCJS), 1)
-C      ENDIF
-CC
-C      IF (JOK .EQ. -1 .AND. MITER .EQ. 2) THEN
-CC If MITER = 2, make N calls to F to approximate the Jacobian. ---------
-C      NJE = NJE + 1
-C      NSLJ = NST
-C      JCUR = 1
-C      FAC = SVNORM (N, SAVF, EWT)
-C      R0 = THOU*ABS(H)*UROUND*REAL(N)*FAC
-C      IF (R0 .EQ. ZERO) R0 = ONE
-C      SRUR = WM(1)
-C      J1 = 2
-C      DO 230 J = 1,N
-C        YJ = Y(J)
-C        R = MAX(SRUR*ABS(YJ),R0/EWT(J))
-C        Y(J) = Y(J) + R
-C        FAC = ONE/R
-C        CALL F (N, TN, Y, FTEM, RPAR, IPAR)
-C        DO 220 I = 1,N
-C 220      WM(I+J1) = (FTEM(I) - SAVF(I))*FAC
-C        Y(J) = YJ
-C        J1 = J1 + N
-C 230    CONTINUE
-C      NFE = NFE + N
-C      LENP = N*N
-C      IF (JSV .EQ. 1) CALL SCOPY (LENP, WM(3), 1, WM(LOCJS), 1)
-C      ENDIF
-CC
-C      IF (JOK .EQ. 1 .AND. (MITER .EQ. 1 .OR. MITER .EQ. 2)) THEN
-C      JCUR = 0
-C      LENP = N*N
-C      CALL SCOPY (LENP, WM(LOCJS), 1, WM(3), 1)
-C      ENDIF
-CC
-C      IF (MITER .EQ. 1 .OR. MITER .EQ. 2) THEN
-CC Multiply Jacobian by scalar, add identity, and do LU decomposition. --
-C      CON = -HRL1
-C      CALL SSCAL (LENP, CON, WM(3), 1)
-C      J = 3
-C      NP1 = N + 1
-C      DO 250 I = 1,N
-C        WM(J) = WM(J) + ONE
-C 250    J = J + NP1
-C      NLU = NLU + 1
-C      CALL SGEFA (WM(3), N, N, IWM(31), IER)
-C      IF (IER .NE. 0) IERPJ = 1
-C      RETURN
-C      ENDIF
-CC End of code block for MITER = 1 or 2. --------------------------------
-CC
-C      IF (MITER .EQ. 3) THEN
-CC If MITER = 3, construct a diagonal approximation to J and P. ---------
-C      NJE = NJE + 1
-C      JCUR = 1
-C      WM(2) = HRL1
-C      R = RL1*PT1
-C      DO 310 I = 1,N
-C 310    Y(I) = Y(I) + R*(H*SAVF(I) - YH(I,2))
-C      CALL F (N, TN, Y, WM(3), RPAR, IPAR)
-C      NFE = NFE + 1
-C      DO 320 I = 1,N
-C        R0 = H*SAVF(I) - YH(I,2)
-C        DI = PT1*R0 - H*(WM(I+2) - SAVF(I))
-C        WM(I+2) = ONE
-C        IF (ABS(R0) .LT. UROUND/EWT(I)) GO TO 320
-C        IF (ABS(DI) .EQ. ZERO) GO TO 330
-C        WM(I+2) = PT1*R0/DI
-C 320    CONTINUE
-C      RETURN
-C 330  IERPJ = 1
-C      RETURN
-C      ENDIF
-CC End of code block for MITER = 3. -------------------------------------
-CC
-CC Set constants for MITER = 4 or 5. ------------------------------------
-C      ML = IWM(1)
-C      MU = IWM(2)
-C      ML3 = ML + 3
-C      MBAND = ML + MU + 1
-C      MEBAND = MBAND + ML
-C      LENP = MEBAND*N
-CC
-C      IF (JOK .EQ. -1 .AND. MITER .EQ. 4) THEN
-CC If JOK = -1 and MITER = 4, call JAC to evaluate Jacobian. ------------
-C      NJE = NJE + 1
-C      NSLJ = NST
-C      JCUR = 1
-C      DO 410 I = 1,LENP
-C 410    WM(I+2) = ZERO
-C      CALL JAC (N, TN, Y, ML, MU, WM(ML3), MEBAND, RPAR, IPAR)
-C      IF (JSV .EQ. 1)
-C     1   CALL SACOPY (MBAND, N, WM(ML3), MEBAND, WM(LOCJS), MBAND)
-C      ENDIF
-CC
-C      IF (JOK .EQ. -1 .AND. MITER .EQ. 5) THEN
-CC If MITER = 5, make N calls to F to approximate the Jacobian. ---------
-C      NJE = NJE + 1
-C      NSLJ = NST
-C      JCUR = 1
-C      MBA = MIN(MBAND,N)
-C      MEB1 = MEBAND - 1
-C      SRUR = WM(1)
-C      FAC = SVNORM (N, SAVF, EWT)
-C      R0 = THOU*ABS(H)*UROUND*REAL(N)*FAC
-C      IF (R0 .EQ. ZERO) R0 = ONE
-C      DO 560 J = 1,MBA
-C        DO 530 I = J,N,MBAND
-C          YI = Y(I)
-C          R = MAX(SRUR*ABS(YI),R0/EWT(I))
-C 530      Y(I) = Y(I) + R
-C        CALL F (N, TN, Y, FTEM, RPAR, IPAR)
-C        DO 550 JJ = J,N,MBAND
-C          Y(JJ) = YH(JJ,1)
-C          YJJ = Y(JJ)
-C          R = MAX(SRUR*ABS(YJJ),R0/EWT(JJ))
-C          FAC = ONE/R
-C          I1 = MAX(JJ-MU,1)
-C          I2 = MIN(JJ+ML,N)
-C          II = JJ*MEB1 - ML + 2
-C          DO 540 I = I1,I2
-C 540        WM(II+I) = (FTEM(I) - SAVF(I))*FAC
-C 550      CONTINUE
-C 560    CONTINUE
-C      NFE = NFE + MBA
-C      IF (JSV .EQ. 1)
-C     1   CALL SACOPY (MBAND, N, WM(ML3), MEBAND, WM(LOCJS), MBAND)
-C      ENDIF
-CC
-C      IF (JOK .EQ. 1) THEN
-C      JCUR = 0
-C      CALL SACOPY (MBAND, N, WM(LOCJS), MBAND, WM(ML3), MEBAND)
-C      ENDIF
-CC
-CC Multiply Jacobian by scalar, add identity, and do LU decomposition.
-C      CON = -HRL1
-C      CALL SSCAL (LENP, CON, WM(3), 1 )
-C      II = MBAND + 2
-C      DO 580 I = 1,N
-C        WM(II) = WM(II) + ONE
-C 580    II = II + MEBAND
-C      NLU = NLU + 1
-C      CALL SGBFA (WM(3), MEBAND, N, ML, MU, IWM(31), IER)
-C      IF (IER .NE. 0) IERPJ = 1
-C      RETURN
-CC End of code block for MITER = 4 or 5. --------------------------------
-CC
-CC----------------------- End of Subroutine SVJAC -----------------------
-C      END
-C      SUBROUTINE SVJUST (YH, LDYH, IORD)
-C      REAL YH
-C      INTEGER LDYH, IORD
-C      DIMENSION YH(LDYH,*)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- YH, LDYH, IORD
-CC Call sequence output -- YH
-CC COMMON block input -- NQ, METH, LMAX, HSCAL, TAU(13), N
-CC COMMON block variables accessed..
-CC     /SVOD01/ -- HSCAL, TAU(13), LMAX, METH, N, NQ,
-CC
-CC Subroutines called by SVJUST.. SAXPY
-CC Function routines called by SVJUST.. None
-CC-----------------------------------------------------------------------
-CC This subroutine adjusts the YH array on reduction of order,
-CC and also when the order is increased for the stiff option (METH = 2).
-CC Communication with SVJUST uses the following..
-CC IORD  = An integer flag used when METH = 2 to indicate an order
-CC         increase (IORD = +1) or an order decrease (IORD = -1).
-CC HSCAL = Step size H used in scaling of Nordsieck array YH.
-CC         (If IORD = +1, SVJUST assumes that HSCAL = TAU(1).)
-CC See References 1 and 2 for details.
-CC-----------------------------------------------------------------------
-CC
-CC Type declarations for labeled COMMON block SVOD01 --------------------
-CC
-C      REAL ACNRM, CCMXJ, CONP, CRATE, DRC, EL,
-C     1     ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2     RC, RL1, TAU, TQ, TN, UROUND
-C      INTEGER ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     1        L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     2        LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     3        N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     4        NSLP, NYH
-CC
-CC Type declarations for local variables --------------------------------
-CC
-C      REAL ALPH0, ALPH1, HSUM, ONE, PROD, T1, XI,XIOLD, ZERO
-C      INTEGER I, IBACK, J, JP1, LP1, NQM1, NQM2, NQP1
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to this integrator.
-CC-----------------------------------------------------------------------
-C      SAVE ONE, ZERO
-CC
-C      COMMON /SVOD01/ ACNRM, CCMXJ, CONP, CRATE, DRC, EL(13),
-C     1                ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2                RC, RL1, TAU(13), TQ(5), TN, UROUND,
-C     3                ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     4                L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     5                LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     6                N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     7                NSLP, NYH
-CC
-C      DATA ONE /1.0E0/, ZERO /0.0E0/
-CC
-C      IF ((NQ .EQ. 2) .AND. (IORD .NE. 1)) RETURN
-C      NQM1 = NQ - 1
-C      NQM2 = NQ - 2
-C      GO TO (100, 200), METH
-CC-----------------------------------------------------------------------
-CC Nonstiff option...
-CC Check to see if the order is being increased or decreased.
-CC-----------------------------------------------------------------------
-C 100  CONTINUE
-C      IF (IORD .EQ. 1) GO TO 180
-CC Order decrease. ------------------------------------------------------
-C      DO 110 J = 1, LMAX
-C 110    EL(J) = ZERO
-C      EL(2) = ONE
-C      HSUM = ZERO
-C      DO 130 J = 1, NQM2
-CC Construct coefficients of x*(x+xi(1))*...*(x+xi(j)). -----------------
-C        HSUM = HSUM + TAU(J)
-C        XI = HSUM/HSCAL
-C        JP1 = J + 1
-C        DO 120 IBACK = 1, JP1
-C          I = (J + 3) - IBACK
-C 120      EL(I) = EL(I)*XI + EL(I-1)
-C 130    CONTINUE
-CC Construct coefficients of integrated polynomial. ---------------------
-C      DO 140 J = 2, NQM1
-C 140    EL(J+1) = REAL(NQ)*EL(J)/REAL(J)
-CC Subtract correction terms from YH array. -----------------------------
-C      DO 170 J = 3, NQ
-C        DO 160 I = 1, N
-C 160      YH(I,J) = YH(I,J) - YH(I,L)*EL(J)
-C 170    CONTINUE
-C      RETURN
-CC Order increase. ------------------------------------------------------
-CC Zero out next column in YH array. ------------------------------------
-C 180  CONTINUE
-C      LP1 = L + 1
-C      DO 190 I = 1, N
-C 190    YH(I,LP1) = ZERO
-C      RETURN
-CC-----------------------------------------------------------------------
-CC Stiff option...
-CC Check to see if the order is being increased or decreased.
-CC-----------------------------------------------------------------------
-C 200  CONTINUE
-C      IF (IORD .EQ. 1) GO TO 300
-CC Order decrease. ------------------------------------------------------
-C      DO 210 J = 1, LMAX
-C 210    EL(J) = ZERO
-C      EL(3) = ONE
-C      HSUM = ZERO
-C      DO 230 J = 1,NQM2
-CC Construct coefficients of x*x*(x+xi(1))*...*(x+xi(j)). ---------------
-C        HSUM = HSUM + TAU(J)
-C        XI = HSUM/HSCAL
-C        JP1 = J + 1
-C        DO 220 IBACK = 1, JP1
-C          I = (J + 4) - IBACK
-C 220      EL(I) = EL(I)*XI + EL(I-1)
-C 230    CONTINUE
-CC Subtract correction terms from YH array. -----------------------------
-C      DO 250 J = 3,NQ
-C        DO 240 I = 1, N
-C 240      YH(I,J) = YH(I,J) - YH(I,L)*EL(J)
-C 250    CONTINUE
-C      RETURN
-CC Order increase. ------------------------------------------------------
-C 300  DO 310 J = 1, LMAX
-C 310    EL(J) = ZERO
-C      EL(3) = ONE
-C      ALPH0 = -ONE
-C      ALPH1 = ONE
-C      PROD = ONE
-C      XIOLD = ONE
-C      HSUM = HSCAL
-C      IF (NQ .EQ. 1) GO TO 340
-C      DO 330 J = 1, NQM1
-CC Construct coefficients of x*x*(x+xi(1))*...*(x+xi(j)). ---------------
-C        JP1 = J + 1
-C        HSUM = HSUM + TAU(JP1)
-C        XI = HSUM/HSCAL
-C        PROD = PROD*XI
-C        ALPH0 = ALPH0 - ONE/REAL(JP1)
-C        ALPH1 = ALPH1 + ONE/XI
-C        DO 320 IBACK = 1, JP1
-C          I = (J + 4) - IBACK
-C 320      EL(I) = EL(I)*XIOLD + EL(I-1)
-C        XIOLD = XI
-C 330    CONTINUE
-C 340  CONTINUE
-C      T1 = (-ALPH0 - ALPH1)/PROD
-CC Load column L + 1 in YH array. ---------------------------------------
-C      LP1 = L + 1
-C      DO 350 I = 1, N
-C 350    YH(I,LP1) = T1*YH(I,LMAX)
-CC Add correction terms to YH array. ------------------------------------
-C      NQP1 = NQ + 1
-C      DO 370 J = 3, NQP1
-C        CALL SAXPY (N, EL(J), YH(1,LP1), 1, YH(1,J), 1 )
-C 370  CONTINUE
-C      RETURN
-CC----------------------- End of Subroutine SVJUST ----------------------
-C      END
-C      SUBROUTINE SVNLSD (Y, YH, LDYH, VSAV, SAVF, EWT, ACOR, IWM, WM,
-C     1                 F, JAC, PDUM, NFLAG, RPAR, IPAR)
-C      EXTERNAL F, JAC, PDUM
-C      REAL Y, YH, VSAV, SAVF, EWT, ACOR, WM, RPAR
-C      INTEGER LDYH, IWM, NFLAG, IPAR
-C      DIMENSION Y(*), YH(LDYH,*), VSAV(*), SAVF(*), EWT(*), ACOR(*),
-C     1          IWM(*), WM(*), RPAR(*), IPAR(*)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- Y, YH, LDYH, SAVF, EWT, ACOR, IWM, WM,
-CC                        F, JAC, NFLAG, RPAR, IPAR
-CC Call sequence output -- YH, ACOR, WM, IWM, NFLAG
-CC COMMON block variables accessed..
-CC     /SVOD01/ ACNRM, CRATE, DRC, H, RC, RL1, TQ(5), TN, ICF,
-CC                JCUR, METH, MITER, N, NSLP
-CC     /SVOD02/ HU, NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-CC Subroutines called by SVNLSD.. F, SAXPY, SCOPY, SSCAL, SVJAC, SVSOL
-CC Function routines called by SVNLSD.. SVNORM
-CC-----------------------------------------------------------------------
-CC Subroutine SVNLSD is a nonlinear system solver, which uses functional
-CC iteration or a chord (modified Newton) method.  For the chord method
-CC direct linear algebraic system solvers are used.  Subroutine SVNLSD
-CC then handles the corrector phase of this integration package.
-CC
-CC Communication with SVNLSD is done with the following variables. (For
-CC more details, please see the comments in the driver subroutine.)
-CC
-CC Y          = The dependent variable, a vector of length N, input.
-CC YH         = The Nordsieck (Taylor) array, LDYH by LMAX, input
-CC              and output.  On input, it contains predicted values.
-CC LDYH       = A constant .ge. N, the first dimension of YH, input.
-CC VSAV       = Unused work array.
-CC SAVF       = A work array of length N.
-CC EWT        = An error weight vector of length N, input.
-CC ACOR       = A work array of length N, used for the accumulated
-CC              corrections to the predicted y vector.
-CC WM,IWM     = Real and integer work arrays associated with matrix
-CC              operations in chord iteration (MITER .ne. 0).
-CC F          = Dummy name for user supplied routine for f.
-CC JAC        = Dummy name for user supplied Jacobian routine.
-CC PDUM       = Unused dummy subroutine name.  Included for uniformity
-CC              over collection of integrators.
-CC NFLAG      = Input/output flag, with values and meanings as follows..
-CC              INPUT
-CC                  0 first call for this time step.
-CC                 -1 convergence failure in previous call to SVNLSD.
-CC                 -2 error test failure in SVSTEP.
-CC              OUTPUT
-CC                  0 successful completion of nonlinear solver.
-CC                 -1 convergence failure or singular matrix.
-CC                 -2 unrecoverable error in matrix preprocessing
-CC                    (cannot occur here).
-CC                 -3 unrecoverable error in solution (cannot occur
-CC                    here).
-CC RPAR, IPAR = Dummy names for user's real and integer work arrays.
-CC
-CC IPUP       = Own variable flag with values and meanings as follows..
-CC              0,            do not update the Newton matrix.
-CC              MITER .ne. 0, update Newton matrix, because it is the
-CC                            initial step, order was changed, the error
-CC                            test failed, or an update is indicated by
-CC                            the scalar RC or step counter NST.
-CC
-CC For more details, see comments in driver subroutine.
-CC-----------------------------------------------------------------------
-CC Type declarations for labeled COMMON block SVOD01 --------------------
-CC
-C      REAL ACNRM, CCMXJ, CONP, CRATE, DRC, EL,
-C     1     ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2     RC, RL1, TAU, TQ, TN, UROUND
-C      INTEGER ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     1        L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     2        LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     3        N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     4        NSLP, NYH
-CC
-CC Type declarations for labeled COMMON block SVOD02 --------------------
-CC
-C      REAL HU
-C      INTEGER NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-CC Type declarations for local variables --------------------------------
-CC
-C      REAL CCMAX, CRDOWN, CSCALE, DCON, DEL, DELP, ONE,
-C     1     RDIV, TWO, ZERO
-C      INTEGER I, IERPJ, IERSL, M, MAXCOR, MSBP
-CC
-CC Type declaration for function subroutines called ---------------------
-CC
-C      REAL SVNORM
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to this integrator.
-CC-----------------------------------------------------------------------
-C      SAVE CCMAX, CRDOWN, MAXCOR, MSBP, RDIV, ONE, TWO, ZERO
-CC
-C      COMMON /SVOD01/ ACNRM, CCMXJ, CONP, CRATE, DRC, EL(13),
-C     1                ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2                RC, RL1, TAU(13), TQ(5), TN, UROUND,
-C     3                ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     4                L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     5                LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     6                N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     7                NSLP, NYH
-C      COMMON /SVOD02/ HU, NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-C      DATA CCMAX /0.3E0/, CRDOWN /0.3E0/, MAXCOR /3/, MSBP /20/,
-C     1     RDIV  /2.0E0/
-C      DATA ONE /1.0E0/, TWO /2.0E0/, ZERO /0.0E0/
-CC-----------------------------------------------------------------------
-CC On the first step, on a change of method order, or after a
-CC nonlinear convergence failure with NFLAG = -2, set IPUP = MITER
-CC to force a Jacobian update when MITER .ne. 0.
-CC-----------------------------------------------------------------------
-C      IF (JSTART .EQ. 0) NSLP = 0
-C      IF (NFLAG .EQ. 0) ICF = 0
-C      IF (NFLAG .EQ. -2) IPUP = MITER
-C      IF ( (JSTART .EQ. 0) .OR. (JSTART .EQ. -1) ) IPUP = MITER
-CC If this is functional iteration, set CRATE .eq. 1 and drop to 220
-C      IF (MITER .EQ. 0) THEN
-C        CRATE = ONE
-C        GO TO 220
-C      ENDIF
-CC-----------------------------------------------------------------------
-CC RC is the ratio of new to old values of the coefficient H/EL(2)=h/l1.
-CC When RC differs from 1 by more than CCMAX, IPUP is set to MITER
-CC to force SVJAC to be called, if a Jacobian is involved.
-CC In any case, SVJAC is called at least every MSBP steps.
-CC-----------------------------------------------------------------------
-C      DRC = ABS(RC-ONE)
-C      IF (DRC .GT. CCMAX .OR. NST .GE. NSLP+MSBP) IPUP = MITER
-CC-----------------------------------------------------------------------
-CC Up to MAXCOR corrector iterations are taken.  A convergence test is
-CC made on the r.m.s. norm of each correction, weighted by the error
-CC weight vector EWT.  The sum of the corrections is accumulated in the
-CC vector ACOR(i).  The YH array is not altered in the corrector loop.
-CC-----------------------------------------------------------------------
-C 220  M = 0
-C      DELP = ZERO
-C      CALL SCOPY (N, YH(1,1), 1, Y, 1 )
-C      CALL F (N, TN, Y, SAVF, RPAR, IPAR)
-C      NFE = NFE + 1
-C      IF (IPUP .LE. 0) GO TO 250
-CC-----------------------------------------------------------------------
-CC If indicated, the matrix P = I - h*rl1*J is reevaluated and
-CC preprocessed before starting the corrector iteration.  IPUP is set
-CC to 0 as an indicator that this has been done.
-CC-----------------------------------------------------------------------
-C      CALL SVJAC (Y, YH, LDYH, EWT, ACOR, SAVF, WM, IWM, F, JAC, IERPJ,
-C     1           RPAR, IPAR)
-C      IPUP = 0
-C      RC = ONE
-C      DRC = ZERO
-C      CRATE = ONE
-C      NSLP = NST
-CC If matrix is singular, take error return to force cut in step size. --
-C      IF (IERPJ .NE. 0) GO TO 430
-C 250  DO 260 I = 1,N
-C 260    ACOR(I) = ZERO
-CC This is a looping point for the corrector iteration. -----------------
-C 270  IF (MITER .NE. 0) GO TO 350
-CC-----------------------------------------------------------------------
-CC In the case of functional iteration, update Y directly from
-CC the result of the last function evaluation.
-CC-----------------------------------------------------------------------
-C      DO 280 I = 1,N
-C 280    SAVF(I) = RL1*(H*SAVF(I) - YH(I,2))
-C      DO 290 I = 1,N
-C 290    Y(I) = SAVF(I) - ACOR(I)
-C      DEL = SVNORM (N, Y, EWT)
-C      DO 300 I = 1,N
-C 300    Y(I) = YH(I,1) + SAVF(I)
-C      CALL SCOPY (N, SAVF, 1, ACOR, 1)
-C      GO TO 400
-CC-----------------------------------------------------------------------
-CC In the case of the chord method, compute the corrector error,
-CC and solve the linear system with that as right-hand side and
-CC P as coefficient matrix.  The correction is scaled by the factor
-CC 2/(1+RC) to account for changes in h*rl1 since the last SVJAC call.
-CC-----------------------------------------------------------------------
-C 350  DO 360 I = 1,N
-C 360    Y(I) = (RL1*H)*SAVF(I) - (RL1*YH(I,2) + ACOR(I))
-C      CALL SVSOL (WM, IWM, Y, IERSL)
-C      NNI = NNI + 1
-C      IF (IERSL .GT. 0) GO TO 410
-C      IF (METH .EQ. 2 .AND. RC .NE. ONE) THEN
-C        CSCALE = TWO/(ONE + RC)
-C        CALL SSCAL (N, CSCALE, Y, 1)
-C      ENDIF
-C      DEL = SVNORM (N, Y, EWT)
-C      CALL SAXPY (N, ONE, Y, 1, ACOR, 1)
-C      DO 380 I = 1,N
-C 380    Y(I) = YH(I,1) + ACOR(I)
-CC-----------------------------------------------------------------------
-CC Test for convergence.  If M .gt. 0, an estimate of the convergence
-CC rate constant is stored in CRATE, and this is used in the test.
-CC-----------------------------------------------------------------------
-C 400  IF (M .NE. 0) CRATE = MAX(CRDOWN*CRATE,DEL/DELP)
-C      DCON = DEL*MIN(ONE,CRATE)/TQ(4)
-C      IF (DCON .LE. ONE) GO TO 450
-C      M = M + 1
-C      IF (M .EQ. MAXCOR) GO TO 410
-C      IF (M .GE. 2 .AND. DEL .GT. RDIV*DELP) GO TO 410
-C      DELP = DEL
-C      CALL F (N, TN, Y, SAVF, RPAR, IPAR)
-C      NFE = NFE + 1
-C      GO TO 270
-CC
-C 410  IF (MITER .EQ. 0 .OR. JCUR .EQ. 1) GO TO 430
-C      ICF = 1
-C      IPUP = MITER
-C      GO TO 220
-CC
-C 430  CONTINUE
-C      NFLAG = -1
-C      ICF = 2
-C      IPUP = MITER
-C      RETURN
-CC
-CC Return for successful step. ------------------------------------------
-C 450  NFLAG = 0
-C      JCUR = 0
-C      ICF = 0
-C      IF (M .EQ. 0) ACNRM = DEL
-C      IF (M .GT. 0) ACNRM = SVNORM (N, ACOR, EWT)
-C      RETURN
-CC----------------------- End of Subroutine SVNLSD ----------------------
-C      END
-C      REAL FUNCTION SVNORM (N, V, W)
-C      REAL V, W
-C      INTEGER N
-C      DIMENSION V(N), W(N)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- N, V, W
-CC Call sequence output -- None
-CC COMMON block variables accessed -- None
-CC
-CC Subroutines/functions called by SVNORM.. None
-CC-----------------------------------------------------------------------
-CC This function routine computes the weighted root-mean-square norm
-CC of the vector of length N contained in the array V, with weights
-CC contained in the array W of length N..
-CC   SVNORM = sqrt( (1/N) * sum( V(i)*W(i) )**2 )
-CC-----------------------------------------------------------------------
-C      REAL SUM
-C      INTEGER I
-CC
-C      SUM = 0.0E0
-C      DO 10 I = 1, N
-C 10     SUM = SUM + (V(I)*W(I))**2
-C      SVNORM = SQRT(SUM/REAL(N))
-C      RETURN
-CC----------------------- End of Function SVNORM ------------------------
-C      END
-C      SUBROUTINE SVODE (F, NEQ, Y, T, TOUT, ITOL, RTOL, ATOL, ITASK,
-C     1            ISTATE, IOPT, RWORK, LRW, IWORK, LIW, JAC, MF,
-C     2            RPAR, IPAR)
-C      EXTERNAL F, JAC
-C      REAL Y, T, TOUT, RTOL, ATOL, RWORK, RPAR
-C      INTEGER NEQ, ITOL, ITASK, ISTATE, IOPT, LRW, IWORK, LIW,
-C     1        MF, IPAR
-C      DIMENSION Y(*), RTOL(*), ATOL(*), RWORK(LRW), IWORK(LIW),
-C     1          RPAR(*), IPAR(*)
-CC-----------------------------------------------------------------------
-CC SVODE.. Variable-coefficient Ordinary Differential Equation solver,
-CC with fixed-leading coefficient implementation.
-CC This version is in single precision.
-CC
-CC SVODE solves the initial value problem for stiff or nonstiff
-CC systems of first order ODEs,
-CC     dy/dt = f(t,y) ,  or, in component form,
-CC     dy(i)/dt = f(i) = f(i,t,y(1),y(2),...,y(NEQ)) (i = 1,...,NEQ).
-CC SVODE is a package based on the EPISODE and EPISODEB packages, and
-CC on the ODEPACK user interface standard, with minor modifications.
-CC-----------------------------------------------------------------------
-CC Revision History (YYMMDD)
-CC   890615  Date Written
-CC   890922  Added interrupt/restart ability, minor changes throughout.
-CC   910228  Minor revisions in line format,  prologue, etc.
-CC   920227  Modifications by D. Pang:
-CC           (1) Applied subgennam to get generic intrinsic names.
-CC           (2) Changed intrinsic names to generic in comments.
-CC           (3) Added *DECK lines before each routine.
-CC   920721  Names of routines and labeled Common blocks changed, so as
-CC           to be unique in combined single/double precision code (ACH).
-CC   920722  Minor revisions to prologue (ACH).
-CC-----------------------------------------------------------------------
-CC References..
-CC
-CC 1. P. N. Brown, G. D. Byrne, and A. C. Hindmarsh, "VODE: A Variable
-CC    Coefficient ODE Solver," SIAM J. Sci. Stat. Comput., 10 (1989),
-CC    pp. 1038-1051.  Also, LLNL Report UCRL-98412, June 1988.
-CC 2. G. D. Byrne and A. C. Hindmarsh, "A Polyalgorithm for the
-CC    Numerical Solution of Ordinary Differential Equations,"
-CC    ACM Trans. Math. Software, 1 (1975), pp. 71-96.
-CC 3. A. C. Hindmarsh and G. D. Byrne, "EPISODE: An Effective Package
-CC    for the Integration of Systems of Ordinary Differential
-CC    Equations," LLNL Report UCID-30112, Rev. 1, April 1977.
-CC 4. G. D. Byrne and A. C. Hindmarsh, "EPISODEB: An Experimental
-CC    Package for the Integration of Systems of Ordinary Differential
-CC    Equations with Banded Jacobians," LLNL Report UCID-30132, April
-CC    1976.
-CC 5. A. C. Hindmarsh, "ODEPACK, a Systematized Collection of ODE
-CC    Solvers," in Scientific Computing, R. S. Stepleman et al., eds.,
-CC    North-Holland, Amsterdam, 1983, pp. 55-64.
-CC 6. K. R. Jackson and R. Sacks-Davis, "An Alternative Implementation
-CC    of Variable Step-Size Multistep Formulas for Stiff ODEs," ACM
-CC    Trans. Math. Software, 6 (1980), pp. 295-318.
-CC-----------------------------------------------------------------------
-CC Authors..
-CC
-CC               Peter N. Brown and Alan C. Hindmarsh
-CC               Computing and Mathematics Research Division, L-316
-CC               Lawrence Livermore National Laboratory
-CC               Livermore, CA 94550
-CC and
-CC               George D. Byrne
-CC               Exxon Research and Engineering Co.
-CC               Clinton Township
-CC               Route 22 East
-CC               Annandale, NJ 08801
-CC-----------------------------------------------------------------------
-CC Summary of usage.
-CC
-CC Communication between the user and the SVODE package, for normal
-CC situations, is summarized here.  This summary describes only a subset
-CC of the full set of options available.  See the full description for
-CC details, including optional communication, nonstandard options,
-CC and instructions for special situations.  See also the example
-CC problem (with program and output) following this summary.
-CC
-CC A. First provide a subroutine of the form..
-CC
-CC           SUBROUTINE F (NEQ, T, Y, YDOT, RPAR, IPAR)
-CC           REAL T, Y, YDOT, RPAR
-CC           DIMENSION Y(NEQ), YDOT(NEQ)
-CC
-CC which supplies the vector function f by loading YDOT(i) with f(i).
-CC
-CC B. Next determine (or guess) whether or not the problem is stiff.
-CC Stiffness occurs when the Jacobian matrix df/dy has an eigenvalue
-CC whose real part is negative and large in magnitude, compared to the
-CC reciprocal of the t span of interest.  If the problem is nonstiff,
-CC use a method flag MF = 10.  If it is stiff, there are four standard
-CC choices for MF (21, 22, 24, 25), and SVODE requires the Jacobian
-CC matrix in some form.  In these cases (MF .gt. 0), SVODE will use a
-CC saved copy of the Jacobian matrix.  If this is undesirable because of
-CC storage limitations, set MF to the corresponding negative value
-CC (-21, -22, -24, -25).  (See full description of MF below.)
-CC The Jacobian matrix is regarded either as full (MF = 21 or 22),
-CC or banded (MF = 24 or 25).  In the banded case, SVODE requires two
-CC half-bandwidth parameters ML and MU.  These are, respectively, the
-CC widths of the lower and upper parts of the band, excluding the main
-CC diagonal.  Thus the band consists of the locations (i,j) with
-CC i-ML .le. j .le. i+MU, and the full bandwidth is ML+MU+1.
-CC
-CC C. If the problem is stiff, you are encouraged to supply the Jacobian
-CC directly (MF = 21 or 24), but if this is not feasible, SVODE will
-CC compute it internally by difference quotients (MF = 22 or 25).
-CC If you are supplying the Jacobian, provide a subroutine of the form..
-CC
-CC           SUBROUTINE JAC (NEQ, T, Y, ML, MU, PD, NROWPD, RPAR, IPAR)
-CC           REAL T, Y, PD, RPAR
-CC           DIMENSION Y(NEQ), PD(NROWPD,NEQ)
-CC
-CC which supplies df/dy by loading PD as follows..
-CC     For a full Jacobian (MF = 21), load PD(i,j) with df(i)/dy(j),
-CC the partial derivative of f(i) with respect to y(j).  (Ignore the
-CC ML and MU arguments in this case.)
-CC     For a banded Jacobian (MF = 24), load PD(i-j+MU+1,j) with
-CC df(i)/dy(j), i.e. load the diagonal lines of df/dy into the rows of
-CC PD from the top down.
-CC     In either case, only nonzero elements need be loaded.
-CC
-CC D. Write a main program which calls subroutine SVODE once for
-CC each point at which answers are desired.  This should also provide
-CC for possible use of logical unit 6 for output of error messages
-CC by SVODE.  On the first call to SVODE, supply arguments as follows..
-CC F      = Name of subroutine for right-hand side vector f.
-CC          This name must be declared external in calling program.
-CC NEQ    = Number of first order ODE-s.
-CC Y      = Array of initial values, of length NEQ.
-CC T      = The initial value of the independent variable.
-CC TOUT   = First point where output is desired (.ne. T).
-CC ITOL   = 1 or 2 according as ATOL (below) is a scalar or array.
-CC RTOL   = Relative tolerance parameter (scalar).
-CC ATOL   = Absolute tolerance parameter (scalar or array).
-CC          The estimated local error in Y(i) will be controlled so as
-CC          to be roughly less (in magnitude) than
-CC             EWT(i) = RTOL*abs(Y(i)) + ATOL     if ITOL = 1, or
-CC             EWT(i) = RTOL*abs(Y(i)) + ATOL(i)  if ITOL = 2.
-CC          Thus the local error test passes if, in each component,
-CC          either the absolute error is less than ATOL (or ATOL(i)),
-CC          or the relative error is less than RTOL.
-CC          Use RTOL = 0.0 for pure absolute error control, and
-CC          use ATOL = 0.0 (or ATOL(i) = 0.0) for pure relative error
-CC          control.  Caution.. Actual (global) errors may exceed these
-CC          local tolerances, so choose them conservatively.
-CC ITASK  = 1 for normal computation of output values of Y at t = TOUT.
-CC ISTATE = Integer flag (input and output).  Set ISTATE = 1.
-CC IOPT   = 0 to indicate no optional input used.
-CC RWORK  = Real work array of length at least..
-CC             20 + 16*NEQ                      for MF = 10,
-CC             22 +  9*NEQ + 2*NEQ**2           for MF = 21 or 22,
-CC             22 + 11*NEQ + (3*ML + 2*MU)*NEQ  for MF = 24 or 25.
-CC LRW    = Declared length of RWORK (in user's DIMENSION statement).
-CC IWORK  = Integer work array of length at least..
-CC             30        for MF = 10,
-CC             30 + NEQ  for MF = 21, 22, 24, or 25.
-CC          If MF = 24 or 25, input in IWORK(1),IWORK(2) the lower
-CC          and upper half-bandwidths ML,MU.
-CC LIW    = Declared length of IWORK (in user's DIMENSION).
-CC JAC    = Name of subroutine for Jacobian matrix (MF = 21 or 24).
-CC          If used, this name must be declared external in calling
-CC          program.  If not used, pass a dummy name.
-CC MF     = Method flag.  Standard values are..
-CC          10 for nonstiff (Adams) method, no Jacobian used.
-CC          21 for stiff (BDF) method, user-supplied full Jacobian.
-CC          22 for stiff method, internally generated full Jacobian.
-CC          24 for stiff method, user-supplied banded Jacobian.
-CC          25 for stiff method, internally generated banded Jacobian.
-CC RPAR,IPAR = user-defined real and integer arrays passed to F and JAC.
-CC Note that the main program must declare arrays Y, RWORK, IWORK,
-CC and possibly ATOL, RPAR, and IPAR.
-CC
-CC E. The output from the first call (or any call) is..
-CC      Y = Array of computed values of y(t) vector.
-CC      T = Corresponding value of independent variable (normally TOUT).
-CC ISTATE = 2  if SVODE was successful, negative otherwise.
-CC          -1 means excess work done on this call. (Perhaps wrong MF.)
-CC          -2 means excess accuracy requested. (Tolerances too small.)
-CC          -3 means illegal input detected. (See printed message.)
-CC          -4 means repeated error test failures. (Check all input.)
-CC          -5 means repeated convergence failures. (Perhaps bad
-CC             Jacobian supplied or wrong choice of MF or tolerances.)
-CC          -6 means error weight became zero during problem. (Solution
-CC             component i vanished, and ATOL or ATOL(i) = 0.)
-CC
-CC F. To continue the integration after a successful return, simply
-CC reset TOUT and call SVODE again.  No other parameters need be reset.
-CC
-CC-----------------------------------------------------------------------
-CC EXAMPLE PROBLEM
-CC
-CC The following is a simple example problem, with the coding
-CC needed for its solution by SVODE.  The problem is from chemical
-CC kinetics, and consists of the following three rate equations..
-CC     dy1/dt = -.04*y1 + 1.e4*y2*y3
-CC     dy2/dt = .04*y1 - 1.e4*y2*y3 - 3.e7*y2**2
-CC     dy3/dt = 3.e7*y2**2
-CC on the interval from t = 0.0 to t = 4.e10, with initial conditions
-CC y1 = 1.0, y2 = y3 = 0.  The problem is stiff.
-CC
-CC The following coding solves this problem with SVODE, using MF = 21
-CC and printing results at t = .4, 4., ..., 4.e10.  It uses
-CC ITOL = 2 and ATOL much smaller for y2 than y1 or y3 because
-CC y2 has much smaller values.
-CC At the end of the run, statistical quantities of interest are
-CC printed. (See optional output in the full description below.)
-CC To generate Fortran source code, replace C in column 1 with a blank
-CC in the coding below.
-CC
-CC     EXTERNAL FEX, JEX
-CC     REAL ATOL, RPAR, RTOL, RWORK, T, TOUT, Y
-CC     DIMENSION Y(3), ATOL(3), RWORK(67), IWORK(33)
-CC     NEQ = 3
-CC     Y(1) = 1.0E0
-CC     Y(2) = 0.0E0
-CC     Y(3) = 0.0E0
-CC     T = 0.0E0
-CC     TOUT = 0.4E0
-CC     ITOL = 2
-CC     RTOL = 1.E-4
-CC     ATOL(1) = 1.E-8
-CC     ATOL(2) = 1.E-14
-CC     ATOL(3) = 1.E-6
-CC     ITASK = 1
-CC     ISTATE = 1
-CC     IOPT = 0
-CC     LRW = 67
-CC     LIW = 33
-CC     MF = 21
-CC     DO 40 IOUT = 1,12
-CC       CALL SVODE(FEX,NEQ,Y,T,TOUT,ITOL,RTOL,ATOL,ITASK,ISTATE,
-CC    1            IOPT,RWORK,LRW,IWORK,LIW,JEX,MF,RPAR,IPAR)
-CC       WRITE(6,20)T,Y(1),Y(2),Y(3)
-CC 20    FORMAT(' At t =',E12.4,'   y =',3E14.6)
-CC       IF (ISTATE .LT. 0) GO TO 80
-CC 40    TOUT = TOUT*10.
-CC     WRITE(6,60) IWORK(11),IWORK(12),IWORK(13),IWORK(19),
-CC    1            IWORK(20),IWORK(21),IWORK(22)
-CC 60  FORMAT(/' No. steps =',I4,'   No. f-s =',I4,
-CC    1       '   No. J-s =',I4,'   No. LU-s =',I4/
-CC    2       '  No. nonlinear iterations =',I4/
-CC    3       '  No. nonlinear convergence failures =',I4/
-CC    4       '  No. error test failures =',I4/)
-CC     STOP
-CC 80  WRITE(6,90)ISTATE
-CC 90  FORMAT(///' Error halt.. ISTATE =',I3)
-CC     STOP
-CC     END
-CC
-CC     SUBROUTINE FEX (NEQ, T, Y, YDOT, RPAR, IPAR)
-CC     REAL RPAR, T, Y, YDOT
-CC     DIMENSION Y(NEQ), YDOT(NEQ)
-CC     YDOT(1) = -.04E0*Y(1) + 1.E4*Y(2)*Y(3)
-CC     YDOT(3) = 3.E7*Y(2)*Y(2)
-CC     YDOT(2) = -YDOT(1) - YDOT(3)
-CC     RETURN
-CC     END
-CC
-CC     SUBROUTINE JEX (NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
-CC     REAL PD, RPAR, T, Y
-CC     DIMENSION Y(NEQ), PD(NRPD,NEQ)
-CC     PD(1,1) = -.04E0
-CC     PD(1,2) = 1.E4*Y(3)
-CC     PD(1,3) = 1.E4*Y(2)
-CC     PD(2,1) = .04E0
-CC     PD(2,3) = -PD(1,3)
-CC     PD(3,2) = 6.E7*Y(2)
-CC     PD(2,2) = -PD(1,2) - PD(3,2)
-CC     RETURN
-CC     END
-CC
-CC The following output was obtained from the above program on a
-CC Cray-1 computer with the CFT compiler.
-CC
-CC At t =  4.0000e-01   y =  9.851680e-01  3.386314e-05  1.479817e-02
-CC At t =  4.0000e+00   y =  9.055255e-01  2.240539e-05  9.445214e-02
-CC At t =  4.0000e+01   y =  7.158108e-01  9.184883e-06  2.841800e-01
-CC At t =  4.0000e+02   y =  4.505032e-01  3.222940e-06  5.494936e-01
-CC At t =  4.0000e+03   y =  1.832053e-01  8.942690e-07  8.167938e-01
-CC At t =  4.0000e+04   y =  3.898560e-02  1.621875e-07  9.610142e-01
-CC At t =  4.0000e+05   y =  4.935882e-03  1.984013e-08  9.950641e-01
-CC At t =  4.0000e+06   y =  5.166183e-04  2.067528e-09  9.994834e-01
-CC At t =  4.0000e+07   y =  5.201214e-05  2.080593e-10  9.999480e-01
-CC At t =  4.0000e+08   y =  5.213149e-06  2.085271e-11  9.999948e-01
-CC At t =  4.0000e+09   y =  5.183495e-07  2.073399e-12  9.999995e-01
-CC At t =  4.0000e+10   y =  5.450996e-08  2.180399e-13  9.999999e-01
-CC
-CC No. steps = 595   No. f-s = 832   No. J-s =  13   No. LU-s = 112
-CC  No. nonlinear iterations = 831
-CC  No. nonlinear convergence failures =   0
-CC  No. error test failures =  22
-CC-----------------------------------------------------------------------
-CC Full description of user interface to SVODE.
-CC
-CC The user interface to SVODE consists of the following parts.
-CC
-CC i.   The call sequence to subroutine SVODE, which is a driver
-CC      routine for the solver.  This includes descriptions of both
-CC      the call sequence arguments and of user-supplied routines.
-CC      Following these descriptions is
-CC        * a description of optional input available through the
-CC          call sequence,
-CC        * a description of optional output (in the work arrays), and
-CC        * instructions for interrupting and restarting a solution.
-CC
-CC ii.  Descriptions of other routines in the SVODE package that may be
-CC      (optionally) called by the user.  These provide the ability to
-CC      alter error message handling, save and restore the internal
-CC      COMMON, and obtain specified derivatives of the solution y(t).
-CC
-CC iii. Descriptions of COMMON blocks to be declared in overlay
-CC      or similar environments.
-CC
-CC iv.  Description of two routines in the SVODE package, either of
-CC      which the user may replace with his own version, if desired.
-CC      these relate to the measurement of errors.
-CC
-CC-----------------------------------------------------------------------
-CC Part i.  Call Sequence.
-CC
-CC The call sequence parameters used for input only are
-CC     F, NEQ, TOUT, ITOL, RTOL, ATOL, ITASK, IOPT, LRW, LIW, JAC, MF,
-CC and those used for both input and output are
-CC     Y, T, ISTATE.
-CC The work arrays RWORK and IWORK are also used for conditional and
-CC optional input and optional output.  (The term output here refers
-CC to the return from subroutine SVODE to the user's calling program.)
-CC
-CC The legality of input parameters will be thoroughly checked on the
-CC initial call for the problem, but not checked thereafter unless a
-CC change in input parameters is flagged by ISTATE = 3 in the input.
-CC
-CC The descriptions of the call arguments are as follows.
-CC
-CC F      = The name of the user-supplied subroutine defining the
-CC          ODE system.  The system must be put in the first-order
-CC          form dy/dt = f(t,y), where f is a vector-valued function
-CC          of the scalar t and the vector y.  Subroutine F is to
-CC          compute the function f.  It is to have the form
-CC               SUBROUTINE F (NEQ, T, Y, YDOT, RPAR, IPAR)
-CC               REAL T, Y, YDOT, RPAR
-CC               DIMENSION Y(NEQ), YDOT(NEQ)
-CC          where NEQ, T, and Y are input, and the array YDOT = f(t,y)
-CC          is output.  Y and YDOT are arrays of length NEQ.
-CC          (In the DIMENSION statement above, NEQ  can be replaced by
-CC          *  to make  Y  and  YDOT  assumed size arrays.)
-CC          Subroutine F should not alter Y(1),...,Y(NEQ).
-CC          F must be declared EXTERNAL in the calling program.
-CC
-CC          Subroutine F may access user-defined real and integer
-CC          work arrays RPAR and IPAR, which are to be dimensioned
-CC          in the main program.
-CC
-CC          If quantities computed in the F routine are needed
-CC          externally to SVODE, an extra call to F should be made
-CC          for this purpose, for consistent and accurate results.
-CC          If only the derivative dy/dt is needed, use SVINDY instead.
-CC
-CC NEQ    = The size of the ODE system (number of first order
-CC          ordinary differential equations).  Used only for input.
-CC          NEQ may not be increased during the problem, but
-CC          can be decreased (with ISTATE = 3 in the input).
-CC
-CC Y      = A real array for the vector of dependent variables, of
-CC          length NEQ or more.  Used for both input and output on the
-CC          first call (ISTATE = 1), and only for output on other calls.
-CC          On the first call, Y must contain the vector of initial
-CC          values.  In the output, Y contains the computed solution
-CC          evaluated at T.  If desired, the Y array may be used
-CC          for other purposes between calls to the solver.
-CC
-CC          This array is passed as the Y argument in all calls to
-CC          F and JAC.
-CC
-CC T      = The independent variable.  In the input, T is used only on
-CC          the first call, as the initial point of the integration.
-CC          In the output, after each call, T is the value at which a
-CC          computed solution Y is evaluated (usually the same as TOUT).
-CC          On an error return, T is the farthest point reached.
-CC
-CC TOUT   = The next value of t at which a computed solution is desired.
-CC          Used only for input.
-CC
-CC          When starting the problem (ISTATE = 1), TOUT may be equal
-CC          to T for one call, then should .ne. T for the next call.
-CC          For the initial T, an input value of TOUT .ne. T is used
-CC          in order to determine the direction of the integration
-CC          (i.e. the algebraic sign of the step sizes) and the rough
-CC          scale of the problem.  Integration in either direction
-CC          (forward or backward in t) is permitted.
-CC
-CC          If ITASK = 2 or 5 (one-step modes), TOUT is ignored after
-CC          the first call (i.e. the first call with TOUT .ne. T).
-CC          Otherwise, TOUT is required on every call.
-CC
-CC          If ITASK = 1, 3, or 4, the values of TOUT need not be
-CC          monotone, but a value of TOUT which backs up is limited
-CC          to the current internal t interval, whose endpoints are
-CC          TCUR - HU and TCUR.  (See optional output, below, for
-CC          TCUR and HU.)
-CC
-CC ITOL   = An indicator for the type of error control.  See
-CC          description below under ATOL.  Used only for input.
-CC
-CC RTOL   = A relative error tolerance parameter, either a scalar or
-CC          an array of length NEQ.  See description below under ATOL.
-CC          Input only.
-CC
-CC ATOL   = An absolute error tolerance parameter, either a scalar or
-CC          an array of length NEQ.  Input only.
-CC
-CC          The input parameters ITOL, RTOL, and ATOL determine
-CC          the error control performed by the solver.  The solver will
-CC          control the vector e = (e(i)) of estimated local errors
-CC          in Y, according to an inequality of the form
-CC                      rms-norm of ( e(i)/EWT(i) )   .le.   1,
-CC          where       EWT(i) = RTOL(i)*abs(Y(i)) + ATOL(i),
-CC          and the rms-norm (root-mean-square norm) here is
-CC          rms-norm(v) = sqrt(sum v(i)**2 / NEQ).  Here EWT = (EWT(i))
-CC          is a vector of weights which must always be positive, and
-CC          the values of RTOL and ATOL should all be non-negative.
-CC          The following table gives the types (scalar/array) of
-CC          RTOL and ATOL, and the corresponding form of EWT(i).
-CC
-CC             ITOL    RTOL       ATOL          EWT(i)
-CC              1     scalar     scalar     RTOL*ABS(Y(i)) + ATOL
-CC              2     scalar     array      RTOL*ABS(Y(i)) + ATOL(i)
-CC              3     array      scalar     RTOL(i)*ABS(Y(i)) + ATOL
-CC              4     array      array      RTOL(i)*ABS(Y(i)) + ATOL(i)
-CC
-CC          When either of these parameters is a scalar, it need not
-CC          be dimensioned in the user's calling program.
-CC
-CC          If none of the above choices (with ITOL, RTOL, and ATOL
-CC          fixed throughout the problem) is suitable, more general
-CC          error controls can be obtained by substituting
-CC          user-supplied routines for the setting of EWT and/or for
-CC          the norm calculation.  See Part iv below.
-CC
-CC          If global errors are to be estimated by making a repeated
-CC          run on the same problem with smaller tolerances, then all
-CC          components of RTOL and ATOL (i.e. of EWT) should be scaled
-CC          down uniformly.
-CC
-CC ITASK  = An index specifying the task to be performed.
-CC          Input only.  ITASK has the following values and meanings.
-CC          1  means normal computation of output values of y(t) at
-CC             t = TOUT (by overshooting and interpolating).
-CC          2  means take one step only and return.
-CC          3  means stop at the first internal mesh point at or
-CC             beyond t = TOUT and return.
-CC          4  means normal computation of output values of y(t) at
-CC             t = TOUT but without overshooting t = TCRIT.
-CC             TCRIT must be input as RWORK(1).  TCRIT may be equal to
-CC             or beyond TOUT, but not behind it in the direction of
-CC             integration.  This option is useful if the problem
-CC             has a singularity at or beyond t = TCRIT.
-CC          5  means take one step, without passing TCRIT, and return.
-CC             TCRIT must be input as RWORK(1).
-CC
-CC          Note..  If ITASK = 4 or 5 and the solver reaches TCRIT
-CC          (within roundoff), it will return T = TCRIT (exactly) to
-CC          indicate this (unless ITASK = 4 and TOUT comes before TCRIT,
-CC          in which case answers at T = TOUT are returned first).
-CC
-CC ISTATE = an index used for input and output to specify the
-CC          the state of the calculation.
-CC
-CC          In the input, the values of ISTATE are as follows.
-CC          1  means this is the first call for the problem
-CC             (initializations will be done).  See note below.
-CC          2  means this is not the first call, and the calculation
-CC             is to continue normally, with no change in any input
-CC             parameters except possibly TOUT and ITASK.
-CC             (If ITOL, RTOL, and/or ATOL are changed between calls
-CC             with ISTATE = 2, the new values will be used but not
-CC             tested for legality.)
-CC          3  means this is not the first call, and the
-CC             calculation is to continue normally, but with
-CC             a change in input parameters other than
-CC             TOUT and ITASK.  Changes are allowed in
-CC             NEQ, ITOL, RTOL, ATOL, IOPT, LRW, LIW, MF, ML, MU,
-CC             and any of the optional input except H0.
-CC             (See IWORK description for ML and MU.)
-CC          Note..  A preliminary call with TOUT = T is not counted
-CC          as a first call here, as no initialization or checking of
-CC          input is done.  (Such a call is sometimes useful to include
-CC          the initial conditions in the output.)
-CC          Thus the first call for which TOUT .ne. T requires
-CC          ISTATE = 1 in the input.
-CC
-CC          In the output, ISTATE has the following values and meanings.
-CC           1  means nothing was done, as TOUT was equal to T with
-CC              ISTATE = 1 in the input.
-CC           2  means the integration was performed successfully.
-CC          -1  means an excessive amount of work (more than MXSTEP
-CC              steps) was done on this call, before completing the
-CC              requested task, but the integration was otherwise
-CC              successful as far as T.  (MXSTEP is an optional input
-CC              and is normally 500.)  To continue, the user may
-CC              simply reset ISTATE to a value .gt. 1 and call again.
-CC              (The excess work step counter will be reset to 0.)
-CC              In addition, the user may increase MXSTEP to avoid
-CC              this error return.  (See optional input below.)
-CC          -2  means too much accuracy was requested for the precision
-CC              of the machine being used.  This was detected before
-CC              completing the requested task, but the integration
-CC              was successful as far as T.  To continue, the tolerance
-CC              parameters must be reset, and ISTATE must be set
-CC              to 3.  The optional output TOLSF may be used for this
-CC              purpose.  (Note.. If this condition is detected before
-CC              taking any steps, then an illegal input return
-CC              (ISTATE = -3) occurs instead.)
-CC          -3  means illegal input was detected, before taking any
-CC              integration steps.  See written message for details.
-CC              Note..  If the solver detects an infinite loop of calls
-CC              to the solver with illegal input, it will cause
-CC              the run to stop.
-CC          -4  means there were repeated error test failures on
-CC              one attempted step, before completing the requested
-CC              task, but the integration was successful as far as T.
-CC              The problem may have a singularity, or the input
-CC              may be inappropriate.
-CC          -5  means there were repeated convergence test failures on
-CC              one attempted step, before completing the requested
-CC              task, but the integration was successful as far as T.
-CC              This may be caused by an inaccurate Jacobian matrix,
-CC              if one is being used.
-CC          -6  means EWT(i) became zero for some i during the
-CC              integration.  Pure relative error control (ATOL(i)=0.0)
-CC              was requested on a variable which has now vanished.
-CC              The integration was successful as far as T.
-CC
-CC          Note..  Since the normal output value of ISTATE is 2,
-CC          it does not need to be reset for normal continuation.
-CC          Also, since a negative input value of ISTATE will be
-CC          regarded as illegal, a negative output value requires the
-CC          user to change it, and possibly other input, before
-CC          calling the solver again.
-CC
-CC IOPT   = An integer flag to specify whether or not any optional
-CC          input is being used on this call.  Input only.
-CC          The optional input is listed separately below.
-CC          IOPT = 0 means no optional input is being used.
-CC                   Default values will be used in all cases.
-CC          IOPT = 1 means optional input is being used.
-CC
-CC RWORK  = A real working array (single precision).
-CC          The length of RWORK must be at least
-CC             20 + NYH*(MAXORD + 1) + 3*NEQ + LWM    where
-CC          NYH    = the initial value of NEQ,
-CC          MAXORD = 12 (if METH = 1) or 5 (if METH = 2) (unless a
-CC                   smaller value is given as an optional input),
-CC          LWM = length of work space for matrix-related data..
-CC          LWM = 0             if MITER = 0,
-CC          LWM = 2*NEQ**2 + 2  if MITER = 1 or 2, and MF.gt.0,
-CC          LWM = NEQ**2 + 2    if MITER = 1 or 2, and MF.lt.0,
-CC          LWM = NEQ + 2       if MITER = 3,
-CC          LWM = (3*ML+2*MU+2)*NEQ + 2 if MITER = 4 or 5, and MF.gt.0,
-CC          LWM = (2*ML+MU+1)*NEQ + 2   if MITER = 4 or 5, and MF.lt.0.
-CC          (See the MF description for METH and MITER.)
-CC          Thus if MAXORD has its default value and NEQ is constant,
-CC          this length is..
-CC             20 + 16*NEQ                    for MF = 10,
-CC             22 + 16*NEQ + 2*NEQ**2         for MF = 11 or 12,
-CC             22 + 16*NEQ + NEQ**2           for MF = -11 or -12,
-CC             22 + 17*NEQ                    for MF = 13,
-CC             22 + 18*NEQ + (3*ML+2*MU)*NEQ  for MF = 14 or 15,
-CC             22 + 17*NEQ + (2*ML+MU)*NEQ    for MF = -14 or -15,
-CC             20 +  9*NEQ                    for MF = 20,
-CC             22 +  9*NEQ + 2*NEQ**2         for MF = 21 or 22,
-CC             22 +  9*NEQ + NEQ**2           for MF = -21 or -22,
-CC             22 + 10*NEQ                    for MF = 23,
-CC             22 + 11*NEQ + (3*ML+2*MU)*NEQ  for MF = 24 or 25.
-CC             22 + 10*NEQ + (2*ML+MU)*NEQ    for MF = -24 or -25.
-CC          The first 20 words of RWORK are reserved for conditional
-CC          and optional input and optional output.
-CC
-CC          The following word in RWORK is a conditional input..
-CC            RWORK(1) = TCRIT = critical value of t which the solver
-CC                       is not to overshoot.  Required if ITASK is
-CC                       4 or 5, and ignored otherwise.  (See ITASK.)
-CC
-CC LRW    = The length of the array RWORK, as declared by the user.
-CC          (This will be checked by the solver.)
-CC
-CC IWORK  = An integer work array.  The length of IWORK must be at least
-CC             30        if MITER = 0 or 3 (MF = 10, 13, 20, 23), or
-CC             30 + NEQ  otherwise (abs(MF) = 11,12,14,15,21,22,24,25).
-CC          The first 30 words of IWORK are reserved for conditional and
-CC          optional input and optional output.
-CC
-CC          The following 2 words in IWORK are conditional input..
-CC            IWORK(1) = ML     These are the lower and upper
-CC            IWORK(2) = MU     half-bandwidths, respectively, of the
-CC                       banded Jacobian, excluding the main diagonal.
-CC                       The band is defined by the matrix locations
-CC                       (i,j) with i-ML .le. j .le. i+MU.  ML and MU
-CC                       must satisfy  0 .le.  ML,MU  .le. NEQ-1.
-CC                       These are required if MITER is 4 or 5, and
-CC                       ignored otherwise.  ML and MU may in fact be
-CC                       the band parameters for a matrix to which
-CC                       df/dy is only approximately equal.
-CC
-CC LIW    = the length of the array IWORK, as declared by the user.
-CC          (This will be checked by the solver.)
-CC
-CC Note..  The work arrays must not be altered between calls to SVODE
-CC for the same problem, except possibly for the conditional and
-CC optional input, and except for the last 3*NEQ words of RWORK.
-CC The latter space is used for internal scratch space, and so is
-CC available for use by the user outside SVODE between calls, if
-CC desired (but not for use by F or JAC).
-CC
-CC JAC    = The name of the user-supplied routine (MITER = 1 or 4) to
-CC          compute the Jacobian matrix, df/dy, as a function of
-CC          the scalar t and the vector y.  It is to have the form
-CC               SUBROUTINE JAC (NEQ, T, Y, ML, MU, PD, NROWPD,
-CC                               RPAR, IPAR)
-CC               REAL T, Y, PD, RPAR
-CC               DIMENSION Y(NEQ), PD(NROWPD, NEQ)
-CC          where NEQ, T, Y, ML, MU, and NROWPD are input and the array
-CC          PD is to be loaded with partial derivatives (elements of the
-CC          Jacobian matrix) in the output.  PD must be given a first
-CC          dimension of NROWPD.  T and Y have the same meaning as in
-CC          Subroutine F.  (In the DIMENSION statement above, NEQ can
-CC          be replaced by  *  to make Y and PD assumed size arrays.)
-CC               In the full matrix case (MITER = 1), ML and MU are
-CC          ignored, and the Jacobian is to be loaded into PD in
-CC          columnwise manner, with df(i)/dy(j) loaded into PD(i,j).
-CC               In the band matrix case (MITER = 4), the elements
-CC          within the band are to be loaded into PD in columnwise
-CC          manner, with diagonal lines of df/dy loaded into the rows
-CC          of PD. Thus df(i)/dy(j) is to be loaded into PD(i-j+MU+1,j).
-CC          ML and MU are the half-bandwidth parameters. (See IWORK).
-CC          The locations in PD in the two triangular areas which
-CC          correspond to nonexistent matrix elements can be ignored
-CC          or loaded arbitrarily, as they are overwritten by SVODE.
-CC               JAC need not provide df/dy exactly.  A crude
-CC          approximation (possibly with a smaller bandwidth) will do.
-CC               In either case, PD is preset to zero by the solver,
-CC          so that only the nonzero elements need be loaded by JAC.
-CC          Each call to JAC is preceded by a call to F with the same
-CC          arguments NEQ, T, and Y.  Thus to gain some efficiency,
-CC          intermediate quantities shared by both calculations may be
-CC          saved in a user COMMON block by F and not recomputed by JAC,
-CC          if desired.  Also, JAC may alter the Y array, if desired.
-CC          JAC must be declared external in the calling program.
-CC               Subroutine JAC may access user-defined real and integer
-CC          work arrays, RPAR and IPAR, whose dimensions are set by the
-CC          user in the main program.
-CC
-CC MF     = The method flag.  Used only for input.  The legal values of
-CC          MF are 10, 11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 25,
-CC          -11, -12, -14, -15, -21, -22, -24, -25.
-CC          MF is a signed two-digit integer, MF = JSV*(10*METH + MITER).
-CC          JSV = SIGN(MF) indicates the Jacobian-saving strategy..
-CC            JSV =  1 means a copy of the Jacobian is saved for reuse
-CC                     in the corrector iteration algorithm.
-CC            JSV = -1 means a copy of the Jacobian is not saved
-CC                     (valid only for MITER = 1, 2, 4, or 5).
-CC          METH indicates the basic linear multistep method..
-CC            METH = 1 means the implicit Adams method.
-CC            METH = 2 means the method based on backward
-CC                     differentiation formulas (BDF-s).
-CC          MITER indicates the corrector iteration method..
-CC            MITER = 0 means functional iteration (no Jacobian matrix
-CC                      is involved).
-CC            MITER = 1 means chord iteration with a user-supplied
-CC                      full (NEQ by NEQ) Jacobian.
-CC            MITER = 2 means chord iteration with an internally
-CC                      generated (difference quotient) full Jacobian
-CC                      (using NEQ extra calls to F per df/dy value).
-CC            MITER = 3 means chord iteration with an internally
-CC                      generated diagonal Jacobian approximation
-CC                      (using 1 extra call to F per df/dy evaluation).
-CC            MITER = 4 means chord iteration with a user-supplied
-CC                      banded Jacobian.
-CC            MITER = 5 means chord iteration with an internally
-CC                      generated banded Jacobian (using ML+MU+1 extra
-CC                      calls to F per df/dy evaluation).
-CC          If MITER = 1 or 4, the user must supply a subroutine JAC
-CC          (the name is arbitrary) as described above under JAC.
-CC          For other values of MITER, a dummy argument can be used.
-CC
-CC RPAR     User-specified array used to communicate real parameters
-CC          to user-supplied subroutines.  If RPAR is a vector, then
-CC          it must be dimensioned in the user's main program.  If it
-CC          is unused or it is a scalar, then it need not be
-CC          dimensioned.
-CC
-CC IPAR     User-specified array used to communicate integer parameter
-CC          to user-supplied subroutines.  The comments on dimensioning
-CC          RPAR apply to IPAR.
-CC-----------------------------------------------------------------------
-CC Optional Input.
-CC
-CC The following is a list of the optional input provided for in the
-CC call sequence.  (See also Part ii.)  For each such input variable,
-CC this table lists its name as used in this documentation, its
-CC location in the call sequence, its meaning, and the default value.
-CC The use of any of this input requires IOPT = 1, and in that
-CC case all of this input is examined.  A value of zero for any
-CC of these optional input variables will cause the default value to be
-CC used.  Thus to use a subset of the optional input, simply preload
-CC locations 5 to 10 in RWORK and IWORK to 0.0 and 0 respectively, and
-CC then set those of interest to nonzero values.
-CC
-CC NAME    LOCATION      MEANING AND DEFAULT VALUE
-CC
-CC H0      RWORK(5)  The step size to be attempted on the first step.
-CC                   The default value is determined by the solver.
-CC
-CC HMAX    RWORK(6)  The maximum absolute step size allowed.
-CC                   The default value is infinite.
-CC
-CC HMIN    RWORK(7)  The minimum absolute step size allowed.
-CC                   The default value is 0.  (This lower bound is not
-CC                   enforced on the final step before reaching TCRIT
-CC                   when ITASK = 4 or 5.)
-CC
-CC MAXORD  IWORK(5)  The maximum order to be allowed.  The default
-CC                   value is 12 if METH = 1, and 5 if METH = 2.
-CC                   If MAXORD exceeds the default value, it will
-CC                   be reduced to the default value.
-CC                   If MAXORD is changed during the problem, it may
-CC                   cause the current order to be reduced.
-CC
-CC MXSTEP  IWORK(6)  Maximum number of (internally defined) steps
-CC                   allowed during one call to the solver.
-CC                   The default value is 500.
-CC
-CC MXHNIL  IWORK(7)  Maximum number of messages printed (per problem)
-CC                   warning that T + H = T on a step (H = step size).
-CC                   This must be positive to result in a non-default
-CC                   value.  The default value is 10.
-CC
-CC-----------------------------------------------------------------------
-CC Optional Output.
-CC
-CC As optional additional output from SVODE, the variables listed
-CC below are quantities related to the performance of SVODE
-CC which are available to the user.  These are communicated by way of
-CC the work arrays, but also have internal mnemonic names as shown.
-CC Except where stated otherwise, all of this output is defined
-CC on any successful return from SVODE, and on any return with
-CC ISTATE = -1, -2, -4, -5, or -6.  On an illegal input return
-CC (ISTATE = -3), they will be unchanged from their existing values
-CC (if any), except possibly for TOLSF, LENRW, and LENIW.
-CC On any error return, output relevant to the error will be defined,
-CC as noted below.
-CC
-CC NAME    LOCATION      MEANING
-CC
-CC HU      RWORK(11) The step size in t last used (successfully).
-CC
-CC HCUR    RWORK(12) The step size to be attempted on the next step.
-CC
-CC TCUR    RWORK(13) The current value of the independent variable
-CC                   which the solver has actually reached, i.e. the
-CC                   current internal mesh point in t.  In the output,
-CC                   TCUR will always be at least as far from the
-CC                   initial value of t as the current argument T,
-CC                   but may be farther (if interpolation was done).
-CC
-CC TOLSF   RWORK(14) A tolerance scale factor, greater than 1.0,
-CC                   computed when a request for too much accuracy was
-CC                   detected (ISTATE = -3 if detected at the start of
-CC                   the problem, ISTATE = -2 otherwise).  If ITOL is
-CC                   left unaltered but RTOL and ATOL are uniformly
-CC                   scaled up by a factor of TOLSF for the next call,
-CC                   then the solver is deemed likely to succeed.
-CC                   (The user may also ignore TOLSF and alter the
-CC                   tolerance parameters in any other way appropriate.)
-CC
-CC NST     IWORK(11) The number of steps taken for the problem so far.
-CC
-CC NFE     IWORK(12) The number of f evaluations for the problem so far.
-CC
-CC NJE     IWORK(13) The number of Jacobian evaluations so far.
-CC
-CC NQU     IWORK(14) The method order last used (successfully).
-CC
-CC NQCUR   IWORK(15) The order to be attempted on the next step.
-CC
-CC IMXER   IWORK(16) The index of the component of largest magnitude in
-CC                   the weighted local error vector ( e(i)/EWT(i) ),
-CC                   on an error return with ISTATE = -4 or -5.
-CC
-CC LENRW   IWORK(17) The length of RWORK actually required.
-CC                   This is defined on normal returns and on an illegal
-CC                   input return for insufficient storage.
-CC
-CC LENIW   IWORK(18) The length of IWORK actually required.
-CC                   This is defined on normal returns and on an illegal
-CC                   input return for insufficient storage.
-CC
-CC NLU     IWORK(19) The number of matrix LU decompositions so far.
-CC
-CC NNI     IWORK(20) The number of nonlinear (Newton) iterations so far.
-CC
-CC NCFN    IWORK(21) The number of convergence failures of the nonlinear
-CC                   solver so far.
-CC
-CC NETF    IWORK(22) The number of error test failures of the integrator
-CC                   so far.
-CC
-CC The following two arrays are segments of the RWORK array which
-CC may also be of interest to the user as optional output.
-CC For each array, the table below gives its internal name,
-CC its base address in RWORK, and its description.
-CC
-CC NAME    BASE ADDRESS      DESCRIPTION
-CC
-CC YH      21             The Nordsieck history array, of size NYH by
-CC                        (NQCUR + 1), where NYH is the initial value
-CC                        of NEQ.  For j = 0,1,...,NQCUR, column j+1
-CC                        of YH contains HCUR**j/factorial(j) times
-CC                        the j-th derivative of the interpolating
-CC                        polynomial currently representing the
-CC                        solution, evaluated at t = TCUR.
-CC
-CC ACOR     LENRW-NEQ+1   Array of size NEQ used for the accumulated
-CC                        corrections on each step, scaled in the output
-CC                        to represent the estimated local error in Y
-CC                        on the last step.  This is the vector e in
-CC                        the description of the error control.  It is
-CC                        defined only on a successful return from SVODE.
-CC
-CC-----------------------------------------------------------------------
-CC Interrupting and Restarting
-CC
-CC If the integration of a given problem by SVODE is to be
-CC interrrupted and then later continued, such as when restarting
-CC an interrupted run or alternating between two or more ODE problems,
-CC the user should save, following the return from the last SVODE call
-CC prior to the interruption, the contents of the call sequence
-CC variables and internal COMMON blocks, and later restore these
-CC values before the next SVODE call for that problem.  To save
-CC and restore the COMMON blocks, use subroutine SVSRCO, as
-CC described below in part ii.
-CC
-CC In addition, if non-default values for either LUN or MFLAG are
-CC desired, an extra call to XSETUN and/or XSETF should be made just
-CC before continuing the integration.  See Part ii below for details.
-CC
-CC-----------------------------------------------------------------------
-CC Part ii.  Other Routines Callable.
-CC
-CC The following are optional calls which the user may make to
-CC gain additional capabilities in conjunction with SVODE.
-CC (The routines XSETUN and XSETF are designed to conform to the
-CC SLATEC error handling package.)
-CC
-CC     FORM OF CALL                  FUNCTION
-CC  CALL XSETUN(LUN)           Set the logical unit number, LUN, for
-CC                             output of messages from SVODE, if
-CC                             the default is not desired.
-CC                             The default value of LUN is 6.
-CC
-CC  CALL XSETF(MFLAG)          Set a flag to control the printing of
-CC                             messages by SVODE.
-CC                             MFLAG = 0 means do not print. (Danger..
-CC                             This risks losing valuable information.)
-CC                             MFLAG = 1 means print (the default).
-CC
-CC                             Either of the above calls may be made at
-CC                             any time and will take effect immediately.
-CC
-CC  CALL SVSRCO(RSAV,ISAV,JOB) Saves and restores the contents of
-CC                             the internal COMMON blocks used by
-CC                             SVODE. (See Part iii below.)
-CC                             RSAV must be a real array of length 49
-CC                             or more, and ISAV must be an integer
-CC                             array of length 40 or more.
-CC                             JOB=1 means save COMMON into RSAV/ISAV.
-CC                             JOB=2 means restore COMMON from RSAV/ISAV.
-CC                                SVSRCO is useful if one is
-CC                             interrupting a run and restarting
-CC                             later, or alternating between two or
-CC                             more problems solved with SVODE.
-CC
-CC  CALL SVINDY(,,,,,)         Provide derivatives of y, of various
-CC        (See below.)         orders, at a specified point T, if
-CC                             desired.  It may be called only after
-CC                             a successful return from SVODE.
-CC
-CC The detailed instructions for using SVINDY are as follows.
-CC The form of the call is..
-CC
-CC  CALL SVINDY (T, K, RWORK(21), NYH, DKY, IFLAG)
-CC
-CC The input parameters are..
-CC
-CC T         = Value of independent variable where answers are desired
-CC             (normally the same as the T last returned by SVODE).
-CC             For valid results, T must lie between TCUR - HU and TCUR.
-CC             (See optional output for TCUR and HU.)
-CC K         = Integer order of the derivative desired.  K must satisfy
-CC             0 .le. K .le. NQCUR, where NQCUR is the current order
-CC             (see optional output).  The capability corresponding
-CC             to K = 0, i.e. computing y(T), is already provided
-CC             by SVODE directly.  Since NQCUR .ge. 1, the first
-CC             derivative dy/dt is always available with SVINDY.
-CC RWORK(21) = The base address of the history array YH.
-CC NYH       = Column length of YH, equal to the initial value of NEQ.
-CC
-CC The output parameters are..
-CC
-CC DKY       = A real array of length NEQ containing the computed value
-CC             of the K-th derivative of y(t).
-CC IFLAG     = Integer flag, returned as 0 if K and T were legal,
-CC             -1 if K was illegal, and -2 if T was illegal.
-CC             On an error return, a message is also written.
-CC-----------------------------------------------------------------------
-CC Part iii.  COMMON Blocks.
-CC If SVODE is to be used in an overlay situation, the user
-CC must declare, in the primary overlay, the variables in..
-CC   (1) the call sequence to SVODE,
-CC   (2) the two internal COMMON blocks
-CC         /SVOD01/  of length  81  (48 single precision words
-CC                         followed by 33 integer words),
-CC         /SVOD02/  of length  9  (1 single precision word
-CC                         followed by 8 integer words),
-CC
-CC If SVODE is used on a system in which the contents of internal
-CC COMMON blocks are not preserved between calls, the user should
-CC declare the above two COMMON blocks in his main program to insure
-CC that their contents are preserved.
-CC
-CC-----------------------------------------------------------------------
-CC Part iv.  Optionally Replaceable Solver Routines.
-CC
-CC Below are descriptions of two routines in the SVODE package which
-CC relate to the measurement of errors.  Either routine can be
-CC replaced by a user-supplied version, if desired.  However, since such
-CC a replacement may have a major impact on performance, it should be
-CC done only when absolutely necessary, and only with great caution.
-CC (Note.. The means by which the package version of a routine is
-CC superseded by the user's version may be system-dependent.)
-CC
-CC (a) SEWSET.
-CC The following subroutine is called just before each internal
-CC integration step, and sets the array of error weights, EWT, as
-CC described under ITOL/RTOL/ATOL above..
-CC     SUBROUTINE SEWSET (NEQ, ITOL, RTOL, ATOL, YCUR, EWT)
-CC where NEQ, ITOL, RTOL, and ATOL are as in the SVODE call sequence,
-CC YCUR contains the current dependent variable vector, and
-CC EWT is the array of weights set by SEWSET.
-CC
-CC If the user supplies this subroutine, it must return in EWT(i)
-CC (i = 1,...,NEQ) a positive quantity suitable for comparison with
-CC errors in Y(i).  The EWT array returned by SEWSET is passed to the
-CC SVNORM routine (See below.), and also used by SVODE in the computation
-CC of the optional output IMXER, the diagonal Jacobian approximation,
-CC and the increments for difference quotient Jacobians.
-CC
-CC In the user-supplied version of SEWSET, it may be desirable to use
-CC the current values of derivatives of y.  Derivatives up to order NQ
-CC are available from the history array YH, described above under
-CC Optional Output.  In SEWSET, YH is identical to the YCUR array,
-CC extended to NQ + 1 columns with a column length of NYH and scale
-CC factors of h**j/factorial(j).  On the first call for the problem,
-CC given by NST = 0, NQ is 1 and H is temporarily set to 1.0.
-CC NYH is the initial value of NEQ.  The quantities NQ, H, and NST
-CC can be obtained by including in SEWSET the statements..
-CC     REAL RVOD, H, HU
-CC     COMMON /SVOD01/ RVOD(48), IVOD(33)
-CC     COMMON /SVOD02/ HU, NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC     NQ = IVOD(28)
-CC     H = RVOD(21)
-CC Thus, for example, the current value of dy/dt can be obtained as
-CC YCUR(NYH+i)/H  (i=1,...,NEQ)  (and the division by H is
-CC unnecessary when NST = 0).
-CC
-CC (b) SVNORM.
-CC The following is a real function routine which computes the weighted
-CC root-mean-square norm of a vector v..
-CC     D = SVNORM (N, V, W)
-CC where..
-CC   N = the length of the vector,
-CC   V = real array of length N containing the vector,
-CC   W = real array of length N containing weights,
-CC   D = sqrt( (1/N) * sum(V(i)*W(i))**2 ).
-CC SVNORM is called with N = NEQ and with W(i) = 1.0/EWT(i), where
-CC EWT is as set by subroutine SEWSET.
-CC
-CC If the user supplies this function, it should return a non-negative
-CC value of SVNORM suitable for use in the error control in SVODE.
-CC None of the arguments should be altered by SVNORM.
-CC For example, a user-supplied SVNORM routine might..
-CC   -substitute a max-norm of (V(i)*W(i)) for the rms-norm, or
-CC   -ignore some components of V in the norm, with the effect of
-CC    suppressing the error control on those components of Y.
-CC-----------------------------------------------------------------------
-CC Other Routines in the SVODE Package.
-CC
-CC In addition to subroutine SVODE, the SVODE package includes the
-CC following subroutines and function routines..
-CC  SVHIN     computes an approximate step size for the initial step.
-CC  SVINDY    computes an interpolated value of the y vector at t = TOUT.
-CC  SVSTEP    is the core integrator, which does one step of the
-CC            integration and the associated error control.
-CC  SVSET     sets all method coefficients and test constants.
-CC  SVNLSD    solves the underlying nonlinear system -- the corrector.
-CC  SVJAC     computes and preprocesses the Jacobian matrix J = df/dy
-CC            and the Newton iteration matrix P = I - (h/l1)*J.
-CC  SVSOL     manages solution of linear system in chord iteration.
-CC  SVJUST    adjusts the history array on a change of order.
-CC  SEWSET    sets the error weight vector EWT before each step.
-CC  SVNORM    computes the weighted r.m.s. norm of a vector.
-CC  SVSRCO    is a user-callable routines to save and restore
-CC            the contents of the internal COMMON blocks.
-CC  SACOPY    is a routine to copy one two-dimensional array to another.
-CC  SGEFA and SGESL   are routines from LINPACK for solving full
-CC            systems of linear algebraic equations.
-CC  SGBFA and SGBSL   are routines from LINPACK for solving banded
-CC            linear systems.
-CC  SAXPY, SSCAL, and SCOPY are basic linear algebra modules (BLAS).
-CC  XERRWV, XSETUN, XSETF, LUNSAV, and MFLGSV handle the printing of all
-CC            error messages and warnings.  XERRWV is machine-dependent.
-CC Note..  SVNORM, LUNSAV, and MFLGSV are function routines.
-CC All the others are subroutines.
-CC
-CC The intrinsic and external routines used by the SVODE package are..
-CC ABS, MAX, MIN, REAL, SIGN, SQRT, and WRITE.
-CC
-CC-----------------------------------------------------------------------
-CC
-CC Type declarations for labeled COMMON block SVOD01 --------------------
-CC
-C      REAL ACNRM, CCMXJ, CONP, CRATE, DRC, EL,
-C     1     ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2     RC, RL1, TAU, TQ, TN, UROUND
-C      INTEGER ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     1        L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     2        LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     3        N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     4        NSLP, NYH
-CC
-CC Type declarations for labeled COMMON block SVOD02 --------------------
-CC
-C      REAL HU
-C      INTEGER NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-CC Type declarations for local variables --------------------------------
-CC
-C      EXTERNAL SVNLSD
-C      LOGICAL IHIT
-C      REAL ATOLI, BIG, EWTI, FOUR, H0, HMAX, HMX, HUN, ONE,
-C     1   PT2, RH, RTOLI, SIZE, TCRIT, TNEXT, TOLSF, TP, TWO, ZERO
-C      INTEGER I, IER, IFLAG, IMXER, JCO, KGO, LENIW, LENJ, LENP, LENRW,
-C     1   LENWM, LF0, MBAND, ML, MORD, MU, MXHNL0, MXSTP0, NITER, NSLAST
-C      CHARACTER*80 MSG
-CC
-CC Type declaration for function subroutines called ---------------------
-CC
-C      REAL R1MACH, SVNORM
-CC
-C      DIMENSION MORD(2)
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to SVODE.
-CC-----------------------------------------------------------------------
-C      SAVE MORD, MXHNL0, MXSTP0
-C      SAVE ZERO, ONE, TWO, FOUR, PT2, HUN
-CC-----------------------------------------------------------------------
-CC The following internal COMMON blocks contain variables which are
-CC communicated between subroutines in the SVODE package, or which are
-CC to be saved between calls to SVODE.
-CC In each block, real variables precede integers.
-CC The block /SVOD01/ appears in subroutines SVODE, SVINDY, SVSTEP,
-CC SVSET, SVNLSD, SVJAC, SVSOL, SVJUST and SVSRCO.
-CC The block /SVOD02/ appears in subroutines SVODE, SVINDY, SVSTEP,
-CC SVNLSD, SVJAC, and SVSRCO.
-CC
-CC The variables stored in the internal COMMON blocks are as follows..
-CC
-CC ACNRM  = Weighted r.m.s. norm of accumulated correction vectors.
-CC CCMXJ  = Threshhold on DRC for updating the Jacobian. (See DRC.)
-CC CONP   = The saved value of TQ(5).
-CC CRATE  = Estimated corrector convergence rate constant.
-CC DRC    = Relative change in H*RL1 since last SVJAC call.
-CC EL     = Real array of integration coefficients.  See SVSET.
-CC ETA    = Saved tentative ratio of new to old H.
-CC ETAMAX = Saved maximum value of ETA to be allowed.
-CC H      = The step size.
-CC HMIN   = The minimum absolute value of the step size H to be used.
-CC HMXI   = Inverse of the maximum absolute value of H to be used.
-CC          HMXI = 0.0 is allowed and corresponds to an infinite HMAX.
-CC HNEW   = The step size to be attempted on the next step.
-CC HSCAL  = Stepsize in scaling of YH array.
-CC PRL1   = The saved value of RL1.
-CC RC     = Ratio of current H*RL1 to value on last SVJAC call.
-CC RL1    = The reciprocal of the coefficient EL(1).
-CC TAU    = Real vector of past NQ step sizes, length 13.
-CC TQ     = A real vector of length 5 in which SVSET stores constants
-CC          used for the convergence test, the error test, and the
-CC          selection of H at a new order.
-CC TN     = The independent variable, updated on each step taken.
-CC UROUND = The machine unit roundoff.  The smallest positive real number
-CC          such that  1.0 + UROUND .ne. 1.0
-CC ICF    = Integer flag for convergence failure in SVNLSD..
-CC            0 means no failures.
-CC            1 means convergence failure with out of date Jacobian
-CC                   (recoverable error).
-CC            2 means convergence failure with current Jacobian or
-CC                   singular matrix (unrecoverable error).
-CC INIT   = Saved integer flag indicating whether initialization of the
-CC          problem has been done (INIT = 1) or not.
-CC IPUP   = Saved flag to signal updating of Newton matrix.
-CC JCUR   = Output flag from SVJAC showing Jacobian status..
-CC            JCUR = 0 means J is not current.
-CC            JCUR = 1 means J is current.
-CC JSTART = Integer flag used as input to SVSTEP..
-CC            0  means perform the first step.
-CC            1  means take a new step continuing from the last.
-CC            -1 means take the next step with a new value of MAXORD,
-CC                  HMIN, HMXI, N, METH, MITER, and/or matrix parameters.
-CC          On return, SVSTEP sets JSTART = 1.
-CC JSV    = Integer flag for Jacobian saving, = sign(MF).
-CC KFLAG  = A completion code from SVSTEP with the following meanings..
-CC               0      the step was succesful.
-CC              -1      the requested error could not be achieved.
-CC              -2      corrector convergence could not be achieved.
-CC              -3, -4  fatal error in VNLS (can not occur here).
-CC KUTH   = Input flag to SVSTEP showing whether H was reduced by the
-CC          driver.  KUTH = 1 if H was reduced, = 0 otherwise.
-CC L      = Integer variable, NQ + 1, current order plus one.
-CC LMAX   = MAXORD + 1 (used for dimensioning).
-CC LOCJS  = A pointer to the saved Jacobian, whose storage starts at
-CC          WM(LOCJS), if JSV = 1.
-CC LYH, LEWT, LACOR, LSAVF, LWM, LIWM = Saved integer pointers
-CC          to segments of RWORK and IWORK.
-CC MAXORD = The maximum order of integration method to be allowed.
-CC METH/MITER = The method flags.  See MF.
-CC MSBJ   = The maximum number of steps between J evaluations, = 50.
-CC MXHNIL = Saved value of optional input MXHNIL.
-CC MXSTEP = Saved value of optional input MXSTEP.
-CC N      = The number of first-order ODEs, = NEQ.
-CC NEWH   = Saved integer to flag change of H.
-CC NEWQ   = The method order to be used on the next step.
-CC NHNIL  = Saved counter for occurrences of T + H = T.
-CC NQ     = Integer variable, the current integration method order.
-CC NQNYH  = Saved value of NQ*NYH.
-CC NQWAIT = A counter controlling the frequency of order changes.
-CC          An order change is about to be considered if NQWAIT = 1.
-CC NSLJ   = The number of steps taken as of the last Jacobian update.
-CC NSLP   = Saved value of NST as of last Newton matrix update.
-CC NYH    = Saved value of the initial value of NEQ.
-CC HU     = The step size in t last used.
-CC NCFN   = Number of nonlinear convergence failures so far.
-CC NETF   = The number of error test failures of the integrator so far.
-CC NFE    = The number of f evaluations for the problem so far.
-CC NJE    = The number of Jacobian evaluations so far.
-CC NLU    = The number of matrix LU decompositions so far.
-CC NNI    = Number of nonlinear iterations so far.
-CC NQU    = The method order last used.
-CC NST    = The number of steps taken for the problem so far.
-CC-----------------------------------------------------------------------
-C      COMMON /SVOD01/ ACNRM, CCMXJ, CONP, CRATE, DRC, EL(13),
-C     1                ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2                RC, RL1, TAU(13), TQ(5), TN, UROUND,
-C     3                ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     4                L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     5                LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     6                N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     7                NSLP, NYH
-C      COMMON /SVOD02/ HU, NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-C      DATA  MORD(1) /12/, MORD(2) /5/, MXSTP0 /500/, MXHNL0 /10/
-C      DATA ZERO /0.0E0/, ONE /1.0E0/, TWO /2.0E0/, FOUR /4.0E0/,
-C     1     PT2 /0.2E0/, HUN /100.0E0/
-CC-----------------------------------------------------------------------
-CC Block A.
-CC This code block is executed on every call.
-CC It tests ISTATE and ITASK for legality and branches appropriately.
-CC If ISTATE .gt. 1 but the flag INIT shows that initialization has
-CC not yet been done, an error return occurs.
-CC If ISTATE = 1 and TOUT = T, return immediately.
-CC-----------------------------------------------------------------------
-C      IF (ISTATE .LT. 1 .OR. ISTATE .GT. 3) GO TO 601
-C      IF (ITASK .LT. 1 .OR. ITASK .GT. 5) GO TO 602
-C      IF (ISTATE .EQ. 1) GO TO 10
-C      IF (INIT .NE. 1) GO TO 603
-C      IF (ISTATE .EQ. 2) GO TO 200
-C      GO TO 20
-C 10   INIT = 0
-C      IF (TOUT .EQ. T) RETURN
-CC-----------------------------------------------------------------------
-CC Block B.
-CC The next code block is executed for the initial call (ISTATE = 1),
-CC or for a continuation call with parameter changes (ISTATE = 3).
-CC It contains checking of all input and various initializations.
-CC
-CC First check legality of the non-optional input NEQ, ITOL, IOPT,
-CC MF, ML, and MU.
-CC-----------------------------------------------------------------------
-C 20   IF (NEQ .LE. 0) GO TO 604
-C      IF (ISTATE .EQ. 1) GO TO 25
-C      IF (NEQ .GT. N) GO TO 605
-C 25   N = NEQ
-C      IF (ITOL .LT. 1 .OR. ITOL .GT. 4) GO TO 606
-C      IF (IOPT .LT. 0 .OR. IOPT .GT. 1) GO TO 607
-C      JSV = SIGN(1,MF)
-C      MF = ABS(MF)
-C      METH = MF/10
-C      MITER = MF - 10*METH
-C      IF (METH .LT. 1 .OR. METH .GT. 2) GO TO 608
-C      IF (MITER .LT. 0 .OR. MITER .GT. 5) GO TO 608
-C      IF (MITER .LE. 3) GO TO 30
-C      ML = IWORK(1)
-C      MU = IWORK(2)
-C      IF (ML .LT. 0 .OR. ML .GE. N) GO TO 609
-C      IF (MU .LT. 0 .OR. MU .GE. N) GO TO 610
-C 30   CONTINUE
-CC Next process and check the optional input. ---------------------------
-C      IF (IOPT .EQ. 1) GO TO 40
-C      MAXORD = MORD(METH)
-C      MXSTEP = MXSTP0
-C      MXHNIL = MXHNL0
-C      IF (ISTATE .EQ. 1) H0 = ZERO
-C      HMXI = ZERO
-C      HMIN = ZERO
-C      GO TO 60
-C 40   MAXORD = IWORK(5)
-C      IF (MAXORD .LT. 0) GO TO 611
-C      IF (MAXORD .EQ. 0) MAXORD = 100
-C      MAXORD = MIN(MAXORD,MORD(METH))
-C      MXSTEP = IWORK(6)
-C      IF (MXSTEP .LT. 0) GO TO 612
-C      IF (MXSTEP .EQ. 0) MXSTEP = MXSTP0
-C      MXHNIL = IWORK(7)
-C      IF (MXHNIL .LT. 0) GO TO 613
-C      IF (MXHNIL .EQ. 0) MXHNIL = MXHNL0
-C      IF (ISTATE .NE. 1) GO TO 50
-C      H0 = RWORK(5)
-C      IF ((TOUT - T)*H0 .LT. ZERO) GO TO 614
-C 50   HMAX = RWORK(6)
-C      IF (HMAX .LT. ZERO) GO TO 615
-C      HMXI = ZERO
-C      IF (HMAX .GT. ZERO) HMXI = ONE/HMAX
-C      HMIN = RWORK(7)
-C      IF (HMIN .LT. ZERO) GO TO 616
-CC-----------------------------------------------------------------------
-CC Set work array pointers and check lengths LRW and LIW.
-CC Pointers to segments of RWORK and IWORK are named by prefixing L to
-CC the name of the segment.  E.g., the segment YH starts at RWORK(LYH).
-CC Segments of RWORK (in order) are denoted  YH, WM, EWT, SAVF, ACOR.
-CC Within WM, LOCJS is the location of the saved Jacobian (JSV .gt. 0).
-CC-----------------------------------------------------------------------
-C 60   LYH = 21
-C      IF (ISTATE .EQ. 1) NYH = N
-C      LWM = LYH + (MAXORD + 1)*NYH
-C      JCO = MAX(0,JSV)
-C      IF (MITER .EQ. 0) LENWM = 0
-C      IF (MITER .EQ. 1 .OR. MITER .EQ. 2) THEN
-C        LENWM = 2 + (1 + JCO)*N*N
-C        LOCJS = N*N + 3
-C      ENDIF
-C      IF (MITER .EQ. 3) LENWM = 2 + N
-C      IF (MITER .EQ. 4 .OR. MITER .EQ. 5) THEN
-C        MBAND = ML + MU + 1
-C        LENP = (MBAND + ML)*N
-C        LENJ = MBAND*N
-C        LENWM = 2 + LENP + JCO*LENJ
-C        LOCJS = LENP + 3
-C        ENDIF
-C      LEWT = LWM + LENWM
-C      LSAVF = LEWT + N
-C      LACOR = LSAVF + N
-C      LENRW = LACOR + N - 1
-C      IWORK(17) = LENRW
-C      LIWM = 1
-C      LENIW = 30 + N
-C      IF (MITER .EQ. 0 .OR. MITER .EQ. 3) LENIW = 30
-C      IWORK(18) = LENIW
-C      IF (LENRW .GT. LRW) GO TO 617
-C      IF (LENIW .GT. LIW) GO TO 618
-CC Check RTOL and ATOL for legality. ------------------------------------
-C      RTOLI = RTOL(1)
-C      ATOLI = ATOL(1)
-C      DO 70 I = 1,N
-C        IF (ITOL .GE. 3) RTOLI = RTOL(I)
-C        IF (ITOL .EQ. 2 .OR. ITOL .EQ. 4) ATOLI = ATOL(I)
-C        IF (RTOLI .LT. ZERO) GO TO 619
-C        IF (ATOLI .LT. ZERO) GO TO 620
-C 70     CONTINUE
-C      IF (ISTATE .EQ. 1) GO TO 100
-CC If ISTATE = 3, set flag to signal parameter changes to SVSTEP. -------
-C      JSTART = -1
-C      IF (NQ .LE. MAXORD) GO TO 90
-CC MAXORD was reduced below NQ.  Copy YH(*,MAXORD+2) into SAVF. ---------
-C      CALL SCOPY (N, RWORK(LWM), 1, RWORK(LSAVF), 1)
-CC Reload WM(1) = RWORK(LWM), since LWM may have changed. ---------------
-C 90   IF (MITER .GT. 0) RWORK(LWM) = SQRT(UROUND)
-CC-----------------------------------------------------------------------
-CC Block C.
-CC The next block is for the initial call only (ISTATE = 1).
-CC It contains all remaining initializations, the initial call to F,
-CC and the calculation of the initial step size.
-CC The error weights in EWT are inverted after being loaded.
-CC-----------------------------------------------------------------------
-C 100  UROUND = R1MACH(4)
-C      TN = T
-C      IF (ITASK .NE. 4 .AND. ITASK .NE. 5) GO TO 110
-C      TCRIT = RWORK(1)
-C      IF ((TCRIT - TOUT)*(TOUT - T) .LT. ZERO) GO TO 625
-C      IF (H0 .NE. ZERO .AND. (T + H0 - TCRIT)*H0 .GT. ZERO)
-C     1   H0 = TCRIT - T
-C 110  JSTART = 0
-C      IF (MITER .GT. 0) RWORK(LWM) = SQRT(UROUND)
-C      CCMXJ = PT2
-C      MSBJ = 50
-C      NHNIL = 0
-C      NST = 0
-C      NJE = 0
-C      NNI = 0
-C      NCFN = 0
-C      NETF = 0
-C      NLU = 0
-C      NSLJ = 0
-C      NSLAST = 0
-C      HU = ZERO
-C      NQU = 0
-CC Initial call to F.  (LF0 points to YH(*,2).) -------------------------
-C      LF0 = LYH + NYH
-C      CALL F (N, T, Y, RWORK(LF0), RPAR, IPAR)
-C      NFE = 1
-CC Load the initial value vector in YH. ---------------------------------
-C      CALL SCOPY (N, Y, 1, RWORK(LYH), 1)
-CC Load and invert the EWT array.  (H is temporarily set to 1.0.) -------
-C      NQ = 1
-C      H = ONE
-C      CALL SEWSET (N, ITOL, RTOL, ATOL, RWORK(LYH), RWORK(LEWT))
-C      DO 120 I = 1,N
-C        IF (RWORK(I+LEWT-1) .LE. ZERO) GO TO 621
-C 120    RWORK(I+LEWT-1) = ONE/RWORK(I+LEWT-1)
-C      IF (H0 .NE. ZERO) GO TO 180
-CC Call SVHIN to set initial step size H0 to be attempted. --------------
-C      CALL SVHIN (N, T, RWORK(LYH), RWORK(LF0), F, RPAR, IPAR, TOUT,
-C     1   UROUND, RWORK(LEWT), ITOL, ATOL, Y, RWORK(LACOR), H0,
-C     2   NITER, IER)
-C      NFE = NFE + NITER
-C      IF (IER .NE. 0) GO TO 622
-CC Adjust H0 if necessary to meet HMAX bound. ---------------------------
-C 180  RH = ABS(H0)*HMXI
-C      IF (RH .GT. ONE) H0 = H0/RH
-CC Load H with H0 and scale YH(*,2) by H0. ------------------------------
-C      H = H0
-C      CALL SSCAL (N, H0, RWORK(LF0), 1)
-C      GO TO 270
-CC-----------------------------------------------------------------------
-CC Block D.
-CC The next code block is for continuation calls only (ISTATE = 2 or 3)
-CC and is to check stop conditions before taking a step.
-CC-----------------------------------------------------------------------
-C 200  NSLAST = NST
-C      KUTH = 0
-C      GO TO (210, 250, 220, 230, 240), ITASK
-C 210  IF ((TN - TOUT)*H .LT. ZERO) GO TO 250
-C      CALL SVINDY (TOUT, 0, RWORK(LYH), NYH, Y, IFLAG)
-C      IF (IFLAG .NE. 0) GO TO 627
-C      T = TOUT
-C      GO TO 420
-C 220  TP = TN - HU*(ONE + HUN*UROUND)
-C      IF ((TP - TOUT)*H .GT. ZERO) GO TO 623
-C      IF ((TN - TOUT)*H .LT. ZERO) GO TO 250
-C      GO TO 400
-C 230  TCRIT = RWORK(1)
-C      IF ((TN - TCRIT)*H .GT. ZERO) GO TO 624
-C      IF ((TCRIT - TOUT)*H .LT. ZERO) GO TO 625
-C      IF ((TN - TOUT)*H .LT. ZERO) GO TO 245
-C      CALL SVINDY (TOUT, 0, RWORK(LYH), NYH, Y, IFLAG)
-C      IF (IFLAG .NE. 0) GO TO 627
-C      T = TOUT
-C      GO TO 420
-C 240  TCRIT = RWORK(1)
-C      IF ((TN - TCRIT)*H .GT. ZERO) GO TO 624
-C 245  HMX = ABS(TN) + ABS(H)
-C      IHIT = ABS(TN - TCRIT) .LE. HUN*UROUND*HMX
-C      IF (IHIT) GO TO 400
-C      TNEXT = TN + HNEW*(ONE + FOUR*UROUND)
-C      IF ((TNEXT - TCRIT)*H .LE. ZERO) GO TO 250
-C      H = (TCRIT - TN)*(ONE - FOUR*UROUND)
-C      KUTH = 1
-CC-----------------------------------------------------------------------
-CC Block E.
-CC The next block is normally executed for all calls and contains
-CC the call to the one-step core integrator SVSTEP.
-CC
-CC This is a looping point for the integration steps.
-CC
-CC First check for too many steps being taken, update EWT (if not at
-CC start of problem), check for too much accuracy being requested, and
-CC check for H below the roundoff level in T.
-CC-----------------------------------------------------------------------
-C 250  CONTINUE
-C      IF ((NST-NSLAST) .GE. MXSTEP) GO TO 500
-C      CALL SEWSET (N, ITOL, RTOL, ATOL, RWORK(LYH), RWORK(LEWT))
-C      DO 260 I = 1,N
-C        IF (RWORK(I+LEWT-1) .LE. ZERO) GO TO 510
-C 260    RWORK(I+LEWT-1) = ONE/RWORK(I+LEWT-1)
-C 270  TOLSF = UROUND*SVNORM (N, RWORK(LYH), RWORK(LEWT))
-C      IF (TOLSF .LE. ONE) GO TO 280
-C      TOLSF = TOLSF*TWO
-C      IF (NST .EQ. 0) GO TO 626
-C      GO TO 520
-C 280  IF ((TN + H) .NE. TN) GO TO 290
-C      NHNIL = NHNIL + 1
-C      IF (NHNIL .GT. MXHNIL) GO TO 290
-C      MSG = 'SVODE--  Warning..internal T (=R1) and H (=R2) are'
-C      CALL XERRWV (MSG, 50, 101, 1, 0, 0, 0, 0, ZERO, ZERO)
-C      MSG='      such that in the machine, T + H = T on the next step  '
-C      CALL XERRWV (MSG, 60, 101, 1, 0, 0, 0, 0, ZERO, ZERO)
-C      MSG = '      (H = step size). solver will continue anyway'
-C      CALL XERRWV (MSG, 50, 101, 1, 0, 0, 0, 2, TN, H)
-C      IF (NHNIL .LT. MXHNIL) GO TO 290
-C      MSG = 'SVODE--  Above warning has been issued I1 times.  '
-C      CALL XERRWV (MSG, 50, 102, 1, 0, 0, 0, 0, ZERO, ZERO)
-C      MSG = '      it will not be issued again for this problem'
-C      CALL XERRWV (MSG, 50, 102, 1, 1, MXHNIL, 0, 0, ZERO, ZERO)
-C 290  CONTINUE
-CC-----------------------------------------------------------------------
-CC CALL SVSTEP (Y, YH, NYH, YH, EWT, SAVF, VSAV, ACOR,
-CC              WM, IWM, F, JAC, F, SVNLSD, RPAR, IPAR)
-CC-----------------------------------------------------------------------
-C      CALL SVSTEP (Y, RWORK(LYH), NYH, RWORK(LYH), RWORK(LEWT),
-C     1   RWORK(LSAVF), Y, RWORK(LACOR), RWORK(LWM), IWORK(LIWM),
-C     2   F, JAC, F, SVNLSD, RPAR, IPAR)
-C      KGO = 1 - KFLAG
-CC Branch on KFLAG.  Note..In this version, KFLAG can not be set to -3.
-CC  KFLAG .eq. 0,   -1,  -2
-C      GO TO (300, 530, 540), KGO
-CC-----------------------------------------------------------------------
-CC Block F.
-CC The following block handles the case of a successful return from the
-CC core integrator (KFLAG = 0).  Test for stop conditions.
-CC-----------------------------------------------------------------------
-C 300  INIT = 1
-C      KUTH = 0
-C      GO TO (310, 400, 330, 340, 350), ITASK
-CC ITASK = 1.  If TOUT has been reached, interpolate. -------------------
-C 310  IF ((TN - TOUT)*H .LT. ZERO) GO TO 250
-C      CALL SVINDY (TOUT, 0, RWORK(LYH), NYH, Y, IFLAG)
-C      T = TOUT
-C      GO TO 420
-CC ITASK = 3.  Jump to exit if TOUT was reached. ------------------------
-C 330  IF ((TN - TOUT)*H .GE. ZERO) GO TO 400
-C      GO TO 250
-CC ITASK = 4.  See if TOUT or TCRIT was reached.  Adjust H if necessary.
-C 340  IF ((TN - TOUT)*H .LT. ZERO) GO TO 345
-C      CALL SVINDY (TOUT, 0, RWORK(LYH), NYH, Y, IFLAG)
-C      T = TOUT
-C      GO TO 420
-C 345  HMX = ABS(TN) + ABS(H)
-C      IHIT = ABS(TN - TCRIT) .LE. HUN*UROUND*HMX
-C      IF (IHIT) GO TO 400
-C      TNEXT = TN + HNEW*(ONE + FOUR*UROUND)
-C      IF ((TNEXT - TCRIT)*H .LE. ZERO) GO TO 250
-C      H = (TCRIT - TN)*(ONE - FOUR*UROUND)
-C      KUTH = 1
-C      GO TO 250
-CC ITASK = 5.  See if TCRIT was reached and jump to exit. ---------------
-C 350  HMX = ABS(TN) + ABS(H)
-C      IHIT = ABS(TN - TCRIT) .LE. HUN*UROUND*HMX
-CC-----------------------------------------------------------------------
-CC Block G.
-CC The following block handles all successful returns from SVODE.
-CC If ITASK .ne. 1, Y is loaded from YH and T is set accordingly.
-CC ISTATE is set to 2, and the optional output is loaded into the work
-CC arrays before returning.
-CC-----------------------------------------------------------------------
-C 400  CONTINUE
-C      CALL SCOPY (N, RWORK(LYH), 1, Y, 1)
-C      T = TN
-C      IF (ITASK .NE. 4 .AND. ITASK .NE. 5) GO TO 420
-C      IF (IHIT) T = TCRIT
-C 420  ISTATE = 2
-C      RWORK(11) = HU
-C      RWORK(12) = HNEW
-C      RWORK(13) = TN
-C      IWORK(11) = NST
-C      IWORK(12) = NFE
-C      IWORK(13) = NJE
-C      IWORK(14) = NQU
-C      IWORK(15) = NEWQ
-C      IWORK(19) = NLU
-C      IWORK(20) = NNI
-C      IWORK(21) = NCFN
-C      IWORK(22) = NETF
-C      RETURN
-CC-----------------------------------------------------------------------
-CC Block H.
-CC The following block handles all unsuccessful returns other than
-CC those for illegal input.  First the error message routine is called.
-CC if there was an error test or convergence test failure, IMXER is set.
-CC Then Y is loaded from YH, T is set to TN, and the illegal input
-CC The optional output is loaded into the work arrays before returning.
-CC-----------------------------------------------------------------------
-CC The maximum number of steps was taken before reaching TOUT. ----------
-C 500  MSG = 'SVODE--  At current T (=R1), MXSTEP (=I1) steps   '
-C      CALL XERRWV (MSG, 50, 201, 1, 0, 0, 0, 0, ZERO, ZERO)
-C      MSG = '      taken on this call before reaching TOUT     '
-C      CALL XERRWV (MSG, 50, 201, 1, 1, MXSTEP, 0, 1, TN, ZERO)
-C      ISTATE = -1
-C      GO TO 580
-CC EWT(i) .le. 0.0 for some i (not at start of problem). ----------------
-C 510  EWTI = RWORK(LEWT+I-1)
-C      MSG = 'SVODE--  At T (=R1), EWT(I1) has become R2 .le. 0.'
-C      CALL XERRWV (MSG, 50, 202, 1, 1, I, 0, 2, TN, EWTI)
-C      ISTATE = -6
-C      GO TO 580
-CC Too much accuracy requested for machine precision. -------------------
-C 520  MSG = 'SVODE--  At T (=R1), too much accuracy requested  '
-C      CALL XERRWV (MSG, 50, 203, 1, 0, 0, 0, 0, ZERO, ZERO)
-C      MSG = '      for precision of machine..  see TOLSF (=R2) '
-C      CALL XERRWV (MSG, 50, 203, 1, 0, 0, 0, 2, TN, TOLSF)
-C      RWORK(14) = TOLSF
-C      ISTATE = -2
-C      GO TO 580
-CC KFLAG = -1.  Error test failed repeatedly or with ABS(H) = HMIN. -----
-C 530  MSG = 'SVODE--  At T(=R1) and step size H(=R2), the error'
-C      CALL XERRWV (MSG, 50, 204, 1, 0, 0, 0, 0, ZERO, ZERO)
-C      MSG = '      test failed repeatedly or with abs(H) = HMIN'
-C      CALL XERRWV (MSG, 50, 204, 1, 0, 0, 0, 2, TN, H)
-C      ISTATE = -4
-C      GO TO 560
-CC KFLAG = -2.  Convergence failed repeatedly or with abs(H) = HMIN. ----
-C 540  MSG = 'SVODE--  At T (=R1) and step size H (=R2), the    '
-C      CALL XERRWV (MSG, 50, 205, 1, 0, 0, 0, 0, ZERO, ZERO)
-C      MSG = '      corrector convergence failed repeatedly     '
-C      CALL XERRWV (MSG, 50, 205, 1, 0, 0, 0, 0, ZERO, ZERO)
-C      MSG = '      or with abs(H) = HMIN   '
-C      CALL XERRWV (MSG, 30, 205, 1, 0, 0, 0, 2, TN, H)
-C      ISTATE = -5
-CC Compute IMXER if relevant. -------------------------------------------
-C 560  BIG = ZERO
-C      IMXER = 1
-C      DO 570 I = 1,N
-C        SIZE = ABS(RWORK(I+LACOR-1)*RWORK(I+LEWT-1))
-C        IF (BIG .GE. SIZE) GO TO 570
-C        BIG = SIZE
-C        IMXER = I
-C 570    CONTINUE
-C      IWORK(16) = IMXER
-CC Set Y vector, T, and optional output. --------------------------------
-C 580  CONTINUE
-C      CALL SCOPY (N, RWORK(LYH), 1, Y, 1)
-C      T = TN
-C      RWORK(11) = HU
-C      RWORK(12) = H
-C      RWORK(13) = TN
-C      IWORK(11) = NST
-C      IWORK(12) = NFE
-C      IWORK(13) = NJE
-C      IWORK(14) = NQU
-C      IWORK(15) = NQ
-C      IWORK(19) = NLU
-C      IWORK(20) = NNI
-C      IWORK(21) = NCFN
-C      IWORK(22) = NETF
-C      RETURN
-CC-----------------------------------------------------------------------
-CC Block I.
-CC The following block handles all error returns due to illegal input
-CC (ISTATE = -3), as detected before calling the core integrator.
-CC First the error message routine is called.   If the illegal input
-CC is a negative ISTATE, the run is aborted (apparent infinite loop).
-CC-----------------------------------------------------------------------
-C 601  MSG = 'SVODE--  ISTATE (=I1) illegal '
-C      CALL XERRWV (MSG, 30, 1, 1, 1, ISTATE, 0, 0, ZERO, ZERO)
-C      IF (ISTATE .LT. 0) GO TO 800
-C      GO TO 700
-C 602  MSG = 'SVODE--  ITASK (=I1) illegal  '
-C      CALL XERRWV (MSG, 30, 2, 1, 1, ITASK, 0, 0, ZERO, ZERO)
-C      GO TO 700
-C 603  MSG='SVODE--  ISTATE (=I1) .gt. 1 but SVODE not initialized      '
-C      CALL XERRWV (MSG, 60, 3, 1, 1, ISTATE, 0, 0, ZERO, ZERO)
-C      GO TO 700
-C 604  MSG = 'SVODE--  NEQ (=I1) .lt. 1     '
-C      CALL XERRWV (MSG, 30, 4, 1, 1, NEQ, 0, 0, ZERO, ZERO)
-C      GO TO 700
-C 605  MSG = 'SVODE--  ISTATE = 3 and NEQ increased (I1 to I2)  '
-C      CALL XERRWV (MSG, 50, 5, 1, 2, N, NEQ, 0, ZERO, ZERO)
-C      GO TO 700
-C 606  MSG = 'SVODE--  ITOL (=I1) illegal   '
-C      CALL XERRWV (MSG, 30, 6, 1, 1, ITOL, 0, 0, ZERO, ZERO)
-C      GO TO 700
-C 607  MSG = 'SVODE--  IOPT (=I1) illegal   '
-C      CALL XERRWV (MSG, 30, 7, 1, 1, IOPT, 0, 0, ZERO, ZERO)
-C      GO TO 700
-C 608  MSG = 'SVODE--  MF (=I1) illegal     '
-C      CALL XERRWV (MSG, 30, 8, 1, 1, MF, 0, 0, ZERO, ZERO)
-C      GO TO 700
-C 609  MSG = 'SVODE--  ML (=I1) illegal.. .lt.0 or .ge.NEQ (=I2)'
-C      CALL XERRWV (MSG, 50, 9, 1, 2, ML, NEQ, 0, ZERO, ZERO)
-C      GO TO 700
-C 610  MSG = 'SVODE--  MU (=I1) illegal.. .lt.0 or .ge.NEQ (=I2)'
-C      CALL XERRWV (MSG, 50, 10, 1, 2, MU, NEQ, 0, ZERO, ZERO)
-C      GO TO 700
-C 611  MSG = 'SVODE--  MAXORD (=I1) .lt. 0  '
-C      CALL XERRWV (MSG, 30, 11, 1, 1, MAXORD, 0, 0, ZERO, ZERO)
-C      GO TO 700
-C 612  MSG = 'SVODE--  MXSTEP (=I1) .lt. 0  '
-C      CALL XERRWV (MSG, 30, 12, 1, 1, MXSTEP, 0, 0, ZERO, ZERO)
-C      GO TO 700
-C 613  MSG = 'SVODE--  MXHNIL (=I1) .lt. 0  '
-C      CALL XERRWV (MSG, 30, 13, 1, 1, MXHNIL, 0, 0, ZERO, ZERO)
-C      GO TO 700
-C 614  MSG = 'SVODE--  TOUT (=R1) behind T (=R2)      '
-C      CALL XERRWV (MSG, 40, 14, 1, 0, 0, 0, 2, TOUT, T)
-C      MSG = '      integration direction is given by H0 (=R1)  '
-C      CALL XERRWV (MSG, 50, 14, 1, 0, 0, 0, 1, H0, ZERO)
-C      GO TO 700
-C 615  MSG = 'SVODE--  HMAX (=R1) .lt. 0.0  '
-C      CALL XERRWV (MSG, 30, 15, 1, 0, 0, 0, 1, HMAX, ZERO)
-C      GO TO 700
-C 616  MSG = 'SVODE--  HMIN (=R1) .lt. 0.0  '
-C      CALL XERRWV (MSG, 30, 16, 1, 0, 0, 0, 1, HMIN, ZERO)
-C      GO TO 700
-C 617  CONTINUE
-C      MSG='SVODE--  RWORK length needed, LENRW (=I1), exceeds LRW (=I2)'
-C      CALL XERRWV (MSG, 60, 17, 1, 2, LENRW, LRW, 0, ZERO, ZERO)
-C      GO TO 700
-C 618  CONTINUE
-C      MSG='SVODE--  IWORK length needed, LENIW (=I1), exceeds LIW (=I2)'
-C      CALL XERRWV (MSG, 60, 18, 1, 2, LENIW, LIW, 0, ZERO, ZERO)
-C      GO TO 700
-C 619  MSG = 'SVODE--  RTOL(I1) is R1 .lt. 0.0        '
-C      CALL XERRWV (MSG, 40, 19, 1, 1, I, 0, 1, RTOLI, ZERO)
-C      GO TO 700
-C 620  MSG = 'SVODE--  ATOL(I1) is R1 .lt. 0.0        '
-C      CALL XERRWV (MSG, 40, 20, 1, 1, I, 0, 1, ATOLI, ZERO)
-C      GO TO 700
-C 621  EWTI = RWORK(LEWT+I-1)
-C      MSG = 'SVODE--  EWT(I1) is R1 .le. 0.0         '
-C      CALL XERRWV (MSG, 40, 21, 1, 1, I, 0, 1, EWTI, ZERO)
-C      GO TO 700
-C 622  CONTINUE
-C      MSG='SVODE--  TOUT (=R1) too close to T(=R2) to start integration'
-C      CALL XERRWV (MSG, 60, 22, 1, 0, 0, 0, 2, TOUT, T)
-C      GO TO 700
-C 623  CONTINUE
-C      MSG='SVODE--  ITASK = I1 and TOUT (=R1) behind TCUR - HU (= R2)  '
-C      CALL XERRWV (MSG, 60, 23, 1, 1, ITASK, 0, 2, TOUT, TP)
-C      GO TO 700
-C 624  CONTINUE
-C      MSG='SVODE--  ITASK = 4 or 5 and TCRIT (=R1) behind TCUR (=R2)   '
-C      CALL XERRWV (MSG, 60, 24, 1, 0, 0, 0, 2, TCRIT, TN)
-C      GO TO 700
-C 625  CONTINUE
-C      MSG='SVODE--  ITASK = 4 or 5 and TCRIT (=R1) behind TOUT (=R2)   '
-C      CALL XERRWV (MSG, 60, 25, 1, 0, 0, 0, 2, TCRIT, TOUT)
-C      GO TO 700
-C 626  MSG = 'SVODE--  At start of problem, too much accuracy   '
-C      CALL XERRWV (MSG, 50, 26, 1, 0, 0, 0, 0, ZERO, ZERO)
-C      MSG='      requested for precision of machine..  see TOLSF (=R1) '
-C      CALL XERRWV (MSG, 60, 26, 1, 0, 0, 0, 1, TOLSF, ZERO)
-C      RWORK(14) = TOLSF
-C      GO TO 700
-C 627  MSG='SVODE--  Trouble from SVINDY.  ITASK = I1, TOUT = R1.       '
-C      CALL XERRWV (MSG, 60, 27, 1, 1, ITASK, 0, 1, TOUT, ZERO)
-CC
-C 700  CONTINUE
-C      ISTATE = -3
-C      RETURN
-CC
-C 800  MSG = 'SVODE--  Run aborted.. apparent infinite loop     '
-C      CALL XERRWV (MSG, 50, 303, 2, 0, 0, 0, 0, ZERO, ZERO)
-C      RETURN
-CC----------------------- End of Subroutine SVODE -----------------------
-C      END
-C      SUBROUTINE SVSET
-CC-----------------------------------------------------------------------
-CC Call sequence communication.. None
-CC COMMON block variables accessed..
-CC     /SVOD01/ -- EL(13), H, TAU(13), TQ(5), L(= NQ + 1),
-CC                 METH, NQ, NQWAIT
-CC
-CC Subroutines called by SVSET.. None
-CC Function routines called by SVSET.. None
-CC-----------------------------------------------------------------------
-CC SVSET is called by SVSTEP and sets coefficients for use there.
-CC
-CC For each order NQ, the coefficients in EL are calculated by use of
-CC  the generating polynomial lambda(x), with coefficients EL(i).
-CC      lambda(x) = EL(1) + EL(2)*x + ... + EL(NQ+1)*(x**NQ).
-CC For the backward differentiation formulas,
-CC                                     NQ-1
-CC      lambda(x) = (1 + x/xi*(NQ)) * product (1 + x/xi(i) ) .
-CC                                     i = 1
-CC For the Adams formulas,
-CC                              NQ-1
-CC      (d/dx) lambda(x) = c * product (1 + x/xi(i) ) ,
-CC                              i = 1
-CC      lambda(-1) = 0,    lambda(0) = 1,
-CC where c is a normalization constant.
-CC In both cases, xi(i) is defined by
-CC      H*xi(i) = t sub n  -  t sub (n-i)
-CC              = H + TAU(1) + TAU(2) + ... TAU(i-1).
-CC
-CC
-CC In addition to variables described previously, communication
-CC with SVSET uses the following..
-CC   TAU    = A vector of length 13 containing the past NQ values
-CC            of H.
-CC   EL     = A vector of length 13 in which vset stores the
-CC            coefficients for the corrector formula.
-CC   TQ     = A vector of length 5 in which vset stores constants
-CC            used for the convergence test, the error test, and the
-CC            selection of H at a new order.
-CC   METH   = The basic method indicator.
-CC   NQ     = The current order.
-CC   L      = NQ + 1, the length of the vector stored in EL, and
-CC            the number of columns of the YH array being used.
-CC   NQWAIT = A counter controlling the frequency of order changes.
-CC            An order change is about to be considered if NQWAIT = 1.
-CC-----------------------------------------------------------------------
-CC
-CC Type declarations for labeled COMMON block SVOD01 --------------------
-CC
-C      REAL ACNRM, CCMXJ, CONP, CRATE, DRC, EL,
-C     1     ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2     RC, RL1, TAU, TQ, TN, UROUND
-C      INTEGER ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     1        L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     2        LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     3        N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     4        NSLP, NYH
-CC
-CC Type declarations for local variables --------------------------------
-CC
-C      REAL AHATN0, ALPH0, CNQM1, CORTES, CSUM, ELP, EM,
-C     1     EM0, FLOTI, FLOTL, FLOTNQ, HSUM, ONE, RXI, RXIS, S, SIX,
-C     2     T1, T2, T3, T4, T5, T6, TWO, XI, ZERO
-C      INTEGER I, IBACK, J, JP1, NQM1, NQM2
-CC
-C      DIMENSION EM(13)
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to this integrator.
-CC-----------------------------------------------------------------------
-C      SAVE CORTES, ONE, SIX, TWO, ZERO
-CC
-C      COMMON /SVOD01/ ACNRM, CCMXJ, CONP, CRATE, DRC, EL(13),
-C     1                ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2                RC, RL1, TAU(13), TQ(5), TN, UROUND,
-C     3                ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     4                L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     5                LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     6                N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     7                NSLP, NYH
-CC
-C      DATA CORTES /0.1E0/
-C      DATA ONE  /1.0E0/, SIX /6.0E0/, TWO /2.0E0/, ZERO /0.0E0/
-CC
-C      FLOTL = REAL(L)
-C      NQM1 = NQ - 1
-C      NQM2 = NQ - 2
-C      GO TO (100, 200), METH
-CC
-CC Set coefficients for Adams methods. ----------------------------------
-C 100  IF (NQ .NE. 1) GO TO 110
-C      EL(1) = ONE
-C      EL(2) = ONE
-C      TQ(1) = ONE
-C      TQ(2) = TWO
-C      TQ(3) = SIX*TQ(2)
-C      TQ(5) = ONE
-C      GO TO 300
-C 110  HSUM = H
-C      EM(1) = ONE
-C      FLOTNQ = FLOTL - ONE
-C      DO 115 I = 2, L
-C 115    EM(I) = ZERO
-C      DO 150 J = 1, NQM1
-C        IF ((J .NE. NQM1) .OR. (NQWAIT .NE. 1)) GO TO 130
-C        S = ONE
-C        CSUM = ZERO
-C        DO 120 I = 1, NQM1
-C          CSUM = CSUM + S*EM(I)/REAL(I+1)
-C 120      S = -S
-C        TQ(1) = EM(NQM1)/(FLOTNQ*CSUM)
-C 130    RXI = H/HSUM
-C        DO 140 IBACK = 1, J
-C          I = (J + 2) - IBACK
-C 140      EM(I) = EM(I) + EM(I-1)*RXI
-C        HSUM = HSUM + TAU(J)
-C 150    CONTINUE
-CC Compute integral from -1 to 0 of polynomial and of x times it. -------
-C      S = ONE
-C      EM0 = ZERO
-C      CSUM = ZERO
-C      DO 160 I = 1, NQ
-C        FLOTI = REAL(I)
-C        EM0 = EM0 + S*EM(I)/FLOTI
-C        CSUM = CSUM + S*EM(I)/(FLOTI+ONE)
-C 160    S = -S
-CC In EL, form coefficients of normalized integrated polynomial. --------
-C      S = ONE/EM0
-C      EL(1) = ONE
-C      DO 170 I = 1, NQ
-C 170    EL(I+1) = S*EM(I)/REAL(I)
-C      XI = HSUM/H
-C      TQ(2) = XI*EM0/CSUM
-C      TQ(5) = XI/EL(L)
-C      IF (NQWAIT .NE. 1) GO TO 300
-CC For higher order control constant, multiply polynomial by 1+x/xi(q). -
-C      RXI = ONE/XI
-C      DO 180 IBACK = 1, NQ
-C        I = (L + 1) - IBACK
-C 180    EM(I) = EM(I) + EM(I-1)*RXI
-CC Compute integral of polynomial. --------------------------------------
-C      S = ONE
-C      CSUM = ZERO
-C      DO 190 I = 1, L
-C        CSUM = CSUM + S*EM(I)/REAL(I+1)
-C 190    S = -S
-C      TQ(3) = FLOTL*EM0/CSUM
-C      GO TO 300
-CC
-CC Set coefficients for BDF methods. ------------------------------------
-C 200  DO 210 I = 3, L
-C 210    EL(I) = ZERO
-C      EL(1) = ONE
-C      EL(2) = ONE
-C      ALPH0 = -ONE
-C      AHATN0 = -ONE
-C      HSUM = H
-C      RXI = ONE
-C      RXIS = ONE
-C      IF (NQ .EQ. 1) GO TO 240
-C      DO 230 J = 1, NQM2
-CC In EL, construct coefficients of (1+x/xi(1))*...*(1+x/xi(j+1)). ------
-C        HSUM = HSUM + TAU(J)
-C        RXI = H/HSUM
-C        JP1 = J + 1
-C        ALPH0 = ALPH0 - ONE/REAL(JP1)
-C        DO 220 IBACK = 1, JP1
-C          I = (J + 3) - IBACK
-C 220      EL(I) = EL(I) + EL(I-1)*RXI
-C 230    CONTINUE
-C      ALPH0 = ALPH0 - ONE/REAL(NQ)
-C      RXIS = -EL(2) - ALPH0
-C      HSUM = HSUM + TAU(NQM1)
-C      RXI = H/HSUM
-C      AHATN0 = -EL(2) - RXI
-C      DO 235 IBACK = 1, NQ
-C        I = (NQ + 2) - IBACK
-C 235    EL(I) = EL(I) + EL(I-1)*RXIS
-C 240  T1 = ONE - AHATN0 + ALPH0
-C      T2 = ONE + REAL(NQ)*T1
-C      TQ(2) = ABS(ALPH0*T2/T1)
-C      TQ(5) = ABS(T2/(EL(L)*RXI/RXIS))
-C      IF (NQWAIT .NE. 1) GO TO 300
-C      CNQM1 = RXIS/EL(L)
-C      T3 = ALPH0 + ONE/REAL(NQ)
-C      T4 = AHATN0 + RXI
-C      ELP = T3/(ONE - T4 + T3)
-C      TQ(1) = ABS(ELP/CNQM1)
-C      HSUM = HSUM + TAU(NQ)
-C      RXI = H/HSUM
-C      T5 = ALPH0 - ONE/REAL(NQ+1)
-C      T6 = AHATN0 - RXI
-C      ELP = T2/(ONE - T6 + T5)
-C      TQ(3) = ABS(ELP*RXI*(FLOTL + ONE)*T5)
-C 300  TQ(4) = CORTES*TQ(2)
-C      RETURN
-CC----------------------- End of Subroutine SVSET -----------------------
-C      END
-C      SUBROUTINE SVSOL (WM, IWM, X, IERSL)
-C      REAL WM, X
-C      INTEGER IWM, IERSL
-C      DIMENSION WM(*), IWM(*), X(*)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- WM, IWM, X
-CC Call sequence output -- X, IERSL
-CC COMMON block variables accessed..
-CC     /SVOD01/ -- H, RL1, MITER, N
-CC
-CC Subroutines called by SVSOL.. SGESL, SGBSL
-CC Function routines called by SVSOL.. None
-CC-----------------------------------------------------------------------
-CC This routine manages the solution of the linear system arising from
-CC a chord iteration.  It is called if MITER .ne. 0.
-CC If MITER is 1 or 2, it calls SGESL to accomplish this.
-CC If MITER = 3 it updates the coefficient H*RL1 in the diagonal
-CC matrix, and then computes the solution.
-CC If MITER is 4 or 5, it calls SGBSL.
-CC Communication with SVSOL uses the following variables..
-CC WM    = Real work space containing the inverse diagonal matrix if
-CC         MITER = 3 and the LU decomposition of the matrix otherwise.
-CC         Storage of matrix elements starts at WM(3).
-CC         WM also contains the following matrix-related data..
-CC         WM(1) = SQRT(UROUND) (not used here),
-CC         WM(2) = HRL1, the previous value of H*RL1, used if MITER = 3.
-CC IWM   = Integer work space containing pivot information, starting at
-CC         IWM(31), if MITER is 1, 2, 4, or 5.  IWM also contains band
-CC         parameters ML = IWM(1) and MU = IWM(2) if MITER is 4 or 5.
-CC X     = The right-hand side vector on input, and the solution vector
-CC         on output, of length N.
-CC IERSL = Output flag.  IERSL = 0 if no trouble occurred.
-CC         IERSL = 1 if a singular matrix arose with MITER = 3.
-CC-----------------------------------------------------------------------
-CC
-CC Type declarations for labeled COMMON block SVOD01 --------------------
-CC
-C      REAL ACNRM, CCMXJ, CONP, CRATE, DRC, EL,
-C     1     ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2     RC, RL1, TAU, TQ, TN, UROUND
-C      INTEGER ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     1        L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     2        LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     3        N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     4        NSLP, NYH
-CC
-CC Type declarations for local variables --------------------------------
-CC
-C      INTEGER I, MEBAND, ML, MU
-C      REAL DI, HRL1, ONE, PHRL1, R, ZERO
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to this integrator.
-CC-----------------------------------------------------------------------
-C      SAVE ONE, ZERO
-CC
-C      COMMON /SVOD01/ ACNRM, CCMXJ, CONP, CRATE, DRC, EL(13),
-C     1                ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2                RC, RL1, TAU(13), TQ(5), TN, UROUND,
-C     3                ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     4                L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     5                LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     6                N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     7                NSLP, NYH
-CC
-C      DATA ONE /1.0E0/, ZERO /0.0E0/
-CC
-C      IERSL = 0
-C      GO TO (100, 100, 300, 400, 400), MITER
-C 100  CALL SGESL (WM(3), N, N, IWM(31), X, 0)
-C      RETURN
-CC
-C 300  PHRL1 = WM(2)
-C      HRL1 = H*RL1
-C      WM(2) = HRL1
-C      IF (HRL1 .EQ. PHRL1) GO TO 330
-C      R = HRL1/PHRL1
-C      DO 320 I = 1,N
-C        DI = ONE - R*(ONE - ONE/WM(I+2))
-C        IF (ABS(DI) .EQ. ZERO) GO TO 390
-C 320    WM(I+2) = ONE/DI
-CC
-C 330  DO 340 I = 1,N
-C 340    X(I) = WM(I+2)*X(I)
-C      RETURN
-C 390  IERSL = 1
-C      RETURN
-CC
-C 400  ML = IWM(1)
-C      MU = IWM(2)
-C      MEBAND = 2*ML + MU + 1
-C      CALL SGBSL (WM(3), MEBAND, N, ML, MU, IWM(31), X, 0)
-C      RETURN
-CC----------------------- End of Subroutine SVSOL -----------------------
-C      END
-C      SUBROUTINE SVSRCO (RSAV, ISAV, JOB)
-C      REAL RSAV
-C      INTEGER ISAV, JOB
-C      DIMENSION RSAV(*), ISAV(*)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- RSAV, ISAV, JOB
-CC Call sequence output -- RSAV, ISAV
-CC COMMON block variables accessed -- All of /SVOD01/ and /SVOD02/
-CC
-CC Subroutines/functions called by SVSRCO.. None
-CC-----------------------------------------------------------------------
-CC This routine saves or restores (depending on JOB) the contents of the
-CC COMMON blocks SVOD01 and SVOD02, which are used internally by SVODE.
-CC
-CC RSAV = real array of length 49 or more.
-CC ISAV = integer array of length 41 or more.
-CC JOB  = flag indicating to save or restore the COMMON blocks..
-CC        JOB  = 1 if COMMON is to be saved (written to RSAV/ISAV).
-CC        JOB  = 2 if COMMON is to be restored (read from RSAV/ISAV).
-CC        A call with JOB = 2 presumes a prior call with JOB = 1.
-CC-----------------------------------------------------------------------
-C      REAL RVOD1, RVOD2
-C      INTEGER IVOD1, IVOD2
-C      INTEGER I, LENIV1, LENIV2, LENRV1, LENRV2
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to this integrator.
-CC-----------------------------------------------------------------------
-C      SAVE LENRV1, LENIV1, LENRV2, LENIV2
-CC
-C      COMMON /SVOD01/ RVOD1(48), IVOD1(33)
-C      COMMON /SVOD02/ RVOD2(1), IVOD2(8)
-C      DATA LENRV1/48/, LENIV1/33/, LENRV2/1/, LENIV2/8/
-CC
-C      IF (JOB .EQ. 2) GO TO 100
-C      DO 10 I = 1,LENRV1
-C 10     RSAV(I) = RVOD1(I)
-C      DO 15 I = 1,LENRV2
-C 15     RSAV(LENRV1+I) = RVOD2(I)
-CC
-C      DO 20 I = 1,LENIV1
-C 20     ISAV(I) = IVOD1(I)
-C      DO 25 I = 1,LENIV2
-C 25     ISAV(LENIV1+I) = IVOD2(I)
-CC
-C      RETURN
-CC
-C 100  CONTINUE
-C      DO 110 I = 1,LENRV1
-C 110     RVOD1(I) = RSAV(I)
-C      DO 115 I = 1,LENRV2
-C 115     RVOD2(I) = RSAV(LENRV1+I)
-CC
-C      DO 120 I = 1,LENIV1
-C 120     IVOD1(I) = ISAV(I)
-C      DO 125 I = 1,LENIV2
-C 125     IVOD2(I) = ISAV(LENIV1+I)
-CC
-C      RETURN
-CC----------------------- End of Subroutine SVSRCO ----------------------
-C      END
-C      SUBROUTINE SVSTEP (Y, YH, LDYH, YH1, EWT, SAVF, VSAV, ACOR,
-C     1                  WM, IWM, F, JAC, PSOL, VNLS, RPAR, IPAR)
-C      EXTERNAL F, JAC, PSOL, VNLS
-C      REAL Y, YH, YH1, EWT, SAVF, VSAV, ACOR, WM, RPAR
-C      INTEGER LDYH, IWM, IPAR
-C      DIMENSION Y(*), YH(LDYH,*), YH1(*), EWT(*), SAVF(*), VSAV(*),
-C     1   ACOR(*), WM(*), IWM(*), RPAR(*), IPAR(*)
-CC-----------------------------------------------------------------------
-CC Call sequence input -- Y, YH, LDYH, YH1, EWT, SAVF, VSAV,
-CC                        ACOR, WM, IWM, F, JAC, PSOL, VNLS, RPAR, IPAR
-CC Call sequence output -- YH, ACOR, WM, IWM
-CC COMMON block variables accessed..
-CC     /SVOD01/  ACNRM, EL(13), H, HMIN, HMXI, HNEW, HSCAL, RC, TAU(13),
-CC               TQ(5), TN, JCUR, JSTART, KFLAG, KUTH,
-CC               L, LMAX, MAXORD, MITER, N, NEWQ, NQ, NQWAIT
-CC     /SVOD02/  HU, NCFN, NETF, NFE, NQU, NST
-CC
-CC Subroutines called by SVSTEP.. F, SAXPY, SCOPY, SSCAL,
-CC                               SVJUST, VNLS, SVSET
-CC Function routines called by SVSTEP.. SVNORM
-CC-----------------------------------------------------------------------
-CC SVSTEP performs one step of the integration of an initial value
-CC problem for a system of ordinary differential equations.
-CC SVSTEP calls subroutine VNLS for the solution of the nonlinear system
-CC arising in the time step.  Thus it is independent of the problem
-CC Jacobian structure and the type of nonlinear system solution method.
-CC SVSTEP returns a completion flag KFLAG (in COMMON).
-CC A return with KFLAG = -1 or -2 means either ABS(H) = HMIN or 10
-CC consecutive failures occurred.  On a return with KFLAG negative,
-CC the values of TN and the YH array are as of the beginning of the last
-CC step, and H is the last step size attempted.
-CC
-CC Communication with SVSTEP is done with the following variables..
-CC
-CC Y      = An array of length N used for the dependent variable vector.
-CC YH     = An LDYH by LMAX array containing the dependent variables
-CC          and their approximate scaled derivatives, where
-CC          LMAX = MAXORD + 1.  YH(i,j+1) contains the approximate
-CC          j-th derivative of y(i), scaled by H**j/factorial(j)
-CC          (j = 0,1,...,NQ).  On entry for the first step, the first
-CC          two columns of YH must be set from the initial values.
-CC LDYH   = A constant integer .ge. N, the first dimension of YH.
-CC          N is the number of ODEs in the system.
-CC YH1    = A one-dimensional array occupying the same space as YH.
-CC EWT    = An array of length N containing multiplicative weights
-CC          for local error measurements.  Local errors in y(i) are
-CC          compared to 1.0/EWT(i) in various error tests.
-CC SAVF   = An array of working storage, of length N.
-CC          also used for input of YH(*,MAXORD+2) when JSTART = -1
-CC          and MAXORD .lt. the current order NQ.
-CC VSAV   = A work array of length N passed to subroutine VNLS.
-CC ACOR   = A work array of length N, used for the accumulated
-CC          corrections.  On a successful return, ACOR(i) contains
-CC          the estimated one-step local error in y(i).
-CC WM,IWM = Real and integer work arrays associated with matrix
-CC          operations in VNLS.
-CC F      = Dummy name for the user supplied subroutine for f.
-CC JAC    = Dummy name for the user supplied Jacobian subroutine.
-CC PSOL   = Dummy name for the subroutine passed to VNLS, for
-CC          possible use there.
-CC VNLS   = Dummy name for the nonlinear system solving subroutine,
-CC          whose real name is dependent on the method used.
-CC RPAR, IPAR = Dummy names for user's real and integer work arrays.
-CC-----------------------------------------------------------------------
-CC
-CC Type declarations for labeled COMMON block SVOD01 --------------------
-CC
-C      REAL ACNRM, CCMXJ, CONP, CRATE, DRC, EL,
-C     1     ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2     RC, RL1, TAU, TQ, TN, UROUND
-C      INTEGER ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     1        L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     2        LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     3        N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     4        NSLP, NYH
-CC
-CC Type declarations for labeled COMMON block SVOD02 --------------------
-CC
-C      REAL HU
-C      INTEGER NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-CC Type declarations for local variables --------------------------------
-CC
-C      REAL ADDON, BIAS1,BIAS2,BIAS3, CNQUOT, DDN, DSM, DUP,
-C     1     ETACF, ETAMIN, ETAMX1, ETAMX2, ETAMX3, ETAMXF,
-C     2     ETAQ, ETAQM1, ETAQP1, FLOTL, ONE, ONEPSM,
-C     3     R, THRESH, TOLD, ZERO
-C      INTEGER I, I1, I2, IBACK, J, JB, KFC, KFH, MXNCF, NCF, NFLAG
-CC
-CC Type declaration for function subroutines called ---------------------
-CC
-C      REAL SVNORM
-CC-----------------------------------------------------------------------
-CC The following Fortran-77 declaration is to cause the values of the
-CC listed (local) variables to be saved between calls to this integrator.
-CC-----------------------------------------------------------------------
-C      SAVE ADDON, BIAS1, BIAS2, BIAS3,
-C     1     ETACF, ETAMIN, ETAMX1, ETAMX2, ETAMX3, ETAMXF,
-C     2     KFC, KFH, MXNCF, ONEPSM, THRESH, ONE, ZERO
-CC-----------------------------------------------------------------------
-C      COMMON /SVOD01/ ACNRM, CCMXJ, CONP, CRATE, DRC, EL(13),
-C     1                ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
-C     2                RC, RL1, TAU(13), TQ(5), TN, UROUND,
-C     3                ICF, INIT, IPUP, JCUR, JSTART, JSV, KFLAG, KUTH,
-C     4                L, LMAX, LYH, LEWT, LACOR, LSAVF, LWM, LIWM,
-C     5                LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
-C     6                N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
-C     7                NSLP, NYH
-C      COMMON /SVOD02/ HU, NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
-CC
-C      DATA KFC/-3/, KFH/-7/, MXNCF/10/
-C      DATA ADDON  /1.0E-6/,    BIAS1  /6.0E0/,     BIAS2  /6.0E0/,
-C     1     BIAS3  /10.0E0/,    ETACF  /0.25E0/,    ETAMIN /0.1E0/,
-C     2     ETAMXF /0.2E0/,     ETAMX1 /1.0E4/,     ETAMX2 /10.0E0/,
-C     3     ETAMX3 /10.0E0/,    ONEPSM /1.00001E0/, THRESH /1.5E0/
-C      DATA ONE/1.0E0/, ZERO/0.0E0/
-CC
-C      KFLAG = 0
-C      TOLD = TN
-C      NCF = 0
-C      JCUR = 0
-C      NFLAG = 0
-C      IF (JSTART .GT. 0) GO TO 20
-C      IF (JSTART .EQ. -1) GO TO 100
-CC-----------------------------------------------------------------------
-CC On the first call, the order is set to 1, and other variables are
-CC initialized.  ETAMAX is the maximum ratio by which H can be increased
-CC in a single step.  It is normally 1.5, but is larger during the
-CC first 10 steps to compensate for the small initial H.  If a failure
-CC occurs (in corrector convergence or error test), ETAMAX is set to 1
-CC for the next increase.
-CC-----------------------------------------------------------------------
-C      LMAX = MAXORD + 1
-C      NQ = 1
-C      L = 2
-C      NQNYH = NQ*LDYH
-C      TAU(1) = H
-C      PRL1 = ONE
-C      RC = ZERO
-C      ETAMAX = ETAMX1
-C      NQWAIT = 2
-C      HSCAL = H
-C      GO TO 200
-CC-----------------------------------------------------------------------
-CC Take preliminary actions on a normal continuation step (JSTART.GT.0).
-CC If the driver changed H, then ETA must be reset and NEWH set to 1.
-CC If a change of order was dictated on the previous step, then
-CC it is done here and appropriate adjustments in the history are made.
-CC On an order decrease, the history array is adjusted by SVJUST.
-CC On an order increase, the history array is augmented by a column.
-CC On a change of step size H, the history array YH is rescaled.
-CC-----------------------------------------------------------------------
-C 20   CONTINUE
-C      IF (KUTH .EQ. 1) THEN
-C        ETA = MIN(ETA,H/HSCAL)
-C        NEWH = 1
-C        ENDIF
-C 50   IF (NEWH .EQ. 0) GO TO 200
-C      IF (NEWQ .EQ. NQ) GO TO 150
-C      IF (NEWQ .LT. NQ) THEN
-C        CALL SVJUST (YH, LDYH, -1)
-C        NQ = NEWQ
-C        L = NQ + 1
-C        NQWAIT = L
-C        GO TO 150
-C        ENDIF
-C      IF (NEWQ .GT. NQ) THEN
-C        CALL SVJUST (YH, LDYH, 1)
-C        NQ = NEWQ
-C        L = NQ + 1
-C        NQWAIT = L
-C        GO TO 150
-C      ENDIF
-CC-----------------------------------------------------------------------
-CC The following block handles preliminaries needed when JSTART = -1.
-CC If N was reduced, zero out part of YH to avoid undefined references.
-CC If MAXORD was reduced to a value less than the tentative order NEWQ,
-CC then NQ is set to MAXORD, and a new H ratio ETA is chosen.
-CC Otherwise, we take the same preliminary actions as for JSTART .gt. 0.
-CC In any case, NQWAIT is reset to L = NQ + 1 to prevent further
-CC changes in order for that many steps.
-CC The new H ratio ETA is limited by the input H if KUTH = 1,
-CC by HMIN if KUTH = 0, and by HMXI in any case.
-CC Finally, the history array YH is rescaled.
-CC-----------------------------------------------------------------------
-C 100  CONTINUE
-C      LMAX = MAXORD + 1
-C      IF (N .EQ. LDYH) GO TO 120
-C      I1 = 1 + (NEWQ + 1)*LDYH
-C      I2 = (MAXORD + 1)*LDYH
-C      IF (I1 .GT. I2) GO TO 120
-C      DO 110 I = I1, I2
-C 110    YH1(I) = ZERO
-C 120  IF (NEWQ .LE. MAXORD) GO TO 140
-C      FLOTL = REAL(LMAX)
-C      IF (MAXORD .LT. NQ-1) THEN
-C        DDN = SVNORM (N, SAVF, EWT)/TQ(1)
-C        ETA = ONE/((BIAS1*DDN)**(ONE/FLOTL) + ADDON)
-C        ENDIF
-C      IF (MAXORD .EQ. NQ .AND. NEWQ .EQ. NQ+1) ETA = ETAQ
-C      IF (MAXORD .EQ. NQ-1 .AND. NEWQ .EQ. NQ+1) THEN
-C        ETA = ETAQM1
-C        CALL SVJUST (YH, LDYH, -1)
-C        ENDIF
-C      IF (MAXORD .EQ. NQ-1 .AND. NEWQ .EQ. NQ) THEN
-C        DDN = SVNORM (N, SAVF, EWT)/TQ(1)
-C        ETA = ONE/((BIAS1*DDN)**(ONE/FLOTL) + ADDON)
-C        CALL SVJUST (YH, LDYH, -1)
-C        ENDIF
-C      ETA = MIN(ETA,ONE)
-C      NQ = MAXORD
-C      L = LMAX
-C 140  IF (KUTH .EQ. 1) ETA = MIN(ETA,ABS(H/HSCAL))
-C      IF (KUTH .EQ. 0) ETA = MAX(ETA,HMIN/ABS(HSCAL))
-C      ETA = ETA/MAX(ONE,ABS(HSCAL)*HMXI*ETA)
-C      NEWH = 1
-C      NQWAIT = L
-C      IF (NEWQ .LE. MAXORD) GO TO 50
-CC Rescale the history array for a change in H by a factor of ETA. ------
-C 150  R = ONE
-C      DO 180 J = 2, L
-C        R = R*ETA
-C        CALL SSCAL (N, R, YH(1,J), 1 )
-C 180    CONTINUE
-C      H = HSCAL*ETA
-C      HSCAL = H
-C      RC = RC*ETA
-C      NQNYH = NQ*LDYH
-CC-----------------------------------------------------------------------
-CC This section computes the predicted values by effectively
-CC multiplying the YH array by the Pascal triangle matrix.
-CC SVSET is called to calculate all integration coefficients.
-CC RC is the ratio of new to old values of the coefficient H/EL(2)=h/l1.
-CC-----------------------------------------------------------------------
-C 200  TN = TN + H
-C      I1 = NQNYH + 1
-C      DO 220 JB = 1, NQ
-C        I1 = I1 - LDYH
-C        DO 210 I = I1, NQNYH
-C 210      YH1(I) = YH1(I) + YH1(I+LDYH)
-C 220  CONTINUE
-C      CALL SVSET
-C      RL1 = ONE/EL(2)
-C      RC = RC*(RL1/PRL1)
-C      PRL1 = RL1
-CC
-CC Call the nonlinear system solver. ------------------------------------
-CC
-C      CALL VNLS (Y, YH, LDYH, VSAV, SAVF, EWT, ACOR, IWM, WM,
-C     1           F, JAC, PSOL, NFLAG, RPAR, IPAR)
-CC
-C      IF (NFLAG .EQ. 0) GO TO 450
-CC-----------------------------------------------------------------------
-CC The VNLS routine failed to achieve convergence (NFLAG .NE. 0).
-CC The YH array is retracted to its values before prediction.
-CC The step size H is reduced and the step is retried, if possible.
-CC Otherwise, an error exit is taken.
-CC-----------------------------------------------------------------------
-C        NCF = NCF + 1
-C        NCFN = NCFN + 1
-C        ETAMAX = ONE
-C        TN = TOLD
-C        I1 = NQNYH + 1
-C        DO 430 JB = 1, NQ
-C          I1 = I1 - LDYH
-C          DO 420 I = I1, NQNYH
-C 420        YH1(I) = YH1(I) - YH1(I+LDYH)
-C 430      CONTINUE
-C        IF (NFLAG .LT. -1) GO TO 680
-C        IF (ABS(H) .LE. HMIN*ONEPSM) GO TO 670
-C        IF (NCF .EQ. MXNCF) GO TO 670
-C        ETA = ETACF
-C        ETA = MAX(ETA,HMIN/ABS(H))
-C        NFLAG = -1
-C        GO TO 150
-CC-----------------------------------------------------------------------
-CC The corrector has converged (NFLAG = 0).  The local error test is
-CC made and control passes to statement 500 if it fails.
-CC-----------------------------------------------------------------------
-C 450  CONTINUE
-C      DSM = ACNRM/TQ(2)
-C      IF (DSM .GT. ONE) GO TO 500
-CC-----------------------------------------------------------------------
-CC After a successful step, update the YH and TAU arrays and decrement
-CC NQWAIT.  If NQWAIT is then 1 and NQ .lt. MAXORD, then ACOR is saved
-CC for use in a possible order increase on the next step.
-CC If ETAMAX = 1 (a failure occurred this step), keep NQWAIT .ge. 2.
-CC-----------------------------------------------------------------------
-C      KFLAG = 0
-C      NST = NST + 1
-C      HU = H
-C      NQU = NQ
-C      DO 470 IBACK = 1, NQ
-C        I = L - IBACK
-C 470    TAU(I+1) = TAU(I)
-C      TAU(1) = H
-C      DO 480 J = 1, L
-C        CALL SAXPY (N, EL(J), ACOR, 1, YH(1,J), 1 )
-C 480    CONTINUE
-C      NQWAIT = NQWAIT - 1
-C      IF ((L .EQ. LMAX) .OR. (NQWAIT .NE. 1)) GO TO 490
-C      CALL SCOPY (N, ACOR, 1, YH(1,LMAX), 1 )
-C      CONP = TQ(5)
-C 490  IF (ETAMAX .NE. ONE) GO TO 560
-C      IF (NQWAIT .LT. 2) NQWAIT = 2
-C      NEWQ = NQ
-C      NEWH = 0
-C      ETA = ONE
-C      HNEW = H
-C      GO TO 690
-CC-----------------------------------------------------------------------
-CC The error test failed.  KFLAG keeps track of multiple failures.
-CC Restore TN and the YH array to their previous values, and prepare
-CC to try the step again.  Compute the optimum step size for the
-CC same order.  After repeated failures, H is forced to decrease
-CC more rapidly.
-CC-----------------------------------------------------------------------
-C 500  KFLAG = KFLAG - 1
-C      NETF = NETF + 1
-C      NFLAG = -2
-C      TN = TOLD
-C      I1 = NQNYH + 1
-C      DO 520 JB = 1, NQ
-C        I1 = I1 - LDYH
-C        DO 510 I = I1, NQNYH
-C 510      YH1(I) = YH1(I) - YH1(I+LDYH)
-C 520  CONTINUE
-C      IF (ABS(H) .LE. HMIN*ONEPSM) GO TO 660
-C      ETAMAX = ONE
-C      IF (KFLAG .LE. KFC) GO TO 530
-CC Compute ratio of new H to current H at the current order. ------------
-C      FLOTL = REAL(L)
-C      ETA = ONE/((BIAS2*DSM)**(ONE/FLOTL) + ADDON)
-C      ETA = MAX(ETA,HMIN/ABS(H),ETAMIN)
-C      IF ((KFLAG .LE. -2) .AND. (ETA .GT. ETAMXF)) ETA = ETAMXF
-C      GO TO 150
-CC-----------------------------------------------------------------------
-CC Control reaches this section if 3 or more consecutive failures
-CC have occurred.  It is assumed that the elements of the YH array
-CC have accumulated errors of the wrong order.  The order is reduced
-CC by one, if possible.  Then H is reduced by a factor of 0.1 and
-CC the step is retried.  After a total of 7 consecutive failures,
-CC an exit is taken with KFLAG = -1.
-CC-----------------------------------------------------------------------
-C 530  IF (KFLAG .EQ. KFH) GO TO 660
-C      IF (NQ .EQ. 1) GO TO 540
-C      ETA = MAX(ETAMIN,HMIN/ABS(H))
-C      CALL SVJUST (YH, LDYH, -1)
-C      L = NQ
-C      NQ = NQ - 1
-C      NQWAIT = L
-C      GO TO 150
-C 540  ETA = MAX(ETAMIN,HMIN/ABS(H))
-C      H = H*ETA
-C      HSCAL = H
-C      TAU(1) = H
-C      CALL F (N, TN, Y, SAVF, RPAR, IPAR)
-C      NFE = NFE + 1
-C      DO 550 I = 1, N
-C 550    YH(I,2) = H*SAVF(I)
-C      NQWAIT = 10
-C      GO TO 200
-CC-----------------------------------------------------------------------
-CC If NQWAIT = 0, an increase or decrease in order by one is considered.
-CC Factors ETAQ, ETAQM1, ETAQP1 are computed by which H could
-CC be multiplied at order q, q-1, or q+1, respectively.
-CC The largest of these is determined, and the new order and
-CC step size set accordingly.
-CC A change of H or NQ is made only if H increases by at least a
-CC factor of THRESH.  If an order change is considered and rejected,
-CC then NQWAIT is set to 2 (reconsider it after 2 steps).
-CC-----------------------------------------------------------------------
-CC Compute ratio of new H to current H at the current order. ------------
-C 560  FLOTL = REAL(L)
-C      ETAQ = ONE/((BIAS2*DSM)**(ONE/FLOTL) + ADDON)
-C      IF (NQWAIT .NE. 0) GO TO 600
-C      NQWAIT = 2
-C      ETAQM1 = ZERO
-C      IF (NQ .EQ. 1) GO TO 570
-CC Compute ratio of new H to current H at the current order less one. ---
-C      DDN = SVNORM (N, YH(1,L), EWT)/TQ(1)
-C      ETAQM1 = ONE/((BIAS1*DDN)**(ONE/(FLOTL - ONE)) + ADDON)
-C 570  ETAQP1 = ZERO
-C      IF (L .EQ. LMAX) GO TO 580
-CC Compute ratio of new H to current H at current order plus one. -------
-C      CNQUOT = (TQ(5)/CONP)*(H/TAU(2))**L
-C      DO 575 I = 1, N
-C 575    SAVF(I) = ACOR(I) - CNQUOT*YH(I,LMAX)
-C      DUP = SVNORM (N, SAVF, EWT)/TQ(3)
-C      ETAQP1 = ONE/((BIAS3*DUP)**(ONE/(FLOTL + ONE)) + ADDON)
-C 580  IF (ETAQ .GE. ETAQP1) GO TO 590
-C      IF (ETAQP1 .GT. ETAQM1) GO TO 620
-C      GO TO 610
-C 590  IF (ETAQ .LT. ETAQM1) GO TO 610
-C 600  ETA = ETAQ
-C      NEWQ = NQ
-C      GO TO 630
-C 610  ETA = ETAQM1
-C      NEWQ = NQ - 1
-C      GO TO 630
-C 620  ETA = ETAQP1
-C      NEWQ = NQ + 1
-C      CALL SCOPY (N, ACOR, 1, YH(1,LMAX), 1)
-CC Test tentative new H against THRESH, ETAMAX, and HMXI, then exit. ----
-C 630  IF (ETA .LT. THRESH .OR. ETAMAX .EQ. ONE) GO TO 640
-C      ETA = MIN(ETA,ETAMAX)
-C      ETA = ETA/MAX(ONE,ABS(H)*HMXI*ETA)
-C      NEWH = 1
-C      HNEW = H*ETA
-C      GO TO 690
-C 640  NEWQ = NQ
-C      NEWH = 0
-C      ETA = ONE
-C      HNEW = H
-C      GO TO 690
-CC-----------------------------------------------------------------------
-CC All returns are made through this section.
-CC On a successful return, ETAMAX is reset and ACOR is scaled.
-CC-----------------------------------------------------------------------
-C 660  KFLAG = -1
-C      GO TO 720
-C 670  KFLAG = -2
-C      GO TO 720
-C 680  IF (NFLAG .EQ. -2) KFLAG = -3
-C      IF (NFLAG .EQ. -3) KFLAG = -4
-C      GO TO 720
-C 690  ETAMAX = ETAMX3
-C      IF (NST .LE. 10) ETAMAX = ETAMX2
-C 700  R = ONE/TQ(2)
-C      CALL SSCAL (N, R, ACOR, 1)
-C 720  JSTART = 1
-C      RETURN
-C      END
-CC----------------------- End of Subroutine SVSTEP ----------------------
-C*****END precision > single
-C
+
       SUBROUTINE XERRWD (MSG, NMES, NERR, LEVEL, NI, I1, I2, NR, R1, R2)
       DOUBLE PRECISION R1, R2
       INTEGER NMES, NERR, LEVEL, NI, I1, I2, NR
@@ -7075,8 +4839,8 @@ C Write the message. ---------------------------------------------------
 C Abort the run if LEVEL = 2. ------------------------------------------
  100  IF (LEVEL .NE. 2) RETURN
       STOP
-C----------------------- End of Subroutine XERRWD ----------------------
       END
+
       SUBROUTINE XSETF (MFLAG)
 C-----------------------------------------------------------------------
 C This routine resets the print control flag MFLAG.
@@ -7085,11 +4849,10 @@ C Subroutines called by XSETF.. None
 C Function routines called by XSETF.. MFLGSV
 C-----------------------------------------------------------------------
       INTEGER MFLAG, JUNK, MFLGSV
-C
+
       IF (MFLAG .EQ. 0 .OR. MFLAG .EQ. 1) JUNK = MFLGSV (MFLAG,.TRUE.)
-      RETURN
-C----------------------- End of Subroutine XSETF -----------------------
       END
+
       SUBROUTINE XSETUN (LUN)
 C-----------------------------------------------------------------------
 C This routine resets the logical unit number for messages.
@@ -7098,10 +4861,8 @@ C Subroutines called by XSETUN.. None
 C Function routines called by XSETUN.. LUNSAV
 C-----------------------------------------------------------------------
       INTEGER LUN, JUNK, LUNSAV
-C
+
       IF (LUN .GT. 0) JUNK = LUNSAV (LUN,.TRUE.)
-      RETURN
-C----------------------- End of Subroutine XSETUN ----------------------
       END
 
       block data vhack_save
