@@ -200,7 +200,8 @@ c ::: -----------------------------------------------------------
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
      &                  tau_control, sest, cfix, changeMax_control,
      &                  thickFacTR, thickFacCH,
-     &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r
+     &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r,
+     &                  Tpipe, Tstick, stL, stLw
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -309,6 +310,15 @@ c     Initialize control variables
       wire_h = zero
       wire_T = -1.0
       wire_r = -1.0
+
+c     If the following two Temperatures do not appear in probin, they default to the 
+c     compiled-in values in the data statements in setupbc
+      Tpipe = -1
+      Tstick = -1
+
+c     Length of stick at Tstick, then ramps to Tpipe over layer stLw
+      stL = 20*Ro
+      stLw = .1*Ro
       
       read(untin,fortin)
 c      write(6,fortin)
@@ -425,6 +435,9 @@ c     data X_O2  /   0.193726937269d0,  0.21d0, 0.193726937269d0,  0.21d0,  0.21
          call get_spec_name(name, n)
          if (name .eq. 'N2' ) iN2 = n
       end do
+
+      if (Tpipe.gt.0) T(BL_PIPEEND) = Tpipe
+      if (Tstick.gt.0) T(BL_STICK) = Tstick
 
       do zone = 1,Nzones
          sum = zero
@@ -619,7 +632,7 @@ c ::: -----------------------------------------------------------
       implicit none
 
       integer orient
-      REAL_T x, y, z, time, u, v, w, rho, Yl(0:*), T, h, dx(SDIM)
+      REAL_T x, y, z, time, u, v, w, rho, Yl(0:*), T, h, dx(SDIM), bin, bout, Tout
       logical getuvw
 
 #include "htdata.H"
@@ -647,11 +660,40 @@ c ::: -----------------------------------------------------------
          h = h_bc(zone)
          Patm = pamb / 101325.0d0
 
-         if (zone.eq.BL_FUELPIPE) then
+         r = SQRT(x**2 + y**2)
 
-            r = SQRT(x**2 + y**2)
+         if (zone.eq.BL_FUELPIPE.or.zone.eq.BL_PIPEEND.or.zone.eq.BL_COFLOW.or.zone.eq.BL_STICK) then
+
+            T = T_bc(BL_FUELPIPE)
+
+            if (stTh.gt.zero) then
+
+c     bin is the blend from the stick center T to T of the pipe end over stLw
+               bin = one - half*(one+TANH((y-half*stL)/(fourth*stLw)))
+               T = T_bc(BL_STICK)*bin + T_bc(BL_PIPEEND)*(one-bin)
+
+c           now, bin is the blend from the stick to the fuel or pipe end over stBL
+               if (zone.eq.BL_FUELPIPE.or.zone.eq.BL_PIPEEND.or.zone.eq.BL_STICK) then
+                  if (r.le.Ro) then
+                     Tout = T_bc(BL_FUELPIPE)
+                  else
+                     Tout = T_bc(BL_PIPEEND)
+                  endif
+                  bin = one - half*(one+TANH((x-half*stTh)/(fourth*stBL)))
+                  T = T*bin + Tout*(one - bin)
+               endif
+
+            endif
+
+c     now, bin is the blend from fuel stream to pipe end, bout is the blend from pipe end to coflow
+            bin = one - half*(one+TANH((r-Ro)/(fourth*.3*wallTh)))
+            bout = one - half*(one+TANH((r-(Ro+wallTh))/(fourth*.3*wallTh)))
+            
+            T = (T*bin + T_bc(BL_PIPEEND)*(one-bin))*bout + T_bc(BL_COFLOW)*(one-bout)
+
+            if (zone.eq.BL_FUELPIPE) then
 #ifdef SWIRL
-            rn = r/Ro
+               rn = r/Ro
 
 cc     Fit as of 4/29/03
 c            eta = 9.920628558770E-001
@@ -671,18 +713,19 @@ c
 
 c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
 
-            eta = 1.004677322175D+000
-     &          - 9.017625583830D-002*rn
-     &          + 3.611171220764D-001*rn**2
-     &          - 5.644888675141D-001*rn**3
-
-            eta = min(max(eta,0.d0),1.d0)
+               eta = 1.004677322175D+000
+     &              - 9.017625583830D-002*rn
+     &              + 3.611171220764D-001*rn**2
+     &              - 5.644888675141D-001*rn**3
+               
+               eta = min(max(eta,0.d0),1.d0)
 #else
-            eta = one
+               eta = one
 #endif
-            do n = 0, Nspec-1
-               Yl(n) = (1.d0-eta)*Y_bc(n,BL_COFLOW) + eta*Y_bc(n,BL_FUELPIPE)
-            end do
+               do n = 0, Nspec-1
+                  Yl(n) = (1.d0-eta)*Y_bc(n,BL_COFLOW) + eta*Y_bc(n,BL_FUELPIPE)
+               end do
+            endif
 
             call FORT_RHOfromPTY(lo,hi,
      &           rho,ARLIM(lo),ARLIM(hi),
@@ -4557,7 +4600,7 @@ c     divu(i,j,k) = min(two,one+time/.05)
       integer i, j, k
       REAL_T xx, yy, zz, r, dr, dz, blend
       
-c     Blend goes from 1 to 0 in r at wire_r, over a width of wire_w  
+c     blend goes from 1 to 0 in r at wire_r, over a width of wire_w  
       blend(r) = one - half*(one+TANH((r-wire_r)/(fourth*wire_w)))
 
       do k = lo(3),hi(3)

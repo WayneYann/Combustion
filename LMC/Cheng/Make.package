@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.1 2003-08-12 19:40:00 lijewski Exp $
+# $Id: Make.package,v 1.2 2004-09-29 23:54:19 marc Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -15,4 +15,5 @@ FEXE_headers += probdata.H PROB_F.H
 
 #fEXE_sources += 2stepSoln.f
 fEXE_sources += drmSoln0.75.f
+#fEXE_sources += gri30-noN-0.55.f
 #fEXE_sources += 2stepSoln0.75.f
