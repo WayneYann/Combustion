@@ -170,7 +170,7 @@ c
       tV_co_l = 1.e6
       tV_co_r = 2.e6
       V_co_new = -100.d0
-      T_stick = 300.d0
+      T_stick = -300.d0
 
 #if defined(BL_DO_FLCT)
       forceInflow = .FALSE.
@@ -354,14 +354,16 @@ c     For probtype == 1, set boundary conditions from premixed flame profile in 
          enddo
 
 c     Get something reasonable for stick
-         call FORT_RHOfromPTY(lo,hi,
-     &                        rho_stick,ARLIM(lo),ARLIM(hi),
-     &                        T_stick,ARLIM(lo),ARLIM(hi),
-     &                        Y_bc(0,M_FUEL),ARLIM(lo),ARLIM(hi), Patm)
-         call FORT_HMIXfromTY(lo,hi,
-     &                        h_stick,ARLIM(lo),ARLIM(hi),
-     &                        T_stick,ARLIM(lo),ARLIM(hi),
-     &                        Y_bc(0,M_FUEL),ARLIM(lo),ARLIM(hi))
+         if (T_stick.gt.zero) then
+            call FORT_RHOfromPTY(lo,hi,
+     &                           rho_stick,ARLIM(lo),ARLIM(hi),
+     &                           T_stick,ARLIM(lo),ARLIM(hi),
+     &                           Y_bc(0,M_FUEL),ARLIM(lo),ARLIM(hi), Patm)
+            call FORT_HMIXfromTY(lo,hi,
+     &                           h_stick,ARLIM(lo),ARLIM(hi),
+     &                           T_stick,ARLIM(lo),ARLIM(hi),
+     &                           Y_bc(0,M_FUEL),ARLIM(lo),ARLIM(hi))
+         endif
 
       else
          call bl_abort('No boundary init yet for probtype != 1')
@@ -495,7 +497,8 @@ c     Set coflow velocity as a function of time
             v = Va(2)
 
 c     Set stick temperature
-            if (zone.eq.M_FUEL  .and.  ABS(x).le..5*stTh) then
+            if (zone.eq.M_FUEL  .and.  ABS(x).le..5*stTh
+     &           .and. T_stick.gt.zero ) then
                T = T_stick
                rho = rho_stick
                h = h_stick
@@ -786,9 +789,10 @@ c     Do species, Temp, rhoH
                   if (do_RH) diff(i,j,RHid) = diff(i,j,RHid)*ap
 #else
 c     Conducting stick: only zero conduction if not on stick
-                  if ( (ABS(xl).gt..5*stTh) .and.
+                  if ( (T_stick .le. zero)  .or. (
+     &                 (ABS(xl).gt..5*stTh) .and.
      &                 (ABS(xh).gt..5*stTh) .and.
-     &                 (ABS(xr).gt..5*stTh) ) then
+     &                 (ABS(xr).gt..5*stTh) ) ) then
 
                      if (do_T)  diff(i,j,Tid ) = diff(i,j,Tid )*ap
                      if (do_RH) diff(i,j,RHid) = diff(i,j,RHid)*ap
