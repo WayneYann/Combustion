@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.1 2004-04-27 22:13:34 lijewski Exp $
+# $Id: Make.package,v 1.2 2004-04-27 22:54:37 lijewski Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -9,5 +9,5 @@ CEXE_headers += ArrayViewEXT.H
 
 FEXE_headers += probdata.H PROB_F.H
 
-fEXE_sources += GRI-drm19_4cm_noAR.f
+#fEXE_sources += GRI-drm19_4cm_noAR.f
 

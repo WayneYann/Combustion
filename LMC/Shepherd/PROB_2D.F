@@ -9,7 +9,7 @@
 #include "PROB_AMR_F.H"
 #include "PROB_F.H"
 #include "ArrayLim.H"
-#include "ChemKinDriver_F.H"
+#include "ChemDriver_F.H"
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -57,7 +57,7 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 #include "htdata.H"
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 
       namelist /fortin/ flowrate_fu_CH4, flowrate_fu_N2,
@@ -175,7 +175,7 @@ c ::: -----------------------------------------------------------
       
       subroutine setupbc()
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 #include "htdata.H"
@@ -197,7 +197,7 @@ c
 c	Glarborg and Bessler cases:
 c
 c	Boundary is divided into 5 zones
-      if ((probtype.eq.0).or.(probtype.eq.1).or.(probtype.eq.2)) then	      
+      if (probtype.eq.0) then	      
 c     Compute inlet mass fracs based on input flowrates
 c
 c     ZONE 1: Fuel stream
@@ -225,20 +225,17 @@ c     Note: 6.e7 = 60 s/min * 1.e6 ml/m^3
             tot = tot + X(n)
          end do
          X(iN2) = one - tot
-         call FORT_MOLETOMASS(lo,hi,
-     &        X, ARLIM(lo),ARLIM(hi),
-     &        Y, ARLIM(lo),ARLIM(hi))
-         do n = 0,Nspec-1
-            Y_bc(n,zone) = Y(n)
-         end do 
+
+         CALL CKXTY (X, IWRK, RWRK, Y_bc(0,zone))
+
          T_bc(zone) = T_fu
          u_bc(zone) = zero
          v_bc(zone) = (flowrate_fu_tot/6.e7) / (Pi*R_fu**2)
-         
-         
+c         
 c     ZONE 2: Oxidizer stream
 c     Needs: flowrate_ox_O2, flowrate_ox_N2, T_ox, R_ox_1, R_ox_2
 c     (flowrate in ml/min, Rs in mm)
+c
          zone = 2
          tot = zero
          flowrate_ox_tot = flowrate_ox_O2 + flowrate_ox_N2
@@ -252,18 +249,15 @@ c     (flowrate in ml/min, Rs in mm)
             tot = tot + X(n)
          end do
          X(iN2) = one - tot
-         call FORT_MOLETOMASS(lo,hi,
-     &        X, ARLIM(lo),ARLIM(hi),
-     &        Y, ARLIM(lo),ARLIM(hi))
-         do n = 0,Nspec-1
-            Y_bc(n,zone) = Y(n)
-         end do 
+
+         CALL CKXTY (X, IWRK, RWRK, Y_bc(0,zone))
+
          T_bc(zone) = T_ox
          u_bc(zone) = zero
          v_bc(zone) = (flowrate_ox_tot/6.e7) / (Pi*(R_ox_2**2 - R_ox_1**2))
-         
-         
+c         
 c     ZONE 3: Dead zone, like 2 but no inflow, different T
+c
          zone = 3
          do n = 0,Nspec-1
             Y_bc(n,zone) = Y_bc(n,2)
@@ -271,8 +265,9 @@ c     ZONE 3: Dead zone, like 2 but no inflow, different T
          T_bc(zone) = T_lip
          u_bc(zone) = u_bc(2)
          v_bc(zone) = zero
-         
+c         
 c     ZONE 4: Hot spot, like 2 but hotter
+c
          zone = 4
          do n = 0,Nspec-1
             Y_bc(n,zone) = Y_bc(n,2)
@@ -280,8 +275,9 @@ c     ZONE 4: Hot spot, like 2 but hotter
          T_bc(zone) = T_hot
          u_bc(zone) = u_bc(2)
          v_bc(zone) = v_bc(2)
-
+c
 c     ZONE 5: Outter wall
+c
          zone = 5
          do n = 0,Nspec-1
             Y_bc(n,zone) = Y_bc(n,2)
@@ -294,8 +290,9 @@ c     ZONE 5: Outter wall
      &        probtype
          stop
       end if
-
+c
 c     Get rho and h for all zones
+c
       do zone=1,Nzones
          call FORT_RHOfromPTY(lo,hi,
      &                        rho_bc(zone),ARLIM(lo),ARLIM(hi),
@@ -312,7 +309,7 @@ c ::: -----------------------------------------------------------
       
       integer function getZone(x, y)
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       REAL_T x, y, epsilon
@@ -343,7 +340,7 @@ c ::: -----------------------------------------------------------
       integer orient
       REAL_T x, y, time, u, v, rho, Yl(0:*), T, h, dx(SDIM)
 #include "htdata.H"
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       REAL_T flowrate_fu_tot, flowrate_ox_tot, Patm, xleft, xrght
@@ -395,25 +392,13 @@ c     Overwrite constant inflow velocities with profiles
      &        + flowrate_fu_O2 + flowrate_fu_H2 + flowrate_fu_NO
          flowrate_ox_tot = flowrate_ox_O2 + flowrate_ox_N2
 
-         if ((probtype .eq. 0).or.(probtype .eq. 2)) then
+         if ((probtype .eq. 0)) then
             if (zone.eq.1) then
                v = flowrate_fu_tot*(R_fu**2 - x**2)/(3.d7*Pi*R_fu**4)
             else if (zone.eq.2) then
                v = flowrate_ox_tot
      &              * (fourth*c_ox*x**2 + a_ox*c_ox*log(x) + b_ox*c_ox)
             endif
-         else if (probtype .eq.1) then
-            if (dx(1) .gt. R_ox_2 - R_ox_1) then
-               write(6,*) 'bcfunction: Grid too coarse for inlet v bc'
-               stop
-            end if
-            xleft = x - half*dx(1)
-            xrght = x + half*dx(1)
-            if ((x+half*dx(1).ge.domnlo(1)).and.(x-half*dx(1).le.R_fu)) then
-               v = uavFU(xleft,xrght,flowrate_fu_tot)
-            else if ((x+half*dx(1).ge.R_ox_1).and.(x-half*dx(1).le.R_ox_2)) then
-               v = uavOX(xleft,xrght,flowrate_ox_tot)
-            end if
          else
             write(*,*) 'PROB_2D::bcfunction: Dont know about probtype = ',
      &           probtype
@@ -488,7 +473,7 @@ c ::: -----------------------------------------------------------
       REAL_T   press(DIMV(press))
 
 #include "htdata.H"
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -496,7 +481,7 @@ c     ::::: local variables
       integer i, j, n, ii, jj
       REAL_T  x, y, y1, y2
       REAL_T  u, v, rho, Xl(maxspec), Yl(maxspec), T, h, Patm
-      REAL_T xcrit, pmf_vals(maxspec+4), bg_vals(maxspec+4)
+      REAL_T xcrit
       REAL_T eta, eta0, xi, sum
       integer getZone, zone, zH, zL, zR, iO2, iN2
       character*(maxspnml) name
@@ -517,7 +502,7 @@ c     ::::: local variables
          if (name .eq. 'O2' ) iO2 = n
       end do
 
-      if ((probtype.eq.0).or.(probtype.eq.1)) then
+      if ((probtype.eq.0)) then
          do j = lo(2), hi(2)
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
@@ -546,47 +531,6 @@ c     ::::: local variables
 
             enddo
          enddo
-
-      else if (probtype.eq.2) then
-c         
-c     Set ICs to premixed flame inside the domain
-c         
-         bg_vals(1) = T_fu
-         bg_vals(2) = (flowrate_ox_O2+flowrate_ox_N2)/(6.d7*Pi*(R_ox_2**2-R_ox_1**2))
-         do n = 1,Nspec
-            bg_vals(3+n) = zero
-         end do
-         bg_vals(3+iN2) = 0.79d0
-         bg_vals(3+iO2) = 0.21d0
-         do j = lo(2), hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
-            do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
-
-               do n=1,SDIM
-                  vel(i,j,n) = zero
-               end do
-
-               y1 = (y-half*delta(2)-ystandoff+.017)*100.
-               y2 = (y+half*delta(2)-ystandoff+.017)*100.
-               call pmf_GRI(y1,y2,pmf_vals,n)
-
-               eta = half*(one + TANH(two*(x-R_fu)/flBL))
-
-               scal(i,j,Temp) = (one - eta)*pmf_vals(1) + eta*bg_vals(1)
-               do n = 1,Nspec
-                  Xl(n) = (one - eta)*pmf_vals(3+n) + eta*bg_vals(3+n)
-               end do 
-               vel(i,j,2) = (one - eta)*pmf_vals(2)/1.d2 + eta*bg_vals(2)
-
-               CALL CKXTY (Xl, IWRK(ckbi), RWRK(ckbr), Yl)
-               do n = 1,Nspec
-                  scal(i,j,FirstSpec+n-1) = Yl(n)
-               end do
-               scal(i,j,Trac) = zero
-            end do
-         end do
-
       end if
 
       Patm = pamb / 101325.0d0
@@ -964,7 +908,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  den(DIMV(den))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -1174,7 +1118,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  temp(DIMV(temp))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -1285,7 +1229,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  rhoh(DIMV(rhoh))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -1395,7 +1339,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  xvel(DIMV(xvel))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -1505,7 +1449,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  yvel(DIMV(yvel))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -1616,7 +1560,7 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  rhoY(DIMV(rhoY))
 
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
       
@@ -1935,7 +1879,7 @@ c            divu(i,j) = min(two,one+time/.05)
       subroutine FORT_RADLOSS(lo,hi,rad,DIMS(rad),
      &                        T,DIMS(T),Y,DIMS(Y),dx,Patm,time)
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
 #include "probdata.H"
       integer DIMDEC(rad)
       integer DIMDEC(T)
@@ -1955,3 +1899,33 @@ c            divu(i,j) = min(two,one+time/.05)
       end do
       end
       
+      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
+
+      implicit none
+
+      REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
+      integer myproc,step,ierr,restart
+
+      call bl_abort('Should not be in FORT_ACTIVECONTROL')
+
+      end
+
+c
+c Fill x & y velocity at once.
+c
+      subroutine FORT_VELFILL (vel,DIMS(vel),domlo,domhi,delta,
+     &                         xlo,time,bc)
+
+      implicit none
+      integer DIMDEC(vel), bc(SDIM,2,SDIM)
+      integer domlo(SDIM), domhi(SDIM)
+      REAL_T  delta(SDIM), xlo(SDIM), time
+      REAL_T  vel(DIMV(vel),SDIM)
+
+      call FORT_XVELFILL (vel(ARG_L1(vel),ARG_L2(vel),1),
+     & DIMS(vel),domlo,domhi,delta,xlo,time,bc(1,1,1))
+
+      call FORT_YVELFILL (vel(ARG_L1(vel),ARG_L2(vel),2),
+     & DIMS(vel),domlo,domhi,delta,xlo,time,bc(1,1,2))
+
+      end

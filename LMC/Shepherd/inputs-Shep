@@ -91,16 +91,16 @@ ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
 
-#ns.chemfile        = drm19_noAR.dat
-ns.chemfile        = chem-CH4-2step.inp
-#ns.chemoutfile     = drm19_noAR.out
-ns.chemoutfile        = chem-CH4-2step.out
-ns.thermfile       = thermo12.dat
-ns.tranfile        = transport12.dat
+ns.tranfile        = ../tran.asc.inert_30
+ns.tranfile        = ../tran.asc.chem-H
+ns.tranfile        = ../tran.asc.grimech30
+ns.tranfile        = ../tran.asc.grimech12
+ns.tranfile        = ../tran.asc.drm19
+ns.tranfile        = ../tran.asc.CH4-2step
+
+ns.chemoutfile     = chem-CH4-2step.out
 ns.fuelName        = CH4
 ns.oxidizerName    = O2
-#ns.flameTracName   = HCO
-#ns.flameTracName   = CO
 ns.flameTracName   = CH4
 ns.unity_Le = 0
 

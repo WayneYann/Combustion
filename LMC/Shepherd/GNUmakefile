@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.1 2004-04-27 22:13:34 lijewski Exp $
+# $Id: GNUmakefile,v 1.2 2004-04-27 22:54:37 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -22,9 +22,15 @@ DEBUG	          = TRUE
 DEBUG	          = FALSE
 USE_THREADS	  = TRUE
 USE_THREADS	  = FALSE
-
-USE_BL3 = TRUE
-USE_BL3 = FALSE
+#
+# Choose your reaction mechanism & thermal properties.
+#
+REACTION_MECHANISM=INERT30
+REACTION_MECHANISM=CHEMH
+REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=GRI12
+REACTION_MECHANISM=GRI30
+REACTION_MECHANISM=CH4-2STEP
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding
@@ -36,8 +42,7 @@ ifeq ($(USE_HGPROJ_SERIAL),TRUE)
   INCLUDE_LOCATIONS += $(dir $(ProjPackage))include/$(DIM)d.$(PRVERSION)
 endif
 
-Packages := $(TOP)/HeatTransfer/ht \
-	    $(TOP)/HeatTransfer/ChemKinDriver/chem \
+Packages := $(TOP)/LMC/ht \
 	    $(TOP)/iamrlib/iamr \
 	    $(TOP)/tensorMG/mcmg \
 	    $(ProjPackage) \
@@ -45,7 +50,6 @@ Packages := $(TOP)/HeatTransfer/ht \
 	    $(TOP)/amrlib/amr \
 	    $(TOP)/bndrylib/bndry \
 	    $(TOP)/BoxLib/box
-
 #
 # Set standard defs
 #
@@ -88,25 +92,9 @@ else
 endif
 include $(addsuffix /Make.package, $(MySrcDirs))
 
-ifeq ($(USE_BL3),TRUE)
-  DEFINES += -DBL3_PROFILING
-  ifeq ($(USE_MPI),TRUE)
-    DEFINES += -DBL3_USE_MPI
-    CEXE_sources += BL3Mpi.cpp
-  endif
-  ifeq ($(USE_THREADS),TRUE)
-    DEFINES += -DBL3_PTHREADS
-  endif
-  CEXE_headers += Thread.H Profiler.H BoxLib3.H Utility.H Assert.H Error.H
-  CEXE_sources += BL3Thread.cpp BL3Profiler.cpp BL3Utility.cpp 
-  CEXE_sources += BL3Error.cpp
-  CEXE_sources += BL3Parallel.cpp  BL3BoxLib3.cpp
-  INCLUDE_LOCATIONS += $(PBOXLIB_HOME)
-  MySrcDirs += $(PBOXLIB_HOME)/BoxLib3
-endif
-
 vpath %.cpp $(MySrcDirs) ..
 vpath %.F   $(MySrcDirs) ..
+vpath %.f90 $(MySrcDirs) ..
 vpath %.H   $(MySrcDirs) ..
 vpath %.h   $(MySrcDirs) ..
 vpath %.f   $(MySrcDirs) ..
@@ -130,7 +118,6 @@ StencilSpecificProjFiles = $(shell grep -l USE_HGPROJ_SERIAL $(iamrFiles)) \
 ifeq ($(USE_HGPROJ_SERIAL),TRUE)
   StencilSpecificProjFiles += $(shell grep -l hg_version.H $(projFiles))
 endif
-
 #
 # Targets
 #
@@ -148,13 +135,11 @@ cleanlibs:
 
 nodata:
 	\rm -rf chk* plt* grdlog inspect.fab *.mfab *.fab *.asc *.out
-
 #
 # Touch all stencil-specific files in serial projection
 #
 touch_hg:
 	touch $(StencilSpecificProjFiles)
-
 #
 # Create MS-IDE dsp file to build this project
 #
