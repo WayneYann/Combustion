@@ -22,7 +22,7 @@
 #define SETRHO_CALCT
 #define SDIM 2
 
-      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step)
+      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
 
       implicit none
 
@@ -31,77 +31,83 @@
 #include "bc.H"
 
       REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
-      integer myproc,step,ierr
+      integer myproc,step,ierr,restart
       REAL_T r1,r2,r3,r4,r5,r6,r7
       integer i1
 
-      if (myproc.eq.0) then
-
-         if (.not. ac_init) then
-            print*, 'Initializing active control variables ...'
-            ac_init = .true.
-            if (step .gt. 0) then
-               open(13,file=ac_hist_file,form='formatted',
-     &              status='old',iostat=ierr)
-               if (ierr .eq. 0) then
+      if (restart.ne.0) then
+         if (step .gt. 0) then
+            open(13,file=ac_hist_file,form='formatted',
+     &           status='old',iostat=ierr)
+            if (ierr .eq. 0) then
+               if (myproc.eq.0) then
                   print*, 'Setting active control from history file ...'
-                  rewind(13)
-                  do
-c
-c                    This read(13) must correspond to the below write(13)
-c
-                     read(13,*,iostat=ierr) i1,r1,r2,r3,r4,r5,r6,r7
-                     if (ierr.ne.0) goto 100
-                     if (i1.eq.step-1) then
-                        print*, 'Got It: ', i1,r1,r2,r3,r4,r5,r6,r7
-c
-c                       Set previous values ...
-c
-                     endif
-                  enddo
-100               continue
-               else
-                  print*, 'Setting active control to defaults ...'
                endif
-            else
-               open(13,file=ac_hist_file,form='formatted',
-     &              status='replace')
-            end if
-            close(13)
+               rewind(13)
+               do
+c
+c                 This read(13) must correspond to the below write(13)
+c
+                  read(13,*,iostat=ierr) i1,r1,r2,r3,r4,r5,r6,r7
+                  if (ierr.ne.0) goto 100
+                  if (i1.eq.step-1) then
+                     if (myproc.eq.0) then
+                        print*, 'Got It: ', i1,r1,r2,r3,r4,r5,r6,r7
+                     endif
+c
+c                    Set previous values ...
+c
+                  endif
+               enddo
+            endif
+100         close(13)
          end if
+         return
+      end if
 
-         if (coft_old .lt. zero) coft_old = coft
+      if (step .eq. 0) then
+c
+c        Null out previous history file (if one exists).
+c
+         open(13,file=ac_hist_file,form='formatted',status='replace')
+      endif
 
-         zbase_control = zbase_control + V_in*dt + dV_control*dt**2
-         V_in_old = V_in
-         V_in = V_in + dt*dV_control
+      if (coft_old .lt. zero) coft_old = coft
 
-         slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
-         sest = (one - corr)*sest + corr*slocal
-         vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+      zbase_control = zbase_control + V_in*dt + dV_control*dt**2
+      V_in_old = V_in
+      V_in = V_in + dt*dV_control
 
-         V_new = V_in + dt*vslope
-         dVmax = changeMax_control * one
-         V_new = MIN(MAX(V_new,V_in-dVmax),V_in+dVmax)
-         V_new = MAX(zero,V_new)
+      slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
+      sest = (one - corr)*sest + corr*slocal
+      vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
 
-         tbase_control = time
-         dV_control = (V_new - V_in)/dt
+      V_new = V_in + dt*vslope
+      dVmax = changeMax_control * one
+      V_new = MIN(MAX(V_new,V_in-dVmax),V_in+dVmax)
+      V_new = MAX(zero,V_new)
 
+      tbase_control = time
+      dV_control = (V_new - V_in)/dt
+
+      if (myproc.eq.0) then
          print *
          print *,'****************** control:'
          print *,'time,coft,V_new:',time,coft,V_new
          print *,'changeMax_control: ', changeMax_control
          print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
          print *,'coft_old,V_in_old:',coft_old,V_in_old
+      endif
 
-         coft_old = coft
+      coft_old = coft
 
+      if (myproc.eq.0) then
          open(13,file=ac_hist_file,form='formatted',position='append')
          write(13,*) step,time,V_in,tbase_control,zbase_control,
-     &               dV_control,sest,coft_old
+     &        dV_control,sest,coft_old
          close(13)
       endif
+
       end
 
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
@@ -278,7 +284,6 @@ c     Initialize control variables
       coft_old = -one
       cfix = zero
       ac_hist_file = 'AC_History'
-      ac_init = .false.
       
       read(untin,fortin)
 c      write(6,fortin)

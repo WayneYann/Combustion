@@ -1,5 +1,5 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.4 2003-10-17 22:56:47 lijewski Exp $
+#define _PROB_F_H_ $Id: PROB_F.H,v 1.5 2003-10-17 23:34:03 lijewski Exp $
 
 #include <PROB_NS_F.H>
 
@@ -98,7 +98,8 @@
 			      const Real* time,
 			      const Real* crsedt,
                               const int*  myproc,
-                              const int*  step);
+                              const int*  step,
+                              const int*  restart);
 
      void FORT_CENTERLINE_TEMP_STATS(ARLIM_P(templo), ARLIM_P(temphi),
 				     const Real* tempdat, const Real* zcen,

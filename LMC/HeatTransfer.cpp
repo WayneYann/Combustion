@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.12 2003-10-17 22:56:47 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.13 2003-10-17 23:34:03 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -1312,6 +1312,14 @@ HeatTransfer::post_restart ()
         if (do_DO_radiation && ParallelDescriptor::IOProcessor())
             std::cout << "Radiation restart multilevel solve done\n";
     }
+
+    Real dummy  = 0;
+    int MyProc  = ParallelDescriptor::MyProc();
+    int step    = parent->levelSteps(0);
+    int restart = 1;
+
+    if (do_active_control)
+        FORT_ACTIVECONTROL(&dummy,&dummy,&crse_dt,&MyProc,&step,&restart);
 }
 
 void
@@ -1560,11 +1568,12 @@ HeatTransfer::sum_integrated_quantities ()
         if (ParallelDescriptor::IOProcessor())
             std::cout << " FUELMASS= " << fuelmass;
 
-        int MyProc = ParallelDescriptor::MyProc();
-        int step   = parent->levelSteps(0);
+        int MyProc  = ParallelDescriptor::MyProc();
+        int step    = parent->levelSteps(0);
+        int restart = 0;
 
         if (do_active_control)
-            FORT_ACTIVECONTROL(&fuelmass,&time,&crse_dt,&MyProc,&step);
+            FORT_ACTIVECONTROL(&fuelmass,&time,&crse_dt,&MyProc,&step,&restart);
     }
 
     if (ParallelDescriptor::IOProcessor())
