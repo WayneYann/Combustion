@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.20 2004-06-16 21:18:08 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.21 2004-06-17 22:12:57 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -727,6 +727,9 @@ HeatTransfer::init_once ()
         auxDiag_names.resize(1);
         auxDiag_names[0] = "FuelConsumptionRate";
 #endif
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "***** Make sure to increase amr.regrid_int !!!!!" << std::endl;
     }
 
     init_once_done = 1;

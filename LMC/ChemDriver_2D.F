@@ -550,13 +550,11 @@ c ----------------------------------------------------------------
       integer i, j, n, MF, ISTATE, lout
       character*(maxspnml) name
 
-      integer nsubchem, nsub, lot(2), hit(2)
-      REAL_T dtloc, weight
-c     REAL_T Xtemp(maxspec), rftemp(maxreac),rrtemp(maxreac)
+      integer nsubchem, nsub, node
+      REAL_T dtloc, weight, TT1save
       REAL_T Ct(maxspec),Qt(maxreac)
-      integer rxns(maxreac)
 
-      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,atoln,zp(maxspec+1)
+      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
 #if defined(MOLAR_CONC)
       REAL_T Ctemp(maxspec),spec_scalC(maxspec)
 #endif
@@ -585,12 +583,10 @@ c     Set IOPT=1 parameter settings for VODE
 
       if (do_diag.eq.1) then
          nsubchem = nchemdiag
-         do n = 1,Nreac
-           rxns(n) = n-1
-         enddo
       endif
-
+c
 c     Set molecular weights and pressure in area accessible by conpF
+c
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       RWRK(NP) = Patm * P1atm
       
@@ -619,6 +615,8 @@ c     Set up ATOL
                
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
+           if(j.ge.0)then
+
             TT1 = zero
             if (do_diag.eq.1) then
                nsub = nsubchem
@@ -630,7 +628,6 @@ c     Set up ATOL
             ISTATE = 1
 
 #ifdef SOLN_IS_1D
-c     Hack! I know the problem is 1D
             if (i.ne.lo(1))then
                do n=1,Nspec
                   Ynew(i,j,n) = Ynew(lo(1),j,n)
@@ -643,8 +640,7 @@ c     Hack! I know the problem is 1D
 c
 c Convert atol from mass frac to molar conc
 c
-            CALL CKYTCP(RWRK(NP),Told(i,j),spec_scalY,
-     &           IWRK(ckbi),RWRK(ckbr),spec_scalC)
+            CALL CKYTCP(RWRK(NP),Told(i,j),spec_scalY,IWRK(ckbi),RWRK(ckbr),spec_scalC)
             if (ITOL.eq.2) then
                do n=1,Nspec
                   ATOL(n+1) = ATOLEPS*spec_scalC(n)
@@ -652,16 +648,12 @@ c
             endif
 #endif
             RWRK(NZ) = Told(i,j)
+
 #ifdef DO_JBB_HACK
             sum = zero
             do n=1,Nspec
                Ytemp(n) = Yold(i,j,n)
-               atoln = ATOLEPS
-               if (ITOL.eq.2) atoln = atol(n+1)
-c               if (Ytemp(n) .LT. zero) Ytemp(n) = 1.e-4*atoln
-c               if (Ytemp(n) .LT. zero) Ytemp(n) = 1.e-16
-c                Ytemp(n) =MAX( Yold(i,j,n),1.e-16)
-               Ytemp(n) =MAX( Yold(i,j,n),zero)
+               Ytemp(n) = MAX(Yold(i,j,n),zero)
                sum = sum+Ytemp(n)
             end do
             if (iN2 .gt. 0) then
@@ -686,8 +678,9 @@ c
                RWRK(NZ+n) = Ctemp(n)
             end do
 #endif
-
+c
 c     Set hmix and rho (in cgs units) in area acessible by conpF 
+c
             CALL CKRHOY(RWRK(NP),RWRK(NZ),Ytemp,IWRK(ckbi),RWRK(ckbr),RWRK(NRHO))
             CALL CKHBMS(RWRK(NZ),Ytemp,IWRK(ckbi),RWRK(ckbr),RWRK(NHMIX))
 
@@ -717,9 +710,20 @@ c            print *, "JACOB",sum,newJ_triggered
                CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
                CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                do n=1,Nreac
-                  diag(i,j,n) = diag(i,j,n) +half*dtloc*Qt(n)
+                  diag(i,j,n) = diag(i,j,n)+half*dtloc*Qt(n)*million
                enddo
             endif
+
+            do node = 1,nsub
+
+            if(node.lt.nsub)then
+               weight = one
+            else
+               weight = half
+            endif
+
+            TT1save = TT1
+            TT2 = TT1 + dtloc
 
 c            print*, 'DVODE(',i,',',j,'):'
 
@@ -746,6 +750,7 @@ c   If the step was bad, and we reused an old Jacobian, try again from scratch
 #  endif
                end do
                if (bad_soln .EQV. .TRUE.) then
+                  TT1 = TT1SAVE
                   FIRST = .TRUE.
                   RWRK(NZ) = Told(i,j)
                   do n=1,Nspec
@@ -755,7 +760,7 @@ c   If the step was bad, and we reused an old Jacobian, try again from scratch
                      RWRK(NZ+n) = Ctemp(n)
 #  endif
                   end do
-                  TT1 = zero
+
                   ISTATE = 1
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                   CALL SVODE
@@ -768,11 +773,13 @@ c   If the step was bad, and we reused an old Jacobian, try again from scratch
                endif
             endif
 
+            TT1 = TT2
+
             if (do_diag.eq.1) then
                CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
                CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                do n=1,Nreac
-                  diag(i,j,n) = diag(i,j,n) +weight*dtloc*Qt(n)
+                  diag(i,j,n) = diag(i,j,n)+weight*dtloc*Qt(n)*million
                enddo
             endif
 
@@ -835,6 +842,8 @@ c   If the step was bad, and we reused an old Jacobian, try again from scratch
                call bl_abort('VODE failed...see drop file...exiting...')
             end if
 
+            enddo
+
             Tnew(i,j) = RWRK(NZ)
 
 #if defined(MASS_FRAC)
@@ -861,6 +870,7 @@ c
 #ifdef SOLN_IS_1D
             endif
 #endif
+         endif
          end do
       end do
       return
