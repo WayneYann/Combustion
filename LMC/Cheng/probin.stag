@@ -1,9 +1,9 @@
  &fortin
   probtype = 3
-  flct_file = "Turb.c0100.bin"
   flct_file = ""
-  forceInflow = .TRUE.
+  flct_file = "initTurb_0900.bin"
   forceInflow = .FALSE.
+  forceInflow = .TRUE.
   nCompInflow = 3
   zstandoff = -0.03
   zstandoff = -0.028
@@ -31,11 +31,12 @@
   max_temp_lev = 0
   temperr = 100
   max_vort_lev = 0
+  max_vort_lev = 4
   refine_stick = 1
   max_stick_lev = 2
   refine_stick_x = 0.003
   refine_stick_z = 0.003
-  refine_nozzle = 1
+  refine_nozzle = 0
   max_nozzle_lev = 2
   refine_nozzle_x = 0.03
   refine_nozzle_z = 0.12
@@ -47,9 +48,11 @@
   stBL = .004
   wallTh = 0.0
   Ro = .0064
+  Rf = .0064
   stTh = 0.001
   stTh = 0.003
   stTh = -0.003
+  vorterr = 1000.
  /
  &heattransin
   pamb = 101325.
