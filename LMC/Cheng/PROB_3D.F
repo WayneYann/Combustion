@@ -264,7 +264,7 @@ c
       forceLo = .TRUE.
       forceHi = .FALSE.
       strmwse_dir = FLCT_ZVEL
-      flct_file = ""
+      flct_file = ''
       turb_scale = 1
 
 c     Note: for setup with no coflow, set Ro=Rf+wallth
@@ -318,7 +318,7 @@ c      write(6,heattransin)
          forceHi = .FALSE.
       else
 #if defined(BL_DO_FLCT)
-         if (flct_file.ne."") then
+         if (flct_file.ne.'') then
 #define FF_UNIT 20
             write(6,*) '...initializing turbulence, reading header info'
             open(FF_UNIT, file=flct_file, form='unformatted')
@@ -393,14 +393,14 @@ c     phi = 0.8
       data T     /        3.d2,          3.d2,         3.d2,        3.d2,    3.d2,   3.d2 ,   3.d2 /
 #else
 c     phi = 1.0
-c     data X_CH4 /  0.095023d0,   zero,  0.095023d0,   zero,   zero,   zero  , zero   /
-c     data X_O2  /  0.190045d0, 0.21d0,  0.190045d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
+      data X_CH4 /  0.095023d0,   zero,  0.095023d0,   zero,   zero,   zero  , zero   /
+      data X_O2  /  0.190045d0, 0.21d0,  0.190045d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
 c     phi = 0.6
 c     data X_CH4 /  0.0592662276576d0,   zero, 0.0592662276576d0,   zero,    zero,   zero , zero  /
 c     data X_O2  /   0.197554092192d0,  0.21d0, 0.197554092192d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0/
 c     phi = 0.7
-      data X_CH4 /  0.0684676292501d0,   zero, 0.0684676292501d0,   zero,    zero,   zero , zero   /
-      data X_O2  /   0.195621797857d0,  0.21d0, 0.195621797857d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
+c     data X_CH4 /  0.0684676292501d0,   zero, 0.0684676292501d0,   zero,    zero,   zero , zero   /
+c     data X_O2  /   0.195621797857d0,  0.21d0, 0.195621797857d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
 c     phi = 0.75
 c     data X_CH4 /  0.0730011587486d0,   zero, 0.0730011587486d0,   zero,    zero,   zero , zero   /
 c     data X_O2  /   0.194669756663d0,  0.21d0, 0.194669756663d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
@@ -643,23 +643,29 @@ c ::: -----------------------------------------------------------
 #ifdef SWIRL
             rn = r/Ro
 
-c     Fit as of 4/29/03
-            eta = 9.920628558770E-001
-     &           -1.065813294748E-001 *rn**1
-     &           +1.800416951718E+000 *rn**2
-     &           -1.158582069687E+001 *rn**3
-     &           +3.588317172715E+001 *rn**4
-     &           -5.816747423739E+001 *rn**5
-     &           +4.632391073835E+001 *rn**6
-     &           -1.450956235808E+001 *rn**7
-            
-c     Ramp down the outter value to zero, 6/2/03
-            eta = eta*0.5*(1-TANH((rn-0.92)/.03))
-
+cc     Fit as of 4/29/03
+c            eta = 9.920628558770E-001
+c     &           -1.065813294748E-001 *rn**1
+c     &           +1.800416951718E+000 *rn**2
+c     &           -1.158582069687E+001 *rn**3
+c     &           +3.588317172715E+001 *rn**4
+c     &           -5.816747423739E+001 *rn**5
+c     &           +4.632391073835E+001 *rn**6
+c     &           -1.450956235808E+001 *rn**7
+cc     Ramp down the outter value to zero, 6/2/03
+c            eta = eta*0.5*(1-TANH((rn-0.92)/.03))
             
 c            eta = 1.002d0 - 0.098868d0*r + 0.84254d0*r**2 - 2.6231d0*r**3 +
 c     $           3.0126d0*r**4 - 1.9876d0*r**5 + 0.52246d0*r**6
 c
+
+c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
+
+            eta = 1.004677322175D+000
+     &          - 9.017625583830D-002*rn
+     &          + 3.611171220764D-001*rn**2
+     &          - 5.644888675141D-001*rn**3
+
             eta = min(max(eta,0.d0),1.d0)
 #else
             eta = one
@@ -889,8 +895,8 @@ c
             
          z = (float(k)+.5)*delta(3)+domnlo(3)
 #if defined(BL_DO_FLCT)
-         if (.false. .and. flct_file.ne."") then      
-c         if (flct_file.ne."") then      
+         if (.false. .and. flct_file.ne.'') then      
+c         if (flct_file.ne.'') then      
             call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo,
      &           delta, z, bc, domnlo, domnhi)
             do j = lo(2), hi(2)
