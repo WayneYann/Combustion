@@ -1,5 +1,5 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.1 2003-08-08 20:09:41 lijewski Exp $
+#define _PROB_F_H_ $Id: PROB_F.H,v 1.2 2003-09-11 20:12:30 lijewski Exp $
 
 #include <PROB_NS_F.H>
 
@@ -21,6 +21,7 @@
 #    define FORT_RADLOSS                radloss
 #    define FORT_ZEROVISC               zerovisc
 #    define FORT_DERCONCENTRATION       derconcentration
+#    define FORT_ACTIVECONTROL          activecontrol
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_PROB_SPEC          SETPSPEC
@@ -40,6 +41,7 @@
 #    define FORT_RADLOSS                RADLOSS
 #    define FORT_ZEROVISC               ZEROVISC
 #    define FORT_DERCONCENTRATION       DERCONCENTRATION
+#    define FORT_ACTIVECONTROL          ACTIVECONTROL
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_PROB_SPEC          setpspec
 #    define FORT_CENTERLINE_TEMP_STATS  cltstats
@@ -57,6 +59,7 @@
 #    define FORT_RADLOSS                radloss
 #    define FORT_ZEROVISC               zerovisc
 #    define FORT_DERCONCENTRATION       derconcentration
+#    define FORT_ACTIVECONTROL          activecontrol
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_PROB_SPEC          setpspec_
 #    define FORT_CENTERLINE_TEMP_STATS  cltstats_
@@ -75,6 +78,7 @@
 #    define FORT_RADLOSS                radloss_
 #    define FORT_ZEROVISC               zerovisc_
 #    define FORT_DERCONCENTRATION       derconcentration_
+#    define FORT_ACTIVECONTROL          activecontrol_
 #  endif
 
   extern "C" {
@@ -89,6 +93,10 @@
 			      const int* oxidID,
 			      const int* prodID,
 			      const int* numspec);
+
+      void FORT_ACTIVECONTROL(const Real* fuelmass,
+			      const Real* crsedt,
+                              const int*  myproc);
 
      void FORT_CENTERLINE_TEMP_STATS(ARLIM_P(templo), ARLIM_P(temphi),
 				     const Real* tempdat, const Real* zcen,

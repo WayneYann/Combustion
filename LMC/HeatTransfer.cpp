@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.4 2003-08-21 16:29:23 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.5 2003-09-11 20:12:30 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -1526,6 +1526,10 @@ HeatTransfer::sum_integrated_quantities ()
 
         if (ParallelDescriptor::IOProcessor())
             std::cout << " FUELMASS= " << fuelmass;
+
+        int MyProc = ParallelDescriptor::MyProc();
+
+        FORT_ACTIVECONTROL(&fuelmass,&crse_dt,&MyProc);
     }
 
     if (ParallelDescriptor::IOProcessor())

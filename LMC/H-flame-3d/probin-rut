@@ -1,4 +1,6 @@
  &fortin
+  active_control = .FALSE.
+  active_control = .TRUE.
   probtype = 8
   pmf_offset = -0.01
   pmf_offset = -0.010317
