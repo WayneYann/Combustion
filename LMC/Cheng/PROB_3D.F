@@ -322,6 +322,9 @@ c      write(6,heattransin)
 #endif
       endif
       convVel = Vin
+      if (probtype.eq.4) then
+         convVel = one
+      endif
 
 c     Load domain dimensions into common, and set up boundary functions
       domnlo(1) = problo(1)
@@ -661,15 +664,18 @@ c
      &           Yl,ARLIM(lo),ARLIM(hi))
          endif
 
-         u = zero
-         v = zero
-         w = zero
-         if (probtype.lt.4 .and. getuvw) then
+         if (getuvw) then
+         if (probtype.eq.4) then
+            u = zero
+            v = zero
+            w =  Vin + (time-tbase_control)*dV_control
+         else
             call VAvg(Vbndry,x,y,dx,Rf,wallTh,Ro,stTh,dBL,stBL,
      &           Vin,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW)
             u = Vbndry(1)
             v = Vbndry(2)
             w = Vbndry(3)
+         endif
          endif
       else
          write(6,*) 'No boundary condition for orientation = ', orient
@@ -2031,6 +2037,7 @@ c
 
 #if defined(BL_DO_FLCT)
       integer DIMDEC(uflct)
+      REAL_T t_flct, dt_flct
       integer loFlctArray(SDIM), hiFlctArray(SDIM)
       REAL_T  uflct(:,:,:), vflct(:,:,:),  wflct(:,:,:)
       allocatable uflct, vflct, wflct
@@ -2063,11 +2070,13 @@ c
          allocate(uflct(DIMV(uflct)))
          allocate(vflct(DIMV(uflct)))
          allocate(wflct(DIMV(uflct)))
-         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, time,
+         dt_flct = time - tbase_control
+         t_flct = tbase_control + Vin*dt_flct + dV_control*dt_flct**2
+         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
      $                  bc(1,1,1), domnlo, domnhi)
-         call INFL_FILL(FLCT_YVEL, DIMS(uflct), vflct, xlo, delta, time,
+         call INFL_FILL(FLCT_YVEL, DIMS(uflct), vflct, xlo, delta, t_flct,
      $                  bc(1,1,2), domnlo, domnhi)
-         call INFL_FILL(FLCT_ZVEL, DIMS(uflct), wflct, xlo, delta, time,
+         call INFL_FILL(FLCT_ZVEL, DIMS(uflct), wflct, xlo, delta, t_flct,
      $                  bc(1,1,3), domnlo, domnhi)
       endif
 #endif
@@ -2258,6 +2267,9 @@ c
                      vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 3) then
+                       if(probtype.eq.4)then
+                        vel(i,j,k,1) = u + uflct(i,j,1)*turb_scale
+                       else
 #ifdef SWIRL
                         vel(i,j,k,1) = u + uflct(i,j,1)
 #else
@@ -2270,6 +2282,7 @@ c
      &                       ((scaler*cs**2+scalet*sg**2)*uflct(i,j,1) +
      &                       (scaler*sg*cs-scalet*sg*cs)*vflct(i,j,1))
 #endif
+                      endif
                      endif
 #endif
                   endif
@@ -2278,6 +2291,9 @@ c
                      vel(i,j,k,2) = v
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 3) then
+                        if(probtype.eq.4)then
+                          vel(i,j,k,2) = v + vflct(i,j,1)*turb_scale
+                        else
 #ifdef SWIRL
                         vel(i,j,k,2) = v + vflct(i,j,1)
 #else
@@ -2290,6 +2306,7 @@ c
      &                       ((scaler*sg**2+scalet*cs**2)*vflct(i,j,1) +
      &                       (scaler*sg*cs- scalet*sg*cs)*uflct(i,j,1))
 #endif
+                       endif
                      endif
 #endif
                   endif
@@ -2298,12 +2315,16 @@ c
                      vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 3) then
+                      if(probtype.eq.4)then
+                        vel(i,j,k,3) = w + wflct(i,j,1)*turb_scale
+                      else
 #ifdef SWIRL
                         vel(i,j,k,3) = w + wflct(i,j,1)
 #else
                         vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
      &                       * anisotsc
 #endif
+                       endif
                      endif
 #endif
                   endif

@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.4 2003-10-24 20:23:21 marc Exp $
+# $Id: GNUmakefile,v 1.5 2003-10-30 00:16:49 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,19 +7,20 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION      = DOUBLE
-DEBUG	       = FALSE
 DEBUG	       = TRUE
+DEBUG	       = FALSE
 PROFILE        = FALSE
 DIM	       = 3
 PRVERSION      = v7
 COMP           = KCC
 COMP           = g++
+COMP           = mpCC
 #FCOMP          = Intel
 USE_RAD        = FALSE
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
-USE_MPI        = TRUE
 USE_MPI        = FALSE
+USE_MPI        = TRUE
 BUILD_IN_PLACE = TRUE
 EBASE          = amr
 USE_SWIRL      = FALSE
