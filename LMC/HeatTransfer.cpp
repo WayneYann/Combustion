@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.18 2004-02-13 21:13:01 marc Exp $
+// $Id: HeatTransfer.cpp,v 1.19 2004-06-15 21:21:50 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -504,6 +504,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     }
 
     auxDiag = 0;
+
     if (plot_auxDiags)
     {
         BL_ASSERT(auxDiag_names.size() > 0);
@@ -1290,6 +1291,8 @@ HeatTransfer::post_timestep (int crse_iteration)
 
     if (plot_auxDiags && level==0)
     {
+        const int Ndiag = auxDiag->nComp();
+
         for (int i=parent->finestLevel(); i>0; --i)
         {
             HeatTransfer& clev = getLevel(i-1);
@@ -1301,7 +1304,7 @@ HeatTransfer::post_timestep (int crse_iteration)
             NavierStokes::avgDown(clev.boxArray(),flev.boxArray(),
                                   Ydot_crse,Ydot_fine,
                                   clev.volume,flev.volume,
-                                  i-1,i,0,1,parent->refRatio(i-1));
+                                  i-1,i,0,Ndiag,parent->refRatio(i-1));
         }
     }
 }
