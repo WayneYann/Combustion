@@ -296,6 +296,7 @@ c     Initialize control variables
       coft_old = -one
       cfix = zero
       ac_hist_file = 'AC_History'
+      h_control = -one
       
       read(untin,fortin)
 c      write(6,fortin)
@@ -315,6 +316,9 @@ c      write(6,heattransin)
 #endif
 
       read(untin,control)
+      if (h_control .lt. zero) then
+         cfix = xxx
+      endif
 
    10 close(unit=untin)
 
