@@ -4,6 +4,7 @@
   flct_file = "./Turb.c0100.bin"
   forceInflow = .FALSE.
   forceInflow = .TRUE.
+  nCompInflow=3
   zstandoff = -0.03
   zBL = .008
   vheight = 0.0

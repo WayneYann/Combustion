@@ -4,6 +4,7 @@
   vorterr = 1000.
   flametracval = .000001
   flct_file = "TurbRep.bin"
+  nCompInflow = 3
   forceInflow = .TRUE.
   zstandoff = .02
   zhot = .02

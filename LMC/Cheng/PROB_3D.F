@@ -90,7 +90,8 @@ c ::: -----------------------------------------------------------
      &                  max_stick_lev, refine_stick, refine_stick_x, 
      &                  refine_stick_z, direction,
      &                  forceInflow, numInflPlanesStore, strmwse_dir,
-     $                  forceLo, forceHi, flct_file, turb_scale,Vin, rhot, zhot,
+     $                  forceLo, forceHi, nCompInflow, flct_file,
+     $                  turb_scale,Vin, rhot, zhot,
      $                  zstandoff, Thot, swK, swW, stTh, Ro, Rf, wallTh,
      &                  zBL, dBL, stBL, hotspot_r, hotspot_z, hotspot_dz,
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
@@ -99,7 +100,7 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen
+      integer maxlen, nCompFile
       parameter (maxlen=256)
 
       character probin*(maxlen)
@@ -150,6 +151,9 @@ c
       add_turb = .FALSE.
       forceInflow = .FALSE.
       numInflPlanesStore = -1
+c
+c     Don't need to default 'nCompInflow' as it is block data'd to /3/
+c
       forceLo = .TRUE.
       forceHi = .FALSE.
       strmwse_dir = FLCT_ZVEL
@@ -197,7 +201,7 @@ c      write(6,heattransin)
 #define FF_UNIT 20
             write(6,*) '...initializing turbulence, reading header info'
             open(FF_UNIT, file=flct_file, form='unformatted')
-            call RD_FLCTHD(FF_UNIT, dimFile, probSizeFile, dxFile)
+            call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
          endif
 #endif

@@ -2,6 +2,7 @@
   probtype = 3
   flct_file = "swr_27830-27990.bin"
   forceInflow = .TRUE.
+  nCompInflow = 3
   zstandoff = -0.0191
   zBL = .008
   zBL = .004
