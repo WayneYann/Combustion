@@ -310,14 +310,16 @@ c
 c     Get rho and h for all zones
 c
       do zone=1,Nzones
-         call FORT_RHOfromPTY(lo,hi,
-     &                        rho_bc(zone),ARLIM(lo),ARLIM(hi),
-     &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
-     &                        Y_bc(0,zone),ARLIM(lo),ARLIM(hi), Patm)
-         call FORT_HMIXfromTY(lo,hi,
-     &                        h_bc(zone),ARLIM(lo),ARLIM(hi),
-     &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
-     &                        Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
+         if (zone.lt.6 .or. probtype.eq.1 ) then
+            call FORT_RHOfromPTY(lo,hi,
+     &                           rho_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                           T_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                           Y_bc(0,zone),ARLIM(lo),ARLIM(hi), Patm)
+            call FORT_HMIXfromTY(lo,hi,
+     &                           h_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                           T_bc(zone),ARLIM(lo),ARLIM(hi),
+     &                           Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
+         end if
       end do
       end
          
