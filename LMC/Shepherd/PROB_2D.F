@@ -70,7 +70,7 @@ c ::: -----------------------------------------------------------
      &     T_wall2, T_wall3, Trad_bg, time_rad, dt_rad,
      &     refine_nozzle, nozzlerefwidth, nozzlerefheight, 
      &     nozzlerefloc, probtype, max_nozzle_lev,
-     &     thickFacTR, thickFacCH
+     &     thickFacTR, thickFacCH, T_air, v_air
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build 'probin' filename -- the name of file containing fortin namelist.
@@ -118,6 +118,8 @@ c     Set defaults
       T_wall3 = 300.d0
       y_wall2 = zero
       y_wall3 = zero
+      v_air = zero
+      T_air = 300.d0
       Trad_bg = 300.d0
       time_rad = zero
       dt_rad = 1.e-9
@@ -200,7 +202,7 @@ c
 c	Glarborg and Bessler cases:
 c
 c	Boundary is divided into 5 zones
-      if ((probtype.eq.0).or.(probtype.eq.2)) then	      
+      if ((probtype.eq.0).or.(probtype.eq.1)) then	      
 c     Compute inlet mass fracs based on input flowrates
 c
 c     ZONE 1: Fuel stream
@@ -290,14 +292,14 @@ c
 c
 c     ZONE 6: Upper boundary
 c
-         if (probtype.eq.6) then
+         if (probtype.eq.1) then
             zone = 6
             do n = 0,Nspec-1
                Y_bc(n,zone) = Y_bc(n,2)
             end do
-            T_bc(zone) = T_lip
+            T_bc(zone) = T_air
             u_bc(zone) = zero
-            v_bc(zone) = zero
+            v_bc(zone) = v_air
          endif
       else
          write(*,*) 'PROB_2D::setupbc: Dont know about probtype = ',
@@ -345,6 +347,11 @@ c ::: -----------------------------------------------------------
      &        (y .ge. y_hot_lo) .AND.
      &        (x .le. x_hot)    ) getZone = 4
       end if
+
+      if ((probtype.eq.1) .and. (y .ge. domnhi(2)-epsilon)) then
+         getZone = 6
+      endif
+
       end
       
 c ::: -----------------------------------------------------------
@@ -357,35 +364,11 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
-      REAL_T flowrate_fu_tot, flowrate_ox_tot, Patm, xleft, xrght
-      REAL_T uavFU,R1FU,R2FU,FlowFU
-      REAL_T uavOX,R1OX,R2OX,FlowOX, OXInt, OXIntR1, OXIntR2
+      REAL_T flowrate_fu_tot, flowrate_ox_tot, Patm
       integer n, getZone, zone, lo(SDIM), hi(SDIM)
       data lo / 1, 1 /
       data hi / 1, 1 /
       
-c     Compute the average velocity in the fuel stream between R1FU and R2FU
-c     Note: If R2FU > R_fu, the average is computed assuming the remainder
-c     extends into a no-flow zone (ie, the fuel tube is wider than dx(1))
-      uavFU(R1FU,R2FU,FlowFU) = 
-     &     (R_fu**2 * (MIN(R_fu,R2FU)**2 - R1FU**2)
-     &     -   half * (MIN(R_fu,R2FU)**4 - R1FU**4) )
-     &     *FlowFU/(Pi * BL_REAL_E(1.0,-3) * (R1FU+R2FU) * dx(1) * R_fu**4)
-c     uavFU(R1FU,R2FU,FlowFU) = FlowFU/(BL_REAL_E(3.0,7)*Pi*R_fu**4)
-c     &	*(R_fu**2 - (half*(R1FU+R2FU))**2)
-
-c     Compute the average velocity in the oxidizer stream between R1OX and R2OX
-c     Note: If R1OX < R_ox_1, or if R2OX > R_ox_2, the average is computed assuming
-c            the remainder extends into a no-flow zone (ie, the fuel tube is
-c            wider than dx(1))
-      OXInt(OXIntR1,OXIntR2) = BL_REAL_E(16.0,-1)*
-     &     (OXIntR2**2*(OXIntR2**2+eight*b_ox+four*a_ox*(two*LOG(OXIntR2)-one))
-     &     -OXIntR1**2*(OXIntR1**2+eight*b_ox+four*a_ox*(two*LOG(OXIntR1)-one)))
-
-      uavOX(R1OX,R2OX,FlowOX) =
-     &     OXInt(MAX(R_ox_1,R1OX),MIN(R_ox_2,R2OX))/OxInt(R_ox_1,R_ox_2)
-     &     *(FlowOX*BL_REAL_E(1.0,-3)/(Pi*(R1OX+R2OX)*dx(1))) 
-
       if (.not. bcinit) then
          write(6,*) 'Need to initialize boundary condition function'
          stop
@@ -406,17 +389,14 @@ c     Overwrite constant inflow velocities with profiles
      &        + flowrate_fu_O2 + flowrate_fu_H2 + flowrate_fu_NO
          flowrate_ox_tot = flowrate_ox_O2 + flowrate_ox_N2
 
-         if ((probtype .eq. 0)) then
+         if ((probtype .eq. 0).or.(probtype.eq.1)) then
             if (zone.eq.1) then
-c               v = 1.e-3*flowrate_fu_tot*(R_fu**2 - x**2)/(Pi*R_fu**4)
                v = 1.e-3*flowrate_fu_tot/(Pi*R_fu**2)
             else if (zone.eq.2) then
-c               v = flowrate_ox_tot
-c     &              * (fourth*c_ox*x**2 + a_ox*c_ox*log(x) + b_ox*c_ox)
                v = 1.e-3*flowrate_ox_tot/(Pi*(R_ox_2**2-R_ox_1**2))
             endif
          else
-            write(*,*) 'PROB_2D::bcfunction: Dont know about probtype = ',
+            write(*,*)'PROB_2D::bcfunction: Dont know about probtype = ',
      &           probtype
             stop
          end if
@@ -440,7 +420,13 @@ c     Overwrite constant T on wall with T profile, then recalc rho and h
      &                           h, ARLIM(lo),ARLIM(hi),
      &                           T, ARLIM(lo),ARLIM(hi),
      &                           Yl,ARLIM(lo),ARLIM(hi))
-         end if 
+         endif
+
+         if ((probtype.eq.1).and.(zone.eq.6)) then
+c            v = v_bc(zone)*(one - (x-domnlo(1))/(domnhi(1)-domnlo(1)))
+c            v = v_bc(zone)*(one - TANH((x-0.08)/.01))/2.
+            v = v_bc(zone)
+         endif
       else
          write(6,*) 'No boundary condition for orientation = ', orient
          stop
@@ -518,7 +504,7 @@ c     ::::: local variables
          if (name .eq. 'O2' ) iO2 = n
       end do
 
-      if ((probtype.eq.0)) then
+      if ((probtype.eq.0).or.(probtype.eq.1)) then
          do j = lo(2), hi(2)
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
