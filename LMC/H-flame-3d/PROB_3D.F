@@ -25,6 +25,12 @@
 #define USE_PMF_CH4
 #undef  USE_PMF_CH4
 
+      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc)
+      implicit none
+      REAL_T coft,time,dt
+      integer myproc
+      end
+
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
      &                     datc, DIMS(datc), nc, mapO2N, lenmap, ratio)
       implicit none
