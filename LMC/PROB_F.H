@@ -1,5 +1,5 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.2 2003-09-11 20:12:30 lijewski Exp $
+#define _PROB_F_H_ $Id: PROB_F.H,v 1.3 2003-10-17 16:42:39 marc Exp $
 
 #include <PROB_NS_F.H>
 
@@ -95,6 +95,7 @@
 			      const int* numspec);
 
       void FORT_ACTIVECONTROL(const Real* fuelmass,
+			      const Real* time,
 			      const Real* crsedt,
                               const int*  myproc);
 
