@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.24 2004-06-29 19:15:48 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.25 2004-06-30 16:33:48 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -1308,13 +1308,15 @@ HeatTransfer::post_timestep (int crse_iteration)
     {
         const int Ndiag = auxDiag->nComp();
 
+#ifdef BL_PLOT_REACS
+        //
+        // Multiply by the inverse of the coarse timestep.
+        //
         const Real factor = 1.0 / crse_dt;
 
         for (int i = parent->finestLevel(); i >= 0; --i)
-            //
-            // Multiply by the inverse of the coarse timestep.
-            //
             getLevel(i).auxDiag->mult(factor);
+#endif
 
         for (int i = parent->finestLevel(); i > 0; --i)
         {
