@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.9 2004-06-16 21:10:41 lijewski Exp $
+# $Id: GNUmakefile,v 1.10 2004-06-16 21:14:21 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -25,7 +25,7 @@ USE_FLCTS         = TRUE
 #
 # If you want to plot reaction rates uncomment the following
 #
-DEFINES += -DBL_PLOT_REACS
+#DEFINES += -DBL_PLOT_REACS
 #
 # If you want to plot fuel consumption rates uncomment the following
 #
