@@ -1,0 +1,5 @@
+Parallel/LMC/Driscoll-2D
+
+Created by Joe in October 2004 as a 2D version of the 3D Driscoll problem.
+Rather than add files to the existing Driscoll directory, a new directory
+was used to avoid confusion while Joe is learning how all of this works.
