@@ -97,7 +97,7 @@ ns.tranfile        = ../tran.asc.chem-H
 ns.tranfile        = ../tran.asc.grimech30
 ns.tranfile        = ../tran.asc.grimech12
 ns.tranfile        = ../tran.asc.drm19
-ns.tranfile        = ../../../tran.asc.CH4-2step
+ns.tranfile        = ../tran.asc.CH4-2step
 
 ns.chemoutfile     = chem-CH4-2step.out
 ns.fuelName        = CH4
