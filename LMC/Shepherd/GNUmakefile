@@ -1,0 +1,182 @@
+#
+# $Id: GNUmakefile,v 1.1 2004-04-27 22:13:34 lijewski Exp $
+#
+PBOXLIB_HOME  = ../..
+TOP           = $(PBOXLIB_HOME)
+#
+# User-settable variables.
+#
+PRECISION         = DOUBLE
+PROFILE 	  = TRUE
+PROFILE           = FALSE
+DIM    	          = 2
+COMP              = g++
+USE_RAD           = FALSE
+BUILD_IN_PLACE    = TRUE
+EBASE             = shep
+PRVERSION         = v5
+USE_HGPROJ_SERIAL = FALSE
+USE_MPI           = TRUE
+USE_MPI           = FALSE
+DEBUG	          = TRUE
+DEBUG	          = FALSE
+USE_THREADS	  = TRUE
+USE_THREADS	  = FALSE
+
+USE_BL3 = TRUE
+USE_BL3 = FALSE
+#
+# Packages below are of the form dir/lib.  dir=location of the lib sources,
+#  lib=library root name.  This info is separated into to corresponding
+#  lists.  
+#
+ProjPackage = $(TOP)/hgproj/proj
+ifeq ($(USE_HGPROJ_SERIAL),TRUE)
+  ProjPackage = $(TOP)/hgproj-serial/proj
+  INCLUDE_LOCATIONS += $(dir $(ProjPackage))include/$(DIM)d.$(PRVERSION)
+endif
+
+Packages := $(TOP)/HeatTransfer/ht \
+	    $(TOP)/HeatTransfer/ChemKinDriver/chem \
+	    $(TOP)/iamrlib/iamr \
+	    $(TOP)/tensorMG/mcmg \
+	    $(ProjPackage) \
+	    $(TOP)/mglib/mg \
+	    $(TOP)/amrlib/amr \
+	    $(TOP)/bndrylib/bndry \
+	    $(TOP)/BoxLib/box
+
+#
+# Set standard defs
+#
+include $(TOP)/mk/Make.defs
+
+ifeq ($(USE_HGPROJ_SERIAL),TRUE)
+  DEFINES += -DBL_USE_HGPROJ_SERIAL
+endif
+
+ifeq ($(MACHINE),AIX)
+  override COMP := mpKCC
+endif
+
+ifeq ($(DIM),2)
+  ifeq ($(findstring 5, $(PRVERSION)), 5)
+    DEFINES += -DBL_PRVERSION=5
+  endif
+  ifeq ($(findstring 9, $(PRVERSION)), 9)
+    DEFINES += -DBL_PRVERSION=9
+  endif
+endif
+#
+# Setup build locations/libraries
+#
+MyLibRoots := $(notdir $(Packages))
+MyPackageDirs := $(dir $(Packages))
+MySrcDirs = .
+INCLUDE_LOCATIONS += ..
+ifeq ($(BUILD_IN_PLACE),TRUE)
+  MySrcDirs += $(MyPackageDirs)
+  INCLUDE_LOCATIONS += $(MySrcDirs)
+else
+  LIBRARIES += $(addsuffix $(DIM)d, $(addprefix -l, $(MyLibRoots)))
+  INCLUDE_LOCATIONS += $(TOP)/include
+  ifeq ($(USE_HGPROJ_SERIAL),TRUE)
+    LIBRARY_LOCATIONS += $(dir $(ProjPackage))lib/$(machineSuffix)
+    LIBRARIES := $(patsubst -lproj$(DIM)d, -lproj$(DIM)d.$(PRVERSION), $(LIBRARIES))
+  endif
+  LIBRARY_LOCATIONS += $(TOP)/lib/$(machineSuffix)
+endif
+include $(addsuffix /Make.package, $(MySrcDirs))
+
+ifeq ($(USE_BL3),TRUE)
+  DEFINES += -DBL3_PROFILING
+  ifeq ($(USE_MPI),TRUE)
+    DEFINES += -DBL3_USE_MPI
+    CEXE_sources += BL3Mpi.cpp
+  endif
+  ifeq ($(USE_THREADS),TRUE)
+    DEFINES += -DBL3_PTHREADS
+  endif
+  CEXE_headers += Thread.H Profiler.H BoxLib3.H Utility.H Assert.H Error.H
+  CEXE_sources += BL3Thread.cpp BL3Profiler.cpp BL3Utility.cpp 
+  CEXE_sources += BL3Error.cpp
+  CEXE_sources += BL3Parallel.cpp  BL3BoxLib3.cpp
+  INCLUDE_LOCATIONS += $(PBOXLIB_HOME)
+  MySrcDirs += $(PBOXLIB_HOME)/BoxLib3
+endif
+
+vpath %.cpp $(MySrcDirs) ..
+vpath %.F   $(MySrcDirs) ..
+vpath %.H   $(MySrcDirs) ..
+vpath %.h   $(MySrcDirs) ..
+vpath %.f   $(MySrcDirs) ..
+vpath %.a   $(LIBRARY_LOCATIONS)
+
+MyMakeLine =  $(MAKE) PRECISION=$(PRECISION) PROFILE=$(PROFILE) COMP=$(COMP) \
+	      DEBUG=$(DEBUG) DIM=$(DIM) USE_MPI=$(USE_MPI) PRVERSION=$(PRVERSION) \
+	      USE_HGPROJ_SERIAL=$(USE_HGPROJ_SERIAL) \
+	      DEFINES="$(DEFINES)" EBASE= LBASE=$@
+
+MyLibDeps := $(shell perl -e '$$,=" ";print reverse @ARGV ;' $(MyLibRoots))
+
+find_files = $(wildcard $(dir)*cpp) $(wildcard $(dir)*H) $(wildcard $(dir)*.F)
+projFiles := $(foreach dir,$(dir $(ProjPackage)),$(find_files))
+iamrFiles := $(foreach dir,$(dir $(filter %/iamr,$(Packages))),$(find_files))
+StencilSpecificProjFiles = $(shell grep -l USE_HGPROJ_SERIAL $(iamrFiles)) \
+                           $(shell grep -l BL_PRVERSION $(iamrFiles)) \
+                           $(wildcard $(dir $(ProjPackage))*F) \
+                           $(wildcard $(dir $(ProjPackage))*cpp) \
+                           $(wildcard $(dir $(ProjPackage))*H)
+ifeq ($(USE_HGPROJ_SERIAL),TRUE)
+  StencilSpecificProjFiles += $(shell grep -l hg_version.H $(projFiles))
+endif
+
+#
+# Targets
+#
+all: $(executable)
+
+$(executable): $(LIBRARIES)
+
+libs: $(MyLibDeps)
+
+$(MyLibDeps):
+	cd $(dir $(filter %/$@, $(Packages))); $(MyMakeLine) install
+
+cleanlibs:
+	$(foreach lib,$(MyPackageDirs),cd $(lib); $(MyMakeLine) clean)
+
+nodata:
+	\rm -rf chk* plt* grdlog inspect.fab *.mfab *.fab *.asc *.out
+
+#
+# Touch all stencil-specific files in serial projection
+#
+touch_hg:
+	touch $(StencilSpecificProjFiles)
+
+#
+# Create MS-IDE dsp file to build this project
+#
+DspOlevel = 1
+DspFileRoot = $(EBASE)$(DIM)d
+ifeq ($(DEBUG), TRUE)
+  DspFileRoot := $(join $(DspFileRoot),.DEBUG)
+  DspOlevel := 0
+endif
+vString = -v $(PRVERSION)
+serialString =
+ifeq ($(USE_HGPROJ_SERIAL),TRUE)
+  serialString := -S
+endif
+dsp: $(DspFileRoot).dsp
+.dspDepends: $(FEXE_sources) $(FEXE_headers) $(fEXE_sources) $(CEXE_headers) $(CEXE_sources) $(INCLUDE_LOCATIONS)
+	@echo $^ > .dspDepends
+
+$(DspFileRoot).dsp: .dspDepends
+	@(echo Building DSP file = $(DspFileRoot).dsp;\
+	$(TOP)/scripts/dsp.mak -t $(TOP) -p $(DspFileRoot) -d $(DIM) -o $(DspFileRoot).dsp -O $(DspOlevel) $(vString) $(serialString) -f $^)
+
+.PHONY: dsp .dspDepends libs cleanlibs nodata touch_hg
+
+include $(TOP)/mk/Make.rules
