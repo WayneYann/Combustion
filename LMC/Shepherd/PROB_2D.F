@@ -59,6 +59,7 @@ c ::: -----------------------------------------------------------
 #include "htdata.H"
 #include "cdwrk.H"
 #include "bc.H"
+#include "visc.H"
 
       namelist /fortin/ flowrate_fu_CH4, flowrate_fu_N2,
      &     flowrate_fu_O2,T_fu, flowrate_fu_H2, flowrate_fu_NO, R_fu,
@@ -1929,4 +1930,25 @@ c
       call FORT_YVELFILL (vel(ARG_L1(vel),ARG_L2(vel),2),
      & DIMS(vel),domlo,domhi,delta,xlo,time,bc(1,1,2))
 
+      end
+
+      subroutine FORT_ALLCHEMFILL (rhoY,DIMS(rhoY),domlo,domhi,delta,
+     &                             xlo,time,bc)
+
+      implicit none
+#include "cdwrk.H"
+#include "bc.H"
+#include "probdata.H"
+
+      integer DIMDEC(rhoY), bc(SDIM,2,Nspec)
+      integer domlo(SDIM), domhi(SDIM)
+      REAL_T  delta(SDIM), xlo(SDIM), time
+      REAL_T  rhoY(DIMV(rhoY),Nspec)
+
+      integer n
+      
+      do n=1,Nspec
+         call FORT_CHEMFILL (rhoY(ARG_L1(rhoY),ARG_L2(rhoY),n),
+     &        DIMS(rhoY),domlo,domhi,delta,xlo,time,bc(1,1,n),n-1)
+      enddo
       end
