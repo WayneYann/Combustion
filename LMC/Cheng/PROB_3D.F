@@ -1046,7 +1046,7 @@ c
                      vel(i,j,k,2) = zero
                      vel(i,j,k,3) = zero
                   end if
-               end do
+              end do
             end do
          end do
       else if (probtype .eq. 3) then
@@ -1092,6 +1092,14 @@ c
                   scal(i,j,k,Temp) = (one - eta)*pmf_vals(1) + eta*bg_vals(1)
                   do n = 1,Nspec
                      Xl(n) = (one - eta)*pmf_vals(3+n) + eta*bg_vals(3+n)
+                  end do 
+
+                  eta = zero
+                  if (zhot .gt. zero) eta = half*(one + TANH(two*(z-zhot)/zBL))
+
+                  scal(i,j,k,Temp) = (one - eta)*scal(i,j,k,Temp) + eta*bg_vals(1)
+                  do n = 1,Nspec
+                     Xl(n) = (one - eta)*Xl(n) + eta*bg_vals(3+n)
                   end do 
 
                   CALL CKXTY (Xl, IWRK, RWRK, Yl)
