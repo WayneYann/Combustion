@@ -159,7 +159,7 @@ c     Precompute some messy coeffs
       a_ox = (R_ox_2**2 - R_ox_1**2)/(4*log(R_ox_1/R_ox_2))
       b_ox = (log(R_ox_2)*R_ox_1**2 - log(R_ox_1)*R_ox_2**2) /
      &     (4*log(R_ox_1/R_ox_2))
-      c_ox = (8.d0/(Pi*6.d7)) /
+      c_ox = (8.d-3/(Pi)) /
      &     (R_ox_2**2*(-4*a_ox+8*b_ox+R_ox_2**2+8*a_ox*log(R_ox_2))
      &     -R_ox_1**2*(-4*a_ox+8*b_ox+R_ox_1**2+8*a_ox*log(R_ox_1)))
       
@@ -204,9 +204,8 @@ c     Compute inlet mass fracs based on input flowrates
 c
 c     ZONE 1: Fuel stream
 c     Needs: flowrate_fu_CH4, flowrate_fu_N2, flowrate_fu_O2, flowrate_fu_H2,
-c     T_fu, R_fu (flowrates in ml/min, R_fu in mm)
+c     T_fu, R_fu (flowrates in liter/s, R_fu in m)
 c     
-c     Note: 6.e7 = 60 s/min * 1.e6 ml/m^3
          zone = 1
          tot = zero
          flowrate_fu_tot = flowrate_fu_CH4 + flowrate_fu_N2
@@ -232,11 +231,11 @@ c     Note: 6.e7 = 60 s/min * 1.e6 ml/m^3
 
          T_bc(zone) = T_fu
          u_bc(zone) = zero
-         v_bc(zone) = (flowrate_fu_tot/6.e7) / (Pi*R_fu**2)
+         v_bc(zone) = (flowrate_fu_tot*1.e-3) / (Pi*R_fu**2)
 c         
 c     ZONE 2: Oxidizer stream
 c     Needs: flowrate_ox_O2, flowrate_ox_N2, T_ox, R_ox_1, R_ox_2
-c     (flowrate in ml/min, Rs in mm)
+c     (flowrate in liter/s, R in m)
 c
          zone = 2
          tot = zero
@@ -256,7 +255,7 @@ c
 
          T_bc(zone) = T_ox
          u_bc(zone) = zero
-         v_bc(zone) = (flowrate_ox_tot/6.e7) / (Pi*(R_ox_2**2 - R_ox_1**2))
+         v_bc(zone) = (flowrate_ox_tot*1.e-3) / (Pi*(R_ox_2**2 - R_ox_1**2))
 c         
 c     ZONE 3: Dead zone, like 2 but no inflow, different T
 c
@@ -346,8 +345,8 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
       REAL_T flowrate_fu_tot, flowrate_ox_tot, Patm, xleft, xrght
-	REAL_T uavFU,R1FU,R2FU,FlowFU
-	REAL_T uavOX,R1OX,R2OX,FlowOX, OXInt, OXIntR1, OXIntR2
+      REAL_T uavFU,R1FU,R2FU,FlowFU
+      REAL_T uavOX,R1OX,R2OX,FlowOX, OXInt, OXIntR1, OXIntR2
       integer n, getZone, zone, lo(SDIM), hi(SDIM)
       data lo / 1, 1 /
       data hi / 1, 1 /
@@ -358,7 +357,7 @@ c     extends into a no-flow zone (ie, the fuel tube is wider than dx(1))
       uavFU(R1FU,R2FU,FlowFU) = 
      &     (R_fu**2 * (MIN(R_fu,R2FU)**2 - R1FU**2)
      &     -   half * (MIN(R_fu,R2FU)**4 - R1FU**4) )
-     &     *FlowFU/(Pi * BL_REAL_E(3.0,7) * (R1FU+R2FU) * dx(1) * R_fu**4)
+     &     *FlowFU/(Pi * BL_REAL_E(1.0,-3) * (R1FU+R2FU) * dx(1) * R_fu**4)
 c     uavFU(R1FU,R2FU,FlowFU) = FlowFU/(BL_REAL_E(3.0,7)*Pi*R_fu**4)
 c     &	*(R_fu**2 - (half*(R1FU+R2FU))**2)
 
@@ -372,7 +371,7 @@ c            wider than dx(1))
 
       uavOX(R1OX,R2OX,FlowOX) =
      &     OXInt(MAX(R_ox_1,R1OX),MIN(R_ox_2,R2OX))/OxInt(R_ox_1,R_ox_2)
-     &     *(FlowOX/(BL_REAL_E(6.0,7)*Pi*(R1OX+R2OX)*dx(1))) 
+     &     *(FlowOX*BL_REAL_E(1.0,-3)/(Pi*(R1OX+R2OX)*dx(1))) 
 
       if (.not. bcinit) then
          write(6,*) 'Need to initialize boundary condition function'
@@ -396,10 +395,12 @@ c     Overwrite constant inflow velocities with profiles
 
          if ((probtype .eq. 0)) then
             if (zone.eq.1) then
-               v = flowrate_fu_tot*(R_fu**2 - x**2)/(3.d7*Pi*R_fu**4)
+c               v = 1.e-3*flowrate_fu_tot*(R_fu**2 - x**2)/(Pi*R_fu**4)
+               v = 1.e-3*flowrate_fu_tot/(Pi*R_fu**2)
             else if (zone.eq.2) then
-               v = flowrate_ox_tot
-     &              * (fourth*c_ox*x**2 + a_ox*c_ox*log(x) + b_ox*c_ox)
+c               v = flowrate_ox_tot
+c     &              * (fourth*c_ox*x**2 + a_ox*c_ox*log(x) + b_ox*c_ox)
+               v = 1.e-3*flowrate_ox_tot/(Pi*(R_ox_2**2-R_ox_1**2))
             endif
          else
             write(*,*) 'PROB_2D::bcfunction: Dont know about probtype = ',
