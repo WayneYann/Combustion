@@ -22,6 +22,12 @@
 #define SETRHO_CALCT
 #define SDIM 2
 
+#if defined(BL_T3E) || defined(BL_AIX) || defined(BL_IRIX64)
+#define OPEN_APPEND position='append'
+#else
+#define OPEN_APPEND access='append'
+#endif
+
       subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
 
       implicit none
@@ -113,7 +119,7 @@ c
       coft_old = coft
 
       if (myproc.eq.0) then
-         open(13,file=ac_hist_file,form='formatted',position='append')
+         open(13,file=ac_hist_file,form='formatted',OPEN_APPEND)
          write(13,1000) step,time,V_in,tbase_control,zbase_control,
      &        dV_control,sest,coft_old
          close(13)
