@@ -1240,7 +1240,7 @@ c
                   
                   xl = float(i)*dx(1)+domnlo(1) 
                   xr = (float(i)+1.d0)*dx(1)+domnlo(1) 
-                  xh = 0.5d0*(xl+xh)
+                  xh = 0.5d0*(xl+xr)
                   yb = float(j)*dx(2)+domnlo(2) 
                   yt = (float(j)+1.d0)*dx(2)+domnlo(2) 
                   yh = 0.5d0*(yb+yt)
