@@ -1,5 +1,5 @@
 //
-// $Id: HeatTransfer.cpp,v 1.22 2004-06-18 22:53:22 lijewski Exp $
+// $Id: HeatTransfer.cpp,v 1.23 2004-06-21 21:47:23 lijewski Exp $
 //
 //
 // "Divu_Type" means S, where divergence U = S
@@ -4523,11 +4523,12 @@ HeatTransfer::strang_chem (MultiFab&  state,
                 const Box& bx = Smfi.validbox();
 		FArrayBox& fc = tmp[Smfi];
 #ifdef BL_PLOT_REACS
-                const bool   do_diag  = plot_auxDiags && BoxLib::intersect(state.boxArray(),geom.Domain()).size() != 0;
-                if (do_diag) chemDiag = &((*auxDiag)[Smfi]);
+                if (plot_auxDiags && BoxLib::intersect(state.boxArray(),auxDiag->boxArray()).size() != 0)
+                    chemDiag = &((*auxDiag)[Smfi]);
 #endif
                 getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chem_integrator,chemDiag);
             }
+
 	    get_new_data(FuncCount_Type).copy(tmp);
         }
         else
@@ -4555,7 +4556,7 @@ HeatTransfer::strang_chem (MultiFab&  state,
 
 #ifdef BL_PLOT_REACS
             MultiFab diagTemp;
-            const bool do_diag = plot_auxDiags && BoxLib::intersect(ba,geom.Domain()).size() != 0;
+            const bool do_diag = plot_auxDiags && BoxLib::intersect(ba,auxDiag->boxArray()).size() != 0;
             if (do_diag)
             {
                 diagTemp.define(ba, auxDiag->nComp(), 0, dm, Fab_allocate);
