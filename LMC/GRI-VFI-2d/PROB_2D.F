@@ -180,6 +180,7 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "visc.H"
+#include "conp.H"
 #if defined(BL_DO_FLCT)
 #include "infl_frc.H"
 #include "INFL_FORCE_F.H"
@@ -199,7 +200,7 @@ c ::: -----------------------------------------------------------
      &                  stTh, Rf, R_hot, R_hotBL, twall, turb_scale, stBL,
      &                  max_trac_lev, max_nozzle_lev, pipeTh, pipeBL,
      &                  tV_in_l,tV_in_r,V_in_new,tV_co_l,tV_co_r,V_co_new,
-     &                  T_stick, T_in,phi_in, thickFacTR, thickFacCH
+     &                  T_stick, T_in,phi_in, thickFacTR, thickFacCH,nchemdiag
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -304,6 +305,7 @@ c     Initialize control variables
       cfix = zero
       ac_hist_file = 'AC_History'
       h_control = -one
+      nchemdiag = one
       
       read(untin,fortin)
 c      write(6,fortin)
