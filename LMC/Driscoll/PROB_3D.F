@@ -1566,14 +1566,16 @@ c ::: -----------------------------------------------------------
       else
          if (x.lt.slotL) then
             L = slotL - x
+            velocityBL = TANH(L/(fourth*velBL))
          else if (x.gt.slotR) then
             L = x - slotR
+            velocityBL = TANH(L/(fourth*velBL))
          else
             xmid = half*(slotR+slotL)
             Wh = half*(slotR-slotL)
             L = ABS(x-xmid)
+            velocityBL = TANH((Wh-L)/(fourth*velBL))
          endif
-         velocityBL = one - half*(one+TANH((L-Wh)/(fourth*velBL)))
       endif
       end
 c
@@ -1674,7 +1676,7 @@ c
       endif
       if (hi(1).gt.domhi(1)) then
          if (bc(1,2,1).eq.EXT_DIR) then
-            do i = domnhi(1)+1,hi(1)
+            do i = domhi(1)+1,hi(1)
                do k = lo(3), hi(3)
                   do j = lo(2),hi(2)
                      vel(i,j,k,1) = zero
