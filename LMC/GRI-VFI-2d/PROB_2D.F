@@ -31,8 +31,7 @@
       integer nc, lenmap, mapO2N(lenmap), ratio
       REAL_T dat(DIMV(dat),nc)
       REAL_T datc(DIMV(datc),nc)
-      write(6,*) 'Should not in FORT_HACK for this problem...'
-      stop
+      call bl_abort('Should not in FORT_HACK for this problem...')
       end
       
       subroutine FORT_SET_PROB_SPEC(fuel, oxid, prod, numspec)
@@ -166,13 +165,10 @@ c     Load domain dimensions into common, and set up boundary functions
       
       end
 
-c ::: -----------------------------------------------------------
-
 #define XLO 0
 #define YLO 1
 #define XHI 2
 #define YHI 3
-      
       
       subroutine setupbc()
       implicit none
@@ -202,6 +198,9 @@ c     For probtype == 1, set boundary conditions from premixed flame profile in 
          yEval = y*100. - y_offset*100.
 c          call pmf_GRI(yEval,pmf_GRI_vals,n)
          call pmf_GRI(yEval,yEval,pmf_GRI_vals,n)
+
+         if (n.ne.Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
+
          call FORT_MOLETOMASS(lo,hi,
      &        pmf_GRI_vals(4), ARLIM(lo),ARLIM(hi),
      &        Y_pmf,         ARLIM(lo),ARLIM(hi))
@@ -229,14 +228,11 @@ c          call pmf_GRI(yEval,pmf_GRI_vals,n)
      &                        Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
 
       else
-         write(6,*) 'No boundary init yet for probtype != 1'
-         stop
+         call bl_abort('No boundary init yet for probtype != 1')
       end if
       
       end
-         
-c ::: -----------------------------------------------------------
-      
+
       integer function getZone(x, y)
       implicit none
 #include "cdwrk.H"
@@ -246,9 +242,7 @@ c ::: -----------------------------------------------------------
       
       getZone = 1
       end
-      
-c ::: -----------------------------------------------------------
-      
+
       subroutine bcfunction(orient, x, y, time, u, v, rho, Yl, T, h)
       implicit none
       integer orient
@@ -261,15 +255,15 @@ c ::: -----------------------------------------------------------
       integer n, getZone, zone, lo(SDIM), hi(SDIM), zL, zR
       data lo / 1, 1 /
       data hi / 1, 1 /
-      
+c      
 c     Some boundary conditions may not be not time-dependent, but rather
 c     just constant values for each orientation.  We can precompute
 c     then (in setupbc), here just retrieve the appropriate values.
 c     However, we do not know the size of the domain here, so we cannot
 c     call setupbc values ourselves.  Need to assume someone else did it.
+c
       if (.not. bcinit) then
-         write(6,*) 'Need to initialize boundary condition function'
-         stop
+         call bl_abort('Need to initialize boundary condition function')
       end if
 
       if (orient .lt. 4) then
@@ -283,8 +277,8 @@ c     call setupbc values ourselves.  Need to assume someone else did it.
          T = T_bc(zone)
          h = h_bc(zone)
       else
-         write(6,*) 'No boundary condition for orientation = ', orient
-         stop
+          print*, 'No boundary condition for orientation = ', orient
+          call bl_abort(' ')
       end if
       end
       
@@ -334,7 +328,6 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
 
-c     ::::: local variables
       integer i, j, n
       REAL_T  x, y
       integer slo(SDIM), shi(SDIM)
@@ -352,13 +345,11 @@ c     ::::: local variables
       data hi_chem /1,1/
 
       if ((Temp.gt.0).neqv.(RhoH.gt.0)) then
-         write(6,*) 'Need both Temp and RhoH, or neither'
-         stop
+         call bl_abort('Need both Temp and RhoH, or neither')
       end if
       
       if ((Temp .LT. 0) .OR. (RhoH .LT. 0)) then
-         write(6,*) 'No IC''s for system without T, RhoH'
-         stop
+         call bl_abort('No IC''s for system without T, RhoH')
       endif
 
       iN2 = -1
@@ -379,8 +370,9 @@ c     ::::: local variables
       call FORT_MOLETOMASS(lo_chem,hi_chem,
      &     X_air, ARLIM(lo_chem),ARLIM(hi_chem),
      &     Y_air, ARLIM(lo_chem),ARLIM(hi_chem))
-      
+c      
 c     Set vorticity into pressure field
+c
       do j = ARG_L2(press),ARG_H2(press)
          y = float(j)*delta(2)+domnlo(2)
          do i = ARG_L1(press),ARG_H1(press)
@@ -397,20 +389,13 @@ c     Set vorticity into pressure field
          
          yEval = y*100. - y_offset
          
-c         yEval = zero
-         
-c         call pmf_GRI(yEval,pmf_GRI_vals,n)
          ylo = (    j*delta(2) + domnlo(2) - y_offset)*1.d2
          yhi = ((j+1)*delta(2) + domnlo(2) - y_offset)*1.d2
-c         ylo = zero
-c         yhi = zero
+
          call pmf_GRI(ylo,yhi,pmf_GRI_vals,n)
-         
-c         if ( y .gt. 13.d-3) then
-c            pmf_GRI_vals(3+iN2) =
-c     &           pmf_GRI_vals(3+iN2) + pmf_GRI_vals(3+iAr)
-c            pmf_GRI_vals(3+iAr) = zero
-c         end if
+
+         if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
+
          call FORT_MOLETOMASS(lo_chem,hi_chem,
      &        pmf_GRI_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
      &        Y_pmf,         ARLIM(lo_chem),ARLIM(hi_chem))
@@ -546,7 +531,7 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      stop 'DENERROR: should no be here for H-flame problem'
+      call bl_abort('DENERROR: should no be here')
       
       end
 
@@ -637,8 +622,7 @@ c ::: -----------------------------------------------------------
      &                     domlo,domhi,delta,xlo,
      &			   problo,time,level)
       end if
-      
-      return
+
       end
 
 c ::: -----------------------------------------------------------
@@ -684,22 +668,23 @@ c ::: -----------------------------------------------------------
       ng = min(ARG_H1(temp)-hi(1),ARG_H2(temp)-hi(2),lo(1)-ARG_L1(temp),lo(2)-ARG_L2(temp))
 
       if (ng .lt. 1) then
-         write(6,*) "TEMPERR cannot compute gradient, ng = ",ng
-         stop
+         print*, "TEMPERR cannot compute gradient, ng = ",ng
+         call bl_abort(' ')
       endif
-
-c     ::::: refine where there is temperature gradient
+c
+c     refine where there is temperature gradient
+c
       if (level .lt. max_temp_lev) then
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-            ax = abs(temperature(i+1,j,1) - temperature(i-1,j,1))
-            ay = abs(temperature(i,j+1,1) - temperature(i,j-1,1))
-            aerr = max(ax,ay)
-            tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               ax = abs(temperature(i+1,j,1) - temperature(i-1,j,1))
+               ay = abs(temperature(i,j+1,1) - temperature(i,j-1,1))
+               aerr = max(ax,ay)
+               tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
+            enddo
          enddo
-      enddo
       endif
-      return
+ 
       end
 
 c ::: -----------------------------------------------------------
@@ -764,7 +749,7 @@ c ::: -----------------------------------------------------------
             end do
          end do
       end if
-      return
+
       end
 
 c ::: -----------------------------------------------------------
@@ -876,7 +861,6 @@ c     that the bc values may often be set up ahead of time.
          enddo
       endif
 
-      return
       end
 
 c ::: -----------------------------------------------------------
@@ -974,7 +958,6 @@ c                               inflow for burner in a can (bic, biac)
            enddo
       endif            
 
-      return
       end
 
 
@@ -1086,7 +1069,6 @@ c     that the bc values may often be set up ahead of time.
          enddo
       endif
 
-      return
       end
 
 c ::: -----------------------------------------------------------
@@ -1198,9 +1180,8 @@ c     that the bc values may often be set up ahead of time.
       endif
       
       end
-
 c
-c Fill x, y & z velocity at once.
+c Fill x & y velocity at once.
 c
       subroutine FORT_VELFILL (vel,DIMS(vel),domlo,domhi,delta,
      &                         xlo,time,bc)
@@ -1242,7 +1223,6 @@ c
      &        DIMS(rhoY),domlo,domhi,delta,xlo,time,bc(1,1,n),n-1)
       enddo
       end
-
 
 c ::: -----------------------------------------------------------
 c ::: This routine is called during a filpatch operation when
@@ -1743,13 +1723,10 @@ c
 
       end
 
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
       subroutine FORT_CALCDIVU(divu,DIMS(divu),plo,phi,xlo,dx,time)
-
-c ... This routine is for user defined divu, for debugging purposes
-c     only.
-
+c
+c     This routine is for user defined divu, for debugging purposes only.
+c
       implicit none
 
       integer    DIMDEC(divu)
@@ -1795,7 +1772,6 @@ c            divu(i,j) = min(two,one+time/.05)
         enddo
       enddo
 
-      return
       end
 
       subroutine FORT_CHECK_TURB(add_turb_var,turb_length,
