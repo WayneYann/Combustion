@@ -17,6 +17,14 @@
 # define CONPJ_FILE conpJC
 #endif
 
+#   if   BL_SPACEDIM==1
+#       define  ARLIM(x)  x(1)
+#   elif BL_SPACEDIM==2
+#       define  ARLIM(x)  x(1),x(2)
+#   elif BL_SPACEDIM==3
+#       define  ARLIM(x)  x(1),x(2),x(3)
+#   endif
+
 #if defined(BL_USE_FLOAT) || defined(BL_T3E) || defined(BL_CRAY)
 #define twothousand 2000
 #define one100th    0.01
@@ -509,7 +517,8 @@ c ----------------------------------------------------------------
      &     Told, DIMS(Told),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
-     &     dt)
+     &     dt,
+     &     diag, do_diag)
       implicit none
 
 #include "cdwrk.H"
@@ -521,13 +530,15 @@ c ----------------------------------------------------------------
       integer DIMDEC(Ynew)
       integer DIMDEC(Tnew)
       integer DIMDEC(FuncCount)
+      integer do_diag
       REAL_T Yold(DIMV(Yold),*)
       REAL_T Told(DIMV(Told))
       REAL_T Ynew(DIMV(Ynew),*)
       REAL_T Tnew(DIMV(Tnew))
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
-      
+      REAL_T diag(DIMV(FuncCount),*)
+   
       integer ITOL, IOPT, ITASK
       parameter (ITOL=1, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
@@ -538,6 +549,12 @@ c ----------------------------------------------------------------
       REAL_T TT1, TT2, RU, RUC, P1atm
       integer i, j, n, MF, ISTATE, lout
       character*(maxspnml) name
+
+      integer nsubchem, nsub, lot(2), hit(2)
+      REAL_T dtloc, weight
+c     REAL_T Xtemp(maxspec), rftemp(maxreac),rrtemp(maxreac)
+      REAL_T Ct(maxspec),Qt(maxreac)
+      integer rxns(maxreac)
 
       REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,atoln,zp(maxspec+1)
 #if defined(MOLAR_CONC)
@@ -565,6 +582,13 @@ c     Set IOPT=1 parameter settings for VODE
 #if !defined(MASS_FRAC) && !defined(MOLAR_CONC)
       call bl_abort("neither mass_frac nor molar_conc is defined")
 #endif
+
+      if (do_diag.eq.1) then
+         nsubchem = nchemdiag
+         do n = 1,Nreac
+           rxns(n) = n-1
+         enddo
+      endif
 
 c     Set molecular weights and pressure in area accessible by conpF
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
@@ -596,6 +620,13 @@ c     Set up ATOL
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             TT1 = zero
+            if (do_diag.eq.1) then
+               nsub = nsubchem
+               dtloc = dt/nsubchem
+            else
+               nsub = 1
+               dtloc = dt
+            endif
             ISTATE = 1
 
 #ifdef SOLN_IS_1D
@@ -682,6 +713,13 @@ c            print *, "JACOB",sum,newJ_triggered
 #ifdef ALWAYS_NEW_J
             FIRST = .TRUE.
 #endif
+            if (do_diag.eq.1) then
+               CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
+               CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+               do n=1,Nreac
+                  diag(i,j,n) = diag(i,j,n) +half*dtloc*Qt(n)
+               enddo
+            endif
 
 c            print*, 'DVODE(',i,',',j,'):'
 
@@ -729,7 +767,15 @@ c   If the step was bad, and we reused an old Jacobian, try again from scratch
      &                 dvi, CONPJ_FILE, MF, RWRK, IWRK)
                endif
             endif
-#endif
+
+            if (do_diag.eq.1) then
+               CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
+               CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+               do n=1,Nreac
+                  diag(i,j,n) = diag(i,j,n) +weight*dtloc*Qt(n)
+               enddo
+            endif
+
             FuncCount(i,j) = IWRK(dvbi+11)
             if (verbose_vode .eq. 1) then
                write(6,*) '......dvode done:'
@@ -851,7 +897,8 @@ c     This version does not evolve T explicitly, but rather solves for it each t
      &     Told, DIMS(Told),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
-     &     dt)
+     &     dt,
+     &     diag,do_diag)
       implicit none
 
 #include "cdwrk.H"
@@ -864,12 +911,14 @@ c     This version does not evolve T explicitly, but rather solves for it each t
       integer DIMDEC(Ynew)
       integer DIMDEC(Tnew)
       integer DIMDEC(FuncCount)
+      integer do_diag
       REAL_T Yold(DIMV(Yold),*)
       REAL_T Told(DIMV(Told))
       REAL_T Ynew(DIMV(Ynew),*)
       REAL_T Tnew(DIMV(Tnew))
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
+      REAL_T diag(DIMV(FuncCount),*)
       
       integer ITOL, IOPT, ITASK
       parameter (ITOL=1, IOPT=1, ITASK=1)
