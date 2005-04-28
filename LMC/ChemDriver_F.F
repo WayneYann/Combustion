@@ -317,13 +317,26 @@ C-----------------------------------------------------------------------
 #endif
       end
 
-      subroutine FORT_CKINU(Nids,KI,lenKI,NU,lenNU,rxnID)
+      subroutine FORT_SETNU(nu,lenNU)
       implicit none
 #include "cdwrk.H"
-      integer lenKI,lenNU
-      integer rxnID, Nids, KI(lenKI), NU(lenNU)
-      integer Ndim
-#ifdef MIKE
+      integer lenNU
+      integer nu(maxreac,maxspec)
+      integer i
+
+      if (lenNU .lt. maxreac*maxspec) then
+         write(6,*) 'FORT_CKNU:  nu work array too small: '
+         call bl_abort(" ")
+      endif
+      call CKNU(maxreac, IWRK(ckbi), RWRK(ckbr), nu)
+      end
+
+      subroutine FORT_CKINU(Nids,KI,lenKI,NU,lenNU,rxnID,nuAll)
+      implicit none
+#include "cdwrk.H"
+      integer lenKI,lenNU,NDIM1
+      integer rxnID, Nids, KI(lenKI), NU(lenNU), nuAll(maxreac,maxspec)
+      integer Ndim, k
       Ndim = MIN(lenKI,lenNU)
       if ((rxnID.le.0).or.(rxnID.gt.Nreac)) then
          write(6,*) 'FORT_CKINU:  reaction id out of range: ',rxnID
@@ -332,10 +345,14 @@ C-----------------------------------------------------------------------
       if (Ndim.lt.maxsp) then
          call bl_abort('FORT_CKINU:  KI or NU not long enough')
       end if
-      CALL CKINU(rxnID, Ndim, IWRK(ckbi), RWRK(ckbr), Nids, KI, NU)
-#else
-      call bl_abort("FORT_CKINU not implemented")
-#endif
+      Nids = 0
+      do k=1,Nspec
+         if (nuAll(rxnID,k).ne.0) then
+            Nids = Nids + 1
+            KI(Nids) = k
+            NU(Nids) = nuAll(rxnID,k)
+         endif
+      enddo
       end
 
       integer function FORT_CKELTXINSPY(eltID, spID)

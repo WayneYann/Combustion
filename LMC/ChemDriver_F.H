@@ -57,6 +57,7 @@
 #    define FORT_CKELTXINSPY     deltxinspy
 #    define FORT_NORMMASS        dnormmass
 #    define FORT_SETTMINTRANS    dsetttrans
+#    define FORT_SETNU           dsetnu
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SETUPCKIO       DSETCKIO
@@ -114,6 +115,7 @@
 #    define FORT_CKELTXINSPY     DELTXINSPY
 #    define FORT_NORMMASS        DNORMMASS
 #    define FORT_SETTMINTRANS    DSETTTRANS
+#    define FORT_SETNU           DSETNU
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SETUPCKIO       dsetckio
 #    define FORT_CLOSECKIO       dclsckio
@@ -170,6 +172,7 @@
 #    define FORT_CKELTXINSPY     deltxinspy
 #    define FORT_NORMMASS        dnormmass
 #    define FORT_SETTMINTRANS    dsetttrans
+#    define FORT_SETNU           dsetnu
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SETUPCKIO       dsetckio_
 #    define FORT_CLOSECKIO       dclsckio_
@@ -229,6 +232,7 @@
 #    define FORT_CKELTXINSPY     deltxinspy_
 #    define FORT_NORMMASS        dnormmass_
 #    define FORT_SETTMINTRANS    dsetttrans_
+#    define FORT_SETNU           dsetnu_
 #  endif
 
 #include <ArrayLim.H>
@@ -253,7 +257,7 @@ extern "C" {
     void FORT_FINDLHS(int* reactions, int* listLen, const int* idx);
     void FORT_FINDRHS(int* reactions, int* listLen, const int* idx);
     void FORT_CKINU(int* Nids,int* KI,const int* lenKI,int* NU,const int* lenNU,
-                    const int* rxnID);
+                    const int* rxnID, const int* nuAll);
     int FORT_CKSYMR(const int* fortReacIdx, const int* coded);
 
     void FORT_GETCKDIMPARAMS(const int* maxreac,  const int* maxspec,
@@ -444,6 +448,8 @@ extern "C" {
     int FORT_GET_EG_ID();
     int FORT_GET_TR_ID();
     void FORT_SETTRLIB(const int* lib_idx);
+
+    void FORT_SETNU(int* nu, const int& N);
 }
 
 #endif

@@ -337,6 +337,7 @@ protected:
 
     void getSpeciesNames ();
     void getElementNames ();
+    void getStoichCoeffs ();
 
 private:
 
@@ -350,6 +351,7 @@ private:
     int                mHtoTiterMAX;
     Array<Real>        mTmpData;
     int mMaxreac, mMaxspec, mMaxelts, mMaxord, mMaxthrdb, mMaxtp, mMaxsp, mMaxspnml;
+    Array<int>         mNu;
 };
 
 inline

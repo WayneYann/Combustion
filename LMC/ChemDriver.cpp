@@ -54,6 +54,7 @@ ChemDriver::initOnce (const std::string& TransportFile)
     getElementNames();
     FORT_GETCKDIMPARAMS(&mMaxreac, &mMaxspec, &mMaxelts,  &mMaxord,
                         &mMaxthrdb, &mMaxtp,  &mMaxsp,    &mMaxspnml);
+    getStoichCoeffs();
 }
 
 void
@@ -110,6 +111,13 @@ ChemDriver::getElementNames()
     delete [] coded;
 }
 
+void
+ChemDriver::getStoichCoeffs()
+{
+    mNu.resize(mMaxspec * mMaxreac);
+    FORT_SETNU(mNu.dataPtr(),mNu.size());
+}
+
 Array<int>
 ChemDriver::reactionsWithXonL(const std::string& specName) const
 {
@@ -152,7 +160,7 @@ ChemDriver::specCoeffsInReactions(int reacIdx) const
     Array<int> NU(mMaxsp);
     int Nids = 0;
     const int fortReacIdx = reacIdx + 1;
-    FORT_CKINU(&Nids,KI.dataPtr(),&mMaxsp,NU.dataPtr(),&mMaxsp,&fortReacIdx);
+    FORT_CKINU(&Nids,KI.dataPtr(),&mMaxsp,NU.dataPtr(),&mMaxsp,&fortReacIdx,mNu.dataPtr());
     Array<std::pair<std::string,int> > result(Nids);
     for (int i=0; i<Nids; ++i)
         result[i] = std::pair<std::string,int>(mSpeciesNames[KI[i]-1],NU[i]);
