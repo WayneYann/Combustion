@@ -2,6 +2,7 @@
 #define _ChemDriver_H_
 
 #include <string>
+#include <map>
 
 #include <Array.H>
 #include <FArrayBox.H>
@@ -333,6 +334,78 @@ public:
     static Array<int> encodeStringForFortran(const std::string& astr);
     static std::string decodeStringFromFortran(const int* coded, int length);
 
+    //
+    // Data structure for generating chemical path diagrams,
+    //   an Edge represents the transfer of an atom from one chemical
+    //   species, sp1, to another, sp2, which occurs through a list
+    //   of reactions.  For each reaction, n of these atoms are
+    //   transferred (RWL is a list of pairs of rxn ID to atom transfer cnt)
+    //
+    class Edge
+    {
+    public:
+        friend std::ostream& operator<< (std::ostream& os, const Edge& e);
+        
+        Edge (const std::string& n1, const std::string& n2, const Array<std::pair<int,Real> > rwl);
+        
+        Edge (const std::string& n1, const std::string& n2, int reac, Real weight );
+        
+        int equivSign (const Edge& rhs) const;
+
+        void combine (const Edge& rhs, int sgn);
+
+        bool touchesSp(const std::string& rhs) const;
+        
+        void reverse();
+
+    private:
+        std::string sp1, sp2;
+        Array<std::pair<int,Real> > RWL; // RateWeightList, each pair is (reac,coeff)
+    };
+
+    // 
+    // Helper class for building chem edges.  A group is a list of constituent 
+    // atoms, and this class allows a coupleof useful math operations on these
+    // groups.  
+    //
+    class Group
+    {
+    public:
+        friend std::ostream& operator<< (std::ostream& os, const Group& g);
+        
+        Group () {}
+
+        Group (const std::map<std::string,int>& eltCnts);
+
+        Group (const Group& rhs);
+
+        Group operator- (const Group& rhs) const;
+
+        Group operator* (int rhs) const;
+
+        int operator[](const std::string& id) const;
+            
+        bool sameSign() const;
+
+        bool contains(const std::string& id) const;
+    
+        Real awt(); // non-const because embedded lazy eval
+
+        int size() const;
+    
+    private:
+        void FillAtomicWeights ();
+        std::map<std::string,int> mEltCnts;
+        static std::map<std::string,Real> AtomicWeight;
+    };
+
+    // 
+    // Compute edges from chem mechanism
+    //
+    std::list<ChemDriver::Edge> getEdges (const std::string& trElt,
+                                          int PrintVerbose=1,
+                                          int HackSplitting=1) const;
+
 protected:
 
     void getSpeciesNames ();
@@ -353,6 +426,8 @@ private:
     int mMaxreac, mMaxspec, mMaxelts, mMaxord, mMaxthrdb, mMaxtp, mMaxsp, mMaxspnml;
     Array<int>         mNu;
 };
+
+ChemDriver::Group operator* (int n, const ChemDriver::Group& g);
 
 inline
 int
