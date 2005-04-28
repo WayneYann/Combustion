@@ -1080,6 +1080,12 @@ ChemDriver::Edge::reverse()
     std::swap(sp1,sp2);
 }
 
+const Array<std::pair<int,Real> >&
+ChemDriver::Edge::rwl () const
+{
+    return RWL;
+}
+
 std::ostream& operator<< (std::ostream& os, const ChemDriver::Edge& e)
 {
     os << e.sp1 << " <=> " << e.sp2 << "  ( ";
@@ -1305,8 +1311,8 @@ ChemDriver::Group::FillAtomicWeights ()
 std::list<ChemDriver::Edge>
 ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitting) const
 {
-    std::list<ChemDriver::Edge> edges;
-    std::map<std::string,ChemDriver::Group> groups;
+    std::list<Edge> edges;
+    std::map<std::string,Group> groups;
     const Array<std::string>& spNames = speciesNames();
     const Array<std::string>& eltNames = elementNames();
     for (int i=0; i<spNames.size(); ++i)
@@ -1320,7 +1326,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             if (m>0)
                 eltCnts[elt] = m;
 
-            groups[sp] = ChemDriver::Group(eltCnts);
+            groups[sp] = Group(eltCnts);
         }
     }
     for (int r=0; r<numReactions(); ++r)
@@ -1380,7 +1386,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
                     const int cop = pit->second;
 
                     int w = std::min(cor*groups[spcr][trElt],cop*groups[spcp][trElt]);
-                    edges.push_back(ChemDriver::Edge(spcr,spcp,r,w));
+                    edges.push_back(Edge(spcr,spcp,r,w));
                 }
             }
             continue;
@@ -1403,8 +1409,8 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             int pc0 = p0->second;
             int pc1 = p1->second;
 
-            ChemDriver::Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
-            ChemDriver::Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
+            Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
+            Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
             int pick = 0;
             
             // HACK
@@ -1461,23 +1467,23 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             
             if (pick == 0)
             {
-                edges.push_back(ChemDriver::Edge(rs0,ps0,r,std::min(nR0,nP0)));
+                edges.push_back(Edge(rs0,ps0,r,std::min(nR0,nP0)));
                 if (nP0<nR0)
-                    edges.push_back(ChemDriver::Edge(rs0,ps1,r,nR0-nP0));
+                    edges.push_back(Edge(rs0,ps1,r,nR0-nP0));
                 
-                edges.push_back(ChemDriver::Edge(rs1,ps1,r,std::min(nR1,nP1)));
+                edges.push_back(Edge(rs1,ps1,r,std::min(nR1,nP1)));
                 if (nR0<nP0)
-                    edges.push_back(ChemDriver::Edge(rs1,ps0,r,nP0-nR0));
+                    edges.push_back(Edge(rs1,ps0,r,nP0-nR0));
             }
             else
             {
-                edges.push_back(ChemDriver::Edge(rs0,ps1,r,std::min(nR0,nP1)));
+                edges.push_back(Edge(rs0,ps1,r,std::min(nR0,nP1)));
                 if (nP1<nR0)
-                    edges.push_back(ChemDriver::Edge(rs0,ps0,r,nR0-nP1));
+                    edges.push_back(Edge(rs0,ps0,r,nR0-nP1));
                 
-                edges.push_back(ChemDriver::Edge(rs1,ps0,r,std::min(nR1,nP0)));
+                edges.push_back(Edge(rs1,ps0,r,std::min(nR1,nP0)));
                 if (nR0<nP1)
-                    edges.push_back(ChemDriver::Edge(rs1,ps1,r,nP1-nR0));
+                    edges.push_back(Edge(rs1,ps1,r,nP1-nR0));
             }
             continue;
         }
@@ -1486,18 +1492,23 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
     }
 
     // Uniquify/combine edges
-    std::list<ChemDriver::Edge> uEdges;
+    std::list<Edge> uEdges;
     while (edges.size()!=0)
     {
-        uEdges.push_back(*(edges.begin()));
-        edges.pop_front();
-        for (std::list<ChemDriver::Edge>::iterator it=edges.begin(); it!=edges.end(); ++it)
+        const Edge oe(edges.front()); edges.pop_front();
+        bool foundIt = false;
+        // There's probably a faster way to search this list...
+        for (std::list<Edge>::iterator it=uEdges.begin(); !foundIt && it!=uEdges.end(); ++it)
         {
-            ChemDriver::Edge& e = uEdges.back();
-            int sgn = e.equivSign(*it);
+            int sgn = it->equivSign(oe);
             if (sgn!=0)
-                e.combine(*it,sgn);
+            {
+                it->combine(oe,sgn);
+                foundIt = true;
+            }
         }
+        if (!foundIt)
+            uEdges.push_back(oe);
     }
     
     return uEdges;
