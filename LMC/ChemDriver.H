@@ -358,6 +358,8 @@ public:
         
         void reverse();
 
+        const Array<std::pair<int,Real> >& rwl () const;
+
     private:
         std::string sp1, sp2;
         Array<std::pair<int,Real> > RWL; // RateWeightList, each pair is (reac,coeff)
