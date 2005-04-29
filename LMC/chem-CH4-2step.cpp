@@ -1709,20 +1709,20 @@ void CKNU(int * kdim, int * iwrk, double * rwrk, int * nuki)
     }
 
     /*reaction 1: 2 CH4 + 3 O2 => 2 CO + 4 H2O */
-    nuki[ 2 * kd + 0 ] = -2 ;
-    nuki[ 0 * kd + 0 ] = -3 ;
-    nuki[ 3 * kd + 0 ] = +2 ;
-    nuki[ 1 * kd + 0 ] = +4 ;
+    nuki[ 2 * kd + 0 ] += -2 ;
+    nuki[ 0 * kd + 0 ] += -3 ;
+    nuki[ 3 * kd + 0 ] += +2 ;
+    nuki[ 1 * kd + 0 ] += +4 ;
 
     /*reaction 2: 2 CO + O2 => 2 CO2 */
-    nuki[ 3 * kd + 1 ] = -2 ;
-    nuki[ 0 * kd + 1 ] = -1 ;
-    nuki[ 4 * kd + 1 ] = +2 ;
+    nuki[ 3 * kd + 1 ] += -2 ;
+    nuki[ 0 * kd + 1 ] += -1 ;
+    nuki[ 4 * kd + 1 ] += +2 ;
 
     /*reaction 3: 2 CO2 => 2 CO + O2 */
-    nuki[ 4 * kd + 2 ] = -2 ;
-    nuki[ 3 * kd + 2 ] = +2 ;
-    nuki[ 0 * kd + 2 ] = +1 ;
+    nuki[ 4 * kd + 2 ] += -2 ;
+    nuki[ 3 * kd + 2 ] += +2 ;
+    nuki[ 0 * kd + 2 ] += +1 ;
 }
 
 

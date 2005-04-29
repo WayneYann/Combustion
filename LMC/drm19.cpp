@@ -2512,491 +2512,491 @@ void CKNU(int * kdim, int * iwrk, double * rwrk, int * nuki)
     }
 
     /*reaction 1: O + H + M <=> OH + M */
-    nuki[ 2 * kd + 0 ] = -1 ;
-    nuki[ 1 * kd + 0 ] = -1 ;
-    nuki[ 4 * kd + 0 ] = +1 ;
+    nuki[ 2 * kd + 0 ] += -1 ;
+    nuki[ 1 * kd + 0 ] += -1 ;
+    nuki[ 4 * kd + 0 ] += +1 ;
 
     /*reaction 2: O + H2 <=> H + OH */
-    nuki[ 2 * kd + 1 ] = -1 ;
-    nuki[ 0 * kd + 1 ] = -1 ;
-    nuki[ 1 * kd + 1 ] = +1 ;
-    nuki[ 4 * kd + 1 ] = +1 ;
+    nuki[ 2 * kd + 1 ] += -1 ;
+    nuki[ 0 * kd + 1 ] += -1 ;
+    nuki[ 1 * kd + 1 ] += +1 ;
+    nuki[ 4 * kd + 1 ] += +1 ;
 
     /*reaction 3: O + HO2 <=> OH + O2 */
-    nuki[ 2 * kd + 2 ] = -1 ;
-    nuki[ 6 * kd + 2 ] = -1 ;
-    nuki[ 4 * kd + 2 ] = +1 ;
-    nuki[ 3 * kd + 2 ] = +1 ;
+    nuki[ 2 * kd + 2 ] += -1 ;
+    nuki[ 6 * kd + 2 ] += -1 ;
+    nuki[ 4 * kd + 2 ] += +1 ;
+    nuki[ 3 * kd + 2 ] += +1 ;
 
     /*reaction 4: O + CH2 <=> H + HCO */
-    nuki[ 2 * kd + 3 ] = -1 ;
-    nuki[ 7 * kd + 3 ] = -1 ;
-    nuki[ 1 * kd + 3 ] = +1 ;
-    nuki[ 13 * kd + 3 ] = +1 ;
+    nuki[ 2 * kd + 3 ] += -1 ;
+    nuki[ 7 * kd + 3 ] += -1 ;
+    nuki[ 1 * kd + 3 ] += +1 ;
+    nuki[ 13 * kd + 3 ] += +1 ;
 
     /*reaction 5: O + CH2(S) <=> H + HCO */
-    nuki[ 2 * kd + 4 ] = -1 ;
-    nuki[ 8 * kd + 4 ] = -1 ;
-    nuki[ 1 * kd + 4 ] = +1 ;
-    nuki[ 13 * kd + 4 ] = +1 ;
+    nuki[ 2 * kd + 4 ] += -1 ;
+    nuki[ 8 * kd + 4 ] += -1 ;
+    nuki[ 1 * kd + 4 ] += +1 ;
+    nuki[ 13 * kd + 4 ] += +1 ;
 
     /*reaction 6: O + CH3 <=> H + CH2O */
-    nuki[ 2 * kd + 5 ] = -1 ;
-    nuki[ 9 * kd + 5 ] = -1 ;
-    nuki[ 1 * kd + 5 ] = +1 ;
-    nuki[ 14 * kd + 5 ] = +1 ;
+    nuki[ 2 * kd + 5 ] += -1 ;
+    nuki[ 9 * kd + 5 ] += -1 ;
+    nuki[ 1 * kd + 5 ] += +1 ;
+    nuki[ 14 * kd + 5 ] += +1 ;
 
     /*reaction 7: O + CH4 <=> OH + CH3 */
-    nuki[ 2 * kd + 6 ] = -1 ;
-    nuki[ 10 * kd + 6 ] = -1 ;
-    nuki[ 4 * kd + 6 ] = +1 ;
-    nuki[ 9 * kd + 6 ] = +1 ;
+    nuki[ 2 * kd + 6 ] += -1 ;
+    nuki[ 10 * kd + 6 ] += -1 ;
+    nuki[ 4 * kd + 6 ] += +1 ;
+    nuki[ 9 * kd + 6 ] += +1 ;
 
     /*reaction 8: O + CO + M <=> CO2 + M */
-    nuki[ 2 * kd + 7 ] = -1 ;
-    nuki[ 11 * kd + 7 ] = -1 ;
-    nuki[ 12 * kd + 7 ] = +1 ;
+    nuki[ 2 * kd + 7 ] += -1 ;
+    nuki[ 11 * kd + 7 ] += -1 ;
+    nuki[ 12 * kd + 7 ] += +1 ;
 
     /*reaction 9: O + HCO <=> OH + CO */
-    nuki[ 2 * kd + 8 ] = -1 ;
-    nuki[ 13 * kd + 8 ] = -1 ;
-    nuki[ 4 * kd + 8 ] = +1 ;
-    nuki[ 11 * kd + 8 ] = +1 ;
+    nuki[ 2 * kd + 8 ] += -1 ;
+    nuki[ 13 * kd + 8 ] += -1 ;
+    nuki[ 4 * kd + 8 ] += +1 ;
+    nuki[ 11 * kd + 8 ] += +1 ;
 
     /*reaction 10: O + HCO <=> H + CO2 */
-    nuki[ 2 * kd + 9 ] = -1 ;
-    nuki[ 13 * kd + 9 ] = -1 ;
-    nuki[ 1 * kd + 9 ] = +1 ;
-    nuki[ 12 * kd + 9 ] = +1 ;
+    nuki[ 2 * kd + 9 ] += -1 ;
+    nuki[ 13 * kd + 9 ] += -1 ;
+    nuki[ 1 * kd + 9 ] += +1 ;
+    nuki[ 12 * kd + 9 ] += +1 ;
 
     /*reaction 11: O + CH2O <=> OH + HCO */
-    nuki[ 2 * kd + 10 ] = -1 ;
-    nuki[ 14 * kd + 10 ] = -1 ;
-    nuki[ 4 * kd + 10 ] = +1 ;
-    nuki[ 13 * kd + 10 ] = +1 ;
+    nuki[ 2 * kd + 10 ] += -1 ;
+    nuki[ 14 * kd + 10 ] += -1 ;
+    nuki[ 4 * kd + 10 ] += +1 ;
+    nuki[ 13 * kd + 10 ] += +1 ;
 
     /*reaction 12: O + C2H4 <=> CH3 + HCO */
-    nuki[ 2 * kd + 11 ] = -1 ;
-    nuki[ 16 * kd + 11 ] = -1 ;
-    nuki[ 9 * kd + 11 ] = +1 ;
-    nuki[ 13 * kd + 11 ] = +1 ;
+    nuki[ 2 * kd + 11 ] += -1 ;
+    nuki[ 16 * kd + 11 ] += -1 ;
+    nuki[ 9 * kd + 11 ] += +1 ;
+    nuki[ 13 * kd + 11 ] += +1 ;
 
     /*reaction 13: O + C2H5 <=> CH3 + CH2O */
-    nuki[ 2 * kd + 12 ] = -1 ;
-    nuki[ 17 * kd + 12 ] = -1 ;
-    nuki[ 9 * kd + 12 ] = +1 ;
-    nuki[ 14 * kd + 12 ] = +1 ;
+    nuki[ 2 * kd + 12 ] += -1 ;
+    nuki[ 17 * kd + 12 ] += -1 ;
+    nuki[ 9 * kd + 12 ] += +1 ;
+    nuki[ 14 * kd + 12 ] += +1 ;
 
     /*reaction 14: O + C2H6 <=> OH + C2H5 */
-    nuki[ 2 * kd + 13 ] = -1 ;
-    nuki[ 18 * kd + 13 ] = -1 ;
-    nuki[ 4 * kd + 13 ] = +1 ;
-    nuki[ 17 * kd + 13 ] = +1 ;
+    nuki[ 2 * kd + 13 ] += -1 ;
+    nuki[ 18 * kd + 13 ] += -1 ;
+    nuki[ 4 * kd + 13 ] += +1 ;
+    nuki[ 17 * kd + 13 ] += +1 ;
 
     /*reaction 15: O2 + CO <=> O + CO2 */
-    nuki[ 3 * kd + 14 ] = -1 ;
-    nuki[ 11 * kd + 14 ] = -1 ;
-    nuki[ 2 * kd + 14 ] = +1 ;
-    nuki[ 12 * kd + 14 ] = +1 ;
+    nuki[ 3 * kd + 14 ] += -1 ;
+    nuki[ 11 * kd + 14 ] += -1 ;
+    nuki[ 2 * kd + 14 ] += +1 ;
+    nuki[ 12 * kd + 14 ] += +1 ;
 
     /*reaction 16: O2 + CH2O <=> HO2 + HCO */
-    nuki[ 3 * kd + 15 ] = -1 ;
-    nuki[ 14 * kd + 15 ] = -1 ;
-    nuki[ 6 * kd + 15 ] = +1 ;
-    nuki[ 13 * kd + 15 ] = +1 ;
+    nuki[ 3 * kd + 15 ] += -1 ;
+    nuki[ 14 * kd + 15 ] += -1 ;
+    nuki[ 6 * kd + 15 ] += +1 ;
+    nuki[ 13 * kd + 15 ] += +1 ;
 
     /*reaction 17: H + O2 + M <=> HO2 + M */
-    nuki[ 1 * kd + 16 ] = -1 ;
-    nuki[ 3 * kd + 16 ] = -1 ;
-    nuki[ 6 * kd + 16 ] = +1 ;
+    nuki[ 1 * kd + 16 ] += -1 ;
+    nuki[ 3 * kd + 16 ] += -1 ;
+    nuki[ 6 * kd + 16 ] += +1 ;
 
     /*reaction 18: H + 2 O2 <=> HO2 + O2 */
-    nuki[ 1 * kd + 17 ] = -1 ;
-    nuki[ 3 * kd + 17 ] = -2 ;
-    nuki[ 6 * kd + 17 ] = +1 ;
-    nuki[ 3 * kd + 17 ] = +1 ;
+    nuki[ 1 * kd + 17 ] += -1 ;
+    nuki[ 3 * kd + 17 ] += -2 ;
+    nuki[ 6 * kd + 17 ] += +1 ;
+    nuki[ 3 * kd + 17 ] += +1 ;
 
     /*reaction 19: H + O2 + H2O <=> HO2 + H2O */
-    nuki[ 1 * kd + 18 ] = -1 ;
-    nuki[ 3 * kd + 18 ] = -1 ;
-    nuki[ 5 * kd + 18 ] = -1 ;
-    nuki[ 6 * kd + 18 ] = +1 ;
-    nuki[ 5 * kd + 18 ] = +1 ;
+    nuki[ 1 * kd + 18 ] += -1 ;
+    nuki[ 3 * kd + 18 ] += -1 ;
+    nuki[ 5 * kd + 18 ] += -1 ;
+    nuki[ 6 * kd + 18 ] += +1 ;
+    nuki[ 5 * kd + 18 ] += +1 ;
 
     /*reaction 20: H + O2 + N2 <=> HO2 + N2 */
-    nuki[ 1 * kd + 19 ] = -1 ;
-    nuki[ 3 * kd + 19 ] = -1 ;
-    nuki[ 19 * kd + 19 ] = -1 ;
-    nuki[ 6 * kd + 19 ] = +1 ;
-    nuki[ 19 * kd + 19 ] = +1 ;
+    nuki[ 1 * kd + 19 ] += -1 ;
+    nuki[ 3 * kd + 19 ] += -1 ;
+    nuki[ 19 * kd + 19 ] += -1 ;
+    nuki[ 6 * kd + 19 ] += +1 ;
+    nuki[ 19 * kd + 19 ] += +1 ;
 
     /*reaction 21: H + O2 + AR <=> HO2 + AR */
-    nuki[ 1 * kd + 20 ] = -1 ;
-    nuki[ 3 * kd + 20 ] = -1 ;
-    nuki[ 20 * kd + 20 ] = -1 ;
-    nuki[ 6 * kd + 20 ] = +1 ;
-    nuki[ 20 * kd + 20 ] = +1 ;
+    nuki[ 1 * kd + 20 ] += -1 ;
+    nuki[ 3 * kd + 20 ] += -1 ;
+    nuki[ 20 * kd + 20 ] += -1 ;
+    nuki[ 6 * kd + 20 ] += +1 ;
+    nuki[ 20 * kd + 20 ] += +1 ;
 
     /*reaction 22: H + O2 <=> O + OH */
-    nuki[ 1 * kd + 21 ] = -1 ;
-    nuki[ 3 * kd + 21 ] = -1 ;
-    nuki[ 2 * kd + 21 ] = +1 ;
-    nuki[ 4 * kd + 21 ] = +1 ;
+    nuki[ 1 * kd + 21 ] += -1 ;
+    nuki[ 3 * kd + 21 ] += -1 ;
+    nuki[ 2 * kd + 21 ] += +1 ;
+    nuki[ 4 * kd + 21 ] += +1 ;
 
     /*reaction 23: 2 H + M <=> H2 + M */
-    nuki[ 1 * kd + 22 ] = -2 ;
-    nuki[ 0 * kd + 22 ] = +1 ;
+    nuki[ 1 * kd + 22 ] += -2 ;
+    nuki[ 0 * kd + 22 ] += +1 ;
 
     /*reaction 24: 2 H + H2 <=> 2 H2 */
-    nuki[ 1 * kd + 23 ] = -2 ;
-    nuki[ 0 * kd + 23 ] = -1 ;
-    nuki[ 0 * kd + 23 ] = +2 ;
+    nuki[ 1 * kd + 23 ] += -2 ;
+    nuki[ 0 * kd + 23 ] += -1 ;
+    nuki[ 0 * kd + 23 ] += +2 ;
 
     /*reaction 25: 2 H + H2O <=> H2 + H2O */
-    nuki[ 1 * kd + 24 ] = -2 ;
-    nuki[ 5 * kd + 24 ] = -1 ;
-    nuki[ 0 * kd + 24 ] = +1 ;
-    nuki[ 5 * kd + 24 ] = +1 ;
+    nuki[ 1 * kd + 24 ] += -2 ;
+    nuki[ 5 * kd + 24 ] += -1 ;
+    nuki[ 0 * kd + 24 ] += +1 ;
+    nuki[ 5 * kd + 24 ] += +1 ;
 
     /*reaction 26: 2 H + CO2 <=> H2 + CO2 */
-    nuki[ 1 * kd + 25 ] = -2 ;
-    nuki[ 12 * kd + 25 ] = -1 ;
-    nuki[ 0 * kd + 25 ] = +1 ;
-    nuki[ 12 * kd + 25 ] = +1 ;
+    nuki[ 1 * kd + 25 ] += -2 ;
+    nuki[ 12 * kd + 25 ] += -1 ;
+    nuki[ 0 * kd + 25 ] += +1 ;
+    nuki[ 12 * kd + 25 ] += +1 ;
 
     /*reaction 27: H + OH + M <=> H2O + M */
-    nuki[ 1 * kd + 26 ] = -1 ;
-    nuki[ 4 * kd + 26 ] = -1 ;
-    nuki[ 5 * kd + 26 ] = +1 ;
+    nuki[ 1 * kd + 26 ] += -1 ;
+    nuki[ 4 * kd + 26 ] += -1 ;
+    nuki[ 5 * kd + 26 ] += +1 ;
 
     /*reaction 28: H + HO2 <=> O2 + H2 */
-    nuki[ 1 * kd + 27 ] = -1 ;
-    nuki[ 6 * kd + 27 ] = -1 ;
-    nuki[ 3 * kd + 27 ] = +1 ;
-    nuki[ 0 * kd + 27 ] = +1 ;
+    nuki[ 1 * kd + 27 ] += -1 ;
+    nuki[ 6 * kd + 27 ] += -1 ;
+    nuki[ 3 * kd + 27 ] += +1 ;
+    nuki[ 0 * kd + 27 ] += +1 ;
 
     /*reaction 29: H + HO2 <=> 2 OH */
-    nuki[ 1 * kd + 28 ] = -1 ;
-    nuki[ 6 * kd + 28 ] = -1 ;
-    nuki[ 4 * kd + 28 ] = +2 ;
+    nuki[ 1 * kd + 28 ] += -1 ;
+    nuki[ 6 * kd + 28 ] += -1 ;
+    nuki[ 4 * kd + 28 ] += +2 ;
 
     /*reaction 30: H + CH2 (+M) <=> CH3 (+M) */
-    nuki[ 1 * kd + 29 ] = -1 ;
-    nuki[ 7 * kd + 29 ] = -1 ;
-    nuki[ 9 * kd + 29 ] = +1 ;
+    nuki[ 1 * kd + 29 ] += -1 ;
+    nuki[ 7 * kd + 29 ] += -1 ;
+    nuki[ 9 * kd + 29 ] += +1 ;
 
     /*reaction 31: H + CH3 (+M) <=> CH4 (+M) */
-    nuki[ 1 * kd + 30 ] = -1 ;
-    nuki[ 9 * kd + 30 ] = -1 ;
-    nuki[ 10 * kd + 30 ] = +1 ;
+    nuki[ 1 * kd + 30 ] += -1 ;
+    nuki[ 9 * kd + 30 ] += -1 ;
+    nuki[ 10 * kd + 30 ] += +1 ;
 
     /*reaction 32: H + CH4 <=> CH3 + H2 */
-    nuki[ 1 * kd + 31 ] = -1 ;
-    nuki[ 10 * kd + 31 ] = -1 ;
-    nuki[ 9 * kd + 31 ] = +1 ;
-    nuki[ 0 * kd + 31 ] = +1 ;
+    nuki[ 1 * kd + 31 ] += -1 ;
+    nuki[ 10 * kd + 31 ] += -1 ;
+    nuki[ 9 * kd + 31 ] += +1 ;
+    nuki[ 0 * kd + 31 ] += +1 ;
 
     /*reaction 33: H + HCO (+M) <=> CH2O (+M) */
-    nuki[ 1 * kd + 32 ] = -1 ;
-    nuki[ 13 * kd + 32 ] = -1 ;
-    nuki[ 14 * kd + 32 ] = +1 ;
+    nuki[ 1 * kd + 32 ] += -1 ;
+    nuki[ 13 * kd + 32 ] += -1 ;
+    nuki[ 14 * kd + 32 ] += +1 ;
 
     /*reaction 34: H + HCO <=> H2 + CO */
-    nuki[ 1 * kd + 33 ] = -1 ;
-    nuki[ 13 * kd + 33 ] = -1 ;
-    nuki[ 0 * kd + 33 ] = +1 ;
-    nuki[ 11 * kd + 33 ] = +1 ;
+    nuki[ 1 * kd + 33 ] += -1 ;
+    nuki[ 13 * kd + 33 ] += -1 ;
+    nuki[ 0 * kd + 33 ] += +1 ;
+    nuki[ 11 * kd + 33 ] += +1 ;
 
     /*reaction 35: H + CH2O (+M) <=> CH3O (+M) */
-    nuki[ 1 * kd + 34 ] = -1 ;
-    nuki[ 14 * kd + 34 ] = -1 ;
-    nuki[ 15 * kd + 34 ] = +1 ;
+    nuki[ 1 * kd + 34 ] += -1 ;
+    nuki[ 14 * kd + 34 ] += -1 ;
+    nuki[ 15 * kd + 34 ] += +1 ;
 
     /*reaction 36: H + CH2O <=> HCO + H2 */
-    nuki[ 1 * kd + 35 ] = -1 ;
-    nuki[ 14 * kd + 35 ] = -1 ;
-    nuki[ 13 * kd + 35 ] = +1 ;
-    nuki[ 0 * kd + 35 ] = +1 ;
+    nuki[ 1 * kd + 35 ] += -1 ;
+    nuki[ 14 * kd + 35 ] += -1 ;
+    nuki[ 13 * kd + 35 ] += +1 ;
+    nuki[ 0 * kd + 35 ] += +1 ;
 
     /*reaction 37: H + CH3O <=> OH + CH3 */
-    nuki[ 1 * kd + 36 ] = -1 ;
-    nuki[ 15 * kd + 36 ] = -1 ;
-    nuki[ 4 * kd + 36 ] = +1 ;
-    nuki[ 9 * kd + 36 ] = +1 ;
+    nuki[ 1 * kd + 36 ] += -1 ;
+    nuki[ 15 * kd + 36 ] += -1 ;
+    nuki[ 4 * kd + 36 ] += +1 ;
+    nuki[ 9 * kd + 36 ] += +1 ;
 
     /*reaction 38: H + C2H4 (+M) <=> C2H5 (+M) */
-    nuki[ 1 * kd + 37 ] = -1 ;
-    nuki[ 16 * kd + 37 ] = -1 ;
-    nuki[ 17 * kd + 37 ] = +1 ;
+    nuki[ 1 * kd + 37 ] += -1 ;
+    nuki[ 16 * kd + 37 ] += -1 ;
+    nuki[ 17 * kd + 37 ] += +1 ;
 
     /*reaction 39: H + C2H5 (+M) <=> C2H6 (+M) */
-    nuki[ 1 * kd + 38 ] = -1 ;
-    nuki[ 17 * kd + 38 ] = -1 ;
-    nuki[ 18 * kd + 38 ] = +1 ;
+    nuki[ 1 * kd + 38 ] += -1 ;
+    nuki[ 17 * kd + 38 ] += -1 ;
+    nuki[ 18 * kd + 38 ] += +1 ;
 
     /*reaction 40: H + C2H6 <=> C2H5 + H2 */
-    nuki[ 1 * kd + 39 ] = -1 ;
-    nuki[ 18 * kd + 39 ] = -1 ;
-    nuki[ 17 * kd + 39 ] = +1 ;
-    nuki[ 0 * kd + 39 ] = +1 ;
+    nuki[ 1 * kd + 39 ] += -1 ;
+    nuki[ 18 * kd + 39 ] += -1 ;
+    nuki[ 17 * kd + 39 ] += +1 ;
+    nuki[ 0 * kd + 39 ] += +1 ;
 
     /*reaction 41: H2 + CO (+M) <=> CH2O (+M) */
-    nuki[ 0 * kd + 40 ] = -1 ;
-    nuki[ 11 * kd + 40 ] = -1 ;
-    nuki[ 14 * kd + 40 ] = +1 ;
+    nuki[ 0 * kd + 40 ] += -1 ;
+    nuki[ 11 * kd + 40 ] += -1 ;
+    nuki[ 14 * kd + 40 ] += +1 ;
 
     /*reaction 42: OH + H2 <=> H + H2O */
-    nuki[ 4 * kd + 41 ] = -1 ;
-    nuki[ 0 * kd + 41 ] = -1 ;
-    nuki[ 1 * kd + 41 ] = +1 ;
-    nuki[ 5 * kd + 41 ] = +1 ;
+    nuki[ 4 * kd + 41 ] += -1 ;
+    nuki[ 0 * kd + 41 ] += -1 ;
+    nuki[ 1 * kd + 41 ] += +1 ;
+    nuki[ 5 * kd + 41 ] += +1 ;
 
     /*reaction 43: 2 OH <=> O + H2O */
-    nuki[ 4 * kd + 42 ] = -2 ;
-    nuki[ 2 * kd + 42 ] = +1 ;
-    nuki[ 5 * kd + 42 ] = +1 ;
+    nuki[ 4 * kd + 42 ] += -2 ;
+    nuki[ 2 * kd + 42 ] += +1 ;
+    nuki[ 5 * kd + 42 ] += +1 ;
 
     /*reaction 44: OH + HO2 <=> O2 + H2O */
-    nuki[ 4 * kd + 43 ] = -1 ;
-    nuki[ 6 * kd + 43 ] = -1 ;
-    nuki[ 3 * kd + 43 ] = +1 ;
-    nuki[ 5 * kd + 43 ] = +1 ;
+    nuki[ 4 * kd + 43 ] += -1 ;
+    nuki[ 6 * kd + 43 ] += -1 ;
+    nuki[ 3 * kd + 43 ] += +1 ;
+    nuki[ 5 * kd + 43 ] += +1 ;
 
     /*reaction 45: OH + CH2 <=> H + CH2O */
-    nuki[ 4 * kd + 44 ] = -1 ;
-    nuki[ 7 * kd + 44 ] = -1 ;
-    nuki[ 1 * kd + 44 ] = +1 ;
-    nuki[ 14 * kd + 44 ] = +1 ;
+    nuki[ 4 * kd + 44 ] += -1 ;
+    nuki[ 7 * kd + 44 ] += -1 ;
+    nuki[ 1 * kd + 44 ] += +1 ;
+    nuki[ 14 * kd + 44 ] += +1 ;
 
     /*reaction 46: OH + CH2(S) <=> H + CH2O */
-    nuki[ 4 * kd + 45 ] = -1 ;
-    nuki[ 8 * kd + 45 ] = -1 ;
-    nuki[ 1 * kd + 45 ] = +1 ;
-    nuki[ 14 * kd + 45 ] = +1 ;
+    nuki[ 4 * kd + 45 ] += -1 ;
+    nuki[ 8 * kd + 45 ] += -1 ;
+    nuki[ 1 * kd + 45 ] += +1 ;
+    nuki[ 14 * kd + 45 ] += +1 ;
 
     /*reaction 47: OH + CH3 <=> CH2 + H2O */
-    nuki[ 4 * kd + 46 ] = -1 ;
-    nuki[ 9 * kd + 46 ] = -1 ;
-    nuki[ 7 * kd + 46 ] = +1 ;
-    nuki[ 5 * kd + 46 ] = +1 ;
+    nuki[ 4 * kd + 46 ] += -1 ;
+    nuki[ 9 * kd + 46 ] += -1 ;
+    nuki[ 7 * kd + 46 ] += +1 ;
+    nuki[ 5 * kd + 46 ] += +1 ;
 
     /*reaction 48: OH + CH3 <=> CH2(S) + H2O */
-    nuki[ 4 * kd + 47 ] = -1 ;
-    nuki[ 9 * kd + 47 ] = -1 ;
-    nuki[ 8 * kd + 47 ] = +1 ;
-    nuki[ 5 * kd + 47 ] = +1 ;
+    nuki[ 4 * kd + 47 ] += -1 ;
+    nuki[ 9 * kd + 47 ] += -1 ;
+    nuki[ 8 * kd + 47 ] += +1 ;
+    nuki[ 5 * kd + 47 ] += +1 ;
 
     /*reaction 49: OH + CH4 <=> CH3 + H2O */
-    nuki[ 4 * kd + 48 ] = -1 ;
-    nuki[ 10 * kd + 48 ] = -1 ;
-    nuki[ 9 * kd + 48 ] = +1 ;
-    nuki[ 5 * kd + 48 ] = +1 ;
+    nuki[ 4 * kd + 48 ] += -1 ;
+    nuki[ 10 * kd + 48 ] += -1 ;
+    nuki[ 9 * kd + 48 ] += +1 ;
+    nuki[ 5 * kd + 48 ] += +1 ;
 
     /*reaction 50: OH + CO <=> H + CO2 */
-    nuki[ 4 * kd + 49 ] = -1 ;
-    nuki[ 11 * kd + 49 ] = -1 ;
-    nuki[ 1 * kd + 49 ] = +1 ;
-    nuki[ 12 * kd + 49 ] = +1 ;
+    nuki[ 4 * kd + 49 ] += -1 ;
+    nuki[ 11 * kd + 49 ] += -1 ;
+    nuki[ 1 * kd + 49 ] += +1 ;
+    nuki[ 12 * kd + 49 ] += +1 ;
 
     /*reaction 51: OH + HCO <=> H2O + CO */
-    nuki[ 4 * kd + 50 ] = -1 ;
-    nuki[ 13 * kd + 50 ] = -1 ;
-    nuki[ 5 * kd + 50 ] = +1 ;
-    nuki[ 11 * kd + 50 ] = +1 ;
+    nuki[ 4 * kd + 50 ] += -1 ;
+    nuki[ 13 * kd + 50 ] += -1 ;
+    nuki[ 5 * kd + 50 ] += +1 ;
+    nuki[ 11 * kd + 50 ] += +1 ;
 
     /*reaction 52: OH + CH2O <=> HCO + H2O */
-    nuki[ 4 * kd + 51 ] = -1 ;
-    nuki[ 14 * kd + 51 ] = -1 ;
-    nuki[ 13 * kd + 51 ] = +1 ;
-    nuki[ 5 * kd + 51 ] = +1 ;
+    nuki[ 4 * kd + 51 ] += -1 ;
+    nuki[ 14 * kd + 51 ] += -1 ;
+    nuki[ 13 * kd + 51 ] += +1 ;
+    nuki[ 5 * kd + 51 ] += +1 ;
 
     /*reaction 53: OH + C2H6 <=> C2H5 + H2O */
-    nuki[ 4 * kd + 52 ] = -1 ;
-    nuki[ 18 * kd + 52 ] = -1 ;
-    nuki[ 17 * kd + 52 ] = +1 ;
-    nuki[ 5 * kd + 52 ] = +1 ;
+    nuki[ 4 * kd + 52 ] += -1 ;
+    nuki[ 18 * kd + 52 ] += -1 ;
+    nuki[ 17 * kd + 52 ] += +1 ;
+    nuki[ 5 * kd + 52 ] += +1 ;
 
     /*reaction 54: HO2 + CH2 <=> OH + CH2O */
-    nuki[ 6 * kd + 53 ] = -1 ;
-    nuki[ 7 * kd + 53 ] = -1 ;
-    nuki[ 4 * kd + 53 ] = +1 ;
-    nuki[ 14 * kd + 53 ] = +1 ;
+    nuki[ 6 * kd + 53 ] += -1 ;
+    nuki[ 7 * kd + 53 ] += -1 ;
+    nuki[ 4 * kd + 53 ] += +1 ;
+    nuki[ 14 * kd + 53 ] += +1 ;
 
     /*reaction 55: HO2 + CH3 <=> O2 + CH4 */
-    nuki[ 6 * kd + 54 ] = -1 ;
-    nuki[ 9 * kd + 54 ] = -1 ;
-    nuki[ 3 * kd + 54 ] = +1 ;
-    nuki[ 10 * kd + 54 ] = +1 ;
+    nuki[ 6 * kd + 54 ] += -1 ;
+    nuki[ 9 * kd + 54 ] += -1 ;
+    nuki[ 3 * kd + 54 ] += +1 ;
+    nuki[ 10 * kd + 54 ] += +1 ;
 
     /*reaction 56: HO2 + CH3 <=> OH + CH3O */
-    nuki[ 6 * kd + 55 ] = -1 ;
-    nuki[ 9 * kd + 55 ] = -1 ;
-    nuki[ 4 * kd + 55 ] = +1 ;
-    nuki[ 15 * kd + 55 ] = +1 ;
+    nuki[ 6 * kd + 55 ] += -1 ;
+    nuki[ 9 * kd + 55 ] += -1 ;
+    nuki[ 4 * kd + 55 ] += +1 ;
+    nuki[ 15 * kd + 55 ] += +1 ;
 
     /*reaction 57: HO2 + CO <=> OH + CO2 */
-    nuki[ 6 * kd + 56 ] = -1 ;
-    nuki[ 11 * kd + 56 ] = -1 ;
-    nuki[ 4 * kd + 56 ] = +1 ;
-    nuki[ 12 * kd + 56 ] = +1 ;
+    nuki[ 6 * kd + 56 ] += -1 ;
+    nuki[ 11 * kd + 56 ] += -1 ;
+    nuki[ 4 * kd + 56 ] += +1 ;
+    nuki[ 12 * kd + 56 ] += +1 ;
 
     /*reaction 58: CH2 + O2 <=> OH + HCO */
-    nuki[ 7 * kd + 57 ] = -1 ;
-    nuki[ 3 * kd + 57 ] = -1 ;
-    nuki[ 4 * kd + 57 ] = +1 ;
-    nuki[ 13 * kd + 57 ] = +1 ;
+    nuki[ 7 * kd + 57 ] += -1 ;
+    nuki[ 3 * kd + 57 ] += -1 ;
+    nuki[ 4 * kd + 57 ] += +1 ;
+    nuki[ 13 * kd + 57 ] += +1 ;
 
     /*reaction 59: CH2 + H2 <=> H + CH3 */
-    nuki[ 7 * kd + 58 ] = -1 ;
-    nuki[ 0 * kd + 58 ] = -1 ;
-    nuki[ 1 * kd + 58 ] = +1 ;
-    nuki[ 9 * kd + 58 ] = +1 ;
+    nuki[ 7 * kd + 58 ] += -1 ;
+    nuki[ 0 * kd + 58 ] += -1 ;
+    nuki[ 1 * kd + 58 ] += +1 ;
+    nuki[ 9 * kd + 58 ] += +1 ;
 
     /*reaction 60: CH2 + CH3 <=> H + C2H4 */
-    nuki[ 7 * kd + 59 ] = -1 ;
-    nuki[ 9 * kd + 59 ] = -1 ;
-    nuki[ 1 * kd + 59 ] = +1 ;
-    nuki[ 16 * kd + 59 ] = +1 ;
+    nuki[ 7 * kd + 59 ] += -1 ;
+    nuki[ 9 * kd + 59 ] += -1 ;
+    nuki[ 1 * kd + 59 ] += +1 ;
+    nuki[ 16 * kd + 59 ] += +1 ;
 
     /*reaction 61: CH2 + CH4 <=> 2 CH3 */
-    nuki[ 7 * kd + 60 ] = -1 ;
-    nuki[ 10 * kd + 60 ] = -1 ;
-    nuki[ 9 * kd + 60 ] = +2 ;
+    nuki[ 7 * kd + 60 ] += -1 ;
+    nuki[ 10 * kd + 60 ] += -1 ;
+    nuki[ 9 * kd + 60 ] += +2 ;
 
     /*reaction 62: CH2(S) + N2 <=> CH2 + N2 */
-    nuki[ 8 * kd + 61 ] = -1 ;
-    nuki[ 19 * kd + 61 ] = -1 ;
-    nuki[ 7 * kd + 61 ] = +1 ;
-    nuki[ 19 * kd + 61 ] = +1 ;
+    nuki[ 8 * kd + 61 ] += -1 ;
+    nuki[ 19 * kd + 61 ] += -1 ;
+    nuki[ 7 * kd + 61 ] += +1 ;
+    nuki[ 19 * kd + 61 ] += +1 ;
 
     /*reaction 63: CH2(S) + AR <=> CH2 + AR */
-    nuki[ 8 * kd + 62 ] = -1 ;
-    nuki[ 20 * kd + 62 ] = -1 ;
-    nuki[ 7 * kd + 62 ] = +1 ;
-    nuki[ 20 * kd + 62 ] = +1 ;
+    nuki[ 8 * kd + 62 ] += -1 ;
+    nuki[ 20 * kd + 62 ] += -1 ;
+    nuki[ 7 * kd + 62 ] += +1 ;
+    nuki[ 20 * kd + 62 ] += +1 ;
 
     /*reaction 64: CH2(S) + O2 <=> H + OH + CO */
-    nuki[ 8 * kd + 63 ] = -1 ;
-    nuki[ 3 * kd + 63 ] = -1 ;
-    nuki[ 1 * kd + 63 ] = +1 ;
-    nuki[ 4 * kd + 63 ] = +1 ;
-    nuki[ 11 * kd + 63 ] = +1 ;
+    nuki[ 8 * kd + 63 ] += -1 ;
+    nuki[ 3 * kd + 63 ] += -1 ;
+    nuki[ 1 * kd + 63 ] += +1 ;
+    nuki[ 4 * kd + 63 ] += +1 ;
+    nuki[ 11 * kd + 63 ] += +1 ;
 
     /*reaction 65: CH2(S) + O2 <=> CO + H2O */
-    nuki[ 8 * kd + 64 ] = -1 ;
-    nuki[ 3 * kd + 64 ] = -1 ;
-    nuki[ 11 * kd + 64 ] = +1 ;
-    nuki[ 5 * kd + 64 ] = +1 ;
+    nuki[ 8 * kd + 64 ] += -1 ;
+    nuki[ 3 * kd + 64 ] += -1 ;
+    nuki[ 11 * kd + 64 ] += +1 ;
+    nuki[ 5 * kd + 64 ] += +1 ;
 
     /*reaction 66: CH2(S) + H2 <=> CH3 + H */
-    nuki[ 8 * kd + 65 ] = -1 ;
-    nuki[ 0 * kd + 65 ] = -1 ;
-    nuki[ 9 * kd + 65 ] = +1 ;
-    nuki[ 1 * kd + 65 ] = +1 ;
+    nuki[ 8 * kd + 65 ] += -1 ;
+    nuki[ 0 * kd + 65 ] += -1 ;
+    nuki[ 9 * kd + 65 ] += +1 ;
+    nuki[ 1 * kd + 65 ] += +1 ;
 
     /*reaction 67: CH2(S) + H2O <=> CH2 + H2O */
-    nuki[ 8 * kd + 66 ] = -1 ;
-    nuki[ 5 * kd + 66 ] = -1 ;
-    nuki[ 7 * kd + 66 ] = +1 ;
-    nuki[ 5 * kd + 66 ] = +1 ;
+    nuki[ 8 * kd + 66 ] += -1 ;
+    nuki[ 5 * kd + 66 ] += -1 ;
+    nuki[ 7 * kd + 66 ] += +1 ;
+    nuki[ 5 * kd + 66 ] += +1 ;
 
     /*reaction 68: CH2(S) + CH3 <=> H + C2H4 */
-    nuki[ 8 * kd + 67 ] = -1 ;
-    nuki[ 9 * kd + 67 ] = -1 ;
-    nuki[ 1 * kd + 67 ] = +1 ;
-    nuki[ 16 * kd + 67 ] = +1 ;
+    nuki[ 8 * kd + 67 ] += -1 ;
+    nuki[ 9 * kd + 67 ] += -1 ;
+    nuki[ 1 * kd + 67 ] += +1 ;
+    nuki[ 16 * kd + 67 ] += +1 ;
 
     /*reaction 69: CH2(S) + CH4 <=> 2 CH3 */
-    nuki[ 8 * kd + 68 ] = -1 ;
-    nuki[ 10 * kd + 68 ] = -1 ;
-    nuki[ 9 * kd + 68 ] = +2 ;
+    nuki[ 8 * kd + 68 ] += -1 ;
+    nuki[ 10 * kd + 68 ] += -1 ;
+    nuki[ 9 * kd + 68 ] += +2 ;
 
     /*reaction 70: CH2(S) + CO <=> CH2 + CO */
-    nuki[ 8 * kd + 69 ] = -1 ;
-    nuki[ 11 * kd + 69 ] = -1 ;
-    nuki[ 7 * kd + 69 ] = +1 ;
-    nuki[ 11 * kd + 69 ] = +1 ;
+    nuki[ 8 * kd + 69 ] += -1 ;
+    nuki[ 11 * kd + 69 ] += -1 ;
+    nuki[ 7 * kd + 69 ] += +1 ;
+    nuki[ 11 * kd + 69 ] += +1 ;
 
     /*reaction 71: CH2(S) + CO2 <=> CH2 + CO2 */
-    nuki[ 8 * kd + 70 ] = -1 ;
-    nuki[ 12 * kd + 70 ] = -1 ;
-    nuki[ 7 * kd + 70 ] = +1 ;
-    nuki[ 12 * kd + 70 ] = +1 ;
+    nuki[ 8 * kd + 70 ] += -1 ;
+    nuki[ 12 * kd + 70 ] += -1 ;
+    nuki[ 7 * kd + 70 ] += +1 ;
+    nuki[ 12 * kd + 70 ] += +1 ;
 
     /*reaction 72: CH2(S) + CO2 <=> CO + CH2O */
-    nuki[ 8 * kd + 71 ] = -1 ;
-    nuki[ 12 * kd + 71 ] = -1 ;
-    nuki[ 11 * kd + 71 ] = +1 ;
-    nuki[ 14 * kd + 71 ] = +1 ;
+    nuki[ 8 * kd + 71 ] += -1 ;
+    nuki[ 12 * kd + 71 ] += -1 ;
+    nuki[ 11 * kd + 71 ] += +1 ;
+    nuki[ 14 * kd + 71 ] += +1 ;
 
     /*reaction 73: CH3 + O2 <=> O + CH3O */
-    nuki[ 9 * kd + 72 ] = -1 ;
-    nuki[ 3 * kd + 72 ] = -1 ;
-    nuki[ 2 * kd + 72 ] = +1 ;
-    nuki[ 15 * kd + 72 ] = +1 ;
+    nuki[ 9 * kd + 72 ] += -1 ;
+    nuki[ 3 * kd + 72 ] += -1 ;
+    nuki[ 2 * kd + 72 ] += +1 ;
+    nuki[ 15 * kd + 72 ] += +1 ;
 
     /*reaction 74: CH3 + O2 <=> OH + CH2O */
-    nuki[ 9 * kd + 73 ] = -1 ;
-    nuki[ 3 * kd + 73 ] = -1 ;
-    nuki[ 4 * kd + 73 ] = +1 ;
-    nuki[ 14 * kd + 73 ] = +1 ;
+    nuki[ 9 * kd + 73 ] += -1 ;
+    nuki[ 3 * kd + 73 ] += -1 ;
+    nuki[ 4 * kd + 73 ] += +1 ;
+    nuki[ 14 * kd + 73 ] += +1 ;
 
     /*reaction 75: 2 CH3 (+M) <=> C2H6 (+M) */
-    nuki[ 9 * kd + 74 ] = -2 ;
-    nuki[ 18 * kd + 74 ] = +1 ;
+    nuki[ 9 * kd + 74 ] += -2 ;
+    nuki[ 18 * kd + 74 ] += +1 ;
 
     /*reaction 76: 2 CH3 <=> H + C2H5 */
-    nuki[ 9 * kd + 75 ] = -2 ;
-    nuki[ 1 * kd + 75 ] = +1 ;
-    nuki[ 17 * kd + 75 ] = +1 ;
+    nuki[ 9 * kd + 75 ] += -2 ;
+    nuki[ 1 * kd + 75 ] += +1 ;
+    nuki[ 17 * kd + 75 ] += +1 ;
 
     /*reaction 77: CH3 + HCO <=> CH4 + CO */
-    nuki[ 9 * kd + 76 ] = -1 ;
-    nuki[ 13 * kd + 76 ] = -1 ;
-    nuki[ 10 * kd + 76 ] = +1 ;
-    nuki[ 11 * kd + 76 ] = +1 ;
+    nuki[ 9 * kd + 76 ] += -1 ;
+    nuki[ 13 * kd + 76 ] += -1 ;
+    nuki[ 10 * kd + 76 ] += +1 ;
+    nuki[ 11 * kd + 76 ] += +1 ;
 
     /*reaction 78: CH3 + CH2O <=> HCO + CH4 */
-    nuki[ 9 * kd + 77 ] = -1 ;
-    nuki[ 14 * kd + 77 ] = -1 ;
-    nuki[ 13 * kd + 77 ] = +1 ;
-    nuki[ 10 * kd + 77 ] = +1 ;
+    nuki[ 9 * kd + 77 ] += -1 ;
+    nuki[ 14 * kd + 77 ] += -1 ;
+    nuki[ 13 * kd + 77 ] += +1 ;
+    nuki[ 10 * kd + 77 ] += +1 ;
 
     /*reaction 79: CH3 + C2H6 <=> C2H5 + CH4 */
-    nuki[ 9 * kd + 78 ] = -1 ;
-    nuki[ 18 * kd + 78 ] = -1 ;
-    nuki[ 17 * kd + 78 ] = +1 ;
-    nuki[ 10 * kd + 78 ] = +1 ;
+    nuki[ 9 * kd + 78 ] += -1 ;
+    nuki[ 18 * kd + 78 ] += -1 ;
+    nuki[ 17 * kd + 78 ] += +1 ;
+    nuki[ 10 * kd + 78 ] += +1 ;
 
     /*reaction 80: HCO + H2O <=> H + CO + H2O */
-    nuki[ 13 * kd + 79 ] = -1 ;
-    nuki[ 5 * kd + 79 ] = -1 ;
-    nuki[ 1 * kd + 79 ] = +1 ;
-    nuki[ 11 * kd + 79 ] = +1 ;
-    nuki[ 5 * kd + 79 ] = +1 ;
+    nuki[ 13 * kd + 79 ] += -1 ;
+    nuki[ 5 * kd + 79 ] += -1 ;
+    nuki[ 1 * kd + 79 ] += +1 ;
+    nuki[ 11 * kd + 79 ] += +1 ;
+    nuki[ 5 * kd + 79 ] += +1 ;
 
     /*reaction 81: HCO + M <=> H + CO + M */
-    nuki[ 13 * kd + 80 ] = -1 ;
-    nuki[ 1 * kd + 80 ] = +1 ;
-    nuki[ 11 * kd + 80 ] = +1 ;
+    nuki[ 13 * kd + 80 ] += -1 ;
+    nuki[ 1 * kd + 80 ] += +1 ;
+    nuki[ 11 * kd + 80 ] += +1 ;
 
     /*reaction 82: HCO + O2 <=> HO2 + CO */
-    nuki[ 13 * kd + 81 ] = -1 ;
-    nuki[ 3 * kd + 81 ] = -1 ;
-    nuki[ 6 * kd + 81 ] = +1 ;
-    nuki[ 11 * kd + 81 ] = +1 ;
+    nuki[ 13 * kd + 81 ] += -1 ;
+    nuki[ 3 * kd + 81 ] += -1 ;
+    nuki[ 6 * kd + 81 ] += +1 ;
+    nuki[ 11 * kd + 81 ] += +1 ;
 
     /*reaction 83: CH3O + O2 <=> HO2 + CH2O */
-    nuki[ 15 * kd + 82 ] = -1 ;
-    nuki[ 3 * kd + 82 ] = -1 ;
-    nuki[ 6 * kd + 82 ] = +1 ;
-    nuki[ 14 * kd + 82 ] = +1 ;
+    nuki[ 15 * kd + 82 ] += -1 ;
+    nuki[ 3 * kd + 82 ] += -1 ;
+    nuki[ 6 * kd + 82 ] += +1 ;
+    nuki[ 14 * kd + 82 ] += +1 ;
 
     /*reaction 84: C2H5 + O2 <=> HO2 + C2H4 */
-    nuki[ 17 * kd + 83 ] = -1 ;
-    nuki[ 3 * kd + 83 ] = -1 ;
-    nuki[ 6 * kd + 83 ] = +1 ;
-    nuki[ 16 * kd + 83 ] = +1 ;
+    nuki[ 17 * kd + 83 ] += -1 ;
+    nuki[ 3 * kd + 83 ] += -1 ;
+    nuki[ 6 * kd + 83 ] += +1 ;
+    nuki[ 16 * kd + 83 ] += +1 ;
 }
 
 
