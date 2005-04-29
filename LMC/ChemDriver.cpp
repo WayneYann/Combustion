@@ -1086,6 +1086,18 @@ ChemDriver::Edge::rwl () const
     return RWL;
 }
 
+const std::string
+ChemDriver::Edge::left() const
+{
+    return sp1;
+}
+
+const std::string
+ChemDriver::Edge::right() const
+{
+    return sp2;
+}
+
 std::ostream& operator<< (std::ostream& os, const ChemDriver::Edge& e)
 {
     os << e.sp1 << " <=> " << e.sp2 << "  ( ";
@@ -1308,6 +1320,15 @@ ChemDriver::Group::FillAtomicWeights ()
     AtomicWeight["E"] = 5.48578E-4;
 }
 
+std::ostream& operator<< (std::ostream& os, const ChemDriver::Group& g)
+{
+    os << "Group < ";
+    for (std::map<std::string,int>::const_iterator it=g.mEltCnts.begin(); it!=g.mEltCnts.end(); ++it)
+        os << it->first << ":" << it->second << " ";
+    os << ">";
+    return os;
+}
+
 std::list<ChemDriver::Edge>
 ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitting) const
 {
@@ -1332,6 +1353,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
     for (int r=0; r<numReactions(); ++r)
     {
         const Array<std::pair<std::string,int> >& coeffs = specCoeffsInReactions(r);
+
         std::map<std::string,int> net;
         for (int i=0; i<coeffs.size(); ++i)
         {
@@ -1349,6 +1371,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
                 net[sp] = co;
             }
         }
+
         std::map<std::string,int> reac, prod;
 
         for (std::map<std::string,int>::const_iterator it = net.begin(); it!=net.end(); ++it)
@@ -1384,7 +1407,6 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
                 {
                     const std::string& spcp = pit->first;
                     const int cop = pit->second;
-
                     int w = std::min(cor*groups[spcr][trElt],cop*groups[spcp][trElt]);
                     edges.push_back(Edge(spcr,spcp,r,w));
                 }
@@ -1412,7 +1434,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
             Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
             int pick = 0;
-            
+
             // HACK
             if ((HackSplitting==1) && (trElt=="H") && (r==61))
             {

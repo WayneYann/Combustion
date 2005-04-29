@@ -360,6 +360,10 @@ public:
 
         const Array<std::pair<int,Real> >& rwl () const;
 
+        const std::string left() const;
+
+        const std::string right() const;
+
     private:
         std::string sp1, sp2;
         Array<std::pair<int,Real> > RWL; // RateWeightList, each pair is (reac,coeff)
@@ -405,7 +409,7 @@ public:
     // Compute edges from chem mechanism
     //
     std::list<ChemDriver::Edge> getEdges (const std::string& trElt,
-                                          int PrintVerbose=1,
+                                          int PrintVerbose=0,
                                           int HackSplitting=1) const;
 
 protected:
