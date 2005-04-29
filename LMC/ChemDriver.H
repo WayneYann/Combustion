@@ -408,10 +408,10 @@ public:
     // 
     // Compute edges from chem mechanism
     //
-    std::list<ChemDriver::Edge> getEdges (const std::string& trElt,
-                                          int PrintVerbose=0,
-                                          int HackSplitting=1) const;
-
+    std::list<Edge> getEdges (const std::string& trElt,
+                              int PrintVerbose=0,
+                              int HackSplitting=1) const;
+    
 protected:
 
     void getSpeciesNames ();
