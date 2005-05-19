@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.10 2004-09-29 19:29:42 lijewski Exp $
+# $Id: GNUmakefile,v 1.11 2005-05-19 22:54:16 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -10,7 +10,7 @@ PRECISION      = DOUBLE
 DEBUG	       = FALSE
 DEBUG	       = TRUE
 PROFILE        = FALSE
-DIM	       = 3
+DIM	           = 3
 PRVERSION      = v7
 COMP           = KCC
 COMP           = mpCC
@@ -49,6 +49,7 @@ REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=GRI30NON
+REACTION_MECHANISM=PROPANE
 #
 # Packages below are of the form dir/lib. dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding

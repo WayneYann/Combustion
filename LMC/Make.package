@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.8 2004-09-29 19:29:42 lijewski Exp $
+# $Id: Make.package,v 1.9 2005-05-19 22:54:16 lijewski Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -36,6 +36,9 @@ ifeq ($(REACTION_MECHANISM),INERT30)
 endif
 ifeq ($(REACTION_MECHANISM),CH4-2STEP)
   C$(HT_BASE)_sources += chem-CH4-2step.cpp
+endif
+ifeq ($(REACTION_MECHANISM),PROPANE)
+  C$(HT_BASE)_sources += propane.cpp
 endif
 
 C$(HT_BASE)_sources += ChemDriver.cpp
