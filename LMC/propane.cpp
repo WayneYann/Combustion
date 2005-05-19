@@ -9261,7 +9261,7 @@ void productionRate(double * wdot, double * sc, double T)
     redP = 1e-12 * alpha / k_f * 3.99e+33*exp(-4.99*tc[0]-20130.9/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
-    logFcent = log10((0.832*exp(T/-1203))+ (0.168*exp(T/-0)));
+    logFcent = log10((0.832*exp(T/-1203)) /*+ (0.168*exp(T/-0))*/);
     troe_c = -.4 - .67 * logFcent;
     troe_n = .75 - 1.27 * logFcent;
     troe = (troe_c + logPred) / (troe_n - .14*(troe_c + logPred));
@@ -10615,7 +10615,7 @@ void productionRate(double * wdot, double * sc, double T)
     redP = 1e-12 * alpha / k_f * 5.49e+49*exp(-10*tc[0]-18006.6/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
-    logFcent = log10((2.17*exp(T/-251))+ (-1.17*exp(T/-0))+ (exp(-1185/T)));
+    logFcent = log10((2.17*exp(T/-251))+ /*(-1.17*exp(T/-0))+*/ (exp(-1185/T)));
     troe_c = -.4 - .67 * logFcent;
     troe_n = .75 - 1.27 * logFcent;
     troe = (troe_c + logPred) / (troe_n - .14*(troe_c + logPred));
@@ -11606,7 +11606,7 @@ void progressRate(double * qdot, double * sc, double T)
     redP = 1e-12 * alpha / k_f * 3.99e+33*exp(-4.99*tc[0]-20130.9/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
-    logFcent = log10((0.832*exp(T/-1203))+ (0.168*exp(T/-0)));
+    logFcent = log10((0.832*exp(T/-1203))/*+ (0.168*exp(T/-0))*/);
     troe_c = -.4 - .67 * logFcent;
     troe_n = .75 - 1.27 * logFcent;
     troe = (troe_c + logPred) / (troe_n - .14*(troe_c + logPred));
@@ -12609,7 +12609,7 @@ void progressRate(double * qdot, double * sc, double T)
     redP = 1e-12 * alpha / k_f * 5.49e+49*exp(-10*tc[0]-18006.6/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
-    logFcent = log10((2.17*exp(T/-251))+ (-1.17*exp(T/-0))+ (exp(-1185/T)));
+    logFcent = log10((2.17*exp(T/-251))+ /*(-1.17*exp(T/-0))+*/ (exp(-1185/T)));
     troe_c = -.4 - .67 * logFcent;
     troe_n = .75 - 1.27 * logFcent;
     troe = (troe_c + logPred) / (troe_n - .14*(troe_c + logPred));
