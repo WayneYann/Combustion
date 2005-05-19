@@ -98,7 +98,7 @@ c
 
       slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
       sest = (one - corr)*sest + corr*slocal
-#if 0
+#if 1
       vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
 
       V_new = V_in + dt*vslope
@@ -131,7 +131,7 @@ c
          print *,'****************** control:'
          print *,'time,dt,coft,V_new:',time,dt,coft,V_new
          print *,'changeMax_control: ', changeMax_control
-#if 0
+#if 1
          print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
 #else
          print *,'alpha,sest,cfix,slocal:',alpha,sest,cfix,slocal

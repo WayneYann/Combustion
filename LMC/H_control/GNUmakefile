@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.1 2005-05-05 16:37:49 jbb Exp $
+# $Id: GNUmakefile,v 1.2 2005-05-19 16:33:27 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -11,7 +11,7 @@ DEBUG	          = FALSE
 PROFILE           = FALSE
 DIM    	          = 2
 PRVERSION         = v5
-FCOMP             = Intel
+#FCOMP             = Intel
 COMP              = g++
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
@@ -19,8 +19,8 @@ EBASE             = amr
 USE_HGPROJ_SERIAL = FALSE
 HGDEBUG           = TRUE
 HGDEBUG           = FALSE
-USE_FLCTS         = FALSE
 USE_FLCTS         = TRUE
+USE_FLCTS         = FALSE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
