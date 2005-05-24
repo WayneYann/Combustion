@@ -66,11 +66,12 @@ c ::: -----------------------------------------------------------
      &     flowrate_ox_O2, flowrate_ox_N2, T_ox, R_ox_1, R_ox_2,
      &     x_hot, y_hot_lo, y_hot_hi, T_lip, bgBL, flBL, ystandoff,
      &     T_hot, temperr, adverr, vorterr, tempgrad, max_temp_lev,
-     &     max_vort_lev, flametracval, y_wall2, y_wall3, T_wall1,
+     &     max_vort_lev, max_trac_lev, flametracval, y_wall2, y_wall3, T_wall1,
      &     T_wall2, T_wall3, Trad_bg, time_rad, dt_rad,
      &     refine_nozzle, nozzlerefwidth, nozzlerefheight, 
      &     nozzlerefloc, probtype, max_nozzle_lev,
-     &     thickFacTR, thickFacCH, T_air, v_air
+     &     thickFacTR, thickFacCH, T_air, v_air, T_stick, stTh, stBL,
+     &     V_fu, phi_fu
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build 'probin' filename -- the name of file containing fortin namelist.
@@ -125,6 +126,12 @@ c     Set defaults
       dt_rad = 1.e-9
       bgBL = one
       flBL = one
+      T_stick = -one
+      stTh = -one
+      stBL = -one
+      T_fu = -one
+      phi_fu = -one
+      V_fu = -one
 
       temperr = zero
       adverr = 1.e20
@@ -132,6 +139,7 @@ c     Set defaults
       tempgrad  = 50.0d0
       max_temp_lev = 0
       max_vort_lev = 0
+      max_trac_lev = 0
       flametracval = .005
       
       refine_nozzle = 0
@@ -186,7 +194,7 @@ c ::: -----------------------------------------------------------
 #include "htdata.H"
       
       REAL_T Patm, X(0:maxspec-1), Y(0:maxspec-1), tot
-      REAL_T flowrate_fu_tot, flowrate_ox_tot
+      REAL_T flowrate_fu_tot, flowrate_ox_tot, a, y1, pmf_vals(maxspec+3)
       integer n, zone, iN2, lo(SDIM), hi(SDIM)
       character*(maxspnml) name
       data lo / 1, 1 /
@@ -301,6 +309,70 @@ c
             u_bc(zone) = zero
             v_bc(zone) = v_air
          endif
+
+      else if (probtype.eq.2) then
+
+         zone = 1
+
+         if (phi_fu .ge. zero) then
+
+            iN2 = -1
+            do n = 1,Nspec
+               call get_spec_name(name,n)
+               if (name .eq. 'N2' ) iN2  = n
+            end do
+            
+            call get_spec_name(name,fuelID)
+            if (name .eq. 'H2' ) then
+               a = half
+               print *,'this is hydrogen',fuelID,oxidID,iN2
+            else if (name .eq. 'CH4' ) then
+               a = two
+               print *,'this is methane',fuelID,oxidID,iN2
+            else if (name .eq. 'C3H8' ) then
+               a = five
+               print *,'this is propane',fuelID,oxidID,iN2
+            else if (phi_fu .ge. zero) then
+               call bl_abort('Unknown fuel species')
+            endif
+            
+            do n=0,Nspec-1
+               X(n) = zero
+            enddo
+
+            X(oxidID-1) = one/(one + phi_fu/a  + 0.79d0/0.21d0)
+            X(fuelID-1) = phi_fu * X(oxidID) / a
+            X(iN2-1   ) = (0.79d0/0.21d0) * X(oxidID)
+
+            CALL CKXTY (X, IWRK, RWRK, Y_bc(0,zone))
+
+         else
+
+            y1 = (domnlo(2)-ystandoff)*100.d0
+            call pmf(y1,y1,pmf_vals,n)
+               
+            if (n.ne.Nspec+3) then
+               call bl_abort('setupbc: n .ne. Nspec+3')
+            endif
+               
+            do n = 0,Nspec-1
+               X(n) = pmf_vals(4+n)
+            end do 
+            
+            CALL CKXTY (X, IWRK, RWRK, Y_bc(0,zone))
+
+            if (V_fu.lt.zero) then
+               V_fu = pmf_vals(2)/100.d0
+            endif
+            if (T_fu.lt.zero) then
+               T_fu = pmf_vals(1)
+            endif
+
+         endif
+
+         T_bc(zone) = T_fu
+         u_bc(zone) = zero
+         v_bc(zone) = V_fu
       else
          write(*,*) 'PROB_2D::setupbc: Dont know about probtype = ',
      &        probtype
@@ -310,7 +382,9 @@ c
 c     Get rho and h for all zones
 c
       do zone=1,Nzones
-         if (zone.lt.6 .or. probtype.eq.1 ) then
+         if ( (zone.lt.5 .and. probtype.eq.0) .or.
+     &        (zone.lt.6 .and. probtype.eq.1) .or.
+     &        (zone.lt.2 .and. probtype.eq.2) ) then
             call FORT_RHOfromPTY(lo,hi,
      &                           rho_bc(zone),ARLIM(lo),ARLIM(hi),
      &                           T_bc(zone),ARLIM(lo),ARLIM(hi),
@@ -321,6 +395,7 @@ c
      &                           Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
          end if
       end do
+
       end
          
 c ::: -----------------------------------------------------------
@@ -332,26 +407,30 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
       REAL_T x, y, epsilon
 
-      epsilon = 1.d-9
-      getZone = 2
-      if (y .le. domnlo(2)+epsilon) then
-         if (x.le.R_fu) then
-            getZone = 1
-         else if ((x.gt.R_fu).and.(x.le.R_ox_1)) then
-            getZone = 3
-         else if ((x.gt.R_ox_1).and.(x.le.R_ox_2)) then
-            getZone = 2
-         endif
-      else if (x.ge.domnhi(1)-epsilon) then
-         getZone = 5
+      if (probtype.eq.2) then
+         getZone = 1
       else
-         if ( (y .le. y_hot_hi) .AND.
-     &        (y .ge. y_hot_lo) .AND.
-     &        (x .le. x_hot)    ) getZone = 4
-      end if
-
-      if ((probtype.eq.1) .and. (y .ge. domnhi(2)-epsilon)) then
-         getZone = 6
+         epsilon = 1.d-9
+         getZone = 2
+         if (y .le. domnlo(2)+epsilon) then
+            if (x.le.R_fu) then
+               getZone = 1
+            else if ((x.gt.R_fu).and.(x.le.R_ox_1)) then
+               getZone = 3
+            else if ((x.gt.R_ox_1).and.(x.le.R_ox_2)) then
+               getZone = 2
+            endif
+         else if (x.ge.domnhi(1)-epsilon) then
+            getZone = 5
+         else
+            if ( (y .le. y_hot_hi) .AND.
+     &           (y .ge. y_hot_lo) .AND.
+     &           (x .le. x_hot)    ) getZone = 4
+         end if
+         
+         if ((probtype.eq.1) .and. (y .ge. domnhi(2)-epsilon)) then
+            getZone = 6
+         endif
       endif
 
       end
@@ -367,7 +446,11 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
       REAL_T flowrate_fu_tot, flowrate_ox_tot, Patm
-      integer n, getZone, zone, lo(SDIM), hi(SDIM)
+      integer n, getZone, zone, lo(SDIM), hi(SDIM), V_in(SDIM)
+      REAL_T inc,x1,Vinc,Tinc
+      integer i,M
+      parameter (M=1)
+
       data lo / 1, 1 /
       data hi / 1, 1 /
       
@@ -386,53 +469,78 @@ c ::: -----------------------------------------------------------
          end do
          T = T_bc(zone)
          h = h_bc(zone)
+
+         if (probtype.eq.0  .or.  probtype.eq.1) then
 c     Overwrite constant inflow velocities with profiles
-         flowrate_fu_tot = flowrate_fu_CH4 + flowrate_fu_N2
-     &        + flowrate_fu_O2 + flowrate_fu_H2 + flowrate_fu_NO
-         flowrate_ox_tot = flowrate_ox_O2 + flowrate_ox_N2
-
-         if ((probtype .eq. 0).or.(probtype.eq.1)) then
-            if (zone.eq.1) then
-               v = 1.e-3*flowrate_fu_tot/(Pi*R_fu**2)
-            else if (zone.eq.2) then
-               v = 1.e-3*flowrate_ox_tot/(Pi*(R_ox_2**2-R_ox_1**2))
-            endif
-         else
-            write(*,*)'PROB_2D::bcfunction: Dont know about probtype = ',
-     &           probtype
-            stop
-         end if
-c     Overwrite constant T on wall with T profile, then recalc rho and h
-         if (zone.eq.5) then
-            Patm = pamb / 101325.0
-            if (y.lt.y_wall2) then
-               T = T_wall1
-     &              + (T_wall2-T_wall1)*(y-domnlo(2))/(y_wall2-domnlo(2))
-            else if (y.lt.y_wall3) then
-               T = T_wall2
-     &              + (T_wall3-T_wall2)*(y-y_wall2)/(y_wall3-y_wall2)
+            flowrate_fu_tot = flowrate_fu_CH4 + flowrate_fu_N2
+     &           + flowrate_fu_O2 + flowrate_fu_H2 + flowrate_fu_NO
+            flowrate_ox_tot = flowrate_ox_O2 + flowrate_ox_N2
+            
+            if ((probtype .eq. 0).or.(probtype.eq.1)) then
+               if (zone.eq.1) then
+                  v = 1.e-3*flowrate_fu_tot/(Pi*R_fu**2)
+               else if (zone.eq.2) then
+                  v = 1.e-3*flowrate_ox_tot/(Pi*(R_ox_2**2-R_ox_1**2))
+               endif
             else
-               T = T_wall3
+               write(*,*)'PROB_2D::bcfunction: Dont know about probtype = ',
+     &              probtype
+               stop
             end if
-            call FORT_RHOfromPTY(lo,hi,
-     &                           rho,ARLIM(lo),ARLIM(hi),
-     &                           T,  ARLIM(lo),ARLIM(hi),
-     &                           Yl, ARLIM(lo),ARLIM(hi), Patm)
-            call FORT_HMIXfromTY(lo,hi,
-     &                           h, ARLIM(lo),ARLIM(hi),
-     &                           T, ARLIM(lo),ARLIM(hi),
-     &                           Yl,ARLIM(lo),ARLIM(hi))
-         endif
+c     Overwrite constant T on wall with T profile, then recalc rho and h
+            if (zone.eq.5) then
+               Patm = pamb / 101325.0
+               if (y.lt.y_wall2) then
+                  T = T_wall1
+     &                 + (T_wall2-T_wall1)*(y-domnlo(2))/(y_wall2-domnlo(2))
+               else if (y.lt.y_wall3) then
+                  T = T_wall2
+     &                 + (T_wall3-T_wall2)*(y-y_wall2)/(y_wall3-y_wall2)
+               else
+                  T = T_wall3
+               end if
+               call FORT_RHOfromPTY(lo,hi,
+     &                              rho,ARLIM(lo),ARLIM(hi),
+     &                              T,  ARLIM(lo),ARLIM(hi),
+     &                              Yl, ARLIM(lo),ARLIM(hi), Patm)
+               call FORT_HMIXfromTY(lo,hi,
+     &                              h, ARLIM(lo),ARLIM(hi),
+     &                              T, ARLIM(lo),ARLIM(hi),
+     &                              Yl,ARLIM(lo),ARLIM(hi))
+            endif
+            
+            if ((probtype.eq.1).and.(zone.eq.6)) then
+c              v = v_bc(zone)*(one - (x-domnlo(1))/(domnhi(1)-domnlo(1)))
+c              v = v_bc(zone)*(one - TANH((x-0.08)/.01))/2.
+               v = v_bc(zone)
+            endif
 
-         if ((probtype.eq.1).and.(zone.eq.6)) then
-c            v = v_bc(zone)*(one - (x-domnlo(1))/(domnhi(1)-domnlo(1)))
-c            v = v_bc(zone)*(one - TANH((x-0.08)/.01))/2.
-            v = v_bc(zone)
+         else if (probtype.eq.2) then
+
+            u = u_bc(zone)
+
+            if (stTh.gt.zero) then
+               inc = dx(1) / M
+               v = zero
+               T = zero
+               do i=1,M
+                  x1 = x - 0.5d0*dx(1) + (i-0.5d0)*inc
+                  if (ABS(x1).gt.half*stTh) then
+                     v = v + V_fu*TANH(2.d0*(ABS(x1)-half*stTh)/stBL)
+                     T = T + T_fu
+                  else
+                     T = T + T_stick
+                  end if
+               end do
+               v = v / M
+            endif
+
          endif
       else
          write(6,*) 'No boundary condition for orientation = ', orient
          stop
       end if
+
       end
       
 c ::: -----------------------------------------------------------
@@ -486,7 +594,7 @@ c     ::::: local variables
       REAL_T  x, y, y1, y2
       REAL_T  u, v, rho, Xl(maxspec), Yl(maxspec), T, h, Patm
       REAL_T xcrit
-      REAL_T eta, eta0, xi, sum
+      REAL_T eta, eta0, xi, sum, Vin(SDIM), pmf_vals(maxspec+3)
       integer getZone, zone, zH, zL, zR, iO2, iN2
       character*(maxspnml) name
       
@@ -532,6 +640,37 @@ c     ::::: local variables
                if ((x.lt.x_hot).and.(y.ge.y_hot_lo).and.(y.le.y_hot_hi)) then
                   scal(i,j,Temp) = T_hot
                end if
+
+            enddo
+         enddo
+      else if (probtype.eq.2) then
+         do j = lo(2), hi(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)
+            do i = lo(1), hi(1)
+               x = (float(i)+.5)*delta(1)+domnlo(1)
+
+               y1 = (y-half*delta(2)-ystandoff)*100.d0
+               y2 = (y+half*delta(2)-ystandoff)*100.d0
+               call pmf(y1,y2,pmf_vals,n)
+               
+               if (n.ne.Nspec+3) then
+                  call bl_abort('INITDATA: n .ne. Nspec+3')
+               endif
+               
+               scal(i,j,Temp) = pmf_vals(1)
+               do n = 1,Nspec
+                  Xl(n) = pmf_vals(3+n)
+               end do 
+               
+               CALL CKXTY (Xl, IWRK, RWRK, Yl)
+               
+               do n = 1,Nspec
+                  scal(i,j,FirstSpec+n-1) = Yl(n)
+               end do
+               scal(i,j,Trac) = zero
+
+               vel(i,j,1) = zero
+               vel(i,j,2) = pmf_vals(2)/100.d0
 
             enddo
          enddo
@@ -593,8 +732,9 @@ c ::: -----------------------------------------------------------
       
 #include "probdata.H"
 #include "htdata.H"
-      integer i, j, n, zone, Y1, YN, getZone, ys, ye
+      integer i, j, n, zone, Y1, YN, getZone, ys, ye,xl,xr,xh
       REAL_T x, y
+      logical on_stick
 
       
       Y1 = FirstSpec + SDIM - 1
@@ -612,10 +752,24 @@ c     Do only species equations
             do i = lo(1), hi(1)
                x = (float(i)+.5)*dx(1)+domnlo(1)
                zone = getZone(x,y)
-               if (zone .EQ. 3) then
+
+               xl = float(i)*dx(1)+domnlo(1) 
+               xr = (float(i)+1.d0)*dx(1)+domnlo(1) 
+               xh = 0.5d0*(xl+xr)
+
+               on_stick = .false.
+               on_stick = on_stick .or. (abs(xl).le.half*stTh)
+               on_stick = on_stick .or. (abs(xr).le.half*stTh)
+               on_stick = on_stick .or. (abs(xh).le.half*stTh)
+
+               if (
+     &              (((probtype.eq.0).or.(probtype.eq.1)) .and. (zone .EQ. 3))
+     &              .or. ((probtype.eq.2).and. (on_stick .eqv. .true.) ) ) then
+
                   do n = ys - id + 1, ye - id + 1
                      diff(i,j,n) = zero
                   end do
+
                end if
             end do
          end if
@@ -687,11 +841,13 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-            tag(i,j) = cvmgt(set,tag(i,j),ftrac(i,j,1).gt.flametracval)
-	 enddo
-      enddo
+      if (level .lt. max_trac_lev) then
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               tag(i,j) = cvmgt(set,tag(i,j),ftrac(i,j,1).gt.flametracval)
+            enddo
+         enddo
+      endif
 
       if ((level .lt. max_nozzle_lev).and.(refine_nozzle .eq. 1)) then
          do j = lo(2), hi(2)
@@ -797,7 +953,6 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-#if 0
       ng = min(ARG_H1(temp)-hi(1),ARG_H2(temp)-hi(2),lo(1)-ARG_L1(temp),lo(2)-ARG_L2(temp))
 
       if (ng .lt. 1) then
@@ -816,7 +971,7 @@ c     ::::: refine where there is temperature gradient
          enddo
       enddo
       endif
-#else
+
       if (level .lt. max_temp_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
@@ -824,7 +979,6 @@ c     ::::: refine where there is temperature gradient
             end do
          end do
       end if
-#endif
       
       end
 
