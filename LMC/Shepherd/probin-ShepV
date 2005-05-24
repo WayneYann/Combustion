@@ -1,0 +1,23 @@
+ &fortin
+  probtype=2
+  T_fu = -300.0
+  R_fu = 100.0
+  T_stick = 1800.
+  stTh = .001
+  stBL = .001
+  v_fu = 3.0
+  phi_fu = -1.0
+  ystandoff = -.02825
+
+  max_temp_lev = 20
+  max_trac_lev = 0
+  temperr = 50000
+  tempgrad = 100
+
+  thickFacTR = 2
+  thickFacCH = 3
+ /
+ &heattransin
+  dpdt_factor = 0.3
+ /
+
