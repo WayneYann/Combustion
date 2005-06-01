@@ -1,5 +1,5 @@
 c
-c $Id: GODUNOV_3D.F,v 1.2 2004-11-12 18:32:34 vince Exp $
+c $Id: GODUNOV_3D.F,v 1.3 2005-06-01 23:52:08 marc Exp $
 c
 #undef  BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -2705,504 +2705,6 @@ c
 
       end
 
-      subroutine FORT_SCALMINMAX(s,DIMS(s),sn,DIMS(sn),
-     &     smin,smax,DIMS(smin),
-     &     lo,hi,bc)
-c
-c     correct an advected field for under/over shoots
-c
-      integer  i, j, k, imin, imax, jmin, jmax, kmin, kmax
-      integer  DIMDEC(s)
-      integer  DIMDEC(sn)
-      integer  DIMDEC(smin)
-      integer  lo(SDIM), hi(SDIM)
-      integer  bc(SDIM,2), do_minmax
-      REAL_T   s(DIMV(s))
-      REAL_T   sn(DIMV(sn))
-      integer  km, kk, kp
-      REAL_T   smn, smx
-      REAL_T   smin(DIM12(smin),0:2)
-      REAL_T   smax(DIM12(smin),0:2)
-
-      imin = lo(1)
-      imax = hi(1)
-      jmin = lo(2)
-      jmax = hi(2)
-      kmin = lo(3)
-      kmax = hi(3)
-c
-c     correct the 8 corners
-c
-      if (bc(1,1).ne.INT_DIR .or. bc(2,1).ne.INT_DIR .or. bc(3,1).ne.INT_DIR) then
-         s(imin-1,jmin-1,kmin-1) = s(imin,jmin,kmin)
-      end if
-      if (bc(1,2).ne.INT_DIR .or. bc(2,1).ne.INT_DIR .or. bc(3,1).ne.INT_DIR) then
-         s(imax+1,jmin-1,kmin-1) = s(imax,jmin,kmin)
-      end if
-      if (bc(1,1).ne.INT_DIR .or. bc(2,2).ne.INT_DIR .or. bc(3,1).ne.INT_DIR) then
-         s(imin-1,jmax+1,kmin-1) = s(imin,jmax,kmin)
-      end if
-      if (bc(1,2).ne.INT_DIR .or. bc(2,2).ne.INT_DIR .or. bc(3,1).ne.INT_DIR) then
-         s(imax+1,jmax+1,kmin-1) = s(imax,jmax,kmin)
-      end if
-      if (bc(1,1).ne.INT_DIR .or. bc(2,1).ne.INT_DIR .or. bc(3,2).ne.INT_DIR) then
-         s(imin-1,jmin-1,kmax+1) = s(imin,jmin,kmax)
-      end if
-      if (bc(1,2).ne.INT_DIR .or. bc(2,1).ne.INT_DIR .or. bc(3,2).ne.INT_DIR) then
-         s(imax+1,jmin-1,kmax+1) = s(imax,jmin,kmax)
-      end if
-      if (bc(1,1).ne.INT_DIR .or. bc(2,2).ne.INT_DIR .or. bc(3,2).ne.INT_DIR) then
-         s(imin-1,jmax+1,kmax+1) = s(imin,jmax,kmax)
-      end if
-      if (bc(1,2).ne.INT_DIR .or. bc(2,2).ne.INT_DIR .or. bc(3,2).ne.INT_DIR) then
-         s(imax+1,jmax+1,kmax+1) = s(imax,jmax,kmax)
-      end if
-c
-c     correct the 12 edges
-c
-      if (bc(1,1).ne.INT_DIR .or. bc(2,1).ne.INT_DIR) then
-        do k = kmin,kmax
-          s(imin-1,jmin-1,k) = s(imin,jmin,k)
-        end do
-      end if
-      if (bc(1,1).ne.INT_DIR .or. bc(2,1).ne.INT_DIR) then
-        do k = kmin,kmax
-          s(imax+1,jmin-1,k) = s(imax,jmin,k)
-        end do
-      end if
-      if (bc(1,1).ne.INT_DIR .or. bc(2,2).ne.INT_DIR) then
-        do k = kmin,kmax
-          s(imin-1,jmax+1,k) = s(imin,jmax,k)
-        end do
-      end if
-      if (bc(1,2).ne.INT_DIR .or. bc(2,2).ne.INT_DIR) then
-        do k = kmin,kmax
-          s(imax+1,jmax+1,k) = s(imax,jmax,k)
-        end do
-      end if
-      if (bc(1,1).ne.INT_DIR .or. bc(3,1).ne.INT_DIR) then
-        do j = jmin,jmax
-          s(imin-1,j,kmin-1) = s(imin,j,kmin)
-        end do
-      end if
-      if (bc(1,2).ne.INT_DIR .or. bc(3,1).ne.INT_DIR) then
-        do j = jmin,jmax
-          s(imax+1,j,kmin-1) = s(imax,j,kmin)
-        end do
-      end if
-      if (bc(1,1).ne.INT_DIR .or. bc(3,2).ne.INT_DIR) then
-        do j = jmin,jmax
-          s(imin-1,j,kmax+1) = s(imin,j,kmax)
-        end do
-      end if
-      if (bc(1,2).ne.INT_DIR .or. bc(3,2).ne.INT_DIR) then
-        do j = jmin,jmax
-          s(imax+1,j,kmax+1) = s(imax,j,kmax)
-        end do
-      end if
-      if (bc(2,1).ne.INT_DIR .or. bc(3,1).ne.INT_DIR) then
-        do i = imin,imax
-          s(i,jmin-1,kmin-1) = s(i,jmin,kmin)
-        end do
-      end if
-      if (bc(2,2).ne.INT_DIR .or. bc(3,1).ne.INT_DIR) then
-        do i = imin,imax
-          s(i,jmax+1,kmin-1) = s(i,jmax,kmin)
-        end do
-      end if
-      if (bc(2,1).ne.INT_DIR .or. bc(3,2).ne.INT_DIR) then
-        do i = imin,imax
-          s(i,jmin-1,kmax+1) = s(i,jmin,kmax)
-        end do
-      end if
-      if (bc(2,2).ne.INT_DIR .or. bc(3,2).ne.INT_DIR) then
-        do i = imin,imax
-          s(i,jmax+1,kmax+1) = s(i,jmax,kmax)
-        end do
-      end if
-c
-c     ::::: compute min/max a slab at a time
-c     ::::: compute min and max of neighbors on kmin-1 slab
-c
-      km = 0
-      kk = 1
-      kp = 2
-
-      k = kmin-1
-      do j = jmin, jmax         
-         do i = imin, imax
-            smin(i,j,km) = min(s(i-1,j-1,k),s(i,j-1,k),s(i+1,j-1,k),
-     &           s(i-1,j  ,k),s(i,j  ,k),s(i+1,j  ,k),
-     &           s(i-1,j+1,k),s(i,j+1,k),s(i+1,j+1,k))
-            smax(i,j,km) = max(s(i-1,j-1,k),s(i,j-1,k),s(i+1,j-1,k),
-     &           s(i-1,j  ,k),s(i,j  ,k),s(i+1,j  ,k),
-     &           s(i-1,j+1,k),s(i,j+1,k),s(i+1,j+1,k))
-         end do         
-      end do
-c
-c     ::::: compute min and max of neighbors on kmin slab
-c
-      k = kmin
-      do j = jmin, jmax         
-         do i = imin, imax
-            smin(i,j,kk) = min(s(i-1,j-1,k),s(i,j-1,k),s(i+1,j-1,k),
-     &           s(i-1,j  ,k),s(i,j  ,k),s(i+1,j  ,k),
-     &           s(i-1,j+1,k),s(i,j+1,k),s(i+1,j+1,k))
-            smax(i,j,kk) = max(s(i-1,j-1,k),s(i,j-1,k),s(i+1,j-1,k),
-     &           s(i-1,j  ,k),s(i,j  ,k),s(i+1,j  ,k),
-     &           s(i-1,j+1,k),s(i,j+1,k),s(i+1,j+1,k))
-         end do         
-      end do
-
-      do k = kmin, kmax
-c
-c        ::::: compute min and max of neighbors on k+1 slab
-c
-         do j = jmin, jmax     
-            do i = imin, imax   
-               smin(i,j,kp) = min(s(i-1,j-1,k+1),s(i,j-1,k+1),s(i+1,j-1,k+1),
-     &              s(i-1,j  ,k+1),s(i,j  ,k+1),s(i+1,j  ,k+1),
-     &              s(i-1,j+1,k+1),s(i,j+1,k+1),s(i+1,j+1,k+1))
-               smax(i,j,kp) = max(s(i-1,j-1,k+1),s(i,j-1,k+1),s(i+1,j-1,k+1),
-     &              s(i-1,j  ,k+1),s(i,j  ,k+1),s(i+1,j  ,k+1),
-     &              s(i-1,j+1,k+1),s(i,j+1,k+1),s(i+1,j+1,k+1))
-c
-c        ::::: compute min/max of cell
-c
-               smn = min(smin(i,j,km),smin(i,j,kk),smin(i,j,kp))
-               smx = max(smax(i,j,km),smax(i,j,kk),smax(i,j,kp))
-               sn(i,j,k) = max(sn(i,j,k),smn)
-               sn(i,j,k) = min(sn(i,j,k),smx)
-               
-            end do
-         end do
-c
-c        ::::: roll indices for next slab
-c
-         km = mod(km+1,3)
-         kk = mod(kk+1,3)
-         kp = mod(kp+1,3)
-      end do
-
-      end
-
-      subroutine FORT_SUM_TF_GP(
-     &     tforces,DIMS(tf),
-     &     gp,DIMS(gp),
-     &     rho,DIMS(rho),
-     &     lo,hi )
-c
-c     sum pressure forcing into tforces
-c
-      integer i, j, k, n
-      integer DIMDEC(tf)
-      integer DIMDEC(visc)
-      integer DIMDEC(gp)
-      integer DIMDEC(rho)
-      integer lo(SDIM), hi(SDIM)
-      REAL_T tforces(DIMV(tf),SDIM)
-      REAL_T gp(DIMV(gp),SDIM)
-      REAL_T rho(DIMV(rho))
-
-      do n = 1, SDIM
-         do k = lo(3), hi(3)
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)
-                  tforces(i,j,k,n) = (
-     &            tforces(i,j,k,n) - gp(i,j,k,n)
-     &                 )/rho(i,j,k)
-               end do
-            end do
-         end do
-      end do
-
-      end
-
-      subroutine FORT_SUM_TF_GP_VISC(
-     &     tforces,DIMS(tf),
-     &     visc,DIMS(visc),
-     &     gp,DIMS(gp),
-     &     rho,DIMS(rho),
-     &     lo,hi )
-c
-c     sum pressure forcing and viscous forcing into
-c     tforces
-c
-      integer i, j, k, n
-      integer DIMDEC(tf)
-      integer DIMDEC(visc)
-      integer DIMDEC(gp)
-      integer DIMDEC(rho)
-      integer lo(SDIM), hi(SDIM)
-      REAL_T tforces(DIMV(tf),SDIM)
-      REAL_T visc(DIMV(visc),SDIM)
-      REAL_T gp(DIMV(gp),SDIM)
-      REAL_T rho(DIMV(rho))
-
-      do n = 1, SDIM
-         do k = lo(3), hi(3)
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)
-                  tforces(i,j,k,n) = (
-     &                 tforces(i,j,k,n)
-     &                 +  visc(i,j,k,n)
-     &                 -    gp(i,j,k,n) )/rho(i,j,k)
-               end do
-            end do
-         end do
-      end do
-
-      end
-
-      subroutine FORT_SUM_TF_DIVU(
-     &     S,DIMS(S),
-     &     tforces,DIMS(tf),
-     &     divu,DIMS(divu),
-     &     rho,DIMS(rho),
-     &     lo,hi,nvar,iconserv )
-c
-c     sum tforces, viscous forcing and divU*S into tforces
-c     depending on the value of iconserv
-c
-      integer nvar, iconserv
-      integer lo(SDIM), hi(SDIM)
-      integer i, j, k, n
-
-      integer DIMDEC(S)
-      integer DIMDEC(tf)
-      integer DIMDEC(divu)
-      integer DIMDEC(rho)
-
-      REAL_T S(DIMV(S),nvar)
-      REAL_T tforces(DIMV(tf),nvar)
-      REAL_T divu(DIMV(divu))
-      REAL_T rho(DIMV(rho))
-
-      if ( iconserv .eq. 1 ) then
-         do n = 1, nvar
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     tforces(i,j,k,n) = 
-     &               tforces(i,j,k,n) - S(i,j,k,n)*divu(i,j,k)
-                  end do
-               end do
-            end do
-         end do
-      else
-         do n = 1, nvar
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     tforces(i,j,k,n) = 
-     &               tforces(i,j,k,n)/rho(i,j,k)
-                  end do
-               end do
-            end do
-         end do
-      end if
-
-      end
-
-      subroutine FORT_SUM_TF_DIVU_VISC(
-     &     S,DIMS(S),
-     &     tforces,DIMS(tf),
-     &     divu,DIMS(divu),
-     &     visc,DIMS(visc),
-     &     rho,DIMS(rho),
-     &     lo,hi,nvar,iconserv )
-c
-c     sum tforces, viscous forcing and divU*S into tforces
-c     depending on the value of iconserv
-c
-      integer nvar, iconserv
-      integer lo(SDIM), hi(SDIM)
-      integer i, j, k, n
-
-      integer DIMDEC(S)
-      integer DIMDEC(tf)
-      integer DIMDEC(divu)
-      integer DIMDEC(visc)
-      integer DIMDEC(rho)
-
-      REAL_T S(DIMV(S),nvar)
-      REAL_T tforces(DIMV(tf),nvar)
-      REAL_T divu(DIMV(divu))
-      REAL_T visc(DIMV(visc),nvar)
-      REAL_T rho(DIMV(rho))
-
-      if ( iconserv .eq. 1 ) then
-         do n = 1, nvar
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     tforces(i,j,k,n) = 
-     &                    tforces(i,j,k,n)
-     &                    +  visc(i,j,k,n)
-     &                    -     S(i,j,k,n)*divu(i,j,k)
-                  end do
-               end do
-            end do
-         end do
-      else
-         do n = 1, nvar
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     tforces(i,j,k,n) = (
-     &                    tforces(i,j,k,n)
-     &                    +  visc(i,j,k,n) )/rho(i,j,k)
-                  end do
-               end do
-            end do
-         end do
-      end if
-
-      end
-
-      subroutine FORT_UPDATE_TF(
-     &     s,       DIMS(s),
-     &     sn,      DIMS(sn),
-     &     tforces, DIMS(tf),
-     &     lo,hi,dt,nvar)
-c
-c     update a field with a forcing term
-c
-      integer i, j, k, n, nvar
-      integer DIMDEC(s)
-      integer DIMDEC(sn)
-      integer DIMDEC(tf)
-      integer lo(SDIM), hi(SDIM)
-      REAL_T dt
-      REAL_T s(DIMV(s),nvar)
-      REAL_T sn(DIMV(sn),nvar)
-      REAL_T tforces(DIMV(tf),nvar)
-
-      do n = 1,nvar
-         do k = lo(3), hi(3)
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)
-                  sn(i,j,k,n) = s(i,j,k,n)
-     &                 + dt*tforces(i,j,k,n)
-               end do
-            end do
-         end do
-      end do
-
-      end
-
-      subroutine FORT_CORRECT_TF(
-     &     ss,  sp,  DIMS(ss),
-     &     tfs, tfn, DIMS(tfs),
-     &     lo,hi,dt,nvar)
-c
-c     correct 1st order rk to second-order
-c
-      integer i, j, k, n, nvar
-      integer lo(SDIM), hi(SDIM)
-      REAL_T dt,hdt
-
-      integer DIMDEC(ss)
-      integer DIMDEC(tfs)
-      REAL_T  ss(DIMV(ss),nvar)
-      REAL_T  sp(DIMV(ss),nvar)
-      REAL_T tfs(DIMV(tfs),nvar)
-      REAL_T tfn(DIMV(tfs),nvar)
-
-      hdt = half*dt
-      do n = 1,nvar
-         do k = lo(3), hi(3)
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)
-                  sp(i,j,k,n) = ss(i,j,k,n)
-     &                 + hdt*(tfs(i,j,k,n)-tfn(i,j,k,n))
-               end do
-            end do
-         end do
-      end do
-
-      end
-
-      subroutine FORT_UPDATE_AOFS_TF(
-     &     s,       DIMS(s),
-     &     sn,      DIMS(sn),
-     &     aofs,    DIMS(aofs),
-     &     tforces, DIMS(tf),
-     &     lo,hi,dt,nvar)
-c
-c     update a field with an advective tendency
-c     and a forcing term
-c
-      integer i, j, k, n, nvar
-      integer DIMDEC(s)
-      integer DIMDEC(sn)
-      integer DIMDEC(aofs)
-      integer DIMDEC(tf)
-      integer lo(SDIM), hi(SDIM)
-      REAL_T dt
-      REAL_T s(DIMV(s),nvar)
-      REAL_T sn(DIMV(sn),nvar)
-      REAL_T aofs(DIMV(aofs),nvar)
-      REAL_T tforces(DIMV(tf),nvar)
-
-      do n = 1,nvar
-         do k = lo(3), hi(3)
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)
-                  sn(i,j,k,n) = s(i,j,k,n)
-     &                 - dt*aofs(i,j,k,n)
-     &                 + dt*tforces(i,j,k,n)
-               end do
-            end do
-         end do
-      end do
-
-      end
-
-      subroutine FORT_UPDATE_AOFS_TF_GP(
-     &     u,       DIMS(u),
-     &     un,      DIMS(un),
-     &     aofs,    DIMS(aofs),
-     &     tforces, DIMS(tf),
-     &     gp,      DIMS(gp),
-     &     rho,     DIMS(rho),
-     &     lo, hi, dt)
-
-c
-c     update the velocities
-c
-      integer i, j, k, n
-      integer DIMDEC(u)
-      integer DIMDEC(un)
-      integer DIMDEC(aofs)
-      integer DIMDEC(rho)
-      integer DIMDEC(gp)
-      integer DIMDEC(tf)
-      integer lo(SDIM), hi(SDIM)
-      REAL_T u(DIMV(u),SDIM)
-      REAL_T un(DIMV(un),SDIM)
-      REAL_T aofs(DIMV(aofs),SDIM)
-      REAL_T rho(DIMV(rho))
-      REAL_T gp(DIMV(gp),SDIM)
-      REAL_T tforces(DIMV(tf),SDIM)
-      REAL_T dt
-
-      do n = 1, SDIM
-         do k = lo(3), hi(3)
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)
-                  un(i,j,k,n) = u(i,j,k,n)
-     &                 - dt*   aofs(i,j,k,n)
-     &                 + dt*tforces(i,j,k,n)/rho(i,j,k)
-     &                 - dt*     gp(i,j,k,n)/rho(i,j,k)
-               end do
-            end do
-         end do
-      end do
-
-      end
-
-
 
       subroutine FORT_CONVSCALMINMAX(s,DIMS(s),sn,DIMS(sn),
      &                               smin,smax,DIMS(smin),lo,hi,bc)
@@ -3600,3 +3102,320 @@ c
       end do
 
       end
+
+      subroutine FORT_SUM_TF_GP(
+     &     tforces,DIMS(tf),
+     &     gp,DIMS(gp),
+     &     rho,DIMS(rho),
+     &     lo,hi )
+c
+c     sum pressure forcing into tforces
+c
+      integer i, j, k, n
+      integer DIMDEC(tf)
+      integer DIMDEC(visc)
+      integer DIMDEC(gp)
+      integer DIMDEC(rho)
+      integer lo(SDIM), hi(SDIM)
+      REAL_T tforces(DIMV(tf),SDIM)
+      REAL_T gp(DIMV(gp),SDIM)
+      REAL_T rho(DIMV(rho))
+
+      do n = 1, SDIM
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  tforces(i,j,k,n) = (
+     &            tforces(i,j,k,n) - gp(i,j,k,n)
+     &                 )/rho(i,j,k)
+               end do
+            end do
+         end do
+      end do
+
+      end
+
+      subroutine FORT_SUM_TF_GP_VISC(
+     &     tforces,DIMS(tf),
+     &     visc,DIMS(visc),
+     &     gp,DIMS(gp),
+     &     rho,DIMS(rho),
+     &     lo,hi )
+c
+c     sum pressure forcing and viscous forcing into
+c     tforces
+c
+      integer i, j, k, n
+      integer DIMDEC(tf)
+      integer DIMDEC(visc)
+      integer DIMDEC(gp)
+      integer DIMDEC(rho)
+      integer lo(SDIM), hi(SDIM)
+      REAL_T tforces(DIMV(tf),SDIM)
+      REAL_T visc(DIMV(visc),SDIM)
+      REAL_T gp(DIMV(gp),SDIM)
+      REAL_T rho(DIMV(rho))
+
+      do n = 1, SDIM
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  tforces(i,j,k,n) = (
+     &                 tforces(i,j,k,n)
+     &                 +  visc(i,j,k,n)
+     &                 -    gp(i,j,k,n) )/rho(i,j,k)
+               end do
+            end do
+         end do
+      end do
+
+      end
+
+      subroutine FORT_SUM_TF_DIVU(
+     &     S,DIMS(S),
+     &     tforces,DIMS(tf),
+     &     divu,DIMS(divu),
+     &     rho,DIMS(rho),
+     &     lo,hi,nvar,iconserv )
+c
+c     sum tforces, viscous forcing and divU*S into tforces
+c     depending on the value of iconserv
+c
+      integer nvar, iconserv
+      integer lo(SDIM), hi(SDIM)
+      integer i, j, k, n
+
+      integer DIMDEC(S)
+      integer DIMDEC(tf)
+      integer DIMDEC(divu)
+      integer DIMDEC(rho)
+
+      REAL_T S(DIMV(S),nvar)
+      REAL_T tforces(DIMV(tf),nvar)
+      REAL_T divu(DIMV(divu))
+      REAL_T rho(DIMV(rho))
+
+      if ( iconserv .eq. 1 ) then
+         do n = 1, nvar
+            do k = lo(3), hi(3)
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)
+                     tforces(i,j,k,n) = 
+     &               tforces(i,j,k,n) - S(i,j,k,n)*divu(i,j,k)
+                  end do
+               end do
+            end do
+         end do
+      else
+         do n = 1, nvar
+            do k = lo(3), hi(3)
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)
+                     tforces(i,j,k,n) = 
+     &               tforces(i,j,k,n)/rho(i,j,k)
+                  end do
+               end do
+            end do
+         end do
+      end if
+
+      end
+
+      subroutine FORT_SUM_TF_DIVU_VISC(
+     &     S,DIMS(S),
+     &     tforces,DIMS(tf),
+     &     divu,DIMS(divu),
+     &     visc,DIMS(visc),
+     &     rho,DIMS(rho),
+     &     lo,hi,nvar,iconserv )
+c
+c     sum tforces, viscous forcing and divU*S into tforces
+c     depending on the value of iconserv
+c
+      integer nvar, iconserv
+      integer lo(SDIM), hi(SDIM)
+      integer i, j, k, n
+
+      integer DIMDEC(S)
+      integer DIMDEC(tf)
+      integer DIMDEC(divu)
+      integer DIMDEC(visc)
+      integer DIMDEC(rho)
+
+      REAL_T S(DIMV(S),nvar)
+      REAL_T tforces(DIMV(tf),nvar)
+      REAL_T divu(DIMV(divu))
+      REAL_T visc(DIMV(visc),nvar)
+      REAL_T rho(DIMV(rho))
+
+      if ( iconserv .eq. 1 ) then
+         do n = 1, nvar
+            do k = lo(3), hi(3)
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)
+                     tforces(i,j,k,n) = 
+     &                    tforces(i,j,k,n)
+     &                    +  visc(i,j,k,n)
+     &                    -     S(i,j,k,n)*divu(i,j,k)
+                  end do
+               end do
+            end do
+         end do
+      else
+         do n = 1, nvar
+            do k = lo(3), hi(3)
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)
+                     tforces(i,j,k,n) = (
+     &                    tforces(i,j,k,n)
+     &                    +  visc(i,j,k,n) )/rho(i,j,k)
+                  end do
+               end do
+            end do
+         end do
+      end if
+
+      end
+
+      subroutine FORT_UPDATE_TF(
+     &     s,       DIMS(s),
+     &     sn,      DIMS(sn),
+     &     tforces, DIMS(tf),
+     &     lo,hi,dt,nvar)
+c
+c     update a field with a forcing term
+c
+      integer i, j, k, n, nvar
+      integer DIMDEC(s)
+      integer DIMDEC(sn)
+      integer DIMDEC(tf)
+      integer lo(SDIM), hi(SDIM)
+      REAL_T dt
+      REAL_T s(DIMV(s),nvar)
+      REAL_T sn(DIMV(sn),nvar)
+      REAL_T tforces(DIMV(tf),nvar)
+
+      do n = 1,nvar
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  sn(i,j,k,n) = s(i,j,k,n)
+     &                 + dt*tforces(i,j,k,n)
+               end do
+            end do
+         end do
+      end do
+
+      end
+
+      subroutine FORT_CORRECT_TF(
+     &     ss,  sp,  DIMS(ss),
+     &     tfs, tfn, DIMS(tfs),
+     &     lo,hi,dt,nvar)
+c
+c     correct 1st order rk to second-order
+c
+      integer i, j, k, n, nvar
+      integer lo(SDIM), hi(SDIM)
+      REAL_T dt,hdt
+
+      integer DIMDEC(ss)
+      integer DIMDEC(tfs)
+      REAL_T  ss(DIMV(ss),nvar)
+      REAL_T  sp(DIMV(ss),nvar)
+      REAL_T tfs(DIMV(tfs),nvar)
+      REAL_T tfn(DIMV(tfs),nvar)
+
+      hdt = half*dt
+      do n = 1,nvar
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  sp(i,j,k,n) = ss(i,j,k,n)
+     &                 + hdt*(tfs(i,j,k,n)-tfn(i,j,k,n))
+               end do
+            end do
+         end do
+      end do
+
+      end
+
+      subroutine FORT_UPDATE_AOFS_TF(
+     &     s,       DIMS(s),
+     &     sn,      DIMS(sn),
+     &     aofs,    DIMS(aofs),
+     &     tforces, DIMS(tf),
+     &     lo,hi,dt,nvar)
+c
+c     update a field with an advective tendency
+c     and a forcing term
+c
+      integer i, j, k, n, nvar
+      integer DIMDEC(s)
+      integer DIMDEC(sn)
+      integer DIMDEC(aofs)
+      integer DIMDEC(tf)
+      integer lo(SDIM), hi(SDIM)
+      REAL_T dt
+      REAL_T s(DIMV(s),nvar)
+      REAL_T sn(DIMV(sn),nvar)
+      REAL_T aofs(DIMV(aofs),nvar)
+      REAL_T tforces(DIMV(tf),nvar)
+
+      do n = 1,nvar
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  sn(i,j,k,n) = s(i,j,k,n)
+     &                 - dt*aofs(i,j,k,n)
+     &                 + dt*tforces(i,j,k,n)
+               end do
+            end do
+         end do
+      end do
+
+      end
+
+      subroutine FORT_UPDATE_AOFS_TF_GP(
+     &     u,       DIMS(u),
+     &     un,      DIMS(un),
+     &     aofs,    DIMS(aofs),
+     &     tforces, DIMS(tf),
+     &     gp,      DIMS(gp),
+     &     rho,     DIMS(rho),
+     &     lo, hi, dt)
+
+c
+c     update the velocities
+c
+      integer i, j, k, n
+      integer DIMDEC(u)
+      integer DIMDEC(un)
+      integer DIMDEC(aofs)
+      integer DIMDEC(rho)
+      integer DIMDEC(gp)
+      integer DIMDEC(tf)
+      integer lo(SDIM), hi(SDIM)
+      REAL_T u(DIMV(u),SDIM)
+      REAL_T un(DIMV(un),SDIM)
+      REAL_T aofs(DIMV(aofs),SDIM)
+      REAL_T rho(DIMV(rho))
+      REAL_T gp(DIMV(gp),SDIM)
+      REAL_T tforces(DIMV(tf),SDIM)
+      REAL_T dt
+
+      do n = 1, SDIM
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  un(i,j,k,n) = u(i,j,k,n)
+     &                 - dt*   aofs(i,j,k,n)
+     &                 + dt*tforces(i,j,k,n)/rho(i,j,k)
+     &                 - dt*     gp(i,j,k,n)/rho(i,j,k)
+               end do
+            end do
+         end do
+      end do
+
+      end
+

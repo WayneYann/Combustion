@@ -204,7 +204,7 @@ SOURCE=..\..\tensorMG\DivVis.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\LMC\drm19.cpp
+SOURCE=..\..\LMC\chem-CH4-2step.cpp
 # End Source File
 # Begin Source File
 
@@ -2484,7 +2484,7 @@ InputName=DIFFUSION_3D
 # End Source File
 # Begin Source File
 
-SOURCE=.\drm19_100.f
+SOURCE=.\2stepSoln1.00.f
 # End Source File
 # Begin Source File
 

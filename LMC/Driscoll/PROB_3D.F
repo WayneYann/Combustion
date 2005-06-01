@@ -203,7 +203,7 @@ c ::: -----------------------------------------------------------
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,vheight,
      &                  tau_control, sest, cfix, changeMax_control,
      &                  sampleLocFUEL, sampleLocPROD, Tinit,
-     &                  slotL, slotR, velBL
+     &                  slotL, slotR, velBL, thickFacTR, thickFacCH
 
 #if defined(BL_DO_FLCT)
      &                  ,forceInflow, numInflPlanesStore, strmwse_dir
@@ -308,6 +308,9 @@ c     Initialize control variables
 
       sampleLocFUEL = zero
       sampleLocPROD = zero
+
+      thickFacTR = one
+      thickFacCH = one
       
       read(untin,fortin)
       

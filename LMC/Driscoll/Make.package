@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.1 2004-10-04 21:35:03 marc Exp $
+# $Id: Make.package,v 1.2 2005-06-01 23:51:51 marc Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -13,4 +13,8 @@ CEXE_headers += ArrayViewEXT.H
 
 FEXE_headers += probdata.H PROB_F.H
 
+ifeq (${REACTION_MECHANISM}, CH4-2STEP)
+fEXE_sources += 2stepSoln1.00.f
+else
 fEXE_sources += drm19_100.f
+endif
