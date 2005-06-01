@@ -2,8 +2,8 @@
   probtype = 1
 
   flct_file = "Turb_dris_rev"
-  forceInflow = .FALSE.
   forceInflow = .TRUE.
+  forceInflow = .FALSE.
   vheight = 0.0
   numInflPlanesStore = 16
 
@@ -19,6 +19,7 @@
   turb_scale=1.0
 
   Vin = 3.0
+  Vco_l = 7.0
   Vco_r = 7.0
   slotL = .0254
   slotR = .0508
@@ -27,7 +28,7 @@
   sampleLocPROD = 2.
 
   thickFacTR = 2
-  thichFacCH = 3
+  thickFacCH = 3
  /
  &heattransin
   pamb = 101325.
