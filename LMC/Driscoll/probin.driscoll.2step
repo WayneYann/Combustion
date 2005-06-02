@@ -2,18 +2,18 @@
   probtype = 1
 
   flct_file = "Turb_dris_rev"
-  forceInflow = .TRUE.
   forceInflow = .FALSE.
+  forceInflow = .TRUE.
   vheight = 0.0
   numInflPlanesStore = 16
 
-  flametracval = 1.e-4
+  flametracval = .009
   max_temp_lev = 0
   temperr = 100
-  max_vort_lev = 0
   max_vort_lev = 1
   vorterr = 500.
   tempgrad = 300.0
+  max_trac_lev = 20
 
   anisotsc = 1.0
   turb_scale=1.0
@@ -23,12 +23,13 @@
   Vco_r = 7.0
   slotL = .0254
   slotR = .0508
+  zhot = .002
 
-  sampleLocFUEL = 0.
-  sampleLocPROD = 2.
+  sampleLocFUEL = 2.5
+  sampleLocPROD = 3.5
 
-  thickFacTR = 2
-  thickFacCH = 3
+  thickFacTR = 4
+  thickFacCH = 6
  /
  &heattransin
   pamb = 101325.

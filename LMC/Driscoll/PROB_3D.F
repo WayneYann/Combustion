@@ -406,7 +406,6 @@ c     Zone definitions
       if (n.ne.Nspec+3) then
          call bl_abort('setupbc:  n .ne. Nspec+3')
       endif
-
       do zone = 1,Nzones
          if (zone.eq.BL_FUELDUCT .or. zone.eq.BL_PILOT .or.
      &        zone.eq.BL_VOLUME .or. zone.eq.BL_HOTSPOT) then 
@@ -425,10 +424,11 @@ c     Zone definitions
                enddo
                u_bc(zone) = zero
                v_bc(zone) = zero
-               w_bc(zone) = Vin*pmfF(3)/pmfP(3)
-               if (zone.eq.BL_PILOT) then
-                  Vco_l = w_bc(zone)
-               endif
+               w_bc(zone) = Vco_l
+c               w_bc(zone) = Vin*pmfF(3)/pmfP(3)
+c               if (zone.eq.BL_PILOT) then
+c                  Vco_l = w_bc(zone)
+c               endif
             endif
          else
             call bl_abort('setupbc: I only know about four bc zones')
@@ -472,7 +472,9 @@ c :::
      &     ((direction.eq."x") .and. (x.le.domnlo(1)))) then
          
          getZone = BL_PILOT
-         if (x1.ge.slotL .and. x1.le.slotR) getZone = BL_FUELDUCT
+         if (x1.ge.slotL .and. x1.le.slotR) then
+            getZone = BL_FUELDUCT
+         endif
          
       else
          getZone = BL_VOLUME
@@ -871,7 +873,7 @@ c ::: -----------------------------------------------------------
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
-#if 0
+#if 1
 c     Use flame tracker to expand region being tagged
                   tag(i,j,k) = cvmgt(set,tag(i,j,k),
      &                 ftrac(i,j,k,1).gt.flametracval)

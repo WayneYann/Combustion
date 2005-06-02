@@ -40,8 +40,10 @@ geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 
 geometry.prob_lo   =  0 0 0
 geometry.prob_hi   =  .0762 .0508 .1016
-amr.n_cell    = 48 32 96
-amr.n_cell    = 120 80 160
+#geometry.prob_hi   =  .0762 .0127 .0254
+#amr.n_cell    = 48 32 64
+#amr.n_cell    = 48 8 16
+amr.n_cell = 120 80 240
 
 mg.usecg = 1
 cg.v = 1
@@ -66,8 +68,9 @@ mg.cg_solver=1
 cg.cg_solver=1
 
 amr.v=1
-amr.max_level =  2            # maximum level number allowed
 amr.max_level =  1            # maximum level number allowed
+amr.max_level =  2            # maximum level number allowed
+amr.ref_ratio       = 4 2 2 2 # refinement ratio
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 1 1 1 1 # number of buffer cells in error est
@@ -75,7 +78,7 @@ amr.grid_eff        = 0.9     # what constitutes an efficient grid
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.check_file      = chk     # root name of checkpoint file
-amr.check_int       = 1     # number of timesteps between checkpoints
+amr.check_int       = 5     # number of timesteps between checkpoints
 amr.plot_file       = plt
 amr.plot_int        = 5
 amr.grid_log        = grdlog  # name of grid logging file
@@ -129,6 +132,7 @@ ns.tranfile        = tran.asc.CH4-2step
 
 ns.fuelName        = CH4
 ns.oxidizerName    = O2
+ns.flameTracName   = CO
 ns.flameTracName   = CH4
 ns.unity_Le = 0
 ns.unity_Le = 1
