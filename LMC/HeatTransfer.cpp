@@ -7053,6 +7053,7 @@ HeatTransfer::writePlotFile (const std::string& dir,
                              std::ostream&  os,
                              VisMF::How     how)
 {
+    if ( ! Amr::Plot_Files_Output() ) return;
     //
     // Note that this is really the same as its NavierStokes counterpart,
     // but in order to add diagnostic MultiFabs into the plotfile, code had
