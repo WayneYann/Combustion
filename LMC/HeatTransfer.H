@@ -174,6 +174,8 @@ public:
 
     void checkTimeStep (Real dt);
 
+    virtual void initData ();
+
     virtual void initDataOtherTypes ();
     //
     // Reset time levels for the initial iterations.

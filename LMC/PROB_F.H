@@ -1,9 +1,10 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.5 2003-10-17 23:34:03 lijewski Exp $
+#define _PROB_F_H_ $Id: PROB_F.H,v 1.6 2005-07-29 15:45:56 lijewski Exp $
 
 #include <PROB_NS_F.H>
 
 #ifdef BL_LANG_FORT
+#    define FORT_INITDATANEWMECH        initdatanewmech
 #    define FORT_SET_PROB_SPEC          setpspec
 #    define FORT_CENTERLINE_TEMP_STATS  cltstats
 #    define FORT_FLAMETRACERROR         fterror
@@ -24,6 +25,7 @@
 #    define FORT_ACTIVECONTROL          activecontrol
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
+#    define FORT_INITDATANEWMECH        INITDATANEWMECH
 #    define FORT_SET_PROB_SPEC          SETPSPEC
 #    define FORT_CENTERLINE_TEMP_STATS  CLTSTATS
 #    define FORT_FLAMETRACERROR         FTERROR
@@ -43,6 +45,7 @@
 #    define FORT_DERCONCENTRATION       DERCONCENTRATION
 #    define FORT_ACTIVECONTROL          ACTIVECONTROL
 #  elif defined(BL_FORT_USE_LOWERCASE)
+#    define FORT_INITDATANEWMECH        initdatanewmech
 #    define FORT_SET_PROB_SPEC          setpspec
 #    define FORT_CENTERLINE_TEMP_STATS  cltstats
 #    define FORT_FLAMETRACERROR         fterror
@@ -61,6 +64,7 @@
 #    define FORT_DERCONCENTRATION       derconcentration
 #    define FORT_ACTIVECONTROL          activecontrol
 #  elif defined(BL_FORT_USE_UNDERSCORE)
+#    define FORT_INITDATANEWMECH        initdatanewmech_
 #    define FORT_SET_PROB_SPEC          setpspec_
 #    define FORT_CENTERLINE_TEMP_STATS  cltstats_
 #    define FORT_FLAMETRACERROR         fterror_
@@ -89,6 +93,18 @@
                      const int* nc, const int* mapOldToNew,
                      const int* lenmap, const int* ratio);
 #endif
+
+      void FORT_INITDATANEWMECH (const int* level, const Real* time,
+                                 const int* lo, const int* hi,
+                                 const int* nscal,
+                                 Real* vel, Real* scal, 
+                                 ARLIM_P(s_lo), ARLIM_P(s_hi),
+                                 Real* press,
+                                 ARLIM_P(p_lo), ARLIM_P(p_hi),
+                                 const Real* dx,
+                                 const Real* xlo, const Real* xhi);
+
+
       void FORT_SET_PROB_SPEC(const int* fuelID,
 			      const int* oxidID,
 			      const int* prodID,

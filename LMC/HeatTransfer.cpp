@@ -29,6 +29,11 @@
 #include <Profiler.H>
 #include <ccse-mpi.H>
 
+#ifdef BL_USE_NEWMECH
+#include <DataServices.H>
+#include <AmrData.H>
+#endif
+
 #ifndef NDEBUG
 void inspectFAB (FArrayBox& unfab);
 void inspectFAB (MultiFab& unfab);
@@ -817,6 +822,143 @@ HeatTransfer::setTimeLevel (Real time,
     state[Ydot_Type].setTimeLevel(time,dt_old,dt_new);
 
     state[FuncCount_Type].setTimeLevel(time,dt_old,dt_new);
+}
+
+//
+// This (minus the NEWMECH stuff) is copied from NavierStokes.cpp
+//
+
+void
+HeatTransfer::initData ()
+{
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::initData()");
+    //
+    // Initialize the state and the pressure.
+    //
+    int         ns       = NUM_STATE - BL_SPACEDIM;
+    const Real* dx       = geom.CellSize();
+    MultiFab&   S_new    = get_new_data(State_Type);
+    MultiFab&   P_new    = get_new_data(Press_Type);
+    const Real  cur_time = state[State_Type].curTime();
+
+#ifdef BL_USE_NEWMECH
+    ParmParse pp("ht");
+
+    std::string pltfile;
+    pp.get("pltfile", pltfile);
+    if (pltfile.empty())
+        BoxLib::Abort("You must specify `pltfile'");
+    if (ParallelDescriptor::IOProcessor())
+        std::cout << "initData: reading data from: " << pltfile << std::endl;
+
+    DataServices::SetBatchMode();
+    FileType fileType(NEWPLT);
+    DataServices dataServices(pltfile, fileType);
+
+    if (!dataServices.AmrDataOk())
+        //
+        // This calls ParallelDescriptor::EndParallel() and exit()
+        //
+        DataServices::Dispatch(DataServices::ExitRequest, NULL);
+    
+    AmrData&                  amrData     = dataServices.AmrDataRef();
+    const int                 nspecies    = getChemSolve().numSpecies();
+    const Array<std::string>& names       = getChemSolve().speciesNames();   
+    Array<std::string>        plotnames   = amrData.PlotVarNames();
+
+    int idT = -1, idX = -1;
+    for (int i = 0; i < plotnames.size(); ++i)
+    {
+        if (plotnames[i] == "temp")       idT = i;
+        if (plotnames[i] == "x_velocity") idX = i;
+    }
+    //
+    // In the plotfile the mass fractions directly follow the velocities.
+    //
+    int idSpec = idX + BL_SPACEDIM;
+
+    for (int i = 0; i < BL_SPACEDIM; i++)
+    {
+        amrData.FillVar(S_new, level, plotnames[idX+i], Xvel+i);
+        amrData.FlushGrids(idX+i);
+    }
+    amrData.FillVar(S_new, level, plotnames[idT], Temp);
+    amrData.FlushGrids(idT);
+
+    for (int i = 0; i < nspecies; i++)
+    {
+        amrData.FillVar(S_new, level, plotnames[idSpec+i], first_spec+i);
+        amrData.FlushGrids(idSpec+i);
+    }
+
+    if (ParallelDescriptor::IOProcessor())
+        std::cout << "initData: finished init from pltfile" << std::endl;
+#endif
+
+    for (MFIter snewmfi(S_new); snewmfi.isValid(); ++snewmfi)
+    {
+        BL_ASSERT(grids[snewmfi.index()] == snewmfi.validbox());
+
+        P_new[snewmfi].setVal(0);
+
+        const int  i    = snewmfi.index();
+        const int* lo   = snewmfi.validbox().loVect();
+        const int* hi   = snewmfi.validbox().hiVect();
+        const int* s_lo = S_new[snewmfi].loVect();
+        const int* s_hi = S_new[snewmfi].hiVect();
+        const int* p_lo = P_new[snewmfi].loVect();
+        const int* p_hi = P_new[snewmfi].hiVect();
+
+#ifdef BL_USE_NEWMECH
+        FORT_INITDATANEWMECH (&level,&cur_time,lo,hi,&ns,
+                              S_new[snewmfi].dataPtr(Xvel),
+                              S_new[snewmfi].dataPtr(BL_SPACEDIM),
+                              ARLIM(s_lo), ARLIM(s_hi),
+                              P_new[snewmfi].dataPtr(),
+                              ARLIM(p_lo), ARLIM(p_hi),
+                              dx,grid_loc[i].lo(),grid_loc[i].hi() );
+#else
+        FORT_INITDATA (&level,&cur_time,lo,hi,&ns,
+                       S_new[snewmfi].dataPtr(Xvel),
+                       S_new[snewmfi].dataPtr(BL_SPACEDIM),
+                       ARLIM(s_lo), ARLIM(s_hi),
+                       P_new[snewmfi].dataPtr(),
+                       ARLIM(p_lo), ARLIM(p_hi),
+                       dx,grid_loc[i].lo(),grid_loc[i].hi() );
+#endif
+    }
+
+    make_rho_prev_time();
+    make_rho_curr_time();
+    //
+    // Initialize other types.
+    //
+    initDataOtherTypes();
+    //
+    // Initialize divU and dSdt.
+    //
+    if (have_divu)
+    {
+        const Real dt       = 1.0;
+        const Real dtin     = -1.0; // Dummy value denotes initialization.
+        const Real cur_time = state[Divu_Type].curTime();
+        MultiFab&  Divu_new = get_new_data(Divu_Type);
+
+        state[State_Type].setTimeLevel(cur_time,dt,dt);
+
+        calc_divu(cur_time,dtin,Divu_new);
+
+        if (have_dsdt)
+            get_new_data(Dsdt_Type).setVal(0);
+    }
+
+    if (state[Press_Type].descriptor()->timeType() == StateDescriptor::Point) 
+    {
+        get_new_data(Dpdt_Type).setVal(0);
+    }
+
+    is_first_step_after_regrid = false;
+    old_intersect_new          = grids;
 }
 
 void
