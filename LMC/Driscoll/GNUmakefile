@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.3 2005-05-19 22:54:16 lijewski Exp $
+# $Id: GNUmakefile,v 1.4 2005-07-29 15:40:31 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,14 +7,13 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION      = DOUBLE
-DEBUG	       = TRUE
 DEBUG	       = FALSE
+DEBUG	       = TRUE
 PROFILE        = FALSE
 DIM	       = 3
 PRVERSION      = v7
-COMP           = xlC
-#COMP           = mpCC
-#FCOMP          = Intel
+COMP           = g++
+FCOMP          = Intel
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
 USE_MPI        = TRUE
@@ -22,6 +21,9 @@ USE_MPI        = FALSE
 BUILD_IN_PLACE = TRUE
 EBASE          = amr
 USE_HGPROJ_SERIAL := FALSE
+USE_NEWMECH    = TRUE
+USE_NEWMECH    = FALSE
+#
 #DEFINES      += -static
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
@@ -42,9 +44,9 @@ REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=INERT30
+REACTION_MECHANISM=PROPANE
 REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=DRM19
-REACTION_MECHANISM=PROPANE
 #
 # Packages below are of the form dir/lib. dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding
@@ -69,7 +71,7 @@ Packages :=	$(TOP)/LMC/ht \
 #
 include $(TOP)/mk/Make.defs
 ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-DEFINES += -DBL_USE_HGPROJ_SERIAL
+  DEFINES += -DBL_USE_HGPROJ_SERIAL
 endif
 
 ifeq ($(DIM),3)
@@ -78,9 +80,15 @@ ifeq ($(DIM),3)
   endif
 endif
 
+ifeq ($(USE_NEWMECH), TRUE)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
+  INCLUDE_LOCATIONS += $(TOP)/pAmrvis
+endif
+
 ifeq (${USE_FLCTS}, TRUE)
   DEFINES += -DBL_DO_FLCT
 endif
+
 ifeq (${USE_SWIRL}, TRUE)
   DEFINES += -DSWIRL
 endif
@@ -112,9 +120,9 @@ ifeq ($(MACHINE),IRIX)
   CXX := $(filter-out -ptused -prelink, $(CXX))
 endif
 
-vpath %.cpp $(MySrcDirs) ..
-vpath %.F   $(MySrcDirs) .. 
-vpath %.H   $(MySrcDirs) ..
+vpath %.cpp $(MySrcDirs) .. $(TOP)/pAmrvis
+vpath %.F   $(MySrcDirs) .. $(TOP)/pAmrvis
+vpath %.H   $(MySrcDirs) .. $(TOP)/pAmrvis
 vpath %.h   $(MySrcDirs) ..
 vpath %.f   $(MySrcDirs) ..
 vpath %.a   $(LIBRARY_LOCATIONS)
