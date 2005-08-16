@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.11 2005-05-19 22:54:16 lijewski Exp $
+# $Id: GNUmakefile,v 1.12 2005-08-16 22:22:49 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -10,12 +10,9 @@ PRECISION      = DOUBLE
 DEBUG	       = FALSE
 DEBUG	       = TRUE
 PROFILE        = FALSE
-DIM	           = 3
+DIM	       = 3
 PRVERSION      = v7
-COMP           = KCC
-COMP           = mpCC
 COMP           = Intel
-COMP           = g++
 FCOMP          = Intel
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
@@ -26,6 +23,9 @@ EBASE          = amr
 USE_SWIRL      = TRUE
 USE_SWIRL      = FALSE
 USE_HGPROJ_SERIAL := FALSE
+USE_NEWMECH   = FALSE
+USE_NEWMECH   = TRUE
+
 #DEFINES      += -static
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
@@ -46,10 +46,10 @@ REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=INERT30
-REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=PROPANE
+REACTION_MECHANISM=DRM19
 #
 # Packages below are of the form dir/lib. dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding
@@ -89,6 +89,10 @@ endif
 ifeq (${USE_SWIRL}, TRUE)
   DEFINES += -DSWIRL
 endif
+ifeq ($(USE_NEWMECH), TRUE)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
+  INCLUDE_LOCATIONS += $(TOP)/pAmrvis
+endif
 #
 # Setup build locations/libraries
 #
@@ -117,9 +121,9 @@ ifeq ($(MACHINE),IRIX)
   CXX := $(filter-out -ptused -prelink, $(CXX))
 endif
 
-vpath %.cpp $(MySrcDirs) ..
-vpath %.F   $(MySrcDirs) .. 
-vpath %.H   $(MySrcDirs) ..
+vpath %.cpp $(MySrcDirs) .. $(TOP)/pAmrvis
+vpath %.F   $(MySrcDirs) .. $(TOP)/pAmrvis
+vpath %.H   $(MySrcDirs) .. $(TOP)/pAmrvis
 vpath %.h   $(MySrcDirs) ..
 vpath %.f   $(MySrcDirs) ..
 vpath %.a   $(LIBRARY_LOCATIONS)

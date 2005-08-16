@@ -1258,6 +1258,64 @@ c                  end if
       deallocate(uflct)
 #endif
       end
+      !
+      ! This is a version of INITDATA in which the velocities,
+      ! the temperature & the mass fractions are passed in.
+      !
+      subroutine FORT_INITDATANEWMECH(level,time,lo,hi,nscal,
+     &     vel,scal,DIMS(state),press,DIMS(press),
+     &     delta,xlo,xhi)
+      implicit none
+      integer  level, nscal, nvel
+      integer  lo(SDIM), hi(SDIM)
+      integer  DIMDEC(state)
+      integer  DIMDEC(press)
+      REAL_T   xlo(SDIM), xhi(SDIM)
+      REAL_T   time, delta(SDIM)
+      REAL_T   vel(DIMV(state),SDIM)
+      REAL_T   scal(DIMV(state),nscal)
+      REAL_T   press(DIMV(press))
+
+#include "htdata.H"
+#include "cdwrk.H"
+#include "bc.H"
+#include "probdata.H"
+
+      integer i, j, k, n
+      REAL_T Patm
+
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               scal(i,j,k,Trac) = zero
+            end do
+         end do
+      end do
+
+      Patm = pamb / 101325.0d0
+
+      call FORT_RHOfromPTY(lo,hi,
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Density),  DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),FirstSpec),DIMS(state),
+     &     Patm)
+      call FORT_HMIXfromTY(lo,hi,
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),RhoH),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),FirstSpec),DIMS(state))
+
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               do n = 0,Nspec-1
+                  scal(i,j,k,FirstSpec+n) = scal(i,j,k,FirstSpec+n)*scal(i,j,k,Density)
+               enddo
+               scal(i,j,k,RhoH) = scal(i,j,k,RhoH)*scal(i,j,k,Density)
+            enddo
+         enddo
+      enddo
+
+      end
       
 c ::: -----------------------------------------------------------
 c ::: This routine will zero out diffusivity on portions of the
