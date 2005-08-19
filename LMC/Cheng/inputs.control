@@ -1,3 +1,7 @@
+ht.pltfile=plt0020_drm19
+
+ns.do_group_bndry_fills=1
+
 #DistributionMapping.verbose=1
 ns.do_active_control = 1
 
@@ -48,7 +52,7 @@ proj.v = 1
 mg.cg_solver=1
 cg.cg_solver=1
 
-amr.n_cell    = 64 64 64
+amr.n_cell    = 32 32 32
 
 amr.v=1
 amr.max_level =  0            # maximum level number allowed
@@ -108,7 +112,7 @@ ns.chemfile        = drm19.dat
 ns.chemoutfile     = chem.out
 ns.thermfile       = thermo12.dat
 ns.tranfile        = transport12.dat
-ns.tranfile        = tran.asc.drm19
+ns.tranfile        = ../tran.asc.drm19
 ns.fuelName        = CH4
 ns.oxidizerName    = O2
 ns.flameTracName   = CH4
