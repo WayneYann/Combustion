@@ -842,6 +842,13 @@ HeatTransfer::initData ()
     const Real  cur_time = state[State_Type].curTime();
 
 #ifdef BL_USE_NEWMECH
+    //
+    // This code has a few drawbacks.  It assumes that the physical
+    // domain size of the current problem is the same as that of the
+    // one that generated the pltfile.  It also assumes that the pltfile
+    // has at least as many levels as does the current problem.  If
+    // either of these are false this code is likely to core dump.
+    //
     ParmParse pp("ht");
 
     std::string pltfile;
