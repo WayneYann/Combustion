@@ -1,9 +1,9 @@
 #
-# $Id: Make.package,v 1.2 2005-05-19 16:33:27 marc Exp $
+# $Id: Make.package,v 1.3 2005-08-24 17:01:20 lijewski Exp $
 #
 CEXE_sources += HT_setup.cpp
 
-FEXE_sources += PROB_2D.F
+FEXE_sources += PROB_$(DIM)D.F
 
 CEXE_headers += ArrayViewEXT.H
 
@@ -18,5 +18,6 @@ endif
 #fEXE_sources += pmf_gri12.f
 #fEXE_sources += drmSoln0.75.f
 #fEXE_sources += pmf_H.f
-fEXE_sources += H-flame-GRI12-0.37.f
+#fEXE_sources += H-flame-GRI12-0.37.f
 #fEXE_sources += GRI-drm19_4cm_1.19.f
+fEXE_sources += 2stepSoln1.00.f

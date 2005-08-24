@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.2 2005-05-19 16:33:27 marc Exp $
+# $Id: GNUmakefile,v 1.3 2005-08-24 17:01:20 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -9,18 +9,18 @@ TOP           = $(PBOXLIB_HOME)
 PRECISION         = DOUBLE
 DEBUG	          = FALSE
 PROFILE           = FALSE
-DIM    	          = 2
+DIM    	          = 3
 PRVERSION         = v5
-#FCOMP             = Intel
-COMP              = g++
+FCOMP             = Intel
+COMP              = Intel
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
 USE_HGPROJ_SERIAL = FALSE
 HGDEBUG           = TRUE
 HGDEBUG           = FALSE
-USE_FLCTS         = TRUE
 USE_FLCTS         = FALSE
+USE_FLCTS         = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
@@ -36,13 +36,13 @@ DEFINES += -DBL_PLOT_CONSUMPTION
 #
 # Choose your reaction mechanism & thermal properties.
 #
-REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=CHEMH
+REACTION_MECHANISM=CH4-2STEP
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
