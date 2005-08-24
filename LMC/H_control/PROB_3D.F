@@ -423,9 +423,12 @@ c     phi = 0.8
       data T     /        3.d2,          3.d2,         3.d2,        3.d2,    3.d2,   3.d2 ,   3.d2 /
 #else
 c     phi = 0.7
-      data X_H2 /  0.0684676292501d0,   zero, 0.0684676292501d0,   zero,    zero,   zero , zero   /
-      data X_O2  /   0.195621797857d0,  0.21d0, 0.195621797857d0,  0.21d0,  0.21d0, 0.21d0, 0.21d0 /
-      data T     /        3.d2,          3.d2,         3.d2,        3.d2,    3.d2,   3.d2,   3.d2  /
+c      data X_H2 /  0.0684676292501d0,  zero, 0.0684676292501d0,  zero, zero /
+c      data X_O2  /  0.195621797857d0, 0.21d0, 0.195621797857d0, 0.21d0, zero /
+c     phi = 1.0
+      data X_H2 /  0.095023d0,   zero,  0.095023d0,   zero,   zero /
+      data X_O2  /  0.190045d0, 0.21d0,  0.190045d0,  0.21d0,  zero /
+      data T     / 3.d2,         3.d2,         3.d2,      3.d2 , zero/
 #endif
       Patm = pamb / 101325.0d0
       iN2 = -1
