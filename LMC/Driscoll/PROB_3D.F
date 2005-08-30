@@ -202,7 +202,7 @@ c ::: -----------------------------------------------------------
      $                  dxhot, dyhot, dzhot, Thot, zBL, dBL, stBL,
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,vheight,
      &                  tau_control, sest, cfix, changeMax_control,
-     &                  sampleLocFUEL, sampleLocPROD, Tinit,
+     &                  sampleLocFUEL, sampleLocPROD, Tinit,tbase_control,
      &                  slotL, slotR, velBL, thickFacTR, thickFacCH
 
 #if defined(BL_DO_FLCT)
@@ -239,7 +239,7 @@ c
       anisotsc = 1.3d0
       vheight = zero
       vorterr = 1.e20
-      temperr = zero
+      temperr = 10000
       adverr = 1.e20
       tempgrad  = 50.0d0
       flametracval = 0.0001d0
@@ -1085,6 +1085,11 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
+#if 0
+c
+c     ::::: refine where there is temperature gradient
+c
+
       ng = min(ARG_H1(temp)-hi(1),ARG_H2(temp)-hi(2),ARG_H3(temp)-hi(3),
      &         lo(1)-ARG_L1(temp),lo(2)-ARG_L2(temp),lo(3)-ARG_L3(temp))
 
@@ -1092,9 +1097,7 @@ c ::: -----------------------------------------------------------
          write(6,*) "TEMPERR cannot compute gradient, ng = ",ng
          call bl_abort(" ")
       endif
-c
-c     ::::: refine where there is temperature gradient
-c
+
       if (level .lt. max_temp_lev) then
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
@@ -1111,6 +1114,20 @@ c
             enddo
          enddo
       endif
+#else
+c
+c Tag cold stuff
+c      
+      if (level .lt. max_temp_lev) then
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  tag(i,j,k) = cvmgt(set,tag(i,j,k),temperature(i,j,k,1).le.temperr)
+               enddo
+            enddo
+         enddo
+      end if
+#endif
 
       end
 
