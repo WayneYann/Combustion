@@ -556,12 +556,12 @@ HeatTransfer::init_once ()
 
     if (rgas <= 0.0)
     {
-        std::cout << "HeatTransfer::init_once(): bad rgas: " << rgas << '\n';
+        std::cerr << "HeatTransfer::init_once(): bad rgas: " << rgas << '\n';
         BoxLib::Abort();
     }
     if (P1atm_MKS <= 0.0)
     {
-        std::cout << "HeatTransfer::init_once(): bad P1atm_MKS: " << P1atm_MKS << '\n';
+        std::cerr << "HeatTransfer::init_once(): bad P1atm_MKS: " << P1atm_MKS << '\n';
         BoxLib::Abort();
     }
     //
