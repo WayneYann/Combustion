@@ -1,5 +1,5 @@
-c
-c $Id: GODUNOV_3D.F,v 1.3 2005-06-01 23:52:08 marc Exp $
+
+c $Id: GODUNOV_3D.F,v 1.4 2005-10-08 20:31:13 lijewski Exp $
 c
 #undef  BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -730,12 +730,12 @@ c
                      if (velpred.eq.1) then
                         stxhi(imin) = MIN(stxhi(imin),zero)
                         stxlo(imin) = stxhi(imin)
-                     print *,'XLO, velpred: stxlo/hi: ',stxlo(imin)
+                     !print *,'XLO, velpred: stxlo/hi: ',stxlo(imin)
                      else
                         if (uad(imin,j,k).ge.zero) then
                            stxhi(imin) = MIN(stxhi(imin),zero)
                            stxlo(imin) = stxhi(imin)
-                     print *,'XLO, novelpred: stxlo/hi: ',stxlo(imin)
+                     !print *,'XLO, novelpred: stxlo/hi: ',stxlo(imin)
                         endif
                      endif
                   else
@@ -760,12 +760,12 @@ c
                      if (velpred.eq.1) then
                         stxlo(imax+1) = MAX(stxlo(imax+1),zero)
                         stxhi(imax+1) = stxlo(imax+1)
-                     print *,'XHI, velpred: stxlo/hi: ',stxlo(imax+1)
+                     !print *,'XHI, velpred: stxlo/hi: ',stxlo(imax+1)
                      else
                         if (uad(imax+1,j,k).le.zero) then
                            stxlo(imax+1) = MAX(stxlo(imax+1),zero)
                            stxhi(imax+1) = stxlo(imax+1)
-                     print *,'XHI, novelpred: stxlo/hi: ',stxlo(imax+1)
+                     !print *,'XHI, novelpred: stxlo/hi: ',stxlo(imax+1)
                         endif
                      endif
                   else
@@ -853,12 +853,12 @@ c
                      if (velpred.eq.1) then
                         styhi(jmin) = MIN(styhi(jmin),zero)
                         stylo(jmin) = stzhi(jmin)
-                     print *,'YLO, velpred: stylo/hi: ',stylo(jmin)
+                     !print *,'YLO, velpred: stylo/hi: ',stylo(jmin)
                      else
                         if (vad(i,jmin,k).ge.zero) then
                            styhi(jmin) = MIN(styhi(jmin),zero)
                            stylo(jmin) = styhi(jmin)
-                     print *,'YLO, novelpred: stylo/hi: ',stylo(jmin)
+                     !print *,'YLO, novelpred: stylo/hi: ',stylo(jmin)
                         endif
                      endif
                   else
