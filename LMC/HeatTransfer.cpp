@@ -4369,49 +4369,6 @@ HeatTransfer::strang_chem (MultiFab&  state,
         std::cout << "HeatTransfer::strang_chem time: " << run_time << std::endl;
 }
 
-static
-BoxArray
-GetBndryCells(const BoxArray& ba,
-              int             n_grow,
-              const Geometry& geom)
-{
-    const BoxList blgrids = BoxList(ba);
-
-    BoxDomain bd;
-
-    for (int i = 0; i < ba.size(); ++i)
-    {
-	BoxList gCells = BoxLib::boxDiff(BoxLib::grow(ba[i],n_grow),ba[i]);
-
-	for (BoxList::iterator bli = gCells.begin(); bli != gCells.end(); ++bli)
-	    bd.add(BoxLib::complementIn(*bli,blgrids));
-    }
-
-    BoxList bl;
-
-    Array<IntVect> pshifts(27);
-
-    for (BoxDomain::const_iterator bdi = bd.begin(); bdi != bd.end(); ++bdi)
-    {
-        bl.push_back(*bdi);
-        //
-        // Add in periodic ghost cells shifted to valid region.
-        //
-        geom.periodicShift(geom.Domain(), *bdi, pshifts);
-
-        for (int i = 0; i < pshifts.size(); i++)
-        {
-            Box shftbox = *bdi + pshifts[i];
-
-            bl.push_back(geom.Domain() & shftbox);
-        }
-    }
-
-    bl.simplify();
-
-    return BoxArray(bl);
-}
-
 void
 HeatTransfer::compute_edge_states (Real               dt,
                                    std::vector<bool>* state_comps_to_compute)
@@ -7473,23 +7430,24 @@ AuxBoundaryData::initialize (const BoxArray& ba,
 			     int             n_comp,
                              const Geometry& geom)
 {
+    const Real strt_time = ParallelDescriptor::second();
+
     BL_ASSERT(!m_initialized);
 
     m_ngrow = n_grow;
 
-    const BoxList blgrids = BoxList(ba);
-
     BoxDomain bd;
-
-    for (int i = 0; i < ba.size(); ++i)
     {
-	BoxList gCells = BoxLib::boxDiff(BoxLib::grow(ba[i],n_grow),ba[i]);
+        const BoxList blgrids = BoxList(ba);
 
-	for (BoxList::iterator bli = gCells.begin();
-             bli != gCells.end();
-             ++bli)
+        for (int i = 0; i < ba.size(); ++i)
         {
-	    bd.add(BoxLib::complementIn(*bli,blgrids));
+            BoxList gCells = BoxLib::boxDiff(BoxLib::grow(ba[i],n_grow),ba[i]);
+
+            for (BoxList::iterator bli = gCells.begin(); bli != gCells.end(); ++bli)
+            {
+                bd.add(BoxLib::complementIn(*bli,blgrids));
+            }
         }
     }
 
@@ -7515,7 +7473,6 @@ AuxBoundaryData::initialize (const BoxArray& ba,
         }
 
 	bd.clear();
-
 	bd.add(bl);
     }
 
@@ -7534,6 +7491,14 @@ AuxBoundaryData::initialize (const BoxArray& ba,
     m_fabs.define(nba,n_comp,0,Fab_allocate);
 
     m_initialized = true;
+
+    const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+    Real      run_time = ParallelDescriptor::second() - strt_time;
+
+    ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+    if (ParallelDescriptor::IOProcessor())
+        std::cout << "AuxBoundaryData::initialize(): time: " << run_time << std::endl;
 }
 
 void
