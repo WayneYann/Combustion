@@ -7436,20 +7436,20 @@ AuxBoundaryData::initialize (const BoxArray& ba,
 
     m_ngrow = n_grow;
 
-    BoxList bl;
-    BoxList blgrids = BoxList(ba);
-
-    for (int i = 0; i < ba.size(); ++i)
+    BoxDomain bd;
     {
-        BoxList gCells = BoxLib::boxDiff(BoxLib::grow(ba[i],n_grow), ba[i]);
+        const BoxList blgrids = BoxList(ba);
 
-        for (BoxList::const_iterator bli = gCells.begin(); bli != gCells.end(); ++bli)
+        for (int i = 0; i < ba.size(); ++i)
         {
-            bl.join(BoxLib::complementIn(*bli, blgrids));
+            BoxList gCells = BoxLib::boxDiff(BoxLib::grow(ba[i],n_grow),ba[i]);
+
+            for (BoxList::iterator bli = gCells.begin(); bli != gCells.end(); ++bli)
+            {
+                bd.add(BoxLib::complementIn(*bli,blgrids));
+            }
         }
     }
-
-    blgrids.clear();
 
     if (geom.isAnyPeriodic())
     {
@@ -7462,28 +7462,33 @@ AuxBoundaryData::initialize (const BoxArray& ba,
             if (!geom.isPeriodic(d)) 
                 dmn.grow(d,n_grow);
 
-        for (BoxList::iterator bli = bl.begin(); bli != bl.end(); )
+        BoxList bl;
+
+        for (BoxDomain::const_iterator bdi = bd.begin(); bdi != bd.end(); ++bdi)
         {
-            const Box isect = *bli & dmn;
+            Box isect = *bdi & dmn;
 
             if (isect.ok())
-            {
-                if (isect != *bli)
-                    *bli = isect;
-                ++bli;
-            }
-            else
-            {
-                bl.remove(bli++);
-            }
+                bl.push_back(isect);
         }
+
+	bd.clear();
+	bd.add(bl);
     }
 
-    bl.simplify();
+    bd.simplify();
 
-    BoxArray nba(bl);
+    BL_ASSERT(bd.ok());
 
-    m_fabs.define(nba, n_comp, 0, Fab_allocate);
+    BoxArray nba(bd.size());
+
+    int cnt = 0;
+    for (BoxDomain::const_iterator bdi = bd.begin(); bdi != bd.end(); ++bdi, ++cnt)
+    {
+        nba.set(cnt,*bdi);
+    }
+
+    m_fabs.define(nba,n_comp,0,Fab_allocate);
 
     m_initialized = true;
 
