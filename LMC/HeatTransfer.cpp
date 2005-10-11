@@ -7436,20 +7436,40 @@ AuxBoundaryData::initialize (const BoxArray& ba,
 
     m_ngrow = n_grow;
 
-    BoxDomain bd;
-    BoxList   blgrids = BoxList(ba);
+    //
+    // First get list of all ghost cells.
+    //
+    BoxList gcells, bcells;
 
     for (int i = 0; i < ba.size(); ++i)
+	gcells.join(BoxLib::boxDiff(BoxLib::grow(ba[i],n_grow),ba[i]));
+    //
+    // Now strip out intersections with original BoxArray.
+    //
+    for (BoxList::const_iterator it = gcells.begin(); it != gcells.end(); ++it)
     {
-        BoxList gCells = BoxLib::boxDiff(BoxLib::grow(ba[i],n_grow),ba[i]);
+        std::vector< std::pair<int,Box> > isects = ba.intersections(*it);
 
-        for (BoxList::iterator bli = gCells.begin(); bli != gCells.end(); ++bli)
+        if (isects.empty())
+            bcells.push_back(*it);
+        else
         {
-            bd.add(BoxLib::complementIn(*bli, blgrids));
+            //
+            // Collect all the intersection pieces.
+            //
+            BoxList pieces;
+            for (int i = 0; i < isects.size(); i++)
+                pieces.push_back(isects[i].second);
+            BoxList leftover = BoxLib::complementIn(*it,pieces);
+            bcells.catenate(leftover);
         }
     }
-
-    blgrids.clear();  // Let's reuse this guy.
+    //
+    // Now strip out overlaps.  Also does a crude simplify().
+    //
+    gcells.clear();
+    gcells = BoxLib::removeOverlap(bcells);
+    bcells.clear();
 
     if (geom.isAnyPeriodic())
     {
@@ -7462,18 +7482,20 @@ AuxBoundaryData::initialize (const BoxArray& ba,
             if (!geom.isPeriodic(d)) 
                 dmn.grow(d,n_grow);
 
-        for (BoxDomain::const_iterator bdi = bd.begin(); bdi != bd.end(); ++bdi)
+        for (BoxList::iterator it = gcells.begin(); it != gcells.end(); )
         {
-            const Box isect = *bdi & dmn;
+            const Box isect = *it & dmn;
 
             if (isect.ok())
-                blgrids.push_back(isect);
+                *it++ = isect;
+            else
+                gcells.remove(it++);
         }
     }
 
-    blgrids.simplify();
+    gcells.simplify();
 
-    BoxArray nba(blgrids);
+    BoxArray nba(gcells);
 
     m_fabs.define(nba, n_comp, 0, Fab_allocate);
 
@@ -7485,7 +7507,7 @@ AuxBoundaryData::initialize (const BoxArray& ba,
     ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
     if (ParallelDescriptor::IOProcessor())
-        std::cout << "AuxBoundaryData::initialize(): time: " << run_time << std::endl;
+        std::cout << "AuxBoundaryData::initialize(): size: " << gcells.size() << ", time: " << run_time << std::endl;
 }
 
 void
