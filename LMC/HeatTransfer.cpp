@@ -7430,12 +7430,9 @@ AuxBoundaryData::initialize (const BoxArray& ba,
 			     int             n_comp,
                              const Geometry& geom)
 {
-    const Real strt_time = ParallelDescriptor::second();
-
     BL_ASSERT(!m_initialized);
 
     m_ngrow = n_grow;
-
     //
     // First get list of all ghost cells.
     //
@@ -7500,14 +7497,6 @@ AuxBoundaryData::initialize (const BoxArray& ba,
     m_fabs.define(nba, n_comp, 0, Fab_allocate);
 
     m_initialized = true;
-
-    const int IOProc   = ParallelDescriptor::IOProcessorNumber();
-    Real      run_time = ParallelDescriptor::second() - strt_time;
-
-    ParallelDescriptor::ReduceRealMax(run_time,IOProc);
-
-    if (ParallelDescriptor::IOProcessor())
-        std::cout << "AuxBoundaryData::initialize(): size: " << gcells.size() << ", time: " << run_time << std::endl;
 }
 
 void
