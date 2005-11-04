@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.15 2005-05-19 22:54:16 lijewski Exp $
+# $Id: GNUmakefile,v 1.16 2005-11-04 22:55:47 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,12 +7,12 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = FALSE
+DEBUG	          = TRUE
 PROFILE           = FALSE
 DIM    	          = 2
 PRVERSION         = v5
 FCOMP             = Intel
-COMP              = g++
+COMP              = Intel
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
@@ -39,11 +39,11 @@ USE_FLCTS         = TRUE
 REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=CHEMH
-REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=PROPANE
+REACTION_MECHANISM=DRM19
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
@@ -157,22 +157,7 @@ nodata:
 #
 touch_hg:
 	touch $(StencilSpecificProjFiles)
-#
-# Create MS-IDE dsp file to build this project
-#
-DspOlevel = 1
-DspFileRoot = $(EBASE)$(DIM)d
-ifeq ($(DEBUG), TRUE)
-  DspOlevel := 0
-endif
-dsp: $(DspFileRoot).dsp
-.dspDepends: $(FEXE_sources) $(FEXE_headers) $(fEXE_sources) $(CEXE_headers) $(CEXE_sources) $(INCLUDE_LOCATIONS)
-	@echo $^ > .dspDepends
 
-$(DspFileRoot).dsp: .dspDepends
-	@(echo Building DSP file = $(DspFileRoot).dsp;\
-	$(TOP)/scripts/dsp.mak -p $(DspFileRoot) -t $(TOP) -d $(DIM) -o $(DspFileRoot).dsp -O $(DspOlevel) -f $^)
-
-.PHONY: dsp .dspDepends libs cleanlibs nodata touch_hg
+.PHONY: libs cleanlibs nodata touch_hg
 
 include $(TOP)/mk/Make.rules
