@@ -493,6 +493,27 @@ c     Get the matrix of elements versus species
          end do
       end if
       end
+      !
+      ! Opens a file of the form: 'vode.failed.N' where N is myproc()
+      !
+      ! Returns the unit number of the open()d file.
+      !
+      function open_vode_failure_file () result (lout)
+        implicit none
+        character*30 name, myproc
+        integer lout
+        integer i
+        !
+        ! Let's hardwire the unit number to 26 for the moment.
+        !
+        lout = 26
+        call bl_pd_myproc(i)
+        write(myproc, *) i
+        myproc = adjustl(myproc)
+        write(name, *) 'vode.failed.', myproc(1:len_trim(myproc))
+        name = adjustl(name)
+        open(unit=lout, file=name(1:len_trim(name)), form='formatted', status='replace')
+      end function open_vode_failure_file
       
       subroutine FORT_CONPSOLV(lo, hi,
      &                         Ynew, DIMS(Ynew), Tnew, DIMS(Tnew),
@@ -519,15 +540,15 @@ c     Get the matrix of elements versus species
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
       
-      integer ITOL, IOPT, ITASK
+      integer ITOL, IOPT, ITASK, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1),ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
       parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
-      external CONPF_FILE, CONPJ_FILE
+      external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
-      integer i, j, k, n, MF, ISTATE, LOUTCK
+      integer i, j, k, n, MF, ISTATE, LOUTCK, lout
       character*(maxspnml) name
       parameter (LOUTCK=6)
 
@@ -722,8 +743,8 @@ c     If the step was bad, and we reused an old Jacobian, try again from scratch
                end if
             end if
 #endif
-
                FuncCount(i,j,k) = IWRK(dvbi+11)
+
                if (verbose_vode .eq. 1) then
                   write(6,*) '......dvode done:'
                   write(6,*) ' last successful step size = ',RWRK(dvbr+10)
@@ -743,36 +764,25 @@ c     If the step was bad, and we reused an old Jacobian, try again from scratch
                   end if
                end if
 
-#undef DIE_ON_MAXSTEP
-#ifdef DIE_ON_MAXSTEP
-               if (ISTATE .LE. -1) goto 500
-#endif
                if (ISTATE .LE. -1) then
-                  
                   call CONPF_FILE(NEQ, TT1, RWRK(NZ), RWRK(NWDOT), RWRK, IWRK)
-                  
-                  write(LOUTCK,*)
-                  write(LOUTCK,995) 'VODE Failed at (i,j,k) = (',i,',',j,
+                  lout = open_vode_failure_file()                  
+                  write(lout,*)
+                  write(lout,995) 'VODE Failed at (i,j,k) = (',i,',',j,
      &                 ',',k,'),   Return code = ',ISTATE
-                  write(LOUTCK,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-                  write(LOUTCK,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
-                  write(LOUTCK,996) 'T               ',
+                  write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
+                  write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
+                  write(lout,996) 'T               ',
      &                 Told(i,j,k),RWRK(NZ),RWRK(NWDOT),RWRK(NWDOT)*(dt-TT1)
                   do n=1,Nspec
                      call get_spec_name(name,n)
-                     write(LOUTCK,996) name,Yold(i,j,k,n),
+                     write(lout,996) name,Yold(i,j,k,n),
      &                    RWRK(NZ+n),RWRK(NWDOT+n),RWRK(NWDOT+n)*(dt-TT1)
                   end do
-                  write(6,*) 'VODE failed...see drop file...exiting...'
  995              format(a,4(i4,a))
  996              format(a16,1x,4e30.22)
-                  
-                  if (ISTATE .LE. -4) then
-                     RWRK(NZ) = Told(i,j,k)
-                     do n=1,Nspec
-                        RWRK(NZ+n) = Ytemp(n)
-                     end do
-                  end if
+                  close(lout)
+                  call bl_abort('VODE failed...see drop file...exiting...')
                end if
 
                Tnew(i,j,k) = RWRK(NZ)
@@ -805,27 +815,6 @@ c
          end do
       end do
       return
-#if 0
- 500  continue
-      call CONPF_FILE(NEQ, TT1, RWRK(NZ), RWRK(NWDOT), RWRK, IWRK)
-
-      write(LOUTCK,*)
-      write(LOUTCK,995) 'VODE Failed at (i,j,k) = (',i,',',j,',',k,
-     &     '),   Return code = ',ISTATE
-      write(LOUTCK,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-      write(LOUTCK,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
-      write(LOUTCK,996) 'T               ',
-     &     Told(i,j,k),RWRK(NZ),RWRK(NWDOT),RWRK(NWDOT)*(dt-TT1)
-      do n=1,Nspec
-         call get_spec_name(name,n)
-         write(LOUTCK,996) name,Yold(i,j,k,n),
-     &        RWRK(NZ+n),RWRK(NWDOT+n),RWRK(NWDOT+n)*(dt-TT1)
-      end do
-      write(6,*) 'VODE failed...see drop file...exiting...'
- 995  format(a,4(i4,a))
- 996  format(a16,1x,4e20.12)
-      call bl_abort(" ")
-#endif
       end
 
       subroutine FORT_CHEMEQ(lo, hi,
