@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.3 2005-08-24 17:01:20 lijewski Exp $
+# $Id: GNUmakefile,v 1.4 2005-12-16 18:46:03 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,7 +7,7 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = FALSE
+DEBUG	          = TRUE
 PROFILE           = FALSE
 DIM    	          = 3
 PRVERSION         = v5
@@ -21,6 +21,10 @@ HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_FLCTS         = TRUE
+#
+# Turn this on to get the ability to set the velocities in initData() from a plotfile.
+#
+USE_VELOCITY = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
@@ -41,8 +45,8 @@ REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=GRI30
-REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=CH4-2STEP
+REACTION_MECHANISM=CHEMH
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
@@ -51,6 +55,11 @@ ProjPackage = $(TOP)/hgproj/proj
 ifeq ($(USE_HGPROJ_SERIAL),TRUE)
   ProjPackage = $(TOP)/hgproj-serial/proj
   INCLUDE_LOCATIONS += $(dir $(ProjPackage))include/$(DIM)d.$(PRVERSION)
+endif
+
+ifeq ($(USE_VELOCITY), TRUE)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_VELOCITY -DBL_PARALLEL_IO
+  INCLUDE_LOCATIONS += $(TOP)/pAmrvis
 endif
 
 Packages := $(TOP)/LMC/ht \
@@ -107,6 +116,12 @@ ifeq (${USE_FLCTS}, TRUE)
   MySrcDirs += $(TOP)/iamrlib/InflowForce
 endif
 
+ifeq ($(USE_VELOCITY), TRUE)
+  MySrcDirs += $(TOP)/pAmrvis
+else
+  MySrcDirs += $(TOP)/pAmrvis
+endif
+
 vpath %.cpp $(MySrcDirs) ..
 vpath %.F   $(MySrcDirs) ..
 vpath %.f90 $(MySrcDirs) ..
@@ -156,22 +171,7 @@ nodata:
 #
 touch_hg:
 	touch $(StencilSpecificProjFiles)
-#
-# Create MS-IDE dsp file to build this project
-#
-DspOlevel = 1
-DspFileRoot = $(EBASE)$(DIM)d
-ifeq ($(DEBUG), TRUE)
-  DspOlevel := 0
-endif
-dsp: $(DspFileRoot).dsp
-.dspDepends: $(FEXE_sources) $(FEXE_headers) $(fEXE_sources) $(CEXE_headers) $(CEXE_sources) $(INCLUDE_LOCATIONS)
-	@echo $^ > .dspDepends
 
-$(DspFileRoot).dsp: .dspDepends
-	@(echo Building DSP file = $(DspFileRoot).dsp;\
-	$(TOP)/scripts/dsp.mak -p $(DspFileRoot) -t $(TOP) -d $(DIM) -o $(DspFileRoot).dsp -O $(DspOlevel) -f $^)
-
-.PHONY: dsp .dspDepends libs cleanlibs nodata touch_hg
+.PHONY: libs cleanlibs nodata touch_hg
 
 include $(TOP)/mk/Make.rules

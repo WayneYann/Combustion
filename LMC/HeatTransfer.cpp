@@ -29,7 +29,7 @@
 #include <Profiler.H>
 #include <ccse-mpi.H>
 
-#ifdef BL_USE_NEWMECH
+#if defined(BL_USE_NEWMECH) || defined(BL_USE_VELOCITY)
 #include <DataServices.H>
 #include <AmrData.H>
 #endif
