@@ -19,7 +19,8 @@
   y_offset = -0.01288
   y_offset = -0.00288
   y_offset = 0.00288
-  flametracval = 2.e-5
+  y_offset = 0.03488
+  flametracval = 1.e-6
   V_in = .1527
   nchemdiag = 1
   phi_in = 0.4
@@ -35,6 +36,6 @@
   tau_control = 4.e-2
   tau_control = 1.e-3
   sest = .3
-  h_control = .008
+  h_control = .04
   changeMax_control = .05
  /

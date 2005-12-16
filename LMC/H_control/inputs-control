@@ -7,17 +7,17 @@ stop_time = 5.00
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 geometry.prob_lo   =   0.  0. # m
 geometry.prob_hi   =  .002 .016
-geometry.prob_hi   =  .001 .016
+geometry.prob_hi   =  .008 .16
 
 ns.tranfile        = ../tran.asc.chem-H
 ns.fuelName        = H2
 ns.oxidizerName    = O2
-ns.flameTracName   = HO2
+ns.flameTracName   = H
 
 ns.do_active_control = true
 
 amr.n_cell = 16 128
-amr.n_cell = 8 128
+amr.n_cell = 16 320
 
 amr.max_level = 0
 amr.max_level = 3
