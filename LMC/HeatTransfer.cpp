@@ -935,6 +935,64 @@ HeatTransfer::initData ()
 #endif
     }
 
+#ifdef BL_USE_VELOCITY
+    //
+    // We want to add the velocity from the supplied plotfile
+    // to what we already put into the velocity field via FORT_INITDATA.
+    //
+    // This code has a few drawbacks.  It assumes that the physical
+    // domain size of the current problem is the same as that of the
+    // one that generated the pltfile.  It also assumes that the pltfile
+    // has at least as many levels (with the same refinement ratios) as does
+    // the current problem.  If either of these are false this code is
+    // likely to core dump.
+    //
+    ParmParse pp("ht");
+
+    std::string velocity_plotfile;
+    pp.get("velocity_plotfile", velocity_plotfile);
+
+    if (!velocity_plotfile.empty())
+    {
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "initData: reading data from: " << velocity_plotfile << std::endl;
+
+        DataServices::SetBatchMode();
+        FileType fileType(NEWPLT);
+        DataServices dataServices(velocity_plotfile, fileType);
+
+        if (!dataServices.AmrDataOk())
+            //
+            // This calls ParallelDescriptor::EndParallel() and exit()
+            //
+            DataServices::Dispatch(DataServices::ExitRequest, NULL);
+    
+        AmrData&                  amrData   = dataServices.AmrDataRef();
+        const int                 nspecies  = getChemSolve().numSpecies();
+        const Array<std::string>& names     = getChemSolve().speciesNames();   
+        Array<std::string>        plotnames = amrData.PlotVarNames();
+
+        int idX = -1;
+        for (int i = 0; i < plotnames.size(); ++i)
+            if (plotnames[i] == "x_velocity") idX = i;
+
+        if (idX == -1)
+            BoxLib::Abort("Could not find velocity fields in supplied velocity_plotfile");
+
+        MultiFab tmp(S_new.boxArray(), 1, 0);
+        for (int i = 0; i < BL_SPACEDIM; i++)
+        {
+            amrData.FillVar(tmp, level, plotnames[idX+i], 0);
+            for (MFIter mfi(tmp); mfi.isValid(); ++mfi)
+                S_new[mfi].plus(tmp[mfi], tmp[mfi].box(), 0, Xvel+i, 1);
+            amrData.FlushGrids(idX+i);
+        }
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "initData: finished init from velocity_plotfile" << std::endl;
+    }
+#endif /*BL_USE_VELOCITY*/
+
     make_rho_prev_time();
     make_rho_curr_time();
     //
