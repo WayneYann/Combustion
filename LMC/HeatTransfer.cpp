@@ -4333,7 +4333,6 @@ HeatTransfer::strang_chem (MultiFab&  state,
         else
         {
             BoxList bl(state.boxArray());
-            bl.minimize();
             bl.maxSize(max_grid_size_chem);
 
             if (bl.size() < 2*ParallelDescriptor::NProcs() && max_grid_size_chem >= 16)
