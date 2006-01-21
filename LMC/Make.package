@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.9 2005-05-19 22:54:16 lijewski Exp $
+# $Id: Make.package,v 1.10 2006-01-21 02:12:39 marc Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -8,8 +8,8 @@ endif
 #
 # The base LMC stuff ...
 #
-C$(HT_BASE)_sources += HeatTransfer.cpp
-C$(HT_BASE)_headers += HeatTransfer.H
+C$(HT_BASE)_sources += HeatTransfer.cpp DDBndry.cpp DDOp.cpp
+C$(HT_BASE)_headers += HeatTransfer.H DDBndry.H DDOp.H
 F$(HT_BASE)_headers += HEATTRANSFER_F.H htdata.H visc.H SLABSTAT_HT_F.H
 F$(HT_BASE)_sources += HEATTRANSFER_F.F HEATTRANSFER_$(DIM)D.F \
   			DERIVE_HT_$(DIM)D.F SLABSTAT_HT_$(DIM)D.F
