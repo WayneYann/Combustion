@@ -1,7 +1,7 @@
 //BL_COPYRIGHT_NOTICE
 
 //
-// $Id: DDBndry.cpp,v 1.1 2006-01-21 02:12:38 marc Exp $
+// $Id: DDBndry.cpp,v 1.2 2006-01-24 23:47:48 marc Exp $
 //
 
 #include <LO_BCTYPES.H>
@@ -52,8 +52,6 @@ DDBndry::setBndryConds (const BCRec&       bc,
             {
                 bcond[face][i][0] = LO_DIRICHLET;
                 bcloc[face][i] = 0.5*delta;
-                //setBoundCond(face,i,LO_DIRICHLET);
-                //setBoundLoc(face,i,0.5*delta);
             }
         }
     }

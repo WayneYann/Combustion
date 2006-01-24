@@ -71,7 +71,7 @@ extern "C" {
     void FORT_INCRDIV(const int* lo, const int* hi,
                       Real*     div, ARLIM_P(divlo), ARLIM_P(divhi),
                       const Real* V, ARLIM_P(Vlo),   ARLIM_P(Vhi),
-                      const Real* dx, const int* dir, const int* nc);
+                      const int* dir, const int* nc);
 
     void FORT_THERM(const int* lo, const int* hi,
                    const Real* lam, ARLIM_P(lamlo),   ARLIM_P(lamhi),
@@ -87,7 +87,7 @@ extern "C" {
     void FORT_CRSNCCBND(const int* lo, const int* hi,
                         const Real* fine, ARLIM_P(flo), ARLIM_P(fhi),
                         const Real* crse, ARLIM_P(clo), ARLIM_P(chi),
-                        const int* nc, const int* face);
+                        const int* nc, const int* face, const int* ratio);
 
     void FORT_DDCCAVG(Real*       crse, ARLIM_P(clo), ARLIM_P(chi),
                       const Real* fine, ARLIM_P(flo), ARLIM_P(fhi),

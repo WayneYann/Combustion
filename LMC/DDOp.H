@@ -23,42 +23,21 @@ public:
                  const IntVect&  ratio,
                  int             mgLevel = 0);
         
-    void setBoundaryData_Mass(const MultiFab&      fineT,
-                              int                  fStartT,
-                              const MultiFab&      fineY,
-                              int                  fStartY,
-                              const BndryRegister* cbrT,
-                              int                  cStartT,
-                              const BndryRegister* cbrY,
-                              int                  cStartY,
-                              const BCRec&         bcT,
-                              const BCRec&         bcY);
-
-    void setBoundaryData_Mole(const MultiFab&      fineT,
-                              int                  fStartT,
-                              const MultiFab&      fineX,
-                              int                  fStartX,
-                              const BndryRegister* cbrT,
-                              int                  cStartT,
-                              const BndryRegister* cbrX,
-                              int                  cStartX,
-                              const BCRec&         bcT,
-                              const BCRec&         bcX);
+    void setBoundaryData(const MultiFab&      fineT,
+                         int                  fStartT,
+                         const MultiFab&      fineX,
+                         int                  fStartX,
+                         const BndryRegister* cbrT,
+                         int                  cStartT,
+                         const BndryRegister* cbrX,
+                         int                  cStartX,
+                         const BCRec&         bcT,
+                         const BCRec&         bcX);
 
     void setGrowCells(MultiFab& T,
                       int       compT,
-                      MultiFab& X,
-                      int       compX) const;
-
-    void cellToEdge(MultiFab&       Te,
-                    int             dCompTe,
-                    MultiFab&       Ye,
-                    int             dCompYe,
-                    const MultiFab& Tc,
-                    int             sCompTc,
-                    const MultiFab& Yc,
-                    int             sCompYc,
-                    int             dir) const;
+                      MultiFab& Y,
+                      int       compY) const;
 
     void applyOp(MultiFab&         outH,
                  int               dCompH,
@@ -99,7 +78,6 @@ public:
     const BoxArray& boxArray() const;
     const DDBndry& TBndry() const;
     const DDBndry& YBndry() const;
-    const DDBndry& XBndry() const;
 
 private:
 
@@ -112,12 +90,11 @@ private:
 
     const ChemDriver& ckdriver;
     BoxArray grids;
-    DDBndry Tbd, Ybd, Xbd;
+    DDBndry Tbd, Ybd;
     IntVect cfRatio;
     MultiFab volume;
     MultiFab area[BL_SPACEDIM];
     DDOp* coarser;
-    MultiFab Soln;
 };
 
 inline
@@ -132,13 +109,6 @@ const DDBndry&
 DDOp::YBndry() const
 {
     return Ybd;
-}
-
-inline
-const DDBndry&
-DDOp::XBndry() const
-{
-    return Xbd;
 }
 
 inline

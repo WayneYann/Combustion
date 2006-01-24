@@ -1,5 +1,5 @@
 #include "DDOp_F.H"
-#include "ChemKinDriver_F.H"
+#include "ChemDriver_F.H"
 #include "ArrayLim.H"
 #include "CONSTANTS.H"
 
@@ -8,7 +8,7 @@
       subroutine FORT_DIFFFORCE(lo,hi,d,DIMS(d),
      &                          X,DIMS(X),T,DIMS(T),dx,dir)
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
       integer lo(SDIM)
       integer hi(SDIM)
       integer DIMDEC(d)
@@ -112,7 +112,7 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
      &                     fluxY, DIMS(fluxY), d, DIMS(d),
      &                     Ye, DIMS(Ye), Te, DIMS(Te), He, DIMS(He), dir)
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
       integer lo(SDIM), hi(SDIM), dir
       integer DIMDEC(fluxH)
       integer DIMDEC(fluxY)
@@ -199,15 +199,14 @@ c     Note: scalings get cgs quantities from EGLib to MKS (assume He,d come in M
       end
       
       subroutine FORT_INCRDIV(lo, hi, div, DIMS(div), V, DIMS(V),
-     &                        dx, dir, nc)
+     &                        dir, nc)
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
       integer lo(SDIM), hi(SDIM), dir, nc
       integer DIMDEC(div)
       integer DIMDEC(V)
       REAL_T div(DIMV(div) ,1)
       REAL_T   V(DIMV(V)   ,1)
-      REAL_T dx(SDIM)
 
       integer i,j,k,n
 
@@ -253,7 +252,7 @@ c     cancel, and we assume V is extensive (ie. Flux.Area)
       subroutine FORT_CPSCALE(lo,hi,lambda,DIMS(lambda),
      &                        Y,DIMS(Y),T,DIMS(T))
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
       integer lo(SDIM)
       integer hi(SDIM)
       integer DIMDEC(lambda)
@@ -286,7 +285,7 @@ c     cancel, and we assume V is extensive (ie. Flux.Area)
       subroutine FORT_THERM(lo, hi, lambda, DIMS(lambda),
      &                     Ye, DIMS(Ye), Te, DIMS(Te), dir)
       implicit none
-#include "ckdwrk.H"
+#include "cdwrk.H"
       integer lo(SDIM), hi(SDIM), dir
       integer DIMDEC(Ye)
       integer DIMDEC(Te)
@@ -397,15 +396,15 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       end
 
       subroutine FORT_CRSNCCBND(lo, hi, fine, DIMS(fine),
-     &                          crse, DIMS(crse), nc, face)
+     &                          crse, DIMS(crse), nc, face, ratio)
       integer lo(SDIM), hi(SDIM), nc
       integer DIMDEC(fine)
       integer DIMDEC(crse)
       REAL_T fine(DIMV(fine),nc)
       REAL_T crse(DIMV(crse),nc)
-      integer face
+      integer face, ratio
       
-      integer i,j,k,n, clo1, chi1, clo2, chi2, clo3, chi3, offset, dir
+      integer i,j,k,n,ii,jj,kk, clo1, chi1, clo2, chi2, clo3, chi3, offset, dir
       
       if ((face.EQ.0).OR.(face.EQ.3)) then
          dir = 0
@@ -432,9 +431,13 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
             do j=clo2,chi2
                do i=clo1,chi1
                   do n=1,nc
-                     crse(i,j,k,n) = 0.25d0 *
-     &                    ( fine(2*i+offset,2*j,2*k  ,n)+fine(2*i+offset,2*j+1,2*k  ,n)
-     &                    + fine(2*i+offset,2*j,2*k+1,n)+fine(2*i+offset,2*j+1,2*k+1,n))
+                     crse(i,j,k,n) = 0.d0
+                     do jj=1,ratio
+                        do kk=1,ratio
+                           crse(i,j,k,n) = crse(i,j,k,n) + fine(2*i+offset,2*j+jj-1,2*k+kk-1,n)
+                        enddo
+                     enddo
+                     crse(i,j,k,n) = crse(i,j,k,n) / (ratio*ratio)
                   enddo
                enddo
             enddo
@@ -450,9 +453,13 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
             do j=clo2,chi2
                do i=clo1,chi1
                   do n=1,nc
-                     crse(i,j,k,n) = 0.25d0 *
-     &                    ( fine(2*i,2*j+offset,2*k  ,n)+fine(2*i+1,2*j+offset,2*k  ,n)
-     &                    + fine(2*i,2*j+offset,2*k+1,n)+fine(2*i+1,2*j+offset,2*k+1,n))
+                     crse(i,j,k,n) = 0.d0
+                     do ii=1,ratio
+                        do kk=1,ratio
+                           crse(i,j,k,n) = crse(i,j,k,n) + fine(2*i+ii-1,2*j+offset,2*k+kk-1,n)
+                        enddo
+                     enddo
+                     crse(i,j,k,n) = crse(i,j,k,n) / (ratio*ratio)
                   enddo
                enddo
             enddo
@@ -468,9 +475,13 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
             do j=clo2,chi2
                do i=clo1,chi1
                   do n=1,nc
-                     crse(i,j,k,n) = 0.25d0 *
-     &                    ( fine(2*i,2*j  ,2*k+offset,n)+fine(2*i+1,2*j  ,2*k+offset,n)
-     &                    + fine(2*i,2*j+1,2*k+offset,n)+fine(2*i+1,2*j+1,2*k+offset,n))
+                     crse(i,j,k,n) = 0.d0
+                     do ii=1,ratio
+                        do jj=1,ratio
+                           crse(i,j,k,n) = crse(i,j,k,n) + fine(2*i+ii-1,2*j+jj-1,2*k+offset,n)
+                        enddo
+                     enddo
+                     crse(i,j,k,n) = crse(i,j,k,n) / (ratio*ratio)
                   enddo
                enddo
             enddo

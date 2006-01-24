@@ -51,24 +51,20 @@ DDOp::coarser_exists(int level) const
 }
 
 void
-DDOp::define (const BoxArray&      _grids,
-              const Box&           box,
-              const IntVect&       ratio,
-              int                  mgLevel)
+DDOp::define (const BoxArray& _grids,
+              const Box&      box,
+              const IntVect&  ratio,
+              int             mgLevel)
 {
     grids = _grids;
     Geometry geom(box);
     Tbd.define(grids,1,geom,mgLevel);
     Ybd.define(grids,ckdriver.numSpecies(),geom,mgLevel);
-    Xbd.define(grids,ckdriver.numSpecies(),geom,mgLevel);
     cfRatio = ratio;
     const int gGrow = 0;
     geom.GetVolume(volume,grids,gGrow);
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
         geom.GetFaceArea(area[dir],grids,dir,gGrow);
-
-    const int nGrowOp = 1;
-    Soln.define(grids,ckdriver.numSpecies()+1,nGrowOp,Fab_allocate);
 
     // Generate coarser one, if possible
     if (can_coarsen(grids))
@@ -132,7 +128,7 @@ coarsenBndryData(const MultiFab&      fmf,
             FORT_CRSNCCBND(fbox.loVect(), fbox.hiVect(),
                            ffab.dataPtr(fmf_sc), ARLIM(ffab.loVect()), ARLIM(ffab.hiVect()),
                            cfab.dataPtr(cmf_sc), ARLIM(cfab.loVect()), ARLIM(cfab.hiVect()),
-                           &nc, &face);
+                           &nc, &face, &cfRatio);
         }
     }
 
@@ -153,35 +149,36 @@ coarsenBndryData(const MultiFab&      fmf,
                 FORT_CRSNCCBND(fbox.loVect(), fbox.hiVect(),
                                ffab.dataPtr(fbr_sc), ARLIM(ffab.loVect()), ARLIM(ffab.hiVect()),
                                cfab.dataPtr(cbr_sc), ARLIM(cfab.loVect()), ARLIM(cfab.hiVect()),
-                               &nc, &face);
+                               &nc, &face, &cfRatio);
             }
         }
     }
 }                 
 
 void
-DDOp::setBoundaryData_Mass(const MultiFab&      fineT,
-                           int                  fStartT,
-                           const MultiFab&      fineY,
-                           int                  fStartY,
-                           const BndryRegister* cbrT,
-                           int                  cStartT,
-                           const BndryRegister* cbrY,
-                           int                  cStartY,
-                           const BCRec&         bcT,
-                           const BCRec&         bcY)
+DDOp::setBoundaryData(const MultiFab&      fineT,
+                      int                  fStartT,
+                      const MultiFab&      fineY,
+                      int                  fStartY,
+                      const BndryRegister* cbrT,
+                      int                  cStartT,
+                      const BndryRegister* cbrY,
+                      int                  cStartY,
+                      const BCRec&         bcT,
+                      const BCRec&         bcY)
 {
     BL_ASSERT(fineT.boxArray() == grids);
     BL_ASSERT(fineY.boxArray() == grids);
+    const int Nspec = ckdriver.numSpecies();
+
     if (coarser)
     {
-        const int nspecies = ckdriver.numSpecies();
-        const int newTmfComp = nspecies;
-        const int newTbrComp = nspecies;
+        const int newTmfComp = Nspec;
+        const int newTbrComp = Nspec;
         const int newYmfComp = 0;
         const int newYbrComp = 0;
         const BoxArray cBA = BoxArray(grids).coarsen(MGIV);
-        MultiFab newMF(cBA,nspecies+1,1);
+        MultiFab newMF(cBA,Nspec+1,1);
 #ifndef NDEBUG
         newMF.setVal(-1.0);
 #endif
@@ -192,7 +189,7 @@ DDOp::setBoundaryData_Mass(const MultiFab&      fineT,
             newBR = new BndryRegister();
             newBR->setBoxes(ccBA);
             for (OrientationIter fi; fi; ++fi)
-                newBR->define(fi(),IndexType::TheCellType(),0,1,1,nspecies+1);
+                newBR->define(fi(),IndexType::TheCellType(),0,1,1,Nspec+1);
 #ifndef NDEBUG
             newBR->setVal(-1.0);
 #endif
@@ -200,9 +197,9 @@ DDOp::setBoundaryData_Mass(const MultiFab&      fineT,
         coarsenBndryData(fineT,fStartT,cbrT,cStartT,
                          newMF,newTmfComp,newBR,newTbrComp,1);
         coarsenBndryData(fineY,fStartY,cbrY,cStartY,
-                         newMF,newYmfComp,newBR,newYbrComp,nspecies);
-        coarser->setBoundaryData_Mass(newMF,newTmfComp,newMF,newYmfComp,
-                                      newBR,newTbrComp,newBR,newYbrComp,bcT,bcY);
+                         newMF,newYmfComp,newBR,newYbrComp,Nspec);
+        coarser->setBoundaryData(newMF,newTmfComp,newMF,newYmfComp,
+                                 newBR,newTbrComp,newBR,newYbrComp,bcT,bcY);
     }
 
     IntVect ratio(cfRatio); // To avoid const problems
@@ -214,152 +211,40 @@ DDOp::setBoundaryData_Mass(const MultiFab&      fineT,
     {
         Tbd.setBndryValues(const_cast<BndryRegister&>(*cbrT),
                            cStartT,fineT,fStartT,0,1,ratio,bcT);
-    }
-
-    const int Nspec = ckdriver.numSpecies();
-    const int nGrow = 1;
-    MultiFab fineX(grids,Nspec,nGrow);
-    const int fStartX = 0;
-    for (MFIter mfi(fineX); mfi.isValid(); ++mfi)
-    {
-        const Box gbox = BoxLib::grow(mfi.validbox(),nGrow);
-        ckdriver.massFracToMoleFrac(fineX[mfi],fineY[mfi],gbox,fStartY,fStartX);
     }
 
     if (cbrY == 0)
     {
         Ybd.setBndryValues(fineY,fStartY,0,Nspec,bcY);
-        Xbd.setBndryValues(fineX,fStartX,0,Nspec,bcY);
     }
     else
     {
-        const BoxArray cbrGrids = BoxArray(grids).coarsen(cfRatio);
-        BndryRegister cbrX(cbrGrids,0,1,1,Nspec);
-        const int cStartX = 0;
-        for (OrientationIter oitr; oitr; ++oitr)
-        {
-            FabSet& fsX = cbrX[oitr()];
-            const FabSet& fsY = (*cbrY)[oitr()];
-            for (FabSetIter fsi(fsX); fsi.isValid(); ++fsi)
-            {
-                ckdriver.massFracToMoleFrac(fsX[fsi],fsY[fsi],fsX[fsi].box(),cStartY,cStartX);
-            }
-        }
         Ybd.setBndryValues(const_cast<BndryRegister&>(*cbrY),
                            cStartY,fineY,fStartY,0,Nspec,ratio,bcY);
-        Xbd.setBndryValues(cbrX,cStartX,fineX,fStartX,0,Nspec,ratio,bcY);
-    }
-}
-
-void
-DDOp::setBoundaryData_Mole(const MultiFab&      fineT,
-                           int                  fStartT,
-                           const MultiFab&      fineX,
-                           int                  fStartX,
-                           const BndryRegister* cbrT,
-                           int                  cStartT,
-                           const BndryRegister* cbrX,
-                           int                  cStartX,
-                           const BCRec&         bcT,
-                           const BCRec&         bcX)
-{
-    BL_ASSERT(fineT.boxArray() == grids);
-    BL_ASSERT(fineX.boxArray() == grids);
-    if (coarser)
-    {
-        const int nspecies = ckdriver.numSpecies();
-        const int newTmfComp = nspecies;
-        const int newTbrComp = nspecies;
-        const int newXmfComp = 0;
-        const int newXbrComp = 0;
-        const BoxArray cBA = BoxArray(grids).coarsen(MGIV);
-        MultiFab newMF(cBA,nspecies+1,1);
-        BoxArray ccBA = BoxArray(cBA).coarsen(MGIV);
-        BndryRegister* newBR = 0;
-        if (cbrT && cbrX && coarser->coarser)
-        {
-            newBR = new BndryRegister();
-            newBR->setBoxes(ccBA);
-            for (OrientationIter fi; fi; ++fi)
-                newBR->define(fi(),IndexType::TheCellType(),0,1,1,nspecies+1);
-        }
-        coarsenBndryData(fineT,fStartT,cbrT,cStartT,
-                         newMF,newTmfComp,newBR,newTbrComp,1);
-        coarsenBndryData(fineX,fStartX,cbrX,cStartX,
-                         newMF,newXmfComp,newBR,newXbrComp,nspecies);
-        coarser->setBoundaryData_Mole(newMF,newTmfComp,newMF,newXmfComp,
-                                      newBR,newTbrComp,newBR,newXbrComp,bcT,bcX);
-    }
-
-    IntVect ratio(cfRatio); // To avoid const problems
-    if (cbrT == 0)
-    {
-        Tbd.setBndryValues(fineT,fStartT,0,1,bcT);
-    }
-    else
-    {
-        Tbd.setBndryValues(const_cast<BndryRegister&>(*cbrT),
-                           cStartT,fineT,fStartT,0,1,ratio,bcT);
-    }
-
-    const int Nspec = ckdriver.numSpecies();
-    const int nGrow = 1;
-    MultiFab fineY(grids,Nspec,nGrow);
-    const int fStartY = 0;
-    for (MFIter mfi(fineY); mfi.isValid(); ++mfi)
-    {
-        const Box gbox = BoxLib::grow(mfi.validbox(),nGrow);
-        FArrayBox& Y = fineY[mfi];
-        const FArrayBox& X = fineX[mfi];
-        ckdriver.moleFracToMassFrac(Y,X,gbox,fStartX,fStartY);
-    }
-
-    if (cbrX == 0)
-    {
-        Xbd.setBndryValues(fineX,fStartX,0,Nspec,bcX);
-        Ybd.setBndryValues(fineY,fStartY,0,Nspec,bcX);
-    }
-    else
-    {
-        const BoxArray cbrGrids = BoxArray(grids).coarsen(cfRatio);
-        BndryRegister cbrY(cbrGrids,0,1,1,Nspec);
-        const int cStartY = 0;
-        for (OrientationIter oitr; oitr; ++oitr)
-        {
-            FabSet& fsY = cbrY[oitr()];
-            const FabSet& fsX = (*cbrX)[oitr()];
-            for (FabSetIter fsi(fsY); fsi.isValid(); ++fsi)
-            {
-                FArrayBox& Y = fsY[fsi];
-                const FArrayBox& X = fsY[fsi];
-                ckdriver.moleFracToMassFrac(Y,X,X.box(),cStartX,cStartY);
-            }
-        }
-        Xbd.setBndryValues(const_cast<BndryRegister&>(*cbrX),
-                           cStartX,fineX,fStartX,0,Nspec,ratio,bcX);
-        Ybd.setBndryValues(cbrY,cStartY,fineY,fStartY,0,Nspec,ratio,bcX);
     }
 }
 
 void
 DDOp::setGrowCells(MultiFab& T,
                    int       compT,
-                   MultiFab& X,
-                   int       compX) const
+                   MultiFab& Y,
+                   int       compY) const
 {
     BL_ASSERT(T.nGrow() >= 1);
-    BL_ASSERT(X.nGrow() >= 1);
+    BL_ASSERT(Y.nGrow() >= 1);
     const int Nspec = ckdriver.numSpecies();
 
     BL_ASSERT(T.nComp() > compT);
-    BL_ASSERT(X.nComp() >= compX + Nspec);
-    BL_ASSERT(&T != &X || (compT<compX || compT >= compX+Nspec));
+    BL_ASSERT(Y.nComp() >= compY + Nspec);
+    BL_ASSERT(&T != &Y || (compT<compY || compT >= compY+Nspec));
 
     BL_ASSERT(T.boxArray() == grids);
-    BL_ASSERT(X.boxArray() == grids);
+    BL_ASSERT(Y.boxArray() == grids);
 
     T.FillBoundary(compT,1);
-    X.FillBoundary(compX,Nspec);
+    Tbd.getGeom().FillPeriodicBoundary(T,compT,1);
+    Y.FillBoundary(compY,Nspec);
+    Ybd.getGeom().FillPeriodicBoundary(Y,compY,Nspec);
 
     const int flagbc  = 1;
     const int flagden = 0; // Use LinOp's bc interpolator, but don't save the coeff
@@ -377,10 +262,10 @@ DDOp::setGrowCells(MultiFab& T,
         const FabSet&            Tfs = Tbd.bndryValues(face);
         const int                Tnc = 1;
         
-        const Array<Array<BoundCond> >&  Xbc = Xbd.bndryConds(face);
-        const Array<Real>&      Xloc = Xbd.bndryLocs(face);
-        const FabSet&            Xfs = Xbd.bndryValues(face);
-        const int                Xnc = Nspec;
+        const Array<Array<BoundCond> >&  Ybc = Ybd.bndryConds(face);
+        const Array<Real>&      Yloc = Ybd.bndryLocs(face);
+        const FabSet&            Yfs = Ybd.bndryValues(face);
+        const int                Ync = Nspec;
 
         const int comp = 0;
         for (MFIter mfi(T); mfi.isValid(); ++mfi)
@@ -404,55 +289,21 @@ DDOp::setGrowCells(MultiFab& T,
                          dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
                          vbox.loVect(),vbox.hiVect(), &Tnc, dx);
 
-            FArrayBox& Xfab = X[mfi];
-            const FArrayBox& Xb = Xfs[mfi];
+            FArrayBox& Yfab = Y[mfi];
+            const FArrayBox& Yb = Yfs[mfi];
 
-            const Mask& Xm  = Xbd.bndryMasks(face)[idx];
-            const Real Xbcl = Xloc[idx];
-            const int Xbct  = Xbc[idx][comp];
+            const Mask& Ym  = Ybd.bndryMasks(face)[idx];
+            const Real Ybcl = Yloc[idx];
+            const int Ybct  = Ybc[idx][comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
-                         Xfab.dataPtr(compX), ARLIM(Xfab.loVect()), ARLIM(Xfab.hiVect()),
-                         &iFace, &Xbct, &Xbcl,
-                         Xb.dataPtr(), ARLIM(Xb.loVect()), ARLIM(Xb.hiVect()),
-                         Xm.dataPtr(), ARLIM(Xm.loVect()), ARLIM(Xm.hiVect()),
+                         Yfab.dataPtr(compY), ARLIM(Yfab.loVect()), ARLIM(Yfab.hiVect()),
+                         &iFace, &Ybct, &Ybcl,
+                         Yb.dataPtr(), ARLIM(Yb.loVect()), ARLIM(Yb.hiVect()),
+                         Ym.dataPtr(), ARLIM(Ym.loVect()), ARLIM(Ym.hiVect()),
                          dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
-                         vbox.loVect(),vbox.hiVect(), &Xnc, dx);
+                         vbox.loVect(),vbox.hiVect(), &Ync, dx);
         }
-    }
-}
-
-void
-DDOp::cellToEdge(MultiFab&       Te,
-                 int             dCompTe,
-                 MultiFab&       Ye,
-                 int             dCompYe,
-                 const MultiFab& Tc,
-                 int             sCompTc,
-                 const MultiFab& Yc,
-                 int             sCompYc,
-                 int             nGrow,
-                 int             dir) const
-{
-    // Assumes nGrow grow cells properly filled for Tc and Yc
-    BL_ASSERT(Tc.nGrow() >= 1);
-    BL_ASSERT(Yc.nGrow() >= 1);
-    const int Nspec = ckdriver.numSpecies();
-    BL_ASSERT(Tc.boxArray() == grids);
-    BL_ASSERT(Yc.boxArray() == grids);
-
-    BL_ASSERT(Tc.nComp() > sCompTc);
-    BL_ASSERT(Yc.nComp() >= sCompYc + Nspec);
-    BL_ASSERT(&Tc != &Yc || (sCompTc<sCompYc || sCompTc >= sCompYc+Nspec));
-    BL_ASSERT(Te.nComp() > dCompTe);
-    BL_ASSERT(Ye.nComp() >= dCompYe + Nspec);
-    BL_ASSERT(&Te != &Ye || (dCompTe<dCompYe || dCompTe >= dCompYe+Nspec));
-
-    for (MFIter mfi(Tc); mfi.isValid(); ++mfi)
-    {
-        const Box gbox = BoxLib::grow(mfi.validbox(),nGrow);
-        center_to_edge(T[mfi],Te[mfi],gbox,0,dCompTe,1);
-        center_to_edge(Y[mfi],Ye[mfi],gbox,0,dCompYe,Nspec);
     }
 }
 
@@ -480,6 +331,7 @@ DDOp::applyOp(MultiFab&         outH,
     }
 
     const int Nspec = ckdriver.numSpecies();
+    const int nGrow = 1;
 
     BL_ASSERT(outH.nComp() > dCompH);
     BL_ASSERT(outY.nComp() >= dCompY + Nspec);
@@ -489,109 +341,92 @@ DDOp::applyOp(MultiFab&         outH,
     BL_ASSERT(outY.boxArray() == grids);
     BL_ASSERT(inT.boxArray() == grids);
     BL_ASSERT(inY.boxArray() == grids);
+    BL_ASSERT(inT.nGrow() >= nGrow);
+    BL_ASSERT(inY.nGrow() >= nGrow);
 
-    // Need grow cells in X,T to compute forcing, and edge values of Y,T for evaluating coeffs
+    // Need grow cells in X,T to compute forcing, and to get Ye for evaluating coeffs
     // Promise to change only the grow cells in T,Y
     setGrowCells(const_cast<MultiFab&>(inT),sCompT,const_cast<MultiFab&>(inY),sCompY);
 
-    // Get CC mole fractions over valid+nGrow
-    const int nGrow = 1;
-    MultiFab inX(grids,Nspec,nGrow);
-    const int sCompX = 0;
-    for (MFIter mfi(inX); mfi.isValid(); ++mfi)
-    {
-        const Box gbox = BoxLib::grow(mfi.validbox(),nGrow);
-        ckdriver.massFracToMoleFrac(inX[mfi],inY[mfi],gbox,sCompY,sCompX);
-    }
-
-    // Compute edge-based T and Y for evaluating diffusion fluxes
+    // Get diffusion flux divergence
+    const Real* dx = Tbd.getGeom().CellSize();
+    FArrayBox de, et, Xc, TYe, Hie;
+    const int sCompde = 0;
+    const int sCompXc = 0;
     const int sCompTe = Nspec;
     const int sCompYe = 0;
-    PArray<MultiFab> TYe(BL_SPACEDIM,PArrayManage);
-    for (int dir = 0; dir < BL_SPACEDIM; dir++)
-    {
-        TYe.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
-                                 Nspec+1,0,Fab_allocate));
-        cellToEdge(TYe[dir],sCompTe,TYe[dir],sCompYe,inT,sCompT,inY,sCompY,dir);
-    }
 
-    // Get fluxes
-    const Real* dx = Tbd.getGeom().CellSize();
-    FArrayBox de, He, X, Y;
-    const int sCompd = 0;
+    // Allocate/initialize output multifabs
+    outH.setVal(0.0,dCompH,1);
+    outY.setVal(0.0,dCompY,Nspec);
+
     for (MFIter mfi(inY); mfi.isValid(); ++mfi)
     {
-        const FArrayBox& Y = inY[mfi];
-        const FArrayBox& X = inX[mfi];
-        const FArrayBox& T = inT[mfi];
+        FArrayBox& outHc = outH[mfi];
+        FArrayBox& outYc = outY[mfi];
+        const FArrayBox& Yc = inY[mfi];
+        const FArrayBox& Tc = inT[mfi];
+        const Box& box = mfi.validbox();
+        const Box gbox = BoxLib::grow(box,nGrow);
+
+        // Get cc mole frac in valid+grow so that we can compute grad(X)
+        ckdriver.massFracToMoleFrac(Xc,Yc,gbox,sCompY,sCompXc);
 
         for (int i=0; i<BL_SPACEDIM; ++i)
         {
-            const int idx = mfi.index();
-            const Box& box = grids[idx];
-            const Box gbox = BoxLib::grow(box,nGrow);
             const Box ebox = BoxLib::surroundingNodes(box,i);
-            de.resize(ebox,Nspec+1);
+            de.resize(ebox,Nspec+1); // force on edge
+            TYe.resize(ebox,Nspec+1); // state on edge
 
-            // CC X,T in and EC de out
+            // Get ec values from cc values
+            center_to_edge(Tc,TYe,gbox,0,sCompTe,1);
+            center_to_edge(Yc,TYe,gbox,0,sCompYe,Nspec);
+
+            // cc X,T in and ec de out
             FORT_DIFFFORCE(box.loVect(),box.hiVect(),
-                           de.dataPtr(sCompd),ARLIM(de.loVect()),ARLIM(de.hiVect()),
-                           X.dataPtr(sCompX), ARLIM(X.loVect()), ARLIM(X.hiVect()),
-                           T.dataPtr(sCompT), ARLIM(T.loVect()), ARLIM(T.hiVect()),
+                           de.dataPtr(sCompde),ARLIM(de.loVect()),ARLIM(de.hiVect()),
+                           Xc.dataPtr(sCompXc),ARLIM(Xc.loVect()),ARLIM(Xc.hiVect()),
+                           Tc.dataPtr(sCompT), ARLIM(Tc.loVect()),ARLIM(Tc.hiVect()),
                            dx, &i);
 
             // Get h_i(Te) on edge temperature
-            He.resize(ebox,Nspec);
-            ckdriver.getHGivenT(He,TYe[i][mfi],ebox,sCompTe,0);
+            Hie.resize(ebox,Nspec);
+            ckdriver.getHGivenT(Hie,TYe,ebox,sCompTe,0);
 
             // Get diffusion fluxes on edges based on edge state/forces
+            FArrayBox& Hfl = fluxH[i][mfi];
+            FArrayBox& Yfl = fluxY[i][mfi];
             FORT_FLUX(box.loVect(),box.hiVect(),
-                      fluxH[i][mfi].dataPtr(dCompFH),ARLIM(fluxH[i][mfi].loVect()),ARLIM(fluxH[i][mfi].hiVect()),
-                      fluxY[i][mfi].dataPtr(dCompFY),ARLIM(fluxY[i][mfi].loVect()),ARLIM(fluxY[i][mfi].hiVect()),
-                      de.dataPtr(),ARLIM(de.loVect()),ARLIM(de.hiVect()),
-                      TYe[i][mfi].dataPtr(sCompYe), ARLIM(TYe[i][mfi].loVect()),ARLIM(TYe[i][mfi].hiVect()),
-                      TYe[i][mfi].dataPtr(sCompTe), ARLIM(TYe[i][mfi].loVect()),ARLIM(TYe[i][mfi].hiVect()),
-                      He.dataPtr(),ARLIM(He.loVect()),ARLIM(He.hiVect()),
+                      Hfl.dataPtr(dCompFH),ARLIM(Hfl.loVect()),ARLIM(Hfl.hiVect()),
+                      Yfl.dataPtr(dCompFY),ARLIM(Yfl.loVect()),ARLIM(Yfl.hiVect()),
+                      de.dataPtr(),        ARLIM(de.loVect()), ARLIM(de.hiVect()),
+                      TYe.dataPtr(sCompYe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
+                      TYe.dataPtr(sCompTe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
+                      Hie.dataPtr(),       ARLIM(Hie.loVect()),ARLIM(Hie.hiVect()),
                       &i);
 
             // Multiply fluxes times edge areas
-            fluxH[i][mfi].mult(area[i][mfi],0,dCompFH,1);
+            Hfl.mult(area[i][mfi],0,dCompFH,1);
             for (int n=0; n<Nspec; ++n)
-                fluxY[i][mfi].mult(area[i][mfi],0,dCompFY+n,1);
-        }
-    }
+                Yfl.mult(area[i][mfi],0,dCompFY+n,1);
 
-    // Compute flux divergence ( really, Div(flux.Area.dx)/Vol )
-    outH.setVal(0.0,dCompH,1);
-    outY.setVal(0.0,dCompY,Nspec);
-    Array<Real> h1(BL_SPACEDIM,1.0);
-    for (MFIter mfi(outH); mfi.isValid(); ++mfi)
-    {
-        const Box& box = mfi.validbox();
-        FArrayBox Hfab = outH[mfi];
-        FArrayBox Yfab = outY[mfi];
-
-        for (int i=0; i<BL_SPACEDIM; ++i)
-        {
-            const FArrayBox& Hfl = fluxH[i][mfi];
-            const FArrayBox& Yfl = fluxY[i][mfi];
-
+            // Now get flux divergences ( really, Div(flux.Area.dx)/Vol -> dx cancels, not needed )
             const int ncH = 1;
             FORT_INCRDIV(box.loVect(),box.hiVect(),
-                         Hfab.dataPtr(dCompH), ARLIM(Hfab.loVect()), ARLIM(Hfab.hiVect()),
+                         outHc.dataPtr(dCompH),ARLIM(outHc.loVect()),ARLIM(outHc.hiVect()),
                          Hfl.dataPtr(dCompFH), ARLIM(Hfl.loVect()),  ARLIM(Hfl.hiVect()),
-                         h1.dataPtr(), &i, &ncH);
+                         &i, &ncH);
 
             FORT_INCRDIV(box.loVect(),box.hiVect(),
-                         Yfab.dataPtr(dCompY), ARLIM(Yfab.loVect()), ARLIM(Yfab.hiVect()),
+                         outYc.dataPtr(dCompY),ARLIM(outYc.loVect()),ARLIM(outYc.hiVect()),
                          Yfl.dataPtr(dCompFY), ARLIM(Yfl.loVect()),  ARLIM(Yfl.hiVect()),
-                         h1.dataPtr(), &i, &Nspec);
+                         &i, &Nspec);
         }
 
         const FArrayBox& v = volume[mfi];
-        Hfab.divide(v,0,dCompH,1);
+        outHc.divide(v,0,dCompH,1);
         for (int n=0; n<Nspec; ++n)
-            Yfab.divide(v,0,dCompY+n,1);
+            outYc.divide(v,0,dCompY+n,1);
     }
     // Flux returned is extensive (i.e. flux.Area)
 }
@@ -613,19 +448,22 @@ DDOp::setRelax(MultiFab&         lambda,
     }
 
     const int Nspec = ckdriver.numSpecies();
+    const int nGrow = 1;
 
     BL_ASSERT(lambda.nComp() > dCompH);
     BL_ASSERT(&inT != &inY || (sCompT<sCompY || sCompT >= sCompY+Nspec));
     BL_ASSERT(lambda.boxArray() == grids);
     BL_ASSERT(inT.boxArray() == grids);
     BL_ASSERT(inY.boxArray() == grids);
+    BL_ASSERT(inT.nGrow() >= nGrow);
+    BL_ASSERT(inY.nGrow() >= nGrow);
 
     // Need grow cells in X,T to get edge values of Y,T for evaluating relax factor
     // Promise to change only the grow cells in T,Y
     setGrowCells(const_cast<MultiFab&>(inT),sCompT,const_cast<MultiFab&>(inY),sCompY);
 
     // Get relax factor
-    FARrayBox TYe;
+    FArrayBox TYe;
     const int sCompTe = Nspec;
     const int sCompYe = 0;
     const Real* dx = Tbd.getGeom().CellSize();
@@ -644,17 +482,16 @@ DDOp::setRelax(MultiFab&         lambda,
             TYe.resize(ebox,Nspec+1);
 
             // Get edge values from center values of input data
-            center_to_edge(Tc,TYe,gbox,0,dCompTe,1);
-            center_to_edge(Yc,TYe,gbox,0,dCompYe,Nspec);
+            center_to_edge(Tc,TYe,gbox,0,sCompTe,1);
+            center_to_edge(Yc,TYe,gbox,0,sCompYe,Nspec);
 
             // Compute thermal conductivity using edge-based data
             FORT_THERM(box.loVect(),box.hiVect(),
-                       lam.dataPtr(dCompH),ARLIM(lam.loVect()),ARLIM(lam.hiVect()),
-                       TYe.dataPtr(sCompYe),ARLIM(Ye.loVect()), ARLIM(Ye.hiVect()),
-                       TYe.dataPtr(sCompTe),ARLIM(Te.loVect()), ARLIM(Te.hiVect()),
+                       lam.dataPtr(dCompH), ARLIM(lam.loVect()),ARLIM(lam.hiVect()),
+                       TYe.dataPtr(sCompYe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
+                       TYe.dataPtr(sCompTe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
                        &i);
         }
-
         
         // Compute lambda / cpmix using cell-centered input data
         FORT_CPSCALE(box.loVect(),box.hiVect(),
@@ -663,7 +500,6 @@ DDOp::setRelax(MultiFab&         lambda,
                      Tc.dataPtr(sCompT), ARLIM(Tc.loVect()), ARLIM(Tc.hiVect()));
 
     }
-
 }
 
 void
