@@ -88,6 +88,7 @@ DDOp::center_to_edge (const FArrayBox& cfab,
                       int              dComp,
                       int              nComp) const
 {
+    // Compute data on edges between each pair of cc values in the dir direction
     const Box&      ebox = efab.box();
     const IndexType ixt  = ebox.ixType();
 
@@ -430,8 +431,10 @@ DDOp::cellToEdge(MultiFab&       Te,
                  int             sCompTc,
                  const MultiFab& Yc,
                  int             sCompYc,
+                 int             nGrow,
                  int             dir) const
 {
+    // Assumes nGrow grow cells properly filled for Tc and Yc
     BL_ASSERT(Tc.nGrow() >= 1);
     BL_ASSERT(Yc.nGrow() >= 1);
     const int Nspec = ckdriver.numSpecies();
@@ -445,107 +448,11 @@ DDOp::cellToEdge(MultiFab&       Te,
     BL_ASSERT(Ye.nComp() >= dCompYe + Nspec);
     BL_ASSERT(&Te != &Ye || (dCompTe<dCompYe || dCompTe >= dCompYe+Nspec));
 
-    const int nGrow = 1;
-    MultiFab T(grids,1,nGrow,Fab_allocate);
-    MultiFab Y(grids,Nspec,nGrow,Fab_allocate);
-    for (MFIter mfi(T); mfi.isValid(); ++mfi)
+    for (MFIter mfi(Tc); mfi.isValid(); ++mfi)
     {
-        const Box& box = mfi.validbox();
-        T[mfi].copy(Tc[mfi],box,sCompTc,box,0,1);
-        Y[mfi].copy(Yc[mfi],box,sCompYc,box,0,Nspec);
-    }
-    
-    const Real bogusVal = -1.e20;
-    T.setBndry(bogusVal,0,1);
-    Y.setBndry(bogusVal,0,Nspec);
-    T.FillBoundary(0,1);
-    Y.FillBoundary(0,Nspec);
-
-    // Simple averaging will get interior edges, and fine-fine edges correct
-    // The stuff below will fix up c-f and phys bc's
-    for (MFIter mfi(T); mfi.isValid(); ++mfi)
-    {
-        const Box& gbox = BoxLib::grow(mfi.validbox(),nGrow);
+        const Box gbox = BoxLib::grow(mfi.validbox(),nGrow);
         center_to_edge(T[mfi],Te[mfi],gbox,0,dCompTe,1);
         center_to_edge(Y[mfi],Ye[mfi],gbox,0,dCompYe,Nspec);
-    }
-
-    // Now, use LinOp's interp stuff to get edge values on c-f and phys bc
-    const int flagbc  = 1;
-    const int flagden = 0; // Use LinOp's bc interpolator, but don't save the coeff
-    const int maxorder = 3;
-    const Real xInt = 0.0; // Grow cell location wrt face, in dx units, +ve inward
-    Real* dummy;
-    Box dumbox(IntVect(D_DECL(0,0,0)),IntVect(D_DECL(0,0,0)));
-    const Real* dx = Tbd.getGeom().CellSize();
-    Orientation face(dir,Orientation::low);
-    for (int side=0; side<2; ++side, face = face.flip())
-    {
-        const int              iFace = (int)face;
-
-        const Array<Array<BoundCond> >&  Tbc = Tbd.bndryConds(face);
-        const Array<Real>&      Tloc = Tbd.bndryLocs(face);
-        const FabSet&            Tfs = Tbd.bndryValues(face);
-        const int                Tnc = 1;
-        
-        const Array<Array<BoundCond> >&  Ybc = Ybd.bndryConds(face);
-        const Array<Real>&      Yloc = Ybd.bndryLocs(face);
-        const FabSet&            Yfs = Ybd.bndryValues(face);
-        const int                Ync = Nspec;
-
-        const int comp = 0;
-        for (MFIter mfi(T); mfi.isValid(); ++mfi)
-        {
-            const int idx = mfi.index();
-            const Box& vbox = mfi.validbox();
-            BL_ASSERT(grids[idx] == vbox);
-            const Box gbox = BoxLib::grow(vbox,nGrow);
-
-            FArrayBox& Tfab = T[mfi];
-            FArrayBox& Tefab = Te[mfi];
-            const FArrayBox& Tb = Tfs[mfi];
-            
-            const Mask& Tm  = Tbd.bndryMasks(face)[idx];
-            const Real Tbcl = Tloc[idx];
-            const int Tbct  = Tbc[idx][0];
-
-            // Shift edge data to look like cell data for interpolator
-            IntVect iv(D_DECL(0,0,0));
-            if (face.isLow())
-                iv = -BoxLib::BASISV(dir);
-
-            Tefab.shift(iv);
-            // FIXME  Before update, Tefab passed into this routine just after Tfab
-            //   xInt==0 used to be the last arg, indicating where grow cells lived, in dx units
-            FORT_APPLYBC(&flagden, &flagbc, &maxorder,
-                         Tefab.dataPtr(dCompTe), ARLIM(Tefab.loVect()), ARLIM(Tefab.hiVect()),
-                         &iFace, &Tbct, &Tbcl,
-                         Tb.dataPtr(), ARLIM(Tb.loVect()), ARLIM(Tb.hiVect()),
-                         Tm.dataPtr(), ARLIM(Tm.loVect()), ARLIM(Tm.hiVect()),
-                         dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
-                         vbox.loVect(),vbox.hiVect(), &Tnc, dx);
-            Tefab.shift(-iv);
-
-            FArrayBox& Yfab = Y[mfi];
-            FArrayBox& Yefab = Ye[mfi];
-            const FArrayBox& Yb = Yfs[mfi];
-
-            const Mask& Ym  = Ybd.bndryMasks(face)[idx];
-            const Real Ybcl = Yloc[idx];
-            const int Ybct  = Ybc[idx][0];
-            
-            Yefab.shift(iv);
-            // FIXME  Before update, Yefab passed into this routine just after Yfab
-            //   xInt==0 used to be the last arg, indicating where grow cells lived, in dx units
-            FORT_APPLYBC(&flagden, &flagbc, &maxorder,
-                         Yefab.dataPtr(), ARLIM(Yfab.loVect()), ARLIM(Yfab.hiVect()),
-                         &iFace, &Ybct, &Ybcl,
-                         Yb.dataPtr(), ARLIM(Yb.loVect()), ARLIM(Yb.hiVect()),
-                         Ym.dataPtr(), ARLIM(Ym.loVect()), ARLIM(Ym.hiVect()),
-                         dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
-                         vbox.loVect(),vbox.hiVect(), &Ync, dx);
-            Yefab.shift(-iv);
-        }
     }
 }
 
@@ -583,16 +490,21 @@ DDOp::applyOp(MultiFab&         outH,
     BL_ASSERT(inT.boxArray() == grids);
     BL_ASSERT(inY.boxArray() == grids);
 
-    // Get CC mole fractions over valid (for computing forces)
+    // Need grow cells in X,T to compute forcing, and edge values of Y,T for evaluating coeffs
+    // Promise to change only the grow cells in T,Y
+    setGrowCells(const_cast<MultiFab&>(inT),sCompT,const_cast<MultiFab&>(inY),sCompY);
+
+    // Get CC mole fractions over valid+nGrow
     const int nGrow = 1;
     MultiFab inX(grids,Nspec,nGrow);
     const int sCompX = 0;
     for (MFIter mfi(inX); mfi.isValid(); ++mfi)
     {
-        ckdriver.massFracToMoleFrac(inX[mfi],inY[mfi],mfi.validbox(),sCompY,sCompX);
+        const Box gbox = BoxLib::grow(mfi.validbox(),nGrow);
+        ckdriver.massFracToMoleFrac(inX[mfi],inY[mfi],gbox,sCompY,sCompX);
     }
 
-    // Need edge-based T and Y for evaluating diffusion fluxes below
+    // Compute edge-based T and Y for evaluating diffusion fluxes
     const int sCompTe = Nspec;
     const int sCompYe = 0;
     PArray<MultiFab> TYe(BL_SPACEDIM,PArrayManage);
@@ -603,10 +515,6 @@ DDOp::applyOp(MultiFab&         outH,
         cellToEdge(TYe[dir],sCompTe,TYe[dir],sCompYe,inT,sCompT,inY,sCompY,dir);
     }
 
-    // Need grow cells in X,T to compute diffusion force below
-    // Promise to change only the grow cells in T
-    setGrowCells(const_cast<MultiFab&>(inT),sCompT,inX,sCompX);
-    
     // Get fluxes
     const Real* dx = Tbd.getGeom().CellSize();
     FArrayBox de, He, X, Y;
@@ -712,55 +620,41 @@ DDOp::setRelax(MultiFab&         lambda,
     BL_ASSERT(inT.boxArray() == grids);
     BL_ASSERT(inY.boxArray() == grids);
 
-    // Get mole fractions over valid
-    const int nGrow = 1;
-    MultiFab inX(grids,Nspec,nGrow);
-    const int sCompX = 0;
-    for (MFIter mfi(inX); mfi.isValid(); ++mfi)
-    {
-        FArrayBox& X = inX[mfi];
-        const FArrayBox& Y = inY[mfi];
-        ckdriver.massFracToMoleFrac(X,Y,mfi.validbox(),sCompY,sCompX);
-    }
+    // Need grow cells in X,T to get edge values of Y,T for evaluating relax factor
+    // Promise to change only the grow cells in T,Y
+    setGrowCells(const_cast<MultiFab&>(inT),sCompT,const_cast<MultiFab&>(inY),sCompY);
 
-    // Need edge-based T and Y for evaluating conductivity below
+    // Get relax factor
+    FARrayBox TYe;
     const int sCompTe = Nspec;
     const int sCompYe = 0;
-    PArray<MultiFab> TYe(BL_SPACEDIM,PArrayManage);
-    for (int dir = 0; dir < BL_SPACEDIM; dir++)
-    {
-        TYe.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
-                                 Nspec+1,0,Fab_allocate));
-        cellToEdge(TYe[dir],sCompTe,TYe[dir],sCompYe,inT,sCompT,inY,sCompY,dir);
-    }
-
-    // Need grow cells in X,T to compute diffusion force below
-    // Promise to change only the grow cells in T
-    setGrowCells(const_cast<MultiFab&>(inT),sCompT,inX,sCompX);
-    
-    // Get fluxes
     const Real* dx = Tbd.getGeom().CellSize();
     for (MFIter mfi(lambda); mfi.isValid(); ++mfi)
     {
         FArrayBox& lam = lambda[mfi];
+        const FArrayBox Yc = inY[mfi];
+        const FArrayBox Tc = inT[mfi];
+
         const Box& box = mfi.validbox();
+        const Box gbox = BoxLib::grow(box,nGrow);
 
         for (int i=0; i<BL_SPACEDIM; ++i)
         {
-            const FArrayBox& Te = TYe[i][mfi];
-            const FArrayBox& Ye = TYe[i][mfi];
+            Box ebox = BoxLib::surroundingNodes(box,i);
+            TYe.resize(ebox,Nspec+1);
+
+            // Get edge values from center values of input data
+            center_to_edge(Tc,TYe,gbox,0,dCompTe,1);
+            center_to_edge(Yc,TYe,gbox,0,dCompYe,Nspec);
 
             // Compute thermal conductivity using edge-based data
             FORT_THERM(box.loVect(),box.hiVect(),
                        lam.dataPtr(dCompH),ARLIM(lam.loVect()),ARLIM(lam.hiVect()),
-                       Ye.dataPtr(sCompYe),ARLIM(Ye.loVect()), ARLIM(Ye.hiVect()),
-                       Te.dataPtr(sCompTe),ARLIM(Te.loVect()), ARLIM(Te.hiVect()),
+                       TYe.dataPtr(sCompYe),ARLIM(Ye.loVect()), ARLIM(Ye.hiVect()),
+                       TYe.dataPtr(sCompTe),ARLIM(Te.loVect()), ARLIM(Te.hiVect()),
                        &i);
-
         }
 
-        const FArrayBox Yc = inY[mfi];
-        const FArrayBox Tc = inT[mfi];
         
         // Compute lambda / cpmix using cell-centered input data
         FORT_CPSCALE(box.loVect(),box.hiVect(),

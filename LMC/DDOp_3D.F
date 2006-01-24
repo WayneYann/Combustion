@@ -73,28 +73,24 @@
 
       integer i,j,k,n
 
-c     Here, (lo,hi) is a "validbox" grown by 1, and the cc data is assumed computable
-c     over this box--so that the edge data will be filled on the surroundingNodes of
-c     (lo,hi) grown by -1 in the dir direction.  It is intended that this routine take
-c     cc data that has been MF::FillBoundary-d, so that edges at f-f boundaries
-c     will get good data.  Something more clever needs to be done to get phys
-c     and c-f edges filled correctly.
+c     Here, the cc data is assumed to be computable over the box (lo,hi) 
+c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       if (dir .EQ. 0) then
          do n = 1,nc
-            do k = lo(3)+1, hi(3)-1
-               do j = lo(2)+1, hi(2)-1
+            do k = lo(3), hi(3)
+               do j = lo(2), hi(2)
                   do i = lo(1)+1, hi(1)
-                     efab(i,j,k,n) = half*(cfab(i,j,k,n) + cfab(i-1,j,k,n))
+                     efab(i,j,k,n) = half*(cfab(i-1,j,k,n) + cfab(i,j,k,n))
                   enddo
                enddo
             enddo
          enddo
       else if (dir .EQ. 1) then
          do n = 1,nc
-            do k = lo(3)+1, hi(3)-1
+            do k = lo(3), hi(3)
                do j = lo(2)+1, hi(2)
-                  do i = lo(1)+1, hi(1)-1
-                     efab(i,j,k,n) = half*(cfab(i,j,k,n) + cfab(i,j-1,k,n))
+                  do i = lo(1), hi(1)
+                     efab(i,j,k,n) = half*(cfab(i,j-1,k,n) + cfab(i,j,k,n))
                   enddo
                enddo
             enddo
@@ -102,9 +98,9 @@ c     and c-f edges filled correctly.
       else
          do n = 1,nc
             do k = lo(3)+1, hi(3)
-               do j = lo(2)+1, hi(2)-1
-                  do i = lo(1)+1, hi(1)-1
-                     efab(i,j,k,n) = half*(cfab(i,j,k,n) + cfab(i,j,k-1,n))
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)
+                     efab(i,j,k,n) = half*(cfab(i,j,k-1,n) + cfab(i,j,k,n))
                   enddo
                enddo
             enddo

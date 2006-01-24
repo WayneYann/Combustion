@@ -58,25 +58,21 @@
 
       integer i,j,n
 
-c     Here, (lo,hi) is a "validbox", and the cc data is assumed computable
-c     over 1 grow cell past this box--so that the edge data will be filled on the
-c     surroundingNodes of (lo,hi).  It is intended that this routine take
-c     cc data that has been MF::FillBoundary-d, so that edges at f-f boundaries
-c     will get good data.  Something more clever needs to be done to get phys
-c     and c-f edges filled correctly.
+c     Here, the cc data is assumed to be computable over the box (lo,hi) 
+c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       if (dir .EQ. 0) then
          do n = 1,nc
-            do j = lo(2)+1, hi(2)-1
+            do j = lo(2), hi(2)
                do i = lo(1)+1, hi(1)
-                  efab(i,j,n) = half*(cfab(i,j,n) + cfab(i-1,j,n))
+                  efab(i,j,n) = half*(cfab(i-1,j,n) + cfab(i,j,n))
                end do
             end do
          end do
       else
          do n = 1,nc
-            do i = lo(1)+1, hi(1)-1
+            do i = lo(1), hi(1)
                do j = lo(2)+1, hi(2)
-                  efab(i,j,n) = half*(cfab(i,j,n) + cfab(i,j-1,n))
+                  efab(i,j,n) = half*(cfab(i,j-1,n) + cfab(i,j,n))
                end do
             end do
          end do
