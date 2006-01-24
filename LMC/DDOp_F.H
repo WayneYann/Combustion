@@ -77,7 +77,6 @@ extern "C" {
                    const Real* lam, ARLIM_P(lamlo),   ARLIM_P(lamhi),
                    const Real* Ye, ARLIM_P(Yelo),   ARLIM_P(Yehi),
                    const Real* Te, ARLIM_P(Telo),   ARLIM_P(Tehi),
-                   const Real* He, ARLIM_P(Helo),   ARLIM_P(Hehi),
                    const int* i);
 
     void FORT_CPSCALE(const int* lo, const int* hi,

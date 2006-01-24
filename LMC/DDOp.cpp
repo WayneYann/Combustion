@@ -305,11 +305,12 @@ DDOp::setBoundaryData_Mole(const MultiFab&      fineT,
     const int nGrow = 1;
     MultiFab fineY(grids,Nspec,nGrow);
     const int fStartY = 0;
-    for (MultiFabIterator Ymfi(fineY); Ymfi.isValid(); ++Ymfi)
+    for (MFIter mfi(fineY); mfi.isValid(); ++mfi)
     {
-        const Box gbox = BoxLib::grow(Ymfi.validbox(),nGrow);
-        DependentMultiFabIterator Xmfi(Ymfi, fineX);
-        ckdriver.moleFracToMassFrac(Ymfi(),Xmfi(),gbox,fStartX,fStartY);
+        const Box gbox = BoxLib::grow(mfi.validbox(),nGrow);
+        FArrayBox& Y = fineY[mfi];
+        const FArrayBox& X = fineX[mfi];
+        ckdriver.moleFracToMassFrac(Y,X,gbox,fStartX,fStartY);
     }
 
     if (cbrX == 0)
@@ -324,10 +325,13 @@ DDOp::setBoundaryData_Mole(const MultiFab&      fineT,
         const int cStartY = 0;
         for (OrientationIter oitr; oitr; ++oitr)
         {
-            for (FabSetIterator Yfsi(cbrY[oitr()]); Yfsi.isValid(); ++Yfsi)
+            FabSet& fsY = cbrY[oitr()];
+            const FabSet& fsX = (*cbrX)[oitr()];
+            for (FabSetIter fsi(fsY); fsi.isValid(); ++fsi)
             {
-                DependentFabSetIterator Xfsi(Yfsi, (*cbrX)[oitr()]);
-                ckdriver.moleFracToMassFrac(Yfsi(),Xfsi(),Xfsi().box(),cStartX,cStartY);
+                FArrayBox& Y = fsY[fsi];
+                const FArrayBox& X = fsY[fsi];
+                ckdriver.moleFracToMassFrac(Y,X,X.box(),cStartX,cStartY);
             }
         }
         Xbd.setBndryValues(const_cast<BndryRegister&>(*cbrX),
@@ -359,7 +363,6 @@ DDOp::setGrowCells(MultiFab& T,
     const int flagbc  = 1;
     const int flagden = 0; // Use LinOp's bc interpolator, but don't save the coeff
     const int maxorder = 3;
-    const Real xInt = -0.5; // Grow cell location wrt face, in dx units, +ve inward
     Real* dummy;
     Box dumbox(IntVect(D_DECL(0,0,0)),IntVect(D_DECL(0,0,0)));
     const Real* dx = Tbd.getGeom().CellSize();
@@ -368,56 +371,52 @@ DDOp::setGrowCells(MultiFab& T,
         const Orientation&      face = oitr();
         const int              iFace = (int)face;
 
-        const Array<BoundCond>&  Tbc = Tbd.bndryConds(face);
+        const Array<Array<BoundCond> >& Tbc = Tbd.bndryConds(face);
         const Array<Real>&      Tloc = Tbd.bndryLocs(face);
         const FabSet&            Tfs = Tbd.bndryValues(face);
         const int                Tnc = 1;
         
-        const Array<BoundCond>&  Xbc = Xbd.bndryConds(face);
+        const Array<Array<BoundCond> >&  Xbc = Xbd.bndryConds(face);
         const Array<Real>&      Xloc = Xbd.bndryLocs(face);
         const FabSet&            Xfs = Xbd.bndryValues(face);
         const int                Xnc = Nspec;
 
-        for (MultiFabIterator Tmfi(T); Tmfi.isValid(); ++Tmfi)
+        const int comp = 0;
+        for (MFIter mfi(T); mfi.isValid(); ++mfi)
         {
-            const int   idx = Tmfi.index();
-            const Box& vbox = Tmfi.validbox();
+            const int   idx = mfi.index();
+            const Box& vbox = mfi.validbox();
             BL_ASSERT(grids[idx] == vbox);
 
-            DependentFabSetIterator Tfsfsi(Tmfi, Tfs);
+            FArrayBox& Tfab = T[mfi];
+            const FArrayBox& Tb = Tfs[mfi];
+
             const Mask& Tm  = Tbd.bndryMasks(face)[idx];
             const Real Tbcl = Tloc[idx];
-            const int Tbct  = Tbc[idx];
+            const int Tbct  = Tbc[idx][comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
-                         Tmfi().dataPtr(compT),
-                         ARLIM(Tmfi().loVect()), ARLIM(Tmfi().hiVect()),
-                         Tmfi().dataPtr(compT),
-                         ARLIM(Tmfi().loVect()), ARLIM(Tmfi().hiVect()),
+                         Tfab.dataPtr(compT), ARLIM(Tfab.loVect()), ARLIM(Tfab.hiVect()),
                          &iFace, &Tbct, &Tbcl,
-                         Tfsfsi().dataPtr(),
-                         ARLIM(Tfsfsi().loVect()), ARLIM(Tfsfsi().hiVect()),
+                         Tb.dataPtr(), ARLIM(Tb.loVect()), ARLIM(Tb.hiVect()),
                          Tm.dataPtr(), ARLIM(Tm.loVect()), ARLIM(Tm.hiVect()),
                          dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
-                         vbox.loVect(),vbox.hiVect(), &Tnc, dx, &xInt);
+                         vbox.loVect(),vbox.hiVect(), &Tnc, dx);
 
-            DependentMultiFabIterator Xmfi(Tmfi,X);
-            DependentFabSetIterator Xfsfsi(Tmfi, Xfs);
+            FArrayBox& Xfab = X[mfi];
+            const FArrayBox& Xb = Xfs[mfi];
+
             const Mask& Xm  = Xbd.bndryMasks(face)[idx];
             const Real Xbcl = Xloc[idx];
-            const int Xbct  = Xbc[idx];
+            const int Xbct  = Xbc[idx][comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
-                         Xmfi().dataPtr(compX),
-                         ARLIM(Xmfi().loVect()), ARLIM(Xmfi().hiVect()),
-                         Xmfi().dataPtr(compX),
-                         ARLIM(Xmfi().loVect()), ARLIM(Xmfi().hiVect()),
+                         Xfab.dataPtr(compX), ARLIM(Xfab.loVect()), ARLIM(Xfab.hiVect()),
                          &iFace, &Xbct, &Xbcl,
-                         Xfsfsi().dataPtr(),
-                         ARLIM(Xfsfsi().loVect()), ARLIM(Xfsfsi().hiVect()),
+                         Xb.dataPtr(), ARLIM(Xb.loVect()), ARLIM(Xb.hiVect()),
                          Xm.dataPtr(), ARLIM(Xm.loVect()), ARLIM(Xm.hiVect()),
                          dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
-                         vbox.loVect(),vbox.hiVect(), &Xnc, dx, &xInt);
+                         vbox.loVect(),vbox.hiVect(), &Xnc, dx);
         }
     }
 }
@@ -449,14 +448,11 @@ DDOp::cellToEdge(MultiFab&       Te,
     const int nGrow = 1;
     MultiFab T(grids,1,nGrow,Fab_allocate);
     MultiFab Y(grids,Nspec,nGrow,Fab_allocate);
-    for (MultiFabIterator Tmfi(T); Tmfi.isValid(); ++Tmfi)
+    for (MFIter mfi(T); mfi.isValid(); ++mfi)
     {
-        DependentMultiFabIterator Ymfi(Tmfi, Y);
-        DependentMultiFabIterator Tcmfi(Tmfi, Tc);
-        DependentMultiFabIterator Ycmfi(Tmfi, Yc);
-        const Box& box = Tmfi.validbox();
-        Tmfi().copy(Tcmfi(),box,sCompTc,box,0,1);
-        Ymfi().copy(Ycmfi(),box,sCompYc,box,0,Nspec);
+        const Box& box = mfi.validbox();
+        T[mfi].copy(Tc[mfi],box,sCompTc,box,0,1);
+        Y[mfi].copy(Yc[mfi],box,sCompYc,box,0,Nspec);
     }
     
     const Real bogusVal = -1.e20;
@@ -467,15 +463,11 @@ DDOp::cellToEdge(MultiFab&       Te,
 
     // Simple averaging will get interior edges, and fine-fine edges correct
     // The stuff below will fix up c-f and phys bc's
-    for (MultiFabIterator Tmfi(T); Tmfi.isValid(); ++Tmfi)
+    for (MFIter mfi(T); mfi.isValid(); ++mfi)
     {
-        DependentMultiFabIterator Ymfi(Tmfi, Y);
-        DependentMultiFabIterator Temfi(Tmfi, Te);
-        DependentMultiFabIterator Yemfi(Tmfi, Ye);
-        const Box& gbox = BoxLib::grow(Tmfi.validbox(),nGrow);
-        
-        center_to_edge(Tmfi(),Temfi(),gbox,0,dCompTe,1);
-        center_to_edge(Ymfi(),Yemfi(),gbox,0,dCompYe,Nspec);
+        const Box& gbox = BoxLib::grow(mfi.validbox(),nGrow);
+        center_to_edge(T[mfi],Te[mfi],gbox,0,dCompTe,1);
+        center_to_edge(Y[mfi],Ye[mfi],gbox,0,dCompYe,Nspec);
     }
 
     // Now, use LinOp's interp stuff to get edge values on c-f and phys bc
@@ -491,67 +483,68 @@ DDOp::cellToEdge(MultiFab&       Te,
     {
         const int              iFace = (int)face;
 
-        const Array<BoundCond>&  Tbc = Tbd.bndryConds(face);
+        const Array<Array<BoundCond> >&  Tbc = Tbd.bndryConds(face);
         const Array<Real>&      Tloc = Tbd.bndryLocs(face);
         const FabSet&            Tfs = Tbd.bndryValues(face);
         const int                Tnc = 1;
         
-        const Array<BoundCond>&  Ybc = Ybd.bndryConds(face);
+        const Array<Array<BoundCond> >&  Ybc = Ybd.bndryConds(face);
         const Array<Real>&      Yloc = Ybd.bndryLocs(face);
         const FabSet&            Yfs = Ybd.bndryValues(face);
         const int                Ync = Nspec;
 
-        for (MultiFabIterator Tmfi(T); Tmfi.isValid(); ++Tmfi)
+        const int comp = 0;
+        for (MFIter mfi(T); mfi.isValid(); ++mfi)
         {
-            const int idx = Tmfi.index();
-            const Box& vbox = Tmfi.validbox();
+            const int idx = mfi.index();
+            const Box& vbox = mfi.validbox();
             BL_ASSERT(grids[idx] == vbox);
             const Box gbox = BoxLib::grow(vbox,nGrow);
 
-            DependentFabSetIterator Tfsfsi(Tmfi, Tfs);
-            DependentMultiFabIterator Temfi(Tmfi, Te);
+            FArrayBox& Tfab = T[mfi];
+            FArrayBox& Tefab = Te[mfi];
+            const FArrayBox& Tb = Tfs[mfi];
+            
             const Mask& Tm  = Tbd.bndryMasks(face)[idx];
             const Real Tbcl = Tloc[idx];
-            const int Tbct  = Tbc[idx];
+            const int Tbct  = Tbc[idx][0];
 
             // Shift edge data to look like cell data for interpolator
             IntVect iv(D_DECL(0,0,0));
             if (face.isLow())
                 iv = -BoxLib::BASISV(dir);
 
-            Temfi().shift(iv);
+            Tefab.shift(iv);
+            // FIXME  Before update, Tefab passed into this routine just after Tfab
+            //   xInt==0 used to be the last arg, indicating where grow cells lived, in dx units
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
-                         Tmfi().dataPtr(),ARLIM(Tmfi().loVect()), ARLIM(Tmfi().hiVect()),
-                         Temfi().dataPtr(dCompTe),
-                         ARLIM(Temfi().loVect()), ARLIM(Temfi().hiVect()),
+                         Tefab.dataPtr(dCompTe), ARLIM(Tefab.loVect()), ARLIM(Tefab.hiVect()),
                          &iFace, &Tbct, &Tbcl,
-                         Tfsfsi().dataPtr(),
-                         ARLIM(Tfsfsi().loVect()), ARLIM(Tfsfsi().hiVect()),
+                         Tb.dataPtr(), ARLIM(Tb.loVect()), ARLIM(Tb.hiVect()),
                          Tm.dataPtr(), ARLIM(Tm.loVect()), ARLIM(Tm.hiVect()),
                          dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
-                         vbox.loVect(),vbox.hiVect(), &Tnc, dx, &xInt);
-            Temfi().shift(-iv);
+                         vbox.loVect(),vbox.hiVect(), &Tnc, dx);
+            Tefab.shift(-iv);
 
-            DependentMultiFabIterator Ymfi(Tmfi,Y);
-            DependentMultiFabIterator Yemfi(Tmfi,Ye);
-            DependentFabSetIterator Yfsfsi(Tmfi, Yfs);
+            FArrayBox& Yfab = Y[mfi];
+            FArrayBox& Yefab = Ye[mfi];
+            const FArrayBox& Yb = Yfs[mfi];
+
             const Mask& Ym  = Ybd.bndryMasks(face)[idx];
             const Real Ybcl = Yloc[idx];
-            const int Ybct  = Ybc[idx];
+            const int Ybct  = Ybc[idx][0];
             
-            Yemfi().shift(iv);
+            Yefab.shift(iv);
+            // FIXME  Before update, Yefab passed into this routine just after Yfab
+            //   xInt==0 used to be the last arg, indicating where grow cells lived, in dx units
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
-                         Ymfi().dataPtr(),
-                         ARLIM(Ymfi().loVect()), ARLIM(Ymfi().hiVect()),
-                         Yemfi().dataPtr(dCompYe),
-                         ARLIM(Yemfi().loVect()), ARLIM(Yemfi().hiVect()),
+                         Yefab.dataPtr(), ARLIM(Yfab.loVect()), ARLIM(Yfab.hiVect()),
                          &iFace, &Ybct, &Ybcl,
-                         Yfsfsi().dataPtr(),
-                         ARLIM(Yfsfsi().loVect()), ARLIM(Yfsfsi().hiVect()),
+                         Yb.dataPtr(), ARLIM(Yb.loVect()), ARLIM(Yb.hiVect()),
                          Ym.dataPtr(), ARLIM(Ym.loVect()), ARLIM(Ym.hiVect()),
                          dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
-                         vbox.loVect(),vbox.hiVect(), &Ync, dx, &xInt);
-            Yemfi().shift(-iv);
+                         vbox.loVect(),vbox.hiVect(), &Ync, dx);
+            Yefab.shift(-iv);
         }
     }
 }
@@ -594,10 +587,9 @@ DDOp::applyOp(MultiFab&         outH,
     const int nGrow = 1;
     MultiFab inX(grids,Nspec,nGrow);
     const int sCompX = 0;
-    for (MultiFabIterator Xmfi(inX); Xmfi.isValid(); ++Xmfi)
+    for (MFIter mfi(inX); mfi.isValid(); ++mfi)
     {
-        DependentMultiFabIterator Ymfi(Xmfi, inY);
-        ckdriver.massFracToMoleFrac(Xmfi(),Ymfi(),Xmfi.validbox(),sCompY,sCompX);
+        ckdriver.massFracToMoleFrac(inX[mfi],inY[mfi],mfi.validbox(),sCompY,sCompX);
     }
 
     // Need edge-based T and Y for evaluating diffusion fluxes below
@@ -619,18 +611,18 @@ DDOp::applyOp(MultiFab&         outH,
     const Real* dx = Tbd.getGeom().CellSize();
     FArrayBox de, He, X, Y;
     const int sCompd = 0;
-    for (ConstMultiFabIterator Ymfi(inY); Ymfi.isValid(); ++Ymfi)
+    for (MFIter mfi(inY); mfi.isValid(); ++mfi)
     {
+        const FArrayBox& Y = inY[mfi];
+        const FArrayBox& X = inX[mfi];
+        const FArrayBox& T = inT[mfi];
+
         for (int i=0; i<BL_SPACEDIM; ++i)
         {
-            const int idx = Ymfi.index();
+            const int idx = mfi.index();
             const Box& box = grids[idx];
             const Box gbox = BoxLib::grow(box,nGrow);
-            const Box ebox = surroundingNodes(box,i);
-
-            const FArrayBox& Y = Ymfi();
-            const FArrayBox& X = inX[idx];
-            const FArrayBox& T = inT[idx];
+            const Box ebox = BoxLib::surroundingNodes(box,i);
             de.resize(ebox,Nspec+1);
 
             // CC X,T in and EC de out
@@ -642,27 +634,22 @@ DDOp::applyOp(MultiFab&         outH,
 
             // Get h_i(Te) on edge temperature
             He.resize(ebox,Nspec);
-            ckdriver.getHGivenT(He,TYe[i][idx],ebox,sCompTe,0);
+            ckdriver.getHGivenT(He,TYe[i][mfi],ebox,sCompTe,0);
 
             // Get diffusion fluxes on edges based on edge state/forces
             FORT_FLUX(box.loVect(),box.hiVect(),
-                      fluxH[i][idx].dataPtr(dCompFH),
-                      ARLIM(fluxH[i][idx].loVect()),ARLIM(fluxH[i][idx].hiVect()),
-                      fluxY[i][idx].dataPtr(dCompFY),
-                      ARLIM(fluxY[i][idx].loVect()),ARLIM(fluxY[i][idx].hiVect()),
+                      fluxH[i][mfi].dataPtr(dCompFH),ARLIM(fluxH[i][mfi].loVect()),ARLIM(fluxH[i][mfi].hiVect()),
+                      fluxY[i][mfi].dataPtr(dCompFY),ARLIM(fluxY[i][mfi].loVect()),ARLIM(fluxY[i][mfi].hiVect()),
                       de.dataPtr(),ARLIM(de.loVect()),ARLIM(de.hiVect()),
-                      TYe[i][idx].dataPtr(sCompYe),
-                      ARLIM(TYe[i][idx].loVect()),ARLIM(TYe[i][idx].hiVect()),
-                      TYe[i][idx].dataPtr(sCompTe),
-                      ARLIM(TYe[i][idx].loVect()),ARLIM(TYe[i][idx].hiVect()),
+                      TYe[i][mfi].dataPtr(sCompYe), ARLIM(TYe[i][mfi].loVect()),ARLIM(TYe[i][mfi].hiVect()),
+                      TYe[i][mfi].dataPtr(sCompTe), ARLIM(TYe[i][mfi].loVect()),ARLIM(TYe[i][mfi].hiVect()),
                       He.dataPtr(),ARLIM(He.loVect()),ARLIM(He.hiVect()),
                       &i);
 
             // Multiply fluxes times edge areas
-            ConstDependentMultiFabIterator ai(Ymfi, area[i]);
-            fluxH[i][idx].mult(ai(),0,dCompFH,1);
+            fluxH[i][mfi].mult(area[i][mfi],0,dCompFH,1);
             for (int n=0; n<Nspec; ++n)
-                fluxY[i][idx].mult(ai(),0,dCompFY+n,1);
+                fluxY[i][mfi].mult(area[i][mfi],0,dCompFY+n,1);
         }
     }
 
@@ -670,34 +657,33 @@ DDOp::applyOp(MultiFab&         outH,
     outH.setVal(0.0,dCompH,1);
     outY.setVal(0.0,dCompY,Nspec);
     Array<Real> h1(BL_SPACEDIM,1.0);
-    for (MultiFabIterator outHmfi(outH); outHmfi.isValid(); ++outHmfi)
+    for (MFIter mfi(outH); mfi.isValid(); ++mfi)
     {
-        DependentMultiFabIterator outYmfi(outHmfi, outY);
-        const int idx = outHmfi.index();
-        const Box& box = outHmfi.validbox();
+        const Box& box = mfi.validbox();
+        FArrayBox Hfab = outH[mfi];
+        FArrayBox Yfab = outY[mfi];
 
         for (int i=0; i<BL_SPACEDIM; ++i)
         {
+            const FArrayBox& Hfl = fluxH[i][mfi];
+            const FArrayBox& Yfl = fluxY[i][mfi];
+
             const int ncH = 1;
             FORT_INCRDIV(box.loVect(),box.hiVect(),
-                         outHmfi().dataPtr(dCompH),
-                         ARLIM(outHmfi().loVect()),ARLIM(outHmfi().hiVect()),
-                         fluxH[i][idx].dataPtr(dCompFH),
-                         ARLIM(fluxH[i][idx].loVect()),ARLIM(fluxH[i][idx].hiVect()),
+                         Hfab.dataPtr(dCompH), ARLIM(Hfab.loVect()), ARLIM(Hfab.hiVect()),
+                         Hfl.dataPtr(dCompFH), ARLIM(Hfl.loVect()),  ARLIM(Hfl.hiVect()),
                          h1.dataPtr(), &i, &ncH);
 
             FORT_INCRDIV(box.loVect(),box.hiVect(),
-                         outYmfi().dataPtr(dCompY),
-                         ARLIM(outYmfi().loVect()),ARLIM(outYmfi().hiVect()),
-                         fluxY[i][idx].dataPtr(dCompFY),
-                         ARLIM(fluxY[i][idx].loVect()),ARLIM(fluxY[i][idx].hiVect()),
+                         Yfab.dataPtr(dCompY), ARLIM(Yfab.loVect()), ARLIM(Yfab.hiVect()),
+                         Yfl.dataPtr(dCompFY), ARLIM(Yfl.loVect()),  ARLIM(Yfl.hiVect()),
                          h1.dataPtr(), &i, &Nspec);
         }
 
-        DependentMultiFabIterator vmfi(outHmfi, volume);
-        outHmfi().divide(vmfi(),0,dCompH,1);
+        const FArrayBox& v = volume[mfi];
+        Hfab.divide(v,0,dCompH,1);
         for (int n=0; n<Nspec; ++n)
-            outYmfi().divide(vmfi(),0,dCompY+n,1);
+            Yfab.divide(v,0,dCompY+n,1);
     }
     // Flux returned is extensive (i.e. flux.Area)
 }
@@ -730,13 +716,14 @@ DDOp::setRelax(MultiFab&         lambda,
     const int nGrow = 1;
     MultiFab inX(grids,Nspec,nGrow);
     const int sCompX = 0;
-    for (MultiFabIterator Xmfi(inX); Xmfi.isValid(); ++Xmfi)
+    for (MFIter mfi(inX); mfi.isValid(); ++mfi)
     {
-        DependentMultiFabIterator Ymfi(Xmfi, inY);
-        ckdriver.massFracToMoleFrac(Xmfi(),Ymfi(),Xmfi.validbox(),sCompY,sCompX);
+        FArrayBox& X = inX[mfi];
+        const FArrayBox& Y = inY[mfi];
+        ckdriver.massFracToMoleFrac(X,Y,mfi.validbox(),sCompY,sCompX);
     }
 
-    // Need edge-based T and Y for evaluating diffusion fluxes below
+    // Need edge-based T and Y for evaluating conductivity below
     const int sCompTe = Nspec;
     const int sCompYe = 0;
     PArray<MultiFab> TYe(BL_SPACEDIM,PArrayManage);
@@ -753,30 +740,33 @@ DDOp::setRelax(MultiFab&         lambda,
     
     // Get fluxes
     const Real* dx = Tbd.getGeom().CellSize();
-    for (MultiFabIterator Lmfi(lambda); Lmfi.isValid(); ++Lmfi)
+    for (MFIter mfi(lambda); mfi.isValid(); ++mfi)
     {
-        const int idx = Lmfi.index();
-        const Box& box = grids[idx];
+        FArrayBox& lam = lambda[mfi];
+        const Box& box = mfi.validbox();
+
         for (int i=0; i<BL_SPACEDIM; ++i)
         {
-            // Compute thermal conductivity
+            const FArrayBox& Te = TYe[i][mfi];
+            const FArrayBox& Ye = TYe[i][mfi];
+
+            // Compute thermal conductivity using edge-based data
             FORT_THERM(box.loVect(),box.hiVect(),
-                       Lmfi().dataPtr(dCompH),      ARLIM(Lmfi().loVect()),     ARLIM(Lmfi().hiVect()),
-                       TYe[i][idx].dataPtr(sCompYe),ARLIM(TYe[i][idx].loVect()),ARLIM(TYe[i][idx].hiVect()),
-                       TYe[i][idx].dataPtr(sCompTe),ARLIM(TYe[i][idx].loVect()),ARLIM(TYe[i][idx].hiVect()),
+                       lam.dataPtr(dCompH),ARLIM(lam.loVect()),ARLIM(lam.hiVect()),
+                       Ye.dataPtr(sCompYe),ARLIM(Ye.loVect()), ARLIM(Ye.hiVect()),
+                       Te.dataPtr(sCompTe),ARLIM(Te.loVect()), ARLIM(Te.hiVect()),
                        &i);
 
         }
 
-        DependentMultiFabIterator Ymfi(Lmfi, inY);
-        const FArrayBox& Y = Ymfi();
-        const FArrayBox& T = inT[idx];
+        const FArrayBox Yc = inY[mfi];
+        const FArrayBox Tc = inT[mfi];
         
-        // Compute lambda / cpmix
+        // Compute lambda / cpmix using cell-centered input data
         FORT_CPSCALE(box.loVect(),box.hiVect(),
-                     Lmfi().dataPtr(dCompH),ARLIM(Lmfi().loVect()),ARLIM(Lmfi().hiVect()),
-                     Y.dataPtr(sCompY),     ARLIM(Y.loVect()), ARLIM(Y.hiVect()),
-                     T.dataPtr(sCompT),     ARLIM(T.loVect()), ARLIM(T.hiVect()));
+                     lam.dataPtr(dCompH),ARLIM(lam.loVect()),ARLIM(lam.hiVect()),
+                     Yc.dataPtr(sCompY), ARLIM(Yc.loVect()), ARLIM(Yc.hiVect()),
+                     Tc.dataPtr(sCompT), ARLIM(Tc.loVect()), ARLIM(Tc.hiVect()));
 
     }
 
@@ -791,16 +781,15 @@ DDOp::average (MultiFab&       mfC,
 {
     BL_ASSERT(mfC.nComp()>=dCompC+nComp);
     BL_ASSERT(mfF.nComp()>=sCompF+nComp);
-    for (MultiFabIterator C_mfi(mfC); C_mfi.isValid(); ++C_mfi)
+    for (MFIter mfi(mfC); mfi.isValid(); ++mfi)
     {
-        DependentMultiFabIterator F_mfi(C_mfi, mfF);
-        const Box& box = C_mfi.validbox();
-        BL_ASSERT(BoxLib::refine(box,MGIV) == F_mfi.validbox());
-        FORT_DDCCAVG(C_mfi().dataPtr(dCompC),
-                     ARLIM(C_mfi().loVect()), ARLIM(C_mfi().hiVect()),
-                     F_mfi().dataPtr(sCompF),
-                     ARLIM(F_mfi().loVect()), ARLIM(F_mfi().hiVect()),
-                     box.loVect(), box.hiVect(), &nComp);
+        FArrayBox& C = mfC[mfi];
+        const FArrayBox& F = mfF[mfi];
+
+        const Box& cbox = mfi.validbox();
+        FORT_DDCCAVG(C.dataPtr(dCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
+                     F.dataPtr(sCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
+                     cbox.loVect(), cbox.hiVect(), &nComp);
     }
 }
 
@@ -813,15 +802,13 @@ DDOp::interpolate (MultiFab&       mfF,
 {
     BL_ASSERT(mfF.nComp()>=dCompF+nComp);
     BL_ASSERT(mfC.nComp()>=sCompC+nComp);
-    for (MultiFabIterator F_mfi(mfF); F_mfi.isValid(); ++F_mfi)
+    for (MFIter mfi(mfF); mfi.isValid(); ++mfi)
     {
-        DependentMultiFabIterator C_mfi(F_mfi, mfC);
-        const Box& box = C_mfi.validbox();
-        BL_ASSERT(BoxLib::refine(box,MGIV) == F_mfi.validbox());
-        FORT_DDCCINT(F_mfi().dataPtr(dCompF),
-                     ARLIM(F_mfi().loVect()), ARLIM(F_mfi().hiVect()),
-                     C_mfi().dataPtr(sCompC),
-                     ARLIM(C_mfi().loVect()), ARLIM(C_mfi().hiVect()),
-                     box.loVect(), box.hiVect(), &nComp);
+        FArrayBox& F = mfF[mfi];
+        const FArrayBox& C = mfC[mfi];
+        const Box cbox = BoxLib::refine(mfi.validbox(),MGIV);
+        FORT_DDCCINT(F.dataPtr(dCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
+                     C.dataPtr(sCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
+                     cbox.loVect(), cbox.hiVect(), &nComp);
     }
 }
