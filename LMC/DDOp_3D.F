@@ -3,7 +3,7 @@
 #include "ArrayLim.H"
 #include "CONSTANTS.H"
 
-#define SDIM 2
+#define SDIM 3
 
       subroutine FORT_DIFFFORCE(lo,hi,d,DIMS(d),
      &                          X,DIMS(X),T,DIMS(T),dx,dir)
@@ -21,28 +21,43 @@
       integer dir
 
       REAL_T dxinv
-      integer i,j,n
+      integer i,j,k,n
 
       dxinv = one / dx(dir+1)
 
       if (dir .EQ. 0) then
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)+1
-               do n=1,Nspec
-                  d(i,j,n) = (X(i,j,n) - X(i-1,j,n))*dxinv
-               end do
-               d(i,j,Nspec+1) = (T(i,j) - T(i-1,j))*dxinv
-            end do
-         end do
-      else
-         do i=lo(1),hi(1)
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)+1
+                  do n=1,Nspec
+                     d(i,j,k,n) = (X(i,j,k,n) - X(i-1,j,k,n))*dxinv
+                  enddo
+                  d(i,j,k,Nspec+1) = (T(i,j,k) - T(i-1,j,k))*dxinv
+               enddo
+            enddo
+         enddo
+      else if (dir .EQ. 1) then
+         do k=lo(3),hi(3)
             do j=lo(2),hi(2)+1
-               do n=1,Nspec
-                  d(i,j,n) = (X(i,j,n) - X(i,j-1,n))*dxinv
-               end do
-               d(i,j,Nspec+1) = (T(i,j) - T(i,j-1))*dxinv
-            end do
-         end do
+               do i=lo(1),hi(1)
+                  do n=1,Nspec
+                     d(i,j,k,n) = (X(i,j,k,n) - X(i,j-1,k,n))*dxinv
+                  enddo
+                  d(i,j,k,Nspec+1) = (T(i,j,k) - T(i,j-1,k))*dxinv
+               enddo
+            enddo
+         enddo
+      else
+         do k=lo(3),hi(3)+1
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  do n=1,Nspec
+                     d(i,j,k,n) = (X(i,j,k,n) - X(i,j,k-1,n))*dxinv
+                  enddo
+                  d(i,j,k,Nspec+1) = (T(i,j,k) - T(i,j,k-1))*dxinv
+               enddo
+            enddo
+         enddo
       end if
       end
 
@@ -56,24 +71,44 @@
       REAL_T  cfab(DIMV(cfab), nc)
       REAL_T  efab(DIMV(efab), nc)
 
-      integer i,j,n
+      integer i,j,k,n
 
+c     Here, (lo,hi) is a "validbox" grown by 1, and the cc data is assumed computable
+c     over this box--so that the edge data will be filled on the surroundingNodes of
+c     (lo,hi) grown by -1 in the dir direction.  It is intended that this routine take
+c     cc data that has been MF::FillBoundary-d, so that edges at f-f boundaries
+c     will get good data.  Something more clever needs to be done to get phys
+c     and c-f edges filled correctly.
       if (dir .EQ. 0) then
          do n = 1,nc
-            do j = lo(2)+1, hi(2)-1
-               do i = lo(1)+1, hi(1)
-                  efab(i,j,n) = half*(cfab(i,j,n) + cfab(i-1,j,n))
-               end do
-            end do
-         end do
+            do k = lo(3)+1, hi(3)-1
+               do j = lo(2)+1, hi(2)-1
+                  do i = lo(1)+1, hi(1)
+                     efab(i,j,k,n) = half*(cfab(i,j,k,n) + cfab(i-1,j,k,n))
+                  enddo
+               enddo
+            enddo
+         enddo
+      else if (dir .EQ. 1) then
+         do n = 1,nc
+            do k = lo(3)+1, hi(3)-1
+               do j = lo(2)+1, hi(2)
+                  do i = lo(1)+1, hi(1)-1
+                     efab(i,j,k,n) = half*(cfab(i,j,k,n) + cfab(i,j-1,k,n))
+                  enddo
+               enddo
+            enddo
+         enddo
       else
          do n = 1,nc
-            do i = lo(1)+1, hi(1)-1
-               do j = lo(2)+1, hi(2)
-                  efab(i,j,n) = half*(cfab(i,j,n) + cfab(i,j-1,n))
-               end do
-            end do
-         end do
+            do k = lo(3)+1, hi(3)
+               do j = lo(2)+1, hi(2)-1
+                  do i = lo(1)+1, hi(1)-1
+                     efab(i,j,k,n) = half*(cfab(i,j,k,n) + cfab(i,j,k-1,n))
+                  enddo
+               enddo
+            enddo
+         enddo
       end if
       end
 
@@ -98,62 +133,72 @@
       REAL_T     Te(DIMV(Te))
       REAL_T     He(DIMV(He)   ,1)
 
-      integer i,j,lo1,lo2,hi1,hi2,K,L
+      integer i,j,k,lo1,lo2,lo3,hi1,hi2,h3,L,M
       REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec)
       REAL_T rhoD, rhoD1(maxspec*maxspec), rhoTD(maxspec), PTC
       REAL_T sum_rhoYV, sum_rhoHYV, sum_rhoThetaD, P1atm, RU, RUC
 
-      rhoD(K,L) = rhoDt( (L-1)*Nspec + K )
+      rhoD(L,M) = rhoDt( (M-1)*Nspec + L )
       
       lo1 = lo(1)
       lo2 = lo(2)
+      lo3 = lo(3)
       if (dir .EQ. 0) then
          hi1 = hi(1) + 1
          hi2 = hi(2)
-      else 
+         hi3 = hi(3)
+      elseif (dir .EQ. 1) then
          hi1 = hi(1)
          hi2 = hi(2) + 1
+         hi3 = hi(3)
+      else 
+      if (dir .EQ. 0) then
+         hi1 = hi(1)
+         hi2 = hi(2)
+         hi3 = hi(3) + 1
       end if
       
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       
-      do j = lo2, hi2
-         do i = lo1, hi1
+      do k = lo3, hi3
+         do j = lo2, hi2
+            do i = lo1, hi1
 
-            do K = 1,Nspec
-               Yt(K) = Ye(i,j,K)
-            end do
-
-            CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
-            CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL CKMMWY(Yt, IWRK(ckbr), RWRK(ckbr), WW)
-            CALL EGSPAR(Te(i,j),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-            CALL EGSLTDR5(Te(i,j),Yt,WW,RWRK(egbr),IWRK(egbi),
-     &                    PTC,rhoTD,rhoDt)
+               do L = 1,Nspec
+                  Yt(L) = Ye(i,j,k,L)
+               enddo
+               
+               CALL CKCPMS(Te(i,j,k),IWRK(ckbi),RWRK(ckbr),CPMS)
+               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+               CALL CKMMWY(Yt, IWRK(ckbr), RWRK(ckbr), WW)
+               CALL EGSPAR(Te(i,j,k),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+               CALL EGSLTDR5(Te(i,j,k),Yt,WW,RWRK(egbr),IWRK(egbi),
+     &                       PTC,rhoTD,rhoDt)
             
 c     Note: scalings get cgs quantities from EGLib to MKS (assume He,d come in MKS)
-            sum_rhoYV     = zero
-            sum_rhoHYV    = zero
-            sum_rhoThetaD = zero
-
-            do K= 1,Nspec
-
-               sum_rhoYV = - Ye(i,j,K)*rhoTD(K)*d(i,j,Nspec+1)/Te(i,j)
+               sum_rhoYV     = zero
+               sum_rhoHYV    = zero
+               sum_rhoThetaD = zero
+               
                do L= 1,Nspec
-                  sum_rhoYV = sum_rhoYV - rhoD(K,L)*d(i,j,L)
-               end do
-               fluxY(i,j,K) = sum_rhoYV*1.d-1
+                  
+                  sum_rhoYV = - Ye(i,j,k,L)*rhoTD(L)*d(i,j,k,Nspec+1)/Te(i,j,k)
+                  do M = 1,Nspec
+                     sum_rhoYV = sum_rhoYV - rhoD(L,M)*d(i,j,k,M)
+                  enddo
+                  fluxY(i,j,k,L) = sum_rhoYV*1.d-1
+                  
+                  sum_rhoHYV = sum_rhoHYV + He(i,j,k,L)*fluxY(i,j,k,L)
+                  sum_rhoThetaD = sum_rhoThetaD + rhoTD(K)*d(i,j,k,L)
+                  
+               enddo
+               
+               fluxH(i,j,k) = sum_rhoHYV - (PTC*1.d-5)*d(i,j,k,Nspec+1)
+     &              - (RU*Te(i,j,k)/WW)*(sum_rhoThetaD*1.d-1)
 
-               sum_rhoHYV = sum_rhoHYV + He(i,j,K)*fluxY(i,j,K)
-               sum_rhoThetaD = sum_rhoThetaD + rhoTD(K)*d(i,j,K)
-
-            end do
-
-            fluxH(i,j) = sum_rhoHYV - (PTC*1.d-5)*d(i,j,Nspec+1)
-     &           - (RU*Te(i,j)/WW)*(sum_rhoThetaD*1.d-1)
-
-         end do
-      end do
+            enddo
+         enddo
+      enddo
       
       end
       
@@ -168,28 +213,43 @@ c     Note: scalings get cgs quantities from EGLib to MKS (assume He,d come in M
       REAL_T   V(DIMV(V)   ,1)
       REAL_T dx(SDIM)
 
-      integer i,j,n
+      integer i,j,k,n
 
 c     Note: We're incrementing with div(dx.Area.Flux), so the dx's
 c     cancel, and we assume V is extensive (ie. Flux.Area)
       if (dir .EQ. 0) then
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-               do n= 1,nc
-                  div(i,j,n) = div(i,j,n)
-     &                 + (V(i+1,j,n) - V(i,j,n))
-               end do
-            end do               
-         end do
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  do n= 1,nc
+                     div(i,j,k,n) = div(i,j,k,n)
+     &                    + (V(i+1,j,k,n) - V(i,j,k,n))
+                  enddo
+               enddo
+            enddo               
+         enddo
+      elseif (dir .EQ. 1) then
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  do n= 1,nc
+                     div(i,j,k,n) = div(i,j,k,n)
+     &                    + (V(i,j+1,k,n) - V(i,j,k,n))
+                  enddo
+               enddo
+            enddo               
+         enddo
       else 
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-               do n= 1,nc
-                  div(i,j,n) = div(i,j,n)
-     &                 + (V(i,j+1,n) - V(i,j,n))
-               end do
-            end do               
-         end do
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  do n= 1,nc
+                     div(i,j,k,n) = div(i,j,k,n)
+     &                    + (V(i,j,k+1,n) - V(i,j,k,n))
+                  enddo
+               enddo
+            enddo               
+         enddo
       end if
       end
 
@@ -208,18 +268,20 @@ c     cancel, and we assume V is extensive (ie. Flux.Area)
       REAL_T T(DIMV(T))
 
       REAL_T YT(maxspec),CPMIX
-      integer i,j,K
+      integer i,j,k,n
       
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-
-            do K = 1,Nspec
-               Yt(K) = Y(i,j,K)
-            end do
-
-            CALL CKCPBS(T(i,j),Yt,IWRK(ckbi),RWRK(ckbr),CPMIX)
-            lambda(i,j) = lambda(i,j)/(CPMIX*1.d-4)
-            
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               
+               do n = 1,Nspec
+                  Yt(n) = Y(i,j,k,n)
+               enddo
+               
+               CALL CKCPBS(T(i,j,k),Yt,IWRK(ckbi),RWRK(ckbr),CPMIX)
+               lambda(i,j,k) = lambda(i,j,k)/(CPMIX*1.d-4)
+               
+            enddo
          enddo
       enddo
       end
@@ -239,64 +301,101 @@ c     cancel, and we assume V is extensive (ie. Flux.Area)
       REAL_T     Te(DIMV(Te))
       REAL_T     lambda(DIMV(lambda)   )
 
-      integer i,j,lo1,lo2,hi1,hi2,K,L
+      integer i,j,k,lo1,lo2,lo3,hi1,hi2,hi3
       REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec), TC
 
 c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       
       lo1 = lo(1)
       lo2 = lo(2)
+      lo3 = lo(3)
       if (dir .EQ. 0) then
          hi1 = hi(1) + 1
          hi2 = hi(2)
+         hi3 = hi(3)
          
-         do j = lo2, hi2
-            do i = lo1, hi1
+         do k = lo3, hi3
+            do j = lo2, hi2
+               do i = lo1, hi1
                
-               do K = 1,Nspec
-                  Yt(K) = Ye(i,j,K)
-               end do
-               
-               CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
-               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               CALL EGSPAR(Te(i,j),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-               CALL EGSL4(Te(i,j),Yt,RWRK(egbr),IWRK(egbi),TC)
-               
-               if(i-1.ge.lo(1))then
-                  lambda(i-1,j) = lambda(i-1,j)+TC*1.d-5
-               endif
-               if(i.le.hi(1))then
-                  lambda(i,j) = lambda(i,j)+TC*1.d-5
-               endif
+                  do n = 1,Nspec
+                     Yt(n) = Ye(i,j,k,n)
+                  enddo
+                  
+                  CALL CKCPMS(Te(i,j,k),IWRK(ckbi),RWRK(ckbr),CPMS)
+                  CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+                  CALL EGSPAR(Te(i,j,k),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+                  CALL EGSL4(Te(i,j,k),Yt,RWRK(egbr),IWRK(egbi),TC)
+                  
+                  if(i-1.ge.lo(1))then
+                     lambda(i-1,j,k) = lambda(i-1,j,k)+TC*1.d-5
+                  endif
+                  if(i.le.hi(1))then
+                     lambda(i,j,k) = lambda(i,j,k)+TC*1.d-5
+                  endif
 
-            end do
-         end do
+               enddo
+            enddo
+         enddo
+
+      elseif (dir .EQ. 1) then
+         hi1 = hi(1)
+         hi2 = hi(2) + 1
+         hi3 = hi(3)
+         
+         do k = lo3, hi3
+            do j = lo2, hi2
+               do i = lo1, hi1
+               
+                  do n = 1,Nspec
+                     Yt(n) = Ye(i,j,k,n)
+                  enddo
+                  
+                  CALL CKCPMS(Te(i,j,k),IWRK(ckbi),RWRK(ckbr),CPMS)
+                  CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+                  CALL EGSPAR(Te(i,j,k),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+                  CALL EGSL4(Te(i,j,k),Yt,RWRK(egbr),IWRK(egbi),TC)
+                  
+                  if(j-1.ge.lo(2))then
+                     lambda(i,j-1,k) = lambda(i,j-1,k)+TC*1.d-5
+                  endif
+                  if(j.le.hi(2))then
+                     lambda(i,j,k) = lambda(i,j,k)+TC*1.d-5
+                  endif
+
+               enddo
+            enddo
+         enddo
 
       else 
 
          hi1 = hi(1)
-         hi2 = hi(2) + 1
-         do j = lo2, hi2
-            do i = lo1, hi1
+         hi2 = hi(2)
+         hi3 = hi(3) + 1
 
-               do K = 1,Nspec
-                  Yt(K) = Ye(i,j,K)
-               end do
+         do k = lo3, hi3
+            do j = lo2, hi2
+               do i = lo1, hi1
 
-               CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
-               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               CALL EGSPAR(Te(i,j),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-               CALL EGSL4(Te(i,j),Yt,RWRK(egbr),IWRK(egbi),TC)
-            
-               if(j-1.ge.lo(2))then
-                  lambda(i,j-1) = lambda(i,j-1)+TC*1.d-5
-               endif
-               if(j.le.hi(2))then
-                  lambda(i,j) = lambda(i,j)+TC*1.d-5
-               endif
-
-            end do
-         end do
+                  do n = 1,Nspec
+                     Yt(n) = Ye(i,j,k,n)
+                  enddo
+                  
+                  CALL CKCPMS(Te(i,j,k),IWRK(ckbi),RWRK(ckbr),CPMS)
+                  CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+                  CALL EGSPAR(Te(i,j,k),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+                  CALL EGSL4(Te(i,j,k),Yt,RWRK(egbr),IWRK(egbi),TC)
+                  
+                  if(k-1.ge.lo(3))then
+                     lambda(i,j,k-1) = lambda(i,j,k-1)+TC*1.d-5
+                  endif
+                  if(k.le.hi(3))then
+                     lambda(i,j,k) = lambda(i,j,k)+TC*1.d-5
+                  endif
+                  
+               enddo
+            enddo
+         enddo
       end if
       
       end
@@ -310,12 +409,14 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       REAL_T crse(DIMV(crse),nc)
       integer face
       
-      integer i,j,n, clo1, chi1, clo2, chi2, offset, dir
+      integer i,j,k,n, clo1, chi1, clo2, chi2, clo3, chi3, offset, dir
       
-      if ((face.EQ.0).OR.(face.EQ.2)) then
+      if ((face.EQ.0).OR.(face.EQ.3)) then
          dir = 0
-      else
+      elseif ((face.EQ.1).OR.(face.EQ.4)) then
          dir = 1
+      else
+         dir = 2
       end if
 
       if (face .LT. SDIM) then
@@ -327,29 +428,57 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       if (dir .eq. 0) then
          clo1 = (lo(1)-offset)/2
          clo2 = lo(2)/2
+         clo3 = lo(3)/2
          chi1 = (hi(1)-offset)/2
          chi2 = (hi(2)+1)/2 - 1
-         do j=clo2,chi2
-            do i=clo1,chi1
-               do n=1,nc
-                  crse(i,j,n) =
-     &                 half*(fine(2*i+offset,2*j,n)+fine(2*i+offset,2*j+1,n))
-               end do
-            end do
-         end do
-      else
+         chi3 = (hi(3)+1)/2 - 1
+         do k=clo3,chi3
+            do j=clo2,chi2
+               do i=clo1,chi1
+                  do n=1,nc
+                     crse(i,j,k,n) = 0.25d0 *
+     &                    ( fine(2*i+offset,2*j,2*k  ,n)+fine(2*i+offset,2*j+1,2*k  ,n)
+     &                    + fine(2*i+offset,2*j,2*k+1,n)+fine(2*i+offset,2*j+1,2*k+1,n))
+                  enddo
+               enddo
+            enddo
+         enddo
+      if (dir .eq. 1) then
          clo1 = lo(1)/2
          clo2 = (lo(2)-offset)/2
+         clo3 = lo(3)/2
          chi1 = (hi(1)+1)/2 - 1
          chi2 = (hi(2)-offset)/2
-         do j=clo2,chi2
-            do i=clo1,chi1
-               do n=1,nc
-                  crse(i,j,n) =
-     &                 half*(fine(2*i,2*j+offset,n)+fine(2*i+1,2*j+offset,n))
-               end do
-            end do
-         end do
+         chi3 = (hi(3)+1)/2 - 1
+         do k=clo3,chi3
+            do j=clo2,chi2
+               do i=clo1,chi1
+                  do n=1,nc
+                     crse(i,j,k,n) = 0.25d0 *
+     &                    ( fine(2*i,2*j+offset,2*k  ,n)+fine(2*i+1,2*j+offset,2*k  ,n)
+     &                    + fine(2*i,2*j+offset,2*k+1,n)+fine(2*i+1,2*j+offset,2*k+1,n))
+                  enddo
+               enddo
+            enddo
+         enddo
+      else
+         clo1 = lo(1)/2
+         clo2 = lo(2)/2
+         clo3 = (lo(3)-offset)/2
+         chi1 = (hi(1)+1)/2 - 1
+         chi2 = (hi(2)+1)/2 - 1
+         chi3 = (hi(3)-offset)/2
+         do k=clo3,chi3
+            do j=clo2,chi2
+               do i=clo1,chi1
+                  do n=1,nc
+                     crse(i,j,k,n) = 0.25d0 *
+     &                    ( fine(2*i,2*j  ,2*k+offset,n)+fine(2*i+1,2*j  ,2*k+offset,n)
+     &                    + fine(2*i,2*j+1,2*k+offset,n)+fine(2*i+1,2*j+1,2*k+offset,n))
+                  enddo
+               enddo
+            enddo
+         enddo
       end if
       end
 
@@ -362,21 +491,19 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
 c
-      integer i
-      integer j
-      integer n
-      REAL_T denom
-      parameter(denom=fourth)
+      integer i,j,k,n
 c
       do n = 1, nc
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-               c(i,j,n) = (
-     $              f(2*i+1,2*j+1,n) + f(2*i  ,2*j+1,n)
-     $              + f(2*i+1,2*j,n ) + f(2*i  ,2*j ,n))*denom
-            end do
-         end do
-      end do
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  c(i,j,n) = 0.125d0 * (
+     $                 f(2*i,2*j,2*k  ,n)+f(2*i+1,2*j,2*k  ,n)+f(2*i,2*j+1,2*k  ,n)+f(2*i+1,2*j+1,2*k  ,n)
+     $                 f(2*i,2*j,2*k+1,n)+f(2*i+1,2*j,2*k+1,n)+f(2*i,2*j+1,2*k+1,n)+f(2*i+1,2*j+1,2*k+1,n))
+               enddo
+            enddo
+         enddo
+      enddo
 c
       end
 
@@ -389,21 +516,24 @@ c
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
 c
-      integer i
-      integer j
-      integer n
+      integer i,j,k,n
 c
       do n = 1, nc
-         do j = lo(2), hi(2)
-cdir$   ivdep
-            do i = lo(1), hi(1)
-               f(2*i+1,2*j+1,n) = c(i,j,n) + f(2*i+1,2*j+1,n)
-               f(2*i  ,2*j+1,n) = c(i,j,n) + f(2*i  ,2*j+1,n)
-               f(2*i+1,2*j  ,n) = c(i,j,n) + f(2*i+1,2*j  ,n)
-               f(2*i  ,2*j  ,n) = c(i,j,n) + f(2*i  ,2*j  ,n)
-            end do
-         end do
-      end do
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  f(2*i  ,2*j  ,2*k  ,n) = c(i,j,k,n) + f(2*i  ,2*j  ,2*k  ,n)
+                  f(2*i+1,2*j  ,2*k  ,n) = c(i,j,k,n) + f(2*i+1,2*j  ,2*k  ,n)
+                  f(2*i  ,2*j+1,2*k  ,n) = c(i,j,k,n) + f(2*i  ,2*j+1,2*k  ,n)
+                  f(2*i+1,2*j+1,2*k  ,n) = c(i,j,k,n) + f(2*i+1,2*j+1,2*k  ,n)
+                  f(2*i  ,2*j  ,2*k+1,n) = c(i,j,k,n) + f(2*i  ,2*j  ,2*k+1,n)
+                  f(2*i+1,2*j  ,2*k+1,n) = c(i,j,k,n) + f(2*i+1,2*j  ,2*k+1,n)
+                  f(2*i  ,2*j+1,2*k+1,n) = c(i,j,k,n) + f(2*i  ,2*j+1,2*k+1,n)
+                  f(2*i+1,2*j+1,2*k+1,n) = c(i,j,k,n) + f(2*i+1,2*j+1,2*k+1,n)
+               enddo
+            enddo
+         enddo
+      enddo
 c
       end
       

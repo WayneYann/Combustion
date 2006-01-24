@@ -58,6 +58,12 @@
 
       integer i,j,n
 
+c     Here, (lo,hi) is a "validbox", and the cc data is assumed computable
+c     over 1 grow cell past this box--so that the edge data will be filled on the
+c     surroundingNodes of (lo,hi).  It is intended that this routine take
+c     cc data that has been MF::FillBoundary-d, so that edges at f-f boundaries
+c     will get good data.  Something more clever needs to be done to get phys
+c     and c-f edges filled correctly.
       if (dir .EQ. 0) then
          do n = 1,nc
             do j = lo(2)+1, hi(2)-1
@@ -361,23 +367,18 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       integer hi(BL_SPACEDIM)
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
-c
-      integer i
-      integer j
-      integer n
-      REAL_T denom
-      parameter(denom=fourth)
-c
+
+      integer i,j,n
+
       do n = 1, nc
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               c(i,j,n) = (
-     $              f(2*i+1,2*j+1,n) + f(2*i  ,2*j+1,n)
-     $              + f(2*i+1,2*j,n ) + f(2*i  ,2*j ,n))*denom
+               c(i,j,n) = 0.25d0 *
+     $              ( f(2*i,2*j  ,n) + f(2*i+1,2*j  ,n)
+     $              + f(2*i,2*j+1,n) + f(2*i+1,2*j+1,n) )
             end do
          end do
       end do
-c
       end
 
       subroutine FORT_DDCCINT(f, DIMS(f), c, DIMS(c), lo, hi, nc)
@@ -395,12 +396,11 @@ c
 c
       do n = 1, nc
          do j = lo(2), hi(2)
-cdir$   ivdep
             do i = lo(1), hi(1)
-               f(2*i+1,2*j+1,n) = c(i,j,n) + f(2*i+1,2*j+1,n)
-               f(2*i  ,2*j+1,n) = c(i,j,n) + f(2*i  ,2*j+1,n)
-               f(2*i+1,2*j  ,n) = c(i,j,n) + f(2*i+1,2*j  ,n)
                f(2*i  ,2*j  ,n) = c(i,j,n) + f(2*i  ,2*j  ,n)
+               f(2*i+1,2*j  ,n) = c(i,j,n) + f(2*i+1,2*j  ,n)
+               f(2*i  ,2*j+1,n) = c(i,j,n) + f(2*i  ,2*j+1,n)
+               f(2*i+1,2*j+1,n) = c(i,j,n) + f(2*i+1,2*j+1,n)
             end do
          end do
       end do
