@@ -519,14 +519,14 @@ c     NOTE: generalize to rz
                         enddo
                      enddo
                   enddo
-                  c(i,j,k,n) = crse(i,j,k,n)*fac
+                  c(i,j,k,n) = c(i,j,k,n)*fac
                enddo
             enddo
          enddo
       enddo
       end
 
-      subroutine FORT_DDCCINT(f, DIMS(f), c, DIMS(c), lo, hi, nc)
+      subroutine FORT_DDCCINT(f, DIMS(f), c, DIMS(c), lo, hi, nc, ratio)
       integer nc
       integer DIMDEC(f)
       integer DIMDEC(c)
@@ -534,6 +534,7 @@ c     NOTE: generalize to rz
       integer hi(BL_SPACEDIM)
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
+      integer ratio(SDIM)
 c
       integer i,j,k,n,ii,jj,kk
 

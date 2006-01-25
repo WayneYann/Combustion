@@ -14,7 +14,7 @@
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_DIFFFORCE       DIFFFORCE
-#    define FORT_DDC2E           CENTOEDGE
+#    define FORT_DDC2E           DDC2E
 #    define FORT_FLUX            GETFLUX
 #    define FORT_INCRDIV         INCRDIV
 #    define FORT_CPSCALE         CPSCALE

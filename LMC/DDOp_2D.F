@@ -386,7 +386,7 @@ c     NOTE: generalize to rz
                      c(i,j,n) = c(i,j,n) + f(2*i+ii-1,2*j+jj-1,n)
                   enddo
                enddo
-               crse(i,j,n) = crse(i,j,n)*fac
+               c(i,j,n) = c(i,j,n)*fac
             enddo
          enddo
       enddo
@@ -400,7 +400,7 @@ c     NOTE: generalize to rz
       integer hi(BL_SPACEDIM)
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
-      integer ratio(SIM)
+      integer ratio(SDIM)
 c
       integer i,j,n,ii,jj
 
