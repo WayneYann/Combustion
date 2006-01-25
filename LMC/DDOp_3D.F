@@ -131,7 +131,7 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
 
       integer i,j,k,lo1,lo2,lo3,hi1,hi2,h3,L,M
       REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec)
-      REAL_T rhoD, rhoD1(maxspec*maxspec), rhoTD(maxspec), PTC
+      REAL_T rhoD, rhoDt(maxspec*maxspec), rhoTD(maxspec), PTC
       REAL_T sum_rhoYV, sum_rhoHYV, sum_rhoThetaD, P1atm, RU, RUC
 
       rhoD(L,M) = rhoDt( (M-1)*Nspec + L )
@@ -402,7 +402,7 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       integer DIMDEC(crse)
       REAL_T fine(DIMV(fine),nc)
       REAL_T crse(DIMV(crse),nc)
-      integer face, ratio
+      integer face, ratio(SDIM)
       
       integer i,j,k,n,ii,jj,kk, clo1, chi1, clo2, chi2, clo3, chi3, offset, dir
       
@@ -432,12 +432,12 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
                do i=clo1,chi1
                   do n=1,nc
                      crse(i,j,k,n) = 0.d0
-                     do jj=1,ratio
-                        do kk=1,ratio
+                     do jj=1,ratio(2)
+                        do kk=1,ratio(3)
                            crse(i,j,k,n) = crse(i,j,k,n) + fine(2*i+offset,2*j+jj-1,2*k+kk-1,n)
                         enddo
                      enddo
-                     crse(i,j,k,n) = crse(i,j,k,n) / (ratio*ratio)
+                     crse(i,j,k,n) = crse(i,j,k,n) / (ratio(2)*ratio(3))
                   enddo
                enddo
             enddo
@@ -454,12 +454,12 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
                do i=clo1,chi1
                   do n=1,nc
                      crse(i,j,k,n) = 0.d0
-                     do ii=1,ratio
-                        do kk=1,ratio
+                     do ii=1,ratio(1)
+                        do kk=1,ratio(3)
                            crse(i,j,k,n) = crse(i,j,k,n) + fine(2*i+ii-1,2*j+offset,2*k+kk-1,n)
                         enddo
                      enddo
-                     crse(i,j,k,n) = crse(i,j,k,n) / (ratio*ratio)
+                     crse(i,j,k,n) = crse(i,j,k,n) / (ratio(1)*ratio(3))
                   enddo
                enddo
             enddo
@@ -476,12 +476,12 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
                do i=clo1,chi1
                   do n=1,nc
                      crse(i,j,k,n) = 0.d0
-                     do ii=1,ratio
-                        do jj=1,ratio
+                     do ii=1,ratio(1)
+                        do jj=1,ratio(2)
                            crse(i,j,k,n) = crse(i,j,k,n) + fine(2*i+ii-1,2*j+jj-1,2*k+offset,n)
                         enddo
                      enddo
-                     crse(i,j,k,n) = crse(i,j,k,n) / (ratio*ratio)
+                     crse(i,j,k,n) = crse(i,j,k,n) / (ratio(1)*ratio(2))
                   enddo
                enddo
             enddo
@@ -489,7 +489,7 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       end if
       end
 
-      subroutine FORT_DDCCAVG(c, DIMS(c), f, DIMS(f), lo, hi, nc)
+      subroutine FORT_DDCCAVG(c, DIMS(c), f, DIMS(f), lo, hi, nc, ratio)
       integer nc
       integer DIMDEC(f)
       integer DIMDEC(c)
@@ -497,21 +497,33 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       integer hi(BL_SPACEDIM)
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
+      integer ratio(SDIM)
 c
-      integer i,j,k,n
-c
+      integer i,j,k,n,ii,jj,kk
+      REAL_T fac
+
+      fac = 1.d0/(ratio(1)*ratio(2)*ratio(3))
+)
+c     NOTE: generalize to rz
       do n = 1, nc
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
-                  c(i,j,n) = 0.125d0 * (
-     $                 f(2*i,2*j,2*k  ,n)+f(2*i+1,2*j,2*k  ,n)+f(2*i,2*j+1,2*k  ,n)+f(2*i+1,2*j+1,2*k  ,n)
-     $                 f(2*i,2*j,2*k+1,n)+f(2*i+1,2*j,2*k+1,n)+f(2*i,2*j+1,2*k+1,n)+f(2*i+1,2*j+1,2*k+1,n))
+                  c(i,j,k,n) = 0.d0
+                  do kk = 1,ratio(3)
+                     do jj = 1,ratio(2)
+                        do jj = 1,ratio(2)
+                           do ii = 1,ratio(1)
+                              c(i,j,k,n) = c(i,j,k,n) + f(2*i+ii-1,2*j+jj-1,2*k+kk-1n)
+                           enddo
+                        enddo
+                     enddo
+                  enddo
+                  c(i,j,k,n) = crse(i,j,k,n)*fac
                enddo
             enddo
          enddo
       enddo
-c
       end
 
       subroutine FORT_DDCCINT(f, DIMS(f), c, DIMS(c), lo, hi, nc)
@@ -523,24 +535,23 @@ c
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
 c
-      integer i,j,k,n
-c
+      integer i,j,k,n,ii,jj,kk
+
+c     NOTE: generalize to rz
       do n = 1, nc
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
-                  f(2*i  ,2*j  ,2*k  ,n) = c(i,j,k,n) + f(2*i  ,2*j  ,2*k  ,n)
-                  f(2*i+1,2*j  ,2*k  ,n) = c(i,j,k,n) + f(2*i+1,2*j  ,2*k  ,n)
-                  f(2*i  ,2*j+1,2*k  ,n) = c(i,j,k,n) + f(2*i  ,2*j+1,2*k  ,n)
-                  f(2*i+1,2*j+1,2*k  ,n) = c(i,j,k,n) + f(2*i+1,2*j+1,2*k  ,n)
-                  f(2*i  ,2*j  ,2*k+1,n) = c(i,j,k,n) + f(2*i  ,2*j  ,2*k+1,n)
-                  f(2*i+1,2*j  ,2*k+1,n) = c(i,j,k,n) + f(2*i+1,2*j  ,2*k+1,n)
-                  f(2*i  ,2*j+1,2*k+1,n) = c(i,j,k,n) + f(2*i  ,2*j+1,2*k+1,n)
-                  f(2*i+1,2*j+1,2*k+1,n) = c(i,j,k,n) + f(2*i+1,2*j+1,2*k+1,n)
+                  do kk = 1,ratio(3)
+                     do jj = 1,ratio(2)
+                        do ii = 1,ratio(1)
+                           f(2*i+ii-1,2*j+jj-1,2*k+kk-1,n) = c(i,j,n) + f(2*i+ii-1,2*j+jj-1,2*k+kk-1,n)
+                        enddo
+                     enddo
+                  enddo
                enddo
             enddo
          enddo
       enddo
-c
       end
       

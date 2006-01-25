@@ -1,8 +1,10 @@
 //BL_COPYRIGHT_NOTICE
 
 //
-// $Id: DDBndry.cpp,v 1.2 2006-01-24 23:47:48 marc Exp $
+// $Id: DDBndry.cpp,v 1.3 2006-01-25 01:28:05 marc Exp $
 //
+#include <winstd.H>
+#include <cmath>
 
 #include <LO_BCTYPES.H>
 #include <DDBndry.H>

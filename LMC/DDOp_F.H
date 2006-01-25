@@ -91,11 +91,11 @@ extern "C" {
 
     void FORT_DDCCAVG(Real*       crse, ARLIM_P(clo), ARLIM_P(chi),
                       const Real* fine, ARLIM_P(flo), ARLIM_P(fhi),
-                      const int* lo, const int* hi, const int* nc);
+                      const int* lo, const int* hi, const int* nc, const int* ratio);
 
     void FORT_DDCCINT(Real*       fine, ARLIM_P(flo), ARLIM_P(fhi),
                       const Real* crse, ARLIM_P(clo), ARLIM_P(chi),
-                      const int* lo, const int* hi, const int* nc);
+                      const int* lo, const int* hi, const int* nc, const int* ratio);
 
 }
 

@@ -1,7 +1,12 @@
+#include <winstd.H>
+
 #include "DDOp.H"
 #include "DDOp_F.H"
 #include "LO_F.H"
 
+// Note: The ratio between the original grids and the coarse-fine boundary data
+//       registers can be anything, but the ratio between adjacent DD operators
+//       generated for multigrid will always be two.
 const IntVect MGIV = IntVect(D_DECL(2,2,2));
 
 DDOp::DDOp (const ChemDriver& ckd)
@@ -26,6 +31,7 @@ DDOp::~DDOp ()
 
 bool can_coarsen(const BoxArray& ba)
 {
+    // Ratio between levels here will always be MGIV
     for (int i = 0; i < ba.size(); ++i)
     {
         Box tmp = ba[i];
@@ -66,7 +72,7 @@ DDOp::define (const BoxArray& _grids,
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
         geom.GetFaceArea(area[dir],grids,dir,gGrow);
 
-    // Generate coarser one, if possible
+    // Generate coarser one (ratio = MGIV), if possible
     if (can_coarsen(grids))
     {
         const BoxArray cGrids = BoxArray(grids).coarsen(MGIV);
@@ -115,6 +121,7 @@ coarsenBndryData(const MultiFab&      fmf,
                  int                  cbr_sc,
                  int                  nc)
 {
+    // coarsen boundary data, always by MGIV
     BL_ASSERT(fmf.boxArray() == BoxArray(cmf.boxArray()).refine(MGIV));
     for (MFIter mfi(fmf); mfi.isValid(); ++mfi)
     {
@@ -128,7 +135,7 @@ coarsenBndryData(const MultiFab&      fmf,
             FORT_CRSNCCBND(fbox.loVect(), fbox.hiVect(),
                            ffab.dataPtr(fmf_sc), ARLIM(ffab.loVect()), ARLIM(ffab.hiVect()),
                            cfab.dataPtr(cmf_sc), ARLIM(cfab.loVect()), ARLIM(cfab.hiVect()),
-                           &nc, &face, &cfRatio);
+                           &nc, &face, MGIV.getVect());
         }
     }
 
@@ -149,7 +156,7 @@ coarsenBndryData(const MultiFab&      fmf,
                 FORT_CRSNCCBND(fbox.loVect(), fbox.hiVect(),
                                ffab.dataPtr(fbr_sc), ARLIM(ffab.loVect()), ARLIM(ffab.hiVect()),
                                cfab.dataPtr(cbr_sc), ARLIM(cfab.loVect()), ARLIM(cfab.hiVect()),
-                               &nc, &face, &cfRatio);
+                               &nc, &face, MGIV.getVect());
             }
         }
     }
@@ -171,7 +178,7 @@ DDOp::setBoundaryData(const MultiFab&      fineT,
     BL_ASSERT(fineY.boxArray() == grids);
     const int Nspec = ckdriver.numSpecies();
 
-    if (coarser)
+    if (coarser)  // if so, then it will be MGIV coarser
     {
         const int newTmfComp = Nspec;
         const int newTbrComp = Nspec;
@@ -249,7 +256,7 @@ DDOp::setGrowCells(MultiFab& T,
     const int flagbc  = 1;
     const int flagden = 0; // Use LinOp's bc interpolator, but don't save the coeff
     const int maxorder = 3;
-    Real* dummy;
+    Real* dummy = 0;
     Box dumbox(IntVect(D_DECL(0,0,0)),IntVect(D_DECL(0,0,0)));
     const Real* dx = Tbd.getGeom().CellSize();
     for (OrientationIter oitr; oitr; ++oitr)
@@ -519,7 +526,7 @@ DDOp::average (MultiFab&       mfC,
         const Box& cbox = mfi.validbox();
         FORT_DDCCAVG(C.dataPtr(dCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
                      F.dataPtr(sCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
-                     cbox.loVect(), cbox.hiVect(), &nComp);
+                     cbox.loVect(), cbox.hiVect(), &nComp, MGIV.getVect());
     }
 }
 
@@ -539,6 +546,6 @@ DDOp::interpolate (MultiFab&       mfF,
         const Box cbox = BoxLib::refine(mfi.validbox(),MGIV);
         FORT_DDCCINT(F.dataPtr(dCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
                      C.dataPtr(sCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
-                     cbox.loVect(), cbox.hiVect(), &nComp);
+                     cbox.loVect(), cbox.hiVect(), &nComp, MGIV.getVect());
     }
 }

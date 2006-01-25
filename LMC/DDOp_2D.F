@@ -30,19 +30,19 @@
             do i=lo(1),hi(1)+1
                do n=1,Nspec
                   d(i,j,n) = (X(i,j,n) - X(i-1,j,n))*dxinv
-               end do
+               enddo
                d(i,j,Nspec+1) = (T(i,j) - T(i-1,j))*dxinv
-            end do
-         end do
+            enddo
+         enddo
       else
          do i=lo(1),hi(1)
             do j=lo(2),hi(2)+1
                do n=1,Nspec
                   d(i,j,n) = (X(i,j,n) - X(i,j-1,n))*dxinv
-               end do
+               enddo
                d(i,j,Nspec+1) = (T(i,j) - T(i,j-1))*dxinv
-            end do
-         end do
+            enddo
+         enddo
       end if
       end
 
@@ -65,17 +65,17 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
             do j = lo(2), hi(2)
                do i = lo(1)+1, hi(1)
                   efab(i,j,n) = half*(cfab(i-1,j,n) + cfab(i,j,n))
-               end do
-            end do
-         end do
+               enddo
+            enddo
+         enddo
       else
          do n = 1,nc
             do i = lo(1), hi(1)
                do j = lo(2)+1, hi(2)
                   efab(i,j,n) = half*(cfab(i,j-1,n) + cfab(i,j,n))
-               end do
-            end do
-         end do
+               enddo
+            enddo
+         enddo
       end if
       end
 
@@ -102,7 +102,7 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
 
       integer i,j,lo1,lo2,hi1,hi2,K,L
       REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec)
-      REAL_T rhoD, rhoD1(maxspec*maxspec), rhoTD(maxspec), PTC
+      REAL_T rhoD, rhoDt(maxspec*maxspec), rhoTD(maxspec), PTC
       REAL_T sum_rhoYV, sum_rhoHYV, sum_rhoThetaD, P1atm, RU, RUC
 
       rhoD(K,L) = rhoDt( (L-1)*Nspec + K )
@@ -124,7 +124,7 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
 
             do K = 1,Nspec
                Yt(K) = Ye(i,j,K)
-            end do
+            enddo
 
             CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
@@ -143,19 +143,19 @@ c     Note: scalings get cgs quantities from EGLib to MKS (assume He,d come in M
                sum_rhoYV = - Ye(i,j,K)*rhoTD(K)*d(i,j,Nspec+1)/Te(i,j)
                do L= 1,Nspec
                   sum_rhoYV = sum_rhoYV - rhoD(K,L)*d(i,j,L)
-               end do
+               enddo
                fluxY(i,j,K) = sum_rhoYV*1.d-1
 
                sum_rhoHYV = sum_rhoHYV + He(i,j,K)*fluxY(i,j,K)
                sum_rhoThetaD = sum_rhoThetaD + rhoTD(K)*d(i,j,K)
 
-            end do
+            enddo
 
             fluxH(i,j) = sum_rhoHYV - (PTC*1.d-5)*d(i,j,Nspec+1)
      &           - (RU*Te(i,j)/WW)*(sum_rhoThetaD*1.d-1)
 
-         end do
-      end do
+         enddo
+      enddo
       
       end
       
@@ -179,18 +179,18 @@ c     cancel, and we assume V is extensive (ie. Flux.Area)
                do n= 1,nc
                   div(i,j,n) = div(i,j,n)
      &                 + (V(i+1,j,n) - V(i,j,n))
-               end do
-            end do               
-         end do
+               enddo
+            enddo               
+         enddo
       else 
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                do n= 1,nc
                   div(i,j,n) = div(i,j,n)
      &                 + (V(i,j+1,n) - V(i,j,n))
-               end do
-            end do               
-         end do
+               enddo
+            enddo               
+         enddo
       end if
       end
 
@@ -216,7 +216,7 @@ c     cancel, and we assume V is extensive (ie. Flux.Area)
 
             do K = 1,Nspec
                Yt(K) = Y(i,j,K)
-            end do
+            enddo
 
             CALL CKCPBS(T(i,j),Yt,IWRK(ckbi),RWRK(ckbr),CPMIX)
             lambda(i,j) = lambda(i,j)/(CPMIX*1.d-4)
@@ -256,7 +256,7 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
                
                do K = 1,Nspec
                   Yt(K) = Ye(i,j,K)
-               end do
+               enddo
                
                CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
@@ -270,8 +270,8 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
                   lambda(i,j) = lambda(i,j)+TC*1.d-5
                endif
 
-            end do
-         end do
+            enddo
+         enddo
 
       else 
 
@@ -282,7 +282,7 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
 
                do K = 1,Nspec
                   Yt(K) = Ye(i,j,K)
-               end do
+               enddo
 
                CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
@@ -296,8 +296,8 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
                   lambda(i,j) = lambda(i,j)+TC*1.d-5
                endif
 
-            end do
-         end do
+            enddo
+         enddo
       end if
       
       end
@@ -309,7 +309,7 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       integer DIMDEC(crse)
       REAL_T fine(DIMV(fine),nc)
       REAL_T crse(DIMV(crse),nc)
-      integer face, ratio
+      integer face, ratio(SDIM)
       
       integer i,j,n,ii,jj, clo1, chi1, clo2, chi2, offset, dir
       
@@ -325,6 +325,7 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
          offset = 0
       end if
       
+c     NOTE: generalize to rz
       if (dir .eq. 0) then
          clo1 = (lo(1)-offset)/2
          clo2 = lo(2)/2
@@ -334,13 +335,13 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
             do i=clo1,chi1
                do n=1,nc
                   crse(i,j,n) = 0.d0
-                  do jj = 1,ratio
+                  do jj = 1,ratio(2)
                      crse(i,j,n) = crse(i,j,n) + fine(2*i+offset,2*j+jj-1,n)
                   enddo
-                  crse(i,j,n) = crse(i,j,n)/ratio
-               end do
-            end do
-         end do
+                  crse(i,j,n) = crse(i,j,n)/ratio(2)
+               enddo
+            enddo
+         enddo
       else
          clo1 = lo(1)/2
          clo2 = (lo(2)-offset)/2
@@ -350,17 +351,17 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
             do i=clo1,chi1
                do n=1,nc
                   crse(i,j,n) = 0.d0
-                  do ii = 1,ratio
+                  do ii = 1,ratio(1)
                      crse(i,j,n) = crse(i,j,n) + fine(2*i+ii-1,2*j+offset,n)
                   enddo
-                  crse(i,j,n) = crse(i,j,n)/ratio
-               end do
-            end do
-         end do
+                  crse(i,j,n) = crse(i,j,n)/ratio(1)
+               enddo
+            enddo
+         enddo
       end if
       end
 
-      subroutine FORT_DDCCAVG(c, DIMS(c), f, DIMS(f), lo, hi, nc)
+      subroutine FORT_DDCCAVG(c, DIMS(c), f, DIMS(f), lo, hi, nc, ratio)
       integer nc
       integer DIMDEC(f)
       integer DIMDEC(c)
@@ -368,21 +369,30 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       integer hi(BL_SPACEDIM)
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
+      integer ratio(SDIM)
 
-      integer i,j,n
+      integer i,j,n,ii,jj
+      REAL_T fac
 
+      fac = 1.d0 / (ratio(1)*ratio(2))
+
+c     NOTE: generalize to rz
       do n = 1, nc
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               c(i,j,n) = 0.25d0 *
-     $              ( f(2*i,2*j  ,n) + f(2*i+1,2*j  ,n)
-     $              + f(2*i,2*j+1,n) + f(2*i+1,2*j+1,n) )
-            end do
-         end do
-      end do
+               c(i,j,n) = 0.d0
+               do jj = 1,ratio(2)
+                  do ii = 1,ratio(1)
+                     c(i,j,n) = c(i,j,n) + f(2*i+ii-1,2*j+jj-1,n)
+                  enddo
+               enddo
+               crse(i,j,n) = crse(i,j,n)*fac
+            enddo
+         enddo
+      enddo
       end
 
-      subroutine FORT_DDCCINT(f, DIMS(f), c, DIMS(c), lo, hi, nc)
+      subroutine FORT_DDCCINT(f, DIMS(f), c, DIMS(c), lo, hi, nc, ratio)
       integer nc
       integer DIMDEC(f)
       integer DIMDEC(c)
@@ -390,21 +400,22 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       integer hi(BL_SPACEDIM)
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
+      integer ratio(SIM)
 c
-      integer i
-      integer j
-      integer n
-c
+      integer i,j,n,ii,jj
+
+c     NOTE: generalize to rz
       do n = 1, nc
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               f(2*i  ,2*j  ,n) = c(i,j,n) + f(2*i  ,2*j  ,n)
-               f(2*i+1,2*j  ,n) = c(i,j,n) + f(2*i+1,2*j  ,n)
-               f(2*i  ,2*j+1,n) = c(i,j,n) + f(2*i  ,2*j+1,n)
-               f(2*i+1,2*j+1,n) = c(i,j,n) + f(2*i+1,2*j+1,n)
-            end do
-         end do
-      end do
+               do jj = 1,ratio(2)
+                  do ii = 1,ratio(1)
+                     f(2*i+ii-1,2*j+jj-1,n) = c(i,j,n) + f(2*i+ii-1,2*j+jj-1,n)
+                  enddo
+               enddo
+            enddo
+         enddo
+      enddo
 c
       end
       
