@@ -501,6 +501,7 @@ c     Get the matrix of elements versus species
 
 c     Hardwire the unit number to 26 for the moment
       lout = 26
+      call bl_pd_myproc(i)
       write(myproc, *) i
       idx = 1
       do j = 1, 30
