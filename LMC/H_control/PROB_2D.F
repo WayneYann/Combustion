@@ -410,7 +410,7 @@ c     Load domain dimensions into common, and set up boundary functions
       REAL_T Yfu(maxspec), Yox(maxspec)
       REAL_T Y_FU_H2, Y_FU_O2, Y_OX_H2, Y_OX_O2
       REAL_T X_FU_H2, X_FU_O2, X_FU_N2, Xsum
-      REAL_T Xfu(maxspec)
+      REAL_T Xfu(maxspec), a
       integer i, zone, n, lo(SDIM), hi(SDIM), iN2, iH2, iO2, getZone
       character*(maxspnml) name
       data lo / 1, 1 /
@@ -535,55 +535,58 @@ c     Get something reasonable for stick
 
       elseif (probtype .eq. 3) then
 c     For probtype == 3, set boundary conditions as constants
+
          iN2 = -1
-         iH2 = -1
-         iO2 = -1
          do n = 1,Nspec
             call get_spec_name(name,n)
             if (name .eq. 'N2' ) iN2  = n
-            if (name .eq. 'H2') iH2 = n
-            if (name .eq. 'O2' ) iO2  = n
          end do
 
-         if(phi_in.ge.zero)then
+         call get_spec_name(name,fuelID)
+         if (name .eq. 'H2' ) then
+            a = half
+            print *,'this is hydrogen',fuelID,oxidID,iN2
+         else if (name .eq. 'CH4' ) then
+            a = two
+            print *,'this is methane',fuelID,oxidID,iN2
+         else if (name .eq. 'C3H8' ) then
+            a = five
+            print *,'this is propane',fuelID,oxidID,iN2
+         else if (phi_in .ge. zero) then
+            call bl_abort('Unknown fuel species')
+         endif
 
-         do n=1,Nspec
-            Xfu(n) = zero
-         enddo
+         if (phi_in .ge. zero) then
 
-         X_FU_H2 = 2.d0*phi_in
-         X_FU_O2 = 1.d0
-         X_FU_N2 = .79d0/.21d0
+            do n=1,Nspec
+               Xfu(n) = zero
+            enddo
 
-         Xsum = X_FU_H2 + X_FU_O2 + X_FU_N2
+            Xfu(oxidID) = one/(one + phi_in/a  + 0.79d0/0.21d0)
+            Xfu(fuelID) = phi_in * Xfu(oxidID) / a
+            Xfu(iN2) = (0.79d0/0.21d0) * Xfu(oxidID)
 
-         Xfu(iH2) = X_FU_H2/ Xsum
-         Xfu(iO2) = X_FU_O2/ Xsum
-         Xfu(iN2) = X_FU_N2/ Xsum
-
-         write(6,*)" in bc routine", Xfu(iH2),Xfu(iO2) ,Xfu(iN2) 
-
-
-         call FORT_MOLETOMASS(lo,hi,
-     &        Xfu, ARLIM(lo),ARLIM(hi),
-     &        Yfu,         ARLIM(lo),ARLIM(hi))
-
+            call FORT_MOLETOMASS(lo,hi,
+     &           Xfu, ARLIM(lo),ARLIM(hi),
+     &           Yfu,         ARLIM(lo),ARLIM(hi))
+            
          else
 
+c     This is for hydrogen
 c     phi = 1.0
-         Y_FU_H2 = 0.0551670662321d0
-         Y_FU_O2  = 0.220068142419d0
+            Y_FU_H2 = 0.0551670662321d0
+            Y_FU_O2  = 0.220068142419d0
 c     phi = 0.7
-c         Y_FU_H2 = 0.0392668168889d0
-c         Y_FU_O2  = 0.223771589041d0
+c     Y_FU_H2 = 0.0392668168889d0
+c     Y_FU_O2  = 0.223771589041d0
 
 
-         do n=1,Nspec
-            Yfu(n) = zero
-         enddo
-         Yfu(iH2) = Y_FU_H2
-         Yfu(iO2)  = Y_FU_O2
-         Yfu(iN2)  = one - Y_FU_H2 - Y_FU_O2
+            do n=1,Nspec
+               Yfu(n) = zero
+            enddo
+            Yfu(fuelID) = Y_FU_H2
+            Yfu(oxidID) = Y_FU_O2
+            Yfu(iN2)  = one - Y_FU_H2 - Y_FU_O2
 
          endif
 
