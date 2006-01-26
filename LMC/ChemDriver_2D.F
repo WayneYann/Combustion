@@ -507,27 +507,27 @@ c     Get the matrix of elements versus species
          end do
       end if
       end
-      !
-      ! Opens a file of the form: 'vode.failed.N' where N is myproc()
-      !
-      ! Returns the unit number of the open()d file.
-      !
-      function open_vode_failure_file () result (lout)
-        implicit none
-        character*30 name, myproc
-        integer lout
-        integer i
-        !
-        ! Let's hardwire the unit number to 26 for the moment.
-        !
-        lout = 26
-        call bl_pd_myproc(i)
-        write(myproc, *) i
-        myproc = adjustl(myproc)
-        write(name, *) 'vode.failed.', myproc(1:len_trim(myproc))
-        name = adjustl(name)
-        open(unit=lout, file=name(1:len_trim(name)), form='formatted', status='replace')
-      end function open_vode_failure_file
+
+      integer function open_vode_failure_file ()
+      implicit none
+      character*30 name, myproc
+      integer lout,i,j,idx
+
+c     Hardwire the unit number to 26 for the moment
+      lout = 26
+      write(myproc, *) i
+      idx = 1
+      do j = 1, 30
+         if (myproc(j:j) .ne. ' ') then
+            idx = j
+            goto 1
+         end if
+      end do
+ 1    continue
+      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
+      open(unit=lout, file=name, form='formatted', status='replace')
+      open_vode_failure_file = lout
+      end
 
 #ifdef EVOLVE_TEMP
       subroutine FORT_CONPSOLV(lo, hi,
