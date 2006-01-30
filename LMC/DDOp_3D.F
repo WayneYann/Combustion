@@ -450,7 +450,7 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
                enddo
             enddo
          enddo
-      if (dir .eq. 1) then
+      elseif (dir .eq. 1) then
          clo1 = lo(1)/2
          clo2 = (lo(2)-offset)/2
          clo3 = lo(3)/2
