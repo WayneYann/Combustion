@@ -66,7 +66,7 @@ extern "C" {
                    const Real* Ye, ARLIM_P(Yelo),   ARLIM_P(Yehi),
                    const Real* Te, ARLIM_P(Telo),   ARLIM_P(Tehi),
                    const Real* He, ARLIM_P(Helo),   ARLIM_P(Hehi),
-                   const int* i);
+                   const int* i, const int* addHflux);
     
     void FORT_INCRDIV(const int* lo, const int* hi,
                       Real*     div, ARLIM_P(divlo), ARLIM_P(divhi),

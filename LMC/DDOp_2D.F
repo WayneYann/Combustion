@@ -62,7 +62,7 @@ c     Here, the cc data is assumed to be computable over the box (lo,hi)
 c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       if (dir .EQ. 0) then
          do n = 1,nc
-            do j = lo(2), hi(2)
+            do j = lo(2)+1, hi(2)-1
                do i = lo(1)+1, hi(1)
                   efab(i,j,n) = half*(cfab(i-1,j,n) + cfab(i,j,n))
                enddo
@@ -70,7 +70,7 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
          enddo
       else
          do n = 1,nc
-            do i = lo(1), hi(1)
+            do i = lo(1)+1, hi(1)-1
                do j = lo(2)+1, hi(2)
                   efab(i,j,n) = half*(cfab(i,j-1,n) + cfab(i,j,n))
                enddo
@@ -81,9 +81,11 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
 
       subroutine FORT_FLUX(lo, hi, fluxH, DIMS(fluxH),
      &                     fluxY, DIMS(fluxY), d, DIMS(d),
-     &                     Ye, DIMS(Ye), Te, DIMS(Te), He, DIMS(He), dir)
+     &                     Ye, DIMS(Ye), Te, DIMS(Te), He, DIMS(He),
+     &                     dir, add_enth_flux)
       implicit none
 #include "cdwrk.H"
+#include "conp.H"
       integer lo(SDIM), hi(SDIM), dir
       integer DIMDEC(fluxH)
       integer DIMDEC(fluxY)
@@ -99,11 +101,12 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       REAL_T     Ye(DIMV(Ye)   ,1)
       REAL_T     Te(DIMV(Te))
       REAL_T     He(DIMV(He)   ,1)
+      integer add_enth_flux
 
-      integer i,j,lo1,lo2,hi1,hi2,K,L
+      integer i,j,lo1,lo2,hi1,hi2,K,L,n
       REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec)
       REAL_T rhoD, rhoDt(maxspec*maxspec), rhoTD(maxspec), PTC
-      REAL_T sum_rhoYV, sum_rhoHYV, sum_rhoThetaD, P1atm, RU, RUC
+      REAL_T sum_rhoYV, sum_rhoHYV, sum_rhoThetaD, P1atm, RU, RUC, sum
 
       rhoD(K,L) = rhoDt( (L-1)*Nspec + K )
       
@@ -122,9 +125,17 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       do j = lo2, hi2
          do i = lo1, hi1
 
-            do K = 1,Nspec
-               Yt(K) = Ye(i,j,K)
-            enddo
+c            do K = 1,Nspec
+c               Yt(K) = Ye(i,j,K)
+c            enddo
+            sum = 0.d0
+            do n=1,Nspec
+               Yt(n) = MAX(Ye(i,j,n),0.d0)
+               sum = sum+Yt(n)
+            end do
+            if (iN2 .gt. 0) then
+               Yt(iN2) = Yt(iN2)+one-sum
+            endif
 
             CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
@@ -138,7 +149,7 @@ c     Note: scalings get cgs quantities from EGLib to MKS (assume He,d come in M
             sum_rhoHYV    = zero
             sum_rhoThetaD = zero
 
-            do K= 1,Nspec
+            do K = 1,Nspec
 
                sum_rhoYV = - Ye(i,j,K)*rhoTD(K)*d(i,j,Nspec+1)/Te(i,j)
                do L= 1,Nspec
@@ -151,7 +162,14 @@ c     Note: scalings get cgs quantities from EGLib to MKS (assume He,d come in M
 
             enddo
 
-            fluxH(i,j) = sum_rhoHYV - (PTC*1.d-5)*d(i,j,Nspec+1)
+            if (add_enth_flux.eq.1) then
+               fluxH(i,j) = sum_rhoHYV
+            else
+               fluxH(i,j) = 0.d0
+            endif
+
+c           Now add all the other terms
+            fluxH(i,j) = - (PTC*1.d-5)*d(i,j,Nspec+1)
      &           - (RU*Te(i,j)/WW)*(sum_rhoThetaD*1.d-1)
 
          enddo

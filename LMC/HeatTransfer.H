@@ -4,6 +4,7 @@
 
 #include <NavierStokes.H>
 #include <ChemDriver.H>
+#include <DDOp.H>
 
 #include <list>
 #include <utility>
@@ -550,6 +551,101 @@ protected:
                                       const Box&       domain,
                                       const FPLoc&     bc_lo,
                                       const FPLoc&     bc_hi);
+
+    void add_heat_sources(MultiFab& sum,
+                          int       dComp,
+                          Real      time,
+                          int       nGrow,
+                          Real      scale);
+
+    //
+    // Functions related to full-transport model
+    //
+    void fill_mcdd_boundary_data(Real time);
+
+    void compute_mcdd_visc_terms(MultiFab&           vtermsY,
+                                 int                 dCompY,
+                                 MultiFab&           vtermsH,
+                                 int                 dCompH,
+                                 Real                time,
+                                 int                 nGrow,
+                                 DDOp::DD_ApForTorRH whichApp,
+                                 PArray<MultiFab>*   flux = 0,
+                                 int                 dCompFY = 0,
+                                 int                 dCompFH = 0);
+
+    void compute_mcdd_relax_parameter(MultiFab&       lambda,
+                                      int             dCompY,
+                                      int             dCompH,
+                                      const MultiFab& Y,
+                                      int             sCompY,
+                                      const MultiFab& T,
+                                      int             sCompT,
+                                      const MultiFab& Rho,
+                                      int             sCompR,
+                                      Real            dt,
+                                      int             mgLevel = 0);
+
+    void mcdd_average_state(const MultiFab& SF,
+                            int             sCompY,
+                            int             sCompH,
+                            const MultiFab& rhoF,
+                            int             sCompFR,
+                            MultiFab&       SC,
+                            int             dCompY,
+                            int             dCompH,
+                            const MultiFab& rhoC,
+                            int             sCompCR) const;
+
+    void mcdd_interp_state(const MultiFab& SC,
+                           int             sCompY,
+                           int             sCompH,
+                           const MultiFab& rhoC,
+                           int             sCompCR,
+                           MultiFab&       SF,
+                           int             dCompY,
+                           int             dCompH,
+                           const MultiFab& rhoF,
+                           int             sCompFR) const;
+
+    void mcdd_v_cycle(MultiFab&         S,
+                      int               sCompYS,
+                      int               sCompHS,
+                      const MultiFab&   Rhs,
+                      int               sCompYR,
+                      int               sCompHR,
+                      MultiFab&         T,
+                      int               sCompT,
+                      const MultiFab&   Rho,
+                      int               sCompR,
+                      PArray<MultiFab>& flux,
+                      int               dCompFY,
+                      int               dCompFH,
+                      Real              time,
+                      Real              dt,
+                      int               level = 0);
+
+    void mcdd_update(Real time,
+                     Real dt);
+
+    void mcdd_apply(MultiFab& AH, int dCompH, MultiFab& AY, int dCompY,
+                    const MultiFab& H, int sCompH, const MultiFab& Y, int sCompY,
+                    MultiFab& T, int sCompT, const MultiFab& Rho, int sCompR,
+                    PArray<MultiFab>& fluxH, int dCompFH,
+                    PArray<MultiFab>& fluxY, int dCompFY,
+                    Real time, Real dt, int level);
+
+    void mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCompY,
+                       const MultiFab& H, int sCompH, const MultiFab& Y, int sCompY,
+                       MultiFab& T, int sCompT, const MultiFab& Rho, int sCompR,
+                       const MultiFab& RhsH, int sCompRH,
+                       const MultiFab& RhsY, int sCompRY,
+                       PArray<MultiFab>& fluxH, int dCompFH,
+                       PArray<MultiFab>& fluxY, int dCompFY,
+                       Real time, Real dt, int level = 0);
+
+    void mcdd_diffuse_sync(Real dt);
+    
 protected:
 
     DistributionMapping getFuncCountDM (const BoxArray& bxba);
@@ -575,6 +671,8 @@ protected:
     static bool               plot_auxDiags;
     MultiFab*                 auxDiag;
     static Array<std::string> auxDiag_names;
+
+    DDOp MCDDOp;
     //
     // Protected static data.
     //
@@ -622,6 +720,14 @@ protected:
     static Real        P1atm_MKS;
     static std::string turbFile;
     static std::string fuelName;
+    static int         do_mcdd;
+    static int         mcdd_NitersMAX;
+    static Real        mcdd_relaxFactor;
+    static Real        mcdd_relaxFactor1;
+    static Real        mcdd_rtol;
+    static int         mcdd_presmooth;
+    static int         mcdd_postsmooth;
+    static Real        mcdd_cfRelaxFactor;
 };
 
 #endif /*_HeatTransfer_H_*/

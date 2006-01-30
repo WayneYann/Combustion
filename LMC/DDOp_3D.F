@@ -77,8 +77,8 @@ c     Here, the cc data is assumed to be computable over the box (lo,hi)
 c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       if (dir .EQ. 0) then
          do n = 1,nc
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
+            do k = lo(3)+1, hi(3)-1
+               do j = lo(2)+1, hi(2)-1
                   do i = lo(1)+1, hi(1)
                      efab(i,j,k,n) = half*(cfab(i-1,j,k,n) + cfab(i,j,k,n))
                   enddo
@@ -87,9 +87,9 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
          enddo
       else if (dir .EQ. 1) then
          do n = 1,nc
-            do k = lo(3), hi(3)
+            do k = lo(3)+1, hi(3)-1
                do j = lo(2)+1, hi(2)
-                  do i = lo(1), hi(1)
+                  do i = lo(1)+1, hi(1)-1
                      efab(i,j,k,n) = half*(cfab(i,j-1,k,n) + cfab(i,j,k,n))
                   enddo
                enddo
@@ -98,8 +98,8 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       else
          do n = 1,nc
             do k = lo(3)+1, hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
+               do j = lo(2)+1, hi(2)-1
+                  do i = lo(1)+1, hi(1)-1
                      efab(i,j,k,n) = half*(cfab(i,j,k-1,n) + cfab(i,j,k,n))
                   enddo
                enddo
@@ -110,7 +110,8 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
 
       subroutine FORT_FLUX(lo, hi, fluxH, DIMS(fluxH),
      &                     fluxY, DIMS(fluxY), d, DIMS(d),
-     &                     Ye, DIMS(Ye), Te, DIMS(Te), He, DIMS(He), dir)
+     &                     Ye, DIMS(Ye), Te, DIMS(Te), He, DIMS(He),
+     &                     dir, add_enth_flux)
       implicit none
 #include "cdwrk.H"
       integer lo(SDIM), hi(SDIM), dir
@@ -128,6 +129,7 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       REAL_T     Ye(DIMV(Ye)   ,1)
       REAL_T     Te(DIMV(Te))
       REAL_T     He(DIMV(He)   ,1)
+      integer add_enth_flux
 
       integer i,j,k,lo1,lo2,lo3,hi1,hi2,h3,L,M
       REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec)
@@ -189,7 +191,14 @@ c     Note: scalings get cgs quantities from EGLib to MKS (assume He,d come in M
                   
                enddo
                
-               fluxH(i,j,k) = sum_rhoHYV - (PTC*1.d-5)*d(i,j,k,Nspec+1)
+               if (add_enth_flux.eq.1) then
+                  fluxH(i,j,k) = sum_rhoHYV
+               else
+                  fluxH(i,j,k) = 0.d0
+               endif
+                  
+c           Now add all the other terms
+               fluxH(i,j,k) = - (PTC*1.d-5)*d(i,j,k,Nspec+1)
      &              - (RU*Te(i,j,k)/WW)*(sum_rhoThetaD*1.d-1)
 
             enddo

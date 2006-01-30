@@ -39,6 +39,8 @@ public:
                       MultiFab& Y,
                       int       compY) const;
 
+    enum DD_ApForTorRH {DD_Temp, DD_RhoH};
+
     void applyOp(MultiFab&         outH,
                  int               dCompH,
                  MultiFab&         outY,
@@ -51,6 +53,7 @@ public:
                  int               dCompFH,
                  PArray<MultiFab>& fluxY,
                  int               dCompFY,
+                 DD_ApForTorRH     whichApp,
                  int               level = 0) const;
 
      void setRelax(MultiFab&         lambda,

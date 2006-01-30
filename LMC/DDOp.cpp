@@ -327,13 +327,14 @@ DDOp::applyOp(MultiFab&         outH,
               int               dCompFH,
               PArray<MultiFab>& fluxY,
               int               dCompFY,
+              DD_ApForTorRH     whichApp,
               int               level) const
 {
     BL_ASSERT(level >= 0);
     if (level > 0)
     {
         coarser->applyOp(outH,dCompH,outY,dCompY,inT,sCompT,inY,sCompY,
-                         fluxH,dCompFH,fluxY,dCompFY,level-1);
+                         fluxH,dCompFH,fluxY,dCompFY,whichApp,level-1);
         return;
     }
 
@@ -362,6 +363,7 @@ DDOp::applyOp(MultiFab&         outH,
     const int sCompXc = 0;
     const int sCompTe = Nspec;
     const int sCompYe = 0;
+    const int do_add_enth_flux = (whichApp==DD_RhoH ? 1 : 0);
 
     // Allocate/initialize output multifabs
     outH.setVal(0.0,dCompH,1);
@@ -377,6 +379,8 @@ DDOp::applyOp(MultiFab&         outH,
         const Box gbox = BoxLib::grow(box,nGrow);
 
         // Get cc mole frac in valid+grow so that we can compute grad(X)
+        // NOTE: No worries for corner cells, since C2E only fills surroundingNodes(box,dir)
+        Xc.resize(gbox,Nspec);
         ckdriver.massFracToMoleFrac(Xc,Yc,gbox,sCompY,sCompXc);
 
         for (int i=0; i<BL_SPACEDIM; ++i)
@@ -386,8 +390,8 @@ DDOp::applyOp(MultiFab&         outH,
             TYe.resize(ebox,Nspec+1); // state on edge
 
             // Get ec values from cc values
-            center_to_edge(Tc,TYe,gbox,0,sCompTe,1);
-            center_to_edge(Yc,TYe,gbox,0,sCompYe,Nspec);
+            center_to_edge(Tc,TYe,gbox,sCompT,sCompTe,1);
+            center_to_edge(Yc,TYe,gbox,sCompY,sCompYe,Nspec);
 
             // cc X,T in and ec de out
             FORT_DIFFFORCE(box.loVect(),box.hiVect(),
@@ -410,7 +414,12 @@ DDOp::applyOp(MultiFab&         outH,
                       TYe.dataPtr(sCompYe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
                       TYe.dataPtr(sCompTe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
                       Hie.dataPtr(),       ARLIM(Hie.loVect()),ARLIM(Hie.hiVect()),
-                      &i);
+                      &i, &do_add_enth_flux);
+
+            // If whichApp==DD_Temp, this is being used for the Temperature equation.
+            //   We do not add hi.fluxi to the energy flux, but we do add
+            //     -(grad(T).sum(cpi.fluxi))/cpmix to the total result.
+            // HACK: need to implement
 
             // Multiply fluxes times edge areas
             Hfl.mult(area[i][mfi],0,dCompFH,1);
