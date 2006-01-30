@@ -131,7 +131,7 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       REAL_T     He(DIMV(He)   ,1)
       integer add_enth_flux
 
-      integer i,j,k,lo1,lo2,lo3,hi1,hi2,h3,L,M
+      integer i,j,k,lo1,lo2,lo3,hi1,hi2,hi3,L,M
       REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec)
       REAL_T rhoD, rhoDt(maxspec*maxspec), rhoTD(maxspec), PTC
       REAL_T sum_rhoYV, sum_rhoHYV, sum_rhoThetaD, P1atm, RU, RUC
@@ -304,7 +304,7 @@ c     cancel, and we assume V is extensive (ie. Flux.Area)
       REAL_T     Te(DIMV(Te))
       REAL_T     lambda(DIMV(lambda)   )
 
-      integer i,j,k,lo1,lo2,lo3,hi1,hi2,hi3
+      integer i,j,k,n,lo1,lo2,lo3,hi1,hi2,hi3
       REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec), TC
 
 c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
@@ -511,7 +511,6 @@ c
       REAL_T fac
 
       fac = 1.d0/(ratio(1)*ratio(2)*ratio(3))
-)
 c     NOTE: generalize to rz
       do n = 1, nc
          do k = lo(3), hi(3)
@@ -520,11 +519,9 @@ c     NOTE: generalize to rz
                   c(i,j,k,n) = 0.d0
                   do kk = 1,ratio(3)
                      do jj = 1,ratio(2)
-                        do jj = 1,ratio(2)
-                           do ii = 1,ratio(1)
-                              c(i,j,k,n) = c(i,j,k,n) + f(2*i+ii-1,2*j+jj-1,2*k+kk-1n)
-                           enddo
-                        enddo
+                         do ii = 1,ratio(1)
+                            c(i,j,k,n) = c(i,j,k,n) + f(2*i+ii-1,2*j+jj-1,2*k+kk-1,n)
+                         enddo
                      enddo
                   enddo
                   c(i,j,k,n) = c(i,j,k,n)*fac
@@ -554,7 +551,7 @@ c     NOTE: generalize to rz
                   do kk = 1,ratio(3)
                      do jj = 1,ratio(2)
                         do ii = 1,ratio(1)
-                           f(2*i+ii-1,2*j+jj-1,2*k+kk-1,n) = c(i,j,n) + f(2*i+ii-1,2*j+jj-1,2*k+kk-1,n)
+                           f(2*i+ii-1,2*j+jj-1,2*k+kk-1,n) = c(i,j,k,n) + f(2*i+ii-1,2*j+jj-1,2*k+kk-1,n)
                         enddo
                      enddo
                   enddo
