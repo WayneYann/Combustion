@@ -150,7 +150,6 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
          hi2 = hi(2) + 1
          hi3 = hi(3)
       else 
-      if (dir .EQ. 0) then
          hi1 = hi(1)
          hi2 = hi(2)
          hi3 = hi(3) + 1
