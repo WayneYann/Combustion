@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.10 2006-01-21 02:12:39 marc Exp $
+# $Id: Make.package,v 1.11 2006-01-30 22:43:31 lijewski Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -43,6 +43,6 @@ endif
 
 C$(HT_BASE)_sources += ChemDriver.cpp
 C$(HT_BASE)_headers += ChemDriver.H
-F$(HT_BASE)_sources += ChemDriver_F.F ChemDriver_$(DIM)D.F
+F$(HT_BASE)_sources += ChemDriver_F.F ChemDriver_$(DIM)D.F DDOp_$(DIM)D.F
 F$(HT_BASE)_headers += ChemDriver_F.H cdwrk.H
 f$(HT_BASE)_sources += vode.f EGSlib.f EGini.f
