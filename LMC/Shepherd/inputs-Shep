@@ -1,4 +1,7 @@
-# ------------------  INPUTS TO MAIN PROGRAM  -------------------
+
+DistributionMapping.verbose=1
+DistributionMapping.do_not_minimize_comm_costs=0
+
 max_step  =  5000 # maximum timestep
 stop_time = 5.0
 

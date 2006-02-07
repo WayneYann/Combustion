@@ -1,4 +1,7 @@
-#DistributionMapping.verbose=1
+
+DistributionMapping.verbose=1
+DistributionMapping.do_not_minimize_comm_costs=0
+
 ns.do_active_control = 1
 
 max_step  =  6000000

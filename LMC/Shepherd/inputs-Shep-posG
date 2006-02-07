@@ -1,5 +1,8 @@
-# ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step  =  50000 # maximum timestep
+
+DistributionMapping.verbose=1
+DistributionMapping.do_not_minimize_comm_costs=0
+
+max_step  =  50000
 stop_time = 5.0
 
 proj.proj_2 = 1
