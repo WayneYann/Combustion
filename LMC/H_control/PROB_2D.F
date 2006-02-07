@@ -229,7 +229,7 @@ c ::: -----------------------------------------------------------
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
 #endif
-      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control
+      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control,zbase_control
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
@@ -305,6 +305,7 @@ c
       T_stick = -300.d0
       T_in = 300.d0
       phi_in = 1.d0
+      zbase_control = 0.d0
 
 #if defined(BL_DO_FLCT)
 c
@@ -1314,7 +1315,7 @@ c ::: -----------------------------------------------------------
       if (level .lt. max_vort_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               tag(i,j) = cvmgt(set,tag(i,j),ABS(vort(i,j,1)).ge.vorterr)
+               tag(i,j) = cvmgt(set,tag(i,j),ABS(vort(i,j,1)).ge.vorterr*2.d0**level)
             end do
          end do
       end if

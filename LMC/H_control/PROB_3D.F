@@ -56,7 +56,7 @@ c
                if (i1.eq.step) then
 
                   found_it = .true.
-                  Vin = r2
+                  V_in = r2
                   tbase_control = r3
                   zbase_control = r4
                   dV_control = r5
@@ -88,21 +88,21 @@ c
       if (coft_old.lt.zero) coft_old = coft
 
       if (dt.gt.zero) then
-         zbase_control = zbase_control + Vin*dt + dV_control*dt**2
-         V_in_old = Vin
-         Vin = Vin + dt*dV_control
+         zbase_control = zbase_control + V_in*dt + dV_control*dt**2
+         V_in_old = V_in
+         V_in = V_in + dt*dV_control
 
-         slocal = half*(V_in_old + Vin) - (coft - coft_old)/(dt*scale_control)
+         slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
          sest = (one - corr)*sest + corr*slocal
-         vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - Vin)/tau_control
+         vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
          
-         V_new = Vin + dt*vslope
+         V_new = V_in + dt*vslope
          dVmax = changeMax_control *  MAX(V_in_old,one)
-         V_new = MIN(MAX(V_new,Vin-dVmax),Vin+dVmax)
+         V_new = MIN(MAX(V_new,V_in-dVmax),V_in+dVmax)
          V_new = MAX(zero,V_new)
          
          tbase_control = time
-         dV_control = (V_new - Vin)/dt
+         dV_control = (V_new - V_in)/dt
          
          if (myproc.eq.0) then
             print *
@@ -117,7 +117,7 @@ c
          
          if (myproc.eq.0) then
             open(13,file=ac_hist_file,form='formatted',position='append')
-            write(13,1000) step,time,Vin,tbase_control,zbase_control,
+            write(13,1000) step,time,V_in,tbase_control,zbase_control,
      &           dV_control,sest,coft_old
             close(13)
          endif
@@ -187,23 +187,14 @@ c ::: -----------------------------------------------------------
      &                  flametracval, probtype,
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
      &                  traceSpecVal,phi_in,T_in,
-     &                  max_nozzle_lev, refine_nozzle, refine_nozzle_x, 
-     &                  refine_nozzle_y, refine_nozzle_z, nozzle_width,
-     &                  max_stick_lev, refine_stick, refine_stick_x, 
-     &                  refine_stick_z, direction, min_nogrid_lev, nogrid_radius,
-     $                  turb_scale, tstart_turb, Vin, rhot, zhot,
-     $                  zstandoff, Thot, swK, swW, stTh, Ro, Rf, wallTh,
-     &                  zBL, dBL, stBL, hotspot_r, hotspot_z, hotspot_dz,
-     &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
-     &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
-     &                  thickFacTR, thickFacCH,
-     &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r
+     $                  turb_scale, tstart_turb, V_in, 
+     $                  zstandoff
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
 #endif
-      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control
+      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control, zbase_control
 c
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -231,7 +222,6 @@ c
       untin = 9
       open(untin,file=probin(1:namlen),form='formatted',status='old')
       
-      anisotsc = 1.3d0
       vorterr = 1.e20
       temperr = zero
       adverr = 1.e20
@@ -242,24 +232,10 @@ c
       max_vort_lev = 0
       max_trac_lev = 100
       traceSpecVal = 1.d-10
-      refine_nozzle = 0
-      refine_nozzle_z = zero
-      refine_nozzle_y = zero
-      refine_nozzle_x = zero
-      nozzle_width = -one
-      max_nozzle_lev = 100
-      refine_stick = 0
-      refine_stick_x = zero
-      refine_stick_z = zero
-      max_stick_lev = 100
       pamb = 101325.d0
       dpdt_factor = 0.3d0
-      direction = "z"
-      vheight = zero
-      min_nogrid_lev = 100
-      nogrid_radius = 1.e10
 
-      add_turb = .FALSE.
+c     add_turb = .FALSE.
       forceInflow = .FALSE.
       numInflPlanesStore = -1
       numInflPlanesStore = 30
@@ -271,28 +247,10 @@ c
       strmwse_dir = FLCT_ZVEL
       flct_file = ''
       turb_scale = 1
+      zbase_control = 0.d0
 
 c     Note: for setup with no coflow, set Ro=Rf+wallth
-      Rf = .025d0
-      wallTh = .001d0
-      stTh = .002d0
-      Ro = .05d0
-      dBL = .01d0
-      zBL = tenth*Rf
-      stBL = half*dBL
-      Vin = 5.d0
-
-      Vco_l  = 0.1d0
-      Vco_r  = 0.1d0
-      tVco_l = 0.0d0
-      tVco_r = 0.0d0
-
-      Thot = 2.d3
-      rhot = Rf
-      zhot = Rf
       zstandoff = zero
-      swK = zero
-      swW = 0.6d0
 
 c     Initialize control variables
       tau_control = one
@@ -305,19 +263,11 @@ c     Initialize control variables
       dV_control = zero
       tbase_control = zero
 
-      wire_x = -1.0
-      wire_y = -1.0
-      wire_z = -1.0
-      wire_w = -1.0
-      wire_h = zero
-      wire_T = -1.0
-      wire_r = -1.0
-      
       read(untin,fortin)
 c      write(6,fortin)
       
 c     Initialize control variables that depend on fortin variables
-      V_in_old = Vin
+      V_in_old = V_in
 
       if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       
@@ -348,7 +298,7 @@ c      write(6,heattransin)
          endif
 #endif
       endif
-      convVel = Vin
+      convVel = V_in
       if (probtype.ge.3) then
          convVel = one
       endif
@@ -495,7 +445,7 @@ c         Y_FU_O2  = 0.223771589041d0
          end do
          T_bc(zone) = T_in
          u_bc(zone) = zero
-         v_bc(zone) = Vin
+         v_bc(zone) = V_in
  
          call FORT_RHOfromPTY(lo,hi,
      &                        rho_bc(zone),ARLIM(lo),ARLIM(hi),
@@ -519,15 +469,15 @@ c
 c     ZONE DEF:
 c     BL_FUELPIPE, BL_COFLOW, BL_STICK, BL_WALL, BL_AMBIENT, BL_VOLUME
 c
-      getZone = BL_VOLUME
-      if ( ((direction.eq."z") .and. (z.le.domnlo(3))).or.
-     &     ((direction.eq."y") .and. (y.le.domnlo(2))).or.
-     &     ((direction.eq."x") .and. (x.le.domnlo(1)))) then
+c     getZone = BL_VOLUME
+c     if ( ((direction.eq."z") .and. (z.le.domnlo(3))).or.
+c    &     ((direction.eq."y") .and. (y.le.domnlo(2))).or.
+c    &     ((direction.eq."x") .and. (x.le.domnlo(1)))) then
 
 
             getZone = 1
 
-       endif
+c      endif
 
       end
       
@@ -682,7 +632,7 @@ c ::: -----------------------------------------------------------
          if (probtype.eq.3) then
             u = zero
             v = zero
-            w =  Vin + (time-tbase_control)*dV_control
+            w =  V_in + (time-tbase_control)*dV_control
          endif
          endif
       else
@@ -716,7 +666,7 @@ c ::: -----------------------------------------------------------
       eta = r/Ro
       if(r.lt.Ro)then
 #ifdef SWIRL
-         turbSclT = Vin*(0.10278d0 + 0.34958d0 *eta - 0.86045d0 *eta**2
+         turbSclT = V_in*(0.10278d0 + 0.34958d0 *eta - 0.86045d0 *eta**2
      %     - 6.9187d0 *eta**3 + 30.903d0 *eta**4 - 31.34d0 *eta**5 + 8.588d0 *eta**6)
 
 #else
@@ -732,7 +682,7 @@ c ::: -----------------------------------------------------------
       eta = r/Ro
       if(r.lt.Ro)then
 #ifdef SWIRL
-         turbSclR=Vin*(0.086871d0 + 1.5445d0*eta - 17.316d0*eta**2 + 79.469d0*eta**3
+         turbSclR=V_in*(0.086871d0 + 1.5445d0*eta - 17.316d0*eta**2 + 79.469d0*eta**3
      &      - 164.43d0*eta**4 + 160.85d0*eta**5 - 60.233d0*eta**6)
 
 #else
@@ -765,7 +715,7 @@ c ::: -----------------------------------------------------------
       turbSclZ = one
       return
 c      if(eta.lt.one)then
-c         turbSclZ = Vin*(-0.020318d0 + 2.18d0*eta - 18.157d0*eta**2 + 66.538d0*eta**3 - 
+c         turbSclZ = V_in*(-0.020318d0 + 2.18d0*eta - 18.157d0*eta**2 + 66.538d0*eta**3 - 
 c     &         112.55d0*eta**4 + 94.931d0*eta**5 - 32.329d0*eta**6)
 c      endif
 #else
@@ -1274,14 +1224,15 @@ c
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
-                  ax = abs(temperature(i+1,j,k,1) - temperature(i,j,k,1))
-                  ay = abs(temperature(i,j+1,k,1) - temperature(i,j,k,1))
-                  az = abs(temperature(i,j,k+1,1) - temperature(i,j,k,1))
-                  ax = MAX(ax,abs(temperature(i,j,k,1) - temperature(i-1,j,k,1)))
-                  ay = MAX(ay,abs(temperature(i,j,k,1) - temperature(i,j-1,k,1)))
-                  az = MAX(az,abs(temperature(i,j,k,1) - temperature(i,j,k-1,1)))
-                  aerr = max(ax,ay,az)
-                  tag(i,j,k) = cvmgt(set,tag(i,j,k),aerr.ge.tempgrad)
+c                 ax = abs(temperature(i+1,j,k,1) - temperature(i,j,k,1))
+c                 ay = abs(temperature(i,j+1,k,1) - temperature(i,j,k,1))
+c                 az = abs(temperature(i,j,k+1,1) - temperature(i,j,k,1))
+c                 ax = MAX(ax,abs(temperature(i,j,k,1) - temperature(i-1,j,k,1)))
+c                 ay = MAX(ay,abs(temperature(i,j,k,1) - temperature(i,j-1,k,1)))
+c                 az = MAX(az,abs(temperature(i,j,k,1) - temperature(i,j,k-1,1)))
+c                 aerr = max(ax,ay,az)
+c                 tag(i,j,k) = cvmgt(set,tag(i,j,k),aerr.ge.tempgrad)
+                  tag(i,j,k) = cvmgt(set,tag(i,j,k),temperature(i,j,k,1).lt.temperr)
                enddo
             enddo
          enddo
@@ -1884,7 +1835,7 @@ c
          allocate(vflct(DIMV(uflct)))
          allocate(wflct(DIMV(uflct)))
          dt_flct = time - tbase_control
-         t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
+         t_flct = zbase_control + V_in*dt_flct + dV_control*dt_flct**2
          call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
      $                  bc(1,1,1), domnlo, domnhi)
          call INFL_FILL(FLCT_YVEL, DIMS(uflct), vflct, xlo, delta, t_flct,
@@ -2000,7 +1951,8 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                      vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 2) then
-                        vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
+c                       vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
+                        vel(i,j,k,1) = u + uflct(i,1,k)*turb_scale
                      endif
 #endif
                   endif
@@ -2009,7 +1961,8 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                      vel(i,j,k,2) = v
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 2) then
-                        vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
+c                       vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
+                        vel(i,j,k,2) = v + vflct(i,1,k)*turb_scale
                      endif
 #endif
                   endif
@@ -2018,7 +1971,8 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                         vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 2) then
-                        vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
+c                       vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
+                        vel(i,j,k,3) = w + wflct(i,1,k)*turb_scale
                      endif
 
 #endif
@@ -2042,7 +1996,8 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                         vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 2) then
-                        vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
+c                       vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
+                        vel(i,j,k,1) = u + uflct(i,1,k)*turb_scale
                      endif
 #endif
                   endif
@@ -2051,7 +2006,8 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                      vel(i,j,k,2) = v
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 2) then
-                        vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
+c                       vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
+                        vel(i,j,k,2) = v + vflct(i,1,k)*turb_scale
                      endif
 #endif
                   endif
@@ -2060,7 +2016,8 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                      vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 2) then
-                        vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
+c                       vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
+                        vel(i,j,k,3) = w + wflct(i,1,k)*turb_scale
                      endif
 #endif
                   endif
@@ -2084,9 +2041,6 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 3) then
                         vel(i,j,k,1) = u + uflct(i,j,1)*turb_scale
-c                       if(i.lt.10.and.j.eq.32)then
-c                         write(6,*)" in velfill u ",i,time,u,uflct(i,j,1),turb_scale
-c                       endif
                      endif
 #endif
                   endif
@@ -2096,9 +2050,6 @@ c                       endif
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 3) then
                           vel(i,j,k,2) = v + vflct(i,j,1)*turb_scale
-c                       if(i.lt.10.and.j.eq.32)then
-c                         write(6,*)" in velfill v ",i,time,v,vflct(i,j,1),turb_scale
-c                       endif
                      endif
 #endif
                   endif
@@ -2108,9 +2059,6 @@ c                       endif
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 3) then
                         vel(i,j,k,3) = w + wflct(i,j,1)*turb_scale
-c                       if(i.lt.10.and.j.eq.32)then
-c                         write(6,*)" in velfill w ",i,time,w,wflct(i,j,1),turb_scale
-c                       endif
                      endif
 #endif
                   endif
@@ -2133,7 +2081,8 @@ c                       endif
                      vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 3) then
-                        vel(i,j,k,1) = u + uflct(i,j,1)*turbSclX(x,y,z)*turb_scale
+c                       vel(i,j,k,1) = u + uflct(i,j,1)*turbSclX(x,y,z)*turb_scale
+                        vel(i,j,k,1) = u + uflct(i,j,1)*turb_scale
                      endif
 #endif
                   endif
@@ -2142,7 +2091,8 @@ c                       endif
                      vel(i,j,k,2) = v
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 3) then
-                        vel(i,j,k,2) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
+c                       vel(i,j,k,2) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
+                        vel(i,j,k,2) = v + vflct(i,j,1)*turb_scale
                      endif
 #endif
                   endif
@@ -2151,7 +2101,8 @@ c                       endif
                      vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 3) then
-                        vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
+c                       vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
+                        vel(i,j,k,3) = w + wflct(i,j,1)*turb_scale
                      endif
 #endif
                   endif
@@ -2266,7 +2217,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 1) then
-                     xvel(i,j,k) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
+                     xvel(i,j,k) = u + uflct(1,j,k)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -2288,7 +2239,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 1) then
-                     xvel(i,j,k) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
+                     xvel(i,j,k) = u + uflct(1,j,k)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -2310,7 +2261,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 2) then
-                     xvel(i,j,k) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
+                     xvel(i,j,k) = u + uflct(i,1,k)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -2332,7 +2283,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 2) then
-                     xvel(i,j,k) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
+                     xvel(i,j,k) = u + uflct(i,1,k)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -2354,14 +2305,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
-                     r = sqrt(x**2+y**2)
-                     cs = x/r
-                     sg = y/r
-                     scaler = turbSclR(r)
-                     scalet = turbSclT(r)
-                     xvel(i,j,k) = u + turb_scale*turbSclX(x,y,z)*
-     &                 ((scaler*cs**2+scalet*sg**2)*uflct(i,j,1) +
-     &                  (scaler*sg*cs-scalet*sg*cs)*vflct(i,j,1))
+                     xvel(i,j,k) = u + turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -2383,7 +2327,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 3) then
-                     xvel(i,j,k) = u + uflct(i,j,1)*turbSclX(x,y,z)*turb_scale
+                     xvel(i,j,k) = u + uflct(i,j,1)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -2502,7 +2446,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 1) then
-                     yvel(i,j,k) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
+                     yvel(i,j,k) = v + vflct(1,j,k)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -2524,7 +2468,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 1) then
-                     yvel(i,j,k) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
+                     yvel(i,j,k) = v + vflct(1,j,k)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -2546,7 +2490,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 2) then
-                     yvel(i,j,k) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
+                     yvel(i,j,k) = v + vflct(i,1,k)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -2568,7 +2512,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 2) then
-                     yvel(i,j,k) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
+                     yvel(i,j,k) = v + vflct(i,1,k)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -2590,15 +2534,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
-c                    yvel(i,j,k) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
-                     r = sqrt(x**2+y**2)
-                     cs = x/r
-                     sg = y/r
-                     scaler = turbSclR(r)
-                     scalet = turbSclT(r)
-                     yvel(i,j,k) = v + turb_scale*turbSclY(x,y,z)*
-     &                 ((scaler*sg**2+scalet*cs**2)*vflct(i,j,1) +
-     &                  (scaler*sg*cs- scalet*sg*cs)*uflct(i,j,1))
+                     yvel(i,j,k) = v + vflct(i,j,1)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -2620,7 +2556,7 @@ c                    yvel(i,j,k) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
                   call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 3) then
-                     yvel(i,j,k) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
+                     yvel(i,j,k) = v + vflct(i,j,1)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -2734,7 +2670,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 1) then
-                     zvel(i,j,k) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
+                     zvel(i,j,k) = w + wflct(1,j,k)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2756,7 +2692,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 1) then
-                     zvel(i,j,k) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
+                     zvel(i,j,k) = w + wflct(1,j,k)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2778,7 +2714,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 2) then
-                     zvel(i,j,k) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
+                     zvel(i,j,k) = w + wflct(i,1,k)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2800,7 +2736,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 2) then
-                     zvel(i,j,k) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
+                     zvel(i,j,k) = w + wflct(i,1,k)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2822,8 +2758,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
-                     zvel(i,j,k) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
-     &                      * anisotsc
+                     zvel(i,j,k) = w + wflct(i,j,1)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2845,7 +2780,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 3) then
-                     zvel(i,j,k) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
+                     zvel(i,j,k) = w + wflct(i,j,1)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -4249,19 +4184,19 @@ c     divu(i,j,k) = min(two,one+time/.05)
 
       add_turb_var = 0
 
-      if (add_turb .and. zturb_top .gt. zero) then
+c     if (add_turb .and. zturb_top .gt. zero) then
 
-         add_turb_var = 1
-         turb_scale_var = turb_scale
+c        add_turb_var = 1
+c        turb_scale_var = turb_scale
 
-         turb_length(1) = domnhi(1)-domnlo(1)
-         turb_length(2) = domnhi(2)-domnlo(2)
-         turb_length(3) = zturb_top - zturb_bot
-         
-         box_offset(1) = 0
-         box_offset(2) = 0
-         box_offset(3) = int(zturb_bot/delta(3))
-      endif
+c        turb_length(1) = domnhi(1)-domnlo(1)
+c        turb_length(2) = domnhi(2)-domnlo(2)
+c        turb_length(3) = zturb_top - zturb_bot
+c        
+c        box_offset(1) = 0
+c        box_offset(2) = 0
+c        box_offset(3) = int(zturb_bot/delta(3))
+c     endif
 
       end
 
@@ -4283,7 +4218,8 @@ c     divu(i,j,k) = min(two,one+time/.05)
       REAL_T xx, yy, zz, r, dr, dz, blend
       
 c     Blend goes from 1 to 0 in r at wire_r, over a width of wire_w  
-      blend(r) = one - half*(one+TANH((r-wire_r)/(fourth*wire_w)))
+c     blend(r) = one - half*(one+TANH((r-wire_r)/(fourth*wire_w)))
+      return
 
       do k = lo(3),hi(3)
          zz = float(k)*dx(3)+domnlo(3)
@@ -4316,8 +4252,8 @@ c
      &                                       *hotspot_htc*(hotspot_T - T(i,j,k))
 
 #else
-               r = SQRT((xx-wire_x)**2 + (zz-wire_z)**2 + MAX(zero,ABS(yy)-wire_y)**2)
-               rad(i,j,k) = -blend(r)*wire_h*MAX(zero,(wire_T - T(i,j,k)))
+c              r = SQRT((xx-wire_x)**2 + (zz-wire_z)**2 + MAX(zero,ABS(yy)-wire_y)**2)
+c              rad(i,j,k) = -blend(r)*wire_h*MAX(zero,(wire_T - T(i,j,k)))
 #endif
             end do
          end do

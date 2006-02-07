@@ -1,13 +1,14 @@
       
       REAL_T vorterr, temperr, adverr, tempgrad, flametracval, twall
       REAL_T splitx, splity, traceSpecVal, xfrontw, yfrontw
+      REAL_T zstandoff
       REAL_T domnlo(SDIM), domnhi(SDIM)
       
       integer probtype, max_vort_lev, max_temp_lev, max_trac_lev, max_nozzle_lev
       integer fuelID, oxidID, prodID, nspecies
 
       common /prob1/ vorterr, temperr, adverr, tempgrad, flametracval, twall,
-     &               splitx, splity, traceSpecVal, xfrontw, yfrontw
+     &               splitx, splity, traceSpecVal, xfrontw, yfrontw, zstandoff
       common /prob2/ domnlo, domnhi
       common /prob3/ probtype, max_vort_lev, max_temp_lev, max_trac_lev,
      &               max_nozzle_lev
@@ -15,9 +16,9 @@
       save /prob1/, /prob2/, /prob3/, /prob4/
 
       integer refine_nozzle
-      REAL_T refine_nozzle_x, refine_nozzle_y, blobx, bloby, blobr, xcen, y_offset
+      REAL_T refine_nozzle_x, refine_nozzle_y, refine_nozzle_z, blobx, bloby, blobr, xcen, y_offset
       common /myprob1/ refine_nozzle
-      common /myprob2/ refine_nozzle_x, refine_nozzle_y, blobx, bloby,
+      common /myprob2/ refine_nozzle_x, refine_nozzle_y, refine_nozzle_z, blobx, bloby,
      &     blobr, xcen, y_offset
 
       REAL_T v_strength,v_width,v_xcen,v_ycen, v_cl_x

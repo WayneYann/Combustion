@@ -1,14 +1,15 @@
  &fortin
   probtype = 3
 
-  Vin = 0.5
+  V_in = 0.45
   turb_scale=1.
 
   zstandoff = -0.002884
+  zstandoff = .014888
   max_trac_lev = 3
   flametracval = 1.e-6
-  max_temp_lev = 0
-  temperr = 100
+  max_temp_lev = 1
+  temperr = 500
   tempgrad = 300.0
   max_vort_lev = 2
   vorterr = 600.
@@ -21,13 +22,14 @@
   dpdt_factor = .3
  /
   &flctin
-  flct_file = "turbh3.128"
+  flct_file = "Turb_1000_r"
   forceInflow = .TRUE.
   nCompInflow = 3
  /
   &control
   tau_control = 2.e-3
-  sest = .15
+  sest = .45
    h_control = .02
   changeMax_control = .05
+  zbase_control = .0451199
  /

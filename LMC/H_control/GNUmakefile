@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.5 2005-12-16 19:02:50 lijewski Exp $
+# $Id: GNUmakefile,v 1.6 2006-02-07 00:15:59 jbb Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,12 +7,13 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = TRUE
+DEBUG	          = FALSE
 PROFILE           = FALSE
 DIM    	          = 2
-PRVERSION         = v5
-FCOMP             = Intel
-COMP              = Intel
+DIM    	          = 3
+PRVERSION         = v7
+FCOMP             = PathScale
+COMP              = PathScale
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
@@ -21,6 +22,7 @@ HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_FLCTS         = TRUE
+USE_MPI           = TRUE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
