@@ -179,8 +179,6 @@ c ::: -----------------------------------------------------------
 
       integer lo(SDIM), hi(SDIM), i, j, zone, iH2, getZone
       character*(maxspnml) spName
-      INTEGER dimFile(3)
-      REAL_T dxFile(3)
       REAL_T rand
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, 
