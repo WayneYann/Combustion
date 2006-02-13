@@ -640,7 +640,7 @@ HeatTransfer::init_once ()
             std::cout << "***** Make sure to increase amr.regrid_int !!!!!" << std::endl;
 #elif defined(BL_PLOT_CONSUMPTION)
         auxDiag_names.resize(1);
-        auxDiag_names[0] = "FuelConsumptionRate";
+        auxDiag_names[0] = consumptionName + "_ConsumptionRate";
 #endif
     }
 
@@ -3333,7 +3333,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&         S,
 
         Real err_Y = MFnorm(Res,0,nspecies);
         Real err_H = MFnorm(Res,nspecies,1);
-        if (iter=0)
+        if (iter==0)
         {
             err0_Y = err_Y;
             err0_H = err_H;
@@ -3439,7 +3439,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&         S,
 
         Real err_Y = MFnorm(Res,0,nspecies);
         Real err_H = MFnorm(Res,nspecies,1);
-        if (iter=0)
+        if (iter==0)
         {
             err0_Y = err_Y;
             err0_H = err_H;
@@ -4446,10 +4446,10 @@ HeatTransfer::advance (Real time,
     //
     // Save off a copy of the pre-chem state
     //
-    const int fuelComp = getChemSolve().index(fuelName) + first_spec;
+    const int consumptionComp = getChemSolve().index(consumptionName) + first_spec;
 #ifdef BL_PLOT_CONSUMPTION
     if (plot_auxDiags)
-        auxDiag->copy(S_old,fuelComp,0,1);
+        auxDiag->copy(S_old,consumptionComp,0,1);
 #endif
     //
     // Build a MultiFab parallel to "fabs".  Force it to have the
@@ -4504,7 +4504,7 @@ HeatTransfer::advance (Real time,
     {
         MultiFab tmp(auxDiag->boxArray(),1,0);
         tmp.setVal(0);
-        tmp.copy(S_old,fuelComp,0,1);
+        tmp.copy(S_old,consumptionComp,0,1);
         for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
             (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);
     }
@@ -4658,7 +4658,7 @@ HeatTransfer::advance (Real time,
     {
         MultiFab tmp(auxDiag->boxArray(),1,0);
         tmp.setVal(0);
-        tmp.copy(S_new,fuelComp,0,1);
+        tmp.copy(S_new,consumptionComp,0,1);
         for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
             (*auxDiag)[mfi].plus(tmp[mfi],0,0,1);
     }
@@ -4671,7 +4671,7 @@ HeatTransfer::advance (Real time,
     {
         MultiFab tmp(auxDiag->boxArray(),1,0);
         tmp.setVal(0);
-        tmp.copy(S_new,fuelComp,0,1);
+        tmp.copy(S_new,consumptionComp,0,1);
         for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
         {
             (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);

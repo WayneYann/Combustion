@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.5 2004-07-14 21:29:55 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.6 2006-02-13 19:10:12 lijewski Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -432,9 +432,10 @@ private:
 //
 // Indices of fuel and oxidizer -- ParmParsed in & used in a couple places.
 //
-std::string HeatTransfer::fuelName = "CH4";
-static std::string oxidizerName    = "O2";
-static std::string productName     = "CO2";
+std::string HeatTransfer::fuelName        = "CH4";
+std::string HeatTransfer::consumptionName = "CH4";
+static std::string oxidizerName           = "O2";
+static std::string productName            = "CO2";
 
 void
 HeatTransfer::variableSetUp ()
@@ -486,6 +487,8 @@ HeatTransfer::variableSetUp ()
     //
     ParmParse pp("ns");
     pp.query("fuelName",fuelName);
+    consumptionName = fuelName;
+    pp.query("consumptionName",consumptionName);
     pp.query("oxidizerName",oxidizerName);
     pp.query("productName",productName);
     pp.query("do_group_bndry_fills",do_group_bndry_fills);
