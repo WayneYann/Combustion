@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.13 2005-11-04 23:21:23 lijewski Exp $
+# $Id: GNUmakefile,v 1.14 2006-03-24 17:08:22 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,8 +7,8 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION      = DOUBLE
-DEBUG	       = FALSE
 DEBUG	       = TRUE
+DEBUG	       = FALSE
 PROFILE        = FALSE
 DIM	       = 3
 PRVERSION      = v7
@@ -16,8 +16,8 @@ COMP           = Intel
 FCOMP          = Intel
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
-USE_MPI        = TRUE
 USE_MPI        = FALSE
+USE_MPI        = TRUE
 BUILD_IN_PLACE = TRUE
 EBASE          = amr
 USE_SWIRL      = TRUE
@@ -26,6 +26,10 @@ USE_HGPROJ_SERIAL := FALSE
 USE_NEWMECH   = TRUE
 USE_NEWMECH   = FALSE
 
+#
+# Turn this on to get the ability to set the velocities in initData() from a plotfile.
+#
+USE_VELOCITY = TRUE
 #DEFINES      += -static
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
@@ -38,7 +42,7 @@ USE_NEWMECH   = FALSE
 #
 # If you want to plot fuel consumption rates uncomment the following
 #
-#DEFINES += -DBL_PLOT_CONSUMPTION
+DEFINES += -DBL_PLOT_CONSUMPTION
 #
 # Choose your reaction mechanism & thermal properties.
 #
@@ -46,10 +50,10 @@ REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=INERT30
-REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=PROPANE
 REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=CH4-2STEP
 #
 # Packages below are of the form dir/lib. dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding
@@ -59,6 +63,11 @@ ProjPackage = $(TOP)/hgproj/proj
 ifeq ($(USE_HGPROJ_SERIAL),TRUE)
 ProjPackage = $(TOP)/hgproj-serial/proj
 INCLUDE_LOCATIONS += $(dir $(ProjPackage))include/$(DIM)d.$(PRVERSION)
+endif
+
+ifeq ($(USE_VELOCITY), TRUE)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_VELOCITY -DBL_PARALLEL_IO
+  INCLUDE_LOCATIONS += $(TOP)/pAmrvis
 endif
 
 Packages :=	$(TOP)/LMC/ht \
@@ -119,6 +128,12 @@ include $(addsuffix /Make.package, $(MySrcDirs))
 #
 ifeq ($(MACHINE),IRIX)
   CXX := $(filter-out -ptused -prelink, $(CXX))
+endif
+
+ifeq ($(USE_VELOCITY), TRUE)
+  MySrcDirs += $(TOP)/pAmrvis
+else
+  MySrcDirs += $(TOP)/pAmrvis
 endif
 
 vpath %.cpp $(MySrcDirs) .. $(TOP)/pAmrvis
