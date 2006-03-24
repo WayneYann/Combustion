@@ -199,6 +199,7 @@ c ::: -----------------------------------------------------------
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
      &                  tau_control, sest, cfix, changeMax_control, h_control,
+     &			zbase_control,
      &                  thickFacTR, thickFacCH,
      &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r,
      &                  Tpipe, Tstick, stL, stLw, zInletEval
@@ -312,6 +313,7 @@ c     Initialize control variables
       wire_h = zero
       wire_T = -1.0
       wire_r = -1.0
+      zbase_control = zero
 
 c     If the following two Temperatures do not appear in probin, they default to the 
 c     compiled-in values in the data statements in setupbc
@@ -358,7 +360,6 @@ c     by convVel within the INFL stuff....set convVel = 1.0
 
 c     Initialize the control parameters...even if we are not controlling, as they are
 c     used in the calculation of the time offset into the turbulence file
-      zbase_control = zero
       dV_control = zero
 
 c     Load domain dimensions into common, and set up boundary functions
