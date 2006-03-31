@@ -1626,7 +1626,7 @@ HeatTransfer::sum_integrated_quantities ()
     if (ParallelDescriptor::IOProcessor())
         std::cout << "TIME= " << time << " RHO*TEMP= " << rho_temp << '\n';
 
-    int old_prec = std::cout.precision(25);
+    int old_prec = std::cout.precision(15);
 
     Real min_temp = 1.0e20;
     Real max_temp = -1.0e20;
@@ -8201,6 +8201,7 @@ HeatTransfer::writePlotFile (const std::string& dir,
                              std::ostream&  os,
                              VisMF::How     how)
 {
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::writePlotFile()");
     if ( ! Amr::Plot_Files_Output() ) return;
     //
     // Note that this is really the same as its NavierStokes counterpart,
@@ -8423,7 +8424,7 @@ HeatTransfer::writePlotFile (const std::string& dir,
     //
     std::string TheFullPath = FullPath;
     TheFullPath += BaseName;
-    VisMF::Write(plotMF,TheFullPath,how,true);
+    VisMF::Write(plotMF,TheFullPath,how);
 }
 
 AuxBoundaryData::AuxBoundaryData ()
@@ -8768,7 +8769,7 @@ extern "C"
 		 const char* file)
       {
 	std::ofstream os(file);
-	os.precision(20);
+	os.precision(15);
 	os << *fab << std::endl;
 	return true;
       }
@@ -8777,7 +8778,7 @@ extern "C"
 		 const char* file)
       {
 	std::ofstream os(file);
-	os.precision(20);
+	os.precision(15);
 	for (int i=0; i < mf->size() ; i++)
 	  os << (*mf)[i] << std::endl;
 	return true;
