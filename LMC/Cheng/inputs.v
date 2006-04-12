@@ -29,7 +29,7 @@ ht.plot_molefrac=0
 ht.plot_massfrac=1
 ht.plot_ydot=0
 ns.use_chemeq2=0
-amr.derive_plot_vars=mag_vort rhoRT diveru avg_pressure gradpx gradpy gradpz mag_vort
+amr.derive_plot_vars=mag_vort rhoRT
 
 #ns.verbose_vode = 1
 #amr.restart=chk0060

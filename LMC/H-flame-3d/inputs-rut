@@ -16,7 +16,7 @@ ns.max_grid_size_chem = 16
 ht.plot_rhoY=0
 ht.plot_molefrac=1
 ht.plot_ydot=0
-amr.derive_plot_vars=mag_vort rhoRT diveru avg_pressure gradpx gradpy gradpz mag_vort
+amr.derive_plot_vars=mag_vort rhoRT
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 

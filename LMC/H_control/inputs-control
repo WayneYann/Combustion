@@ -61,7 +61,7 @@ amr.max_grid_size   = 256
 ht.plot_rhoY=0
 ht.plot_molefrac=1
 ht.plot_ydot=0
-amr.derive_plot_vars=rhoRT diveru rhominsumrhoY avg_pressure gradpx gradpy mag_vort
+amr.derive_plot_vars=rhoRT rhominsumrhoY mag_vort
 
 amr.probin_file = probin-control # This will default to file "probin" if not set
 
