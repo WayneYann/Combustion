@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.4 2005-07-29 15:40:31 lijewski Exp $
+# $Id: GNUmakefile,v 1.5 2006-04-28 21:17:05 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -177,22 +177,7 @@ nodata:
 #
 touch_hg:
 	touch $(StencilSpecificProjFiles)
-#
-# Create MS-IDE dsp file to build this project
-#
-DspOlevel = 1
-DspFileRoot = $(EBASE)$(DIM)d
-ifeq ($(DEBUG), TRUE)
-  DspOlevel := 0
-endif
-dsp: $(DspFileRoot).dsp
-.dspDepends: $(FEXE_sources) $(FEXE_headers) $(fEXE_sources) $(CEXE_headers) $(CEXE_sources) $(INCLUDE_LOCATIONS)
-	@echo $^ > .dspDepends
 
-$(DspFileRoot).dsp: .dspDepends
-	@(echo Building DSP file = $(DspFileRoot).dsp;\
-	./dsp.mak -p $(DspFileRoot) -t $(TOP) -d $(DIM) -o $(DspFileRoot).dsp -O $(DspOlevel) -f $^)
-
-.PHONY: dsp .dspDepends libs cleanlibs nodata touch_hg
+.PHONY: libs cleanlibs nodata touch_hg
 
 include $(TOP)/mk/Make.rules
