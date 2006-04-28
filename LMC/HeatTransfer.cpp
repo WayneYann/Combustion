@@ -5113,7 +5113,9 @@ HeatTransfer::strang_chem (MultiFab&  state,
 
         if (do_not_use_funccount)
         {
-	    MultiFab tmp(state.boxArray(), 1, 0);
+	    MultiFab tmp;
+
+            tmp.define(state.boxArray(), 1, 0, state.DistributionMap(), Fab_allocate);
 
             for (MFIter Smfi(state); Smfi.isValid(); ++Smfi)
             {
