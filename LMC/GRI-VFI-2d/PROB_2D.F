@@ -22,7 +22,7 @@
 #define SETRHO_CALCT
 #define SDIM 2
 
-#if defined(BL_T3E) || defined(BL_AIX) || defined(BL_IRIX64) || defined(BL_CRAYX1)
+#if defined(BL_T3E) || defined(BL_AIX) || defined(BL_IRIX64) || defined(BL_CRAYX1) || (defined(BL_HIVE) && ifeq ($(FCOMP), g95))
 #define OPEN_APPEND position='append'
 #else
 #define OPEN_APPEND access='append'
