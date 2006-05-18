@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.16 2005-11-04 22:55:47 lijewski Exp $
+# $Id: GNUmakefile,v 1.17 2006-05-18 22:02:52 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,20 +7,22 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = TRUE
+DEBUG	          = FALSE
 PROFILE           = FALSE
 DIM    	          = 2
 PRVERSION         = v5
 FCOMP             = Intel
 COMP              = Intel
+FCOMP             = g95
+COMP              = mpiCC
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
 USE_HGPROJ_SERIAL = FALSE
-HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_FLCTS         = TRUE
+USE_MPI           = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
@@ -32,7 +34,7 @@ USE_FLCTS         = TRUE
 #
 # If you want to plot fuel consumption rates uncomment the following
 #
-#DEFINES += -DBL_PLOT_CONSUMPTION
+DEFINES += -DBL_PLOT_CONSUMPTION
 #
 # Choose your reaction mechanism & thermal properties.
 #
@@ -41,9 +43,9 @@ REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
-REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=PROPANE
 REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=GRI30
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
@@ -69,6 +71,9 @@ include $(TOP)/mk/Make.defs
 ifeq ($(USE_HGPROJ_SERIAL),TRUE)
   DEFINES += -DBL_USE_HGPROJ_SERIAL
 endif
+
+#jbb insert
+CXX = mpiCC
 
 ifeq ($(DIM),2)
   ifeq ($(findstring 5, $(PRVERSION)), 5)
