@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.17 2006-05-18 22:02:52 sepp Exp $
+# $Id: GNUmakefile,v 1.18 2006-05-26 19:54:31 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -13,8 +13,8 @@ DIM    	          = 2
 PRVERSION         = v5
 FCOMP             = Intel
 COMP              = Intel
-FCOMP             = g95
-COMP              = mpiCC
+#FCOMP             = g95
+#COMP              = mpiCC
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
@@ -71,9 +71,6 @@ include $(TOP)/mk/Make.defs
 ifeq ($(USE_HGPROJ_SERIAL),TRUE)
   DEFINES += -DBL_USE_HGPROJ_SERIAL
 endif
-
-#jbb insert
-CXX = mpiCC
 
 ifeq ($(DIM),2)
   ifeq ($(findstring 5, $(PRVERSION)), 5)
