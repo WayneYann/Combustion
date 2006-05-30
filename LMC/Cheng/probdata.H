@@ -31,6 +31,10 @@
       common /myprob4/ zturb_top, zturb_bot, turb_scale, anisotsc, add_turb
       save /myprob4/
 
+      REAL_T pertmag
+      common /pert1/ pertmag
+      save /pert1/
+
       logical forceInflow
       REAL_T probSizeFile(3)
       common /inflow1/forceInflow

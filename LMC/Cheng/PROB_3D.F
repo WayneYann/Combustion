@@ -202,7 +202,7 @@ c ::: -----------------------------------------------------------
      &			zbase_control,
      &                  thickFacTR, thickFacCH,
      &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r,
-     &                  Tpipe, Tstick, stL, stLw, zInletEval
+     &                  Tpipe, Tstick, stL, stLw, zInletEval, pertmag
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -230,6 +230,7 @@ c
       untin = 9
       open(untin,file=probin(1:namlen),form='formatted',status='old')
       
+      pertmag = zero
       zInletEval = zero
       anisotsc = 1.3d0
       vorterr = 1.e20
@@ -918,6 +919,7 @@ c ::: -----------------------------------------------------------
       REAL_T x, y, z, zt, u, v, w, rho, Yl(maxspec), Xl(maxspec), T, h, Patm
       REAL_T turbSclX, turbSclY, turbSclZ, convVelSAVE
       REAL_T eta, eta0, pmf_vals(maxspec+3), bg_vals(maxspec+3), r, y1, y2, theta
+      REAL_T zpert,Lx,Ly
       character*(maxspnml) name
 
 #if defined(BL_DO_FLCT)
@@ -1207,8 +1209,19 @@ c                  end if
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
 
-                  y1 = (z-half*delta(3)-zstandoff)*100.d0
-                  y2 = (z+half*delta(3)-zstandoff)*100.d0
+                  zpert = 0.d0
+                  if (pertmag .gt. 0.d0) then
+                     Lx = domnhi(1) - domnlo(1)
+                     Ly = domnhi(2) - domnlo(2)
+                     zpert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)             * sin(2*Pi*5*y/Ly)
+     &                              + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)   * sin(2*Pi*4*(y-.0053765)/Ly)
+     &                              + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx) * sin(2*Pi*3*(y-.02137)/Ly) 
+     &                              + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)     * sin(2*Pi*6*(y-.018)/Ly) 
+     &                                          + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
+                  endif
+
+                  y1 = (z-half*delta(3)-zstandoff+zpert)*100.d0
+                  y2 = (z+half*delta(3)-zstandoff+zpert)*100.d0
 
                   call pmf(y1,y2,pmf_vals,n)
 
@@ -1226,7 +1239,8 @@ c                  end if
                   do n = 1,Nspec
                      scal(i,j,k,FirstSpec+n-1) = Yl(n)
                   end do
-                  scal(i,j,k,Trac) = zero
+c                  scal(i,j,k,Trac) = zero
+                  scal(i,j,k,Trac) = -z
 
                end do
             end do
@@ -1898,9 +1912,29 @@ c ::: -----------------------------------------------------------
       REAL_T     adv(DIMV(adv))
       integer    bc(SDIM,2)
 
+      integer    i,j,k
+      integer lo(SDIM), hi(SDIM)
+
+      lo(1) = ARG_L1(adv)
+      lo(2) = ARG_L2(adv)
+      lo(3) = ARG_L3(adv)
+      hi(1) = ARG_H1(adv)
+      hi(2) = ARG_H2(adv)
+      hi(3) = ARG_H3(adv)
+
       call filcc (adv,DIMS(adv),domlo,domhi,delta,xlo,bc)
 
-      call fillWithZeros(adv,DIMS(adv),domlo,domhi,bc)
+      if (bc(3,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
+         do k = lo(3), domlo(3)-1
+            do j = lo(2),hi(2)
+               do i = lo(1), hi(1)
+                  adv(i,j,k) = time
+               enddo
+            enddo
+         enddo
+      endif    
+      
+c      call fillWithZeros(adv,DIMS(adv),domlo,domhi,bc)
 
       end
 
