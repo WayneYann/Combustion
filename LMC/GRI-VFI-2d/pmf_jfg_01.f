@@ -10,8 +10,9 @@ c
 c                                                 
 c                              -USAGE-            
 c                                                 
-c     OVERVIEW: call gm_CH4_100(x,y,Niny)   
-c     interpolates y(x). Here x is a scalar, y    
+c     OVERVIEW: call pmf_GRI   (xlo,xhi,y,Niny)   
+c     computes y(xlo,xhi) by averaging data over  
+c     the range [xlo,xhi]. Here x is a scalar, y  
 c     a vector, with Niny components used. Piece- 
 c     constant Extrapolation is applied to points 
 c     laying outside the range of the orig data   
@@ -31,13 +32,14 @@ c-------------------------------------------------
 c                                                 
 c                          -SPECIFICATION-        
 c     SYNTAX:                                     
-c     subroutine gm_CH4_100(x:dp,y:dp arr, Niny: int)      
+c     subroutine pmf_GRI   (xlo,xhi:dp,y:dp arr, Niny: int)
 c     returns: none                               
 c     REQUIRES: none                              
 c     MODIFIES: y, N                              
 c     SIGNALS: none                               
-c     EFFECTS: computes the value of y at x       
-c     and returns number of components used, N.   
+c     EFFECTS: computes the average value of y    
+c     over the range [xlo,xhi] and returns number 
+c     of components used, N.                      
 c                                                 
 c-------------------------------------------------
 c                                                 
@@ -48,7 +50,7 @@ c     NOTES: interpolation x,y data is defined in
 c     data statements for efficiency.             
 c     REQUIRES: none                              
 c     LOCAL VARIABLES:                            
-c     x...............(dp) interpolate y here
+c     xlo,xhi.........(dp) average y on this range
 c     y_vector........(1D dp arr) computed y(x)   
 c     Niny............(int) no. of used components
 c     x_data..........(dp) x data points          
@@ -56,14 +58,15 @@ c     y_data..........(dp) y(x) data points
 c     N...............(int) number of x points    
 c     M...............(int) dimension of y_data   
 c     i,j,k...........(int) loop index            
-c     loside..........(int) idx of data below x   
-c     hiside..........(int) idx of data above x   
+c     lo_{lo,hi}side..(int) idx of data near xlo  
+c     hi_{lo,hi}side..(int) idx of data near xhi  
 c     x1..............(dp) interpolation point    
 c     x2..............(dp) interpolation point    
 c     y1..............(dp) interpolation value    
 c     y2..............(dp) interpolation value    
 c     dydx............(dp) slope of linear interp 
-c     y...............(dp) value at x             
+c     ylo.............(dp) value at xlo           
+c     yhi.............(dp) value at xhi           
 c     GLOBAL VARIABLES:none                       
 c     PROCEDURES: none                            
 c     FILES: none                                 
@@ -72,13 +75,14 @@ c-------------------------------------------------
 c                                                 
 c                             -CODE-              
 c     FIRST LINE:                                 
-      subroutine pmf_GRI (x,y_vector,Niny)
+      subroutine pmf_GRI   (xlo,xhi,y_vector,Niny)
 c                                                 
 c     declare local variables                     
 c                                                 
-      integer N,M,i,j,k,loside,hiside,Niny        
-      double precision x,y_vector(*)              
-      double precision y,x1,y1,x2,y2,dydx         
+      integer N,M,i,j,k,lo_loside,lo_hiside       
+      integer hi_loside,hi_hiside,Niny            
+      double precision xlo,xhi,y_vector(*),sum    
+      double precision ylo,yhi,x1,y1,x2,y2,dydx   
       double precision x_data(    93)              
       double precision y_data(    93,    56)        
       data N,M /    93,    56/                   
@@ -5387,47 +5391,104 @@ c
       data y_data(    93,  54) /   0.257281772027D-38/
       data y_data(    93,  55) /   0.347464744491D-24/
       data y_data(    93,  56) /   0.784922517102D-26/
-c
-c     interpolation routine
-c
-      loside = 0
-      hiside = 0
-      if (x .le. x_data(1)) then
-         loside = 1
-         hiside = 1
+c                                                 
+c     interpolation routine                       
+c                                                 
+      lo_loside = 0
+      lo_hiside = 0
+      hi_loside = 0
+      hi_hiside = 0
+      if (xlo .le. x_data(1)) then
+         lo_loside = 1
+         lo_hiside = 1
       end if
-      if (x .ge. x_data(N)) then
-         loside = N
-         hiside = N
+      if (xhi .le. x_data(1)) then
+         hi_loside = 1
+         hi_hiside = 1
       end if
-      if (loside.eq.0) then
-         do i = 1, N-1
-            if ( (x .ge. x_data(i))
+      if (xlo .ge. x_data(N)) then
+         lo_loside = N
+         lo_hiside = N
+      end if
+      if (xhi .ge. x_data(N)) then
+         hi_loside = N
+         hi_hiside = N
+      end if
+      if (lo_loside.eq.0) then
+         do i = 1, N-1                           
+            if ( (xlo .ge. x_data(i))
      &           .and.
-     &           (x .le. x_data(i+1)) ) then
-               loside  = i
-               hiside  = i+1
+     &           (xlo .le. x_data(i+1)) ) then
+               lo_loside  = i
+               lo_hiside  = i+1
             end if
          end do
       end if
- 
+      if (hi_loside.eq.0) then            
+         do i = 1, N-1                           
+            if ( (xhi .ge. x_data(i))
+     &           .and.
+     &           (xhi .le. x_data(i+1)) ) then
+               hi_loside = i
+               hi_hiside = i + 1
+            end if
+         end do
+      end if
+         
       do j = 1, M
- 
-         x1 = x_data(loside)
-         y1 = y_data(loside,j)
- 
-         x2 = x_data(hiside)
-         y2 = y_data(hiside,j)
- 
-         if (loside.eq.hiside) then
+         
+         x1 = x_data(lo_loside)
+         y1 = y_data(lo_loside,j)
+         
+         x2 = x_data(lo_hiside)
+         y2 = y_data(lo_hiside,j)
+          
+         if (lo_loside.eq.lo_hiside) then
             dydx = 0.d0
          else
             dydx = (y2-y1)/(x2-x1)
          end if
- 
-         y_vector(j) = y1 + dydx*(x - x1)
- 
+         
+         ylo = y1 + dydx*(xlo - x1)
+         
+         if (lo_loside .eq. hi_loside) then
+            
+            yhi = y1 + dydx*(xhi - x1)
+            
+            y_vector(j) = 0.5d0*(ylo + yhi)
+            
+         else
+            
+            sum = (x2 - xlo) * 0.5d0 * (ylo + y2)
+            
+            x1 = x_data(hi_loside)
+            y1 = y_data(hi_loside,j)
+         
+            x2 = x_data(hi_hiside)
+            y2 = y_data(hi_hiside,j)
+            
+            if (hi_loside.eq.hi_hiside) then
+               dydx = 0.d0
+            else
+               dydx = (y2-y1)/(x2-x1)
+            end if
+            
+            yhi = y1 + dydx*(xhi - x1)
+            
+            sum = sum + (xhi - x1)*0.5d0*(yhi+y1)
+            
+            do k = lo_hiside,hi_loside-1
+               
+               sum = sum + (x_data(k+1)-x_data(k))
+     &              * 0.5d0
+     &              * (y_data(k,j) + y_data(k+1,j))
+               
+            end do
+            
+            y_vector(j) = sum / (xhi - xlo)
+            
+         end if
       end do
-      end
-c     LAST LINE
+      end                                         
+c     LAST LINE                                   
 c-------------------------------------------------

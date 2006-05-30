@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.6 2006-05-26 19:52:04 sepp Exp $
+# $Id: Make.package,v 1.7 2006-05-30 21:11:32 sepp Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -14,8 +14,9 @@ ifeq (${USE_FLCTS}, TRUE)
 endif
 
 #fEXE_sources += pmf_30_0.8.f
-fEXE_sources += pmf_30_1.0.f
+#fEXE_sources += pmf_30_1.0.f
 #fEXE_sources += pmf_30_1.2.f
 #fEXE_sources += pmf_gri12.f
 #fEXE_sources += drmSoln0.75.f
 #fEXE_sources += GRI-drm19_4cm_1.19.f
+fEXE_sources += pmf_jfg_01.f
