@@ -846,7 +846,6 @@ c
             endif
             
             call pmf_GRI(ylo*100,yhi*100,pmf_GRI_vals,n)
-            print *, ">>>>>>>>>>>", n, Nspec
             if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
             call FORT_MOLETOMASS(lo_chem,hi_chem,
      &                           pmf_GRI_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
