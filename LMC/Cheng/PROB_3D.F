@@ -801,7 +801,7 @@ c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
 
       REAL_T function turbSclT(r)
       REAL_T r, eta
-#include"probdata.H"
+#include "probdata.H"
       turbSclT = 0.d0
       eta = r/Ro
       if(r.lt.Ro)then
@@ -817,7 +817,7 @@ c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
 
       REAL_T function turbSclR(r)
       REAL_T r, eta
-#include"probdata.H"
+#include "probdata.H"
       turbSclR = 0.d0
       eta = r/Ro
       if(r.lt.Ro)then
@@ -1207,7 +1207,9 @@ c                  end if
          do k= lo(3),hi(3)
             z = (float(k)+.5)*delta(3)+domnlo(3)            
             do j = lo(2), hi(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
 
                   zpert = 0.d0
                   if (pertmag .gt. 0.d0) then
