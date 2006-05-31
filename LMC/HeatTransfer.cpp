@@ -976,7 +976,7 @@ HeatTransfer::initData ()
     ParmParse pp("ht");
 
     std::string velocity_plotfile;
-    pp.get("velocity_plotfile", velocity_plotfile);
+    pp.query("velocity_plotfile", velocity_plotfile);
 
     if (!velocity_plotfile.empty())
     {
