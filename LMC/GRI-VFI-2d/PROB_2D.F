@@ -838,13 +838,7 @@ c
       do j = lo(2), hi(2)
          y = (float(j)+.5)*delta(2)+domnlo(2)         
          do i = lo(1), hi(1)
-
-      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209)) 
-     +   write (6, "('>>>> scal', 2i5, 1d20.10)") 
-     +      i, j, 
-     +      scal(i, j, firstSpec + 53 - 1)
- 
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+             x = (float(i)+.5)*delta(1)+domnlo(1)
 
             ylo =   j  *delta(2)+domnlo(2)-y_offset
             yhi = (j+1)*delta(2)+domnlo(2)-y_offset
@@ -856,32 +850,13 @@ c
             call pmf_GRI(ylo*100,yhi*100,pmf_GRI_vals,n)
             if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
 
-      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209))
-     +   write (6, "('>>>> pmfg', 2i5, 1d20.10)") 
-     +      i, j, 
-     +      pmf_GRI_vals(56)
-
             call FORT_MOLETOMASS(lo_chem,hi_chem,
      &                           pmf_GRI_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
      &                           Y_pmf,         ARLIM(lo_chem),ARLIM(hi_chem))
          
-      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209))
-     +   write (6, "('>>>> ypmf', 2i5, 1d20.10)") 
-     +      i, j, 
-     +      Y_pmf(53)
-
             call FORT_MASSTOMOLE(lo_chem,hi_chem,
      &                           Y_pmf, ARLIM(lo_chem),ARLIM(hi_chem),
      &                           X_debug,         ARLIM(lo_chem),ARLIM(hi_chem))
-         
-      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209))
-     +   write (6, "('>>>> xdgb', 2i5, 1d20.10)") 
-     +      i, j, 
-     +      X_debug(53)
-
-      if (i .eq. lo(1))
-     +   write (53, "(3d20.10)") dble(j), pmf_GRI_vals(56), Y_pmf(53)
-
             rblob = sqrt( (v_xcen-x)**2 + (v_ycen-y)**2 )
 
             scal(i,j,Trac) = fourth*(press(i,j  ) + press(i+1,j)
@@ -938,12 +913,6 @@ c     Cut off initial pmf at R_hot so that air along wall
             if (probtype.eq.2) then
                vel(i,j,2) = zero
             endif
-
-      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209))
-     +   write (6, "('>>>> scal', 2i5, 1d20.10)") 
-     +      i, j, 
-     +      scal(i, j, firstSpec + 53 - 1)
-
          enddo
       enddo
       Patm = pamb / 101325.0
