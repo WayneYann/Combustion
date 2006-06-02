@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.19 2006-05-30 22:51:49 sepp Exp $
+# $Id: GNUmakefile,v 1.20 2006-06-02 17:07:33 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -13,8 +13,6 @@ DIM    	          = 2
 PRVERSION         = v5
 FCOMP             = Intel
 COMP              = Intel
-#FCOMP             = g95
-#COMP              = mpiCC
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr

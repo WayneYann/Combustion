@@ -784,11 +784,13 @@ c ::: -----------------------------------------------------------
       integer zL, zR, zH
       REAL_T eta, xi, xblend, mdotb, mdotL, mdotR, r1sq, r2sq, ylo, yhi
       REAL_T pmf_GRI_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
-      REAL_T Y_air(maxspec), X_air(maxspec)
+      REAL_T Y_air(maxspec), X_air(maxspec), X_debug(maxspec)
       integer iN2, iAr, iO2
       integer lo_chem(SDIM),hi_chem(SDIM)
       data lo_chem /1,1/
       data hi_chem /1,1/
+
+      write (6, *) maxspec
 
       if ((Temp.gt.0).neqv.(RhoH.gt.0)) then
          call bl_abort('Need both Temp and RhoH, or neither')
@@ -836,6 +838,12 @@ c
       do j = lo(2), hi(2)
          y = (float(j)+.5)*delta(2)+domnlo(2)         
          do i = lo(1), hi(1)
+
+      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209)) 
+     +   write (6, "('>>>> scal', 2i5, 1d20.10)") 
+     +      i, j, 
+     +      scal(i, j, firstSpec + 53 - 1)
+ 
             x = (float(i)+.5)*delta(1)+domnlo(1)
 
             ylo =   j  *delta(2)+domnlo(2)-y_offset
@@ -847,10 +855,32 @@ c
             
             call pmf_GRI(ylo*100,yhi*100,pmf_GRI_vals,n)
             if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
+
+      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209))
+     +   write (6, "('>>>> pmfg', 2i5, 1d20.10)") 
+     +      i, j, 
+     +      pmf_GRI_vals(56)
+
             call FORT_MOLETOMASS(lo_chem,hi_chem,
      &                           pmf_GRI_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
      &                           Y_pmf,         ARLIM(lo_chem),ARLIM(hi_chem))
          
+      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209))
+     +   write (6, "('>>>> ypmf', 2i5, 1d20.10)") 
+     +      i, j, 
+     +      Y_pmf(53)
+
+            call FORT_MASSTOMOLE(lo_chem,hi_chem,
+     &                           Y_pmf, ARLIM(lo_chem),ARLIM(hi_chem),
+     &                           X_debug,         ARLIM(lo_chem),ARLIM(hi_chem))
+         
+      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209))
+     +   write (6, "('>>>> xdgb', 2i5, 1d20.10)") 
+     +      i, j, 
+     +      X_debug(53)
+
+      if (i .eq. lo(1))
+     +   write (53, "(3d20.10)") dble(j), pmf_GRI_vals(56), Y_pmf(53)
 
             rblob = sqrt( (v_xcen-x)**2 + (v_ycen-y)**2 )
 
@@ -859,9 +889,11 @@ c
 
             if (v_blob_r .le. zero) then
                scal(i,j,Temp) = pmf_GRI_vals(1)
+
                do n = 1,Nspec
                   scal(i,j,firstSpec+n-1) = Y_pmf(n)
                end do
+
                if (iN2.gt.0) then
                   sum = zero
                   do n = 1,Nspec
@@ -869,6 +901,7 @@ c
                   end do
                   scal(i,j,firstSpec+iN2-1) = one - sum
                endif
+
             else
                eta = 0.5*(1.d0 + TANH((rblob - v_blob_r)/xfrontw))
                
@@ -886,6 +919,8 @@ c
                   end do
                   scal(i,j,firstSpec+iN2-1) = one - sum
                endif
+
+
             end if
 
 c     Cut off initial pmf at R_hot so that air along wall
@@ -903,6 +938,12 @@ c     Cut off initial pmf at R_hot so that air along wall
             if (probtype.eq.2) then
                vel(i,j,2) = zero
             endif
+
+      if (i .eq. lo(1) .and. (j .eq. 208 .or. j .eq. 209))
+     +   write (6, "('>>>> scal', 2i5, 1d20.10)") 
+     +      i, j, 
+     +      scal(i, j, firstSpec + 53 - 1)
+
          enddo
       enddo
       Patm = pamb / 101325.0
