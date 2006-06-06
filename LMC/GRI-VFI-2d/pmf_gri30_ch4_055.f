@@ -5,6 +5,8 @@ C     fuel: methane, CH4
 C     stoichiometry: phi = 0.55
 C     extent of domain: 0.0 cm to 4.0 cm
 C     location of flame: 2.0 cm
+C     differencing: centered and conservative
+
 c-------------------------------------------------
 c                                                 
 c                                                 
