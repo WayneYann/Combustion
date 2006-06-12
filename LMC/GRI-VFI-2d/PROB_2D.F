@@ -430,6 +430,12 @@ c     For probtype == 1, set boundary conditions from premixed flame profile in 
          end if
          T_bc(zone) = pmf_GRI_vals(1)
          u_bc(zone) = zero
+         if (V_in .lt. zero) 
+c           JFG: 
+c           set V_in to the inflow value in the initial guess.
+c           must multiply by 0.01 to convert from cm/s to m/s.
+            V_in = 0.01 * pmf_GRI_vals(2)
+         end if
          v_bc(zone) = V_in
          call FORT_RHOfromPTY(lo,hi,
      &                        rho_bc(zone),ARLIM(lo),ARLIM(hi),
