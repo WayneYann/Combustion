@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.8 2006-06-02 17:07:33 sepp Exp $
+# $Id: Make.package,v 1.9 2006-07-07 22:47:46 sepp Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -19,4 +19,5 @@ endif
 #fEXE_sources += pmf_gri12.f
 #fEXE_sources += drmSoln0.75.f
 #fEXE_sources += GRI-drm19_4cm_1.19.f
-fEXE_sources += pmf_gri30_ch4_100.f
+#fEXE_sources += pmf_gri30_ch4_100.f
+fEXE_sources += pmf_gri30_hno_037.f
