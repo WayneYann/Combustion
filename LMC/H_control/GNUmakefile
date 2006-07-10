@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.6 2006-02-07 00:15:59 jbb Exp $
+# $Id: GNUmakefile,v 1.7 2006-07-10 14:28:20 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -8,12 +8,13 @@ TOP           = $(PBOXLIB_HOME)
 #
 PRECISION         = DOUBLE
 DEBUG	          = FALSE
+PROFILE           = TRUE
 PROFILE           = FALSE
 DIM    	          = 2
 DIM    	          = 3
 PRVERSION         = v7
-FCOMP             = PathScale
-COMP              = PathScale
+FCOMP             = Intel
+COMP              = Intel
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
@@ -23,10 +24,16 @@ HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_FLCTS         = TRUE
 USE_MPI           = TRUE
+
+#NEEDS_FLUSH_F := TRUE
+#
+# Turn this on to restart from a plotfile.
+#
+USE_NEWMECH = TRUE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
-USE_VELOCITY = TRUE
+#USE_VELOCITY = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
@@ -61,6 +68,11 @@ endif
 
 ifeq ($(USE_VELOCITY), TRUE)
   DEFINES += -DBL_NOLINEVALUES -DBL_USE_VELOCITY -DBL_PARALLEL_IO
+  INCLUDE_LOCATIONS += $(TOP)/pAmrvis
+endif
+
+ifeq ($(USE_NEWMECH), TRUE)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
   INCLUDE_LOCATIONS += $(TOP)/pAmrvis
 endif
 
