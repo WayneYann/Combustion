@@ -3,7 +3,7 @@ c
 c                                                 
 c                              -USAGE-            
 c                                                 
-c     OVERVIEW: call pmf_H     (xlo,xhi,y,Niny)   
+c     OVERVIEW: call pmf     (xlo,xhi,y,Niny)   
 c     computes y(xlo,xhi) by averaging data over  
 c     the range [xlo,xhi]. Here x is a scalar, y  
 c     a vector, with Niny components used. Piece- 
@@ -25,7 +25,7 @@ c-------------------------------------------------
 c                                                 
 c                          -SPECIFICATION-        
 c     SYNTAX:                                     
-c     subroutine pmf_H     (xlo,xhi:dp,y:dp arr, Niny: int)
+c     subroutine pmf     (xlo,xhi:dp,y:dp arr, Niny: int)
 c     returns: none                               
 c     REQUIRES: none                              
 c     MODIFIES: y, N                              
@@ -68,7 +68,7 @@ c-------------------------------------------------
 c                                                 
 c                             -CODE-              
 c     FIRST LINE:                                 
-      subroutine pmf_H     (xlo,xhi,y_vector,Niny)
+      subroutine pmf     (xlo,xhi,y_vector,Niny)
 c                                                 
 c     declare local variables                     
 c                                                 
