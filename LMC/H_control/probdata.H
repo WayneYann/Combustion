@@ -35,6 +35,10 @@
      &     V_co_new, T_stick, rho_stick, h_stick
       save /myprob1/, /myprob2/, /myprob3/, /myprob4/, /myprob5/ 
 
+      REAL_T pertmag
+      common /pert1/ pertmag
+      save /pert1/
+
       logical forceInflow
       REAL_T probSizeFile(3), dxFile(3)
       integer dimFile

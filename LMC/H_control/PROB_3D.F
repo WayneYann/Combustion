@@ -186,7 +186,7 @@ c ::: -----------------------------------------------------------
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
      &                  traceSpecVal,phi_in,T_in,
      $                  turb_scale, tstart_turb, V_in, 
-     $                  zstandoff
+     $                  zstandoff, pertmag
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -249,6 +249,7 @@ c
 
 c     Note: for setup with no coflow, set Ro=Rf+wallth
       zstandoff = zero
+      pertmag = 0.d0
 
 c     Initialize control variables
       tau_control = one
@@ -726,6 +727,61 @@ c      endif
 #endif
       end
 
+      subroutine FORT_INITDATANEWMECH(level,time,lo,hi,nscal,
+     &     vel,scal,DIMS(state),press,DIMS(press),
+     &     delta,xlo,xhi)
+      implicit none
+      integer  level, nscal, nvel
+      integer  lo(SDIM), hi(SDIM)
+      integer  DIMDEC(state)
+      integer  DIMDEC(press)
+      REAL_T   xlo(SDIM), xhi(SDIM)
+      REAL_T   time, delta(SDIM)
+      REAL_T   vel(DIMV(state),SDIM)
+      REAL_T   scal(DIMV(state),nscal)
+      REAL_T   press(DIMV(press))
+ 
+#include "htdata.H"
+#include "cdwrk.H"
+#include "bc.H"
+#include "probdata.H"
+ 
+      integer i, j, k, n
+      REAL_T Patm
+ 
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               scal(i,j,k,Trac) = zero
+            end do
+         end do
+      end do
+ 
+      Patm = pamb / 101325.0d0
+ 
+      call FORT_RHOfromPTY(lo,hi,
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Density),  DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),FirstSpec),DIMS(state),
+     &     Patm)
+      call FORT_HMIXfromTY(lo,hi,
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),RhoH),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),FirstSpec),DIMS(state))
+ 
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               do n = 0,Nspec-1
+                  scal(i,j,k,FirstSpec+n) = scal(i,j,k,FirstSpec+n)*scal(i,j,k,Density)
+               enddo
+               scal(i,j,k,RhoH) = scal(i,j,k,RhoH)*scal(i,j,k,Density)
+            enddo
+         enddo
+      enddo
+ 
+      end
+
 c ::: -----------------------------------------------------------
 c ::: This routine is called at problem setup time and is used
 c ::: to initialize data on each grid.  The velocity field you
@@ -777,6 +833,7 @@ c ::: -----------------------------------------------------------
       REAL_T x, y, z, zt, u, v, w, rho, Yl(maxspec), Xl(maxspec), T, h, Patm
       REAL_T turbSclX, turbSclY, turbSclZ, convVelSAVE
       REAL_T eta, eta0, pmf_vals(maxspec+3), bg_vals(maxspec+3), r, y1, y2, theta
+      REAL_T zpert,Lx,Ly
       character*(maxspnml) name
 
 #if defined(BL_DO_FLCT)
@@ -884,12 +941,25 @@ c         if (flct_file.ne.'') then
          do k= lo(3),hi(3)
             z = (float(k)+.5)*delta(3)+domnlo(3)            
             do j = lo(2), hi(2)
+               y = (float(j)+5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
 
-                  y1 = (z-half*delta(3)-zstandoff)*100.d0
-                  y2 = (z+half*delta(3)-zstandoff)*100.d0
+                  zpert = 0.d0
+                  if (pertmag .gt. 0.d0) then
+                     Lx = domnhi(1) - domnlo(1)
+                     Ly = domnhi(2) - domnlo(2)
+                     zpert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)             * sin(2*Pi*5*y/Ly)
+     &                              + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)   * sin(2*Pi*4*(y-.0053765)/Ly)
+     &                              + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx) * sin(2*Pi*3*(y-.02137)/Ly) 
+     &                              + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)     * sin(2*Pi*6*(y-.018)/Ly) 
+     &                                          + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
+                  endif
 
-                  call pmf_H(y1,y2,pmf_vals,n)
+                  y1 = (z-half*delta(3)-zstandoff+zpert)*100.d0
+                  y2 = (z+half*delta(3)-zstandoff+zpert)*100.d0
+
+                  call pmf(y1,y2,pmf_vals,n)
 
                   if (n.ne.Nspec+3) then
                      call bl_abort('INITDATA: n .ne. Nspec+3')
@@ -905,7 +975,8 @@ c         if (flct_file.ne.'') then
                   do n = 1,Nspec
                      scal(i,j,k,FirstSpec+n-1) = Yl(n)
                   end do
-                  scal(i,j,k,Trac) = zero
+c                  scal(i,j,k,Trac) = zero
+                  scal(i,j,k,Trac) = -z
 
                end do
             end do
@@ -1474,9 +1545,29 @@ c ::: -----------------------------------------------------------
       REAL_T     adv(DIMV(adv))
       integer    bc(SDIM,2)
 
+      integer    i,j,k
+      integer lo(SDIM), hi(SDIM)
+
+      lo(1) = ARG_L1(adv)
+      lo(2) = ARG_L2(adv)
+      lo(3) = ARG_L3(adv)
+      hi(1) = ARG_H1(adv)
+      hi(2) = ARG_H2(adv)
+      hi(3) = ARG_H3(adv)
+
       call filcc (adv,DIMS(adv),domlo,domhi,delta,xlo,bc)
 
-      call fillWithZeros(adv,DIMS(adv),domlo,domhi,bc)
+      if (bc(3,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
+         do k = lo(3), domlo(3)-1
+            do j = lo(2),hi(2)
+               do i = lo(1), hi(1)
+                  adv(i,j,k) = time
+               enddo
+            enddo
+         enddo
+      endif    
+      
+c      call fillWithZeros(adv,DIMS(adv),domlo,domhi,bc)
 
       end
 
