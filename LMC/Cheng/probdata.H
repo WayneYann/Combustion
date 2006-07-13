@@ -41,12 +41,12 @@
       common /inflow2/probSizeFile
       save /inflow1/, /inflow2/
 
-      REAL_T Rf, wallTh, Ro, stTh, Vin, zBL,
+      REAL_T Rf, wallTh, Ro, stTh, Vin, Tin, phiin, zBL,
      &            dBL, stBL, Thot, rhot, zhot, zstandoff, swK, swW,
      &            hotspot_r, hotspot_z, hotspot_dz, hotspot_T, hotspot_htc,
      &            hotspot_w, vheight, Vco_l, Vco_r, tVco_l, tVco_r,
      &             Tpipe, Tstick, stL, stLw, zInletEval
-      common /myprob3/ Rf, wallTh, Ro, stTh, Vin, zBL,
+      common /myprob3/ Rf, wallTh, Ro, stTh, Vin, Tin, phiin, zBL,
      &            dBL, stBL, Thot, rhot, zhot, zstandoff, swK, swW,
      &            hotspot_r, hotspot_z, hotspot_dz, hotspot_T, hotspot_htc,
      &            hotspot_w, vheight, Vco_l, Vco_r, tVco_l, tVco_r,

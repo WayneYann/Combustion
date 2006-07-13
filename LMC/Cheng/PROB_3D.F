@@ -193,7 +193,7 @@ c ::: -----------------------------------------------------------
      &                  refine_stick_z, direction, min_nogrid_lev, nogrid_radius,
      &                  forceInflow, numInflPlanesStore, strmwse_dir,
      $                  forceLo, forceHi, nCompInflow, flct_file,
-     $                  turb_scale, tstart_turb, Vin, rhot, zhot,
+     $                  turb_scale, tstart_turb, Vin, Tin, phiin, rhot, zhot,
      $                  zstandoff, Thot, swK, swW, stTh, Ro, Rf, wallTh,
      &                  zBL, dBL, stBL, hotspot_r, hotspot_z, hotspot_dz,
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
@@ -282,6 +282,8 @@ c     Note: for setup with no coflow, set Ro=Rf+wallth
       zBL = tenth*Rf
       stBL = half*dBL
       Vin = 5.d0
+      Tin = -1.d0
+      phiin = -1.d0
 
       Vco_l  = 0.1d0
       Vco_r  = 0.1d0
@@ -402,7 +404,7 @@ c     Load domain dimensions into common, and set up boundary functions
 #include "htdata.H"
       
       REAL_T Patm, x, pmf_vals(maxspec+3), sum, Y_pmf(maxspec)
-      integer i, zone, n, lo(SDIM), hi(SDIM), iN2, getZone
+      integer i, zone, n, lo(SDIM), hi(SDIM), iN2, iO2, iCH4, a, getZone
       character*(maxspnml) name
       data lo / 1, 1, 1 /
       data hi / 1, 1, 1 /
@@ -419,6 +421,10 @@ c     Zone definitions
 
       REAL_T X_CH4(Nzones),X_O2(Nzones),X_N2(Nzones),T(Nzones)
       REAL_T Xt(maxspec)
+
+      integer isioproc
+
+
 c     ZONES:            1                   2         3             4           5     6         7
 #ifdef SWIRL
 c     phi = 0.8
@@ -453,16 +459,46 @@ c     data X_O2  /   0.193726937269d0,  0.21d0, 0.193726937269d0,  0.21d0,  0.21
       if (Tpipe.gt.0) T(BL_PIPEEND) = Tpipe
       if (Tstick.gt.0) T(BL_STICK) = Tstick
 
+      call bl_pd_is_ioproc(isioproc)
+      if (isioproc.eq.1) then
+         print *, '*********** zone boundary values at startup'
+      endif
       do zone = 1,Nzones
          if (zone.eq.BL_FUELPIPE .and. probtype.eq.4) then
-            call pmf(zInletEval,zInletEval,pmf_vals,n)
-            if (n.ne.Nspec+3) then
-               call bl_abort('setupbc: n .ne. Nspec+3')
+            if (phiin .ge. 0.d0) then
+               iN2  = -1
+               iCH4 = -1
+               iO2  = -1
+               do n = 1,Nspec
+                  call get_spec_name(name,n)
+                  if (name .eq. 'N2' ) iN2  = n
+                  if (name .eq. 'CH4') iCH4 = n
+                  if (name .eq. 'O2' ) iO2  = n
+               enddo
+ 
+               do n=1,Nspec
+                  Xt(n) = zero
+               enddo
+
+c              hc + a.O2 -> b.CO2 + c.H2O
+c              for hc = CH4, a=2, b=1, c=2
+               a = 2
+
+               Xt(iO2) = 1.d0/(1.d0 + phiin/a  + 0.79d0/0.21d0)
+               Xt(iCH4) = phiin * Xt(iO2) / a
+               Xt(iN2) = 1.d0 - Xt(iCH4) - Xt(iO2)
+
+               T_bc(zone) = Tin
+            else
+               call pmf(zInletEval,zInletEval,pmf_vals,n)
+               if (n.ne.Nspec+3) then
+                  call bl_abort('setupbc: n .ne. Nspec+3')
+               endif
+               do n =1,Nspec
+                  Xt(n) = pmf_vals(3+n)
+               enddo
+               T_bc(zone) = pmf_vals(1)
             endif
-            do n =1,Nspec
-               Xt(n) = pmf_vals(3+n)
-            enddo
-            T_bc(zone) = pmf_vals(1)
          else
             sum = zero
             do n = 1,Nspec
@@ -476,6 +512,7 @@ c     data X_O2  /   0.193726937269d0,  0.21d0, 0.193726937269d0,  0.21d0,  0.21
             T_bc(zone) = T(zone)
          endif
          CALL CKXTY (Xt, IWRK, RWRK, Y_bc(0,zone))
+
          call FORT_RHOfromPTY(lo,hi,
      &        rho_bc(zone),ARLIM(lo),ARLIM(hi),
      &        T_bc(zone),ARLIM(lo),ARLIM(hi),
@@ -484,6 +521,14 @@ c     data X_O2  /   0.193726937269d0,  0.21d0, 0.193726937269d0,  0.21d0,  0.21
      &        h_bc(zone),ARLIM(lo),ARLIM(hi),
      &        T_bc(zone),ARLIM(lo),ARLIM(hi),
      &        Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
+
+         if (isioproc.eq.1) then
+            print *, 'zone',zone
+            print *, '  T,rho,h: ',T_bc(zone),rho_bc(zone),h_bc(zone)
+            print *, '  Y:'
+            print *, Y_bc(0:Nspec-1,zone)
+         endif
+
       end do
 
       end
