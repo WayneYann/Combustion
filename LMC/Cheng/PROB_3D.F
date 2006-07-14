@@ -24,6 +24,12 @@
 #define SDIM 3
 #define USE_PMF_AVG
 
+#if defined(BL_T3E) || defined(BL_AIX) || defined(BL_IRIX64) || defined(BL_CRAYX1)
+#define OPEN_APPEND position='append'
+#else
+#define OPEN_APPEND access='append'
+#endif
+
       subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
 
       implicit none
@@ -116,7 +122,7 @@ c
          coft_old = coft
          
          if (myproc.eq.0) then
-            open(13,file=ac_hist_file,form='formatted',position='append')
+            open(13,file=ac_hist_file,form='formatted',OPEN_APPEND)
             write(13,1000) step,time,Vin,tbase_control,zbase_control,
      &           dV_control,sest,coft_old
             close(13)
@@ -174,7 +180,9 @@ c ::: -----------------------------------------------------------
 #include "htdata.H"
 #include "cdwrk.H"
 #include "bc.H"
+#if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
+#endif
 #include "visc.H"
 
       integer lo(SDIM), hi(SDIM), i, j, zone, iCH4, getZone
@@ -191,9 +199,11 @@ c ::: -----------------------------------------------------------
      &                  refine_nozzle_y, refine_nozzle_z, nozzle_width,
      &                  max_stick_lev, refine_stick, refine_stick_x, 
      &                  refine_stick_z, direction, min_nogrid_lev, nogrid_radius,
+#if defined(BL_DO_FLCT)
      &                  forceInflow, numInflPlanesStore, strmwse_dir,
-     $                  forceLo, forceHi, nCompInflow, flct_file,
-     $                  turb_scale, tstart_turb, Vin, Tin, phiin, rhot, zhot,
+     $                  forceLo, forceHi, nCompInflow, flct_file, tstart_turb, 
+#endif
+     $                  turb_scale, Vin, Tin, phiin, rhot, zhot,
      $                  zstandoff, Thot, swK, swW, stTh, Ro, Rf, wallTh,
      &                  zBL, dBL, stBL, hotspot_r, hotspot_z, hotspot_dz,
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
@@ -261,6 +271,8 @@ c
       nogrid_radius = 1.e10
 
       add_turb = .FALSE.
+
+#if defined(BL_DO_FLCT)
       forceInflow = .FALSE.
       numInflPlanesStore = -1
       numInflPlanesStore = 30
@@ -271,6 +283,7 @@ c
       forceHi = .FALSE.
       strmwse_dir = FLCT_ZVEL
       flct_file = ''
+#endif
       turb_scale = 1
 
 c     Note: for setup with no coflow, set Ro=Rf+wallth
@@ -340,11 +353,11 @@ c      write(6,heattransin)
 
    10 close(unit=untin)
 
+#if defined(BL_DO_FLCT)
       if (forceInflow .eqv. .FALSE.) then
          forceLo = .FALSE.
          forceHi = .FALSE.
       else
-#if defined(BL_DO_FLCT)
          if (flct_file.ne.'') then
 #define FF_UNIT 20
             write(6,*) '...initializing turbulence, reading header info'
@@ -352,14 +365,13 @@ c      write(6,heattransin)
             call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
          endif
-#endif
-
       endif
 
 c     We build our our "time" value in VELFILL for stepping through the
 c     turbulence file.  The routine relies on time not being further scaled
 c     by convVel within the INFL stuff....set convVel = 1.0     
       convVel = one
+#endif
 
 c     Initialize the control parameters...even if we are not controlling, as they are
 c     used in the calculation of the time offset into the turbulence file
@@ -526,7 +538,7 @@ c              for hc = CH4, a=2, b=1, c=2
             print *, 'zone',zone
             print *, '  T,rho,h: ',T_bc(zone),rho_bc(zone),h_bc(zone)
             print *, '  Y:'
-            print *, Y_bc(0:Nspec-1,zone)
+            print *, (Y_bc(i,zone),i=0,Nspec-1)
          endif
 
       end do
@@ -958,7 +970,9 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
+#if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
+#endif
 
       integer i, j, k, n, iN2, iO2
       REAL_T x, y, z, zt, u, v, w, rho, Yl(maxspec), Xl(maxspec), T, h, Patm
@@ -1006,8 +1020,6 @@ c
          if (name .eq. 'O2' ) iO2 = n
       end do
 
-      convVelSAVE = convVel
-      convVel = 15.d0
       do k= lo(3),hi(3)
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
@@ -1019,6 +1031,8 @@ c
             
          z = (float(k)+.5)*delta(3)+domnlo(3)
 #if defined(BL_DO_FLCT)
+         convVelSAVE = convVel
+         convVel = 15.d0
          if (.false. .and. flct_file.ne.'') then      
 c         if (flct_file.ne.'') then      
             call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo,
@@ -1066,9 +1080,9 @@ c         if (flct_file.ne.'') then
                end do
             end do
          end if
+         convVel = convVelSAVE
 #endif
       enddo            
-      convVel = convVelSAVE
 
       if (probtype .eq. 1) then
          do k = lo(3), hi(3)
@@ -2293,8 +2307,9 @@ c
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
+#if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
-
+#endif
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
       REAL_T  z, y, x
