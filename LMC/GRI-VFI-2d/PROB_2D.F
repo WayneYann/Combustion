@@ -188,7 +188,7 @@ c ::: -----------------------------------------------------------
 
       REAL_T species(maxspec)
       integer lo(2), hi(2), n
-      integer ifreq,zone,i,iCH4,getZone
+      integer ifreq,zone,i,getZone
       character*(maxspnml) spName
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, flametracval, probtype,
@@ -354,13 +354,8 @@ c     Load domain dimensions into common, and set up boundary functions
       call setupbc()
       bcinit = .true.
 
-      iCH4 = -1
-      do n = 1,Nspec
-         call get_spec_name(spName,n)
-         if (spName .eq. 'CH4') iCH4 = n-1
-      end do
       zone = getZone(half*(domnlo(1)+domnhi(1)),domnlo(2))
-      scale_control = Y_bc(iCH4,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))
+      scale_control = Y_bc(fuelID-1,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
       endif
