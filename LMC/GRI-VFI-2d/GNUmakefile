@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.22 2006-07-07 22:39:19 lijewski Exp $
+# $Id: GNUmakefile,v 1.23 2006-07-24 19:52:13 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -12,8 +12,8 @@ DEBUG	          = TRUE
 PROFILE           = FALSE
 DIM    	          = 2
 PRVERSION         = v5
+COMP              = g++
 FCOMP             = Intel
-COMP              = Intel
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
@@ -46,6 +46,7 @@ REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=PROPANE
 REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=GRI30
+REACTION_MECHANISM=GRI211HNO
 REACTION_MECHANISM=GRI30HNO
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
