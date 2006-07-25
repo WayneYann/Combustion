@@ -108,12 +108,23 @@ c
       dV_control = (V_new - V_in)/dt
 
       if (myproc.eq.0) then
-         print *
-         print *,'****************** control:'
-         print *,'time,dt,coft,V_new:',time,dt,coft,V_new
-         print *,'changeMax_control: ', changeMax_control
-         print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
-         print *,'coft_old,V_in_old:',coft_old,V_in_old
+         write (6, "('prob_2d.f/fort_activecontrol:')")
+         write (6, "(' ')")
+         write (6, "('  changeMax  ', 1pe23.15e3)") changeMax_control
+         write (6, "('          h  ', 1pe23.15e3)") h_control
+         write (6, "('       sest  ', 1pe23.15e3)") sest
+         write (6, "('        tau  ', 1pe23.15e3)") tau_control
+         write (6, "(' ')")
+         write (6, "('       time  ', 1pe23.15e3)") time
+         write (6, "('         dt  ', 1pe23.15e3)") dt
+         write (6, "('       coft  ', 1pe23.15e3)") coft
+         write (6, "('       _new  ', 1pe23.15e3)") V_new
+         write (6, "('     vslope  ', 1pe23.15e3)") vslope
+         write (6, "('       cfix  ', 1pe23.15e3)") cfix
+         write (6, "('     slocal  ', 1pe23.15e3)") slocal
+         write (6, "('   coft_old  ', 1pe23.15e3)") coft_old
+         write (6, "('   V_in_old  ', 1pe23.15e3)") V_in_old
+         write (6, "(' ')")
       endif
 
       coft_old = coft
@@ -206,7 +217,8 @@ c ::: -----------------------------------------------------------
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
 #endif
-      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control
+      namelist /control/ 
+     &   tau_control, sest, cfix, changeMax_control, h_control
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
