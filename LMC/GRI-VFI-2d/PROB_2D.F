@@ -803,8 +803,6 @@ c ::: -----------------------------------------------------------
       data lo_chem /1,1/
       data hi_chem /1,1/
 
-      write (6, *) maxspec
-
       if ((Temp.gt.0).neqv.(RhoH.gt.0)) then
          call bl_abort('Need both Temp and RhoH, or neither')
       end if
