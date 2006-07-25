@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.23 2006-07-24 19:52:13 lijewski Exp $
+# $Id: GNUmakefile,v 1.24 2006-07-25 15:34:51 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,12 +7,13 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = FALSE
 DEBUG	          = TRUE
+DEBUG	          = FALSE
 PROFILE           = FALSE
 DIM    	          = 2
 PRVERSION         = v5
 COMP              = g++
+COMP              = Intel
 FCOMP             = Intel
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
@@ -21,8 +22,8 @@ USE_HGPROJ_SERIAL = FALSE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_FLCTS         = TRUE
-USE_MPI           = TRUE
 USE_MPI           = FALSE
+USE_MPI           = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
@@ -46,8 +47,8 @@ REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=PROPANE
 REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=GRI30
-REACTION_MECHANISM=GRI211HNO
 REACTION_MECHANISM=GRI30HNO
+REACTION_MECHANISM=GRI211HNO
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
