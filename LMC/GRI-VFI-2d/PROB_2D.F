@@ -406,8 +406,17 @@ c     Load domain dimensions into common, and set up boundary functions
       
       Patm = pamb / 101325.d0
       
-      if (probtype .eq. 1) then
+      if (probtype .eq. 1 .or. probtype .eq. 3) then
 c     For probtype == 1, set boundary conditions from premixed flame profile in y
+c        JFG:
+c        the probtype 1 and 3 apper to be the same in setupbc
+c        but the original 3 is still down below.  one difference
+c        is that it hardwires the methane chemistry and uses phi_in.
+c        in case that is important, the following check was added.
+
+         if (phi_in .ge. zero)
+     &      call bl_abort('SETUPBC: phi_in is no longer used')
+
          y = domnlo(2)
          zone = getZone(y,domnlo(2))
          iN2 = -1
