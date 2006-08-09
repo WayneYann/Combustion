@@ -3461,7 +3461,7 @@ C-----------------------------------------------------------------------
          ZN(I) = DMI(I)*RN(I) + BETAN*ZN(I)
       ENDDO
       CALL EGSAXS(NG, G, ZN, TEMP)
-      BBB = DDOT (NG, ZN, 1, TEMP, 1)
+      BBB = VDDOT (NG, ZN, 1, TEMP, 1)
       DO I = 1, NG
          AN(I) = AN(I) + AAA/BBB*ZN(I)
          RN(I) = RN(I) - AAA/BBB*TEMP(I)
@@ -3525,7 +3525,7 @@ C-----------------------------------------------------------------------
      &              DMI(3,I)*RN(I+NS) + BETAN*ZN(I+NS)
       ENDDO
       CALL EGSAXS(NG, G, ZN, TEMP)
-      BBB = DDOT (NG, ZN, 1, TEMP, 1)
+      BBB = VDDOT (NG, ZN, 1, TEMP, 1)
       DO I = 1, NG
          AN(I) = AN(I) + AAA/BBB*ZN(I)
          RN(I) = RN(I) - AAA/BBB*TEMP(I)
@@ -3605,7 +3605,7 @@ C-----------------------------------------------------------------------
      &               DMI(6,I)*RN(I+NS2) + BETAN*ZN(I+NS2)
       ENDDO
       CALL EGSAXS(NG, G, ZN, TEMP)
-      BBB = DDOT (NG, ZN, 1, TEMP, 1)
+      BBB = VDDOT (NG, ZN, 1, TEMP, 1)
       DO I = 1, NG
          AN(I) = AN(I) + AAA/BBB*ZN(I)
          RN(I) = RN(I) - AAA/BBB*TEMP(I)

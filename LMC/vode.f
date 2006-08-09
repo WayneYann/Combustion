@@ -135,7 +135,7 @@ c
       enddo
       end
 
-      double precision function ddot (n,dx,incx,dy,incy)
+      double precision function vddot (n,dx,incx,dy,incy)
 c
 c     forms the dot product of two vectors.
 c     uses unrolled loops for increments equal to one.
@@ -144,7 +144,7 @@ c
       double precision dx(*),dy(*),dtemp
       integer i,incx,incy,ix,iy,m,mp1,n
 c
-      ddot = 0.0d0
+      vddot = 0.0d0
       dtemp = 0.0d0
       if (n.le.0) return
       if (incx.eq.1.and.incy.eq.1) goto 20
@@ -160,7 +160,7 @@ c
         ix = ix + incx
         iy = iy + incy
       enddo
-      ddot = dtemp
+      vddot = dtemp
       return
 c
 c     code for both increments equal to 1
@@ -179,7 +179,7 @@ c
         dtemp = dtemp + dx(i)*dy(i) + dx(i + 1)*dy(i + 1) +
      *   dx(i + 2)*dy(i + 2) + dx(i + 3)*dy(i + 3) + dx(i + 4)*dy(i + 4)
       enddo
-   60 ddot = dtemp
+   60 vddot = dtemp
       end
 
       subroutine dscal (n,da,dx,incx)
@@ -224,7 +224,7 @@ c
       enddo
       end
 
-      subroutine daxpy (n,da,dx,incx,dy,incy)
+      subroutine vdaxpy (n,da,dx,incx,dy,incy)
 c
 c     constant times a vector plus a vector.
 c     uses unrolled loops for increments equal to one.
@@ -326,11 +326,11 @@ c     cleve moler, university of new mexico, argonne national lab.
 c
 c     subroutines and functions
 c
-c     blas daxpy,ddot
+c     blas vdaxpy,vddot
 c
 c     internal variables
 c
-      double precision ddot,t
+      double precision vddot,t
       integer k,kb,l,nm1
 c
       nm1 = n - 1
@@ -347,7 +347,7 @@ c
                b(l) = b(k)
                b(k) = t
    10       continue
-            call daxpy(n-k,t,a(k+1,k),1,b(k+1),1)
+            call vdaxpy(n-k,t,a(k+1,k),1,b(k+1),1)
          enddo
    30    continue
 c
@@ -357,7 +357,7 @@ c
             k = n + 1 - kb
             b(k) = b(k)/a(k,k)
             t = -b(k)
-            call daxpy(k-1,t,a(1,k),1,b(1),1)
+            call vdaxpy(k-1,t,a(1,k),1,b(1),1)
          enddo
       go to 100
    50 continue
@@ -366,7 +366,7 @@ c        job = nonzero, solve  trans(a) * x = b
 c        first solve  trans(u)*y = b
 c
          do k = 1, n
-            t = ddot(k-1,a(1,k),1,b(1),1)
+            t = vddot(k-1,a(1,k),1,b(1),1)
             b(k) = (b(k) - t)/a(k,k)
          enddo
 c
@@ -375,7 +375,7 @@ c
          if (nm1 .lt. 1) goto 90
          do kb = 1, nm1
             k = n - kb
-            b(k) = b(k) + ddot(n-k,a(k+1,k),1,b(k+1),1)
+            b(k) = b(k) + vddot(n-k,a(k+1,k),1,b(k+1),1)
             l = ipvt(k)
             if (l .eq. k) go to 70
                t = b(l)
@@ -449,12 +449,12 @@ c     cleve moler, university of new mexico, argonne national lab.
 c
 c     subroutines and functions
 c
-c     blas daxpy,ddot
+c     blas vdaxpy,vddot
 c     fortran min0
 c
 c     internal variables
 c
-      double precision ddot,t
+      double precision vddot,t
       integer k,kb,l,la,lb,lm,m,nm1
 c
       m = mu + ml + 1
@@ -474,7 +474,7 @@ c
                   b(l) = b(k)
                   b(k) = t
    10          continue
-               call daxpy(lm,t,abd(m+1,k),1,b(k+1),1)
+               call vdaxpy(lm,t,abd(m+1,k),1,b(k+1),1)
             enddo
    30    continue
 c
@@ -487,7 +487,7 @@ c
             la = m - lm
             lb = k - lm
             t = -b(k)
-            call daxpy(lm,t,abd(la,k),1,b(lb),1)
+            call vdaxpy(lm,t,abd(la,k),1,b(lb),1)
          enddo
       goto 100
    50 continue
@@ -499,7 +499,7 @@ c
             lm = min0(k,m) - 1
             la = m - lm
             lb = k - lm
-            t = ddot(lm,abd(la,k),1,b(lb),1)
+            t = vddot(lm,abd(la,k),1,b(lb),1)
             b(k) = (b(k) - t)/abd(m,k)
          enddo
 c
@@ -510,7 +510,7 @@ c
             do kb = 1, nm1
                k = n - kb
                lm = min0(ml,n-k)
-               b(k) = b(k) + ddot(lm,abd(m+1,k),1,b(k+1),1)
+               b(k) = b(k) + vddot(lm,abd(m+1,k),1,b(k+1),1)
                l = ipvt(k)
                if (l .eq. k) goto 70
                   t = b(l)
@@ -603,7 +603,7 @@ c     cleve moler, university of new mexico, argonne national lab.
 c
 c     subroutines and functions
 c
-c     blas daxpy,dscal,idamax
+c     blas vdaxpy,dscal,idamax
 c     fortran max0,min0
 c
 c     internal variables
@@ -683,7 +683,7 @@ c
                   abd(l,j) = abd(mm,j)
                   abd(mm,j) = t
    70          continue
-               call daxpy(lm,t,abd(m+1,k),1,abd(mm+1,j),1)
+               call vdaxpy(lm,t,abd(m+1,k),1,abd(mm+1,j),1)
             enddo
    90       continue
          goto 110
@@ -779,7 +779,7 @@ c     cleve moler, university of new mexico, argonne national lab.
 c
 c     subroutines and functions
 c
-c     blas daxpy,dscal,idamax
+c     blas vdaxpy,dscal,idamax
 c
 c     internal variables
 c
@@ -825,7 +825,7 @@ c
                   a(l,j) = a(k,j)
                   a(k,j) = t
    20          continue
-               call daxpy(n-k,t,a(k+1,k),1,a(k+1,j),1)
+               call vdaxpy(n-k,t,a(k+1,k),1,a(k+1,j),1)
             enddo
          goto 50
    40    continue
@@ -1878,7 +1878,7 @@ C COMMON block input -- NQ, METH, LMAX, HSCAL, TAU(13), N
 C COMMON block variables accessed..
 C     /DVOD01/ -- HSCAL, TAU(13), LMAX, METH, N, NQ,
 C
-C Subroutines called by DVJUST.. DAXPY
+C Subroutines called by DVJUST.. VDAXPY
 C Function routines called by DVJUST.. None
 C-----------------------------------------------------------------------
 C This subroutine adjusts the YH array on reduction of order,
@@ -2021,7 +2021,7 @@ C Load column L + 1 in YH array. ---------------------------------------
 C Add correction terms to YH array. ------------------------------------
       NQP1 = NQ + 1
       DO 370 J = 3, NQP1
-        CALL DAXPY (N, EL(J), YH(1,LP1), 1, YH(1,J), 1 )
+        CALL VDAXPY (N, EL(J), YH(1,LP1), 1, YH(1,J), 1 )
  370  CONTINUE
       END
 
@@ -2041,7 +2041,7 @@ C     /DVOD01/ ACNRM, CRATE, DRC, H, RC, RL1, TQ(5), TN, ICF,
 C                JCUR, METH, MITER, N, NSLP
 C     /DVOD02/ HU, NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
 C
-C Subroutines called by DVNLSD.. F, DAXPY, DCOPY, DSCAL, DVJAC, DVSOL
+C Subroutines called by DVNLSD.. F, VDAXPY, DCOPY, DSCAL, DVJAC, DVSOL
 C Function routines called by DVNLSD.. DVNORM
 C-----------------------------------------------------------------------
 C Subroutine DVNLSD is a nonlinear system solver, which uses functional
@@ -2236,7 +2236,7 @@ C-----------------------------------------------------------------------
         CALL DSCAL (N, CSCALE, Y, 1)
       ENDIF
       DEL = DVNORM (N, Y, EWT)
-      CALL DAXPY (N, ONE, Y, 1, ACOR, 1)
+      CALL VDAXPY (N, ONE, Y, 1, ACOR, 1)
       DO 380 I = 1,N
  380    Y(I) = YH(I,1) + ACOR(I)
 
@@ -3325,7 +3325,7 @@ C  DGEFA and DGESL   are routines from LINPACK for solving full
 C            systems of linear algebraic equations.
 C  DGBFA and DGBSL   are routines from LINPACK for solving banded
 C            linear systems.
-C  DAXPY, DSCAL, and DCOPY are basic linear algebra modules (BLAS).
+C  VDAXPY, DSCAL, and DCOPY are basic linear algebra modules (BLAS).
 C  XERRWD, XSETUN, XSETF, LUNSAV, and MFLGSV handle the printing of all
 C            error messages and warnings.  XERRWD is machine-dependent.
 C Note..  DVNORM, LUNSAV, and MFLGSV are function routines.
@@ -4355,7 +4355,7 @@ C               TQ(5), TN, JCUR, JSTART, KFLAG, KUTH,
 C               L, LMAX, MAXORD, MITER, N, NEWQ, NQ, NQWAIT
 C     /DVOD02/  HU, NCFN, NETF, NFE, NQU, NST
 C
-C Subroutines called by DVSTEP.. F, DAXPY, DCOPY, DSCAL,
+C Subroutines called by DVSTEP.. F, VDAXPY, DCOPY, DSCAL,
 C                               DVJUST, VNLS, DVSET
 C Function routines called by DVSTEP.. DVNORM
 C-----------------------------------------------------------------------
@@ -4638,7 +4638,7 @@ C-----------------------------------------------------------------------
  470    TAU(I+1) = TAU(I)
       TAU(1) = H
       DO 480 J = 1, L
-        CALL DAXPY (N, EL(J), ACOR, 1, YH(1,J), 1 )
+        CALL VDAXPY (N, EL(J), ACOR, 1, YH(1,J), 1 )
  480    CONTINUE
       NQWAIT = NQWAIT - 1
       IF ((L .EQ. LMAX) .OR. (NQWAIT .NE. 1)) GO TO 490
