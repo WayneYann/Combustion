@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.15 2006-08-09 19:17:16 lijewski Exp $
+# $Id: GNUmakefile,v 1.16 2006-08-14 20:50:04 lijewski Exp $
 #
 PBOXLIB_HOME = ../..
 FBOXLIB_HOME = ../../../fParallel
@@ -60,6 +60,12 @@ REACTION_MECHANISM=DRM19
 include $(TOP)/mk/Make.defs
 
 Bdirs := LMC LMC/Cheng BoxLib iamrlib amrlib tensorMG mglib bndrylib hgproj
+
+ifeq ($(DIM),3)
+  ifeq ($(findstring 7, $(PRVERSION)), 7)
+      DEFINES += -DBL_PRVERSION=7
+  endif
+endif
 
 ifeq ($(USE_VELOCITY), TRUE)
   DEFINES += -DBL_NOLINEVALUES -DBL_USE_VELOCITY -DBL_PARALLEL_IO
