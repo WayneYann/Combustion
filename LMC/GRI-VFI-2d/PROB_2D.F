@@ -414,9 +414,6 @@ c        but the original 3 is still down below.  one difference
 c        is that it hardwires the methane chemistry and uses phi_in.
 c        in case that is important, the following check was added.
 
-         if (phi_in .ge. zero)
-     &      call bl_abort('SETUPBC: phi_in is no longer used')
-
          y = domnlo(2)
          zone = getZone(y,domnlo(2))
          iN2 = -1
