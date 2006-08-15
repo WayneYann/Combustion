@@ -1355,8 +1355,6 @@ HeatTransfer::init ()
 void
 HeatTransfer::post_timestep (int crse_iteration)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::post_timestep()");
-
     NavierStokes::post_timestep(crse_iteration);
 
     if (plot_auxDiags && level == 0)
@@ -1407,8 +1405,6 @@ void
 HeatTransfer::post_regrid (int lbase,
                            int new_finest)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::post_regrid()");
-
     NavierStokes::post_regrid(lbase, new_finest);
     //
     // FIXME: This may be necessary regardless, unless the interpolation
