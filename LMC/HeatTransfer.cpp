@@ -1841,8 +1841,6 @@ HeatTransfer::resetState (Real time,
 void
 HeatTransfer::avgDown ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::avgDown()");
-
     if (level == parent->finestLevel()) return;
 
     HeatTransfer&   fine_lev = getLevel(level+1);
