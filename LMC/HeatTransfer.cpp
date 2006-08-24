@@ -4883,6 +4883,8 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::set_overdetermined_boundary_cells()");
 
+    BL_ASSERT(first_spec == Density+1);
+
     const TimeLevel whichTime = which_time(State_Type,time);
 
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
@@ -4890,27 +4892,24 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     AuxBoundaryData& rhoh_data = (whichTime == AmrOldTime) ? aux_boundary_data_old : aux_boundary_data_new;
 
     const int nGrow = (whichTime == AmrOldTime) ? HYP_GROW : LinOp_grow;
-    //
-    // Build a MultiFab parallel to State with appropriate # of ghost
-    // cells built into the FABs themselves to cover rhoh_data.
-    //
+    //                                                                                                           
+    // Build a MultiFab parallel to State with appropriate # of ghost                                            
+    // cells built into the FABs themselves to cover rhoh_data.                                                  
+    //                                                                                                           
     BoxList bl;
     for (int i = 0; i < grids.size(); i++)
         bl.push_back(BoxLib::grow(grids[i],nGrow));
 
-    BoxArray _bl(bl);
-    MultiFab tmpS(_bl,1,0);
-
-    BL_ASSERT(first_spec == Density+1);
+    MultiFab tmpS(BoxArray(bl),1,0);
 
     FArrayBox rhoh, tmp;
 
-    const int sCompT = 0;
-    const int sCompY = 1;
-    const int sCompH = 0;
-    //
-    // A non-allocated MultiFab on grids for FPI below.
-    //
+    BoxArray rhoh_BA = rhoh_data.equivBoxArray();
+
+    const int sCompT = 0, sCompY = 1, sCompH = 0;
+    //                                                                                                           
+    // A non-allocated MultiFab on grids for FPI below.                                                          
+    //                                                                                                           
     MultiFab t(grids,1,0,Fab_noallocate);
 
     for (FillPatchIterator T_fpi(*this,t,nGrow,time,State_Type,Temp,1),
@@ -4926,23 +4925,20 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
         tmp.copy(RhoY,0,0,1);
         tmp.invert(1);
 
-        const BoxArray& rhoh_BA = rhoh_data.equivBoxArray();
+        std::vector< std::pair<int,Box> > isects = rhoh_BA.intersections(RhoY.box());
 
-        for (int i = 0; i < rhoh_BA.size(); i++)
+        for (int i = 0; i < isects.size(); i++)
         {
-            const Box isect = RhoY.box() & rhoh_BA[i];
+            const Box& isect = isects[i].second;
 
-            if (isect.ok())
-            {
-                for (int i = 1; i < nspecies+1; ++i)
-                    RhoY.mult(tmp,isect,0,i,1);
+            for (int j = 1; j < nspecies+1; j++)
+                RhoY.mult(tmp,isect,0,j,1);
 
-                rhoh.resize(isect,1);
-                getChemSolve().getHmixGivenTY(rhoh,T_fpi(),RhoY,isect,sCompT,sCompY,sCompH);
-                rhoh.mult(RhoY,0,0,1);
+            rhoh.resize(isect,1);
+            getChemSolve().getHmixGivenTY(rhoh,T_fpi(),RhoY,isect,sCompT,sCompY,sCompH);
+            rhoh.mult(RhoY,0,0,1);
 
-                tmpS[T_fpi.index()].copy(rhoh);
-            }
+            tmpS[T_fpi.index()].copy(rhoh);
         }
     }
 
