@@ -2,7 +2,6 @@
 #ifndef BL_LANG_FORT
 #define BL_LANG_FORT
 #endif
-
 #include "REAL.H"
 #include "CONSTANTS.H"
 #include "BC_TYPES.H"
@@ -752,7 +751,7 @@ c ::: This routine is called at problem setup time and is used
 c ::: to initialize data on each grid.  The velocity field you
 c ::: provide does not have to be divergence free and the pressure
 c ::: field need not be set.  A subsequent projection iteration
-c ::: will define aa divergence free velocity field along with a
+c ::: will define a divergence free velocity field along with a
 c ::: consistant pressure.
 c ::: 
 c ::: NOTE:  all arrays have one cell of ghost zones surrounding
