@@ -41,3 +41,9 @@
       common /inflow2/probSizeFile, dxFile
       common /inflow3/dimFile
       save /inflow1/, /inflow2/, /inflow3/
+
+      integer waves
+      REAL_T amplitude, division(0 : 1001)
+      common / wavesI / waves
+      common / wavesR / amplitude, division
+      save /wavesI/, /wavesR/

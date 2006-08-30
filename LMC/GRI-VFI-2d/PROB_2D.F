@@ -178,9 +178,10 @@ c ::: -----------------------------------------------------------
       subroutine FORT_PROBINIT (init,name,namlen,problo,probhi)
       implicit none
       integer init, namlen
-      integer name(namlen)
+      integer name(namlen), seedArray(:), seedSize
       integer untin
       REAL_T problo(SDIM), probhi(SDIM)
+      allocatable seedArray
 
 #define RANDOM rand()
       REAL_T rand
@@ -196,21 +197,21 @@ c ::: -----------------------------------------------------------
 #include "INFL_FORCE_F.H"
 #endif
 
-      REAL_T species(maxspec)
+      REAL_T species(maxspec), temporary
       integer lo(2), hi(2), n
-      integer ifreq,zone,i,getZone
+      integer ifreq,zone,i,j,getZone,seed
       character*(maxspnml) spName
 
-      namelist /fortin/ vorterr, temperr, adverr, tempgrad, flametracval, probtype,
-     &			max_temp_lev, max_vort_lev, splitx, splity, traceSpecVal,
-     &                  xfrontw, yfrontw, refine_nozzle_x,
-     &                  refine_nozzle_y, blobx, bloby,
-     &                  blobr, xcen, v_strength,v_width,v_xcen,v_ycen,v_cl_x,
-     &                  y_offset, v_blob_r, v_blob_T, v_blob_airfrac, V_in, V_co,
-     &                  stTh, Rf, R_hot, R_hotBL, twall, turb_scale, stBL,
-     &                  max_trac_lev, max_nozzle_lev, pipeTh, pipeBL,
-     &                  tV_in_l,tV_in_r,V_in_new,tV_co_l,tV_co_r,V_co_new,
-     &                  T_stick, T_in,phi_in, thickFacTR, thickFacCH,nchemdiag
+      namelist /fortin/ 
+     +   adverr, amplitude, blobr, blobx, bloby, flametracval,
+     +   max_nozzle_lev, max_temp_lev, max_trac_lev, max_vort_lev,
+     +   nchemdiag, phi_in, pipeBL, pipeTh, probtype, R_hot, R_hotBL,
+     +   refine_nozzle_x, refine_nozzle_y, Rf, splitx, splity, stBL,
+     +   stTh, T_in, T_stick, temperr, tempgrad, thickFacCH, thickFacTR,
+     +   traceSpecVal, turb_scale, tV_co_l, tV_co_r, tV_in_l, tV_in_r,
+     +   twall, v_blob_airfrac, v_blob_r, v_blob_T, v_cl_x, V_co,
+     +   V_co_new, V_in, V_in_new, v_strength, v_width, v_xcen, v_ycen,
+     +   vorterr, waves, xcen, xfrontw, y_offset, yfrontw, seed
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -293,6 +294,11 @@ c
       T_stick = -300.d0
       T_in = 300.d0
       phi_in = 1.d0
+      seed = 0
+
+c     initialize wave parameters
+      waves = 0
+      amplitude = 0.0
 
 #if defined(BL_DO_FLCT)
 c
@@ -356,12 +362,42 @@ c      convVel = V_in
       convVel = one
 #endif
 
-c     Load domain dimensions into common, and set up boundary functions
+c     Load domain dimensions into common
       domnlo(1) = problo(1)
       domnlo(2) = problo(2)
       domnhi(1) = probhi(1)
       domnhi(2) = probhi(2)
 
+c     Set up wave divisions
+      if (zero .lt. amplitude .and. 0 .lt. waves) then
+         if (1000 .lt. waves) then
+            call bl_abort('No more than 1000 waves.')
+         endif
+         if (0 .lt. seed) then
+            call RANDOM_SEED (SIZE = seedSize)
+            allocate (seedArray(seedSize))
+            do i = 1, seedSize
+               seedArray(i) = seed
+            end do
+            call RANDOM_SEED (PUT = seedArray)
+            deallocate (seedArray)
+         end if
+         do j = 1, waves
+            call RANDOM_NUMBER (temporary)
+            temporary = ((j - 0.5) + (2 * temporary - 1) * 0.33) / waves
+            division(j) =
+     +           (1 - temporary) * domnlo(1) + temporary * domnhi(1)
+         end do
+         division(0) = division(waves) - (domnhi(1) - domnlo(1))
+         division(waves + 1) = division(1) + (domnhi(1) - domnlo(1))
+         do j = 0, waves
+            if (division(j + 1) .le. division(j)) then
+               call bl_abort ('divisions are out of order.')
+            end if
+         enddo
+      end if
+
+c     Set up boundary functions
       call setupbc()
       bcinit = .true.
 
@@ -381,6 +417,25 @@ c     Load domain dimensions into common, and set up boundary functions
 #define M_FUEL  1
 #define M_CO    2
 #define M_WALL  3
+      
+      subroutine wave (perturbation, x)
+      implicit none
+#include "probdata.H"
+
+      integer j
+      REAL_T angle, perturbation, x
+
+      perturbation = zero
+      do j = 0, waves
+         if (division(j) .le. x .and. x .le. division(j + 1)) then
+            angle = 2 * Pi
+     +           * ((x - division(j)) / (division(j + 1) - division(j)))
+            perturbation = amplitude * COS (angle)
+            exit
+         endif
+      enddo
+
+      end
       
       subroutine setupbc()
       implicit none
@@ -803,6 +858,7 @@ c ::: -----------------------------------------------------------
       REAL_T eta, xi, xblend, mdotb, mdotL, mdotR, r1sq, r2sq, ylo, yhi
       REAL_T pmf_GRI_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
       REAL_T Y_air(maxspec), X_air(maxspec), X_debug(maxspec)
+      REAL_T perturbation
       integer iN2, iAr, iO2
       integer lo_chem(SDIM),hi_chem(SDIM)
       data lo_chem /1,1/
@@ -850,17 +906,30 @@ c
      &           (dexp(-r1sq/v_width**2)-dexp(-r2sq/v_width**2)) 
          end do
       end do
+
+c      write (myproc+10, "(1x)") 
+c      write (myproc+10, "(1x, 'level, lo(1), hi(1)', 3i6)") level, lo(1), hi(1)
+c      write (myproc+10, "(1x, 'level, lo(2), hi(2)', 3i6)") level, lo(2), hi(2)
+c      write (myproc+10, "(1x, 'domnlo(1)', e20.10)") domnlo(1)
+c      write (myproc+10, "(1x, 'domnhi(1)', e20.10)") domnhi(1)
+c      write (myproc+10, "(1x, 'delta(1)', e20.10)") delta(1)
+c      write (myproc+10, "(1x, 'domnlo(2)', e20.10)") domnlo(2)
+c      write (myproc+10, "(1x, 'domnhi(2)', e20.10)") domnhi(2)
       
       do j = lo(2), hi(2)
          y = (float(j)+.5)*delta(2)+domnlo(2)         
          do i = lo(1), hi(1)
-             x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (float(i)+.5)*delta(1)+domnlo(1)
 
-            ylo =   j  *delta(2)+domnlo(2)-y_offset
-            yhi = (j+1)*delta(2)+domnlo(2)-y_offset
-            if (probtype.eq.2) then
+            if (probtype .eq. 1 .or. probtype .eq. 3) then
+               call wave (perturbation, x)
+               ylo =   j  *delta(2)+domnlo(2)-y_offset-perturbation
+               yhi = (j+1)*delta(2)+domnlo(2)-y_offset-perturbation
+            elseif (probtype .eq. 2) then
                ylo = ylo - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
                yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
+            else
+               call bl_abort ('probtype is neither 1, 2, nor 3.')
             endif
             
             call pmf_GRI(ylo*100,yhi*100,pmf_GRI_vals,n)
