@@ -470,7 +470,6 @@ c        in case that is important, the following check was added.
          yEval = y*100. - y_offset*100.
          call pmf_GRI(yEval,yEval,pmf_GRI_vals,n)
 
-         write (62, "(2i10)") n, Nspec+3
          if (n.ne.Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
 
          call FORT_MOLETOMASS(lo,hi,
