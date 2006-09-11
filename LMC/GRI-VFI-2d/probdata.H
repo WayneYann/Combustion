@@ -43,7 +43,7 @@
       save /inflow1/, /inflow2/, /inflow3/
 
       integer waves
-      REAL_T amplitude, division(0 : 1001)
+      REAL_T amplitude, coefficient(2, 100)
       common / wavesI / waves
-      common / wavesR / amplitude, division
+      common / wavesR / amplitude, coefficient
       save /wavesI/, /wavesR/

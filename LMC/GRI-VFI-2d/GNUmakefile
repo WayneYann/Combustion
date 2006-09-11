@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.25 2006-08-30 20:27:11 sepp Exp $
+# $Id: GNUmakefile,v 1.26 2006-09-11 15:12:40 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -12,7 +12,6 @@ DEBUG	          = FALSE
 PROFILE           = FALSE
 DIM    	          = 2
 PRVERSION         = v5
-COMP              = g++
 COMP              = Intel
 FCOMP             = Intel
 RUNDIR            = run

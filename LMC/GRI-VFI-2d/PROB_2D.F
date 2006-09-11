@@ -370,8 +370,8 @@ c     Load domain dimensions into common
 
 c     Set up wave divisions
       if (zero .lt. amplitude .and. 0 .lt. waves) then
-         if (1000 .lt. waves) then
-            call bl_abort('No more than 1000 waves.')
+         if (100 .lt. waves) then
+            call bl_abort('No more than 100 waves.')
          endif
          if (0 .lt. seed) then
             call RANDOM_SEED (SIZE = seedSize)
@@ -384,17 +384,8 @@ c     Set up wave divisions
          end if
          do j = 1, waves
             call RANDOM_NUMBER (temporary)
-            temporary = ((j - 0.5) + (2 * temporary - 1) * 0.33) / waves
-            division(j) =
-     +           (1 - temporary) * domnlo(1) + temporary * domnhi(1)
+            coefficient(1, j) = amplitude * (2 * temporary - 1)
          end do
-         division(0) = division(waves) - (domnhi(1) - domnlo(1))
-         division(waves + 1) = division(1) + (domnhi(1) - domnlo(1))
-         do j = 0, waves
-            if (division(j + 1) .le. division(j)) then
-               call bl_abort ('divisions are out of order.')
-            end if
-         enddo
       end if
 
 c     Set up boundary functions
@@ -426,13 +417,13 @@ c     Set up boundary functions
       REAL_T angle, perturbation, x
 
       perturbation = zero
-      do j = 0, waves
-         if (division(j) .le. x .and. x .le. division(j + 1)) then
-            angle = 2 * Pi
-     +           * ((x - division(j)) / (division(j + 1) - division(j)))
-            perturbation = amplitude * COS (angle)
-            exit
-         endif
+      do j = 1, waves
+         angle = 2 * Pi * j * x / (domnhi(1) - domnlo(1))
+         perturbation 
+     +        = perturbation 
+     +        + amplitude 
+     +        * (coefficient(1, j) * COS (angle)
+     +        + coefficient(2, j) * SIN (angle))
       enddo
 
       end
