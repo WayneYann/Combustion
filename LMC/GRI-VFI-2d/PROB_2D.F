@@ -385,6 +385,8 @@ c     Set up wave divisions
          do j = 1, waves
             call RANDOM_NUMBER (temporary)
             coefficient(1, j) = amplitude * (2 * temporary - 1)
+            call RANDOM_NUMBER (temporary)
+            coefficient(2, j) = amplitude * (2 * temporary - 1)
          end do
       end if
 
@@ -418,7 +420,7 @@ c     Set up boundary functions
 
       perturbation = zero
       do j = 1, waves
-         angle = 2 * Pi * j * x / (domnhi(1) - domnlo(1))
+         angle = 2 * Pi * j * (x  - domnlo(1)) / (domnhi(1) - domnlo(1))
          perturbation 
      +        = perturbation 
      +        + amplitude 
