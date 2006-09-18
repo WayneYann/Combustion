@@ -416,16 +416,16 @@ c     Set up boundary functions
 #include "probdata.H"
 
       integer j
-      REAL_T angle, perturbation, x
+      REAL_T angle, perturbation, scale, x
 
-      perturbation = zero
+      perturbation = 0
+      scale = 2 / sqrt (dble (waves))
       do j = 1, waves
          angle = 2 * Pi * j * (x  - domnlo(1)) / (domnhi(1) - domnlo(1))
          perturbation 
      +        = perturbation 
-     +        + amplitude 
-     +        * (coefficient(1, j) * COS (angle)
-     +        + coefficient(2, j) * SIN (angle))
+     +        + scale * coefficient(1, j) * COS (angle)
+     +        + scale * coefficient(2, j) * SIN (angle)
       enddo
 
       end
