@@ -1958,7 +1958,14 @@ void productionRate(double * wdot, double * sc, double T)
     }
 
     /*reaction 1: 2 CH4 + 3 O2 => 2 CO + 4 H2O */
-    phi_f = sc[2]*sc[0];
+    if (sc[2]<0. || sc[0]<0)
+    {
+        phi_f = 0.;
+    }
+    else
+    {
+        phi_f = sc[2]*sc[0];
+    }
     k_f = 1e-6 * 1.545e+14*exp(0.5*tc[0]-20078/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
@@ -1969,7 +1976,14 @@ void productionRate(double * wdot, double * sc, double T)
     wdot[1] += 4 * qdot;
 
     /*reaction 2: 2 CO + O2 => 2 CO2 */
-    phi_f = sc[3]*pow(sc[1],0.5)*pow(sc[0],0.25);
+    if (sc[3]<0. || sc[0]<0 || sc[1]<0)
+    {
+        phi_f = 0.;
+    }
+    else
+    {
+        phi_f = sc[3]*pow(sc[1],0.5)*pow(sc[0],0.25);
+    }
     k_f = 3.16228e-5 * 1.991e+14*exp(-20130.9/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
@@ -1979,7 +1993,14 @@ void productionRate(double * wdot, double * sc, double T)
     wdot[4] += 2 * qdot;
 
     /*reaction 3: 2 CO2 => 2 CO + O2 */
-    phi_f = sc[4];
+    if (sc[4]<0.)
+    {
+        phi_f = 0.;
+    }
+    else
+    {
+        phi_f = sc[4];
+    }
     k_f = 2.5e+08*exp(-20130.9/tc[1]);
     q_f = phi_f * k_f;
     q_r = 0.0;
