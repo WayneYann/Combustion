@@ -11,7 +11,9 @@
 #include "ArrayLim.H"
 #include "ChemDriver_F.H"
 #include "HEATTRANSFER_F.H"
+#if defined(BL_DO_FLCT)
 #include "infl_frc.H"
+#endif
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -212,7 +214,8 @@ c ::: -----------------------------------------------------------
      &			zbase_control,
      &                  thickFacTR, thickFacCH,
      &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r,
-     &                  Tpipe, Tstick, stL, stLw, zInletEval, pertmag
+     &                  Tpipe, Tstick, stL, stLw, zInletEval, pertmag,
+     &                  Rtran, Rftran, zfuelinit, Rfu
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -339,6 +342,12 @@ c     compiled-in values in the data statements in setupbc
 c     Length of stick at Tstick, then ramps to Tpipe over layer stLw
       stL = 20*Ro
       stLw = .1*Ro
+
+c     New swirl parameters
+      Rtran = .1d0
+      Rftran = .1d0
+      zfuelinit = .1d0
+      Rfu = .1d0
       
       read(untin,fortin)
 c      write(6,fortin)
@@ -476,7 +485,9 @@ c     data X_O2  /   0.193726937269d0,  0.21d0, 0.193726937269d0,  0.21d0,  0.21
          print *, '*********** zone boundary values at startup'
       endif
       do zone = 1,Nzones
-         if (zone.eq.BL_FUELPIPE .and. probtype.eq.4) then
+c         if(isioproc.eq.1)print *,"in zone loop",zone, BL_FUELPIPE
+         if (zone.eq.BL_FUELPIPE .and. ((probtype.eq.4).or.(probtype.eq.5)) ) then
+c         if(isioproc.eq.1)print *,"inside a",zone, BL_FUELPIPE
             if (phiin .ge. 0.d0) then
                iN2  = -1
                iCH4 = -1
@@ -502,6 +513,7 @@ c              for hc = CH4, a=2, b=1, c=2
 
                T_bc(zone) = Tin
             else
+c            if(isioproc.eq.1)print *,"inside b",zone, BL_FUELPIPE
                call pmf(zInletEval,zInletEval,pmf_vals,n)
                if (n.ne.Nspec+3) then
                   call bl_abort('setupbc: n .ne. Nspec+3')
@@ -512,6 +524,7 @@ c              for hc = CH4, a=2, b=1, c=2
                T_bc(zone) = pmf_vals(1)
             endif
          else
+c         if(isioproc.eq.1)print *,"inside c",zone, BL_FUELPIPE
             sum = zero
             do n = 1,Nspec
                Xt(n) = zero
@@ -560,7 +573,7 @@ c
      &     ((direction.eq."y") .and. (y.le.domnlo(2))).or.
      &     ((direction.eq."x") .and. (x.le.domnlo(1)))) then
 
-         if (probtype.ge.4) then
+         if ( (probtype.ge.4) .or. (probtype.eq.5) ) then
 
             getZone = BL_FUELPIPE
 
@@ -715,100 +728,51 @@ c ::: -----------------------------------------------------------
 
       integer orient
       REAL_T x, y, z, time, u, v, w, rho, Yl(0:*), T, h, dx(SDIM), bin, bout, Tout
+      REAL_T rr
       logical getuvw
+
+      integer isioproc
 
 #include "htdata.H"
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
 
-      REAL_T Vbndry(3), eta, Patm, r, rn
+      REAL_T Vbndry(3), eta, Patm, r, rn, u_inf(3), Vco
       integer n, getZone, zone, lo(SDIM), hi(SDIM)
       data lo / 1, 1, 1 /
       data hi / 1, 1, 1 /
+
+      call bl_pd_is_ioproc(isioproc)
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
       end if
       
       if (orient .le. ZHI) then
-
-         zone = getZone(x,y,z)
-         rho = rho_bc(zone)
-         do n = 0, Nspec-1
-            Yl(n) = Y_bc(n,zone)
-         end do
-         T = T_bc(zone)
-         h = h_bc(zone)
-         Patm = pamb / 101325.0d0
-
-         r = SQRT(x**2 + y**2)
-
-         if (probtype.ne.4 .and. zone.eq.BL_FUELPIPE.or.zone.eq.BL_PIPEEND.or.zone.eq.BL_COFLOW.or.zone.eq.BL_STICK) then
-
-            T = T_bc(BL_FUELPIPE)
-
-            if (stTh.gt.zero) then
-
-c     bin is the blend from the stick center T to T of the pipe end over stLw
-               bin = one - half*(one+TANH((ABS(y)-half*stL)/(fourth*stLw)))
-               T = T_bc(BL_STICK)*bin + T_bc(BL_PIPEEND)*(one-bin)
-
-c           now, bin is the blend from the stick to the fuel or pipe end over stBL
-               if (zone.eq.BL_FUELPIPE.or.zone.eq.BL_PIPEEND.or.zone.eq.BL_STICK) then
-                  if (r.le.Ro) then
-                     Tout = T_bc(BL_FUELPIPE)
-                  else
-                     Tout = T_bc(BL_PIPEEND)
-                  endif
-                  bin = one - half*(one+TANH((ABS(x)-half*stTh)/(fourth*stBL)))
-                  T = T*bin + Tout*(one - bin)
-               endif
-
-            endif
-
-c     now, bin is the blend from fuel stream to pipe end, bout is the blend from pipe end to coflow
-            bin = one - half*(one+TANH((r-Ro)/(fourth*.3*wallTh)))
-            bout = one - half*(one+TANH((r-(Ro+wallTh))/(fourth*.3*wallTh)))
+         
+         if (probtype.eq.5) then
             
-            T = (T*bin + T_bc(BL_PIPEEND)*(one-bin))*bout + T_bc(BL_COFLOW)*(one-bout)
-
-            if (zone.eq.BL_FUELPIPE) then
-#ifdef SWIRL
-               rn = r/Ro
-
-cc     Fit as of 4/29/03
-c            eta = 9.920628558770E-001
-c     &           -1.065813294748E-001 *rn**1
-c     &           +1.800416951718E+000 *rn**2
-c     &           -1.158582069687E+001 *rn**3
-c     &           +3.588317172715E+001 *rn**4
-c     &           -5.816747423739E+001 *rn**5
-c     &           +4.632391073835E+001 *rn**6
-c     &           -1.450956235808E+001 *rn**7
-cc     Ramp down the outter value to zero, 6/2/03
-c            eta = eta*0.5*(1-TANH((rn-0.92)/.03))
+            r = SQRT( x*x + y*y )
             
-c            eta = 1.002d0 - 0.098868d0*r + 0.84254d0*r**2 - 2.6231d0*r**3 +
-c     $           3.0126d0*r**4 - 1.9876d0*r**5 + 0.52246d0*r**6
-c
+c     Rftran is the transition width between fuel and air
+            eta =  0.5d0*(1.d0 - TANH(2*(r-Rfu)/Rftran))
+     &           * 0.5d0*(1.d0 - TANH(2*(z-zfuelinit)/Rftran))
+            
+            do n = 0, Nspec-1
+               Yl(n) = (1.d0-eta)*Y_bc(n,BL_COFLOW) + eta*Y_bc(n,BL_FUELPIPE)
+            end do
+            T = (1.d0-eta)*T_bc(BL_COFLOW) + eta*T_bc(BL_FUELPIPE)
 
-c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
+            rr = SQRT( x*x + y*y + (z-zhot)**2 )
+            eta = 0.5d0*(1.d0 - TANH(2*(rr-rhot)/Rftran))
+            do n = 0, Nspec-1
+               Yl(n) = (1.d0-eta)*Yl(n) + eta*Y_bc(n,BL_COFLOW)
+            end do
+            T = (1.d0-eta)*T + eta*Thot
 
-               eta = 1.004677322175D+000
-     &              - 9.017625583830D-002*rn
-     &              + 3.611171220764D-001*rn**2
-     &              - 5.644888675141D-001*rn**3
-               
-               eta = min(max(eta,0.d0),1.d0)
-#else
-               eta = one
-#endif
-               do n = 0, Nspec-1
-                  Yl(n) = (1.d0-eta)*Y_bc(n,BL_COFLOW) + eta*Y_bc(n,BL_FUELPIPE)
-               end do
-            endif
-
+            Patm = pamb / 101325.0d0
+            
             call FORT_RHOfromPTY(lo,hi,
      &           rho,ARLIM(lo),ARLIM(hi),
      &           T,ARLIM(lo),ARLIM(hi),
@@ -817,27 +781,147 @@ c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
      &           h,ARLIM(lo),ARLIM(hi),
      &           T,ARLIM(lo),ARLIM(hi),
      &           Yl,ARLIM(lo),ARLIM(hi))
-         endif
 
-         if (getuvw) then
-         if (probtype.eq.4) then
-            u = zero
-            v = zero
-            w =  Vin + (time-tbase_control)*dV_control
+            if (getuvw) then
+
+c     Compute coflow velocity components (allows ramping up/down)
+               u_inf(1) = 0.d0
+               u_inf(2) = 0.d0
+               if ( (time .gt. zero).and.(tVco_l.ge.zero) ) then
+                  if (time .le. tVco_l) then
+                     u_inf(3) = Vco_l
+                  else if (time .ge. tVco_r) then
+                     u_inf(3) = Vco_r
+                  else
+                     u_inf(3) = Vco_l+(time-tVco_l)*(Vco_r-Vco_l)/(tVco_r-tVco_l)
+                  endif
+               endif
+
+c     Load experimental database values
+               call vswirlXYZ(x,y,u,v,w)
+
+c     Continue expt data with TANH profiles to u_inf values
+               if (r.gt.Rfu) then
+                  eta = TANH(2*(r-Rfu)/Rtran)
+                  u = eta*u_inf(1) + (1.d0-eta)*u
+                  v = eta*u_inf(2) + (1.d0-eta)*v
+                  w = eta*u_inf(3) + (1.d0-eta)*w
+               endif
+            endif
+
          else
-            call VAvg(Vbndry,x,y,dx,Rf,wallTh,Ro,stTh,dBL,stBL,
-     &           Vin,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW,probtype,domnhi(1))
-            u = Vbndry(1)
-            v = Vbndry(2)
-            w = Vbndry(3)
-         endif
+
+            zone = getZone(x,y,z)
+            rho = rho_bc(zone)
+            do n = 0, Nspec-1
+               Yl(n) = Y_bc(n,zone)
+            end do
+            T = T_bc(zone)
+            h = h_bc(zone)
+            Patm = pamb / 101325.0d0
+            
+            r = SQRT(x**2 + y**2)
+            
+            if (probtype.ne.4 .and.
+     &           zone.eq.BL_FUELPIPE  .or.
+     &           zone.eq.BL_PIPEEND   .or.
+     &           zone.eq.BL_COFLOW    .or.
+     &           zone.eq.BL_STICK          ) then
+
+               T = T_bc(BL_FUELPIPE)
+
+               if (stTh.gt.zero) then
+                  
+c     bin is the blend from the stick center T to T of the pipe end over stLw
+                  bin = one - half*(one+TANH((ABS(y)-half*stL)/(fourth*stLw)))
+                  T = T_bc(BL_STICK)*bin + T_bc(BL_PIPEEND)*(one-bin)
+                  
+c     now, bin is the blend from the stick to the fuel or pipe end over stBL
+                  if (zone.eq.BL_FUELPIPE.or.zone.eq.BL_PIPEEND.or.zone.eq.BL_STICK) then
+                     if (r.le.Ro) then
+                        Tout = T_bc(BL_FUELPIPE)
+                     else
+                        Tout = T_bc(BL_PIPEEND)
+                     endif
+                     bin = one - half*(one+TANH((ABS(x)-half*stTh)/(fourth*stBL)))
+                     T = T*bin + Tout*(one - bin)
+                  endif
+                  
+               endif
+               
+c     now, bin is the blend from fuel stream to pipe end, bout is the blend from pipe end to coflow
+               bin = one - half*(one+TANH((r-Ro)/(fourth*.3*wallTh)))
+               bout = one - half*(one+TANH((r-(Ro+wallTh))/(fourth*.3*wallTh)))
+               
+               T = (T*bin + T_bc(BL_PIPEEND)*(one-bin))*bout + T_bc(BL_COFLOW)*(one-bout)
+               
+               if (zone.eq.BL_FUELPIPE) then
+#ifdef SWIRL
+                  rn = r/Ro
+                  
+c     c     Fit as of 4/29/03
+c     eta = 9.920628558770E-001
+c     &           -1.065813294748E-001 *rn**1
+c     &           +1.800416951718E+000 *rn**2
+c     &           -1.158582069687E+001 *rn**3
+c     &           +3.588317172715E+001 *rn**4
+c     &           -5.816747423739E+001 *rn**5
+c     &           +4.632391073835E+001 *rn**6
+c     &           -1.450956235808E+001 *rn**7
+c     c     Ramp down the outter value to zero, 6/2/03
+c     eta = eta*0.5*(1-TANH((rn-0.92)/.03))
+                  
+c     eta = 1.002d0 - 0.098868d0*r + 0.84254d0*r**2 - 2.6231d0*r**3 +
+c     $           3.0126d0*r**4 - 1.9876d0*r**5 + 0.52246d0*r**6
+c     
+                  
+c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
+                  
+                  eta = 1.004677322175D+000
+     &                - 9.017625583830D-002*rn
+     &                + 3.611171220764D-001*rn**2
+     &                - 5.644888675141D-001*rn**3
+               
+                  eta = min(max(eta,0.d0),1.d0)
+#else
+                  eta = one
+#endif
+                  do n = 0, Nspec-1
+                     Yl(n) = (1.d0-eta)*Y_bc(n,BL_COFLOW) + eta*Y_bc(n,BL_FUELPIPE)
+                  end do
+               endif
+               
+               call FORT_RHOfromPTY(lo,hi,
+     &                              rho,ARLIM(lo),ARLIM(hi),
+     &                              T,ARLIM(lo),ARLIM(hi),
+     &                              Yl,ARLIM(lo),ARLIM(hi), Patm)
+               call FORT_HMIXfromTY(lo,hi,
+     &                              h,ARLIM(lo),ARLIM(hi),
+     &                              T,ARLIM(lo),ARLIM(hi),
+     &                              Yl,ARLIM(lo),ARLIM(hi))
+            endif
+
+            if (getuvw) then
+               if (probtype.eq.4) then
+                  u = zero
+                  v = zero
+                  w =  Vin + (time-tbase_control)*dV_control
+               else
+                  call VAvg(Vbndry,x,y,dx,Rf,wallTh,Ro,stTh,dBL,stBL,
+     &                      Vin,Vco_l,Vco_r,tVco_l,tVco_r,time,swK,swW,probtype,domnhi(1))
+                  u = Vbndry(1)
+                  v = Vbndry(2)
+                  w = Vbndry(3)
+               endif
+            endif
+            
          endif
       else
          write(6,*) 'No boundary condition for orientation = ', orient
          call bl_abort(" ")
       endif
       end
-
+      
       REAL_T function shapet(r)
       REAL_T r
       if(r.le.1.d0)then
@@ -1306,6 +1390,25 @@ c                  scal(i,j,k,Trac) = zero
                end do
             end do
          end do
+      else if (probtype .eq. 5) then
+         do k= lo(3),hi(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)            
+            do j = lo(2), hi(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
+
+                  call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  scal(i,j,k,Temp) = T
+                  do n = 1,Nspec
+                     scal(i,j,k,FirstSpec+n-1) = Yl(n)
+                  end do
+                  scal(i,j,k,Trac) = zero
+
+               end do
+            end do
+         end do
+
       end if
 
       Patm = pamb / 101325.0d0
@@ -2312,7 +2415,7 @@ c
 #endif
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
-      REAL_T  z, y, x
+      REAL_T  z, y, x, eta
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
       REAL_T  cs,sg,r,scaler,scalet
       REAL_T  turbSclX,turbSclY,turbSclZ,turbSclR,turbSclT
@@ -2546,6 +2649,8 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
+                  r = SQRT(x*x + y*y)
+                  eta = EXP(-2*(Rfu-r)/.015)
 
                   call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
@@ -2555,6 +2660,11 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                      if (forceLo .and. strmwse_dir .eq. 3) then
                        if(probtype.eq.4)then
                         vel(i,j,k,1) = u + uflct(i,j,1)*turb_scale
+                       elseif(probtype.eq.5)then
+                          vel(i,j,k,1) = u
+                          if (r.le.Rfu) then
+                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
+                          endif
                        else
 #ifdef SWIRL
                         vel(i,j,k,1) = u + uflct(i,j,1)
@@ -2579,6 +2689,11 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                      if (forceLo .and. strmwse_dir .eq. 3) then
                         if(probtype.eq.4)then
                           vel(i,j,k,2) = v + vflct(i,j,1)*turb_scale
+                       elseif(probtype.eq.5)then
+                          vel(i,j,k,2) = v
+                          if (r.le.Rfu) then
+                             vel(i,j,k,2) = v + vflct(i,j,1)*(2.7 + eta*4.25)
+                          endif
                         else
 #ifdef SWIRL
                         vel(i,j,k,2) = v + vflct(i,j,1)
@@ -2603,6 +2718,11 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                      if (forceLo .and. strmwse_dir .eq. 3) then
                       if(probtype.eq.4)then
                         vel(i,j,k,3) = w + wflct(i,j,1)*turb_scale
+                       elseif(probtype.eq.5)then
+                          vel(i,j,k,3) = w
+                          if (r.le.Rfu) then
+                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
+                          endif
                       else
 #ifdef SWIRL
                         vel(i,j,k,3) = w + wflct(i,j,1)

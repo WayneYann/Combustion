@@ -56,3 +56,7 @@
       REAL_T wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r, wire_l, wire_lw
       common /wirecom/ wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r, wire_l, wire_lw
       save /wirecom/
+
+      REAL_T Rtran, Rftran, zfuelinit, Rfu
+      common /swirlin/ Rtran, Rftran, zfuelinit, Rfu
+      save /swirlin/
