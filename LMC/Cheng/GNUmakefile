@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.16 2006-08-14 20:50:04 lijewski Exp $
+# $Id: GNUmakefile,v 1.17 2006-11-10 18:27:34 marc Exp $
 #
 PBOXLIB_HOME = ../..
 FBOXLIB_HOME = ../../../fParallel
@@ -18,6 +18,8 @@ DIM	       = 3
 PRVERSION      = v7
 COMP           = mpCC
 FCOMP          = xlf
+COMP           = Intel
+FCOMP          = Intel
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
 USE_MPI        = FALSE
@@ -26,17 +28,18 @@ BUILD_IN_PLACE = TRUE
 EBASE          = amr
 USE_SWIRL      = TRUE
 USE_SWIRL      = FALSE
+USE_SWIRL_DATA = TRUE
 USE_NEWMECH   = TRUE
 USE_NEWMECH   = FALSE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
-#USE_VELOCITY = TRUE
+USE_VELOCITY = TRUE
 #DEFINES      += -static
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
-DEFINES += -DBL_RHORT_IN_TRACER
+#DEFINES += -DBL_RHORT_IN_TRACER
 #
 # If you want to plot reaction rates uncomment the following
 #
@@ -54,8 +57,8 @@ REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=PROPANE
-REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=CH4-2STEP
 
 include $(TOP)/mk/Make.defs
 
@@ -69,7 +72,7 @@ endif
 
 ifeq ($(USE_VELOCITY), TRUE)
   DEFINES += -DBL_NOLINEVALUES -DBL_USE_VELOCITY -DBL_PARALLEL_IO
-  Bdirs   += pAmrvis
+  #Bdirs   += pAmrvis
 endif
 
 ifeq ($(USE_FLCTS),TRUE)
@@ -126,5 +129,8 @@ ifeq ($(MACHINE),T3E)
 else
   $(executable): $(LIBRARIES)
 endif
+
+o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o:
+	ifort -module o/3d.Linux.Intel.Intel.MPI.EXE -O3 -hlo0 -ip -c  ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o
 
 include $(TOP)/mk/Make.rules
