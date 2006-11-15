@@ -717,11 +717,11 @@ c           print *, "JACOB",sum,newJ_triggered
             FIRST = .TRUE.
 #endif
             if (do_diag.eq.1) then
-               FuncCount(i,j) = 0
+               FuncCount(i,j,k) = 0
                CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
                CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                do n=1,Nreac
-                  diag(i,j,n) = diag(i,j,n)+half*dtloc*Qt(n)*million
+                  diag(i,j,k,n) = diag(i,j,k,n)+half*dtloc*Qt(n)*million
                enddo
             endif
 
@@ -787,11 +787,11 @@ c     If the step was bad, and we reused an old Jacobian, try again from scratch
                   CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
                   CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                   do n=1,Nreac
-                     diag(i,j,n) = diag(i,j,n)+weight*dtloc*Qt(n)*million
+                     diag(i,j,k,n) = diag(i,j,k,n)+weight*dtloc*Qt(n)*million
                   enddo
-                  FuncCount(i,j) = FuncCount(i,j) + IWRK(dvbi+11)
+                  FuncCount(i,j,k) = FuncCount(i,j,k) + IWRK(dvbi+11)
                else
-                  FuncCount(i,j) = IWRK(dvbi+11)
+                  FuncCount(i,j,k) = IWRK(dvbi+11)
                endif
 
 
