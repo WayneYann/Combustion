@@ -550,6 +550,11 @@ c     Hardwire the unit number to 26 for the moment
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
       integer i, j, k, n, MF, ISTATE, LOUTCK, lout
+
+      integer nsubchem, nsub, node
+      REAL_T dtloc, weight, TT1save
+      REAL_T Ct(maxspec),Qt(maxreac)
+
       character*(maxspnml) name
       parameter (LOUTCK=6)
 
@@ -580,6 +585,11 @@ c     Set IOPT=1 parameter settings for VODE
       call bl_abort("neither mass_frac nor molar_conc is defined")
 #endif
 
+      if (do_diag.eq.1) then
+         nsubchem = nchemdiag
+      endif
+
+c
 c     Set molecular weights and pressure in area accessible by conpF
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       RWRK(NP) = Patm * P1atm
@@ -616,6 +626,14 @@ c     Set up ATOL
                endif
 
                TT1 = zero
+               if (do_diag.eq.1) then
+                  nsub = nsubchem
+                  dtloc = dt/nsubchem
+               else
+                  nsub = 1
+                  dtloc = dt
+               endif
+
                ISTATE = 1
 
 #ifdef SOLN_IS_1D
@@ -698,6 +716,25 @@ c           print *, "JACOB",sum,newJ_triggered
 #ifdef ALWAYS_NEW_J
             FIRST = .TRUE.
 #endif
+            if (do_diag.eq.1) then
+               FuncCount(i,j) = 0
+               CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
+               CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+               do n=1,Nreac
+                  diag(i,j,n) = diag(i,j,n)+half*dtloc*Qt(n)*million
+               enddo
+            endif
+
+            do node = 1,nsub
+               if (node.lt.nsub) then
+                  weight = one
+               else
+                  weight = half
+               endif
+
+               TT1save = TT1
+               TT2 = TT1 + dtloc
+
 
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                CALL SVODE
@@ -744,7 +781,19 @@ c     If the step was bad, and we reused an old Jacobian, try again from scratch
                end if
             end if
 #endif
-               FuncCount(i,j,k) = IWRK(dvbi+11)
+               TT1 = TT2
+
+               if (do_diag.eq.1) then
+                  CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
+                  CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                  do n=1,Nreac
+                     diag(i,j,n) = diag(i,j,n)+weight*dtloc*Qt(n)*million
+                  enddo
+                  FuncCount(i,j) = FuncCount(i,j) + IWRK(dvbi+11)
+               else
+                  FuncCount(i,j) = IWRK(dvbi+11)
+               endif
+
 
                if (verbose_vode .eq. 1) then
                   write(6,*) '......dvode done:'
@@ -785,6 +834,7 @@ c     If the step was bad, and we reused an old Jacobian, try again from scratch
                   close(lout)
                   call bl_abort('VODE failed...see drop file...exiting...')
                end if
+             enddo
 
                Tnew(i,j,k) = RWRK(NZ)
 
