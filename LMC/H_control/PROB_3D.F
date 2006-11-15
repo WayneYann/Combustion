@@ -176,6 +176,7 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "INFL_FORCE_F.H"
 #include "visc.H"
+#include "conp.H"
 
       integer lo(SDIM), hi(SDIM), i, j, zone, iH2, getZone
       character*(maxspnml) spName
@@ -186,7 +187,7 @@ c ::: -----------------------------------------------------------
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
      &                  traceSpecVal,phi_in,T_in,
      $                  turb_scale, tstart_turb, V_in, 
-     $                  zstandoff, pertmag
+     $                  zstandoff, pertmag, nchemdiag
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -259,6 +260,8 @@ c     Initialize control variables
       coft_old = -one
       cfix = zero
       ac_hist_file = 'AC_History'
+      h_control = -one
+      nchemdiag = 1
       dV_control = zero
       tbase_control = zero
 
