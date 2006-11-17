@@ -8271,6 +8271,11 @@ HeatTransfer::writePlotFile (const std::string& dir,
             for (i=0; i<auxDiag_names.size(); ++i)
                 os << auxDiag_names[i] << '\n';
 
+	// JFG: debug print statement
+	std::cout << ' ';
+	std::cout << ' number of auxDiags = ' << auxDiag_names.size();
+	std::cout << ' ';
+
         os << BL_SPACEDIM << '\n';
         os << parent->cumTime() << '\n';
         int f_lev = parent->finestLevel();
