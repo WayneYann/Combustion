@@ -8273,7 +8273,7 @@ HeatTransfer::writePlotFile (const std::string& dir,
 
 	// JFG: debug print statement
 	std::cout << ' ';
-	std::cout << ' number of auxDiags = ' << auxDiag_names.size();
+	std::cout << " number of auxDiags = " << auxDiag_names.size();
 	std::cout << ' ';
 
         os << BL_SPACEDIM << '\n';
