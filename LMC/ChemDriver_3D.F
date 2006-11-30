@@ -619,12 +619,6 @@ c     Set up ATOL
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
 
-               if (do_diag.eq.1) then
-                  do n=1,Nreac
-                     diag(i,j,k,n) = diag(i,j,k,n) + 1
-                  enddo
-               endif
-
                TT1 = zero
                if (do_diag.eq.1) then
                   nsub = nsubchem
