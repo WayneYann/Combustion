@@ -186,6 +186,7 @@ c ::: -----------------------------------------------------------
 #include "INFL_FORCE_F.H"
 #endif
 #include "visc.H"
+#include "conp.H"
 
       integer lo(SDIM), hi(SDIM), i, j, zone, iCH4, getZone
       character*(maxspnml) spName
@@ -215,7 +216,7 @@ c ::: -----------------------------------------------------------
      &                  thickFacTR, thickFacCH,
      &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r,
      &                  Tpipe, Tstick, stL, stLw, zInletEval, pertmag,
-     &                  Rtran, Rftran, zfuelinit, Rfu
+     &                  Rtran, Rftran, zfuelinit, Rfu, nchemdiag
       namelist /heattransin/ pamb, dpdt_factor
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -349,6 +350,8 @@ c     New swirl parameters
       zfuelinit = .1d0
       Rfu = .1d0
       
+      nchemdiag = 1
+
       read(untin,fortin)
 c      write(6,fortin)
       
