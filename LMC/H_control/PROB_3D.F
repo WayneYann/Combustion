@@ -264,6 +264,9 @@ c     Initialize control variables
       nchemdiag = 1
       dV_control = zero
       tbase_control = zero
+      h_control = -one
+
+      nchemdiag = 1
 
       read(untin,fortin)
 c      write(6,fortin)

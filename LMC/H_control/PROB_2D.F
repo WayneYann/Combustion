@@ -329,7 +329,7 @@ c     Initialize control variables
       cfix = zero
       ac_hist_file = 'AC_History'
       h_control = -one
-      nchemdiag = one
+      nchemdiag = 1
       
       read(untin,fortin)
 c      write(6,fortin)
