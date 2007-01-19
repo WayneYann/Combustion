@@ -221,12 +221,14 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, nCompFile
+      integer maxlen, nCompFile, proc
       parameter (maxlen=256)
 
       character probin*(maxlen)
       REAL_T y, yEval, pmf_vals(maxspec+3)
       integer n
+
+      call bl_pd_myproc(proc)
 
       if (namlen .gt. maxlen) then
          call bl_abort('probin file name too long')
@@ -372,8 +374,8 @@ c      write(6,heattransin)
       else
          if (flct_file.ne.'') then
 #define FF_UNIT 20
-            write(6,*) '...initializing turbulence, reading header info'
-            open(FF_UNIT, file=flct_file, form='unformatted')
+            if (proc.eq.0) print*, '...initializing turbulence, reading header info'
+            open(FF_UNIT, file=flct_file,form='unformatted',status='old')
             call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
          endif
@@ -2455,6 +2457,7 @@ c
          loFlctArray(strmwse_dir) = 1
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
+
          allocate(uflct(DIMV(uflct)))
          allocate(vflct(DIMV(uflct)))
          allocate(wflct(DIMV(uflct)))
@@ -2464,12 +2467,14 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
          convVel = one
          dt_flct = time - tbase_control
          t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
+
          call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
      $                  bc(1,1,1), domnlo, domnhi)
          call INFL_FILL(FLCT_YVEL, DIMS(uflct), vflct, xlo, delta, t_flct,
      $                  bc(1,1,2), domnlo, domnhi)
          call INFL_FILL(FLCT_ZVEL, DIMS(uflct), wflct, xlo, delta, t_flct,
      $                  bc(1,1,3), domnlo, domnhi)
+
       endif
 #endif
 
