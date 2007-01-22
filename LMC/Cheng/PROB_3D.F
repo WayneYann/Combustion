@@ -374,8 +374,8 @@ c      write(6,heattransin)
       else
          if (flct_file.ne.'') then
 #define FF_UNIT 20
-            if (proc.eq.0) print*, '...initializing turbulence, reading header info'
-            open(FF_UNIT, file=flct_file,form='unformatted',status='old')
+            if (proc.eq.0) print*, '...initializing turbulence'
+            open(FF_UNIT, file=trim(flct_file)//'/HDR',form='formatted',status='old')
             call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
          endif
@@ -2671,7 +2671,8 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                        elseif(probtype.eq.5)then
                           vel(i,j,k,1) = u
                           if (r.le.Rfu) then
-                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
+c                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
+                             vel(i,j,k,1) = u + uflct(i,j,1)*(1.0d0 + eta*1.574d0)
                           endif
                        else
 #ifdef SWIRL
@@ -2700,7 +2701,8 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                        elseif(probtype.eq.5)then
                           vel(i,j,k,2) = v
                           if (r.le.Rfu) then
-                             vel(i,j,k,2) = v + vflct(i,j,1)*(2.7 + eta*4.25)
+c                             vel(i,j,k,2) = v + vflct(i,j,1)*(2.7 + eta*4.25)
+                             vel(i,j,k,2) = v + vflct(i,j,1)*(1.0d0 + eta*1.574d0)
                           endif
                         else
 #ifdef SWIRL
@@ -2729,7 +2731,8 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                        elseif(probtype.eq.5)then
                           vel(i,j,k,3) = w
                           if (r.le.Rfu) then
-                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
+c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
+                             vel(i,j,k,3) = w + wflct(i,j,1)*(1.0d0 + eta*1.574d0)
                           endif
                       else
 #ifdef SWIRL
