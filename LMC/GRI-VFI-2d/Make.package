@@ -1,6 +1,6 @@
 
 #
-# $Id: Make.package,v 1.19 2007-01-25 16:34:43 sepp Exp $
+# $Id: Make.package,v 1.20 2007-01-25 17:31:47 sepp Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -11,6 +11,7 @@ CEXE_headers += ArrayViewEXT.H
 FEXE_headers += probdata.H PROB_F.H
 
 ifeq (${USE_FLCTS}, TRUE)
+   CEXE_sources += inflow.cpp
    FEXE_sources += FLUCTFILE.F INFL_FORCE_$(DIM)D.F INFL_FORCE_F.F
 endif
 
