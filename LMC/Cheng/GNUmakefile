@@ -1,12 +1,12 @@
 #
-# $Id: GNUmakefile,v 1.17 2006-11-10 18:27:34 marc Exp $
+# $Id: GNUmakefile,v 1.18 2007-02-14 19:09:18 lijewski Exp $
 #
 PBOXLIB_HOME = ../..
+
 FBOXLIB_HOME = ../../../fParallel
 FBOXLIB_HOME =
 
-TOP = $(PBOXLIB_HOME)
-
+TOP := $(PBOXLIB_HOME)
 #
 # User-settable variables.
 #
@@ -34,7 +34,7 @@ USE_NEWMECH   = FALSE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
-USE_VELOCITY = TRUE
+#USE_VELOCITY = TRUE
 #DEFINES      += -static
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
@@ -57,8 +57,8 @@ REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=PROPANE
-REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=CH4-2STEP
+REACTION_MECHANISM=DRM19
 
 include $(TOP)/mk/Make.defs
 
@@ -86,7 +86,7 @@ endif
 
 ifeq ($(USE_NEWMECH), TRUE)
   DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
-  Bdirs   += $(TOP)/pAmrvis
+  #Bdirs   += pAmrvis
 endif
 
 Bpack	:= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
@@ -130,7 +130,13 @@ else
   $(executable): $(LIBRARIES)
 endif
 
+o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o:
+	ifort -module o/3d.Linux.Intel.Intel.PROF.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o
+
 o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.MPI.EXE -O3 -hlo0 -ip -c  ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o
+	ifort -module o/3d.Linux.Intel.Intel.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o
+
+o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o:
+	ifort -module o/3d.Linux.Intel.Intel.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o
 
 include $(TOP)/mk/Make.rules
