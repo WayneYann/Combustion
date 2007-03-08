@@ -44,6 +44,7 @@
 #    define FORT_CPfromT         dcpt
 #    define FORT_HfromT          dht
 #    define FORT_TfromHY         dthy
+#    define FORT_TfromHYpt       dthypt
 #    define FORT_GETCKNUMREAC    dcknreac
 #    define FORT_MOLPROD         dmolprod
 #    define FORT_GETELTMOLES     dgetemol
@@ -102,6 +103,7 @@
 #    define FORT_CPfromT         DCPT
 #    define FORT_HfromT          DHT
 #    define FORT_TfromHY         DTHY
+#    define FORT_TfromHYpt       DTHYPT
 #    define FORT_GETCKNUMREAC    DCKNREAC
 #    define FORT_MOLPROD         DMOLPROD
 #    define FORT_GETELTMOLES     DGETEMOL
@@ -159,6 +161,7 @@
 #    define FORT_CPfromT         dcpt
 #    define FORT_HfromT          dht
 #    define FORT_TfromHY         dthy
+#    define FORT_TfromHYpt       dthypt
 #    define FORT_GETCKNUMREAC    dcknreac
 #    define FORT_MOLPROD         dmolprod
 #    define FORT_GETELTMOLES     dgetemol
@@ -216,6 +219,7 @@
 #    define FORT_CPfromT         dcpt_
 #    define FORT_HfromT          dht_
 #    define FORT_TfromHY         dthy_
+#    define FORT_TfromHYpt       dthypt_
 #    define FORT_GETCKNUMREAC    dcknreac_
 #    define FORT_MOLPROD         dmolprod_
 #    define FORT_GETELTMOLES     dgetemol_
@@ -422,6 +426,9 @@ extern "C" {
 		     const Real* h, ARLIM_P(hlo), ARLIM_P(hhi),
 		     const Real* Y, ARLIM_P(Ylo), ARLIM_P(Yhi),
 		     const Real* errMAX, const int* NiterMAX,const Real* tmp);
+
+    int FORT_TfromHYpt(Real* T, const Real* Hin, const Real* Yin,
+                       const Real* errMAX, const int* NiterMAX, const Real* res);
 
     int FORT_GETCKNUMREAC();
 

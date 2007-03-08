@@ -664,7 +664,7 @@ C
       integer NY, k
       
       REAL_T HtoTerrMAX
-      integer HtoTiterMAX, Niter, TfromHYpt
+      integer HtoTiterMAX, Niter, FORT_TfromHYpt
       parameter (HtoTerrMAX = BL_REAL_E(1.0,-8))
       parameter (HtoTiterMAX = 20)
       REAL_T res(0:HtoTiterMAX-1)
@@ -680,7 +680,7 @@ c
 
       Temp0 = RPAR(NTEMP)
       Hmix = RPAR(NHMIX)*BL_REAL_E(1.0,-4)
-      Niter = TfromHYpt(RPAR(NTEMP),Hmix,RPAR(NY),HtoTerrMax,HtoTiterMAX,res)
+      Niter = FORT_TfromHYpt(RPAR(NTEMP),Hmix,RPAR(NY),HtoTerrMax,HtoTiterMAX,res)
       if (Niter .lt. 0) goto 100
       CALL CKWC(RPAR(NTEMP),Z,IPAR(ckbi),RPAR(ckbr),ZP)
       RETURN
@@ -845,7 +845,7 @@ c     Error condition....dump state and bail out
 
       end
 
-      integer function TfromHYpt(T,Hin,Y,errMax,NiterMAX,res)
+      integer function FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res)
       implicit none
 #include "cdwrk.H"
       REAL_T T,Y(*),H,Hin
@@ -894,7 +894,7 @@ c     Error condition....dump state and bail out
          end if
          soln_bad = out_of_bounds(T)
          if (soln_bad) then
-            TfromHYpt = -1
+            FORT_TfromHYpt = -1
             goto 100
          else
             CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),H)
@@ -903,7 +903,7 @@ c     Error condition....dump state and bail out
             Niter = Niter + 1
          end if
          if (Niter .ge. NiterMAX) then
-            TfromHYpt = -2
+            FORT_TfromHYpt = -2
             goto 100
          endif
          converged = (dH.le.errMAX) .or. (ABS(dT).le.errMAX)
@@ -926,7 +926,7 @@ c     Error condition....dump state and bail out
 c
 c     Set max iters taken during this solve and exit
 c
-      TfromHYpt = Niter
+      FORT_TfromHYpt = Niter
       return
 c
 c     Error condition....dump state and bail out
@@ -960,7 +960,7 @@ c
       integer n
       
       REAL_T epsmn,epsmx,dtmn,tnot,ymn(maxspec),prt
-      integer itermx,ns,TfromeYpt,TfromHYpt,Niter
+      integer itermx,ns,TfromeYpt,FORT_TfromHYpt,Niter
 
       REAL_T HtoTerrMAX
       integer HtoTiterMAX
@@ -1010,7 +1010,7 @@ c     Pull output data from interface
 
 c     Update temperature field
       if (const_h) then
-         Niter = TfromHYpt(Tout,RWRK(NHMIX),Yout,HtoTerrMax,HtoTiterMAX,res)
+         Niter = FORT_TfromHYpt(Tout,RWRK(NHMIX),Yout,HtoTerrMax,HtoTiterMAX,res)
          if (Niter .lt. 0) then
             write(6,*) 'T from h,y solve in chemeqpt() failed',Niter
             call bl_abort(" ")
@@ -1034,7 +1034,7 @@ c
 #include "cdwrk.H"
 #include "conp.H"
       REAL_T c(*), q(*), d(*), t
-      integer TfromHYpt, Niter
+      integer FORT_TfromHYpt, Niter
       REAL_T HtoTerrMax
       integer HtoTiterMAX
       parameter (HtoTerrMax = BL_REAL_E(1.0,-8))
@@ -1047,7 +1047,7 @@ c
 
 c     Update temperature to agree with current species/enthalpy values
       call CKCTY(c, IWRK(ckbi), RWRK(ckbr), y)
-      Niter = TfromHYpt(temp,hmix,y,HtoTerrMax,HtoTiterMAX,res)
+      Niter = FORT_TfromHYpt(temp,hmix,y,HtoTerrMax,HtoTiterMAX,res)
       if (Niter .lt. 0) then
          write(6,*) 'T from h,y solve in ckdfe_consth() failed',Niter
          call bl_abort(" ")
