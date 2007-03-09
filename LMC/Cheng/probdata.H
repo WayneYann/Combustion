@@ -11,7 +11,7 @@
      &               traceSpecVal
       common /prob2/ domnlo, domnhi
       common /prob3/ probtype, max_vort_lev, max_temp_lev
-      common /prob4/ direction
+      common /prob4/ direction, fuelID, oxidID, prodID, nspecies
       save /prob1/,/prob2/,/prob3/,/prob4/
 
       integer refine_nozzle, max_nozzle_lev,
