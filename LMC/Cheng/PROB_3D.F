@@ -148,10 +148,14 @@ c
       subroutine FORT_SET_PROB_SPEC(fuel, oxid, prod, numspec)
       implicit none
 #include "probdata.H"
-      integer fuel, oxid, prod, numspec
+      integer fuel, oxid, prod, numspec,isioproc
+      call bl_pd_is_ioproc(isioproc)
       fuelID = fuel + 1
       oxidID = oxid + 1
       prodID = prod + 1
+      if (isioproc.eq.1) then
+         print*, 'fuelID: ', fuelID, ', oxidID: ', oxidID, 'prodID: ', prodID
+      end if
       end
 
 c ::: -----------------------------------------------------------
@@ -212,7 +216,7 @@ c ::: -----------------------------------------------------------
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
      &                  tau_control, sest, cfix, changeMax_control, h_control,
-     &			zbase_control,
+     &			zbase_control, tbase_control,
      &                  thickFacTR, thickFacCH,
      &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r,
      &                  Tpipe, Tstick, stL, stLw, zInletEval, pertmag,
@@ -429,8 +433,8 @@ c     Load domain dimensions into common, and set up boundary functions
 #include "probdata.H"
 #include "htdata.H"
       
-      REAL_T Patm, x, pmf_vals(maxspec+3), sum, Y_pmf(maxspec)
-      integer i, zone, n, lo(SDIM), hi(SDIM), iN2, iO2, iCH4, a, getZone
+      REAL_T Patm, x, pmf_vals(maxspec+3), sum, Y_pmf(maxspec), a
+      integer i, zone, n, lo(SDIM), hi(SDIM), iN2, iO2, getZone
       character*(maxspnml) name
       data lo / 1, 1, 1 /
       data hi / 1, 1, 1 /
@@ -495,12 +499,10 @@ c         if(isioproc.eq.1)print *,"in zone loop",zone, BL_FUELPIPE
 c         if(isioproc.eq.1)print *,"inside a",zone, BL_FUELPIPE
             if (phiin .ge. 0.d0) then
                iN2  = -1
-               iCH4 = -1
                iO2  = -1
                do n = 1,Nspec
                   call get_spec_name(name,n)
                   if (name .eq. 'N2' ) iN2  = n
-                  if (name .eq. 'CH4') iCH4 = n
                   if (name .eq. 'O2' ) iO2  = n
                enddo
  
@@ -508,13 +510,35 @@ c         if(isioproc.eq.1)print *,"inside a",zone, BL_FUELPIPE
                   Xt(n) = zero
                enddo
 
-c              hc + a.O2 -> b.CO2 + c.H2O
-c              for hc = CH4, a=2, b=1, c=2
-               a = 2
+               call get_spec_name(name,fuelID)
 
-               Xt(iO2) = 1.d0/(1.d0 + phiin/a  + 0.79d0/0.21d0)
-               Xt(iCH4) = phiin * Xt(iO2) / a
-               Xt(iN2) = 1.d0 - Xt(iCH4) - Xt(iO2)
+               if (name .eq. 'CH4') then
+c
+c                 hc + a.O2 -> b.CO2 + c.H2O
+c                 for hc = CH4, a=2, b=1, c=2
+c
+                  a = 2
+
+                  Xt(iO2)    = 1.d0/(1.d0 + phiin/a  + 0.79d0/0.21d0)
+                  Xt(fuelID) = phiin * Xt(iO2) / a
+                  Xt(iN2)    = 1.d0 - Xt(fuelID) - Xt(iO2)
+               else if (name .eq. 'H2') then
+c
+c                 hc + a.O2 -> b.CO2 + c.H2O
+c                 for hc = H2, a=.5, b=0, c=1
+c
+                  a = .5
+
+                  Xt(iO2)    = 1.d0/(1.d0 + phiin/a  + 0.79d0/0.21d0)
+                  Xt(fuelID) = phiin * Xt(iO2) / a
+                  Xt(iN2)    = 1.d0 - Xt(fuelID) - Xt(iO2)
+
+               else
+                  if (isioproc.eq.1) then
+                     print*, 'setupbc(): unknown fuel type'
+                  end if
+                  call bl_abort()
+               end if
 
                T_bc(zone) = Tin
             else
