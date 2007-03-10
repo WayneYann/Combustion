@@ -517,7 +517,7 @@ c
 c                 hc + a.O2 -> b.CO2 + c.H2O
 c                 for hc = CH4, a=2, b=1, c=2
 c
-                  a = 2
+                  a = 2.0d0
 
                   Xt(iO2)    = 1.d0/(1.d0 + phiin/a  + 0.79d0/0.21d0)
                   Xt(fuelID) = phiin * Xt(iO2) / a
@@ -527,12 +527,21 @@ c
 c                 hc + a.O2 -> b.CO2 + c.H2O
 c                 for hc = H2, a=.5, b=0, c=1
 c
-                  a = .5
+                  a = .5d0
 
                   Xt(iO2)    = 1.d0/(1.d0 + phiin/a  + 0.79d0/0.21d0)
                   Xt(fuelID) = phiin * Xt(iO2) / a
                   Xt(iN2)    = 1.d0 - Xt(fuelID) - Xt(iO2)
+               else if (name .eq. 'C3H8') then
+c
+c                 hc + a.O2 -> b.CO2 + c.H2O
+c                 for hc = C3H8, a=5, b=3, c=4
+c
+                  a = 5.0d0
 
+                  Xt(iO2)    = 1.d0/(1.d0 + phiin/a  + 0.79d0/0.21d0)
+                  Xt(fuelID) = phiin * Xt(iO2) / a
+                  Xt(iN2)    = 1.d0 - Xt(fuelID) - Xt(iO2)
                else
                   if (isioproc.eq.1) then
                      print*, 'setupbc(): unknown fuel type'
