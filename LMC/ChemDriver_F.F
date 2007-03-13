@@ -1673,6 +1673,7 @@ c
 
       block data tranjunk
 #include "cdwrk.H"
+#include "visc.H"
       REAL_T TSAVE, SMH(0:maxspec-1), EQK(0:maxreac-1)
       REAL_T RKFT(0:maxreac-1), RKRT(0:maxreac-1)
       common / junk / TSAVE, SMH, EQK, RKFT, RKRT
@@ -1680,5 +1681,7 @@ c
       data verbose_vode / 0 /
       data max_vode_subcycles / 15000 /
       data spec_scalY / maxspec*one /
+      data thickFacTR / 1.d0 /
+      data thickFacCH / 1.d0 /
 
       end
