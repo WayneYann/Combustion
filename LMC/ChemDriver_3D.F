@@ -494,30 +494,6 @@ c     Get the matrix of elements versus species
       end if
       end
 
-      integer function open_vode_failure_file ()
-      implicit none
-      character*20 myproc
-      character*50 name
-      integer lout,i,j,idx
-c
-c     Hardwire the unit number to 26 for the moment
-c
-      lout = 26
-      call bl_pd_myproc(i)
-      write(myproc, *) i
-      idx = 1
-      do j = 1, 20
-         if (myproc(j:j) .ne. ' ') then
-            idx = j
-            goto 1
-         end if
-      end do
- 1    continue
-      write(name, '(2a)') 'vode.failed.', myproc(idx:20)
-      open(unit=lout, file=name, form='formatted', status='replace')
-      open_vode_failure_file = lout
-      end
-      
       subroutine FORT_CONPSOLV(lo, hi,
      &                         Ynew, DIMS(Ynew), Tnew, DIMS(Tnew),
      &                         Yold, DIMS(Yold), Told, DIMS(Told),
