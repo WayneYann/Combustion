@@ -119,9 +119,14 @@ c     I/O
       common /ckdio1/ verbose_vode, max_vode_subcycles
       save /ckdio1/
 
+c     Integrator
       REAL_T spec_scalY(maxspec)
       common /vode1/ spec_scalY
       save /vode1/
+
+      REAL_T thickFacCH
+      common /vode2/ thickFacCH
+      save /vode2/
             
 c     Transport library
       REAL_T TMIN_TRANS
