@@ -1671,6 +1671,35 @@ c
  1001 format(2(/))
       end
 
+      integer function open_vode_failure_file ()
+      implicit none
+      character*30 name, myproc
+      integer lout,i,j,k,idx
+
+c     Hardwire the unit number to 26 for the moment
+      lout = 26
+      call bl_pd_myproc(i)
+      write(myproc, *) i
+      idx = 1
+      do j = 1, 30
+         if (myproc(j:j) .ne. ' ') then
+            idx = j
+            goto 1
+         end if
+      end do
+ 1    continue
+      do k = 30, j+1, -1
+         if (myproc(k:k) .ne. ' ') then
+            goto 2
+         end if
+      end do
+ 2    continue
+      write(name, '(2a)') 'vode.failed.', myproc(idx:k)
+c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
+      open(unit=lout, file=name, form='formatted', status='replace')
+      open_vode_failure_file = lout
+      end
+      
       block data tranjunk
 #include "cdwrk.H"
 #include "visc.H"
@@ -1682,6 +1711,5 @@ c
       data max_vode_subcycles / 15000 /
       data spec_scalY / maxspec*one /
       data thickFacTR / 1.d0 /
-      data thickFacCH / 1.d0 /
 
       end
