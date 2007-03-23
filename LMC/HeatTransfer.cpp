@@ -5013,18 +5013,10 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba)
 #endif
 
     DistributionMapping res;
-
-    if (DistributionMapping::strategy() == DistributionMapping::SFC)
-    {
-        res.SFCProcessorMap(bxba,vwrk,ParallelDescriptor::NProcs());
-    }
-    else
-    {
-        //
-        // This call doesn't invoke the MinimizeCommCosts() stuff.
-        //
-        res.KnapSackProcessorMap(vwrk,ParallelDescriptor::NProcs());
-    }
+    //
+    // This call doesn't invoke the MinimizeCommCosts() stuff.
+    //
+    res.KnapSackProcessorMap(vwrk,ParallelDescriptor::NProcs());
 
     return res;
 }
