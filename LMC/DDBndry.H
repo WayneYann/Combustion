@@ -4,7 +4,7 @@
 #define _DDBndry_H_
 
 //
-// $Id: DDBndry.H,v 1.1 2006-01-21 02:12:38 marc Exp $
+// $Id: DDBndry.H,v 1.2 2007-03-27 17:28:05 lijewski Exp $
 //
 
 #include <ViscBndry.H>
@@ -28,8 +28,12 @@ public:
                  const Geometry& geom,
                  int             mgLevel);
 
+    virtual void setBndryConds (const BCRec& phys_bc,
+                                int          ratio);
+
     virtual void setBndryConds (const BCRec&       phys_bc,
-                                /*const*/ IntVect& ratio);
+                                /*const*/ IntVect& ratio,
+                                int                comp = 0);
 
 protected:
     int mg_level;

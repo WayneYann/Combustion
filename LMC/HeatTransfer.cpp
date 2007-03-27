@@ -3333,7 +3333,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&         S,
             err0_H = err_H;
         }
 
-        if ( std::max(err_Y/err0_Y,err_H/err_H) < mcdd_rtol)
+        if ( std::max(err_Y/err0_Y,err_H/err0_H) < mcdd_rtol)
             iter = mcdd_presmooth;
 
         for (int i=0; i<level; ++i)
@@ -3439,7 +3439,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&         S,
             err0_H = err_H;
         }
 
-        if ( std::max(err_Y/err0_Y,err_H/err_H) < mcdd_rtol)
+        if ( std::max(err_Y/err0_Y,err_H/err0_H) < mcdd_rtol)
             iter = mcdd_postsmooth;
 
         for (int i=0; i<level; ++i)

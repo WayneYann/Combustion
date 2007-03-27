@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.7 2006-09-01 23:11:14 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.8 2007-03-27 17:28:05 lijewski Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -127,13 +127,6 @@ int
 reflect_bc[] =
 {
     REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN
-};
-
-static
-int
-dqrad_bc[] =
-{
-    INT_DIR, REFLECT_EVEN, REFLECT_EVEN, REFLECT_EVEN, REFLECT_EVEN, REFLECT_EVEN
 };
 
 static
@@ -290,20 +283,6 @@ set_dsdt_bc (BCRec&       bc,
     {
 	bc.setLo(i,dsdt_bc[lo_bc[i]]);
 	bc.setHi(i,dsdt_bc[hi_bc[i]]);
-    }
-}
-
-static
-void
-set_dqrad_bc (BCRec&       bc,
-              const BCRec& phys_bc)
-{
-    const int* lo_bc = phys_bc.lo();
-    const int* hi_bc = phys_bc.hi();
-    for (int i = 0; i < BL_SPACEDIM; i++)
-    {
-	bc.setLo(i,dqrad_bc[lo_bc[i]]);
-	bc.setHi(i,dqrad_bc[hi_bc[i]]);
     }
 }
 

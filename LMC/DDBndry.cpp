@@ -1,7 +1,7 @@
 //BL_COPYRIGHT_NOTICE
 
 //
-// $Id: DDBndry.cpp,v 1.3 2006-01-25 01:28:05 marc Exp $
+// $Id: DDBndry.cpp,v 1.4 2007-03-27 17:28:05 lijewski Exp $
 //
 #include <winstd.H>
 #include <cmath>
@@ -28,8 +28,17 @@ DDBndry::define (const BoxArray& grids,
 }
 
 void
+DDBndry::setBndryConds (const BCRec& phys_bc,
+                        int          ratio)
+{
+    IntVect ratio_vect = ratio * IntVect::TheUnitVector();
+    setBndryConds(phys_bc, ratio_vect);
+}
+
+void
 DDBndry::setBndryConds (const BCRec&       bc,
-                        /*const*/ IntVect& ratio)
+                        /*const*/ IntVect& ratio,
+                        int                comp)
 {
     //
     //  NOTE: ALL BCLOC VALUES ARE DEFINED AS A LENGTH IN PHYSICAL
@@ -38,7 +47,7 @@ DDBndry::setBndryConds (const BCRec&       bc,
     const Real* dx    = getGeom().CellSize();
     const Box& domain = getGeom().Domain();
 
-    ViscBndry::setBndryConds(bc,ratio);
+    ViscBndry::setBndryConds(bc,ratio,comp);
 
     // Here, just overwrite the c-f boundary instructions
     for (OrientationIter fi; fi; ++fi)
