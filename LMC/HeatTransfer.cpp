@@ -8525,11 +8525,26 @@ AuxBoundaryData::initialize (const BoxArray& ba,
         }
     }
 
-//    gcells.simplify();
+    //gcells.simplify();
 
     BoxArray nba(gcells);
 
-    m_fabs.define(nba, n_comp, 0, Fab_allocate);
+    std::vector<long> wgts(nba.size());
+
+    for (unsigned int i = 0; i < wgts.size(); i++)
+    {
+        wgts[i] = nba[i].numPts();
+    }
+    DistributionMapping dm;
+    //
+    // This call doesn't invoke the MinimizeCommCosts() stuff.
+    // There's very little to gain with this type of covering.
+    // This also guarantees that this DM won't be put into the
+    // cache.
+    //
+    dm.KnapSackProcessorMap(wgts,ParallelDescriptor::NProcs());
+
+    m_fabs.define(nba, n_comp, 0, dm, Fab_allocate);
 
     m_initialized = true;
 }
