@@ -8525,7 +8525,7 @@ AuxBoundaryData::initialize (const BoxArray& ba,
         }
     }
 
-    gcells.simplify();
+//    gcells.simplify();
 
     BoxArray nba(gcells);
 
