@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.8 2007-03-27 17:28:05 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.9 2007-04-18 00:08:46 marc Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -328,126 +328,96 @@ public:
     //
     // Bogus constructor.
     //
-    ChemBndryFunc ();
+    ChemBndryFunc()
+	:
+        m_func(0),
+        m_stateID(-1) {}
     //
     // Constructor.
     //
     ChemBndryFunc (ChemBndryFunc_FortBndryFunc  inFunc,
-                   const std::string&           stateName);
+                   const std::string& stateName)
+	:
+        m_func(inFunc),
+        m_stateName(stateName)
+    {
+	m_stateID = getStateID(m_stateName);
+	BL_ASSERT(m_stateID >= 0);
+    }
     //
     // Another Constructor which sets "regular" and "group" fill routines..
     //
     ChemBndryFunc (ChemBndryFunc_FortBndryFunc  inFunc,
                    const std::string&           stateName,
-                   BndryFuncDefault             gFunc);
+                   BndryFuncDefault             gFunc)
+	:
+        BndryFunc(gFunc,gFunc),
+        m_func(inFunc),
+        m_stateName(stateName)
+    {
+	m_stateID = getStateID(m_stateName);
+	BL_ASSERT(m_stateID >= 0);
+    }
     //
     // Destructor.
     //
-    virtual ~ChemBndryFunc ();
+    virtual ~ChemBndryFunc () {}
     
-    virtual StateDescriptor::BndryFunc* clone () const;
+    virtual StateDescriptor::BndryFunc* clone () const
+    {
+        //
+	// Bitwise copy ok here, no copy ctr required.
+        //
+	return new ChemBndryFunc(*this);
+    }
     //
     // Fill boundary cells the "regular" way.
+    // The other virtual function in BndryFunc will
+    // give us the appropriate call for "group" fills.
     //
     virtual void operator () (Real* data, const int* lo, const int* hi,
 			      const int* dom_lo, const int* dom_hi,
 			      const Real* dx, const Real* grd_lo,
-			      const Real* time, const int* bc) const;
-    //
-    // Fill boundary cells using "group" function.
-    //
+			      const Real* time, const int* bc) const
+    {
+	BL_ASSERT(m_func != 0);
+	m_func(data,ARLIM(lo),ARLIM(hi),dom_lo,dom_hi,dx,grd_lo,time,bc,&m_stateID);
+    }
+        //
+        // Fill boundary cells using "group" function.
+        //
     virtual void operator () (Real* data, const int* lo, const int* hi,
-                              const int* dom_lo, const int* dom_hi,
-                              const Real* dx, const Real* grd_lo,
-                              const Real* time, const int* bc, bool) const;
+			      const int* dom_lo, const int* dom_hi,
+			      const Real* dx, const Real* grd_lo,
+			      const Real* time, const int* bc, bool trait) const
+    {
+        BndryFunc::operator()(data, lo, hi, dom_lo, dom_hi, dx, grd_lo, time, bc, trait);
+    }
+  
     //
     // Access.
     //
-    int getStateID () const                            { return m_stateID;   }
-
-    const std::string& getStateName () const           { return m_stateName; }
-
+    int getStateID () const              { return m_stateID;   }
+    const std::string& getStateName () const { return m_stateName; }
     ChemBndryFunc_FortBndryFunc getBndryFunc () const  { return m_func;      }
     
 protected:
 
-    static int getStateID (const std::string& stateName);
-
+    static int getStateID (const std::string& stateName)
+    {
+	const Array<std::string>& names = HeatTransfer::getChemSolve().speciesNames();
+	for (int i=0; i<names.size(); i++)
+	    if (names[i] == stateName)
+		return i;
+	return -1;
+    }
+    
 private:
 
     ChemBndryFunc_FortBndryFunc m_func;
-    std::string                 m_stateName;
-    int                         m_stateID;
+    std::string       m_stateName;
+    int           m_stateID;
 };
-
-ChemBndryFunc::ChemBndryFunc ()
-	:
-        m_func(0),
-        m_stateID(-1)
-{}
-
-ChemBndryFunc::ChemBndryFunc (ChemBndryFunc_FortBndryFunc  inFunc,
-                              const std::string&           stateName)
-    :
-    m_func(inFunc),
-    m_stateName(stateName)
-{
-    m_stateID = getStateID(m_stateName);
-    BL_ASSERT(m_stateID >= 0);
-}
-
-ChemBndryFunc::ChemBndryFunc (ChemBndryFunc_FortBndryFunc  inFunc,
-                              const std::string&           stateName,
-                              BndryFuncDefault             gFunc)
-    :
-    BndryFunc(gFunc,gFunc),
-    m_func(inFunc),
-    m_stateName(stateName)
-{
-    m_stateID = getStateID(m_stateName);
-    BL_ASSERT(m_stateID >= 0);
-}
-
-ChemBndryFunc::~ChemBndryFunc () {}
-    
-StateDescriptor::BndryFunc*
-ChemBndryFunc::clone () const
-{
-    //
-    // Bitwise copy ok here, no copy ctr required.
-    //
-    return new ChemBndryFunc(*this);
-}
-
-void
-ChemBndryFunc::operator () (Real* data, const int* lo, const int* hi,
-                            const int* dom_lo, const int* dom_hi,
-                            const Real* dx, const Real* grd_lo,
-                            const Real* time, const int* bc) const
-{
-    BL_ASSERT(m_func != 0);
-    m_func(data,ARLIM(lo),ARLIM(hi),dom_lo,dom_hi,dx,grd_lo,time,bc,&m_stateID);
-}
-
-void
-ChemBndryFunc::operator () (Real* data, const int* lo, const int* hi,
-                            const int* dom_lo, const int* dom_hi,
-                            const Real* dx, const Real* grd_lo,
-                            const Real* time, const int* bc, bool ) const
-{
-    bool b = true;
-    StateDescriptor::BndryFunc::operator()(data,lo,hi,dom_lo,dom_hi,dx,grd_lo,time,bc,b);
-}
-
-int
-ChemBndryFunc::getStateID (const std::string& stateName)
-{
-    const Array<std::string>& names = HeatTransfer::getChemSolve().speciesNames();
-    for (int i=0; i<names.size(); i++)
-        if (names[i] == stateName)
-            return i;
-    return -1;
-}
 
 //
 // Indices of fuel and oxidizer -- ParmParsed in & used in a couple places.
