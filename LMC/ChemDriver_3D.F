@@ -573,13 +573,19 @@ c     Set molecular weights and pressure in area accessible by conpF
       RWRK(NP) = Patm * P1atm
       
       TT2 = dt
+
+      if (nstiff .eq. 1) then
 #if defined(MASS_FRAC)
 c     finite difference jacobian
-      MF = 22
+         MF = 22
 #elif defined(MOLAR_CONC)
 c     user supplied jacobian, in this case an analytic one
-      MF = 21
+         MF = 21
+c     MF = 22
 #endif
+      else
+         MF = 10
+      endif
       
 c     Set up ATOL
       if (ITOL.eq.2) then

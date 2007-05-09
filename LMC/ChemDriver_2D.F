@@ -591,14 +591,18 @@ c
       
       TT2 = dt
 
+      if (nstiff .eq. 1) then
 #if defined(MASS_FRAC)
 c     finite difference jacobian
-      MF = 22
+         MF = 22
 #elif defined(MOLAR_CONC)
 c     user supplied jacobian, in this case an analytic one
-      MF = 21
-c      MF = 22
+         MF = 21
+c     MF = 22
 #endif
+      else
+         MF = 10
+      endif
 
 c     Set up ATOL
       if (ITOL.eq.2) then
@@ -1825,7 +1829,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
                Yt(n) = Y(i,j,n)
             end do
             
-            Niter = TfromHYpt(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res)
+            Niter = FORT_TfromHYpt(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res)
             if (Niter .lt. 0) then
                write(6,*) 'T from h,y solve in FORT_TfromHY failed',Niter
                call bl_abort(" ")
