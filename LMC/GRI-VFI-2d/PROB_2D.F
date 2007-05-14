@@ -490,7 +490,8 @@ c        in case that is important, the following check was added.
          end if
          T_bc(zone) = pmf_GRI_vals(1)
          u_bc(zone) = zero
-         if (V_in .le. zero) then
+c         if (V_in .le. zero) then
+         if (V_in .lt. zero) then
 c           JFG: 
 c           set V_in to the inflow value in the initial guess.
 c           must multiply by 0.01 to convert from cm/s to m/s.
