@@ -1954,6 +1954,16 @@ HeatTransfer::scalar_diffusion_update (Real dt,
                                        int  last_scalar,
                                        int  corrector)
 {
+    if (ParallelDescriptor::IOProcessor())
+    {
+	std::cout << "\n"
+		  << "JFG: entering HeatTransfer::scalar_diffusion_update\n"
+		  << dt << " dt\n"
+		  << first_scalar << " first scalar\n"
+		  << last_scalar << " last scalar\n"
+		  << std::endl;
+    }
+
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::scalar_diffusion_update()");
 
     const Real strt_time = ParallelDescriptor::second();
@@ -4249,6 +4259,40 @@ HeatTransfer::temperature_stats (MultiFab& S)
 }
 
 void
+HeatTransfer::temperature_stat (MultiFab& S)
+{
+    if (verbose)
+    {
+        BL_PROFILE(BL_PROFILE_THIS_NAME() + "::temperature_stat()");
+        //
+        // Calculate and display temperature minimum and maximum.
+        //
+        Real tmin, tmax;
+
+        tmin =  1.0e30;
+        tmax = -1.0e30;
+
+        for (MFIter S_mfi(S); S_mfi.isValid(); ++S_mfi)
+        {
+            const Box& bx = S_mfi.validbox();
+
+            tmin = std::min(tmin,S[S_mfi].min(bx,Temp));
+            tmax = std::max(tmax,S[S_mfi].max(bx,Temp));
+        }
+
+        const int IOProc = ParallelDescriptor::IOProcessorNumber();
+
+        ParallelDescriptor::ReduceRealMin(tmin,IOProc);
+        ParallelDescriptor::ReduceRealMax(tmax,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+        {
+            std::cout << "  Min,max temp = " << tmin << ", " << tmax << '\n';
+        }
+    }
+}
+
+void
 HeatTransfer::compute_rhoRT (const MultiFab& S,
                              MultiFab&       p, 
                              int             pComp,
@@ -4371,13 +4415,21 @@ HeatTransfer::advance (Real time,
 
     if (ParallelDescriptor::IOProcessor())
     {
-      std::cout << "\n"
-		<< "entering advance in HeatTransfer_JFG\n"
-		<< time << " time\n"
-		<< dt << " dt\n"
-		<< iteration << " iteration\n"
-		<< ncycle << " ncycle\n"
-		<< std::endl;
+	std::cout << "\n"
+		  << "JFG: entering advance in HeatTransfer\n"
+		  << time << " time\n"
+		  << dt << " dt\n"
+		  << iteration << " iteration\n"
+		  << ncycle << " ncycle\n\n"
+		  << "JFG: variable layout\n"
+		  << " velocities\n"
+		  << Density << " Density\n"
+		  << " species\n"
+		  << RhoH << " RhoH\n"
+		  << Trac << " Trac\n"
+		  << Temp << " Temp\n"
+		  << RhoRT << " RhoRT\n"
+		  << std::endl;
     }
 
     if (level == 0)
@@ -4593,6 +4645,13 @@ HeatTransfer::advance (Real time,
     }
     else
     {
+	if (ParallelDescriptor::IOProcessor())
+	{
+	    std::cout << "\n"
+		      << "JFG: entering block to update energy and species\n"
+		      << std::endl;
+	}
+
         //
         // Predictor
         //
@@ -4603,9 +4662,26 @@ HeatTransfer::advance (Real time,
         BL_PROFILE_TIMER(ptimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-predictor");
         BL_PROFILE_START(ptimer);
         
+	if (ParallelDescriptor::IOProcessor())
+	{
+	    std::cout << "\n"
+		      << "JFG: about to update temperature\n"
+		      << std::endl;
+	}
         MultiFab::Copy(*diffnp1_cc,*diffn_cc,0,0,nScalDiffs,diffn_cc->nGrow());
-        temp_update(dt,corrector);         // Here, predict n+1 coeffs using n coeffs
-        temperature_stats(S_new);
+        // Here, predict n+1 coeffs using n coeffs
+	// Do implicit c-n solve for temperature.
+	// Do implicit c-n solve for an arbitrary scalar (i.e., not velocity).
+	// scalar_update(dt,Temp,Temp,corrector);
+	NavierStokes::scalar_advection_update(dt, Temp, Temp);
+	HeatTransfer::scalar_diffusion_update(dt, Temp, Temp, corrector);
+        temperature_stat(S_new);
+	if (ParallelDescriptor::IOProcessor())
+	{
+	    std::cout << "\n"
+		      << "JFG: finished updating temperature\n"
+		      << std::endl;
+	}
         
         calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
         spec_update(time,dt,corrector);
@@ -6028,6 +6104,7 @@ HeatTransfer::rhoh_update (Real time,
     scalar_update(dt,RhoH,RhoH,corrector);
 }
 
+/* JFG: removed temp_update which was called only once
 void
 HeatTransfer::temp_update (Real dt,
                            int  corrector) 
@@ -6037,6 +6114,7 @@ HeatTransfer::temp_update (Real dt,
     //
     scalar_update(dt,Temp,Temp,corrector);
 }
+*/
 
 void
 HeatTransfer::spec_update (Real time,
