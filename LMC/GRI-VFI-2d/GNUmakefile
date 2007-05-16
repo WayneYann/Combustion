@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.28 2007-05-15 21:07:08 sepp Exp $
+# $Id: GNUmakefile,v 1.29 2007-05-16 17:27:21 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -40,6 +40,7 @@ DEFINES += -DBL_PLOT_CONSUMPTION
 #
 REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=INERT30
+REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=PROPANE
@@ -47,7 +48,6 @@ REACTION_MECHANISM=GRI30HNO
 REACTION_MECHANISM=GRI211HNO
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=DRM19
-REACTION_MECHANISM=CHEMH
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
@@ -58,7 +58,8 @@ ifeq ($(USE_HGPROJ_SERIAL),TRUE)
   INCLUDE_LOCATIONS += $(dir $(ProjPackage))include/$(DIM)d.$(PRVERSION)
 endif
 
-Packages := $(TOP)/iamrlib/iamr \
+Packages := $(TOP)/LMC/ht \
+	    $(TOP)/iamrlib/iamr \
 	    $(TOP)/tensorMG/mcmg \
 	    $(ProjPackage) \
 	    $(TOP)/mglib/mg \
@@ -101,7 +102,6 @@ else
   LIBRARY_LOCATIONS += $(TOP)/lib/$(machineSuffix)
 endif
 include $(addsuffix /Make.package, $(MySrcDirs))
-include ../Make.package_JFG
 
 ifeq ($(HGDEBUG),TRUE)
   DEFINES+=-DHG_DEBUG
