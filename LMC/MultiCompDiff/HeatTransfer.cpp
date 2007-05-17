@@ -4669,10 +4669,10 @@ HeatTransfer::advance (Real time,
 		      << std::endl;
 	}
         MultiFab::Copy(*diffnp1_cc,*diffn_cc,0,0,nScalDiffs,diffn_cc->nGrow());
+	// formerly: scalar_update(dt,Temp,Temp,corrector);
         // Here, predict n+1 coeffs using n coeffs
 	// Do implicit c-n solve for temperature.
 	// Do implicit c-n solve for an arbitrary scalar (i.e., not velocity).
-	// scalar_update(dt,Temp,Temp,corrector);
 	NavierStokes::scalar_advection_update(dt, Temp, Temp);
 	HeatTransfer::scalar_diffusion_update(dt, Temp, Temp, corrector);
         temperature_stat(S_new);
