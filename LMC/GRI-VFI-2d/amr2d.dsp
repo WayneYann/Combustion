@@ -128,10 +128,6 @@ SOURCE=..\..\amrlib\BCRec.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\BoxLib\BLProfiler.cpp
-# End Source File
-# Begin Source File
-
 SOURCE=..\..\BoxLib\BLThread.cpp
 # End Source File
 # Begin Source File
@@ -1094,7 +1090,7 @@ SOURCE=Debug\Fort\COORDSYS_2D.FOR
 # End Source File
 # Begin Source File
 
-SOURCE=Debug\Fort\DERIVE_2D.FOR
+SOURCE=Debug\Fort\DDOp_2D.FOR
 
 !IF  "$(CFG)" == "amr2d - Win32 Release"
 
@@ -1107,7 +1103,7 @@ SOURCE=Debug\Fort\DERIVE_2D.FOR
 # End Source File
 # Begin Source File
 
-SOURCE=Debug\Fort\DDOp_2D.FOR
+SOURCE=Debug\Fort\DERIVE_2D.FOR
 
 !IF  "$(CFG)" == "amr2d - Win32 Release"
 
@@ -2084,6 +2080,10 @@ InputName=ABec_UTIL
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\hgproj\amr_real2d.2.f
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\hgproj\amr_real2d.f
 # End Source File
 # Begin Source File
@@ -2379,7 +2379,7 @@ InputName=DIFFUSION_2D
 # End Source File
 # Begin Source File
 
-SOURCE=drmSoln0.75.f
+SOURCE=drm19Soln_070.f
 # End Source File
 # Begin Source File
 
