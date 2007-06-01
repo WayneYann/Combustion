@@ -4352,7 +4352,9 @@ HeatTransfer::advance (Real time,
 	}
 
         calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+	// 
 	// formerly: spec_update
+	//
 	// Do implicit c-n solve for rho*Y_l, l=0,nspecies-1.
 	scalar_advection_update(dt, first_spec, last_spec);
 	if (unity_Le)
@@ -4366,6 +4368,9 @@ HeatTransfer::advance (Real time,
 	// Enforce sum_l rho U Y_l equals rho.
 	if (floor_species)
 	    scale_species(get_new_data(State_Type),0,1);
+	// 
+	// end formerly: spec_update
+	//
 
 	if (ParallelDescriptor::IOProcessor())
 	{
@@ -4393,7 +4398,26 @@ HeatTransfer::advance (Real time,
         corrector = 1;
         calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
         tracer_update(dt,corrector);
-        spec_update(time,dt,corrector);
+	//
+	// formerly: spec_update
+	//
+	// Do implicit c-n solve for rho*Y_l, l=0,nspecies-1.
+	scalar_advection_update(dt, first_spec, last_spec);
+	
+	if (unity_Le)
+	{
+	    scalar_diffusion_update(dt, first_spec, last_spec, corrector);
+	}
+	else
+	{
+	    differential_spec_diffusion_update(dt, corrector);
+	}
+	// Enforce sum_l rho U Y_l equals rho.
+	if (floor_species)
+	    scale_species(get_new_data(State_Type),0,1);
+	//
+	// end formerly: spec_update
+	//
         
         set_overdetermined_boundary_cells(time + dt);// RhoH BC's to see new Y's at n+1
         
@@ -4413,7 +4437,7 @@ HeatTransfer::advance (Real time,
     // about stuff in the valid region.
     //
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "HeatTransfer::advance(): after scalar_update\n";
+        std::cout << "HeatTransfer::advance(): after scalar update\n";
 
     temperature_stats(S_new);
 
@@ -5790,44 +5814,6 @@ HeatTransfer::rhoh_update (Real time,
     // Do implicit c-n solve for RhoH
     //
     scalar_update(dt,RhoH,RhoH,corrector);
-}
-
-/* JFG: removed temp_update which was called only once
-void
-HeatTransfer::temp_update (Real dt,
-                           int  corrector) 
-{
-    //
-    // Do implicit c-n solve for temperature.
-    //
-    scalar_update(dt,Temp,Temp,corrector);
-}
-*/
-
-void
-HeatTransfer::spec_update (Real time,
-                           Real dt,
-                           int  corrector) 
-{
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::spec_update()");
-    //
-    // Do implicit c-n solve for rho*Y_l, l=0,nspecies-1.
-    //
-    scalar_advection_update(dt, first_spec, last_spec);
-	    
-    if (unity_Le)
-    {
-        scalar_diffusion_update(dt, first_spec, last_spec, corrector);
-    }
-    else
-    {
-        differential_spec_diffusion_update(dt, corrector);
-    }
-    //
-    // Enforce sum_l rho U Y_l equals rho.
-    //
-    if (floor_species)
-        scale_species(get_new_data(State_Type),0,1);
 }
 
 void

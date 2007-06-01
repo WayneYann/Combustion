@@ -25,22 +25,16 @@ HeatTransfer::diffuse_scalar_setup (Real        dt,
     if (sigma == Temp)
     {
         (*rho_flag) = 1;
+        diffuse_temp_setup(prev_time,dt,delta_rhs,alpha); 
     }
-    else if (sigma == RhoH || sigma >= first_spec && sigma <= last_spec)
+    else if (sigma == RhoH)
     {
         (*rho_flag) = 2;
-    }
-
-    if (sigma == RhoH)
-    {
         diffuse_rhoh_setup(prev_time,dt,delta_rhs); 
-    }
-    else if (sigma == Temp)
-    {
-        diffuse_temp_setup(prev_time,dt,delta_rhs,alpha); 
     }
     else if (sigma >= first_spec && sigma <= last_spec)
     {
+        (*rho_flag) = 2;
         // formerly: diffuse_spec_setup(sigma,prev_time,dt,delta_rhs); 
 	// Chemistry split, no source terms
 	delta_rhs = new MultiFab(grids,1,0);
