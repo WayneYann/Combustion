@@ -147,10 +147,10 @@ public:
 			   int  last_scalar,
 			   bool do_adv_reflux);
     
-    void scalar_update (Real dt,
-                        int  first_scalar,
-                        int  last_scalar,
-                        int  do_viscreflux);
+//    void scalar_update (Real dt,
+//                        int  first_scalar,
+//                        int  last_scalar,
+//                        int  do_viscreflux);
 
 //    void differential_spec_diffusion_update (Real dt,
 //					     int  corrector);
@@ -306,12 +306,12 @@ protected:
                         int       strtcomp,
                         int       minzero = 0);
 
-    void rhoh_update (Real time,
-                      Real dt,
-                      int  corrector);
+    // void rhoh_update (Real time,
+    //                  Real dt,
+    //                  int  corrector);
 
-    void tracer_update (Real dt,
-                        int  corrector);
+    // void tracer_update (Real dt,
+    //                    int  corrector);
 
     void temp_update (Real dt,
                       int  corrector);
