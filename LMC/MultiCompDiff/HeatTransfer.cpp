@@ -1950,7 +1950,7 @@ HeatTransfer::avgDown ()
 
 #include "scalar_diffusion_update.cpp"
 
-#include "differential_spec_diffusion_update.cpp"
+#include "species_diffusion_update.cpp"
 
 #include "diffuse_scalar_setup.cpp"
 
@@ -4363,7 +4363,7 @@ HeatTransfer::advance (Real time,
 	}
 	else
 	{
-	    differential_spec_diffusion_update(dt, corrector);
+	    species_diffusion_update(dt, corrector);
 	}
 	// Enforce sum_l rho U Y_l equals rho.
 	if (floor_species)
@@ -4410,7 +4410,7 @@ HeatTransfer::advance (Real time,
 	}
 	else
 	{
-	    differential_spec_diffusion_update(dt, corrector);
+	    species_diffusion_update(dt, corrector);
 	}
 	// Enforce sum_l rho U Y_l equals rho.
 	if (floor_species)

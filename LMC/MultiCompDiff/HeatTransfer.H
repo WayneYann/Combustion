@@ -152,8 +152,11 @@ public:
                         int  last_scalar,
                         int  do_viscreflux);
 
-    void differential_spec_diffusion_update (Real dt,
-					     int  corrector);
+//    void differential_spec_diffusion_update (Real dt,
+//					     int  corrector);
+    
+    void species_diffusion_update (Real dt,
+				   int  corrector);
     
     void adjust_spec_diffusion_update (MultiFab&              S_new,
 				       const MultiFab*        S_old,
