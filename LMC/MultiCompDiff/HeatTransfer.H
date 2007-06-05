@@ -108,6 +108,7 @@ public:
                            int       src_comp, 
                            Real      time);
 
+/*
     virtual void diffuse_scalar_setup (Real        dt,
                                        int         sigma,
                                        int*        rho_flag, 
@@ -115,6 +116,17 @@ public:
                                        MultiFab*&  alpha, 
                                        MultiFab**& betan,
                                        MultiFab**& betanp1);
+*/
+
+/*
+    void temporary (Real        dt,
+		    int         sigma,
+		    int*        rho_flag, 
+		    MultiFab*&  delta_rhs,
+		    MultiFab*&  alpha, 
+		    MultiFab**& betan,
+		    MultiFab**& betanp1);
+*/
 
     void diffuse_rhoh_setup (Real       time,
                              Real       dt,
@@ -155,8 +167,8 @@ public:
 //    void differential_spec_diffusion_update (Real dt,
 //					     int  corrector);
     
-    void species_diffusion_update (Real dt,
-				   int  corrector);
+    void diffusion_step_for_species (Real dt,
+				     int  corrector);
     
     void adjust_spec_diffusion_update (MultiFab&              S_new,
 				       const MultiFab*        S_old,
@@ -170,10 +182,15 @@ public:
 				       const MultiFab*        alpha, 
 				       const MultiFab* const* betanp1);
     
-    virtual void scalar_diffusion_update (Real dt,
-                                          int  first_scalar, 
-                                          int  last_scalar,
-                                          int  do_viscreflux);
+//    virtual void scalar_diffusion_update (Real dt,
+//    void scalar_diffusion_update (Real dt,
+//				  int  first_scalar, 
+//				  int  last_scalar,
+//				  int  do_viscreflux);
+
+    void diffusion_step_for_scalar (Real dt,
+				    int  sigma, 
+				    int  do_viscreflux);
 
     virtual void velocity_diffusion_update (Real dt);
 

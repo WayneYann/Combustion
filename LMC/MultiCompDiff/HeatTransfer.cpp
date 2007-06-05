@@ -332,6 +332,8 @@ HeatTransfer::read_params ()
     pp.query("unity_Le",unity_Le);
     unity_Le = unity_Le ? 1 : 0;
     if (unity_Le)
+	BoxLib::Error("HeatTransfer::read_params: unity_Le is not supported");
+    if (unity_Le)
     {
 	schmidt = prandtl;
         if (ParallelDescriptor::IOProcessor())
@@ -1948,11 +1950,15 @@ HeatTransfer::avgDown ()
     }
 }
 
-#include "scalar_diffusion_update.cpp"
+#include "diffusion_step_for_scalar.cpp"
 
-#include "species_diffusion_update.cpp"
+#include "diffusion_step_for_species.cpp"
 
-#include "diffuse_scalar_setup.cpp"
+// #include "scalar_diffusion_update.cpp"
+
+// #include "diffuse_scalar_setup.cpp"
+
+// #include "temporary.cpp"
 
 void
 HeatTransfer::make_rho_prev_time ()
