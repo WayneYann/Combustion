@@ -2141,16 +2141,6 @@ NavierStokes::scalar_advection_update (Real dt,
                                        int  first_scalar,
                                        int  last_scalar)
 {
-    if (ParallelDescriptor::IOProcessor())
-    {
-	std::cout << "\n"
-		  << "JFG: entering NavierStokes::scalar_advection_update\n"
-		  << dt << " dt\n"
-		  << first_scalar << " first scalar\n"
-		  << last_scalar << " last scalar\n"
-		  << std::endl;
-    }
-
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::scalar_advection_update()");
 
     MultiFab&  S_old    = get_old_data(State_Type);
