@@ -215,6 +215,7 @@ c ::: -----------------------------------------------------------
      &                  zBL, dBL, stBL, hotspot_r, hotspot_z, hotspot_dz,
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
+     &                  InletFact_l,InletFact_r,tInletFact_l,tInletFact_r,
      &                  tau_control, sest, cfix, changeMax_control, h_control,
      &			zbase_control, tbase_control,
      &                  thickFacTR, thickFacCH,
@@ -312,6 +313,11 @@ c     Note: for setup with no coflow, set Ro=Rf+wallth
       Vco_r  = 0.1d0
       tVco_l = 0.0d0
       tVco_r = 0.0d0
+
+      InletFact_l = -1
+      InletFact_r = -1
+      tInletFact_l = -1
+      tInletFact_r = -1
 
       Thot = 2.d3
       rhot = Rf
@@ -2456,7 +2462,7 @@ c
       REAL_T  z, y, x, eta
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
       REAL_T  cs,sg,r,scaler,scalet
-      REAL_T  turbSclX,turbSclY,turbSclZ,turbSclR,turbSclT
+      REAL_T  turbSclX,turbSclY,turbSclZ,turbSclR,turbSclT,factor
 
 #if defined(BL_DO_FLCT)
       integer DIMDEC(uflct)
@@ -2480,6 +2486,18 @@ c
       ihi = min(hi(1),domhi(1))
       jhi = min(hi(2),domhi(2))
       khi = min(hi(3),domhi(3)) 
+
+c     Compute a time-varying factor to apply to the velocity fields
+      factor = 1.d0
+      if ( (time .gt. zero).and.(tInletFact_l.ge.zero) ) then
+         if (time .le. tInletFact_l) then
+            factor = InletFact_l
+         else if (time .ge. tInletFact_r) then
+            factor = InletFact_r
+         else
+            factor = InletFact_l+(time-tInletFact_l)*(InletFact_r-InletFact_l)/(tInletFact_r-tInletFact_l)
+         endif
+      endif
 
 #if defined(BL_DO_FLCT)
       if (forceInflow) then
@@ -2535,6 +2553,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(1,1,2).eq.EXT_DIR) then
@@ -2544,6 +2563,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(1,1,3).eq.EXT_DIR) then
@@ -2553,6 +2573,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
@@ -2576,6 +2597,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(1,2,2).eq.EXT_DIR) then
@@ -2585,6 +2607,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(1,2,3).eq.EXT_DIR) then
@@ -2594,6 +2617,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
@@ -2617,6 +2641,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(2,1,2).eq.EXT_DIR) then
@@ -2626,6 +2651,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(2,1,3).eq.EXT_DIR) then
@@ -2636,6 +2662,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                      endif
 
 #endif
+                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
@@ -2659,6 +2686,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(2,2,2).eq.EXT_DIR) then
@@ -2668,6 +2696,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(2,2,3).eq.EXT_DIR) then
@@ -2677,6 +2706,7 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
                         vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
@@ -2723,6 +2753,7 @@ c                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
                       endif
                      endif
 #endif
+                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(3,1,2).eq.EXT_DIR) then
@@ -2753,6 +2784,7 @@ c                             vel(i,j,k,2) = v + vflct(i,j,1)*(2.7 + eta*4.25)
                        endif
                      endif
 #endif
+                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(3,1,3).eq.EXT_DIR) then
@@ -2777,6 +2809,7 @@ c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
                        endif
                      endif
 #endif
+                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
@@ -2800,6 +2833,7 @@ c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
                         vel(i,j,k,1) = u + uflct(i,j,1)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(3,2,2).eq.EXT_DIR) then
@@ -2809,6 +2843,7 @@ c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
                         vel(i,j,k,2) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(3,2,3).eq.EXT_DIR) then
@@ -2818,6 +2853,7 @@ c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
                         vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
                      endif
 #endif
+                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
