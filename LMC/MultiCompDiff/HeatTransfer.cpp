@@ -1285,9 +1285,7 @@ HeatTransfer::initDataOtherTypes ()
     // Assume always variable diffusivity.
     // Assume always variable viscosity.
     //
-    const int offset   = BL_SPACEDIM + 1;
-    const int num_diff = NUM_STATE-offset;
-    calcDiffusivity(cur_time, dt, iteration, ncycle, offset, num_diff, true);
+    calculate_diffusion_coefficients(cur_time, dt, iteration, ncycle, true);
     //
     // Assume that by now, S_new has "good" data
     //
@@ -6321,7 +6319,7 @@ HeatTransfer::calcViscosity (const Real time,
     compute_vel_visc(time, whichTime == AmrOldTime ? viscn_cc : viscnp1_cc);
 }
 
-#include "calcDiffusivity.cpp"
+#include "calculate_diffusion_coefficients.cpp"
 
 void
 HeatTransfer::getViscosity (MultiFab*  beta[BL_SPACEDIM],

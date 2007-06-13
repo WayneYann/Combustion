@@ -377,19 +377,18 @@ protected:
                                 const int  iteration,
                                 const int  ncycle);
 
-    virtual void calcDiffusivity (const Real time,
-                                  const Real dt,
-                                  const int  iteration,
-                                  const int  ncycle,
-                                  const int  src_comp = 0,
-                                  const int  num_comp = 1);
-
-    void calcDiffusivity (const Real time,
+/*    void calcDiffusivity (const Real time,
                           const Real dt,
                           const int  iteration,
                           const int  ncycle,
                           const int  src_comp,
                           const int  num_comp,
+                          bool       doCalcVisc);*/
+
+    void calculate_diffusion_coefficients (const Real time,
+                          const Real dt,
+                          const int  iteration,
+                          const int  ncycle,
                           bool       doCalcVisc);
 
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
