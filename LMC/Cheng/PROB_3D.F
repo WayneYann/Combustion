@@ -2517,7 +2517,8 @@ c     correct depth.  This requires that time is not further scaled inside the
 c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
          convVel = one
          dt_flct = time - tbase_control
-         t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
+c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
+         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
 
          call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
      $                  bc(1,1,1), domnlo, domnhi)
