@@ -19,6 +19,21 @@
   phi_in = 0.37
   T_in = 298.
 
+  forcing_type           =  8
+  spectrum_type          =  2
+  nmodes                 =  4
+  mode_start             =  1
+  do_mode_division       =  0
+  forcing_epsilon        =  0.1
+  use_rho_in_forcing     =  1
+  turb_scale             =  .5
+  force_scale            =  32.
+  force_scale            =  512000.
+  forcing_time_scale_min =  .32
+  forcing_time_scale_max =  .64
+  blrandseed             = 070180
+
+
  /
  &heattransin
   pamb = 101325.

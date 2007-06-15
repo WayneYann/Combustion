@@ -212,10 +212,10 @@ c ::: -----------------------------------------------------------
       REAL_T  kappa, kappaMax, freqMin, freqMax, freqDiff, pdk
 
       namelist /fortin/ nmodes, nxmodes, nymodes, nzmodes, mode_start,
-     &                  forcing_type, spectrum_type,
+     &                  forcing_type, spectrum_type, time_offset,
      &                  forcing_xlength, forcing_ylength, forcing_zlength,
      &                  forcing_time_scale_min, forcing_time_scale_max, 
-     &                  force_scale, forcing_epsilon,
+     &                  force_scale, forcing_epsilon, blrandseed,
      &                  use_rho_in_forcing, do_mode_division,
      &                  AXY, BXY, CXY, DXY, PXY, QXY, RXY,
      &                  AZX, BZX, CZX, DZX, PZX, QZX, RZX,

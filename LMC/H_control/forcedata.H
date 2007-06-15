@@ -7,8 +7,8 @@
       REAL_T  FPX(0:32,0:32,0:32), FPY(0:32,0:32,0:32), FPZ(0:32,0:32,0:32), FAX(0:32,0:32,0:32), FAY(0:32,0:32,0:32), FAZ(0:32,0:32,0:32)
       integer nmodes, nxmodes, nymodes, nzmodes, mode_start, blrandseed
       integer spectrum_type, forcing_type, use_rho_in_forcing, do_mode_division
-      common /forcedt/ nmodes, nxmodes, nymodes, nzmodes, mode_start, forcing_type,
-     &                 force_scale, forcing_epsilon, use_rho_in_forcing, do_mode_division,
+      common /forcedtint/ blrandseed, nmodes, nxmodes, nymodes, nzmodes, mode_start, forcing_type, use_rho_in_forcing, do_mode_division
+      common /forcedt/ force_scale, forcing_epsilon,
      &                 forcing_xlength, forcing_ylength, forcing_zlength,
      &                 forcing_time_scale_min, forcing_time_scale_max, time_offset,
      &                 AXY, BXY, CXY, DXY, PXY, QXY, RXY,
