@@ -296,3 +296,545 @@ c     Set pointers into state (these must agree with setup for this derived quan
 
       end
 
+
+      subroutine FORT_DERFORCING (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
+     &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
+     $                         level,grid_no)
+      implicit none
+c
+c ::: This routine will computes the forcing term
+c
+
+#include "htdata.H"
+
+      integer    lo(SDIM), hi(SDIM)
+      integer    DIMDEC(e)
+      integer    DIMDEC(dat)
+      integer    domlo(SDIM), domhi(SDIM)
+      integer    nv, ncomp
+      integer    bc(SDIM,2,ncomp)
+      REAL_T     delta(SDIM), xlo(SDIM), time, dt
+      REAL_T     e(DIMV(e),nv)
+      REAL_T     dat(DIMV(dat),ncomp)
+      integer    level, grid_no
+
+#include "probdata.H"
+
+#ifdef DO_LMC_FORCE
+#include "forcedata.H"
+#endif
+
+c
+c     ::::: local variables
+c
+      integer i, j, k, n
+      integer ilo, jlo, klo
+      integer ihi, jhi, khi
+      integer a2, a3, a4, a5
+      REAL_T  x, y, z
+      REAL_T  hx, hy, hz
+      REAL_T  sga, cga
+      REAL_T  f1, f2, f3
+      REAL_T  twicePi
+      REAL_T  force_time
+      REAL_T  kxd, kyd, kzd
+      REAL_T  xt, yt, zt
+      REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
+      REAL_T  rho, u, v, w
+      integer kx, ky, kz, mode_count, xstep, ystep, zstep
+      integer isioproc
+      integer nXvel, nYvel, nZvel, nRho, nTrac
+
+      hx = delta(1)
+      hy = delta(2)
+      hz = delta(3)
+
+      ilo = lo(1)
+      jlo = lo(2)
+      klo = lo(3)
+      ihi = hi(1)
+      jhi = hi(2)
+      khi = hi(3)
+
+#ifdef DO_LMC_FORCE
+c     Homogeneous Isotropic Turbulence
+      twicePi=two*Pi
+      
+c     Adjust z offset for probtype 15
+      if (time_offset.gt.(-half)) then
+         force_time = time + time_offset
+      else
+         force_time = time
+      endif
+      
+      Lx = domnhi(1)-domnlo(1)
+      Ly = domnhi(2)-domnlo(2)
+      Lz = domnhi(3)-domnlo(3)
+      
+      Lmin = min(Lx,Ly,Lz)
+      kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
+      nxmodes = nmodes*int(0.5+Lx/Lmin)
+      nymodes = nmodes*int(0.5+Ly/Lmin)
+      nzmodes = nmodes*int(0.5+Lz/Lmin)
+      
+      xstep = int(Lx/Lmin+0.5)
+      ystep = int(Ly/Lmin+0.5)
+      zstep = int(Lz/Lmin+0.5)
+      
+      do k = klo, khi
+         z = xlo(3) + hz*(float(k-klo) + half)
+         do j = jlo, jhi
+            y = xlo(2) + hy*(float(j-jlo) + half)
+            do i = ilo, ihi
+               x = xlo(1) + hx*(float(i-ilo) + half)
+               rho = dat(i,j,k,1)
+               u   = dat(i,j,k,2)
+               v   = dat(i,j,k,3)
+               w   = dat(i,j,k,4)
+               f1 = zero
+               f2 = zero
+               f3 = zero
+               do kz = mode_start*zstep, nzmodes, zstep
+                  kzd = dfloat(kz)
+                  do ky = mode_start*ystep, nymodes, ystep
+                     kyd = dfloat(ky)
+                     do kx = mode_start*xstep, nxmodes, xstep
+                        kxd = dfloat(kx)
+                        kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
+                        if (kappa.le.kappaMax) then
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
+                           f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                        endif
+                     enddo
+                  enddo
+               enddo
+               do kz = mode_start, zstep - 1
+                  kzd = dfloat(kz)
+                  do ky = mode_start, nymodes
+                     kyd = dfloat(ky)
+                     do kx = mode_start, nxmodes
+                        kxd = dfloat(kx)
+                        kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
+                        if (kappa.le.kappaMax) then
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
+                           f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                        endif
+                     enddo
+                  enddo
+               enddo
+               if (use_rho_in_forcing.eq.1) then
+                  e(i,j,k,1) = f1*rho*u
+                  e(i,j,k,2) = f2*rho*v
+                  e(i,j,k,3) = f3*rho*w
+               else
+                  e(i,j,k,1) = f1*u
+                  e(i,j,k,2) = f2*v
+                  e(i,j,k,3) = f3*w
+               endif
+            enddo
+         enddo
+      enddo
+#endif
+      end
+
+
+      subroutine FORT_DERFORCEX (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
+     &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
+     $                         level,grid_no)
+      implicit none
+c
+c ::: This routine will computes the forcing term
+c
+
+#include "htdata.H"
+
+      integer    lo(SDIM), hi(SDIM)
+      integer    DIMDEC(e)
+      integer    DIMDEC(dat)
+      integer    domlo(SDIM), domhi(SDIM)
+      integer    nv, ncomp
+      integer    bc(SDIM,2,ncomp)
+      REAL_T     delta(SDIM), xlo(SDIM), time, dt
+      REAL_T     e(DIMV(e),nv)
+      REAL_T     dat(DIMV(dat),ncomp)
+      integer    level, grid_no
+
+#include "probdata.H"
+
+#ifdef DO_LMC_FORCE
+#include "forcedata.H"
+#endif
+
+c
+c     ::::: local variables
+c
+      integer i, j, k, n
+      integer ilo, jlo, klo
+      integer ihi, jhi, khi
+      integer a2, a3, a4, a5
+      REAL_T  x, y, z
+      REAL_T  hx, hy, hz
+      REAL_T  sga, cga
+      REAL_T  f1, f2, f3
+      REAL_T  twicePi
+      REAL_T  force_time
+      REAL_T  kxd, kyd, kzd
+      REAL_T  xt, yt, zt
+      REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
+      REAL_T  rho
+      integer kx, ky, kz, mode_count, xstep, ystep, zstep
+      integer isioproc
+      integer nXvel, nYvel, nZvel, nRho, nTrac
+
+      hx = delta(1)
+      hy = delta(2)
+      hz = delta(3)
+
+      ilo = lo(1)
+      jlo = lo(2)
+      klo = lo(3)
+      ihi = hi(1)
+      jhi = hi(2)
+      khi = hi(3)
+
+#ifdef DO_LMC_FORCE
+c     Homogeneous Isotropic Turbulence
+      twicePi=two*Pi
+      
+c     Adjust z offset for probtype 15
+      if (time_offset.gt.(-half)) then
+         force_time = time + time_offset
+      else
+         force_time = time
+      endif
+      
+      Lx = domnhi(1)-domnlo(1)
+      Ly = domnhi(2)-domnlo(2)
+      Lz = domnhi(3)-domnlo(3)
+      
+      Lmin = min(Lx,Ly,Lz)
+      kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
+      nxmodes = nmodes*int(0.5+Lx/Lmin)
+      nymodes = nmodes*int(0.5+Ly/Lmin)
+      nzmodes = nmodes*int(0.5+Lz/Lmin)
+      
+      xstep = int(Lx/Lmin+0.5)
+      ystep = int(Ly/Lmin+0.5)
+      zstep = int(Lz/Lmin+0.5)
+      
+      do k = klo, khi
+         z = xlo(3) + hz*(float(k-klo) + half)
+         do j = jlo, jhi
+            y = xlo(2) + hy*(float(j-jlo) + half)
+            do i = ilo, ihi
+               x = xlo(1) + hx*(float(i-ilo) + half)
+               rho = dat(i,j,k,1)
+               f1 = zero
+               f2 = zero
+               f3 = zero
+               do kz = mode_start*zstep, nzmodes, zstep
+                  kzd = dfloat(kz)
+                  do ky = mode_start*ystep, nymodes, ystep
+                     kyd = dfloat(ky)
+                     do kx = mode_start*xstep, nxmodes, xstep
+                        kxd = dfloat(kx)
+                        kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
+                        if (kappa.le.kappaMax) then
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
+                           f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                        endif
+                     enddo
+                  enddo
+               enddo
+               do kz = mode_start, zstep - 1
+                  kzd = dfloat(kz)
+                  do ky = mode_start, nymodes
+                     kyd = dfloat(ky)
+                     do kx = mode_start, nxmodes
+                        kxd = dfloat(kx)
+                        kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
+                        if (kappa.le.kappaMax) then
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
+                           f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                        endif
+                     enddo
+                  enddo
+               enddo
+               if (use_rho_in_forcing.eq.1) then
+                  e(i,j,k,1) = f1*rho
+               else
+                  e(i,j,k,1) = f1
+               endif
+            enddo
+         enddo
+      enddo
+#endif
+      end
+
+
+      subroutine FORT_DERFORCEY (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
+     &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
+     $                         level,grid_no)
+      implicit none
+c
+c ::: This routine will computes the forcing term
+c
+
+#include "htdata.H"
+
+      integer    lo(SDIM), hi(SDIM)
+      integer    DIMDEC(e)
+      integer    DIMDEC(dat)
+      integer    domlo(SDIM), domhi(SDIM)
+      integer    nv, ncomp
+      integer    bc(SDIM,2,ncomp)
+      REAL_T     delta(SDIM), xlo(SDIM), time, dt
+      REAL_T     e(DIMV(e),nv)
+      REAL_T     dat(DIMV(dat),ncomp)
+      integer    level, grid_no
+
+#include "probdata.H"
+
+#ifdef DO_LMC_FORCE
+#include "forcedata.H"
+#endif
+
+c
+c     ::::: local variables
+c
+      integer i, j, k, n
+      integer ilo, jlo, klo
+      integer ihi, jhi, khi
+      integer a2, a3, a4, a5
+      REAL_T  x, y, z
+      REAL_T  hx, hy, hz
+      REAL_T  sga, cga
+      REAL_T  f1, f2, f3
+      REAL_T  twicePi
+      REAL_T  force_time
+      REAL_T  kxd, kyd, kzd
+      REAL_T  xt, yt, zt
+      REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
+      REAL_T  rho
+      integer kx, ky, kz, mode_count, xstep, ystep, zstep
+      integer isioproc
+      integer nXvel, nYvel, nZvel, nRho, nTrac
+
+      hx = delta(1)
+      hy = delta(2)
+      hz = delta(3)
+
+      ilo = lo(1)
+      jlo = lo(2)
+      klo = lo(3)
+      ihi = hi(1)
+      jhi = hi(2)
+      khi = hi(3)
+
+#ifdef DO_LMC_FORCE
+c     Homogeneous Isotropic Turbulence
+      twicePi=two*Pi
+      
+c     Adjust z offset for probtype 15
+      if (time_offset.gt.(-half)) then
+         force_time = time + time_offset
+      else
+         force_time = time
+      endif
+      
+      Lx = domnhi(1)-domnlo(1)
+      Ly = domnhi(2)-domnlo(2)
+      Lz = domnhi(3)-domnlo(3)
+      
+      Lmin = min(Lx,Ly,Lz)
+      kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
+      nxmodes = nmodes*int(0.5+Lx/Lmin)
+      nymodes = nmodes*int(0.5+Ly/Lmin)
+      nzmodes = nmodes*int(0.5+Lz/Lmin)
+      
+      xstep = int(Lx/Lmin+0.5)
+      ystep = int(Ly/Lmin+0.5)
+      zstep = int(Lz/Lmin+0.5)
+      
+      do k = klo, khi
+         z = xlo(3) + hz*(float(k-klo) + half)
+         do j = jlo, jhi
+            y = xlo(2) + hy*(float(j-jlo) + half)
+            do i = ilo, ihi
+               x = xlo(1) + hx*(float(i-ilo) + half)
+               rho = dat(i,j,k,1)
+               f2 = zero
+               do kz = mode_start*zstep, nzmodes, zstep
+                  kzd = dfloat(kz)
+                  do ky = mode_start*ystep, nymodes, ystep
+                     kyd = dfloat(ky)
+                     do kx = mode_start*xstep, nxmodes, xstep
+                        kxd = dfloat(kx)
+                        kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
+                        if (kappa.le.kappaMax) then
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
+                           f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                        endif
+                     enddo
+                  enddo
+               enddo
+               do kz = mode_start, zstep - 1
+                  kzd = dfloat(kz)
+                  do ky = mode_start, nymodes
+                     kyd = dfloat(ky)
+                     do kx = mode_start, nxmodes
+                        kxd = dfloat(kx)
+                        kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
+                        if (kappa.le.kappaMax) then
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
+                           f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                        endif
+                     enddo
+                  enddo
+               enddo
+               if (use_rho_in_forcing.eq.1) then
+                  e(i,j,k,1) = f2*rho
+               else
+                  e(i,j,k,1) = f2
+               endif
+            enddo
+         enddo
+      enddo
+#endif
+      end
+
+
+      subroutine FORT_DERFORCEZ (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
+     &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
+     $                         level,grid_no)
+      implicit none
+c
+c ::: This routine will computes the forcing term
+c
+
+#include "htdata.H"
+
+      integer    lo(SDIM), hi(SDIM)
+      integer    DIMDEC(e)
+      integer    DIMDEC(dat)
+      integer    domlo(SDIM), domhi(SDIM)
+      integer    nv, ncomp
+      integer    bc(SDIM,2,ncomp)
+      REAL_T     delta(SDIM), xlo(SDIM), time, dt
+      REAL_T     e(DIMV(e),nv)
+      REAL_T     dat(DIMV(dat),ncomp)
+      integer    level, grid_no
+
+#include "probdata.H"
+
+#ifdef DO_LMC_FORCE
+#include "forcedata.H"
+#endif
+
+c
+c     ::::: local variables
+c
+      integer i, j, k, n
+      integer ilo, jlo, klo
+      integer ihi, jhi, khi
+      integer a2, a3, a4, a5
+      REAL_T  x, y, z
+      REAL_T  hx, hy, hz
+      REAL_T  sga, cga
+      REAL_T  f1, f2, f3
+      REAL_T  twicePi
+      REAL_T  force_time
+      REAL_T  kxd, kyd, kzd
+      REAL_T  xt, yt, zt
+      REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
+      REAL_T  rho
+      integer kx, ky, kz, mode_count, xstep, ystep, zstep
+      integer isioproc
+      integer nXvel, nYvel, nZvel, nRho, nTrac
+
+      hx = delta(1)
+      hy = delta(2)
+      hz = delta(3)
+
+      ilo = lo(1)
+      jlo = lo(2)
+      klo = lo(3)
+      ihi = hi(1)
+      jhi = hi(2)
+      khi = hi(3)
+
+#ifdef DO_LMC_FORCE
+c     Homogeneous Isotropic Turbulence
+      twicePi=two*Pi
+      
+c     Adjust z offset for probtype 15
+      if (time_offset.gt.(-half)) then
+         force_time = time + time_offset
+      else
+         force_time = time
+      endif
+      
+      Lx = domnhi(1)-domnlo(1)
+      Ly = domnhi(2)-domnlo(2)
+      Lz = domnhi(3)-domnlo(3)
+      
+      Lmin = min(Lx,Ly,Lz)
+      kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
+      nxmodes = nmodes*int(0.5+Lx/Lmin)
+      nymodes = nmodes*int(0.5+Ly/Lmin)
+      nzmodes = nmodes*int(0.5+Lz/Lmin)
+      
+      xstep = int(Lx/Lmin+0.5)
+      ystep = int(Ly/Lmin+0.5)
+      zstep = int(Lz/Lmin+0.5)
+      
+      do k = klo, khi
+         z = xlo(3) + hz*(float(k-klo) + half)
+         do j = jlo, jhi
+            y = xlo(2) + hy*(float(j-jlo) + half)
+            do i = ilo, ihi
+               x = xlo(1) + hx*(float(i-ilo) + half)
+               rho = dat(i,j,k,1)
+               f3 = zero
+               do kz = mode_start*zstep, nzmodes, zstep
+                  kzd = dfloat(kz)
+                  do ky = mode_start*ystep, nymodes, ystep
+                     kyd = dfloat(ky)
+                     do kx = mode_start*xstep, nxmodes, xstep
+                        kxd = dfloat(kx)
+                        kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
+                        if (kappa.le.kappaMax) then
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
+                           f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                        endif
+                     enddo
+                  enddo
+               enddo
+               do kz = mode_start, zstep - 1
+                  kzd = dfloat(kz)
+                  do ky = mode_start, nymodes
+                     kyd = dfloat(ky)
+                     do kx = mode_start, nxmodes
+                        kxd = dfloat(kx)
+                        kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
+                        if (kappa.le.kappaMax) then
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
+                           f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                        endif
+                     enddo
+                  enddo
+               enddo
+               if (use_rho_in_forcing.eq.1) then
+                  e(i,j,k,1) = f3*rho
+               else
+                  e(i,j,k,1) = f3
+               endif
+            enddo
+         enddo
+      enddo
+#endif
+      end

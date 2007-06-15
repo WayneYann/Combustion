@@ -26,7 +26,8 @@
  /
   &flctin
   flct_file = "Turb_n0575_strong.bin"
-  forceInflow = .TRUE.
+  flct_file = ""
+  forceInflow = .FALSE.
   nCompInflow = 3
  /
   &control

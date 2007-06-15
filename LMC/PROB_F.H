@@ -1,5 +1,5 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.6 2005-07-29 15:45:56 lijewski Exp $
+#define _PROB_F_H_ $Id: PROB_F.H,v 1.7 2007-06-15 23:27:46 aaspden Exp $
 
 #include <PROB_NS_F.H>
 
@@ -23,6 +23,10 @@
 #    define FORT_ZEROVISC               zerovisc
 #    define FORT_DERCONCENTRATION       derconcentration
 #    define FORT_ACTIVECONTROL          activecontrol
+#    define FORT_DERFORCING             drforcing
+#    define FORT_DERFORCEX              drforcex
+#    define FORT_DERFORCEY              drforcey
+#    define FORT_DERFORCEZ              drforcez
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_INITDATANEWMECH        INITDATANEWMECH
@@ -44,6 +48,10 @@
 #    define FORT_ZEROVISC               ZEROVISC
 #    define FORT_DERCONCENTRATION       DERCONCENTRATION
 #    define FORT_ACTIVECONTROL          ACTIVECONTROL
+#    define FORT_DERFORCING             DRFORCING
+#    define FORT_DERFORCEX              DRFORCEX
+#    define FORT_DERFORCEY              DRFORCEY
+#    define FORT_DERFORCEZ              DRFORCEZ
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_INITDATANEWMECH        initdatanewmech
 #    define FORT_SET_PROB_SPEC          setpspec
@@ -63,6 +71,10 @@
 #    define FORT_ZEROVISC               zerovisc
 #    define FORT_DERCONCENTRATION       derconcentration
 #    define FORT_ACTIVECONTROL          activecontrol
+#    define FORT_DERFORCING             drforcing
+#    define FORT_DERFORCEX              drforcex
+#    define FORT_DERFORCEY              drforcey
+#    define FORT_DERFORCEZ              drforcez
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_INITDATANEWMECH        initdatanewmech_
 #    define FORT_SET_PROB_SPEC          setpspec_
@@ -83,6 +95,10 @@
 #    define FORT_ZEROVISC               zerovisc_
 #    define FORT_DERCONCENTRATION       derconcentration_
 #    define FORT_ACTIVECONTROL          activecontrol_
+#    define FORT_DERFORCING             drforcing_
+#    define FORT_DERFORCEX              drforcex_
+#    define FORT_DERFORCEY              drforcey_
+#    define FORT_DERFORCEZ              drforcez_
 #  endif
 
   extern "C" {
@@ -222,6 +238,47 @@
                          const Real* dx, const Real* problo,
                          const int* bc, const int* idir, const int* isrz,
                          const int* state_comp, const int* ncomp);
+
+     void FORT_DERFORCING
+                          (Real* data, ARLIM_P(dat_lo), ARLIM_P(dat_hi),
+                           const int* nvar, const Real* compdat,
+			   ARLIM_P(clo), ARLIM_P(chi), const int* ncomp,
+			   const int* lo, const int* hi,
+			   const int* domain_lo, const int* domain_hi,
+			   const Real* delta, const Real* xlo,
+			   const Real* time,  const Real* dt, const int* bcrec, 
+                           const int* level, const int* grid_no) ;
+
+     void FORT_DERFORCEX
+                          (Real* data, ARLIM_P(dat_lo), ARLIM_P(dat_hi),
+                           const int* nvar, const Real* compdat,
+			   ARLIM_P(clo), ARLIM_P(chi), const int* ncomp,
+			   const int* lo, const int* hi,
+			   const int* domain_lo, const int* domain_hi,
+			   const Real* delta, const Real* xlo,
+			   const Real* time,  const Real* dt, const int* bcrec, 
+                           const int* level, const int* grid_no) ;
+
+     void FORT_DERFORCEY
+                          (Real* data, ARLIM_P(dat_lo), ARLIM_P(dat_hi),
+                           const int* nvar, const Real* compdat,
+			   ARLIM_P(clo), ARLIM_P(chi), const int* ncomp,
+			   const int* lo, const int* hi,
+			   const int* domain_lo, const int* domain_hi,
+			   const Real* delta, const Real* xlo,
+			   const Real* time,  const Real* dt, const int* bcrec, 
+                           const int* level, const int* grid_no) ;
+
+     void FORT_DERFORCEZ
+                          (Real* data, ARLIM_P(dat_lo), ARLIM_P(dat_hi),
+                           const int* nvar, const Real* compdat,
+			   ARLIM_P(clo), ARLIM_P(chi), const int* ncomp,
+			   const int* lo, const int* hi,
+			   const int* domain_lo, const int* domain_hi,
+			   const Real* delta, const Real* xlo,
+			   const Real* time,  const Real* dt, const int* bcrec, 
+                           const int* level, const int* grid_no) ;
+
   }
 #endif
 

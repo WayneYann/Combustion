@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.9 2007-04-18 00:08:46 marc Exp $
+// $Id: HT_setup.cpp,v 1.10 2007-06-15 23:27:46 aaspden Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -833,6 +833,32 @@ HeatTransfer::variableSetUp ()
     //
     derive_lst.add("mag_vort",IndexType::TheCellType(),1,FORT_DERMGVORT,grow_box_by_one);
     derive_lst.addComponent("mag_vort",desc_lst,State_Type,Xvel,BL_SPACEDIM);
+
+    //
+    // forcing - used to calculate the rate of injection of energy
+    //
+    derive_lst.add("forcing",IndexType::TheCellType(),1,FORT_DERFORCING,the_same_box);
+    derive_lst.addComponent("forcing",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("forcing",desc_lst,State_Type,Xvel,BL_SPACEDIM);
+    //
+    // forcex - used to put the forcing term in the plot file
+    //
+    derive_lst.add("forcex",IndexType::TheCellType(),1,FORT_DERFORCEX,the_same_box);
+    derive_lst.addComponent("forcex",desc_lst,State_Type,Density,1);
+    //    derive_lst.addComponent("forcex",desc_lst,State_Type,Xvel,BL_SPACEDIM);
+    //
+    // forcey - used to put the forcing term in the plot file
+    //
+    derive_lst.add("forcey",IndexType::TheCellType(),1,FORT_DERFORCEY,the_same_box);
+    derive_lst.addComponent("forcey",desc_lst,State_Type,Density,1);
+    //    derive_lst.addComponent("forcey",desc_lst,State_Type,Xvel,BL_SPACEDIM);
+    //
+    // forcez - used to put the forcing term in the plot file
+    //
+    derive_lst.add("forcez",IndexType::TheCellType(),1,FORT_DERFORCEZ,the_same_box);
+    derive_lst.addComponent("forcez",desc_lst,State_Type,Density,1);
+    //    derive_lst.addComponent("forcez",desc_lst,State_Type,Xvel,BL_SPACEDIM);
+
     //
     // **************  DEFINE ERROR ESTIMATION QUANTITIES  *************
     //

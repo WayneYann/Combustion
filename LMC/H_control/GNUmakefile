@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.8 2006-07-13 20:46:19 sepp Exp $
+# $Id: GNUmakefile,v 1.9 2007-06-15 23:27:46 aaspden Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -11,7 +11,6 @@ DEBUG	          = FALSE
 PROFILE           = TRUE
 PROFILE           = FALSE
 DIM    	          = 3
-DIM    	          = 2
 PRVERSION         = v7
 FCOMP             = Intel
 COMP              = Intel
@@ -21,15 +20,20 @@ EBASE             = amr
 USE_HGPROJ_SERIAL = FALSE
 HGDEBUG           = TRUE
 HGDEBUG           = FALSE
-USE_FLCTS         = FALSE
 USE_FLCTS         = TRUE
-USE_MPI           = TRUE
+USE_MPI           = FALSE
+
+# This allows GetForce to call a Fortran routine
+DEFINES += -DGENGETFORCE
+
+# This is for the time-dependent turbulence forcing term
+DEFINES += -DDO_LMC_FORCE
 
 #NEEDS_FLUSH_F := TRUE
 #
 # Turn this on to restart from a plotfile.
 #
-USE_NEWMECH = TRUE
+USE_NEWMECH = FALSE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
@@ -55,8 +59,8 @@ REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=CH4-2STEP
-REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI30HNO
+REACTION_MECHANISM=CHEMH
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  

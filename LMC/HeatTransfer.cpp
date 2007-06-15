@@ -5376,7 +5376,11 @@ HeatTransfer::compute_edge_states (Real               dt,
         //
         if (use_forces_in_trans || (do_mom_diff == 1))
         {
-            NavierStokes::getForce(tvelforces,i,nGrowF,Xvel,BL_SPACEDIM,Rho);
+            NavierStokes::getForce(tvelforces,i,nGrowF,Xvel,BL_SPACEDIM,
+#ifdef GENGETFORCE
+				   prev_time,
+#endif		 
+				   Rho);
             godunov->Sum_tf_gp_visc(tvelforces,visc_terms[Xvel][i],Gp[i],Rho);
         }
         //
@@ -5443,7 +5447,11 @@ HeatTransfer::compute_edge_states (Real               dt,
             spec.resize(S_fpi().box(),nspecies);
             spec.copy(S_fpi(),first_spec,0,nspecies);
 
-            NavierStokes::getForce(tforces,i,nGrowF,first_spec,nspecies,Rho);
+            NavierStokes::getForce(tforces,i,nGrowF,first_spec,nspecies,
+#ifdef GENGETFORCE
+				   prev_time,
+#endif		 
+				   Rho);
 
             for (int comp = 0 ; comp < nspecies ; comp++)
             {
@@ -5535,7 +5543,12 @@ HeatTransfer::compute_edge_states (Real               dt,
             state.resize(S_fpi().box(),1);
             state.copy(S_fpi(),state_ind,0,1);
 
-            NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,Rho);
+            NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,
+#ifdef GENGETFORCE
+				   prev_time,
+#endif		 
+
+				   Rho);
             Array<int> bc = getBCArray(State_Type,i,state_ind,1);
 
             AdvectionScheme adv_scheme = FPU;
@@ -5619,7 +5632,11 @@ HeatTransfer::compute_edge_states (Real               dt,
                 //
                 state.copy(S_fpi(),state_ind,0,1);
                 const int comp = 0;
-                NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,Rho);
+                NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,
+#ifdef GENGETFORCE
+				       prev_time,
+#endif		 
+				       Rho);
                 godunov->Sum_tf_divu_visc(state, tforces, comp, 1,
                                           visc_terms[state_ind][i], 0,
                                           (*divu_fp)[i], Rho,

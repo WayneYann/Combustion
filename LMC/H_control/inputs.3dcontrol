@@ -55,10 +55,11 @@ proj.v = 1
 ns.do_group_bndry_fills = 1
 
 mg.cg_solver=1
-cg.cg_solver=1
+cg.cg_solver=2
 
-amr.n_cell    = 64 64 128
 amr.n_cell    = 128 128 384
+amr.n_cell    = 64 64 128
+amr.n_cell    = 32 32 64
 
 amr.v=1
 amr.max_level =  2            # maximum level number allowed
