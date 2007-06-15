@@ -2,9 +2,14 @@
 DistributionMapping.verbose=1
 DistributionMapping.do_not_minimize_comm_costs=0
 
+#ht.velocity_plotfile=vel_plt1140
+
+#amr.plotfile_on_restart=1
+#amr.regrid_on_restart=1
+
 ns.do_active_control = 1
 
-max_step  =  6000000
+max_step  =  100000
 stop_time = 4.00
 
 ns.do_fillPatchUMAC=1
@@ -23,7 +28,7 @@ ht.plot_molefrac=1
 ht.plot_ydot=0
 ns.use_chemeq2=0
 ht.plot_auxDiags = 1
-amr.derive_plot_vars=mag_vort rhoRT
+amr.derive_plot_vars=rhoRT mag_vort
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 
@@ -54,10 +59,9 @@ cg.cg_solver=1
 
 amr.n_cell    = 64 64 128
 amr.n_cell    = 128 128 384
-amr.n_cell    = 32 32 64
 
 amr.v=1
-amr.max_level =  0            # maximum level number allowed
+amr.max_level =  2            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 1 1 1 2 # number of buffer cells in error est
@@ -65,7 +69,7 @@ amr.grid_eff        = 0.9     # what constitutes an efficient grid
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.check_file      = chk     # root name of checkpoint file
-amr.check_int       = 1     # number of timesteps between checkpoints
+amr.check_int       = 1       # number of timesteps between checkpoints
 amr.plot_file       = plt
 amr.plot_int        = 1
 amr.grid_log        = grdlog  # name of grid logging file
@@ -110,7 +114,7 @@ ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
 
-ns.tranfile        = ../tran.asc.chem-H
+ns.tranfile        = tran.asc.chem-H
 ns.fuelName        = H2
 ns.oxidizerName    = O2
 ns.flameTracName   = H

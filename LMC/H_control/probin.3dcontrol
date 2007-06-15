@@ -6,13 +6,16 @@
 
   zstandoff = -0.002884
   zstandoff = .014888
+  max_trac_lev = 1
   max_trac_lev = 3
+  max_trac_lev = 2
   flametracval = 1.e-6
   max_temp_lev = 1
   temperr = 500
   tempgrad = 300.0
-  max_vort_lev = 2
+  max_vort_lev = 1
   vorterr = 600.
+  vorterr = 1000.
   phi_in = 0.37
   T_in = 298.
 
@@ -22,14 +25,17 @@
   dpdt_factor = .3
  /
   &flctin
-  flct_file = "Turb_1000_r"
+  flct_file = "Turb_n0575_strong.bin"
   forceInflow = .TRUE.
   nCompInflow = 3
  /
   &control
-  tau_control = 2.e-3
+  tau_control = 3.e-4
   sest = .45
-   h_control = .02
+  sest = .65
+  h_control = .02
   changeMax_control = .05
   zbase_control = .0451199
+  zbase_control = .04357289
+  zbase_control = .03604954
  /
