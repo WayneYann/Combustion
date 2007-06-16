@@ -54,8 +54,8 @@ mac.v = 1
 proj.v = 1
 ns.do_group_bndry_fills = 1
 
-mg.cg_solver=1
-cg.cg_solver=2
+mg.cg_solver=2
+cg.cg_solver=1
 
 amr.n_cell    = 128 128 384
 amr.n_cell    = 64 64 128
