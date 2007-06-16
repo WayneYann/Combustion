@@ -2,10 +2,12 @@
   probtype = 3
 
   V_in = 0.45
+  V_in = 0.0
   turb_scale=1.
 
   zstandoff = -0.002884
   zstandoff = .014888
+  zstandoff = .094888
   max_trac_lev = 1
   max_trac_lev = 3
   max_trac_lev = 2
