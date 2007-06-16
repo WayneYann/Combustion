@@ -1252,7 +1252,7 @@ c         if (flct_file.ne.'') then
                   y1 = (z-half*delta(3)-zstandoff+zpert)*100.d0
                   y2 = (z+half*delta(3)-zstandoff+zpert)*100.d0
 
-                  call pmf(y1,y2,pmf_vals,n)
+                  call pmf_H(y1,y2,pmf_vals,n)
 
                   if (n.ne.Nspec+3) then
                      call bl_abort('INITDATA: n .ne. Nspec+3')
