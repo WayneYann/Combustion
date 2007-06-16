@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.9 2007-06-15 23:27:46 aaspden Exp $
+# $Id: GNUmakefile,v 1.10 2007-06-16 03:31:39 jbb Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -21,7 +21,7 @@ USE_HGPROJ_SERIAL = FALSE
 HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = TRUE
-USE_MPI           = FALSE
+USE_MPI           = TRUE
 
 # This allows GetForce to call a Fortran routine
 DEFINES += -DGENGETFORCE
@@ -33,11 +33,12 @@ DEFINES += -DDO_LMC_FORCE
 #
 # Turn this on to restart from a plotfile.
 #
+#USE_NEWMECH = TRUE
 USE_NEWMECH = FALSE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
-#USE_VELOCITY = TRUE
+USE_VELOCITY = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #

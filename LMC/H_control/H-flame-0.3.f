@@ -70,7 +70,7 @@ c                             -CODE-
 c     FIRST LINE:                                 
       subroutine pmf_H     (xlo,xhi,y_vector,Niny)
 c                                                 
-c     declare local variables                     
+
 c                                                 
       integer N,M,i,j,k,lo_loside,lo_hiside       
       integer hi_loside,hi_hiside,Niny            
