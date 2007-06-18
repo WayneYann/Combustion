@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.10 2007-06-16 03:31:39 jbb Exp $
+# $Id: GNUmakefile,v 1.11 2007-06-18 16:36:06 jbb Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -193,5 +193,15 @@ touch_hg:
 	touch $(StencilSpecificProjFiles)
 
 .PHONY: libs cleanlibs nodata touch_hg
+
+o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o:
+	ifort -module o/3d.Linux.Intel.Intel.PROF.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o
+
+o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o:
+	ifort -module o/3d.Linux.Intel.Intel.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o
+
+o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o:
+	ifort -module o/3d.Linux.Intel.Intel.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o
+
 
 include $(TOP)/mk/Make.rules
