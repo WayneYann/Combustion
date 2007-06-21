@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.5 2006-11-04 01:39:12 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.6 2007-06-21 15:27:40 sepp Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -551,7 +551,8 @@ c           We use the latter because it is more robust
             write(6,*)'ERROR: FORT_CHECK_DIVU_DT : i,j,dt>dtcell = ',
      &            i,j,dt,dtcell
           else if (dt.gt.dtcell*dtfactor) then
-            write(6,*)'WARNING: FORT_CHECK_DIVU_DT : i,j,dt>dtcell*dtfactor = ',
+            write(6,*)'WARNING: ',
+     &            'FORT_CHECK_DIVU_DT : i,j,dt>dtcell*dtfactor = ',
      &            i,j,dt,dtcell*dtfactor
           endif
         enddo
