@@ -108,7 +108,6 @@ public:
                            int       src_comp, 
                            Real      time);
 
-/*
     virtual void diffuse_scalar_setup (Real        dt,
                                        int         sigma,
                                        int*        rho_flag, 
@@ -116,17 +115,6 @@ public:
                                        MultiFab*&  alpha, 
                                        MultiFab**& betan,
                                        MultiFab**& betanp1);
-*/
-
-/*
-    void temporary (Real        dt,
-		    int         sigma,
-		    int*        rho_flag, 
-		    MultiFab*&  delta_rhs,
-		    MultiFab*&  alpha, 
-		    MultiFab**& betan,
-		    MultiFab**& betanp1);
-*/
 
     void diffuse_rhoh_setup (Real       time,
                              Real       dt,
@@ -159,16 +147,13 @@ public:
 			   int  last_scalar,
 			   bool do_adv_reflux);
     
-//    void scalar_update (Real dt,
-//                        int  first_scalar,
-//                        int  last_scalar,
-//                        int  do_viscreflux);
+    void scalar_update (Real dt,
+                        int  first_scalar,
+                        int  last_scalar,
+                        int  do_viscreflux);
 
-//    void differential_spec_diffusion_update (Real dt,
-//					     int  corrector);
-    
-    void diffusion_step_for_species (Real dt,
-				     int  corrector);
+    void differential_spec_diffusion_update (Real dt,
+					     int  corrector);
     
     void adjust_spec_diffusion_update (MultiFab&              S_new,
 				       const MultiFab*        S_old,
@@ -182,15 +167,10 @@ public:
 				       const MultiFab*        alpha, 
 				       const MultiFab* const* betanp1);
     
-//    virtual void scalar_diffusion_update (Real dt,
-//    void scalar_diffusion_update (Real dt,
-//				  int  first_scalar, 
-//				  int  last_scalar,
-//				  int  do_viscreflux);
-
-    void diffusion_step_for_scalar (Real dt,
-				    int  sigma, 
-				    int  do_viscreflux);
+    virtual void scalar_diffusion_update (Real dt,
+                                          int  first_scalar, 
+                                          int  last_scalar,
+                                          int  do_viscreflux);
 
     virtual void velocity_diffusion_update (Real dt);
 
@@ -289,8 +269,6 @@ protected:
 
     virtual void temperature_stats (MultiFab& S);
 
-    virtual void temperature_stat (MultiFab& S);
-
     void compute_rhohmix (Real       time,
                           MultiFab& rhohmix);
 
@@ -323,12 +301,12 @@ protected:
                         int       strtcomp,
                         int       minzero = 0);
 
-    // void rhoh_update (Real time,
-    //                  Real dt,
-    //                  int  corrector);
+    void rhoh_update (Real time,
+                      Real dt,
+                      int  corrector);
 
-    // void tracer_update (Real dt,
-    //                    int  corrector);
+    void tracer_update (Real dt,
+                        int  corrector);
 
     void temp_update (Real dt,
                       int  corrector);
@@ -377,18 +355,19 @@ protected:
                                 const int  iteration,
                                 const int  ncycle);
 
-/*    void calcDiffusivity (const Real time,
+    virtual void calcDiffusivity (const Real time,
+                                  const Real dt,
+                                  const int  iteration,
+                                  const int  ncycle,
+                                  const int  src_comp = 0,
+                                  const int  num_comp = 1);
+
+    void calcDiffusivity (const Real time,
                           const Real dt,
                           const int  iteration,
                           const int  ncycle,
                           const int  src_comp,
                           const int  num_comp,
-                          bool       doCalcVisc);*/
-
-    void calculate_diffusion_coefficients (const Real time,
-                          const Real dt,
-                          const int  iteration,
-                          const int  ncycle,
                           bool       doCalcVisc);
 
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
@@ -544,6 +523,11 @@ protected:
 
     void mcdd_diffuse_sync(Real dt);
     
+    void rk_diffusion_update(Real time,
+			     Real dt,
+			     int  iteration,
+			     int  ncycle);
+
 protected:
 
     DistributionMapping getFuncCountDM (const BoxArray& bxba);
@@ -627,6 +611,7 @@ protected:
     static int         mcdd_presmooth;
     static int         mcdd_postsmooth;
     static Real        mcdd_cfRelaxFactor;
+    static int         do_rk_diffusion;
 };
 
 #endif /*_HeatTransfer_H_*/

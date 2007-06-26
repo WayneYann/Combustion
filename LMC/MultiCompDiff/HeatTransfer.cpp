@@ -2,7 +2,6 @@
 // "Divu_Type" means S, where divergence U = S
 // "Dsdt_Type" means pd S/pd t, where S is as above
 // "Ydot_Type" means -omega_l/rho, i.e., the mass rate of decrease of species l due
-//             to kinetics divided by rho
 //
 #include <winstd.H>
 
@@ -127,6 +126,7 @@ Real      HeatTransfer::mcdd_rtol                 = 1.e-8;
 int       HeatTransfer::mcdd_presmooth            = 3;
 int       HeatTransfer::mcdd_postsmooth           = 3;
 Real      HeatTransfer::mcdd_cfRelaxFactor        = 1.0;
+int       HeatTransfer::do_rk_diffusion           = 0;
 
 static int  max_grid_size_chem   = 16;
 static bool do_not_use_funccount = false;
@@ -332,8 +332,6 @@ HeatTransfer::read_params ()
     pp.query("unity_Le",unity_Le);
     unity_Le = unity_Le ? 1 : 0;
     if (unity_Le)
-	BoxLib::Error("HeatTransfer::read_params: unity_Le is not supported");
-    if (unity_Le)
     {
 	schmidt = prandtl;
         if (ParallelDescriptor::IOProcessor())
@@ -410,7 +408,6 @@ HeatTransfer::read_params ()
     pp.query("mcdd_presmooth",mcdd_presmooth);
     pp.query("mcdd_postsmooth",mcdd_postsmooth);
     pp.query("mcdd_cfRelaxFactor",mcdd_cfRelaxFactor);
-
 }
 
 HeatTransfer::HeatTransfer ()
@@ -629,6 +626,10 @@ HeatTransfer::init_once ()
                   << num_state_type << '\n';
     }
     ParmParse pp("ht");
+
+    pp.query("do_rk_diffusion",do_rk_diffusion);
+    if (ParallelDescriptor::IOProcessor())
+        std::cout << "do_rk_diffusion = " << do_rk_diffusion << std::endl;
 
     pp.query("plot_auxDiags",plot_auxDiags);
 
@@ -1285,7 +1286,9 @@ HeatTransfer::initDataOtherTypes ()
     // Assume always variable diffusivity.
     // Assume always variable viscosity.
     //
-    calculate_diffusion_coefficients(cur_time, dt, iteration, ncycle, true);
+    const int offset   = BL_SPACEDIM + 1;
+    const int num_diff = NUM_STATE-offset;
+    calcDiffusivity(cur_time, dt, iteration, ncycle, offset, num_diff, true);
     //
     // Assume that by now, S_new has "good" data
     //
@@ -1948,15 +1951,275 @@ HeatTransfer::avgDown ()
     }
 }
 
-#include "diffusion_step_for_scalar.cpp"
+void
+HeatTransfer::scalar_diffusion_update (Real dt,
+                                       int  first_scalar, 
+                                       int  last_scalar,
+                                       int  corrector)
+{
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::scalar_diffusion_update()");
 
-#include "diffusion_step_for_species.cpp"
+    const Real strt_time = ParallelDescriptor::second();
+    //
+    // Build single component edge-centered array of MultiFabs for fluxes
+    //
+    MultiFab** fluxSCn;
+    MultiFab** fluxSCnp1;
+    const int nGrow = 0;
+    const int nComp = 1;
+    diffusion->allocFluxBoxesLevel(fluxSCn  ,nGrow,nComp);
+    diffusion->allocFluxBoxesLevel(fluxSCnp1,nGrow,nComp);
+    //
+    // Set diffusion solve mode.
+    //
+    Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
+    //
+    // Do implicit c-n solve for each scalar.
+    //
+    const MultiFab* Rh = get_rho_half_time();
 
-// #include "scalar_diffusion_update.cpp"
+    for (int sigma = first_scalar; sigma <= last_scalar; sigma++)
+    {
+        if (is_diffusive[sigma])
+        {
+            int rho_flag = 0;
+	    
+            MultiFab *delta_rhs, *alpha, **betan, **betanp1;
 
-// #include "diffuse_scalar_setup.cpp"
+            diffuse_scalar_setup(dt,sigma,&rho_flag,delta_rhs,alpha,betan,betanp1);
+            //
+            // Note: dt taken care of in diffuse_scalar.
+            //
+	    const int dataComp = 0; // Component of dR, alpha, betas to use.
 
-// #include "temporary.cpp"
+            diffusion->diffuse_scalar(dt,sigma,be_cn_theta,Rh,rho_flag,fluxSCn,
+                                      fluxSCnp1,dataComp,delta_rhs,alpha,betan,
+                                      betanp1,solve_mode);
+	    //
+	    // If corrector, increment the viscous flux registers (assume
+	    //  corrector called only ONCE!).
+	    //
+	    if (do_reflux && corrector)
+	    {
+                FArrayBox fluxtot;
+
+		for (int d = 0; d < BL_SPACEDIM; d++)
+		{
+		    for (MFIter fmfi(*fluxSCn[d]); fmfi.isValid(); ++fmfi)
+		    {
+                        const Box& ebox = (*fluxSCn[d])[fmfi].box();
+                        fluxtot.resize(ebox,nComp);
+                        fluxtot.copy((*fluxSCn[d])[fmfi],ebox,0,ebox,0,nComp);
+                        fluxtot.plus((*fluxSCnp1[d])[fmfi],ebox,0,0,nComp);
+			if (level < parent->finestLevel())
+			    getLevel(level+1).getViscFluxReg().CrseInit(fluxtot,ebox,
+									d,0,sigma,
+									nComp,-dt);
+			
+			if (level > 0)
+			    getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),
+						     0,sigma,nComp,dt);
+		    }
+		}
+		if (level < parent->finestLevel())
+		    getLevel(level+1).getViscFluxReg().CrseInitFinish();
+	    }
+	    //
+	    // Clean up memory, etc
+	    //
+            diffuse_cleanup(delta_rhs, betan, betanp1, alpha);
+        }  
+    }    
+    diffusion->removeFluxBoxesLevel(fluxSCn);
+    diffusion->removeFluxBoxesLevel(fluxSCnp1);
+
+    const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+    Real      run_time = ParallelDescriptor::second() - strt_time;
+
+    ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+    if (ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::scalar_diffusion_update(): time: " << run_time << std::endl;
+}
+
+void
+HeatTransfer::differential_spec_diffusion_update (Real dt,
+						  int  corrector)
+{
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::differential_spec_diffusion_update()");
+
+    const Real strt_time = ParallelDescriptor::second();
+
+    if (hack_nospecdiff)
+    {
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "... HACK!!! skipping spec diffusion " << std::endl;
+
+        if (!corrector)
+            MultiFab::Copy(get_new_data(State_Type),get_old_data(State_Type),first_spec,first_spec,nspecies,0);
+
+        for (int d = 0; d < BL_SPACEDIM; ++d)
+        {
+            SpecDiffusionFluxn[d]->setVal(0,0,nspecies);
+            SpecDiffusionFluxnp1[d]->setVal(0,0,nspecies);
+        }
+        for (int comp = 0; comp < nspecies; ++comp)
+            spec_diffusion_flux_computed[comp] = HT_Diffusion;
+
+        return;
+    }
+    //
+    // Build single component edge-centered array of MultiFabs for fluxes
+    //
+    MultiFab** fluxSCn;
+    MultiFab** fluxSCnp1;
+    const int nGrow   = 0;
+    const int nCompSC = 1;
+    const int sCompSC = 0;
+    diffusion->allocFluxBoxesLevel(fluxSCn,  nGrow,nCompSC);
+    diffusion->allocFluxBoxesLevel(fluxSCnp1,nGrow,nCompSC);
+    //
+    // Set diffusion solve mode
+    //
+    Diffusion::SolveMode solve_mode = Diffusion::PREDICTOR;
+    //
+    // Do implicit c-n solve for each scalar...but dont reflux.
+    // Save the fluxes, coeffs and source term, we need 'em for later
+    //
+    const int sCompY = first_spec;
+    const int nCompY = nspecies;
+    MultiFab* alpha = 0; // Allocate lazily
+    MultiFab delta_rhs(grids, nCompY, nGrow);
+    MultiFab **betan, **betanp1;
+    diffusion->allocFluxBoxesLevel(betan  ,nGrow,nCompY);
+    diffusion->allocFluxBoxesLevel(betanp1,nGrow,nCompY);
+    Array<int> rho_flag(nCompY,0);
+    
+    MultiFab *alphaSC, *delta_rhsSC, **betanSC, **betanp1SC;
+
+    const MultiFab* Rh = get_rho_half_time();
+
+    for (int sigma = 0; sigma < nCompY; ++sigma)
+    {
+	const int state_ind = sCompY + sigma;
+
+	diffuse_scalar_setup(dt, state_ind, &rho_flag[sigma], delta_rhsSC,
+			     alphaSC, betanSC, betanp1SC);
+	
+	if (state_ind == sCompY && alphaSC)
+	{
+	    alpha = new MultiFab(grids, nCompY, nGrow);
+	}
+	else
+	{
+	    if ((!alphaSC) ^ !alpha)
+		BoxLib::Error("All diff-diffusion must be of same form");
+	}   
+	//    
+	// Nab a copy of the coeffs, call diffuser
+	//
+	if (alphaSC)
+	    MultiFab::Copy(*alpha,*alphaSC,sCompSC,sigma,nCompSC,nGrow);
+	
+	for (int d=0; d<BL_SPACEDIM; ++d)
+	{
+	    if (betanSC)
+		MultiFab::Copy(  *betan[d],  *betanSC[d],sCompSC,sigma,nCompSC,nGrow);
+	    if (betanp1SC)
+		MultiFab::Copy(*betanp1[d],*betanp1SC[d],sCompSC,sigma,nCompSC,nGrow);
+	}
+	//
+	// Make sure we've got a place for delta_rhs...predictor will dump any
+	// explicit updates taken before this routine into delta_rhs for later.
+	//
+	if (delta_rhsSC)
+	{
+	    MultiFab::Copy(delta_rhs,*delta_rhsSC,sCompSC,sigma,nCompSC,nGrow);
+	}
+	else
+	{
+	    delta_rhs.setVal(0,sigma,1);
+	}
+	//
+	// Clean up single-component stuff, then diffuse the scalar
+	//
+	diffuse_cleanup(delta_rhsSC, betanSC, betanp1SC, alphaSC);
+
+	diffusion->diffuse_scalar(dt,state_ind,be_cn_theta,Rh,rho_flag[sigma],
+                                  fluxSCn,fluxSCnp1,sigma,&delta_rhs,alpha,
+                                  betan,betanp1,solve_mode);
+	//
+	// Pull fluxes into flux array
+	//
+	for (int d = 0; d < BL_SPACEDIM; ++d)
+        {
+	    MultiFab::Copy(*SpecDiffusionFluxn[d],  *fluxSCn[d],  sCompSC,sigma,nCompSC,nGrow);
+	    MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSCnp1[d],sCompSC,sigma,nCompSC,nGrow);
+        }
+	spec_diffusion_flux_computed[sigma] = HT_Diffusion;
+    }
+    //
+    // Modify update/fluxes to preserve flux sum = 0, compute new update and
+    // leave modified fluxes in level data.  Do this in two stages, first for
+    // the explicit fluxes, then the implicit ones (so send in rhs=0 for the
+    // second one...).
+    //
+    const int  dataComp  = 0;
+    const Real prev_time = state[State_Type].prevTime();
+    const Real cur_time  = state[State_Type].curTime();
+
+    adjust_spec_diffusion_update(get_new_data(State_Type),&get_old_data(State_Type),
+				 sCompY,dt,prev_time,rho_flag,Rh,dataComp,
+                                 &delta_rhs,alpha,betan);
+    adjust_spec_diffusion_update(get_new_data(State_Type),&get_new_data(State_Type),
+				 sCompY,dt,cur_time,rho_flag,Rh,dataComp,0,
+                                 alpha,betanp1);
+    //
+    // Now do reflux with new, improved fluxes
+    //
+    if (do_reflux && corrector)
+    {
+        FArrayBox fluxtot;
+
+	for (int d = 0; d < BL_SPACEDIM; d++)
+	{
+	    for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
+	    {
+                const Box& ebox = (*SpecDiffusionFluxn[d])[fmfi].box();
+
+                fluxtot.resize(ebox,nCompY);
+                fluxtot.copy((*SpecDiffusionFluxn[d])[fmfi], ebox,0,ebox,0,nCompY);
+                fluxtot.plus((*SpecDiffusionFluxnp1[d])[fmfi],ebox,0,0,nCompY);
+
+		if (level < parent->finestLevel())
+		    getLevel(level+1).getViscFluxReg().CrseInit(fluxtot,ebox,d,0,sCompY,nCompY,-dt);
+
+		if (level > 0)
+		    getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,sCompY,nCompY,dt);
+	    }
+	}
+
+	if (level < parent->finestLevel())
+	    getLevel(level+1).getViscFluxReg().CrseInitFinish();
+    }
+    //
+    // Clean up memory
+    //
+    if (alpha)
+	delete alpha;
+    diffusion->removeFluxBoxesLevel(fluxSCn);
+    diffusion->removeFluxBoxesLevel(fluxSCnp1);
+    diffusion->removeFluxBoxesLevel(betan);
+    diffusion->removeFluxBoxesLevel(betanp1);
+
+    const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+    Real      run_time = ParallelDescriptor::second() - strt_time;
+
+    ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+    if (ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::differential_spec_diffusion_update(): time: " << run_time << std::endl;
+}
 
 void
 HeatTransfer::make_rho_prev_time ()
@@ -2200,6 +2463,71 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 
         Phi_new[mfi].copy(update,box,0,box,sCompS,nspecies);
     }
+}
+
+void
+HeatTransfer::diffuse_scalar_setup (Real        dt,
+                                    int         sigma,
+                                    int*        rho_flag, 
+                                    MultiFab*&  delta_rhs,
+                                    MultiFab*&  alpha, 
+                                    MultiFab**& betan,
+                                    MultiFab**& betanp1)
+{
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::diffuse_scalar_setup()");
+    //
+    // Do setup for implicit c-n solve for an arbitrary scalar.
+    //
+    // Note: should be ok for variable c_p.
+    //
+    const Real prev_time = state[State_Type].prevTime();
+
+    NavierStokes::diffuse_scalar_setup(dt, sigma, rho_flag, 
+                                       delta_rhs, alpha, betan, betanp1);
+    alpha     = 0;
+    delta_rhs = 0;
+    betan     = 0;
+    betanp1   = 0;
+   
+    if (sigma == Temp)
+    {
+        (*rho_flag) = 1;
+    }
+    else if (sigma == RhoH || sigma >= first_spec && sigma <= last_spec)
+    {
+        (*rho_flag) = 2;
+    }
+
+    if (sigma == RhoH)
+    {
+        diffuse_rhoh_setup(prev_time,dt,delta_rhs); 
+    }
+    else if (sigma == Temp)
+    {
+        diffuse_temp_setup(prev_time,dt,delta_rhs,alpha); 
+    }
+    else if (sigma >= first_spec && sigma <= last_spec)
+    {
+        diffuse_spec_setup(sigma,prev_time,dt,delta_rhs); 
+    }
+
+    diffusion->allocFluxBoxesLevel(betan);
+    diffusion->allocFluxBoxesLevel(betanp1);
+    getDiffusivity(betan, prev_time, sigma, 0, 1);
+    getDiffusivity(betanp1, prev_time+dt, sigma, 0, 1);
+}
+
+void
+HeatTransfer::diffuse_spec_setup (int        istate,
+                                  Real       time,
+                                  Real       dt, 
+                                  MultiFab*& delta_rhs)
+{
+    //
+    // Chemistry split, no source terms
+    //
+    delta_rhs = new MultiFab(grids,1,0);
+    delta_rhs->setVal(0);
 }
 
 void
@@ -3358,6 +3686,8 @@ HeatTransfer::mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCom
     }
 }
 
+#include "rk_diffusion_update.cpp"
+
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 						    int       sComp,
@@ -3924,40 +4254,6 @@ HeatTransfer::temperature_stats (MultiFab& S)
 }
 
 void
-HeatTransfer::temperature_stat (MultiFab& S)
-{
-    if (verbose)
-    {
-        BL_PROFILE(BL_PROFILE_THIS_NAME() + "::temperature_stat()");
-        //
-        // Calculate and display temperature minimum and maximum.
-        //
-        Real tmin, tmax;
-
-        tmin =  1.0e30;
-        tmax = -1.0e30;
-
-        for (MFIter S_mfi(S); S_mfi.isValid(); ++S_mfi)
-        {
-            const Box& bx = S_mfi.validbox();
-
-            tmin = std::min(tmin,S[S_mfi].min(bx,Temp));
-            tmax = std::max(tmax,S[S_mfi].max(bx,Temp));
-        }
-
-        const int IOProc = ParallelDescriptor::IOProcessorNumber();
-
-        ParallelDescriptor::ReduceRealMin(tmin,IOProc);
-        ParallelDescriptor::ReduceRealMax(tmax,IOProc);
-
-        if (ParallelDescriptor::IOProcessor())
-        {
-            std::cout << "  Min,max temp = " << tmin << ", " << tmax << '\n';
-        }
-    }
-}
-
-void
 HeatTransfer::compute_rhoRT (const MultiFab& S,
                              MultiFab&       p, 
                              int             pComp,
@@ -4070,7 +4366,433 @@ HeatTransfer::setThermoPress(Real time)
     compute_rhoRT (S,S,pComp);
 }
 
-#include "advance.cpp"
+Real
+HeatTransfer::advance (Real time,
+                       Real dt,
+                       int  iteration,
+                       int  ncycle)
+{
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::advance(Real,...");
+
+    if (level == 0)
+    {
+        crse_dt = dt;
+        int thisLevelStep = parent->levelSteps(0);
+        FORT_SET_COMMON(&time,&thisLevelStep);
+    }
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+    {
+        std::cout << "Advancing level "    << level
+                  << " : starting time = " << time
+                  << " with dt = "         << dt << std::endl;
+    }
+
+    advance_setup(time,dt,iteration,ncycle);
+
+    if (do_check_divudt)
+        checkTimeStep(dt);
+    
+    MultiFab& S_new = get_new_data(State_Type);
+    MultiFab& S_old = get_old_data(State_Type);
+    //
+    // Reset flag that fill patched state data is good
+    //
+    FillPatchedOldState_ok = true;
+    //
+    // Compute traced states for normal comp of velocity at half time level.
+    //
+    Real dt_test = 0.0, dummy = 0.0;    
+    dt_test = predict_velocity(dt,dummy);
+    
+    if (ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::advance(): at start of time step\n";
+
+    temperature_stats(S_old);
+
+    const Real prev_time = state[State_Type].prevTime();
+    const Real cur_time  = state[State_Type].curTime();
+#if 0
+    setThermoPress(prev_time);
+#endif
+    //
+    // Do MAC projection and update edge velocities.
+    //
+    if (do_mac_proj) 
+    {
+        int havedivu = 1;
+        mac_rhs = create_mac_rhs(time,dt);
+        mac_project(time,dt,S_old,mac_rhs,havedivu);
+    }
+
+    if (do_mom_diff == 0)
+        velocity_advection(dt);
+    //
+    // Set old-time boundary data for RhoH
+    // 
+    set_overdetermined_boundary_cells(time);
+    //
+    // Advance the old state for a Strang-split dt/2.  Include grow cells in
+    // advance, and squirrel these away for diffusion and Godunov guys to
+    // access for overwriting non-advanced fill-patched grow cell data.
+    //
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "... advancing chem\n";
+
+    BL_ASSERT(S_new.boxArray() == S_old.boxArray());
+
+    const int nComp = NUM_STATE - BL_SPACEDIM;
+    //
+    // Save off a copy of the pre-chem state
+    //
+    const int consumptionComp = getChemSolve().index(consumptionName) + first_spec;
+#ifdef BL_PLOT_CONSUMPTION
+    if (plot_auxDiags)
+        auxDiag->copy(S_old,consumptionComp,0,1);
+#endif
+    //
+    // Build a MultiFab parallel to "fabs".  Force it to have the
+    // same distribution as aux_boundary_data_old.  This'll cut out a
+    // parallel copy.  It doesn't happen by default (like you might think)
+    // due to not being recached appropriately after regridding.
+    //
+    {
+        MultiFab tmpFABs;
+
+        tmpFABs.define(aux_boundary_data_old.equivBoxArray(),
+                       NUM_STATE,
+                       0,
+                       aux_boundary_data_old.DistributionMap(),
+                       Fab_allocate);
+        {
+            BoxList bl;
+
+            for (int i = 0; i < S_old.size(); i++)
+                bl.push_back(BoxLib::grow(S_old.boxArray()[i],aux_boundary_data_old.nGrow()));
+
+            BoxArray ba(bl);
+            //
+            // This MF is guaranteed to cover tmpFABs & valid region of S_old.
+            //
+            MultiFab tmpS_old(ba,NUM_STATE,0);
+            //
+            // Note that S_old & tmpS_old have the same distribution.
+            //
+            const int ngrow = aux_boundary_data_old.nGrow();
+
+            for (FillPatchIterator fpi(*this,S_old,ngrow,prev_time,State_Type,0,NUM_STATE);
+                 fpi.isValid();
+                 ++fpi)
+            {
+                tmpS_old[fpi.index()].copy(fpi());
+            }
+
+            tmpFABs.copy(tmpS_old);
+        }
+
+        strang_chem(S_old,  dt,HT_LeaveYdotAlone);
+        strang_chem(tmpFABs,dt,HT_LeaveYdotAlone);
+
+        aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
+    }
+    //
+    // Find change due to first Strang step.
+    //
+#ifdef BL_PLOT_CONSUMPTION
+    if (plot_auxDiags)
+    {
+        MultiFab tmp(auxDiag->boxArray(),1,0);
+        tmp.setVal(0);
+        tmp.copy(S_old,consumptionComp,0,1);
+        for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
+            (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);
+    }
+#endif
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::advance(): after first Strang step\n";
+
+    temperature_stats(S_old);
+    //
+    // Activate hook in FillPatch hack to get better data now.
+    //
+    FillPatchedOldState_ok = false;
+    //
+    // Compute tn coeffs based on chem-advance tn data
+    //  (these are used in the Godunov extrapolation)
+    //
+    const int nScalDiffs = NUM_STATE-BL_SPACEDIM-1;
+    calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+    //
+    // Godunov-extrapolate states to cell edges
+    //
+    compute_edge_states(dt);
+    //
+    // Compute advective fluxes divergences, where possible
+    // NOTE: If Le!=1 cannot do RhoH advection until after spec update fills
+    //       spec diffusion fluxes.  Since it is never a bad idea to do this
+    //       later (i.e. S_old does not change), we do it later always.
+    //
+    const int first_scalar = Density;
+    const int last_scalar = first_scalar + NUM_SCALARS - 1;
+    bool do_adv_reflux = true;
+    if (RhoH > first_scalar)
+	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
+    if (RhoH < last_scalar)
+	scalar_advection(dt,RhoH+1,last_scalar,do_adv_reflux);
+    //
+    // Copy old-time boundary Density & RhoH into estimate for new-time RhoH.
+    //
+    aux_boundary_data_new.copy(aux_boundary_data_old,Density-BL_SPACEDIM,0,1);
+    aux_boundary_data_new.copy(aux_boundary_data_old,RhoH-BL_SPACEDIM,   1,1);
+    //
+    // Save rho used in rho-states, needed for replacing with new one
+    //  NOTE: WE LOAD/USE GROW CELLS HERE SO WE CAN FIX BOUNDARY DATA AS WELL
+    //
+    MultiFab Rho_hold(grids,1,LinOp_grow);
+
+    BL_ASSERT(LinOp_grow == 1);
+
+    for (MFIter mfi(*rho_ctime); mfi.isValid(); ++mfi)
+    {
+        const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
+        Rho_hold[mfi.index()].copy((*rho_ctime)[mfi],box,0,box,0,1);
+    }
+    //
+    // Compute new and half-time densities.
+    //
+    const int rho_corr = 1;
+    scalar_update(dt,Density,Density,rho_corr);
+    //
+    // Set saved rho at current time.
+    //
+    make_rho_curr_time();
+    //
+    // Reset rho-states to contain new rho.
+    //
+    reset_rho_in_rho_states(Rho_hold,cur_time,first_scalar+1,NUM_SCALARS-1);
+    //
+    // Compute the update to momentum
+    //
+    if (do_mom_diff == 1)
+      momentum_advection(dt,do_reflux);
+
+    //
+    // Runge-Kutta method for update of energy and species:
+    //
+    if (do_rk_diffusion)
+    {
+	// While under development this block is active for debugging,
+	// but it will not alter values in the state.
+
+	rk_diffusion_update (time, dt, iteration, ncycle);
+
+/*	scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // RhoH aofs, already did others
+        // the calcDiffusivity step is already done
+        calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs); 
+        BoxLib::Abort("stopping here");
+
+        // Loop over the boxes at this level at the old and new time.
+	MultiFab dummy (grids, 1, 2); // Use dummy to give grids to FillPatchIterator.
+	for (FillPatchIterator box_fpi (*this, dummy, 2, prev_time, State_Type, 0, NUM_STATE); // Get everything.
+	     box_fpi.isValid ();
+	     ++box_fpi)
+	{
+	    const Box box = box_fpi.fabbox (); // This box includes the 2 layers of ghost cells.
+	    } */
+    }
+    //
+    // Update energy and species
+    //
+    if (do_mcdd)
+    {
+        scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // RhoH aofs, already did others
+        mcdd_update(time,dt);
+    }
+    else
+    {
+        //
+        // Predictor
+        //
+        int corrector = 0;
+        //
+        // Set tnp1 coeffs to tn values in first round of predictor
+        //
+        BL_PROFILE_TIMER(ptimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-predictor");
+        BL_PROFILE_START(ptimer);
+        
+        MultiFab::Copy(*diffnp1_cc,*diffn_cc,0,0,nScalDiffs,diffn_cc->nGrow());
+        temp_update(dt,corrector);         // Here, predict n+1 coeffs using n coeffs
+        temperature_stats(S_new);
+        
+        calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+        spec_update(time,dt,corrector);
+        
+        set_overdetermined_boundary_cells(time + dt); // RhoH BC's to see new Y's at n+1
+        
+        do_adv_reflux = false;
+        scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // Get aofs for RhoH now
+        
+        rhoh_update(time,dt,corrector);
+        RhoH_to_Temp(S_new);
+        temperature_stats(S_new);
+        
+        BL_PROFILE_STOP(ptimer);
+        //
+        // Corrector
+        //
+        BL_PROFILE_TIMER(ctimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-corrector");
+        BL_PROFILE_START(ctimer);
+        
+        corrector = 1;
+        calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+        tracer_update(dt,corrector);
+        spec_update(time,dt,corrector);
+        
+        set_overdetermined_boundary_cells(time + dt);// RhoH BC's to see new Y's at n+1
+        
+        do_adv_reflux = true;
+        scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // Get aofs for RhoH now
+        
+        rhoh_update(time,dt,corrector);
+        RhoH_to_Temp(S_new); 
+        
+        BL_PROFILE_STOP(ctimer);
+    }
+    //
+    // Second half of Strang-split chemistry (first half done in
+    // compute_edge_states) This takes new-time data, and returns new-time
+    // data, as well as providing a predicted Ydot for the velocity
+    // constraint.  We write the result over the new state, but only care
+    // about stuff in the valid region.
+    //
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::advance(): after scalar_update\n";
+
+    temperature_stats(S_new);
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "... advancing chem\n";
+    //
+    // Adjust chemistry diagnostic before and after reactions.
+    //
+#ifdef BL_PLOT_CONSUMPTION
+    if (plot_auxDiags)
+    {
+        MultiFab tmp(auxDiag->boxArray(),1,0);
+        tmp.setVal(0);
+        tmp.copy(S_new,consumptionComp,0,1);
+        for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
+            (*auxDiag)[mfi].plus(tmp[mfi],0,0,1);
+    }
+#endif
+
+    strang_chem(S_new,dt,HT_EstimateYdotNew);
+
+#ifdef BL_PLOT_CONSUMPTION
+    if (plot_auxDiags)
+    {
+        MultiFab tmp(auxDiag->boxArray(),1,0);
+        tmp.setVal(0);
+        tmp.copy(S_new,consumptionComp,0,1);
+        for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
+        {
+            (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);
+            (*auxDiag)[mfi].mult(1.0/dt);
+        }
+    }
+#endif
+    //
+    //  HACK!!  What are we really supposed to do here?
+    //  Deactivate hook in FillPatch hack so that old data really is old data again
+    //
+    FillPatchedOldState_ok = true;
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+	std::cout << "HeatTransfer::advance(): after second Strang-split step\n";
+    
+    temperature_stats(S_new);
+    //
+    // S appears in rhs of the velocity update, so we better do it now.
+    // (be sure to use most recent version of state to get
+    // viscosity/diffusivity).
+    //
+    calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
+    //
+    // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
+    //   the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
+    //   not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
+    //
+    setThermoPress(cur_time);
+
+    calc_divu(time+dt, dt, get_new_data(Divu_Type));
+
+    if (!NavierStokes::initial_step && level != parent->finestLevel())
+    {
+        //
+        // Set new divu to old div + dt*dsdt_old where covered by fine.
+        //
+        BoxArray crsndgrids = getLevel(level+1).grids;
+        crsndgrids.coarsen(fine_ratio);
+            
+        MultiFab& divu_new = get_new_data(Divu_Type);
+        MultiFab& divu_old = get_old_data(Divu_Type);
+        MultiFab& dsdt_old = get_old_data(Dsdt_Type);
+            
+        for (MFIter mfi(divu_new); mfi.isValid();++mfi)
+        {
+            for (int i=0; i<crsndgrids.size(); ++i)
+            {
+                const Box ovlp = crsndgrids[i] & mfi.validbox();
+                if (ovlp.ok())
+                {
+                    divu_new[mfi].copy(dsdt_old[mfi],ovlp,0,ovlp,0,1);
+                    divu_new[mfi].mult(dt,ovlp,0,1);
+                    divu_new[mfi].plus(divu_old[mfi],ovlp,0,0,1);
+                }
+            }
+        }
+    }
+        
+    calc_dsdt(time, dt, get_new_data(Dsdt_Type));
+    if (NavierStokes::initial_step)
+        MultiFab::Copy(get_old_data(Dsdt_Type),get_new_data(Dsdt_Type),0,0,1,0);
+    //
+    // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
+    //
+    velocity_update(dt);
+    
+    advance_cleanup(dt,iteration,ncycle);
+    //
+    // Increment rho average.
+    //
+    if (!initial_step)
+    {
+        if (level > 0)
+        {
+            Real alpha = 1.0/Real(ncycle);
+            if (iteration == ncycle)
+                alpha = 0.5/Real(ncycle);
+            incrRhoAvg(alpha);
+        }
+        //
+        // Do a level project to update the pressure and velocity fields.
+        //
+        level_projector(dt,time,iteration);
+
+        if (level > 0 && iteration == 1) p_avg->setVal(0);
+    }
+    //
+    // Update estimate for allowable time step.
+    //
+    dt_test = std::min(dt_test, estTimeStep());
+    if (ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::advance(): at end of time step\n";
+
+    temperature_stats(S_new);
+   
+    return dt_test;
+}
 
 MultiFab*
 HeatTransfer::create_mac_rhs (Real time, Real dt)
@@ -5313,6 +6035,79 @@ HeatTransfer::scalar_advection (Real dt,
         diffusion->removeFluxBoxesLevel(fluxNULN);
 }
 
+void
+HeatTransfer::rhoh_update (Real time,
+                           Real dt,
+                           int  corrector) 
+{
+    //
+    // Do implicit c-n solve for RhoH
+    //
+    scalar_update(dt,RhoH,RhoH,corrector);
+}
+
+void
+HeatTransfer::temp_update (Real dt,
+                           int  corrector) 
+{
+    //
+    // Do implicit c-n solve for temperature.
+    //
+    scalar_update(dt,Temp,Temp,corrector);
+}
+
+void
+HeatTransfer::spec_update (Real time,
+                           Real dt,
+                           int  corrector) 
+{
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::spec_update()");
+    //
+    // Do implicit c-n solve for rho*Y_l, l=0,nspecies-1.
+    //
+    scalar_advection_update(dt, first_spec, last_spec);
+	    
+    if (unity_Le)
+    {
+        scalar_diffusion_update(dt, first_spec, last_spec, corrector);
+    }
+    else
+    {
+        differential_spec_diffusion_update(dt, corrector);
+    }
+    //
+    // Enforce sum_l rho U Y_l equals rho.
+    //
+    if (floor_species)
+        scale_species(get_new_data(State_Type),0,1);
+}
+
+void
+HeatTransfer::tracer_update (Real dt,
+                             int  corrector) 
+{
+    //
+    // Update tracer.
+    //
+    if (have_trac)
+        scalar_update(dt,Trac,Trac,corrector);
+    if (have_rhort)
+        scalar_update(dt,RhoRT,RhoRT,corrector);
+}
+
+void
+HeatTransfer::scalar_update (Real dt,
+                             int  first_scalar, 
+                             int  last_scalar,
+                             int  corrector)
+{
+    //
+    // Do implicit c-n solve for an arbitrary scalar (i.e., not velocity).
+    //
+    scalar_advection_update(dt, first_scalar, last_scalar);
+    scalar_diffusion_update(dt, first_scalar, last_scalar, corrector);
+}
+
 //
 // sum_l rho D grad Y_l dot grad h_l on the valid region of the multifab.
 //
@@ -6319,7 +7114,147 @@ HeatTransfer::calcViscosity (const Real time,
     compute_vel_visc(time, whichTime == AmrOldTime ? viscn_cc : viscnp1_cc);
 }
 
-#include "calculate_diffusion_coefficients.cpp"
+void
+HeatTransfer::calcDiffusivity (const Real time,
+			       const Real dt,
+			       const int  iteration,
+			       const int  ncycle,
+			       const int  src_comp,
+			       const int  num_comp)
+{
+    calcDiffusivity(time,dt,iteration,ncycle,src_comp,num_comp,false);
+}
+
+void
+HeatTransfer::calcDiffusivity (const Real time,
+			       const Real dt,
+			       const int  iteration,
+			       const int  ncycle,
+			       const int  src_comp,
+			       const int  num_comp,
+                               bool       do_VelVisc)
+{
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calcDiffusivity()");
+
+    if (do_mcdd)
+        return;
+
+    const TimeLevel whichTime = which_time(State_Type, time);
+
+    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
+
+    const int  nGrow           = 1;
+    const int  offset          = BL_SPACEDIM + 1; // No diffusion coeff for vels or rho
+    const int  last_comp       = src_comp + num_comp - 1;
+    const bool has_spec        = src_comp < last_spec && last_comp > first_spec;
+    const int  non_spec_comps  = std::max(0,first_spec-src_comp) + std::max(0,last_comp-last_spec);
+    MultiFab*  temp            = new MultiFab(grids,1,nGrow);
+    MultiFab*  rhospec         = new MultiFab(grids,nspecies+1,nGrow);
+    MultiFab*  visc            = (whichTime == AmrOldTime) ? diffn_cc : diffnp1_cc;
+
+    BL_ASSERT( !has_spec || (num_comp >= nspecies+non_spec_comps) );
+
+    FArrayBox tmp, bcen;
+
+    for (FillPatchIterator Rho_and_spec_fpi(*this,*rhospec,nGrow,time,State_Type,Density,nspecies+1),
+             Temp_fpi(*this,*rhospec,nGrow,time,State_Type,Temp,nGrow);
+         Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();
+         ++Rho_and_spec_fpi, ++Temp_fpi)
+    {
+        const int idx = Rho_and_spec_fpi.index();
+        const Box box = BoxLib::grow(grids[idx],nGrow);
+        //
+        // Convert from RhoY_l to Y_l
+        //
+        tmp.resize(box,1);
+        tmp.copy(Rho_and_spec_fpi(),0,0,1);
+        tmp.invert(1);
+
+        for (int n = 1; n < nspecies+1; n++)
+            Rho_and_spec_fpi().mult(tmp,0,n,1);
+
+        (*rhospec)[idx].copy(Rho_and_spec_fpi(),0,0,nspecies+1);
+
+        (*temp)[idx].copy(Temp_fpi(),0,0,1);
+    }
+
+    BL_ASSERT(nspecies > 0 && has_spec);
+
+    if (nspecies > 0 && has_spec)
+    {
+        BL_ASSERT(first_spec == Density+1);
+
+        for (MFIter rho_and_spec(*rhospec); rho_and_spec.isValid(); ++rho_and_spec)
+        {
+            const int  idx     = rho_and_spec.index();
+            const Box  box     = BoxLib::grow(grids[idx],nGrow);
+            const int  vflag   = do_VelVisc;
+            FArrayBox& tempFab = (*temp)[idx];
+
+            BL_ASSERT(box == (*rhospec)[idx].box());
+
+            const int nc_bcen = nspecies+2;
+            int       dotemp  = 1;
+            bcen.resize(box,nc_bcen);
+
+            FORT_SPECTEMPVISC(box.loVect(),box.hiVect(),
+                              ARLIM(tempFab.loVect()),ARLIM(tempFab.hiVect()),
+                              tempFab.dataPtr(),
+                              ARLIM((*rhospec)[idx].loVect()),ARLIM((*rhospec)[idx].hiVect()),
+                              (*rhospec)[idx].dataPtr(1),
+                              ARLIM(bcen.loVect()),ARLIM(bcen.hiVect()),bcen.dataPtr(),
+                              &nc_bcen, &P1atm_MKS, &dotemp, &vflag);
+
+            (*visc)[idx].copy(bcen,0,first_spec-offset,nspecies);
+            (*visc)[idx].copy(bcen,nspecies,Temp-offset,1);
+
+            if (do_VelVisc)
+            {
+                MultiFab* beta = (whichTime==AmrOldTime) ? viscn_cc : viscnp1_cc;
+
+                (*beta)[idx].copy(bcen,nspecies+1,0,1);
+            }
+        }
+    }
+    //
+    // Now get the rest.
+    //
+    for (int icomp = src_comp; icomp <= last_comp; icomp++)
+    {
+        const bool is_spec = icomp >= first_spec && icomp <= last_spec;
+
+        if (!is_spec)
+        {
+            if (icomp == RhoH)
+            {
+                //
+                // We assume that Temp has already been done.
+                //
+                BL_ASSERT(first_spec == Density+1);
+
+                FArrayBox cpmix;
+
+                for (MFIter rho_and_species(*rhospec); rho_and_species.isValid(); ++rho_and_species)
+                {
+                    const int idx = rho_and_species.index();
+                    const Box box = BoxLib::grow(grids[idx],nGrow);
+                    (*visc)[idx].copy((*visc)[idx],Temp-offset,RhoH-offset,1);
+                    cpmix.resize(box,1);
+                    const int sCompT = 0, sCompY = 1, sCompCp = 0;
+                    getChemSolve().getCpmixGivenTY(cpmix,(*temp)[idx],(*rhospec)[idx],box,sCompT,sCompY,sCompCp);
+                    (*visc)[idx].divide(cpmix,0,RhoH-offset,1);
+                }
+            }
+            else if (icomp == Trac || icomp == RhoRT)
+            {
+                visc->setVal(trac_diff_coef, icomp-offset, 1, nGrow);
+            }
+        }
+    }
+
+    delete rhospec;
+    delete temp;
+}
 
 void
 HeatTransfer::getViscosity (MultiFab*  beta[BL_SPACEDIM],
