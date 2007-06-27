@@ -7,11 +7,23 @@
 
 #include "ArrayLim.H"
 
+c     to do:
+c     must adjust diffusion coefficients by thickness factors
+c     must include fixes for boundary conditions
+c        it is unclear whether bc is (BL_SPACEDIM,2,ncomps)
+c                                 or (2,BL_SPACEDIM,ncomps)
+c     may need to adjust the mixture-averaged fluxes so they sum to zero
+c     unsure of the signs and scaling wanted for fluxes and updates:
+c        at present the updates (but not the fluxes) are weighted by 1/vol
+c        so they give the change to the pointwise value
+c     unsure of LMC support for r-z coordinates
+
       subroutine FORT_RK_DIFFUSION
      &     (
      &     lo, hi,               ! INPUT limits of valid region
      &     areax, DIMS(areax),   ! INPUT areas of the faces perpendicular to x axis
      &     areay, DIMS(areay),   ! INPUT areas of the faces perpendicular to y axis
+     &     bc,                   ! INPUT boundary condition array for all comps
      &     dx,                   ! INPUT physical dimensions of grid cells
      &     state, DIMS(state),   ! INPUT all variables in the state
      &     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
@@ -39,14 +51,13 @@
 #include "ChemDriver_F.H"
 #include "cdwrk.H"
 
-c     to do
-c     must adjust diffusion coefficients by thickness factors
-c     must include fixes for boundary conditions
-
 c     arguments
+      integer ncomps
+      integer nspecies
       integer lo(BL_SPACEDIM), hi(BL_SPACEDIM)
       integer DIMDEC(areax)
       integer DIMDEC(areay)
+      integer bc(BL_SPACEDIM,2,ncomps)
       integer DIMDEC(state)
       integer DIMDEC(update_for_H)
       integer DIMDEC(update_for_Y)
@@ -55,8 +66,6 @@ c     arguments
       integer DIMDEC(xflux_for_Y)
       integer DIMDEC(yflux_for_Y)
       integer DIMDEC(vol)
-      integer ncomps
-      integer nspecies
       integer index_of_firstY
       integer index_of_lastY
       integer index_of_rho
@@ -75,7 +84,10 @@ c     arguments
       REAL_T vol(DIMV(vol))
 
 c     local variables
-      integer i, j, n, offset
+      integer i
+      integer j
+      integer n
+      integer offset
       REAL_T alpha
       REAL_T contiguous_Y
       REAL_T cpms
@@ -172,19 +184,19 @@ c     calculate rho_D and lambda
 
 c           since rho is in the state, why recompute it? 
 c           note, this is the practice in the FORT_SPECTEMPVISC routine
-c           that does much of the work for calcDiffusivity.
+c           that underlies calcDiffusivity.
             CALL CKRHOY (pressure, floored_T, contiguous_Y, IWRK(ckbi),
      &           RWRK(ckbr), rho)
             do n=1,nspecies
-c              per equation 12 in the EGLIB manual
-c              multiplication by tenth converts from cgs to mks
+c              per equation 12 in the EGLIB manual.
+c              multiplication by tenth converts from cgs to mks.
                rho_D(i,j,n) 
      &              = rho * mmw * one_over_wt(n) * Upsilon(n) * tenth
             end do
 
 c           this averaging per equation 50 in the chemkin transport package manual.
 c           note, the EGLIB manual does not mention the averaging, but it does have
-c           provisions to compute it through the alpha parameter in equation 17
+c           provisions to compute it through the alpha parameter in equation 17.
             alpha = one
             CALL EGSL1 (alpha, floored_T, X, RWRK(egbr), plus_value)
             alpha = - one
