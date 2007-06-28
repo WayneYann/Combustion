@@ -18,26 +18,28 @@ c        at present the updates (but not the fluxes) are weighted by 1/vol
 c        so they give the change to the pointwise value
 c     unsure of LMC support for r-z coordinates
 
+c     arguments are alphabetical, mostly:
+c
 c     lo, hi,                           ! INPUT limits of valid region
 c     areax, DIMS(areax),               ! INPUT areas of the faces perpendicular to x axis
 c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
 c     dx,                               ! INPUT physical dimensions of grid cells
-c     state, DIMS(state),               ! INPUT all variables in the state
-c     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
-c     update_for_Y, DIMS(update_for_Y), ! OUTPUT divergences of the fluxes
-c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT x fluxes for enthalpy
-c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT y fluxes for enthalpy
-c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT x fluxes for species
-c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
-c     volume, DIMS(volume),             ! INPUT volumes of the cells
-c     ncomps,                           ! INPUT total number of components in the state
-c     nspecies,                         ! INPUT total number of species in the state
 c     index_of_firstY,                  ! INPUT index of rho Y for the first species in the state
 c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
 c     index_of_rho,                     ! INPUT index of rho in the state
 c     index_of_rhoH,                    ! INPUT index of rho H in the state
 c     index_of_T                        ! INPUT index of T in the state
+c     ncomps,                           ! INPUT total number of components in the state
+c     nspecies,                         ! INPUT total number of species in the state
+c     state, DIMS(state),               ! INPUT all variables in the state
+c     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
+c     update_for_Y, DIMS(update_for_Y), ! OUTPUT divergences of the fluxes
+c     volume, DIMS(volume),             ! INPUT volumes of the cells
+c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT x fluxes for enthalpy
+c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT x fluxes for species
+c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT y fluxes for enthalpy
+c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 
       subroutine FORT_RK_DIFFUSION
      &     (
@@ -46,21 +48,21 @@ c     index_of_T                        ! INPUT index of T in the state
      &     areay, DIMS(areay),
      &     bc,
      &     dx,
-     &     state, DIMS(state),
-     &     update_for_H, DIMS(update_for_H),
-     &     update_for_Y, DIMS(update_for_Y),
-     &     xflux_for_H, DIMS(xflux_for_H),
-     &     yflux_for_H, DIMS(yflux_for_H),
-     &     xflux_for_Y, DIMS(xflux_for_Y),
-     &     yflux_for_Y, DIMS(yflux_for_Y),
-     &     volume, DIMS(volume),
-     &     ncomps,
-     &     nspecies,
      &     index_of_firstY,
      &     index_of_lastY,
      &     index_of_rho,
      &     index_of_rhoH,
-     &     index_of_T
+     &     index_of_T,
+     &     ncomps,
+     &     nspecies,
+     &     state, DIMS(state),
+     &     update_for_H, DIMS(update_for_H),
+     &     update_for_Y, DIMS(update_for_Y),
+     &     volume, DIMS(volume),
+     &     xflux_for_H, DIMS(xflux_for_H),
+     &     xflux_for_Y, DIMS(xflux_for_Y),
+     &     yflux_for_H, DIMS(yflux_for_H),
+     &     yflux_for_Y, DIMS(yflux_for_Y)
      &     )
 
       implicit none
