@@ -178,6 +178,15 @@ public:
                                          MultiFab*&  delta_rhs,
                                          MultiFab**& betan, 
                                          MultiFab**& betanp1);
+
+    //
+    // Runge-Kutta diffusion functions used by level advance function.
+    //
+    void rk_diffusion_operator (const Real time,
+				MultiFab **& flux_for_H,
+				MultiFab **& flux_for_Y,
+				MultiFab *& update_for_H,
+				MultiFab *& update_for_Y);
     //
     // Make rho at time n.
     //
@@ -523,11 +532,6 @@ protected:
 
     void mcdd_diffuse_sync(Real dt);
     
-    void rk_diffusion_update(Real time,
-			     Real dt,
-			     int  iteration,
-			     int  ncycle);
-
 protected:
 
     DistributionMapping getFuncCountDM (const BoxArray& bxba);

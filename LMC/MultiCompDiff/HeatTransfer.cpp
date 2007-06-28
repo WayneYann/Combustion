@@ -3686,7 +3686,7 @@ HeatTransfer::mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCom
     }
 }
 
-#include "rk_diffusion_update.cpp"
+#include "rk_diffusion_operator.cpp"
 
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
@@ -4585,21 +4585,33 @@ HeatTransfer::advance (Real time,
 	// While under development this block is active for debugging,
 	// but it will not alter values in the state.
 
-	rk_diffusion_update (time, dt, iteration, ncycle);
+	if (ParallelDescriptor::IOProcessor())
+	    std::cout << "JFG: at top of do_rk_diffusion block\n" << std::flush;
 
-/*	scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // RhoH aofs, already did others
-        // the calcDiffusivity step is already done
-        calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs); 
-        BoxLib::Abort("stopping here");
+	MultiFab** flux_for_H;
+	MultiFab** flux_for_Y;
+	MultiFab* update_for_H;
+	MultiFab* update_for_Y;
 
-        // Loop over the boxes at this level at the old and new time.
-	MultiFab dummy (grids, 1, 2); // Use dummy to give grids to FillPatchIterator.
-	for (FillPatchIterator box_fpi (*this, dummy, 2, prev_time, State_Type, 0, NUM_STATE); // Get everything.
-	     box_fpi.isValid ();
-	     ++box_fpi)
-	{
-	    const Box box = box_fpi.fabbox (); // This box includes the 2 layers of ghost cells.
-	    } */
+	rk_diffusion_operator (time,
+			       flux_for_H,
+			       flux_for_Y,
+			       update_for_H,
+			       update_for_Y);
+
+	// these deletes may be wrong for the fluxes
+	// Mike suggests using Diffusion::removeFluxBoxesLevel
+	// though elsewhere Marc just uses delete
+	// Mike also prefers to so the allocate at the same level of the deallocate
+	// delete flux_for_H;
+	// delete flux_for_Y;
+	diffusion->removeFluxBoxesLevel (flux_for_H);
+	diffusion->removeFluxBoxesLevel (flux_for_Y);
+	delete update_for_H;
+	delete update_for_Y;
+
+	if (ParallelDescriptor::IOProcessor())
+	    std::cout << "JFG: at bottom of do_rk_diffusion block\n" << std::flush;
     }
     //
     // Update energy and species

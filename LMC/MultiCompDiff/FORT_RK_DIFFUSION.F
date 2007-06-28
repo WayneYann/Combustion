@@ -1,11 +1,11 @@
-#undef BL_LANG_CC
-#ifndef BL_LANG_FORT
-#define BL_LANG_FORT
-#endif
+c#undef BL_LANG_CC
+c#ifndef BL_LANG_FORT
+c#define BL_LANG_FORT
+c#endif
 
-#define BL_SPACEDIM 2
+c#define BL_SPACEDIM 2
 
-#include "ArrayLim.H"
+c#include "ArrayLim.H"
 
 c     to do:
 c     must adjust diffusion coefficients by thickness factors
@@ -18,28 +18,49 @@ c        at present the updates (but not the fluxes) are weighted by 1/vol
 c        so they give the change to the pointwise value
 c     unsure of LMC support for r-z coordinates
 
+c     lo, hi,                           ! INPUT limits of valid region
+c     areax, DIMS(areax),               ! INPUT areas of the faces perpendicular to x axis
+c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
+c     bc,                               ! INPUT boundary condition array for all comps
+c     dx,                               ! INPUT physical dimensions of grid cells
+c     state, DIMS(state),               ! INPUT all variables in the state
+c     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
+c     update_for_Y, DIMS(update_for_Y), ! OUTPUT divergences of the fluxes
+c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT x fluxes for enthalpy
+c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT y fluxes for enthalpy
+c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT x fluxes for species
+c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
+c     volume, DIMS(volume),             ! INPUT volumes of the cells
+c     ncomps,                           ! INPUT total number of components in the state
+c     nspecies,                         ! INPUT total number of species in the state
+c     index_of_firstY,                  ! INPUT index of rho Y for the first species in the state
+c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
+c     index_of_rho,                     ! INPUT index of rho in the state
+c     index_of_rhoH,                    ! INPUT index of rho H in the state
+c     index_of_T                        ! INPUT index of T in the state
+
       subroutine FORT_RK_DIFFUSION
      &     (
-     &     lo, hi,               ! INPUT limits of valid region
-     &     areax, DIMS(areax),   ! INPUT areas of the faces perpendicular to x axis
-     &     areay, DIMS(areay),   ! INPUT areas of the faces perpendicular to y axis
-     &     bc,                   ! INPUT boundary condition array for all comps
-     &     dx,                   ! INPUT physical dimensions of grid cells
-     &     state, DIMS(state),   ! INPUT all variables in the state
-     &     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
-     &     update_for_Y, DIMS(update_for_Y), ! OUTPUT divergences of the fluxes
-     &     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT x fluxes for enthalpy
-     &     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT y fluxes for enthalpy
-     &     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT x fluxes for species
-     &     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
-     &     vol, DIMS(vol),       ! INPUT volumes of the cells
-     &     ncomps,               ! INPUT total number of components in the state
-     &     nspecies,             ! INPUT total number of species in the state
-     &     index_of_firstY,      ! INPUT index of rho Y for the first species in the state
-     &     index_of_lastY,       ! INPUT index of rho Y for the last species in the state
-     &     index_of_rho,         ! INPUT index of rho in the state
-     &     index_of_rhoH,        ! INPUT index of rho H in the state
-     &     index_of_T            ! INPUT index of T in the state
+     &     lo, hi,
+     &     areax, DIMS(areax),
+     &     areay, DIMS(areay),
+     &     bc,
+     &     dx,
+     &     state, DIMS(state),
+     &     update_for_H, DIMS(update_for_H),
+     &     update_for_Y, DIMS(update_for_Y),
+     &     xflux_for_H, DIMS(xflux_for_H),
+     &     yflux_for_H, DIMS(yflux_for_H),
+     &     xflux_for_Y, DIMS(xflux_for_Y),
+     &     yflux_for_Y, DIMS(yflux_for_Y),
+     &     volume, DIMS(volume),
+     &     ncomps,
+     &     nspecies,
+     &     index_of_firstY,
+     &     index_of_lastY,
+     &     index_of_rho,
+     &     index_of_rhoH,
+     &     index_of_T
      &     )
 
       implicit none
@@ -65,7 +86,7 @@ c     arguments
       integer DIMDEC(yflux_for_H)
       integer DIMDEC(xflux_for_Y)
       integer DIMDEC(yflux_for_Y)
-      integer DIMDEC(vol)
+      integer DIMDEC(volume)
       integer index_of_firstY
       integer index_of_lastY
       integer index_of_rho
@@ -81,7 +102,7 @@ c     arguments
       REAL_T yflux_for_H(DIMV(yflux_for_H))
       REAL_T xflux_for_Y(DIMV(xflux_for_Y),ncomps)
       REAL_T yflux_for_Y(DIMV(yflux_for_Y),ncomps)
-      REAL_T vol(DIMV(vol))
+      REAL_T volume(DIMV(volume))
 
 c     local variables
       integer i
@@ -99,7 +120,7 @@ c     local variables
       REAL_T lambda
       REAL_T minus_value
       REAL_T mmw
-      REAL_T neg_one_over_vol
+      REAL_T neg_one_over_volume
       REAL_T one_over_rho
       REAL_T one_over_wt
       REAL_T Patm
@@ -135,25 +156,29 @@ c     local variables
       dimension X (:)
       dimension Y (:,:,:)
 
-c     calculate Y from rho Y in the state
-      allocate (Y (DIMV(state), nspecies))
-      offset = index_of_firstY - 1
-      do j=ARG_L2(state),ARG_H2(state)
-         do i=ARG_L1(state),ARG_H1(state)
-            one_over_rho = one / state(j, i, index_of_rho)
-            do n=1,nspecies
-               Y(j, i, n) = one_over_rho * state(j, i, offset + n)
-            end do
-         end do
-      end do
-
-c     calculate rho_D and lambda
+c     allocate all variably dimensioned local arrays
       allocate (contiguous_Y (nspecies))
+      allocate (cpms (nspecies))
+      allocate (hms (nspecies))
       allocate (lambda (DIMV(state)))
       allocate (one_over_wt (nspecies))
       allocate (rho_D (DIMV(state), nspecies))
       allocate (Upsilon (nspecies))
       allocate (X (nspecies))
+      allocate (Y (DIMV(state), nspecies))
+
+c     calculate Y from rho Y in the state
+      offset = index_of_firstY - 1
+      do j=ARG_L2(state),ARG_H2(state)
+         do i=ARG_L1(state),ARG_H1(state)
+            one_over_rho = one / state(i, j, index_of_rho)
+            do n=1,nspecies
+               Y(i, j, n) = one_over_rho * state(i, j, offset + n)
+            end do
+         end do
+      end do
+
+c     calculate rho_D and lambda
 
       CALL CKRP (IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       pressure = Patm * P1ATM
@@ -208,7 +233,6 @@ c           multiplication by 1.0e-5 converts from cgs to mks
          end do
       end do
 
-      allocate (hms (nspecies))
 c     multiplication by scale_factor converts from cgs to MKS (1 erg/g = 1.e-4 J/kg)
       scale_factor = tenth**4
 
@@ -273,14 +297,14 @@ c     flux as a subexpression, so we simply multiply by an egde h.
 c     volume weighted negative sum of the fluxes
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
-            neg_one_over_vol = - one / vol(i,j)
+            neg_one_over_volume = - one / volume(i,j)
             update_for_H(i, j) 
-     &           = neg_one_over_vol
+     &           = neg_one_over_volume
      &           * (xflux_for_H(i+1,j) - xflux_for_H(i,j)
      &           + yflux_for_H(i,j+1) - yflux_for_H(i,j))
             do n=1,nspecies
                update_for_Y(i, j, n) 
-     &              = neg_one_over_vol
+     &              = neg_one_over_volume
      &              * (xflux_for_Y(i+1,j,n) - xflux_for_Y(i,j,n)
      &              + yflux_for_Y(i,j+1,n) - yflux_for_Y(i,j,n))
             end do
