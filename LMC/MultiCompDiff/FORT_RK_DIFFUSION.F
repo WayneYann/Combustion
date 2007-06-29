@@ -118,7 +118,7 @@ c     local variables
       REAL_T half_over_dx
       REAL_T half_over_dy
       REAL_T half_over_hundred_thousand
-      REAL_T hms ! species enthalpies at an edge
+      REAL_T hms 
       REAL_T lambda
       REAL_T minus_value
       REAL_T mmw
@@ -137,8 +137,8 @@ c     local variables
       REAL_T sum
       REAL_T T_on_edge
       REAL_T Upsilon
-      REAL_T X ! mole fractions at cell centers
-      REAL_T Y ! mass fractions at cell centers
+      REAL_T X 
+      REAL_T Y 
       allocatable contiguous_Y
       allocatable cpms
       allocatable hms
@@ -221,7 +221,7 @@ c              multiplication by tenth converts from cgs to mks.
      &              = rho * mmw * one_over_wt(n) * Upsilon(n) * tenth
             end do
 
-c           this averaging per equation 50 in the chemkin transport package manual.
+c           this averaging is equation 50 in the chemkin transport package manual.
 c           note, the EGLIB manual does not mention the averaging, but it does have
 c           provisions to compute it through the alpha parameter in equation 17.
             alpha = one
