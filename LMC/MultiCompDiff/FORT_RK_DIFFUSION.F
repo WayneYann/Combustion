@@ -70,7 +70,7 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
       implicit none
 
 #include "REAL.H"
-#include "CONSTANTS.H"
+c#include "CONSTANTS.H"
 #include "BC_TYPES.H"
 #include "HEATTRANSFER_F.H"
 #include "ChemDriver_F.H"
@@ -178,7 +178,7 @@ c     offset of species in the state
 c     calculate Y from rho Y in the state
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
-            one_over_rho = one / state(i, j, index_of_rho)
+            one_over_rho = 1.0d0 / state(i, j, index_of_rho)
             do n=1,nspecies
                Y(i, j, n) = one_over_rho * state(i, j, offset + n)
             end do
@@ -192,10 +192,10 @@ c     calculate rho_D and lambda
 
       call CKWT (IWRK(ckbi),RWRK(ckbr),one_over_wt)
       do n=1,nspecies
-         one_over_wt(n) = one / one_over_wt(n)
+         one_over_wt(n) = 1.0d0 / one_over_wt(n)
       end do
 
-      half_over_hundred_thousand = half / 100000
+      half_over_hundred_thousand = 0.5d-5
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
             do n=1,nspecies
@@ -223,15 +223,15 @@ c           that underlies calcDiffusivity.
 c              per equation 12 in the EGLIB manual.
 c              multiplication by tenth converts from cgs to mks.
                rho_D(i,j,n) 
-     &              = rho * mmw * one_over_wt(n) * Upsilon(n) * tenth
+     &              = rho * mmw * one_over_wt(n) * Upsilon(n) * 0.1d0
             end do
 
 c           this averaging is equation 50 in the chemkin transport package manual.
 c           note, the EGLIB manual does not mention the averaging, but it does have
 c           provisions to compute it through the alpha parameter in equation 17.
-            alpha = one
+            alpha = 1.0d0
             CALL EGSL1 (alpha, floored_T, X, RWRK(egbr), plus_value)
-            alpha = - one
+            alpha = - 1.0d0
             CALL EGSL1 (alpha, floored_T, X, RWRK(egbr), minus_value)
 c           multiplication by 1.0e-5 converts from cgs to mks
             lambda(i,j) 
@@ -241,17 +241,17 @@ c           multiplication by 1.0e-5 converts from cgs to mks
       end do
 
 c     multiplication by scale_factor converts from cgs to MKS (1 erg/g = 1.e-4 J/kg)
-      scale_factor = tenth**4
+      scale_factor = 1.0d-4
 
 c     fluxes in x direction
-      half_over_dx = half / dx(1)
+      half_over_dx = 0.5d0 / dx(1)
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)+1
             sum = half_over_dx
      &           * areay(i,j) 
      &           * (lambda(i-1,j) + lambda(i,j)) 
      &           * (state(i,j,index_of_T) - state(i-1,j,index_of_T))
-            T_on_edge = half 
+            T_on_edge = 0.5d0
      &           * (state(i-1,j,index_of_T) 
      &            + state(i,j,index_of_T))
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
@@ -302,7 +302,7 @@ c              unsymmetric stencil for dirichlet conditions
      &              * (- (8.0d0 / 3.0d0) * state(i-1,j,index_of_T)
      &              + 3 * state(i,j,index_of_T)
      &              - (1.0d0 / 3.0d0) * state(i+1,j,index_of_T))
-               T_on_edge = half 
+               T_on_edge = 0.5d0
      &              * (state(i-1,j,index_of_T) 
      &              + state(i,j,index_of_T))
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
@@ -350,13 +350,13 @@ c              unsymmetric stencil for dirichlet conditions
      &              * ((1.0d0 / 3.0d0) * state(i-1,j,index_of_T)
      &              - 3 * state(i,j,index_of_T)
      &              + (8.0d0 / 3.0d0) * state(i+1,j,index_of_T))
-               T_on_edge = half 
+               T_on_edge = 0.5d0
      &              * (state(i-1,j,index_of_T) 
      &              + state(i,j,index_of_T))
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                do n=1,nspecies
                   sum = sum
-     &                 + xflux_for_Y(i,j,n)
+     &                 + xflux_for_Y(i+1,j,n)
      &                 * hms(n)
      &                 * scale_factor
                end do
@@ -372,14 +372,14 @@ c              for T, then the same is true for all the species.
       end if
 
 c     fluxes in y direction
-      half_over_dy = half / dx(2)
+      half_over_dy = 0.5d0 / dx(2)
       do j=lo(2),hi(2)+1
          do i=lo(1),hi(1)
             sum = half_over_dy
      &           * areay(i,j) 
      &           * (lambda(i,j-1) + lambda(i,j)) 
      &           * (state(i,j,index_of_T) - state(i,j-1,index_of_T))
-            T_on_edge = half 
+            T_on_edge = 0.5d0
      &           * (state(i,j-1,index_of_T) 
      &            + state(i,j,index_of_T))
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
@@ -430,7 +430,7 @@ c              unsymmetric stencil for dirichlet conditions
      &              * (- (8.0d0 / 3.0d0) * state(i,j-1,index_of_T)
      &              + 3 * state(i,j,index_of_T)
      &              - (1.0d0 / 3.0d0) * state(i,j+1,index_of_T))
-               T_on_edge = half 
+               T_on_edge = 0.5d0
      &              * (state(i,j-1,index_of_T) 
      &              + state(i,j,index_of_T))
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
@@ -456,7 +456,7 @@ c           do species first because their fluxes appear in the enthalpy case
             do n=1,nspecies
                if (bc(2, 2, offset + n) .eq. EXT_DIR) then
 c                 unsymmetric stencil for dirichlet conditions
-                  xflux_for_Y(i,j+1,n) 
+                  yflux_for_Y(i,j+1,n) 
      &                 = half_over_dx 
      &                 * areax(i,j) 
      &                 * (rho_D(i,j-1,n) + rho_D(i,j,n)) 
@@ -466,7 +466,7 @@ c                 unsymmetric stencil for dirichlet conditions
                else if (bc(2, 2, offset + n) .ne. INT_DIR) then
 c                 no flux in all other cases (INT_DIR should never occur 
 c                 at a domain boundary but it does not hurt to check)
-                  xflux_for_Y(i,j+1,n) = 0
+                  yflux_for_Y(i,j+1,n) = 0
                end if
             end do
 c           now the enthalpy case
@@ -484,17 +484,17 @@ c              unsymmetric stencil for dirichlet conditions
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                do n=1,nspecies
                   sum = sum
-     &                 + xflux_for_Y(i,j+1,n)
+     &                 + yflux_for_Y(i,j+1,n)
      &                 * hms(n)
      &                 * scale_factor
                end do
-               xflux_for_H(i,j+1) = sum
+               yflux_for_H(i,j+1) = sum
             else if (bc(2, 2, index_of_T) .ne. INT_DIR) then
 c              no flux in all other cases (INT_DIR should never occur 
 c              at a domain boundary but it does not hurt to check).
 c              note the code logic assumes if neither EXT_DIR nor INT_DIR 
 c              for T, then the same is true for all the species.
-               xflux_for_H(i,j+1) = 0
+               yflux_for_H(i,j+1) = 0
             end if
          end do
       end if
@@ -502,7 +502,7 @@ c              for T, then the same is true for all the species.
 c     volume weighted negative sum of the fluxes
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
-            neg_one_over_volume = - one / volume(i,j)
+            neg_one_over_volume = - 1.0d0 / volume(i,j)
             update_for_H(i, j) 
      &           = neg_one_over_volume
      &           * (xflux_for_H(i+1,j) - xflux_for_H(i,j)
