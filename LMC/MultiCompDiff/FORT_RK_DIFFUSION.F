@@ -274,8 +274,8 @@ c     flux as a subexpression, so we simply multiply by an egde h.
 
 c     redo the fluxes in x direction at domain boundaries
       if (domain_lo(1) .eq. lo(1)) then
+         i = lo(1)
          do j=lo(2),hi(2)
-            i = lo(1)
 c           do species first because their fluxes appear in the enthalpy case
             do n=1,nspecies
                if (bc(1, 1, offset + n) .eq. EXT_DIR) then
@@ -286,7 +286,7 @@ c                 unsymmetric stencil for dirichlet conditions
      &                 * (rho_D(i-1,j,n) + rho_D(i,j,n)) 
      &                 * (- (8.0d0 / 3.0d0) * Y(i-1,j,n)
      &                 + 3 * Y(i,j,n)
-     &                 + (1.0d0 / 3.0d0) * Y(i+1,j,n))
+     &                 - (1.0d0 / 3.0d0) * Y(i+1,j,n))
                else if (bc(1, 1, offset + n) .ne. INT_DIR) then
 c                 no flux in all other cases (INT_DIR should never occur 
 c                 at a domain boundary but it does not hurt to check)
@@ -301,7 +301,7 @@ c              unsymmetric stencil for dirichlet conditions
      &              * (lambda(i-1,j) + lambda(i,j)) 
      &              * (- (8.0d0 / 3.0d0) * state(i-1,j,index_of_T)
      &              + 3 * state(i,j,index_of_T)
-     &              + (1.0d0 / 3.0d0) * state(i+1,j,index_of_T))
+     &              - (1.0d0 / 3.0d0) * state(i+1,j,index_of_T))
                T_on_edge = half 
      &              * (state(i-1,j,index_of_T) 
      &              + state(i,j,index_of_T))
@@ -315,7 +315,57 @@ c              unsymmetric stencil for dirichlet conditions
                xflux_for_H(i,j) = sum
             else if (bc(1, 1, index_of_T) .ne. INT_DIR) then
 c              no flux in all other cases (INT_DIR should never occur 
-c              at a domain boundary but it does not hurt to check)
+c              at a domain boundary but it does not hurt to check).
+c              note the code logic assumes if neither EXT_DIR nor INT_DIR 
+c              for T, then the same is true for all the species.
+               xflux_for_H(i,j) = 0
+            end if
+         end do
+      else if (domain_hi(1) .eq. hi(1)) then
+         i = hi(1)
+         do j=lo(2),hi(2)
+c           do species first because their fluxes appear in the enthalpy case
+            do n=1,nspecies
+               if (bc(1, 2, offset + n) .eq. EXT_DIR) then
+c                 unsymmetric stencil for dirichlet conditions
+                  xflux_for_Y(i,j,n) 
+     &                 = half_over_dx 
+     &                 * areax(i,j) 
+     &                 * (rho_D(i-1,j,n) + rho_D(i,j,n)) 
+     &                 * ((1.0d0 / 3.0d0) * Y(i-1,j,n)
+     &                 - 3 * Y(i,j,n)
+     &                 + (8.0d0 / 3.0d0) * Y(i+1,j,n))
+               else if (bc(1, 2, offset + n) .ne. INT_DIR) then
+c                 no flux in all other cases (INT_DIR should never occur 
+c                 at a domain boundary but it does not hurt to check)
+                  xflux_for_Y(i,j,n) = 0
+               end if
+            end do
+c           now the enthalpy case
+            if (bc(1, 2, index_of_T) .eq. EXT_DIR) then
+c              unsymmetric stencil for dirichlet conditions
+               sum = half_over_dx
+     &              * areay(i,j) 
+     &              * (lambda(i-1,j) + lambda(i,j)) 
+     &              * ((1.0d0 / 3.0d0) * state(i-1,j,index_of_T)
+     &              - 3 * state(i,j,index_of_T)
+     &              + (8.0d0 / 3.0d0) * state(i+1,j,index_of_T))
+               T_on_edge = half 
+     &              * (state(i-1,j,index_of_T) 
+     &              + state(i,j,index_of_T))
+               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+               do n=1,nspecies
+                  sum = sum
+     &                 + xflux_for_Y(i,j,n)
+     &                 * hms(n)
+     &                 * scale_factor
+               end do
+               xflux_for_H(i,j) = sum
+            else if (bc(1, 2, index_of_T) .ne. INT_DIR) then
+c              no flux in all other cases (INT_DIR should never occur 
+c              at a domain boundary but it does not hurt to check).
+c              note the code logic assumes if neither EXT_DIR nor INT_DIR 
+c              for T, then the same is true for all the species.
                xflux_for_H(i,j) = 0
             end if
          end do
@@ -349,6 +399,105 @@ c     flux as a subexpression, so we simply multiply by an egde h.
             yflux_for_H(i,j) = sum
          end do
       end do
+
+c     redo the fluxes in y direction at domain boundaries
+      if (domain_lo(2) .eq. lo(2)) then
+         j = lo(2)
+         do i=lo(1),hi(1)
+c           do species first because their fluxes appear in the enthalpy case
+            do n=1,nspecies
+               if (bc(2, 1, offset + n) .eq. EXT_DIR) then
+c                 unsymmetric stencil for dirichlet conditions
+                  yflux_for_Y(i,j,n) 
+     &                 = half_over_dx 
+     &                 * areax(i,j) 
+     &                 * (rho_D(i,j-1,n) + rho_D(i,j,n)) 
+     &                 * (- (8.0d0 / 3.0d0) * Y(i,j-1,n)
+     &                 + 3 * Y(i,j,n)
+     &                 - (1.0d0 / 3.0d0) * Y(i,j+1,n))
+               else if (bc(2, 1, offset + n) .ne. INT_DIR) then
+c                 no flux in all other cases (INT_DIR should never occur 
+c                 at a domain boundary but it does not hurt to check)
+                  yflux_for_Y(i,j,n) = 0
+               end if
+            end do
+c           now the enthalpy case
+            if (bc(2, 1, index_of_T) .eq. EXT_DIR) then
+c              unsymmetric stencil for dirichlet conditions
+               sum = half_over_dx
+     &              * areay(i,j) 
+     &              * (lambda(i,j-1) + lambda(i,j)) 
+     &              * (- (8.0d0 / 3.0d0) * state(i,j-1,index_of_T)
+     &              + 3 * state(i,j,index_of_T)
+     &              - (1.0d0 / 3.0d0) * state(i,j+1,index_of_T))
+               T_on_edge = half 
+     &              * (state(i,j-1,index_of_T) 
+     &              + state(i,j,index_of_T))
+               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+               do n=1,nspecies
+                  sum = sum
+     &                 + yflux_for_Y(i,j,n)
+     &                 * hms(n)
+     &                 * scale_factor
+               end do
+               yflux_for_H(i,j) = sum
+            else if (bc(2, 1, index_of_T) .ne. INT_DIR) then
+c              no flux in all other cases (INT_DIR should never occur 
+c              at a domain boundary but it does not hurt to check).
+c              note the code logic assumes if neither EXT_DIR nor INT_DIR 
+c              for T, then the same is true for all the species.
+               yflux_for_H(i,j) = 0
+            end if
+         end do
+      else if (domain_hi(2) .eq. hi(2)) then
+         j = hi(2)
+         do i=lo(1),hi(1)
+c           do species first because their fluxes appear in the enthalpy case
+            do n=1,nspecies
+               if (bc(2, 2, offset + n) .eq. EXT_DIR) then
+c                 unsymmetric stencil for dirichlet conditions
+                  xflux_for_Y(i,j,n) 
+     &                 = half_over_dx 
+     &                 * areax(i,j) 
+     &                 * (rho_D(i,j-1,n) + rho_D(i,j,n)) 
+     &                 * ((1.0d0 / 3.0d0) * Y(i,j-1,n)
+     &                 - 3 * Y(i,j,n)
+     &                 + (8.0d0 / 3.0d0) * Y(i,j+1,n))
+               else if (bc(2, 2, offset + n) .ne. INT_DIR) then
+c                 no flux in all other cases (INT_DIR should never occur 
+c                 at a domain boundary but it does not hurt to check)
+                  xflux_for_Y(i,j,n) = 0
+               end if
+            end do
+c           now the enthalpy case
+            if (bc(2, 2, index_of_T) .eq. EXT_DIR) then
+c              unsymmetric stencil for dirichlet conditions
+               sum = half_over_dx
+     &              * areay(i,j) 
+     &              * (lambda(i,j-1) + lambda(i,j)) 
+     &              * ((1.0d0 / 3.0d0) * state(i,j-1,index_of_T)
+     &              - 3 * state(i,j,index_of_T)
+     &              + (8.0d0 / 3.0d0) * state(i,j+1,index_of_T))
+               T_on_edge = half 
+     &              * (state(i,j-1,index_of_T) 
+     &              + state(i,j,index_of_T))
+               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+               do n=1,nspecies
+                  sum = sum
+     &                 + xflux_for_Y(i,j,n)
+     &                 * hms(n)
+     &                 * scale_factor
+               end do
+               xflux_for_H(i,j) = sum
+            else if (bc(2, 2, index_of_T) .ne. INT_DIR) then
+c              no flux in all other cases (INT_DIR should never occur 
+c              at a domain boundary but it does not hurt to check).
+c              note the code logic assumes if neither EXT_DIR nor INT_DIR 
+c              for T, then the same is true for all the species.
+               xflux_for_H(i,j) = 0
+            end if
+         end do
+      end if
 
 c     volume weighted negative sum of the fluxes
       do j=lo(2),hi(2)
