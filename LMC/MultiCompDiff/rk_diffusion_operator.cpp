@@ -11,20 +11,9 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     const TimeLevel whichTime = which_time(State_Type, time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
 
-    // allocate OUTPUT multifabs for fluxes and updates
-    int ngrow = 0;
-    diffusion->allocFluxBoxesLevel(flux_for_H,ngrow,1);
-    diffusion->allocFluxBoxesLevel(flux_for_Y,ngrow,nspecies);
-    update_for_H = new MultiFab(grids,1,ngrow);
-    update_for_Y = new MultiFab(grids,nspecies,ngrow);
-
     // get some constants used as dimensions
     int ncomps = NUM_STATE;
     // const int nspecies = getChemSolve().numSpecies(); // this is globally defined
-
-    // allocate INPUT multifab for state
-    ngrow = 1;
-    MultiFab state (grids, ncomps, ngrow);
 
     // get locations of things in the state
     int index_of_firstY = Density + 1;
@@ -32,6 +21,17 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     int index_of_rho = Density;
     int index_of_rhoH = RhoH;
     int index_of_T = Temp;
+
+    // allocate INPUT multifab for state
+    int ngrow = 1;
+    MultiFab state (grids, ncomps, ngrow);
+
+    // allocate OUTPUT multifabs for fluxes and updates
+    ngrow = 0;
+    diffusion->allocFluxBoxesLevel(flux_for_H,ngrow,1);
+    diffusion->allocFluxBoxesLevel(flux_for_Y,ngrow,nspecies);
+    update_for_H = new MultiFab(grids,1,ngrow);
+    update_for_Y = new MultiFab(grids,nspecies,ngrow);
 
     // loop over boxes
     MFIter update_for_H_mfi(*update_for_H);
@@ -68,7 +68,8 @@ HeatTransfer::rk_diffusion_operator (const Real time,
 /*
 c     arguments are alphabetical, mostly:
 c
-c     lo, hi,                           ! INPUT limits of valid region
+c     domain_lo, domain_hi,             ! INPUT limits of valid region of the domain
+c     lo, hi,                           ! INPUT limits of valid region of the box
 c     areax, DIMS(areax),               ! INPUT areas of the faces perpendicular to x axis
 c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
@@ -92,27 +93,26 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 
 #define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
 
-	    FORT_RK_DIFFUSION (grids[idx].loVect(), grids[idx].hiVect(),
-			       DATA_AND_LIMITS(area[0][idx]),
-			       DATA_AND_LIMITS(area[1][idx]),
-			       bc.dataPtr(),
-			       geom.CellSize(),
-			       &index_of_firstY,
-			       &index_of_lastY,
-			       &index_of_rho,
-			       &index_of_rhoH,
-			       &index_of_T,
-			       &ncomps,
-			       &nspecies,
-			       DATA_AND_LIMITS(state[idx]),
-			       DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
-			       DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
-			       DATA_AND_LIMITS(volume[idx]),
-			       DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
-			       DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
-			       DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
-			       DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
+	FORT_RK_DIFFUSION (geom.Domain().loVect(), geom.Domain().hiVect(), 
+			   grids[idx].loVect(), grids[idx].hiVect(),
+			   DATA_AND_LIMITS(area[0][idx]),
+			   DATA_AND_LIMITS(area[1][idx]),
+			   bc.dataPtr(),
+			   geom.CellSize(),
+			   &index_of_firstY,
+			   &index_of_lastY,
+			   &index_of_rho,
+			   &index_of_rhoH,
+			   &index_of_T,
+			   &ncomps,
+			   &nspecies,
+			   DATA_AND_LIMITS(state[idx]),
+			   DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
+			   DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
+			   DATA_AND_LIMITS(volume[idx]),
+			   DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
+			   DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
+			   DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
+			   DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
     }
-
-    // stop here, more to come
 }

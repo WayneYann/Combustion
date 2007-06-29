@@ -20,7 +20,8 @@ c     unsure of LMC support for r-z coordinates
 
 c     arguments are alphabetical, mostly:
 c
-c     lo, hi,                           ! INPUT limits of valid region
+c     domain_lo, domain_hi,             ! INPUT limits of valid region of the domain
+c     lo, hi,                           ! INPUT limits of valid region of the box
 c     areax, DIMS(areax),               ! INPUT areas of the faces perpendicular to x axis
 c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
@@ -43,6 +44,7 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 
       subroutine FORT_RK_DIFFUSION
      &     (
+     &     domain_lo, domain_hi,
      &     lo, hi,
      &     areax, DIMS(areax),
      &     areay, DIMS(areay),
@@ -77,6 +79,7 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 c     arguments
       integer ncomps
       integer nspecies
+      integer domain_lo(BL_SPACEDIM), domain_hi(BL_SPACEDIM)
       integer lo(BL_SPACEDIM), hi(BL_SPACEDIM)
       integer DIMDEC(areax)
       integer DIMDEC(areay)
@@ -169,8 +172,10 @@ c     allocate all variably dimensioned local arrays
       allocate (X (nspecies))
       allocate (Y (DIMV(state), nspecies))
 
-c     calculate Y from rho Y in the state
+c     offset of species in the state
       offset = index_of_firstY - 1
+
+c     calculate Y from rho Y in the state
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
             one_over_rho = one / state(i, j, index_of_rho)
@@ -242,7 +247,7 @@ c     fluxes in x direction
       half_over_dx = half / dx(1)
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)+1
-            sum = half_over_dy
+            sum = half_over_dx
      &           * areay(i,j) 
      &           * (lambda(i-1,j) + lambda(i,j)) 
      &           * (state(i,j,index_of_T) - state(i-1,j,index_of_T))
@@ -266,6 +271,55 @@ c     flux as a subexpression, so we simply multiply by an egde h.
             xflux_for_H(i,j) = sum
          end do
       end do
+
+c     redo the fluxes in x direction at domain boundaries
+      if (domain_lo(1) .eq. lo(1)) then
+         do j=lo(2),hi(2)
+            i = lo(1)
+c           do species first because their fluxes appear in the enthalpy case
+            do n=1,nspecies
+               if (bc(1, 1, offset + n) .eq. EXT_DIR) then
+c                 unsymmetric stencil for dirichlet conditions
+                  xflux_for_Y(i,j,n) 
+     &                 = half_over_dx 
+     &                 * areax(i,j) 
+     &                 * (rho_D(i-1,j,n) + rho_D(i,j,n)) 
+     &                 * (- (8.0d0 / 3.0d0) * Y(i-1,j,n)
+     &                 + 3 * Y(i,j,n)
+     &                 + (1.0d0 / 3.0d0) * Y(i+1,j,n))
+               else if (bc(1, 1, offset + n) .ne. INT_DIR) then
+c                 no flux in all other cases (INT_DIR should never occur 
+c                 at a domain boundary but it does not hurt to check)
+                  xflux_for_Y(i,j,n) = 0
+               end if
+            end do
+c           now the enthalpy case
+            if (bc(1, 1, index_of_T) .eq. EXT_DIR) then
+c              unsymmetric stencil for dirichlet conditions
+               sum = half_over_dx
+     &              * areay(i,j) 
+     &              * (lambda(i-1,j) + lambda(i,j)) 
+     &              * (- (8.0d0 / 3.0d0) * state(i-1,j,index_of_T)
+     &              + 3 * state(i,j,index_of_T)
+     &              + (1.0d0 / 3.0d0) * state(i+1,j,index_of_T))
+               T_on_edge = half 
+     &              * (state(i-1,j,index_of_T) 
+     &              + state(i,j,index_of_T))
+               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+               do n=1,nspecies
+                  sum = sum
+     &                 + xflux_for_Y(i,j,n)
+     &                 * hms(n)
+     &                 * scale_factor
+               end do
+               xflux_for_H(i,j) = sum
+            else if (bc(1, 1, index_of_T) .ne. INT_DIR) then
+c              no flux in all other cases (INT_DIR should never occur 
+c              at a domain boundary but it does not hurt to check)
+               xflux_for_H(i,j) = 0
+            end if
+         end do
+      end if
 
 c     fluxes in y direction
       half_over_dy = half / dx(2)
