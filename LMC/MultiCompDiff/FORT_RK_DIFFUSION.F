@@ -448,7 +448,7 @@ c           enthalpy flux
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
             sum = 0
             do n=1,nspecies
-               sum = sum + xflux_for_Y(i,j,n) * hms(n) * hms_scale_factor
+               sum = sum + yflux_for_Y(i,j,n) * hms(n) * hms_scale_factor
             end do
             yflux_for_H(i,j) 
      &           = sum
@@ -497,7 +497,7 @@ c              species fluxes
      &                 * (- (8.0d0 / 3.0d0) * Y(i,j-1,n)
      &                 + 3 * Y(i,j,n)
      &                 - (1.0d0 / 3.0d0) * Y(i,j+1,n))
-                  sum = sum + xflux_for_Y(i,j,n) 
+                  sum = sum + yflux_for_Y(i,j,n) 
                end do
 c              flux correction
                correction = - sum / nspecies
@@ -567,7 +567,7 @@ c              species fluxes
      &                 * ((1.0d0 / 3.0d0) * Y(i,j-1,n)
      &                 - 3 * Y(i,j,n)
      &                 + (8.0d0 / 3.0d0) * Y(i,j+1,n))
-                  sum = sum + xflux_for_Y(i,j+1,n) 
+                  sum = sum + yflux_for_Y(i,j+1,n) 
                end do
 c              flux correction
                correction = - sum / nspecies
@@ -584,7 +584,7 @@ c              flux correction
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                sum = 0
                do n=1,nspecies
-                  sum = sum + xflux_for_Y(i,j+1,n) * hms(n) * hms_scale_factor
+                  sum = sum + yflux_for_Y(i,j+1,n) * hms(n) * hms_scale_factor
                end do
                yflux_for_H(i,j+1) 
      &              = sum
