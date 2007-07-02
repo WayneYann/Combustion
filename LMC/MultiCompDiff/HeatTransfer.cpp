@@ -4599,10 +4599,9 @@ HeatTransfer::advance (Real time,
 			       update_for_H,
 			       update_for_Y);
 
-	// these deletes may be wrong for the fluxes
-	// Mike suggests using Diffusion::removeFluxBoxesLevel
-	// though elsewhere Marc just uses delete
-	// Mike also prefers to so the allocate at the same level of the deallocate
+	// Mike suggests using Diffusion::removeFluxBoxesLevel though Marc just uses delete
+	// Mike also prefers to do the allocate at the same level of the deallocate
+
 	// delete flux_for_H;
 	// delete flux_for_Y;
 	diffusion->removeFluxBoxesLevel (flux_for_H);
