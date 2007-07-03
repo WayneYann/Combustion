@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.3 2007-06-29 21:26:43 sepp Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.4 2007-07-03 16:58:35 sepp Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -260,6 +260,7 @@ extern "C" {
 	Real* areax, ARLIM_P(areax_lo), ARLIM_P(areax_hi),
 	Real* areay, ARLIM_P(areay_lo), ARLIM_P(areay_hi),
 	const int* bc,
+	const Real* dt,
 	const Real* dx,
 	int* index_of_firstY,
 	int* index_of_lastY,

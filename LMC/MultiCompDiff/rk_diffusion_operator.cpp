@@ -1,5 +1,6 @@
 void
 HeatTransfer::rk_diffusion_operator (const Real time,
+				     const Real dt,
 				     MultiFab **& flux_for_H,
 				     MultiFab **& flux_for_Y,
 				     MultiFab *& update_for_H,
@@ -73,6 +74,7 @@ c     lo, hi,                           ! INPUT limits of valid region of the bo
 c     areax, DIMS(areax),               ! INPUT areas of the faces perpendicular to x axis
 c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
+c     dt,                               ! INPUT timestep
 c     dx,                               ! INPUT physical dimensions of grid cells
 c     index_of_firstY,                  ! INPUT index of rho Y for the first species in the state
 c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
@@ -98,6 +100,7 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 			   DATA_AND_LIMITS(area[0][idx]),
 			   DATA_AND_LIMITS(area[1][idx]),
 			   bc.dataPtr(),
+			   &dt,
 			   geom.CellSize(),
 			   &index_of_firstY,
 			   &index_of_lastY,

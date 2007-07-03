@@ -183,6 +183,7 @@ public:
     // Runge-Kutta diffusion functions used by level advance function.
     //
     void rk_diffusion_operator (const Real time,
+				const Real dt,
 				MultiFab **& flux_for_H,
 				MultiFab **& flux_for_Y,
 				MultiFab *& update_for_H,

@@ -4575,51 +4575,68 @@ HeatTransfer::advance (Real time,
     // Compute the update to momentum
     //
     if (do_mom_diff == 1)
-      momentum_advection(dt,do_reflux);
-
+	momentum_advection(dt,do_reflux);
     //
-    // Runge-Kutta method for update of energy and species:
+    // Update energy and species: Runge-Kutta method.
     //
     if (do_rk_diffusion)
     {
-	// While under development this block is active for debugging,
-	// but it will not alter values in the state.
-
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at top of do_rk_diffusion block\n" << std::flush;
 
-	MultiFab** flux_for_H;
-	MultiFab** flux_for_Y;
-	MultiFab* update_for_H;
-	MultiFab* update_for_Y;
+	// finish the advective update by including rho H.
+	bool do_adv_reflux = true;
+        scalar_advection(dt,RhoH,RhoH,do_adv_reflux);
 
-	rk_diffusion_operator (time,
-			       flux_for_H,
-			       flux_for_Y,
-			       update_for_H,
-			       update_for_Y);
+	// get locations of some things in the state
+	int index_of_firstY = Density + 1;
+	int index_of_rhoH = RhoH;
 
-	// Mike suggests using Diffusion::removeFluxBoxesLevel though Marc just uses delete
-	// Mike also prefers to do the allocate at the same level of the deallocate
+	// get the forcing and advection terms as the difference between
+	// the old state and the advective update that is in the new state
+	MultiFab terms_for_rhoH (grids, 1, 0);
+	MultiFab terms_for_rhoY (grids, nspecies, 0);
+	MultiFab& S_new = get_new_data(State_Type);
+	MultiFab& S_old = get_old_data(State_Type);
+	MultiFab::Copy (terms_for_rhoH, S_new, index_of_rhoH, 0, 1, 0);
+	MultiFab::Copy (terms_for_rhoY, S_new, index_of_firstY, 0, nspecies, 0);
+	MultiFab::Subtract (terms_for_rhoH, S_old, index_of_rhoH, 0, 1, 0);
+	MultiFab::Subtract (terms_for_rhoY, S_old, index_of_firstY, 0, nspecies, 0);
 
-	// delete flux_for_H;
-	// delete flux_for_Y;
-	diffusion->removeFluxBoxesLevel (flux_for_H);
-	diffusion->removeFluxBoxesLevel (flux_for_Y);
-	delete update_for_H;
-	delete update_for_Y;
+	// apply the diffusion operator to the old time data to get fluxes and updates
+	MultiFab** flux_for_H_old;
+	MultiFab** flux_for_Y_old;
+	MultiFab* update_for_H_old;
+	MultiFab* update_for_Y_old;
+
+	rk_diffusion_operator (prev_time,
+			       dt,
+			       flux_for_H_old,
+			       flux_for_Y_old,
+			       update_for_H_old,
+			       update_for_Y_old);
+
+	BoxLib::Abort("JFG: stopping here for now");
+
+	diffusion->removeFluxBoxesLevel (flux_for_H_old);
+	diffusion->removeFluxBoxesLevel (flux_for_Y_old);
+	delete update_for_H_old;
+	delete update_for_Y_old;
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at bottom of do_rk_diffusion block\n" << std::flush;
     }
     //
-    // Update energy and species
+    // Update energy and species, Marc's differential diffusion version.
     //
-    if (do_mcdd)
+    else if (do_mcdd)
     {
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // RhoH aofs, already did others
         mcdd_update(time,dt);
     }
+    //
+    // Update energy and species: original version.
+    //
     else
     {
         //
@@ -5756,7 +5773,8 @@ HeatTransfer::scalar_advection (Real dt,
         && fscalar>=RhoH && lscalar<=RhoH
         && !unity_Le 
         && do_add_nonunityLe_corr_to_rhoh_adv_flux
-        && !do_mcdd;
+        && !do_mcdd
+	&& !do_rk_diffusion;
     MultiFab** fluxNULN;
     //
     // If RhoH included, compute non-unity Lewis number flux addition.stuff

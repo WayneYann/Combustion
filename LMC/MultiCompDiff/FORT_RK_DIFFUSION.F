@@ -9,9 +9,6 @@ c#include "ArrayLim.H"
 
 c     to do:
 c     must adjust diffusion coefficients by thickness factors
-c     unsure of the signs and scaling wanted for fluxes and updates:
-c        at present the updates (but not the fluxes) are weighted by 1/vol
-c        so they give the change to the pointwise value
 c     unsure of LMC support for r-z coordinates
 
 c     arguments are alphabetical, mostly:
@@ -21,6 +18,7 @@ c     lo, hi,                           ! INPUT limits of valid region of the bo
 c     areax, DIMS(areax),               ! INPUT areas of the faces perpendicular to x axis
 c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
+c     dt,                               ! INPUT timestep
 c     dx,                               ! INPUT physical dimensions of grid cells
 c     index_of_firstY,                  ! INPUT index of rho Y for the first species in the state
 c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
@@ -45,6 +43,7 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
      &     areax, DIMS(areax),
      &     areay, DIMS(areay),
      &     bc,
+     &     dt,
      &     dx,
      &     index_of_firstY,
      &     index_of_lastY,
@@ -95,6 +94,7 @@ c     arguments
       integer index_of_T
       REAL_T areax(DIMV(areax))
       REAL_T areay(DIMV(areay))
+      REAL_T dt
       REAL_T dx(BL_SPACEDIM)
       REAL_T state(DIMV(state),ncomps)
       REAL_T update_for_H(DIMV(update_for_H))
@@ -120,6 +120,7 @@ c     local variables
       REAL_T contiguous_Y
       REAL_T correction
       REAL_T cpms
+      REAL_T dt_over_volume
       REAL_T floored_T
       REAL_T half_over_dx
       REAL_T half_over_dy
@@ -128,7 +129,6 @@ c     local variables
       REAL_T lambda
       REAL_T minus_value
       REAL_T mmw
-      REAL_T neg_one_over_volume
       REAL_T one_over_dx
       REAL_T one_over_rho
       REAL_T one_over_wt
@@ -600,17 +600,17 @@ c              flux correction
          end do
       end if
 
-c     volume weighted negative sum of the fluxes
+c     volume weighted sum of the fluxes
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
-            neg_one_over_volume = - 1.0d0 / volume(i,j)
+            dt_over_volume = dt / volume(i,j)
             update_for_H(i, j) 
-     &           = neg_one_over_volume
+     &           = dt_over_volume
      &           * (xflux_for_H(i+1,j) - xflux_for_H(i,j)
      &           + yflux_for_H(i,j+1) - yflux_for_H(i,j))
             do n=1,nspecies
                update_for_Y(i, j, n) 
-     &              = neg_one_over_volume
+     &              = dt_over_volume
      &              * (xflux_for_Y(i+1,j,n) - xflux_for_Y(i,j,n)
      &              + yflux_for_Y(i,j+1,n) - yflux_for_Y(i,j,n))
             end do
