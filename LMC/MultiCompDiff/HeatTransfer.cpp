@@ -4591,19 +4591,23 @@ HeatTransfer::advance (Real time,
 	// get locations of some things in the state
 	int index_of_firstY = Density + 1;
 	int index_of_rhoH = RhoH;
+	int index_of_T = Temp;
 
-	// get the forcing and advection terms as the difference between
-	// the old state and the advective update that is in the new state
-	MultiFab terms_for_rhoH (grids, 1, 0);
-	MultiFab terms_for_rhoY (grids, nspecies, 0);
+	// get the old and new states
 	MultiFab& S_new = get_new_data(State_Type);
 	MultiFab& S_old = get_old_data(State_Type);
-	MultiFab::Copy (terms_for_rhoH, S_new, index_of_rhoH, 0, 1, 0);
-	MultiFab::Copy (terms_for_rhoY, S_new, index_of_firstY, 0, nspecies, 0);
-	MultiFab::Subtract (terms_for_rhoH, S_old, index_of_rhoH, 0, 1, 0);
-	MultiFab::Subtract (terms_for_rhoY, S_old, index_of_firstY, 0, nspecies, 0);
 
-	// apply the diffusion operator to the old time data to get fluxes and updates
+	// the new state currently holds the sum of the old state and the forcing 
+	// and advection terms.  save these values.
+	MultiFab save_for_rhoH (grids, 1, 0);
+	MultiFab save_for_rhoY (grids, nspecies, 0);
+	// note the arguments for MultiFab:: procedures are 
+	// (dst, src, srccomp, dstcomp, ncomp, nghost);
+	MultiFab::Copy (save_for_rhoH, S_new, index_of_rhoH, 0, 1, 0);
+	MultiFab::Copy (save_for_rhoY, S_new, index_of_firstY, 0, nspecies, 0);
+
+	// apply the diffusion operator to the old state to get fluxes and updates
+        // associated with the old state
 	MultiFab** flux_for_H_old;
 	MultiFab** flux_for_Y_old;
 	MultiFab* update_for_H_old;
@@ -4616,10 +4620,59 @@ HeatTransfer::advance (Real time,
 			       update_for_H_old,
 			       update_for_Y_old);
 
-	BoxLib::Abort("JFG: stopping here for now");
+	// form the new_star state in the new state by adding the updates associated 
+        // with the old state
+	MultiFab::Add (S_new, *update_for_H_old, 0, index_of_rhoH, 1, 0);
+	MultiFab::Add (S_new, *update_for_Y_old, 0, index_of_firstY, nspecies, 0);
 
+	// use the old temperature as an initial guess for the Newton iteration to form 
+        // consistent temperatures in the new_star state.
+	// question: should this be repeated after the new state is formed
+        // or is that taken care of elsewhere?
+	MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
+        RhoH_to_Temp(S_new);
+
+	// apply the diffusion operator to the new_star state to get fluxes and updates
+        // associated with the new_star state
+	MultiFab** flux_for_H_new;
+	MultiFab** flux_for_Y_new;
+	MultiFab* update_for_H_new;
+	MultiFab* update_for_Y_new;
+
+	rk_diffusion_operator (cur_time,
+			       dt,
+			       flux_for_H_new,
+			       flux_for_Y_new,
+			       update_for_H_new,
+			       update_for_Y_new);
+
+	// restore the new state with the saved values so that it holds the sum of the old
+        // state and the forcing and advection terms.
+	MultiFab::Copy (S_new, save_for_rhoH, 0, index_of_rhoH, 1, 0);
+	MultiFab::Copy (S_new, save_for_rhoY, 0, index_of_firstY, nspecies, 0);
+
+	BoxLib::Abort("JFG: stopping here, for now");
+
+	// form the new state in place by adding the average of the updates associated with
+        // the old state and the new_star state
+	(*update_for_H_new).mult (0.5, 0);
+	(*update_for_Y_new).mult (0.5, 0);
+	MultiFab::Add (S_new, *update_for_H_old, 0, index_of_rhoH, 1, 0);
+	MultiFab::Add (S_new, *update_for_Y_old, 0, index_of_firstY, nspecies, 0);
+	(*update_for_H_old).mult (0.5, 0);
+	(*update_for_Y_old).mult (0.5, 0);
+	MultiFab::Add (S_new, *update_for_H_new, 0, index_of_rhoH, 1, 0);
+	MultiFab::Add (S_new, *update_for_Y_new, 0, index_of_firstY, nspecies, 0);
+
+	BoxLib::Abort("JFG: stopping here, for now");
+
+	// since these are MultiFab* or **, is this the correct way to delete them?
+	diffusion->removeFluxBoxesLevel (flux_for_H_new);
+	diffusion->removeFluxBoxesLevel (flux_for_Y_new);
 	diffusion->removeFluxBoxesLevel (flux_for_H_old);
 	diffusion->removeFluxBoxesLevel (flux_for_Y_old);
+	delete update_for_H_new;
+	delete update_for_Y_new;
 	delete update_for_H_old;
 	delete update_for_Y_old;
 

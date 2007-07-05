@@ -1,5 +1,5 @@
 //
-// $Id: MultiFab.cpp,v 1.1 2007-07-03 17:00:21 sepp Exp $
+// $Id: MultiFab.cpp,v 1.2 2007-07-05 15:07:23 sepp Exp $
 //
 #include <winstd.H>
 
@@ -14,6 +14,27 @@
 #include <MultiFab.H>
 #include <ParallelDescriptor.H>
 #include <Profiler.H>
+
+void
+MultiFab::Add (MultiFab&       dst,
+	       const MultiFab& src,
+	       int             srccomp,
+	       int             dstcomp,
+	       int             numcomp,
+	       int             nghost)
+{
+    BL_ASSERT(dst.boxArray() == src.boxArray());
+    BL_ASSERT(dst.distributionMap == src.distributionMap);
+    BL_ASSERT(dst.nGrow() >= nghost && src.nGrow() >= nghost);
+
+    for (MFIter mfi(dst); mfi.isValid(); ++mfi)
+    {
+        Box bx = BoxLib::grow(mfi.validbox(),nghost);
+
+        if (bx.ok())
+            dst[mfi].plus(src[mfi], bx, bx, srccomp, dstcomp, numcomp);
+    }
+}
 
 void
 MultiFab::Copy (MultiFab&       dst,
