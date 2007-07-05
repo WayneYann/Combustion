@@ -65,7 +65,6 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
       implicit none
 
 #include "REAL.H"
-c#include "CONSTANTS.H"
 #include "BC_TYPES.H"
 #include "HEATTRANSFER_F.H"
 #include "ChemDriver_F.H"
@@ -120,8 +119,10 @@ c     local variables
       REAL_T contiguous_Y
       REAL_T correction
       REAL_T cpms
+      REAL_T dpdt_factor
       REAL_T dt_over_volume
       REAL_T floored_T
+      REAL_T FORT_P1ATMMKS
       REAL_T half_over_dx
       REAL_T half_over_dy
       REAL_T hms 
@@ -132,7 +133,7 @@ c     local variables
       REAL_T one_over_dx
       REAL_T one_over_rho
       REAL_T one_over_wt
-      REAL_T Patm
+      REAL_T p_amb
       REAL_T P1ATM
       REAL_T plus_value
       REAL_T pressure
@@ -164,6 +165,14 @@ c     local variables
       dimension X (:)
       dimension Y (:,:,:)
 
+c     debug variables
+      logical debug
+      integer idx
+      integer jdx
+      debug = .true.
+      idx = hi(1)
+      jdx = hi(2)
+
 c     allocate all variably dimensioned local arrays
       allocate (contiguous_Y (nspecies))
       allocate (cpms (nspecies))
@@ -178,6 +187,31 @@ c     allocate all variably dimensioned local arrays
 c     offset of species in the state
       offset = index_of_firstY - 1
 
+c     debug: print what is comming in
+      if (debug) then
+      i=idx
+      j=jdx
+      print *
+      print *, "entering FORT_RK_DIFFUSION"
+      print *, "domain_lo", ARG_L1(state), ARG_L2(state)
+      print *, "domain_hi", ARG_H1(state), ARG_H2(state)
+      print *, "lo", lo(1), lo(2)
+      print *, "hi", hi(1), hi(2)
+      print *, "dt", dt
+      print *, "dx", dx(1), dx(2)
+      print *, "index_of_firstY", index_of_firstY
+      print *, "index_of_lastY", index_of_lastY
+      print *, "index_of_rho", index_of_rho
+      print *, "index_of_rhoH", index_of_rhoH
+      print *, "index_of_T", index_of_T
+      print *, "ncomps", ncomps
+      print *, "nspecies", nspecies
+      do n=1,ncomps
+         print *, "comp", n, state(i, j, n)
+      end do
+      print *
+      end if
+
 c     calculate Y from rho Y in the state
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
@@ -188,22 +222,68 @@ c     calculate Y from rho Y in the state
          end do
       end do
 
-c     calculate rho_D and lambda
+c     debug:
+      if (debug) then
+c      i=ARG_L1(state)+1
+c      j=ARG_L2(state)+1
+      i=idx
+      j=jdx
+      print *
+      print *, "Y"
+      do n=1,nspecies
+         print *, "comp", n, Y(i, j, n)
+      end do
+      print *
+      end if
 
+c     get pressure
       CALL CKRP (IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
-      pressure = Patm * P1ATM
+      call FORT_GETPAMB (p_amb, dpdt_factor)
+      pressure = P1ATM * p_amb / FORT_P1ATMMKS ()
+
+c     debug:
+      if (debug) then
+      print *
+      print *, "pressure", pressure
+      print *
+      end if
+
+c     calculate rho_D and lambda
 
       call CKWT (IWRK(ckbi),RWRK(ckbr),one_over_wt)
       do n=1,nspecies
          one_over_wt(n) = 1.0d0 / one_over_wt(n)
       end do
 
+c     debug:
+      if (debug) then
+c      i=ARG_L1(state)+1
+c      j=ARG_L2(state)+1
+      i=idx
+      j=jdx
+      print *
+      print *, "one_over_wt"
+      do n=1,nspecies
+         print *, "comp", n, one_over_wt(n)
+      end do
+      print *
+      end if
+
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
             do n=1,nspecies
                contiguous_Y(n) = Y(i,j,n)
             end do
+
+c  FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res)
+c            Niter = FORT_TfromHYpt(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res)
+
             floored_T = MAX (state(i,j,index_of_T), TMIN_TRANS) 
+
+c            if (debug .and. i .eq. ARG_L1(state)+1 .and. j .eq. ARG_L2(state)) then
+            if (debug .and. i .eq. idx .and. j .eq. jdx) then
+               print *, "floored_T", floored_T
+            end if
 
             CALL CKCPMS (floored_T, IWRK(ckbi), RWRK(ckbr), cpms)
             CALL CKYTX (contiguous_Y, IWRK(ckbi), RWRK(ckbr), X)
@@ -241,10 +321,25 @@ c           multiplication by 0.5 averages the values
          end do
       end do
 
+c     debug:
+      if (debug) then
+c      i=ARG_L1(state)+1
+c      j=ARG_L2(state)+1
+      i=idx
+      j=jdx
+      print *
+      print *, "lambda", lambda(i, j)
+      print *, "rho_D"
+      do n=1,nspecies
+         print *, "comp", n, rho_D(i, j, n)
+      end do
+      print *
+      end if
+
 c     multiplication by hms_scale_factor converts from cgs to MKS (1 erg/g = 1.e-4 J/kg)
       hms_scale_factor = 1.0d-4
 
-c     fluxes in x direction
+c     fluxes in x direction are from lo(1) to hi(1)+1
       half_over_dx = 0.5d0 / dx(1)
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)+1
@@ -263,6 +358,16 @@ c           flux correction
             do n=1,nspecies
                xflux_for_Y(i,j,n) = xflux_for_Y(i,j,n) + correction
             end do
+
+            if (debug .and. i .eq. idx .and. j .eq. jdx) then
+               print *
+               print *, "xflux_for_Y"
+               do n=1,nspecies
+                  print *, "comp", n, xflux_for_Y(i, j, n)
+               end do
+               print *
+            end if
+
 c           enthalpy flux
             T_on_edge = 0.5d0
      &           * (state(i-1,j,index_of_T) 
@@ -278,6 +383,12 @@ c           enthalpy flux
      &           * areax(i,j) 
      &           * (lambda(i-1,j) + lambda(i,j)) 
      &           * (state(i,j,index_of_T) - state(i-1,j,index_of_T))
+            if (debug .and. i .eq. idx .and. j .eq. jdx) then
+               print *
+               print *, "xflux_for_H", xflux_for_H(i, j)
+               print *
+            end if
+
          end do
       end do
 
@@ -422,10 +533,10 @@ c              flux correction
          end do
       end if
 
-c     fluxes in y direction
+c     fluxes in y direction are from lo(2) to hi(2)+1
       half_over_dx = 0.5d0 / dx(2)
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)+1
+      do j=lo(2),hi(2)+1
+         do i=lo(1),hi(1)
 c           species fluxes
             sum = 0
             do n=1,nspecies
@@ -600,6 +711,15 @@ c              flux correction
          end do
       end if
 
+      if (debug) then
+         print *, "lo(1)", lo(1)
+         print *, "hi(1)", hi(1)
+         print *, "lo(2)", lo(2)
+         print *, "hi(2)", hi(2)
+         print *, "idx", idx
+         print *, "jdx", jdx
+      end if
+
 c     volume weighted sum of the fluxes
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
@@ -608,6 +728,14 @@ c     volume weighted sum of the fluxes
      &           = dt_over_volume
      &           * (xflux_for_H(i+1,j) - xflux_for_H(i,j)
      &           + yflux_for_H(i,j+1) - yflux_for_H(i,j))
+            if (debug .and. i .eq. idx .and. j .eq. jdx) then
+               print *
+               print *, "dt_over_volume", dt_over_volume
+               print *, xflux_for_H(i+1,j)
+               print *, xflux_for_H(i,j)
+               print *, yflux_for_H(i,j+1)
+               print *, yflux_for_H(i,j)
+            end if
             do n=1,nspecies
                update_for_Y(i, j, n) 
      &              = dt_over_volume
@@ -616,6 +744,24 @@ c     volume weighted sum of the fluxes
             end do
          end do
       end do
+
+c     debug: print what is going out
+      if (debug) then
+c      i=ARG_L1(state)+1
+c      j=ARG_L2(state)+1
+      i=idx
+      j=jdx
+      print *
+      print *, "leaving FORT_RK_DIFFUSION"
+      print *, "update_for_H", update_for_H(i, j)
+c      print *, "update_for_H"
+c      print *, update_for_H
+      print *, "update_for_Y"
+      do n=1,nspecies
+         print *, "comp", n, update_for_Y(i, j, n)
+      end do
+      print *
+      end if
 
       deallocate (contiguous_Y)
       deallocate (cpms)
@@ -626,6 +772,8 @@ c     volume weighted sum of the fluxes
       deallocate (Upsilon)
       deallocate (X)
       deallocate (Y)
+
+      stop
 
       return
       end

@@ -22,26 +22,29 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     int index_of_rho = Density;
     int index_of_rhoH = RhoH;
     int index_of_T = Temp;
-
-    // allocate INPUT multifab for state
-    int ngrow = 1;
-    MultiFab state (grids, ncomps, ngrow);
+    int fort_index_of_firstY = 1 + index_of_firstY;
+    int fort_index_of_lastY  = 1 + index_of_lastY;
+    int fort_index_of_rho    = 1 + index_of_rho;
+    int fort_index_of_rhoH   = 1 + index_of_rhoH;
+    int fort_index_of_T      = 1 + index_of_T;
 
     // allocate OUTPUT multifabs for fluxes and updates
-    ngrow = 0;
+    int ngrow = 0;
     diffusion->allocFluxBoxesLevel(flux_for_H,ngrow,1);
     diffusion->allocFluxBoxesLevel(flux_for_Y,ngrow,nspecies);
     update_for_H = new MultiFab(grids,1,ngrow);
     update_for_Y = new MultiFab(grids,nspecies,ngrow);
 
-    // loop over boxes
+    // loop over fabs in the state at the specified time
+    MultiFab dummy (grids,1,0,Fab_noallocate);
     MFIter update_for_H_mfi(*update_for_H);
     MFIter update_for_Y_mfi(*update_for_Y);
     MFIter xflux_for_H_mfi(*flux_for_H[0]);
     MFIter yflux_for_H_mfi(*flux_for_H[1]);
     MFIter xflux_for_Y_mfi(*flux_for_Y[0]);
     MFIter yflux_for_Y_mfi(*flux_for_Y[1]);
-    for (FillPatchIterator state_fpi (*this, state, ngrow, time, State_Type, 0, ncomps);
+    ngrow = 1;
+    for (FillPatchIterator state_fpi (*this, dummy, ngrow, time, State_Type, 0, ncomps);
          state_fpi.isValid();
          ++state_fpi, 
 	     ++update_for_H_mfi, 
@@ -102,14 +105,14 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 			   bc.dataPtr(),
 			   &dt,
 			   geom.CellSize(),
-			   &index_of_firstY,
-			   &index_of_lastY,
-			   &index_of_rho,
-			   &index_of_rhoH,
-			   &index_of_T,
+			   &fort_index_of_firstY,
+			   &fort_index_of_lastY,
+			   &fort_index_of_rho,
+			   &fort_index_of_rhoH,
+			   &fort_index_of_T,
 			   &ncomps,
 			   &nspecies,
-			   DATA_AND_LIMITS(state[idx]),
+			   DATA_AND_LIMITS(state_fpi()),
 			   DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
 			   DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
 			   DATA_AND_LIMITS(volume[idx]),
