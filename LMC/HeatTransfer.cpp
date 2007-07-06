@@ -7822,6 +7822,13 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 //       trusted out there, nGrow must be same in temp and S
 // Note: no good reason for above restriction on nGrow, removed
 //
+// RhoH_to_Temp is the top of a rather long sequence of wrappers:
+//
+//         RhoH_to_Temp    in   HeatTransfer.cpp  calls
+//         getTGivenHY     in     ChemDriver.cpp  calls
+//         FORT_TfromHY    in  ChemDriver_?D.F    calls
+//         FORT_TfromHYpt  in   ChemDriver_F.F    does the work
+//
 
 void
 HeatTransfer::RhoH_to_Temp (MultiFab& S,
