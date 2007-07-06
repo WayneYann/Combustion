@@ -4613,6 +4613,9 @@ HeatTransfer::advance (Real time,
 	MultiFab* update_for_H_old;
 	MultiFab* update_for_Y_old;
 
+	if (ParallelDescriptor::IOProcessor())
+	    std::cout << "JFG: at first call to diffusion operator\n" << std::flush;
+
 	rk_diffusion_operator (prev_time,
 			       dt,
 			       flux_for_H_old,
@@ -4627,10 +4630,7 @@ HeatTransfer::advance (Real time,
 
 	// use the old temperature as an initial guess for the Newton iteration to form 
         // consistent temperatures in the new_star state.
-	// question: should this be repeated after the new state is formed
-        // or is that taken care of elsewhere?
-	MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
-        RhoH_to_Temp(S_new);
+	// MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
 
 	// apply the diffusion operator to the new_star state to get fluxes and updates
         // associated with the new_star state
@@ -4638,6 +4638,9 @@ HeatTransfer::advance (Real time,
 	MultiFab** flux_for_Y_new;
 	MultiFab* update_for_H_new;
 	MultiFab* update_for_Y_new;
+
+	if (ParallelDescriptor::IOProcessor())
+	    std::cout << "JFG: at second call to diffusion operator\n" << std::flush;
 
 	rk_diffusion_operator (cur_time,
 			       dt,
@@ -4650,8 +4653,6 @@ HeatTransfer::advance (Real time,
         // state and the forcing and advection terms.
 	MultiFab::Copy (S_new, save_for_rhoH, 0, index_of_rhoH, 1, 0);
 	MultiFab::Copy (S_new, save_for_rhoY, 0, index_of_firstY, nspecies, 0);
-
-	BoxLib::Abort("JFG: stopping here, for now");
 
 	// form the new state in place by adding the average of the updates associated with
         // the old state and the new_star state
@@ -7915,6 +7916,13 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 // Note: nGrow is number of grow cells wanted, assumes the rest of the state
 //       trusted out there, nGrow must be same in temp and S
 // Note: no good reason for above restriction on nGrow, removed
+//
+// RhoH_to_Temp is the top of a rather long sequence of wrappers:
+//
+//         RhoH_to_Temp    in   HeatTransfer.cpp  calls
+//         getTGivenHY     in     ChemDriver.cpp  calls
+//         FORT_TfromHY    in  ChemDriver_?D.F    calls
+//         FORT_TfromHYpt  in   ChemDriver_F.F    does the work
 //
 
 void

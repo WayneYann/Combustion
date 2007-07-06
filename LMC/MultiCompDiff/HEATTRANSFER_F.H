@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.4 2007-07-03 16:58:35 sepp Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.5 2007-07-06 17:57:57 sepp Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -267,6 +267,8 @@ extern "C" {
 	int* index_of_rho,
 	int* index_of_rhoH,
 	int* index_of_T,
+	Real* maximum_error,
+	int* maximum_iterations,
 	int* ncomps,
 	int* nspcecies,
 	Real* state, ARLIM_P(state_lo), ARLIM_P(state_hi),

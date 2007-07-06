@@ -24,7 +24,9 @@ c     index_of_firstY,                  ! INPUT index of rho Y for the first spe
 c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
 c     index_of_rho,                     ! INPUT index of rho in the state
 c     index_of_rhoH,                    ! INPUT index of rho H in the state
-c     index_of_T                        ! INPUT index of T in the state
+c     index_of_T,                       ! INPUT index of T in the state
+c     maximum_error,                    ! INPUT maximum error in calculation of T
+c     maximum_iterations,               ! INPUT maximum iterations in calculation of T
 c     ncomps,                           ! INPUT total number of components in the state
 c     nspecies,                         ! INPUT total number of species in the state
 c     state, DIMS(state),               ! INPUT all variables in the state
@@ -50,6 +52,8 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
      &     index_of_rho,
      &     index_of_rhoH,
      &     index_of_T,
+     &     maximum_error,
+     &     maximum_iterations,
      &     ncomps,
      &     nspecies,
      &     state, DIMS(state),
@@ -91,6 +95,8 @@ c     arguments
       integer index_of_rho
       integer index_of_rhoH
       integer index_of_T
+      integer maximum_iterations
+      REAL_T maximum_error
       REAL_T areax(DIMV(areax))
       REAL_T areay(DIMV(areay))
       REAL_T dt
@@ -105,7 +111,10 @@ c     arguments
       REAL_T volume(DIMV(volume))
 
 c     local variables
+      external FORT_TfromHYpt 
+      integer FORT_TfromHYpt 
       integer i
+      integer iterations
       integer j
       integer n
       integer offset
@@ -123,6 +132,7 @@ c     local variables
       REAL_T dt_over_volume
       REAL_T floored_T
       REAL_T FORT_P1ATMMKS
+      REAL_T H
       REAL_T half_over_dx
       REAL_T half_over_dy
       REAL_T hms 
@@ -137,30 +147,38 @@ c     local variables
       REAL_T P1ATM
       REAL_T plus_value
       REAL_T pressure
+      REAL_T residual
       REAL_T rho
       REAL_T rho_D
       REAL_T RU
       REAL_T RUC
       REAL_T sum
       REAL_T T_on_edge
+      REAL_T temperature
       REAL_T Upsilon
       REAL_T X 
       REAL_T Y 
       allocatable contiguous_Y
       allocatable cpms
+      allocatable H
       allocatable hms
       allocatable lambda
       allocatable one_over_wt
+      allocatable residual
       allocatable rho_D
+      allocatable temperature
       allocatable Upsilon
       allocatable X
       allocatable Y
       dimension contiguous_Y (:)
       dimension cpms (:)
+      dimension h (:,:)
       dimension hms (:)
       dimension lambda (:,:)
       dimension one_over_wt (:)
+      dimension residual (:)
       dimension rho_D (:,:,:)
+      dimension temperature (:,:)
       dimension Upsilon (:)
       dimension X (:)
       dimension Y (:,:,:)
@@ -170,16 +188,20 @@ c     debug variables
       integer idx
       integer jdx
       debug = .true.
+      debug = .false.
       idx = hi(1)
       jdx = hi(2)
 
 c     allocate all variably dimensioned local arrays
       allocate (contiguous_Y (nspecies))
       allocate (cpms (nspecies))
+      allocate (H (DIMV(state)))
       allocate (hms (nspecies))
       allocate (lambda (DIMV(state)))
       allocate (one_over_wt (nspecies))
+      allocate (residual (maximum_iterations))
       allocate (rho_D (DIMV(state), nspecies))
+      allocate (temperature (DIMV(state)))
       allocate (Upsilon (nspecies))
       allocate (X (nspecies))
       allocate (Y (DIMV(state), nspecies))
@@ -212,10 +234,18 @@ c     debug: print what is comming in
       print *
       end if
 
-c     calculate Y from rho Y in the state
+c     copy temperature from the state
+      do j=ARG_L2(state),ARG_H2(state)
+         do i=ARG_L1(state),ARG_H1(state)
+            temperature(i, j) = state(i, j, index_of_T)
+         end do
+      end do
+
+c     calculate H and Y from rho H and rho Y in the state
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
             one_over_rho = 1.0d0 / state(i, j, index_of_rho)
+            H(i, j) = one_over_rho * state(i, j, index_of_rhoH)
             do n=1,nspecies
                Y(i, j, n) = one_over_rho * state(i, j, offset + n)
             end do
@@ -248,7 +278,7 @@ c     debug:
       print *
       end if
 
-c     calculate rho_D and lambda
+c     calculate temperature, rho_D, and lambda
 
       call CKWT (IWRK(ckbi),RWRK(ckbr),one_over_wt)
       do n=1,nspecies
@@ -275,10 +305,16 @@ c      j=ARG_L2(state)+1
                contiguous_Y(n) = Y(i,j,n)
             end do
 
-c  FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res)
-c            Niter = FORT_TfromHYpt(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res)
+c           calculate temperature consistent with rho, rho H, and rho Y
+            iterations = FORT_TfromHYpt 
+     &           (temperature(i, j), 
+     &           H(i, j), 
+     &           contiguous_Y,
+     &           maximum_error,
+     &           maximum_iterations,
+     &           residual)
 
-            floored_T = MAX (state(i,j,index_of_T), TMIN_TRANS) 
+            floored_T = MAX (temperature(i,j), TMIN_TRANS) 
 
 c            if (debug .and. i .eq. ARG_L1(state)+1 .and. j .eq. ARG_L2(state)) then
             if (debug .and. i .eq. idx .and. j .eq. jdx) then
@@ -320,6 +356,11 @@ c           multiplication by 0.5 averages the values
             lambda(i,j) = 0.5d-5 * (plus_value + minus_value)
          end do
       end do
+
+      print *
+      print *, "temperature"
+      print *, temperature
+      print *
 
 c     debug:
       if (debug) then
@@ -370,8 +411,8 @@ c           flux correction
 
 c           enthalpy flux
             T_on_edge = 0.5d0
-     &           * (state(i-1,j,index_of_T) 
-     &            + state(i,j,index_of_T))
+     &           * (temperature(i-1,j) 
+     &            + temperature(i,j))
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
             sum = 0
             do n=1,nspecies
@@ -382,7 +423,7 @@ c           enthalpy flux
      &           + half_over_dx
      &           * areax(i,j) 
      &           * (lambda(i-1,j) + lambda(i,j)) 
-     &           * (state(i,j,index_of_T) - state(i-1,j,index_of_T))
+     &           * (temperature(i,j) - temperature(i-1,j))
             if (debug .and. i .eq. idx .and. j .eq. jdx) then
                print *
                print *, "xflux_for_H", xflux_for_H(i, j)
@@ -442,8 +483,10 @@ c              flux correction
                   xflux_for_Y(i,j,n) = 0
                end do
             end if
-            if (external_for_T) then          
-               T_on_edge = state(i-1,j,index_of_T)
+            if (external_for_T) then
+c              restore the boundary value
+               temperature(i-1,j) = state(i-1,j,index_of_T)
+               T_on_edge = temperature(i-1,j)
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                sum = 0
                do n=1,nspecies
@@ -454,9 +497,9 @@ c              flux correction
      &              + one_over_dx
      &              * areax(i,j) 
      &              * lambda(i-1,j)
-     &                 * (- (8.0d0 / 3.0d0) * state(i-1,j,index_of_T)
-     &                 + 3 * state(i,j,index_of_T)
-     &                 - (1.0d0 / 3.0d0) * state(i+1,j,index_of_T))
+     &                 * (- (8.0d0 / 3.0d0) * temperature(i-1,j)
+     &                 + 3 * temperature(i,j)
+     &                 - (1.0d0 / 3.0d0) * temperature(i+1,j))
             else if (.not. internal) then
                xflux_for_H(i,j) = 0
             end if
@@ -513,7 +556,9 @@ c              flux correction
                end do
             end if
             if (external_for_T) then          
-               T_on_edge = state(i+1,j,index_of_T)
+c              restore the boundary value
+               temperature(i+1,j) = state(i+1,j,index_of_T)
+               T_on_edge = temperature(i+1,j)
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                sum = 0
                do n=1,nspecies
@@ -524,9 +569,9 @@ c              flux correction
      &              + one_over_dx
      &              * areax(i+1,j) 
      &              * lambda(i+1,j)
-     &              * ((1.0d0 / 3.0d0) * state(i-1,j,index_of_T)
-     &              - 3 * state(i,j,index_of_T)
-     &              + (8.0d0 / 3.0d0) * state(i+1,j,index_of_T))
+     &              * ((1.0d0 / 3.0d0) * temperature(i-1,j)
+     &              - 3 * temperature(i,j)
+     &              + (8.0d0 / 3.0d0) * temperature(i+1,j))
             else if (.not. internal) then
                xflux_for_H(i+1,j) = 0
             end if
@@ -554,8 +599,8 @@ c           flux correction
             end do
 c           enthalpy flux
             T_on_edge = 0.5d0
-     &           * (state(i,j-1,index_of_T) 
-     &            + state(i,j,index_of_T))
+     &           * (temperature(i,j-1) 
+     &            + temperature(i,j))
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
             sum = 0
             do n=1,nspecies
@@ -566,7 +611,7 @@ c           enthalpy flux
      &           + half_over_dx
      &           * areay(i,j) 
      &           * (lambda(i,j-1) + lambda(i,j)) 
-     &           * (state(i,j,index_of_T) - state(i,j-1,index_of_T))
+     &           * (temperature(i,j) - temperature(i,j-1))
          end do
       end do
 
@@ -621,7 +666,9 @@ c              flux correction
                end do
             end if
             if (external_for_T) then          
-               T_on_edge = state(i,j-1,index_of_T)
+c              restore the boundary value
+               temperature(i,j-1) = state(i,j-1,index_of_T)
+               T_on_edge = temperature(i,j-1)
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                sum = 0
                do n=1,nspecies
@@ -632,9 +679,9 @@ c              flux correction
      &              + one_over_dx
      &              * areax(i,j) 
      &              * lambda(i,j-1)
-     &                 * (- (8.0d0 / 3.0d0) * state(i,j-1,index_of_T)
-     &                 + 3 * state(i,j,index_of_T)
-     &                 - (1.0d0 / 3.0d0) * state(i,j+1,index_of_T))
+     &                 * (- (8.0d0 / 3.0d0) * temperature(i,j-1)
+     &                 + 3 * temperature(i,j)
+     &                 - (1.0d0 / 3.0d0) * temperature(i,j+1))
             else if (.not. internal) then
                yflux_for_H(i,j) = 0
             end if
@@ -691,7 +738,9 @@ c              flux correction
                end do
             end if
             if (external_for_T) then          
-               T_on_edge = state(i,j+1,index_of_T)
+c              restore the boundary value
+               temperature(i,j+1) = state(i,j+1,index_of_T)
+               T_on_edge = temperature(i,j+1)
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                sum = 0
                do n=1,nspecies
@@ -702,9 +751,9 @@ c              flux correction
      &              + one_over_dx
      &              * areax(i,j+1) 
      &              * lambda(i,j+1)
-     &              * ((1.0d0 / 3.0d0) * state(i,j-1,index_of_T)
-     &              - 3 * state(i,j,index_of_T)
-     &              + (8.0d0 / 3.0d0) * state(i,j+1,index_of_T))
+     &              * ((1.0d0 / 3.0d0) * temperature(i,j-1)
+     &              - 3 * temperature(i,j)
+     &              + (8.0d0 / 3.0d0) * temperature(i,j+1))
             else if (.not. internal) then
                yflux_for_H(i,j+1) = 0
             end if
@@ -765,15 +814,19 @@ c      print *, update_for_H
 
       deallocate (contiguous_Y)
       deallocate (cpms)
+      deallocate (H)
       deallocate (hms)
       deallocate (lambda)
       deallocate (one_over_wt)
+      deallocate (residual)
       deallocate (rho_D)
+      deallocate (temperature)
       deallocate (Upsilon)
       deallocate (X)
       deallocate (Y)
 
-      stop
+c     debug:
+c      stop
 
       return
       end

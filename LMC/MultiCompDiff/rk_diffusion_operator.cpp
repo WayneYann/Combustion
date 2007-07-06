@@ -16,7 +16,11 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     int ncomps = NUM_STATE;
     // const int nspecies = getChemSolve().numSpecies(); // this is globally defined
 
-    // get locations of things in the state
+    // get some constants used in the calculation of temperature
+    Real maximum_error = getChemSolve().getHtoTerrMAX ();
+    int maximum_iterations = getChemSolve().getHtoTiterMAX ();
+
+    // get locations of things in the state and convert to fortran indexing
     int index_of_firstY = Density + 1;
     int index_of_lastY = index_of_firstY + nspecies - 1;
     int index_of_rho = Density;
@@ -83,7 +87,9 @@ c     index_of_firstY,                  ! INPUT index of rho Y for the first spe
 c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
 c     index_of_rho,                     ! INPUT index of rho in the state
 c     index_of_rhoH,                    ! INPUT index of rho H in the state
-c     index_of_T                        ! INPUT index of T in the state
+c     index_of_T,                       ! INPUT index of T in the state
+c     maximum_error,                    ! INPUT maximum error in calculation of T
+c     maximum_iterations,               ! INPUT maximum iterations in calculation of T
 c     ncomps,                           ! INPUT total number of components in the state
 c     nspecies,                         ! INPUT total number of species in the state
 c     state, DIMS(state),               ! INPUT all variables in the state
@@ -110,6 +116,8 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 			   &fort_index_of_rho,
 			   &fort_index_of_rhoH,
 			   &fort_index_of_T,
+			   &maximum_error,
+			   &maximum_iterations,
 			   &ncomps,
 			   &nspecies,
 			   DATA_AND_LIMITS(state_fpi()),
