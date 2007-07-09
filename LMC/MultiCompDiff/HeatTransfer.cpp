@@ -4626,10 +4626,6 @@ HeatTransfer::advance (Real time,
 	MultiFab::Add (S_new, *update_for_H_old, 0, index_of_rhoH, 1, 0);
 	MultiFab::Add (S_new, *update_for_Y_old, 0, index_of_firstY, nspecies, 0);
 
-	// use the old temperature as an initial guess for the Newton iteration to form 
-        // consistent temperatures in the new_star state.
-	// MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
-
 	// apply the diffusion operator to the new_star state to get fluxes and updates
         // associated with the new_star state
 	MultiFab** flux_for_H_new;
@@ -4719,6 +4715,11 @@ HeatTransfer::advance (Real time,
 	delete update_for_Y_new;
 	delete update_for_H_old;
 	delete update_for_Y_old;
+
+	// update the temperature in the new state
+	// use the old temperature as an initial guess for the Newton iteration.
+	MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
+        RhoH_to_Temp(S_new);
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at bottom of do_rk_diffusion block\n" << std::flush;

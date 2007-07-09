@@ -267,7 +267,7 @@ c      j=ARG_L2(state)+1
       end if
 
 c     get pressure
-      CALL CKRP (IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
+      call CKRP (IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       call FORT_GETPAMB (p_amb, dpdt_factor)
       pressure = P1ATM * p_amb / FORT_P1ATMMKS ()
 
@@ -332,9 +332,8 @@ c            if (debug .and. i .eq. ARG_L1(state)+1 .and. j .eq. ARG_L2(state)) 
      &           (pressure, floored_T, contiguous_Y, mmw, RWRK(egbr), 
      &           Upsilon)
 
-c           since rho is in the state, why recompute it? 
-c           note, this is the practice in the FORT_SPECTEMPVISC routine
-c           that underlies calcDiffusivity.
+c           note, this is the practice in the FORT_SPECTEMPVISC routine that underlies 
+c           calcDiffusivity.  but since rho is in the state, why recompute it? 
             CALL CKRHOY (pressure, floored_T, contiguous_Y, IWRK(ckbi),
      &           RWRK(ckbr), rho)
             do n=1,nspecies
