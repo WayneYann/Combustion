@@ -628,8 +628,6 @@ HeatTransfer::init_once ()
     ParmParse pp("ht");
 
     pp.query("do_rk_diffusion",do_rk_diffusion);
-    if (ParallelDescriptor::IOProcessor())
-        std::cout << "do_rk_diffusion = " << do_rk_diffusion << std::endl;
 
     pp.query("plot_auxDiags",plot_auxDiags);
 
@@ -4665,9 +4663,54 @@ HeatTransfer::advance (Real time,
 	MultiFab::Add (S_new, *update_for_H_new, 0, index_of_rhoH, 1, 0);
 	MultiFab::Add (S_new, *update_for_Y_new, 0, index_of_firstY, nspecies, 0);
 
-	BoxLib::Abort("JFG: stopping here, for now");
+	if (ParallelDescriptor::IOProcessor())
+	    std::cout << "JFG: at flux register updating\n" << std::flush;
 
-	// since these are MultiFab* or **, is this the correct way to delete them?
+	// place the totaled H fluxes into the flux registers
+	FArrayBox total_flux;
+	int components = 1;
+	for (int dimension = 0; dimension < BL_SPACEDIM; dimension++)
+	{
+	    for (MFIter flux_mfi(*flux_for_H_old[dimension]); flux_mfi.isValid(); ++flux_mfi)
+	    {
+		const Box& edge_box = (*flux_for_H_old[dimension])[flux_mfi].box();
+		total_flux.resize(edge_box,components);
+		total_flux.copy((*flux_for_H_old[dimension])[flux_mfi],edge_box,0,edge_box,0,components);
+		total_flux.plus((*flux_for_H_new[dimension])[flux_mfi],edge_box,0,0,components);
+		if (level < parent->finestLevel())
+		    getLevel(level+1).getViscFluxReg().CrseInit
+			(total_flux, edge_box, dimension, 0, index_of_rhoH, components, -dt);
+		
+		if (level > 0)
+		    getViscFluxReg().FineAdd
+			(total_flux, dimension, flux_mfi.index(), 0, index_of_rhoH, components, dt);
+	    }
+	}
+
+	// place the totaled Y fluxes into the flux registers
+	components = nspecies;
+	for (int dimension = 0; dimension < BL_SPACEDIM; dimension++)
+	{
+	    for (MFIter flux_mfi(*flux_for_Y_old[dimension]); flux_mfi.isValid(); ++flux_mfi)
+	    {
+		const Box& edge_box = (*flux_for_Y_old[dimension])[flux_mfi].box();
+		total_flux.resize(edge_box,components);
+		total_flux.copy((*flux_for_Y_old[dimension])[flux_mfi],edge_box,0,edge_box,0,components);
+		total_flux.plus((*flux_for_Y_new[dimension])[flux_mfi],edge_box,0,0,components);
+		if (level < parent->finestLevel())
+		    getLevel(level+1).getViscFluxReg().CrseInit
+			(total_flux, edge_box, dimension, 0, index_of_firstY, components, -dt);
+		
+		if (level > 0)
+		    getViscFluxReg().FineAdd
+			(total_flux, dimension, flux_mfi.index(), 0, index_of_firstY, components, dt);
+	    }
+	}
+
+	if (level < parent->finestLevel())
+	    getLevel(level+1).getViscFluxReg().CrseInitFinish();
+
+	// delete the space for fluxes and updates
 	diffusion->removeFluxBoxesLevel (flux_for_H_new);
 	diffusion->removeFluxBoxesLevel (flux_for_Y_new);
 	diffusion->removeFluxBoxesLevel (flux_for_H_old);
@@ -4679,6 +4722,8 @@ HeatTransfer::advance (Real time,
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at bottom of do_rk_diffusion block\n" << std::flush;
+
+	// BoxLib::Abort("JFG: stopping here, for now");
     }
     //
     // Update energy and species, Marc's differential diffusion version.

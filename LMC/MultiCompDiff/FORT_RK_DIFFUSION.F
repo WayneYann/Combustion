@@ -357,11 +357,6 @@ c           multiplication by 0.5 averages the values
          end do
       end do
 
-      print *
-      print *, "temperature"
-      print *, temperature
-      print *
-
 c     debug:
       if (debug) then
 c      i=ARG_L1(state)+1
