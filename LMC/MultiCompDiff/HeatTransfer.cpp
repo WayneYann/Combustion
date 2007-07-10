@@ -4718,8 +4718,8 @@ HeatTransfer::advance (Real time,
 
 	// update the temperature in the new state
 	// use the old temperature as an initial guess for the Newton iteration.
-	// MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
-        // RhoH_to_Temp(S_new);
+	MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
+        RhoH_to_Temp(S_new);
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at bottom of do_rk_diffusion block\n" << std::flush;

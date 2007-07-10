@@ -15,7 +15,7 @@ c     arguments are alphabetical, mostly:
 c
 c     domain_lo, domain_hi,             ! INPUT limits of valid region of the domain
 c     lo, hi,                           ! INPUT limits of valid region of the box
-c     areax, DIMS(areax),               ! INPUT areas of the faces perpendicular to x axis
+c     areax, DIMS(areax),               ! INPUT areas of the faces perendicular to x axis
 c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
 c     dt,                               ! INPUT timestep
@@ -125,6 +125,8 @@ c     local variables
       logical internal
       logical internal_check
       REAL_T alpha
+      REAL_T ambient_pressure_cgs
+      REAL_T ambient_pressure_si
       REAL_T contiguous_Y
       REAL_T correction
       REAL_T cpms
@@ -136,19 +138,17 @@ c     local variables
       REAL_T half_over_dx
       REAL_T half_over_dy
       REAL_T hms 
-      REAL_T hms_scale_factor
       REAL_T lambda
       REAL_T minus_value
       REAL_T mmw
+      REAL_T one_atmosphere_cgs
+      REAL_T one_atmosphere_si
       REAL_T one_over_dx
       REAL_T one_over_rho
       REAL_T one_over_wt
-      REAL_T p_amb
-      REAL_T P1ATM
       REAL_T plus_value
-      REAL_T pressure
       REAL_T residual
-      REAL_T rho
+      REAL_T rho_cgs
       REAL_T rho_D
       REAL_T RU
       REAL_T RUC
@@ -277,15 +277,18 @@ c      print *, Y(2,09,8), Y(3,09,8), Y(4,09,8)
 c      print *, Y(2,08,8), Y(3,08,8), Y(4,08,8)
 c      print *
 
-c     get pressure
-      call CKRP (IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
-      call FORT_GETPAMB (p_amb, dpdt_factor)
-      pressure = P1ATM * p_amb / FORT_P1ATMMKS ()
+c     get ambient pressure in cgs units
+c     one_atmosphere_cgs = 1013250.0 (dyne / cm**2)
+c     one_atmosphere_si = 101325.0 (pascal)
+      call CKRP (IWRK(ckbi), RWRK(ckbr), RU, RUC, one_atmosphere_cgs)
+      call FORT_GETPAMB (ambient_pressure_si, dpdt_factor)
+      one_atmosphere_si = FORT_P1ATMMKS ()
+      ambient_pressure_cgs = one_atmosphere_cgs * ambient_pressure_si / one_atmosphere_si
 
 c     debug:
       if (debug) then
       print *
-      print *, "pressure", pressure
+      print *, "ambient_pressure_cgs", ambient_pressure_cgs
       print *
       end if
 
@@ -340,29 +343,35 @@ c            if (debug .and. i .eq. ARG_L1(state)+1 .and. j .eq. ARG_L2(state)) 
 
             CALL CKMMWY (contiguous_Y, IWRK(ckbi), RWRK(ckbr), mmw)
             CALL EGSV1 
-     &           (pressure, floored_T, contiguous_Y, mmw, RWRK(egbr), 
+     &           (ambient_pressure_cgs, floored_T, contiguous_Y, mmw, RWRK(egbr), 
      &           Upsilon)
 
 c           note, this is the practice in the FORT_SPECTEMPVISC routine that underlies 
-c           calcDiffusivity.  but since rho is in the state, why recompute it? 
-            CALL CKRHOY (pressure, floored_T, contiguous_Y, IWRK(ckbi),
-     &           RWRK(ckbr), rho)
+c           calcDiffusivity, but since rho is in the state, why recompute it? 
+            CALL CKRHOY (ambient_pressure_cgs, floored_T, contiguous_Y, IWRK(ckbi),
+     &           RWRK(ckbr), rho_cgs)
             do n=1,nspecies
-c              per equation 12 in the EGLIB manual.
-c              multiplication by 0.1d0 converts from cgs to mks.
-               rho_D(i,j,n) 
-     &              = rho * mmw * one_over_wt(n) * Upsilon(n) * 0.1d0
+c              per page 17 in the EGLIB manual, Upsilon has units (cm**2 / s), so
+c              rho Upsilon has units (g / cm s).  per equation 12 in the EGLIB manual, 
+c              the mixture averaged diffusion coefficient is rho Upsilon times the 
+c              dimensionless mmw / wt(n).  thus rho times the diffusion coefficient 
+c              with units (g / (cm s)) = 10 (Kg / (m s)) must be divided by 10 to obtain
+c              si units.
+               rho_D(i,j,n) = rho_cgs * mmw * one_over_wt(n) * Upsilon(n) * 0.1d0
             end do
 
-c           this averaging is equation 50 in the chemkin transport package manual.
-c           note, the EGLIB manual does not mention the averaging, but it does have
-c           provisions to compute it through the alpha parameter in equation 17.
+c           the following averaging is equation 50 in the chemkin transport package 
+c           manual.  the EGLIB manual does not mention the averaging, but it does have
+c           provisions to compute it through the alpha parameter in its equation 17.
             alpha = 1.0d0
             CALL EGSL1 (alpha, floored_T, X, RWRK(egbr), plus_value)
             alpha = - 1.0d0
             CALL EGSL1 (alpha, floored_T, X, RWRK(egbr), minus_value)
-c           multiplication by 1.0e-5 converts from cgs to mks
-c           multiplication by 0.5 averages the values
+c           per page 15 of the EGLIB manual, these thermal conductivities are returned
+c           with units (erg / (cm s K)) = ((J / 10**7) / ((m / 10**2) s K)) =
+c           = ((W s) / (10**5 m s K)) = (W / (m K 10**5)).  the si unit of thermal
+c           conductivity is (W / (M K)), so these values must be divided by 10**5
+c           to convert them to si units.   multiplication by 0.5 averages the values.
             lambda(i,j) = 0.5d-5 * (plus_value + minus_value)
          end do
       end do
@@ -390,9 +399,6 @@ c      j=ARG_L2(state)+1
       end do
       print *
       end if
-
-c     multiplication by hms_scale_factor converts from cgs to MKS (1 erg/g = 1.e-4 J/kg)
-      hms_scale_factor = 1.0d-4
 
 c     fluxes in x direction are from lo(1) to hi(1)+1
       half_over_dx = 0.5d0 / dx(1)
@@ -428,9 +434,12 @@ c           enthalpy flux
      &           * (temperature(i-1,j) 
      &            + temperature(i,j))
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+c           per page 98 of the Chemkin manual, hms has units (erg / g) =
+c           = (J / 10**7) / (Kg / 10**3) = (J / Kg) * (1/ 10**4).  so hms
+c           must be divided by 10**4 to convert to si units.
             sum = 0
             do n=1,nspecies
-               sum = sum + xflux_for_Y(i,j,n) * hms(n) * hms_scale_factor
+               sum = sum + xflux_for_Y(i,j,n) * hms(n) * 1.0d-4
             end do
             xflux_for_H(i,j) 
      &           = sum
@@ -504,7 +513,7 @@ c              restore the boundary value
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                sum = 0
                do n=1,nspecies
-                  sum = sum + xflux_for_Y(i,j,n) * hms(n) * hms_scale_factor
+                  sum = sum + xflux_for_Y(i,j,n) * hms(n) * 1.0d-4
                end do
                xflux_for_H(i,j) 
      &              = sum
@@ -576,7 +585,7 @@ c              restore the boundary value
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                sum = 0
                do n=1,nspecies
-                  sum = sum + xflux_for_Y(i+1,j,n) * hms(n) * hms_scale_factor
+                  sum = sum + xflux_for_Y(i+1,j,n) * hms(n) * 1.0d-4
                end do
                xflux_for_H(i+1,j) 
      &              = sum
@@ -632,7 +641,7 @@ c           enthalpy flux
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
             sum = 0
             do n=1,nspecies
-               sum = sum + yflux_for_Y(i,j,n) * hms(n) * hms_scale_factor
+               sum = sum + yflux_for_Y(i,j,n) * hms(n) * 1.0d-4
             end do
             yflux_for_H(i,j) 
      &           = sum
@@ -700,7 +709,7 @@ c              restore the boundary value
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                sum = 0
                do n=1,nspecies
-                  sum = sum + yflux_for_Y(i,j,n) * hms(n) * hms_scale_factor
+                  sum = sum + yflux_for_Y(i,j,n) * hms(n) * 1.0d-4
                end do
                yflux_for_H(i,j) 
      &              = sum
@@ -772,7 +781,7 @@ c              restore the boundary value
                call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
                sum = 0
                do n=1,nspecies
-                  sum = sum + yflux_for_Y(i,j+1,n) * hms(n) * hms_scale_factor
+                  sum = sum + yflux_for_Y(i,j+1,n) * hms(n) * 1.0d-4
                end do
                yflux_for_H(i,j+1) 
      &              = sum
