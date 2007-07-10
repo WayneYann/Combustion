@@ -191,6 +191,8 @@ c     debug variables
       debug = .false.
       idx = hi(1)
       jdx = hi(2)
+      idx = 3
+      jdx = 10
 
 c     allocate all variably dimensioned local arrays
       allocate (contiguous_Y (nspecies))
@@ -266,6 +268,15 @@ c      j=ARG_L2(state)+1
       print *
       end if
 
+c      print *
+c      print *, "Y(,,8) input"
+c      print *, Y(2,12,8), Y(3,12,8), Y(4,12,8)
+c      print *, Y(2,11,8), Y(3,11,8), Y(4,11,8)
+c      print *, Y(2,10,8), Y(3,10,8), Y(4,10,8)
+c      print *, Y(2,09,8), Y(3,09,8), Y(4,09,8)
+c      print *, Y(2,08,8), Y(3,08,8), Y(4,08,8)
+c      print *
+
 c     get pressure
       call CKRP (IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       call FORT_GETPAMB (p_amb, dpdt_factor)
@@ -305,7 +316,7 @@ c      j=ARG_L2(state)+1
                contiguous_Y(n) = Y(i,j,n)
             end do
 
-c           calculate temperature consistent with rho, rho H, and rho Y
+c           calculate temperature consistent with H and Y
             iterations = FORT_TfromHYpt 
      &           (temperature(i, j), 
      &           H(i, j), 
@@ -355,6 +366,15 @@ c           multiplication by 0.5 averages the values
             lambda(i,j) = 0.5d-5 * (plus_value + minus_value)
          end do
       end do
+
+c      print *
+c      print *, "rho_D(,,8)"
+c      print *, rho_D(2,12,8), rho_D(3,12,8), rho_D(4,12,8)
+c      print *, rho_D(2,11,8), rho_D(3,11,8), rho_D(4,11,8)
+c      print *, rho_D(2,10,8), rho_D(3,10,8), rho_D(4,10,8)
+c      print *, rho_D(2,09,8), rho_D(3,09,8), rho_D(4,09,8)
+c      print *, rho_D(2,08,8), rho_D(3,08,8), rho_D(4,08,8)
+c      print *
 
 c     debug:
       if (debug) then
@@ -573,7 +593,11 @@ c              restore the boundary value
       end if
 
 c     fluxes in y direction are from lo(2) to hi(2)+1
-      half_over_dx = 0.5d0 / dx(2)
+      half_over_dy = 0.5d0 / dx(2)
+c      print *
+c      print *, "dx(2) = ", dx(2)
+c      print *, "half_over_dy = ", half_over_dy
+c      print *
       do j=lo(2),hi(2)+1
          do i=lo(1),hi(1)
 c           species fluxes
@@ -586,6 +610,16 @@ c           species fluxes
      &              * (Y(i,j,n) - Y(i,j-1,n))
                sum = sum + yflux_for_Y(i,j,n)
             end do
+c            if (i .eq. 3 .and. j .eq. 10) then
+c               n = 8
+c               print *
+c               print *, "half_over_dy = ", half_over_dy
+c               print *, "areay(i,j) = ", areay(i,j) 
+c               print *, "sum of rho_Ds = ", (rho_D(i,j-1,n) + rho_D(i,j,n)) 
+c               print *, "difference of Ys = ", (Y(i,j,n) - Y(i,j-1,n))
+c               print *, "yflux_for_Y(i,j,n) = ", yflux_for_Y(i,j,n)
+c               print *
+c            end if
 c           flux correction
             correction = - sum / nspecies
             do n=1,nspecies
@@ -602,7 +636,7 @@ c           enthalpy flux
             end do
             yflux_for_H(i,j) 
      &           = sum
-     &           + half_over_dx
+     &           + half_over_dy
      &           * areay(i,j) 
      &           * (lambda(i,j-1) + lambda(i,j)) 
      &           * (temperature(i,j) - temperature(i,j-1))
@@ -754,6 +788,15 @@ c              restore the boundary value
          end do
       end if
 
+c      print *
+c      print *, "yflux_for_Y(,,8)"
+c      print *, yflux_for_Y(2,12,8), yflux_for_Y(3,12,8), yflux_for_Y(4,12,8)
+c      print *, yflux_for_Y(2,11,8), yflux_for_Y(3,11,8), yflux_for_Y(4,11,8)
+c      print *, yflux_for_Y(2,10,8), yflux_for_Y(3,10,8), yflux_for_Y(4,10,8)
+c      print *, yflux_for_Y(2,09,8), yflux_for_Y(3,09,8), yflux_for_Y(4,09,8)
+c      print *, yflux_for_Y(2,08,8), yflux_for_Y(3,08,8), yflux_for_Y(4,08,8)
+c      print *
+
       if (debug) then
          print *, "lo(1)", lo(1)
          print *, "hi(1)", hi(1)
@@ -785,8 +828,20 @@ c     volume weighted sum of the fluxes
      &              * (xflux_for_Y(i+1,j,n) - xflux_for_Y(i,j,n)
      &              + yflux_for_Y(i,j+1,n) - yflux_for_Y(i,j,n))
             end do
+c           debug:
+c            update_for_Y(i, 10, 8) = 1.0d-4
+c            update_for_Y(i, 200, 8) = 1.0d-4
          end do
       end do
+
+c      print *
+c      print *, "update_for_Y(,,8) output"
+c      print *, update_for_Y(2,12,8), update_for_Y(3,12,8), update_for_Y(4,12,8)
+c      print *, update_for_Y(2,11,8), update_for_Y(3,11,8), update_for_Y(4,11,8)
+c      print *, update_for_Y(2,10,8), update_for_Y(3,10,8), update_for_Y(4,10,8)
+c      print *, update_for_Y(2,09,8), update_for_Y(3,09,8), update_for_Y(4,09,8)
+c      print *, update_for_Y(2,08,8), update_for_Y(3,08,8), update_for_Y(4,08,8)
+c      print *
 
 c     debug: print what is going out
       if (debug) then
