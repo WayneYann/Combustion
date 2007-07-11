@@ -127,8 +127,8 @@ c     local variables
       REAL_T alpha
       REAL_T ambient_pressure_cgs
       REAL_T ambient_pressure_si
+      REAL_T coefficient
       REAL_T contiguous_Y
-      REAL_T correction
       REAL_T cpms
       REAL_T dpdt_factor
       REAL_T dt_over_volume
@@ -150,9 +150,12 @@ c     local variables
       REAL_T residual
       REAL_T rho_cgs
       REAL_T rho_D
+      REAL_T rho_Y
       REAL_T RU
       REAL_T RUC
       REAL_T sum
+      REAL_T sum_of_fluxes
+      REAL_T sum_of_rho_Y
       REAL_T T_on_edge
       REAL_T temperature
       REAL_T Upsilon
@@ -166,6 +169,7 @@ c     local variables
       allocatable one_over_wt
       allocatable residual
       allocatable rho_D
+      allocatable rho_Y
       allocatable temperature
       allocatable Upsilon
       allocatable X
@@ -178,6 +182,7 @@ c     local variables
       dimension one_over_wt (:)
       dimension residual (:)
       dimension rho_D (:,:,:)
+      dimension rho_Y (:,:,:)
       dimension temperature (:,:)
       dimension Upsilon (:)
       dimension X (:)
@@ -203,6 +208,7 @@ c     allocate all variably dimensioned local arrays
       allocate (one_over_wt (nspecies))
       allocate (residual (maximum_iterations))
       allocate (rho_D (DIMV(state), nspecies))
+      allocate (rho_Y (DIMV(state), nspecies))
       allocate (temperature (DIMV(state)))
       allocate (Upsilon (nspecies))
       allocate (X (nspecies))
@@ -243,12 +249,13 @@ c     copy temperature from the state
          end do
       end do
 
-c     calculate H and Y from rho H and rho Y in the state
+c     calculate H and Y from rho, rho H and rho Y in the state
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
             one_over_rho = 1.0d0 / state(i, j, index_of_rho)
             H(i, j) = one_over_rho * state(i, j, index_of_rhoH)
             do n=1,nspecies
+               rho_Y(i, j, n) = state(i, j, offset + n)
                Y(i, j, n) = one_over_rho * state(i, j, offset + n)
             end do
          end do
@@ -405,29 +412,27 @@ c     fluxes in x direction are from lo(1) to hi(1)+1
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)+1
 c           species fluxes
-            sum = 0
             do n=1,nspecies
                xflux_for_Y(i,j,n) 
      &              = half_over_dx 
      &              * areax(i,j) 
      &              * (rho_D(i-1,j,n) + rho_D(i,j,n)) 
      &              * (Y(i,j,n) - Y(i-1,j,n))
-               sum = sum + xflux_for_Y(i,j,n)
             end do
 c           flux correction
-            correction = - sum / nspecies
+            sum_of_fluxes = 0
+            sum_of_rho_Y = 0
             do n=1,nspecies
-               xflux_for_Y(i,j,n) = xflux_for_Y(i,j,n) + correction
+               sum_of_fluxes = sum_of_fluxes + xflux_for_Y(i,j,n)
+               sum_of_rho_Y = sum_of_rho_Y + (rho_Y(i-1, j, n) + rho_Y(i, j, n))
             end do
-
-            if (debug .and. i .eq. idx .and. j .eq. jdx) then
-               print *
-               print *, "xflux_for_Y"
-               do n=1,nspecies
-                  print *, "comp", n, xflux_for_Y(i, j, n)
-               end do
-               print *
-            end if
+            coefficient = sum_of_fluxes / sum_of_rho_Y
+            do n=1,nspecies
+               xflux_for_Y(i,j,n) 
+     &              = xflux_for_Y(i,j,n) 
+     &              - (rho_Y(i-1, j, n) + rho_Y(i, j, n))
+     &              * coefficient
+            end do
 
 c           enthalpy flux
             T_on_edge = 0.5d0
@@ -485,7 +490,6 @@ c        check the bc flags
          do j=lo(2),hi(2)
             if (external_for_Y) then
 c              species fluxes
-               sum = 0
                do n=1,nspecies
                   xflux_for_Y(i,j,n) 
      &                 = one_over_dx 
@@ -494,12 +498,20 @@ c              species fluxes
      &                 * (- (8.0d0 / 3.0d0) * Y(i-1,j,n)
      &                 + 3 * Y(i,j,n)
      &                 - (1.0d0 / 3.0d0) * Y(i+1,j,n))
-                  sum = sum + xflux_for_Y(i,j,n) 
                end do
 c              flux correction
-               correction = - sum / nspecies
+               sum_of_fluxes = 0
+               sum_of_rho_Y = 0
                do n=1,nspecies
-                  xflux_for_Y(i,j,n) = xflux_for_Y(i,j,n) + correction
+                  sum_of_fluxes = sum_of_fluxes + xflux_for_Y(i,j,n)
+                  sum_of_rho_Y = sum_of_rho_Y + (rho_Y(i-1, j, n) + rho_Y(i, j, n))
+               end do
+               coefficient = sum_of_fluxes / sum_of_rho_Y
+               do n=1,nspecies
+                  xflux_for_Y(i,j,n) 
+     &                 = xflux_for_Y(i,j,n) 
+     &                 - (rho_Y(i-1, j, n) + rho_Y(i, j, n))
+     &                 * coefficient
                end do
             else if (.not. internal) then
                do n=1,nspecies
@@ -557,7 +569,6 @@ c        check the bc flags
          do j=lo(2),hi(2)
             if (external_for_Y) then
 c              species fluxes
-               sum = 0
                do n=1,nspecies
                   xflux_for_Y(i+1,j,n) 
      &                 = one_over_dx 
@@ -566,12 +577,20 @@ c              species fluxes
      &                 * ((1.0d0 / 3.0d0) * Y(i-1,j,n)
      &                 - 3 * Y(i,j,n)
      &                 + (8.0d0 / 3.0d0) * Y(i+1,j,n))
-                  sum = sum + xflux_for_Y(i+1,j,n) 
                end do
 c              flux correction
-               correction = - sum / nspecies
+               sum_of_fluxes = 0
+               sum_of_rho_Y = 0
                do n=1,nspecies
-                  xflux_for_Y(i+1,j,n) = xflux_for_Y(i+1,j,n) + correction
+                  sum_of_fluxes = sum_of_fluxes + xflux_for_Y(i+1,j,n)
+                  sum_of_rho_Y = sum_of_rho_Y + (rho_Y(i, j, n) + rho_Y(i+1, j, n))
+               end do
+               coefficient = sum_of_fluxes / sum_of_rho_Y
+               do n=1,nspecies
+                  xflux_for_Y(i+1,j,n) 
+     &                 = xflux_for_Y(i+1,j,n) 
+     &                 - (rho_Y(i, j, n) + rho_Y(i+1, j, n))
+     &                 * coefficient
                end do
             else if (.not. internal) then
                do n=1,nspecies
@@ -603,36 +622,29 @@ c              restore the boundary value
 
 c     fluxes in y direction are from lo(2) to hi(2)+1
       half_over_dy = 0.5d0 / dx(2)
-c      print *
-c      print *, "dx(2) = ", dx(2)
-c      print *, "half_over_dy = ", half_over_dy
-c      print *
       do j=lo(2),hi(2)+1
          do i=lo(1),hi(1)
 c           species fluxes
-            sum = 0
             do n=1,nspecies
                yflux_for_Y(i,j,n) 
      &              = half_over_dy
      &              * areay(i,j) 
      &              * (rho_D(i,j-1,n) + rho_D(i,j,n)) 
      &              * (Y(i,j,n) - Y(i,j-1,n))
-               sum = sum + yflux_for_Y(i,j,n)
             end do
-c            if (i .eq. 3 .and. j .eq. 10) then
-c               n = 8
-c               print *
-c               print *, "half_over_dy = ", half_over_dy
-c               print *, "areay(i,j) = ", areay(i,j) 
-c               print *, "sum of rho_Ds = ", (rho_D(i,j-1,n) + rho_D(i,j,n)) 
-c               print *, "difference of Ys = ", (Y(i,j,n) - Y(i,j-1,n))
-c               print *, "yflux_for_Y(i,j,n) = ", yflux_for_Y(i,j,n)
-c               print *
-c            end if
 c           flux correction
-            correction = - sum / nspecies
+            sum_of_fluxes = 0
+            sum_of_rho_Y = 0
             do n=1,nspecies
-               yflux_for_Y(i,j,n) = yflux_for_Y(i,j,n) + correction
+               sum_of_fluxes = sum_of_fluxes + yflux_for_Y(i,j,n)
+               sum_of_rho_Y = sum_of_rho_Y + (rho_Y(i, j-1, n) + rho_Y(i, j, n))
+            end do
+            coefficient = sum_of_fluxes / sum_of_rho_Y
+            do n=1,nspecies
+               yflux_for_Y(i,j,n) 
+     &              = yflux_for_Y(i,j,n) 
+     &              - (rho_Y(i, j-1, n) + rho_Y(i, j, n))
+     &              * coefficient
             end do
 c           enthalpy flux
             T_on_edge = 0.5d0
@@ -681,7 +693,6 @@ c        check the bc flags
          do i=lo(1),hi(1)
             if (external_for_Y) then
 c              species fluxes
-               sum = 0
                do n=1,nspecies
                   yflux_for_Y(i,j,n) 
      &                 = one_over_dx 
@@ -690,12 +701,20 @@ c              species fluxes
      &                 * (- (8.0d0 / 3.0d0) * Y(i,j-1,n)
      &                 + 3 * Y(i,j,n)
      &                 - (1.0d0 / 3.0d0) * Y(i,j+1,n))
-                  sum = sum + yflux_for_Y(i,j,n) 
                end do
 c              flux correction
-               correction = - sum / nspecies
+               sum_of_fluxes = 0
+               sum_of_rho_Y = 0
                do n=1,nspecies
-                  yflux_for_Y(i,j,n) = yflux_for_Y(i,j,n) + correction
+                  sum_of_fluxes = sum_of_fluxes + yflux_for_Y(i,j,n)
+                  sum_of_rho_Y = sum_of_rho_Y + (rho_Y(i, j-1, n) + rho_Y(i, j, n))
+               end do
+               coefficient = sum_of_fluxes / sum_of_rho_Y
+               do n=1,nspecies
+                  yflux_for_Y(i,j,n) 
+     &                 = yflux_for_Y(i,j,n) 
+     &                 - (rho_Y(i, j-1, n) + rho_Y(i, j, n))
+     &                 * coefficient
                end do
             else if (.not. internal) then
                do n=1,nspecies
@@ -753,7 +772,6 @@ c        check the bc flags
          do i=lo(1),hi(1)
             if (external_for_Y) then
 c              species fluxes
-               sum = 0
                do n=1,nspecies
                   yflux_for_Y(i,j+1,n) 
      &                 = one_over_dx 
@@ -762,12 +780,20 @@ c              species fluxes
      &                 * ((1.0d0 / 3.0d0) * Y(i,j-1,n)
      &                 - 3 * Y(i,j,n)
      &                 + (8.0d0 / 3.0d0) * Y(i,j+1,n))
-                  sum = sum + yflux_for_Y(i,j+1,n) 
                end do
 c              flux correction
-               correction = - sum / nspecies
+               sum_of_fluxes = 0
+               sum_of_rho_Y = 0
                do n=1,nspecies
-                  yflux_for_Y(i,j+1,n) = yflux_for_Y(i,j+1,n) + correction
+                  sum_of_fluxes = sum_of_fluxes + yflux_for_Y(i,j+1,n)
+                  sum_of_rho_Y = sum_of_rho_Y + (rho_Y(i, j, n) + rho_Y(i, j+1, n))
+               end do
+               coefficient = sum_of_fluxes / sum_of_rho_Y
+               do n=1,nspecies
+                  yflux_for_Y(i,j+1,n) 
+     &                 = yflux_for_Y(i,j,n) 
+     &                 - (rho_Y(i, j, n) + rho_Y(i, j+1, n))
+     &                 * coefficient
                end do
             else if (.not. internal) then
                do n=1,nspecies
@@ -878,6 +904,7 @@ c      print *, update_for_H
       deallocate (one_over_wt)
       deallocate (residual)
       deallocate (rho_D)
+      deallocate (rho_Y)
       deallocate (temperature)
       deallocate (Upsilon)
       deallocate (X)
