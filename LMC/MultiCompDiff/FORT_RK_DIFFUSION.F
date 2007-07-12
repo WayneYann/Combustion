@@ -188,18 +188,6 @@ c     local variables
       dimension X (:)
       dimension Y (:,:,:)
 
-c     debug variables
-      logical debug
-      integer idx
-      integer jdx
-      debug = .true.
-      debug = .false.
-      idx = hi(1)
-      jdx = hi(2)
-      idx = 3
-      jdx = 10
-
-c     allocate all variably dimensioned local arrays
       allocate (contiguous_Y (nspecies))
       allocate (cpms (nspecies))
       allocate (H (DIMV(state)))
@@ -216,31 +204,6 @@ c     allocate all variably dimensioned local arrays
 
 c     offset of species in the state
       offset = index_of_firstY - 1
-
-c     debug: print what is comming in
-      if (debug) then
-      i=idx
-      j=jdx
-      print *
-      print *, "entering FORT_RK_DIFFUSION"
-      print *, "domain_lo", ARG_L1(state), ARG_L2(state)
-      print *, "domain_hi", ARG_H1(state), ARG_H2(state)
-      print *, "lo", lo(1), lo(2)
-      print *, "hi", hi(1), hi(2)
-      print *, "dt", dt
-      print *, "dx", dx(1), dx(2)
-      print *, "index_of_firstY", index_of_firstY
-      print *, "index_of_lastY", index_of_lastY
-      print *, "index_of_rho", index_of_rho
-      print *, "index_of_rhoH", index_of_rhoH
-      print *, "index_of_T", index_of_T
-      print *, "ncomps", ncomps
-      print *, "nspecies", nspecies
-      do n=1,ncomps
-         print *, "comp", n, state(i, j, n)
-      end do
-      print *
-      end if
 
 c     copy temperature from the state
       do j=ARG_L2(state),ARG_H2(state)
@@ -261,29 +224,6 @@ c     calculate H and Y from rho, rho H and rho Y in the state
          end do
       end do
 
-c     debug:
-      if (debug) then
-c      i=ARG_L1(state)+1
-c      j=ARG_L2(state)+1
-      i=idx
-      j=jdx
-      print *
-      print *, "Y"
-      do n=1,nspecies
-         print *, "comp", n, Y(i, j, n)
-      end do
-      print *
-      end if
-
-c      print *
-c      print *, "Y(,,8) input"
-c      print *, Y(2,12,8), Y(3,12,8), Y(4,12,8)
-c      print *, Y(2,11,8), Y(3,11,8), Y(4,11,8)
-c      print *, Y(2,10,8), Y(3,10,8), Y(4,10,8)
-c      print *, Y(2,09,8), Y(3,09,8), Y(4,09,8)
-c      print *, Y(2,08,8), Y(3,08,8), Y(4,08,8)
-c      print *
-
 c     get ambient pressure in cgs units
 c     one_atmosphere_cgs = 1013250.0 (dyne / cm**2)
 c     one_atmosphere_si = 101325.0 (pascal)
@@ -292,33 +232,12 @@ c     one_atmosphere_si = 101325.0 (pascal)
       one_atmosphere_si = FORT_P1ATMMKS ()
       ambient_pressure_cgs = one_atmosphere_cgs * ambient_pressure_si / one_atmosphere_si
 
-c     debug:
-      if (debug) then
-      print *
-      print *, "ambient_pressure_cgs", ambient_pressure_cgs
-      print *
-      end if
-
 c     calculate temperature, rho_D, and lambda
 
       call CKWT (IWRK(ckbi),RWRK(ckbr),one_over_wt)
       do n=1,nspecies
          one_over_wt(n) = 1.0d0 / one_over_wt(n)
       end do
-
-c     debug:
-      if (debug) then
-c      i=ARG_L1(state)+1
-c      j=ARG_L2(state)+1
-      i=idx
-      j=jdx
-      print *
-      print *, "one_over_wt"
-      do n=1,nspecies
-         print *, "comp", n, one_over_wt(n)
-      end do
-      print *
-      end if
 
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
@@ -336,11 +255,6 @@ c           calculate temperature consistent with H and Y
      &           residual)
 
             floored_T = MAX (temperature(i,j), TMIN_TRANS) 
-
-c            if (debug .and. i .eq. ARG_L1(state)+1 .and. j .eq. ARG_L2(state)) then
-            if (debug .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "floored_T", floored_T
-            end if
 
             CALL CKCPMS (floored_T, IWRK(ckbi), RWRK(ckbr), cpms)
             CALL CKYTX (contiguous_Y, IWRK(ckbi), RWRK(ckbr), X)
@@ -392,21 +306,6 @@ c      print *, rho_D(2,09,8), rho_D(3,09,8), rho_D(4,09,8)
 c      print *, rho_D(2,08,8), rho_D(3,08,8), rho_D(4,08,8)
 c      print *
 
-c     debug:
-      if (debug) then
-c      i=ARG_L1(state)+1
-c      j=ARG_L2(state)+1
-      i=idx
-      j=jdx
-      print *
-      print *, "lambda", lambda(i, j)
-      print *, "rho_D"
-      do n=1,nspecies
-         print *, "comp", n, rho_D(i, j, n)
-      end do
-      print *
-      end if
-
 c     fluxes in x direction are from lo(1) to hi(1)+1
       half_over_dx = 0.5d0 / dx(1)
       do j=lo(2),hi(2)
@@ -452,12 +351,6 @@ c           must be divided by 10**4 to convert to si units.
      &           * areax(i,j) 
      &           * (lambda(i-1,j) + lambda(i,j)) 
      &           * (temperature(i,j) - temperature(i-1,j))
-            if (debug .and. i .eq. idx .and. j .eq. jdx) then
-               print *
-               print *, "xflux_for_H", xflux_for_H(i, j)
-               print *
-            end if
-
          end do
       end do
 
@@ -832,15 +725,6 @@ c      print *, yflux_for_Y(2,09,8), yflux_for_Y(3,09,8), yflux_for_Y(4,09,8)
 c      print *, yflux_for_Y(2,08,8), yflux_for_Y(3,08,8), yflux_for_Y(4,08,8)
 c      print *
 
-      if (debug) then
-         print *, "lo(1)", lo(1)
-         print *, "hi(1)", hi(1)
-         print *, "lo(2)", lo(2)
-         print *, "hi(2)", hi(2)
-         print *, "idx", idx
-         print *, "jdx", jdx
-      end if
-
 c     volume weighted sum of the fluxes
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
@@ -849,52 +733,14 @@ c     volume weighted sum of the fluxes
      &           = dt_over_volume
      &           * (xflux_for_H(i+1,j) - xflux_for_H(i,j)
      &           + yflux_for_H(i,j+1) - yflux_for_H(i,j))
-            if (debug .and. i .eq. idx .and. j .eq. jdx) then
-               print *
-               print *, "dt_over_volume", dt_over_volume
-               print *, xflux_for_H(i+1,j)
-               print *, xflux_for_H(i,j)
-               print *, yflux_for_H(i,j+1)
-               print *, yflux_for_H(i,j)
-            end if
             do n=1,nspecies
                update_for_Y(i, j, n) 
      &              = dt_over_volume
      &              * (xflux_for_Y(i+1,j,n) - xflux_for_Y(i,j,n)
      &              + yflux_for_Y(i,j+1,n) - yflux_for_Y(i,j,n))
             end do
-c           debug:
-c            update_for_Y(i, 10, 8) = 1.0d-4
-c            update_for_Y(i, 200, 8) = 1.0d-4
          end do
       end do
-
-c      print *
-c      print *, "update_for_Y(,,8) output"
-c      print *, update_for_Y(2,12,8), update_for_Y(3,12,8), update_for_Y(4,12,8)
-c      print *, update_for_Y(2,11,8), update_for_Y(3,11,8), update_for_Y(4,11,8)
-c      print *, update_for_Y(2,10,8), update_for_Y(3,10,8), update_for_Y(4,10,8)
-c      print *, update_for_Y(2,09,8), update_for_Y(3,09,8), update_for_Y(4,09,8)
-c      print *, update_for_Y(2,08,8), update_for_Y(3,08,8), update_for_Y(4,08,8)
-c      print *
-
-c     debug: print what is going out
-      if (debug) then
-c      i=ARG_L1(state)+1
-c      j=ARG_L2(state)+1
-      i=idx
-      j=jdx
-      print *
-      print *, "leaving FORT_RK_DIFFUSION"
-      print *, "update_for_H", update_for_H(i, j)
-c      print *, "update_for_H"
-c      print *, update_for_H
-      print *, "update_for_Y"
-      do n=1,nspecies
-         print *, "comp", n, update_for_Y(i, j, n)
-      end do
-      print *
-      end if
 
       deallocate (contiguous_Y)
       deallocate (cpms)
@@ -909,9 +755,6 @@ c      print *, update_for_H
       deallocate (Upsilon)
       deallocate (X)
       deallocate (Y)
-
-c     debug:
-c      stop
 
       return
       end
