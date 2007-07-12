@@ -144,6 +144,7 @@ c     local variables
       REAL_T one_atmosphere_cgs
       REAL_T one_atmosphere_si
       REAL_T one_over_dx
+      REAL_T one_over_dy
       REAL_T one_over_rho
       REAL_T one_over_wt
       REAL_T plus_value
@@ -297,15 +298,6 @@ c           to convert them to si units.   multiplication by 0.5 averages the va
          end do
       end do
 
-c      print *
-c      print *, "rho_D(,,8)"
-c      print *, rho_D(2,12,8), rho_D(3,12,8), rho_D(4,12,8)
-c      print *, rho_D(2,11,8), rho_D(3,11,8), rho_D(4,11,8)
-c      print *, rho_D(2,10,8), rho_D(3,10,8), rho_D(4,10,8)
-c      print *, rho_D(2,09,8), rho_D(3,09,8), rho_D(4,09,8)
-c      print *, rho_D(2,08,8), rho_D(3,08,8), rho_D(4,08,8)
-c      print *
-
 c     fluxes in x direction are from lo(1) to hi(1)+1
       half_over_dx = 0.5d0 / dx(1)
       do j=lo(2),hi(2)
@@ -339,7 +331,7 @@ c           enthalpy flux
      &            + temperature(i,j))
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
 c           per page 98 of the Chemkin manual, hms has units (erg / g) =
-c           = (J / 10**7) / (Kg / 10**3) = (J / Kg) * (1/ 10**4).  so hms
+c           = (J / 10**7) / (Kg / 10**3) = (J / Kg) * (1 / 10**4).  so hms
 c           must be divided by 10**4 to convert to si units.
             sum = 0
             do n=1,nspecies
@@ -581,14 +573,14 @@ c        check the bc flags
      &        (.not. external_for_Y .or. external_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc flags at low y")
-         one_over_dx = 1.0d0 / dx(2)
+         one_over_dy = 1.0d0 / dx(2)
          j = lo(2)
          do i=lo(1),hi(1)
             if (external_for_Y) then
 c              species fluxes
                do n=1,nspecies
                   yflux_for_Y(i,j,n) 
-     &                 = one_over_dx 
+     &                 = one_over_dy 
      &                 * areay(i,j) 
      &                 * rho_D(i,j-1,n)
      &                 * (- (8.0d0 / 3.0d0) * Y(i,j-1,n)
@@ -625,8 +617,8 @@ c              restore the boundary value
                end do
                yflux_for_H(i,j) 
      &              = sum
-     &              + one_over_dx
-     &              * areax(i,j) 
+     &              + one_over_dy
+     &              * areay(i,j) 
      &              * lambda(i,j-1)
      &                 * (- (8.0d0 / 3.0d0) * temperature(i,j-1)
      &                 + 3 * temperature(i,j)
@@ -660,15 +652,15 @@ c        check the bc flags
      &        (.not. external_for_Y .or. external_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc flags at high y")
-         one_over_dx = 1.0d0 / dx(2)
+         one_over_dy = 1.0d0 / dx(2)
          j = hi(2)
          do i=lo(1),hi(1)
             if (external_for_Y) then
 c              species fluxes
                do n=1,nspecies
                   yflux_for_Y(i,j+1,n) 
-     &                 = one_over_dx 
-     &                 * areax(i,j+1) 
+     &                 = one_over_dy 
+     &                 * areay(i,j+1) 
      &                 * rho_D(i,j+1,n)
      &                 * ((1.0d0 / 3.0d0) * Y(i,j-1,n)
      &                 - 3 * Y(i,j,n)
@@ -704,8 +696,8 @@ c              restore the boundary value
                end do
                yflux_for_H(i,j+1) 
      &              = sum
-     &              + one_over_dx
-     &              * areax(i,j+1) 
+     &              + one_over_dy
+     &              * areay(i,j+1) 
      &              * lambda(i,j+1)
      &              * ((1.0d0 / 3.0d0) * temperature(i,j-1)
      &              - 3 * temperature(i,j)
@@ -716,28 +708,20 @@ c              restore the boundary value
          end do
       end if
 
-c      print *
-c      print *, "yflux_for_Y(,,8)"
-c      print *, yflux_for_Y(2,12,8), yflux_for_Y(3,12,8), yflux_for_Y(4,12,8)
-c      print *, yflux_for_Y(2,11,8), yflux_for_Y(3,11,8), yflux_for_Y(4,11,8)
-c      print *, yflux_for_Y(2,10,8), yflux_for_Y(3,10,8), yflux_for_Y(4,10,8)
-c      print *, yflux_for_Y(2,09,8), yflux_for_Y(3,09,8), yflux_for_Y(4,09,8)
-c      print *, yflux_for_Y(2,08,8), yflux_for_Y(3,08,8), yflux_for_Y(4,08,8)
-c      print *
-
 c     volume weighted sum of the fluxes
+c     the inclusion of the 1/dx terms leads to failure in the T update in the c++
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             dt_over_volume = dt / volume(i,j)
             update_for_H(i, j) 
      &           = dt_over_volume
-     &           * (xflux_for_H(i+1,j) - xflux_for_H(i,j)
-     &           + yflux_for_H(i,j+1) - yflux_for_H(i,j))
+     &           * ((xflux_for_H(i+1,j) - xflux_for_H(i,j)) 
+     &           + (yflux_for_H(i,j+1) - yflux_for_H(i,j)))
             do n=1,nspecies
                update_for_Y(i, j, n) 
      &              = dt_over_volume
-     &              * (xflux_for_Y(i+1,j,n) - xflux_for_Y(i,j,n)
-     &              + yflux_for_Y(i,j+1,n) - yflux_for_Y(i,j,n))
+     &              * ((xflux_for_Y(i+1,j,n) - xflux_for_Y(i,j,n))
+     &              + (yflux_for_Y(i,j+1,n) - yflux_for_Y(i,j,n)))
             end do
          end do
       end do
