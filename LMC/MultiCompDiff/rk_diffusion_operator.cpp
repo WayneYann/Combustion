@@ -12,6 +12,14 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     const TimeLevel whichTime = which_time(State_Type, time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
 
+    if (ParallelDescriptor::IOProcessor())
+    {
+	if (whichTime == AmrOldTime)
+	    std::cout << "JFG: time is AmrOldTime\n" << std::flush;
+	else
+	    std::cout << "JFG: time is AmrNewTime\n" << std::flush;
+    }
+
     // get some constants used as dimensions
     int ncomps = NUM_STATE;
     // const int nspecies = getChemSolve().numSpecies(); // this is globally defined
@@ -72,6 +80,15 @@ HeatTransfer::rk_diffusion_operator (const Real time,
 
 	// get boundary condition array for all components
 	Array<int> bc = getBCArray (State_Type, idx, 0, ncomps);
+
+        // print some stuff
+	const int* lo_vect = grids[idx].loVect();
+	const int* hi_vect = grids[idx].hiVect();
+	if (ParallelDescriptor::IOProcessor())
+	    std::cout << "JFG: in rk_diffusion\n" 
+		      << "state_fpi.index() = " << state_fpi.index() << "\n"
+		      << "lo_vect[0] = " << lo_vect[0] << "\n"
+		      << std::flush;
 
 /*
 c     arguments are alphabetical, mostly:

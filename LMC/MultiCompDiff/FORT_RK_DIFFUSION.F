@@ -189,6 +189,17 @@ c     local variables
       dimension X (:)
       dimension Y (:,:,:)
 
+c     temporary local variables for estimating time step
+      logical first
+      REAL_T dt_limit
+      REAL_T dx_cgs
+      REAL_T estimate
+      allocatable dt_limit
+      dimension dt_limit(:)
+      dx_cgs = 100.0d0 * min (dx(1), dx(2))
+      first = .true.
+      allocate (dt_limit (nspecies))
+
       allocate (contiguous_Y (nspecies))
       allocate (cpms (nspecies))
       allocate (H (DIMV(state)))
@@ -275,13 +286,21 @@ c           calcDiffusivity, but since rho is in the state, why recompute it?
             do n=1,nspecies
 c              per page 17 in the EGLIB manual, Upsilon has units (cm**2 / s), so
 c              rho Upsilon has units (g / cm s).  per equation 12 in the EGLIB manual, 
-c              the mixture averaged diffusion coefficient is rho Upsilon times the 
+c              the mixture averaged diffusion coefficient is Upsilon times the 
 c              dimensionless mmw / wt(n).  thus rho times the diffusion coefficient 
 c              with units (g / (cm s)) = 10 (Kg / (m s)) must be divided by 10 to obtain
 c              si units.
                rho_D(i,j,n) = rho_cgs * mmw * one_over_wt(n) * Upsilon(n) * 0.1d0
-            end do
 
+c              first coded estimate is wrong; just print D in si units instead
+               estimate = mmw * one_over_wt(n) * Upsilon(n) * 1.0d-4
+               if (first) then
+                  dt_limit(n) = estimate
+               else
+                  dt_limit(n) = max (estimate, dt_limit(n))
+               end if
+
+            end do
 c           the following averaging is equation 50 in the chemkin transport package 
 c           manual.  the EGLIB manual does not mention the averaging, but it does have
 c           provisions to compute it through the alpha parameter in its equation 17.
@@ -295,8 +314,19 @@ c           = ((W s) / (10**5 m s K)) = (W / (m K 10**5)).  the si unit of therm
 c           conductivity is (W / (M K)), so these values must be divided by 10**5
 c           to convert them to si units.   multiplication by 0.5 averages the values.
             lambda(i,j) = 0.5d-5 * (plus_value + minus_value)
+
+            first = .false.
          end do
       end do
+
+      print *
+      print *, "dt estimate for each species (no, est)"
+      print *, "D_mix for each species (no, est) in si units"
+      print *
+      do n=1,nspecies
+         print *, n, dt_limit(n)
+      end do
+      print *
 
 c     fluxes in x direction are from lo(1) to hi(1)+1
       half_over_dx = 0.5d0 / dx(1)
