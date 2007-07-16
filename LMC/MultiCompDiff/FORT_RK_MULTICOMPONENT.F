@@ -224,7 +224,7 @@ c     some constants, at least in Cartesian coordinates
 c     get ambient pressure in cgs units
 c     one_atmosphere_cgs = 1013250.0 (dyne / cm**2)
 c     one_atmosphere_si = 101325.0 (pascal)
-      call CKRP (IWRK(ckbi), RWRK(ckbr), RU, RUC, one_atmosphere_cgs)
+      call CKRP (IWRK(ckbi), RWRK(ckbr), universal_gas_constant_cgs, RUC, one_atmosphere_cgs)
       call FORT_GETPAMB (ambient_pressure_si, dpdt_factor)
       one_atmosphere_si = FORT_P1ATMMKS ()
       ambient_pressure_cgs = one_atmosphere_cgs * ambient_pressure_si / one_atmosphere_si
@@ -351,8 +351,11 @@ c           use a floored temperature just in case
      &           (T_on_edge, contiguous_Y_on_edge, mmw_on_edge, RWRK(egbr), IWRK(egbi),
      &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge)
+            pressure_over_rho_on_edge 
+     &           = universal_gas_constant_cgs * T_on_edge / mmw_on_edge
  
             sum_h_xflux_for_Y = 0
+            sum_rho_theta_dX = 0
             sum_rho_Y_D_dX = 0
             do n = 1,nspecies
                sum_rho_Y_D_dX = 0
@@ -360,34 +363,49 @@ c           use a floored temperature just in case
                   sum_rho_Y_D_dX 
      &                 = sum_rho_Y_D_dX 
      &                 + rho_Y_D_on_edge(n,ell) 
-     &                 * (X(i,j,n) - X(i-1,j,n))
+     &                 * (X(i,j,ell) - X(i-1,j,ell))
                enddo
+c              scaling by 0.1 converts expression of mixed units to cgs (check this)
                xflux_for_Y(i,j,n) 
      &              = areay_over_dx 
      &              * (sum_rho_Y_D_dX * 1.0d-1
      &              + contiguous_Y_on_edge(n) * rho_theta_on_edge(n) * (T(i,j) - T(i-1,j)) / T_on_edge)
-               sum_h_xflux_for_Y = sum_h_xflux_for_Y + hms_on_edge(n) * xflux_for_Y(i,j,n)
+               sum_h_xflux_for_Y 
+     &              = sum_h_xflux_for_Y 
+     &              + hms_on_edge(n) 
+     &              * xflux_for_Y(i,j,n)
+               sum_rho_theta_dX 
+     &              = sum_rho_theta_dX 
+     &              + rho_theta_on_edge(n) 
+     &              * (X(i,j,n) - X(i-1,j,n))
             end do
+c           scaling by 0.1 converts expression of mixed units to cgs (check this)
+            xflux_for_H(i,j)
+     &           = sum_h_xflux_for_Y
+     &           + areay_over_dx 
+     &           * (lambda_prime_on_edge * (T(i,j) - T(i-1,j))
+     &           + pressure_over_rho_on_edge * sum_rho_theta_dX * 1.0d-1)
+            end do
+         end do
 
 c--------------------------------------------------------------------
 c     Note: scalings get cgs quantities from EGLib to MKS (assume He,d come in MKS)
 c           sum_rho_Y_D_dX     = zero
 c           sum_h_xflux_for_Y    = zero
-            sum_rhoThetaD = zero
+            sum_rho_theta_dX = zero
             do n = 1,Nspec
 c              sum_rho_Y_D_dX = - Ye(i,j,n)*rho_theta_on_edge(n)*d(i,j,Nspec+1)/Te(i,j)
                do L= 1,Nspec
 c                 sum_rho_Y_D_dX = sum_rho_Y_D_dX - rhoD(n,L)*d(i,j,L)
                enddo
-c               xflux_for_Y(i,j,n) = sum_rho_Y_D_dX*1.d-1
+c              xflux_for_Y(i,j,n) = sum_rho_Y_D_dX*1.d-1
 c              sum_h_xflux_for_Y = sum_h_xflux_for_Y + hms_on_edgeH(n)*xflux_for_Y(i,j,n)
-               sum_rhoThetaD = sum_rhoThetaD + rho_theta_on_edge(n)*d(i,j,n)
+c               sum_rho_theta_dX = sum_rho_theta_dX + rho_theta_on_edge(n)*d(i,j,n)
             enddo
-            xflux_for_H(i,j) = sum_h_xflux_for_Y
-c           Now add all the other terms
             xflux_for_H(i,j) 
-     &           = - (lambda_prime_on_edge*1.d-5)*d(i,j,Nspec+1)
-     &           - (RU*Te(i,j)/WW)*(sum_rhoThetaD*1.d-1)
+c     &           = sum_h_xflux_for_Y
+c     &           + (lambda_prime_on_edge*1.d-5)*d(i,j,Nspec+1)
+     &           + (RU*Te(i,j)/WW) * (sum_rho_theta_dX * 1.d-1)
 
 c--------------------------------------------------------------------
 
