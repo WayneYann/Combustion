@@ -4662,44 +4662,46 @@ HeatTransfer::advance (Real time,
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at flux register updating\n" << std::flush;
 
-	// place the totaled H fluxes into the flux registers
-	FArrayBox total_flux;
+	// place into the flux registers the average of the old and new H fluxes
+	FArrayBox average_flux;
 	int components = 1;
 	for (int dimension = 0; dimension < BL_SPACEDIM; dimension++)
 	{
 	    for (MFIter flux_mfi(*flux_for_H_old[dimension]); flux_mfi.isValid(); ++flux_mfi)
 	    {
 		const Box& edge_box = (*flux_for_H_old[dimension])[flux_mfi].box();
-		total_flux.resize(edge_box,components);
-		total_flux.copy((*flux_for_H_old[dimension])[flux_mfi],edge_box,0,edge_box,0,components);
-		total_flux.plus((*flux_for_H_new[dimension])[flux_mfi],edge_box,0,0,components);
+		average_flux.resize(edge_box,components);
+		average_flux.copy((*flux_for_H_old[dimension])[flux_mfi],edge_box,0,edge_box,0,components);
+		average_flux.plus((*flux_for_H_new[dimension])[flux_mfi],edge_box,0,0,components);
+                average_flux.mult(0.5);
 		if (level < parent->finestLevel())
 		    getLevel(level+1).getViscFluxReg().CrseInit
-			(total_flux, edge_box, dimension, 0, index_of_rhoH, components, -dt);
+			(average_flux, edge_box, dimension, 0, index_of_rhoH, components, -dt);
 		
 		if (level > 0)
 		    getViscFluxReg().FineAdd
-			(total_flux, dimension, flux_mfi.index(), 0, index_of_rhoH, components, dt);
+			(average_flux, dimension, flux_mfi.index(), 0, index_of_rhoH, components, dt);
 	    }
 	}
 
-	// place the totaled Y fluxes into the flux registers
+	// place into the flux registers the average of the old and new Y fluxes
 	components = nspecies;
 	for (int dimension = 0; dimension < BL_SPACEDIM; dimension++)
 	{
 	    for (MFIter flux_mfi(*flux_for_Y_old[dimension]); flux_mfi.isValid(); ++flux_mfi)
 	    {
 		const Box& edge_box = (*flux_for_Y_old[dimension])[flux_mfi].box();
-		total_flux.resize(edge_box,components);
-		total_flux.copy((*flux_for_Y_old[dimension])[flux_mfi],edge_box,0,edge_box,0,components);
-		total_flux.plus((*flux_for_Y_new[dimension])[flux_mfi],edge_box,0,0,components);
+		average_flux.resize(edge_box,components);
+		average_flux.copy((*flux_for_Y_old[dimension])[flux_mfi],edge_box,0,edge_box,0,components);
+		average_flux.plus((*flux_for_Y_new[dimension])[flux_mfi],edge_box,0,0,components);
+                average_flux.mult(0.5);
 		if (level < parent->finestLevel())
 		    getLevel(level+1).getViscFluxReg().CrseInit
-			(total_flux, edge_box, dimension, 0, index_of_firstY, components, -dt);
+			(average_flux, edge_box, dimension, 0, index_of_firstY, components, -dt);
 		
 		if (level > 0)
 		    getViscFluxReg().FineAdd
-			(total_flux, dimension, flux_mfi.index(), 0, index_of_firstY, components, dt);
+			(average_flux, dimension, flux_mfi.index(), 0, index_of_firstY, components, dt);
 	    }
 	}
 

@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.5 2007-07-06 17:57:57 sepp Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.6 2007-07-16 23:17:06 sepp Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -25,7 +25,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
-#    define FORT_RK_DIFFUSION              rk_diffusion
+#    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -50,7 +50,7 @@
 #    define FORT_INCRWEXTFLXDIV            INCRWEXTFLXDIV
 #    define FORT_SET_COMMON                SETCOMMON
 #    define FORT_COMPUTE_UGRADP            COMPUTEUGRADP
-#    define FORT_RK_DIFFUSION              RK_DIFFUSION
+#    define FORT_RK_MIXTURE_AVERAGED       RKMIXTUREAVERAGED
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -74,7 +74,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
-#    define FORT_RK_DIFFUSION              rk_diffusion
+#    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -98,7 +98,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv_
 #    define FORT_SET_COMMON                setcommon_
 #    define FORT_COMPUTE_UGRADP            computeugradp_
-#    define FORT_RK_DIFFUSION              rk_diffusion_
+#    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged_
 #  endif
 
 #include <ArrayLim.H>
@@ -254,7 +254,7 @@ extern "C" {
 #endif
                              const int* lo, const int* hi, const Real* dx);
 
-    void FORT_RK_DIFFUSION (
+    void FORT_RK_MIXTURE_AVERAGED (
 	const int* domain_lo, const int* domain_hi,
 	const int* lo, const int* hi,
 	Real* areax, ARLIM_P(areax_lo), ARLIM_P(areax_hi),

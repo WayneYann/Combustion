@@ -6,6 +6,19 @@ HeatTransfer::rk_diffusion_operator (const Real time,
 				     MultiFab *& update_for_H,
 				     MultiFab *& update_for_Y)
 {
+/*
+  evaluate the "operator" (update and fluxes) for the Runge-Kutta 
+  implementation of the diffusion step using either mixture averaged 
+  or multicomponent coefficients
+
+  Real time                       ! INPUT time, either prev_time or cur_time
+  Real dt                         ! INPUT timestep
+  MultiFab **& flux_for_H         ! OUTPUT extensive rho H flux
+  MultiFab **& flux_for_Y         ! OUTPUT extensive rho Y flux
+  MultiFab *& OUTPUT update_for_H ! OUTPUT update for rho H weighted by dt / vol
+  MultiFab *& OUTPUT update_for_Y ! OUTPUT update for rho Y weighted by dt / vol
+*/
+
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::rk_diffusion_operator()");
 
     // check that time is either prev_time or cur_time
@@ -81,6 +94,7 @@ HeatTransfer::rk_diffusion_operator (const Real time,
 	// get boundary condition array for all components
 	Array<int> bc = getBCArray (State_Type, idx, 0, ncomps);
 
+/*
         // print some stuff
 	const int* lo_vect = grids[idx].loVect();
 	const int* hi_vect = grids[idx].hiVect();
@@ -89,6 +103,7 @@ HeatTransfer::rk_diffusion_operator (const Real time,
 		      << "state_fpi.index() = " << state_fpi.index() << "\n"
 		      << "lo_vect[0] = " << lo_vect[0] << "\n"
 		      << std::flush;
+*/
 
 /*
 c     arguments are alphabetical, mostly:
@@ -121,29 +136,30 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 
 #define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
 
-	FORT_RK_DIFFUSION (geom.Domain().loVect(), geom.Domain().hiVect(), 
-			   grids[idx].loVect(), grids[idx].hiVect(),
-			   DATA_AND_LIMITS(area[0][idx]),
-			   DATA_AND_LIMITS(area[1][idx]),
-			   bc.dataPtr(),
-			   &dt,
-			   geom.CellSize(),
-			   &fort_index_of_firstY,
-			   &fort_index_of_lastY,
-			   &fort_index_of_rho,
-			   &fort_index_of_rhoH,
-			   &fort_index_of_T,
-			   &maximum_error,
-			   &maximum_iterations,
-			   &ncomps,
-			   &nspecies,
-			   DATA_AND_LIMITS(state_fpi()),
-			   DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
-			   DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
-			   DATA_AND_LIMITS(volume[idx]),
-			   DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
-			   DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
-			   DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
-			   DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
+	FORT_RK_MIXTURE_AVERAGED
+	    (geom.Domain().loVect(), geom.Domain().hiVect(), 
+	     grids[idx].loVect(), grids[idx].hiVect(),
+	     DATA_AND_LIMITS(area[0][idx]),
+	     DATA_AND_LIMITS(area[1][idx]),
+	     bc.dataPtr(),
+	     &dt,
+	     geom.CellSize(),
+	     &fort_index_of_firstY,
+	     &fort_index_of_lastY,
+	     &fort_index_of_rho,
+	     &fort_index_of_rhoH,
+	     &fort_index_of_T,
+	     &maximum_error,
+	     &maximum_iterations,
+	     &ncomps,
+	     &nspecies,
+	     DATA_AND_LIMITS(state_fpi()),
+	     DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
+	     DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
+	     DATA_AND_LIMITS(volume[idx]),
+	     DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
+	     DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
+	     DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
+	     DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
     }
 }
