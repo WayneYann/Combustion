@@ -215,6 +215,7 @@ c     offset of species in the state
       offset = index_of_firstY - 1
 
 c     some constants, at least in Cartesian coordinates
+      areax_over_dy = dx(1) / dx(2)
       areay_over_dx = dx(2) / dx(1)
       half_over_dx = 0.5d0 / dx(1)
       half_over_dy = 0.5d0 / dx(2)
@@ -263,46 +264,12 @@ c     also, calculate H, T, X, Y from rho, rho H and rho Y in the state
          end do
       end do
 
-c     calculate temperature, rho_D, and lambda
+c---- some remarks on scaling
 
-      call CKWT (IWRK(ckbi),RWRK(ckbr),one_over_wt)
-      do n=1,nspecies
-         one_over_wt(n) = 1.0d0 / one_over_wt(n)
-      end do
-
-      do j=ARG_L2(state),ARG_H2(state)
-         do i=ARG_L1(state),ARG_H1(state)
-            do n=1,nspecies
-               contiguous_X(n) = X(i,j,n)
-               contiguous_Y(n) = Y(i,j,n)
-            end do
-
-c           calculate temperature consistent with H and Y
-            iterations = FORT_TfromHYpt 
-     &           (temperature(i, j), 
-     &           H(i, j), 
-     &           contiguous_Y,
-     &           maximum_error,
-     &           maximum_iterations,
-     &           residual)
-
-            floored_T = MAX (temperature(i,j), TMIN_TRANS) 
-
-c           calculate rho_D
-            CALL CKCPMS (floored_T, IWRK(ckbi), RWRK(ckbr), cpms)
-            CALL EGSPAR 
-     &           (floored_T, contiguous_X, contiguous_Y, cpms, RWRK(egbr), 
-     &           IWRK(egbi))
-
-            CALL CKMMWY (contiguous_Y, IWRK(ckbi), RWRK(ckbr), mmw)
             CALL EGSV1 
      &           (ambient_pressure_cgs, floored_T, contiguous_Y, mmw, RWRK(egbr), 
      &           Upsilon)
 
-c           note, this is the practice in the FORT_SPECTEMPVISC routine that underlies 
-c           calcDiffusivity, but since rho is in the state, why recompute it? 
-            CALL CKRHOY (ambient_pressure_cgs, floored_T, contiguous_Y, IWRK(ckbi),
-     &           RWRK(ckbr), rho_cgs)
             do n=1,nspecies
 c              per page 17 in the EGLIB manual, Upsilon has units (cm**2 / s), so
 c              rho Upsilon has units (g / cm s).  per equation 12 in the EGLIB manual, 
@@ -313,11 +280,6 @@ c              si units.
                rho_D(i,j,n) = rho_cgs * mmw * one_over_wt(n) * Upsilon(n) * 0.1d0
             end do
 
-c           calculate lambda
-c           the following averaging is equation 50 in the chemkin transport package 
-c           manual.  the EGLIB manual does not mention the averaging, but it does have
-c           provisions to compute it through the alpha parameter in its equation 17.
-            alpha = 1.0d0
             CALL EGSL1 (alpha, floored_T, contiguous_X, RWRK(egbr), plus_value)
             alpha = - 1.0d0
             CALL EGSL1 (alpha, floored_T, contiguous_X, RWRK(egbr), minus_value)
@@ -327,8 +289,13 @@ c           = ((W s) / (10**5 m s K)) = (W / (m K 10**5)).  the si unit of therm
 c           conductivity is (W / (M K)), so these values must be divided by 10**5
 c           to convert them to si units.   multiplication by 0.5 averages the values.
             lambda(i,j) = 0.5d-5 * (plus_value + minus_value)
-         end do
-      end do
+
+            call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+c           per page 98 of the Chemkin manual, hms has units (erg / g) =
+c           = (J / 10**7) / (Kg / 10**3) = (J / Kg) * (1 / 10**4).  so hms
+c           must be divided by 10**4 to convert to si units.
+
+c---- end of some remarks on scaling
 
 c     fluxes in x direction are from lo(1) to hi(1)+1
       do j=lo(2),hi(2)
@@ -351,6 +318,7 @@ c           use a floored temperature just in case
      &           (T_on_edge, contiguous_Y_on_edge, mmw_on_edge, RWRK(egbr), IWRK(egbi),
      &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge)
+c           there does not seem to be a chemkin call to get this ratio from T and Y
             pressure_over_rho_on_edge 
      &           = universal_gas_constant_cgs * T_on_edge / mmw_on_edge
  
