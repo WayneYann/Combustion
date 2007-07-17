@@ -13,8 +13,8 @@ links: \
 	ChemDriver_F.H \
 	REAL.H
 
-#ArrayLim.H:
-#	ln -s $(BOXLIB)/ArrayLim.H ArrayLim.H
+ArrayLim.H:
+	ln -s $(BOXLIB)/ArrayLim.H ArrayLim.H
 
 BC_TYPES.H:
 	ln -s $(AMRLIB)/BC_TYPES.H BC_TYPES.H
@@ -28,8 +28,8 @@ ChemDriver_F.H:
 #CONSTANTS.H:
 #	ln -s $(BOXLIB)/CONSTANTS.H CONSTANTS.H
 
-#HEATTRANSFER_F.H:
-#	ln -s $(LMC)/HEATTRANSFER_F.H HEATTRANSFER_F.H
+HEATTRANSFER_F.H:
+	ln -s $(LMC)/HEATTRANSFER_F.H HEATTRANSFER_F.H
 
 REAL.H:
 	ln -s $(BOXLIB)/REAL.H REAL.H
@@ -43,9 +43,9 @@ sav:
 	cp -r sav_old sav_new
 	cp *.cpp *.F *.H sav_new
 
-expanded.F: FORT_RK_DIFFUSION.F
+expanded.F: FORT_RK_MULTICOMPONENT.F ArrayLim.H BC_TYPES.H cdwrk.H ChemDriver_F.H HEATTRANSFER_F.H REAL.H
 	rm -f expanded.F messages
-	cpp FORT_RK_DIFFUSION.F > expanded.F
+	cpp FORT_RK_MULTICOMPONENT.F > expanded.F
 
 messages: expanded.F
-	ifort -c -132 expanded.F >& messages
+	ifort -c -o -132 expanded.F >& messages

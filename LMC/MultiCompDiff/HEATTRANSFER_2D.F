@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.2 2007-07-16 23:17:06 sepp Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.3 2007-07-17 18:24:18 sepp Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1278,3 +1278,5 @@ c
       end
 
 #include "FORT_RK_MIXTURE_AVERAGED.F"
+
+#include "FORT_RK_MULTICOMPONENT.F"
