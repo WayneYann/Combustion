@@ -239,9 +239,5 @@ c///
 c///  end of FORT_RK_STEP_SELECTION
 c///
 
-      print *
-      print *, "smallest_time_step = ", smallest_time_step
-      print *
-
       return
       end

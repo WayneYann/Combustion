@@ -619,6 +619,7 @@ protected:
     static int         mcdd_postsmooth;
     static Real        mcdd_cfRelaxFactor;
     static int         do_rk_diffusion;
+    static Real        rk_time_step_multiplier;
 };
 
 #endif /*_HeatTransfer_H_*/

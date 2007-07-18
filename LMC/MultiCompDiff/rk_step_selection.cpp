@@ -100,5 +100,10 @@ c     state, DIMS(state) ! INPUT all variables in the state
     }
     // reconcile the time step over all the processors
     ParallelDescriptor::ReduceRealMin (smallest_time_step);
-    return smallest_time_step;
+
+    // apply the safety factor
+    Real time_step = rk_time_step_multiplier * smallest_time_step;
+
+    // return the scaled time step
+    return time_step;
 }
