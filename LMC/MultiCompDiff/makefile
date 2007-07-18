@@ -19,8 +19,8 @@ ArrayLim.H:
 BC_TYPES.H:
 	ln -s $(AMRLIB)/BC_TYPES.H BC_TYPES.H
 
-cdwrk.H:
-	ln -s $(LMC)/cdwrk.H cdwrk.H
+#cdwrk.H:
+#	ln -s $(LMC)/cdwrk.H cdwrk.H
 
 ChemDriver_F.H:
 	ln -s $(LMC)/ChemDriver_F.H ChemDriver_F.H

@@ -1,37 +1,28 @@
-void
-HeatTransfer::rk_diffusion_operator (const Real time,
-				     const Real dt,
-				     MultiFab **& flux_for_H,
-				     MultiFab **& flux_for_Y,
-				     MultiFab *& update_for_H,
-				     MultiFab *& update_for_Y)
+Real
+HeatTransfer::rk_step_selection (const Real time)
 {
 /*
-  evaluate the "operator" (update and fluxes) for the Runge-Kutta 
-  implementation of the diffusion step using either mixture averaged 
-  or multicomponent coefficients
+  estimate the time step for the Runge-Kutta implementation of the diffusion
+  update.  this estimation is based on the diffusion coefficients of the 
+  species into the mixture, independent of whether or not the "operator" is 
+  based on the mixture averaged or the multicomponent formulation with Soret 
+  and Dufour effects.
 
-  Real time                       ! INPUT time, either prev_time or cur_time
-  Real dt                         ! INPUT timestep
-  MultiFab **& flux_for_H         ! OUTPUT extensive rho H flux
-  MultiFab **& flux_for_Y         ! OUTPUT extensive rho Y flux
-  MultiFab *& OUTPUT update_for_H ! OUTPUT update for rho H weighted by dt / vol
-  MultiFab *& OUTPUT update_for_Y ! OUTPUT update for rho Y weighted by dt / vol
+                                space_step ** 2
+                  time_step  =  ---------------
+                                D_mix * 2 * DIM
+
+  the minimum of this formula is taken over all cells and species
+
+  Real time     ! INPUT time, either prev_time or cur_time
+  returned Real ! OUTPUT the time step
 */
 
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::rk_diffusion_operator()");
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::rk_step_selection()");
 
     // check that time is either prev_time or cur_time
     const TimeLevel whichTime = which_time(State_Type, time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
-
-    if (ParallelDescriptor::IOProcessor())
-    {
-	if (whichTime == AmrOldTime)
-	    std::cout << "JFG: time is AmrOldTime\n" << std::flush;
-	else
-	    std::cout << "JFG: time is AmrNewTime\n" << std::flush;
-    }
 
     // get some constants used as dimensions
     int ncomps = NUM_STATE;
@@ -53,102 +44,46 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     int fort_index_of_rhoH   = 1 + index_of_rhoH;
     int fort_index_of_T      = 1 + index_of_T;
 
-    // allocate OUTPUT multifabs for fluxes and updates
-    int ngrow = 0;
-    diffusion->allocFluxBoxesLevel(flux_for_H,ngrow,1);
-    diffusion->allocFluxBoxesLevel(flux_for_Y,ngrow,nspecies);
-    update_for_H = new MultiFab(grids,1,ngrow);
-    update_for_Y = new MultiFab(grids,nspecies,ngrow);
+    // get the state at the desired time
+    MultiFab& state 
+	= (whichTime == AmrOldTime) 
+	? get_old_data(State_Type) 
+	: get_new_data(State_Type);
 
-    // loop over fabs in the state at the specified time
-    MultiFab dummy (grids,1,0,Fab_noallocate);
-    MFIter update_for_H_mfi(*update_for_H);
-    MFIter update_for_Y_mfi(*update_for_Y);
-    MFIter xflux_for_H_mfi(*flux_for_H[0]);
-    MFIter yflux_for_H_mfi(*flux_for_H[1]);
-    MFIter xflux_for_Y_mfi(*flux_for_Y[0]);
-    MFIter yflux_for_Y_mfi(*flux_for_Y[1]);
-    ngrow = 1;
-    for (FillPatchIterator state_fpi (*this, dummy, ngrow, time, State_Type, 0, ncomps);
-         state_fpi.isValid();
-         ++state_fpi, 
-	     ++update_for_H_mfi, 
-	     ++update_for_Y_mfi,
-	     ++xflux_for_H_mfi,
-	     ++yflux_for_H_mfi,
-	     ++xflux_for_Y_mfi,
-	     ++yflux_for_Y_mfi)
+    // since it is possible that a processor has no boxes on this
+    // level, the variable that holds the smallest time step found
+    // here must be initialized with a large value so that the 
+    // ParallelDescriptor::ReduceRealMin will function propoerly.
+    Real smallest_time_step = 1.0e20;
+
+    // loop over fabs in the state
+    for (MFIter state_mfi(state); state_mfi.isValid(); ++state_mfi)
     {
-        BL_ASSERT (
-	    update_for_H_mfi.isValid() &&
-	    update_for_Y_mfi.isValid() &&
-	    xflux_for_H_mfi.isValid() &&
-	    yflux_for_H_mfi.isValid() &&
-	    xflux_for_Y_mfi.isValid() &&
-	    yflux_for_Y_mfi.isValid()
-	    );
-
 	// get index of the present box
-        const int idx = state_fpi.index();
-
-	// get boundary condition array for all components
-	Array<int> bc = getBCArray (State_Type, idx, 0, ncomps);
-
-/*
-        // print some stuff
-	const int* lo_vect = grids[idx].loVect();
-	const int* hi_vect = grids[idx].hiVect();
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: in rk_diffusion\n" 
-		      << "state_fpi.index() = " << state_fpi.index() << "\n"
-		      << "lo_vect[0] = " << lo_vect[0] << "\n"
-		      << std::flush;
-*/
+        const int idx = state_mfi.index();
 
 /*
 c     arguments are alphabetical, mostly:
 c
-c     domain_lo, domain_hi,             ! INPUT limits of valid region of the domain
-c     lo, hi,                           ! INPUT limits of valid region of the box
-c     areax, DIMS(areax),               ! INPUT areas of the faces perpendicular to x axis
-c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
-c     bc,                               ! INPUT boundary condition array for all comps
-c     dt,                               ! INPUT timestep
-c     dx,                               ! INPUT physical dimensions of grid cells
-c     index_of_firstY,                  ! INPUT index of rho Y for the first species in the state
-c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
-c     index_of_rho,                     ! INPUT index of rho in the state
-c     index_of_rhoH,                    ! INPUT index of rho H in the state
-c     index_of_T,                       ! INPUT index of T in the state
-c     maximum_error,                    ! INPUT maximum error in calculation of T
-c     maximum_iterations,               ! INPUT maximum iterations in calculation of T
-c     ncomps,                           ! INPUT total number of components in the state
-c     nspecies,                         ! INPUT total number of species in the state
-c     state, DIMS(state),               ! INPUT all variables in the state
-c     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
-c     update_for_Y, DIMS(update_for_Y), ! OUTPUT divergences of the fluxes
-c     volume, DIMS(volume),             ! INPUT volumes of the cells
-c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT x fluxes for enthalpy
-c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT x fluxes for species
-c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT y fluxes for enthalpy
-c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
+c     lo, hi             ! INPUT limits of valid region of the box
+c     dx                 ! INPUT physical dimensions of grid cells
+c     index_of_firstY    ! INPUT index of rho Y for the first species in the state
+c     index_of_lastY     ! INPUT index of rho Y for the last species in the state
+c     index_of_rho       ! INPUT index of rho in the state
+c     index_of_rhoH      ! INPUT index of rho H in the state
+c     index_of_T         ! INPUT index of T in the state
+c     maximum_error      ! INPUT maximum error in calculation of T
+c     maximum_iterations ! INPUT maximum iterations in calculation of T
+c     ncomps             ! INPUT total number of components in the state
+c     nspecies           ! INPUT total number of species in the state
+c     smallest_time_step ! OUTPUT smallest time step over all cells and species
+c     state, DIMS(state) ! INPUT all variables in the state
 */
 
 #define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
 
-//      call this as a test and then throw the results away
-	if (1)
-	{
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: about to call FORT_RK_MULTICOMPONENT\n" << std::flush;
-
-	FORT_RK_MULTICOMPONENT
-	    (geom.Domain().loVect(), geom.Domain().hiVect(), 
-	     grids[idx].loVect(), grids[idx].hiVect(),
-	     DATA_AND_LIMITS(area[0][idx]),
-	     DATA_AND_LIMITS(area[1][idx]),
-	     bc.dataPtr(),
-	     &dt,
+	FORT_RK_STEP_SELECTION
+	    (grids[idx].loVect(), grids[idx].hiVect(),
 	     geom.CellSize(),
 	     &fort_index_of_firstY,
 	     &fort_index_of_lastY,
@@ -159,43 +94,11 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 	     &maximum_iterations,
 	     &ncomps,
 	     &nspecies,
-	     DATA_AND_LIMITS(state_fpi()),
-	     DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
-	     DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
-	     DATA_AND_LIMITS(volume[idx]),
-	     DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
-	     DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
-	     DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
-	     DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
-
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: returned from FORT_RK_MULTICOMPONENT\n" << std::flush;
-	}
-
-	FORT_RK_MIXTURE_AVERAGED
-	    (geom.Domain().loVect(), geom.Domain().hiVect(), 
-	     grids[idx].loVect(), grids[idx].hiVect(),
-	     DATA_AND_LIMITS(area[0][idx]),
-	     DATA_AND_LIMITS(area[1][idx]),
-	     bc.dataPtr(),
-	     &dt,
-	     geom.CellSize(),
-	     &fort_index_of_firstY,
-	     &fort_index_of_lastY,
-	     &fort_index_of_rho,
-	     &fort_index_of_rhoH,
-	     &fort_index_of_T,
-	     &maximum_error,
-	     &maximum_iterations,
-	     &ncomps,
-	     &nspecies,
-	     DATA_AND_LIMITS(state_fpi()),
-	     DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
-	     DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
-	     DATA_AND_LIMITS(volume[idx]),
-	     DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
-	     DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
-	     DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
-	     DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
+	     &smallest_time_step,
+	     DATA_AND_LIMITS(state[state_mfi])
+	     );
     }
+    // reconcile the time step over all the processors
+    ParallelDescriptor::ReduceRealMin (smallest_time_step);
+    return smallest_time_step;
 }

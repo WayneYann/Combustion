@@ -764,17 +764,29 @@ HeatTransfer::estTimeStep ()
 
     ParallelDescriptor::ReduceRealMin(divu_dt);
 
+    Real rk_dt;
+    if (do_rk_diffusion) rk_dt = rk_step_selection (cur_time);
+
     if (ParallelDescriptor::IOProcessor())
     {
-        std::cout << "HeatTransfer::estTimeStep(): estdt, divu_dt = " 
-                  << estdt << ", " << divu_dt << '\n';
+	if (do_rk_diffusion)
+	{
+	    std::cout << "HeatTransfer::estTimeStep(): estdt, divu_dt, rk_dt = " 
+		      << estdt << ", " << divu_dt << ", " << rk_dt << '\n';
+	}
+	else
+	{
+	    std::cout << "HeatTransfer::estTimeStep(): estdt, divu_dt = " 
+		      << estdt << ", " << divu_dt << '\n';
+	}
     }
 
     estdt = std::min(estdt, divu_dt);
+    if (do_rk_diffusion) estdt = std::min(estdt, rk_dt);
 
     if (estdt < ns_estdt && ParallelDescriptor::IOProcessor())
     {
-        std::cout << "HeatTransfer::estTimeStep() : timestep reduced from " 
+        std::cout << "HeatTransfer::estTimeStep(): timestep reduced from " 
                   << ns_estdt << " to " << estdt << '\n';
     }
 
@@ -3685,6 +3697,8 @@ HeatTransfer::mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCom
 }
 
 #include "rk_diffusion_operator.cpp"
+
+#include "rk_step_selection.cpp"
 
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,

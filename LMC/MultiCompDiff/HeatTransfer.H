@@ -188,6 +188,8 @@ public:
 				MultiFab **& flux_for_Y,
 				MultiFab *& update_for_H,
 				MultiFab *& update_for_Y);
+
+    Real rk_step_selection (const Real time);
     //
     // Make rho at time n.
     //

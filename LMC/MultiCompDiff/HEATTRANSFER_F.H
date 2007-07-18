@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.7 2007-07-17 18:24:18 sepp Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.8 2007-07-18 20:19:38 sepp Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -27,6 +27,7 @@
 #    define FORT_COMPUTE_UGRADP            computeugradp
 #    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent
+#    define FORT_RK_STEP_SELECTION         rkstepselection
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -53,6 +54,7 @@
 #    define FORT_COMPUTE_UGRADP            COMPUTEUGRADP
 #    define FORT_RK_MIXTURE_AVERAGED       RKMIXTUREAVERAGED
 #    define FORT_RK_MULTICOMPONENT         RKMULTICOMPONENT
+#    define FORT_RK_STEP_SELECTION         RKSTEPSELECTION
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -78,6 +80,7 @@
 #    define FORT_COMPUTE_UGRADP            computeugradp
 #    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent
+#    define FORT_RK_STEP_SELECTION         rkstepselection
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -103,6 +106,7 @@
 #    define FORT_COMPUTE_UGRADP            computeugradp_
 #    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged_
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent_
+#    define FORT_RK_STEP_SELECTION         rkstepselection_
 #  endif
 
 #include <ArrayLim.H>
@@ -310,6 +314,22 @@ extern "C" {
 	Real* xflux_for_Y, ARLIM_P(xflux_for_Y_lo), ARLIM_P(xflux_for_Y_hi),
 	Real* yflux_for_Y, ARLIM_P(yflux_for_Y_lo), ARLIM_P(yflux_for_Y_hi),
 	Real* yflux_for_H, ARLIM_P(yflux_for_H_lo), ARLIM_P(yflux_for_H_hi)
+	);
+
+    void FORT_RK_STEP_SELECTION (
+	const int* lo, const int* hi,
+	const Real* dx,
+	int* index_of_firstY,
+	int* index_of_lastY,
+	int* index_of_rho,
+	int* index_of_rhoH,
+	int* index_of_T,
+	Real* maximum_error,
+	int* maximum_iterations,
+	int* ncomps,
+	int* nspcecies,
+	Real* smallest_time_step,
+	Real* state, ARLIM_P(state_lo), ARLIM_P(state_hi)
 	);
 }
 #endif

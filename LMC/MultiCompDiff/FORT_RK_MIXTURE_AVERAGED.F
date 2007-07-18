@@ -324,14 +324,14 @@ c           to convert them to si units.   multiplication by 0.5 averages the va
          end do
       end do
 
-      print *
-      print *, "dt estimate for each species (no, est)"
-      print *, "D_mix for each species (no, est) in si units"
-      print *
-      do n=1,nspecies
-         print *, n, dt_limit(n)
-      end do
-      print *
+c      print *
+c      print *, "dt estimate for each species (no, est)"
+c      print *, "D_mix for each species (no, est) in si units"
+c      print *
+c      do n=1,nspecies
+c         print *, n, dt_limit(n)
+c      end do
+c      print *
 
 c     fluxes in x direction are from lo(1) to hi(1)+1
       half_over_dx = 0.5d0 / dx(1)
