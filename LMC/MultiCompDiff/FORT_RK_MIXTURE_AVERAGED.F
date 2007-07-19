@@ -192,17 +192,6 @@ c     local variables
       dimension Upsilon (:)
       dimension Y (:,:,:)
 
-c     temporary local variables for estimating time step
-      logical first
-      REAL_T dt_limit
-      REAL_T dx_cgs
-      REAL_T estimate
-      allocatable dt_limit
-      dimension dt_limit(:)
-      dx_cgs = 100.0d0 * min (dx(1), dx(2))
-      first = .true.
-      allocate (dt_limit (nspecies))
-
       allocate (contiguous_X (nspecies))
       allocate (contiguous_Y (nspecies))
       allocate (cpms (nspecies))
@@ -273,6 +262,7 @@ c           calculate temperature consistent with H and Y
 
 c           calculate rho_D
             CALL CKCPMS (floored_T, IWRK(ckbi), RWRK(ckbr), cpms)
+
             CALL CKYTX (contiguous_Y, IWRK(ckbi), RWRK(ckbr), contiguous_X)
             CALL EGSPAR 
      &           (floored_T, contiguous_X, contiguous_Y, cpms, RWRK(egbr), 
@@ -282,6 +272,15 @@ c           calculate rho_D
             CALL EGSV1 
      &           (ambient_pressure_cgs, floored_T, contiguous_Y, mmw, RWRK(egbr), 
      &           Upsilon)
+
+            print *, "cpms_on_edge", cpms
+            print *, "T_on_edge", temperature(i, j)
+            print *, "X_on_edge", contiguous_X
+            print *, "Y_on_edge", contiguous_Y
+            print *, "mmw_on_edge", mmw
+            print *, "Upsilon", Upsilon
+            print *, "end of good stuff"
+            stop
 
 c           note, this is the practice in the FORT_SPECTEMPVISC routine that underlies 
 c           calcDiffusivity, but since rho is in the state, why recompute it? 
@@ -295,14 +294,6 @@ c              dimensionless mmw / wt(n).  thus rho times the diffusion coeffici
 c              with units (g / (cm s)) = 10 (Kg / (m s)) must be divided by 10 to obtain
 c              si units.
                rho_D(i,j,n) = rho_cgs * mmw * one_over_wt(n) * Upsilon(n) * 0.1d0
-
-c              first coded estimate is wrong; just print D in si units instead
-               estimate = mmw * one_over_wt(n) * Upsilon(n) * 1.0d-4
-               if (first) then
-                  dt_limit(n) = estimate
-               else
-                  dt_limit(n) = max (estimate, dt_limit(n))
-               end if
             end do
 
 c           calculate lambda
@@ -319,8 +310,6 @@ c           = ((W s) / (10**5 m s K)) = (W / (m K 10**5)).  the si unit of therm
 c           conductivity is (W / (M K)), so these values must be divided by 10**5
 c           to convert them to si units.   multiplication by 0.5 averages the values.
             lambda(i,j) = 0.5d-5 * (plus_value + minus_value)
-
-            first = .false.
          end do
       end do
 

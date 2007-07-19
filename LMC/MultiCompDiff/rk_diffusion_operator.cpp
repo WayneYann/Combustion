@@ -136,66 +136,70 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 
 #define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
 
-//      call this as a test and then throw the results away
-	if (0)
+	if (!rk_mixture_averaged)
 	{
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: about to call FORT_RK_MULTICOMPONENT\n" << std::flush;
+	    // multicomponent is the default
 
-	FORT_RK_MULTICOMPONENT
-	    (geom.Domain().loVect(), geom.Domain().hiVect(), 
-	     grids[idx].loVect(), grids[idx].hiVect(),
-	     DATA_AND_LIMITS(area[0][idx]),
-	     DATA_AND_LIMITS(area[1][idx]),
-	     bc.dataPtr(),
-	     &dt,
-	     geom.CellSize(),
-	     &fort_index_of_firstY,
-	     &fort_index_of_lastY,
-	     &fort_index_of_rho,
-	     &fort_index_of_rhoH,
-	     &fort_index_of_T,
-	     &maximum_error,
-	     &maximum_iterations,
-	     &ncomps,
-	     &nspecies,
-	     DATA_AND_LIMITS(state_fpi()),
-	     DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
-	     DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
-	     DATA_AND_LIMITS(volume[idx]),
-	     DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
-	     DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
-	     DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
-	     DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
+	    if (ParallelDescriptor::IOProcessor())
+		std::cout << "JFG: about to call FORT_RK_MULTICOMPONENT\n" << std::flush;
+	    
+	    FORT_RK_MULTICOMPONENT
+		(geom.Domain().loVect(), geom.Domain().hiVect(), 
+		 grids[idx].loVect(), grids[idx].hiVect(),
+		 DATA_AND_LIMITS(area[0][idx]),
+		 DATA_AND_LIMITS(area[1][idx]),
+		 bc.dataPtr(),
+		 &dt,
+		 geom.CellSize(),
+		 &fort_index_of_firstY,
+		 &fort_index_of_lastY,
+		 &fort_index_of_rho,
+		 &fort_index_of_rhoH,
+		 &fort_index_of_T,
+		 &maximum_error,
+		 &maximum_iterations,
+		 &ncomps,
+		 &nspecies,
+		 DATA_AND_LIMITS(state_fpi()),
+		 DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
+		 DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
+		 DATA_AND_LIMITS(volume[idx]),
+		 DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
+		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
+		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
+		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
 
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: returned from FORT_RK_MULTICOMPONENT\n" << std::flush;
+	    if (ParallelDescriptor::IOProcessor())
+		std::cout << "JFG: returned from FORT_RK_MULTICOMPONENT\n" << std::flush;
 	}
-
-	FORT_RK_MIXTURE_AVERAGED
-	    (geom.Domain().loVect(), geom.Domain().hiVect(), 
-	     grids[idx].loVect(), grids[idx].hiVect(),
-	     DATA_AND_LIMITS(area[0][idx]),
-	     DATA_AND_LIMITS(area[1][idx]),
-	     bc.dataPtr(),
-	     &dt,
-	     geom.CellSize(),
-	     &fort_index_of_firstY,
-	     &fort_index_of_lastY,
-	     &fort_index_of_rho,
-	     &fort_index_of_rhoH,
-	     &fort_index_of_T,
-	     &maximum_error,
-	     &maximum_iterations,
-	     &ncomps,
-	     &nspecies,
-	     DATA_AND_LIMITS(state_fpi()),
-	     DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
-	     DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
-	     DATA_AND_LIMITS(volume[idx]),
-	     DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
-	     DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
-	     DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
-	     DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
+	else
+	{
+	    // do mixture averaged
+	    FORT_RK_MIXTURE_AVERAGED
+		(geom.Domain().loVect(), geom.Domain().hiVect(), 
+		 grids[idx].loVect(), grids[idx].hiVect(),
+		 DATA_AND_LIMITS(area[0][idx]),
+		 DATA_AND_LIMITS(area[1][idx]),
+		 bc.dataPtr(),
+		 &dt,
+		 geom.CellSize(),
+		 &fort_index_of_firstY,
+		 &fort_index_of_lastY,
+		 &fort_index_of_rho,
+		 &fort_index_of_rhoH,
+		 &fort_index_of_T,
+		 &maximum_error,
+		 &maximum_iterations,
+		 &ncomps,
+		 &nspecies,
+		 DATA_AND_LIMITS(state_fpi()),
+		 DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
+		 DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
+		 DATA_AND_LIMITS(volume[idx]),
+		 DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
+		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
+		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
+		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
+	}
     }
 }

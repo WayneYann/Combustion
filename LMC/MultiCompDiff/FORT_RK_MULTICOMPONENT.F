@@ -211,6 +211,11 @@ c     debug variables
       logical debug
       integer idx
       integer jdx
+      REAL_T Upsilon
+      allocatable Upsilon
+      dimension Upsilon (:)
+      allocate (Upsilon (nspecies))
+
       debug = .true.
       idx = hi(1)
       jdx = hi(2)
@@ -474,15 +479,27 @@ c           evaluate diffusion coefficients and other things at the edge
             call CKMMWY 
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), mmw_on_edge)
 
+            CALL EGSV1 
+     &           (ambient_pressure_cgs, T_on_edge, Y_on_edge, mmw_on_edge, RWRK(egbr), 
+     &           Upsilon)
+
             print *, "cpms_on_edge", cpms_on_edge
             print *, "T_on_edge", T_on_edge
             print *, "X_on_edge", X_on_edge
             print *, "Y_on_edge", Y_on_edge
             print *, "mmw_on_edge", mmw_on_edge
+            print *, "Upsilon", Upsilon
+            print *, "end of good stuff"
 
-            call EGSLTDR5 
+            call EGSLTDR5
      &           (T_on_edge, Y_on_edge, mmw_on_edge, RWRK(egbr), IWRK(egbi),
      &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
+
+            print *, "lambda_prime_on_edge", lambda_prime_on_edge
+            print *, "rho_theta_on_edge", rho_theta_on_edge
+            print *, "rho_Y_D_on_edge", rho_Y_D_on_edge
+            stop
+
             call CKHMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge)
 c           there does not seem to be a chemkin call to get this ratio from T and Y

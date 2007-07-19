@@ -126,7 +126,8 @@ Real      HeatTransfer::mcdd_rtol                 = 1.e-8;
 int       HeatTransfer::mcdd_presmooth            = 3;
 int       HeatTransfer::mcdd_postsmooth           = 3;
 Real      HeatTransfer::mcdd_cfRelaxFactor        = 1.0;
-int       HeatTransfer::do_rk_diffusion           = 0;
+bool      HeatTransfer::do_rk_diffusion           = false;
+bool      HeatTransfer::rk_mixture_averaged       = false;
 Real      HeatTransfer::rk_time_step_multiplier   = 0.5;
 
 static int  max_grid_size_chem   = 16;
@@ -629,6 +630,7 @@ HeatTransfer::init_once ()
     ParmParse pp("ht");
 
     pp.query ("do_rk_diffusion", do_rk_diffusion);
+    pp.query ("rk_mixture_averaged", rk_mixture_averaged);
     pp.query ("rk_time_step_multiplier", rk_time_step_multiplier);
 
     pp.query("plot_auxDiags",plot_auxDiags);

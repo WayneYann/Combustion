@@ -618,7 +618,8 @@ protected:
     static int         mcdd_presmooth;
     static int         mcdd_postsmooth;
     static Real        mcdd_cfRelaxFactor;
-    static int         do_rk_diffusion;
+    static bool        do_rk_diffusion;
+    static bool        rk_mixture_averaged;
     static Real        rk_time_step_multiplier;
 };
 
