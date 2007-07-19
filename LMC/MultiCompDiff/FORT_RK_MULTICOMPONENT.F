@@ -125,14 +125,14 @@ c     local variables
       logical at_hi
       logical at_lo
       logical error
-      logical hi_external_check
-      logical hi_external_for_T
-      logical hi_external_for_Y
+      logical hi_dirichlet_check
+      logical hi_dirichlet_for_T
+      logical hi_dirichlet_for_Y
       logical hi_internal
       logical hi_internal_check
-      logical lo_external_check
-      logical lo_external_for_T
-      logical lo_external_for_Y
+      logical lo_dirichlet_check
+      logical lo_dirichlet_for_T
+      logical lo_dirichlet_for_Y
       logical lo_internal
       logical lo_internal_check
       REAL_T area_for_x
@@ -324,62 +324,62 @@ c///
 c///  x fluxes
 c///
 
-c     set flags for special treatment of the low boundary
+c     set flags for special treatment of the lo boundary
 
-      lo_external_for_T = .false.
-      lo_external_for_Y = .false.
-      lo_internal       = .true.
+      lo_dirichlet_for_T = .false.
+      lo_dirichlet_for_Y = .false.
+      lo_internal        = .true.
       if (domain_lo(1) .eq. lo(1)) then
-c        reset the flags and check that the bc array is consistent for T and Y.
+c        set flags and check whether the bc array is consistent for T and Y.
 c        consistent means:
 c        1) if T or one Y is marked internal then T and all Y are marked internal
 c        2) if one Y is marked external then all Y are marked external
 c        3) if the Y are marked external then so is T
-         lo_external_for_T = EXT_DIR .eq. bc(1, 1, index_of_T)
-         lo_external_for_Y = EXT_DIR .eq. bc(1, 1, index_of_firstY)
-         lo_external_check = EXT_DIR .eq. bc(1, 1, index_of_firstY)
-         lo_internal       = INT_DIR .eq. bc(1, 1, index_of_T)
-         lo_internal_check = INT_DIR .eq. bc(1, 1, index_of_T)
+         lo_dirichlet_for_T = EXT_DIR .eq. bc(1, 1, index_of_T)
+         lo_dirichlet_for_Y = EXT_DIR .eq. bc(1, 1, index_of_firstY)
+         lo_dirichlet_check = EXT_DIR .eq. bc(1, 1, index_of_firstY)
+         lo_internal        = INT_DIR .eq. bc(1, 1, index_of_T)
+         lo_internal_check  = INT_DIR .eq. bc(1, 1, index_of_T)
          do n=1,nspecies
-            lo_external_for_Y = lo_external_for_Y .and. (EXT_DIR .eq. bc(1, 1, offset + n))
-            lo_external_check = lo_external_check  .or. (EXT_DIR .eq. bc(1, 1, offset + n))
-            lo_internal       = lo_internal       .and. (INT_DIR .eq. bc(1, 1, offset + n))
-            lo_internal_check = lo_internal_check  .or. (INT_DIR .eq. bc(1, 1, offset + n))
+            lo_dirichlet_for_Y = lo_dirichlet_for_Y .and. (EXT_DIR .eq. bc(1, 1, offset + n))
+            lo_dirichlet_check = lo_dirichlet_check  .or. (EXT_DIR .eq. bc(1, 1, offset + n))
+            lo_internal        = lo_internal        .and. (INT_DIR .eq. bc(1, 1, offset + n))
+            lo_internal_check  = lo_internal_check   .or. (INT_DIR .eq. bc(1, 1, offset + n))
          end do
          error = .not. (
-     &        (lo_external_for_Y .eq. lo_external_check) .and.
+     &        (lo_dirichlet_for_Y .eq. lo_dirichlet_check) .and.
      &        (lo_internal .eq. lo_internal_check) .and.
-     &        (.not. lo_external_for_Y .or. lo_external_for_T))
+     &        (.not. lo_dirichlet_for_Y .or. lo_dirichlet_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc array at low x")
       end if
 
 c     set flags for special treatment of the hi boundary
 
-      hi_external_for_T = .false.
-      hi_external_for_Y = .false.
-      hi_internal       = .true.
+      hi_dirichlet_for_T = .false.
+      hi_dirichlet_for_Y = .false.
+      hi_internal        = .true.
       if (domain_hi(1) .eq. hi(1)) then
-c        reset the flags and check that the bc array is consistent for T and Y.
+c        set flags and check whether the bc array is consistent for T and Y.
 c        consistent means:
 c        1) if T or one Y is marked internal then T and all Y are marked internal
 c        2) if one Y is marked external then all Y are marked external
 c        3) if the Y are marked external then so is T
-         hi_external_for_T = EXT_DIR .eq. bc(1, 2, index_of_T)
-         hi_external_for_Y = EXT_DIR .eq. bc(1, 2, index_of_firstY)
-         hi_external_check = EXT_DIR .eq. bc(1, 2, index_of_firstY)
-         hi_internal       = INT_DIR .eq. bc(1, 2, index_of_T)
-         hi_internal_check = INT_DIR .eq. bc(1, 2, index_of_T)
+         hi_dirichlet_for_T = EXT_DIR .eq. bc(1, 2, index_of_T)
+         hi_dirichlet_for_Y = EXT_DIR .eq. bc(1, 2, index_of_firstY)
+         hi_dirichlet_check = EXT_DIR .eq. bc(1, 2, index_of_firstY)
+         hi_internal        = INT_DIR .eq. bc(1, 2, index_of_T)
+         hi_internal_check  = INT_DIR .eq. bc(1, 2, index_of_T)
          do n=1,nspecies
-            hi_external_for_Y = hi_external_for_Y .and. (EXT_DIR .eq. bc(1, 2, offset + n))
-            hi_external_check = hi_external_check  .or. (EXT_DIR .eq. bc(1, 2, offset + n))
-            hi_internal       = hi_internal       .and. (INT_DIR .eq. bc(1, 2, offset + n))
-            hi_internal_check = hi_internal_check  .or. (INT_DIR .eq. bc(1, 2, offset + n))
+            hi_dirichlet_for_Y = hi_dirichlet_for_Y .and. (EXT_DIR .eq. bc(1, 2, offset + n))
+            hi_dirichlet_check = hi_dirichlet_check  .or. (EXT_DIR .eq. bc(1, 2, offset + n))
+            hi_internal        = hi_internal        .and. (INT_DIR .eq. bc(1, 2, offset + n))
+            hi_internal_check  = hi_internal_check   .or. (INT_DIR .eq. bc(1, 2, offset + n))
          end do
          error = .not. (
-     &        (hi_external_for_Y .eq. hi_external_check) .and.
+     &        (hi_dirichlet_for_Y .eq. hi_dirichlet_check) .and.
      &        (hi_internal .eq. hi_internal_check) .and.
-     &        (.not. hi_external_for_Y .or. hi_external_for_T))
+     &        (.not. hi_dirichlet_for_Y .or. hi_dirichlet_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc array at high x")
       end if
@@ -390,16 +390,16 @@ c     calculate fluxes in the x direction
 c        fluxes in x direction are at edges indexed from lo(1) to hi(1)+1
          do i=lo(1),hi(1)+1
 
-c           set flags indicating whether this edge is at the left or right boundary
+c           set flags indicating whether the edge is at the left or right boundary
             at_lo = i .eq. domain_lo(1)
             at_hi = i .eq. domain_hi(1) + 1
 
-c           evaluate the value for T at the edge
+c           evaluate the value for T on the edge
 c           for external (Dirichlet) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
-            if (at_lo .and. lo_external_for_T) then
+            if (at_lo .and. lo_dirichlet_for_T) then
                T_on_edge = state(i-1, j, index_of_T)
-            else if (at_hi .and. hi_external_for_T) then
+            else if (at_hi .and. hi_dirichlet_for_T) then
                T_on_edge = state(i, j, index_of_T)
             else
                T_on_edge = 0.5 * (T(i-1,j) + T(i,j))
@@ -408,13 +408,13 @@ c           placed the boundary value in the ghost cell adjacent to the edge
 c           use a floored T just in case
             T_on_edge = MAX (TMIN_TRANS, T_on_edge)
 
-c           evaluate the values for Y at the edge
+c           evaluate the values for Y on the edge
 c           for external (Dirichlet) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             do n = 1,nspecies
-               if (at_lo .and. lo_external_for_Y) then
+               if (at_lo .and. lo_dirichlet_for_Y) then
                   Y_on_edge(n) = state(i-1, j, offset + n)
-               else if (at_hi .and. hi_external_for_Y) then
+               else if (at_hi .and. hi_dirichlet_for_Y) then
                   Y_on_edge(n) = state(i, j, offset + n)
                else
                   Y_on_edge(n) = 0.5 * (Y(i-1,j,n) + Y(i,j,n))
@@ -424,45 +424,61 @@ c           placed the boundary value in the ghost cell adjacent to the edge
 c            print *, "T_on_edge", T_on_edge
 c            print *, "Y_on_edge", Y_on_edge
 
-c           evaluate the values for X at the edge
+c           evaluate the values for X on the edge
             call CKYTX 
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), X_on_edge)
 
 c            print *, "X_on_edge", X_on_edge
 
-c           evaluate the derivative for T at the edge
-            if (at_lo .and. lo_external_for_T) then
-               derivative_of_T 
-     &              = one_over_dx
-     &              * (lo_coefficient_0 * T_on_edge
-     &              + lo_coefficient_1 * T(i,j)
-     &              + lo_coefficient_2 * T(i+1,j))
-            else if (at_hi .and. hi_external_for_T) then
-               derivative_of_T 
-     &              = one_over_dx
-     &              * (hi_coefficient_0 * T(i-2,j)
-     &              + hi_coefficient_1 * T(i-1,j)
-     &              + hi_coefficient_2 * T_on_edge)
+c           evaluate the derivative for T on the edge
+            if (at_lo .and. .not. lo_internal) then
+               if (lo_dirichlet_for_T) then
+                  derivative_of_T 
+     &                 = one_over_dx
+     &                 * (lo_coefficient_0 * T_on_edge
+     &                 + lo_coefficient_1 * T(i,j)
+     &                 + lo_coefficient_2 * T(i+1,j))
+               else
+                  derivative_of_T = 0.0d0
+               end if
+            else if (at_hi .and. .not. hi_internal) then
+               if (hi_dirichlet_for_T) then
+                  derivative_of_T 
+     &                 = one_over_dx
+     &                 * (hi_coefficient_0 * T(i-2,j)
+     &                 + hi_coefficient_1 * T(i-1,j)
+     &                 + hi_coefficient_2 * T_on_edge)
+               else
+                  derivative_of_T = 0.0d0
+               end if
             else
                derivative_of_T = (T(i,j) - T(i-1,j)) * one_over_dx
             end if
 
 c            print *, "derivative_of_T", derivative_of_T
 
-c           evaluate the derivatives for X at the edge
+c           evaluate the derivatives for X on the edge
             do n = 1,nspecies
-               if (at_lo .and. lo_external_for_Y) then
-                  derivative_of_X(n)
-     &                 = one_over_dx
-     &                 * (lo_coefficient_0 * X_on_edge(n)
-     &                 + lo_coefficient_1 * X(i,j,n)
-     &                 + lo_coefficient_2 * X(i+1,j,n))
-               else if (at_hi .and. hi_external_for_Y) then
-                  derivative_of_X(n)
-     &                 = one_over_dx
-     &                 * (hi_coefficient_0 * X(i-2,j,n)
-     &                 + hi_coefficient_1 * X(i-1,j,n)
-     &                 + hi_coefficient_2 * X_on_edge(n))
+               if (at_lo .and. .not. lo_internal) then
+                  if (lo_dirichlet_for_Y) then
+                     derivative_of_X(n)
+     &                    = one_over_dx
+     &                    * (lo_coefficient_0 * X_on_edge(n)
+     &                    + lo_coefficient_1 * X(i,j,n)
+     &                    + lo_coefficient_2 * X(i+1,j,n))
+                  else
+                     derivative_of_X(n) = 0.0d0
+                  end if
+               else if (at_hi .and. .not. hi_internal) then
+                  if (hi_dirichlet_for_Y) then
+                     derivative_of_X(n)
+     &                    = one_over_dx
+     &                    * (hi_coefficient_0 * X(i-2,j,n)
+     &                    + hi_coefficient_1 * X(i-1,j,n)
+     &                    + hi_coefficient_2 * X_on_edge(n))
+                  else
+                     derivative_of_X(n) = 0.0d0
+                  end if
                else
                   derivative_of_X(n) = (X(i,j,n) - X(i-1,j,n)) * one_over_dx
                end if
@@ -470,7 +486,7 @@ c           evaluate the derivatives for X at the edge
 
 c            print *, "derivative_of_X", derivative_of_X
 
-c           evaluate diffusion coefficients and other things at the edge
+c           evaluate diffusion coefficients and other things on the edge
             call CKCPMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), cpms_on_edge)
             call EGSPAR 
@@ -590,62 +606,62 @@ c///
 c///  y fluxes
 c///
 
-c     set flags for special treatment of the low boundary
+c     set flags for special treatment of the lo boundary
 
-      lo_external_for_T = .false.
-      lo_external_for_Y = .false.
-      lo_internal       = .true.
+      lo_dirichlet_for_T = .false.
+      lo_dirichlet_for_Y = .false.
+      lo_internal        = .true.
       if (domain_lo(2) .eq. lo(2)) then
-c        reset the flags and check that the bc array is consistent for T and Y.
+c        set flags and check whether the bc array is consistent for T and Y.
 c        consistent means:
 c        1) if T or one Y is marked internal then T and all Y are marked internal
 c        2) if one Y is marked external then all Y are marked external
 c        3) if the Y are marked external then so is T
-         lo_external_for_T = EXT_DIR .eq. bc(2, 1, index_of_T)
-         lo_external_for_Y = EXT_DIR .eq. bc(2, 1, index_of_firstY)
-         lo_external_check = EXT_DIR .eq. bc(2, 1, index_of_firstY)
-         lo_internal       = INT_DIR .eq. bc(2, 1, index_of_T)
-         lo_internal_check = INT_DIR .eq. bc(2, 1, index_of_T)
+         lo_dirichlet_for_T = EXT_DIR .eq. bc(2, 1, index_of_T)
+         lo_dirichlet_for_Y = EXT_DIR .eq. bc(2, 1, index_of_firstY)
+         lo_dirichlet_check = EXT_DIR .eq. bc(2, 1, index_of_firstY)
+         lo_internal        = INT_DIR .eq. bc(2, 1, index_of_T)
+         lo_internal_check  = INT_DIR .eq. bc(2, 1, index_of_T)
          do n=1,nspecies
-            lo_external_for_Y = lo_external_for_Y .and. (EXT_DIR .eq. bc(2, 1, offset + n))
-            lo_external_check = lo_external_check  .or. (EXT_DIR .eq. bc(2, 1, offset + n))
-            lo_internal       = lo_internal       .and. (INT_DIR .eq. bc(2, 1, offset + n))
-            lo_internal_check = lo_internal_check  .or. (INT_DIR .eq. bc(2, 1, offset + n))
+            lo_dirichlet_for_Y = lo_dirichlet_for_Y .and. (EXT_DIR .eq. bc(2, 1, offset + n))
+            lo_dirichlet_check = lo_dirichlet_check  .or. (EXT_DIR .eq. bc(2, 1, offset + n))
+            lo_internal        = lo_internal        .and. (INT_DIR .eq. bc(2, 1, offset + n))
+            lo_internal_check  = lo_internal_check   .or. (INT_DIR .eq. bc(2, 1, offset + n))
          end do
          error = .not. (
-     &        (lo_external_for_Y .eq. lo_external_check) .and.
+     &        (lo_dirichlet_for_Y .eq. lo_dirichlet_check) .and.
      &        (lo_internal .eq. lo_internal_check) .and.
-     &        (.not. lo_external_for_Y .or. lo_external_for_T))
+     &        (.not. lo_dirichlet_for_Y .or. lo_dirichlet_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc array at low y")
       end if
 
 c     set flags for special treatment of the hi boundary
 
-      hi_external_for_T = .false.
-      hi_external_for_Y = .false.
-      hi_internal       = .true.
+      hi_dirichlet_for_T = .false.
+      hi_dirichlet_for_Y = .false.
+      hi_internal        = .true.
       if (domain_hi(2) .eq. hi(2)) then
-c        reset the flags and check that the bc array is consistent for T and Y.
+c        set flags and check whether the bc array is consistent for T and Y.
 c        consistent means:
 c        1) if T or one Y is marked internal then T and all Y are marked internal
 c        2) if one Y is marked external then all Y are marked external
 c        3) if the Y are marked external then so is T
-         hi_external_for_T = EXT_DIR .eq. bc(2, 2, index_of_T)
-         hi_external_for_Y = EXT_DIR .eq. bc(2, 2, index_of_firstY)
-         hi_external_check = EXT_DIR .eq. bc(2, 2, index_of_firstY)
-         hi_internal       = INT_DIR .eq. bc(2, 2, index_of_T)
-         hi_internal_check = INT_DIR .eq. bc(2, 2, index_of_T)
+         hi_dirichlet_for_T = EXT_DIR .eq. bc(2, 2, index_of_T)
+         hi_dirichlet_for_Y = EXT_DIR .eq. bc(2, 2, index_of_firstY)
+         hi_dirichlet_check = EXT_DIR .eq. bc(2, 2, index_of_firstY)
+         hi_internal        = INT_DIR .eq. bc(2, 2, index_of_T)
+         hi_internal_check  = INT_DIR .eq. bc(2, 2, index_of_T)
          do n=1,nspecies
-            hi_external_for_Y = hi_external_for_Y .and. (EXT_DIR .eq. bc(2, 2, offset + n))
-            hi_external_check = hi_external_check  .or. (EXT_DIR .eq. bc(2, 2, offset + n))
-            hi_internal       = hi_internal       .and. (INT_DIR .eq. bc(2, 2, offset + n))
-            hi_internal_check = hi_internal_check  .or. (INT_DIR .eq. bc(2, 2, offset + n))
+            hi_dirichlet_for_Y = hi_dirichlet_for_Y .and. (EXT_DIR .eq. bc(2, 2, offset + n))
+            hi_dirichlet_check = hi_dirichlet_check  .or. (EXT_DIR .eq. bc(2, 2, offset + n))
+            hi_internal        = hi_internal        .and. (INT_DIR .eq. bc(2, 2, offset + n))
+            hi_internal_check  = hi_internal_check   .or. (INT_DIR .eq. bc(2, 2, offset + n))
          end do
          error = .not. (
-     &        (hi_external_for_Y .eq. hi_external_check) .and.
+     &        (hi_dirichlet_for_Y .eq. hi_dirichlet_check) .and.
      &        (hi_internal .eq. hi_internal_check) .and.
-     &        (.not. hi_external_for_Y .or. hi_external_for_T))
+     &        (.not. hi_dirichlet_for_Y .or. hi_dirichlet_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc array at high y")
       end if
@@ -656,16 +672,16 @@ c     fluxes in y direction are at edges indexed from lo(2) to hi(2)+1
       do j=lo(2),hi(2)+1
          do i=lo(1),hi(1)
 
-c           set flags indicating whether this edge is at the left or right boundary
+c           set flags indicating whether the edge is at the left or right boundary
             at_lo = j .eq. domain_lo(2)
             at_hi = j .eq. domain_hi(2) + 1
 
-c           evaluate the value for T at the edge
+c           evaluate the value for T on the edge
 c           for external (Dirichlet) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
-            if (at_lo .and. lo_external_for_T) then
+            if (at_lo .and. lo_dirichlet_for_T) then
                T_on_edge = state(i, j-1, index_of_T)
-            else if (at_hi .and. hi_external_for_T) then
+            else if (at_hi .and. hi_dirichlet_for_T) then
                T_on_edge = state(i, j, index_of_T)
             else
                T_on_edge = 0.5 * (T(i,j-1) + T(i,j))
@@ -674,60 +690,76 @@ c           placed the boundary value in the ghost cell adjacent to the edge
 c           use a floored T just in case
             T_on_edge = MAX (TMIN_TRANS, T_on_edge)
 
-c           evaluate the values for Y at the edge
+c           evaluate the values for Y on the edge
 c           for external (Dirichlet) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             do n = 1,nspecies
-               if (at_lo .and. lo_external_for_Y) then
+               if (at_lo .and. lo_dirichlet_for_Y) then
                   Y_on_edge(n) = state(i, j-1, offset + n)
-               else if (at_hi .and. hi_external_for_Y) then
+               else if (at_hi .and. hi_dirichlet_for_Y) then
                   Y_on_edge(n) = state(i, j, offset + n)
                else
                   Y_on_edge(n) = 0.5 * (Y(i,j-1,n) + Y(i,j,n))
                end if
             end do
 
-c           evaluate the values for X at the edge
-            call CKYTX 
+c           evaluate the values for X on the edge
+            call CKYTX
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), X_on_edge)
 
-c           evaluate the derivative for T at the edge
-            if (at_lo .and. lo_external_for_T) then
-               derivative_of_T 
-     &              = one_over_dy
-     &              * (lo_coefficient_0 * T_on_edge
-     &              + lo_coefficient_1 * T(i,j)
-     &              + lo_coefficient_2 * T(i,j-1))
-            else if (at_hi .and. hi_external_for_T) then
-               derivative_of_T 
-     &              = one_over_dy
-     &              * (hi_coefficient_0 * T(i,j-2)
-     &              + hi_coefficient_1 * T(i,j-1)
-     &              + hi_coefficient_2 * T_on_edge)
+c           evaluate the derivative for T on the edge
+            if (at_lo .and. .not. lo_internal) then
+               if (lo_dirichlet_for_T) then
+                  derivative_of_T
+     &                 = one_over_dy
+     &                 * (lo_coefficient_0 * T_on_edge
+     &                 + lo_coefficient_1 * T(i,j)
+     &                 + lo_coefficient_2 * T(i,j-1))
+               else
+                  derivative_of_T = 0
+               end if
+            else if (at_hi .and. .not. hi_internal) then
+               if (hi_dirichlet_for_T) then
+                  derivative_of_T
+     &                 = one_over_dy
+     &                 * (hi_coefficient_0 * T(i,j-2)
+     &                 + hi_coefficient_1 * T(i,j-1)
+     &                 + hi_coefficient_2 * T_on_edge)
+               else
+                  derivative_of_T = 0
+               end if
             else
                derivative_of_T = (T(i,j) - T(i,j-1)) * one_over_dy
             end if
 
-c           evaluate the derivatives for X at the edge
+c           evaluate the derivatives for X on the edge
             do n = 1,nspecies
-               if (at_lo .and. lo_external_for_Y) then
-                  derivative_of_X(n)
-     &                 = one_over_dy
-     &                 * (lo_coefficient_0 * X_on_edge(n)
-     &                 + lo_coefficient_1 * X(i,j,n)
-     &                 + lo_coefficient_2 * X(i,j+1,n))
-               else if (at_hi .and. hi_external_for_Y) then
-                  derivative_of_X(n)
-     &                 = one_over_dy
-     &                 * (hi_coefficient_0 * X(i,j-2,n)
-     &                 + hi_coefficient_1 * X(i,j-1,n)
-     &                 + hi_coefficient_2 * X_on_edge(n))
+               if (at_lo .and. .not. lo_internal) then
+                  if (lo_dirichlet_for_Y) then
+                     derivative_of_X(n)
+     &                    = one_over_dy
+     &                    * (lo_coefficient_0 * X_on_edge(n)
+     &                    + lo_coefficient_1 * X(i,j,n)
+     &                    + lo_coefficient_2 * X(i,j+1,n))
+                  else
+                     derivative_of_X(n) = 0.0d0
+                  end if                     
+               else if (at_hi .and. .not. hi_internal) then
+                  if (hi_dirichlet_for_Y) then
+                     derivative_of_X(n)
+     &                    = one_over_dy
+     &                    * (hi_coefficient_0 * X(i,j-2,n)
+     &                    + hi_coefficient_1 * X(i,j-1,n)
+     &                    + hi_coefficient_2 * X_on_edge(n))
+                  else
+                     derivative_of_X(n) = 0.0d0
+                  end if
                else
                   derivative_of_X(n) = (X(i,j,n) - X(i,j-1,n)) * one_over_dy
                end if
             end do
 
-c           evaluate diffusion coefficients and other things at the edge
+c           evaluate diffusion coefficients and other things on the edge
             call CKCPMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), cpms_on_edge)
             call EGSPAR 
