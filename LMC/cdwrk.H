@@ -41,12 +41,14 @@ c     Multicomponent transport properties package workspace requirements
       parameter (mclTranlib = 0)
       parameter (mcl = mclTranfit+mclTranlib)
 
-c     EGLib package for transport properties (using "scalar" mode)
+c     EGLib package for transport properties (using scalar "S" mode):
+c     1) the values IFLAG=7 and ITLS=3 enable all the "S" library routines
+c     2) the original coding of egr (which was for the ITLS=3) was in error
       integer egr, egi, egl, egc, eg_nodes, eg_IFLAG, eg_ITLS
       parameter (eg_nodes = 1)
-      parameter (eg_IFLAG = 3)
-      parameter (eg_ITLS  = 1)
-      parameter (egr = 23 + 14*maxspec + 32*maxspec**2 + 11*eg_nodes
+      parameter (eg_IFLAG = 7)
+      parameter (eg_ITLS  = 3)
+      parameter (egr = 23 + 14*maxspec + 32*maxspec**2 + 13*eg_nodes
      &               + 30*eg_nodes*maxspec + 5*eg_nodes*maxspec**2)
       parameter (egi = maxspec)
       parameter (egl = 0)
