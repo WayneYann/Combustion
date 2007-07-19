@@ -192,6 +192,17 @@ c     local variables
       dimension Upsilon (:)
       dimension Y (:,:,:)
 
+c     debug stuff
+      REAL_T lambda_prime_on_edge
+      REAL_T rho_theta_on_edge
+      REAL_T rho_Y_D_on_edge
+      allocatable rho_theta_on_edge
+      allocatable rho_Y_D_on_edge
+      dimension rho_theta_on_edge (:)
+      dimension rho_Y_D_on_edge (:,:)
+      allocate (rho_theta_on_edge (nspecies))
+      allocate (rho_Y_D_on_edge (nspecies, nspecies))
+
       allocate (contiguous_X (nspecies))
       allocate (contiguous_Y (nspecies))
       allocate (cpms (nspecies))
@@ -274,12 +285,20 @@ c           calculate rho_D
      &           Upsilon)
 
             print *, "cpms_on_edge", cpms
-            print *, "T_on_edge", temperature(i, j)
+            print *, "T_on_edge", floored_T
             print *, "X_on_edge", contiguous_X
             print *, "Y_on_edge", contiguous_Y
             print *, "mmw_on_edge", mmw
             print *, "Upsilon", Upsilon
             print *, "end of good stuff"
+
+            call EGSLTDR5
+     &           (floored_T, contiguous_Y, mmw, RWRK(egbr), IWRK(egbi),
+     &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
+
+            print *, "lambda_prime_on_edge", lambda_prime_on_edge
+            print *, "rho_theta_on_edge", rho_theta_on_edge
+            print *, "rho_Y_D_on_edge", rho_Y_D_on_edge
             stop
 
 c           note, this is the practice in the FORT_SPECTEMPVISC routine that underlies 
