@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.10 2007-06-15 23:27:46 aaspden Exp $
+// $Id: HT_setup.cpp,v 1.11 2007-07-19 17:57:14 aaspden Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -833,7 +833,7 @@ HeatTransfer::variableSetUp ()
     //
     derive_lst.add("mag_vort",IndexType::TheCellType(),1,FORT_DERMGVORT,grow_box_by_one);
     derive_lst.addComponent("mag_vort",desc_lst,State_Type,Xvel,BL_SPACEDIM);
-
+#ifdef DO_LMC_FORCE
     //
     // forcing - used to calculate the rate of injection of energy
     //
@@ -857,6 +857,7 @@ HeatTransfer::variableSetUp ()
     //
     derive_lst.add("forcez",IndexType::TheCellType(),1,FORT_DERFORCEZ,the_same_box);
     derive_lst.addComponent("forcez",desc_lst,State_Type,Density,1);
+#endif
     //    derive_lst.addComponent("forcez",desc_lst,State_Type,Xvel,BL_SPACEDIM);
 
     //
