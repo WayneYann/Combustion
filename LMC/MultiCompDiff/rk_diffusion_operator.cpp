@@ -136,6 +136,9 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 
 #define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
 
+	if (ParallelDescriptor::IOProcessor())
+	    std::cout << "JFG: rk_mixture_averaged = " << rk_mixture_averaged << "\n" << std::flush;
+
 	if (!rk_mixture_averaged)
 	{
 	    // multicomponent is the default
@@ -201,5 +204,7 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
 		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
 	}
+
+        BoxLib::Abort("JFG: stopping here for now");
     }
 }

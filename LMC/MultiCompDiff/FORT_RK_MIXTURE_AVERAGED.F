@@ -169,7 +169,7 @@ c     local variables
       allocatable contiguous_Y
       allocatable cpms
       allocatable H
-      allocatable hms
+      allocatable hms 
       allocatable lambda
       allocatable one_over_wt
       allocatable residual
@@ -200,6 +200,18 @@ c     debug stuff
       allocatable rho_Y_D_on_edge
       dimension rho_theta_on_edge (:)
       dimension rho_Y_D_on_edge (:,:)
+
+
+c     debug variables
+      integer idx
+      integer jdx
+      idx = hi(1)
+      jdx = hi(2)
+      idx = 3
+      jdx = 127
+
+
+
       allocate (rho_theta_on_edge (nspecies))
       allocate (rho_Y_D_on_edge (nspecies, nspecies))
 
@@ -284,22 +296,22 @@ c           calculate rho_D
      &           (ambient_pressure_cgs, floored_T, contiguous_Y, mmw, RWRK(egbr), 
      &           Upsilon)
 
-            print *, "cpms_on_edge", cpms
-            print *, "T_on_edge", floored_T
-            print *, "X_on_edge", contiguous_X
-            print *, "Y_on_edge", contiguous_Y
-            print *, "mmw_on_edge", mmw
-            print *, "Upsilon", Upsilon
-            print *, "end of good stuff"
+c            print *, "cpms_on_edge", cpms
+c            print *, "T_on_edge", floored_T
+c            print *, "X_on_edge", contiguous_X
+c            print *, "Y_on_edge", contiguous_Y
+c            print *, "mmw_on_edge", mmw
+c            print *, "Upsilon", Upsilon
+c            print *, "end of good stuff"
 
-            call EGSLTDR5
-     &           (floored_T, contiguous_Y, mmw, RWRK(egbr), IWRK(egbi),
-     &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
+c            call EGSLTDR5
+c     &           (floored_T, contiguous_Y, mmw, RWRK(egbr), IWRK(egbi),
+c     &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
 
-            print *, "lambda_prime_on_edge", lambda_prime_on_edge
-            print *, "rho_theta_on_edge", rho_theta_on_edge
-            print *, "rho_Y_D_on_edge", rho_Y_D_on_edge
-            stop
+c            print *, "lambda_prime_on_edge", lambda_prime_on_edge
+c            print *, "rho_theta_on_edge", rho_theta_on_edge
+c            print *, "rho_Y_D_on_edge", rho_Y_D_on_edge
+c            stop
 
 c           note, this is the practice in the FORT_SPECTEMPVISC routine that underlies 
 c           calcDiffusivity, but since rho is in the state, why recompute it? 
@@ -412,7 +424,8 @@ c        check the bc flags
      &        (internal .eq. internal_check) .and.
      &        (.not. external_for_Y .or. external_for_T))
          if (error) call bl_abort 
-     &        ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at low x")
+     &      ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at low x")
+c23456789012345678901234567890123456789012345678901234567890123456789012
          one_over_dx = 1.0d0 / dx(1)
          i = lo(1)
          do j=lo(2),hi(2)
@@ -491,7 +504,8 @@ c        check the bc flags
      &        (internal .eq. internal_check) .and.
      &        (.not. external_for_Y .or. external_for_T))
          if (error) call bl_abort 
-     &        ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at high x")
+     &     ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at high x")
+c23456789012345678901234567890123456789012345678901234567890123456789012
          one_over_dx = 1.0d0 / dx(1)
          i = hi(1)
          do j=lo(2),hi(2)
@@ -547,6 +561,9 @@ c              restore the boundary value
             end if
          end do
       end if
+
+      call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx)
+      call print_patch_n ("xflux_for_Y", xflux_for_Y, DIMS(xflux_for_Y), nspecies, idx, jdx)
 
 c     fluxes in y direction are from lo(2) to hi(2)+1
       half_over_dy = 0.5d0 / dx(2)
@@ -615,7 +632,8 @@ c        check the bc flags
      &        (internal .eq. internal_check) .and.
      &        (.not. external_for_Y .or. external_for_T))
          if (error) call bl_abort 
-     &        ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at low y")
+     &      ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at low y")
+c23456789012345678901234567890123456789012345678901234567890123456789012
          one_over_dy = 1.0d0 / dx(2)
          j = lo(2)
          do i=lo(1),hi(1)
@@ -694,7 +712,8 @@ c        check the bc flags
      &        (internal .eq. internal_check) .and.
      &        (.not. external_for_Y .or. external_for_T))
          if (error) call bl_abort 
-     &        ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at high y")
+     &     ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at high y")
+c23456789012345678901234567890123456789012345678901234567890123456789012
          one_over_dy = 1.0d0 / dx(2)
          j = hi(2)
          do i=lo(1),hi(1)
@@ -751,6 +770,9 @@ c              restore the boundary value
          end do
       end if
 
+      call print_patch_n ("yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
+      call print_patch_n ("yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
+
 c     volume weighted sum of the fluxes
 c     the inclusion of the 1/dx terms leads to failure in the T update in the c++
       do j=lo(2),hi(2)
@@ -768,6 +790,9 @@ c     the inclusion of the 1/dx terms leads to failure in the T update in the c+
             end do
          end do
       end do
+
+      call print_patch_n ("update_for_H", update_for_H, DIMS(update_for_H), 1, idx, jdx)
+      call print_patch_n ("update_for_Y", update_for_Y, DIMS(update_for_Y), nspecies, idx, jdx)
 
       deallocate (contiguous_X)
       deallocate (contiguous_Y)

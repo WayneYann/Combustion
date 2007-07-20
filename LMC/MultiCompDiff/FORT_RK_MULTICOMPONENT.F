@@ -21,8 +21,8 @@ c     arguments are alphabetical, mostly:
 c
 c     domain_lo, domain_hi,             ! INPUT limits of valid region of the domain
 c     lo, hi,                           ! INPUT limits of valid region of the box
-c     areax, DIMS(areax),               ! INPUT areas of the faces perendicular to x axis
-c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
+c   * areax, DIMS(areax),               ! INPUT areas of the faces perendicular to x axis
+c   * areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
 c     dt,                               ! INPUT timestep
 c     dx,                               ! INPUT physical dimensions of grid cells
@@ -38,11 +38,13 @@ c     nspecies,                         ! INPUT total number of species in the s
 c     state, DIMS(state),               ! INPUT all variables in the state
 c     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
 c     update_for_Y, DIMS(update_for_Y), ! OUTPUT divergences of the fluxes
-c     volume, DIMS(volume),             ! INPUT volumes of the cells
+c   * volume, DIMS(volume),             ! INPUT volumes of the cells
 c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT x fluxes for enthalpy
 c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT x fluxes for species
 c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT y fluxes for enthalpy
 c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
+c
+c     * these arguments are not used
 
       subroutine FORT_RK_MULTICOMPONENT
      &     (
@@ -121,6 +123,8 @@ c     local variables
       integer iterations
       integer j
       integer n
+      integer ni
+      integer nj
       integer offset
       logical at_hi
       logical at_lo
@@ -153,7 +157,8 @@ c     local variables
       REAL_T hi_coefficient_1
       REAL_T hi_coefficient_2
       REAL_T hms_on_edge 
-      REAL_T lambda_prime_on_edge
+      REAL_T lambda_prime_on_edge_cgs
+      REAL_T lambda_prime_on_edge_si
       REAL_T lo_coefficient_0
       REAL_T lo_coefficient_1
       REAL_T lo_coefficient_2
@@ -167,10 +172,13 @@ c     local variables
       REAL_T plus_value
       REAL_T pressure_over_rho_on_edge
       REAL_T residual
-      REAL_T rho_theta_on_edge
-      REAL_T rho_Y_D_on_edge
+      REAL_T rho_theta_on_edge_cgs
+      REAL_T rho_theta_on_edge_si
+      REAL_T rho_Y_D_on_edge_cgs
+      REAL_T rho_Y_D_on_edge_si
       REAL_T RUC
       REAL_T sum_h_xflux_for_Y
+      REAL_T sum_h_yflux_for_Y
       REAL_T sum_rho_theta_derivative_of_X
       REAL_T sum_rho_Y_D_derivative_of_X
       REAL_T T
@@ -186,8 +194,10 @@ c     local variables
       allocatable derivative_of_X
       allocatable hms_on_edge
       allocatable residual
-      allocatable rho_theta_on_edge
-      allocatable rho_Y_D_on_edge
+      allocatable rho_theta_on_edge_cgs
+      allocatable rho_theta_on_edge_si
+      allocatable rho_Y_D_on_edge_cgs
+      allocatable rho_Y_D_on_edge_si
       allocatable T
       allocatable X
       allocatable X_on_edge
@@ -199,8 +209,10 @@ c     local variables
       dimension derivative_of_X (:)
       dimension hms_on_edge (:)
       dimension residual (:)
-      dimension rho_theta_on_edge (:)
-      dimension rho_Y_D_on_edge (:,:)
+      dimension rho_theta_on_edge_cgs (:)
+      dimension rho_theta_on_edge_si (:)
+      dimension rho_Y_D_on_edge_cgs (:,:)
+      dimension rho_Y_D_on_edge_si (:,:)
       dimension T (:,:)
       dimension X (:,:,:)
       dimension X_on_edge (:)
@@ -208,19 +220,19 @@ c     local variables
       dimension Y_on_edge (:)
 
 c     debug variables
-      logical debug
       integer idx
       integer jdx
-      REAL_T Upsilon
-      allocatable Upsilon
-      dimension Upsilon (:)
-      allocate (Upsilon (nspecies))
-
-      debug = .true.
       idx = hi(1)
       jdx = hi(2)
       idx = 3
-      jdx = 10
+      jdx = 127
+
+c      logical debug
+c      REAL_T Upsilon
+c      allocatable Upsilon
+c      dimension Upsilon (:)
+c      allocate (Upsilon (nspecies))
+c      debug = .false.
 
       allocate (contiguous_X (nspecies))
       allocate (contiguous_Y (nspecies))
@@ -228,8 +240,10 @@ c     debug variables
       allocate (derivative_of_X (nspecies))
       allocate (hms_on_edge (nspecies))
       allocate (residual (maximum_iterations))
-      allocate (rho_theta_on_edge (nspecies))
-      allocate (rho_Y_D_on_edge (nspecies, nspecies))
+      allocate (rho_theta_on_edge_cgs (nspecies))
+      allocate (rho_theta_on_edge_si (nspecies))
+      allocate (rho_Y_D_on_edge_cgs (nspecies, nspecies))
+      allocate (rho_Y_D_on_edge_si (nspecies, nspecies))
       allocate (T (DIMV(state)))
       allocate (X (DIMV(state), nspecies))
       allocate (X_on_edge (nspecies))
@@ -240,29 +254,29 @@ c///
 c///  initialization
 c///
 
-      print *, "at top of FORT_RK_MULTICOMPONENT"
+      print *, "JFG: at top of FORT_RK_MULTICOMPONENT"
 
 c     debug: print what is comming in
-      if (debug) then
-      print *
-      print *, "entering FORT_RK_DIFFUSION"
-      print *, "domain_lo", ARG_L1(state), ARG_L2(state)
-      print *, "domain_hi", ARG_H1(state), ARG_H2(state)
-      print *, "lo", lo(1), lo(2)
-      print *, "hi", hi(1), hi(2)
-      print *, "dt", dt
-      print *, "dx", dx(1), dx(2)
-      print *, "index_of_firstY", index_of_firstY
-      print *, "index_of_lastY", index_of_lastY
-      print *, "index_of_rho", index_of_rho
-      print *, "index_of_rhoH", index_of_rhoH
-      print *, "index_of_T", index_of_T
-      print *, "ncomps", ncomps
-      print *, "nspecies", nspecies
-      print *
-      end if
+c      if (debug) then
+c      print *
+c      print *, "entering FORT_RK_DIFFUSION"
+c      print *, "domain_lo", ARG_L1(state), ARG_L2(state)
+c      print *, "domain_hi", ARG_H1(state), ARG_H2(state)
+c      print *, "lo", lo(1), lo(2)
+c      print *, "hi", hi(1), hi(2)
+c      print *, "dt", dt
+c      print *, "dx", dx(1), dx(2)
+c      print *, "index_of_firstY", index_of_firstY
+c      print *, "index_of_lastY", index_of_lastY
+c      print *, "index_of_rho", index_of_rho
+c      print *, "index_of_rhoH", index_of_rhoH
+c      print *, "index_of_T", index_of_T
+c      print *, "ncomps", ncomps
+c      print *, "nspecies", nspecies
+c      print *
+c      end if
 
-      call print_patch_n ("state at index_of_T", state, DIMS(state), ncomps, idx, jdx, index_of_T)
+c      call print_patch_n ("state at index_of_T", state, DIMS(state), ncomps, idx, jdx, index_of_T)
 
 c     offset of species in the state
       offset = index_of_firstY - 1
@@ -318,7 +332,7 @@ c           use the state value for T as a guess for the Newton iteration
          end do
       end do
 
-      call print_patch_n ("T", T, DIMS(state), 1, idx, jdx, 1)
+c      call print_patch_n ("T", T, DIMS(state), 1, idx, jdx)
 
 c///
 c///  x fluxes
@@ -333,8 +347,8 @@ c     set flags for special treatment of the lo boundary
 c        set flags and check whether the bc array is consistent for T and Y.
 c        consistent means:
 c        1) if T or one Y is marked internal then T and all Y are marked internal
-c        2) if one Y is marked external then all Y are marked external
-c        3) if the Y are marked external then so is T
+c        2) if one Y is marked dirichlet then all Y are marked dirichlet
+c        3) if the Y are marked dirichlet then so is T
          lo_dirichlet_for_T = EXT_DIR .eq. bc(1, 1, index_of_T)
          lo_dirichlet_for_Y = EXT_DIR .eq. bc(1, 1, index_of_firstY)
          lo_dirichlet_check = EXT_DIR .eq. bc(1, 1, index_of_firstY)
@@ -363,8 +377,8 @@ c     set flags for special treatment of the hi boundary
 c        set flags and check whether the bc array is consistent for T and Y.
 c        consistent means:
 c        1) if T or one Y is marked internal then T and all Y are marked internal
-c        2) if one Y is marked external then all Y are marked external
-c        3) if the Y are marked external then so is T
+c        2) if one Y is marked dirichlet then all Y are marked dirichlet
+c        3) if the Y are marked dirichlet then so is T
          hi_dirichlet_for_T = EXT_DIR .eq. bc(1, 2, index_of_T)
          hi_dirichlet_for_Y = EXT_DIR .eq. bc(1, 2, index_of_firstY)
          hi_dirichlet_check = EXT_DIR .eq. bc(1, 2, index_of_firstY)
@@ -395,7 +409,7 @@ c           set flags indicating whether the edge is at the left or right bounda
             at_hi = i .eq. domain_hi(1) + 1
 
 c           evaluate the value for T on the edge
-c           for external (Dirichlet) boundaries the fill patch iterator has
+c           for Dirichlet (external) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             if (at_lo .and. lo_dirichlet_for_T) then
                T_on_edge = state(i-1, j, index_of_T)
@@ -409,7 +423,7 @@ c           use a floored T just in case
             T_on_edge = MAX (TMIN_TRANS, T_on_edge)
 
 c           evaluate the values for Y on the edge
-c           for external (Dirichlet) boundaries the fill patch iterator has
+c           for Dirichlet (external) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             do n = 1,nspecies
                if (at_lo .and. lo_dirichlet_for_Y) then
@@ -484,8 +498,6 @@ c           evaluate the derivatives for X on the edge
                end if
             end do
 
-c            print *, "derivative_of_X", derivative_of_X
-
 c           evaluate diffusion coefficients and other things on the edge
             call CKCPMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), cpms_on_edge)
@@ -494,80 +506,91 @@ c           evaluate diffusion coefficients and other things on the edge
      &           cpms_on_edge, RWRK(egbr), IWRK(egbi))
             call CKMMWY 
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), mmw_on_edge)
-
-            CALL EGSV1 
-     &           (ambient_pressure_cgs, T_on_edge, Y_on_edge, mmw_on_edge, RWRK(egbr), 
-     &           Upsilon)
-
-            print *, "cpms_on_edge", cpms_on_edge
-            print *, "T_on_edge", T_on_edge
-            print *, "X_on_edge", X_on_edge
-            print *, "Y_on_edge", Y_on_edge
-            print *, "mmw_on_edge", mmw_on_edge
-            print *, "Upsilon", Upsilon
-            print *, "end of good stuff"
-
 c           SUBROUTINE EGSLTDR5 (T, Y, WW, WEG, IWEG, PTC, THETA, D)
             call EGSLTDR5
      &           (T_on_edge, Y_on_edge, mmw_on_edge, RWRK(egbr), IWRK(egbi),
-     &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
-
-            print *, "lambda_prime_on_edge", lambda_prime_on_edge
-            print *, "rho_theta_on_edge", rho_theta_on_edge
-            print *, "rho_Y_D_on_edge", rho_Y_D_on_edge
-            stop
-
+     &           lambda_prime_on_edge_cgs, rho_theta_on_edge_cgs, rho_Y_D_on_edge_cgs)
             call CKHMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge)
 c           there does not seem to be a chemkin call to get this ratio from T and Y
             pressure_over_rho_on_edge 
      &           = universal_gas_constant_cgs * T_on_edge / mmw_on_edge
 
-c            print *, "cpms_on_edge", cpms_on_edge
-c            print *, "mmw_on_edge", mmw_on_edge
-            print *, "lambda_prime_on_edge", lambda_prime_on_edge
-            print *, "rho_theta_on_edge", rho_theta_on_edge
-            print *, "rho_Y_D_on_edge", rho_Y_D_on_edge
-c            print *, "hms_on_edge", hms_on_edge
-c            print *, "pressure_over_rho_on_edge", pressure_over_rho_on_edge
-            stop
+c           convert the library values from cgs units to si units
+
+c           per page 23 of the EGLIB manual, the partial thermal conductivity, 
+c           lambda_prime_on_edge_cgs, has units
+c
+c                            erg / (cm s K)
+c                 =          (J / 10**7) / ((m / 10**2) s K)
+c                 = 1.0d-5 * ((W s) / (m s K))
+c                 = 1.0d-5 * W / (m K).
+c
+c           the si unit of thermal conductivity is W / (m K), so the EGLIB value must
+c           be multiplied by 1.0d-5 to convert it to si units.
+            lambda_prime_on_edge_si = 1.0d-5 * lambda_prime_on_edge_cgs
+
+c           per page 23 in the EGLIB manual, the rescaled thermal diffusion vector,
+c           rho_theta_on_edge_cgs, has units
+c
+c                            g / (cm s)
+c                 =          (Kg / 10**3) / ((m / 10**2) s)
+c                 = 1.0d-1 * Kg / (m s)
+c
+c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to si units.
+            do n=1,species
+               rho_theta_on_edge_si(n) = 1.0d-1 * rho_theta_on_edge_cgs(n)
+            end do
+
+c           per page 23 in the EGLIB manual, the rescaled flux diffusion matrix,
+c           rho_Y_D_on_edge_cgs, has units
+c
+c                            g / (cm s)
+c                 =          (Kg / 10**3) / ((m / 10**2) s)
+c                 = 1.0d-1 * Kg / (m s)
+c
+c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to si units.
+            do ni=1,nspecies
+               do nj=1,nspecies
+                  rho_Y_D_on_edge_si(ni,nj) = 1.0d-1 * rho_Y_D_on_edge_cgs(ni,nj)
+               end do
+            end do
 
 c           assemble the fluxes
             sum_h_xflux_for_Y = 0
             sum_rho_theta_derivative_of_X = 0
-            sum_rho_Y_D_derivative_of_X = 0
             do n = 1,nspecies
                sum_rho_Y_D_derivative_of_X = 0
                do ell = 1,nspecies
                   sum_rho_Y_D_derivative_of_X 
      &                 = sum_rho_Y_D_derivative_of_X 
-     &                 + rho_Y_D_on_edge(n,ell) 
+     &                 + rho_Y_D_on_edge_si(n,ell) 
      &                 * derivative_of_X(ell)
                end do
 c              scaling by 0.1 converts expression of mixed units to cgs (check this)
                xflux_for_Y(i,j,n) 
      &              = area_for_x
-     &              * (sum_rho_Y_D_derivative_of_X * 1.0d-1
-     &              + Y_on_edge(n) * rho_theta_on_edge(n) * derivative_of_T / T_on_edge)
+     &              * (sum_rho_Y_D_derivative_of_X
+     &              + Y_on_edge(n) * rho_theta_on_edge_si(n) * derivative_of_T / T_on_edge)
                sum_h_xflux_for_Y 
      &              = sum_h_xflux_for_Y 
      &              + hms_on_edge(n) 
      &              * xflux_for_Y(i,j,n)
                sum_rho_theta_derivative_of_X 
      &              = sum_rho_theta_derivative_of_X 
-     &              + rho_theta_on_edge(n) 
+     &              + rho_theta_on_edge_si(n)
      &              * derivative_of_X(n)
             end do
-c           scaling by 0.1 converts expression of mixed units to cgs (check this)
             xflux_for_H(i,j)
      &           = sum_h_xflux_for_Y
      &           + area_for_x
-     &           * (lambda_prime_on_edge * derivative_of_T
+     &           * (lambda_prime_on_edge_si * derivative_of_T
      &           + pressure_over_rho_on_edge * sum_rho_theta_derivative_of_X * 1.0d-1)
             end do
          end do
 
-      call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx, 1)
+      call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx)
+      call print_patch_n ("xflux_for_Y", xflux_for_Y, DIMS(xflux_for_Y), nspecies, idx, jdx)
 
 
 c---- some remarks on scaling
@@ -616,8 +639,8 @@ c     set flags for special treatment of the lo boundary
 c        set flags and check whether the bc array is consistent for T and Y.
 c        consistent means:
 c        1) if T or one Y is marked internal then T and all Y are marked internal
-c        2) if one Y is marked external then all Y are marked external
-c        3) if the Y are marked external then so is T
+c        2) if one Y is marked dirichlet then all Y are marked dirichlet
+c        3) if the Y are marked dirichlet then so is T
          lo_dirichlet_for_T = EXT_DIR .eq. bc(2, 1, index_of_T)
          lo_dirichlet_for_Y = EXT_DIR .eq. bc(2, 1, index_of_firstY)
          lo_dirichlet_check = EXT_DIR .eq. bc(2, 1, index_of_firstY)
@@ -646,8 +669,8 @@ c     set flags for special treatment of the hi boundary
 c        set flags and check whether the bc array is consistent for T and Y.
 c        consistent means:
 c        1) if T or one Y is marked internal then T and all Y are marked internal
-c        2) if one Y is marked external then all Y are marked external
-c        3) if the Y are marked external then so is T
+c        2) if one Y is marked dirichlet then all Y are marked dirichlet
+c        3) if the Y are marked dirichlet then so is T
          hi_dirichlet_for_T = EXT_DIR .eq. bc(2, 2, index_of_T)
          hi_dirichlet_for_Y = EXT_DIR .eq. bc(2, 2, index_of_firstY)
          hi_dirichlet_check = EXT_DIR .eq. bc(2, 2, index_of_firstY)
@@ -678,7 +701,7 @@ c           set flags indicating whether the edge is at the left or right bounda
             at_hi = j .eq. domain_hi(2) + 1
 
 c           evaluate the value for T on the edge
-c           for external (Dirichlet) boundaries the fill patch iterator has
+c           for Dirichlet (external) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             if (at_lo .and. lo_dirichlet_for_T) then
                T_on_edge = state(i, j-1, index_of_T)
@@ -692,7 +715,7 @@ c           use a floored T just in case
             T_on_edge = MAX (TMIN_TRANS, T_on_edge)
 
 c           evaluate the values for Y on the edge
-c           for external (Dirichlet) boundaries the fill patch iterator has
+c           for Dirichlet (external) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             do n = 1,nspecies
                if (at_lo .and. lo_dirichlet_for_Y) then
@@ -770,47 +793,88 @@ c           evaluate diffusion coefficients and other things on the edge
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), mmw_on_edge)
             call EGSLTDR5 
      &           (T_on_edge, Y_on_edge, mmw_on_edge, RWRK(egbr), IWRK(egbi),
-     &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
+     &           lambda_prime_on_edge_cgs, rho_theta_on_edge_cgs, rho_Y_D_on_edge_cgs)
             call CKHMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge)
 c           there does not seem to be a chemkin call to get this ratio from T and Y
             pressure_over_rho_on_edge 
      &           = universal_gas_constant_cgs * T_on_edge / mmw_on_edge
 
+c           convert the library values from cgs units to si units
+
+c           per page 23 of the EGLIB manual, the partial thermal conductivity, 
+c           lambda_prime_on_edge_cgs, has units
+c
+c                            erg / (cm s K)
+c                 =          (J / 10**7) / ((m / 10**2) s K)
+c                 = 1.0d-5 * ((W s) / (m s K))
+c                 = 1.0d-5 * W / (m K).
+c
+c           the si unit of thermal conductivity is W / (m K), so the EGLIB value must
+c           be multiplied by 1.0d-5 to convert it to si units.
+            lambda_prime_on_edge_si = 1.0d-5 * lambda_prime_on_edge_cgs
+
+c           per page 23 in the EGLIB manual, the rescaled thermal diffusion vector,
+c           rho_theta_on_edge_cgs, has units
+c
+c                            g / (cm s)
+c                 =          (Kg / 10**3) / ((m / 10**2) s)
+c                 = 1.0d-1 * Kg / (m s)
+c
+c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to si units.
+            do n=1,species
+               rho_theta_on_edge_si(n) = 1.0d-1 * rho_theta_on_edge_cgs(n)
+            end do
+
+c           per page 23 in the EGLIB manual, the rescaled flux diffusion matrix,
+c           rho_Y_D_on_edge_cgs, has units
+c
+c                            g / (cm s)
+c                 =          (Kg / 10**3) / ((m / 10**2) s)
+c                 = 1.0d-1 * Kg / (m s)
+c
+c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to si units.
+            do ni=1,nspecies
+               do nj=1,nspecies
+                  rho_Y_D_on_edge_si(ni,nj) = 1.0d-1 * rho_Y_D_on_edge_cgs(ni,nj)
+               end do
+            end do
+
 c           assemble the fluxes
-            sum_h_xflux_for_Y = 0
+            sum_h_yflux_for_Y = 0
             sum_rho_theta_derivative_of_X = 0
-            sum_rho_Y_D_derivative_of_X = 0
             do n = 1,nspecies
                sum_rho_Y_D_derivative_of_X = 0
                do ell = 1,nspecies
                   sum_rho_Y_D_derivative_of_X 
      &                 = sum_rho_Y_D_derivative_of_X 
-     &                 + rho_Y_D_on_edge(n,ell) 
+     &                 + rho_Y_D_on_edge_si(n,ell) 
      &                 * derivative_of_X(ell)
                end do
 c              scaling by 0.1 converts expression of mixed units to cgs (check this)
-               xflux_for_Y(i,j,n) 
-     &              = area_for_x
-     &              * (sum_rho_Y_D_derivative_of_X * 1.0d-1
-     &              + Y_on_edge(n) * rho_theta_on_edge(n) * derivative_of_T / T_on_edge)
-               sum_h_xflux_for_Y 
-     &              = sum_h_xflux_for_Y 
+               yflux_for_Y(i,j,n) 
+     &              = area_for_y
+     &              * (sum_rho_Y_D_derivative_of_X
+     &              + Y_on_edge(n) * rho_theta_on_edge_si(n) * derivative_of_T / T_on_edge)
+               sum_h_yflux_for_Y 
+     &              = sum_h_yflux_for_Y 
      &              + hms_on_edge(n) 
-     &              * xflux_for_Y(i,j,n)
+     &              * yflux_for_Y(i,j,n)
                sum_rho_theta_derivative_of_X 
      &              = sum_rho_theta_derivative_of_X 
-     &              + rho_theta_on_edge(n) 
+     &              + rho_theta_on_edge_si(n) 
      &              * derivative_of_X(n)
             end do
-c           scaling by 0.1 converts expression of mixed units to cgs (check this)
-            xflux_for_H(i,j)
-     &           = sum_h_xflux_for_Y
-     &           + area_for_x
-     &           * (lambda_prime_on_edge * derivative_of_T
+            yflux_for_H(i,j)
+     &           = sum_h_yflux_for_Y
+     &           + area_for_y
+     &           * (lambda_prime_on_edge_si * derivative_of_T
      &           + pressure_over_rho_on_edge * sum_rho_theta_derivative_of_X * 1.0d-1)
             end do
          end do
+
+      call print_patch_n ("yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
+      call print_patch_n ("yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
 
 c///
 c///  form the updates weighted by dt / vol
@@ -831,7 +895,8 @@ c///
          end do
       end do
 
-      call print_patch_n ("update_for_H", update_for_H, DIMS(update_for_H), 1, idx, jdx, 1)
+      call print_patch_n ("update_for_H", update_for_H, DIMS(update_for_H), 1, idx, jdx)
+      call print_patch_n ("update_for_Y", update_for_Y, DIMS(update_for_Y), nspecies, idx, jdx)
 
 c///
 c///  release temporary arrays (not strictly necessary)
@@ -843,8 +908,10 @@ c///
       deallocate (derivative_of_X)
       deallocate (hms_on_edge)
       deallocate (residual)
-      deallocate (rho_theta_on_edge)
-      deallocate (rho_Y_D_on_edge)
+      deallocate (rho_theta_on_edge_cgs)
+      deallocate (rho_theta_on_edge_si)
+      deallocate (rho_Y_D_on_edge_cgs)
+      deallocate (rho_Y_D_on_edge_si)
       deallocate (T)
       deallocate (X)
       deallocate (X_on_edge)
@@ -855,14 +922,15 @@ c///
 c///  end of FORT_RK_MULTICOMPONENT
 c///
 
-      stop
+      print *, "JFG: at bottom of FORT_RK_MULTICOMPONENT"
+
       return
       end
 
       subroutine print_patch_n (
      &     title,
      &     array, lo1, lo2, hi1, hi2, ncomps,
-     &     i_loc, j_loc, n)
+     &     i_loc, j_loc)
 
       character title*(*)
       integer i
@@ -875,9 +943,19 @@ c///
       REAL_T array(lo1 : hi1, lo2 : hi2, ncomps)
 
       write (6, 60000) title
-      write (6, 60001) (j, j=j_loc-1,j_loc+1)
-      write (6, 60002) (i, (array(i, j, n), j=j_loc-1,j_loc+1), i=i_loc-1,i_loc+1)
-      write (6, "()")
+      if (lo1 .le. i_loc-1 .and. i_loc+1 .le. hi1 .and.
+     &    lo2 .le. j_loc-1 .and. j_loc+1 .le. hi2) then
+         do n=1,ncomps
+            write (6, 60001) (i, i=i_loc-1,i_loc+1)
+            write (6, 60002) (j, (array(i, j, n), i=i_loc-1,i_loc+1), j=j_loc+1,j_loc-1,-1)
+         end do
+         write (6, "()")
+      else
+         write (6, "()")
+         write (6, 60000) 
+     &        "the print region is not in the range of this box"
+         write (6, "()")
+      end if
 
 60000 format (4x, a)
 60001 format (/6x, 3i15)
