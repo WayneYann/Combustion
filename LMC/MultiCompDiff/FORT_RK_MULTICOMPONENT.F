@@ -507,6 +507,7 @@ c           evaluate diffusion coefficients and other things on the edge
             print *, "Upsilon", Upsilon
             print *, "end of good stuff"
 
+c           SUBROUTINE EGSLTDR5 (T, Y, WW, WEG, IWEG, PTC, THETA, D)
             call EGSLTDR5
      &           (T_on_edge, Y_on_edge, mmw_on_edge, RWRK(egbr), IWRK(egbi),
      &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)

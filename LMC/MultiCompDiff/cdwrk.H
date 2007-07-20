@@ -43,7 +43,7 @@ c     Multicomponent transport properties package workspace requirements
 
 c     EGLib package for transport properties (using scalar "S" mode):
 c     1) the values IFLAG=7 and ITLS=3 enable all the "S" library routines
-c     2) the original coding of egr (which was for the ITLS=3) was in error
+c     2) the original coding of egr (which was for ITLS=3) was in error
       integer egr, egi, egl, egc, eg_nodes, eg_IFLAG, eg_ITLS
       parameter (eg_nodes = 1)
       parameter (eg_IFLAG = 7)
