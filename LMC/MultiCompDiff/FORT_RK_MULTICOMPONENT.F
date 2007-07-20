@@ -156,7 +156,8 @@ c     local variables
       REAL_T hi_coefficient_0
       REAL_T hi_coefficient_1
       REAL_T hi_coefficient_2
-      REAL_T hms_on_edge 
+      REAL_T hms_on_edge_cgs
+      REAL_T hms_on_edge_si
       REAL_T lambda_prime_on_edge_cgs
       REAL_T lambda_prime_on_edge_si
       REAL_T lo_coefficient_0
@@ -170,7 +171,8 @@ c     local variables
       REAL_T one_over_dy
       REAL_T one_over_rho
       REAL_T plus_value
-      REAL_T pressure_over_rho_on_edge
+      REAL_T pressure_over_rho_on_edge_cgs
+      REAL_T pressure_over_rho_on_edge_si
       REAL_T residual
       REAL_T rho_theta_on_edge_cgs
       REAL_T rho_theta_on_edge_si
@@ -192,7 +194,8 @@ c     local variables
       allocatable contiguous_Y
       allocatable cpms_on_edge
       allocatable derivative_of_X
-      allocatable hms_on_edge
+      allocatable hms_on_edge_cgs
+      allocatable hms_on_edge_si
       allocatable residual
       allocatable rho_theta_on_edge_cgs
       allocatable rho_theta_on_edge_si
@@ -207,7 +210,8 @@ c     local variables
       dimension contiguous_Y (:)
       dimension cpms_on_edge (:)
       dimension derivative_of_X (:)
-      dimension hms_on_edge (:)
+      dimension hms_on_edge_cgs (:)
+      dimension hms_on_edge_si (:)
       dimension residual (:)
       dimension rho_theta_on_edge_cgs (:)
       dimension rho_theta_on_edge_si (:)
@@ -238,7 +242,8 @@ c      debug = .false.
       allocate (contiguous_Y (nspecies))
       allocate (cpms_on_edge (nspecies))
       allocate (derivative_of_X (nspecies))
-      allocate (hms_on_edge (nspecies))
+      allocate (hms_on_edge_cgs (nspecies))
+      allocate (hms_on_edge_si (nspecies))
       allocate (residual (maximum_iterations))
       allocate (rho_theta_on_edge_cgs (nspecies))
       allocate (rho_theta_on_edge_si (nspecies))
@@ -297,7 +302,7 @@ c     note still must divide by dx to get the approximate derivative
       lo_coefficient_1 = + 3.0d0
       lo_coefficient_2 = - 1.0d0 / 3.0d0
 
-c     get ambient pressure in cgs units
+c     get ambient pressure
 c     one_atmosphere_cgs = 1013250.0 (dyne / cm**2)
 c     one_atmosphere_si = 101325.0 (pascal)
       call CKRP (IWRK(ckbi), RWRK(ckbr), universal_gas_constant_cgs, RUC, one_atmosphere_cgs)
@@ -511,12 +516,25 @@ c           SUBROUTINE EGSLTDR5 (T, Y, WW, WEG, IWEG, PTC, THETA, D)
      &           (T_on_edge, Y_on_edge, mmw_on_edge, RWRK(egbr), IWRK(egbi),
      &           lambda_prime_on_edge_cgs, rho_theta_on_edge_cgs, rho_Y_D_on_edge_cgs)
             call CKHMS 
-     &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge)
+     &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge_cgs)
 c           there does not seem to be a chemkin call to get this ratio from T and Y
-            pressure_over_rho_on_edge 
+            pressure_over_rho_on_edge_cgs 
      &           = universal_gas_constant_cgs * T_on_edge / mmw_on_edge
 
 c           convert the library values from cgs units to si units
+
+c           per page 98 of the chemkin manual, the enthalpies for the species,
+c           hms_on_edge_cgs, has units
+c
+c                            erg / g
+c                 =          (J / 10**7) / (Kg / 10**3)
+c                 = 1.0d-4 * J / Kg
+c
+c           the si unit of thermal conductivity is J / Kg, so the EGLIB value must
+c           be multiplied by 1.0d-4 to convert it to si units.
+            do n=1,nspecies
+               hms_on_edge_si(n) = 1.0d-4 * hms_on_edge_cgs(n)
+            end do
 
 c           per page 23 of the EGLIB manual, the partial thermal conductivity, 
 c           lambda_prime_on_edge_cgs, has units
@@ -538,7 +556,7 @@ c                 =          (Kg / 10**3) / ((m / 10**2) s)
 c                 = 1.0d-1 * Kg / (m s)
 c
 c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to si units.
-            do n=1,species
+            do n=1,nspecies
                rho_theta_on_edge_si(n) = 1.0d-1 * rho_theta_on_edge_cgs(n)
             end do
 
@@ -555,6 +573,18 @@ c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to 
                   rho_Y_D_on_edge_si(ni,nj) = 1.0d-1 * rho_Y_D_on_edge_cgs(ni,nj)
                end do
             end do
+
+c           the cgs unit for pressure is the barye which equals 0.1 Pascal.
+c           the si unit for pressure is the Pascal which equals 1 Kg m s**2.
+
+c           the pressure and denisty ratio, pressure_over_rho_on_edge_cgs, has units
+c
+c                            barye / (g / cm**2)
+c                 =          (1.0d-1 Pa) / ((1.0d-3 Kg) / (1.0d-2 m)**2)
+c                 = 1.0d-2 * Pa / (Kg / m**2)
+c
+c           so the cgs value must be multiplied by 1.0d-2 to convert it to si units.
+            pressure_over_rho_on_edge_si = 1.0d-2 * pressure_over_rho_on_edge_cgs 
 
 c           assemble the fluxes
             sum_h_xflux_for_Y = 0
@@ -574,7 +604,7 @@ c              scaling by 0.1 converts expression of mixed units to cgs (check t
      &              + Y_on_edge(n) * rho_theta_on_edge_si(n) * derivative_of_T / T_on_edge)
                sum_h_xflux_for_Y 
      &              = sum_h_xflux_for_Y 
-     &              + hms_on_edge(n) 
+     &              + hms_on_edge_si(n) 
      &              * xflux_for_Y(i,j,n)
                sum_rho_theta_derivative_of_X 
      &              = sum_rho_theta_derivative_of_X 
@@ -585,46 +615,12 @@ c              scaling by 0.1 converts expression of mixed units to cgs (check t
      &           = sum_h_xflux_for_Y
      &           + area_for_x
      &           * (lambda_prime_on_edge_si * derivative_of_T
-     &           + pressure_over_rho_on_edge * sum_rho_theta_derivative_of_X * 1.0d-1)
+     &           + pressure_over_rho_on_edge_si * sum_rho_theta_derivative_of_X)
             end do
          end do
 
       call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx)
       call print_patch_n ("xflux_for_Y", xflux_for_Y, DIMS(xflux_for_Y), nspecies, idx, jdx)
-
-
-c---- some remarks on scaling
-
-c            CALL EGSV1 
-c     &           (ambient_pressure_cgs, floored_T, contiguous_Y, mmw_on_edge, RWRK(egbr), 
-c     &           Upsilon)
-
-c            do n=1,nspecies
-c              per page 17 in the EGLIB manual, Upsilon has units (cm**2 / s), so
-c              rho Upsilon has units (g / cm s).  per equation 12 in the EGLIB manual, 
-c              the mixture averaged diffusion coefficient is Upsilon times the 
-c              dimensionless mmw / wt(n).  thus rho times the diffusion coefficient 
-c              with units (g / (cm s)) = 10 (Kg / (m s)) must be divided by 10 to obtain
-c              si units.
-c               rho_D(i,j,n) = rho_cgs * mmw * one_over_wt(n) * Upsilon(n) * 0.1d0
-c            end do
-
-c            CALL EGSL1 (alpha, floored_T, contiguous_X, RWRK(egbr), plus_value)
-c            alpha = - 1.0d0
-c            CALL EGSL1 (alpha, floored_T, contiguous_X, RWRK(egbr), minus_value)
-c           per page 15 of the EGLIB manual, these thermal conductivities are returned
-c           with units (erg / (cm s K)) = ((J / 10**7) / ((m / 10**2) s K)) =
-c           = ((W s) / (10**5 m s K)) = (W / (m K 10**5)).  the si unit of thermal
-c           conductivity is (W / (M K)), so these values must be divided by 10**5
-c           to convert them to si units.   multiplication by 0.5 averages the values.
-c            lambda(i,j) = 0.5d-5 * (plus_value + minus_value)
-
-c            call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
-c           per page 98 of the Chemkin manual, hms has units (erg / g) =
-c           = (J / 10**7) / (Kg / 10**3) = (J / Kg) * (1 / 10**4).  so hms
-c           must be divided by 10**4 to convert to si units.
-
-c---- end of some remarks on scaling
 
 c///
 c///  y fluxes
@@ -795,12 +791,25 @@ c           evaluate diffusion coefficients and other things on the edge
      &           (T_on_edge, Y_on_edge, mmw_on_edge, RWRK(egbr), IWRK(egbi),
      &           lambda_prime_on_edge_cgs, rho_theta_on_edge_cgs, rho_Y_D_on_edge_cgs)
             call CKHMS 
-     &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge)
+     &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge_cgs)
 c           there does not seem to be a chemkin call to get this ratio from T and Y
-            pressure_over_rho_on_edge 
+            pressure_over_rho_on_edge_cgs 
      &           = universal_gas_constant_cgs * T_on_edge / mmw_on_edge
 
 c           convert the library values from cgs units to si units
+
+c           per page 98 of the chemkin manual, the enthalpies for the species,
+c           hms_on_edge_cgs, has units
+c
+c                            erg / g
+c                 =          (J / 10**7) / (Kg / 10**3)
+c                 = 1.0d-4 * J / Kg
+c
+c           the si unit of thermal conductivity is J / Kg, so the EGLIB value must
+c           be multiplied by 1.0d-4 to convert it to si units.
+            do n=1,nspecies
+               hms_on_edge_si(n) = 1.0d-4 * hms_on_edge_cgs(n)
+            end do
 
 c           per page 23 of the EGLIB manual, the partial thermal conductivity, 
 c           lambda_prime_on_edge_cgs, has units
@@ -822,7 +831,7 @@ c                 =          (Kg / 10**3) / ((m / 10**2) s)
 c                 = 1.0d-1 * Kg / (m s)
 c
 c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to si units.
-            do n=1,species
+            do n=1,nspecies
                rho_theta_on_edge_si(n) = 1.0d-1 * rho_theta_on_edge_cgs(n)
             end do
 
@@ -839,6 +848,15 @@ c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to 
                   rho_Y_D_on_edge_si(ni,nj) = 1.0d-1 * rho_Y_D_on_edge_cgs(ni,nj)
                end do
             end do
+
+c           the pressure and denisty ratio, pressure_over_rho_on_edge_cgs, has units
+c
+c                            barye / (g / cm**2)
+c                 =          (1.0d-1 Pa) / ((1.0d-3 Kg) / (1.0d-2 m)**2)
+c                 = 1.0d-2 * Pa / (Kg / m**2)
+c
+c           so the cgs value must be multiplied by 1.0d-2 to convert it to si units.
+            pressure_over_rho_on_edge_si = 1.0d-2 * pressure_over_rho_on_edge_cgs 
 
 c           assemble the fluxes
             sum_h_yflux_for_Y = 0
@@ -858,7 +876,7 @@ c              scaling by 0.1 converts expression of mixed units to cgs (check t
      &              + Y_on_edge(n) * rho_theta_on_edge_si(n) * derivative_of_T / T_on_edge)
                sum_h_yflux_for_Y 
      &              = sum_h_yflux_for_Y 
-     &              + hms_on_edge(n) 
+     &              + hms_on_edge_si(n) 
      &              * yflux_for_Y(i,j,n)
                sum_rho_theta_derivative_of_X 
      &              = sum_rho_theta_derivative_of_X 
@@ -869,7 +887,7 @@ c              scaling by 0.1 converts expression of mixed units to cgs (check t
      &           = sum_h_yflux_for_Y
      &           + area_for_y
      &           * (lambda_prime_on_edge_si * derivative_of_T
-     &           + pressure_over_rho_on_edge * sum_rho_theta_derivative_of_X * 1.0d-1)
+     &           + pressure_over_rho_on_edge_si * sum_rho_theta_derivative_of_X)
             end do
          end do
 
@@ -906,7 +924,8 @@ c///
       deallocate (contiguous_Y)
       deallocate (cpms_on_edge)
       deallocate (derivative_of_X)
-      deallocate (hms_on_edge)
+      deallocate (hms_on_edge_cgs)
+      deallocate (hms_on_edge_si)
       deallocate (residual)
       deallocate (rho_theta_on_edge_cgs)
       deallocate (rho_theta_on_edge_si)
