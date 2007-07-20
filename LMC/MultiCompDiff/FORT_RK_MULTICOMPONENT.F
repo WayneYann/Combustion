@@ -303,8 +303,8 @@ c     note still must divide by dx to get the approximate derivative
       lo_coefficient_2 = - 1.0d0 / 3.0d0
 
 c     get ambient pressure
-c     one_atmosphere_cgs = 1013250.0 (dyne / cm**2)
-c     one_atmosphere_si = 101325.0 (pascal)
+c     one_atmosphere_cgs = 1013250.0 (dyne / cm**2) = 10.0 (Pascal)
+c     one_atmosphere_si = 101325.0 (Pascal)
       call CKRP (IWRK(ckbi), RWRK(ckbr), universal_gas_constant_cgs, RUC, one_atmosphere_cgs)
       call FORT_GETPAMB (ambient_pressure_si, dpdt_factor)
       one_atmosphere_si = FORT_P1ATMMKS ()
