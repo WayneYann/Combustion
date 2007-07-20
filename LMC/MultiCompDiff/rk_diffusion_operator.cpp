@@ -205,6 +205,6 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
 	}
 
-        BoxLib::Abort("JFG: stopping here for now");
+        // BoxLib::Abort("JFG: stopping here for now");
     }
 }

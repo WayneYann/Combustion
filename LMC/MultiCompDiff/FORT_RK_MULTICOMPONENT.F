@@ -226,17 +226,12 @@ c     local variables
 c     debug variables
       integer idx
       integer jdx
+      logical debug
+      debug = .false.
       idx = hi(1)
       jdx = hi(2)
       idx = 3
       jdx = 127
-
-c      logical debug
-c      REAL_T Upsilon
-c      allocatable Upsilon
-c      dimension Upsilon (:)
-c      allocate (Upsilon (nspecies))
-c      debug = .false.
 
       allocate (contiguous_X (nspecies))
       allocate (contiguous_Y (nspecies))
@@ -259,29 +254,7 @@ c///
 c///  initialization
 c///
 
-      print *, "JFG: at top of FORT_RK_MULTICOMPONENT"
-
-c     debug: print what is comming in
-c      if (debug) then
-c      print *
-c      print *, "entering FORT_RK_DIFFUSION"
-c      print *, "domain_lo", ARG_L1(state), ARG_L2(state)
-c      print *, "domain_hi", ARG_H1(state), ARG_H2(state)
-c      print *, "lo", lo(1), lo(2)
-c      print *, "hi", hi(1), hi(2)
-c      print *, "dt", dt
-c      print *, "dx", dx(1), dx(2)
-c      print *, "index_of_firstY", index_of_firstY
-c      print *, "index_of_lastY", index_of_lastY
-c      print *, "index_of_rho", index_of_rho
-c      print *, "index_of_rhoH", index_of_rhoH
-c      print *, "index_of_T", index_of_T
-c      print *, "ncomps", ncomps
-c      print *, "nspecies", nspecies
-c      print *
-c      end if
-
-c      call print_patch_n ("state at index_of_T", state, DIMS(state), ncomps, idx, jdx, index_of_T)
+      if (debug) print *, "JFG: at top of FORT_RK_MULTICOMPONENT"
 
 c     offset of species in the state
       offset = index_of_firstY - 1
@@ -336,8 +309,6 @@ c           use the state value for T as a guess for the Newton iteration
             end do
          end do
       end do
-
-c      call print_patch_n ("T", T, DIMS(state), 1, idx, jdx)
 
 c///
 c///  x fluxes
@@ -597,7 +568,6 @@ c           assemble the fluxes
      &                 + rho_Y_D_on_edge_si(n,ell) 
      &                 * derivative_of_X(ell)
                end do
-c              scaling by 0.1 converts expression of mixed units to cgs (check this)
                xflux_for_Y(i,j,n) 
      &              = area_for_x
      &              * (sum_rho_Y_D_derivative_of_X
@@ -619,8 +589,8 @@ c              scaling by 0.1 converts expression of mixed units to cgs (check t
             end do
          end do
 
-      call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx)
-      call print_patch_n ("xflux_for_Y", xflux_for_Y, DIMS(xflux_for_Y), nspecies, idx, jdx)
+      if (debug) call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx)
+      if (debug) call print_patch_n ("xflux_for_Y", xflux_for_Y, DIMS(xflux_for_Y), nspecies, idx, jdx)
 
 c///
 c///  y fluxes
@@ -869,7 +839,6 @@ c           assemble the fluxes
      &                 + rho_Y_D_on_edge_si(n,ell) 
      &                 * derivative_of_X(ell)
                end do
-c              scaling by 0.1 converts expression of mixed units to cgs (check this)
                yflux_for_Y(i,j,n) 
      &              = area_for_y
      &              * (sum_rho_Y_D_derivative_of_X
@@ -891,8 +860,8 @@ c              scaling by 0.1 converts expression of mixed units to cgs (check t
             end do
          end do
 
-      call print_patch_n ("yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
-      call print_patch_n ("yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
+      if (debug) call print_patch_n ("yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
+      if (debug) call print_patch_n ("yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
 
 c///
 c///  form the updates weighted by dt / vol
@@ -913,8 +882,8 @@ c///
          end do
       end do
 
-      call print_patch_n ("update_for_H", update_for_H, DIMS(update_for_H), 1, idx, jdx)
-      call print_patch_n ("update_for_Y", update_for_Y, DIMS(update_for_Y), nspecies, idx, jdx)
+      if (debug) call print_patch_n ("update_for_H", update_for_H, DIMS(update_for_H), 1, idx, jdx)
+      if (debug) call print_patch_n ("update_for_Y", update_for_Y, DIMS(update_for_Y), nspecies, idx, jdx)
 
 c///
 c///  release temporary arrays (not strictly necessary)
@@ -941,7 +910,8 @@ c///
 c///  end of FORT_RK_MULTICOMPONENT
 c///
 
-      print *, "JFG: at bottom of FORT_RK_MULTICOMPONENT"
+      if (debug) print *, "JFG: at bottom of FORT_RK_MULTICOMPONENT"
+      if (debug) stop
 
       return
       end

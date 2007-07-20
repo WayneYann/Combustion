@@ -18,8 +18,8 @@ c     arguments are alphabetical, mostly:
 c
 c     domain_lo, domain_hi,             ! INPUT limits of valid region of the domain
 c     lo, hi,                           ! INPUT limits of valid region of the box
-c     areax, DIMS(areax),               ! INPUT areas of the faces perendicular to x axis
-c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
+c   * areax, DIMS(areax),               ! INPUT areas of the faces perendicular to x axis
+c   * areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
 c     dt,                               ! INPUT timestep
 c     dx,                               ! INPUT physical dimensions of grid cells
@@ -35,11 +35,13 @@ c     nspecies,                         ! INPUT total number of species in the s
 c     state, DIMS(state),               ! INPUT all variables in the state
 c     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
 c     update_for_Y, DIMS(update_for_Y), ! OUTPUT divergences of the fluxes
-c     volume, DIMS(volume),             ! INPUT volumes of the cells
+c   * volume, DIMS(volume),             ! INPUT volumes of the cells
 c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT x fluxes for enthalpy
 c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT x fluxes for species
 c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT y fluxes for enthalpy
 c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
+c
+c     * these arguments are not used
 
       subroutine FORT_RK_MIXTURE_AVERAGED
      &     (
@@ -71,10 +73,7 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 
       implicit none
 
-#include "REAL.H"
 #include "BC_TYPES.H"
-#include "HEATTRANSFER_F.H"
-#include "ChemDriver_F.H"
 #include "cdwrk.H"
 
 c     arguments
@@ -122,14 +121,16 @@ c     local variables
       integer n
       integer offset
       logical error
-      logical external_check
-      logical external_for_T
-      logical external_for_Y
+      logical dirichlet_check
+      logical dirichlet_for_T
+      logical dirichlet_for_Y
       logical internal
       logical internal_check
       REAL_T alpha
       REAL_T ambient_pressure_cgs
       REAL_T ambient_pressure_si
+      REAL_T area_for_x
+      REAL_T area_for_y
       REAL_T coefficient
       REAL_T contiguous_X
       REAL_T contiguous_Y
@@ -139,11 +140,9 @@ c     local variables
       REAL_T floored_T
       REAL_T FORT_P1ATMMKS
       REAL_T H
-      REAL_T half_over_dx
-      REAL_T half_over_dy
-      REAL_T hms 
-      REAL_T lambda
-      REAL_T minus_value
+      REAL_T hms_cgs 
+      REAL_T lambda_si
+      REAL_T minus_value_cgs
       REAL_T mmw
       REAL_T one_atmosphere_cgs
       REAL_T one_atmosphere_si
@@ -151,10 +150,10 @@ c     local variables
       REAL_T one_over_dy
       REAL_T one_over_rho
       REAL_T one_over_wt
-      REAL_T plus_value
+      REAL_T plus_value_cgs
       REAL_T residual
       REAL_T rho_cgs
-      REAL_T rho_D
+      REAL_T rho_D_si
       REAL_T rho_Y
       REAL_T RU
       REAL_T RUC
@@ -169,11 +168,11 @@ c     local variables
       allocatable contiguous_Y
       allocatable cpms
       allocatable H
-      allocatable hms 
-      allocatable lambda
+      allocatable hms_cgs 
+      allocatable lambda_si
       allocatable one_over_wt
       allocatable residual
-      allocatable rho_D
+      allocatable rho_D_si
       allocatable rho_Y
       allocatable temperature
       allocatable Upsilon
@@ -182,55 +181,55 @@ c     local variables
       dimension contiguous_Y (:)
       dimension cpms (:)
       dimension h (:,:)
-      dimension hms (:)
-      dimension lambda (:,:)
+      dimension hms_cgs (:)
+      dimension lambda_si (:,:)
       dimension one_over_wt (:)
       dimension residual (:)
-      dimension rho_D (:,:,:)
+      dimension rho_D_si (:,:,:)
       dimension rho_Y (:,:,:)
       dimension temperature (:,:)
       dimension Upsilon (:)
       dimension Y (:,:,:)
 
-c     debug stuff
-      REAL_T lambda_prime_on_edge
-      REAL_T rho_theta_on_edge
-      REAL_T rho_Y_D_on_edge
-      allocatable rho_theta_on_edge
-      allocatable rho_Y_D_on_edge
-      dimension rho_theta_on_edge (:)
-      dimension rho_Y_D_on_edge (:,:)
-
-
 c     debug variables
       integer idx
       integer jdx
+      logical debug
+      debug = .false.
       idx = hi(1)
       jdx = hi(2)
       idx = 3
       jdx = 127
 
-
-
-      allocate (rho_theta_on_edge (nspecies))
-      allocate (rho_Y_D_on_edge (nspecies, nspecies))
-
       allocate (contiguous_X (nspecies))
       allocate (contiguous_Y (nspecies))
       allocate (cpms (nspecies))
       allocate (H (DIMV(state)))
-      allocate (hms (nspecies))
-      allocate (lambda (DIMV(state)))
+      allocate (hms_cgs (nspecies))
+      allocate (lambda_si (DIMV(state)))
       allocate (one_over_wt (nspecies))
       allocate (residual (maximum_iterations))
-      allocate (rho_D (DIMV(state), nspecies))
+      allocate (rho_D_si (DIMV(state), nspecies))
       allocate (rho_Y (DIMV(state), nspecies))
       allocate (temperature (DIMV(state)))
       allocate (Upsilon (nspecies))
       allocate (Y (DIMV(state), nspecies))
 
+c///
+c///  initialization
+c///
+
+      if (debug) print *, "JFG: at top of FORT_RK_MIXTURE_AVERAGED"
+
 c     offset of species in the state
       offset = index_of_firstY - 1
+
+c     some constants, at least in Cartesian coordinates
+      area_for_x = dx(2)
+      area_for_y = dx(1)
+      dt_over_volume = dt / (dx(1) * dx(2))
+      one_over_dx = 1.0d0 / dx(1)
+      one_over_dy = 1.0d0 / dx(2)
 
 c     copy temperature from the state
       do j=ARG_L2(state),ARG_H2(state)
@@ -251,15 +250,15 @@ c     calculate H and Y from rho, rho H and rho Y in the state
          end do
       end do
 
-c     get ambient pressure in cgs units
-c     one_atmosphere_cgs = 1013250.0 (dyne / cm**2)
+c     get ambient pressure
+c     one_atmosphere_cgs = 1013250.0 (dyne / cm**2) = 10.0 (Pascal)
 c     one_atmosphere_si = 101325.0 (pascal)
       call CKRP (IWRK(ckbi), RWRK(ckbr), RU, RUC, one_atmosphere_cgs)
       call FORT_GETPAMB (ambient_pressure_si, dpdt_factor)
       one_atmosphere_si = FORT_P1ATMMKS ()
       ambient_pressure_cgs = one_atmosphere_cgs * ambient_pressure_si / one_atmosphere_si
 
-c     calculate temperature, rho_D, and lambda
+c     calculate temperature, rho_D_si, and lambda_si
 
       call CKWT (IWRK(ckbi),RWRK(ckbr),one_over_wt)
       do n=1,nspecies
@@ -283,35 +282,16 @@ c           calculate temperature consistent with H and Y
 
             floored_T = MAX (temperature(i,j), TMIN_TRANS) 
 
-c           calculate rho_D
+c           calculate rho_D_si
             CALL CKCPMS (floored_T, IWRK(ckbi), RWRK(ckbr), cpms)
-
             CALL CKYTX (contiguous_Y, IWRK(ckbi), RWRK(ckbr), contiguous_X)
             CALL EGSPAR 
      &           (floored_T, contiguous_X, contiguous_Y, cpms, RWRK(egbr), 
      &           IWRK(egbi))
-
             CALL CKMMWY (contiguous_Y, IWRK(ckbi), RWRK(ckbr), mmw)
             CALL EGSV1 
      &           (ambient_pressure_cgs, floored_T, contiguous_Y, mmw, RWRK(egbr), 
      &           Upsilon)
-
-c            print *, "cpms_on_edge", cpms
-c            print *, "T_on_edge", floored_T
-c            print *, "X_on_edge", contiguous_X
-c            print *, "Y_on_edge", contiguous_Y
-c            print *, "mmw_on_edge", mmw
-c            print *, "Upsilon", Upsilon
-c            print *, "end of good stuff"
-
-c            call EGSLTDR5
-c     &           (floored_T, contiguous_Y, mmw, RWRK(egbr), IWRK(egbi),
-c     &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
-
-c            print *, "lambda_prime_on_edge", lambda_prime_on_edge
-c            print *, "rho_theta_on_edge", rho_theta_on_edge
-c            print *, "rho_Y_D_on_edge", rho_Y_D_on_edge
-c            stop
 
 c           note, this is the practice in the FORT_SPECTEMPVISC routine that underlies 
 c           calcDiffusivity, but since rho is in the state, why recompute it? 
@@ -324,46 +304,39 @@ c              the mixture averaged diffusion coefficient is Upsilon times the
 c              dimensionless mmw / wt(n).  thus rho times the diffusion coefficient 
 c              with units (g / (cm s)) = 10 (Kg / (m s)) must be divided by 10 to obtain
 c              si units.
-               rho_D(i,j,n) = rho_cgs * mmw * one_over_wt(n) * Upsilon(n) * 0.1d0
+               rho_D_si(i,j,n) = rho_cgs * mmw * one_over_wt(n) * Upsilon(n) * 0.1d0
             end do
 
-c           calculate lambda
+c           calculate lambda_si
 c           the following averaging is equation 50 in the chemkin transport package 
 c           manual.  the EGLIB manual does not mention the averaging, but it does have
 c           provisions to compute it through the alpha parameter in its equation 17.
             alpha = 1.0d0
-            CALL EGSL1 (alpha, floored_T, contiguous_X, RWRK(egbr), plus_value)
+            CALL EGSL1 (alpha, floored_T, contiguous_X, RWRK(egbr), plus_value_cgs)
             alpha = - 1.0d0
-            CALL EGSL1 (alpha, floored_T, contiguous_X, RWRK(egbr), minus_value)
+            CALL EGSL1 (alpha, floored_T, contiguous_X, RWRK(egbr), minus_value_cgs)
 c           per page 15 of the EGLIB manual, these thermal conductivities are returned
 c           with units (erg / (cm s K)) = ((J / 10**7) / ((m / 10**2) s K)) =
 c           = ((W s) / (10**5 m s K)) = (W / (m K 10**5)).  the si unit of thermal
 c           conductivity is (W / (M K)), so these values must be divided by 10**5
 c           to convert them to si units.   multiplication by 0.5 averages the values.
-            lambda(i,j) = 0.5d-5 * (plus_value + minus_value)
+            lambda_si(i,j) = 0.5d-5 * (plus_value_cgs + minus_value_cgs)
          end do
       end do
 
-c      print *
-c      print *, "dt estimate for each species (no, est)"
-c      print *, "D_mix for each species (no, est) in si units"
-c      print *
-c      do n=1,nspecies
-c         print *, n, dt_limit(n)
-c      end do
-c      print *
+c///
+c///  y fluxes
+c///
 
 c     fluxes in x direction are from lo(1) to hi(1)+1
-      half_over_dx = 0.5d0 / dx(1)
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)+1
 c           species fluxes
             do n=1,nspecies
                xflux_for_Y(i,j,n) 
-     &              = half_over_dx 
-     &              * areax(i,j) 
-     &              * (rho_D(i-1,j,n) + rho_D(i,j,n)) 
-     &              * (Y(i,j,n) - Y(i-1,j,n))
+     &              = area_for_x 
+     &              * 0.5d0 * (rho_D_si(i-1,j,n) + rho_D_si(i,j,n)) 
+     &              * one_over_dx * (Y(i,j,n) - Y(i-1,j,n))
             end do
 c           flux correction
             sum_of_fluxes = 0
@@ -384,35 +357,34 @@ c           enthalpy flux
             T_on_edge = 0.5d0
      &           * (temperature(i-1,j) 
      &            + temperature(i,j))
-            call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
-c           per page 98 of the Chemkin manual, hms has units (erg / g) =
-c           = (J / 10**7) / (Kg / 10**3) = (J / Kg) * (1 / 10**4).  so hms
+            call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_cgs)
+c           per page 98 of the Chemkin manual, hms_cgs has units (erg / g) =
+c           = (J / 10**7) / (Kg / 10**3) = (J / Kg) * (1 / 10**4).  so hms_cgs
 c           must be divided by 10**4 to convert to si units.
             sum = 0
             do n=1,nspecies
-               sum = sum + xflux_for_Y(i,j,n) * hms(n) * 1.0d-4
+               sum = sum + xflux_for_Y(i,j,n) * hms_cgs(n) * 1.0d-4
             end do
             xflux_for_H(i,j) 
      &           = sum
-     &           + half_over_dx
-     &           * areax(i,j) 
-     &           * (lambda(i-1,j) + lambda(i,j)) 
-     &           * (temperature(i,j) - temperature(i-1,j))
+     &           + area_for_x 
+     &           * 0.5d0 * (lambda_si(i-1,j) + lambda_si(i,j)) 
+     &           * one_over_dx * (temperature(i,j) - temperature(i-1,j))
          end do
       end do
 
 c     redo the fluxes at low x domain boundary
       if (domain_lo(1) .eq. lo(1)) then
 c        check the bc flags
-         external_for_T = bc(1, 1, index_of_T) .eq. EXT_DIR
-         external_for_Y = bc(1, 1, index_of_firstY) .eq. EXT_DIR
-         external_check = bc(1, 1, index_of_firstY) .eq. EXT_DIR
+         dirichlet_for_T = bc(1, 1, index_of_T) .eq. EXT_DIR
+         dirichlet_for_Y = bc(1, 1, index_of_firstY) .eq. EXT_DIR
+         dirichlet_check = bc(1, 1, index_of_firstY) .eq. EXT_DIR
          internal = bc(1, 1, index_of_T) .eq. INT_DIR
          internal_check = bc(1, 1, index_of_T) .eq. INT_DIR
          do n=1,nspecies
-            external_for_Y = external_for_Y 
+            dirichlet_for_Y = dirichlet_for_Y 
      &           .and. (bc(1, 1, offset + n) .eq. EXT_DIR)
-            external_check = external_check 
+            dirichlet_check = dirichlet_check 
      &           .or. (bc(1, 1, offset + n) .eq. EXT_DIR)
             internal = internal
      &           .and. (bc(1, 1, offset + n) .eq. INT_DIR)
@@ -420,25 +392,24 @@ c        check the bc flags
      &           .or. (bc(1, 1, offset + n) .eq. INT_DIR)
          end do
          error = .not. (
-     &        (external_for_Y .eq. external_check) .and.
+     &        (dirichlet_for_Y .eq. dirichlet_check) .and.
      &        (internal .eq. internal_check) .and.
-     &        (.not. external_for_Y .or. external_for_T))
+     &        (.not. dirichlet_for_Y .or. dirichlet_for_T))
          if (error) call bl_abort 
      &      ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at low x")
 c23456789012345678901234567890123456789012345678901234567890123456789012
-         one_over_dx = 1.0d0 / dx(1)
          i = lo(1)
          do j=lo(2),hi(2)
-            if (external_for_Y) then
+            if (dirichlet_for_Y) then
 c              species fluxes
                do n=1,nspecies
                   xflux_for_Y(i,j,n) 
-     &                 = one_over_dx 
-     &                 * areax(i,j) 
-     &                 * rho_D(i-1,j,n)
-     &                 * (- (8.0d0 / 3.0d0) * Y(i-1,j,n)
-     &                 + 3 * Y(i,j,n)
-     &                 - (1.0d0 / 3.0d0) * Y(i+1,j,n))
+     &                 = area_for_x 
+     &                 * rho_D_si(i-1,j,n)
+     &                 * one_over_dx 
+     &                    * (- (8.0d0 / 3.0d0) * Y(i-1,j,n)
+     &                    + 3 * Y(i,j,n)
+     &                    - (1.0d0 / 3.0d0) * Y(i+1,j,n))
                end do
 c              flux correction
                sum_of_fluxes = 0
@@ -459,20 +430,20 @@ c              flux correction
                   xflux_for_Y(i,j,n) = 0
                end do
             end if
-            if (external_for_T) then
+            if (dirichlet_for_T) then
 c              restore the boundary value
                temperature(i-1,j) = state(i-1,j,index_of_T)
                T_on_edge = temperature(i-1,j)
-               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_cgs)
                sum = 0
                do n=1,nspecies
-                  sum = sum + xflux_for_Y(i,j,n) * hms(n) * 1.0d-4
+                  sum = sum + xflux_for_Y(i,j,n) * hms_cgs(n) * 1.0d-4
                end do
                xflux_for_H(i,j) 
      &              = sum
-     &              + one_over_dx
-     &              * areax(i,j) 
-     &              * lambda(i-1,j)
+     &              + area_for_x 
+     &              * lambda_si(i-1,j)
+     &              * one_over_dx
      &                 * (- (8.0d0 / 3.0d0) * temperature(i-1,j)
      &                 + 3 * temperature(i,j)
      &                 - (1.0d0 / 3.0d0) * temperature(i+1,j))
@@ -484,15 +455,15 @@ c              restore the boundary value
 c     redo the fluxes at high x domain boundary
       else if (domain_hi(1) .eq. hi(1)) then
 c        check the bc flags
-         external_for_T = bc(1, 2, index_of_T) .eq. EXT_DIR
-         external_for_Y = bc(1, 2, index_of_firstY) .eq. EXT_DIR
-         external_check = bc(1, 2, index_of_firstY) .eq. EXT_DIR
+         dirichlet_for_T = bc(1, 2, index_of_T) .eq. EXT_DIR
+         dirichlet_for_Y = bc(1, 2, index_of_firstY) .eq. EXT_DIR
+         dirichlet_check = bc(1, 2, index_of_firstY) .eq. EXT_DIR
          internal = bc(1, 2, index_of_T) .eq. INT_DIR
          internal_check = bc(1, 2, index_of_T) .eq. INT_DIR
          do n=1,nspecies
-            external_for_Y = external_for_Y 
+            dirichlet_for_Y = dirichlet_for_Y 
      &           .and. (bc(1, 2, offset + n) .eq. EXT_DIR)
-            external_check = external_check 
+            dirichlet_check = dirichlet_check 
      &           .or. (bc(1, 2, offset + n) .eq. EXT_DIR)
             internal = internal
      &           .and. (bc(1, 2, offset + n) .eq. INT_DIR)
@@ -500,25 +471,24 @@ c        check the bc flags
      &           .or. (bc(1, 2, offset + n) .eq. INT_DIR)
          end do
          error = .not. (
-     &        (external_for_Y .eq. external_check) .and.
+     &        (dirichlet_for_Y .eq. dirichlet_check) .and.
      &        (internal .eq. internal_check) .and.
-     &        (.not. external_for_Y .or. external_for_T))
+     &        (.not. dirichlet_for_Y .or. dirichlet_for_T))
          if (error) call bl_abort 
      &     ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at high x")
 c23456789012345678901234567890123456789012345678901234567890123456789012
-         one_over_dx = 1.0d0 / dx(1)
          i = hi(1)
          do j=lo(2),hi(2)
-            if (external_for_Y) then
+            if (dirichlet_for_Y) then
 c              species fluxes
                do n=1,nspecies
                   xflux_for_Y(i+1,j,n) 
-     &                 = one_over_dx 
-     &                 * areax(i+1,j) 
-     &                 * rho_D(i+1,j,n)
-     &                 * ((1.0d0 / 3.0d0) * Y(i-1,j,n)
-     &                 - 3 * Y(i,j,n)
-     &                 + (8.0d0 / 3.0d0) * Y(i+1,j,n))
+     &                 = area_for_x
+     &                 * rho_D_si(i+1,j,n)
+     &                 * one_over_dx 
+     &                    * ((1.0d0 / 3.0d0) * Y(i-1,j,n)
+     &                    - 3 * Y(i,j,n)
+     &                    + (8.0d0 / 3.0d0) * Y(i+1,j,n))
                end do
 c              flux correction
                sum_of_fluxes = 0
@@ -539,43 +509,45 @@ c              flux correction
                   xflux_for_Y(i+1,j,n) = 0
                end do
             end if
-            if (external_for_T) then          
+            if (dirichlet_for_T) then          
 c              restore the boundary value
                temperature(i+1,j) = state(i+1,j,index_of_T)
                T_on_edge = temperature(i+1,j)
-               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_cgs)
                sum = 0
                do n=1,nspecies
-                  sum = sum + xflux_for_Y(i+1,j,n) * hms(n) * 1.0d-4
+                  sum = sum + xflux_for_Y(i+1,j,n) * hms_cgs(n) * 1.0d-4
                end do
                xflux_for_H(i+1,j) 
      &              = sum
-     &              + one_over_dx
-     &              * areax(i+1,j) 
-     &              * lambda(i+1,j)
-     &              * ((1.0d0 / 3.0d0) * temperature(i-1,j)
-     &              - 3 * temperature(i,j)
-     &              + (8.0d0 / 3.0d0) * temperature(i+1,j))
+     &              + area_for_x
+     &              * lambda_si(i+1,j)
+     &              * one_over_dx
+     &                 * ((1.0d0 / 3.0d0) * temperature(i-1,j)
+     &                 - 3 * temperature(i,j)
+     &                 + (8.0d0 / 3.0d0) * temperature(i+1,j))
             else if (.not. internal) then
                xflux_for_H(i+1,j) = 0
             end if
          end do
       end if
 
-      call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx)
-      call print_patch_n ("xflux_for_Y", xflux_for_Y, DIMS(xflux_for_Y), nspecies, idx, jdx)
+      if (debug) call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx)
+      if (debug) call print_patch_n ("xflux_for_Y", xflux_for_Y, DIMS(xflux_for_Y), nspecies, idx, jdx)
+
+c///
+c///  y fluxes
+c///
 
 c     fluxes in y direction are from lo(2) to hi(2)+1
-      half_over_dy = 0.5d0 / dx(2)
       do j=lo(2),hi(2)+1
          do i=lo(1),hi(1)
 c           species fluxes
             do n=1,nspecies
                yflux_for_Y(i,j,n) 
-     &              = half_over_dy
-     &              * areay(i,j) 
-     &              * (rho_D(i,j-1,n) + rho_D(i,j,n)) 
-     &              * (Y(i,j,n) - Y(i,j-1,n))
+     &              = area_for_y 
+     &              * 0.5d0 * (rho_D_si(i,j-1,n) + rho_D_si(i,j,n)) 
+     &              * one_over_dy * (Y(i,j,n) - Y(i,j-1,n))
             end do
 c           flux correction
             sum_of_fluxes = 0
@@ -595,32 +567,31 @@ c           enthalpy flux
             T_on_edge = 0.5d0
      &           * (temperature(i,j-1) 
      &            + temperature(i,j))
-            call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+            call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_cgs)
             sum = 0
             do n=1,nspecies
-               sum = sum + yflux_for_Y(i,j,n) * hms(n) * 1.0d-4
+               sum = sum + yflux_for_Y(i,j,n) * hms_cgs(n) * 1.0d-4
             end do
             yflux_for_H(i,j) 
      &           = sum
-     &           + half_over_dy
-     &           * areay(i,j) 
-     &           * (lambda(i,j-1) + lambda(i,j)) 
-     &           * (temperature(i,j) - temperature(i,j-1))
+     &           + area_for_y 
+     &           * 0.5d0 * (lambda_si(i,j-1) + lambda_si(i,j)) 
+     &           * one_over_dy * (temperature(i,j) - temperature(i,j-1))
          end do
       end do
 
 c     redo the fluxes at low y domain boundary
       if (domain_lo(2) .eq. lo(2)) then
 c        check the bc flags
-         external_for_T = bc(2, 1, index_of_T) .eq. EXT_DIR
-         external_for_Y = bc(2, 1, index_of_firstY) .eq. EXT_DIR
-         external_check = bc(2, 1, index_of_firstY) .eq. EXT_DIR
+         dirichlet_for_T = bc(2, 1, index_of_T) .eq. EXT_DIR
+         dirichlet_for_Y = bc(2, 1, index_of_firstY) .eq. EXT_DIR
+         dirichlet_check = bc(2, 1, index_of_firstY) .eq. EXT_DIR
          internal = bc(2, 1, index_of_T) .eq. INT_DIR
          internal_check = bc(2, 1, index_of_T) .eq. INT_DIR
          do n=1,nspecies
-            external_for_Y = external_for_Y 
+            dirichlet_for_Y = dirichlet_for_Y 
      &           .and. (bc(2, 1, offset + n) .eq. EXT_DIR)
-            external_check = external_check 
+            dirichlet_check = dirichlet_check 
      &           .or. (bc(2, 1, offset + n) .eq. EXT_DIR)
             internal = internal
      &           .and. (bc(2, 1, offset + n) .eq. INT_DIR)
@@ -628,25 +599,24 @@ c        check the bc flags
      &           .or. (bc(2, 1, offset + n) .eq. INT_DIR)
          end do
          error = .not. (
-     &        (external_for_Y .eq. external_check) .and.
+     &        (dirichlet_for_Y .eq. dirichlet_check) .and.
      &        (internal .eq. internal_check) .and.
-     &        (.not. external_for_Y .or. external_for_T))
+     &        (.not. dirichlet_for_Y .or. dirichlet_for_T))
          if (error) call bl_abort 
      &      ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at low y")
 c23456789012345678901234567890123456789012345678901234567890123456789012
-         one_over_dy = 1.0d0 / dx(2)
          j = lo(2)
          do i=lo(1),hi(1)
-            if (external_for_Y) then
+            if (dirichlet_for_Y) then
 c              species fluxes
                do n=1,nspecies
                   yflux_for_Y(i,j,n) 
-     &                 = one_over_dy 
-     &                 * areay(i,j) 
-     &                 * rho_D(i,j-1,n)
-     &                 * (- (8.0d0 / 3.0d0) * Y(i,j-1,n)
-     &                 + 3 * Y(i,j,n)
-     &                 - (1.0d0 / 3.0d0) * Y(i,j+1,n))
+     &                 = area_for_y 
+     &                 * rho_D_si(i,j-1,n)
+     &                 * one_over_dy 
+     &                    * (- (8.0d0 / 3.0d0) * Y(i,j-1,n)
+     &                    + 3 * Y(i,j,n)
+     &                    - (1.0d0 / 3.0d0) * Y(i,j+1,n))
                end do
 c              flux correction
                sum_of_fluxes = 0
@@ -667,20 +637,20 @@ c              flux correction
                   yflux_for_Y(i,j,n) = 0
                end do
             end if
-            if (external_for_T) then          
+            if (dirichlet_for_T) then          
 c              restore the boundary value
                temperature(i,j-1) = state(i,j-1,index_of_T)
                T_on_edge = temperature(i,j-1)
-               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_cgs)
                sum = 0
                do n=1,nspecies
-                  sum = sum + yflux_for_Y(i,j,n) * hms(n) * 1.0d-4
+                  sum = sum + yflux_for_Y(i,j,n) * hms_cgs(n) * 1.0d-4
                end do
                yflux_for_H(i,j) 
      &              = sum
-     &              + one_over_dy
-     &              * areay(i,j) 
-     &              * lambda(i,j-1)
+     &              + area_for_y 
+     &              * lambda_si(i,j-1)
+     &              * one_over_dy
      &                 * (- (8.0d0 / 3.0d0) * temperature(i,j-1)
      &                 + 3 * temperature(i,j)
      &                 - (1.0d0 / 3.0d0) * temperature(i,j+1))
@@ -692,15 +662,15 @@ c              restore the boundary value
 c     redo the fluxes at high y domain boundary
       else if (domain_hi(2) .eq. hi(2)) then
 c        check the bc flags
-         external_for_T = bc(2, 2, index_of_T) .eq. EXT_DIR
-         external_for_Y = bc(2, 2, index_of_firstY) .eq. EXT_DIR
-         external_check = bc(2, 2, index_of_firstY) .eq. EXT_DIR
+         dirichlet_for_T = bc(2, 2, index_of_T) .eq. EXT_DIR
+         dirichlet_for_Y = bc(2, 2, index_of_firstY) .eq. EXT_DIR
+         dirichlet_check = bc(2, 2, index_of_firstY) .eq. EXT_DIR
          internal = bc(2, 2, index_of_T) .eq. INT_DIR
          internal_check = bc(2, 2, index_of_T) .eq. INT_DIR
          do n=1,nspecies
-            external_for_Y = external_for_Y 
+            dirichlet_for_Y = dirichlet_for_Y 
      &           .and. (bc(2, 2, offset + n) .eq. EXT_DIR)
-            external_check = external_check 
+            dirichlet_check = dirichlet_check 
      &           .or. (bc(2, 2, offset + n) .eq. EXT_DIR)
             internal = internal
      &           .and. (bc(2, 2, offset + n) .eq. INT_DIR)
@@ -708,25 +678,24 @@ c        check the bc flags
      &           .or. (bc(2, 2, offset + n) .eq. INT_DIR)
          end do
          error = .not. (
-     &        (external_for_Y .eq. external_check) .and.
+     &        (dirichlet_for_Y .eq. dirichlet_check) .and.
      &        (internal .eq. internal_check) .and.
-     &        (.not. external_for_Y .or. external_for_T))
+     &        (.not. dirichlet_for_Y .or. dirichlet_for_T))
          if (error) call bl_abort 
      &     ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at high y")
 c23456789012345678901234567890123456789012345678901234567890123456789012
-         one_over_dy = 1.0d0 / dx(2)
          j = hi(2)
          do i=lo(1),hi(1)
-            if (external_for_Y) then
+            if (dirichlet_for_Y) then
 c              species fluxes
                do n=1,nspecies
                   yflux_for_Y(i,j+1,n) 
-     &                 = one_over_dy 
-     &                 * areay(i,j+1) 
-     &                 * rho_D(i,j+1,n)
-     &                 * ((1.0d0 / 3.0d0) * Y(i,j-1,n)
-     &                 - 3 * Y(i,j,n)
-     &                 + (8.0d0 / 3.0d0) * Y(i,j+1,n))
+     &                 = area_for_y
+     &                 * rho_D_si(i,j+1,n)
+     &                 * one_over_dy 
+     &                    * ((1.0d0 / 3.0d0) * Y(i,j-1,n)
+     &                    - 3 * Y(i,j,n)
+     &                    + (8.0d0 / 3.0d0) * Y(i,j+1,n))
                end do
 c              flux correction
                sum_of_fluxes = 0
@@ -747,37 +716,38 @@ c              flux correction
                   yflux_for_Y(i,j+1,n) = 0
                end do
             end if
-            if (external_for_T) then          
+            if (dirichlet_for_T) then          
 c              restore the boundary value
                temperature(i,j+1) = state(i,j+1,index_of_T)
                T_on_edge = temperature(i,j+1)
-               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms)
+               call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_cgs)
                sum = 0
                do n=1,nspecies
-                  sum = sum + yflux_for_Y(i,j+1,n) * hms(n) * 1.0d-4
+                  sum = sum + yflux_for_Y(i,j+1,n) * hms_cgs(n) * 1.0d-4
                end do
                yflux_for_H(i,j+1) 
      &              = sum
-     &              + one_over_dy
-     &              * areay(i,j+1) 
-     &              * lambda(i,j+1)
-     &              * ((1.0d0 / 3.0d0) * temperature(i,j-1)
-     &              - 3 * temperature(i,j)
-     &              + (8.0d0 / 3.0d0) * temperature(i,j+1))
+     &              + area_for_y
+     &              * lambda_si(i,j+1)
+     &              * one_over_dy
+     &                 * ((1.0d0 / 3.0d0) * temperature(i,j-1)
+     &                 - 3 * temperature(i,j)
+     &                 + (8.0d0 / 3.0d0) * temperature(i,j+1))
             else if (.not. internal) then
                yflux_for_H(i,j+1) = 0
             end if
          end do
       end if
 
-      call print_patch_n ("yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
-      call print_patch_n ("yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
+      if (debug) call print_patch_n ("yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
+      if (debug) call print_patch_n ("yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
 
-c     volume weighted sum of the fluxes
-c     the inclusion of the 1/dx terms leads to failure in the T update in the c++
+c///
+c///  form the updates weighted by dt / vol
+c///
+
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
-            dt_over_volume = dt / volume(i,j)
             update_for_H(i, j) 
      &           = dt_over_volume
      &           * ((xflux_for_H(i+1,j) - xflux_for_H(i,j)) 
@@ -791,22 +761,33 @@ c     the inclusion of the 1/dx terms leads to failure in the T update in the c+
          end do
       end do
 
-      call print_patch_n ("update_for_H", update_for_H, DIMS(update_for_H), 1, idx, jdx)
-      call print_patch_n ("update_for_Y", update_for_Y, DIMS(update_for_Y), nspecies, idx, jdx)
+      if (debug) call print_patch_n ("update_for_H", update_for_H, DIMS(update_for_H), 1, idx, jdx)
+      if (debug) call print_patch_n ("update_for_Y", update_for_Y, DIMS(update_for_Y), nspecies, idx, jdx)
+
+c///
+c///  release temporary arrays (not strictly necessary)
+c///
 
       deallocate (contiguous_X)
       deallocate (contiguous_Y)
       deallocate (cpms)
       deallocate (H)
-      deallocate (hms)
-      deallocate (lambda)
+      deallocate (hms_cgs)
+      deallocate (lambda_si)
       deallocate (one_over_wt)
       deallocate (residual)
-      deallocate (rho_D)
+      deallocate (rho_D_si)
       deallocate (rho_Y)
       deallocate (temperature)
       deallocate (Upsilon)
       deallocate (Y)
+
+c///
+c///  end of FORT_RK_MIXTURE_AVERAGED
+c///
+
+      if (debug) print *, "JFG: at bottom of FORT_RK_MIXTURE_AVERAGED"
+      if (debug) stop
 
       return
       end
