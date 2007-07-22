@@ -4406,13 +4406,28 @@ HeatTransfer::advance (Real time,
                   << " with dt = "         << dt << std::endl;
     }
 
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point A S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point A S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     advance_setup(time,dt,iteration,ncycle);
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point B S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point B S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
 
     if (do_check_divudt)
         checkTimeStep(dt);
     
     MultiFab& S_new = get_new_data(State_Type);
     MultiFab& S_old = get_old_data(State_Type);
+
     //
     // Reset flag that fill patched state data is good
     //
@@ -4441,6 +4456,13 @@ HeatTransfer::advance (Real time,
         int havedivu = 1;
         mac_rhs = create_mac_rhs(time,dt);
         mac_project(time,dt,S_old,mac_rhs,havedivu);
+    }
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point C S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point C S_new", 3, 127, 0, NUM_STATE, &S_new);
     }
 
     if (do_mom_diff == 0)
@@ -4513,6 +4535,13 @@ HeatTransfer::advance (Real time,
 
         aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
     }
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point D S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point D S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     //
     // Find change due to first Strang step.
     //
@@ -4569,6 +4598,13 @@ HeatTransfer::advance (Real time,
     //
     MultiFab Rho_hold(grids,1,LinOp_grow);
 
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point E S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point E S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     BL_ASSERT(LinOp_grow == 1);
 
     for (MFIter mfi(*rho_ctime); mfi.isValid(); ++mfi)
@@ -4581,6 +4617,14 @@ HeatTransfer::advance (Real time,
     //
     const int rho_corr = 1;
     scalar_update(dt,Density,Density,rho_corr);
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point F S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point F S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     //
     // Set saved rho at current time.
     //
@@ -4597,6 +4641,14 @@ HeatTransfer::advance (Real time,
     //
     // Update energy and species: Runge-Kutta method.
     //
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point G S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point G S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     if (do_rk_diffusion)
     {
 	if (ParallelDescriptor::IOProcessor())
@@ -4618,7 +4670,7 @@ HeatTransfer::advance (Real time,
 	// get the old and new states
 	MultiFab& S_new = get_new_data(State_Type);
 	MultiFab& S_old = get_old_data(State_Type);
-
+/*
 	print_values ("S_old",
 		      idx,
 		      jdx,
@@ -4632,7 +4684,7 @@ HeatTransfer::advance (Real time,
 		      0,
 		      NUM_STATE,
 		      &S_new);
-
+*/
 	// the new state currently holds the sum of the old state and the forcing 
 	// and advection terms.  save these values.
 	MultiFab save_for_rhoH (grids, 1, 0);
@@ -4658,7 +4710,7 @@ HeatTransfer::advance (Real time,
 			       flux_for_Y_old,
 			       update_for_H_old,
 			       update_for_Y_old);
-
+/*
 	print_values ("update_for_H_old",
 		      idx,
 		      jdx,
@@ -4672,7 +4724,7 @@ HeatTransfer::advance (Real time,
 		      0,
 		      nspecies,
 		      update_for_Y_old);
-
+*/
 	// form the new_star state in the new state by adding the updates associated 
         // with the old state
 	MultiFab::Add (S_new, *update_for_H_old, 0, index_of_rhoH, 1, 0);
@@ -4694,7 +4746,7 @@ HeatTransfer::advance (Real time,
 			       flux_for_Y_new,
 			       update_for_H_new,
 			       update_for_Y_new);
-
+/*
 	print_values ("update_for_H_new",
 		      idx,
 		      jdx,
@@ -4708,7 +4760,7 @@ HeatTransfer::advance (Real time,
 		      0,
 		      nspecies,
 		      update_for_Y_new);
-
+*/
 	// restore the new state with the saved values so that it holds the sum of the old
         // state and the forcing and advection terms.
 	MultiFab::Copy (S_new, save_for_rhoH, 0, index_of_rhoH, 1, 0);
@@ -4788,13 +4840,14 @@ HeatTransfer::advance (Real time,
 	// use the old temperature as an initial guess for the Newton iteration.
 	MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
         RhoH_to_Temp(S_new);
-
+/*
 	print_values ("final S_new",
 		      idx,
 		      jdx,
 		      0,
 		      NUM_STATE,
 		      &S_new);
+*/
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at bottom of do_rk_diffusion block\n" << std::flush;
@@ -4872,6 +4925,13 @@ HeatTransfer::advance (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "HeatTransfer::advance(): after scalar_update\n";
 
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point H S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point H S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     temperature_stats(S_new);
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -4891,6 +4951,13 @@ HeatTransfer::advance (Real time,
 #endif
 
     strang_chem(S_new,dt,HT_EstimateYdotNew);
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point I S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point I S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
 
 #ifdef BL_PLOT_CONSUMPTION
     if (plot_auxDiags)
@@ -4921,6 +4988,14 @@ HeatTransfer::advance (Real time,
     // viscosity/diffusivity).
     //
     calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point J S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point J S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     //
     // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
     //   the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
@@ -4929,6 +5004,13 @@ HeatTransfer::advance (Real time,
     setThermoPress(cur_time);
 
     calc_divu(time+dt, dt, get_new_data(Divu_Type));
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point K S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point K S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
 
     if (!NavierStokes::initial_step && level != parent->finestLevel())
     {
@@ -4964,7 +5046,14 @@ HeatTransfer::advance (Real time,
     // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
     //
     velocity_update(dt);
-    
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point L S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point L S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     advance_cleanup(dt,iteration,ncycle);
     //
     // Increment rho average.
@@ -4985,6 +5074,14 @@ HeatTransfer::advance (Real time,
 
         if (level > 0 && iteration == 1) p_avg->setVal(0);
     }
+    
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point M S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point M S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     //
     // Update estimate for allowable time step.
     //
@@ -4993,7 +5090,14 @@ HeatTransfer::advance (Real time,
         std::cout << "HeatTransfer::advance(): at end of time step\n";
 
     temperature_stats(S_new);
-   
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point N S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point N S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     return dt_test;
 }
 
