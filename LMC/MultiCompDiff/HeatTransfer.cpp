@@ -4409,17 +4409,20 @@ HeatTransfer::advance (Real time,
     {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point A S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point A S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point A1 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point A1 S_new", 3, 127, 0, NUM_STATE, &S_new);
     }
+
+    //  state modification:
+    //  advance_setup changes old v, rho, rhoY, rhoH, T, rhoRT
 
     advance_setup(time,dt,iteration,ncycle);
 
     {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point B S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point B S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point A2 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point A2 S_new", 3, 127, 0, NUM_STATE, &S_new);
     }
 
     if (do_check_divudt)
@@ -4458,19 +4461,14 @@ HeatTransfer::advance (Real time,
         mac_project(time,dt,S_old,mac_rhs,havedivu);
     }
 
-    {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point C S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point C S_new", 3, 127, 0, NUM_STATE, &S_new);
-    }
-
     if (do_mom_diff == 0)
         velocity_advection(dt);
+
     //
     // Set old-time boundary data for RhoH
     // 
     set_overdetermined_boundary_cells(time);
+
     //
     // Advance the old state for a Strang-split dt/2.  Include grow cells in
     // advance, and squirrel these away for diffusion and Godunov guys to
@@ -4486,6 +4484,7 @@ HeatTransfer::advance (Real time,
     // Save off a copy of the pre-chem state
     //
     const int consumptionComp = getChemSolve().index(consumptionName) + first_spec;
+
 #ifdef BL_PLOT_CONSUMPTION
     if (plot_auxDiags)
         auxDiag->copy(S_old,consumptionComp,0,1);
@@ -4496,6 +4495,17 @@ HeatTransfer::advance (Real time,
     // parallel copy.  It doesn't happen by default (like you might think)
     // due to not being recached appropriately after regridding.
     //
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point B1 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point B1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
+    //  state modification:
+    //  the following block changes old rhoY, T
+
     {
         MultiFab tmpFABs;
 
@@ -4538,8 +4548,8 @@ HeatTransfer::advance (Real time,
     {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point D S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point D S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point B2 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point B2 S_new", 3, 127, 0, NUM_STATE, &S_new);
     }
 
     //
@@ -4598,13 +4608,6 @@ HeatTransfer::advance (Real time,
     //
     MultiFab Rho_hold(grids,1,LinOp_grow);
 
-    {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point E S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point E S_new", 3, 127, 0, NUM_STATE, &S_new);
-    }
-
     BL_ASSERT(LinOp_grow == 1);
 
     for (MFIter mfi(*rho_ctime); mfi.isValid(); ++mfi)
@@ -4612,6 +4615,16 @@ HeatTransfer::advance (Real time,
         const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
         Rho_hold[mfi.index()].copy((*rho_ctime)[mfi],box,0,box,0,1);
     }
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point C1 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point C1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
+    //  state modification:
+    //  scalar_update changes new rho
+
     //
     // Compute new and half-time densities.
     //
@@ -4621,36 +4634,57 @@ HeatTransfer::advance (Real time,
     {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point F S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point F S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point C2 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point C2 S_new", 3, 127, 0, NUM_STATE, &S_new);
     }
 
     //
     // Set saved rho at current time.
     //
     make_rho_curr_time();
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point D1 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point D1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
+    //  state modification:
+    //  reset_rho_in_rho_states changes new rhoY, rhoH
+
     //
     // Reset rho-states to contain new rho.
     //
     reset_rho_in_rho_states(Rho_hold,cur_time,first_scalar+1,NUM_SCALARS-1);
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point D2 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	print_values ("point D2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     //
     // Compute the update to momentum
     //
     if (do_mom_diff == 1)
 	momentum_advection(dt,do_reflux);
-    //
-    // Update energy and species: Runge-Kutta method.
-    //
-
-    {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point G S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point G S_new", 3, 127, 0, NUM_STATE, &S_new);
-    }
 
     if (do_rk_diffusion)
     {
+        {
+            MultiFab& S_new = get_new_data(State_Type);
+            MultiFab& S_old = get_old_data(State_Type);
+            print_values ("point E1 S_old", 3, 127, 0, NUM_STATE, &S_old);
+            print_values ("point E1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+        }
+
+        //  state modification:
+        //  the following block changes new rhoY, rhoH, T
+
+        //
+        // Update energy and species: Runge-Kutta method.
+        //
+
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at top of do_rk_diffusion block\n" << std::flush;
 
@@ -4854,19 +4888,41 @@ HeatTransfer::advance (Real time,
 
 	// BoxLib::Abort("JFG: stopping here, for now");
     }
-    //
-    // Update energy and species, Marc's differential diffusion version.
-    //
     else if (do_mcdd)
     {
+        {
+            MultiFab& S_new = get_new_data(State_Type);
+            MultiFab& S_old = get_old_data(State_Type);
+	    print_values ("point E2 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	    print_values ("point E2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+        }
+
+        //  state modification:
+        //  the following block probably changes new rhoY, rhoH, T
+	
+        //
+        // Update energy and species, Marc's differential diffusion version.
+        //
+
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // RhoH aofs, already did others
         mcdd_update(time,dt);
     }
-    //
-    // Update energy and species: original version.
-    //
     else
     {
+        {
+            MultiFab& S_new = get_new_data(State_Type);
+            MultiFab& S_old = get_old_data(State_Type);
+	    print_values ("point E3 S_old", 3, 127, 0, NUM_STATE, &S_old);
+	    print_values ("point E3 S_new", 3, 127, 0, NUM_STATE, &S_new);
+        }
+
+        //  state modification:
+        //  the following block probably changes new rhoY, rhoH, T
+	
+        //
+        // Update energy and species: original version.
+        //
+
         //
         // Predictor
         //
@@ -4915,6 +4971,14 @@ HeatTransfer::advance (Real time,
         
         BL_PROFILE_STOP(ctimer);
     }
+
+    {
+        MultiFab& S_new = get_new_data(State_Type);
+        MultiFab& S_old = get_old_data(State_Type);
+        print_values ("point E4 S_old", 3, 127, 0, NUM_STATE, &S_old);
+        print_values ("point E4 S_new", 3, 127, 0, NUM_STATE, &S_new);
+    }
+
     //
     // Second half of Strang-split chemistry (first half done in
     // compute_edge_states) This takes new-time data, and returns new-time
