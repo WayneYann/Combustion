@@ -3704,6 +3704,8 @@ HeatTransfer::mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCom
 
 #include "rk_step_selection.cpp"
 
+#include "print_values.cpp"
+
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 						    int       sComp,
@@ -4600,6 +4602,10 @@ HeatTransfer::advance (Real time,
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at top of do_rk_diffusion block\n" << std::flush;
 
+	// choose a cell to inspect
+	int idx = 3;
+	int jdx = 127;
+
 	// finish the advective update by including rho H.
 	bool do_adv_reflux = true;
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux);
@@ -4612,6 +4618,20 @@ HeatTransfer::advance (Real time,
 	// get the old and new states
 	MultiFab& S_new = get_new_data(State_Type);
 	MultiFab& S_old = get_old_data(State_Type);
+
+	print_values ("S_old",
+		      idx,
+		      jdx,
+		      0,
+		      NUM_STATE,
+		      &S_old);
+
+	print_values ("initial S_new",
+		      idx,
+		      jdx,
+		      0,
+		      NUM_STATE,
+		      &S_new);
 
 	// the new state currently holds the sum of the old state and the forcing 
 	// and advection terms.  save these values.
@@ -4639,6 +4659,20 @@ HeatTransfer::advance (Real time,
 			       update_for_H_old,
 			       update_for_Y_old);
 
+	print_values ("update_for_H_old",
+		      idx,
+		      jdx,
+		      0,
+		      1,
+		      update_for_H_old);
+
+	print_values ("update_for_Y_old",
+		      idx,
+		      jdx,
+		      0,
+		      nspecies,
+		      update_for_Y_old);
+
 	// form the new_star state in the new state by adding the updates associated 
         // with the old state
 	MultiFab::Add (S_new, *update_for_H_old, 0, index_of_rhoH, 1, 0);
@@ -4660,6 +4694,20 @@ HeatTransfer::advance (Real time,
 			       flux_for_Y_new,
 			       update_for_H_new,
 			       update_for_Y_new);
+
+	print_values ("update_for_H_new",
+		      idx,
+		      jdx,
+		      0,
+		      1,
+		      update_for_H_new);
+
+	print_values ("update_for_Y_new",
+		      idx,
+		      jdx,
+		      0,
+		      nspecies,
+		      update_for_Y_new);
 
 	// restore the new state with the saved values so that it holds the sum of the old
         // state and the forcing and advection terms.
@@ -4740,6 +4788,13 @@ HeatTransfer::advance (Real time,
 	// use the old temperature as an initial guess for the Newton iteration.
 	MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
         RhoH_to_Temp(S_new);
+
+	print_values ("final S_new",
+		      idx,
+		      jdx,
+		      0,
+		      NUM_STATE,
+		      &S_new);
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at bottom of do_rk_diffusion block\n" << std::flush;
