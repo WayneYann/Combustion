@@ -325,7 +325,7 @@ c           to convert them to si units.   multiplication by 0.5 averages the va
       end do
 
 c///
-c///  y fluxes
+c///  x fluxes
 c///
 
 c     fluxes in x direction are from lo(1) to hi(1)+1
@@ -334,7 +334,7 @@ c     fluxes in x direction are from lo(1) to hi(1)+1
 c           species fluxes
             do n=1,nspecies
                xflux_for_Y(i,j,n) 
-     &              = area_for_x 
+     &              = - area_for_x 
      &              * 0.5d0 * (rho_D_si(i-1,j,n) + rho_D_si(i,j,n)) 
      &              * one_over_dx * (Y(i,j,n) - Y(i-1,j,n))
             end do
@@ -354,9 +354,7 @@ c           flux correction
             end do
 
 c           enthalpy flux
-            T_on_edge = 0.5d0
-     &           * (temperature(i-1,j) 
-     &            + temperature(i,j))
+            T_on_edge = 0.5d0 * (temperature(i-1,j) + temperature(i,j))
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_cgs)
 c           per page 98 of the Chemkin manual, hms_cgs has units (erg / g) =
 c           = (J / 10**7) / (Kg / 10**3) = (J / Kg) * (1 / 10**4).  so hms_cgs
@@ -367,7 +365,7 @@ c           must be divided by 10**4 to convert to si units.
             end do
             xflux_for_H(i,j) 
      &           = sum
-     &           + area_for_x 
+     &           - area_for_x 
      &           * 0.5d0 * (lambda_si(i-1,j) + lambda_si(i,j)) 
      &           * one_over_dx * (temperature(i,j) - temperature(i-1,j))
          end do
@@ -397,14 +395,13 @@ c        check the bc flags
      &        (.not. dirichlet_for_Y .or. dirichlet_for_T))
          if (error) call bl_abort 
      &      ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at low x")
-c23456789012345678901234567890123456789012345678901234567890123456789012
          i = lo(1)
          do j=lo(2),hi(2)
             if (dirichlet_for_Y) then
 c              species fluxes
                do n=1,nspecies
                   xflux_for_Y(i,j,n) 
-     &                 = area_for_x 
+     &                 = - area_for_x 
      &                 * rho_D_si(i-1,j,n)
      &                 * one_over_dx 
      &                    * (- (8.0d0 / 3.0d0) * Y(i-1,j,n)
@@ -441,7 +438,7 @@ c              restore the boundary value
                end do
                xflux_for_H(i,j) 
      &              = sum
-     &              + area_for_x 
+     &              - area_for_x 
      &              * lambda_si(i-1,j)
      &              * one_over_dx
      &                 * (- (8.0d0 / 3.0d0) * temperature(i-1,j)
@@ -483,7 +480,7 @@ c23456789012345678901234567890123456789012345678901234567890123456789012
 c              species fluxes
                do n=1,nspecies
                   xflux_for_Y(i+1,j,n) 
-     &                 = area_for_x
+     &                 = - area_for_x
      &                 * rho_D_si(i+1,j,n)
      &                 * one_over_dx 
      &                    * ((1.0d0 / 3.0d0) * Y(i-1,j,n)
@@ -520,7 +517,7 @@ c              restore the boundary value
                end do
                xflux_for_H(i+1,j) 
      &              = sum
-     &              + area_for_x
+     &              - area_for_x
      &              * lambda_si(i+1,j)
      &              * one_over_dx
      &                 * ((1.0d0 / 3.0d0) * temperature(i-1,j)
@@ -545,7 +542,7 @@ c     fluxes in y direction are from lo(2) to hi(2)+1
 c           species fluxes
             do n=1,nspecies
                yflux_for_Y(i,j,n) 
-     &              = area_for_y 
+     &              = - area_for_y 
      &              * 0.5d0 * (rho_D_si(i,j-1,n) + rho_D_si(i,j,n)) 
      &              * one_over_dy * (Y(i,j,n) - Y(i,j-1,n))
             end do
@@ -564,9 +561,7 @@ c           flux correction
      &              * coefficient
             end do
 c           enthalpy flux
-            T_on_edge = 0.5d0
-     &           * (temperature(i,j-1) 
-     &            + temperature(i,j))
+            T_on_edge = 0.5d0 * (temperature(i,j-1) + temperature(i,j))
             call CKHMS (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_cgs)
             sum = 0
             do n=1,nspecies
@@ -574,7 +569,7 @@ c           enthalpy flux
             end do
             yflux_for_H(i,j) 
      &           = sum
-     &           + area_for_y 
+     &           - area_for_y 
      &           * 0.5d0 * (lambda_si(i,j-1) + lambda_si(i,j)) 
      &           * one_over_dy * (temperature(i,j) - temperature(i,j-1))
          end do
@@ -604,14 +599,13 @@ c        check the bc flags
      &        (.not. dirichlet_for_Y .or. dirichlet_for_T))
          if (error) call bl_abort 
      &      ("FORT_RK_MIXTURE_AVERAGED: inconsistent bc flags at low y")
-c23456789012345678901234567890123456789012345678901234567890123456789012
          j = lo(2)
          do i=lo(1),hi(1)
             if (dirichlet_for_Y) then
 c              species fluxes
                do n=1,nspecies
                   yflux_for_Y(i,j,n) 
-     &                 = area_for_y 
+     &                 = - area_for_y 
      &                 * rho_D_si(i,j-1,n)
      &                 * one_over_dy 
      &                    * (- (8.0d0 / 3.0d0) * Y(i,j-1,n)
@@ -648,7 +642,7 @@ c              restore the boundary value
                end do
                yflux_for_H(i,j) 
      &              = sum
-     &              + area_for_y 
+     &              - area_for_y 
      &              * lambda_si(i,j-1)
      &              * one_over_dy
      &                 * (- (8.0d0 / 3.0d0) * temperature(i,j-1)
@@ -690,7 +684,7 @@ c23456789012345678901234567890123456789012345678901234567890123456789012
 c              species fluxes
                do n=1,nspecies
                   yflux_for_Y(i,j+1,n) 
-     &                 = area_for_y
+     &                 = - area_for_y
      &                 * rho_D_si(i,j+1,n)
      &                 * one_over_dy 
      &                    * ((1.0d0 / 3.0d0) * Y(i,j-1,n)
@@ -727,7 +721,7 @@ c              restore the boundary value
                end do
                yflux_for_H(i,j+1) 
      &              = sum
-     &              + area_for_y
+     &              - area_for_y
      &              * lambda_si(i,j+1)
      &              * one_over_dy
      &                 * ((1.0d0 / 3.0d0) * temperature(i,j-1)
