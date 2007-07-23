@@ -4407,13 +4407,15 @@ HeatTransfer::advance (Real time,
     }
 
     //  debug by tracing changes to S_old and S_new
-    bool debug_changes = false;
+    bool debug_changes = true;
+    int i_c = 3;
+    int j_c = 127;
 
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point A1 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point A1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point A1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point A1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //  state modification:
@@ -4424,8 +4426,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point A2 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point A2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point A2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point A2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     if (do_check_divudt)
@@ -4502,8 +4504,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point B1 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point B1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point B1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point B1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //  state modification:
@@ -4551,8 +4553,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point B2 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point B2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point B2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point B2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //
@@ -4621,8 +4623,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point C1 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point C1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point C1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point C1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //  state modification:
@@ -4637,8 +4639,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point C2 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point C2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point C2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point C2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //
@@ -4648,8 +4650,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point D1 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point D1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point D1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point D1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //  state modification:
@@ -4662,8 +4664,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point D2 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point D2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point D2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point D2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //
@@ -4677,8 +4679,8 @@ HeatTransfer::advance (Real time,
         if (debug_changes) {
             MultiFab& S_new = get_new_data(State_Type);
             MultiFab& S_old = get_old_data(State_Type);
-            print_values ("point E1 S_old", 3, 127, 0, NUM_STATE, &S_old);
-            print_values ("point E1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+            print_values ("point E1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+            print_values ("point E1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
         }
 
         //  state modification:
@@ -4896,8 +4898,8 @@ HeatTransfer::advance (Real time,
         if (debug_changes) {
             MultiFab& S_new = get_new_data(State_Type);
             MultiFab& S_old = get_old_data(State_Type);
-	    print_values ("point E2 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	    print_values ("point E2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	    print_values ("point E2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	    print_values ("point E2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
         }
 
         //  state modification:
@@ -4915,8 +4917,8 @@ HeatTransfer::advance (Real time,
         if (debug_changes) {
             MultiFab& S_new = get_new_data(State_Type);
             MultiFab& S_old = get_old_data(State_Type);
-	    print_values ("point E3 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	    print_values ("point E3 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	    print_values ("point E3 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	    print_values ("point E3 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
         }
 
         //  state modification:
@@ -4978,8 +4980,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-        print_values ("point E4 S_old", 3, 127, 0, NUM_STATE, &S_old);
-        print_values ("point E4 S_new", 3, 127, 0, NUM_STATE, &S_new);
+        print_values ("point E4 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+        print_values ("point E4 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //
@@ -5013,8 +5015,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point F1 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point F1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point F1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point F1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //  state modification:
@@ -5025,8 +5027,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point F2 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point F2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point F2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point F2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
 #ifdef BL_PLOT_CONSUMPTION
@@ -5062,8 +5064,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point G1 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point G1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point G1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point G1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //  state modification:
@@ -5079,8 +5081,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point G2 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point G2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point G2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point G2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     calc_divu(time+dt, dt, get_new_data(Divu_Type));
@@ -5120,8 +5122,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point H1 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point H1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point H1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point H1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //  state modification:
@@ -5135,8 +5137,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point H2 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point H2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point H2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point H2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     advance_cleanup(dt,iteration,ncycle);
@@ -5144,8 +5146,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point I1 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point I1 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point I1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point I1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //  state modification:
@@ -5174,8 +5176,8 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point I2 S_old", 3, 127, 0, NUM_STATE, &S_old);
-	print_values ("point I2 S_new", 3, 127, 0, NUM_STATE, &S_new);
+	print_values ("point I2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point I2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //

@@ -267,7 +267,7 @@ c     some constants, at least in Cartesian coordinates
       one_over_dy = 1.0d0 / dx(2)
 
 c     coefficients for difference formulas at the hi and low edges
-c     note still must divide by dx to get the approximate derivative
+c     note still must divide by dx or dy to get the approximate derivative
       hi_coefficient_0 = + 1.0d0 / 3.0d0
       hi_coefficient_1 = - 3.0d0
       hi_coefficient_2 = + 8.0d0 / 3.0d0
@@ -392,7 +392,7 @@ c           placed the boundary value in the ghost cell adjacent to the edge
             else if (at_hi .and. hi_dirichlet_for_T) then
                T_on_edge = state(i, j, index_of_T)
             else
-               T_on_edge = 0.5 * (T(i-1,j) + T(i,j))
+               T_on_edge = 0.5d0 * (T(i-1,j) + T(i,j))
             end if
 
 c           use a floored T just in case
@@ -407,7 +407,7 @@ c           placed the boundary value in the ghost cell adjacent to the edge
                else if (at_hi .and. hi_dirichlet_for_Y) then
                   Y_on_edge(n) = state(i, j, offset + n)
                else
-                  Y_on_edge(n) = 0.5 * (Y(i-1,j,n) + Y(i,j,n))
+                  Y_on_edge(n) = 0.5d0 * (Y(i-1,j,n) + Y(i,j,n))
                end if
             end do
 
@@ -495,14 +495,14 @@ c           there does not seem to be a chemkin call to get this ratio from T an
 c           convert the library values from cgs units to si units
 
 c           per page 98 of the chemkin manual, the enthalpies for the species,
-c           hms_on_edge_cgs, has units
+c           hms_on_edge_cgs, have units
 c
 c                            erg / g
 c                 =          (J / 10**7) / (Kg / 10**3)
 c                 = 1.0d-4 * J / Kg
 c
-c           the si unit of thermal conductivity is J / Kg, so the EGLIB value must
-c           be multiplied by 1.0d-4 to convert it to si units.
+c           the si unit of thermal conductivity is J / Kg, so the EGLIB values must
+c           be multiplied by 1.0d-4 to convert them to si units.
             do n=1,nspecies
                hms_on_edge_si(n) = 1.0d-4 * hms_on_edge_cgs(n)
             end do
@@ -548,7 +548,7 @@ c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to 
 c           the cgs unit for pressure is the barye which equals 0.1 Pascal.
 c           the si unit for pressure is the Pascal which equals 1 Kg m s**2.
 
-c           the pressure and denisty ratio, pressure_over_rho_on_edge_cgs, has units
+c           the pressure and density ratio, pressure_over_rho_on_edge_cgs, has units
 c
 c                            barye / (g / cm**2)
 c                 =          (1.0d-1 Pa) / ((1.0d-3 Kg) / (1.0d-2 m)**2)
@@ -674,7 +674,7 @@ c           placed the boundary value in the ghost cell adjacent to the edge
             else if (at_hi .and. hi_dirichlet_for_T) then
                T_on_edge = state(i, j, index_of_T)
             else
-               T_on_edge = 0.5 * (T(i,j-1) + T(i,j))
+               T_on_edge = 0.5d0 * (T(i,j-1) + T(i,j))
             end if
 
 c           use a floored T just in case
@@ -689,7 +689,7 @@ c           placed the boundary value in the ghost cell adjacent to the edge
                else if (at_hi .and. hi_dirichlet_for_Y) then
                   Y_on_edge(n) = state(i, j, offset + n)
                else
-                  Y_on_edge(n) = 0.5 * (Y(i,j-1,n) + Y(i,j,n))
+                  Y_on_edge(n) = 0.5d0 * (Y(i,j-1,n) + Y(i,j,n))
                end if
             end do
 
@@ -704,7 +704,7 @@ c           evaluate the derivative for T on the edge
      &                 = one_over_dy
      &                 * (lo_coefficient_0 * T_on_edge
      &                 + lo_coefficient_1 * T(i,j)
-     &                 + lo_coefficient_2 * T(i,j-1))
+     &                 + lo_coefficient_2 * T(i,j+1))
                else
                   derivative_of_T = 0
                end if
@@ -769,14 +769,14 @@ c           there does not seem to be a chemkin call to get this ratio from T an
 c           convert the library values from cgs units to si units
 
 c           per page 98 of the chemkin manual, the enthalpies for the species,
-c           hms_on_edge_cgs, has units
+c           hms_on_edge_cgs, have units
 c
 c                            erg / g
 c                 =          (J / 10**7) / (Kg / 10**3)
 c                 = 1.0d-4 * J / Kg
 c
-c           the si unit of thermal conductivity is J / Kg, so the EGLIB value must
-c           be multiplied by 1.0d-4 to convert it to si units.
+c           the si unit of thermal conductivity is J / Kg, so the EGLIB values must
+c           be multiplied by 1.0d-4 to convert them to si units.
             do n=1,nspecies
                hms_on_edge_si(n) = 1.0d-4 * hms_on_edge_cgs(n)
             end do
@@ -819,7 +819,10 @@ c           so the EGLIB values must be multiplied by 1.0d-1 to convert them to 
                end do
             end do
 
-c           the pressure and denisty ratio, pressure_over_rho_on_edge_cgs, has units
+c           the cgs unit for pressure is the barye which equals 0.1 Pascal.
+c           the si unit for pressure is the Pascal which equals 1 Kg m s**2.
+
+c           the pressure and density ratio, pressure_over_rho_on_edge_cgs, has units
 c
 c                            barye / (g / cm**2)
 c                 =          (1.0d-1 Pa) / ((1.0d-3 Kg) / (1.0d-2 m)**2)
