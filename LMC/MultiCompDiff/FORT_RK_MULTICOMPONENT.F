@@ -227,7 +227,7 @@ c     debug variables
       integer idx
       integer jdx
       logical debug
-      debug = .false.
+      debug = .true.
       idx = hi(1)
       jdx = hi(2)
       idx = 3
@@ -309,6 +309,9 @@ c           use the state value for T as a guess for the Newton iteration
             end do
          end do
       end do
+
+      if (debug) call print_patch_n ("T", T, DIMS(state), 1, idx, jdx)
+      if (debug) call print_patch_n ("X", X, DIMS(state), nspecies, idx, jdx)
 
 c///
 c///  x fluxes
@@ -569,7 +572,7 @@ c           assemble the fluxes
      &                 * derivative_of_X(ell)
                end do
                xflux_for_Y(i,j,n) 
-     &              = area_for_x
+     &              = - area_for_x
      &              * (sum_rho_Y_D_derivative_of_X
      &              + Y_on_edge(n) * rho_theta_on_edge_si(n) * derivative_of_T / T_on_edge)
                sum_h_xflux_for_Y 
@@ -583,7 +586,7 @@ c           assemble the fluxes
             end do
             xflux_for_H(i,j)
      &           = sum_h_xflux_for_Y
-     &           + area_for_x
+     &           - area_for_x
      &           * (lambda_prime_on_edge_si * derivative_of_T
      &           + pressure_over_rho_on_edge_si * sum_rho_theta_derivative_of_X)
             end do
@@ -843,7 +846,7 @@ c           assemble the fluxes
      &                 * derivative_of_X(ell)
                end do
                yflux_for_Y(i,j,n) 
-     &              = area_for_y
+     &              = - area_for_y
      &              * (sum_rho_Y_D_derivative_of_X
      &              + Y_on_edge(n) * rho_theta_on_edge_si(n) * derivative_of_T / T_on_edge)
                sum_h_yflux_for_Y 
@@ -857,7 +860,7 @@ c           assemble the fluxes
             end do
             yflux_for_H(i,j)
      &           = sum_h_yflux_for_Y
-     &           + area_for_y
+     &           - area_for_y
      &           * (lambda_prime_on_edge_si * derivative_of_T
      &           + pressure_over_rho_on_edge_si * sum_rho_theta_derivative_of_X)
             end do

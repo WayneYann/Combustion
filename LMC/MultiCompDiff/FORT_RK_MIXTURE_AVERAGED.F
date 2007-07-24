@@ -599,7 +599,7 @@ c           assemble the fluxes
             sum_h_xflux_for_Y = 0
             do n = 1,nspecies
                xflux_for_Y(i,j,n)
-     &              = area_for_x
+     &              = - area_for_x
      &              * rho_Dmix_on_edge_si(n)
      &              * derivative_of_Y(n)
                sum_h_xflux_for_Y
@@ -609,7 +609,7 @@ c           assemble the fluxes
             end do
             xflux_for_H(i,j)
      &           = sum_h_xflux_for_Y
-     &           + area_for_x
+     &           -  area_for_x
      &           * lambda_on_edge_si 
      &           * derivative_of_T
          end do
@@ -838,7 +838,7 @@ c           assemble the fluxes
             sum_h_yflux_for_Y = 0
             do n = 1,nspecies
                yflux_for_Y(i,j,n)
-     &              = area_for_x
+     &              = - area_for_x
      &              * rho_Dmix_on_edge_si(n)
      &              * derivative_of_Y(n)
                sum_h_yflux_for_Y
@@ -848,7 +848,7 @@ c           assemble the fluxes
             end do
             yflux_for_H(i,j)
      &           = sum_h_yflux_for_Y
-     &           + area_for_y
+     &           - area_for_y
      &           * lambda_on_edge_si 
      &           * derivative_of_T
          end do
