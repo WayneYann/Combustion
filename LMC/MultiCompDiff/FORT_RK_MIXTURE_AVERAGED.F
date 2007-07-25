@@ -9,9 +9,16 @@ c///
 c///  start of FORT_RK_MIXTURE_AVERAGED
 c///
 
-c     evaluate the "operator" (update and fluxes) for the Runge-Kutta 
-c     implementation of the diffusion update using the multicomponent 
-c     formulation with Soret and Dufour effects
+c     evaluate the "operator" (extensive fluxes and their divergences) for the 
+c     Runge-Kutta implementation of the diffusion update using the mixture
+c     averaged formulation.
+
+c     the divergences are scaled by 1/vol so they do approximate the analytic
+c     divergence.  when used in the Runge-Kutta formula their additional scaling,
+c     given by scale_factor, should be set to - dt.  the minus occurs because
+c     the standard ODE is written y_prime = f(y), that is, the divergences are
+c     moved to the opposite side of the equation from the time derivative.  when
+c     used in getViscTerms the scale_factor should be set to -1.
 
 c     to do:
 c     1) must adjust diffusion coefficients by thickness factors
@@ -24,7 +31,6 @@ c     lo, hi,                           ! INPUT limits of valid region of the bo
 c   * areax, DIMS(areax),               ! INPUT areas of the faces perendicular to x axis
 c   * areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
-c     dt,                               ! INPUT timestep
 c     dx,                               ! INPUT physical dimensions of grid cells
 c     index_of_firstY,                  ! INPUT index of rho Y for the first species in the state
 c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
@@ -35,14 +41,15 @@ c     maximum_error,                    ! INPUT maximum error in calculation of 
 c     maximum_iterations,               ! INPUT maximum iterations in calculation of T
 c     ncomps,                           ! INPUT total number of components in the state
 c     nspecies,                         ! INPUT total number of species in the state
+c     scale_factor,                     ! INPUT scale factor for the divergences of the fluxes
 c     state, DIMS(state),               ! INPUT all variables in the state
-c     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
-c     update_for_Y, DIMS(update_for_Y), ! OUTPUT divergences of the fluxes
 c   * volume, DIMS(volume),             ! INPUT volumes of the cells
-c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT x fluxes for enthalpy
-c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT x fluxes for species
-c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT y fluxes for enthalpy
-c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
+c     div_of_flux_for_H, DIMS(div_of_flux_for_H), ! OUTPUT divergence of the flux for rho H
+c     div_of_flux_for_Y, DIMS(div_of_flux_for_Y), ! OUTPUT divergences of the fluxes for rho Y
+c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT extensive x fluxes for rho H
+c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT extensive x fluxes for rho Y
+c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT extensive y fluxes for rho H
+c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT extensive y fluxes for rho Y
 c
 c     * these arguments are not used
 
@@ -53,7 +60,6 @@ c     * these arguments are not used
      &     areax, DIMS(areax),
      &     areay, DIMS(areay),
      &     bc,
-     &     dt,
      &     dx,
      &     index_of_firstY,
      &     index_of_lastY,
@@ -64,10 +70,11 @@ c     * these arguments are not used
      &     maximum_iterations,
      &     ncomps,
      &     nspecies,
+     &     scale_factor,
      &     state, DIMS(state),
-     &     update_for_H, DIMS(update_for_H),
-     &     update_for_Y, DIMS(update_for_Y),
      &     volume, DIMS(volume),
+     &     div_of_flux_for_H, DIMS(div_of_flux_for_H),
+     &     div_of_flux_for_Y, DIMS(div_of_flux_for_Y),
      &     xflux_for_H, DIMS(xflux_for_H),
      &     xflux_for_Y, DIMS(xflux_for_Y),
      &     yflux_for_H, DIMS(yflux_for_H),
@@ -88,8 +95,8 @@ c     arguments
       integer DIMDEC(areay)
       integer bc(BL_SPACEDIM,2,ncomps)
       integer DIMDEC(state)
-      integer DIMDEC(update_for_H)
-      integer DIMDEC(update_for_Y)
+      integer DIMDEC(div_of_flux_for_H)
+      integer DIMDEC(div_of_flux_for_Y)
       integer DIMDEC(xflux_for_H)
       integer DIMDEC(yflux_for_H)
       integer DIMDEC(xflux_for_Y)
@@ -101,19 +108,19 @@ c     arguments
       integer index_of_rhoH
       integer index_of_T
       integer maximum_iterations
-      REAL_T maximum_error
       REAL_T areax(DIMV(areax))
       REAL_T areay(DIMV(areay))
-      REAL_T dt
       REAL_T dx(BL_SPACEDIM)
+      REAL_T maximum_error
+      REAL_T div_of_flux_for_H(DIMV(div_of_flux_for_H))
+      REAL_T div_of_flux_for_Y(DIMV(div_of_flux_for_Y),nspecies)
+      REAL_T scale_factor
       REAL_T state(DIMV(state),ncomps)
-      REAL_T update_for_H(DIMV(update_for_H))
-      REAL_T update_for_Y(DIMV(update_for_Y),nspecies)
+      REAL_T volume(DIMV(volume))
       REAL_T xflux_for_H(DIMV(xflux_for_H))
       REAL_T yflux_for_H(DIMV(yflux_for_H))
       REAL_T xflux_for_Y(DIMV(xflux_for_Y),ncomps)
       REAL_T yflux_for_Y(DIMV(yflux_for_Y),ncomps)
-      REAL_T volume(DIMV(volume))
 
 c     local variables
       external FORT_TfromHYpt 
@@ -149,7 +156,6 @@ c     local variables
       REAL_T derivative_of_T
       REAL_T derivative_of_Y
       REAL_T dpdt_factor
-      REAL_T dt_over_volume
       REAL_T FORT_P1ATMMKS
       REAL_T H
       REAL_T hi_coefficient_0
@@ -175,6 +181,7 @@ c     local variables
       REAL_T rho_Dmix_on_edge_si
       REAL_T rho_Upsilon_on_edge_cgs
       REAL_T RUC
+      REAL_T scale_factor_over_volume
       REAL_T sum_h_xflux_for_Y
       REAL_T sum_h_yflux_for_Y
       REAL_T T
@@ -221,8 +228,8 @@ c     debug variables
       integer jdx
       logical debug
       logical debug2
-      debug = .false.
-      debug2 = .false.
+      debug = .true.
+      debug2 = .true.
       idx = hi(1)
       jdx = hi(2)
       idx = 3
@@ -256,9 +263,9 @@ c     offset of species in the state
 c     some constants, at least in Cartesian coordinates
       area_for_x = dx(2)
       area_for_y = dx(1)
-      dt_over_volume = dt / (dx(1) * dx(2))
       one_over_dx = 1.0d0 / dx(1)
       one_over_dy = 1.0d0 / dx(2)
+      scale_factor_over_volume = scale_factor / (dx(1) * dx(2))
 
 c     coefficients for difference formulas at the hi and low edges
 c     note still must divide by dx or dy to get the approximate derivative
@@ -319,6 +326,12 @@ c           use the state value for T as a guess for the Newton iteration
 c///
 c///  x fluxes
 c///
+
+      if (debug2) then
+         print *
+         print *, "////////// x fluxes //////////"
+         print *
+      end if
 
 c     set flags for special treatment of the lo boundary
 
@@ -417,16 +430,13 @@ c           placed the boundary value in the ghost cell adjacent to the edge
                end if
             end do
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "T_on_edge", T_on_edge
-               print *, "Y_on_edge", Y_on_edge
-            end if
-
 c           evaluate the values for X on the edge
             call CKYTX 
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), X_on_edge)
 
             if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
+               print *, "T_on_edge", T_on_edge
+               print *, "Y_on_edge", Y_on_edge
                print *, "X_on_edge", X_on_edge
             end if
 
@@ -497,10 +507,6 @@ c           evaluate diffusion coefficients and other things on the edge
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), mmw_on_edge)
             CALL EGSVR1 
      &           (T_on_edge, Y_on_edge, RWRK(egbr), rho_Upsilon_on_edge_cgs)
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "rho_Upsilon_on_edge_cgs"
-               print *, rho_Upsilon_on_edge_cgs
-            end if
             call CKHMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), hms_on_edge_cgs)
 c           the following averaging is equation 50 in the chemkin transport package 
@@ -508,19 +514,13 @@ c           manual.  the EGLIB manual does not mention the averaging, but it doe
 c           provisions to compute it through the alpha parameter in its equation 17.
             alpha = 1.0d0
             CALL EGSL1 (alpha, T_on_edge, X_on_edge, RWRK(egbr), plus_value_cgs)
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "rho_Upsilon_on_edge_cgs"
-               print *, rho_Upsilon_on_edge_cgs
-            end if
             alpha = - 1.0d0
             CALL EGSL1 (alpha, T_on_edge, X_on_edge, RWRK(egbr), minus_value_cgs)
             lambda_on_edge_cgs = 0.5d0 * (plus_value_cgs + minus_value_cgs)
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "rho_Upsilon_on_edge_cgs"
-               print *, rho_Upsilon_on_edge_cgs
-            end if
 
             if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
+               print *, "cpms_on_edge", cpms_on_edge
+               print *, "mmw_on_edge", mmw_on_edge
                print *, "hms_on_edge_cgs", hms_on_edge_cgs
                print *, "lambda_on_edge_cgs", lambda_on_edge_cgs
                print *, "rho_Upsilon_on_edge_cgs", rho_Upsilon_on_edge_cgs
@@ -541,18 +541,6 @@ c           be multiplied by 1.0d-4 to convert them to si units.
                hms_on_edge_si(n) = 1.0d-4 * hms_on_edge_cgs(n)
             end do
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *
-               print *, "before calculation of rho_Dmix_on_edge_si"
-               print *
-               print *, "rho_Upsilon_on_edge_cgs"
-               print *, rho_Upsilon_on_edge_cgs
-               print *, "mmw_on_edge"
-               print *, mmw_on_edge
-               print *, "one_over_wt"
-               print *, one_over_wt
-            end if
-
 c           per page 23 in the EGLIB manual, the rescaled flux diffusion vector,
 c           rho_Upsilon_cgs, has units
 c
@@ -568,19 +556,6 @@ c           mmw / wt(n).
                 rho_Dmix_on_edge_si(n) 
      &              = 1.0d-1 *  rho_Upsilon_on_edge_cgs(n) * mmw_on_edge * one_over_wt(n)
             end do
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *
-               print *, "after calculation of rho_Dmix_on_edge_si"
-               print *
-               print *, "rho_Dmix_on_edge_si"
-               print *, rho_Dmix_on_edge_si
-               print *, "rho_Upsilon_on_edge_cgs"
-               print *, rho_Upsilon_on_edge_cgs
-               print *, "mmw_on_edge"
-               print *, mmw_on_edge
-               print *, "one_over_wt"
-               print *, one_over_wt
-            end if
 
 c           per page 15 of the EGLIB manual, these thermal conductivities are returned
 c           with units (erg / (cm s K)) = ((J / 10**7) / ((m / 10**2) s K)) =
@@ -621,6 +596,12 @@ c           assemble the fluxes
 c///
 c///  y fluxes
 c///
+
+      if (debug2) then
+         print *
+         print *, "////////// y fluxes //////////"
+         print *
+      end if
 
 c     set flags for special treatment of the lo boundary
 
@@ -723,6 +704,12 @@ c           evaluate the values for X on the edge
             call CKYTX
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), X_on_edge)
 
+            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
+               print *, "T_on_edge", T_on_edge
+               print *, "Y_on_edge", Y_on_edge
+               print *, "X_on_edge", X_on_edge
+            end if
+
 c           evaluate the derivative for T on the edge
             if (at_lo .and. .not. lo_internal) then
                if (lo_dirichlet_for_T) then
@@ -775,6 +762,11 @@ c           evaluate the derivatives for X on the edge
                end if
             end do
 
+            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
+               print *, "derivative_of_T", derivative_of_T
+               print *, "derivative_of_Y", derivative_of_Y
+            end if
+
 c           evaluate diffusion coefficients and other things on the edge
             call CKCPMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), cpms_on_edge)
@@ -795,6 +787,14 @@ c           provisions to compute it through the alpha parameter in its equation
             alpha = - 1.0d0
             CALL EGSL1 (alpha, T_on_edge, X_on_edge, RWRK(egbr), minus_value_cgs)
             lambda_on_edge_cgs = 0.5d0 * (plus_value_cgs + minus_value_cgs)
+
+            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
+               print *, "cpms_on_edge", cpms_on_edge
+               print *, "mmw_on_edge", mmw_on_edge
+               print *, "hms_on_edge_cgs", hms_on_edge_cgs
+               print *, "lambda_on_edge_cgs", lambda_on_edge_cgs
+               print *, "rho_Upsilon_on_edge_cgs", rho_Upsilon_on_edge_cgs
+            end if
 
 c           convert the library values from cgs units to si units
 
@@ -834,6 +834,12 @@ c           conductivity is (W / (M K)), so these values must be divided by 10**
 c           to convert them to si units.
             lambda_on_edge_si = 1.0d-5 * lambda_on_edge_cgs
 
+            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
+               print *, "hms_on_edge_si", hms_on_edge_si
+               print *, "lambda_on_edge_si", lambda_on_edge_si
+               print *, "rho_Dmix_on_edge_si", rho_Dmix_on_edge_si
+            end if
+
 c           assemble the fluxes
             sum_h_yflux_for_Y = 0
             do n = 1,nspecies
@@ -851,6 +857,16 @@ c           assemble the fluxes
      &           - area_for_y
      &           * lambda_on_edge_si 
      &           * derivative_of_T
+
+            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
+               print *, "sum_h_yflux_for_Y", sum_h_yflux_for_Y
+               print *, "- area_for_y", - area_for_y
+               print *, "lambda_on_edge_si", lambda_on_edge_si
+               print *, "derivative_of_T", derivative_of_T
+               print *, " term 2", - area_for_y * lambda_on_edge_si * derivative_of_T
+               print *, "yflux_for_H(i,j)", yflux_for_H(i,j)
+            end if
+
          end do
       end do
 
@@ -858,26 +874,26 @@ c           assemble the fluxes
       if (debug) call print_patch_n ("yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
 
 c///
-c///  form the updates weighted by dt / vol
+c///  form the updates weighted by scale_factor / vol
 c///
 
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
-            update_for_H(i, j) 
-     &           = dt_over_volume
+            div_of_flux_for_H(i, j) 
+     &           = scale_factor_over_volume
      &           * ((xflux_for_H(i+1,j) - xflux_for_H(i,j)) 
      &           + (yflux_for_H(i,j+1) - yflux_for_H(i,j)))
             do n=1,nspecies
-               update_for_Y(i, j, n) 
-     &              = dt_over_volume
+               div_of_flux_for_Y(i, j, n) 
+     &              = scale_factor_over_volume
      &              * ((xflux_for_Y(i+1,j,n) - xflux_for_Y(i,j,n))
      &              + (yflux_for_Y(i,j+1,n) - yflux_for_Y(i,j,n)))
             end do
          end do
       end do
 
-      if (debug) call print_patch_n ("update_for_H", update_for_H, DIMS(update_for_H), 1, idx, jdx)
-      if (debug) call print_patch_n ("update_for_Y", update_for_Y, DIMS(update_for_Y), nspecies, idx, jdx)
+      if (debug) call print_patch_n ("div_of_flux_for_H", div_of_flux_for_H, DIMS(div_of_flux_for_H), 1, idx, jdx)
+      if (debug) call print_patch_n ("div_of_flux_for_Y", div_of_flux_for_Y, DIMS(div_of_flux_for_Y), nspecies, idx, jdx)
 
 c///
 c///  release temporary arrays (not strictly necessary)

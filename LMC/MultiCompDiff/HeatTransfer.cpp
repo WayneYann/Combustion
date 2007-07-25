@@ -4602,70 +4602,70 @@ HeatTransfer::advance (Real time,
 
 	// apply the diffusion operator to the old state to get fluxes and updates
         // associated with the old state
+	MultiFab* div_of_flux_for_H_old;
+	MultiFab* div_of_flux_for_Y_old;
 	MultiFab** flux_for_H_old;
 	MultiFab** flux_for_Y_old;
-	MultiFab* update_for_H_old;
-	MultiFab* update_for_Y_old;
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at first call to diffusion operator\n" << std::flush;
 
 	rk_diffusion_operator (prev_time,
-			       dt,
+			       - dt,
+			       div_of_flux_for_H_old,
+			       div_of_flux_for_Y_old,
 			       flux_for_H_old,
-			       flux_for_Y_old,
-			       update_for_H_old,
-			       update_for_Y_old);
+			       flux_for_Y_old);
 /*
-	print_values ("update_for_H_old",
+	print_values ("div_of_flux_for_H_old",
 		      idx,
 		      jdx,
 		      0,
 		      1,
-		      update_for_H_old);
+		      div_of_flux_for_H_old);
 
-	print_values ("update_for_Y_old",
+	print_values ("div_of_flux_for_Y_old",
 		      idx,
 		      jdx,
 		      0,
 		      nspecies,
-		      update_for_Y_old);
+		      div_of_flux_for_Y_old);
 */
 	// form the new_star state in the new state by adding the updates associated 
         // with the old state
-	MultiFab::Add (S_new, *update_for_H_old, 0, index_of_rhoH, 1, 0);
-	MultiFab::Add (S_new, *update_for_Y_old, 0, index_of_firstY, nspecies, 0);
+	MultiFab::Add (S_new, *div_of_flux_for_H_old, 0, index_of_rhoH, 1, 0);
+	MultiFab::Add (S_new, *div_of_flux_for_Y_old, 0, index_of_firstY, nspecies, 0);
 
 	// apply the diffusion operator to the new_star state to get fluxes and updates
         // associated with the new_star state
+	MultiFab* div_of_flux_for_H_new;
+	MultiFab* div_of_flux_for_Y_new;
 	MultiFab** flux_for_H_new;
 	MultiFab** flux_for_Y_new;
-	MultiFab* update_for_H_new;
-	MultiFab* update_for_Y_new;
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at second call to diffusion operator\n" << std::flush;
 
 	rk_diffusion_operator (cur_time,
-			       dt,
+			       - dt,
+			       div_of_flux_for_H_new,
+			       div_of_flux_for_Y_new,
 			       flux_for_H_new,
-			       flux_for_Y_new,
-			       update_for_H_new,
-			       update_for_Y_new);
+			       flux_for_Y_new);
 /*
-	print_values ("update_for_H_new",
+	print_values ("div_of_flux_for_H_new",
 		      idx,
 		      jdx,
 		      0,
 		      1,
-		      update_for_H_new);
+		      div_of_flux_for_H_new);
 
-	print_values ("update_for_Y_new",
+	print_values ("div_of_flux_for_Y_new",
 		      idx,
 		      jdx,
 		      0,
 		      nspecies,
-		      update_for_Y_new);
+		      div_of_flux_for_Y_new);
 */
 	// restore the new state with the saved values so that it holds the sum of the old
         // state and the forcing and advection terms.
@@ -4674,14 +4674,14 @@ HeatTransfer::advance (Real time,
 
 	// form the new state in place by adding the average of the updates associated with
         // the old state and the new_star state
-	(*update_for_H_old).mult (0.5, 0);
-	(*update_for_Y_old).mult (0.5, 0);
-	MultiFab::Add (S_new, *update_for_H_old, 0, index_of_rhoH, 1, 0);
-	MultiFab::Add (S_new, *update_for_Y_old, 0, index_of_firstY, nspecies, 0);
-	(*update_for_H_new).mult (0.5, 0);
-	(*update_for_Y_new).mult (0.5, 0);
-	MultiFab::Add (S_new, *update_for_H_new, 0, index_of_rhoH, 1, 0);
-	MultiFab::Add (S_new, *update_for_Y_new, 0, index_of_firstY, nspecies, 0);
+	(*div_of_flux_for_H_old).mult (0.5, 0);
+	(*div_of_flux_for_Y_old).mult (0.5, 0);
+	MultiFab::Add (S_new, *div_of_flux_for_H_old, 0, index_of_rhoH, 1, 0);
+	MultiFab::Add (S_new, *div_of_flux_for_Y_old, 0, index_of_firstY, nspecies, 0);
+	(*div_of_flux_for_H_new).mult (0.5, 0);
+	(*div_of_flux_for_Y_new).mult (0.5, 0);
+	MultiFab::Add (S_new, *div_of_flux_for_H_new, 0, index_of_rhoH, 1, 0);
+	MultiFab::Add (S_new, *div_of_flux_for_Y_new, 0, index_of_firstY, nspecies, 0);
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at flux register updating\n" << std::flush;
@@ -4733,14 +4733,14 @@ HeatTransfer::advance (Real time,
 	    getLevel(level+1).getViscFluxReg().CrseInitFinish();
 
 	// delete the space for fluxes and updates
+	delete div_of_flux_for_H_new;
+	delete div_of_flux_for_Y_new;
+	delete div_of_flux_for_H_old;
+	delete div_of_flux_for_Y_old;
 	diffusion->removeFluxBoxesLevel (flux_for_H_new);
 	diffusion->removeFluxBoxesLevel (flux_for_Y_new);
 	diffusion->removeFluxBoxesLevel (flux_for_H_old);
 	diffusion->removeFluxBoxesLevel (flux_for_Y_old);
-	delete update_for_H_new;
-	delete update_for_Y_new;
-	delete update_for_H_old;
-	delete update_for_Y_old;
 
 	// update the temperature in the new state
 	// use the old temperature as an initial guess for the Newton iteration.

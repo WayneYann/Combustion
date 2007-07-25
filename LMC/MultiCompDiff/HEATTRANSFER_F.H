@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.8 2007-07-18 20:19:38 sepp Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.9 2007-07-25 20:22:04 sepp Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -268,7 +268,6 @@ extern "C" {
 	Real* areax, ARLIM_P(areax_lo), ARLIM_P(areax_hi),
 	Real* areay, ARLIM_P(areay_lo), ARLIM_P(areay_hi),
 	const int* bc,
-	const Real* dt,
 	const Real* dx,
 	int* index_of_firstY,
 	int* index_of_lastY,
@@ -279,10 +278,11 @@ extern "C" {
 	int* maximum_iterations,
 	int* ncomps,
 	int* nspcecies,
+	const Real* scale_factor,
 	Real* state, ARLIM_P(state_lo), ARLIM_P(state_hi),
-	Real* update_for_H, ARLIM_P(update_for_H_lo), ARLIM_P(update_for_H_hi),
-	Real* update_for_Y, ARLIM_P(update_for_Y_lo), ARLIM_P(update_for_Y_hi),
 	Real* volume, ARLIM_P(volume_lo), ARLIM_P(volume_hi),
+	Real* div_of_flux_for_H, ARLIM_P(div_of_flux_for_H_lo), ARLIM_P(div_of_flux_for_H_hi),
+	Real* div_of_flux_for_Y, ARLIM_P(div_of_flux_for_Y_lo), ARLIM_P(div_of_flux_for_Y_hi),
 	Real* xflux_for_H, ARLIM_P(xflux_for_H_lo), ARLIM_P(xflux_for_H_hi),
 	Real* xflux_for_Y, ARLIM_P(xflux_for_Y_lo), ARLIM_P(xflux_for_Y_hi),
 	Real* yflux_for_Y, ARLIM_P(yflux_for_Y_lo), ARLIM_P(yflux_for_Y_hi),
@@ -295,7 +295,6 @@ extern "C" {
 	Real* areax, ARLIM_P(areax_lo), ARLIM_P(areax_hi),
 	Real* areay, ARLIM_P(areay_lo), ARLIM_P(areay_hi),
 	const int* bc,
-	const Real* dt,
 	const Real* dx,
 	int* index_of_firstY,
 	int* index_of_lastY,
@@ -306,10 +305,11 @@ extern "C" {
 	int* maximum_iterations,
 	int* ncomps,
 	int* nspcecies,
+	const Real* scale_factor,
 	Real* state, ARLIM_P(state_lo), ARLIM_P(state_hi),
-	Real* update_for_H, ARLIM_P(update_for_H_lo), ARLIM_P(update_for_H_hi),
-	Real* update_for_Y, ARLIM_P(update_for_Y_lo), ARLIM_P(update_for_Y_hi),
 	Real* volume, ARLIM_P(volume_lo), ARLIM_P(volume_hi),
+	Real* div_of_flux_for_H, ARLIM_P(div_of_flux_for_H_lo), ARLIM_P(div_of_flux_for_H_hi),
+	Real* div_of_flux_for_Y, ARLIM_P(div_of_flux_for_Y_lo), ARLIM_P(div_of_flux_for_Y_hi),
 	Real* xflux_for_H, ARLIM_P(xflux_for_H_lo), ARLIM_P(xflux_for_H_hi),
 	Real* xflux_for_Y, ARLIM_P(xflux_for_Y_lo), ARLIM_P(xflux_for_Y_hi),
 	Real* yflux_for_Y, ARLIM_P(yflux_for_Y_lo), ARLIM_P(yflux_for_Y_hi),

@@ -1,22 +1,29 @@
 void
 HeatTransfer::rk_diffusion_operator (const Real time,
-				     const Real dt,
+				     const Real scale_factor,
+				     MultiFab *& div_of_flux_for_H,
+				     MultiFab *& div_of_flux_for_Y,
 				     MultiFab **& flux_for_H,
-				     MultiFab **& flux_for_Y,
-				     MultiFab *& update_for_H,
-				     MultiFab *& update_for_Y)
+				     MultiFab **& flux_for_Y)
 {
 /*
-  evaluate the "operator" (update and fluxes) for the Runge-Kutta 
-  implementation of the diffusion step using either mixture averaged 
-  or multicomponent coefficients
+  evaluate the "operator" (extensive fluxes and their divergences) for the 
+  Runge-Kutta implementation of the diffusion update using the mixture
+  averaged or multicomponent formulation.
+  
+  the divergences are scaled by 1/vol so they do approximate the analytic
+  divergence.  when used in the Runge-Kutta formula their additional scaling,
+  given by scale_factor, should be set to - dt.  the minus occurs because
+  the standard ODE is written y_prime = f(y), that is, the divergences are
+  moved to the opposite side of the equation from the time derivative.  when
+  used in getViscTerms the scale_factor should be set to -1.
 
   Real time                       ! INPUT time, either prev_time or cur_time
-  Real dt                         ! INPUT timestep
+  Real scale_factor               ! INPUT scale factor
+  MultiFab *& div_of_flux_for_H   ! OUTPUT divergence of the flux for rho H weighted by scale_factor / vol
+  MultiFab *& div_of_flux_for_Y   ! OUTPUT divergence of the flux for rho Y weighted by scale_factor / vol
   MultiFab **& flux_for_H         ! OUTPUT extensive rho H flux
   MultiFab **& flux_for_Y         ! OUTPUT extensive rho Y flux
-  MultiFab *& OUTPUT update_for_H ! OUTPUT update for rho H weighted by dt / vol
-  MultiFab *& OUTPUT update_for_Y ! OUTPUT update for rho Y weighted by dt / vol
 */
 
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::rk_diffusion_operator()");
@@ -57,13 +64,13 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     int ngrow = 0;
     diffusion->allocFluxBoxesLevel(flux_for_H,ngrow,1);
     diffusion->allocFluxBoxesLevel(flux_for_Y,ngrow,nspecies);
-    update_for_H = new MultiFab(grids,1,ngrow);
-    update_for_Y = new MultiFab(grids,nspecies,ngrow);
+    div_of_flux_for_H = new MultiFab(grids,1,ngrow);
+    div_of_flux_for_Y = new MultiFab(grids,nspecies,ngrow);
 
     // loop over fabs in the state at the specified time
     MultiFab dummy (grids,1,0,Fab_noallocate);
-    MFIter update_for_H_mfi(*update_for_H);
-    MFIter update_for_Y_mfi(*update_for_Y);
+    MFIter div_of_flux_for_H_mfi(*div_of_flux_for_H);
+    MFIter div_of_flux_for_Y_mfi(*div_of_flux_for_Y);
     MFIter xflux_for_H_mfi(*flux_for_H[0]);
     MFIter yflux_for_H_mfi(*flux_for_H[1]);
     MFIter xflux_for_Y_mfi(*flux_for_Y[0]);
@@ -72,16 +79,16 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     for (FillPatchIterator state_fpi (*this, dummy, ngrow, time, State_Type, 0, ncomps);
          state_fpi.isValid();
          ++state_fpi, 
-	     ++update_for_H_mfi, 
-	     ++update_for_Y_mfi,
+	     ++div_of_flux_for_H_mfi, 
+	     ++div_of_flux_for_Y_mfi,
 	     ++xflux_for_H_mfi,
 	     ++yflux_for_H_mfi,
 	     ++xflux_for_Y_mfi,
 	     ++yflux_for_Y_mfi)
     {
         BL_ASSERT (
-	    update_for_H_mfi.isValid() &&
-	    update_for_Y_mfi.isValid() &&
+	    div_of_flux_for_H_mfi.isValid() &&
+	    div_of_flux_for_Y_mfi.isValid() &&
 	    xflux_for_H_mfi.isValid() &&
 	    yflux_for_H_mfi.isValid() &&
 	    xflux_for_Y_mfi.isValid() &&
@@ -110,10 +117,9 @@ c     arguments are alphabetical, mostly:
 c
 c     domain_lo, domain_hi,             ! INPUT limits of valid region of the domain
 c     lo, hi,                           ! INPUT limits of valid region of the box
-c     areax, DIMS(areax),               ! INPUT areas of the faces perpendicular to x axis
-c     areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
+c   * areax, DIMS(areax),               ! INPUT areas of the faces perendicular to x axis
+c   * areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
 c     bc,                               ! INPUT boundary condition array for all comps
-c     dt,                               ! INPUT timestep
 c     dx,                               ! INPUT physical dimensions of grid cells
 c     index_of_firstY,                  ! INPUT index of rho Y for the first species in the state
 c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
@@ -124,14 +130,17 @@ c     maximum_error,                    ! INPUT maximum error in calculation of 
 c     maximum_iterations,               ! INPUT maximum iterations in calculation of T
 c     ncomps,                           ! INPUT total number of components in the state
 c     nspecies,                         ! INPUT total number of species in the state
+c     scale_factor,                     ! INPUT scale_factor
 c     state, DIMS(state),               ! INPUT all variables in the state
-c     update_for_H, DIMS(update_for_H), ! OUTPUT divergences of the fluxes
-c     update_for_Y, DIMS(update_for_Y), ! OUTPUT divergences of the fluxes
-c     volume, DIMS(volume),             ! INPUT volumes of the cells
-c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT x fluxes for enthalpy
-c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT x fluxes for species
-c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT y fluxes for enthalpy
-c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
+c   * volume, DIMS(volume),             ! INPUT volumes of the cells
+c     div_of_flux_for_H, DIMS(div_of_flux_for_H), ! OUTPUT divergence of the flux for rho H
+c     div_of_flux_for_Y, DIMS(div_of_flux_for_Y), ! OUTPUT divergences of the fluxes for rho Y
+c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT extensive x fluxes for rho H
+c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT extensive x fluxes for rho Y
+c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT extensive y fluxes for rho H
+c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT extensive y fluxes for rho Y
+c
+c     * these arguments are not used
 */
 
 #define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
@@ -152,7 +161,6 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 		 DATA_AND_LIMITS(area[0][idx]),
 		 DATA_AND_LIMITS(area[1][idx]),
 		 bc.dataPtr(),
-		 &dt,
 		 geom.CellSize(),
 		 &fort_index_of_firstY,
 		 &fort_index_of_lastY,
@@ -163,10 +171,11 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 		 &maximum_iterations,
 		 &ncomps,
 		 &nspecies,
+		 &scale_factor,
 		 DATA_AND_LIMITS(state_fpi()),
-		 DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
-		 DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
 		 DATA_AND_LIMITS(volume[idx]),
+		 DATA_AND_LIMITS((*div_of_flux_for_H)[div_of_flux_for_H_mfi]),
+		 DATA_AND_LIMITS((*div_of_flux_for_Y)[div_of_flux_for_Y_mfi]),
 		 DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
 		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
 		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
@@ -184,7 +193,6 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 		 DATA_AND_LIMITS(area[0][idx]),
 		 DATA_AND_LIMITS(area[1][idx]),
 		 bc.dataPtr(),
-		 &dt,
 		 geom.CellSize(),
 		 &fort_index_of_firstY,
 		 &fort_index_of_lastY,
@@ -195,10 +203,11 @@ c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT y fluxes for species
 		 &maximum_iterations,
 		 &ncomps,
 		 &nspecies,
+		 &scale_factor,
 		 DATA_AND_LIMITS(state_fpi()),
-		 DATA_AND_LIMITS((*update_for_H)[update_for_H_mfi]),
-		 DATA_AND_LIMITS((*update_for_Y)[update_for_Y_mfi]),
 		 DATA_AND_LIMITS(volume[idx]),
+		 DATA_AND_LIMITS((*div_of_flux_for_H)[div_of_flux_for_H_mfi]),
+		 DATA_AND_LIMITS((*div_of_flux_for_Y)[div_of_flux_for_Y_mfi]),
 		 DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
 		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
 		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
