@@ -228,8 +228,8 @@ c     debug variables
       integer jdx
       logical debug
       logical debug2
-      debug = .true.
-      debug2 = .true.
+      debug = .false.
+      debug2 = .false.
       idx = hi(1)
       jdx = hi(2)
       idx = 3
