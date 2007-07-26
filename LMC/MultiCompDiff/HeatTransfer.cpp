@@ -3567,6 +3567,8 @@ HeatTransfer::mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCom
 
 #include "print_values.cpp"
 
+#include "print_change_of_values.cpp"
+
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 						    int       sComp,
@@ -4285,7 +4287,7 @@ HeatTransfer::advance (Real time,
 	print_values ("point A1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
-    //  state modification:
+    //  state modification A:
     //  advance_setup changes old v, rho, rhoY, rhoH, T, rhoRT
 
     advance_setup(time,dt,iteration,ncycle);
@@ -4375,7 +4377,7 @@ HeatTransfer::advance (Real time,
 	print_values ("point B1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
-    //  state modification:
+    //  state modification B:
     //  the following block changes old rhoY, T
 
     {
@@ -4494,7 +4496,7 @@ HeatTransfer::advance (Real time,
 	print_values ("point C1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
-    //  state modification:
+    //  state modification C:
     //  scalar_update changes new rho
 
     //
@@ -4521,7 +4523,7 @@ HeatTransfer::advance (Real time,
 	print_values ("point D1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
-    //  state modification:
+    //  state modification D:
     //  reset_rho_in_rho_states changes new rhoY, rhoH
 
     //
@@ -4541,18 +4543,24 @@ HeatTransfer::advance (Real time,
     if (do_mom_diff == 1)
 	momentum_advection(dt,do_reflux);
 
+    // JFG: must remove this declaration when not debugging
+    MultiFab save_new (grids, NUM_STATE, 0);
+    if (debug_changes) {
+	MultiFab& S_new = get_new_data(State_Type);
+	MultiFab& S_old = get_old_data(State_Type);
+	print_values ("point E1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+	print_values ("point E1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
+
+	// note the arguments for MultiFab:: procedures are 
+	// (dst, src, srccomp, dstcomp, ncomp, nghost);
+	MultiFab::Copy (save_new, S_new, 0, 0, NUM_STATE, 0);
+    }
+    
+    //  state modification E:
+    //  the following independent blocks (rk, mc, and original)  change new rhoY, rhoH, T
+
     if (do_rk_diffusion)
     {
-        if (debug_changes) {
-            MultiFab& S_new = get_new_data(State_Type);
-            MultiFab& S_old = get_old_data(State_Type);
-            print_values ("point E1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-            print_values ("point E1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-        }
-
-        //  state modification:
-        //  the following block changes new rhoY, rhoH, T
-
         //
         // Update energy and species: Runge-Kutta method.
         //
@@ -4762,18 +4770,8 @@ HeatTransfer::advance (Real time,
     }
     else if (do_mcdd)
     {
-        if (debug_changes) {
-            MultiFab& S_new = get_new_data(State_Type);
-            MultiFab& S_old = get_old_data(State_Type);
-	    print_values ("point E2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	    print_values ("point E2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-        }
-
-        //  state modification:
-        //  the following block probably changes new rhoY, rhoH, T
-	
         //
-        // Update energy and species, Marc's differential diffusion version.
+        // Update energy and species: Marc's multicomponent differential diffusion.
         //
 
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // RhoH aofs, already did others
@@ -4781,17 +4779,7 @@ HeatTransfer::advance (Real time,
     }
     else
     {
-        if (debug_changes) {
-            MultiFab& S_new = get_new_data(State_Type);
-            MultiFab& S_old = get_old_data(State_Type);
-	    print_values ("point E3 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	    print_values ("point E3 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-        }
-
-        //  state modification:
-        //  the following block probably changes new rhoY, rhoH, T
-	
-        //
+	//
         // Update energy and species: original version.
         //
 
@@ -4847,8 +4835,17 @@ HeatTransfer::advance (Real time,
     if (debug_changes) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
-        print_values ("point E4 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-        print_values ("point E4 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
+        print_values ("point E2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
+
+	for (int ii = i_c-2; ii <= i_c+2; ++ii) {
+	    for (int jj = j_c-2; ii <= j_c+2; ++jj) {
+		print_values ("point E2 S_new", ii, jj, 0, NUM_STATE, &S_new);
+	    }
+	}
+
+        print_values ("point E2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
+
+        print_change_of_values ("point E new", i_c, j_c, 0, NUM_STATE, &save_new, &S_new);
     }
 
     //
@@ -4886,7 +4883,7 @@ HeatTransfer::advance (Real time,
 	print_values ("point F1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
-    //  state modification:
+    //  state modification F:
     //  strang_chem changes new rhoY, T
 
     strang_chem(S_new,dt,HT_EstimateYdotNew);
@@ -4935,7 +4932,7 @@ HeatTransfer::advance (Real time,
 	print_values ("point G1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
-    //  state modification:
+    //  state modification G:
     //  setThermoPress changes new rhoRT
 
     //
@@ -4993,7 +4990,7 @@ HeatTransfer::advance (Real time,
 	print_values ("point H1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
-    //  state modification:
+    //  state modification H:
     //  velocity_update changes new v
 
     //
@@ -5017,7 +5014,7 @@ HeatTransfer::advance (Real time,
 	print_values ("point I1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
-    //  state modification:
+    //  state modification I:
     //  the following block changes new v
             
     //

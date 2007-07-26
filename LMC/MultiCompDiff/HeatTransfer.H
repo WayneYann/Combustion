@@ -197,6 +197,14 @@ public:
 		       const int first,
 		       const int number,
 		       MultiFab *multifab);
+
+    void print_change_of_values (const char* message,
+				 const int i_coordinate,
+				 const int j_coordinate,
+				 const int first,
+				 const int number,
+				 MultiFab *old_mf,
+				 MultiFab *new_mf);
     //
     // Make rho at time n.
     //

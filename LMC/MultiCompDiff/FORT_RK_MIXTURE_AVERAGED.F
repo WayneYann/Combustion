@@ -228,8 +228,10 @@ c     debug variables
       integer jdx
       logical debug
       logical debug2
-      debug = .false.
+      logical debug3
+      debug = .true.
       debug2 = .false.
+      debug3 = .true.
       idx = hi(1)
       jdx = hi(2)
       idx = 3
@@ -889,6 +891,12 @@ c///
      &              * ((xflux_for_Y(i+1,j,n) - xflux_for_Y(i,j,n))
      &              + (yflux_for_Y(i,j+1,n) - yflux_for_Y(i,j,n)))
             end do
+
+            if (debug3 .and. i .eq. idx .and. j .eq. jdx) then
+               print *
+               print *, "setting value of div_of_flux_for_Y"
+               call change_values (div_of_flux_for_Y, DIMS(div_of_flux_for_Y), nspecies, idx, jdx, 1, 1.0d-2)
+            end if
          end do
       end do
 
@@ -920,8 +928,32 @@ c///  end of FORT_RK_MIXTURE_AVERAGED
 c///
 
       if (debug) print *, "JFG: at bottom of FORT_RK_MIXTURE_AVERAGED"
-      if (debug) stop
+      if (debug .and. .not. debug3) stop
 
       return
       end
 
+      subroutine change_values 
+     &     (array, lo1, lo2, hi1, hi2, ncomps,
+     &     i_loc, j_loc, comp, value)
+
+      integer comp
+      integer i
+      integer i_loc
+      integer j
+      integer j_loc
+      integer lo1, lo2, hi1, hi2
+      integer n
+      integer ncomps
+      REAL_T array(lo1 : hi1, lo2 : hi2, ncomps)
+      REAL_T value
+
+      if (lo1 .le. i_loc .and. i_loc .le. hi1 .and.
+     &    lo2 .le. j_loc .and. j_loc .le. hi2) then
+         print *, i_loc, j_loc, comp, value
+         print *
+         array(i_loc, j_loc, comp) = value
+      end if
+
+      return
+      end
