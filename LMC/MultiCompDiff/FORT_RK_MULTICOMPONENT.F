@@ -235,7 +235,8 @@ c     debug variables
       integer jdx
       logical debug
       logical debug2
-      debug = .false.
+c     debug prints patches
+      debug = .true.
       debug2 = .false.
       idx = hi(1)
       jdx = hi(2)
@@ -998,7 +999,7 @@ c///  end of FORT_RK_MULTICOMPONENT
 c///
 
       if (debug) print *, "JFG: at bottom of FORT_RK_MULTICOMPONENT"
-      if (debug) stop
+c      if (debug) stop
 
       return
       end

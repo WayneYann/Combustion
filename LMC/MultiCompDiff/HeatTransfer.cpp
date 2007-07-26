@@ -3,6 +3,10 @@
 // "Dsdt_Type" means pd S/pd t, where S is as above
 // "Ydot_Type" means -omega_l/rho, i.e., the mass rate of decrease of species l due
 //
+
+// this is some of Joe's debug stuff
+// #define PRINT_CHANGES
+
 #include <winstd.H>
 
 #include <iostream>
@@ -4276,11 +4280,12 @@ HeatTransfer::advance (Real time,
     }
 
     //  debug by tracing changes to S_old and S_new
-    bool debug_changes = true;
+    bool debug_values = false;
+    bool debug_changes = false;
     int i_c = 3;
     int j_c = 127;
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point A1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4292,7 +4297,7 @@ HeatTransfer::advance (Real time,
 
     advance_setup(time,dt,iteration,ncycle);
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point A2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4370,7 +4375,7 @@ HeatTransfer::advance (Real time,
     // due to not being recached appropriately after regridding.
     //
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point B1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4419,7 +4424,7 @@ HeatTransfer::advance (Real time,
 
         aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
     }
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point B2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4489,7 +4494,7 @@ HeatTransfer::advance (Real time,
         const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
         Rho_hold[mfi.index()].copy((*rho_ctime)[mfi],box,0,box,0,1);
     }
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point C1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4505,7 +4510,7 @@ HeatTransfer::advance (Real time,
     const int rho_corr = 1;
     scalar_update(dt,Density,Density,rho_corr);
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point C2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4516,7 +4521,7 @@ HeatTransfer::advance (Real time,
     // Set saved rho at current time.
     //
     make_rho_curr_time();
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point D1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4530,7 +4535,7 @@ HeatTransfer::advance (Real time,
     // Reset rho-states to contain new rho.
     //
     reset_rho_in_rho_states(Rho_hold,cur_time,first_scalar+1,NUM_SCALARS-1);
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point D2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4543,9 +4548,12 @@ HeatTransfer::advance (Real time,
     if (do_mom_diff == 1)
 	momentum_advection(dt,do_reflux);
 
-    // JFG: must remove this declaration when not debugging
+#ifdef PRINT_CHANGES
     MultiFab save_new (grids, NUM_STATE, 0);
-    if (debug_changes) {
+    MultiFab::Copy (save_new, S_new, 0, 0, NUM_STATE, 0);
+#endif
+
+    if (debug_values) {
 	MultiFab& S_new = get_new_data(State_Type);
 	MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point E1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4553,7 +4561,6 @@ HeatTransfer::advance (Real time,
 
 	// note the arguments for MultiFab:: procedures are 
 	// (dst, src, srccomp, dstcomp, ncomp, nghost);
-	MultiFab::Copy (save_new, S_new, 0, 0, NUM_STATE, 0);
     }
     
     //  state modification E:
@@ -4832,21 +4839,16 @@ HeatTransfer::advance (Real time,
         BL_PROFILE_STOP(ctimer);
     }
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
         print_values ("point E2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-
-	for (int ii = i_c-2; ii <= i_c+2; ++ii) {
-	    for (int jj = j_c-2; ii <= j_c+2; ++jj) {
-		print_values ("point E2 S_new", ii, jj, 0, NUM_STATE, &S_new);
-	    }
-	}
-
         print_values ("point E2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-
-        print_change_of_values ("point E new", i_c, j_c, 0, NUM_STATE, &save_new, &S_new);
     }
+
+#ifdef PRINT_CHANGES
+    print_change_of_values ("point E new", i_c, j_c, 0, NUM_STATE, &save_new, &S_new);
+#endif
 
     //
     // Second half of Strang-split chemistry (first half done in
@@ -4876,7 +4878,7 @@ HeatTransfer::advance (Real time,
     }
 #endif
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point F1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4888,7 +4890,7 @@ HeatTransfer::advance (Real time,
 
     strang_chem(S_new,dt,HT_EstimateYdotNew);
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point F2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4925,7 +4927,7 @@ HeatTransfer::advance (Real time,
     //
     calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point G1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4942,7 +4944,7 @@ HeatTransfer::advance (Real time,
     //
     setThermoPress(cur_time);
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point G2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4983,7 +4985,7 @@ HeatTransfer::advance (Real time,
     if (NavierStokes::initial_step)
         MultiFab::Copy(get_old_data(Dsdt_Type),get_new_data(Dsdt_Type),0,0,1,0);
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point H1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -4998,7 +5000,7 @@ HeatTransfer::advance (Real time,
     //
     velocity_update(dt);
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point H2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -5007,7 +5009,7 @@ HeatTransfer::advance (Real time,
 
     advance_cleanup(dt,iteration,ncycle);
 
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point I1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
@@ -5037,7 +5039,7 @@ HeatTransfer::advance (Real time,
         if (level > 0 && iteration == 1) p_avg->setVal(0);
     }
     
-    if (debug_changes) {
+    if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
 	print_values ("point I2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);

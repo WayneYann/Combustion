@@ -187,6 +187,10 @@ c     * these arguments are not used
 	else
 	{
 	    // do mixture averaged
+
+	    if (ParallelDescriptor::IOProcessor())
+		std::cout << "JFG: about to call FORT_RK_MIXTURE_AVERAGED\n" << std::flush;
+	    
 	    FORT_RK_MIXTURE_AVERAGED
 		(geom.Domain().loVect(), geom.Domain().hiVect(), 
 		 grids[idx].loVect(), grids[idx].hiVect(),
@@ -212,6 +216,9 @@ c     * these arguments are not used
 		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
 		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
 		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
+
+	    if (ParallelDescriptor::IOProcessor())
+		std::cout << "JFG: returned from FORT_RK_MIXTURE_AVERAGED\n" << std::flush;
 	}
 
         // BoxLib::Abort("JFG: stopping here for now");

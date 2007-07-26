@@ -229,11 +229,10 @@ c     debug variables
       logical debug
       logical debug2
       logical debug3
-      debug = .true.
+c     debug prints patches
+      debug = .false.
       debug2 = .false.
-      debug3 = .true.
-      idx = hi(1)
-      jdx = hi(2)
+      debug3 = .false.
       idx = 3
       jdx = 127
 
@@ -895,7 +894,7 @@ c///
             if (debug3 .and. i .eq. idx .and. j .eq. jdx) then
                print *
                print *, "setting value of div_of_flux_for_Y"
-               call change_values (div_of_flux_for_Y, DIMS(div_of_flux_for_Y), nspecies, idx, jdx, 1, 1.0d-2)
+               call change_values (div_of_flux_for_Y, DIMS(div_of_flux_for_Y), nspecies, idx, jdx, 1, 1.0d-3)
             end if
          end do
       end do
@@ -928,7 +927,7 @@ c///  end of FORT_RK_MIXTURE_AVERAGED
 c///
 
       if (debug) print *, "JFG: at bottom of FORT_RK_MIXTURE_AVERAGED"
-      if (debug .and. .not. debug3) stop
+c      if (debug) stop
 
       return
       end
@@ -950,8 +949,7 @@ c///
 
       if (lo1 .le. i_loc .and. i_loc .le. hi1 .and.
      &    lo2 .le. j_loc .and. j_loc .le. hi2) then
-         print *, i_loc, j_loc, comp, value
-         print *
+         print *, "i = ", i_loc, "j = ", j_loc, "comp = ", comp, "value = ", value
          array(i_loc, j_loc, comp) = value
       end if
 
