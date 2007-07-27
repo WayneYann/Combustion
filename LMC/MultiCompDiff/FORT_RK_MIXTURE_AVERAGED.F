@@ -420,8 +420,10 @@ c           evaluate the value for T on the edge
 c           for Dirichlet (external) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             if (at_lo .and. lo_dirichlet_for_T) then
+c              take the boundary value in state rather than the computed value in T
                T_on_edge = state(i-1, j, index_of_T)
             else if (at_hi .and. hi_dirichlet_for_T) then
+c              take the boundary value in state rather than the computed value in T
                T_on_edge = state(i, j, index_of_T)
             else
                T_on_edge = 0.5d0 * (T(i-1,j) + T(i,j))
@@ -709,8 +711,10 @@ c           evaluate the value for T on the edge
 c           for Dirichlet (external) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             if (at_lo .and. lo_dirichlet_for_T) then
+c              take the boundary value in state rather than the computed value in T
                T_on_edge = state(i, j-1, index_of_T)
             else if (at_hi .and. hi_dirichlet_for_T) then
+c              take the boundary value in state rather than the computed value in T
                T_on_edge = state(i, j, index_of_T)
             else
                T_on_edge = 0.5d0 * (T(i,j-1) + T(i,j))
@@ -724,9 +728,9 @@ c           for Dirichlet (external) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             do n = 1,nspecies
                if (at_lo .and. lo_dirichlet_for_Y) then
-                  Y_on_edge(n) = state(i, j-1, offset + n)
+                  Y_on_edge(n) = Y(i, j-1, n)
                else if (at_hi .and. hi_dirichlet_for_Y) then
-                  Y_on_edge(n) = state(i, j, offset + n)
+                  Y_on_edge(n) = Y(i, j, n)
                else
                   Y_on_edge(n) = 0.5d0 * (Y(i,j-1,n) + Y(i,j,n))
                end if
