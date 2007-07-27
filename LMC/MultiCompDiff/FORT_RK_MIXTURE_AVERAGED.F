@@ -151,6 +151,7 @@ c     local variables
       REAL_T area_for_y
       REAL_T ambient_pressure_cgs
       REAL_T ambient_pressure_si
+      REAL_T coefficient
       REAL_T contiguous_Y
       REAL_T cpms_on_edge
       REAL_T derivative_of_T
@@ -308,7 +309,7 @@ c     get reciprocals of molecular weights
          print *, one_over_wt
       end if
 
-c     calculate T, X, and Y from rho, rho H and rho Y in the state
+c     form rho_Y, T, X, and Y from rho, rho H and rho Y in the state
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
             one_over_rho = 1.0d0 / state(i, j, index_of_rho)
