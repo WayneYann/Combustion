@@ -3357,6 +3357,11 @@ HeatTransfer::mcdd_update(Real time,
         std::cout << "... mcdd update for RhoH and RhoY" << '\n';
 
     // Get advection updates into new-time state
+    // JFG in mcdd_update: 
+    // 1) can this be called twice?  not sure, careful about loading flux registers twice
+    // 2) why is rhoh done separately?  maybe not contiguous with species
+    // 3) the chem terms are in old and new
+    // warning this may update flux registers
     scalar_advection_update(dt, first_spec, last_spec);
     scalar_advection_update(dt, RhoH, RhoH);
     if (hack_nospecdiff==1)
@@ -4281,7 +4286,6 @@ HeatTransfer::advance (Real time,
 
     //  debug by tracing changes to S_old and S_new
     bool debug_values = false;
-    bool debug_changes = false;
     int i_c = 3;
     int j_c = 127;
 
@@ -4472,6 +4476,9 @@ HeatTransfer::advance (Real time,
     const int first_scalar = Density;
     const int last_scalar = first_scalar + NUM_SCALARS - 1;
     bool do_adv_reflux = true;
+// JFG: here is the call that loadsi into aofs 
+//  want to do this for firt to last species.
+// JFG: the flag true means to load the advective flux registers into aofs
     if (RhoH > first_scalar)
 	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
     if (RhoH < last_scalar)
@@ -4580,6 +4587,7 @@ HeatTransfer::advance (Real time,
 	int jdx = 127;
 
 	// finish the advective update by including rho H.
+	// JFG: what does this flag do?
 	bool do_adv_reflux = true;
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux);
 
@@ -4606,15 +4614,7 @@ HeatTransfer::advance (Real time,
 		      NUM_STATE,
 		      &S_new);
 */
-	// the new state currently holds the sum of the old state and the forcing 
-	// and advection terms.  save these values.
-	MultiFab save_for_rhoH (grids, 1, 0);
-	MultiFab save_for_rhoY (grids, nspecies, 0);
-	// note the arguments for MultiFab:: procedures are 
-	// (dst, src, srccomp, dstcomp, ncomp, nghost);
-	MultiFab::Copy (save_for_rhoH, S_new, index_of_rhoH, 0, 1, 0);
-	MultiFab::Copy (save_for_rhoY, S_new, index_of_firstY, 0, nspecies, 0);
-
+	// the old state currently holds the time n values plus the half step chemistry
 	// apply the diffusion operator to the old state to get fluxes and updates
         // associated with the old state
 	MultiFab* div_of_flux_for_H_old;
@@ -4646,6 +4646,19 @@ HeatTransfer::advance (Real time,
 		      nspecies,
 		      div_of_flux_for_Y_old);
 */
+	// the new state currently holds the time n values plus the half step chemistry
+	// add the advective terms to the new state
+	scalar_advection_update(dt, first_spec, last_spec);
+	scalar_advection_update(dt, RhoH, RhoH);
+
+	// save these values.
+	MultiFab save_for_rhoH (grids, 1, 0);
+	MultiFab save_for_rhoY (grids, nspecies, 0);
+	// note the arguments for MultiFab:: procedures are 
+	// (dst, src, srccomp, dstcomp, ncomp, nghost);
+	MultiFab::Copy (save_for_rhoH, S_new, index_of_rhoH, 0, 1, 0);
+	MultiFab::Copy (save_for_rhoY, S_new, index_of_firstY, 0, nspecies, 0);
+
 	// form the new_star state in the new state by adding the updates associated 
         // with the old state
 	MultiFab::Add (S_new, *div_of_flux_for_H_old, 0, index_of_rhoH, 1, 0);
