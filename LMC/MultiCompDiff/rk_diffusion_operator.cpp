@@ -67,6 +67,13 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     div_of_flux_for_H = new MultiFab(grids,1,ngrow);
     div_of_flux_for_Y = new MultiFab(grids,nspecies,ngrow);
 
+/*
+must have bool fill patch iterator bndry data ok = false
+so the fpi copies in the chem advanced boundary data in the
+rountine that pverrides a amrlib rouine at the very end
+of the fpi rouitne  "set prefered boundary values"
+*/
+
     // loop over fabs in the state at the specified time
     MultiFab dummy (grids,1,0,Fab_noallocate);
     MFIter div_of_flux_for_H_mfi(*div_of_flux_for_H);

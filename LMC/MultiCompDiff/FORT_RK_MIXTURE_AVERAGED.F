@@ -180,10 +180,14 @@ c     local variables
       REAL_T residual
       REAL_T rho_Dmix_on_edge_si
       REAL_T rho_Upsilon_on_edge_cgs
+      REAL_T rho_Y
+      REAL_T rho_Y_on_edge
       REAL_T RUC
       REAL_T scale_factor_over_volume
       REAL_T sum_h_xflux_for_Y
       REAL_T sum_h_yflux_for_Y
+      REAL_T sum_of_fluxes
+      REAL_T sum_of_rho_Y
       REAL_T T
       REAL_T T_on_edge
       REAL_T universal_gas_constant_cgs
@@ -201,6 +205,8 @@ c     local variables
       allocatable residual
       allocatable rho_Dmix_on_edge_si
       allocatable rho_Upsilon_on_edge_cgs
+      allocatable rho_Y
+      allocatable rho_Y_on_edge
       allocatable T
       allocatable wt
       allocatable X
@@ -216,6 +222,8 @@ c     local variables
       dimension residual (:)
       dimension rho_Dmix_on_edge_si (:)
       dimension rho_Upsilon_on_edge_cgs (:)
+      dimension rho_Y (:,:,:)
+      dimension rho_Y_on_edge (:)
       dimension T (:,:)
       dimension wt (:)
       dimension X (:,:,:)
@@ -245,6 +253,8 @@ c     debug prints patches
       allocate (residual (maximum_iterations))
       allocate (rho_Dmix_on_edge_si (nspecies))
       allocate (rho_Upsilon_on_edge_cgs (nspecies))
+      allocate (rho_Y (DIMV(state), nspecies))
+      allocate (rho_Y_on_edge (nspecies))
       allocate (T (DIMV(state)))
       allocate (wt (nspecies))
       allocate (X (DIMV(state), nspecies))
@@ -304,6 +314,7 @@ c     calculate T, X, and Y from rho, rho H and rho Y in the state
             one_over_rho = 1.0d0 / state(i, j, index_of_rho)
             H = one_over_rho * state(i, j, index_of_rhoH)
             do n=1,nspecies
+               rho_Y(i, j, n) = state(i, j, offset + n)
                Y(i, j, n) = one_over_rho * state(i, j, offset + n)
             end do
             do n=1,nspecies
@@ -418,15 +429,18 @@ c           placed the boundary value in the ghost cell adjacent to the edge
 c           use a floored T just in case
             T_on_edge = MAX (TMIN_TRANS, T_on_edge)
 
-c           evaluate the values for Y on the edge
+c           evaluate the values for Y and rho_Y on the edge
 c           for Dirichlet (external) boundaries the fill patch iterator has
 c           placed the boundary value in the ghost cell adjacent to the edge
             do n = 1,nspecies
                if (at_lo .and. lo_dirichlet_for_Y) then
-                  Y_on_edge(n) = state(i-1, j, offset + n)
+                  rho_Y_on_edge(n) = rho_Y(i-1, j, n)
+                  Y_on_edge(n) = Y(i-1, j, n)
                else if (at_hi .and. hi_dirichlet_for_Y) then
-                  Y_on_edge(n) = state(i, j, offset + n)
+                  rho_Y_on_edge(n) = rho_Y(i, j, n)
+                  Y_on_edge(n) = Y(i, j, n)
                else
+                  rho_Y_on_edge(n) = 0.5d0 * (rho_Y(i-1,j,n) + rho_Y(i,j,n))
                   Y_on_edge(n) = 0.5d0 * (Y(i-1,j,n) + Y(i,j,n))
                end if
             end do
@@ -588,6 +602,22 @@ c           assemble the fluxes
      &           -  area_for_x
      &           * lambda_on_edge_si 
      &           * derivative_of_T
+
+c           flux correction
+            sum_of_fluxes = 0
+            sum_of_rho_Y = 0
+            do n=1,nspecies
+               sum_of_fluxes = sum_of_fluxes + xflux_for_Y(i,j,n)
+               sum_of_rho_Y = sum_of_rho_Y + rho_Y_on_edge(n)
+            end do
+            coefficient = sum_of_fluxes / sum_of_rho_Y
+            do n=1,nspecies
+               xflux_for_Y(i,j,n) 
+     &              = xflux_for_Y(i,j,n) 
+     &              - rho_Y_on_edge(n)
+     &              * coefficient
+            end do
+
          end do
       end do
 
@@ -697,6 +727,22 @@ c           placed the boundary value in the ghost cell adjacent to the edge
                else if (at_hi .and. hi_dirichlet_for_Y) then
                   Y_on_edge(n) = state(i, j, offset + n)
                else
+                  Y_on_edge(n) = 0.5d0 * (Y(i,j-1,n) + Y(i,j,n))
+               end if
+            end do
+
+c           evaluate the values for Y and rho_Y on the edge
+c           for Dirichlet (external) boundaries the fill patch iterator has
+c           placed the boundary value in the ghost cell adjacent to the edge
+            do n = 1,nspecies
+               if (at_lo .and. lo_dirichlet_for_Y) then
+                  rho_Y_on_edge(n) = rho_Y(i, j-1, n)
+                  Y_on_edge(n) = Y(i, j-1, n)
+               else if (at_hi .and. hi_dirichlet_for_Y) then
+                  rho_Y_on_edge(n) = rho_Y(i, j, n)
+                  Y_on_edge(n) = Y(i, j, n)
+               else
+                  rho_Y_on_edge(n) = 0.5d0 * (rho_Y(i,j-1,n) + rho_Y(i,j,n))
                   Y_on_edge(n) = 0.5d0 * (Y(i,j-1,n) + Y(i,j,n))
                end if
             end do
@@ -859,6 +905,21 @@ c           assemble the fluxes
      &           * lambda_on_edge_si 
      &           * derivative_of_T
 
+c           flux correction
+            sum_of_fluxes = 0
+            sum_of_rho_Y = 0
+            do n=1,nspecies
+               sum_of_fluxes = sum_of_fluxes + yflux_for_Y(i,j,n)
+               sum_of_rho_Y = sum_of_rho_Y + rho_Y_on_edge(n)
+            end do
+            coefficient = sum_of_fluxes / sum_of_rho_Y
+            do n=1,nspecies
+               yflux_for_Y(i,j,n) 
+     &              = yflux_for_Y(i,j,n) 
+     &              - rho_Y_on_edge(n)
+     &              * coefficient
+            end do
+
             if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
                print *, "sum_h_yflux_for_Y", sum_h_yflux_for_Y
                print *, "- area_for_y", - area_for_y
@@ -915,6 +976,8 @@ c///
       deallocate (residual)
       deallocate (rho_Dmix_on_edge_si)
       deallocate (rho_Upsilon_on_edge_cgs)
+      deallocate (rho_Y)
+      deallocate (rho_Y_on_edge)
       deallocate (T)
       deallocate (wt)
       deallocate (X)
