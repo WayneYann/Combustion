@@ -236,7 +236,7 @@ c     debug variables
       logical debug
       logical debug2
 c     debug prints patches
-      debug = .true.
+      debug = .false.
       debug2 = .false.
       idx = hi(1)
       jdx = hi(2)
