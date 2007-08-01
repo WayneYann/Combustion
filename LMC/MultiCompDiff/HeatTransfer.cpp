@@ -7682,6 +7682,9 @@ HeatTransfer::calc_divu (Real      time,
                          Real      dt,
                          MultiFab& divu)
 {
+    if (ParallelDescriptor::IOProcessor())
+	std::cout << "JFG: at top of calc_divu\n" << std::flush;
+
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calc_divu()");
     //
     // Get Mwmix, cpmix and pressure
@@ -7859,6 +7862,8 @@ HeatTransfer::calc_divu (Real      time,
             }
         }
     }
+    if (ParallelDescriptor::IOProcessor())
+	std::cout << "JFG: at bottom of calc_divu\n" << std::flush;
 }
 
 //
