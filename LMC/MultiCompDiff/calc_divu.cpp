@@ -7,7 +7,7 @@ HeatTransfer::calc_divu (Real      time,
 	std::cout << "JFG: at top of calc_divu\n" << std::flush;
 
     // choose a cell to inspect
-    bool debug_values = true;
+    bool debug_values = false;
     int idx = 3;
     int jdx = 127;
 
@@ -61,7 +61,7 @@ HeatTransfer::calc_divu (Real      time,
 	    T[i].copy(T_fpi(),0,0,1);
 	}
 
-	// get Y, which is needed only to get mmw and cp
+	// get Y, which is needed only to get cp, h_k, and mmw
 	MultiFab Y;
 	Y.define(grids,nspecies,nGrow,Fab_allocate);
 	
@@ -82,7 +82,7 @@ HeatTransfer::calc_divu (Real      time,
 		Y[i].mult(tmp,0,ispecies,1);
 	}
 	
-	// get cp, h for each species, and mmw
+	// get cp, h_k, and mmw
 	MultiFab cp(grids,1,nGrow);
 	MultiFab h(grids,nspecies,nGrow);
 	MultiFab mmw(grids,1,nGrow);
@@ -121,6 +121,9 @@ HeatTransfer::calc_divu (Real      time,
 	MultiFab term2A(grids,1,nGrow);
 	MultiFab term2B(grids,1,nGrow);
 
+        // note Ydot_Type appears to have 1 growth cell, but the following
+        // iterator discards that, so the following arithmetic can be done 
+        // without using boxes to restrict to the valid region
         for (FillPatchIterator Ydot_fpi(*this,divu,0,time,Ydot_Type,0,nspecies);
              Ydot_fpi.isValid();
              ++Ydot_fpi)
@@ -143,9 +146,13 @@ HeatTransfer::calc_divu (Real      time,
 		term2A[iGrid].divide(rho[iGrid],0,0,1);
 		// term2B = Ydot_n 
 		// JFG: should we divide ydot by rho?
+		// Ydot apparently is - omega, that is,
+                // it has a minus sign built in, so we
+                // only want an addition here.
 		term2B[iGrid].copy(Ydot_fpi(),n,0,1);
-		// term2A = term2A - term2B
-		term2A[iGrid].minus(term2B[iGrid],0,0,1);
+		// term2A = term2A - omega
+		// term2A = term2A + term2B
+		term2A[iGrid].plus(term2B[iGrid],0,0,1);
 
 		// term1A = term1A * term2A
 		term1A[iGrid].mult(term2A[iGrid],0,0,1);
@@ -353,5 +360,5 @@ HeatTransfer::calc_divu (Real      time,
     if (ParallelDescriptor::IOProcessor())
 	std::cout << "JFG: at bottom of calc_divu\n" << std::flush;
 
-    BoxLib::Abort("JFG: stopping here, for now");
+    // BoxLib::Abort("JFG: stopping here, for now");
 }

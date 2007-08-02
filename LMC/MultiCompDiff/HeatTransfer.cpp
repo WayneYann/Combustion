@@ -3732,6 +3732,8 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     //
     // NOTE: This routine does not fill grow cells
     //
+    // JFG: what does the rho_flag do?
+    //
     BL_ASSERT(visc_terms.boxArray()==grids);
 
     const int nGrow     = 0;
