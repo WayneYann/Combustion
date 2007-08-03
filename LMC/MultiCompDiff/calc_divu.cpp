@@ -7,7 +7,7 @@ HeatTransfer::calc_divu (Real      time,
 	std::cout << "JFG: at top of calc_divu\n" << std::flush;
 
     // choose a cell to inspect
-    bool debug_values = false;
+    bool debug_values = true;
     int idx = 3;
     int jdx = 127;
 
@@ -113,6 +113,8 @@ HeatTransfer::calc_divu (Real      time,
 	    divu[iGrid].divide(T[iGrid],grids[iGrid],0,0,1);
 	}
 
+	if (debug_values) print_values ("divu first term", idx, jdx, 0, 1, &divu);
+
 	// add to divu the products of the other terms
 
 	const Array<Real> mw = getChemSolve().speciesMolecWt();
@@ -158,6 +160,8 @@ HeatTransfer::calc_divu (Real      time,
 		term1A[iGrid].mult(term2A[iGrid],0,0,1);
 		// divu = divu + term1A
 		divu[iGrid].plus(term1A[iGrid],0,0,1);
+
+		if (debug_values) print_values ("divu species term", idx, jdx, 0, 1, &term1A);
 	    }
 	}
 
@@ -360,5 +364,5 @@ HeatTransfer::calc_divu (Real      time,
     if (ParallelDescriptor::IOProcessor())
 	std::cout << "JFG: at bottom of calc_divu\n" << std::flush;
 
-    // BoxLib::Abort("JFG: stopping here, for now");
+    BoxLib::Abort("JFG: stopping here, for now");
 }
