@@ -586,10 +586,10 @@ c           the pressure and density ratio, pressure_over_rho_on_edge_cgs, has u
 c
 c                            barye / (g / cm**3)
 c                 =          (1.0d-1 Pa) / ((1.0d-3 Kg) / (1.0d-2 m)**3)
-c                 = 1.0d-5 * Pa / (Kg / m**2)
+c                 = 1.0d-4 * Pa / (Kg / m**2)
 c
-c           so the cgs value must be multiplied by 1.0d-5 to convert it to si units.
-            pressure_over_rho_on_edge_si = 1.0d-5 * pressure_over_rho_on_edge_cgs 
+c           so the cgs value must be multiplied by 1.0d-4 to convert it to si units.
+            pressure_over_rho_on_edge_si = 1.0d-4 * pressure_over_rho_on_edge_cgs 
 
             if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
                print *, "hms_on_edge_si", hms_on_edge_si
@@ -896,10 +896,10 @@ c           the pressure and density ratio, pressure_over_rho_on_edge_cgs, has u
 c
 c                            barye / (g / cm**3)
 c                 =          (1.0d-1 Pa) / ((1.0d-3 Kg) / (1.0d-2 m)**3)
-c                 = 1.0d-5 * Pa / (Kg / m**2)
+c                 = 1.0d-4 * Pa / (Kg / m**2)
 c
-c           so the cgs value must be multiplied by 1.0d-5 to convert it to si units.
-            pressure_over_rho_on_edge_si = 1.0d-5 * pressure_over_rho_on_edge_cgs 
+c           so the cgs value must be multiplied by 1.0d-4 to convert it to si units.
+            pressure_over_rho_on_edge_si = 1.0d-4 * pressure_over_rho_on_edge_cgs 
 
             if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
                print *, "hms_on_edge_si", hms_on_edge_si
