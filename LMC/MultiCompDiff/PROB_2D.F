@@ -117,7 +117,7 @@ c
          write (6, "('       time  ', 1pe23.15e3)") time
          write (6, "('         dt  ', 1pe23.15e3)") dt
          write (6, "('       coft  ', 1pe23.15e3)") coft
-         write (6, "('       _new  ', 1pe23.15e3)") V_new
+         write (6, "('      V_new  ', 1pe23.15e3)") V_new
          write (6, "('     vslope  ', 1pe23.15e3)") vslope
          write (6, "('       cfix  ', 1pe23.15e3)") cfix
          write (6, "('     slocal  ', 1pe23.15e3)") slocal

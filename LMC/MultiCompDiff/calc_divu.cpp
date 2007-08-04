@@ -3,11 +3,11 @@ HeatTransfer::calc_divu (Real      time,
                          Real      dt,
                          MultiFab& divu)
 {
-    if (ParallelDescriptor::IOProcessor())
-	std::cout << "JFG: at top of calc_divu\n" << std::flush;
+//    if (ParallelDescriptor::IOProcessor())
+//	std::cout << "JFG: at top of calc_divu\n" << std::flush;
 
     // choose a cell to inspect
-    bool debug_values = true;
+    bool debug_values = false;
     int idx = 3;
     int jdx = 127;
 
@@ -35,14 +35,25 @@ HeatTransfer::calc_divu (Real      time,
 	MultiFab* div_of_flux_for_Y;
 	MultiFab** flux_for_H;
 	MultiFab** flux_for_Y;
+
+/*
+	// debug to see what happens with mixture averaged constraint
+	bool save_rk_mixture_averaged = rk_mixture_averaged;
+	rk_mixture_averaged = true;
+*/
 	
-	// the divergences should not be scaled by dt, so pass 1 as the dt argument
+	// the divergences should not be scaled, so pass 1 as the scaling argument
 	rk_diffusion_operator (time,
 			       1.0,
 			       div_of_flux_for_H,
 			       div_of_flux_for_Y,
 			       flux_for_H,
 			       flux_for_Y);
+
+/*
+	// debug to see what happens with mixture averaged constraint
+	rk_mixture_averaged = save_rk_mixture_averaged;
+*/
 
 	// get rho and T
 	MultiFab rho(grids,1,nGrow);
@@ -361,8 +372,8 @@ HeatTransfer::calc_divu (Real      time,
     }
     if (debug_values) print_values ("divu", idx, jdx, 0, 1, &divu);
 
-    if (ParallelDescriptor::IOProcessor())
-	std::cout << "JFG: at bottom of calc_divu\n" << std::flush;
+    //if (ParallelDescriptor::IOProcessor())
+//	std::cout << "JFG: at bottom of calc_divu\n" << std::flush;
 
-    BoxLib::Abort("JFG: stopping here, for now");
+    // BoxLib::Abort("JFG: stopping here, for now");
 }
