@@ -1,6 +1,6 @@
 
 #
-# $Id: Make.package,v 1.1 2007-05-16 17:50:43 sepp Exp $
+# $Id: Make.package,v 1.2 2007-08-06 19:31:23 sepp Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -15,4 +15,5 @@ ifeq (${USE_FLCTS}, TRUE)
    FEXE_sources += FLUCTFILE.F INFL_FORCE_$(DIM)D.F INFL_FORCE_F.F
 endif
 
-fEXE_sources += pmf_chem-H_037.f
+#fEXE_sources += pmf_chem-H_037.f
+fEXE_sources += pmf_chem-H_100.f
