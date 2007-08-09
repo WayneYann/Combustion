@@ -2,6 +2,7 @@
 // "Divu_Type" means S, where divergence U = S
 // "Dsdt_Type" means pd S/pd t, where S is as above
 // "Ydot_Type" means -omega_l/rho, i.e., the mass rate of decrease of species l due
+//             to kinetics divided by rho
 //
 
 // this is some of Joe's debug stuff
@@ -4575,6 +4576,9 @@ HeatTransfer::advance (Real time,
     //  state modification E:
     //  the following independent blocks (rk, mc, and original)  change new rhoY, rhoH, T
 
+    BL_PROFILE_TIMER(diffusiontimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-diffusion");
+    BL_PROFILE_START(diffusiontimer);
+
     if (do_rk_diffusion)
     {
         //
@@ -4853,6 +4857,8 @@ HeatTransfer::advance (Real time,
         
         BL_PROFILE_STOP(ctimer);
     }
+
+    BL_PROFILE_STOP(diffusiontimer);
 
     if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);

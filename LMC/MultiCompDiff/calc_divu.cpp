@@ -7,7 +7,7 @@ HeatTransfer::calc_divu (Real      time,
 //	std::cout << "JFG: at top of calc_divu\n" << std::flush;
 
     // choose a cell to inspect
-    bool debug_values = false;
+    bool debug_values = true;
     int idx = 3;
     int jdx = 127;
 
@@ -163,6 +163,7 @@ HeatTransfer::calc_divu (Real      time,
                 // it has a minus sign built in, so we
                 // only want an addition here.
 		term2B[iGrid].copy(Ydot_fpi(),n,0,1);
+		// term2B[iGrid].divide(rho[iGrid],0,0,1); // test to divide Ydot by rho
 		// term2A = term2A - omega
 		// term2A = term2A + term2B
 		term2A[iGrid].plus(term2B[iGrid],0,0,1);
@@ -175,8 +176,6 @@ HeatTransfer::calc_divu (Real      time,
 		if (debug_values) print_values ("divu species term", idx, jdx, 0, 1, &term1A);
 	    }
 	}
-
-	if (debug_values) print_values ("divu", idx, jdx, 0, 1, &divu);
 
 	// delete the space for fluxes and updates
 	delete div_of_flux_for_H;
