@@ -7433,7 +7433,7 @@ HeatTransfer::calcDiffusivity (const Real time,
 		<< "     src_comp = " << src_comp << std::endl
 		<< "     num_comp = " << num_comp << std::endl
 		<< "   do_VelVisc = " << do_VelVisc << std::endl
-		<< std::endl;
+		<< std::endl
 		<< "Doing nothing, returning immediately" << std::endl
 		<< std::endl;
 	}
