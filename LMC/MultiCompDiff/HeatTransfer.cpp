@@ -7422,8 +7422,23 @@ HeatTransfer::calcDiffusivity (const Real time,
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calcDiffusivity()");
 
-    if (do_mcdd)
+    if (do_mcdd || do_rk_diffusion)
+    {
+	if (ParallelDescriptor::IOProcessor())
+	{
+	    std::cout 
+		<< std::endl
+		<< "Entering calcDiffusivity for some reason" << std::endl
+		<< std::endl
+		<< "     src_comp = " << src_comp << std::endl
+		<< "     num_comp = " << num_comp << std::endl
+		<< "   do_VelVisc = " << do_VelVisc << std::endl
+		<< std::endl;
+		<< "Doing nothing, returning immediately" << std::endl
+		<< std::endl
+	}
         return;
+    }
 
     const TimeLevel whichTime = which_time(State_Type, time);
 
