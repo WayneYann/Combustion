@@ -88,7 +88,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 		    std::cout << "JFG: at top of getViscTerms do_rk_diffusion block\n" << std::flush;
 
 		// apply the diffusion operator to the old or new state to get updates
-		// associated with that state.  only the species updates are used here, 
+		// associated with that state.  only the species divergences are used here, 
 		// but space is still needed for the others.
 		MultiFab* div_of_flux_for_H;
 		MultiFab* div_of_flux_for_Y;
@@ -121,9 +121,9 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 		    std::cout << "JFG: at bottom of getViscTerms do_rk_diffusion block\n" << std::flush;
 	    }
 #endif
-	    else {
+	    else 
+	    {
 		// code for the original implementation
-
 		compute_differential_diffusion_terms(visc_terms,sCompY,time);
             }
         }
@@ -146,8 +146,75 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 			<< std::endl;
 		}
 
-                if (!do_mcdd) // Because in this case, was done above
+                if (do_mcdd) 
+		{
+		    // Do nothing, because in this case, was done above
+		}
+		else if (do_rk_diffusion)
+		{
+		    // code for Joe's Runge-Kutta diffusion
+		    
+		    if (ParallelDescriptor::IOProcessor())
+			std::cout << "JFG: at top of getViscTerms do_rk_diffusion block\n" << std::flush;
+		    
+		    // apply the diffusion operator to the old or new state to get updates
+		    // associated with that state.  only the species divergences are used here, 
+		    // but space is still needed for the others.
+		    MultiFab* div_of_flux_for_H;
+		    MultiFab* div_of_flux_for_Y;
+		    MultiFab** flux_for_H;
+		    MultiFab** flux_for_Y;
+		    
+		    // per the comments above, pass - 1.0 as the scaling argument.
+		    rk_diffusion_operator (time,
+					   - 1.0,
+					   div_of_flux_for_H,
+					   div_of_flux_for_Y,
+					   flux_for_H,
+					   flux_for_Y);
+		    
+		    MultiFab& S_old = get_old_data (State_Type);
+		    FArrayBox cpmix;
+		    FArrayBox h;
+		    FArrayBox Y;
+		    for (MFIter mfi (S_old); mfi.isValid (); ++mfi)
+		    {
+			const Box& box = mfi.validbox ();
+			// form Y
+			Y.resize (box, nspecies);
+			Y.copy (S_old[mfi], first_spec, 0, nspecies);
+			for (int k = 0; k < nspecies; ++k)
+			    Y.divide (S_old[mfi], Density, k, 1);
+			// form cpmix
+			cpmix.resize (box, 1);
+			getChemSolve().getCpmixGivenTY (cpmix, S_old[mfi], Y, box, Temp, 0, 0);
+			// form h_k
+			h.resize (box, nspecies);
+			getChemSolve ().getHGivenT(h, S_old[mfi], box, Temp, 0);
+			// assemble the right side of the temperature equation
+			// note the minus sign has been included in the scaling of the divergences
+			visc_terms[mfi].copy ((*div_of_flux_for_H)[mfi]);
+			h.mult ((*div_of_flux_for_Y)[mfi], 0, 0, nspecies);
+			for (int k = 0; k < nspecies; ++k)
+			    visc_terms[mfi].plus (h, k, 0, 1);
+			visc_terms[mfi].divide (cpmix);
+		    }
+		    
+		    // delete the space for fluxes and updates
+		    delete div_of_flux_for_H;
+		    delete div_of_flux_for_Y;
+		    diffusion->removeFluxBoxesLevel (flux_for_H);
+		    diffusion->removeFluxBoxesLevel (flux_for_Y);
+		    
+		    if (ParallelDescriptor::IOProcessor())
+			std::cout << "JFG: at bottom of getViscTerms do_rk_diffusion block\n" << std::flush;
+		}
+		else
+		{
+		    // code for the original implementation
                     getTempViscTerms(visc_terms,Temp-load_comp,time);
+		}
+
 	    }
 	    else if (icomp == RhoH)
 	    {
