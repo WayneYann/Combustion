@@ -32,14 +32,6 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     const TimeLevel whichTime = which_time(State_Type, time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
 
-    if (ParallelDescriptor::IOProcessor())
-    {
-	if (whichTime == AmrOldTime)
-	    std::cout << "JFG: time is AmrOldTime\n" << std::flush;
-	else
-	    std::cout << "JFG: time is AmrNewTime\n" << std::flush;
-    }
-
     // get some constants used as dimensions
     int ncomps = NUM_STATE;
     // const int nspecies = getChemSolve().numSpecies(); // this is globally defined
@@ -66,13 +58,6 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     diffusion->allocFluxBoxesLevel(flux_for_Y,ngrow,nspecies);
     div_of_flux_for_H = new MultiFab(grids,1,ngrow);
     div_of_flux_for_Y = new MultiFab(grids,nspecies,ngrow);
-
-/*
-must have bool fill patch iterator bndry data ok = false
-so the fpi copies in the chem advanced boundary data in the
-rountine that pverrides a amrlib rouine at the very end
-of the fpi rouitne  "set prefered boundary values"
-*/
 
     // loop over fabs in the state at the specified time
     MultiFab dummy (grids,1,0,Fab_noallocate);
@@ -109,17 +94,6 @@ of the fpi rouitne  "set prefered boundary values"
 	Array<int> bc = getBCArray (State_Type, idx, 0, ncomps);
 
 /*
-        // print some stuff
-	const int* lo_vect = grids[idx].loVect();
-	const int* hi_vect = grids[idx].hiVect();
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: in rk_diffusion\n" 
-		      << "state_fpi.index() = " << state_fpi.index() << "\n"
-		      << "lo_vect[0] = " << lo_vect[0] << "\n"
-		      << std::flush;
-*/
-
-/*
 c     arguments are alphabetical, mostly:
 c
 c     domain_lo, domain_hi,             ! INPUT limits of valid region of the domain
@@ -152,16 +126,9 @@ c     * these arguments are not used
 
 #define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
 
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: rk_mixture_averaged = " << rk_mixture_averaged << "\n" << std::flush;
-
 	if (!rk_mixture_averaged)
 	{
 	    // multicomponent is the default
-
-	    if (ParallelDescriptor::IOProcessor())
-		std::cout << "JFG: about to call FORT_RK_MULTICOMPONENT\n" << std::flush;
-	    
 	    FORT_RK_MULTICOMPONENT
 		(geom.Domain().loVect(), geom.Domain().hiVect(), 
 		 grids[idx].loVect(), grids[idx].hiVect(),
@@ -187,17 +154,10 @@ c     * these arguments are not used
 		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
 		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
 		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
-
-	    if (ParallelDescriptor::IOProcessor())
-		std::cout << "JFG: returned from FORT_RK_MULTICOMPONENT\n" << std::flush;
 	}
 	else
 	{
 	    // do mixture averaged
-
-	    if (ParallelDescriptor::IOProcessor())
-		std::cout << "JFG: about to call FORT_RK_MIXTURE_AVERAGED\n" << std::flush;
-	    
 	    FORT_RK_MIXTURE_AVERAGED
 		(geom.Domain().loVect(), geom.Domain().hiVect(), 
 		 grids[idx].loVect(), grids[idx].hiVect(),
@@ -223,9 +183,6 @@ c     * these arguments are not used
 		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
 		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
 		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
-
-	    if (ParallelDescriptor::IOProcessor())
-		std::cout << "JFG: returned from FORT_RK_MIXTURE_AVERAGED\n" << std::flush;
 	}
 
         // BoxLib::Abort("JFG: stopping here for now");

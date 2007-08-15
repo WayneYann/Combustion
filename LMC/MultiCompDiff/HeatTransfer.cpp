@@ -134,7 +134,6 @@ Real      HeatTransfer::mcdd_cfRelaxFactor        = 1.0;
 bool      HeatTransfer::do_rk_diffusion           = false;
 bool      HeatTransfer::rk_mixture_averaged       = false;
 Real      HeatTransfer::rk_time_step_multiplier   = 0.5;
-int       HeatTransfer::calcDiffusivity_count     = 0;
 
 static int  max_grid_size_chem   = 16;
 static bool do_not_use_funccount = false;
@@ -4303,15 +4302,7 @@ HeatTransfer::advance (Real time,
     //  state modification A:
     //  advance_setup changes old v, rho, rhoY, rhoH, T, rhoRT
 
-    if (ParallelDescriptor::IOProcessor())
-    {
-        std::cout << "about to call advance_setup" << std::endl;
-    }
     advance_setup(time,dt,iteration,ncycle);
-    if (ParallelDescriptor::IOProcessor())
-    {
-        std::cout << "returned from advance_setup" << std::endl;
-    }
 
     if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
@@ -4481,11 +4472,7 @@ HeatTransfer::advance (Real time,
     //
     // Godunov-extrapolate states to cell edges
     //
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "about to call compute_edge_states" << std::endl;
     compute_edge_states(dt);
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "returned from compute_edge_states" << std::endl;
     //
     // Compute advective fluxes divergences, where possible
     // NOTE: If Le!=1 cannot do RhoH advection until after spec update fills
@@ -4495,9 +4482,7 @@ HeatTransfer::advance (Real time,
     const int first_scalar = Density;
     const int last_scalar = first_scalar + NUM_SCALARS - 1;
     bool do_adv_reflux = true;
-// JFG: here is the call that loads into aofs 
-//  want to do this for first to last species.
-// JFG: the flag true means to load the advective flux registers into aofs
+    // JFG: the flag true means to load the advective flux registers into aofs
     if (RhoH > first_scalar)
 	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
     if (RhoH < last_scalar)
@@ -4601,9 +4586,6 @@ HeatTransfer::advance (Real time,
         // Update energy and species: Runge-Kutta method.
         //
 
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: at top of advance do_rk_diffusion block\n" << std::flush;
-
 	// choose a cell to inspect
 	int idx = 3;
 	int jdx = 127;
@@ -4634,9 +4616,6 @@ HeatTransfer::advance (Real time,
 	MultiFab** flux_for_H_old;
 	MultiFab** flux_for_Y_old;
 
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: at first call to diffusion operator\n" << std::flush;
-
 	rk_diffusion_operator (prev_time,
 			       - dt,
 			       div_of_flux_for_H_old,
@@ -4650,10 +4629,10 @@ HeatTransfer::advance (Real time,
 	// the new state currently holds the time n values plus the half step chemistry
 	// add the advective terms to the new state
 	scalar_advection_update(dt, first_spec, last_spec);
-	print_values ("S_new before scalar_advection_update", idx, jdx, 0, NUM_STATE, &S_new);
-	print_values ("aofs before scalar_advection_update", idx, jdx, 0, NUM_STATE, aofs);
+	// print_values ("S_new before scalar_advection_update", idx, jdx, 0, NUM_STATE, &S_new);
+	// print_values ("aofs before scalar_advection_update", idx, jdx, 0, NUM_STATE, aofs);
 	scalar_advection_update(dt, RhoH, RhoH);
-	print_values ("S_new after scalar_advection_update", idx, jdx, 0, NUM_STATE, &S_new);
+	// print_values ("S_new after scalar_advection_update", idx, jdx, 0, NUM_STATE, &S_new);
 
 	// save these values.
 	MultiFab save_for_rhoH (grids, 1, 0);
@@ -4674,9 +4653,6 @@ HeatTransfer::advance (Real time,
 	MultiFab* div_of_flux_for_Y_new;
 	MultiFab** flux_for_H_new;
 	MultiFab** flux_for_Y_new;
-
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: at second call to diffusion operator\n" << std::flush;
 
 	// print_values ("S_old before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_old);
 	// print_values ("S_new before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_new);
@@ -4717,9 +4693,6 @@ HeatTransfer::advance (Real time,
 	(*div_of_flux_for_Y_new).mult (0.5, 0);
 	MultiFab::Add (S_new, *div_of_flux_for_H_new, 0, index_of_rhoH, 1, 0);
 	MultiFab::Add (S_new, *div_of_flux_for_Y_new, 0, index_of_firstY, nspecies, 0);
-
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: at flux register updating\n" << std::flush;
 
 	// place into the flux registers the average of the old and new H fluxes
 	FArrayBox average_flux;
@@ -4790,10 +4763,6 @@ HeatTransfer::advance (Real time,
 		      &S_new);
 */
 
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: at bottom of advance do_rk_diffusion block\n" << std::flush;
-
-	// BoxLib::Abort("JFG: stopping here, for now");
     }
     else if (do_mcdd)
     {
@@ -6997,6 +6966,7 @@ HeatTransfer::calcDiffusivity (const Real time,
 
     if (do_mcdd || do_rk_diffusion)
     {
+/*
 	if (ParallelDescriptor::IOProcessor())
 	{
 	    calcDiffusivity_count += 1;
@@ -7012,7 +6982,8 @@ HeatTransfer::calcDiffusivity (const Real time,
 		<< "Doing nothing, returning immediately" << std::endl
 		<< std::endl;
 	}
-        if (calcDiffusivity_count == 3) BoxLib::Abort("Entering calcDiffusivity");
+        // if (calcDiffusivity_count == 3) BoxLib::Abort("Entering calcDiffusivity");
+*/
         return;
     }
 

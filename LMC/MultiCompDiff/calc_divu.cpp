@@ -3,12 +3,8 @@ HeatTransfer::calc_divu (Real      time,
                          Real      dt,
                          MultiFab& divu)
 {
-
-    if (ParallelDescriptor::IOProcessor())
-	std::cout << "JFG: at top of calc_divu\n" << std::flush;
-
     // choose a cell to inspect
-    bool debug_values = true;
+    bool debug_values = false;
     int idx = 3;
     int jdx = 127;
 
@@ -20,9 +16,6 @@ HeatTransfer::calc_divu (Real      time,
 	//
         // Calculate right side of constraint: Runge-Kutta operator.
         //
-
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: at top of calc_divu do_rk_diffusion block\n" << std::flush;
 
 	// check dt
 	BL_ASSERT(dt > 0);
@@ -183,9 +176,6 @@ HeatTransfer::calc_divu (Real      time,
 	delete div_of_flux_for_Y;
 	diffusion->removeFluxBoxesLevel (flux_for_H);
 	diffusion->removeFluxBoxesLevel (flux_for_Y);
-	
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "JFG: at bottom of calc_divu do_rk_diffusion block\n" << std::flush;
     }
     else
     {
@@ -371,9 +361,4 @@ HeatTransfer::calc_divu (Real      time,
 	}
     }
     if (debug_values) print_values ("divu", idx, jdx, 0, 1, &divu);
-
-    if (ParallelDescriptor::IOProcessor())
-	std::cout << "JFG: at bottom of calc_divu\n" << std::flush;
-
-    // BoxLib::Abort("JFG: stopping here, for now");
 }

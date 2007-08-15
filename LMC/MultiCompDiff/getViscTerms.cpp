@@ -1,8 +1,3 @@
-// this is some of Joe's debug stuff
-// define this to get the orginal visc terms
-// comment this out to get the new operator
-// #define ORIGINAL_GETVISCTERMS
-
 void
 HeatTransfer::getViscTerms (MultiFab& visc_terms,
                             int       src_comp, 
@@ -11,18 +6,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getViscTerms()");
 
-    if (ParallelDescriptor::IOProcessor())
-    {
-	std::cout 
-	    << std::endl
-	    << "Entering getViscTerms" << std::endl
-	    << std::endl
-	    << "             src_comp = " << src_comp << std::endl
-	    << "             num_comp = " << num_comp << std::endl
-	    << "                 time = " << time << std::endl
-	    << std::endl;
-    }
-    
     //
     // Load "viscous" terms, starting from component = 0.
     //
@@ -79,13 +62,9 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                 BL_ASSERT(sCompT > 0 && sCompT < visc_terms.nComp());
                 compute_mcdd_visc_terms(visc_terms,sCompY,visc_terms,sCompT,time,nGrow,DDOp::DD_Temp);
             }
-#ifndef ORIGINAL_GETVISCTERMS
             else if (do_rk_diffusion)
 	    {
 		// code for Joe's Runge-Kutta diffusion
-
-		if (ParallelDescriptor::IOProcessor())
-		    std::cout << "JFG: at top of getViscTerms do_rk_diffusion block\n" << std::flush;
 
 		// apply the diffusion operator to the old or new state to get updates
 		// associated with that state.  only the species divergences are used here, 
@@ -116,11 +95,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 		delete div_of_flux_for_Y;
 		diffusion->removeFluxBoxesLevel (flux_for_H);
 		diffusion->removeFluxBoxesLevel (flux_for_Y);
-
-		if (ParallelDescriptor::IOProcessor())
-		    std::cout << "JFG: at bottom of getViscTerms do_rk_diffusion block\n" << std::flush;
 	    }
-#endif
 	    else 
 	    {
 		// code for the original implementation
@@ -139,13 +114,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 	{
 	    if (icomp == Temp)
 	    {
-		if (ParallelDescriptor::IOProcessor())
-		{
-		    std::cout 
-			<< "At icomp == Temp in getViscTerms"
-			<< std::endl;
-		}
-
                 if (do_mcdd) 
 		{
 		    // Do nothing, because in this case, was done above
@@ -153,9 +121,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 		else if (do_rk_diffusion)
 		{
 		    // code for Joe's Runge-Kutta diffusion
-		    
-		    if (ParallelDescriptor::IOProcessor())
-			std::cout << "JFG: at top of getViscTerms do_rk_diffusion block\n" << std::flush;
 		    
 		    // apply the diffusion operator to the old or new state to get updates
 		    // associated with that state.  only the species divergences are used here, 
@@ -205,9 +170,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 		    delete div_of_flux_for_Y;
 		    diffusion->removeFluxBoxesLevel (flux_for_H);
 		    diffusion->removeFluxBoxesLevel (flux_for_Y);
-		    
-		    if (ParallelDescriptor::IOProcessor())
-			std::cout << "JFG: at bottom of getViscTerms do_rk_diffusion block\n" << std::flush;
 		}
 		else
 		{
@@ -218,14 +180,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 	    }
 	    else if (icomp == RhoH)
 	    {
-		if (ParallelDescriptor::IOProcessor())
-		{
-		    std::cout 
-			<< "At icomp == RhoH in getViscTerms"
-			<< std::endl;
-		}
-
-                if (do_mcdd)
+               if (do_mcdd)
                     // What to do here?  
                     BoxLib::Abort("do we really want to get RhoH VT when do_mcdd?");
 	    }
@@ -236,22 +191,11 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 
 		if (icomp == Density)
                 {
-		    if (ParallelDescriptor::IOProcessor())
-		    {
-			std::cout 
-			    << "At icomp == Density in getViscTerms"
-			    << std::endl;
-		    }
                     visc_terms.setVal(0.0,load_comp,1);
                 }
                 else
                 {
-		    if (ParallelDescriptor::IOProcessor())
-		    {
-			std::cout 
-			    << "At else in getViscTerms"
-			    << std::endl;
-		    }
+		    // JFG: can a return be placed here for rk_diffusion?
                     //
                     // Assume always variable viscosity / diffusivity.
                     //
