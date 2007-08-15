@@ -10,6 +10,19 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                             Real      time)
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getViscTerms()");
+
+    if (ParallelDescriptor::IOProcessor())
+    {
+	std::cout 
+	    << std::endl
+	    << "Entering getViscTerms" << std::endl
+	    << std::endl
+	    << "             src_comp = " << src_comp << std::endl
+	    << "             num_comp = " << num_comp << std::endl
+	    << "                 time = " << time << std::endl
+	    << std::endl;
+    }
+    
     //
     // Load "viscous" terms, starting from component = 0.
     //
@@ -19,8 +32,8 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     //
     //       j_k = - rho D_k,mix grad Y_k
     //
-    // so the divergence of the flux is div dot j_k.  instead this procedure returns 
-    // - div dot j_k.
+    // so the divergence of the flux, div dot j_k, has a negative in it.  instead 
+    // this procedure returns - div dot j_k to remove the negative.
     //
     // note the fluxes used in the code are extensive, that is, scaled by the areas
     // of the cell edges.  the calculation of the divergence is the sum of un-divided
@@ -126,11 +139,25 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 	{
 	    if (icomp == Temp)
 	    {
+		if (ParallelDescriptor::IOProcessor())
+		{
+		    std::cout 
+			<< "At icomp == Temp in getViscTerms"
+			<< std::endl;
+		}
+
                 if (!do_mcdd) // Because in this case, was done above
                     getTempViscTerms(visc_terms,Temp-load_comp,time);
 	    }
 	    else if (icomp == RhoH)
 	    {
+		if (ParallelDescriptor::IOProcessor())
+		{
+		    std::cout 
+			<< "At icomp == RhoH in getViscTerms"
+			<< std::endl;
+		}
+
                 if (do_mcdd)
                     // What to do here?  
                     BoxLib::Abort("do we really want to get RhoH VT when do_mcdd?");
@@ -142,10 +169,22 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 
 		if (icomp == Density)
                 {
+		    if (ParallelDescriptor::IOProcessor())
+		    {
+			std::cout 
+			    << "At icomp == Density in getViscTerms"
+			    << std::endl;
+		    }
                     visc_terms.setVal(0.0,load_comp,1);
                 }
                 else
                 {
+		    if (ParallelDescriptor::IOProcessor())
+		    {
+			std::cout 
+			    << "At else in getViscTerms"
+			    << std::endl;
+		    }
                     //
                     // Assume always variable viscosity / diffusivity.
                     //

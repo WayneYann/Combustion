@@ -134,6 +134,7 @@ Real      HeatTransfer::mcdd_cfRelaxFactor        = 1.0;
 bool      HeatTransfer::do_rk_diffusion           = false;
 bool      HeatTransfer::rk_mixture_averaged       = false;
 Real      HeatTransfer::rk_time_step_multiplier   = 0.5;
+int       HeatTransfer::calcDiffusivity_count     = 0;
 
 static int  max_grid_size_chem   = 16;
 static bool do_not_use_funccount = false;
@@ -4302,7 +4303,15 @@ HeatTransfer::advance (Real time,
     //  state modification A:
     //  advance_setup changes old v, rho, rhoY, rhoH, T, rhoRT
 
+    if (ParallelDescriptor::IOProcessor())
+    {
+        std::cout << "about to call advance_setup" << std::endl;
+    }
     advance_setup(time,dt,iteration,ncycle);
+    if (ParallelDescriptor::IOProcessor())
+    {
+        std::cout << "returned from advance_setup" << std::endl;
+    }
 
     if (debug_values) {
         MultiFab& S_new = get_new_data(State_Type);
@@ -4464,12 +4473,19 @@ HeatTransfer::advance (Real time,
     // Compute tn coeffs based on chem-advance tn data
     //  (these are used in the Godunov extrapolation)
     //
+    // JFG: perhaps this should be skipped for rk_diffusion
+    // since getVsicTerms computes its own diffusion coefficients
+    //
     const int nScalDiffs = NUM_STATE-BL_SPACEDIM-1;
     calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs);
     //
     // Godunov-extrapolate states to cell edges
     //
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "about to call compute_edge_states" << std::endl;
     compute_edge_states(dt);
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "returned from compute_edge_states" << std::endl;
     //
     // Compute advective fluxes divergences, where possible
     // NOTE: If Le!=1 cannot do RhoH advection until after spec update fills
@@ -4479,8 +4495,8 @@ HeatTransfer::advance (Real time,
     const int first_scalar = Density;
     const int last_scalar = first_scalar + NUM_SCALARS - 1;
     bool do_adv_reflux = true;
-// JFG: here is the call that loadsi into aofs 
-//  want to do this for firt to last species.
+// JFG: here is the call that loads into aofs 
+//  want to do this for first to last species.
 // JFG: the flag true means to load the advective flux registers into aofs
     if (RhoH > first_scalar)
 	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
@@ -4594,6 +4610,7 @@ HeatTransfer::advance (Real time,
 
 	// finish the advective update by including rho H.
 	// JFG: what does this flag do?
+	// is this working?
 	bool do_adv_reflux = true;
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux);
 
@@ -4605,21 +4622,10 @@ HeatTransfer::advance (Real time,
 	// get the old and new states
 	MultiFab& S_new = get_new_data(State_Type);
 	MultiFab& S_old = get_old_data(State_Type);
-/*
-	print_values ("S_old",
-		      idx,
-		      jdx,
-		      0,
-		      NUM_STATE,
-		      &S_old);
 
-	print_values ("initial S_new",
-		      idx,
-		      jdx,
-		      0,
-		      NUM_STATE,
-		      &S_new);
-*/
+	// print_values ("S_old before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_old);
+	// print_values ("S_new before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_new);
+
 	// the old state currently holds the time n values plus the half step chemistry
 	// apply the diffusion operator to the old state to get fluxes and updates
         // associated with the old state
@@ -4637,25 +4643,17 @@ HeatTransfer::advance (Real time,
 			       div_of_flux_for_Y_old,
 			       flux_for_H_old,
 			       flux_for_Y_old);
-/*
-	print_values ("div_of_flux_for_H_old",
-		      idx,
-		      jdx,
-		      0,
-		      1,
-		      div_of_flux_for_H_old);
 
-	print_values ("div_of_flux_for_Y_old",
-		      idx,
-		      jdx,
-		      0,
-		      nspecies,
-		      div_of_flux_for_Y_old);
-*/
+	// print_values ("div_of_flux_for_H_old", idx, jdx, 0, 1, div_of_flux_for_H_old);
+	// print_values ("div_of_flux_for_Y_old", idx, jdx, 0, nspecies, div_of_flux_for_Y_old);
+
 	// the new state currently holds the time n values plus the half step chemistry
 	// add the advective terms to the new state
 	scalar_advection_update(dt, first_spec, last_spec);
+	print_values ("S_new before scalar_advection_update", idx, jdx, 0, NUM_STATE, &S_new);
+	print_values ("aofs before scalar_advection_update", idx, jdx, 0, NUM_STATE, aofs);
 	scalar_advection_update(dt, RhoH, RhoH);
+	print_values ("S_new after scalar_advection_update", idx, jdx, 0, NUM_STATE, &S_new);
 
 	// save these values.
 	MultiFab save_for_rhoH (grids, 1, 0);
@@ -4679,6 +4677,9 @@ HeatTransfer::advance (Real time,
 
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "JFG: at second call to diffusion operator\n" << std::flush;
+
+	// print_values ("S_old before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_old);
+	// print_values ("S_new before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_new);
 
 	rk_diffusion_operator (cur_time,
 			       - dt,
@@ -5531,435 +5532,7 @@ HeatTransfer::strang_chem (MultiFab&  state,
         std::cout << "HeatTransfer::strang_chem time: " << run_time << std::endl;
 }
 
-void
-HeatTransfer::compute_edge_states (Real               dt,
-                                   std::vector<bool>* state_comps_to_compute)
-{
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_edge_states()");
-    //
-    // Compute edge states, store internally.  Do this to
-    // avoid recomputing these, and to allow inter-equation consistency.  Note,
-    // storage order in EdgeState same as in State_Type.
-    // NOTE: Ordering is important here, must do rho.Y and Temp BEFORE RhoH and
-    //       Density, but then it doesn't matter.
-    //
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... computing edge states\n";
-    //
-    // Get simulation parameters.
-    //
-    const Real* dx             = geom.CellSize();
-    const Real  prev_time      = state[State_Type].prevTime();
-    const Real  prev_pres_time = state[Press_Type].prevTime();
-    //
-    // NOTE: Massive memory bloat here...how many MultiFab can we waste??
-    // Get viscous forcing on the ones we need, don't bother allocating others
-    //
-    const int nState = desc_lst[State_Type].nComp();
-    PArray<MultiFab> visc_terms(nState,PArrayManage);
-    const int use_forces_in_trans = godunov->useForcesInTrans();
-    //
-    // "do_predict" states are predicted normally, after special states
-    //
-    std::vector<bool> do_predict(nState,true);
-    if (do_mom_diff == 1) 
-    {
-      for (int d=0; d<BL_SPACEDIM; ++d)
-        do_predict[Xvel+d] = true;
-    }
-    else
-    {
-      for (int d=0; d<BL_SPACEDIM; ++d)
-        do_predict[Xvel+d] = false;
-    } 
-    for (int sigma=first_spec; sigma<=last_spec; ++sigma)
-        do_predict[sigma] = false; // Will get these in a special way
-    
-    if (do_set_rho_to_species_sum)
-    {
-        do_predict[Density] = false;
-        do_predict[RhoH]    = false;
-    }
-
-    if (do_mcdd)
-    {
-        do_predict[RhoH] = false; // Wont need this
-        do_predict[Temp] = true; // Will get this in a special way
-    }
-    //
-    // This logic and the associated array passed in allows the computation
-    // of the edge states to be shut off for specific components.  This is
-    // intended to allow special components, such as RhoK and RhoEps in
-    // TurbHT be treated differently.  This logic tries to insure that
-    // all components with interdependencies are turned on at the same time.
-    //
-    std::vector<bool> compute_comp(nState, true);
-    if (state_comps_to_compute != 0)
-    {
-        BL_ASSERT(state_comps_to_compute->size() == nState);
-
-        for (int cmp = 0; cmp < nState; cmp++)
-            compute_comp[cmp] = (*state_comps_to_compute)[cmp];
-
-        if (compute_comp[Density] || compute_comp[Temp] ||
-            compute_comp[RhoH]    || compute_comp[first_spec])
-        {
-            BL_ASSERT(compute_comp[Density]);
-            BL_ASSERT(compute_comp[Temp]);
-            BL_ASSERT(compute_comp[RhoH]);
-
-            for (int sigma=first_spec; sigma<=last_spec; ++sigma)
-                BL_ASSERT(compute_comp[sigma]);
-        }
-    }
-    //
-    // If !do_predict, but will need visc terms, get them explicity here
-    //
-    const int nGrowF = 1;
-    if (use_forces_in_trans || (do_mom_diff == 1))
-    {
-        visc_terms.set(Xvel, new MultiFab(grids,BL_SPACEDIM,nGrowF));
-        getViscTerms(visc_terms[Xvel],Xvel,BL_SPACEDIM,prev_time);
-    }
-
-    if (compute_comp[first_spec])
-    {
-        visc_terms.set(first_spec, new MultiFab(grids,nspecies,nGrowF));
-
-        if (do_mcdd)
-        {
-            visc_terms.set(Temp, new MultiFab(grids,1,nGrowF,Fab_allocate));
-            compute_mcdd_visc_terms(visc_terms[first_spec],0,visc_terms[Temp],0,
-                                    prev_time,nGrowF,DDOp::DD_Temp);
-        }
-        else
-        {
-            getViscTerms(visc_terms[first_spec],first_spec,nspecies,prev_time);
-        }
-    }
-    //
-    // Get all the normal visc terms for everything but velocity
-    //
-    for (int sigma=BL_SPACEDIM; sigma<nState; ++sigma)
-    {
-        if (do_predict[sigma] && compute_comp[sigma])
-        {
-            BL_ASSERT( sigma < first_spec || sigma > last_spec );
-            visc_terms.set(sigma, new MultiFab(grids,1,nGrowF));
-            if (be_cn_theta == 1.0)
-            {
-                visc_terms[sigma].setVal(0.0,0,1,nGrowF);
-            }
-            else
-            {
-                getViscTerms(visc_terms[sigma],sigma,1,prev_time);
-            }
-        }
-    }
-    //
-    // Loop on grids, and compute edge fluxes
-    //
-    FArrayBox edge[BL_SPACEDIM],tforces,tvelforces,Rho,U,spec,h,state,edgeVals;
-    //
-    // FillPatch'd state data.
-    //
-    MultiFab* divu_fp = NavierStokes::create_mac_rhs_grown(nGrowF,prev_time,dt);
-
-    MultiFab Gp(grids,BL_SPACEDIM,1);
-
-    getGradP(Gp, prev_pres_time);
-
-    for (FillPatchIterator S_fpi(*this,*divu_fp,HYP_GROW,prev_time,State_Type,0,nState);
-         S_fpi.isValid();
-         ++S_fpi)
-    {
-        //
-        // Gonna need this array on a per-grid basis
-        //
-        std::vector<bool> this_edge_state_computed(nState,false);
-
-        const int i = S_fpi.index();
-
-        Rho.resize(S_fpi().box(),1);
-        Rho.copy(S_fpi(),Density,0,1);
-
-        U.resize(S_fpi().box(),BL_SPACEDIM);
-        U.copy(S_fpi(),Xvel,0,BL_SPACEDIM);
-        //
-        // Get the spec forces based on CC data (forces on EC data in getViscTerms)
-        //
-        if (use_forces_in_trans || (do_mom_diff == 1))
-        {
-            NavierStokes::getForce(tvelforces,i,nGrowF,Xvel,BL_SPACEDIM,Rho);
-            godunov->Sum_tf_gp_visc(tvelforces,visc_terms[Xvel][i],Gp[i],Rho);
-        }
-        //
-        // Set up the workspace for the godunov Box (also resize "edge" for later)
-        //
-        Array<int> u_bc[BL_SPACEDIM];
-        D_TERM(u_bc[0] = getBCArray(State_Type,i,0,1);,
-               u_bc[1] = getBCArray(State_Type,i,1,1);,
-               u_bc[2] = getBCArray(State_Type,i,2,1);)
-
-        godunov->Setup(grids[i], dx, dt, 0,
-                       edge[0], u_bc[0].dataPtr(),
-                       edge[1], u_bc[1].dataPtr(),
-#if (BL_SPACEDIM == 3)
-                       edge[2], u_bc[2].dataPtr(),
-#endif
-                       U, Rho, tvelforces);
-
-        const int velpred = 0; // Already have edge velocities for transverse derivative
-
-        FArrayBox vel;
-
-        if (do_mom_diff == 1) 
-        {
-            vel.resize(S_fpi().box(),BL_SPACEDIM);
-            vel.copy(S_fpi(),0,0,BL_SPACEDIM);
-            //
-            // Loop over the velocity components.
-            //
-            for (int comp = 0 ; comp < BL_SPACEDIM ; comp++ )
-            {
-                if (predict_mom_together == 1) 
-                {
-                    vel.mult(Rho,S_fpi().box(),S_fpi().box(),0,comp,1);
-                    tvelforces.mult(Rho,tvelforces.box(),tvelforces.box(),0,comp,1);
-                }
-                Array<int> bc = getBCArray(State_Type,i,comp,1);
-
-                int iconserv_dummy = 0;
-                FArrayBox divu_dummy;
-
-                godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_mac[0][i], edge[0],
-                                     u_mac[1][i], edge[1],
-#if (BL_SPACEDIM == 3)             
-                                     u_mac[2][i], edge[2],
-#endif
-                                     U,vel,tvelforces,divu_dummy,
-                                     comp,comp,bc.dataPtr(),
-                                     iconserv_dummy,PRE_MAC);
-
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,comp,1);
-
-                this_edge_state_computed[comp] = true;
-            }
-        }
-        //
-        // Get spec edge states
-        // FIXME: Fab copy reqd, force sum below pulls state and forces from same comp
-        //
-        if (compute_comp[first_spec])
-        {
-            spec.resize(S_fpi().box(),nspecies);
-            spec.copy(S_fpi(),first_spec,0,nspecies);
-
-            NavierStokes::getForce(tforces,i,nGrowF,first_spec,nspecies,Rho);
-
-            for (int comp = 0 ; comp < nspecies ; comp++)
-            {
-                int state_ind = first_spec + comp;
-                int use_conserv_diff = 
-                      (advectionType[state_ind] == Conservative) ? true : false;
-                Array<int> bc = getBCArray(State_Type,i,state_ind,1);
-
-                AdvectionScheme adv_scheme = FPU;
-                if (adv_scheme == PRE_MAC)
-                {
-                    godunov->Sum_tf_divu_visc(spec, tforces, comp, 1,
-                                              visc_terms[first_spec][i], comp,
-                                              (*divu_fp)[i], Rho, use_conserv_diff);
-                    
-                    int iconserv_dummy = 0;
-                    godunov->edge_states(grids[i], dx, dt, velpred,
-                                         u_mac[0][i], edge[0],
-                                         u_mac[1][i], edge[1],
-#if (BL_SPACEDIM==3)
-                                         u_mac[2][i], edge[2],
-#endif
-                                         U,spec,tforces,(*divu_fp)[i],
-                                         comp,state_ind,bc.dataPtr(),
-                                         iconserv_dummy,PRE_MAC);
-                }
-                else
-                {
-                    FArrayBox junkDivu(tforces.box(),1);
-                    junkDivu.setVal(0.);
-                    godunov->Sum_tf_divu_visc(spec, tforces, comp, 1,
-                                              visc_terms[first_spec][i], comp,
-                                              junkDivu, Rho, use_conserv_diff);
-                    
-                    godunov->edge_states(grids[i], dx, dt, velpred,
-                                         u_macG[0][i], edge[0],
-                                         u_macG[1][i], edge[1],
-#if (BL_SPACEDIM==3)
-                                         u_macG[2][i], edge[2],
-#endif
-                                         U,spec,tforces,(*divu_fp)[i],
-                                         comp,state_ind,bc.dataPtr(), 
-                                         use_conserv_diff,FPU);
-                }
-
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
-
-                this_edge_state_computed[state_ind] = true;
-            }
-        }
-        //
-        // Get density edge states
-        //
-        if (compute_comp[Density])
-        {
-            if (do_set_rho_to_species_sum)
-            {
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                {
-                    (*EdgeState[d])[i].setVal(0.0,edge[d].box(),Density,1);
-                    for (int sigma=first_spec; sigma<=last_spec; ++sigma)
-                        (*EdgeState[d])[i].plus((*EdgeState[d])[i],
-                                                edge[d].box(), sigma,Density,1);
-                }
-                this_edge_state_computed[Density] = true;
-            }
-            else
-            {
-                BoxLib::Error("No code yet for rho != sum(rho.Y)");
-            }
-
-            if (do_mom_diff == 1 && predict_mom_together == 0)
-               for (int icomp = 0; icomp < BL_SPACEDIM; icomp++)
-                  for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].mult((*EdgeState[d])[i],(*EdgeState[d])[i].box(),
-                                            (*EdgeState[d])[i].box(),Density,icomp,1);
-        }
-
-        if (compute_comp[Temp])
-        {
-            //
-            // Get Temp edge states via extrap.
-            //
-            const int comp = 0;
-            const int state_ind = Temp;
-            int use_conserv_diff = 
-                      (advectionType[state_ind] == Conservative) ? true : false;
-            state.resize(S_fpi().box(),1);
-            state.copy(S_fpi(),state_ind,0,1);
-
-            NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,Rho);
-            Array<int> bc = getBCArray(State_Type,i,state_ind,1);
-
-            AdvectionScheme adv_scheme = FPU;
-
-            if (adv_scheme == PRE_MAC)
-            {
-                godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
-                                          visc_terms[state_ind][i], 0,
-                                          (*divu_fp)[i], Rho, use_conserv_diff);
-
-                int iconserv_dummy = 0;
-                godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_mac[0][i], edge[0],
-                                     u_mac[1][i], edge[1],
-#if (BL_SPACEDIM==3)
-                                     u_mac[2][i], edge[2],
-#endif
-                                     U, state, tforces, (*divu_fp)[i],
-                                     comp, state_ind, bc.dataPtr(),
-                                     iconserv_dummy, PRE_MAC);
-
-            } else {
-
-                FArrayBox junkDivu(tforces.box(),1);
-                junkDivu.setVal(0.);
-                godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
-                                          visc_terms[state_ind][i], 0,
-                                          junkDivu, Rho, use_conserv_diff);
-
-                godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_macG[0][i], edge[0],
-                                     u_macG[1][i], edge[1],
-#if (BL_SPACEDIM==3)
-                                     u_macG[2][i], edge[2],
-#endif
-                                     U, state, tforces, (*divu_fp)[i],
-                                     comp, state_ind, bc.dataPtr(), 
-                                     use_conserv_diff, FPU);
-            }
-
-            for (int d=0; d<BL_SPACEDIM; ++d)
-                (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
-
-            this_edge_state_computed[state_ind] = true;
-        }
-
-        if (compute_comp[RhoH])
-        {
-            //
-            // Set rhoh on edges = sum(rho.Y.H)
-            //
-            for (int d=0; d<BL_SPACEDIM; ++d)
-            {
-                (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
-                h.resize(edge[d].box(),nspecies);
-                getChemSolve().getHGivenT(h,(*EdgeState[d])[i],
-                                          edge[d].box(),Temp,0);
-                h.mult((*EdgeState[d])[i],edge[d].box(),first_spec,0,
-                       nspecies);
-                
-                (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
-                for (int comp=0; comp<nspecies; ++comp)
-                    (*EdgeState[d])[i].plus(h,edge[d].box(),comp,RhoH,1);
-            }
-            this_edge_state_computed[RhoH] = true;
-        }
-        //
-        // Now do the rest as normal
-        //
-        state.resize(S_fpi().box(),1);
-        for (int state_ind=0; state_ind<nState; ++state_ind)
-        {
-            if (do_predict[state_ind]                &&
-                !this_edge_state_computed[state_ind] &&
-                compute_comp[state_ind])
-            {
-                int use_conserv_diff =
-                    (advectionType[state_ind] == Conservative) ? true : false;
-                //
-                // Do it the old-fashioned way.
-                //
-                state.copy(S_fpi(),state_ind,0,1);
-                const int comp = 0;
-                NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,Rho);
-                godunov->Sum_tf_divu_visc(state, tforces, comp, 1,
-                                          visc_terms[state_ind][i], 0,
-                                          (*divu_fp)[i], Rho,
-                                          use_conserv_diff);
-                Array<int> bc = getBCArray(State_Type,i,state_ind,1);
-                int iconserv_dummy = 0;
-                godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_mac[0][i], edge[0],
-                                     u_mac[1][i], edge[1],
-#if (BL_SPACEDIM==3)
-                                     u_mac[2][i], edge[2],
-#endif
-                                     U,state,tforces,(*divu_fp)[i],
-                                     comp,state_ind,bc.dataPtr(),
-                                     iconserv_dummy,PRE_MAC);
-
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
-
-                this_edge_state_computed[state_ind] = true;
-            }
-        }
-    }
-
-    delete divu_fp;
-}
+#include "compute_edge_states.cpp"
 
 void
 HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
@@ -7426,17 +6999,20 @@ HeatTransfer::calcDiffusivity (const Real time,
     {
 	if (ParallelDescriptor::IOProcessor())
 	{
+	    calcDiffusivity_count += 1;
 	    std::cout 
 		<< std::endl
 		<< "Entering calcDiffusivity for some reason" << std::endl
 		<< std::endl
-		<< "     src_comp = " << src_comp << std::endl
-		<< "     num_comp = " << num_comp << std::endl
-		<< "   do_VelVisc = " << do_VelVisc << std::endl
+		<< "calcDiffusivity_count = " << calcDiffusivity_count << std::endl
+		<< "             src_comp = " << src_comp << std::endl
+		<< "             num_comp = " << num_comp << std::endl
+		<< "           do_VelVisc = " << do_VelVisc << std::endl
 		<< std::endl
 		<< "Doing nothing, returning immediately" << std::endl
 		<< std::endl;
 	}
+        if (calcDiffusivity_count == 3) BoxLib::Abort("Entering calcDiffusivity");
         return;
     }
 

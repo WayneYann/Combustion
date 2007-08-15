@@ -123,8 +123,8 @@ c     arguments
       REAL_T yflux_for_Y(DIMV(yflux_for_Y),ncomps)
 
 c     local variables
-      external FORT_TfromHYpt 
-      integer FORT_TfromHYpt
+      external FORT_CALCULATE_T
+      integer FORT_CALCULATE_T
       integer ell
       integer i
       integer iterations
@@ -158,7 +158,7 @@ c     local variables
       REAL_T derivative_of_Y
       REAL_T dpdt_factor
       REAL_T FORT_P1ATMMKS
-      REAL_T H
+      REAL_T h
       REAL_T hi_coefficient_0
       REAL_T hi_coefficient_1
       REAL_T hi_coefficient_2
@@ -200,6 +200,7 @@ c     local variables
       allocatable contiguous_Y
       allocatable cpms_on_edge
       allocatable derivative_of_Y
+      allocatable h
       allocatable hms_on_edge_cgs
       allocatable hms_on_edge_si
       allocatable one_over_wt
@@ -217,6 +218,7 @@ c     local variables
       dimension contiguous_Y (:)
       dimension cpms_on_edge (:)
       dimension derivative_of_Y (:)
+      dimension h (:,:)
       dimension hms_on_edge_cgs (:)
       dimension hms_on_edge_si (:)
       dimension one_over_wt (:)
@@ -240,14 +242,19 @@ c     debug variables
       logical debug3
 c     debug prints patches
       debug = .false.
+      debug = .true.
       debug2 = .false.
       debug3 = .false.
       idx = 3
       jdx = 127
+      idx = 0
+      idx = 1
+      jdx = 0
 
       allocate (contiguous_Y (nspecies))
       allocate (cpms_on_edge (nspecies))
       allocate (derivative_of_Y (nspecies))
+      allocate (h (DIMV(state)))
       allocate (hms_on_edge_cgs (nspecies))
       allocate (hms_on_edge_si (nspecies))
       allocate (one_over_wt (nspecies))
@@ -309,11 +316,24 @@ c     get reciprocals of molecular weights
          print *, one_over_wt
       end if
 
-c     form rho_Y, T, X, and Y from rho, rho H and rho Y in the state
+      if (debug) call print_patch_n ("state", state, DIMS(state), ncomps, idx, jdx)
+
+c     get h from the state
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
             one_over_rho = 1.0d0 / state(i, j, index_of_rho)
-            H = one_over_rho * state(i, j, index_of_rhoH)
+            h(i, j) = one_over_rho * state(i, j, index_of_rhoH)
+         end do
+      end do
+
+      if (debug) call print_patch_n ("h", h, DIMS(state), 1, idx, jdx)
+
+c     form rho_Y, T, X, and Y from rho, rho H and rho Y in the state
+      do j=ARG_L2(state),ARG_H2(state)
+         do i=ARG_L1(state),ARG_H1(state)
+            print *, i, j
+            one_over_rho = 1.0d0 / state(i, j, index_of_rho)
+c            H = one_over_rho * state(i, j, index_of_rhoH)
             do n=1,nspecies
                rho_Y(i, j, n) = state(i, j, offset + n)
                Y(i, j, n) = one_over_rho * state(i, j, offset + n)
@@ -323,9 +343,9 @@ c     form rho_Y, T, X, and Y from rho, rho H and rho Y in the state
             end do
 c           use the state value for T as a guess for the Newton iteration
             T(i, j) = state(i, j, index_of_T)
-            iterations = FORT_TfromHYpt 
+            iterations = FORT_CALCULATE_T
      &           (T(i, j),
-     &           H, 
+     &           h(i, j), 
      &           contiguous_Y,
      &           maximum_error,
      &           maximum_iterations,
@@ -975,6 +995,7 @@ c///
       deallocate (contiguous_Y)
       deallocate (cpms_on_edge)
       deallocate (derivative_of_Y)
+      deallocate (h)
       deallocate (hms_on_edge_cgs)
       deallocate (hms_on_edge_si)
       deallocate (one_over_wt)

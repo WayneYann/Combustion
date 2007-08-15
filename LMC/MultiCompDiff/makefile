@@ -22,8 +22,8 @@ BC_TYPES.H:
 #cdwrk.H:
 #	ln -s $(LMC)/cdwrk.H cdwrk.H
 
-ChemDriver_F.H:
-	ln -s $(LMC)/ChemDriver_F.H ChemDriver_F.H
+#ChemDriver_F.H:
+#	ln -s $(LMC)/ChemDriver_F.H ChemDriver_F.H
 
 #CONSTANTS.H:
 #	ln -s $(BOXLIB)/CONSTANTS.H CONSTANTS.H

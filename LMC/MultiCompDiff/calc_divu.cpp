@@ -3,8 +3,9 @@ HeatTransfer::calc_divu (Real      time,
                          Real      dt,
                          MultiFab& divu)
 {
-//    if (ParallelDescriptor::IOProcessor())
-//	std::cout << "JFG: at top of calc_divu\n" << std::flush;
+
+    if (ParallelDescriptor::IOProcessor())
+	std::cout << "JFG: at top of calc_divu\n" << std::flush;
 
     // choose a cell to inspect
     bool debug_values = true;
@@ -371,8 +372,8 @@ HeatTransfer::calc_divu (Real      time,
     }
     if (debug_values) print_values ("divu", idx, jdx, 0, 1, &divu);
 
-    //if (ParallelDescriptor::IOProcessor())
-//	std::cout << "JFG: at bottom of calc_divu\n" << std::flush;
+    if (ParallelDescriptor::IOProcessor())
+	std::cout << "JFG: at bottom of calc_divu\n" << std::flush;
 
     // BoxLib::Abort("JFG: stopping here, for now");
 }

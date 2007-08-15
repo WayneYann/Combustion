@@ -636,6 +636,7 @@ protected:
     static bool        do_rk_diffusion;
     static bool        rk_mixture_averaged;
     static Real        rk_time_step_multiplier;
+    static int         calcDiffusivity_count;
 };
 
 #endif /*_HeatTransfer_H_*/
