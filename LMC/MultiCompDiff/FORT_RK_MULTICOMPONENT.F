@@ -356,8 +356,8 @@ c        3) if the Y are marked dirichlet then so is T
             lo_internal_check  = lo_internal_check   .or. (INT_DIR .eq. bc(1, 1, offset + n))
          end do
          error = .not. (
-     &        (lo_dirichlet_for_Y .eq. lo_dirichlet_check) .and.
-     &        (lo_internal .eq. lo_internal_check) .and.
+     &        (lo_dirichlet_for_Y .eqv. lo_dirichlet_check) .and.
+     &        (lo_internal .eqv. lo_internal_check) .and.
      &        (.not. lo_dirichlet_for_Y .or. lo_dirichlet_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc array at low x")
@@ -386,8 +386,8 @@ c        3) if the Y are marked dirichlet then so is T
             hi_internal_check  = hi_internal_check   .or. (INT_DIR .eq. bc(1, 2, offset + n))
          end do
          error = .not. (
-     &        (hi_dirichlet_for_Y .eq. hi_dirichlet_check) .and.
-     &        (hi_internal .eq. hi_internal_check) .and.
+     &        (hi_dirichlet_for_Y .eqv. hi_dirichlet_check) .and.
+     &        (hi_internal .eqv. hi_internal_check) .and.
      &        (.not. hi_dirichlet_for_Y .or. hi_dirichlet_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc array at high x")
@@ -666,8 +666,8 @@ c        3) if the Y are marked dirichlet then so is T
             lo_internal_check  = lo_internal_check   .or. (INT_DIR .eq. bc(2, 1, offset + n))
          end do
          error = .not. (
-     &        (lo_dirichlet_for_Y .eq. lo_dirichlet_check) .and.
-     &        (lo_internal .eq. lo_internal_check) .and.
+     &        (lo_dirichlet_for_Y .eqv. lo_dirichlet_check) .and.
+     &        (lo_internal .eqv. lo_internal_check) .and.
      &        (.not. lo_dirichlet_for_Y .or. lo_dirichlet_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc array at low y")
@@ -696,8 +696,8 @@ c        3) if the Y are marked dirichlet then so is T
             hi_internal_check  = hi_internal_check   .or. (INT_DIR .eq. bc(2, 2, offset + n))
          end do
          error = .not. (
-     &        (hi_dirichlet_for_Y .eq. hi_dirichlet_check) .and.
-     &        (hi_internal .eq. hi_internal_check) .and.
+     &        (hi_dirichlet_for_Y .eqv. hi_dirichlet_check) .and.
+     &        (hi_internal .eqv. hi_internal_check) .and.
      &        (.not. hi_dirichlet_for_Y .or. hi_dirichlet_for_T))
          if (error) call bl_abort 
      &        ("FORT_RK_DIFFUSION: inconsistent bc array at high y")
