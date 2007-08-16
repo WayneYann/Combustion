@@ -6964,17 +6964,17 @@ HeatTransfer::calcDiffusivity (const Real time,
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calcDiffusivity()");
 
-    if (do_mcdd || do_rk_diffusion)
-    {
+    if (do_mcdd) return;
 /*
+    if (do_rk_diffusion)
+    {
+
 	if (ParallelDescriptor::IOProcessor())
 	{
-	    calcDiffusivity_count += 1;
 	    std::cout 
 		<< std::endl
-		<< "Entering calcDiffusivity for some reason" << std::endl
+		<< "JFG: entering calcDiffusivity" << std::endl
 		<< std::endl
-		<< "calcDiffusivity_count = " << calcDiffusivity_count << std::endl
 		<< "             src_comp = " << src_comp << std::endl
 		<< "             num_comp = " << num_comp << std::endl
 		<< "           do_VelVisc = " << do_VelVisc << std::endl
@@ -6982,10 +6982,9 @@ HeatTransfer::calcDiffusivity (const Real time,
 		<< "Doing nothing, returning immediately" << std::endl
 		<< std::endl;
 	}
-        // if (calcDiffusivity_count == 3) BoxLib::Abort("Entering calcDiffusivity");
-*/
         return;
     }
+*/
 
     const TimeLevel whichTime = which_time(State_Type, time);
 
@@ -7485,7 +7484,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 //
 // Taking an initial guess from S, solve hmix = sum(hl(temp).Yl) for temp.
 // hmix and Yl are taken from S (and are assumed to be multiplied by rho
-// (i.e. S hold rho.hmix and rho.Yl).
+// (i.e. S holds rho.hmix and rho.Yl).
 //
 // Be careful -- this is called for levels other than the current level
 // Note: we only do this on the valid region. The ghost cells
@@ -7500,7 +7499,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 //       trusted out there, nGrow must be same in temp and S
 // Note: no good reason for above restriction on nGrow, removed
 //
-// RhoH_to_Temp is the top of a rather long sequence of wrappers:
+// JFG: RhoH_to_Temp is the top of a rather long sequence of wrappers:
 //
 //         RhoH_to_Temp    in   HeatTransfer.cpp  calls
 //         getTGivenHY     in     ChemDriver.cpp  calls
@@ -7516,6 +7515,12 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 {
     BL_PROFILE("HeatTransfer::RhoH_to_Temp()");
 
+/*
+    if (ParallelDescriptor::IOProcessor())
+    {
+	std::cout << "JFG: entering RhoH_to_Temp" << std::endl;
+    }
+*/
     BL_ASSERT(S.nGrow() >= nGrow  &&  temp.nGrow() >= nGrow);
 
     const BoxArray& sgrids = S.boxArray();
@@ -7571,6 +7576,12 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
             std::cout << "HeatTransfer::RhoH_to_Temp: max_iters = " << max_iters << '\n';
         }
     }
+/*
+    if (ParallelDescriptor::IOProcessor())
+    {
+	std::cout << "JFG: leaving RhoH_to_Temp" << std::endl;
+    }
+*/
 }
 
 void
