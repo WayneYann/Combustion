@@ -102,7 +102,7 @@ c
       do n = 0,Niter-1
          write(6,998) '  ',res(n)
       end do
-      call bl_abort('FORT_CALCULATE_T: failed')
+c      call bl_abort('FORT_CALCULATE_T: failed')
 
  997  format(a,3(i4,a))
  998  format(a,d21.12)

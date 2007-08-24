@@ -242,8 +242,8 @@ c     debug prints patches
       debug = .false.
       debug2 = .false.
       debug3 = .false.
-      idx = 3
-      jdx = 127
+      idx = 32
+      jdx = 27
 
       allocate (contiguous_Y (nspecies))
       allocate (cpms_on_edge (nspecies))
@@ -939,8 +939,11 @@ c           flux correction
          end do
       end do
 
-      if (debug) call print_patch_n ("yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
-      if (debug) call print_patch_n ("yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
+      call print_all ("all xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, 1)
+      call print_all ("all yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, 1)
+
+      if (debug) call print_patch_n ("what yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
+      if (debug) call print_patch_n ("what yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
 
 c///
 c///  form the updates weighted by scale_factor / vol
@@ -1019,9 +1022,39 @@ c      if (debug) stop
 
       if (lo1 .le. i_loc .and. i_loc .le. hi1 .and.
      &    lo2 .le. j_loc .and. j_loc .le. hi2) then
-         print *, "i = ", i_loc, "j = ", j_loc, "comp = ", comp, "value = ", value
+         print *, "i = ", i_loc, "j = ", j_loc, "comp = ", comp, 
+     &    "value = ", value
          array(i_loc, j_loc, comp) = value
       end if
+
+      return
+      end
+
+      subroutine print_all (
+     &     title,
+     &     array, lo1, lo2, hi1, hi2, ncomps,
+     &     n)
+
+      character title*(*)
+      integer i
+      integer i_loc
+      integer j
+      integer j_loc
+      integer lo1, lo2, hi1, hi2
+      integer n
+      integer ncomps
+      REAL_T array(lo1 : hi1, lo2 : hi2, ncomps)
+      REAL_T sum
+
+      sum = 0
+      do j = lo2, hi2
+         do i = lo1, hi1
+            sum = sum + abs (array(i, j, n))
+         end do
+      end do
+      write (6, 60000) title, sum, lo1, hi1, lo2, hi2
+
+60000 format (4x, a, " absolute sum = ", 1p, d16.9, 4i5)
 
       return
       end

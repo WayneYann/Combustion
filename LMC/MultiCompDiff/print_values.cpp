@@ -19,12 +19,16 @@ HeatTransfer::print_values (const char* message,
 	if (lo_vect[0] <= i_coordinate && i_coordinate <= hi_vect[0] && 
 	    lo_vect[1] <= j_coordinate && j_coordinate <= hi_vect[1])
 	{
-	    std::cout << std::endl;
+	    std::cout << std::endl
+		      << message << ":"
+		      << " i coordinate = " << i_coordinate << ","
+		      << " j coordinate = " << j_coordinate
+		      << std::endl;
 	    Real values[ncomp];
 	    (*multifab)[mfi].getVal(values,IntVect(i_coordinate,j_coordinate),0,ncomp);
 	    for (int n = 0; n < ncomp; ++n)
 	    {
-		std::cout << message
+		std::cout << message << ":"
 			  << " component " 
 			  << n 
 			  << " = " 

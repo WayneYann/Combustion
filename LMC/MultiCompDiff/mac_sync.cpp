@@ -7,13 +7,20 @@ void
 HeatTransfer::mac_sync ()
 {
     // choose a cell to inspect
-    bool debug = false;
-    int icoord = 3;
-    int jcoord = 127;
+    bool debug = true;
+    int icoord = 32;
+    //int icoord = 31;
+    //int icoord = 33;
+    int jcoord = 27;
+    //int jcoord = 26;
+    //int jcoord = 28;
     if (debug && ParallelDescriptor::IOProcessor())
     {
-	std::cout << "JFG: entering mac_sync" << std::endl;
+	std::cout << "JFG: entering mac_sync for level = " 
+		  << level
+		  << std::endl;
 
+	print_values ("Ssync at 1", icoord, jcoord, 0, 0, Ssync);
         MultiFab& S_new = get_new_data(State_Type);
 	print_values ("S_new at 1", icoord, jcoord, 0, 0, &S_new);
     }
@@ -34,6 +41,10 @@ HeatTransfer::mac_sync ()
     MultiFab*  DeltaSsync     = 0; // hold (Delta rho)*q for conserved quantities
     MultiFab*  Rh             = get_rho_half_time();
 
+    if (debug && ParallelDescriptor::IOProcessor())
+    {
+	print_values ("Rh", icoord, jcoord, 0, 0, Rh);
+    }
     sync_setup(DeltaSsync);
     //
     // Compute the correction velocity.
@@ -85,17 +96,38 @@ HeatTransfer::mac_sync ()
             }
         }
 
+	if (debug && ParallelDescriptor::IOProcessor())
+	{
+	    print_values ("Ssync before mac_sync_compute", icoord, jcoord, 0, 0, Ssync);
+	}
         for (int comp=BL_SPACEDIM; comp<NUM_STATE; ++comp)
         {
             if (sync_scheme[comp]==UseEdgeState)
             {
+		if (debug && ParallelDescriptor::IOProcessor())
+		{
+		    std::cout << "JFG: calling mac_sync_compute for component = " 
+			      << comp
+			      << std::endl;
+		}
                 int s_ind = comp - BL_SPACEDIM;
+                //
+                // This routine does a sync advect step for a single 
+                // scalar component. The half-time edge states are passed in.
+                // This routine is useful when the edge states are computed
+                // in a physics-class-specific manner. (For example, as they are
+                // in the calculation of div rho U h = div U sum_l (rho Y)_l h_l(T)).
+                //
                 mac_projector->mac_sync_compute(level,Ssync,comp,s_ind,
                                                 EdgeState,comp,Rh,
                                                 (level>0 ? &getAdvFluxReg(level):0),
                                                 advectionType,modify_reflux_normal_vel,dt);
             }
         }
+	if (debug && ParallelDescriptor::IOProcessor())
+	{
+	    print_values ("Ssync after mac_sync_compute", icoord, jcoord, 0, 0, Ssync);
+	}
         
         Ssync->mult(dt,Ssync->nGrow());
         //
@@ -156,6 +188,7 @@ HeatTransfer::mac_sync ()
 
 	if (debug && ParallelDescriptor::IOProcessor())
 	{
+	    print_values ("Ssync at 2", icoord, jcoord, 0, 0, Ssync);
 	    MultiFab& S_new = get_new_data(State_Type);
 	    print_values ("S_new at 2", icoord, jcoord, 0, 0, &S_new);
 	}
@@ -323,6 +356,7 @@ HeatTransfer::mac_sync ()
 
 	    if (debug && ParallelDescriptor::IOProcessor())
 	    {
+		print_values ("Ssync at 3", icoord, jcoord, 0, 0, Ssync);
 		MultiFab& S_new = get_new_data(State_Type);
 		print_values ("S_new at 3", icoord, jcoord, 0, 0, &S_new);
 	    }
@@ -377,6 +411,7 @@ HeatTransfer::mac_sync ()
 		    }
                 }
             }
+
             diffusion->removeFluxBoxesLevel(flux);
 	    diffusion->removeFluxBoxesLevel(beta);
         }
@@ -384,6 +419,12 @@ HeatTransfer::mac_sync ()
         // For all conservative variables Q (other than density)
         // increment sync by (sync_for_rho)*q_presync.
         //
+	if (debug && ParallelDescriptor::IOProcessor())
+	{
+	    print_values ("Ssync at 4", icoord, jcoord, 0, 0, Ssync);
+	    MultiFab& S_new = get_new_data(State_Type);
+	    print_values ("S_new at 4", icoord, jcoord, 0, 0, &S_new);
+	}
         for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
         {
             const int i = mfi.index();
@@ -404,6 +445,12 @@ HeatTransfer::mac_sync ()
         //
         // Increment the state (for all but rho, since that was done above)
         //
+	if (debug && ParallelDescriptor::IOProcessor())
+	{
+	    print_values ("Ssync at 5", icoord, jcoord, 0, 0, Ssync);
+	    MultiFab& S_new = get_new_data(State_Type);
+	    print_values ("S_new at 5", icoord, jcoord, 0, 0, &S_new);
+	}
         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
         {
             const int i = mfi.index();
@@ -416,15 +463,20 @@ HeatTransfer::mac_sync ()
                 }
             }
         }
-	if (debug && ParallelDescriptor::IOProcessor())
-	{
-	    MultiFab& S_new = get_new_data(State_Type);
-	    print_values ("S_new at 4", icoord, jcoord, 0, 0, &S_new);
-	}
         //
         // Recompute temperature and rho R T after the mac_sync.
         //
+	if (debug && ParallelDescriptor::IOProcessor())
+	{
+	    MultiFab& S_new = get_new_data(State_Type);
+	    print_values ("S_new at 6", icoord, jcoord, 0, 0, &S_new);
+	}
         RhoH_to_Temp(S_new);
+	if (debug && ParallelDescriptor::IOProcessor())
+	{
+	    MultiFab& S_new = get_new_data(State_Type);
+	    print_values ("S_new at 7", icoord, jcoord, 0, 0, &S_new);
+	}
         setThermoPress(cur_time);
         //
         // Get boundary conditions.
@@ -563,7 +615,7 @@ HeatTransfer::mac_sync ()
     if (debug && ParallelDescriptor::IOProcessor())
     {
 	MultiFab& S_new = get_new_data(State_Type);
-	print_values ("S_new at 5", icoord, jcoord, 0, 0, &S_new);
+	print_values ("S_new at 8", icoord, jcoord, 0, 0, &S_new);
 
 	std::cout << "JFG: leaving mac_sync" << std::endl;
     }

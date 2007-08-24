@@ -1023,19 +1023,20 @@ c      if (debug) stop
       integer ncomps
       REAL_T array(lo1 : hi1, lo2 : hi2, ncomps)
 
-      write (6, 60000) title
       if (lo1 .le. i_loc-1 .and. i_loc+1 .le. hi1 .and.
      &    lo2 .le. j_loc-1 .and. j_loc+1 .le. hi2) then
+         write (6, 60000) title
          do n=1,ncomps
             write (6, 60001) (i, i=i_loc-1,i_loc+1)
             write (6, 60002) (j, (array(i, j, n), i=i_loc-1,i_loc+1), j=j_loc+1,j_loc-1,-1)
          end do
          write (6, "()")
-      else
-         write (6, "()")
-         write (6, 60000) 
-     &        "the print region is not in the range of this box"
-         write (6, "()")
+c      else
+c         write (6, 60000) title
+c         write (6, "()")
+c         write (6, 60000) 
+c     &        "the print region is not in the range of this box"
+c         write (6, "()")
       end if
 
 60000 format (4x, a)

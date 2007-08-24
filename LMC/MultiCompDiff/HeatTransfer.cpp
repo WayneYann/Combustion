@@ -4694,6 +4694,31 @@ HeatTransfer::advance (Real time,
 	MultiFab::Add (S_new, *div_of_flux_for_H_new, 0, index_of_rhoH, 1, 0);
 	MultiFab::Add (S_new, *div_of_flux_for_Y_new, 0, index_of_firstY, nspecies, 0);
 
+	if (ParallelDescriptor::IOProcessor())
+	{
+	    std::cout << std::endl
+		      << "JFG: about to update flux registers for H"
+		      << std::endl;
+	    if (level < parent->finestLevel())
+	    {
+		int ncomp =  getViscFluxReg(level+1).nComp ();
+		for (int n = 0; n < ncomp; ++n)
+		{
+		    Real foo = getViscFluxReg(level+1).SumReg (n);
+		    std::cout << "JFG: getViscFluxReg(" << level+1 << ").SumReg (" << n << ") = " << foo << std::endl;
+		}
+	    }
+	    if (level > 0)
+	    {
+		int ncomp =  getViscFluxReg(level).nComp ();
+		for (int n = 0; n < ncomp; ++n)
+		{
+		    Real foo = getViscFluxReg(level).SumReg (n);
+		    std::cout << "JFG: getViscFluxReg(" << level << ").SumReg (" << n << ") = " << foo << std::endl;
+		}
+	    }
+	}
+
 	// place into the flux registers the average of the old and new H fluxes
 	FArrayBox average_flux;
 	int components = 1;
@@ -4707,12 +4732,38 @@ HeatTransfer::advance (Real time,
 		average_flux.plus((*flux_for_H_new[dimension])[flux_mfi],edge_box,0,0,components);
                 average_flux.mult(0.5);
 		if (level < parent->finestLevel())
+		{
 		    getLevel(level+1).getViscFluxReg().CrseInit
 			(average_flux, edge_box, dimension, 0, index_of_rhoH, components, -dt);
-		
+		}
 		if (level > 0)
 		    getViscFluxReg().FineAdd
 			(average_flux, dimension, flux_mfi.index(), 0, index_of_rhoH, components, dt);
+	    }
+	}
+
+	if (ParallelDescriptor::IOProcessor())
+	{
+	    std::cout << std::endl
+		      << "JFG: about to update flux registers for Y"
+		      << std::endl;
+	    if (level < parent->finestLevel())
+	    {
+		int ncomp =  getViscFluxReg(level+1).nComp ();
+		for (int n = 0; n < ncomp; ++n)
+		{
+		    Real foo = getViscFluxReg(level+1).SumReg (n);
+		    std::cout << "JFG: getViscFluxReg(" << level+1 << ").SumReg (" << n << ") = " << foo << std::endl;
+		}
+	    }
+	    if (level > 0)
+	    {
+		int ncomp =  getViscFluxReg(level).nComp ();
+		for (int n = 0; n < ncomp; ++n)
+		{
+		    Real foo = getViscFluxReg(level).SumReg (n);
+		    std::cout << "JFG: getViscFluxReg(" << level << ").SumReg (" << n << ") = " << foo << std::endl;
+		}
 	    }
 	}
 
@@ -4734,6 +4785,31 @@ HeatTransfer::advance (Real time,
 		if (level > 0)
 		    getViscFluxReg().FineAdd
 			(average_flux, dimension, flux_mfi.index(), 0, index_of_firstY, components, dt);
+	    }
+	}
+
+	if (ParallelDescriptor::IOProcessor())
+	{
+	    std::cout << std::endl
+		      << "JFG: finished updating flux registers"
+		      << std::endl;
+	    if (level < parent->finestLevel())
+	    {
+		int ncomp =  getViscFluxReg(level+1).nComp ();
+		for (int n = 0; n < ncomp; ++n)
+		{
+		    Real foo = getViscFluxReg(level+1).SumReg (n);
+		    std::cout << "JFG: getViscFluxReg(" << level+1 << ").SumReg (" << n << ") = " << foo << std::endl;
+		}
+	    }
+	    if (level > 0)
+	    {
+		int ncomp =  getViscFluxReg(level).nComp ();
+		for (int n = 0; n < ncomp; ++n)
+		{
+		    Real foo = getViscFluxReg(level).SumReg (n);
+		    std::cout << "JFG: getViscFluxReg(" << level << ").SumReg (" << n << ") = " << foo << std::endl;
+		}
 	    }
 	}
 
@@ -6715,6 +6791,16 @@ HeatTransfer::differential_spec_diffuse_sync(Real dt)
 void
 HeatTransfer::reflux ()
 {
+    bool debug = true;
+    int icoord = 32;
+    int jcoord = 27;
+    if (debug && ParallelDescriptor::IOProcessor())
+    {
+	std::cout << std::endl
+		  << "JFG: entering HeatTransfer::reflux at level = " << level 
+		  << std::endl;
+	ns_print_values ("Ssync before HeatTransfer::reflux", icoord, jcoord, Ssync);
+    }
     if (level == parent->finestLevel())
         return;
 
@@ -6742,8 +6828,17 @@ HeatTransfer::reflux ()
     // Set do_reflux_visc to 0 for debugging reasons only.
     //
     if (do_reflux_visc)
+    {
         fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
+	if (debug && ParallelDescriptor::IOProcessor())
+	{
+	    std::cout << std::endl
+		      << "JFG: in HeatTransfer::reflux after fr_visc.Reflux" 
+		      << std::endl;
+	    ns_print_values ("Ssync after fr_visc.Reflux", icoord, jcoord, Ssync);
+	}
+    }
     const MultiFab* Rh = get_rho_half_time();
 
     if (do_mom_diff == 0) 
@@ -6803,6 +6898,13 @@ HeatTransfer::reflux ()
                 (*Ssync)[k].setVal(0,bx,0,NUM_STATE-BL_SPACEDIM);
             }
         }
+    }
+    if (debug && ParallelDescriptor::IOProcessor())
+    {
+	ns_print_values ("Ssync after HeatTransfer::reflux", icoord, jcoord, Ssync);
+	std::cout << std::endl
+		  << "JFG: leaving HeatTransfer::reflux at level = " << level 
+		  << std::endl;
     }
 }
 
@@ -7431,12 +7533,21 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 {
     BL_PROFILE("HeatTransfer::RhoH_to_Temp()");
 
-/*
+
     if (ParallelDescriptor::IOProcessor())
     {
 	std::cout << "JFG: entering RhoH_to_Temp" << std::endl;
     }
-*/
+
+    // choose a cell to inspect
+    bool debug = true;
+    int icoord = 32;
+    int jcoord = 27;
+    if (debug && ParallelDescriptor::IOProcessor())
+    {
+	HeatTransfer::print_values ("S", icoord, jcoord, 0, 0, &S);
+    }
+
     BL_ASSERT(S.nGrow() >= nGrow  &&  temp.nGrow() >= nGrow);
 
     const BoxArray& sgrids = S.boxArray();
@@ -7492,12 +7603,12 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
             std::cout << "HeatTransfer::RhoH_to_Temp: max_iters = " << max_iters << '\n';
         }
     }
-/*
+
     if (ParallelDescriptor::IOProcessor())
     {
 	std::cout << "JFG: leaving RhoH_to_Temp" << std::endl;
     }
-*/
+
 }
 
 void
