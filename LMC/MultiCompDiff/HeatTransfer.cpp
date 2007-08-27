@@ -3691,9 +3691,6 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 
 	MultiFab::Copy(s_tmp,rho_and_species,comp+1,0,1,0);
 	
-	// JFG: here is the copy that must be replaced in getViscTerms
-	// higher up in the calling sequence
-
 	// note the arguments for MultiFab:: procedures are 
 	// (dst, src, srccomp, dstcomp, ncomp, nghost);
 
@@ -6987,28 +6984,7 @@ HeatTransfer::calcDiffusivity (const Real time,
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calcDiffusivity()");
 
-    // if (do_mcdd) return;
     if (do_mcdd || do_rk_diffusion) return;
-/*
-    if (do_rk_diffusion)
-    {
-
-	if (ParallelDescriptor::IOProcessor())
-	{
-	    std::cout 
-		<< std::endl
-		<< "JFG: entering calcDiffusivity" << std::endl
-		<< std::endl
-		<< "             src_comp = " << src_comp << std::endl
-		<< "             num_comp = " << num_comp << std::endl
-		<< "           do_VelVisc = " << do_VelVisc << std::endl
-		<< std::endl
-		<< "Doing nothing, returning immediately" << std::endl
-		<< std::endl;
-	}
-        return;
-    }
-*/
 
     const TimeLevel whichTime = which_time(State_Type, time);
 

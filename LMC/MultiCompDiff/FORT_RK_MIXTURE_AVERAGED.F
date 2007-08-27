@@ -123,8 +123,8 @@ c     arguments
       REAL_T yflux_for_Y(DIMV(yflux_for_Y),ncomps)
 
 c     local variables
-      external FORT_CALCULATE_T
-      integer FORT_CALCULATE_T
+      external FORT_TfromHYpt
+      integer FORT_TfromHYpt
       integer ell
       integer i
       integer iterations
@@ -325,7 +325,7 @@ c     form rho_Y, T, X, and Y from rho, rho H and rho Y in the state
             end do
 c           use the state value for T as a guess for the Newton iteration
             T(i, j) = state(i, j, index_of_T)
-            iterations = FORT_CALCULATE_T
+            iterations = FORT_TfromHYpt
      &           (T(i, j),
      &           h, 
      &           contiguous_Y,

@@ -1227,8 +1227,6 @@ C     output RD = mass density (rho) * mixture averaged diffusion coefficients
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec),Dt(maxspec),CPMS(maxspec)
       REAL_T RHO, scal, Tt, Wavg, invmwt(maxspec), X(maxspec)
       
-      print *, "JFG: entering FORT_MIXAVG_RHODIFF"
-
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
       call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
@@ -1284,24 +1282,9 @@ C           invmut(n) = molecular weight of species n
       REAL_T Patm
 
       integer i, j, n
-c      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec),Dt(maxspec),CPMS(maxspec)
-c      REAL_T RHO, scal, tscal, Tt, Wavg, invmwt(maxspec), X(maxspec)
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(9),Dt(9),CPMS(9)
-      REAL_T RHO, scal, tscal, Tt, Wavg, invmwt(9), X(9)
+      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec), CPMS(maxspec)
+      REAL_T RHO, scal, tscal, Tt, Wavg, invmwt(maxspec), X(maxspec)
       REAL_T alpha, l1, l2
-
-c     debug stuff
-c      REAL_T lambda_prime_on_edge
-c      REAL_T rho_theta_on_edge
-c      REAL_T rho_Y_D_on_edge
-c      allocatable rho_theta_on_edge
-c      allocatable rho_Y_D_on_edge
-c      dimension rho_theta_on_edge (:)
-c      dimension rho_Y_D_on_edge (:,:)
-c      allocate (rho_theta_on_edge (9))
-c      allocate (rho_Y_D_on_edge (9, 9))
-
-c      print *, "JFG: entering FORT_MIXAVG_RHODIFF_TEMP"
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
@@ -1325,24 +1308,6 @@ c      print *, "JFG: entering FORT_MIXAVG_RHODIFF_TEMP"
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
             CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
             CALL EGSV1(Ptmp,Tt,Yt,Wavg,RWRK(egbr),Dt)
-
-c            print *, "cpms_on_edge", CPMS
-c            print *, "T_on_edge", Tt
-c            print *, "X_on_edge", X
-c            print *, "Y_on_edge", Yt
-c            print *, "mmw_on_edge", Wavg
-c            print *, "Upsilon", Dt
-c            print *, "end of good stuff"
-
-c           this is a debug call. the output is not used.
-c            call EGSLTDR5
-c     &           (Tt, Yt, Wavg, RWRK(egbr), IWRK(egbi),
-c     &           lambda_prime_on_edge, rho_theta_on_edge, rho_Y_D_on_edge)
-
-c            print *, "lambda_prime_on_edge", lambda_prime_on_edge
-c            print *, "rho_theta_on_edge", rho_theta_on_edge
-c            print *, "rho_Y_D_on_edge", rho_Y_D_on_edge
-c            stop
 
             CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
             do n=1,Nspec
@@ -1863,8 +1828,8 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
       REAL_T errMAX
       REAL_T res(0:NiterMAX-1)
       REAL_T Yt(maxspec)
-c      integer i,j,n,FORT_TfromHYpt,Niter,MAXiters
-      integer i,j,n,FORT_CALCULATE_T,Niter,MAXiters
+      integer i,j,n,FORT_TfromHYpt,Niter,MAXiters
+      REAL_T Tguess
 
       MAXiters = 0
       do j=lo(2),hi(2)
@@ -1872,15 +1837,24 @@ c      integer i,j,n,FORT_TfromHYpt,Niter,MAXiters
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
             end do
-            
-c            Niter = FORT_TfromHYpt(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res)
-            Niter = FORT_CALCULATE_T(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res)
+            Tguess = T(i,j)
+            Niter = FORT_TfromHYpt(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res)
             if (Niter .lt. 0) then
-               write(6,*) 'T from h,y solve in FORT_TfromHY failed',Niter
-               write(6,*) 'failed at i = ', i, ' j = ', j
-               write(6,*) 'lo = ', lo
-               write(6,*) 'hi = ', hi
+               write(6,996) 'T from h,y solve in FORT_TfromHY failed'
+               write(6,997) 'Niter flag = ',Niter
+               write(6,997) '   i and j = ',i,j
+               write(6,998) '   input h = ',HMIX(i,j)
+               write(6,998) '   input T = ',Tguess
+               write(6,998) '  output T = ',T(i,j)
+               write(6,998) 'input species mass fractions:'
+               do n = 1,Nspec
+                  write(6,998) '  ',Y(i,j,n)
+               end do
                call bl_abort(" ")
+
+ 996           format(a)
+ 997           format(a,2i5)
+ 998           format(a,d21.12)
             end if
             
             if (Niter .gt. MAXiters) then
