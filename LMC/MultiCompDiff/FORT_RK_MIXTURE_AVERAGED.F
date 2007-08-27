@@ -939,8 +939,8 @@ c           flux correction
          end do
       end do
 
-      call print_all ("all xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, 1)
-      call print_all ("all yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, 1)
+c      call print_all ("all xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, 1)
+c      call print_all ("all yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, 1)
 
       if (debug) call print_patch_n ("what yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
       if (debug) call print_patch_n ("what yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)

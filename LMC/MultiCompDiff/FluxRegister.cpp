@@ -1,5 +1,5 @@
 //
-// $Id: FluxRegister.cpp,v 1.1 2007-08-24 19:36:33 sepp Exp $
+// $Id: FluxRegister.cpp,v 1.2 2007-08-27 17:31:36 sepp Exp $
 //
 #include <winstd.H>
 
@@ -204,7 +204,7 @@ FluxRegister::Reflux (MultiFab&       S,
                       int             num_comp, 
                       const Geometry& geom)
 {
-    bool debug = true;
+    bool debug = false;
     int icoord = 32;
     int jcoord = 27;
     if (debug && ParallelDescriptor::IOProcessor())

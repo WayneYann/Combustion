@@ -1,5 +1,5 @@
 c
-c $Id: FLUXREG_2D.F,v 1.1 2007-08-24 19:53:16 sepp Exp $
+c $Id: FLUXREG_2D.F,v 1.2 2007-08-27 17:31:36 sepp Exp $
 c
 
 #undef  BL_LANG_CC
@@ -267,38 +267,38 @@ c :: For Multifluid reg is defined as: REAL_T reg(DIMV(reg),numcomp+FLUX_EXTRA)
       REAL_T     vol(DIMV(vol))
 
       integer n, i, j
-      integer ii, jj
-      ii = 32
-      jj = 27
+c      integer ii, jj
+c      ii = 32
+c      jj = 27
 
-      if (lo(2) .le. jj .and. jj .le. hi(2) .and.
-     +    lo(1) .le. ii .and. ii .le. hi(1)) then
-         print *
-         print *, "JFG: in FORT_FRREFLUX"
-         print *
-         print *, "DIMS(s) = ", DIMS(s)
-         print *, "DIMS(vol) = ", DIMS(vol)
-         print *, "DIMS(reg) = ", DIMS(reg)
-         print *, "lo = ", lo
-         print *, "hi = ", hi
-      end if
+c      if (lo(2) .le. jj .and. jj .le. hi(2) .and.
+c     +    lo(1) .le. ii .and. ii .le. hi(1)) then
+c         print *
+c         print *, "JFG: in FORT_FRREFLUX"
+c         print *
+c         print *, "DIMS(s) = ", DIMS(s)
+c         print *, "DIMS(vol) = ", DIMS(vol)
+c         print *, "DIMS(reg) = ", DIMS(reg)
+c         print *, "lo = ", lo
+c         print *, "hi = ", hi
+c      end if
 
       do n = 1, numcomp
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               if (i .eq. ii .and. j .eq. jj) then
+c               if (i .eq. ii .and. j .eq. jj) then
 c                  print *
 c                  print *, "JFG: in FORT_FRREFLUX"
-                  print *
-                  print *, "s(i,j,n) = ", s(i,j,n)
-                  print *, "mult = ", mult
-                  print *, "reg(i,j,n) = ", reg(i,j,n)
-                  print *, "vol(i,j) = ", vol(i,j)
-               end if
+c                  print *
+c                  print *, "s(i,j,n) = ", s(i,j,n)
+c                  print *, "mult = ", mult
+c                  print *, "reg(i,j,n) = ", reg(i,j,n)
+c                  print *, "vol(i,j) = ", vol(i,j)
+c               end if
                s(i,j,n) = s(i,j,n) + mult*reg(i,j,n)/vol(i,j)
-               if (i .eq. ii .and. j .eq. jj) then
-                  print *, "out s(i,j,n) = ", s(i,j,n)
-               end if
+c               if (i .eq. ii .and. j .eq. jj) then
+c                  print *, "out s(i,j,n) = ", s(i,j,n)
+c               end if
             end do
          end do
       end do

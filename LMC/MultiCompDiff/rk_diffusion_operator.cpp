@@ -183,8 +183,8 @@ c     * these arguments are not used
 		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
 		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
 		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
-	    std::cout << "                            x sum = " << ((*flux_for_H[0])[xflux_for_H_mfi]).norm (1, 0, 1) << std::endl;
-	    std::cout << "                            y sum = " << ((*flux_for_H[1])[yflux_for_H_mfi]).norm (1, 0, 1) << std::endl;
+	    // std::cout << "                            x sum = " << ((*flux_for_H[0])[xflux_for_H_mfi]).norm (1, 0, 1) << std::endl;
+	    // std::cout << "                            y sum = " << ((*flux_for_H[1])[yflux_for_H_mfi]).norm (1, 0, 1) << std::endl;
 	    
 	}
 

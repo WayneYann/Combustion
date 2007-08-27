@@ -7,7 +7,7 @@ void
 HeatTransfer::mac_sync ()
 {
     // choose a cell to inspect
-    bool debug = true;
+    bool debug = false;
     int icoord = 32;
     //int icoord = 31;
     //int icoord = 33;
@@ -384,7 +384,8 @@ HeatTransfer::mac_sync ()
 		    && state_ind!=Temp
 		    && is_diffusive[state_ind]
 		    && !(is_spec && !unity_Le)
-                    && !(do_mcdd && (is_spec || state_ind==RhoH));
+                    && !(do_mcdd && (is_spec || state_ind==RhoH))
+		    && !do_rk_diffusion;
 		
 		if (do_it && (is_spec || state_ind==RhoH))
 		    rho_flag = 2;
@@ -394,11 +395,8 @@ HeatTransfer::mac_sync ()
                     MultiFab* alpha = 0;
                     getDiffusivity(beta, cur_time, state_ind, 0, 1);
                     
-		    if (!do_rk_diffusion)
-		    {
-			diffusion->diffuse_Ssync(Ssync,sigma,dt,be_cn_theta,Rh,
-						 rho_flag,flux,0,beta,alpha);
-		    }
+		    diffusion->diffuse_Ssync(Ssync,sigma,dt,be_cn_theta,Rh,
+					     rho_flag,flux,0,beta,alpha);
 		    if (do_viscsyncflux && level > 0)
 		    {
 			for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)

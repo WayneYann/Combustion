@@ -4694,10 +4694,11 @@ HeatTransfer::advance (Real time,
 	MultiFab::Add (S_new, *div_of_flux_for_H_new, 0, index_of_rhoH, 1, 0);
 	MultiFab::Add (S_new, *div_of_flux_for_Y_new, 0, index_of_firstY, nspecies, 0);
 
+/*
 	if (ParallelDescriptor::IOProcessor())
 	{
 	    std::cout << std::endl
-		      << "JFG: about to update flux registers for H"
+		      << "JFG: at level " << level << " about to update flux registers for H"
 		      << std::endl;
 	    if (level < parent->finestLevel())
 	    {
@@ -4718,6 +4719,7 @@ HeatTransfer::advance (Real time,
 		}
 	    }
 	}
+*/
 
 	// place into the flux registers the average of the old and new H fluxes
 	FArrayBox average_flux;
@@ -4742,6 +4744,7 @@ HeatTransfer::advance (Real time,
 	    }
 	}
 
+/*
 	if (ParallelDescriptor::IOProcessor())
 	{
 	    std::cout << std::endl
@@ -4766,6 +4769,7 @@ HeatTransfer::advance (Real time,
 		}
 	    }
 	}
+*/
 
 	// place into the flux registers the average of the old and new Y fluxes
 	components = nspecies;
@@ -4788,6 +4792,7 @@ HeatTransfer::advance (Real time,
 	    }
 	}
 
+/*
 	if (ParallelDescriptor::IOProcessor())
 	{
 	    std::cout << std::endl
@@ -4812,6 +4817,7 @@ HeatTransfer::advance (Real time,
 		}
 	    }
 	}
+*/
 
 	if (level < parent->finestLevel())
 	    getLevel(level+1).getViscFluxReg().CrseInitFinish();
@@ -6791,7 +6797,7 @@ HeatTransfer::differential_spec_diffuse_sync(Real dt)
 void
 HeatTransfer::reflux ()
 {
-    bool debug = true;
+    bool debug = false;
     int icoord = 32;
     int jcoord = 27;
     if (debug && ParallelDescriptor::IOProcessor())
@@ -7533,14 +7539,15 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 {
     BL_PROFILE("HeatTransfer::RhoH_to_Temp()");
 
-
+/*
     if (ParallelDescriptor::IOProcessor())
     {
 	std::cout << "JFG: entering RhoH_to_Temp" << std::endl;
     }
+*/
 
     // choose a cell to inspect
-    bool debug = true;
+    bool debug = false;
     int icoord = 32;
     int jcoord = 27;
     if (debug && ParallelDescriptor::IOProcessor())
@@ -7604,11 +7611,12 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
         }
     }
 
+/*
     if (ParallelDescriptor::IOProcessor())
     {
 	std::cout << "JFG: leaving RhoH_to_Temp" << std::endl;
     }
-
+*/
 }
 
 void

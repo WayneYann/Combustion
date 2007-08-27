@@ -4753,7 +4753,7 @@ NavierStokes::reflux ()
     //   be divided by rho^(n+1) in level_sync.
     //
     fr_visc.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
-    bool debug = true;
+    bool debug = false;
     int icoord = 32;
     int jcoord = 27;
     if (debug && ParallelDescriptor::IOProcessor())
