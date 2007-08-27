@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.15 2007-08-24 17:30:27 sepp Exp $
+# $Id: GNUmakefile,v 1.16 2007-08-27 17:44:35 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,8 +7,8 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = FALSE
 DEBUG	          = TRUE
+DEBUG	          = FALSE
 PROFILE           = TRUE
 PROFILE           = FALSE
 DIM    	          = 2

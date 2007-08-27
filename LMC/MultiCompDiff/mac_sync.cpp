@@ -385,7 +385,7 @@ HeatTransfer::mac_sync ()
 		    && is_diffusive[state_ind]
 		    && !(is_spec && !unity_Le)
                     && !(do_mcdd && (is_spec || state_ind==RhoH))
-		    && !do_rk_diffusion;
+                    && !(do_rk_diffusion && (is_spec || state_ind==RhoH));
 		
 		if (do_it && (is_spec || state_ind==RhoH))
 		    rho_flag = 2;
