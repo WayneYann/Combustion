@@ -360,7 +360,7 @@ c        3) if the Y are marked dirichlet then so is T
      &        (lo_internal .eqv. lo_internal_check) .and.
      &        (.not. lo_dirichlet_for_Y .or. lo_dirichlet_for_T))
          if (error) call bl_abort 
-     &        ("FORT_RK_DIFFUSION: inconsistent bc array at low x")
+     &        ("FORT_RK_MULTICOMPONENT: inconsistent bc array at low x")
       end if
 
 c     set flags for special treatment of the hi boundary
@@ -390,7 +390,7 @@ c        3) if the Y are marked dirichlet then so is T
      &        (hi_internal .eqv. hi_internal_check) .and.
      &        (.not. hi_dirichlet_for_Y .or. hi_dirichlet_for_T))
          if (error) call bl_abort 
-     &        ("FORT_RK_DIFFUSION: inconsistent bc array at high x")
+     &        ("FORT_RK_MULTICOMPONENT: inconsistent bc array at high x")
       end if
 
 c     calculate fluxes in the x direction
@@ -670,7 +670,7 @@ c        3) if the Y are marked dirichlet then so is T
      &        (lo_internal .eqv. lo_internal_check) .and.
      &        (.not. lo_dirichlet_for_Y .or. lo_dirichlet_for_T))
          if (error) call bl_abort 
-     &        ("FORT_RK_DIFFUSION: inconsistent bc array at low y")
+     &        ("FORT_RK_MULTICOMPONENT: inconsistent bc array at low y")
       end if
 
 c     set flags for special treatment of the hi boundary
@@ -700,7 +700,7 @@ c        3) if the Y are marked dirichlet then so is T
      &        (hi_internal .eqv. hi_internal_check) .and.
      &        (.not. hi_dirichlet_for_Y .or. hi_dirichlet_for_T))
          if (error) call bl_abort 
-     &        ("FORT_RK_DIFFUSION: inconsistent bc array at high y")
+     &        ("FORT_RK_MULTICOMPONENT: inconsistent bc array at high y")
       end if
 
 c     calculate fluxes in the y direction
