@@ -5,9 +5,6 @@
 //             to kinetics divided by rho
 //
 
-// this is some of Joe's debug stuff
-// #define PRINT_CHANGES
-
 #include <winstd.H>
 
 #include <iostream>
@@ -3577,8 +3574,6 @@ HeatTransfer::mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCom
 
 #include "print_values.cpp"
 
-#include "print_change_of_values.cpp"
-
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 						    int       sComp,
@@ -4556,11 +4551,6 @@ HeatTransfer::advance (Real time,
     if (do_mom_diff == 1)
 	momentum_advection(dt,do_reflux);
 
-#ifdef PRINT_CHANGES
-    MultiFab save_new (grids, NUM_STATE, 0);
-    MultiFab::Copy (save_new, S_new, 0, 0, NUM_STATE, 0);
-#endif
-
     if (debug_values) {
 	MultiFab& S_new = get_new_data(State_Type);
 	MultiFab& S_old = get_old_data(State_Type);
@@ -4915,10 +4905,6 @@ HeatTransfer::advance (Real time,
         print_values ("point E2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
         print_values ("point E2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
-
-#ifdef PRINT_CHANGES
-    print_change_of_values ("point E new", i_c, j_c, 0, NUM_STATE, &save_new, &S_new);
-#endif
 
     //
     // Second half of Strang-split chemistry (first half done in
