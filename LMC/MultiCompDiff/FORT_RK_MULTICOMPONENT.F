@@ -230,19 +230,6 @@ c     local variables
       dimension Y (:,:,:)
       dimension Y_on_edge (:)
 
-c     debug variables
-      integer idx
-      integer jdx
-      logical debug
-      logical debug2
-c     debug prints patches
-      debug = .false.
-      debug2 = .false.
-      idx = hi(1)
-      jdx = hi(2)
-      idx = 3
-      jdx = 127
-
       allocate (contiguous_X (nspecies))
       allocate (contiguous_Y (nspecies))
       allocate (cpms_on_edge (nspecies))
@@ -263,8 +250,6 @@ c     debug prints patches
 c///
 c///  initialization
 c///
-
-      if (debug) print *, "JFG: at top of FORT_RK_MULTICOMPONENT"
 
 c     offset of species in the state
       offset = index_of_firstY - 1
@@ -320,18 +305,9 @@ c           use the state value for T as a guess for the Newton iteration
          end do
       end do
 
-      if (debug) call print_patch_n ("T", T, DIMS(state), 1, idx, jdx)
-      if (debug) call print_patch_n ("X", X, DIMS(state), nspecies, idx, jdx)
-
 c///
 c///  x fluxes
 c///
-
-      if (debug2) then
-         print *
-         print *, "////////// x fluxes //////////"
-         print *
-      end if
 
 c     set flags for special treatment of the lo boundary
 
@@ -436,12 +412,6 @@ c           evaluate the values for X on the edge
             call CKYTX 
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), X_on_edge)
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "T_on_edge", T_on_edge
-               print *, "Y_on_edge", Y_on_edge
-               print *, "X_on_edge", X_on_edge
-            end if
-
 c           evaluate the derivative for T on the edge
             if (at_lo .and. .not. lo_internal) then
                if (lo_dirichlet_for_T) then
@@ -494,11 +464,6 @@ c           evaluate the derivatives for X on the edge
                end if
             end do
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "derivative_of_T", derivative_of_T
-               print *, "derivative_of_X", derivative_of_X
-            end if
-
 c           evaluate diffusion coefficients and other things on the edge
             call CKCPMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), cpms_on_edge)
@@ -516,15 +481,6 @@ c           SUBROUTINE EGSLTDR5 (T, Y, WW, WEG, IWEG, PTC, THETA, D)
 c           there does not seem to be a chemkin call to get this ratio from T and Y
             pressure_over_rho_on_edge_cgs 
      &           = universal_gas_constant_cgs * T_on_edge / mmw_on_edge
-
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "cpms_on_edge", cpms_on_edge
-               print *, "mmw_on_edge", mmw_on_edge
-               print *, "hms_on_edge_cgs", hms_on_edge_cgs
-               print *, "lambda_prime_on_edge_cgs", lambda_prime_on_edge_cgs
-               print *, "rho_theta_on_edge_cgs", rho_theta_on_edge_cgs
-               print *, "rho_Y_D_on_edge_cgs", rho_Y_D_on_edge_cgs
-            end if
 
 c           convert the library values from cgs units to si units
 
@@ -591,13 +547,6 @@ c
 c           so the cgs value must be multiplied by 1.0d-4 to convert it to si units.
             pressure_over_rho_on_edge_si = 1.0d-4 * pressure_over_rho_on_edge_cgs 
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "hms_on_edge_si", hms_on_edge_si
-               print *, "lambda_prime_on_edge_si", lambda_prime_on_edge_si
-               print *, "rho_theta_on_edge_si", rho_theta_on_edge_si
-               print *, "rho_Y_D_on_edge_si", rho_Y_D_on_edge_si
-            end if
-
 c           assemble the fluxes
             sum_h_xflux_for_Y = 0
             sum_rho_theta_derivative_of_X = 0
@@ -630,18 +579,9 @@ c           assemble the fluxes
             end do
          end do
 
-      if (debug) call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx)
-      if (debug) call print_patch_n ("xflux_for_Y", xflux_for_Y, DIMS(xflux_for_Y), nspecies, idx, jdx)
-
 c///
 c///  y fluxes
 c///
-
-      if (debug2) then
-         print *
-         print *, "////////// y fluxes //////////"
-         print *
-      end if
 
 c     set flags for special treatment of the lo boundary
 
@@ -746,12 +686,6 @@ c           evaluate the values for X on the edge
             call CKYTX
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), X_on_edge)
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "T_on_edge", T_on_edge
-               print *, "Y_on_edge", Y_on_edge
-               print *, "X_on_edge", X_on_edge
-            end if
-
 c           evaluate the derivative for T on the edge
             if (at_lo .and. .not. lo_internal) then
                if (lo_dirichlet_for_T) then
@@ -804,11 +738,6 @@ c           evaluate the derivatives for X on the edge
                end if
             end do
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "derivative_of_T", derivative_of_T
-               print *, "derivative_of_X", derivative_of_X
-            end if
-
 c           evaluate diffusion coefficients and other things on the edge
             call CKCPMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), cpms_on_edge)
@@ -826,15 +755,6 @@ c           SUBROUTINE EGSLTDR5 (T, Y, WW, WEG, IWEG, PTC, THETA, D)
 c           there does not seem to be a chemkin call to get this ratio from T and Y
             pressure_over_rho_on_edge_cgs 
      &           = universal_gas_constant_cgs * T_on_edge / mmw_on_edge
-
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "cpms_on_edge", cpms_on_edge
-               print *, "mmw_on_edge", mmw_on_edge
-               print *, "hms_on_edge_cgs", hms_on_edge_cgs
-               print *, "lambda_prime_on_edge_cgs", lambda_prime_on_edge_cgs
-               print *, "rho_theta_on_edge_cgs", rho_theta_on_edge_cgs
-               print *, "rho_Y_D_on_edge_cgs", rho_Y_D_on_edge_cgs
-            end if
 
 c           convert the library values from cgs units to si units
 
@@ -901,13 +821,6 @@ c
 c           so the cgs value must be multiplied by 1.0d-4 to convert it to si units.
             pressure_over_rho_on_edge_si = 1.0d-4 * pressure_over_rho_on_edge_cgs 
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "hms_on_edge_si", hms_on_edge_si
-               print *, "lambda_prime_on_edge_si", lambda_prime_on_edge_si
-               print *, "rho_theta_on_edge_si", rho_theta_on_edge_si
-               print *, "rho_Y_D_on_edge_si", rho_Y_D_on_edge_si
-            end if
-
 c           assemble the fluxes
             sum_h_yflux_for_Y = 0
             sum_rho_theta_derivative_of_X = 0
@@ -937,23 +850,8 @@ c           assemble the fluxes
      &           - area_for_y
      &           * (lambda_prime_on_edge_si * derivative_of_T
      &           + pressure_over_rho_on_edge_si * sum_rho_theta_derivative_of_X)
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "sum_h_yflux_for_Y", sum_h_yflux_for_Y
-               print *, "- area_for_y", - area_for_y
-               print *, "lambda_prime_on_edge_si", lambda_prime_on_edge_si
-               print *, "derivative_of_T", derivative_of_T
-               print *, "pressure_over_rho_on_edge_si", pressure_over_rho_on_edge_si
-               print *, "sum_rho_theta_derivative_of_X", sum_rho_theta_derivative_of_X
-               print *, "term 2", - area_for_y * lambda_prime_on_edge_si * derivative_of_T
-               print *, "term 3", - area_for_y * pressure_over_rho_on_edge_si * sum_rho_theta_derivative_of_X
-               print *, "yflux_for_H(i,j)", yflux_for_H(i,j)
-            end if
-
-            end do
          end do
-
-      if (debug) call print_patch_n ("yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
-      if (debug) call print_patch_n ("yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
+      end do
 
 c///
 c///  form the updates weighted by scale_factor / vol
@@ -973,9 +871,6 @@ c///
             end do
          end do
       end do
-
-      if (debug) call print_patch_n ("div_of_flux_for_H", div_of_flux_for_H, DIMS(div_of_flux_for_H), 1, idx, jdx)
-      if (debug) call print_patch_n ("div_of_flux_for_Y", div_of_flux_for_Y, DIMS(div_of_flux_for_Y), nspecies, idx, jdx)
 
 c///
 c///  release temporary arrays (not strictly necessary)
@@ -1001,47 +896,6 @@ c///
 c///
 c///  end of FORT_RK_MULTICOMPONENT
 c///
-
-      if (debug) print *, "JFG: at bottom of FORT_RK_MULTICOMPONENT"
-c      if (debug) stop
-
-      return
-      end
-
-      subroutine print_patch_n (
-     &     title,
-     &     array, lo1, lo2, hi1, hi2, ncomps,
-     &     i_loc, j_loc)
-
-      character title*(*)
-      integer i
-      integer i_loc
-      integer j
-      integer j_loc
-      integer lo1, lo2, hi1, hi2
-      integer n
-      integer ncomps
-      REAL_T array(lo1 : hi1, lo2 : hi2, ncomps)
-
-      if (lo1 .le. i_loc-1 .and. i_loc+1 .le. hi1 .and.
-     &    lo2 .le. j_loc-1 .and. j_loc+1 .le. hi2) then
-         write (6, 60000) title
-         do n=1,ncomps
-            write (6, 60001) (i, i=i_loc-1,i_loc+1)
-            write (6, 60002) (j, (array(i, j, n), i=i_loc-1,i_loc+1), j=j_loc+1,j_loc-1,-1)
-         end do
-         write (6, "()")
-c      else
-c         write (6, 60000) title
-c         write (6, "()")
-c         write (6, 60000) 
-c     &        "the print region is not in the range of this box"
-c         write (6, "()")
-      end if
-
-60000 format (4x, a)
-60001 format (/6x, 3i15)
-60002 format (1p, 1x, i5, 3d15.6 /1x, i5, 3d15.6 /1x, i5, 3d15.6)
 
       return
       end

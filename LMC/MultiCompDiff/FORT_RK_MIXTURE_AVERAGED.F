@@ -232,19 +232,6 @@ c     local variables
       dimension Y (:,:,:)
       dimension Y_on_edge (:)
 
-c     debug variables
-      integer idx
-      integer jdx
-      logical debug
-      logical debug2
-      logical debug3
-c     debug prints patches
-      debug = .false.
-      debug2 = .false.
-      debug3 = .false.
-      idx = 32
-      jdx = 27
-
       allocate (contiguous_Y (nspecies))
       allocate (cpms_on_edge (nspecies))
       allocate (derivative_of_Y (nspecies))
@@ -266,8 +253,6 @@ c     debug prints patches
 c///
 c///  initialization
 c///
-
-      if (debug) print *, "JFG: at top of FORT_RK_MIXTURE_AVERAGED"
 
 c     offset of species in the state
       offset = index_of_firstY - 1
@@ -302,15 +287,6 @@ c     get reciprocals of molecular weights
          one_over_wt(n) = 1.0d0 / wt(n)
       end do
 
-      if (debug2) then
-         print *, "wt"
-         print *, wt
-         print *, "one_over_wt"
-         print *, one_over_wt
-      end if
-
-      if (debug) call print_patch_n ("state", state, DIMS(state), ncomps, idx, jdx)
-
 c     form rho_Y, T, X, and Y from rho, rho H and rho Y in the state
       do j=ARG_L2(state),ARG_H2(state)
          do i=ARG_L1(state),ARG_H1(state)
@@ -335,18 +311,9 @@ c           use the state value for T as a guess for the Newton iteration
          end do
       end do
 
-      if (debug) call print_patch_n ("T", T, DIMS(state), 1, idx, jdx)
-      if (debug) call print_patch_n ("Y", Y, DIMS(state), nspecies, idx, jdx)
-
 c///
 c///  x fluxes
 c///
-
-      if (debug2) then
-         print *
-         print *, "////////// x fluxes //////////"
-         print *
-      end if
 
 c     set flags for special treatment of the lo boundary
 
@@ -454,12 +421,6 @@ c           evaluate the values for X on the edge
             call CKYTX 
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), X_on_edge)
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "T_on_edge", T_on_edge
-               print *, "Y_on_edge", Y_on_edge
-               print *, "X_on_edge", X_on_edge
-            end if
-
 c           evaluate the derivative for T on the edge
             if (at_lo .and. .not. lo_internal) then
                if (lo_dirichlet_for_T) then
@@ -512,11 +473,6 @@ c           evaluate the derivatives for Y on the edge
                end if
             end do
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "derivative_of_T", derivative_of_T
-               print *, "derivative_of_Y", derivative_of_Y
-            end if
-
 c           evaluate diffusion coefficients and other things on the edge
             call CKCPMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), cpms_on_edge)
@@ -537,14 +493,6 @@ c           provisions to compute it through the alpha parameter in its equation
             alpha = - 1.0d0
             CALL EGSL1 (alpha, T_on_edge, X_on_edge, RWRK(egbr), minus_value_cgs)
             lambda_on_edge_cgs = 0.5d0 * (plus_value_cgs + minus_value_cgs)
-
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "cpms_on_edge", cpms_on_edge
-               print *, "mmw_on_edge", mmw_on_edge
-               print *, "hms_on_edge_cgs", hms_on_edge_cgs
-               print *, "lambda_on_edge_cgs", lambda_on_edge_cgs
-               print *, "rho_Upsilon_on_edge_cgs", rho_Upsilon_on_edge_cgs
-            end if
 
 c           convert the library values from cgs units to si units
 
@@ -584,12 +532,6 @@ c           conductivity is (W / (M K)), so these values must be divided by 10**
 c           to convert them to si units.
             lambda_on_edge_si = 1.0d-5 * lambda_on_edge_cgs
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "hms_on_edge_si", hms_on_edge_si
-               print *, "lambda_on_edge_si", lambda_on_edge_si
-               print *, "rho_Dmix_on_edge_si", rho_Dmix_on_edge_si
-            end if
-
 c           assemble the fluxes
             sum_h_xflux_for_Y = 0
             do n = 1,nspecies
@@ -626,18 +568,9 @@ c           flux correction
          end do
       end do
 
-      if (debug) call print_patch_n ("xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, idx, jdx)
-      if (debug) call print_patch_n ("xflux_for_Y", xflux_for_Y, DIMS(xflux_for_Y), nspecies, idx, jdx)
-
 c///
 c///  y fluxes
 c///
-
-      if (debug2) then
-         print *
-         print *, "////////// y fluxes //////////"
-         print *
-      end if
 
 c     set flags for special treatment of the lo boundary
 
@@ -758,12 +691,6 @@ c           evaluate the values for X on the edge
             call CKYTX
      &           (Y_on_edge, IWRK(ckbi), RWRK(ckbr), X_on_edge)
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "T_on_edge", T_on_edge
-               print *, "Y_on_edge", Y_on_edge
-               print *, "X_on_edge", X_on_edge
-            end if
-
 c           evaluate the derivative for T on the edge
             if (at_lo .and. .not. lo_internal) then
                if (lo_dirichlet_for_T) then
@@ -816,11 +743,6 @@ c           evaluate the derivatives for X on the edge
                end if
             end do
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "derivative_of_T", derivative_of_T
-               print *, "derivative_of_Y", derivative_of_Y
-            end if
-
 c           evaluate diffusion coefficients and other things on the edge
             call CKCPMS 
      &           (T_on_edge, IWRK(ckbi), RWRK(ckbr), cpms_on_edge)
@@ -841,14 +763,6 @@ c           provisions to compute it through the alpha parameter in its equation
             alpha = - 1.0d0
             CALL EGSL1 (alpha, T_on_edge, X_on_edge, RWRK(egbr), minus_value_cgs)
             lambda_on_edge_cgs = 0.5d0 * (plus_value_cgs + minus_value_cgs)
-
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "cpms_on_edge", cpms_on_edge
-               print *, "mmw_on_edge", mmw_on_edge
-               print *, "hms_on_edge_cgs", hms_on_edge_cgs
-               print *, "lambda_on_edge_cgs", lambda_on_edge_cgs
-               print *, "rho_Upsilon_on_edge_cgs", rho_Upsilon_on_edge_cgs
-            end if
 
 c           convert the library values from cgs units to si units
 
@@ -888,12 +802,6 @@ c           conductivity is (W / (M K)), so these values must be divided by 10**
 c           to convert them to si units.
             lambda_on_edge_si = 1.0d-5 * lambda_on_edge_cgs
 
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "hms_on_edge_si", hms_on_edge_si
-               print *, "lambda_on_edge_si", lambda_on_edge_si
-               print *, "rho_Dmix_on_edge_si", rho_Dmix_on_edge_si
-            end if
-
 c           assemble the fluxes
             sum_h_yflux_for_Y = 0
             do n = 1,nspecies
@@ -926,24 +834,8 @@ c           flux correction
      &              - rho_Y_on_edge(n)
      &              * coefficient
             end do
-
-            if (debug2 .and. i .eq. idx .and. j .eq. jdx) then
-               print *, "sum_h_yflux_for_Y", sum_h_yflux_for_Y
-               print *, "- area_for_y", - area_for_y
-               print *, "lambda_on_edge_si", lambda_on_edge_si
-               print *, "derivative_of_T", derivative_of_T
-               print *, " term 2", - area_for_y * lambda_on_edge_si * derivative_of_T
-               print *, "yflux_for_H(i,j)", yflux_for_H(i,j)
-            end if
-
          end do
       end do
-
-c      call print_all ("all xflux_for_H", xflux_for_H, DIMS(xflux_for_H), 1, 1)
-c      call print_all ("all yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, 1)
-
-      if (debug) call print_patch_n ("what yflux_for_H", yflux_for_H, DIMS(yflux_for_H), 1, idx, jdx)
-      if (debug) call print_patch_n ("what yflux_for_Y", yflux_for_Y, DIMS(yflux_for_Y), nspecies, idx, jdx)
 
 c///
 c///  form the updates weighted by scale_factor / vol
@@ -961,17 +853,8 @@ c///
      &              * ((xflux_for_Y(i+1,j,n) - xflux_for_Y(i,j,n))
      &              + (yflux_for_Y(i,j+1,n) - yflux_for_Y(i,j,n)))
             end do
-
-            if (debug3 .and. i .eq. idx .and. j .eq. jdx) then
-               print *
-               print *, "setting value of div_of_flux_for_Y"
-               call change_values (div_of_flux_for_Y, DIMS(div_of_flux_for_Y), nspecies, idx, jdx, 1, 1.0d-3)
-            end if
          end do
       end do
-
-      if (debug) call print_patch_n ("div_of_flux_for_H", div_of_flux_for_H, DIMS(div_of_flux_for_H), 1, idx, jdx)
-      if (debug) call print_patch_n ("div_of_flux_for_Y", div_of_flux_for_Y, DIMS(div_of_flux_for_Y), nspecies, idx, jdx)
 
 c///
 c///  release temporary arrays (not strictly necessary)
@@ -998,63 +881,6 @@ c///
 c///
 c///  end of FORT_RK_MIXTURE_AVERAGED
 c///
-
-      if (debug) print *, "JFG: at bottom of FORT_RK_MIXTURE_AVERAGED"
-c      if (debug) stop
-
-      return
-      end
-
-      subroutine change_values 
-     &     (array, lo1, lo2, hi1, hi2, ncomps,
-     &     i_loc, j_loc, comp, value)
-
-      integer comp
-      integer i
-      integer i_loc
-      integer j
-      integer j_loc
-      integer lo1, lo2, hi1, hi2
-      integer n
-      integer ncomps
-      REAL_T array(lo1 : hi1, lo2 : hi2, ncomps)
-      REAL_T value
-
-      if (lo1 .le. i_loc .and. i_loc .le. hi1 .and.
-     &    lo2 .le. j_loc .and. j_loc .le. hi2) then
-         print *, "i = ", i_loc, "j = ", j_loc, "comp = ", comp, 
-     &    "value = ", value
-         array(i_loc, j_loc, comp) = value
-      end if
-
-      return
-      end
-
-      subroutine print_all (
-     &     title,
-     &     array, lo1, lo2, hi1, hi2, ncomps,
-     &     n)
-
-      character title*(*)
-      integer i
-      integer i_loc
-      integer j
-      integer j_loc
-      integer lo1, lo2, hi1, hi2
-      integer n
-      integer ncomps
-      REAL_T array(lo1 : hi1, lo2 : hi2, ncomps)
-      REAL_T sum
-
-      sum = 0
-      do j = lo2, hi2
-         do i = lo1, hi1
-            sum = sum + abs (array(i, j, n))
-         end do
-      end do
-      write (6, 60000) title, sum, lo1, hi1, lo2, hi2
-
-60000 format (4x, a, " absolute sum = ", 1p, d16.9, 4i5)
 
       return
       end
