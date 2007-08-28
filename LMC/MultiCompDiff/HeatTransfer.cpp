@@ -6794,16 +6794,6 @@ HeatTransfer::differential_spec_diffuse_sync(Real dt)
 void
 HeatTransfer::reflux ()
 {
-    bool debug = false;
-    int icoord = 32;
-    int jcoord = 27;
-    if (debug && ParallelDescriptor::IOProcessor())
-    {
-	std::cout << std::endl
-		  << "JFG: entering HeatTransfer::reflux at level = " << level 
-		  << std::endl;
-	ns_print_values ("Ssync before HeatTransfer::reflux", icoord, jcoord, Ssync);
-    }
     if (level == parent->finestLevel())
         return;
 
@@ -6833,14 +6823,6 @@ HeatTransfer::reflux ()
     if (do_reflux_visc)
     {
         fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
-
-	if (debug && ParallelDescriptor::IOProcessor())
-	{
-	    std::cout << std::endl
-		      << "JFG: in HeatTransfer::reflux after fr_visc.Reflux" 
-		      << std::endl;
-	    ns_print_values ("Ssync after fr_visc.Reflux", icoord, jcoord, Ssync);
-	}
     }
     const MultiFab* Rh = get_rho_half_time();
 
@@ -6901,13 +6883,6 @@ HeatTransfer::reflux ()
                 (*Ssync)[k].setVal(0,bx,0,NUM_STATE-BL_SPACEDIM);
             }
         }
-    }
-    if (debug && ParallelDescriptor::IOProcessor())
-    {
-	ns_print_values ("Ssync after HeatTransfer::reflux", icoord, jcoord, Ssync);
-	std::cout << std::endl
-		  << "JFG: leaving HeatTransfer::reflux at level = " << level 
-		  << std::endl;
     }
 }
 
