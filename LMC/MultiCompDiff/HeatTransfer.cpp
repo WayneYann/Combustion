@@ -3355,10 +3355,6 @@ HeatTransfer::mcdd_update(Real time,
         std::cout << "... mcdd update for RhoH and RhoY" << '\n';
 
     // Get advection updates into new-time state
-    // JFG in mcdd_update: 
-    // 1) can this be called twice?  not sure, careful about loading flux registers twice
-    // 2) why is rhoh done separately?  maybe not contiguous with species
-    // 3) the chem terms are in old and new
     // warning this may update flux registers
     scalar_advection_update(dt, first_spec, last_spec);
     scalar_advection_update(dt, RhoH, RhoH);
@@ -3572,8 +3568,6 @@ HeatTransfer::mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCom
 
 #include "rk_step_selection.cpp"
 
-#include "print_values.cpp"
-
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 						    int       sComp,
@@ -3724,8 +3718,6 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     //               sum_l rho D grad Y_l dot grad h_l)
     //
     // NOTE: This routine does not fill grow cells
-    //
-    // JFG: what does the rho_flag do?
     //
     BL_ASSERT(visc_terms.boxArray()==grids);
 
@@ -4418,9 +4410,6 @@ HeatTransfer::advance (Real time,
     // Compute tn coeffs based on chem-advance tn data
     //  (these are used in the Godunov extrapolation)
     //
-    // JFG: perhaps this should be skipped for rk_diffusion
-    // since getVsicTerms computes its own diffusion coefficients
-    //
     const int nScalDiffs = NUM_STATE-BL_SPACEDIM-1;
     calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs);
     //
@@ -4496,8 +4485,6 @@ HeatTransfer::advance (Real time,
 	int jdx = 127;
 
 	// finish the advective update by including rho H.
-	// JFG: what does this flag do?
-	// is this working?
 	bool do_adv_reflux = true;
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux);
 
@@ -4509,9 +4496,6 @@ HeatTransfer::advance (Real time,
 	// get the old and new states
 	MultiFab& S_new = get_new_data(State_Type);
 	MultiFab& S_old = get_old_data(State_Type);
-
-	// print_values ("S_old before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_old);
-	// print_values ("S_new before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_new);
 
 	// the old state currently holds the time n values plus the half step chemistry
 	// apply the diffusion operator to the old state to get fluxes and updates
@@ -4528,16 +4512,10 @@ HeatTransfer::advance (Real time,
 			       flux_for_H_old,
 			       flux_for_Y_old);
 
-	// print_values ("div_of_flux_for_H_old", idx, jdx, 0, 1, div_of_flux_for_H_old);
-	// print_values ("div_of_flux_for_Y_old", idx, jdx, 0, nspecies, div_of_flux_for_Y_old);
-
 	// the new state currently holds the time n values plus the half step chemistry
 	// add the advective terms to the new state
 	scalar_advection_update(dt, first_spec, last_spec);
-	// print_values ("S_new before scalar_advection_update", idx, jdx, 0, NUM_STATE, &S_new);
-	// print_values ("aofs before scalar_advection_update", idx, jdx, 0, NUM_STATE, aofs);
 	scalar_advection_update(dt, RhoH, RhoH);
-	// print_values ("S_new after scalar_advection_update", idx, jdx, 0, NUM_STATE, &S_new);
 
 	// save these values.
 	MultiFab save_for_rhoH (grids, 1, 0);
@@ -4559,30 +4537,12 @@ HeatTransfer::advance (Real time,
 	MultiFab** flux_for_H_new;
 	MultiFab** flux_for_Y_new;
 
-	// print_values ("S_old before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_old);
-	// print_values ("S_new before rk_diffusion_operator", idx, jdx, 0, NUM_STATE, &S_new);
-
 	rk_diffusion_operator (cur_time,
 			       - dt,
 			       div_of_flux_for_H_new,
 			       div_of_flux_for_Y_new,
 			       flux_for_H_new,
 			       flux_for_Y_new);
-/*
-	print_values ("div_of_flux_for_H_new",
-		      idx,
-		      jdx,
-		      0,
-		      1,
-		      div_of_flux_for_H_new);
-
-	print_values ("div_of_flux_for_Y_new",
-		      idx,
-		      jdx,
-		      0,
-		      nspecies,
-		      div_of_flux_for_Y_new);
-*/
 	// restore the new state with the saved values so that it holds the sum of the old
         // state and the forcing and advection terms.
 	MultiFab::Copy (S_new, save_for_rhoH, 0, index_of_rhoH, 1, 0);
@@ -4598,33 +4558,6 @@ HeatTransfer::advance (Real time,
 	(*div_of_flux_for_Y_new).mult (0.5, 0);
 	MultiFab::Add (S_new, *div_of_flux_for_H_new, 0, index_of_rhoH, 1, 0);
 	MultiFab::Add (S_new, *div_of_flux_for_Y_new, 0, index_of_firstY, nspecies, 0);
-
-/*
-	if (ParallelDescriptor::IOProcessor())
-	{
-	    std::cout << std::endl
-		      << "JFG: at level " << level << " about to update flux registers for H"
-		      << std::endl;
-	    if (level < parent->finestLevel())
-	    {
-		int ncomp =  getViscFluxReg(level+1).nComp ();
-		for (int n = 0; n < ncomp; ++n)
-		{
-		    Real foo = getViscFluxReg(level+1).SumReg (n);
-		    std::cout << "JFG: getViscFluxReg(" << level+1 << ").SumReg (" << n << ") = " << foo << std::endl;
-		}
-	    }
-	    if (level > 0)
-	    {
-		int ncomp =  getViscFluxReg(level).nComp ();
-		for (int n = 0; n < ncomp; ++n)
-		{
-		    Real foo = getViscFluxReg(level).SumReg (n);
-		    std::cout << "JFG: getViscFluxReg(" << level << ").SumReg (" << n << ") = " << foo << std::endl;
-		}
-	    }
-	}
-*/
 
 	// place into the flux registers the average of the old and new H fluxes
 	FArrayBox average_flux;
@@ -4649,33 +4582,6 @@ HeatTransfer::advance (Real time,
 	    }
 	}
 
-/*
-	if (ParallelDescriptor::IOProcessor())
-	{
-	    std::cout << std::endl
-		      << "JFG: about to update flux registers for Y"
-		      << std::endl;
-	    if (level < parent->finestLevel())
-	    {
-		int ncomp =  getViscFluxReg(level+1).nComp ();
-		for (int n = 0; n < ncomp; ++n)
-		{
-		    Real foo = getViscFluxReg(level+1).SumReg (n);
-		    std::cout << "JFG: getViscFluxReg(" << level+1 << ").SumReg (" << n << ") = " << foo << std::endl;
-		}
-	    }
-	    if (level > 0)
-	    {
-		int ncomp =  getViscFluxReg(level).nComp ();
-		for (int n = 0; n < ncomp; ++n)
-		{
-		    Real foo = getViscFluxReg(level).SumReg (n);
-		    std::cout << "JFG: getViscFluxReg(" << level << ").SumReg (" << n << ") = " << foo << std::endl;
-		}
-	    }
-	}
-*/
-
 	// place into the flux registers the average of the old and new Y fluxes
 	components = nspecies;
 	for (int dimension = 0; dimension < BL_SPACEDIM; dimension++)
@@ -4697,33 +4603,6 @@ HeatTransfer::advance (Real time,
 	    }
 	}
 
-/*
-	if (ParallelDescriptor::IOProcessor())
-	{
-	    std::cout << std::endl
-		      << "JFG: finished updating flux registers"
-		      << std::endl;
-	    if (level < parent->finestLevel())
-	    {
-		int ncomp =  getViscFluxReg(level+1).nComp ();
-		for (int n = 0; n < ncomp; ++n)
-		{
-		    Real foo = getViscFluxReg(level+1).SumReg (n);
-		    std::cout << "JFG: getViscFluxReg(" << level+1 << ").SumReg (" << n << ") = " << foo << std::endl;
-		}
-	    }
-	    if (level > 0)
-	    {
-		int ncomp =  getViscFluxReg(level).nComp ();
-		for (int n = 0; n < ncomp; ++n)
-		{
-		    Real foo = getViscFluxReg(level).SumReg (n);
-		    std::cout << "JFG: getViscFluxReg(" << level << ").SumReg (" << n << ") = " << foo << std::endl;
-		}
-	    }
-	}
-*/
-
 	if (level < parent->finestLevel())
 	    getLevel(level+1).getViscFluxReg().CrseInitFinish();
 
@@ -4741,15 +4620,6 @@ HeatTransfer::advance (Real time,
 	// use the old temperature as an initial guess for the Newton iteration.
 	MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
         RhoH_to_Temp(S_new);
-/*
-	print_values ("final S_new",
-		      idx,
-		      jdx,
-		      0,
-		      NUM_STATE,
-		      &S_new);
-*/
-
     }
     else if (do_mcdd)
     {
@@ -7374,13 +7244,6 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
             std::cout << "HeatTransfer::RhoH_to_Temp: max_iters = " << max_iters << '\n';
         }
     }
-
-/*
-    if (ParallelDescriptor::IOProcessor())
-    {
-	std::cout << "JFG: leaving RhoH_to_Temp" << std::endl;
-    }
-*/
 }
 
 void
