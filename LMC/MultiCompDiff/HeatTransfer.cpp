@@ -4279,29 +4279,7 @@ HeatTransfer::advance (Real time,
                   << " with dt = "         << dt << std::endl;
     }
 
-    //  debug by tracing changes to S_old and S_new
-    bool debug_values = false;
-    int i_c = 3;
-    int j_c = 127;
-
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point A1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point A1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
-    //  state modification A:
-    //  advance_setup changes old v, rho, rhoY, rhoH, T, rhoRT
-
     advance_setup(time,dt,iteration,ncycle);
-
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point A2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point A2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
 
     if (do_check_divudt)
         checkTimeStep(dt);
@@ -4374,16 +4352,6 @@ HeatTransfer::advance (Real time,
     // due to not being recached appropriately after regridding.
     //
 
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point B1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point B1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
-    //  state modification B:
-    //  the following block changes old rhoY, T
-
     {
         MultiFab tmpFABs;
 
@@ -4422,12 +4390,6 @@ HeatTransfer::advance (Real time,
         strang_chem(tmpFABs,dt,HT_LeaveYdotAlone);
 
         aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
-    }
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point B2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point B2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
     }
 
     //
@@ -4497,15 +4459,6 @@ HeatTransfer::advance (Real time,
         const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
         Rho_hold[mfi.index()].copy((*rho_ctime)[mfi],box,0,box,0,1);
     }
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point C1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point C1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
-    //  state modification C:
-    //  scalar_update changes new rho
 
     //
     // Compute new and half-time densities.
@@ -4513,56 +4466,21 @@ HeatTransfer::advance (Real time,
     const int rho_corr = 1;
     scalar_update(dt,Density,Density,rho_corr);
 
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point C2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point C2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
     //
     // Set saved rho at current time.
     //
     make_rho_curr_time();
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point D1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point D1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
-    //  state modification D:
-    //  reset_rho_in_rho_states changes new rhoY, rhoH
 
     //
     // Reset rho-states to contain new rho.
     //
     reset_rho_in_rho_states(Rho_hold,cur_time,first_scalar+1,NUM_SCALARS-1);
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point D2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point D2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
 
     //
     // Compute the update to momentum
     //
     if (do_mom_diff == 1)
 	momentum_advection(dt,do_reflux);
-
-    if (debug_values) {
-	MultiFab& S_new = get_new_data(State_Type);
-	MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point E1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point E1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-
-	// note the arguments for MultiFab:: procedures are 
-	// (dst, src, srccomp, dstcomp, ncomp, nghost);
-    }
-    
-    //  state modification E:
-    //  the following independent blocks (rk, mc, and original)  change new rhoY, rhoH, T
 
     BL_PROFILE_TIMER(diffusiontimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-diffusion");
     BL_PROFILE_START(diffusiontimer);
@@ -4899,13 +4817,6 @@ HeatTransfer::advance (Real time,
 
     BL_PROFILE_STOP(diffusiontimer);
 
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-        print_values ("point E2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-        print_values ("point E2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
     //
     // Second half of Strang-split chemistry (first half done in
     // compute_edge_states) This takes new-time data, and returns new-time
@@ -4934,24 +4845,7 @@ HeatTransfer::advance (Real time,
     }
 #endif
 
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point F1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point F1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
-    //  state modification F:
-    //  strang_chem changes new rhoY, T
-
     strang_chem(S_new,dt,HT_EstimateYdotNew);
-
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point F2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point F2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
 
 #ifdef BL_PLOT_CONSUMPTION
     if (plot_auxDiags)
@@ -4983,29 +4877,12 @@ HeatTransfer::advance (Real time,
     //
     calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
 
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point G1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point G1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
-    //  state modification G:
-    //  setThermoPress changes new rhoRT
-
     //
     // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
     //   the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
     //   not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
     //
     setThermoPress(cur_time);
-
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point G2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point G2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
 
     calc_divu(time+dt, dt, get_new_data(Divu_Type));
 
@@ -5041,40 +4918,13 @@ HeatTransfer::advance (Real time,
     if (NavierStokes::initial_step)
         MultiFab::Copy(get_old_data(Dsdt_Type),get_new_data(Dsdt_Type),0,0,1,0);
 
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point H1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point H1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
-    //  state modification H:
-    //  velocity_update changes new v
-
     //
     // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
     //
     velocity_update(dt);
 
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point H2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point H2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
     advance_cleanup(dt,iteration,ncycle);
 
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point I1 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point I1 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
-    //  state modification I:
-    //  the following block changes new v
-            
     //
     // Increment rho average.
     //
@@ -5095,13 +4945,6 @@ HeatTransfer::advance (Real time,
         if (level > 0 && iteration == 1) p_avg->setVal(0);
     }
     
-    if (debug_values) {
-        MultiFab& S_new = get_new_data(State_Type);
-        MultiFab& S_old = get_old_data(State_Type);
-	print_values ("point I2 S_old", i_c, j_c, 0, NUM_STATE, &S_old);
-	print_values ("point I2 S_new", i_c, j_c, 0, NUM_STATE, &S_new);
-    }
-
     //
     // Update estimate for allowable time step.
     //
@@ -7475,22 +7318,6 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
                             int       dominmax)
 {
     BL_PROFILE("HeatTransfer::RhoH_to_Temp()");
-
-/*
-    if (ParallelDescriptor::IOProcessor())
-    {
-	std::cout << "JFG: entering RhoH_to_Temp" << std::endl;
-    }
-*/
-
-    // choose a cell to inspect
-    bool debug = false;
-    int icoord = 32;
-    int jcoord = 27;
-    if (debug && ParallelDescriptor::IOProcessor())
-    {
-	HeatTransfer::print_values ("S", icoord, jcoord, 0, 0, &S);
-    }
 
     BL_ASSERT(S.nGrow() >= nGrow  &&  temp.nGrow() >= nGrow);
 
