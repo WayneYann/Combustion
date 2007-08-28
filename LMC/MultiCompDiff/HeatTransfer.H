@@ -191,13 +191,6 @@ public:
 
     Real rk_step_selection (const Real time);
 
-    static void print_values (const char* message,
-		       const int i_coordinate,
-		       const int j_coordinate,
-		       const int first,
-		       const int number,
-		       MultiFab *multifab);
-
     //
     // Make rho at time n.
     //

@@ -3,14 +3,8 @@ HeatTransfer::calc_divu (Real      time,
                          Real      dt,
                          MultiFab& divu)
 {
-    // choose a cell to inspect
-    bool debug_values = false;
-    int idx = 3;
-    int jdx = 127;
-
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calc_divu()");
 
-    // if (do_rk_diffusion && !rk_mixture_averaged)
     if (do_rk_diffusion)
     {
 	//
@@ -30,12 +24,6 @@ HeatTransfer::calc_divu (Real      time,
 	MultiFab** flux_for_H;
 	MultiFab** flux_for_Y;
 
-/*
-	// debug to see what happens with mixture averaged constraint
-	bool save_rk_mixture_averaged = rk_mixture_averaged;
-	rk_mixture_averaged = true;
-*/
-	
 	// the divergences should not be scaled, so pass 1 as the scaling argument
 	rk_diffusion_operator (time,
 			       1.0,
@@ -43,11 +31,6 @@ HeatTransfer::calc_divu (Real      time,
 			       div_of_flux_for_Y,
 			       flux_for_H,
 			       flux_for_Y);
-
-/*
-	// debug to see what happens with mixture averaged constraint
-	rk_mixture_averaged = save_rk_mixture_averaged;
-*/
 
 	// get rho and T
 	MultiFab rho(grids,1,nGrow);
@@ -118,8 +101,6 @@ HeatTransfer::calc_divu (Real      time,
 	    divu[iGrid].divide(T[iGrid],grids[iGrid],0,0,1);
 	}
 
-	if (debug_values) print_values ("divu first term", idx, jdx, 0, 1, &divu);
-
 	// add to divu the products of the other terms
 
 	const Array<Real> mw = getChemSolve().speciesMolecWt();
@@ -166,8 +147,6 @@ HeatTransfer::calc_divu (Real      time,
 		term1A[iGrid].mult(term2A[iGrid],0,0,1);
 		// divu = divu + term1A
 		divu[iGrid].plus(term1A[iGrid],0,0,1);
-
-		if (debug_values) print_values ("divu species term", idx, jdx, 0, 1, &term1A);
 	    }
 	}
 
@@ -360,5 +339,4 @@ HeatTransfer::calc_divu (Real      time,
 	    }
 	}
     }
-    if (debug_values) print_values ("divu", idx, jdx, 0, 1, &divu);
 }
