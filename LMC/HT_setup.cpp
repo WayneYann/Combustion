@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.11 2007-07-19 17:57:14 aaspden Exp $
+// $Id: HT_setup.cpp,v 1.12 2007-08-29 22:27:15 sepp Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -864,11 +864,10 @@ HeatTransfer::variableSetUp ()
     // **************  DEFINE ERROR ESTIMATION QUANTITIES  *************
     //
     const int nGrowErr = 1;
-    //err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_ADVERROR);
-
     err_list.add("temp", nGrowErr, ErrorRec::Special, FORT_TEMPERROR);
     err_list.add("mag_vort", nGrowErr, ErrorRec::Special, FORT_MVERROR);
-    err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_MVERROR);
+    // err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_MVERROR);
+    err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_ADVERROR);
     //
     // Tag region of interesting chemistry.
     //
