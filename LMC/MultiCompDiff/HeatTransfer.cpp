@@ -4620,6 +4620,10 @@ HeatTransfer::advance (Real time,
 	// use the old temperature as an initial guess for the Newton iteration.
 	MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
         RhoH_to_Temp(S_new);
+
+	// update the tracer and RhoRT
+        int corrector = 1; // this flag just means this is for real
+        tracer_update(dt,corrector);
     }
     else if (do_mcdd)
     {
