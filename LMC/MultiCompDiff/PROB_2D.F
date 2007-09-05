@@ -308,7 +308,7 @@ c
       numInflPlanesStore = -1
       forceLo = .TRUE.
       forceHi = .FALSE.
-      strmwse_dir = FLCT_ZVEL
+      strmwse_dir = FLCT_YVEL
       flct_file = ""
       turb_scale = 1
 #endif
@@ -353,7 +353,7 @@ c      write(6,heattransin)
          if (flct_file.ne."") then
 #define FF_UNIT 20
             write(6,*) '...initializing turbulence, reading header info'
-            open(FF_UNIT, file=trim(flct_file)//'HDR',form='unformatted')
+            open(FF_UNIT, file=trim(flct_file)//'/HDR',form='formatted')
             call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
          endif
