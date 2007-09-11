@@ -353,6 +353,7 @@ c      write(6,heattransin)
          if (flct_file.ne."") then
 #define FF_UNIT 20
             write(6,*) '...initializing turbulence, reading header info'
+            open(FF_UNIT, file=trim(flct_file)//'/HDR',form='formatted',status='old')
             open(FF_UNIT, file=trim(flct_file)//'HDR', form='unformatted')
             call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
