@@ -773,7 +773,7 @@ HeatTransfer::estTimeStep ()
 
     if (estdt < ns_estdt && ParallelDescriptor::IOProcessor())
     {
-        std::cout << "HeatTransfer::estTimeStep() : timestep reduced from " 
+        std::cout << "HeatTransfer::estTimeStep(): timestep reduced from " 
                   << ns_estdt << " to " << estdt << '\n';
     }
 
@@ -7807,7 +7807,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 //
 // Taking an initial guess from S, solve hmix = sum(hl(temp).Yl) for temp.
 // hmix and Yl are taken from S (and are assumed to be multiplied by rho
-// (i.e. S hold rho.hmix and rho.Yl).
+// (i.e. S holds rho.hmix and rho.Yl).
 //
 // Be careful -- this is called for levels other than the current level
 // Note: we only do this on the valid region. The ghost cells
@@ -7822,7 +7822,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 //       trusted out there, nGrow must be same in temp and S
 // Note: no good reason for above restriction on nGrow, removed
 //
-// RhoH_to_Temp is the top of a rather long sequence of wrappers:
+// JFG: RhoH_to_Temp is the top of a rather long sequence of wrappers:
 //
 //         RhoH_to_Temp    in   HeatTransfer.cpp  calls
 //         getTGivenHY     in     ChemDriver.cpp  calls
