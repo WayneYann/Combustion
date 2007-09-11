@@ -331,7 +331,7 @@ c     Initialize control variables that depend on fortin variables
          if (flct_file.ne.'') then
 #define FF_UNIT 20
             write(6,*) '...initializing turbulence, reading header info'
-            open(FF_UNIT, file=flct_file, form='unformatted')
+            open(FF_UNIT, file=trim(flct_file)//'/HDR',form='formatted',status='old') 
             call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
          endif
