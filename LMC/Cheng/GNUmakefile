@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.18 2007-02-14 19:09:18 lijewski Exp $
+# $Id: GNUmakefile,v 1.19 2007-09-12 21:00:02 lijewski Exp $
 #
 PBOXLIB_HOME = ../..
 
@@ -16,10 +16,8 @@ DEBUG	       = FALSE
 PROFILE        = FALSE
 DIM	       = 3
 PRVERSION      = v7
-COMP           = mpCC
-FCOMP          = xlf
-COMP           = Intel
-FCOMP          = Intel
+COMP           = CC
+FCOMP          = ftn
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
 USE_MPI        = FALSE
@@ -28,9 +26,10 @@ BUILD_IN_PLACE = TRUE
 EBASE          = amr
 USE_SWIRL      = TRUE
 USE_SWIRL      = FALSE
-USE_SWIRL_DATA = TRUE
-USE_NEWMECH   = TRUE
-USE_NEWMECH   = FALSE
+USE_SWIRL_DATA = FALSE
+USE_NEWMECH    = TRUE
+USE_NEWMECH    = FALSE
+USE_XT3        = TRUE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
@@ -39,7 +38,7 @@ USE_NEWMECH   = FALSE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
-#DEFINES += -DBL_RHORT_IN_TRACER
+DEFINES += -DBL_RHORT_IN_TRACER
 #
 # If you want to plot reaction rates uncomment the following
 #
@@ -51,16 +50,35 @@ DEFINES += -DBL_PLOT_CONSUMPTION
 #
 # Choose your reaction mechanism & thermal properties.
 #
-REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=GRI30NON
-REACTION_MECHANISM=PROPANE
 REACTION_MECHANISM=CH4-2STEP
+REACTION_MECHANISM=PROPANE
+REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=DRM19
 
+DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
+
 include $(TOP)/mk/Make.defs
+
+ifeq ($(USE_XT3),TRUE)
+  LIBRARIES += -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl -lpgftnrtl -lpghpf -lrt
+  DEFINES += -DBL_PGI -DMPICH_SKIP_MPICXX #-DBL_XT3
+ifeq ($(USE_MPI),TRUE)
+  CXX := CC #-target=catamount
+  FC  := ftn #-target=catamount
+  fC  := ftn #-target=catamount
+else
+  CXX := pgCC
+  FC  := pgf90
+  fC  := pgf90
+endif
+  CXXOPTF += -O --no_exceptions -fastsse -Mvect=nosse
+  FOPTF   += -O -fastsse -Minline=levels:3
+  fOPTF   += -O -fastsse -Minline=levels:3
+endif
 
 Bdirs := LMC LMC/Cheng BoxLib iamrlib amrlib tensorMG mglib bndrylib hgproj
 
@@ -82,6 +100,10 @@ endif
 
 ifeq (${USE_SWIRL}, TRUE)
   DEFINES += -DSWIRL
+endif
+
+ifeq (${USE_SWIRL_DATA}, TRUE)
+  DEFINES += -DSWIRL_DATA
 endif
 
 ifeq ($(USE_NEWMECH), TRUE)
@@ -120,15 +142,6 @@ vpath %.f   $(VPATH_LOCATIONS)
 vpath %.f90 $(VPATH_LOCATIONS)
 
 all: $(executable)
-
-ifeq ($(MACHINE),T3E)
-#
-# We don't explicitly set the path of the mpi directory on the T3E.
-# 
-  $(executable): $(filter-out -lmpi, $(LIBRARIES))
-else
-  $(executable): $(LIBRARIES)
-endif
 
 o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o:
 	ifort -module o/3d.Linux.Intel.Intel.PROF.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o
