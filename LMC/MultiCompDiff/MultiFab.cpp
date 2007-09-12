@@ -1,5 +1,5 @@
 //
-// $Id: MultiFab.cpp,v 1.2 2007-07-05 15:07:23 sepp Exp $
+// $Id: MultiFab.cpp,v 1.3 2007-09-12 17:44:11 sepp Exp $
 //
 #include <winstd.H>
 
@@ -246,6 +246,7 @@ MultiFab::minus (const MultiFab& mf,
 {
     BL_ASSERT(boxarray == mf.boxarray);
     BL_ASSERT(strt_comp >= 0);
+    BL_ASSERT(num_comp > 0);
 #ifndef NDEBUG
     int lst_comp = strt_comp + num_comp - 1;
 #endif
