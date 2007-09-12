@@ -842,7 +842,13 @@ c     Compute coflow velocity components (allows ramping up/down)
                endif
 
 c     Load experimental database values
+#ifdef SWIRL_DATA
                call vswirlXYZ(x,y,u,v,w)
+#else
+      u = 0
+      v = 0
+      w = 0
+#endif
 
 c     Continue expt data with TANH profiles to u_inf values
                if (r.gt.Rfu) then
