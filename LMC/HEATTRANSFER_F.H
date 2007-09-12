@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.1 2003-08-08 20:09:41 lijewski Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.2 2007-09-12 21:29:44 sepp Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -25,6 +25,9 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
+#    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
+#    define FORT_RK_MULTICOMPONENT         rkmulticomponent
+#    define FORT_RK_STEP_SELECTION         rkstepselection
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -49,6 +52,9 @@
 #    define FORT_INCRWEXTFLXDIV            INCRWEXTFLXDIV
 #    define FORT_SET_COMMON                SETCOMMON
 #    define FORT_COMPUTE_UGRADP            COMPUTEUGRADP
+#    define FORT_RK_MIXTURE_AVERAGED       RKMIXTUREAVERAGED
+#    define FORT_RK_MULTICOMPONENT         RKMULTICOMPONENT
+#    define FORT_RK_STEP_SELECTION         RKSTEPSELECTION
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -72,6 +78,9 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
+#    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
+#    define FORT_RK_MULTICOMPONENT         rkmulticomponent
+#    define FORT_RK_STEP_SELECTION         rkstepselection
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -95,6 +104,9 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv_
 #    define FORT_SET_COMMON                setcommon_
 #    define FORT_COMPUTE_UGRADP            computeugradp_
+#    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged_
+#    define FORT_RK_MULTICOMPONENT         rkmulticomponent_
+#    define FORT_RK_STEP_SELECTION         rkstepselection_
 #  endif
 
 #include <ArrayLim.H>
@@ -249,6 +261,76 @@ extern "C" {
                              const Real* wmac, ARLIM_P(wmac_lo),  ARLIM_P(wmac_hi),
 #endif
                              const int* lo, const int* hi, const Real* dx);
+
+    void FORT_RK_MIXTURE_AVERAGED (
+	const int* domain_lo, const int* domain_hi,
+	const int* lo, const int* hi,
+	Real* areax, ARLIM_P(areax_lo), ARLIM_P(areax_hi),
+	Real* areay, ARLIM_P(areay_lo), ARLIM_P(areay_hi),
+	const int* bc,
+	const Real* dx,
+	int* index_of_firstY,
+	int* index_of_lastY,
+	int* index_of_rho,
+	int* index_of_rhoH,
+	int* index_of_T,
+	Real* maximum_error,
+	int* maximum_iterations,
+	int* ncomps,
+	int* nspcecies,
+	const Real* scale_factor,
+	Real* state, ARLIM_P(state_lo), ARLIM_P(state_hi),
+	Real* volume, ARLIM_P(volume_lo), ARLIM_P(volume_hi),
+	Real* div_of_flux_for_H, ARLIM_P(div_of_flux_for_H_lo), ARLIM_P(div_of_flux_for_H_hi),
+	Real* div_of_flux_for_Y, ARLIM_P(div_of_flux_for_Y_lo), ARLIM_P(div_of_flux_for_Y_hi),
+	Real* xflux_for_H, ARLIM_P(xflux_for_H_lo), ARLIM_P(xflux_for_H_hi),
+	Real* xflux_for_Y, ARLIM_P(xflux_for_Y_lo), ARLIM_P(xflux_for_Y_hi),
+	Real* yflux_for_Y, ARLIM_P(yflux_for_Y_lo), ARLIM_P(yflux_for_Y_hi),
+	Real* yflux_for_H, ARLIM_P(yflux_for_H_lo), ARLIM_P(yflux_for_H_hi)
+	);
+
+    void FORT_RK_MULTICOMPONENT (
+	const int* domain_lo, const int* domain_hi,
+	const int* lo, const int* hi,
+	Real* areax, ARLIM_P(areax_lo), ARLIM_P(areax_hi),
+	Real* areay, ARLIM_P(areay_lo), ARLIM_P(areay_hi),
+	const int* bc,
+	const Real* dx,
+	int* index_of_firstY,
+	int* index_of_lastY,
+	int* index_of_rho,
+	int* index_of_rhoH,
+	int* index_of_T,
+	Real* maximum_error,
+	int* maximum_iterations,
+	int* ncomps,
+	int* nspcecies,
+	const Real* scale_factor,
+	Real* state, ARLIM_P(state_lo), ARLIM_P(state_hi),
+	Real* volume, ARLIM_P(volume_lo), ARLIM_P(volume_hi),
+	Real* div_of_flux_for_H, ARLIM_P(div_of_flux_for_H_lo), ARLIM_P(div_of_flux_for_H_hi),
+	Real* div_of_flux_for_Y, ARLIM_P(div_of_flux_for_Y_lo), ARLIM_P(div_of_flux_for_Y_hi),
+	Real* xflux_for_H, ARLIM_P(xflux_for_H_lo), ARLIM_P(xflux_for_H_hi),
+	Real* xflux_for_Y, ARLIM_P(xflux_for_Y_lo), ARLIM_P(xflux_for_Y_hi),
+	Real* yflux_for_Y, ARLIM_P(yflux_for_Y_lo), ARLIM_P(yflux_for_Y_hi),
+	Real* yflux_for_H, ARLIM_P(yflux_for_H_lo), ARLIM_P(yflux_for_H_hi)
+	);
+
+    void FORT_RK_STEP_SELECTION (
+	const int* lo, const int* hi,
+	const Real* dx,
+	int* index_of_firstY,
+	int* index_of_lastY,
+	int* index_of_rho,
+	int* index_of_rhoH,
+	int* index_of_T,
+	Real* maximum_error,
+	int* maximum_iterations,
+	int* ncomps,
+	int* nspcecies,
+	Real* smallest_time_step,
+	Real* state, ARLIM_P(state_lo), ARLIM_P(state_hi)
+	);
 }
 #endif
 

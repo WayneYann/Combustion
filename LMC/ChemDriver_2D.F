@@ -1208,6 +1208,7 @@ c     Set molecular weights and pressure in area accessible by conpF
  
       subroutine FORT_MIXAVG_RHODIFF(lo, hi, RD, DIMS(RD), T, DIMS(T),
      &                               Y, DIMS(Y), Patm)
+C     output RD = mass density (rho) * mixture averaged diffusion coefficients
       implicit none
 
 #include "cdwrk.H"
@@ -1244,12 +1245,18 @@ c
                Yt(n) = Y(i,j,n)
             end do
             Tt = MAX(T(i,j),TMIN_TRANS) 
+C           Wavg = mean molecular weight
             CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
             CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
             CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+C           Dt(n) = molecular weight of species n
+C                 * diffusion coefficient of species n into the mixture
+C                 / mean molecular weight
             CALL EGSV1(Ptmp,Tt,Yt,Wavg,RWRK(egbr),Dt)
+C           RHO = mass density
             CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
+C           invmut(n) = molecular weight of species n
             do n=1,Nspec
                RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * scal
             end do
@@ -1274,7 +1281,7 @@ c
       REAL_T Patm
 
       integer i, j, n
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec),Dt(maxspec),CPMS(maxspec)
+      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec), CPMS(maxspec)
       REAL_T RHO, scal, tscal, Tt, Wavg, invmwt(maxspec), X(maxspec)
       REAL_T alpha, l1, l2
 
@@ -1300,6 +1307,7 @@ c
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
             CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
             CALL EGSV1(Ptmp,Tt,Yt,Wavg,RWRK(egbr),Dt)
+
             CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
             do n=1,Nspec
                RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * scal
@@ -1820,19 +1828,32 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
       REAL_T res(0:NiterMAX-1)
       REAL_T Yt(maxspec)
       integer i,j,n,FORT_TfromHYpt,Niter,MAXiters
+      REAL_T Tguess
 
       MAXiters = 0
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
-            
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
             end do
-            
+            Tguess = T(i,j)
             Niter = FORT_TfromHYpt(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res)
             if (Niter .lt. 0) then
-               write(6,*) 'T from h,y solve in FORT_TfromHY failed',Niter
+               write(6,996) 'T from h,y solve in FORT_TfromHY failed'
+               write(6,997) 'Niter flag = ',Niter
+               write(6,997) '   i and j = ',i,j
+               write(6,998) '   input h = ',HMIX(i,j)
+               write(6,998) '   input T = ',Tguess
+               write(6,998) '  output T = ',T(i,j)
+               write(6,998) 'input species mass fractions:'
+               do n = 1,Nspec
+                  write(6,998) '  ',Y(i,j,n)
+               end do
                call bl_abort(" ")
+
+ 996           format(a)
+ 997           format(a,2i5)
+ 998           format(a,d21.12)
             end if
             
             if (Niter .gt. MAXiters) then
