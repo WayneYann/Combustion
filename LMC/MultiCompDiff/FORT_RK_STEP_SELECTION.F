@@ -7,6 +7,10 @@ c#define BL_SPACEDIM 2
 
 c#include "ArrayLim.H"
 
+c///
+c///  start of FORT_RK_STEP_SELECTION
+c///
+
 c     estimate the time step for the Runge-Kutta implementation of the diffusion
 c     update.  this estimation is based on the diffusion coefficients of the 
 c     species into the mixture, independent of whether or not the "operator" is 
