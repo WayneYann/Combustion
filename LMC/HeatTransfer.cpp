@@ -3941,7 +3941,12 @@ c
 c     * these arguments are not used
 */
 
+#if (BL_SPACEDIM==2) 
 #define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
+#endif
+#if (BL_SPACEDIM==3) 
+#define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.loVect()[2],foo.hiVect()[0],foo.hiVect()[1],foo.hiVect()[2]
+#endif
 
 	if (!rk_mixture_averaged)
 	{
@@ -4086,7 +4091,12 @@ c     smallest_time_step ! OUTPUT smallest time step over all cells and species
 c     state, DIMS(state) ! INPUT all variables in the state
 */
 
+#if (BL_SPACEDIM==2) 
 #define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
+#endif
+#if (BL_SPACEDIM==3) 
+#define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.loVect()[2],foo.hiVect()[0],foo.hiVect()[1],foo.hiVect()[2]
+#endif
 
 	FORT_RK_STEP_SELECTION
 	    (grids[idx].loVect(), grids[idx].hiVect(),
@@ -5495,9 +5505,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     for (int i = 0; i < grids.size(); i++)
         bl.push_back(BoxLib::grow(grids[i],nGrow));
 
-    BoxArray ba(bl);
-
-    MultiFab tmpS(ba,1,0);
+    MultiFab tmpS(BoxArray(bl),1,0);
 
     FArrayBox rhoh, tmp;
 

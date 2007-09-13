@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.7 2006-11-04 01:38:02 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.8 2007-09-13 22:32:36 sepp Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1720,3 +1720,203 @@ c  interior cell.
       end do
       end do
       end
+
+      subroutine FORT_RK_MIXTURE_AVERAGED
+     &     (
+     &     domain_lo, domain_hi,
+     &     lo, hi,
+     &     areax, DIMS(areax),
+     &     areay, DIMS(areay),
+     &     bc,
+     &     dx,
+     &     index_of_firstY,
+     &     index_of_lastY,
+     &     index_of_rho,
+     &     index_of_rhoH,
+     &     index_of_T,
+     &     maximum_error,
+     &     maximum_iterations,
+     &     ncomps,
+     &     nspecies,
+     &     scale_factor,
+     &     state, DIMS(state),
+     &     volume, DIMS(volume),
+     &     div_of_flux_for_H, DIMS(div_of_flux_for_H),
+     &     div_of_flux_for_Y, DIMS(div_of_flux_for_Y),
+     &     xflux_for_H, DIMS(xflux_for_H),
+     &     xflux_for_Y, DIMS(xflux_for_Y),
+     &     yflux_for_H, DIMS(yflux_for_H),
+     &     yflux_for_Y, DIMS(yflux_for_Y)
+     &     )
+
+      implicit none
+
+#include "BC_TYPES.H"
+#include "cdwrk.H"
+
+c     arguments
+      integer ncomps
+      integer nspecies
+      integer domain_lo(BL_SPACEDIM), domain_hi(BL_SPACEDIM)
+      integer lo(BL_SPACEDIM), hi(BL_SPACEDIM)
+      integer DIMDEC(areax)
+      integer DIMDEC(areay)
+      integer bc(BL_SPACEDIM,2,ncomps)
+      integer DIMDEC(state)
+      integer DIMDEC(div_of_flux_for_H)
+      integer DIMDEC(div_of_flux_for_Y)
+      integer DIMDEC(xflux_for_H)
+      integer DIMDEC(yflux_for_H)
+      integer DIMDEC(xflux_for_Y)
+      integer DIMDEC(yflux_for_Y)
+      integer DIMDEC(volume)
+      integer index_of_firstY
+      integer index_of_lastY
+      integer index_of_rho
+      integer index_of_rhoH
+      integer index_of_T
+      integer maximum_iterations
+      REAL_T areax(DIMV(areax))
+      REAL_T areay(DIMV(areay))
+      REAL_T dx(BL_SPACEDIM)
+      REAL_T maximum_error
+      REAL_T div_of_flux_for_H(DIMV(div_of_flux_for_H))
+      REAL_T div_of_flux_for_Y(DIMV(div_of_flux_for_Y),nspecies)
+      REAL_T scale_factor
+      REAL_T state(DIMV(state),ncomps)
+      REAL_T volume(DIMV(volume))
+      REAL_T xflux_for_H(DIMV(xflux_for_H))
+      REAL_T yflux_for_H(DIMV(yflux_for_H))
+      REAL_T xflux_for_Y(DIMV(xflux_for_Y),ncomps)
+      REAL_T yflux_for_Y(DIMV(yflux_for_Y),ncomps)
+
+      call bl_abort 
+     &     ("FORT_RK_MIXTURE_AVERAGED: 3D Runge-Kutta is not supported")
+
+      return
+      end
+
+      subroutine FORT_RK_MULTICOMPONENT
+     &     (
+     &     domain_lo, domain_hi,
+     &     lo, hi,
+     &     areax, DIMS(areax),
+     &     areay, DIMS(areay),
+     &     bc,
+     &     dx,
+     &     index_of_firstY,
+     &     index_of_lastY,
+     &     index_of_rho,
+     &     index_of_rhoH,
+     &     index_of_T,
+     &     maximum_error,
+     &     maximum_iterations,
+     &     ncomps,
+     &     nspecies,
+     &     scale_factor,
+     &     state, DIMS(state),
+     &     volume, DIMS(volume),
+     &     div_of_flux_for_H, DIMS(div_of_flux_for_H),
+     &     div_of_flux_for_Y, DIMS(div_of_flux_for_Y),
+     &     xflux_for_H, DIMS(xflux_for_H),
+     &     xflux_for_Y, DIMS(xflux_for_Y),
+     &     yflux_for_H, DIMS(yflux_for_H),
+     &     yflux_for_Y, DIMS(yflux_for_Y)
+     &     )
+
+      implicit none
+
+#include "BC_TYPES.H"
+#include "cdwrk.H"
+
+c     arguments
+      integer ncomps
+      integer nspecies
+      integer domain_lo(BL_SPACEDIM), domain_hi(BL_SPACEDIM)
+      integer lo(BL_SPACEDIM), hi(BL_SPACEDIM)
+      integer DIMDEC(areax)
+      integer DIMDEC(areay)
+      integer bc(BL_SPACEDIM,2,ncomps)
+      integer DIMDEC(state)
+      integer DIMDEC(div_of_flux_for_H)
+      integer DIMDEC(div_of_flux_for_Y)
+      integer DIMDEC(xflux_for_H)
+      integer DIMDEC(yflux_for_H)
+      integer DIMDEC(xflux_for_Y)
+      integer DIMDEC(yflux_for_Y)
+      integer DIMDEC(volume)
+      integer index_of_firstY
+      integer index_of_lastY
+      integer index_of_rho
+      integer index_of_rhoH
+      integer index_of_T
+      integer maximum_iterations
+      REAL_T areax(DIMV(areax))
+      REAL_T areay(DIMV(areay))
+      REAL_T div_of_flux_for_H(DIMV(div_of_flux_for_H))
+      REAL_T div_of_flux_for_Y(DIMV(div_of_flux_for_Y),nspecies)
+      REAL_T dx(BL_SPACEDIM)
+      REAL_T maximum_error
+      REAL_T scale_factor
+      REAL_T state(DIMV(state),ncomps)
+      REAL_T volume(DIMV(volume))
+      REAL_T xflux_for_H(DIMV(xflux_for_H))
+      REAL_T yflux_for_H(DIMV(yflux_for_H))
+      REAL_T xflux_for_Y(DIMV(xflux_for_Y),ncomps)
+      REAL_T yflux_for_Y(DIMV(yflux_for_Y),ncomps)
+
+      call bl_abort 
+     &     ("FORT_RK_MULTICOMPONENT: 3D Runge-Kutta is not supported")
+
+      return
+      end
+
+      subroutine FORT_RK_STEP_SELECTION
+     &     (
+     &     lo, hi,
+     &     dx,
+     &     index_of_firstY,
+     &     index_of_lastY,
+     &     index_of_rho,
+     &     index_of_rhoH,
+     &     index_of_T,
+     &     maximum_error,
+     &     maximum_iterations,
+     &     ncomps,
+     &     nspecies,
+     &     smallest_time_step,
+     &     state, DIMS(state)
+     &     )
+
+      implicit none
+
+#include "REAL.H"
+#include "HEATTRANSFER_F.H"
+#include "ChemDriver_F.H"
+#include "cdwrk.H"
+
+c     arguments
+      integer ncomps
+      integer nspecies
+      integer lo(BL_SPACEDIM), hi(BL_SPACEDIM)
+      integer DIMDEC(state)
+      integer index_of_firstY
+      integer index_of_lastY
+      integer index_of_rho
+      integer index_of_rhoH
+      integer index_of_T
+      integer maximum_iterations
+      REAL_T maximum_error
+      REAL_T dx(BL_SPACEDIM)
+      REAL_T smallest_time_step
+      REAL_T state(DIMV(state),ncomps)
+
+      call bl_abort 
+     &     ("FORT_RK_STEP_SELECTION: 3D Runge-Kutta is not supported")
+
+      return
+      end
+
+
+
+

@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.7 2007-09-12 21:29:44 sepp Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.8 2007-09-13 22:32:36 sepp Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -3126,6 +3126,7 @@ c     arguments
       integer maximum_iterations
       REAL_T maximum_error
       REAL_T dx(BL_SPACEDIM)
+      REAL_T smallest_time_step
       REAL_T state(DIMV(state),ncomps)
 
 c     local variables
@@ -3156,7 +3157,6 @@ c     local variables
       REAL_T rho_cgs
       REAL_T RU
       REAL_T RUC
-      REAL_T smallest_time_step
       REAL_T space_step
       REAL_T T
       REAL_T time_step
