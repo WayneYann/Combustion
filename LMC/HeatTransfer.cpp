@@ -5505,7 +5505,9 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     for (int i = 0; i < grids.size(); i++)
         bl.push_back(BoxLib::grow(grids[i],nGrow));
 
-    MultiFab tmpS(BoxArray(bl),1,0);
+    BoxArray ba(bl);
+
+    MultiFab tmpS(ba,1,0);
 
     FArrayBox rhoh, tmp;
 
