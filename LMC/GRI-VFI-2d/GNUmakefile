@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.29 2007-05-16 17:27:21 sepp Exp $
+# $Id: GNUmakefile,v 1.30 2007-09-19 04:31:36 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -19,10 +19,10 @@ BUILD_IN_PLACE    = TRUE
 EBASE             = amr
 USE_HGPROJ_SERIAL = FALSE
 HGDEBUG           = FALSE
-USE_FLCTS         = FALSE
 USE_FLCTS         = TRUE
-USE_MPI           = TRUE
+USE_FLCTS         = FALSE
 USE_MPI           = FALSE
+USE_MPI           = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
@@ -44,10 +44,10 @@ REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=PROPANE
-REACTION_MECHANISM=GRI30HNO
 REACTION_MECHANISM=GRI211HNO
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=GRI30HNO
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
