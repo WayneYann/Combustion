@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.30 2007-09-19 04:31:36 sepp Exp $
+# $Id: GNUmakefile,v 1.31 2007-09-19 18:19:07 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -14,6 +14,8 @@ DIM    	          = 2
 PRVERSION         = v5
 COMP              = Intel
 FCOMP             = Intel
+COMP              = CC
+FCOMP             = ftn
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
@@ -23,6 +25,7 @@ USE_FLCTS         = TRUE
 USE_FLCTS         = FALSE
 USE_MPI           = FALSE
 USE_MPI           = TRUE
+USE_XT3           = FALSE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
@@ -81,6 +84,25 @@ ifeq ($(DIM),2)
   ifeq ($(findstring 9, $(PRVERSION)), 9)
     DEFINES += -DBL_PRVERSION=9
   endif
+endif
+#
+# For franklin per Mike
+#
+ifeq ($(USE_XT3),TRUE)
+  LIBRARIES += -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl -lpgftnrtl -lpghpf -lrt
+  DEFINES += -DBL_PGI -DMPICH_SKIP_MPICXX #-DBL_XT3
+ifeq ($(USE_MPI),TRUE)
+  CXX := CC #-target=catamount
+  FC  := ftn #-target=catamount
+  fC  := ftn #-target=catamount
+else
+  CXX := pgCC
+  FC  := pgf90
+  fC  := pgf90
+endif
+  CXXOPTF += -O --no_exceptions -fastsse -Mvect=nosse
+  FOPTF   += -O -fastsse -Minline=levels:3
+  fOPTF   += -O -fastsse -Minline=levels:3
 endif
 #
 # Setup build locations/libraries.
@@ -143,7 +165,7 @@ endif
 #
 all: $(executable)
 
-$(executable): $(LIBRARIES)
+$(executable): 
 
 libs: $(MyLibDeps)
 
