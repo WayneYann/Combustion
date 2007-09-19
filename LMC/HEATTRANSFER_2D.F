@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.8 2007-09-13 22:32:36 sepp Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.9 2007-09-19 17:23:58 sepp Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -3276,7 +3276,7 @@ c///
 c///  release temporary arrays (not strictly necessary)
 c///
 
-      deallocate (contiguous_x)
+      deallocate (contiguous_X)
       deallocate (contiguous_Y)
       deallocate (cpms)
       deallocate (one_over_wt)
