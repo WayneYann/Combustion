@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.9 2007-09-19 17:23:58 sepp Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.10 2007-09-19 18:15:05 sepp Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1424,18 +1424,13 @@ c     local variables
       REAL_T ambient_pressure_cgs
       REAL_T ambient_pressure_si
       REAL_T coefficient
-      REAL_T contiguous_Y
-      REAL_T cpms_on_edge
       REAL_T derivative_of_T
-      REAL_T derivative_of_Y
       REAL_T dpdt_factor
       REAL_T FORT_P1ATMMKS
       REAL_T h
       REAL_T hi_coefficient_0
       REAL_T hi_coefficient_1
       REAL_T hi_coefficient_2
-      REAL_T hms_on_edge_cgs
-      REAL_T hms_on_edge_si
       REAL_T lambda_on_edge_cgs
       REAL_T lambda_on_edge_si
       REAL_T lo_coefficient_0
@@ -1448,61 +1443,34 @@ c     local variables
       REAL_T one_over_dx
       REAL_T one_over_dy
       REAL_T one_over_rho
-      REAL_T one_over_wt
       REAL_T plus_value_cgs
-      REAL_T residual
-      REAL_T rho_Dmix_on_edge_si
-      REAL_T rho_Upsilon_on_edge_cgs
-      REAL_T rho_Y
-      REAL_T rho_Y_on_edge
       REAL_T RUC
       REAL_T scale_factor_over_volume
       REAL_T sum_h_xflux_for_Y
       REAL_T sum_h_yflux_for_Y
       REAL_T sum_of_fluxes
       REAL_T sum_of_rho_Y
-      REAL_T T
       REAL_T T_on_edge
       REAL_T universal_gas_constant_cgs
-      REAL_T wt
-      REAL_T X
-      REAL_T X_on_edge
-      REAL_T Y 
-      REAL_T Y_on_edge
-      allocatable contiguous_Y
-      allocatable cpms_on_edge
-      allocatable derivative_of_Y
-      allocatable hms_on_edge_cgs
-      allocatable hms_on_edge_si
-      allocatable one_over_wt
-      allocatable residual
-      allocatable rho_Dmix_on_edge_si
-      allocatable rho_Upsilon_on_edge_cgs
-      allocatable rho_Y
-      allocatable rho_Y_on_edge
-      allocatable T
-      allocatable wt
-      allocatable X
-      allocatable X_on_edge
-      allocatable Y
-      allocatable Y_on_edge
-      dimension contiguous_Y (:)
-      dimension cpms_on_edge (:)
-      dimension derivative_of_Y (:)
-      dimension hms_on_edge_cgs (:)
-      dimension hms_on_edge_si (:)
-      dimension one_over_wt (:)
-      dimension residual (:)
-      dimension rho_Dmix_on_edge_si (:)
-      dimension rho_Upsilon_on_edge_cgs (:)
-      dimension rho_Y (:,:,:)
-      dimension rho_Y_on_edge (:)
-      dimension T (:,:)
-      dimension wt (:)
-      dimension X (:,:,:)
-      dimension X_on_edge (:)
-      dimension Y (:,:,:)
-      dimension Y_on_edge (:)
+
+c     local arrays
+      REAL_T, allocatable :: contiguous_Y (:)
+      REAL_T, allocatable :: cpms_on_edge (:)
+      REAL_T, allocatable :: derivative_of_Y (:)
+      REAL_T, allocatable :: hms_on_edge_cgs (:)
+      REAL_T, allocatable :: hms_on_edge_si (:)
+      REAL_T, allocatable :: one_over_wt (:)
+      REAL_T, allocatable :: residual (:)
+      REAL_T, allocatable :: rho_Dmix_on_edge_si (:)
+      REAL_T, allocatable :: rho_Upsilon_on_edge_cgs (:)
+      REAL_T, allocatable :: rho_Y (:,:,:)
+      REAL_T, allocatable :: rho_Y_on_edge (:)
+      REAL_T, allocatable :: T (:,:)
+      REAL_T, allocatable :: wt (:)
+      REAL_T, allocatable :: X (:,:,:)
+      REAL_T, allocatable :: X_on_edge (:)
+      REAL_T, allocatable :: Y (:,:,:)
+      REAL_T, allocatable :: Y_on_edge (:)
 
       allocate (contiguous_Y (nspecies))
       allocate (cpms_on_edge (nspecies))
@@ -2302,11 +2270,7 @@ c     local variables
       REAL_T area_for_y
       REAL_T ambient_pressure_cgs
       REAL_T ambient_pressure_si
-      REAL_T contiguous_X
-      REAL_T contiguous_Y
-      REAL_T cpms_on_edge
       REAL_T derivative_of_T
-      REAL_T derivative_of_X
       REAL_T dpdt_factor
       REAL_T floored_T
       REAL_T FORT_P1ATMMKS
@@ -2314,8 +2278,6 @@ c     local variables
       REAL_T hi_coefficient_0
       REAL_T hi_coefficient_1
       REAL_T hi_coefficient_2
-      REAL_T hms_on_edge_cgs
-      REAL_T hms_on_edge_si
       REAL_T lambda_prime_on_edge_cgs
       REAL_T lambda_prime_on_edge_si
       REAL_T lo_coefficient_0
@@ -2331,56 +2293,32 @@ c     local variables
       REAL_T plus_value
       REAL_T pressure_over_rho_on_edge_cgs
       REAL_T pressure_over_rho_on_edge_si
-      REAL_T residual
-      REAL_T rho_theta_on_edge_cgs
-      REAL_T rho_theta_on_edge_si
-      REAL_T rho_Y_D_on_edge_cgs
-      REAL_T rho_Y_D_on_edge_si
       REAL_T RUC
       REAL_T scale_factor_over_volume
       REAL_T sum_h_xflux_for_Y
       REAL_T sum_h_yflux_for_Y
       REAL_T sum_rho_theta_derivative_of_X
       REAL_T sum_rho_Y_D_derivative_of_X
-      REAL_T T
       REAL_T T_on_edge
       REAL_T universal_gas_constant_cgs
-      REAL_T X
-      REAL_T X_on_edge
-      REAL_T Y 
-      REAL_T Y_on_edge
-      allocatable contiguous_X
-      allocatable contiguous_Y
-      allocatable cpms_on_edge
-      allocatable derivative_of_X
-      allocatable hms_on_edge_cgs
-      allocatable hms_on_edge_si
-      allocatable residual
-      allocatable rho_theta_on_edge_cgs
-      allocatable rho_theta_on_edge_si
-      allocatable rho_Y_D_on_edge_cgs
-      allocatable rho_Y_D_on_edge_si
-      allocatable T
-      allocatable X
-      allocatable X_on_edge
-      allocatable Y
-      allocatable Y_on_edge
-      dimension contiguous_X (:)
-      dimension contiguous_Y (:)
-      dimension cpms_on_edge (:)
-      dimension derivative_of_X (:)
-      dimension hms_on_edge_cgs (:)
-      dimension hms_on_edge_si (:)
-      dimension residual (:)
-      dimension rho_theta_on_edge_cgs (:)
-      dimension rho_theta_on_edge_si (:)
-      dimension rho_Y_D_on_edge_cgs (:,:)
-      dimension rho_Y_D_on_edge_si (:,:)
-      dimension T (:,:)
-      dimension X (:,:,:)
-      dimension X_on_edge (:)
-      dimension Y (:,:,:)
-      dimension Y_on_edge (:)
+
+c     local arrays
+      REAL_T, allocatable :: contiguous_X (:)
+      REAL_T, allocatable :: contiguous_Y (:)
+      REAL_T, allocatable :: cpms_on_edge (:)
+      REAL_T, allocatable :: derivative_of_X (:)
+      REAL_T, allocatable :: hms_on_edge_cgs (:)
+      REAL_T, allocatable :: hms_on_edge_si (:)
+      REAL_T, allocatable :: residual (:)
+      REAL_T, allocatable :: rho_theta_on_edge_cgs (:)
+      REAL_T, allocatable :: rho_theta_on_edge_si (:)
+      REAL_T, allocatable :: rho_Y_D_on_edge_cgs (:,:)
+      REAL_T, allocatable :: rho_Y_D_on_edge_si (:,:)
+      REAL_T, allocatable :: T (:,:)
+      REAL_T, allocatable :: X (:,:,:)
+      REAL_T, allocatable :: X_on_edge (:)
+      REAL_T, allocatable :: Y (:,:,:)
+      REAL_T, allocatable :: Y_on_edge (:)
 
       allocate (contiguous_X (nspecies))
       allocate (contiguous_Y (nspecies))
@@ -3140,9 +3078,6 @@ c     local variables
       logical first
       REAL_T ambient_pressure_cgs
       REAL_T ambient_pressure_si
-      REAL_T contiguous_X
-      REAL_T contiguous_Y
-      REAL_T cpms
       REAL_T D
       REAL_T dpdt_factor
       REAL_T floored_T
@@ -3152,30 +3087,21 @@ c     local variables
       REAL_T one_atmosphere_cgs
       REAL_T one_atmosphere_si
       REAL_T one_over_rho
-      REAL_T one_over_wt
-      REAL_T residual
       REAL_T rho_cgs
       REAL_T RU
       REAL_T RUC
       REAL_T space_step
       REAL_T T
       REAL_T time_step
-      REAL_T Upsilon
-      REAL_T wt
-      allocatable contiguous_X
-      allocatable contiguous_Y
-      allocatable cpms
-      allocatable one_over_wt
-      allocatable residual
-      allocatable Upsilon
-      allocatable wt
-      dimension contiguous_X (:)
-      dimension contiguous_Y (:)
-      dimension cpms (:)
-      dimension one_over_wt (:)
-      dimension residual (:)
-      dimension Upsilon (:)
-      dimension wt (:)
+
+c     local arrays
+      REAL_T, allocatable :: contiguous_X (:)
+      REAL_T, allocatable :: contiguous_Y (:)
+      REAL_T, allocatable :: cpms (:)
+      REAL_T, allocatable :: one_over_wt (:)
+      REAL_T, allocatable :: residual (:)
+      REAL_T, allocatable :: Upsilon (:)
+      REAL_T, allocatable :: wt (:)
 
       allocate (contiguous_X (nspecies))
       allocate (contiguous_Y (nspecies))
