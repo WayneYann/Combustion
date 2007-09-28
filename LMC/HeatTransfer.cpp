@@ -1010,6 +1010,12 @@ HeatTransfer::initData ()
             // This calls ParallelDescriptor::EndParallel() and exit()
             //
             DataServices::Dispatch(DataServices::ExitRequest, NULL);
+
+        if (amrData.FinestLevel() < level)
+            BoxLib::Abort("initData: not enough levels in plotfile");
+
+        if (amrData.ProbDomain()[level] != Domain())
+            BoxLib::Abort("initData: problem domains do not match");
     
         AmrData&                  amrData   = dataServices.AmrDataRef();
         const int                 nspecies  = getChemSolve().numSpecies();
