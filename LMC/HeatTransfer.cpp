@@ -5031,10 +5031,6 @@ HeatTransfer::advance (Real time,
         // Update energy and species: Runge-Kutta method.
         //
 
-	// choose a cell to inspect
-	int idx = 3;
-	int jdx = 127;
-
 	// finish the advective update by including rho H.
 	bool do_adv_reflux = true;
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux);
