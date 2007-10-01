@@ -1,9 +1,13 @@
+
+amr.regrid_on_restart = 1
+#amr.plotfile_on_restart=1
+
+ht.plot_auxDiags=1
+
 DistributionMapping.verbose=1
 DistributionMapping.do_not_minimize_comm_costs=0
 
-#ht.plot_auxDiags=1
-
-#amr.regrid_on_restart = 1
+ns.do_group_bndry_fills=1
 
 max_step  =  6000000 
 stop_time = 4.00
@@ -31,9 +35,6 @@ ht.plot_ydot=0
 ns.use_chemeq2=0
 amr.derive_plot_vars=mag_vort rhoRT
 
-#ns.verbose_vode = 1
-#amr.restart=chk0060
-
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 
 geometry.prob_lo   =  -0.20 -0.20 -0.00
@@ -41,12 +42,11 @@ geometry.prob_hi   =  +0.20 +0.20 +0.40
 geometry.prob_lo   =  -0.06 -0.06 -0.00
 geometry.prob_hi   =  +0.06 +0.06 +0.12
 
+mg.smooth_on_cg_unstable=1
+mg.v=1
 mg.usecg = 1
 cg.v = 1
-cg.v = 0
 cg.isExpert=1
-mg.v = 1
-mg.v = 0
 cg.maxiter = 1000
 mg.maxiter = 1000
 mg.nu_0 = 1
@@ -57,7 +57,7 @@ cg.unstable_criterion = 100
 ns.htt_tempmin=1.0
 ns.htt_tempmax=2.5
 ns.v = 1
-#mac.v = 1
+mac.v = 1
 proj.v = 1
 
 mg.cg_solver=1
@@ -72,19 +72,21 @@ amr.n_cell    = 96 96 96
 
 amr.v=1
 amr.max_level =  1            # maximum level number allowed
-amr.max_level =  3            # maximum level number allowed
 amr.max_level =  2            # maximum level number allowed
+amr.max_level =  3            # maximum level number allowed
+
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 1 1 1 1 # number of buffer cells in error est
 amr.grid_eff        = 0.9     # what constitutes an efficient grid
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.blocking_factor = 8       # block factor in grid generation
+amr.blocking_factor = 16      # block factor in grid generation
 amr.check_file      = chk     # root name of checkpoint file
-amr.check_int       = 1     # number of timesteps between checkpoints
+amr.check_int       = 1       # number of timesteps between checkpoints
 amr.plot_file       = plt
-amr.plot_int        = 5
-amr.grid_log        = grdlog  # name of grid logging file
+amr.plot_int        = 1
+amr.grid_log        = grdlog.new  # name of grid logging file
 amr.max_grid_size   = 64
 amr.max_grid_size   = 32
 #amr.derive_plot_vars=ALL
@@ -129,7 +131,6 @@ ns.min_rho_divu_ceiling = .01
 ns.chemfile        = drm19.dat
 ns.chemoutfile     = chem.out
 ns.thermfile       = thermo12.dat
-ns.tranfile        = transport12.dat
 ns.tranfile        = tran.asc.drm19
 
 ns.fuelName        = CH4
@@ -176,26 +177,8 @@ proj.divu_minus_s_factor = 0.
 mac.mac_tol        = 1.0e-12  # tolerence for mac projections
 mac.mac_sync_tol   = 1.0e-9   # tolerence for mac SYNC projection
 mac.mac_abs_tol    = 1.0e-14
-mac.use_cg_solve   = 1
+mac.use_cg_solve   = 0
 
 fab.format = NATIVE
 
 DistributionMapping.strategy = KNAPSACK
-
-# ns.cdf_prefix = DebugFiles/test
-#
-# StationData.vars     -- Names of StateData components to output
-# StationData.coord    -- BL_SPACEDIM array of Reals
-# StationData.coord    -- the next one
-# StationData.coord    -- ditto ...
-#
-# e.g.
-#
-#StationData.vars  = pressure
-#StationData.coord = 0.001 0.001
-#StationData.coord = 0.011 0.0021
-#StationData.coord = 0.0005 0.005
-#StationData.coord = 0.00123 0.00123
-#StationData.coord = 0.0023 0.00153
-#StationData.coord = 0.00234 0.00234
-
