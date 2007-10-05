@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.12 2007-08-29 22:27:15 sepp Exp $
+// $Id: HT_setup.cpp,v 1.13 2007-10-05 19:09:25 marc Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -126,7 +126,7 @@ static
 int
 reflect_bc[] =
 {
-    REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN
+    INT_DIR,REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN,REFLECT_EVEN
 };
 
 static
@@ -568,16 +568,6 @@ HeatTransfer::variableSetUp ()
     set_temp_bc(bc,phys_bc);
     desc_lst.setComponent(State_Type,Temp,"temp",bc,BndryFunc(FORT_TEMPFILL));
     //
-    // **************  DEFINE RhoRT  ********************
-    //
-    // Force Trac BCs to be REFLECT_EVEN for RhoRT ghost cells in UGRADP.
-    //
-    if (RhoRT > 0)
-    {
-        set_reflect_bc(bc,phys_bc);
-        desc_lst.setComponent(State_Type,RhoRT,"RhoRT",bc,BndryFunc(FORT_ADVFILL));
-    }
-    //
     // ***************  DEFINE SPECIES **************************
     //
     bcs.resize(nspecies);
@@ -613,10 +603,24 @@ HeatTransfer::variableSetUp ()
                               &cell_cons_interp);
     }
     //
-    // ***************  DEFINE TRACER **************************
+    // ***************  DEFINE TRACER and RhoRT **************************
     //
-    set_scalar_bc(bc,phys_bc);
-    desc_lst.setComponent(State_Type,Trac,"tracer",bc,BndryFunc(FORT_ADVFILL));
+    // Force BCs to be REFLECT_EVEN for RhoRT ghost cells in UGRADP.
+    // ADVFILL is ok for this, if all BC's are REFLECT_EVEN (ie, no EXT_DIR)
+    //
+    if (RhoRT >= 0)
+    {
+        set_scalar_bc(bc,phys_bc);
+        desc_lst.setComponent(State_Type,Trac,"tracer",bc,BndryFunc(FORT_ADVFILL));
+
+        set_reflect_bc(bc,phys_bc);
+        desc_lst.setComponent(State_Type,RhoRT,"RhoRT",bc,BndryFunc(FORT_ADVFILL));
+    }
+    else
+    {
+        set_reflect_bc(bc,phys_bc);
+        desc_lst.setComponent(State_Type,Trac,"tracer",bc,BndryFunc(FORT_ADVFILL));
+    }
 
     advectionType.resize(NUM_STATE);
     diffusionType.resize(NUM_STATE);
