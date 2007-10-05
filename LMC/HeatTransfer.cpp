@@ -1011,17 +1011,17 @@ HeatTransfer::initData ()
             //
             DataServices::Dispatch(DataServices::ExitRequest, NULL);
 
+        AmrData&                  amrData   = dataServices.AmrDataRef();
+        const int                 nspecies  = getChemSolve().numSpecies();
+        const Array<std::string>& names     = getChemSolve().speciesNames();   
+        Array<std::string>        plotnames = amrData.PlotVarNames();
+
         if (amrData.FinestLevel() < level)
             BoxLib::Abort("initData: not enough levels in plotfile");
 
         if (amrData.ProbDomain()[level] != Domain())
             BoxLib::Abort("initData: problem domains do not match");
     
-        AmrData&                  amrData   = dataServices.AmrDataRef();
-        const int                 nspecies  = getChemSolve().numSpecies();
-        const Array<std::string>& names     = getChemSolve().speciesNames();   
-        Array<std::string>        plotnames = amrData.PlotVarNames();
-
         int idX = -1;
         for (int i = 0; i < plotnames.size(); ++i)
             if (plotnames[i] == "x_velocity") idX = i;
