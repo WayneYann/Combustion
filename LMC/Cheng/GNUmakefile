@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.19 2007-09-12 21:00:02 lijewski Exp $
+# $Id: GNUmakefile,v 1.20 2007-10-05 21:09:37 lijewski Exp $
 #
 PBOXLIB_HOME = ../..
 
@@ -29,7 +29,6 @@ USE_SWIRL      = FALSE
 USE_SWIRL_DATA = FALSE
 USE_NEWMECH    = TRUE
 USE_NEWMECH    = FALSE
-USE_XT3        = TRUE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
@@ -62,23 +61,6 @@ REACTION_MECHANISM=DRM19
 DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
 
 include $(TOP)/mk/Make.defs
-
-ifeq ($(USE_XT3),TRUE)
-  LIBRARIES += -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl -lpgftnrtl -lpghpf -lrt
-  DEFINES += -DBL_PGI -DMPICH_SKIP_MPICXX #-DBL_XT3
-ifeq ($(USE_MPI),TRUE)
-  CXX := CC #-target=catamount
-  FC  := ftn #-target=catamount
-  fC  := ftn #-target=catamount
-else
-  CXX := pgCC
-  FC  := pgf90
-  fC  := pgf90
-endif
-  CXXOPTF += -O --no_exceptions -fastsse -Mvect=nosse
-  FOPTF   += -O -fastsse -Minline=levels:3
-  fOPTF   += -O -fastsse -Minline=levels:3
-endif
 
 Bdirs := LMC LMC/Cheng BoxLib iamrlib amrlib tensorMG mglib bndrylib hgproj
 
