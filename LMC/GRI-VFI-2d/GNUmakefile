@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.33 2007-10-12 19:14:54 sepp Exp $
+# $Id: GNUmakefile,v 1.34 2007-10-17 21:11:36 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -16,6 +16,9 @@ COMP              = CC
 FCOMP             = ftn
 COMP              = Intel
 FCOMP             = Intel
+# For bassi (IBM)
+COMP              = mpCC
+FCOMP             = xlf
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
