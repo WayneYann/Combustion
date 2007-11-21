@@ -1718,7 +1718,7 @@ C If JOK = -1 and MITER = 1, call JAC to evaluate Jacobian. ------------
       LENP = N*N
       DO 110 I = 1,LENP
  110    WM(I+2) = ZERO
-      CALL JAC (N, TN, Y, SAVF, NFE, FTEM, 0, 0, WM(3), N, RPAR, IPAR)
+      CALL JAC (N, TN, Y, 0, 0, WM(3), N, RPAR, IPAR)
       IF (JSV .EQ. 1) CALL DCOPY (LENP, WM(3), 1, WM(LOCJS), 1)
       ENDIF
 C
@@ -1810,8 +1810,7 @@ C If JOK = -1 and MITER = 4, call JAC to evaluate Jacobian. ------------
       JCUR = 1
       DO 410 I = 1,LENP
  410    WM(I+2) = ZERO
-      CALL JAC (N, TN, Y, SAVF, NFE, FTEM, ML, MU, WM(ML3), MEBAND, 
-     & RPAR, IPAR)
+      CALL JAC (N, TN, Y, ML, MU, WM(ML3), MEBAND, RPAR, IPAR)
       IF (JSV .EQ. 1)
      1   CALL DACOPY (MBAND, N, WM(ML3), MEBAND, WM(LOCJS), MBAND)
       ENDIF
