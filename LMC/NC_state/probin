@@ -1,5 +1,6 @@
  &fortin
 
+  T_amb = 300.
   T_hot = 1800.
   x_hot = 0.
   y_hot = 1.
@@ -14,7 +15,7 @@
   max_vort_lev = 1
   vorterr = 1.e3
 
-  max_tral_lev = 2
+  max_trac_lev = 2
   flametracval = 5.e-8
 
   max_temp_lev = 2

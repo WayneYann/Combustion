@@ -180,10 +180,6 @@ c     Load domain dimensions into common, and set up boundary functions
      &     X_comp, ARLIM(lo),ARLIM(hi),
      &     Y_comp, ARLIM(lo),ARLIM(hi))
 
-      print *,'iN2:',iN2
-      print *,'iH2:',iH2
-      print *,'iO2:',iO2
-      
       call setupbc()
       bcinit = .true.
 

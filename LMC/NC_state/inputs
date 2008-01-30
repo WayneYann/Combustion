@@ -9,7 +9,7 @@ geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 geometry.prob_lo   =  0.   -.01  # m meters
 geometry.prob_hi   =  0.015 .01 
 
-ns.tranfile        = tran.asc.drm19
+ns.tranfile        = tran.asc.chem-H
 ns.fuelName        = H2
 ns.oxidizerName    = O2
 ns.flameTracName   = H
@@ -192,3 +192,9 @@ DistributionMapping.strategy = KNAPSACK
 #StationData.coord = 0.00123 0.00123
 #StationData.coord = 0.0023 0.00153
 #StationData.coord = 0.00234 0.00234
+
+max_step=0
+ns.hack_nochem=1
+ns.hack_nospecdiff=1
+ns.num_divu_iters=0
+ns.init_iter=0
