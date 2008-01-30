@@ -1,0 +1,37 @@
+#
+# $Id: Make.package,v 1.1 2008-01-30 18:13:43 jbb Exp $
+#
+CEXE_sources += HT_setup.cpp
+
+FEXE_sources += PROB_$(DIM)D.F
+
+CEXE_headers += ArrayViewEXT.H
+
+FEXE_headers += probdata.H PROB_F.H
+
+ifeq (${USE_FLCTS}, TRUE)
+   FEXE_sources += FLUCTFILE.F INFL_FORCE_$(DIM)D.F INFL_FORCE_F.F
+   CEXE_sources += inflow.cpp
+endif
+
+ifeq ($(USE_VELOCITY), TRUE)
+  CEXE_headers += DataServices.H AmrData.H XYPlotDataList.H AmrvisConstants.H
+  CEXE_sources += DataServices.cpp AmrData.cpp
+  FEXE_sources += FABUTIL_$(DIM)D.F
+endif
+
+ifeq ($(USE_NEWMECH), TRUE)
+  CEXE_headers += DataServices.H AmrData.H XYPlotDataList.H AmrvisConstants.H
+  CEXE_sources += DataServices.cpp AmrData.cpp
+  FEXE_sources += FABUTIL_$(DIM)D.F
+endif
+
+#fEXE_sources += pmf_30_0.8.f
+#fEXE_sources += pmf_30_1.2.f
+#fEXE_sources += pmf_gri12.f
+#fEXE_sources += drmSoln0.75.f
+#fEXE_sources += pmf_H.f
+fEXE_sources += H-flame-0.3.f
+#fEXE_sources += H-flame-GRI12-0.37.f
+#fEXE_sources += GRI-drm19_4cm_1.19.f
+#fEXE_sources += 2stepSoln0.8.f

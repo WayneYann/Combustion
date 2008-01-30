@@ -1,0 +1,35 @@
+ &fortin
+
+  probtype = 2
+  T_hot = 1800.
+  x_hot = 0.
+  y_hot = 1.
+  hot_wid = .0005
+
+  v_strength = -5000.
+  v_width = .001
+  v_cl_x  = 0.0
+  v_xcen = 0.001
+  v_ycen = 0.007
+
+  max_vort_lev = 1
+  vorterr = 1.e3
+
+  max_tral_lev = 2
+  flametracval = 5.e-8
+
+
+  max_temp_lev = 2
+  tempgrad = 100.
+  
+  phi_in = 1.
+  x_nitrogen = .7737556561085972850
+ /
+ &heattransin
+  pamb = 101325.0
+  dpdt_factor = 0.3
+ /
+ &flctin
+ /
+ &control
+ /
