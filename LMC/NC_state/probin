@@ -2,8 +2,8 @@
 
   T_amb = 300.
   T_hot = 1800.
-  x_hot = 0.0075
-  y_hot = 0.
+  x_hot = 0.00
+  y_hot = 0.01
   r_hot = .015
   hot_wid = .0005
 

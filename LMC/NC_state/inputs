@@ -14,11 +14,11 @@ amr.n_cell = 96 128
 ns.tranfile        = tran.asc.chem-H
 ns.fuelName        = H2
 ns.oxidizerName    = O2
-ns.flameTracName   = H
+ns.flameTracName   = HO2
 
 ns.do_active_control = false
 
-amr.max_level = 1
+amr.max_level = 0
 
 proj.proj_2 = 1
 ns.do_init_vort_proj = 1
@@ -199,9 +199,3 @@ DistributionMapping.strategy = KNAPSACK
 #StationData.coord = 0.00123 0.00123
 #StationData.coord = 0.0023 0.00153
 #StationData.coord = 0.00234 0.00234
-
-max_step=0
-ns.hack_nochem=1
-ns.hack_nospecdiff=1
-ns.num_divu_iters=0
-ns.init_iter=0
