@@ -6,10 +6,10 @@ max_step  =  500
 stop_time = .0005
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
-geometry.prob_lo   =  0.   -.01  # m meters
-geometry.prob_hi   =  0.015 .01 
+geometry.prob_lo   =  -.0075 0
+geometry.prob_hi   =  +.0075 0.02
 
-amr.n_cell = 96 128 
+amr.n_cell = 96 128
 
 ns.tranfile        = tran.asc.chem-H
 ns.fuelName        = H2
@@ -25,15 +25,22 @@ ns.do_init_vort_proj = 1
 proj.add_vort_proj = 1
 ns.hack_nochem = 0
 
-mg.usecg = 1
+cg.use_jacobi_precond=1
 cg.v = 0
-mg.v = 0
 cg.maxiter = 1000
+cg.isExpert=1
+cg.maxiter = 1000
+cg.unstable_criterion = 100
+cg.cg_solver=1
+
+mg.usecg = 1
+mg.v = 0
 mg.maxiter = 1000
 mg.nu_0 = 1
 mg.nu_1 = 4
 mg.nu_2 = 4
 mg.nu_f = 40
+mg.cg_solver=1
 
 ns.v   = 1
 amr.v  = 1
@@ -132,7 +139,7 @@ proj.divu_minus_s_factor = 0.
 mac.mac_tol        = 1.0e-12  # tolerence for mac projections
 mac.mac_sync_tol   = 1.0e-9   # tolerence for mac SYNC projection
 mac.mac_abs_tol    = 1.0e-14
-mac.use_cg_solve   = 1
+mac.use_cg_solve   = 0
 mac.do_outflow_bcs = 1
 
 # ------------------  INPUTS TO RADIAION CLASS  -------------------
