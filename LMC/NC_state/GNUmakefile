@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.2 2008-01-30 20:30:48 marc Exp $
+# $Id: GNUmakefile,v 1.3 2008-01-30 20:42:10 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -39,7 +39,7 @@ USE_NEWMECH = FALSE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
-USE_VELOCITY = TRUE
+#USE_VELOCITY = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
