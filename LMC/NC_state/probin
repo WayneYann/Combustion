@@ -1,6 +1,5 @@
  &fortin
 
-  probtype = 2
   T_hot = 1800.
   x_hot = 0.
   y_hot = 1.
@@ -18,7 +17,6 @@
   max_tral_lev = 2
   flametracval = 5.e-8
 
-
   max_temp_lev = 2
   tempgrad = 100.
   
@@ -28,8 +26,4 @@
  &heattransin
   pamb = 101325.0
   dpdt_factor = 0.3
- /
- &flctin
- /
- &control
  /

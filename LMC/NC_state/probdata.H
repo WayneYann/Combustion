@@ -1,48 +1,41 @@
+#include "cdwrk.H"
       
-      REAL_T vorterr, temperr, adverr, tempgrad, flametracval, twall
-      REAL_T splitx, splity, traceSpecVal, xfrontw, yfrontw
-      REAL_T zstandoff
+      REAL_T vorterr, temperr, adverr, tempgrad, flametracval
+      common /prob1/ vorterr, temperr, adverr, tempgrad, flametracval
+
       REAL_T domnlo(SDIM), domnhi(SDIM)
+      common /prob2/ domnlo, domnhi
       
       integer probtype, max_vort_lev, max_temp_lev, max_trac_lev, max_nozzle_lev
-      integer fuelID, oxidID, prodID, nspecies
+      common /prob3/ probtype, max_vort_lev, max_temp_lev, max_trac_lev
 
-      common /prob1/ vorterr, temperr, adverr, tempgrad, flametracval, twall,
-     &               splitx, splity, traceSpecVal, xfrontw, yfrontw, zstandoff
-      common /prob2/ domnlo, domnhi
-      common /prob3/ probtype, max_vort_lev, max_temp_lev, max_trac_lev,
-     &               max_nozzle_lev
+      integer fuelID, oxidID, prodID, nspecies
       common /prob4/ fuelID, oxidID, prodID, nspecies
+
       save /prob1/, /prob2/, /prob3/, /prob4/
 
-      integer refine_nozzle
-      REAL_T refine_nozzle_x, refine_nozzle_y, refine_nozzle_z, blobx, bloby, blobr, xcen, y_offset
-      common /myprob1/ refine_nozzle
-      common /myprob2/ refine_nozzle_x, refine_nozzle_y, refine_nozzle_z, blobx, bloby,
-     &     blobr, xcen, y_offset
 
-      REAL_T v_strength,v_width,v_xcen,v_ycen, v_cl_x, x_hot,y_hot,hot_wid,T_hot
-      common /myprob3/ v_strength,v_width,v_xcen,v_ycen,v_cl_x, x_hot,y_hot,hot_wid,T_hot
+      REAL_T X_comp(maxspec), Y_comp(maxspec), phi_in, X_nitrogen
+      common /myconc1/ X_comp, Y_comp, phi_in, X_nitrogen
+      integer iH2, iO2
+      common /myconc2/ iH2, iO2
 
-      REAL_T v_blob_r, v_blob_T, v_blob_airfrac, turb_scale,phi_in, X_nitrogen
-      common /myprob4/ v_blob_r, v_blob_T, v_blob_airfrac, turb_scale,phi_in,X_nitrogen
+      save /myconc1/, /myconc2/
 
-      REAL_T stTh, Rf, V_in, V_co, T_in, R_hot, R_hotBL, stBL, pipeTh, pipeBL
-      REAL_T tV_in_l, tV_in_r, V_in_new, tV_co_l, tV_co_r, V_co_new
-      REAL_T T_stick, rho_stick, h_stick
-      common /myprob5/ stTh, Rf, V_in, V_co, T_in, R_hot, R_hotBL, stBL,
-     &     pipeTh, pipeBL, tV_in_l, tV_in_r, V_in_new, tV_co_l, tV_co_r,
-     &     V_co_new, T_stick, rho_stick, h_stick
-      save /myprob1/, /myprob2/, /myprob3/, /myprob4/, /myprob5/ 
+      REAL_T v_strength,v_width,v_xcen,v_ycen, v_cl_x, x_hot,y_hot,r_hot,hot_wid,T_hot,T_amb
+      common /myprob3/ v_strength,v_width,v_xcen,v_ycen,v_cl_x, x_hot,y_hot,r_hot,hot_wid,T_hot,T_amb
 
-      REAL_T pertmag
-      common /pert1/ pertmag
-      save /pert1/
+      save /myprob3/
 
-      logical forceInflow
-      REAL_T probSizeFile(3), dxFile(3)
-      integer dimFile
-      common /inflow1/forceInflow
-      common /inflow2/probSizeFile, dxFile
-      common /inflow3/dimFile
-      save /inflow1/, /inflow2/, /inflow3/
+
+      logical bcinit
+      common / stats/ bcinit
+
+      integer Nzones
+      parameter (Nzones=5)      
+
+      REAL_T u_bc(Nzones), v_bc(Nzones), rho_bc(Nzones)
+      REAL_T Y_bc(0:maxspec-1, Nzones), T_bc(Nzones)
+      REAL_T h_bc(Nzones)
+      
+      common / bcs / u_bc, v_bc, rho_bc, Y_bc, T_bc, h_bc
