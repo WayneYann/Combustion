@@ -21,10 +21,10 @@
       common /myprob2/ refine_nozzle_x, refine_nozzle_y, refine_nozzle_z, blobx, bloby,
      &     blobr, xcen, y_offset
 
-      REAL_T v_strength,v_width,v_xcen,v_ycen, v_cl_x, x_hot,y_hot,wid_hot,T_hot
-      common /myprob3/ v_strength,v_width,v_xcen,v_ycen,v_cl_x, x_hot,y_hot,wid_hot,T_hot
+      REAL_T v_strength,v_width,v_xcen,v_ycen, v_cl_x, x_hot,y_hot,hot_wid,T_hot
+      common /myprob3/ v_strength,v_width,v_xcen,v_ycen,v_cl_x, x_hot,y_hot,hot_wid,T_hot
 
-      REAL_T v_blob_r, v_blob_T, v_blob_airfrac, turb_scale,phi_in, X_nitrogren
+      REAL_T v_blob_r, v_blob_T, v_blob_airfrac, turb_scale,phi_in, X_nitrogen
       common /myprob4/ v_blob_r, v_blob_T, v_blob_airfrac, turb_scale,phi_in,X_nitrogen
 
       REAL_T stTh, Rf, V_in, V_co, T_in, R_hot, R_hotBL, stBL, pipeTh, pipeBL

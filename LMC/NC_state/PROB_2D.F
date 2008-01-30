@@ -224,7 +224,7 @@ c ::: -----------------------------------------------------------
      &                  max_trac_lev, max_nozzle_lev, pipeTh, pipeBL,
      &                  tV_in_l,tV_in_r,V_in_new,tV_co_l,tV_co_r,V_co_new,
      &                  T_stick, T_in,phi_in, thickFacTR, thickFacCH,nchemdiag,
-     &                   x_hot,y_hot,wid_hot,T_hot,X_nitrogen
+     &                   x_hot,y_hot,hot_wid,T_hot,X_nitrogen
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -833,7 +833,7 @@ c ::: -----------------------------------------------------------
          X_comp(n) = zero
       enddo
       X_comp(iN2) = X_nitrogen
-      X_comp(iH2) = phi_in/(phi_in+0.d)*(1.d0-X_nitrogen)
+      X_comp(iH2) = phi_in/(phi_in+0.d0)*(1.d0-X_nitrogen)
       X_comp(iO2) = 1.d0 - X_nitrogen -  X_comp(iH2)
       call FORT_MOLETOMASS(lo_chem,hi_chem,
      &     X_comp, ARLIM(lo_chem),ARLIM(hi_chem),
@@ -859,7 +859,7 @@ c
             x = (float(i)+.5)*delta(1)+domnlo(1)
 
 
-            rblob = sqrt( (x_hot-x)**2 + (y_hoh-y)**2 )
+            rblob = sqrt( (x_hot-x)**2 + (y_hot-y)**2 )
 
             scal(i,j,Trac) = fourth*(press(i,j  ) + press(i+1,j)
      &           +                   press(i,j+1) + press(i+1,j+1))

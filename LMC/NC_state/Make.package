@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.1 2008-01-30 18:13:43 jbb Exp $
+# $Id: Make.package,v 1.2 2008-01-30 18:26:33 marc Exp $
 #
 CEXE_sources += HT_setup.cpp
 
@@ -26,12 +26,4 @@ ifeq ($(USE_NEWMECH), TRUE)
   FEXE_sources += FABUTIL_$(DIM)D.F
 endif
 
-#fEXE_sources += pmf_30_0.8.f
-#fEXE_sources += pmf_30_1.2.f
-#fEXE_sources += pmf_gri12.f
-#fEXE_sources += drmSoln0.75.f
-#fEXE_sources += pmf_H.f
-fEXE_sources += H-flame-0.3.f
-#fEXE_sources += H-flame-GRI12-0.37.f
-#fEXE_sources += GRI-drm19_4cm_1.19.f
-#fEXE_sources += 2stepSoln0.8.f
+fEXE_sources += pmf_H.f
