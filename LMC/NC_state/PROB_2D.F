@@ -342,20 +342,19 @@ c
          y = (float(j)+.5)*delta(2)+domnlo(2)         
          do i = lo(1), hi(1)
             x = (float(i)+.5)*delta(1)+domnlo(1)
-
-
             rblob = sqrt( (x_hot-x)**2 + (y_hot-y)**2 )
+
+            scal(i,j,Temp) = 300.d0+ (T_hot-300.d0)*dexp(-(rblob/hot_wid)**2)
+            do n = 1,Nspec
+               scal(i,j,firstSpec+n-1) = Y_comp(n)
+            end do
+            
+            vel(i,j,1) = zero
+            vel(i,j,2) = zero
 
             scal(i,j,Trac) = fourth*(press(i,j  ) + press(i+1,j)
      &           +                   press(i,j+1) + press(i+1,j+1))
 
-               scal(i,j,Temp) = 300.d0+ (T_hot-300.d0)*dexp(-(rblob/hot_wid)**2)
-               do n = 1,Nspec
-                  scal(i,j,firstSpec+n-1) = Y_comp(n)
-               end do
-
-            vel(i,j,1) = zero
-            vel(i,j,2) = zero
          enddo
       enddo
       Patm = pamb / 101325.0

@@ -9,14 +9,14 @@ geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 geometry.prob_lo   =  0.   -.01  # m meters
 geometry.prob_hi   =  0.015 .01 
 
+amr.n_cell = 96 128 
+
 ns.tranfile        = tran.asc.chem-H
 ns.fuelName        = H2
 ns.oxidizerName    = O2
 ns.flameTracName   = H
 
 ns.do_active_control = false
-
-amr.n_cell = 96 128 
 
 amr.max_level = 1
 
