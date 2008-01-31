@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.5 2008-01-31 01:34:00 marc Exp $
+# $Id: GNUmakefile,v 1.6 2008-01-31 19:13:54 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -196,14 +196,8 @@ touch_hg:
 
 .PHONY: libs cleanlibs nodata touch_hg
 
-o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.PROF.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o
 
-o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o
-
-o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o
-
+o/${DIM}d.Linux.${COMP}$(FCOMPSuffix)$(PrecisionSuffix)$(ProfSuffix)$(MPISuffix).EXE/amr_real${DIM}d.2.o:
+	ifort -module ${objEXETempDir} -O3 -hlo0 -ip -c ../../hgproj/amr_real${DIM}d.2.f -o ${objEXETempDir}/amr_real${DIM}d.2.o
 
 include $(TOP)/mk/Make.rules
