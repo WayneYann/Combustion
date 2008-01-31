@@ -174,7 +174,7 @@ c     Load domain dimensions into common, and set up boundary functions
          X_comp(n) = zero
       enddo
       X_comp(iN2) = X_nitrogen
-      X_comp(iH2) = phi_in/(phi_in+0.d0)*(1.d0-X_nitrogen)
+      X_comp(iH2) = phi_in/(phi_in+0.5d0)*(1.d0-X_nitrogen)
       X_comp(iO2) = 1.d0 - X_nitrogen -  X_comp(iH2)
       call FORT_MOLETOMASS(lo,hi,
      &     X_comp, ARLIM(lo),ARLIM(hi),
@@ -333,7 +333,7 @@ c
             x = float(i)*delta(1)+domnlo(1)
             r1sq = (x-v_xcen)**2              + (y-v_ycen)**2
             r2sq = (x-(two*v_cl_x-v_xcen))**2 + (y-v_ycen)**2
-            press(i,j) = v_strength/(Pi*v_width**2)*
+            press(i,j) = 2.d0*v_strength/((1.d0-dexp(-1.d0))*v_width)*
      &           (dexp(-r1sq/v_width**2)-dexp(-r2sq/v_width**2)) 
          end do
       end do

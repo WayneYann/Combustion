@@ -7,7 +7,7 @@
   r_hot = .015
   hot_wid = .0005
 
-  v_strength = -5000.
+  v_strength = 50.
   v_width = .001
   v_cl_x  = 0.0
   v_xcen = 0.001
@@ -16,10 +16,10 @@
   max_vort_lev = 1
   vorterr = 1.e3
 
-  max_trac_lev = 2
-  flametracval = 5.e-8
+  max_trac_lev = 10
+  flametracval = 5.e-6
 
-  max_temp_lev = 2
+  max_temp_lev = 3
   tempgrad = 100.
   
   phi_in = 1.

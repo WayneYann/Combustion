@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.3 2008-01-30 20:42:10 marc Exp $
+# $Id: GNUmakefile,v 1.4 2008-01-31 01:23:56 jbb Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -14,7 +14,7 @@ PROFILE           = FALSE
 DIM    	          = 2
 PRVERSION         = v7
 FCOMP             = Intel
-COMP              = Intel
+COMP              = gcc
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr

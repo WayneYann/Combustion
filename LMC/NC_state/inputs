@@ -18,7 +18,8 @@ ns.flameTracName   = HO2
 
 ns.do_active_control = false
 
-amr.max_level = 0
+amr.max_level = 3
+ht.plot_auxDiags=1
 
 proj.proj_2 = 1
 ns.do_init_vort_proj = 1
