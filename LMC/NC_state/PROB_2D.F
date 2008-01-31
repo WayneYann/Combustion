@@ -309,12 +309,9 @@ c ::: -----------------------------------------------------------
       REAL_T  x, y
       integer slo(SDIM), shi(SDIM)
       character*(maxspnml) name
-      REAL_T Patm
-      integer spec, getZone, zone
+      REAL_T Patm, r1sq, r2sq
       
-      integer zL, zR, zH
-      REAL_T eta, xi, xblend, mdotb, mdotL, mdotR, r1sq, r2sq, ylo, yhi
-      REAL_T pmf_H_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
+      REAL_T rblob
 
       if ((Temp.gt.0).neqv.(RhoH.gt.0)) then
          call bl_abort('Need both Temp and RhoH, or neither')
