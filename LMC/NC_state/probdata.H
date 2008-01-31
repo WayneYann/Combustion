@@ -6,7 +6,7 @@
       REAL_T domnlo(SDIM), domnhi(SDIM)
       common /prob2/ domnlo, domnhi
       
-      integer probtype, max_vort_lev, max_temp_lev, max_trac_lev, max_nozzle_lev
+      integer probtype, max_vort_lev, max_temp_lev, max_trac_lev
       common /prob3/ probtype, max_vort_lev, max_temp_lev, max_trac_lev
 
       integer fuelID, oxidID, prodID, nspecies
