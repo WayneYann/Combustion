@@ -144,7 +144,7 @@ c     Set default values for namelisted variables
       hot_wid = 1.d0
       T_hot = 1.d3
       X_nitrogen = 0.d0
-      rshift = 0.d0
+      rshift = 0.0075d0
       pamb = 101325.d0
       dpdt_factor = 0.3d0
       

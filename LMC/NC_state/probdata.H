@@ -15,8 +15,8 @@
       save /prob1/, /prob2/, /prob3/, /prob4/
 
 
-      REAL_T X_comp(maxspec), Y_comp(maxspec), phi_in, X_nitrogen
-      common /myconc1/ X_comp, Y_comp, phi_in, X_nitrogen
+      REAL_T X_comp(maxspec), Y_comp(maxspec), phi_in, X_nitrogen,rshift
+      common /myconc1/ X_comp, Y_comp, phi_in, X_nitrogen,rshift
       integer iH2, iO2
       common /myconc2/ iH2, iO2
 
