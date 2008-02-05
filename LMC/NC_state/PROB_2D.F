@@ -633,7 +633,7 @@ c ::: -----------------------------------------------------------
                x = float(i)*dx(1)+domnlo(1)
                r1sq = (x-v_xcen)**2              + (y-v_ycen)**2
                r2sq = (x-(two*v_cl_x-v_xcen))**2 + (y-v_ycen)**2
-               v = 2.d0*v_strength/((1.d0-dexp(-1.d0))*v_width)*
+               v = v_strength*
      &              (dexp(-r1sq/v_width**2)-dexp(-r2sq/v_width**2)) 
                tag(i,j) = cvmgt(set,tag(i,j),ABS(v).ge.vorterr)
             end do

@@ -6,6 +6,7 @@
   y_hot = 0.01
   r_hot = .015
   hot_wid = .0005
+  hot_wid = .0020
 
   v_strength = 50.
   v_width = .001
@@ -15,12 +16,15 @@
 
   max_vort_lev = 1
   vorterr = 1.e3
+  vorterr = 4.e3
 
   max_trac_lev = 10
   flametracval = 5.e-6
+  flametracval = 125.e-6
 
   max_temp_lev = 3
   tempgrad = 100.
+  tempgrad = 10.
   
   phi_in = 1.
   x_nitrogen = .7737556561085972850

@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.6 2008-01-31 19:13:54 marc Exp $
+# $Id: GNUmakefile,v 1.7 2008-02-05 18:24:01 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -197,7 +197,7 @@ touch_hg:
 .PHONY: libs cleanlibs nodata touch_hg
 
 
-o/${DIM}d.Linux.${COMP}$(FCOMPSuffix)$(PrecisionSuffix)$(ProfSuffix)$(MPISuffix).EXE/amr_real${DIM}d.2.o:
+o/${DIM}d.Linux.Intel.Intel$(PrecisionSuffix)$(ProfSuffix)$(MPISuffix).EXE/amr_real${DIM}d.2.o:
 	ifort -module ${objEXETempDir} -O3 -hlo0 -ip -c ../../hgproj/amr_real${DIM}d.2.f -o ${objEXETempDir}/amr_real${DIM}d.2.o
 
 include $(TOP)/mk/Make.rules
