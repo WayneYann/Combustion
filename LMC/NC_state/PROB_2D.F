@@ -94,7 +94,8 @@ c ::: -----------------------------------------------------------
      &                  probtype, max_temp_lev, max_vort_lev, 
      &                  max_trac_lev,T_amb,
      &                  v_strength,v_width,v_xcen,v_ycen,v_cl_x,
-     &                  phi_in,r_hot,x_hot,y_hot,hot_wid,T_hot,X_nitrogen
+     &                  phi_in,r_hot,x_hot,y_hot,hot_wid,T_hot,
+     &                  X_nitrogen,rshift
       namelist /heattransin/ pamb, dpdt_factor
 
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -143,6 +144,7 @@ c     Set default values for namelisted variables
       hot_wid = 1.d0
       T_hot = 1.d3
       X_nitrogen = 0.d0
+      rshift = 0.d0
       pamb = 101325.d0
       dpdt_factor = 0.3d0
       
@@ -312,6 +314,7 @@ c ::: -----------------------------------------------------------
       REAL_T Patm, r1sq, r2sq
       
       REAL_T rblob
+      REAL_T pmf_vals(maxspec+3),Xt(maxspec),Yt(maxspec),rEval
 
       if ((Temp.gt.0).neqv.(RhoH.gt.0)) then
          call bl_abort('Need both Temp and RhoH, or neither')
@@ -341,10 +344,20 @@ c
             x = (float(i)+.5)*delta(1)+domnlo(1)
             rblob = sqrt( (x_hot-x)**2 + (y_hot-y)**2 )
 
-            scal(i,j,Temp) = 300.d0+ (T_hot-300.d0)*dexp(-(rblob/hot_wid)**2)
-            do n = 1,Nspec
-               scal(i,j,firstSpec+n-1) = Y_comp(n)
-            end do
+            if (probtype.eq.0) then
+               scal(i,j,Temp) = 300.d0+ (T_hot-300.d0)*dexp(-(rblob/hot_wid)**2)
+               do n = 1,Nspec
+                  scal(i,j,firstSpec+n-1) = Y_comp(n)
+               end do
+            else
+               rEval = (rshift-rblob)*100
+               call pmf_H(rEval-delta(1)*.5,rEval+delta(1)*.5,pmf_vals,n)
+               scal(i,j,Temp) = pmf_vals(1)
+               call CKXTY(pmf_vals(4),IWRK,RWRK,Yt)
+               do n = 1,Nspec
+                  scal(i,j,FirstSpec+n-1) = Yt(n)
+               end do
+            endif
             
             vel(i,j,1) = zero
             vel(i,j,2) = zero
@@ -633,9 +646,9 @@ c ::: -----------------------------------------------------------
                x = float(i)*dx(1)+domnlo(1)
                r1sq = (x-v_xcen)**2              + (y-v_ycen)**2
                r2sq = (x-(two*v_cl_x-v_xcen))**2 + (y-v_ycen)**2
-               v = v_strength*
-     &              (dexp(-r1sq/v_width**2)-dexp(-r2sq/v_width**2)) 
-               tag(i,j) = cvmgt(set,tag(i,j),ABS(v).ge.vorterr)
+               v = 2.d0*v_strength/((1.d0-dexp(-1.d0))*v_width)*
+     &           (dexp(-r1sq/v_width**2)-dexp(-r2sq/v_width**2)) 
+               tag(i,j) = cvmgt(set,tag(i,j),ABS(v).ge.vorterr*2.d0**level)
             end do
          end do
       endif
