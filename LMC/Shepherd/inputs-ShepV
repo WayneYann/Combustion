@@ -111,14 +111,6 @@ ns.oxidizerName    = O2
 ns.flameTracName   = CH4
 ns.unity_Le = 0
 
-ns.dpdt_option = 2
-
-ns.partialInFlow = 1
-ns.XpartialInFlow = 1.e4
-
-ns.prandtl = .75
-ns.schmidt = .75
-
 # ----------------  PROBLEM DEPENDENT INPUTS
 
 ns.lo_bc          = 2 1

@@ -98,11 +98,6 @@ ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
 
 ns.unity_Le = 0
-ns.dpdt_option = 2
-ns.partialInFlow = 1
-ns.XpartialInFlow = 1.e4
-ns.prandtl = .75
-ns.schmidt = .75
 
 # ----------------  PROBLEM DEPENDENT INPUTS
 
