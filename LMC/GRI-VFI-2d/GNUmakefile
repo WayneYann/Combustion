@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.34 2007-10-17 21:11:36 sepp Exp $
+# $Id: GNUmakefile,v 1.35 2008-03-10 00:24:59 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -16,9 +16,6 @@ COMP              = CC
 FCOMP             = ftn
 COMP              = Intel
 FCOMP             = Intel
-# For bassi (IBM)
-COMP              = mpCC
-FCOMP             = xlf
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
@@ -41,6 +38,9 @@ USE_MPI           = TRUE
 #
 DEFINES += -DBL_PLOT_CONSUMPTION
 #
+# Only one of plot reaction rates and plot fuel consumption rates
+# can be chosen!
+#
 # Choose your reaction mechanism & thermal properties.
 #
 REACTION_MECHANISM=CH4-2STEP
@@ -49,10 +49,10 @@ REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=PROPANE
 REACTION_MECHANISM=GRI211HNO
-REACTION_MECHANISM=GRI30
-REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=GRI30HNO
 REACTION_MECHANISM=CHEMH
+REACTION_MECHANISM=GRI30
+REACTION_MECHANISM=DRM19
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
