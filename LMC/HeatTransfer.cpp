@@ -896,7 +896,7 @@ HeatTransfer::initData ()
     ParmParse pp("ht");
 
     std::string pltfile;
-    pp.get("pltfile", pltfile);
+    pp.query("pltfile", pltfile);
     if (pltfile.empty())
         BoxLib::Abort("You must specify `pltfile'");
     if (ParallelDescriptor::IOProcessor())
