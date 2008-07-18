@@ -405,28 +405,13 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
 #include "cdwrk.H"
       integer i
       integer coded(*)
-      character*(2) dummyCh(maxelts)
-      character*(2) name
-      integer j, ctr, lout
-      logical error
-      data error /.false./
-
-      lout = 6
-      call CKSYME(CWRK(ckbc),lout,dummyCh,error)
-      if (error) then
-         call bl_abort('Could not get element name')
-      end if
-      name = dummyCh(i+1)
-      
-c     Encode the name for transfer to C++
-      ctr = 0
-      do j = 1, 2
-         if (name(j:j).NE.' ') then
-            ctr = ctr+1
-            coded(ctr) = ICHAR(name(j:j))
-         end if
-      end do
-      FORT_GETCKELTNAME = ctr
+      integer names(maxelts*2)
+      integer ctr, nlen
+      nlen = 2
+      call CKSYME(names,nlen)
+      coded(1) = ICHAR(names(2*i  ))
+      coded(2) = ICHAR(names(2*i+1))
+      FORT_GETCKELTNAME = 2
       end
 
       integer function FORT_GETCKSPECNAME(i, coded)
@@ -434,22 +419,12 @@ c     Encode the name for transfer to C++
 #include "cdwrk.H"
       integer i
       integer coded(*)
-      character*(maxspnml) dummyCh(maxspec)
-      character*(maxspnml) name
-      integer j, str_len, lout
-      logical error
-      data error /.false./
-      lout = 6
-      call CKSYMS(CWRK(ckbc),lout,dummyCh,error)
-      if (error) then
-         call bl_abort('Could not get species names')
-      end if
-      name = dummyCh(i+1)
-      
-c     Encode the name for transfer to C++
-      str_len = MIN(maxspnml,INDEX(name,' '))
-      do j = 1, str_len
-         coded(j) = ICHAR(name(j:j))
+      int names(maxspec*maxspnml)
+      integer j, str_len
+      call CKSYMS(names, maxspnml)
+      str_len = INDEX(names(maxspnml*i:maxspnml*(i+1)-1),' ')
+      do j = 1, maxspnml
+         coded(j) = ICHAR(names(maxspnml*i+j))
       end do
       FORT_GETCKSPECNAME = str_len - 1
       end

@@ -245,8 +245,8 @@ void progressRate(double * qdot, double * speciesConc, double T);
 void CKINDX(int * iwrk, double *rwrk, int * mm, int * kk, int * ii, int * nfit );
 void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * rval, int * kerr, int lenline);
 void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * knum, int * nval, double * rval, int * kerr, int lenline, int lenkray);
-void CKSYME(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int lenkname);
-void CKSYMS(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int lenkname);
+void CKSYME(int * kname, int * lenkname);
+void CKSYMS(int * kname, int * lenkname);
 void CKRP(int * ickwrk, double * rckwrk, double * ru, double * ruc, double * pa);
 void CKPX(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * P);
 void CKPY(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * P);
@@ -390,9 +390,10 @@ void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * kn
 
 
 /* Returns the char strings of element names */
-void CKSYME(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int lenkname )
+void CKSYME(char * kname, int * plenkname)
 {
     int i; /*Loop Counter */
+    int lenkname = *plenkname;
     /*clear kname */
     for (i=0; i<lenkname*3; i++) {
         kname[i] = ' ';
@@ -413,9 +414,10 @@ void CKSYME(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int
 
 
 /* Returns the char strings of species names */
-void CKSYMS(char * cckwrk, int * lout, char * kname, int * kerr, int lencck, int lenkname )
+void CKSYMS(int * kname, int * plenkname )
 {
     int i; /*Loop Counter */
+    int lenkname = *plenkname;
     /*clear kname */
     for (i=0; i<lenkname*9; i++) {
         kname[i] = ' ';
