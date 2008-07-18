@@ -390,7 +390,7 @@ void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * kn
 
 
 /* Returns the char strings of element names */
-void CKSYME(char * kname, int * plenkname)
+void CKSYME(int * kname, int * plenkname)
 {
     int i; /*Loop Counter */
     int lenkname = *plenkname;

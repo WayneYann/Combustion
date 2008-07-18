@@ -121,9 +121,11 @@ c
 #include "cdwrk.H"
 #include "conp.H"
       logical error
-      integer ioproc, myid, ierr, n, RTOT, lout
+      integer ioproc, myid, ierr, n, RTOT, lout, namlen, i
+      integer FORT_GETCKSPECNAME
       parameter (ioproc = 0)
       character*(maxspnml) name
+      integer coded(maxspnml)
 
       call BL_PD_MYPROC(myid)
       
@@ -172,7 +174,8 @@ c
          call get_spec_name(name,n)
          if (name .eq. 'N2' ) iN2 = n
       end do
-      if (iN2.eq.-1) write(6,*) '.....warning: no N2 in CKD_2D'
+      if (iN2.eq.-1)
+     &     write(6,*) '.....warning: no N2 in chemistry species list'
       end
 
       subroutine CNVTTR (LINKMC)
@@ -409,8 +412,8 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       integer ctr, nlen
       nlen = 2
       call CKSYME(names,nlen)
-      coded(1) = ICHAR(names(2*i  ))
-      coded(2) = ICHAR(names(2*i+1))
+      coded(1) = names(2*(i-1)  )
+      coded(2) = names(2*(i-1)+1)
       FORT_GETCKELTNAME = 2
       end
 
@@ -419,12 +422,17 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
 #include "cdwrk.H"
       integer i
       integer coded(*)
-      int names(maxspec*maxspnml)
+      integer names(maxspec*maxspnml)
       integer j, str_len
       call CKSYMS(names, maxspnml)
-      str_len = INDEX(names(maxspnml*i:maxspnml*(i+1)-1),' ')
       do j = 1, maxspnml
-         coded(j) = ICHAR(names(maxspnml*i+j))
+         coded(j) = names(maxspnml*(i-1)+j)
+      end do
+      do j = 1, maxspnml
+         if (coded(j).eq.ICHAR(' ')) then
+            str_len = j
+            exit
+         endif 
       end do
       FORT_GETCKSPECNAME = str_len - 1
       end
@@ -466,21 +474,18 @@ c
       subroutine get_spec_name(name, j)
       implicit none
 #include "cdwrk.H"
-      integer j, lout
+      integer i, j, FORT_GETCKSPECNAME
+      integer coded(maxspnml), len
       character*(maxspnml) name
-      character*(maxspnml) dummyCh(maxspec)
-      
-      logical error
-      data error /.false./
-
-      lout = 6
-      call CKSYMS(CWRK(ckbc),lout,dummyCh,error)
-      if (error) then
-         call bl_abort('Could not get species names')
-      end if
-      name = dummyCh(j)
+      len = FORT_GETCKSPECNAME(j, coded)
+      do i = 1, maxspnml
+         name(i:i) = ' '
+      end do
+      do i = 1, len
+         name(i:i) = char(coded(i))
+      end do
       end
-      
+
       subroutine get_spec_number(name, j)
       implicit none
 #include "cdwrk.H"

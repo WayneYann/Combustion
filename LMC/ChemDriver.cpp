@@ -83,12 +83,12 @@ ChemDriver::getSpeciesNames()
     int max_len = FORT_GETCKMAXNAMELEN();
     int* coded = new int[max_len];
     int Nspec = FORT_GETCKNUMSPEC();
-    
     mSpeciesNames.clear();
     mSpeciesNames.resize(Nspec);
     for (int i=0; i<Nspec; ++i)
     {
-	int len = FORT_GETCKSPECNAME(&i, coded);
+        int ifort = i+1;
+	int len = FORT_GETCKSPECNAME(&ifort, coded);
 	mSpeciesNames[i] = decodeStringFromFortran(coded,len);
     }
     delete [] coded;
@@ -105,7 +105,8 @@ ChemDriver::getElementNames()
     mElementNames.resize(Nelt);
     for (int i=0; i<Nelt; ++i)
     {
-	int len = FORT_GETCKELTNAME(&i, coded);
+        int ifort = i+1;
+	int len = FORT_GETCKELTNAME(&ifort, coded);
 	mElementNames[i] = decodeStringFromFortran(coded,len);
     }
     delete [] coded;
