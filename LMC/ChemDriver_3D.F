@@ -453,40 +453,35 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       integer DIMDEC(C)
       REAL_T Celt(DIMV(Celt))
       REAL_T C(DIMV(C),*)
-      parameter (maxlen=256)
       integer thenames(maxelts*2)
       logical match
       integer i, j, k, theidx, n, lout
       integer NCF(Nelt,Nspec)
-      if (namlen.GT.maxlen) then
-         call bl_abort('FORT_GETELTMOLES: element name too long')
-      else if (namlen.NE.0) then
 c     Find index of desired element
-         CALL CKSYME(thenames,2)
-         theidx = -1
-         do i=1,Nelt
-            match = .true.
-            do j=1,namlen               
-               if (namenc(j) .NE. thenames((i-1)*2+j)) match = .false.
-            enddo
-            if (match .eqv. .true.) theidx = i
-         end do
-         if (theidx.lt.0) then
-            call bl_pd_abort()
-         endif
+      CALL CKSYME(thenames,2)
+      theidx = -1
+      do i=1,Nelt
+         match = .true.
+         do j=1,namlen               
+            if (namenc(j) .NE. thenames((i-1)*2+j)) match = .false.
+         enddo
+         if (match .eqv. .true.) theidx = i
+      end do
+      if (theidx.lt.0) then
+         call bl_pd_abort()
+      endif
 c     Get the matrix of elements versus species
-         call CKNCF(Nelt,IWRK,RWRK,NCF)
-         do k = lo(3),hi(3)
-            do j = lo(2),hi(2)
-               do i = lo(1),hi(1)
-                  Celt(i,j,k) = zero
-                  do n = 1,Nspec
-                     Celt(i,j,k) = Celt(i,j,k) +C(i,j,k,n)*NCF(theidx,n)
-                  end do
+      call CKNCF(Nelt,IWRK,RWRK,NCF)
+      do k = lo(3),hi(3)
+         do j = lo(2),hi(2)
+            do i = lo(1),hi(1)
+               Celt(i,j,k) = zero
+               do n = 1,Nspec
+                  Celt(i,j,k) = Celt(i,j,k) +C(i,j,k,n)*NCF(theidx,n)
                end do
             end do
          end do
-      end if
+      end do
       end
 
       subroutine FORT_CONPSOLV(lo, hi,

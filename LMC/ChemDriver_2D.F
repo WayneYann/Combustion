@@ -469,43 +469,33 @@ c ----------------------------------------------------------------
       integer DIMDEC(C)
       REAL_T Celt(DIMV(Celt))
       REAL_T C(DIMV(C),*)
-      parameter (maxlen=256)
-      character eltnam*(maxlen)
-      character*(maxspnml) thenames(maxelts), thename
-      logical errflag
-      integer i, j, theidx, n, lout
+      integer thenames(maxelts*2)
+      logical match
+      integer i, j, k, theidx, n, lout
       integer NCF(Nelt,Nspec)
-      if (namlen.GT.maxlen) then
-         call bl_abort('FORT_GETELTMOLES: element name too long')
-      else if (namlen.NE.0) then
-         do i = 1, namlen
-            eltnam(i:i) = char(namenc(i))
-         end do
-         thename = eltnam(1:namlen)
 c     Find index of desired element
-#ifdef MIKE
-         lout = 6
-         CALL CKSYME(CWRK,lout,thenames,errflag)
-#else
-         call bl_abort("FORT_GETELTMOLES not implemented")
-#endif
-         if (errflag) then
-            call bl_abort('FORT_GETELTMOLES: error finding element')
-         end if
-         do i=1,Nelt
-            if (thename .EQ. thenames(i)) theidx=i
-         end do
+      CALL CKSYME(thenames,2)
+      theidx = -1
+      do i=1,Nelt
+         match = .true.
+         do j=1,namlen               
+            if (namenc(j) .NE. thenames((i-1)*2+j)) match = .false.
+         enddo
+         if (match .eqv. .true.) theidx = i
+      end do
+      if (theidx.lt.0) then
+         call bl_pd_abort()
+      endif
 c     Get the matrix of elements versus species
-         call CKNCF(Nelt,IWRK,RWRK,NCF)
-         do j = lo(2),hi(2)
-            do i = lo(1),hi(1)
-               Celt(i,j) = zero
-               do n = 1,Nspec
-                  Celt(i,j) = Celt(i,j) + C(i,j,n)*NCF(theidx,n)
-               end do
+      call CKNCF(Nelt,IWRK,RWRK,NCF)
+      do j = lo(2),hi(2)
+         do i = lo(1),hi(1)
+            Celt(i,j) = zero
+            do n = 1,Nspec
+               Celt(i,j) = Celt(i,j) + C(i,j,n)*NCF(theidx,n)
             end do
          end do
-      end if
+      end do
       end
 
 #ifdef EVOLVE_TEMP
