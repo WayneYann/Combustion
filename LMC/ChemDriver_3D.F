@@ -455,18 +455,13 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       REAL_T C(DIMV(C),*)
       parameter (maxlen=256)
       integer thenames(maxelts*2)
-      character*2 eltnam
       logical match
       integer i, j, k, theidx, n, lout
       integer NCF(Nelt,Nspec)
       if (namlen.GT.maxlen) then
          call bl_abort('FORT_GETELTMOLES: element name too long')
       else if (namlen.NE.0) then
-c         do i = 1, namlen
-c            eltnam(i:i) = char(namenc(i))
-c         end do
-c         thename = eltnam(1:namlen)
-cc     Find index of desired element
+c     Find index of desired element
          CALL CKSYME(thenames,2)
          theidx = -1
          do i=1,Nelt
@@ -480,11 +475,7 @@ cc     Find index of desired element
             call bl_pd_abort()
          endif
 c     Get the matrix of elements versus species
-
          call CKNCF(Nelt,IWRK,RWRK,NCF)
-         do i = 1, namlen
-            eltnam(i:i) = char(namenc(i))
-         end do
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)
