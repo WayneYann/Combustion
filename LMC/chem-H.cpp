@@ -3562,12 +3562,12 @@ void gibbs(double * species, double * tc)
 
     static double T_old = -1, species_old[9];
 
-//    if (T == T_old)
-//    {
-//        for (int i = 0; i < 9; i++)
-//            species[i] = species_old[i];
-//        return;
-//    }
+    if (T == T_old)
+    {
+        for (int i = 0; i < 9; i++)
+            species[i] = species_old[i];
+        return;
+    }
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
