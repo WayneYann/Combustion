@@ -2192,6 +2192,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     adjust_spec_diffusion_update(get_new_data(State_Type),&get_old_data(State_Type),
 				 sCompY,dt,prev_time,rho_flag,Rh,dataComp,
                                  &delta_rhs,alpha,betan);
+    delta_rhs.clear();
     adjust_spec_diffusion_update(get_new_data(State_Type),&get_new_data(State_Type),
 				 sCompY,dt,cur_time,rho_flag,Rh,dataComp,0,
                                  alpha,betanp1);
@@ -2421,6 +2422,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
                              &nspecies, &d);
         }
     }
+    rho_and_species.clear();
     //
     // Reset Phi_new using "repaired" fluxes.  Here, we assume the following
     // arrangement of terms:
@@ -2709,6 +2711,7 @@ HeatTransfer::diffuse_temp_setup (Real       prev_time,
     {
         (*delta_rhs)[mfi].plus(rdgydgh[mfi],0,0,1);
     }
+    rdgydgh.clear();
     //
     // alpha = c_p^(n+1/2)
     // Note: rho accounted for in diffusion box
@@ -5491,6 +5494,8 @@ HeatTransfer::reset_rho_in_rho_states (const MultiFab& rho,
         rhoGrow[rmfi].copy(rho[rmfi],rho[rmfi].box());
 
     tmpRho.copy(rhoGrow);  // Parallel copy.
+
+    rhoGrow.clear();
 
     for (MFIter rmfi(tmpRho); rmfi.isValid(); ++rmfi)
     {
