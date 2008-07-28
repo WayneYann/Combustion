@@ -2257,9 +2257,7 @@ HeatTransfer::make_rho_prev_time ()
     //
     // We are assuming that the state is loaded with Density then species.
     //
-    int ncomp = nspecies + 1;
-
-    for (FillPatchIterator fpi(*this,*rho_ptime,1,prev_time,State_Type,Density,ncomp);
+    for (FillPatchIterator fpi(*this,*rho_ptime,1,prev_time,State_Type,Density,1);
          fpi.isValid();
          ++fpi)
     {
@@ -2276,9 +2274,7 @@ HeatTransfer::make_rho_curr_time ()
     //
     // We are assuming that the state is loaded with Density then species.
     //
-    int ncomp = nspecies + 1;
-
-    for (FillPatchIterator fpi(*this,*rho_ctime,1,curr_time,State_Type,Density,ncomp);
+    for (FillPatchIterator fpi(*this,*rho_ctime,1,curr_time,State_Type,Density,1);
          fpi.isValid();
          ++fpi)
     {
@@ -6007,12 +6003,12 @@ HeatTransfer::compute_edge_states (Real               dt,
 
         const int i = S_fpi.index();
 
-        FArrayBox tvelforces;
+        FArrayBox tforces, tvelforces;
 
         Rho.resize(S_fpi().box(),1);
-        Rho.copy(S_fpi(),Density,0,1);
-
         U.resize(S_fpi().box(),BL_SPACEDIM);
+
+        Rho.copy(S_fpi(),Density,0,1);
         U.copy(S_fpi(),Xvel,0,BL_SPACEDIM);
         //
         // Get the spec forces based on CC data (forces on EC data in getViscTerms)
@@ -6081,8 +6077,6 @@ HeatTransfer::compute_edge_states (Real               dt,
             }
         }
         tvelforces.clear();
-
-        FArrayBox tforces;
         //
         // Get spec edge states
         // FIXME: Fab copy reqd, force sum below pulls state and forces from same comp
@@ -6215,7 +6209,9 @@ HeatTransfer::compute_edge_states (Real               dt,
                                      comp, state_ind, bc.dataPtr(),
                                      iconserv_dummy, PRE_MAC);
 
-            } else {
+            }
+            else
+            {
 
                 FArrayBox junkDivu(tforces.box(),1);
                 junkDivu.setVal(0.);
@@ -6356,8 +6352,7 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
         }
     }
 
-    for (int comp = 0 ; comp < BL_SPACEDIM ; comp++)
-        edge[comp].clear();
+    D_TERM(edge[0].clear();, edge[1].clear();, edge[2].clear(););
     //
     // pullFluxes() contains CrseInit() calls -- complete the process.
     //
@@ -6664,8 +6659,7 @@ HeatTransfer::scalar_advection (Real dt,
         }
     }
 
-    for (int comp = 0 ; comp < BL_SPACEDIM ; comp++)
-        edge[comp].clear();
+    D_TERM(edge[0].clear();, edge[1].clear();, edge[2].clear(););
     //
     // pullFluxes() contains CrseInit() calls. Got to complete the process.
     //
