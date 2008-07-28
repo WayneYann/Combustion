@@ -5885,15 +5885,11 @@ HeatTransfer::compute_edge_states (Real               dt,
     // "do_predict" states are predicted normally, after special states
     //
     std::vector<bool> do_predict(nState,true);
-    if (do_mom_diff == 1) 
+
+    if (do_mom_diff != 1) 
     {
-      for (int d=0; d<BL_SPACEDIM; ++d)
-        do_predict[Xvel+d] = true;
-    }
-    else
-    {
-      for (int d=0; d<BL_SPACEDIM; ++d)
-        do_predict[Xvel+d] = false;
+        for (int d=0; d<BL_SPACEDIM; ++d)
+            do_predict[Xvel+d] = false;
     } 
     for (int sigma=first_spec; sigma<=last_spec; ++sigma)
         do_predict[sigma] = false; // Will get these in a special way
@@ -5917,6 +5913,7 @@ HeatTransfer::compute_edge_states (Real               dt,
     // all components with interdependencies are turned on at the same time.
     //
     std::vector<bool> compute_comp(nState, true);
+
     if (state_comps_to_compute != 0)
     {
         BL_ASSERT(state_comps_to_compute->size() == nState);
@@ -5939,10 +5936,16 @@ HeatTransfer::compute_edge_states (Real               dt,
     // If !do_predict, but will need visc terms, get them explicity here
     //
     const int nGrowF = 1;
+
+    MultiFab Gp;
+
     if (use_forces_in_trans || (do_mom_diff == 1))
     {
         visc_terms.set(Xvel, new MultiFab(grids,BL_SPACEDIM,nGrowF));
         getViscTerms(visc_terms[Xvel],Xvel,BL_SPACEDIM,prev_time);
+
+        Gp.define(grids,BL_SPACEDIM,1,Fab_allocate);
+        getGradP(Gp, prev_pres_time);
     }
 
     if (compute_comp[first_spec])
@@ -5951,7 +5954,7 @@ HeatTransfer::compute_edge_states (Real               dt,
 
         if (do_mcdd)
         {
-            visc_terms.set(Temp, new MultiFab(grids,1,nGrowF,Fab_allocate));
+            visc_terms.set(Temp, new MultiFab(grids,1,nGrowF));
             compute_mcdd_visc_terms(visc_terms[first_spec],0,visc_terms[Temp],0,
                                     prev_time,nGrowF,DDOp::DD_Temp);
         }
@@ -5987,10 +5990,6 @@ HeatTransfer::compute_edge_states (Real               dt,
     // FillPatch'd state data.
     //
     MultiFab* divu_fp = NavierStokes::create_mac_rhs_grown(nGrowF,prev_time,dt);
-
-    MultiFab Gp(grids,BL_SPACEDIM,1);
-
-    getGradP(Gp, prev_pres_time);
 
     for (FillPatchIterator S_fpi(*this,*divu_fp,HYP_GROW,prev_time,State_Type,0,nState);
          S_fpi.isValid();
@@ -7815,7 +7814,7 @@ HeatTransfer::calcDiffusivity (const Real time,
         FArrayBox tmp;
 
         for (FillPatchIterator Rho_and_spec_fpi(*this,*rhospec,nGrow,time,State_Type,Density,nspecies+1),
-                 Temp_fpi(*this,*rhospec,nGrow,time,State_Type,Temp,nGrow);
+                 Temp_fpi(*this,*rhospec,nGrow,time,State_Type,Temp,1);
              Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();
              ++Rho_and_spec_fpi, ++Temp_fpi)
         {
