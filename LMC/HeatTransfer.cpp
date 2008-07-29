@@ -2254,9 +2254,7 @@ HeatTransfer::make_rho_prev_time ()
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_rho_prev_time()");
 
     const Real prev_time = state[State_Type].prevTime();
-    //
-    // We are assuming that the state is loaded with Density then species.
-    //
+
     for (FillPatchIterator fpi(*this,*rho_ptime,1,prev_time,State_Type,Density,1);
          fpi.isValid();
          ++fpi)
@@ -2271,9 +2269,7 @@ HeatTransfer::make_rho_curr_time ()
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_rho_curr_time()");
 
     const Real curr_time = state[State_Type].curTime();
-    //
-    // We are assuming that the state is loaded with Density then species.
-    //
+
     for (FillPatchIterator fpi(*this,*rho_ctime,1,curr_time,State_Type,Density,1);
          fpi.isValid();
          ++fpi)
@@ -2408,13 +2404,13 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     // "Repair" fluxes to ensure they sum to zero, use rho_and_species to pick dominant comp
     //  Note that rho_and_species is now rho and rho.Y, not rho and Y.
     //
-    for (int d =0; d < BL_SPACEDIM; ++d)
+    for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
     {
-        for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
-        {
-            FArrayBox& state = rho_and_species[mfi];
-            const Box& box   = mfi.validbox();
+        FArrayBox& state = rho_and_species[mfi];
+        const Box& box   = mfi.validbox();
 
+        for (int d =0; d < BL_SPACEDIM; ++d)
+        {
             FArrayBox& fab = (*flux[d])[mfi.index()];
             FORT_REPAIR_FLUX(box.loVect(), box.hiVect(),
                              fab.dataPtr(),  ARLIM(fab.loVect()),  ARLIM(fab.hiVect()),
@@ -4918,19 +4914,17 @@ HeatTransfer::advance (Real time,
                        aux_boundary_data_old.DistributionMap(),
                        Fab_allocate);
         {
-            BoxList bl;
-            for (int i = 0; i < S_old.size(); i++)
-                bl.push_back(BoxLib::grow(S_old.boxArray()[i],aux_boundary_data_old.nGrow()));
-            BoxArray ba(bl);
-            bl.clear();
+            const int ngrow = aux_boundary_data_old.nGrow();
+
+            BoxArray ba = S_old.boxArray();
+
+            ba.grow(ngrow);
             //
             // This MF is guaranteed to cover tmpFABs & valid region of S_old.
             //
-            MultiFab tmpS_old(ba,NUM_STATE,0);
-            //
             // Note that S_old & tmpS_old have the same distribution.
             //
-            const int ngrow = aux_boundary_data_old.nGrow();
+            MultiFab tmpS_old(ba,NUM_STATE,0);
 
             for (FillPatchIterator fpi(*this,S_old,ngrow,prev_time,State_Type,0,NUM_STATE);
                  fpi.isValid();
@@ -5471,11 +5465,10 @@ HeatTransfer::reset_rho_in_rho_states (const MultiFab& rho,
                   0,
                   aux_boundary_data_new.DistributionMap(),
                   Fab_allocate);
-    BoxList bl;
-    for (int i = 0; i < rho.size(); i++)
-        bl.push_back(BoxLib::grow(rho.boxArray()[i],nGrow));
-    BoxArray bat(bl);
-    bl.clear();
+
+    BoxArray bat = rho.boxArray();
+
+    bat.grow(nGrow);
     //
     // This MF is guaranteed to cover tmpRho.
     //
@@ -5522,12 +5515,10 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     //                                                                                                           
     // Build a MultiFab parallel to State with appropriate # of ghost                                            
     // cells built into the FABs themselves to cover rhoh_data.                                                  
-    //                                                                                                           
-    BoxList bl;
-    for (int i = 0; i < grids.size(); i++)
-        bl.push_back(BoxLib::grow(grids[i],nGrow));
-    BoxArray ba(bl);
-    bl.clear();
+    //
+    BoxArray ba = grids;
+
+    ba.grow(nGrow);
 
     MultiFab tmpS(ba,1,0);
 
