@@ -542,10 +542,6 @@ protected:
     //
     // Protected data.
     //
-    MultiFab*   Spec_adv_sync;    // Species advective sync update storage
-    MultiFab*   Spec_visc_sync;   // Species diffusive sync update storage
-    MultiFab*   RhoH_adv_sync;    // RhoH advective sync update storage
-    MultiFab*   RhoH_visc_sync;   // RhoH diffusive sync update storage
     MultiFab**  EdgeState;
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
@@ -556,7 +552,6 @@ protected:
     AuxBoundaryData        aux_boundary_data_old;
     AuxBoundaryData        aux_boundary_data_new;
     bool                   FillPatchedOldState_ok;
-    PArray<MultiFab>       derive_mfs;
 
     static bool               plot_auxDiags;
     MultiFab*                 auxDiag;
