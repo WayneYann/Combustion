@@ -490,7 +490,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 
 HeatTransfer::~HeatTransfer ()
 {
-    diffusion->removeFluxBoxesLevel(EdgeState);    
+    diffusion->removeFluxBoxesLevel(EdgeState);
     if (nspecies>0 && !unity_Le)    
     {
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxn);    
@@ -2184,6 +2184,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
         }
 	spec_diffusion_flux_computed[sigma] = HT_Diffusion;
     }
+    diffusion->removeFluxBoxesLevel(fluxSCn);
+    diffusion->removeFluxBoxesLevel(fluxSCnp1);
     //
     // Modify update/fluxes to preserve flux sum = 0, compute new update and
     // leave modified fluxes in level data.  Do this in two stages, first for
@@ -2197,10 +2199,17 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     adjust_spec_diffusion_update(get_new_data(State_Type),&get_old_data(State_Type),
 				 sCompY,dt,prev_time,rho_flag,Rh,dataComp,
                                  &delta_rhs,alpha,betan);
+
+    diffusion->removeFluxBoxesLevel(betan);
     delta_rhs.clear();
+
     adjust_spec_diffusion_update(get_new_data(State_Type),&get_new_data(State_Type),
 				 sCompY,dt,cur_time,rho_flag,Rh,dataComp,0,
                                  alpha,betanp1);
+
+    diffusion->removeFluxBoxesLevel(betanp1);
+    if (alpha)
+	delete alpha;
     //
     // Now do reflux with new, improved fluxes
     //
@@ -2229,15 +2238,6 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 	if (level < parent->finestLevel())
 	    getLevel(level+1).getViscFluxReg().CrseInitFinish();
     }
-    //
-    // Clean up memory
-    //
-    if (alpha)
-	delete alpha;
-    diffusion->removeFluxBoxesLevel(fluxSCn);
-    diffusion->removeFluxBoxesLevel(fluxSCnp1);
-    diffusion->removeFluxBoxesLevel(betan);
-    diffusion->removeFluxBoxesLevel(betanp1);
 
     const int IOProc   = ParallelDescriptor::IOProcessorNumber();
     Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -4257,6 +4257,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     s_tmp.clear();
     rho_and_species.clear();
     rho_and_species_crse.clear();
+    diffusion->removeFluxBoxesLevel(flux);
     //
     // Modify update/fluxes to preserve flux sum = 0, compute -Div(flux)
     // (use dt = 1.0,  since the routine actually updates does "state"-=Div(flux)*dt)
@@ -4269,7 +4270,6 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     adjust_spec_diffusion_update(visc_terms,old_state,sComp,dt,time,rho_flag,
 				 get_rho_half_time(),dataComp,delta_rhs,alpha,beta);
     diffusion->removeFluxBoxesLevel(beta);
-    diffusion->removeFluxBoxesLevel(flux);
 }
 
 void
@@ -4299,6 +4299,7 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     //
     getDiffusivity(beta, time, Temp, 0, 1);
     diffusion->getViscTerms(visc_terms,src_comp,Temp,time,rho_flag,0,beta);
+    diffusion->removeFluxBoxesLevel(beta);
     add_heat_sources(visc_terms,Temp-src_comp,time,nGrow,1.0);
 
     MultiFab delta_visc_terms(grids,1,nGrow);
@@ -4339,10 +4340,6 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
         visc_terms[dvt_mfi].plus(delta_visc_terms[dvt_mfi],box,0,Temp-src_comp,1);
         visc_terms[dvt_mfi].divide(cp,0,Temp-src_comp,1);
     }
-    //
-    // Clean up.
-    //
-    diffusion->removeFluxBoxesLevel(beta);
 }
 
 void
@@ -4375,11 +4372,8 @@ HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
     getDiffusivity(beta, time, RhoH, 0, 1);
 
     diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,0,beta);
-    add_heat_sources(visc_terms,RhoH-src_comp,time,nGrow,1.0);
-    //
-    // Clean up.
-    //
     diffusion->removeFluxBoxesLevel(beta);
+    add_heat_sources(visc_terms,RhoH-src_comp,time,nGrow,1.0);
 }
 
 void
@@ -5929,7 +5923,6 @@ HeatTransfer::compute_edge_states (Real               dt,
     //
     const int nGrowF = 1;
 
-    MultiFab* u_macG  = create_umac_grown();
     MultiFab* divu_fp = create_mac_rhs_grown(nGrowF,prev_time,dt);
 
     MultiFab Gp;
@@ -6296,7 +6289,6 @@ HeatTransfer::compute_edge_states (Real               dt,
     }
 
     delete divu_fp;
-    delete [] u_macG;
 }
 
 void
@@ -6540,6 +6532,8 @@ HeatTransfer::scalar_advection (Real dt,
         }
 
         Soln.clear();
+        diffusion->removeFluxBoxesLevel(fluxSC);
+        diffusion->removeFluxBoxesLevel(rhoh_visc);
         //
         // Multiply fluxi by h_i, and add to running total
         //
@@ -6572,12 +6566,8 @@ HeatTransfer::scalar_advection (Real dt,
                     (*fluxNULN[d])[i].plus((*fluxi[d])[i],ebox,comp,0,1);
             }
         }
-        //
-        // Clean up
-        //
-        diffusion->removeFluxBoxesLevel(fluxSC);
+
         diffusion->removeFluxBoxesLevel(fluxi);
-        diffusion->removeFluxBoxesLevel(rhoh_visc);
     }
     
     for (MFIter AofS_mfi(*aofs); AofS_mfi.isValid(); ++AofS_mfi)
@@ -6653,16 +6643,14 @@ HeatTransfer::scalar_advection (Real dt,
     }
 
     D_TERM(edge[0].clear();, edge[1].clear();, edge[2].clear(););
+
+    if (do_special_rhoh)
+        diffusion->removeFluxBoxesLevel(fluxNULN);
     //
     // pullFluxes() contains CrseInit() calls. Got to complete the process.
     //
     if (do_reflux && level < parent->finestLevel())
         getAdvFluxReg(level+1).CrseInitFinish();
-    //
-    // Cleanup memory , if necessary
-    //
-    if (do_special_rhoh)
-        diffusion->removeFluxBoxesLevel(fluxNULN);
 }
 
 void
@@ -6781,48 +6769,48 @@ HeatTransfer::compute_rhoDgradYgradH (Real      time,
           fpi.isValid();
           ++fpi)
     {
-            const int  i               = fpi.index();
-            const int* lo              = grids[i].loVect();
-            const int* hi              = grids[i].hiVect();
-            FArrayBox& rho_and_species = fpi();
+        const int  i               = fpi.index();
+        const int* lo              = grids[i].loVect();
+        const int* hi              = grids[i].hiVect();
+        FArrayBox& rho_and_species = fpi();
 
-            rdgydgh_spec_i.resize(grids[i],1);
-            DEF_LIMITS(rdgydgh_spec_i,prod,prodlo,prodhi);
+        rdgydgh_spec_i.resize(grids[i],1);
+        DEF_LIMITS(rdgydgh_spec_i,prod,prodlo,prodhi);
 
-            const  int* speclo  = rho_and_species.loVect();
-            const  int* spechi  = rho_and_species.hiVect();
+        const  int* speclo  = rho_and_species.loVect();
+        const  int* spechi  = rho_and_species.hiVect();
 
-            tmp.resize(rho_and_species.box(),1);
-            tmp.copy(rho_and_species,0,0,1);
-            tmp.invert(1);
+        tmp.resize(rho_and_species.box(),1);
+        tmp.copy(rho_and_species,0,0,1);
+        tmp.invert(1);
 
-            for (int spec = first_spec; spec <= last_spec; spec++) 
-            {
-                const int comp = spec - first_spec;
+        for (int spec = first_spec; spec <= last_spec; spec++) 
+        {
+            const int comp = spec - first_spec;
 
-                DEF_CLIMITSCOMP(h[i],hdat,hlo,hhi,comp);
-                DEF_CLIMITSCOMP((*beta[0])[i],betax,betaxlo,betaxhi,comp);
-                DEF_CLIMITSCOMP((*beta[1])[i],betay,betaylo,betayhi,comp);
+            DEF_CLIMITSCOMP(h[i],hdat,hlo,hhi,comp);
+            DEF_CLIMITSCOMP((*beta[0])[i],betax,betaxlo,betaxhi,comp);
+            DEF_CLIMITSCOMP((*beta[1])[i],betay,betaylo,betayhi,comp);
 #if (BL_SPACEDIM==3)
-                DEF_CLIMITSCOMP((*beta[2])[i],betaz,betazlo,betazhi,comp);
+            DEF_CLIMITSCOMP((*beta[2])[i],betaz,betazlo,betazhi,comp);
 #endif
 
-                rho_and_species.mult(tmp,0,comp+1,1);
+            rho_and_species.mult(tmp,0,comp+1,1);
 
-                const Real* specdat = rho_and_species.dataPtr(comp+1);
+            const Real* specdat = rho_and_species.dataPtr(comp+1);
 
-                FORT_COMPUTE_RHODGRADHDOTGRADY(dx,lo,hi,
-                                               ARLIM(speclo),ARLIM(spechi),specdat,
-                                               ARLIM(hlo),ARLIM(hhi),hdat,
-                                               ARLIM(betaxlo),ARLIM(betaxhi),betax,
-                                               ARLIM(betaylo),ARLIM(betayhi),betay,
+            FORT_COMPUTE_RHODGRADHDOTGRADY(dx,lo,hi,
+                                           ARLIM(speclo),ARLIM(spechi),specdat,
+                                           ARLIM(hlo),ARLIM(hhi),hdat,
+                                           ARLIM(betaxlo),ARLIM(betaxhi),betax,
+                                           ARLIM(betaylo),ARLIM(betayhi),betay,
 #if (BL_SPACEDIM==3) 
-                                               ARLIM(betazlo),ARLIM(betazhi),betaz,
+                                           ARLIM(betazlo),ARLIM(betazhi),betaz,
 #endif            
-                                               ARLIM(prodlo),ARLIM(prodhi),prod);
+                                           ARLIM(prodlo),ARLIM(prodhi),prod);
 
-                rdgydgh[i].plus(rdgydgh_spec_i);
-            }
+            rdgydgh[i].plus(rdgydgh_spec_i);
+        }
     }
   
     diffusion->removeFluxBoxesLevel(beta);
@@ -7071,6 +7059,8 @@ HeatTransfer::mac_sync ()
                 }
 
                 Soln.clear();
+                diffusion->removeFluxBoxesLevel(fluxSC);
+                diffusion->removeFluxBoxesLevel(rhoh_visc);
                 //
                 // Multiply fluxi by h_i (let FLXDIV routine below sum up the fluxes)
                 //
@@ -7137,9 +7127,8 @@ HeatTransfer::mac_sync ()
                                         ARLIM(vol.hiVect()),
                                         &nspecies, &mult);
                 }
-                diffusion->removeFluxBoxesLevel(fluxSC);
+
                 diffusion->removeFluxBoxesLevel(fluxNULN);
-                diffusion->removeFluxBoxesLevel(rhoh_visc);
             }
             else if (nspecies>0 && do_mcdd)
             {
@@ -7585,9 +7574,7 @@ HeatTransfer::differential_spec_diffuse_sync(Real dt)
     const int dataComp = 0; 
     adjust_spec_diffusion_update(*Ssync,old_sync,sCompS,dt,cur_time,rho_flag,
                                  Rh,dataComp,&Rhs,alpha,betanp1);
-    //
-    // Clean up memory
-    //
+
     diffusion->removeFluxBoxesLevel(betanp1);
 
     Rhs.clear();
