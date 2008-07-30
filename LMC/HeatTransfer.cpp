@@ -4870,8 +4870,9 @@ HeatTransfer::advance (Real time,
     if (do_mac_proj) 
     {
         int havedivu = 1;
-        mac_rhs = create_mac_rhs(time,dt);
+        MultiFab* mac_rhs = create_mac_rhs(time,dt);
         mac_project(time,dt,S_old,mac_rhs,havedivu);
+        delete mac_rhs;
     }
 
     if (do_mom_diff == 0)
@@ -5928,6 +5929,9 @@ HeatTransfer::compute_edge_states (Real               dt,
     //
     const int nGrowF = 1;
 
+    MultiFab* u_macG  = create_umac_grown();
+    MultiFab* divu_fp = create_mac_rhs_grown(nGrowF,prev_time,dt);
+
     MultiFab Gp;
 
     if (use_forces_in_trans || (do_mom_diff == 1))
@@ -5980,8 +5984,6 @@ HeatTransfer::compute_edge_states (Real               dt,
     //
     // FillPatch'd state data.
     //
-    MultiFab* divu_fp = NavierStokes::create_mac_rhs_grown(nGrowF,prev_time,dt);
-
     for (FillPatchIterator S_fpi(*this,*divu_fp,HYP_GROW,prev_time,State_Type,0,nState);
          S_fpi.isValid();
          ++S_fpi)
@@ -6294,6 +6296,7 @@ HeatTransfer::compute_edge_states (Real               dt,
     }
 
     delete divu_fp;
+    delete [] u_macG;
 }
 
 void
