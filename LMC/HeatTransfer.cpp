@@ -715,15 +715,17 @@ HeatTransfer::estTimeStep ()
 
     Real dt, ns_estdt = estdt, divu_dt = 1.0e20;
 
-    const int         n_grow   = 1;
-    const Real        cur_time = state[State_Type].curTime();
-    const Real*       dx       = geom.CellSize();
-    MultiFab*         dsdt     = getDsdt(0,cur_time);
-    MultiFab*         divu     = getDivCond(0,cur_time);
+    const int   n_grow   = 1;
+    const Real  cur_time = state[State_Type].curTime();
+    const Real* dx       = geom.CellSize();
+    MultiFab*   dsdt     = getDsdt(0,cur_time);
+    MultiFab*   divu     = getDivCond(0,cur_time);
 
     MFIter  dsdtmfi(*dsdt);
     MFIter  divumfi(*divu);
     MFIter  Rho_mfi(*rho_ctime);
+
+    FArrayBox area[BL_SPACEDIM];
 
     for (FillPatchIterator U_fpi(*this,*divu,n_grow,cur_time,State_Type,Xvel,BL_SPACEDIM);
          dsdtmfi.isValid() && divumfi.isValid() && Rho_mfi.isValid() && U_fpi.isValid();
@@ -737,16 +739,21 @@ HeatTransfer::estTimeStep ()
         const int*       lo  = grids[i].loVect();
         const int*       hi  = grids[i].hiVect();
 
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+        {
+            geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
+        }
+
         DEF_CLIMITS((*divu)[Rho_mfi],sdat,slo,shi);
         DEF_CLIMITS(Rho,rhodat,rholo,rhohi);
         DEF_CLIMITS(U,vel,ulo,uhi);
 
         DEF_CLIMITS(volume[i],vol,v_lo,v_hi);
 
-        DEF_CLIMITS(area[0][i],areax,ax_lo,ax_hi);
-        DEF_CLIMITS(area[1][i],areay,ay_lo,ay_hi);
+        DEF_CLIMITS(area[0],areax,ax_lo,ax_hi);
+        DEF_CLIMITS(area[1],areay,ay_lo,ay_hi);
 #if (BL_SPACEDIM==3) 
-        DEF_CLIMITS(area[2][i],areaz,az_lo,az_hi)
+        DEF_CLIMITS(area[2],areaz,az_lo,az_hi)
 #endif
         FORT_EST_DIVU_DT(divu_ceiling,&divu_dt_factor,
                          dx,sdat,ARLIM(slo),ARLIM(shi),
@@ -815,6 +822,8 @@ HeatTransfer::checkTimeStep (Real dt)
     MFIter dsdtmfi(*dsdt);
     MFIter divumfi(*divu);
 
+    FArrayBox area[BL_SPACEDIM];
+
     for (FillPatchIterator U_fpi(*this,*divu,n_grow,cur_time,State_Type,Xvel,BL_SPACEDIM);
          dsdtmfi.isValid() && divumfi.isValid() && U_fpi.isValid();
          ++dsdtmfi, ++divumfi, ++U_fpi)
@@ -827,16 +836,21 @@ HeatTransfer::checkTimeStep (Real dt)
         const int*       lo  = grids[i].loVect();
         const int*       hi  = grids[i].hiVect();
 
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+        {
+            geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
+        }
+
         DEF_LIMITS((*divu)[U_fpi],sdat,slo,shi);
         DEF_CLIMITS(Rho,rhodat,rholo,rhohi);
         DEF_CLIMITS(U,vel,ulo,uhi);
 
         DEF_CLIMITS(volume[i],vol,v_lo,v_hi);
-        DEF_CLIMITS(area[0][i],areax,ax_lo,ax_hi);
-        DEF_CLIMITS(area[1][i],areay,ay_lo,ay_hi);
+        DEF_CLIMITS(area[0],areax,ax_lo,ax_hi);
+        DEF_CLIMITS(area[1],areay,ay_lo,ay_hi);
 
 #if (BL_SPACEDIM==3) 
-        DEF_CLIMITS(area[2][i],areaz,az_lo,az_hi);
+        DEF_CLIMITS(area[2],areaz,az_lo,az_hi);
 #endif
         FORT_CHECK_DIVU_DT(divu_ceiling,&divu_dt_factor,
                            dx,sdat,ARLIM(slo),ARLIM(shi),
@@ -3880,6 +3894,13 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     int fort_index_of_rhoH   = 1 + index_of_rhoH;
     int fort_index_of_T      = 1 + index_of_T;
 
+    MultiFab area[BL_SPACEDIM];
+
+    for (int dir = 0; dir < BL_SPACEDIM; dir++)
+    {
+        geom.GetFaceArea(area[dir],grids,dir,GEOM_GROW);
+    }
+
     // allocate OUTPUT multifabs for fluxes and updates
     int ngrow = 0;
     diffusion->allocFluxBoxesLevel(flux_for_H,ngrow,1);
@@ -4236,8 +4257,8 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 	
 	for (int d = 0; d < BL_SPACEDIM; d++)
 	{
-	    MultiFab bcoeffs(area[d].boxArray(),1,0);
-	    MultiFab::Copy(bcoeffs,area[d],0,0,1,0);
+            MultiFab bcoeffs;
+            geom.GetFaceArea(bcoeffs,grids,d,0);
 	    for (MFIter mfi(bcoeffs); mfi.isValid(); ++mfi)
 		bcoeffs[mfi].mult((*beta[d])[mfi.index()],comp,0,1);
 	    visc_op.bCoefficients(bcoeffs,d);
@@ -6299,11 +6320,12 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
 
     const int   finest_level   = parent->finestLevel();
     Box edge_bx[BL_SPACEDIM];
-    FArrayBox edge[BL_SPACEDIM];
+    FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM];
     //
     // Compute the advective forcing for momentum.
     //
     int use_conserv_diff = true;
+
     for (MFIter AofS_mfi(*aofs); AofS_mfi.isValid(); ++AofS_mfi)
     {
         const int i = AofS_mfi.index();
@@ -6312,6 +6334,11 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
         {
             edge_bx[d] = BoxLib::surroundingNodes(grids[i],d);
             edge[d].resize(edge_bx[d],1);
+        }
+
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+        {
+            geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
         }
 
         for (int comp = 0 ; comp < BL_SPACEDIM ; comp++ )
@@ -6323,10 +6350,10 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
                 edge[d].copy((*EdgeState[d])[i],edge_bx[d],comp,edge_bx[d],0,1);
  
             godunov->ComputeAofs(grids[i],
-                                 area[0][i],u_mac[0][i],edge[0],
-                                 area[1][i],u_mac[1][i],edge[1],
+                                 area[0],u_mac[0][i],edge[0],
+                                 area[1],u_mac[1][i],edge[1],
 #if BL_SPACEDIM==3
-                                 area[2][i],u_mac[2][i],edge[2],
+                                 area[2],u_mac[2][i],edge[2],
 #endif
                                  volume[i],(*aofs)[i],comp,
                                  use_conserv_diff);
@@ -6337,6 +6364,7 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
         }
     }
 
+    D_TERM(area[0].clear();, area[1].clear();, area[2].clear(););
     D_TERM(edge[0].clear();, edge[1].clear();, edge[2].clear(););
     //
     // pullFluxes() contains CrseInit() calls -- complete the process.
@@ -6355,8 +6383,6 @@ HeatTransfer::scalar_advection (Real dt,
     //
     // Compute the advection flux divergences
     //
-    Box edge_bx[BL_SPACEDIM];
-    FArrayBox edge[BL_SPACEDIM];
     const bool do_special_rhoh = nspecies>0 
         && do_set_rho_to_species_sum 
         && fscalar>=RhoH && lscalar<=RhoH
@@ -6569,14 +6595,23 @@ HeatTransfer::scalar_advection (Real dt,
 
         diffusion->removeFluxBoxesLevel(fluxi);
     }
-    
+
+    Box edge_bx[BL_SPACEDIM];
+
+    FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM];
+
     for (MFIter AofS_mfi(*aofs); AofS_mfi.isValid(); ++AofS_mfi)
     {
         const int i = AofS_mfi.index();
+
         for (int d=0; d<BL_SPACEDIM; ++d)
         {
             edge_bx[d] = BoxLib::surroundingNodes(grids[i],d);
             edge[d].resize(edge_bx[d],1);
+        }
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+        {
+            geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
         }
         for (int sigma=fscalar; sigma<=lscalar; ++sigma)
         {
@@ -6590,10 +6625,10 @@ HeatTransfer::scalar_advection (Real dt,
                       (advectionType[sigma] == Conservative) ? true : false;
 
             godunov->ComputeAofs(grids[i],
-                                 area[0][i],u_mac[0][i],edge[0],
-                                 area[1][i],u_mac[1][i],edge[1],
+                                 area[0],u_mac[0][i],edge[0],
+                                 area[1],u_mac[1][i],edge[1],
 #if BL_SPACEDIM==3
-                                 area[2][i],u_mac[2][i],edge[2],
+                                 area[2],u_mac[2][i],edge[2],
 #endif
                                  volume[i],(*aofs)[i],sigma,
                                  use_conserv_diff);
@@ -6642,6 +6677,7 @@ HeatTransfer::scalar_advection (Real dt,
         }
     }
 
+    D_TERM(area[0].clear();, area[1].clear();, area[2].clear(););
     D_TERM(edge[0].clear();, edge[1].clear();, edge[2].clear(););
 
     if (do_special_rhoh)
