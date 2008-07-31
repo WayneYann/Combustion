@@ -725,7 +725,7 @@ HeatTransfer::estTimeStep ()
     MFIter  divumfi(*divu);
     MFIter  Rho_mfi(*rho_ctime);
 
-    FArrayBox area[BL_SPACEDIM];
+    FArrayBox area[BL_SPACEDIM], volume;
 
     for (FillPatchIterator U_fpi(*this,*divu,n_grow,cur_time,State_Type,Xvel,BL_SPACEDIM);
          dsdtmfi.isValid() && divumfi.isValid() && Rho_mfi.isValid() && U_fpi.isValid();
@@ -743,12 +743,13 @@ HeatTransfer::estTimeStep ()
         {
             geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
         }
+        geom.GetVolume(volume, grids, i, GEOM_GROW);
 
         DEF_CLIMITS((*divu)[Rho_mfi],sdat,slo,shi);
         DEF_CLIMITS(Rho,rhodat,rholo,rhohi);
         DEF_CLIMITS(U,vel,ulo,uhi);
 
-        DEF_CLIMITS(volume[i],vol,v_lo,v_hi);
+        DEF_CLIMITS(volume,vol,v_lo,v_hi);
 
         DEF_CLIMITS(area[0],areax,ax_lo,ax_hi);
         DEF_CLIMITS(area[1],areay,ay_lo,ay_hi);
@@ -822,7 +823,7 @@ HeatTransfer::checkTimeStep (Real dt)
     MFIter dsdtmfi(*dsdt);
     MFIter divumfi(*divu);
 
-    FArrayBox area[BL_SPACEDIM];
+    FArrayBox area[BL_SPACEDIM], volume;
 
     for (FillPatchIterator U_fpi(*this,*divu,n_grow,cur_time,State_Type,Xvel,BL_SPACEDIM);
          dsdtmfi.isValid() && divumfi.isValid() && U_fpi.isValid();
@@ -840,12 +841,13 @@ HeatTransfer::checkTimeStep (Real dt)
         {
             geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
         }
+        geom.GetVolume(volume, grids, i, GEOM_GROW);
 
         DEF_LIMITS((*divu)[U_fpi],sdat,slo,shi);
         DEF_CLIMITS(Rho,rhodat,rholo,rhohi);
         DEF_CLIMITS(U,vel,ulo,uhi);
 
-        DEF_CLIMITS(volume[i],vol,v_lo,v_hi);
+        DEF_CLIMITS(volume,vol,v_lo,v_hi);
         DEF_CLIMITS(area[0],areax,ax_lo,ax_hi);
         DEF_CLIMITS(area[1],areay,ay_lo,ay_hi);
 
@@ -1411,15 +1413,21 @@ HeatTransfer::post_timestep (int crse_iteration)
 
         for (int i = parent->finestLevel(); i > 0; --i)
         {
+            MultiFab fvolume;
+            MultiFab cvolume;
+
             HeatTransfer& clev = getLevel(i-1);
             HeatTransfer& flev = getLevel(i);
 
             MultiFab& Ydot_crse = *(clev.auxDiag);
             MultiFab& Ydot_fine = *(flev.auxDiag);
+
+            flev.geom.GetVolume(fvolume,flev.grids,GEOM_GROW);
+            clev.geom.GetVolume(cvolume,clev.grids,GEOM_GROW);
             
             NavierStokes::avgDown(clev.boxArray(),flev.boxArray(),
                                   Ydot_crse,Ydot_fine,
-                                  clev.volume,flev.volume,
+                                  cvolume,fvolume,
                                   i-1,i,0,Ndiag,parent->refRatio(i-1));
         }
     }
@@ -1530,17 +1538,21 @@ HeatTransfer::post_init (Real stop_time)
             {
                 for (int k = finest_level-1; k >= 0; k--)
                 {
+                    MultiFab fvolume;
+                    MultiFab cvolume;
+
                     HeatTransfer&   fine_lev = getLevel(k+1);
                     const BoxArray& fgrids   = fine_lev.grids;
-                    MultiFab&       fvolume  = fine_lev.volume;
                     
                     HeatTransfer&   crse_lev = getLevel(k);
                     const BoxArray& cgrids   = crse_lev.grids;
-                    MultiFab&       cvolume  = crse_lev.volume;
                     const IntVect&  fratio   = crse_lev.fine_ratio;
                     
                     MultiFab& Divu_crse = crse_lev.get_new_data(Divu_Type);
                     MultiFab& Divu_fine = fine_lev.get_new_data(Divu_Type);
+
+                    fine_lev.geom.GetVolume(fvolume,fine_lev.grids,GEOM_GROW);
+                    crse_lev.geom.GetVolume(cvolume,crse_lev.grids,GEOM_GROW);
                     
                     crse_lev.NavierStokes::avgDown(cgrids,fgrids,
                                                    Divu_crse,Divu_fine,
@@ -1561,10 +1573,14 @@ HeatTransfer::post_init (Real stop_time)
             //
             for (int k = finest_level-1; k >= 0; k--)
             {
+                MultiFab fvolume;
+                MultiFab cvolume;
+
+                getLevel(k+1).geom.GetVolume(fvolume,getLevel(k+1).grids,GEOM_GROW);
+                getLevel(k).geom.GetVolume(cvolume,getLevel(k).grids,GEOM_GROW);
+
                 const BoxArray& fgrids  = getLevel(k+1).grids;
                 const BoxArray& cgrids  = getLevel(k).grids;
-                MultiFab&       fvolume = getLevel(k+1).volume;
-                MultiFab&       cvolume = getLevel(k).volume;
                 MultiFab&       S_fine  = getLevel(k+1).get_new_data(State_Type);
                 MultiFab&       S_crse  = getLevel(k).get_new_data(State_Type);
                 IntVect&        fratio  = getLevel(k).fine_ratio;
@@ -1887,9 +1903,12 @@ HeatTransfer::avgDown ()
 
     HeatTransfer&   fine_lev = getLevel(level+1);
     const BoxArray& fgrids   = fine_lev.grids;
-    MultiFab&       fvolume  = fine_lev.volume;
     MultiFab&       S_crse   = get_new_data(State_Type);
     MultiFab&       S_fine   = fine_lev.get_new_data(State_Type);
+
+    MultiFab fvolume, volume;
+    geom.GetVolume(volume,grids,GEOM_GROW);
+    fine_lev.geom.GetVolume(fvolume,fine_lev.grids,GEOM_GROW);
 
     NavierStokes::avgDown(grids,fgrids,S_crse,S_fine,volume,fvolume,
                           level,level+1,0,S_crse.nComp(),fine_ratio);
@@ -2442,7 +2461,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     //            A = 1            for rho_flag == 2
     //     
     //
-    FArrayBox update, tmp;
+    FArrayBox update, tmp, volume;
 
     for (MFIter mfi(Phi_new); mfi.isValid(); ++mfi)
     {
@@ -2463,6 +2482,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
         // state
 	//
         update.resize(box,nspecies);
+        geom.GetVolume(volume,grids,iGrid,GEOM_GROW);
 	FORT_RECOMP_UPDATE(box.loVect(), box.hiVect(),
 			   update.dataPtr(),
 			   ARLIM(update.loVect()),       ARLIM(update.hiVect()),
@@ -2477,8 +2497,8 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 			   ARLIM((*flux[2])[iGrid].loVect()),
                            ARLIM((*flux[2])[iGrid].hiVect()),
 #endif
-			   volume[iGrid].dataPtr(),
-			   ARLIM(volume[iGrid].loVect()),ARLIM(volume[iGrid].hiVect()),
+			   volume.dataPtr(),
+			   ARLIM(volume.loVect()),ARLIM(volume.hiVect()),
 			   &nspecies);
 	
 	if (delta_rhs)
@@ -3894,12 +3914,13 @@ HeatTransfer::rk_diffusion_operator (const Real time,
     int fort_index_of_rhoH   = 1 + index_of_rhoH;
     int fort_index_of_T      = 1 + index_of_T;
 
-    MultiFab area[BL_SPACEDIM];
+    MultiFab area[BL_SPACEDIM], volume;
 
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
     {
         geom.GetFaceArea(area[dir],grids,dir,GEOM_GROW);
     }
+    geom.GetVolume(volume,grids,GEOM_GROW);
 
     // allocate OUTPUT multifabs for fluxes and updates
     int ngrow = 0;
@@ -6320,7 +6341,7 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
 
     const int   finest_level   = parent->finestLevel();
     Box edge_bx[BL_SPACEDIM];
-    FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM];
+    FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM], volume;
     //
     // Compute the advective forcing for momentum.
     //
@@ -6340,6 +6361,7 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
         {
             geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
         }
+        geom.GetVolume(volume,grids,i,GEOM_GROW);
 
         for (int comp = 0 ; comp < BL_SPACEDIM ; comp++ )
         {
@@ -6355,7 +6377,7 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
 #if BL_SPACEDIM==3
                                  area[2],u_mac[2][i],edge[2],
 #endif
-                                 volume[i],(*aofs)[i],comp,
+                                 volume,(*aofs)[i],comp,
                                  use_conserv_diff);
             //
             // Get fluxes for diagnostics and refluxing.
@@ -6598,7 +6620,7 @@ HeatTransfer::scalar_advection (Real dt,
 
     Box edge_bx[BL_SPACEDIM];
 
-    FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM];
+    FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM], volume;
 
     for (MFIter AofS_mfi(*aofs); AofS_mfi.isValid(); ++AofS_mfi)
     {
@@ -6613,6 +6635,8 @@ HeatTransfer::scalar_advection (Real dt,
         {
             geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
         }
+        geom.GetVolume(volume,grids,i,GEOM_GROW);
+
         for (int sigma=fscalar; sigma<=lscalar; ++sigma)
         {
             // 
@@ -6630,7 +6654,7 @@ HeatTransfer::scalar_advection (Real dt,
 #if BL_SPACEDIM==3
                                  area[2],u_mac[2][i],edge[2],
 #endif
-                                 volume[i],(*aofs)[i],sigma,
+                                 volume,(*aofs)[i],sigma,
                                  use_conserv_diff);
             //
             // Add divergence of fluxNULN to aofs[RhoH], and increment advective
@@ -6645,7 +6669,7 @@ HeatTransfer::scalar_advection (Real dt,
                 FArrayBox& staten = (*aofs)[i];
                 const FArrayBox& stateo = staten;
                 const Box& box = AofS_mfi.validbox();
-                const FArrayBox& vol = volume[i];
+                const FArrayBox& vol = volume;
                 const Real mult = 1.0; // no dt scaling of aofs, done in scl_adv_upd
                 const int nComp = 1;
                 
@@ -7126,13 +7150,16 @@ HeatTransfer::mac_sync ()
                     }
                 }
 
+                FArrayBox volume;
+
                 for (MFIter Ssync_mfi(*Ssync); Ssync_mfi.isValid(); ++Ssync_mfi)
                 {
                     const int i      = Ssync_mfi.index();
                     FArrayBox& syncn = (*Ssync)[i];
                     const FArrayBox& synco = (*Ssync)[i];
                     const Box& box = Ssync_mfi.validbox();
-                    const FArrayBox& vol = volume[i];
+
+                    geom.GetVolume(volume,grids,i,GEOM_GROW);
                     //
                     // Multiply by dt*dt, one to make it extensive, and one because
                     // Ssync multiplied above by dt, need same units here.
@@ -7158,9 +7185,9 @@ HeatTransfer::mac_sync ()
                                         syncn.dataPtr(sigmaRhoH),
                                         ARLIM(syncn.loVect()),
                                         ARLIM(syncn.hiVect()),
-                                        vol.dataPtr(),
-                                        ARLIM(vol.loVect()),
-                                        ARLIM(vol.hiVect()),
+                                        volume.dataPtr(),
+                                        ARLIM(volume.loVect()),
+                                        ARLIM(volume.hiVect()),
                                         &nspecies, &mult);
                 }
 
@@ -7366,15 +7393,18 @@ HeatTransfer::mac_sync ()
         {
             HeatTransfer&   fine_lev = getLevel(lev+1);
             const BoxArray& fgrids   = fine_lev.grids;
-            MultiFab&       fvolume  = fine_lev.volume;
             
             HeatTransfer&   crse_lev = getLevel(lev);
             const BoxArray& cgrids   = crse_lev.grids;
-            MultiFab&       cvolume  = crse_lev.volume;
             const IntVect&  fratio   = crse_lev.fine_ratio;
             
             MultiFab& S_crse = crse_lev.get_new_data(State_Type);
             MultiFab& S_fine = fine_lev.get_new_data(State_Type);
+
+            MultiFab fvolume, cvolume;
+
+            crse_lev.geom.GetVolume(cvolume,crse_lev.grids,GEOM_GROW);
+            fine_lev.geom.GetVolume(fvolume,fine_lev.grids,GEOM_GROW);
 
             const int pComp = (have_rhort ? RhoRT : Trac);
             crse_lev.NavierStokes::avgDown(cgrids,fgrids,
@@ -7667,6 +7697,10 @@ HeatTransfer::reflux ()
     //   do_mom_diff == 1, both components of the refluxing will
     //   be divided by rho^(n+1) in NavierStokes::level_sync.
     //
+    MultiFab volume;
+
+    geom.GetVolume(volume,grids,GEOM_GROW);
+
     fr_visc.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
     //
     // Set do_reflux_visc to 0 for debugging reasons only.
