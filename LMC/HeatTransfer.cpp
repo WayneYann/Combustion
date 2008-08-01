@@ -6153,10 +6153,10 @@ HeatTransfer::compute_edge_states (Real               dt,
                                               junkDivu, Rho, use_conserv_diff);
                     
                     godunov->edge_states(grids[i], dx, dt, velpred,
-                                         u_macG[0][i], edge[0],
-                                         u_macG[1][i], edge[1],
+                                         u_mac[0][i], edge[0],
+                                         u_mac[1][i], edge[1],
 #if (BL_SPACEDIM==3)
-                                         u_macG[2][i], edge[2],
+                                         u_mac[2][i], edge[2],
 #endif
                                          U,spec,tforces,(*divu_fp)[i],
                                          comp,state_ind,bc.dataPtr(), 
@@ -6247,10 +6247,10 @@ HeatTransfer::compute_edge_states (Real               dt,
                                           junkDivu, Rho, use_conserv_diff);
 
                 godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_macG[0][i], edge[0],
-                                     u_macG[1][i], edge[1],
+                                     u_mac[0][i], edge[0],
+                                     u_mac[1][i], edge[1],
 #if (BL_SPACEDIM==3)
-                                     u_macG[2][i], edge[2],
+                                     u_mac[2][i], edge[2],
 #endif
                                      U, state, tforces, (*divu_fp)[i],
                                      comp, state_ind, bc.dataPtr(), 
