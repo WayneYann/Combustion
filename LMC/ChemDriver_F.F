@@ -408,7 +408,7 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
 #include "cdwrk.H"
       integer i
       integer coded(*)
-      integer names(maxelts*2)
+      integer names(0:maxelts*2)
       integer ctr, nlen
       nlen = 2
       call CKSYME(names,nlen)
