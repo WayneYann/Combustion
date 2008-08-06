@@ -68,7 +68,7 @@ c-------------------------------------------------
 c                                                 
 c                             -CODE-              
 c     FIRST LINE:                                 
-      subroutine pmf       (xlo,xhi,y_vector,Niny)
+      subroutine pmf_H       (xlo,xhi,y_vector,Niny)
 c                                                 
 c     declare local variables                     
 c                                                 
