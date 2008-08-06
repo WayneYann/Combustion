@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.10 2007-09-19 18:15:05 sepp Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.11 2008-08-06 17:41:17 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -295,9 +295,9 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             call FORT_MIXAVG_RHODIFF_TEMP(lo, hi, rhoD, DIMS(rhoD),
      &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
             if (thickFacTR.ne.1.d0) then
-               do j=lo(2), hi(2)
-                  do i=lo(1), hi(1)
-                     do n=1,ncompd-1
+               do n=1,ncompd-1
+                  do j=lo(2), hi(2)
+                     do i=lo(1), hi(1)
                         rhoD(i,j,n) = rhoD(i,j,n)*thickFacTR
                      end do
                   end do
@@ -310,9 +310,12 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                do i=lo(1), hi(1)
                   rhoD(i,j,ncompd-1) = rhoD(i,j,1)
                   rhoD(i,j,ncompd  ) = rhoD(i,j,1)
-                  val = rhoD(i,j,1) * Yfac
-                  do n=1,nspecies
-                     rhoD(i,j,n) = val
+               end do
+            end do
+            do n=1,nspecies
+               do j=lo(2), hi(2)
+                  do i=lo(1), hi(1)
+                     rhoD(i,j,n) = rhoD(i,j,1) * Yfac
                   end do
                end do
             end do
@@ -333,9 +336,9 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             end if
          end if
       else
-         do j=lo(2), hi(2)
-            do i=lo(1), hi(1)
-               do n=1,nspecies
+         do n=1,nspecies
+            do j=lo(2), hi(2)
+               do i=lo(1), hi(1)
                   rhoD(i,j,n) = constant_rhoD_val
                end do
             end do
