@@ -721,21 +721,17 @@ HeatTransfer::estTimeStep ()
     MultiFab*   dsdt     = getDsdt(0,cur_time);
     MultiFab*   divu     = getDivCond(0,cur_time);
 
-    MFIter  dsdtmfi(*dsdt);
-    MFIter  divumfi(*divu);
-    MFIter  Rho_mfi(*rho_ctime);
-
     FArrayBox area[BL_SPACEDIM], volume;
 
     for (FillPatchIterator U_fpi(*this,*divu,n_grow,cur_time,State_Type,Xvel,BL_SPACEDIM);
-         dsdtmfi.isValid() && divumfi.isValid() && Rho_mfi.isValid() && U_fpi.isValid();
-         ++dsdtmfi, ++divumfi, ++Rho_mfi, ++U_fpi)
+         U_fpi.isValid();
+         ++U_fpi)
     {
         BL_ASSERT(dsdtmfi.index() == divumfi.index());
 
-        const int        i   = dsdtmfi.index();
+        const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
-        const FArrayBox& Rho = (*rho_ctime)[Rho_mfi];
+        const FArrayBox& Rho = (*rho_ctime)[i];
         const int*       lo  = grids[i].loVect();
         const int*       hi  = grids[i].hiVect();
 
@@ -745,7 +741,7 @@ HeatTransfer::estTimeStep ()
         }
         geom.GetVolume(volume, grids, i, GEOM_GROW);
 
-        DEF_CLIMITS((*divu)[Rho_mfi],sdat,slo,shi);
+        DEF_CLIMITS((*divu)[i],sdat,slo,shi);
         DEF_CLIMITS(Rho,rhodat,rholo,rhohi);
         DEF_CLIMITS(U,vel,ulo,uhi);
 
@@ -758,7 +754,7 @@ HeatTransfer::estTimeStep ()
 #endif
         FORT_EST_DIVU_DT(divu_ceiling,&divu_dt_factor,
                          dx,sdat,ARLIM(slo),ARLIM(shi),
-                         (*dsdt)[Rho_mfi].dataPtr(),
+                         (*dsdt)[i].dataPtr(),
                          rhodat,ARLIM(rholo),ARLIM(rhohi),
                          vel,ARLIM(ulo),ARLIM(uhi),
                          vol,ARLIM(v_lo),ARLIM(v_hi),
@@ -820,18 +816,15 @@ HeatTransfer::checkTimeStep (Real dt)
     MultiFab*   dsdt      = getDsdt(0,cur_time);
     MultiFab*   divu      = getDivCond(0,cur_time);
 
-    MFIter dsdtmfi(*dsdt);
-    MFIter divumfi(*divu);
-
     FArrayBox area[BL_SPACEDIM], volume;
 
     for (FillPatchIterator U_fpi(*this,*divu,n_grow,cur_time,State_Type,Xvel,BL_SPACEDIM);
-         dsdtmfi.isValid() && divumfi.isValid() && U_fpi.isValid();
-         ++dsdtmfi, ++divumfi, ++U_fpi)
+         U_fpi.isValid();
+         ++U_fpi)
     {
         BL_ASSERT(dsdtmfi.index() == divumfi.index());
 
-        const int        i   = divumfi.index();
+        const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
         const FArrayBox& Rho = (*rho_ctime)[i];
         const int*       lo  = grids[i].loVect();
@@ -1354,7 +1347,7 @@ HeatTransfer::init (AmrLevel& old)
          fpi.isValid();
          ++fpi)
     {
-        Ydot[fpi.index()].copy(fpi(),0,0,nspecies);
+        Ydot[fpi.index()].copy(fpi());
     }
 
     RhoH_to_Temp(get_new_data(State_Type));
@@ -1517,9 +1510,13 @@ HeatTransfer::post_init (Real stop_time)
                 // Don't update S_new in this strang_chem() call ...
                 //
                 MultiFab S_tmp(S_new.boxArray(),S_new.nComp(),0);
- 
-                S_tmp.copy(S_new);
- 
+                //
+                // Split up the copy below to cut down on excess FAB overhead.
+                //
+                for (int i = 0; i < S_new.nComp(); i++)
+                {
+                    S_tmp.copy(S_new, i, i, 1);  // Parallel copy
+                }
                 getLevel(k).strang_chem(S_tmp,dt_save[k],HT_EstimateYdotNew);
             }
         }
@@ -1950,7 +1947,7 @@ HeatTransfer::avgDown ()
             injectDown(crse_P_fine_BA[i],crse_P_fine[i],P_fine[i],fine_ratio);
         }
 
-        P_crse.copy(crse_P_fine);
+        P_crse.copy(crse_P_fine);  // Parallel copy
     }
     //
     // Next average down divu and dSdT at new time.
@@ -2350,6 +2347,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     //
     {
         FArrayBox tmp;
+
         for (FillPatchIterator fpi(*this,rho_and_species,nGrowOp,time,State_Type,Density,nspecies+1);
              fpi.isValid();
              ++fpi)
@@ -4969,8 +4967,13 @@ HeatTransfer::advance (Real time,
             {
                 tmpS_old[fpi.index()].copy(fpi());
             }
-
-            tmpFABs.copy(tmpS_old);
+            //
+            // Split up the copy below to cut down on excess FAB overhead.
+            //
+            for (int i = 0; i < NUM_STATE; i++)
+            {
+                tmpFABs.copy(tmpS_old, i, i, 1);  // Parallel copy
+            }
         }
 
         strang_chem(S_old,  dt,HT_LeaveYdotAlone);
@@ -5464,6 +5467,7 @@ HeatTransfer::reset_rho_in_rho_states (const MultiFab& rho,
 
     {
         FArrayBox tmp;
+
         for (MFIter Smfi(S); Smfi.isValid(); ++Smfi)
         {
             tmp.resize(Smfi.validbox(),1);
@@ -5550,8 +5554,8 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
 
     const int nGrow = (whichTime == AmrOldTime) ? HYP_GROW : LinOp_grow;
     //                                                                                                           
-    // Build a MultiFab parallel to State with appropriate # of ghost                                            
-    // cells built into the FABs themselves to cover rhoh_data.                                                  
+    // Build a MultiFab parallel to State with appropriate # of ghost
+    // cells built into the FABs themselves to cover rhoh_data.
     //
     BoxArray ba = grids;
 
@@ -5559,33 +5563,32 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
 
     MultiFab tmpS(ba,1,0);
 
-    FArrayBox tmp;
-
-    BoxArray rhoh_BA = rhoh_data.equivBoxArray();
+    const BoxArray& rhoh_BA = rhoh_data.equivBoxArray();
 
     const int sCompT = 0, sCompY = 1, sCompH = 0;
-    //                                                                                                           
-    // A non-allocated MultiFab on grids for FPI below.                                                          
-    //                                                                                                           
-    MultiFab t(grids,1,0,Fab_noallocate);
-
-    for (FillPatchIterator T_fpi(*this,t,nGrow,time,State_Type,Temp,1),
-             RhoY_fpi(*this,t,nGrow,time,State_Type,Density,nspecies+1);
-         T_fpi.isValid() && RhoY_fpi.isValid();
-         ++T_fpi, ++RhoY_fpi)
+    //
+    // A non-allocated MultiFab on grids for FPI below.
+    //
     {
-        FArrayBox& RhoY = RhoY_fpi();
+        FArrayBox tmp, rhoh;
 
-        BL_ASSERT(RhoY.box() == tmpS[RhoY_fpi.index()].box());
+        MultiFab t(grids,1,0,Fab_noallocate);
 
-        tmp.resize(RhoY.box(),1);
-        tmp.copy(RhoY,0,0,1);
-        tmp.invert(1);
-
-        std::vector< std::pair<int,Box> > isects = rhoh_BA.intersections(RhoY.box());
-
+        for (FillPatchIterator T_fpi(*this,t,nGrow,time,State_Type,Temp,1),
+                 RhoY_fpi(*this,t,nGrow,time,State_Type,Density,nspecies+1);
+             T_fpi.isValid() && RhoY_fpi.isValid();
+             ++T_fpi, ++RhoY_fpi)
         {
-            FArrayBox rhoh;
+            FArrayBox& RhoY = RhoY_fpi();
+
+            BL_ASSERT(RhoY.box() == tmpS[RhoY_fpi.index()].box());
+
+            tmp.resize(RhoY.box(),1);
+            tmp.copy(RhoY,0,0,1);
+            tmp.invert(1);
+
+            std::vector< std::pair<int,Box> > isects = rhoh_BA.intersections(RhoY.box());
+
             for (int i = 0; i < isects.size(); i++)
             {
                 const Box& isect = isects[i].second;
@@ -5601,8 +5604,6 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
             }
         }
     }
-
-    tmp.clear();
 
     const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 1;
 
@@ -5785,20 +5786,16 @@ HeatTransfer::strang_chem (MultiFab&  state,
         }
         else
         {
-            BoxList bl(state.boxArray());
+            BoxArray ba = state.boxArray();
 
-            bl.maxSize(max_grid_size_chem);
+            ba.maxSize(max_grid_size_chem);
 
-            if (bl.size() < 2*ParallelDescriptor::NProcs() && max_grid_size_chem >= 16)
+            if (ba.size() < 2*ParallelDescriptor::NProcs() && max_grid_size_chem >= 16)
                 //
                 // Let's chop the grids up a bit more.
                 // We want to try and level out the chemistry work.
                 //
-                bl.maxSize(max_grid_size_chem/2);
-
-            const BoxArray ba(bl);
-
-            bl.clear();
+                ba.maxSize(max_grid_size_chem/2);
 
             DistributionMapping dm = getFuncCountDM(ba);
 
@@ -5819,8 +5816,13 @@ HeatTransfer::strang_chem (MultiFab&  state,
 #endif
             if (verbose && ParallelDescriptor::IOProcessor())
                 std::cout << "*** strang_chem: FABs in tmp MF: " << tmp.size() << std::endl;
-
-            tmp.copy(state); // Parallel copy.
+            //
+            // Split up the copy below to cut down on excess FAB overhead.
+            //
+            for (int i = 0; i < state.nComp(); i++)
+            {
+                tmp.copy(state, i, i, 1); // Parallel copy.
+            }
 
             for (MFIter Smfi(tmp); Smfi.isValid(); ++Smfi)
             {
@@ -5832,8 +5834,13 @@ HeatTransfer::strang_chem (MultiFab&  state,
 #endif
                 getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chem_integrator,chemDiag);
             }
-
-            state.copy(tmp); // Parallel copy.
+            //
+            // Split up the copy below to cut down on excess FAB overhead.
+            //
+            for (int i = 0; i < state.nComp(); i++)
+            {
+                state.copy(tmp, i, i, 1); // Parallel copy.
+            }
 
 #ifdef BL_PLOT_REACS
             if (do_diag) auxDiag->copy(diagTemp); // Parallel copy
@@ -5843,21 +5850,16 @@ HeatTransfer::strang_chem (MultiFab&  state,
 
         if (ydot_tmp)
         {
-            MultiFab state_tmp(ydot_tmp->boxArray(),nspecies,0);
-
-            state_tmp.copy(state,ycomp,0,nspecies);
-            
-            for (MFIter Smfi(state_tmp); Smfi.isValid(); ++Smfi)
+            for (MFIter Smfi(state); Smfi.isValid(); ++Smfi)
             {
-                (*ydot_tmp)[Smfi].minus(state_tmp[Smfi]);
-                (*ydot_tmp)[Smfi].mult(1/(0.5*dt),Smfi.validbox(),0,nspecies);
+                (*ydot_tmp)[Smfi].minus(state[Smfi], Smfi.validbox(), ycomp, 0, nspecies);
+                (*ydot_tmp)[Smfi].mult(1/(0.5*dt), Smfi.validbox(), 0, nspecies);
             }
         }
 
-        //if (chem_integrator == ChemDriver::CKD_Vode)
-            for (MFIter Smfi(state); Smfi.isValid(); ++Smfi)
-                for (int comp = 0; comp < nspecies; ++comp)
-                    state[Smfi].mult(state[Smfi],Smfi.validbox(),rho_comp,ycomp+comp,1);
+        for (MFIter Smfi(state); Smfi.isValid(); ++Smfi)
+            for (int comp = 0; comp < nspecies; ++comp)
+                state[Smfi].mult(state[Smfi],Smfi.validbox(),rho_comp,ycomp+comp,1);
 
         if (Ydot_action == HT_ImproveYdotOld)
         {
@@ -6799,11 +6801,6 @@ HeatTransfer::compute_rhoDgradYgradH (Real      time,
     //
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_rhoDgradYgradH()");
     //
-    // Get cell-centered h_i
-    //
-    MultiFab h(grids,nspecies,1);
-    compute_h(time,h);
-    //
     // Get edge-centered rho.D
     // (copy spec visc from internal database directly (before inflow "zeroing"))
     //
@@ -6813,7 +6810,7 @@ HeatTransfer::compute_rhoDgradYgradH (Real      time,
     //
     // Get result, using cell-centered Y,h and edge-centered rhoD
     //
-    FArrayBox rdgydgh_spec_i, tmp;
+    FArrayBox rdgydgh_spec_i, tmp, h;
 
     const Real* dx = geom.CellSize();
 
@@ -6823,16 +6820,17 @@ HeatTransfer::compute_rhoDgradYgradH (Real      time,
     // density and species together.
     //
     int nspecies = last_spec - first_spec + 1;
-    int ncomp    = nspecies + 1;
 
-    for (FillPatchIterator fpi(*this,h,1,time,State_Type,Density,ncomp);
-          fpi.isValid();
-          ++fpi)
+    for (FillPatchIterator rho_and_species_fpi(*this,rdgydgh,1,time,State_Type,Density,nspecies+1),
+             Temp_fpi(*this,rdgydgh,1,time,State_Type,Temp,1);
+         rho_and_species_fpi.isValid() && Temp_fpi.isValid();
+         ++rho_and_species_fpi, ++Temp_fpi)
     {
-        const int  i               = fpi.index();
+        const int  i               = rho_and_species_fpi.index();
         const int* lo              = grids[i].loVect();
         const int* hi              = grids[i].hiVect();
-        FArrayBox& rho_and_species = fpi();
+        FArrayBox& rho_and_species = rho_and_species_fpi();
+        const Box& bx              = rho_and_species.box();
 
         rdgydgh_spec_i.resize(grids[i],1);
         DEF_LIMITS(rdgydgh_spec_i,prod,prodlo,prodhi);
@@ -6844,11 +6842,15 @@ HeatTransfer::compute_rhoDgradYgradH (Real      time,
         tmp.copy(rho_and_species,0,0,1);
         tmp.invert(1);
 
+        h.resize(bx,nspecies);
+
+	getChemSolve().getHGivenT(h,Temp_fpi(),bx,0,0);
+
         for (int spec = first_spec; spec <= last_spec; spec++) 
         {
             const int comp = spec - first_spec;
 
-            DEF_CLIMITSCOMP(h[i],hdat,hlo,hhi,comp);
+            DEF_CLIMITSCOMP(h,hdat,hlo,hhi,comp);
             DEF_CLIMITSCOMP((*beta[0])[i],betax,betaxlo,betaxhi,comp);
             DEF_CLIMITSCOMP((*beta[1])[i],betay,betaylo,betayhi,comp);
 #if (BL_SPACEDIM==3)
@@ -8274,17 +8276,12 @@ HeatTransfer::calc_divu (Real      time,
     else
     {
 	//
-        // Calculate right side of constraint: original code.
-        //
-
-	//
 	// Get Mwmix, cpmix and pressure
 	//
 	const int nGrow = 0;
 
 	int sCompR, sCompT, sCompY, sCompP, sCompCp, sCompMw;
 	sCompR=sCompT=sCompY=sCompP=sCompCp=sCompMw=0;	
-
 	//
 	// mcdd: get Y,T visc terms together, use in place of individual calls below
 	//
@@ -8297,17 +8294,15 @@ HeatTransfer::calc_divu (Real      time,
 	    compute_mcdd_visc_terms(mcViscTerms,vtCompY,mcViscTerms,vtCompT,time,nGrow,DDOp::DD_Temp);
 	}
 
-	MultiFab rho(grids,1,nGrow);
-	MultiFab temp(grids,1,nGrow);
+	MultiFab rho(grids,1,nGrow), temp(grids,1,nGrow);
 
 	const MultiFab& Rho_time = get_rho(time);
-	MFIter          Rho_mfi(Rho_time);
 
 	for (FillPatchIterator Temp_fpi(*this,temp,nGrow,time,State_Type,Temp,1);
-	     Rho_mfi.isValid() && Temp_fpi.isValid();
-	     ++Rho_mfi, ++Temp_fpi)
+	     Temp_fpi.isValid();
+	     ++Temp_fpi)
 	{
-	    const int i = Rho_mfi.index();
+	    const int i = Temp_fpi.index();
 
 	    rho[i].copy(Rho_time[i],0,sCompR,1);
 	    temp[i].copy(Temp_fpi(),0,sCompT,1);
@@ -8337,8 +8332,7 @@ HeatTransfer::calc_divu (Real      time,
             }
         }
 
-	MultiFab mwmix(grids,1,nGrow);
-	MultiFab cp(grids,1,nGrow);
+	MultiFab mwmix(grids,1,nGrow), cp(grids,1,nGrow);
 
 	for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
 	{
@@ -8379,8 +8373,7 @@ HeatTransfer::calc_divu (Real      time,
 	    divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
 	}
 
-	MultiFab delta_divu(grids,1,nGrow);
-	MultiFab spec_visc_terms(grids,nspecies,0);
+	MultiFab delta_divu(grids,1,nGrow), spec_visc_terms(grids,nspecies,0);
 
 	delta_divu.setVal(0.0);
 
@@ -8398,6 +8391,7 @@ HeatTransfer::calc_divu (Real      time,
 	for (MFIter mfi(spec_visc_terms); mfi.isValid(); ++mfi)
 	{
 	    const int iGrid = mfi.index();
+
 	    for (int comp = 0; comp < nspecies; ++comp)
 	    {
 		spec_visc_terms[mfi].mult(1.0/mwt[comp],comp,1);
@@ -8425,24 +8419,25 @@ HeatTransfer::calc_divu (Real      time,
 	    //    sum_l (h_l/(c_p*T) - mw_mix/mw_l)*delta Y_l/dt 
 	    // (i.e., Y_l"dot")
 	    //
-	    const Array<Real> mwt = getChemSolve().speciesMolecWt();
-	    MultiFab h(grids,nspecies,nGrow);
+	    FArrayBox h;
+
 	    const int sCompH = 0;
-	    for (MFIter mfi(h); mfi.isValid(); ++mfi)
-	    {
-		getChemSolve().getHGivenT(h[mfi],temp[mfi],mfi.validbox(),sCompT,sCompH);
-	    }
 
 	    for (FillPatchIterator Ydot_fpi(*this,delta_divu,0,time,Ydot_Type,0,nspecies);
 		 Ydot_fpi.isValid();
 		 ++Ydot_fpi)
 	    {
+                const int i = Ydot_fpi.index();
+
+                h.resize(BoxLib::grow(grids[i],nGrow),nspecies);
+
+		getChemSolve().getHGivenT(h,temp[i],grids[i],sCompT,sCompH);
+
 		for (int istate = first_spec; istate <= last_spec; istate++)
 		{
 		    const int ispec = istate-first_spec;
-		    const int i     = Ydot_fpi.index();
 
-		    delta_divu[i].copy(h[i],ispec,0,1);
+		    delta_divu[i].copy(h,ispec,0,1);
 		    delta_divu[i].divide(cp[i]);
 		    delta_divu[i].divide(temp[i]);
 		    delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
