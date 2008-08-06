@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.11 2008-08-06 17:41:17 lijewski Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.12 2008-08-06 17:54:54 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -310,12 +310,13 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                do i=lo(1), hi(1)
                   rhoD(i,j,ncompd-1) = rhoD(i,j,1)
                   rhoD(i,j,ncompd  ) = rhoD(i,j,1)
+                  rhoD(i,j,1)        = rhoD(i,j,1) * Yfac
                end do
             end do
-            do n=1,nspecies
+            do n=2,nspecies
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
-                     rhoD(i,j,n) = rhoD(i,j,1) * Yfac
+                     rhoD(i,j,n) = rhoD(i,j,1)
                   end do
                end do
             end do
