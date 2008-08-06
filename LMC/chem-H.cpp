@@ -4070,15 +4070,6 @@ void cp_R(double * species, double * tc)
     /*temperature */
     double T = tc[1];
 
-    static double T_old = -1, species_old[9];
-
-    if (T == T_old)
-    {
-        for (int i = 0; i < 9; i++)
-            species[i] = species_old[i];
-        return;
-    }
-
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
         /*species 0: H2 */
@@ -4209,9 +4200,7 @@ void cp_R(double * species, double * tc)
             +1.00970400e-10 * tc[3]
             -6.75335100e-15 * tc[4];
     }
-    T_old = T;
-    for (int i = 0; i < 9; i++)
-        species_old[i] = species[i];
+
     return;
 }
 
