@@ -211,7 +211,7 @@ c ::: -----------------------------------------------------------
       REAL_T  Lx, Ly, Lz, Lmin, rn 
       REAL_T  kappa, kappaMax, freqMin, freqMax, freqDiff, pdk
 
-      namelist /fortin/ nmodes, nxmodes, nymodes, nzmodes, mode_start,
+      namelist /fortin/ nmodes, nxmodes, nymodes, nzmodes, mode_start, hack_lz,
      &                  forcing_type, spectrum_type, time_offset,
      &                  forcing_xlength, forcing_ylength, forcing_zlength,
      &                  forcing_time_scale_min, forcing_time_scale_max, 
@@ -387,6 +387,10 @@ c     Load domain dimensions into common, and set up boundary functions
          Lx = domnhi(1)-domnlo(1)
          Ly = domnhi(2)-domnlo(2)
          Lz = domnhi(3)-domnlo(3)
+         
+         if (hack_lz) then 
+            Lz = Lz/two
+         endif
          
          if (isioproc .eq. 1) then
             write(*,*) "Lx = ",Lx
@@ -4821,6 +4825,10 @@ c     Adjust z offset for probtype 15
             Ly = domnhi(2)-domnlo(2)
             Lz = domnhi(3)-domnlo(3)
 
+            if (hack_lz) then 
+               Lz = Lz/two
+            endif
+         
             Lmin = min(Lx,Ly,Lz)
             kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
             nxmodes = nmodes*int(0.5+Lx/Lmin)

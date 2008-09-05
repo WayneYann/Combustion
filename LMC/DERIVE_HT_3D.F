@@ -370,6 +370,10 @@ c     Adjust z offset for probtype 15
       Lx = domnhi(1)-domnlo(1)
       Ly = domnhi(2)-domnlo(2)
       Lz = domnhi(3)-domnlo(3)
+
+      if (hack_lz) then
+         Lz = Lz/two
+      endif
       
       Lmin = min(Lx,Ly,Lz)
       kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
@@ -515,6 +519,10 @@ c     Adjust z offset for probtype 15
       Lx = domnhi(1)-domnlo(1)
       Ly = domnhi(2)-domnlo(2)
       Lz = domnhi(3)-domnlo(3)
+
+      if (hack_lz) then
+         Lz = Lz/two
+      endif
       
       Lmin = min(Lx,Ly,Lz)
       kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
@@ -649,6 +657,10 @@ c     Adjust z offset for probtype 15
       Lx = domnhi(1)-domnlo(1)
       Ly = domnhi(2)-domnlo(2)
       Lz = domnhi(3)-domnlo(3)
+
+      if (hack_lz) then
+         Lz = Lz/two
+      endif
       
       Lmin = min(Lx,Ly,Lz)
       kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
@@ -781,6 +793,10 @@ c     Adjust z offset for probtype 15
       Lx = domnhi(1)-domnlo(1)
       Ly = domnhi(2)-domnlo(2)
       Lz = domnhi(3)-domnlo(3)
+
+      if (hack_lz) then
+         Lz = Lz/two
+      endif
       
       Lmin = min(Lx,Ly,Lz)
       kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
