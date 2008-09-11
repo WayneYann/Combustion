@@ -177,11 +177,11 @@ c :::
 c ::: -----------------------------------------------------------
       subroutine FORT_PROBINIT (init,name,namlen,problo,probhi)
       implicit none
+      integer, dimension (:), allocatable :: seedArray
       integer init, namlen
-      integer name(namlen), seedArray(:), seedSize
+      integer name(namlen), seedSize
       integer untin
       REAL_T problo(SDIM), probhi(SDIM)
-      allocatable seedArray
 
 #define RANDOM rand()
       REAL_T rand
