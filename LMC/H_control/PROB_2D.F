@@ -223,7 +223,8 @@ c ::: -----------------------------------------------------------
      &                  stTh, Rf, R_hot, R_hotBL, twall, turb_scale, stBL,
      &                  max_trac_lev, max_nozzle_lev, pipeTh, pipeBL,
      &                  tV_in_l,tV_in_r,V_in_new,tV_co_l,tV_co_r,V_co_new,
-     &                  T_stick, T_in,phi_in, thickFacTR, thickFacCH,nchemdiag
+     &                  T_stick, T_in,phi_in, thickFacTR, thickFacCH,nchemdiag,
+     &                  pertmag
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -306,6 +307,7 @@ c
       T_in = 300.d0
       phi_in = 1.d0
       zbase_control = 0.d0
+      pertmag = 0.d0
 
 #if defined(BL_DO_FLCT)
 c
@@ -814,7 +816,7 @@ c ::: -----------------------------------------------------------
       integer zL, zR, zH
       REAL_T eta, xi, xblend, mdotb, mdotL, mdotR, r1sq, r2sq, ylo, yhi
       REAL_T pmf_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
-      REAL_T Y_air(maxspec), X_air(maxspec)
+      REAL_T Y_air(maxspec), X_air(maxspec), ypert, Lx
       integer iN2, iAr, iO2
       integer lo_chem(SDIM),hi_chem(SDIM)
       data lo_chem /1,1/
@@ -868,13 +870,23 @@ c
          do i = lo(1), hi(1)
             x = (float(i)+.5)*delta(1)+domnlo(1)
 
-            ylo =   j  *delta(2)+domnlo(2)-y_offset
-            yhi = (j+1)*delta(2)+domnlo(2)-y_offset
+            ypert = 0.d0
+            if (pertmag .gt. 0.d0) then
+               Lx = domnhi(1) - domnlo(1)
+               ypert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)
+     &              + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)
+     &              + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx)
+     &              + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)
+     &              + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
+            endif
+            
+            ylo =   j  *delta(2)+domnlo(2)-y_offset + ypert
+            yhi = (j+1)*delta(2)+domnlo(2)-y_offset + ypert
             if (probtype.eq.2) then
                ylo = ylo - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
                yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
             endif
-            
+
             call pmf(ylo*100,yhi*100,pmf_vals,n)
             if (n.ne.Nspec+3) then
                print *,'PMF file thinks n=',n
