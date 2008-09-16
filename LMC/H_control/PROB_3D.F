@@ -190,11 +190,11 @@ c ::: -----------------------------------------------------------
      &                  flametracval, probtype,
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
      &                  traceSpecVal,phi_in,T_in,
-     $                  turb_scale, tstart_turb, V_in, 
+     $                  turb_scale, V_in, 
      $                  zstandoff, pertmag, nchemdiag
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
-      namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
+      namelist /flctin/ tstart_turb, forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
 #endif
       namelist /control/ tau_control, sest, cfix, changeMax_control, h_control, zbase_control
@@ -267,6 +267,7 @@ c
       pamb = 101325.d0
       dpdt_factor = 0.3d0
 
+#if defined(BL_DO_FLCT)
 c     add_turb = .FALSE.
       forceInflow = .FALSE.
       numInflPlanesStore = -1
@@ -279,6 +280,8 @@ c
       strmwse_dir = FLCT_ZVEL
       flct_file = ''
       turb_scale = 1
+#endif
+
       zbase_control = 0.d0
 
 c     Note: for setup with no coflow, set Ro=Rf+wallth
@@ -322,11 +325,11 @@ c      write(6,heattransin)
 
    10 close(unit=untin)
 
+#if defined(BL_DO_FLCT)
       if (forceInflow .eqv. .FALSE.) then
          forceLo = .FALSE.
          forceHi = .FALSE.
       else
-#if defined(BL_DO_FLCT)
          if (flct_file.ne.'') then
 #define FF_UNIT 20
             write(6,*) '...initializing turbulence, reading header info'
@@ -334,13 +337,12 @@ c      write(6,heattransin)
             call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
          endif
-#endif
       endif
       convVel = V_in
       if (probtype.ge.3) then
          convVel = one
       endif
-
+#endif
 c     Load domain dimensions into common, and set up boundary functions
       domnlo(1) = problo(1)
       domnlo(2) = problo(2)
@@ -1164,6 +1166,8 @@ c
          bc(i,1) = EXT_DIR
          bc(i,2) = EXT_DIR
       end do
+      convVelSAVE = convVel
+      convVel = 15.d0
 #endif 
            
       do n = 1,Nspec
@@ -1172,8 +1176,6 @@ c
          if (name .eq. 'O2' ) iO2 = n
       end do
 
-      convVelSAVE = convVel
-      convVel = 15.d0
       do k= lo(3),hi(3)
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
@@ -1302,6 +1304,7 @@ c                  scal(i,j,k,Trac) = zero
       enddo
 
 #if defined(BL_DO_FLCT)          
+      convVel = convVelSAVE
       deallocate(uflct)
 #endif
       end

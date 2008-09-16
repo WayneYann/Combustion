@@ -407,7 +407,7 @@ c     Load domain dimensions into common, and set up boundary functions
 #include "probdata.H"
 #include "htdata.H"
       
-      REAL_T Patm, y, pmf_H_vals(maxspec+3), sum, Y_pmf(maxspec), yEval
+      REAL_T Patm, y, pmf_vals(maxspec+3), sum, Y_pmf(maxspec), yEval
       REAL_T Yfu(maxspec), Yox(maxspec)
       REAL_T Y_FU_H2, Y_FU_O2, Y_OX_H2, Y_OX_O2
       REAL_T X_FU_H2, X_FU_O2, X_FU_N2, Xsum
@@ -434,12 +434,12 @@ c     For probtype == 1, set boundary conditions from premixed flame profile in 
          end do
 
          yEval = y*100. - y_offset*100.
-         call pmf_H(yEval,yEval,pmf_H_vals,n)
+         call pmf(yEval,yEval,pmf_vals,n)
 
          if (n.ne.Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
 
          call FORT_MOLETOMASS(lo,hi,
-     &        pmf_H_vals(4), ARLIM(lo),ARLIM(hi),
+     &        pmf_vals(4), ARLIM(lo),ARLIM(hi),
      &        Y_pmf,         ARLIM(lo),ARLIM(hi))
          
          do n=0,Nspec-1
@@ -452,7 +452,7 @@ c     For probtype == 1, set boundary conditions from premixed flame profile in 
             end do
             Y_bc(iN2-1,zone) = one - sum
          end if
-         T_bc(zone) = pmf_H_vals(1)
+         T_bc(zone) = pmf_vals(1)
          u_bc(zone) = zero
          v_bc(zone) = V_in
          call FORT_RHOfromPTY(lo,hi,
@@ -813,7 +813,7 @@ c ::: -----------------------------------------------------------
       
       integer zL, zR, zH
       REAL_T eta, xi, xblend, mdotb, mdotL, mdotR, r1sq, r2sq, ylo, yhi
-      REAL_T pmf_H_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
+      REAL_T pmf_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
       REAL_T Y_air(maxspec), X_air(maxspec)
       integer iN2, iAr, iO2
       integer lo_chem(SDIM),hi_chem(SDIM)
@@ -875,10 +875,14 @@ c
                yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
             endif
             
-            call pmf_H(ylo*100,yhi*100,pmf_H_vals,n)
-            if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
+            call pmf(ylo*100,yhi*100,pmf_vals,n)
+            if (n.ne.Nspec+3) then
+               print *,'PMF file thinks n=',n
+               print *,'I think Nspec=',Nspec
+               call bl_abort('INITDATA: n .ne. Nspec+3, n:')
+            endif
             call FORT_MOLETOMASS(lo_chem,hi_chem,
-     &                           pmf_H_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
+     &                           pmf_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
      &                           Y_pmf,         ARLIM(lo_chem),ARLIM(hi_chem))
          
 
@@ -888,7 +892,7 @@ c
      &           +                   press(i,j+1) + press(i+1,j+1))
 
             if (v_blob_r .le. zero) then
-               scal(i,j,Temp) = pmf_H_vals(1)
+               scal(i,j,Temp) = pmf_vals(1)
                do n = 1,Nspec
                   scal(i,j,firstSpec+n-1) = Y_pmf(n)
                end do
@@ -902,7 +906,7 @@ c
             else
                eta = 0.5*(1.d0 + TANH((rblob - v_blob_r)/xfrontw))
                
-               scal(i,j,Temp) = eta*pmf_H_vals(1) + (1.d0-eta)*v_blob_T
+               scal(i,j,Temp) = eta*pmf_vals(1) + (1.d0-eta)*v_blob_T
                do n = 1,Nspec
                   scal(i,j,firstSpec+n-1) = eta*Y_pmf(n)
      &                 +(1.d0-eta)*(v_blob_airfrac   *    Y_air(n)
@@ -929,7 +933,7 @@ c     Cut off initial pmf at R_hot so that air along wall
             endif
 
             vel(i,j,1) = zero
-            vel(i,j,2) = pmf_H_vals(2) / 1.d2
+            vel(i,j,2) = pmf_vals(2) / 1.d2
             if (probtype.eq.2) then
                vel(i,j,2) = zero
             endif
