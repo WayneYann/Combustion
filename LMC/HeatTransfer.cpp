@@ -727,8 +727,6 @@ HeatTransfer::estTimeStep ()
          U_fpi.isValid();
          ++U_fpi)
     {
-        BL_ASSERT(dsdtmfi.index() == divumfi.index());
-
         const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
         const FArrayBox& Rho = (*rho_ctime)[i];
@@ -822,8 +820,6 @@ HeatTransfer::checkTimeStep (Real dt)
          U_fpi.isValid();
          ++U_fpi)
     {
-        BL_ASSERT(dsdtmfi.index() == divumfi.index());
-
         const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
         const FArrayBox& Rho = (*rho_ctime)[i];
