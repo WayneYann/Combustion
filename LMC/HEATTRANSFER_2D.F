@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.12 2008-08-06 17:54:54 lijewski Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.13 2008-09-17 22:29:47 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1457,6 +1457,10 @@ c     local variables
       REAL_T T_on_edge
       REAL_T universal_gas_constant_cgs
 
+#ifdef BL_CYGWIN_NT
+      print *,'Need to rebuild with f90'
+      stop
+#else
 c     local arrays
       REAL_T, allocatable :: contiguous_Y (:)
       REAL_T, allocatable :: cpms_on_edge (:)
@@ -2125,7 +2129,7 @@ c///
 c///
 c///  end of FORT_RK_MIXTURE_AVERAGED
 c///
-
+#endif 
       return
       end
 
@@ -2306,6 +2310,10 @@ c     local variables
       REAL_T T_on_edge
       REAL_T universal_gas_constant_cgs
 
+#ifdef BL_CYGWIN_NT
+      print *,'Need to rebuild with f90'
+      stop
+#else
 c     local arrays
       REAL_T, allocatable :: contiguous_X (:)
       REAL_T, allocatable :: contiguous_Y (:)
@@ -2990,7 +2998,7 @@ c///
 c///
 c///  end of FORT_RK_MULTICOMPONENT
 c///
-
+#endif
       return
       end
 
@@ -3098,6 +3106,10 @@ c     local variables
       REAL_T T
       REAL_T time_step
 
+#ifdef BL_CYGWIN_NT
+      print *,'Need to rebuild with f90'
+      stop
+#else
 c     local arrays
       REAL_T, allocatable :: contiguous_X (:)
       REAL_T, allocatable :: contiguous_Y (:)
@@ -3217,6 +3229,6 @@ c///
 c///
 c///  end of FORT_RK_STEP_SELECTION
 c///
-
+#endif
       return
       end
