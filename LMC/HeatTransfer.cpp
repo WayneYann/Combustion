@@ -117,8 +117,10 @@ Real      HeatTransfer::trac_diff_coef            = 0.0;
 Real      HeatTransfer::P1atm_MKS                 = -1.0;
 std::string   HeatTransfer::turbFile                  ="";
 ChemDriver::Chem_Evolve HeatTransfer::chem_integrator = ChemDriver::CKD_Vode;
-Array<std::string> HeatTransfer::auxDiag_names(0);
-bool      HeatTransfer::plot_auxDiags             = false;
+std::map<std::string, Array<std::string> > HeatTransfer::auxDiag_names;
+bool      HeatTransfer::plot_reactions            = false;
+bool      HeatTransfer::plot_consumption          = true;
+bool      HeatTransfer::plot_heat_release         = true;
 int       HeatTransfer::do_mcdd                   = 0;
 int       HeatTransfer::mcdd_NitersMAX            = 100;
 Real      HeatTransfer::mcdd_relaxFactor          = 1.0;
@@ -142,10 +144,6 @@ static Real crse_dt = -1;
 #else
 #  define Real_MIN DBL_MIN
 #  define Real_MAX DBL_MAX
-#endif
-
-#if defined(BL_PLOT_REACS) && defined(BL_PLOT_CONSUMPTION)
-#error "Only one of BL_PLOT_REACS or BL_PLOT_CONSUMPTION may be defined"
 #endif
 
 static
@@ -432,7 +430,6 @@ HeatTransfer::HeatTransfer ()
     SpecDiffusionFluxn     = 0;
     SpecDiffusionFluxnp1   = 0;
     FillPatchedOldState_ok = true;
-    auxDiag                = 0;
 }
 
 HeatTransfer::HeatTransfer (Amr&            papa,
@@ -475,13 +472,11 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
-    auxDiag = 0;
-
-    if (plot_auxDiags)
+    for (std::map<std::string,Array<std::string> >::iterator it=auxDiag_names.begin();
+         it!=auxDiag_names.end(); ++it)
     {
-        BL_ASSERT(auxDiag_names.size() > 0);
-        auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
-        auxDiag->setVal(0);
+        auxDiag[it->first] = new MultiFab(grids,it->second.size(),0);
+        auxDiag[it->first]->setVal(0);
     }
 
     if (do_mcdd)
@@ -496,7 +491,12 @@ HeatTransfer::~HeatTransfer ()
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxn);    
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxnp1);    
     }
-    delete auxDiag;
+
+    for (std::map<std::string,MultiFab*>::iterator it=auxDiag.begin();
+         it!=auxDiag.end(); ++it)
+    {
+        delete it->second;
+    }
 }
 
 void
@@ -634,23 +634,32 @@ HeatTransfer::init_once ()
     pp.query ("rk_mixture_averaged", rk_mixture_averaged);
     pp.query ("rk_time_step_multiplier", rk_time_step_multiplier);
 
-    pp.query("plot_auxDiags",plot_auxDiags);
-
-    if (plot_auxDiags)
+    pp.query("plot_reactions",plot_reactions);
+    if (plot_reactions)
     {
-#ifdef BL_PLOT_REACS
-        auxDiag_names.resize(getChemSolve().numReactions());
-        for (int i = 0; i < auxDiag_names.size(); ++i)
-            auxDiag_names[i] = BoxLib::Concatenate("R",i+1);
+        auxDiag_names["REACTIONS"].resize(getChemSolve().numReactions());
+        for (int i = 0; i < auxDiag_names["REACTIONS"].size(); ++i)
+            auxDiag_names["REACTIONS"][i] = BoxLib::Concatenate("R",i+1);
         if (ParallelDescriptor::IOProcessor())
             std::cout << "***** Make sure to increase amr.regrid_int !!!!!" << std::endl;
-#elif defined(BL_PLOT_CONSUMPTION)
-        auxDiag_names.resize(consumptionName.size());
+    }
+
+    pp.query("plot_consumption",plot_consumption);
+    pp.query("plot_auxDiags",plot_consumption); // This is for backward comptibility - FIXME
+    if (plot_consumption)
+    {
+        auxDiag_names["CONSUMPTION"].resize(consumptionName.size());
         for (int j=0; j<consumptionName.size(); ++j)
         {
-            auxDiag_names[j] = consumptionName[j] + "_ConsumptionRate";
+            auxDiag_names["CONSUMPTION"][j] = consumptionName[j] + "_ConsumptionRate";
         }
-#endif
+    }
+
+    pp.query("plot_heat_release",plot_heat_release);
+    if (plot_consumption)
+    {
+        auxDiag_names["HEATRELEASE"].resize(1);
+        auxDiag_names["HEATRELEASE"][0] = "HeatRelease";
     }
 
     init_once_done = 1;
@@ -690,13 +699,11 @@ HeatTransfer::restart (Amr&          papa,
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
-    auxDiag = 0;
-
-    if (plot_auxDiags)
+    for (std::map<std::string,Array<std::string> >::iterator it=auxDiag_names.begin();
+         it!=auxDiag_names.end(); ++it)
     {
-        BL_ASSERT(auxDiag_names.size() > 0);
-        auxDiag = new MultiFab(grids,auxDiag_names.size(),0);
-        auxDiag->setVal(0);
+        auxDiag[it->first] = new MultiFab(grids,it->second.size(),0);
+        auxDiag[it->first]->setVal(0);
     }
 
     if (do_mcdd)
@@ -1389,19 +1396,17 @@ HeatTransfer::post_timestep (int crse_iteration)
 {
     NavierStokes::post_timestep(crse_iteration);
 
-    if (plot_auxDiags && level == 0)
+    if (plot_reactions && level == 0)
     {
-        const int Ndiag = auxDiag->nComp();
+        const int Ndiag = auxDiag["REACTIONS"]->nComp();
 
-#ifdef BL_PLOT_REACS
         //
         // Multiply by the inverse of the coarse timestep.
         //
         const Real factor = 1.0 / crse_dt;
 
         for (int i = parent->finestLevel(); i >= 0; --i)
-            getLevel(i).auxDiag->mult(factor);
-#endif
+            getLevel(i).auxDiag["REACTIONS"]->mult(factor);
 
         for (int i = parent->finestLevel(); i > 0; --i)
         {
@@ -1411,8 +1416,8 @@ HeatTransfer::post_timestep (int crse_iteration)
             HeatTransfer& clev = getLevel(i-1);
             HeatTransfer& flev = getLevel(i);
 
-            MultiFab& Ydot_crse = *(clev.auxDiag);
-            MultiFab& Ydot_fine = *(flev.auxDiag);
+            MultiFab& Ydot_crse = *(clev.auxDiag["REACTIONS"]);
+            MultiFab& Ydot_fine = *(flev.auxDiag["REACTIONS"]);
 
             flev.geom.GetVolume(fvolume,flev.grids,GEOM_GROW);
             clev.geom.GetVolume(cvolume,clev.grids,GEOM_GROW);
@@ -4925,9 +4930,8 @@ HeatTransfer::advance (Real time,
     BL_ASSERT(S_new.boxArray() == S_old.boxArray());
 
     const int nComp = NUM_STATE - BL_SPACEDIM;
-#ifdef BL_PLOT_CONSUMPTION
     Array<int> consumptionComps; // Put in scope for work below
-    if (plot_auxDiags)
+    if (plot_consumption)
     {
         //
         // Save off a copy of the pre-chem state
@@ -4936,10 +4940,9 @@ HeatTransfer::advance (Real time,
         for (int j=0; j<consumptionComps.size(); ++j)
         {
             consumptionComps[j] = getChemSolve().index(consumptionName[j]) + first_spec;
-            auxDiag->copy(S_old,consumptionComps[j],j,1);
+            auxDiag["CONSUMPTION"]->copy(S_old,consumptionComps[j],j,1);
         }
     }
-#endif
     //
     // Build a MultiFab parallel to "fabs".  Force it to have the
     // same distribution as aux_boundary_data_old.  This'll cut out a
@@ -4990,21 +4993,19 @@ HeatTransfer::advance (Real time,
     //
     // Find change due to first Strang step.
     //
-#ifdef BL_PLOT_CONSUMPTION
-    if (plot_auxDiags)
+    if (plot_consumption)
     {
-        MultiFab tmp(auxDiag->boxArray(),consumptionComps.size(),0);
+        MultiFab tmp(auxDiag["CONSUMPTION"]->boxArray(),consumptionComps.size(),0);
         tmp.setVal(0);
         for (int j=0; j<consumptionComps.size(); ++j)
         {
             tmp.copy(S_old,consumptionComps[j],j,1);
         }
-        for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
+        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
         {
-            (*auxDiag)[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
+            (*auxDiag["CONSUMPTION"])[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
         }
     }
-#endif
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "HeatTransfer::advance(): after first Strang step\n";
@@ -5315,40 +5316,36 @@ HeatTransfer::advance (Real time,
     //
     // Adjust chemistry diagnostic before and after reactions.
     //
-#ifdef BL_PLOT_CONSUMPTION
-    if (plot_auxDiags)
+    if (plot_consumption)
     {
-        MultiFab tmp(auxDiag->boxArray(),consumptionComps.size(),0);
+        MultiFab tmp(auxDiag["CONSUMPTION"]->boxArray(),consumptionComps.size(),0);
         tmp.setVal(0);
         for (int j=0; j<consumptionComps.size(); ++j)
         {
             tmp.copy(S_new,consumptionComps[j],j,1);
         }
-        for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
+        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
         {
-            (*auxDiag)[mfi].plus(tmp[mfi],0,0,consumptionComps.size());
+            (*auxDiag["CONSUMPTION"])[mfi].plus(tmp[mfi],0,0,consumptionComps.size());
         }
     }
-#endif
 
     strang_chem(S_new,dt,HT_EstimateYdotNew);
 
-#ifdef BL_PLOT_CONSUMPTION
-    if (plot_auxDiags)
+    if (plot_consumption)
     {
-        MultiFab tmp(auxDiag->boxArray(),consumptionComps.size(),0);
+        MultiFab tmp(auxDiag["CONSUMPTION"]->boxArray(),consumptionComps.size(),0);
         tmp.setVal(0);
         for (int j=0; j<consumptionComps.size(); ++j)
         {
             tmp.copy(S_new,consumptionComps[j],j,1);
         }
-        for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
+        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
         {
-            (*auxDiag)[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
-            (*auxDiag)[mfi].mult(1.0/dt);
+            (*auxDiag["CONSUMPTION"])[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
+            (*auxDiag["CONSUMPTION"])[mfi].mult(1.0/dt);
         }
     }
-#endif
     //
     //  HACK!!  What are we really supposed to do here?
     //  Deactivate hook in FillPatch hack so that old data really is old data again
@@ -5794,10 +5791,13 @@ HeatTransfer::strang_chem (MultiFab&  state,
                 FArrayBox& fb = state[Smfi];
                 const Box& bx = Smfi.validbox();
 		FArrayBox& fc = tmp[Smfi];
-#ifdef BL_PLOT_REACS
-                if (plot_auxDiags && BoxLib::intersect(state.boxArray(),auxDiag->boxArray()).size() != 0)
-                    chemDiag = &((*auxDiag)[Smfi]);
-#endif
+
+                if (plot_reactions &&
+                    BoxLib::intersect(state.boxArray(),auxDiag["REACTIONS"]->boxArray()).size() != 0)
+                {
+                    chemDiag = &( (*auxDiag["REACTIONS"])[Smfi] );
+                }
+
                 getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chem_integrator,chemDiag);
             }
 
@@ -5824,15 +5824,14 @@ HeatTransfer::strang_chem (MultiFab&  state,
 
             fcnCntTemp.define(ba, 1, 0, dm, Fab_allocate);
 
-#ifdef BL_PLOT_REACS
             MultiFab diagTemp;
-            const bool do_diag = plot_auxDiags && BoxLib::intersect(ba,auxDiag->boxArray()).size() != 0;
+            const bool do_diag = plot_reactions && BoxLib::intersect(ba,auxDiag["REACTIONS"]->boxArray()).size() != 0;
             if (do_diag)
             {
-                diagTemp.define(ba, auxDiag->nComp(), 0, dm, Fab_allocate);
-                diagTemp.copy(*auxDiag); // Parallel copy
+                diagTemp.define(ba, auxDiag["REACTIONS"]->nComp(), 0, dm, Fab_allocate);
+                diagTemp.copy(*auxDiag["REACTIONS"]); // Parallel copy
             }
-#endif
+
             if (verbose && ParallelDescriptor::IOProcessor())
                 std::cout << "*** strang_chem: FABs in tmp MF: " << tmp.size() << std::endl;
             //
@@ -5848,9 +5847,8 @@ HeatTransfer::strang_chem (MultiFab&  state,
                 FArrayBox& fb = tmp[Smfi];
                 const Box& bx = Smfi.validbox();
                 FArrayBox& fc = fcnCntTemp[Smfi];
-#ifdef BL_PLOT_REACS
                 chemDiag = (do_diag ? &(diagTemp[Smfi]) : 0);
-#endif
+
                 getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chem_integrator,chemDiag);
             }
             //
@@ -5861,9 +5859,11 @@ HeatTransfer::strang_chem (MultiFab&  state,
                 state.copy(tmp, i, i, 1); // Parallel copy.
             }
 
-#ifdef BL_PLOT_REACS
-            if (do_diag) auxDiag->copy(diagTemp); // Parallel copy
-#endif
+            if (do_diag)
+            {
+                auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
+            }
+
             get_new_data(FuncCount_Type).copy(fcnCntTemp); // Parallel copy.
         }
 
@@ -9153,8 +9153,11 @@ HeatTransfer::writePlotFile (const std::string& dir,
     }
 
     int num_auxDiag = 0;
-    if (plot_auxDiags)
-        num_auxDiag = auxDiag_names.size();
+    for (std::map<std::string,MultiFab*>::const_iterator it = auxDiag.begin(); it!=auxDiag.end(); ++it)
+    {
+        num_auxDiag += it->second->nComp();
+    }
+
     int n_data_items = plot_var_map.size() + num_derive + num_auxDiag;
     Real cur_time = state[State_Type].curTime();
 
@@ -9191,9 +9194,12 @@ HeatTransfer::writePlotFile (const std::string& dir,
         //
         // Hack in additional diagnostics.
         //
-        if (plot_auxDiags)
-            for (i=0; i<auxDiag_names.size(); ++i)
-                os << auxDiag_names[i] << '\n';
+        for (std::map<std::string,Array<std::string> >::const_iterator it = auxDiag_names.begin();
+             it!=auxDiag_names.end(); ++it)
+        {
+            for (i=0; i<it->second.size(); ++i)
+                os << it->second[i] << '\n';
+        }
 
         os << BL_SPACEDIM << '\n';
         os << parent->cumTime() << '\n';
@@ -9333,8 +9339,12 @@ HeatTransfer::writePlotFile (const std::string& dir,
     //
     // Cull data from diagnostic multifabs.
     //
-    if (plot_auxDiags)
-        MultiFab::Copy(plotMF,*auxDiag,0,cnt,num_auxDiag,nGrow);
+    for (std::map<std::string,MultiFab*>::const_iterator it = auxDiag.begin(); it!=auxDiag.end(); ++it)
+    {
+        int nComp = it->second->nComp();
+        MultiFab::Copy(plotMF,*it->second,0,cnt,nComp,nGrow);
+        cnt += nComp;
+    }
     //
     // Use the Full pathname when naming the MultiFab.
     //

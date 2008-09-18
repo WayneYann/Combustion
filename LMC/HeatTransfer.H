@@ -8,6 +8,7 @@
 #include <DDOp.H>
 
 #include <list>
+#include <map>
 #include <utility>
 
 //
@@ -553,9 +554,11 @@ protected:
     AuxBoundaryData        aux_boundary_data_new;
     bool                   FillPatchedOldState_ok;
 
-    static bool               plot_auxDiags;
-    MultiFab*                 auxDiag;
-    static Array<std::string> auxDiag_names;
+    static bool                     plot_reactions;
+    static bool                     plot_consumption;
+    static bool                     plot_heat_release;
+    std::map<std::string,MultiFab*> auxDiag;
+    static std::map<std::string,Array<std::string> > auxDiag_names;
 
     DDOp MCDDOp;
     //
