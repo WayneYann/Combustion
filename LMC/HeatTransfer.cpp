@@ -645,8 +645,11 @@ HeatTransfer::init_once ()
         if (ParallelDescriptor::IOProcessor())
             std::cout << "***** Make sure to increase amr.regrid_int !!!!!" << std::endl;
 #elif defined(BL_PLOT_CONSUMPTION)
-        auxDiag_names.resize(1);
-        auxDiag_names[0] = consumptionName + "_ConsumptionRate";
+        auxDiag_names.resize(consumptionName.size());
+        for (int j=0; j<consumptionName.size(); ++j)
+        {
+            auxDiag_names[j] = consumptionName[j] + "_ConsumptionRate";
+        }
 #endif
     }
 
@@ -4922,13 +4925,20 @@ HeatTransfer::advance (Real time,
     BL_ASSERT(S_new.boxArray() == S_old.boxArray());
 
     const int nComp = NUM_STATE - BL_SPACEDIM;
-    //
-    // Save off a copy of the pre-chem state
-    //
-    const int consumptionComp = getChemSolve().index(consumptionName) + first_spec;
 #ifdef BL_PLOT_CONSUMPTION
+    Array<int> consumptionComps; // Put in scope for work below
     if (plot_auxDiags)
-        auxDiag->copy(S_old,consumptionComp,0,1);
+    {
+        //
+        // Save off a copy of the pre-chem state
+        //
+        consumptionComps.resize(consumptionName.size());
+        for (int j=0; j<consumptionComps.size(); ++j)
+        {
+            consumptionComps[j] = getChemSolve().index(consumptionName[j]) + first_spec;
+            auxDiag->copy(S_old,consumptionComps[j],j,1);
+        }
+    }
 #endif
     //
     // Build a MultiFab parallel to "fabs".  Force it to have the
@@ -4983,11 +4993,16 @@ HeatTransfer::advance (Real time,
 #ifdef BL_PLOT_CONSUMPTION
     if (plot_auxDiags)
     {
-        MultiFab tmp(auxDiag->boxArray(),1,0);
+        MultiFab tmp(auxDiag->boxArray(),consumptionComps.size(),0);
         tmp.setVal(0);
-        tmp.copy(S_old,consumptionComp,0,1);
+        for (int j=0; j<consumptionComps.size(); ++j)
+        {
+            tmp.copy(S_old,consumptionComps[j],j,1);
+        }
         for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
-            (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);
+        {
+            (*auxDiag)[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
+        }
     }
 #endif
 
@@ -5303,11 +5318,16 @@ HeatTransfer::advance (Real time,
 #ifdef BL_PLOT_CONSUMPTION
     if (plot_auxDiags)
     {
-        MultiFab tmp(auxDiag->boxArray(),1,0);
+        MultiFab tmp(auxDiag->boxArray(),consumptionComps.size(),0);
         tmp.setVal(0);
-        tmp.copy(S_new,consumptionComp,0,1);
+        for (int j=0; j<consumptionComps.size(); ++j)
+        {
+            tmp.copy(S_new,consumptionComps[j],j,1);
+        }
         for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
-            (*auxDiag)[mfi].plus(tmp[mfi],0,0,1);
+        {
+            (*auxDiag)[mfi].plus(tmp[mfi],0,0,consumptionComps.size());
+        }
     }
 #endif
 
@@ -5316,12 +5336,15 @@ HeatTransfer::advance (Real time,
 #ifdef BL_PLOT_CONSUMPTION
     if (plot_auxDiags)
     {
-        MultiFab tmp(auxDiag->boxArray(),1,0);
+        MultiFab tmp(auxDiag->boxArray(),consumptionComps.size(),0);
         tmp.setVal(0);
-        tmp.copy(S_new,consumptionComp,0,1);
+        for (int j=0; j<consumptionComps.size(); ++j)
+        {
+            tmp.copy(S_new,consumptionComps[j],j,1);
+        }
         for (MFIter mfi(*auxDiag); mfi.isValid(); ++mfi)
         {
-            (*auxDiag)[mfi].minus(tmp[mfi],0,0,1);
+            (*auxDiag)[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
             (*auxDiag)[mfi].mult(1.0/dt);
         }
     }

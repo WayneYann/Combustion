@@ -605,7 +605,7 @@ protected:
     static Real        P1atm_MKS;
     static std::string turbFile;
     static std::string fuelName;
-    static std::string consumptionName;
+    static Array<std::string> consumptionName;
     static int         do_mcdd;
     static int         mcdd_NitersMAX;
     static Real        mcdd_relaxFactor;
