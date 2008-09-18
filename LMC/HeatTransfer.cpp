@@ -4943,6 +4943,16 @@ HeatTransfer::advance (Real time,
             auxDiag["CONSUMPTION"]->copy(S_old,consumptionComps[j],j,1);
         }
     }
+
+    MultiFab Qtmp; // Put in scope for work below
+    if (plot_heat_release)
+    {
+        //
+        // Save off a copy of the pre-chem state
+        //
+        Qtmp.define(grids,getChemSolve().numSpecies(),0,Fab_allocate);
+        MultiFab::Copy(Qtmp,S_old,first_spec,0,Qtmp.nComp(),0);
+    }
     //
     // Build a MultiFab parallel to "fabs".  Force it to have the
     // same distribution as aux_boundary_data_old.  This'll cut out a
@@ -5004,6 +5014,13 @@ HeatTransfer::advance (Real time,
         for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
         {
             (*auxDiag["CONSUMPTION"])[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
+        }
+    }
+    if (plot_heat_release)
+    {
+        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
+        {
+            Qtmp[mfi].minus(S_old[mfi],first_spec,0,Qtmp.nComp());
         }
     }
 
@@ -5318,15 +5335,19 @@ HeatTransfer::advance (Real time,
     //
     if (plot_consumption)
     {
-        MultiFab tmp(auxDiag["CONSUMPTION"]->boxArray(),consumptionComps.size(),0);
-        tmp.setVal(0);
-        for (int j=0; j<consumptionComps.size(); ++j)
-        {
-            tmp.copy(S_new,consumptionComps[j],j,1);
-        }
         for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
         {
-            (*auxDiag["CONSUMPTION"])[mfi].plus(tmp[mfi],0,0,consumptionComps.size());
+            for (int j=0; j<consumptionComps.size(); ++j)
+            {
+                (*auxDiag["CONSUMPTION"])[mfi].plus(S_new[mfi],consumptionComps[j],j,1);
+            }
+        }
+    }
+    if (plot_heat_release)
+    {
+        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
+        {
+            Qtmp[mfi].plus(S_new[mfi],first_spec,0,Qtmp.nComp());
         }
     }
 
@@ -5334,16 +5355,36 @@ HeatTransfer::advance (Real time,
 
     if (plot_consumption)
     {
-        MultiFab tmp(auxDiag["CONSUMPTION"]->boxArray(),consumptionComps.size(),0);
-        tmp.setVal(0);
-        for (int j=0; j<consumptionComps.size(); ++j)
-        {
-            tmp.copy(S_new,consumptionComps[j],j,1);
-        }
         for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
         {
-            (*auxDiag["CONSUMPTION"])[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
+            for (int j=0; j<consumptionComps.size(); ++j)
+            {
+                (*auxDiag["CONSUMPTION"])[mfi].minus(S_new[mfi],consumptionComps[j],j,1);
+            }
             (*auxDiag["CONSUMPTION"])[mfi].mult(1.0/dt);
+        }
+    }
+    if (plot_heat_release)
+    {
+        FArrayBox enthi, T;
+        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
+        {
+            Qtmp[mfi].minus(S_new[mfi],first_spec,0,Qtmp.nComp());
+
+            const Box& box = mfi.validbox();
+            T.resize(mfi.validbox(),1);
+            T.setVal(298.15);
+
+            enthi.resize(mfi.validbox(),Qtmp.nComp());
+            getChemSolve().getHGivenT(enthi,T,box,0,0);
+
+            // Form heat release
+            (*auxDiag["HEATRELEASE"])[mfi].setVal(0.);
+            for (int j=0; j<Qtmp.nComp(); ++j)
+            {
+                Qtmp[mfi].mult(enthi,j,j,1);
+                (*auxDiag["HEATRELEASE"])[mfi].plus(Qtmp[mfi],j,0,1);
+            }
         }
     }
     //
