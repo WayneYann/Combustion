@@ -656,7 +656,7 @@ HeatTransfer::init_once ()
     }
 
     pp.query("plot_heat_release",plot_heat_release);
-    if (plot_consumption)
+    if (plot_heat_release)
     {
         auxDiag_names["HEATRELEASE"].resize(1);
         auxDiag_names["HEATRELEASE"][0] = "HeatRelease";
