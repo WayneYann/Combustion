@@ -1,8 +1,9 @@
 #
-# $Id: GNUmakefile,v 1.12 2008-09-19 15:52:56 marc Exp $
+# $Id: GNUmakefile,v 1.13 2008-09-19 17:05:38 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
+PMFdir        = ../PMFfiles
 #
 # User-settable variables.
 #
@@ -147,12 +148,12 @@ endif
 
 #CPPFLAGS += -DMPICH_SKIP_MPICXX
 
-vpath %.cpp $(MySrcDirs) ..
-vpath %.F   $(MySrcDirs) ..
-vpath %.f90 $(MySrcDirs) ..
-vpath %.H   $(MySrcDirs) ..
-vpath %.h   $(MySrcDirs) ..
-vpath %.f   $(MySrcDirs) ..
+vpath %.cpp $(MySrcDirs) ${PMFdir}
+vpath %.F   $(MySrcDirs) ${PMFdir}
+vpath %.f90 $(MySrcDirs) ${PMFdir}
+vpath %.H   $(MySrcDirs) ${PMFdir}
+vpath %.h   $(MySrcDirs) ${PMFdir}
+vpath %.f   $(MySrcDirs) ${PMFdir}
 vpath %.a   $(LIBRARY_LOCATIONS)
 
 MyMakeLine =  $(MAKE) PRECISION=$(PRECISION) PROFILE=$(PROFILE) COMP=$(COMP) \
