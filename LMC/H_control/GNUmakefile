@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.11 2007-06-18 16:36:06 jbb Exp $
+# $Id: GNUmakefile,v 1.12 2008-09-19 15:52:56 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -11,6 +11,7 @@ DEBUG	          = FALSE
 PROFILE           = TRUE
 PROFILE           = FALSE
 DIM    	          = 3
+DIM    	          = 2
 PRVERSION         = v7
 FCOMP             = Intel
 COMP              = Intel
@@ -20,14 +21,16 @@ EBASE             = amr
 USE_HGPROJ_SERIAL = FALSE
 HGDEBUG           = TRUE
 HGDEBUG           = FALSE
-USE_FLCTS         = TRUE
+USE_FLCTS         = FALSE
+#USE_FLCTS         = TRUE
 USE_MPI           = TRUE
+USE_MPI           = FALSE
 
 # This allows GetForce to call a Fortran routine
-DEFINES += -DGENGETFORCE
+#DEFINES += -DGENGETFORCE
 
 # This is for the time-dependent turbulence forcing term
-DEFINES += -DDO_LMC_FORCE
+#DEFINES += -DDO_LMC_FORCE
 
 #NEEDS_FLUSH_F := TRUE
 #
@@ -55,13 +58,13 @@ DEFINES += -DBL_PLOT_CONSUMPTION
 # Choose your reaction mechanism & thermal properties.
 #
 REACTION_MECHANISM=INERT30
-REACTION_MECHANISM=DRM19
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=GRI30HNO
 REACTION_MECHANISM=CHEMH
+REACTION_MECHANISM=DRM19
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
@@ -141,6 +144,8 @@ ifeq ($(USE_VELOCITY), TRUE)
 else
   MySrcDirs += $(TOP)/pAmrvis
 endif
+
+#CPPFLAGS += -DMPICH_SKIP_MPICXX
 
 vpath %.cpp $(MySrcDirs) ..
 vpath %.F   $(MySrcDirs) ..

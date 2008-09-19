@@ -5,7 +5,7 @@
   xcen = .02
   splitx = 2.0
   xfrontw = .005
-  probtype = 3
+  probtype = 1
   v_strength = -4000.
   v_strength = 0.
   v_width = .00125
@@ -15,16 +15,13 @@
   vorterr = .2
   max_vort_lev = 1
   vorterr = 1.e3
-  y_offset = -0.004
-  y_offset = -0.01288
-  y_offset = -0.00288
-  y_offset = 0.00288
-  y_offset = 0.03488
+  y_offset = 0.0
   flametracval = 1.e-6
   V_in = .1527
   nchemdiag = 1
   phi_in = 0.4
   phi_in = 0.37
+  pertmag = .0005
  /
  &heattransin
   pamb = 101325.0
@@ -36,6 +33,6 @@
   tau_control = 4.e-2
   tau_control = 1.e-3
   sest = .3
-  h_control = .04
+  h_control = .03
   changeMax_control = .05
  /

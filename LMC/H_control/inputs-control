@@ -5,32 +5,27 @@ DistributionMapping.do_not_minimize_comm_costs=0
 ht.plot_auxDiags = 0
 ht.plot_auxDiags = 1
 
-max_step  =  500
-stop_time = 5.00
+max_step  = 50000
+stop_time =  5.00
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 geometry.prob_lo   =   0.  0. # m
-geometry.prob_hi   =  .002 .016
-geometry.prob_hi   =  .008 .16
-geometry.prob_hi   =  .0039 .078
+geometry.prob_hi   =  .03 .06
 
-ns.tranfile        = ../tran.asc.chem-H
+ns.tranfile        = ./tran.asc.drm19
 ns.fuelName        = H2
 ns.oxidizerName    = O2
 ns.flameTracName   = H
+ns.consumptionName = CH4 H2
 
 ns.do_active_control = true
 
-amr.n_cell = 16 128
-amr.n_cell = 16 320
+amr.n_cell = 128 256
 
-amr.max_level = 3
-amr.max_level = 0
 
 proj.proj_2 = 1
-ns.do_init_vort_proj = 1
-proj.add_vort_proj = 1
-ns.hack_nochem = 0
+ns.do_init_vort_proj = 0
+proj.add_vort_proj = 0
 
 mg.usecg = 2
 cg.v = 0
@@ -47,11 +42,12 @@ amr.v  = 1
 mac.v  = 1
 proj.v = 0
 
+amr.max_level = 3
+amr.max_level = 0
 amr.ref_ratio       = 2 2 2 2   # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
-amr.grid_eff        = 0.9     # what constitutes an efficient grid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.check_file      = chk
 amr.check_int       = 25     # number of timesteps between checkpoints
@@ -62,7 +58,7 @@ amr.max_grid_size   = 512
 ht.plot_rhoY=0
 ht.plot_molefrac=1
 ht.plot_ydot=0
-amr.derive_plot_vars=rhoRT rhominsumrhoY mag_vort
+amr.derive_plot_vars=rhoRT mag_vort
 
 amr.probin_file = probin-control # This will default to file "probin" if not set
 
