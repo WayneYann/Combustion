@@ -216,6 +216,7 @@ c ::: -----------------------------------------------------------
      &                  hotspot_T, hotspot_htc, hotspot_w, vheight,
      &                  Vco_l,Vco_r,tVco_l,tVco_r,anisotsc,
      &                  InletFact_l,InletFact_r,tInletFact_l,tInletFact_r,
+     &                  InletFluctFact_l,InletFluctFact_r,tInletFluctFact_l,tInletFluctFact_r,
      &                  tau_control, sest, cfix, changeMax_control, h_control,
      &			zbase_control, tbase_control,
      &                  thickFacTR, thickFacCH,
@@ -318,6 +319,11 @@ c     Note: for setup with no coflow, set Ro=Rf+wallth
       InletFact_r = -1
       tInletFact_l = -1
       tInletFact_r = -1
+
+      InletFluctFact_l = -1
+      InletFluctFact_r = -1
+      tInletFluctFact_l = -1
+      tInletFluctFact_r = -1
 
       Thot = 2.d3
       rhot = Rf
@@ -787,6 +793,8 @@ c ::: -----------------------------------------------------------
       data lo / 1, 1, 1 /
       data hi / 1, 1, 1 /
 
+      double precision factor
+
       call bl_pd_is_ioproc(isioproc)
 
       if (.not. bcinit) then
@@ -845,10 +853,28 @@ c     Load experimental database values
 #ifdef SWIRL_DATA
                call vswirlXYZ(x,y,u,v,w)
 #else
-      u = 0
-      v = 0
-      w = 0
+               u = 0
+               v = 0
+               w = 0
 #endif
+               
+c     Compute a time-varying factor to apply to the velocity fields above the fuel pipe
+               factor = 1.d0
+               if ( (time .gt. zero).and.(tInletFact_l.ge.zero) ) then
+                  if (time .le. tInletFact_l) then
+                     factor = InletFact_l
+                  else if (time .ge. tInletFact_r) then
+                     factor = InletFact_r
+                  else
+                     factor = InletFact_l
+     &                    +(time-tInletFact_l)*(InletFact_r-InletFact_l)
+     &                    / (tInletFact_r-tInletFact_l)
+                  endif
+               endif
+
+               u = u*factor
+               v = v*factor
+               w = w*factor
 
 c     Continue expt data with TANH profiles to u_inf values
                if (r.gt.Rfu) then
@@ -2493,15 +2519,17 @@ c
       jhi = min(hi(2),domhi(2))
       khi = min(hi(3),domhi(3)) 
 
-c     Compute a time-varying factor to apply to the velocity fields
+c     Compute a time-varying factor to apply to the velocity field fluctuations
       factor = 1.d0
-      if ( (time .gt. zero).and.(tInletFact_l.ge.zero) ) then
-         if (time .le. tInletFact_l) then
-            factor = InletFact_l
-         else if (time .ge. tInletFact_r) then
-            factor = InletFact_r
+      if ( (time .gt. zero).and.(tInletFluctFact_l.ge.zero) ) then
+         if (time .le. tInletFluctFact_l) then
+            factor = InletFluctFact_l
+         else if (time .ge. tInletFluctFact_r) then
+            factor = InletFluctFact_r
          else
-            factor = InletFact_l+(time-tInletFact_l)*(InletFact_r-InletFact_l)/(tInletFact_r-tInletFact_l)
+            factor = InletFluctFact_l
+     &           +(time-tInletFluctFact_l)*(InletFluctFact_r-InletFluctFact_l)
+     &           /(tInletFluctFact_r-tInletFluctFact_l)
          endif
       endif
 
@@ -2560,7 +2588,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(1,1,2).eq.EXT_DIR) then
@@ -2570,7 +2597,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(1,1,3).eq.EXT_DIR) then
@@ -2580,7 +2606,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
@@ -2604,7 +2629,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(1,2,2).eq.EXT_DIR) then
@@ -2614,7 +2638,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(1,2,3).eq.EXT_DIR) then
@@ -2624,7 +2647,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
@@ -2648,7 +2670,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(2,1,2).eq.EXT_DIR) then
@@ -2658,7 +2679,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(2,1,3).eq.EXT_DIR) then
@@ -2669,7 +2689,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                      endif
 
 #endif
-                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
@@ -2693,7 +2712,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(2,2,2).eq.EXT_DIR) then
@@ -2703,7 +2721,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(2,2,3).eq.EXT_DIR) then
@@ -2713,7 +2730,6 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                         vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
@@ -2736,31 +2752,30 @@ c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
                      vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 3) then
-                       if(probtype.eq.4)then
-                        vel(i,j,k,1) = u + uflct(i,j,1)*turb_scale
-                       elseif(probtype.eq.5)then
-                          vel(i,j,k,1) = u
-                          if (r.le.Rfu) then
+                        if(probtype.eq.4)then
+                           vel(i,j,k,1) = u + uflct(i,j,1)*turb_scale
+                        elseif(probtype.eq.5)then
+                           vel(i,j,k,1) = u
+                           if (r.le.Rfu) then
 c                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
-                             vel(i,j,k,1) = u + uflct(i,j,1)*(1.0d0 + eta*1.574d0)
-                          endif
-                       else
+                              vel(i,j,k,1) = u + uflct(i,j,1)*(1.0d0 + eta*1.574d0)*factor
+                           endif
+                        else
 #ifdef SWIRL
-                        vel(i,j,k,1) = u + uflct(i,j,1)
+                           vel(i,j,k,1) = u + uflct(i,j,1)
 #else
-                        r = sqrt(x**2+y**2)
-                        cs = x/r
-                        sg = y/r
-                        scaler = turbSclR(r)
-                        scalet = turbSclT(r)
-                        vel(i,j,k,1) = u + turb_scale*turbSclX(x,y,z)*
-     &                       ((scaler*cs**2+scalet*sg**2)*uflct(i,j,1) +
-     &                       (scaler*sg*cs-scalet*sg*cs)*vflct(i,j,1))
+                           r = sqrt(x**2+y**2)
+                           cs = x/r
+                           sg = y/r
+                           scaler = turbSclR(r)
+                           scalet = turbSclT(r)
+                           vel(i,j,k,1) = u + turb_scale*turbSclX(x,y,z)*
+     &                          ((scaler*cs**2+scalet*sg**2)*uflct(i,j,1) +
+     &                          (scaler*sg*cs-scalet*sg*cs)*vflct(i,j,1))
 #endif
-                      endif
+                        endif
                      endif
 #endif
-                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(3,1,2).eq.EXT_DIR) then
@@ -2768,61 +2783,59 @@ c                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 3) then
                         if(probtype.eq.4)then
-                          vel(i,j,k,2) = v + vflct(i,j,1)*turb_scale
-                       elseif(probtype.eq.5)then
-                          vel(i,j,k,2) = v
-                          if (r.le.Rfu) then
+                           vel(i,j,k,2) = v + vflct(i,j,1)*turb_scale
+                        elseif(probtype.eq.5)then
+                           vel(i,j,k,2) = v
+                           if (r.le.Rfu) then
 c                             vel(i,j,k,2) = v + vflct(i,j,1)*(2.7 + eta*4.25)
-                             vel(i,j,k,2) = v + vflct(i,j,1)*(1.0d0 + eta*1.574d0)
-                          endif
+                              vel(i,j,k,2) = v + vflct(i,j,1)*(1.0d0 + eta*1.574d0)*factor
+                           endif
                         else
 #ifdef SWIRL
-                        vel(i,j,k,2) = v + vflct(i,j,1)
+                           vel(i,j,k,2) = v + vflct(i,j,1)
 #else
-                        r = sqrt(x**2+y**2)
-                        cs = x/r
-                        sg = y/r
-                        scaler = turbSclR(r)
-                        scalet = turbSclT(r)
-                        vel(i,j,k,2) = v + turb_scale*turbSclY(x,y,z)*
-     &                       ((scaler*sg**2+scalet*cs**2)*vflct(i,j,1) +
-     &                       (scaler*sg*cs- scalet*sg*cs)*uflct(i,j,1))
+                           r = sqrt(x**2+y**2)
+                           cs = x/r
+                           sg = y/r
+                           scaler = turbSclR(r)
+                           scalet = turbSclT(r)
+                           vel(i,j,k,2) = v + turb_scale*turbSclY(x,y,z)*
+     &                          ((scaler*sg**2+scalet*cs**2)*vflct(i,j,1) +
+     &                          (scaler*sg*cs- scalet*sg*cs)*uflct(i,j,1))
 #endif
-                       endif
+                        endif
                      endif
 #endif
-                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
-
+                  
                   if (bc(3,1,3).eq.EXT_DIR) then
                      vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 3) then
-                      if(probtype.eq.4)then
-                        vel(i,j,k,3) = w + wflct(i,j,1)*turb_scale
-                       elseif(probtype.eq.5)then
-                          vel(i,j,k,3) = w
-                          if (r.le.Rfu) then
+                        if(probtype.eq.4)then
+                           vel(i,j,k,3) = w + wflct(i,j,1)*turb_scale
+                        elseif(probtype.eq.5)then
+                           vel(i,j,k,3) = w
+                           if (r.le.Rfu) then
 c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
-                             vel(i,j,k,3) = w + wflct(i,j,1)*(1.0d0 + eta*1.574d0)
-                          endif
-                      else
+                              vel(i,j,k,3) = w + wflct(i,j,1)*(1.0d0 + eta*1.574d0)*factor
+                           endif
+                        else
 #ifdef SWIRL
-                        vel(i,j,k,3) = w + wflct(i,j,1)
-#else
-                        vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
-     &                       * anisotsc
+                           vel(i,j,k,3) = w + wflct(i,j,1)
+#else 
+                           vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
+     &                          * anisotsc
 #endif
-                       endif
+                        endif
                      endif
 #endif
-                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
          enddo
       endif
-
+      
       if (hi(3).gt.domhi(3)) then
          do k = domhi(3)+1, hi(3)
             z = (float(k)+.5)*delta(3)+domnlo(3)
@@ -2840,7 +2853,6 @@ c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
                         vel(i,j,k,1) = u + uflct(i,j,1)*turbSclX(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,1) = vel(i,j,k,1) * factor
                   endif
 
                   if (bc(3,2,2).eq.EXT_DIR) then
@@ -2850,7 +2862,6 @@ c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
                         vel(i,j,k,2) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,2) = vel(i,j,k,2) * factor
                   endif
 
                   if (bc(3,2,3).eq.EXT_DIR) then
@@ -2860,7 +2871,6 @@ c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
                         vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
                      endif
 #endif
-                     vel(i,j,k,3) = vel(i,j,k,3) * factor
                   endif
                enddo
             enddo
