@@ -8331,8 +8331,8 @@ HeatTransfer::calc_divu (Real      time,
 	//
 	const int nGrow = 0;
 
-	int sCompR, sCompT, sCompY, sCompP, sCompCp, sCompMw;
-	sCompR=sCompT=sCompY=sCompP=sCompCp=sCompMw=0;	
+	int sCompR, sCompT, sCompY, sCompCp, sCompMw;
+	sCompR=sCompT=sCompY=sCompCp=sCompMw=0;	
 	//
 	// mcdd: get Y,T visc terms together, use in place of individual calls below
 	//
