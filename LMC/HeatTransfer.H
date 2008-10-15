@@ -539,7 +539,7 @@ protected:
     
 protected:
 
-    DistributionMapping getFuncCountDM (const BoxArray& bxba);
+    DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
     //
     // Protected data.
     //

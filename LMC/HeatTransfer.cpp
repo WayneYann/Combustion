@@ -4967,9 +4967,10 @@ HeatTransfer::advance (Real time,
                        0,
                        aux_boundary_data_old.DistributionMap(),
                        Fab_allocate);
-        {
-            const int ngrow = aux_boundary_data_old.nGrow();
 
+        const int ngrow = aux_boundary_data_old.nGrow();
+
+        {
             BoxArray ba = S_old.boxArray();
 
             ba.grow(ngrow);
@@ -4996,7 +4997,7 @@ HeatTransfer::advance (Real time,
         }
 
         strang_chem(S_old,  dt,HT_LeaveYdotAlone);
-        strang_chem(tmpFABs,dt,HT_LeaveYdotAlone);
+        strang_chem(tmpFABs,dt,HT_LeaveYdotAlone,ngrow);
 
         aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
     }
@@ -5668,8 +5669,13 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
 }
 
 DistributionMapping
-HeatTransfer::getFuncCountDM (const BoxArray& bxba)
+HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
 {
+    //
+    // Sometimes "mf" is the valid region of the State.
+    // Sometimes it's the region covered by AuxBoundaryData.
+    // When ngrow>0 were doing AuxBoundaryData with nGrow()==ngrow.
+    //
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getFuncCountDM()");
 
     DistributionMapping rr;
@@ -5678,7 +5684,31 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba)
     MultiFab fctmpnew;
     fctmpnew.define(bxba, 1, 0, rr, Fab_allocate);
     fctmpnew.setVal(1);
-    fctmpnew.copy(get_new_data(FuncCount_Type));  // Parallel copy.
+
+    if (ngrow == 0)
+    {
+        //
+        // Working on valid region of state.
+        //
+        fctmpnew.copy(get_new_data(FuncCount_Type));  // Parallel copy.
+    }
+    else
+    {
+        //
+        // Can't directly use a parallel copy from FuncCount_Type to fctmpnew.
+        //
+        MultiFab& FC = get_new_data(FuncCount_Type);
+
+        BoxArray ba = FC.boxArray();
+        ba.grow(ngrow);
+        MultiFab grownFC(ba, 1, 0);
+        grownFC.setVal(1);
+                
+        for (MFIter mfi(FC); mfi.isValid(); ++mfi)
+            grownFC[mfi].copy(FC[mfi]);
+
+        fctmpnew.copy(grownFC);  // Parallel copy.
+    }
 
     int count = 0;
     Array<long> vwrk(bxba.size());
@@ -5744,13 +5774,15 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba)
 }
 
 void
-HeatTransfer::strang_chem (MultiFab&  state,
+HeatTransfer::strang_chem (MultiFab&  mf,
                            Real       dt,
                            YdotAction Ydot_action,
                            int        ngrow)
 {
     //
-    // Note: we only update the valid region of the "state" MultiFab.
+    // Sometimes "mf" is the valid region of the State.
+    // Sometimes it's the region covered by AuxBoundaryData.
+    // When ngrow>0 were doing AuxBoundaryData with nGrow()==ngrow.
     //
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::strang_chem(MultiFab&,...");
 
@@ -5770,9 +5802,9 @@ HeatTransfer::strang_chem (MultiFab&  state,
     //       estimate by averaging with the effective rate over this first half
     // Note:
     //   The dt passed in is the full time step for this level ... and
-    //   state is in State_Type ordering, but starts at the scalars.
+    //   mf is in State_Type ordering, but starts at the scalars.
     //
-    const int rho_comp  = Density; // state and State_Type completely aligned here
+    const int rho_comp  = Density; // mf and State_Type completely aligned here
     const int dCompYdot = 0;       // first component of Ydot corres. to first_spec
     const int ycomp     = first_spec - Density + rho_comp;
     const int Tcomp     = Temp - Density + rho_comp;
@@ -5805,19 +5837,19 @@ HeatTransfer::strang_chem (MultiFab&  state,
 
         {
             FArrayBox tmp;
-            for (MFIter Smfi(state); Smfi.isValid(); ++Smfi)
+            for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi)
             {
                 tmp.resize(Smfi.validbox(),1);
-                tmp.copy(state[Smfi],rho_comp,0,1);
+                tmp.copy(mf[Smfi],rho_comp,0,1);
                 tmp.invert(1);
 
                 for (int comp = 0; comp < nspecies; ++comp)
-                    state[Smfi].mult(tmp,0,ycomp+comp,1);
+                    mf[Smfi].mult(tmp,0,ycomp+comp,1);
             }
         }
 
         if (ydot_tmp) 
-            ydot_tmp->copy(state,ycomp,dCompYdot,nspecies);
+            ydot_tmp->copy(mf,ycomp,dCompYdot,nspecies);
 
         FArrayBox* chemDiag = 0;
 
@@ -5825,28 +5857,32 @@ HeatTransfer::strang_chem (MultiFab&  state,
         {
 	    MultiFab tmp;
 
-            tmp.define(state.boxArray(), 1, 0, state.DistributionMap(), Fab_allocate);
+            tmp.define(mf.boxArray(), 1, 0, mf.DistributionMap(), Fab_allocate);
 
-            for (MFIter Smfi(state); Smfi.isValid(); ++Smfi)
+            for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi)
             {
-                FArrayBox& fb = state[Smfi];
+                FArrayBox& fb = mf[Smfi];
                 const Box& bx = Smfi.validbox();
 		FArrayBox& fc = tmp[Smfi];
 
                 if (plot_reactions &&
-                    BoxLib::intersect(state.boxArray(),auxDiag["REACTIONS"]->boxArray()).size() != 0)
+                    BoxLib::intersect(mf.boxArray(),auxDiag["REACTIONS"]->boxArray()).size() != 0)
                 {
                     chemDiag = &( (*auxDiag["REACTIONS"])[Smfi] );
                 }
 
                 getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chem_integrator,chemDiag);
             }
-
+            //
+            // When ngrow>0 this does NOT properly update FuncCount_Type since parallel
+            // copy()s do not touch ghost cells.  We'll ignore this since we're not using
+            // the FuncCount_Type anyway.
+            //
 	    get_new_data(FuncCount_Type).copy(tmp);
         }
         else
         {
-            BoxArray ba = state.boxArray();
+            BoxArray ba = mf.boxArray();
 
             ba.maxSize(max_grid_size_chem);
 
@@ -5857,11 +5893,11 @@ HeatTransfer::strang_chem (MultiFab&  state,
                 //
                 ba.maxSize(max_grid_size_chem/2);
 
-            DistributionMapping dm = getFuncCountDM(ba);
+            DistributionMapping dm = getFuncCountDM(ba,ngrow);
 
             MultiFab tmp, fcnCntTemp;
 
-            tmp.define(ba, state.nComp(), 0, dm, Fab_allocate);
+            tmp.define(ba, mf.nComp(), 0, dm, Fab_allocate);
 
             fcnCntTemp.define(ba, 1, 0, dm, Fab_allocate);
 
@@ -5878,9 +5914,9 @@ HeatTransfer::strang_chem (MultiFab&  state,
             //
             // Split up the copy below to cut down on excess FAB overhead.
             //
-            for (int i = 0; i < state.nComp(); i++)
+            for (int i = 0; i < mf.nComp(); i++)
             {
-                tmp.copy(state, i, i, 1); // Parallel copy.
+                tmp.copy(mf, i, i, 1); // Parallel copy.
             }
 
             for (MFIter Smfi(tmp); Smfi.isValid(); ++Smfi)
@@ -5895,9 +5931,9 @@ HeatTransfer::strang_chem (MultiFab&  state,
             //
             // Split up the copy below to cut down on excess FAB overhead.
             //
-            for (int i = 0; i < state.nComp(); i++)
+            for (int i = 0; i < mf.nComp(); i++)
             {
-                state.copy(tmp, i, i, 1); // Parallel copy.
+                mf.copy(tmp, i, i, 1); // Parallel copy.
             }
 
             if (do_diag)
@@ -5905,21 +5941,46 @@ HeatTransfer::strang_chem (MultiFab&  state,
                 auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
             }
 
-            get_new_data(FuncCount_Type).copy(fcnCntTemp); // Parallel copy.
+            if (ngrow == 0)
+            {
+                //
+                // Working on valid region of state.
+                //
+                get_new_data(FuncCount_Type).copy(fcnCntTemp); // Parallel copy.
+            }
+            else
+            {
+                //
+                // Can't directly use a parallel copy to update FuncCount_Type.
+                //
+                MultiFab& FC = get_new_data(FuncCount_Type);
+
+                BoxArray ba = FC.boxArray();
+                ba.grow(ngrow);
+                MultiFab grownFC(ba, 1, 0);
+                
+                for (MFIter mfi(FC); mfi.isValid(); ++mfi)
+                    grownFC[mfi].copy(FC[mfi]);
+
+                grownFC.copy(fcnCntTemp); // Parallel copy.
+
+                for (MFIter mfi(grownFC); mfi.isValid(); ++mfi)
+                    FC[mfi].copy(grownFC[mfi]);
+            }
         }
 
         if (ydot_tmp)
         {
-            for (MFIter Smfi(state); Smfi.isValid(); ++Smfi)
+            for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi)
             {
-                (*ydot_tmp)[Smfi].minus(state[Smfi], Smfi.validbox(), ycomp, 0, nspecies);
+                (*ydot_tmp)[Smfi].minus(mf[Smfi], Smfi.validbox(), ycomp, 0, nspecies);
                 (*ydot_tmp)[Smfi].mult(1/(0.5*dt), Smfi.validbox(), 0, nspecies);
             }
         }
 
-        for (MFIter Smfi(state); Smfi.isValid(); ++Smfi)
+        for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi)
             for (int comp = 0; comp < nspecies; ++comp)
-                state[Smfi].mult(state[Smfi],Smfi.validbox(),rho_comp,ycomp+comp,1);
+                mf[Smfi].mult(mf[Smfi],Smfi.validbox(),rho_comp,ycomp+comp,1);
 
         if (Ydot_action == HT_ImproveYdotOld)
         {
