@@ -1514,13 +1514,9 @@ HeatTransfer::post_init (Real stop_time)
                 // Don't update S_new in this strang_chem() call ...
                 //
                 MultiFab S_tmp(S_new.boxArray(),S_new.nComp(),0);
-                //
-                // Split up the copy below to cut down on excess FAB overhead.
-                //
-                for (int i = 0; i < S_new.nComp(); i++)
-                {
-                    S_tmp.copy(S_new, i, i, 1);  // Parallel copy
-                }
+
+                S_tmp.copy(S_new);  // Parallel copy
+
                 getLevel(k).strang_chem(S_tmp,dt_save[k],HT_EstimateYdotNew);
             }
         }
@@ -4987,13 +4983,8 @@ HeatTransfer::advance (Real time,
             {
                 tmpS_old[fpi.index()].copy(fpi());
             }
-            //
-            // Split up the copy below to cut down on excess FAB overhead.
-            //
-            for (int i = 0; i < NUM_STATE; i++)
-            {
-                tmpFABs.copy(tmpS_old, i, i, 1);  // Parallel copy
-            }
+
+            tmpFABs.copy(tmpS_old);
         }
 
         strang_chem(S_old,  dt,HT_LeaveYdotAlone);
@@ -5782,7 +5773,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
     //
     // Sometimes "mf" is the valid region of the State.
     // Sometimes it's the region covered by AuxBoundaryData.
-    // When ngrow>0 were doing AuxBoundaryData with nGrow()==ngrow.
+    // When ngrow>0 we're doing AuxBoundaryData with nGrow()==ngrow.
     //
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::strang_chem(MultiFab&,...");
 
@@ -5911,13 +5902,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
             if (verbose && ParallelDescriptor::IOProcessor())
                 std::cout << "*** strang_chem: FABs in tmp MF: " << tmp.size() << std::endl;
-            //
-            // Split up the copy below to cut down on excess FAB overhead.
-            //
-            for (int i = 0; i < mf.nComp(); i++)
-            {
-                tmp.copy(mf, i, i, 1); // Parallel copy.
-            }
+
+            tmp.copy(mf); // Parallel copy.
 
             for (MFIter Smfi(tmp); Smfi.isValid(); ++Smfi)
             {
@@ -5928,13 +5914,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
                 getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chem_integrator,chemDiag);
             }
-            //
-            // Split up the copy below to cut down on excess FAB overhead.
-            //
-            for (int i = 0; i < mf.nComp(); i++)
-            {
-                mf.copy(tmp, i, i, 1); // Parallel copy.
-            }
+
+            mf.copy(tmp); // Parallel copy.
 
             if (do_diag)
             {
