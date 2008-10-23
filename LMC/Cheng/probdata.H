@@ -14,14 +14,14 @@
       common /prob4/ fuelID, oxidID, prodID, nspecies, direction
       save /prob1/,/prob2/,/prob3/,/prob4/
 
-      integer refine_nozzle, max_nozzle_lev,
+      integer refine_nozzle, max_nozzle_lev, nozzle_alt_lev,
      &         refine_stick, max_stick_lev, max_trac_lev, min_nogrid_lev
-      REAL_T refine_nozzle_x, refine_nozzle_y, refine_nozzle_z, 
+      REAL_T refine_nozzle_x, refine_nozzle_y, refine_nozzle_z, refine_nozzle_z_alt,
      &         nozzle_width, refine_stick_x, refine_stick_z, nogrid_radius
-      common /myprob1/ refine_nozzle, max_nozzle_lev,
+      common /myprob1/ refine_nozzle, max_nozzle_lev, nozzle_alt_lev,
      &         refine_stick, max_stick_lev, max_trac_lev, min_nogrid_lev
       common /myprob2/ refine_nozzle_x, refine_nozzle_y, 
-     &                 refine_nozzle_z, nozzle_width,
+     &                 refine_nozzle_z, refine_nozzle_z_alt, nozzle_width,
      &                 refine_stick_x, refine_stick_z, nogrid_radius
 
       save /myprob1/,/myprob2/

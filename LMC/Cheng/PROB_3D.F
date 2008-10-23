@@ -201,9 +201,9 @@ c ::: -----------------------------------------------------------
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, 
      &                  flametracval, probtype,
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
-     &                  traceSpecVal,
+     &                  traceSpecVal, nozzle_alt_lev,
      &                  max_nozzle_lev, refine_nozzle, refine_nozzle_x, 
-     &                  refine_nozzle_y, refine_nozzle_z, nozzle_width,
+     &                  refine_nozzle_y, refine_nozzle_z, refine_nozzle_z_alt, nozzle_width,
      &                  max_stick_lev, refine_stick, refine_stick_x, 
      &                  refine_stick_z, direction, min_nogrid_lev, nogrid_radius,
 #if defined(BL_DO_FLCT)
@@ -266,11 +266,13 @@ c
       max_trac_lev = 100
       traceSpecVal = 1.d-10
       refine_nozzle = 0
+      refine_nozzle_z_alt = zero
       refine_nozzle_z = zero
       refine_nozzle_y = zero
       refine_nozzle_x = zero
       nozzle_width = -one
       max_nozzle_lev = 100
+      nozzle_alt_lev = 100
       refine_stick = 0
       refine_stick_x = zero
       refine_stick_z = zero
@@ -1762,6 +1764,22 @@ c ::: -----------------------------------------------------------
                   in_refine_zone = (r .le. refine_nozzle_x)
                   in_refine_zone = in_refine_zone .and.
      &                  (z - problo(3)) .le. refine_nozzle_z
+                  tag(i,j,k) = cvmgt(set,tag(i,j,k),in_refine_zone)
+               end do
+            end do
+         end do
+      end if
+      if ((level.lt.nozzle_alt_lev).and.(refine_nozzle.eq.1)) then
+         do k = lo(3), hi(3)
+            z = (float(k)+.5)*dx(3)+problo(3)
+            do j = lo(2), hi(2)
+               y = (float(j)+.5)*dx(2)+problo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*dx(1)+problo(1)
+                  r = SQRT(x*x+y*y)
+                  in_refine_zone = (r .le. refine_nozzle_x)
+                  in_refine_zone = in_refine_zone .and.
+     &                  (z - problo(3)) .le. refine_nozzle_z_alt
                   tag(i,j,k) = cvmgt(set,tag(i,j,k),in_refine_zone)
                end do
             end do
