@@ -5155,6 +5155,7 @@ HeatTransfer::advance (Real time,
 			       div_of_flux_for_Y_new,
 			       flux_for_H_new,
 			       flux_for_Y_new);
+
 	// restore the new state with the saved values so that it holds the sum of the old
         // state and the forcing and advection terms.
 	MultiFab::Copy (S_new, save_for_rhoH, 0, index_of_rhoH, 1, 0);
