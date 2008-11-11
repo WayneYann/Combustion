@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.11 2008-11-11 02:02:22 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.12 2008-11-11 02:33:46 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1993,7 +1993,7 @@ c     Returns the number of fine cells fixed up
                      enddo
                   enddo
 
-                  FORT_CONSERVATIVE_T_FLOOR = FORT_CONSERVATIVE_T_FLOOR + cnt
+                  FORT_CONSERVATIVE_T_FLOOR = FORT_CONSERVATIVE_T_FLOOR + ncells
                   tmp(Rcomp) = tmp(Rcomp) * ncellsInv
                   do n=first_spec,last_spec
                      tmp(n) = tmp(n) * ncellsInv
