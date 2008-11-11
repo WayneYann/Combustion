@@ -133,6 +133,8 @@ bool      HeatTransfer::do_rk_diffusion           = false;
 bool      HeatTransfer::rk_mixture_averaged       = false;
 Real      HeatTransfer::rk_time_step_multiplier   = 0.5;
 
+Real      HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
+
 static int  max_grid_size_chem   = 16;
 static bool do_not_use_funccount = false;
 static bool do_active_control    = false;
@@ -661,6 +663,8 @@ HeatTransfer::init_once ()
         auxDiag_names["HEATRELEASE"].resize(1);
         auxDiag_names["HEATRELEASE"][0] = "HeatRelease";
     }
+    
+    pp.query("new_T_threshold",new_T_threshold);
 
     init_once_done = 1;
 }
@@ -1387,6 +1391,47 @@ HeatTransfer::init ()
     FillCoarsePatch(get_new_data(Ydot_Type),0,cur_time,Ydot_Type,0,nspecies);
 
     RhoH_to_Temp(get_new_data(State_Type));
+
+    if (new_T_threshold>0)
+    {
+        MultiFab& crse = old.get_new_data(State_Type);
+        MultiFab& fine = get_new_data(State_Type);
+
+        RhoH_to_Temp(crse,0); // Make sure T is current
+        Real min_T_crse = crse.min(Temp);
+        Real min_T_fine = min_T_crse * std::min(1.0, new_T_threshold);
+
+        const int* ratio = crse_ratio.getVect();
+        int Tcomp = (int)Temp;
+        int Rcomp = (int)Density;
+        int n_tmp = std::max( (int)Density, std::max( (int)Temp, std::max( last_spec, RhoH) ) );
+        Array<Real> tmp(n_tmp);
+        int num_cells_hacked = 0;
+        for (MFIter mfi(fine); mfi.isValid(); ++mfi)
+        {
+            FArrayBox& fab = fine[mfi];
+            const Box& box = mfi.validbox();
+            num_cells_hacked += 
+                FORT_CONSERVATIVE_T_FLOOR(box.loVect(), box.hiVect(),
+                                          fab.dataPtr(), ARLIM(fab.loVect()), ARLIM(fab.hiVect()),
+                                          &min_T_fine, &Tcomp, &Rcomp, &first_spec, &last_spec, &RhoH,
+                                          ratio, tmp.dataPtr(), &n_tmp);
+        }
+
+        ParallelDescriptor::ReduceIntSum(num_cells_hacked);
+
+        if (num_cells_hacked > 0) {
+
+            Real old_min = fine.min(Temp);
+            RhoH_to_Temp(get_new_data(State_Type));
+            Real new_min = fine.min(Temp);
+
+            if (verbose && ParallelDescriptor::IOProcessor()) {
+                std::cout << "...level data adjusted to reduce new extrema (" << num_cells_hacked
+                          << " cells affected), new min = " << new_min << " (old min = " << old_min << ")" << std::endl;
+            }
+        }
+    }
 
     FillCoarsePatch(get_new_data(FuncCount_Type),0,cur_time,FuncCount_Type,0,1);
 }

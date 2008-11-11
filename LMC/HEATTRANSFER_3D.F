@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.10 2008-08-06 17:54:54 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.11 2008-11-11 02:02:22 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1923,6 +1923,104 @@ c     arguments
       return
       end
 
+      integer function FORT_CONSERVATIVE_T_FLOOR(
+     &     loF,hiF,state,DIMS(state),
+     &     min_T, Tcomp, Rcomp, first_spec, last_spec, RhoH,
+     &     ratio, tmp, nt)
+      implicit none
+
+      integer loF(SDIM), hiF(SDIM)
+      integer DIMDEC(state)
+      REAL_T  state(DIMV(state),0:*)      
+      integer Tcomp, Rcomp, first_spec, last_spec, RhoH, ratio(SDIM), nt
+      REAL_T  min_T, tmp(0:nt-1)
+      integer n,i,j,k, loC(SDIM),hiC(SDIM),ii,jj,kk,iii,jjj,kkk,ncells
+      Real ncellsInv
+      logical bad_T
+
+c     Returns the number of fine cells fixed up
+      FORT_CONSERVATIVE_T_FLOOR = 0
+
+      ncells = 1
+      do n=1,SDIM
+         loC(n) = loF(n)/ratio(n)
+         hiC(n) = (hiF(n)+1)/ratio(n) - 1
+         ncells = ncells*ratio(n)
+      enddo
+      ncellsInv = 1.d0 / ncells
+
+      do k=loC(3),hiC(3)
+         do j=loC(2),hiC(2)
+            do i=loC(1),hiC(1)
+
+               bad_T = .false.
+               do kk=0,ratio(3)-1
+                  kkk = ratio(3)*k + kk
+                  do jj=0,ratio(2)-1
+                     jjj = ratio(2)*j + jj
+                     do ii=0,ratio(1)-1
+                        iii = ratio(1)*i + ii
+                        if (state(iii,jjj,kkk,Tcomp).lt.min_T) then
+                           bad_T = .true.
+                        endif
+                     enddo
+                  enddo
+               enddo
+
+               if (bad_T .eqv. .true.) then
+
+                  tmp(Rcomp) = 0.d0
+                  do n=first_spec,last_spec
+                     tmp(n) = 0.d0
+                  enddo
+                  tmp(RhoH) = 0.d0
 
 
+                  do kk=0,ratio(3)-1
+                     kkk = ratio(3)*k + kk
+                     do jj=0,ratio(2)-1
+                        jjj = ratio(2)*j + jj
+                        do ii=0,ratio(1)-1
+                           iii = ratio(1)*i + ii
+                           
+                           tmp(Rcomp) = tmp(Rcomp) + state(iii,jjj,kkk,Rcomp)
+                           do n=first_spec,last_spec
+                              tmp(n) = tmp(n) + state(iii,jjj,kkk,n)
+                           enddo
+                           tmp(RhoH) = tmp(RhoH) + state(iii,jjj,kkk,RhoH)
+                           
+                        enddo
+                     enddo
+                  enddo
 
+                  FORT_CONSERVATIVE_T_FLOOR = FORT_CONSERVATIVE_T_FLOOR + cnt
+                  tmp(Rcomp) = tmp(Rcomp) * ncellsInv
+                  do n=first_spec,last_spec
+                     tmp(n) = tmp(n) * ncellsInv
+                  enddo
+                  tmp(RhoH) = tmp(RhoH)* ncellsInv
+                  
+                  do kk=0,ratio(3)-1
+                     kkk = ratio(3)*k + kk
+                     do jj=0,ratio(2)-1
+                        jjj = ratio(2)*j + jj
+                        do ii=0,ratio(1)-1
+                           iii = ratio(1)*i + ii
+                           
+                           state(iii,jjj,kkk,Rcomp) = tmp(Rcomp)
+                           do n=first_spec,last_spec
+                              state(iii,jjj,kkk,n) = tmp(n)
+                           enddo
+                           state(iii,jjj,kkk,RhoH) = tmp(RhoH)
+                           
+                        enddo
+                     enddo
+                  enddo
+
+
+               endif
+
+            enddo
+         enddo
+      enddo
+      end

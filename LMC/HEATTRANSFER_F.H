@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.2 2007-09-12 21:29:44 sepp Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.3 2008-11-11 02:02:22 marc Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -28,6 +28,7 @@
 #    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent
 #    define FORT_RK_STEP_SELECTION         rkstepselection
+#    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -55,6 +56,7 @@
 #    define FORT_RK_MIXTURE_AVERAGED       RKMIXTUREAVERAGED
 #    define FORT_RK_MULTICOMPONENT         RKMULTICOMPONENT
 #    define FORT_RK_STEP_SELECTION         RKSTEPSELECTION
+#    define FORT_CONSERVATIVE_T_FLOOR      CONSTFLOOR
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -81,6 +83,7 @@
 #    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent
 #    define FORT_RK_STEP_SELECTION         rkstepselection
+#    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -107,6 +110,7 @@
 #    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged_
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent_
 #    define FORT_RK_STEP_SELECTION         rkstepselection_
+#    define FORT_CONSERVATIVE_T_FLOOR      constfloor_
 #  endif
 
 #include <ArrayLim.H>
@@ -331,6 +335,14 @@ extern "C" {
 	Real* smallest_time_step,
 	Real* state, ARLIM_P(state_lo), ARLIM_P(state_hi)
 	);
+
+    int FORT_CONSERVATIVE_T_FLOOR(const int* lo, const int* hi,
+                                  Real* fabdat, ARLIM_P(flo), ARLIM_P(fhi),
+                                  const Real* min_T_fine, const int* Tcomp, const int* Rcomp,
+                                  const int* first_comp, const int* last_spec, const int* RhoH,
+                                  const int* ratio, Real* tmp, const int* nt);
+    
+
 }
 #endif
 

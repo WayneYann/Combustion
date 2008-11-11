@@ -621,6 +621,7 @@ protected:
     static bool        rk_mixture_averaged;
     static Real        rk_time_step_multiplier;
     static int         calcDiffusivity_count;
+    static Real        new_T_threshold;
 };
 
 #endif /*_HeatTransfer_H_*/
