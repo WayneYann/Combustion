@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.36 2008-10-02 20:08:40 sepp Exp $
+# $Id: GNUmakefile,v 1.37 2008-12-19 20:44:04 sepp Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -7,8 +7,8 @@ TOP           = $(PBOXLIB_HOME)
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = TRUE
 DEBUG	          = FALSE
+DEBUG	          = TRUE
 PROFILE           = FALSE
 DIM    	          = 2
 PRVERSION         = v5
@@ -23,8 +23,8 @@ USE_HGPROJ_SERIAL = FALSE
 HGDEBUG           = FALSE
 USE_FLCTS         = TRUE
 USE_FLCTS         = FALSE
-USE_MPI           = FALSE
 USE_MPI           = TRUE
+USE_MPI           = FALSE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
