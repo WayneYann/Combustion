@@ -3112,10 +3112,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                     diffusion->allocFluxBoxesLevel(beta);
                     getDiffusivity(beta, time, icomp, 0, 1);
 
-		    if (ParallelDescriptor::IOProcessor ())
-		    {
-			std::cout << "///  jfg: HeatTransfer::getViscTerms calling diffusion->getViscTerms comp = " << icomp << std::endl;
-		    }
                     diffusion->getViscTerms(visc_terms,icomp-load_comp,
                                             icomp,time,rho_flag,0,beta);
                     
@@ -6162,15 +6158,7 @@ HeatTransfer::compute_edge_states (Real               dt,
             }
             else
             {
-		if (ParallelDescriptor::IOProcessor())
-		{
-		    std::cout << "jfg: compute_edge_states calls getViscTerms" << std::endl;
-		}
                 getViscTerms(visc_terms[sigma],sigma,1,prev_time);
-		if (ParallelDescriptor::IOProcessor())
-		{
-		    std::cout << "jfg: compute_edge_states returns from getViscTerms" << std::endl;
-		}
             }
         }
     }
