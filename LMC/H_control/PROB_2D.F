@@ -438,7 +438,11 @@ c     For probtype == 1, set boundary conditions from premixed flame profile in 
          yEval = y*100. - y_offset*100.
          call pmf(yEval,yEval,pmf_vals,n)
 
-         if (n.ne.Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
+         if (n.ne.Nspec+3) then
+            print *,'n=',n
+            print *,'Nspec=',Nspec
+            call bl_abort('SETUPBC: n .ne. Nspec+3')
+         endif
 
          call FORT_MOLETOMASS(lo,hi,
      &        pmf_vals(4), ARLIM(lo),ARLIM(hi),
