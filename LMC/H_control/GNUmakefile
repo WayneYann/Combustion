@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.13 2008-09-19 17:05:38 marc Exp $
+# $Id: GNUmakefile,v 1.14 2009-01-07 18:59:27 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -38,23 +38,14 @@ USE_MPI           = FALSE
 # Turn this on to restart from a plotfile.
 #
 #USE_NEWMECH = TRUE
-USE_NEWMECH = FALSE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
-USE_VELOCITY = TRUE
+#USE_VELOCITY = TRUE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
 #DEFINES += -DBL_RHORT_IN_TRACER
-#
-# If you want to plot reaction rates uncomment the following
-#
-#DEFINES += -DBL_PLOT_REACS
-#
-# If you want to plot fuel consumption rates uncomment the following
-#
-DEFINES += -DBL_PLOT_CONSUMPTION
 #
 # Choose your reaction mechanism & thermal properties.
 #
