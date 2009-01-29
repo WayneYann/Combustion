@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.14 2008-11-11 02:02:22 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.15 2009-01-29 00:23:23 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1460,7 +1460,7 @@ c     local variables
 #ifdef BL_CYGWIN_NT
       print *,'Need to rebuild with f90'
       stop
-#else
+#endif
 c     local arrays
       REAL_T, allocatable :: contiguous_Y (:)
       REAL_T, allocatable :: cpms_on_edge (:)
@@ -2313,7 +2313,7 @@ c     local variables
 #ifdef BL_CYGWIN_NT
       print *,'Need to rebuild with f90'
       stop
-#else
+#endif
 c     local arrays
       REAL_T, allocatable :: contiguous_X (:)
       REAL_T, allocatable :: contiguous_Y (:)
@@ -3109,7 +3109,7 @@ c     local variables
 #ifdef BL_CYGWIN_NT
       print *,'Need to rebuild with f90'
       stop
-#else
+#endif
 c     local arrays
       REAL_T, allocatable :: contiguous_X (:)
       REAL_T, allocatable :: contiguous_Y (:)
