@@ -230,7 +230,8 @@ c ::: -----------------------------------------------------------
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
 #endif
-      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control,zbase_control
+      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control,
+     &     zbase_control, tbase_control
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
@@ -317,9 +318,10 @@ c
       numInflPlanesStore = -1
       forceLo = .TRUE.
       forceHi = .FALSE.
-      strmwse_dir = FLCT_ZVEL
+      strmwse_dir = FLCT_YVEL
       flct_file = ""
       turb_scale = 1
+      nCompInFlow = 2
 #endif
 
 c     Initialize control variables
@@ -332,6 +334,7 @@ c     Initialize control variables
       ac_hist_file = 'AC_History'
       h_control = -one
       nchemdiag = 1
+      tbase_control = zero
       
       read(untin,fortin)
 c      write(6,fortin)
@@ -347,7 +350,7 @@ c      write(6,heattransin)
 #if defined(BL_DO_FLCT)
       read(untin,flctin)
 
-      write(6,flctin)
+c     write(6,flctin)
 #endif
 
       read(untin,control)
