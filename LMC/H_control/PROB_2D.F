@@ -383,13 +383,8 @@ c     Load domain dimensions into common, and set up boundary functions
       call setupbc()
       bcinit = .true.
 
-      iH2 = -1
-      do n = 1,Nspec
-         call get_spec_name(spName,n)
-         if (spName .eq. 'H2') iH2 = n-1
-      end do
       zone = getZone(half*(domnlo(1)+domnhi(1)),domnlo(2))
-      scale_control = Y_bc(iH2,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))
+      scale_control = Y_bc(fuelID-1,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
       endif
