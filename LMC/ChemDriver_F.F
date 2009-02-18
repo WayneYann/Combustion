@@ -414,7 +414,11 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       call CKSYME(names,nlen)
       coded(1) = names(2*(i-1)  )
       coded(2) = names(2*(i-1)+1)
-      FORT_GETCKELTNAME = 2
+      if (coded(2).eq.ICHAR(' ')) then
+         FORT_GETCKELTNAME = 1
+      else
+         FORT_GETCKELTNAME = 2
+      endif
       end
 
       integer function FORT_GETCKSPECNAME(i, coded)
