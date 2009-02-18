@@ -308,7 +308,7 @@ void CKWXP(double * P, double * T, double * x, int * iwrk, double *rwrk, double 
 void CKWYR(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * wdot);
 void CKWXR(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * wdot);
 void CKQC(double * T, double * C, int * iwrk, double *rwrk, double * qdot);
-void CKKFKR(double * T, double * C, int * iwrk, double *rwrk, double * q_f, double * q_r);
+void CKKFKR(double * P, double * T, double * x, int * iwrk, double *rwrk, double * q_f, double * q_r);
 void CKQYP(double * P, double * T, double * y, int * iwrk, double *rwrk, double * qdot);
 void CKQXP(double * P, double * T, double * x, int * iwrk, double *rwrk, double * qdot);
 void CKQYR(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * qdot);
@@ -1727,22 +1727,19 @@ void CKQC(double * T, double * C, int * iwrk, double * rwrk, double * qdot)
 
 
 /*Returns the rate of progress for each reaction */
-void CKKFKR(double * T, double * C, int * iwrk, double * rwrk, double * q_f, double * q_r)
+void CKKFKR(double * P, double * T, double * x, int * iwrk, double * rwrk, double * q_f, double * q_r)
 {
     int id; /*loop counter */
+    double c[9]; /*temporary storage */
+    double PORT = 1e6 * (*P)/(8.314e+07 * (*T)); /*1e6 * P/RT so c goes to SI units */
 
-    /*convert to SI */
+    /*Compute conversion, see Eq 10 */
     for (id = 0; id < 9; ++id) {
-        C[id] *= 1.0e6;
+        c[id] = x[id]*PORT;
     }
 
     /*convert to chemkin units */
-    progressRateFR(q_f, q_r, C, *T);
-
-    /*convert to chemkin units */
-    for (id = 0; id < 9; ++id) {
-        C[id] *= 1.0e-6;
-    }
+    progressRateFR(q_f, q_r, c, *T);
 
     for (id = 0; id < 27; ++id) {
         q_f[id] *= 1.0e-6;
