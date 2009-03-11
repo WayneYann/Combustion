@@ -411,6 +411,13 @@ HeatTransfer::read_params ()
     pp.query("mcdd_presmooth",mcdd_presmooth);
     pp.query("mcdd_postsmooth",mcdd_postsmooth);
     pp.query("mcdd_cfRelaxFactor",mcdd_cfRelaxFactor);
+
+    if (ParallelDescriptor::IOProcessor())
+    {
+        std::cout << "\nDumping ParmParse table:\n \n";
+        ParmParse::dumpTable(std::cout);
+        std::cout << "\n... done dumping ParmParse table.\n" << std::endl;
+    }
 }
 
 HeatTransfer::HeatTransfer ()
