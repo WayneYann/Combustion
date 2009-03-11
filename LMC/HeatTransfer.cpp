@@ -971,13 +971,14 @@ HeatTransfer::initData ()
 
         P_new[snewmfi].setVal(0);
 
-        const int  i    = snewmfi.index();
-        const int* lo   = snewmfi.validbox().loVect();
-        const int* hi   = snewmfi.validbox().hiVect();
-        const int* s_lo = S_new[snewmfi].loVect();
-        const int* s_hi = S_new[snewmfi].hiVect();
-        const int* p_lo = P_new[snewmfi].loVect();
-        const int* p_hi = P_new[snewmfi].hiVect();
+        const int  i       = snewmfi.index();
+        RealBox    gridloc = RealBox(grids[i],geom.CellSize(),geom.ProbLo());
+        const int* lo      = snewmfi.validbox().loVect();
+        const int* hi      = snewmfi.validbox().hiVect();
+        const int* s_lo    = S_new[snewmfi].loVect();
+        const int* s_hi    = S_new[snewmfi].hiVect();
+        const int* p_lo    = P_new[snewmfi].loVect();
+        const int* p_hi    = P_new[snewmfi].hiVect();
 
 #ifdef BL_USE_NEWMECH
         FORT_INITDATANEWMECH (&level,&cur_time,lo,hi,&ns,
@@ -986,7 +987,7 @@ HeatTransfer::initData ()
                               ARLIM(s_lo), ARLIM(s_hi),
                               P_new[snewmfi].dataPtr(),
                               ARLIM(p_lo), ARLIM(p_hi),
-                              dx,grid_loc[i].lo(),grid_loc[i].hi() );
+                              dx,gridloc.lo(),gridloc.hi() );
 #else
         FORT_INITDATA (&level,&cur_time,lo,hi,&ns,
                        S_new[snewmfi].dataPtr(Xvel),
@@ -994,7 +995,7 @@ HeatTransfer::initData ()
                        ARLIM(s_lo), ARLIM(s_hi),
                        P_new[snewmfi].dataPtr(),
                        ARLIM(p_lo), ARLIM(p_hi),
-                       dx,grid_loc[i].lo(),grid_loc[i].hi() );
+                       dx,gridloc.lo(),gridloc.hi() );
 #endif
     }
 
@@ -9390,8 +9391,9 @@ HeatTransfer::writePlotFile (const std::string& dir,
 
         for (i = 0; i < grids.size(); ++i)
         {
+            RealBox gridloc = RealBox(grids[i],geom.CellSize(),geom.ProbLo());
             for (n = 0; n < BL_SPACEDIM; n++)
-                os << grid_loc[i].lo(n) << ' ' << grid_loc[i].hi(n) << '\n';
+                os << gridloc.lo(n) << ' ' << gridloc.hi(n) << '\n';
         }
         //
         // The full relative pathname of the MultiFabs at this level.
