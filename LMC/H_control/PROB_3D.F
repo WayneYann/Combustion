@@ -227,14 +227,12 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, nCompFile
+      integer maxlen, nCompFile, isioproc
       parameter (maxlen=256)
 
       character probin*(maxlen)
       REAL_T y, yEval, pmf_vals(maxspec+3)
       integer n
-
-      integer isioproc
 
       call bl_pd_is_ioproc(isioproc)
 
@@ -305,7 +303,6 @@ c     Initialize control variables
       nchemdiag = 1
 
       read(untin,fortin)
-c      write(6,fortin)
       
 c     Initialize control variables that depend on fortin variables
       V_in_old = V_in
@@ -313,13 +310,10 @@ c     Initialize control variables that depend on fortin variables
       if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       
       read(untin,heattransin)
-c      write(6,heattransin)
  
 #if defined(BL_DO_FLCT)
       read(untin,flctin)
- 
-      write(6,flctin)
-#endif
+ #endif
  
       read(untin,control)
 
@@ -623,6 +617,14 @@ c     Set amplitudes
       endif
 #endif
 
+      if (isioproc.eq.1) then
+         write(6,fortin)
+         write(6,heattransin)
+#if defined(BL_DO_FLCT)
+         write(6,flctin)
+#endif
+         write(6,control)
+      end if
 
       end
 

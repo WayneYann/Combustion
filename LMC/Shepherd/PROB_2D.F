@@ -76,10 +76,12 @@ c ::: -----------------------------------------------------------
 c
 c      Build 'probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, i
+      integer maxlen, i, isioproc
       parameter (maxlen=256)
 
       character probin*(maxlen)
+
+      call bl_pd_is_ioproc(isioproc)
 
       if (namlen .gt. maxlen) then
          write(6,*) 'probin file name too long'
@@ -156,6 +158,7 @@ c     Set defaults
       
       pamb = 101325.0
       dpdt_factor = 0.3
+
       read(untin,heattransin)
 
    10 close(unit=untin)
@@ -176,6 +179,11 @@ c     Precompute some messy coeffs
       
       call setupbc()
       bcinit = .true.
+
+      if (isioproc.eq.1) then
+         write(6,fortin)
+         write(6,heattransin)
+      end if
       
       end
 

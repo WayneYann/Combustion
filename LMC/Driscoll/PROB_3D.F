@@ -213,12 +213,14 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, nCompFile
+      integer maxlen, nCompFile, isioproc
       parameter (maxlen=256)
 
       character probin*(maxlen)
       REAL_T y, yEval, pmf_vals(maxspec+3)
       integer n
+
+      call bl_pd_is_ioproc(isioproc)
 
       if (namlen .gt. maxlen) then
          call bl_abort('probin file name too long')
@@ -356,7 +358,6 @@ c     Set species pointers
          if (spName .eq. 'CH4') iCH4 = n
       end do
 
-
       call setupbc()
       bcinit = .true.
       
@@ -367,6 +368,11 @@ c     Initialize the control parameters...even if we are not controlling, as the
 c     used in the calculation of the time offset into the turbulence file
       zbase_control = zero
       dV_control = zero
+
+      if (isioproc.eq.1) then
+         write(6,fortin)
+         write(6,heattransin)
+      end if
 
       end
 

@@ -106,12 +106,14 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen
+      integer maxlen, isioproc
       parameter (maxlen=256)
 
       character probin*(maxlen)
       REAL_T y, yEval, pmf_H_vals(maxspec+3)
       integer n
+
+      call bl_pd_is_ioproc(isioproc)
 
       if (namlen .gt. maxlen) then
          call bl_abort('probin file name too long')
@@ -189,12 +191,10 @@ c
       blobs   = one
       
       read(untin,fortin)
-c      write(6,fortin)
       
       if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       
       read(untin,heattransin)
-c      write(6,heattransin)
 
    10 close(unit=untin)
 
@@ -246,6 +246,11 @@ c
             call blutilrand(gammalm(i,j))
          end do
       end do
+
+      if (isioproc.eq.1) then
+         write(6,fortin)
+         write(6,heattransin)
+      end if
       
       end
 

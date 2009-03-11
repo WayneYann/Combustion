@@ -235,10 +235,12 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, nCompFile
+      integer maxlen, nCompFile, isioproc
       parameter (maxlen=256)
 
       character probin*(maxlen)
+
+      call bl_pd_is_ioproc(isioproc)
 
       if (namlen .gt. maxlen) then
          write(6,*) 'probin file name too long'
@@ -337,7 +339,6 @@ c     Initialize control variables
       tbase_control = zero
       
       read(untin,fortin)
-c      write(6,fortin)
 
 c     Initialize control variables that depend on fortin variables
       V_in_old = V_in
@@ -345,12 +346,9 @@ c     Initialize control variables that depend on fortin variables
 c      if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       
       read(untin,heattransin)
-c      write(6,heattransin)
 
 #if defined(BL_DO_FLCT)
       read(untin,flctin)
-
-c     write(6,flctin)
 #endif
 
       read(untin,control)
@@ -388,6 +386,15 @@ c     Load domain dimensions into common, and set up boundary functions
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
       endif
+
+      if (isioproc.eq.1) then
+         write(6,fortin)
+         write(6,heattransin)
+#if defined(BL_DO_FLCT)
+         write(6,flctin)
+#endif
+         write(6,control)
+      end if
       
       end
 

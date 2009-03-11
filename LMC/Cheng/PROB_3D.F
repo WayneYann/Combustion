@@ -227,7 +227,7 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, nCompFile, proc
+      integer maxlen, nCompFile, proc, isioproc
       parameter (maxlen=256)
 
       character probin*(maxlen)
@@ -235,6 +235,8 @@ c
       integer n
 
       call bl_pd_myproc(proc)
+
+      call bl_pd_is_ioproc(isioproc)
 
       if (namlen .gt. maxlen) then
          call bl_abort('probin file name too long')
@@ -373,15 +375,13 @@ c     New swirl parameters
       nchemdiag = 1
 
       read(untin,fortin)
-c      write(6,fortin)
-      
+
 c     Initialize control variables that depend on fortin variables
       V_in_old = Vin
 
       if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       
       read(untin,heattransin)
-c      write(6,heattransin)
 
    10 close(unit=untin)
 
@@ -430,6 +430,11 @@ c     Load domain dimensions into common, and set up boundary functions
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
       endif
+
+      if (isioproc.eq.1) then
+         write(6,fortin)
+         write(6,heattransin)
+      end if
 
       end
 
