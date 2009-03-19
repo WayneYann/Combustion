@@ -7,12 +7,16 @@
 #include <Array.H>
 #include <FArrayBox.H>
 
+// STRINGIFY is a macro to expand its argument and surround it with strings
+#define HACKSTRINGIFY(x) #x
+#define STRINGIFY(x) HACKSTRINGIFY(x)
+
 class ChemDriver
 {
 public:
 
-    ChemDriver (const std::string& TransportFile);
-		  
+    ChemDriver (const std::string TransportFile = STRINGIFY(TRANFILE));	  
+
     ~ChemDriver () {}
     
     enum Chem_Evolve { CKD_Vode, CKD_ChemEQ2 };

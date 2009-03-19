@@ -10,7 +10,8 @@ const Real HtoTerrMAX_DEF = 1.e-8;
 const int HtoTiterMAX_DEF = 20;
 const Real Tmin_trans_DEF = 0.;
 
-ChemDriver::ChemDriver (const std::string& TransportFile)
+
+ChemDriver::ChemDriver (const std::string TransportFile)
     :
     mHtoTerrMAX(HtoTerrMAX_DEF),
     mHtoTiterMAX(HtoTiterMAX_DEF)

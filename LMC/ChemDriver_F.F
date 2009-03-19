@@ -28,6 +28,7 @@
       integer maxlen, i
       parameter (maxlen=256)
       character filet*(maxlen)
+      integer isioproc
 c
 c     Convert encoded name to a Fortran string.
 c
@@ -41,10 +42,16 @@ c
 c        Open problem-specific transport file for EGlib.
 c
          LLINKMC = 51
-         open(unit=LLINKMC,status='UNKNOWN',form='FORMATTED',
-     &        file=filet(1:nametrlen))
+         open(unit=LLINKMC,status='OLD',form='FORMATTED',
+     &        file=filet(1:nametrlen), err=300)
       else
          call bl_abort('FORT_CKINTERP: transport file must be provided')
+      endif
+      return
+ 300  call bl_pd_is_ioproc(isioproc)
+      if (isioproc .eq. 1) then
+         print *,'Transfile = ',filet(1:nametrlen)
+         call bl_abort('File not found')
       endif
       end
 
