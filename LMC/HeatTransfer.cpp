@@ -5416,6 +5416,7 @@ HeatTransfer::advance (Real time,
         for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
         {
             Qtmp[mfi].minus(S_new[mfi],first_spec,0,Qtmp.nComp());
+            Qtmp[mfi].mult(1.0/dt);
 
             const Box& box = mfi.validbox();
             T.resize(mfi.validbox(),1);
