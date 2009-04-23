@@ -1,5 +1,5 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.1 2009-04-15 19:40:26 gilet Exp $
+#define _PROB_F_H_ $Id: PROB_F.H,v 1.2 2009-04-23 13:46:31 gilet Exp $
 
 #include <PROB_NS_F.H>
 
@@ -288,7 +288,7 @@
 			      const Real* dx,
 			      const Real* xlo, const Real* xhi,
 			      const Real* gravity,
-			      const int* scomp, const int* ncomp);
+			      const int* ncomp);
 
 
   }

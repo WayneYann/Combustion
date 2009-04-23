@@ -2585,15 +2585,15 @@ C
 C SDIM = 2
       subroutine FORT_MAKEFORCE_SDC(time,force,rho,
      &                              DIMS(s_index),
-     &                          dx,xlo,xhi,gravity,scomp,ncomp)
+     &                              dx,xlo,xhi,gravity,ncomp)
 
       implicit none
 
       integer    DIMDEC(s_index)
-      integer    scomp, ncomp
+      integer    ncomp
       REAL_T     time, dx(SDIM)
       REAL_T     xlo(SDIM), xhi(SDIM) 
-      REAL_T     force  (DIMV(s_index),scomp:scomp+ncomp-1)
+      REAL_T     force  (DIMV(s_index),ncomp)
       REAL_T     rho    (DIMV(s_index))
       REAL_T     gravity
 
@@ -2611,7 +2611,7 @@ C      write(*,*) 'Inside MAKEFORCE_SDC...'
  
       do j = s_index_l2, s_index_h2
          do i = s_index_l1, s_index_h1
-            do n = scomp, (scomp+ncomp-1)
+            do n = 1, ncomp
                force(i,j,n) = 0.0
             enddo
          end do

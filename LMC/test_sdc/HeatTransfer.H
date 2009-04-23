@@ -126,6 +126,17 @@ public:
                                int       num_comp,
                                Real      time);
 
+
+    void HeatTransfer::Sum_extF_sdcF (FArrayBox& S,
+				      int        s_ind,
+				      FArrayBox& extF,
+				      int        extf_ind,
+				      int        num_comp,
+				      FArrayBox& sdcF,
+				      int        sdcf_ind,
+				      FArrayBox& rho,
+				      int        iconserv);
+
     void getTempViscTerms (MultiFab& visc_terms,
                            int       src_comp, 
                            Real      time);
@@ -275,6 +286,14 @@ public:
     //
     static void variableCleanUp ();
     
+  void make_I_AD ();
+
+  void make_advection_sdcForce ( int       src_comp, 
+				 int       num_comp);
+
+  void make_diffusion_sdcForce ( int       src_comp, 
+				 int       num_comp);
+
 protected:
     //
     // Protected member functions.
@@ -673,6 +692,12 @@ protected:
     static Real        rk_time_step_multiplier;
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
+
+  // SDC stuff
+  static bool use_sdc;
+  static int  sdc_iters;
+  static int  quadrature;
+
 };
 
 #endif /*_HeatTransfer_H_*/

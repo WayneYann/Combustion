@@ -1,5 +1,5 @@
 //
-// $Id: Amr.cpp,v 1.1 2009-04-15 18:20:08 gilet Exp $
+// $Id: Amr.cpp,v 1.2 2009-04-23 13:46:31 gilet Exp $
 //
 #include <winstd.H>
 
@@ -1540,17 +1540,7 @@ Amr::timeStep (int  level,
                   << std::endl;
     }
     
-    // CEG: control statement for using sdc.  is this the place to put it? 
-    // where to put use_sdc???
-    bool use_sdc = true;
-    Real dt_new; 
-    if (use_sdc){
-      std::cout<<"calling advance_sdc()....\n";
-      dt_new = amr_level[level].advance_sdc(time,dt_level[level],iteration,niter); }
-    else {
-      std::cout<<"calling advance()...\n";
-       dt_new = amr_level[level].advance(time,dt_level[level],iteration,niter);
-    }
+    Real dt_new = amr_level[level].advance(time,dt_level[level],iteration,niter);
 
     dt_min[level] = iteration == 1 ? dt_new : std::min(dt_min[level],dt_new);
 
