@@ -135,7 +135,7 @@ public:
 				      FArrayBox& sdcF,
 				      int        sdcf_ind,
 				      FArrayBox& rho,
-				      int        iconserv);
+				      int        isconserv);
 
     void getTempViscTerms (MultiFab& visc_terms,
                            int       src_comp, 
@@ -293,6 +293,16 @@ public:
 
   void make_diffusion_sdcForce ( int       src_comp, 
 				 int       num_comp);
+
+  void rhoh_advection_sdc (Real dt,
+			   bool do_adv_reflux);
+
+  void rhoh_diffusion_update_sdc (Real dt,
+				  int  corrector);
+
+  //CEG:: not currently using this
+  void compute_rhoh_NULN_terms(Real time, int sdc_t_index,
+			       Real dt, bool do_adv_reflux);
 
 protected:
     //
