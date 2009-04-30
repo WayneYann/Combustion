@@ -486,8 +486,8 @@ DDOp::setRelax(MultiFab&         lambda,
     for (MFIter mfi(lambda); mfi.isValid(); ++mfi)
     {
         FArrayBox& lam = lambda[mfi];
-        const FArrayBox Yc = inY[mfi];
-        const FArrayBox Tc = inT[mfi];
+        const FArrayBox& Yc = inY[mfi];
+        const FArrayBox& Tc = inT[mfi];
 
         const Box& box = mfi.validbox();
         const Box gbox = BoxLib::grow(box,nGrow);
