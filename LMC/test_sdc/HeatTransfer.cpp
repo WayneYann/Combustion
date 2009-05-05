@@ -6037,6 +6037,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
     if (hack_nochem)
     {
+      if (ParallelDescriptor::IOProcessor())
       std::cout<<"\nDOING NOCHEM HACK!!!\n";
         if (ydot_tmp)
         {
@@ -6045,8 +6046,6 @@ HeatTransfer::strang_chem (MultiFab&  mf,
     }
     else
     {
-
-      std::cout<<"\n doing chem anyway...\n";
         Real p_amb, dpdt_factor;
         FORT_GETPAMB(&p_amb, &dpdt_factor);
         const Real Patm = p_amb / P1atm_MKS;
@@ -9802,30 +9801,6 @@ HeatTransfer::advance_sdc (Real time,
 
     BL_ASSERT(S_new.boxArray() == S_old.boxArray());
 
-    const int nComp = NUM_STATE - BL_SPACEDIM;
-    Array<int> consumptionComps; 
-    if (plot_consumption)
-    {
-        //
-        // Save off a copy of the pre-chem state
-        //
-        consumptionComps.resize(consumptionName.size());
-        for (int j=0; j<consumptionComps.size(); ++j)
-        {
-            consumptionComps[j] = getChemSolve().index(consumptionName[j]) + first_spec;
-            auxDiag["CONSUMPTION"]->copy(S_old,consumptionComps[j],j,1);
-        }
-    }
-    MultiFab Qtmp; 
-    if (plot_heat_release)
-    {
-        //
-        // Save off a copy of the pre-chem state
-        //
-        Qtmp.define(grids,getChemSolve().numSpecies(),0,Fab_allocate);
-        MultiFab::Copy(Qtmp,S_old,first_spec,0,Qtmp.nComp(),0);
-    }
-
     // Compute tn coeffs based on chem-advance tn data
     //  (these are used in the Godunov extrapolation)
     const int nScalDiffs = NUM_STATE-BL_SPACEDIM-1;
@@ -10216,42 +10191,6 @@ HeatTransfer::advance_sdc (Real time,
       //i think this is all that's really needed not lines above
       ydot_tmp->setVal(0,dCompYdot,nspecies);
 
-    //shouldn't need this with SDC
-    if (plot_consumption)
-    {
-        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
-        {
-            for (int j=0; j<consumptionComps.size(); ++j)
-            {
-                (*auxDiag["CONSUMPTION"])[mfi].minus(S_new[mfi],consumptionComps[j],j,1);
-            }
-            (*auxDiag["CONSUMPTION"])[mfi].mult(1.0/dt);
-        }
-    }
-    if (plot_heat_release)
-    {
-        FArrayBox enthi, T;
-        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
-        {
-            Qtmp[mfi].minus(S_new[mfi],first_spec,0,Qtmp.nComp());
-
-            const Box& box = mfi.validbox();
-            T.resize(mfi.validbox(),1);
-            T.setVal(298.15);
-
-            enthi.resize(mfi.validbox(),Qtmp.nComp());
-            getChemSolve().getHGivenT(enthi,T,box,0,0);
-
-            // Form heat release
-            (*auxDiag["HEATRELEASE"])[mfi].setVal(0.);
-            for (int j=0; j<Qtmp.nComp(); ++j)
-            {
-                Qtmp[mfi].mult(enthi,j,j,1);
-                (*auxDiag["HEATRELEASE"])[mfi].plus(Qtmp[mfi],j,0,1);
-            }
-        }
-    }
-
     if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "HeatTransfer::advance(): after second Strang-split step\n";
 
@@ -10348,6 +10287,7 @@ HeatTransfer::advance_sdc (Real time,
 
     temperature_stats(S_new);
 
+    //need if(S_new.defined(0)) to run in parallel
 //     std::ofstream edge_fab("snew_sdc");
 //     S_new[0].writeOn(edge_fab);
 //     edge_fab.close();
