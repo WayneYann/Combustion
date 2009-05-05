@@ -2190,9 +2190,10 @@ HeatTransfer::scalar_diffusion_update (Real dt,
                             fluxtot.plus((*fluxSCnp1[d])[fmfi],ebox,
 					 0,0,nComp);
                             if (level < parent->finestLevel())
-                                getLevel(level+1).getViscFluxReg().
-				  CrseInit(fluxtot,ebox,d,0,sigma,nComp,-dt);
-			
+			    {
+			      getLevel(level+1).getViscFluxReg().
+				CrseInit(fluxtot,ebox,d,0,sigma,nComp,-dt);
+			    }
                             if (level > 0)
                                 getViscFluxReg().FineAdd(fluxtot,d,
 							 fmfi.index(),
@@ -2226,8 +2227,6 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 						  int  corrector)
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::differential_spec_diffusion_update()");
-
-    std::cout<<"WARNING:Inside original spec_diffusion...\n";
 
     const Real strt_time = ParallelDescriptor::second();
 
@@ -5573,6 +5572,7 @@ HeatTransfer::advance (Real time,
         for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
         {
             Qtmp[mfi].minus(S_new[mfi],first_spec,0,Qtmp.nComp());
+	    Qtmp[mfi].mult(1.0/dt);
 
             const Box& box = mfi.validbox();
             T.resize(mfi.validbox(),1);
@@ -5680,10 +5680,12 @@ HeatTransfer::advance (Real time,
 
     temperature_stats(S_new);
 
-    std::ofstream edge_fab("snew_ht");
-    S_new[0].writeOn(edge_fab);
-    edge_fab.close();
-
+    if(S_new.defined(0))
+      {
+	std::ofstream edge_fab("snew_ht");
+	S_new[0].writeOn(edge_fab);
+	edge_fab.close();
+      }
   }
   
   return dt_test;
