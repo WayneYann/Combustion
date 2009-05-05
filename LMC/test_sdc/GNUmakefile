@@ -1,14 +1,14 @@
 #
-# $Id: GNUmakefile,v 1.2 2009-04-30 22:21:42 gilet Exp $
+# $Id: GNUmakefile,v 1.3 2009-05-05 20:26:53 gilet Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
 PMFdir        = ../PMFfiles
 #
 # User-settable variables.
-#
+#  MUST use all caps here
 PRECISION         = DOUBLE
-DEBUG	          = False
+DEBUG	          = FALSE
 PROFILE           = TRUE
 PROFILE           = FALSE
 DIM    	          = 3
@@ -21,8 +21,8 @@ HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = TRUE
 USE_FLCTS         = FALSE
-#USE_MPI           = True 
-USE_MPI           = False
+#USE_MPI           = FALSE 
+USE_MPI           = TRUE
 
 # This allows GetForce to call a Fortran routine
 #DEFINES += -DGENGETFORCE

@@ -4566,6 +4566,7 @@ HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
     diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,0,beta);
     diffusion->removeFluxBoxesLevel(beta);
     add_heat_sources(visc_terms,RhoH-src_comp,time,nGrow,1.0);
+ 
 }
 
 void
@@ -5678,6 +5679,11 @@ HeatTransfer::advance (Real time,
         std::cout << "HeatTransfer::advance(): at end of time step\n";
 
     temperature_stats(S_new);
+
+    std::ofstream edge_fab("snew_ht");
+    S_new[0].writeOn(edge_fab);
+    edge_fab.close();
+
   }
   
   return dt_test;
@@ -9866,7 +9872,8 @@ HeatTransfer::advance_sdc (Real time,
     // Compute advective fluxes divergences, where possible
     const int first_scalar = Density;
     const int last_scalar = first_scalar + NUM_SCALARS - 1;
-    bool do_adv_reflux = true;
+    //    bool do_adv_reflux = true;
+    bool do_adv_reflux = false;
     // CEG: AofS is computes without the dt but divided by the vol
     // aofs declared with structure of grids, like DofS and sdcForce
     std::cout<<"calling scalar advection...\n";
@@ -9940,18 +9947,18 @@ HeatTransfer::advance_sdc (Real time,
         
     // Calculate Diffusivities at time n+1
     calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
-    //    VisMF::Write(*diffnp1_cc,"Dmn1_sdc");     
   
     // computes snew = sold - dt*aofs + dt*ext_forcing_terms
     //   no visc terms here
     scalar_advection_update(dt, first_spec, last_spec);
+    VisMF::Write(S_new,"adv_update");     
 
     // diffusion looks in sdcForce for any sdc forcing terms
     // make sure to have something in there.
     // set to zero for sdc
     *sdcForce = 0.0;
     differential_spec_diffusion_update_sdc(dt, corrector);
-
+    VisMF::Write(S_new,"diff_update");     
     // 
     //Update RhoH
     //
@@ -9960,7 +9967,8 @@ HeatTransfer::advance_sdc (Real time,
 
     getRhoHViscTerms(DofS[0],RhoH,prev_time);
     
-    do_adv_reflux = false;
+    //already set above
+    //   do_adv_reflux = false;
     // getting aofs for rhoH
     rhoh_advection_sdc(dt,do_adv_reflux);    
 //     VisMF::Write(*aofs,"adv_sdc");   
@@ -9970,6 +9978,7 @@ HeatTransfer::advance_sdc (Real time,
 //      VisMF::Write(*aofs,"aofs_sdc");     
 
     scalar_advection_update(dt,RhoH,RhoH);
+    VisMF::Write(S_new,"rhadv_update");     
  //      MultiFab::Add(RhoH_NULN_terms[0],RhoH_NULN_terms[1],0,0,1,0);
 //       RhoH_NULN_terms[0].mult(dt,0,1);
 //       MultiFab::Subtract(S_new,RhoH_NULN_terms[0],0,RhoH,1,0);
@@ -9978,6 +9987,7 @@ HeatTransfer::advance_sdc (Real time,
     // This fn takes care of adding in the NULN terms
     //   looks in sdcForce for add'l terms 
     rhoh_diffusion_update_sdc(dt,corrector);
+    VisMF::Write(S_new,"rhdiff_update");     
 //     VisMF::Write(S_new,"snew_sdc");     
 //     abort();
 
@@ -9991,6 +10001,7 @@ HeatTransfer::advance_sdc (Real time,
     //make_I_R(j,dt);
     
     RhoH_to_Temp(S_new);
+    VisMF::Write(S_new,"temp_update");     
     temperature_stats(S_new);
 
     BL_PROFILE_STOP(ptimer);
@@ -10003,12 +10014,13 @@ HeatTransfer::advance_sdc (Real time,
     {
       std::cout<<"Change in state over timestep, with provisional soln"<<std::endl;
       std::cout<<"comp     min    max"<<std::endl;
-      for(int i = 0; i < NUM_STATE; i++)
-      {
-	comp_min = difference.min(i);
-	comp_max = difference.max(i);
+    }  
+    for(int i = 0; i < NUM_STATE; i++)
+    {
+      comp_min = difference.min(i);
+      comp_max = difference.max(i);
+      if (ParallelDescriptor::IOProcessor())
 	std::cout<<"comp "<<i<<": "<<comp_min<<" "<<comp_max<<std::endl;
-      }
     }
     std::cout<<std::endl;
     MultiFab::Copy(difference,S_new,0,0,NUM_STATE,0);
@@ -10037,6 +10049,7 @@ HeatTransfer::advance_sdc (Real time,
 //       MultiFab::Subtract(I_change,I_AD[0],0,0,NUM_STATE,0);
 // //       I_change.mult(dt,first_spec,nspecies);
 // //       I_change.mult(dt,first_spec,nspecies);
+//hangs in parallel, FIX if(IOProc) statement
 //       if (ParallelDescriptor::IOProcessor())
 //       {
 // 	std::cout<<"Change in I_AD (first time gives magnitude)"<<std::endl;
@@ -10064,12 +10077,14 @@ HeatTransfer::advance_sdc (Real time,
 
 //       MultiFab::Copy(I_change,I_AD[0],0,0,NUM_STATE,0);
 
-      std::cout<<"Inside SDC iters... n_sdc= "<<n_sdc<<std::endl;
+      if (ParallelDescriptor::IOProcessor())
+	std::cout<<"Inside SDC iters... n_sdc= "<<n_sdc<<std::endl;
       if (n_sdc == sdc_iters)
       {
 	corrector = 1;
 	do_adv_reflux = true;
 	// CEG:: I think this can go in here
+	//   RhoRT is also updated in this function
 	tracer_update(dt,corrector);
       }
       // for radau will need to check that rho_ptime has the right data in it
@@ -10104,11 +10119,12 @@ HeatTransfer::advance_sdc (Real time,
       // Set to rho in State_new (at current time).
       make_rho_curr_time();
 
-       reset_rho_in_rho_states(Rho_hold,cur_time,first_scalar+1,
+      reset_rho_in_rho_states(Rho_hold,cur_time,first_scalar+1,
  			      NUM_SCALARS-1);
 
       // Update species with snew = sold - dt*aofs + dt*extForces
       scalar_advection_update(dt, first_spec, last_spec);
+      VisMF::Write(S_new,"adv_update3");     
       //      VisMF::Write(S_new,"snew"); 
 
       // fill sdcForce
@@ -10118,7 +10134,7 @@ HeatTransfer::advance_sdc (Real time,
 //       VisMF::Write(DofS[0],"d0");
 //      *sdcForce = 0.0;
       differential_spec_diffusion_update_sdc(dt, corrector);
-
+      VisMF::Write(S_new,"diff_update3");     
       //Recompute D(t^n+1)
       //getViscTerms_sdc(DofS[1],first_spec,nspecies,cur_time);
 
@@ -10128,11 +10144,13 @@ HeatTransfer::advance_sdc (Real time,
       rhoh_advection_sdc(dt,do_adv_reflux);    
 
       scalar_advection_update(dt,RhoH,RhoH);
+      VisMF::Write(S_new,"rhadv_update3");     
       make_diffusion_sdcForce(RhoH,1);
       // This fn takes care of adding in the NULN terms
       rhoh_diffusion_update_sdc(dt,corrector);
-
+      VisMF::Write(S_new,"rhdiff_update3");     
       RhoH_to_Temp(S_new); 
+      VisMF::Write(S_new,"temp_update3");     
       temperature_stats(S_new);
 
       //CEG::Recalculate diffusivity here?  We initiallly talked about not,
@@ -10158,12 +10176,13 @@ HeatTransfer::advance_sdc (Real time,
       {
 	std::cout<<"Change in soln at t^n+1"<<std::endl;
 	std::cout<<"comp     min    max"<<std::endl;
-	for(int i = 0; i < NUM_STATE; i++)
-        {
-	  comp_min = difference.min(i);
-	  comp_max = difference.max(i);
+      }
+      for(int i = 0; i < NUM_STATE; i++)
+      {
+	comp_min = difference.min(i);
+	comp_max = difference.max(i);
+	if (ParallelDescriptor::IOProcessor())
 	  std::cout<<"comp "<<i<<": "<<comp_min<<" "<<comp_max<<std::endl;
-	}
       }
       MultiFab::Copy(difference,S_new,0,0,NUM_STATE,0);
       std::cout<<std::endl;
@@ -10195,6 +10214,7 @@ HeatTransfer::advance_sdc (Real time,
       //i think this is all that's really needed not lines above
       ydot_tmp->setVal(0,dCompYdot,nspecies);
 
+    //shouldn't need this with SDC
     if (plot_consumption)
     {
         for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
@@ -10237,7 +10257,6 @@ HeatTransfer::advance_sdc (Real time,
     // Does nothing if verbose = false    
     temperature_stats(S_new);
 
-    //
     // S appears in rhs of the velocity update, so we better do it now.
     // (be sure to use most recent version of state to get
     // viscosity/diffusivity).
@@ -10289,12 +10308,14 @@ HeatTransfer::advance_sdc (Real time,
     }
         
     calc_dsdt(time, dt, get_new_data(Dsdt_Type));
+
     if (NavierStokes::initial_step)
-        MultiFab::Copy(get_old_data(Dsdt_Type),get_new_data(Dsdt_Type),0,0,1,0);
+      MultiFab::Copy(get_old_data(Dsdt_Type),get_new_data(Dsdt_Type),0,0,1,0);
     //
     // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
     //
     velocity_update(dt);
+
     // deletes aofs and u_mac
     advance_cleanup_sdc(dt,iteration,ncycle);
     //
@@ -10324,6 +10345,10 @@ HeatTransfer::advance_sdc (Real time,
         std::cout << "HeatTransfer::advance(): at end of time step\n";
 
     temperature_stats(S_new);
+
+//     std::ofstream edge_fab("snew_sdc");
+//     S_new[0].writeOn(edge_fab);
+//     edge_fab.close();
 
     return dt_test;
 }
@@ -11536,9 +11561,11 @@ HeatTransfer::make_I_AD ()
     MultiFab::Copy(I_AD[0],DofS[0],RhoH,RhoH,1,0);
     MultiFab::Add (I_AD[0],DofS[1],RhoH,RhoH,1,0);
     I_AD[0].mult(half,RhoH,1);
+    //CEG:: These NULN terms will cancel with the -NULN^k in the 
+    //   SDC update
     // the 1/2 is already in NULN terms, but off my a minus sign
-    MultiFab::Subtract(I_AD[0],RhoH_NULN_terms[0],0,RhoH,1,0);
-    MultiFab::Subtract(I_AD[0],RhoH_NULN_terms[1],0,RhoH,1,0);
+//       MultiFab::Subtract(I_AD[0],RhoH_NULN_terms[0],0,RhoH,1,0);
+//       MultiFab::Subtract(I_AD[0],RhoH_NULN_terms[1],0,RhoH,1,0);
 }
 
 void
@@ -11610,7 +11637,7 @@ HeatTransfer::make_diffusion_sdcForce ( int       src_comp,
 
 
 //
-// CEG:: this versiono of rhoh advection seems kinda wasteful
+// CEG:: this version of rhoh advection seems kinda wasteful
 //   because it keeps recomputing terms at time n (which aren't 
 //   changing).  However, the fluxes used in computing these 
 //   NULN terms in the rhoh eqn are used for refluxing--and would 
@@ -12271,7 +12298,7 @@ HeatTransfer::rhoh_diffusion_update_sdc (Real dt,
     MultiFab::Add(*delta_rhs,RhoH_NULN_terms[1],0,0,1,0);
     (*delta_rhs).mult(-1.0,0,1);
     // add any sdc term
-    VisMF::Write(*sdcForce,"sdcf");
+    //    VisMF::Write(*sdcForce,"sdcf");
     MultiFab::Add(*delta_rhs,*sdcForce,RhoH,0,1,0);      
 
     diffusion->allocFluxBoxesLevel(betan);
