@@ -8,8 +8,6 @@ c     Series of runtime hacks
 #define DO_JBB_HACK_TEMP
 #define HACK_TEMP_MIN 273.d0
 #define HACK_TEMP_MAX 1900.d0
-#undef DO_JBB_HACK_POST
-#define DO_JBB_HACK_POST
 #define TRIGGER_NEW_J
 #undef ALWAYS_NEW_J
 #undef SOLN_IS_1D

@@ -6014,9 +6014,16 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             }
         }
 
-        for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi)
-            for (int comp = 0; comp < nspecies; ++comp)
+        for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi) {
+#ifdef DO_JBB_HACK_POST
+            const Box& box = Smfi.validbox();
+            getChemSolve().getHmixGivenTY(mf[Smfi],mf[Smfi],mf[Smfi],box,Temp,first_spec,RhoH);
+            mf[Smfi].mult(mf[Smfi],box,Density,RhoH,1);
+#endif
+            for (int comp = 0; comp < nspecies; ++comp) {
                 mf[Smfi].mult(mf[Smfi],Smfi.validbox(),rho_comp,ycomp+comp,1);
+            }
+        }
 
         if (Ydot_action == HT_ImproveYdotOld)
         {
