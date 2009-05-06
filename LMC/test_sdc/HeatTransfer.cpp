@@ -861,6 +861,7 @@ HeatTransfer::estTimeStep ()
                   << ns_estdt << " to " << estdt << '\n';
     }
 
+    //    abort();
     return estdt;
 }
 
@@ -9928,14 +9929,14 @@ HeatTransfer::advance_sdc (Real time,
     // computes snew = sold - dt*aofs + dt*ext_forcing_terms
     //   no visc terms here
     scalar_advection_update(dt, first_spec, last_spec);
-    VisMF::Write(S_new,"adv_update");     
+    //    VisMF::Write(S_new,"adv_update");     
 
     // diffusion looks in sdcForce for any sdc forcing terms
     // make sure to have something in there.
     // set to zero for sdc
     *sdcForce = 0.0;
     differential_spec_diffusion_update_sdc(dt, corrector);
-    VisMF::Write(S_new,"diff_update");     
+    //VisMF::Write(S_new,"diff_update");     
     // 
     //Update RhoH
     //
@@ -9955,7 +9956,7 @@ HeatTransfer::advance_sdc (Real time,
 //      VisMF::Write(*aofs,"aofs_sdc");     
 
     scalar_advection_update(dt,RhoH,RhoH);
-    VisMF::Write(S_new,"rhadv_update");     
+    //VisMF::Write(S_new,"rhadv_update");     
  //      MultiFab::Add(RhoH_NULN_terms[0],RhoH_NULN_terms[1],0,0,1,0);
 //       RhoH_NULN_terms[0].mult(dt,0,1);
 //       MultiFab::Subtract(S_new,RhoH_NULN_terms[0],0,RhoH,1,0);
@@ -9964,7 +9965,7 @@ HeatTransfer::advance_sdc (Real time,
     // This fn takes care of adding in the NULN terms
     //   looks in sdcForce for add'l terms 
     rhoh_diffusion_update_sdc(dt,corrector);
-    VisMF::Write(S_new,"rhdiff_update");     
+    //VisMF::Write(S_new,"rhdiff_update");     
 //     VisMF::Write(S_new,"snew_sdc");     
 //     abort();
 
@@ -9978,7 +9979,7 @@ HeatTransfer::advance_sdc (Real time,
     //make_I_R(j,dt);
     
     RhoH_to_Temp(S_new);
-    VisMF::Write(S_new,"temp_update");     
+    //VisMF::Write(S_new,"temp_update");     
     temperature_stats(S_new);
 
     BL_PROFILE_STOP(ptimer);
@@ -9999,7 +10000,8 @@ HeatTransfer::advance_sdc (Real time,
       if (ParallelDescriptor::IOProcessor())
 	std::cout<<"comp "<<i<<": "<<comp_min<<" "<<comp_max<<std::endl;
     }
-    std::cout<<std::endl;
+    if (ParallelDescriptor::IOProcessor())
+      std::cout<<std::endl;
     MultiFab::Copy(difference,S_new,0,0,NUM_STATE,0);
 
     ////////////////////
@@ -10101,7 +10103,7 @@ HeatTransfer::advance_sdc (Real time,
 
       // Update species with snew = sold - dt*aofs + dt*extForces
       scalar_advection_update(dt, first_spec, last_spec);
-      VisMF::Write(S_new,"adv_update3");     
+      //VisMF::Write(S_new,"adv_update3");     
       //      VisMF::Write(S_new,"snew"); 
 
       // fill sdcForce
@@ -10111,7 +10113,7 @@ HeatTransfer::advance_sdc (Real time,
 //       VisMF::Write(DofS[0],"d0");
 //      *sdcForce = 0.0;
       differential_spec_diffusion_update_sdc(dt, corrector);
-      VisMF::Write(S_new,"diff_update3");     
+      //VisMF::Write(S_new,"diff_update3");     
       //Recompute D(t^n+1)
       //getViscTerms_sdc(DofS[1],first_spec,nspecies,cur_time);
 
@@ -10121,13 +10123,13 @@ HeatTransfer::advance_sdc (Real time,
       rhoh_advection_sdc(dt,do_adv_reflux);    
 
       scalar_advection_update(dt,RhoH,RhoH);
-      VisMF::Write(S_new,"rhadv_update3");     
+      //VisMF::Write(S_new,"rhadv_update3");     
       make_diffusion_sdcForce(RhoH,1);
       // This fn takes care of adding in the NULN terms
       rhoh_diffusion_update_sdc(dt,corrector);
-      VisMF::Write(S_new,"rhdiff_update3");     
+      //VisMF::Write(S_new,"rhdiff_update3");     
       RhoH_to_Temp(S_new); 
-      VisMF::Write(S_new,"temp_update3");     
+      //VisMF::Write(S_new,"temp_update3");     
       temperature_stats(S_new);
 
       //CEG::Recalculate diffusivity here?  We initiallly talked about not,
@@ -10162,11 +10164,11 @@ HeatTransfer::advance_sdc (Real time,
 	  std::cout<<"comp "<<i<<": "<<comp_min<<" "<<comp_max<<std::endl;
       }
       MultiFab::Copy(difference,S_new,0,0,NUM_STATE,0);
-      std::cout<<std::endl;
     }//end sdc_iters loop
  
     Rho_hold.clear();
-    std::cout<<"done with sdc_iters loop...\n"<<std::endl;
+    if (ParallelDescriptor::IOProcessor())  
+      std::cout<<"done with sdc_iters loop...\n"<<std::endl;
 
 
     BL_PROFILE_STOP(ctimer); 
