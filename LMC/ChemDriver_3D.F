@@ -2,6 +2,21 @@
 #include "ArrayLim.H"
 #include "CONSTANTS.H"
 
+c     Series of runtime hacks
+#define DO_JBB_HACK
+#undef DO_JBB_HACK_TEMP
+#define DO_JBB_HACK_TEMP
+#define HACK_TEMP_MIN 273.d0
+#define HACK_TEMP_MAX 1900.d0
+#undef DO_JBB_HACK_POST
+#define DO_JBB_HACK_POST
+#define TRIGGER_NEW_J
+#undef ALWAYS_NEW_J
+#undef SOLN_IS_1D
+
+
+
+
 #define MASS_FRAC
 #undef MOLAR_CONC
 
@@ -87,11 +102,6 @@
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       Pdyne = Patm * P1atm
       scale = million
-
-#define DO_JBB_HACK
-#define TRIGGER_NEW_J
-#undef ALWAYS_NEW_J
-#undef SOLN_IS_1D
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -627,7 +637,13 @@ c
             endif
 #endif
                RWRK(NZ) = Told(i,j,k)
+
 #ifdef DO_JBB_HACK
+
+#ifdef DO_JBB_HACK_TEMP
+c     Force temperature into arbitrary bounds
+               RWRK(NZ) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, RWRK(NZ)))
+#endif
             sum = zero
             do n=1,Nspec
                Ytemp(n) = Yold(i,j,k,n)
@@ -804,6 +820,10 @@ c     If the step was bad, and we reused an old Jacobian, try again from scratch
                end if
              enddo
 
+#ifdef DO_JBB_HACK_POST
+c     Force temperature into arbitrary bounds
+               RWRK(NZ) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, RWRK(NZ)))
+#endif
                Tnew(i,j,k) = RWRK(NZ)
 
 #if defined(MASS_FRAC)
@@ -817,10 +837,25 @@ c
             CALL CKCTY(RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Yres)
 #endif
 
-#ifdef DO_JBB_HACK
+#if defined(DO_JBB_HACK)
                do n=1,Nspec
                   Ynew(i,j,k,n) = Yold(i,j,k,n)+Yres(n)-Ytemp(n)
                end do
+#elif  defined(DO_JBB_HACK_POST)
+            sum = zero
+            do n=1,Nspec
+               Ytemp(n) = Yres(i,j,k,n)
+               atoln = ATOLEPS
+               if (ITOL.eq.2) atoln = atol(n+1)
+c               if (Ytemp(n) .LT. zero) Ytemp(n) = 1.e-4*atoln
+c               if (Ytemp(n) .LT. zero) Ytemp(n) = 1.e-16
+c               Ytemp(n) =MAX( Yold(i,j,k,n),1.e-16)
+               Ytemp(n) =MAX( Yres(i,j,k,n),zero)
+               sum = sum+Ytemp(n)
+            end do
+            if (iN2 .gt. 0) then
+               Ytemp(iN2) = Ytemp(iN2)+one-sum
+            endif
 #else
                do n=1,Nspec
                   Ynew(i,j,k,n) = Yres(n)
