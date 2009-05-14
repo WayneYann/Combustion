@@ -6018,6 +6018,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 #ifdef DO_JBB_HACK_POST
             const Box& box = Smfi.validbox();
             getChemSolve().getHmixGivenTY(mf[Smfi],mf[Smfi],mf[Smfi],box,Temp,first_spec,RhoH);
+            const Real Patm = p_amb / P1atm_MKS;
+            getChemSolve().getRhoGivenPTY(mf[Smfi],Patm,mf[Smfi],mf[Smfi],box,Temp,first_spec,Density);
             mf[Smfi].mult(mf[Smfi],box,Density,RhoH,1);
 #endif
             for (int comp = 0; comp < nspecies; ++comp) {
