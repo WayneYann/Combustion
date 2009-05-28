@@ -145,7 +145,8 @@ c
 c     Set pointers in conp common blocks (used in conpF evaluations)
 c
       CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
-      NEQ   = Nspec + 1
+C      NEQ   = Nspec + 1
+      NEQ   = Nspec + 2
       NP    = dvdbr
       NRHO  = NP    + 1
       NTEMP = NRHO  + 1
@@ -156,8 +157,71 @@ c
       NCPK  = NH    + Nspec
       NWDOT = NCPK  + Nspec
       NZ    = NWDOT + NEQ
-C SDC: add in space here for A & D? use some kind of max index
       RTOT  = NZ    + NEQ - 1
+      if (RTOT .GT. dvder) then
+         write(6,*) 'Memory layout bust, dvdr not big enough'
+         write(6,*) RTOT, dvder
+         call bl_abort(" ")
+      end if
+c
+c     Set molecular weights in RWRK
+c
+      CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
+c
+c     Find N2 in the list.
+c
+      iN2 = -1
+      do n = 1,Nspec
+         call get_spec_name(name,n)
+         if (name .eq. 'N2' ) iN2 = n
+      end do
+      if (iN2.eq.-1)
+     &     write(6,*) '.....warning: no N2 in chemistry species list'
+      end
+
+C  CEG:: not currently using.  modified interpchem()
+      subroutine FORT_INTERPCHEM_SDC()
+      implicit none
+#include "cdwrk.H"
+#include "conp.H"
+      logical error
+      integer ioproc, myid, ierr, n, RTOT, lout, namlen, i
+      integer FORT_GETCKSPECNAME
+      parameter (ioproc = 0)
+      character*(maxspnml) name
+      integer coded(maxspnml)
+
+      call BL_PD_MYPROC(myid)
+      
+      if (myid .eq. ioproc) then
+c
+c        Suck in mc linking file, spit out EG linking file.
+c
+         call CNVTTR (LLINKMC)
+      endif
+      
+      call BL_PD_BARRIER()
+      
+      lout = 6
+      call EGINI(eg_nodes, lout, eg_IFLAG, eg_ITLS,
+     &     RWRK(egbr), egr, IWRK(egbi), egi)
+c      
+c     Set pointers in conp common blocks (used in conpF evaluations)
+c
+      CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
+c evolving enthalpy, species and temp (for VODEto get stiffness right)
+      NEQ   = Nspec + 2
+      NP    = dvdbr
+      NRHO  = NP    + 1
+      NTEMP = NRHO  + 1
+      NHMIX = NTEMP + 1
+      NWT   = NHMIX + 1
+      NC    = NWT   + Nspec
+      NH    = NC    + Nspec
+      NCPK  = NH    + Nspec
+      NWDOT = NCPK  + Nspec
+      NZ    = NWDOT + NEQ
+      RTOT  = NZ  + NEQ - 1
       if (RTOT .GT. dvder) then
          write(6,*) 'Memory layout bust, dvdr not big enough'
          write(6,*) RTOT, dvder
@@ -538,18 +602,6 @@ c     Result in kg/kmole
       REAL_T RHO, CPB, SUM, H, WDOT, WT, THFAC
       integer K
 
-C REMOVE ME
-C      write(*,*)'NEQ, N'
-C      write(*,*) NEQ, N
-C      write(*,*)'Z: '
-C      write(*,*) Z
-C      write(*,*)'ZP: '
-C      write(*,*)ZP
-C      write(*,*)'RPAR:'
-C      write(*,*)RPAR(1:75)
-C      write(*,*)'NP : ', NP
-C      stop
-C
 C     Variables in Z are:  Z(1)   = T
 C                          Z(K+1) = Y(K)
       
@@ -579,9 +631,6 @@ C computes production rate for each species; result in RPAR(NWDOT)
       CALL CKWC(Z(1), RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
 C computes h_m for each species; result in RPAR
       CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), RPAR(NH))
-
-C Add function here to compute the A-D part for SDC reactions
-
 C
 C     Form governing equation
 C
@@ -591,12 +640,9 @@ C
          H    = RPAR(NH    + K - 1)
          WDOT = RPAR(NWDOT + K - 1) * THFAC
          WT   = RPAR(NWT   + K - 1)
-C SDC: add A-D term to ZP 
-C why no neg here?  something about the way wdot is calculated?
          ZP(K+1) = WDOT * WT / RHO
          SUM = SUM + H * WDOT * WT
       END DO
-C why neg?
       ZP(1) = -SUM / (RHO*CPB)
 
 #if 0
@@ -617,6 +663,178 @@ C why neg?
 #endif
 
       END
+
+C=======================================================
+
+C**************************************
+C* SDC Reactions Integration Function *
+C**************************************
+
+      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
+      implicit none
+#include "cdwrk.H"
+#include "conp.H"
+#include "visc.H"
+      REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
+      integer N, IPAR(*)
+      
+      REAL_T RHO, CPB, SUM, H, WDOT, WT, THFAC
+      integer K
+      REAL_T Y_m(Nspec)
+
+C     Variables in Z are:  Z(1)   = T
+C                          Z(K+1) = Y(K)
+
+C compute rho from species
+      RHO = 0.
+      DO K = 1, Nspec
+         RHO = RHO + ZP(K+1)
+      end do
+      DO K = 1, Nspec
+         Y_m(K) = ZP(K+1)/RHO
+      end do
+
+C computes c_p,mix returns result in CPB
+      CALL CKCPBS(Z(1),Y_m,IPAR(ckbi),RPAR(ckbr),CPB)
+C calculate molar concentrations from mass fractions; result in RPAR(NC)
+      CALL CKYTCP(RPAR(NP), Z(1), Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+
+c
+c     Get net production rates.  Compute such that production from -ve
+c     reactants gives zero contrib.
+c      
+c      do k=1,Nspec
+c         if (RPAR(NC-1+k) .lt. zero) write(6,*) '.....negative C',k
+c      end do
+      
+#define MAKE_C_POS
+#undef MAKE_C_POS
+#ifdef MAKE_C_POS
+      do k=1,Nspec
+         Y_m(k) = MAX(Y_m(k),zero)
+      end do 
+#endif
+      
+C computes production rate for each species; result in RPAR(NWDOT)
+      CALL CKWC(Z(1), RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
+C computes h_m for each species; result in RPAR
+      CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), RPAR(NH))
+
+
+C     Form (rho*Y)_t 
+      THFAC = one / thickFacCH
+      SUM = zero
+      DO K = 1, Nspec
+         H    = RPAR(NH    + K - 1)
+         WDOT = RPAR(NWDOT + K - 1) * THFAC
+         WT   = RPAR(NWT   + K - 1)
+c c_0, c_1 are in common /sdc/ in cdwrk.H
+         ZP(K+1) = WDOT * WT + c_0(K+1) + c_1(K+1)*TIME
+         SUM = SUM + H * ZP(K+1)
+      END DO
+C  make (rho*h)_t
+      ZP(Nspec+2) = c_0(Nspec+2) + c_1(Nspec+2)*TIME
+C  make Temp_t
+      ZP(1) = (ZP(Nspec+2) - SUM) / (RHO*CPB)
+
+#if 0
+      print*, 'Z:'
+      do k = 1, Nspec+1
+         write(6,996) Z(K)
+      end do
+      print*, 'ZP:'
+      do k = 1, Nspec+1
+         write(6,996) ZP(K)
+      end do
+      print*, 'WDOT:'
+      do k = 1, Nspec
+         write(6,996) RPAR(NWDOT + K - 1)
+      end do
+
+996   format(e30.22)
+#endif
+
+      END
+
+C*************************************
+C* Functions for Lobotto integration *
+C*************************************
+C
+C Load up c's saved in common /sdc_interp_coef/ (in cdwrk.H)
+C VODE will integrate
+C    c_0 + c_1 * time + Rxns
+C (through calling conpFY)
+C
+C provisional reactions integration for Advection and 
+C diffusion--rxns part added in conpFY.
+C solving
+C    S_t = Adv + Diff + Rxn
+C  
+      subroutine Lob_provis(Adv,Diffn,NULN,dt)
+      implicit none
+#include "cdwrk.H"
+
+      REAL_T,  intent(in   ) :: Adv(0:)
+      REAL_T,  intent(in   ) :: Diffn(0:)
+      REAL_T,  intent(in   ) :: NULN(0:)
+      REAL_T,  intent(in   ) :: dt
+
+
+      integer n
+      integer, parameter :: nD = 3      
+C     if here need to know nD explicitly.
+
+
+C     Diffn is organized by
+C     spec1_t1,spec2_t1,...
+C     spec1_t2,spec2_t2,...
+C     ...
+C     rhoH_t1, rhoH_t2 ,...
+
+C     make for species
+      do n = 0, Nspec-1
+         c_0(n+1) = Adv(n) + Diffn(n+Nspec)
+         c_1(n+1) = 0.
+      end do
+C     make for RhoH 
+      c_0(Nspec+1) = Adv(Nspec) + Diffn(nD*Nspec+1) + NULN(1)
+      c_1(Nspec+1) = 0.
+
+      end subroutine Lob_provis
+C
+C SDC reactions integration for advection and diffusion
+C rxns part added in conpFY
+C solving
+C    S_t = A_new-A_old + D_new-D_old + I'_AD + Rxn
+C
+      subroutine Lob_sdc(Adv,Diffn,NULN,dt)
+      implicit none
+#include "cdwrk.H"
+
+      REAL_T,  intent(in   ) :: Adv(0:)
+      REAL_T,  intent(in   ) :: Diffn(0:)
+      REAL_T,  intent(in   ) :: NULN(0:)
+      REAL_T,  intent(in   ) :: dt
+
+
+      integer n
+      integer, parameter ::  nD = 3      
+
+      do n = 0, Nspec-1
+         c_0(n+1) = Adv(n) + Diffn(n) + Diffn(n+Nspec) - 
+     &              Diffn(n+2*Nspec)
+         c_1(n+1) = (Diffn(n+2*Nspec) - Diffn(n))/dt
+      end do
+C     make for RhoH 
+      c_0(Nspec+1) = Adv(Nspec) + Diffn(nD*Nspec) + Diffn(nD*Nspec+1) -
+     &               Diffn(nD*Nspec+2) + NULN(0) + NULN(1) - NULN(2)
+      c_1(Nspec+1) = (Diffn(nD*Nspec+2) - Diffn(nD*Nspec))/dt +
+     &               (NULN(2) - NULN(0))/dt
+
+      end subroutine Lob_sdc
+C
+C End SDC stuff
+C======================================================================
 
       subroutine conpFC(N, TIME, Z, ZP, RPAR, IPAR)
       implicit none
@@ -660,6 +878,7 @@ C
       ENDDO
       ZP(1) = -SUM / (RPAR(NRHO)*CPB)
       END
+
 
       subroutine conpFCnoT(N, TIME, Z, ZP, RPAR, IPAR)
       implicit none

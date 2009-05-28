@@ -127,15 +127,15 @@ public:
                                Real      time);
 
 
-    void HeatTransfer::Sum_extF_sdcF (FArrayBox& S,
-				      int        s_ind,
-				      FArrayBox& extF,
-				      int        extf_ind,
-				      int        num_comp,
-				      FArrayBox& sdcF,
-				      int        sdcf_ind,
-				      FArrayBox& rho,
-				      int        isconserv);
+    void Sum_extF_sdcF (FArrayBox& S,
+			int        s_ind,
+			FArrayBox& extF,
+			int        extf_ind,
+			int        num_comp,
+			FArrayBox& sdcF,
+			int        sdcf_ind,
+			FArrayBox& rho,
+			int        isconserv);
 
     void getTempViscTerms (MultiFab& visc_terms,
                            int       src_comp, 
@@ -286,7 +286,12 @@ public:
     //
     static void variableCleanUp ();
     
+
   void make_I_AD ();
+
+  void make_I_R_provis (Real dt);
+
+  void make_I_R_sdc (Real dt);
 
   void make_advection_sdcForce ( int       src_comp, 
 				 int       num_comp);
@@ -301,8 +306,9 @@ public:
 				  int  corrector);
 
   //CEG:: not currently using this
-  void compute_rhoh_NULN_terms(Real time, int sdc_t_index,
-			       Real dt, bool do_adv_reflux);
+  void compute_rhoh_NULN_terms(Real time,
+			       Real dt, bool do_adv_reflux,
+			       MultiFab& NULN_terms);
 
 protected:
     //
@@ -440,9 +446,10 @@ protected:
                               int        ngrow = 0);
 
     virtual void chem_sdc (MultiFab&  state,
-			      Real       dt,
-			      YdotAction Ydot_action,
-                              int        ngrow = 0);
+			   Real       dt,
+			   int        sdc_flag,
+			   int        ngrow = 0);
+
 
     virtual void calcViscosity (const Real time,
                                 const Real dt,

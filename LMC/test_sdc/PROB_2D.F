@@ -378,8 +378,11 @@ c     Load domain dimensions into common, and set up boundary functions
       domnhi(1) = probhi(1)
       domnhi(2) = probhi(2)
 
-      call setupbc()
-      bcinit = .true.
+      if (probtype .ne. 101) then
+         call setupbc()
+         bcinit = .true.
+      endif
+
 
       zone = getZone(half*(domnlo(1)+domnhi(1)),domnlo(2))
       scale_control = Y_bc(fuelID-1,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))
@@ -805,7 +808,8 @@ c ::: -----------------------------------------------------------
       integer    DIMDEC(state)
       integer    DIMDEC(press)
       REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     time, delta(SDIM)
+      REAL_T     time
+      REAL_T     delta(SDIM) ! = dx
       REAL_T     vel(DIMV(state),SDIM)
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
@@ -830,6 +834,9 @@ c ::: -----------------------------------------------------------
       integer lo_chem(SDIM),hi_chem(SDIM)
       data lo_chem /1,1/
       data hi_chem /1,1/
+
+      REAL_T, parameter :: PI = DACOS(-1.0d0)
+      REAL_T            :: width
 
       if ((Temp.gt.0).neqv.(RhoH.gt.0)) then
          call bl_abort('Need both Temp and RhoH, or neither')
@@ -858,108 +865,139 @@ c ::: -----------------------------------------------------------
      &     X_air, ARLIM(lo_chem),ARLIM(hi_chem),
      &     Y_air, ARLIM(lo_chem),ARLIM(hi_chem))
 
+      if (probtype .eq. 101) then
+         width = 20.
+         
+         do j=lo(2),hi(2)
+            y = delta(2) * (dble(j) + half)
+            do i=lo(1),hi(1)
+               x = delta(1) * (dble(i) + half)
+               
+               vel(i,j,1) = tanh(width*(.25-abs(y-half)))
+               vel(i,j,2) = .05*sin(two*PI*(x))
+               
+               scal(i,j,Temp) = 500.
+               scal(i,j,Trac) = 0.
+          
+               do n = firstSpec,(firstSpec+Nspec-1)
+                  if (n .eq. (iN2+firstSpec-1)) then
+                     scal(i,j,n) = Y_air(iN2)*half*(1+tanh(width*(.25-
+     &                    abs(y-half))))/ten !Species A
+                  else if (n .eq. (iO2+firstSpec-1)) then
+                     scal(i,j,n) = X_air(iO2)*half*(1+tanh(width*(.25-
+     &                    abs(y-half))))/ten !Species A
+                  else
+                     scal(i,j,n) = half*(1-tanh(width*(.25-
+     &                    abs(y-half))))/(ten*7.) !Species B
+                  end if
+               end do            
+            end do
+         end do
+      else
 c     Set initial flame angle for probtype=2
-      theta = Pi / 6.d0
+         theta = Pi / 6.d0
 
 c     Set vorticity into pressure field
 c
-      do j = ARG_L2(press),ARG_H2(press)
-         y = float(j)*delta(2)+domnlo(2)
-         do i = ARG_L1(press),ARG_H1(press)
-            x = float(i)*delta(1)+domnlo(1)
-            r1sq = (x-v_xcen)**2              + (y-v_ycen)**2
-            r2sq = (x-(two*v_cl_x-v_xcen))**2 + (y-v_ycen)**2
-            press(i,j) = v_strength*
-     &           (dexp(-r1sq/v_width**2)-dexp(-r2sq/v_width**2)) 
+         do j = ARG_L2(press),ARG_H2(press)
+            y = float(j)*delta(2)+domnlo(2)
+            do i = ARG_L1(press),ARG_H1(press)
+               x = float(i)*delta(1)+domnlo(1)
+               r1sq = (x-v_xcen)**2              + (y-v_ycen)**2
+               r2sq = (x-(two*v_cl_x-v_xcen))**2 + (y-v_ycen)**2
+               press(i,j) = v_strength*
+     &              (dexp(-r1sq/v_width**2)-dexp(-r2sq/v_width**2)) 
+            end do
          end do
-      end do
       
-      do j = lo(2), hi(2)
-         y = (float(j)+.5)*delta(2)+domnlo(2)         
-         do i = lo(1), hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+         do j = lo(2), hi(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)         
+            do i = lo(1), hi(1)
+               x = (float(i)+.5)*delta(1)+domnlo(1)
 
-            ypert = 0.d0
-            if (pertmag .gt. 0.d0) then
-               Lx = domnhi(1) - domnlo(1)
-               ypert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)
-     &              + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)
-     &              + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx)
-     &              + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)
-     &              + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
-            endif
+               ypert = 0.d0
+               if (pertmag .gt. 0.d0) then
+                  Lx = domnhi(1) - domnlo(1)
+                  ypert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)
+     &                 + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)
+     &                 + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx)
+     &                 + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)
+     &                 + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
+               endif
             
-            ylo =   j  *delta(2)+domnlo(2)-y_offset + ypert
-            yhi = (j+1)*delta(2)+domnlo(2)-y_offset + ypert
-            if (probtype.eq.2) then
-               ylo = ylo - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
-               yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
-            endif
-
-            call pmf(ylo*100,yhi*100,pmf_vals,n)
-            if (n.ne.Nspec+3) then
-               print *,'PMF file thinks n=',n
-               print *,'I think Nspec=',Nspec
-               call bl_abort('INITDATA: n .ne. Nspec+3, n:')
-            endif
-            call FORT_MOLETOMASS(lo_chem,hi_chem,
-     &                           pmf_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
-     &                           Y_pmf,         ARLIM(lo_chem),ARLIM(hi_chem))
+               ylo =   j  *delta(2)+domnlo(2)-y_offset + ypert
+               yhi = (j+1)*delta(2)+domnlo(2)-y_offset + ypert
+               if (probtype.eq.2) then
+                  ylo = ylo - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
+                  yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
+               endif
+               
+               call pmf(ylo*100,yhi*100,pmf_vals,n)
+               if (n.ne.Nspec+3) then
+                  print *,'PMF file thinks n=',n
+                  print *,'I think Nspec=',Nspec
+                  call bl_abort('INITDATA: n .ne. Nspec+3, n:')
+               endif
+               call FORT_MOLETOMASS(lo_chem,hi_chem,
+     &              pmf_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
+     &              Y_pmf,         ARLIM(lo_chem),ARLIM(hi_chem))
          
 
-            rblob = sqrt( (v_xcen-x)**2 + (v_ycen-y)**2 )
-
-            scal(i,j,Trac) = fourth*(press(i,j  ) + press(i+1,j)
-     &           +                   press(i,j+1) + press(i+1,j+1))
-
-            if (v_blob_r .le. zero) then
-               scal(i,j,Temp) = pmf_vals(1)
-               do n = 1,Nspec
-                  scal(i,j,firstSpec+n-1) = Y_pmf(n)
-               end do
-               if (iN2.gt.0) then
-                  sum = zero
-                  do n = 1,Nspec
-                     if (n.ne.iN2) sum = sum+scal(i,j,firstSpec+n-1)
-                  end do
-                  scal(i,j,firstSpec+iN2-1) = one - sum
-               endif
-            else
-               eta = 0.5*(1.d0 + TANH((rblob - v_blob_r)/xfrontw))
+               rblob = sqrt( (v_xcen-x)**2 + (v_ycen-y)**2 )
                
-               scal(i,j,Temp) = eta*pmf_vals(1) + (1.d0-eta)*v_blob_T
-               do n = 1,Nspec
-                  scal(i,j,firstSpec+n-1) = eta*Y_pmf(n)
-     &                 +(1.d0-eta)*(v_blob_airfrac   *    Y_air(n)
-     &                 +            (1.d0-v_blob_airfrac)*Y_pmf(n))
-               end do
-
-               if (iN2.gt.0) then
-                  sum = zero
+               scal(i,j,Trac) = fourth*(press(i,j  ) + press(i+1,j)
+     &              +                   press(i,j+1) + press(i+1,j+1))
+               
+               if (v_blob_r .le. zero) then
+                  scal(i,j,Temp) = pmf_vals(1)
                   do n = 1,Nspec
-                     if (n.ne.iN2) sum = sum+scal(i,j,firstSpec+n-1)
+                     scal(i,j,firstSpec+n-1) = Y_pmf(n)
                   end do
-                  scal(i,j,firstSpec+iN2-1) = one - sum
-               endif
-            end if
+                  if (iN2.gt.0) then
+                     sum = zero
+                     do n = 1,Nspec
+                        if (n.ne.iN2) sum = sum+scal(i,j,firstSpec+n-1)
+                     end do
+                     scal(i,j,firstSpec+iN2-1) = one - sum
+                  endif
+               else
+                  eta = 0.5*(1.d0 + TANH((rblob - v_blob_r)/xfrontw))
+               
+                  scal(i,j,Temp) = eta*pmf_vals(1) + (1.d0-eta)*v_blob_T
+                  do n = 1,Nspec
+                     scal(i,j,firstSpec+n-1) = eta*Y_pmf(n)
+     &                    +(1.d0-eta)*(v_blob_airfrac   *    Y_air(n)
+     &                    +            (1.d0-v_blob_airfrac)*Y_pmf(n))
+                  end do
+                  
+                  if (iN2.gt.0) then
+                     sum = zero
+                     do n = 1,Nspec
+                        if (n.ne.iN2) sum = sum+scal(i,j,firstSpec+n-1)
+                     end do
+                     scal(i,j,firstSpec+iN2-1) = one - sum
+                  endif
+               end if
 
 c     Cut off initial pmf at R_hot so that air along wall
-            if (probtype.eq.2) then
-               eta = half*(one + TANH(two*(ABS(x)-R_hot)/R_hotBL))                  
-               scal(i,j,Temp) = (one - eta)*scal(i,j,Temp) + eta*T_in
-               do n = 1,Nspec
-                  scal(i,j,firstSpec+n-1) =
-     &                 (one - eta)*scal(i,j,firstSpec+n-1) + eta*Y_air(n)
-               end do 
-            endif
-
-            vel(i,j,1) = zero
-            vel(i,j,2) = pmf_vals(2) / 1.d2
-            if (probtype.eq.2) then
-               vel(i,j,2) = zero
-            endif
+               if (probtype.eq.2) then
+                  eta = half*(one + TANH(two*(ABS(x)-R_hot)/R_hotBL))           
+                  scal(i,j,Temp) = (one - eta)*scal(i,j,Temp) + eta*T_in
+                  do n = 1,Nspec
+                     scal(i,j,firstSpec+n-1) =
+     &                    (one - eta)*scal(i,j,firstSpec+n-1) + eta*Y_air(n)
+                  end do 
+               endif
+               
+               vel(i,j,1) = zero
+               vel(i,j,2) = pmf_vals(2) / 1.d2
+               if (probtype.eq.2) then
+                  vel(i,j,2) = zero
+               endif
+            enddo
          enddo
-      enddo
+      end if 
+
       Patm = pamb / 101325.0
       call FORT_RHOfromPTY(lo,hi,
      &                     scal(ARG_L1(state),ARG_L2(state),Density),  DIMS(state),
