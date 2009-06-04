@@ -2104,34 +2104,37 @@ HeatTransfer::scalar_diffusion_update (Real dt,
                                       fluxSCnp1,dataComp,delta_rhs,alpha,betan,
                                       betanp1,solve_mode);
 	    //
-	    // If corrector, increment the viscous flux registers (assume
-	    //  corrector called only ONCE!).
+	    // If corrector, increment the viscous flux registers.
+            // Assume corrector called only ONCE!.
 	    //
 	    if (do_reflux && corrector)
 	    {
+                FArrayBox fluxtot;
+
+                for (int d = 0; d < BL_SPACEDIM; d++)
                 {
-                    FArrayBox fluxtot;
-                    for (int d = 0; d < BL_SPACEDIM; d++)
+                    MultiFab fluxes;
+
+                    if (level < parent->finestLevel())
+                        fluxes.define(fluxSCn[d]->boxArray(), 1, 0, Fab_allocate);
+
+                    for (MFIter fmfi(*fluxSCn[d]); fmfi.isValid(); ++fmfi)
                     {
-                        for (MFIter fmfi(*fluxSCn[d]); fmfi.isValid(); ++fmfi)
-                        {
-                            const Box& ebox = (*fluxSCn[d])[fmfi].box();
-                            fluxtot.resize(ebox,nComp);
-                            fluxtot.copy((*fluxSCn[d])[fmfi],ebox,0,ebox,0,nComp);
-                            fluxtot.plus((*fluxSCnp1[d])[fmfi],ebox,0,0,nComp);
-                            if (level < parent->finestLevel())
-                                getLevel(level+1).getViscFluxReg().CrseInit(fluxtot,ebox,
-                                                                            d,0,sigma,
-                                                                            nComp,-dt);
-			
-                            if (level > 0)
-                                getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),
-                                                         0,sigma,nComp,dt);
-                        }
+                        const Box& ebox = (*fluxSCn[d])[fmfi].box();
+
+                        fluxtot.resize(ebox,nComp);
+                        fluxtot.copy((*fluxSCn[d])[fmfi],ebox,0,ebox,0,nComp);
+                        fluxtot.plus((*fluxSCnp1[d])[fmfi],ebox,0,0,nComp);
+
+                        if (level < parent->finestLevel())
+                            fluxes[fmfi].copy(fluxtot);
+
+                        if (level > 0)
+                            getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,sigma,nComp,dt);
                     }
+                    if (level < parent->finestLevel())
+                        getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,sigma,nComp,-dt);
                 }
-		if (level < parent->finestLevel())
-		    getLevel(level+1).getViscFluxReg().CrseInitFinish();
 	    }
 	    //
 	    // Clean up memory, etc
@@ -2298,28 +2301,33 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     //
     if (do_reflux && corrector)
     {
+        FArrayBox fluxtot;
+
+        for (int d = 0; d < BL_SPACEDIM; d++)
         {
-            FArrayBox fluxtot;
-            for (int d = 0; d < BL_SPACEDIM; d++)
+            MultiFab fluxes;
+
+            if (level < parent->finestLevel())
+                fluxes.define(SpecDiffusionFluxn[d]->boxArray(), nCompY, 0, Fab_allocate);
+
+            for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
             {
-                for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
-                {
-                    const Box& ebox = (*SpecDiffusionFluxn[d])[fmfi].box();
+                const Box& ebox = (*SpecDiffusionFluxn[d])[fmfi].box();
 
-                    fluxtot.resize(ebox,nCompY);
-                    fluxtot.copy((*SpecDiffusionFluxn[d])[fmfi], ebox,0,ebox,0,nCompY);
-                    fluxtot.plus((*SpecDiffusionFluxnp1[d])[fmfi],ebox,0,0,nCompY);
+                fluxtot.resize(ebox,nCompY);
+                fluxtot.copy((*SpecDiffusionFluxn[d])[fmfi], ebox,0,ebox,0,nCompY);
+                fluxtot.plus((*SpecDiffusionFluxnp1[d])[fmfi],ebox,0,0,nCompY);
 
-                    if (level < parent->finestLevel())
-                        getLevel(level+1).getViscFluxReg().CrseInit(fluxtot,ebox,d,0,sCompY,nCompY,-dt);
+                if (level < parent->finestLevel())
+                    fluxes[fmfi].copy(fluxtot);
 
-                    if (level > 0)
-                        getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,sCompY,nCompY,dt);
-                }
+                if (level > 0)
+                    getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,sCompY,nCompY,dt);
             }
+
+            if (level < parent->finestLevel())
+                getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,sCompY,nCompY,-dt);
         }
-	if (level < parent->finestLevel())
-	    getLevel(level+1).getViscFluxReg().CrseInitFinish();
     }
 
     const int IOProc   = ParallelDescriptor::IOProcessorNumber();
@@ -3779,6 +3787,10 @@ HeatTransfer::mcdd_update(Real time,
 
     if (do_reflux)
     {
+        //
+        // TODO - integrate in new CrseInit() call.
+        //
+
         // Build the total flux (pieces from n and np1) for RY and RH
         FArrayBox fluxtot, fluxtmp;
         for (int d = 0; d < BL_SPACEDIM; d++)
