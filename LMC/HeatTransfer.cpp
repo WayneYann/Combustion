@@ -6798,23 +6798,28 @@ HeatTransfer::scalar_advection (Real dt,
         diffusion->removeFluxBoxesLevel(fluxi);
     }
 
-    Box edge_bx[BL_SPACEDIM];
-
     FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM], volume;
+
+    const int nscalar = lscalar - fscalar + 1;
+
+    MultiFab fluxes[BL_SPACEDIM];
+
+    if (do_adv_reflux && level < parent->finestLevel())
+    {
+        for (int d=0; d<BL_SPACEDIM; ++d)
+            fluxes[d].define((*EdgeState[d]).boxArray(), nscalar, 0, Fab_allocate);
+    }
 
     for (MFIter AofS_mfi(*aofs); AofS_mfi.isValid(); ++AofS_mfi)
     {
         const int i = AofS_mfi.index();
 
         for (int d=0; d<BL_SPACEDIM; ++d)
-        {
-            edge_bx[d] = BoxLib::surroundingNodes(grids[i],d);
-            edge[d].resize(edge_bx[d],1);
-        }
+            edge[d].resize(BoxLib::surroundingNodes(grids[i],d),1);
+
         for (int dir = 0; dir < BL_SPACEDIM; dir++)
-        {
             geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
-        }
+
         geom.GetVolume(volume,grids,i,GEOM_GROW);
 
         for (int sigma=fscalar; sigma<=lscalar; ++sigma)
@@ -6823,10 +6828,9 @@ HeatTransfer::scalar_advection (Real dt,
             // If here, edge states at n+1/2 have already been computed, get a copy
             // 
             for (int d=0; d<BL_SPACEDIM; ++d)
-                edge[d].copy((*EdgeState[d])[i],edge_bx[d],sigma,edge_bx[d],0,1);
+                edge[d].copy((*EdgeState[d])[i],edge[d].box(),sigma,edge[d].box(),0,1);
             
-            int use_conserv_diff = 
-                      (advectionType[sigma] == Conservative) ? true : false;
+            int use_conserv_diff = (advectionType[sigma] == Conservative) ? true : false;
 
             godunov->ComputeAofs(grids[i],
                                  area[0],u_mac[0][i],edge[0],
@@ -6838,13 +6842,13 @@ HeatTransfer::scalar_advection (Real dt,
                                  use_conserv_diff);
             //
             // Add divergence of fluxNULN to aofs[RhoH], and increment advective
-            //  going into flux registers
+            // going into flux registers
             //
             if (sigma==RhoH && do_special_rhoh)
             {
                 if (do_adv_reflux)
                     for (int d=0; d<BL_SPACEDIM; ++d)
-                        edge[d].plus((*fluxNULN[d])[i],edge_bx[d],0,0,1);
+                        edge[d].plus((*fluxNULN[d])[i],edge[d].box(),0,0,1);
                 
                 FArrayBox& staten = (*aofs)[i];
                 const FArrayBox& stateo = staten;
@@ -6873,11 +6877,23 @@ HeatTransfer::scalar_advection (Real dt,
                                     ARLIM(vol.loVect()), ARLIM(vol.hiVect()),
                                     &nComp, &mult);
             }
-            //
-            // Do refluxing
-            //
+
             if (do_adv_reflux)
-                pullFluxes(i,sigma,1,edge[0],edge[1],edge[2],dt);
+            {
+                if (level < parent->finestLevel())
+                {
+                    const int fcomp = sigma - fscalar;
+
+                    for (int d=0; d<BL_SPACEDIM; ++d)
+                        fluxes[d][i].copy(edge[d],0,fcomp,1);
+                }
+                if (level > 0)
+                {
+                    D_TERM(advflux_reg->FineAdd(edge[0],0,i,0,sigma,1,dt);,
+                           advflux_reg->FineAdd(edge[1],1,i,0,sigma,1,dt);,
+                           advflux_reg->FineAdd(edge[2],2,i,0,sigma,1,dt););
+                }
+            }
         }
     }
 
@@ -6886,11 +6902,12 @@ HeatTransfer::scalar_advection (Real dt,
 
     if (do_special_rhoh)
         diffusion->removeFluxBoxesLevel(fluxNULN);
-    //
-    // pullFluxes() contains CrseInit() calls. Got to complete the process.
-    //
+
     if (do_reflux && level < parent->finestLevel())
-        getAdvFluxReg(level+1).CrseInitFinish();
+    {
+        for (int d=0; d<BL_SPACEDIM; ++d)
+            getAdvFluxReg(level+1).CrseInit(fluxes[d],d,0,fscalar,nscalar,-dt);
+    }
 }
 
 void
