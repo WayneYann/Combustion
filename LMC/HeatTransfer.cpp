@@ -7650,7 +7650,9 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
 
         return;            
     }
-
+    //
+    // TODO - merge in new CrseInit() calls.
+    //
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "...doing mcdd sync diffusion..." << '\n';
 
@@ -7848,21 +7850,14 @@ HeatTransfer::differential_spec_diffuse_sync(Real dt)
     {
 	for (int d=0; d<BL_SPACEDIM; ++d)
 	{
-	    for (MFIter fmfi(*SpecDiffusionFluxnp1[d]); fmfi.isValid(); ++fmfi)
-	    {
-                FArrayBox& fmfi_fab = (*SpecDiffusionFluxnp1[d])[fmfi];
-		if (level < parent->finestLevel())
-		    getLevel(level+1).getViscFluxReg().CrseInit(fmfi_fab,
-								fmfi_fab.box(),
-								d,0,first_spec,
-								nspecies,-dt);
-		if (level > 0)
-		    getViscFluxReg().FineAdd(fmfi_fab,d,fmfi.index(),
-					     0,first_spec,nspecies,dt);
-	    }
+            if (level > 0)
+            {
+                for (MFIter fmfi(*SpecDiffusionFluxnp1[d]); fmfi.isValid(); ++fmfi)
+		    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies,dt);
+            }
+            if (level < parent->finestLevel())
+                getLevel(level+1).getViscFluxReg().CrseInit(*SpecDiffusionFluxnp1[d],d,0,first_spec,nspecies,-dt);
 	}
-	if (level < parent->finestLevel())
-	    getLevel(level+1).getViscFluxReg().CrseInitFinish();
     }
     
     if (verbose && ParallelDescriptor::IOProcessor())
