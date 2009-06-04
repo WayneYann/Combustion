@@ -6419,7 +6419,6 @@ HeatTransfer::compute_edge_states (Real               dt,
             }
             else
             {
-
                 FArrayBox junkDivu(tforces.box(),1);
                 junkDivu.setVal(0.);
                 godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
@@ -6519,28 +6518,32 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... advect momentum\n";
 
-    const int   finest_level   = parent->finestLevel();
-    Box edge_bx[BL_SPACEDIM];
+    const int finest_level = parent->finestLevel();
+
     FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM], volume;
     //
     // Compute the advective forcing for momentum.
     //
-    int use_conserv_diff = true;
+    const int use_conserv_diff = true;
+
+    MultiFab fluxes[BL_SPACEDIM];
+
+    if (do_reflux && level < parent->finestLevel())
+    {
+        for (int d=0; d<BL_SPACEDIM; ++d)
+            fluxes[d].define((*EdgeState[d]).boxArray(), BL_SPACEDIM, 0, Fab_allocate);
+    }
 
     for (MFIter AofS_mfi(*aofs); AofS_mfi.isValid(); ++AofS_mfi)
     {
         const int i = AofS_mfi.index();
 
         for (int d=0; d<BL_SPACEDIM; ++d)
-        {
-            edge_bx[d] = BoxLib::surroundingNodes(grids[i],d);
-            edge[d].resize(edge_bx[d],1);
-        }
+            edge[d].resize(BoxLib::surroundingNodes(grids[i],d),1);
 
         for (int dir = 0; dir < BL_SPACEDIM; dir++)
-        {
             geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
-        }
+
         geom.GetVolume(volume,grids,i,GEOM_GROW);
 
         for (int comp = 0 ; comp < BL_SPACEDIM ; comp++ )
@@ -6549,7 +6552,7 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
             // If here, edge states at n+1/2 have already been computed, get a copy
             // 
             for (int d=0; d<BL_SPACEDIM; ++d)
-                edge[d].copy((*EdgeState[d])[i],edge_bx[d],comp,edge_bx[d],0,1);
+                edge[d].copy((*EdgeState[d])[i],edge[d].box(),comp,edge[d].box(),0,1);
  
             godunov->ComputeAofs(grids[i],
                                  area[0],u_mac[0][i],edge[0],
@@ -6559,20 +6562,32 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
 #endif
                                  volume,(*aofs)[i],comp,
                                  use_conserv_diff);
-            //
-            // Get fluxes for diagnostics and refluxing.
-            //
-            pullFluxes(i, comp, 1, edge[0], edge[1], edge[2], dt);
+            if (do_adv_reflux)
+            {
+                if (level < parent->finestLevel())
+                {
+                    for (int d=0; d<BL_SPACEDIM; ++d)
+                        fluxes[d][i].copy(edge[d],0,comp,1);
+                }
+
+                if (level > 0)
+                {
+                    D_TERM(advflux_reg->FineAdd(edge[0],0,i,0,comp,1,dt);,
+                           advflux_reg->FineAdd(edge[1],1,i,0,comp,1,dt);,
+                           advflux_reg->FineAdd(edge[2],2,i,0,comp,1,dt););
+                }
+            }
         }
     }
 
     D_TERM(area[0].clear();, area[1].clear();, area[2].clear(););
     D_TERM(edge[0].clear();, edge[1].clear();, edge[2].clear(););
-    //
-    // pullFluxes() contains CrseInit() calls -- complete the process.
-    //
+
     if (do_adv_reflux && level < finest_level)
-        getAdvFluxReg(level+1).CrseInitFinish();
+    {
+        for (int d=0; d<BL_SPACEDIM; ++d)
+            getAdvFluxReg(level+1).CrseInit(fluxes[d],d,0,0,BL_SPACEDIM,-dt);
+    }
 }
 
 void
