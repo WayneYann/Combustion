@@ -129,9 +129,6 @@ Real      HeatTransfer::mcdd_rtol                 = 1.e-8;
 int       HeatTransfer::mcdd_presmooth            = 3;
 int       HeatTransfer::mcdd_postsmooth           = 3;
 Real      HeatTransfer::mcdd_cfRelaxFactor        = 1.0;
-bool      HeatTransfer::do_rk_diffusion           = false;
-bool      HeatTransfer::rk_mixture_averaged       = false;
-Real      HeatTransfer::rk_time_step_multiplier   = 0.5;
 
 Real      HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
 
@@ -642,10 +639,6 @@ HeatTransfer::init_once ()
 
     ParmParse pp("ht");
 
-    pp.query ("do_rk_diffusion", do_rk_diffusion);
-    pp.query ("rk_mixture_averaged", rk_mixture_averaged);
-    pp.query ("rk_time_step_multiplier", rk_time_step_multiplier);
-
     pp.query("plot_reactions",plot_reactions);
     if (plot_reactions)
     {
@@ -794,21 +787,13 @@ HeatTransfer::estTimeStep ()
 
     ParallelDescriptor::ReduceRealMin(divu_dt);
 
-    Real rk_dt;
-    if (do_rk_diffusion) rk_dt = rk_step_selection (cur_time);
-
     if (verbose && ParallelDescriptor::IOProcessor())
     {
-	if (do_rk_diffusion)
-	    std::cout << "HeatTransfer::estTimeStep(): estdt, divu_dt, rk_dt = " 
-		      << estdt << ", " << divu_dt << ", " << rk_dt << '\n';
-	else
-	    std::cout << "HeatTransfer::estTimeStep(): estdt, divu_dt = " 
-		      << estdt << ", " << divu_dt << '\n';
+        std::cout << "HeatTransfer::estTimeStep(): estdt, divu_dt = " 
+                  << estdt << ", " << divu_dt << '\n';
     }
 
     estdt = std::min(estdt, divu_dt);
-    if (do_rk_diffusion) estdt = std::min(estdt, rk_dt);
 
     if (estdt < ns_estdt && verbose && ParallelDescriptor::IOProcessor())
         std::cout << "HeatTransfer::estTimeStep(): timestep reduced from " 
@@ -2962,49 +2947,11 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
             const int sCompT = Temp - src_comp + load_comp;
             if (do_mcdd)
             {
-		// code for Marc's multicomponent diffusion
-
                 BL_ASSERT(sCompT > 0 && sCompT < visc_terms.nComp());
                 compute_mcdd_visc_terms(visc_terms,sCompY,visc_terms,sCompT,time,nGrow,DDOp::DD_Temp);
             }
-            else if (do_rk_diffusion)
-	    {
-		// code for Joe's Runge-Kutta diffusion
-
-		// apply the diffusion operator to the old or new state to get updates
-		// associated with that state.  only the species divergences are used here, 
-		// but space is still needed for the others.
-		MultiFab* div_of_flux_for_H;
-		MultiFab* div_of_flux_for_Y;
-		MultiFab** flux_for_H;
-		MultiFab** flux_for_Y;
-
-		// per the comments above, pass - 1.0 as the scaling argument.
-		rk_diffusion_operator (time,
-				       - 1.0,
-				       div_of_flux_for_H,
-				       div_of_flux_for_Y,
-				       flux_for_H,
-				       flux_for_Y);
-
-		// examination of visc_terms.nGrow() reveals getViscTerms is called twice,
-		// once with 1 growth cell, and once with 0.  the original implementation,
-		// in the following else block, compute_differential_diffusion_terms 
-                // contains a remark that it does not fill growth cells, so we also do
-		// not fill them here.  note the arguments for MultiFab:: procedures are 
-		// (dst, src, srccomp, dstcomp, ncomp, nghost);
-		MultiFab::Copy (visc_terms, *div_of_flux_for_Y, 0, sCompY, nspecies, 0);
-
-		// delete the space for fluxes and updates
-		delete div_of_flux_for_H;
-		delete div_of_flux_for_Y;
-		diffusion->removeFluxBoxesLevel (flux_for_H);
-		diffusion->removeFluxBoxesLevel (flux_for_Y);
-	    }
 	    else 
 	    {
-		// code for the original implementation
-
 		compute_differential_diffusion_terms(visc_terms,sCompY,time);
             }
         }
@@ -3024,67 +2971,14 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 		{
 		    // Do nothing, because in this case, was done above
 		}
-		else if (do_rk_diffusion)
-		{
-		    // code for Joe's Runge-Kutta diffusion
-		    
-		    // apply the diffusion operator to the old or new state to get updates
-		    // associated with that state.  only the species divergences are used here, 
-		    // but space is still needed for the others.
-		    MultiFab* div_of_flux_for_H;
-		    MultiFab* div_of_flux_for_Y;
-		    MultiFab** flux_for_H;
-		    MultiFab** flux_for_Y;
-		    
-		    // per the comments above, pass - 1.0 as the scaling argument.
-		    rk_diffusion_operator (time,
-					   - 1.0,
-					   div_of_flux_for_H,
-					   div_of_flux_for_Y,
-					   flux_for_H,
-					   flux_for_Y);
-		    
-		    MultiFab& S_old = get_old_data (State_Type);
-		    FArrayBox cpmix, h, Y;
-		    for (MFIter mfi (S_old); mfi.isValid (); ++mfi)
-		    {
-			const Box& box = mfi.validbox ();
-			// form Y
-			Y.resize (box, nspecies);
-			Y.copy (S_old[mfi], first_spec, 0, nspecies);
-			for (int k = 0; k < nspecies; ++k)
-			    Y.divide (S_old[mfi], Density, k, 1);
-			// form cpmix
-			cpmix.resize (box, 1);
-			getChemSolve().getCpmixGivenTY (cpmix, S_old[mfi], Y, box, Temp, 0, 0);
-			// form h_k
-			h.resize (box, nspecies);
-			getChemSolve ().getHGivenT(h, S_old[mfi], box, Temp, 0);
-			// assemble the right side of the temperature equation
-			// note the minus sign has been included in the scaling of the divergences
-			visc_terms[mfi].copy ((*div_of_flux_for_H)[mfi]);
-			h.mult ((*div_of_flux_for_Y)[mfi], 0, 0, nspecies);
-			for (int k = 0; k < nspecies; ++k)
-			    visc_terms[mfi].plus (h, k, 0, 1);
-			visc_terms[mfi].divide (cpmix);
-		    }
-		    // delete the space for fluxes and updates
-		    delete div_of_flux_for_H;
-		    delete div_of_flux_for_Y;
-		    diffusion->removeFluxBoxesLevel (flux_for_H);
-		    diffusion->removeFluxBoxesLevel (flux_for_Y);
-		}
 		else
 		{
-		    // code for the original implementation
-
                     getTempViscTerms(visc_terms,Temp-load_comp,time);
 		}
 	    }
 	    else if (icomp == RhoH)
 	    {
 		if (do_mcdd)
-                    // What to do here?  
                     BoxLib::Abort("do we really want to get RhoH VT when do_mcdd?");
 	    }
 	    else
@@ -3098,7 +2992,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                 }
                 else
                 {
-		    // JFG: can a return be placed here for rk_diffusion?
                     //
                     // Assume always variable viscosity / diffusivity.
                     //
@@ -3901,323 +3794,6 @@ HeatTransfer::mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCom
 }
 
 void
-HeatTransfer::rk_diffusion_operator (const Real time,
-				     const Real scale_factor,
-				     MultiFab *& div_of_flux_for_H,
-				     MultiFab *& div_of_flux_for_Y,
-				     MultiFab **& flux_for_H,
-				     MultiFab **& flux_for_Y)
-{
-/*
-  evaluate the "operator" (extensive fluxes and their divergences) for the 
-  Runge-Kutta implementation of the diffusion update using the mixture
-  averaged or multicomponent formulation.
-  
-  the divergences are scaled by 1/vol so they do approximate the analytic
-  divergence.  when used in the Runge-Kutta formula their additional scaling,
-  given by scale_factor, should be set to - dt.  the minus occurs because
-  the standard ODE is written y_prime = f(y), that is, the divergences are
-  moved to the opposite side of the equation from the time derivative.  when
-  used in getViscTerms the scale_factor should be set to -1.
-
-  Real time                       ! INPUT time, either prev_time or cur_time
-  Real scale_factor               ! INPUT scale factor
-  MultiFab *& div_of_flux_for_H   ! OUTPUT divergence of the flux for rho H weighted by scale_factor / vol
-  MultiFab *& div_of_flux_for_Y   ! OUTPUT divergence of the flux for rho Y weighted by scale_factor / vol
-  MultiFab **& flux_for_H         ! OUTPUT extensive rho H flux
-  MultiFab **& flux_for_Y         ! OUTPUT extensive rho Y flux
-*/
-
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::rk_diffusion_operator()");
-
-    // check that time is either prev_time or cur_time
-    const TimeLevel whichTime = which_time(State_Type, time);
-    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
-
-    // get some constants used as dimensions
-    int ncomps = NUM_STATE;
-    // const int nspecies = getChemSolve().numSpecies(); // this is globally defined
-
-    // get some constants used in the calculation of temperature
-    Real maximum_error = getChemSolve().getHtoTerrMAX ();
-    int maximum_iterations = getChemSolve().getHtoTiterMAX ();
-
-    // get locations of things in the state and convert to fortran indexing
-    int index_of_firstY = Density + 1;
-    int index_of_lastY = index_of_firstY + nspecies - 1;
-    int index_of_rho = Density;
-    int index_of_rhoH = RhoH;
-    int index_of_T = Temp;
-    int fort_index_of_firstY = 1 + index_of_firstY;
-    int fort_index_of_lastY  = 1 + index_of_lastY;
-    int fort_index_of_rho    = 1 + index_of_rho;
-    int fort_index_of_rhoH   = 1 + index_of_rhoH;
-    int fort_index_of_T      = 1 + index_of_T;
-
-    MultiFab area[BL_SPACEDIM], volume;
-
-    for (int dir = 0; dir < BL_SPACEDIM; dir++)
-    {
-        geom.GetFaceArea(area[dir],grids,dir,GEOM_GROW);
-    }
-    geom.GetVolume(volume,grids,GEOM_GROW);
-
-    // allocate OUTPUT multifabs for fluxes and updates
-    int ngrow = 0;
-    diffusion->allocFluxBoxesLevel(flux_for_H,ngrow,1);
-    diffusion->allocFluxBoxesLevel(flux_for_Y,ngrow,nspecies);
-    div_of_flux_for_H = new MultiFab(grids,1,ngrow);
-    div_of_flux_for_Y = new MultiFab(grids,nspecies,ngrow);
-
-    // loop over fabs in the state at the specified time
-    MultiFab dummy (grids,1,0,Fab_noallocate);
-    MFIter div_of_flux_for_H_mfi(*div_of_flux_for_H);
-    MFIter div_of_flux_for_Y_mfi(*div_of_flux_for_Y);
-    MFIter xflux_for_H_mfi(*flux_for_H[0]);
-    MFIter yflux_for_H_mfi(*flux_for_H[1]);
-    MFIter xflux_for_Y_mfi(*flux_for_Y[0]);
-    MFIter yflux_for_Y_mfi(*flux_for_Y[1]);
-    ngrow = 1;
-    for (FillPatchIterator state_fpi (*this, dummy, ngrow, time, State_Type, 0, ncomps);
-         state_fpi.isValid();
-         ++state_fpi, 
-	     ++div_of_flux_for_H_mfi, 
-	     ++div_of_flux_for_Y_mfi,
-	     ++xflux_for_H_mfi,
-	     ++yflux_for_H_mfi,
-	     ++xflux_for_Y_mfi,
-	     ++yflux_for_Y_mfi)
-    {
-        BL_ASSERT (
-	    div_of_flux_for_H_mfi.isValid() &&
-	    div_of_flux_for_Y_mfi.isValid() &&
-	    xflux_for_H_mfi.isValid() &&
-	    yflux_for_H_mfi.isValid() &&
-	    xflux_for_Y_mfi.isValid() &&
-	    yflux_for_Y_mfi.isValid()
-	    );
-
-	// get index of the present box
-        const int idx = state_fpi.index();
-
-	// get boundary condition array for all components
-	Array<int> bc = getBCArray (State_Type, idx, 0, ncomps);
-
-/*
-c     arguments are alphabetical, mostly:
-c
-c     domain_lo, domain_hi,             ! INPUT limits of valid region of the domain
-c     lo, hi,                           ! INPUT limits of valid region of the box
-c   * areax, DIMS(areax),               ! INPUT areas of the faces perendicular to x axis
-c   * areay, DIMS(areay),               ! INPUT areas of the faces perpendicular to y axis
-c     bc,                               ! INPUT boundary condition array for all comps
-c     dx,                               ! INPUT physical dimensions of grid cells
-c     index_of_firstY,                  ! INPUT index of rho Y for the first species in the state
-c     index_of_lastY,                   ! INPUT index of rho Y for the last species in the state
-c     index_of_rho,                     ! INPUT index of rho in the state
-c     index_of_rhoH,                    ! INPUT index of rho H in the state
-c     index_of_T,                       ! INPUT index of T in the state
-c     maximum_error,                    ! INPUT maximum error in calculation of T
-c     maximum_iterations,               ! INPUT maximum iterations in calculation of T
-c     ncomps,                           ! INPUT total number of components in the state
-c     nspecies,                         ! INPUT total number of species in the state
-c     scale_factor,                     ! INPUT scale_factor
-c     state, DIMS(state),               ! INPUT all variables in the state
-c   * volume, DIMS(volume),             ! INPUT volumes of the cells
-c     div_of_flux_for_H, DIMS(div_of_flux_for_H), ! OUTPUT divergence of the flux for rho H
-c     div_of_flux_for_Y, DIMS(div_of_flux_for_Y), ! OUTPUT divergences of the fluxes for rho Y
-c     xflux_for_H, DIMS(xflux_for_H),   ! OUTPUT extensive x fluxes for rho H
-c     xflux_for_Y, DIMS(xflux_for_Y),   ! OUTPUT extensive x fluxes for rho Y
-c     yflux_for_H, DIMS(yflux_for_H),   ! OUTPUT extensive y fluxes for rho H
-c     yflux_for_Y, DIMS(yflux_for_Y),   ! OUTPUT extensive y fluxes for rho Y
-c
-c     * these arguments are not used
-*/
-
-#if (BL_SPACEDIM==2) 
-#define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
-#endif
-#if (BL_SPACEDIM==3) 
-#define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.loVect()[2],foo.hiVect()[0],foo.hiVect()[1],foo.hiVect()[2]
-#endif
-
-	if (!rk_mixture_averaged)
-	{
-	    // multicomponent is the default
-	    FORT_RK_MULTICOMPONENT
-		(geom.Domain().loVect(), geom.Domain().hiVect(), 
-		 grids[idx].loVect(), grids[idx].hiVect(),
-		 DATA_AND_LIMITS(area[0][idx]),
-		 DATA_AND_LIMITS(area[1][idx]),
-		 bc.dataPtr(),
-		 geom.CellSize(),
-		 &fort_index_of_firstY,
-		 &fort_index_of_lastY,
-		 &fort_index_of_rho,
-		 &fort_index_of_rhoH,
-		 &fort_index_of_T,
-		 &maximum_error,
-		 &maximum_iterations,
-		 &ncomps,
-		 &nspecies,
-		 &scale_factor,
-		 DATA_AND_LIMITS(state_fpi()),
-		 DATA_AND_LIMITS(volume[idx]),
-		 DATA_AND_LIMITS((*div_of_flux_for_H)[div_of_flux_for_H_mfi]),
-		 DATA_AND_LIMITS((*div_of_flux_for_Y)[div_of_flux_for_Y_mfi]),
-		 DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
-		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
-		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
-		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
-	}
-	else
-	{
-	    // do mixture averaged
-	    FORT_RK_MIXTURE_AVERAGED
-		(geom.Domain().loVect(), geom.Domain().hiVect(), 
-		 grids[idx].loVect(), grids[idx].hiVect(),
-		 DATA_AND_LIMITS(area[0][idx]),
-		 DATA_AND_LIMITS(area[1][idx]),
-		 bc.dataPtr(),
-		 geom.CellSize(),
-		 &fort_index_of_firstY,
-		 &fort_index_of_lastY,
-		 &fort_index_of_rho,
-		 &fort_index_of_rhoH,
-		 &fort_index_of_T,
-		 &maximum_error,
-		 &maximum_iterations,
-		 &ncomps,
-		 &nspecies,
-		 &scale_factor,
-		 DATA_AND_LIMITS(state_fpi()),
-		 DATA_AND_LIMITS(volume[idx]),
-		 DATA_AND_LIMITS((*div_of_flux_for_H)[div_of_flux_for_H_mfi]),
-		 DATA_AND_LIMITS((*div_of_flux_for_Y)[div_of_flux_for_Y_mfi]),
-		 DATA_AND_LIMITS((*flux_for_H[0])[xflux_for_H_mfi]),
-		 DATA_AND_LIMITS((*flux_for_Y[0])[xflux_for_Y_mfi]),
-		 DATA_AND_LIMITS((*flux_for_H[1])[yflux_for_H_mfi]),
-		 DATA_AND_LIMITS((*flux_for_Y[1])[yflux_for_Y_mfi]));
-	}
-    }
-}
-
-Real
-HeatTransfer::rk_step_selection (const Real time)
-{
-/*
-  estimate the time step for the Runge-Kutta implementation of the diffusion
-  update.  this estimation is based on the diffusion coefficients of the 
-  species into the mixture, independent of whether or not the "operator" is 
-  based on the mixture averaged or the multicomponent formulation with Soret 
-  and Dufour effects.
-
-                                space_step ** 2
-                  time_step  =  ---------------
-                                D_mix * 2 * DIM
-
-  the minimum of this formula is taken over all cells and species
-
-  Real time     ! INPUT time, either prev_time or cur_time
-  returned Real ! OUTPUT the time step
-*/
-
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::rk_step_selection()");
-
-    // check that time is either prev_time or cur_time
-    const TimeLevel whichTime = which_time(State_Type, time);
-    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
-
-    // get some constants used as dimensions
-    int ncomps = NUM_STATE;
-    // const int nspecies = getChemSolve().numSpecies(); // this is globally defined
-
-    // get some constants used in the calculation of temperature
-    Real maximum_error = getChemSolve().getHtoTerrMAX ();
-    int maximum_iterations = getChemSolve().getHtoTiterMAX ();
-
-    // get locations of things in the state and convert to fortran indexing
-    int index_of_firstY = Density + 1;
-    int index_of_lastY = index_of_firstY + nspecies - 1;
-    int index_of_rho = Density;
-    int index_of_rhoH = RhoH;
-    int index_of_T = Temp;
-    int fort_index_of_firstY = 1 + index_of_firstY;
-    int fort_index_of_lastY  = 1 + index_of_lastY;
-    int fort_index_of_rho    = 1 + index_of_rho;
-    int fort_index_of_rhoH   = 1 + index_of_rhoH;
-    int fort_index_of_T      = 1 + index_of_T;
-
-    // get the state at the desired time
-    MultiFab& state 
-	= (whichTime == AmrOldTime) 
-	? get_old_data(State_Type) 
-	: get_new_data(State_Type);
-
-    // since it is possible that a processor has no boxes on this
-    // level, the variable that holds the smallest time step found
-    // here must be initialized with a large value so that the 
-    // ParallelDescriptor::ReduceRealMin will function propoerly.
-    Real smallest_time_step = 1.0e20;
-
-    // loop over fabs in the state
-    for (MFIter state_mfi(state); state_mfi.isValid(); ++state_mfi)
-    {
-	// get index of the present box
-        const int idx = state_mfi.index();
-
-/*
-c     arguments are alphabetical, mostly:
-c
-c     lo, hi             ! INPUT limits of valid region of the box
-c     dx                 ! INPUT physical dimensions of grid cells
-c     index_of_firstY    ! INPUT index of rho Y for the first species in the state
-c     index_of_lastY     ! INPUT index of rho Y for the last species in the state
-c     index_of_rho       ! INPUT index of rho in the state
-c     index_of_rhoH      ! INPUT index of rho H in the state
-c     index_of_T         ! INPUT index of T in the state
-c     maximum_error      ! INPUT maximum error in calculation of T
-c     maximum_iterations ! INPUT maximum iterations in calculation of T
-c     ncomps             ! INPUT total number of components in the state
-c     nspecies           ! INPUT total number of species in the state
-c     smallest_time_step ! OUTPUT smallest time step over all cells and species
-c     state, DIMS(state) ! INPUT all variables in the state
-*/
-
-#if (BL_SPACEDIM==2) 
-#define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.hiVect()[0],foo.hiVect()[1]
-#endif
-#if (BL_SPACEDIM==3) 
-#define DATA_AND_LIMITS(foo) foo.dataPtr(),foo.loVect()[0],foo.loVect()[1],foo.loVect()[2],foo.hiVect()[0],foo.hiVect()[1],foo.hiVect()[2]
-#endif
-
-	FORT_RK_STEP_SELECTION
-	    (grids[idx].loVect(), grids[idx].hiVect(),
-	     geom.CellSize(),
-	     &fort_index_of_firstY,
-	     &fort_index_of_lastY,
-	     &fort_index_of_rho,
-	     &fort_index_of_rhoH,
-	     &fort_index_of_T,
-	     &maximum_error,
-	     &maximum_iterations,
-	     &ncomps,
-	     &nspecies,
-	     &smallest_time_step,
-	     DATA_AND_LIMITS(state[state_mfi])
-	     );
-    }
-    // reconcile the time step over all the processors
-    ParallelDescriptor::ReduceRealMin (smallest_time_step);
-
-    // apply the safety factor
-    Real time_step = rk_time_step_multiplier * smallest_time_step;
-
-    // return the scaled time step
-    return time_step;
-}
-
-void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 						    int       sComp,
                                                     Real      time)
@@ -4237,21 +3813,13 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     BL_ASSERT(visc_terms.boxArray() == grids);
     BL_ASSERT(visc_terms.nComp() >= sComp+nspecies);
 
-    MultiFab& S = get_data(State_Type,time);
-    const Real* dx = geom.CellSize();
+    const int        nGrowOp = 1; // Required by the operator to compute first-cut fluxes
+    MultiFab&        S       = get_data(State_Type,time);
+    const Real*      dx      = geom.CellSize();
 
     const Array<int> rho_flag(nspecies,2); // Hardwired, for now.
-    const int nGrowOp = 1; // Required by the operator to compute first-cut fluxes
-    MultiFab s_tmp(grids,1,nGrowOp);
-    //
-    // FIXME: Should have this in level data
-    //
-    MultiFab **beta;
-    diffusion->allocFluxBoxesLevel(beta,0,nspecies);
-    getDiffusivity(beta, time, first_spec, 0, nspecies);
 
-    MultiFab **flux;
-    diffusion->allocFluxBoxesLevel(flux,0,1);
+    MultiFab s_tmp(grids,1,nGrowOp);
 
     const TimeLevel whichTime = which_time(State_Type,time);
 
@@ -4307,6 +3875,14 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
                     fab.mult(tmp,0,comp+1,1);
         }
     }
+
+    MultiFab **flux;
+    MultiFab **beta;
+
+    diffusion->allocFluxBoxesLevel(flux,0,1);
+    diffusion->allocFluxBoxesLevel(beta,0,nspecies);
+
+    getDiffusivity(beta, time, first_spec, 0, nspecies);
 
     for (int comp = 0; comp < nspecies; ++comp)
     {
@@ -5129,175 +4705,16 @@ HeatTransfer::advance (Real time,
 
     BL_PROFILE_TIMER(diffusiontimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-diffusion");
     BL_PROFILE_START(diffusiontimer);
-
-    if (do_rk_diffusion)
+    //
+    // Update energy and species.
+    //
+    if (do_mcdd)
     {
-        //
-        // Update energy and species: Runge-Kutta method.
-        //
-
-	// finish the advective update by including rho H.
-	bool do_adv_reflux = true;
-        scalar_advection(dt,RhoH,RhoH,do_adv_reflux);
-
-	// get locations of some things in the state
-	int index_of_firstY = Density + 1;
-	int index_of_rhoH = RhoH;
-	int index_of_T = Temp;
-
-	// get the old and new states
-	MultiFab& S_new = get_new_data(State_Type);
-	MultiFab& S_old = get_old_data(State_Type);
-
-	// the old state currently holds the time n values plus the half step chemistry
-	// apply the diffusion operator to the old state to get fluxes and updates
-        // associated with the old state
-	MultiFab* div_of_flux_for_H_old;
-	MultiFab* div_of_flux_for_Y_old;
-	MultiFab** flux_for_H_old;
-	MultiFab** flux_for_Y_old;
-
-	rk_diffusion_operator (prev_time,
-			       - dt,
-			       div_of_flux_for_H_old,
-			       div_of_flux_for_Y_old,
-			       flux_for_H_old,
-			       flux_for_Y_old);
-
-	// the new state currently holds the time n values plus the half step chemistry
-	// add the advective terms to the new state
-	scalar_advection_update(dt, first_spec, last_spec);
-	scalar_advection_update(dt, RhoH, RhoH);
-
-	// save these values.
-	MultiFab save_for_rhoH (grids, 1, 0);
-	MultiFab save_for_rhoY (grids, nspecies, 0);
-	// note the arguments for MultiFab:: procedures are 
-	// (dst, src, srccomp, dstcomp, ncomp, nghost);
-	MultiFab::Copy (save_for_rhoH, S_new, index_of_rhoH, 0, 1, 0);
-	MultiFab::Copy (save_for_rhoY, S_new, index_of_firstY, 0, nspecies, 0);
-
-	// form the new_star state in the new state by adding the updates associated 
-        // with the old state
-	MultiFab::Add (S_new, *div_of_flux_for_H_old, 0, index_of_rhoH, 1, 0);
-	MultiFab::Add (S_new, *div_of_flux_for_Y_old, 0, index_of_firstY, nspecies, 0);
-
-	// apply the diffusion operator to the new_star state to get fluxes and updates
-        // associated with the new_star state
-	MultiFab* div_of_flux_for_H_new;
-	MultiFab* div_of_flux_for_Y_new;
-	MultiFab** flux_for_H_new;
-	MultiFab** flux_for_Y_new;
-
-	rk_diffusion_operator (cur_time,
-			       - dt,
-			       div_of_flux_for_H_new,
-			       div_of_flux_for_Y_new,
-			       flux_for_H_new,
-			       flux_for_Y_new);
-
-	// restore the new state with the saved values so that it holds the sum of the old
-        // state and the forcing and advection terms.
-	MultiFab::Copy (S_new, save_for_rhoH, 0, index_of_rhoH, 1, 0);
-	MultiFab::Copy (S_new, save_for_rhoY, 0, index_of_firstY, nspecies, 0);
-
-        save_for_rhoY.clear();
-        save_for_rhoH.clear();
-
-	// form the new state in place by adding the average of the updates associated with
-        // the old state and the new_star state
-	(*div_of_flux_for_H_old).mult (0.5, 0);
-	(*div_of_flux_for_Y_old).mult (0.5, 0);
-	MultiFab::Add (S_new, *div_of_flux_for_H_old, 0, index_of_rhoH, 1, 0);
-	MultiFab::Add (S_new, *div_of_flux_for_Y_old, 0, index_of_firstY, nspecies, 0);
-	(*div_of_flux_for_H_new).mult (0.5, 0);
-	(*div_of_flux_for_Y_new).mult (0.5, 0);
-	MultiFab::Add (S_new, *div_of_flux_for_H_new, 0, index_of_rhoH, 1, 0);
-	MultiFab::Add (S_new, *div_of_flux_for_Y_new, 0, index_of_firstY, nspecies, 0);
-
-	// place into the flux registers the average of the old and new H fluxes
-	FArrayBox average_flux;
-	int components = 1;
-	for (int dimension = 0; dimension < BL_SPACEDIM; dimension++)
-	{
-	    for (MFIter flux_mfi(*flux_for_H_old[dimension]); flux_mfi.isValid(); ++flux_mfi)
-	    {
-		const Box& edge_box = (*flux_for_H_old[dimension])[flux_mfi].box();
-		average_flux.resize(edge_box,components);
-		average_flux.copy((*flux_for_H_old[dimension])[flux_mfi],edge_box,0,edge_box,0,components);
-		average_flux.plus((*flux_for_H_new[dimension])[flux_mfi],edge_box,0,0,components);
-                average_flux.mult(0.5);
-		if (level < parent->finestLevel())
-		{
-		    getLevel(level+1).getViscFluxReg().CrseInit
-			(average_flux, edge_box, dimension, 0, index_of_rhoH, components, -dt);
-		}
-		if (level > 0)
-		    getViscFluxReg().FineAdd
-			(average_flux, dimension, flux_mfi.index(), 0, index_of_rhoH, components, dt);
-	    }
-	}
-
-	// place into the flux registers the average of the old and new Y fluxes
-	components = nspecies;
-	for (int dimension = 0; dimension < BL_SPACEDIM; dimension++)
-	{
-	    for (MFIter flux_mfi(*flux_for_Y_old[dimension]); flux_mfi.isValid(); ++flux_mfi)
-	    {
-		const Box& edge_box = (*flux_for_Y_old[dimension])[flux_mfi].box();
-		average_flux.resize(edge_box,components);
-		average_flux.copy((*flux_for_Y_old[dimension])[flux_mfi],edge_box,0,edge_box,0,components);
-		average_flux.plus((*flux_for_Y_new[dimension])[flux_mfi],edge_box,0,0,components);
-                average_flux.mult(0.5);
-		if (level < parent->finestLevel())
-		    getLevel(level+1).getViscFluxReg().CrseInit
-			(average_flux, edge_box, dimension, 0, index_of_firstY, components, -dt);
-		
-		if (level > 0)
-		    getViscFluxReg().FineAdd
-			(average_flux, dimension, flux_mfi.index(), 0, index_of_firstY, components, dt);
-	    }
-	}
-
-        average_flux.clear();
-
-	if (level < parent->finestLevel())
-	    getLevel(level+1).getViscFluxReg().CrseInitFinish();
-
-	// delete the space for fluxes and updates
-	delete div_of_flux_for_H_new;
-	delete div_of_flux_for_Y_new;
-	delete div_of_flux_for_H_old;
-	delete div_of_flux_for_Y_old;
-	diffusion->removeFluxBoxesLevel (flux_for_H_new);
-	diffusion->removeFluxBoxesLevel (flux_for_Y_new);
-	diffusion->removeFluxBoxesLevel (flux_for_H_old);
-	diffusion->removeFluxBoxesLevel (flux_for_Y_old);
-
-	// update the temperature in the new state
-	// use the old temperature as an initial guess for the Newton iteration.
-	MultiFab::Copy (S_new, S_old, index_of_T, index_of_T, 1, 1);
-        RhoH_to_Temp(S_new);
-
-	// update the tracer and RhoRT
-        int corrector = 1; // this flag just means this is for real
-        tracer_update(dt,corrector);
-    }
-    else if (do_mcdd)
-    {
-        //
-        // Update energy and species: Marc's multicomponent differential diffusion.
-        //
-
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // RhoH aofs, already did others
         mcdd_update(time,dt);
     }
     else
     {
-        //
-        // Update energy and species: original version.
-        //
-
         //
         // Predictor
         //
@@ -6582,8 +5999,7 @@ HeatTransfer::scalar_advection (Real dt,
         && fscalar>=RhoH && lscalar<=RhoH
         && !unity_Le 
         && do_add_nonunityLe_corr_to_rhoh_adv_flux
-        && !do_mcdd
-        && !do_rk_diffusion;
+        && !do_mcdd;
     MultiFab** fluxNULN;
     //
     // If RhoH included, compute non-unity Lewis number flux addition.stuff
@@ -7240,8 +6656,7 @@ HeatTransfer::mac_sync ()
 	    if (!unity_Le 
 		&& nspecies>0 
 		&& do_add_nonunityLe_corr_to_rhoh_adv_flux 
-		&& !do_mcdd
-		&& !do_rk_diffusion)
+		&& !do_mcdd)
 	    {
 		//
 		// Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
@@ -7415,8 +6830,7 @@ HeatTransfer::mac_sync ()
 		    && state_ind!=Temp
 		    && is_diffusive[state_ind]
 		    && !(is_spec && !unity_Le)
-		    && !(do_mcdd && (is_spec || state_ind==RhoH))
-		    && !(do_rk_diffusion && (is_spec || state_ind==RhoH));
+		    && !(do_mcdd && (is_spec || state_ind==RhoH));
 		
 		if (do_it && (is_spec || state_ind==RhoH))
 		    rho_flag = 2;
@@ -8048,7 +7462,7 @@ HeatTransfer::calcDiffusivity (const Real time,
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calcDiffusivity()");
 
-    if (do_mcdd || do_rk_diffusion) return;
+    if (do_mcdd) return;
 
     const TimeLevel whichTime = which_time(State_Type, time);
 
@@ -8313,333 +7727,178 @@ HeatTransfer::calc_divu (Real      time,
                          MultiFab& divu)
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calc_divu()");
+    //
+    // Get Mwmix, cpmix and pressure
+    //
+    const int nGrow = 0;
 
-    if (do_rk_diffusion)
+    int sCompR, sCompT, sCompY, sCompCp, sCompMw;
+    sCompR=sCompT=sCompY=sCompCp=sCompMw=0;	
+    //
+    // mcdd: get Y,T visc terms together, use in place of individual calls below
+    //
+    MultiFab mcViscTerms;
+    const int vtCompT = nspecies; // T terms stacked on Y terms
+    const int vtCompY = 0;
+    if (do_mcdd)
     {
-	//
-        // Calculate right side of constraint: Runge-Kutta operator.
-        //
+        mcViscTerms.define(grids,nspecies+1,nGrow,Fab_allocate);
+        compute_mcdd_visc_terms(mcViscTerms,vtCompY,mcViscTerms,vtCompT,time,nGrow,DDOp::DD_Temp);
+    }
 
-	// check dt
-	BL_ASSERT(dt > 0);
+    MultiFab rho(grids,1,nGrow), temp(grids,1,nGrow);
 
-	// no growth cells
-	const int nGrow = 0;
-	
-	// apply the diffusion operator to the old or new state.  only the 
-	// divergences are used here, but space is still needed for the others.
-	MultiFab* div_of_flux_for_H;
-	MultiFab* div_of_flux_for_Y;
-	MultiFab** flux_for_H;
-	MultiFab** flux_for_Y;
+    const MultiFab& Rho_time = get_rho(time);
 
-	// the divergences should not be scaled, so pass 1 as the scaling argument
-	rk_diffusion_operator (time,
-			       1.0,
-			       div_of_flux_for_H,
-			       div_of_flux_for_Y,
-			       flux_for_H,
-			       flux_for_Y);
+    for (FillPatchIterator Temp_fpi(*this,temp,nGrow,time,State_Type,Temp,1);
+         Temp_fpi.isValid();
+         ++Temp_fpi)
+    {
+        const int i = Temp_fpi.index();
 
-	// get rho and T
-	MultiFab rho(grids,1,nGrow);
-	MultiFab T(grids,1,nGrow);
-	
-	const MultiFab& Rho_time = get_rho(time);
-	MFIter          Rho_mfi(Rho_time);
-	
-	for (FillPatchIterator T_fpi(*this,T,nGrow,time,State_Type,Temp,1);
-	     Rho_mfi.isValid() && T_fpi.isValid();
-	     ++Rho_mfi, ++T_fpi)
-	{
-	    const int i = Rho_mfi.index();
-	    
-	    rho[i].copy(Rho_time[i],0,0,1);
-	    T[i].copy(T_fpi(),0,0,1);
-	}
+        rho[i].copy(Rho_time[i],0,sCompR,1);
+        temp[i].copy(Temp_fpi(),0,sCompT,1);
+    }
+    //
+    // Note that state contains rho*species, so divide species by rho.
+    //
+    MultiFab species(grids,nspecies,nGrow);
 
-	// get Y, which is needed only to get cp, h_k, and mmw
-	MultiFab Y(grids,nspecies,nGrow);
+    FArrayBox tmp;
 
-        FArrayBox tmp;
+    for (FillPatchIterator Spec_fpi(*this,species,nGrow,time,State_Type,first_spec,nspecies);
+         Spec_fpi.isValid();
+         ++Spec_fpi)
+    {
+        const int i = Spec_fpi.index();
 
-        for (FillPatchIterator Y_fpi(*this,Y,nGrow,time,State_Type,first_spec,nspecies);
-             Y_fpi.isValid();
-             ++Y_fpi)
-        {
-            const int i = Y_fpi.index();
-	    
-            Y[i].copy(Y_fpi(),0,0,nspecies);
-	    
-            tmp.resize(grids[i],1);
-            tmp.copy(rho[i],0,0,1);
-            tmp.invert(1);
-	    
-            for (int ispecies = 0; ispecies < nspecies; ispecies++)
-                Y[i].mult(tmp,0,ispecies,1);
-        }
-	
-	// get cp, h_k, and mmw
-	MultiFab cp(grids,1,nGrow);
-	MultiFab h(grids,nspecies,nGrow);
-	MultiFab mmw(grids,1,nGrow);
-	
-	for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
-	{
-	    const int  iGrid = Rho_mfi.index();
-	    const Box& box   = Rho_mfi.validbox();
-	    
-	    BL_ASSERT(box == grids[iGrid]);
-	    
-	    getChemSolve().getMwmixGivenY(mmw[iGrid],Y[iGrid],box,0,0);
-	    getChemSolve().getCpmixGivenTY(cp[iGrid],T[iGrid],Y[iGrid],box,0,0,0);
-	    getChemSolve().getHGivenT(h[iGrid],T[iGrid],box,0,0);
-	}
+        species[i].copy(Spec_fpi(),0,sCompY,nspecies);
 
-	// form in divu the first term: - div_of_flux_for_H / (cp rho T)
+        tmp.resize(grids[i],1);
+        tmp.copy(rho[i],sCompR,0,1);
+        tmp.invert(1);
 
-	// note the arguments for MultiFab:: procedures are 
-	// (dst, src, srccomp, dstcomp, ncomp, nghost);
-	MultiFab::Copy (divu, *div_of_flux_for_H, 0, 0, 1, nGrow);
-	for (MFIter divu_mfi(divu); divu_mfi.isValid(); ++divu_mfi)
-	{
-	    const int iGrid = divu_mfi.index();
-	    divu[iGrid].mult(-1.0);
-	    divu[iGrid].divide(cp[iGrid],grids[iGrid],0,0,1);
-	    divu[iGrid].divide(rho[iGrid],grids[iGrid],0,0,1);
-	    divu[iGrid].divide(T[iGrid],grids[iGrid],0,0,1);
-	}
+        for (int ispecies = 0; ispecies < nspecies; ispecies++)
+            species[i].mult(tmp,0,ispecies,1);
+    }
 
-	// add to divu the products of the other terms
+    MultiFab mwmix(grids,1,nGrow), cp(grids,1,nGrow);
 
-	const Array<Real> mw = getChemSolve().speciesMolecWt();
-	MultiFab term1A(grids,1,nGrow);
-	MultiFab term1B(grids,1,nGrow);
-	MultiFab term2A(grids,1,nGrow);
-	MultiFab term2B(grids,1,nGrow);
+    for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
+    {
+        const int  iGrid = Rho_mfi.index();
+        const Box& box   = Rho_mfi.validbox();
 
-        // note Ydot_Type appears to have 1 growth cell, but the following
-        // iterator discards that, so the following arithmetic can be done 
-        // without using boxes to restrict to the valid region
-        for (FillPatchIterator Ydot_fpi(*this,divu,0,time,Ydot_Type,0,nspecies);
-             Ydot_fpi.isValid();
-             ++Ydot_fpi)
-	{
-	    const int iGrid = Ydot_fpi.index();
-	    for (int n = 0; n < nspecies; ++n)
-	    {
-		// term1A = h_n / (cp T)
-		term1A[iGrid].copy(h[iGrid],n,0,1);
-		term1A[iGrid].divide(cp[iGrid],0,0,1);
-		term1A[iGrid].divide(T[iGrid],0,0,1);
-		// term1B = mmw / mw_n
-		term1B[iGrid].copy(mmw[iGrid],0,0,1);
-		term1B[iGrid].mult(1.0/mw[n]);
-		// term1A = term1A - term1B
-		term1A[iGrid].minus(term1B[iGrid],0,0,1);
+        BL_ASSERT(box == grids[iGrid]);
 
-		// term2A = div_of_flux_for_Y_n / rho
-		term2A[iGrid].copy((*div_of_flux_for_Y)[iGrid],n,0,1);
-		term2A[iGrid].divide(rho[iGrid],0,0,1);
-		// term2B = Ydot_n 
-		// JFG: should we divide ydot by rho?
-		// Ydot apparently is - omega, that is,
-                // it has a minus sign built in, so we
-                // only want an addition here.
-		term2B[iGrid].copy(Ydot_fpi(),n,0,1);
-		// term2B[iGrid].divide(rho[iGrid],0,0,1); // test to divide Ydot by rho
-		// term2A = term2A - omega
-		// term2A = term2A + term2B
-		term2A[iGrid].plus(term2B[iGrid],0,0,1);
+        getChemSolve().getMwmixGivenY(mwmix[iGrid],species[iGrid],
+                                      box,sCompY,sCompMw);
+        getChemSolve().getCpmixGivenTY(cp[iGrid],temp[iGrid],species[iGrid],
+                                       box,sCompT,sCompY,sCompCp);
+    }
 
-		// term1A = term1A * term2A
-		term1A[iGrid].mult(term2A[iGrid],0,0,1);
-		// divu = divu + term1A
-		divu[iGrid].plus(term1A[iGrid],0,0,1);
-	    }
-	}
-
-	// delete the space for fluxes and updates
-	delete div_of_flux_for_H;
-	delete div_of_flux_for_Y;
-	diffusion->removeFluxBoxesLevel (flux_for_H);
-	diffusion->removeFluxBoxesLevel (flux_for_Y);
+    species.clear();
+    //
+    // divu = 1/T DT/dt + W_mix * sum (1/W)DY/Dt
+    //
+    // Compute rho*DT/Dt as
+    //
+    //   1/c_p (div lambda grad T + sum_l rho D grad h_l dot grad Y_l)
+    //
+    if (do_mcdd)
+    {
+        MultiFab::Copy(divu,mcViscTerms,vtCompT,0,1,nGrow);
     }
     else
     {
-	//
-	// Get Mwmix, cpmix and pressure
-	//
-	const int nGrow = 0;
+        MultiFab visc_terms(grids,1,1);
+        getViscTerms(visc_terms,Temp,1,time);
+        MultiFab::Copy(divu,visc_terms,0,0,1,nGrow);
+    }
 
-	int sCompR, sCompT, sCompY, sCompCp, sCompMw;
-	sCompR=sCompT=sCompY=sCompCp=sCompMw=0;	
-	//
-	// mcdd: get Y,T visc terms together, use in place of individual calls below
-	//
-	MultiFab mcViscTerms;
-	const int vtCompT = nspecies; // T terms stacked on Y terms
-	const int vtCompY = 0;
-	if (do_mcdd)
-	{
-	    mcViscTerms.define(grids,nspecies+1,nGrow,Fab_allocate);
-	    compute_mcdd_visc_terms(mcViscTerms,vtCompY,mcViscTerms,vtCompT,time,nGrow,DDOp::DD_Temp);
-	}
+    for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
+    {
+        const int iGrid = Divu_mfi.index();
+        divu[iGrid].divide(rho[iGrid],grids[iGrid],sCompR,0,1);
+        divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
+    }
 
-	MultiFab rho(grids,1,nGrow), temp(grids,1,nGrow);
+    MultiFab delta_divu(grids,1,nGrow), spec_visc_terms(grids,nspecies,0);
 
-	const MultiFab& Rho_time = get_rho(time);
+    delta_divu.setVal(0.0);
 
-	for (FillPatchIterator Temp_fpi(*this,temp,nGrow,time,State_Type,Temp,1);
-	     Temp_fpi.isValid();
-	     ++Temp_fpi)
-	{
-	    const int i = Temp_fpi.index();
+    const Array<Real> mwt = getChemSolve().speciesMolecWt();
 
-	    rho[i].copy(Rho_time[i],0,sCompR,1);
-	    temp[i].copy(Temp_fpi(),0,sCompT,1);
-	}
-	//
-	// Note that state contains rho*species, so divide species by rho.
-	//
-	MultiFab species(grids,nspecies,nGrow);
+    if (do_mcdd)
+    {
+        MultiFab::Copy(spec_visc_terms,mcViscTerms,vtCompY,0,nspecies,0);
+    }
+    else
+    {
+        getViscTerms(spec_visc_terms,first_spec,nspecies,time);
+    }
 
-        FArrayBox tmp;
+    for (MFIter mfi(spec_visc_terms); mfi.isValid(); ++mfi)
+    {
+        const int iGrid = mfi.index();
 
-        for (FillPatchIterator Spec_fpi(*this,species,nGrow,time,State_Type,first_spec,nspecies);
-             Spec_fpi.isValid();
-             ++Spec_fpi)
+        for (int comp = 0; comp < nspecies; ++comp)
         {
-            const int i = Spec_fpi.index();
-
-            species[i].copy(Spec_fpi(),0,sCompY,nspecies);
-
-            tmp.resize(grids[i],1);
-            tmp.copy(rho[i],sCompR,0,1);
-            tmp.invert(1);
-
-            for (int ispecies = 0; ispecies < nspecies; ispecies++)
-                species[i].mult(tmp,0,ispecies,1);
+            spec_visc_terms[mfi].mult(1.0/mwt[comp],comp,1);
+            delta_divu[mfi].plus(spec_visc_terms[mfi],grids[iGrid],comp,0,1);
         }
+    }
 
-	MultiFab mwmix(grids,1,nGrow), cp(grids,1,nGrow);
+    spec_visc_terms.clear();
 
-	for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
-	{
-	    const int  iGrid = Rho_mfi.index();
-	    const Box& box   = Rho_mfi.validbox();
+    for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
+    {
+        const int  iGrid = Divu_mfi.index();
+        const Box& box   = Divu_mfi.validbox();
+        delta_divu[iGrid].divide(rho[iGrid],box,sCompR,0,1);
+        delta_divu[iGrid].mult(mwmix[iGrid],box,0,0,1);
+        divu[iGrid].plus(delta_divu[iGrid],box,0,0,1);
+    }
 
-	    BL_ASSERT(box == grids[iGrid]);
+    rho.clear();
 
-	    getChemSolve().getMwmixGivenY(mwmix[iGrid],species[iGrid],
-					  box,sCompY,sCompMw);
-	    getChemSolve().getCpmixGivenTY(cp[iGrid],temp[iGrid],species[iGrid],
-					   box,sCompT,sCompY,sCompCp);
-	}
+    if (dt > 0.0)
+    {
+        //
+        // Increment divu by
+        //    sum_l (h_l/(c_p*T) - mw_mix/mw_l)*delta Y_l/dt 
+        // (i.e., Y_l"dot")
+        //
+        FArrayBox h;
 
-        species.clear();
-	//
-	// divu = 1/T DT/dt + W_mix * sum (1/W)DY/Dt
-	//
-	// Compute rho*DT/Dt as
-	//
-	//   1/c_p (div lambda grad T + sum_l rho D grad h_l dot grad Y_l)
-	//
-	if (do_mcdd)
-	{
-	    MultiFab::Copy(divu,mcViscTerms,vtCompT,0,1,nGrow);
-	}
-	else
-	{
-            MultiFab visc_terms(grids,1,1);
-	    getViscTerms(visc_terms,Temp,1,time);
-	    MultiFab::Copy(divu,visc_terms,0,0,1,nGrow);
-	}
+        const int sCompH = 0;
 
-	for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
-	{
-	    const int iGrid = Divu_mfi.index();
-	    divu[iGrid].divide(rho[iGrid],grids[iGrid],sCompR,0,1);
-	    divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
-	}
+        for (FillPatchIterator Ydot_fpi(*this,delta_divu,0,time,Ydot_Type,0,nspecies);
+             Ydot_fpi.isValid();
+             ++Ydot_fpi)
+        {
+            const int i = Ydot_fpi.index();
 
-	MultiFab delta_divu(grids,1,nGrow), spec_visc_terms(grids,nspecies,0);
+            h.resize(BoxLib::grow(grids[i],nGrow),nspecies);
 
-	delta_divu.setVal(0.0);
+            getChemSolve().getHGivenT(h,temp[i],grids[i],sCompT,sCompH);
 
-	const Array<Real> mwt = getChemSolve().speciesMolecWt();
+            for (int istate = first_spec; istate <= last_spec; istate++)
+            {
+                const int ispec = istate-first_spec;
 
-	if (do_mcdd)
-	{
-	    MultiFab::Copy(spec_visc_terms,mcViscTerms,vtCompY,0,nspecies,0);
-	}
-	else
-	{
-	    getViscTerms(spec_visc_terms,first_spec,nspecies,time);
-	}
+                delta_divu[i].copy(h,ispec,0,1);
+                delta_divu[i].divide(cp[i]);
+                delta_divu[i].divide(temp[i]);
+                delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
+                divu[i].plus(delta_divu[i]);
 
-	for (MFIter mfi(spec_visc_terms); mfi.isValid(); ++mfi)
-	{
-	    const int iGrid = mfi.index();
-
-	    for (int comp = 0; comp < nspecies; ++comp)
-	    {
-		spec_visc_terms[mfi].mult(1.0/mwt[comp],comp,1);
-		delta_divu[mfi].plus(spec_visc_terms[mfi],grids[iGrid],comp,0,1);
-	    }
-	}
-
-        spec_visc_terms.clear();
-
-	for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
-	{
-	    const int  iGrid = Divu_mfi.index();
-	    const Box& box   = Divu_mfi.validbox();
-	    delta_divu[iGrid].divide(rho[iGrid],box,sCompR,0,1);
-	    delta_divu[iGrid].mult(mwmix[iGrid],box,0,0,1);
-	    divu[iGrid].plus(delta_divu[iGrid],box,0,0,1);
-	}
-
-        rho.clear();
-
-	if (dt > 0.0)
-	{
-	    //
-	    // Increment divu by
-	    //    sum_l (h_l/(c_p*T) - mw_mix/mw_l)*delta Y_l/dt 
-	    // (i.e., Y_l"dot")
-	    //
-	    FArrayBox h;
-
-	    const int sCompH = 0;
-
-	    for (FillPatchIterator Ydot_fpi(*this,delta_divu,0,time,Ydot_Type,0,nspecies);
-		 Ydot_fpi.isValid();
-		 ++Ydot_fpi)
-	    {
-                const int i = Ydot_fpi.index();
-
-                h.resize(BoxLib::grow(grids[i],nGrow),nspecies);
-
-		getChemSolve().getHGivenT(h,temp[i],grids[i],sCompT,sCompH);
-
-		for (int istate = first_spec; istate <= last_spec; istate++)
-		{
-		    const int ispec = istate-first_spec;
-
-		    delta_divu[i].copy(h,ispec,0,1);
-		    delta_divu[i].divide(cp[i]);
-		    delta_divu[i].divide(temp[i]);
-		    delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
-		    divu[i].plus(delta_divu[i]);
-
-		    delta_divu[i].copy(mwmix[i],0,0,1);
-		    delta_divu[i].divide(mwt[ispec]);
-		    delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
-		    divu[i].minus(delta_divu[i]);
-		}
-	    }
-	}
+                delta_divu[i].copy(mwmix[i],0,0,1);
+                delta_divu[i].divide(mwt[ispec]);
+                delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
+                divu[i].minus(delta_divu[i]);
+            }
+        }
     }
 }
 

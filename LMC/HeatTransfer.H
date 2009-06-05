@@ -179,19 +179,6 @@ public:
                                          MultiFab*&  delta_rhs,
                                          MultiFab**& betan, 
                                          MultiFab**& betanp1);
-
-    //
-    // Runge-Kutta diffusion functions used by level advance function.
-    //
-    void rk_diffusion_operator (const Real time,
-				const Real scale_factor,
-				MultiFab *& div_of_flux_for_H,
-				MultiFab *& div_of_flux_for_Y,
-				MultiFab **& flux_for_H,
-				MultiFab **& flux_for_Y);
-
-    Real rk_step_selection (const Real time);
-
     //
     // Make rho at time n.
     //
@@ -617,9 +604,6 @@ protected:
     static int         mcdd_presmooth;
     static int         mcdd_postsmooth;
     static Real        mcdd_cfRelaxFactor;
-    static bool        do_rk_diffusion;
-    static bool        rk_mixture_averaged;
-    static Real        rk_time_step_multiplier;
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
 };
