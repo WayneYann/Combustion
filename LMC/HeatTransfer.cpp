@@ -7179,6 +7179,11 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     MultiFab **betanp1;
     diffusion->allocFluxBoxesLevel(betanp1,0,nspecies);
     getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies);
+
+    MultiFab Rhs(grids,nspecies,0);
+    const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
+    MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
+    Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
     //
     // Some standard settings
     //
@@ -7198,8 +7203,9 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         // diffused result is an acceleration, not a velocity, req'd by the projection.
         //
 	const int ssync_ind = first_spec + sigma - Density;
-	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,Rh,
-                                 rho_flag[sigma],fluxSC,sigma,betanp1,alpha);
+	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
+				 Rh,rho_flag[sigma],fluxSC,
+                                 sigma,betanp1,alpha);
 	//
 	// Pull fluxes into flux array
 	//
@@ -7208,11 +7214,6 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	spec_diffusion_flux_computed[sigma] = HT_SyncDiffusion;
     }
     diffusion->removeFluxBoxesLevel(fluxSC);
-
-    MultiFab Rhs(grids,nspecies,0);
-    const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
-    MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
-    Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
     //
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
