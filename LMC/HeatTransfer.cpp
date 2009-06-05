@@ -284,7 +284,7 @@ HeatTransfer::variableCleanUp ()
     delete chemSolve;
 
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "done" << std::endl;
+        std::cout << "done" << '\n';
 
     chemSolve = 0;
 }
@@ -344,7 +344,7 @@ HeatTransfer::read_params ()
     {
 	schmidt = prandtl;
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::read_params: Le=1, setting Sc = Pr" << std::endl;
+            std::cout << "HeatTransfer::read_params: Le=1, setting Sc = Pr" << '\n';
     }
 
     pp.query("constant_mu_val",constant_mu_val);
@@ -354,19 +354,19 @@ HeatTransfer::read_params ()
     {
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "HeatTransfer::read_params: using constant_mu_val = " 
-                      << constant_mu_val << std::endl;
+                      << constant_mu_val << '\n';
     }
     if (constant_rhoD_val != -1)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "HeatTransfer::read_params: using constant_rhoD_val = " 
-                      << constant_rhoD_val << std::endl;
+                      << constant_rhoD_val << '\n';
     }
     if (constant_lambda_val != -1)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "HeatTransfer::read_params: using constant_lambda_val = " 
-                      << constant_lambda_val << std::endl;
+                      << constant_lambda_val << '\n';
     }
 
     pp.query("do_add_nonunityLe_corr_to_rhoh_adv_flux", do_add_nonunityLe_corr_to_rhoh_adv_flux);
@@ -421,7 +421,7 @@ HeatTransfer::read_params ()
     {
         std::cout << "\nDumping ParmParse table:\n \n";
         ParmParse::dumpTable(std::cout);
-        std::cout << "\n... done dumping ParmParse table.\n" << std::endl;
+        std::cout << "\n... done dumping ParmParse table.\n" << '\n';
     }
 }
 
@@ -653,7 +653,7 @@ HeatTransfer::init_once ()
         for (int i = 0; i < auxDiag_names["REACTIONS"].size(); ++i)
             auxDiag_names["REACTIONS"][i] = BoxLib::Concatenate("R",i+1);
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "***** Make sure to increase amr.regrid_int !!!!!" << std::endl;
+            std::cout << "***** Make sure to increase amr.regrid_int !!!!!" << '\n';
     }
 
     pp.query("plot_consumption",plot_consumption);
@@ -921,7 +921,7 @@ HeatTransfer::initData ()
     if (pltfile.empty())
         BoxLib::Abort("You must specify `pltfile'");
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "initData: reading data from: " << pltfile << std::endl;
+        std::cout << "initData: reading data from: " << pltfile << '\n';
 
     DataServices::SetBatchMode();
     FileType fileType(NEWPLT);
@@ -964,7 +964,7 @@ HeatTransfer::initData ()
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "initData: finished init from pltfile" << std::endl;
+        std::cout << "initData: finished init from pltfile" << '\n';
 #endif
 
     for (MFIter snewmfi(S_new); snewmfi.isValid(); ++snewmfi)
@@ -1021,7 +1021,7 @@ HeatTransfer::initData ()
     if (!velocity_plotfile.empty())
     {
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "initData: reading data from: " << velocity_plotfile << std::endl;
+            std::cout << "initData: reading data from: " << velocity_plotfile << '\n';
 
         DataServices::SetBatchMode();
         FileType fileType(NEWPLT);
@@ -1061,7 +1061,7 @@ HeatTransfer::initData ()
         }
 
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "initData: finished init from velocity_plotfile" << std::endl;
+            std::cout << "initData: finished init from velocity_plotfile" << '\n';
     }
 #endif /*BL_USE_VELOCITY*/
 
@@ -1206,7 +1206,7 @@ HeatTransfer::initDataOtherTypes ()
             //
             if (verbose && ParallelDescriptor::IOProcessor())
                 std::cout << "averaging down turb data by factor of " 
-                          << avgdown_ratio << std::endl;
+                          << avgdown_ratio << '\n';
 
             BoxArray fileTurbBA(turbVelFile->boxArray());
             BoxArray crseTurbBA(fileTurbBA);
@@ -1244,7 +1244,7 @@ HeatTransfer::initDataOtherTypes ()
             // Interpolate data from this level to finer level.
             //
             if (verbose && ParallelDescriptor::IOProcessor())
-                std::cout << "interpolating turb data by factor of " << refine_ratio << std::endl;
+                std::cout << "interpolating turb data by factor of " << refine_ratio << '\n';
 
             if (turbVelFile->nGrow() == 0)
                 BoxLib::Error("need ghost cells to interp -- use new turb fcn");
@@ -1430,7 +1430,7 @@ HeatTransfer::init ()
 
             if (verbose && ParallelDescriptor::IOProcessor()) {
                 std::cout << "...level data adjusted to reduce new extrema (" << num_cells_hacked
-                          << " cells affected), new min = " << new_min << " (old min = " << old_min << ")" << std::endl;
+                          << " cells affected), new min = " << new_min << " (old min = " << old_min << ")" << '\n';
             }
         }
     }
@@ -1545,7 +1545,7 @@ HeatTransfer::post_init (Real stop_time)
     const int  init_divu_iter = do_iter ? num_divu_iters : 0;
 
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "doing num_divu_iters = " << num_divu_iters << std::endl;
+        std::cout << "doing num_divu_iters = " << num_divu_iters << '\n';
 
     for (int iter = 0; iter < init_divu_iter; ++iter)
     {
@@ -2142,7 +2142,7 @@ HeatTransfer::scalar_diffusion_update (Real dt,
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::scalar_diffusion_update(): time: " << run_time << std::endl;
+            std::cout << "HeatTransfer::scalar_diffusion_update(): time: " << run_time << '\n';
     }
 }
 
@@ -2157,7 +2157,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! skipping spec diffusion " << std::endl;
+            std::cout << "... HACK!!! skipping spec diffusion " << '\n';
 
         if (!corrector)
             MultiFab::Copy(get_new_data(State_Type),get_old_data(State_Type),first_spec,first_spec,nspecies,0);
@@ -2330,7 +2330,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::differential_spec_diffusion_update(): time: " << run_time << std::endl;
+            std::cout << "HeatTransfer::differential_spec_diffusion_update(): time: " << run_time << '\n';
     }
 }
 
@@ -4241,7 +4241,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! zeroing spec diffusion terms " << std::endl;
+            std::cout << "... HACK!!! zeroing spec diffusion terms " << '\n';
         visc_terms.setVal(0.0,sComp,nspecies);
         return;            
     }
@@ -4922,7 +4922,7 @@ HeatTransfer::advance (Real time,
     {
         std::cout << "Advancing level "    << level
                   << " : starting time = " << time
-                  << " with dt = "         << dt << std::endl;
+                  << " with dt = "         << dt << '\n';
     }
 
     advance_setup(time,dt,iteration,ncycle);
@@ -5955,7 +5955,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             }
 
             if (verbose && ParallelDescriptor::IOProcessor())
-                std::cout << "*** strang_chem: FABs in tmp MF: " << tmp.size() << std::endl;
+                std::cout << "*** strang_chem: FABs in tmp MF: " << tmp.size() << '\n';
 
             tmp.copy(mf); // Parallel copy.
 
@@ -6048,7 +6048,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::strang_chem time: " << run_time << std::endl;
+            std::cout << "HeatTransfer::strang_chem time: " << run_time << '\n';
     }
 }
 
@@ -6918,7 +6918,7 @@ HeatTransfer::scalar_advection (Real dt,
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::scalar_advection(): time: " << run_time << std::endl;
+            std::cout << "HeatTransfer::scalar_advection(): time: " << run_time << '\n';
     }
 }
 
@@ -7791,8 +7791,10 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         return;            
     }
 
+    const Real strt_time = ParallelDescriptor::second();
+
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "...doing differential sync diffusion..." << '\n';
+        std::cout << "Doing differential sync diffusion ..." << '\n';
     //
     // Do implicit c-n solve for each scalar...but dont reflux.
     // Save the fluxes, coeffs and source term, we need 'em for later
@@ -7869,9 +7871,17 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
                 getLevel(level+1).getViscFluxReg().CrseInit(*SpecDiffusionFluxnp1[d],d,0,first_spec,nspecies,-dt);
 	}
     }
-    
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "...finished differential sync diffusion..." << '\n';    
+
+    if (verbose)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::differential_spec_diffuse_sync(): time: " << run_time << '\n';
+    }
 }
 
 void
@@ -7975,7 +7985,7 @@ HeatTransfer::reflux ()
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::Reflux(): time: " << run_time << std::endl;
+            std::cout << "HeatTransfer::Reflux(): time: " << run_time << '\n';
     }
 }
 
