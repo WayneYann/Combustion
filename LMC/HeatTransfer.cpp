@@ -3849,6 +3849,8 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
                 fab.mult(tmp,0,comp+1,1);
     }
 
+    tmp.clear();
+
     MultiFab rho_and_species_crse;
 
     if (level > 0) 
@@ -3903,8 +3905,6 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 	    visc_op.bCoefficients(bcoeffs,d);
 	}
 
-	// JFG: note the arguments for MultiFab:: procedures are 
-	// (dst, src, srccomp, dstcomp, ncomp, ngrow);
 	MultiFab::Copy(s_tmp,rho_and_species,comp+1,0,1,0);
 	
         visc_op.compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),s_tmp);
@@ -3992,8 +3992,7 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
 
         const int yComp   = 0;
         const int sCompCp = 0;
-        getChemSolve().getCpmixGivenTY(cp,S[dvt_mfi],spec,box,
-                                       Temp,yComp,sCompCp);
+        getChemSolve().getCpmixGivenTY(cp,S[dvt_mfi],spec,box,Temp,yComp,sCompCp);
         
         visc_terms[dvt_mfi].plus(delta_visc_terms[dvt_mfi],box,0,Temp-src_comp,1);
         visc_terms[dvt_mfi].divide(cp,0,Temp-src_comp,1);
@@ -4397,8 +4396,7 @@ HeatTransfer::compute_rhoRT (const MultiFab& S,
         for (int k = 0; k < nCompY; k++)
             state.mult(tmp,0,sCompY+k,1);
 
-	getChemSolve().getPGivenRTY(p[i],state,state,state,
-				    box,sCompR,sCompT,sCompY,pComp);
+	getChemSolve().getPGivenRTY(p[i],state,state,state,box,sCompR,sCompT,sCompY,pComp);
     }
 }
 			   
@@ -4659,7 +4657,9 @@ HeatTransfer::advance (Real time,
     const int first_scalar = Density;
     const int last_scalar = first_scalar + NUM_SCALARS - 1;
     bool do_adv_reflux = true;
-    // JFG: the flag true means to load the advective flux registers into aofs
+    //
+    //  Load the advective flux registers into aofs.
+    //
     if (RhoH > first_scalar)
 	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
     if (RhoH < last_scalar)
@@ -5588,7 +5588,7 @@ HeatTransfer::compute_edge_states (Real               dt,
     //
     // Loop on grids, and compute edge fluxes
     //
-    FArrayBox edge[BL_SPACEDIM],Rho,U,state;
+    FArrayBox edge[BL_SPACEDIM],Rho,U,state,tforces,tvelforces,vel,h,spec;
     //
     // FillPatch'd state data.
     //
@@ -5602,8 +5602,6 @@ HeatTransfer::compute_edge_states (Real               dt,
         std::vector<bool> this_edge_state_computed(nState,false);
 
         const int i = S_fpi.index();
-
-        FArrayBox tforces, tvelforces;
 
         Rho.resize(S_fpi().box(),1);
         U.resize(S_fpi().box(),BL_SPACEDIM);
@@ -5642,7 +5640,7 @@ HeatTransfer::compute_edge_states (Real               dt,
 
         if (do_mom_diff == 1) 
         {
-            FArrayBox vel(S_fpi().box(),BL_SPACEDIM);
+            vel.resize(S_fpi().box(),BL_SPACEDIM);
 
             vel.copy(S_fpi(),0,0,BL_SPACEDIM);
             //
@@ -5676,14 +5674,13 @@ HeatTransfer::compute_edge_states (Real               dt,
                 this_edge_state_computed[comp] = true;
             }
         }
-        tvelforces.clear();
         //
-        // Get spec edge states
+        // Get spec edge states.
         // FIXME: Fab copy reqd, force sum below pulls state and forces from same comp
         //
         if (compute_comp[first_spec])
         {
-            FArrayBox spec(S_fpi().box(),nspecies);
+            spec.resize(S_fpi().box(),nspecies);
             spec.copy(S_fpi(),first_spec,0,nspecies);
 
             NavierStokes::getForce(tforces,i,nGrowF,first_spec,nspecies,
@@ -5777,8 +5774,7 @@ HeatTransfer::compute_edge_states (Real               dt,
             //
             const int comp = 0;
             const int state_ind = Temp;
-            int use_conserv_diff = 
-                      (advectionType[state_ind] == Conservative) ? true : false;
+            int use_conserv_diff = (advectionType[state_ind] == Conservative) ? true : false;
             state.resize(S_fpi().box(),1);
             state.copy(S_fpi(),state_ind,0,1);
 
@@ -5813,7 +5809,7 @@ HeatTransfer::compute_edge_states (Real               dt,
             else
             {
                 FArrayBox junkDivu(tforces.box(),1);
-                junkDivu.setVal(0.);
+                junkDivu.setVal(0);
                 godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
                                           visc_terms[state_ind][i], 0,
                                           junkDivu, Rho, use_conserv_diff);
@@ -5840,7 +5836,6 @@ HeatTransfer::compute_edge_states (Real               dt,
             //
             // Set rhoh on edges = sum(rho.Y.H)
             //
-            FArrayBox h;
             for (int d=0; d<BL_SPACEDIM; ++d)
             {
                 (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
@@ -5860,6 +5855,7 @@ HeatTransfer::compute_edge_states (Real               dt,
         // Now do the rest as normal
         //
         state.resize(S_fpi().box(),1);
+
         for (int state_ind=0; state_ind<nState; ++state_ind)
         {
             if (do_predict[state_ind]                &&
@@ -6076,9 +6072,7 @@ HeatTransfer::scalar_advection (Real dt,
             //
             for (int d = 0; d < BL_SPACEDIM; ++d)
             {
-                for (MFIter SDF_mfi(*SpecDiffusionFluxn[d]);
-                     SDF_mfi.isValid();
-                     ++SDF_mfi)
+                for (MFIter SDF_mfi(*SpecDiffusionFluxn[d]); SDF_mfi.isValid(); ++SDF_mfi)
                 {
                     const Box& ebox    = SDF_mfi.validbox();
                     FArrayBox& SDF_fab = (*SpecDiffusionFluxn[d])[SDF_mfi];
@@ -6104,10 +6098,8 @@ HeatTransfer::scalar_advection (Real dt,
             {
                 const Box ebox = BoxLib::surroundingNodes(box,d);
                 eTemp.resize(ebox,1);
-                FPLoc bc_lo =
-                    fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
-                FPLoc bc_hi = 
-                    fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
+                FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
+                FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
                 
                 center_to_edge_fancy(Told_fpi(),eTemp,
                                      BoxLib::grow(box,BoxLib::BASISV(d)),0,0,1,
@@ -6511,8 +6503,6 @@ HeatTransfer::mac_sync ()
     const Real dt             = parent->dtLevel(level);
     MultiFab*  DeltaSsync     = 0; // hold (Delta rho)*q for conserved quantities
     MultiFab*  Rh             = get_rho_half_time();
-
-    sync_setup(DeltaSsync);
     //
     // Compute the correction velocity.
     //
@@ -6583,33 +6573,34 @@ HeatTransfer::mac_sync ()
         }
         
         Ssync->mult(dt,Ssync->nGrow());
+
+        sync_setup(DeltaSsync);
         //
         // For all conservative variables Q (other than density)
         // express Q as rho*q and increment sync by -(sync_for_rho)*q 
         //
+        FArrayBox delta_ssync;
+
+        for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
         {
-            FArrayBox delta_ssync;
-            for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+            const int  i   = mfi.index();
+            const Box& grd = grids[i];
+
+            int iconserved = -1;
+
+            for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
             {
-                const int  i   = mfi.index();
-                const Box& grd = grids[i];
-
-                int iconserved = -1;
-
-                for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
+                if (istate != Density && advectionType[istate] == Conservative)
                 {
-                    if (istate != Density && advectionType[istate] == Conservative)
-                    {
-                        iconserved++;
+                    iconserved++;
                         
-                        delta_ssync.resize(grd,1);
-                        delta_ssync.copy(S_new[i],grd,istate,grd,0,1);
-                        delta_ssync.divide(S_new[i],grd,Density,0,1);
-                        FArrayBox& s_sync = (*Ssync)[i];
-                        delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1);
-                        (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1);
-                        s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1);
-                    }
+                    delta_ssync.resize(grd,1);
+                    delta_ssync.copy(S_new[i],grd,istate,grd,0,1);
+                    delta_ssync.divide(S_new[i],grd,Density,0,1);
+                    FArrayBox& s_sync = (*Ssync)[i];
+                    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1);
+                    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1);
+                    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1);
                 }
             }
         }
@@ -6647,9 +6638,7 @@ HeatTransfer::mac_sync ()
             if (is_diffusive[Xvel])
             {
                 int rho_flag = (do_mom_diff == 0) ? 1 : 3;
-
                 getViscosity(beta, cur_time);
-
                 diffusion->diffuse_Vsync(Vsync,dt,be_cn_theta,Rh,rho_flag,beta);
             }
 	    
@@ -6747,10 +6736,8 @@ HeatTransfer::mac_sync ()
                     {
                         const Box ebox = BoxLib::surroundingNodes(box,d);
                         eTemp.resize(ebox,1);
-                        FPLoc bc_lo =
-                            fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
-                        FPLoc bc_hi = 
-                            fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
+                        FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
+                        FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
                         
                         center_to_edge_fancy(Tnew_fpi(),eTemp,BoxLib::grow(box,BoxLib::BASISV(d)),
                                              0,0,1,geom.Domain(),bc_lo,bc_hi);
@@ -6824,6 +6811,7 @@ HeatTransfer::mac_sync ()
 		//    (a) if Le==1, and spec diffusive
 		//    (b) if Le!=1, do differential diffusion instead, done above
 		// (5) Temp, no (set instead by RhoH to Temp)
+                //
 		const bool is_spec = state_ind<=last_spec && state_ind>=first_spec;
                 int do_it
 		    =  state_ind!=Density 
@@ -6848,8 +6836,7 @@ HeatTransfer::mac_sync ()
 			{
 			    const int i=mfi.index();
 			    for (int d=0; d<BL_SPACEDIM; ++d)
-                                getViscFluxReg().FineAdd((*flux[d])[i],d,i,
-                                                         0,state_ind,1,dt);
+                                getViscFluxReg().FineAdd((*flux[d])[i],d,i,0,state_ind,1,dt);
 			}
 		    }
                 }
@@ -6873,11 +6860,11 @@ HeatTransfer::mac_sync ()
                 {
                     iconserved++;
 
-                    (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],
-                                     iconserved,istate-BL_SPACEDIM,1);
+                    (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
                 }
             }
         }
+        sync_cleanup(DeltaSsync);
         //
         // Increment the state (for all but rho, since that was done above)
         //
@@ -7032,8 +7019,6 @@ HeatTransfer::mac_sync ()
         if (ParallelDescriptor::IOProcessor())
             std::cout << "HeatTransfer:mac_sync(): lev: " << level << ", time: " << run_time << '\n';
     }
-
-    sync_cleanup(DeltaSsync);
 }
 
 void
@@ -7981,8 +7966,7 @@ HeatTransfer::calc_dpdt (Real      time,
 
     tmp.clear();
     
-    MultiFab mwmix(grids,1,nGrow);
-    MultiFab cp(grids,1,nGrow);
+    MultiFab mwmix(grids,1,nGrow), cp(grids,1,nGrow);
     
     for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
     {
@@ -8024,7 +8008,7 @@ HeatTransfer::calc_dpdt (Real      time,
     cp.clear();
     mwmix.clear();
 
-    FArrayBox ugradp;
+    FArrayBox ugradp, p_denom;
     
     for (MFIter mfi(dpdt); mfi.isValid(); ++mfi)
     {
@@ -8082,7 +8066,7 @@ HeatTransfer::calc_dpdt (Real      time,
         else
         {
             const int ncomp = 1;
-            FArrayBox p_denom(grids[i],ncomp);
+            p_denom.resize(grids[i],ncomp);
             p_denom.copy(S_old[i],grids[i],pComp,grids[i],0,ncomp);
             Real num_norm = dpdt[i].norm(0,0,1);
             FabMinMax(p_denom,grids[i],2*num_norm*Real_MIN,p_amb,0,ncomp);
