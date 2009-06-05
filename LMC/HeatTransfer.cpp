@@ -2098,31 +2098,17 @@ HeatTransfer::scalar_diffusion_update (Real dt,
 	    //
 	    if (do_reflux && corrector)
 	    {
-                FArrayBox fluxtot;
-
                 for (int d = 0; d < BL_SPACEDIM; d++)
                 {
-                    MultiFab fluxes;
-
-                    if (level < parent->finestLevel())
-                        fluxes.define(fluxSCn[d]->boxArray(), 1, 0, Fab_allocate);
-
                     for (MFIter fmfi(*fluxSCn[d]); fmfi.isValid(); ++fmfi)
                     {
-                        const Box& ebox = (*fluxSCn[d])[fmfi].box();
-
-                        fluxtot.resize(ebox,1);
-                        fluxtot.copy((*fluxSCn[d])[fmfi],ebox,0,ebox,0,1);
-                        fluxtot.plus((*fluxSCnp1[d])[fmfi],ebox,0,0,1);
-
-                        if (level < parent->finestLevel())
-                            fluxes[fmfi].copy(fluxtot);
+                        (*fluxSCnp1[d])[fmfi].plus((*fluxSCn[d])[fmfi]);
 
                         if (level > 0)
-                            getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,sigma,1,dt);
+                            getViscFluxReg().FineAdd((*fluxSCnp1[d])[fmfi],d,fmfi.index(),0,sigma,1,dt);
                     }
                     if (level < parent->finestLevel())
-                        getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,sigma,1,-dt);
+                        getLevel(level+1).getViscFluxReg().CrseInit(*fluxSCnp1[d],d,0,sigma,1,-dt);
                 }
 	    }
 	    //
