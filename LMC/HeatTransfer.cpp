@@ -2041,8 +2041,6 @@ HeatTransfer::scalar_diffusion_update (Real dt,
                                        int  corrector)
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::scalar_diffusion_update()");
-
-    const Real strt_time = ParallelDescriptor::second();
     //
     // Build single component edge-centered array of MultiFabs for fluxes
     //
@@ -2104,17 +2102,6 @@ HeatTransfer::scalar_diffusion_update (Real dt,
     }    
     diffusion->removeFluxBoxesLevel(fluxSCn);
     diffusion->removeFluxBoxesLevel(fluxSCnp1);
-
-    if (verbose)
-    {
-        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
-        Real      run_time = ParallelDescriptor::second() - strt_time;
-
-        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
-
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::scalar_diffusion_update(): time: " << run_time << '\n';
-    }
 }
 
 void
