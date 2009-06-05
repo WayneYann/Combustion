@@ -338,7 +338,7 @@ protected:
     // advance functions
     //
     virtual void compute_edge_states (Real dt,
-                                      std::vector<bool>* state_comps_to_compute = 0);
+                                      std::vector<int>* state_comps_to_compute = 0);
     virtual void differential_spec_diffuse_sync (Real dt);
     virtual void compute_differential_diffusion_terms (MultiFab& visc_terms,
 						       int       sComp,

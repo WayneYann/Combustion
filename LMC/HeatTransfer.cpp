@@ -5447,8 +5447,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 }
 
 void
-HeatTransfer::compute_edge_states (Real               dt,
-                                   std::vector<bool>* state_comps_to_compute)
+HeatTransfer::compute_edge_states (Real              dt,
+                                   std::vector<int>* state_comps_to_compute)
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_edge_states()");
     //
@@ -5476,7 +5476,7 @@ HeatTransfer::compute_edge_states (Real               dt,
     //
     // "do_predict" states are predicted normally, after special states
     //
-    std::vector<bool> do_predict(nState,true);
+    std::vector<int> do_predict(nState,true);
 
     if (do_mom_diff != 1) 
     {
@@ -5504,7 +5504,7 @@ HeatTransfer::compute_edge_states (Real               dt,
     // TurbHT be treated differently.  This logic tries to insure that
     // all components with interdependencies are turned on at the same time.
     //
-    std::vector<bool> compute_comp(nState, true);
+    std::vector<int> compute_comp(nState, true);
 
     if (state_comps_to_compute != 0)
     {
@@ -5590,7 +5590,7 @@ HeatTransfer::compute_edge_states (Real               dt,
         //
         // Gonna need this array on a per-grid basis
         //
-        std::vector<bool> this_edge_state_computed(nState,false);
+        std::vector<int> this_edge_state_computed(nState,false);
 
         const int i = S_fpi.index();
 
