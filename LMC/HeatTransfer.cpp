@@ -2091,7 +2091,9 @@ HeatTransfer::scalar_diffusion_update (Real dt,
                             getViscFluxReg().FineAdd((*fluxSCnp1[d])[fmfi],d,fmfi.index(),0,sigma,1,dt);
                     }
                     if (level < parent->finestLevel())
+                    {
                         getLevel(level+1).getViscFluxReg().CrseInit(*fluxSCnp1[d],d,0,sigma,1,-dt);
+                    }
                 }
 	    }
 	    //
@@ -2276,7 +2278,9 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
             }
 
             if (level < parent->finestLevel())
+            {
                 getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,sCompY,nCompY,-dt);
+            }
         }
     }
 
@@ -5961,7 +5965,9 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
     if (do_adv_reflux && level < finest_level)
     {
         for (int d=0; d<BL_SPACEDIM; ++d)
+        {
             getAdvFluxReg(level+1).CrseInit(fluxes[d],d,0,0,BL_SPACEDIM,-dt);
+        }
     }
 }
 
@@ -6285,10 +6291,12 @@ HeatTransfer::scalar_advection (Real dt,
     if (do_special_rhoh)
         diffusion->removeFluxBoxesLevel(fluxNULN);
 
-    if (do_reflux && level < parent->finestLevel())
+    if (do_adv_reflux && level < parent->finestLevel())
     {
         for (int d=0; d<BL_SPACEDIM; ++d)
+        {
             getAdvFluxReg(level+1).CrseInit(fluxes[d],d,0,fscalar,nscalar,-dt);
+        }
     }
 
     if (verbose)
@@ -7240,7 +7248,9 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 		    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies,dt);
             }
             if (level < parent->finestLevel())
+            {
                 getLevel(level+1).getViscFluxReg().CrseInit(*SpecDiffusionFluxnp1[d],d,0,first_spec,nspecies,-dt);
+            }
 	}
     }
 
