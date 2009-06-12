@@ -308,7 +308,8 @@ public:
   //CEG:: not currently using this
   void compute_rhoh_NULN_terms(Real time,
 			       Real dt, bool do_adv_reflux,
-			       MultiFab& NULN_terms);
+			       MultiFab& NULN_terms,
+			       bool save_flux = false);
 
 protected:
     //

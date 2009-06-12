@@ -1,7 +1,7 @@
 #ht.velocity_plotfile=PLT03580
 
-ht.use_sdc = 0
-ht.sdc_iters = 1
+ht.use_sdc = 1
+ht.sdc_iters = 20
 #ht.hack_nospecdiff = 1
 
 amr.plot_int        = 1
@@ -13,7 +13,7 @@ DistributionMapping.do_not_minimize_comm_costs=0
 #ht.plot_auxDiags = 0
 ht.plot_auxDiags = 0
 
-max_step  = 1
+max_step  = 2
 stop_time =  50.00
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
@@ -31,8 +31,8 @@ ns.plot_heat_release = 1
 
 ns.do_active_control = false
 
-amr.max_grid_size   = 256
-amr.n_cell = 256 256
+amr.max_grid_size   = 128
+amr.n_cell = 128 128
 #amr.n_cell = 512 512
 #amr.n_cell = 1024 1024
 
@@ -53,8 +53,8 @@ mg.nu_f = 40
 #ns.v   = 0
 #amr.v  = 0
 #mac.v  = 0
-ht.v = 1
-ns.v   = 1
+ht.v = 0
+ns.v   = 0
 #amr.v  = 1
 #mac.v  = 1
 proj.v = 0
