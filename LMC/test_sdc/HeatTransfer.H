@@ -286,6 +286,11 @@ public:
     //
     static void variableCleanUp ();
     
+  void make_sdc_fabs(int box_ind,
+		     const Box& bx,
+		     FArrayBox& Afab,
+		     FArrayBox& Dfab,
+		     FArrayBox& NULNfab);
 
   void make_I_AD ();
 

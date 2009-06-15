@@ -729,11 +729,11 @@ C     Form (rho*Y)_t
          WDOT = RPAR(NWDOT + K - 1) * THFAC
          WT   = RPAR(NWT   + K - 1)
 c c_0, c_1 are in common /sdc/ in cdwrk.H
-         ZP(K+1) = WDOT * WT + c_0(K+1) + c_1(K+1)*TIME
+         ZP(K+1) = WDOT * WT + c_0(K) + c_1(K)*TIME
          SUM = SUM + H * ZP(K+1)
       END DO
 C  make (rho*h)_t
-      ZP(Nspec+2) = c_0(Nspec+2) + c_1(Nspec+2)*TIME
+      ZP(Nspec+2) = c_0(Nspec+1) + c_1(Nspec+1)*TIME
 C  make Temp_t
       ZP(1) = (ZP(Nspec+2) - SUM) / (RHO*CPB)
 

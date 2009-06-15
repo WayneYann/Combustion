@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.1 2009-04-30 22:23:56 gilet Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.2 2009-06-15 17:47:04 gilet Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -3380,3 +3380,78 @@ c local vars
 
       end
 
+      subroutine FORT_MAKE_IR_PROVIS(lo,hi,compY,compH,
+     &     snew,DIMS(snew), sold,DIMS(sold),
+     &     AofS,DIMS(AofS), DofS,DIMS(DofS),
+     &     NULN,DIMS(NULN), IR,DIMS(IR), nspec, nD, dt)
+      implicit none
+
+      integer lo(SDIM), hi(SDIM)
+      integer compY, compH, nspec, nD
+      integer DIMDEC(snew)
+      integer DIMDEC(sold)
+      integer DIMDEC(AofS)
+      integer DIMDEC(DofS)
+      integer DIMDEC(NULN)
+      integer DIMDEC(IR)
+      REAL_T dt
+      REAL_T snew(DIMV(snew),*)
+      REAL_T sold(DIMV(sold),*)
+      REAL_T AofS(DIMV(AofS),*)
+      REAL_T DofS(DIMV(DofS),*)
+      REAL_T NULN(DIMV(NULN),*)
+      REAL_T IR(DIMV(IR),*)
+
+      integer i,j,n      
+
+      do j = lo(2),hi(2)
+         do i = lo(1),hi(1)
+            do n = 1,nspec
+               IR(i,j,compY+n) = (snew(i,j,compY+n)-sold(i,j,compY+n))/dt
+     &              - AofS(i,j,n) - DofS(i,j,n+nspec) 
+            enddo
+            IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
+     &           - AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
+     &           - (NULN(i,j,2)+NULN(i,j,1))/2
+            enddo
+         enddo
+      end
+
+      subroutine FORT_MAKE_IR_SDC(lo,hi,compY,compH,
+     &     snew,DIMS(snew), sold,DIMS(sold),
+     &     AofS,DIMS(AofS), DofS,DIMS(DofS),
+     &     NULN,DIMS(NULN), IR,DIMS(IR), nspec, nD, dt)
+      implicit none
+
+      integer lo(SDIM), hi(SDIM)
+      integer compY, compH, nspec, nD
+      integer DIMDEC(snew)
+      integer DIMDEC(sold)
+      integer DIMDEC(AofS)
+      integer DIMDEC(DofS)
+      integer DIMDEC(NULN)
+      integer DIMDEC(IR)
+      REAL_T dt
+      REAL_T snew(DIMV(snew),*)
+      REAL_T sold(DIMV(sold),*)
+      REAL_T AofS(DIMV(AofS),*)
+      REAL_T DofS(DIMV(DofS),*)
+      REAL_T NULN(DIMV(NULN),*)
+      REAL_T IR(DIMV(IR),*)
+
+      integer i,j,n      
+
+      do j = lo(2),hi(2)
+         do i = lo(1),hi(1)
+            do n = 1,nspec
+               IR(i,j,compY+n) = (snew(i,j,compY+n)-sold(i,j,compY+n))/dt
+     &              - AofS(i,j,n) - DofS(i,j,n+nspec) 
+     &              - (DofS(i,j,n)-DofS(i,j,n+nspec*2))/2
+            enddo
+            IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
+     &           - AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
+     &           - (DofS(i,j,nD*nspec+1)-DofS(i,j,nD*nspec+3))/2
+     &           - NULN(i,j,2) - (NULN(i,j,1)-NULN(i,j,3))/2
+            enddo
+         enddo
+      end

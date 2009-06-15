@@ -1730,6 +1730,9 @@ HeatTransfer::sum_integrated_quantities ()
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::sum_integrated_quantities()");
 
+    //FIXME debugging
+    std::cout<<"Inside SUM_INTEGRATED_QUAN"<<std::endl;
+
     const int finest_level = parent->finestLevel();
     const Real time        = state[State_Type].curTime();
 
@@ -1843,6 +1846,8 @@ HeatTransfer::sum_integrated_quantities ()
         }
     }
 
+    //FIXME! don't think this will work for sdc since not using Ydot type
+    //  looks like it doesn't change anything, juat gets min/max and prints it
     Real min_max_sum[2] = { 1.0e20, -1.0e20 };
     
     for (int lev = 0; lev <= finest_level; lev++)
@@ -8535,9 +8540,6 @@ HeatTransfer::calc_divu (Real      time,
 	  temp[i].copy(Temp_fpi(),0,sCompT,1);
 	}
 
-      //	VisMF::Write(rho,"rho_orig");
-      //	VisMF::Write(temp,"temp_orig");
-      
       //
       // Note that state contains rho*species, so divide species by rho.
       //
@@ -8563,8 +8565,6 @@ HeatTransfer::calc_divu (Real      time,
 	  }
       }
 
-      //	VisMF::Write(species,"species_orig");
-
       MultiFab mwmix(grids,1,nGrow), cp(grids,1,nGrow);
       
       for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
@@ -8580,10 +8580,6 @@ HeatTransfer::calc_divu (Real      time,
 					 box,sCompT,sCompY,sCompCp);
 	}
 
-      //	VisMF::Write(mwmix,"mwmix_orig");
-      //	VisMF::Write(cp,"cp_orig");
-
-
       // Compute
       //  div u = (div lambda grad T + 
       //           sum_l rho D grad h_l dot grad Y_l)/(c_p*T*rho)
@@ -8597,8 +8593,6 @@ HeatTransfer::calc_divu (Real      time,
 	  divu[iGrid].divide(rho[iGrid],grids[iGrid],sCompR,0,1);
 	  divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
 	}
-      //	VisMF::Write(divu,"divu_visc_orig");
-
 
       // Compute
       //  divu = divu + W * (del . rho D_l grad Y_l)/(rho*W_l)
@@ -8610,7 +8604,6 @@ HeatTransfer::calc_divu (Real      time,
       const Array<Real> mwt = getChemSolve().speciesMolecWt();
       
       getViscTerms(spec_visc_terms,first_spec,nspecies,time);
-      //	VisMF::Write(spec_visc_terms,"spec_visc_orig");
 
       for (MFIter mfi(spec_visc_terms); mfi.isValid(); ++mfi)
 	{
@@ -8634,6 +8627,7 @@ HeatTransfer::calc_divu (Real      time,
 	  divu[iGrid].plus(delta_divu[iGrid],box,0,0,1);
 	}
 
+      // CEG:: do i need to keep rho???
       rho.clear();
       
       // Compute
@@ -8650,12 +8644,11 @@ HeatTransfer::calc_divu (Real      time,
 
 	  const int sCompH = 0;
 
-	  // CEG:: is this getting P at the right time?
 	  Real p_amb, dpdt_factor;
 	  FORT_GETPAMB(&p_amb, &dpdt_factor);
 	  const Real Patm = p_amb / P1atm_MKS;
 
-	  // CEG::Is this okay in place of a FPI???
+	  // CEG::Is this okay in place of a FPI???  nGrow = 0
 	  for (MFIter Ydot_mfi(ydot); Ydot_mfi.isValid(); ++Ydot_mfi)
 	    {
 	      const int i = Ydot_mfi.index();
@@ -8667,16 +8660,15 @@ HeatTransfer::calc_divu (Real      time,
 	      //Compute
 	      //  -omega-dot/rho = -Y_l-dot
 	      //
-	      // CEG:: this does the job, but it also does extra work
+	      // CEG:: this does the job, but it also does a little extra work
 	      //  could i use CKYTCR instead of CKYTCP (use rho instead of
 	      //  Press and Temp)
-	      // is Patm the right thing????
+	      // is Patm the right thing--should be; simulating open container
 	      getChemSolve().reactionRateY(ydot[i],species[i],temp[i],Patm,
 					   grids[i],sCompY,sCompT,0);
 
-	      for (int ispec = 0; ispec <= nspecies; ispec++)
+	      for (int ispec = 0; ispec < nspecies; ispec++)
 		{
-
 		  delta_divu[i].copy(h,ispec,0,1);
 		  delta_divu[i].divide(cp[i]);
 		  delta_divu[i].divide(temp[i]);
@@ -10147,7 +10139,7 @@ HeatTransfer::advance_sdc (Real time,
     *sdcForce = 0.0;
     differential_spec_diffusion_update_sdc(dt, corrector);
 
-    //!!!! getViscTerms changes SpecDiffusionFlux -- Ask marc
+    //!!!! getViscTerms changes SpecDiffusionFlux 
     // Compute Diffn^n+1 for species
     //    getViscTerms_sdc(DofS[1],first_spec,nspecies,cur_time);
  
@@ -10608,8 +10600,8 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
     const int ycomp     = first_spec;
     const int Tcomp     = Temp;
 
-
     //CEG:: would it have been better to just load ydot here???
+    // need to think about consequences for initial iters stuff
 
     if (hack_nochem)
     {
@@ -10637,26 +10629,6 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
                 FArrayBox& fb = mf[Smfi];
                 const Box& bx = Smfi.validbox();
 		FArrayBox& fc = tmp[Smfi];
-       
-
-		Afab.resize(bx,nspecies+1);
-		Dfab.resize(bx,(nspecies+1)*n_diffusion);
-		NULNfab.resize(bx,n_diffusion);
-		//CEG:: is there a better way to do this that doesn't
-		//   involve this copy?
-		Afab.copy((*aofs)[Smfi],first_spec,0,nspecies);
-		Afab.copy((*aofs)[Smfi],RhoH,nspecies,1);
-		//load up the Diffusion fab so that it contains
-		//  spec1, spec2,...(at time 1),
-		//  spec1, spec2,...(at time 2),
-		//  ..., 
-		//  RhoH_t1,RhoH_t2,...
-		for (int j = 0; j < n_diffusion; j++)
-		{ 
-		  Dfab.copy(DofS[j][Smfi],first_spec,j*nspecies,nspecies);
-		  Dfab.copy(DofS[j][Smfi],RhoH,n_diffusion*nspecies+j,1);
-		  NULNfab.copy(RhoH_NULN_terms[j][Smfi],0,j,1);
-		}
 
                 if (plot_reactions &&
                     BoxLib::intersect(mf.boxArray(),auxDiag["REACTIONS"]->
@@ -10664,6 +10636,8 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
                 {
                     chemDiag = &( (*auxDiag["REACTIONS"])[Smfi] );
                 }
+
+		make_sdc_fabs(Smfi.index(),bx,Afab,Dfab,NULNfab);
 
                 getChemSolve().solveTransient_sdc(fb,fb,Afab,Dfab,NULNfab,
 						  fc,bx,Density,ycomp,
@@ -10719,22 +10693,7 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
                 FArrayBox& fc = fcnCntTemp[Smfi];
                 chemDiag = (do_diag ? &(diagTemp[Smfi]) : 0);
 
-		Afab.resize(bx,nspecies+1);
-		Dfab.resize(bx,(nspecies+1)*n_diffusion);
-		NULNfab.resize(bx,n_diffusion);
-		//CEG:: is there a better way to do this that doesn't
-		//   involve this copy?
-		Afab.copy((*aofs)[Smfi],first_spec,0,nspecies);
-		Afab.copy((*aofs)[Smfi],RhoH,nspecies,1);
-		//load up the Diffusion fab so that it contains
-		//  spec1, spec2,...(at time 1),spec1, spec2,...(at time 2),
-		//  etc., RhoH_t1,RhoH_t2,...
-		for (int j = 0; j < n_diffusion; j++)
-		{ 
-		  Dfab.copy(DofS[j][Smfi],first_spec,j*nspecies,nspecies);
-		  Dfab.copy(DofS[j][Smfi],RhoH,n_diffusion*nspecies+j,1);
-		  NULNfab.copy(RhoH_NULN_terms[j][Smfi],0,j,1);
-		}
+		make_sdc_fabs(Smfi.index(),bx,Afab,Dfab,NULNfab);
 
                 getChemSolve().solveTransient_sdc(fb,fb,Afab,Dfab,NULNfab,
 						  fc,bx,Density,ycomp,
@@ -11221,7 +11180,7 @@ HeatTransfer::differential_spec_diffusion_update_sdc (Real dt,
     {
 	const int state_ind = first_spec + sigma;
 
-	// set rho_flag = 2 (diffusion type = laplacian (S/rho))
+	// set rho_flag = 2 (diffusion ty = laplacian (S/rho))
 	// declare alpha, delta_rhs = zero
 	// beta_n = D_m^n
 	// beta_np1 = D_m^n+1
@@ -11614,91 +11573,108 @@ HeatTransfer::make_I_AD ()
     I_AD[0].mult(half,RhoH,1);
 }
 
-// void
-// HeatTransfer::make_I_R_provis (Real dt)
-// {
-//   MultiFab& S_new = get_new_data(State_Type);
-//   MultiFab& S_old = get_old_data(State_Type);
-//   MultiFab tmp;
+void
+HeatTransfer::make_I_R_provis (Real dt)
+{
+  MultiFab& S_new = get_new_data(State_Type);
+  MultiFab& S_old = get_old_data(State_Type);
+  FArrayBox Afab;
+  FArrayBox Dfab;
+  FArrayBox NULNfab;
 
-//   //CEG:: i'm probably better off to use an MFIter and a fn in 2D.F
-//   // can crib from stuff in chem_sdc
 
-//   //I_R = s_new - s_old - dt*[A + D(1) + NULN(1)]
+  //CEG:: FIXME! haven't decided how to deal with NULN in provis soln yet
+  //   for now am using CN.  see notebook 3 p 98
+  //I_R = s_new - s_old - dt*[A + D(1) + NULN(1)]
 
-//   tmp.define(grids,nspecies+1,0);
-
-//   MultiFab::Copy(tmp,*aofs,first_spec,0,nspecies,0);
-//   MultiFab::Copy(tmp,*aofs,RhoH,nspecies,1,0);
-
-//   MultiFab::Add(tmp,DofS[1],first_spec,0,nspecies,0);
-//   MultiFab::Add(tmp,DofS[1],RhoH,nspecies,1,0);
-//   MultiFab::Add(tmp,RhoH_NULN_terms[1],0,nspecies,1,0);
-
-//   tmp.mult(dt,0,nspecies+1);
-
-//   MultiFab::Copy(I_R[0],S_new,first_spec,first_spec,nspecies,0);
-//   MultiFab::Copy(I_R[0],S_new,RhoH,RhoH,1,0);
-
-//   MultiFab::Subtract(I_R[0],S_old,first_spec,first_spec,nspecies,0);
-//   MultiFab::Subtract(I_R[0],S_old,RhoH,RhoH,1,0);
-     
-//   MultiFab::Subtract(I_R[0],tmp,0,first_spec,nspecies,0);
-//   MultiFab::Subtract(I_R[0],tmp,nspecies,RhoH,1,0);
-
-// }
-
-// void
-// HeatTransfer::make_I_R_sdc (Real dt)
-// {
-//   MultiFab& S_new = get_new_data(State_Type);
-//   MultiFab& S_old = get_old_data(State_Type);
-
-//   // I_R = s_new - s_old - dt*[A + D(1) + (D(0)-D(2))/2
-//   //                          + NULN(1) + (NULN(0)-NULN(2))/2]      
-  
-//   FArrayBox Afab;
-//   FArrayBox Dfab;
-//   FArrayBox NULNfab;
-
-//   MultiFab tmp;
-
-//   tmp.define(mf.boxArray(), 1, 0, mf.DistributionMap(), Fab_allocate);
-  
-//   for (MFIter Smfi(S_new); Smfi.isValid(); ++Smfi)
-//     {
-//       FArrayBox& fb = S_new[Smfi];
-//       const Box& bx = Smfi.validbox();
-//       FArrayBox& fc = tmp[Smfi];
+  for (MFIter Smfi(S_new); Smfi.isValid(); ++Smfi)
+    {
+      FArrayBox& sn = S_new[Smfi];
+      FArrayBox& so = S_old[Smfi];
+      const Box& bx = Smfi.validbox();
+      FArrayBox& IR = (I_R[0])[Smfi];
        
+      make_sdc_fabs(Smfi.index(),bx,Afab,Dfab,NULNfab);
 
-//       Afab.resize(bx,nspecies+1);
-//       Dfab.resize(bx,(nspecies+1)*n_diffusion);
-//       NULNfab.resize(bx,n_diffusion);
-//       //CEG:: is there a better way to do this that doesn't
-//       //   involve this copy?
-//       Afab.copy((*aofs)[Smfi],first_spec,0,nspecies);
-//       Afab.copy((*aofs)[Smfi],RhoH,nspecies,1);
-//       //load up the Diffusion fab so that it contains
-//       //  spec1, spec2,...(at time 1),
-//       //  spec1, spec2,...(at time 2),
-//       //  ..., 
-//       //  RhoH_t1,RhoH_t2,...
-//       for (int j = 0; j < n_diffusion; j++)
-// 	{ 
-// 	  Dfab.copy(DofS[j][Smfi],first_spec,j*nspecies,nspecies);
-// 	  Dfab.copy(DofS[j][Smfi],RhoH,n_diffusion*nspecies+j,1);
-// 	  NULNfab.copy(RhoH_NULN_terms[j][Smfi],0,j,1);
-// 	}
-      
-//       //look at solveTransient_sdc
-//       FORT_MAKE_IR_SDC(fb,fb,Afab,Dfab,NULNfab,
-// 		       fc,bx,Density,ycomp,
-// 		       Tcomp,RhoH,
-// 		       dt,sdc_flag);
-//     }
+      FORT_MAKE_IR_PROVIS(bx.loVect(), bx.hiVect(),
+			  &first_spec,&RhoH,
+			  sn.dataPtr(), ARLIM(sn.loVect()),ARLIM(sn.hiVect()),
+			  so.dataPtr(), ARLIM(so.loVect()),ARLIM(so.hiVect()),
+			  Afab.dataPtr(), ARLIM(Afab.loVect()),ARLIM(Afab.hiVect()),
+			  Dfab.dataPtr(), ARLIM(Dfab.loVect()),ARLIM(Dfab.hiVect()),
+			  NULNfab.dataPtr(), ARLIM(NULNfab.loVect()),
+		                             ARLIM(NULNfab.hiVect()),
+			  IR.dataPtr(), ARLIM(IR.loVect()),ARLIM(IR.hiVect()),
+			  &nspecies, &n_diffusion, &dt);
+    }
+}
 
-// }
+void
+HeatTransfer::make_I_R_sdc (Real dt)
+{
+  MultiFab& S_new = get_new_data(State_Type);
+  MultiFab& S_old = get_old_data(State_Type);
+  FArrayBox Afab;
+  FArrayBox Dfab;
+  FArrayBox NULNfab;
+
+  // I_R = s_new - s_old - dt*[A + D(1) + (D(0)-D(2))/2
+  //                          + NULN(1) + (NULN(0)-NULN(2))/2]        
+
+  
+  for (MFIter Smfi(S_new); Smfi.isValid(); ++Smfi)
+    {
+      FArrayBox& sn = S_new[Smfi];
+      FArrayBox& so = S_old[Smfi];
+      const Box& bx = Smfi.validbox();
+      FArrayBox& IR = (I_R[0])[Smfi];
+       
+      make_sdc_fabs(Smfi.index(),bx,Afab,Dfab,NULNfab);
+
+      FORT_MAKE_IR_SDC(bx.loVect(), bx.hiVect(),
+		       &first_spec,&RhoH,
+		       sn.dataPtr(), ARLIM(sn.loVect()),ARLIM(sn.hiVect()),
+		       so.dataPtr(), ARLIM(so.loVect()),ARLIM(so.hiVect()),
+		       Afab.dataPtr(), ARLIM(Afab.loVect()),ARLIM(Afab.hiVect()),
+		       Dfab.dataPtr(), ARLIM(Dfab.loVect()),ARLIM(Dfab.hiVect()),
+		       NULNfab.dataPtr(), ARLIM(NULNfab.loVect()),
+		                          ARLIM(NULNfab.hiVect()),
+		       IR.dataPtr(), ARLIM(IR.loVect()),ARLIM(IR.hiVect()),
+		       &nspecies, &n_diffusion, &dt);
+    }
+
+}
+
+
+// provis(), sdc() fns in ChemDriver_F.F & MAKE_IR_SDC() in HEATTRANSFER_2D.F 
+// extract the data from these fabs and need to be 
+// changed if this function get changed.
+void
+HeatTransfer::make_sdc_fabs(int box_ind,
+			    const Box& bx,
+			    FArrayBox& Afab,
+			    FArrayBox& Dfab,
+			    FArrayBox& NULNfab)
+{
+  Afab.resize(bx,nspecies+1);
+  Dfab.resize(bx,(nspecies+1)*n_diffusion);
+  NULNfab.resize(bx,n_diffusion);
+  //CEG:: is there a better way to do this that doesn't
+  //   involve this copy?
+  Afab.copy((*aofs)[box_ind],first_spec,0,nspecies);
+  Afab.copy((*aofs)[box_ind],RhoH,nspecies,1);
+  //load up the Diffusion fab so that it contains
+  //  spec1, spec2,...(at time 1),
+  //  spec1, spec2,...(at time 2),
+  //  ..., 
+  //  RhoH_t1,RhoH_t2,...
+  for (int j = 0; j < n_diffusion; j++)
+    { 
+      Dfab.copy(DofS[j][box_ind],first_spec,j*nspecies,nspecies);
+      Dfab.copy(DofS[j][box_ind],RhoH,n_diffusion*nspecies+j,1);
+      NULNfab.copy(RhoH_NULN_terms[j][box_ind],0,j,1);
+    }
+}
 
 void
 HeatTransfer::make_advection_sdcForce ( int       src_comp, 

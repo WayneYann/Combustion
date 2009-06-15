@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.1 2009-04-30 22:23:56 gilet Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.2 2009-06-15 17:47:04 gilet Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -30,6 +30,8 @@
 #    define FORT_RK_STEP_SELECTION         rkstepselection
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #    define FORT_SUM_EXTF_SDCF             sumextfsdcf
+#    define FORT_MAKE_IR_SDC               makeirsdc
+#    define FORT_MAKE_IR_PROVIS            makeirprovis
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -59,6 +61,8 @@
 #    define FORT_RK_STEP_SELECTION         RKSTEPSELECTION
 #    define FORT_CONSERVATIVE_T_FLOOR      CONSTFLOOR
 #    define FORT_SUM_EXTF_SDCF             SUMEXTFSDCF
+#    define FORT_MAKE_IR_SDC               MAKEIRSDC
+#    define FORT_MAKE_IR_PROVIS            MAKEIRPROVIS
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -87,6 +91,8 @@
 #    define FORT_RK_STEP_SELECTION         rkstepselection
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #    define FORT_SUM_EXTF_SDCF             sumextfsdcf
+#    define FORT_MAKE_IR_SDC               makeirsdc
+#    define FORT_MAKE_IR_PROVIS            makeirprovis
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -115,6 +121,8 @@
 #    define FORT_RK_STEP_SELECTION         rkstepselection_
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor_
 #    define FORT_SUM_EXTF_SDCF             sumextfsdcf_
+#    define FORT_MAKE_IR_SDC               makeirsdc_
+#    define FORT_MAKE_IR_PROVIS            makeirprovis_
 #  endif
 
 #include <ArrayLim.H>
@@ -352,6 +360,26 @@ extern "C" {
 			  const Real* RHdat, ARLIM_P(rlo), ARLIM_P(rhi),
 			  const int* tlo, const int* thi, 
 			  int* num_comp, int* iconserv);
+
+  void FORT_MAKE_IR_PROVIS(const int* lo, const int* hi, 
+			   int* compY, int* compH,
+			   const Real* snew, ARLIM_P(snlo), ARLIM_P(snhi),
+			   const Real* sold, ARLIM_P(solo), ARLIM_P(sohi),
+			   const Real* AofS, ARLIM_P(alo), ARLIM_P(afhi),
+			   const Real* DofS, ARLIM_P(dlo), ARLIM_P(dhi),
+			   const Real* NULN, ARLIM_P(nlo), ARLIM_P(nhi),
+			   const  Real* IR, ARLIM_P(ilo), ARLIM_P(ihi),
+			   int* nspec, const int* nD, const Real* dt);
+
+  void FORT_MAKE_IR_SDC(const int* lo, const int* hi, 
+			int* compY, int* compH,
+			const Real* snew, ARLIM_P(snlo), ARLIM_P(snhi),
+			const Real* sold, ARLIM_P(solo), ARLIM_P(sohi),
+			const Real* AofS, ARLIM_P(alo), ARLIM_P(afhi),
+			const Real* DofS, ARLIM_P(dlo), ARLIM_P(dhi),
+			const Real* NULN, ARLIM_P(nlo), ARLIM_P(nhi),
+			const Real* IR, ARLIM_P(ilo), ARLIM_P(ihi),
+			int* nspec, const int* nD, const Real* dt);
 
 }
 #endif
