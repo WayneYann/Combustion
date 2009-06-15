@@ -1,12 +1,13 @@
 amr.plot_nfiles=64
 amr.checkpoint_nfiles=64
 
-
 mg.smooth_on_cg_unstable=1
 
-DistributionMapping.verbose=1
-DistributionMapping.do_not_minimize_comm_costs=0
+DistributionMapping.verbose=0
+DistributionMapping.do_not_minimize_comm_costs=1
 DistributionMapping.swap_n_test_count=1
+DistributionMapping.strategy = SFC
+DistributionMapping.sfc_threshold=3
 
 amr.checkpoint_files_output=0
 amr.plot_files_output=0
@@ -70,8 +71,8 @@ amr.n_cell    = 64 64 128
 amr.v=1
 amr.max_level =  2            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
-amr.regrid_int      = 2       # how often to regrid
-amr.n_error_buf     = 1 1 1 2 # number of buffer cells in error est
+amr.regrid_int      = 8       # how often to regrid
+amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
 amr.grid_eff        = 0.9     # what constitutes an efficient grid
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.blocking_factor = 16       # block factor in grid generation
@@ -160,7 +161,6 @@ diffuse.v = 1
 diffuse.Rhs_in_abs_tol = 1
 
 # ------------------  INPUTS TO PROJECTION CLASS -------------------
-proj.proj_tol       = 1.0e-1  # tolerence for projections
 proj.proj_tol       = 1.0e-11  # tolerence for projections
 proj.sync_tol       = 1.0e-9  # tolerence for projections
 proj.rho_wgt_vel_proj = 0      # 0 => const den proj, 1 => rho weighted
@@ -187,28 +187,6 @@ mac.do_outflow_bcs = 0
 #   8BIT   (eight-bit run-length-encoded)
 #
 fab.format = NATIVE
-#
-# Initializes distribution strategy from ParmParse.
-#
-# ParmParse options are:
-#
-#   DistributionMapping.strategy = ROUNDROBIN
-#   DistributionMapping.strategy = KNAPSACK
-#
-# The default strategy is ROUNDROBIN.
-#
-DistributionMapping.strategy = ROUNDROBIN
-DistributionMapping.strategy = KNAPSACK
-
-# ns.cdf_prefix = DebugFiles/test
-#
-# StationData.vars     -- Names of StateData components to output
-# StationData.coord    -- BL_SPACEDIM array of Reals
-# StationData.coord    -- the next one
-# StationData.coord    -- ditto ...
-#
-# e.g.
-#
 
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
