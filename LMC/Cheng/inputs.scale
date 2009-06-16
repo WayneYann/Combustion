@@ -21,7 +21,7 @@ ns.do_fillPatchUMAC=1
 ns.zeroBndryVisc=1
 
 proj.proj_2 = 1
-ns.num_divu_iters =3
+ns.num_divu_iters = 1
 
 ns.max_grid_size_chem = 64
 ns.max_grid_size_chem = 32
@@ -100,7 +100,7 @@ ns.temp_cond_coef  = 2.6091e-5
 ns.scal_diff_coefs = -0.01
 ns.variable_vel_visc  = 1
 ns.variable_scal_diff = 1
-ns.init_iter      = 3        # number of init iters to def pressure
+ns.init_iter      = 1        # number of init iters to def pressure
 ns.gravity        = -9.81    # body force  (gravity in MKS units)
 ns.gravity        = 0        # body force  (gravity in MKS units)
 ns.sum_interval   = 0        # timesteps between computing mass
