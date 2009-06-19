@@ -1,5 +1,5 @@
 ht.use_sdc = 1
-ht.sdc_iters = 2
+ht.sdc_iters = 1
 
 amr.plot_int = 1
 
@@ -177,7 +177,7 @@ DistributionMapping.do_not_minimize_comm_costs=0
 DistributionMapping.verbose=0
 
 #ns.hack_nochem=1
-ns.hack_nospecdiff=1
+#ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0
 #max_step=0
