@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.16 2009-04-10 23:40:55 gilet Exp $
+# $Id: GNUmakefile,v 1.17 2009-06-19 21:09:53 xinfeng Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -16,13 +16,13 @@ DIM    	          = 2
 FCOMP             = Intel
 COMP              = Intel
 BUILD_IN_PLACE    = TRUE
-EBASE             = main
+EBASE             = amr
 HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = TRUE
-USE_FLCTS         = FALSE
-USE_MPI           = True 
-USE_MPI           = False
+USE_VELOCITY      = TRUE
+USE_MPI           = TRUE
+
 
 # This allows GetForce to call a Fortran routine
 #DEFINES += -DGENGETFORCE
@@ -38,22 +38,25 @@ USE_MPI           = False
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
-#USE_VELOCITY = TRUE
+
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
 #DEFINES += -DBL_RHORT_IN_TRACER
+
+DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
+
 #
 # Choose your reaction mechanism & thermal properties.
 #
-REACTION_MECHANISM=INERT30
-REACTION_MECHANISM=GRI12
-REACTION_MECHANISM=GRI30NON
-REACTION_MECHANISM=GRI30
-REACTION_MECHANISM=CH4-2STEP
-REACTION_MECHANISM=GRI30HNO
+#REACTION_MECHANISM=INERT30
+#REACTION_MECHANISM=GRI12
+#REACTION_MECHANISM=GRI30NON
+#REACTION_MECHANISM=GRI30
+#REACTION_MECHANISM=CH4-2STEP
+#REACTION_MECHANISM=GRI30HNO
 REACTION_MECHANISM=DRM19
-REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=GLARBORG
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
@@ -144,49 +147,7 @@ vpath %.h   $(MySrcDirs) ${PMFdir}
 vpath %.f   $(MySrcDirs) ${PMFdir}
 vpath %.a   $(LIBRARY_LOCATIONS)
 
-MyMakeLine =  $(MAKE) PRECISION=$(PRECISION) PROFILE=$(PROFILE) COMP=$(COMP) \
-	      DEBUG=$(DEBUG) DIM=$(DIM) USE_MPI=$(USE_MPI) PRVERSION=$(PRVERSION) \
-	      USE_HGPROJ_SERIAL=$(USE_HGPROJ_SERIAL) \
-	      DEFINES="$(DEFINES)" EBASE= LBASE=$@
-
-MyLibDeps := $(shell perl -e '$$,=" ";print reverse @ARGV ;' $(MyLibRoots))
-
-find_files = $(wildcard $(dir)*cpp) $(wildcard $(dir)*H) $(wildcard $(dir)*.F)
-projFiles := $(foreach dir,$(dir $(ProjPackage)),$(find_files))
-iamrFiles := $(foreach dir,$(dir $(filter %/iamr,$(Packages))),$(find_files))
-StencilSpecificProjFiles = $(shell grep -l USE_HGPROJ_SERIAL $(iamrFiles)) \
-                           $(shell grep -l BL_PRVERSION $(iamrFiles)) \
-                           $(wildcard $(dir $(ProjPackage))*F) \
-                           $(wildcard $(dir $(ProjPackage))*cpp) \
-                           $(wildcard $(dir $(ProjPackage))*H)
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-  StencilSpecificProjFiles += $(shell grep -l hg_version.H $(projFiles))
-endif
-#
-# Targets
-#
 all: $(executable)
-
-$(executable): $(LIBRARIES)
-
-libs: $(MyLibDeps)
-
-$(MyLibDeps):
-	cd $(dir $(filter %/$@, $(Packages))); $(MyMakeLine) install
-
-cleanlibs:
-	$(foreach lib,$(MyPackageDirs),cd $(lib); $(MyMakeLine) clean)
-
-nodata:
-	\rm -rf chk* plt* grdlog inspect.fab *.mfab *.fab *.asc *.out
-
-#
-# Touch all stencil-specific files in serial projection
-#
-touch_hg:
-	touch $(StencilSpecificProjFiles)
-
-.PHONY: libs cleanlibs nodata touch_hg
 
 o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o:
 	ifort -module o/3d.Linux.Intel.Intel.PROF.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o
