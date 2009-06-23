@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.15 2008-09-17 22:30:12 marc Exp $
+# $Id: Make.package,v 1.16 2009-06-23 19:55:23 marc Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -16,6 +16,9 @@ F$(HT_BASE)_sources += HEATTRANSFER_F.F HEATTRANSFER_$(DIM)D.F DDOp_$(DIM)D.F \
 #
 # The chemistry-specific stuff ...
 #
+ifeq ($(REACTION_MECHANISM),GLARBORG)
+  C$(HT_BASE)_sources += glarSkel.cpp
+endif
 ifeq ($(REACTION_MECHANISM),DRM19)
   C$(HT_BASE)_sources += drm19.cpp
 endif
