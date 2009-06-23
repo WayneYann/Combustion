@@ -1,5 +1,5 @@
 ht.use_sdc = 1
-ht.sdc_iters = 1
+ht.sdc_iters = 20
 
 amr.plot_int = 1
 
@@ -96,7 +96,7 @@ ns.plot_consumption = 1
 ns.plot_heat_release = 1
 ns.do_active_control = false
 ns.do_init_vort_proj = 0
-ns.v   = 0
+ns.v   = 1
 
 # ----------------  PROBLEM DEPENDENT INPUTS
 ns.lo_bc          = 0 1

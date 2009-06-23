@@ -291,6 +291,13 @@ public:
 		     FArrayBox& Afab,
 		     FArrayBox& Dfab,
 		     FArrayBox& NULNfab);
+  void make_sdc_mf (BoxArray& ba, 
+		    DistributionMapping& dm,
+		    MultiFab& mf_new,
+		    MultiFab& mf_old,
+		    int& Acomp,
+		    int& Dcomp,
+		    int& NULNcomp);
 
   void make_I_AD ();
 

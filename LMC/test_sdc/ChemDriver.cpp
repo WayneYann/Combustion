@@ -572,8 +572,11 @@ ChemDriver::decodeStringFromFortran(const int* coded,
 }
 
 #include "iostream"
+//CEG FIXME
+#include "fstream"
 using std::cout;
 using std::endl;
+
 //CEG:: this gets called on a box
 void
 ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
@@ -587,6 +590,9 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			       int               sCompY,
 			       int               sCompT,
 			       int               sCompH,
+			       int               sCompA,
+			       int               sCompD,
+			       int               sCompNULN,
 			       Real              dt,
 			       Real              Patm,
 			       const Chem_Evolve solver,
@@ -597,11 +603,20 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 
     const int do_diag  = (chemDiag!=0);
     Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
-    
-    int ncompA = AofS.nComp();
-    int ncompD = DofS.nComp();
-    int ncompNULN = RhoH_NULN.nComp();
+    //FIXME    
+    const int ncompA = AofS.nComp();
+    const int ncompD = DofS.nComp();
+    const int ncompNULN = RhoH_NULN.nComp();
 
+//     std::cout<<"nCompA = "<<ncompA<<std::endl;
+//     std::cout<<"nCompD = "<<ncompD<<std::endl;
+//     std::cout<<"nCompNULN = "<<ncompNULN<<std::endl;
+//     std::cout<<"sCompA = "<<sCompA<<std::endl;
+//     std::cout<<"sCompD = "<<sCompD<<std::endl;
+//     std::cout<<"sCompNULN = "<<sCompNULN<<std::endl;
+//     std::cout<<"sCompRho = "<<sCompRho<<std::endl;
+//     std::cout<<"sCompH = "<<sCompH<<std::endl;
+//     std::cout<<"sCompT = "<<sCompT<<std::endl;
 
     if (sdc_flag == 0)
     {
@@ -620,16 +635,17 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			                        ARLIM(Sold.hiVect()),
 			  Sold.dataPtr(sCompH), ARLIM(Sold.loVect()), 
 			                        ARLIM(Sold.hiVect()),
-			  AofS.dataPtr(), ARLIM(AofS.loVect()), 
-			                  ARLIM(AofS.hiVect()), ncompA,
-			  DofS.dataPtr(), ARLIM(DofS.loVect()), 
-			                  ARLIM(DofS.hiVect()), ncompD,
-			  RhoH_NULN.dataPtr(), ARLIM(RhoH_NULN.loVect()), 
+			  AofS.dataPtr(sCompA), ARLIM(AofS.loVect()), 
+			                        ARLIM(AofS.hiVect()), &ncompA,
+			  DofS.dataPtr(sCompD), ARLIM(DofS.loVect()), 
+			                        ARLIM(DofS.hiVect()), &ncompD,
+			  RhoH_NULN.dataPtr(sCompNULN), ARLIM(RhoH_NULN.loVect()), 
 			                       ARLIM(RhoH_NULN.hiVect()),
-			  ncompNULN,
+			  &ncompNULN,
 			  FuncCount.dataPtr(), ARLIM(FuncCount.loVect()),  
                                                ARLIM(FuncCount.hiVect()),
 			  &Patm, &dt, diagData, &do_diag, Lob_provis);
+	std::cout<<"done with conpsolv"<<std::endl;
     }
     else
     {
@@ -649,13 +665,13 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			                        ARLIM(Sold.hiVect()),
 			  Sold.dataPtr(sCompH), ARLIM(Sold.loVect()), 
 			                        ARLIM(Sold.hiVect()),
-			  AofS.dataPtr(), ARLIM(AofS.loVect()), 
-			                  ARLIM(AofS.hiVect()), ncompA,
-			  DofS.dataPtr(), ARLIM(DofS.loVect()), 
-			                  ARLIM(DofS.hiVect()), ncompD,
-			  RhoH_NULN.dataPtr(), ARLIM(RhoH_NULN.loVect()), 
+			  AofS.dataPtr(sCompA), ARLIM(AofS.loVect()), 
+			                        ARLIM(AofS.hiVect()), &ncompA,
+			  DofS.dataPtr(sCompD), ARLIM(DofS.loVect()), 
+			                        ARLIM(DofS.hiVect()), &ncompD,
+			  RhoH_NULN.dataPtr(sCompNULN), ARLIM(RhoH_NULN.loVect()), 
 			                       ARLIM(RhoH_NULN.hiVect()),
-			  ncompNULN,
+			  &ncompNULN,
 			  FuncCount.dataPtr(), ARLIM(FuncCount.loVect()),  
                                                ARLIM(FuncCount.hiVect()),
 			  &Patm, &dt, diagData, &do_diag, Lob_sdc);

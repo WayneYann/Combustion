@@ -498,7 +498,7 @@ c     Get the matrix of elements versus species
       end do
       end
 
-C new FORT_CONPSOLV(Y's,T's, A's, D's, I_AD, I_R) 
+C new FORT_CONPSOLV(Y's,T's, A's, D's) 
 C in this function have to load up all data needed during 
 C rxn integration into sdc common block
 C need to evolve T so that vode gets the stiffness (& hence time
@@ -657,9 +657,8 @@ c     Set up ATOL
                   Tnew(i,j) = Tnew(lo(1),j)
                else
 #endif
-
                RWRK(NZ) = Told(i,j)
-               RWRK(NZ+Nspec+2) = Hold(i,j)
+               RWRK(NZ+Nspec+1) = Hold(i,j)
                RWRK(NRHO)= Rho(i,j)               
 
 C CEG: doing JBB_HACK
@@ -682,9 +681,10 @@ C CEG: doing JBB_HACK
 C as previously written, RWRK is expecting just Y not rho*Y
                do n = 1,Nspec
                   RWRK(NZ+n) = Ytemp(n)
+c                  write(*,*)'RWRK = ',RWRK(NZ+n)
                   Y_m(n) = Ytemp(n)/Rho(i,j)
+c                  write(*,*)'Y_m = ',Y_m(n)
                end do
-
 
 c CEG:: Don't need CKHBMS if FuncCount is taken out
 C compute hmix and store in RWRK(NHMIX)
@@ -694,8 +694,8 @@ C Put SDC additions in area accessible by conpFY
                call sdc_func(AofS(i,j,:ncompA),DofS(i,j,:ncompD),
      &              NULN(i,j,:ncompNULN),dt)
                
-
 #ifdef TRIGGER_NEW_J
+c               write(*,*)'trigger new j defined'
                newJ_triggered = .FALSE.
                scale = spec_scalT
                sum = ABS(RWRK(NZ)-YJ_SAVE(1))/scale
@@ -713,6 +713,7 @@ c            print *, "JACOB",sum,newJ_triggered
 #ifdef ALWAYS_NEW_J
                FIRST = .TRUE.
 #endif
+C CEG do_diag!=1
                if (do_diag.eq.1) then
                   FuncCount(i,j) = 0
 C converts Y (mass frac) to concentration.  
@@ -735,6 +736,10 @@ C "Returns the rate of progress for each reaction"
                   TT1save = TT1
                   TT2 = TT1 + dtloc
 
+c                  write(*,*)'dt = ',dt
+c                  write(*,*)'nsub = ',nsub
+c                  write(*,*)'TT1 = ',TT1
+c                  write(*,*)'TT2 = ',TT2
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                   CALL SVODE
 #else
@@ -764,7 +769,7 @@ c
                         do n=1,Nspec
                            RWRK(NZ+n) = Ytemp(n)
                         end do
-                        RWRK(NZ+Nspec+2) = Hold(i,j)
+                        RWRK(NZ+Nspec+1) = Hold(i,j)
 
                         ISTATE = 1
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
@@ -785,11 +790,14 @@ c
                      do n = 1, Nspec
                         Rho(i,j) = Rho(i,j) + RWRK(NZ+n)
                      enddo
+
                      do n=1,Nspec
                         Y_m(n) = RWRK(NZ+n)/Rho(i,j)
                      enddo
+
                      CALL CKYTCP(RWRK(NP),RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),Ct)
                      CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+
                      do n=1,Nreac
                         diag(i,j,n) = diag(i,j,n)+weight*dtloc*Qt(n)*million
                      enddo
@@ -840,8 +848,8 @@ c
             enddo
 
             Tnew(i,j) = RWRK(NZ)
-            Hnew(i,j) = RWRK(NZ+Nspec+2)
-            
+            Hnew(i,j) = RWRK(NZ+Nspec+1)
+
             Rho(i,j) = 0.
             do n = 1, Nspec
                Rho(i,j) = Rho(i,j) + RWRK(NZ+n)

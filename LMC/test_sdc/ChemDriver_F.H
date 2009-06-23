@@ -354,20 +354,20 @@ extern "C" {
 			   const Real* Told, ARLIM_P(Tolo), ARLIM_P(Tohi),
 			   const Real* RhoHold, ARLIM_P(Holo), ARLIM_P(Hohi),
 			   const Real* AofS, ARLIM_P(Alo), ARLIM_P(Ahi),
-			   const int ncompA,
+			   const int* ncompA,
 			   const Real* DofS, ARLIM_P(Dlo), ARLIM_P(Dhi),
-			   const int ncompD,
+			   const int* ncompD,
 			   const Real* NULN, ARLIM_P(NULNlo), ARLIM_P(NULNhi),
-			   const int ncompNULN,
+			   const int* ncompNULN,
 			   Real* FuncCount, ARLIM_P(FuncCountlo), 
 			   ARLIM_P(FuncCounthi),const Real* p, const Real* dt, 
 			   Real* diag, const int* do_diag, 
 			   void (*sdc_func)(Real* Adv, Real* Diffn, 
-					    Real* NULN, Real dt));
+					    Real* NULN, Real* dt));
 
-  void Lob_provis(Real* Adv, Real* Diffn, Real* NULN, Real dt);
+  void Lob_provis(Real* Adv, Real* Diffn, Real* NULN, Real* dt);
 
-  void Lob_sdc(Real* Adv, Real* Diffn, Real* NULN, Real dt);
+  void Lob_sdc(Real* Adv, Real* Diffn, Real* NULN, Real* dt);
 
 
     void FORT_CHEMEQ(const int* lo, const int* hi,
