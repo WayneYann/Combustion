@@ -1,7 +1,7 @@
 ht.use_sdc = 1
-ht.sdc_iters = 20
+ht.sdc_iters = 2
 
-amr.plot_int = 1
+amr.plot_int = 10
 
 max_step  = 1
 stop_time =  50.00

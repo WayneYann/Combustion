@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.2 2009-06-15 17:47:04 gilet Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.3 2009-06-23 20:40:40 gilet Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -3408,11 +3408,14 @@ c local vars
          do i = lo(1),hi(1)
             do n = 1,nspec
                IR(i,j,compY+n) = (snew(i,j,compY+n)-sold(i,j,compY+n))/dt
-     &              - AofS(i,j,n) - DofS(i,j,n+nspec) 
+     &              + AofS(i,j,n) - DofS(i,j,n+nspec) 
+C     no minus sign included in AofS when made
             enddo
             IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
-     &           - AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
-     &           - (NULN(i,j,2)+NULN(i,j,1))/2
+     &           + AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
+     &           + NULN(i,j,2)
+C     an extra minus sign included in NULN when made, correct here
+C     NULN here must match how treated in provisional solution
             enddo
          enddo
       end
@@ -3445,13 +3448,13 @@ c local vars
          do i = lo(1),hi(1)
             do n = 1,nspec
                IR(i,j,compY+n) = (snew(i,j,compY+n)-sold(i,j,compY+n))/dt
-     &              - AofS(i,j,n) - DofS(i,j,n+nspec) 
+     &              + AofS(i,j,n) - DofS(i,j,n+nspec) 
      &              - (DofS(i,j,n)-DofS(i,j,n+nspec*2))/2
             enddo
             IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
-     &           - AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
+     &           + AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
      &           - (DofS(i,j,nD*nspec+1)-DofS(i,j,nD*nspec+3))/2
-     &           - NULN(i,j,2) - (NULN(i,j,1)-NULN(i,j,3))/2
+     &           + NULN(i,j,2) + (NULN(i,j,1)-NULN(i,j,3))/2
             enddo
          enddo
       end

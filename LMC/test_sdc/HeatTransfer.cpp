@@ -5553,7 +5553,7 @@ HeatTransfer::advance (Real time,
         do_adv_reflux = true;
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // Get aofs for RhoH now
 
-	VisMF::Write(*aofs,"anuln");        
+	//	VisMF::Write(*aofs,"anuln");        
         rhoh_update(time,dt,corrector);
 
         RhoH_to_Temp(S_new); 
@@ -10225,7 +10225,7 @@ HeatTransfer::advance_sdc (Real time,
 
     int sdc_flag = 0; //doing provisional solution 
     chem_sdc(S_new,dt,sdc_flag,0);
-    std::cout<<"after react"<<std::endl;
+    //   std::cout<<"after react"<<std::endl;
   
     // need to think about ghost cells.
     MultiFab::Copy(S_new,Rho_hold,0,Density,1,1);
@@ -10234,7 +10234,7 @@ HeatTransfer::advance_sdc (Real time,
     // because code will mult forcing terms by dt later, 
     // have to actually compute I_R/sdc_dt
     make_I_R_provis(dt);
-    std::cout<<"about make IR"<<std::endl;
+    //std::cout<<"about make IR"<<std::endl;
     BL_PROFILE_STOP(ptimer);
 
     
@@ -10280,7 +10280,7 @@ HeatTransfer::advance_sdc (Real time,
       //make I_AD
       make_I_AD();
 
-      VisMF::Write(I_AD[0],"IAD");
+      //      VisMF::Write(I_AD[0],"IAD");
       // Update Temp
       RhoH_to_Temp(S_new);
       //VisMF::Write(S_new,"temp_update");     
@@ -10717,13 +10717,13 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
             if (verbose && ParallelDescriptor::IOProcessor())
                 std::cout << "*** strang_chem: FABs in tmp MF: " << tmp.size() << std::endl;
 
-	    VisMF::Write(*aofs,"aofs");
-	    VisMF::Write(DofS[0],"dofs0");
-	    VisMF::Write(DofS[1],"dofs1");
-	    VisMF::Write(DofS[2],"dofs2");
-	    VisMF::Write(RhoH_NULN_terms[0],"nuln0");
-	    VisMF::Write(RhoH_NULN_terms[1],"nuln1");
-	    VisMF::Write(RhoH_NULN_terms[2],"nuln2");
+// 	    VisMF::Write(*aofs,"aofs");
+// 	    VisMF::Write(DofS[0],"dofs0");
+// 	    VisMF::Write(DofS[1],"dofs1");
+// 	    VisMF::Write(DofS[2],"dofs2");
+// 	    VisMF::Write(RhoH_NULN_terms[0],"nuln0");
+// 	    VisMF::Write(RhoH_NULN_terms[1],"nuln1");
+// 	    VisMF::Write(RhoH_NULN_terms[2],"nuln2");
 
             for (MFIter Smfi(tmp); Smfi.isValid(); ++Smfi)
             {
