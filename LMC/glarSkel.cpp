@@ -349,9 +349,9 @@ void CKINDX(int * iwrk, double * rwrk, int * mm, int * kk, int * ii, int * nfit)
 void fginit_(int * leniwk, int * lenrwk, int * lencwk, int * linc, int * lout, int * ickwrk, double * rckwrk, char * cckwrk )
 {
     if ((*lout) != 0) {
-        printf(" ***       Congratulations       *** \n");
-        printf(" * You are using the Fuego Library * \n");
-        printf(" *****    Say NO to cklib.f    ***** \n");
+        /* printf(" ***       Congratulations       *** \n"); */
+        /* printf(" * You are using the Fuego Library * \n"); */
+        /* printf(" *****    Say NO to cklib.f    ***** \n"); */
     }
 }
 
