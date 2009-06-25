@@ -122,9 +122,11 @@ public:
                                Real      time);
 
     virtual void getViscTerms_sdc (MultiFab& visc_terms,
-                               int       src_comp, 
-                               int       num_comp,
-                               Real      time);
+				   int       src_comp, 
+				   int       num_comp,
+				   Real      time,
+				   Real      dt,
+				   bool      do_diffsn_reflux = false);
 
 
     void Sum_extF_sdcF (FArrayBox& S,
@@ -144,6 +146,13 @@ public:
     void getRhoHViscTerms (MultiFab& visc_terms,
                            int       src_comp, 
                            Real      time);
+
+    void getRhoHViscTerms_sdc (MultiFab& visc_terms,
+			       int       src_comp, 
+			       Real      time,
+			       Real      dt,
+			       bool      save_flux = false,
+			       bool      do_diffsn_reflux = false);
 
     virtual void diffuse_scalar_setup (Real        dt,
                                        int         sigma,
@@ -203,9 +212,8 @@ public:
 					     int  corrector);
 
 
-    void differential_spec_diffusion_update_sdc (Real dt,
-					     int  corrector);
-
+  void differential_spec_diffusion_update_sdc (Real dt,
+					       int  corrector);
     void getForce_sdc (int  scomp,
 		       int  ncomp,
 		       int  ngrow);
@@ -314,8 +322,7 @@ public:
   void rhoh_advection_sdc (Real dt,
 			   bool do_adv_reflux);
 
-  void rhoh_diffusion_update_sdc (Real dt,
-				  int  corrector);
+  void rhoh_diffusion_update_sdc (Real dt);
 
   //CEG:: not currently using this
   void compute_rhoh_NULN_terms(Real time,

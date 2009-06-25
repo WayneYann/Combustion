@@ -109,10 +109,15 @@ contains
     enddo
 
 ! avg the exact data down onto course grids
-    do n = 1,n_grids
+    do n = n_grids,1, -1
        call multifab_build(avg(n),s(n)%la,nscal)
        call ml_cc_restriction(avg(n),s_exact,ir(n,:))
        call write_plotfile(n, mla(n),avg(n))
+       write(*,*)'write avg'
+!       call multifab_print(avg(n))
+       write(*,*)'write s(n)'
+!       call multifab_print(s(n))
+       write(*,*)'sub sub'
        call multifab_sub_sub(avg(n),s(n))
        call write_plotfile(n+n_grids, mla(n),avg(n))
     enddo

@@ -1,9 +1,9 @@
 ht.use_sdc = 1
-ht.sdc_iters = 2
+ht.sdc_iters = 20
 
 amr.plot_int = 10
 
-max_step  = 1
+max_step  = 5
 stop_time =  50.00
 
 #ns.fixed_dt = 0.000002 #1024 due to stability
@@ -12,7 +12,7 @@ ns.fixed_dt = 0.000032 # 64
 #ns.fixed_dt = 0.000016 # 128 
 #ns.fixed_dt = 0.000008 # 256
 
-amr.max_grid_size   = 128
+amr.max_grid_size   = 64
 amr.n_cell = 64 64
 #amr.n_cell = 512 512
 #amr.n_cell = 1024 1024
