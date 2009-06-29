@@ -577,7 +577,6 @@ ChemDriver::decodeStringFromFortran(const int* coded,
 using std::cout;
 using std::endl;
 
-//CEG:: this gets called on a box
 void
 ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			       const FArrayBox&  Sold,
@@ -645,7 +644,6 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			  FuncCount.dataPtr(), ARLIM(FuncCount.loVect()),  
                                                ARLIM(FuncCount.hiVect()),
 			  &Patm, &dt, diagData, &do_diag, Lob_provis);
-	std::cout<<"done with conpsolv"<<std::endl;
     }
     else
     {

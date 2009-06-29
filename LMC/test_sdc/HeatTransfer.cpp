@@ -8679,13 +8679,15 @@ HeatTransfer::calc_divu (Real      time,
 	      //Compute
 	      //  -omega-dot/rho = -Y_l-dot
 	      //
-	      // CEG:: this does the job, but it also does a little extra work
+	      // CEG:: this does the job, (just calls conpFY)
+	      //  but it also does a little extra work
 	      //  could i use CKYTCR instead of CKYTCP (use rho instead of
 	      //  Press and Temp)
+	      // could just call CKWC() directly (chem-H.cpp)
 	      // is Patm the right thing--should be; simulating open container
 	      getChemSolve().reactionRateY(ydot[i],species[i],temp[i],Patm,
 					   grids[i],sCompY,sCompT,0);
-
+	      // does ydot need to get mulitplied by WT???
 	      for (int ispec = 0; ispec < nspecies; ispec++)
 		{
 		  delta_divu[i].copy(h,ispec,0,1);
@@ -10202,6 +10204,7 @@ HeatTransfer::advance_sdc (Real time,
 //     MultiFab::Add(*sdcForce,RhoH_NULN_terms[0],0,RhoH,1,0);
 //     (*sdcForce).mult(-.5,RhoH,1);
     (*sdcForce).mult(-1.,RhoH,1);
+    //    sdcForce->setVal(0.0);
 
     // Update rhoH with diffusion (calling multi-grid in here) and
     //  NULN terms:
@@ -10216,31 +10219,50 @@ HeatTransfer::advance_sdc (Real time,
     // Compute Diffsn(rhoH)^n+1
     getRhoHViscTerms_sdc(DofS[1],0,cur_time,dt);
 
+    //debugging FIXME
+//     MultiFab::Copy(difference,S_new,RhoH,RhoH,1,0);
+//     MultiFab::Copy(S_new,S_old,RhoH,RhoH,1,0);
+//     MultiFab tmp(grids,1,0);
+//     MultiFab::Copy(tmp,DofS[1],RhoH,0,1,0);
+//     MultiFab::Subtract(tmp,*aofs,RhoH,0,1,0);
+//     MultiFab::Subtract(tmp,RhoH_NULN_terms[1],0,0,1,0);
+//     tmp.mult(dt);
+//     //    VisMF::Write(tmp,"want");
+//     MultiFab::Add(S_new,tmp,0,RhoH,1,0);
+//     MultiFab::Subtract(difference,S_new,RhoH,RhoH,1,0);
+//     VisMF::Write(difference,"diff");
+//     abort();
 
-    //
-    //React
-    //
+    if (!hack_nochem){
+      //
+      //React
+      //
 
-    //FIXME!!!
-    // MultiFab::Copy(difference,S_new,RhoH,RhoH,1,0);
-    //VisMF::Write(S_new,"snew1");
-    // Save a copy of rho_new or set up chem_sdc to take rho separately
-    // CEG:: think about ghost cells.
-    MultiFab::Copy(Rho_hold,*rho_ctime,0,0,1,1);
-    MultiFab::Copy(S_new,S_old,first_scalar,first_scalar,NUM_SCALARS,0);
+      //FIXME!!!
+      MultiFab::Copy(difference,S_new,RhoH,RhoH,1,0);
+      MultiFab::Copy(difference,S_new,Density,Density,1,0);
+      //VisMF::Write(S_new,"snew1");
+      // Maybe I want to be resetting rhoH too.
+      // Save a copy of rho_new or set up chem_sdc to take rho separately
+      // CEG:: think about ghost cells.
+      MultiFab::Copy(Rho_hold,*rho_ctime,0,0,1,1);
+      MultiFab::Copy(S_new,S_old,first_scalar,first_scalar,NUM_SCALARS,0);
 
-    int sdc_flag = 0; //doing provisional solution 
-    chem_sdc(S_new,dt,sdc_flag,0);
-    //   std::cout<<"after react"<<std::endl;
+      int sdc_flag = 0; //doing provisional solution 
+      chem_sdc(S_new,dt,sdc_flag,0);
+      //   std::cout<<"after react"<<std::endl;
   
-    // need to think about ghost cells.
-    MultiFab::Copy(S_new,Rho_hold,0,Density,1,1);
+      // need to think about ghost cells.
+      MultiFab::Copy(S_new,Rho_hold,0,Density,1,1);
+      MultiFab::Copy(S_new,difference,RhoH,RhoH,1,0);
 
-    //Make I_R
-    // because code will mult forcing terms by dt later, 
-    // have to actually compute I_R/sdc_dt
-    make_I_R_provis(dt);
+      //Make I_R
+      // because code will mult forcing terms by dt later, 
+      // have to actually compute I_R/sdc_dt
+      make_I_R_provis(dt);
+    }
 
+    //    BoxLib::Abort("afer provis chem");
     if (sdc_iters == 0){
       do_adv_reflux = true;
       do_diffsn_reflux = true;
@@ -10267,6 +10289,7 @@ HeatTransfer::advance_sdc (Real time,
     // change in state over timestep
     Real comp_min, comp_max;
     MultiFab::Subtract(difference,S_new,0,0,NUM_STATE,0);
+    VisMF::Write(difference,"diff");
     if (ParallelDescriptor::IOProcessor())
     {
       std::cout<<"Change in state over timestep, with provisional soln"<<std::endl;
@@ -10398,23 +10421,99 @@ HeatTransfer::advance_sdc (Real time,
       // Recompute Diffsn(rhoH)^n+1
       getRhoHViscTerms_sdc(DofS[1],0,cur_time,dt);
 
+    //debugging FIXME
+       IntVect badPt(D_DECL(1,25,0));
+       Real* data = new Real[NUM_STATE];
+      (*aofs)[0].getVal(data, badPt,RhoH,1);
+      std::cout<<"aofs = "<<data[0]<<std::endl;
+      DofS[0][0].getVal(data, badPt,RhoH,1);
+      std::cout<<"dofs0 = "<<data[0]<<std::endl;
+      DofS[1][0].getVal(data, badPt,RhoH,1);
+      std::cout<<"dofs1 = "<<data[0]<<std::endl;
+      DofS[2][0].getVal(data, badPt,RhoH,1);
+      std::cout<<"dofs2 = "<<data[0]<<std::endl;
+      RhoH_NULN_terms[0][0].getVal(data, badPt,0,1);
+      std::cout<<"nuln0 = "<<data[0]<<std::endl;
+      RhoH_NULN_terms[1][0].getVal(data, badPt,0,1);
+      std::cout<<"nuln1 = "<<data[0]<<std::endl;
+      RhoH_NULN_terms[2][0].getVal(data, badPt,0,1);
+      std::cout<<"nuln2 = "<<data[0]<<std::endl;
+      std::cout<<"dt = "<<dt<<std::endl;
 
-      //
-      //React
-      //
-      MultiFab::Copy(Rho_hold,*rho_ctime,0,0,1,1);
-	
-      MultiFab::Copy(S_new,S_old,first_scalar,first_scalar,NUM_SCALARS,0);
-      
-      int sdc_flag = 1; //doing SDC solution 
-      chem_sdc(S_new,dt,sdc_flag,0);
-      
-      // need to think about ghost cells.
-      MultiFab::Copy(S_new,Rho_hold,0,Density,1,1);
+       MultiFab::Copy(difference,S_new,RhoH,RhoH,1,0);
+       MultiFab::Copy(S_new,S_old,RhoH,RhoH,1,0);
+       MultiFab tmp(grids,1,0);
 
-      //Recompute I_R
-      make_I_R_sdc(dt);
-    
+      MultiFab::Copy(tmp,DofS[1],RhoH,0,1,0);
+      MultiFab::Subtract(tmp,DofS[2],RhoH,0,1,0);
+      MultiFab::Subtract(tmp,*aofs,RhoH,0,1,0);
+      MultiFab::Add(tmp,RhoH_NULN_terms[2],0,0,1,0);
+      MultiFab::Subtract(tmp,RhoH_NULN_terms[1],0,0,1,0);
+      MultiFab::Add(tmp,I_AD[0],RhoH,0,1,0);
+      MultiFab::Add(tmp,I_R[0],RhoH,0,1,0);
+      tmp.mult(dt);
+      tmp[0].getVal(data, badPt,0,1);
+      std::cout<<"Inside LMC: dt*(-A + D(1)-D(2) - NULN(1)+NULN(2) +I_AD+I_R)"
+	       <<std::endl;
+      std::cout<<"result = "<<data[0]<<std::endl;
+
+
+      Real c0 = data[0];
+      MultiFab::Copy(tmp,DofS[2],RhoH,0,1,0);
+      MultiFab::Subtract(tmp,DofS[0],RhoH,0,1,0);
+      MultiFab::Subtract(tmp,RhoH_NULN_terms[2],0,0,1,0);
+      MultiFab::Add(tmp,RhoH_NULN_terms[0],0,0,1,0);
+      tmp.mult(1.0/dt);
+      tmp.mult(0.5);
+      tmp.mult(dt);
+      tmp[0].getVal(data, badPt,0,1);
+      std::cout<<"c1 = (D(2)-D(0) - NULN(2)+NULN(0))/2"<<std::endl;
+      std::cout<<"c1 = "<<data[0]<<std::endl;
+
+      MultiFab::Add(tmp,DofS[1],RhoH,0,1,0);
+      MultiFab::Add(tmp,DofS[0],RhoH,0,1,0);
+      MultiFab::Subtract(tmp,DofS[2],RhoH,0,1,0);
+      MultiFab::Subtract(tmp,*aofs,RhoH,0,1,0);
+      MultiFab::Subtract(tmp,RhoH_NULN_terms[0],0,0,1,0);
+      MultiFab::Subtract(tmp,RhoH_NULN_terms[1],0,0,1,0);
+      MultiFab::Add(tmp,RhoH_NULN_terms[2],0,0,1,0);
+      tmp.mult(dt);
+      tmp[0].getVal(data, badPt,0,1);
+     std::cout<<"dt*(D(2)-D(0) - NULN(2)+NULN(0))/2 + dt*(D(1)+D(0)-D(2)-A-N(0)-N(1)+N(2))"<<std::endl;
+      std::cout<<"total = "<<data[0]<<std::endl;
+
+//       c0 *= dt;
+//       c0 += data[0]*dt*dt/2.0;
+//        std::cout<<"total = "<<c0<<std::endl;
+
+      VisMF::Write(tmp,"want");
+      MultiFab::Add(S_new,tmp,0,RhoH,1,0);
+      MultiFab::Subtract(difference,S_new,RhoH,RhoH,1,0);
+      difference[0].getVal(data, badPt,RhoH,1);
+      std::cout<<"diff = "<<data[0]<<std::endl;
+      VisMF::Write(difference,"diff");
+
+      //       abort();
+
+      if (!hack_nochem){
+	//
+	//React
+	//
+	MultiFab::Copy(Rho_hold,*rho_ctime,0,0,1,1);
+	MultiFab::Copy(difference,S_new,RhoH,RhoH,1,0);
+
+	MultiFab::Copy(S_new,S_old,first_scalar,first_scalar,NUM_SCALARS,0);
+
+	int sdc_flag = 1; //doing SDC solution 
+	chem_sdc(S_new,dt,sdc_flag,0);
+      
+	// need to think about ghost cells.
+	MultiFab::Copy(S_new,Rho_hold,0,Density,1,1);
+
+	//Recompute I_R
+	make_I_R_sdc(dt);
+      }
+
       // Recompute DofS(n+1) 
       //  species
       getViscTerms_sdc(DofS[2],first_spec,nspecies,cur_time,dt,
@@ -10432,7 +10531,20 @@ HeatTransfer::advance_sdc (Real time,
       temperature_stats(S_new);
 
       //Compute the change in the soln at n+1
+      difference[0].getVal(data, badPt,RhoH,1);
+      std::cout<<"Hnew_old = "<<data[0]<<std::endl;
       MultiFab::Subtract(difference,S_new,0,0,NUM_STATE,0);
+      VisMF::Write(difference,"difference");
+      //      Real* data2 = new Real[NUM_STATE];
+      difference[0].getVal(data, badPt,RhoH,1);
+      std::cout<<"difference = "<<data[0]<<std::endl;
+      S_old[0].getVal(data, badPt,RhoH,1);
+      std::cout<<"Hold = "<<data[0]<<std::endl;
+      S_new[0].getVal(data, badPt,RhoH,1);
+      std::cout<<"Hnew = "<<data[0]<<std::endl;
+
+
+      BoxLib::Abort("difference");
       if (ParallelDescriptor::IOProcessor())
       {
 	std::cout<<"Change in soln at t^n+1"<<std::endl;
@@ -10661,12 +10773,8 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
     //CEG:: would it have been better to just load ydot here???
     // need to think about consequences for initial iters stuff
 
-    if (hack_nochem)
-    {
-      return;        
-    }
-    else
-    {
+      MultiFab Rho_hold(grids,1,LinOp_grow);
+
         Real p_amb, dpdt_factor;
         FORT_GETPAMB(&p_amb, &dpdt_factor);
         const Real Patm = p_amb / P1atm_MKS;
@@ -10715,7 +10823,6 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
         }
         else
         {
-	  std::cout<<"use func count..."<<std::endl;
             BoxArray ba = mf.boxArray();
 
             ba.maxSize(max_grid_size_chem);
@@ -10746,7 +10853,7 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
             }
 
             if (verbose && ParallelDescriptor::IOProcessor())
-                std::cout << "*** strang_chem: FABs in tmp MF: " << tmp.size() << std::endl;
+                std::cout << "*** chem_sdc: FABs in tmp MF: " << tmp.size() << std::endl;
 
 // 	    VisMF::Write(*aofs,"aofs");
 // 	    VisMF::Write(DofS[0],"dofs0");
@@ -10762,8 +10869,8 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
                 const Box& bx = Smfi.validbox();
                 FArrayBox& fc = fcnCntTemp[Smfi];
 		
-		std::ofstream edge_fab("tmp");
-		fb.writeOn(edge_fab);
+ // 		std::ofstream edge_fab("tmp");
+//  		fb.writeOn(edge_fab);
 
                 chemDiag = (do_diag ? &(diagTemp[Smfi]) : 0);
 
@@ -10773,8 +10880,9 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
 						  Acomp,Dcomp,NULNcomp,
 						  dt,Patm,chem_integrator,
 						  chemDiag,sdc_flag);
+//  		if (Smfi.index()==2 && sdc_flag==1)
+//  		  BoxLib::Abort();
 	    }
-	    std::cout<<"done with make fb"<<std::endl;
 
             mf.copy(tmp,0,0,NUM_STATE); // Parallel copy.
 
@@ -10782,7 +10890,7 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
             {
                 auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
             }
-	    std::cout<<"done if do_diag"<<std::endl;
+
             if (ngrow == 0)
             {
 	      std::cout<<"ngrow = 0"<<std::endl;
@@ -10812,7 +10920,6 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
                     FC[mfi].copy(grownFC[mfi]);
             }
         }
-    }
 
     const int IOProc   = ParallelDescriptor::IOProcessorNumber();
     Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -10820,7 +10927,7 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
     ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "HeatTransfer::strang_chem time: " << run_time << std::endl;
+        std::cout << "HeatTransfer::chem_sdc time: " << run_time << std::endl;
 }
 
 void
@@ -11712,7 +11819,18 @@ HeatTransfer::make_I_R_provis (Real dt)
       FArrayBox& IR = (I_R[0])[Smfi];
        
       make_sdc_fabs(Smfi.index(),bx,Afab,Dfab,NULNfab);
-
+//       {
+// 	std::ofstream edge_fab("Afab");
+// 	Afab.writeOn(edge_fab);
+//       }
+//       {	
+// 	std::ofstream edge_fab("Dfab");
+// 	Dfab.writeOn(edge_fab);
+//       }
+//       {	
+// 	std::ofstream edge_fab("NULN");
+// 	NULNfab.writeOn(edge_fab);
+//       }
       FORT_MAKE_IR_PROVIS(bx.loVect(), bx.hiVect(),
 			  &first_spec,&RhoH,
 			  sn.dataPtr(), ARLIM(sn.loVect()),ARLIM(sn.hiVect()),
@@ -11724,6 +11842,7 @@ HeatTransfer::make_I_R_provis (Real dt)
 			  IR.dataPtr(), ARLIM(IR.loVect()),ARLIM(IR.hiVect()),
 			  &nspecies, &n_diffusion, &dt);
     }
+  VisMF::Write(I_R[0],"IR");
 }
 
 void
@@ -11759,7 +11878,7 @@ HeatTransfer::make_I_R_sdc (Real dt)
 		       IR.dataPtr(), ARLIM(IR.loVect()),ARLIM(IR.hiVect()),
 		       &nspecies, &n_diffusion, &dt);
     }
-
+  VisMF::Write(I_R[0],"IR2");
 }
 
 
@@ -11841,7 +11960,7 @@ HeatTransfer::make_advection_sdcForce ( int       src_comp,
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_advection_sdcForce()");
 
     MultiFab::Copy(*sdcForce,I_AD[0],src_comp,src_comp,num_comp,0);
-    //MultiFab::Add(*sdcForce,I_R[0],src_comp,src_comp,num_comp,0);
+    MultiFab::Add(*sdcForce,I_R[0],src_comp,src_comp,num_comp,0);
 
     for (MFIter mfi(*sdcForce); mfi.isValid(); ++mfi)
     {
@@ -11873,7 +11992,7 @@ HeatTransfer::make_diffusion_sdcForce ( int       src_comp,
 
     // might not need this copy, sdcForces should already conatin this
     MultiFab::Copy(*sdcForce,I_AD[0],src_comp,src_comp,num_comp,0);
-    //    MultiFab::Add(*sdcForce,I_R[0],src_comp,src_comp,num_comp,0);
+    MultiFab::Add(*sdcForce,I_R[0],src_comp,src_comp,num_comp,0);
     MultiFab::Subtract(*sdcForce,DofS[2],src_comp,src_comp,num_comp,0);
 
     if (src_comp == RhoH){
@@ -12345,14 +12464,13 @@ HeatTransfer::getRhoHViscTerms_sdc (MultiFab& visc_terms,
     BL_ASSERT(visc_terms.boxArray()==grids);
 
     MultiFab** beta;
-    const int nGrow = 0;
     diffusion->allocFluxBoxesLevel(beta);
     
     const int rhoh_rho_flag = 2;
     getDiffusivity(beta, time, RhoH, 0, 1);
 
-//     diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,
-// 			    0,beta);
+//       diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,
+//   			    0,beta);
 // Copied out of diffusion->getViscTerms
     int allnull, allthere;
     //CEG:: I'm not sure that i still need this checkBeta stuff 
@@ -12368,10 +12486,12 @@ HeatTransfer::getRhoHViscTerms_sdc (MultiFab& visc_terms,
     // Note: This routine DOES NOT fill grow cells
     //
     const Real* dx = geom.CellSize();
+    //    std::cout<<"dx = "<<dx<<std::endl;
     MultiFab&   S  = get_data(State_Type,time);
 
     int ngrow = visc_terms.nGrow();
     visc_terms.setVal(0.0,RhoH-src_comp,1,ngrow);
+    //    std::cout<<"ngrow = "<<ngrow<<std::endl;
     //
     // FIXME
     // LinOp classes cannot handle multcomponent MultiFabs yet,
@@ -12391,6 +12511,12 @@ HeatTransfer::getRhoHViscTerms_sdc (MultiFab& visc_terms,
     ABecLaplacian visc_op(visc_bndry,dx);
     
     visc_op.setScalars(a,b);
+    int max_order = diffusion->maxOrder();
+    visc_op.maxOrder(max_order);
+
+//     std::cout<<"a = "<<a<<std::endl;
+//     std::cout<<"b = "<<b<<std::endl;
+
     //visc_op.maxOrder(Diffusion::max_order);
 
     if (allnull)
@@ -12416,10 +12542,11 @@ HeatTransfer::getRhoHViscTerms_sdc (MultiFab& visc_terms,
 		bcoeffs[i].mult((*beta[n])[i],0,0,1);
 		bcoeffs[i].mult(dx[n]);
 	      }
+	    //	VisMF::Write(bcoeffs,"bcoef_new");     
 	    visc_op.bCoefficients(bcoeffs,n);
 	  }
       }
-    
+
     //
     // Copy to single component multifab for operator classes.
     //
@@ -12437,8 +12564,9 @@ HeatTransfer::getRhoHViscTerms_sdc (MultiFab& visc_terms,
 	    s_tmp[Smfi].divide(S[Smfi],box,Density,0,1);
 	  }
       }
-
+    //    VisMF::Write(s_tmp,"stmp_new"); 
     visc_op.apply(visc_tmp,s_tmp);
+    //VisMF::Write(visc_tmp,"visc_new1"); 
     //
     // Must divide by volume.
     //
@@ -12452,8 +12580,9 @@ HeatTransfer::getRhoHViscTerms_sdc (MultiFab& visc_terms,
 	  visc_tmp[i].divide(volume,visc_tmpmfi.validbox(),0,0,1);
 	}
     }
-    
+    //    	VisMF::Write(visc_tmp,"visc_new2"); 
     MultiFab::Copy(visc_terms,visc_tmp,0,RhoH-src_comp,1,0);
+    //    abort();
 
     if (save_flux)
       {

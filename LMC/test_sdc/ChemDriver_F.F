@@ -691,6 +691,9 @@ C compute rho from species
       DO K = 1, Nspec
          RHO = RHO + Z(K+1)
       end do
+C this function computes rho (= Pressure/(R* Temp* sum(Y_m/W_m)))  
+C      CALL CKRHOY(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO)
+
 C      write(*,*)'rho = ',RHO
       DO K = 1, Nspec
          Y_m(K) = Z(K+1)/RHO
@@ -703,6 +706,9 @@ C computes c_p,mix returns result in CPB
 C      write(*,*)'Cpmix = ',CPB
 C calculate molar concentrations from mass fractions; result in RPAR(NC)
       CALL CKYTCP(RPAR(NP), Z(1), Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+c calc molar conc from mass frac using RHO, instead of PW/RT
+C      CALL CKYTCR(RHO, Z(1), Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+
 C$$$      do n = 0,Nspec
 C$$$         write(*,*)'Conc = ',RPAR(NC+n)
 C$$$      enddo
@@ -751,6 +757,12 @@ c c_0, c_1 are in common /sdc/ in cdwrk.H
       END DO
 C  make (rho*h)_t
       ZP(Nspec+2) = c_0(Nspec+1) + c_1(Nspec+1)*TIME
+      write(10,*)'rhoH = ',Z(Nspec+2)
+      write(10,*)'rhoH_t = ',ZP(Nspec+2)
+      write(10,*)'c0 = ',c_0(Nspec+1) 
+      write(10,*)'c1 = ',c_1(Nspec+1)
+      write(10,*)'time = ',TIME
+      write(10,*) 
 C  make Temp_t
       ZP(1) = (ZP(Nspec+2) - SUM) / (RHO*CPB)
 c      do n = 1,Nspec+2
@@ -854,14 +866,14 @@ C
       do n = 0, Nspec-1
          c_0(n+1) = -Adv(n) + Diffn(n) + Diffn(n+Nspec) - 
      &              Diffn(n+2*Nspec)  
-        c_1(n+1) = (Diffn(n+2*Nspec) - Diffn(n))/dt
+         c_1(n+1) = (Diffn(n+2*Nspec) - Diffn(n))/dt
       end do
 C     make for RhoH 
       c_0(Nspec+1) = -Adv(Nspec) + Diffn(nD*Nspec) + Diffn(nD*Nspec+1) -
      &               Diffn(nD*Nspec+2) - NULN(0) - NULN(1) + NULN(2)
       c_1(Nspec+1) = (Diffn(nD*Nspec+2) - Diffn(nD*Nspec) -
      &               NULN(2) + NULN(0))/dt
-
+   
 c      write(*,*)0,'Adv = ',Adv(0)
 c      write(*,*)0,'Diff0 = ',Diffn(0)
 c      write(*,*)0,'Diff1 = ',Diffn(Nspec)
@@ -871,14 +883,14 @@ c      write(*,*)8,'Diff0 = ',Diffn(8)
 c      write(*,*)8,'Diff1 = ',Diffn(8+Nspec)
 c      write(*,*)8,'Diff2 = ',Diffn(8+2*Nspec)
 
-c      write(*,*)'RhoH Adv = ',Adv(Nspec)
-c      write(*,*)'RhoH Diff0 = ',Diffn(nD*Nspec)
-c     write(*,*)'     Diff1 = ',Diffn(nD*Nspec+1)
-c      write(*,*)'     Diff2 = ',Diffn(nD*Nspec+2)
-c      write(*,*)'RhoH NULN0 = ',NULN(0)
-c      write(*,*)'     1 = ',NULN(1)
-c      write(*,*)'     2 = ',NULN(2)
-c      call bl_abort();
+C$$$      write(*,*)'RhoH Adv = ',Adv(Nspec)
+C$$$      write(*,*)'RhoH Diff0 = ',Diffn(nD*Nspec)
+C$$$      write(*,*)'     Diff1 = ',Diffn(nD*Nspec+1)
+C$$$      write(*,*)'     Diff2 = ',Diffn(nD*Nspec+2)
+C$$$      write(*,*)'RhoH NULN0 = ',NULN(0)
+C$$$      write(*,*)'     1 = ',NULN(1)
+C$$$      write(*,*)'     2 = ',NULN(2)
+C      call bl_abort();
 
 
       end subroutine Lob_sdc

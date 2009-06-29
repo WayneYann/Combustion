@@ -587,10 +587,13 @@ C   get a box of data
       LOGICAL FIRST
       COMMON /VHACK/ YJ_SAVE, FIRST
       SAVE   /VHACK/
-      REAL_T scale
+      REAL_T scale,total
 
       REAL_T Y_m(Nspec)
 
+      integer, save :: count = 0 
+
+      count = count + 1
 
 c     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
@@ -639,6 +642,7 @@ c     Set up ATOL
          do i=lo(1),hi(1)
             if(j.ge.0)then
 
+C               write(*,*)i,j
                TT1 = zero
                if (do_diag.eq.1) then
                   nsub = nsubchem
@@ -662,6 +666,8 @@ c     Set up ATOL
                RWRK(NRHO)= Rho(i,j)               
 
 C CEG: doing JBB_HACK
+C#undef DO_JBB_HACK
+C did not help the rhoh problem
 #ifdef DO_JBB_HACK
                sum = zero
                do n=1,Nspec
@@ -686,14 +692,36 @@ c                  write(*,*)'RWRK = ',RWRK(NZ+n)
 c                  write(*,*)'Y_m = ',Y_m(n)
                end do
 
-c CEG:: Don't need CKHBMS if FuncCount is taken out
 C compute hmix and store in RWRK(NHMIX)
                CALL CKHBMS(RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),
      &              RWRK(NHMIX))      
 C Put SDC additions in area accessible by conpFY
                call sdc_func(AofS(i,j,:ncompA),DofS(i,j,:ncompD),
      &              NULN(i,j,:ncompNULN),dt)
-               
+
+            if(i .eq. 1 .and. j .eq.25) then
+               write(*,*)'Inside ChemDriver'
+               write(*,*)"dt = ", dt
+               write(*,*)'aofs = ',AofS(i,j,10)
+               write(*,*)'dofs0 = ',DofS(i,j,28)
+               write(*,*)'dofs1 = ',DofS(i,j,29)
+               write(*,*)'dofs2 = ',DofS(i,j,30)
+               write(*,*)'nuln0 = ',NULN(i,j,1)
+               write(*,*)'nuln1 = ',NULN(i,j,2)
+               write(*,*)'nuln2 = ',NULN(i,j,3)
+               write(*,*)"c_0 = ",c_0(Nspec+1)
+               write(*,*)"c_1 = ",c_1(Nspec+1)
+               total =  dt*c_0(Nspec+1) 
+               write(*,*)"dt*c0",total
+               total = dt*dt*c_1(Nspec+1)/2.0
+               write(*,*)"dt*dt*c1/2",total
+               total =  dt*c_0(Nspec+1)+dt*dt*c_1(Nspec+1)/2.0
+               write(*,*)'together = ',total
+               write(*,*)'Hold = ',Hold(i,j)
+               total = total + Hold(i,j)
+               write(*,*)'Hnew should be ',total
+            endif
+
 #ifdef TRIGGER_NEW_J
 c               write(*,*)'trigger new j defined'
                newJ_triggered = .FALSE.
@@ -736,10 +764,6 @@ C "Returns the rate of progress for each reaction"
                   TT1save = TT1
                   TT2 = TT1 + dtloc
 
-c                  write(*,*)'dt = ',dt
-c                  write(*,*)'nsub = ',nsub
-c                  write(*,*)'TT1 = ',TT1
-c                  write(*,*)'TT2 = ',TT2
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                   CALL SVODE
 #else
@@ -748,6 +772,23 @@ c                  write(*,*)'TT2 = ',TT2
      &              (conpFY_sdc, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
      &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
      &              dvi, dummy, MF, RWRK, IWRK)
+
+                  write(10,*)
+                  write(10,*)
+                  write(10,*)
+                  if (i .eq. 1 .and. j .eq. 25) then
+                     write(*,*)'dt = ',dt
+c     write(*,*)'nsub = ',nsub
+                     write(*,*)'TT1 = ',TT1
+                     write(*,*)'TT2 = ',TT2
+                     write(*,*)'Hnew(i,j) actual= ',RWRK(NZ+Nspec+1)
+                     total = total - RWRK(NZ+Nspec+1)
+                     write(*,*)'difference expected-Hnew = ', total
+                     write(*,*)'RWRK(NZ+Nspec) = ',RWRK(NZ+Nspec)
+                     write(*,*)'RWRK(NZ+Nspec+2) = ',RWRK(NZ+Nspec+2)
+                     if (count > 16) call bl_abort("here!");
+                  endif
+
 c
 c   If the step was bad, and we reused an old Jacobian, try again from scratch.
 c               
