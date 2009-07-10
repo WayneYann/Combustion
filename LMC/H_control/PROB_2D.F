@@ -171,6 +171,64 @@ c
       prodID = prod + 1
       end
 
+   !
+      ! This is a version of INITDATA in which the velocities,
+      ! the temperature & the mass fractions are passed in.
+      !
+      subroutine FORT_INITDATANEWMECH(level,time,lo,hi,nscal,
+     &     vel,scal,DIMS(state),press,DIMS(press),
+     &     delta,xlo,xhi)
+      implicit none
+      integer  level, nscal, nvel
+      integer  lo(SDIM), hi(SDIM)
+      integer  DIMDEC(state)
+      integer  DIMDEC(press)
+      REAL_T   xlo(SDIM), xhi(SDIM)
+      REAL_T   time, delta(SDIM)
+      REAL_T   vel(DIMV(state),SDIM)
+      REAL_T   scal(DIMV(state),nscal)
+      REAL_T   press(DIMV(press))
+
+#include "htdata.H"
+#include "cdwrk.H"
+#include "bc.H"
+#include "probdata.H"
+
+      integer i, j, n
+      REAL_T Patm
+
+     
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               scal(i,j,Trac) = zero
+            end do
+         end do
+    
+
+      Patm = pamb / 101325.0d0
+
+      call FORT_RHOfromPTY(lo,hi,
+     &     scal(ARG_L1(state),ARG_L2(state),Density), DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state),
+     &     Patm)
+      call FORT_HMIXfromTY(lo,hi,
+     &     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state))
+
+     
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               do n = 0,Nspec-1
+                  scal(i,j,FirstSpec+n) = scal(i,j,FirstSpec+n)*scal(i,j,Density)
+               enddo
+               scal(i,j,RhoH) = scal(i,j,RhoH)*scal(i,j,Density)
+            enddo
+         enddo
+    
+
+      end
 c ::: -----------------------------------------------------------
 c ::: This routine is called at problem initialization time
 c ::: and when restarting from a checkpoint file.
@@ -955,6 +1013,7 @@ c     Cut off initial pmf at R_hot so that air along wall
 
             vel(i,j,1) = zero
             vel(i,j,2) = pmf_vals(2) / 1.d2
+
             if (probtype.eq.2) then
                vel(i,j,2) = zero
             endif
