@@ -6668,7 +6668,7 @@ void gibbs(double * species, double * tc)
             +2.30377602e-16 * tc[4];
     }
     T_old = T;
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < 15; i++)
         species_old[i] = species[i];
     return;
 }
