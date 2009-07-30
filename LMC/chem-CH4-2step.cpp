@@ -465,8 +465,9 @@ void CKSYMS(int * kname, int * plenkname )
 /* Returns R, Rc, Patm */
 void CKRP(int * ickwrk, double * rckwrk, double * ru, double * ruc, double * pa)
 {
-     *ru  = 8.314e+07; 
-     *ruc = 1.987; 
+     *ru  = 8.31451e+07; 
+     //*ruc = 1.987; 
+     *ruc = (*ru)/4.184e7;
      *pa  = 1.01325e+06; 
 }
 
@@ -481,7 +482,7 @@ void CKPX(double * rho, double * T, double * x, int * iwrk, double * rwrk, doubl
     XW += x[3]*28.010400; /*CO */
     XW += x[4]*44.009800; /*CO2 */
     XW += x[5]*28.013400; /*N2 */
-    *P = *rho * 8.314e+07 * (*T) / XW; /*P = rho*R*T/W */
+    *P = *rho * 8.31451e+07 * (*T) / XW; /*P = rho*R*T/W */
 
     return;
 }
@@ -497,7 +498,7 @@ void CKPY(double * rho, double * T, double * y, int * iwrk, double * rwrk, doubl
     YOW += y[3]/28.010400; /*CO */
     YOW += y[4]/44.009800; /*CO2 */
     YOW += y[5]/28.013400; /*N2 */
-    *P = *rho * 8.314e+07 * (*T) * YOW; /*P = rho*R*T/W */
+    *P = *rho * 8.31451e+07 * (*T) * YOW; /*P = rho*R*T/W */
 
     return;
 }
@@ -520,7 +521,7 @@ void CKPC(double * rho, double * T, double * c, int * iwrk, double * rwrk, doubl
     for (id = 0; id < 6; ++id) {
         sumC += c[id];
     }
-    *P = *rho * 8.314e+07 * (*T) * sumC / W; /*P = rho*R*T/W */
+    *P = *rho * 8.31451e+07 * (*T) * sumC / W; /*P = rho*R*T/W */
 
     return;
 }
@@ -536,7 +537,7 @@ void CKRHOX(double * P, double * T, double * x, int * iwrk, double * rwrk, doubl
     XW += x[3]*28.010400; /*CO */
     XW += x[4]*44.009800; /*CO2 */
     XW += x[5]*28.013400; /*N2 */
-    *rho = *P * XW / (8.314e+07 * (*T)); /*rho = P*W/(R*T) */
+    *rho = *P * XW / (8.31451e+07 * (*T)); /*rho = P*W/(R*T) */
 
     return;
 }
@@ -552,7 +553,7 @@ void CKRHOY(double * P, double * T, double * y, int * iwrk, double * rwrk, doubl
     YOW += y[3]/28.010400; /*CO */
     YOW += y[4]/44.009800; /*CO2 */
     YOW += y[5]/28.013400; /*N2 */
-    *rho = *P / (8.314e+07 * (*T) * YOW); /*rho = P*W/(R*T) */
+    *rho = *P / (8.31451e+07 * (*T) * YOW); /*rho = P*W/(R*T) */
 
     return;
 }
@@ -575,7 +576,7 @@ void CKRHOC(double * P, double * T, double * c, int * iwrk, double * rwrk, doubl
     for (id = 0; id < 6; ++id) {
         sumC += c[id];
     }
-    *rho = *P * W / (sumC * (*T) * 8.314e+07); /*rho = PW/(R*T) */
+    *rho = *P * W / (sumC * (*T) * 8.31451e+07); /*rho = PW/(R*T) */
 
     return;
 }
@@ -683,7 +684,7 @@ void CKYTCP(double * P, double * T, double * y, int * iwrk, double * rwrk, doubl
     YOW += y[4]/44.009800; /*CO2 */
     YOW += y[5]/28.013400; /*N2 */
     /*PW/RT (see Eq. 7) */
-    PWORT = (*P)/(YOW * 8.314e+07 * (*T)); 
+    PWORT = (*P)/(YOW * 8.31451e+07 * (*T)); 
     /*Now compute conversion */
     c[0] = PWORT * y[0]/31.998800; 
     c[1] = PWORT * y[1]/18.015340; 
@@ -738,7 +739,7 @@ void CKXTY(double * x, int * iwrk, double * rwrk, double * y)
 void CKXTCP(double * P, double * T, double * x, int * iwrk, double * rwrk, double * c)
 {
     int id; /*loop counter */
-    double PORT = (*P)/(8.314e+07 * (*T)); /*P/RT */
+    double PORT = (*P)/(8.31451e+07 * (*T)); /*P/RT */
 
     /*Compute conversion, see Eq 10 */
     for (id = 0; id < 6; ++id) {
@@ -857,7 +858,7 @@ void CKCVML(double *T, int * iwrk, double * rwrk, double * cvml)
 
     /*convert to chemkin units */
     for (id = 0; id < 6; ++id) {
-        cvml[id] *= 8.314e+07;
+        cvml[id] *= 8.31451e+07;
     }
 }
 
@@ -873,7 +874,7 @@ void CKCPML(double *T, int * iwrk, double * rwrk, double * cpml)
 
     /*convert to chemkin units */
     for (id = 0; id < 6; ++id) {
-        cpml[id] *= 8.314e+07;
+        cpml[id] *= 8.31451e+07;
     }
 }
 
@@ -885,7 +886,7 @@ void CKUML(double *T, int * iwrk, double * rwrk, double * uml)
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     speciesInternalEnergy(uml, tc);
 
     /*convert to chemkin units */
@@ -902,7 +903,7 @@ void CKHML(double *T, int * iwrk, double * rwrk, double * hml)
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     speciesEnthalpy(hml, tc);
 
     /*convert to chemkin units */
@@ -919,7 +920,7 @@ void CKGML(double *T, int * iwrk, double * rwrk, double * gml)
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     gibbs(gml, tc);
 
     /*convert to chemkin units */
@@ -936,7 +937,7 @@ void CKAML(double *T, int * iwrk, double * rwrk, double * aml)
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     helmholtz(aml, tc);
 
     /*convert to chemkin units */
@@ -956,7 +957,7 @@ void CKSML(double *T, int * iwrk, double * rwrk, double * sml)
 
     /*convert to chemkin units */
     for (id = 0; id < 6; ++id) {
-        sml[id] *= 8.314e+07;
+        sml[id] *= 8.31451e+07;
     }
 }
 
@@ -1000,7 +1001,7 @@ void CKUMS(double *T, int * iwrk, double * rwrk, double * ums)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     speciesInternalEnergy(ums, tc);
     ums[0] *= RT/31.998800; /*O2 */
     ums[1] *= RT/18.015340; /*H2O */
@@ -1016,7 +1017,7 @@ void CKHMS(double *T, int * iwrk, double * rwrk, double * hms)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     speciesEnthalpy(hms, tc);
     hms[0] *= RT/31.998800; /*O2 */
     hms[1] *= RT/18.015340; /*H2O */
@@ -1032,7 +1033,7 @@ void CKGMS(double *T, int * iwrk, double * rwrk, double * gms)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     gibbs(gms, tc);
     gms[0] *= RT/31.998800; /*O2 */
     gms[1] *= RT/18.015340; /*H2O */
@@ -1048,7 +1049,7 @@ void CKAMS(double *T, int * iwrk, double * rwrk, double * ams)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     helmholtz(ams, tc);
     ams[0] *= RT/31.998800; /*O2 */
     ams[1] *= RT/18.015340; /*H2O */
@@ -1090,7 +1091,7 @@ void CKCPBL(double *T, double *x, int * iwrk, double * rwrk, double * cpbl)
         result += x[id]*cpor[id];
     }
 
-    *cpbl = result * 8.314e+07;
+    *cpbl = result * 8.31451e+07;
 }
 
 
@@ -1110,7 +1111,7 @@ void CKCPBS(double *T, double *y, int * iwrk, double * rwrk, double * cpbs)
     result += cpor[4]*y[4]/44.0098; /*CO2 */
     result += cpor[5]*y[5]/28.0134; /*N2 */
 
-    *cpbs = result * 8.314e+07;
+    *cpbs = result * 8.31451e+07;
 }
 
 
@@ -1129,7 +1130,7 @@ void CKCVBL(double *T, double *x, int * iwrk, double * rwrk, double * cvbl)
         result += x[id]*cvor[id];
     }
 
-    *cvbl = result * 8.314e+07;
+    *cvbl = result * 8.31451e+07;
 }
 
 
@@ -1149,7 +1150,7 @@ void CKCVBS(double *T, double *y, int * iwrk, double * rwrk, double * cvbs)
     result += cvor[4]*y[4]/44.0098; /*CO2 */
     result += cvor[5]*y[5]/28.0134; /*N2 */
 
-    *cvbs = result * 8.314e+07;
+    *cvbs = result * 8.31451e+07;
 }
 
 
@@ -1161,7 +1162,7 @@ void CKHBML(double *T, double *x, int * iwrk, double * rwrk, double * hbml)
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double hml[6]; /* temporary storage */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     speciesEnthalpy(hml, tc);
 
     /*perform dot product */
@@ -1180,7 +1181,7 @@ void CKHBMS(double *T, double *y, int * iwrk, double * rwrk, double * hbms)
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double hml[6]; /* temporary storage */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     speciesEnthalpy(hml, tc);
     /*perform dot product + scaling by wt */
     result += y[0]*hml[0]/31.998800; /*O2 */
@@ -1202,7 +1203,7 @@ void CKUBML(double *T, double *x, int * iwrk, double * rwrk, double * ubml)
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double uml[6]; /* temporary energy array */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     speciesInternalEnergy(uml, tc);
 
     /*perform dot product */
@@ -1221,7 +1222,7 @@ void CKUBMS(double *T, double *y, int * iwrk, double * rwrk, double * ubms)
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double ums[6]; /* temporary energy array */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     speciesInternalEnergy(ums, tc);
     /*perform dot product + scaling by wt */
     result += y[0]*ums[0]/31.998800; /*O2 */
@@ -1252,7 +1253,7 @@ void CKSBML(double *P, double *T, double *x, int * iwrk, double * rwrk, double *
         result += x[id]*(sor[id]-log((x[id]+1e-100))-logPratio);
     }
 
-    *sbml = result * 8.314e+07;
+    *sbml = result * 8.31451e+07;
 }
 
 
@@ -1290,7 +1291,7 @@ void CKSBMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double *
     result += x[4]*(sor[4]-log((x[4]+1e-100))-logPratio);
     result += x[5]*(sor[5]-log((x[5]+1e-100))-logPratio);
     /*Scale by R/W */
-    *sbms = result * 8.314e+07 * YOW;
+    *sbms = result * 8.31451e+07 * YOW;
 }
 
 
@@ -1303,7 +1304,7 @@ void CKGBML(double *P, double *T, double *x, int * iwrk, double * rwrk, double *
     double logPratio = log ( *P / 1013250.0 ); 
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     double gort[6]; /* temporary storage */
     /*Compute g/RT */
     gibbs(gort, tc);
@@ -1325,7 +1326,7 @@ void CKGBMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double *
     double logPratio = log ( *P / 1013250.0 ); 
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     double gort[6]; /* temporary storage */
     double x[6]; /* need a ytx conversion */
     double YOW = 0; /*To hold 1/molecularweight */
@@ -1365,7 +1366,7 @@ void CKABML(double *P, double *T, double *x, int * iwrk, double * rwrk, double *
     double logPratio = log ( *P / 1013250.0 ); 
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     double aort[6]; /* temporary storage */
     /*Compute g/RT */
     helmholtz(aort, tc);
@@ -1387,7 +1388,7 @@ void CKABMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double *
     double logPratio = log ( *P / 1013250.0 ); 
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
-    double RT = 8.314e+07*tT; /*R*T */
+    double RT = 8.31451e+07*tT; /*R*T */
     double aort[6]; /* temporary storage */
     double x[6]; /* need a ytx conversion */
     double YOW = 0; /*To hold 1/molecularweight */
@@ -1455,7 +1456,7 @@ void CKWYP(double * P, double * T, double * y, int * iwrk, double * rwrk, double
     YOW += y[4]/44.009800; /*CO2 */
     YOW += y[5]/28.013400; /*N2 */
     /*PW/RT (see Eq. 7) */
-    PWORT = (*P)/(YOW * 8.314e+07 * (*T)); 
+    PWORT = (*P)/(YOW * 8.31451e+07 * (*T)); 
     /*multiply by 1e6 so c goes to SI */
     PWORT *= 1e6; 
     /*Now compute conversion (and go to SI) */
@@ -1482,7 +1483,7 @@ void CKWXP(double * P, double * T, double * x, int * iwrk, double * rwrk, double
 {
     int id; /*loop counter */
     double c[6]; /*temporary storage */
-    double PORT = 1e6 * (*P)/(8.314e+07 * (*T)); /*1e6 * P/RT so c goes to SI units */
+    double PORT = 1e6 * (*P)/(8.31451e+07 * (*T)); /*1e6 * P/RT so c goes to SI units */
 
     /*Compute conversion, see Eq 10 */
     for (id = 0; id < 6; ++id) {
@@ -1596,7 +1597,7 @@ void CKQYP(double * P, double * T, double * y, int * iwrk, double * rwrk, double
     YOW += y[4]/44.009800; /*CO2 */
     YOW += y[5]/28.013400; /*N2 */
     /*PW/RT (see Eq. 7) */
-    PWORT = (*P)/(YOW * 8.314e+07 * (*T)); 
+    PWORT = (*P)/(YOW * 8.31451e+07 * (*T)); 
     /*multiply by 1e6 so c goes to SI */
     PWORT *= 1e6; 
     /*Now compute conversion (and go to SI) */
@@ -1623,7 +1624,7 @@ void CKQXP(double * P, double * T, double * x, int * iwrk, double * rwrk, double
 {
     int id; /*loop counter */
     double c[6]; /*temporary storage */
-    double PORT = 1e6 * (*P)/(8.314e+07 * (*T)); /*1e6 * P/RT so c goes to SI units */
+    double PORT = 1e6 * (*P)/(8.31451e+07 * (*T)); /*1e6 * P/RT so c goes to SI units */
 
     /*Compute conversion, see Eq 10 */
     for (id = 0; id < 6; ++id) {
@@ -1941,7 +1942,7 @@ void productionRate(double * wdot, double * sc, double T)
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
 
     /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
-    double refC = 101325 / 8.314 / T;
+    double refC = 101325 / 8.31451 / T;
 
     /*compute the mixture concentration */
     mixture = 0.0;
@@ -2043,7 +2044,7 @@ void progressRate(double * qdot, double * sc, double T)
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
 
     /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
-    double refC = 101325 / 8.314 / T;
+    double refC = 101325 / 8.31451 / T;
 
     /*compute the mixture concentration */
     mixture = 0.0;
@@ -2104,7 +2105,7 @@ void progressRate(double * qdot, double * sc, double T)
 void equilibriumConstants(double *kc, double * g_RT, double T)
 {
     /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
-    double refC = 101325 / 8.314 / T;
+    double refC = 101325 / 8.31451 / T;
 
     /*reaction 1: 2 CH4 + 3 O2 => 2 CO + 4 H2O */
     //kc[0] = refC * exp((2 * g_RT[2] + 3 * g_RT[0]) - (2 * g_RT[3] + 4 * g_RT[1]));
@@ -3050,7 +3051,7 @@ void fezndrhs_(double * time, double * z, double * zdot, double * rwrk, int * iw
     double ru, T, uvel, wtm, p, rho, gam, son, xm, sum, drdy, eta, cp, cv ;
     double *y; /*mass frac pointer */
 
-    ru = 8.314e+07;
+    ru = 8.31451e+07;
 
     psc = rwrk[0];
     rho1 = rwrk[1];
