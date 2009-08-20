@@ -110,7 +110,7 @@ c
       parameter (maxlen=256)
 
       character probin*(maxlen)
-      REAL_T y, yEval, pmf_H_vals(maxspec+3)
+      REAL_T y, yEval, pmf_vals(maxspec+3)
       integer n
 
       call bl_pd_is_ioproc(isioproc)
@@ -198,7 +198,8 @@ c
 
    10 close(unit=untin)
 
-      if ((forceInflow .eqv. .FALSE.).and. .not.((probtype.eq.30).or.(probtype.eq.32))) then
+      if ((forceInflow .eqv. .FALSE.).and.
+     &     .not.((probtype.eq.30).or.(probtype.eq.32).or.(probtype.eq.40))) then
          forceLo = .FALSE.
          forceHi = .FALSE.
       else
@@ -216,15 +217,11 @@ c
       y = 0.0d0
       yEval = (y-pmf_offset)*1.d2
 
-#ifdef USE_PMF_CH4
-      call pmf_CH4(yEval,yEval,pmf_H_vals,n)
-#else
-      call pmf_H(yEval,pmf_H_vals,n)
-#endif
+      call pmf(yEval,yEval,pmf_vals,n)
 
       if (n.ne.Nspec+3) call bl_abort('PROBINIT: n .ne. Nspec+3')
 
-      convVel = pmf_H_vals(2)/1.d2 - vel_frame
+      convVel = pmf_vals(2)/1.d2 - vel_frame
 
 c     Load domain dimensions into common, and set up boundary functions
       domnlo(1) = problo(1)
@@ -270,7 +267,7 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 #include "htdata.H"
       
-      REAL_T Patm, x, pmf_H_vals(maxspec+3), sum, Y_pmf(maxspec)
+      REAL_T Patm, x, pmf_vals(maxspec+3), sum, Y_pmf(maxspec)
       integer i, zone, n, lo(SDIM), hi(SDIM), iN2, getZone
       character*(maxspnml) name
       data lo / 1, 1, 1 /
@@ -301,16 +298,12 @@ c     z direction
 
          zEval = (x-pmf_offset)*1.d2
 
-#ifdef USE_PMF_CH4
-         call pmf_CH4(zEval,zEval,pmf_H_vals,n)
-#else
-         call pmf_H(zEval,pmf_H_vals,n)
-#endif
+         call pmf(zEval,zEval,pmf_vals,n)
 
          if (n.ne.Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
 
          call FORT_MOLETOMASS(lo,hi,
-     &        pmf_H_vals(4), ARLIM(lo), ARLIM(hi),
+     &        pmf_vals(4), ARLIM(lo), ARLIM(hi),
      &        Y_pmf,         ARLIM(lo), ARLIM(hi))
          
          if (probtype .eq. 8 .or. probtype .eq. 28) then
@@ -330,10 +323,10 @@ c     z direction
             end do
             Y_bc(iN2-1,zone) = one - sum
          end if
-         T_bc(zone) = pmf_H_vals(1)
+         T_bc(zone) = pmf_vals(1)
          u_bc(zone) = zero
          v_bc(zone) = zero
-         w_bc(zone) = pmf_H_vals(2) / 1.d2 - vel_frame
+         w_bc(zone) = pmf_vals(2) / 1.d2 - vel_frame
          call FORT_RHOfromPTY(lo,hi,
      &                        rho_bc(zone),ARLIM(lo),ARLIM(hi),
      &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
@@ -344,6 +337,9 @@ c     z direction
      &                        Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
          
          
+      else if (probtype.eq.40) then
+c     Nothing needed here...all outflow
+
       else
 
          do zone = 1,Nzones
@@ -573,7 +569,7 @@ c ::: -----------------------------------------------------------
       integer zL, zR, zH
       REAL_T eta, xi, xblend, mdotb, mdotL, mdotR, zblend
 c      REAL_T r1sq, r2sq
-      REAL_T pmf_H_vals(maxspec+3), sum, Y_pmf(maxspec), zEval, zlo, zhi
+      REAL_T pmf_vals(maxspec+3), sum, Y_pmf(maxspec), zlo, zhi
       REAL_T Xini(maxspec), Yini(maxspec)
       integer iN2, iH2, iO2
       integer statelo1,statelo2,statelo3
@@ -624,6 +620,8 @@ c
 c     30. This is a Hydrogen flame ball with outflow everytwhere
 c     31. Same as 30, but perturb the surface of the ball, and put stationary field
 c     32. Same as 30, but use file giving post-pmf burn profiles
+c
+c     40. Premixed flame ball w/perturbed surface propagating outward in stationary field
 c      
       if ((Temp.gt.0).neqv.(RhoH.gt.0)) then
          call bl_abort('Need both Temp and RhoH, or neither')
@@ -984,20 +982,14 @@ c     Make a platter of data in XY, will march over z
                end do
             end if
 
-            zEval = (z-pmf_offset)*1.d2
-
-#ifdef USE_PMF_CH4
             zlo = (    k*delta(3) + domnlo(3) - pmf_offset)*1.d2
             zhi = ((k+1)*delta(3) + domnlo(3) - pmf_offset)*1.d2
-            call pmf_CH4(zlo,zhi,pmf_H_vals,n)
-#else
-            call pmf_H(zEval,pmf_H_vals,n)
-#endif
+            call pmf(zlo,zhi,pmf_vals,n)
 
             if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
 
             call FORT_MOLETOMASS(lo_chem,hi_chem,
-     &           pmf_H_vals(4), ARLIM(lo_chem), ARLIM(hi_chem),
+     &           pmf_vals(4), ARLIM(lo_chem), ARLIM(hi_chem),
      &           Y_pmf,         ARLIM(lo_chem), ARLIM(hi_chem))
             
             do j = lo(2), hi(2)
@@ -1007,7 +999,7 @@ c     Make a platter of data in XY, will march over z
                   scal(i,j,k,Trac) = zero
 c                  scal(i,j,Trac) = fourth*(press(i,j  ) + press(i+1,j)
 c     &                 +                   press(i,j+1) + press(i+1,j+1))
-                  scal(i,j,k,Temp) = pmf_H_vals(1)
+                  scal(i,j,k,Temp) = pmf_vals(1)
                   do n = 1,Nspec
                      scal(i,j,k,firstSpec+n-1) = Y_pmf(n)
                   end do
@@ -1019,7 +1011,7 @@ c     &                 +                   press(i,j+1) + press(i+1,j+1))
                      scal(i,j,k,firstSpec+iN2-1) = one - sum
                   end if
                   vel(i,j,k,3) = vel(i,j,k,3) + 
-     &                   pmf_H_vals(2) / 1.d2 - vel_frame
+     &                   pmf_vals(2) / 1.d2 - vel_frame
                enddo
             enddo
          enddo
@@ -1057,20 +1049,14 @@ c     &                 +                   press(i,j+1) + press(i+1,j+1))
          do k= lo(3),hi(3)
             z = (float(k)+.5)*delta(3)+domnlo(3)
             
-            zEval = (z-pmf_offset)*1.d2  
-
-#ifdef USE_PMF_CH4
             zlo = (    k*delta(3) + domnlo(3) - pmf_offset)*1.d2
             zhi = ((k+1)*delta(3) + domnlo(3) - pmf_offset)*1.d2
-            call pmf_CH4(zlo,zhi,pmf_H_vals,n)
-#else
-            call pmf_H(zEval,pmf_H_vals,n)
-#endif
+            call pmf(zlo,zhi,pmf_vals,n)
 
             if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
 
             call FORT_MOLETOMASS(lo_chem,hi_chem,
-     &           pmf_H_vals(4), ARLIM(lo_chem), ARLIM(hi_chem),
+     &           pmf_vals(4), ARLIM(lo_chem), ARLIM(hi_chem),
      &           Y_pmf,         ARLIM(lo_chem), ARLIM(hi_chem))
 
             do j = lo(2), hi(2)
@@ -1081,7 +1067,7 @@ c     &                 +                   press(i,j+1) + press(i+1,j+1))
                   scal(i,j,k,Trac) = zero
 c                  scal(i,j,Trac) = fourth*(press(i,j  ) + press(i+1,j)
 c     &                 +                   press(i,j+1) + press(i+1,j+1))
-                  scal(i,j,k,Temp) = pmf_H_vals(1)
+                  scal(i,j,k,Temp) = pmf_vals(1)
 
                   if (probtype .eq. 28) then
                      do n = 1,Nspec
@@ -1102,7 +1088,7 @@ c     &                 +                   press(i,j+1) + press(i+1,j+1))
                   end if
                   vel(i,j,k,1) = zero
                   vel(i,j,k,2) = zero
-                  vel(i,j,k,3) = pmf_H_vals(2) / 1.d2
+                  vel(i,j,k,3) = pmf_vals(2) / 1.d2
                enddo
             enddo
          enddo
@@ -1220,10 +1206,10 @@ c     HACK!!    make up some boundary conditions
                      
                   else
                      
-                     call ball(r*1.d2,r*1.d2,pmf_H_vals,n)
-                     scal(i,j,k,Temp) = pmf_H_vals(2)
+                     call ball(r*1.d2,r*1.d2,pmf_vals,n)
+                     scal(i,j,k,Temp) = pmf_vals(2)
                      do n = 1,Nspec
-                        Xini(n) = pmf_H_vals(3+n)
+                        Xini(n) = pmf_vals(3+n)
                      end do
                      
                   end if
@@ -1340,6 +1326,83 @@ c     HACK!!    make up some boundary conditions
                      Xini(iN2) = one - sum
                   end if
                   
+                  call FORT_MOLETOMASS(lo_chem,hi_chem,
+     &                 Xini, ARLIM(lo_chem), ARLIM(hi_chem),
+     &                 Yini, ARLIM(lo_chem), ARLIM(hi_chem))
+                  
+                  do n = 1,Nspec
+                     scal(i,j,k,firstSpec+n-1) = Yini(n)
+                  end do
+                  
+               end do
+            end do
+         end do
+         
+         Patm = pamb / 101325.0d0
+         call FORT_RHOfromPTY(lo,hi,
+     &        scal(statelo1,statelo2,statelo3,Density),  DIMS(state),
+     &        scal(statelo1,statelo2,statelo3,Temp),     DIMS(state),
+     &        scal(statelo1,statelo2,statelo3,firstSpec),DIMS(state),
+     &        Patm)
+         call FORT_HMIXfromTY(lo,hi,
+     &        scal(statelo1,statelo2,statelo3,RhoH),     DIMS(state),
+     &        scal(statelo1,statelo2,statelo3,Temp),     DIMS(state),
+     &        scal(statelo1,statelo2,statelo3,firstSpec),DIMS(state))
+         do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  do n = 0,Nspec-1
+                     scal(i,j,k,firstSpec+n) 
+     &                    = scal(i,j,k,firstSpec+n)*scal(i,j,k,Density)
+                  enddo
+                  scal(i,j,k,RhoH) = scal(i,j,k,RhoH)*scal(i,j,k,Density)
+               enddo
+            enddo
+         enddo
+
+      else if (probtype .eq. 40) then
+         do k= lo(3),hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  do n=1,SDIM
+                     vel(i,j,k,n) = zero
+                  end do
+               end do
+            end do
+         end do
+         
+         do k = lo(3), hi(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
+            do j = lo(2), hi(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
+                  scal(i,j,k,Trac) = zero
+
+                  r = SQRT((x-blobx)**2+(y-bloby)**2+(z-blobz)**2)
+                  if (r.LE.delta(1)) then
+                     eta = zero
+                  else
+                     theta = ATAN2(SQRT((x-blobx)**2+(y-bloby)**2)/r,(z-blobz)/r)-Pi
+                     phi = ATAN2((y-bloby)/r,(x-blobx)/r)
+                     
+                     rfront = zero
+                     ctr = 0
+                     do l = lmodemin,lmodemax
+                        do m = 0,l
+                           ctr = ctr + 1
+                           rfront = rfront + 
+     &                          betalm(l,m)*EXP(-float(l-lpeak)**2/(.15*lpeak)**2)
+     &                          * Ylm(l,m,phi+alphalm(l,m)*2*Pi,
+     &                                COS(theta+gammalm(l,m)*2*Pi))
+                        end do
+                     end do
+                     if (ctr.GT.0) rfront = rfront/ctr
+                     r = r + rfront
+                     call pmf(r,r,Xini,n)
+                  endif
+                  
+                  scal(i,j,k,Temp) = pmf_vals(1)
                   call FORT_MOLETOMASS(lo_chem,hi_chem,
      &                 Xini, ARLIM(lo_chem), ARLIM(hi_chem),
      &                 Yini, ARLIM(lo_chem), ARLIM(hi_chem))
