@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.8 2005-05-19 22:54:16 lijewski Exp $
+# $Id: GNUmakefile,v 1.9 2009-08-20 18:03:19 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -25,14 +25,6 @@ USE_HGPROJ_SERIAL := FALSE
 #
 #DEFINES += -DBL_RHORT_IN_TRACER
 #
-# If you want to plot reaction rates uncomment the following
-#
-#DEFINES += -DBL_PLOT_REACS 
-#
-# If you want to plot fuel consumption rates uncomment the following
-#
-#DEFINES += -DBL_PLOT_CONSUMPTION
-#
 # Choose your reaction mechanism & thermal properties.
 #
 REACTION_MECHANISM=CH4-2STEP
@@ -41,8 +33,8 @@ REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=DRM19
-REACTION_MECHANISM=CHEMH
 REACTION_MECHANISM=PROPANE
+REACTION_MECHANISM=CHEMH
 #
 # Packages below are of the form dir/lib. dir=location of the lib sources,
 #  lib=library root name.  This info is separated into to corresponding
