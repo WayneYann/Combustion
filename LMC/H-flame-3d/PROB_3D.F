@@ -3175,6 +3175,146 @@ c     that the bc values may often be set up ahead of time.
 
       end
 
+      subroutine FORT_ALLCHEMFILL (rhoY,DIMS(rhoY),domlo,domhi,delta,
+     &                             xlo,time,bc)
+
+      implicit none
+
+#include "cdwrk.H"
+#include "bc.H"
+#include "probdata.H"
+      
+      integer DIMDEC(rhoY), bc(SDIM,2)
+      integer domlo(SDIM), domhi(SDIM)
+      REAL_T  delta(SDIM), xlo(SDIM), time
+      REAL_T  rhoY(DIMV(rhoY),Nspec)
+
+      integer i, j, k, n
+      integer ilo, ihi, jlo, jhi, klo, khi
+      REAL_T  z, y, x
+      REAL_T  u, v, w, rho, Yl(maxspec), T, h
+
+      integer lo(SDIM), hi(SDIM)
+
+c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
+
+      lo(1) = ARG_L1(rhoY)
+      lo(2) = ARG_L2(rhoY)
+      lo(3) = ARG_L3(rhoY)
+      hi(1) = ARG_H1(rhoY)
+      hi(2) = ARG_H2(rhoY)
+      hi(3) = ARG_H3(rhoY)
+
+      ilo = max(lo(1),domlo(1))
+      jlo = max(lo(2),domlo(2))
+      klo = max(lo(3),domlo(3))
+      ihi = min(hi(1),domhi(1))
+      jhi = min(hi(2),domhi(2))
+      khi = min(hi(3),domhi(3))
+      
+      do n = 1,Nspec
+         call filcc (rhoY(lo(1),lo(2),lo(3),n),
+     $               DIMS(rhoY),domlo,domhi,delta,xlo,bc)
+      end do
+
+      if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
+         do i = lo(1), domlo(1)-1
+            x = (float(i)+.5)*delta(1)+domnlo(1)
+            do k = lo(3),hi(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
+               do j = lo(2), hi(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
+                  call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  do n = 1,Nspec
+                     rhoY(i,j,k,n) = rho*Yl(n)
+                  end do
+               enddo
+            enddo
+         enddo
+      endif
+      
+      if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
+         do i = domhi(1)+1, hi(1)
+            x = (float(i)+.5)*delta(1)+domnlo(1)
+            do k = lo(3),hi(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
+               do j = lo(2), hi(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
+                  call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  do n = 1,Nspec
+                     rhoY(i,j,k,n) = rho*Yl(n)
+                  end do
+               enddo
+            enddo
+         enddo
+      endif    
+
+      if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
+         do j = lo(2), domlo(2)-1
+            y = (float(j)+.5)*delta(2)+domnlo(2)
+            do k = lo(3),hi(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
+                  call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  do n = 1,Nspec
+                     rhoY(i,j,k,n) = rho*Yl(n)
+                  end do
+               enddo
+            enddo
+         enddo
+      endif    
+      
+      if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
+         do j = domhi(2)+1, hi(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)
+            do k = lo(3),hi(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
+                  call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  do n = 1,Nspec
+                     rhoY(i,j,k,n) = rho*Yl(n)
+                  end do
+               enddo
+            enddo
+         enddo
+      endif
+
+      if (bc(3,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
+         do k = lo(3), domlo(3)-1
+            z = (float(k)+.5)*delta(3)+domnlo(3)
+            do j = lo(2),hi(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
+                  call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  do n = 1,Nspec
+                     rhoY(i,j,k,n) = rho*Yl(n)
+                  end do
+               enddo
+            enddo
+         enddo
+      endif    
+      
+      if (bc(3,2).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
+         do k = domhi(3)+1, hi(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
+            do j = lo(2),hi(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
+                  call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  do n = 1,Nspec
+                     rhoY(i,j,k,n) = rho*Yl(n)
+                  end do
+               enddo
+            enddo
+         enddo
+      endif
+
+      end
+
 c ::: -----------------------------------------------------------
 c ::: This routine is called during a filpatch operation when
 c ::: the patch to be filled falls outside the interior
