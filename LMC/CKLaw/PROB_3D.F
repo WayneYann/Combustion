@@ -626,6 +626,12 @@ c
 c     Set random numbers for Ylm perts
 c
 
+c
+c     In parallel these must be consistent, so set the seed to have
+c     the same value across all processors
+c
+      call blutilinitrand(111397)
+
       do j = lmodemin,lmodemax
          do i = 0,j
             call blutilrand(alphalm(i,j))
