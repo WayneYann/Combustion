@@ -1214,64 +1214,60 @@ c
          end do
       enddo            
 
-         do k= lo(3),hi(3)
-            z = (float(k)+.5)*delta(3)+domnlo(3)            
-            do j = lo(2), hi(2)
-               y = (float(j)+0.5)*delta(2)+domnlo(2)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
+      do k= lo(3),hi(3)
+         z = (dfloat(k)+.5)*delta(3)+domnlo(3)            
+         do j = lo(2), hi(2)
+            y = (dfloat(j)+0.5)*delta(2)+domnlo(2)
+            do i = lo(1), hi(1)
+               x = (dfloat(i)+.5)*delta(1)+domnlo(1)
+               r = SQRT((x-blobx)**2+(y-bloby)**2+(z-blobz)**2)
 
-
-                  r = SQRT((x-blobx)**2+(y-bloby)**2+(z-blobz)**2)
-                  if (r.LE.delta(1)) then
-                    theta = zero
-                    phi = zero
-
-                  else
-                     theta = ATAN2(SQRT((x-blobx)**2+(y-bloby)**2)/r,(z-blobz)/r)-Pi
-                     phi = ATAN2((y-bloby)/r,(x-blobx)/r)
-                  endif
- 
-                     rfront = zero
-                     ctr = 0
-                     do l = lmodemin,lmodemax
-                        do m = 0,l
-                           ctr = ctr + 1
-                           rfront = rfront +
-     &                          betalm(l,m)*EXP(-float(l-lpeak)**2/(.15*lpeak)**2)
-     &                          * Ylm(l,m,phi+alphalm(l,m)*2*Pi,
-     &                                COS(theta+gammalm(l,m)*2*Pi))
-                        end do
-                     end do
-                     if (ctr.GT.0) rfront = rfront/ctr
- 
-                     rfront = (blobr + pertmag* rfront - r + zstandoff) *100.d0
-
- 
-                  call pmf(rfront,rfront,pmf_vals,n)
-
- 
-                  if (n.ne.Nspec+3) then
-                     call bl_abort('INITDATA: n .ne. Nspec+3')
-                  endif
-
-                  scal(i,j,k,Temp) = pmf_vals(1)
-                  do n = 1,Nspec
-                     Xl(n) = pmf_vals(3+n)
-                  end do 
-
-                  call FORT_MOLETOMASS(lo_chem,hi_chem,
-     &                 Xl, ARLIM(lo_chem), ARLIM(hi_chem),
-     &                 Yl, ARLIM(lo_chem), ARLIM(hi_chem))
- 
-                  do n = 1,Nspec
-                     scal(i,j,k,FirstSpec+n-1) = Yl(n)
+               if (r.LE.delta(1)) then
+                  theta = zero
+                  phi = zero
+               else
+                  theta = ATAN2(SQRT((x-blobx)**2+(y-bloby)**2)/r,(z-blobz)/r)-Pi
+                  phi = ATAN2((y-bloby)/r,(x-blobx)/r)
+               endif
+               
+               rfront = zero
+               ctr = 0
+               do l = lmodemin,lmodemax
+                  do m = 0,l
+                     ctr = ctr + 1
+                     rfront = rfront +
+     &                    betalm(l,m)*EXP(-dfloat(l-lpeak)**2/(.15d0*lpeak)**2)
+     &                    * Ylm(l,m,phi+alphalm(l,m)*2*Pi,
+     &                    COS(theta+gammalm(l,m)*2*Pi))
                   end do
-                  scal(i,j,k,Trac) = zero
-
                end do
+               if (ctr.GT.0) rfront = rfront/ctr
+               
+               rfront = (blobr + pertmag* rfront - r + zstandoff) *100.d0
+               
+               call pmf(rfront,rfront,pmf_vals,n)
+               
+               if (n.ne.Nspec+3) then
+                  call bl_abort('INITDATA: n .ne. Nspec+3')
+               endif
+
+               scal(i,j,k,Temp) = pmf_vals(1)
+               do n = 1,Nspec
+                  Xl(n) = pmf_vals(3+n)
+               end do 
+
+               call FORT_MOLETOMASS(lo_chem,hi_chem,
+     &              Xl, ARLIM(lo_chem), ARLIM(hi_chem),
+     &              Yl, ARLIM(lo_chem), ARLIM(hi_chem))
+               
+               do n = 1,Nspec
+                  scal(i,j,k,FirstSpec+n-1) = Yl(n)
+               end do
+               scal(i,j,k,Trac) = zero
+
             end do
          end do
+      end do
 
       Patm = pamb / 101325.0d0
       call FORT_RHOfromPTY(lo,hi,
@@ -1325,13 +1321,13 @@ c
       if(m.lt.0.or.m.gt.l.or.abs(x).gt.1.) then
          call bl_abort('bad arguments in plgndr')
       endif
-      pmm=1.
+      pmm=1.d0
       if(m.gt.0) then
-        somx2=sqrt((1.-x)*(1.+x))
-        fact=1.
+        somx2=sqrt((1.d0-x)*(1.d0+x))
+        fact=1.d0
         do 11 i=1,m
           pmm=-pmm*fact*somx2
-          fact=fact+2.
+          fact=fact+2.d0
 11      continue
       endif
       if(l.eq.m) then
