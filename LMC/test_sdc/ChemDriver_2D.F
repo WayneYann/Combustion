@@ -179,6 +179,52 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       end do
       end
 
+      subroutine FORT_RRATEY_SDC(lo,hi,Y,DIMS(Y),T,DIMS(T),Rho,DIMS(Rho),
+     &     Ydot,DIMS(Ydot),Patm)
+      implicit none
+
+#include "cdwrk.H"
+#include "conp.H"
+
+      integer lo(SDIM)
+      integer hi(SDIM)
+      integer DIMDEC(Y)
+      integer DIMDEC(T)
+      integer DIMDEC(Rho)
+      integer DIMDEC(Ydot)
+      REAL_T Y(DIMV(Y),*)
+      REAL_T T(DIMV(T))
+      REAL_T Rho(DIMV(Rho))
+      REAL_T Ydot(DIMV(Ydot),*)
+      REAL_T Patm
+
+      REAL_T Zt(maxspec+1),Zdott(maxspec+1)
+      integer i,j,n
+      REAL_T P1atm,RU,RUC, density
+
+
+      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
+      RWRK(NP) = Patm * P1atm
+C      write(*,*)'after patm'
+
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            Zt(1) = T(i,j)
+            density = Rho(i,j)
+C            write(*,*)'density = ',density
+            do n=1,Nspec
+               Zt(n+1) = Y(i,j,n)
+            end do
+C            write(*,*)'about to call calcYdot'
+            call calcYdot(density,Zt,Zdott,RWRK,IWRK)
+C            write(*,*)'after calcYdot'
+            do n=1,Nspec
+               Ydot(i,j,n) = Zdott(n+1)
+            end do
+         end do
+      end do
+      end
+
       subroutine FORT_RRATEY(lo,hi,Y,DIMS(Y),T,DIMS(T),
      &                       Ydot,DIMS(Ydot),Patm)
       implicit none
@@ -567,9 +613,12 @@ C   get a box of data
 
       integer ITOL, IOPT, ITASK, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)
-      REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
+C      REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
+      REAL_T RTOL, ATOL(maxspec+2), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
+C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
+C CEG:: trying lower TOL
+      parameter (RTOL=1.0E-14, ATOLEPS=1.0E-14)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external conpFY_sdc, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
@@ -635,9 +684,10 @@ c     Set up ATOL
             ATOL(n+1) = ATOLEPS*spec_scalY(n)
          end do
       else
+C     itol != 2
          ATOL(1) = ATOLEPS
       end if
-               
+
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             if(j.ge.0)then
@@ -663,7 +713,7 @@ C               write(*,*)i,j
 #endif
                RWRK(NZ) = Told(i,j)
                RWRK(NZ+Nspec+1) = Hold(i,j)
-               RWRK(NRHO)= Rho(i,j)               
+               RWRK(NRHO)= Rho(i,j)             
 
 C CEG: doing JBB_HACK
 C#undef DO_JBB_HACK
@@ -692,35 +742,36 @@ c                  write(*,*)'RWRK = ',RWRK(NZ+n)
 c                  write(*,*)'Y_m = ',Y_m(n)
                end do
 
+C not used for sdc
 C compute hmix and store in RWRK(NHMIX)
-               CALL CKHBMS(RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),
-     &              RWRK(NHMIX))      
+C               CALL CKHBMS(RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),
+c     &              RWRK(NHMIX))      
 C Put SDC additions in area accessible by conpFY
                call sdc_func(AofS(i,j,:ncompA),DofS(i,j,:ncompD),
      &              NULN(i,j,:ncompNULN),dt)
 
-            if(i .eq. 1 .and. j .eq.25) then
-               write(*,*)'Inside ChemDriver'
-               write(*,*)"dt = ", dt
-               write(*,*)'aofs = ',AofS(i,j,10)
-               write(*,*)'dofs0 = ',DofS(i,j,28)
-               write(*,*)'dofs1 = ',DofS(i,j,29)
-               write(*,*)'dofs2 = ',DofS(i,j,30)
-               write(*,*)'nuln0 = ',NULN(i,j,1)
-               write(*,*)'nuln1 = ',NULN(i,j,2)
-               write(*,*)'nuln2 = ',NULN(i,j,3)
-               write(*,*)"c_0 = ",c_0(Nspec+1)
-               write(*,*)"c_1 = ",c_1(Nspec+1)
-               total =  dt*c_0(Nspec+1) 
-               write(*,*)"dt*c0",total
-               total = dt*dt*c_1(Nspec+1)/2.0
-               write(*,*)"dt*dt*c1/2",total
-               total =  dt*c_0(Nspec+1)+dt*dt*c_1(Nspec+1)/2.0
-               write(*,*)'together = ',total
-               write(*,*)'Hold = ',Hold(i,j)
-               total = total + Hold(i,j)
-               write(*,*)'Hnew should be ',total
-            endif
+C$$$            if(i .eq. 1 .and. j .eq.25) then
+C$$$               write(*,*)'Inside ChemDriver'
+C$$$               write(*,*)"dt = ", dt
+C$$$               write(*,*)'aofs = ',AofS(i,j,10)
+C$$$               write(*,*)'dofs0 = ',DofS(i,j,28)
+C$$$               write(*,*)'dofs1 = ',DofS(i,j,29)
+C$$$               write(*,*)'dofs2 = ',DofS(i,j,30)
+C$$$               write(*,*)'nuln0 = ',NULN(i,j,1)
+C$$$               write(*,*)'nuln1 = ',NULN(i,j,2)
+C$$$               write(*,*)'nuln2 = ',NULN(i,j,3)
+C$$$               write(*,*)"c_0 = ",c_0(Nspec+1)
+C$$$               write(*,*)"c_1 = ",c_1(Nspec+1)
+C$$$               total =  dt*c_0(Nspec+1) 
+C$$$               write(*,*)"dt*c0",total
+C$$$               total = dt*dt*c_1(Nspec+1)/2.0
+C$$$               write(*,*)"dt*dt*c1/2",total
+C$$$               total =  dt*c_0(Nspec+1)+dt*dt*c_1(Nspec+1)/2.0
+C$$$               write(*,*)'together = ',total
+C$$$               write(*,*)'Hold = ',Hold(i,j)
+C$$$               total = total + Hold(i,j)
+C$$$               write(*,*)'Hnew should be ',total
+C$$$            endif
 
 #ifdef TRIGGER_NEW_J
 c               write(*,*)'trigger new j defined'
@@ -773,21 +824,22 @@ C "Returns the rate of progress for each reaction"
      &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
      &              dvi, dummy, MF, RWRK, IWRK)
 
-                  write(10,*)
-                  write(10,*)
-                  write(10,*)
-                  if (i .eq. 1 .and. j .eq. 25) then
-                     write(*,*)'dt = ',dt
-c     write(*,*)'nsub = ',nsub
-                     write(*,*)'TT1 = ',TT1
-                     write(*,*)'TT2 = ',TT2
-                     write(*,*)'Hnew(i,j) actual= ',RWRK(NZ+Nspec+1)
-                     total = total - RWRK(NZ+Nspec+1)
-                     write(*,*)'difference expected-Hnew = ', total
-                     write(*,*)'RWRK(NZ+Nspec) = ',RWRK(NZ+Nspec)
-                     write(*,*)'RWRK(NZ+Nspec+2) = ',RWRK(NZ+Nspec+2)
-                     if (count > 16) call bl_abort("here!");
-                  endif
+c                  write(11,*)
+C                  write(11,*)
+C$$$                  write(10,*)
+C$$$                  write(10,*)
+c                  if (i .eq. 1 .and. j .eq. 25) then
+C$$$                     write(*,*)'dt = ',dt
+C$$$c     write(*,*)'nsub = ',nsub
+C$$$                     write(*,*)'TT1 = ',TT1
+C$$$                     write(*,*)'TT2 = ',TT2
+C$$$                     write(*,*)'Hnew(i,j) actual= ',RWRK(NZ+Nspec+1)
+C$$$                     total = total - RWRK(NZ+Nspec+1)
+C$$$                     write(*,*)'difference expected-Hnew = ', total
+C$$$                     write(*,*)'RWRK(NZ+Nspec) = ',RWRK(NZ+Nspec)
+C$$$                     write(*,*)'RWRK(NZ+Nspec+2) = ',RWRK(NZ+Nspec+2)
+c                    if (count > 16) call bl_abort("here!");
+c                  endif
 
 c
 c   If the step was bad, and we reused an old Jacobian, try again from scratch.

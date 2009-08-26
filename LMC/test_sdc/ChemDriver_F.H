@@ -21,6 +21,7 @@
 #    define FORT_FRrateXTP       dfrrtxtp
 #    define FORT_HTRLS           dhtrls
 #    define FORT_RRATEY          drratey
+#    define FORT_RRATEY_SDC      drratey_sdc
 #    define FORT_RRATEC          drratec
 #    define FORT_MOLETOMASS      dmoltoms
 #    define FORT_MASSTP_TO_CONC  dmstptocon
@@ -84,6 +85,7 @@
 #    define FORT_FRrateXTP       DFRRTXTP
 #    define FORT_HTRLS           DHTRLS
 #    define FORT_RRATEY          DRRATEY
+#    define FORT_RRATEY_SDC      DRRATEY_SDC
 #    define FORT_RRATEC          DRRATEC
 #    define FORT_MOLETOMASS      DMOLTOMS
 #    define FORT_MASSTP_TO_CONC  DMSTPTOCON
@@ -149,6 +151,7 @@
 #    define FORT_FRrateXTP       dfrrtxtp
 #    define FORT_HTRLS           dhtrls
 #    define FORT_RRATEY          drratey
+#    define FORT_RRATEY_SDC      drratey_sdc
 #    define FORT_RRATEC          drratec
 #    define FORT_MOLETOMASS      dmoltoms
 #    define FORT_CONPSOLV        dcpsolv
@@ -211,6 +214,7 @@
 #    define FORT_FRrateXTP       dfrrtxtp_
 #    define FORT_HTRLS           dhtrls_
 #    define FORT_RRATEY          drratey_
+#    define FORT_RRATEY_SDC      drratey_sdc_
 #    define FORT_RRATEC          drratec_
 #    define FORT_MOLETOMASS      dmoltoms_
 #    define FORT_CONPSOLV        dcpsolv_
@@ -303,6 +307,13 @@ extern "C" {
                      const Real* T, ARLIM_P(Tlo),    ARLIM_P(Thi),
                      Real*    Ydot, ARLIM_P(Ydotlo), ARLIM_P(Ydothi),
                      Real* Patm);
+
+    void FORT_RRATEY_SDC(const int* lo, const int* hi,
+			 const Real* Y, ARLIM_P(Ylo),    ARLIM_P(Yhi),
+			 const Real* T, ARLIM_P(Tlo),    ARLIM_P(Thi),
+			 const Real* Rho, ARLIM_P(Rholo),ARLIM_P(Rhohi),
+			 Real*    Ydot, ARLIM_P(Ydotlo), ARLIM_P(Ydothi),
+			 Real* Patm);
 
     void FORT_RRATEC(const int* lo, const int* hi,
                      const Real* C, ARLIM_P(Clo),    ARLIM_P(Chi),

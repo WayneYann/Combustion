@@ -17,16 +17,19 @@
   vorterr = 1.e3
   vorterr = 100
   y_offset = -0.002
-  y_offset = -0.0285	 
+  y_offset = -0.028	 
+  y_offset = -0.027	 
   flametracval = 1.e-6
   V_in = .1527
   nchemdiag = 1
   phi_in = .37
   pertmag = .0001
+  pertmag = .000
   turb_scale = 1.0	  
  /
  &heattransin
   pamb = 101325.0
+  dpdt_factor = 0.
   dpdt_factor = 0.3
  /
  &flctin
@@ -34,9 +37,10 @@
   forceInflow = .FALSE.
  /
  &control
-  tau_control = 1.5e-3
+  tau_control = 6e-4
   sest = .3
-  h_control = .03
+  h_control = .0011
+  h_control = .0025
   changeMax_control = .05
   zbase_control = 0.0
  /

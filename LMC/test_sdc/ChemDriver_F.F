@@ -639,6 +639,8 @@ C
       DO K = 1, Nspec
          H    = RPAR(NH    + K - 1)
          WDOT = RPAR(NWDOT + K - 1) * THFAC
+C debugging FIXME!!!
+C         WDOT = 0.d0
          WT   = RPAR(NWT   + K - 1)
          ZP(K+1) = WDOT * WT / RHO
          SUM = SUM + H * WDOT * WT
@@ -666,6 +668,46 @@ C
 
 C=======================================================
 
+      subroutine calcYdot(RHO, Z, ZP, RPAR, IPAR)
+      implicit none
+#include "cdwrk.H"
+#include "conp.H"
+#include "visc.H"
+      REAL_T RHO, Z(NEQ), ZP(NEQ), RPAR(*)
+      integer N, IPAR(*)
+      
+      REAL_T  WDOT, WT, THFAC
+      integer K
+
+C     Variables in Z are:  Z(1)   = T
+C                          Z(K+1) = Y(K)
+      
+C calculate molar concentrations from mass fractions; result in RPAR(NC)
+      CALL CKYTCP(RPAR(NP), Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+
+#define MAKE_C_POS
+#undef MAKE_C_POS
+#ifdef MAKE_C_POS
+      do k=1,Nspec
+         RPAR(NC-1+k) = MAX(RPAR(NC-1+k),zero)
+      end do 
+#endif
+      
+C computes production rate for each species; result in RPAR(NWDOT)
+      CALL CKWC(Z(1), RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
+C
+C     Form governing equation
+C
+      THFAC = one / thickFacCH
+      DO K = 1, Nspec
+         WDOT = RPAR(NWDOT + K - 1) * THFAC
+         WT   = RPAR(NWT   + K - 1)
+C convert rho to cgs
+         ZP(K+1) = WDOT * WT / (RHO * 1.d-3)
+      END DO
+
+      END
+
 C**************************************
 C* SDC Reactions Integration Function *
 C**************************************
@@ -678,40 +720,74 @@ C**************************************
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
-      REAL_T RHO, CPB, SUM, H, WDOT, WT, THFAC
+      REAL_T RHO_MKS, RHO_CGS, CPB, SUM, H, WDOT, WT, THFAC
       integer K
       REAL_T Y_m(Nspec)
+C debugging FIXME
+      integer HtoTiterMAX,Niter,FORT_TfromHYpt
+      parameter (HtoTiterMAX = 20)
+      REAL_T HtoTerrMax,Temp
+      parameter (HtoTerrMax = BL_REAL_E(1.0,-8))
+      REAL_T res(0:HtoTiterMAX-1)
+
 
 C     Variables in Z are:  Z(1)   = T
 C                          Z(K+1) = Y(K)
 
 C      write(*,*)'inside conpFY'
 C compute rho from species
-      RHO = 0.
+      RHO_MKS = 0.d0
       DO K = 1, Nspec
-         RHO = RHO + Z(K+1)
+         RHO_MKS = RHO_MKS + Z(K+1)
       end do
 C this function computes rho (= Pressure/(R* Temp* sum(Y_m/W_m)))  
-C      CALL CKRHOY(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO)
-
+C Not good for rhoRT result
+C      CALL CKRHOY(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO_CGS)
 C      write(*,*)'rho = ',RHO
+C      RHO_MKS = RHO_CGS * 1.d3
+
       DO K = 1, Nspec
-         Y_m(K) = Z(K+1)/RHO
+         Y_m(K) = Z(K+1)/RHO_MKS
 C      write(*,*)'Y_m = ',Y_m(K)
       end do
 C      write(*,*)
 
-C computes c_p,mix returns result in CPB
-      CALL CKCPBS(Z(1),Y_m,IPAR(ckbi),RPAR(ckbr),CPB)
-C      write(*,*)'Cpmix = ',CPB
-C calculate molar concentrations from mass fractions; result in RPAR(NC)
-      CALL CKYTCP(RPAR(NP), Z(1), Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
-c calc molar conc from mass frac using RHO, instead of PW/RT
-C      CALL CKYTCR(RHO, Z(1), Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+C convert from MKS to CGS for CK fns
+      RHO_CGS = RHO_MKS*1.d-3
 
-C$$$      do n = 0,Nspec
-C$$$         write(*,*)'Conc = ',RPAR(NC+n)
-C$$$      enddo
+C Debugging FIXME
+C      Temp = Z(1)
+C      H = Z(Nspec+2)/RHO_MKS
+C CEG:: i don't think this is neccessary
+C      H = H*BL_REAL_E(1.0,-4)
+C      Niter = FORT_TfromHYpt(Temp,H,Y_m,HtoTerrMax,HtoTiterMAX,res)
+C$$$      write(11,*)'Temp = ',Z(1)
+C$$$      write(11,*)'rhoH = ',Z(Nspec+2)
+C$$$      write(11,*)'Temp from H = ',Temp
+C$$$      write(11,*)'iters = ',Niter
+C$$$      write(11,*)
+
+C computes c_p,mix returns result in CPB
+C units should be = cm^2/s^2/K
+      CALL CKCPBS(Z(1),Y_m,IPAR(ckbi),RPAR(ckbr),CPB)
+C      CALL CKCPBS(Temp,Y_m,IPAR(ckbi),RPAR(ckbr),CPB)
+C      write(*,*)'Cpmix = ',CPB
+
+C calculate molar concentrations from mass fractions; result in RPAR(NC)
+C units = mol/cm^3
+      CALL CKYTCP(RPAR(NP), Z(1), Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+C      CALL CKYTCP(RPAR(NP), Temp, Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+C      do n = 0,Nspec
+C         write(*,*)'Conc = ',RPAR(NC+n)
+C      enddo
+
+C doesn't seem to matter which one of these i use
+c calc molar conc from mass frac using RHO, instead of PW/RT
+C      CALL CKYTCR(RHO_CGS, Z(1), Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+C      do n = 0,Nspec
+C         write(*,*)'Conc = ',RPAR(NC+n)
+C      enddo
+C      call bl_abort();
 c
 c     Get net production rates.  Compute such that production from -ve
 c     reactants gives zero contrib.
@@ -729,42 +805,55 @@ c      end do
 #endif
       
 C computes production rate for each species; result in RPAR(NWDOT)
+C units = mol/cm^3/s
       CALL CKWC(Z(1), RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
+C      CALL CKWC(Temp, RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
 C      write(*,*)
 C      do n = 0,Nspec
 C         write(*,*)'wdot = ',RPAR(NWDOT+n)
 C      enddo
 
 C computes h_m for each species; result in RPAR
+C units = erg = g cm^2/s^2
       CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), RPAR(NH))
+C      CALL CKHMS(Temp, IPAR(ckbi), RPAR(ckbr), RPAR(NH))
 c      write(*,*)
 c      do n = 0,Nspec-1
 c         write(*,*)'H_m = ',RPAR(NH+n)
 c      enddo
-
 
 C     Form (rho*Y)_t 
       THFAC = one / thickFacCH
 c      write(*,*)'THFAC = ',THFAC
       SUM = zero
       DO K = 1, Nspec
-         H    = RPAR(NH    + K - 1)
-         WDOT = RPAR(NWDOT + K - 1) * THFAC
+C convert to SI units = m^2/s^2
+         H    = RPAR(NH    + K - 1)* 1.d-4
+C convert from mol/cm^3/s to kmol/m^3/s
+         WDOT = RPAR(NWDOT + K - 1) * THFAC * 1.d3
+C debugging FIXME!!!
+C         WDOT = 0.d0
          WT   = RPAR(NWT   + K - 1)
 c c_0, c_1 are in common /sdc/ in cdwrk.H
          ZP(K+1) = WDOT * WT + c_0(K) + c_1(K)*TIME
+C Debugging! FIXME
+C         ZP(K+1) = c_0(K) + c_1(K)*TIME
+
+C units = mol
          SUM = SUM + H * ZP(K+1)
       END DO
 C  make (rho*h)_t
       ZP(Nspec+2) = c_0(Nspec+1) + c_1(Nspec+1)*TIME
-      write(10,*)'rhoH = ',Z(Nspec+2)
-      write(10,*)'rhoH_t = ',ZP(Nspec+2)
-      write(10,*)'c0 = ',c_0(Nspec+1) 
-      write(10,*)'c1 = ',c_1(Nspec+1)
-      write(10,*)'time = ',TIME
-      write(10,*) 
+C$$$      write(10,*)'rhoH = ',Z(Nspec+2)
+C$$$      write(10,*)'rhoH_t = ',ZP(Nspec+2)
+C$$$      write(10,*)'c0 = ',c_0(Nspec+1) 
+C$$$      write(10,*)'c1 = ',c_1(Nspec+1)
+C$$$      write(10,*)'time = ',TIME
+C$$$      write(10,*) 
 C  make Temp_t
-      ZP(1) = (ZP(Nspec+2) - SUM) / (RHO*CPB)
+C convert CPB to MKS
+      ZP(1) = (ZP(Nspec+2) - SUM) / (RHO_MKS*CPB*1.d-4)
+
 c      do n = 1,Nspec+2
 c         write(*,*)'ZP = ', ZP(n)
 c      enddo

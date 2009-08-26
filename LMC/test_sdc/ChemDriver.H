@@ -39,6 +39,7 @@ public:
 			  FArrayBox&        AofS,
 			  FArrayBox&        DofS,
 			  FArrayBox&        RhoH_NULN,
+			  FArrayBox&        Bforce,
 			  FArrayBox&        FuncCount,
 			  const Box&        box,
 			  int               sCompRho,
@@ -48,6 +49,7 @@ public:
 			  int               sCompA,
 			  int               sCompD,
 			  int               sCompNULN,
+			  int               sCompF,
 			  Real              dt,
 			  Real              Patm,
 			  const Chem_Evolve solver,
@@ -210,6 +212,19 @@ public:
                         int              sCompY,
                         int              sCompT,
                         int              sCompYdot) const;
+
+  //compute dY/dt based on Y, Temp, Rho, and Press
+  //  reactionRateY() uses P, T and Y to compute Rho
+  void YdotGivenRhoT_sdc(FArrayBox&       Ydot,
+			 const FArrayBox& Y,
+			 const FArrayBox& T,
+			 const FArrayBox& Rho,
+			 Real             Patm,
+			 const Box&       box,
+			 int              sCompY,
+			 int              sCompT,
+			 int              sCompRho,
+			 int              sCompYdot) const;
 
     void reactionRateC (FArrayBox&       Cdot,
                         const FArrayBox& C,

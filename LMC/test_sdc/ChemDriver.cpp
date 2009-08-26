@@ -577,12 +577,49 @@ ChemDriver::decodeStringFromFortran(const int* coded,
 using std::cout;
 using std::endl;
 
+
+void
+ChemDriver::YdotGivenRhoT_sdc(FArrayBox&       Ydot,
+			      const FArrayBox& Y,
+			      const FArrayBox& T,
+			      const FArrayBox& Rho,
+			      Real             Patm,
+			      const Box&       box,
+			      int              sCompY,
+			      int              sCompT,
+			      int              sCompRho,
+			      int              sCompYdot) const
+{ 
+    const int Nspec = numSpecies();
+    BL_ASSERT(Ydot.nComp() >= sCompYdot + Nspec);
+    BL_ASSERT(Y.nComp() >= sCompY + Nspec);
+    BL_ASSERT(T.nComp() > sCompT);
+    BL_ASSERT(Rho.nComp() > sCompRho);
+
+    const Box& mabx = Y.box();
+    const Box& mbbx = T.box();
+    const Box& mcbx = Rho.box();
+    const Box& mobx = Ydot.box();
+    
+    Box ovlp = box & mabx & mbbx & mobx & mcbx;
+
+    if( ! ovlp.ok() ) return;
+    
+    FORT_RRATEY_SDC(ovlp.loVect(), ovlp.hiVect(),
+		    Y.dataPtr(sCompY),ARLIM(mabx.loVect()), ARLIM(mabx.hiVect()),
+		    T.dataPtr(sCompT),ARLIM(mbbx.loVect()), ARLIM(mbbx.hiVect()),
+		    Rho.dataPtr(sCompRho),ARLIM(mcbx.loVect()), ARLIM(mcbx.hiVect()),
+		    Ydot.dataPtr(sCompYdot), ARLIM(mobx.loVect()), ARLIM(mobx.hiVect()),
+		    &Patm);
+}
+
 void
 ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			       const FArrayBox&  Sold,
 			       FArrayBox&        AofS,
 			       FArrayBox&        DofS,
 			       FArrayBox&        RhoH_NULN,
+			       FArrayBox&        tforces,
 			       FArrayBox&        FuncCount,
 			       const Box&        box,
 			       int               sCompRho,
@@ -592,6 +629,7 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			       int               sCompA,
 			       int               sCompD,
 			       int               sCompNULN,
+			       int               sCompF,
 			       Real              dt,
 			       Real              Patm,
 			       const Chem_Evolve solver,
