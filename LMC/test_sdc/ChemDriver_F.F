@@ -832,7 +832,7 @@ C convert to SI units = m^2/s^2
 C convert from mol/cm^3/s to kmol/m^3/s
          WDOT = RPAR(NWDOT + K - 1) * THFAC * 1.d3
 C debugging FIXME!!!
-C         WDOT = 0.d0
+         WDOT = 0.d0
          WT   = RPAR(NWT   + K - 1)
 c c_0, c_1 are in common /sdc/ in cdwrk.H
          ZP(K+1) = WDOT * WT + c_0(K) + c_1(K)*TIME

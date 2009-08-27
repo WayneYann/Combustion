@@ -1,5 +1,5 @@
-ht.use_sdc = 1
-ht.sdc_iters = 0
+ht.use_sdc = 0
+ht.sdc_iters = 2
 
 amr.plot_int = 1
 
@@ -12,14 +12,14 @@ stop_time =  1000.00
 #ns.fixed_dt = 0.000016 # 128 
 #ns.fixed_dt = 0.000008 # 256
 
-amr.max_grid_size   = 128
+amr.max_grid_size   = 64
 #amr.n_cell = 128 128 
 amr.n_cell = 32 256
 #amr.n_cell = 256 256
 #amr.n_cell = 512 512
 #amr.n_cell = 1024 1024
 
-amr.restart = chk00000
+###amr.restart = chk17200
 
 ht.pltfile = plt00050
 ht.plot_auxDiags = 0
@@ -62,8 +62,8 @@ ns.change_max     = 1.1       # scale back initial timestep
 
 ns.init_iter      = 4       # number of init iters to def pressure
 #ns.init_iter      = 0        # number of init iters to def pressure
-#ns.num_divu_iters = 0
-ns.num_divu_iters = 4
+ns.num_divu_iters = 0
+#ns.num_divu_iters = 4
 
 ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
 #ns.visc_tol        = 1.0e-16  # tolerence for viscous solves
@@ -184,7 +184,7 @@ DistributionMapping.strategy = KNAPSACK
 DistributionMapping.do_not_minimize_comm_costs=0
 DistributionMapping.verbose=0
 
-#ns.hack_nochem=1
+ns.hack_nochem=1
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0

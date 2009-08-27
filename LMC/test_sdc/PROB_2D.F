@@ -444,6 +444,7 @@ c     For probtype == 1, set boundary conditions from premixed flame profile in 
          end do
 
          yEval = y*100. - y_offset*100.
+         write(*,*)'yEval = ', yEval
          call pmf(yEval,yEval,pmf_vals,n)
 
          if (n.ne.Nspec+3) then
@@ -932,6 +933,7 @@ c
                   yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
                endif
                
+               if (j .eq. 0) write(*,*)"init::",j,ylo,yhi
                call pmf(ylo*100,yhi*100,pmf_vals,n)
                if (n.ne.Nspec+3) then
                   print *,'PMF file thinks n=',n
