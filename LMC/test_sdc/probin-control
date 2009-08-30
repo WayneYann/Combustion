@@ -20,7 +20,8 @@
   y_offset = -0.028	 
   y_offset = -0.01	 
   y_offset = -0.027	 
-  y_offset = -0.025	 
+  y_offset = -0.0225	 
+  y_offset = -0.024	 
   flametracval = 1.e-6
   V_in = .1527
   nchemdiag = 1

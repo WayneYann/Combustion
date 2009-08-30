@@ -1,5 +1,5 @@
-ht.use_sdc = 0
-ht.sdc_iters = 2
+ht.use_sdc = 1
+ht.sdc_iters = 1
 
 amr.plot_int = 1
 
@@ -12,21 +12,21 @@ stop_time =  1000.00
 #ns.fixed_dt = 0.000016 # 128 
 #ns.fixed_dt = 0.000008 # 256
 
-amr.max_grid_size   = 64
+amr.max_grid_size   = 128
 #amr.n_cell = 128 128 
 amr.n_cell = 32 256
 #amr.n_cell = 256 256
 #amr.n_cell = 512 512
 #amr.n_cell = 1024 1024
 
-###amr.restart = chk17200
+#amr.restart = chk00800
 
 ht.pltfile = plt00050
 ht.plot_auxDiags = 0
 ht.plot_rhoY=0
 ht.plot_molefrac=1
 ht.plot_ydot=0
-ht.v = 0
+ht.v = 1
 
 mg.usecg = 2
 mg.v = 0
@@ -62,7 +62,7 @@ ns.change_max     = 1.1       # scale back initial timestep
 
 ns.init_iter      = 4       # number of init iters to def pressure
 #ns.init_iter      = 0        # number of init iters to def pressure
-ns.num_divu_iters = 0
+ns.num_divu_iters = 1
 #ns.num_divu_iters = 4
 
 ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
@@ -111,9 +111,9 @@ ns.hi_bc          = 0 2
 
 geometry.is_periodic = 1 0
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
-geometry.prob_lo   =   0.  0. # m
+geometry.prob_lo   =   0.  0. # in meters
 #geometry.prob_hi   =  .004 .004
-geometry.prob_hi   =  .001 .008
+geometry.prob_hi   =  .001 .012
 #geometry.prob_hi   =  1 1
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
@@ -184,7 +184,7 @@ DistributionMapping.strategy = KNAPSACK
 DistributionMapping.do_not_minimize_comm_costs=0
 DistributionMapping.verbose=0
 
-ns.hack_nochem=1
+#ns.hack_nochem=1
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0

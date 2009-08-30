@@ -684,6 +684,10 @@ C                          Z(K+1) = Y(K)
       
 C calculate molar concentrations from mass fractions; result in RPAR(NC)
       CALL CKYTCP(RPAR(NP), Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+C      do K = 1, Nspec
+C         WT   = RPAR(NWT + K - 1)
+C         RPAR(NC + K-1) = 1.d-3 * Z(K+1)*RHO/WT
+C      enddo
 
 #define MAKE_C_POS
 #undef MAKE_C_POS
@@ -724,6 +728,8 @@ C**************************************
       integer K
       REAL_T Y_m(Nspec)
 C debugging FIXME
+      REAL_T conc(Nspec)
+      REAL_T diff
       integer HtoTiterMAX,Niter,FORT_TfromHYpt
       parameter (HtoTiterMAX = 20)
       REAL_T HtoTerrMax,Temp
@@ -732,7 +738,7 @@ C debugging FIXME
 
 
 C     Variables in Z are:  Z(1)   = T
-C                          Z(K+1) = Y(K)
+C                          Z(K+1) = rho*Y(K)
 
 C      write(*,*)'inside conpFY'
 C compute rho from species
@@ -775,11 +781,21 @@ C      write(*,*)'Cpmix = ',CPB
 
 C calculate molar concentrations from mass fractions; result in RPAR(NC)
 C units = mol/cm^3
-      CALL CKYTCP(RPAR(NP), Z(1), Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+C      CALL CKYTCP(RPAR(NP), Z(1), Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
 C      CALL CKYTCP(RPAR(NP), Temp, Y_m, IPAR(ckbi), RPAR(ckbr), RPAR(NC))
 C      do n = 0,Nspec
 C         write(*,*)'Conc = ',RPAR(NC+n)
 C      enddo
+
+      do K = 1, Nspec
+         WT   = RPAR(NWT   + K - 1)
+         RPAR(NC + K-1) = 1.d-3 * Z(K+1)/WT
+c         conc(K) = 1.d-3 * Z(K+1)/WT
+C         diff = conc(K) - RPAR(NC + K-1)
+C         if (abs(diff) .ge. 1.d-9) then 
+C            write(*,*)'Spec ',k,': conc diff = ', diff
+C         endif
+      enddo
 
 C doesn't seem to matter which one of these i use
 c calc molar conc from mass frac using RHO, instead of PW/RT
@@ -832,7 +848,7 @@ C convert to SI units = m^2/s^2
 C convert from mol/cm^3/s to kmol/m^3/s
          WDOT = RPAR(NWDOT + K - 1) * THFAC * 1.d3
 C debugging FIXME!!!
-         WDOT = 0.d0
+C         WDOT = 0.d0
          WT   = RPAR(NWT   + K - 1)
 c c_0, c_1 are in common /sdc/ in cdwrk.H
          ZP(K+1) = WDOT * WT + c_0(K) + c_1(K)*TIME
