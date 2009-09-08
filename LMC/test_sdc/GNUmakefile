@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.5 2009-06-23 20:40:40 gilet Exp $
+# $Id: GNUmakefile,v 1.6 2009-09-08 21:05:25 gilet Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -8,6 +8,7 @@ PMFdir        = ../PMFfiles
 # User-settable variables.
 #  MUST use all caps here
 PRECISION         = DOUBLE
+DEBUG	          = TRUE
 DEBUG	          = FALSE
 PROFILE           = TRUE
 PROFILE           = FALSE

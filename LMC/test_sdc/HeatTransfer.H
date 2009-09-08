@@ -305,7 +305,8 @@ public:
 		    MultiFab& mf_old,
 		    int& Acomp,
 		    int& Dcomp,
-		    int& NULNcomp);
+		    int& NULNcomp,
+		    int& Fcomp);
 
   void make_I_AD ();
 

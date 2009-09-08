@@ -933,7 +933,7 @@ c
                   yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
                endif
                
-               if (j .eq. 0) write(*,*)"init::",j,ylo,yhi
+C               if (j .eq. 0) write(*,*)"init::",j,ylo,yhi
                call pmf(ylo*100,yhi*100,pmf_vals,n)
                if (n.ne.Nspec+3) then
                   print *,'PMF file thinks n=',n

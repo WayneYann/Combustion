@@ -370,15 +370,17 @@ extern "C" {
 			   const int* ncompD,
 			   const Real* NULN, ARLIM_P(NULNlo), ARLIM_P(NULNhi),
 			   const int* ncompNULN,
+			   const Real* bodyForce, ARLIM_P(BFlo), ARLIM_P(BFhi),
 			   Real* FuncCount, ARLIM_P(FuncCountlo), 
 			   ARLIM_P(FuncCounthi),const Real* p, const Real* dt, 
 			   Real* diag, const int* do_diag, 
 			   void (*sdc_func)(Real* Adv, Real* Diffn, 
-					    Real* NULN, Real* dt));
+					    Real* NULN, Real* bForce,
+					    Real* dt));
 
-  void Lob_provis(Real* Adv, Real* Diffn, Real* NULN, Real* dt);
+  void Lob_provis(Real* Adv, Real* Diffn, Real* NULN, Real* bForce, Real* dt);
 
-  void Lob_sdc(Real* Adv, Real* Diffn, Real* NULN, Real* dt);
+  void Lob_sdc(Real* Adv, Real* Diffn, Real* NULN, Real* bForce, Real* dt);
 
 
     void FORT_CHEMEQ(const int* lo, const int* hi,

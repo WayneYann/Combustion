@@ -683,11 +683,11 @@ C     Variables in Z are:  Z(1)   = T
 C                          Z(K+1) = Y(K)
       
 C calculate molar concentrations from mass fractions; result in RPAR(NC)
-      CALL CKYTCP(RPAR(NP), Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
-C      do K = 1, Nspec
-C         WT   = RPAR(NWT + K - 1)
-C         RPAR(NC + K-1) = 1.d-3 * Z(K+1)*RHO/WT
-C      enddo
+C      CALL CKYTCP(RPAR(NP), Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+      do K = 1, Nspec
+         WT   = RPAR(NWT + K - 1)
+         RPAR(NC + K-1) = 1.d-3 * Z(K+1)*RHO/WT
+      enddo
 
 #define MAKE_C_POS
 #undef MAKE_C_POS
@@ -705,6 +705,8 @@ C
       THFAC = one / thickFacCH
       DO K = 1, Nspec
          WDOT = RPAR(NWDOT + K - 1) * THFAC
+C debugging FIXME!!
+         WDOT = 0.d0
          WT   = RPAR(NWT   + K - 1)
 C convert rho to cgs
          ZP(K+1) = WDOT * WT / (RHO * 1.d-3)
@@ -752,21 +754,26 @@ C      CALL CKRHOY(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO_CGS)
 C      write(*,*)'rho = ',RHO
 C      RHO_MKS = RHO_CGS * 1.d3
 
+      SUM = 0.d0
       DO K = 1, Nspec
          Y_m(K) = Z(K+1)/RHO_MKS
+         SUM = SUM + Y_m(K)
 C      write(*,*)'Y_m = ',Y_m(K)
       end do
-C      write(*,*)
+      if (SUM .ge. 1.0000001 .OR. SUM .le. 0.9999999) then
+         write(*,*) 'WARNING:: Sum(Y_m) != 1'
+      endif
 
 C convert from MKS to CGS for CK fns
       RHO_CGS = RHO_MKS*1.d-3
 
 C Debugging FIXME
-C      Temp = Z(1)
-C      H = Z(Nspec+2)/RHO_MKS
+      Temp = Z(1)
+      H = Z(Nspec+2)/RHO_MKS
 C CEG:: i don't think this is neccessary
 C      H = H*BL_REAL_E(1.0,-4)
-C      Niter = FORT_TfromHYpt(Temp,H,Y_m,HtoTerrMax,HtoTiterMAX,res)
+      Niter = FORT_TfromHYpt(Temp,H,Y_m,HtoTerrMax,HtoTiterMAX,res)
+      Z(1) = Temp
 C$$$      write(11,*)'Temp = ',Z(1)
 C$$$      write(11,*)'rhoH = ',Z(Nspec+2)
 C$$$      write(11,*)'Temp from H = ',Temp
@@ -848,7 +855,7 @@ C convert to SI units = m^2/s^2
 C convert from mol/cm^3/s to kmol/m^3/s
          WDOT = RPAR(NWDOT + K - 1) * THFAC * 1.d3
 C debugging FIXME!!!
-C         WDOT = 0.d0
+         WDOT = 0.d0
          WT   = RPAR(NWT   + K - 1)
 c c_0, c_1 are in common /sdc/ in cdwrk.H
          ZP(K+1) = WDOT * WT + c_0(K) + c_1(K)*TIME
@@ -868,7 +875,9 @@ C$$$      write(10,*)'time = ',TIME
 C$$$      write(10,*) 
 C  make Temp_t
 C convert CPB to MKS
-      ZP(1) = (ZP(Nspec+2) - SUM) / (RHO_MKS*CPB*1.d-4)
+C      ZP(1) = (ZP(Nspec+2) - SUM) / (RHO_MKS*CPB*1.d-4)
+C Debugging FIXME
+      ZP(1) = 0.d0
 
 c      do n = 1,Nspec+2
 c         write(*,*)'ZP = ', ZP(n)
@@ -908,13 +917,14 @@ C diffusion--rxns part added in conpFY.
 C solving
 C    S_t = Adv + Diff + Rxn
 C  
-      subroutine Lob_provis(Adv,Diffn,NULN,dt)
+      subroutine Lob_provis(Adv,Diffn,NULN,bForce,dt)
       implicit none
 #include "cdwrk.H"
 
       REAL_T,  intent(in   ) :: Adv(0:)
       REAL_T,  intent(in   ) :: Diffn(0:)
       REAL_T,  intent(in   ) :: NULN(0:)
+      REAL_T,  intent(in   ) :: bForce(0:)
       REAL_T,  intent(in   ) :: dt
 
 
@@ -932,6 +942,7 @@ C     rhoH_t1, rhoH_t2 ,...
 C     make for species
       do n = 0, Nspec-1
          c_0(n+1) = -Adv(n) + Diffn(n+Nspec)
+C + bForce(n)
 C      write(*,*)n,'Adv = ',Adv(n)
 C      write(*,*)n,'Diff = ',Diffn(n+Nspec)
          c_1(n+1) = 0.
@@ -955,13 +966,14 @@ C rxns part added in conpFY
 C solving
 C    S_t = A_new-A_old + D_new-D_old + I'_AD + Rxn
 C
-      subroutine Lob_sdc(Adv,Diffn,NULN,dt)
+      subroutine Lob_sdc(Adv,Diffn,NULN,bForce,dt)
       implicit none
 #include "cdwrk.H"
 
       REAL_T,  intent(in   ) :: Adv(0:)
       REAL_T,  intent(in   ) :: Diffn(0:)
       REAL_T,  intent(in   ) :: NULN(0:)
+      REAL_T,  intent(in   ) :: bForce(0:)
       REAL_T,  intent(in   ) :: dt
 
 
@@ -970,7 +982,8 @@ C
 
       do n = 0, Nspec-1
          c_0(n+1) = -Adv(n) + Diffn(n) + Diffn(n+Nspec) - 
-     &              Diffn(n+2*Nspec)  
+     &              Diffn(n+2*Nspec) 
+C+ bForce(n)  
          c_1(n+1) = (Diffn(n+2*Nspec) - Diffn(n))/dt
       end do
 C     make for RhoH 
@@ -2117,7 +2130,7 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       data verbose_vode / 0 /
       data max_vode_subcycles / 15000 /
       data spec_scalY / maxspec*one /
-      data thickFacCH / 1.d0 /
+      data thickFacCH / 1.0d0 /
       data nstiff / 1 /
 
       end

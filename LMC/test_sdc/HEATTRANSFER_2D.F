@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.4 2009-06-29 19:47:09 gilet Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.5 2009-09-08 21:05:25 gilet Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -3424,9 +3424,9 @@ c            write(*,*)'NULN2 =',NULN(i,j,2)
 c            write(*,*)'NULN3 =',NULN(i,j,3)
 c            call bl_abort();
 C  This is ~10^-6 when calculated
-C            IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
-C     &           + AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
-C     &           + NULN(i,j,2)
+            IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
+     &           + AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
+     &           + NULN(i,j,2)
 C     an extra minus sign included in NULN when made, correct here
 C     NULN here must match how treated in provisional solution
             enddo

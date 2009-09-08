@@ -564,6 +564,7 @@ C   get a box of data
      &     ncompD,
      &     NULN, DIMS(NULN),
      &     ncompNULN,
+     &     bodyForce, DIMS(bodyForce),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
      &     dt,
@@ -585,6 +586,7 @@ C   get a box of data
       integer DIMDEC(AofS)
       integer DIMDEC(DofS)
       integer DIMDEC(NULN)
+      integer DIMDEC(bodyForce)
       integer DIMDEC(FuncCount)
       integer do_diag
       integer ncompA, ncompD, ncompNULN
@@ -598,15 +600,17 @@ C   get a box of data
       REAL_T AofS(DIMV(AofS),*)
       REAL_T DofS(DIMV(DofS),*)
       REAL_T NULN(DIMV(NULN),*)
+      REAL_T bodyForce(DIMV(bodyForce),*)
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
    
       interface
-        subroutine sdc_func(Adv,Diffn,NULN,dt)
+        subroutine sdc_func(Adv,Diffn,NULN,bForce,dt)
           REAL_T,  intent(in   ) :: Adv(0:)
           REAL_T,  intent(in   ) :: Diffn(0:)
           REAL_T,  intent(in   ) :: NULN(0:)
+          REAL_T,  intent(in   ) :: bForce(0:)
           REAL_T,  intent(in   ) :: dt
         end subroutine sdc_func
       end interface
@@ -616,9 +620,9 @@ C   get a box of data
 C      REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T RTOL, ATOL(maxspec+2), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
+      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
 C CEG:: trying lower TOL
-      parameter (RTOL=1.0E-14, ATOLEPS=1.0E-14)
+C      parameter (RTOL=1.0E-14, ATOLEPS=1.0E-14)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external conpFY_sdc, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
@@ -745,10 +749,14 @@ c                  write(*,*)'Y_m = ',Y_m(n)
 C not used for sdc
 C compute hmix and store in RWRK(NHMIX)
 C               CALL CKHBMS(RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),
-c     &              RWRK(NHMIX))      
+c     &              RWRK(NHMIX)) 
+C               do n = 1,Nspec
+C                  write(*,*)bodyForce(i,j,n)
+C               enddo
+C               call bl_abort('')               
 C Put SDC additions in area accessible by conpFY
                call sdc_func(AofS(i,j,:ncompA),DofS(i,j,:ncompD),
-     &              NULN(i,j,:ncompNULN),dt)
+     &              NULN(i,j,:ncompNULN),bodyForce(i,j,:Nspec),dt)
 
 C$$$            if(i .eq. 1 .and. j .eq.25) then
 C$$$               write(*,*)'Inside ChemDriver'
@@ -795,7 +803,8 @@ c            print *, "JACOB",sum,newJ_triggered
 C CEG do_diag!=1
                if (do_diag.eq.1) then
                   FuncCount(i,j) = 0
-C converts Y (mass frac) to concentration.  
+C converts Y (mass frac) to concentration.
+C fixme? could get conc in a more direct way  
                   CALL CKYTCP(RWRK(NP),RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),Ct)
 C CEG:: is this meaningful anymore???
 C "Returns the rate of progress for each reaction"

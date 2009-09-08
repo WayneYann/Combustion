@@ -619,7 +619,7 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			       FArrayBox&        AofS,
 			       FArrayBox&        DofS,
 			       FArrayBox&        RhoH_NULN,
-			       FArrayBox&        tforces,
+			       FArrayBox&        bodyForce,
 			       FArrayBox&        FuncCount,
 			       const Box&        box,
 			       int               sCompRho,
@@ -640,10 +640,11 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 
     const int do_diag  = (chemDiag!=0);
     Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
-    //FIXME    
+    //FIXME:: thia doesn't work in all cases 
     const int ncompA = AofS.nComp();
     const int ncompD = DofS.nComp();
     const int ncompNULN = RhoH_NULN.nComp();
+    //Assume ncompF = nspecies
 
 //     std::cout<<"nCompA = "<<ncompA<<std::endl;
 //     std::cout<<"nCompD = "<<ncompD<<std::endl;
@@ -679,6 +680,8 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			  RhoH_NULN.dataPtr(sCompNULN), ARLIM(RhoH_NULN.loVect()), 
 			                       ARLIM(RhoH_NULN.hiVect()),
 			  &ncompNULN,
+			  bodyForce.dataPtr(sCompF), ARLIM(bodyForce.loVect()), 
+			                             ARLIM(bodyForce.hiVect()),
 			  FuncCount.dataPtr(), ARLIM(FuncCount.loVect()),  
                                                ARLIM(FuncCount.hiVect()),
 			  &Patm, &dt, diagData, &do_diag, Lob_provis);
@@ -708,6 +711,8 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			  RhoH_NULN.dataPtr(sCompNULN), ARLIM(RhoH_NULN.loVect()), 
 			                       ARLIM(RhoH_NULN.hiVect()),
 			  &ncompNULN,
+			  bodyForce.dataPtr(sCompF), ARLIM(bodyForce.loVect()), 
+			                             ARLIM(bodyForce.hiVect()),
 			  FuncCount.dataPtr(), ARLIM(FuncCount.loVect()),  
                                                ARLIM(FuncCount.hiVect()),
 			  &Patm, &dt, diagData, &do_diag, Lob_sdc);
