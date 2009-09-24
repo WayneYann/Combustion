@@ -213,7 +213,8 @@ public:
 
 
   void differential_spec_diffusion_update_sdc (Real dt,
-					       int  corrector);
+					       int  corrector,
+					       bool save_diffsn = false);
     void getForce_sdc (int  scomp,
 		       int  ncomp,
 		       int  ngrow);
@@ -228,7 +229,8 @@ public:
 				       int                    dataComp,
 				       const MultiFab*        delta_rhs, 
 				       const MultiFab*        alpha, 
-				       const MultiFab* const* betanp1);
+				       const MultiFab* const* betanp1,
+				       bool            save_diffsn = false);
     
     virtual void scalar_diffusion_update (Real dt,
                                           int  first_scalar, 
@@ -323,7 +325,8 @@ public:
   void rhoh_advection_sdc (Real dt,
 			   bool do_adv_reflux);
 
-  void rhoh_diffusion_update_sdc (Real dt);
+  void rhoh_diffusion_update_sdc (Real dt,
+				  bool save_diffsn = false);
 
   //CEG:: not currently using this
   void compute_rhoh_NULN_terms(Real time,

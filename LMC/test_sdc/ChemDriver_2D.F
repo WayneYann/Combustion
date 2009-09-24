@@ -100,9 +100,12 @@
       Pdyne = Patm * P1atm
       scale = million
 
+#undef DO_JBB_HACK
 #define DO_JBB_HACK
 #define TRIGGER_NEW_J
+#undef TRIGGER_NEW_J
 #undef ALWAYS_NEW_J
+#define ALWAYS_NEW_J
 #undef SOLN_IS_1D
       
       do j=lo(2),hi(2)
@@ -620,9 +623,9 @@ C   get a box of data
 C      REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T RTOL, ATOL(maxspec+2), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
+C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
 C CEG:: trying lower TOL
-C      parameter (RTOL=1.0E-14, ATOLEPS=1.0E-14)
+      parameter (RTOL=1.0E-14, ATOLEPS=1.0E-14)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external conpFY_sdc, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
@@ -646,6 +649,19 @@ C      parameter (RTOL=1.0E-14, ATOLEPS=1.0E-14)
 
       integer, save :: count = 0 
 
+C Debugging FIXME
+      REAL_T, save :: time_dbg = 0 
+      logical update_time
+      integer xi, yi, ymax, ymin, unit, sdc_iter
+      character(len=128) :: fname
+      xi = 3
+      yi = 157
+C 128
+      ymin = 0
+      ymax = 256
+      sdc_iter = 3
+      update_time = .false.
+
       count = count + 1
 
 c     Set IOPT=1 parameter settings for VODE
@@ -655,7 +671,7 @@ c     Set IOPT=1 parameter settings for VODE
       IWRK(dvbi+4) = 0
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
-      
+  
 
 #if defined(MOLAR_CONC)
       call bl_abort("sdc is not yet set up to do molar_conc")
@@ -663,6 +679,26 @@ c     Set IOPT=1 parameter settings for VODE
 
       if (do_diag.eq.1) then
          nsubchem = nchemdiag
+
+C debugging FIXME
+1000  FORMAT(E20.12,2X,$) 
+         open(100, FILE='rxns_ij', ACCESS='APPEND')
+         if(count .eq. 1) then
+            write(100,*)'# following point ',xi,yi
+            write(100,*)'# time   rhoH   H2   H   etc.'
+         endif
+
+         open(10, FILE='rxns_0', ACCESS='append')
+         write(10,*)'# i = ',xi,' data at beginning of rxns'
+         write(10,*) '# j   rhoH   H2   H   etc.'    
+
+         do unit = 1,nsubchem
+            write(fname,'(a,i1)') 'rxns_',unit
+            open(10+unit, FILE= fname, ACCESS='append')
+            write(10+unit,*)'# i = ',xi,' data'
+            write(10+unit,*) '# j   rhoH   H2   H   etc.'    
+         enddo
+cccc debug
       endif
 
 C sets RU to the universal gas const R, RUC = 1.987, P1atm = standard P in 
@@ -680,6 +716,9 @@ C use finite difference jacobian
       else
          MF = 10
       endif
+C debugging FIXME
+C      MF = 10
+
 
 c     Set up ATOL
       if (ITOL.eq.2) then
@@ -696,7 +735,6 @@ C     itol != 2
          do i=lo(1),hi(1)
             if(j.ge.0)then
 
-C               write(*,*)i,j
                TT1 = zero
                if (do_diag.eq.1) then
                   nsub = nsubchem
@@ -708,6 +746,7 @@ C               write(*,*)i,j
                ISTATE = 1
 
 #ifdef SOLN_IS_1D
+               call bl_abort('no checks of 1D SDC have been done yet')
                if (i.ne.lo(1))then
                   do n=1,Nspec
                      Ynew(i,j,n) = Ynew(lo(1),j,n)
@@ -715,8 +754,12 @@ C               write(*,*)i,j
                   Tnew(i,j) = Tnew(lo(1),j)
                else
 #endif
+C FIXME
                RWRK(NZ) = Told(i,j)
-               RWRK(NZ+Nspec+1) = Hold(i,j)
+C               RWRK(NTEMP) = Told(i,j)
+C               RWRK(NZ) = Hold(i,j)
+C FIXME
+C               RWRK(NZ+Nspec+1) = Hold(i,j)
                RWRK(NRHO)= Rho(i,j)             
 
 C CEG: doing JBB_HACK
@@ -748,8 +791,8 @@ c                  write(*,*)'Y_m = ',Y_m(n)
 
 C not used for sdc
 C compute hmix and store in RWRK(NHMIX)
-C               CALL CKHBMS(RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),
-c     &              RWRK(NHMIX)) 
+               CALL CKHBMS(RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),
+     &              RWRK(NHMIX)) 
 C               do n = 1,Nspec
 C                  write(*,*)bodyForce(i,j,n)
 C               enddo
@@ -803,14 +846,19 @@ c            print *, "JACOB",sum,newJ_triggered
 C CEG do_diag!=1
                if (do_diag.eq.1) then
                   FuncCount(i,j) = 0
+C FIXME?? the original code won't work with SDC 
 C converts Y (mass frac) to concentration.
 C fixme? could get conc in a more direct way  
-                  CALL CKYTCP(RWRK(NP),RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),Ct)
+C                  CALL CKYTCP(RWRK(NP),RWRK(NZ),Y_m,IWRK(ckbi),RWRK(ckbr),Ct)
 C CEG:: is this meaningful anymore???
 C "Returns the rate of progress for each reaction"
-                  CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+C                  CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+C                  do n=1,Nreac
+C                     diag(i,j,n) = diag(i,j,n)+half*dtloc*Qt(n)*million
+C                  enddo
+
                   do n=1,Nreac
-                     diag(i,j,n) = diag(i,j,n)+half*dtloc*Qt(n)*million
+                     diag(i,j,n) = RWRK(NZ+n)
                   enddo
                endif
 
@@ -824,14 +872,57 @@ C "Returns the rate of progress for each reaction"
                   TT1save = TT1
                   TT2 = TT1 + dtloc
 
+C debugging FIXME
+                  if (do_diag.eq.1) then
+                     if ((i .eq. xi) .AND. (j .eq. yi)) then
+                        write(100,1000)time_dbg
+                        write(100,1000)RWRK(NZ+Nspec+1)
+                        do n = 1,Nspec
+                           write(100,1000) RWRK(NZ+n)
+                        enddo
+                        write(100,*)
+                        time_dbg = time_dbg + dtloc
+                        update_time = .true.
+                     endif 
+                  endif
+ccccccccccccccccccc
+
+C debugging FIXME!!!!
+C$$$                 if ( j .eq. 132 .and. i .eq. 8) then
+C$$$                     write(*,*)'(i,j)',i,j
+C$$$                     write(*,*)'TT1, TT2, diff, dt'
+C$$$                     write(*,*)TT1, TT2, (TT2-TT1), dt
+C$$$                     write(*,*)'Temp', Told(i,j)
+C$$$                     write(*,*)'Rho', Rho(i,j)
+C$$$                     write(*,*)'rho*H, c_0, c_1'
+C$$$                     write(*,*) Hold(i,j), c_0(Nspec+1),c_1(Nspec+1)
+C$$$                     write(*,*)'Hold + dt*c_0 + c_1*(TT2^2-TT1^2)/2'
+C$$$                     write(*,*)(Hold(i,j)+(TT2-TT1)*c_0(Nspec+1)+
+C$$$     &                    c_1(Nspec+1)*(TT2*TT2-TT1*TT1)/2)
+C$$$                     write(*,*)
+C$$$                     write(*,*)'rho*Y, c_0, c_1'
+C$$$                     do n = 1,Nspec
+C$$$                        write(*,*)n, Yold(i,j,n),c_0(n),c_1(n)
+C$$$                     enddo
+C$$$                     write(*,*)'yold + dt*c_0 + c_1*(TT2^2-TT1^2)/2'
+C$$$                     do n = 1,Nspec
+C$$$                        write(*,*)(Yold(i,j,n)+(TT2-TT1)*c_0(n)+
+C$$$     &                       c_1(n)*(TT2*TT2-TT1*TT1)/2)
+
+C$$$                     enddo
+
+C$$$C                     call bl_abort('debugging');
+C$$$                  endif
+
+C                  call CG_VODE(TT1, TT2, RWRK(NZ), RWRK, IWRK)
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                   CALL SVODE
 #else
                   CALL DVODE
 #endif
-     &              (conpFY_sdc, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
-     &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &              dvi, dummy, MF, RWRK, IWRK)
+     &              (conpFY_sdc, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, 
+     &              ATOL, ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, 
+     &              IWRK(dvbi), dvi, dummy, MF, RWRK, IWRK)
 
 c                  write(11,*)
 C                  write(11,*)
@@ -849,7 +940,6 @@ C$$$                     write(*,*)'RWRK(NZ+Nspec) = ',RWRK(NZ+Nspec)
 C$$$                     write(*,*)'RWRK(NZ+Nspec+2) = ',RWRK(NZ+Nspec+2)
 c                    if (count > 16) call bl_abort("here!");
 c                  endif
-
 c
 c   If the step was bad, and we reused an old Jacobian, try again from scratch.
 c               
@@ -865,13 +955,21 @@ c
      &                       bad_soln = .TRUE.             
                      end do
                      if (bad_soln .EQV. .TRUE.) then
+
+                        write(*,*)'********************************'
+                        write(*,*)' New J triggered'
+                        write(*,*)'********************************'
+                        call bl_abort("new j triggered")
+
                         TT1 = TT1SAVE
                         FIRST = .TRUE.
+C FIXME::is this the right thing to do when we have substeps???
                         RWRK(NZ) = Told(i,j)
                         do n=1,Nspec
                            RWRK(NZ+n) = Ytemp(n)
                         end do
-                        RWRK(NZ+Nspec+1) = Hold(i,j)
+C FIXME::is this the right thing to do when we have substeps???
+C                        RWRK(NZ+Nspec+1) = Hold(i,j)
 
                         ISTATE = 1
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
@@ -885,9 +983,45 @@ c
                      endif
                   endif
 #endif
+
                   TT1 = TT2
 
                   if (do_diag.eq.1) then
+                     if (node .eq. nchemdiag) then
+                        do n=1,Nreac
+                           diag(i,j,n) = RWRK(NZ+n) - diag(i,j,n)
+                        enddo
+                     endif
+C debugging FIXME
+                  if ((i .eq. xi) .AND. (j .eq. yi) .AND. 
+     &                    node .eq. nchemdiag) then
+                     write(100,1000)time_dbg
+                     write(100,1000)RWRK(NZ+Nspec+1)
+                     do n = 1,Nspec
+                        write(100,1000) RWRK(NZ+n)
+                     enddo
+                     write(100,*)
+                  endif 
+
+                  if ((i .eq. xi) .AND. j >= ymin .AND. j <= ymax) then
+                     write(10+node,'(I6,$)') j
+                     write(10+node,1000)RWRK(NZ+Nspec+1)
+                     do n = 1, Nspec
+                        write(10+node,1000) RWRK(NZ+n)
+                     enddo
+                     write(10+node,*)
+                     if (node .eq. 1) then
+                        write(10,'(I6,$)') j
+C old and new were passed in as pointers to the same thing
+C  this works because neither Y nor H has been updated yet
+                        write(10,1000)Hold(i,j)
+                        do n = 1, Nspec
+                           write(10,1000)Yold(xi,j,n)
+                        enddo
+                        write(10,*)
+                     endif
+                  endif
+ccccccc
                      Rho(i,j) = 0.
                      do n = 1, Nspec
                         Rho(i,j) = Rho(i,j) + RWRK(NZ+n)
@@ -949,8 +1083,12 @@ c
                end if
             enddo
 
+C FIXME
             Tnew(i,j) = RWRK(NZ)
-            Hnew(i,j) = RWRK(NZ+Nspec+1)
+C            Hnew(i,j) = RWRK(NZ)
+
+C debugging FIXME
+C            Hnew(i,j) = RWRK(NZ+Nspec+1)
 
             Rho(i,j) = 0.
             do n = 1, Nspec
@@ -977,6 +1115,17 @@ c
       endif
       end do
       end do
+
+C debugging FIXME
+      if (do_diag.eq.1) then
+         if (MODULO(count,sdc_iter).ne.0 .and. update_time.eq..true.) 
+     &        time_dbg = time_dbg-dt
+         close(100)
+         do n = 0, nchemdiag
+            close(10+n)
+         enddo
+      endif
+CCCc  
       return
     
       contains
@@ -1044,6 +1193,20 @@ c
       SAVE   /VHACK/
       REAL_T scale
 
+C Debugging FIXME
+      integer, save :: count = 0 
+      REAL_T, save :: time_dbg = 0 
+
+      integer xi, yi, ymax, ymin, unit
+      character(len=128) :: fname
+      xi = 6
+      yi = 0
+      ymin = 0
+      ymax = 255
+
+      count = count + 1
+ccccccccc
+
 c     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
@@ -1061,6 +1224,26 @@ c     Set IOPT=1 parameter settings for VODE
 
       if (do_diag.eq.1) then
          nsubchem = nchemdiag
+C debugging FIXME
+1000  FORMAT(E20.12,2X,$) 
+         open(100, FILE='rxns_ij', ACCESS='APPEND')
+         if(count .eq. 1) then
+            write(100,*)'# following point ',xi,yi
+            write(100,*)'# time   H2   H   etc.'
+         endif
+
+         open(10, FILE='rxns_0', ACCESS='append')
+         write(10,*)'# i = ',xi,' data at beginning of rxns'
+         write(10,*) '# j   H2   H   etc.'    
+
+         do unit = 1,nsubchem
+            write(fname,'(a,i1)') 'rxns_',unit
+            open(10+unit, FILE= fname, ACCESS='append')
+            write(10+unit,*)'# i = ',xi,' data'
+            write(10+unit,*) '# j   H2   H   etc.'    
+         enddo
+cccc debug
+
       endif
 c
 c     Set molecular weights and pressure in area accessible by conpF
@@ -1213,6 +1396,18 @@ C CEG: what is this about?
                   
                   TT1save = TT1
                   TT2 = TT1 + dtloc
+C debugging FIXME
+                  if (do_diag.eq.1) then
+                     if ((i .eq. xi) .AND. (j .eq. yi)) then
+                        write(100,1000)time_dbg
+                        do n = 1,Nspec
+                           write(100,1000) RWRK(NZ+n)
+                        enddo
+                        write(100,*)
+                        time_dbg = time_dbg + dtloc
+                     endif 
+                  endif
+ccccccccccccccccccc
 
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                   CALL SVODE
@@ -1264,6 +1459,32 @@ c
                   TT1 = TT2
 
                   if (do_diag.eq.1) then
+C debugging FIXME
+                  if ((i .eq. xi) .AND. (j .eq. yi) .AND. 
+     &                    node .eq. nchemdiag) then
+                     write(100,1000)time_dbg
+                     do n = 1,Nspec
+                        write(100,1000) RWRK(NZ+n)
+                     enddo
+                     write(100,*)
+                  endif 
+
+                  if ((i .eq. xi) .AND. j >= ymin .AND. j <= ymax) then
+                     write(10+node,'(I6,$)') j
+                     do n = 1, Nspec
+                        write(10+node,1000) RWRK(NZ+n)
+                     enddo
+                     write(10+node,*)
+                     if (node .eq. 1) then
+                        write(10,'(I6,$)') j
+                        do n = 1, Nspec
+                           write(10,1000)Yold(xi,j,n)
+                        enddo
+                        write(10,*)
+                     endif
+                  endif
+ccccccc
+
                      CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
                      CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                      do n=1,Nreac
@@ -1344,6 +1565,14 @@ c
       endif
       end do
       end do
+C debugging FIXME
+      if (do_diag) then
+         close(100)
+         do n = 0, nchemdiag
+            close(10+n)
+         enddo
+      endif
+CCCc
       return
       end
 #else

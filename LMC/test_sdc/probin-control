@@ -17,19 +17,20 @@
   vorterr = 1.e3
   vorterr = 100
   y_offset = -0.002
-  y_offset = -0.028	 	 
+  y_offset = -0.028	 
+  y_offset = -0.0285	 	 
   y_offset = -0.01	 
-  y_offset = -0.0225	 
-  y_offset = -0.022	 
+  y_offset = -0.022
+  y_offset = -0.027	 	 
   y_offset = -0.023
-  y_offset = -0.027	 
-  y_offset = -0.0285	 
+  y_offset = -0.025
+  y_offset = -0.0225	 
   flametracval = 1.e-6
   V_in = .1527
   nchemdiag = 5
   phi_in = .37
-  pertmag = .000
   pertmag = .0001
+  pertmag = .000
   turb_scale = 1.0	  
  /
  &heattransin

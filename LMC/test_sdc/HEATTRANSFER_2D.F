@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.5 2009-09-08 21:05:25 gilet Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.6 2009-09-24 21:40:14 gilet Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -3424,9 +3424,9 @@ c            write(*,*)'NULN2 =',NULN(i,j,2)
 c            write(*,*)'NULN3 =',NULN(i,j,3)
 c            call bl_abort();
 C  This is ~10^-6 when calculated
-            IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
-     &           + AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
-     &           + NULN(i,j,2)
+C            IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
+C     &           + AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
+C     &           + NULN(i,j,2)
 C     an extra minus sign included in NULN when made, correct here
 C     NULN here must match how treated in provisional solution
             enddo
@@ -3465,10 +3465,10 @@ C     NULN here must match how treated in provisional solution
      &              + AofS(i,j,n) - DofS(i,j,n+nspec) 
      &              - (DofS(i,j,n)-DofS(i,j,n+nspec*2))/2
             enddo
-            IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
-     &           + AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
-     &           - (DofS(i,j,nD*nspec+1)-DofS(i,j,nD*nspec+3))/2
-     &           + NULN(i,j,2) + (NULN(i,j,1)-NULN(i,j,3))/2
+C            IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
+C     &           + AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 
+C     &           - (DofS(i,j,nD*nspec+1)-DofS(i,j,nD*nspec+3))/2
+C     &           + NULN(i,j,2) + (NULN(i,j,1)-NULN(i,j,3))/2
             enddo
          enddo
       end

@@ -145,8 +145,10 @@ c
 c     Set pointers in conp common blocks (used in conpF evaluations)
 c
       CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
-C      NEQ   = Nspec + 1
-      NEQ   = Nspec + 2
+      NEQ   = Nspec + 1
+C Debugging FIXME
+C integrate rhoH too, as a check
+C      NEQ   = Nspec + 2
       NP    = dvdbr
       NRHO  = NP    + 1
       NTEMP = NRHO  + 1
@@ -180,68 +182,68 @@ c
       end
 
 C  CEG:: not currently using.  modified interpchem()
-      subroutine FORT_INTERPCHEM_SDC()
-      implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      logical error
-      integer ioproc, myid, ierr, n, RTOT, lout, namlen, i
-      integer FORT_GETCKSPECNAME
-      parameter (ioproc = 0)
-      character*(maxspnml) name
-      integer coded(maxspnml)
+C$$$      subroutine FORT_INTERPCHEM_SDC()
+C$$$      implicit none
+C$$$#include "cdwrk.H"
+C$$$#include "conp.H"
+C$$$      logical error
+C$$$      integer ioproc, myid, ierr, n, RTOT, lout, namlen, i
+C$$$      integer FORT_GETCKSPECNAME
+C$$$      parameter (ioproc = 0)
+C$$$      character*(maxspnml) name
+C$$$      integer coded(maxspnml)
 
-      call BL_PD_MYPROC(myid)
+C$$$      call BL_PD_MYPROC(myid)
       
-      if (myid .eq. ioproc) then
-c
-c        Suck in mc linking file, spit out EG linking file.
-c
-         call CNVTTR (LLINKMC)
-      endif
+C$$$      if (myid .eq. ioproc) then
+C$$$c
+C$$$c        Suck in mc linking file, spit out EG linking file.
+C$$$c
+C$$$         call CNVTTR (LLINKMC)
+C$$$      endif
       
-      call BL_PD_BARRIER()
+C$$$      call BL_PD_BARRIER()
       
-      lout = 6
-      call EGINI(eg_nodes, lout, eg_IFLAG, eg_ITLS,
-     &     RWRK(egbr), egr, IWRK(egbi), egi)
-c      
-c     Set pointers in conp common blocks (used in conpF evaluations)
-c
-      CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
-c evolving enthalpy, species and temp (for VODEto get stiffness right)
-      NEQ   = Nspec + 2
-      NP    = dvdbr
-      NRHO  = NP    + 1
-      NTEMP = NRHO  + 1
-      NHMIX = NTEMP + 1
-      NWT   = NHMIX + 1
-      NC    = NWT   + Nspec
-      NH    = NC    + Nspec
-      NCPK  = NH    + Nspec
-      NWDOT = NCPK  + Nspec
-      NZ    = NWDOT + NEQ
-      RTOT  = NZ  + NEQ - 1
-      if (RTOT .GT. dvder) then
-         write(6,*) 'Memory layout bust, dvdr not big enough'
-         write(6,*) RTOT, dvder
-         call bl_abort(" ")
-      end if
-c
-c     Set molecular weights in RWRK
-c
-      CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
-c
-c     Find N2 in the list.
-c
-      iN2 = -1
-      do n = 1,Nspec
-         call get_spec_name(name,n)
-         if (name .eq. 'N2' ) iN2 = n
-      end do
-      if (iN2.eq.-1)
-     &     write(6,*) '.....warning: no N2 in chemistry species list'
-      end
+C$$$      lout = 6
+C$$$      call EGINI(eg_nodes, lout, eg_IFLAG, eg_ITLS,
+C$$$     &     RWRK(egbr), egr, IWRK(egbi), egi)
+C$$$c      
+C$$$c     Set pointers in conp common blocks (used in conpF evaluations)
+C$$$c
+C$$$      CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
+C$$$c evolving enthalpy, species and temp (for VODEto get stiffness right)
+C$$$      NEQ   = Nspec + 2
+C$$$      NP    = dvdbr
+C$$$      NRHO  = NP    + 1
+C$$$      NTEMP = NRHO  + 1
+C$$$      NHMIX = NTEMP + 1
+C$$$      NWT   = NHMIX + 1
+C$$$      NC    = NWT   + Nspec
+C$$$      NH    = NC    + Nspec
+C$$$      NCPK  = NH    + Nspec
+C$$$      NWDOT = NCPK  + Nspec
+C$$$      NZ    = NWDOT + NEQ
+C$$$      RTOT  = NZ  + NEQ - 1
+C$$$      if (RTOT .GT. dvder) then
+C$$$         write(6,*) 'Memory layout bust, dvdr not big enough'
+C$$$         write(6,*) RTOT, dvder
+C$$$         call bl_abort(" ")
+C$$$      end if
+
+C$$$C     Set molecular weights in RWRK
+
+C$$$      CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
+
+C$$$C     Find N2 in the list.
+
+C$$$      iN2 = -1
+C$$$      do n = 1,Nspec
+C$$$         call get_spec_name(name,n)
+C$$$         if (name .eq. 'N2' ) iN2 = n
+C$$$      end do
+C$$$      if (iN2.eq.-1)
+C$$$     &     write(6,*) '.....warning: no N2 in chemistry species list'
+C$$$      end
 
       subroutine CNVTTR (LINKMC)
       implicit none
@@ -686,16 +688,9 @@ C calculate molar concentrations from mass fractions; result in RPAR(NC)
 C      CALL CKYTCP(RPAR(NP), Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
       do K = 1, Nspec
          WT   = RPAR(NWT + K - 1)
+C         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)*RHO/WT), zero) 
          RPAR(NC + K-1) = 1.d-3 * Z(K+1)*RHO/WT
       enddo
-
-#define MAKE_C_POS
-#undef MAKE_C_POS
-#ifdef MAKE_C_POS
-      do k=1,Nspec
-         RPAR(NC-1+k) = MAX(RPAR(NC-1+k),zero)
-      end do 
-#endif
       
 C computes production rate for each species; result in RPAR(NWDOT)
       CALL CKWC(Z(1), RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
@@ -706,7 +701,7 @@ C
       DO K = 1, Nspec
          WDOT = RPAR(NWDOT + K - 1) * THFAC
 C debugging FIXME!!
-         WDOT = 0.d0
+C         WDOT = 0.d0
          WT   = RPAR(NWT   + K - 1)
 C convert rho to cgs
          ZP(K+1) = WDOT * WT / (RHO * 1.d-3)
@@ -741,6 +736,9 @@ C debugging FIXME
 
 C     Variables in Z are:  Z(1)   = T
 C                          Z(K+1) = rho*Y(K)
+C                         // Z(1) = rho*H
+C For debugging FIXME
+C                          Z(Nspec+2) = rho*H
 
 C      write(*,*)'inside conpFY'
 C compute rho from species
@@ -768,12 +766,15 @@ C convert from MKS to CGS for CK fns
       RHO_CGS = RHO_MKS*1.d-3
 
 C Debugging FIXME
-      Temp = Z(1)
-      H = Z(Nspec+2)/RHO_MKS
-C CEG:: i don't think this is neccessary
-C      H = H*BL_REAL_E(1.0,-4)
-      Niter = FORT_TfromHYpt(Temp,H,Y_m,HtoTerrMax,HtoTiterMAX,res)
-      Z(1) = Temp
+c      Temp = Z(1)
+C      H = Z(Nspec+2)/RHO_MKS
+C      H = Z(1)/RHO_MKS
+C need an initial guess for T
+C      Temp = RWRK(NTEMP)
+C CEG:: TfromHYpt assumes MKS units
+C      Niter = FORT_TfromHYpt(Temp,H,Y_m,HtoTerrMax,HtoTiterMAX,res)
+C      if (Niter .eq. -1) call bl_abort('H to Temp failed')
+c      Z(1) = Temp
 C$$$      write(11,*)'Temp = ',Z(1)
 C$$$      write(11,*)'rhoH = ',Z(Nspec+2)
 C$$$      write(11,*)'Temp from H = ',Temp
@@ -796,6 +797,7 @@ C      enddo
 
       do K = 1, Nspec
          WT   = RPAR(NWT   + K - 1)
+C         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)/WT),zero)
          RPAR(NC + K-1) = 1.d-3 * Z(K+1)/WT
 c         conc(K) = 1.d-3 * Z(K+1)/WT
 C         diff = conc(K) - RPAR(NC + K-1)
@@ -855,18 +857,17 @@ C convert to SI units = m^2/s^2
 C convert from mol/cm^3/s to kmol/m^3/s
          WDOT = RPAR(NWDOT + K - 1) * THFAC * 1.d3
 C debugging FIXME!!!
-         WDOT = 0.d0
+C         WDOT = 0.d0
          WT   = RPAR(NWT   + K - 1)
 c c_0, c_1 are in common /sdc/ in cdwrk.H
          ZP(K+1) = WDOT * WT + c_0(K) + c_1(K)*TIME
-C Debugging! FIXME
-C         ZP(K+1) = c_0(K) + c_1(K)*TIME
 
 C units = mol
          SUM = SUM + H * ZP(K+1)
       END DO
-C  make (rho*h)_t
-      ZP(Nspec+2) = c_0(Nspec+1) + c_1(Nspec+1)*TIME
+C  debugging FIXME:: make (rho*h)_t
+C      ZP(Nspec+2) = c_0(Nspec+1) + c_1(Nspec+1)*TIME
+C      ZP(1) = c_0(Nspec+1) + c_1(Nspec+1)*TIME
 C$$$      write(10,*)'rhoH = ',Z(Nspec+2)
 C$$$      write(10,*)'rhoH_t = ',ZP(Nspec+2)
 C$$$      write(10,*)'c0 = ',c_0(Nspec+1) 
@@ -876,8 +877,10 @@ C$$$      write(10,*)
 C  make Temp_t
 C convert CPB to MKS
 C      ZP(1) = (ZP(Nspec+2) - SUM) / (RHO_MKS*CPB*1.d-4)
+       ZP(1) = (c_0(Nspec+1) + c_1(Nspec+1)*TIME - SUM) / 
+     &         (RHO_MKS*CPB*1.d-4)
 C Debugging FIXME
-      ZP(1) = 0.d0
+C      ZP(1) = 0.d0
 
 c      do n = 1,Nspec+2
 c         write(*,*)'ZP = ', ZP(n)
@@ -901,6 +904,43 @@ c      call bl_abort();
 996   format(e30.22)
 #endif
 
+      END
+
+      subroutine CG_VODE(Tstart, Tend, Z, RPAR, IPAR)
+      implicit none
+#include "cdwrk.H"
+#include "conp.H"
+#include "visc.H"
+      REAL_T Tstart, Tend, Z(NEQ),Z2(NEQ), ZP1(NEQ),ZP2(NEQ), RPAR(*)
+      integer N, IPAR(*)
+      
+      REAL_T RHO_MKS, RHO_CGS, CPB, SUM, H, WDOT, WT, THFAC
+      integer K
+      REAL_T Y_m(Nspec)
+
+      REAL_T dt, TIME
+      REAL_T nStep
+      parameter (nStep = 100.0)
+      integer iter
+
+C     Variables in Z are:  Z(1)   = T
+C                          Z(K+1) = rho*Y(K)
+
+      TIME = Tstart
+      dt = (Tend - Tstart)/nStep
+      do iter = 1, nStep
+         call conpFY_sdc(N, TIME, Z, ZP1, RPAR, IPAR)         
+         
+         TIME = TIME + dt
+         do k = 1, Nspec+1
+            Z2(k) = Z(k) + dt*ZP1(k)
+         enddo
+         call conpFY_sdc(N, TIME, Z2, ZP2, RPAR, IPAR)         
+
+         do k = 1, Nspec+1
+            Z(k) = Z(k) + dt*(ZP1(k)+ZP2(k))/2.d0
+         enddo         
+      enddo
       END
 
 C*************************************

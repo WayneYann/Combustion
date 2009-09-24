@@ -66,7 +66,7 @@ contains
     
     ir(1,:) = 32
     dx(1,:) = 1.d0/32.d0 !1.d0/dble(ir(1,:))
-    dt(1)   = 6.4d-5
+    dt(1)   = 3.2d-5
 
     do n = 2, n_grids
        ir(n,:) = ir(n-1,:)/2.d0

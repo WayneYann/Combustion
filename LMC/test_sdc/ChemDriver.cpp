@@ -1,5 +1,4 @@
 #include <winstd.H>
-
 #include "ChemDriver.H"
 #include "ChemDriver_F.H"
 #include <ParallelDescriptor.H>
@@ -574,6 +573,8 @@ ChemDriver::decodeStringFromFortran(const int* coded,
 #include "iostream"
 //CEG FIXME
 #include "fstream"
+#include <string>
+#include <sstream>
 using std::cout;
 using std::endl;
 
@@ -645,6 +646,7 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
     const int ncompD = DofS.nComp();
     const int ncompNULN = RhoH_NULN.nComp();
     //Assume ncompF = nspecies
+
 
 //     std::cout<<"nCompA = "<<ncompA<<std::endl;
 //     std::cout<<"nCompD = "<<ncompD<<std::endl;
