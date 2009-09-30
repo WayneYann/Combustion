@@ -8534,7 +8534,7 @@ HeatTransfer::calc_divu (Real      time,
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calc_divu()");
 
     if(use_sdc){
-      std::cout<<"inside calc_divu"<<std::endl;
+      //      std::cout<<"inside calc_divu"<<std::endl;
       //
       // Get Mwmix, cpmix and pressure
       //
@@ -8754,7 +8754,7 @@ HeatTransfer::calc_divu (Real      time,
 		}
 
 	    }
-	  std::cout<<std::endl<<"count = "<<count<<std::endl;
+	  //	  std::cout<<std::endl<<"count = "<<count<<std::endl;
 	  count++;
 	  //	}
     }
@@ -10328,7 +10328,7 @@ HeatTransfer::advance_sdc (Real time,
 
       int sdc_flag = 0; //doing provisional solution 
       chem_sdc(S_new,dt,sdc_flag,0);
-      std::cout<<"after react"<<std::endl;
+      //      std::cout<<"after react"<<std::endl;
 
 //       S_new[0].getVal(data,Pt,0,NUM_STATE); 
 //       std::cout<<"Snew::"<<std::endl;
@@ -10361,7 +10361,7 @@ HeatTransfer::advance_sdc (Real time,
 	MultiFab::Divide(*ydot,S_new,Density,ispec,1,0);
       
     }
-    std::cout<<"done with chem"<<std::endl;
+    //    std::cout<<"done with chem"<<std::endl;
 
     if (sdc_iters == 0){
       do_diffsn_reflux = true;
@@ -10479,8 +10479,10 @@ HeatTransfer::advance_sdc (Real time,
 	//   have Le != 1; DO we really want to update the NULN terms here?
 	//   rhoH visc terms won't change unless pH changes
 	//   RhoH
-	//       compute_rhoh_NULN_terms(cur_time, dt, do_adv_reflux,
-	// 			      RhoH_NULN_terms[2]);
+// 	compute_rhoh_NULN_terms(cur_time, dt, do_adv_reflux,
+// 				RhoH_NULN_terms[2]);
+// Recomputing NULN terms doesn't seem to affect things much--no 
+//  qualitative difference in the results (w/ 2-step)
 	MultiFab::Copy(RhoH_NULN_terms[2],RhoH_NULN_terms[1],0,0,1,0);
       }
 
@@ -10721,9 +10723,8 @@ HeatTransfer::advance_sdc (Real time,
     }//end sdc_iters loop
  
     // Doing a final diffusion solve to smooth the solution a little
-    MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies,0);
+    scalar_advection_update(dt,first_spec, last_spec);
     MultiFab::Copy(*sdcForce,I_R[0],first_spec,first_spec,nspecies,0);
-    MultiFab::Subtract(*sdcForce,*aofs,first_spec,first_spec,nspecies,0);
     theta = 0.5;
     differential_spec_diffusion_update_sdc(dt,theta,corrector);
     // MultiFab::Copy(DofS[2],DofS[1],first_spec,first_spec,nspecies,0);
