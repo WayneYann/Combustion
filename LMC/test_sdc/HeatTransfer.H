@@ -213,6 +213,7 @@ public:
 
 
   void differential_spec_diffusion_update_sdc (Real dt,
+					       const Real species_diffusion_theta,
 					       int  corrector,
 					       bool save_diffsn = false);
     void getForce_sdc (int  scomp,

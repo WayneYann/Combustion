@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.7 2009-09-24 21:40:14 gilet Exp $
+# $Id: GNUmakefile,v 1.8 2009-09-30 00:24:34 gilet Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -22,8 +22,8 @@ HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = TRUE
 USE_FLCTS         = FALSE
-USE_MPI           = FALSE 
-#USE_MPI           = TRUE
+#USE_MPI           = FALSE 
+USE_MPI           = TRUE
 
 # This allows GetForce to call a Fortran routine
 #DEFINES += -DGENGETFORCE
@@ -51,10 +51,10 @@ REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=GRI30
-REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=GRI30HNO
 REACTION_MECHANISM=DRM19
-REACTION_MECHANISM=CHEMH
+REACTION_MECHANISM=CH4-2STEP
+#REACTION_MECHANISM=CHEMH
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  

@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.6 2009-09-24 21:40:14 gilet Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.7 2009-09-30 00:24:34 gilet Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -3464,6 +3464,14 @@ C     NULN here must match how treated in provisional solution
                IR(i,j,compY+n) = (snew(i,j,compY+n)-sold(i,j,compY+n))/dt
      &              + AofS(i,j,n) - DofS(i,j,n+nspec) 
      &              - (DofS(i,j,n)-DofS(i,j,n+nspec*2))/2
+
+C  Debugging -- CEG trying something new  FIXME
+C
+C$$$               IR(i,j,compY+n) = (snew(i,j,compY+n)-sold(i,j,compY+n))/dt
+C$$$     &              + AofS(i,j,n) - DofS(i,j,n+nspec) 
+C$$$     &              - DofS(i,j,n+nspec*2) 
+C$$$     &              - (DofS(i,j,n) + DofS(i,j,n+nspec*3))/2
+      
             enddo
 C            IR(i,j,compH+1) = (snew(i,j,compH+1)-sold(i,j,compH+1))/dt
 C     &           + AofS(i,j,nspec+1) - DofS(i,j,nD*nspec+2) 

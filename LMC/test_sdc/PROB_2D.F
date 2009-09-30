@@ -240,6 +240,7 @@ c
 
       character probin*(maxlen)
 
+      write(*,*)'here'
       call bl_pd_is_ioproc(isioproc)
 
       if (namlen .gt. maxlen) then

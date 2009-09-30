@@ -688,8 +688,8 @@ C calculate molar concentrations from mass fractions; result in RPAR(NC)
 C      CALL CKYTCP(RPAR(NP), Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
       do K = 1, Nspec
          WT   = RPAR(NWT + K - 1)
-C         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)*RHO/WT), zero) 
-         RPAR(NC + K-1) = 1.d-3 * Z(K+1)*RHO/WT
+         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)*RHO/WT), zero) 
+C         RPAR(NC + K-1) = 1.d-3 * Z(K+1)*RHO/WT
       enddo
       
 C computes production rate for each species; result in RPAR(NWDOT)
@@ -797,8 +797,8 @@ C      enddo
 
       do K = 1, Nspec
          WT   = RPAR(NWT   + K - 1)
-C         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)/WT),zero)
-         RPAR(NC + K-1) = 1.d-3 * Z(K+1)/WT
+         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)/WT),zero)
+C         RPAR(NC + K-1) = 1.d-3 * Z(K+1)/WT
 c         conc(K) = 1.d-3 * Z(K+1)/WT
 C         diff = conc(K) - RPAR(NC + K-1)
 C         if (abs(diff) .ge. 1.d-9) then 
@@ -969,6 +969,8 @@ C
 
 
       integer n
+C FIXME
+C      integer, parameter :: nD = 4      
       integer, parameter :: nD = 3      
 C     if here need to know nD explicitly.
 
@@ -1018,6 +1020,8 @@ C
 
 
       integer n
+C FIXME
+C      integer, parameter ::  nD = 4      
       integer, parameter ::  nD = 3      
 
       do n = 0, Nspec-1
@@ -1025,6 +1029,14 @@ C
      &              Diffn(n+2*Nspec) 
 C+ bForce(n)  
          c_1(n+1) = (Diffn(n+2*Nspec) - Diffn(n))/dt
+
+C
+C debugging  CEG:: trying something different FIXME!!!
+C
+C$$$         c_0(n+1) = -Adv(n) + Diffn(n) + Diffn(n+Nspec) - 
+C$$$     &              Diffn(n+2*Nspec) 
+C$$$C+ bForce(n)  
+C$$$         c_1(n+1) = (Diffn(n+3*Nspec) - Diffn(n))/dt
       end do
 C     make for RhoH 
       c_0(Nspec+1) = -Adv(Nspec) + Diffn(nD*Nspec) + Diffn(nD*Nspec+1) -

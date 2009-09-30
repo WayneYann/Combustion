@@ -2636,7 +2636,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
         geom.GetVolume(volume,grids,iGrid,GEOM_GROW);
 	FORT_RECOMP_UPDATE(box.loVect(), box.hiVect(),
 			   update.dataPtr(),
-			   ARLIM(update.loVect()),       ARLIM(update.hiVect()),
+			   ARLIM(update.loVect()), ARLIM(update.hiVect()),
 			   (*flux[0])[iGrid].dataPtr(),
                            ARLIM((*flux[0])[iGrid].loVect()),
                            ARLIM((*flux[0])[iGrid].hiVect()),
@@ -5071,7 +5071,6 @@ HeatTransfer::advance (Real time,
     }
 
     advance_setup(time,dt,iteration,ncycle);
-
 
     if (do_check_divudt)
         checkTimeStep(dt);
@@ -8540,6 +8539,7 @@ HeatTransfer::calc_divu (Real      time,
       // Get Mwmix, cpmix and pressure
       //
       const int nGrow = 0;
+      static int count = 0;
 
       int sCompR, sCompT, sCompY, sCompCp, sCompMw;
       sCompR=sCompT=sCompY=sCompCp=sCompMw=0;	
@@ -8615,6 +8615,8 @@ HeatTransfer::calc_divu (Real      time,
       //
       MultiFab visc_terms(grids,1,1);
       getViscTerms(visc_terms,Temp,1,time);
+//       VisMF::Write(visc_terms,"vt");
+
       MultiFab::Copy(divu,visc_terms,0,0,1,nGrow);
       for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
 	{
@@ -8631,7 +8633,16 @@ HeatTransfer::calc_divu (Real      time,
       delta_divu.setVal(0.0);
       
       const Array<Real> mwt = getChemSolve().speciesMolecWt();
-      getViscTerms(spec_visc_terms,first_spec,nspecies,time);
+//       if (count < num_divu_iters+1)
+	getViscTerms(spec_visc_terms,first_spec,nspecies,time);
+//       else{
+// 	//CEG:: debugging FIXME-- this didn't seem to change anything
+// 	// if keeping, need to fix up this hack
+// //  	MultiFab* const* flux = (whichTime == AmrOldTime) 
+// //  	  ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
+// 	MultiFab::Copy(spec_visc_terms,DofS[2],first_spec,0,nspecies,0);
+//        }
+//       VisMF::Write(spec_visc_terms,"vs");	
 
       for (MFIter mfi(spec_visc_terms); mfi.isValid(); ++mfi)
 	{
@@ -8654,12 +8665,14 @@ HeatTransfer::calc_divu (Real      time,
 	  delta_divu[iGrid].mult(mwmix[iGrid],box,0,0,1);
 	  divu[iGrid].plus(delta_divu[iGrid],box,0,0,1);
 	}
+//       VisMF::Write(delta_divu,"vtvs");
 
       // Compute
       //  divu = divu + (h_l/(c_p*T) - W/W_l) * omega_l^dot/rho
       //
-      if (dt > 0.0)
-	{
+      // I don't think this is needed now with SDC
+//       if (dt > 0.0)
+// 	{
 	  if (hack_nochem){
 	    std::cout<<"WARNING::no chem in calc_divu()"<<std::endl;
 	    return;
@@ -8673,10 +8686,18 @@ HeatTransfer::calc_divu (Real      time,
 	  FORT_GETPAMB(&p_amb, &dpdt_factor);
 	  const Real Patm = p_amb / P1atm_MKS;
 
+//       VisMF::Write(divu,"divu");
+
 	  // CEG::Is this okay in place of a FPI???  nGrow = 0
-	  for (MFIter Ydot_mfi(ydot); Ydot_mfi.isValid(); ++Ydot_mfi)
+// 	  for (MFIter Ydot_mfi(ydot); Ydot_mfi.isValid(); ++Ydot_mfi)
+// 	    {
+// CEG debugging FIXME
+	  for (FillPatchIterator Ydot_fpi(*this,delta_divu,0,time,Ydot_Type,0,nspecies);
+	       Ydot_fpi.isValid();
+	       ++Ydot_fpi)
 	    {
-	      const int i = Ydot_mfi.index();
+// 	      const int i = Ydot_mfi.index();
+	      const int i = Ydot_fpi.index();
 
 	      h.resize(BoxLib::grow(grids[i],nGrow),nspecies);
 
@@ -8684,25 +8705,58 @@ HeatTransfer::calc_divu (Real      time,
 	      //Compute
 	      //  -omega-dot/rho = -Y_l-dot
 	      //
-	      getChemSolve().YdotGivenRhoT_sdc(ydot[i],species[i],temp[i],
-					       rho[i],Patm, grids[i],
-					       sCompY,sCompT,0,0);
+	      // CEG DEBUGGING FIXME!!
+// 	      if (count == 0){
+// 		getChemSolve().YdotGivenRhoT_sdc(ydot[i],species[i],temp[i],
+//  					       rho[i],Patm, grids[i],
+// 						 sCompY,sCompT,0,0);}
+// 	      else {
+// 		ydot[i].copy(I_R[0][i],first_spec,0,nspecies);
+// 		for (int ispec = 0; ispec < nspecies; ispec++){
+// 		  ydot[i].divide(rho[i],sCompR,ispec,1);
+// 		}
+// 	      }
+
+// 	      for (int ispec = 0; ispec < nspecies; ispec++)
+// 		{
+// 		  delta_divu[i].copy(h,ispec,0,1);
+// 		  delta_divu[i].divide(cp[i]);
+// 		  delta_divu[i].divide(temp[i]);
+// 		  delta_divu[i].mult(ydot[i],ispec,0,1);
+// 		  divu[i].minus(delta_divu[i]);
+
+// 		  delta_divu[i].copy(mwmix[i],0,0,1);
+// 		  delta_divu[i].divide(mwt[ispec]);
+// 		  delta_divu[i].mult(ydot[i],ispec,0,1);
+// 		  divu[i].plus(delta_divu[i]);
+// 		}
+// 	      if (count < 1){
+// 		std::cout<<"calling getting Ydot from rho T"<<std::endl;
+		getChemSolve().YdotGivenRhoT_sdc(Ydot_fpi(),species[i],
+						 temp[i],
+						 rho[i],Patm, grids[i],
+						 sCompY,sCompT,0,0);
+		//	      }
+
 
 	      for (int ispec = 0; ispec < nspecies; ispec++)
 		{
 		  delta_divu[i].copy(h,ispec,0,1);
 		  delta_divu[i].divide(cp[i]);
 		  delta_divu[i].divide(temp[i]);
-		  delta_divu[i].mult(ydot[i],ispec,0,1);
+		  delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
 		  divu[i].minus(delta_divu[i]);
 
 		  delta_divu[i].copy(mwmix[i],0,0,1);
 		  delta_divu[i].divide(mwt[ispec]);
-		  delta_divu[i].mult(ydot[i],ispec,0,1);
+		  delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
 		  divu[i].plus(delta_divu[i]);
 		}
+
 	    }
-	}
+	  std::cout<<std::endl<<"count = "<<count<<std::endl;
+	  count++;
+	  //	}
     }
   
     else {
@@ -10056,7 +10110,8 @@ HeatTransfer::advance_sdc (Real time,
     //
 
     //debugging FIXME
-    IntVect Pt(D_DECL(3,157,0));
+    //    IntVect Pt(D_DECL(3,157,0));
+    IntVect Pt(D_DECL(0,0,0));
     Real* data = new Real[NUM_STATE];
     std::cout.precision(15);
 //     S_old[0].getVal(data,Pt,0,NUM_STATE);
@@ -10135,7 +10190,7 @@ HeatTransfer::advance_sdc (Real time,
     //  not doing sdc on rho directly, just rhoY_m's
     scalar_advection_update(dt,Density,Density);
 
-    VisMF::Write(S_new,"s_rho");
+//     VisMF::Write(S_new,"s_rho");
 
     // Set saved rho at current time.
     make_rho_curr_time();
@@ -10160,7 +10215,7 @@ HeatTransfer::advance_sdc (Real time,
     // 
     scalar_advection_update(dt, first_spec, last_spec);
 
-    VisMF::Write(S_new,"s_adv");
+//     VisMF::Write(S_new,"s_adv");
 
     // Update species with diffusion (calling multi-grid in here):
     //
@@ -10174,15 +10229,16 @@ HeatTransfer::advance_sdc (Real time,
     //   conserved.
     sdcForce->setVal(0.0);
     bool const save_diffsn = true;
-    differential_spec_diffusion_update_sdc(dt,corrector,save_diffsn);
+    Real theta = 1.0;
+    differential_spec_diffusion_update_sdc(dt,theta,corrector,save_diffsn);
 
-    VisMF::Write(S_new,"s_diff");
+    //    VisMF::Write(S_new,"s_diff");
 
 // CEG:: getting this in diffusion update now
     //!!!! getViscTerms changes SpecDiffusionFlux 
     // Compute Diffn^n+1 for species
     //    getViscTerms_sdc(DofS[1],first_spec,nspecies,cur_time,dt);
-    VisMF::Write(DofS[1],"dofs");
+    //    VisMF::Write(DofS[1],"dofs");
 
     // 
     // Update RhoH
@@ -10209,7 +10265,7 @@ HeatTransfer::advance_sdc (Real time,
     //  
     scalar_advection_update(dt,RhoH,RhoH);
 
-    VisMF::Write(S_new,"s_rhohA");
+    //    VisMF::Write(S_new,"s_rhohA");
 
     if (!unity_Le){
       // Compute Non-unity Lewis number (NULN) terms
@@ -10242,8 +10298,11 @@ HeatTransfer::advance_sdc (Real time,
     //   terms 
     rhoh_diffusion_update_sdc(dt,save_diffsn);
 
-    VisMF::Write(S_new,"s_rhoh");
+    //    VisMF::Write(S_new,"s_rhoh");
 
+    // debugging FIXME
+    MultiFab *ydot;
+    ydot = &get_new_data(Ydot_Type);
     //
     //React
     //
@@ -10278,11 +10337,11 @@ HeatTransfer::advance_sdc (Real time,
 //       std::cout<<std::endl;
       
       MultiFab::Subtract(difference2,S_new,0,0,NUM_STATE,0);
-      difference2[0].getVal(data,Pt,0,NUM_STATE); 
-      std::cout<<"chem difference::"<<std::endl;
-      for (int ii = 0; ii < nspecies; ii++)
-	std::cout<<"spec : "<<ii<<": "<<data[first_spec+ii]<<std::endl;
-      std::cout<<std::endl;
+//       difference2[0].getVal(data,Pt,0,NUM_STATE); 
+//       std::cout<<"chem difference::"<<std::endl;
+//       for (int ii = 0; ii < nspecies; ii++)
+// 	std::cout<<"spec : "<<ii<<": "<<data[first_spec+ii]<<std::endl;
+//       std::cout<<std::endl;
       //      abort();
 
       // need to think about ghost cells.
@@ -10296,6 +10355,11 @@ HeatTransfer::advance_sdc (Real time,
       // because code will mult forcing terms by dt later, 
       // have to actually compute I_R/sdc_dt
       make_I_R_provis(dt);
+      // DEBUGGING FIXME
+      MultiFab::Copy(*ydot,I_R[0],first_spec,0,nspecies,0);
+      for (int ispec = 0; ispec < nspecies; ispec++)
+	MultiFab::Divide(*ydot,S_new,Density,ispec,1,0);
+      
     }
     std::cout<<"done with chem"<<std::endl;
 
@@ -10305,33 +10369,7 @@ HeatTransfer::advance_sdc (Real time,
       tracer_update(dt,1);
     }
 
-    // Recompute DofS(n+1) 
-    //  species
-    // DEBUGGING FIXME
-     getViscTerms_sdc(DofS[2],first_spec,nspecies,cur_time,dt,
- 		     do_diffsn_reflux);
-    //MultiFab::Copy(DofS[2],DofS[1],first_spec,first_spec,nspecies,0);
-    // Save off DofS^n+1 for rhoH 
-    MultiFab::Copy(DofS[2],DofS[1],RhoH,RhoH,1,0);
-
-    if (!unity_Le){
-      //  NULN terms 
-      // FIXME !!!!
-      //CEG::: need to think more about how to deal with rhoH if 
-      //   have Le != 1; DO we really want to update the NULN terms here?
-      //   rhoH visc terms won't change unless pH changes
-      //   RhoH
-      compute_rhoh_NULN_terms(cur_time, dt, do_adv_reflux,
-			      RhoH_NULN_terms[2]);
-    }
-
-    VisMF::Write(S_new,"s_chem");
-
-    // Update Temp
-    // CEG:: this changes rhoH a little bit b/c we divide out rho
-    //       and then mult it back in
-    RhoH_to_Temp(S_new);
-    temperature_stats(S_new);
+    //    VisMF::Write(S_new,"s_chem");
 
     BL_PROFILE_STOP(ptimer);
 
@@ -10365,55 +10403,55 @@ HeatTransfer::advance_sdc (Real time,
 
 
     // debugging FIXME
-    (*aofs)[0].getVal(data,Pt,0,NUM_STATE);
-    std::ofstream output;
-    output.open("aofs_ij",std::ios::app);
-    output<<prev_time;
-    output<<"   "<<data[Temp];
-    output<<"   "<<data[Density];
-    output<<"   "<<data[RhoH];
-    for (int ii = 0; ii < nspecies; ii++)
-      output<<"   "<<data[first_spec+ii];
-    output<<std::endl;
-    output.close();
-    (DofS[0])[0].getVal(data,Pt,0,NUM_STATE);
-    output.open("dofs_ij",std::ios::app);
-    output<<prev_time;
-    output<<"   "<<data[Temp];
-    output<<"   "<<data[Density];
-    output<<"   "<<data[RhoH];
-    for (int ii = 0; ii < nspecies; ii++)
-      output<<"   "<<data[first_spec+ii];
-    output<<std::endl;
-    (DofS[1])[0].getVal(data,Pt,0,NUM_STATE);
-    output<<cur_time;
-    output<<"   "<<data[Temp];
-    output<<"   "<<data[Density];
-    output<<"   "<<data[RhoH];
-    for (int ii = 0; ii < nspecies; ii++)
-      output<<"   "<<data[first_spec+ii];
-    output<<std::endl;
-    output.close();
-    (DofS[2])[0].getVal(data,Pt,0,NUM_STATE);
-    output.open("dofs2_ij",std::ios::app);
-    output<<cur_time;
-    output<<"   "<<data[Temp];
-    output<<"   "<<data[Density];
-    output<<"   "<<data[RhoH];
-    for (int ii = 0; ii < nspecies; ii++)
-      output<<"   "<<data[first_spec+ii];
-    output<<std::endl;
-    output.close();
-    (I_R[0])[0].getVal(data,Pt,0,NUM_STATE);
-    output.open("IR_ij",std::ios::app);
-    output<<cur_time;
-    output<<"   "<<data[Temp];
-    output<<"   "<<data[Density];
-    output<<"   "<<data[RhoH];
-    for (int ii = 0; ii < nspecies; ii++)
-      output<<"   "<<data[first_spec+ii];
-    output<<std::endl;
-    output.close();
+//     (*aofs)[0].getVal(data,Pt,0,NUM_STATE);
+//     std::ofstream output;
+//     output.open("aofs_ij",std::ios::app);
+//     output<<prev_time;
+//     output<<"   "<<data[Temp];
+//     output<<"   "<<data[Density];
+//     output<<"   "<<data[RhoH];
+//     for (int ii = 0; ii < nspecies; ii++)
+//       output<<"   "<<data[first_spec+ii];
+//     output<<std::endl;
+//     output.close();
+//     (DofS[0])[0].getVal(data,Pt,0,NUM_STATE);
+//     output.open("dofs_ij",std::ios::app);
+//     output<<prev_time;
+//     output<<"   "<<data[Temp];
+//     output<<"   "<<data[Density];
+//     output<<"   "<<data[RhoH];
+//     for (int ii = 0; ii < nspecies; ii++)
+//       output<<"   "<<data[first_spec+ii];
+//     output<<std::endl;
+//     (DofS[1])[0].getVal(data,Pt,0,NUM_STATE);
+//     output<<cur_time;
+//     output<<"   "<<data[Temp];
+//     output<<"   "<<data[Density];
+//     output<<"   "<<data[RhoH];
+//     for (int ii = 0; ii < nspecies; ii++)
+//       output<<"   "<<data[first_spec+ii];
+//     output<<std::endl;
+//     output.close();
+//     (DofS[2])[0].getVal(data,Pt,0,NUM_STATE);
+//     output.open("dofs2_ij",std::ios::app);
+//     output<<cur_time;
+//     output<<"   "<<data[Temp];
+//     output<<"   "<<data[Density];
+//     output<<"   "<<data[RhoH];
+//     for (int ii = 0; ii < nspecies; ii++)
+//       output<<"   "<<data[first_spec+ii];
+//     output<<std::endl;
+//     output.close();
+//     (I_R[0])[0].getVal(data,Pt,0,NUM_STATE);
+//     output.open("IR_ij",std::ios::app);
+//     output<<cur_time;
+//     output<<"   "<<data[Temp];
+//     output<<"   "<<data[Density];
+//     output<<"   "<<data[RhoH];
+//     for (int ii = 0; ii < nspecies; ii++)
+//       output<<"   "<<data[first_spec+ii];
+//     output<<std::endl;
+//     output.close();
 
 
 
@@ -10426,18 +10464,44 @@ HeatTransfer::advance_sdc (Real time,
 
     for (int n_sdc = 1; n_sdc <= sdc_iters; n_sdc++)        
     {
+      // Recompute DofS(n+1) 
+      //  species
+      // DEBUGGING FIXME
+      getViscTerms_sdc(DofS[2],first_spec,nspecies,cur_time,dt);
+      //MultiFab::Copy(DofS[2],DofS[1],first_spec,first_spec,nspecies,0);
+      // Save off DofS^n+1 for rhoH 
+      MultiFab::Copy(DofS[2],DofS[1],RhoH,RhoH,1,0);
+
+      if (!unity_Le){
+	//  NULN terms 
+	// FIXME !!!!
+	//CEG::: need to think more about how to deal with rhoH if 
+	//   have Le != 1; DO we really want to update the NULN terms here?
+	//   rhoH visc terms won't change unless pH changes
+	//   RhoH
+	//       compute_rhoh_NULN_terms(cur_time, dt, do_adv_reflux,
+	// 			      RhoH_NULN_terms[2]);
+	MultiFab::Copy(RhoH_NULN_terms[2],RhoH_NULN_terms[1],0,0,1,0);
+      }
+
       //make I_AD
       make_I_AD();
-      (I_AD[0])[0].getVal(data,Pt,0,NUM_STATE);
-      output.open("IAD_ij",std::ios::app);
-      output<<cur_time;
-      output<<"   "<<data[Temp];
-      output<<"   "<<data[Density];
-      output<<"   "<<data[RhoH];
-      for (int ii = 0; ii < nspecies; ii++)
-	output<<"   "<<data[first_spec+ii];
-      output<<std::endl;
-      output.close();
+//       (I_AD[0])[0].getVal(data,Pt,0,NUM_STATE);
+//       output.open("IAD_ij",std::ios::app);
+//       output<<cur_time;
+//       output<<"   "<<data[Temp];
+//       output<<"   "<<data[Density];
+//       output<<"   "<<data[RhoH];
+//       for (int ii = 0; ii < nspecies; ii++)
+// 	output<<"   "<<data[first_spec+ii];
+//       output<<std::endl;
+//       output.close();
+
+      // Update Temp
+      // CEG:: this changes rhoH a little bit b/c we divide out rho
+      //       and then mult it back in
+      RhoH_to_Temp(S_new);
+      temperature_stats(S_new);
 
       // Update Diffusivities
       //
@@ -10459,6 +10523,7 @@ HeatTransfer::advance_sdc (Real time,
 
       // will pull external forces from getForce
       // and add in sdc terms in sdcForce. 
+      // rhoH edge states get computed by summing Y_m*h_m(T)
       compute_edge_states_sdc(dt);
 
       if (n_sdc == sdc_iters)
@@ -10508,7 +10573,7 @@ HeatTransfer::advance_sdc (Real time,
 
       make_diffusion_sdcForce(first_spec,nspecies);
       //CEG:: i think i can take out corrector
-      differential_spec_diffusion_update_sdc(dt,corrector,save_diffsn);
+      differential_spec_diffusion_update_sdc(dt,theta,corrector,save_diffsn);
       // CEG:: saving DofS[1] inside diffusion update now
       // !!!! getViscTerms changes SpecDiffusionFlux
       //Recompute D(t^n+1)
@@ -10530,6 +10595,7 @@ HeatTransfer::advance_sdc (Real time,
       // contributions from NULN terms added in as well
       make_diffusion_sdcForce(RhoH,1);
       // Recompute Diffsn(rhoH)^n+1
+      // FIXME!!! need to change this to do the diffusion reflux
       rhoh_diffusion_update_sdc(dt,save_diffsn);
 
 
@@ -10571,32 +10637,12 @@ HeatTransfer::advance_sdc (Real time,
 
 	//Recompute I_R
 	make_I_R_sdc(dt);
+	// debugging FIXME
+      MultiFab::Copy(*ydot,I_R[0],first_spec,0,nspecies,0);
+      for (int ispec = 0; ispec < nspecies; ispec++)
+	MultiFab::Divide(*ydot,S_new,Density,ispec,1,0);
+
       }
-
-      // Recompute DofS(n+1) 
-      //  species
-      //Debugging FIXME!
-      getViscTerms_sdc(DofS[2],first_spec,nspecies,cur_time,dt,
- 		       do_diffsn_reflux);
-       // MultiFab::Copy(DofS[2],DofS[1],first_spec,first_spec,nspecies,0);
-
-      // save off a copy of Diffsn(rhoH)^n+1_old
-      MultiFab::Copy(DofS[2],DofS[1],RhoH,RhoH,1,0);
-
-      if (!unity_Le){
-	//  NULN terms 
-	// FIXME !!!!
-	//CEG::: need to think more about how to deal with rhoH if 
-	//   have Le != 1; Do we really want to be changing NULN here? 
-	//   rhoH visc terms won't change unless pH changes
-	//   RhoH
-	compute_rhoh_NULN_terms(cur_time, dt, do_adv_reflux,
-				RhoH_NULN_terms[2]);
-      }
-
-      // Update Temp
-      RhoH_to_Temp(S_new);
-      temperature_stats(S_new);
 
       //Compute the change in the soln at n+1
       MultiFab::Subtract(difference,S_new,0,0,NUM_STATE,0);
@@ -10623,57 +10669,68 @@ HeatTransfer::advance_sdc (Real time,
       MultiFab::Copy(difference,S_new,0,0,NUM_STATE,0); 
 
       // debugging FIXME
-      (*aofs)[0].getVal(data,Pt,0,NUM_STATE);
-      output.open("aofs_ij",std::ios::app);
-      output<<prev_time;
-      output<<"   "<<data[Temp];
-      output<<"   "<<data[Density];
-      output<<"   "<<data[RhoH];
-      for (int ii = 0; ii < nspecies; ii++)
-	output<<"   "<<data[first_spec+ii];
-      output<<std::endl;
-      output.close();
-      (DofS[0])[0].getVal(data,Pt,0,NUM_STATE);
-      output.open("dofs_ij",std::ios::app);
-      output<<prev_time;
-      output<<"   "<<data[Temp];
-      output<<"   "<<data[Density];
-      output<<"   "<<data[RhoH];
-      for (int ii = 0; ii < nspecies; ii++)
-	output<<"   "<<data[first_spec+ii];
-      output<<std::endl;
-      (DofS[1])[0].getVal(data,Pt,0,NUM_STATE);
-      output<<cur_time;
-      output<<"   "<<data[Temp];
-      output<<"   "<<data[Density];
-      output<<"   "<<data[RhoH];
-      for (int ii = 0; ii < nspecies; ii++)
-	output<<"   "<<data[first_spec+ii];
-      output<<std::endl;
-      output.close();
-      (DofS[2])[0].getVal(data,Pt,0,NUM_STATE);
-      output.open("dofs2_ij",std::ios::app);
-      output<<cur_time;
-      output<<"   "<<data[Temp];
-      output<<"   "<<data[Density];
-      output<<"   "<<data[RhoH];
-      for (int ii = 0; ii < nspecies; ii++)
-	output<<"   "<<data[first_spec+ii];
-      output<<std::endl;
-      output.close();
-      (I_R[0])[0].getVal(data,Pt,0,NUM_STATE);
-      output.open("IR_ij",std::ios::app);
-      output<<cur_time;
-      output<<"   "<<data[Temp];
-      output<<"   "<<data[Density];
-      output<<"   "<<data[RhoH];
-      for (int ii = 0; ii < nspecies; ii++)
-	output<<"   "<<data[first_spec+ii];
-      output<<std::endl;
-      output.close();
+//       (*aofs)[0].getVal(data,Pt,0,NUM_STATE);
+//       output.open("aofs_ij",std::ios::app);
+//       output<<prev_time;
+//       output<<"   "<<data[Temp];
+//       output<<"   "<<data[Density];
+//       output<<"   "<<data[RhoH];
+//       for (int ii = 0; ii < nspecies; ii++)
+// 	output<<"   "<<data[first_spec+ii];
+//       output<<std::endl;
+//       output.close();
+//       (DofS[0])[0].getVal(data,Pt,0,NUM_STATE);
+//       output.open("dofs_ij",std::ios::app);
+//       output<<prev_time;
+//       output<<"   "<<data[Temp];
+//       output<<"   "<<data[Density];
+//       output<<"   "<<data[RhoH];
+//       for (int ii = 0; ii < nspecies; ii++)
+// 	output<<"   "<<data[first_spec+ii];
+//       output<<std::endl;
+//       (DofS[1])[0].getVal(data,Pt,0,NUM_STATE);
+//       output<<cur_time;
+//       output<<"   "<<data[Temp];
+//       output<<"   "<<data[Density];
+//       output<<"   "<<data[RhoH];
+//       for (int ii = 0; ii < nspecies; ii++)
+// 	output<<"   "<<data[first_spec+ii];
+//       output<<std::endl;
+//       output.close();
+//       (DofS[2])[0].getVal(data,Pt,0,NUM_STATE);
+//       output.open("dofs2_ij",std::ios::app);
+//       output<<cur_time;
+//       output<<"   "<<data[Temp];
+//       output<<"   "<<data[Density];
+//       output<<"   "<<data[RhoH];
+//       for (int ii = 0; ii < nspecies; ii++)
+// 	output<<"   "<<data[first_spec+ii];
+//       output<<std::endl;
+//       output.close();
+//       (I_R[0])[0].getVal(data,Pt,0,NUM_STATE);
+//       output.open("IR_ij",std::ios::app);
+//       output<<cur_time;
+//       output<<"   "<<data[Temp];
+//       output<<"   "<<data[Density];
+//       output<<"   "<<data[RhoH];
+//       for (int ii = 0; ii < nspecies; ii++)
+// 	output<<"   "<<data[first_spec+ii];
+//       output<<std::endl;
+//       output.close();
 
     }//end sdc_iters loop
  
+    // Doing a final diffusion solve to smooth the solution a little
+    MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies,0);
+    MultiFab::Copy(*sdcForce,I_R[0],first_spec,first_spec,nspecies,0);
+    MultiFab::Subtract(*sdcForce,*aofs,first_spec,first_spec,nspecies,0);
+    theta = 0.5;
+    differential_spec_diffusion_update_sdc(dt,theta,corrector);
+    // MultiFab::Copy(DofS[2],DofS[1],first_spec,first_spec,nspecies,0);
+
+    //CEG:: need to think about Le != 1 case more
+    //      do i update NULN and rhoH here???
+
     Rho_hold.clear();
     if (ParallelDescriptor::IOProcessor())  
       std::cout<<"done with sdc_iters loop...\n"<<std::endl;
@@ -10692,7 +10749,6 @@ HeatTransfer::advance_sdc (Real time,
     // CEG:: do I need to put data in ydot for other funcs to use???
 
     // REMOVE ME!!!   second half of strang was here
-    // inserting hack_nochem from strang_chem()
 //     MultiFab *ydot_tmp = &get_new_data(Ydot_Type);
 //     // first component of Ydot corres. to first_spec
 //     const int dCompYdot = 0;      
@@ -11444,6 +11500,7 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
 
 void
 HeatTransfer::differential_spec_diffusion_update_sdc (Real dt,
+						      const Real species_diffusion_theta,
 						      int  corrector,
 						      bool save_diffsn)
 {
@@ -11499,9 +11556,7 @@ HeatTransfer::differential_spec_diffusion_update_sdc (Real dt,
     Array<int> rho_flag(nspecies,0);
     MultiFab *alphaSC, *delta_rhsSC, **betanSC, **betanp1SC;
     const MultiFab* Rh = get_rho_half_time();
-
-    const Real species_diffusion_theta = 1.0;
-   
+ 
 
     for (int sigma = 0; sigma < nspecies; ++sigma)
     {
