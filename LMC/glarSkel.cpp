@@ -5934,7 +5934,7 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
     /*reaction 31: NO + HO2 <=> NO2 + OH */
     phi_f = sc[8]*sc[5];
     k_f = 1e-06 * 2.1e+12*exp(+250.126/tc[1]);
-    q_f[0] = phi_f * k_f;
+    q_f[30] = phi_f * k_f;
     phi_r = sc[9]*sc[2];
     Kc = exp((g_RT[8] + g_RT[5]) - (g_RT[9] + g_RT[2]));
     k_r = k_f / Kc;
