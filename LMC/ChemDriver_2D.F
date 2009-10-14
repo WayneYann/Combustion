@@ -1215,7 +1215,7 @@ C     output RD = mass density (rho) * mixture averaged diffusion coefficients
       integer i, j, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec),Dt(maxspec),CPMS(maxspec)
       REAL_T RHO, scal, Tt, Wavg, invmwt(maxspec), X(maxspec)
-      
+
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
       call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
@@ -1261,6 +1261,10 @@ C           invmut(n) = molecular weight of species n
 
 #include "cdwrk.H"
 
+#ifdef BL_USE_OMP
+      include "omp_lib.h"
+#endif
+
       integer lo(SDIM), hi(SDIM), do_temp, do_VelVisc
       integer DIMDEC(RD)
       integer DIMDEC(T)
@@ -1272,8 +1276,19 @@ C           invmut(n) = molecular weight of species n
 
       integer i, j, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec), CPMS(maxspec)
-      REAL_T RHO, scal, tscal, Tt, Wavg, invmwt(maxspec), X(maxspec)
+      REAL_T RHO, SCAL, TSCAL, Tt, Wavg, invmwt(maxspec), X(maxspec)
       REAL_T alpha, l1, l2
+
+      REAL_T,  allocatable :: egrwrk(:,:)
+      integer, allocatable :: egiwrk(:,:)
+
+      integer egrlen, egilen, tid, nthrds
+
+      parameter(SCAL = tenth, TSCAL = one / 100000.0D0)
+
+      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
+     &               + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+      egilen = Nspec
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
@@ -1283,41 +1298,83 @@ C           invmut(n) = molecular weight of species n
          invmwt(n) = one / invmwt(n)
       end do
 
-      scal  = tenth
-      tscal = one / 100000
+!$omp parallel
+
+!$omp single
+#ifdef BL_USE_OMP
+      nthrds = omp_get_num_threads()
+
+      allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
+
+      do i = 1,nthrds
+         do n=1,egrlen
+            egrwrk(n,i) = RWRK(egbr+n-1)
+         enddo
+
+         do n=1,egilen
+            egiwrk(n,i) = IWRK(egbi+n-1)
+         enddo
+      end do
+#endif
+!$omp end single
+
+#ifdef BL_USE_OMP
+#define EGSRWK egrwrk(1,tid)
+#define EGSIWK egiwrk(1,tid)
+#else
+#define EGSRWK RWRK(egbr)
+#define EGSIWK IWRK(egbi)
+#endif
+
+!$omp do private(i,j,n,Yt,Tt,alpha,Dt,Wavg)
+!$omp&private(CPMS,X,RHO,l1,l2,tid)
       do j=lo(2),hi(2)
+
+#ifdef BL_USE_OMP
+         tid = omp_get_thread_num() + 1
+#else
+         tid = 1
+#endif
          do i=lo(1),hi(1)
 
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
             end do
+
             Tt = MAX(T(i,j),TMIN_TRANS) 
             CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
             CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-            CALL EGSV1(Ptmp,Tt,Yt,Wavg,RWRK(egbr),Dt)
-
+            CALL EGSPAR(Tt,X,Yt,CPMS,EGSRWK,EGSIWK)
+            CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGSRWK,Dt)
             CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
+
             do n=1,Nspec
-               RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * scal
+               RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
             end do
 
             if (do_temp .ne. 0) then
-               alpha = 1
-               CALL EGSL1(alpha,Tt,X,RWRK(egbr),l1)
-               alpha = -1
-               CALL EGSL1(alpha,Tt,X,RWRK(egbr),l2)
-               RD(i,j,Nspec+1) = half * (l1 + l2) * tscal
+               alpha = 1.0D0
+               CALL EGSL1(alpha,Tt,X,EGSRWK,l1)
+               alpha = -1.0D0
+               CALL EGSL1(alpha,Tt,X,EGSRWK,l2)
+               RD(i,j,Nspec+1) = half * (l1 + l2) * TSCAL
             endif
 
             if (do_VelVisc .ne. 0) then
-               CALL EGSE3(Tt,Yt,RWRK(egbr),RD(i,j,Nspec+2))
-               RD(i,j,Nspec+2) = RD(i,j,Nspec+2) * scal
+               CALL EGSE3(Tt,Yt,EGSRWK,RD(i,j,Nspec+2))
+               RD(i,j,Nspec+2) = RD(i,j,Nspec+2) * SCAL
             endif
 
          end do
       end do
+!$omp end do
+
+!$omp end parallel
+
+#undef EGSRWK
+#undef EGSIWK
+
       end
 
       subroutine FORT_MIXAVG_RHODIFF_P(lo, hi, RD, DIMS(RD), T, DIMS(T),
@@ -1338,7 +1395,7 @@ C           invmut(n) = molecular weight of species n
       
       integer i, j, n
       REAL_T Ptmp, Yt(maxspec), Dt(maxspec), CPMS(maxspec)
-      REAL_T RHO, scal, Wavg, Tt, invmwt(maxspec), X(maxspec)
+      REAL_T RHO, SCAL, Wavg, Tt, invmwt(maxspec), X(maxspec)
 
       call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
 c
@@ -1348,10 +1405,10 @@ c
          invmwt(n) = one / invmwt(n)
       end do
 c      
-c     scal converts result from assumed cgs to MKS (1g/cm.s=.1 kg/m.s)
+c     SCAL converts result from assumed cgs to MKS (1g/cm.s=.1 kg/m.s)
 c      Pmks needs to be converted from MKS to cgs (10dyne/cm2 = 1Pa)
 c
-      scal = tenth
+      SCAL = tenth
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
@@ -1366,7 +1423,7 @@ c
             CALL EGSV1(Ptmp,Tt,Yt,Wavg,RWRK(egbr),Dt)
             CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
             do n=1,Nspec
-               RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * scal
+               RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
             end do
          end do
       end do
@@ -1385,15 +1442,16 @@ c
       REAL_T lambda(DIMV(lambda))
       REAL_T T(DIMV(T))
       REAL_T Y(DIMV(Y),*)
-      REAL_T scal
+      REAL_T SCAL
       
       integer i, j, n
       REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), alpha, l1, l2, Tt
+
 c
 c     The following computes the mixture conductivity using EGLib
-c     scal converts result to MKS ( 1 erg/cm*K*s =  1.e-5 J/m*K*s )
+c     SCAL converts result to MKS ( 1 erg/cm*K*s =  1.e-5 J/m*K*s )
 c
-      scal = one / 100000
+      SCAL = one / 100000
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
@@ -1407,7 +1465,7 @@ c
             CALL EGSL1(alpha,Tt,Yt,RWRK(egbr),l1)
             alpha = -1
             CALL EGSL1(alpha,Tt,Yt,RWRK(egbr),l2)
-            lambda(i,j) = half * (l1 + l2) * scal
+            lambda(i,j) = half * (l1 + l2) * SCAL
          end do
       end do
 
@@ -1426,15 +1484,16 @@ c
       REAL_T eta(DIMV(eta))
       REAL_T T(DIMV(T))
       REAL_T Y(DIMV(Y),*)
-      REAL_T scal
+      REAL_T SCAL
       
       integer i, j, n
       REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), Tt
+
 c
 c     The following computes the mixture averaged shear viscosity using EGLib
-c     Note that scal converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
+c     Note that SCAL converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
 c
-      scal = tenth
+      SCAL = tenth
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
@@ -1445,7 +1504,7 @@ c
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
             CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
             CALL EGSE3(Tt,Yt,RWRK(egbr),eta(i,j))
-            eta(i,j) = eta(i,j) * scal
+            eta(i,j) = eta(i,j) * SCAL
          end do
       end do
 
@@ -1464,19 +1523,20 @@ c
       REAL_T kappa(DIMV(kappa))
       REAL_T T(DIMV(T))
       REAL_T Y(DIMV(Y),*)
-      REAL_T scal, Tt
+      REAL_T SCAL, Tt
       
       integer i, j, n
       REAL_T X(maxspec), CPMS(maxspec), Yt(maxspec), alpha, k1, k2
+
 c      
 c     The following computes the mixture averaged bulk viscosity using eglib
-c     Note that scal converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
+c     Note that SCAL converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
 c
       if (eg_IFLAG .lt. 4) then
          call bl_abort('FORT_MIX_BULK_VISC: eg_IFLAG must be >= 4')
       endif
 
-      scal = tenth
+      SCAL = tenth
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
@@ -1490,7 +1550,7 @@ c
             CALL EGSK1(alpha,Tt,Yt,RWRK(egbr),k1)
             alpha = -1
             CALL EGSK1(alpha,Tt,Yt,RWRK(egbr),k2)
-            kappa(i,j) = half * (k1 + k2) * scal
+            kappa(i,j) = half * (k1 + k2) * SCAL
          end do
       end do
       end
@@ -1511,10 +1571,10 @@ c
       REAL_T Patm
       
       integer i, j, n
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), scal
+      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL
       
-c     NOTE: scal converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
-      scal = one * 1000
+c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
+      SCAL = one * 1000
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
       do j=lo(2),hi(2)
@@ -1523,7 +1583,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3
                Yt(n) = Y(i,j,n)
             end do
             CALL CKRHOY(Ptmp,T(i,j),Yt,IWRK(ckbi),RWRK(ckbr),RHO(i,j))
-            RHO(i,j) = RHO(i,j) * scal
+            RHO(i,j) = RHO(i,j) * SCAL
          end do
       end do
       end
@@ -1545,10 +1605,10 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3
       REAL_T P(DIMV(P))
       
       integer i, j, n
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), scal
+      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL
       
-c     NOTE: scal converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
-      scal = one * 1000
+c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
+      SCAL = one * 1000
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
@@ -1557,7 +1617,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3
             end do
             Ptmp = P(i,j) * P1ATM
             CALL CKRHOY(Ptmp,T(i,j),Yt,IWRK(ckbi),RWRK(ckbr),RHO(i,j))
-            RHO(i,j) = RHO(i,j) * scal
+            RHO(i,j) = RHO(i,j) * SCAL
          end do
       end do
       end
@@ -1579,20 +1639,20 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3
       REAL_T Y(DIMV(Y),*)
       
       integer i, j, n
-      REAL_T Yt(maxspec), RHOt, scal, scal1
+      REAL_T Yt(maxspec), RHOt, SCAL, SCAL1
       
-c     NOTE: scal converts result from assumed cgs to MKS (1 dyne/cm^2 = .1 Pa)
-c           scal1 converts density (1 kg/m^3 = 1.e-3 g/cm^3)
-      scal = tenth
-      scal1 = tenth**3
+c     NOTE: SCAL converts result from assumed cgs to MKS (1 dyne/cm^2 = .1 Pa)
+c           SCAL1 converts density (1 kg/m^3 = 1.e-3 g/cm^3)
+      SCAL = tenth
+      SCAL1 = tenth**3
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
             end do
-            RHOt = RHO(i,j) * scal1
+            RHOt = RHO(i,j) * SCAL1
             CALL CKPY(RHOt,T(i,j),Yt,IWRK(ckbi),RWRK(ckbr),P(i,j))
-            P(i,j) = P(i,j) * scal
+            P(i,j) = P(i,j) * SCAL
          end do
       end do
       end
@@ -1613,20 +1673,20 @@ c           scal1 converts density (1 kg/m^3 = 1.e-3 g/cm^3)
       REAL_T Patm
       
       integer i, j, n
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), scal, Wavg, RHOt
+      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL, Wavg, RHOt
       
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
 
-c     NOTE: scal converts density (1 kg/m^3 = 1.e-3 g/cm^3)
-      scal = tenth**3
+c     NOTE: SCAL converts density (1 kg/m^3 = 1.e-3 g/cm^3)
+      SCAL = tenth**3
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
             end do
             CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
-            RHOt = RHO(i,j) * scal
+            RHOt = RHO(i,j) * SCAL
             T(i,j) = Ptmp / (RHOt * RU / Wavg)
          end do
       end do
@@ -1647,17 +1707,17 @@ c     NOTE: scal converts density (1 kg/m^3 = 1.e-3 g/cm^3)
       REAL_T Y(DIMV(Y),*)
       
       integer i, j, n
-      REAL_T Yt(maxspec), scal
+      REAL_T Yt(maxspec), SCAL
       
-c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
-      scal = tenth**4
+c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
+      SCAL = tenth**4
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
             end do
             CALL CKCPBS(T(i,j),Yt,IWRK(ckbi),RWRK(ckbr),CPMIX(i,j))
-            CPMIX(i,j) = CPMIX(i,j) * scal
+            CPMIX(i,j) = CPMIX(i,j) * SCAL
          end do
       end do
       end
@@ -1677,17 +1737,17 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg
       REAL_T Y(DIMV(Y),*)
       
       integer i, j, n
-      REAL_T Yt(maxspec), scal
+      REAL_T Yt(maxspec), SCAL
       
-c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
-      scal = tenth**4
+c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
+      SCAL = tenth**4
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
             end do
             CALL CKCVBS(T(i,j),Yt,IWRK(ckbi),RWRK(ckbr),CVMIX(i,j))
-            CVMIX(i,j) = CVMIX(i,j) * scal
+            CVMIX(i,j) = CVMIX(i,j) * SCAL
          end do
       end do
       end
@@ -1707,17 +1767,17 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg
       REAL_T Y(DIMV(Y),*)
       
       integer i, j, n
-      REAL_T Yt(maxspec), scal
+      REAL_T Yt(maxspec), SCAL
       
-c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
-      scal = tenth**4
+c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
+      SCAL = tenth**4
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
             end do
             CALL CKHBMS(T(i,j),Yt,IWRK(ckbi),RWRK(ckbr),HMIX(i,j))
-            HMIX(i,j) = HMIX(i,j) * scal
+            HMIX(i,j) = HMIX(i,j) * SCAL
          end do
       end do
       end
@@ -1759,15 +1819,15 @@ c     Returns mean molecular weight in kg/kmole
       REAL_T T(DIMV(T))
       
       integer i, j, n
-      REAL_T scal, CPt(maxspec)
+      REAL_T SCAL, CPt(maxspec)
       
-c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
-      scal = tenth**4
+c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
+      SCAL = tenth**4
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             CALL CKCPMS(T(i,j),IWRK(ckbi),RWRK(ckbr),CPt)
             do n=1,Nspec
-               CP(i,j,n) = CPt(n) * scal
+               CP(i,j,n) = CPt(n) * SCAL
             end do
          end do
       end do
@@ -1785,15 +1845,15 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg
       REAL_T T(DIMV(T))
       
       integer i, j, n
-      REAL_T scal, Ht(maxspec)
+      REAL_T SCAL, Ht(maxspec)
       
-c     NOTE: scal converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
-      scal = tenth**4
+c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
+      SCAL = tenth**4
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             CALL CKHMS(T(i,j),IWRK(ckbi),RWRK(ckbr),Ht)
             do n=1,Nspec
-               H(i,j,n) = Ht(n) * scal
+               H(i,j,n) = Ht(n) * SCAL
             end do
          end do
       end do
