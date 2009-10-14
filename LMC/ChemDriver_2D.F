@@ -1555,51 +1555,6 @@ c
 
       end
 
-      subroutine FORT_MIX_BULK_VISC(lo, hi, kappa, DIMS(kappa),
-     &                              T, DIMS(T), Y, DIMS(Y))
-      implicit none
-
-#include "cdwrk.H"
-
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(kappa)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T kappa(DIMV(kappa))
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
-      REAL_T SCAL, Tt
-      
-      integer i, j, n
-      REAL_T X(maxspec), CPMS(maxspec), Yt(maxspec), alpha, k1, k2
-
-c      
-c     The following computes the mixture averaged bulk viscosity using eglib
-c     Note that SCAL converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
-c
-      if (eg_IFLAG .lt. 4) then
-         call bl_abort('FORT_MIX_BULK_VISC: eg_IFLAG must be >= 4')
-      endif
-
-      SCAL = tenth
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-            do n=1,Nspec
-               Yt(n) = Y(i,j,n)
-            end do
-            Tt = MAX(T(i,j),TMIN_TRANS) 
-            CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
-            CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-            alpha = 1
-            CALL EGSK1(alpha,Tt,Yt,RWRK(egbr),k1)
-            alpha = -1
-            CALL EGSK1(alpha,Tt,Yt,RWRK(egbr),k2)
-            kappa(i,j) = half * (k1 + k2) * SCAL
-         end do
-      end do
-      end
-
       subroutine FORT_RHOfromPTY(lo, hi, RHO, DIMS(RHO), T, DIMS(T),
      &                           Y, DIMS(Y), Patm)
       implicit none

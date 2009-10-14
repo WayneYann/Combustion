@@ -703,28 +703,6 @@ ChemDriver::getMixShearVisc(FArrayBox&       eta,
 }
 
 void
-ChemDriver::getMixBulkVisc(FArrayBox&       kappa,
-                              const FArrayBox& Y,
-                              const FArrayBox& T,
-                              const Box&       box,
-                              int              sCompY,
-                              int              sCompT,
-                              int              sCompK) const
-{
-    BL_ASSERT(Y.nComp() >= sCompY+numSpecies());
-    BL_ASSERT(kappa.nComp() >= sCompK);
-    BL_ASSERT(T.nComp() > sCompT);
-    BL_ASSERT(Y.box().contains(box));
-    BL_ASSERT(T.box().contains(box));
-    BL_ASSERT(kappa.box().contains(box));
-    
-    FORT_MIX_BULK_VISC(box.loVect(), box.hiVect(),
-                       kappa.dataPtr(sCompK),ARLIM(kappa.loVect()),ARLIM(kappa.hiVect()),
-                       T.dataPtr(sCompT),  ARLIM(T.loVect()),  ARLIM(T.hiVect()),
-                       Y.dataPtr(sCompY),  ARLIM(Y.loVect()),  ARLIM(Y.hiVect()));
-}
-
-void
 ChemDriver::getRhoGivenPTY(FArrayBox&       Rho,
 			      Real             Patm,
 			      const FArrayBox& T,

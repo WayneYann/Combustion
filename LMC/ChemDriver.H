@@ -299,14 +299,6 @@ public:
                           int              sCompT,
                           int              sCompE) const;
     
-    void getMixBulkVisc (FArrayBox&       kappa,
-                         const FArrayBox& Y,
-                         const FArrayBox& T,
-                         const Box&       box,
-                         int              sCompY,
-                         int              sCompT,
-                         int              sCompK) const;
-    
     void getElementMoles (FArrayBox&       C_elt,
                           const std::string&   name,
                           const FArrayBox& C,
