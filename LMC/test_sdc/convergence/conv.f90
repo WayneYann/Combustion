@@ -26,20 +26,25 @@ contains
     !local variables   
     integer, parameter :: dm        = 2, &
                           levs      = 1, &
-                          nscal     = 19, &
-                          nspec     = 9, &
+                          ! H chem vlaue
+!                          nscal     = 19, &
+                          ! CH4 2step value
+                          nscal     = 16, &
+                          ! H chem vlaue
+!                          nspec     = 9, &
+                          ! CH4 2step value
+                          nspec     = 6, &
 ! indices of the data i care about
                           rho       = 1, &
                           rhoH      = 2, &
                           Temp      = 4, &
                           first_spec= 9, &
 !
-                          n_grids   = 4, &
+                          n_grids   = 3, &
                           n_err     = nspec+4, &
 ! not really concerned with ghost cells, throw away
                           ng_cell   = 0, &
                           exact_loc = 1024
-    real(dp_t), parameter :: cfl = 0.5d0
 ! don't forget to check ir, dx
 
     integer                   :: nlevs,n,i,index
@@ -64,9 +69,11 @@ contains
     nodal(:) = .true.
     pmask(:) = .true.
     
-    ir(1,:) = 32
-    dx(1,:) = 1.d0/32.d0 !1.d0/dble(ir(1,:))
-    dt(1)   = 3.2d-5
+    ir(1,:) = 16
+!    dx(1,:) = 1.d0/32.d0 !1.d0/dble(ir(1,:))
+!    dt(1)   = 3.2d-5
+    dx(1,:) = 1.d-3/16.d0 !1.d0/dble(ir(1,:))
+    dt(1)   = 3.44d-7
 
     do n = 2, n_grids
        ir(n,:) = ir(n-1,:)/2.d0
@@ -83,17 +90,26 @@ contains
     plot_names(6) = 'divu'
     plot_names(7) = 'dsdt'
     plot_names(8) = 'FuncCount'
-    plot_names(9) = 'X(H2)'
-    plot_names(10) = 'X(H)'
-    plot_names(11) = 'X(O)'
-    plot_names(12) = 'X(O2)'
-    plot_names(13) = 'X(OH)'
-    plot_names(14) = 'X(H2O)'
-    plot_names(15) = 'X(HO2)'
-    plot_names(16) = 'X(H2O2)'
-    plot_names(17) = 'X(N2)'
-    plot_names(18) = 'mag_vort'
-    plot_names(19) = 'HeatRelease'
+!    plot_names(9) = 'X(H2)'
+!    plot_names(10) = 'X(H)'
+!    plot_names(11) = 'X(O)'
+!    plot_names(12) = 'X(O2)'
+!    plot_names(13) = 'X(OH)'
+!    plot_names(14) = 'X(H2O)'
+!    plot_names(15) = 'X(HO2)'
+!    plot_names(16) = 'X(H2O2)'
+!    plot_names(17) = 'X(N2)'
+!    plot_names(18) = 'mag_vort'
+!    plot_names(19) = 'HeatRelease'
+
+    plot_names(9) = 'Y(02)'
+    plot_names(10) = 'Y(H20)'
+    plot_names(11) = 'Y(CH4)'
+    plot_names(12) = 'Y(CO)'
+    plot_names(13) = 'Y(CO2)'
+    plot_names(14) = 'Y(N2)'
+    plot_names(15) = 'mag_vort'
+    plot_names(16) = 'HeatRelease'
 
     write(*,*) loc(1),loc(2),loc(3),loc(4)
     write(*,*) files(1),files(2)
@@ -160,8 +176,8 @@ contains
     do n = 1, n_grids
        write(files(1),1000) dt(n),l1_error(n,1),l1_error(n,2),l1_error(n,3),&
                    l1_error(n,4),l1_error(n,5),l1_error(n,6),l1_error(n,7),&
-                   l1_error(n,8),l1_error(n,9),l1_error(n,10),l1_error(n,11),&
-                   l1_error(n,12),l1_error(n,13)
+                   l1_error(n,8),l1_error(n,9),l1_error(n,10)!,l1_error(n,11),&
+!                   l1_error(n,12),l1_error(n,13)
     end do
 
     write(files(2),*)'#Convergence study data -- L2 norm'
@@ -169,8 +185,8 @@ contains
     do n = 1, n_grids
        write(files(2),1000) dt(n),l2_error(n,1),l2_error(n,2),l2_error(n,3),&
                    l2_error(n,4),l2_error(n,5),l2_error(n,6),l2_error(n,7),&
-                   l2_error(n,8),l2_error(n,9),l2_error(n,10),l2_error(n,11),&
-                   l2_error(n,12),l2_error(n,13)
+                   l2_error(n,8),l2_error(n,9),l2_error(n,10)!,l2_error(n,11),&
+!                   l2_error(n,12),l2_error(n,13)
     end do
 
     do n = 1,n_grids+1

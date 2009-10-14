@@ -567,7 +567,7 @@ C   get a box of data
      &     ncompD,
      &     NULN, DIMS(NULN),
      &     ncompNULN,
-     &     bodyForce, DIMS(bodyForce),
+     &     extForce, DIMS(extForce),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
      &     dt,
@@ -589,7 +589,7 @@ C   get a box of data
       integer DIMDEC(AofS)
       integer DIMDEC(DofS)
       integer DIMDEC(NULN)
-      integer DIMDEC(bodyForce)
+      integer DIMDEC(extForce)
       integer DIMDEC(FuncCount)
       integer do_diag
       integer ncompA, ncompD, ncompNULN
@@ -603,17 +603,17 @@ C   get a box of data
       REAL_T AofS(DIMV(AofS),*)
       REAL_T DofS(DIMV(DofS),*)
       REAL_T NULN(DIMV(NULN),*)
-      REAL_T bodyForce(DIMV(bodyForce),*)
+      REAL_T extForce(DIMV(extForce),*)
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
    
       interface
-        subroutine sdc_func(Adv,Diffn,NULN,bForce,dt)
+        subroutine sdc_func(Adv,Diffn,NULN,extForce,dt)
           REAL_T,  intent(in   ) :: Adv(0:)
           REAL_T,  intent(in   ) :: Diffn(0:)
           REAL_T,  intent(in   ) :: NULN(0:)
-          REAL_T,  intent(in   ) :: bForce(0:)
+          REAL_T,  intent(in   ) :: extForce(0:)
           REAL_T,  intent(in   ) :: dt
         end subroutine sdc_func
       end interface
@@ -799,7 +799,7 @@ C               enddo
 C               call bl_abort('')               
 C Put SDC additions in area accessible by conpFY
                call sdc_func(AofS(i,j,:ncompA),DofS(i,j,:ncompD),
-     &              NULN(i,j,:ncompNULN),bodyForce(i,j,:Nspec),dt)
+     &              NULN(i,j,:ncompNULN),extForce(i,j,:Nspec),dt)
 
 C$$$            if(i .eq. 1 .and. j .eq.25) then
 C$$$               write(*,*)'Inside ChemDriver'

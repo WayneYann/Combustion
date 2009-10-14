@@ -688,8 +688,8 @@ C calculate molar concentrations from mass fractions; result in RPAR(NC)
 C      CALL CKYTCP(RPAR(NP), Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
       do K = 1, Nspec
          WT   = RPAR(NWT + K - 1)
-         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)*RHO/WT), zero) 
-C         RPAR(NC + K-1) = 1.d-3 * Z(K+1)*RHO/WT
+C         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)*RHO/WT), zero) 
+         RPAR(NC + K-1) = 1.d-3 * Z(K+1)*RHO/WT
       enddo
       
 C computes production rate for each species; result in RPAR(NWDOT)
@@ -797,8 +797,8 @@ C      enddo
 
       do K = 1, Nspec
          WT   = RPAR(NWT   + K - 1)
-         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)/WT),zero)
-C         RPAR(NC + K-1) = 1.d-3 * Z(K+1)/WT
+C         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)/WT),zero)
+         RPAR(NC + K-1) = 1.d-3 * Z(K+1)/WT
 c         conc(K) = 1.d-3 * Z(K+1)/WT
 C         diff = conc(K) - RPAR(NC + K-1)
 C         if (abs(diff) .ge. 1.d-9) then 
@@ -957,14 +957,14 @@ C diffusion--rxns part added in conpFY.
 C solving
 C    S_t = Adv + Diff + Rxn
 C  
-      subroutine Lob_provis(Adv,Diffn,NULN,bForce,dt)
+      subroutine Lob_provis(Adv,Diffn,NULN,extForce,dt)
       implicit none
 #include "cdwrk.H"
 
       REAL_T,  intent(in   ) :: Adv(0:)
       REAL_T,  intent(in   ) :: Diffn(0:)
       REAL_T,  intent(in   ) :: NULN(0:)
-      REAL_T,  intent(in   ) :: bForce(0:)
+      REAL_T,  intent(in   ) :: extForce(0:)
       REAL_T,  intent(in   ) :: dt
 
 
@@ -983,8 +983,9 @@ C     rhoH_t1, rhoH_t2 ,...
 
 C     make for species
       do n = 0, Nspec-1
-         c_0(n+1) = -Adv(n) + Diffn(n+Nspec)
-C + bForce(n)
+         c_0(n+1) = -Adv(n) + Diffn(n+Nspec) + extForce(n)
+C         write(*,*) 'extF = ',extForce(n)
+C      call bl_abort();
 C      write(*,*)n,'Adv = ',Adv(n)
 C      write(*,*)n,'Diff = ',Diffn(n+Nspec)
          c_1(n+1) = 0.
@@ -1008,14 +1009,14 @@ C rxns part added in conpFY
 C solving
 C    S_t = A_new-A_old + D_new-D_old + I'_AD + Rxn
 C
-      subroutine Lob_sdc(Adv,Diffn,NULN,bForce,dt)
+      subroutine Lob_sdc(Adv,Diffn,NULN,extForce,dt)
       implicit none
 #include "cdwrk.H"
 
       REAL_T,  intent(in   ) :: Adv(0:)
       REAL_T,  intent(in   ) :: Diffn(0:)
       REAL_T,  intent(in   ) :: NULN(0:)
-      REAL_T,  intent(in   ) :: bForce(0:)
+      REAL_T,  intent(in   ) :: extForce(0:)
       REAL_T,  intent(in   ) :: dt
 
 
@@ -1026,8 +1027,7 @@ C      integer, parameter ::  nD = 4
 
       do n = 0, Nspec-1
          c_0(n+1) = -Adv(n) + Diffn(n) + Diffn(n+Nspec) - 
-     &              Diffn(n+2*Nspec) 
-C+ bForce(n)  
+     &              Diffn(n+2*Nspec) + extForce(n)  
          c_1(n+1) = (Diffn(n+2*Nspec) - Diffn(n))/dt
 
 C

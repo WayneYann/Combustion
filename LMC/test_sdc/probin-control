@@ -23,6 +23,7 @@
   phi_in = .37
   pertmag = .0
   pertmag = .0001
+  pertmag = .00005
   turb_scale = 1.0	  
  /
  &heattransin

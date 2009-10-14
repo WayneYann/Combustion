@@ -39,7 +39,7 @@ public:
 			  FArrayBox&        AofS,
 			  FArrayBox&        DofS,
 			  FArrayBox&        RhoH_NULN,
-			  FArrayBox&        bodyForce,
+			  FArrayBox&        extForce,
 			  FArrayBox&        FuncCount,
 			  const Box&        box,
 			  int               sCompRho,

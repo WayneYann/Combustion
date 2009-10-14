@@ -133,9 +133,9 @@ public:
 			int        s_ind,
 			FArrayBox& extF,
 			int        extf_ind,
-			int        num_comp,
 			FArrayBox& sdcF,
 			int        sdcf_ind,
+			int        num_comp,
 			FArrayBox& rho,
 			int        isconserv);
 

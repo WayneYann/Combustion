@@ -1,27 +1,29 @@
 # CHECK DPDT_FAC
 # CHECK WDOT IN ChemDriver_F.F
-ht.use_sdc = 0
-ht.sdc_iters = 2
+ht.use_sdc = 1
+ht.sdc_iters = 5
 
-amr.plot_int = 10
+amr.plot_int = 1
 
-max_step  = 10000
-stop_time =  0.000256
+max_step  = 1 
+stop_time =  1
 
 #ns.fixed_dt = 0.000002 #1024 due to stability
 #ns.fixed_dt = 0.00000064 #1024 due to stability
 #ns.fixed_dt = 0.000064 # 32 
+#ns.fixed_dt = 0.0000032 # 32 
 #ns.fixed_dt = 0.000032 # 64 
 #ns.fixed_dt = 0.000016 # 128 
+#ns.fixed_dt = 0.00000075 # 128 
 #ns.fixed_dt = 0.000008 # 256
 #ns.fixed_dt = 0.00008 # 256
 #ns.fixed_dt = 0.00004 # 256
 #ns.fixed_dt = 0.000024 # 256
 
-amr.max_grid_size   = 128
-amr.n_cell = 1024 1024
-#amr.n_cell = 256 256
-#amr.n_cell = 128 128
+amr.max_grid_size   = 64
+#amr.n_cell = 1024 1024
+#amr.n_cell = 32 256
+amr.n_cell = 32 32
 
 #amr.restart = chkL00030
 
@@ -49,9 +51,9 @@ amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.blocking_factor = 16      # block factor in grid generation
-amr.check_file      = chkEx
+amr.check_file      = chk
 amr.check_int       = 50     # number of timesteps between checkpoints
-amr.plot_file       = pltEx
+amr.plot_file       = plt
 amr.grid_log        = grdlog  # name of grid logging file
 amr.derive_plot_vars=rhoRT mag_vort
 amr.probin_file = probin-control # This will default to file "probin" if not set
@@ -59,16 +61,16 @@ amr.v  = 1
 
 # ------------------  INPUTS TO PHYSICS CLASS -------------------
 #ns.cfl            = 0.75      # cfl number for hyperbolic system
-ns.cfl            = 0.05      # cfl number for hyperbolic system
-ns.init_shrink    = 0.1        # scale down initial timestep
-#ns.init_shrink    = 1.0        # scale down initial timestep
-ns.change_max     = 1.1       # scale back initial timestep
-#ns.change_max     = 1.0       # scale back initial timestep
+ns.cfl            = 0.2      # cfl number for hyperbolic system
+#ns.init_shrink    = 0.1        # scale down initial timestep
+#ns.change_max     = 1.1       # scale back initial timestep
+ns.init_shrink    = 1.0        # scale down initial timestep
+ns.change_max     = 1.0       # scale back initial timestep
 
-ns.init_iter      = 4        # number of init iters to def pressure
-#ns.init_iter      = 0        # number of init iters to def pressure
-#ns.num_divu_iters = 0
-ns.num_divu_iters = 4
+#ns.init_iter      = 4        # number of init iters to def pressure
+#ns.num_divu_iters = 4
+ns.init_iter      = 0        # number of init iters to def pressure
+ns.num_divu_iters = 0
 
 ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
 #ns.visc_tol        = 1.0e-16  # tolerence for viscous solves
@@ -96,16 +98,18 @@ ns.do_reflux_visc  = 1
 ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
-ns.unity_Le = 0
+ns.unity_Le = 1
 
 ns.tranfile        = ./tran.asc.CH4-2step
 ns.fuelName        = CH4
 ns.consumptionName = CH4
+ns.flameTracName   = CO
 #ns.tranfile        = ./tran.asc.chem-H
 #ns.fuelName        = H2
 #ns.consumptionName = H2
+#ns.flameTracName   = H
 ns.oxidizerName    = O2
-ns.flameTracName   = H
+
 
 ns.plot_consumption = 1
 ns.plot_heat_release = 1
@@ -121,10 +125,10 @@ ns.hi_bc          = 0 2
 
 geometry.is_periodic = 1 0
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
-geometry.prob_lo   =   0.  0. # in meters
-geometry.prob_hi   =  .008 .008
+geometry.prob_lo   =   0.  0.0035 # in meters
+geometry.prob_hi   =  .0025 .006
 #geometry.prob_hi   =  .004 .004
-#geometry.prob_hi   =  .001 .016
+#geometry.prob_hi   =  .001 .008
 #geometry.prob_hi   =  .008 .016
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<

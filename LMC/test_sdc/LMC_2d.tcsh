@@ -8,11 +8,12 @@
 alias calc 'awk "BEGIN{ print \!* }" '
 alias calcfx ' awk -v CONVFMT="%12.2f" -v OFMT="%.9g" "BEGIN{  print \!* }" '
 
-foreach DX ( 32 64 128 256 )
+foreach DX ( 256 128 64 32 )
+#foreach DX ( 64 )
 foreach SDCITER ( 0 1 2 )
 
-set FIXEDDT=`calcfx 0.000002*1024*0.5/$DX`
-set NSTEP=`calcfx 2*128/(1024/$DX)`
+set FIXEDDT=`calcfx 0.0000032*(256/$DX)`
+set NSTEP=`calcfx 0.000256/$FIXEDDT`
 
 echo "dx is " $DX
 echo "sdciter is " $SDCITER
@@ -31,7 +32,7 @@ ns.fixed_dt = $FIXEDDT
 amr.max_grid_size   = 64
 amr.n_cell = $DX $DX
 
-ns.hack_nochem = 1
+#ns.hack_nochem = 1
 
 amr.plot_int = 10
 
@@ -100,13 +101,19 @@ ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
 # FIXME
-ns.unity_Le = 1
-#ns.unity_Le = 0
-ns.tranfile        = ./tran.asc.chem-H
-ns.fuelName        = H2
+#ns.unity_Le = 1
+ns.unity_Le = 0
+#ns.tranfile        = ./tran.asc.chem-H
+#ns.fuelName        = H2
+#ns.flameTracName   = H
+#ns.consumptionName = H2
 ns.oxidizerName    = O2
-ns.flameTracName   = H
-ns.consumptionName = H2
+
+ns.tranfile        = ./tran.asc.CH4-2step
+ns.fuelName        = CH4
+ns.consumptionName = CH4
+ns.flameTracName   = CO
+
 ns.plot_consumption = 1
 ns.plot_heat_release = 1
 ns.do_active_control = false
@@ -188,20 +195,20 @@ EOF
 mpiexec -n 2 main2d.Linux.Intel.Intel.MPI.ex input > output_${DX}_${SDCITER}
 
 if ( $DX == 32 ) then
- mv plt00008 convergence/plt${SDCITER}032
- mv chk00008 convergence/chk${SDCITER}032
+ mv plt00010 convergence/plt${SDCITER}032
+ mv chk00010 convergence/chk${SDCITER}032
 endif
 if ( $DX == 64 ) then
- mv plt00016 convergence/plt${SDCITER}064
- mv chk00016 convergence/chk${SDCITER}064
+ mv plt00020 convergence/plt${SDCITER}064
+ mv chk00020 convergence/chk${SDCITER}064
 endif
 if ( $DX == 128 ) then
- mv plt00032 convergence/plt${SDCITER}128
- mv chk00032 convergence/chk${SDCITER}128
+ mv plt00040 convergence/plt${SDCITER}128
+ mv chk00040 convergence/chk${SDCITER}128
 endif
 if ( $DX == 256 ) then
- mv plt00064 convergence/plt${SDCITER}256
- mv chk00064 convergence/chk${SDCITER}256
+ mv plt00080 convergence/plt${SDCITER}256
+ mv chk00080 convergence/chk${SDCITER}256
 endif
 
 end

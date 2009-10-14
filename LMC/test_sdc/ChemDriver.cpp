@@ -620,7 +620,7 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			       FArrayBox&        AofS,
 			       FArrayBox&        DofS,
 			       FArrayBox&        RhoH_NULN,
-			       FArrayBox&        bodyForce,
+			       FArrayBox&        extForce,
 			       FArrayBox&        FuncCount,
 			       const Box&        box,
 			       int               sCompRho,
@@ -657,6 +657,7 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 //     std::cout<<"sCompRho = "<<sCompRho<<std::endl;
 //     std::cout<<"sCompH = "<<sCompH<<std::endl;
 //     std::cout<<"sCompT = "<<sCompT<<std::endl;
+//    std::cout<<"sCompF = "<<sCompF<<std::endl;
 
     if (sdc_flag == 0)
     {
@@ -682,8 +683,8 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			  RhoH_NULN.dataPtr(sCompNULN), ARLIM(RhoH_NULN.loVect()), 
 			                       ARLIM(RhoH_NULN.hiVect()),
 			  &ncompNULN,
-			  bodyForce.dataPtr(sCompF), ARLIM(bodyForce.loVect()), 
-			                             ARLIM(bodyForce.hiVect()),
+			  extForce.dataPtr(sCompF), ARLIM(extForce.loVect()), 
+			                             ARLIM(extForce.hiVect()),
 			  FuncCount.dataPtr(), ARLIM(FuncCount.loVect()),  
                                                ARLIM(FuncCount.hiVect()),
 			  &Patm, &dt, diagData, &do_diag, Lob_provis);
@@ -713,8 +714,8 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Snew,
 			  RhoH_NULN.dataPtr(sCompNULN), ARLIM(RhoH_NULN.loVect()), 
 			                       ARLIM(RhoH_NULN.hiVect()),
 			  &ncompNULN,
-			  bodyForce.dataPtr(sCompF), ARLIM(bodyForce.loVect()), 
-			                             ARLIM(bodyForce.hiVect()),
+			  extForce.dataPtr(sCompF), ARLIM(extForce.loVect()), 
+			                             ARLIM(extForce.hiVect()),
 			  FuncCount.dataPtr(), ARLIM(FuncCount.loVect()),  
                                                ARLIM(FuncCount.hiVect()),
 			  &Patm, &dt, diagData, &do_diag, Lob_sdc);
