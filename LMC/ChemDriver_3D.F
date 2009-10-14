@@ -1021,57 +1021,6 @@ c     Set molecular weights and pressure in area accessible by conpF
       end do
       end
 
-      subroutine FORT_MIXAVG_RHODIFF(lo, hi, RD, DIMS(RD), T, DIMS(T),
-     &                               Y, DIMS(Y), Patm)
-      implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(RD)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T RD(DIMV(RD),*)
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
-      REAL_T Patm
-
-      integer i, j, k, n
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec), X(maxspec)
-      REAL_T scal, Wavg, RHO, Tt, invmwt(maxspec), CPMS(maxspec)
-
-      CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
-      Ptmp = Patm * P1ATM
-      call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
-c
-c     Invert the molecular weights so I can multiply instead of divide.
-c
-      do n=1,Nspec
-         invmwt(n) = one / invmwt(n)
-      end do
-c
-c     NOTE: scal converts result from assumed cgs to MKS (1g/cm.s=.1 kg/m.s)
-c
-      scal = tenth
-      do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               do n=1,Nspec
-                  Yt(n) = Y(i,j,k,n)
-               end do
-               Tt = MAX(T(i,j,k),TMIN_TRANS)
-               CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
-               CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
-               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-               CALL EGSV1(Ptmp,Tt,Yt,Wavg,RWRK(egbr),Dt)
-               CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
-               do n=1,Nspec
-                  RD(i,j,k,n) = RHO * Wavg * invmwt(n) * Dt(n) * scal
-               end do
-            end do
-         end do
-      end do
-      end
-
       subroutine FORT_MIXAVG_RHODIFF_P(lo, hi, RD, DIMS(RD), T, DIMS(T),
      &                                 Y, DIMS(Y), Pmks, DIMS(Pmks))
       implicit none

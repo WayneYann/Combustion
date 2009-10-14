@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.13 2009-06-05 16:59:15 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.14 2009-10-14 23:24:08 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -362,36 +362,6 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
       print *,'**** in FORT_SPECVISC'
       call bl_abort()
 
-      if (.not.use_constant_rhoD) then
-         if (.not. LeEQ1) then
-            Patm = pamb / P1ATM_MKS
-            call FORT_MIXAVG_RHODIFF(lo, hi, rhoD, DIMS(rhoD), T, DIMS(T),
-     &                               Y, DIMS(Y), Patm)
-         else
-            call FORT_VELVISC(lo,hi,DIMS(T),T,DIMS(Y),Y,
-     &           DIMS(rhoD),rhoD)
-            do k=lo(3), hi(3)
-               do j=lo(2), hi(2)
-                  do i=lo(1), hi(1)
-                     val = rhoD(i,j,k,1) / Sc
-                     do n=1,ncompd
-                        rhoD(i,j,k,n) = val
-                     end do
-                  end do
-               end do
-            end do
-         end if
-      else
-         do k=lo(3), hi(3)
-            do j=lo(2), hi(2)
-               do i=lo(1), hi(1)
-                  do n=1,ncompd
-                     rhoD(i,j,k,n) = constant_rhoD_val
-                  end do
-               end do
-            end do
-         end do
-      end if
       end
 
       subroutine FORT_EST_DIVU_DT(flag, dtfactor, delta, divu, DIMS(divu), 

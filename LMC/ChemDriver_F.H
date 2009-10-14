@@ -27,7 +27,6 @@
 #    define FORT_CONC_TO_MOLE    dcontomol
 #    define FORT_CONPSOLV        dcpsolv
 #    define FORT_CHEMEQ          dchemeq
-#    define FORT_MIXAVG_RHODIFF  dmavgdif
 #    define FORT_MIXAVG_RHODIFF_P dmavgdifp
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
 #    define FORT_MIX_COND        dmixcon
@@ -86,7 +85,6 @@
 #    define FORT_CONC_TO_MOLE    DCONTOMOL
 #    define FORT_CONPSOLV        DCPSOLV
 #    define FORT_CHEMEQ          DCHEMEQ
-#    define FORT_MIXAVG_RHODIFF  DMAVGDIF
 #    define FORT_MIXAVG_RHODIFF_P DMAVGDIFP
 #    define FORT_MIXAVG_RHODIFF_TEMP DMAVGDIFTEMP
 #    define FORT_MIX_COND        DMIXCON
@@ -144,7 +142,6 @@
 #    define FORT_MOLETOMASS      dmoltoms
 #    define FORT_CONPSOLV        dcpsolv
 #    define FORT_CHEMEQ          dchemeq
-#    define FORT_MIXAVG_RHODIFF  dmavgdif
 #    define FORT_MIXAVG_RHODIFF_P dmavgdifp
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
 #    define FORT_MIX_COND        dmixcon
@@ -202,7 +199,6 @@
 #    define FORT_MOLETOMASS      dmoltoms_
 #    define FORT_CONPSOLV        dcpsolv_
 #    define FORT_CHEMEQ          dchemeq_
-#    define FORT_MIXAVG_RHODIFF  dmavgdif_
 #    define FORT_MIXAVG_RHODIFF_P dmavgdifp_
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp_
 #    define FORT_MIX_COND        dmixcon_
@@ -335,12 +331,6 @@ extern "C" {
                      const Real* Told, ARLIM_P(Tolo), ARLIM_P(Tohi),
                      Real* FuncCount, ARLIM_P(FuncCountlo), ARLIM_P(FuncCounthi),
                      const Real* p, const Real* dt);
-
-    void FORT_MIXAVG_RHODIFF(const int* lo, const int* hi,
-                             Real*       RD, ARLIM_P(RDlo), ARLIM_P(RDhi),
-                             const Real* T,  ARLIM_P(Tlo),  ARLIM_P(Thi),
-                             const Real* Y,  ARLIM_P(Ylo),  ARLIM_P(Yhi),
-                             const Real* Patm);
 
     void FORT_MIXAVG_RHODIFF_TEMP(const int* lo, const int* hi,
                                   Real*       RD, ARLIM_P(RDlo), ARLIM_P(RDhi),
