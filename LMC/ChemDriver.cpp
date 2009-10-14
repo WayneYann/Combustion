@@ -619,12 +619,15 @@ ChemDriver::getMixAveragedRhoDiff(FArrayBox&       rhoD,
     BL_ASSERT(Y.box().contains(box));
     BL_ASSERT(T.box().contains(box));
     BL_ASSERT(rhoD.box().contains(box));
-    
-    FORT_MIXAVG_RHODIFF(box.loVect(), box.hiVect(),
-                        rhoD.dataPtr(sCompRD),ARLIM(rhoD.loVect()),ARLIM(rhoD.hiVect()),
-                        T.dataPtr(sCompT),    ARLIM(T.loVect()),   ARLIM(T.hiVect()),
-                        Y.dataPtr(sCompY),    ARLIM(Y.loVect()),   ARLIM(Y.hiVect()),
-                        &Patm);
+
+    int do_temp    = 0;
+    int do_VelVisc = 0;
+
+    FORT_MIXAVG_RHODIFF_TEMP(box.loVect(), box.hiVect(),
+                             rhoD.dataPtr(sCompRD),ARLIM(rhoD.loVect()),ARLIM(rhoD.hiVect()),
+                             T.dataPtr(sCompT),    ARLIM(T.loVect()),   ARLIM(T.hiVect()),
+                             Y.dataPtr(sCompY),    ARLIM(Y.loVect()),   ARLIM(Y.hiVect()),
+                             &Patm,&do_temp,&do_VelVisc);
 
 
 }
