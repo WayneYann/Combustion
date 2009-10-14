@@ -1286,10 +1286,6 @@ C           invmut(n) = molecular weight of species n
 
       parameter(SCAL = tenth, TSCAL = one / 100000.0D0)
 
-      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &               + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
-      egilen = Nspec
-
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
       call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
@@ -1298,10 +1294,14 @@ C           invmut(n) = molecular weight of species n
          invmwt(n) = one / invmwt(n)
       end do
 
-!$omp parallel
+!$omp parallel private(egrlen,egilen,nthrds)
+
+#ifdef BL_USE_OMP
 
 !$omp single
-#ifdef BL_USE_OMP
+      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
+     &               + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+      egilen = Nspec
       nthrds = omp_get_num_threads()
 
       allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
@@ -1310,30 +1310,27 @@ C           invmut(n) = molecular weight of species n
          do n=1,egrlen
             egrwrk(n,i) = RWRK(egbr+n-1)
          enddo
-
          do n=1,egilen
             egiwrk(n,i) = IWRK(egbi+n-1)
          enddo
       end do
-#endif
 !$omp end single
 
-#ifdef BL_USE_OMP
 #define EGSRWK egrwrk(1,tid)
 #define EGSIWK egiwrk(1,tid)
+
 #else
+
 #define EGSRWK RWRK(egbr)
 #define EGSIWK IWRK(egbi)
-#endif
 
+#endif /*BL_USE_OMP*/
 !$omp do private(i,j,n,Yt,Tt,alpha,Dt,Wavg)
 !$omp&private(CPMS,X,RHO,l1,l2,tid)
       do j=lo(2),hi(2)
 
 #ifdef BL_USE_OMP
          tid = omp_get_thread_num() + 1
-#else
-         tid = 1
 #endif
          do i=lo(1),hi(1)
 
@@ -1489,12 +1486,54 @@ c
       integer i, j, n
       REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), Tt
 
-c
-c     The following computes the mixture averaged shear viscosity using EGLib
-c     Note that SCAL converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
-c
-      SCAL = tenth
+      REAL_T,  allocatable :: egrwrk(:,:)
+      integer, allocatable :: egiwrk(:,:)
+
+      integer egrlen, egilen, tid, nthrds
+
+      parameter(SCAL = tenth)
+
+!$omp parallel private(egrlen,egilen,nthrds)
+
+#ifdef BL_USE_OMP
+
+!$omp single
+      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
+     &               + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+      egilen = Nspec
+      nthrds = omp_get_num_threads()
+
+      allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
+
+      do i = 1,nthrds
+         do n=1,egrlen
+            egrwrk(n,i) = RWRK(egbr+n-1)
+         enddo
+         do n=1,egilen
+            egiwrk(n,i) = IWRK(egbi+n-1)
+         enddo
+      end do
+!$omp end single
+
+#define EGSRWK egrwrk(1,tid)
+#define EGSIWK egiwrk(1,tid)
+
+#else
+
+#define EGSRWK RWRK(egbr)
+#define EGSIWK IWRK(egbi)
+
+#endif /*BL_USE_OMP*/
+!
+! The following computes the mixture averaged shear viscosity using EGLib
+! Note that SCAL converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
+!
+!$omp do private(i,j,n,Yt,Tt,CPMS,X,tid)
       do j=lo(2),hi(2)
+
+#ifdef BL_USE_OMP
+         tid = omp_get_thread_num() + 1
+#endif
          do i=lo(1),hi(1)
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
@@ -1502,11 +1541,17 @@ c
             Tt = MAX(T(i,j),TMIN_TRANS) 
             CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-            CALL EGSE3(Tt,Yt,RWRK(egbr),eta(i,j))
+            CALL EGSPAR(Tt,X,Yt,CPMS,EGSRWK,EGSIWK)
+            CALL EGSE3(Tt,Yt,EGSRWK,eta(i,j))
             eta(i,j) = eta(i,j) * SCAL
          end do
       end do
+!$omp end do
+
+!$omp end parallel
+
+#undef EGSRWK
+#undef EGSIWK
 
       end
 
