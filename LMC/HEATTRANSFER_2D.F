@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.18 2009-10-15 16:26:32 lijewski Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.19 2009-10-15 21:06:39 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -76,41 +76,6 @@ c -------------------- begin here ----------------------------
           rdghdgy(i,j) =  half*((betadotleft + betadotright)/dxsqr +
      &                          (betadottop  + betadotbot)/dysqr)
 #endif
-        enddo
-      enddo
-      end
-
-      subroutine FORT_FLOOR_AND_SCALE_SPEC(nspecies,lo,hi,
-     &  DIMS(spec),sum,spec)
-
-      implicit none
-
-      integer nspecies
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(spec)
-      REAL_T  sum(DIMV(spec))      
-      REAL_T  spec(DIMV(spec),nspecies)      
-
-      integer i,j,k
-
-      do j=lo(2),hi(2)
-        do i=lo(1),hi(1)
-          sum(i,j) = zero
-        enddo
-      enddo
-      do k=1,nspecies
-        do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-            spec(i,j,k) = max(zero,spec(i,j,k))
-            sum(i,j)    = sum(i,j)+spec(i,j,k)
-          enddo
-        enddo
-      enddo
-      do k=1,nspecies
-        do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-            spec(i,j,k) = spec(i,j,k)/sum(i,j)
-          enddo
         enddo
       enddo
       end

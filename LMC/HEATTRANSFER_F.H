@@ -1,12 +1,11 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.4 2009-10-15 16:26:32 lijewski Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.5 2009-10-15 21:06:39 lijewski Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady
-#    define FORT_FLOOR_AND_SCALE_SPEC      floorandscalespec 
 #    define FORT_DIVUFILL                  divufill
 #    define FORT_DSDTFILL                  dsdtfill
 #    define FORT_DQRADFILL                 dqradfill
@@ -32,7 +31,6 @@
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
 #    define FORT_GETPAMB                   GETPAMB
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY COMPUTERHODGRADHDOTGRADY
-#    define FORT_FLOOR_AND_SCALE_SPEC      FLOORANDSCALESPEC 
 #    define FORT_DIVUFILL                  DIVUFILL
 #    define FORT_DSDTFILL                  DSDTFILL
 #    define FORT_DQRADFILL                 DQRADFILL
@@ -57,7 +55,6 @@
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady
-#    define FORT_FLOOR_AND_SCALE_SPEC      floorandscalespec
 #    define FORT_DIVUFILL                  divufill
 #    define FORT_DSDTFILL                  dsdtfill
 #    define FORT_DQRADFILL                 dqradfill
@@ -82,7 +79,6 @@
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady_
-#    define FORT_FLOOR_AND_SCALE_SPEC      floorandscalespec_
 #    define FORT_DIVUFILL                  divufill_
 #    define FORT_DSDTFILL                  dsdtfill_
 #    define FORT_DQRADFILL                 dqradfill_
@@ -129,10 +125,6 @@ extern "C" {
 #endif            
               ARLIM_P(ddrhslo),ARLIM_P(ddrhshi), Real* ddrhsdat);
 
-    void FORT_FLOOR_AND_SCALE_SPEC(const int& nspecies, 
-                    const int* lo, const int* hi, ARLIM_P(s_lo),
-                    ARLIM_P(s_hi), Real* sum, Real* species); 
- 
     void FORT_DIVUFILL (Real* data, ARLIM_P(data_lo), ARLIM_P(data_hi),
 			 const int* dom_lo, const int* dom_hi,
                          const Real* dx, const Real* grd_lo,

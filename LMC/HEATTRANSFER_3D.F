@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.16 2009-10-15 21:00:52 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.17 2009-10-15 21:06:39 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -81,47 +81,6 @@ c
       enddo
 !$omp end parallel do
 
-      end
-
-      subroutine FORT_FLOOR_AND_SCALE_SPEC(nspecies,lo,hi,
-     &  DIMS(spec),sum,spec)
-
-      implicit none
-
-      integer nspecies
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(spec)
-      REAL_T  sum(DIMV(spec))      
-      REAL_T  spec(DIMV(spec),nspecies)      
-
-      integer i,j,k,n
-
-      do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               sum(i,j,k) = zero
-            enddo
-         enddo
-      enddo
-      do n=1,nspecies
-         do k=lo(3),hi(3)
-            do j=lo(2),hi(2)
-               do i=lo(1),hi(1)
-                  spec(i,j,k,n) = max(zero,spec(i,j,k,n))
-                  sum(i,j,k)    = sum(i,j,k)+spec(i,j,k,n)
-               enddo
-            enddo
-         enddo
-      enddo
-      do n=1,nspecies
-         do k=lo(3),hi(3)
-            do j=lo(2),hi(2)
-               do i=lo(1),hi(1)
-                  spec(i,j,k,n) = spec(i,j,k,n)/sum(i,j,k)
-               enddo
-            enddo
-         enddo
-      enddo
       end
 
       subroutine FORT_VELVISC(lo,hi,
