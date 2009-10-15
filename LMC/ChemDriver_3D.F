@@ -1619,10 +1619,10 @@ c
       
       character*(maxspnml) name      
       integer n, i, j, k, iH2O, iCO2, iCH4, iCO
-      REAL_T lnT, aP, c0, c1, c2, c3, c4
-      REAL_T T1, T2, T3, T4, Tb4, lnT1, lnT2, lnT3, lnT4, sigma
+      REAL_T aP, c0, c1, c2, c3, c4
+      REAL_T T1,T2,T3,T4,lnT1,lnT2,lnT3,lnT4,Tb4,sigma
 
-      data sigma / 5.669e-08 /
+      parameter (sigma = 5.669D-08)
       
       iH2O = 0
       iCO2 = 0
@@ -1638,7 +1638,9 @@ c
       end do
       
       Tb4 = T_bg**4
-      
+
+!$omp parallel do private(i,j,k,T1,T2,T3,T4,lnT1,lnT2,lnT3,lnT4)
+!$omp&private(aP,c0,c1,c2,c3,c4)
       do k = lo(3),hi(3)
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)
@@ -1677,15 +1679,15 @@ c
 
                if ((iCH4.gt.0).and.(X(i,j,k,iCH4).gt.zero)) then
                   aP = aP + X(i,j,k,iCH4)*
-     &                 ( 6.6334
-     &                 - 0.0035686 *T1
+     &                 ( 6.6334D0
+     &                 - 0.0035686D0 *T1
      &                 + 1.6682D-08*T2
      &                 + 2.5611D-10*T3
      &                 - 2.6558D-14*T4 )         
                end if
                
                if ((iCO.gt.0).and.(X(i,j,k,iCO).gt.zero)) then
-                  if ( T1 .le. 750.d0 ) then
+                  if ( T1 .le. 750.0D0 ) then
                      c0 =  4.7869D0
                      c1 = -0.06953D0
                      c2 =  2.95775D-4
@@ -1706,6 +1708,8 @@ c
             end do
          end do
       end do
+!$omp end parallel do
+
       end
       
       subroutine aplycnst(N, T, Y, RPAR, IPAR)
