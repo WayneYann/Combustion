@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.18 2009-10-15 21:46:05 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.19 2009-10-15 22:07:43 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -582,7 +582,9 @@ c===================================================================
      &                            flux, DIMS(flux),
      &                            state, DIMS(state), nc, dir)
       implicit none
+
 #include "cdwrk.H"
+
       integer lo(SDIM), hi(SDIM), nc, dir
       integer DIMDEC(flux)
       integer DIMDEC(state)
@@ -590,24 +592,26 @@ c===================================================================
       REAL_T state(DIMV(state),nc)
       
       character*(maxspnml) name
-      integer i, j, k, n, pm, maxs, iN2
-      REAL_T sum, val, maxv
-      
-#if (METH == VCOR)
-      REAL_T yedge, sumRhoY
-#endif
 
+      integer i, j, k, n, pm, maxs, iN2
+      REAL_T sum, val, maxv, yedge, sumRhoY
+      
+#if (METH == N2DOM)
       iN2 = -1
       do n = 1,nc
          call get_spec_name(name,n)
          if (name .eq. 'N2' ) iN2 = n
       end do
+#endif
          
+!$omp parallel private(i,j,k,n,pm,maxs,sum,val,maxv,yedge,sumRhoY)
+
       if (dir.eq.0) then
+!$omp do
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)+1
-                  sum = zero
+                  sum     = zero
                   sumRhoY = zero
                   do n=1,nc
                      sum = sum + flux(i,j,k,n)
@@ -638,11 +642,13 @@ c===================================================================
                end do
             end do
          end do
+!$omp end do
       else if (dir.eq.1) then
+!$omp do
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)+1
                do i = lo(1),hi(1)
-                  sum = zero
+                  sum     = zero
                   sumRhoY = zero
                   do n=1,nc
                      sum = sum + flux(i,j,k,n)
@@ -673,11 +679,13 @@ c===================================================================
                end do
             end do
          end do
+!$omp end do
       else
+!$omp do
          do k = lo(3),hi(3)+1
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)
-                  sum = zero
+                  sum     = zero
                   sumRhoY = zero
                   do n=1,nc
                      sum = sum + flux(i,j,k,n)
@@ -708,7 +716,10 @@ c===================================================================
                end do
             end do
          end do
+!$omp end do
       end if
+!$omp end parallel
+
       end
 #else
       subroutine FORT_REPAIR_FLUX(lo, hi,
@@ -836,6 +847,12 @@ c
       call bl_abort(" ")
       end
 #endif
+
+#undef VCOR
+#undef N2DOM
+#undef FINDDOM
+#undef JBBMOD
+#undef METH
       
       subroutine  FORT_RECOMP_UPDATE(lo, hi,
      &                               update, DIMS(update),
