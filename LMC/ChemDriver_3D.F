@@ -97,9 +97,10 @@ c     Series of runtime hacks
       integer i,j,k,n
       REAL_T P1atm,RU,RUC,Pdyne
 
+      parameter(scale = million)
+
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       Pdyne = Patm * P1atm
-      scale = million
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -153,14 +154,16 @@ c     Series of runtime hacks
       integer ndummy
       REAL_T tdummy,P1atm,RU,RUC
       REAL_T RHO, CPB, scal
+c
+c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.m^3)
+c
+      parameter(scal = tenth)
 
       ndummy = Nspec
-      tdummy = 0.
+      tdummy = 0.0D0
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       RWRK(NP) = Patm * P1atm
 
-c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.m^3)
-      scal = tenth
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -331,7 +334,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       
       REAL_T Yt(maxspec), Ct(maxspec), RU, RUC, P1ATM, Ptmp
       integer i,j,k,n
-      
+
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
 
@@ -398,7 +401,8 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       REAL_T Ct(maxspec), Xt(maxspec), scale
       integer i,j,k,n
 
-      scale = one/million
+      parameter(scale = one/million)
+      
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -978,7 +982,7 @@ c     Set molecular weights and pressure in area accessible by conpF
 
       integer i, j, k, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec)
-      REAL_T scal, tscal, Wavg, RHO, Tt, invmwt(maxspec)
+      REAL_T SCAL, TSCAL, Wavg, RHO, Tt, invmwt(maxspec)
       REAL_T alpha, l1, l2, X(maxspec), CPMS(maxspec)
 
       REAL_T,  allocatable :: egrwrk(:,:)
@@ -1169,7 +1173,9 @@ c     Set molecular weights and pressure in area accessible by conpF
       subroutine FORT_RHOfromPTY(lo, hi, RHO, DIMS(RHO), T, DIMS(T),
      &                           Y, DIMS(Y), Patm)
       implicit none
+
 #include "cdwrk.H"
+
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(RHO)
       integer DIMDEC(T)
@@ -1181,11 +1187,15 @@ c     Set molecular weights and pressure in area accessible by conpF
       
       integer i, j, k, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL
-      
+c
 c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
-      SCAL = one * 1000
+c
+      parameter(SCAL = one * 1000.0D0)
+      
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
+
+!$omp parallel do private(i,j,k,n,Yt)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1197,6 +1207,8 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3
             end do
          end do
       end do
+!$omp end parallel do
+
       end
       
       subroutine FORT_RHOfromPvTY(lo, hi, RHO, DIMS(RHO), T, DIMS(T),
@@ -1215,9 +1227,11 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3
       
       integer i, j, k, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL
-      
+c
 c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
-      SCAL = one * 1000
+c
+      parameter(SCAL = one * 1000)
+      
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -1236,7 +1250,9 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3
       subroutine FORT_PfromRTY(lo, hi, P, DIMS(P), RHO, DIMS(RHO),
      &                         T, DIMS(T), Y, DIMS(Y))
       implicit none
+
 #include "cdwrk.H"
+
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(P)
       integer DIMDEC(RHO)
@@ -1249,11 +1265,13 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3
       
       integer i, j, k, n
       REAL_T Yt(maxspec), RHOt, SCAL, SCAL1
-      
+c
 c     NOTE: SCAL converts result from assumed cgs to MKS (1 dyne/cm^2 = .1 Pa)
 c           SCAL1 converts density (1 kg/m^3 = 1.e-3 g/cm^3)
-      SCAL = tenth
-      SCAL1 = tenth**3
+c
+      parameter(SCAL = tenth, SCAL1 = tenth**3)
+
+!$omp parallel do private(i,j,k,n,Yt,RHOt)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1266,6 +1284,8 @@ c           SCAL1 converts density (1 kg/m^3 = 1.e-3 g/cm^3)
             end do
          end do
       end do
+!$omp end parallel do
+
       end
       
       subroutine FORT_TfromPRY(lo, hi, T, DIMS(T), RHO, DIMS(RHO),
@@ -1283,12 +1303,14 @@ c           SCAL1 converts density (1 kg/m^3 = 1.e-3 g/cm^3)
       
       integer i, j, k, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL, Wavg, RHOt
+c
+c     NOTE: SCAL converts density (1 kg/m^3 = 1.e-3 g/cm^3)
+c
+      parameter(SCAL = tenth**3)
       
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
 
-c     NOTE: SCAL converts density (1 kg/m^3 = 1.e-3 g/cm^3)
-      SCAL = tenth**3
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1317,9 +1339,12 @@ c     NOTE: SCAL converts density (1 kg/m^3 = 1.e-3 g/cm^3)
       
       integer i, j, k, n
       REAL_T Yt(maxspec), SCAL
-      
+c
 c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
-      SCAL = tenth**4
+c
+      parameter(SCAL = tenth**4)
+
+!$omp parallel do private(i,j,k,n,Yt)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1331,6 +1356,7 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg
             end do
          end do
       end do
+!$omp end parallel do
       end
       
       subroutine FORT_CVMIXfromTY(lo, hi, CVMIX, DIMS(CVMIX), T, DIMS(T),
@@ -1347,9 +1373,11 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg
       
       integer i, j, k, n
       REAL_T Yt(maxspec), SCAL
-      
+c
 c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
-      SCAL = tenth**4
+c
+      parameter(SCAL = tenth**4)
+
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1366,7 +1394,9 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg
       subroutine FORT_HMIXfromTY(lo, hi, HMIX, DIMS(HMIX), T, DIMS(T),
      &                           Y, DIMS(Y))
       implicit none
+
 #include "cdwrk.H"
+
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(HMIX)
       integer DIMDEC(T)
@@ -1377,9 +1407,12 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg
       
       integer i, j, k, n
       REAL_T Yt(maxspec), SCAL
-      
+c
 c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
-      SCAL = tenth**4
+c
+      parameter(SCAL = tenth**4)
+
+!$omp parallel do private(i,j,k,n,Yt)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1391,11 +1424,15 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
             end do
          end do
       end do
+!$omp end parallel do
+
       end
       
       subroutine FORT_MWMIXfromY(lo, hi, MWMIX, DIMS(MWMIX), Y, DIMS(Y))
       implicit none
+
 #include "cdwrk.H"
+
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(MWMIX)
       integer DIMDEC(Y)
@@ -1404,8 +1441,10 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
       
       integer i, j, k,n
       REAL_T Yt(maxspec)
-
-c     Returns mean molecular weight in kg/kmole
+!
+!     Returns mean molecular weight in kg/kmole
+!
+!$omp parallel do private(i,j,k,n,Yt)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1416,6 +1455,8 @@ c     Returns mean molecular weight in kg/kmole
             end do
          end do
       end do
+!$omp end parallel do
+
       end
       
       subroutine FORT_CPfromT(lo, hi, CP, DIMS(CP), T, DIMS(T))
@@ -1429,9 +1470,11 @@ c     Returns mean molecular weight in kg/kmole
       
       integer i, j, k, n
       REAL_T SCAL, CPt(maxspec)
-      
+c
 c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
-      SCAL = tenth**4
+c
+      parameter(SCAL = tenth**4)
+      
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1455,9 +1498,12 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg
       
       integer i, j, k, n
       REAL_T SCAL, Ht(maxspec)
-      
+c
 c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
-      SCAL = tenth**4
+c
+      parameter(SCAL = tenth**4)
+
+!$omp parallel do private(i,j,k,n,Ht)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1468,13 +1514,17 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
             end do
          end do
       end do
+!$omp end parallel do
+
       end
 
       integer function FORT_TfromHY(lo, hi, T, DIMS(T),
      &                              HMIX, DIMS(HMIX), Y, DIMS(Y),
      &                              errMax, NiterMAX, res)
       implicit none
+
 #include "cdwrk.H"
+
       integer lo(SDIM), hi(SDIM)
       integer NiterMAX
       integer DIMDEC(T)
@@ -1489,6 +1539,8 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
       integer i,j,k,n,FORT_TfromHYpt,Niter,MAXiters
 
       MAXiters = 0
+
+!$omp parallel do private(i,j,k,n,Yt,res,Niter) reduction(max:MAXiters)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1504,13 +1556,12 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
                   call bl_abort(" ")
                end if
                
-               if (Niter .gt. MAXiters) then
-                  MAXiters = Niter
-               end if
+               if (Niter .gt. MAXiters) MAXiters = Niter
 
             end do
          end do
       end do
+!$omp end parallel do
 
 c     Set max iters taken during this solve, and exit
       FORT_TfromHY = MAXiters
