@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.17 2009-10-15 21:06:39 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.18 2009-10-15 21:46:05 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -104,14 +104,16 @@ c
          if (.not. LeEQ1) then
             call FORT_MIX_SHEAR_VISC(lo, hi, mu, DIMS(mu),
      &                               T, DIMS(T), Y, DIMS(Y))       
-         else 
+         else
+!$omp parallel do private(i,j,k)
             do k=lo(3), hi(3)
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
-                     mu(i,j,k) = 1.85e-5*(T(i,j,k)/298.0)**.7
+                     mu(i,j,k) = 1.85D-5*(T(i,j,k)/298.0)**.7
                   end do
                end do
             end do
+!$omp end parallel do
          end if
       else
          do k=lo(3), hi(3)
@@ -267,7 +269,11 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
       REAL_T  fluxxlo, fluxxhi, fluxylo, fluxyhi, fluxzlo, fluxzhi
       REAL_T  a,b,c
 
-      dt = 1.0e20
+      dt = 1.0D20
+
+!$omp parallel do reduction(min : dt) private(i,j,k,a,b,c)
+!$omp&private(dtcell,dtcell2,denom,rhominij,rhoij)
+!$omp&private(fluxxlo,fluxxhi,fluxylo,fluxyhi,fluxzlo,fluxzhi)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -277,28 +283,24 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                      if(rho(i,j,k).gt.rhomin) then
                         dtcell = dtfactor*(one-rhomin/rho(i,j,k))/divu(i,j,k)
                      else
-                        dtcell = dtfactor*.5/divu(i,j,k)
+                        dtcell = dtfactor*0.5D0/divu(i,j,k)
                      endif
-                     if (dsdt(i,j,k).gt.1.0e-20) then
+                     if (dsdt(i,j,k).gt.1.0D-20) then
                         if (abs(rho(i,j,k)).gt.rhomin) then
                            rhominij = rhomin
                         else
-                           rhominij = .9*abs(rho(i,j,k)) 
+                           rhominij = 0.9D0*abs(rho(i,j,k)) 
                         endif
                         rhoij = abs(rho(i,j,k))
-#if 0 
-                        dtcell2 = (-rhoij*divu(i,j,k) + 
-     &                       sqrt((rhoij*divu(i,j,k))**2+
-     &                       two*dsdt(i,j,k)*rhoij*abs(rhoij-rhominij)))/
-     &                       (rhoij*dsdt(i,j,k))
-#else 
+c
 c     ... note: (-b+sqrt(b^2-4ac))/2a = 2c/(-b-sqrt(b^2-4ac))
 c     We use the latter because it is more robust
+c
                         a = rhoij*dsdt(i,j,k)*half
                         b = rhoij*divu(i,j,k)
                         c = rhominij - rhoij
                         dtcell2 = two*c/(-b-sqrt(b**2-four*a*c))
-#endif
+
                         dtcell2 = dtfactor*dtcell2
                         dtcell = min(dtcell,dtcell2)
                      endif
@@ -351,6 +353,8 @@ c     We use the latter because it is more robust
             enddo
          enddo
       enddo
+!$omp end parallel do
+
       end
 
       subroutine FORT_CHECK_DIVU_DT(flag, dtfactor, delta, divu, DIMS(divu), 
@@ -392,6 +396,9 @@ c     We use the latter because it is more robust
       REAL_T  fluxxlo,fluxxhi,fluxylo,fluxyhi,fluxzlo,fluxzhi
       REAL_T  a,b,c,dtcell2,rhominij,rhoij
 
+!$omp parallel do private(i,j,k,a,b,c)
+!$omp&private(dtcell,dtcell2,denom,rhominij,rhoij)
+!$omp&private(fluxxlo,fluxxhi,fluxylo,fluxyhi,fluxzlo,fluxzhi)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -403,26 +410,22 @@ c     We use the latter because it is more robust
                      else
                         dtcell = one/divu(i,j,k)
                      endif
-                     if (dsdt(i,j,k).gt.1.0e-20) then
+                     if (dsdt(i,j,k).gt.1.0D-20) then
                         if (abs(rho(i,j,k)).gt.rhomin) then
                            rhominij = rhomin
                         else
-                           rhominij = .9*abs(rho(i,j,k)) 
+                           rhominij = 0.9D0*abs(rho(i,j,k)) 
                         endif
                         rhoij = abs(rho(i,j,k))
-#if 0 
-                        dtcell2 = (-rhoij*divu(i,j,k) + 
-     &                       sqrt((rhoij*divu(i,j,k))**2+
-     &                       two*dsdt(i,j,k)*rhoij*abs(rhoij-rhominij)))/
-     &                       (rhoij*dsdt(i,j,k))
-#else 
+c
 c     ... note: (-b+sqrt(b^2-4ac))/2a = 2c/(-b-sqrt(b^2-4ac))
 c     We use the latter because it is more robust
+c
                         a = rhoij*dsdt(i,j,k)*half
                         b = rhoij*divu(i,j,k)
                         c = rhominij - rhoij
                         dtcell2 = two*c/(-b-sqrt(b**2-four*a*c))
-#endif
+
                         dtcell = min(dtcell,dtcell2)
                      endif
                   endif
@@ -473,6 +476,8 @@ c     We use the latter because it is more robust
             enddo
          enddo
       enddo
+!$omp end parallel do
+
       end
 
 c===================================================================
@@ -552,6 +557,7 @@ c===================================================================
       integer i,j,k,n
 
       do n = 1,nc
+!$omp parallel do private(i,j,k)
          do k=lo(3),hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
@@ -559,6 +565,7 @@ c===================================================================
                end do
             end do
          end do
+!$omp end parallel do
       end do
       end
 
