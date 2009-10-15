@@ -1205,7 +1205,6 @@ c     Set molecular weights and pressure in area accessible by conpF
 #ifdef BL_USE_OMP
       include "omp_lib.h"
 #endif
-
       integer lo(SDIM), hi(SDIM), do_temp, do_VelVisc
       integer DIMDEC(RD)
       integer DIMDEC(T)
@@ -1266,6 +1265,7 @@ c     Set molecular weights and pressure in area accessible by conpF
 #define EGSIWK IWRK(egbi)
 
 #endif /*BL_USE_OMP*/
+
 !$omp do private(i,j,n,Yt,Tt,alpha,Dt,Wavg)
 !$omp&private(CPMS,X,RHO,l1,l2,tid)
       do j=lo(2),hi(2)
@@ -1415,6 +1415,9 @@ c
 
 #include "cdwrk.H"
 
+#ifdef BL_USE_OMP
+      include "omp_lib.h"
+#endif
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(eta)
       integer DIMDEC(T)
