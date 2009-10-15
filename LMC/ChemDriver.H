@@ -268,26 +268,6 @@ public:
                                 int              sCompY,
                                 int              sCompT,
                                 int              sCompRD) const;
-    
-    void getMixAveragedRhoDiffP (FArrayBox&       rhoD,
-                                 const FArrayBox& Y,
-                                 const FArrayBox& T,
-                                 const FArrayBox& Pmks,
-                                 const Box&       box,
-                                 int              sCompY,
-                                 int              sCompT,
-                                 int              sCompP,
-                                 int              sCompRD) const;
-    //
-    // Thermal conductivity.
-    //
-    void getMixCond (FArrayBox&       lambda,
-                     const FArrayBox& Y,
-                     const FArrayBox& T,
-                     const Box&       box,
-                     int              sCompY,
-                     int              sCompT,
-                     int              sCompL) const;
     //
     // Viscosity.
     //

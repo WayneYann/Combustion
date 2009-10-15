@@ -27,11 +27,8 @@
 #    define FORT_CONC_TO_MOLE    dcontomol
 #    define FORT_CONPSOLV        dcpsolv
 #    define FORT_CHEMEQ          dchemeq
-#    define FORT_MIXAVG_RHODIFF_P dmavgdifp
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
-#    define FORT_MIX_COND        dmixcon
 #    define FORT_MIX_SHEAR_VISC  dmixshvis
-#    define FORT_MIX_BULK_VISC   dmixbvis
 #    define FORT_RHOfromPTY      drhopty
 #    define FORT_RHOfromPvTY     drhopvty
 #    define FORT_PfromRTY        dprhoty
@@ -85,11 +82,8 @@
 #    define FORT_CONC_TO_MOLE    DCONTOMOL
 #    define FORT_CONPSOLV        DCPSOLV
 #    define FORT_CHEMEQ          DCHEMEQ
-#    define FORT_MIXAVG_RHODIFF_P DMAVGDIFP
 #    define FORT_MIXAVG_RHODIFF_TEMP DMAVGDIFTEMP
-#    define FORT_MIX_COND        DMIXCON
 #    define FORT_MIX_SHEAR_VISC  DMIXSHVIS
-#    define FORT_MIX_BULK_VISC   DMIXBVIS
 #    define FORT_RHOfromPTY      DRHOPTY
 #    define FORT_RHOfromPvTY     DRHOPVTY
 #    define FORT_PfromRTY        DPRHOTY
@@ -142,11 +136,8 @@
 #    define FORT_MOLETOMASS      dmoltoms
 #    define FORT_CONPSOLV        dcpsolv
 #    define FORT_CHEMEQ          dchemeq
-#    define FORT_MIXAVG_RHODIFF_P dmavgdifp
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
-#    define FORT_MIX_COND        dmixcon
 #    define FORT_MIX_SHEAR_VISC  dmixshvis
-#    define FORT_MIX_BULK_VISC   dmixbvis
 #    define FORT_RHOfromPTY      drhopty
 #    define FORT_RHOfromPvTY     drhopvty
 #    define FORT_PfromRTY        dprhoty
@@ -199,11 +190,8 @@
 #    define FORT_MOLETOMASS      dmoltoms_
 #    define FORT_CONPSOLV        dcpsolv_
 #    define FORT_CHEMEQ          dchemeq_
-#    define FORT_MIXAVG_RHODIFF_P dmavgdifp_
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp_
-#    define FORT_MIX_COND        dmixcon_
 #    define FORT_MIX_SHEAR_VISC  dmixshvis_
-#    define FORT_MIX_BULK_VISC   dmixbvis_
 #    define FORT_RHOfromPTY      drhopty_
 #    define FORT_RHOfromPvTY     drhopvty_
 #    define FORT_PfromRTY        dprhoty_
@@ -339,26 +327,10 @@ extern "C" {
                                   const Real* Patm, const int* do_temp,
                                   const int* do_VelVisc);
     
-    void FORT_MIXAVG_RHODIFF_P(const int* lo, const int* hi,
-                               Real*       RD,  ARLIM_P(RDlo), ARLIM_P(RDhi),
-                               const Real* T,   ARLIM_P(Tlo),  ARLIM_P(Thi),
-                               const Real* Y,   ARLIM_P(Ylo),  ARLIM_P(Yhi),
-                               const Real* Pmks,ARLIM_P(Plo),  ARLIM_P(Phi));
-    
-    void FORT_MIX_COND(const int* lo, const int* hi,
-                       Real*       D, ARLIM_P(Dlo), ARLIM_P(Dhi),
-                       const Real* T, ARLIM_P(Tlo), ARLIM_P(Thi),
-                       const Real* Y, ARLIM_P(Ylo), ARLIM_P(Yhi));
-    
     void FORT_MIX_SHEAR_VISC(const int* lo, const int* hi,
                              Real*       D, ARLIM_P(Dlo), ARLIM_P(Dhi),
                              const Real* T, ARLIM_P(Tlo), ARLIM_P(Thi),
                              const Real* Y, ARLIM_P(Ylo), ARLIM_P(Yhi));
-    
-    void FORT_MIX_BULK_VISC(const int* lo, const int* hi,
-                            Real*       D, ARLIM_P(Dlo), ARLIM_P(Dhi),
-                            const Real* T, ARLIM_P(Tlo), ARLIM_P(Thi),
-                            const Real* Y, ARLIM_P(Ylo), ARLIM_P(Yhi));
     
     void FORT_RHOfromPTY(const int* lo, const int* hi,
 			 Real*       R, ARLIM_P(Rlo), ARLIM_P(Rhi),

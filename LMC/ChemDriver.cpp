@@ -633,57 +633,6 @@ ChemDriver::getMixAveragedRhoDiff(FArrayBox&       rhoD,
 }
 
 void
-ChemDriver::getMixAveragedRhoDiffP(FArrayBox&       rhoD,
-                                      const FArrayBox& Y,
-                                      const FArrayBox& T,
-                                      const FArrayBox& Pmks,
-                                      const Box&       box,
-                                      int              sCompY,
-                                      int              sCompT,
-                                      int              sCompP,
-                                      int              sCompRD) const
-{
-    BL_ASSERT(Y.nComp() >= sCompY+numSpecies());
-    BL_ASSERT(rhoD.nComp() >= sCompRD+numSpecies());
-    BL_ASSERT(T.nComp() > sCompT);
-    BL_ASSERT(Pmks.nComp() > sCompP);
-    BL_ASSERT(Y.box().contains(box));
-    BL_ASSERT(Pmks.box().contains(box));
-    BL_ASSERT(T.box().contains(box));
-    BL_ASSERT(rhoD.box().contains(box));
-    
-    FORT_MIXAVG_RHODIFF_P(box.loVect(), box.hiVect(),
-                          rhoD.dataPtr(sCompRD),
-                          ARLIM(rhoD.loVect()),ARLIM(rhoD.hiVect()),
-                          T.dataPtr(sCompT),   ARLIM(T.loVect()),   ARLIM(T.hiVect()),
-                          Y.dataPtr(sCompY),   ARLIM(Y.loVect()),   ARLIM(Y.hiVect()),
-                          Pmks.dataPtr(sCompY),
-                          ARLIM(Pmks.loVect()),ARLIM(Pmks.hiVect()));
-}
-
-void
-ChemDriver::getMixCond(FArrayBox&       lambda,
-                          const FArrayBox& Y,
-                          const FArrayBox& T,
-                          const Box&       box,
-                          int              sCompY,
-                          int              sCompT,
-                          int              sCompL) const
-{
-    BL_ASSERT(Y.nComp() >= sCompY+numSpecies());
-    BL_ASSERT(lambda.nComp() >= sCompL);
-    BL_ASSERT(T.nComp() > sCompT);
-    BL_ASSERT(Y.box().contains(box));
-    BL_ASSERT(T.box().contains(box));
-    BL_ASSERT(lambda.box().contains(box));
-    
-    FORT_MIX_COND(box.loVect(), box.hiVect(),
-                  lambda.dataPtr(sCompL),ARLIM(lambda.loVect()),ARLIM(lambda.hiVect()),
-                  T.dataPtr(sCompT),     ARLIM(T.loVect()),     ARLIM(T.hiVect()),
-                  Y.dataPtr(sCompY),     ARLIM(Y.loVect()),     ARLIM(Y.hiVect()));
-}
-
-void
 ChemDriver::getMixShearVisc(FArrayBox&       eta,
                                const FArrayBox& Y,
                                const FArrayBox& T,

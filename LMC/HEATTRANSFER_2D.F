@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.17 2009-10-14 23:24:08 lijewski Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.18 2009-10-15 16:26:32 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -150,80 +150,6 @@ c -------------------- begin here ----------------------------
             end do
          end do
       end if
-      end
-
-      subroutine FORT_TEMPVISC(lo,hi,
-     &                         DIMS(T), T,
-     &                         DIMS(Y), Y,
-     &                         DIMS(lambda), lambda)
-      implicit none
-#include "visc.H"
-#include "cdwrk.H"
-      integer nspecies
-      integer lo(SDIM),hi(SDIM)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      integer DIMDEC(lambda)
-      REAL_T  T(DIMV(T))
-      REAL_T  Y(DIMV(Y),*)
-      REAL_T  lambda(DIMV(lambda))
-      
-      integer i, j, n
-      REAL_T Yt(maxspec)
-      REAL_T cpmix
-      integer lo_chem(SDIM),hi_chem(SDIM)
-      data lo_chem /1,1/
-      data hi_chem /1,1/
-
-      print *,'**** in FORT_TEMPVISC'
-      call bl_abort()
-
-      if (.not. LeEQ1) then
-         call FORT_MIX_COND(lo, hi, lambda, DIMS(lambda),
-     &        T, DIMS(T), Y, DIMS(Y))
-      else
-         call FORT_VELVISC(lo,hi,DIMS(T),T,DIMS(Y),Y,
-     &        DIMS(lambda),lambda)
-         do j=lo(2), hi(2)
-            do i=lo(1), hi(1)
-               do n=1,Nspec
-                  Yt(n) = Y(i,j,n)
-               end do
-               CALL FORT_CPMIXfromTY(lo_chem, hi_chem, 
-     &              CPMIX,  ARLIM(lo_chem), ARLIM(hi_chem),
-     &              T(i,j), ARLIM(lo_chem), ARLIM(hi_chem),
-     &              Yt,     ARLIM(lo_chem), ARLIM(hi_chem))
-               lambda(i,j) = lambda(i,j) * cpmix / Pr
-            end do
-         end do
-      end if
-      end
-
-      subroutine FORT_SPECVISC(lo,hi,
-     &                         DIMS(T), T,
-     &                         DIMS(Y), Y,
-     &                         DIMS(rhoD), rhoD,
-     &                         ncompd, P1ATM_MKS)
-      implicit none
-#include "visc.H"
-#include "htdata.H"
-#include "cdwrk.H"
-      integer lo(SDIM),hi(SDIM)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      integer DIMDEC(rhoD)
-      integer ncompd
-      REAL_T  T(DIMV(T))
-      REAL_T  Y(DIMV(Y),*)
-      REAL_T  rhoD(DIMV(rhoD),ncompd)
-      
-      integer i, j
-      integer n
-      REAL_T P1ATM_MKS, Ptmp, val, Patm
-
-      print *,'**** in FORT_SPECVISC'
-      call bl_abort()
-
       end
 
       subroutine FORT_SPECTEMPVISC(lo,hi,

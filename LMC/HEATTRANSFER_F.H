@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.3 2008-11-11 02:02:22 marc Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.4 2009-10-15 16:26:32 lijewski Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -16,8 +16,6 @@
 #    define FORT_INIT_VISC_DATA            initviscdata
 #    define FORT_SET_HT_VISC_COMMON        setvisccm
 #    define FORT_VELVISC                   velvisc
-#    define FORT_TEMPVISC                  tempvisc
-#    define FORT_SPECVISC                  specvisc
 #    define FORT_SPECTEMPVISC              spectempvisc
 #    define FORT_FABMINMAX                 fabminmax
 #    define FORT_REPAIR_FLUX               rparflux
@@ -44,8 +42,6 @@
 #    define FORT_INIT_VISC_DATA            INITVISCDATA
 #    define FORT_SET_HT_VISC_COMMON        SETVISCCM
 #    define FORT_VELVISC                   VELVISC
-#    define FORT_TEMPVISC                  TEMPVISC
-#    define FORT_SPECVISC                  SPECVISC
 #    define FORT_SPECTEMPVISC              SPECTEMPVISC
 #    define FORT_FABMINMAX                 FABMINMAX
 #    define FORT_REPAIR_FLUX               RPARFLUX
@@ -71,8 +67,6 @@
 #    define FORT_INIT_VISC_DATA            initviscdata
 #    define FORT_SET_HT_VISC_COMMON        setvisccm
 #    define FORT_VELVISC                   velvisc
-#    define FORT_TEMPVISC                  tempvisc
-#    define FORT_SPECVISC                  specvisc
 #    define FORT_SPECTEMPVISC              spectempvisc
 #    define FORT_FABMINMAX                 fabminmax
 #    define FORT_REPAIR_FLUX               rparflux
@@ -98,8 +92,6 @@
 #    define FORT_INIT_VISC_DATA            initviscdata_
 #    define FORT_SET_HT_VISC_COMMON        setvisccm_
 #    define FORT_VELVISC                   velvisc_
-#    define FORT_TEMPVISC                  tempvisc_
-#    define FORT_SPECVISC                  specvisc_
 #    define FORT_SPECTEMPVISC              spectempvisc_
 #    define FORT_FABMINMAX                 fabminmax_
 #    define FORT_REPAIR_FLUX               rparflux_
@@ -207,17 +199,6 @@ extern "C" {
 		      ARLIM_P(tlo), ARLIM_P(thi), const Real* tempdat,
 		      ARLIM_P(slo), ARLIM_P(shi), const Real* specdat,
 		      ARLIM_P(blo), ARLIM_P(bhi), Real* betadat);
-
-    void FORT_TEMPVISC(const int* lo, const int* hi,
-		       ARLIM_P(tlo), ARLIM_P(thi), const Real* temp,
-		       ARLIM_P(slo), ARLIM_P(shi), const Real* spec,
-		       ARLIM_P(blo), ARLIM_P(bhi), Real* betadat);
-    
-    void FORT_SPECVISC(const int* lo, const int* hi,
-		       ARLIM_P(tlo), ARLIM_P(thi), const Real* tempdat,
-		       ARLIM_P(slo), ARLIM_P(shi), const Real* specdat,
-		       ARLIM_P(blo), ARLIM_P(bhi), Real* betadat,
-		       const int* nCompD, const Real* P1ATM_MKS);
 
     void FORT_SPECTEMPVISC(const int* lo, const int* hi,
                            ARLIM_P(tlo), ARLIM_P(thi), const Real* tempdat,
