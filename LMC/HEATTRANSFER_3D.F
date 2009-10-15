@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.15 2009-10-15 16:26:32 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.16 2009-10-15 21:00:52 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -48,27 +48,19 @@ c
       REAL_T rdghdgy(DIMV(rdghdgy))
 
       integer i,j,k
-      REAL_T  betaxcen, betaycen, betazcen, dxsqr, dysqr, dzsqr
+      REAL_T  dxsqr, dysqr, dzsqr
       REAL_T  betadotxlo, betadotxhi, betadotylo, betadotyhi
       REAL_T  betadotzlo, betadotzhi
 
       dxsqr = dx(1)**2
       dysqr = dx(2)**2
       dzsqr = dx(3)**2
+
+!$omp parallel do private(i,j,k,betadotxlo,betadotxhi,betadotylo)
+!$omp&private(betadotyhi,betadotzlo,betadotzhi)
       do k=lo(3),hi(3)
         do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-#if 0
-            betaxcen = half*(betax(i,j,k)+betax(i+1,j,k))
-            betaycen = half*(betay(i,j,k)+betay(i,j+1,k))
-            betazcen = half*(betaz(i,j,k)+betaz(i,j,k+1))
-            rdghdgy(i,j,k) = betaxcen*(h(i+1,j,k)-h(i-1,j,k))*
-     &                         (species(i+1,j,k)-species(i-1,j,k))/dxsqr +
-     &                   betaycen*(h(i,j+1,k)-h(i,j-1,k))*
-     &                         (species(i,j+1,k)-species(i,j-1,k))/dysqr +
-     &                   betazcen*(h(i,j,k+1)-h(i,j,k-1))*
-     &                          (species(i,j,k+1)-species(i,j,k-1))/dzsqr
-#else 
             betadotxlo = betax(i,j,k  )*(h(i,j,k)-h(i-1,j,k))
      &                        *(species(i,j,k)-species(i-1,j,k))
             betadotxhi = betax(i+1,j,k)*(h(i+1,j,k)-h(i,j,k))
@@ -84,12 +76,11 @@ c
             rdghdgy(i,j,k) =  half*((betadotxlo + betadotxhi)/dxsqr +
      &                            (betadotylo + betadotyhi)/dysqr +
      &                            (betadotzlo + betadotzhi)/dysqr)
-
-#endif
-
           enddo
         enddo
       enddo
+!$omp end parallel do
+
       end
 
       subroutine FORT_FLOOR_AND_SCALE_SPEC(nspecies,lo,hi,
@@ -902,20 +893,21 @@ c
 
       integer i, j, k, n
 
-      do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               do n=1,nc
+      do n=1,nc
+!$omp parallel do private(i,j,k)
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
                   update(i,j,k,n)=-((xflux(i+1,j,k,n)-xflux(i,j,k,n))
      &                 +            (yflux(i,j+1,k,n)-yflux(i,j,k,n))
      &                 +            (zflux(i,j,k+1,n)-zflux(i,j,k,n)))
-     &                     /vol(i,j,k)
+     &                 /vol(i,j,k)
                end do
             end do
          end do
+!$omp end parallel do
       end do
       end
-
 
       subroutine  FORT_INCRWEXTFLXDIV(lo, hi,
      &                                xflux,  DIMS(xflux),
@@ -943,7 +935,8 @@ c
 
       integer i, j, k, n
       REAL_T dF
-      
+
+!$omp parallel do private(i,j,k,n,dF)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -957,6 +950,7 @@ c
             end do
          end do
       end do
+!$omp end parallel do
       end
 
       subroutine fillEdges(dat,DIMS(dat),domlo,domhi,bc )
@@ -1590,25 +1584,29 @@ c  interior cell.
       REAL_T p_x_lo, p_x_hi
       REAL_T p_y_lo, p_y_hi
       REAL_T p_z_lo, p_z_hi
-      
+
+!$omp parallel do private(i,j,k,uadv,vadv,wadv)
+!$omp&private(p_x_lo,p_x_hi,p_y_lo,p_y_hi,p_z_lo,p_z_hi)
       do k=lo(3),hi(3)
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-            uadv = half*(umac(i,j,k) + umac(i+1,j,k))
-            vadv = half*(vmac(i,j,k) + vmac(i,j+1,k))
-            wadv = half*(wmac(i,j,k) + wmac(i,j,k+1))
-            p_x_hi = cvmgp(p(i  ,j,k),p(i+1,j,k),umac(i+1,j,k))
-            p_x_lo = cvmgp(p(i-1,j,k),p(i  ,j,k),umac(i  ,j,k))
-            p_y_hi = cvmgp(p(i,j  ,k),p(i,j+1,k),vmac(i,j+1,k))
-            p_y_lo = cvmgp(p(i,j-1,k),p(i,j  ,k),vmac(i,j  ,k))
-            p_z_hi = cvmgp(p(i,j,k  ),p(i,j,k+1),wmac(i,j,k+1))
-            p_z_lo = cvmgp(p(i,j,k-1),p(i,j,k  ),wmac(i,j,k  ))
-            ugradp(i,j,k) = uadv * (p_x_hi - p_x_lo) / dx(1) +
-     &                      vadv * (p_y_hi - p_y_lo) / dx(2) +    
-     &                      wadv * (p_z_hi - p_z_lo) / dx(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               uadv = half*(umac(i,j,k) + umac(i+1,j,k))
+               vadv = half*(vmac(i,j,k) + vmac(i,j+1,k))
+               wadv = half*(wmac(i,j,k) + wmac(i,j,k+1))
+               p_x_hi = cvmgp(p(i  ,j,k),p(i+1,j,k),umac(i+1,j,k))
+               p_x_lo = cvmgp(p(i-1,j,k),p(i  ,j,k),umac(i  ,j,k))
+               p_y_hi = cvmgp(p(i,j  ,k),p(i,j+1,k),vmac(i,j+1,k))
+               p_y_lo = cvmgp(p(i,j-1,k),p(i,j  ,k),vmac(i,j  ,k))
+               p_z_hi = cvmgp(p(i,j,k  ),p(i,j,k+1),wmac(i,j,k+1))
+               p_z_lo = cvmgp(p(i,j,k-1),p(i,j,k  ),wmac(i,j,k  ))
+               ugradp(i,j,k) = uadv * (p_x_hi - p_x_lo) / dx(1) +
+     &              vadv * (p_y_hi - p_y_lo) / dx(2) +    
+     &              wadv * (p_z_hi - p_z_lo) / dx(3)
+            end do
          end do
       end do
-      end do
+!$omp end parallel do
+
       end
 
       integer function FORT_CONSERVATIVE_T_FLOOR(
