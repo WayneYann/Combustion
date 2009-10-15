@@ -313,7 +313,7 @@ c     Initialize control variables that depend on fortin variables
  
 #if defined(BL_DO_FLCT)
       read(untin,flctin)
- #endif
+#endif
  
       read(untin,control)
 
