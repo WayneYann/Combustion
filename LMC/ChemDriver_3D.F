@@ -1033,7 +1033,7 @@ c     Set molecular weights and pressure in area accessible by conpF
 #endif /*BL_USE_OMP*/
 
 !$omp do private(i,j,k,n,Yt,Tt,alpha,Dt,Wavg)
-!$omp&private(CPMS,X,RHO,l1,l2,tid)
+!$omp&private(CPMS,X,RHO,l1,l2,tid) firstprivate(Ptmp)
       do k=lo(3),hi(3)
 
 #ifdef BL_USE_OMP
@@ -1195,7 +1195,7 @@ c
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
 
-!$omp parallel do private(i,j,k,n,Yt)
+!$omp parallel do private(i,j,k,n,Yt) firstprivate(Ptmp)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1541,6 +1541,7 @@ c
       MAXiters = 0
 
 !$omp parallel do private(i,j,k,n,Yt,res,Niter) reduction(max:MAXiters)
+!$omp&firstprivate(errMax,NiterMAX)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
