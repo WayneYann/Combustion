@@ -985,8 +985,10 @@ c     Set molecular weights and pressure in area accessible by conpF
       REAL_T SCAL, TSCAL, Wavg, RHO, Tt, invmwt(maxspec)
       REAL_T alpha, l1, l2, X(maxspec), CPMS(maxspec)
 
+#ifdef BL_USE_OMP
       REAL_T,  allocatable :: egrwrk(:,:)
       integer, allocatable :: egiwrk(:,:)
+#endif
 
       integer egrlen, egilen, tid, nthrds
 
@@ -1100,8 +1102,10 @@ c     Set molecular weights and pressure in area accessible by conpF
       integer i, j, k, n
       REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), Tt
 
+#ifdef BL_USE_OMP
       REAL_T,  allocatable :: egrwrk(:,:)
       integer, allocatable :: egiwrk(:,:)
+#endif
 
       integer egrlen, egilen, tid, nthrds
 
