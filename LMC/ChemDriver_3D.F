@@ -1711,31 +1711,3 @@ c
 !$omp end parallel do
 
       end
-      
-      subroutine aplycnst(N, T, Y, RPAR, IPAR)
-      implicit none
-#include "conp.H"
-      REAL_T T, Y, RPAR
-      integer N, IPAR
-      dimension Y(N), RPAR(*), IPAR(*)
-      integer I
-      REAL_T sum, Ytmp
-#if defined(MASS_FRAC)
-c     
-c     Apply constraint to proposed soln
-c      
-#if 0
-      if (iN2 .GT. 0) then
-         sum = zero
-         do I=2,N
-            Ytmp = MAX(Y(I),zero)
-            sum = sum + Ytmp - Y(I)
-            Y(I) = Ytmp
-         end do
-         Y(1+iN2) = Y(1+iN2) - sum
-      end if
-#endif
-#endif
-      end
-      
-

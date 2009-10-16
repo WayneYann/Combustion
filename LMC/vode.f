@@ -1426,10 +1426,6 @@ C Estimate the second derivative as a difference quotient in f. --------
       T1 = T0 + HG
       DO 60 I = 1, N
  60     Y(I) = Y0(I) + HG*YDOT(I)
-
-c     HACK...Require that predicted solution satisfy constraint
-      call aplycnst(N, T1, Y, RPAR, IPAR)
-        
       CALL F (N, T1, Y, TEMP, RPAR, IPAR)
       DO 70 I = 1, N
  70     TEMP(I) = (TEMP(I) - YDOT(I))/HG
@@ -2177,10 +2173,7 @@ C vector ACOR(i).  The YH array is not altered in the corrector loop.
 C-----------------------------------------------------------------------
  220  M = 0
       DELP = ZERO
-      
-c     HACK...Require that predicted solution satisfy constraint
-      call aplycnst(N, TN, YH(1,1), RPAR, IPAR)
-      
+
       CALL DCOPY (N, YH(1,1), 1, Y, 1 )
       CALL F (N, TN, Y, SAVF, RPAR, IPAR)
       NFE = NFE + 1
@@ -2239,9 +2232,7 @@ C-----------------------------------------------------------------------
       DO 380 I = 1,N
  380    Y(I) = YH(I,1) + ACOR(I)
 
-c     HACK...Require that predicted solution satisfy constraint
  400  continue 
-      call aplycnst(N, TN, Y, RPAR, IPAR)
       do I=1,N
          ACOR(I) = Y(I) - YH(I,1)
       end do
@@ -3631,10 +3622,6 @@ C-----------------------------------------------------------------------
       NSLAST = 0
       HU = ZERO
       NQU = 0
-
-c     HACK...Require that initial solution satisfy constraint
-      call aplycnst(N, TN, Y, RPAR, IPAR)
-      
 C     Initial call to F.  (LF0 points to YH(*,2).) -------------------------
       LF0 = LYH + NYH
       CALL F (N, T, Y, RWORK(LF0), RPAR, IPAR)
@@ -3755,10 +3742,6 @@ C-----------------------------------------------------------------------
 C ITASK = 1.  If TOUT has been reached, interpolate. -------------------
  310  IF ((TN - TOUT)*H .LT. ZERO) GO TO 250
       CALL DVINDY (TOUT, 0, RWORK(LYH), NYH, Y, IFLAG)
-
-c     HACK...Require that predicted solution satisfy constraint
-      call aplycnst(N, TN, Y, RPAR, IPAR)
-      
       T = TOUT
       GO TO 420
 C ITASK = 3.  Jump to exit if TOUT was reached. ------------------------
