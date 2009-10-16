@@ -13,7 +13,7 @@ geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 geometry.prob_lo   =   -.02 -.02 -.02 # m
 geometry.prob_hi   =  .02 .02 .02
 
-ns.tranfile        = ./tran.asc.chem-H
+ns.tranfile        = ./tran.asc.LiDryer
 ns.fuelName        = H2
 ns.oxidizerName    = O2
 ns.flameTracName   = H
@@ -25,6 +25,7 @@ ns.do_active_control = false
 
 amr.n_cell = 256 256 256
 amr.n_cell = 128 128 128
+amr.n_cell = 64 64 64
 
 proj.proj_2 = 1
 ns.do_init_vort_proj = 0
@@ -49,7 +50,7 @@ amr.v  = 1
 mac.v  = 1
 proj.v = 0
 
-amr.max_level = 3
+amr.max_level = 1
 amr.ref_ratio       = 2 2 2 2   # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
@@ -62,7 +63,7 @@ amr.plot_int        = 10
 amr.grid_log        = grdlog  # name of grid logging file
 #amr.max_grid_size   = 512
 #amr.max_grid_size   = 128
-amr.max_grid_size   = 64
+amr.max_grid_size   = 32
 ht.plot_rhoY=0
 ht.plot_molefrac=1
 ht.plot_ydot=0
