@@ -4135,9 +4135,17 @@ void speciesInternalEnergy(double * species, double * tc)
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 void speciesEnthalpy(double * species, double * tc)
 {
-
     /*temperature */
     double T = tc[1];
+
+    static double T_save = -1, species_save[9];
+
+    if (T == T_save)
+    {
+        for (int i = 0; i < 9; i++)
+            species[i] = species_save[i];
+        return;
+    }
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -4287,6 +4295,9 @@ void speciesEnthalpy(double * species, double * tc)
             -1.35067020e-15 * tc[4]
             -9.22797700e+02 / tc[1];
     }
+    T_save = T;
+    for (int i = 0; i < 9; i++)
+        species_save[i] = species[i];
     return;
 }
 
