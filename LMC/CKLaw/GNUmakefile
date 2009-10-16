@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.1 2009-08-24 17:47:58 jbb Exp $
+# $Id: GNUmakefile,v 1.2 2009-10-16 17:29:51 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -17,11 +17,9 @@ FCOMP             = Intel
 COMP              = Intel
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
-HGDEBUG           = TRUE
-HGDEBUG           = FALSE
 USE_FLCTS         = TRUE
-USE_VELOCITY      = TRUE
-USE_MPI           = TRUE
+USE_VELOCITY      = FALSE
+USE_MPI           = FALSE
 
 
 # This allows GetForce to call a Fortran routine
@@ -30,14 +28,9 @@ USE_MPI           = TRUE
 # This is for the time-dependent turbulence forcing term
 #DEFINES += -DDO_LMC_FORCE
 
-#NEEDS_FLUSH_F := TRUE
-#
 # Turn this on to restart from a plotfile.
 #
 #USE_NEWMECH = TRUE
-#
-# Turn this on to get the ability to set the velocities in initData() from a plotfile.
-#
 
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
@@ -57,7 +50,8 @@ DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
 #REACTION_MECHANISM=GRI30HNO
 #REACTION_MECHANISM=DRM19
 #REACTION_MECHANISM=GLARBORG
-REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=CHEMH
+REACTION_MECHANISM=LIDRYER
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  
@@ -123,9 +117,6 @@ else
 endif
 include $(addsuffix /Make.package, $(MySrcDirs))
 
-ifeq ($(HGDEBUG),TRUE)
-  DEFINES+=-DHG_DEBUG
-endif
 ifeq (${USE_FLCTS}, TRUE)
   DEFINES += -DBL_DO_FLCT
   INCLUDE_LOCATIONS += $(TOP)/iamrlib/InflowForce
@@ -137,8 +128,6 @@ ifeq ($(USE_VELOCITY), TRUE)
 else
   MySrcDirs += $(TOP)/pAmrvis
 endif
-
-#CPPFLAGS += -DMPICH_SKIP_MPICXX
 
 vpath %.cpp $(MySrcDirs) ${PMFdir}
 vpath %.F   $(MySrcDirs) ${PMFdir}
