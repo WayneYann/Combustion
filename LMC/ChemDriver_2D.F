@@ -1202,9 +1202,6 @@ c     Set molecular weights and pressure in area accessible by conpF
 
 #include "cdwrk.H"
 
-#ifdef BL_USE_OMP
-      include "omp_lib.h"
-#endif
       integer lo(SDIM), hi(SDIM), do_temp, do_VelVisc
       integer DIMDEC(RD)
       integer DIMDEC(T)
@@ -1220,10 +1217,10 @@ c     Set molecular weights and pressure in area accessible by conpF
       REAL_T alpha, l1, l2
 
 #ifdef BL_USE_OMP
+      include "omp_lib.h"
       REAL_T,  allocatable :: egrwrk(:,:)
       integer, allocatable :: egiwrk(:,:)
 #endif
-
       integer egrlen, egilen, tid, nthrds
 
       parameter(SCAL = tenth, TSCAL = one / 100000.0D0)
@@ -1323,9 +1320,6 @@ c     Set molecular weights and pressure in area accessible by conpF
 
 #include "cdwrk.H"
 
-#ifdef BL_USE_OMP
-      include "omp_lib.h"
-#endif
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(eta)
       integer DIMDEC(T)
@@ -1339,10 +1333,10 @@ c     Set molecular weights and pressure in area accessible by conpF
       REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), Tt
 
 #ifdef BL_USE_OMP
+      include "omp_lib.h"
       REAL_T,  allocatable :: egrwrk(:,:)
       integer, allocatable :: egiwrk(:,:)
 #endif
-
       integer egrlen, egilen, tid, nthrds
 
       parameter(SCAL = tenth)
