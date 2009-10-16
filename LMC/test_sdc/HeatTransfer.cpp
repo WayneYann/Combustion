@@ -10729,11 +10729,11 @@ HeatTransfer::advance_sdc (Real time,
  
     //FIXME!!!
     // Doing a final diffusion solve to smooth the solution a little
-//     scalar_advection_update(dt,first_spec, last_spec);
-//     MultiFab::Copy(*sdcForce,I_R[0],first_spec,first_spec,nspecies,0);
-//     theta = 0.5;
-//     // need to change this to do the diffusion refluxing
-//     differential_spec_diffusion_update_sdc(dt,theta,corrector);
+     scalar_advection_update(dt,first_spec, last_spec);
+     MultiFab::Copy(*sdcForce,I_R[0],first_spec,first_spec,nspecies,0);
+     theta = 0.5;
+     // need to change this to do the diffusion refluxing
+     differential_spec_diffusion_update_sdc(dt,theta,corrector);
     // MultiFab::Copy(DofS[2],DofS[1],first_spec,first_spec,nspecies,0);
 
     //CEG:: need to think about Le != 1 case more
@@ -10748,6 +10748,33 @@ HeatTransfer::advance_sdc (Real time,
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "HeatTransfer::advance(): after scalar_update\n";
+
+    if (plot_heat_release)
+    {
+      MultiFab Qtmp; 
+      Qtmp.define(grids,getChemSolve().numSpecies(),0,Fab_allocate);
+      MultiFab::Copy(Qtmp,I_R[0],first_spec,0,Qtmp.nComp(),0);
+      Qtmp.mult(-1.);
+
+        FArrayBox enthi, T;
+        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
+        {
+            const Box& box = mfi.validbox();
+            T.resize(mfi.validbox(),1);
+            T.setVal(298.15);
+
+            enthi.resize(mfi.validbox(),Qtmp.nComp());
+            getChemSolve().getHGivenT(enthi,T,box,0,0);
+
+            // Form heat release
+            (*auxDiag["HEATRELEASE"])[mfi].setVal(0.);
+            for (int j=0; j<Qtmp.nComp(); ++j)
+            {
+                Qtmp[mfi].mult(enthi,j,j,1);
+                (*auxDiag["HEATRELEASE"])[mfi].plus(Qtmp[mfi],j,0,1);
+            }
+        }
+    }
 
     // return new-time
     // data, and provide a predicted Ydot for the velocity
