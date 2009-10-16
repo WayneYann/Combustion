@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.19 2009-10-15 21:06:39 lijewski Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.20 2009-10-16 16:00:56 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -829,40 +829,22 @@ c                               inflow for pipe
       end do
       end
 
-      
-#define VCOR    0
-#define N2DOM   1
-#define FINDDOM 2
-#define JBBMOD  3
-#define METH VCOR
-      
-#if !(METH == JBBMOD)
-      
       subroutine FORT_REPAIR_FLUX(lo, hi,
      &                            flux, DIMS(flux),
      &                            state, DIMS(state), nc, dir)
       implicit none
+
 #include "cdwrk.H"
+
       integer lo(SDIM), hi(SDIM), nc, dir
       integer DIMDEC(flux)
       integer DIMDEC(state)
       REAL_T flux(DIMV(flux),nc)
       REAL_T state(DIMV(state),nc)
       
-      character*(maxspnml) name
-      integer i, j, n, pm, maxs, iN2
-      REAL_T sum, val, maxv
-      
-#if (METH == VCOR)
-      REAL_T yedge, sumRhoY
-#endif
+      integer i, j, n
+      REAL_T sum, yedge, sumRhoY
 
-      iN2 = -1
-      do n = 1,nc
-         call get_spec_name(name,n)
-         if (name .eq. 'N2' ) iN2 = n
-      end do
-         
       if (dir.eq.0) then
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)+1
@@ -872,28 +854,10 @@ c                               inflow for pipe
                   sum = sum + flux(i,j,n)
                   sumRhoY = sumRhoY + half*(state(i-1,j,n)+state(i,j,n))
                end do               
-#if (METH == VCOR)
                do n=1,nc
                   yedge = half*(state(i-1,j,n)+state(i,j,n))
                   flux(i,j,n) = flux(i,j,n) - sum*yedge/sumRhoY
                end do
-#else
-#  if (METH == N2DOM)
-               maxs = iN2
-#  elif (METH == FINDDOM)
-               pm = cvmgt(0,-1,sum.gt.zero)
-               maxs=1
-               maxv=state(i+pm,j,maxs)
-               do n=2,nc
-                  val = state(i+pm,j,n)
-                  if (val.gt.maxv) then
-                     maxv=val
-                     maxs=n
-                  end if
-               end do
-#  endif
-               flux(i,j,maxs) = flux(i,j,maxs) - sum
-#endif
             end do
          end do
       else
@@ -905,146 +869,15 @@ c                               inflow for pipe
                   sum = sum + flux(i,j,n)
                   sumRhoY = sumRhoY + half*(state(i,j-1,n)+state(i,j,n))
                end do
-#if (METH == VCOR)
                do n=1,nc
                   yedge = half*(state(i,j-1,n)+state(i,j,n))
                   flux(i,j,n) = flux(i,j,n) - sum*yedge/sumRhoY
                end do
-#else
-#  if (METH == N2DOM)
-               maxs = iN2
-#  elif (METH == FINDDOM)
-               pm = cvmgt(0,-1,sum.gt.zero)
-               maxs=1
-               maxv=state(i,j+pm,maxs)
-               do n=2,nc
-                  val = state(i,j+pm,n)
-                  if (val.gt.maxv) then
-                     maxv=val
-                     maxs=n
-                  end if
-               end do
-#  endif
-               flux(i,j,maxs) = flux(i,j,maxs) - sum
-#endif
             end do
          end do
       end if
       end
-#else
-      subroutine FORT_REPAIR_FLUX(lo, hi,
-     &                            flux, DIMS(flux),
-     &                            state, DIMS(state), nc, dir)
-      implicit none
-      integer lo(SDIM), hi(SDIM), nc, dir
-      integer DIMDEC(flux)
-      integer DIMDEC(state)
-      REAL_T flux(DIMV(flux),nc)
-      REAL_T state(DIMV(state),nc)
-#include "cdwrk.H"
-      integer i,j,n,hi_e(SDIM),ii,jj
-      REAL_T sump,sumn,delta,alphabar,sumy,beta,y(maxspec)
-      character*(maxspnml) name
-      
-      if (nc.lt.Nspec) then
-         call bl_abort('FORT_REPAIR_FLUX: too few flux comps for repair')
-      end if
 
-c      
-c     The scheme:
-c     We want the fluxes to sum to zero, take f+ and f- as +ve and -ve fluxes
-c     at a face.  If the net flux is positive, we want alphabar*f+ + f- = 0.
-c     We will reduce each fl+ (ie give flux back to originator) by an amount
-c     alphal proportional to the mass frac of the downstream cell, thus
-c                        (1 - alphal)*fl+ = beta*Yl
-c     Summing over l, we get (1-alphabar)*sum(fl+) = beta*sum(Yl) as an equation
-c     for beta given alphabar (alphabar computed from initial data so that 
-c     flux sums to zero).  We exclude any fluxes from this mod if the downstream 
-c     mass frac is <= 0.
-c      
-      if (dir .EQ. 0) then
-         hi_e(1) = hi(1) + 1
-         hi_e(2) = hi(2)
-      else if (dir .EQ. 1) then
-         hi_e(1) = hi(1)
-         hi_e(2) = hi(2) + 1
-      else
-         write(6,*) 'FORT_REPAIR_FLUX: Bad dir'
-      end if
-      
-      do j = lo(2),hi_e(2)
-         do i = lo(1),hi_e(1)
-            sump=zero
-            sumn=zero
-            do n=1,Nspec
-               if (flux(i,j,n) .GT. zero) then
-                  sump = sump + flux(i,j,n)
-               else if (flux(i,j,n) .LT. zero) then
-                  sumn = sumn + flux(i,j,n)
-               end if
-            end do
-            delta = sump + sumn
-            if (delta .NE. zero) then
-               sumy = zero
-               if (delta .LT. zero) then
-                  do n=1,Nspec
-                     if (dir .EQ. 0) then
-                        y(n) = MAX(zero,state(i-1,j,n))
-                     else
-                        y(n) = MAX(zero,state(i,j-1,n))
-                     endif
-                     if (flux(i,j,n).GE.zero) y(n) = zero
-                     sumy = sumy + y(n)
-                  end do
-                  alphabar = - sump/sumn
-                  beta=cvmgt(sumn*(one-alphabar)/sumy,zero,sumy.NE.zero)
-               else
-                  do n=1,Nspec
-                     y(n) = MAX(zero,state(i,j,n))
-                     if (flux(i,j,n).LE.zero) y(n) = zero
-                     sumy = sumy + y(n)
-                  end do
-                  alphabar = - sumn/sump
-                  beta=cvmgt(sump*(one-alphabar)/sumy,zero,sumy.NE.zero)
-               end if
-               if (alphabar .GT. one) goto 100
-               do n=1,Nspec
-                  flux(i,j,n) = flux(i,j,n) - beta*y(n)
-               end do
-            end if
-         end do
-      end do
-      return
-      
- 100  continue 
-      write(6,*) 'FORT_REPAIR_FLUX: alphabar > 1'
-      write(6,*) 'fluxes: (dir=',dir,')'
-      do n=1,Nspec
-         call get_spec_name(name,n)
-         write(6,996) name,flux(i,j,n)
-      end do
-      write(6,*) 'left state:'
-      do n=1,Nspec
-         call get_spec_name(name,n)
-         write(6,996) name,state(i,j,n)
-      end do
-      write(6,*) 'right state:'
-      ii = i
-      jj = j
-      if (dir .EQ. 0) then
-         ii = i + 1
-      else
-         jj = j + 1
-      end if
-      do n=1,Nspec
-         call get_spec_name(name,n)
-         write(6,996) name,state(ii,jj,n)
-      end do
- 996  format(a16,1x,e30.22)
-      call bl_abort(" ")
-      end
-#endif
-      
       subroutine  FORT_RECOMP_UPDATE(lo, hi,
      &                               update, DIMS(update),
      &                               xflux,  DIMS(xflux),
