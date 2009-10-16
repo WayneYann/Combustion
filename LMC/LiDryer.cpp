@@ -2555,6 +2555,8 @@ void productionRate(double * wdot, double * sc, double T)
 {
     double qdot;
 
+    static double T_save = -1, k_f_save[21], Kc_save[21];
+
     int id; /*loop counter */
     double mixture;                 /*mixture concentration */
     double g_RT[9];                /*Gibbs free energy */
@@ -2597,12 +2599,61 @@ void productionRate(double * wdot, double * sc, double T)
         wdot[id] = 0.0;
     }
 
+    if (T != T_save)
+    {
+        T_save = T;
+
+        k_f_save[0] = 1e-06 * 3.547e+15*exp(-0.406*tc[0]-8353.8/tc[1]);
+        k_f_save[1] = 1e-06 * 50800*exp(2.67*tc[0]-3165.58/tc[1]);
+        k_f_save[2] = 1e-06 * 2.16e+08*exp(1.51*tc[0]-1726.22/tc[1]);
+        k_f_save[3] = 1e-06 * 2.97e+06*exp(2.02*tc[0]-6743.83/tc[1]);
+        k_f_save[4] = 1e-06 * 4.577e+19*exp(-1.4*tc[0]-52531.5/tc[1]);
+        k_f_save[5] = 1e-12 * 6.165e+15*exp(-0.5*tc[0]);
+        k_f_save[6] = 1e-12 * 4.714e+18*exp(-1*tc[0]);
+        k_f_save[7] = 1e-12 * 3.8e+22*exp(-2*tc[0]);
+        k_f_save[8] = 1e-06 * 1.475e+12*exp(0.6*tc[0]);
+        k_f_save[9] = 1e-06 * 1.66e+13*exp(-414.192/tc[1]);
+        k_f_save[10] = 1e-06 * 7.079e+13*exp(-148.465/tc[1]);
+        k_f_save[11] = 1e-06 * 3.25e+13;
+        k_f_save[12] = 1e-06 * 2.89e+13*exp(+250.126/tc[1]);
+        k_f_save[13] = 1e-06 * 4.2e+14*exp(-6030.2/tc[1]);
+        k_f_save[14] = 1e-06 * 1.3e+11*exp(+819.98/tc[1]);
+        k_f_save[15] = 1 * 2.951e+14*exp(-24373.4/tc[1]);
+        k_f_save[16] = 1e-06 * 2.41e+13*exp(-1997.99/tc[1]);
+        k_f_save[17] = 1e-06 * 4.82e+13*exp(-4001.01/tc[1]);
+        k_f_save[18] = 1e-06 * 9.55e+06*exp(2*tc[0]-1997.99/tc[1]);
+        k_f_save[19] = 1e-06 * 1e+12;
+        k_f_save[20] = 1e-06 * 5.8e+14*exp(-4809.76/tc[1]);
+
+        Kc_save[0] = exp((g_RT[3] + g_RT[1]) - (g_RT[4] + g_RT[5]));
+        Kc_save[1] = exp((g_RT[4] + g_RT[0]) - (g_RT[3] + g_RT[5]));
+        Kc_save[2] = exp((g_RT[0] + g_RT[5]) - (g_RT[2] + g_RT[3]));
+        Kc_save[3] = exp((g_RT[4] + g_RT[2]) - (g_RT[5] + g_RT[5]));
+        Kc_save[4] = refC * exp((g_RT[0]) - (g_RT[3] + g_RT[3]));
+        Kc_save[5] = 1.0 / (refC) * exp((g_RT[4] + g_RT[4]) - (g_RT[1]));
+        Kc_save[6] = 1.0 / (refC) * exp((g_RT[4] + g_RT[3]) - (g_RT[5]));
+        Kc_save[7] = 1.0 / (refC) * exp((g_RT[3] + g_RT[5]) - (g_RT[2]));
+        Kc_save[8] = 1.0 / (refC) * exp((g_RT[3] + g_RT[1]) - (g_RT[6]));
+        Kc_save[9] = exp((g_RT[6] + g_RT[3]) - (g_RT[0] + g_RT[1]));
+        Kc_save[10] = exp((g_RT[6] + g_RT[3]) - (g_RT[5] + g_RT[5]));
+        Kc_save[11] = exp((g_RT[6] + g_RT[4]) - (g_RT[1] + g_RT[5]));
+        Kc_save[12] = exp((g_RT[6] + g_RT[5]) - (g_RT[2] + g_RT[1]));
+        Kc_save[13] = exp((g_RT[6] + g_RT[6]) - (g_RT[7] + g_RT[1]));
+        Kc_save[14] = exp((g_RT[6] + g_RT[6]) - (g_RT[7] + g_RT[1]));
+        Kc_save[15] = refC * exp((g_RT[7]) - (g_RT[5] + g_RT[5]));
+        Kc_save[16] = exp((g_RT[7] + g_RT[3]) - (g_RT[2] + g_RT[5]));
+        Kc_save[17] = exp((g_RT[7] + g_RT[3]) - (g_RT[6] + g_RT[0]));
+        Kc_save[18] = exp((g_RT[7] + g_RT[4]) - (g_RT[5] + g_RT[6]));
+        Kc_save[19] = exp((g_RT[7] + g_RT[5]) - (g_RT[6] + g_RT[2]));
+        Kc_save[20] = exp((g_RT[7] + g_RT[5]) - (g_RT[6] + g_RT[2]));
+    }
+
     /*reaction 1: H + O2 <=> O + OH */
     phi_f = sc[3]*sc[1];
-    k_f = 1e-06 * 3.547e+15*exp(-0.406*tc[0]-8353.8/tc[1]);
+    k_f = k_f_save[0];
     q_f = phi_f * k_f;
     phi_r = sc[4]*sc[5];
-    Kc = exp((g_RT[3] + g_RT[1]) - (g_RT[4] + g_RT[5]));
+    Kc = Kc_save[0];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2613,10 +2664,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 2: O + H2 <=> H + OH */
     phi_f = sc[4]*sc[0];
-    k_f = 1e-06 * 50800*exp(2.67*tc[0]-3165.58/tc[1]);
+    k_f = k_f_save[1];
     q_f = phi_f * k_f;
     phi_r = sc[3]*sc[5];
-    Kc = exp((g_RT[4] + g_RT[0]) - (g_RT[3] + g_RT[5]));
+    Kc = Kc_save[1];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2627,10 +2678,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 3: H2 + OH <=> H2O + H */
     phi_f = sc[0]*sc[5];
-    k_f = 1e-06 * 2.16e+08*exp(1.51*tc[0]-1726.22/tc[1]);
+    k_f = k_f_save[2];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[3];
-    Kc = exp((g_RT[0] + g_RT[5]) - (g_RT[2] + g_RT[3]));
+    Kc = Kc_save[2];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2641,10 +2692,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 4: O + H2O <=> OH + OH */
     phi_f = sc[4]*sc[2];
-    k_f = 1e-06 * 2.97e+06*exp(2.02*tc[0]-6743.83/tc[1]);
+    k_f = k_f_save[3];
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[5];
-    Kc = exp((g_RT[4] + g_RT[2]) - (g_RT[5] + g_RT[5]));
+    Kc = Kc_save[3];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2656,10 +2707,10 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 5: H2 + M <=> H + H + M */
     phi_f = sc[0];
     alpha = mixture + 1.5*sc[0] + 11*sc[2];
-    k_f = 1e-06 * alpha * 4.577e+19*exp(-1.4*tc[0]-52531.5/tc[1]);
+    k_f = alpha * k_f_save[4];
     q_f = phi_f * k_f;
     phi_r = sc[3]*sc[3];
-    Kc = refC * exp((g_RT[0]) - (g_RT[3] + g_RT[3]));
+    Kc = Kc_save[4];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2670,10 +2721,10 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 6: O + O + M <=> O2 + M */
     phi_f = sc[4]*sc[4];
     alpha = mixture + 1.5*sc[0] + 11*sc[2];
-    k_f = 1e-12 * alpha * 6.165e+15*exp(-0.5*tc[0]);
+    k_f = alpha * k_f_save[5];
     q_f = phi_f * k_f;
     phi_r = sc[1];
-    Kc = 1.0 / (refC) * exp((g_RT[4] + g_RT[4]) - (g_RT[1]));
+    Kc = Kc_save[5];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2684,10 +2735,10 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 7: O + H + M <=> OH + M */
     phi_f = sc[4]*sc[3];
     alpha = mixture + 1.5*sc[0] + 11*sc[2];
-    k_f = 1e-12 * alpha * 4.714e+18*exp(-1*tc[0]);
+    k_f = alpha * k_f_save[6];
     q_f = phi_f * k_f;
     phi_r = sc[5];
-    Kc = 1.0 / (refC) * exp((g_RT[4] + g_RT[3]) - (g_RT[5]));
+    Kc = Kc_save[6];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2698,10 +2749,10 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 8: H + OH + M <=> H2O + M */
     phi_f = sc[3]*sc[5];
     alpha = mixture + 1.5*sc[0] + 11*sc[2];
-    k_f = 1e-12 * alpha * 3.8e+22*exp(-2*tc[0]);
+    k_f = alpha * k_f_save[7];
     q_f = phi_f * k_f;
     phi_r = sc[2];
-    Kc = 1.0 / (refC) * exp((g_RT[3] + g_RT[5]) - (g_RT[2]));
+    Kc = Kc_save[7];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2712,7 +2763,7 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 9: H + O2 (+M) <=> HO2 (+M) */
     phi_f = sc[3]*sc[1];
     alpha = mixture + sc[0] + 10*sc[2] + -0.22*sc[1];
-    k_f = 1e-06 * 1.475e+12*exp(0.6*tc[0]);
+    k_f = k_f_save[8];
     redP = 1e-12 * alpha / k_f * 6.366e+20*exp(-1.72*tc[0]-264.117/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
@@ -2725,7 +2776,7 @@ void productionRate(double * wdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[6];
-    Kc = 1.0 / (refC) * exp((g_RT[3] + g_RT[1]) - (g_RT[6]));
+    Kc = Kc_save[8];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2735,10 +2786,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 10: HO2 + H <=> H2 + O2 */
     phi_f = sc[6]*sc[3];
-    k_f = 1e-06 * 1.66e+13*exp(-414.192/tc[1]);
+    k_f = k_f_save[9];
     q_f = phi_f * k_f;
     phi_r = sc[0]*sc[1];
-    Kc = exp((g_RT[6] + g_RT[3]) - (g_RT[0] + g_RT[1]));
+    Kc = Kc_save[9];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2749,10 +2800,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 11: HO2 + H <=> OH + OH */
     phi_f = sc[6]*sc[3];
-    k_f = 1e-06 * 7.079e+13*exp(-148.465/tc[1]);
+    k_f = k_f_save[10];
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[5];
-    Kc = exp((g_RT[6] + g_RT[3]) - (g_RT[5] + g_RT[5]));
+    Kc = Kc_save[10];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2763,10 +2814,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 12: HO2 + O <=> O2 + OH */
     phi_f = sc[6]*sc[4];
-    k_f = 1e-06 * 3.25e+13;
+    k_f = k_f_save[11];
     q_f = phi_f * k_f;
     phi_r = sc[1]*sc[5];
-    Kc = exp((g_RT[6] + g_RT[4]) - (g_RT[1] + g_RT[5]));
+    Kc = Kc_save[11];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2777,10 +2828,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 13: HO2 + OH <=> H2O + O2 */
     phi_f = sc[6]*sc[5];
-    k_f = 1e-06 * 2.89e+13*exp(+250.126/tc[1]);
+    k_f = k_f_save[12];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[1];
-    Kc = exp((g_RT[6] + g_RT[5]) - (g_RT[2] + g_RT[1]));
+    Kc = Kc_save[12];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2791,10 +2842,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 14: HO2 + HO2 <=> H2O2 + O2 */
     phi_f = sc[6]*sc[6];
-    k_f = 1e-06 * 4.2e+14*exp(-6030.2/tc[1]);
+    k_f = k_f_save[13];
     q_f = phi_f * k_f;
     phi_r = sc[7]*sc[1];
-    Kc = exp((g_RT[6] + g_RT[6]) - (g_RT[7] + g_RT[1]));
+    Kc = Kc_save[13];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2805,10 +2856,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 15: HO2 + HO2 <=> H2O2 + O2 */
     phi_f = sc[6]*sc[6];
-    k_f = 1e-06 * 1.3e+11*exp(+819.98/tc[1]);
+    k_f = k_f_save[14];
     q_f = phi_f * k_f;
     phi_r = sc[7]*sc[1];
-    Kc = exp((g_RT[6] + g_RT[6]) - (g_RT[7] + g_RT[1]));
+    Kc = Kc_save[14];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2820,7 +2871,7 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 16: H2O2 (+M) <=> OH + OH (+M) */
     phi_f = sc[7];
     alpha = mixture + 1.5*sc[0] + 11*sc[2];
-    k_f = 1 * 2.951e+14*exp(-24373.4/tc[1]);
+    k_f = k_f_save[15];
     redP = 1e-12 * alpha / k_f * 1.202e+17*exp(-22898.8/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
@@ -2833,7 +2884,7 @@ void productionRate(double * wdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[5];
-    Kc = refC * exp((g_RT[7]) - (g_RT[5] + g_RT[5]));
+    Kc = Kc_save[15];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2843,10 +2894,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 17: H2O2 + H <=> H2O + OH */
     phi_f = sc[7]*sc[3];
-    k_f = 1e-06 * 2.41e+13*exp(-1997.99/tc[1]);
+    k_f = k_f_save[16];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[5];
-    Kc = exp((g_RT[7] + g_RT[3]) - (g_RT[2] + g_RT[5]));
+    Kc = Kc_save[16];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2857,10 +2908,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 18: H2O2 + H <=> HO2 + H2 */
     phi_f = sc[7]*sc[3];
-    k_f = 1e-06 * 4.82e+13*exp(-4001.01/tc[1]);
+    k_f = k_f_save[17];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[0];
-    Kc = exp((g_RT[7] + g_RT[3]) - (g_RT[6] + g_RT[0]));
+    Kc = Kc_save[17];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2871,10 +2922,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 19: H2O2 + O <=> OH + HO2 */
     phi_f = sc[7]*sc[4];
-    k_f = 1e-06 * 9.55e+06*exp(2*tc[0]-1997.99/tc[1]);
+    k_f = k_f_save[18];
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[6];
-    Kc = exp((g_RT[7] + g_RT[4]) - (g_RT[5] + g_RT[6]));
+    Kc = Kc_save[18];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2885,10 +2936,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 20: H2O2 + OH <=> HO2 + H2O */
     phi_f = sc[7]*sc[5];
-    k_f = 1e-06 * 1e+12;
+    k_f = k_f_save[19];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[2];
-    Kc = exp((g_RT[7] + g_RT[5]) - (g_RT[6] + g_RT[2]));
+    Kc = Kc_save[19];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -2899,10 +2950,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 21: H2O2 + OH <=> HO2 + H2O */
     phi_f = sc[7]*sc[5];
-    k_f = 1e-06 * 5.8e+14*exp(-4809.76/tc[1]);
+    k_f = k_f_save[20];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[2];
-    Kc = exp((g_RT[7] + g_RT[5]) - (g_RT[6] + g_RT[2]));
+    Kc = Kc_save[20];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -3273,9 +3324,17 @@ void equilibriumConstants(double *kc, double * g_RT, double T)
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 void gibbs(double * species, double * tc)
 {
-
     /*temperature */
     double T = tc[1];
+
+    static double T_save = -1, species_save[9];
+
+    if (T == T_save)
+    {
+        for (int i = 0; i < 9; i++)
+            species[i] = species_save[i];
+        return;
+    }
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -3443,6 +3502,9 @@ void gibbs(double * species, double * tc)
             -8.41420000e-12 * tc[3]
             +3.37667550e-16 * tc[4];
     }
+    T_save = T;
+    for (int i = 0; i < 9; i++)
+        species_save[i] = species[i];
     return;
 }
 
