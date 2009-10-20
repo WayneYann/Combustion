@@ -12,20 +12,8 @@ c     Series of runtime hacks
 #undef ALWAYS_NEW_J
 #undef SOLN_IS_1D
 
-
-
-
-#define MASS_FRAC
-#undef MOLAR_CONC
-
-#if defined(MASS_FRAC)
-# define CONPF_FILE conpFY
-# define CONPJ_FILE conpJY
-#endif
-#if defined(MOLAR_CONC)
-# define CONPF_FILE conpFC
-# define CONPJ_FILE conpJC
-#endif
+#define CONPF_FILE conpFY
+#define CONPJ_FILE conpJY
 
 #if defined(BL_USE_FLOAT) || defined(BL_T3E) || defined(BL_CRAY)
 #define twothousand 2000
@@ -539,18 +527,23 @@ c     Get the matrix of elements versus species
       parameter (LOUTCK=6)
 
       REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,atoln
-#if defined(MOLAR_CONC)
-      REAL_T Ctemp(maxspec),spec_scalC(maxspec)
-#endif
       logical newJ_triggered, bad_soln
+
+#ifdef BL_USE_OMP
+      include "omp_lib.h"
+      REAL_T,  allocatable :: dvrwrk(:,:)
+      integer, allocatable :: dviwrk(:,:)
+#endif
+      integer dvrlen, dvilen, tid, nthrds
 
       REAL_T YJ_SAVE(80)
       LOGICAL FIRST
       COMMON /VHACK/ YJ_SAVE, FIRST
       SAVE   /VHACK/
       REAL_T scale
-      
+c      
 c     Set IOPT=1 parameter settings for VODE
+c
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
       RWRK(dvbr+6) = ten2minus19
@@ -558,66 +551,90 @@ c     Set IOPT=1 parameter settings for VODE
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
       
-#if defined(MASS_FRAC) && defined(MOLAR_CONC)
-      call bl_abort("both mass_frac and molar_conc are defined")
-#endif
-#if !defined(MASS_FRAC) && !defined(MOLAR_CONC)
-      call bl_abort("neither mass_frac nor molar_conc is defined")
-#endif
-
-      if (do_diag.eq.1) then
-         nsubchem = nchemdiag
-      endif
-
+      if (do_diag.eq.1) nsubchem = nchemdiag
 c
 c     Set molecular weights and pressure in area accessible by conpF
+c
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       RWRK(NP) = Patm * P1atm
-      
-      TT2 = dt
 
       if (nstiff .eq. 1) then
-#if defined(MASS_FRAC)
-c     finite difference jacobian
-         MF = 22
-#elif defined(MOLAR_CONC)
-c     user supplied jacobian, in this case an analytic one
-         MF = 21
-c     MF = 22
-#endif
+         MF = 22  ! finite difference jacobian
       else
          MF = 10
       endif
-      
+c      
 c     Set up ATOL
+c
       if (ITOL.eq.2) then
          ATOL(1) = spec_scalT*ATOLEPS
-#if defined(MASS_FRAC)
          do n=1,Nspec
             ATOL(n+1) = ATOLEPS*spec_scalY(n)
          end do
-#endif
       else
          ATOL(1) = ATOLEPS
       endif
 
+!$omp parallel shared(dvrlen,dvilen,nthrds)
+
+#ifdef BL_USE_OMP
+
+!$omp single
+      dvrlen = 22 + 9*(Nspec+1) + 2*(Nspec+1)**2
+      dvilen = 30 + Nspec + 1
+      nthrds = omp_get_num_threads()
+
+      allocate(dvrwrk(dvrlen,nthrds),dviwrk(dvilen,nthrds))
+
+      do i = 1,nthrds
+         do n=1,dvrlen
+            dvrwrk(n,i) = RWRK(dvbr+n-1)
+         enddo
+      enddo
+      do i = 1,nthrds
+         do n=1,dvilen
+            dviwrk(n,i) = IWRK(dvbi+n-1)
+         enddo
+      end do
+!$omp end single
+
+#define DVRWK dvrwrk(1,tid)
+#define DVIWK dviwrk(1,tid)
+#define DVRLEN dvrlen
+#define DVILEN dvilen
+
+#else
+
+#define DVRWK RWRK(dvbr)
+#define DVIWK IWRK(dvbi)
+#define DVRLEN dvr
+#define DVILEN dvi
+
+#endif /*BL_USE_OMP*/
+
+! need private (initialized) copies of /VHACK/
+
+!$omp do private(i,j,k,n,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
+!$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tid)
+
       do k=lo(3),hi(3)
+
+#ifdef BL_USE_OMP
+         tid = omp_get_thread_num() + 1
+#endif
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
 
-               TT1 = zero
+               TT1    = zero
+               ISTATE = 1
                if (do_diag.eq.1) then
-                  nsub = nsubchem
+                  nsub  = nsubchem
                   dtloc = dt/nsubchem
                else
-                  nsub = 1
+                  nsub  = 1
                   dtloc = dt
                endif
-
-               ISTATE = 1
-
 #ifdef SOLN_IS_1D
-c     Hack!  I know the problem is 1D
             if (i.ne.lo(1) .and. j.ne.lo(2)) then
                do n=1,Nspec
                   Ynew(i,j,k,n) = Ynew(lo(1),lo(2),k,n)
@@ -625,25 +642,12 @@ c     Hack!  I know the problem is 1D
                Tnew(i,j,k) = Tnew(lo(1),lo(2),k)
             else
 #endif
-
-#if defined(MOLAR_CONC)
-c
-c Convert atol from mass frac to molar conc
-c
-            CALL CKYTCP(RWRK(NP),Told(i,j,k),spec_scalY,
-     &           IWRK(ckbi),RWRK(ckbr),spec_scalC)
-            if (ITOL.eq.2) then
-               do n=1,Nspec
-                  ATOL(n+1) = ATOLEPS*spec_scalC(n)
-               end do
-            endif
-#endif
                RWRK(NZ) = Told(i,j,k)
-
 #ifdef DO_JBB_HACK
-
 #ifdef DO_JBB_HACK_TEMP
-c     Force temperature into arbitrary bounds
+c
+c              Force temperature into arbitrary bounds
+c
                RWRK(NZ) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, RWRK(NZ)))
 #endif
             sum = zero
@@ -651,52 +655,31 @@ c     Force temperature into arbitrary bounds
                Ytemp(n) = Yold(i,j,k,n)
                atoln = ATOLEPS
                if (ITOL.eq.2) atoln = atol(n+1)
-c               if (Ytemp(n) .LT. zero) Ytemp(n) = 1.e-4*atoln
-c               if (Ytemp(n) .LT. zero) Ytemp(n) = 1.e-16
-c               Ytemp(n) =MAX( Yold(i,j,k,n),1.e-16)
-               Ytemp(n) =MAX( Yold(i,j,k,n),zero)
+               Ytemp(n) = MAX( Yold(i,j,k,n),zero)
                sum = sum+Ytemp(n)
             end do
-            if (iN2 .gt. 0) then
-               Ytemp(iN2) = Ytemp(iN2)+one-sum
-            endif
+            if (iN2 .gt. 0) Ytemp(iN2) = Ytemp(iN2)+one-sum
 #else
             do n=1,Nspec
                Ytemp(n) = Yold(i,j,k,n)
             end do
 #endif
-
-#if defined(MASS_FRAC)
             do n = 1,Nspec
                RWRK(NZ+n) = Ytemp(n)
             end do
-#elif defined(MOLAR_CONC)
-c
-c convert from Y to C
-c            
-            CALL CKYTCP(RWRK(NP),Told(i,j,k),Ytemp,IWRK(ckbi),RWRK(ckbr),Ctemp)
-            do n=1,NSPEC
-               RWRK(NZ+n) = Ctemp(n)
-            end do
-#endif
 
 #ifdef TRIGGER_NEW_J
             newJ_triggered = .FALSE.
             sum = zero
             do n=1,NEQ
                scale = spec_scalT
-#  if defined(MASS_FRAC)
                if (n.ne.1) scale = spec_scalY(n-1)
-#  elif defined(MOLAR_CONC)
-               if (n.ne.1) scale = spec_scalC(n-1)
-#  endif
                sum = sum + ABS(RWRK(NZ+n-1)-YJ_SAVE(n))/scale
             end do
             if (sum .gt. NEWJ_TOL) then
                FIRST = .TRUE.
                newJ_triggered = .TRUE.
             end if
-c           print *, "JACOB",sum,newJ_triggered
 #endif
 
 #ifdef ALWAYS_NEW_J
@@ -719,51 +702,42 @@ c           print *, "JACOB",sum,newJ_triggered
                endif
 
                TT1save = TT1
-               TT2 = TT1 + dtloc
-
+               TT2     = TT1 + dtloc
 
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                CALL SVODE
 #else 
                CALL DVODE
 #endif
-     &                (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
-     &                 ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &                 dvi, CONPJ_FILE, MF, RWRK, IWRK)
-
+     &              (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
+     &              ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
+     &              CONPJ_FILE, MF, RWRK, IWRK)
+c
 c     If the step was bad, and we reused an old Jacobian, try again from scratch
+c               
 #if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
             if (newJ_triggered .EQV. .FALSE.) then 
                bad_soln = .FALSE.
                do n=1,Nspec
-#  if defined(MASS_FRAC)
                   if (RWRK(NZ+n) .lt. -1.e-6*spec_scalY(n))
      &                 bad_soln = .TRUE.             
-#  elif defined(MOLAR_CONC)
-                  if (RWRK(NZ+n) .lt. -1.e-6*spec_scalC(n))
-     &                 bad_soln = .TRUE.             
-#  endif
                end do
                if (bad_soln .EQV. .TRUE.) then
                   FIRST = .TRUE. 
                   RWRK(NZ) = Told(i,j,k)
                   do n=1,Nspec
-#  if defined(MASS_FRAC)
                      RWRK(NZ+n) = Ytemp(n)
-#  elif defined(MOLAR_CONC)
-                     RWRK(NZ+n) = Ctemp(n)
-#  endif
                   end do
-                  TT1 = zero
+                  TT1    = zero
                   ISTATE = 1
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                   CALL SVODE
 #else 
                   CALL DVODE
 #endif
-     &                (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
-     &                 ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &                 dvi, CONPJ_FILE, MF, RWRK, IWRK)
+     &                 (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
+     &                 ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
+     &                 CONPJ_FILE, MF, RWRK, IWRK)
                end if
             end if
 #endif
@@ -779,7 +753,6 @@ c     If the step was bad, and we reused an old Jacobian, try again from scratch
                else
                   FuncCount(i,j,k) = IWRK(dvbi+11)
                endif
-
 
                if (verbose_vode .eq. 1) then
                   write(6,*) '......dvode done:'
@@ -823,21 +796,16 @@ c     If the step was bad, and we reused an old Jacobian, try again from scratch
              enddo
 
 #ifdef DO_JBB_HACK_POST
-c     Force temperature into arbitrary bounds
+c
+c              Force temperature into arbitrary bounds
+c
                RWRK(NZ) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, RWRK(NZ)))
 #endif
                Tnew(i,j,k) = RWRK(NZ)
 
-#if defined(MASS_FRAC)
-            do n= 1,Nspec
-               Yres(n) = RWRK(NZ+n)
-            end do
-#elif defined(MOLAR_CONC)
-c
-c convert back from C to Y
-c            
-            CALL CKCTY(RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Yres)
-#endif
+               do n= 1,Nspec
+                  Yres(n) = RWRK(NZ+n)
+               end do
 
 #if defined(DO_JBB_HACK)
                do n=1,Nspec
@@ -849,10 +817,7 @@ c
                Ytemp(n) = Yres(i,j,k,n)
                atoln = ATOLEPS
                if (ITOL.eq.2) atoln = atol(n+1)
-c               if (Ytemp(n) .LT. zero) Ytemp(n) = 1.e-4*atoln
-c               if (Ytemp(n) .LT. zero) Ytemp(n) = 1.e-16
-c               Ytemp(n) =MAX( Yold(i,j,k,n),1.e-16)
-               Ytemp(n) =MAX( Yres(i,j,k,n),zero)
+               Ytemp(n) = MAX(Yres(i,j,k,n),zero)
                sum = sum+Ytemp(n)
             end do
             if (iN2 .gt. 0) then
@@ -870,7 +835,27 @@ c               Ytemp(n) =MAX( Yold(i,j,k,n),1.e-16)
             end do
          end do
       end do
-      return
+!$omp end do
+
+!$omp end parallel
+
+
+#undef DVSRWK
+#undef DVSIWK
+#undef DVRLEN
+#undef DVILEN
+c
+c TODO -- remove when done testing with one thread.
+c
+#ifdef BL_USE_OMP
+      do n=1,dvrlen
+         RWRK(dvbr+n-1) = dvrwrk(n,1)
+      enddo
+      do n=1,dvilen
+         IWRK(dvbi+n-1) = dviwrk(n,1)
+      enddo
+#endif
+
       end
 
       subroutine FORT_CHEMEQ(lo, hi,
