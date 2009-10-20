@@ -4898,8 +4898,6 @@ void productionRate(double * wdot, double * sc, double T)
 {
     double qdot;
 
-    static double T_old = -1, k_f_old[84], Kc_old[84];
-
     int id; /*loop counter */
     double mixture;                 /*mixture concentration */
     double g_RT[21];                /*Gibbs free energy */
@@ -4942,10 +4940,15 @@ void productionRate(double * wdot, double * sc, double T)
         wdot[id] = 0.0;
     }
 
+#ifdef BL_USE_OMP
+    double k_f_old[84], Kc_old[84];
+#else
+    static double T_old = -1, k_f_old[84], Kc_old[84];
+
     if (T != T_old)
     {
         T_old = T;
-
+#endif
         k_f_old[0] = 1e-12 * 5e+17*exp(-1*tc[0]);
         k_f_old[1] = 1e-06 * 50000*exp(2.67*tc[0]-3165.58/tc[1]);
         k_f_old[2] = 1e-06 * 2e+13;
@@ -5115,7 +5118,9 @@ void productionRate(double * wdot, double * sc, double T)
         Kc_old[81] = exp((g_RT[13] + g_RT[3]) - (g_RT[6] + g_RT[11]));
         Kc_old[82] = exp((g_RT[15] + g_RT[3]) - (g_RT[6] + g_RT[14]));
         Kc_old[83] = exp((g_RT[17] + g_RT[3]) - (g_RT[6] + g_RT[16]));
+#ifndef BL_USE_OMP
     }
+#endif
 
     /*reaction 1: O + H + M <=> OH + M */
     phi_f = sc[2]*sc[1];
@@ -8511,10 +8516,10 @@ void equilibriumConstants(double *kc, double * g_RT, double T)
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 void gibbs(double * species, double * tc)
 {
-
     /*temperature */
     double T = tc[1];
 
+#ifndef BL_USE_OMP
     static double T_old = -1, species_old[21];
 
     if (T == T_old)
@@ -8523,6 +8528,7 @@ void gibbs(double * species, double * tc)
             species[i] = species_old[i];
         return;
     }
+#endif
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -8906,9 +8912,11 @@ void gibbs(double * species, double * tc)
             -0.00000000e+00 * tc[3]
             -0.00000000e+00 * tc[4];
     }
+#ifndef BL_USE_OMP
     T_old = T;
     for (int i = 0; i < 21; i++)
       species_old[i] = species[i];
+#endif
     return;
 }
 
@@ -10286,6 +10294,7 @@ void speciesEnthalpy(double * species, double * tc)
     /*temperature */
     double T = tc[1];
 
+#ifndef BL_USE_OMP
     static double T_old = -1, species_old[21];
 
     if (T == T_old)
@@ -10294,6 +10303,7 @@ void speciesEnthalpy(double * species, double * tc)
             species[i] = species_old[i];
         return;
     }
+#endif
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -10635,9 +10645,11 @@ void speciesEnthalpy(double * species, double * tc)
             +0.00000000e+00 * tc[4]
             -7.45375000e+02 / tc[1];
     }
+#ifndef BL_USE_OMP
     T_old = T;
     for (int i = 0; i < 21; i++)
       species_old[i] = species[i];
+#endif
     return;
 }
 
