@@ -494,6 +494,7 @@ c     Get the matrix of elements versus species
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
+#include "vode.H"
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(Yold)
       integer DIMDEC(Told)
@@ -517,7 +518,7 @@ c     Get the matrix of elements versus species
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
-      integer i, j, k, n, MF, ISTATE, LOUTCK, lout
+      integer i, j, k, m, MF, ISTATE, LOUTCK, lout
 
       integer nsubchem, nsub, node
       REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec)
@@ -543,10 +544,12 @@ c     Get the matrix of elements versus species
       COMMON /VHACK/ YJ_SAVE, FIRST
       SAVE   /VHACK/
 
-!$omp threadprivate(/VHACK/)
+!$omp threadprivate(/VHACK/,/DVOD01/,/DVOD02/)
 
 c      
 c     Set IOPT=1 parameter settings for VODE
+c
+c     TODO -- these never change so only do'm once.
 c
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
@@ -573,8 +576,8 @@ c     Set up ATOL
 c
       if (ITOL.eq.2) then
          ATOL(1) = spec_scalT*ATOLEPS
-         do n=1,Nspec
-            ATOL(n+1) = ATOLEPS*spec_scalY(n)
+         do m=1,Nspec
+            ATOL(m+1) = ATOLEPS*spec_scalY(m)
          end do
       else
          ATOL(1) = ATOLEPS
@@ -588,7 +591,7 @@ c
          dtloc = dt
       endif
 
-!$omp parallel private(nthrds) 
+!$omp parallel private(nthrds) copyin(/VHACK/)
 
 #ifdef BL_USE_OMP
 
@@ -601,13 +604,13 @@ c
          allocate(dvrwrk(dvrlen,nthrds),dviwrk(dvilen,nthrds))
 
          do i = 1,nthrds
-            do n=1,dvrlen
-               dvrwrk(n,i) = RWRK(dvbr+n-1)
+            do m=1,dvrlen
+               dvrwrk(m,i) = RWRK(dvbr+m-1)
             enddo
          enddo
          do i = 1,nthrds
-            do n=1,dvilen
-               dviwrk(n,i) = IWRK(dvbi+n-1)
+            do m=1,dvilen
+               dviwrk(m,i) = IWRK(dvbi+m-1)
             enddo
          end do
       endif
@@ -627,7 +630,7 @@ c
 
 #endif /*BL_USE_OMP*/
 
-!$omp do private(i,j,k,n,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
+!$omp do private(i,j,k,m,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
 !$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tid,tspecies)
 
       do k=lo(3),hi(3)
@@ -643,47 +646,44 @@ c
 
 #ifdef SOLN_IS_1D
             if (i.ne.lo(1) .and. j.ne.lo(2)) then
-               do n=1,Nspec
-                  Ynew(i,j,k,n) = Ynew(lo(1),lo(2),k,n)
+               do m=1,Nspec
+                  Ynew(i,j,k,m) = Ynew(lo(1),lo(2),k,m)
                end do
                Tnew(i,j,k) = Tnew(lo(1),lo(2),k)
             else
 #endif
-
                tspecies(0) = Told(i,j,k)
 
 #ifdef DO_JBB_HACK
 #ifdef DO_JBB_HACK_TEMP
-c
-c              Force temperature into arbitrary bounds
-c
+
                tspecies(0) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, tspecies(0)))
 #endif
             sum = zero
-            do n=1,Nspec
-               Ytemp(n) = Yold(i,j,k,n)
+            do m=1,Nspec
+               Ytemp(m) = Yold(i,j,k,m)
                atoln = ATOLEPS
-               if (ITOL.eq.2) atoln = atol(n+1)
-               Ytemp(n) = MAX( Yold(i,j,k,n),zero)
-               sum = sum+Ytemp(n)
+               if (ITOL.eq.2) atoln = atol(m+1)
+               Ytemp(m) = MAX(Yold(i,j,k,m),zero)
+               sum = sum+Ytemp(m)
             end do
             if (iN2 .gt. 0) Ytemp(iN2) = Ytemp(iN2)+one-sum
 #else
-            do n=1,Nspec
-               Ytemp(n) = Yold(i,j,k,n)
+            do m=1,Nspec
+               Ytemp(m) = Yold(i,j,k,m)
             end do
 #endif
-            do n = 1,Nspec
-               tspecies(n) = Ytemp(n)
+            do m = 1,Nspec
+               tspecies(m) = Ytemp(m)
             end do
 
 #ifdef TRIGGER_NEW_J
             newJ_triggered = .FALSE.
             sum = zero
-            do n=1,NEQ
+            do m=1,NEQ
                scale = spec_scalT
-               if (n.ne.1) scale = spec_scalY(n-1)
-               sum = sum + ABS(tspecies(n-1)-YJ_SAVE(n))/scale
+               if (m.ne.1) scale = spec_scalY(m-1)
+               sum = sum + ABS(tspecies(m-1)-YJ_SAVE(m))/scale
             end do
             if (sum .gt. NEWJ_TOL) then
                FIRST = .TRUE.
@@ -698,8 +698,8 @@ c
                FuncCount(i,j,k) = 0
                CALL CKYTCP(RWRK(NP),tspecies(0),tspecies(1),IWRK(ckbi),RWRK(ckbr),Ct)
                CALL CKQC(tspecies(0),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
-               do n=1,Nreac
-                  diag(i,j,k,n) = diag(i,j,k,n)+half*dtloc*Qt(n)*million
+               do m=1,Nreac
+                  diag(i,j,k,m) = diag(i,j,k,m)+half*dtloc*Qt(m)*million
                enddo
             endif
 
@@ -727,15 +727,15 @@ c
 #if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
             if (newJ_triggered .EQV. .FALSE.) then 
                bad_soln = .FALSE.
-               do n=1,Nspec
-                  if (tspecies(n) .lt. -1.D-6*spec_scalY(n))
-     &                 bad_soln = .TRUE.             
+               do m=1,Nspec
+                  if (tspecies(m) .lt. -1.D-6*spec_scalY(m))
+     &                 bad_soln = .TRUE.
                end do
                if (bad_soln .EQV. .TRUE.) then
                   FIRST = .TRUE. 
                   tspecies(0) = Told(i,j,k)
-                  do n=1,Nspec
-                     tspecies(n) = Ytemp(n)
+                  do m=1,Nspec
+                     tspecies(m) = Ytemp(m)
                   end do
                   TT1    = zero
                   ISTATE = 1
@@ -751,12 +751,14 @@ c
             end if
 #endif
                TT1 = TT2
-
+               !
+               ! TODO -- replace IWRK here.
+               !
                if (do_diag.eq.1) then
                   CALL CKYTCP(RWRK(NP),tspecies(0),tspecies(1),IWRK(ckbi),RWRK(ckbr),Ct)
                   CALL CKQC(tspecies(0),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
-                  do n=1,Nreac
-                     diag(i,j,k,n) = diag(i,j,k,n)+weight*dtloc*Qt(n)*million
+                  do m=1,Nreac
+                     diag(i,j,k,m) = diag(i,j,k,m)+weight*dtloc*Qt(m)*million
                   enddo
                   FuncCount(i,j,k) = FuncCount(i,j,k) + IWRK(dvbi+11)
                else
@@ -792,52 +794,50 @@ c
                   write(lout,995) 'VODE Failed at (i,j,k) = (',i,',',j,
      &                 ',',k,'),   Return code = ',ISTATE
                   write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-                  write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
+                write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
                   write(lout,996) 'T               ',
      &                 Told(i,j,k),tspecies(0),RWRK(NWDOT),RWRK(NWDOT)*(dt-TT1)
-                  do n=1,Nspec
-                     call get_spec_name(name,n)
-                     write(lout,996) name,Yold(i,j,k,n),
-     &                    tspecies(n),RWRK(NWDOT+n),RWRK(NWDOT+n)*(dt-TT1)
+                  do m=1,Nspec
+                     call get_spec_name(name,m)
+                     write(lout,996) name,Yold(i,j,k,m),
+     &                    tspecies(m),RWRK(NWDOT+m),RWRK(NWDOT+m)*(dt-TT1)
                   end do
  995              format(a,4(i4,a))
  996              format(a16,1x,4e30.22)
                   close(lout)
-                  call bl_abort('VODE failed...see drop file...exiting...')
+                  call bl_abort('VODE failed, see drop file, exiting')
                end if
              enddo
 
 #ifdef DO_JBB_HACK_POST
-c
-c              Force temperature into arbitrary bounds
-c
+
                tspecies(0) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, tspecies(0)))
 #endif
                Tnew(i,j,k) = tspecies(0)
 
-               do n= 1,Nspec
-                  Yres(n) = tspecies(n)
+               do m= 1,Nspec
+                  Yres(m) = tspecies(m)
                end do
 
 #if defined(DO_JBB_HACK)
-               do n=1,Nspec
-                  Ynew(i,j,k,n) = Yold(i,j,k,n)+Yres(n)-Ytemp(n)
+               do m=1,Nspec
+                  Ynew(i,j,k,m) = Yold(i,j,k,m)+Yres(m)-Ytemp(m)
                end do
 #elif  defined(DO_JBB_HACK_POST)
             sum = zero
-            do n=1,Nspec
-               Ytemp(n) = Yres(i,j,k,n)
+            do m=1,Nspec
+               Ytemp(m) = Yres(i,j,k,m)
                atoln = ATOLEPS
-               if (ITOL.eq.2) atoln = atol(n+1)
-               Ytemp(n) = MAX(Yres(i,j,k,n),zero)
-               sum = sum+Ytemp(n)
+               if (ITOL.eq.2) atoln = atol(m+1)
+               Ytemp(m) = MAX(Yres(i,j,k,m),zero)
+               sum = sum+Ytemp(m)
             end do
             if (iN2 .gt. 0) then
                Ytemp(iN2) = Ytemp(iN2)+one-sum
             endif
 #else
-               do n=1,Nspec
-                  Ynew(i,j,k,n) = Yres(n)
+               do m=1,Nspec
+                  Ynew(i,j,k,m) = Yres(m)
                end do
 #endif
 
