@@ -588,7 +588,9 @@ c
          dtloc = dt
       endif
 
-!$omp parallel private(nthrds) copyin(/VHACK/)
+c!$omp parallel private(nthrds) copyin(/VHACK/)
+
+!$omp parallel private(nthrds)
 
 #ifdef BL_USE_OMP
 
