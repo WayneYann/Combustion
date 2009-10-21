@@ -531,10 +531,12 @@ c     Get the matrix of elements versus species
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
-      REAL_T,  allocatable :: dvrwrk(:,:)
-      integer, allocatable :: dviwrk(:,:)
+      REAL_T,  pointer, save :: dvrwrk(:,:)
+      integer, pointer, save :: dviwrk(:,:)
+      integer,          save :: dvrlen
+      integer,          save :: dvilen
 #endif
-      integer dvrlen, dvilen, tid, nthrds
+      integer tid, nthrds
 
       REAL_T YJ_SAVE(80)
       LOGICAL FIRST
@@ -586,27 +588,29 @@ c
          dtloc = dt
       endif
 
-!$omp parallel shared(dvrlen,dvilen,nthrds) copyin(/VHACK/)
+!$omp parallel private(nthrds) copyin(/VHACK/)
 
 #ifdef BL_USE_OMP
 
 !$omp single
-      dvrlen = 22 + 9*(Nspec+1) + 2*(Nspec+1)**2
-      dvilen = 30 + Nspec + 1
-      nthrds = omp_get_num_threads()
+      if (.not.associated(dvrwrk)) then
+         dvrlen = 22 + 9*(Nspec+1) + 2*(Nspec+1)**2
+         dvilen = 30 + Nspec + 1
+         nthrds = omp_get_num_threads()
 
-      allocate(dvrwrk(dvrlen,nthrds),dviwrk(dvilen,nthrds))
+         allocate(dvrwrk(dvrlen,nthrds),dviwrk(dvilen,nthrds))
 
-      do i = 1,nthrds
-         do n=1,dvrlen
-            dvrwrk(n,i) = RWRK(dvbr+n-1)
+         do i = 1,nthrds
+            do n=1,dvrlen
+               dvrwrk(n,i) = RWRK(dvbr+n-1)
+            enddo
          enddo
-      enddo
-      do i = 1,nthrds
-         do n=1,dvilen
-            dviwrk(n,i) = IWRK(dvbi+n-1)
-         enddo
-      end do
+         do i = 1,nthrds
+            do n=1,dvilen
+               dviwrk(n,i) = IWRK(dvbi+n-1)
+            enddo
+         end do
+      endif
 !$omp end single
 
 #define DVRWK dvrwrk(1,tid)
@@ -852,17 +856,6 @@ c
 #undef DVSIWK
 #undef DVRLEN
 #undef DVILEN
-c
-c TODO -- remove when done testing with one thread.
-c
-#ifdef BL_USE_OMP
-      do n=1,dvrlen
-         RWRK(dvbr+n-1) = dvrwrk(n,1)
-      enddo
-      do n=1,dvilen
-         IWRK(dvbi+n-1) = dviwrk(n,1)
-      enddo
-#endif
 
       end
 
