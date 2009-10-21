@@ -268,7 +268,7 @@ C-----------------------------------------------------------------------
       imaxreac = maxreac
       imaxspec = maxspec
       imaxelts = maxelts
-      imaxord = maxord
+      imaxord = 10
       imaxthrdb = maxthrdb
       imaxtp = maxtp
       imaxsp = maxsp
