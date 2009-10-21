@@ -1,13 +1,13 @@
 #include "REAL.H"
 
 c     Hardwired sizes
-      integer maxreac, maxspec, maxelts, maxord, maxthrdb, maxtp, maxsp,
+      integer maxreac, maxspec, maxelts, maxthrdb, maxtp, maxsp,
      &     maxspnml
-c      parameter (maxreac = 1000, maxspec=200, maxelts=20, maxord=10,
+c      parameter (maxreac = 1000, maxspec=200, maxelts=20,
 c     &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
-      parameter (maxreac = 447, maxspec=65, maxelts=5, maxord=10,
+      parameter (maxreac = 447, maxspec=65, maxelts=5,
      &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
-c      parameter (maxreac = 3, maxspec=6, maxelts=4, maxord=10,
+c      parameter (maxreac = 3, maxspec=6, maxelts=4,
 c     &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
 
 c     ChemKin workspace requirements
