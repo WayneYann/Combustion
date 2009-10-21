@@ -492,9 +492,11 @@ c     Get the matrix of elements versus species
      &                         dt,
      &                         diag,do_diag)
       implicit none
+
 #include "cdwrk.H"
 #include "conp.H"
 #include "vode.H"
+
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(Yold)
       integer DIMDEC(Told)
@@ -517,17 +519,16 @@ c     Get the matrix of elements versus species
       parameter (RTOL=1.0D-8, ATOLEPS=1.0D-8)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
-      REAL_T TT1, TT2, RU, RUC, P1atm
+      REAL_T TT1, TT2, RU, RUC, P1atm, sum, atoln
       integer i, j, k, m, MF, ISTATE, LOUTCK, lout
 
-      integer nsubchem, nsub, node
+      integer nsubchem, nsub, node, tid, nthrds
       REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec)
-      REAL_T Ct(maxspec),Qt(maxreac)
+      REAL_T Ct(maxspec),Qt(maxreac),Ytemp(maxspec),Yres(maxspec)
 
       character*(maxspnml) name
       parameter (LOUTCK=6)
 
-      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,atoln
       logical newJ_triggered, bad_soln
 
 #ifdef BL_USE_OMP
@@ -537,7 +538,6 @@ c     Get the matrix of elements versus species
       integer,          save :: dvrlen
       integer,          save :: dvilen
 #endif
-      integer tid, nthrds
 
       REAL_T YJ_SAVE(80)
       LOGICAL FIRST
@@ -549,7 +549,7 @@ c     Get the matrix of elements versus species
 c      
 c     Set IOPT=1 parameter settings for VODE
 c
-c     TODO -- these never change so only do'm once.
+c     TODO -- these really only need to be set once.
 c
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
@@ -604,35 +604,35 @@ c
          allocate(dvrwrk(dvrlen,nthrds),dviwrk(dvilen,nthrds))
 
          do i = 1,nthrds
-            do m=1,dvrlen
-               dvrwrk(m,i) = RWRK(dvbr+m-1)
-            enddo
-         enddo
-         do i = 1,nthrds
-            do m=1,dvilen
-               dviwrk(m,i) = IWRK(dvbi+m-1)
-            enddo
+            dvrwrk(5,i) = 0
+            dvrwrk(6,i) = 0
+            dvrwrk(7,i) = ten2minus19
+            dviwrk(5,i) = 0
+            dviwrk(6,i) = max_vode_subcycles
+            dviwrk(7,i) = 0
          end do
       endif
 !$omp end single
 
-#define DVRWK dvrwrk(1,tid)
-#define DVIWK dviwrk(1,tid)
-#define DVRLEN dvrlen
-#define DVILEN dvilen
+#define DVRWK   dvrwrk(1,tid)
+#define DVIWK   dviwrk(1,tid)
+#define DVIFCNT dviwrk(12,tid)
+#define DVRLEN  dvrlen
+#define DVILEN  dvilen
 
 #else
 
-#define DVRWK RWRK(dvbr)
-#define DVIWK IWRK(dvbi)
-#define DVRLEN dvr
-#define DVILEN dvi
+#define DVRWK   RWRK(dvbr)
+#define DVIWK   IWRK(dvbi)
+#define DVIFCNT IWRK(dvbi+11)
+#define DVRLEN  dvr
+#define DVILEN  dvi
 
 #endif /*BL_USE_OMP*/
 
 !$omp do private(i,j,k,m,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
 !$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tid,tspecies)
-
+!$omp&private(lout,name)
       do k=lo(3),hi(3)
 
 #ifdef BL_USE_OMP
@@ -718,7 +718,7 @@ c
 #else 
                CALL DVODE
 #endif
-     &              (CONPF_FILE, NEQ, tspecies(0), TT1, TT2, ITOL, RTOL, ATOL,
+     &              (CONPF_FILE, NEQ, tspecies, TT1, TT2, ITOL, RTOL, ATOL,
      &              ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
      &              CONPJ_FILE, MF, RWRK, IWRK)
 c
@@ -744,28 +744,44 @@ c
 #else 
                   CALL DVODE
 #endif
-     &                 (CONPF_FILE, NEQ, tspecies(0), TT1, TT2, ITOL, RTOL, ATOL,
+     &                 (CONPF_FILE, NEQ, tspecies, TT1, TT2, ITOL, RTOL, ATOL,
      &                 ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
      &                 CONPJ_FILE, MF, RWRK, IWRK)
                end if
             end if
 #endif
                TT1 = TT2
-               !
-               ! TODO -- replace IWRK here.
-               !
+
                if (do_diag.eq.1) then
                   CALL CKYTCP(RWRK(NP),tspecies(0),tspecies(1),IWRK(ckbi),RWRK(ckbr),Ct)
                   CALL CKQC(tspecies(0),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                   do m=1,Nreac
                      diag(i,j,k,m) = diag(i,j,k,m)+weight*dtloc*Qt(m)*million
                   enddo
-                  FuncCount(i,j,k) = FuncCount(i,j,k) + IWRK(dvbi+11)
+                  FuncCount(i,j,k) = FuncCount(i,j,k) + DVIFCNT
                else
-                  FuncCount(i,j,k) = IWRK(dvbi+11)
+                  FuncCount(i,j,k) = DVIFCNT
                endif
 
                if (verbose_vode .eq. 1) then
+#ifdef BL_USE_OMP
+                  write(6,*) '......dvode done:'
+                  write(6,*) ' last successful step size = ',dvrwrk(11,tid)
+                  write(6,*) '          next step to try = ',dvrwrk(12,tid)
+                  write(6,*) '   integrated time reached = ',dvrwrk(13,tid)
+                  write(6,*) '      number of time steps = ',dviwrk(11,tid)
+                  write(6,*) '              number of fs = ',dviwrk(12,tid)
+                  write(6,*) '              number of Js = ',dviwrk(13,tid)
+                  write(6,*) '    method order last used = ',dviwrk(14,tid)
+                  write(6,*) '   method order to be used = ',dviwrk(15,tid)
+                  write(6,*) '            number of LUDs = ',dviwrk(19,tid)
+                  write(6,*) ' number of Newton iterations ',dviwrk(20,tid)
+                  write(6,*) ' number of Newton failures = ',dviwrk(21,tid)
+                  if (ISTATE.eq.-4 .or. ISTATE.eq.-5) then
+                     call get_spec_name(name,dviwrk(16,tid))
+                     write(6,*) '   spec with largest error = ',name
+                  end if
+#else
                   write(6,*) '......dvode done:'
                   write(6,*) ' last successful step size = ',RWRK(dvbr+10)
                   write(6,*) '          next step to try = ',RWRK(dvbr+11)
@@ -782,13 +798,27 @@ c
                      call get_spec_name(name,IWRK(dvbi+15))
                      write(6,*) '   spec with largest error = ',name
                   end if
+#endif
                end if
 
                if (ISTATE .LE. -1) then
-                  !
-                  ! TODO -- get rid of RWRK(NWDOT) here.
-                  !
-                  call CONPF_FILE(NEQ, TT1, tspecies(0), RWRK(NWDOT), RWRK, IWRK)
+#ifdef BL_USE_OMP
+                  call CONPF_FILE(NEQ, TT1, tspecies, Qt, RWRK, IWRK)
+                  lout = open_vode_failure_file()                  
+                  write(lout,*)
+                  write(lout,995) 'VODE Failed at (i,j,k) = (',i,',',j,
+     &                 ',',k,'),   Return code = ',ISTATE
+                  write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
+                write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
+                  write(lout,996) 'T               ',
+     &                 Told(i,j,k),tspecies(0),Qt(1),Qt(1)*(dt-TT1)
+                  do m=1,Nspec
+                     call get_spec_name(name,m)
+                     write(lout,996) name,Yold(i,j,k,m),
+     &                    tspecies(m),Qt(1+m),Qt(1+m)*(dt-TT1)
+                  end do
+#else
+                  call CONPF_FILE(NEQ, TT1, tspecies, RWRK(NWDOT), RWRK, IWRK)
                   lout = open_vode_failure_file()                  
                   write(lout,*)
                   write(lout,995) 'VODE Failed at (i,j,k) = (',i,',',j,
@@ -802,6 +832,7 @@ c
                      write(lout,996) name,Yold(i,j,k,m),
      &                    tspecies(m),RWRK(NWDOT+m),RWRK(NWDOT+m)*(dt-TT1)
                   end do
+#endif
  995              format(a,4(i4,a))
  996              format(a16,1x,4e30.22)
                   close(lout)
