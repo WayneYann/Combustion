@@ -977,8 +977,10 @@ c     Set molecular weights and pressure in area accessible by conpF
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
-      REAL_T,  allocatable :: egrwrk(:,:)
-      integer, allocatable :: egiwrk(:,:)
+      REAL_T,  pointer :: egrwrk(:,:)
+      integer, pointer :: egiwrk(:,:)
+      common /egwork/ egrwrk,egiwrk
+      save /egwork/
 #endif
       integer egrlen, egilen, tid, nthrds
 
@@ -997,21 +999,25 @@ c     Set molecular weights and pressure in area accessible by conpF
 #ifdef BL_USE_OMP
 
 !$omp single
-      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &               + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
-      egilen = Nspec
-      nthrds = omp_get_num_threads()
+      if (.not.associated(egrwrk)) then
+         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
+     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+         egilen = Nspec
+         nthrds = omp_get_num_threads()
 
-      allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
+         allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
 
-      do i = 1,nthrds
-         do n=1,egrlen
-            egrwrk(n,i) = RWRK(egbr+n-1)
+         do i = 1,nthrds
+            do n=1,egrlen
+               egrwrk(n,i) = RWRK(egbr+n-1)
+            enddo
          enddo
-         do n=1,egilen
-            egiwrk(n,i) = IWRK(egbi+n-1)
-         enddo
-      end do
+         do i = 1,nthrds
+            do n=1,egilen
+               egiwrk(n,i) = IWRK(egbi+n-1)
+            enddo
+         end do
+      endif
 !$omp end single
 
 #define EGSRWK egrwrk(1,tid)
@@ -1026,6 +1032,7 @@ c     Set molecular weights and pressure in area accessible by conpF
 
 !$omp do private(i,j,k,n,Yt,Tt,alpha,Dt,Wavg)
 !$omp&private(CPMS,X,RHO,l1,l2,tid)
+
       do k=lo(3),hi(3)
 
 #ifdef BL_USE_OMP
@@ -1091,8 +1098,10 @@ c     Set molecular weights and pressure in area accessible by conpF
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
-      REAL_T,  allocatable :: egrwrk(:,:)
-      integer, allocatable :: egiwrk(:,:)
+      REAL_T,  pointer :: egrwrk(:,:)
+      integer, pointer :: egiwrk(:,:)
+      common /egwork/ egrwrk,egiwrk
+      save /egwork/
 #endif
       integer egrlen, egilen, tid, nthrds
 
@@ -1103,21 +1112,27 @@ c     Set molecular weights and pressure in area accessible by conpF
 #ifdef BL_USE_OMP
 
 !$omp single
-      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &               + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
-      egilen = Nspec
-      nthrds = omp_get_num_threads()
 
-      allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
+      if (.not.associated(egrwrk)) then
+         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
+     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+         egilen = Nspec
+         nthrds = omp_get_num_threads()
 
-      do i = 1,nthrds
-         do n=1,egrlen
-            egrwrk(n,i) = RWRK(egbr+n-1)
+         allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
+
+         do i = 1,nthrds
+            do n=1,egrlen
+               egrwrk(n,i) = RWRK(egbr+n-1)
+            enddo
          enddo
-         do n=1,egilen
-            egiwrk(n,i) = IWRK(egbi+n-1)
-         enddo
-      end do
+         do i = 1,nthrds
+            do n=1,egilen
+               egiwrk(n,i) = IWRK(egbi+n-1)
+            enddo
+         end do
+      endif
+
 !$omp end single
 
 #define EGSRWK egrwrk(1,tid)
