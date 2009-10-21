@@ -513,14 +513,14 @@ c     Get the matrix of elements versus species
       parameter (ITOL=1, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1),ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
+      parameter (RTOL=1.0D-8, ATOLEPS=1.0D-8)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
       integer i, j, k, n, MF, ISTATE, LOUTCK, lout
 
       integer nsubchem, nsub, node
-      REAL_T dtloc, weight, TT1save
+      REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec)
       REAL_T Ct(maxspec),Qt(maxreac)
 
       character*(maxspnml) name
@@ -540,7 +540,9 @@ c     Get the matrix of elements versus species
       LOGICAL FIRST
       COMMON /VHACK/ YJ_SAVE, FIRST
       SAVE   /VHACK/
-      REAL_T scale
+
+!$omp threadprivate(/VHACK/)
+
 c      
 c     Set IOPT=1 parameter settings for VODE
 c
@@ -556,6 +558,7 @@ c
 c     Set molecular weights and pressure in area accessible by conpF
 c
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
+
       RWRK(NP) = Patm * P1atm
 
       if (nstiff .eq. 1) then
@@ -575,7 +578,15 @@ c
          ATOL(1) = ATOLEPS
       endif
 
-!$omp parallel shared(dvrlen,dvilen,nthrds)
+      if (do_diag.eq.1) then
+         nsub  = nsubchem
+         dtloc = dt/nsubchem
+      else
+         nsub  = 1
+         dtloc = dt
+      endif
+
+!$omp parallel shared(dvrlen,dvilen,nthrds) copyin(/VHACK/)
 
 #ifdef BL_USE_OMP
 
@@ -612,10 +623,8 @@ c
 
 #endif /*BL_USE_OMP*/
 
-! need private (initialized) copies of /VHACK/
-
 !$omp do private(i,j,k,n,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
-!$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tid)
+!$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tid,tspecies)
 
       do k=lo(3),hi(3)
 
@@ -627,13 +636,7 @@ c
 
                TT1    = zero
                ISTATE = 1
-               if (do_diag.eq.1) then
-                  nsub  = nsubchem
-                  dtloc = dt/nsubchem
-               else
-                  nsub  = 1
-                  dtloc = dt
-               endif
+
 #ifdef SOLN_IS_1D
             if (i.ne.lo(1) .and. j.ne.lo(2)) then
                do n=1,Nspec
@@ -642,13 +645,15 @@ c
                Tnew(i,j,k) = Tnew(lo(1),lo(2),k)
             else
 #endif
-               RWRK(NZ) = Told(i,j,k)
+
+               tspecies(0) = Told(i,j,k)
+
 #ifdef DO_JBB_HACK
 #ifdef DO_JBB_HACK_TEMP
 c
 c              Force temperature into arbitrary bounds
 c
-               RWRK(NZ) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, RWRK(NZ)))
+               tspecies(0) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, tspecies(0)))
 #endif
             sum = zero
             do n=1,Nspec
@@ -665,7 +670,7 @@ c
             end do
 #endif
             do n = 1,Nspec
-               RWRK(NZ+n) = Ytemp(n)
+               tspecies(n) = Ytemp(n)
             end do
 
 #ifdef TRIGGER_NEW_J
@@ -674,7 +679,7 @@ c
             do n=1,NEQ
                scale = spec_scalT
                if (n.ne.1) scale = spec_scalY(n-1)
-               sum = sum + ABS(RWRK(NZ+n-1)-YJ_SAVE(n))/scale
+               sum = sum + ABS(tspecies(n-1)-YJ_SAVE(n))/scale
             end do
             if (sum .gt. NEWJ_TOL) then
                FIRST = .TRUE.
@@ -687,8 +692,8 @@ c
 #endif
             if (do_diag.eq.1) then
                FuncCount(i,j,k) = 0
-               CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
-               CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+               CALL CKYTCP(RWRK(NP),tspecies(0),tspecies(1),IWRK(ckbi),RWRK(ckbr),Ct)
+               CALL CKQC(tspecies(0),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                do n=1,Nreac
                   diag(i,j,k,n) = diag(i,j,k,n)+half*dtloc*Qt(n)*million
                enddo
@@ -709,7 +714,7 @@ c
 #else 
                CALL DVODE
 #endif
-     &              (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
+     &              (CONPF_FILE, NEQ, tspecies(0), TT1, TT2, ITOL, RTOL, ATOL,
      &              ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
      &              CONPJ_FILE, MF, RWRK, IWRK)
 c
@@ -719,14 +724,14 @@ c
             if (newJ_triggered .EQV. .FALSE.) then 
                bad_soln = .FALSE.
                do n=1,Nspec
-                  if (RWRK(NZ+n) .lt. -1.e-6*spec_scalY(n))
+                  if (tspecies(n) .lt. -1.D-6*spec_scalY(n))
      &                 bad_soln = .TRUE.             
                end do
                if (bad_soln .EQV. .TRUE.) then
                   FIRST = .TRUE. 
-                  RWRK(NZ) = Told(i,j,k)
+                  tspecies(0) = Told(i,j,k)
                   do n=1,Nspec
-                     RWRK(NZ+n) = Ytemp(n)
+                     tspecies(n) = Ytemp(n)
                   end do
                   TT1    = zero
                   ISTATE = 1
@@ -735,7 +740,7 @@ c
 #else 
                   CALL DVODE
 #endif
-     &                 (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
+     &                 (CONPF_FILE, NEQ, tspecies(0), TT1, TT2, ITOL, RTOL, ATOL,
      &                 ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
      &                 CONPJ_FILE, MF, RWRK, IWRK)
                end if
@@ -744,8 +749,8 @@ c
                TT1 = TT2
 
                if (do_diag.eq.1) then
-                  CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
-                  CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                  CALL CKYTCP(RWRK(NP),tspecies(0),tspecies(1),IWRK(ckbi),RWRK(ckbr),Ct)
+                  CALL CKQC(tspecies(0),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                   do n=1,Nreac
                      diag(i,j,k,n) = diag(i,j,k,n)+weight*dtloc*Qt(n)*million
                   enddo
@@ -774,7 +779,10 @@ c
                end if
 
                if (ISTATE .LE. -1) then
-                  call CONPF_FILE(NEQ, TT1, RWRK(NZ), RWRK(NWDOT), RWRK, IWRK)
+                  !
+                  ! TODO -- get rid of RWRK(NWDOT) here.
+                  !
+                  call CONPF_FILE(NEQ, TT1, tspecies(0), RWRK(NWDOT), RWRK, IWRK)
                   lout = open_vode_failure_file()                  
                   write(lout,*)
                   write(lout,995) 'VODE Failed at (i,j,k) = (',i,',',j,
@@ -782,11 +790,11 @@ c
                   write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
                   write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
                   write(lout,996) 'T               ',
-     &                 Told(i,j,k),RWRK(NZ),RWRK(NWDOT),RWRK(NWDOT)*(dt-TT1)
+     &                 Told(i,j,k),tspecies(0),RWRK(NWDOT),RWRK(NWDOT)*(dt-TT1)
                   do n=1,Nspec
                      call get_spec_name(name,n)
                      write(lout,996) name,Yold(i,j,k,n),
-     &                    RWRK(NZ+n),RWRK(NWDOT+n),RWRK(NWDOT+n)*(dt-TT1)
+     &                    tspecies(n),RWRK(NWDOT+n),RWRK(NWDOT+n)*(dt-TT1)
                   end do
  995              format(a,4(i4,a))
  996              format(a16,1x,4e30.22)
@@ -799,12 +807,12 @@ c
 c
 c              Force temperature into arbitrary bounds
 c
-               RWRK(NZ) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, RWRK(NZ)))
+               tspecies(0) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, tspecies(0)))
 #endif
-               Tnew(i,j,k) = RWRK(NZ)
+               Tnew(i,j,k) = tspecies(0)
 
                do n= 1,Nspec
-                  Yres(n) = RWRK(NZ+n)
+                  Yres(n) = tspecies(n)
                end do
 
 #if defined(DO_JBB_HACK)
