@@ -543,40 +543,42 @@ c     Result in kg/kmole
       
       REAL_T RHO, CPB, SUM, H, WDOT, WT, THFAC
       integer K
+
+      REAL_T CONC(maxspec), WDOTS(maxspec), ENTHALPY(maxspec)
 C
 C     Variables in Z are:  Z(1)   = T
 C                          Z(K+1) = Y(K)
       
       CALL CKRHOY(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO)
       CALL CKCPBS(Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CPB)
-      CALL CKYTCP(RPAR(NP), Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+      CALL CKYTCP(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CONC(1))
 c
 c     Get net production rates.  Compute such that production from -ve
 c     reactants gives zero contrib.
 c      
 c      do k=1,Nspec
-c         if (RPAR(NC-1+k) .lt. zero) write(6,*) '.....negative C',k
+c         if (CONC(k) .lt. zero) write(6,*) '.....negative C',k
 c      end do
       
 #define MAKE_C_POS
 #undef MAKE_C_POS
 #ifdef MAKE_C_POS
       do k=1,Nspec
-         RPAR(NC-1+k) = MAX(RPAR(NC-1+k),zero)
+         CONC(k) = MAX(CONC(k),zero)
       end do 
 #endif
       
-      CALL CKWC(Z(1), RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
-      CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), RPAR(NH))
+      CALL CKWC(Z(1), CONC(1), IPAR(ckbi), RPAR(ckbr), WDOTS(1))
+      CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), ENTHALPY(1))
 C
 C     Form governing equation
 C
       THFAC = one / thickFacCH
       SUM = zero
       DO K = 1, Nspec
-         H    = RPAR(NH    + K - 1)
-         WDOT = RPAR(NWDOT + K - 1) * THFAC
-         WT   = RPAR(NWT   + K - 1)
+         H    = ENTHALPY(K)
+         WDOT = WDOTS(K) * THFAC
+         WT   = RPAR(NWT+K-1)
          ZP(K+1) = WDOT * WT / RHO
          SUM = SUM + H * WDOT * WT
       END DO
@@ -593,7 +595,7 @@ C
       end do
       print*, 'WDOT:'
       do k = 1, Nspec
-         write(6,996) RPAR(NWDOT + K - 1)
+         write(6,996) WDOTS(K)
       end do
 
 996   format(e30.22)
