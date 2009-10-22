@@ -13,7 +13,7 @@ ns.do_active_control = 0
 mg.smooth_on_cg_unstable=1
 
 
-max_step  =  100000
+max_step  =  2
 stop_time = 4.00
 
 ns.do_fillPatchUMAC=1
@@ -30,7 +30,6 @@ ht.plot_rhoY=0
 ht.plot_molefrac=1
 #ht.plot_massfrac=1
 ht.plot_ydot=0
-ns.use_chemeq2=0
 ht.plot_auxDiags = 1
 amr.derive_plot_vars=rhoRT mag_vort
 
@@ -61,12 +60,12 @@ ns.do_group_bndry_fills = 1
 mg.cg_solver=1
 #cg.cg_solver=1
 
-amr.n_cell    = 32 32 64
-amr.n_cell    = 64 64 256
 amr.n_cell    = 128 128 512
+amr.n_cell    = 64 64 256
+amr.n_cell    = 32 32 64
 
 amr.v=1
-amr.max_level =  2            # maximum level number allowed
+amr.max_level =  1            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 4 2 1 2 # number of buffer cells in error est
