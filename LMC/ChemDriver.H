@@ -18,8 +18,6 @@ public:
     ChemDriver (const std::string TransportFile = STRINGIFY(TRANFILE));	  
 
     ~ChemDriver () {}
-    
-    enum Chem_Evolve { CKD_Vode, CKD_ChemEQ2 };
 
     void solveTransient (FArrayBox&        Ynew,
                          FArrayBox&        Tnew,
@@ -31,7 +29,6 @@ public:
                          int               sCompT,
                          Real              dt,
                          Real              Patm,
-                         const Chem_Evolve solver=CKD_Vode,
                          FArrayBox*        chemDiag=0) const;
 
     void set_verbose_vode ();
@@ -190,15 +187,6 @@ public:
                         int              sCompY,
                         int              sCompT,
                         int              sCompYdot) const;
-
-    void reactionRateC (FArrayBox&       Cdot,
-                        const FArrayBox& C,
-                        const FArrayBox& T,
-                        Real             Patm,
-                        const Box&       box,
-                        int              sCompC,
-                        int              sCompT,
-                        int              sCompCdot) const;
 
     void fwdRevReacRatesGivenXTP (FArrayBox&        FwdK,
                                   FArrayBox&        RevK,

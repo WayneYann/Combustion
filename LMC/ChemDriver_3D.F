@@ -209,47 +209,6 @@ c
       end do
       end
 
-      subroutine FORT_RRATEC(lo,hi,C,DIMS(C),T,DIMS(T),
-     &                       Cdot,DIMS(Cdot),Patm)
-      implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(C)
-      integer DIMDEC(T)
-      integer DIMDEC(Cdot)
-      REAL_T C(DIMV(C),*)
-      REAL_T T(DIMV(T))
-      REAL_T Cdot(DIMV(Cdot),*)
-      REAL_T Patm
-
-      REAL_T Zt(maxspec+1),Zdott(maxspec+1)
-      integer i,j,k,n
-      integer ndummy
-      REAL_T tdummy,P1atm,RU,RUC
-
-      ndummy = Nspec
-      tdummy = 0.
-      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      RWRK(NP) = Patm * P1atm
-
-      do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               Zt(1) = T(i,j,k)
-               do n=1,Nspec+1
-                  Zt(n+1) = C(i,j,k,n)
-               end do
-               call conpFC(ndummy,tdummy,Zt,Zdott,RWRK,IWRK)
-               do n=1,Nspec
-                  Cdot(i,j,k,n) = Zdott(n+1)
-               end do
-            end do
-         end do
-      end do
-      end
-
       subroutine FORT_MASSTOMOLE(lo, hi, Y, DIMS(Y), X, DIMS(X))
       implicit none
 #include "cdwrk.H"
@@ -538,14 +497,6 @@ c     Get the matrix of elements versus species
       integer,          save :: dvrlen
       integer,          save :: dvilen
 #endif
-
-      REAL_T YJ_SAVE(80)
-      LOGICAL FIRST
-      COMMON /VHACK/ YJ_SAVE, FIRST
-      SAVE   /VHACK/
-
-!$omp threadprivate(/VHACK/,/DVOD01/,/DVOD02/)
-
 c      
 c     Set IOPT=1 parameter settings for VODE
 c
@@ -591,6 +542,7 @@ c
          dtloc = dt
       endif
 
+c!$omp parallel private(nthrds) copyin(/VHACK/,/DVOD01/,/DVOD02/)
 !$omp parallel private(nthrds) copyin(/VHACK/)
 
 #ifdef BL_USE_OMP
@@ -888,95 +840,6 @@ c
 #undef DVRLEN
 #undef DVILEN
 
-      end
-
-      subroutine FORT_CHEMEQ(lo, hi,
-     &     Ynew, DIMS(Ynew), 
-     &     Tnew, DIMS(Tnew),
-     &     Yold, DIMS(Yold), 
-     &     Told, DIMS(Told),
-     &     FuncCount, DIMS(FuncCount),
-     &     Patm,
-     &     dt)
-      implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(Yold)
-      integer DIMDEC(Told)
-      integer DIMDEC(Ynew)
-      integer DIMDEC(Tnew)
-      integer DIMDEC(FuncCount)
-      REAL_T Yold(DIMV(Yold),*)
-      REAL_T Told(DIMV(Told))
-      REAL_T Ynew(DIMV(Ynew),*)
-      REAL_T Tnew(DIMV(Tnew))
-      REAL_T FuncCount(DIMV(FuncCount))
-      REAL_T Patm, dt
-
-      integer i,j,k,n
-      REAL_T Yin(maxspec), Temp, Yout(maxspec), sum, mwt(maxspec)
-      REAL_T RU, RUC, P1atm, Perg, Tin, rho
-      integer gc,rc,tgc,trc
-
-c     Set molecular weights and pressure in area accessible by conpF
-      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      Perg = Patm * P1atm
-
-      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
-      
-      do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-
-#if 0
-               rho = zero
-               do n=1,Nspec
-                  rho = rho + Yold(i,j,k,n)
-               enddo
-
-               sum = 0.d0
-               do n=1,Nspec
-                  Yin(n) = MAX(Yold(i,j,k,n)/rho,zero)
-                  Yin(n) = Yold(i,j,k,n)/rho
-                  sum = sum + Yin(n)/mwt(n)
-               end do
-               Tin = Perg / (RU * rho*1.d-3 * sum)
-
-               if (ABS(Tin-Told(i,j,k)).gt.20.d0) then
-                  write(6,100)'********',i,j,Tin,Told(i,j,k)
- 100              format(a,2i4,2e20.10)
-               endif
-
-               call chemeqpt(Perg,Tin,Tnew(i,j,k),Yin,Yout,dt)
-               call chemct(1.0,gc,rc,tgc,trc)
-               FuncCount(i,j,k) = gc
-              
-               do n=1,Nspec
-                  Ynew(i,j,k,n) = rho*(Yold(i,j,k,n)+Yout(n)-Yin(n))
-               end do
-#else
-               sum = zero
-               do n=1,Nspec
-                  Yin(n) = MAX(Yold(i,j,k,n),zero)
-                  sum = sum + Yin(n)
-               end do
-               if (iN2 .gt. 0) then
-                  Yin(iN2) = Yin(iN2)+one-sum
-               endif
-
-               call chemeqpt(Perg,Told(i,j,k),Tnew(i,j,k),Yin,Yout,dt)
-               call chemct(1.0,gc,rc,tgc,trc)
-               FuncCount(i,j,k) = gc
-
-               do n=1,Nspec
-                  Ynew(i,j,k,n) = Yold(i,j,k,n)+Yout(n)-Yin(n)
-               end do
-#endif
-            end do
-         end do
-      end do
-      
       end
  
       subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,

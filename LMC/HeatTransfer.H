@@ -556,7 +556,6 @@ protected:
     static int         RhoH;
     static int         do_OT_radiation;
     static int         do_heat_sink;
-    static ChemDriver::Chem_Evolve chem_integrator;
     static int         unity_Le;
     static int         FuncCount_Type;
     static int         Ydot_Type;

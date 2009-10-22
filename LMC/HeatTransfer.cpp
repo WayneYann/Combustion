@@ -116,7 +116,6 @@ int       HeatTransfer::hack_noavgdivu            = 0;
 Real      HeatTransfer::trac_diff_coef            = 0.0;
 Real      HeatTransfer::P1atm_MKS                 = -1.0;
 std::string   HeatTransfer::turbFile                  ="";
-ChemDriver::Chem_Evolve HeatTransfer::chem_integrator = ChemDriver::CKD_Vode;
 std::map<std::string, Array<std::string> > HeatTransfer::auxDiag_names;
 bool      HeatTransfer::plot_reactions            = false;
 bool      HeatTransfer::plot_consumption          = true;
@@ -376,9 +375,6 @@ HeatTransfer::read_params ()
     do_OT_radiation = (do_OT_radiation ? 1 : 0);
     pp.query("do_heat_sink",do_heat_sink);
     do_heat_sink = (do_heat_sink ? 1 : 0);
-
-    int use_chemeq2 = 0; pp.query("use_chemeq2",use_chemeq2);
-    chem_integrator = (use_chemeq2 ? ChemDriver::CKD_ChemEQ2 : ChemDriver::CKD_Vode );
 
     std::string tranfile=""; pp.query("tranfile",tranfile);
     chemSolve = new ChemDriver(tranfile);
@@ -5310,7 +5306,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                     chemDiag = &( (*auxDiag["REACTIONS"])[Smfi] );
                 }
 
-                getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chem_integrator,chemDiag);
+                getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chemDiag);
             }
             //
             // When ngrow>0 this does NOT properly update FuncCount_Type since parallel
@@ -5360,7 +5356,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                 FArrayBox& fc = fcnCntTemp[Smfi];
                 chemDiag = (do_diag ? &(diagTemp[Smfi]) : 0);
 
-                getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chem_integrator,chemDiag);
+                getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chemDiag);
             }
 
             mf.copy(tmp); // Parallel copy.

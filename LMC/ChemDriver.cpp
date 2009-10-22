@@ -378,35 +378,6 @@ ChemDriver::reactionRateY(FArrayBox&       Ydot,
 }
 
 void
-ChemDriver::reactionRateC(FArrayBox&       Cdot,
-                             const FArrayBox& C,
-                             const FArrayBox& T,
-                             Real             Patm,
-                             const Box&       box,
-                             int              sCompC,
-                             int              sCompT,
-                             int              sCompCdot) const
-{
-    const int Nspec = numSpecies();
-    BL_ASSERT(Cdot.nComp() >= sCompCdot + Nspec);
-    BL_ASSERT(C.nComp() >= sCompC + Nspec);
-    BL_ASSERT(T.nComp() > sCompT);
-
-    const Box& mabx = C.box();
-    const Box& mbbx = T.box();
-    const Box& mobx = Cdot.box();
-    
-    Box ovlp = box & mabx & mbbx & mobx;
-    if( ! ovlp.ok() ) return;
-    
-    FORT_RRATEC(ovlp.loVect(), ovlp.hiVect(),
-                C.dataPtr(sCompC),       ARLIM(mabx.loVect()), ARLIM(mabx.hiVect()),
-                T.dataPtr(sCompT),       ARLIM(mbbx.loVect()), ARLIM(mbbx.hiVect()),
-                Cdot.dataPtr(sCompCdot), ARLIM(mobx.loVect()), ARLIM(mobx.hiVect()),
-                &Patm);
-}
-
-void
 ChemDriver::massFracToMoleFrac(FArrayBox&       X,
 				  const FArrayBox& Y,
 				  const Box&       box,
@@ -566,7 +537,6 @@ ChemDriver::solveTransient(FArrayBox&        Ynew,
                            int               sCompT,
                            Real              dt,
                            Real              Patm,
-                           const Chem_Evolve solver,
                            FArrayBox*        chemDiag) const
 {
     BL_ASSERT(sCompY+numSpecies() <= Ynew.nComp());
@@ -577,30 +547,16 @@ ChemDriver::solveTransient(FArrayBox&        Ynew,
     BL_ASSERT(Ynew.box().contains(box) && Yold.box().contains(box));
     BL_ASSERT(Tnew.box().contains(box) && Told.box().contains(box));
 
-    if (solver == CKD_Vode)
-    {
-        const int do_diag  = (chemDiag!=0);
-        Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
-        FORT_CONPSOLV(box.loVect(), box.hiVect(),
-                      Ynew.dataPtr(sCompY), ARLIM(Ynew.loVect()), ARLIM(Ynew.hiVect()),
-                      Tnew.dataPtr(sCompT), ARLIM(Tnew.loVect()), ARLIM(Tnew.hiVect()),
-                      Yold.dataPtr(sCompY), ARLIM(Yold.loVect()), ARLIM(Yold.hiVect()),
-                      Told.dataPtr(sCompT), ARLIM(Told.loVect()), ARLIM(Told.hiVect()),
-                      FuncCount.dataPtr(),
-                      ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
-                      &Patm, &dt, diagData, &do_diag);
-    }
-    else
-    {
-        FORT_CHEMEQ(box.loVect(), box.hiVect(),
-                    Ynew.dataPtr(sCompY), ARLIM(Ynew.loVect()), ARLIM(Ynew.hiVect()),
-                    Tnew.dataPtr(sCompT), ARLIM(Tnew.loVect()), ARLIM(Tnew.hiVect()),
-                    Yold.dataPtr(sCompY), ARLIM(Yold.loVect()), ARLIM(Yold.hiVect()),
-                    Told.dataPtr(sCompT), ARLIM(Told.loVect()), ARLIM(Told.hiVect()),
-                    FuncCount.dataPtr(),
-                    ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
-                    &Patm, &dt);
-    }
+    const int do_diag  = (chemDiag!=0);
+    Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
+    FORT_CONPSOLV(box.loVect(), box.hiVect(),
+                  Ynew.dataPtr(sCompY), ARLIM(Ynew.loVect()), ARLIM(Ynew.hiVect()),
+                  Tnew.dataPtr(sCompT), ARLIM(Tnew.loVect()), ARLIM(Tnew.hiVect()),
+                  Yold.dataPtr(sCompY), ARLIM(Yold.loVect()), ARLIM(Yold.hiVect()),
+                  Told.dataPtr(sCompT), ARLIM(Told.loVect()), ARLIM(Told.hiVect()),
+                  FuncCount.dataPtr(),
+                  ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
+                  &Patm, &dt, diagData, &do_diag);
 }
 
 void

@@ -2,20 +2,8 @@
 #include "ArrayLim.H"
 #include "CONSTANTS.H"
 
-#undef MASS_FRAC
-#define MOLAR_CONC
-#define MASS_FRAC
-#undef MOLAR_CONC
-#define EVOLVE_TEMP
-
-#if defined(MASS_FRAC)
-# define CONPF_FILE conpFY
-# define CONPJ_FILE conpJY
-#endif
-#if defined(MOLAR_CONC)
-# define CONPF_FILE conpFC
-# define CONPJ_FILE conpJC
-#endif
+#define CONPF_FILE conpFY
+#define CONPJ_FILE conpJY
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -215,47 +203,6 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
             call conpFY(ndummy,tdummy,Zt,Zdott,RWRK,IWRK)
             do n=1,Nspec
                Ydot(i,j,n) = Zdott(n+1)
-            end do
-         end do
-      end do
-      end
-
-      subroutine FORT_RRATEC(lo,hi,C,DIMS(C),T,DIMS(T),
-     &                       Cdot,DIMS(Cdot),Patm)
-      implicit none
-
-#include "cdwrk.H"
-#include "conp.H"
-
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(C)
-      integer DIMDEC(T)
-      integer DIMDEC(Cdot)
-      REAL_T C(DIMV(C),*)
-      REAL_T T(DIMV(T))
-      REAL_T Cdot(DIMV(Cdot),*)
-      REAL_T Patm
-
-      REAL_T Zt(maxspec+1),Zdott(maxspec+1)
-      integer i,j,n
-      integer ndummy
-      REAL_T tdummy,P1atm,RU,RUC
-
-      ndummy = Nspec
-      tdummy = 0.
-      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      RWRK(NP) = Patm * P1atm
-
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-            Zt(1) = T(i,j)
-            do n=1,Nspec
-               Zt(n+1) = C(i,j,n)
-            end do
-            call conpFC(ndummy,tdummy,Zt,Zdott,RWRK,IWRK)
-            do n=1,Nspec
-               Cdot(i,j,n) = Zdott(n+1)
             end do
          end do
       end do
@@ -498,7 +445,6 @@ c     Get the matrix of elements versus species
       end do
       end
 
-#ifdef EVOLVE_TEMP
       subroutine FORT_CONPSOLV(lo, hi,
      &     Ynew, DIMS(Ynew), 
      &     Tnew, DIMS(Tnew),
@@ -544,9 +490,6 @@ c     Get the matrix of elements versus species
       REAL_T Ct(maxspec),Qt(maxreac)
 
       REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
-#if defined(MOLAR_CONC)
-      REAL_T Ctemp(maxspec),spec_scalC(maxspec)
-#endif
       logical newJ_triggered, bad_soln
 
       REAL_T YJ_SAVE(80)
@@ -562,17 +505,8 @@ c     Set IOPT=1 parameter settings for VODE
       IWRK(dvbi+4) = 0
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
-      
-#if defined(MASS_FRAC) && defined(MOLAR_CONC)
-      call bl_abort("both mass_frac and molar_conc are defined")
-#endif
-#if !defined(MASS_FRAC) && !defined(MOLAR_CONC)
-      call bl_abort("neither mass_frac nor molar_conc is defined")
-#endif
 
-      if (do_diag.eq.1) then
-         nsubchem = nchemdiag
-      endif
+      if (do_diag.eq.1) nsubchem = nchemdiag
 c
 c     Set molecular weights and pressure in area accessible by conpF
 c
@@ -582,14 +516,8 @@ c
       TT2 = dt
 
       if (nstiff .eq. 1) then
-#if defined(MASS_FRAC)
 c     finite difference jacobian
          MF = 22
-#elif defined(MOLAR_CONC)
-c     user supplied jacobian, in this case an analytic one
-         MF = 21
-c     MF = 22
-#endif
       else
          MF = 10
       endif
@@ -597,11 +525,9 @@ c     MF = 22
 c     Set up ATOL
       if (ITOL.eq.2) then
          ATOL(1) = spec_scalT*ATOLEPS
-#if defined(MASS_FRAC)
          do n=1,Nspec
             ATOL(n+1) = ATOLEPS*spec_scalY(n)
          end do
-#endif
       else
          ATOL(1) = ATOLEPS
       end if
@@ -629,17 +555,6 @@ c     Set up ATOL
             else
 #endif
 
-#if defined(MOLAR_CONC)
-c
-c Convert atol from mass frac to molar conc
-c
-            CALL CKYTCP(RWRK(NP),Told(i,j),spec_scalY,IWRK(ckbi),RWRK(ckbr),spec_scalC)
-            if (ITOL.eq.2) then
-               do n=1,Nspec
-                  ATOL(n+1) = ATOLEPS*spec_scalC(n)
-               end do
-            endif
-#endif
             RWRK(NZ) = Told(i,j)
 
 #ifdef DO_JBB_HACK
@@ -657,43 +572,22 @@ c
                Ytemp(n) = Yold(i,j,n)
             end do
 #endif
-
-#if defined(MASS_FRAC)
             do n = 1,Nspec
                RWRK(NZ+n) = Ytemp(n)
             end do
-#elif defined(MOLAR_CONC)
-c
-c convert from Y to C
-c            
-            CALL CKYTCP(RWRK(NP),Told(i,j),Ytemp,IWRK(ckbi),RWRK(ckbr),Ctemp)
-            do n=1,NSPEC
-               RWRK(NZ+n) = Ctemp(n)
-            end do
-#endif
-c
-c     Set hmix and rho (in cgs units) in area acessible by conpF 
-c
-            CALL CKRHOY(RWRK(NP),RWRK(NZ),Ytemp,IWRK(ckbi),RWRK(ckbr),RWRK(NRHO))
-            CALL CKHBMS(RWRK(NZ),Ytemp,IWRK(ckbi),RWRK(ckbr),RWRK(NHMIX))
 
 #ifdef TRIGGER_NEW_J
             newJ_triggered = .FALSE.
             sum = zero
             do n=1,NEQ
                scale = spec_scalT
-#  if defined(MASS_FRAC)
                if (n.ne.1) scale = spec_scalY(n-1)
-#  elif defined(MOLAR_CONC)
-               if (n.ne.1) scale = spec_scalC(n-1)
-#  endif
                sum = sum + ABS(RWRK(NZ+n-1)-YJ_SAVE(n))/scale
             end do
             if (sum .gt. NEWJ_TOL) then
                FIRST = .TRUE.
                newJ_triggered = .TRUE.
             endif
-c            print *, "JACOB",sum,newJ_triggered
 #endif
             
 #ifdef ALWAYS_NEW_J
@@ -733,24 +627,15 @@ c
                if (newJ_triggered .EQV. .FALSE.) then
                   bad_soln = .FALSE.
                   do n=1,Nspec
-#if defined(MASS_FRAC)
-                     if (RWRK(NZ+n) .lt. -1.e-6*spec_scalY(n))
+                     if (RWRK(NZ+n) .lt. -1.D-6*spec_scalY(n))
      &                    bad_soln = .TRUE.             
-#elif defined(MOLAR_CONC)
-                     if (RWRK(NZ+n) .lt. -1.e-6*spec_scalC(n))
-     &                    bad_soln = .TRUE.             
-#endif
                   end do
                   if (bad_soln .EQV. .TRUE.) then
                      TT1 = TT1SAVE
                      FIRST = .TRUE.
                      RWRK(NZ) = Told(i,j)
                      do n=1,Nspec
-#if defined(MASS_FRAC)
                         RWRK(NZ+n) = Ytemp(n)
-#elif defined(MOLAR_CONC)
-                        RWRK(NZ+n) = Ctemp(n)
-#endif
                      end do
 
                      ISTATE = 1
@@ -821,16 +706,9 @@ c
 
             Tnew(i,j) = RWRK(NZ)
 
-#if defined(MASS_FRAC)
             do n= 1,Nspec
                Yres(n) = RWRK(NZ+n)
             end do
-#elif defined(MOLAR_CONC)
-c
-c convert back from C to Y
-c            
-            CALL CKCTY(RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Yres)
-#endif
 
 #ifdef DO_JBB_HACK
             do n=1,Nspec
@@ -848,352 +726,6 @@ c
       endif
       end do
       end do
-      return
-      end
-#else
-c     This version does not evolve T explicitly, but rather solves for it each time
-
-      subroutine FORT_CONPSOLV(lo, hi,
-     &     Ynew, DIMS(Ynew), 
-     &     Tnew, DIMS(Tnew),
-     &     Yold, DIMS(Yold), 
-     &     Told, DIMS(Told),
-     &     FuncCount, DIMS(FuncCount),
-     &     Patm,
-     &     dt,
-     &     diag,do_diag)
-      implicit none
-
-#include "cdwrk.H"
-#include "conp.H"
-#include "ckstrt.h"
-
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(Yold)
-      integer DIMDEC(Told)
-      integer DIMDEC(Ynew)
-      integer DIMDEC(Tnew)
-      integer DIMDEC(FuncCount)
-      integer do_diag
-      REAL_T Yold(DIMV(Yold),*)
-      REAL_T Told(DIMV(Told))
-      REAL_T Ynew(DIMV(Ynew),*)
-      REAL_T Tnew(DIMV(Tnew))
-      REAL_T FuncCount(DIMV(FuncCount))
-      REAL_T Patm, dt
-      REAL_T diag(DIMV(FuncCount),*)
-      
-      integer ITOL, IOPT, ITASK, open_vode_failure_file
-      parameter (ITOL=1, IOPT=1, ITASK=1)
-      REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
-      REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
-      parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
-      external conpFCnoT, CONPJ_FILE, open_vode_failure_file
-      REAL_T TT1, TT2, RU, RUC, P1atm
-      integer i, j, n, MF, ISTATE
-      character*(maxspnml) name
-
-      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,atoln
-      REAL_T Ctemp(maxspec),spec_scalC(maxspec)
-      logical newJ_triggered, bad_soln
-
-      REAL_T YJ_SAVE(80)
-      LOGICAL FIRST
-      COMMON /VHACK/ YJ_SAVE, FIRST
-      SAVE   /VHACK/
-      REAL_T scale
-
-c     Set IOPT=1 parameter settings for VODE
-      RWRK(dvbr+4) = 0
-      RWRK(dvbr+5) = 0
-      RWRK(dvbr+6) = ten2minus19
-      IWRK(dvbi+4) = 0
-      IWRK(dvbi+5) = max_vode_subcycles
-      IWRK(dvbi+6) = 0
-      
-#if defined(MASS_FRAC)
-      call bl_abort('MOLAR_CONC must be defined to use code w/o EVOLVE_TEMP')
-#endif
-
-c     Set molecular weights and pressure in area accessible by conpF
-      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      RWRK(NP) = Patm * P1atm
-      
-      TT2 = dt
-      MF = 22
-      NEQ = Nspec
-
-c     Set up ATOL
-      if (ITOL.eq.2) then
-         ATOL(1) = spec_scalT*ATOLEPS
-      else
-         ATOL(1) = ATOLEPS
-      end if
-               
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-            TT1 = zero
-            ISTATE = 1
-
-c
-c Convert atol from mass frac to molar conc
-c
-            RWRK(NTEMP) = Told(i,j)
-            CALL CKYTCP(RWRK(NP),RWRK(NTEMP),spec_scalY,
-     &           IWRK(ckbi),RWRK(ckbr),spec_scalC)
-            if (ITOL.eq.2) then
-               do n=1,Nspec
-                  ATOL(n+1) = ATOLEPS*spec_scalC(n)
-               end do
-            endif
-            sum = zero
-            do n=1,Nspec
-               Ytemp(n) = Yold(i,j,n)
-               atoln = ATOLEPS
-               if (ITOL.eq.2) atoln = atol(n)
-               Ytemp(n) =MAX( Yold(i,j,n),zero)
-               sum = sum+Ytemp(n)
-            end do
-            if (iN2 .gt. 0) then
-               Ytemp(iN2) = Ytemp(iN2)+one-sum
-            endif
-
-c
-c convert from Y to C
-c            
-            CALL CKYTCP(RWRK(NP),RWRK(NTEMP),Ytemp,IWRK(ckbi),RWRK(ckbr),Ctemp)
-            do n=1,NSPEC
-               RWRK(NZ+n-1) = Ctemp(n)
-            end do
-
-#ifdef TRIGGER_NEW_J
-            newJ_triggered = .FALSE.
-            sum = zero
-            do n=1,NEQ
-               scale = spec_scalT
-               if (n.ne.1) scale = spec_scalC(n-1)
-               sum = sum + ABS(RWRK(NZ+n-1)-YJ_SAVE(n))/scale
-            end do
-            if (sum .gt. NEWJ_TOL) then
-               FIRST = .TRUE.
-               newJ_triggered = .TRUE.
-            endif
-c            print *, "JACOB",sum,newJ_triggered
-#endif
-            
-#ifdef ALWAYS_NEW_J
-            FIRST = .TRUE.
-#endif
-
-
-c     Set hmix and rho (in cgs units) in area acessible by conpF 
-            CALL CKRHOY(RWRK(NP),RWRK(NTEMP),Ytemp,IWRK(ckbi),RWRK(ckbr),RWRK(NRHO))
-            CALL CKHBMS(RWRK(NTEMP),Ytemp,IWRK(ckbi),RWRK(ckbr),RWRK(NHMIX))
-
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
-            CALL SVODE
-#else
-            CALL DVODE
-#endif
-     &                (conpFCnoT, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
-     &                 ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &                 dvi, CONPJ_FILE, MF, RWRK, IWRK)
-
-c   If the step was bad, and we reused an old Jacobian, try again from scratch
-#if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
-            if (newJ_triggered .EQV. .FALSE.) then
-               bad_soln = .FALSE.
-               do n=1,Nspec
-                  if (RWRK(NZ+n-1) .lt. -1.e-6*spec_scalC(n))
-     &                 bad_soln = .TRUE.             
-               end do
-               if (bad_soln .EQV. .TRUE.) then
-                  FIRST = .TRUE.
-                  RWRK(NTEMP) = Told(i,j)
-                  do n=1,Nspec
-                     RWRK(NZ+n-1) = Ctemp(n)
-                  end do
-                  TT1 = zero
-                  ISTATE = 1
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
-                  CALL SVODE
-#else 
-                  CALL DVODE
-#endif
-     &                 (conpFCnoT, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
-     &                 ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &                 dvi, CONPJ_FILE, MF, RWRK, IWRK)
-               endif
-            endif
-#endif
-            FuncCount(i,j) = IWRK(dvbi+11)
-            if (verbose_vode .eq. 1) then
-               write(6,*) '......dvode done:'
-               write(6,*) ' last successful step size = ',RWRK(dvbr+10)
-               write(6,*) '          next step to try = ',RWRK(dvbr+11)
-               write(6,*) '   integrated time reached = ',RWRK(dvbr+12)
-               write(6,*) '      number of time steps = ',IWRK(dvbi+10)
-               write(6,*) '              number of fs = ',IWRK(dvbi+11)
-               write(6,*) '              number of Js = ',IWRK(dvbi+12)
-               write(6,*) '    method order last used = ',IWRK(dvbi+13)
-               write(6,*) '   method order to be used = ',IWRK(dvbi+14)
-               write(6,*) '            number of LUDs = ',IWRK(dvbi+18)
-               write(6,*) ' number of Newton iterations ',IWRK(dvbi+19)
-               write(6,*) ' number of Newton failures = ',IWRK(dvbi+20)
-               if (ISTATE.eq.-4 .or. ISTATE.eq.-5) then
-                  call get_spec_name(name,IWRK(dvbi+15))
-                  write(6,*) '   spec with largest error = ', name
-               end if
-            end if
-            
-            if (ISTATE .LE. -1) then
-               call conpFCnoT(NEQ, TT1, RWRK(NZ), RWRK(NWDOT), RWRK, IWRK)
-               lout = open_vode_failure_file()
-               write(lout,*)
-               write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
-     &              '),   Return code = ',ISTATE
-               write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-               write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
-               do n=1,Nspec
-                  call get_spec_name(name,n)
-                  write(lout,996) name,Yold(i,j,n),
-     &                 RWRK(NZ+n),RWRK(NWDOT+n-1),RWRK(NWDOT+n-1)*(dt-TT1)
-               end do
- 995           format(a,3(i4,a))
- 996           format(a16,1x,4e30.22)
-               close(lout)
-               call bl_abort('VODE failed...see drop file...exiting...')
-            end if
-
-            Tnew(i,j) = RWRK(NTEMP)
-c
-c convert back from C to Y
-c            
-            CALL CKCTY(RWRK(NZ),IWRK(ckbi),RWRK(ckbr),Yres)
-
-            do n=1,Nspec
-               Ynew(i,j,n) = Yold(i,j,n)+Yres(n)-Ytemp(n)
-            end do
-
-         end do
-      end do
-      return
-
-#if 0
- 500  continue 
-      call conpFCnoT(NEQ, TT1, RWRK(NZ), RWRK(NWDOT), RWRK, IWRK)
-
-      write(lout,*)
-      write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
-     &     '),   Return code = ',ISTATE
-      write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-      write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
-      write(lout,996) 'T               ',
-     &     Told(i,j),RWRK(NZ),RWRK(NWDOT),RWRK(NWDOT)*(dt-TT1)
-      do n=1,Nspec
-         call get_spec_name(name,n)
-         write(lout,996) name,Yold(i,j,n),
-     &        RWRK(NZ+n),RWRK(NWDOT+n),RWRK(NWDOT+n)*(dt-TT1)
-      end do
-      write(6,*) 'VODE failed...see drop file...exiting...'
- 995  format(a,3(i4,a))
- 996  format(a16,1x,4e20.12)
-      call bl_abort(" ")
-#endif
-      end
-
-#endif 
-c ----------------------------------------------------------------     
-      
-      subroutine FORT_CHEMEQ(lo, hi,
-     &     Ynew, DIMS(Ynew), 
-     &     Tnew, DIMS(Tnew),
-     &     Yold, DIMS(Yold), 
-     &     Told, DIMS(Told),
-     &     FuncCount, DIMS(FuncCount),
-     &     Patm,
-     &     dt)
-      implicit none
-
-#include "cdwrk.H"
-#include "conp.H"
-
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(Yold)
-      integer DIMDEC(Told)
-      integer DIMDEC(Ynew)
-      integer DIMDEC(Tnew)
-      integer DIMDEC(FuncCount)
-      REAL_T Yold(DIMV(Yold),*)
-      REAL_T Told(DIMV(Told))
-      REAL_T Ynew(DIMV(Ynew),*)
-      REAL_T Tnew(DIMV(Tnew))
-      REAL_T FuncCount(DIMV(FuncCount))
-      REAL_T Patm, dt
-
-      integer i,j,n
-      REAL_T Yin(maxspec), Temp, Yout(maxspec), sum, mwt(maxspec)
-      REAL_T RU, RUC, P1atm, Perg, Tin, rho
-      integer gc,rc,tgc,trc
-
-c     Set molecular weights and pressure in area accessible by conpF
-      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      Perg = Patm * P1atm
-
-      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
-
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-
-#if 0
-            rho = zero
-            do n=1,Nspec
-               rho = rho + Yold(i,j,n)
-            enddo
-            
-            sum = 0.d0
-            do n=1,Nspec
-               Yin(n) = MAX(Yold(i,j,n)/rho,zero)
-               Yin(n) = Yold(i,j,n)/rho
-               sum = sum + Yin(n)/mwt(n)
-            end do
-            Tin = Perg / (RU * rho*1.d-3 * sum)
-            
-            if (ABS(Tin-Told(i,j)).gt.20.d0) then
-               write(6,100)'********',i,j,Tin,Told(i,j)
- 100           format(a,2i4,2e20.10)
-            endif
-            
-            call chemeqpt(Perg,Tin,Tnew(i,j),Yin,Yout,dt)
-            call chemct(1.0,gc,rc,tgc,trc)
-            FuncCount(i,j) = gc
-            
-            do n=1,Nspec
-               Ynew(i,j,n) = rho*(Yold(i,j,n)+Yout(n)-Yin(n))
-            end do
-#else
-
-            sum = zero
-            do n=1,Nspec
-               Yin(n) = MAX(Yold(i,j,n),zero)
-               sum = sum + Yin(n)
-            end do
-            if (iN2 .gt. 0) then
-               Yin(iN2) = Yin(iN2)+one-sum
-            endif
-
-            call chemeqpt(Perg,Told(i,j),Tnew(i,j),Yin,Yout,dt)
-            call chemct(1.0,gc,rc,tgc,trc)
-            FuncCount(i,j) = gc
-
-            do n=1,Nspec
-               Ynew(i,j,n) = Yold(i,j,n)+Yout(n)-Yin(n)
-            end do
-#endif
-         end do
-      end do
-      
       end
 
       subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,
@@ -1822,7 +1354,7 @@ c
       REAL_T lnT, aP, c0, c1, c2, c3, c4
       REAL_T T1, T2, T3, T4, Tb4, lnT1, lnT2, lnT3, lnT4, sigma
 
-      data sigma / 5.669e-08 /
+      data sigma / 5.669D-08 /
       
       iH2O = 0
       iCO2 = 0

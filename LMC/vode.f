@@ -2037,11 +2037,6 @@ C
       DATA CCMAX /0.3D0/, CRDOWN /0.3D0/, MAXCOR /3/, MSBP /20/,
      1     RDIV  /2.0D0/
       DATA ONE /1.0D0/, TWO /2.0D0/, ZERO /0.0D0/
-
-      DOUBLE PRECISION YJ_SAVE(80)
-      LOGICAL FIRST
-      COMMON /VHACK/ YJ_SAVE, FIRST
-      SAVE   /VHACK/
       
       include "conp.H"
 
@@ -4612,10 +4607,7 @@ C-----------------------------------------------------------------------
       END
 
       block data vhack_save
-      DOUBLE PRECISION YJ_SAVE(80)
-      LOGICAL FIRST
-      COMMON /VHACK/ YJ_SAVE, FIRST
-      SAVE   /VHACK/
+      include "vode.H"
       DATA YJ_SAVE /80*-1.d0/
       DATA FIRST /.TRUE./
       end
