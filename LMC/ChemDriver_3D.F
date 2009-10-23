@@ -498,9 +498,7 @@ c     Get the matrix of elements versus species
       integer,          save :: dvilen
 #endif
 c      
-c     Set IOPT=1 parameter settings for VODE
-c
-c     TODO -- these really only need to be set once.
+c     Set IOPT=1 parameter settings for VODE (only really need to be set once).
 c
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
@@ -542,7 +540,6 @@ c
          dtloc = dt
       endif
 
-c!$omp parallel private(nthrds) copyin(/VHACK/,/DVOD01/,/DVOD02/)
 !$omp parallel private(nthrds) copyin(/VHACK/)
 
 #ifdef BL_USE_OMP
@@ -584,7 +581,8 @@ c!$omp parallel private(nthrds) copyin(/VHACK/,/DVOD01/,/DVOD02/)
 
 !$omp do private(i,j,k,m,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
 !$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tid,tspecies)
-!$omp&private(lout,name)
+!$omp&private(lout,name) schedule(dynamic,1)
+
       do k=lo(3),hi(3)
 
 #ifdef BL_USE_OMP
