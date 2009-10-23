@@ -377,8 +377,9 @@ extern "C" {
 		     const Real* Y, ARLIM_P(Ylo), ARLIM_P(Yhi),
 		     const Real* errMAX, const int* NiterMAX,const Real* tmp);
 
-    int FORT_TfromHYpt(Real* T, const Real* Hin, const Real* Yin,
-                       const Real* errMAX, const int* NiterMAX, const Real* res);
+    void FORT_TfromHYpt(Real* T, const Real* Hin, const Real* Yin,
+                        const Real* errMAX, const int* NiterMAX, const Real* res,
+                        int* Niter);
 
     int FORT_GETCKNUMREAC();
 

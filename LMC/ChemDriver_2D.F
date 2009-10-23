@@ -1257,7 +1257,7 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
       REAL_T errMAX
       REAL_T res(0:NiterMAX-1)
       REAL_T Yt(maxspec)
-      integer i,j,n,FORT_TfromHYpt,Niter,MAXiters
+      integer i,j,n,Niter,MAXiters
       REAL_T Tguess
 
       MAXiters = 0
@@ -1267,7 +1267,7 @@ c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
                Yt(n) = Y(i,j,n)
             end do
             Tguess = T(i,j)
-            Niter = FORT_TfromHYpt(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res)
+            call FORT_TfromHYpt(T(i,j),HMIX(i,j),Yt,errMax,NiterMAX,res,Niter)
             if (Niter .lt. 0) then
                write(6,996) 'T from h,y solve in FORT_TfromHY failed'
                write(6,997) 'Niter flag = ',Niter

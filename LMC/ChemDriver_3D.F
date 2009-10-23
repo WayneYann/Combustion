@@ -1429,7 +1429,7 @@ c
       REAL_T errMAX
       REAL_T res(0:NiterMAX-1)
       REAL_T Yt(maxspec)
-      integer i,j,k,n,FORT_TfromHYpt,Niter,MAXiters
+      integer i,j,k,n,Niter,MAXiters
 
       MAXiters = 0
 
@@ -1442,7 +1442,7 @@ c
                   Yt(n) = Y(i,j,k,n)
                end do
 
-               Niter = FORT_TfromHYpt(T(i,j,k),HMIX(i,j,k),Yt,errMax,NiterMAX,res)
+               call FORT_TfromHYpt(T(i,j,k),HMIX(i,j,k),Yt,errMax,NiterMAX,res,Niter)
 
                if (Niter .lt. 0) then
                   write(6,*) 'T from h,y solve in FORT_TfromHY failed',Niter

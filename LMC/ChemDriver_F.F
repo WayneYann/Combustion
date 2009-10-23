@@ -720,7 +720,7 @@ c     Error condition....dump state and bail out
 
       end
 
-      integer function FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res)
+      subroutine FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res,Niter)
       implicit none
 #include "cdwrk.H"
       REAL_T T,Y(*),H,Hin
@@ -769,7 +769,7 @@ c     Error condition....dump state and bail out
          end if
          soln_bad = out_of_bounds(T)
          if (soln_bad) then
-            FORT_TfromHYpt = -1
+            Niter = -1
             goto 100
          else
             CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),H)
@@ -778,7 +778,7 @@ c     Error condition....dump state and bail out
             Niter = Niter + 1
          end if
          if (Niter .ge. NiterMAX) then
-            FORT_TfromHYpt = -2
+            Niter = -2
             goto 100
          endif
          converged = (dH.le.errMAX) .or. (ABS(dT).le.errMAX)
@@ -798,10 +798,7 @@ c     Error condition....dump state and bail out
             converged = .true.
          endif
       end do
-c
-c     Set max iters taken during this solve and exit
-c
-      FORT_TfromHYpt = Niter
+
       return
 c
 c     Error condition....dump state and bail out
