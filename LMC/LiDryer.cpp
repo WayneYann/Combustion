@@ -2555,8 +2555,6 @@ void productionRate(double * wdot, double * sc, double T)
 {
     double qdot;
 
-    static double T_save = -1, k_f_save[21], Kc_save[21];
-
     int id; /*loop counter */
     double mixture;                 /*mixture concentration */
     double g_RT[9];                /*Gibbs free energy */
@@ -2599,10 +2597,15 @@ void productionRate(double * wdot, double * sc, double T)
         wdot[id] = 0.0;
     }
 
+#ifdef BL_USE_OMP
+    double k_f_save[21], Kc_save[21];
+#else
+    static double T_save = -1, k_f_save[21], Kc_save[21];
+
     if (T != T_save)
     {
         T_save = T;
-
+#endif
         k_f_save[0] = 1e-06 * 3.547e+15*exp(-0.406*tc[0]-8353.8/tc[1]);
         k_f_save[1] = 1e-06 * 50800*exp(2.67*tc[0]-3165.58/tc[1]);
         k_f_save[2] = 1e-06 * 2.16e+08*exp(1.51*tc[0]-1726.22/tc[1]);
@@ -2646,7 +2649,9 @@ void productionRate(double * wdot, double * sc, double T)
         Kc_save[18] = exp((g_RT[7] + g_RT[4]) - (g_RT[5] + g_RT[6]));
         Kc_save[19] = exp((g_RT[7] + g_RT[5]) - (g_RT[6] + g_RT[2]));
         Kc_save[20] = exp((g_RT[7] + g_RT[5]) - (g_RT[6] + g_RT[2]));
+#ifndef BL_USE_OMP
     }
+#endif
 
     /*reaction 1: H + O2 <=> O + OH */
     phi_f = sc[3]*sc[1];
@@ -3327,6 +3332,7 @@ void gibbs(double * species, double * tc)
     /*temperature */
     double T = tc[1];
 
+#ifndef BL_USE_OMP
     static double T_save = -1, species_save[9];
 
     if (T == T_save)
@@ -3335,6 +3341,7 @@ void gibbs(double * species, double * tc)
             species[i] = species_save[i];
         return;
     }
+#endif
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -3502,9 +3509,11 @@ void gibbs(double * species, double * tc)
             -8.41420000e-12 * tc[3]
             +3.37667550e-16 * tc[4];
     }
+#ifndef BL_USE_OMP
     T_save = T;
     for (int i = 0; i < 9; i++)
         species_save[i] = species[i];
+#endif
     return;
 }
 
@@ -4138,6 +4147,7 @@ void speciesEnthalpy(double * species, double * tc)
     /*temperature */
     double T = tc[1];
 
+#ifndef BL_USE_OMP
     static double T_save = -1, species_save[9];
 
     if (T == T_save)
@@ -4146,6 +4156,7 @@ void speciesEnthalpy(double * species, double * tc)
             species[i] = species_save[i];
         return;
     }
+#endif
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -4295,9 +4306,11 @@ void speciesEnthalpy(double * species, double * tc)
             -1.35067020e-15 * tc[4]
             -9.22797700e+02 / tc[1];
     }
+#ifndef BL_USE_OMP
     T_save = T;
     for (int i = 0; i < 9; i++)
         species_save[i] = species[i];
+#endif
     return;
 }
 
