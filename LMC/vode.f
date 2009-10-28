@@ -1063,12 +1063,8 @@ C
 C Type declaration for function subroutines called ---------------------
 C
       DOUBLE PRECISION DVNORM
-C-----------------------------------------------------------------------
-C The following Fortran-77 declaration is to cause the values of the
-C listed (local) variables to be saved between calls to this integrator.
-C-----------------------------------------------------------------------
-      SAVE HALF, HUN, PT1, TWO
-      DATA HALF /0.5D0/, HUN /100.0D0/, PT1 /0.1D0/, TWO /2.0D0/
+
+      PARAMETER(HALF =0.5D0, HUN = 100.0D0, PT1 = 0.1D0, TWO = 2.0D0)
 C
       NITER = 0
       TDIST = ABS(TOUT - T0)
@@ -1185,12 +1181,7 @@ C
       DOUBLE PRECISION C, HUN, R, S, TFUZZ, TN1, TP, ZERO
       INTEGER I, IC, J, JB, JB2, JJ, JJ1, JP1
       CHARACTER*80 MSG
-C-----------------------------------------------------------------------
-C The following Fortran-77 declaration is to cause the values of the
-C listed (local) variables to be saved between calls to this integrator.
-C-----------------------------------------------------------------------
-      SAVE HUN, ZERO
-      DATA HUN /100.0D0/, ZERO /0.0D0/
+      PARAMETER(HUN = 100.0D0, ZERO = 0.0D0)
 C
       IFLAG = 0
       IF (K .LT. 0 .OR. K .GT. NQ) GO TO 80
@@ -1314,12 +1305,7 @@ C
 C Type declaration for function subroutines called ---------------------
 C
       DOUBLE PRECISION DVNORM
-C-----------------------------------------------------------------------
-C The following Fortran-77 declaration is to cause the values of the
-C listed (local) variables to be saved between calls to this subroutine.
-C-----------------------------------------------------------------------
-      SAVE ONE, PT1, THOU, ZERO
-      DATA ONE /1.0D0/, THOU /1000.0D0/, ZERO /0.0D0/, PT1 /0.1D0/
+      PARAMETER(ONE = 1.0D0, THOU = 1000.0D0, ZERO = 0.0D0, PT1 = 0.1D0)
 C
       IERPJ = 0
       HRL1 = H*RL1
@@ -1518,12 +1504,7 @@ C Type declarations for local variables --------------------------------
 C
       DOUBLE PRECISION ALPH0, ALPH1, HSUM, ONE, PROD, T1, XI,XIOLD, ZERO
       INTEGER I, IBACK, J, JP1, LP1, NQM1, NQM2, NQP1
-C-----------------------------------------------------------------------
-C The following Fortran-77 declaration is to cause the values of the
-C listed (local) variables to be saved between calls to this integrator.
-C-----------------------------------------------------------------------
-      SAVE ONE, ZERO
-      DATA ONE /1.0D0/, ZERO /0.0D0/
+      PARAMETER(ONE = 1.0D0, ZERO = 0.0D0)
 C
       IF ((NQ .EQ. 2) .AND. (IORD .NE. 1)) RETURN
       NQM1 = NQ - 1
@@ -1704,15 +1685,8 @@ C
 C Type declaration for function subroutines called ---------------------
 C
       DOUBLE PRECISION DVNORM
-C-----------------------------------------------------------------------
-C The following Fortran-77 declaration is to cause the values of the
-C listed (local) variables to be saved between calls to this integrator.
-C-----------------------------------------------------------------------
-      SAVE CCMAX, CRDOWN, MAXCOR, MSBP, RDIV, ONE, TWO, ZERO
-C
-      DATA CCMAX /0.3D0/, CRDOWN /0.3D0/, MAXCOR /3/, MSBP /20/,
-     1     RDIV  /2.0D0/
-      DATA ONE /1.0D0/, TWO /2.0D0/, ZERO /0.0D0/
+      PARAMETER(CCMAX = 0.3D0, CRDOWN = 0.3D0, MAXCOR = 3, MSBP = 20)
+      PARAMETER(RDIV  = 2.0D0, ONE = 1.0D0, TWO = 2.0D0, ZERO = 0.0D0)
       
       include "conp.H"
 
@@ -2920,14 +2894,6 @@ C
 C Type declaration for function subroutines called ---------------------
 C
       DOUBLE PRECISION D1MACH, DVNORM
-C
-      DIMENSION MORD(2)
-C-----------------------------------------------------------------------
-C The following Fortran-77 declaration is to cause the values of the
-C listed (local) variables to be saved between calls to DVODE.
-C-----------------------------------------------------------------------
-      SAVE MORD, MXHNL0, MXSTP0
-      SAVE ZERO, ONE, TWO, FOUR, PT2, HUN
 C-----------------------------------------------------------------------
 C The following internal COMMON blocks contain variables which are
 C communicated between subroutines in the DVODE package, or which are
@@ -3023,9 +2989,13 @@ C NQU    = The method order last used.
 C NST    = The number of steps taken for the problem so far.
 C-----------------------------------------------------------------------
 C
-      DATA  MORD(1) /12/, MORD(2) /5/, MXSTP0 /500/, MXHNL0 /10/
-      DATA ZERO /0.0D0/, ONE /1.0D0/, TWO /2.0D0/, FOUR /4.0D0/,
-     1     PT2 /0.2D0/, HUN /100.0D0/
+      DIMENSION MORD(2)
+
+      DATA  MORD(1) /12/, MORD(2) /5/
+      PARAMETER(MXSTP0 = 500, MXHNL0 = 10)
+      PARAMETER(ZERO = 0.0D0, ONE = 1.0D0, TWO = 2.0D0, FOUR = 4.0D0)
+      PARAMETER(PT2 = 0.2D0, HUN = 100.0D0)
+
 C-----------------------------------------------------------------------
 C Block A.
 C This code block is executed on every call.
@@ -3583,13 +3553,8 @@ C
       INTEGER I, IBACK, J, JP1, NQM1, NQM2
 C
       DIMENSION EM(13)
-C-----------------------------------------------------------------------
-C The following Fortran-77 declaration is to cause the values of the
-C listed (local) variables to be saved between calls to this integrator.
-C-----------------------------------------------------------------------
-      SAVE CORTES, ONE, SIX, TWO, ZERO
-      DATA CORTES /0.1D0/
-      DATA ONE  /1.0D0/, SIX /6.0D0/, TWO /2.0D0/, ZERO /0.0D0/
+      PARAMETER(CORTES = 0.1D0, ONE = 1.0D0, SIX = 6.0D0, TWO = 2.0D0)
+      PARAMETER(ZERO = 0.0D0)
 C
       FLOTL = REAL(L)
       NQM1 = NQ - 1
@@ -3745,12 +3710,7 @@ C Type declarations for local variables --------------------------------
 C
       INTEGER I, MEBAND, ML, MU
       DOUBLE PRECISION DI, HRL1, ONE, PHRL1, R, ZERO
-C-----------------------------------------------------------------------
-C The following Fortran-77 declaration is to cause the values of the
-C listed (local) variables to be saved between calls to this integrator.
-C-----------------------------------------------------------------------
-      SAVE ONE, ZERO
-      DATA ONE /1.0D0/, ZERO /0.0D0/
+      PARAMETER(ONE = 1.0D0, ZERO = 0.0D0)
 C
       IERSL = 0
       GO TO (100, 100, 300, 400, 400), MITER
@@ -3857,20 +3817,13 @@ C
 C Type declaration for function subroutines called ---------------------
 C
       DOUBLE PRECISION DVNORM
-C-----------------------------------------------------------------------
-C The following Fortran-77 declaration is to cause the values of the
-C listed (local) variables to be saved between calls to this integrator.
-C-----------------------------------------------------------------------
-      SAVE ADDON, BIAS1, BIAS2, BIAS3,
-     1     ETACF, ETAMIN, ETAMX1, ETAMX2, ETAMX3, ETAMXF,
-     2     KFC, KFH, MXNCF, ONEPSM, THRESH, ONE, ZERO
-C-----------------------------------------------------------------------
-      DATA KFC/-3/, KFH/-7/, MXNCF/10/
-      DATA ADDON  /1.0D-6/,    BIAS1  /6.0D0/,     BIAS2  /6.0D0/,
-     1     BIAS3  /10.0D0/,    ETACF  /0.25D0/,    ETAMIN /0.1D0/,
-     2     ETAMXF /0.2D0/,     ETAMX1 /1.0D4/,     ETAMX2 /10.0D0/,
-     3     ETAMX3 /10.0D0/,    ONEPSM /1.00001D0/, THRESH /1.5D0/
-      DATA ONE/1.0D0/, ZERO/0.0D0/
+
+      PARAMETER(KFC = -3, KFH = -7, MXNCF = 10, ADDON = 1.0D-6)
+      PARAMETER(BIAS1 = 6.0D0, BIAS2 = 6.0D0, BIAS3 = 10.0D0)
+      PARAMETER(ETACF = 0.25D0, ETAMIN = 0.1D0, ETAMXF = 0.2D0)
+      PARAMETER(ETAMX1 = 1.0D4, ETAMX2 = 10.0D0, ETAMX3 = 10.0D0)
+      PARAMETER(ONEPSM = 1.00001D0, THRESH = 1.5D0, ONE = 1.0D0)
+      PARAMETER(ZERO = 0.0D0)
 C
       ETAQ   = ONE
       ETAQM1 = ONE
