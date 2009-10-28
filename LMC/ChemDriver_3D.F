@@ -540,7 +540,7 @@ c
          dtloc = dt
       endif
 
-!$omp parallel private(nthrds) copyin(/VHACK/)
+!$omp parallel copyin(/VHACK/)
 
 #ifdef BL_USE_OMP
 
@@ -879,7 +879,7 @@ c
          invmwt(n) = one / invmwt(n)
       end do
 
-!$omp parallel private(egrlen,egilen,nthrds)
+!$omp parallel
 
 #ifdef BL_USE_OMP
 
@@ -992,12 +992,11 @@ c
 
       parameter(SCAL = tenth)
 
-!$omp parallel private(egrlen,egilen,nthrds)
+!$omp parallel
 
 #ifdef BL_USE_OMP
 
 !$omp single
-
       if (.not.associated(egrwrk)) then
          egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
      &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
@@ -1017,7 +1016,6 @@ c
             enddo
          end do
       endif
-
 !$omp end single
 
 #define EGSRWK egrwrk(1,tid)
