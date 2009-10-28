@@ -458,6 +458,7 @@ c     Get the matrix of elements versus species
 
 #include "cdwrk.H"
 #include "conp.H"
+#include "vode.H"
 
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(Yold)
@@ -482,21 +483,15 @@ c     Get the matrix of elements versus species
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
-      integer i, j, n, MF, ISTATE, lout
+      integer i, j, m, MF, ISTATE, lout
       character*(maxspnml) name
 
       integer nsubchem, nsub, node
       REAL_T dtloc, weight, TT1save
-      REAL_T Ct(maxspec),Qt(maxreac)
+      REAL_T Ct(maxspec),Qt(maxreac), scale
 
       REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
       logical newJ_triggered, bad_soln
-
-      REAL_T YJ_SAVE(80)
-      LOGICAL FIRST
-      COMMON /VHACK/ YJ_SAVE, FIRST
-      SAVE   /VHACK/
-      REAL_T scale
 
 c     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
@@ -525,8 +520,8 @@ c     finite difference jacobian
 c     Set up ATOL
       if (ITOL.eq.2) then
          ATOL(1) = spec_scalT*ATOLEPS
-         do n=1,Nspec
-            ATOL(n+1) = ATOLEPS*spec_scalY(n)
+         do m=1,Nspec
+            ATOL(m+1) = ATOLEPS*spec_scalY(m)
          end do
       else
          ATOL(1) = ATOLEPS
@@ -548,8 +543,8 @@ c     Set up ATOL
 
 #ifdef SOLN_IS_1D
             if (i.ne.lo(1))then
-               do n=1,Nspec
-                  Ynew(i,j,n) = Ynew(lo(1),j,n)
+               do m=1,Nspec
+                  Ynew(i,j,m) = Ynew(lo(1),j,m)
                end do
                Tnew(i,j) = Tnew(lo(1),j)
             else
@@ -559,30 +554,30 @@ c     Set up ATOL
 
 #ifdef DO_JBB_HACK
             sum = zero
-            do n=1,Nspec
-               Ytemp(n) = Yold(i,j,n)
-               Ytemp(n) = MAX(Yold(i,j,n),zero)
-               sum = sum+Ytemp(n)
+            do m=1,Nspec
+               Ytemp(m) = Yold(i,j,m)
+               Ytemp(m) = MAX(Yold(i,j,m),zero)
+               sum = sum+Ytemp(m)
             end do
             if (iN2 .gt. 0) then
                Ytemp(iN2) = Ytemp(iN2)+one-sum
             endif
 #else
-            do n=1,Nspec
-               Ytemp(n) = Yold(i,j,n)
+            do m=1,Nspec
+               Ytemp(m) = Yold(i,j,m)
             end do
 #endif
-            do n = 1,Nspec
-               RWRK(NZ+n) = Ytemp(n)
+            do m=1,Nspec
+               RWRK(NZ+m) = Ytemp(m)
             end do
 
 #ifdef TRIGGER_NEW_J
             newJ_triggered = .FALSE.
             sum = zero
-            do n=1,NEQ
+            do m=1,NEQ
                scale = spec_scalT
-               if (n.ne.1) scale = spec_scalY(n-1)
-               sum = sum + ABS(RWRK(NZ+n-1)-YJ_SAVE(n))/scale
+               if (m.ne.1) scale = spec_scalY(m-1)
+               sum = sum + ABS(RWRK(NZ+m-1)-YJ_SAVE(m))/scale
             end do
             if (sum .gt. NEWJ_TOL) then
                FIRST = .TRUE.
@@ -597,8 +592,8 @@ c     Set up ATOL
                FuncCount(i,j) = 0
                CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
                CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
-               do n=1,Nreac
-                  diag(i,j,n) = diag(i,j,n)+half*dtloc*Qt(n)*million
+               do m=1,Nreac
+                  diag(i,j,m) = diag(i,j,m)+half*dtloc*Qt(m)*million
                enddo
             endif
 
@@ -626,16 +621,16 @@ c
 #if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
                if (newJ_triggered .EQV. .FALSE.) then
                   bad_soln = .FALSE.
-                  do n=1,Nspec
-                     if (RWRK(NZ+n) .lt. -1.D-6*spec_scalY(n))
+                  do m=1,Nspec
+                     if (RWRK(NZ+m) .lt. -1.D-6*spec_scalY(m))
      &                    bad_soln = .TRUE.             
                   end do
                   if (bad_soln .EQV. .TRUE.) then
                      TT1 = TT1SAVE
                      FIRST = .TRUE.
                      RWRK(NZ) = Told(i,j)
-                     do n=1,Nspec
-                        RWRK(NZ+n) = Ytemp(n)
+                     do m=1,Nspec
+                        RWRK(NZ+m) = Ytemp(m)
                      end do
 
                      ISTATE = 1
@@ -655,8 +650,8 @@ c
                if (do_diag.eq.1) then
                   CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
                   CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
-                  do n=1,Nreac
-                     diag(i,j,n) = diag(i,j,n)+weight*dtloc*Qt(n)*million
+                  do m=1,Nreac
+                     diag(i,j,m) = diag(i,j,m)+weight*dtloc*Qt(m)*million
                   enddo
                   FuncCount(i,j) = FuncCount(i,j) + IWRK(dvbi+11)
                else
@@ -689,34 +684,34 @@ c
                   write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
      &                 '),   Return code = ',ISTATE
                   write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-                  write(lout,995)'State ID, old, last, dY/dt, dY/dt*(dt)'
+                 write(lout,995)'State ID, old, last, dY/dt, dY/dt*(dt)'
                   write(lout,996) 'T               ',
      &                 Told(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
-                  do n=1,Nspec
-                     call get_spec_name(name,n)
-                     write(lout,996) name,Yold(i,j,n),
-     &                    RWRK(NZ+n),zp(1+n),zp(1+n)*(dt-TT1)
+                  do m=1,Nspec
+                     call get_spec_name(name,m)
+                     write(lout,996) name,Yold(i,j,m),
+     &                    RWRK(NZ+m),zp(1+m),zp(1+m)*(dt-TT1)
                   end do
 995               format(a,3(i4,a))
 996               format(a16,1x,4e30.22)
                   close(lout)
-                  call bl_abort('VODE failed...see drop file...exiting...')
+                  call bl_abort('VODE failed, see drop file, exiting...')
                end if
             enddo
 
             Tnew(i,j) = RWRK(NZ)
 
-            do n= 1,Nspec
-               Yres(n) = RWRK(NZ+n)
+            do m= 1,Nspec
+               Yres(m) = RWRK(NZ+m)
             end do
 
 #ifdef DO_JBB_HACK
-            do n=1,Nspec
-               Ynew(i,j,n) = Yold(i,j,n)+Yres(n)-Ytemp(n)
+            do m=1,Nspec
+               Ynew(i,j,m) = Yold(i,j,m)+Yres(m)-Ytemp(m)
             end do
 #else
-            do n=1,Nspec
-               Ynew(i,j,n) = Yres(n)
+            do m=1,Nspec
+               Ynew(i,j,m) = Yres(m)
             end do
 #endif
 
