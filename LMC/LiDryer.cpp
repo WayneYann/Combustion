@@ -2877,7 +2877,7 @@ void productionRate(double * wdot, double * sc, double T)
     phi_f = sc[7];
     alpha = mixture + 1.5*sc[0] + 11*sc[2];
     k_f = k_f_save[15];
-    redP = 1e-12 * alpha / k_f * 1.202e+17*exp(-22898.8/tc[1]);
+    redP = 1e-6 * alpha / k_f * 1.202e+17*exp(-22898.8/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.5*exp(T/-1e-30))+ (0.5*exp(T/-1e+30)));
@@ -3181,7 +3181,7 @@ void progressRate(double * qdot, double * sc, double T)
     phi_f = sc[7];
     alpha = mixture + 1.5*sc[0] + 11*sc[2];
     k_f = 1 * 2.951e+14*exp(-24373.4/tc[1]);
-    redP = 1e-12 * alpha / k_f * 1.202e+17*exp(-22898.8/tc[1]);
+    redP = 1e-6 * alpha / k_f * 1.202e+17*exp(-22898.8/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.5*exp(T/-1e-30))+ (0.5*exp(T/-1e+30)));
