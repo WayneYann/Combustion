@@ -34,13 +34,13 @@ c     H2 at phi=0.37
       Perg = Patm*P1ATM
 
       call CKRHOY(Perg,T,Y,IWRK,RWRK,rho)
-      print *,'rho [CGS]: ',rho
+      print *,'rho: ',rho
 
-      call calcDiffusivityMKS(T, Y, Patm, rhoD, kappa, mu)
-      print *,'mu [MKS]: ',mu
-      print *,'kappa [MKS]: ',kappa
+      call calcDiffusivity(T, Y, Patm, rhoD, kappa, mu)
+      print *,'mu: ',mu
+      print *,'kappa: ',kappa
       do n=1,Nspec
-         print *,'rhoD(',specNames(n),')[MKS]: ',rhoD(n)
+         print *,'rhoD(',specNames(n),'): ',rhoD(n)
       enddo
 
       end

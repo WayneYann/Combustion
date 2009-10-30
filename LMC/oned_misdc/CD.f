@@ -16,7 +16,7 @@
 
 
 
-      subroutine calcDiffusivityMKS(T, Y, Patm, rhoD, kappa, mu)
+      subroutine calcDiffusivity(T, Y, Patm, rhoD, kappa, mu)
       implicit none
       include 'spec.h'
       double precision T, Y(*), Patm
@@ -43,17 +43,16 @@ c     Ensure chem/tran initialized
          CALL CKRHOY(Ptmp,Tt,Y,IWRK,RWRK,RHO)
 
          do n=1,Nspec
-            rhoD(n) = RHO * Wavg * invmwt(n) * Dt(n) * 0.1d0
+            rhoD(n) = RHO * Wavg * invmwt(n) * Dt(n)
          end do
          
          alpha = 1.0D0
          CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
          alpha = -1.0D0
          CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
-         kappa = .5 * (l1 + l2) * 1.d-5
+         kappa = .5 * (l1 + l2)
          
          CALL EGSE3(Tt, Y, EGRWRK, mu)
-         mu = mu * 1.d-1
 
          
          if (thickFacTR.ne.1.d0) then
@@ -67,13 +66,13 @@ c     Ensure chem/tran initialized
          
       else
 
-         mu = 1.85e-5*(T/298.0)**.7         
+         mu = 1.d1 * 1.85e-5*(T/298.0)**.7
          do n=1,Nspec
             rhoD(n) = mu * thickFacTR / Sc
          enddo
          
          CALL CKCPBS(T,Y,IWRK,RWRK,CPMIX)
-         kappa = rhoD(1) * CPMIX * 1.d-4 * thickFacTR / Pr
+         kappa = rhoD(1) * CPMIX * thickFacTR / Pr
 
       endif
       end
