@@ -10,7 +10,7 @@ C_sources += CDc.cpp
 
 
 #
-# Choose your reaction mechanism & thermal properties.
+# Choose reaction mechanism
 #
 #REACTION_MECHANISM=INERT30
 #REACTION_MECHANISM=GRI12
