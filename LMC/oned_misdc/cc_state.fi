@@ -1,0 +1,8 @@
+      integer i_zone
+      double precision dens_zone, temp_zone, pres_zone,
+     $                 c_p_pass, c_p_inv, 
+     $                 totime, enthalpy, rho_hstar_zone
+      common /zone_state/ i_zone, dens_zone, temp_zone, pres_zone,
+     $                    c_p_pass, c_p_inv,
+     &                    totime, enthalpy, rho_hstar_zone
+

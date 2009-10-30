@@ -1,0 +1,2 @@
+      integer nscal,nspec,nreac
+      COMMON /nums/ nscal,nspec,nreac
