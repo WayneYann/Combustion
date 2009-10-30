@@ -4,13 +4,13 @@ fCOMP := g77
 XTRALIBS :=  -lm -lg2c
 EXEname := driver.exe
 
-f_sources += driver.f CD.f vode.f EGini.f EGSlib.f
+f_sources += CD.f vode.f EGini.f EGSlib.f
 f_includes += spec.h
 C_sources += CDc.cpp
 
 
 #
-# Choose reaction mechanism
+# Choose your reaction mechanism & thermal properties.
 #
 #REACTION_MECHANISM=INERT30
 #REACTION_MECHANISM=GRI12
