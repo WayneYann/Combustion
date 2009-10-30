@@ -11,11 +11,19 @@
       parameter (egi = maxspec)
       parameter (LLINKMC = 56)
       
-      integer traninit, EGIWRK(egi), Nelt, Nspec, Nreac, Nfit, LeEQ1
-      common / trani / EGIWRK, traninit, Nelt, Nspec, Nreac, Nfit, LeEQ1
-      double precision EGRWRK(egr), invmwt(maxspec), P1ATM, TMIN_TRANS,
-     &     Pr, Sc, thickFacTR
-      common / tranr / EGRWRK, invmwt, P1ATM, TMIN_TRANS, Pr, Sc,
-     &     thickFacTR
+      integer traninit, EGIWRK(egi), Nelt, Nspec, Nreac, Nfit,
+     &     LeEQ1, max_vode_subcycles
+      common / trani / EGIWRK, traninit, Nelt, Nspec, Nreac, Nfit,
+     &     LeEQ1, max_vode_subcycles
+
+      double precision EGRWRK(egr), invmwt(maxspec), mwt(maxspec),
+     &     P1ATM, TMIN_TRANS, Pr, Sc, thickFacTR, thickFacCH
+      common / tranr / EGRWRK, invmwt, mwt, P1ATM, TMIN_TRANS, Pr, Sc,
+     &     thickFacTR, thickFacCH
+
       character*256 tranfile
       common / tranc / tranfile
+
+
+      double precision NP_DVD
+      common / dvdi / NP_DVD

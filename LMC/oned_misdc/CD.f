@@ -8,6 +8,10 @@
       data Sc / 0.7d0 /
       data LeEQ1 / 0 /
       data thickFacTR / 1.d0 /
+      data thickFacCH / 1.d0 /
+      data max_vode_subcycles / 15000 /
+      data Pcgs_dvd / -1 /
+
       end
 
 
@@ -88,9 +92,9 @@ c     Ensure chem/tran initialized
 
 c     Other useful things
          call CKRP(IWRK, RWRK, RU, RUC, P1ATM)
-         call CKWT(IWRK, RWRK, invmwt)         
+         call CKWT(IWRK, RWRK, mwt)         
          do n=1,Nspec
-            invmwt(n) = 1.d0 / invmwt(n)
+            invmwt(n) = 1.d0 / mwt(n)
          end do
 
          traninit = 1
@@ -181,3 +185,182 @@ C-----------------------------------------------------------------------
       end
 
 
+      subroutine conpFY(N, TIME, Z, ZP, RPAR, IPAR)
+      implicit none
+      include 'spec.h'
+      double precision TIME, Z(maxspec+1), ZP(maxspec+1), RPAR(*)
+      integer N, IPAR(*)
+      
+      double precision RHO, CPB, SUM, H, WDOT, WT, THFAC, Pcgs
+      double precision HK(maxspec), WDOTK(maxspec), CONC(maxspec), RWRK
+      integer K, IWRK
+
+      Pcgs = RPAR(NP_DVD)
+      if (Pcgs.lt.0.d0) then
+         print *,'conpFY: Must set P(cgs) before calling vode'
+         stop
+      endif
+
+      call CKRHOY(Pcgs,Z(1),Z(2),IWRK,RWRK,RHO)
+      call CKCPBS(Z(1),Z(2),IWRK,RWRK,CPB)
+      call CKYTCP(Pcgs,Z(1),Z(2),IWRK,RWRK,CONC)
+      call CKWC(Z(1), CONC, IWRK, RWRK, WDOTK)
+      call CKHMS(Z(1), IWRK, RWRK, HK)
+
+      THFAC = 1.d0 / thickFacCH
+      SUM = 0.d0
+      DO K = 1, Nspec
+         H    = HK(K)
+         WDOT = WDOTK(K) * THFAC
+         WT   = mwt(K)
+         ZP(K+1) = WDOT * WT / RHO
+         SUM = SUM + H * WDOT * WT
+      END DO
+      ZP(1) = -SUM / (RHO*CPB)
+      END
+
+
+      subroutine conpJY(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
+      implicit none
+      integer NEQ, NRPD, ML, MU, IPAR(*)
+      double precision T, Y(NEQ), PD(NRPD,NEQ), RPAR(*)
+      print *,'Should not be in conpJY'
+      stop
+      end
+
+
+      subroutine FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res,Niter)
+      implicit none
+      include 'spec.h'
+      double precision T,Y(*),H,Hin
+      double precision TMIN,TMAX,errMAX
+      integer NiterMAX,Niter,n,NiterDAMP
+      parameter (TMIN=250, TMAX=5000)
+      double precision  T0,cp,cv,dH,temp,RoverWbar,Wbar,RU,RUC
+      double precision res(0:NiterMAX-1),dT, Htarg
+      logical out_of_bounds, converged, soln_bad, stalled
+      double precision h300,cp300,h6500,cp6500
+      integer ihitlo,ihithi,j,IWRK
+      double precision RWRK
+
+      out_of_bounds(temp) = (temp.lt.TMIN) .or. (temp.gt.TMAX)
+
+      NiterDAMP = NiterMAX
+      if ((T.GE.TMIN).and.(T.LE.TMAX)) then
+         T0 = T
+      else
+         T0 = 0.5*(TMIN+TMAX)
+         T = T0
+      end if
+      Niter = 0
+      dH = 0.d0
+      soln_bad = .FALSE.
+c     Hin in MKS, convert to CGS
+c      Htarg = Hin * 1.d4
+      Htarg = Hin
+      ihitlo = 0
+      ihithi = 0
+
+      CALL CKHBMS(T,Y,IWRK,RWRK,H)
+      dH = 2*ABS(H - Htarg)/(1.d0 + ABS(H) + ABS(Htarg))
+      res(Niter) = dH
+      converged = dH.le.errMAX
+
+      do while ((.not.converged) .and. (.not.soln_bad))
+
+         CALL CKCPBS(T,Y,IWRK,RWRK,cp)
+         dT = (Htarg - H)/cp
+         if ((Niter.le.NiterDAMP).and.(T+dT.ge.TMAX)) then
+            T = TMAX
+            ihithi = 1
+         else if ((Niter.le.NiterDAMP).and.(T+dT.le.TMIN)) then
+            T = TMIN
+            ihitlo = 1
+         else
+            T = T + dT
+         end if
+         soln_bad = out_of_bounds(T)
+         if (soln_bad) then
+            Niter = -1
+            goto 100
+         else
+            CALL CKHBMS(T,Y,IWRK,RWRK,H)
+            dH = 2*ABS(H - Htarg)/(1.d0 + ABS(H) + ABS(Htarg))
+            res(Niter) = dH
+            Niter = Niter + 1
+         end if
+         if (Niter .ge. NiterMAX) then
+            Niter = -2
+            goto 100
+         endif
+         converged = (dH.le.errMAX) .or. (ABS(dT).le.errMAX)
+
+         if ((ihitlo.eq.1).and.(H.gt.Htarg)) then
+            T = TMIN
+            CALL CKHBMS(T,Y,IWRK,RWRK,h300)
+            CALL CKCPBS(T,Y,IWRK,RWRK,cp300)
+            T=TMIN+(Htarg-h300)/cp300
+            converged = .true.
+         endif
+         if ((ihithi.eq.1).and.(H.lt.Htarg)) then
+            T = TMAX
+            CALL CKHBMS(T,Y,IWRK,RWRK,h6500)
+            CALL CKCPBS(T,Y,IWRK,RWRK,cp6500)
+            T=TMAX+(Htarg-h6500)/cp6500
+            converged = .true.
+         endif
+      end do
+
+      return
+c
+c     Error condition....dump state and bail out
+c
+ 100  continue
+
+      write(6,997) 'T from (H,Y): failed'
+      write(6,997) 'iterations tried = ',Niter
+      write(6,998) 'initial T = ',T0
+      write(6,998) 'current T = ',T
+      write(6,998) 'species mass fracs:'
+      do n = 1,Nspec
+         write(6,998) '  ',Y(n)
+      end do
+      write(6,998)
+      write(6,998) 'residual:'
+      do n = 0,Niter-1
+         write(6,998) '  ',res(n)
+      end do
+
+ 997  format(a,3(i4,a))
+ 998  format(a,d21.12)
+      end
+  
+      integer function open_vode_failure_file ()
+      implicit none
+      character*30 name, myproc
+      integer lout,i,j,k,idx
+
+c     Hardwire the unit number to 26 for the moment
+      lout = 26 
+c      call bl_pd_myproc(i)
+      i = 0
+      write(myproc, *) i
+      idx = 1 
+      do j = 1, 30
+         if (myproc(j:j) .ne. ' ') then
+            idx = j
+            goto 1
+         end if 
+      end do
+ 1    continue
+      do k = 30, j+1, -1
+         if (myproc(k:k) .ne. ' ') then
+            goto 2
+         end if
+      end do
+ 2    continue
+      write(name, '(2a)') 'vode.failed.', myproc(idx:k)
+c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
+      open(unit=lout, file=name, form='formatted', status='replace')
+      open_vode_failure_file = lout
+      end
