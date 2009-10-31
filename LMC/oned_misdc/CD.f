@@ -34,7 +34,7 @@
       if (LeEQ1 .eq. 0) then
          
 c     Ensure chem/tran initialized
-         if (traninit.lt.0) call initeg()
+         if (traninit.lt.0) call initchem()
          
          Ptmp = Patm * P1ATM
          Tt = MAX(T,TMIN_TRANS) 
@@ -81,7 +81,7 @@ c     Ensure chem/tran initialized
       endif
       end
 
-      subroutine initeg
+      subroutine initchem
       implicit none
       include 'spec.h'
       double precision RU, RUC, RWRK

@@ -14,7 +14,7 @@
       integer FC, do_diag
       double precision diag(maxreac), dt, sum
       
-      call initeg()
+      call initchem()
 
       do n=1,Nspec
          Y(n) = 0
