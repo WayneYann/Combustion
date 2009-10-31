@@ -280,11 +280,11 @@ C-----------------------------------------------------------------------
 
       integer nsubchem, nsub, node
       double precision dtloc, weight, TT1save
-      double precision Ct(maxspec),Qt(maxreac), scale
+      double precision C(maxspec),Q(maxreac), scale
 
       double precision dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum
       double precision zp(maxspec+1)
-      logical newJ_triggered, bad_soln
+      logical bad_soln
 
 
 c     DVODE workspace requirements      
@@ -343,10 +343,10 @@ c     Always form Jacobian to start
 
       if (do_diag.eq.1) then
          FuncCount = 0
-         CALL CKYTCP(Pcgs_dvd,Z(1),Z(2),IWRK,RWRK,Ct)
-         CALL CKQC(Z(1),Ct,IWRK,RWRK,Qt)
+         CALL CKYTCP(Pcgs_dvd,Z(1),Z(2),IWRK,RWRK,C)
+         CALL CKQC(Z(1),C,IWRK,RWRK,Q)
          do m=1,Nreac
-            diag(m) = diag(m) + 0.5*dtloc*Qt(m)
+            diag(m) = diag(m) + 0.5*dtloc*Q(m)
          enddo
       endif
 
@@ -368,10 +368,10 @@ c     Always form Jacobian to start
          TT1 = TT2
 
          if (do_diag.eq.1) then
-            CALL CKYTCP(Pcgs_dvd,Z(1),Z(2),IWRK,RWRK,Ct)
-            CALL CKQC(Z(1),Ct,IWRK,RWRK,Qt)
+            CALL CKYTCP(Pcgs_dvd,Z(1),Z(2),IWRK,RWRK,C)
+            CALL CKQC(Z(1),C,IWRK,RWRK,Q)
             do m=1,Nreac
-               diag(m) = diag(m) + weight*dtloc*Qt(m)
+               diag(m) = diag(m) + weight*dtloc*Q(m)
             enddo
             FuncCount = FuncCount + DVIWRK(11)
          else
@@ -380,17 +380,17 @@ c     Always form Jacobian to start
 
          if (verbose_vode .eq. 1) then
             write(6,*) '......dvode done:'
-            write(6,*) ' last successful step size = ',DVRWRK(10)
-            write(6,*) '          next step to try = ',DVRWRK(11)
-            write(6,*) '   integrated time reached = ',DVRWRK(12)
-            write(6,*) '      number of time steps = ',DVIWRK(10)
-            write(6,*) '              number of fs = ',DVIWRK(11)
-            write(6,*) '              number of Js = ',DVIWRK(12)
-            write(6,*) '    method order last used = ',DVIWRK(13)
-            write(6,*) '   method order to be used = ',DVIWRK(14)
-            write(6,*) '            number of LUDs = ',DVIWRK(18)
-            write(6,*) ' number of Newton iterations ',DVIWRK(19)
-            write(6,*) ' number of Newton failures = ',DVIWRK(20)
+            write(6,*) ' last successful step size = ',DVRWRK(11)
+            write(6,*) '          next step to try = ',DVRWRK(12)
+            write(6,*) '   integrated time reached = ',DVRWRK(13)
+            write(6,*) '      number of time steps = ',DVIWRK(11)
+            write(6,*) '              number of fs = ',DVIWRK(12)
+            write(6,*) '              number of Js = ',DVIWRK(13)
+            write(6,*) '    method order last used = ',DVIWRK(14)
+            write(6,*) '   method order to be used = ',DVIWRK(15)
+            write(6,*) '            number of LUDs = ',DVIWRK(19)
+            write(6,*) ' number of Newton iterations ',DVIWRK(20)
+            write(6,*) ' number of Newton failures = ',DVIWRK(21)
          end if
                
          Tnew = Z(1)
