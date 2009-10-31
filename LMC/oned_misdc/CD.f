@@ -1,5 +1,5 @@
 
-      block data transtat
+      block data chemdat
       include 'spec.h'
       data traninit / -1 /
       data tranfile / 'tran.asc.chem-H' /
@@ -10,8 +10,12 @@
       data thickFacTR / 1.d0 /
       data thickFacCH / 1.d0 /
       data max_vode_subcycles / 15000 /
+      data min_vode_timestep / 1.e-14 /
       data Pcgs_dvd / -1 /
-
+      data iH2  / -1 /
+      data iO2  / -1 /
+      data iN2  / -1 /
+      data iCH4 / -1 /
       end
 
 
@@ -81,7 +85,9 @@ c     Ensure chem/tran initialized
       implicit none
       include 'spec.h'
       double precision RU, RUC, RWRK
-      integer lout, IWRK, n
+      integer lout, IWRK, n, len, offset,i
+      integer kname(maxspnml*maxspec)
+
       if (traninit.lt.0) then
          open(unit=51,status='old',form='formatted',file=tranfile)
          call CNVTTR(51)
@@ -96,6 +102,17 @@ c     Other useful things
             invmwt(n) = 1.d0 / mwt(n)
          end do
 
+         call cksyms(kname,maxspnml)
+         specNameLen = 0
+         do n=1,Nspec
+            offset = (n-1)*maxspnml+1
+            call convStr(kname(offset),maxspnml,specNames(n),len)
+            specNamelen = MAX(specNameLen,len)
+            if (specNames(n).eq.'H2')  iH2=n
+            if (specNames(n).eq.'O2')  iO2=n
+            if (specNames(n).eq.'N2')  iN2=n
+            if (specNames(n).eq.'CH4') iCH4=n
+         enddo
          traninit = 1
       endif
       end
@@ -136,6 +153,15 @@ c
 c     Make sure the transport & chemistry files are consistent.
 c
       CALL CKINDX(IDUMMY,RDUMMY,Nelt,Nspec,Nreac,Nfit)
+      if (Nelt.gt.maxelts) then
+         print *,'Too many elements, increase maxelts'
+      endif
+      if (Nspec.gt.maxspec) then
+         print *,'Too many species, increase maxspec'
+      endif
+      if (Nreac.gt.maxreac) then
+         print *,'Too many reactions, increase maxreac'
+      endif
 
       if (NS .NE. Nspec) then
          print*, 'transport database thinks Nspec = ', NS
@@ -176,11 +202,11 @@ C-----------------------------------------------------------------------
       character*(*) string
       do k=1,maxLen
          string(k:k) = ' '
-         if (codedString(k).ne. ICHAR(' ')) then
+         if (codedString(k) .ne. ICHAR(' ')) then
             string(k:k) = CHAR(codedString(k))
+            strLen = k
          endif
       enddo
-      strLen = k
       end
 
 
@@ -194,7 +220,7 @@ C-----------------------------------------------------------------------
       double precision HK(maxspec), WDOTK(maxspec), CONC(maxspec), RWRK
       integer K, IWRK
 
-      Pcgs = RPAR(NP_DVD)
+      Pcgs = Pcgs_dvd
       if (Pcgs.lt.0.d0) then
          print *,'conpFY: Must set P(cgs) before calling vode'
          stop
@@ -225,6 +251,154 @@ C-----------------------------------------------------------------------
       double precision T, Y(NEQ), PD(NRPD,NEQ), RPAR(*)
       print *,'Should not be in conpJY'
       stop
+      end
+
+
+
+
+      subroutine chemsolve(Ynew, Tnew, Yold, Told, FuncCount, Patm, dt,
+     &     diag, do_diag)
+      implicit none
+      include 'spec.h'
+
+      double precision YJ_SAVE(80)
+      logical FIRST
+      common /VHACK/ YJ_SAVE, FIRST
+      save   /VHACK/
+
+      integer do_diag
+      double precision Yold(*), Ynew(*), Told, Tnew, FuncCount
+      double precision Patm, dt, diag(*)
+   
+      integer NEQ, ITOL, IOPT, ITASK, open_vode_failure_file
+      parameter (ITOL=1, IOPT=1, ITASK=1)
+      double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
+      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
+      external conpFY, conpJY, open_vode_failure_file
+      integer m, MF, ISTATE, lout
+      character*(maxspnml) name
+
+      integer nsubchem, nsub, node
+      double precision dtloc, weight, TT1save
+      double precision Ct(maxspec),Qt(maxreac), scale
+
+      double precision dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum
+      double precision zp(maxspec+1)
+      logical newJ_triggered, bad_soln
+
+
+c     DVODE workspace requirements      
+      integer dvr, dvi
+      parameter (dvr = 22 + 9*(maxspec+1) + 2*(maxspec+1)**2)
+      parameter (dvi = 30 + maxspec + 1)
+      
+      double precision DVRWRK(dvr)
+      integer DVIWRK(dvi)
+
+      double precision Z(maxspec+1)
+      double precision RPAR, RWRK
+      integer IPAR, IWRK
+
+c     IOPT=1 parameter settings for VODE
+      DVRWRK(7) = min_vode_timestep
+      DVIWRK(6) = max_vode_subcycles
+
+      if (do_diag.eq.1) nsubchem = nchemdiag
+c
+c     Set pressure in area accessible by conpFY
+c
+      Pcgs_dvd = Patm * P1atm
+      
+      MF = 22
+      ATOL(1) = ATOLEPS
+      TT1 = 0.d0
+      TT2 = dt
+      if (do_diag.eq.1) then
+         nsub = nsubchem
+         dtloc = dt/nsubchem
+      else
+         nsub = 1
+         dtloc = dt
+      endif
+      ISTATE = 1
+      NEQ = Nspec + 1
+
+
+      sum = 0.d0
+      do m=1,Nspec
+         Ytemp(m) = MAX(Yold(m),0.d0)
+         sum = sum+Ytemp(m)
+      end do
+      if (iN2 .gt. 0) then
+         Ytemp(iN2) = Ytemp(iN2)+1.d0-sum
+      endif
+
+      Z(1) = Told
+      do m=1,Nspec
+         Z(1+m) = Ytemp(m)
+      end do
+
+c     Always form Jacobian to start
+      FIRST = .TRUE.
+
+      if (do_diag.eq.1) then
+         FuncCount = 0
+         CALL CKYTCP(Pcgs_dvd,Z(1),Z(2),IWRK,RWRK,Ct)
+         CALL CKQC(Z(1),Ct,IWRK,RWRK,Qt)
+         do m=1,Nreac
+            diag(m) = diag(m) + 0.5*dtloc*Qt(m)
+         enddo
+      endif
+
+      do node = 1,nsub
+         if (node.lt.nsub) then
+            weight = 1.d0
+         else
+            weight = 0.5d0
+         endif
+
+         TT1save = TT1
+         TT2 = TT1 + dtloc
+
+         CALL DVODE
+     &        (conpFY, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
+     &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
+     &        dvi, conpJY, MF, RPAR, IPAR)
+
+         TT1 = TT2
+
+         if (do_diag.eq.1) then
+            CALL CKYTCP(Pcgs_dvd,Z(1),Z(2),IWRK,RWRK,Ct)
+            CALL CKQC(Z(1),Ct,IWRK,RWRK,Qt)
+            do m=1,Nreac
+               diag(m) = diag(m) + weight*dtloc*Qt(m)
+            enddo
+            FuncCount = FuncCount + DVIWRK(11)
+         else
+            FuncCount = DVIWRK(11)
+         endif
+
+         if (verbose_vode .eq. 1) then
+            write(6,*) '......dvode done:'
+            write(6,*) ' last successful step size = ',DVRWRK(10)
+            write(6,*) '          next step to try = ',DVRWRK(11)
+            write(6,*) '   integrated time reached = ',DVRWRK(12)
+            write(6,*) '      number of time steps = ',DVIWRK(10)
+            write(6,*) '              number of fs = ',DVIWRK(11)
+            write(6,*) '              number of Js = ',DVIWRK(12)
+            write(6,*) '    method order last used = ',DVIWRK(13)
+            write(6,*) '   method order to be used = ',DVIWRK(14)
+            write(6,*) '            number of LUDs = ',DVIWRK(18)
+            write(6,*) ' number of Newton iterations ',DVIWRK(19)
+            write(6,*) ' number of Newton failures = ',DVIWRK(20)
+         end if
+               
+         Tnew = Z(1)
+         do m=1,Nspec
+            Ynew(m) = Yold(m)+Z(m+1)-Ytemp(m)
+         end do
+
+      enddo
       end
 
 
@@ -262,6 +436,7 @@ c      Htarg = Hin * 1.d4
 
       CALL CKHBMS(T,Y,IWRK,RWRK,H)
       dH = 2*ABS(H - Htarg)/(1.d0 + ABS(H) + ABS(Htarg))
+
       res(Niter) = dH
       converged = dH.le.errMAX
 
@@ -292,7 +467,7 @@ c      Htarg = Hin * 1.d4
             Niter = -2
             goto 100
          endif
-         converged = (dH.le.errMAX) .or. (ABS(dT).le.errMAX)
+         converged = (ABS(dH).le.errMAX) .or. (ABS(dT).le.errMAX)
 
          if ((ihitlo.eq.1).and.(H.gt.Htarg)) then
             T = TMIN

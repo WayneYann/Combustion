@@ -3,21 +3,18 @@
       include 'spec.h'
       double precision RWRK
       integer n, k, IWRK, kname(0:maxspnml*maxspec-1), len
-      integer iH2, iO2, iN2
-      character*(maxspnml) specNames(maxspec), nameTMP
+      character*(maxspnml) name
 
+      integer NiterMAX, Niter
+      parameter (NiterMAX = 30)
       double precision Y(maxspec), T, Patm, rho, Perg
-      double precision rhoD(maxspec), kappa, mu
+      double precision rhoD(maxspec), kappa, mu, hmix
+      double precision res(NiterMAX), errMAX
+      double precision Ynew(maxspec), Tnew
+      integer FC, do_diag
+      double precision diag(maxreac), dt, sum
       
       call initeg()
-
-      call cksyms(kname,maxspnml)
-      do n=1,Nspec
-         call convStr(kname((n-1)*maxspnml),maxspnml,specNames(n),len)
-         if (specNames(n).eq.'H2') iH2=n
-         if (specNames(n).eq.'O2') iO2=n
-         if (specNames(n).eq.'N2') iN2=n
-      enddo
 
       do n=1,Nspec
          Y(n) = 0
@@ -30,6 +27,7 @@ c     H2 at phi=0.37
 
       Patm = 1.d0
       T = 298.d0
+      T = 1500.d0
 
       Perg = Patm*P1ATM
 
@@ -40,7 +38,49 @@ c     H2 at phi=0.37
       print *,'mu: ',mu
       print *,'kappa: ',kappa
       do n=1,Nspec
-         print *,'rhoD(',specNames(n),'): ',rhoD(n)
+         name = specNames(n)
+         print *,'rhoD(',name(1:specNameLen),'): ',rhoD(n)
       enddo
+
+
+      call CKHBMS(T,Y,IWRK,RWRK,hmix)
+      T = T*1.3
+
+      errMax = ABS(hmix*1.e-20)
+      call FORT_TfromHYpt(T,hmix,Y,errMax,NiterMAX,res,Niter)
+      if (Niter.ge.0) then
+         print *,'H to T solve converged in ',Niter,' iterations'
+      else
+         print *,'H to T solve failed, Niter=',Niter
+      endif
+      print *,'T new is ',T
+
+
+      print *,'pre-chem state'
+      print *,'T:',T
+      print *,'Y:',(Y(n),n=1,Nspec)
+      dt = 1.d-4
+      call chemsolve(Ynew, Tnew, Y, T, FC, Patm, dt, diag, do_diag)
+
+      print *,'post-chem state'
+      print *,'T:',Tnew
+      print *,'Y:',(Ynew(n),n=1,Nspec)
+      sum = 0.d0
+      do n=1,Nspec
+         sum = sum + Ynew(n)
+      enddo
+      print *,'new sum:',sum
+      print *,'T new is ',Tnew
+
+      call CKHBMS(Tnew,Ynew,IWRK,RWRK,hmix)
+      Tnew = Tnew*1.05
+
+      errMax = ABS(hmix*1.e-20)
+      call FORT_TfromHYpt(Tnew,hmix,Ynew,errMax,NiterMAX,res,Niter)
+      if (Niter.gt.0) then
+         print *,'H to T solve converged in ',Niter,' iterations'
+      else
+         print *,'H to T solve failed, Niter=',Niter
+      endif
 
       end
