@@ -2549,6 +2549,13 @@ void CKEQXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, dou
     /*eqcon[20] *= 1;  */
 }
 
+static double T_save = -1;
+#pragma omp threadprivate(T_save)
+static double k_f_save[21];
+#pragma omp threadprivate(k_f_save)
+static double Kc_save[21];
+#pragma omp threadprivate(Kc_save)
+
 
 /*compute the production rate for each species */
 void productionRate(double * wdot, double * sc, double T)
@@ -2580,6 +2587,8 @@ void productionRate(double * wdot, double * sc, double T)
     double F_sri;                   /*SRI intermediate */
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
 
+    double invT = 1.0 / tc[1];
+
     /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
     double refC = 101325 / 8.31451 / T;
 
@@ -2597,36 +2606,31 @@ void productionRate(double * wdot, double * sc, double T)
         wdot[id] = 0.0;
     }
 
-#ifdef BL_USE_OMP
-    double k_f_save[21], Kc_save[21];
-#else
-    static double T_save = -1, k_f_save[21], Kc_save[21];
-
     if (T != T_save)
     {
         T_save = T;
-#endif
-        k_f_save[0] = 1e-06 * 3.547e+15*exp(-0.406*tc[0]-8353.8/tc[1]);
-        k_f_save[1] = 1e-06 * 50800*exp(2.67*tc[0]-3165.58/tc[1]);
-        k_f_save[2] = 1e-06 * 2.16e+08*exp(1.51*tc[0]-1726.22/tc[1]);
-        k_f_save[3] = 1e-06 * 2.97e+06*exp(2.02*tc[0]-6743.83/tc[1]);
-        k_f_save[4] = 1e-06 * 4.577e+19*exp(-1.4*tc[0]-52531.5/tc[1]);
+
+        k_f_save[0] = 1e-06 * 3.547e+15*exp(-0.406*tc[0]-8353.8*invT);
+        k_f_save[1] = 1e-06 * 50800*exp(2.67*tc[0]-3165.58*invT);
+        k_f_save[2] = 1e-06 * 2.16e+08*exp(1.51*tc[0]-1726.22*invT);
+        k_f_save[3] = 1e-06 * 2.97e+06*exp(2.02*tc[0]-6743.83*invT);
+        k_f_save[4] = 1e-06 * 4.577e+19*exp(-1.4*tc[0]-52531.5*invT);
         k_f_save[5] = 1e-12 * 6.165e+15*exp(-0.5*tc[0]);
         k_f_save[6] = 1e-12 * 4.714e+18*exp(-1*tc[0]);
         k_f_save[7] = 1e-12 * 3.8e+22*exp(-2*tc[0]);
         k_f_save[8] = 1e-06 * 1.475e+12*exp(0.6*tc[0]);
-        k_f_save[9] = 1e-06 * 1.66e+13*exp(-414.192/tc[1]);
-        k_f_save[10] = 1e-06 * 7.079e+13*exp(-148.465/tc[1]);
+        k_f_save[9] = 1e-06 * 1.66e+13*exp(-414.192*invT);
+        k_f_save[10] = 1e-06 * 7.079e+13*exp(-148.465*invT);
         k_f_save[11] = 1e-06 * 3.25e+13;
-        k_f_save[12] = 1e-06 * 2.89e+13*exp(+250.126/tc[1]);
-        k_f_save[13] = 1e-06 * 4.2e+14*exp(-6030.2/tc[1]);
-        k_f_save[14] = 1e-06 * 1.3e+11*exp(+819.98/tc[1]);
-        k_f_save[15] = 1 * 2.951e+14*exp(-24373.4/tc[1]);
-        k_f_save[16] = 1e-06 * 2.41e+13*exp(-1997.99/tc[1]);
-        k_f_save[17] = 1e-06 * 4.82e+13*exp(-4001.01/tc[1]);
-        k_f_save[18] = 1e-06 * 9.55e+06*exp(2*tc[0]-1997.99/tc[1]);
+        k_f_save[12] = 1e-06 * 2.89e+13*exp(+250.126*invT);
+        k_f_save[13] = 1e-06 * 4.2e+14*exp(-6030.2*invT);
+        k_f_save[14] = 1e-06 * 1.3e+11*exp(+819.98*invT);
+        k_f_save[15] = 1 * 2.951e+14*exp(-24373.4*invT);
+        k_f_save[16] = 1e-06 * 2.41e+13*exp(-1997.99*invT);
+        k_f_save[17] = 1e-06 * 4.82e+13*exp(-4001.01*invT);
+        k_f_save[18] = 1e-06 * 9.55e+06*exp(2*tc[0]-1997.99*invT);
         k_f_save[19] = 1e-06 * 1e+12;
-        k_f_save[20] = 1e-06 * 5.8e+14*exp(-4809.76/tc[1]);
+        k_f_save[20] = 1e-06 * 5.8e+14*exp(-4809.76*invT);
 
         Kc_save[0] = exp((g_RT[3] + g_RT[1]) - (g_RT[4] + g_RT[5]));
         Kc_save[1] = exp((g_RT[4] + g_RT[0]) - (g_RT[3] + g_RT[5]));
@@ -2649,9 +2653,7 @@ void productionRate(double * wdot, double * sc, double T)
         Kc_save[18] = exp((g_RT[7] + g_RT[4]) - (g_RT[5] + g_RT[6]));
         Kc_save[19] = exp((g_RT[7] + g_RT[5]) - (g_RT[6] + g_RT[2]));
         Kc_save[20] = exp((g_RT[7] + g_RT[5]) - (g_RT[6] + g_RT[2]));
-#ifndef BL_USE_OMP
     }
-#endif
 
     /*reaction 1: H + O2 <=> O + OH */
     phi_f = sc[3]*sc[1];
@@ -2769,7 +2771,7 @@ void productionRate(double * wdot, double * sc, double T)
     phi_f = sc[3]*sc[1];
     alpha = mixture + sc[0] + 10*sc[2] + -0.22*sc[1];
     k_f = k_f_save[8];
-    redP = 1e-12 * alpha / k_f * 6.366e+20*exp(-1.72*tc[0]-264.117/tc[1]);
+    redP = 1e-12 * alpha / k_f * 6.366e+20*exp(-1.72*tc[0]-264.117*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.2*exp(T/-1e-30))+ (0.8*exp(T/-1e+30)));
@@ -2877,7 +2879,7 @@ void productionRate(double * wdot, double * sc, double T)
     phi_f = sc[7];
     alpha = mixture + 1.5*sc[0] + 11*sc[2];
     k_f = k_f_save[15];
-    redP = 1e-6 * alpha / k_f * 1.202e+17*exp(-22898.8/tc[1]);
+    redP = 1e-6 * alpha / k_f * 1.202e+17*exp(-22898.8*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.5*exp(T/-1e-30))+ (0.5*exp(T/-1e+30)));
@@ -3330,7 +3332,7 @@ void equilibriumConstants(double *kc, double * g_RT, double T)
 void gibbs(double * species, double * tc)
 {
     /*temperature */
-    double T = tc[1];
+    double T = tc[1], invT = 1.0 / T;
 
 #ifndef BL_USE_OMP
     static double T_save = -1, species_save[9];
@@ -3347,7 +3349,7 @@ void gibbs(double * species, double * tc)
     if (T < 1000) {
         /*species 0: H2 */
         species[0] =
-            -1.01252087e+03 / tc[1]
+            -1.01252087e+03 * invT
             +6.59221840e+00
             -3.29812431e+00 * tc[0]
             -4.12472087e-04 * tc[1]
@@ -3356,7 +3358,7 @@ void gibbs(double * species, double * tc)
             -2.06743612e-14 * tc[4];
         /*species 1: O2 */
         species[1] =
-            -1.00524902e+03 / tc[1]
+            -1.00524902e+03 * invT
             -2.82180119e+00
             -3.21293640e+00 * tc[0]
             -5.63743175e-04 * tc[1]
@@ -3365,7 +3367,7 @@ void gibbs(double * species, double * tc)
             +4.38427696e-14 * tc[4];
         /*species 2: H2O */
         species[2] =
-            -3.02081133e+04 / tc[1]
+            -3.02081133e+04 * invT
             +7.96609640e-01
             -3.38684249e+00 * tc[0]
             -1.73749123e-03 * tc[1]
@@ -3374,7 +3376,7 @@ void gibbs(double * species, double * tc)
             +1.25329424e-13 * tc[4];
         /*species 3: H */
         species[3] =
-            +2.54716270e+04 / tc[1]
+            +2.54716270e+04 * invT
             +2.96011761e+00
             -2.50000000e+00 * tc[0]
             -0.00000000e+00 * tc[1]
@@ -3383,7 +3385,7 @@ void gibbs(double * species, double * tc)
             -0.00000000e+00 * tc[4];
         /*species 4: O */
         species[4] =
-            +2.91476445e+04 / tc[1]
+            +2.91476445e+04 * invT
             -1.75662000e-02
             -2.94642878e+00 * tc[0]
             +8.19083245e-04 * tc[1]
@@ -3392,7 +3394,7 @@ void gibbs(double * species, double * tc)
             -1.94534818e-14 * tc[4];
         /*species 5: OH */
         species[5] =
-            +3.34630913e+03 / tc[1]
+            +3.34630913e+03 * invT
             +4.81573857e+00
             -4.12530561e+00 * tc[0]
             +1.61272470e-03 * tc[1]
@@ -3401,7 +3403,7 @@ void gibbs(double * species, double * tc)
             -1.03118689e-13 * tc[4];
         /*species 6: HO2 */
         species[6] =
-            +2.94808040e+02 / tc[1]
+            +2.94808040e+02 * invT
             +5.85135560e-01
             -4.30179801e+00 * tc[0]
             +2.37456025e-03 * tc[1]
@@ -3410,7 +3412,7 @@ void gibbs(double * species, double * tc)
             -4.64612562e-13 * tc[4];
         /*species 7: H2O2 */
         species[7] =
-            -1.76631465e+04 / tc[1]
+            -1.76631465e+04 * invT
             -3.39660955e+00
             -3.38875365e+00 * tc[0]
             -3.28461290e-03 * tc[1]
@@ -3419,7 +3421,7 @@ void gibbs(double * species, double * tc)
             -1.23575738e-13 * tc[4];
         /*species 8: N2 */
         species[8] =
-            -1.02090000e+03 / tc[1]
+            -1.02090000e+03 * invT
             -6.51695000e-01
             -3.29867700e+00 * tc[0]
             -7.04120000e-04 * tc[1]
@@ -3429,7 +3431,7 @@ void gibbs(double * species, double * tc)
     } else {
         /*species 0: H2 */
         species[0] =
-            -8.35033997e+02 / tc[1]
+            -8.35033997e+02 * invT
             +4.34653354e+00
             -2.99142337e+00 * tc[0]
             -3.50032206e-04 * tc[1]
@@ -3438,7 +3440,7 @@ void gibbs(double * species, double * tc)
             -7.91375895e-17 * tc[4];
         /*species 1: O2 */
         species[1] =
-            -1.23393018e+03 / tc[1]
+            -1.23393018e+03 * invT
             +5.08412600e-01
             -3.69757819e+00 * tc[0]
             -3.06759845e-04 * tc[1]
@@ -3447,7 +3449,7 @@ void gibbs(double * species, double * tc)
             +5.68217655e-17 * tc[4];
         /*species 2: H2O */
         species[2] =
-            -2.98992090e+04 / tc[1]
+            -2.98992090e+04 * invT
             -4.19067120e+00
             -2.67214561e+00 * tc[0]
             -1.52814644e-03 * tc[1]
@@ -3456,7 +3458,7 @@ void gibbs(double * species, double * tc)
             +3.19580894e-16 * tc[4];
         /*species 3: H */
         species[3] =
-            +2.54716270e+04 / tc[1]
+            +2.54716270e+04 * invT
             +2.96011764e+00
             -2.50000000e+00 * tc[0]
             -0.00000000e+00 * tc[1]
@@ -3465,7 +3467,7 @@ void gibbs(double * species, double * tc)
             -0.00000000e+00 * tc[4];
         /*species 4: O */
         species[4] =
-            +2.92308027e+04 / tc[1]
+            +2.92308027e+04 * invT
             -2.37824845e+00
             -2.54205966e+00 * tc[0]
             +1.37753096e-05 * tc[1]
@@ -3474,7 +3476,7 @@ void gibbs(double * species, double * tc)
             +2.18402575e-17 * tc[4];
         /*species 5: OH */
         species[5] =
-            +3.68362875e+03 / tc[1]
+            +3.68362875e+03 * invT
             -2.83691187e+00
             -2.86472886e+00 * tc[0]
             -5.28252240e-04 * tc[1]
@@ -3483,7 +3485,7 @@ void gibbs(double * species, double * tc)
             +6.65979380e-17 * tc[4];
         /*species 6: HO2 */
         species[6] =
-            +1.11856713e+02 / tc[1]
+            +1.11856713e+02 * invT
             +2.32108750e-01
             -4.01721090e+00 * tc[0]
             -1.11991006e-03 * tc[1]
@@ -3492,7 +3494,7 @@ void gibbs(double * species, double * tc)
             +5.39542675e-16 * tc[4];
         /*species 7: H2O2 */
         species[7] =
-            -1.80069609e+04 / tc[1]
+            -1.80069609e+04 * invT
             +4.07202989e+00
             -4.57316685e+00 * tc[0]
             -2.16806820e-03 * tc[1]
@@ -3501,7 +3503,7 @@ void gibbs(double * species, double * tc)
             +7.15826780e-16 * tc[4];
         /*species 8: N2 */
         species[8] =
-            -9.22797700e+02 / tc[1]
+            -9.22797700e+02 * invT
             -3.05388800e+00
             -2.92664000e+00 * tc[0]
             -7.43988500e-04 * tc[1]
@@ -4145,7 +4147,7 @@ void speciesInternalEnergy(double * species, double * tc)
 void speciesEnthalpy(double * species, double * tc)
 {
     /*temperature */
-    double T = tc[1];
+    double T = tc[1], invT = 1.0 / T;
 
 #ifndef BL_USE_OMP
     static double T_save = -1, species_save[9];
@@ -4167,7 +4169,7 @@ void speciesEnthalpy(double * species, double * tc)
             -2.71433843e-07 * tc[2]
             -2.36885858e-11 * tc[3]
             +8.26974448e-14 * tc[4]
-            -1.01252087e+03 / tc[1];
+            -1.01252087e+03 * invT;
         /*species 1: O2 */
         species[1] =
             +3.21293640e+00
@@ -4175,7 +4177,7 @@ void speciesEnthalpy(double * species, double * tc)
             -1.91871682e-07 * tc[2]
             +3.28469308e-10 * tc[3]
             -1.75371078e-13 * tc[4]
-            -1.00524902e+03 / tc[1];
+            -1.00524902e+03 * invT;
         /*species 2: H2O */
         species[2] =
             +3.38684249e+00
@@ -4183,7 +4185,7 @@ void speciesEnthalpy(double * species, double * tc)
             -2.11823211e-06 * tc[2]
             +1.74214532e-09 * tc[3]
             -5.01317694e-13 * tc[4]
-            -3.02081133e+04 / tc[1];
+            -3.02081133e+04 * invT;
         /*species 3: H */
         species[3] =
             +2.50000000e+00
@@ -4191,7 +4193,7 @@ void speciesEnthalpy(double * species, double * tc)
             +0.00000000e+00 * tc[2]
             +0.00000000e+00 * tc[3]
             +0.00000000e+00 * tc[4]
-            +2.54716270e+04 / tc[1];
+            +2.54716270e+04 * invT;
         /*species 4: O */
         species[4] =
             +2.94642878e+00
@@ -4199,7 +4201,7 @@ void speciesEnthalpy(double * species, double * tc)
             +8.07010567e-07 * tc[2]
             -4.00710797e-10 * tc[3]
             +7.78139272e-14 * tc[4]
-            +2.91476445e+04 / tc[1];
+            +2.91476445e+04 * invT;
         /*species 5: OH */
         species[5] =
             +4.12530561e+00
@@ -4207,7 +4209,7 @@ void speciesEnthalpy(double * species, double * tc)
             +2.17588230e-06 * tc[2]
             -1.44963411e-09 * tc[3]
             +4.12474758e-13 * tc[4]
-            +3.34630913e+03 / tc[1];
+            +3.34630913e+03 * invT;
         /*species 6: HO2 */
         species[6] =
             +4.30179801e+00
@@ -4215,7 +4217,7 @@ void speciesEnthalpy(double * species, double * tc)
             +7.05276303e-06 * tc[2]
             -6.06909735e-09 * tc[3]
             +1.85845025e-12 * tc[4]
-            +2.94808040e+02 / tc[1];
+            +2.94808040e+02 * invT;
         /*species 7: H2O2 */
         species[7] =
             +3.38875365e+00
@@ -4223,7 +4225,7 @@ void speciesEnthalpy(double * species, double * tc)
             -4.95004193e-08 * tc[2]
             -1.15645138e-09 * tc[3]
             +4.94302950e-13 * tc[4]
-            -1.76631465e+04 / tc[1];
+            -1.76631465e+04 * invT;
         /*species 8: N2 */
         species[8] =
             +3.29867700e+00
@@ -4231,7 +4233,7 @@ void speciesEnthalpy(double * species, double * tc)
             -1.32107400e-06 * tc[2]
             +1.41037875e-09 * tc[3]
             -4.88971000e-13 * tc[4]
-            -1.02090000e+03 / tc[1];
+            -1.02090000e+03 * invT;
     } else {
         /*species 0: H2 */
         species[0] =
@@ -4240,7 +4242,7 @@ void speciesEnthalpy(double * species, double * tc)
             -1.87794290e-08 * tc[2]
             -2.30789455e-12 * tc[3]
             +3.16550358e-16 * tc[4]
-            -8.35033997e+02 / tc[1];
+            -8.35033997e+02 * invT;
         /*species 1: O2 */
         species[1] =
             +3.69757819e+00
@@ -4248,7 +4250,7 @@ void speciesEnthalpy(double * species, double * tc)
             -4.19613997e-08 * tc[2]
             +4.43820370e-12 * tc[3]
             -2.27287062e-16 * tc[4]
-            -1.23393018e+03 / tc[1];
+            -1.23393018e+03 * invT;
         /*species 2: H2O */
         species[2] =
             +2.67214561e+00
@@ -4256,7 +4258,7 @@ void speciesEnthalpy(double * species, double * tc)
             -2.91008670e-07 * tc[2]
             +3.00249098e-11 * tc[3]
             -1.27832357e-15 * tc[4]
-            -2.98992090e+04 / tc[1];
+            -2.98992090e+04 * invT;
         /*species 3: H */
         species[3] =
             +2.50000000e+00
@@ -4264,7 +4266,7 @@ void speciesEnthalpy(double * species, double * tc)
             +0.00000000e+00 * tc[2]
             +0.00000000e+00 * tc[3]
             +0.00000000e+00 * tc[4]
-            +2.54716270e+04 / tc[1];
+            +2.54716270e+04 * invT;
         /*species 4: O */
         species[4] =
             +2.54205966e+00
@@ -4272,7 +4274,7 @@ void speciesEnthalpy(double * species, double * tc)
             -1.03426778e-09 * tc[2]
             +1.13776685e-12 * tc[3]
             -8.73610300e-17 * tc[4]
-            +2.92308027e+04 / tc[1];
+            +2.92308027e+04 * invT;
         /*species 5: OH */
         species[5] =
             +2.86472886e+00
@@ -4280,7 +4282,7 @@ void speciesEnthalpy(double * species, double * tc)
             -8.63609193e-08 * tc[2]
             +7.63046685e-12 * tc[3]
             -2.66391752e-16 * tc[4]
-            +3.68362875e+03 / tc[1];
+            +3.68362875e+03 * invT;
         /*species 6: HO2 */
         species[6] =
             +4.01721090e+00
@@ -4288,7 +4290,7 @@ void speciesEnthalpy(double * species, double * tc)
             -2.11219383e-07 * tc[2]
             +2.85615925e-11 * tc[3]
             -2.15817070e-15 * tc[4]
-            +1.11856713e+02 / tc[1];
+            +1.11856713e+02 * invT;
         /*species 7: H2O2 */
         species[7] =
             +4.57316685e+00
@@ -4296,7 +4298,7 @@ void speciesEnthalpy(double * species, double * tc)
             -4.91562940e-07 * tc[2]
             +5.87225893e-11 * tc[3]
             -2.86330712e-15 * tc[4]
-            -1.80069609e+04 / tc[1];
+            -1.80069609e+04 * invT;
         /*species 8: N2 */
         species[8] =
             +2.92664000e+00
@@ -4304,7 +4306,7 @@ void speciesEnthalpy(double * species, double * tc)
             -1.89492033e-07 * tc[2]
             +2.52426000e-11 * tc[3]
             -1.35067020e-15 * tc[4]
-            -9.22797700e+02 / tc[1];
+            -9.22797700e+02 * invT;
     }
 #ifndef BL_USE_OMP
     T_save = T;
