@@ -5,8 +5,12 @@ c     Chem species, etc
       parameter (maxreac = 100, maxspec=30, maxelts=3,
      &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
 
-      integer iH2, iO2, iCH4, iN2, specNameLen
-      common / speci / iH2, iO2, iCH4, iN2, specNameLen
+      integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
+     &     iN2, specNameLen, nscal, Density, Temp, RhoH, 
+     &     RhoRT, FirstSpec, LastSpec
+      common / speci / Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
+     &     iN2, specNameLen, nscal, Density, Temp, RhoH, 
+     &     RhoRT, FirstSpec, LastSpec
 
       character*(maxspnml) specNames(maxspec)
       common / specc / specNames
@@ -21,10 +25,10 @@ c     EGLib stuff
       parameter (egi = maxspec)
       parameter (LLINKMC = 56)
       
-      integer traninit, EGIWRK(egi), Nelt, Nspec, Nreac, Nfit,
-     &     LeEQ1, max_vode_subcycles, verbose_vode
-      common / trani / EGIWRK, traninit, Nelt, Nspec, Nreac, Nfit,
-     &     LeEQ1, max_vode_subcycles, verbose_vode
+      integer traninit, EGIWRK(egi), LeEQ1,
+     &     max_vode_subcycles, verbose_vode
+      common / trani / traninit, EGIWRK, LeEQ1,
+     &     max_vode_subcycles, verbose_vode
 
       double precision EGRWRK(egr), invmwt(maxspec), mwt(maxspec),
      &     P1ATM, TMIN_TRANS, Pr, Sc, thickFacTR, thickFacCH,
@@ -40,6 +44,12 @@ c     DVODE driver stuff
       integer nchemdiag
       common / dvdi / nchemdiag
 
-      double precision Pcgs_dvd
-      common / dvdr / Pcgs_dvd
 
+c     LMC alg stuff
+      integer probtype
+      common / lmci / probtype
+
+      double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),
+     &     Y_bc(maxspec,0:1), h_bc(0:1), u_bc(0:1), flame_offset
+      common / lmcr / dpdt_factor, Pcgs, T_bc, rho_bc,
+     &     Y_bc, h_bc, u_bc, flame_offset

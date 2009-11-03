@@ -2,12 +2,15 @@
 CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
 fCOMP := g77
 XTRALIBS :=  -lm -lg2c
-EXEname := driver.exe
+EXEname := lmc.exe
 
-f_sources += CD.f vode.f EGini.f EGSlib.f
+f_sources += lmc.f CD.f vode.f EGini.f EGSlib.f prob.f \
+             calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f
+
 f_includes += spec.h
-C_sources += CDc.cpp
+C_sources += main.cpp
 
+f_sources += H-flame_0370.f
 
 #
 # Choose reaction mechanism
@@ -77,7 +80,7 @@ clean:
 	${fCOMP} -c -o $*.o $^
 
 
-MySrcDirs += . ..
+MySrcDirs += . .. ../PMFfiles
 vpath %.cpp $(MySrcDirs)
 vpath %.h   $(MySrcDirs)
 vpath %.f   $(MySrcDirs)

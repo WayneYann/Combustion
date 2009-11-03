@@ -11,7 +11,7 @@
       data thickFacCH / 1.d0 /
       data max_vode_subcycles / 15000 /
       data min_vode_timestep / 1.e-14 /
-      data Pcgs_dvd / -1 /
+      data Pcgs / -1 /
       data iH2  / -1 /
       data iO2  / -1 /
       data iN2  / -1 /
@@ -20,65 +20,81 @@
 
 
 
-      subroutine calcDiffusivity(T, Y, Patm, rhoD, kappa, mu)
+      subroutine calc_diffusivities(nx, scal, beta, mu)
       implicit none
       include 'spec.h'
-      double precision T, Y(*), Patm
-      double precision rhoD(*), kappa, mu
+      integer nx
+      double precision scal(-1:nx,*)
+      double precision beta(-1:nx,*)
+      double precision mu(-1:nx)
 
-      double precision Ptmp, Dt(maxspec), CPMS(maxspec)
-      double precision RHO, Tt, Wavg
+      double precision Dt(maxspec), CPMS(maxspec), Y(maxspec)
+      double precision Tt, Wavg
       double precision X(maxspec), alpha, l1, l2, cpmix, RWRK
-      integer n, IWRK
+      integer n, i, IWRK
+
+c     Ensure chem/tran initialized
+      if (traninit.lt.0) call initchem()
 
       if (LeEQ1 .eq. 0) then
          
-c     Ensure chem/tran initialized
-         if (traninit.lt.0) call initchem()
-         
-         Ptmp = Patm * P1ATM
-         Tt = MAX(T,TMIN_TRANS) 
-         
-         CALL CKMMWY(Y,IWRK,RWRK,Wavg)
-         CALL CKCPMS(Tt,IWRK,RWRK,CPMS)
-         CALL CKYTX(Y,IWRK,RWRK,X)
-         CALL EGSPAR(Tt,X,Y,CPMS,EGRWRK,EGIWRK)
-         CALL EGSV1(Ptmp,Tt,Y,Wavg,EGRWRK,Dt)
-         CALL CKRHOY(Ptmp,Tt,Y,IWRK,RWRK,RHO)
-
-         do n=1,Nspec
-            rhoD(n) = RHO * Wavg * invmwt(n) * Dt(n)
-         end do
-         
-         alpha = 1.0D0
-         CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
-         alpha = -1.0D0
-         CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
-         kappa = .5 * (l1 + l2)
-         
-         CALL EGSE3(Tt, Y, EGRWRK, mu)
-
-         
-         if (thickFacTR.ne.1.d0) then
-            
+         do i=-1, nx         
+            Tt = MAX(scal(i,Temp),TMIN_TRANS) 
             do n=1,Nspec
-               rhoD(n) = rhoD(n) * thickFacTR
-            end do
-            kappa = kappa * thickFacTR
+               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
+            enddo
             
-         endif
+            CALL CKMMWY(Y,IWRK,RWRK,Wavg)
+            CALL CKCPMS(Tt,IWRK,RWRK,CPMS)
+            CALL CKYTX(Y,IWRK,RWRK,X)
+            CALL EGSPAR(Tt,X,Y,CPMS,EGRWRK,EGIWRK)
+            CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
+c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
+
+            do n=1,Nspec
+               beta(i,FirstSpec+n-1)
+     &              = scal(i,Density) * Wavg * invmwt(n) * Dt(n)
+            end do
+         
+            alpha = 1.0D0
+            CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
+            alpha = -1.0D0
+            CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
+            beta(i,Temp) = .5 * (l1 + l2)
+            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
+            beta(i,RhoH) = beta(i,Temp) / CPMIX
+            
+            CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
+         enddo
          
       else
 
-         mu = 1.d1 * 1.85e-5*(T/298.0)**.7
-         do n=1,Nspec
-            rhoD(n) = mu * thickFacTR / Sc
+         do i=-1, nx
+            mu(i) = 1.d1 * 1.85e-5*(scal(i,Temp)/298.0)**.7
+            do n=1,Nspec
+               beta(i,FirstSpec+n-1) = mu(i) / Sc
+            enddo
+            
+            do n=1,Nspec
+               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
+            enddo
+            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
+            beta(i,RhoH) = beta(i,FirstSpec) / Pr
+            beta(i,Temp) = beta(i,RhoH) * CPMIX
          enddo
-         
-         CALL CKCPBS(T,Y,IWRK,RWRK,CPMIX)
-         kappa = rhoD(1) * CPMIX * thickFacTR / Pr
-
       endif
+
+
+      if (thickFacTR.ne.1.d0) then
+         do i=-1, nx
+            do n=1,Nspec
+               beta(i,FirstSpec+n-1) = beta(i,FirstSpec+n-1)*thickFacTR
+            end do
+            beta(i,Temp) = beta(i,Temp) * thickFacTR
+            beta(i,RhoH) = beta(i,RhoH) * thickFacTR
+         enddo
+      endif
+
       end
 
       subroutine initchem
@@ -216,13 +232,12 @@ C-----------------------------------------------------------------------
       double precision TIME, Z(maxspec+1), ZP(maxspec+1), RPAR(*)
       integer N, IPAR(*)
       
-      double precision RHO, CPB, SUM, H, WDOT, WT, THFAC, Pcgs
+      double precision RHO, CPB, SUM, H, WDOT, WT, THFAC
       double precision HK(maxspec), WDOTK(maxspec), CONC(maxspec), RWRK
       integer K, IWRK
 
-      Pcgs = Pcgs_dvd
       if (Pcgs.lt.0.d0) then
-         print *,'conpFY: Must set P(cgs) before calling vode'
+         print *,'conpFY: Must set Pcgs before calling vode'
          stop
       endif
 
@@ -304,10 +319,6 @@ c     IOPT=1 parameter settings for VODE
       DVIWRK(6) = max_vode_subcycles
 
       if (do_diag.eq.1) nsubchem = nchemdiag
-c
-c     Set pressure in area accessible by conpFY
-c
-      Pcgs_dvd = Patm * P1atm
       
       MF = 22
       ATOL(1) = ATOLEPS
@@ -343,7 +354,7 @@ c     Always form Jacobian to start
 
       if (do_diag.eq.1) then
          FuncCount = 0
-         CALL CKYTCP(Pcgs_dvd,Z(1),Z(2),IWRK,RWRK,C)
+         CALL CKYTCP(Pcgs,Z(1),Z(2),IWRK,RWRK,C)
          CALL CKQC(Z(1),C,IWRK,RWRK,Q)
          do m=1,Nreac
             diag(m) = diag(m) + 0.5*dtloc*Q(m)
@@ -368,7 +379,7 @@ c     Always form Jacobian to start
          TT1 = TT2
 
          if (do_diag.eq.1) then
-            CALL CKYTCP(Pcgs_dvd,Z(1),Z(2),IWRK,RWRK,C)
+            CALL CKYTCP(Pcgs,Z(1),Z(2),IWRK,RWRK,C)
             CALL CKQC(Z(1),C,IWRK,RWRK,Q)
             do m=1,Nreac
                diag(m) = diag(m) + weight*dtloc*Q(m)
@@ -409,14 +420,14 @@ c     Always form Jacobian to start
       double precision TMIN,TMAX,errMAX
       integer NiterMAX,Niter,n,NiterDAMP
       parameter (TMIN=250, TMAX=5000)
-      double precision  T0,cp,cv,dH,temp,RoverWbar,Wbar,RU,RUC
+      double precision  T0,cp,cv,dH,Tt,RoverWbar,Wbar,RU,RUC
       double precision res(0:NiterMAX-1),dT, Htarg
       logical out_of_bounds, converged, soln_bad, stalled
       double precision h300,cp300,h6500,cp6500
       integer ihitlo,ihithi,j,IWRK
       double precision RWRK
 
-      out_of_bounds(temp) = (temp.lt.TMIN) .or. (temp.gt.TMAX)
+      out_of_bounds(Tt) = (Tt.lt.TMIN) .or. (Tt.gt.TMAX)
 
       NiterDAMP = NiterMAX
       if ((T.GE.TMIN).and.(T.LE.TMAX)) then
