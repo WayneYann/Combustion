@@ -44,6 +44,8 @@ c     DVODE driver stuff
       integer nchemdiag
       common / dvdi / nchemdiag
 
+      double precision c_0(maxspec+1), c_1(maxspec+1)
+      common / dvdr / c_0, c_1
 
 c     LMC alg stuff
       integer probtype

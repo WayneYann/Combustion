@@ -232,8 +232,8 @@ C-----------------------------------------------------------------------
       double precision TIME, Z(maxspec+1), ZP(maxspec+1), RPAR(*)
       integer N, IPAR(*)
       
-      double precision RHO, CPB, SUM, H, WDOT, WT, THFAC
-      double precision HK(maxspec), WDOTK(maxspec), CONC(maxspec), RWRK
+      double precision RHO, CPB, SUM, H, WDOT, WT, THFAC, Y(maxspec)
+      double precision HK(maxspec), WDOTK(maxspec), C(maxspec), RWRK
       integer K, IWRK
 
       if (Pcgs.lt.0.d0) then
@@ -241,10 +241,16 @@ C-----------------------------------------------------------------------
          stop
       endif
 
-      call CKRHOY(Pcgs,Z(1),Z(2),IWRK,RWRK,RHO)
-      call CKCPBS(Z(1),Z(2),IWRK,RWRK,CPB)
-      call CKYTCP(Pcgs,Z(1),Z(2),IWRK,RWRK,CONC)
-      call CKWC(Z(1), CONC, IWRK, RWRK, WDOTK)
+      RHO = 0.d0
+      do n=1,Nspec
+         RHO = RHO + Z(1+n)
+      enddo
+      do n=1,Nspec
+         Y(n) = Z(1+n)/RHO
+         C(n) = Z(1+n)*invmwt(n)
+      enddo
+      call CKCPBS(Z(1),Y,IWRK,RWRK,CPB)
+      call CKWC(Z(1), C, IWRK, RWRK, WDOTK)
       call CKHMS(Z(1), IWRK, RWRK, HK)
 
       THFAC = 1.d0 / thickFacCH
@@ -253,10 +259,10 @@ C-----------------------------------------------------------------------
          H    = HK(K)
          WDOT = WDOTK(K) * THFAC
          WT   = mwt(K)
-         ZP(K+1) = WDOT * WT / RHO
-         SUM = SUM + H * WDOT * WT
+         ZP(K+1) = WDOT * WT  + c_0(1+K) + c_1(1+K)*TIME
+         SUM = SUM + H * ZP(K+1)
       END DO
-      ZP(1) = -SUM / (RHO*CPB)
+      ZP(1) = (c_0(1)+c_1(1)*TIME -SUM) / (RHO*CPB)
       END
 
 
@@ -271,7 +277,7 @@ C-----------------------------------------------------------------------
 
 
 
-      subroutine chemsolve(Ynew, Tnew, Yold, Told, FuncCount, Patm, dt,
+      subroutine chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &     diag, do_diag)
       implicit none
       include 'spec.h'
@@ -282,15 +288,15 @@ C-----------------------------------------------------------------------
       save   /VHACK/
 
       integer do_diag
-      double precision Yold(*), Ynew(*), Told, Tnew, FuncCount
-      double precision Patm, dt, diag(*)
+      double precision RYold(*), RYnew(*), Told, Tnew, FuncCount
+      double precision dt, diag(*)
    
       integer NEQ, ITOL, IOPT, ITASK, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)
       double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
       parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       external conpFY, conpJY, open_vode_failure_file
-      integer m, MF, ISTATE, lout
+      integer n, MF, ISTATE, lout
       character*(maxspnml) name
 
       integer nsubchem, nsub, node
@@ -335,18 +341,9 @@ c     IOPT=1 parameter settings for VODE
       NEQ = Nspec + 1
 
 
-      sum = 0.d0
-      do m=1,Nspec
-         Ytemp(m) = MAX(Yold(m),0.d0)
-         sum = sum+Ytemp(m)
-      end do
-      if (iN2 .gt. 0) then
-         Ytemp(iN2) = Ytemp(iN2)+1.d0-sum
-      endif
-
       Z(1) = Told
-      do m=1,Nspec
-         Z(1+m) = Ytemp(m)
+      do n=1,Nspec
+         Z(1+n) = RYold(n)
       end do
 
 c     Always form Jacobian to start
@@ -354,10 +351,12 @@ c     Always form Jacobian to start
 
       if (do_diag.eq.1) then
          FuncCount = 0
-         CALL CKYTCP(Pcgs,Z(1),Z(2),IWRK,RWRK,C)
+         do n=1,Nspec
+            C(n) = Z(n+1)*invmwt(n)
+         enddo
          CALL CKQC(Z(1),C,IWRK,RWRK,Q)
-         do m=1,Nreac
-            diag(m) = diag(m) + 0.5*dtloc*Q(m)
+         do n=1,Nreac
+            diag(n) = diag(n) + 0.5*dtloc*Q(n)
          enddo
       endif
 
@@ -379,10 +378,12 @@ c     Always form Jacobian to start
          TT1 = TT2
 
          if (do_diag.eq.1) then
-            CALL CKYTCP(Pcgs,Z(1),Z(2),IWRK,RWRK,C)
+            do n=1,Nspec
+               C(n) = Z(n+1)*invmwt(n)
+            enddo
             CALL CKQC(Z(1),C,IWRK,RWRK,Q)
-            do m=1,Nreac
-               diag(m) = diag(m) + weight*dtloc*Q(m)
+            do n=1,Nreac
+               diag(n) = diag(n) + weight*dtloc*Q(n)
             enddo
             FuncCount = FuncCount + DVIWRK(11)
          else
@@ -405,8 +406,8 @@ c     Always form Jacobian to start
          end if
                
          Tnew = Z(1)
-         do m=1,Nspec
-            Ynew(m) = Yold(m)+Z(m+1)-Ytemp(m)
+         do n=1,Nspec
+            RYnew(n) = Z(n+1)
          end do
 
       enddo

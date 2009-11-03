@@ -1,14 +1,8 @@
       subroutine est_dt(nx,vel,scal,divu,dsdt,cfl,umax,dx,dt)
-
       implicit none
-
-      include 'nums.fi'
-      include 'sndata.fi'
-  
-c     Quantities passed in/out.
       integer nx
       real*8    vel(-1:nx)
-      real*8   scal(-1:nx,nscal)
+      real*8   scal(-1:nx,*)
       real*8   divu(0 :nx-1)
       real*8   dsdt(0 :nx-1)
       real*8  cfl
@@ -16,7 +10,6 @@ c     Quantities passed in/out.
       real*8  dx
       real*8  dt
 
-c     Local variables
       real*8  small
       real*8  dt_start
       real*8  dt_divu
@@ -43,7 +36,7 @@ c     Local variables
 
       call est_divu_dt(nx,divu,dsdt,scal,dx,dt_divu)
 
-      print *,'ESTDT: LEV = 0 UMAX = ',umax
+      print *,'ESTDT: UMAX = ',umax
 
       print *,'DT = MIN(',dt,dt_divu,')'
 
@@ -52,21 +45,15 @@ c     Local variables
       end
 
       subroutine est_divu_dt(nx,divu,dsdt,scal,dx,dt)
-
       implicit none
-
-      include 'nums.fi'
-      include 'sndata.fi'
-  
-c     Quantities passed in/out.
+      include 'spec.h'
       integer nx
       real*8   divu(0 :nx-1)
       real*8   dsdt(0 :nx-1)
-      real*8   scal(-1:nx  ,nscal)
+      real*8   scal(-1:nx  ,*)
       real*8  dx
       real*8  dt
 
-c     Local variables
       real*8  rho
       real*8  dtcell,dtcell2
       real*8  rhoij,rhominij

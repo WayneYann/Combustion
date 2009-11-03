@@ -71,7 +71,7 @@ c     Set linear source terms in common for ode integrators access
 
       enddo
 
-c     Set outflow condition.
+c     Set outflow condition....HACK, we can do better than this.
       do n = 1,nscal
          scal_new(nx,n) = scal_new(nx-1,n)
       enddo
