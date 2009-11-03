@@ -1,172 +1,161 @@
-        subroutine advance(nx,vel_old,vel_new,scal_old,scal_new,
-     $                     Ydot_old,Ydot_new,press_old,press_new,
-     $                     divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                     intra,dx,dt,time)
+      subroutine advance(nx,vel_old,vel_new,scal_old,scal_new,
+     $                   Ydot_old,Ydot_new,press_old,press_new,
+     $                   divu_old,divu_new,dsdt,beta_old,beta_new,
+     $                   intra,dx,dt,time)
 
-        implicit none
-
-        include 'nums.fi'
-        include 'sndata.fi'
-        include 'probdata.fi'
-
-c       Quantities passed in
-        integer nx
-        real*8   vel_new(-1:nx  )
-        real*8   vel_old(-1:nx  )
-        real*8  scal_new(-1:nx  ,nscal)
-        real*8  scal_old(-1:nx  ,nscal)
-        real*8 press_new(0 :nx  )
-        real*8 press_old(0 :nx  )
-        real*8  Ydot_new(0 :nx-1,nspec)
-        real*8  Ydot_old(0 :nx-1,nspec)
-        real*8    macvel(0 :nx  )
-        real*8   veledge(0 :nx  ,nscal)
-        real*8      aofs(0 :nx-1,nscal)
-        real*8  divu_old(0 :nx-1)
-        real*8  divu_new(0 :nx-1)
-        real*8  divu_tmp(0 :nx-1)
-        real*8  beta_old(-1:nx,nscal)
-        real*8  beta_new(-1:nx,nscal)
-        real*8      dsdt(0 :nx-1)
-        real*8        gp(0 :nx-1)
-        real*8   rhohalf(0 :nx-1)
-        real*8    tforce(0 :nx-1,nscal)
-        real*8      visc(0 :nx-1)
-        real*8     intra(0 :nx-1,nscal)
-        real*8        cp(0 :nx-1)
-        real*8 x
-        real*8 dx
-        real*8 dt
-        real*8 time
-        real*8 be_cn_theta
-
-c       New arrays for MISDC algorithm
-        real*8    diff_old(0 :nx-1,nscal)
-        real*8    diff_hat(0 :nx-1,nscal)
-        real*8    diff_new(0 :nx-1,nscal)
-        real*8   const_src(0 :nx-1,nscal)
-        real*8 lin_src_old(0 :nx-1,nscal)
-        real*8 lin_src_new(0 :nx-1,nscal)
-        real*8    scal_tmp(0 :nx-1,nscal)
-        real*8    sumh
-        integer misdc
-
-c       Local variables
-        integer i,n,ispec
-        integer iunit
-
-        real*8 divu_max
-        real*8    alpha(0:nx-1)
-        real*8      Rhs(0:nx-1)
-        real*8    rhort(-1:nx  )
-        real*8    Ydot_max
-
-        print *,'SuperNova::advance(): at start of time step'
-c
+      implicit none
+      include 'spec.h'
+      integer nx
+      real*8   vel_new(-1:nx  )
+      real*8   vel_old(-1:nx  )
+      real*8  scal_new(-1:nx  ,nscal)
+      real*8  scal_old(-1:nx  ,nscal)
+      real*8 press_new(0 :nx  )
+      real*8 press_old(0 :nx  )
+      real*8  Ydot_new(0 :nx-1,nspec)
+      real*8  Ydot_old(0 :nx-1,nspec)
+      real*8    macvel(0 :nx  )
+      real*8   veledge(0 :nx  ,nscal)
+      real*8      aofs(0 :nx-1,nscal)
+      real*8  divu_old(0 :nx-1)
+      real*8  divu_new(0 :nx-1)
+      real*8  divu_tmp(0 :nx-1)
+      real*8  beta_old(-1:nx,nscal)
+      real*8  beta_new(-1:nx,nscal)
+      real*8        mu(-1:nx)
+      real*8      dsdt(0 :nx-1)
+      real*8        gp(0 :nx-1)
+      real*8   rhohalf(0 :nx-1)
+      real*8    tforce(0 :nx-1,nscal)
+      real*8      visc(0 :nx-1)
+      real*8     intra(0 :nx-1,nscal)
+      real*8        cp(0 :nx-1)
+      real*8 x
+      real*8 dx
+      real*8 dt
+      real*8 time
+      real*8 be_cn_theta
+      
+      real*8    diff_old(0 :nx-1,nscal)
+      real*8    diff_hat(0 :nx-1,nscal)
+      real*8    diff_new(0 :nx-1,nscal)
+      real*8   const_src(0 :nx-1,nscal)
+      real*8 lin_src_old(0 :nx-1,nscal)
+      real*8 lin_src_new(0 :nx-1,nscal)
+      real*8    scal_tmp(0 :nx-1,nscal)
+      real*8    sumh
+      integer misdc
+      
+      integer i,n,ispec
+      integer iunit
+      
+      real*8 divu_max
+      real*8    alpha(0:nx-1)
+      real*8      Rhs(0:nx-1)
+      real*8    rhort(-1:nx  )
+      real*8    Ydot_max
+      
+      print *,'advance: at start of time step'
+c     
 c*****************************************************************
-c       Create MAC velocities.
+c     Create MAC velocities.
 c*****************************************************************
-c
+c     
+      
+      do i = 0,nx-1
+         gp(i) = (press_old(i+1) - press_old(i)) / dx
+      enddo
+      
+      call minmax_scal(nx,scal_old)
+      print *,'... predict edge velocities'
+      call pre_mac_predict(nx,vel_old,scal_old,gp,
+     $                     macvel,dx,dt)
+      
+      call compute_rhort(nx,scal_old,rhort)
 
-        do i = 0,nx-1
-          gp(i) = (press_old(i+1) - press_old(i)) / dx
-        enddo
+      do i = 0,nx-1
+         divu_tmp(i) = divu_old(i) + 0.5d0 * dt * dsdt(i)
+      enddo
+      divu_max = ABS(divu_tmp(0))
+      do i = 1,nx-1
+         divu_max = MAX(divu_max,ABS(divu_tmp(i)))
+      enddo
+      print *,'DIVU norm old = ',divu_max 
+      call add_dpdt(nx,rhort,divu_tmp,macvel,dx,dt)
+      divu_max = ABS(divu_tmp(0))
+      do i = 1,nx-1
+         divu_max = MAX(divu_max,ABS(divu_tmp(i)))
+      enddo
+      print *,'DIVU norm new = ',divu_max 
+      call macproj(nx,macvel,divu_tmp,dx)
 
-        call minmax_scal(nx,scal_old)
-        print *,'... predict edge velocities'
-        call pre_mac_predict(nx,vel_old,scal_old,gp,
-     $                       macvel,dx,dt)
-
-        call compute_rhort(nx,scal_old,rhort)
-
-        do i = 0,nx-1
-          divu_tmp(i) = divu_old(i) + 0.5d0 * dt * dsdt(i)
-        enddo
-        divu_max = abs(divu_tmp(0))
-        do i = 1,nx-1
-          divu_max = max(divu_max,abs(divu_tmp(i)))
-        enddo
-        print *,'DIVU norm old = ',divu_max 
-        call add_dpdt(nx,rhort,divu_tmp,macvel,dx,dt)
-        divu_max = abs(divu_tmp(0))
-        do i = 1,nx-1
-          divu_max = max(divu_max,abs(divu_tmp(i)))
-        enddo
-        print *,'DIVU norm new = ',divu_max 
-        call macproj(nx,macvel,divu_tmp,dx)
-
-c
-c*****************************************************************
-c       New MISDC algorithm
-c*****************************************************************
-c
-        do n = 1,nscal
+      do n = 1,nscal
          do i = 0,nx-1
-             tforce(i,n) = 0.d0
-c             intra(i,n) = 0.d0
-           diff_old(i,n) = 0.d0
-           diff_hat(i,n) = 0.d0
-           diff_new(i,n) = 0.d0
-           aofs(i,n)     = 0.d0
+            tforce(i,n) = 0.d0
+c           intra(i,n) = 0.d0
+            diff_old(i,n) = 0.d0
+            diff_hat(i,n) = 0.d0
+            diff_new(i,n) = 0.d0
+            aofs(i,n)     = 0.d0
          enddo
-        enddo
+      enddo
 c
 c*****************************************************************
-c
-        print *,'... creating the diffusive terms with old data'
-
-c       First create the del dot lambda grad H terms 
-        call calc_diffusivities(nx,scal_old,beta_old)
-        call rhoh_visc_terms(nx,scal_old,beta_old,visc,dx)
-        do i = 0,nx-1
-          diff_old(i,RhoH) = visc(i)
-        enddo
-
-        call compute_cp(nx,cp,scal_old)
-        do i = 0,nx-1
-          diff_old(i,Temp) = diff_old(i,RhoH) / 
-     $                       (cp(i)*scal_old(i,Density))
-        enddo
-
+c     
+      print *,'... creating the diffusive terms with old data'
+      
+c     First create the del dot lambda grad H terms 
+      call calc_diffusivities(nx,scal_old,beta_old,mu)
+      call rhoh_visc_terms(nx,scal_old,beta_old,visc,dx)
+      do i = 0,nx-1
+         diff_old(i,RhoH) = visc(i)
+      enddo
+      
+      call compute_cp(nx,cp,scal_old)
+      do i = 0,nx-1
+         diff_old(i,Temp) = diff_old(i,RhoH) / 
+     $        (cp(i)*scal_old(i,Density))
+      enddo
+      
 c*****************************************************************
-
-        print *,'... computing aofs with source = diff_old + intra'
-        do n = 1,nscal
+      
+      print *,'... computing aofs with source = diff_old + intra'
+      do n = 1,nscal
          do i = 0,nx-1
-           tforce(i,n) = diff_old(i,n) + intra(i,n)
+            tforce(i,n) = diff_old(i,n) + intra(i,n)
          enddo
-        enddo
-
-        call scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt)
-
-        do n = 1,nscal
+      enddo
+      
+      call scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt)
+      
+      do n = 1,nscal
          do i = 0,nx-1
-           tforce(i,n) = intra(i,n)
+            tforce(i,n) = intra(i,n)
          enddo
-        enddo
-
+      enddo
+      
 c*****************************************************************
-
-c       print *,'... update species and rho with advective terms only '
-c       call update_spec(nx,scal_old,scal_new,aofs,tforce,dx,dt)
-
+      
+c     print *,'... update species and rho with advective terms only '
+c     call update_spec(nx,scal_old,scal_new,aofs,tforce,dx,dt)
+      
 c*****************************************************************
-
-c       print *,'... update to temp. to define new diff coeffs'
-c       call update_temp(nx,scal_old,scal_new,aofs,
-c    $                   alpha,beta_old,Rhs,dx,dt,be_cn_theta)
-c       call cn_solve(nx,scal_new,alpha,beta_old,Rhs,
-c    $                dx,dt,Temp,be_cn_theta)
-
-c       call calc_diffusivities(nx,scal_new,beta_new)
-
-        print *,'... set new beta = old beta'
-        do n = 1,nscal
+      
+c     print *,'... update to temp. to define new diff coeffs'
+c     call update_temp(nx,scal_old,scal_new,aofs,
+c     $                   alpha,beta_old,Rhs,dx,dt,be_cn_theta)
+c     call cn_solve(nx,scal_new,alpha,beta_old,Rhs,
+c     $                dx,dt,Temp,be_cn_theta)
+      
+c     call calc_diffusivities(nx,scal_new,beta_new)
+      
+      print *,'... set new beta = old beta'
+      do n = 1,nscal
          do i = -1,nx
-           beta_new(i,n) = beta_old(i,n)
+            beta_new(i,n) = beta_old(i,n)
          enddo
-        enddo
-
+      enddo
+      
 c*****************************************************************
 
         print *,'... update to rhoH with new diff. coeffs'
