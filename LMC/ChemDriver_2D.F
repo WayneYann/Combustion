@@ -92,7 +92,13 @@
 #define TRIGGER_NEW_J
 #undef ALWAYS_NEW_J
 #undef SOLN_IS_1D
-      
+
+#ifdef MIKE1
+      do n=1,Nrxns
+         RevKt(i,j,n) = zero
+      end do      
+#endif      
+
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
@@ -113,7 +119,8 @@
 #ifdef MIKE1
             CALL CKKFKR(Pdyne,T(i,j),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt,RevKt)
 #else
-            call bl_abort("FORT_FRrateXTP not implemented")
+            CALL CKQXP(Pdyne,T(i,j),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt)
+c            call bl_abort("FORT_FRrateXTP not implemented")
 #endif
             do n=1,Nrxns
                FwdK(i,j,n) = FwdKt(rxns(n)+1)*scale
