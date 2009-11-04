@@ -106,16 +106,9 @@ c
       
 c     First create the del dot lambda grad H terms 
       call calc_diffusivities(nx,scal_old,beta_old,mu)
-      call rhoh_visc_terms(nx,scal_old,beta_old,visc,dx)
-      do i = 0,nx-1
-         diff_old(i,RhoH) = visc(i)
-      enddo
-      
-      call compute_cp(nx,cp,scal_old)
-      do i = 0,nx-1
-         diff_old(i,Temp) = diff_old(i,RhoH) / 
-     $        (cp(i)*scal_old(i,Density))
-      enddo
+      call get_temp_visc_terms(nx,scal_old,beta_old,diff_old(0,Temp),dx)
+      call get_spec_visc_terms(nx,scal_old,beta_old,
+     &                         diff_old(0,FirstSpec),dx)
       
 c*****************************************************************
       

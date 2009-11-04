@@ -31,7 +31,7 @@
       use_bds = 0
       
       do n = 1,nscal
-         if (n.ne.Density) then
+         if ((n.ne.Density) .and. (n.eq.RhoH) ) then
             
             if (n.eq.Temp) then
                iconserv = 0
@@ -84,7 +84,7 @@
          endif
       enddo
       
-c     Compute Rho on edges as sum of (Rho Y_i) on edges, hmix as sum of (H_i.Y_i)
+c     Compute Rho on edges as sum of (Rho Y_i) on edges, rho.hmix as sum of (H_i.Rho.Y_i)
       do i = 0,nx
          sedge(i,Density) = 0.d0
          do n = 1,nspec

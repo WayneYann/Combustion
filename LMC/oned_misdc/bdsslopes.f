@@ -1,65 +1,63 @@
-        subroutine bdsslopes(nx,s,slope)
+      subroutine bdsslopes(nx,s,slope)
+      implicit none
+      
+      integer nx
+      real*8     s(-1:nx  )
+      real*8 slope( 0:nx-1)
+      
+      real*8 sint(0:nx)
+      real*8 slo,shi
+      real*8 smin,smax
+      integer i
 
-        implicit none
+      real*8 sumloc,redfac
+      real*8 diff_lo,diff_hi
+      real*8 sumdif,sgndif
+      real*8 smax_lo,smax_hi
+      real*8 smin_lo,smin_hi
+      real*8 sc_lo,sc_hi
+      real*8 eps
+      integer kdp
+      integer ll
+      integer unlim
 
-        integer nx
-        real*8     s(-1:nx  )
-        real*8 slope( 0:nx-1)
+      eps = 1.d-8
 
-c       Local variables
-        real*8 sint(0:nx)
-        real*8 slo,shi
-        real*8 smin,smax
-        integer i
+      unlim = 0
 
-        real*8 sumloc,redfac
-        real*8 diff_lo,diff_hi
-        real*8 sumdif,sgndif
-        real*8 smax_lo,smax_hi
-        real*8 smin_lo,smin_hi
-        real*8 sc_lo,sc_hi
-        real*8 eps
-        integer kdp
-        integer ll
-        integer unlim
+      do i = 1,nx-1
+         sint(i) =       ( -(s(i-2) + s(i+1)) 
+     $        + 7.d0 * (s(i-1) + s(i  )) ) / 12.d0
+      enddo
 
-        eps = 1.d-8
+      sint( 0) = 0.5d0 * (s(0 ) + s(  -1))
+      sint(nx) = 0.5d0 * (s(nx) + s(nx-1))
 
-        unlim = 0
+      do i = 0,nx-1
+         slope(i) = sint(i+1) - sint(i)
+      enddo
 
-        do i = 1,nx-1
-          sint(i) =       ( -(s(i-2) + s(i+1)) 
-     $              + 7.d0 * (s(i-1) + s(i  )) ) / 12.d0
-        enddo
-
-        sint( 0) = 0.5d0 * (s(0 ) + s(  -1))
-        sint(nx) = 0.5d0 * (s(nx) + s(nx-1))
-
-        do i = 0,nx-1
-          slope(i) = sint(i+1) - sint(i)
-        enddo
-
-        if (unlim .eq. 0) then
-c       Now apply min/max limiting.
-          do i = 0,nx-1
+      if (unlim .eq. 0) then
+c     Now apply min/max limiting.
+         do i = 0,nx-1
             shi = s(i) + 0.5d0*slope(i)
             smax = max(s(i),s(i+1))
             smin = min(s(i),s(i+1))
             if (shi .gt. smax)
-     $        slope(i) = 2.d0*(smax-s(i))
+     $           slope(i) = 2.d0*(smax-s(i))
             if (shi .lt. smin) 
-     $        slope(i) = 2.d0*(smin-s(i))
-  
+     $           slope(i) = 2.d0*(smin-s(i))
+            
             slo = s(i) - 0.5d0*slope(i)
             smax = max(s(i),s(i-1))
             smin = min(s(i),s(i-1))
             if (slo .gt. smax)
-     $        slope(i) = 2.d0*(s(i)-smax)
+     $           slope(i) = 2.d0*(s(i)-smax)
             if (slo .lt. smin) 
-     $        slope(i) = 2.d0*(s(i)-smin)
+     $           slope(i) = 2.d0*(s(i)-smin)
 
-          enddo
-        endif
+         enddo
+      endif
 
 c       Traditional limiting (gives same result)
 c       do i = 0,nx-1
@@ -119,4 +117,4 @@ c           slope(i) = sc_hi - sc_lo
 c         enddo
 c       enddo
 
-        end
+      end

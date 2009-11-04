@@ -8,7 +8,8 @@ f_sources += lmc.f CD.f vode.f EGini.f EGSlib.f prob.f \
              calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f \
              est_dt.f project.f strang_chem.f \
              pre_mac_predict.f compute_pthermo.f add_dpdt.f \
-             mac_proj.f mkslopes.f read_check.f
+             mac_proj.f scal_aofs.f mkslopes.f bdsslopes.f \
+             read_check.f write_check.f
 
 f_includes += spec.h
 C_sources += main.cpp

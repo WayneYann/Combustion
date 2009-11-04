@@ -9,9 +9,10 @@
 
         integer i,n,is,IWRK
         real*8 beta_lo,beta_hi
-        real*8 flux_lo,flux_hi
+        real*8 flux_lo(maxspec),flux_hi(maxspec)
         real*8 dxsqinv,RWRK
-        real*8 Y(-1:nx,maxspec)
+        real*8 Y(-1:nx,maxspec), sum_lo, sum_hi, sumRhoY_lo, sumRhoY_hi
+        real*8 RhoYe_lo, RhoYe_hi
 
 c     Note, this returns Div(rho.Di.Grad(Yi) + rho.Y.Vcor)
 
@@ -25,7 +26,11 @@ c     Note, this returns Div(rho.Di.Grad(Yi) + rho.Y.Vcor)
 
         do i = 1,nx
 
-c     Compute Div( rho.Di.Grad(Yi) )
+c     Compute Div( rho.Di.Grad(Yi) ) but ensure sum spec fluxes = 0
+           sum_lo = 0.d0
+           sum_hi = 0.d0
+           sumRhoY_lo = 0
+           sumRhoY_hi = 0
            do n=1,Nspec
               is = FirstSpec + n - 1
 c     Harmonic
@@ -35,10 +40,26 @@ c     Arithmetic
               beta_lo = 0.5*(beta(i,is) + beta(i-1,is))
               beta_hi = 0.5*(beta(i,is) + beta(i+1,is))
               
-              flux_hi = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
-              flux_lo = beta_lo*(Y(i  ,n) - Y(i-1,n)) 
-              visc(i,n) =  (flux_hi - flux_lo)*dxsqinv
+              flux_hi(n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
+              flux_lo(n) = beta_lo*(Y(i  ,n) - Y(i-1,n)) 
+
+              sum_lo = sum_lo + flux_lo(n)
+              sum_hi = sum_hi + flux_hi(n)
+
+              sumRhoY_lo = sumRhoY_lo + 0.5d0*(scal(i-1,is)+scal(i,is))
+              sumRhoY_hi = sumRhoY_hi + 0.5d0*(scal(i,is)+scal(i+1,is))
            enddo
+
+           do n=1,Nspec
+              is = FirstSpec + n - 1
+              RhoYe_lo = .5d0*(scal(i-1,is)+scal(i,is))
+              RhoYe_hi = .5d0*(scal(i,is)+scal(i+1,is))
+
+              flux_lo(n) = flux_lo(n) - sum_lo*RhoYe_lo/sumRhoY_lo
+              flux_hi(n) = flux_hi(n) - sum_hi*RhoYe_hi/sumRhoY_hi
+
+              visc(i,n) =  (flux_hi(n) - flux_lo(n))*dxsqinv
+           end do
 
         end do
         end
