@@ -9439,7 +9439,7 @@ void productionRate(double * wdot, double * sc, double T)
     phi_f = sc[21];
     alpha = mixture;
     k_f = 1 * 8.85e+20*exp(-1.23*tc[0]-51445.8/tc[1]);
-    redP = 1e-12 * alpha / k_f * 4.9e+42*exp(-6.43*tc[0]-53935.7/tc[1]);
+    redP = 1e-6 * alpha / k_f * 4.9e+42*exp(-6.43*tc[0]-53935.7/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.16*exp(T/-125))+ (0.84*exp(T/-2219))+ (exp(-6882/T)));
@@ -9519,7 +9519,7 @@ void productionRate(double * wdot, double * sc, double T)
     phi_f = sc[20];
     alpha = mixture;
     k_f = 1 * 1.11e+10*exp(1.037*tc[0]-18504.6/tc[1]);
-    redP = 1e-12 * alpha / k_f * 3.99e+33*exp(-4.99*tc[0]-20130.9/tc[1]);
+    redP = 1e-6 * alpha / k_f * 3.99e+33*exp(-4.99*tc[0]-20130.9/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.832*exp(T/-1203)) /*+ (0.168*exp(T/-0))*/);
@@ -9697,7 +9697,7 @@ void productionRate(double * wdot, double * sc, double T)
     phi_f = sc[24];
     alpha = mixture;
     k_f = 1 * 6.38e+09*exp(1*tc[0]-18936.4/tc[1]);
-    redP = 1e-12 * alpha / k_f * 1.51e+14*exp(0.1*tc[0]-16450.1/tc[1]);
+    redP = 1e-6 * alpha / k_f * 1.51e+14*exp(0.1*tc[0]-16450.1/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.7*exp(T/-1e+30))+ (0.3*exp(T/-1e-30)));
@@ -10657,7 +10657,7 @@ void productionRate(double * wdot, double * sc, double T)
     phi_f = sc[36];
     alpha = mixture;
     k_f = 1 * 1.1e+17*exp(-42472.5/tc[1]);
-    redP = 1e-12 * alpha / k_f * 7.83e+18*exp(-32701.8/tc[1]);
+    redP = 1e-6 * alpha / k_f * 7.83e+18*exp(-32701.8/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.24*exp(T/-1946))+ (0.76*exp(T/-38)));
@@ -10873,7 +10873,7 @@ void productionRate(double * wdot, double * sc, double T)
     phi_f = sc[38];
     alpha = mixture;
     k_f = 1 * 1.23e+13*exp(-0.1*tc[0]-15204/tc[1]);
-    redP = 1e-12 * alpha / k_f * 5.49e+49*exp(-10*tc[0]-18006.6/tc[1]);
+    redP = 1e-6 * alpha / k_f * 5.49e+49*exp(-10*tc[0]-18006.6/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((2.17*exp(T/-251))+ /*(-1.17*exp(T/-0))+*/ (exp(-1185/T)));
@@ -11803,7 +11803,7 @@ void progressRate(double * qdot, double * sc, double T)
     phi_f = sc[21];
     alpha = mixture;
     k_f = 1 * 8.85e+20*exp(-1.23*tc[0]-51445.8/tc[1]);
-    redP = 1e-12 * alpha / k_f * 4.9e+42*exp(-6.43*tc[0]-53935.7/tc[1]);
+    redP = 1e-6 * alpha / k_f * 4.9e+42*exp(-6.43*tc[0]-53935.7/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.16*exp(T/-125))+ (0.84*exp(T/-2219))+ (exp(-6882/T)));
@@ -11864,7 +11864,7 @@ void progressRate(double * qdot, double * sc, double T)
     phi_f = sc[20];
     alpha = mixture;
     k_f = 1 * 1.11e+10*exp(1.037*tc[0]-18504.6/tc[1]);
-    redP = 1e-12 * alpha / k_f * 3.99e+33*exp(-4.99*tc[0]-20130.9/tc[1]);
+    redP = 1e-6 * alpha / k_f * 3.99e+33*exp(-4.99*tc[0]-20130.9/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.832*exp(T/-1203))/*+ (0.168*exp(T/-0))*/);
@@ -11997,7 +11997,7 @@ void progressRate(double * qdot, double * sc, double T)
     phi_f = sc[24];
     alpha = mixture;
     k_f = 1 * 6.38e+09*exp(1*tc[0]-18936.4/tc[1]);
-    redP = 1e-12 * alpha / k_f * 1.51e+14*exp(0.1*tc[0]-16450.1/tc[1]);
+    redP = 1e-6 * alpha / k_f * 1.51e+14*exp(0.1*tc[0]-16450.1/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.7*exp(T/-1e+30))+ (0.3*exp(T/-1e-30)));
@@ -12705,7 +12705,7 @@ void progressRate(double * qdot, double * sc, double T)
     phi_f = sc[36];
     alpha = mixture;
     k_f = 1 * 1.1e+17*exp(-42472.5/tc[1]);
-    redP = 1e-12 * alpha / k_f * 7.83e+18*exp(-32701.8/tc[1]);
+    redP = 1e-6 * alpha / k_f * 7.83e+18*exp(-32701.8/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.24*exp(T/-1946))+ (0.76*exp(T/-38)));
@@ -12867,7 +12867,7 @@ void progressRate(double * qdot, double * sc, double T)
     phi_f = sc[38];
     alpha = mixture;
     k_f = 1 * 1.23e+13*exp(-0.1*tc[0]-15204/tc[1]);
-    redP = 1e-12 * alpha / k_f * 5.49e+49*exp(-10*tc[0]-18006.6/tc[1]);
+    redP = 1e-6 * alpha / k_f * 5.49e+49*exp(-10*tc[0]-18006.6/tc[1]);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((2.17*exp(T/-251))+ /*(-1.17*exp(T/-0))+*/ (exp(-1185/T)));
