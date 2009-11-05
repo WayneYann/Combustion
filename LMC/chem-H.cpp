@@ -3885,6 +3885,10 @@ void equilibriumConstants(double *kc, double * g_RT, double T)
     return;
 }
 
+static double T_old_gibbs = -1;
+#pragma omp threadprivate(T_old_gibbs)
+static double species_old_gibbs[9];
+#pragma omp threadprivate(species_old_gibbs)
 
 /*compute the g/(RT) at the given temperature */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
@@ -3894,16 +3898,12 @@ void gibbs(double * species, double * tc)
     /*temperature */
     double T = tc[1], invT = 1.0 / T;
 
-#ifndef BL_USE_OMP
-    static double T_old = -1, species_old[9];
-
-    if (T == T_old)
+    if (T == T_old_gibbs)
     {
         for (int i = 0; i < 9; i++)
-            species[i] = species_old[i];
+            species[i] = species_old_gibbs[i];
         return;
     }
-#endif
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -4071,11 +4071,9 @@ void gibbs(double * species, double * tc)
             -8.41419833e-12 * tc[3]
             +3.37667550e-16 * tc[4];
     }
-#ifndef BL_USE_OMP
-    T_old = T;
+    T_old_gibbs = T;
     for (int i = 0; i < 9; i++)
-        species_old[i] = species[i];
-#endif
+        species_old_gibbs[i] = species[i];
     return;
 }
 
@@ -4702,6 +4700,10 @@ void speciesInternalEnergy(double * species, double * tc)
     return;
 }
 
+static double T_old_enthalpy = -1;
+#pragma omp threadprivate(T_old_enthalpy)
+static double species_old_enthalpy[9];
+#pragma omp threadprivate(species_old_enthalpy)
 
 /*compute the h/(RT) at the given temperature (Eq 20) */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
@@ -4711,16 +4713,12 @@ void speciesEnthalpy(double * species, double * tc)
     /*temperature */
     double T = tc[1], invT = 1.0 / T;
 
-#ifndef BL_USE_OMP
-    static double T_old = -1, species_old[9];
-
-    if (T == T_old)
+    if (T == T_old_enthalpy)
     {
         for (int i = 0; i < 9; i++)
-            species[i] = species_old[i];
+            species[i] = species_old_enthalpy[i];
         return;
     }
-#endif
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -4870,11 +4868,9 @@ void speciesEnthalpy(double * species, double * tc)
             -1.35067020e-15 * tc[4]
             -9.22797700e+02 * invT;
     }
-#ifndef BL_USE_OMP
-    T_old = T;
+    T_old_enthalpy = T;
     for (int i = 0; i < 9; i++)
-        species_old[i] = species[i];
-#endif
+        species_old_enthalpy[i] = species[i];
     return;
 }
 
