@@ -482,7 +482,7 @@ c     Get the matrix of elements versus species
       integer i, j, k, m, MF, ISTATE, LOUTCK, lout
 
       integer nsubchem, nsub, node, tid, nthrds
-      REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec)
+      REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec), nwdot(0:maxspec)
       REAL_T Ct(maxspec),Qt(maxreac),Ytemp(maxspec),Yres(maxspec)
 
       character*(maxspnml) name
@@ -752,8 +752,7 @@ c
                end if
 
                if (ISTATE .LE. -1) then
-#ifdef BL_USE_OMP
-                  call CONPF_FILE(NEQ, TT1, tspecies, Qt, RWRK, IWRK)
+                  call CONPF_FILE(NEQ, TT1, tspecies, nwdot, RWRK, IWRK)
                   lout = open_vode_failure_file()                  
                   write(lout,*)
                   write(lout,995) 'VODE Failed at (i,j,k) = (',i,',',j,
@@ -761,28 +760,13 @@ c
                   write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
                 write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
                   write(lout,996) 'T               ',
-     &                 Told(i,j,k),tspecies(0),Qt(1),Qt(1)*(dt-TT1)
+     &                 Told(i,j,k),tspecies(0),nwdot(0),nwdot(0)*(dt-TT1)
                   do m=1,Nspec
                      call get_spec_name(name,m)
                      write(lout,996) name,Yold(i,j,k,m),
-     &                    tspecies(m),Qt(1+m),Qt(1+m)*(dt-TT1)
+     &                    tspecies(m),nwdot(m),nwdot(m)*(dt-TT1)
                   end do
-#else
-                  call CONPF_FILE(NEQ, TT1, tspecies, RWRK(NWDOT), RWRK, IWRK)
-                  lout = open_vode_failure_file()                  
-                  write(lout,*)
-                  write(lout,995) 'VODE Failed at (i,j,k) = (',i,',',j,
-     &                 ',',k,'),   Return code = ',ISTATE
-                  write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-                write(lout,995) 'State ID, old, last, dY/dt, dY/dt*(dt)'
-                  write(lout,996) 'T               ',
-     &                 Told(i,j,k),tspecies(0),RWRK(NWDOT),RWRK(NWDOT)*(dt-TT1)
-                  do m=1,Nspec
-                     call get_spec_name(name,m)
-                     write(lout,996) name,Yold(i,j,k,m),
-     &                    tspecies(m),RWRK(NWDOT+m),RWRK(NWDOT+m)*(dt-TT1)
-                  end do
-#endif
+
  995              format(a,4(i4,a))
  996              format(a16,1x,4e30.22)
                   close(lout)
