@@ -3334,17 +3334,6 @@ void gibbs(double * species, double * tc)
     /*temperature */
     double T = tc[1], invT = 1.0 / T;
 
-#ifndef BL_USE_OMP
-    static double T_save = -1, species_save[9];
-
-    if (T == T_save)
-    {
-        for (int i = 0; i < 9; i++)
-            species[i] = species_save[i];
-        return;
-    }
-#endif
-
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
         /*species 0: H2 */
@@ -3511,11 +3500,7 @@ void gibbs(double * species, double * tc)
             -8.41420000e-12 * tc[3]
             +3.37667550e-16 * tc[4];
     }
-#ifndef BL_USE_OMP
-    T_save = T;
-    for (int i = 0; i < 9; i++)
-        species_save[i] = species[i];
-#endif
+
     return;
 }
 
@@ -4149,17 +4134,6 @@ void speciesEnthalpy(double * species, double * tc)
     /*temperature */
     double T = tc[1], invT = 1.0 / T;
 
-#ifndef BL_USE_OMP
-    static double T_save = -1, species_save[9];
-
-    if (T == T_save)
-    {
-        for (int i = 0; i < 9; i++)
-            species[i] = species_save[i];
-        return;
-    }
-#endif
-
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
         /*species 0: H2 */
@@ -4308,11 +4282,7 @@ void speciesEnthalpy(double * species, double * tc)
             -1.35067020e-15 * tc[4]
             -9.22797700e+02 * invT;
     }
-#ifndef BL_USE_OMP
-    T_save = T;
-    for (int i = 0; i < 9; i++)
-        species_save[i] = species[i];
-#endif
+
     return;
 }
 
