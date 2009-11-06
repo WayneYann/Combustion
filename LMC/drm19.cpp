@@ -8512,26 +8512,12 @@ void equilibriumConstants(double *kc, double * g_RT, double T)
     return;
 }
 
-static double T_old_gibbs = -1;
-#pragma omp threadprivate(T_old_gibbs)
-static double species_old_gibbs[21];
-#pragma omp threadprivate(species_old_gibbs)
-
 /*compute the g/(RT) at the given temperature */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 void gibbs(double * species, double * tc)
 {
     /*temperature */
-    double T = tc[1];
-
-    if (T == T_old_gibbs)
-    {
-        for (int i = 0; i < 21; i++)
-            species[i] = species_old_gibbs[i];
-        return;
-    }
-
-    double invT = 1.0 / T;
+    double T = tc[1], invT = 1.0 / T;
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -8915,9 +8901,7 @@ void gibbs(double * species, double * tc)
             -0.00000000e+00 * tc[3]
             -0.00000000e+00 * tc[4];
     }
-    T_old_gibbs = T;
-    for (int i = 0; i < 21; i++)
-      species_old_gibbs[i] = species[i];
+
     return;
 }
 
@@ -10287,26 +10271,12 @@ void speciesInternalEnergy(double * species, double * tc)
     return;
 }
 
-static double T_old_enthalpy = -1;
-#pragma omp threadprivate(T_old_enthalpy)
-static double species_old_enthalpy[21];
-#pragma omp threadprivate(species_old_enthalpy)
-
 /*compute the h/(RT) at the given temperature (Eq 20) */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 void speciesEnthalpy(double * species, double * tc)
 {
     /*temperature */
-    double T = tc[1];
-
-    if (T == T_old_enthalpy)
-    {
-        for (int i = 0; i < 21; i++)
-            species[i] = species_old_enthalpy[i];
-        return;
-    }
-
-    double invT = 1.0 / T;
+    double T = tc[1], invT = 1.0 / T;
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -10648,9 +10618,7 @@ void speciesEnthalpy(double * species, double * tc)
             +0.00000000e+00 * tc[4]
             -7.45375000e+02 * invT;
     }
-    T_old_enthalpy = T;
-    for (int i = 0; i < 21; i++)
-      species_old_enthalpy[i] = species[i];
+
     return;
 }
 
