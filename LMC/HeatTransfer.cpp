@@ -3022,7 +3022,9 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     {
         const int N = visc_terms.IndexMap().size();
 
+#ifdef BL_USE_OMP
 #pragma omp parallel for
+#endif
         for (int i = 0; i < N; i++)
         {
             const int  k   = visc_terms.IndexMap()[i];

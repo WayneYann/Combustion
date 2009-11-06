@@ -2550,12 +2550,19 @@ void CKEQXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, dou
 }
 
 static double T_save = -1;
+#ifdef BL_USE_OMP
 #pragma omp threadprivate(T_save)
-static double k_f_save[21];
-#pragma omp threadprivate(k_f_save)
-static double Kc_save[21];
-#pragma omp threadprivate(Kc_save)
+#endif
 
+static double k_f_save[21];
+#ifdef BL_USE_OMP
+#pragma omp threadprivate(k_f_save)
+#endif
+
+static double Kc_save[21];
+#ifdef BL_USE_OMP
+#pragma omp threadprivate(Kc_save)
+#endif
 
 /*compute the production rate for each species */
 void productionRate(double * wdot, double * sc, double T)

@@ -3864,11 +3864,19 @@ void CKEQXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, dou
 }
 
 static double T_old = -1;
+#ifdef BL_USE_OMP
 #pragma omp threadprivate(T_old)
+#endif
+
 static double k_f_old[58];
+#ifdef BL_USE_OMP
 #pragma omp threadprivate(k_f_old)
+#endif
+
 static double Kc_old[58];
+#ifdef BL_USE_OMP
 #pragma omp threadprivate(Kc_old)
+#endif
 
 /*compute the production rate for each species */
 void productionRate(double * wdot, double * sc, double T)
