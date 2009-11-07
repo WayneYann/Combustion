@@ -25,21 +25,25 @@ c     Quantities passed in
          enddo
          call CKMMWY(Y,IWRK,RWRK,mwmix(i))
          call CKCPBS(scal(i,Temp),Y,IWRK,RWRK,cpmix(i))
+         print *,cpmix(i),scal(i,Temp)
          call CKHMS(scal(i,Temp),IWRK,RWRK,hi(1,i))
       enddo
       
       call get_temp_visc_terms(nx,scal,beta,divu,dx)
       do i = 0,nx-1
          divu(i) = divu(i) / (cpmix(i)*scal(i,Temp))
+c         print *,cpmix(i),divu(i)
       enddo
-      
       call get_spec_visc_terms(nx,scal,beta,ddivu,dx)
       do i = 0,nx-1
          do n=1,Nspec
-            divu(i) = divu(i)
-     &           + ddivu(i,n)*invmwt(i)*mwmix(i)
-     &           + (hi(n,i)/cpmix(i) - mwmix(i)*invmwt(i))*Ydot(i,n)
+c            divu(i) = divu(i)
+c     &           + ddivu(i,n)*invmwt(i)*mwmix(i)
+c     &           + (hi(n,i)/cpmix(i) - mwmix(i)*invmwt(i))*Ydot(i,n)
          enddo
+c         print *,divu(i)
+
          divu(i) = divu(i) / scal(i,Density)
       enddo
+      stop
       end

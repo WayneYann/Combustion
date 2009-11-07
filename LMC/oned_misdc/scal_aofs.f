@@ -85,6 +85,11 @@
       enddo
       
 c     Compute Rho on edges as sum of (Rho Y_i) on edges, rho.hmix as sum of (H_i.Rho.Y_i)
+c     NOTE: Assumes Le=1 (no Le terms in RhoH equation)
+      if (LeEQ1 .ne. 1) then
+         print *,'Le != 1 terms not yet in aofs for RhoH'
+      endif
+
       do i = 0,nx
          sedge(i,Density) = 0.d0
          do n = 1,nspec

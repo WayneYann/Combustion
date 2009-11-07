@@ -31,10 +31,9 @@ c     EGLib stuff
      &     max_vode_subcycles, verbose_vode
 
       double precision EGRWRK(egr), invmwt(maxspec), mwt(maxspec),
-     &     P1ATM, TMIN_TRANS, Pr, Sc, thickFacTR, thickFacCH,
+     &     P1ATM, TMIN_TRANS, min_vode_timestep
+      common / tranr / EGRWRK, invmwt, mwt, P1ATM, TMIN_TRANS,
      &     min_vode_timestep
-      common / tranr / EGRWRK, invmwt, mwt, P1ATM, TMIN_TRANS, Pr, Sc,
-     &     thickFacTR, thickFacCH, min_vode_timestep
 
       character*256 tranfile
       common / tranc / tranfile
@@ -48,10 +47,12 @@ c     DVODE driver stuff
       common / dvdr / c_0, c_1
 
 c     LMC alg stuff
-      integer probtype
-      common / lmci / probtype
+      integer probtype, misdc_iterMAX
+      common / lmci / probtype, misdc_iterMAX
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),
-     &     Y_bc(maxspec,0:1), h_bc(0:1), u_bc(0:1), flame_offset
+     &     Y_bc(maxspec,0:1), h_bc(0:1), u_bc(0:1), flame_offset, 
+     &     coef_avg_harm, Pr, Sc, thickFacTR, thickFacCH
       common / lmcr / dpdt_factor, Pcgs, T_bc, rho_bc,
-     &     Y_bc, h_bc, u_bc, flame_offset
+     &     Y_bc, h_bc, u_bc, flame_offset,
+     &     coef_avg_harm, Pr, Sc, thickFacTR, thickFacCH

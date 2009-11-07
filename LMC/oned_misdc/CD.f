@@ -6,7 +6,7 @@
       data TMIN_TRANS / 0.d0 /
       data Pr / 0.7d0 /
       data Sc / 0.7d0 /
-      data LeEQ1 / 0 /
+      data LeEQ1 / 1 /
       data thickFacTR / 1.d0 /
       data thickFacCH / 1.d0 /
       data max_vode_subcycles / 15000 /
@@ -70,7 +70,7 @@ c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
       else
 
          do i=-1, nx
-            mu(i) = 1.d1 * 1.85e-5*(scal(i,Temp)/298.0)**.7
+            mu(i) = 10.d0 * 1.85e-5*(MAX(scal(i,Temp),1.d0)/298.0)**.7
             do n=1,Nspec
                beta(i,FirstSpec+n-1) = mu(i) / Sc
             enddo
@@ -83,7 +83,6 @@ c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
             beta(i,Temp) = beta(i,RhoH) * CPMIX
          enddo
       endif
-
 
       if (thickFacTR.ne.1.d0) then
          do i=-1, nx
