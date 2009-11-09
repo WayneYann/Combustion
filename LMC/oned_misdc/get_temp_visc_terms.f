@@ -30,7 +30,7 @@ c     Compute Hi, Yi
            enddo
         enddo
 
-        do i = 1,nx
+        do i = 1,nx-1
 
 c     Compute Div( lambda Grad(T) )
            if (coef_avg_harm.eq.1) then
@@ -57,7 +57,7 @@ c     Add rhoD Grad(Yi).Grad(hi) terms
               endif
 
               flux_lo = beta_lo*(Y(n,i)-Y(n,i-1))*(hi(n,i)-hi(n,i-1))
-              flux_hi = beta_hi*(Y(n,i+1)-Y(n,i))*(hi(i+1,n)-hi(i,n))
+              flux_hi = beta_hi*(Y(n,i+1)-Y(n,i))*(hi(n,i+1)-hi(n,i))
 
               visc(i) = visc(i) + flux_hi - flux_lo
               

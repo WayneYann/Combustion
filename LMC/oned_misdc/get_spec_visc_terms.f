@@ -24,7 +24,7 @@ c     Note, this returns Div(rho.Di.Grad(Yi) + rho.Y.Vcor)
          enddo
       enddo
       
-      do i = 1,nx
+      do i = 1,nx-1
          
 c     Compute Div( rho.Di.Grad(Yi) ) but ensure sum spec fluxes = 0
          sum_lo = 0.d0

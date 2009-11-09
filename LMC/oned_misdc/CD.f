@@ -320,8 +320,12 @@ c     DVODE workspace requirements
       integer IPAR, IWRK
 
 c     IOPT=1 parameter settings for VODE
+      DVRWRK(4) = 0
+      DVRWRK(5) = 0
       DVRWRK(7) = min_vode_timestep
+      DVIWRK(5) = 0
       DVIWRK(6) = max_vode_subcycles
+      DVIWRK(7) = 0
 
       if (do_diag.eq.1) nsubchem = nchemdiag
       
@@ -403,7 +407,7 @@ c     Always form Jacobian to start
             write(6,*) ' number of Newton iterations ',DVIWRK(20)
             write(6,*) ' number of Newton failures = ',DVIWRK(21)
          end if
-               
+
          Tnew = Z(1)
          do n=1,Nspec
             RYnew(n) = Z(n+1)
