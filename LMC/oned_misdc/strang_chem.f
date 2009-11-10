@@ -25,12 +25,12 @@
 
 c     Find a good typical value for hmix
       hmixTYP = ABS(scal_old(-1,RhoH)/scal_old(-1,Density))
-      do i = 0,nx
+      do i = 0,nx-1
          hmixTYP=MAX(hmixTYP,ABS(scal_old(i,RhoH)/scal_old(i,Density)))
       enddo
 
 c     Evolve chem over grid
-      do i = -1,nx
+      do i = 0,nx-1
          do n = 1,Nspec
             RYold(n) = scal_old(i,FirstSpec+n-1)
          enddo

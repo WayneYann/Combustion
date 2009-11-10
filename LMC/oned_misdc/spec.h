@@ -47,7 +47,8 @@ c     DVODE driver stuff
       common / dvdr / c_0, c_1
 
 c     LMC alg stuff
-      integer probtype, misdc_iterMAX
+      integer probtype, misdc_iterMAX,on_lo,on_hi,max_order
+      parameter (on_lo = 0, on_hi = 1, max_order = 3)
       common / lmci / probtype, misdc_iterMAX
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),

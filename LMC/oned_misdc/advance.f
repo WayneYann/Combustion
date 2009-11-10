@@ -348,7 +348,7 @@ c*****************************************************************
         
 c     HACKING THIS OUT
 c        call calc_diffusivities(nx,scal_new,beta_new)
-        call calc_divu(nx,scal_new,beta_new,Ydot_new,divu_new,dx)
+        call calc_divu(nx,scal_new,beta_new,Ydot_new,divu_new,dx,time)
 
         do i = 0,nx-1
            rhohalf(i) = 0.5d0*(scal_old(i,Density)+scal_new(i,Density))

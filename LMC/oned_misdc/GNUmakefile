@@ -1,6 +1,6 @@
 
 CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
-fCOMP := g77
+fCOMP := g77 -fbounds-check
 XTRALIBS :=  -lm -lg2c
 EXEname := lmc.exe
 
@@ -73,7 +73,7 @@ C_objects := $(C_sources:%.cpp=%.o)
 f_objects := $(f_sources:%.f=%.o)
 
 
-${EXEname}: ${f_objects} ${C_objects}
+${EXEname}: ${f_objects} ${C_objects} ${f_includes}
 	${CCOMP} ${f_objects} ${C_objects} -o ${EXEname} ${XTRALIBS}
 
 clean:

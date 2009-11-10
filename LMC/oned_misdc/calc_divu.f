@@ -1,4 +1,4 @@
-      subroutine calc_divu(nx,scal,beta,Ydot,divu,dx)
+      subroutine calc_divu(nx,scal,beta,Ydot,divu,dx,time)
       implicit none
       include 'spec.h'
 
@@ -8,16 +8,16 @@ c     Quantities passed in
       real*8 beta(-1:nx,nscal)
       real*8 divu(0:nx-1)
       real*8 Ydot(0:nx-1,nspec)
-      real*8 dx
+      real*8 dx, time
       
       real*8 Y(maxspec)
       real*8 hi(maxspec,-1:nx)
       real*8 cpmix(-1:nx)
-      real*8 ddivu(-1:nx,maxspec)
+      real*8 ddivu(0:nx-1,maxspec)
       real*8 mwmix(-1:nx)
       
-      real*8 RWRK, sum
-      integer IWRK,i,n,is
+      real*8 RWRK, sum, vel
+      integer IWRK,i,n,is,do_vel
 
       do i = -1,nx
          do n = 1,Nspec
@@ -29,6 +29,8 @@ c     Quantities passed in
          call CKHMS(scal(i,Temp),IWRK,RWRK,hi(1,i))
       enddo
       
+      do_vel = 0
+      call applybc(nx,vel,scal,dx,time,do_vel)
       call get_temp_visc_terms(nx,scal,beta,divu,dx)
       do i = 0,nx-1
          divu(i) = divu(i) / (cpmix(i)*scal(i,Temp))
@@ -38,8 +40,8 @@ c     Quantities passed in
          do n=1,Nspec
             divu(i) = divu(i)
      &           + ddivu(i,n)*invmwt(n)*mwmix(i)
-     &           + (hi(n,i)/cpmix(i) - mwmix(i)*invmwt(n))*Ydot(i,n)
+     &           - (hi(n,i)/(cpmix(i)*scal(i,Temp))
+     &           -   mwmix(i)*invmwt(n))*Ydot(i,n)
          enddo
-         divu(i) = divu(i) / scal(i,Density)
       enddo
       end

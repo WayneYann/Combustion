@@ -18,13 +18,13 @@ c     Note, this returns Div(rho.Di.Grad(Yi) + rho.Y.Vcor)
       
       dxsqinv = 1.d0/(dx*dx)
       
-      do i = 0,nx-1
+      do i = -1,nx
          do n=1,Nspec
             Y(i,n) = scal(i,FirstSpec+n-1)/scal(i,Density)
          enddo
       enddo
       
-      do i = 1,nx-1
+      do i = 0,nx-1
          
 c     Compute Div( rho.Di.Grad(Yi) ) but ensure sum spec fluxes = 0
          sum_lo = 0.d0
@@ -54,7 +54,7 @@ c     Compute Div( rho.Di.Grad(Yi) ) but ensure sum spec fluxes = 0
                sumRhoY_hi = sumRhoY_hi+0.5d0*(scal(i,is)+scal(i+1,is))
             endif
          enddo
-         
+
          if (LeEQ1 .eq. 0) then
             do n=1,Nspec
                is = FirstSpec + n - 1
