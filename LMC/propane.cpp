@@ -10520,7 +10520,7 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 149: C3H6 + O <=> C2H5 + HCO */
     phi_f = sc[35]*sc[5];
-    k_f = 1e-06 * 3.5e+07*exp(1.65*tc[0]+489.557/tc[1]);
+    k_f = 1e-06 * 3.5e+07*exp(1.65*tc[0]+489.504013446732/tc[1]);
     q_f = phi_f * k_f;
     phi_r = sc[20]*sc[12];
     Kc = exp((g_RT[35] + g_RT[5]) - (g_RT[20] + g_RT[12]));
@@ -12608,7 +12608,7 @@ void progressRate(double * qdot, double * sc, double T)
 
     /*reaction 149: C3H6 + O <=> C2H5 + HCO */
     phi_f = sc[35]*sc[5];
-    k_f = 1e-06 * 3.5e+07*exp(1.65*tc[0]+489.557/tc[1]);
+    k_f = 1e-06 * 3.5e+07*exp(1.65*tc[0]+489.504013446732/tc[1]);
     q_f = phi_f * k_f;
     phi_r = sc[20]*sc[12];
     Kc = exp((g_RT[35] + g_RT[5]) - (g_RT[20] + g_RT[12]));
@@ -14443,7 +14443,7 @@ void progressRateFR(double * q_f, double* q_r, double * sc, double T)
 
     /*reaction 149: C3H6 + O <=> C2H5 + HCO */
     phi_f = sc[35]*sc[5];
-    k_f = 1e-06 * 3.5e+07*exp(1.65*tc[0]+489.557/tc[1]);
+    k_f = 1e-06 * 3.5e+07*exp(1.65*tc[0]+489.504013446732/tc[1]);
     q_f[148] = phi_f * k_f;
     phi_r = sc[20]*sc[12];
     Kc = exp((g_RT[35] + g_RT[5]) - (g_RT[20] + g_RT[12]));
