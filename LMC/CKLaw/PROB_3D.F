@@ -734,7 +734,7 @@ c     For probtype == 3, set boundary conditions as constants
          Xfu(iO2) = X_FU_O2/ Xsum
          Xfu(iN2) = X_FU_N2/ Xsum
  
-         write(6,*)" in bc routine", Xfu(iH2),Xfu(iO2) ,Xfu(iN2)
+c         write(6,*)" in bc routine", Xfu(iH2),Xfu(iO2) ,Xfu(iN2)
  
  
          call FORT_MOLETOMASS(lo,hi,
