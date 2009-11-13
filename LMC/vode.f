@@ -1688,8 +1688,6 @@ C
       PARAMETER(CCMAX = 0.3D0, CRDOWN = 0.3D0, MAXCOR = 3, MSBP = 20)
       PARAMETER(RDIV  = 2.0D0, ONE = 1.0D0, TWO = 2.0D0, ZERO = 0.0D0)
       
-      include "conp.H"
-
 C-----------------------------------------------------------------------
 C On the first step, on a change of method order, or after a
 C nonlinear convergence failure with NFLAG = -2, set IPUP = MITER
