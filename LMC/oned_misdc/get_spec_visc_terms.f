@@ -40,7 +40,7 @@ c     Compute Div( rho.Di.Grad(Yi) ) but ensure sum spec fluxes = 0
                beta_lo = 0.5*(beta(i,is) + beta(i-1,is))
                beta_hi = 0.5*(beta(i,is) + beta(i+1,is))
             endif
-            
+
             flux_hi(n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
             flux_lo(n) = beta_lo*(Y(i  ,n) - Y(i-1,n)) 
             

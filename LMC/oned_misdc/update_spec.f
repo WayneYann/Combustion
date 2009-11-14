@@ -1,5 +1,5 @@
       subroutine update_spec(nx,scal_old,scal_new,
-     $                       aofs,beta,Rhs,dx,dt,be_cn_theta)
+     $                       aofs,alpha,beta,Rhs,dx,dt,be_cn_theta)
       implicit none
       include 'spec.h'
       integer nx
@@ -31,7 +31,7 @@ c     Note, this returns Div(rho.Di.Grad(Yi) + rho.Y.Vcor)
 
 
 c     Note, some double calc here for cell-based indexing 
-      do i = 1,nx
+      do i = 0,nx-1
          
 c     Compute Div( rho.Di.Grad(Yi) ) but ensure sum spec fluxes = 0
          sum_lo = 0.d0
@@ -76,7 +76,9 @@ c     Compute Div( rho.Di.Grad(Yi) ) but ensure sum spec fluxes = 0
          do n=1,Nspec
             is = FirstSpec + n - 1
             visc_term = (flux_hi(n) - flux_lo(n))*dxsqinv
-            Rhs(i,n) = visc_term * dth
+            scal_new(i,is) = scal_old(i,is) + dt*aofs(i,is)
+            Rhs(i,n) = visc_term * dth + scal_new(i,is)
+            alpha(i) = scal_new(i,Density)
          enddo
       enddo
 

@@ -7,7 +7,7 @@
       real*8   tforce(0 :nx-1,nscal)
       real*8     aofs(0 :nx-1,nscal)
       real*8 dx
-      real*8 dt
+      real*8 time, dt
       
       real*8  sedge(0:nx  ,nscal)
       real*8  slope(0:nx-1)
@@ -30,8 +30,10 @@
       
       use_bds = 0
       
+      call set_bc_s(nx,scal_old,dx,time)
+
       do n = 1,nscal
-         if ((n.ne.Density) .and. (n.eq.RhoH) ) then
+         if ((n.ne.Density) .and. (n.ne.RhoH) ) then
             
             if (n.eq.Temp) then
                iconserv = 0
@@ -44,7 +46,6 @@
             else
                call  mkslopes(nx,scal_old(-1,n),slope)
             endif
-
             do i = 1,nx-1
                slo = scal_old(i-1,n)+(0.5d0 - dthx*macvel(i))*slope(i-1)
                shi = scal_old(i  ,n)-(0.5d0 + dthx*macvel(i))*slope(i  )

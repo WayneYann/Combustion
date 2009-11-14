@@ -56,7 +56,7 @@
       real*8 rhocp_old(0:nx-1)
       real*8   pthermo(-1:nx  )
       real*8    Ydot_max, Y(maxspec)
-      real*8 RWRK, cpmix
+      real*8 RWRK, cpmix, sum
       integer IWRK, is
       
       print *,'advance: at start of time step'
@@ -109,7 +109,7 @@ c*****************************************************************
 c     
       print *,'... creating the diffusive terms with old data'
       
-      call calc_diffusivities(nx,scal_old,beta_old,mu_old)
+      call calc_diffusivities(nx,scal_old,beta_old,mu_old,dx,time)
       call get_temp_visc_terms(nx,scal_old,beta_old,diff_old(0,Temp),dx)
       call get_spec_visc_terms(nx,scal_old,beta_old,
      &                         diff_old(0,FirstSpec),dx)
@@ -131,55 +131,64 @@ c     Temp visc terms must be scaled by 1/(rho.cp)
          tforce(i,n) = tforce(i,n)/rhocp_old(i)
       enddo
       
-      call scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt)
+      call scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt,time)
 
       do n = 1,nscal
          do i = 0,nx-1
             tforce(i,n) = intra(i,n)
          enddo
+      enddo
+      do i = 0,nx-1
          tforce(i,Temp) = tforce(i,Temp)/rhocp_old(i)
       enddo
-
 c*****************************************************************
 
       print *,'... update rho'
       call update_rho(nx,scal_old,scal_new,aofs,dx,dt)
 
-
       print *,'... update to temp to define new diff coeffs'
       call update_temp(nx,scal_old,scal_new,aofs,
-     $                 alpha,beta_old,Rhs,dx,dt,be_cn_theta)
-      call cn_solve(nx,scal_new,alpha,beta_old,Rhs,
+     $                 alpha,beta_old,Rhs(0,Temp),dx,dt,be_cn_theta)
+      call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,Temp),
      $              dx,dt,Temp,be_cn_theta)
 
-      call calc_diffusivities(nx,scal_new,beta_new,mu_new)
-
+      call get_hmix_given_T_RhoY(nx,scal_new,dx)
+      
+      call calc_diffusivities(nx,scal_new,beta_new,mu_new,dx,time+dt)
 
 c*****************************************************************
 
       print *,'... update to spec with new diff. coeffs, do predictor'
-      call update_spec(nx,scal_old,scal_new,aofs,
-     $                 beta_old,Rhs,dx,dt,be_cn_theta)
+      call update_spec(nx,scal_old,scal_new,aofs,alpha,
+     $                 beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
 
       do n=1,Nspec
          is = FirstSpec + n - 1
-         call cn_solve(nx,scal_new,alpha,beta_old,Rhs,
+         call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,is),
      $                 dx,dt,is,be_cn_theta)
       enddo
 
 c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
-      
-      call update_rhoh(nx,scal_old,scal_new,beta_old,beta_new,
-     $                 aofs,tforce,alpha,Rhs,dx,dt,be_cn_theta)
-      call cn_solve(nx,scal_new,alpha,beta_new,Rhs,
+      call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
+     &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
+
+      call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta)
+
+      do i=0,nx-1
+         print *,'rhoh:',i,scal_new(i,RhoH),scal_old(i,RhoH)
+      enddo
+      stop
+
+      print *,'going in'
       call rhoh_to_temp(nx,scal_new)
+      print *,'coming out'
 
 
       print *,'... recompute diffusivities, then do corrector'
 
-      call calc_diffusivities(nx,scal_new,beta_new,mu_new)
-      call update_spec(nx,scal_old,scal_new,aofs,
+      call calc_diffusivities(nx,scal_new,beta_new,mu_new,dx,time+dt)
+      call update_spec(nx,scal_old,scal_new,aofs,alpha,
      $                 beta_old,Rhs,dx,dt,be_cn_theta)
 
       do n=1,Nspec
@@ -190,8 +199,8 @@ c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
 
 c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       
-      call update_rhoh(nx,scal_old,scal_new,beta_old,beta_new,
-     $                 aofs,tforce,alpha,Rhs,dx,dt,be_cn_theta)
+      call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
+     &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs,
      $              dx,dt,RhoH,be_cn_theta)
       call rhoh_to_temp(nx,scal_new)
@@ -235,7 +244,8 @@ c*****************************************************************
               enddo
            enddo
 
-           call calc_diffusivities(nx,scal_new,beta_new,mu_new)
+           call calc_diffusivities(nx,scal_new,beta_new,mu_new,
+     &          dx,time+dt)
 
            print *,'... create new diff. terms : diff_hat'
            call get_rhoh_visc_terms(nx,scal_new,beta_new,visc,dx)
@@ -257,7 +267,7 @@ c*****************************************************************
            enddo
            
            print *,'... computing aofs with source = diff_old + intra'
-           call scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt)
+           call scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt,time)
            
 c*****************************************************************
            
@@ -273,8 +283,8 @@ c*****************************************************************
 c           call update_spec(nx,scal_old,scal_new,aofs,tforce,dx,dt)
            
            print *,'... update to rhoH with new diff. coeffs'
-           call update_rhoh(nx,scal_old,scal_new,beta_old,beta_new,
-     $                      aofs,tforce,alpha,Rhs,dx,dt,be_cn_theta)
+           call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
+     &                      Rhs(0,RhoH),dx,dt,be_cn_theta)
            call cn_solve(nx,scal_new,alpha,beta_new,Rhs,
      $                   dx,dt,RhoH,be_cn_theta)
 
@@ -347,7 +357,7 @@ c*****************************************************************
         enddo
         
 c     HACKING THIS OUT
-c        call calc_diffusivities(nx,scal_new,beta_new)
+c        call calc_diffusivities(nx,scal_new,beta_new,dx,time+dt)
         call calc_divu(nx,scal_new,beta_new,Ydot_new,divu_new,dx,time)
 
         do i = 0,nx-1
@@ -367,6 +377,8 @@ c        call calc_diffusivities(nx,scal_new,beta_new)
      $       macvel,veledge,dx,dt)
         call update_vel(nx,vel_old,vel_new,gp,rhohalf,
      $       macvel,veledge,dx,dt)
+
+c     FIXME: Add viscous terms
         
         print *,'...nodal projection...'
         call project(nx,vel_old,vel_new,rhohalf,divu_new,

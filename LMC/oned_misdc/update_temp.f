@@ -49,7 +49,7 @@ c     (here, build rho to ensure correct extract of Y regardless of whether
 c     rho was updated independently - ie, assume no reset_rho_in_rho_states))
 c*************************************************************************
 
-      do i = -1,nx
+      do i = 0,nx-1
          rho_old = 0.d0
          rho_new = 0.d0
          do n = 1,Nspec

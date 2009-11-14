@@ -41,12 +41,10 @@
       enddo
       
       do i = 0,nx-1
-         if (n.eq.RhoH) then
+         if (n.ne.Temp) then
             scal_new(i,n) = scal_new(i,n) * scal_new(i,Density)
          endif
       enddo
-      
-      scal_new(nx,n) = scal_new(nx-1,n)
       
       end
 

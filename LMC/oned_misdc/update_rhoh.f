@@ -39,17 +39,16 @@ c*************************************************************************
      $        beta_hi*(scal_old(i+1,RhoH)-scal_old(i  ,RhoH)) -
      $        beta_lo*(scal_old(i  ,RhoH)-scal_old(i-1,RhoH))
          Rhs(i) = visc_term * dxsqinv * dth
-
       enddo
 
-
 c*************************************************************************
-c     Set Rhs.  Also, put advection terms in new state.
+c     Put advection terms in new state.
 c*************************************************************************
 
       do i = 0,nx-1
          scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
-         Rhs(i) = scal_new(i,RhoH)
+         Rhs(i) = Rhs(i) + scal_new(i,RhoH)
+         alpha(i) = scal_new(i,Density)
       enddo
       
       end

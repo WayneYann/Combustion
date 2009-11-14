@@ -20,22 +20,24 @@
 
 
 
-      subroutine calc_diffusivities(nx, scal, beta, mu)
+      subroutine calc_diffusivities(nx, scal, beta, mu, dx, time)
       implicit none
       include 'spec.h'
       integer nx
       double precision scal(-1:nx,*)
       double precision beta(-1:nx,*)
       double precision mu(-1:nx)
+      double precision time, dx
 
       double precision Dt(maxspec), CPMS(maxspec), Y(maxspec)
-      double precision Tt, Wavg
+      double precision Tt, Wavg, rho
       double precision X(maxspec), alpha, l1, l2, cpmix, RWRK
       integer n, i, IWRK
 
 c     Ensure chem/tran initialized
       if (traninit.lt.0) call initchem()
 
+      call set_bc_s(nx,scal,dx,time)
       if (LeEQ1 .eq. 0) then
          
          do i=-1, nx         
@@ -70,16 +72,20 @@ c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
       else
 
          do i=-1, nx
+c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
             mu(i) = 10.d0 * 1.85e-5*(MAX(scal(i,Temp),1.d0)/298.0)**.7
+c     For Le=1, rho.D = lambda/cp = mu/Pr
+            rho = 0.d0
             do n=1,Nspec
                beta(i,FirstSpec+n-1) = mu(i) / Sc
+               rho = rho + scal(i,FirstSpec+n-1)
             enddo
             
             do n=1,Nspec
-               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
+               Y(n) = scal(i,FirstSpec+n-1) / rho
             enddo
             CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
-            beta(i,RhoH) = beta(i,FirstSpec) / Pr
+            beta(i,RhoH) = mu(i) / Pr
             beta(i,Temp) = beta(i,RhoH) * CPMIX
          enddo
       endif
@@ -225,7 +231,7 @@ C-----------------------------------------------------------------------
       end
 
 
-      subroutine conpFY(N, TIME, Z, ZP, RPAR, IPAR)
+      subroutine conpF_T_RhoY(N, TIME, Z, ZP, RPAR, IPAR)
       implicit none
       include 'spec.h'
       double precision TIME, Z(maxspec+1), ZP(maxspec+1), RPAR(*)
@@ -235,8 +241,13 @@ C-----------------------------------------------------------------------
       double precision HK(maxspec), WDOTK(maxspec), C(maxspec), RWRK
       integer K, IWRK
 
+      integer NiterMAX, Niter
+      parameter (NiterMAX = 30)
+      double precision res(NiterMAX), errMAX, hmix, T, DEN
+
+
       if (Pcgs.lt.0.d0) then
-         print *,'conpFY: Must set Pcgs before calling vode'
+         print *,'conpF_T_RhoY: Must set Pcgs before calling vode'
          stop
       endif
 
@@ -245,13 +256,22 @@ C-----------------------------------------------------------------------
          RHO = RHO + Z(1+n)
       enddo
       do n=1,Nspec
-         Y(n) = Z(1+n)/RHO
          C(n) = Z(1+n)*invmwt(n)
+         Y(n) = Z(1+n)/RHO
       enddo
-      call CKCPBS(Z(1),Y,IWRK,RWRK,CPB)
-      call CKWC(Z(1), C, IWRK, RWRK, WDOTK)
-      call CKHMS(Z(1), IWRK, RWRK, HK)
 
+c     The evolved energy variable is T
+      T = Z(1)
+c      call CKHMS(hmix, IWRK, RWRK, HK)
+
+c     The evolved energy variable is RhoH
+      hmix = Z(1)/RHO
+      errMax = hmix * 1.e-10
+      T = Tg
+      call FORT_TfromHYpt(T,hmix,Y,errMax,NiterMAX,res,Niter)      
+
+      call CKCPBS(T,Y,IWRK,RWRK,CPB)
+      call CKWC(T,C,IWRK,RWRK,WDOTK)
       THFAC = 1.d0 / thickFacCH
       SUM = 0.d0
       DO K = 1, Nspec
@@ -261,15 +281,18 @@ C-----------------------------------------------------------------------
          ZP(K+1) = WDOT * WT  + c_0(1+K) + c_1(1+K)*TIME
          SUM = SUM + H * ZP(K+1)
       END DO
+c     The evolved energy variable is T
       ZP(1) = (c_0(1)+c_1(1)*TIME -SUM) / (RHO*CPB)
+c     The evolved energy variable is RhoH
+      ZP(1) = (c_0(1)+c_1(1)*TIME)*RHO
       END
 
 
-      subroutine conpJY(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
+      subroutine conpJ_T_RhoY(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
       implicit none
       integer NEQ, NRPD, ML, MU, IPAR(*)
       double precision T, Y(NEQ), PD(NRPD,NEQ), RPAR(*)
-      print *,'Should not be in conpJY'
+      print *,'Should not be in conpJ_T_RhoY'
       stop
       end
 
@@ -294,7 +317,7 @@ C-----------------------------------------------------------------------
       parameter (ITOL=1, IOPT=1, ITASK=1)
       double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
       parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
-      external conpFY, conpJY, open_vode_failure_file
+      external conpF_T_RhoY, conpJ_T_RhoY, open_vode_failure_file
       integer n, MF, ISTATE, lout
       character*(maxspnml) name
 
@@ -374,9 +397,9 @@ c     Always form Jacobian to start
          TT2 = TT1 + dtloc
 
          CALL DVODE
-     &        (conpFY, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
+     &        (conpF_T_RhoY, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
      &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
-     &        dvi, conpJY, MF, RPAR, IPAR)
+     &        dvi, conpJ_T_RhoY, MF, RPAR, IPAR)
 
          TT1 = TT2
 
@@ -552,4 +575,28 @@ c      call bl_pd_myproc(i)
 c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       open(unit=lout, file=name, form='formatted', status='replace')
       open_vode_failure_file = lout
+      end
+
+
+      subroutine get_hmix_given_T_RhoY(nx,scal,dx)
+      implicit none
+      include 'spec.h'
+      integer nx
+      real*8 scal(-1:nx,*)
+      real*8 dx
+      
+      integer i,n,IWRK
+      real*8 Y(maxspec), rho, RWRK, hmix
+
+      do i = 0,nx-1
+         rho = 0.d0
+         do n=1,Nspec
+            rho = rho + scal(i,FirstSpec+n-1)
+         enddo
+         do n=1,Nspec
+            Y(n) = scal(i,FirstSpec+n-1)/rho
+         enddo
+         call CKHBMS(scal(i,Temp),Y,IWRK,RWRK,hmix)
+         scal(i,RhoH) = hmix * rho
+      enddo
       end

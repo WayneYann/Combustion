@@ -12,6 +12,9 @@
       double precision res(NiterMAX), errMAX, epsHtoTemp
       parameter (epsHtoTemp = 1.e-12)
 
+      integer IWRK
+      double precision RWRK
+
       
       do i = 0,nx-1
          hmixTYP = MAX(ABS(scal(i,RhoH) / scal(i,Density)),hmixTYP)
@@ -29,10 +32,22 @@
             Y(n) = scal(i,is) / rho
          enddo
          hmix = scal(i,RhoH) / scal(i,Density)
+
+         print *,'T before:',i,scal(i,Temp),hmix
+
+         CALL CKHBMS(scal(i,Temp),Y,IWRK,RWRK,hmix)
+         print *,'             ',hmix
+
          call FORT_TfromHYpt(scal(i,Temp),hmix,Y,
      &                       errMax,NiterMAX,res,Niter)
+         print *,'            T after:',i,scal(i,Temp)
          if (Niter.lt.0) then
             print *,'H to T solve failed, Niter,i=',Niter,i
+            print *,'T:',scal(i,Temp)
+            do n=1,NiterMAX
+               print *,'res(',n,')',res(n)
+            enddo
+            stop
          endif
       enddo
 

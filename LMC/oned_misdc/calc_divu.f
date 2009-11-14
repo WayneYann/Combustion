@@ -16,8 +16,8 @@ c     Quantities passed in
       real*8 ddivu(0:nx-1,maxspec)
       real*8 mwmix(-1:nx)
       
-      real*8 RWRK, sum, vel
-      integer IWRK,i,n,is,do_vel
+      real*8 RWRK
+      integer IWRK,i,n,is
 
       do i = -1,nx
          do n = 1,Nspec
@@ -28,9 +28,8 @@ c     Quantities passed in
          call CKCPBS(scal(i,Temp),Y,IWRK,RWRK,cpmix(i))
          call CKHMS(scal(i,Temp),IWRK,RWRK,hi(1,i))
       enddo
-      
-      do_vel = 0
-      call applybc(nx,vel,scal,dx,time,do_vel)
+
+      call set_bc_grow_s(nx,scal,dx,time)
       call get_temp_visc_terms(nx,scal,beta,divu,dx)
       do i = 0,nx-1
          divu(i) = divu(i) / (cpmix(i)*scal(i,Temp))
@@ -43,5 +42,6 @@ c     Quantities passed in
      &           - (hi(n,i)/(cpmix(i)*scal(i,Temp))
      &           -   mwmix(i)*invmwt(n))*Ydot(i,n)
          enddo
+         divu(i) = divu(i) / scal(i,Density)
       enddo
       end
