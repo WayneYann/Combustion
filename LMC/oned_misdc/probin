@@ -1,0 +1,18 @@
+&fortin
+  nsteps = 10
+  stop_time = 1.e4
+  cfl = 0.5
+  problo = 0.0
+  probhi = 1.5
+  chkfile = 'null'
+  plot_int = 1
+  chk_int = 1
+  change_max = 1.1
+  init_shrink = 0.1
+  probtype = 1
+  flame_offset = 0.
+  dpdt_factor = 0.0
+  Patm = 1.0
+/
+
+
