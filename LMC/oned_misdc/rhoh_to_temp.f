@@ -33,14 +33,9 @@
          enddo
          hmix = scal(i,RhoH) / scal(i,Density)
 
-         print *,'T before:',i,scal(i,Temp),hmix
-
-         CALL CKHBMS(scal(i,Temp),Y,IWRK,RWRK,hmix)
-         print *,'             ',hmix
-
          call FORT_TfromHYpt(scal(i,Temp),hmix,Y,
      &                       errMax,NiterMAX,res,Niter)
-         print *,'            T after:',i,scal(i,Temp)
+
          if (Niter.lt.0) then
             print *,'H to T solve failed, Niter,i=',Niter,i
             print *,'T:',scal(i,Temp)

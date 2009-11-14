@@ -16,8 +16,8 @@
       integer ispec
       real*8 RYold(maxspec), RYnew(maxspec), Told, Tnew
       real*8 linSrcOLD(nscal),linSrcNEW(nscal)
-      integer FuncCount, do_diag
-      real*8 diag(maxreac),Y(maxspec),hmix
+      integer FuncCount, do_diag, IWRK
+      real*8 diag(maxreac),Y(maxspec),hmix,RWRK
       
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
@@ -34,7 +34,11 @@ c     Evolve chem over grid
          do n = 1,Nspec
             RYold(n) = scal_old(i,FirstSpec+n-1)
          enddo
+c     The evolved variable is T
          Told = scal_old(i,Temp)
+c     The evolved variable is RhoH
+c         Tg = scal_old(i,Temp)
+c         Told = scal_old(i,RhoH)
 
 c     Set linear source terms in common for ode integrators access
          do n = 1,Nspec
@@ -44,7 +48,7 @@ c     Set linear source terms in common for ode integrators access
          enddo
          c_0(1) = const_src(i,RhoH) + dt*lin_src_old(i,RhoH)
          c_1(1) = lin_src_new(i,RhoH) - lin_src_old(i,RhoH)
-         
+
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag)
          
@@ -58,20 +62,20 @@ c     Set linear source terms in common for ode integrators access
             Y(n) = RYnew(n)/scal_new(i,Density)
          enddo
 
-         scal_new(i,RhoH) = scal_old(i,RhoH)+
-     &        + dt*const_src(i,RhoH)
-     &        + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,rhoH))
-         hmix = scal_new(i,RhoH) / scal_new(i,Density)
+c     The evolved variable is T
+         CALL CKHBMS(Tnew,Y,IWRK,RWRK,hmix)
+         scal_new(i,RhoH) = hmix * scal_new(i,Density)
 
-         errMax = hmixTYP * 1.e-20
-         call FORT_TfromHYpt(Tnew,hmix,Y,errMax,NiterMAX,res,Niter)
-         scal_new(i,Temp) = Tnew
+c     The evolved variable is RhoH
+c         scal_new(i,RhoH) = scal_old(i,RhoH)+
+c     &        + dt*const_src(i,RhoH)
+c     &        + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,rhoH))
+c         hmix = scal_new(i,RhoH) / scal_new(i,Density)
 
-      enddo
+c         errMax = hmixTYP * 1.e-20
+c         call FORT_TfromHYpt(Tnew,hmix,Y,errMax,NiterMAX,res,Niter)
+c         scal_new(i,Temp) = Tnew
 
-c     Set outflow condition....HACK, we can do better than this.
-      do n = 1,nscal
-         scal_new(nx,n) = scal_new(nx-1,n)
       enddo
 
 c     Define change in state due to chemistry.

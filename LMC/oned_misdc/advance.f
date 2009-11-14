@@ -175,15 +175,12 @@ c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta)
 
-      do i=0,nx-1
-         print *,'rhoh:',i,scal_new(i,RhoH),scal_old(i,RhoH)
-      enddo
-      stop
-
-      print *,'going in'
+c      do i=0,nx-1
+c         print *,'enth:',i,scal_new(i,FirstSpec)/scal_new(i,Density),
+c     &        scal_old(i,FirstSpec)/scal_old(i,Density)
+c      enddo
+c      stop
       call rhoh_to_temp(nx,scal_new)
-      print *,'coming out'
-
 
       print *,'... recompute diffusivities, then do corrector'
 

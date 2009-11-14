@@ -265,10 +265,10 @@ c     The evolved energy variable is T
 c      call CKHMS(hmix, IWRK, RWRK, HK)
 
 c     The evolved energy variable is RhoH
-      hmix = Z(1)/RHO
-      errMax = hmix * 1.e-10
-      T = Tg
-      call FORT_TfromHYpt(T,hmix,Y,errMax,NiterMAX,res,Niter)      
+c      hmix = Z(1)/RHO
+c      errMax = hmix * 1.e-10
+c      T = Tg
+c      call FORT_TfromHYpt(T,hmix,Y,errMax,NiterMAX,res,Niter)      
 
       call CKCPBS(T,Y,IWRK,RWRK,CPB)
       call CKWC(T,C,IWRK,RWRK,WDOTK)
@@ -277,14 +277,15 @@ c     The evolved energy variable is RhoH
       DO K = 1, Nspec
          H    = HK(K)
          WDOT = WDOTK(K) * THFAC
+         WDOT = 0.d0
          WT   = mwt(K)
          ZP(K+1) = WDOT * WT  + c_0(1+K) + c_1(1+K)*TIME
          SUM = SUM + H * ZP(K+1)
       END DO
 c     The evolved energy variable is T
-      ZP(1) = (c_0(1)+c_1(1)*TIME -SUM) / (RHO*CPB)
+      ZP(1) = (c_0(1) + c_1(1)*TIME - SUM) / (RHO*CPB)
 c     The evolved energy variable is RhoH
-      ZP(1) = (c_0(1)+c_1(1)*TIME)*RHO
+c      ZP(1) = (c_0(1)+c_1(1)*TIME)*RHO
       END
 
 
