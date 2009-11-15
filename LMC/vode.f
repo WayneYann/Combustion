@@ -868,85 +868,6 @@ c
 !       RETURN
 !       END FUNCTION D1MACH
 
-      DOUBLE PRECISION FUNCTION D1MACH(I)
-C
-C  DOUBLE-PRECISION MACHINE CONSTANTS
-C
-C  D1MACH( 1) = B**(EMIN-1), THE SMALLEST POSITIVE MAGNITUDE.
-C
-C  D1MACH( 2) = B**EMAX*(1 - B**(-T)), THE LARGEST MAGNITUDE.
-C
-C  D1MACH( 3) = B**(-T), THE SMALLEST RELATIVE SPACING.
-C
-C  D1MACH( 4) = B**(1-T), THE LARGEST RELATIVE SPACING.
-C
-C  D1MACH( 5) = LOG10(B)
-C
-      INTEGER SMALL(2)
-      INTEGER LARGE(2)
-      INTEGER RIGHT(2)
-      INTEGER DIVER(2)
-      INTEGER LOG10(2)
-      INTEGER SC, I
-
-      SAVE SMALL, LARGE, RIGHT, DIVER, LOG10, SC
-
-      DATA SC /0/
-
-      DOUBLE PRECISION DMACH(5)
-
-      EQUIVALENCE (DMACH(1),SMALL(1))
-      EQUIVALENCE (DMACH(2),LARGE(1))
-      EQUIVALENCE (DMACH(3),RIGHT(1))
-      EQUIVALENCE (DMACH(4),DIVER(1))
-      EQUIVALENCE (DMACH(5),LOG10(1))
-
-!$omp critical
-      IF (SC .NE. 987) THEN
-         DMACH(1) = 1.D13
-         IF (      SMALL(1) .EQ. 1117925532
-     *       .AND. SMALL(2) .EQ. -448790528) THEN
-*           *** IEEE BIG ENDIAN ***
-            SMALL(1) = 1048576
-            SMALL(2) = 0
-            LARGE(1) = 2146435071
-            LARGE(2) = -1
-            RIGHT(1) = 1017118720
-            RIGHT(2) = 0
-            DIVER(1) = 1018167296
-            DIVER(2) = 0
-            LOG10(1) = 1070810131
-            LOG10(2) = 1352628735
-         ELSE IF ( SMALL(2) .EQ. 1117925532
-     *       .AND. SMALL(1) .EQ. -448790528) THEN
-*           *** IEEE LITTLE ENDIAN ***
-            SMALL(2) = 1048576
-            SMALL(1) = 0
-            LARGE(2) = 2146435071
-            LARGE(1) = -1
-            RIGHT(2) = 1017118720
-            RIGHT(1) = 0
-            DIVER(2) = 1018167296
-            DIVER(1) = 0
-            LOG10(2) = 1070810131
-            LOG10(1) = 1352628735
-         ELSE
-               WRITE(*,*)'Adjust D1MACH by uncommenting'
-               WRITE(*,*)'data statements appropriate for your machine.'
-            STOP 779
-            END IF
-         SC = 987
-         END IF
-!$omp end critical
-
-      IF (DMACH(4) .GE. 1.0D0) STOP 778
-      IF (I .LT. 1 .OR. I .GT. 5) THEN
-         WRITE(*,*) 'D1MACH(I): I =',I,' is out of bounds.'
-         STOP
-         END IF
-      D1MACH = DMACH(I)
-      END
-
       SUBROUTINE DACOPY (NROW, NCOL, A, NROWA, B, NROWB)
       DOUBLE PRECISION A, B
       INTEGER NROW, NCOL, NROWA, NROWB
@@ -2891,7 +2812,7 @@ C
 C
 C Type declaration for function subroutines called ---------------------
 C
-      DOUBLE PRECISION D1MACH, DVNORM
+      DOUBLE PRECISION DVNORM
 C-----------------------------------------------------------------------
 C The following internal COMMON blocks contain variables which are
 C communicated between subroutines in the DVODE package, or which are
@@ -3124,7 +3045,7 @@ C It contains all remaining initializations, the initial call to F,
 C and the calculation of the initial step size.
 C The error weights in EWT are inverted after being loaded.
 C-----------------------------------------------------------------------
- 100  UROUND = D1MACH(4)
+ 100  UROUND = EPSILON(UROUND)
       TN = T
       IF (ITASK .NE. 4 .AND. ITASK .NE. 5) GO TO 110
       TCRIT = RWORK(1)
