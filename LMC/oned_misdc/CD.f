@@ -16,6 +16,7 @@
       data iO2  / -1 /
       data iN2  / -1 /
       data iCH4 / -1 /
+      data dvd_debug / 0 /
       end
 
 
@@ -251,13 +252,13 @@ C-----------------------------------------------------------------------
       endif
 
       RHO = 0.d0
-      do n=1,Nspec
-         RHO = RHO + Z(1+n)
+      do K=1,Nspec
+         RHO = RHO + Z(1+K)
       enddo
 
-      do n=1,Nspec
-         C(n) = Z(1+n)*invmwt(n)
-         Y(n) = Z(1+n)/RHO
+      do K=1,Nspec
+         C(K) = Z(1+K)*invmwt(K)
+         Y(K) = Z(1+K)/RHO
       enddo
 
       T = Z(1)

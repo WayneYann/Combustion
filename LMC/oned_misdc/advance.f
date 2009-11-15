@@ -205,10 +205,11 @@ c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       call rhoh_to_temp(nx,scal_new)
 
 
-      print *,'... create new visc terms for divu'
+      print *,'... create new visc terms'
       call get_temp_visc_terms(nx,scal_new,beta_new,diff_new(0,Temp),dx)
       call get_spec_visc_terms(nx,scal_new,beta_new,
      &                         diff_new(0,FirstSpec),dx)
+      call get_rhoh_visc_terms(nx,scal_new,beta_new,diff_new(0,RhoH),dx)
 
 c*****************************************************************
 c       Do chemistry update with const source = adv + diff_new
@@ -217,9 +218,9 @@ c*****************************************************************
         print *,'... advancing chem with const source'
         do n = 1,nscal
           do i = 0,nx-1
-c              const_src(i,n) =     aofs(i,n)
-c            lin_src_old(i,n) = diff_old(i,n)
-c            lin_src_new(i,n) = diff_new(i,n)
+              const_src(i,n) =     aofs(i,n)
+            lin_src_old(i,n) = diff_old(i,n)
+            lin_src_new(i,n) = diff_new(i,n)
           enddo
         enddo
 

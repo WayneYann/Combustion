@@ -40,8 +40,8 @@ c     EGLib stuff
 
 
 c     DVODE driver stuff
-      integer nchemdiag
-      common / dvdi / nchemdiag
+      integer nchemdiag, dvd_debug
+      common / dvdi / nchemdiag, dvd_debug
 
       double precision c_0(maxspec+1), c_1(maxspec+1), hmix_INIT,
      &     hmix_TYP
