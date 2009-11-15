@@ -3,20 +3,7 @@ CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
 fCOMP := g77 -fbounds-check
 XTRALIBS :=  -lm -lg2c
 EXEname := lmc.exe
-
-f_sources += lmc.f CD.f vode.f EGini.f EGSlib.f prob.f \
-             calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f \
-             get_rhoh_visc_terms.f est_dt.f project.f strang_chem.f \
-             pre_mac_predict.f compute_pthermo.f add_dpdt.f \
-             mac_proj.f scal_aofs.f mkslopes.f bdsslopes.f \
-             update_rho.f update_spec.f update_temp.f update_rhoh.f \
-             rhoh_to_temp.f advance.f vel_edge_states.f update_vel.f \
-             read_check.f write_check.f cn_solve.f
-
-f_includes += spec.h
-C_sources += main.cpp
-
-f_sources += H-flame_0370.f
+pmf_source := H-flame_0370.f
 
 #
 # Choose reaction mechanism
@@ -33,48 +20,68 @@ REACTION_MECHANISM=CHEMH
 
 
 ifeq ($(REACTION_MECHANISM),GLARBORG)
-  C_sources += glarSkel.cpp
+  mech_source += glarSkel.cpp
 endif
 ifeq ($(REACTION_MECHANISM),DRM19)
-  C_sources += drm19.cpp
+  mech_source += drm19.cpp
 endif
 ifeq ($(REACTION_MECHANISM),GRI12)
-  C_sources += gri12.cpp
+  mech_source += gri12.cpp
 endif
 ifeq ($(REACTION_MECHANISM),GRI30)
-  C_sources += gri30.cpp
+  mech_source += gri30.cpp
 endif
 ifeq ($(REACTION_MECHANISM),GRI30NON)
-  C_sources += gri30-noN.cpp
+  mech_source += gri30-noN.cpp
 endif
 ifeq ($(REACTION_MECHANISM),GRI30HNO)
-  C_sources += gri30_hno.cpp
+  mech_source += gri30_hno.cpp
 endif
 ifeq ($(REACTION_MECHANISM),GRI211HNO)
-  C_sources += gri211-hno.cpp
+  mech_source += gri211-hno.cpp
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
-  C_sources += chem-H.cpp
+  mech_source += chem-H.cpp
 endif
 ifeq ($(REACTION_MECHANISM),INERT30)
-  C_sources += inert30.cpp
+  mech_source += inert30.cpp
 endif
 ifeq ($(REACTION_MECHANISM),CH4-2STEP)
-  C_sources += chem-CH4-2step.cpp
+  mech_source += chem-CH4-2step.cpp
 endif
 ifeq ($(REACTION_MECHANISM),PROPANE)
-  C_sources += propane.cpp
+  mech_source += propane.cpp
 endif
 ifeq ($(REACTION_MECHANISM),LIDRYER)
-  C_sources += LiDryer.cpp
+  mech_source += LiDryer.cpp
 endif
+
+chem_sources := CD.f vode.f EGini.f EGSlib.f
+
+pmf_object := $(pmf_source:%.f=%.o)
+mech_object := $(mech_source:%.cpp=%.o)
+chem_objects := $(chem_sources:%.f=%.o)
+
+f_sources += lmc.f ${chem_sources} prob.f \
+             calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f \
+             get_rhoh_visc_terms.f est_dt.f project.f strang_chem.f \
+             pre_mac_predict.f compute_pthermo.f add_dpdt.f \
+             mac_proj.f scal_aofs.f mkslopes.f bdsslopes.f \
+             update_rho.f update_spec.f update_temp.f update_rhoh.f \
+             rhoh_to_temp.f advance.f vel_edge_states.f update_vel.f \
+             read_check.f write_check.f cn_solve.f ${pmf_source}
+
+f_includes += spec.h
+C_sources += main.cpp ${mech_source}
 
 C_objects := $(C_sources:%.cpp=%.o)
 f_objects := $(f_sources:%.f=%.o)
 
-
 ${EXEname}: ${f_objects} ${C_objects} ${f_includes}
 	${CCOMP} ${f_objects} ${C_objects} -o ${EXEname} ${XTRALIBS}
+
+test.exe: CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects}
+	${CCOMP} CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects} -o test.exe ${XTRALIBS}
 
 clean:
 	\rm -rf ${EXEname} ${f_objects} ${C_objects}

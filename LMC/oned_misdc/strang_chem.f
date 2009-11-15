@@ -21,12 +21,13 @@
       
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
-      double precision res(NiterMAX), errMAX, hmixTYP
+      double precision res(NiterMAX), errMAX
 
 c     Find a good typical value for hmix
-      hmixTYP = ABS(scal_old(-1,RhoH)/scal_old(-1,Density))
+      hmix_TYP = ABS(scal_old(-1,RhoH)/scal_old(-1,Density))
       do i = 0,nx-1
-         hmixTYP=MAX(hmixTYP,ABS(scal_old(i,RhoH)/scal_old(i,Density)))
+         hmix_TYP=MAX(hmix_TYP,
+     &                ABS(scal_old(i,RhoH)/scal_old(i,Density)))
       enddo
 
 c     Evolve chem over grid
@@ -34,11 +35,7 @@ c     Evolve chem over grid
          do n = 1,Nspec
             RYold(n) = scal_old(i,FirstSpec+n-1)
          enddo
-c     The evolved variable is T
          Told = scal_old(i,Temp)
-c     The evolved variable is RhoH
-c         Tg = scal_old(i,Temp)
-c         Told = scal_old(i,RhoH)
 
 c     Set linear source terms in common for ode integrators access
          do n = 1,Nspec
@@ -48,7 +45,7 @@ c     Set linear source terms in common for ode integrators access
          enddo
          c_0(1) = const_src(i,RhoH) + dt*lin_src_old(i,RhoH)
          c_1(1) = lin_src_new(i,RhoH) - lin_src_old(i,RhoH)
-
+         hmix_INIT = scal_old(i,RhoH)/scal_old(i,Density)
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag)
          
@@ -62,19 +59,19 @@ c     Set linear source terms in common for ode integrators access
             Y(n) = RYnew(n)/scal_new(i,Density)
          enddo
 
-c     The evolved variable is T
-         CALL CKHBMS(Tnew,Y,IWRK,RWRK,hmix)
-         scal_new(i,RhoH) = hmix * scal_new(i,Density)
+         scal_new(i,RhoH) = scal_old(i,RhoH)+
+     &        + dt*const_src(i,RhoH)
+     &        + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,rhoH))
+         hmix = scal_new(i,RhoH) / scal_new(i,Density)
 
-c     The evolved variable is RhoH
-c         scal_new(i,RhoH) = scal_old(i,RhoH)+
-c     &        + dt*const_src(i,RhoH)
-c     &        + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,rhoH))
-c         hmix = scal_new(i,RhoH) / scal_new(i,Density)
-
-c         errMax = hmixTYP * 1.e-20
-c         call FORT_TfromHYpt(Tnew,hmix,Y,errMax,NiterMAX,res,Niter)
-c         scal_new(i,Temp) = Tnew
+         errMax = hmix_TYP * 1.e-10
+         call FORT_TfromHYpt(Tnew,hmix,Y,errMax,NiterMAX,res,Niter)
+         if (Niter.lt.0) then
+            print *,'SC: H to T solve failed in F, Niter=',Niter
+            print *,'hmix_TYP:',hmix_TYP
+            stop
+         endif
+         scal_new(i,Temp) = Tnew
 
       enddo
 

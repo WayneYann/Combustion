@@ -267,11 +267,11 @@ c     Here we zero out intra before each advance. FIXME: WHY?
      $                    intra,dx,dt,time)
              call minmax_vel(nx,vel_new)
 
-             do i = 0,nx
+             do i = 0,nx-1
                 vel_new(i)  =   vel_old(i)
              enddo
 
-             do i = 0,nx
+             do i = 0,nx-1
                 do ns = 1,nscal
                    scal_new(i,ns) =  scal_hold(i,ns)
                    scal_old(i,ns) =  scal_hold(i,ns)

@@ -90,7 +90,23 @@ c----------------------------------------------------------------------
             scal(i,Temp) = T
             scal(i,RhoH) = rho * h
             vel(i) = valsPMF(2)
+            if (i.eq.0) then
+               hmix_TYP = ABS(h)
+            else
+               hmix_TYP = MAX(hmix_TYP,ABS(h))
+            endif
+         enddo
 
+         do n = 1,Nspec+1
+            c_0(n) = 0.d0
+            c_1(n) = 0.d0
+         enddo
+         do i = 0,nx-1
+            Z(1) = scal(i,Temp)
+            do n=1,Nspec
+               Z(n+1) = scal(i,FirstSpec+n-1)
+            enddo
+            hmix_INIT = scal(i,RhoH)/scal(i,Density)
             call conpF_T_RhoY(Nspec+1,time,Z,ZP,RWRK,IWRK)
             do n=1,Nspec
                Ydot(i,n) = Zp(n+1)
@@ -100,6 +116,9 @@ c----------------------------------------------------------------------
          print *,'bcfunction: invalid probtype'
          call abort()
       endif
+
+
+
 
 
       end

@@ -237,14 +237,13 @@ C-----------------------------------------------------------------------
       double precision TIME, Z(maxspec+1), ZP(maxspec+1), RPAR(*)
       integer N, IPAR(*)
       
-      double precision RHO, CPB, SUM, H, WDOT, WT, THFAC, Y(maxspec)
+      double precision RHO, CPB, SUM, Y(maxspec)
       double precision HK(maxspec), WDOTK(maxspec), C(maxspec), RWRK
       integer K, IWRK
 
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
       double precision res(NiterMAX), errMAX, hmix, T, DEN
-
 
       if (Pcgs.lt.0.d0) then
          print *,'conpF_T_RhoY: Must set Pcgs before calling vode'
@@ -255,37 +254,33 @@ C-----------------------------------------------------------------------
       do n=1,Nspec
          RHO = RHO + Z(1+n)
       enddo
+
       do n=1,Nspec
          C(n) = Z(1+n)*invmwt(n)
          Y(n) = Z(1+n)/RHO
       enddo
 
-c     The evolved energy variable is T
       T = Z(1)
-c      call CKHMS(hmix, IWRK, RWRK, HK)
+      hmix = hmix_INIT + c_0(1) + c_1(1)*TIME
+      errMax = ABS(hmix_TYP*1.e-6)
+      call FORT_TfromHYpt(T,hmix,Y,errMax,NiterMAX,res,Niter)
+      if (Niter.lt.0) then
+         print *,'F: H to T solve failed in F, Niter=',Niter
+         print *,'F: hmix_INIT:',hmix_INIT
+         print *,'F: hmix_TYP:',hmix_TYP
+         stop
+      endif
 
-c     The evolved energy variable is RhoH
-c      hmix = Z(1)/RHO
-c      errMax = hmix * 1.e-10
-c      T = Tg
-c      call FORT_TfromHYpt(T,hmix,Y,errMax,NiterMAX,res,Niter)      
-
+      call CKHMS(T,IWRK,RWRK,HK)
       call CKCPBS(T,Y,IWRK,RWRK,CPB)
       call CKWC(T,C,IWRK,RWRK,WDOTK)
-      THFAC = 1.d0 / thickFacCH
       SUM = 0.d0
       DO K = 1, Nspec
-         H    = HK(K)
-         WDOT = WDOTK(K) * THFAC
-         WDOT = 0.d0
-         WT   = mwt(K)
-         ZP(K+1) = WDOT * WT  + c_0(1+K) + c_1(1+K)*TIME
-         SUM = SUM + H * ZP(K+1)
+         ZP(K+1) = WDOTK(K)*mwt(K)/thickFacCH
+     &               + c_0(1+K) + c_1(1+K)*TIME
+         SUM = SUM + HK(K)*ZP(K+1)
       END DO
-c     The evolved energy variable is T
       ZP(1) = (c_0(1) + c_1(1)*TIME - SUM) / (RHO*CPB)
-c     The evolved energy variable is RhoH
-c      ZP(1) = (c_0(1)+c_1(1)*TIME)*RHO
       END
 
 
@@ -430,6 +425,7 @@ c     Always form Jacobian to start
             write(6,*) '            number of LUDs = ',DVIWRK(19)
             write(6,*) ' number of Newton iterations ',DVIWRK(20)
             write(6,*) ' number of Newton failures = ',DVIWRK(21)
+            write(6,*) '     comp with largest err = ',DVIWRK(16)
          end if
 
          Tnew = Z(1)
@@ -540,7 +536,7 @@ c
       end do
       write(6,998)
       write(6,998) 'residual:'
-      do n = 0,Niter-1
+      do n = 0,NiterMAX-1
          write(6,998) '  ',res(n)
       end do
 

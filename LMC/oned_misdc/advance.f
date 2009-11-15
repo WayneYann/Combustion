@@ -113,6 +113,7 @@ c
       call get_temp_visc_terms(nx,scal_old,beta_old,diff_old(0,Temp),dx)
       call get_spec_visc_terms(nx,scal_old,beta_old,
      &                         diff_old(0,FirstSpec),dx)
+      call get_rhoh_visc_terms(nx,scal_old,beta_old,diff_old(0,RhoH),dx)
       
 c*****************************************************************
       
@@ -185,12 +186,13 @@ c      stop
       print *,'... recompute diffusivities, then do corrector'
 
       call calc_diffusivities(nx,scal_new,beta_new,mu_new,dx,time+dt)
+
       call update_spec(nx,scal_old,scal_new,aofs,alpha,
-     $                 beta_old,Rhs,dx,dt,be_cn_theta)
+     $                 beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
 
       do n=1,Nspec
          is = FirstSpec + n - 1
-         call cn_solve(nx,scal_new,alpha,beta_old,Rhs,
+         call cn_solve(nx,scal_new,alpha,beta_old,Rhs(0,is),
      $                 dx,dt,is,be_cn_theta)
       enddo
 
@@ -198,15 +200,15 @@ c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       
       call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
-      call cn_solve(nx,scal_new,alpha,beta_new,Rhs,
+      call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta)
       call rhoh_to_temp(nx,scal_new)
 
 
       print *,'... create new visc terms for divu'
-      call get_temp_visc_terms(nx,scal_old,beta_old,diff_old(0,Temp),dx)
-      call get_spec_visc_terms(nx,scal_old,beta_old,
-     &                         diff_old(0,FirstSpec),dx)
+      call get_temp_visc_terms(nx,scal_new,beta_new,diff_new(0,Temp),dx)
+      call get_spec_visc_terms(nx,scal_new,beta_new,
+     &                         diff_new(0,FirstSpec),dx)
 
 c*****************************************************************
 c       Do chemistry update with const source = adv + diff_new
@@ -215,9 +217,9 @@ c*****************************************************************
         print *,'... advancing chem with const source'
         do n = 1,nscal
           do i = 0,nx-1
-              const_src(i,n) =     aofs(i,n)
-            lin_src_old(i,n) = diff_old(i,n)
-            lin_src_new(i,n) = diff_new(i,n)
+c              const_src(i,n) =     aofs(i,n)
+c            lin_src_old(i,n) = diff_old(i,n)
+c            lin_src_new(i,n) = diff_new(i,n)
           enddo
         enddo
 
@@ -282,22 +284,22 @@ c           call update_spec(nx,scal_old,scal_new,aofs,tforce,dx,dt)
            print *,'... update to rhoH with new diff. coeffs'
            call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                      Rhs(0,RhoH),dx,dt,be_cn_theta)
-           call cn_solve(nx,scal_new,alpha,beta_new,Rhs,
+           call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
      $                   dx,dt,RhoH,be_cn_theta)
 
            print *,'... create new diff. terms for RhoH: diff_new'
            if (be_cn_theta .eq. 1.d0) then
               do i = 0,nx-1
-                 diff_new(i,RhoH) = 
-     $                (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-     $                -aofs(i,RhoH)-tforce(i,RhoH)
+c                 diff_new(i,RhoH) = 
+c     $                (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
+c     $                -aofs(i,RhoH)-tforce(i,RhoH)
               enddo
            else if (be_cn_theta .eq. 0.5d0) then
               do i = 0,nx-1
-                 diff_new(i,RhoH) = 2.d0 * (
-     $                (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-     $                -aofs(i,RhoH)-tforce(i,RhoH)
-     $                -0.5d0*diff_old(i,RhoH))
+c                 diff_new(i,RhoH) = 2.d0 * (
+c     $                (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
+c     $                -aofs(i,RhoH)-tforce(i,RhoH)
+c     $                -0.5d0*diff_old(i,RhoH))
               enddo
            else 
               print *,'OOPS - BOGUS BE_CN_THETA ',be_cn_theta
@@ -310,8 +312,8 @@ c           call update_spec(nx,scal_old,scal_new,aofs,tforce,dx,dt)
            print *,'... create new diff. terms for Temp: diff_new'
 c           call compute_cp(nx,cp,scal_new)
            do i = 0,nx-1
-              diff_new(i,Temp) = diff_new(i,RhoH) / 
-     $             (cp(i)*scal_new(i,Density))
+c              diff_new(i,Temp) = diff_new(i,RhoH) / 
+c     $             (cp(i)*scal_new(i,Density))
            enddo
 
 c*****************************************************************

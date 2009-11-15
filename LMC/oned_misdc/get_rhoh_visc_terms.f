@@ -30,7 +30,7 @@ c     Compute Hi, Yi
            enddo
         enddo
 
-        do i = 1,nx
+        do i = 0,nx-1
 
 c     Compute Div( lambda Grad(T) )
            if (coef_avg_harm.eq.1) then

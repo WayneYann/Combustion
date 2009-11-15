@@ -7,10 +7,10 @@
 
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
-      double precision Y(maxspec), T, Patm, rho, Perg
+      double precision RY(maxspec), Y(maxspec), T, Patm, rho
       double precision rhoD(maxspec), kappa, mu, hmix
       double precision res(NiterMAX), errMAX
-      double precision Ynew(maxspec), Tnew
+      double precision RYnew(maxspec), Ynew(maxspec), Tnew
       integer FC, do_diag
       double precision diag(maxreac), dt, sum
       
@@ -29,18 +29,18 @@ c     H2 at phi=0.37
       T = 298.d0
       T = 1500.d0
 
-      Perg = Patm*P1ATM
+      Pcgs = Patm*P1ATM
 
-      call CKRHOY(Perg,T,Y,IWRK,RWRK,rho)
+      call CKRHOY(Pcgs,T,Y,IWRK,RWRK,rho)
       print *,'rho: ',rho
 
-      call calcDiffusivity(T, Y, Patm, rhoD, kappa, mu)
-      print *,'mu: ',mu
-      print *,'kappa: ',kappa
-      do n=1,Nspec
-         name = specNames(n)
-         print *,'rhoD(',name(1:specNameLen),'): ',rhoD(n)
-      enddo
+c      call calc_diffusivities(T, Y, Patm, rhoD, kappa, mu)
+c      print *,'mu: ',mu
+c      print *,'kappa: ',kappa
+c      do n=1,Nspec
+c         name = specNames(n)
+c         print *,'rhoD(',name(1:specNameLen),'): ',rhoD(n)
+c      enddo
 
 
       call CKHBMS(T,Y,IWRK,RWRK,hmix)
@@ -59,28 +59,40 @@ c     H2 at phi=0.37
       print *,'pre-chem state'
       print *,'T:',T
       print *,'Y:',(Y(n),n=1,Nspec)
-      dt = 1.d-4
-      call chemsolve(Ynew, Tnew, Y, T, FC, Patm, dt, diag, do_diag)
+      dt = 1.d-5
+      do n=1,Nspec
+         RY(n) = Y(n) * rho
+      enddo
+      verbose_vode = 1
+      do n=1,Nspec+1
+         c_0(n) = 0.d0
+         c_1(n) = 0.d0
+      enddo
+      hmix_INIT = hmix
+      hmix_TYP = 1.d5
 
-      print *,'post-chem state'
-      print *,'T:',Tnew
-      print *,'Y:',(Ynew(n),n=1,Nspec)
+      do_diag=0
+      call chemsolve(RYnew, Tnew, RY, T, FC, Patm, dt, diag, do_diag)
+
       sum = 0.d0
       do n=1,Nspec
-         sum = sum + Ynew(n)
+         sum = sum + RYnew(n)
       enddo
-      print *,'new sum:',sum
-      print *,'T new is ',Tnew
+      do n=1,Nspec
+         Ynew(n) = RYnew(n)/sum
+      enddo
 
-      call CKHBMS(Tnew,Ynew,IWRK,RWRK,hmix)
-      Tnew = Tnew*1.05
-
-      errMax = ABS(hmix*1.e-20)
+      errMax = ABS(hmix*1.e-10)
+      print *,'errMax:',errMax
       call FORT_TfromHYpt(Tnew,hmix,Ynew,errMax,NiterMAX,res,Niter)
       if (Niter.gt.0) then
          print *,'H to T solve converged in ',Niter,' iterations'
       else
-         print *,'H to T solve failed, Niter=',Niter
+         print *,'H to T solve failed in DRIVER, Niter=',Niter
       endif
 
+      print *,'post-chem state'
+
+      print *,'T new is ',Tnew
+      print *,'Y:',(Ynew(n),n=1,Nspec)
       end

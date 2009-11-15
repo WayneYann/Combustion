@@ -40,11 +40,12 @@ c     EGLib stuff
 
 
 c     DVODE driver stuff
-      integer nchemdiag, Tg
-      common / dvdi / nchemdiag, Tg
+      integer nchemdiag
+      common / dvdi / nchemdiag
 
-      double precision c_0(maxspec+1), c_1(maxspec+1)
-      common / dvdr / c_0, c_1
+      double precision c_0(maxspec+1), c_1(maxspec+1), hmix_INIT,
+     &     hmix_TYP
+      common / dvdr / c_0, c_1, hmix_INIT, hmix_TYP
 
 c     LMC alg stuff
       integer probtype, misdc_iterMAX,on_lo,on_hi,max_order
