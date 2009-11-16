@@ -35,6 +35,8 @@
       double precision X(maxspec), alpha, l1, l2, cpmix, RWRK
       integer n, i, IWRK
 
+      double precision cpi(9)
+
 c     Ensure chem/tran initialized
       if (traninit.lt.0) call initchem()
 
@@ -262,13 +264,11 @@ C-----------------------------------------------------------------------
       enddo
 
       T = Z(1)
-      hmix = hmix_INIT + c_0(1) + c_1(1)*TIME
+      hmix = (rhoh_INIT + c_0(1) + c_1(1)*TIME)/RHO
       errMax = ABS(hmix_TYP*1.e-6)
       call FORT_TfromHYpt(T,hmix,Y,errMax,NiterMAX,res,Niter)
       if (Niter.lt.0) then
          print *,'F: H to T solve failed in F, Niter=',Niter
-         print *,'F: hmix_INIT:',hmix_INIT
-         print *,'F: hmix_TYP:',hmix_TYP
          stop
       endif
 
@@ -281,9 +281,8 @@ C-----------------------------------------------------------------------
      &               + c_0(1+K) + c_1(1+K)*TIME
          SUM = SUM + HK(K)*ZP(K+1)
       END DO
-      ZP(1) = (c_0(1) + c_1(1)*TIME - SUM) / (RHO*CPB)
+      ZP(1) = - SUM / (RHO*CPB)
       END
-
 
       subroutine conpJ_T_RhoY(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
       implicit none
@@ -297,7 +296,7 @@ C-----------------------------------------------------------------------
 
 
       subroutine chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
-     &     diag, do_diag)
+     &     diag, do_diag, ifail)
       implicit none
       include 'spec.h'
 
@@ -306,7 +305,7 @@ C-----------------------------------------------------------------------
       common /VHACK/ YJ_SAVE, FIRST
       save   /VHACK/
 
-      integer do_diag
+      integer do_diag, ifail
       double precision RYold(*), RYnew(*), Told, Tnew, FuncCount
       double precision dt, diag(*)
    
@@ -383,6 +382,7 @@ c     Always form Jacobian to start
          enddo
       endif
 
+      ifail = 0
       do node = 1,nsub
          if (node.lt.nsub) then
             weight = 1.d0
@@ -413,7 +413,7 @@ c     Always form Jacobian to start
             FuncCount = DVIWRK(11)
          endif
 
-         if (verbose_vode .eq. 1) then
+         if (ISTATE.LE.-1  .or.  verbose_vode .eq. 1) then
             write(6,*) '......dvode done:'
             write(6,*) ' last successful step size = ',DVRWRK(11)
             write(6,*) '          next step to try = ',DVRWRK(12)
@@ -433,6 +433,8 @@ c     Always form Jacobian to start
          do n=1,Nspec
             RYnew(n) = Z(n+1)
          end do
+         
+         if (ISTATE.LE.-1) ifail = 1
 
       enddo
       end

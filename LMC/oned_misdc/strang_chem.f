@@ -12,7 +12,7 @@
       real*8        intra( 0:nx-1,nscal)
       real*8  dt
       
-      integer i,n
+      integer i,n,ifail
       integer ispec
       real*8 RYold(maxspec), RYnew(maxspec), Told, Tnew
       real*8 linSrcOLD(nscal),linSrcNEW(nscal)
@@ -45,9 +45,14 @@ c     Set linear source terms in common for ode integrators access
          enddo
          c_0(1) = const_src(i,RhoH) + dt*lin_src_old(i,RhoH)
          c_1(1) = lin_src_new(i,RhoH) - lin_src_old(i,RhoH)
-         hmix_INIT = scal_old(i,RhoH)/scal_old(i,Density)
+         rhoh_INIT = scal_old(i,RhoH)
+
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
-     &                  diag, do_diag)
+     &                  diag, do_diag, ifail)
+         if (ifail.ne.0) then
+            print *,'solve failed, i=',i
+            stop
+         endif
          
          scal_new(i,Density) = 0.d0
          do n = 1,Nspec

@@ -64,7 +64,7 @@ c----------------------------------------------------------------------
       double precision  x, rho, Y(maxspec), T, h
       double precision xPMFlo, xPMFhi
       double precision Z(maxspec+1), Zp(maxspec+1)
-      double precision valsPMF(maxspec+3), RWRK, time
+      double precision valsPMF(maxspec+3), RWRK, time, sum
       integer i, n, nPMF, IWRK
 
       if (probtype.eq.1) then
@@ -78,13 +78,19 @@ c----------------------------------------------------------------------
             call pmf(xPMFlo,xPMFhi,valsPMF,nPMF)
             call CKXTY(valsPMF(4),IWRK,RWRK,Y)
             T = valsPMF(1)
+
+            if (iN2.gt.0  .and.  iN2.le.Nspec) then
+               sum = 0.d0
+               do n=1,Nspec
+                  sum = sum + Y(n)
+               enddo
+               Y(iN2) = Y(iN2) - 1.d0 + sum
+            endif
+
             call CKHBMS(T,Y,IWRK,RWRK,h)
             call CKRHOY(Pcgs,T,Y,IWRK,RWRK,rho)
-
-            Z(1) = T
             do n=1,Nspec
                scal(i,FirstSpec+n-1) = rho * Y(n)
-               Z(n+1) = rho * Y(n)
             enddo
             scal(i,Density) = rho
             scal(i,Temp) = T

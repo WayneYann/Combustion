@@ -67,7 +67,8 @@ c     New arrays for MISDC.
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int, change_max,
      $                  init_shrink, probtype,flame_offset,
-     $                  dpdt_factor, Patm, coef_avg_harm
+     $                  dpdt_factor, Patm, coef_avg_harm,
+     $                  misdc_iterMAX
 
 c     Initialize chem/tran database
       call initchem()
@@ -88,6 +89,7 @@ c     Set defaults, change with namelist
       dpdt_factor = 0.d0
       Patm = 0
       coef_avg_harm = 1
+      misdc_iterMAX = 3
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
@@ -194,10 +196,7 @@ c              Should rather use bc vals, and modify stencil for laplacians
           print *,' '
 
           do nd = 1,num_divu_iters
-             print *,' '
-             write(6,1000) nd
- 1000        format('...doing ',i2,'th divu_iter ')
-             print *,' '
+             print *,' ...doing divu_iter number',nd
 
              call strang_chem(nx,scal_old,scal_new,
      $                        const_src,lin_src_old,lin_src_new,

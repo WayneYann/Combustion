@@ -14,6 +14,8 @@
         real*8 hi(maxspec,-1:nx)
         real*8 Y(maxspec,-1:nx)
 
+        real*8 cpi(9)
+
 c     Note, this returns Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
 
         dxsqinv = 1.d0/(dx*dx)

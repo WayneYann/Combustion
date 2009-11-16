@@ -97,11 +97,12 @@ c      call minmax_scal(nx,scal_old)
          do i = 0,nx-1
             tforce(i,n) = 0.d0
 c     Initialized elsewhere, reused from previous timestep where possible
-c            intra(i,n) = 0.d0
-            diff_old(i,n) = 0.d0
-            diff_hat(i,n) = 0.d0
-            diff_new(i,n) = 0.d0
-            aofs(i,n)     = 0.d0
+c     FIXME: starting on a bad note
+cc            intra(i,n) = 0.d0
+c            diff_old(i,n) = 0.d0
+c            diff_hat(i,n) = 0.d0
+c            diff_new(i,n) = 0.d0
+c            aofs(i,n)     = 0.d0
          enddo
       enddo
 c
@@ -148,6 +149,7 @@ c*****************************************************************
       call update_rho(nx,scal_old,scal_new,aofs,dx,dt)
 
       print *,'... update to temp to define new diff coeffs'
+      be_cn_theta = 1.d0
       call update_temp(nx,scal_old,scal_new,aofs,
      $                 alpha,beta_old,Rhs(0,Temp),dx,dt,be_cn_theta)
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,Temp),
@@ -162,7 +164,6 @@ c*****************************************************************
       print *,'... update to spec with new diff. coeffs, do predictor'
       call update_spec(nx,scal_old,scal_new,aofs,alpha,
      $                 beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
-
       do n=1,Nspec
          is = FirstSpec + n - 1
          call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,is),
@@ -172,7 +173,6 @@ c*****************************************************************
 c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
-
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta)
 
@@ -189,7 +189,6 @@ c      stop
 
       call update_spec(nx,scal_old,scal_new,aofs,alpha,
      $                 beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
-
       do n=1,Nspec
          is = FirstSpec + n - 1
          call cn_solve(nx,scal_new,alpha,beta_old,Rhs(0,is),
@@ -219,7 +218,7 @@ c*****************************************************************
         do n = 1,nscal
           do i = 0,nx-1
               const_src(i,n) =     aofs(i,n)
-            lin_src_old(i,n) = diff_old(i,n)
+            lin_src_old(i,n) = diff_new(i,n)
             lin_src_new(i,n) = diff_new(i,n)
           enddo
         enddo
@@ -248,6 +247,7 @@ c*****************************************************************
      &          dx,time+dt)
 
            print *,'... create new diff. terms : diff_hat'
+           be_cn_theta = 0.5d0
            call get_rhoh_visc_terms(nx,scal_new,beta_new,visc,dx)
            do i = 0,nx-1
               diff_hat(i,RhoH) = visc(i)
