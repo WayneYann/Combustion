@@ -112,8 +112,8 @@ c----------------------------------------------------------------------
             do n=1,Nspec
                Z(n+1) = scal(i,FirstSpec+n-1)
             enddo
-            hmix_INIT = scal(i,RhoH)/scal(i,Density)
-            call conpF_T_RhoY(Nspec+1,time,Z,ZP,RWRK,IWRK)
+            rhoh_INIT = scal(i,RhoH)
+            call vodeF_T_RhoY(Nspec+1,time,Z,ZP,RWRK,IWRK)
             do n=1,Nspec
                Ydot(i,n) = Zp(n+1)
             enddo

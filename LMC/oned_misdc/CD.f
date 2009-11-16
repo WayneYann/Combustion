@@ -234,7 +234,7 @@ C-----------------------------------------------------------------------
       end
 
 
-      subroutine conpF_T_RhoY(N, TIME, Z, ZP, RPAR, IPAR)
+      subroutine vodeF_T_RhoY(N, TIME, Z, ZP, RPAR, IPAR)
       implicit none
       include 'spec.h'
       double precision TIME, Z(maxspec+1), ZP(maxspec+1), RPAR(*)
@@ -249,7 +249,7 @@ C-----------------------------------------------------------------------
       double precision res(NiterMAX), errMAX, hmix, T, DEN
 
       if (Pcgs.lt.0.d0) then
-         print *,'conpF_T_RhoY: Must set Pcgs before calling vode'
+         print *,'vodeF_T_RhoY: Must set Pcgs before calling vode'
          stop
       endif
 
@@ -284,11 +284,11 @@ C-----------------------------------------------------------------------
       ZP(1) = - SUM / (RHO*CPB)
       END
 
-      subroutine conpJ_T_RhoY(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
+      subroutine vodeJ(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
       implicit none
       integer NEQ, NRPD, ML, MU, IPAR(*)
       double precision T, Y(NEQ), PD(NRPD,NEQ), RPAR(*)
-      print *,'Should not be in conpJ_T_RhoY'
+      print *,'Should not be in vodeJ'
       stop
       end
 
@@ -313,7 +313,7 @@ C-----------------------------------------------------------------------
       parameter (ITOL=1, IOPT=1, ITASK=1)
       double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
       parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
-      external conpF_T_RhoY, conpJ_T_RhoY, open_vode_failure_file
+      external vodeF_T_RhoY, vodeJ, open_vode_failure_file
       integer n, MF, ISTATE, lout
       character*(maxspnml) name
 
@@ -394,9 +394,9 @@ c     Always form Jacobian to start
          TT2 = TT1 + dtloc
 
          CALL DVODE
-     &        (conpF_T_RhoY, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
+     &        (vodeF_T_RhoY, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
      &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
-     &        dvi, conpJ_T_RhoY, MF, RPAR, IPAR)
+     &        dvi, vodeJ, MF, RPAR, IPAR)
 
          TT1 = TT2
 
