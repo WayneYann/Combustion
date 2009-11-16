@@ -1,5 +1,0 @@
-!     Constant and linear source terms from advection/diffusion 
-
-      double precision src_const(MAXSPEC+1),src_old(MAXSPEC+1),
-     $                                      src_new(MAXSPEC+1)
-      common /src_info/ src_const,src_old,src_new 
