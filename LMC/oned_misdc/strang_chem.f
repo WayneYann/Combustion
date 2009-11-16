@@ -40,11 +40,11 @@ c     Evolve chem over grid
 c     Set linear source terms in common for ode integrators access
          do n = 1,Nspec
             ispec = FirstSpec + n - 1
-            c_0(n+1) = const_src(i,ispec) + dt*lin_src_old(i,ispec)
-            c_1(n+1) = lin_src_new(i,ispec) - lin_src_old(i,ispec)
+            c_0(n+1) = const_src(i,ispec) + lin_src_old(i,ispec)
+            c_1(n+1) = (lin_src_new(i,ispec) - lin_src_old(i,ispec))/dt
          enddo
-         c_0(1) = const_src(i,RhoH) + dt*lin_src_old(i,RhoH)
-         c_1(1) = lin_src_new(i,RhoH) - lin_src_old(i,RhoH)
+         c_0(1) = const_src(i,RhoH) + lin_src_old(i,RhoH)
+         c_1(1) = (lin_src_new(i,RhoH) - lin_src_old(i,RhoH))/dt
          rhoh_INIT = scal_old(i,RhoH)
 
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,

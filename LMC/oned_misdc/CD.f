@@ -264,7 +264,7 @@ C-----------------------------------------------------------------------
       enddo
 
       T = Z(1)
-      hmix = (rhoh_INIT + c_0(1) + c_1(1)*TIME)/RHO
+      hmix = (rhoh_INIT + c_0(1)*TIME + c_1(1)*TIME*TIME)/RHO
       errMax = ABS(hmix_TYP*1.e-6)
       call FORT_TfromHYpt(T,hmix,Y,errMax,NiterMAX,res,Niter)
       if (Niter.lt.0) then
@@ -281,7 +281,7 @@ C-----------------------------------------------------------------------
      &               + c_0(1+K) + c_1(1+K)*TIME
          SUM = SUM + HK(K)*ZP(K+1)
       END DO
-      ZP(1) = - SUM / (RHO*CPB)
+      ZP(1) = (c_0(1) + c_1(1)*TIME - SUM) / (RHO*CPB)
       END
 
       subroutine vodeJ(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
