@@ -20,8 +20,9 @@ pmf_source := H-flame_0370.f
 REACTION_MECHANISM=CHEMH
 
 ifeq (${USE_INTEL},TRUE)
-  CCOMP := icpc -DBL_FORT_USE_UNDERSCORE
-  fCOMP := ifort
+  CCOMP := icpc -vec_report0 -DBL_FORT_USE_UNDERSCORE
+  fCOMP := ifort -vec-report0
+#  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
   fCOMP := g77 -fbounds-check
