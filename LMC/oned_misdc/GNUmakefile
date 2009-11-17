@@ -22,7 +22,7 @@ REACTION_MECHANISM=CHEMH
 ifeq (${USE_INTEL},TRUE)
   CCOMP := icpc -vec_report0 -DBL_FORT_USE_UNDERSCORE
   fCOMP := ifort -vec-report0
-#  fCOMP += -CB
+  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
   fCOMP := g77 -fbounds-check
