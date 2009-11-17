@@ -2812,7 +2812,7 @@ C
 C
 C Type declaration for function subroutines called ---------------------
 C
-      DOUBLE PRECISION DVNORM
+      DOUBLE PRECISION DUMACH, DVNORM
 C-----------------------------------------------------------------------
 C The following internal COMMON blocks contain variables which are
 C communicated between subroutines in the DVODE package, or which are
@@ -3045,7 +3045,8 @@ C It contains all remaining initializations, the initial call to F,
 C and the calculation of the initial step size.
 C The error weights in EWT are inverted after being loaded.
 C-----------------------------------------------------------------------
- 100  UROUND = EPSILON(UROUND)
+c 100  UROUND = EPSILON(UROUND)
+ 100  UROUND = DUMACH()
       TN = T
       IF (ITASK .NE. 4 .AND. ITASK .NE. 5) GO TO 110
       TCRIT = RWORK(1)
@@ -4153,6 +4154,17 @@ C-----------------------------------------------------------------------
 
       IF (LUN .GT. 0) JUNK = LUNSAV (LUN,.TRUE.)
       END
+
+      DOUBLE PRECISION FUNCTION DUMACH ()
+      DOUBLE PRECISION U, COMP
+      U = 1.0D0
+ 10   U = U*0.5D0
+      COMP = 1.0D0 + U
+      IF (COMP .NE. 1.0D0) GO TO 10
+      DUMACH = U*2.0D0
+      RETURN
+      END
+
 
       block data vhack_save
       include "vode.H"
