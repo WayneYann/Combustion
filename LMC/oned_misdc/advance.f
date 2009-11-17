@@ -248,15 +248,10 @@ c*****************************************************************
 
            print *,'... create new diff. terms : diff_hat'
            be_cn_theta = 0.5d0
-           call get_rhoh_visc_terms(nx,scal_new,beta_new,visc,dx)
-           do i = 0,nx-1
-              diff_hat(i,RhoH) = visc(i)
-           enddo
-c           call compute_cp(nx,cp,scal_new)
-c           do i = 0,nx-1
-c              diff_hat(i,Temp) = diff_hat(i,RhoH) / 
-c     $             (cp(i)*scal_new(i,Density))
-c           enddo
+           call get_rhoh_visc_terms(nx,scal_new,beta_new,
+     &                              diff_hat(0,RhoH),dx)
+           call get_temp_visc_terms(nx,scal_new,beta_new,
+     &                              diff_hat(0,Temp),dx)
            
 c*****************************************************************
            
@@ -280,8 +275,14 @@ c*****************************************************************
            enddo
            
            print *,'Updating species,rho with advective + intra terms'
-c           call update_spec(nx,scal_old,scal_new,aofs,tforce,dx,dt)
-           
+           call update_spec(nx,scal_old,scal_new,aofs,alpha,
+     $                      beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
+           do n=1,Nspec
+              is = FirstSpec + n - 1
+              call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,is),
+     $                      dx,dt,is,be_cn_theta)
+           enddo
+
            print *,'... update to rhoH with new diff. coeffs'
            call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                      Rhs(0,RhoH),dx,dt,be_cn_theta)
