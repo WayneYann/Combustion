@@ -44,7 +44,6 @@ c
       integer    i,j,k,n
       integer    nxlo,nxhi,nylo,nyhi,nzlo,nzhi
       
-c     ::::: lets punt if not in domain interior
       nxlo = max(0,domlo(1)-lo(1))
       nxhi = max(0,hi(1)-domhi(1))
       nylo = max(0,domlo(2)-lo(2))
@@ -63,8 +62,9 @@ c     ::::: lets punt if not in domain interior
             enddo
          enddo
       enddo
-      
+
       do n=2,ncomp
+!$omp parallel do private(i,j,k)
          do k=lo(3),hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
@@ -72,11 +72,9 @@ c     ::::: lets punt if not in domain interior
                enddo
             enddo
          enddo
+!$omp end parallel do
       enddo
-c     
-c     end of routine
-c
-      return
+
       end
 
 c=========================================================
@@ -105,7 +103,6 @@ c
       integer    i,j,k,n
       integer    nxlo, nxhi, nylo, nyhi, nzlo,nzhi
       
-c     ::::: lets punt if not in domain interior
       nxlo = max(0,domlo(1)-lo(1))
       nxhi = max(0,hi(1)-domhi(1))
       nylo = max(0,domlo(2)-lo(2))
@@ -120,12 +117,13 @@ c     ::::: lets punt if not in domain interior
       do k = lo(3),hi(3)
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               e(i,j,k,1) = 0.0
+               e(i,j,k,1) = 0.0d0
             enddo
          enddo
       enddo
       
       do n=1,ncomp
+!$omp parallel do private(i,j,k)
          do k=lo(3),hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
@@ -133,11 +131,9 @@ c     ::::: lets punt if not in domain interior
                enddo
             enddo
          enddo
+!$omp end parallel do
       enddo
-c     
-c     end of routine
-c
-      return
+
       end
 
 c=========================================================
@@ -171,7 +167,6 @@ c
       data lo_chem /1,1,1/
       data hi_chem /1,1,1/
       
-c     ::::: lets punt if not in domain interior
       nxlo = max(0,domlo(1)-lo(1))
       nxhi = max(0,hi(1)-domhi(1))
       nylo = max(0,domlo(2)-lo(2))
@@ -182,12 +177,14 @@ c     ::::: lets punt if not in domain interior
       if (nxlo+nxhi+nylo+nyhi+nzlo+nzhi .gt. 0) then
 	 call bl_abort("FORT_DERRHORT: outside domain")
       endif
-      
-c     Set pointers into state (these must agree with setup for this derived quant)
+c      
+c     Set pointers into state (these must agree with setup for this derived quant).
+c
       rho = 1
-      T = 2
-      fS = 3
+      T   = 2
+      fS  = 3
 
+!$omp parallel do private(i,j,k,n,Yt)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -202,13 +199,16 @@ c     Set pointers into state (these must agree with setup for this derived quan
             end do
          end do
       end do
+!$omp end parallel do
       end
 
       subroutine FORT_DERMOLEFRAC (x,DIMS(x),nv,dat,DIMS(dat),ncomp,
      &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
      $                         level,grid_no)
       implicit none
+
 #include "cdwrk.H"
+
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(x)
       integer    DIMDEC(dat)
@@ -228,8 +228,9 @@ c     Set pointers into state (these must agree with setup for this derived quan
       data hi_chem /1,1,1/
 
       rho = 1 
-      fS = 2
+      fS  = 2
 
+!$omp parallel do private(i,j,k,n,Xt,Yt)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -245,15 +246,17 @@ c     Set pointers into state (these must agree with setup for this derived quan
             enddo
          enddo
       enddo
+!$omp end parallel do
 
       end
-
 
       subroutine FORT_DERCONCENTRATION(C,DIMS(C),nv,dat,DIMS(dat),ncomp,
      &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
      $                         level,grid_no)
       implicit none
+
 #include "cdwrk.H"
+
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(C)
       integer    DIMDEC(dat)
@@ -276,13 +279,14 @@ c     Set pointers into state (these must agree with setup for this derived quan
       T   = 2
       fS  = 3
 
+!$omp parallel do private(i,j,k,n,Ct,Yt)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                do n = 1,Nspec
                   Yt(n) = dat(i,j,k,fS+n-1)/dat(i,j,k,rho) 
                enddo
-            call FORT_MASSR_TO_CONC(lo_chem,hi_chem,
+               call FORT_MASSR_TO_CONC(lo_chem,hi_chem,
      &           Yt,             ARLIM(lo_chem),ARLIM(hi_chem),
      &           dat(i,j,k,T),   ARLIM(lo_chem),ARLIM(hi_chem),
      &           dat(i,j,k,rho), ARLIM(lo_chem),ARLIM(hi_chem),
@@ -293,6 +297,7 @@ c     Set pointers into state (these must agree with setup for this derived quan
             enddo
          enddo
       enddo
+!$omp end parallel do
 
       end
 
@@ -384,17 +389,15 @@ c     Adjust z offset for probtype 15
       xstep = int(Lx/Lmin+0.5)
       ystep = int(Ly/Lmin+0.5)
       zstep = int(Lz/Lmin+0.5)
-      
+
+!$omp parallel do private(i,j,k,x,y,z,f1,f2,f3,u,v,w,rho)
+!$omp&private(kz,kzd,ky,kyd,kx,kxd,kappa,xT)
       do k = klo, khi
          z = xlo(3) + hz*(float(k-klo) + half)
          do j = jlo, jhi
             y = xlo(2) + hy*(float(j-jlo) + half)
             do i = ilo, ihi
                x = xlo(1) + hx*(float(i-ilo) + half)
-               rho = dat(i,j,k,1)
-               u   = dat(i,j,k,2)
-               v   = dat(i,j,k,3)
-               w   = dat(i,j,k,4)
                f1 = zero
                f2 = zero
                f3 = zero
@@ -431,6 +434,10 @@ c     Adjust z offset for probtype 15
                   enddo
                enddo
                if (use_rho_in_forcing.eq.1) then
+                  rho = dat(i,j,k,1)
+                  u   = dat(i,j,k,2)
+                  v   = dat(i,j,k,3)
+                  w   = dat(i,j,k,4)
                   e(i,j,k,1) = f1*rho*u
                   e(i,j,k,2) = f2*rho*v
                   e(i,j,k,3) = f3*rho*w
@@ -442,9 +449,9 @@ c     Adjust z offset for probtype 15
             enddo
          enddo
       enddo
+!$omp end parallel do
 #endif
       end
-
 
       subroutine FORT_DERFORCEX (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
      &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
@@ -483,13 +490,12 @@ c
       REAL_T  x, y, z
       REAL_T  hx, hy, hz
       REAL_T  sga, cga
-      REAL_T  f1, f2, f3
+      REAL_T  f1
       REAL_T  twicePi
       REAL_T  force_time
       REAL_T  kxd, kyd, kzd
       REAL_T  xt, yt, zt
       REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
-      REAL_T  rho
       integer kx, ky, kz, mode_count, xstep, ystep, zstep
       integer isioproc
       integer nXvel, nYvel, nZvel, nRho, nTrac
@@ -533,17 +539,16 @@ c     Adjust z offset for probtype 15
       xstep = int(Lx/Lmin+0.5)
       ystep = int(Ly/Lmin+0.5)
       zstep = int(Lz/Lmin+0.5)
-      
+
+!$omp parallel do private(i,j,k,x,y,z,f1)
+!$omp&private(kz,kzd,ky,kyd,kx,kxd,kappa,xT)      
       do k = klo, khi
          z = xlo(3) + hz*(float(k-klo) + half)
          do j = jlo, jhi
             y = xlo(2) + hy*(float(j-jlo) + half)
             do i = ilo, ihi
                x = xlo(1) + hx*(float(i-ilo) + half)
-               rho = dat(i,j,k,1)
                f1 = zero
-               f2 = zero
-               f3 = zero
                do kz = mode_start*zstep, nzmodes, zstep
                   kzd = dfloat(kz)
                   do ky = mode_start*ystep, nymodes, ystep
@@ -573,13 +578,14 @@ c     Adjust z offset for probtype 15
                   enddo
                enddo
                if (use_rho_in_forcing.eq.1) then
-                  e(i,j,k,1) = f1*rho
+                  e(i,j,k,1) = f1*dat(i,j,k,1)
                else
                   e(i,j,k,1) = f1
                endif
             enddo
          enddo
       enddo
+!$omp end parallel do
 #endif
       end
 
@@ -621,13 +627,12 @@ c
       REAL_T  x, y, z
       REAL_T  hx, hy, hz
       REAL_T  sga, cga
-      REAL_T  f1, f2, f3
+      REAL_T  f2
       REAL_T  twicePi
       REAL_T  force_time
       REAL_T  kxd, kyd, kzd
       REAL_T  xt, yt, zt
       REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
-      REAL_T  rho
       integer kx, ky, kz, mode_count, xstep, ystep, zstep
       integer isioproc
       integer nXvel, nYvel, nZvel, nRho, nTrac
@@ -671,14 +676,15 @@ c     Adjust z offset for probtype 15
       xstep = int(Lx/Lmin+0.5)
       ystep = int(Ly/Lmin+0.5)
       zstep = int(Lz/Lmin+0.5)
-      
+
+!$omp parallel do private(i,j,k,x,y,z,f2) 
+!$omp&private(kz,kzd,ky,kyd,kx,kxd,kappa,xT) 
       do k = klo, khi
          z = xlo(3) + hz*(float(k-klo) + half)
          do j = jlo, jhi
             y = xlo(2) + hy*(float(j-jlo) + half)
             do i = ilo, ihi
                x = xlo(1) + hx*(float(i-ilo) + half)
-               rho = dat(i,j,k,1)
                f2 = zero
                do kz = mode_start*zstep, nzmodes, zstep
                   kzd = dfloat(kz)
@@ -709,13 +715,14 @@ c     Adjust z offset for probtype 15
                   enddo
                enddo
                if (use_rho_in_forcing.eq.1) then
-                  e(i,j,k,1) = f2*rho
+                  e(i,j,k,1) = f2*dat(i,j,k,1)
                else
                   e(i,j,k,1) = f2
                endif
             enddo
          enddo
       enddo
+!$omp end parallel do
 #endif
       end
 
@@ -757,13 +764,12 @@ c
       REAL_T  x, y, z
       REAL_T  hx, hy, hz
       REAL_T  sga, cga
-      REAL_T  f1, f2, f3
+      REAL_T  f3
       REAL_T  twicePi
       REAL_T  force_time
       REAL_T  kxd, kyd, kzd
       REAL_T  xt, yt, zt
       REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
-      REAL_T  rho
       integer kx, ky, kz, mode_count, xstep, ystep, zstep
       integer isioproc
       integer nXvel, nYvel, nZvel, nRho, nTrac
@@ -807,14 +813,15 @@ c     Adjust z offset for probtype 15
       xstep = int(Lx/Lmin+0.5)
       ystep = int(Ly/Lmin+0.5)
       zstep = int(Lz/Lmin+0.5)
-      
+
+!$omp parallel do private(i,j,k,x,y,z,f3) 
+!$omp&private(kz,kzd,ky,kyd,kx,kxd,kappa,xT)      
       do k = klo, khi
          z = xlo(3) + hz*(float(k-klo) + half)
          do j = jlo, jhi
             y = xlo(2) + hy*(float(j-jlo) + half)
             do i = ilo, ihi
                x = xlo(1) + hx*(float(i-ilo) + half)
-               rho = dat(i,j,k,1)
                f3 = zero
                do kz = mode_start*zstep, nzmodes, zstep
                   kzd = dfloat(kz)
@@ -845,12 +852,13 @@ c     Adjust z offset for probtype 15
                   enddo
                enddo
                if (use_rho_in_forcing.eq.1) then
-                  e(i,j,k,1) = f3*rho
+                  e(i,j,k,1) = f3*dat(i,j,k,1)
                else
                   e(i,j,k,1) = f3
                endif
             enddo
          enddo
       enddo
+!$omp end parallel do
 #endif
       end
