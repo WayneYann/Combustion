@@ -1,8 +1,9 @@
-
-CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
-fCOMP := g77 -fbounds-check
-XTRALIBS :=  -lm -lg2c
+USE_INTEL = TRUE
 EXEname := lmc.exe
+
+#
+# Choose pmf file
+#
 pmf_source := H-flame_0370.f
 
 #
@@ -18,6 +19,15 @@ pmf_source := H-flame_0370.f
 #REACTION_MECHANISM=GLARBORG
 REACTION_MECHANISM=CHEMH
 
+ifeq (${USE_INTEL},TRUE)
+  CCOMP := icpc -DBL_FORT_USE_UNDERSCORE
+  fCOMP := ifort
+  XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
+else
+  fCOMP := g77 -fbounds-check
+  CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
+  XTRALIBS :=  -lm -lg2c
+endif
 
 ifeq ($(REACTION_MECHANISM),GLARBORG)
   mech_source += glarSkel.cpp
@@ -78,7 +88,7 @@ C_objects := $(C_sources:%.cpp=%.o)
 f_objects := $(f_sources:%.f=%.o)
 
 ${EXEname}: ${f_objects} ${C_objects} ${f_includes}
-	${CCOMP} ${f_objects} ${C_objects} -o ${EXEname} ${XTRALIBS}
+	${CCOMP} -o ${EXEname} ${f_objects} ${C_objects} ${XTRALIBS}
 
 test.exe: CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects}
 	${CCOMP} CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects} -o test.exe ${XTRALIBS}
@@ -87,10 +97,10 @@ clean:
 	\rm -rf ${EXEname} ${f_objects} ${C_objects}
 
 %.o: %.cpp
-	${CCOMP} -c -o $*.o $^
+	${CCOMP} -c $^ -o $*.o
 
 %.o: %.f
-	${fCOMP} -c -o $*.o $^
+	${fCOMP} -c $^ -o $*.o
 
 
 MySrcDirs += . .. ../PMFfiles
