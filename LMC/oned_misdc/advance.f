@@ -130,7 +130,7 @@ c     Temp visc terms must be scaled by 1/(rho.cp)
          enddo
          call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
          rhocp_old(i) = cpmix * scal_old(i,Density)
-         tforce(i,n) = tforce(i,n)/rhocp_old(i)
+         tforce(i,Temp) = tforce(i,Temp)/rhocp_old(i)
       enddo
       
       call scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt,time)
