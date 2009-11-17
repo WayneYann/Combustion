@@ -1517,6 +1517,7 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 
       if (level.lt.max_trac_lev) then
+!$omp parallel do private(i,j,k)
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
@@ -1525,6 +1526,7 @@ c ::: -----------------------------------------------------------
                enddo
             enddo
          enddo
+!$omp end parallel do
       endif
 
       end
@@ -1613,7 +1615,6 @@ c ::: -----------------------------------------------------------
       integer   tag(DIMV(tag))
       REAL_T    temperature(DIMV(temp),nvar)
 
-      REAL_T    x, y, z, ax, ay, az, aerr
       integer   i, j, k, ng
 
 #include "probdata.H"
@@ -1629,21 +1630,15 @@ c
 c     ::::: refine where there is temperature gradient
 c
       if (level .lt. max_temp_lev) then
+!$omp parallel do private(i,j,k)
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
-c                 ax = abs(temperature(i+1,j,k,1) - temperature(i,j,k,1))
-c                 ay = abs(temperature(i,j+1,k,1) - temperature(i,j,k,1))
-c                 az = abs(temperature(i,j,k+1,1) - temperature(i,j,k,1))
-c                 ax = MAX(ax,abs(temperature(i,j,k,1) - temperature(i-1,j,k,1)))
-c                 ay = MAX(ay,abs(temperature(i,j,k,1) - temperature(i,j-1,k,1)))
-c                 az = MAX(az,abs(temperature(i,j,k,1) - temperature(i,j,k-1,1)))
-c                 aerr = max(ax,ay,az)
-c                 tag(i,j,k) = cvmgt(set,tag(i,j,k),aerr.ge.tempgrad)
                   tag(i,j,k) = cvmgt(set,tag(i,j,k),temperature(i,j,k,1).lt.temperr)
                enddo
             enddo
          enddo
+!$omp end parallel do
       endif
 
       end
@@ -1689,9 +1684,8 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-c     if ((probtype.eq.8 .or. probtype .eq. 28 .or. probtype .eq. 29) 
-c    &     .and. (level .lt. max_vort_lev)) then
       if (level .lt. max_vort_lev) then
+!$omp parallel do private(i,j,k)
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
@@ -1700,6 +1694,7 @@ c    &     .and. (level .lt. max_vort_lev)) then
                enddo
             enddo
          enddo
+!$omp end parallel do
       end if
 
       end
@@ -4687,314 +4682,3 @@ c              rad(i,j,k) = -blend(r)*wire_h*MAX(zero,(wire_T - T(i,j,k)))
          end do
       end do
       end
-
-      subroutine FORT_DERVRADIAL (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
-     &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
-     $                         level,grid_no)
-      implicit none
-#include "probdata.H"
-
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(e)
-      integer    DIMDEC(dat)
-      integer    domlo(SDIM), domhi(SDIM)
-      integer    nv, ncomp
-      integer    bc(SDIM,2,ncomp)
-      REAL_T     delta(SDIM), xlo(SDIM), time, dt
-      REAL_T     e(DIMV(e),nv)
-      REAL_T     dat(DIMV(dat),ncomp)
-      integer    level, grid_no
-
-      integer    i,j,k,n
-      integer    nxlo, nxhi, nylo, nyhi, nzlo,nzhi
-      REAL_T     x,y,r
-      
-c     ::::: lets punt if not in domain interior
-      nxlo = max(0,domlo(1)-lo(1))
-      nxhi = max(0,hi(1)-domhi(1))
-      nylo = max(0,domlo(2)-lo(2))
-      nyhi = max(0,hi(2)-domhi(2))
-      nzlo = max(0,domlo(3)-lo(3))
-      nzhi = max(0,hi(3)-domhi(3))
-
-      if (nxlo+nxhi+nylo+nyhi+nzlo+nzhi .gt. 0) then
-	 call bl_abort("FORT_DERVRADIAL: outside domain")
-      endif
-
-      do k = lo(3),hi(3)
-         do j = lo(2), hi(2)
-            y = (float(j)+0.5d0)*delta(2)+domnlo(2)
-            do i = lo(1), hi(1)
-               x =( float(i)+0.5d0)*delta(1)+domnlo(1)
-               r = sqrt(x**2 + y**2)
-               e(i,j,k,1) = (x*dat(i,j,k,1) + y*dat(i,j,k,2))/r
-            enddo
-         enddo
-      enddo
-      
-      end
-
-      subroutine FORT_DERVTHETA (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
-     &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
-     $                         level,grid_no)
-      implicit none
-#include "probdata.H"
-
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(e)
-      integer    DIMDEC(dat)
-      integer    domlo(SDIM), domhi(SDIM)
-      integer    nv, ncomp
-      integer    bc(SDIM,2,ncomp)
-      REAL_T     delta(SDIM), xlo(SDIM), time, dt
-      REAL_T     e(DIMV(e),nv)
-      REAL_T     dat(DIMV(dat),ncomp)
-      integer    level, grid_no
-
-      integer    i,j,k,n
-      integer    nxlo, nxhi, nylo, nyhi, nzlo,nzhi
-      REAL_T     x,y,r
-c      
-c     ::::: lets punt if not in domain interior
-c
-      nxlo = max(0,domlo(1)-lo(1))
-      nxhi = max(0,hi(1)-domhi(1))
-      nylo = max(0,domlo(2)-lo(2))
-      nyhi = max(0,hi(2)-domhi(2))
-      nzlo = max(0,domlo(3)-lo(3))
-      nzhi = max(0,hi(3)-domhi(3))
-
-      if (nxlo+nxhi+nylo+nyhi+nzlo+nzhi .gt. 0) then
-	 call bl_abort("FORT_DERVTHETA: outside domain")
-      endif
-
-      do k = lo(3),hi(3)
-         do j = lo(2), hi(2)
-            y = (float(j)+0.5d0)*delta(2)+domnlo(2)
-            do i = lo(1), hi(1)
-               x = (float(i)+0.5d0)*delta(1)+domnlo(1)
-               r = sqrt(x**2 + y**2)
-               e(i,j,k,1) = (x*dat(i,j,k,2) - y*dat(i,j,k,1))/r
-            enddo
-         enddo
-      enddo
-
-      end
-
-
-c
-c
-c ::: -----------------------------------------------------------
-c
-c     This routine add the forcing terms to the momentum equation
-c
-      subroutine FORT_MAKEFORCE(time,force,rho,
-     &                          DIMS(istate),DIMS(state),
-     &                          dx,xlo,xhi,gravity,scomp,ncomp)
-
-      implicit none
-
-      integer    DIMDEC(state)
-      integer    DIMDEC(istate)
-      integer    scomp, ncomp
-      REAL_T     time, dx(SDIM)
-      REAL_T     xlo(SDIM), xhi(SDIM)
-      REAL_T     force  (DIMV(istate),scomp+1:scomp+ncomp)
-      REAL_T     rho    (DIMV(state))
-      REAL_T     gravity
-
-      REAL_T     Lx, Ly, Lz, Lmin
-      REAL_T     kappa, kappaMax
-
-#include "probdata.H"
-
-#ifdef DO_LMC_FORCE
-#include "forcedata.H"
-#endif
-
-c
-c     ::::: local variables
-c
-      integer i, j, k, n
-      integer ilo, jlo, klo
-      integer ihi, jhi, khi
-      integer a2, a3, a4, a5
-      REAL_T  x, y, z
-      REAL_T  hx, hy, hz
-      REAL_T  sga, cga
-      REAL_T  f1, f2, f3
-      REAL_T  twicePi
-      REAL_T  force_time
-      REAL_T  kxd, kyd, kzd
-      REAL_T  xt, yt, zt
-      integer kx, ky, kz, mode_count, xstep, ystep, zstep
-      integer isioproc
-      integer nXvel, nYvel, nZvel, nRho, nTrac
-
-
-      hx = dx(1)
-      hy = dx(2)
-      hz = dx(3)
-
-      ilo = istate_l1
-      jlo = istate_l2
-      klo = istate_l3
-      ihi = istate_h1
-      jhi = istate_h2
-      khi = istate_h3
-
-c     Assumes components are in the following order
-      nXvel = 1
-      nYvel = 2
-      nZvel = 3
-      nRho  = 4
-      nTrac = 5
-
-      if (scomp.eq.0) then
-c     Do velocity forcing
-         if (probtype.eq.3) then
-#ifdef DO_LMC_FORCE
-c     Homogeneous Isotropic Turbulence
-            twicePi=two*Pi
-            
-c     Adjust z offset for probtype 15
-            if (time_offset.gt.(-half)) then
-               force_time = time + time_offset
-            else
-               force_time = time
-            endif
-
-            Lx = domnhi(1)-domnlo(1)
-            Ly = domnhi(2)-domnlo(2)
-            Lz = domnhi(3)-domnlo(3)
-
-            if (hack_lz) then 
-               Lz = Lz/two
-            endif
-         
-            Lmin = min(Lx,Ly,Lz)
-            kappaMax = dfloat(nmodes)/Lmin + 1.0d-8
-            nxmodes = nmodes*int(0.5+Lx/Lmin)
-            nymodes = nmodes*int(0.5+Ly/Lmin)
-            nzmodes = nmodes*int(0.5+Lz/Lmin)
-
-            xstep = int(Lx/Lmin+0.5)
-            ystep = int(Ly/Lmin+0.5)
-            zstep = int(Lz/Lmin+0.5)
-
-            do k = klo, khi
-               z = xlo(3) + hz*(float(k-klo) + half)
-               do j = jlo, jhi
-                  y = xlo(2) + hy*(float(j-jlo) + half)
-                  do i = ilo, ihi
-                     x = xlo(1) + hx*(float(i-ilo) + half)
-                     f1 = zero
-                     f2 = zero
-                     f3 = zero
-                     do kz = mode_start*zstep, nzmodes, zstep
-                        kzd = dfloat(kz)
-                        do ky = mode_start*ystep, nymodes, ystep
-                           kyd = dfloat(ky)
-                           do kx = mode_start*xstep, nxmodes, xstep
-                              kxd = dfloat(kx)
-                              kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
-                              if (kappa.le.kappaMax) then
-                                 xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                                 f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                                 f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                                 f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                              endif
-                           enddo
-                        enddo
-                     enddo
-                     do kz = mode_start, zstep - 1
-                        kzd = dfloat(kz)
-                        do ky = mode_start, nymodes
-                           kyd = dfloat(ky)
-                           do kx = mode_start, nxmodes
-                              kxd = dfloat(kx)
-                              kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
-                              if (kappa.le.kappaMax) then
-                                 xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                                 f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                                 f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                                 f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                              endif
-                           enddo
-                        enddo
-                     enddo
-                     if (use_rho_in_forcing.eq.1) then
-                        force(i,j,k,nXvel) = f1*rho(i,j,k)
-                        force(i,j,k,nYvel) = f2*rho(i,j,k)
-                        force(i,j,k,nZvel) = f3*rho(i,j,k)
-                     else
-                        force(i,j,k,nXvel) = f1
-                        force(i,j,k,nYvel) = f2
-                        force(i,j,k,nZvel) = f3
-                     endif
-                  enddo
-               enddo
-            enddo
-#endif
-c     Default to gravity...
-         elseif (abs(gravity).gt.0.0001) then
-            do k = klo, khi
-               do j = jlo, jhi
-                  do i = ilo, ihi
-                     force(i,j,k,nXvel) = zero
-                     force(i,j,k,nYvel) = zero
-                     force(i,j,k,nZvel) = gravity*rho(i,j,k)
-                  enddo
-               enddo
-            enddo
-c     else to zero
-         else
-            do k = klo, khi
-               do j = jlo, jhi
-                  do i = ilo, ihi
-                     force(i,j,k,nXvel) = zero
-                     force(i,j,k,nYvel) = zero
-                     force(i,j,k,nZvel) = zero
-                  enddo
-               enddo
-            enddo
-         endif
-c     End of velocity forcing
-      endif
-
-      if ((scomp+ncomp).gt.BL_SPACEDIM) then
-c     Scalar forcing
-         do n = max(scomp+1,nRho), scomp+ncomp
-            if (n.eq.nRho) then
-c     Density
-               do k = klo, khi
-                  do j = jlo, jhi
-                     do i = ilo, ihi
-                        force(i,j,k,n) = zero
-                     enddo
-                  enddo
-               enddo
-            else if (n.eq.nTrac) then
-c     Tracer
-               do k = klo, khi
-                  do j = jlo, jhi
-                     do i = ilo, ihi
-                        force(i,j,k,n) = zero
-                     enddo
-                  enddo
-               enddo
-            else
-c     Other scalar
-               do k = klo, khi
-                  do j = jlo, jhi
-                     do i = ilo, ihi
-                        force(i,j,k,n) = zero
-                     enddo
-                  enddo
-               enddo
-            endif
-         enddo
-      endif
-
-      end
-
