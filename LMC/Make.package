@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.18 2009-10-22 22:39:14 lijewski Exp $
+# $Id: Make.package,v 1.19 2009-11-18 20:17:53 aaspden Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -51,6 +51,15 @@ ifeq ($(REACTION_MECHANISM),PROPANE)
 endif
 ifeq ($(REACTION_MECHANISM),LIDRYER)
   C$(HT_BASE)_sources += LiDryer.cpp
+endif
+ifeq ($(REACTION_MECHANISM),HAI)
+  C$(HT_BASE)_sources += Hai.cpp
+endif
+ifeq ($(REACTION_MECHANISM),USCC1-3OPT)
+  C$(HT_BASE)_sources += uscC1-3opt.cpp
+endif
+ifeq ($(REACTION_MECHANISM),GRIMECH30-NON)
+  C$(HT_BASE)_sources += GriMech30-NoN.cpp
 endif
 
 C$(HT_BASE)_sources += ChemDriver.cpp
