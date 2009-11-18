@@ -5,8 +5,8 @@ c     Hardwired sizes
      &     maxspnml
 c      parameter (maxreac = 1000, maxspec=200, maxelts=20,
 c     &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
-      parameter (maxreac = 447, maxspec=65, maxelts=6,
-     &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
+      parameter (maxreac = 472, maxspec=72, maxelts=6,
+     &     maxthrdb=20, maxtp=3, maxsp=12, maxspnml = 16)
 c      parameter (maxreac = 3, maxspec=6, maxelts=4,
 c     &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
 
