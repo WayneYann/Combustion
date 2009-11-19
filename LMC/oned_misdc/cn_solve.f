@@ -32,7 +32,7 @@ c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
       do i = 0,nx-1
          
          if (rho_flag.eq.1) then
-            fac = fac / rhohalf(i+1)
+            fac = fac / rhohalf(i)
          endif
 
          u(i+1) = 0.d0
