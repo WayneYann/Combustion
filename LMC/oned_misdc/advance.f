@@ -154,7 +154,7 @@ c*****************************************************************
       call update_temp(nx,scal_old,scal_new,aofs,
      $                 alpha,beta_old,Rhs(0,Temp),dx,dt,be_cn_theta)
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,Temp),
-     $              dx,dt,Temp,be_cn_theta)
+     $              dx,dt,Temp,be_cn_theta,1)
 
       call get_hmix_given_T_RhoY(nx,scal_new,dx)
       
@@ -168,14 +168,14 @@ c*****************************************************************
       do n=1,Nspec
          is = FirstSpec + n - 1
          call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,is),
-     $                 dx,dt,is,be_cn_theta)
+     $                 dx,dt,is,be_cn_theta,2)
       enddo
 
 c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,be_cn_theta)
+     $              dx,dt,RhoH,be_cn_theta,2)
 
 c      do i=0,nx-1
 c         print *,'enth:',i,scal_new(i,FirstSpec)/scal_new(i,Density),
@@ -193,7 +193,7 @@ c      stop
       do n=1,Nspec
          is = FirstSpec + n - 1
          call cn_solve(nx,scal_new,alpha,beta_old,Rhs(0,is),
-     $                 dx,dt,is,be_cn_theta)
+     $                 dx,dt,is,be_cn_theta,2)
       enddo
 
 c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
@@ -201,7 +201,7 @@ c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,be_cn_theta)
+     $              dx,dt,RhoH,be_cn_theta,2)
       call rhoh_to_temp(nx,scal_new)
 
 
@@ -281,14 +281,14 @@ c*****************************************************************
            do n=1,Nspec
               is = FirstSpec + n - 1
               call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,is),
-     $                      dx,dt,is,be_cn_theta)
+     $                      dx,dt,is,be_cn_theta,2)
            enddo
 
            print *,'... update to rhoH with new diff. coeffs'
            call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                      Rhs(0,RhoH),dx,dt,be_cn_theta)
            call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $                   dx,dt,RhoH,be_cn_theta)
+     $                   dx,dt,RhoH,be_cn_theta,2)
 
            print *,'... create new diff. terms for RhoH: diff_new'
            if (be_cn_theta .eq. 1.d0) then
@@ -383,20 +383,11 @@ c        call calc_diffusivities(nx,scal_new,beta_new,dx,time+dt)
      &                  macvel,veledge,alpha,mu_old,
      &                  vel_Rhs,dx,dt,be_cn_theta)
         call cn_solve(nx,vel_new,alpha,mu_new,vel_Rhs,
-     $                dx,dt,1,be_cn_theta)
-c          do i=0,nx
-c              print *,'adv:',i,vel_new(i)
-c           enddo
-c           stop
+     $                dx,dt,1,be_cn_theta,3)
 
         print *,'...nodal projection...'
         call project(nx,vel_old,vel_new,rhohalf,divu_new,
      $       press_old,press_new,dx,dt)
-
-        print *,'adv:',dt
-        do i=0,nx-1
-           print *,'adv:',i,vel_old(i),vel_new(i)
-        enddo
         
         sumh = 0.d0
         do i=0,nx-1

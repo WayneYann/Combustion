@@ -1,12 +1,12 @@
       subroutine cn_solve(nx,scal_new,alpha,beta_cc,Rhs,dx,dt,n,
-     $                    be_cn_theta)
+     $                    be_cn_theta,rho_flag)
       implicit none
       include 'spec.h'
 
-      integer nx
-      real*8 scal_new(-1:nx  ,nscal)
+      integer nx, rho_flag
+      real*8 scal_new(-1:nx  ,*)
       real*8    alpha( 0:nx-1)
-      real*8  beta_cc(-1:nx  ,nscal)
+      real*8  beta_cc(-1:nx  ,*)
       real*8      Rhs( 0:nx-1)
       real*8 dx
       real*8 dt
@@ -41,7 +41,7 @@
       enddo
       
       do i = 0,nx-1
-         if (n.ne.Temp) then
+         if (rho_flag.eq.2) then
             scal_new(i,n) = scal_new(i,n) * scal_new(i,Density)
          endif
       enddo
