@@ -25,8 +25,7 @@
       dth = be_cn_theta * dt * 2
       dxsqinv = 1.d0/(dx*dx)
 
-c     DU/Dt + G(pi) = D(tau), here D(tau) = 4.
-
+c     rho.DU/Dt + G(pi) = D(tau), here D(tau) = 4/3 d/dx ( mu . du/dx )
       do i = 0,nx-1
          
          if (coef_avg_harm .eq. 1) then
@@ -47,7 +46,8 @@ c     DU/Dt + G(pi) = D(tau), here D(tau) = 4.
 
          vel_new(i) = vel_old(i) + dt * ( -aofs + gp(i)/rhohalf(i) )
 
-         Rhs(i) = vel_new(i) + (2.d0/3.d0)*visc_term/rhohalf(i)
+         Rhs(i) = vel_new(i) 
+     &        + (4.d0/3.d0)*be_cn_theta*visc_term/rhohalf(i)
 
          alpha(i) = 1.d0
       enddo

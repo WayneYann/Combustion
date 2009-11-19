@@ -382,6 +382,7 @@ c        call calc_diffusivities(nx,scal_new,beta_new,dx,time+dt)
         call update_vel(nx,vel_old,vel_new,gp,rhohalf,
      &                  macvel,veledge,alpha,mu_old,
      &                  vel_Rhs,dx,dt,be_cn_theta)
+c     FIXME: Need to fix up solver for v equation to get all the coeffs right
         call cn_solve(nx,vel_new,alpha,mu_new,vel_Rhs,
      $                dx,dt,1,be_cn_theta,3)
 

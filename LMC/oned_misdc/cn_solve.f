@@ -25,6 +25,11 @@
       fac = be_cn_theta * dt / (dx*dx)
 
       do i = 0,nx-1
+         
+         if (rho_flag.eq.3) then
+            fac = fac / rhohalf
+         endif
+
          u(i+1) = 0.d0
          r(i+1) = Rhs(i)
          a(i+1) = -fac*beta(i  )
