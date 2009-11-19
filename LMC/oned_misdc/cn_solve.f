@@ -18,7 +18,11 @@
       real*8 r(nx),u(nx)
       real*8 fac
       real*8 beta(0:nx)
-      
+
+c     rho_flag used here to deal with rho scaling differences:
+c     viscosity,conduction (rho_flag=1): rho.du/dt=Div(D.Grad(u))
+c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
+
       do i = 0,nx
          beta(i) = 2.0d0 /(1.d0/beta_cc(i,n)+1.d0/beta_cc(i-1,n))
       enddo
@@ -28,7 +32,7 @@
       do i = 0,nx-1
          
          if (rho_flag.eq.3) then
-            fac = (4.d0/3.d0)*fac / rhohalf(i)
+            fac = fac / rhohalf(i)
          endif
 
          u(i+1) = 0.d0
