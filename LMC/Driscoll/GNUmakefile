@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.5 2006-04-28 21:17:05 lijewski Exp $
+# $Id: GNUmakefile,v 1.6 2009-11-19 19:08:05 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -12,15 +12,14 @@ DEBUG	       = TRUE
 PROFILE        = FALSE
 DIM	       = 3
 PRVERSION      = v7
-COMP           = g++
+COMP           = Intel
 FCOMP          = Intel
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
 USE_MPI        = TRUE
 USE_MPI        = FALSE
-BUILD_IN_PLACE = TRUE
 EBASE          = amr
-USE_HGPROJ_SERIAL := FALSE
+USE_HGPROJ_SERIAL = FALSE
 USE_NEWMECH    = TRUE
 USE_NEWMECH    = FALSE
 #
@@ -47,32 +46,13 @@ REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=PROPANE
 REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=DRM19
-#
-# Packages below are of the form dir/lib. dir=location of the lib sources,
-#  lib=library root name.  This info is separated into to corresponding
-#  lists.
-#
-ProjPackage = $(TOP)/hgproj/proj
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-ProjPackage = $(TOP)/hgproj-serial/proj
-INCLUDE_LOCATIONS += $(dir $(ProjPackage))include/$(DIM)d.$(PRVERSION)
-endif
 
-Packages :=	$(TOP)/LMC/ht \
-		$(TOP)/iamrlib/iamr  \
-		$(TOP)/tensorMG/mcmg \
-		$(ProjPackage) \
-		$(TOP)/mglib/mg \
-		$(TOP)/amrlib/amr \
-		$(TOP)/bndrylib/bndry \
-		$(TOP)/BoxLib/box 			
-#
-# Set standard defs 
-#
+
+DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
+
 include $(TOP)/mk/Make.defs
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-  DEFINES += -DBL_USE_HGPROJ_SERIAL
-endif
+
+Bdirs := LMC LMC/Cheng BoxLib iamrlib amrlib tensorMG mglib bndrylib hgproj
 
 ifeq ($(DIM),3)
   ifeq ($(findstring 7, $(PRVERSION)), 7)
@@ -80,104 +60,69 @@ ifeq ($(DIM),3)
   endif
 endif
 
-ifeq ($(USE_NEWMECH), TRUE)
-  DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
-  INCLUDE_LOCATIONS += $(TOP)/pAmrvis
+ifeq ($(USE_VELOCITY), TRUE)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_VELOCITY -DBL_PARALLEL_IO
+  #Bdirs   += pAmrvis
 endif
 
-ifeq (${USE_FLCTS}, TRUE)
+ifeq ($(USE_FLCTS),TRUE)
+  Bdirs   += iamrlib/InflowForce
   DEFINES += -DBL_DO_FLCT
 endif
+
 
 ifeq (${USE_SWIRL}, TRUE)
   DEFINES += -DSWIRL
 endif
-#
-# Setup build locations/libraries
-#
-MyLibRoots := $(notdir $(Packages))
-MyPackageDirs := $(dir $(Packages))
-MySrcDirs = . 
-INCLUDE_LOCATIONS += ..
-INCLUDE_LOCATIONS += $(TOP)/iamrlib/InflowForce
-ifeq ($(BUILD_IN_PLACE),TRUE)
-  MySrcDirs += $(MyPackageDirs)
-  INCLUDE_LOCATIONS += $(MySrcDirs)
-else
-  LIBRARIES += $(addsuffix $(DIM)d, $(addprefix -l, $(MyLibRoots)))
-  INCLUDE_LOCATIONS += $(TOP)/include
-  ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-    LIBRARY_LOCATIONS += $(dir $(ProjPackage))lib/$(machineSuffix)
-    LIBRARIES := $(patsubst -lproj$(DIM)d, -lproj$(DIM)d.$(PRVERSION), $(LIBRARIES))
-  endif
-  LIBRARY_LOCATIONS += $(TOP)/lib/$(machineSuffix)
-endif
-include $(addsuffix /Make.package, $(MySrcDirs))
-#
-# Generic defines and flags, then specific run config flags
-#
-ifeq ($(MACHINE),IRIX)
-  CXX := $(filter-out -ptused -prelink, $(CXX))
+
+ifeq (${USE_SWIRL_DATA}, TRUE)
+  DEFINES += -DSWIRL_DATA
 endif
 
-vpath %.cpp $(MySrcDirs) .. $(TOP)/pAmrvis
-vpath %.F   $(MySrcDirs) .. $(TOP)/pAmrvis
-vpath %.H   $(MySrcDirs) .. $(TOP)/pAmrvis
-vpath %.h   $(MySrcDirs) ..
-vpath %.f   $(MySrcDirs) ..
-vpath %.a   $(LIBRARY_LOCATIONS)
-vpath %.H   $(TOP)/iamrlib/InflowForce
-vpath %.F   $(TOP)/iamrlib/InflowForce
-
-MyMakeLine = $(MAKE) PRECISION=$(PRECISION) PROFILE=$(PROFILE) COMP=$(COMP) \
-	DEBUG=$(DEBUG) DIM=$(DIM) USE_MPI=$(USE_MPI) PRVERSION=$(PRVERSION) \
-	USE_HGPROJ_SERIAL=$(USE_HGPROJ_SERIAL) \
-	DEFINES="$(DEFINES)" EBASE= LBASE=$@
-
-MyLibDeps := $(shell perl -e '$$,=" ";print reverse @ARGV ;' $(MyLibRoots))
-
-find_files = $(wildcard $(dir)*cpp) $(wildcard $(dir)*H) $(wildcard $(dir)*.F)
-projFiles := $(foreach dir,$(dir $(ProjPackage)),$(find_files))
-iamrFiles := $(foreach dir,$(dir $(filter %/iamr,$(Packages))),$(find_files))
-StencilSpecificProjFiles = $(shell grep -l USE_HGPROJ_SERIAL $(iamrFiles)) \
-                           $(shell grep -l BL_PRVERSION $(iamrFiles)) \
-                           $(wildcard $(dir $(ProjPackage))*F) \
-                           $(wildcard $(dir $(ProjPackage))*cpp) \
-                           $(wildcard $(dir $(ProjPackage))*H)
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-  StencilSpecificProjFiles += $(shell grep -l hg_version.H $(projFiles))
+ifeq ($(USE_NEWMECH), TRUE)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
+  #Bdirs   += pAmrvis
 endif
-#
-# Targets
-#
+
+Bpack	:= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
+Blocs	:= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
+
+include $(Bpack)
+
+ifdef FBOXLIB_HOME
+  DEFINES += -DMG_USE_FBOXLIB
+
+  include $(PBOXLIB_HOME)/MGT_Solver/Make.package
+  INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/MGT_Solver
+  VPATH_LOCATIONS += $(PBOXLIB_HOME)/MGT_Solver
+
+  include $(FBOXLIB_HOME)/mg/FParallelMG.mak
+  INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/mg/
+  Fdirs   := boxlib mg extern/SPARSKIT extern/LAPACK
+  Flocs   := $(foreach dir, $(Fdirs), $(FBOXLIB_HOME)/$(dir))
+  VPATH_LOCATIONS += $(Flocs)
+endif
+
+INCLUDE_LOCATIONS += . $(Blocs)
+VPATH_LOCATIONS   += . $(Blocs)
+
+vpath %.c   $(VPATH_LOCATIONS)
+vpath %.cpp $(VPATH_LOCATIONS)
+vpath %.h   $(VPATH_LOCATIONS)
+vpath %.H   $(VPATH_LOCATIONS)
+vpath %.F   $(VPATH_LOCATIONS)
+vpath %.f   $(VPATH_LOCATIONS)
+vpath %.f90 $(VPATH_LOCATIONS)
+
 all: $(executable)
 
-ifeq ($(MACHINE),T3E)
-#
-# We don't explicitly set the path of the mpi directory on the T3E.
-# 
-  $(executable): $(filter-out -lmpi, $(LIBRARIES))
-else
-  $(executable): $(LIBRARIES)
-endif
+o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o:
+	ifort -module o/3d.Linux.Intel.Intel.PROF.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o
 
-libs: $(MyLibDeps)
+o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o:
+	ifort -module o/3d.Linux.Intel.Intel.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o
 
-$(MyLibDeps):
-	cd $(dir $(filter %/$@, $(Packages))); $(MyMakeLine) install
-
-cleanlibs:
-	$(foreach lib,$(MyPackageDirs),cd $(lib); $(MyMakeLine) clean)
-
-nodata:
-	\rm -rf chk* plt* grdlog inspect.fab *.mfab *.fab *.asc *.out
-
-#
-# Touch all stencil-specific files in serial projection
-#
-touch_hg:
-	touch $(StencilSpecificProjFiles)
-
-.PHONY: libs cleanlibs nodata touch_hg
+o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o:
+	ifort -module o/3d.Linux.Intel.Intel.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o
 
 include $(TOP)/mk/Make.rules
