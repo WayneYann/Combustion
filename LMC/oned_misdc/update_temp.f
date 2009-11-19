@@ -19,7 +19,7 @@
       real*8  visc_term, RWRK
       integer i,n,is, IWRK
 
-      dth = 0.5d0 * dt
+      dth = be_cn_theta * dt
       dxsqinv = 1.d0/(dx*dx)
       
 c*************************************************************************

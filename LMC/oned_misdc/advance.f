@@ -58,7 +58,7 @@
       real*8   pthermo(-1:nx  )
       real*8    Ydot_max, Y(maxspec)
       real*8 RWRK, cpmix, sum, rhDUM
-      integer IWRK, is
+      integer IWRK, is, rho_flag
       
       print *,'advance: at start of time step'
 c     
@@ -151,10 +151,11 @@ c*****************************************************************
 
       print *,'... update to temp to define new diff coeffs'
       be_cn_theta = 1.d0
+      rho_flag = 2
       call update_temp(nx,scal_old,scal_new,aofs,
      $                 alpha,beta_old,Rhs(0,Temp),dx,dt,be_cn_theta)
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,Temp),
-     $              dx,dt,Temp,be_cn_theta,1,rhDUM)
+     $              dx,dt,Temp,be_cn_theta,rho_flag,rhDUM)
 
       call get_hmix_given_T_RhoY(nx,scal_new,dx)
       
@@ -165,17 +166,19 @@ c*****************************************************************
       print *,'... update to spec with new diff. coeffs, do predictor'
       call update_spec(nx,scal_old,scal_new,aofs,alpha,
      $                 beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
+      rho_flag = 2
       do n=1,Nspec
          is = FirstSpec + n - 1
          call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,is),
-     $                 dx,dt,is,be_cn_theta,2,rhDUM)
+     $                 dx,dt,is,be_cn_theta,rho_flag,rhDUM)
       enddo
 
 c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
+      rho_flag = 2
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,be_cn_theta,2,rhDUM)
+     $              dx,dt,RhoH,be_cn_theta,rho_flag,rhDUM)
 
 c      do i=0,nx-1
 c         print *,'enth:',i,scal_new(i,FirstSpec)/scal_new(i,Density),
@@ -190,18 +193,20 @@ c      stop
 
       call update_spec(nx,scal_old,scal_new,aofs,alpha,
      $                 beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
+      rho_flag = 2
       do n=1,Nspec
          is = FirstSpec + n - 1
          call cn_solve(nx,scal_new,alpha,beta_old,Rhs(0,is),
-     $                 dx,dt,is,be_cn_theta,2,rhDUM)
+     $                 dx,dt,is,be_cn_theta,rho_flag,rhDUM)
       enddo
 
 c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       
       call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
+      rho_flag = 2
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,be_cn_theta,2,rhDUM)
+     $              dx,dt,RhoH,be_cn_theta,rho_flag,rhDUM)
       call rhoh_to_temp(nx,scal_new)
 
 
@@ -278,17 +283,19 @@ c*****************************************************************
            print *,'Updating species,rho with advective + intra terms'
            call update_spec(nx,scal_old,scal_new,aofs,alpha,
      $                      beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
+           rho_flag = 2
            do n=1,Nspec
               is = FirstSpec + n - 1
               call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,is),
-     $                      dx,dt,is,be_cn_theta,2,rhDUM)
+     $                      dx,dt,is,be_cn_theta,rho_flag,rhDUM)
            enddo
 
            print *,'... update to rhoH with new diff. coeffs'
            call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                      Rhs(0,RhoH),dx,dt,be_cn_theta)
+           rho_flag = 2
            call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $                   dx,dt,RhoH,be_cn_theta,2,rhDUM)
+     $                   dx,dt,RhoH,be_cn_theta,rho_flag,rhDUM)
 
            print *,'... create new diff. terms for RhoH: diff_new'
            if (be_cn_theta .eq. 1.d0) then
@@ -382,9 +389,9 @@ c        call calc_diffusivities(nx,scal_new,beta_new,dx,time+dt)
         call update_vel(nx,vel_old,vel_new,gp,rhohalf,
      &                  macvel,veledge,alpha,mu_old,
      &                  vel_Rhs,dx,dt,be_cn_theta)
-c     FIXME: Need to fix up solver for v equation to get all the coeffs right
+        rho_flag = 1
         call cn_solve(nx,vel_new,alpha,mu_new,vel_Rhs,
-     $                dx,dt,1,be_cn_theta,3,rhohalf)
+     $                dx,dt,1,be_cn_theta,rho_flag,rhohalf)
 
         print *,'...nodal projection...'
         call project(nx,vel_old,vel_new,rhohalf,divu_new,

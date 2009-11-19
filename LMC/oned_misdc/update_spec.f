@@ -21,7 +21,7 @@
       real*8 RhoYe_lo(maxspec), RhoYe_hi(maxspec)
       real*8 Y_L, Y_C, Y_R, sum_lo, sum_hi, sumRhoYe_lo, sumRhoYe_hi
 
-      dth = 0.5d0 * dt
+      dth = be_cn_theta * dt
       dxsqinv = 1.d0/(dx*dx)
       
 c*************************************************************************

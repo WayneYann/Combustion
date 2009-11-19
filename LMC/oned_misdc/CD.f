@@ -35,7 +35,9 @@
       double precision X(maxspec), alpha, l1, l2, cpmix, RWRK
       integer n, i, IWRK
 
-      double precision cpi(9)
+      double precision fourThirds
+
+      fourThirds = 4.d0 / 3.d0
 
 c     Ensure chem/tran initialized
       if (traninit.lt.0) call initchem()
@@ -70,6 +72,7 @@ c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
             beta(i,RhoH) = beta(i,Temp) / CPMIX
             
             CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
+            mu(i) = fourThirds*mu(i)
          enddo
          
       else
@@ -90,6 +93,8 @@ c     For Le=1, rho.D = lambda/cp = mu/Pr
             CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
             beta(i,RhoH) = mu(i) / Pr
             beta(i,Temp) = beta(i,RhoH) * CPMIX
+
+            mu(i) = fourThirds*mu(i)
          enddo
       endif
 
