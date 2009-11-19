@@ -1,5 +1,5 @@
       subroutine cn_solve(nx,scal_new,alpha,beta_cc,Rhs,dx,dt,n,
-     $                    be_cn_theta,rho_flag)
+     $                    be_cn_theta,rho_flag,rhohalf)
       implicit none
       include 'spec.h'
 
@@ -8,6 +8,7 @@
       real*8    alpha( 0:nx-1)
       real*8  beta_cc(-1:nx  ,*)
       real*8      Rhs( 0:nx-1)
+      real*8  rhohalf(0:*)
       real*8 dx
       real*8 dt
       real*8 be_cn_theta
@@ -27,7 +28,7 @@
       do i = 0,nx-1
          
          if (rho_flag.eq.3) then
-            fac = (4.d0/3.d0)*fac / rhohalf
+            fac = (4.d0/3.d0)*fac / rhohalf(i)
          endif
 
          u(i+1) = 0.d0
