@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.20 2009-10-16 16:00:56 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.21 2009-11-19 23:13:57 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -169,6 +169,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
      &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
             if (thickFacTR.ne.1.d0) then
                do n=1,ncompd-1
+!$omp parallel do private(i,j,k)
                   do k=lo(3), hi(3)
                      do j=lo(2), hi(2)
                         do i=lo(1), hi(1)
@@ -176,6 +177,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                         end do
                      end do
                   end do
+!$omp end parallel do
                end do
             endif
          else
