@@ -44,10 +44,10 @@ c     rho.DU/Dt + G(pi) = D(tau), here D(tau) = 4/3 d/dx ( mu . du/dx )
      $        (macvel(i+1)-macvel(i)) * 
      $        0.5d0 * (sedge(i)+sedge(i+1)) ) /dx
 
-         vel_new(i) = vel_old(i) + dt * ( -aofs + gp(i)/rhohalf(i) )
+         vel_new(i) = vel_old(i) - dt * ( aofs + gp(i)/rhohalf(i) )
 
          Rhs(i) = vel_new(i) 
-     &        + (4.d0/3.d0)*be_cn_theta*visc_term/rhohalf(i)
+     &        + (4.d0/3.d0)*(1.d0-be_cn_theta)*dt*visc_term/rhohalf(i)
 
          alpha(i) = 1.d0
       enddo
