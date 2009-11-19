@@ -27,7 +27,7 @@
       do i = 0,nx-1
          
          if (rho_flag.eq.3) then
-            fac = fac / rhohalf
+            fac = (4.d0/3.d0)*fac / rhohalf
          endif
 
          u(i+1) = 0.d0
