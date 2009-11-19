@@ -15,7 +15,7 @@
       real*8  Ydot_new(0 :nx-1,nspec)
       real*8  Ydot_old(0 :nx-1,nspec)
       real*8    macvel(0 :nx  )
-      real*8   veledge(0 :nx  ,nscal)
+      real*8   veledge(0 :nx  )
       real*8      aofs(0 :nx-1,nscal)
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
@@ -53,6 +53,7 @@
       real*8 divu_max
       real*8     alpha(0:nx-1)
       real*8       Rhs(0:nx-1,nscal)
+      real*8   vel_Rhs(0:nx-1)
       real*8 rhocp_old(0:nx-1)
       real*8   pthermo(-1:nx  )
       real*8    Ydot_max, Y(maxspec)
@@ -374,16 +375,24 @@ c        call calc_diffusivities(nx,scal_new,beta_new,dx,time+dt)
         print *,'YDOT MAX ',Ydot_max
         
         print *,'... update velocities'
-        call vel_edge_states(nx,vel_old,scal_old,gp,
-     $       macvel,veledge,dx,dt)
-        call update_vel(nx,vel_old,vel_new,gp,rhohalf,
-     $       macvel,veledge,dx,dt)
 
-c     FIXME: Add viscous terms
-        
+        call vel_edge_states(nx,vel_old,scal_old(-1,Density),gp,
+     $       macvel,veledge,dx,dt,time)
+
+        call update_vel(nx,vel_old,vel_new,gp,rhohalf,
+     &                  macvel,veledge,alpha,mu_old,
+     &                  vel_Rhs,dx,dt,be_cn_theta)
+        call cn_solve(nx,vel_new,alpha,mu_new,vel_Rhs,
+     $                dx,dt,1,be_cn_theta)
+
         print *,'...nodal projection...'
         call project(nx,vel_old,vel_new,rhohalf,divu_new,
      $       press_old,press_new,dx,dt)
+
+        print *,'adv:',dt
+        do i=0,nx-1
+           print *,'adv:',i,vel_old(i),vel_new(i)
+        enddo
         
         sumh = 0.d0
         do i=0,nx-1

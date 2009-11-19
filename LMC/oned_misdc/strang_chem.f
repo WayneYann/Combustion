@@ -47,6 +47,7 @@ c     Set linear source terms in common for ode integrators access
          c_1(1) = (lin_src_new(i,RhoH) - lin_src_old(i,RhoH))/dt
          rhoh_INIT = scal_old(i,RhoH)
 
+c         print *,'sc:',i
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag, ifail)
          if (ifail.ne.0) then
@@ -91,7 +92,6 @@ c     Define change in state due to chemistry.
       enddo
       
       print *,' '
-      print *,'strang_chem time '
       print *,' '
         
       end

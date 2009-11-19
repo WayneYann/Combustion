@@ -45,7 +45,7 @@ c-----------------------------------------------------------------------
 
       else
          print *,'bcfunction: invalid probtype'
-         call abort()
+         stop
       end if
       end
 
@@ -120,7 +120,7 @@ c----------------------------------------------------------------------
          enddo
       else
          print *,'bcfunction: invalid probtype'
-         call abort()
+         stop
       endif
 
 

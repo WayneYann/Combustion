@@ -1,35 +1,41 @@
-      subroutine vel_edge_states(nx,vel_old,scal_old,gp,
-     $                           macvel,sedge,dx,dt)
+      subroutine vel_edge_states(nx,vel_old,rho_old,gp,
+     $                           macvel,sedge,dx,dt,time)
       implicit none
       include 'spec.h'
-      
       integer nx
       real*8  vel_old(-1:nx)
-      real*8 scal_old(-1:nx,*)
+      real*8  rho_old(-1:nx)
       real*8       gp(0:nx-1)
       real*8   macvel(0:nx)
-      real*8   sedge(0:nx)
+      real*8    sedge(0:nx)
       real*8 dx
-      real*8 dt
+      real*8 dt, time
 
       real*8 slope(0:nx-1)
       real*8 dth
       real*8 dthx
       real*8 eps
-      real*8 slo,shi
+      real*8 slo,shi,vel_TYP
       integer i,n
       
       dth  = 0.5d0 * dt
       dthx = 0.5d0 * dt / dx
-      eps = 1.e-6
-      
+
+      call set_bc_v(nx,vel_old,dx,time)
+
+      vel_TYP = ABS(vel_old(-1))
+      do i=0,nx
+         vel_TYP = MAX(vel_TYP,ABS(vel_old(-1)))
+      enddo
+      eps = 1.e-6*vel_TYP
+
       call mkslopes(nx,vel_old,slope)
 
       do i = 1,nx-1
          slo = vel_old(i-1) + (0.5 - dthx*vel_old(i-1))*slope(i-1)
-     $        - dth*gp(i-1)/scal_old(i-1,Density)
+     $        - dth*gp(i-1)/rho_old(i-1)
          shi = vel_old(i  ) - (0.5 + dthx*vel_old(i))*slope(i  )
-     $        - dth*gp(i  )/scal_old(i  ,Density)
+     $        - dth*gp(i  )/rho_old(i  )
          if ( macvel(i) .gt. eps) then
             sedge(i) = slo
          else if ( macvel(i) .lt. -eps) then
@@ -39,13 +45,12 @@
          endif
       enddo
       
-      i = 0
       sedge(0) = vel_old(-1)
       
       i = nx
       sedge(i) = vel_old(i-1) + 
      $     (0.5d0 - dthx*vel_old(i-1))*slope(i-1) 
-     $     - dth*gp(i-1)/scal_old(i-1,Density)
+     $     - dth*gp(i-1)/rho_old(i-1)
 
       end
       

@@ -81,6 +81,9 @@
               else
                 dtcell = divu_dt_factor*0.5d0/divu(i)
               endif
+
+              print *,'estdt:',dsdt(i)
+
               if (dsdt(i) .gt. 1.0d-20) then
                 if (abs(rho).gt.rhomin) then
                   rhominij = rhomin

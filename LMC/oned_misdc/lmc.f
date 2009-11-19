@@ -163,6 +163,9 @@ c              Should rather use bc vals, and modify stencil for laplacians
           print *,'initialVelocityProject: '
           dt_dummy = -1.d0
 
+          do i=0,nx-1
+             vel_old(i) = vel_new(i)
+          enddo
           call project(nx,vel_old,vel_new,rhohalf,divu_new,
      $                 press_old,press_new,dx,dt_dummy,time)
 
@@ -196,7 +199,7 @@ c              Should rather use bc vals, and modify stencil for laplacians
           print *,' '
 
           do nd = 1,num_divu_iters
-             print *,' ...doing divu_iter number',nd
+             print *,' ...doing divu_iter number',nd,'dt=',dt
 
              call strang_chem(nx,scal_old,scal_new,
      $                        const_src,lin_src_old,lin_src_new,
@@ -227,6 +230,7 @@ c              Should rather use bc vals, and modify stencil for laplacians
              print *,' '
              print *,' '
              dt_init = dt
+
              call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
      $                   cfl,umax,dx,dt_init2)
              dt_init2 = dt_init2 * init_shrink
@@ -243,7 +247,7 @@ c              Should rather use bc vals, and modify stencil for laplacians
           enddo
           
           do n = 1,num_init_iters
-             
+
              call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
      $                   cfl,umax,dx,dt)
              dt = dt * init_shrink

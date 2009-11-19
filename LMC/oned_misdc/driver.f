@@ -68,10 +68,34 @@ c      enddo
          c_0(n) = 0.d0
          c_1(n) = 0.d0
       enddo
-      hmix_INIT = hmix
+      rhoh_INIT = hmix * rho
       hmix_TYP = 1.d5
 
+      T=437.609349445155
       do_diag=0
+      dt =  3.896686739246933d-5
+      Y(1) = 5.241468896616197D-003
+      Y(2) = 1.046629392866622D-010
+      Y(3) = 5.510364915755311D-008
+      Y(4) = 0.222367303274566D0    
+      Y(5) = 1.259485524742000D-008
+      Y(6) = 1.426435811729874D-002
+      Y(7) = 2.781504475068043D-005
+      Y(8) = 2.958869335307645D-005
+      Y(9) = 0.758069398170248D0    
+      call CKHBMS(T,Y,IWRK,RWRK,hmix)
+      call CKRHOY(Pcgs,T,Y,IWRK,RWRK,rho)
+      sum = 0.d0
+      do n=1,Nspec
+         sum = sum + Y(n)
+         RY(n) = Y(n) * rho
+      enddo
+      rhoh_INIT = hmix * rho
+      print *,'HACK   pre-chem state'
+      print *,'T,sum:',T,sum
+      print *,'Y:',(Y(n),n=1,Nspec)
+
+      
       call chemsolve(RYnew, Tnew, RY, T, FC, Patm, dt, diag, do_diag)
 
       sum = 0.d0
@@ -85,14 +109,18 @@ c      enddo
       errMax = ABS(hmix*1.e-10)
       print *,'errMax:',errMax
       call FORT_TfromHYpt(Tnew,hmix,Ynew,errMax,NiterMAX,res,Niter)
-      if (Niter.gt.0) then
+      if (Niter.ge.0) then
          print *,'H to T solve converged in ',Niter,' iterations'
       else
          print *,'H to T solve failed in DRIVER, Niter=',Niter
+         do n=1,Nspec
+            print *,res(n)
+         enddo
       endif
 
       print *,'post-chem state'
 
       print *,'T new is ',Tnew
       print *,'Y:',(Ynew(n),n=1,Nspec)
+      print *,'hmix:',hmix
       end

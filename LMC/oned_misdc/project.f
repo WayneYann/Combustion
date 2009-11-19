@@ -18,10 +18,16 @@
       real*8 divu_node
       real*8 gp
 
-      do i = 0,nx-1
-         gp = (press_old(i+1)-press_old(i))/dx
-         vel_star(i) = vel_new(i) + dt * gp / rhohalf(i)
-      end do
+      if (dt .gt. 0) then
+         do i = 0,nx-1
+            gp = (press_old(i+1)-press_old(i))/dx
+            vel_star(i) = vel_new(i) + dt * gp / rhohalf(i)
+         end do
+      else
+         do i = 0,nx-1
+            vel_star(i) = vel_new(i)
+         end do
+      endif
       
 c     Build v^n+1 directly, since we have bc and div(v)=s
 c     Get boundary value, vel(-1) at inlet wall, and integrate
@@ -46,6 +52,7 @@ c      and   gp    = -(v_new-v_old)/dt * rhohalf
          do i = 0,nx
             press_new(i) = phi(i)
          enddo
+
       else
          do i = 0,nx
             press_new(i) = 0.d0
