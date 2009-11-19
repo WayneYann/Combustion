@@ -22,12 +22,10 @@
       real*8  visc_term, RWRK
       integer i,n,is, IWRK
 
-      dth = be_cn_theta * dt
+      dth = be_cn_theta * dt * 2
       dxsqinv = 1.d0/(dx*dx)
-      
-c*************************************************************************
-c       Create RHS = time n diffusive term.
-c*************************************************************************
+
+c     DU/Dt + G(pi) = D(tau), here D(tau) = 4.
 
       do i = 0,nx-1
          
@@ -40,19 +38,17 @@ c*************************************************************************
          endif
 
          visc_term =  
-     $        beta_hi*(vel_old(i+1)-vel_old(i  )) -
-     $        beta_lo*(vel_old(i  )-vel_old(i-1))
-         Rhs(i) = visc_term * dxsqinv * dth
-      enddo
+     $        ( beta_hi*(vel_old(i+1)-vel_old(i  ))
+     $        - beta_lo*(vel_old(i  )-vel_old(i-1)) )*dxsqinv
 
-
-      do i = 0,nx-1
          aofs = ( (macvel(i+1)*sedge(i+1) - macvel(i)*sedge(i))  -
      $        (macvel(i+1)-macvel(i)) * 
      $        0.5d0 * (sedge(i)+sedge(i+1)) ) /dx
 
-         vel_new(i) = vel_old(i) + dt * ( aofs - gp(i) / rhohalf(i) )
-         Rhs(i) = Rhs(i) + vel_new(i)
+         vel_new(i) = vel_old(i) + dt * ( -aofs + gp(i)/rhohalf(i) )
+
+         Rhs(i) = vel_new(i) + (2.d0/3.d0)*visc_term/rhohalf(i)
+
          alpha(i) = 1.d0
       enddo
 
