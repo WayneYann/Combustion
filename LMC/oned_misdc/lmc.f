@@ -90,6 +90,9 @@ c     Set defaults, change with namelist
       Patm = 0
       coef_avg_harm = 1
       misdc_iterMAX = 3
+      divu_ceiling_flag = 1
+      divu_dt_factor    = 0.4d0
+      rho_divu_ceiling  = 0.01
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)

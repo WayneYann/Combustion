@@ -57,16 +57,9 @@
       real*8  rho
       real*8  dtcell,dtcell2
       real*8  rhoij,rhominij
-      real*8  rho_divu_ceiling
-      real*8  divu_dt_factor
       real*8  rhomin
       real*8  a,b,c
-      integer divu_ceiling_flag
       integer i
-
-      divu_ceiling_flag = 1
-      divu_dt_factor    = 0.4d0
-      rho_divu_ceiling  = 1.e6
 
       rhomin = rho_divu_ceiling
 
@@ -81,8 +74,6 @@
               else
                 dtcell = divu_dt_factor*0.5d0/divu(i)
               endif
-
-              print *,'estdt:',dsdt(i)
 
               if (dsdt(i) .gt. 1.0d-20) then
                 if (abs(rho).gt.rhomin) then

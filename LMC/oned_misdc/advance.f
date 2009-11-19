@@ -99,11 +99,11 @@ c      call minmax_scal(nx,scal_old)
             tforce(i,n) = 0.d0
 c     Initialized elsewhere, reused from previous timestep where possible
 c     FIXME: starting on a bad note
-cc            intra(i,n) = 0.d0
-c            diff_old(i,n) = 0.d0
-c            diff_hat(i,n) = 0.d0
-c            diff_new(i,n) = 0.d0
-c            aofs(i,n)     = 0.d0
+c            intra(i,n) = 0.d0
+            diff_old(i,n) = 0.d0
+            diff_hat(i,n) = 0.d0
+            diff_new(i,n) = 0.d0
+            aofs(i,n)     = 0.d0
          enddo
       enddo
 c
@@ -384,6 +384,10 @@ c        call calc_diffusivities(nx,scal_new,beta_new,dx,time+dt)
      &                  vel_Rhs,dx,dt,be_cn_theta)
         call cn_solve(nx,vel_new,alpha,mu_new,vel_Rhs,
      $                dx,dt,1,be_cn_theta)
+c          do i=0,nx
+c              print *,'adv:',i,vel_new(i)
+c           enddo
+c           stop
 
         print *,'...nodal projection...'
         call project(nx,vel_old,vel_new,rhohalf,divu_new,
