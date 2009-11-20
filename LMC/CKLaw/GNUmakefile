@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.2 2009-10-16 17:29:51 lijewski Exp $
+# $Id: GNUmakefile,v 1.3 2009-11-20 06:38:15 jbb Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -11,15 +11,15 @@ PRECISION         = DOUBLE
 DEBUG	          = FALSE
 PROFILE           = TRUE
 PROFILE           = FALSE
-DIM    	          = 2
 DIM    	          = 3
+DIM    	          = 2
 FCOMP             = Intel
 COMP              = Intel
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
 USE_FLCTS         = TRUE
 USE_VELOCITY      = FALSE
-USE_MPI           = FALSE
+USE_MPI           = TRUE
 
 
 # This allows GetForce to call a Fortran routine
