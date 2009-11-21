@@ -19,8 +19,6 @@
       real*8 RhoYe_lo(maxspec), RhoYe_hi(maxspec)
       real*8 Y_L, Y_C, Y_R, sum_lo, sum_hi, sumRhoYe_lo, sumRhoYe_hi
       
-c     Compute  Div(rho.Di.Grad(Yi) + rho.Y.Vcor)
-
       call set_bc_grow_s(nx,scal_old,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
@@ -65,7 +63,8 @@ c     Compute  Div(rho.Di.Grad(Yi) + rho.Y.Vcor)
          endif
          do n=1,Nspec
             is = FirstSpec + n - 1
-            visc_term = (flux_hi(n) - flux_lo(n))*dxsqinv*dt*be_cn_theta
+            visc_term = (flux_hi(n)-flux_lo(n))
+     &           * dxsqinv * dt * (1.d0-be_cn_theta)
             scal_new(i,is) = scal_old(i,is) + dt*aofs(i,is)
             Rhs(i,n) = visc_term + scal_new(i,is)
             alpha(i) = scal_new(i,Density)

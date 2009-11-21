@@ -27,12 +27,12 @@
             beta_hi = 0.5*(beta(i,RhoH) + beta(i+1,RhoH))
          endif
 
-         visc_term = dxsqinv * dt * be_cn_theta * (
+         visc_term = dxsqinv * dt * (1.d0 - be_cn_theta) * (
      $        beta_hi*(scal_old(i+1,RhoH)-scal_old(i  ,RhoH)) -
      $        beta_lo*(scal_old(i  ,RhoH)-scal_old(i-1,RhoH)) )
 
          scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
-         Rhs(i) = scal_new(i,RhoH)
+         Rhs(i) = scal_new(i,RhoH) + visc_term
          alpha(i) = scal_new(i,Density)
       enddo
       
