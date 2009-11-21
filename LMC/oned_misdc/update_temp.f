@@ -83,7 +83,7 @@ c*************************************************************************
          enddo
          call CKCPBS(scal_old(i,Temp),Ymid,IWRK,RWRK,cpmix)
          alpha(i) = 0.5d0 * (rho_old + scal_new(i,Density)) * cpmix
-         Rhs(i) = Rhs(i) + scal_old(i,Temp)*alpha(i)
+         Rhs(i) = Rhs(i) + scal_new(i,Temp)*alpha(i)
       enddo
 
       end
