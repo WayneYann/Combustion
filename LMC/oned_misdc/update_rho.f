@@ -6,16 +6,11 @@
       real*8 scal_old(-1:nx  ,nscal)
       real*8 scal_new(-1:nx  ,nscal)
       real*8     aofs(0 :nx-1,nscal)
-      real*8 dx
-      real*8 dt
-      
-      integer i,n
+      real*8 dx,dt
 
-      n = Density
+      integer i
+
       do i = 0,nx-1
-         scal_new(i,n) = scal_old(i,n) + dt * aofs(i,n)
+         scal_new(i,Density) = scal_old(i,Density) + dt*aofs(i,Density)
       enddo
-      
-      scal_new(nx,n) = scal_new(nx-1,n)
-      
       end

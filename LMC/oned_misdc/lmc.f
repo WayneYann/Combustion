@@ -8,8 +8,6 @@
       integer plot_int, chk_int
       integer num_init_iters
       integer num_divu_iters
-      parameter (num_divu_iters = 3)
-      parameter (num_init_iters = 2)
       parameter (nx = 64)
       
 
@@ -68,7 +66,8 @@ c     New arrays for MISDC.
      $                  plot_int, chk_int, change_max,
      $                  init_shrink, probtype,flame_offset,
      $                  dpdt_factor, Patm, coef_avg_harm,
-     $                  misdc_iterMAX, predict_temp_for_coeffs
+     $                  misdc_iterMAX, predict_temp_for_coeffs,
+     $                  num_divu_iters, num_init_iters
 
 c     Initialize chem/tran database
       call initchem()
@@ -94,6 +93,8 @@ c     Set defaults, change with namelist
       divu_dt_factor    = 0.4d0
       rho_divu_ceiling  = 0.01
       predict_temp_for_coeffs = 1
+      num_divu_iters = 3
+      num_init_iters = 2
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)

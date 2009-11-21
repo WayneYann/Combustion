@@ -13,11 +13,10 @@
       real*8 dxsqinv
       
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-
+      call set_bc_grow_s(nx,scal,dx,time)
       call rhoDgradHgradY(nx,scal,beta,visc,dx,time)
 
 c     Add Div( lambda Grad(T) )
-      call set_bc_grow_s(nx,scal,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
          if (coef_avg_harm.eq.1) then

@@ -108,7 +108,7 @@ c
       call calc_diffusivities(nx,scal_old,beta_old,mu_old,dx,time)
       call get_temp_visc_terms(nx,scal_old,beta_old,diff_old(0,Temp),dx)
       call get_spec_visc_terms(nx,scal_old,beta_old,
-     &                         diff_old(0,FirstSpec),dx)
+     &                         diff_old(0,FirstSpec),dx,time)
       call get_rhoh_visc_terms(nx,scal_old,beta_old,diff_old(0,RhoH),
      &                         dx,time)
       
@@ -164,8 +164,8 @@ c*****************************************************************
 
       print *,'... do predictor for species'
       be_cn_theta = 0.5d0
-      call update_spec(nx,scal_old,scal_new,aofs,alpha,
-     $                 beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
+      call update_spec(nx,scal_old,scal_new,aofs,alpha,beta_old,
+     &                 Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
       rho_flag = 2
       do n=1,Nspec
          is = FirstSpec + n - 1
@@ -176,7 +176,7 @@ c*****************************************************************
 c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       print *,'... do predictor for rhoh'
       call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
-     &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
+     &                 Rhs(0,RhoH),dx,dt,be_cn_theta,time)
       rho_flag = 2
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
@@ -186,8 +186,8 @@ c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
       call calc_diffusivities(nx,scal_new,beta_new,mu_new,dx,time+dt)
 
       print *,'... do corrector for species'
-      call update_spec(nx,scal_old,scal_new,aofs,alpha,
-     $                 beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
+      call update_spec(nx,scal_old,scal_new,aofs,alpha,beta_old,
+     $                 Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
       rho_flag = 2
       do n=1,Nspec
          is = FirstSpec + n - 1
@@ -198,7 +198,7 @@ c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
 c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms      
       print *,'... do corrector for species'
       call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
-     &                 Rhs(0,RhoH),dx,dt,be_cn_theta)
+     &                 Rhs(0,RhoH),dx,dt,be_cn_theta,time)
       rho_flag = 2
       call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
@@ -206,7 +206,7 @@ c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
 
       print *,'... create source terms for chem'
       call get_spec_visc_terms(nx,scal_new,beta_new,
-     &                         diff_new(0,FirstSpec),dx)
+     &                         diff_new(0,FirstSpec),dx,time)
       call get_rhoh_visc_terms(nx,scal_new,beta_new,diff_new(0,RhoH),
      &                         dx,time)
 
@@ -264,7 +264,7 @@ c*****************************************************************
            call get_temp_visc_terms(nx,scal_new,beta_new,
      &                              diff_hat(0,Temp),dx)
            call get_spec_visc_terms(nx,scal_new,beta_new,
-     &                              diff_hat(0,FirstSpec),dx)
+     &                              diff_hat(0,FirstSpec),dx,time)
            
 c*****************************************************************
            
@@ -277,8 +277,8 @@ c*****************************************************************
            enddo
            
            print *,'Updating A+D for species with intra terms'
-           call update_spec(nx,scal_old,scal_new,aofs,alpha,
-     $                      beta_old,Rhs(0,FirstSpec),dx,dt,be_cn_theta)
+           call update_spec(nx,scal_old,scal_new,aofs,alpha,beta_old,
+     &                      Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
            rho_flag = 2
            do n=1,Nspec
               is = FirstSpec + n - 1
@@ -288,7 +288,7 @@ c*****************************************************************
 
            print *,'... update A+D for RhoH with intra terms'
            call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
-     &                      Rhs(0,RhoH),dx,dt,be_cn_theta)
+     &                      Rhs(0,RhoH),dx,dt,be_cn_theta,time)
            rho_flag = 2
            call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
      $                   dx,dt,RhoH,be_cn_theta,rho_flag)
@@ -350,6 +350,18 @@ c*****************************************************************
            do n = 1,nspec
               ispec = FirstSpec-1+n
               Ydot_new(i,n) = intra(i,ispec)
+           enddo
+        enddo
+
+        print *,'adv: hacking state'
+        do i=-1,nx
+           do n=1,nscal
+              scal_new(i,n) = scal_old(i,n)
+           enddo
+        enddo
+        do i=0,nx-1
+           do n=1,Nspec
+              Ydot_new(i,n) = Ydot_old(i,n)
            enddo
         enddo
         
