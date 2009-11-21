@@ -815,7 +815,7 @@ c
       end do
       write(6,998)
       write(6,998) 'residual:'
-      do n = 0,Niter-1
+      do n = 0,NiterMAX-1
          write(6,998) '  ',res(n)
       end do
 
