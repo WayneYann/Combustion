@@ -9,10 +9,12 @@
   chk_int = 1
   change_max = 1.1
   init_shrink = 0.1
+  init_shrink = 0.01
   probtype = 1
   flame_offset = 0.
   dpdt_factor = 0.0
   Patm = 1.0
+  predict_temp_for_coeffs = 1
 /
 
 

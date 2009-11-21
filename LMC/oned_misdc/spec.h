@@ -49,9 +49,10 @@ c     DVODE driver stuff
 
 c     LMC alg stuff
       integer probtype, misdc_iterMAX,on_lo,on_hi,max_order,
-     &     divu_ceiling_flag
+     &     divu_ceiling_flag, predict_temp_for_coeffs
       parameter (on_lo = 0, on_hi = 1, max_order = 3)
-      common / lmci / probtype, misdc_iterMAX, divu_ceiling_flag
+      common / lmci / probtype, misdc_iterMAX, divu_ceiling_flag,
+     &     predict_temp_for_coeffs
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),
      &     Y_bc(maxspec,0:1), h_bc(0:1), u_bc(0:1), flame_offset, 

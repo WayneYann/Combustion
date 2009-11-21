@@ -1,5 +1,5 @@
       subroutine cn_solve(nx,scal_new,alpha,beta_cc,Rhs,dx,dt,n,
-     $                    be_cn_theta,rho_flag,rhohalf)
+     $                    be_cn_theta,rho_flag)
       implicit none
       include 'spec.h'
 
@@ -8,7 +8,6 @@
       real*8    alpha( 0:nx-1)
       real*8  beta_cc(-1:nx  ,*)
       real*8      Rhs( 0:nx-1)
-      real*8  rhohalf(0:*)
       real*8 dx
       real*8 dt
       real*8 be_cn_theta
@@ -30,11 +29,6 @@ c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
       fac = be_cn_theta * dt / (dx*dx)
 
       do i = 0,nx-1
-         
-         if (rho_flag.eq.1) then
-            fac = fac / rhohalf(i)
-         endif
-
          u(i+1) = 0.d0
          r(i+1) = Rhs(i)
          a(i+1) = -fac*beta(i  )

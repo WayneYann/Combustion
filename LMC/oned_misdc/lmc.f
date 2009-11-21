@@ -68,7 +68,7 @@ c     New arrays for MISDC.
      $                  plot_int, chk_int, change_max,
      $                  init_shrink, probtype,flame_offset,
      $                  dpdt_factor, Patm, coef_avg_harm,
-     $                  misdc_iterMAX
+     $                  misdc_iterMAX, predict_temp_for_coeffs
 
 c     Initialize chem/tran database
       call initchem()
@@ -93,6 +93,7 @@ c     Set defaults, change with namelist
       divu_ceiling_flag = 1
       divu_dt_factor    = 0.4d0
       rho_divu_ceiling  = 0.01
+      predict_temp_for_coeffs = 1
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
