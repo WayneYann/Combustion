@@ -80,7 +80,7 @@ f_sources += lmc.f ${chem_sources} prob.f \
              mac_proj.f scal_aofs.f mkslopes.f bdsslopes.f \
              update_rho.f update_spec.f update_temp.f update_rhoh.f \
              rhoh_to_temp.f advance.f vel_edge_states.f update_vel.f \
-             read_check.f write_check.f cn_solve.f ${pmf_source}
+             read_check.f write_check.f write_plt.f cn_solve.f ${pmf_source}
 
 f_includes += spec.h
 C_sources += main.cpp ${mech_source}
