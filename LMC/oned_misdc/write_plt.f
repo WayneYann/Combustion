@@ -29,9 +29,7 @@
       write(10,*) nx
       write(10,*) time
       do i = 0,nx
-         write(10,*) (i+.5)*dx,scal(i,FirstSpec),
-     $                         scal(i,FirstSpec+1),
-     $                         scal(i,FirstSpec+2),
+         write(10,*) (i+.5)*dx,(scal(i,FirstSpec+n),n=0,Nspec-1),
      $                         scal(i,Density),
      $                         scal(i,Temp),
      $                         scal(i,RhoH),
