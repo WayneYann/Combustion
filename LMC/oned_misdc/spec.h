@@ -43,7 +43,7 @@ c     DVODE driver stuff
       integer nchemdiag, dvd_debug
       common / dvdi / nchemdiag, dvd_debug
 
-      double precision c_0(maxspec+1), c_1(maxspec+1), rhoh_INIT,
+      double precision c_0(0:maxspec), c_1(0:maxspec), rhoh_INIT,
      &     hmix_TYP
       common / dvdr / c_0, c_1, rhoh_INIT, hmix_TYP
 

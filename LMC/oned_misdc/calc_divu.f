@@ -7,41 +7,35 @@ c     Quantities passed in
       real*8 scal(-1:nx,nscal)
       real*8 beta(-1:nx,nscal)
       real*8 divu(0:nx-1)
-      real*8 Ydot(0:nx-1,nspec)
+      real*8 Ydot(0:nx-1,0:maxspec)
       real*8 dx, time
       
       real*8 Y(maxspec)
-      real*8 hi(maxspec,-1:nx)
-      real*8 cpmix(-1:nx)
+      real*8 cpmix,mwmix
       real*8 ddivu(0:nx-1,maxspec)
-      real*8 mwmix(-1:nx)
       
-      real*8 RWRK
-      integer IWRK,i,n,is
+      real*8 RWRK,rho,T
+      integer IWRK,i,n
 
-      do i = -1,nx
+      call get_temp_visc_terms(nx,scal,beta,divu,dx,time)
+      call get_spec_visc_terms(nx,scal,beta,ddivu,dx,time)
+
+      do i = 0,nx-1
+         rho = 0.d0
          do n = 1,Nspec
-            is = FirstSpec + n - 1
-            Y(n) = scal(i,is) / scal(i,Density)
+            rho = rho + scal(i,FirstSpec + n - 1)
          enddo
-         call CKMMWY(Y,IWRK,RWRK,mwmix(i))
-         call CKCPBS(scal(i,Temp),Y,IWRK,RWRK,cpmix(i))
-         call CKHMS(scal(i,Temp),IWRK,RWRK,hi(1,i))
-      enddo
+         do n = 1,Nspec
+            Y(n) = scal(i,FirstSpec + n - 1) / rho
+         enddo
+         T = scal(i,Temp)
+         call CKMMWY(Y,IWRK,RWRK,mwmix)
+         call CKCPBS(T,Y,IWRK,RWRK,cpmix)
 
-      call set_bc_grow_s(nx,scal,dx,time)
-      call get_temp_visc_terms(nx,scal,beta,divu,dx)
-      do i = 0,nx-1
-         divu(i) = divu(i) / (cpmix(i)*scal(i,Temp))
-      enddo
-      call get_spec_visc_terms(nx,scal,beta,ddivu,dx)
-      do i = 0,nx-1
+         divu(i) = (divu(i)/(rho*cpmix) + Ydot(i,0)) / T
          do n=1,Nspec
             divu(i) = divu(i)
-     &           + ddivu(i,n)*invmwt(n)*mwmix(i)
-     &           - (hi(n,i)/(cpmix(i)*scal(i,Temp))
-     &           -   mwmix(i)*invmwt(n))*Ydot(i,n)
+     &           + (ddivu(i,n) + Ydot(i,n))*invmwt(n)*mwmix/rho
          enddo
-         divu(i) = divu(i) / scal(i,Density)
       enddo
       end

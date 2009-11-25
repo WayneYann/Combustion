@@ -22,8 +22,8 @@ c     Room for rho, rhoH, Temp, RhoRT + species (rho.Y)
       real*8  scal_hold(-1:nx ,MAX_NSCAL)
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
-      real*8  Ydot_new(0 :nx-1,maxspec)
-      real*8  Ydot_old(0 :nx-1,maxspec)
+      real*8  Ydot_new(0 :nx-1,0:maxspec)
+      real*8  Ydot_old(0 :nx-1,0:maxspec)
       real*8   rhohalf(-1:nx  )
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
@@ -124,7 +124,7 @@ c      write(*,fortin)
             enddo
          enddo
          do i = 0,nx-1
-            do n = 1,nspec
+            do n = 0,nspec
                Ydot_old(i,n) =  Ydot_new(i,n)
             enddo
             divu_old(i) = divu_new(i)
@@ -204,7 +204,7 @@ c              Should rather use bc vals, and modify stencil for laplacians
           print *,' '
 
           do nd = 1,num_divu_iters
-             print *,' ...doing divu_iter number',nd,'dt=',dt
+             print *,' ...doing divu_iter number',nd,' dt=',dt
 
              call strang_chem(nx,scal_old,scal_new,
      $                        const_src,lin_src_old,lin_src_new,
@@ -216,6 +216,7 @@ c              Should rather use bc vals, and modify stencil for laplacians
                    Ydot_new(i,n) = 
      $                  (scal_new(i,is)-scal_old(i,is))/dt
                 enddo
+                Ydot_new(i,0) = (scal_new(i,Temp)-scal_old(i,Temp))/dt
              enddo
              do i = 0,nx
                 do n = 1,nscal
@@ -244,7 +245,7 @@ c              Should rather use bc vals, and modify stencil for laplacians
           enddo
   
           do i = 0,nx-1
-             do n = 1,nspec
+             do n = 0,nspec
                 Ydot_old(i,n) = Ydot_new(i,n)
              enddo
              vel_old(i) =  vel_new(i)
@@ -286,7 +287,7 @@ c     Here we zero out intra before each advance. FIXME: WHY?
                 enddo
              enddo
              do i = 0,nx-1
-                do ns = 1,nspec
+                do ns = 0,nspec
                    Ydot_new(i,ns) =  Ydot_old(i,ns)
                 enddo
                 divu_new(i) = divu_old(i)

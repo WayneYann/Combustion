@@ -59,11 +59,11 @@ c----------------------------------------------------------------------
       double precision     dx
       double precision    vel(-1:nx)
       double precision   scal(-1:nx  ,*)
-      double precision   Ydot(0 :nx-1,*)
+      double precision   Ydot(0 :nx-1,0:*)
 
       double precision  x, rho, Y(maxspec), T, h
       double precision xPMFlo, xPMFhi
-      double precision Z(maxspec+1), Zp(maxspec+1)
+      double precision Z(0:maxspec)
       double precision valsPMF(maxspec+3), RWRK, time, sum
       integer i, n, nPMF, IWRK
 
@@ -103,30 +103,22 @@ c----------------------------------------------------------------------
             endif
          enddo
 
-         do n = 1,Nspec+1
+         do n = 0,Nspec
             c_0(n) = 0.d0
             c_1(n) = 0.d0
          enddo
          do i = 0,nx-1
-            Z(1) = scal(i,Temp)
+            Z(0) = scal(i,Temp)
             do n=1,Nspec
-               Z(n+1) = scal(i,FirstSpec+n-1)
+               Z(n) = scal(i,FirstSpec+n-1)
             enddo
             rhoh_INIT = scal(i,RhoH)
-            call vodeF_T_RhoY(Nspec+1,time,Z,ZP,RWRK,IWRK)
-            do n=1,Nspec
-               Ydot(i,n) = Zp(n+1)
-            enddo
+            call vodeF_T_RhoY(Nspec+1,time,Z,Ydot(i,0),RWRK,IWRK)
          enddo
       else
          print *,'bcfunction: invalid probtype'
          stop
       endif
-
-
-
-
-
       end
 
 

@@ -16,6 +16,12 @@
       real*8  visc_term, RWRK
       integer i,n,is, IWRK
 
+c     FIXME: Add NULN terms
+      if (LeEQ1 .ne. 1) then
+         print *,'update_rhoh does yet support non-unity Le'
+         stop
+      endif
+
       call set_bc_grow_s(nx,scal_old,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1

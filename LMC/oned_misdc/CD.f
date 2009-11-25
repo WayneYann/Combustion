@@ -242,7 +242,7 @@ C-----------------------------------------------------------------------
       subroutine vodeF_T_RhoY(NEQ, TIME, Z, ZP, RPAR, IPAR)
       implicit none
       include 'spec.h'
-      double precision TIME, Z(maxspec+1), ZP(maxspec+1), RPAR(*)
+      double precision TIME, Z(0:maxspec+1), ZP(0:maxspec), RPAR(*)
       integer NEQ, IPAR(*)
       
       double precision RHO, CPB, SUM, Y(maxspec)
@@ -260,17 +260,16 @@ C-----------------------------------------------------------------------
 
       RHO = 0.d0
       do K=1,Nspec
-         RHO = RHO + Z(1+K)
+         RHO = RHO + Z(K)
       enddo
 
       do K=1,Nspec
-         C(K) = MAX(0.d0,Z(1+K)*invmwt(K))
-         Y(K) = Z(1+K)/RHO
+         C(K) = MAX(0.d0,Z(K)*invmwt(K))
+         Y(K) = Z(K)/RHO
       enddo
 
-      T = Z(1)
-c      hmix = (rhoh_INIT + c_0(1)*TIME + c_1(1)*TIME*TIME)/RHO
-      hmix = rhoh_INIT/RHO
+      T = Z(0)
+      hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME)/RHO
       errMax = ABS(hmix_TYP*1.e-12)
 
 c      print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
@@ -286,12 +285,11 @@ c      print *,'  ** Fdiag',TIME,T,Z(1),Niter
       call CKWC(T,C,IWRK,RWRK,WDOTK)
       SUM = 0.d0
       DO K = 1, Nspec
-          ZP(K+1) = WDOTK(K)*mwt(K)/thickFacCH
-c     &               + c_0(1+K) + c_1(1+K)*TIME
-         SUM = SUM + HK(K)*ZP(K+1)
+          ZP(K) = WDOTK(K)*mwt(K)/thickFacCH
+     &            + c_0(K) + c_1(K)*TIME
+         SUM = SUM - HK(K)*ZP(K)
       END DO
-c      ZP(1) = (c_0(1) + c_1(1)*TIME - SUM) / (RHO*CPB)
-      ZP(1) = - SUM / (RHO*CPB)
+      ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
       END
 
       subroutine vodeJ(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
@@ -332,7 +330,6 @@ c      ZP(1) = (c_0(1) + c_1(1)*TIME - SUM) / (RHO*CPB)
       double precision C(maxspec),Q(maxreac), scale
 
       double precision dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum
-      double precision zp(maxspec+1)
       logical bad_soln
 
 
@@ -344,7 +341,7 @@ c     DVODE workspace requirements
       double precision DVRWRK(dvr)
       integer DVIWRK(dvi)
 
-      double precision Z(maxspec+1)
+      double precision Z(0:maxspec)
       double precision RPAR, RWRK
       integer IPAR, IWRK
 
@@ -373,9 +370,9 @@ c     IOPT=1 parameter settings for VODE
       NEQ = Nspec + 1
 
 
-      Z(1) = Told
+      Z(0) = Told
       do n=1,Nspec
-         Z(1+n) = RYold(n)
+         Z(n) = RYold(n)
       end do
 
 c     Always form Jacobian to start
@@ -384,9 +381,9 @@ c     Always form Jacobian to start
       if (do_diag.eq.1) then
          FuncCount = 0
          do n=1,Nspec
-            C(n) = Z(n+1)*invmwt(n)
+            C(n) = Z(n)*invmwt(n)
          enddo
-         CALL CKQC(Z(1),C,IWRK,RWRK,Q)
+         CALL CKQC(Z(0),C,IWRK,RWRK,Q)
          do n=1,Nreac
             diag(n) = diag(n) + 0.5*dtloc*Q(n)
          enddo
@@ -404,7 +401,7 @@ c     Always form Jacobian to start
          TT2 = TT1 + dtloc
 
          CALL DVODE
-     &        (vodeF_T_RhoY, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
+     &        (vodeF_T_RhoY, NEQ, Z(0), TT1, TT2, ITOL, RTOL, ATOL,
      &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
      &        dvi, vodeJ, MF, RPAR, IPAR)
 
@@ -412,9 +409,9 @@ c     Always form Jacobian to start
 
          if (do_diag.eq.1) then
             do n=1,Nspec
-               C(n) = Z(n+1)*invmwt(n)
+               C(n) = Z(n)*invmwt(n)
             enddo
-            CALL CKQC(Z(1),C,IWRK,RWRK,Q)
+            CALL CKQC(Z(0),C,IWRK,RWRK,Q)
             do n=1,Nreac
                diag(n) = diag(n) + weight*dtloc*Q(n)
             enddo
@@ -439,11 +436,11 @@ c     Always form Jacobian to start
             write(6,*) '     comp with largest err = ',DVIWRK(16)
          end if
 
-         Tnew = Z(1)
+         Tnew = Z(0)
          do n=1,Nspec
-            RYnew(n) = Z(n+1)
+            RYnew(n) = Z(n)
          end do
-         
+
          if (ISTATE.LE.-1) ifail = 1
 
       enddo

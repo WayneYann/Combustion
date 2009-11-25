@@ -64,7 +64,7 @@ c      enddo
          RY(n) = Y(n) * rho
       enddo
       verbose_vode = 1
-      do n=1,Nspec+1
+      do n=0,Nspec
          c_0(n) = 0.d0
          c_1(n) = 0.d0
       enddo

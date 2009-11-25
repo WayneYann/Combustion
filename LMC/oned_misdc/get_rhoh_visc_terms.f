@@ -14,6 +14,12 @@
       
 c     Compute Div( lambda/cp Grad(hmix) )
 
+c     FIXME: Add NULN terms
+      if (LeEQ1 .ne. 1) then
+         print *,'get_rhoh_visc_terms does yet support non-unity Le'
+         stop
+      endif
+
       call set_bc_grow_s(nx,scal,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1         

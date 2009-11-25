@@ -15,13 +15,16 @@
       integer i,n,ifail
       integer ispec
       real*8 RYold(maxspec), RYnew(maxspec), Told, Tnew
-      real*8 linSrcOLD(nscal),linSrcNEW(nscal)
+      real*8 linSrcOLD(nscal),linSrcNEW(nscal), rho
       integer FuncCount, do_diag, IWRK
-      real*8 diag(maxreac),Y(maxspec),hmix,RWRK
+      real*8 diag(maxreac),Y(maxspec),hmix,RWRK,TSAVE
       
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
       double precision res(NiterMAX), errMAX
+
+c     Shut off diagnostics
+      do_diag = 0
 
 c     Find a good typical value for hmix
       hmix_TYP = ABS(scal_old(-1,RhoH)/scal_old(-1,Density))
@@ -40,36 +43,36 @@ c     Evolve chem over grid
 c     Set linear source terms in common for ode integrators access
          do n = 1,Nspec
             ispec = FirstSpec + n - 1
-            c_0(n+1) = const_src(i,ispec) + lin_src_old(i,ispec)
-            c_1(n+1) = (lin_src_new(i,ispec) - lin_src_old(i,ispec))/dt
+            c_0(n) = const_src(i,ispec) + lin_src_old(i,ispec)
+            c_1(n) = (lin_src_new(i,ispec) - lin_src_old(i,ispec))/dt
          enddo
-         c_0(1) = const_src(i,RhoH) + lin_src_old(i,RhoH)
-         c_1(1) = (lin_src_new(i,RhoH) - lin_src_old(i,RhoH))/dt
+         c_0(0) = const_src(i,RhoH) + lin_src_old(i,RhoH)
+         c_1(0) = (lin_src_new(i,RhoH) - lin_src_old(i,RhoH))/dt
          rhoh_INIT = scal_old(i,RhoH)
 
-c         print *,'sc:',i
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag, ifail)
+
          if (ifail.ne.0) then
             print *,'solve failed, i=',i
             stop
          endif
-         
+
          scal_new(i,Density) = 0.d0
          do n = 1,Nspec
-            ispec = FirstSpec+n-1
-            scal_new(i,Density) = scal_new(i,Density)+scal_new(i,ispec)
+            scal_new(i,Density) = scal_new(i,Density) + RYnew(n)
          enddo
          do n = 1,Nspec
-            scal_new(i,FirstSpec+n-1)=RYnew(n)
+            scal_new(i,FirstSpec+n-1) = RYnew(n)
             Y(n) = RYnew(n)/scal_new(i,Density)
          enddo
 
          scal_new(i,RhoH) = scal_old(i,RhoH)+
      &        + dt*const_src(i,RhoH)
-     &        + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,rhoH))
+     &        + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
          hmix = scal_new(i,RhoH) / scal_new(i,Density)
 
+         TSAVE = Tnew
          errMax = hmix_TYP * 1.e-10
          call FORT_TfromHYpt(Tnew,hmix,Y,errMax,NiterMAX,res,Niter)
          if (Niter.lt.0) then
