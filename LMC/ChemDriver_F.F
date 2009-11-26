@@ -777,11 +777,16 @@ c     Error condition....dump state and bail out
             res(Niter) = dH
             Niter = Niter + 1
          end if
-         if (Niter .ge. NiterMAX) then
-            Niter = -2
-            goto 100
-         endif
          converged = (dH.le.errMAX) .or. (ABS(dT).le.errMAX)
+         if (Niter .ge. NiterMAX) then
+            if(abs(T-1000.d0).le.1.d-3.and. dH.le.1.d-5)then
+              converged = .true.
+            else
+              Niter = -2
+              goto 100
+            endif
+         endif
+
 
          if ((ihitlo.eq.1).and.(H.gt.Htarg)) then
             T = TMIN
