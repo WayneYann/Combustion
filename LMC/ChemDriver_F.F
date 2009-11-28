@@ -774,12 +774,13 @@ c     Error condition....dump state and bail out
          else
             CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),H)
             dH = two*ABS(H - Htarg)/(one + ABS(H) + ABS(Htarg))
-            res(Niter) = dH
+            res(Niter) = min(dH,abs(dT))
             Niter = Niter + 1
          end if
          converged = (dH.le.errMAX) .or. (ABS(dT).le.errMAX)
          if (Niter .ge. NiterMAX) then
-            if(abs(T-1000.d0).le.1.d-3.and. dH.le.1.d-4)then
+c            if(abs(T-1000.d0).le.1.d-3.and. dH.le.1.d-4)then
+            if ((abs(dT).le.1.d-3) .or. (dH.le.1.d-4)) then
               converged = .true.
             else
               Niter = -2
