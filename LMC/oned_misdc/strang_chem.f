@@ -96,9 +96,9 @@ c     Define change in state due to chemistry.
          rho_half = 0.5d0*(rho_old + scal_new(i,Density))
          CALL CKCPBS(0.5*(scal_old(i,temp)+Tnew),Yhalf,IWRK,RWRK,cp)
          I_R(i,0) = (
-     $           (scal_new(i,is)-scal_old(i,is)) / dt
-     $           - const_src(i,is)
-     $           - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is)) )/
+     $           (scal_new(i,RhoH)-scal_old(i,RhoH)) / dt
+     $           - const_src(i,RhoH)
+     $           - 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
      $        (rho_half*cp)
       enddo
 
