@@ -1,6 +1,5 @@
-      subroutine compute_pthermo(nx,scal,pthermo)
+      subroutine compute_pthermo(scal,pthermo)
       include 'spec.h'
-      integer nx
       real*8  scal(-1:nx,nscal)
       real*8 pthermo(-1:nx)
       

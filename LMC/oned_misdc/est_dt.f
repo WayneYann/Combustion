@@ -34,7 +34,7 @@
 
       print *,'DT * CFL ',dt
 
-      call est_divu_dt(nx,divu,dsdt,scal,dx,dt_divu)
+      call est_divu_dt(divu,dsdt,scal,dx,dt_divu)
 
       print *,'ESTDT: UMAX = ',umax
 
@@ -44,10 +44,9 @@
 
       end
 
-      subroutine est_divu_dt(nx,divu,dsdt,scal,dx,dt)
+      subroutine est_divu_dt(divu,dsdt,scal,dx,dt)
       implicit none
       include 'spec.h'
-      integer nx
       real*8   divu(0 :nx-1)
       real*8   dsdt(0 :nx-1)
       real*8   scal(-1:nx  ,*)

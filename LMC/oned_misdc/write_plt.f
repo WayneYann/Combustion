@@ -1,9 +1,8 @@
-      subroutine write_plt(nx,vel,scal,press,dx,nsteps,time)
+      subroutine write_plt(vel,scal,press,dx,nsteps,time)
       implicit none
       include 'spec.h'
 
       integer nsteps
-      integer nx
       real*8   vel(-1:nx)
       real*8  scal(-1:nx,nscal)
       real*8 press( 0:nx)
@@ -21,7 +20,7 @@
       pltfile(4:8) = char_of_int
  1005 format(i5.5)
       
-      call compute_pthermo(nx,scal,ptherm)
+      call compute_pthermo(scal,ptherm)
       
       open(10,file=pltfile,form='formatted')
       print *,'...writing data to ',pltfile

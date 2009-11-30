@@ -1,7 +1,6 @@
-      subroutine get_rhoh_visc_terms(nx,scal,beta,visc,dx,time)
+      subroutine get_rhoh_visc_terms(scal,beta,visc,dx,time)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
@@ -20,7 +19,7 @@ c     FIXME: Add NULN terms
          stop
       endif
 
-      call set_bc_grow_s(nx,scal,dx,time)
+      call set_bc_grow_s(scal,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1         
          if (coef_avg_harm.eq.1) then

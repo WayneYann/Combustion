@@ -1,9 +1,8 @@
-      subroutine update_vel(nx,vel_old,vel_new,gp,rhohalf,
+      subroutine update_vel(vel_old,vel_new,gp,rhohalf,
      &                      macvel,sedge,alpha,beta,
      &                      Rhs,dx,dt,be_cn_theta)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 vel_old(-1:nx  )
       real*8 vel_new(-1:nx  )
       real*8      gp(0 :nx-1)

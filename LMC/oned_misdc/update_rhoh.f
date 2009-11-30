@@ -1,13 +1,13 @@
-      subroutine update_rhoh(nx,scal_old,scal_new,aofs,alpha,
-     &                       beta,Rhs,dx,dt,be_cn_theta,time)
+      subroutine update_rhoh(scal_old,scal_new,aofs,alpha,
+     &                       beta,dRhs,Rhs,dx,dt,be_cn_theta,time)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 scal_old(-1:nx  ,nscal)
       real*8 scal_new(-1:nx  ,nscal)
       real*8     aofs(0 :nx-1,nscal)
       real*8    alpha(0 :nx-1)
       real*8     beta(-1:nx  ,nscal)
+      real*8     dRhs(0 :nx-1)
       real*8      Rhs(0 :nx-1)
       real*8 dx,dt,be_cn_theta,time
       
@@ -22,7 +22,7 @@ c     FIXME: Add NULN terms
          stop
       endif
 
-      call set_bc_grow_s(nx,scal_old,dx,time)
+      call set_bc_grow_s(scal_old,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
          if (coef_avg_harm .eq. 1) then
@@ -38,7 +38,7 @@ c     FIXME: Add NULN terms
      $        beta_lo*(scal_old(i  ,RhoH)-scal_old(i-1,RhoH)) )
 
          scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
-         Rhs(i) = scal_new(i,RhoH) + visc_term
+         Rhs(i) = dRhs(i) + scal_new(i,RhoH) + visc_term
          alpha(i) = scal_new(i,Density)
       enddo
       

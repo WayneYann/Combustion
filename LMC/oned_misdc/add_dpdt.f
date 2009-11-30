@@ -1,7 +1,6 @@
-      subroutine add_dpdt(nx,pthermo,divu,umac,dx,dt)
+      subroutine add_dpdt(pthermo,divu,umac,dx,dt)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 pthermo(-1:nx)
       real*8  divu(0 :nx-1)
       real*8  umac(0 :nx  )

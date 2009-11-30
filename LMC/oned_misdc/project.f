@@ -1,8 +1,7 @@
-      subroutine project(nx,vel_old,vel_new,rhohalf,divu,
+      subroutine project(vel_old,vel_new,rhohalf,divu,
      $                   press_old,press_new,dx,dt,time)
-
       implicit none
-      integer nx
+      include 'spec.h'
       real*8  vel_old(-1:nx)
       real*8  vel_new(-1:nx)
       real*8  rhohalf(-1:nx)
@@ -32,7 +31,7 @@
 c     Build v^n+1 directly, since we have bc and div(v)=s
 c     Get boundary value, vel(-1) at inlet wall, and integrate
 c     explicitly.
-      call set_bc_v(nx,vel_new,dx,time)
+      call set_bc_v(vel_new,dx,time)
       vel_new(0) = vel_new(-1) + 0.5*divu(0)*dx
 
       do i = 1,nx-1

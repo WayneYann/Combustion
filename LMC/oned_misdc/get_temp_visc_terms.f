@@ -1,7 +1,6 @@
-      subroutine get_temp_visc_terms(nx,scal,beta,visc,dx,time)
+      subroutine get_temp_visc_terms(scal,beta,visc,dx,time)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
@@ -13,8 +12,8 @@
       real*8 dxsqinv
       
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-      call set_bc_grow_s(nx,scal,dx,time)
-      call rhoDgradHgradY(nx,scal,beta,visc,dx,time)
+      call set_bc_grow_s(scal,dx,time)
+      call rhoDgradHgradY(scal,beta,visc,dx,time)
 
 c     Add Div( lambda Grad(T) )
       dxsqinv = 1.d0/(dx*dx)
@@ -33,10 +32,9 @@ c     Add Div( lambda Grad(T) )
       enddo
       end
 
-      subroutine rhoDgradHgradY(nx,scal,beta,visc,dx,time)
+      subroutine rhoDgradHgradY(scal,beta,visc,dx,time)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
@@ -52,7 +50,7 @@ c     Add Div( lambda Grad(T) )
 c     Compute rhoD Grad(Yi).Grad(hi) terms
 
 c     Get Hi, Yi at cell centers
-      call set_bc_grow_s(nx,scal,dx,time)
+      call set_bc_grow_s(scal,dx,time)
       do i = -1,nx
          rho = 0.d0
          do n=1,Nspec

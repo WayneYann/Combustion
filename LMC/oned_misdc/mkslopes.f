@@ -1,6 +1,6 @@
-      subroutine mkslopes(nx,s,slope)
+      subroutine mkslopes(s,slope)
       implicit none
-      integer nx
+      include 'spec.h'
       integer ncomp
       real*8     s(-1:nx  )
       real*8 slope( 0:nx-1)

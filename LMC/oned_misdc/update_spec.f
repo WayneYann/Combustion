@@ -1,14 +1,14 @@
-      subroutine update_spec(nx,scal_old,scal_new,aofs,
-     &     alpha,beta,Rhs,dx,dt,be_cn_theta,time)
+      subroutine update_spec(scal_old,scal_new,aofs,
+     &     alpha,beta,I_R,Rhs,dx,dt,be_cn_theta,time)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 scal_old(-1:nx  ,nscal)
       real*8 scal_new(-1:nx  ,nscal)
       real*8     aofs(0 :nx-1,nscal)
       real*8    alpha(0 :nx-1)
       real*8     beta(-1:nx  ,nscal)
-      real*8      Rhs(0 :nx-1,nscal)
+      real*8      Rhs(0 :nx-1,*)
+      real*8      I_R(0:nx-1,maxspec)
       real*8 dx,dt,be_cn_theta,time
       
       real*8  dth,dxsqinv
@@ -19,7 +19,7 @@
       real*8 RhoYe_lo(maxspec), RhoYe_hi(maxspec)
       real*8 Y_L, Y_C, Y_R, sum_lo, sum_hi, sumRhoYe_lo, sumRhoYe_hi
       
-      call set_bc_grow_s(nx,scal_old,dx,time)
+      call set_bc_grow_s(scal_old,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
          sum_lo = 0.d0
@@ -66,7 +66,7 @@
             visc_term = (flux_hi(n)-flux_lo(n))
      &           * dxsqinv * dt * (1.d0-be_cn_theta)
             scal_new(i,is) = scal_old(i,is) + dt*aofs(i,is)
-            Rhs(i,n) = visc_term + scal_new(i,is)
+            Rhs(i,n) = I_R(i,n) + visc_term + scal_new(i,is)
             alpha(i) = scal_new(i,Density)
          enddo
       enddo

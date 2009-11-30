@@ -1,19 +1,18 @@
-      subroutine advance(nx,vel_old,vel_new,scal_old,scal_new,
-     $                   Ydot_old,Ydot_new,press_old,press_new,
+      subroutine advance(vel_old,vel_new,scal_old,scal_new,
+     $                   I_R_old,I_R_new,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   intra,dx,dt,time)
+     $                   dx,dt,time)
 
       implicit none
       include 'spec.h'
-      integer nx
       real*8   vel_new(-1:nx  )
       real*8   vel_old(-1:nx  )
       real*8  scal_new(-1:nx  ,nscal)
       real*8  scal_old(-1:nx  ,nscal)
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
-      real*8  Ydot_new(0 :nx-1,0:maxspec)
-      real*8  Ydot_old(0 :nx-1,0:maxspec)
+      real*8   I_R_new(0:nx-1,0:maxspec)
+      real*8   I_R_old(0:nx-1,0:maxspec)
       real*8    macvel(0 :nx  )
       real*8   veledge(0 :nx  )
       real*8      aofs(0 :nx-1,nscal)
@@ -29,7 +28,6 @@
       real*8   rhohalf(0 :nx-1)
       real*8    tforce(0 :nx-1,nscal)
       real*8      visc(0 :nx-1)
-      real*8     intra(0 :nx-1,nscal)
       real*8        cp(0 :nx-1)
       real*8 x
       real*8 dx
@@ -37,14 +35,13 @@
       real*8 time
       real*8 be_cn_theta
       
-      real*8    diff_old(0 :nx-1,nscal)
-      real*8    diff_hat(0 :nx-1,nscal)
-      real*8    diff_new(0 :nx-1,nscal)
-      real*8   const_src(0 :nx-1,nscal)
-      real*8 lin_src_old(0 :nx-1,nscal)
-      real*8 lin_src_new(0 :nx-1,nscal)
-      real*8    scal_tmp(0 :nx-1,nscal)
-      real*8    sumh
+      real*8    diff_old(0:nx-1,nscal)
+      real*8    diff_hat(0:nx-1,nscal)
+      real*8    diff_new(0:nx-1,nscal)
+      real*8   const_src(0:nx-1,nscal)
+      real*8 lin_src_old(0:nx-1,nscal)
+      real*8 lin_src_new(0:nx-1,nscal)
+      real*8    scal_tmp(0:nx-1,nscal)
       integer misdc
       
       integer i,n,ispec
@@ -53,6 +50,7 @@
       real*8 divu_max
       real*8     alpha(0:nx-1)
       real*8       Rhs(0:nx-1,nscal)
+      real*8      dRhs(0:nx-1,0:maxspec)
       real*8   vel_Rhs(0:nx-1)
       real*8 rhocp_old
       real*8   pthermo(-1:nx  )
@@ -73,10 +71,10 @@ c
       
 c      call minmax_scal(nx,scal_old)
       print *,'... predict edge velocities'
-      call pre_mac_predict(nx,vel_old,scal_old,gp,
+      call pre_mac_predict(vel_old,scal_old,gp,
      $                     macvel,dx,dt,time)
       
-      call compute_pthermo(nx,scal_old,pthermo)
+      call compute_pthermo(scal_old,pthermo)
 
       do i = 0,nx-1
          divu_tmp(i) = divu_old(i) + 0.5d0 * dt * dsdt(i)
@@ -86,7 +84,7 @@ c      call minmax_scal(nx,scal_old)
          divu_max = MAX(divu_max,ABS(divu_tmp(i)))
       enddo
       print *,'DIVU norm old = ',divu_max 
-      call add_dpdt(nx,pthermo,divu_tmp,macvel,dx,dt)
+      call add_dpdt(pthermo,divu_tmp,macvel,dx,dt)
       divu_max = ABS(divu_tmp(0))
       do i = 1,nx-1
          divu_max = MAX(divu_max,ABS(divu_tmp(i)))
@@ -98,17 +96,23 @@ c*****************************************************************
 c     
       print *,'... creating the diffusive terms with old data'
       
-      call calc_diffusivities(nx,scal_old,beta_old,mu_old,dx,time)
-      call get_temp_visc_terms(nx,scal_old,beta_old,
+      call calc_diffusivities(scal_old,beta_old,mu_old,dx,time)
+      call get_temp_visc_terms(scal_old,beta_old,
      &                         diff_old(0,Temp),dx,time)
-      call get_spec_visc_terms(nx,scal_old,beta_old,
+      call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),dx,time)
-      call get_rhoh_visc_terms(nx,scal_old,beta_old,
+      call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
       
 c*****************************************************************
       
-      print *,'... computing aofs with source = diff_old + intra-guess'
+      print *,'... computing aofs with D(old) + R(guess)'
+      do i = 0,nx-1
+         do n = 0,Nspec
+            I_R_new(i,n) = I_R_old(i,n)
+         enddo
+      enddo
+
       do i = 0,nx-1
          do n = 1,Nspec
             Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
@@ -117,17 +121,19 @@ c*****************************************************************
          rhocp_old = cpmix * scal_old(i,Density)
          diff_old(i,Temp) = diff_old(i,Temp)/rhocp_old
 
-         do n = 1,nscal
-            tforce(i,n) = diff_old(i,n) + intra(i,n)
+         do n = 1,Nspec
+            is = FirstSpec + n - 1
+            tforce(i,is) = diff_old(i,is) + I_R_new(i,n)
          enddo
+         tforce(i,Temp) = I_R_new(i,0)
       enddo
       
-      call scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt,time)
+      call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
 
 c*****************************************************************
 
       print *,'... update rho'
-      call update_rho(nx,scal_old,scal_new,aofs,dx,dt)
+      call update_rho(scal_old,scal_new,aofs,dx,dt)
 
 c*****************************************************************
 c     Either do c-n solve for new T prior to computing new 
@@ -136,15 +142,15 @@ c     coeffs, or simply start by copying from previous time step
       if (predict_temp_for_coeffs .eq. 1) then
          print *,'... predict temp with old coeffs'
          rho_flag = 1
-         call update_temp(nx,scal_old,scal_new,aofs,
-     $                    alpha,beta_old,beta_new,intra(0,Temp),
+         call update_temp(scal_old,scal_new,aofs,
+     $                    alpha,beta_old,beta_new,I_R_new(0,0),
      $                    Rhs(0,Temp),dx,dt,be_cn_theta,time)
-         call cn_solve(nx,scal_new,alpha,beta_old,Rhs(0,Temp),
+         call cn_solve(scal_new,alpha,beta_old,Rhs(0,Temp),
      $                 dx,dt,Temp,be_cn_theta,rho_flag)
-         call get_hmix_given_T_RhoY(nx,scal_new,dx)      
+         call get_hmix_given_T_RhoY(scal_new,dx)      
 
          print *,'... compute new coeffs'
-         call calc_diffusivities(nx,scal_new,beta_new,mu_new,dx,time+dt)
+         call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
       else
          print *,'... set new coeffs to old values for predictor'
          do n=1,nscal
@@ -157,123 +163,112 @@ c     coeffs, or simply start by copying from previous time step
 
 c*****************************************************************
 
-      print *,'... do predictor for species'
-      call update_spec(nx,scal_old,scal_new,aofs,alpha,beta_old,
-     &                 Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
+      print *,'... do predictor for species (MISDC terms=0)'
+      do i=0,nx-1
+         do n=0,Nspec
+            dRhs(i,n) = 0.d0
+         enddo
+      enddo
+      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
+     &     dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
       rho_flag = 2
       do n=1,Nspec
          is = FirstSpec + n - 1
-         call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,is),
+         call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
      $                 dx,dt,is,be_cn_theta,rho_flag)
       enddo
 
-c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
-      print *,'... do predictor for rhoh'
-      call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
-     &                 Rhs(0,RhoH),dx,dt,be_cn_theta,time)
+      print *,'... do predictor for rhoh (MISDC terms=0)'
+      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
+     &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
       rho_flag = 2
-      call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
+      call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
-      call rhoh_to_temp(nx,scal_new)
+      call rhoh_to_temp(scal_new)
 
-      print *,'... recompute diffusivities'
-      call calc_diffusivities(nx,scal_new,beta_new,mu_new,dx,time+dt)
-
-      print *,'... do corrector for species'
-      call update_spec(nx,scal_old,scal_new,aofs,alpha,beta_old,
-     $                 Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
-      rho_flag = 2
-      do n=1,Nspec
-         is = FirstSpec + n - 1
-         call cn_solve(nx,scal_new,alpha,beta_old,Rhs(0,is),
-     $                 dx,dt,is,be_cn_theta,rho_flag)
+      print *,'...   extract D sources'
+      do i = 0,nx-1
+         diff_new(i,Temp) = (
+     $        (scal_new(i,Temp)-scal_old(i,Temp))/dt 
+     $        - aofs(i,Temp) - I_R_new(i,0) - 
+     $        (1.d0-be_cn_theta)*diff_old(i,Temp) )/be_cn_theta
+         do n=1,Nspec
+            is = FirstSpec + n - 1
+            diff_new(i,is) = (
+     $           (scal_new(i,is)-scal_old(i,is))/dt 
+     $           - aofs(i,is) - I_R_new(i,n) - 
+     $           (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
+         enddo
       enddo
 
-c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms      
-      print *,'... do corrector for rhoh'
-      call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
-     &                 Rhs(0,RhoH),dx,dt,be_cn_theta,time)
-      rho_flag = 2
-      call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,be_cn_theta,rho_flag)
-      call rhoh_to_temp(nx,scal_new)
-
-      print *,'... advance chem with const A+D sources at n+1'
-      call get_spec_visc_terms(nx,scal_new,beta_new,
-     &                         diff_new(0,FirstSpec),dx,time)
-      call get_rhoh_visc_terms(nx,scal_new,beta_new,diff_new(0,RhoH),
-     &                         dx,time)
-      
+      print *,'... advance chem with A+D sources, reset I_R_new'
       do n = 1,nscal
          do i = 0,nx-1
             const_src(i,n) =     aofs(i,n)
-            lin_src_old(i,n) = diff_new(i,n)
+            lin_src_old(i,n) = diff_old(i,n)
             lin_src_new(i,n) = diff_new(i,n)
          enddo
       enddo
       
-      call strang_chem(nx,scal_old,scal_new,
+      call strang_chem(scal_old,scal_new,
      $                 const_src,lin_src_old,lin_src_new,
-     $                 intra,dt)
+     $                 I_R_new,dt)
 
       do misdc = 1, misdc_iterMAX
 
          print *,'MISDC iteration ',misdc
 
-         do n=1,nscal
-            do i=0,nx-1
-               scal_tmp(i,n) = scal_new(i,n)
-            enddo
-         enddo
-         
-         do n = 1,nscal
-            do i = 0,nx-1
-               tforce(i,n) = intra(i,n) + diff_old(i,n)
-            enddo
-         enddo
-         
-         print *,'... computing aofs with source = diff_old + intra'
-         call scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt,time)
-           
-
-         print *,'... create new diff. terms : diff_hat'
-         call calc_diffusivities(nx,scal_new,beta_new,mu_new,
+         print *,'... create new diff_hat from current state'
+         call calc_diffusivities(scal_new,beta_new,mu_new,
      &                           dx,time+dt)
-         call get_rhoh_visc_terms(nx,scal_new,beta_new,
-     &                            diff_hat(0,RhoH),dx,time)
-         call get_temp_visc_terms(nx,scal_new,beta_new,
+         call get_temp_visc_terms(scal_new,beta_new,
      &                            diff_hat(0,Temp),dx,time)
-         call get_spec_visc_terms(nx,scal_new,beta_new,
+         call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_hat(0,FirstSpec),dx,time)
-           
-c*****************************************************************
-           
-         do n = 1,nscal
-            do i = 0,nx-1
-               tforce(i,n) = intra(i,n)
-     $              + 0.5d0 * (diff_old(i,n) + diff_hat(i,n))
-     $              -          diff_hat(i,n)
+
+         do i = 0,nx-1
+            do n = 1,Nspec
+               ispec = FirstSpec + n - 1
+               tforce(i,ispec) = I_R_new(i,n)
+     &              + 0.5d0*(diff_old(i,ispec)+diff_new(i,ispec))
             enddo
+            tforce(i,Temp) = I_R_new(i,0)
+     &              + 0.5d0*(diff_old(i,Temp)+diff_new(i,Temp))
          enddo
-           
-         print *,'... update A+D for species with intra terms (CN)'
-         call update_spec(nx,scal_old,scal_new,aofs,alpha,beta_old,
-     &                    Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
+         
+         print *,'... compute A with updated D+R source'
+         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
+
+
+c*****************************************************************
+
+         print *,'... update D for species with A + R + MISDC(D)'
+         do i=0,nx-1
+            do n=1,Nspec
+               is = FirstSpec + n - 1
+               dRhs(i,n) = I_R_new(i,n)
+     &              + 0.5d0*(diff_new(i,is) - diff_hat(i,is))
+            enddo
+            dRhs(i,0) =
+     &           + 0.5d0*(diff_new(i,RhoH) - diff_hat(i,RhoH))
+         enddo
+         call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
+     &        dRhs,Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
-            call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,is),
+            call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
      $                    dx,dt,is,be_cn_theta,rho_flag)
          enddo
 
-         print *,'... update A+D for RhoH with intra terms (CN)'
-         call update_rhoh(nx,scal_old,scal_new,aofs,alpha,beta_old,
-     &                    Rhs(0,RhoH),dx,dt,be_cn_theta,time)
+         print *,'... update D for rhoh with A + R + MISDC(D)'
+         call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
+     &        dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
          rho_flag = 2
-         call cn_solve(nx,scal_new,alpha,beta_new,Rhs(0,RhoH),
+         call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $                 dx,dt,RhoH,be_cn_theta,rho_flag)
          print *,'... create new temp from new RhoH, spec'
-         call rhoh_to_temp(nx,scal_new)
+         call rhoh_to_temp(scal_new)
 
          print *,'... create diff_new from RhoH and spec solutions'
          if (be_cn_theta .ne. 0.d0) then
@@ -303,9 +298,9 @@ c*****************************************************************
             enddo
          enddo
          
-         call strang_chem(nx,scal_old,scal_new,
+         call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
-     $                    intra,dt)
+     $                    I_R_new,dt)
 
 
 c*****************************************************************
@@ -313,28 +308,9 @@ c       End of MISDC iterations
 c*****************************************************************
       enddo
       
-      do i = 0,nx-1
-         do n = 1,nspec
-            ispec = FirstSpec-1+n
-            Ydot_new(i,n) = intra(i,ispec)
-         enddo
-         Ydot_new(i,0) = intra(i,Temp)
-      enddo
-
-c      print *,'adv: hacking state'
-c      do i=-1,nx
-c         do n=1,nscal
-c            scal_new(i,n) = scal_old(i,n)
-c         enddo
-c      enddo
-c      do i=0,nx-1
-c         do n=0,Nspec
-c            Ydot_new(i,n) = Ydot_old(i,n)
-c         enddo
-c      enddo
       
-c     call calc_diffusivities(nx,scal_new,beta_new,dx,time+dt)
-      call calc_divu(nx,scal_new,beta_new,Ydot_new,divu_new,dx,time)
+c     call calc_diffusivities(scal_new,beta_new,dx,time+dt)
+      call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
 
       do i = 0,nx-1
          rhohalf(i) = 0.5d0*(scal_old(i,Density)+scal_new(i,Density))
@@ -343,18 +319,18 @@ c     call calc_diffusivities(nx,scal_new,beta_new,dx,time+dt)
       
       print *,'... update velocities'
       
-      call vel_edge_states(nx,vel_old,scal_old(-1,Density),gp,
+      call vel_edge_states(vel_old,scal_old(-1,Density),gp,
      $                     macvel,veledge,dx,dt,time)
       
-      call update_vel(nx,vel_old,vel_new,gp,rhohalf,
+      call update_vel(vel_old,vel_new,gp,rhohalf,
      &                macvel,veledge,alpha,mu_old,
      &                vel_Rhs,dx,dt,be_cn_theta,time)
       rho_flag = 1
-      call cn_solve(nx,vel_new,alpha,mu_new,vel_Rhs,
+      call cn_solve(vel_new,alpha,mu_new,vel_Rhs,
      $              dx,dt,1,be_cn_theta,rho_flag)
       
       print *,'...nodal projection...'
-      call project(nx,vel_old,vel_new,rhohalf,divu_new,
+      call project(vel_old,vel_new,rhohalf,divu_new,
      $             press_old,press_new,dx,dt)
         
       end

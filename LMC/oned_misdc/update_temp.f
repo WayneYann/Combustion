@@ -1,9 +1,8 @@
-      subroutine update_temp(nx,scal_old,scal_new,aofs,
+      subroutine update_temp(scal_old,scal_new,aofs,
      &                       alpha,beta_old,beta_new,I_R,Rhs,
      &                       dx,dt,be_cn_theta,time)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 scal_old(-1:nx  ,nscal)
       real*8 scal_new(-1:nx  ,nscal)
       real*8     aofs(0 :nx-1,nscal)
@@ -32,7 +31,7 @@ c*************************************************************************
 c*************************************************************************
 c     Initialize RHS = (1-theta) * Div( lambda Grad(T) ) at old time
 c*************************************************************************      
-      call set_bc_grow_s(nx,scal_old,dx,time)
+      call set_bc_grow_s(scal_old,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
          Rhs(i) = I_R(i)
@@ -54,11 +53,11 @@ c*************************************************************************
 c*************************************************************************
 c     Add rho.D.Grad(Y).Grad(H)  [with appropriate theta time centering]
 c*************************************************************************      
-      call rhoDgradHgradY(nx,scal_old,beta_old,visc,dx,time)
+      call rhoDgradHgradY(scal_old,beta_old,visc,dx,time)
       do i = 0,nx-1
          Rhs(i) = Rhs(i) + (1.d0 - be_cn_theta)*visc(i) 
       enddo
-      call rhoDgradHgradY(nx,scal_new,beta_new,visc,dx,time+dt)
+      call rhoDgradHgradY(scal_new,beta_new,visc,dx,time+dt)
       do i = 0,nx-1
          Rhs(i) = Rhs(i) + be_cn_theta*visc(i) 
       enddo

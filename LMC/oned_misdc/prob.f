@@ -51,19 +51,17 @@ c-----------------------------------------------------------------------
 
 c----------------------------------------------------------------------
 
-      subroutine initdata(nx,vel,scal,Ydot,dx)
+      subroutine initdata(vel,scal,I_R,dx)
       implicit none
       include 'spec.h'
-
-      integer              nx
-      double precision     dx
-      double precision    vel(-1:nx)
-      double precision   scal(-1:nx  ,*)
-      double precision   Ydot(0 :nx-1,0:*)
+      double precision    dx
+      double precision   vel(-1:nx)
+      double precision  scal(-1:nx  ,*)
+      double precision   I_R(0:nx-1,0:*)
 
       double precision  x, rho, Y(maxspec), T, h
       double precision xPMFlo, xPMFhi
-      double precision Z(0:maxspec)
+      double precision Z(0:maxspec),ZP(0:maxspec)
       double precision valsPMF(maxspec+3), RWRK, time, sum
       integer i, n, nPMF, IWRK
 
@@ -113,7 +111,10 @@ c----------------------------------------------------------------------
                Z(n) = scal(i,FirstSpec+n-1)
             enddo
             rhoh_INIT = scal(i,RhoH)
-            call vodeF_T_RhoY(Nspec+1,time,Z,Ydot(i,0),RWRK,IWRK)
+            call vodeF_T_RhoY(Nspec+1,time,Z(0),ZP(0),RWRK,IWRK)
+            do n=0,Nspec
+               I_R(i,n) = ZP(N)
+            enddo
          enddo
       else
          print *,'bcfunction: invalid probtype'
@@ -124,11 +125,9 @@ c----------------------------------------------------------------------
 
 c----------------------------------------------------------------------
 
-      subroutine set_bc_s(nx,scal,dx,time)
+      subroutine set_bc_s(scal,dx,time)
       implicit none
       include 'spec.h'
-
-      integer              nx
       double precision     dx, time
       double precision   scal(-1:nx  ,*)
       integer n, is, HorL
@@ -161,11 +160,10 @@ c     hi:  Neumann for all
 
 c----------------------------------------------------------------------
 
-      subroutine set_bc_v(nx,vel,dx,time)
+      subroutine set_bc_v(vel,dx,time)
       implicit none
       include 'spec.h'
-
-      integer              nx, HorL
+      integer              HorL
       double precision     dx, time
       double precision    vel(-1:nx)
       double precision u, rho, Y(maxspec), T, hmix
@@ -185,10 +183,9 @@ c     hi:  Neumann
 
 c----------------------------------------------------------------------
 
-      subroutine set_bc_grow_s(nx,scal,dx,time)
+      subroutine set_bc_grow_s(scal,dx,time)
       implicit none
       include 'spec.h'
-      integer              nx
       double precision     dx, time
       double precision   scal(-1:nx  ,*)
       integer n, i, is, HorL, leni, ib, IWRK
@@ -206,7 +203,7 @@ c     Set coeffs for polynomial extrap to fill grow cells
       call polyInterpCoeff(xInt, x, max_order, coef)
 
 c     Set Dirichlet values into grow cells
-      call set_bc_s(nx,scal,dx,time)
+      call set_bc_s(scal,dx,time)
 
 c     Do extrap
       ib = -1
@@ -243,10 +240,9 @@ c     On lo boundary grow cell, now have Y and T in state, get rho and h and fix
 
 c----------------------------------------------------------------------
 
-      subroutine set_bc_grow_v(nx,vel,dx,time)
+      subroutine set_bc_grow_v(vel,dx,time)
       implicit none
       include 'spec.h'
-      integer              nx
       double precision     dx, time
       double precision    vel(-1:nx)
       integer n, i, is, HorL, leni, ib, IWRK
@@ -264,7 +260,7 @@ c     Set coeffs for polynomial extrap to fill grow cells
       call polyInterpCoeff(xInt, x, max_order, coef)
 
 c     Set Dirichlet values into grow cells
-      call set_bc_v(nx,vel,dx,time)
+      call set_bc_v(vel,dx,time)
 
 c     Do extrap
       ib = -1

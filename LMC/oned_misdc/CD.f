@@ -21,10 +21,9 @@
 
 
 
-      subroutine calc_diffusivities(nx, scal, beta, mu, dx, time)
+      subroutine calc_diffusivities(scal, beta, mu, dx, time)
       implicit none
       include 'spec.h'
-      integer nx
       double precision scal(-1:nx,*)
       double precision beta(-1:nx,*)
       double precision mu(-1:nx)
@@ -42,7 +41,7 @@
 c     Ensure chem/tran initialized
       if (traninit.lt.0) call initchem()
 
-      call set_bc_s(nx,scal,dx,time)
+      call set_bc_s(scal,dx,time)
       if (LeEQ1 .eq. 0) then
          
          do i=-1, nx         
@@ -76,7 +75,6 @@ c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
          enddo
          
       else
-
          do i=-1, nx
 c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
             mu(i) = 10.d0 * 1.85e-5*(MAX(scal(i,Temp),1.d0)/298.0)**.7
@@ -609,10 +607,9 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       end
 
 
-      subroutine get_hmix_given_T_RhoY(nx,scal,dx)
+      subroutine get_hmix_given_T_RhoY(scal,dx)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 scal(-1:nx,*)
       real*8 dx
       

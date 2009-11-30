@@ -1,7 +1,6 @@
-      subroutine scal_aofs(nx,scal_old,macvel,aofs,tforce,dx,dt)
+      subroutine scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 scal_old(-1:nx  ,nscal)
       real*8   macvel(0 :nx  )
       real*8   tforce(0 :nx-1,nscal)
@@ -30,7 +29,7 @@
       
       use_bds = 0
       
-      call set_bc_s(nx,scal_old,dx,time)
+      call set_bc_s(scal_old,dx,time)
 
       do n = 1,nscal
          if ((n.ne.Density) .and. (n.ne.RhoH) ) then
@@ -42,9 +41,9 @@
             endif
 
             if (use_bds .eq. 1) then
-               call bdsslopes(nx,scal_old(-1,n),slope)
+               call bdsslopes(scal_old(-1,n),slope)
             else
-               call  mkslopes(nx,scal_old(-1,n),slope)
+               call  mkslopes(scal_old(-1,n),slope)
             endif
             do i = 1,nx-1
                slo = scal_old(i-1,n)+(0.5d0 - dthx*macvel(i))*slope(i-1)

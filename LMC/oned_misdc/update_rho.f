@@ -1,8 +1,6 @@
-      subroutine update_rho(nx,scal_old,scal_new,aofs,dx,dt)
+      subroutine update_rho(scal_old,scal_new,aofs,dx,dt)
       implicit none
       include 'spec.h'
-      integer nx
-
       real*8 scal_old(-1:nx  ,nscal)
       real*8 scal_new(-1:nx  ,nscal)
       real*8     aofs(0 :nx-1,nscal)

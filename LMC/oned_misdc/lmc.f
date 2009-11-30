@@ -1,39 +1,31 @@
       subroutine lmc()
       implicit none
       include 'spec.h'
-      integer nx
       integer nsteps
       integer nsteps_taken
       integer at_nstep
       integer plot_int, chk_int
       integer num_init_iters
       integer num_divu_iters
-      parameter (nx = 64)
       
-
-c     Room for rho, rhoH, Temp, RhoRT + species (rho.Y)
-      integer MAX_NSCAL
-      parameter (MAX_NSCAL = maxspec + 4)
-
       real*8   vel_new(-1:nx  )
       real*8   vel_old(-1:nx  )
-      real*8  scal_new(-1:nx  ,MAX_NSCAL)
-      real*8  scal_old(-1:nx  ,MAX_NSCAL)
-      real*8  scal_hold(-1:nx ,MAX_NSCAL)
+      real*8  scal_new(-1:nx  ,nscal)
+      real*8  scal_old(-1:nx  ,nscal)
+      real*8  scal_hold(-1:nx ,nscal)
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
-      real*8  Ydot_new(0 :nx-1,0:maxspec)
-      real*8  Ydot_old(0 :nx-1,0:maxspec)
+      real*8 I_R_new(0:nx-1,0:maxspec)
+      real*8 I_R_old(0:nx-1,0:maxspec)
       real*8   rhohalf(-1:nx  )
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
-      real*8  beta_old(-1 :nx,MAX_NSCAL)
-      real*8  beta_new(-1 :nx,MAX_NSCAL)
+      real*8  beta_old(-1 :nx,nscal)
+      real*8  beta_new(-1 :nx,nscal)
       real*8    mu_old(-1 :nx)
       real*8    mu_new(-1 :nx)
       real*8      dsdt(0 :nx-1)
-      real*8     intra(0 :nx-1,MAX_NSCAL)
-      real*8    tforce(0 :nx-1,MAX_NSCAL)
+      real*8    tforce(0 :nx-1,nscal)
 
 
 c     Local variables
@@ -57,9 +49,9 @@ c     Local variables
       integer do_init, is, i, n, nd, ns
       
 c     New arrays for MISDC.
-      real*8    const_src(0 :nx-1,MAX_NSCAL)
-      real*8  lin_src_old(0 :nx-1,MAX_NSCAL)
-      real*8  lin_src_new(0 :nx-1,MAX_NSCAL)
+      real*8    const_src(0 :nx-1,nscal)
+      real*8  lin_src_old(0 :nx-1,nscal)
+      real*8  lin_src_new(0 :nx-1,nscal)
       
       character chkfile*(16)
       real*8 Patm
@@ -107,7 +99,6 @@ c      write(*,fortin)
       Pcgs = Patm * P1ATM
       
       dx = (probhi-problo)/DBLE(nx)
-      nscal = Nspec+4
       
       call probinit(problo,probhi)
       
@@ -116,7 +107,7 @@ c      write(*,fortin)
          print *,'CHKFILE ',chkfile
          
          call read_check(chkfile,nx,vel_new,scal_new,press_new,
-     $                   Ydot_new,divu_new,dsdt,intra,
+     $                   I_R_new,divu_new,dsdt,
      $                   time,at_nstep,dt_old,cfl_used)
          do_init = 0
             
@@ -127,8 +118,8 @@ c      write(*,fortin)
             enddo
          enddo
          do i = 0,nx-1
-            do n = 0,nspec
-               Ydot_old(i,n) =  Ydot_new(i,n)
+            do n = 0,Nspec
+               I_R_old(i,n) =  I_R_new(i,n)
             enddo
             divu_old(i) = divu_new(i)
          enddo
@@ -144,8 +135,8 @@ c     call minmax_vel(nx,vel_new)
          time = 0.d0
          at_nstep = 0
 
-         call initdata(nx,vel_new,scal_new,Ydot_new,dx)
-         call set_bc_grow_s(nx,scal_new,dx,time)
+         call initdata(vel_new,scal_new,I_R_new(0,0),dx)
+         call set_bc_grow_s(scal_new,dx,time)
          do i = -1,nx
             do n = 1,nscal
                scal_old(i,n) = scal_new(i,n)
@@ -154,12 +145,9 @@ c     call minmax_vel(nx,vel_new)
          
          call minmax_vel(nx,vel_new)
          
-         call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
-     $                cfl,umax,dx,dt)
+         call calc_diffusivities(scal_new,beta_new,mu_new)
 
-         call calc_diffusivities(nx,scal_new,beta_new,mu_new)
-         
-         call calc_divu(nx,scal_new,beta_new,Ydot_new,divu_new,dx,time)
+         call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
          
          print *,'initialVelocityProject: '
          dt_dummy = -1.d0
@@ -173,7 +161,7 @@ c     Define density for initial projection.
             rhohalf(i) = scal_old(i,Density)
          enddo
 
-         call project(nx,vel_old,vel_new,rhohalf,divu_new,
+         call project(vel_old,vel_new,rhohalf,divu_new,
      $                press_old,press_new,dx,dt_dummy,time)
 
          call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
@@ -194,45 +182,28 @@ c     Define density for initial projection.
          enddo
          
          do i = 0,nx-1
-            do n = 1,nspec
-               is = FirstSpec-1+n
-               intra(i,is) = Ydot_new(i,n)
+            do n=1,nscal
+               const_src(i,n) = 0.d0
+               lin_src_old(i,n) = 0.d0
+               lin_src_new(i,n) = 0.d0
             enddo
-            intra(i,Temp) = Ydot_new(i,0)
-
-            const_src(i,n) = 0.d0
-            lin_src_old(i,n) = 0.d0
-            lin_src_new(i,n) = 0.d0
          enddo
          
          do nd = 1,num_divu_iters
 
             print *,' ...doing divu_iter number',nd,' dt=',dt
             
-            call strang_chem(nx,scal_old,scal_new,
+            call strang_chem(scal_old,scal_new,
      $                       const_src,lin_src_old,lin_src_new,
-     $                       intra,dt)
+     $                       I_R_new,dt)
 
-c     Extract Ydot, and reset state
-            print *,'... compute new Ydot'
-            do i = 0,nx-1
-               do n = 1,nspec 
-                  is = FirstSpec-1+n
-                  Ydot_new(i,n) = (scal_new(i,is)-scal_old(i,is))/dt
-               enddo
-               Ydot_new(i,0) = (scal_new(i,Temp)-scal_old(i,Temp))/dt
-               do n = 1,nscal
-                  scal_new(i,n) = scal_hold(i,n)
-               enddo
-            enddo
-            
-            call calc_divu(nx,scal_new,beta_new,Ydot_new,
+            call calc_divu(scal_new,beta_new,I_R_new,
      &                     divu_new,dx,time)
 
             print *,'initialVelocityProject: '
             dt_dummy = -1.d0
             
-            call project(nx,vel_old,vel_new,rhohalf,divu_new,
+            call project(vel_old,vel_new,rhohalf,divu_new,
      $                   press_old,press_new,dx,dt_dummy,time)
 
             print *,' '
@@ -247,7 +218,7 @@ c     Extract Ydot, and reset state
 
             do i = 0,nx-1
                do n = 0,Nspec
-                  Ydot_old(i,n) = Ydot_new(i,n)
+                  I_R_old(i,n) = I_R_new(i,n)
                enddo
                vel_old(i) =  vel_new(i)
                divu_old(i) = divu_new(i)
@@ -269,24 +240,24 @@ c     Extract Ydot, and reset state
             print *,' '
             write(6,1001) time,dt
 
-            call advance(nx,vel_old,vel_new,scal_old,scal_new,
-     $                   Ydot_old,Ydot_new,press_old,press_new,
+            call advance(vel_old,vel_new,scal_old,scal_new,
+     $                   I_R_old,I_R_new,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   intra,dx,dt,time)
+     $                   dx,dt,time)
             call minmax_vel(nx,vel_new)
 
             do i = 0,nx-1
                vel_new(i)  =   vel_old(i)
             enddo
 
-c     Reset state, Ydot
+c     Reset state, I_R
             do i = 0,nx-1
                do ns = 1,nscal
                   scal_new(i,ns) =  scal_hold(i,ns)
                   scal_old(i,ns) =  scal_hold(i,ns)
                enddo
-               do ns = 0,nspec
-                  Ydot_new(i,ns) =  Ydot_old(i,ns)
+               do ns = 1,Nspec
+                  I_R_new(i,ns) =  I_R_old(i,ns)
                enddo
                divu_new(i) = divu_old(i)
             enddo

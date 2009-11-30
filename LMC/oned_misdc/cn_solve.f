@@ -1,9 +1,9 @@
-      subroutine cn_solve(nx,scal_new,alpha,beta_cc,Rhs,dx,dt,n,
+      subroutine cn_solve(scal_new,alpha,beta_cc,Rhs,dx,dt,n,
      $                    be_cn_theta,rho_flag)
       implicit none
       include 'spec.h'
 
-      integer nx, rho_flag
+      integer rho_flag
       real*8 scal_new(-1:nx  ,*)
       real*8    alpha( 0:nx-1)
       real*8  beta_cc(-1:nx  ,*)
@@ -14,7 +14,7 @@
       
       integer i,n
       real*8 a(nx),b(nx),c(nx)
-      real*8 r(nx),u(nx)
+      real*8 r(nx),u(nx),gam(nx)
       real*8 fac
       real*8 beta(0:nx)
 
@@ -38,7 +38,7 @@ c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
          b(i+1) = alpha(i) - (a(i+1)+c(i+1))
       enddo
 
-      call tridiag(a,b,c,r,u,nx)
+      call tridiag(a,b,c,r,u,gam,nx)
       
       do i = 0,nx-1
          scal_new(i,n) = u(i+1)
@@ -57,15 +57,14 @@ c ** TRIDIAG **
 c ** Do a tridiagonal solve 
 c *************************************************************************
 
-      subroutine tridiag(a,b,c,r,u,n)
+      subroutine tridiag(a,b,c,r,u,gam,n)
 
       implicit none
 
       integer n
-      real*8 a(n),b(n),c(n),r(n),u(n)
+      real*8 a(n),b(n),c(n),r(n),u(n),gam(n)
       integer j
       real*8 bet 
-      real*8 gam(n)
       if (b(1) .eq. 0) print *,'CANT HAVE B(1) = ZERO'
 
       bet = b(1)
