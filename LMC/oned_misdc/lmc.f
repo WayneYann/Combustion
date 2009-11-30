@@ -241,7 +241,7 @@ c     Define density for initial projection.
             write(6,1001) time,dt
 
             call advance(vel_old,vel_new,scal_old,scal_new,
-     $                   I_R_old,I_R_new,press_old,press_new,
+     $                   I_R_new,I_R_new,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
      $                   dx,dt,time)
             call minmax_vel(nx,vel_new)

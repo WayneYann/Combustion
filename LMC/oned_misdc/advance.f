@@ -91,6 +91,7 @@ c      call minmax_scal(nx,scal_old)
       enddo
       print *,'DIVU norm new = ',divu_max 
       call macproj(nx,macvel,divu_tmp,dx)
+
 c
 c*****************************************************************
 c     
@@ -188,10 +189,10 @@ c*****************************************************************
 
       print *,'...   extract D sources'
       do i = 0,nx-1
-         diff_new(i,Temp) = (
-     $        (scal_new(i,Temp)-scal_old(i,Temp))/dt 
-     $        - aofs(i,Temp) - I_R_new(i,0) - 
-     $        (1.d0-be_cn_theta)*diff_old(i,Temp) )/be_cn_theta
+         diff_new(i,RhoH) = (
+     $        (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
+     $        - aofs(i,RhoH) - 
+     $        (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
          do n=1,Nspec
             is = FirstSpec + n - 1
             diff_new(i,is) = (
@@ -222,9 +223,9 @@ c*****************************************************************
          call calc_diffusivities(scal_new,beta_new,mu_new,
      &                           dx,time+dt)
          call get_temp_visc_terms(scal_new,beta_new,
-     &                            diff_hat(0,Temp),dx,time)
+     &                            diff_hat(0,Temp),dx,time+dt)
          call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_hat(0,FirstSpec),dx,time)
+     &                            diff_hat(0,FirstSpec),dx,time+dt)
 
          do i = 0,nx-1
             do n = 1,Nspec
@@ -253,7 +254,7 @@ c*****************************************************************
      &           + 0.5d0*(diff_new(i,RhoH) - diff_hat(i,RhoH))
          enddo
          call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
-     &        dRhs,Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
+     &        dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
