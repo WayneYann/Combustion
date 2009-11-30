@@ -1,7 +1,6 @@
-      subroutine rhoh_to_temp(nx,scal)
+      subroutine rhoh_to_temp(scal)
       implicit none
       include 'spec.h'
-      integer nx
       real*8 scal(-1:nx,nscal)
       real*8 rho, Y(maxspec), hmix, hmixTYP
       integer i,n
