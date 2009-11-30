@@ -16,11 +16,16 @@ c     Quantities passed in
       
       real*8 RWRK,rho,T
       integer IWRK,i,n
+      real*8 divu_max,marc
 
       call get_temp_visc_terms(nx,scal,beta,divu,dx,time)
       call get_spec_visc_terms(nx,scal,beta,ddivu,dx,time)
 
+      marc=0.d0
       do i = 0,nx-1
+         marc = MAX(ABS(divu(i)),marc)
+c         print *,'cdu',i,marc
+c         print *,'cdu',i,MAX(ABS(divu(i)),marc)
          rho = 0.d0
          do n = 1,Nspec
             rho = rho + scal(i,FirstSpec + n - 1)
@@ -37,5 +42,12 @@ c     Quantities passed in
             divu(i) = divu(i)
      &           + (ddivu(i,n) + Ydot(i,n))*invmwt(n)*mwmix/rho
          enddo
+       enddo
+
+      divu_max = ABS(divu(0))
+      do i = 1,nx-1
+         divu_max = MAX(divu_max,ABS(divu(i)))
       enddo
+      print *,'*********** DIVU norm = ',divu_max,marc
+
       end

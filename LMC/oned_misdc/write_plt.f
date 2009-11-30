@@ -14,7 +14,7 @@
       character pltfile*(8)
       character char_of_int*(5)
       
-      integer i
+      integer i,n
       pltfile(1:3) = 'plt'
       
       write(char_of_int,1005) nsteps

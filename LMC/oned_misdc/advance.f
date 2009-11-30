@@ -61,12 +61,12 @@
       integer IWRK, is, rho_flag
       
       print *,'advance: at start of time step'
+      be_cn_theta = 0.5d0
 c     
 c*****************************************************************
 c     Create MAC velocities.
 c*****************************************************************
-c     
-      
+c           
       do i = 0,nx-1
          gp(i) = (press_old(i+1) - press_old(i)) / dx
       enddo
@@ -74,7 +74,7 @@ c
 c      call minmax_scal(nx,scal_old)
       print *,'... predict edge velocities'
       call pre_mac_predict(nx,vel_old,scal_old,gp,
-     $                     macvel,dx,dt)
+     $                     macvel,dx,dt,time)
       
       call compute_pthermo(nx,scal_old,pthermo)
 
@@ -93,7 +93,6 @@ c      call minmax_scal(nx,scal_old)
       enddo
       print *,'DIVU norm new = ',divu_max 
       call macproj(nx,macvel,divu_tmp,dx)
-
 c
 c*****************************************************************
 c     
@@ -136,7 +135,6 @@ c     coeffs, or simply start by copying from previous time step
 
       if (predict_temp_for_coeffs .eq. 1) then
          print *,'... predict temp with old coeffs'
-         be_cn_theta = 0.5d0
          rho_flag = 1
          call update_temp(nx,scal_old,scal_new,aofs,
      $                    alpha,beta_old,beta_new,intra(0,Temp),
@@ -160,7 +158,6 @@ c     coeffs, or simply start by copying from previous time step
 c*****************************************************************
 
       print *,'... do predictor for species'
-      be_cn_theta = 0.5d0
       call update_spec(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                 Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
       rho_flag = 2
@@ -219,9 +216,9 @@ c     FIXME: Adjust spec flux at np1, reset scal_new, compute Le!=1 terms
      $                 const_src,lin_src_old,lin_src_new,
      $                 intra,dt)
 
-      print *,'MOVING ON TO MISDC LOOP '
-
       do misdc = 1, misdc_iterMAX
+
+         print *,'MISDC iteration ',misdc
 
          do n=1,nscal
             do i=0,nx-1
@@ -260,7 +257,6 @@ c*****************************************************************
          enddo
            
          print *,'... update A+D for species with intra terms (CN)'
-         be_cn_theta = 0.5d0
          call update_spec(nx,scal_old,scal_new,aofs,alpha,beta_old,
      &                    Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
          rho_flag = 2
@@ -325,17 +321,17 @@ c*****************************************************************
          Ydot_new(i,0) = intra(i,Temp)
       enddo
 
-      print *,'adv: hacking state'
-      do i=-1,nx
-         do n=1,nscal
-            scal_new(i,n) = scal_old(i,n)
-         enddo
-      enddo
-      do i=0,nx-1
-         do n=0,Nspec
-            Ydot_new(i,n) = Ydot_old(i,n)
-         enddo
-      enddo
+c      print *,'adv: hacking state'
+c      do i=-1,nx
+c         do n=1,nscal
+c            scal_new(i,n) = scal_old(i,n)
+c         enddo
+c      enddo
+c      do i=0,nx-1
+c         do n=0,Nspec
+c            Ydot_new(i,n) = Ydot_old(i,n)
+c         enddo
+c      enddo
       
 c     call calc_diffusivities(nx,scal_new,beta_new,dx,time+dt)
       call calc_divu(nx,scal_new,beta_new,Ydot_new,divu_new,dx,time)

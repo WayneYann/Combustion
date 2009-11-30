@@ -1,4 +1,5 @@
-      subroutine pre_mac_predict(nx,vel_old,scal_old,gp,macvel,dx,dt)
+      subroutine pre_mac_predict(nx,vel_old,scal_old,gp,macvel,
+     &                           dx,dt,time)
       implicit none
       include 'spec.h'
       integer nx
@@ -6,8 +7,7 @@
       real*8 scal_old(-1:nx,nscal)
       real*8     gp(0:nx)
       real*8 macvel(0:nx)
-      real*8 dx
-      real*8 dt
+      real*8 dx, dt, time
       
       real*8 slope(0:nx-1)
       real*8 dth
@@ -37,13 +37,14 @@
          endif
       enddo
       
-      i = 0
-      macvel(i) = vel_old(-1)
+      call set_bc_v(nx,vel_old,dx,time)
+      macvel(0) = vel_old(-1)
       
       i = nx
       macvel(i) = vel_old(i-1) + 
      $     (0.5d0 - dthx*vel_old(i-1))*slope(i-1) 
      $     - dth      *gp(i-1) / scal_old(i-1,Density)
       
-      
+c      print *,'pre_mac:',vel_old(i-1),slope(i-1),gp(i-1),
+c     &     scal_old(i-1,Density),macvel(i)
       end

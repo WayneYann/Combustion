@@ -335,6 +335,20 @@ c      print *,'  ** Fdiag',TIME,T,Z(1),Niter
 
 c     DVODE workspace requirements      
       integer dvr, dvi
+
+c     METH = 2 (backward diffs)
+c     MAXORD = 5
+c     NEQ = maxspec+1 
+c     NYH = NEQ = maxspec+1
+c     MITER = 2
+c     JSV = 1
+c     JSV = SIGN(MF)
+c     MF = JSV*(10*METH + MITER) = 22
+c     LWM = 2*(maxspec+1)**2 + 2    (MITER = 2, MF<0)
+c     lenr = 20 + NYH*(MAXORD + 1) + 3*NEQ + LWM
+c          = 20 + (maxspec+1)*(6) + 3*(maxspec+1) + 2*(maxspec+1)**2 + 2
+c          = 22 + (maxspec+1)*9 + 2*(maxspec+1)**2
+c     
       parameter (dvr = 22 + 9*(maxspec+1) + 2*(maxspec+1)**2)
       parameter (dvi = 30 + maxspec + 1)
       
@@ -346,12 +360,18 @@ c     DVODE workspace requirements
       integer IPAR, IWRK
 
 c     IOPT=1 parameter settings for VODE
-      DVRWRK(4) = 0
-      DVRWRK(5) = 0
+      DVRWRK(5) = 0.d0
+      DVRWRK(6) = 0.d0
       DVRWRK(7) = min_vode_timestep
+      DVRWRK(8) = 0.d0
+      DVRWRK(9) = 0.d0
+      DVRWRK(10) = 0.d0
       DVIWRK(5) = 0
       DVIWRK(6) = max_vode_subcycles
       DVIWRK(7) = 0
+      DVIWRK(8) = 0
+      DVIWRK(9) = 0
+      DVIWRK(10) = 0
 
       if (do_diag.eq.1) nsubchem = nchemdiag
       
@@ -434,6 +454,10 @@ c     Always form Jacobian to start
             write(6,*) ' number of Newton iterations ',DVIWRK(20)
             write(6,*) ' number of Newton failures = ',DVIWRK(21)
             write(6,*) '     comp with largest err = ',DVIWRK(16)
+
+            print *,'Input state:'
+            print *,'T:',Told
+            print *,'RY:',(RYold(n),n=1,Nspec)
          end if
 
          Tnew = Z(0)
