@@ -725,13 +725,14 @@ c     Error condition....dump state and bail out
 #include "cdwrk.H"
       REAL_T T,Y(*),H,Hin
       REAL_T TMIN,TMAX,errMAX
-      integer NiterMAX,Niter,n,NiterDAMP
-      parameter (TMIN=250, TMAX=5000)
+      integer NiterMAX,Niter,n,NiterDAMP, Discont_NiterMAX
+      parameter (TMIN=250, TMAX=5000, Discont_NiterMAX=100)
       REAL_T  T0,cp,cv,dH,temp,RoverWbar,Wbar,RU,RUC,P1ATM
       REAL_T res(0:NiterMAX-1),dT, Htarg
-      logical out_of_bounds, converged, soln_bad, stalled
-      REAL_T h300,cp300,h6500,cp6500
+      logical out_of_bounds, converged, soln_bad, stalled, discont
+      REAL_T HMIN,cpMIN,HMAX,cpMAX
       integer ihitlo,ihithi,j
+      REAL_T old_T, old_H, Tsec, Hsec
 
       out_of_bounds(temp) = (temp.lt.TMIN-one) .or. (temp.gt.TMAX)
 
@@ -743,21 +744,28 @@ c     Error condition....dump state and bail out
          T = T0
       end if
       Niter = 0
-      dH = zero
       soln_bad = .FALSE.
       Htarg = Hin * 1.d4
       ihitlo = 0
       ihithi = 0
 
       CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),H)
+
+      old_T = T
+      old_H = H
+
       dH = two*ABS(H - Htarg)/(one + ABS(H) + ABS(Htarg))
       res(Niter) = dH
       converged = dH.le.errMAX
+      stalled = .false.
 
-      do while ((.not.converged) .and. (.not.soln_bad))
+      do while ((.not.converged) .and. 
+     &     (.not.stalled) .and.
+     &     (.not.soln_bad))
 
          CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cp)
          dT = (Htarg - H)/cp
+         old_T = T
          if ((Niter.le.NiterDAMP).and.(T+dT.ge.TMAX)) then
             T = TMAX
             ihithi = 1
@@ -772,35 +780,57 @@ c     Error condition....dump state and bail out
             Niter = -1
             goto 100
          else
+            old_H = H
             CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),H)
             dH = two*ABS(H - Htarg)/(one + ABS(H) + ABS(Htarg))
             res(Niter) = min(dH,abs(dT))
             Niter = Niter + 1
          end if
-         converged = (dH.le.errMAX) .or. (ABS(dT).le.errMAX)
-         if (Niter .ge. NiterMAX) then
-c            if(abs(T-1000.d0).le.1.d-3.and. dH.le.1.d-4)then
-            if ((abs(dT).le.1.d-3) .or. (dH.le.1.d-4)) then
-              converged = .true.
-            else
-              Niter = -2
-              goto 100
-            endif
-         endif
-
-
+         converged = (dH.le.errMAX)
+         stalled = (ABS(dT).le.errMAX)
          if ((ihitlo.eq.1).and.(H.gt.Htarg)) then
             T = TMIN
-            CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),h300)
-            CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cp300)
-            T=TMIN+(Htarg-h300)/cp300
+            CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),HMIN)
+            CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cpMIN)
+            T=TMIN+(Htarg-HMIN)/cpMIN
             converged = .true.
          endif
          if ((ihithi.eq.1).and.(H.lt.Htarg)) then
             T = TMAX
-            CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),h6500)
-            CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cp6500)
-            T=TMAX+(Htarg-h6500)/cp6500
+            CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),HMAX)
+            CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cpMAX)
+            T=TMAX+(Htarg-HMAX)/cpMAX
+            converged = .true.
+         endif
+
+c     If the iterations are failing, perhaps it is because the fits are discontinuous
+c     The following implements a modified secant method to hone in on a discontinity in h
+c     with T.  Discont_NiterMAX is fairly large because this process can be particularly
+c     slow to converge if the Htarg value happens to lay between the discontinuous function
+c     values.  
+         if (Niter .ge. NiterMAX) then
+            do while (.not. stalled)
+               dT = - (H - Htarg) * (old_T - T)/(old_H - H)
+               Tsec = T + dT
+               soln_bad = out_of_bounds(Tsec)
+               if (soln_bad) then
+                  Niter = -3
+                  goto 100
+               endif
+               CALL CKHBMS(Tsec,Y,IWRK(ckbi),RWRK(ckbr),Hsec)
+               if ( (Hsec-Htarg)*(Htarg-H) .gt. 0.d0 ) then
+                  old_H = H
+                  old_T = T
+               endif
+               H = Hsec
+               T = Tsec
+               stalled = (ABS(dT).le.errMAX)
+               Niter = Niter + 1
+               if (Niter.gt.NiterMAX+Discont_NiterMAX) then
+                  Niter = -2
+                  goto 100
+               endif
+            enddo
             converged = .true.
          endif
       end do
@@ -815,6 +845,8 @@ c
       write(6,997) 'iterations tried = ',Niter
       write(6,998) 'initial T = ',T0
       write(6,998) 'current T = ',T
+      write(6,998) 'previous T = ',old_T
+      write(6,998) 'target H = ',Htarg
       write(6,998) 'species mass fracs:'
       do n = 1,Nspec
          write(6,998) '  ',Y(n)
