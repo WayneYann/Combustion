@@ -1,5 +1,5 @@
 USE_INTEL = FALSE
-EXEname := lmc.exe
+EXEbase := lmc.exe
 
 #
 # Choose pmf file
@@ -18,6 +18,7 @@ pmf_source := H-flame_0370.f
 #REACTION_MECHANISM=DRM19
 #REACTION_MECHANISM=GLARBORG
 REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=LIDRYER
 
 ifeq (${USE_INTEL},TRUE)
   CCOMP := icpc -vec_report0 -DBL_FORT_USE_UNDERSCORE

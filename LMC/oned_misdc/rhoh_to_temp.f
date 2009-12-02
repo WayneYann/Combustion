@@ -32,7 +32,7 @@
          enddo
          hmix = scal(i,RhoH) / scal(i,Density)
 
-         call FORT_TfromHYpt(scal(i,Temp),hmix,Y,
+         call FORT_TfromHYpt(scal(i,Temp),hmix,Y,Nspec,
      &                       errMax,NiterMAX,res,Niter)
 
          if (Niter.lt.0) then

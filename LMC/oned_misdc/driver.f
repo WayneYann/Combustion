@@ -11,8 +11,10 @@
       double precision rhoD(maxspec), kappa, mu, hmix
       double precision res(NiterMAX), errMAX
       double precision RYnew(maxspec), Ynew(maxspec), Tnew
-      integer FC, do_diag
-      double precision diag(maxreac), dt, sum
+      integer FC, do_diag, i, NEVAL
+      parameter (NEVAL=100)
+      double precision diag(maxreac), dt, sum, eps
+      double precision cp(0:NEVAL-1), cpp(0:NEVAL-1), Teval(0:NEVAL-1)
       
       call initchem()
 
@@ -47,13 +49,57 @@ c      enddo
       T = T*1.3
 
       errMax = ABS(hmix*1.e-20)
-      call FORT_TfromHYpt(T,hmix,Y,errMax,NiterMAX,res,Niter)
+      call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
       if (Niter.ge.0) then
          print *,'H to T solve converged in ',Niter,' iterations'
       else
          print *,'H to T solve failed, Niter=',Niter
       endif
       print *,'T new is ',T
+
+
+
+      print *,'debugging test:'
+
+      hmix = 0.868214818423d+07;
+      T=0.999984396440d+03;
+      T=1.00000001d+03;
+      Y(1) = 0.889979543278d-2
+      Y(2) = 0.176897481907d+0
+      Y(3) = 0.682771928057d-1
+      Y(4) = 0.103061796579d-3
+      Y(5) = 0.320304190562d-3
+      Y(6) = 0.668446420264d-3
+      Y(7) = 0.758079131426d-3
+      Y(8) = 0.135677506994d-3
+      Y(9) = 0.743939960808d+0
+
+      errMax = ABS(hmix*1.e-20)
+      call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
+      if (Niter.ge.0) then
+         print *,'H to T solve converged in ',Niter,' iterations'
+      else
+         print *,'H to T solve failed, Niter=',Niter
+      endif
+      print *,'T new is ',T
+
+      T = 1.d3
+      eps = 5.d-3
+      open(unit=34,file='cp.dat',status='unknown')
+      do i=0,NEVAL-1
+         Teval(i) = T + 2*eps*(DBLE(i)-(NEVAL-1)/2.d0)/NEVAL
+         CALL CKCPBS(Teval(i),Y,IWRK,RWRK,cp(i))
+      enddo
+      do i=0,NEVAL-2
+         write(34,*)
+c     &        0.5*(Teval(i+1)+Teval(i)),
+     &        Teval(i),
+     &        cp(i)
+c     &        0.5*(cp(i+1)+cp(i)),
+c     &        (cp(i+1)-cp(i))/(Teval(i+1)-Teval(i))
+      enddo
+      close(34)
+      stop
 
 
       print *,'pre-chem state'
@@ -108,7 +154,8 @@ c      enddo
 
       errMax = ABS(hmix*1.e-10)
       print *,'errMax:',errMax
-      call FORT_TfromHYpt(Tnew,hmix,Ynew,errMax,NiterMAX,res,Niter)
+      call FORT_TfromHYpt(Tnew,hmix,Ynew,
+     &     Nspec,errMax,NiterMAX,res,Niter)
       if (Niter.ge.0) then
          print *,'H to T solve converged in ',Niter,' iterations'
       else
@@ -123,4 +170,6 @@ c      enddo
       print *,'T new is ',Tnew
       print *,'Y:',(Ynew(n),n=1,Nspec)
       print *,'hmix:',hmix
+
+
       end
