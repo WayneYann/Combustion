@@ -631,6 +631,7 @@ c     In parallel these must be consistent, so set the seed to have
 c     the same value across all processors
 c
       call blutilinitrand(111397)
+      call blutilinitrand(134527)
 
       do j = lmodemin,lmodemax
          do i = 0,j
@@ -1236,14 +1237,17 @@ c
                   do m = 0,l
                      ctr = ctr + 1
                      rfront = rfront +
-     &                    betalm(l,m)*EXP(-dfloat(l-lpeak)**2/(.15d0*lpeak)**2)
-     &                    * Ylm(l,m,phi+alphalm(l,m)*2*Pi,
-     &                    COS(theta+gammalm(l,m)*2*Pi))
+c    &                    betalm(l,m)*EXP(-dfloat(l-lpeak)**2/(.15d0*lpeak)**2)
+     &                    betalm(l,m)
+     &                    * Ylm(l,m,phi,COS(theta))
+c    &                    * Ylm(l,m,phi+alphalm(l,m)*2*Pi,
+c    &                    COS(theta+gammalm(l,m)*2*Pi))
                   end do
                end do
                if (ctr.GT.0) rfront = rfront/ctr
                
-               rfront = (blobr + pertmag* rfront - r + zstandoff) *100.d0
+c              rfront = (blobr + pertmag* rfront - r + zstandoff) *100.d0
+               rfront = (blobr + pertmag* rfront*blobr - r + zstandoff) *100.d0
                
                call pmf(rfront,rfront,pmf_vals,n)
                

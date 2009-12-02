@@ -1,11 +1,10 @@
  &fortin
-  blobr = .002
+  blobr = .001
   blobr = .001
   blobr = .0005
   blobx = 0.
   bloby = 0.
   blobz = 0.
-  zstandoff = .00587
   zstandoff = .03
   probtype = 1
   flametracval = .0001
@@ -18,12 +17,13 @@
   phi_in = 0.4
   nchemdiag = 1
   pertmag = .001
-  pertmag = .01
+  pertmag = .1
   turb_scale = 1.0	  
  /
  &heattransin
   pamb = 101325.0
   pamb = 506625.0
+  pamb = 1013250.0
   dpdt_factor = 0.3
  /
  &flctin
