@@ -1,5 +1,5 @@
 USE_INTEL = FALSE
-EXEbase := lmc.exe
+EXEname := lmc.exe
 
 #
 # Choose pmf file

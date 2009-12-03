@@ -75,7 +75,8 @@ c     Set linear source terms in common for ode integrators access
 
          TSAVE = Tnew
          errMax = hmix_TYP * 1.e-10
-         call FORT_TfromHYpt(Tnew,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
+         call FORT_TfromHYpt(Tnew,hmix,Y,
+     &        Nspec,errMax,NiterMAX,res,Niter)
          if (Niter.lt.0) then
             print *,'SC: H to T solve failed in F, Niter=',Niter
             print *,'hmix_TYP:',hmix_TYP

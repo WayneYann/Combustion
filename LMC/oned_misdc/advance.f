@@ -126,7 +126,7 @@ c*****************************************************************
             is = FirstSpec + n - 1
             tforce(i,is) = diff_old(i,is) + I_R_new(i,n)
          enddo
-         tforce(i,Temp) = I_R_new(i,0)
+         tforce(i,Temp) = diff_old(i,Temp) + I_R_new(i,0)
       enddo
       
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
