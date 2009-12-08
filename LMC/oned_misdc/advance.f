@@ -342,9 +342,6 @@ c     call calc_diffusivities(scal_new,beta_new,dx,time+dt)
       rho_flag = 1
       call cn_solve(vel_new,alpha,mu_new,vel_Rhs,
      $              dx,dt,1,be_cn_theta,rho_flag)
-      do i = 0,nx-1
-         write(16,*)i,rhohalf(i)
-      enddo         
 
       print *,'...nodal projection...'
       call project(vel_old,vel_new,rhohalf,divu_new,

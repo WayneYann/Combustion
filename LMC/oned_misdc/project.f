@@ -30,12 +30,6 @@ C CEG:: vel_old never ends up gettting used
          end do
       endif
 
-      write(15,*)'# dt,dx = ',dt, dx
-      do i = 0,nx-1
-         write(15,*)i,vel_new(i),vel_star(i),divu(i),rhohalf(i),
-     &        press_old(i)
-      enddo
-
 c     Build v^n+1 directly, since we have bc and div(v)=s
 c     Get boundary value, vel(-1) at inlet wall, and integrate
 c     explicitly.
