@@ -135,7 +135,17 @@ c     call minmax_vel(nx,vel_new)
          time = 0.d0
          at_nstep = 0
 
+C take vals from PMF and fills vel, spec (rhoY), Temp
+C                              computes rho, rhoH, I_R
+C Does NOT fill ghost cells
+C vel and press have uninitialized (ie grabage in) ghost cells coming out
          call initdata(vel_new,scal_new,I_R_new(0,0),dx)
+C CEG:: not sure where/if this get initialized if not done here
+C  not sure this is really needed
+         do i = 0,nx
+            press_old(i) =  0.d0
+         enddo
+C Fills in ghost cells for rho, Y, Temp, rhoH 
          call set_bc_grow_s(scal_new,dx,time)
          do i = -1,nx
             do n = 1,nscal
@@ -161,6 +171,8 @@ c     Define density for initial projection.
             rhohalf(i) = scal_old(i,Density)
          enddo
 
+C fills vel_new ghost cells, but not for vel_old 
+C press_new gets vals everywhere
          call project(vel_old,vel_new,rhohalf,divu_new,
      $                press_old,press_new,dx,dt_dummy,time)
 
@@ -188,7 +200,12 @@ c     Define density for initial projection.
                lin_src_new(i,n) = 0.d0
             enddo
          enddo
-         
+
+C CEG:: just checking
+C         write(*,*)'dt = ', dt
+C         call write_plt(vel_new,scal_new,press_new,dx,0,time)
+C         stop 
+        
          do nd = 1,num_divu_iters
 
             print *,' ...doing divu_iter number',nd,' dt=',dt
@@ -196,7 +213,7 @@ c     Define density for initial projection.
             call strang_chem(scal_old,scal_new,
      $                       const_src,lin_src_old,lin_src_new,
      $                       I_R_new,dt)
-
+           
             call calc_divu(scal_new,beta_new,I_R_new,
      &                     divu_new,dx,time)
 

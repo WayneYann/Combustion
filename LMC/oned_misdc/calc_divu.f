@@ -10,12 +10,13 @@ c     Quantities passed in
       real*8 dx, time
       
       real*8 Y(maxspec)
+      real*8 HK(maxspec)
       real*8 cpmix,mwmix
       real*8 ddivu(0:nx-1,maxspec)
       
       real*8 RWRK,rho,T
       integer IWRK,i,n
-      real*8 divu_max,marc
+      real*8 divu_max,marc,sum
 
       call get_temp_visc_terms(scal,beta,divu,dx,time)
       call get_spec_visc_terms(scal,beta,ddivu,dx,time)
@@ -33,11 +34,20 @@ c     Quantities passed in
          call CKMMWY(Y,IWRK,RWRK,mwmix)
          call CKCPBS(T,Y,IWRK,RWRK,cpmix)
 
-         divu(i) = (divu(i)/(rho*cpmix) + I_R(i,0)) / T
-         marc = MAX(ABS(divu(i)),marc)
+C CEG additions
+         call CKHMS(T,IWRK,RWRK,HK)
+
+C Using I_R(temp) leads to a large change in Vmax and press that is way off
+C         divu(i) = (divu(i)/(rho*cpmix) + I_R(i,0)) / T
+C         marc = MAX(ABS(divu(i)),marc)
+         divu(i) = divu(i)/(rho*cpmix*T)
+         sum = 0.0d0
          do n=1,Nspec
             divu(i) = divu(i)
+C     &           + (ddivu(i,n) + I_R(i,n))*invmwt(n)*mwmix/rho
      &           + (ddivu(i,n) + I_R(i,n))*invmwt(n)*mwmix/rho
+     &           - HK(n)*I_R(i,n)/(rho*cpmix*T)
+            sum = sum -HK(n)*I_R(i,n)/(rho*cpmix*T)
          enddo
        enddo
 

@@ -17,6 +17,7 @@
       integer FuncCount, do_diag, IWRK
       real*8 diag(maxreac),hmix,RWRK,TSAVE
       real*8 Yhalf(maxspec),Y(maxspec), cp
+      real*8 HK(maxspec),HK_new(maxspec),HK_old(maxspec)
       
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
@@ -68,6 +69,7 @@ c     Set linear source terms in common for ode integrators access
             Y(n) = RYnew(n)/scal_new(i,Density)
          enddo
 
+C CEG:: don't know that really need this
          scal_new(i,RhoH) = scal_old(i,RhoH)+
      &        + dt*const_src(i,RhoH)
      &        + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
@@ -85,6 +87,12 @@ c     Set linear source terms in common for ode integrators access
          scal_new(i,Temp) = Tnew
 
 c     Define change in state due to chemistry.
+C CEG:: I don't think I_R(temp) as marc did it is right
+         call CKHMS(0.5d0*(Told+Tnew),IWRK,RWRK,HK)
+         call CKHMS(Told,IWRK,RWRK,HK_old)
+         call CKHMS(Tnew,IWRK,RWRK,HK_new)
+C         write(13,*)Told, Tnew
+         I_R(i,0) = 0.d0
          do n = 1,Nspec
             is = FirstSpec + n - 1
             I_R(i,n) =
@@ -93,14 +101,20 @@ c     Define change in state due to chemistry.
      $           - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
             Yhalf(n) = 0.5d0*(scal_old(i,is)/rho_old
      &           +           Y(n)/scal_new(i,Density))
+            I_R(i,0) = I_R(i,0) + HK(n)*const_src(i,is)
+     &                 + 0.5d0*(HK_old(n)*lin_src_old(i,is)
+     &                 + HK_new(n)*lin_src_new(i,is))
          enddo
          rho_half = 0.5d0*(rho_old + scal_new(i,Density))
-         CALL CKCPBS(0.5*(scal_old(i,temp)+Tnew),Yhalf,IWRK,RWRK,cp)
-         I_R(i,0) = 
-     $           (scal_new(i,Temp)-scal_old(i,Temp)) / dt
-     $            - (    const_src(i,RhoH)
-     $           + 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
-     $                         (rho_half*cp)
+         CALL CKCPBS(0.5d0*(scal_old(i,temp)+Tnew),Yhalf,IWRK,RWRK,cp)
+         I_R(i,0) = -I_R(i,0)/(cp*rho_half)
+
+C CEG:: I don't agree with this
+C$$$         I_R(i,0) = 
+C$$$     $           (scal_new(i,Temp)-scal_old(i,Temp)) / dt
+C$$$     $            - (    const_src(i,RhoH)
+C$$$     $           + 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
+C$$$     $                         (rho_half*cp)
       enddo
 
       print *,' '

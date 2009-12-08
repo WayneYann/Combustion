@@ -65,6 +65,10 @@ c----------------------------------------------------------------------
       double precision valsPMF(maxspec+3), RWRK, time, sum
       integer i, n, nPMF, IWRK
 
+C CEG:: remove me.  
+C      double precision   press(-1:nx)
+C      integer nsteps
+
       if (probtype.eq.1) then
 
          time = 0.d0
@@ -120,6 +124,15 @@ c----------------------------------------------------------------------
          print *,'bcfunction: invalid probtype'
          stop
       endif
+
+C CEG:: remove me
+C$$$      nsteps = 0
+C$$$      do i = 0,nx-1
+C$$$         press(i) = 0.d0
+C$$$      end do
+C$$$      call write_plt(vel,scal,press,dx,nsteps,time)
+C$$$      stop
+
       end
 
 

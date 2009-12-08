@@ -29,12 +29,12 @@ c*************************************************************************
       enddo
 
 c*************************************************************************
-c     Initialize RHS = (1-theta) * Div( lambda Grad(T) ) at old time
+c     Initialize RHS = I_R + (1-theta) * Div( lambda Grad(T) ) at old time
 c*************************************************************************      
       call set_bc_grow_s(scal_old,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
-         Rhs(i) = I_R(i)
+         Rhs(i) = I_R(i)*dt
          if (coef_avg_harm .eq. 1) then
             beta_lo = 2.d0 /
      &           (1.d0/beta_old(i,Temp)+1.d0/beta_old(i-1,Temp))

@@ -28,7 +28,7 @@
       if (umax .gt. small) dt = min(dt,dx/umax)
       if (dt .eq. dt_start) dt = dx
 
-      print *,'DT = DX / V = ',dt,' USING ',umax
+      print *,'DT = DX / V = ',dt,' USING V =',umax
 
       dt = dt*cfl
 

@@ -65,6 +65,12 @@ c*****************************************************************
 c     Create MAC velocities.
 c*****************************************************************
 c           
+C CEG:: just checking
+C      write(*,*)'dt = ', dt
+C      call write_plt(vel_old,scal_old,press_old,dx,0,time)
+C      call write_plt(vel_new,scal_new,press_new,dx,1,time)
+C      stop
+
       do i = 0,nx-1
          gp(i) = (press_old(i+1) - press_old(i)) / dx
       enddo
@@ -146,6 +152,7 @@ c     coeffs, or simply start by copying from previous time step
          call update_temp(scal_old,scal_new,aofs,
      $                    alpha,beta_old,beta_new,I_R_new(0,0),
      $                    Rhs(0,Temp),dx,dt,be_cn_theta,time)
+C CEG:: just uses RHS and overwrites snew
          call cn_solve(scal_new,alpha,beta_old,Rhs(0,Temp),
      $                 dx,dt,Temp,be_cn_theta,rho_flag)
          call get_hmix_given_T_RhoY(scal_new,dx)      
@@ -163,11 +170,11 @@ c     coeffs, or simply start by copying from previous time step
       endif
 
 c*****************************************************************
-
       print *,'... do predictor for species (MISDC terms=0)'
       do i=0,nx-1
-         do n=0,Nspec
-            dRhs(i,n) = 0.d0
+         dRhs(i,0) = 0.0d0
+         do n=1,Nspec
+            dRhs(i,n) = dt*I_R_new(i,n)
          enddo
       enddo
       call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
@@ -215,7 +222,11 @@ c*****************************************************************
      $                 const_src,lin_src_old,lin_src_new,
      $                 I_R_new,dt)
 
+C----------------------------------------------------------------
+C----------------------------------------------------------------
       do misdc = 1, misdc_iterMAX
+
+         be_cn_theta = 1.d0
 
          print *,'MISDC iteration ',misdc
 
@@ -231,10 +242,10 @@ c*****************************************************************
             do n = 1,Nspec
                ispec = FirstSpec + n - 1
                tforce(i,ispec) = I_R_new(i,n)
-     &              + 0.5d0*(diff_old(i,ispec)+diff_new(i,ispec))
+     &              + 0.5d0*(diff_old(i,ispec)+diff_hat(i,ispec))
             enddo
             tforce(i,Temp) = I_R_new(i,0)
-     &              + 0.5d0*(diff_old(i,Temp)+diff_new(i,Temp))
+     &              + 0.5d0*(diff_old(i,Temp)+diff_hat(i,Temp))
          enddo
          
          print *,'... compute A with updated D+R source'
@@ -247,11 +258,13 @@ c*****************************************************************
          do i=0,nx-1
             do n=1,Nspec
                is = FirstSpec + n - 1
-               dRhs(i,n) = I_R_new(i,n)
-     &              + 0.5d0*(diff_new(i,is) - diff_hat(i,is))
+C could take out diff_old if i left theta = 0.5
+C will need to think about this for the case of Le != 1
+               dRhs(i,n) = dt*(I_R_new(i,n) 
+     &              + 0.5d0*(diff_old(i,is) - diff_hat(i,is)))
             enddo
-            dRhs(i,0) =
-     &           + 0.5d0*(diff_new(i,RhoH) - diff_hat(i,RhoH))
+            dRhs(i,0) = dt*(
+     &           + 0.5d0*(diff_old(i,RhoH) - diff_new(i,RhoH)))
          enddo
          call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &        dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
@@ -276,18 +289,18 @@ c*****************************************************************
             do i = 0,nx-1
                diff_new(i,RhoH) = (
      $              (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-     $              - aofs(i,RhoH) - tforce(i,RhoH) - 
+     $              - aofs(i,RhoH) - dRhs(i,0)/dt - 
      $              (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
                do n=1,Nspec
                   is = FirstSpec + n - 1
                   diff_new(i,is) = (
      $                 (scal_new(i,is)-scal_old(i,is))/dt 
-     $                 - aofs(i,is) - tforce(i,is) - 
+     $                 - aofs(i,is) - dRhs(i,n)/dt - 
      $                 (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
                enddo
             enddo
          endif
-           
+ 
          print *,'... advancing chem with const and linear sources'
          do n = 1,nscal
             do i = 0,nx-1
@@ -316,8 +329,8 @@ c     call calc_diffusivities(scal_new,beta_new,dx,time+dt)
       do i = 0,nx-1
          rhohalf(i) = 0.5d0*(scal_old(i,Density)+scal_new(i,Density))
          dsdt(i) = (divu_new(i) - divu_old(i)) / dt
-      enddo
-      
+      enddo         
+
       print *,'... update velocities'
       
       call vel_edge_states(vel_old,scal_old(-1,Density),gp,
@@ -329,10 +342,14 @@ c     call calc_diffusivities(scal_new,beta_new,dx,time+dt)
       rho_flag = 1
       call cn_solve(vel_new,alpha,mu_new,vel_Rhs,
      $              dx,dt,1,be_cn_theta,rho_flag)
-      
+      do i = 0,nx-1
+         write(16,*)i,rhohalf(i)
+      enddo         
+
       print *,'...nodal projection...'
       call project(vel_old,vel_new,rhohalf,divu_new,
      $             press_old,press_new,dx,dt)
         
       end
+
 
