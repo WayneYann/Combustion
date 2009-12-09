@@ -328,6 +328,8 @@ public:
 
         const std::string right() const;
 
+        bool operator< (const Edge& rhs) const;
+
     private:
         std::string sp1, sp2;
         Array<std::pair<int,Real> > RWL; // RateWeightList, each pair is (reac,coeff)

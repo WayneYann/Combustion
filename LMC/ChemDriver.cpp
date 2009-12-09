@@ -986,6 +986,12 @@ ChemDriver::Edge::right() const
     return sp2;
 }
 
+bool
+ChemDriver::Edge::operator<(const Edge& rhs) const
+{
+    return (this->left() == rhs.left() ?  this->right() < rhs.right() : this->left() < rhs.left());
+}
+
 std::ostream& operator<< (std::ostream& os, const ChemDriver::Edge& e)
 {
     os << e.sp1 << " <=> " << e.sp2 << "  ( ";
