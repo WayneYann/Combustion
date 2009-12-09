@@ -95,7 +95,7 @@
 
 #ifdef MIKE1
       do n=1,Nrxns
-         RevKt(i,j,n) = zero
+         RevKt(n) = zero
       end do      
 #endif      
 
