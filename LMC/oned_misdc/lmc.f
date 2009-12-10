@@ -17,7 +17,7 @@
       real*8 press_old(0 :nx  )
       real*8 I_R_new(0:nx-1,0:maxspec)
       real*8 I_R_old(0:nx-1,0:maxspec)
-      real*8   rhohalf(-1:nx  )
+      real*8   rhohalf( 0:nx-1)
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
       real*8  beta_old(-1 :nx,nscal)
@@ -167,7 +167,7 @@ C Fills in ghost cells for rho, Y, Temp, rhoH
          enddo
 
 c     Define density for initial projection.
-         do i = -1,nx
+         do i = 0,nx-1
             rhohalf(i) = scal_old(i,Density)
          enddo
 

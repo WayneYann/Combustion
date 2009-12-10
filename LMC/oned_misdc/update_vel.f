@@ -1,6 +1,6 @@
       subroutine update_vel(vel_old,vel_new,gp,rhohalf,
      &                      macvel,sedge,alpha,beta,
-     &                      Rhs,dx,dt,be_cn_theta)
+     &                      Rhs,dx,dt,be_cn_theta,time)
       implicit none
       include 'spec.h'
       real*8 vel_old(-1:nx  )
@@ -20,6 +20,7 @@
       integer i,n,is, IWRK
 
       dxsqinv = 1.d0/(dx*dx)
+      call set_bc_grow_v(vel_old,dx,time)
 
 c     rho.DU/Dt + G(pi) = D(tau), here D(tau) = d/dx ( a . du/dx ), a=4.mu/3
       do i = 0,nx-1

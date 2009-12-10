@@ -495,6 +495,7 @@ c     Always form Jacobian to start
       soln_bad = .FALSE.
 c     Hin in MKS, convert to CGS
 c      Htarg = Hin * 1.d4
+      Htarg = Hin
       ihitlo = 0
       ihithi = 0
 
