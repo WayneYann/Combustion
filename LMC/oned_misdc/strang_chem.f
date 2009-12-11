@@ -63,7 +63,6 @@ c     Set linear source terms in common for ode integrators access
             scal_new(i,FirstSpec+n-1) = RYnew(n)
             Y(n) = RYnew(n)/scal_new(i,Density)
          enddo
-         write(19,*)i,Tnew
 
 C CEG:: don't know that really need this
          scal_new(i,RhoH) = scal_old(i,RhoH)+
@@ -81,7 +80,7 @@ C CEG:: don't know that really need this
             stop
          endif
          scal_new(i,Temp) = Tnew
-         write(19,*)i, ' Tnew = ',Tnew
+
 c     Define change in state due to chemistry.
 C CEG:: I don't think I_R(temp) as marc did it is right
          call CKHMS(0.5d0*(Told+Tnew),IWRK,RWRK,HK)

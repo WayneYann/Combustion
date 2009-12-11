@@ -35,13 +35,13 @@ C should change this to a problem dependent vel_TYP
 
       print *,'DT * CFL ',dt
 
-C$$$      call est_divu_dt(divu,dsdt,scal,dx,dt_divu)
+      call est_divu_dt(divu,dsdt,scal,dx,dt_divu)
 
-C$$$      print *,'ESTDT: UMAX = ',umax
+      print *,'ESTDT: UMAX = ',umax
 
-C$$$      print *,'DT = MIN(',dt,dt_divu,')'
+      print *,'DT = MIN(',dt,dt_divu,')'
 
-C$$$      dt = min(dt,dt_divu)
+      dt = min(dt,dt_divu)
 
       end
 

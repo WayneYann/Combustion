@@ -39,7 +39,7 @@ C CEG additions
 
 C Using I_R(temp) leads to a large change in Vmax and press that is way off
          divu(i) = (divu(i)/(rho*cpmix) + I_R(i,0)) / T
-C         marc = MAX(ABS(divu(i)),marc)
+         marc = MAX(ABS(divu(i)),marc)
 C         divu(i) = divu(i)/(rho*cpmix*T)
          sum = 0.0d0
          do n=1,Nspec

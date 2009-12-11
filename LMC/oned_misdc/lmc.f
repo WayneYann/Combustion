@@ -143,8 +143,8 @@ C vel and press have uninitialized (ie grabage in) ghost cells coming out
 C CEG:: not sure where/if this get initialized if not done here
 C FIXME!!
 C I don't think scal(RhoRT) ever actually gets used for anything,
-C  But scal_aofs still want to compute an advection term for it,
-C  so initialize to here to a riduculous number for now
+C  But scal_aofs still wants to compute an advection term for it,
+C  so initialize here to a riduculous number for now
          do i = 0,nx-1
             press_old(i) =  0.d0
             dsdt(i) =  0.d0
