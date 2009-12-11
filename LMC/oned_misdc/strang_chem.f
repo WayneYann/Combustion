@@ -23,15 +23,11 @@
       parameter (NiterMAX = 30)
       double precision res(NiterMAX), errMAX
 
+C debugging remove me
+      real*8 sum, diff
+
 c     Shut off diagnostics
       do_diag = 0
-
-c     Find a good typical value for hmix
-      hmix_TYP = ABS(scal_old(-1,RhoH)/scal_old(-1,Density))
-      do i = 0,nx-1
-         hmix_TYP=MAX(hmix_TYP,
-     &                ABS(scal_old(i,RhoH)/scal_old(i,Density)))
-      enddo
 
 c     Evolve chem over grid
       do i = 0,nx-1
@@ -54,7 +50,6 @@ c     Set linear source terms in common for ode integrators access
 
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag, ifail)
-
          if (ifail.ne.0) then
             print *,'solve failed, i=',i
             stop
@@ -68,6 +63,7 @@ c     Set linear source terms in common for ode integrators access
             scal_new(i,FirstSpec+n-1) = RYnew(n)
             Y(n) = RYnew(n)/scal_new(i,Density)
          enddo
+         write(19,*)i,Tnew
 
 C CEG:: don't know that really need this
          scal_new(i,RhoH) = scal_old(i,RhoH)+
@@ -85,14 +81,15 @@ C CEG:: don't know that really need this
             stop
          endif
          scal_new(i,Temp) = Tnew
-
+         write(19,*)i, ' Tnew = ',Tnew
 c     Define change in state due to chemistry.
 C CEG:: I don't think I_R(temp) as marc did it is right
          call CKHMS(0.5d0*(Told+Tnew),IWRK,RWRK,HK)
          call CKHMS(Told,IWRK,RWRK,HK_old)
          call CKHMS(Tnew,IWRK,RWRK,HK_new)
-C         write(13,*)Told, Tnew
+
          I_R(i,0) = 0.d0
+         sum = 0.d0
          do n = 1,Nspec
             is = FirstSpec + n - 1
             I_R(i,n) =
@@ -104,17 +101,22 @@ C         write(13,*)Told, Tnew
             I_R(i,0) = I_R(i,0) + HK(n)*const_src(i,is)
      &                 + 0.5d0*(HK_old(n)*lin_src_old(i,is)
      &                 + HK_new(n)*lin_src_new(i,is))
+            sum = sum - I_R(i,n) * HK(n)
+C            write(19,*)i,HK_old(n),HK(n),HK_new(n)
          enddo
          rho_half = 0.5d0*(rho_old + scal_new(i,Density))
-         CALL CKCPBS(0.5d0*(scal_old(i,temp)+Tnew),Yhalf,IWRK,RWRK,cp)
-         I_R(i,0) = -I_R(i,0)/(cp*rho_half)
+         CALL CKCPBS(0.5d0*(scal_old(i,Temp)+Tnew),Yhalf,IWRK,RWRK,cp)
+C         I_R(i,0) = -I_R(i,0)/(cp*rho_half)
 
-C CEG:: I don't agree with this
-C$$$         I_R(i,0) = 
-C$$$     $           (scal_new(i,Temp)-scal_old(i,Temp)) / dt
-C$$$     $            - (    const_src(i,RhoH)
-C$$$     $           + 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
-C$$$     $                         (rho_half*cp)
+         I_R(i,0) =  
+     $           (scal_new(i,Temp)-scal_old(i,Temp)) / dt
+     $            - (const_src(i,RhoH) - I_R(i,0)
+     $           + 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
+     $                         (rho_half*cp)
+
+         sum = sum/(rho_half*cp)
+         diff = sum - I_R(i,0)
+         write(18,*)i,I_R(i,0),sum,diff
       enddo
 
       print *,' '

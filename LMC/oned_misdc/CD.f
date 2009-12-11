@@ -358,12 +358,20 @@ c
       integer IPAR, IWRK
 
 c     IOPT=1 parameter settings for VODE
+C      DVRWRK(1) = 0.d0
+C      DVRWRK(2) = 0.d0
+C      DVRWRK(3) = 0.d0
+C      DVRWRK(4) = 0.d0
       DVRWRK(5) = 0.d0
       DVRWRK(6) = 0.d0
       DVRWRK(7) = min_vode_timestep
       DVRWRK(8) = 0.d0
       DVRWRK(9) = 0.d0
       DVRWRK(10) = 0.d0
+C      DVIWRK(1) = 0
+C      DVIWRK(2) = 0
+C      DVIWRK(3) = 0
+C      DVIWRK(4) = 0
       DVIWRK(5) = 0
       DVIWRK(6) = max_vode_subcycles
       DVIWRK(7) = 0
@@ -503,6 +511,8 @@ c      Htarg = Hin * 1.d4
 
       old_T = T
       old_H = H
+
+      Htarg = Hin
 
       dH = 2.d0*ABS(H - Htarg)/(1.d0 + ABS(H) + ABS(Htarg))
       res(Niter) = dH

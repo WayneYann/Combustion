@@ -45,10 +45,4 @@
      $     (0.5d0 - dthx*vel_old(i-1))*slope(i-1) 
      $     - dth      *gp(i-1) / scal_old(i-1,Density)
 
-C      write(15,*)'#',dth,dthx
-C      do i = 0,nx-1
-C         write(15,*)i,slope(i),vel_old(i),gp(i),scal_old(i,Density),
-C     &        macvel(i)
-C      enddo
-
       end

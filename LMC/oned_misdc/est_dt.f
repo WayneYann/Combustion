@@ -15,10 +15,11 @@
       real*8  dt_divu
       integer i
 
+C should change this to a problem dependent vel_TYP
       small   = 1.0d-8
 
       umax = 0.d0
-      do i = 0,nx-1
+      do i = -1,nx
         umax = max(umax,abs(vel(i)))
       end do
 
@@ -34,13 +35,13 @@
 
       print *,'DT * CFL ',dt
 
-      call est_divu_dt(divu,dsdt,scal,dx,dt_divu)
+C$$$      call est_divu_dt(divu,dsdt,scal,dx,dt_divu)
 
-      print *,'ESTDT: UMAX = ',umax
+C$$$      print *,'ESTDT: UMAX = ',umax
 
-      print *,'DT = MIN(',dt,dt_divu,')'
+C$$$      print *,'DT = MIN(',dt,dt_divu,')'
 
-      dt = min(dt,dt_divu)
+C$$$      dt = min(dt,dt_divu)
 
       end
 

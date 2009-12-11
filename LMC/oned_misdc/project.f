@@ -18,7 +18,6 @@ C CEG:: vel_old never ends up gettting used
       real*8 divu_node
       real*8 gp
 
-
       if (dt .gt. 0) then
          do i = 0,nx-1
             gp = (press_old(i+1)-press_old(i))/dx

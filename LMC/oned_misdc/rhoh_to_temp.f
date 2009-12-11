@@ -15,18 +15,19 @@
       double precision RWRK
 
       
+      hmixTYP = 0.d0
       do i = 0,nx-1
          hmixTYP = MAX(ABS(scal(i,RhoH) / scal(i,Density)),hmixTYP)
       enddo
       errMAX = hmixTYP * epsHtoTemp
-
+ 
       do i = 0,nx-1
          rho = 0.d0
          do n=1,Nspec
             is = FirstSpec + n - 1
             rho = rho + scal(i,is)
          enddo
-         do n = 1,nspec
+         do n = 1,Nspec
             is = FirstSpec - 1 + n
             Y(n) = scal(i,is) / rho
          enddo

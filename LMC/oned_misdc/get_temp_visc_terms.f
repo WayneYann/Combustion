@@ -49,6 +49,7 @@ c     Add Div( lambda Grad(T) )
 
 c     Compute rhoD Grad(Yi).Grad(hi) terms
 
+      dxsqinv = 1.d0/(dx*dx)
 c     Get Hi, Yi at cell centers
       call set_bc_grow_s(scal,dx,time)
       do i = -1,nx

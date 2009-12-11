@@ -22,6 +22,7 @@
       dxsqinv = 1.d0/(dx*dx)
       call set_bc_grow_v(vel_old,dx,time)
 
+      call set_bc_grow_v(vel_old,dx,time)
 c     rho.DU/Dt + G(pi) = D(tau), here D(tau) = d/dx ( a . du/dx ), a=4.mu/3
       do i = 0,nx-1
          if (coef_avg_harm .eq. 1) then

@@ -57,7 +57,10 @@ c     4th order slopes
       else
          
          if (unlim .eq. 0) then
-            do i = 1,nx-1
+C CEG:: i think this indexing is a bug...
+C            do i = 1,nx-1
+C hopefully this is the right fix
+            do i = 0,nx-1
                shi = 2.0d0*(s(i+1) - s(i  ))
                slo = 2.0d0*(s(i  ) - s(i-1))
                slxscr(i,cen) = 0.5d0*(s(i+1)-s(i-1))

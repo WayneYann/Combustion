@@ -134,7 +134,7 @@ c*****************************************************************
          enddo
          tforce(i,Temp) = diff_old(i,Temp) + I_R_new(i,0)
       enddo
-      
+       
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
 
 c*****************************************************************
@@ -218,6 +218,14 @@ c*****************************************************************
          enddo
       enddo
       
+C      write(20,*)'nscal = ',nscal
+C      write(20,*)Density,Temp,RhoH,FirstSpec,RhoRT
+C      do i = 0,nx-1
+C         do n = 1,nscal
+C            write(20,*)i,aofs(i,n),diff_old(i,n),diff_new(i,n)
+C         enddo
+C      enddo
+
       call strang_chem(scal_old,scal_new,
      $                 const_src,lin_src_old,lin_src_new,
      $                 I_R_new,dt)
@@ -311,7 +319,7 @@ C will need to think about this for the case of Le != 1
                lin_src_new(i,n) = diff_hat(i,n)
             enddo
          enddo
-         
+          
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_new,dt)

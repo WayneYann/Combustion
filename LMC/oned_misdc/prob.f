@@ -13,6 +13,7 @@ c     Set ordering of variables in state
       RhoRT = 4
       FirstSpec = 5
       LastSpec = FirstSpec + (nspec-1)
+      nscal = LastSpec
 
 c     Set boundary data
       xPMF = domnlo - flame_offset
@@ -104,6 +105,8 @@ C      integer nsteps
                hmix_TYP = MAX(hmix_TYP,ABS(h))
             endif
          enddo
+
+         write(*,*)'hmix_TYP ', hmix_TYP
 
          do n = 0,Nspec
             c_0(n) = 0.d0

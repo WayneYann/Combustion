@@ -10,9 +10,9 @@
       
       real*8   vel_new(-1:nx  )
       real*8   vel_old(-1:nx  )
-      real*8  scal_new(-1:nx  ,nscal)
-      real*8  scal_old(-1:nx  ,nscal)
-      real*8  scal_hold(-1:nx ,nscal)
+      real*8  scal_new(-1:nx  ,maxscal)
+      real*8  scal_old(-1:nx  ,maxscal)
+      real*8  scal_hold(-1:nx ,maxscal)
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
       real*8 I_R_new(0:nx-1,0:maxspec)
@@ -20,12 +20,12 @@
       real*8   rhohalf( 0:nx-1)
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
-      real*8  beta_old(-1 :nx,nscal)
-      real*8  beta_new(-1 :nx,nscal)
+      real*8  beta_old(-1 :nx,maxscal)
+      real*8  beta_new(-1 :nx,maxscal)
       real*8    mu_old(-1 :nx)
       real*8    mu_new(-1 :nx)
       real*8      dsdt(0 :nx-1)
-      real*8    tforce(0 :nx-1,nscal)
+      real*8    tforce(0 :nx-1,maxscal)
 
 
 c     Local variables
@@ -49,9 +49,9 @@ c     Local variables
       integer do_init, is, i, n, nd, ns
       
 c     New arrays for MISDC.
-      real*8    const_src(0 :nx-1,nscal)
-      real*8  lin_src_old(0 :nx-1,nscal)
-      real*8  lin_src_new(0 :nx-1,nscal)
+      real*8    const_src(0 :nx-1,maxscal)
+      real*8  lin_src_old(0 :nx-1,maxscal)
+      real*8  lin_src_new(0 :nx-1,maxscal)
       
       character chkfile*(16)
       real*8 Patm
@@ -141,10 +141,20 @@ C Does NOT fill ghost cells
 C vel and press have uninitialized (ie grabage in) ghost cells coming out
          call initdata(vel_new,scal_new,I_R_new(0,0),dx)
 C CEG:: not sure where/if this get initialized if not done here
-C  not sure this is really needed
-         do i = 0,nx
+C FIXME!!
+C I don't think scal(RhoRT) ever actually gets used for anything,
+C  But scal_aofs still want to compute an advection term for it,
+C  so initialize to here to a riduculous number for now
+         do i = 0,nx-1
             press_old(i) =  0.d0
+            dsdt(i) =  0.d0
+            dsdt(i) =  0.d0
+            scal_new(i,RhoRT) = -1.d20
          enddo
+         scal_new(-1,RhoRT) = -1.d20
+         scal_new(nx,RhoRT) = -1.d20
+         press_old(nx) =  0.d0
+  
 C Fills in ghost cells for rho, Y, Temp, rhoH 
          call set_bc_grow_s(scal_new,dx,time)
          do i = -1,nx
@@ -152,13 +162,13 @@ C Fills in ghost cells for rho, Y, Temp, rhoH
                scal_old(i,n) = scal_new(i,n)
             enddo
          enddo
-         
+
          call minmax_vel(nx,vel_new)
          
          call calc_diffusivities(scal_new,beta_new,mu_new)
 
          call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
-         
+        
          print *,'initialVelocityProject: '
          dt_dummy = -1.d0
 
@@ -183,6 +193,7 @@ C press_new gets vals everywhere
 
          dt_init = dt
 
+C CEG:: why no ghost cells here?
          do i = 0,nx-1
             do n = 1,nscal
                scal_hold(i,n) = scal_old(i,n)
@@ -284,7 +295,9 @@ c     Reset state, I_R
             enddo
             
          enddo
-         
+                  
+         call write_plt(vel_new,scal_new,press_new,dx,0,time)
+      
  1001    format('Advancing: starting time = ',
      $        e15.9,' with dt = ',e15.9)
          

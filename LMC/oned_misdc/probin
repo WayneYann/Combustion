@@ -15,8 +15,8 @@
   dpdt_factor = 0.0
   Patm = 1.0
   predict_temp_for_coeffs = 1
-  num_init_iters = 5
-  num_divu_iters = 1
+  num_init_iters = 4
+  num_divu_iters = 4
   misdc_iterMAX = 0
 /
 

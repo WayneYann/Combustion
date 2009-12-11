@@ -6,15 +6,15 @@ c     Chem species, etc
      &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
 
 c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
-      integer nscal, nx
-      parameter (nscal = maxspec + 4, nx = 64)
+      integer maxscal, nx
+      parameter (maxscal = maxspec + 4, nx = 64)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
-     &     RhoRT, FirstSpec, LastSpec
+     &     RhoRT, FirstSpec, LastSpec, nscal
       common / speci / Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
-     &     RhoRT, FirstSpec, LastSpec
+     &     RhoRT, FirstSpec, LastSpec, nscal
       save /speci/
 
       character*(maxspnml) specNames(maxspec)
