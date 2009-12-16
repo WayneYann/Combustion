@@ -29,6 +29,12 @@ C debugging remove me
 c     Shut off diagnostics
       do_diag = 0
 
+      if (nochem_hack) then
+         write(*,*)'WARNING! nochem_hack--skipping reactions'
+         return
+      endif
+
+      print *,'... chemistry'
 c     Evolve chem over grid
       do i = 0,nx-1
          rho_old = 0.d0
@@ -117,8 +123,5 @@ C         I_R(i,0) = -I_R(i,0)/(cp*rho_half)
          diff = sum - I_R(i,0)
          write(18,*)i,I_R(i,0),sum,diff
       enddo
-
-      print *,' '
-      print *,' '
         
       end

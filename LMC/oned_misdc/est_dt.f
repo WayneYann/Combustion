@@ -19,7 +19,7 @@ C should change this to a problem dependent vel_TYP
       small   = 1.0d-8
 
       umax = 0.d0
-      do i = -1,nx
+      do i = 0,nx-1
         umax = max(umax,abs(vel(i)))
       end do
 
@@ -29,6 +29,7 @@ C should change this to a problem dependent vel_TYP
       if (umax .gt. small) dt = min(dt,dx/umax)
       if (dt .eq. dt_start) dt = dx
 
+      print *,'... est_dt'
       print *,'DT = DX / V = ',dt,' USING V =',umax
 
       dt = dt*cfl

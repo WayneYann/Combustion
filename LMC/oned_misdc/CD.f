@@ -78,7 +78,7 @@ c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
          do i=-1, nx
 c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
             mu(i) = 10.d0 * 1.85e-5*(MAX(scal(i,Temp),1.d0)/298.0)**.7
-c     For Le=1, rho.D = lambda/cp = mu/Pr
+c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
             rho = 0.d0
             do n=1,Nspec
                beta(i,FirstSpec+n-1) = mu(i) / Sc
@@ -250,6 +250,11 @@ C-----------------------------------------------------------------------
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
       double precision res(NiterMAX), errMAX, hmix, T, DEN
+
+      if (nochem_hack) then
+         print *,'ERROR: calling VODE with nochem_hack = true'
+         stop
+      endif
 
       if (Pcgs.lt.0.d0) then
          print *,'vodeF_T_RhoY: Must set Pcgs before calling vode'

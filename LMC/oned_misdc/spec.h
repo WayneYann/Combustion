@@ -7,14 +7,15 @@ c     Chem species, etc
 
 c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
       integer maxscal, nx
-      parameter (maxscal = maxspec + 4, nx = 64)
+      parameter (maxscal = maxspec + 4, nx = 256)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
      &     RhoRT, FirstSpec, LastSpec, nscal
+      logical nochem_hack
       common / speci / Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
-     &     RhoRT, FirstSpec, LastSpec, nscal
+     &     RhoRT, FirstSpec, LastSpec, nscal, nochem_hack
       save /speci/
 
       character*(maxspnml) specNames(maxspec)

@@ -33,7 +33,7 @@ c     Local variables
       real*8 dx
       real*8 time
       real*8 dt_old
-      real*8 dt_init,dt_init2
+      real*8 dt_init,dt_new
       real*8 init_shrink
       real*8 change_max
       real*8 local_change_max
@@ -63,6 +63,7 @@ c     New arrays for MISDC.
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  num_divu_iters, num_init_iters
+
 
 c     Initialize chem/tran database
       call initchem()
@@ -95,6 +96,8 @@ c     Set defaults, change with namelist
       read(9,fortin)
       close(unit=9)
 c      write(*,fortin)
+
+      nochem_hack = .true.
 
       Pcgs = Patm * P1ATM
       
@@ -140,8 +143,9 @@ C                              computes rho, rhoH, I_R
 C Does NOT fill ghost cells
 C vel and press have uninitialized (ie grabage in) ghost cells coming out
          call initdata(vel_new,scal_new,I_R_new(0,0),dx)
+C         call write_plt(vel_new,scal_new,press_new,dx,99999,time)
 C CEG:: not sure where/if this get initialized if not done here
-C FIXME!!
+C FIXME
 C I don't think scal(RhoRT) ever actually gets used for anything,
 C  But scal_aofs still wants to compute an advection term for it,
 C  so initialize here to a riduculous number for now
@@ -193,13 +197,16 @@ C press_new gets vals everywhere
 
          dt_init = dt
 
-C CEG:: why no ghost cells here?
+C CEG:: why no ghost cells here?-- everything is set up to fill ghost cells
+C  right before they are used
+C  I don't know if this is neccessary.  I don't think scal_old gets changed
          do i = 0,nx-1
             do n = 1,nscal
                scal_hold(i,n) = scal_old(i,n)
             enddo
          enddo
          
+C CEG:: do i really need to change the ghosts here???
          do i = -1,nx
             vel_old(i) =  vel_new(i)
          enddo
@@ -212,11 +219,12 @@ C CEG:: why no ghost cells here?
             enddo
          enddo
 
-C CEG:: just checking
-C         write(*,*)'dt = ', dt
-C         call write_plt(vel_new,scal_new,press_new,dx,0,time)
-C         stop 
-        
+         print *,' '
+         print *,' '
+         print *,'...doing num_divu_iters = ',num_divu_iters 
+         print *,' '
+         print *,' '
+
          do nd = 1,num_divu_iters
 
             print *,' ...doing divu_iter number',nd,' dt=',dt
@@ -228,20 +236,18 @@ C         stop
             call calc_divu(scal_new,beta_new,I_R_new,
      &                     divu_new,dx,time)
 
-            print *,'initialVelocityProject: '
+            print *,'divu_iters velocity Project: '
             dt_dummy = -1.d0
             
             call project(vel_old,vel_new,rhohalf,divu_new,
      $                   press_old,press_new,dx,dt_dummy,time)
 
-            print *,' '
-            print *,' '
             dt_init = dt
              
             call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
-     $                  cfl,umax,dx,dt_init2)
-            dt_init2 = dt_init2 * init_shrink
-            dt = min(dt_init,dt_init2)
+     $                  cfl,umax,dx,dt_new)
+            dt_new = dt_new * init_shrink
+            dt = min(dt_init,dt_new)
             print *,' '
 
             do i = 0,nx-1
@@ -254,18 +260,20 @@ C         stop
 
          enddo
   
+C         call write_plt(vel_new,scal_new,press_new,dx,99997,time)
+
          print *,' '
          print *,'...doing num_init_iters = ',num_init_iters 
          print *,' '
          do n = 1,num_init_iters
 
+            print *,' '
+            print *,'INITIAL PRESSURE ITERATION ',n
+
             call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
      $                  cfl,umax,dx,dt)
             dt = dt * init_shrink
             dt = min(dt,dt_init)
-            print *,' '
-            print *,'INITIAL PRESSURE ITERATION ',n
-            print *,' '
             write(6,1001) time,dt
 
             call advance(vel_old,vel_new,scal_old,scal_new,
@@ -274,12 +282,13 @@ C         stop
      $                   dx,dt,time)
             call minmax_vel(nx,vel_new)
 
-            do i = 0,nx-1
-               vel_new(i)  =   vel_old(i)
+            do i = 0,nx
+               press_old(i)  = press_new(i)
             enddo
 
 c     Reset state, I_R
             do i = 0,nx-1
+               vel_new(i)  =   vel_old(i)
                do ns = 1,nscal
                   scal_new(i,ns) =  scal_hold(i,ns)
                   scal_old(i,ns) =  scal_hold(i,ns)
@@ -289,24 +298,74 @@ c     Reset state, I_R
                enddo
                divu_new(i) = divu_old(i)
             enddo
-            
-            do i = 0,nx
-               press_old(i)  = press_new(i)
-            enddo
-            
+                        
          enddo
-                  
+
+         do i = 0,nx-1                  
+            write(13,*)(i+.5)*dx,divu_new(i)
+         enddo
          call write_plt(vel_new,scal_new,press_new,dx,0,time)
-      
- 1001    format('Advancing: starting time = ',
-     $        e15.9,' with dt = ',e15.9)
-         
-         print *,'COMPLETED INITIAL ITERATIONS'
-         print *,' '
-         
+
          cfl_used = cfl * init_shrink
 
+         print *,' '      
+         print *,' '      
+         print *,'COMPLETED INITIAL ITERATIONS'
+         print *,' '      
+         print *,'START ADVANCING THE SOLUTION '
+         print *,' '            
+
+ 1001    format('Advancing: starting time = ',
+     $        e15.9,' with dt = ',e15.9)
+
       endif
+C-- Done with initialization--------------------
+
+C-- Now advance 
+      do nsteps_taken = 1, nsteps
+
+         if (time > 0.d0) then            
+            call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
+     $                  cfl,umax,dx,dt_new)
+            dt = dt * change_max 
+            dt = min(dt,dt_new)            
+         endif
+
+         write(6,*)
+         write(6,1001 )time,dt
+         write(6,*)'STEP = ',nsteps_taken
+         
+         call advance(vel_old,vel_new,scal_old,scal_new,
+     $                I_R_new,I_R_new,press_old,press_new,
+     $                divu_old,divu_new,dsdt,beta_old,beta_new,
+     $                dx,dt,time)
+
+c     update state, I_R, time
+         do i = 0,nx-1
+            vel_old(i)  =   vel_new(i)
+            do ns = 1,nscal
+               scal_old(i,ns) = scal_new(i,ns)   
+            enddo
+            do ns = 1,Nspec
+               I_R_old(i,ns) = I_R_new(i,ns) 
+            enddo
+            divu_old(i) = divu_new(i)
+         enddo
+         do i = 0,nx
+            press_old(i)  = press_new(i)
+         enddo
+         time = time + dt
+
+         do i = 0,nx-1                  
+            write(14,*)(i+.5)*dx,divu_new(i)
+         enddo
+         call write_plt(vel_new,scal_new,press_new,dx,nsteps_taken,time)
+      enddo
+
+      print *,' '      
+      print *,'COMPLETED SUCCESSFULLY'
+      print *,' '      
+
       end
 
       subroutine minmax_vel(nx,vel)

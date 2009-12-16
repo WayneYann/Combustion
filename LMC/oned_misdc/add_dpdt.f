@@ -41,6 +41,6 @@ c     FIXME: compute gamma here
       end do
       
       write(6,1000) dpdt_max
- 1000 format('DPDT norm     = ',f14.4)
+ 1000 format(' DPDT norm     = ',f14.4)
       
       end

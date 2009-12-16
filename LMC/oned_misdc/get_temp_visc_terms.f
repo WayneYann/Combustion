@@ -12,7 +12,8 @@
       real*8 dxsqinv
       
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-      call set_bc_grow_s(scal,dx,time)
+C CEG:: the first thing rhoDgradHgradY() does is set grow cells
+C      call set_bc_grow_s(scal,dx,time)
       call rhoDgradHgradY(scal,beta,visc,dx,time)
 
 c     Add Div( lambda Grad(T) )

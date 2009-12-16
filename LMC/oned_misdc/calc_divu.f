@@ -38,15 +38,16 @@ C CEG additions
          call CKHMS(T,IWRK,RWRK,HK)
 
 C Using I_R(temp) leads to a large change in Vmax and press that is way off
-         divu(i) = (divu(i)/(rho*cpmix) + I_R(i,0)) / T
-         marc = MAX(ABS(divu(i)),marc)
-C         divu(i) = divu(i)/(rho*cpmix*T)
+C         divu(i) = (divu(i)/(rho*cpmix) + I_R(i,0)) / T
+C         marc = MAX(ABS(divu(i)),marc)
+         divu(i) = divu(i)/(rho*cpmix*T)
          sum = 0.0d0
          do n=1,Nspec
             divu(i) = divu(i)
-     &           + (ddivu(i,n) + I_R(i,n))*invmwt(n)*mwmix/rho
 C     &           + (ddivu(i,n) + I_R(i,n))*invmwt(n)*mwmix/rho
-C     &           - HK(n)*I_R(i,n)/(rho*cpmix*T)
+     &           + (ddivu(i,n) + I_R(i,n))*invmwt(n)*mwmix/rho
+     &           - HK(n)*I_R(i,n)/(rho*cpmix*T)
+C
 C CEG:: debugging. remove me
 C            sum = sum -HK(n)*I_R(i,n)/(rho*cpmix*T)
          enddo
