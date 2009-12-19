@@ -630,8 +630,8 @@ c
 c     In parallel these must be consistent, so set the seed to have
 c     the same value across all processors
 c
-      call blutilinitrand(111397)
       call blutilinitrand(134527)
+      call blutilinitrand(111397)
 
       do j = lmodemin,lmodemax
          do i = 0,j
@@ -1156,6 +1156,7 @@ c ::: -----------------------------------------------------------
       REAL_T turbSclX, turbSclY, turbSclZ, convVelSAVE
       REAL_T eta, eta0, pmf_vals(maxspec+3), bg_vals(maxspec+3), r, y1, y2, theta
       REAL_T zpert,Lx,Ly
+      REAL_T  xloc,yloc,zloc,xtemp
       character*(maxspnml) name
       integer lo_chem(SDIM), hi_chem(SDIM)
       data lo_chem /1,1,1/
@@ -1223,25 +1224,43 @@ c
                x = (dfloat(i)+.5)*delta(1)+domnlo(1)
                r = SQRT((x-blobx)**2+(y-bloby)**2+(z-blobz)**2)
 
-               if (r.LE.delta(1)) then
-                  theta = zero
-                  phi = zero
-               else
-                  theta = ATAN2(SQRT((x-blobx)**2+(y-bloby)**2)/r,(z-blobz)/r)-Pi
-                  phi = ATAN2((y-bloby)/r,(x-blobx)/r)
-               endif
+c              if (r.LE.delta(1)) then
+c                 theta = zero
+c                 phi = zero
+c              else
+c                 theta = ATAN2(SQRT((x-blobx)**2+(y-bloby)**2)/r,(z-blobz)/r)-Pi
+c                 phi = ATAN2((y-bloby)/r,(x-blobx)/r)
+c              endif
                
                rfront = zero
                ctr = 0
                do l = lmodemin,lmodemax
                   do m = 0,l
                      ctr = ctr + 1
+
+c set local coordinates
+
+               if (r.LE.delta(1)) then
+                  theta = zero
+                  phi = zero
+               else
+                  xtemp = cos(2.d0*Pi*alphalm(l,m))*x + sin(2.d0*Pi*alphalm(l,m))*y
+                  yloc = -sin(2.d0*Pi*alphalm(l,m))*x + cos(2.d0*Pi*alphalm(l,m))*y
+
+                  xloc = cos(2.d0*Pi*gammalm(l,m))*xtemp + sin(2.d0*Pi*gammalm(l,m))*z
+                  zloc = -sin(2.d0*Pi*gammalm(l,m))*xtemp + cos(2.d0*Pi*gammalm(l,m))*z
+
+                  theta = ATAN2(SQRT((xloc-blobx)**2+(yloc-bloby)**2)/r,(zloc-blobz)/r)-Pi
+                  phi = ATAN2((yloc-bloby)/r,(xloc-blobx)/r)
+               endif
+
                      rfront = rfront +
-c    &                    betalm(l,m)*EXP(-dfloat(l-lpeak)**2/(.15d0*lpeak)**2)
      &                    betalm(l,m)
      &                    * Ylm(l,m,phi,COS(theta))
-c    &                    * Ylm(l,m,phi+alphalm(l,m)*2*Pi,
-c    &                    COS(theta+gammalm(l,m)*2*Pi))
+
+c    &                    betalm(l,m)*EXP(-dfloat(l-lpeak)**2/(.15d0*lpeak)**2)
+c    &                    * Ylm(l,m,phi+alphalm(l,m)*2.d0*Pi,
+c    &                    COS(theta+gammalm(l,m)*2.d0*Pi))
                   end do
                end do
                if (ctr.GT.0) rfront = rfront/ctr
