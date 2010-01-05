@@ -19,9 +19,10 @@ module convergence
  
 contains
  
-  subroutine conv(loc,files)
+  subroutine conv(loc,files,n_grids)
     integer, intent(in   ) :: loc(:)
     integer, intent(in   ) :: files(:)
+    integer, intent(in   ) :: n_grids
 
     !local variables   
     integer, parameter :: dm        = 2, &
@@ -40,8 +41,7 @@ contains
                           Temp      = 4, &
                           first_spec= 9, &
 !
-                          n_grids   = 3, &
-                          n_err     = nspec+4, &
+                          n_err     = nspec+4+dm, &
 ! not really concerned with ghost cells, throw away
                           ng_cell   = 0, &
                           exact_loc = 1024
@@ -52,18 +52,18 @@ contains
     type(ml_layout)           :: mla(n_grids+1)
     real(dp_t)                :: time,dummy
     type(multifab)            :: s_exact,s(n_grids)
-    type(multifab)            :: uold
+    type(multifab)            :: u_exact,u(n_grids)
     type(ml_boxarray)         :: mba
     logical                   :: nodal(dm)
     logical                   :: pmask(dm)
-    type(multifab)            :: avg(n_grids)
+    type(multifab)            :: avg(n_grids), u_avg(n_grids)
     real(dp_t)                :: l2_error(n_grids,n_err), l1_error(n_grids,n_err)
     real(dp_t)                :: dx(n_grids,dm)
     real(dp_t)                :: dt(n_grids)
-    character(len=20)         :: plot_names(nscal)
+    character(len=20)         :: plot_names(dm+nscal)
     character(len=20)         :: sd_name
     type(multifab), allocatable  :: plotdata(:)
-
+    integer, save             :: count = 0
 
     nlevs = 1
     nodal(:) = .true.
@@ -73,7 +73,7 @@ contains
 !    dx(1,:) = 1.d0/32.d0 !1.d0/dble(ir(1,:))
 !    dt(1)   = 3.2d-5
     dx(1,:) = 1.d-3/16.d0 !1.d0/dble(ir(1,:))
-    dt(1)   = 3.44d-7
+    dt(1)   = 1.7d-5
 
     do n = 2, n_grids
        ir(n,:) = ir(n-1,:)/2.d0
@@ -82,14 +82,16 @@ contains
     end do
 
 ! could potentially get plot names from restart data
-    plot_names(1) = 'density'
-    plot_names(2) = 'rhoH'
-    plot_names(3) = 'tracer'
-    plot_names(4) = 'Temp'
-    plot_names(5) = 'RhoRT'
-    plot_names(6) = 'divu'
-    plot_names(7) = 'dsdt'
-    plot_names(8) = 'FuncCount'
+    plot_names(1) = 'x velocity'
+    plot_names(2) = 'y velocity'
+    plot_names(3) = 'density'
+    plot_names(4) = 'rhoH'
+    plot_names(5) = 'tracer'
+    plot_names(6) = 'Temp'
+    plot_names(7) = 'RhoRT'
+    plot_names(8) = 'divu'
+    plot_names(9) = 'dsdt'
+    plot_names(10) = 'FuncCount'
 !    plot_names(9) = 'X(H2)'
 !    plot_names(10) = 'X(H)'
 !    plot_names(11) = 'X(O)'
@@ -102,51 +104,56 @@ contains
 !    plot_names(18) = 'mag_vort'
 !    plot_names(19) = 'HeatRelease'
 
-    plot_names(9) = 'Y(02)'
-    plot_names(10) = 'Y(H20)'
-    plot_names(11) = 'Y(CH4)'
-    plot_names(12) = 'Y(CO)'
-    plot_names(13) = 'Y(CO2)'
-    plot_names(14) = 'Y(N2)'
-    plot_names(15) = 'mag_vort'
-    plot_names(16) = 'HeatRelease'
+    plot_names(11) = 'Y(02)'
+    plot_names(12) = 'Y(H20)'
+    plot_names(13) = 'Y(CH4)'
+    plot_names(14) = 'Y(CO)'
+    plot_names(15) = 'Y(CO2)'
+    plot_names(16) = 'Y(N2)'
+    plot_names(17) = 'mag_vort'
+    plot_names(18) = 'HeatRelease'
 
     write(*,*) loc(1),loc(2),loc(3),loc(4)
     write(*,*) files(1),files(2)
 ! read  in data
-    call initialize_from_restart(mla(n_grids+1),exact_loc,time,dummy,pmask,uold,&
-                                 s_exact)
-    call destroy(uold)
-
+    call initialize_from_restart(mla(n_grids+1),exact_loc,time,dummy,pmask,&
+                                 u_exact,s_exact)
     do n = 1, n_grids
-       call initialize_from_restart(mla(n),loc(n),time,dummy,pmask,uold,&
+       call initialize_from_restart(mla(n),loc(n),time,dummy,pmask,u(n),&
                                     s(n))
-       call destroy(uold)
     enddo
 
 ! avg the exact data down onto course grids
     do n = 1,n_grids
        call multifab_build(avg(n),s(n)%la,nscal)
        call ml_cc_restriction(avg(n),s_exact,ir(n,:))
-       call write_plotfile(n, mla(n),avg(n))
+       call multifab_build(u_avg(n),u(n)%la,dm)
+       call ml_cc_restriction(u_avg(n),u_exact,ir(n,:))
+       i = n_grids*count*2
+       call write_plotfile(n+i, mla(n),avg(n),u_avg(n))
        call multifab_sub_sub(avg(n),s(n))
-       call write_plotfile(n+n_grids, mla(n),avg(n))
+       call multifab_sub_sub(u_avg(n),u(n))
+       call write_plotfile(n+n_grids+i, mla(n),avg(n),u_avg(n))
     enddo
 
 ! calculate l1 error
     do i = 1,n_grids
+       !velocity
+       do n = 1, dm
+          l1_error(i,n) =  multifab_norm_l1_c(u_avg(i),n,1,all=.false.)
+       enddo
        ! Density
-       l1_error(i,1) = multifab_norm_l1_c(avg(i),rho,1,all=.false.)
+       l1_error(i,1+dm) = multifab_norm_l1_c(avg(i),rho,1,all=.false.)
        ! RhoH
-       l1_error(i,2) = multifab_norm_l1_c(avg(i),rhoH,1,all=.false.)
+       l1_error(i,2+dm) = multifab_norm_l1_c(avg(i),rhoH,1,all=.false.)
        ! Temp
-       l1_error(i,3) = multifab_norm_l1_c(avg(i),Temp,1,all=.false.)
+       l1_error(i,3+dm) = multifab_norm_l1_c(avg(i),Temp,1,all=.false.)
        ! Species
        l1_error(i,n_err) = 0.d0
        do n = 0,nspec-1
           index = first_spec+n
-          l1_error(i,4+n) = multifab_norm_l1_c(avg(i),index,1,all=.false.)
-          l1_error(i,n_err) = l1_error(i,n_err) + l1_error(i,4+n)
+          l1_error(i,4+n+dm) = multifab_norm_l1_c(avg(i),index,1,all=.false.)
+          l1_error(i,n_err) = l1_error(i,n_err) + l1_error(i,4+n+dm)
        enddo
        l1_error(i,:) = l1_error(i,:)*(dx(i,1)*dx(i,2))
        l1_error(i,n_err) = l1_error(i,n_err)/dble(nspec)
@@ -155,17 +162,21 @@ contains
 
 ! calculate l2 error
     do i = 1,n_grids
+       !velocity
+       do n = 1, dm
+          l2_error(i,n) =  multifab_norm_l2_c(u_avg(i),n,1,all=.false.)
+       enddo
        ! Density
-       l2_error(i,1) = multifab_norm_l2_c(avg(i),rho,1,all=.false.)
+       l2_error(i,1+dm) = multifab_norm_l2_c(avg(i),rho,1,all=.false.)
        ! RhoH
-       l2_error(i,2) = multifab_norm_l2_c(avg(i),rhoH,1,all=.false.)
+       l2_error(i,2+dm) = multifab_norm_l2_c(avg(i),rhoH,1,all=.false.)
        ! Temp
-       l2_error(i,3) = multifab_norm_l2_c(avg(i),Temp,1,all=.false.)
+       l2_error(i,3+dm) = multifab_norm_l2_c(avg(i),Temp,1,all=.false.)
        l2_error(i,n_err) = 0.d0
        do n = 0,nspec-1
           index = first_spec+n
-          l2_error(i,4+n) = multifab_norm_l2_c(avg(i),index,1,all=.false.)
-          l2_error(i,n_err) = l2_error(i,n_err) + l2_error(i,4+n)
+          l2_error(i,4+n+dm) = multifab_norm_l2_c(avg(i),index,1,all=.false.)
+          l2_error(i,n_err) = l2_error(i,n_err) + l2_error(i,4+n+dm)
        enddo
        l2_error(i,:) = l2_error(i,:)*sqrt(dx(i,1)*dx(i,2))
        l2_error(i,n_err) = l2_error(i,n_err)/dble(nspec)
@@ -193,6 +204,8 @@ contains
        call destroy(mla(n))
     end do
     
+    count = count + 1 
+
 1000 FORMAT(14(E15.8,1X)) 
 
 contains
@@ -281,26 +294,28 @@ contains
     
   end subroutine data_read
 
-  subroutine write_plotfile(istep_to_write, mla, mf)
+  subroutine write_plotfile(istep_to_write, mla, smf, umf)
 
     integer,         intent(in   ) :: istep_to_write
     type(ml_layout), intent(in   ) :: mla
-    type(multifab),  intent(in   ) :: mf
+    type(multifab),  intent(in   ) :: smf
+    type(multifab),  intent(in   ) :: umf
   
     integer                        :: n,n_plot_comps
 
     allocate(plotdata(levs))
-    n_plot_comps = nscal
+    n_plot_comps = nscal+dm
 
     do n = 1,levs
        call multifab_build(plotdata(n), mla%la(n), n_plot_comps, 0)
-       call multifab_copy_c(plotdata(n),1        ,mf,1,nscal)
+       call multifab_copy_c(plotdata(n),1        ,umf,1,dm)
+       call multifab_copy_c(plotdata(n),1+dm     ,smf,1,nscal)
 
     end do
 
     write(unit=sd_name,fmt='("plt",i4.4)') istep_to_write
     call fabio_ml_multifab_write_d(plotdata, mla%mba%rr(:,1), sd_name, plot_names, &
-                                   mla%mba%pd(1), time, dx(1,:))
+                                   mla%mba%pd(1))
 
     do n = 1,levs
       call multifab_destroy(plotdata(n))

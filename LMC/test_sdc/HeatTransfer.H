@@ -318,7 +318,8 @@ public:
   void make_I_R_sdc (Real dt);
 
   void make_advection_sdcForce ( int       src_comp, 
-				 int       num_comp);
+				 int       num_comp,
+				 int       corrector);
 
   void make_diffusion_sdcForce ( int       src_comp, 
 				 int       num_comp);

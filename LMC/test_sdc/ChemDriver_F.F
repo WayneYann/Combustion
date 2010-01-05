@@ -709,6 +709,46 @@ C convert rho to cgs
 
       END
 
+
+      subroutine calcOmegaDot(RHO, Z, ZP, RPAR, IPAR)
+      implicit none
+#include "cdwrk.H"
+#include "conp.H"
+#include "visc.H"
+      REAL_T RHO, Z(NEQ), ZP(NEQ), RPAR(*)
+      integer N, IPAR(*)
+      
+      REAL_T  WDOT, WT, THFAC
+      integer K
+
+C     Variables in Z are:  Z(1)   = T
+C                          Z(K+1) = Y(K)
+      
+C calculate molar concentrations from mass fractions; result in RPAR(NC)
+C      CALL CKYTCP(RPAR(NP), Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+      do K = 1, Nspec
+         WT   = RPAR(NWT + K - 1)
+C         RPAR(NC + K-1) = MAX((1.d-3 * Z(K+1)*RHO/WT), zero) 
+         RPAR(NC + K-1) = 1.d-3 * Z(K+1)*RHO/WT
+      enddo
+      
+C computes production rate for each species; result in RPAR(NWDOT)
+      CALL CKWC(Z(1), RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
+C
+C     Form governing equation
+C
+      THFAC = one / thickFacCH
+      DO K = 1, Nspec
+         WDOT = RPAR(NWDOT + K - 1) * THFAC
+C debugging FIXME!!
+C         WDOT = 0.d0
+         WT   = RPAR(NWT   + K - 1)
+C convert from cgs
+         ZP(K+1) = WDOT * WT  * 1.d3
+      END DO
+
+      END
+
 C**************************************
 C* SDC Reactions Integration Function *
 C**************************************
@@ -734,11 +774,11 @@ C debugging FIXME
       REAL_T res(0:HtoTiterMAX-1)
 
 
-C     Variables in Z are:  Z(1)   = T
+C     Variables in Z are:  //Z(1)   = T
 C                          Z(K+1) = rho*Y(K)
-C                         // Z(1) = rho*H
+C                          Z(1) = rho*H
 C For debugging FIXME
-C                          Z(Nspec+2) = rho*H
+C                          //Z(Nspec+2) = rho*H
 
 C      write(*,*)'inside conpFY'
 C compute rho from species
@@ -768,13 +808,13 @@ C convert from MKS to CGS for CK fns
 C Debugging FIXME
 c      Temp = Z(1)
 C      H = Z(Nspec+2)/RHO_MKS
-C      H = Z(1)/RHO_MKS
+      H = Z(1)/RHO_MKS
 C need an initial guess for T
-C      Temp = RWRK(NTEMP)
+      Temp = RWRK(NTEMP)
 C CEG:: TfromHYpt assumes MKS units
-C      Niter = FORT_TfromHYpt(Temp,H,Y_m,HtoTerrMax,HtoTiterMAX,res)
-C      if (Niter .eq. -1) call bl_abort('H to Temp failed')
-c      Z(1) = Temp
+      Niter = FORT_TfromHYpt(Temp,H,Y_m,HtoTerrMax,HtoTiterMAX,res)
+      if (Niter .eq. -1) call bl_abort('H to Temp failed')
+      RWRK(NTEMP) = Temp
 C$$$      write(11,*)'Temp = ',Z(1)
 C$$$      write(11,*)'rhoH = ',Z(Nspec+2)
 C$$$      write(11,*)'Temp from H = ',Temp
@@ -783,8 +823,8 @@ C$$$      write(11,*)
 
 C computes c_p,mix returns result in CPB
 C units should be = cm^2/s^2/K
-      CALL CKCPBS(Z(1),Y_m,IPAR(ckbi),RPAR(ckbr),CPB)
-C      CALL CKCPBS(Temp,Y_m,IPAR(ckbi),RPAR(ckbr),CPB)
+C      CALL CKCPBS(Z(1),Y_m,IPAR(ckbi),RPAR(ckbr),CPB)
+      CALL CKCPBS(Temp,Y_m,IPAR(ckbi),RPAR(ckbr),CPB)
 C      write(*,*)'Cpmix = ',CPB
 
 C calculate molar concentrations from mass fractions; result in RPAR(NC)
@@ -831,8 +871,8 @@ c      end do
       
 C computes production rate for each species; result in RPAR(NWDOT)
 C units = mol/cm^3/s
-      CALL CKWC(Z(1), RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
-C      CALL CKWC(Temp, RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
+C      CALL CKWC(Z(1), RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
+      CALL CKWC(Temp, RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
 C      write(*,*)
 C      do n = 0,Nspec
 C         write(*,*)'wdot = ',RPAR(NWDOT+n)
@@ -840,8 +880,8 @@ C      enddo
 
 C computes h_m for each species; result in RPAR
 C units = erg = g cm^2/s^2
-      CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), RPAR(NH))
-C      CALL CKHMS(Temp, IPAR(ckbi), RPAR(ckbr), RPAR(NH))
+C      CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), RPAR(NH))
+      CALL CKHMS(Temp, IPAR(ckbi), RPAR(ckbr), RPAR(NH))
 c      write(*,*)
 c      do n = 0,Nspec-1
 c         write(*,*)'H_m = ',RPAR(NH+n)
@@ -867,7 +907,7 @@ C units = mol
       END DO
 C  debugging FIXME:: make (rho*h)_t
 C      ZP(Nspec+2) = c_0(Nspec+1) + c_1(Nspec+1)*TIME
-C      ZP(1) = c_0(Nspec+1) + c_1(Nspec+1)*TIME
+      ZP(1) = c_0(Nspec+1) + c_1(Nspec+1)*TIME
 C$$$      write(10,*)'rhoH = ',Z(Nspec+2)
 C$$$      write(10,*)'rhoH_t = ',ZP(Nspec+2)
 C$$$      write(10,*)'c0 = ',c_0(Nspec+1) 
@@ -877,8 +917,8 @@ C$$$      write(10,*)
 C  make Temp_t
 C convert CPB to MKS
 C      ZP(1) = (ZP(Nspec+2) - SUM) / (RHO_MKS*CPB*1.d-4)
-       ZP(1) = (c_0(Nspec+1) + c_1(Nspec+1)*TIME - SUM) / 
-     &         (RHO_MKS*CPB*1.d-4)
+C       ZP(1) = (c_0(Nspec+1) + c_1(Nspec+1)*TIME - SUM) / 
+C     &         (RHO_MKS*CPB*1.d-4)
 C Debugging FIXME
 C      ZP(1) = 0.d0
 

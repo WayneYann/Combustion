@@ -228,7 +228,7 @@ contains
 
     write(unit=sd_name,fmt='("plt",i4.4)') istep_to_write
     call fabio_ml_multifab_write_d(plotdata, mla%mba%rr(:,1), sd_name, plot_names, &
-                                   mla%mba%pd(1), time, dx(1,:))
+                                   mla%mba%pd(1))
 
     do n = 1,levs
       call multifab_destroy(plotdata(n))

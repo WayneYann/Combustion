@@ -17,19 +17,25 @@
   vorterr = 1.e3
   vorterr = 100
   y_offset = -0.025 
+  y_offset = -0.028
+  y_offset = -0.023
+  y_offset = -0.0245
   flametracval = 1.e-6
+  V_in = 0.2666
+  V_in = 0.268023278035
   V_in = .1527
+  V_in =  0.268023278035000
   nchemdiag = 1
   phi_in = .37
-  pertmag = .0
   pertmag = .0001
   pertmag = .00005
+  pertmag = .0
   turb_scale = 1.0	  
  /
  &heattransin
   pamb = 101325.0
-  dpdt_factor = 0.
   dpdt_factor = 0.3
+  dpdt_factor = 0.
  /
  &flctin
   flct_file = ""

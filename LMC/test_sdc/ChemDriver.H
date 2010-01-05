@@ -226,6 +226,17 @@ public:
 			 int              sCompRho,
 			 int              sCompYdot) const;
 
+  void omegaDotGivenRhoT_sdc(FArrayBox&       omegadot,
+			     const FArrayBox& Y,
+			     const FArrayBox& T,
+			     const FArrayBox& Rho,
+			     Real             Patm,
+			     const Box&       box,
+			     int              sCompY,
+			     int              sCompT,
+			     int              sCompRho,
+			     int              sCompOmegadot) const;
+
     void reactionRateC (FArrayBox&       Cdot,
                         const FArrayBox& C,
                         const FArrayBox& T,

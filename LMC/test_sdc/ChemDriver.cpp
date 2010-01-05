@@ -578,7 +578,6 @@ ChemDriver::decodeStringFromFortran(const int* coded,
 using std::cout;
 using std::endl;
 
-
 void
 ChemDriver::YdotGivenRhoT_sdc(FArrayBox&       Ydot,
 			      const FArrayBox& Y,
@@ -611,6 +610,41 @@ ChemDriver::YdotGivenRhoT_sdc(FArrayBox&       Ydot,
 		    T.dataPtr(sCompT),ARLIM(mbbx.loVect()), ARLIM(mbbx.hiVect()),
 		    Rho.dataPtr(sCompRho),ARLIM(mcbx.loVect()), ARLIM(mcbx.hiVect()),
 		    Ydot.dataPtr(sCompYdot), ARLIM(mobx.loVect()), ARLIM(mobx.hiVect()),
+		    &Patm);
+}
+
+void
+ChemDriver::omegaDotGivenRhoT_sdc(FArrayBox&   omegadot,
+			      const FArrayBox& Y,
+			      const FArrayBox& T,
+			      const FArrayBox& Rho,
+			      Real             Patm,
+			      const Box&       box,
+			      int              sCompY,
+			      int              sCompT,
+			      int              sCompRho,
+			      int              sCompOmegadot) const
+{ 
+    const int Nspec = numSpecies();
+    BL_ASSERT(omegadot.nComp() >= sCompOmegadot + Nspec);
+    BL_ASSERT(Y.nComp() >= sCompY + Nspec);
+    BL_ASSERT(T.nComp() > sCompT);
+    BL_ASSERT(Rho.nComp() > sCompRho);
+
+    const Box& mabx = Y.box();
+    const Box& mbbx = T.box();
+    const Box& mcbx = Rho.box();
+    const Box& mobx = omegadot.box();
+    
+    Box ovlp = box & mabx & mbbx & mobx & mcbx;
+
+    if( ! ovlp.ok() ) return;
+    
+    FORT_RXNRATE_SDC(ovlp.loVect(), ovlp.hiVect(),
+		    Y.dataPtr(sCompY),ARLIM(mabx.loVect()), ARLIM(mabx.hiVect()),
+		    T.dataPtr(sCompT),ARLIM(mbbx.loVect()), ARLIM(mbbx.hiVect()),
+		    Rho.dataPtr(sCompRho),ARLIM(mcbx.loVect()), ARLIM(mcbx.hiVect()),
+		    omegadot.dataPtr(sCompOmegadot), ARLIM(mobx.loVect()), ARLIM(mobx.hiVect()),
 		    &Patm);
 }
 

@@ -1,4 +1,5 @@
-
+//CEG:: debugging remove me!!
+#include "cg_write.H"
 //
 // "Divu_Type" means S, where divergence U = S
 // "Dsdt_Type" means pd S/pd t, where S is as above
@@ -1054,7 +1055,6 @@ HeatTransfer::initData ()
                        dx,gridloc.lo(),gridloc.hi() );
 #endif
     }
-
 #ifdef BL_USE_VELOCITY
     //
     // We want to add the velocity from the supplied plotfile
@@ -1588,7 +1588,10 @@ HeatTransfer::post_init (Real stop_time)
     // estimate of constraint, coarse levels are fine level averages, pressure
     // is zero.
     //
+    cg_write(getLevel(0).get_new_data(Divu_Type),"divu.dat",8);
     post_init_state();
+    cg_write(getLevel(0).get_new_data(State_Type),"after.dat",8);
+    BoxLib::Abort("after psot init state");
     //
     // Estimate the initial timestepping.
     //
@@ -1719,7 +1722,12 @@ HeatTransfer::post_init (Real stop_time)
     //
     // Initialize the pressure by iterating the initial timestep.
     //
+    std::cout<<"about to call cg write "<<std::endl;
+
+    //CEG:: Debugging FIXME
+    //    cg_write(getLevel(0).get_new_data(State_Type),"before.dat",8);
     post_init_press(dt_init, nc_save, dt_save);
+    //cg_write(getLevel(0).get_new_data(State_Type),"after.dat",8);
     //
     // Compute the initial estimate of conservation.
     //
@@ -1845,35 +1853,34 @@ HeatTransfer::sum_integrated_quantities ()
         }
     }
 
-    //FIXME? SDC not using Ydot type.  do i need to come up with an 
-    //       alturnative???
-    if (!use_sdc){
-      Real min_max_sum[2] = { 1.0e20, -1.0e20 };
+    Real min_max_sum[2] = { 1.0e20, -1.0e20 };
     
-      for (int lev = 0; lev <= finest_level; lev++)
-	{
-	  MultiFab* mf = getLevel(lev).derive("sumYdot",time,0);
-
-	  for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
-	    {
-	      min_max_sum[0] = std::min(min_max_sum[0],(*mf)[mfi].min());
-	      min_max_sum[1] = std::max(min_max_sum[1],(*mf)[mfi].max());
-	    }
-
-	  delete mf;
-	}
-
-      ParallelDescriptor::ReduceRealMin(min_max_sum,2,IOProc);
-
-      if (ParallelDescriptor::IOProcessor())
-	{
+    for (int lev = 0; lev <= finest_level; lev++)
+      {
+	MultiFab* mf = getLevel(lev).derive("sumYdot",time,0);
+	
+	for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
+	  {
+	    min_max_sum[0] = std::min(min_max_sum[0],(*mf)[mfi].min());
+	    min_max_sum[1] = std::max(min_max_sum[1],(*mf)[mfi].max());
+	  }
+	
+	delete mf;
+      }
+    
+    ParallelDescriptor::ReduceRealMin(min_max_sum,2,IOProc);
+    
+    if (ParallelDescriptor::IOProcessor())
+      {
+	if (use_sdc)
+	  std::cout << "min,max sum I_R/dt = ";
+	else
 	  std::cout << "min,max sum Ydot = "
 		    << min_max_sum[0] << ", "
 		    << min_max_sum[1] << '\n';
-	}
-
-      std::cout << std::setprecision(old_prec);
-    }
+      }
+    
+    std::cout << std::setprecision(old_prec);
 }
 
 void
@@ -1894,6 +1901,8 @@ HeatTransfer::post_init_press (Real&        dt_init,
     // Make space to save a copy of the initial State_Type state data
     //
     PArray<MultiFab> saved_state(finest_level+1,PArrayManage);
+
+  std::cout<<"inside post init press  "<<std::endl;
 
     if (init_iter > 0)
         for (int k = 0; k <= finest_level; k++)
@@ -4507,6 +4516,7 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     getDiffusivity(beta, time, Temp, 0, 1);
 
     diffusion->getViscTerms(visc_terms,src_comp,Temp,time,rho_flag,0,beta);
+    //    abort();
     diffusion->removeFluxBoxesLevel(beta);
 
     add_heat_sources(visc_terms,Temp-src_comp,time,nGrow,1.0);
@@ -5110,6 +5120,9 @@ HeatTransfer::advance (Real time,
         MultiFab* mac_rhs = create_mac_rhs(time,dt);
         mac_project(time,dt,S_old,mac_rhs,havedivu);
         delete mac_rhs;
+	
+// 	VisMF::Write(u_mac[1],"umac");
+// 	abort();
     }
 
     if (do_mom_diff == 0)
@@ -5262,6 +5275,7 @@ HeatTransfer::advance (Real time,
 	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
     if (RhoH < last_scalar)
 	scalar_advection(dt,RhoH+1,last_scalar,do_adv_reflux);
+
     /*//REMOVE ME
 
     RESULT:
@@ -5883,7 +5897,8 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     //
     // A non-allocated MultiFab on grids for FPI below.
     //
-    {
+    //    if(!use_sdc)
+      {
         FArrayBox tmp, rhoh;
 
         MultiFab t(grids,1,0,Fab_noallocate);
@@ -5918,6 +5933,20 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
             }
         }
     }
+//     else{
+//         MultiFab t(grids,1,0,Fab_noallocate);
+
+//         for (FillPatchIterator RhoH_fpi(*this,t,nGrow,time,State_Type,RhoH,1);
+//              RhoH_fpi.isValid();
+//              ++RhoH_fpi)
+//         {
+// 	  tmpS[RhoH_fpi.index()].copy(RhoH_fpi());
+//         }
+
+//     }
+
+//     VisMF::Write(tmpS,"rhoh");
+//     abort();
 
     const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 1;
 
@@ -6415,11 +6444,10 @@ HeatTransfer::compute_edge_states (Real               dt,
             }
             else
             {
-                getViscTerms(visc_terms[sigma],sigma,1,prev_time);
+	      getViscTerms(visc_terms[sigma],sigma,1,prev_time);
             }
         }
     }
- 
     //
     // Loop on grids, and compute edge fluxes
     //
@@ -8535,7 +8563,6 @@ HeatTransfer::calc_divu (Real      time,
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calc_divu()");
 
     if(use_sdc){
-      //      std::cout<<"inside calc_divu"<<std::endl;
       //
       // Get Mwmix, cpmix and pressure
       //
@@ -8562,13 +8589,9 @@ HeatTransfer::calc_divu (Real      time,
 	  rho[i].copy(Rho_time[i],0,sCompR,1);
 	  temp[i].copy(Temp_fpi(),0,sCompT,1);
 	}
-
       //fixme  debugging
 //       rho[0].getVal(data, badPt,0,1);
 //       std::cout<<"rho = "<<data[0]<<std::endl;
-	  //FIXME debugging
-//  	  VisMF::Write(rho,"rho");
-//  	  VisMF::Write(temp,"temp");
 
       //
       // Note that state contains rho*species, so divide species by rho.
@@ -8666,14 +8689,13 @@ HeatTransfer::calc_divu (Real      time,
 	  delta_divu[iGrid].mult(mwmix[iGrid],box,0,0,1);
 	  divu[iGrid].plus(delta_divu[iGrid],box,0,0,1);
 	}
-//       VisMF::Write(delta_divu,"vtvs");
 
       // Compute
       //  divu = divu + (h_l/(c_p*T) - W/W_l) * omega_l^dot/rho
       //
       // I don't think this is needed now with SDC
-//       if (dt > 0.0)
-// 	{
+      if (dt > 0.0)
+ 	{
 	  if (hack_nochem){
 	    std::cout<<"WARNING::no chem in calc_divu()"<<std::endl;
 	    return;
@@ -8718,21 +8740,12 @@ HeatTransfer::calc_divu (Real      time,
 // 		}
 // 	      }
 
-// 	      for (int ispec = 0; ispec < nspecies; ispec++)
-// 		{
-// 		  delta_divu[i].copy(h,ispec,0,1);
-// 		  delta_divu[i].divide(cp[i]);
-// 		  delta_divu[i].divide(temp[i]);
-// 		  delta_divu[i].mult(ydot[i],ispec,0,1);
-// 		  divu[i].minus(delta_divu[i]);
-
-// 		  delta_divu[i].copy(mwmix[i],0,0,1);
-// 		  delta_divu[i].divide(mwt[ispec]);
-// 		  delta_divu[i].mult(ydot[i],ispec,0,1);
-// 		  divu[i].plus(delta_divu[i]);
-// 		}
 // 	      if (count < 1){
 // 		std::cout<<"calling getting Ydot from rho T"<<std::endl;
+// 		getChemSolve().omegaDotGivenRhoT_sdc(Ydot_fpi(),species[i],
+// 						 temp[i],
+// 						 rho[i],Patm, grids[i],
+// 						 sCompY,sCompT,0,0);
 		getChemSolve().YdotGivenRhoT_sdc(Ydot_fpi(),species[i],
 						 temp[i],
 						 rho[i],Patm, grids[i],
@@ -8742,6 +8755,19 @@ HeatTransfer::calc_divu (Real      time,
 
 	      for (int ispec = 0; ispec < nspecies; ispec++)
 		{
+// 		  delta_divu[i].copy(Ydot_fpi(),ispec,0,1);
+// 		  delta_divu[i].divide(rho[i]);
+// 		  delta_divu[i].divide(cp[i]);
+// 		  delta_divu[i].divide(temp[i]);
+// 		  delta_divu[i].mult(h,ispec,0,1);
+// 		  divu[i].minus(delta_divu[i]);
+
+// 		  delta_divu[i].copy(Ydot_fpi(),ispec,0,1);
+// 		  delta_divu[i].divide(rho[i]);
+// 		  delta_divu[i].mult(mwmix[i],0,0,1);
+// 		  delta_divu[i].divide(mwt[ispec]);
+// 		  divu[i].plus(delta_divu[i]);
+
 		  delta_divu[i].copy(h,ispec,0,1);
 		  delta_divu[i].divide(cp[i]);
 		  delta_divu[i].divide(temp[i]);
@@ -8753,11 +8779,9 @@ HeatTransfer::calc_divu (Real      time,
 		  delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
 		  divu[i].plus(delta_divu[i]);
 		}
-
 	    }
-	  //	  std::cout<<std::endl<<"count = "<<count<<std::endl;
-	  count++;
-	  //	}
+	}
+      count++;
     }
   
     else {
@@ -8990,6 +9014,8 @@ HeatTransfer::calc_divu (Real      time,
 	      getChemSolve().getCpmixGivenTY(cp[iGrid],temp[iGrid],species[iGrid],
 					     box,sCompT,sCompY,sCompCp);
 	    }
+	  //	  VisMF::Write(mwmix,"mw");
+	  //VisMF::Write(cp,"cp");
 
 	  species.clear();
 	  //
@@ -9007,6 +9033,10 @@ HeatTransfer::calc_divu (Real      time,
 	    {
 	      MultiFab visc_terms(grids,1,1);
 	      getViscTerms(visc_terms,Temp,1,time);
+
+	      //debugging FIXME
+	      cg_write(visc_terms,"tvt.dat",8);
+
 	      MultiFab::Copy(divu,visc_terms,0,0,1,nGrow);
 	    }
 
@@ -9031,6 +9061,10 @@ HeatTransfer::calc_divu (Real      time,
 	    {
 	      getViscTerms(spec_visc_terms,first_spec,nspecies,time);
 	    }
+
+	  //	  VisMF::Write(spec_visc_terms,"specVT");
+	  //debugging FIXME
+	  cg_write(spec_visc_terms,"svt.dat",8);
 
 	  for (MFIter mfi(spec_visc_terms); mfi.isValid(); ++mfi)
 	    {
@@ -9096,6 +9130,8 @@ HeatTransfer::calc_divu (Real      time,
 	    }
 	}
     }
+
+    //VisMF::Write(divu,"divu");
 }
 
 //
@@ -10048,9 +10084,6 @@ HeatTransfer::advance_sdc (Real time,
     MultiFab::Copy(difference,S_old,0,0,NUM_STATE,0);
     MultiFab difference2(grids,NUM_STATE,0);
     MultiFab::Copy(difference2,S_old,0,0,NUM_STATE,0);
-    MultiFab I_change(grids,NUM_STATE,0);
-    //I_AD initialized to zero in advance_setup
-    MultiFab::Copy(I_change,I_AD[0],0,0,NUM_STATE,0);
 
     //
     // Set flag so that aux_boundary_data is not used.
@@ -10087,13 +10120,17 @@ HeatTransfer::advance_sdc (Real time,
     // velocity advection was here.  moved to after scalar stuff with 
     // no effect on answer/result
 
-    //CEG:: I think this function is strictly for the aux bdry stuff
-    //   and I can remove it
-    //From testing w/ HT vs sdc modifed to HT, need to keep this to get
-    //  same answer
+    //
+    // CEG:: this assumes that we trust the Y's and Temp value, not RhoH
+    //       with temp eqn removed, probably don't want to do things this
+    //       way anymore
+    //  uses aux bdry data-- must put something in there.  i've changed it
+    //    inside set.... but seems like this shouldn't be neccessary
+    //CEG:: From testing w/ HT vs sdc modifed to HT, need to keep 
+    //  this to get same answer-- are a couple of ways to get rhoH at the bdry
+    //  want to make sure we're being consistent
     // Set old-time boundary data for RhoH
     set_overdetermined_boundary_cells(time);
-
 
     BL_ASSERT(S_new.boxArray() == S_old.boxArray());
 
@@ -10120,13 +10157,37 @@ HeatTransfer::advance_sdc (Real time,
 //       std::cout<<"S_old species "<<ii<<": "<<data[first_spec+ii]<<std::endl;
 //     std::cout<<std::endl;
 
-    //CEG:: should insert some kind of if()??
     // Get Diffusion(S) at time n; this DOES NOT have dt multipied in
     //   returns Diff(S)/vol
+    //   Fills ghost cell with 0th order extrap
     getViscTerms_sdc(*sdcForce,first_spec,nspecies,prev_time,dt);
     // save a copy of D(t^n)
     MultiFab::Copy(DofS[0],*sdcForce,first_spec,first_spec,nspecies,0); 
     sdcForce->setVal(0.0);
+
+    // make sdcForce for RhoH advection
+    // Compute Diffsn(H)^n  
+    // Save the flux for refluxing later
+    bool save_flux;
+    if (sdc_iters == 0)
+      save_flux = false;
+    else
+      save_flux = true;
+    // This routine does not fill ghost cells!
+    getRhoHViscTerms_sdc(DofS[0],0,prev_time,dt,save_flux);
+
+    if (!unity_Le){
+      // Compute Non-unity Lewis number (NULN) terms
+      //  Actually computing -NULN
+      //
+      // save NULN_n for later
+      compute_rhoh_NULN_terms(prev_time, dt, false,
+			      RhoH_NULN_terms[0],save_flux);
+    }
+
+    int corrector = 0;
+    // CEG:: no source terms in advection for now
+    //make_advection_sdcForce(RhoH,1,corrector);
 
     // Godunov-extrapolate states to cell edges
     // For everything after rhoH this function also computes 
@@ -10160,12 +10221,15 @@ HeatTransfer::advance_sdc (Real time,
     // Compute advection:
     //  AofS is computed without mult by dt but divided by the vol
     //  This does not update/change Snew 
-    // Do RhoH later
-    if (RhoH > first_scalar)
-	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
-    if (RhoH < last_scalar)
-	scalar_advection(dt,RhoH+1,last_scalar,do_adv_reflux);
+    // Don't do Temp or RhoH
+    // CEG:: Assuming I'm doing corrections, only need to do species and
+    //       density here
+    scalar_advection(dt,first_spec,last_spec,do_adv_reflux);
+    scalar_advection(dt,Density,Density,do_adv_reflux);
 
+    //
+    // CEG:: I don't think i need this if not using Temp equation
+    //
     // Save rho used in rho-states, needed for replacing with new one
     //  NOTE: WE LOAD/USE GROW CELLS HERE SO WE CAN FIX BOUNDARY 
     //    DATA AS WELL
@@ -10176,15 +10240,15 @@ HeatTransfer::advance_sdc (Real time,
     // Is resetting rho in rho states even necessary?
     // Why do need to use MFIter--Don't.  this does the same thing as
     //  MF::Copy
-    MultiFab Rho_hold(grids,1,LinOp_grow);
+//     MultiFab Rho_hold(grids,1,LinOp_grow);
 
-    BL_ASSERT(LinOp_grow == 1);
+//     BL_ASSERT(LinOp_grow == 1);
 
-    for (MFIter mfi(*rho_ctime); mfi.isValid(); ++mfi)
-    {
-        const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
-        Rho_hold[mfi.index()].copy((*rho_ctime)[mfi],box,0,box,0,1);
-    }
+//     for (MFIter mfi(*rho_ctime); mfi.isValid(); ++mfi)
+//     {
+//         const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
+//         Rho_hold[mfi.index()].copy((*rho_ctime)[mfi],box,0,box,0,1);
+//     }
 
     // Compute new and half-time densities.
     // CEG: 
@@ -10201,34 +10265,18 @@ HeatTransfer::advance_sdc (Real time,
     //   filled ghost cells
     make_rho_curr_time();
 
-    // Reset rho-states to contain new rho.
-    // divide out rho_old and mult by rho_new--to get multi grid 
-    //    to converge faster???
-    reset_rho_in_rho_states(Rho_hold,cur_time,first_scalar+1,NUM_SCALARS-1);
-
     //debugging FIXME
 //       if (do_mom_diff == 0)
 //           velocity_advection(dt);
-
-    int corrector = 0;
-
-    // Predict n+1 coeffs using n coeffs
-    temp_update(dt,corrector); 
-    temperature_stats(S_new);
-        
-    //CEG:: Why do this here?  Do diffusivities only depend on Temp
-    //   and rho (should be independent of rho)
-    // Calculate Diffusivities at time n+1
-    calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
-
+  
+//CEG:: I don't think this needs to be separate from Density update
+//      anymore-- or separate from RhoH advection update either      
     // Update species with advection (just adding up terms here):
     //
     //      snew = sold - dt*aofs + dt*ext_forcing_terms
     // 
     scalar_advection_update(dt, first_spec, last_spec);
 
- //     VisMF::Write(S_new,"s_adv");
-//      abort();
     // Update species with diffusion (calling multi-grid in here):
     //
     //      snew = sold - dt*aofs + dt*Diffsn^n+1 + dt*ext_forcing
@@ -10243,30 +10291,15 @@ HeatTransfer::advance_sdc (Real time,
     bool const save_diffsn = true;
     Real theta = 1.0;
     differential_spec_diffusion_update_sdc(dt,theta,corrector,save_diffsn);
-
-    //    VisMF::Write(S_new,"s_diff");
-
-// CEG:: getting this in diffusion update now
-    //!!!! getViscTerms changes SpecDiffusionFlux 
-    // Compute Diffn^n+1 for species
-    //    getViscTerms_sdc(DofS[1],first_spec,nspecies,cur_time,dt);
-    //    VisMF::Write(DofS[1],"dofs");
+    // CEG:: This routine saves the diffusion at time n+1 in DofS 
+    //       if save_diffsn = true
 
     // 
     // Update RhoH
     //
+    // CEG:: don't need this without temp eqn
     // RhoH BC's to see new Y's at n+1
     set_overdetermined_boundary_cells(time + dt); 
-
-    // Don't actually need this yet
-    // Compute Diffsn(H)^n  
-    // Save the flux for refluxing later
-    bool save_flux;
-    if (sdc_iters == 0)
-      save_flux = false;
-    else
-      save_flux = true;
-    getRhoHViscTerms_sdc(DofS[0],0,prev_time,dt,save_flux);
 
     // Compute advection (AofS for rhoH)
     rhoh_advection_sdc(dt,do_adv_reflux);    
@@ -10283,9 +10316,6 @@ HeatTransfer::advance_sdc (Real time,
       // Compute Non-unity Lewis number (NULN) terms
       //  Actually computing -NULN
       //
-      // save NULN_n for later
-      compute_rhoh_NULN_terms(prev_time, dt, false,
-			      RhoH_NULN_terms[0],save_flux);
       compute_rhoh_NULN_terms(cur_time, dt, false,
 			      RhoH_NULN_terms[1]);
     }
@@ -10321,51 +10351,31 @@ HeatTransfer::advance_sdc (Real time,
     if (!hack_nochem){
 
       //FIXME!!!
-//       MultiFab::Copy(difference,S_new,0,0,NUM_STATE,0);
        MultiFab::Copy(difference2,S_new,0,0,NUM_STATE,0);
-
-//      MultiFab::Copy(difference,S_new,RhoH,RhoH,1,0);
 
       // Maybe I want to be resetting rhoH too.
       // Save a copy of rho_new or set up chem_sdc to take rho separately
       // CEG:: think about ghost cells.
-       //      MultiFab::Copy(Rho_hold,*rho_ctime,0,0,1,1);
-       //      MultiFab::Copy(Rho_hold,S_new,Density,0,1,1);
-       //      MultiFab::Copy(S_new,S_old,first_scalar,first_scalar,NUM_SCALARS,0);
       // taking rhoH integration out of VODE
       MultiFab::Copy(S_new,S_old,Density,Density,1,0);
       MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies,0);
-      //      MultiFab::Copy(S_new,S_old,RhoH,RhoH,1,0);
-      MultiFab::Copy(S_new,S_old,Temp,Temp,1,0);
+      MultiFab::Copy(S_new,S_old,RhoH,RhoH,1,0);
+      //CEG:: this should be redundant if not using Temp equation any more
+      //MultiFab::Copy(S_new,S_old,Temp,Temp,1,0);
 
       int sdc_flag = 0; //doing provisional solution 
       //CEG:: eventually i probably want to stop passing rhoH through 
       //      into conpSolv
       chem_sdc(S_new,dt,sdc_flag,0);
-      //      std::cout<<"after react"<<std::endl;
-
-//       S_new[0].getVal(data,Pt,0,NUM_STATE); 
-//       std::cout<<"Snew::"<<std::endl;
-//       for (int ii = 0; ii < nspecies; ii++)
-// 	std::cout<<"spec : "<<ii<<": "<<data[first_spec+ii]<<std::endl;
-//       std::cout<<std::endl;
       
       MultiFab::Subtract(difference2,S_new,0,0,NUM_STATE,0);
-//       difference2[0].getVal(data,Pt,0,NUM_STATE); 
-//       std::cout<<"chem difference::"<<std::endl;
-//       for (int ii = 0; ii < nspecies; ii++)
-// 	std::cout<<"spec : "<<ii<<": "<<data[first_spec+ii]<<std::endl;
-//       std::cout<<std::endl;
-      //      abort();
 
       // need to think about ghost cells.
-       //      MultiFab::Copy(S_new,Rho_hold,0,Density,1,1);
+      //    MultiFab::Copy(S_new,Rho_hold,0,Density,1,1);
       //    MultiFab::Copy(S_new,difference,RhoH,RhoH,1,0);
 
-      //FIXME FIXME!!!
-      //MultiFab::Copy(S_new,difference,first_scalar,first_scalar,NUM_SCALARS,0);
-
       //Make I_R
+      //getTempViscTerms(DofS[1],0,cur_time);
       // because code will mult forcing terms by dt later, 
       // have to actually compute I_R/sdc_dt
       make_I_R_provis(dt);
@@ -10381,11 +10391,12 @@ HeatTransfer::advance_sdc (Real time,
       //might not need this here if keep the final diffusion solve
       //      do_diffsn_reflux = true;
 
+      // CEG:: might need RhoH to Temp here???
+
       tracer_update(dt,1);
     }
 
     BL_PROFILE_STOP(ptimer);
-
     
     // change in state over timestep
     Real comp_min, comp_max;
@@ -10423,49 +10434,8 @@ HeatTransfer::advance_sdc (Real time,
 //     output<<"   "<<data[Temp];
 //     output<<"   "<<data[Density];
 //     output<<"   "<<data[RhoH];
-//     for (int ii = 0; ii < nspecies; ii++)
-//       output<<"   "<<data[first_spec+ii];
 //     output<<std::endl;
 //     output.close();
-//     (DofS[0])[0].getVal(data,Pt,0,NUM_STATE);
-//     output.open("dofs_ij",std::ios::app);
-//     output<<prev_time;
-//     output<<"   "<<data[Temp];
-//     output<<"   "<<data[Density];
-//     output<<"   "<<data[RhoH];
-//     for (int ii = 0; ii < nspecies; ii++)
-//       output<<"   "<<data[first_spec+ii];
-//     output<<std::endl;
-//     (DofS[1])[0].getVal(data,Pt,0,NUM_STATE);
-//     output<<cur_time;
-//     output<<"   "<<data[Temp];
-//     output<<"   "<<data[Density];
-//     output<<"   "<<data[RhoH];
-//     for (int ii = 0; ii < nspecies; ii++)
-//       output<<"   "<<data[first_spec+ii];
-//     output<<std::endl;
-//     output.close();
-//     (DofS[2])[0].getVal(data,Pt,0,NUM_STATE);
-//     output.open("dofs2_ij",std::ios::app);
-//     output<<cur_time;
-//     output<<"   "<<data[Temp];
-//     output<<"   "<<data[Density];
-//     output<<"   "<<data[RhoH];
-//     for (int ii = 0; ii < nspecies; ii++)
-//       output<<"   "<<data[first_spec+ii];
-//     output<<std::endl;
-//     output.close();
-//     (I_R[0])[0].getVal(data,Pt,0,NUM_STATE);
-//     output.open("IR_ij",std::ios::app);
-//     output<<cur_time;
-//     output<<"   "<<data[Temp];
-//     output<<"   "<<data[Density];
-//     output<<"   "<<data[RhoH];
-//     for (int ii = 0; ii < nspecies; ii++)
-//       output<<"   "<<data[first_spec+ii];
-//     output<<std::endl;
-//     output.close();
-
 
 
     ////////////////////
@@ -10477,13 +10447,28 @@ HeatTransfer::advance_sdc (Real time,
 
     for (int n_sdc = 1; n_sdc <= sdc_iters; n_sdc++)        
     {
-      // Recompute DofS(n+1) 
-      //  species
+      // Update Temp
+      // CEG:: this changes rhoH a little bit b/c we divide out rho
+      //       and then mult it back in
+      RhoH_to_Temp(S_new);
+      temperature_stats(S_new);
+      MultiFab::Copy(difference,S_new,Temp,Temp,1,0);
+      // Update Diffusivities
+      //
+      //CEG::  Unclear where to put this
+      //??? Need this after rho update, because this function really computes
+      //    rho_D_m not just D_m
+      calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+
+      // Recompute DofS(n+1) for species 
       // DEBUGGING FIXME
       getViscTerms_sdc(DofS[2],first_spec,nspecies,cur_time,dt);
       //MultiFab::Copy(DofS[2],DofS[1],first_spec,first_spec,nspecies,0);
+
+      // If updating Diffusivities, need to recompute this
+      getRhoHViscTerms_sdc(DofS[2],0,cur_time,dt);
       // Save off DofS^n+1 for rhoH 
-      MultiFab::Copy(DofS[2],DofS[1],RhoH,RhoH,1,0);
+      //MultiFab::Copy(DofS[2],DofS[1],RhoH,RhoH,1,0);
 
       if (!unity_Le){
 	//  NULN terms 
@@ -10492,11 +10477,11 @@ HeatTransfer::advance_sdc (Real time,
 	//   have Le != 1; DO we really want to update the NULN terms here?
 	//   rhoH visc terms won't change unless pH changes
 	//   RhoH
-// 	compute_rhoh_NULN_terms(cur_time, dt, do_adv_reflux,
-// 				RhoH_NULN_terms[2]);
+ 	compute_rhoh_NULN_terms(cur_time, dt, do_adv_reflux,
+ 				RhoH_NULN_terms[2]);
 // Recomputing NULN terms doesn't seem to affect things much--no 
-//  qualitative difference in the results (w/ 2-step)
-	MultiFab::Copy(RhoH_NULN_terms[2],RhoH_NULN_terms[1],0,0,1,0);
+//  qualitative difference in the results (w/ 2-step)--need a better check
+//	MultiFab::Copy(RhoH_NULN_terms[2],RhoH_NULN_terms[1],0,0,1,0);
       }
 
       //make I_AD
@@ -10512,18 +10497,18 @@ HeatTransfer::advance_sdc (Real time,
 //       output<<std::endl;
 //       output.close();
 
-      // Update Temp
-      // CEG:: this changes rhoH a little bit b/c we divide out rho
-      //       and then mult it back in
-      RhoH_to_Temp(S_new);
-      temperature_stats(S_new);
+      // load I_AD + I_R into sdcForces and fill ghost cells  
+      //   use 0th order extrapolation if needed
+      // Also, must load in reactions for Temp to see
+      make_advection_sdcForce(first_spec,nspecies,1);
+      make_advection_sdcForce(RhoH,1,1);
 
+      // Debugging FIXME -- this is moved to after rho update
       // Update Diffusivities
       //
       //CEG::Put this after I_AD for now; doing earlier might adversely 
       // affect stability
-      // Debugging FIXME
-      calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+      //calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
 
       if (ParallelDescriptor::IOProcessor())
 	std::cout<<"Inside SDC iters... n_sdc= "<<n_sdc<<std::endl;
@@ -10531,10 +10516,6 @@ HeatTransfer::advance_sdc (Real time,
       // for radau will need to check that rho_ptime has the right data 
       //  in it. 
       // am i wastecully recomputing rho_half?
-
-      // load I_AD + I_R into sdcForces and fill ghost cells  
-      //   use 0th order extrapolation if needed
-      make_advection_sdcForce(first_spec,nspecies);
 
       // will pull external forces from getForce
       // and add in sdc terms in sdcForce. 
@@ -10549,23 +10530,19 @@ HeatTransfer::advance_sdc (Real time,
 	// Only needed for hack_nospecdiff
 	corrector = 1;
 
-// 	// RhoRT is also updated in this function
+	scalar_advection(dt,Tracer,Tracer,do_adv_reflux);
+	scalar_advection(dt,RhoRT,RhoRT,do_adv_reflux);
+ 	// RhoRT is also updated in this function
  	tracer_update(dt,1);
       }
-      // RhoRT is also updated in this function
-      //      tracer_update(dt,1);
 
       //
       //  Update Rho and Species
       //
 
       // Recompute aofs
-      // CEG:: might want to change this so it only operates on 
-      //   species here.  could actually do rhoH here too
-      if (RhoH > first_scalar)
-	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
-      if (RhoH < last_scalar)
-	scalar_advection(dt,RhoH+1,last_scalar,do_adv_reflux);
+      scalar_advection(dt,first_spec,last_spec,do_adv_reflux);
+      scalar_advection(dt,Density,Density,do_adv_reflux);
 
       // loop over quad pts here?
 
@@ -10589,6 +10566,7 @@ HeatTransfer::advance_sdc (Real time,
       //
       // Update RhoH
       //
+      //  CEG:: don't need with without temp eqn
       // RhoH BC's to see new Y's at n+1
       set_overdetermined_boundary_cells(time + dt);
       rhoh_advection_sdc(dt,do_adv_reflux);  
@@ -10621,7 +10599,7 @@ HeatTransfer::advance_sdc (Real time,
 	MultiFab::Copy(S_new,S_old,Density,Density,1,0);
 	MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies,0);
 	//taking rhoH out of VODE integration
-	//	MultiFab::Copy(S_new,S_old,RhoH,RhoH,1,0);
+	MultiFab::Copy(S_new,S_old,RhoH,RhoH,1,0);
 	MultiFab::Copy(S_new,S_old,Temp,Temp,1,0);
 
 	int sdc_flag = 1; //doing SDC solution 
@@ -10729,17 +10707,30 @@ HeatTransfer::advance_sdc (Real time,
  
     //FIXME!!!
     // Doing a final diffusion solve to smooth the solution a little
-     scalar_advection_update(dt,first_spec, last_spec);
-     MultiFab::Copy(*sdcForce,I_R[0],first_spec,first_spec,nspecies,0);
-     theta = 0.5;
-     // need to change this to do the diffusion refluxing
-     differential_spec_diffusion_update_sdc(dt,theta,corrector);
+//      scalar_advection_update(dt,first_spec, last_spec);
+//      MultiFab::Copy(*sdcForce,I_R[0],first_spec,first_spec,nspecies,0);
+//      theta = 0.5;
+//      // need to change this to do the diffusion refluxing
+//      differential_spec_diffusion_update_sdc(dt,theta,corrector);
     // MultiFab::Copy(DofS[2],DofS[1],first_spec,first_spec,nspecies,0);
 
     //CEG:: need to think about Le != 1 case more
     //      do i update NULN and rhoH here???
 
-    Rho_hold.clear();
+    RhoH_to_Temp(S_new); 
+    // This just writes out some statistics.
+    // Does nothing if verbose = false    
+    temperature_stats(S_new);
+
+    //CEG:: 09/17 Marc questions whether it is the right thing to do
+    //      to be updating the diffusivity here
+    // S appears in rhs of the velocity update, so we better do it now.
+    // (be sure to use most recent version of state to get
+    // viscosity/diffusivity).
+    //
+    calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
+
+    //    Rho_hold.clear();
     if (ParallelDescriptor::IOProcessor())  
       std::cout<<"done with sdc_iters loop...\n"<<std::endl;
 
@@ -10788,19 +10779,6 @@ HeatTransfer::advance_sdc (Real time,
 //     // first component of Ydot corres. to first_spec
 //     const int dCompYdot = 0;      
 //     ydot_tmp->setVal(0,dCompYdot,nspecies);
-
-    RhoH_to_Temp(S_new); 
-    // This just writes out some statistics.
-    // Does nothing if verbose = false    
-    temperature_stats(S_new);
-
-    //CEG:: 09/17 Marc questions whether it is the right thing to do
-    //      to be updating the diffusivity here
-    // S appears in rhs of the velocity update, so we better do it now.
-    // (be sure to use most recent version of state to get
-    // viscosity/diffusivity).
-    //
-    //calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
 
     // CEG: do_mom_diff = 0
     //debugging FIXME
@@ -11099,7 +11077,7 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
 
             if (ngrow == 0)
             {
-	      std::cout<<"ngrow = 0"<<std::endl;
+	      //	      std::cout<<"ngrow = 0"<<std::endl;
                 //
                 // Working on valid region of state.
                 //
@@ -11161,11 +11139,13 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_edge_states_sdc()");
     //
+    // For SDC: Taking out Temp equation.
+    //
     // Compute edge states, store internally.  Do this to
-    // avoid recomputing these, and to allow inter-equation consistency.  Note,
-    // storage order in EdgeState same as in State_Type.
-    // NOTE: Ordering is important here, must do rho.Y and Temp BEFORE RhoH and
-    //       Density, but then it doesn't matter.
+    // avoid recomputing these, and to allow inter-equation consistency.  
+    // Note, storage order in EdgeState same as in State_Type.
+    // NOTE: Ordering is important here, must do rho.Y BEFORE 
+    //       RhoH and Density, but then it doesn't matter.
     //
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -11178,7 +11158,8 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
     const Real  prev_pres_time = state[Press_Type].prevTime();
     //
     // NOTE: Massive memory bloat here...how many MultiFab can we waste??
-    // Get viscous forcing on the ones we need, don't bother allocating others
+    // Get viscous forcing on the ones we need, don't bother allocating 
+    // others
     //
     const int nState = desc_lst[State_Type].nComp();
     PArray<MultiFab> visc_terms(nState,PArrayManage);
@@ -11193,13 +11174,14 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
     //     do mom diff = 0
     //     do set rho to species sum = 1
 
-    // for sdc do velocity separately
-    for (int d=0; d<BL_SPACEDIM; ++d)
-      do_predict[Xvel+d] = false;
-     
+    if (do_mom_diff != 1) 
+    {
+      for (int d=0; d<BL_SPACEDIM; ++d)
+	do_predict[Xvel+d] = false;
+    }
     for (int sigma=first_spec; sigma<=last_spec; ++sigma)
         do_predict[sigma] = false; // Will get these in a special way
-    
+
     if (do_set_rho_to_species_sum)
     {
         do_predict[Density] = false;
@@ -11214,9 +11196,10 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
     // all components with interdependencies are turned on at the same time.
     //
     //FIXME
-    // CEG: if i use this comp-edge-states, then need to change this logic
-    // so Temp doesn't need to get recomputed too.
+    // CEG: need to think about what this is
     std::vector<bool> compute_comp(nState, true);
+    //for SDC taking out Temp equation
+    compute_comp[Temp] = false;    
 
     if (state_comps_to_compute != 0)
     {
@@ -11225,6 +11208,7 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
         for (int cmp = 0; cmp < nState; cmp++)
             compute_comp[cmp] = (*state_comps_to_compute)[cmp];
 
+	BL_ASSERT(!compute_comp[Temp]);
 	// for now assume state_comps_to_compute is made sensibly
 //         if (compute_comp[Density] || compute_comp[Temp] ||
 //             compute_comp[RhoH]    || compute_comp[first_spec])
@@ -11243,7 +11227,7 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
     MultiFab* divu_fp = create_mac_rhs_grown(nGrowF,prev_time,dt);
 
     // Get all the normal visc terms for everything but velocity
-    // CEG:: this gets visc terms for 13-15
+    // CEG:: this gets visc terms for tracer and rhoRT
     for (int sigma=BL_SPACEDIM; sigma<nState; ++sigma)
     {
         if (do_predict[sigma] && compute_comp[sigma])
@@ -11277,7 +11261,7 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
 
         const int i = S_fpi.index();
 
-        FArrayBox tforces, tvelforces;
+        FArrayBox tforces,tvelforces;
 
         Rho.resize(S_fpi().box(),1);
         U.resize(S_fpi().box(),BL_SPACEDIM);
@@ -11303,7 +11287,6 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
 
         const int velpred = 0; // Already have edge velocities for 
 	                       // transverse derivative
-
         tvelforces.clear();
 
 /////////////////////////////////////////////////////////////////////////
@@ -11314,7 +11297,7 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
         // Get spec edge states
 	if (compute_comp[first_spec])
 	{
-	  // resizes tforces to length = nspecies 
+	  // resizes tforces to ncomp = nspecies 
 	  NavierStokes::getForce(tforces,i,nGrowF,first_spec,nspecies,
 #ifdef GENGETFORCE
 				 prev_time,
@@ -11382,15 +11365,18 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
             
         }
 
-        if (compute_comp[Temp])
+	if (compute_comp[Temp])
+	  BoxLib::Abort("compute_edge_states_sdc():: Should not be trying to compute Temp edge states");
+
+        if (compute_comp[RhoH])
         {
             //
-            // Get Temp edge states via extrap.
+            // Get RhoH edge states via extrap.
             //
             const int comp = 0;
-            const int state_ind = Temp;
+            const int state_ind = RhoH;
             int use_conserv_diff = 
-                      (advectionType[state_ind] == Conservative) ? true : false;
+	      (advectionType[state_ind] == Conservative) ? true : false;
             state.resize(S_fpi().box(),1);
             state.copy(S_fpi(),state_ind,0,1);
 
@@ -11398,76 +11384,33 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
 #ifdef GENGETFORCE
 				   prev_time,
 #endif		 
-
 				   Rho);
+
+	    std::ofstream edge_fab("tforces");
+	    tforces.writeOn(edge_fab);
+	    edge_fab.close();
+
             Array<int> bc = getBCArray(State_Type,i,state_ind,1);
 
-            AdvectionScheme adv_scheme = FPU;
+	    int fcomp = 0;
+	    Sum_extF_sdcF(S_fpi(), RhoH, tforces, fcomp, 
+				   (*sdcForce)[i], RhoH, 1,
+				   Rho, use_conserv_diff);
 
-            if (adv_scheme == PRE_MAC)
-            {
-                godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
-                                          visc_terms[state_ind][i], 0,
-                                          (*divu_fp)[i], Rho, use_conserv_diff);
-
-                int iconserv_dummy = 0;
-                godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_mac[0][i], edge[0],
-                                     u_mac[1][i], edge[1],
+	    godunov->edge_states(grids[i], dx, dt, velpred,
+				 u_mac[0][i], edge[0],
+				 u_mac[1][i], edge[1],
 #if (BL_SPACEDIM==3)
-                                     u_mac[2][i], edge[2],
+				 u_mac[2][i], edge[2],
 #endif
-                                     U, state, tforces, (*divu_fp)[i],
-                                     comp, state_ind, bc.dataPtr(),
-                                     iconserv_dummy, PRE_MAC);
-
-            }
-            else
-            {
-
-                FArrayBox junkDivu(tforces.box(),1);
-                junkDivu.setVal(0.);
-                godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
-                                          visc_terms[state_ind][i], 0,
-                                          junkDivu, Rho, use_conserv_diff);
-
-                godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_mac[0][i], edge[0],
-                                     u_mac[1][i], edge[1],
-#if (BL_SPACEDIM==3)
-                                     u_mac[2][i], edge[2],
-#endif
-                                     U, state, tforces, (*divu_fp)[i],
-                                     comp, state_ind, bc.dataPtr(), 
-                                     use_conserv_diff, FPU);
-            }
+				 U, S_fpi(), (*sdcForce)[i], (*divu_fp)[i],
+				 RhoH, RhoH, bc.dataPtr(), 
+				 use_conserv_diff, FPU);
 
             for (int d=0; d<BL_SPACEDIM; ++d)
                 (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
 
             this_edge_state_computed[state_ind] = true;
-        }
-
-        if (compute_comp[RhoH])
-        {
-            //
-            // Set rhoh on edges = sum(rho.Y.H)
-            //
-            FArrayBox h;
-            for (int d=0; d<BL_SPACEDIM; ++d)
-            {
-                (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
-                h.resize(edge[d].box(),nspecies);
-                getChemSolve().getHGivenT(h,(*EdgeState[d])[i],
-                                          edge[d].box(),Temp,0);
-                h.mult((*EdgeState[d])[i],edge[d].box(),first_spec,0,
-                       nspecies);
-                
-                (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
-                for (int comp=0; comp<nspecies; ++comp)
-                    (*EdgeState[d])[i].plus(h,edge[d].box(),comp,RhoH,1);
-            }
-            this_edge_state_computed[RhoH] = true;
         }
 
 //////////////////////////////////////////////////////////////////
@@ -11983,7 +11926,6 @@ HeatTransfer::Sum_extF_sdcF (FArrayBox& S,
     BL_ASSERT(extF.nComp() >= extf_ind+num_comp);
     BL_ASSERT(sdcF.nComp() >= s_ind+num_comp);
     BL_ASSERT(rho.nComp()  == 1             );
-    BL_ASSERT(isconserv    == 1             );
     
     const int *slo    = S.loVect();
     const int *shi    = S.hiVect();
@@ -12045,9 +11987,7 @@ HeatTransfer::make_I_R_provis (Real dt)
   FArrayBox NULNfab;
 
 
-  //CEG:: FIXME! haven't decided how to deal with NULN in provis soln yet
-  //   for now am using CN.  see notebook 3 p 98
-  //I_R = s_new - s_old - dt*[A + D(1) + NULN(1)]
+  //I_R = s_new - s_old - dt*[A + D(1)]
 
   for (MFIter Smfi(S_new); Smfi.isValid(); ++Smfi)
     {
@@ -12057,18 +11997,7 @@ HeatTransfer::make_I_R_provis (Real dt)
       FArrayBox& IR = (I_R[0])[Smfi];
        
       make_sdc_fabs(Smfi.index(),bx,Afab,Dfab,NULNfab);
-//       {
-// 	std::ofstream edge_fab("Afab");
-// 	Afab.writeOn(edge_fab);
-//       }
-//       {	
-// 	std::ofstream edge_fab("Dfab");
-// 	Dfab.writeOn(edge_fab);
-//       }
-//       {	
-// 	std::ofstream edge_fab("NULN");
-// 	NULNfab.writeOn(edge_fab);
-//       }
+
       FORT_MAKE_IR_PROVIS(bx.loVect(), bx.hiVect(),
 			  &first_spec,&RhoH,
 			  sn.dataPtr(), ARLIM(sn.loVect()),ARLIM(sn.hiVect()),
@@ -12092,7 +12021,6 @@ HeatTransfer::make_I_R_sdc (Real dt)
   FArrayBox NULNfab;
 
   // I_R = s_new - s_old - dt*[A + D(1) + (D(0)-D(2))/2
-  //                          + NULN(1) + (NULN(0)-NULN(2))/2]        
 
   
   for (MFIter Smfi(S_new); Smfi.isValid(); ++Smfi)
@@ -12225,23 +12153,162 @@ HeatTransfer::make_sdc_mf (BoxArray& ba,
 
 void
 HeatTransfer::make_advection_sdcForce ( int       src_comp, 
-					int       num_comp)
+					int       num_comp,
+					int       corrector)
 {
     BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_advection_sdcForce()");
 
-    //CEG:: FIXME? this function is only ever calling this for species, 
-    //      since rho and rhoH are determined from sums of Y_m's  
+    BL_ASSERT((src_comp>=first_spec && src_comp<=last_spec) ? num_comp<=nspecies
+	                                                    : true );
 
-    MultiFab::Copy(*sdcForce,I_AD[0],src_comp,src_comp,num_comp,0);
-    MultiFab::Add(*sdcForce,I_R[0],src_comp,src_comp,num_comp,0);
+    if(src_comp>=first_spec && src_comp<=last_spec){
+       MultiFab::Copy(*sdcForce,I_AD[0],src_comp,src_comp,num_comp,0);
+       MultiFab::Add(*sdcForce,I_R[0],src_comp,src_comp,num_comp,0);
+    }
 
+    if(src_comp == RhoH){
+      if(!corrector){
+	MultiFab::Copy(*sdcForce,DofS[0],RhoH,RhoH,1,0);
+	MultiFab::Subtract(*sdcForce,RhoH_NULN_terms[0],0,RhoH,1,0);
+      }
+      else{
+       MultiFab::Copy(*sdcForce,I_AD[0],src_comp,src_comp,num_comp,0);
+      }
+    }
+    // to match up with the way the Temp visc_terms are computed,
+    // need to compute omega-dot_m * h_m(T) / c_p 
+//     if (src_comp==Temp){
+//       int nGrow = 0;
+//       int sCompY = 0;
+//       MultiFab species(grids,nspecies,nGrow);
+//       MultiFab omegadot(grids,nspecies,nGrow);
+//       MultiFab vt(grids,1,nGrow);
+//       FArrayBox tmp, h, cp;
+
+//       //debugging FIXME
+//       MultiFab cnwdot(grids,nspecies,nGrow);
+
+//       Real p_amb, dpdt_factor;
+//       FORT_GETPAMB(&p_amb, &dpdt_factor);
+//       const Real Patm = p_amb / P1atm_MKS;
+
+//       (*sdcForce).setVal(0.,Temp,1);
+
+//       Real time = state[State_Type].prevTime();
+//       {
+// 	MultiFab& S = get_old_data(State_Type);
+
+// 	for (FillPatchIterator Spec_fpi(*this,species,nGrow,time,State_Type,first_spec,nspecies);
+// 	     Spec_fpi.isValid();
+// 	     ++Spec_fpi){
+// 	  const int i = Spec_fpi.index();
+	
+// 	  species[i].copy(Spec_fpi(),0,sCompY,nspecies);
+		
+// 	  for (int ispecies = 0; ispecies < nspecies; ispecies++)
+// 	    species[i].divide(S[i],Density,ispecies,1);
+	  
+// 	}
+
+// 	//CEG:: clean this up...
+// 	for (MFIter wdot_mfi(omegadot); wdot_mfi.isValid(); ++wdot_mfi){
+	
+// 	  const int i = wdot_mfi.index();
+
+// 	  tmp.resize(grids[i],1);
+// 	  h.resize(BoxLib::grow(grids[i],nGrow),nspecies);
+// 	  cp.resize(BoxLib::grow(grids[i],nGrow),1);
+
+// 	  getChemSolve().getCpmixGivenTY(cp,S[i],species[i],
+// 					 grids[i],Temp,sCompY,0);
+// 	  getChemSolve().getHGivenT(h,S[i],grids[i],Temp,0);
+// 	  getChemSolve().omegaDotGivenRhoT_sdc(omegadot[i],species[i],
+// 					       S[i],
+// 					       S[i],Patm, grids[i],
+// 					       sCompY,Temp,Density,0);
+
+// 	  for (int ispec = 0; ispec < nspecies; ispec++)
+// 	    {
+// 	      tmp.copy(h,ispec,0,1);
+// 	      tmp.mult(omegadot[i],ispec,0,1);
+// 	      // Recall code compute a PRODUCTION rate, while the 
+// 	      //   equations use a DESTRUCTION rate ==> need a minus 
+// 	      //   sign in front of wdot
+// 	      (*sdcForce)[i].minus(tmp,0,Temp,1);
+// 	    }
+// 	  (*sdcForce)[i].divide(cp,0,Temp,1);
+// 	}
+//       }
+//       //debugging FIXME
+//       MultiFab::Copy(cnwdot,omegadot,0,0,nspecies,nGrow);
+
+//       time = state[State_Type].curTime();
+//       {
+// 	MultiFab& S = get_new_data(State_Type);
+// 	for (FillPatchIterator Spec_fpi(*this,species,nGrow,time,State_Type,first_spec,nspecies);
+// 	     Spec_fpi.isValid();
+// 	     ++Spec_fpi){
+// 	  const int i = Spec_fpi.index();
+	
+// 	  species[i].copy(Spec_fpi(),0,sCompY,nspecies);
+		
+// 	  for (int ispecies = 0; ispecies < nspecies; ispecies++)
+// 	    species[i].divide(S[i],Density,ispecies,1);
+	
+// 	}
+
+// 	//CEG:: clean this up...
+// 	for (MFIter wdot_mfi(omegadot); wdot_mfi.isValid(); ++wdot_mfi){
+	  
+// 	  const int i = wdot_mfi.index();
+
+// 	  tmp.resize(grids[i],1);
+// 	  h.resize(BoxLib::grow(grids[i],nGrow),nspecies);
+// 	  cp.resize(BoxLib::grow(grids[i],nGrow),1);
+
+// 	  getChemSolve().getCpmixGivenTY(cp,S[i],species[i],
+// 					 grids[i],Temp,sCompY,0);
+// 	  getChemSolve().getHGivenT(h,S[i],grids[i],Temp,0);
+// 	  getChemSolve().omegaDotGivenRhoT_sdc(omegadot[i],species[i],
+// 					       S[i],
+// 					       S[i],Patm, grids[i],
+// 					       sCompY,Temp,Density,0);
+// 	  vt[i].setVal(0.,grids[i],0);
+// 	  for (int ispec = 0; ispec < nspecies; ispec++)
+// 	    {
+// 	      tmp.copy(h,ispec,0,1);
+// 	      tmp.mult(omegadot[i],ispec,0,1);
+// 	      // Recall code compute a PRODUCTION rate, while the 
+// 	      //   equations use a DESTRUCTION rate ==> need a minus 
+// 	      //   sign in front of wdot
+// 	      vt[i].minus(tmp,0,0,1);
+// 	    }
+// 	  vt[i].divide(cp,0,0,1);
+// 	  (*sdcForce)[i].plus(vt[i],0,Temp,1);
+// 	}
+//       }
+//       //debugging FIXME
+//       MultiFab::Add(cnwdot,omegadot,0,0,nspecies,nGrow);
+//       cnwdot.mult(0.5,0,nspecies);
+//       VisMF::Write(cnwdot,"wdot");
+//       VisMF::Write(I_R[0],"IR");
+//       abort();
+
+//       getTempViscTerms(vt,Temp,state[State_Type].prevTime());
+//       MultiFab::Add(*sdcForce,vt,0,Temp,1,0);
+//       getTempViscTerms(vt,Temp,state[State_Type].curTime());
+//       MultiFab::Add(*sdcForce,vt,0,Temp,1,0);
+//       (*sdcForce).mult(0.5,Temp,1);
+//     }
+
+    // Do a 0th order extrapolation (ie just takes the value from 
+    //   nearest valid cell) to fill ghost cells (strictly one cell
+    //   on each edge).
     for (MFIter mfi(*sdcForce); mfi.isValid(); ++mfi)
     {
       FArrayBox& sdcF  = (*sdcForce)[mfi];
       const Box& box = mfi.validbox();
       
-      // Does a 0th order extrapolation (ie just takes the value from 
-      //   nearest valid cell) to fill ghost cells
       FORT_VISCEXTRAP(sdcF.dataPtr(src_comp),ARLIM(sdcF.loVect()),ARLIM(sdcF.hiVect()),
 		      box.loVect(),box.hiVect(),&num_comp);
     }
@@ -12261,7 +12328,7 @@ void
 HeatTransfer::make_diffusion_sdcForce ( int       src_comp, 
 					int       num_comp)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_advection_sdcForce()");
+    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_diffusion_sdcForce()");
 
     // might not need to copy I_AD, sdcForces should already conatin it
     //   from compute_edge_states solves

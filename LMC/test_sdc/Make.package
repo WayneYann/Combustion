@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.2 2009-09-30 00:24:34 gilet Exp $
+# $Id: Make.package,v 1.3 2010-01-05 19:19:32 gilet Exp $
 #
 CEXE_sources += HT_setup.cpp 
 
@@ -26,6 +26,7 @@ ifeq ($(USE_NEWMECH), TRUE)
   FEXE_sources += FABUTIL_$(DIM)D.F
 endif
 
+#fEXE_sources += H-flame_0370.f
 #fEXE_sources += chemHSoln_seed_0.00.f
 fEXE_sources += 2stepSoln0.8.f
 #fEXE_sources += drm19Soln_seed_0.00.f
@@ -34,3 +35,18 @@ fEXE_sources += 2stepSoln0.8.f
 #fEXE_sources += drm19Soln_seed_0.50.f
 #fEXE_sources += drm19Soln_seed_0.75.f
 #fEXE_sources += drm19Soln_seed_1.00.f
+
+#HT_BASE=EXE
+#ifeq ($(LBASE),ht)
+#  HT_BASE=LIB
+#endif
+
+#C$(HT_BASE)_sources += ChemDriver.cpp
+#C$(HT_BASE)_headers += ChemDriver.H
+#F$(HT_BASE)_sources += ChemDriver_F.F ChemDriver_$(DIM)D.F
+#F$(HT_BASE)_headers += ChemDriver_F.H cdwrk.H conp.H vode.H
+
+CEXE_sources += cg_write.cpp
+CEXE_headers += cg_write.H
+FEXE_sources += cg_write_$(DIM)D.F
+FEXE_headers += cg_write_F.H 

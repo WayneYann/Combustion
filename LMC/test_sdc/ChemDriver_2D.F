@@ -182,6 +182,52 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       end do
       end
 
+      subroutine FORT_RXNRATE_SDC(lo,hi,Y,DIMS(Y),T,DIMS(T),Rho,DIMS(Rho),
+     &     omegadot,DIMS(omegadot),Patm)
+      implicit none
+
+#include "cdwrk.H"
+#include "conp.H"
+
+      integer lo(SDIM)
+      integer hi(SDIM)
+      integer DIMDEC(Y)
+      integer DIMDEC(T)
+      integer DIMDEC(Rho)
+      integer DIMDEC(omegadot)
+      REAL_T Y(DIMV(Y),*)
+      REAL_T T(DIMV(T))
+      REAL_T Rho(DIMV(Rho))
+      REAL_T omegadot(DIMV(omegadot),*)
+      REAL_T Patm
+
+      REAL_T Zt(maxspec+1),Zdott(maxspec+1)
+      integer i,j,n
+      REAL_T P1atm,RU,RUC, density
+
+
+      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
+      RWRK(NP) = Patm * P1atm
+C      write(*,*)'after patm'
+
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            Zt(1) = T(i,j)
+            density = Rho(i,j)
+C            write(*,*)'density = ',density
+            do n=1,Nspec
+               Zt(n+1) = Y(i,j,n)
+            end do
+C            write(*,*)'about to call calcomegadot'
+            call calcOmegaDot(density,Zt,Zdott,RWRK,IWRK)
+C            write(*,*)'after calcomegadot'
+            do n=1,Nspec
+               omegadot(i,j,n) = Zdott(n+1)
+            end do
+         end do
+      end do
+      end
+
       subroutine FORT_RRATEY_SDC(lo,hi,Y,DIMS(Y),T,DIMS(T),Rho,DIMS(Rho),
      &     Ydot,DIMS(Ydot),Patm)
       implicit none
@@ -755,9 +801,9 @@ C     itol != 2
                else
 #endif
 C FIXME
-               RWRK(NZ) = Told(i,j)
-C               RWRK(NTEMP) = Told(i,j)
-C               RWRK(NZ) = Hold(i,j)
+C               RWRK(NZ) = Told(i,j)
+               RWRK(NTEMP) = Told(i,j)
+               RWRK(NZ) = Hold(i,j)
 C FIXME
 C               RWRK(NZ+Nspec+1) = Hold(i,j)
                RWRK(NRHO)= Rho(i,j)             
@@ -964,7 +1010,8 @@ c
                         TT1 = TT1SAVE
                         FIRST = .TRUE.
 C FIXME::is this the right thing to do when we have substeps???
-                        RWRK(NZ) = Told(i,j)
+C                        RWRK(NZ) = Told(i,j)
+                        RWRK(NZ) = Hold(i,j)
                         do n=1,Nspec
                            RWRK(NZ+n) = Ytemp(n)
                         end do
@@ -1084,8 +1131,9 @@ ccccccc
             enddo
 
 C FIXME
-            Tnew(i,j) = RWRK(NZ)
-C            Hnew(i,j) = RWRK(NZ)
+C            Tnew(i,j) = RWRK(NZ)
+            Tnew(i,j) = RWRK(NTEMP)
+            Hnew(i,j) = RWRK(NZ)
 
 C debugging FIXME
 C            Hnew(i,j) = RWRK(NZ+Nspec+1)

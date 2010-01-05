@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.8 2009-10-14 01:46:16 gilet Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.9 2010-01-05 19:19:32 gilet Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -3369,7 +3369,15 @@ c local vars
          end do
       else
 c nothing set up for when species are not conservative yet
-         call bl_abort("SUM_EXTF_SDCF:: species must be conservative");
+         do n = 1, nvar
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  sdcF(i,j,n) = 
+     &                 (extF(i,j,n) + sdcF(i,j,n))/rho(i,j)
+               end do
+            end do
+         end do
+
       end if
 
       end
