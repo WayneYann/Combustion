@@ -42,11 +42,17 @@ c     Local variables
       real*8 cfl_used
       real*8 umax
       real*8 dt
+      real*8 fixed_dt
       real*8 dt_dummy
 
       real*8 divu_max
 
       integer do_init, is, i, n, nd, ns
+
+C CEG debgging REMOVE ME
+      integer hi, lo, ncomp,j
+      real*8 ptherm(-1:nx)
+      real*8 Y(maxspec)
       
 c     New arrays for MISDC.
       real*8    const_src(0 :nx-1,maxscal)
@@ -62,7 +68,7 @@ c     New arrays for MISDC.
      $                  init_shrink, probtype,flame_offset,
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
-     $                  num_divu_iters, num_init_iters
+     $                  num_divu_iters, num_init_iters,fixed_dt
 
 
 c     Initialize chem/tran database
@@ -83,7 +89,7 @@ c     Set defaults, change with namelist
       flame_offset = 0.d0
       dpdt_factor = 0.d0
       Patm = 0
-      coef_avg_harm = 1
+      coef_avg_harm = 0
       misdc_iterMAX = 3
       divu_ceiling_flag = 1
       divu_dt_factor    = 0.4d0
@@ -91,6 +97,7 @@ c     Set defaults, change with namelist
       predict_temp_for_coeffs = 1
       num_divu_iters = 3
       num_init_iters = 2
+      fixed_dt = -1.d0
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
@@ -143,7 +150,6 @@ C                              computes rho, rhoH, I_R
 C Does NOT fill ghost cells
 C vel and press have uninitialized (ie grabage in) ghost cells coming out
          call initdata(vel_new,scal_new,I_R_new(0,0),dx)
-C         call write_plt(vel_new,scal_new,press_new,dx,99999,time)
 C CEG:: not sure where/if this get initialized if not done here
 C FIXME
 C I don't think scal(RhoRT) ever actually gets used for anything,
@@ -172,12 +178,16 @@ C Fills in ghost cells for rho, Y, Temp, rhoH
          call calc_diffusivities(scal_new,beta_new,mu_new)
 
          call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
+         call write_plt(vel_new,scal_new,press_new,divu_new,
+     &                  dx,dt,99999,time)
         
          print *,'initialVelocityProject: '
          dt_dummy = -1.d0
 
          do i=0,nx-1
             vel_old(i) = vel_new(i)
+C CEG:: for the event that divu_iters = 0
+            divu_old(i) = divu_new(i)
          enddo
 
 c     Define density for initial projection.
@@ -190,13 +200,38 @@ C press_new gets vals everywhere
          call project(vel_old,vel_new,rhohalf,divu_new,
      $                press_old,press_new,dx,dt_dummy,time)
 
-         call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
-     $               cfl,umax,dx,dt)
+C debugging FIXME
+C 1006 FORMAT((I5,1X),11(E22.15,1X))      
+C         hi = 255
+C         lo = 0
+C         ncomp = 11
+C         call compute_pthermo(scal_new,ptherm)
+C         open(UNIT=11, FILE='after.dat', STATUS = 'REPLACE')
+C         write(11,*)'# ', hi-lo, ncomp 
+C         do j=lo,hi
+C            do n = 1,Nspec
+C               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
+C            enddo
+C            write(11,1006) j, vel_new(j)*1.d-2, 
+C     &                     scal_new(j,Density)*1.d3,
+C     &                     (Y(n),n=1,Nspec),
+C     $                     scal_new(j,RhoH)*1.d-1,
+C     $                     scal_new(j,Temp),
+C     $                     ptherm(j)*1.d-1
+C         enddo
+C         close(11)
+C         stop
+CCCCCCCCCCCCC
 
-         dt = dt * init_shrink
-
-         dt_init = dt
-
+         if (fixed_dt > 0) then
+            dt = fixed_dt
+         else
+            call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
+     $                  cfl,umax,dx,dt)
+            
+            dt = dt * init_shrink
+            dt_init = dt
+         endif
 C CEG:: why no ghost cells here?-- everything is set up to fill ghost cells
 C  right before they are used
 C  I don't know if this is neccessary.  I don't think scal_old gets changed
@@ -244,10 +279,14 @@ C CEG:: do i really need to change the ghosts here???
 
             dt_init = dt
              
-            call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
-     $                  cfl,umax,dx,dt_new)
-            dt_new = dt_new * init_shrink
-            dt = min(dt_init,dt_new)
+            if (fixed_dt > 0) then
+               dt = fixed_dt
+            else
+               call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
+     $                     cfl,umax,dx,dt_new)
+               dt_new = dt_new * init_shrink
+               dt = min(dt_init,dt_new)
+            endif
             print *,' '
 
             do i = 0,nx-1
@@ -259,21 +298,45 @@ C CEG:: do i really need to change the ghosts here???
             enddo
 
          enddo
-  
-C         call write_plt(vel_new,scal_new,press_new,dx,99997,time)
 
          print *,' '
          print *,'...doing num_init_iters = ',num_init_iters 
          print *,' '
+
+C debugging FIXME
+C$$$         hi = 255
+C$$$         lo = 0
+C$$$         ncomp = 11
+C$$$         call compute_pthermo(scal_new,ptherm)
+C$$$         open(UNIT=11, FILE='before.dat', STATUS = 'REPLACE')
+C$$$         write(11,*)'# ', hi-lo, ncomp 
+C$$$         do j=lo,hi
+C$$$            do n = 1,Nspec
+C$$$               Y(n) = scal_new(i,FirstSpec+n-1)/scal_new(i,Density)
+C$$$            enddo
+C$$$            write(11,1006) j, vel_new(i)*1.d-2, 
+C$$$     &                     scal_new(i,Density)*1.d3,
+C$$$     &                     (Y(n),n=1,Nspec),
+C$$$     $                     scal_new(i,RhoH)*1.d-4,
+C$$$     $                     scal_new(i,Temp),
+C$$$     $                     ptherm(i)*1.d-1
+C$$$         enddo
+C$$$         close(11)
+CCCCCCCCCCCCC
+
          do n = 1,num_init_iters
 
             print *,' '
             print *,'INITIAL PRESSURE ITERATION ',n
 
-            call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
-     $                  cfl,umax,dx,dt)
-            dt = dt * init_shrink
-            dt = min(dt,dt_init)
+            if (fixed_dt > 0) then
+               dt = fixed_dt
+            else
+               call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
+     $                     cfl,umax,dx,dt)
+               dt = dt * init_shrink
+               dt = min(dt,dt_init)
+            endif
             write(6,1001) time,dt
 
             call advance(vel_old,vel_new,scal_old,scal_new,
@@ -301,10 +364,8 @@ c     Reset state, I_R
                         
          enddo
 
-         do i = 0,nx-1                  
-            write(13,*)(i+.5)*dx,divu_new(i)
-         enddo
-         call write_plt(vel_new,scal_new,press_new,dx,0,time)
+         call write_plt(vel_new,scal_new,press_new,divu_new,
+     &                  dx,dt,0,time)
 
          cfl_used = cfl * init_shrink
 
@@ -324,11 +385,15 @@ C-- Done with initialization--------------------
 C-- Now advance 
       do nsteps_taken = 1, nsteps
 
-         if (time > 0.d0) then            
-            call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
-     $                  cfl,umax,dx,dt_new)
-            dt = dt * change_max 
-            dt = min(dt,dt_new)            
+         if (time > 0.d0) then 
+            if (fixed_dt > 0) then
+               dt = fixed_dt
+            else
+               call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
+     $                     cfl,umax,dx,dt_new)
+               dt = dt * change_max 
+               dt = min(dt,dt_new)            
+            endif
          endif
 
          write(6,*)
@@ -356,10 +421,8 @@ c     update state, I_R, time
          enddo
          time = time + dt
 
-         do i = 0,nx-1                  
-            write(14,*)(i+.5)*dx,divu_new(i)
-         enddo
-         call write_plt(vel_new,scal_new,press_new,dx,nsteps_taken,time)
+         call write_plt(vel_new,scal_new,press_new,divu_new,dx,dt,
+     &                  nsteps_taken,time)
       enddo
 
       print *,' '      
