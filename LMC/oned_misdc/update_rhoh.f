@@ -10,11 +10,14 @@
       real*8     dRhs(0 :nx-1)
       real*8      Rhs(0 :nx-1)
       real*8 dx,dt,be_cn_theta,time
-      
+
+      real*8  h_hi,h_lo,h_mid
+      real*8  flux_lo,flux_hi
       real*8  dxsqinv
       real*8  beta_lo,beta_hi
       real*8  visc_term, RWRK
       integer i,n,is, IWRK
+
 
 c     FIXME: Add NULN terms
       if (LeEQ1 .ne. 1) then
@@ -33,9 +36,14 @@ c     FIXME: Add NULN terms
             beta_hi = 0.5*(beta(i,RhoH) + beta(i+1,RhoH))
          endif
 
-         visc_term = dxsqinv * dt * (1.d0 - be_cn_theta) * (
-     $        beta_hi*(scal_old(i+1,RhoH)-scal_old(i  ,RhoH)) -
-     $        beta_lo*(scal_old(i  ,RhoH)-scal_old(i-1,RhoH)) )
+         h_hi  = scal_old(i+1,RhoH) / scal_old(i+1,Density)
+         h_mid = scal_old(i  ,RhoH) / scal_old(i  ,Density)
+         h_lo  = scal_old(i-1,RhoH) / scal_old(i-1,Density)
+
+         flux_hi = beta_hi*(h_hi - h_mid)
+         flux_lo = beta_lo*(h_mid - h_lo)
+         visc_term = (flux_hi - flux_lo) * 
+     &        dxsqinv * dt * (1.d0 - be_cn_theta)
 
          scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
          Rhs(i) = dRhs(i) + scal_new(i,RhoH) + visc_term
