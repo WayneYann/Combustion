@@ -20,6 +20,8 @@
       real*8  visc(0:nx-1)
       real*8  RWRK
       integer i,n,is, IWRK
+      real*8  Tmid
+
 
 c*************************************************************************
 c     Add adv terms to old state prior to doing stuff below
@@ -55,11 +57,11 @@ c     Add rho.D.Grad(Y).Grad(H)  [with appropriate theta time centering]
 c*************************************************************************      
       call rhoDgradHgradY(scal_old,beta_old,visc,dx,time)
       do i = 0,nx-1
-         Rhs(i) = Rhs(i) + (1.d0 - be_cn_theta)*visc(i) 
+         Rhs(i) = Rhs(i) + dt*(1.d0 - be_cn_theta)*visc(i) 
       enddo
       call rhoDgradHgradY(scal_new,beta_new,visc,dx,time+dt)
       do i = 0,nx-1
-         Rhs(i) = Rhs(i) + be_cn_theta*visc(i) 
+         Rhs(i) = Rhs(i) + dt*be_cn_theta*visc(i) 
       enddo
 
 c*************************************************************************
@@ -67,7 +69,8 @@ c     Construct alpha from half-time level data
 c     (here, build rho to ensure correct extract of Y regardless of whether
 c     rho was updated independently - ie, assume no reset_rho_in_rho_states))
 c*************************************************************************
-      do i = 0,nx-1
+
+         do i = 0,nx-1
          rho_old = 0.d0
          rho_new = 0.d0
          do n = 1,Nspec
@@ -80,9 +83,13 @@ c*************************************************************************
             Ymid(n) =
      &           0.5d0*(scal_old(i,is)/rho_old + scal_new(i,is)/rho_new)
          enddo
-         call CKCPBS(scal_old(i,Temp),Ymid,IWRK,RWRK,cpmix)
+         Tmid = 0.5d0*(scal_old(i,Temp) + scal_new(i,Temp))
+C         call CKCPBS(scal_old(i,Temp),Ymid,IWRK,RWRK,cpmix)
+         call CKCPBS(Tmid,Ymid,IWRK,RWRK,cpmix)
          alpha(i) = 0.5d0 * (rho_old + scal_new(i,Density)) * cpmix
          Rhs(i) = Rhs(i) + scal_new(i,Temp)*alpha(i)
+C remove me
+         visc(i) = cpmix
       enddo
 
       end
