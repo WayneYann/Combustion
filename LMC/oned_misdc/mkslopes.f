@@ -19,7 +19,7 @@
       parameter( fromm = 4 )
 
       slope_order = 4
-      unlim       = 0
+      unlim       = 1
       
       if (slope_order .eq. 1) then
          do i = 0,nx-1
