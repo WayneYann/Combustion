@@ -7709,7 +7709,7 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
     phi_r = sc[10];
     Kc = 1.0 / (refC) * exp((g_RT[1] + g_RT[9]) - (g_RT[10]));
     k_r = k_f / Kc;
-    q_r[20] = phi_r * k_r;
+    q_r[30] = phi_r * k_r;
 
     /*reaction 32: H + CH4 <=> CH3 + H2 */
     phi_f = sc[1]*sc[10];
