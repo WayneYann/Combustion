@@ -2,7 +2,8 @@
       block data chemdat
       include 'spec.h'
       data traninit / -1 /
-      data tranfile / 'tran.asc.chem-H' /
+C      data tranfile / 'tran.asc.chem-H' /
+      data tranfile / 'tran.asc.CH4-2step' /
       data TMIN_TRANS / 0.d0 /
       data Pr / 0.7d0 /
       data Sc / 0.7d0 /
@@ -182,6 +183,8 @@ c
       CALL CKINDX(IDUMMY,RDUMMY,Nelt,Nspec,Nreac,Nfit)
       if (Nelt.gt.maxelts) then
          print *,'Too many elements, increase maxelts'
+         print *, 'Nelt = ',Nelt
+         print *, 'maxelts = ',maxelts
       endif
       if (Nspec.gt.maxspec) then
          print *,'Too many species, increase maxspec'
@@ -252,7 +255,7 @@ C-----------------------------------------------------------------------
       double precision res(NiterMAX), errMAX, hmix, T, DEN
 
       if (nochem_hack) then
-         print *,'ERROR: calling VODE with nochem_hack = true'
+         print *,'WARNING: calling VODE with nochem_hack = true'
          stop
       endif
 
@@ -272,7 +275,7 @@ C-----------------------------------------------------------------------
       enddo
 
       T = Z(0)
-      hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME)/RHO
+      hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
       errMax = ABS(hmix_TYP*1.e-12)
 
 c      print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
