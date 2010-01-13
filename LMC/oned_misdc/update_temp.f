@@ -31,34 +31,19 @@ c*************************************************************************
       enddo
 
 c*************************************************************************
-c     Initialize RHS = I_R + (1-theta) * Div( lambda Grad(T) ) at old time
+c     Initialize RHS = I_R + (1-theta) * [ Div( lambda Grad(T) ) +  
+C                                          rho.D.Grad(Y).Grad(h) ]
+C     at old time
 c*************************************************************************      
-      call set_bc_grow_s(scal_old,dx,time)
-      dxsqinv = 1.d0/(dx*dx)
+C this fn sets ghost cells
+      call get_temp_visc_terms(scal_old,beta_old,visc,dx,time)
       do i = 0,nx-1
-         Rhs(i) = I_R(i)*dt
-         if (coef_avg_harm .eq. 1) then
-            beta_lo = 2.d0 /
-     &           (1.d0/beta_old(i,Temp)+1.d0/beta_old(i-1,Temp))
-            beta_hi = 2.d0 /
-     &           (1.d0/beta_old(i,Temp)+1.d0/beta_old(i+1,Temp))
-         else
-            beta_lo = 0.5*(beta_old(i,Temp)+beta_old(i-1,Temp))
-            beta_hi = 0.5*(beta_old(i,Temp)+beta_old(i+1,Temp))
-         endif
-         
-         Rhs(i) =  Rhs(i) + (1.d0 - be_cn_theta)*dt*dxsqinv*(
-     $        beta_hi*(scal_old(i+1,Temp)-scal_old(i  ,Temp)) -
-     $        beta_lo*(scal_old(i  ,Temp)-scal_old(i-1,Temp)) )
+         Rhs(i) = I_R(i)*dt + (1.d0 - be_cn_theta)*dt*visc(i)  
       enddo
 
 c*************************************************************************
-c     Add rho.D.Grad(Y).Grad(H)  [with appropriate theta time centering]
+c     Add rho.D.Grad(Y).Grad(H)  at time n+1
 c*************************************************************************      
-      call rhoDgradHgradY(scal_old,beta_old,visc,dx,time)
-      do i = 0,nx-1
-         Rhs(i) = Rhs(i) + dt*(1.d0 - be_cn_theta)*visc(i) 
-      enddo
       call rhoDgradHgradY(scal_new,beta_new,visc,dx,time+dt)
       do i = 0,nx-1
          Rhs(i) = Rhs(i) + dt*be_cn_theta*visc(i) 
@@ -84,12 +69,9 @@ c*************************************************************************
      &           0.5d0*(scal_old(i,is)/rho_old + scal_new(i,is)/rho_new)
          enddo
          Tmid = 0.5d0*(scal_old(i,Temp) + scal_new(i,Temp))
-C         call CKCPBS(scal_old(i,Temp),Ymid,IWRK,RWRK,cpmix)
          call CKCPBS(Tmid,Ymid,IWRK,RWRK,cpmix)
          alpha(i) = 0.5d0 * (rho_old + scal_new(i,Density)) * cpmix
          Rhs(i) = Rhs(i) + scal_new(i,Temp)*alpha(i)
-C remove me
-         visc(i) = cpmix
       enddo
 
       end

@@ -1,5 +1,5 @@
       subroutine vel_edge_states(vel_old,rho_old,gp,
-     $                           macvel,sedge,dx,dt,time)
+     $                           macvel,sedge,dx,dt,time,tforces)
       implicit none
       include 'spec.h'
       real*8  vel_old(-1:nx)
@@ -9,8 +9,10 @@
       real*8    sedge(0:nx)
       real*8 dx
       real*8 dt, time
+      real*8  tforces(0:nx-1)
 
       real*8 slope(0:nx-1)
+      real*8 visc(0:nx-1)
       real*8 dth
       real*8 dthx
       real*8 eps
@@ -32,9 +34,9 @@
 
       do i = 1,nx-1
          slo = vel_old(i-1) + (0.5 - dthx*vel_old(i-1))*slope(i-1)
-     $        - dth*gp(i-1)/rho_old(i-1)
+     $        - dth*gp(i-1)/rho_old(i-1) + dth*tforces(i-1)
          shi = vel_old(i  ) - (0.5 + dthx*vel_old(i))*slope(i  )
-     $        - dth*gp(i  )/rho_old(i  )
+     $        - dth*gp(i  )/rho_old(i  ) + dth*tforces(i)
          if ( macvel(i) .gt. eps) then
             sedge(i) = slo
          else if ( macvel(i) .lt. -eps) then

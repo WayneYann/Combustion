@@ -104,7 +104,8 @@ c     Set defaults, change with namelist
       close(unit=9)
 c      write(*,fortin)
 
-      nochem_hack = .true.
+      nochem_hack = .false.
+      use_strang = .false.
 
       Pcgs = Patm * P1ATM
       
@@ -148,10 +149,8 @@ c     call minmax_vel(nx,vel_new)
 C take vals from PMF and fills vel, spec (rhoY), Temp
 C                              computes rho, rhoH, I_R
 C Does NOT fill ghost cells
-C vel and press have uninitialized (ie grabage in) ghost cells coming out
          call initdata(vel_new,scal_new,I_R_new(0,0),dx)
-C CEG:: not sure where/if this get initialized if not done here
-C FIXME
+C FIXME?
 C I don't think scal(RhoRT) ever actually gets used for anything,
 C  But scal_aofs still wants to compute an advection term for it,
 C  so initialize here to a riduculous number for now
@@ -165,7 +164,7 @@ C  so initialize here to a riduculous number for now
          scal_new(nx,RhoRT) = -1.d20
          press_old(nx) =  0.d0
   
-C Fills in ghost cells for rho, Y, Temp, rhoH 
+C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT 
          call set_bc_grow_s(scal_new,dx,time)
          do i = -1,nx
             do n = 1,nscal
@@ -196,32 +195,8 @@ c     Define density for initial projection.
          enddo
 
 C fills vel_new ghost cells, but not for vel_old 
-C press_new gets vals everywhere
          call project(vel_old,vel_new,rhohalf,divu_new,
      $                press_old,press_new,dx,dt_dummy,time)
-
-C debugging FIXME
-C 1006 FORMAT((I5,1X),11(E22.15,1X))      
-C         hi = 255
-C         lo = 0
-C         ncomp = 11
-C         call compute_pthermo(scal_new,ptherm)
-C         open(UNIT=11, FILE='after.dat', STATUS = 'REPLACE')
-C         write(11,*)'# ', hi-lo, ncomp 
-C         do j=lo,hi
-C            do n = 1,Nspec
-C               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
-C            enddo
-C            write(11,1006) j, vel_new(j)*1.d-2, 
-C     &                     scal_new(j,Density)*1.d3,
-C     &                     (Y(n),n=1,Nspec),
-C     $                     scal_new(j,RhoH)*1.d-1,
-C     $                     scal_new(j,Temp),
-C     $                     ptherm(j)*1.d-1
-C         enddo
-C         close(11)
-C         stop
-CCCCCCCCCCCCC
 
          if (fixed_dt > 0) then
             dt = fixed_dt
@@ -232,16 +207,14 @@ CCCCCCCCCCCCC
             dt = dt * init_shrink
             dt_init = dt
          endif
-C CEG:: why no ghost cells here?-- everything is set up to fill ghost cells
-C  right before they are used
-C  I don't know if this is neccessary.  I don't think scal_old gets changed
+C  CEG:: I don't know if this is neccessary.  I don't think scal_old 
+C        gets changed
          do i = 0,nx-1
             do n = 1,nscal
                scal_hold(i,n) = scal_old(i,n)
             enddo
          enddo
          
-C CEG:: do i really need to change the ghosts here???
          do i = -1,nx
             vel_old(i) =  vel_new(i)
          enddo
@@ -259,7 +232,6 @@ C CEG:: do i really need to change the ghosts here???
          print *,'...doing num_divu_iters = ',num_divu_iters 
          print *,' '
          print *,' '
-
          do nd = 1,num_divu_iters
 
             print *,' ...doing divu_iter number',nd,' dt=',dt
@@ -302,28 +274,11 @@ C CEG:: do i really need to change the ghosts here???
          print *,' '
          print *,'...doing num_init_iters = ',num_init_iters 
          print *,' '
-
-C debugging FIXME
-C$$$         hi = 255
-C$$$         lo = 0
-C$$$         ncomp = 11
-C$$$         call compute_pthermo(scal_new,ptherm)
-C$$$         open(UNIT=11, FILE='before.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# ', hi-lo, ncomp 
-C$$$         do j=lo,hi
-C$$$            do n = 1,Nspec
-C$$$               Y(n) = scal_new(i,FirstSpec+n-1)/scal_new(i,Density)
-C$$$            enddo
-C$$$            write(11,1006) j, vel_new(i)*1.d-2, 
-C$$$     &                     scal_new(i,Density)*1.d3,
-C$$$     &                     (Y(n),n=1,Nspec),
-C$$$     $                     scal_new(i,RhoH)*1.d-4,
-C$$$     $                     scal_new(i,Temp),
-C$$$     $                     ptherm(i)*1.d-1
-C$$$         enddo
-C$$$         close(11)
-CCCCCCCCCCCCC
-
+         if (num_init_iters .le. 0) then
+            initial_iter = 0
+         else
+            initial_iter = 1
+         endif
          do n = 1,num_init_iters
 
             print *,' '
@@ -356,13 +311,35 @@ c     Reset state, I_R
                   scal_new(i,ns) =  scal_hold(i,ns)
                   scal_old(i,ns) =  scal_hold(i,ns)
                enddo
-               do ns = 1,Nspec
+               do ns = 0,Nspec
                   I_R_new(i,ns) =  I_R_old(i,ns)
                enddo
                divu_new(i) = divu_old(i)
             enddo
-                        
+            initial_iter = 0          
          enddo
+C debugging FIXME
+C$$$ 1006 FORMAT((I5,1X),11(E22.15,1X))      
+C$$$         hi = 255
+C$$$         lo = 0
+C$$$         ncomp = 11
+C$$$         call compute_pthermo(scal_new,ptherm)
+C$$$         open(UNIT=11, FILE='after.dat', STATUS = 'REPLACE')
+C$$$         write(11,*)'# ', hi-lo, ncomp 
+C$$$         do j=lo,hi
+C$$$            do n = 1,Nspec
+C$$$               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
+C$$$            enddo
+C$$$            write(11,1006) j, vel_new(j)*1.d-2, 
+C$$$     &                     scal_new(j,Density)*1.d3,
+C$$$     &                     (Y(n),n=1,Nspec),
+C$$$     $                     scal_new(j,RhoH)*1.d-1,
+C$$$     $                     scal_new(j,Temp),
+C$$$     $                     ptherm(j)*1.d-1
+C$$$         enddo
+C$$$         close(11)
+C$$$         stop
+CCCCCCCCCCCCC
 
          call write_plt(vel_new,scal_new,press_new,divu_new,
      &                  dx,dt,0,time)
@@ -411,7 +388,7 @@ c     update state, I_R, time
             do ns = 1,nscal
                scal_old(i,ns) = scal_new(i,ns)   
             enddo
-            do ns = 1,Nspec
+            do ns = 0,Nspec
                I_R_old(i,ns) = I_R_new(i,ns) 
             enddo
             divu_old(i) = divu_new(i)

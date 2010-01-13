@@ -60,15 +60,19 @@ c     DVODE driver stuff
 
 c     LMC alg stuff
       integer probtype, misdc_iterMAX,on_lo,on_hi,max_order,
-     &     divu_ceiling_flag, predict_temp_for_coeffs
+     &     divu_ceiling_flag, predict_temp_for_coeffs, initial_iter
       parameter (on_lo = 0, on_hi = 1, max_order = 3)
       common / lmci / probtype, misdc_iterMAX, divu_ceiling_flag,
-     &     predict_temp_for_coeffs
+     &     predict_temp_for_coeffs, initial_iter
       save /lmci/
+
+      logical use_strang 
+      common / lmcl / use_strang
+      save /lmcl/
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),
      &     Y_bc(maxspec,0:1), h_bc(0:1), u_bc(0:1), flame_offset, 
-     &     coef_avg_harm, Pr, Sc, thickFacTR, thickFacCH,
+     &     coef_avg_harm, Pr, Sc, thickFacTR, thickFacCH, 
      &     rho_divu_ceiling, divu_dt_factor
       common / lmcr / dpdt_factor, Pcgs, T_bc, rho_bc,
      &     Y_bc, h_bc, u_bc, flame_offset,

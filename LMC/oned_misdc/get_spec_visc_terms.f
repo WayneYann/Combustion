@@ -12,14 +12,15 @@
       real*8 dxsqinv,RWRK
       real*8 Y(-1:nx,maxspec), sum_lo, sum_hi, sumRhoY_lo, sumRhoY_hi
       real*8 RhoYe_lo, RhoYe_hi
-      
+
+
       call set_bc_grow_s(scal,dx,time)
       do i = -1,nx
          do n=1,Nspec
             Y(i,n) = scal(i,FirstSpec+n-1)/scal(i,Density)
          enddo
       enddo
-      
+
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
          sum_lo = 0.d0
@@ -32,8 +33,8 @@
                beta_lo = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i-1,is))
                beta_hi = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i+1,is))
             else
-               beta_lo = 0.5*(beta(i,is) + beta(i-1,is))
-               beta_hi = 0.5*(beta(i,is) + beta(i+1,is))
+               beta_lo = 0.5d0*(beta(i,is) + beta(i-1,is))
+               beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
             endif
 
             flux_hi(n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
@@ -64,4 +65,5 @@
          endif
          
       end do
+        
       end

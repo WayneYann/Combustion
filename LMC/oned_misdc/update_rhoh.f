@@ -11,6 +11,7 @@
       real*8      Rhs(0 :nx-1)
       real*8 dx,dt,be_cn_theta,time
 
+      real*8  visc(0:nx-1)
       real*8  h_hi,h_lo,h_mid
       real*8  flux_lo,flux_hi
       real*8  dxsqinv
@@ -19,31 +20,16 @@
       integer i,n,is, IWRK
 
 
+      call get_rhoh_visc_terms(scal_old,beta,visc,dx,time)
+
 c     FIXME: Add NULN terms
       if (LeEQ1 .ne. 1) then
          print *,'update_rhoh does yet support non-unity Le'
          stop
       endif
 
-      call set_bc_grow_s(scal_old,dx,time)
-      dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
-         if (coef_avg_harm .eq. 1) then
-            beta_lo = 2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i-1,RhoH))
-            beta_hi = 2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i+1,RhoH))
-         else
-            beta_lo = 0.5*(beta(i,RhoH) + beta(i-1,RhoH))
-            beta_hi = 0.5*(beta(i,RhoH) + beta(i+1,RhoH))
-         endif
-
-         h_hi  = scal_old(i+1,RhoH) / scal_old(i+1,Density)
-         h_mid = scal_old(i  ,RhoH) / scal_old(i  ,Density)
-         h_lo  = scal_old(i-1,RhoH) / scal_old(i-1,Density)
-
-         flux_hi = beta_hi*(h_hi - h_mid)
-         flux_lo = beta_lo*(h_mid - h_lo)
-         visc_term = (flux_hi - flux_lo) * 
-     &        dxsqinv * dt * (1.d0 - be_cn_theta)
+         visc_term = dt*(1.d0 - be_cn_theta)*visc(i)
 
          scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
          Rhs(i) = dRhs(i) + scal_new(i,RhoH) + visc_term

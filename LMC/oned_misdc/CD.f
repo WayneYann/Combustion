@@ -275,9 +275,9 @@ C-----------------------------------------------------------------------
       enddo
 
       T = Z(0)
+      if(.not. use_strang) then
       hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
       errMax = ABS(hmix_TYP*1.e-12)
-
 c      print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
       call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
       if (Niter.lt.0) then
@@ -285,6 +285,7 @@ c      print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
          stop
       endif
 c      print *,'  ** Fdiag',TIME,T,Z(1),Niter
+      endif
 
       call CKHMS(T,IWRK,RWRK,HK)
       call CKCPBS(T,Y,IWRK,RWRK,CPB)
@@ -327,6 +328,7 @@ c      print *,'  ** Fdiag',TIME,T,Z(1),Niter
       parameter (ITOL=1, IOPT=1, ITASK=1)
       double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
       parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
+C      parameter (RTOL=1.0E-14, ATOLEPS=1.0E-14)
       external vodeF_T_RhoY, vodeJ, open_vode_failure_file
       integer n, MF, ISTATE, lout
       character*(maxspnml) name

@@ -18,6 +18,9 @@ c     Quantities passed in
       integer IWRK,i,n
       real*8 divu_max,marc,sum
 
+C debugging FIXME
+      integer hi, lo, ncomp, j
+
       call get_temp_visc_terms(scal,beta,divu,dx,time)
       call get_spec_visc_terms(scal,beta,ddivu,dx,time)
 
@@ -27,6 +30,8 @@ c     Quantities passed in
          do n = 1,Nspec
             rho = rho + scal(i,FirstSpec + n - 1)
          enddo
+C CEG:: makes a small difference b/t using rho & scal(density)
+         rho = scal(i,Density)
          do n = 1,Nspec
             Y(n) = scal(i,FirstSpec + n - 1) / rho
          enddo
@@ -34,10 +39,12 @@ c     Quantities passed in
          call CKMMWY(Y,IWRK,RWRK,mwmix)
          call CKCPBS(T,Y,IWRK,RWRK,cpmix)
 
+C FIXME
+C         write(11,1006) i, divu(i)*1.d3/cpmix
 C CEG additions
          call CKHMS(T,IWRK,RWRK,HK)
 
-C Using I_R(temp) leads to a large change in Vmax and press that is way off
+C using I_R(Temp) seems to make osciallations worse 
 C         divu(i) = (divu(i)/(rho*cpmix) + I_R(i,0)) / T
 C         marc = MAX(ABS(divu(i)),marc)
          divu(i) = divu(i)/(rho*cpmix*T)
@@ -52,6 +59,20 @@ C CEG:: debugging. remove me
 C            sum = sum -HK(n)*I_R(i,n)/(rho*cpmix*T)
          enddo
        enddo
+C debugging FIXME
+C$$$ 1006 FORMAT((I5,1X),(E22.15,1X))      
+C$$$         hi = 255
+C$$$         lo = 0
+C$$$         ncomp = 2
+C$$$         open(UNIT=11, FILE='divu.dat', STATUS = 'REPLACE')
+C$$$         write(11,*)'# ', hi-lo, ncomp 
+C$$$         do j=lo,hi
+C$$$            write(11,1006) j, divu(j)
+C$$$         enddo
+C$$$         close(11)
+C$$$         stop
+CCCCCCCCCCCCC
+
 
       divu_max = ABS(divu(0))
       do i = 1,nx-1
@@ -59,5 +80,7 @@ C            sum = sum -HK(n)*I_R(i,n)/(rho*cpmix*T)
       enddo
       print *,'*********** DIVU norm = ',divu_max,marc
 c      print *,'*********** DIVU norm = ',divu_max
+
+C      close(11)
 
       end

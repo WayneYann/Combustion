@@ -22,9 +22,15 @@ c     rho_flag used here to deal with rho scaling differences:
 c     viscosity,conduction (rho_flag=1): rho.du/dt=Div(D.Grad(u))
 c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
 
-      do i = 0,nx
-         beta(i) = 2.0d0 /(1.d0/beta_cc(i,n)+1.d0/beta_cc(i-1,n))
-      enddo
+      if (coef_avg_harm.eq.1) then
+         do i = 0,nx
+            beta(i) = 2.0d0 / (1.d0/beta_cc(i,n)+1.d0/beta_cc(i-1,n))
+         enddo
+      else
+         do i = 0,nx
+            beta(i) = 0.5d0*(beta_cc(i,n) + beta_cc(i-1,n))
+         enddo
+      endif
 
       fac = be_cn_theta * dt / (dx*dx)
 
@@ -44,11 +50,11 @@ c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
          scal_new(i,n) = u(i+1)
       enddo
       
-      do i = 0,nx-1
-         if (rho_flag.eq.2) then
+      if (rho_flag.eq.2) then
+         do i = 0,nx-1
             scal_new(i,n) = scal_new(i,n) * scal_new(i,Density)
-         endif
-      enddo
+         enddo
+      endif
       
       end
 

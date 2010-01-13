@@ -4,7 +4,8 @@ EXEname := lmc.exe
 #
 # Choose pmf file
 #
-pmf_source := H-flame_0370.f
+#pmf_source := H-flame_0370.f
+pmf_source := 2stepSoln0.8.f
 
 #
 # Choose reaction mechanism
@@ -13,11 +14,11 @@ pmf_source := H-flame_0370.f
 #REACTION_MECHANISM=GRI12
 #REACTION_MECHANISM=GRI30NON
 #REACTION_MECHANISM=GRI30
-#REACTION_MECHANISM=CH4-2STEP
+REACTION_MECHANISM=CH4-2STEP
 #REACTION_MECHANISM=GRI30HNO
 #REACTION_MECHANISM=DRM19
 #REACTION_MECHANISM=GLARBORG
-REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=CHEMH
 #REACTION_MECHANISM=LIDRYER
 
 ifeq (${USE_INTEL},TRUE)
@@ -76,6 +77,7 @@ chem_objects := $(chem_sources:%.f=%.o)
 
 f_sources += lmc.f ${chem_sources} prob.f \
              calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f \
+             get_vel_visc_terms.f\
              get_rhoh_visc_terms.f est_dt.f project.f strang_chem.f \
              pre_mac_predict.f compute_pthermo.f add_dpdt.f \
              mac_proj.f scal_aofs.f mkslopes.f bdsslopes.f \

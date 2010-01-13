@@ -70,25 +70,28 @@ c     Set linear source terms in common for ode integrators access
             Y(n) = RYnew(n)/scal_new(i,Density)
          enddo
 
-C CEG:: don't know that really need this
+C CEG:: don't know that really need this; RhoH_new should already
          scal_new(i,RhoH) = scal_old(i,RhoH)+
      &        + dt*const_src(i,RhoH)
      &        + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
          hmix = scal_new(i,RhoH) / scal_new(i,Density)
 
          TSAVE = Tnew
-         errMax = hmix_TYP * 1.e-10
-         call FORT_TfromHYpt(Tnew,hmix,Y,
-     &        Nspec,errMax,NiterMAX,res,Niter)
-         if (Niter.lt.0) then
-            print *,'SC: H to T solve failed in F, Niter=',Niter
-            print *,'hmix_TYP:',hmix_TYP
-            stop
+         if (use_strang) then
+            scal_new(i,Temp) = Tnew
+         else
+            errMax = hmix_TYP * 1.e-10
+            call FORT_TfromHYpt(Tnew,hmix,Y,
+     &           Nspec,errMax,NiterMAX,res,Niter)
+            if (Niter.lt.0) then
+               print *,'SC: H to T solve failed in F, Niter=',Niter
+               print *,'hmix_TYP:',hmix_TYP
+               stop
+            endif
+            scal_new(i,Temp) = Tnew
          endif
-         scal_new(i,Temp) = Tnew
 
 c     Define change in state due to chemistry.
-C CEG:: I don't think I_R(temp) as marc did it is right
          call CKHMS(0.5d0*(Told+Tnew),IWRK,RWRK,HK)
          call CKHMS(Told,IWRK,RWRK,HK_old)
          call CKHMS(Tnew,IWRK,RWRK,HK_new)
@@ -103,25 +106,29 @@ C CEG:: I don't think I_R(temp) as marc did it is right
      $           - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
             Yhalf(n) = 0.5d0*(scal_old(i,is)/rho_old
      &           +           Y(n)/scal_new(i,Density))
-            I_R(i,0) = I_R(i,0) + HK(n)*const_src(i,is)
+            I_R(i,0) = I_R(i,0) - ( HK(n)*const_src(i,is)
      &                 + 0.5d0*(HK_old(n)*lin_src_old(i,is)
-     &                 + HK_new(n)*lin_src_new(i,is))
-            sum = sum - I_R(i,n) * HK(n)
+     &                 + HK_new(n)*lin_src_new(i,is)) )
+C            sum = sum - I_R(i,n) * HK(n)
 C            write(19,*)i,HK_old(n),HK(n),HK_new(n)
          enddo
          rho_half = 0.5d0*(rho_old + scal_new(i,Density))
          CALL CKCPBS(0.5d0*(scal_old(i,Temp)+Tnew),Yhalf,IWRK,RWRK,cp)
 C         I_R(i,0) = -I_R(i,0)/(cp*rho_half)
 
+C         I_R(i,0) =  
+C     $           (scal_new(i,Temp)-scal_old(i,Temp)) / dt
+C     $            - (const_src(i,RhoH) - I_R(i,0)
+C     $           + 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
+C     $                         (rho_half*cp)
          I_R(i,0) =  
      $           (scal_new(i,Temp)-scal_old(i,Temp)) / dt
-     $            - (const_src(i,RhoH) - I_R(i,0)
+     $            - ( I_R(i,0) + const_src(i,RhoH)
      $           + 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
-     $                         (rho_half*cp)
+     $           (rho_half*cp)
 
-         sum = sum/(rho_half*cp)
-         diff = sum - I_R(i,0)
-         write(18,*)i,I_R(i,0),sum,diff
+C         diff = sum - I_R(i,0)
+C         write(18,*)i,I_R(i,0),sum,diff
       enddo
-        
+
       end
