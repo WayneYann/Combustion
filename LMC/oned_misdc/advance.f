@@ -523,7 +523,7 @@ CCCCCCCCCCC debugging FIXME
          enddo
          close(11)
          write(*,*)'strang chem'
-         stop
+C         stop
 CCCCCCCCCCCCC      
 c     
 c*****************************************************************

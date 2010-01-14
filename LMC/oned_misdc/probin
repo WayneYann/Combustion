@@ -7,8 +7,8 @@
   chkfile = 'null'
   plot_int = 1
   chk_int = 1
-  change_max = 1.0
-  init_shrink = 1.
+  change_max = 1.1
+  init_shrink = 0.1
   probtype = 1
   flame_offset = -2.45
   dpdt_factor = 0.
@@ -17,7 +17,6 @@
   num_divu_iters = 0
   num_init_iters = 0
   misdc_iterMAX = 1
-  fixed_dt = 0.000013
 /
 
 

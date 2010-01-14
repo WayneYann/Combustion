@@ -120,6 +120,7 @@ c----------------------------------------------------------------------
                   Z(n) = scal(i,FirstSpec+n-1)
                enddo
                rhoh_INIT = scal(i,RhoH)
+               if (use_strang) rho_strang = scal(i,Density)
                call vodeF_T_RhoY(Nspec+1,time,Z(0),ZP(0),RWRK,IWRK)
                do n=0,Nspec
                   I_R(i,n) = ZP(N)

@@ -274,8 +274,29 @@ C-----------------------------------------------------------------------
          Y(K) = Z(K)/RHO
       enddo
 
+      if( use_strang) then
+C CEG:: this was  a bad idea.  rho decreases a lot (compared with LMC rho)
+C       when done this way
+C$$$         do K=1,Nspec
+C$$$            C(K) = MAX(0.d0,Z(K)*invmwt(K))
+C$$$            Y(K) = Z(K)/rho_strang
+C$$$         enddo
+C$$$         write(*,*)rho_strang
+C$$$C CEG:: maybe it's a better idea to do it like LMC, where rho is determined
+C$$$C       by Y_m's and enforcing P=1 atm
+C$$$         call CKRHOY(P1ATM,Z(0),Y,IWRK,RWRK,RHO)
+C$$$         rho_strang = RHO
+C$$$         write(*,*)RHO
+C$$$         T = Z(0)
+         call CKRHOY(P1ATM,Z(0),Y,IWRK,RWRK,RHO)
+         do K=1,Nspec
+            Y(K) = Z(K)/RHO
+         enddo
+         T = Z(0)
+
+      else
+
       T = Z(0)
-      if(.not. use_strang) then
       hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
       errMax = ABS(hmix_TYP*1.e-12)
 c      print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
@@ -297,6 +318,9 @@ c      print *,'  ** Fdiag',TIME,T,Z(1),Niter
          SUM = SUM - HK(K)*ZP(K)
       END DO
       ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
+
+C      write(*,*)TIME,RHO,Y(4),ZP(4)/RHO
+
       END
 
       subroutine vodeJ(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
@@ -339,7 +363,6 @@ C      parameter (RTOL=1.0E-14, ATOLEPS=1.0E-14)
 
       double precision dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum
       logical bad_soln
-
 
 c     DVODE workspace requirements      
       integer dvr, dvi
@@ -410,6 +433,15 @@ C      DVIWRK(4) = 0
       do n=1,Nspec
          Z(n) = RYold(n)
       end do
+
+C don't need this anymore
+C for strang splitting need to initialize rho
+C      if (use_strang) then
+C         rho_strang = 0.d0
+C         do n=1,Nspec
+C            rho_strang = rho_strang + RYold(n)
+C         end do
+C      endif
 
 c     Always form Jacobian to start
       FIRST = .TRUE.

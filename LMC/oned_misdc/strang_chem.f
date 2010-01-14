@@ -61,6 +61,11 @@ c     Set linear source terms in common for ode integrators access
             stop
          endif
 
+C         if (i .eq. 125) then
+C            write(*,*) 'hit 125'
+C            stop
+C         endif
+
          scal_new(i,Density) = 0.d0
          do n = 1,Nspec
             scal_new(i,Density) = scal_new(i,Density) + RYnew(n)

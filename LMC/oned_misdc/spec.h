@@ -2,7 +2,7 @@
 c     Chem species, etc
       integer maxreac, maxspec, maxelts, maxthrdb, maxtp, maxsp,
      &     maxspnml
-      parameter (maxreac = 100, maxspec=30, maxelts=3,
+      parameter (maxreac = 100, maxspec=30, maxelts=6,
      &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
 
 c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
@@ -54,8 +54,8 @@ c     DVODE driver stuff
       save /dvdi/
 
       double precision c_0(0:maxspec), c_1(0:maxspec), rhoh_INIT,
-     &     hmix_TYP
-      common / dvdr / c_0, c_1, rhoh_INIT, hmix_TYP
+     &     hmix_TYP, rho_strang
+      common / dvdr / c_0, c_1, rhoh_INIT, hmix_TYP, rho_strang
       save /dvdr/
 
 c     LMC alg stuff
