@@ -633,11 +633,12 @@ c
       call blutilinitrand(134527)
       call blutilinitrand(111397)
 
-      do j = lmodemin,lmodemax
-         do i = 0,j
+      do i = lmodemin,lmodemax
+         do j = 0,i
             call blutilrand(alphalm(i,j))
             call blutilrand(betalm(i,j))
             call blutilrand(gammalm(i,j))
+c           write(6,*)"numbers",i,j,alphalm(i,j),betalm(i,j),gammalm(i,j)
          end do
       end do
  
@@ -1239,7 +1240,6 @@ c              endif
                      ctr = ctr + 1
 
 c set local coordinates
-
                if (r.LE.delta(1)) then
                   theta = zero
                   phi = zero
@@ -1253,6 +1253,12 @@ c set local coordinates
                   theta = ATAN2(SQRT((xloc-blobx)**2+(yloc-bloby)**2)/r,(zloc-blobz)/r)-Pi
                   phi = ATAN2((yloc-bloby)/r,(xloc-blobx)/r)
                endif
+c              if(i.eq.75.and.j.eq.75.and. k.eq.70)then
+c                write(6,*)"l,m",l,m
+c                write(6,*)"pi,theta",phi,theta
+c                write(6,*)"alpha,",alphalm(l,m),betalm(l,m),gammalm(l,m)
+c                write(6,*)"sph",Ylm(l,m,phi,COS(theta))
+c              endif
 
                      rfront = rfront +
      &                    betalm(l,m)

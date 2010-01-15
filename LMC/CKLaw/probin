@@ -1,7 +1,7 @@
  &fortin
   blobr = .001
-  blobr = .001
   blobr = .0005
+  blobr = .001
   blobx = 0.
   bloby = 0.
   blobz = 0.
@@ -18,6 +18,7 @@
   nchemdiag = 1
   pertmag = .001
   pertmag = .1
+  pertmag = 2.
   turb_scale = 1.0	  
  /
  &heattransin
