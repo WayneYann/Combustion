@@ -17,8 +17,7 @@
       character char_of_int*(5)
       
       integer i,n,nvars
-      pltfile(1:3) = 'plt'
-      
+      pltfile(1:3) = 'plt'       
       write(char_of_int,1005) nsteps
       pltfile(4:8) = char_of_int
  1005 format(i5.5)

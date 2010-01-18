@@ -111,7 +111,7 @@ C    integrating rhoY instead of just Y.  Run into contradiction of
 C    enforcing P = 1atm requires that rho changes, however reactions
 C    cannot (and do not) explicitly change rho; so we have two different
 C    values for rho  
-      use_strang = .false.
+      use_strang = .true.
 
       Pcgs = Patm * P1ATM
       
@@ -213,8 +213,7 @@ C fills vel_new ghost cells, but not for vel_old
             dt = dt * init_shrink
             dt_init = dt
          endif
-C  CEG:: I don't know if this is neccessary.  I don't think scal_old 
-C        gets changed
+C  CEG:: needed for strang chemistry
          do i = 0,nx-1
             do n = 1,nscal
                scal_hold(i,n) = scal_old(i,n)
@@ -324,6 +323,24 @@ c     Reset state, I_R
             enddo
             initial_iter = 0          
          enddo
+
+         call write_plt(vel_new,scal_new,press_new,divu_new,
+     &                  dx,dt,0,time)
+
+         cfl_used = cfl * init_shrink
+
+         print *,' '      
+         print *,' '      
+         print *,'COMPLETED INITIAL ITERATIONS'
+         print *,' '      
+         print *,'START ADVANCING THE SOLUTION '
+         print *,' '            
+
+ 1001    format('Advancing: starting time = ',
+     $        e15.9,' with dt = ',e15.9)
+
+      endif
+C-- Done with initialization--------------------
 C debugging FIXME
 C$$$ 1006 FORMAT((I5,1X),11(E22.15,1X))      
 C$$$         hi = 255
@@ -346,24 +363,6 @@ C$$$         enddo
 C$$$         close(11)
 C$$$         stop
 CCCCCCCCCCCCC
-
-         call write_plt(vel_new,scal_new,press_new,divu_new,
-     &                  dx,dt,0,time)
-
-         cfl_used = cfl * init_shrink
-
-         print *,' '      
-         print *,' '      
-         print *,'COMPLETED INITIAL ITERATIONS'
-         print *,' '      
-         print *,'START ADVANCING THE SOLUTION '
-         print *,' '            
-
- 1001    format('Advancing: starting time = ',
-     $        e15.9,' with dt = ',e15.9)
-
-      endif
-C-- Done with initialization--------------------
 
 C-- Now advance 
       do nsteps_taken = 1, nsteps

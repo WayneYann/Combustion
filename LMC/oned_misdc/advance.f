@@ -412,6 +412,25 @@ C       until after all num_init_iters are done
          call project(vel_old,vel_new,rhohalf,divu_new,
      $        press_old,press_new,dx,dt)
       endif
+CCCCCCCCCCC debugging FIXME
+ 1006 FORMAT((I5,1X),11(E22.15,1X))      
+         call compute_pthermo(scal_new,ptherm)
+         open(UNIT=11, FILE='corr.dat', STATUS = 'REPLACE')
+         write(11,*)'# 256 12'
+         do j=0,nx-1
+            do n = 1,Nspec
+               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
+            enddo
+            write(11,1006) j, vel_new(j)*1.d-2, 
+     &                     scal_new(j,Density)*1.d3,
+     &                     (Y(n),n=1,Nspec),
+     $                     scal_new(j,RhoH)*1.d-1,
+     $                     scal_new(j,Temp),
+     $                     ptherm(j)*1.d-1
+         enddo
+         close(11)
+C         stop
+CCCCCCCCCCCCC      
 
       end
 
@@ -429,8 +448,7 @@ C       until after all num_init_iters are done
       real*8      aofs(0 :nx-1,nscal)
       real*8  beta_old(-1:nx,nscal)
       real*8  beta_new(-1:nx,nscal)
-      real*8    mu_old(-1:nx)
-      real*8    mu_new(-1:nx)
+      real*8  mu_dummy(-1:nx)
       real*8   rhohalf(0 :nx-1)
       real*8    tforce(0 :nx-1,nscal)
       real*8      visc(0 :nx-1)
@@ -466,24 +484,6 @@ C CEG debugging FIXME
       
 
       be_cn_theta = 0.5d0
-CCCCCCCCCCC debugging FIXME
-         call compute_pthermo(scal_old,ptherm)
-         open(UNIT=11, FILE='before.dat', STATUS = 'REPLACE')
-         write(11,*)'# 256 12'
-         do j=0,nx-1
-            do n = 1,Nspec
-               Y(n) = scal_old(j,FirstSpec+n-1)*1.d3
-            enddo
-            write(11,1006) j, macvel(j)*1.d-2, 
-     &                     scal_old(j,Density)*1.d3,
-     &                     (Y(n),n=1,Nspec),
-     $                     scal_old(j,RhoH)*1.d-1,
-     $                     scal_old(j,Temp),
-     $                     ptherm(j)*1.d-1
-         enddo
-         close(11)
-         write(*,*)'strang chem'
-CCCCCCCCCCCCC      
 
       if (nochem_hack) then
          print *,'WARNING! doing nochem_hack...'
@@ -501,36 +501,23 @@ CCCCCCCCCCCCC
                lin_src_new(i,n) = 0.d0
             enddo
          enddo
-         call strang_chem(scal_old,scal_old,
+         call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_new,dt/2.d0)
-      endif
-CCCCCCCCCCC debugging FIXME
- 1006 FORMAT((I5,1X),11(E22.15,1X))      
-         call compute_pthermo(scal_old,ptherm)
-         open(UNIT=11, FILE='corr.dat', STATUS = 'REPLACE')
-         write(11,*)'# 256 12'
          do j=0,nx-1
-            do n = 1,Nspec
-               Y(n) = scal_old(j,FirstSpec+n-1)*1.d3
+            do n = FirstSpec,LastSpec
+               scal_old(j,n) = scal_new(j,n)
             enddo
-            write(11,1006) j, macvel(j)*1.d-2, 
-     &                     scal_old(j,Density)*1.d3,
-     &                     (Y(n),n=1,Nspec),
-     $                     scal_old(j,RhoH)*1.d-1,
-     $                     scal_old(j,Temp),
-     $                     ptherm(j)*1.d-1
+            scal_old(j,Temp) = scal_new(j,Temp)
          enddo
-         close(11)
-         write(*,*)'strang chem'
-C         stop
-CCCCCCCCCCCCC      
+      endif
 c     
 c*****************************************************************
 c     
       print *,'... creating the diffusive terms with old data'
 C CEG:: fixme??
-C      call calc_diffusivities(scal_old,beta_old,mu_old,dx,time)
+      call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
+      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time)
 
 C CEG:: each one of these functions first calls set_bc(scal_old)
 C   maybe should change this
@@ -560,9 +547,10 @@ C   maybe should change this
        
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
 
-
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
+
+      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time)
 
 c*****************************************************************
 c     Either do c-n solve for new T prior to computing new 
@@ -585,7 +573,7 @@ C does not fill ghost cells
          call get_hmix_given_T_RhoY(scal_new,dx)      
 
          print *,'... compute new coeffs'
-         call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
+         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
       else
          print *,'... set new coeffs to old values for predictor'
          do n=1,nscal
@@ -595,7 +583,6 @@ C does not fill ghost cells
             enddo
          enddo
       endif
-
 
       print *,'... do predictor for species'
       do i=0,nx-1
@@ -614,6 +601,7 @@ C does not fill ghost cells
      $                 dx,dt,is,be_cn_theta,rho_flag)
       enddo
 
+
       print *,'... do predictor for rhoh (MISDC terms=0)'
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
      &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
@@ -627,7 +615,7 @@ C----------------------------------------------------------------
 C   Corrector
 
       print *,'... compute new coeffs'
-      call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
+      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
 
       call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &                 dRhs(0,1),Rhs(0,FirstSpec),dx,dt,
@@ -647,13 +635,40 @@ C   Corrector
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
       call rhoh_to_temp(scal_new)
 
-
       if (nochem_hack) then
          print *,'WARNING! doing nochem_hack...'
       else
-         call strang_chem(scal_new,scal_new,
+         do j=0,nx-1
+            do n = FirstSpec,LastSpec
+               scal_old(j,n) = scal_new(j,n)
+            enddo
+            scal_old(j,Temp) = scal_new(j,Temp)
+            scal_old(j,Density) = scal_new(j,Density)
+         enddo
+
+         call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_new,dt/2.d0)
       endif
+
+CCCCCCCCCCC debugging FIXME
+C$$$ 1006 FORMAT((I5,1X),11(E22.15,1X))      
+C$$$         call compute_pthermo(scal_new,ptherm)
+C$$$         open(UNIT=11, FILE='corr.dat', STATUS = 'REPLACE')
+C$$$         write(11,*)'# 256 12'
+C$$$         do j=0,nx-1
+C$$$            do n = 1,Nspec
+C$$$               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
+C$$$            enddo
+C$$$            write(11,1006) j, macvel(j)*1.d-2, 
+C$$$     &                     scal_new(j,Density)*1.d3,
+C$$$     &                     (Y(n),n=1,Nspec),
+C$$$     $                     scal_new(j,RhoH)*1.d-1,
+C$$$     $                     scal_new(j,Temp),
+C$$$     $                     ptherm(j)*1.d-1
+C$$$         enddo
+C$$$         close(11)
+C$$$         write(*,*)'AFTER end'
+CCCCCCCCCCCCC      
 
       end

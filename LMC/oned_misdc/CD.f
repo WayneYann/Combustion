@@ -11,7 +11,7 @@ C      data tranfile / 'tran.asc.chem-H' /
       data thickFacTR / 1.d0 /
       data thickFacCH / 1.d0 /
       data max_vode_subcycles / 15000 /
-      data min_vode_timestep / 1.e-14 /
+      data min_vode_timestep / 1.e-19 /
       data Pcgs / -1 /
       data iH2  / -1 /
       data iO2  / -1 /
@@ -246,13 +246,20 @@ C-----------------------------------------------------------------------
       double precision TIME, Z(0:maxspec+1), ZP(0:maxspec), RPAR(*)
       integer NEQ, IPAR(*)
       
-      double precision RHO, CPB, SUM, Y(maxspec)
+      double precision RHO, CPB, SUM, Y(maxspec),X(maxspec),sumX
       double precision HK(maxspec), WDOTK(maxspec), C(maxspec), RWRK
       integer K, IWRK
 
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
       double precision res(NiterMAX), errMAX, hmix, T, DEN
+C     For strang
+C     Variables in Z are:  Z(0)   = T
+C                          Z(K) = Y(K)
+C     For SDC
+C     Variables in Z are:  Z(0)   = T
+C                          Z(K) = rho*Y(K)
+C
 
       if (nochem_hack) then
          print *,'WARNING: calling VODE with nochem_hack = true'
@@ -264,19 +271,18 @@ C-----------------------------------------------------------------------
          stop
       endif
 
-      RHO = 0.d0
-      do K=1,Nspec
-         RHO = RHO + Z(K)
-      enddo
-
-      do K=1,Nspec
-         C(K) = MAX(0.d0,Z(K)*invmwt(K))
-         Y(K) = Z(K)/RHO
+      do K = 1, Nspec
+         if (Z(K) .lt. 0.d0) then
+            write(*,*)'Z_m < 0,  m = ',K
+            stop
+         endif
       enddo
 
       if( use_strang) then
+C
 C CEG:: this was  a bad idea.  rho decreases a lot (compared with LMC rho)
 C       when done this way
+C
 C$$$         do K=1,Nspec
 C$$$            C(K) = MAX(0.d0,Z(K)*invmwt(K))
 C$$$            Y(K) = Z(K)/rho_strang
@@ -288,28 +294,63 @@ C$$$         call CKRHOY(P1ATM,Z(0),Y,IWRK,RWRK,RHO)
 C$$$         rho_strang = RHO
 C$$$         write(*,*)RHO
 C$$$         T = Z(0)
-         call CKRHOY(P1ATM,Z(0),Y,IWRK,RWRK,RHO)
-         do K=1,Nspec
-            Y(K) = Z(K)/RHO
-         enddo
-         T = Z(0)
+C
+C CEG:: this wasn't a good idea either.  rho decreases a lot (compared with 
+C       LMC rho) when done this way
+C
+C$$$         sumX = 0.d0
+C$$$         do K=1,Nspec
+C$$$            C(K) = MAX(0.d0,Z(K)*invmwt(K))
+C$$$            sumX = sumX + C(K)
+C$$$         enddo
 
+C$$$         do K=1,Nspec
+C$$$            X(K) = C(K)/sumX
+C$$$         enddo
+C$$$         call CKRHOX(P1ATM,Z(0),X,IWRK,RWRK,RHO)
+C$$$         do K=1,Nspec
+C$$$            Y(K) = Z(K)/RHO
+C$$$         enddo
+C$$$         T = Z(0)
+C
+C  Doing exactly what LMC does
+C
+         T = Z(0)
+C     this function computes rho (= Pressure/(R* Temp* sum(Y_m/W_m)))  
+         CALL CKRHOY(P1ATM,T,Z(1),IWRK,RWRK,RHO)
+C     calculate molar concentrations from mass fractions; result in RPAR(NC)
+         CALL CKYTCP(P1ATM, T, Z(1), IWRK, RWRK, C)
+         call CKCPBS(T,Z(1),IWRK,RWRK,CPB)
+      
       else
 
-      T = Z(0)
-      hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
-      errMax = ABS(hmix_TYP*1.e-12)
-c      print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-      call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
-      if (Niter.lt.0) then
-         print *,'F: H to T solve failed in F, Niter=',Niter
-         stop
-      endif
-c      print *,'  ** Fdiag',TIME,T,Z(1),Niter
+         RHO = 0.d0
+         do K=1,Nspec
+            RHO = RHO + Z(K)
+         enddo
+         
+         sumX = 0.d0
+         do K=1,Nspec
+            C(K) = MAX(0.d0,Z(K)*invmwt(K))
+            sumX = sumX + C(K)
+            Y(K) = Z(K)/RHO
+         enddo
+
+         T = Z(0)
+         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
+         errMax = ABS(hmix_TYP*1.e-12)
+c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
+         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
+         if (Niter.lt.0) then
+            print *,'F: H to T solve failed in F, Niter=',Niter
+            stop
+         endif
+c     print *,'  ** Fdiag',TIME,T,Z(1),Niter
+         call CKCPBS(T,Y,IWRK,RWRK,CPB)
+
       endif
 
       call CKHMS(T,IWRK,RWRK,HK)
-      call CKCPBS(T,Y,IWRK,RWRK,CPB)
       call CKWC(T,C,IWRK,RWRK,WDOTK)
       SUM = 0.d0
       DO K = 1, Nspec
@@ -319,7 +360,22 @@ c      print *,'  ** Fdiag',TIME,T,Z(1),Niter
       END DO
       ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
 
-C      write(*,*)TIME,RHO,Y(4),ZP(4)/RHO
+      if(use_strang) then
+         DO K = 1, Nspec
+            ZP(K) = ZP(K)/RHO
+         enddo         
+      endif
+
+C       write(*,1007)TIME,RHO,CPB,P1ATM
+C       write(*,1006)(Z(k),k=0,Nspec)
+C       write(*,1006)(ZP(k),k=0,Nspec)
+C       write(*,1008)(C(k),k=1,Nspec)
+C       write(*,*)'***********************************'
+C CEG debugging FIXME
+C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
+ 1006 FORMAT(7(E22.15,1X))
+ 1007 FORMAT(4(E22.15,1X))
+ 1008 FORMAT(6(E22.15,1X))      
 
       END
 
@@ -352,7 +408,7 @@ C      write(*,*)TIME,RHO,Y(4),ZP(4)/RHO
       parameter (ITOL=1, IOPT=1, ITASK=1)
       double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
       parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
-C      parameter (RTOL=1.0E-14, ATOLEPS=1.0E-14)
+C      parameter (RTOL=1.0E-11, ATOLEPS=1.0E-11)
       external vodeF_T_RhoY, vodeJ, open_vode_failure_file
       integer n, MF, ISTATE, lout
       character*(maxspnml) name
@@ -398,9 +454,9 @@ C      DVRWRK(4) = 0.d0
       DVRWRK(5) = 0.d0
       DVRWRK(6) = 0.d0
       DVRWRK(7) = min_vode_timestep
-      DVRWRK(8) = 0.d0
-      DVRWRK(9) = 0.d0
-      DVRWRK(10) = 0.d0
+C      DVRWRK(8) = 0.d0
+C      DVRWRK(9) = 0.d0
+C      DVRWRK(10) = 0.d0
 C      DVIWRK(1) = 0
 C      DVIWRK(2) = 0
 C      DVIWRK(3) = 0
@@ -408,9 +464,9 @@ C      DVIWRK(4) = 0
       DVIWRK(5) = 0
       DVIWRK(6) = max_vode_subcycles
       DVIWRK(7) = 0
-      DVIWRK(8) = 0
-      DVIWRK(9) = 0
-      DVIWRK(10) = 0
+C      DVIWRK(8) = 0
+C      DVIWRK(9) = 0
+C      DVIWRK(10) = 0
 
       if (do_diag.eq.1) nsubchem = nchemdiag
       
@@ -467,7 +523,13 @@ c     Always form Jacobian to start
 
          TT1save = TT1
          TT2 = TT1 + dtloc
-
+         
+C         write(*,*)'NEQ, TT1, TT2, ITOL, RTOL ATOL'
+C         write(*,*)NEQ, TT1, TT2, dt
+C, ITOL, RTOL, ATOL
+C         write(*,*)'ITASK, ISTATE, IOPT, MF'
+C         write(*,*)ITASK, ISTATE, IOPT, MF
+C         stop
          CALL DVODE
      &        (vodeF_T_RhoY, NEQ, Z(0), TT1, TT2, ITOL, RTOL, ATOL,
      &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
