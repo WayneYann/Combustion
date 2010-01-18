@@ -105,12 +105,6 @@ c     Set defaults, change with namelist
 c      write(*,fortin)
 
       nochem_hack = .false.
-C CEG:: only use strang with nochem_hack = true
-C i couldn't figure out a way to get chemistry working when
-C    integrating rhoY instead of just Y.  Run into contradiction of
-C    enforcing P = 1atm requires that rho changes, however reactions
-C    cannot (and do not) explicitly change rho; so we have two different
-C    values for rho  
       use_strang = .true.
 
       Pcgs = Patm * P1ATM
