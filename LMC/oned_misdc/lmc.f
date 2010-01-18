@@ -68,7 +68,8 @@ c     New arrays for MISDC.
      $                  init_shrink, probtype,flame_offset,
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
-     $                  num_divu_iters, num_init_iters,fixed_dt
+     $                  num_divu_iters, num_init_iters,fixed_dt,
+     $                  nochem_hack, use_strang
 
 
 c     Initialize chem/tran database
@@ -98,14 +99,13 @@ c     Set defaults, change with namelist
       num_divu_iters = 3
       num_init_iters = 2
       fixed_dt = -1.d0
+      nochem_hack = .false.
+      use_strang = .true.
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)
 c      write(*,fortin)
-
-      nochem_hack = .false.
-      use_strang = .true.
 
       Pcgs = Patm * P1ATM
       

@@ -407,8 +407,8 @@ C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
       integer NEQ, ITOL, IOPT, ITASK, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)
       double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
-C      parameter (RTOL=1.0E-11, ATOLEPS=1.0E-11)
+C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
+      parameter (RTOL=1.0E-11, ATOLEPS=1.0E-11)
       external vodeF_T_RhoY, vodeJ, open_vode_failure_file
       integer n, MF, ISTATE, lout
       character*(maxspnml) name
