@@ -243,10 +243,38 @@ C  CEG:: needed for strang chemistry
             
             call strang_chem(scal_old,scal_new,
      $                       const_src,lin_src_old,lin_src_new,
-     $                       I_R_new,dt)
+     $                       I_R_new,dt*0.5d0)
            
-            call calc_divu(scal_new,beta_new,I_R_new,
+            call calc_divu(scal_old,beta_new,I_R_new,
      &                     divu_new,dx,time)
+
+CCCCCCCCCCC debugging FIXME
+C$$$ 1006 FORMAT((I5,1X),11(E22.15,1X))      
+C$$$ 1007 FORMAT((I5,1X),(E22.15,1X))      
+C$$$         call compute_pthermo(scal_new,ptherm)
+C$$$         open(UNIT=11, FILE='snew.dat', STATUS = 'REPLACE')
+C$$$         write(11,*)'# 256 12'
+C$$$         do j=0,nx-1
+C$$$            do n = 1,Nspec
+C$$$               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
+C$$$            enddo
+C$$$            write(11,1006) j, vel_new(j)*1.d-2, 
+C$$$     &                     scal_new(j,Density)*1.d3,
+C$$$     &                     (Y(n),n=1,Nspec),
+C$$$     $                     scal_new(j,RhoH)*1.d-1,
+C$$$     $                     scal_new(j,Temp),
+C$$$     $                     ptherm(j)*1.d-1
+C$$$         enddo
+C$$$         close(11)
+C$$$         open(UNIT=11, FILE='divu.dat', STATUS = 'REPLACE')
+C$$$         write(11,*)'# 256 2'
+C$$$         do j=0,nx-1
+C$$$            write(11,1007) j, divu_new(j)
+C$$$         enddo
+C$$$         close(11)
+C$$$         write(*,*)'init divu iters'
+C$$$         stop
+CCCCCCCCCCCCC      
 
             print *,'divu_iters velocity Project: '
             dt_dummy = -1.d0

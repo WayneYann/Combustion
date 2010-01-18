@@ -1,5 +1,5 @@
 &fortin
-  nsteps = 1
+  nsteps = 10
   stop_time = 1.e4
   cfl = 0.5
   problo = 0.
@@ -14,8 +14,8 @@
   dpdt_factor = 0.
   Patm = 1.0
   predict_temp_for_coeffs = 1
-  num_divu_iters = 0
-  num_init_iters = 1
+  num_divu_iters = 3
+  num_init_iters = 4
   misdc_iterMAX = 1
   fixed_dt = 0.0000018
 /

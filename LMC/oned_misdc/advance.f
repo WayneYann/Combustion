@@ -413,22 +413,22 @@ C       until after all num_init_iters are done
      $        press_old,press_new,dx,dt)
       endif
 CCCCCCCCCCC debugging FIXME
- 1006 FORMAT((I5,1X),11(E22.15,1X))      
-         call compute_pthermo(scal_new,ptherm)
-         open(UNIT=11, FILE='corr.dat', STATUS = 'REPLACE')
-         write(11,*)'# 256 12'
-         do j=0,nx-1
-            do n = 1,Nspec
-               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
-            enddo
-            write(11,1006) j, vel_new(j)*1.d-2, 
-     &                     scal_new(j,Density)*1.d3,
-     &                     (Y(n),n=1,Nspec),
-     $                     scal_new(j,RhoH)*1.d-1,
-     $                     scal_new(j,Temp),
-     $                     ptherm(j)*1.d-1
-         enddo
-         close(11)
+C$$$ 1006 FORMAT((I5,1X),11(E22.15,1X))      
+C$$$         call compute_pthermo(scal_new,ptherm)
+C$$$         open(UNIT=11, FILE='corr.dat', STATUS = 'REPLACE')
+C$$$         write(11,*)'# 256 12'
+C$$$         do j=0,nx-1
+C$$$            do n = 1,Nspec
+C$$$               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
+C$$$            enddo
+C$$$            write(11,1006) j, vel_new(j)*1.d-2, 
+C$$$     &                     scal_new(j,Density)*1.d3,
+C$$$     &                     (Y(n),n=1,Nspec),
+C$$$     $                     scal_new(j,RhoH)*1.d-1,
+C$$$     $                     scal_new(j,Temp),
+C$$$     $                     ptherm(j)*1.d-1
+C$$$         enddo
+C$$$         close(11)
 C         stop
 CCCCCCCCCCCCC      
 
