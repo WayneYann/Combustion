@@ -3,6 +3,32 @@
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
+      real*8 rdghgy(0 :nx-1)
+      real*8 visc(0 :nx-1)
+      real*8 dx, time
+      
+      integer i
+      real*8 beta_lo,beta_hi
+      real*8 flux_lo,flux_hi
+      
+c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
+C CEG:: the first thing rhoDgradHgradY() does is set grow cells
+C      call set_bc_grow_s(scal,dx,time)
+      call rhoDgradHgradY(scal,beta,rdghgy,dx,time)
+
+c     Add Div( lambda Grad(T) )
+      call addDivLambdaGradT(scal,beta,visc,dx,time)
+      do i = 0,nx-1
+         visc(i) = visc(i) + rdghgy(i)
+      enddo
+
+      end
+
+      subroutine addDivLambdaGradT(scal,beta,visc,dx,time)
+      implicit none
+      include 'spec.h'
+      real*8 scal(-1:nx  ,*)
+      real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
       real*8 dx, time
       
@@ -10,13 +36,12 @@
       real*8 beta_lo,beta_hi
       real*8 flux_lo,flux_hi
       real*8 dxsqinv
-      
-c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-C CEG:: the first thing rhoDgradHgradY() does is set grow cells
-C      call set_bc_grow_s(scal,dx,time)
-      call rhoDgradHgradY(scal,beta,visc,dx,time)
 
-c     Add Div( lambda Grad(T) )
+
+C CEG:: this function will sometimes be called independently from 
+C       get_temp_visc_terms, so need this here
+      call set_bc_grow_s(scal,dx,time)
+
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
          if (coef_avg_harm.eq.1) then
@@ -29,8 +54,9 @@ c     Add Div( lambda Grad(T) )
          
          flux_hi = beta_hi*(scal(i+1,Temp) - scal(i  ,Temp)) 
          flux_lo = beta_lo*(scal(i  ,Temp) - scal(i-1,Temp)) 
-         visc(i) =  visc(i) + (flux_hi - flux_lo) * dxsqinv
+         visc(i) = visc(i) + (flux_hi - flux_lo) * dxsqinv
       enddo
+
       end
 
       subroutine rhoDgradHgradY(scal,beta,visc,dx,time)
@@ -62,8 +88,6 @@ c     Get Hi, Yi at cell centers
          call CKHMS(scal(i,Temp),IWRK,RWRK,hi(1,i))
          do n=1,Nspec
             Y(n,i) = scal(i,FirstSpec+n-1)/rho
-C CEG:: changing tobe consistent with LMC
-C            Y(n,i) = scal(i,FirstSpec+n-1)/scal(i,Density)
          enddo
       enddo
 
@@ -76,8 +100,8 @@ c     Compute differences
                beta_lo = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i-1,is))
                beta_hi = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i+1,is))
             else
-               beta_lo = 0.5*(beta(i,is) + beta(i-1,is))
-               beta_hi = 0.5*(beta(i,is) + beta(i+1,is))
+               beta_lo = 0.5d0*(beta(i,is) + beta(i-1,is))
+               beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
             endif
             
             rdgydgh_lo = beta_lo*(Y(n,i)-Y(n,i-1))*(hi(n,i)-hi(n,i-1))

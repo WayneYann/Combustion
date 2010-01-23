@@ -122,33 +122,33 @@ C CEG:: make sure to get diffusivities at time n (old time)
          else
             print *,'... evolving without using temp eqn'
             print *,'... creating the diffusive terms with old data'
+            print *,'... set new coeffs to old values for predictor'
+C CEG:: this should already be true, but jus tbeing pedantic
+            do n=1,nscal
+               do i=-1,nx
+                  scal_new(i,Temp) = scal_old(i,Temp)
+                  beta_new(i,n) = beta_old(i,n)
+               enddo
+            enddo
 
 C     CEG:: each one of these functions first calls set_bc(scal_old)
 C     maybe should change this
-            call get_temp_visc_terms(scal_old,beta_old,
-     &           diff_old(0,Temp),dx,time)
             call get_spec_visc_terms(scal_old,beta_old,
      &           diff_old(0,FirstSpec),dx,time)
-            call get_rhoh_visc_terms(scal_old,beta_old,
+            call divRhoDHgradY(scal_old,beta_old,diff_old(0,RhoH),
+     &           dx,time)
+            call addDivLambdaGradT(scal_old,beta_old,
      &           diff_old(0,RhoH),dx,time)
-            
 c*****************************************************************
             
             print *,'... computing aofs with D(old) + R(guess)'
 
             do i = 0,nx-1
                do n = 1,Nspec
-                  Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
-               enddo
-               call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
-               rhocp_old = cpmix * scal_old(i,Density)
-               diff_old(i,Temp) = diff_old(i,Temp)/rhocp_old
-
-               do n = 1,Nspec
                   is = FirstSpec + n - 1
                   tforce(i,is) = diff_old(i,is) + I_R_new(i,n)
                enddo
-               tforce(i,Temp) = diff_old(i,Temp) + I_R_new(i,0)
+               tforce(i,RhoH) = diff_old(i,RhoH)
             enddo
             
             call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
@@ -158,43 +158,29 @@ c*****************************************************************
             print *,'... update rho'
             call update_rho(scal_old,scal_new,aofs,dx,dt)
 
-            if (predict_temp_for_coeffs .eq. 1) then
-               print *,'... predict temp with old coeffs'
-               rho_flag = 1
-               theta = 0.5d0
-C     CEG:: beta_new comes into advance() with the same value as 
-C     beta_old (the one we just calculated)
-               call update_temp(scal_old,scal_new,aofs,
-     $              alpha,beta_old,beta_new,I_R_new(0,0),
-     $              Rhs(0,Temp),dx,dt,theta,time)
-C     CEG:: just uses RHS and overwrites snew
-C     does not fill ghost cells
-               call cn_solve(scal_new,alpha,beta_old,Rhs(0,Temp),
-     $              dx,dt,Temp,theta,rho_flag)
-
-               call get_hmix_given_T_RhoY(scal_new,dx)      
-
-               print *,'... compute new coeffs'
-               call calc_diffusivities(scal_new,beta_new,mu_new,dx,
-     &                                 time+dt)
-            else
-               print *,'... set new coeffs to old values for predictor'
-               do n=1,nscal
-                  do i=-1,nx
-                     scal_new(i,Temp) = scal_old(i,Temp)
-                     beta_new(i,n) = beta_old(i,n)
-                  enddo
-               enddo
-            endif
 
 c*****************************************************************
             print *,'... do predictor for species (MISDC terms=0)'
+C CEG:: trying with CN as provisional solution for now
+            theta = 0.5d0
             do i=0,nx-1
-               dRhs(i,0) = 0.0d0
+               dRhs(i,0) = dt*(1.0d0 - theta)*diff_old(i,RhoH)
                do n=1,Nspec
                   dRhs(i,n) = dt*I_R_new(i,n)
                enddo
             enddo
+
+C CEG:: Trying something different FIXME??? 
+            print *,'... do predictor for rhoh (MISDC terms=0)'
+            call update_rhoh(scal_old,scal_new,aofs,alpha,beta_new,
+     &           dRhs(0,0),Rhs(0,Temp),dx,dt,theta,time)
+C Implicit solve for Temp^n+1
+            rho_flag = 1
+            call cn_solve(scal_new,alpha,beta_new,Rhs(0,Temp),
+     $           dx,dt,Temp,theta,rho_flag)
+            call calc_diffusivities(scal_new,beta_new,mu_new,dx,time)
+CCCCCCCCCCC
+
             call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &           dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
 
@@ -205,24 +191,15 @@ c*****************************************************************
      $              dx,dt,is,be_cn_theta,rho_flag)
             enddo
 
-C CEG:: trying NOT doing SDC with rhoH.  just do the old CN solve instead
-            theta = 0.5d0
-            print *,'... do predictor for rhoh (MISDC terms=0)'
-            call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &           dRhs(0,0),Rhs(0,RhoH),dx,dt,theta,time)
-            rho_flag = 2
-            call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $           dx,dt,RhoH,theta,rho_flag)
-
-            call rhoh_to_temp(scal_new)
-
             print *,'...   extract D sources'
+C CEG;; not that neither of these 2 fns use rhoH_new
+            call divRhoDHgradY(scal_new,beta_new,diff_new(0,RhoH),
+     &           dx,time)
+            call addDivLambdaGradT(scal_new,beta_new,
+     &           diff_new(0,RhoH),dx,time)
+
             if (be_cn_theta .ne. 0.d0) then
                do i = 0,nx-1
-                  diff_new(i,RhoH) = (
-     $                 (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-     $                 - aofs(i,RhoH) -
-     $                 (1.d0-theta)*diff_old(i,RhoH) )/theta
                   do n=1,Nspec
                      is = FirstSpec + n - 1
                      diff_new(i,is) = (
@@ -289,25 +266,22 @@ C----------------------------------------------------------------
                print *,'... create new diff_hat from current state'
                call calc_diffusivities(scal_new,beta_new,mu_new,
      &              dx,time+dt)
-               call get_temp_visc_terms(scal_new,beta_new,
-     &              diff_hat(0,Temp),dx,time+dt)
+
                call get_spec_visc_terms(scal_new,beta_new,
      &              diff_hat(0,FirstSpec),dx,time+dt)
+               call divRhoDHgradY(scal_new,beta_new,diff_hat(0,RhoH),
+     &              dx,time)
+               call addDivLambdaGradT(scal_new,beta_new,
+     &              diff_hat(0,RhoH),dx,time)
 
                do i = 0,nx-1
-                  do n = 1,Nspec
-                     Y(n) =scal_new(i,FirstSpec+n-1)/scal_new(i,Density)
-                  enddo
-                  call CKCPBS(scal_new(i,Temp),Y,IWRK,RWRK,cpmix)
-                  rhocp = cpmix * scal_new(i,Density)
-                  diff_hat(i,Temp) = diff_hat(i,Temp)/rhocp
                   do n = 1,Nspec
                      ispec = FirstSpec + n - 1
                      tforce(i,ispec) = I_R_new(i,n)
      &                    + 0.5d0*(diff_old(i,ispec)+diff_hat(i,ispec))
                   enddo
-                  tforce(i,Temp) = I_R_new(i,0)
-     &                 + 0.5d0*(diff_old(i,Temp)+diff_hat(i,Temp))
+                  tforce(i,RhoH) =
+     &                 + 0.5d0*(diff_old(i,RhoH)+diff_hat(i,RhoH))
                enddo
                
                print *,'... compute A with updated D+R source'
@@ -325,8 +299,18 @@ c*****************************************************************
                      dRhs(i,n) = dt*(I_R_new(i,n) 
      &                    + 0.5d0*(diff_old(i,is) - diff_hat(i,is)))
                   enddo
-                  dRhs(i,0) = 0.d0
+                  dRhs(i,0) = dt * 0.5d0 
+     $                 * (diff_old(i,RhoH)-diff_hat(i,RhoH))
                enddo
+
+               print *,'... update D for rhoh with A + R + MISDC(D)'
+               call update_rhoh(scal_old,scal_new,aofs,alpha,beta_new,
+     &              dRhs(0,0),Rhs(0,Temp),dx,dt,be_cn_theta,time)
+C     Implicit solve for Temp^n+1
+               rho_flag = 1
+               call cn_solve(scal_new,alpha,beta_new,Rhs(0,Temp),
+     $              dx,dt,Temp,be_cn_theta,rho_flag)
+
                call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &              dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
                rho_flag = 2
@@ -336,23 +320,16 @@ c*****************************************************************
      $                 dx,dt,is,be_cn_theta,rho_flag)
                enddo
 
-               print *,'... update D for rhoh with A + R + MISDC(D)'
-               call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &              dRhs(0,0),Rhs(0,RhoH),dx,dt,theta,time)
-               rho_flag = 2
-               call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,theta,rho_flag)
-               print *,'... create new temp from new RhoH, spec'
-               call rhoh_to_temp(scal_new)
+               print *,'...   extract D sources'
+C     CEG;; note that neither of these 2 fns use rhoH_new
+               call divRhoDHgradY(scal_new,beta_new,diff_new(0,RhoH),
+     &              dx,time)
+               call addDivLambdaGradT(scal_new,beta_new,
+     &              diff_new(0,RhoH),dx,time)
 
                print *,'... create diff_new from RhoH & spec solutions'
                if (be_cn_theta .ne. 0.d0) then
                   do i = 0,nx-1
-                     diff_new(i,RhoH) = (
-     $                    (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-     $                    - aofs(i,RhoH) - dRhs(i,0)/dt - 
-     $                    (1.d0-theta)*diff_old(i,RhoH) 
-     $                    )/theta
                      do n=1,Nspec
                         is = FirstSpec + n - 1
                         diff_new(i,is) = (
@@ -373,10 +350,6 @@ c*****************************************************************
                   print *,'... react with const and linear sources'
                   do n = 1,nscal
                      do i = 0,nx-1
-                        const_src(i,RhoH) = aofs(i,RhoH)
-                        lin_src_old(i,RhoH) = diff_old(i,RhoH)
-                        lin_src_new(i,RhoH) = diff_new(i,RhoH)
-
                         const_src(i,n) = aofs(i,n)
      $                       + diff_new(i,n) - diff_hat(i,n)
                         lin_src_old(i,n) = diff_old(i,n)

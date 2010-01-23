@@ -69,7 +69,7 @@ c     New arrays for MISDC.
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  num_divu_iters, num_init_iters,fixed_dt,
-     $                  nochem_hack, use_strang
+     $                  nochem_hack, use_strang, use_temp_eqn
 
 
 c     Initialize chem/tran database
@@ -101,6 +101,7 @@ c     Set defaults, change with namelist
       fixed_dt = -1.d0
       nochem_hack = .false.
       use_strang = .true.
+      use_temp_eqn = .true.
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
@@ -177,8 +178,8 @@ C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT
          call calc_diffusivities(scal_new,beta_new,mu_new)
 
          call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
-         call write_plt(vel_new,scal_new,press_new,divu_new,
-     &                  dx,dt,99999,time)
+C         call write_plt(vel_new,scal_new,press_new,divu_new,
+C     &                  dx,dt,99999,time)
         
          print *,'initialVelocityProject: '
          dt_dummy = -1.d0

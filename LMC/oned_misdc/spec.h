@@ -12,10 +12,11 @@ c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
      &     RhoRT, FirstSpec, LastSpec, nscal
-      logical nochem_hack
+      logical nochem_hack, use_temp_eqn
       common / speci / Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
-     &     RhoRT, FirstSpec, LastSpec, nscal, nochem_hack
+     &     RhoRT, FirstSpec, LastSpec, nscal, nochem_hack,
+     &     use_temp_eqn
       save /speci/
 
       character*(maxspnml) specNames(maxspec)
@@ -54,8 +55,8 @@ c     DVODE driver stuff
       save /dvdi/
 
       double precision c_0(0:maxspec), c_1(0:maxspec), rhoh_INIT,
-     &     hmix_TYP, rho_strang
-      common / dvdr / c_0, c_1, rhoh_INIT, hmix_TYP, rho_strang
+     &     hmix_TYP
+      common / dvdr / c_0, c_1, rhoh_INIT, hmix_TYP
       save /dvdr/
 
 c     LMC alg stuff

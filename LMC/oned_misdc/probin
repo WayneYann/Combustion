@@ -5,20 +5,21 @@
   problo = 0.
   probhi = 1.2
   chkfile = 'null'
-  plot_int = 1
-  chk_int = 1
+  plot_int = 100
+  chk_int = 100
   change_max = 1.1
   init_shrink = .1
   probtype = 1
   flame_offset = -2.45
   dpdt_factor = 0.
   Patm = 1.0
-  predict_temp_for_coeffs = 1
+  predict_temp_for_coeffs = 0
   num_divu_iters = 3
   num_init_iters = 4
-  misdc_iterMAX = 1
+  misdc_iterMAX = 2
   nochem_hack = .false.
-  use_strang = .true.
+  use_strang = .false.
+  use_temp_eqn = .false.
 /
 
 

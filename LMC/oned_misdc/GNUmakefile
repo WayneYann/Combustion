@@ -27,7 +27,7 @@ ifeq (${USE_INTEL},TRUE)
   fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
-  fCOMP := g77 -g -fbounds-check #-O -Wuninitialized 
+  fCOMP := g77 -g -fbounds-check -O -Wuninitialized 
   CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
   XTRALIBS :=  -lm -lg2c
 endif
@@ -77,7 +77,7 @@ chem_objects := $(chem_sources:%.f=%.o)
 
 f_sources += lmc.f ${chem_sources} prob.f \
              calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f \
-             get_vel_visc_terms.f\
+             get_vel_visc_terms.f divRhoDHgradY.f\
              get_rhoh_visc_terms.f est_dt.f project.f strang_chem.f \
              pre_mac_predict.f compute_pthermo.f add_dpdt.f \
              mac_proj.f scal_aofs.f mkslopes.f bdsslopes.f \

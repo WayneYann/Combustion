@@ -26,8 +26,8 @@ c     FIXME: Add NULN terms
             beta_lo = 2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i-1,RhoH))
             beta_hi = 2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i+1,RhoH))
          else
-            beta_lo = 0.5*(beta(i,RhoH) + beta(i-1,RhoH))
-            beta_hi = 0.5*(beta(i,RhoH) + beta(i+1,RhoH))
+            beta_lo = 0.5d0*(beta(i,RhoH) + beta(i-1,RhoH))
+            beta_hi = 0.5d0*(beta(i,RhoH) + beta(i+1,RhoH))
          endif
 
          h_hi  = scal(i+1,RhoH) / scal(i+1,Density)

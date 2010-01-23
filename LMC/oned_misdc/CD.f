@@ -272,8 +272,10 @@ C
       endif
 
       do K = 1, Nspec
-         if (Z(K) .lt. 0.d0) then
-            write(*,*)'Z_m < 0,  m = ',K
+         if (Z(K) .lt. -1.d-12) then
+C         if (Z(K) .lt. 0.d0) then
+            write(*,*)'WARNING!!!****************'
+            write(*,*)'Z_m < 0,  m = ',K, ',  Z_m = ',Z(K)
             stop
          endif
       enddo
@@ -290,7 +292,7 @@ C$$$         enddo
 C$$$         write(*,*)rho_strang
 C$$$C CEG:: maybe it's a better idea to do it like LMC, where rho is determined
 C$$$C       by Y_m's and enforcing P=1 atm
-C$$$         call CKRHOY(P1ATM,Z(0),Y,IWRK,RWRK,RHO)
+C$$$         call CKRHOY(Pcgs,Z(0),Y,IWRK,RWRK,RHO)
 C$$$         rho_strang = RHO
 C$$$         write(*,*)RHO
 C$$$         T = Z(0)
@@ -307,7 +309,7 @@ C$$$         enddo
 C$$$         do K=1,Nspec
 C$$$            X(K) = C(K)/sumX
 C$$$         enddo
-C$$$         call CKRHOX(P1ATM,Z(0),X,IWRK,RWRK,RHO)
+C$$$         call CKRHOX(Pcgs,Z(0),X,IWRK,RWRK,RHO)
 C$$$         do K=1,Nspec
 C$$$            Y(K) = Z(K)/RHO
 C$$$         enddo
@@ -317,9 +319,9 @@ C  Doing exactly what LMC does
 C
          T = Z(0)
 C     this function computes rho (= Pressure/(R* Temp* sum(Y_m/W_m)))  
-         CALL CKRHOY(P1ATM,T,Z(1),IWRK,RWRK,RHO)
+         CALL CKRHOY(Pcgs,T,Z(1),IWRK,RWRK,RHO)
 C     calculate molar concentrations from mass fractions; result in RPAR(NC)
-         CALL CKYTCP(P1ATM, T, Z(1), IWRK, RWRK, C)
+         CALL CKYTCP(Pcgs, T, Z(1), IWRK, RWRK, C)
          call CKCPBS(T,Z(1),IWRK,RWRK,CPB)
       
       else
@@ -331,21 +333,25 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
          
          sumX = 0.d0
          do K=1,Nspec
-            C(K) = MAX(0.d0,Z(K)*invmwt(K))
-            sumX = sumX + C(K)
+C            C(K) = MAX(0.d0,Z(K)*invmwt(K))
+            C(K) = Z(K)*invmwt(K)
             Y(K) = Z(K)/RHO
          enddo
 
-         T = Z(0)
-         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
-         errMax = ABS(hmix_TYP*1.e-12)
-c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
-         if (Niter.lt.0) then
-            print *,'F: H to T solve failed in F, Niter=',Niter
-            stop
-         endif
+C$$$         T = Z(0)
+C$$$         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
+C$$$         errMax = ABS(hmix_TYP*1.e-12)
+C$$$c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
+C$$$         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
+C$$$         if (Niter.lt.0) then
+C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
+C$$$            stop
+C$$$         endif
 c     print *,'  ** Fdiag',TIME,T,Z(1),Niter
+
+C CEG trying something new with the temp evolution FIXME??
+         call CKRHOPY(RHO,Pcgs,Y,IWRK,RWRK,T)
+CCCCC
          call CKCPBS(T,Y,IWRK,RWRK,CPB)
 
       endif
@@ -366,7 +372,7 @@ c     print *,'  ** Fdiag',TIME,T,Z(1),Niter
          enddo         
       endif
 
-C       write(*,1007)TIME,RHO,CPB,P1ATM
+C       write(*,1007)TIME,RHO,CPB,Pcgs
 C       write(*,1006)(Z(k),k=0,Nspec)
 C       write(*,1006)(ZP(k),k=0,Nspec)
 C       write(*,1008)(C(k),k=1,Nspec)
@@ -408,7 +414,7 @@ C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
       parameter (ITOL=1, IOPT=1, ITASK=1)
       double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
 C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
-      parameter (RTOL=1.0E-11, ATOLEPS=1.0E-11)
+      parameter (RTOL=1.0E-13, ATOLEPS=1.0E-13)
       external vodeF_T_RhoY, vodeJ, open_vode_failure_file
       integer n, MF, ISTATE, lout
       character*(maxspnml) name

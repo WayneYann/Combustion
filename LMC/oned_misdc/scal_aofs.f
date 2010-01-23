@@ -22,6 +22,8 @@
 
       real*8 Y(maxspec), RWRK, hmix
       integer IWRK
+
+      logical compute_comp(nscal)
       
       dth  = 0.5d0 * dt
       dthx = 0.5d0 * dt / dx
@@ -31,8 +33,19 @@
       
       call set_bc_s(scal_old,dx,time)
 
+      do n = 1, nscal
+         compute_comp(n) = .true.
+      enddo
+      compute_comp(Density) = .false.
+
+      if (use_temp_eqn) then
+         compute_comp(RhoH) = .false.
+      else
+         compute_comp(Temp) = .false.
+      endif
+
       do n = 1,nscal
-         if ((n.ne.Density) .and. (n.ne.RhoH) ) then
+         if (compute_comp(n) ) then
             
             if (n.eq.Temp) then
                iconserv = 0
@@ -88,6 +101,7 @@ c     Compute Rho on edges as sum of (Rho Y_i) on edges, rho.hmix as sum of (H_i
 c     NOTE: Assumes Le=1 (no Le terms in RhoH equation)
       if (LeEQ1 .ne. 1) then
          print *,'Le != 1 terms not yet in aofs for RhoH'
+         stop
       endif
 
       do i = 0,nx
@@ -100,8 +114,10 @@ c     NOTE: Assumes Le=1 (no Le terms in RhoH equation)
             ispec = FirstSpec-1+n
             Y(n) = sedge(i,ispec) / sedge(i,Density)
          enddo
-         call CKHBMS(sedge(i,Temp),Y,IWRK,RWRK,Hmix)
-         sedge(i,RhoH) = Hmix * sedge(i,Density)
+         if ( .not.compute_comp (RhoH) ) then 
+            call CKHBMS(sedge(i,Temp),Y,IWRK,RWRK,Hmix)
+            sedge(i,RhoH) = Hmix * sedge(i,Density)
+         endif
       enddo
 
       do n = 1,nscal

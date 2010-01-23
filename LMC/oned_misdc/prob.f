@@ -66,7 +66,8 @@ c----------------------------------------------------------------------
       double precision valsPMF(maxspec+3), RWRK, time, sum
       integer i, n, nPMF, IWRK
 
-
+       write(*,*)'*** initdata *****'
+       write(*,*)'Pcgs = ', Pcgs
       if (probtype.eq.1) then
 
          time = 0.d0
