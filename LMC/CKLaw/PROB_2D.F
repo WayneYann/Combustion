@@ -927,7 +927,9 @@ c ::: -----------------------------------------------------------
                   theta = ATAN2((y-bloby)/r,(x-blobx)/r)
                endif
 
-               rfront = sin(2.d0*Pi*3.d0*theta) + 0.583d0*sin(2.d0*Pi*5.d0*theta - 1.077)
+               rfront = sin(3.d0*theta) + 0.583d0*sin(5.d0*theta - 1.077)
+     &               + .634d0*sin(10.d0*theta - 2.0546d0)
+     &               + .364d0*sin(15.d0*theta - 0.0546d0)
  
                rfront = (blobr + pertmag* rfront * blobr - r + y_offset) *100.d0
 c              if(i.eq.160 .and. j.eq.160)then
