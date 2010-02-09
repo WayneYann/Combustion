@@ -2,8 +2,8 @@
       block data chemdat
       include 'spec.h'
       data traninit / -1 /
-C      data tranfile / 'tran.asc.chem-H' /
-      data tranfile / 'tran.asc.CH4-2step' /
+      data tranfile / 'tran.asc.chem-H' /
+C      data tranfile / 'tran.asc.CH4-2step' /
       data TMIN_TRANS / 0.d0 /
       data Pr / 0.7d0 /
       data Sc / 0.7d0 /
@@ -47,8 +47,13 @@ c     Ensure chem/tran initialized
          
          do i=-1, nx         
             Tt = MAX(scal(i,Temp),TMIN_TRANS) 
+            rho = 0.d0
             do n=1,Nspec
-               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
+               rho = rho + scal(i,FirstSpec+n-1)
+            enddo
+            do n=1,Nspec
+C               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
+               Y(n) = scal(i,FirstSpec+n-1) / rho
             enddo
             
             CALL CKMMWY(Y,IWRK,RWRK,Wavg)
@@ -271,14 +276,14 @@ C
          stop
       endif
 
-      do K = 1, Nspec
-         if (Z(K) .lt. -1.d-12) then
-C         if (Z(K) .lt. 0.d0) then
-            write(*,*)'WARNING!!!****************'
-            write(*,*)'Z_m < 0,  m = ',K, ',  Z_m = ',Z(K)
-            stop
-         endif
-      enddo
+C$$$      do K = 1, Nspec
+C$$$         if (Z(K) .lt. -1.d-12) then
+C$$$C         if (Z(K) .lt. 0.d0) then
+C$$$            write(*,*)'WARNING!!!****************'
+C$$$            write(*,*)'Z_m < 0,  m = ',K, ',  Z_m = ',Z(K)
+C$$$            stop
+C$$$         endif
+C$$$      enddo
 
       if( use_strang) then
 C
@@ -322,6 +327,11 @@ C     this function computes rho (= Pressure/(R* Temp* sum(Y_m/W_m)))
          CALL CKRHOY(Pcgs,T,Z(1),IWRK,RWRK,RHO)
 C     calculate molar concentrations from mass fractions; result in RPAR(NC)
          CALL CKYTCP(Pcgs, T, Z(1), IWRK, RWRK, C)
+         if (lim_rxns .gt. 0) then
+            do K=1,Nspec
+               C(K) = MAX(0.d0,C(K))
+            enddo
+         endif
          call CKCPBS(T,Z(1),IWRK,RWRK,CPB)
       
       else
@@ -333,8 +343,11 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
          
          sumX = 0.d0
          do K=1,Nspec
-C            C(K) = MAX(0.d0,Z(K)*invmwt(K))
-            C(K) = Z(K)*invmwt(K)
+            if (lim_rxns .eq. 0) then
+               C(K) = Z(K)*invmwt(K)
+            else
+               C(K) = MAX(0.d0,Z(K)*invmwt(K))
+            endif
             Y(K) = Z(K)/RHO
          enddo
 

@@ -7,7 +7,8 @@
       integer plot_int, chk_int
       integer num_init_iters
       integer num_divu_iters
-      
+      integer sdc_iter     
+
       real*8   vel_new(-1:nx  )
       real*8   vel_old(-1:nx  )
       real*8  scal_new(-1:nx  ,maxscal)
@@ -69,7 +70,8 @@ c     New arrays for MISDC.
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  num_divu_iters, num_init_iters,fixed_dt,
-     $                  nochem_hack, use_strang, use_temp_eqn
+     $                  nochem_hack, use_strang, use_temp_eqn,
+     $                  use_radau, V_in, lim_rxns
 
 
 c     Initialize chem/tran database
@@ -100,13 +102,17 @@ c     Set defaults, change with namelist
       num_init_iters = 2
       fixed_dt = -1.d0
       nochem_hack = .false.
-      use_strang = .true.
-      use_temp_eqn = .true.
+      use_strang = .false.
+      use_temp_eqn = .false.
+      use_radau = .false.
+      V_in = 1.d20
+      unlim = 0
+      lim_rxns = 1
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)
-c      write(*,fortin)
+      write(*,fortin)
 
       Pcgs = Patm * P1ATM
       
@@ -151,6 +157,10 @@ C take vals from PMF and fills vel, spec (rhoY), Temp
 C                              computes rho, rhoH, I_R
 C Does NOT fill ghost cells
          call initdata(vel_new,scal_new,I_R_new(0,0),dx)
+         call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+     &                  dx,dt,99999,time)
+C         stop
+
 C FIXME?
 C I don't think scal(RhoRT) ever actually gets used for anything,
 C  But scal_aofs still wants to compute an advection term for it,
@@ -167,19 +177,12 @@ C  so initialize here to a riduculous number for now
   
 C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT 
          call set_bc_grow_s(scal_new,dx,time)
-         do i = -1,nx
-            do n = 1,nscal
-               scal_old(i,n) = scal_new(i,n)
-            enddo
-         enddo
 
          call minmax_vel(nx,vel_new)
          
          call calc_diffusivities(scal_new,beta_new,mu_new)
 
          call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
-C         call write_plt(vel_new,scal_new,press_new,divu_new,
-C     &                  dx,dt,99999,time)
         
          print *,'initialVelocityProject: '
          dt_dummy = -1.d0
@@ -188,10 +191,11 @@ C     &                  dx,dt,99999,time)
             vel_old(i) = vel_new(i)
 C CEG:: for the event that divu_iters = 0
             divu_old(i) = divu_new(i)
-         enddo
-
+            do n = 1,nscal
+               scal_old(i,n) = scal_new(i,n)
+               beta_old(i,n) = beta_new(i,n) 
+            enddo
 c     Define density for initial projection.
-         do i = 0,nx-1
             rhohalf(i) = scal_old(i,Density)
          enddo
 
@@ -236,11 +240,27 @@ C  CEG:: needed for strang chemistry
 
             print *,' ...doing divu_iter number',nd,' dt=',dt
             
-            call strang_chem(scal_old,scal_new,
-     $                       const_src,lin_src_old,lin_src_new,
-     $                       I_R_new,dt*0.5d0)
+            if (use_strang) then
+               call strang_chem(scal_old,scal_new,
+     $              const_src,lin_src_old,lin_src_new,
+     $              I_R_new,dt*0.5d0)
+            else 
+C Using strang vs SDC seems to have practically no effect in the long run
+C maybe sdc needs a better estimate of IR here
+C increasing sdc iters did not help
+C               sdc_iter = misdc_iterMAX
+C               misdc_iterMAX = 10
+               call advance(vel_old,vel_new,scal_old,scal_new,
+     $                   I_R_new,I_R_new,press_old,press_new,
+     $                   divu_old,divu_new,dsdt,beta_old,beta_new,
+     $                   dx,0.5d0*dt,time)
+               do i = 0,nx-1
+                  vel_new(i) =  vel_old(i)
+               enddo
+C               misdc_iterMAX = sdc_iter
+            endif
            
-            call calc_divu(scal_old,beta_new,I_R_new,
+            call calc_divu(scal_old,beta_old,I_R_new,
      &                     divu_new,dx,time)
 
 CCCCCCCCCCC debugging FIXME
@@ -274,6 +294,8 @@ CCCCCCCCCCCCC
             print *,'divu_iters velocity Project: '
             dt_dummy = -1.d0
             
+C vel_old does not get used in proj(), 
+C assumes good data in vel_new
             call project(vel_old,vel_new,rhohalf,divu_new,
      $                   press_old,press_new,dx,dt_dummy,time)
 
@@ -282,6 +304,8 @@ CCCCCCCCCCCCC
             if (fixed_dt > 0) then
                dt = fixed_dt
             else
+C CEG:: not sure that this should be scal_new and not scal_old
+C   probably doesn't matter that much
                call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
      $                     cfl,umax,dx,dt_new)
                dt_new = dt_new * init_shrink
@@ -326,6 +350,7 @@ CCCCCCCCCCCCC
      $                   I_R_new,I_R_new,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
      $                   dx,dt,time)
+
             call minmax_vel(nx,vel_new)
 
             do i = 0,nx
@@ -347,7 +372,7 @@ c     Reset state, I_R
             initial_iter = 0          
          enddo
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,
+         call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
      &                  dx,dt,0,time)
 
          cfl_used = cfl * init_shrink
@@ -426,8 +451,16 @@ c     update state, I_R, time
          enddo
          time = time + dt
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,dx,dt,
-     &                  nsteps_taken,time)
+         if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
+     &        nsteps_taken.eq.nsteps) then 
+            call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+     $           dx,dt,nsteps_taken,time)
+         endif
+         if (MOD(nsteps_taken,chk_int).eq.0 .OR.
+     &        nsteps_taken.eq.nsteps) then 
+            call write_check(nsteps_taken,vel_new,scal_new,press_new,
+     $           I_R_new,divu_new,dsdt,dx,time,dt,cfl)
+         endif
       enddo
 
       print *,' '      

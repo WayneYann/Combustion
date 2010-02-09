@@ -60,17 +60,17 @@ C            sum = sum -HK(n)*I_R(i,n)/(rho*cpmix*T)
          enddo
        enddo
 C debugging FIXME
-C$$$ 1006 FORMAT((I5,1X),(E22.15,1X))      
-C$$$         hi = 255
-C$$$         lo = 0
-C$$$         ncomp = 2
-C$$$         open(UNIT=11, FILE='divu.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# ', hi-lo, ncomp 
-C$$$         do j=lo,hi
-C$$$            write(11,1006) j, divu(j)
-C$$$         enddo
-C$$$         close(11)
-C$$$         stop
+ 1006 FORMAT((I5,1X),6(E22.15,1X))      
+         hi = 255
+         lo = 0
+         ncomp = 7
+         open(UNIT=11, FILE='dfsn.dat', STATUS = 'REPLACE')
+         write(11,*)'# ', hi-lo, ncomp 
+         do j=lo,hi
+            write(11,1006) j, (ddivu(j,n),n=1,Nspec)
+         enddo
+         close(11)
+C         stop
 CCCCCCCCCCCCC
 
 

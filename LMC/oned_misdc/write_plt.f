@@ -1,4 +1,4 @@
-      subroutine write_plt(vel,scal,press,divu,dx,dt,nsteps,time)
+      subroutine write_plt(vel,scal,press,divu,I_R,dx,dt,nsteps,time)
       implicit none
       include 'spec.h'
 
@@ -7,6 +7,7 @@
       real*8  scal(-1:nx,nscal)
       real*8 press( 0:nx)
       real*8 divu( 0:nx-1)
+      real*8 I_R( 0:nx-1,0:Nspec)
       real*8 ptherm(-1:nx)
       real*8 dx
       real*8 dt
@@ -17,11 +18,12 @@
       character char_of_int*(5)
       
       integer i,n,nvars
-      pltfile(1:3) = 'ppt'
+      pltfile(1:3) = 'dpt'
       write(char_of_int,1005) nsteps
       pltfile(4:8) = char_of_int
  1005 format(i5.5)
- 1006 FORMAT(14(E15.8,1X))      
+C 1006 FORMAT(20(E15.8,1X))      
+ 1006 FORMAT(26(E15.8,1X))      
       call compute_pthermo(scal,ptherm)
       
       open(10,file=pltfile,form='formatted')
@@ -42,7 +44,8 @@ C         write(10,1006) (i+.5)*dx,(scal(i,FirstSpec+n),n=0,Nspec-1),
      $                     vel(i),
      $                     press(i),
      $                     ptherm(i),
-     $                     divu(i)
+     $                     divu(i),
+     $                     (I_R(i,n),n=1,Nspec)
       enddo
 
       end

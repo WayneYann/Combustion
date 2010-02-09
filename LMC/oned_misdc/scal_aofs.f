@@ -24,6 +24,10 @@
       integer IWRK
 
       logical compute_comp(nscal)
+
+CCCCCCCC
+      real*8 ptherm(0 :nx)
+CCCCCCCC
       
       dth  = 0.5d0 * dt
       dthx = 0.5d0 * dt / dx
@@ -38,7 +42,7 @@
       enddo
       compute_comp(Density) = .false.
 
-      if (use_temp_eqn) then
+      if (use_temp_eqn .or. use_strang) then
          compute_comp(RhoH) = .false.
       else
          compute_comp(Temp) = .false.
@@ -119,6 +123,26 @@ c     NOTE: Assumes Le=1 (no Le terms in RhoH equation)
             sedge(i,RhoH) = Hmix * sedge(i,Density)
          endif
       enddo
+
+CCCCCCCCCCC debugging FIXME
+ 1006 FORMAT(15(E22.15,1X))      
+         call compute_pthermo(sedge,ptherm)
+         open(UNIT=11, FILE='edge.dat', STATUS = 'REPLACE')
+         write(11,*)'# 256 12'
+         do i=0,nx-1
+            do n = 1,Nspec
+               Y(n) = sedge(i,FirstSpec+n-1)/sedge(i,Density)
+            enddo
+            write(11,1006) i*dx, macvel(i),
+     &                     sedge(i,Density),
+     &                     (Y(n),n=1,Nspec),
+     $                     sedge(i,RhoH),
+     $                     sedge(i,Temp),
+     $                     ptherm(i)
+         enddo
+         close(11)
+C         stop
+CCCCCCCCCCCCC      
 
       do n = 1,nscal
          if (n.eq.Temp) then

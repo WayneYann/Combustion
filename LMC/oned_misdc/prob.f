@@ -20,7 +20,11 @@ c     Set boundary data
       call pmf(xPMF,xPMF,valsPMF,nPMF)
       call CKXTY(valsPMF(4),IWRK,RWRK,Y_bc(1,0))
       T_bc(0) = valsPMF(1)
-      u_bc(0) = valsPMF(2)
+      if (ABS(V_in) .lt. 1.d20) then
+         u_bc(0) = V_in
+      else
+         u_bc(0) = valsPMF(2)
+      endif
 
       call CKHBMS(T_bc(0),Y_bc(1,0),IWRK,RWRK,h_bc(0))
       call CKRHOY(Pcgs,T_bc(0),Y_bc(1,0),IWRK,RWRK,rho_bc(0))

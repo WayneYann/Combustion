@@ -10,7 +10,6 @@
       real*8 smax,smin
       integer i
       integer slope_order
-      integer unlim
 
       integer cen,lim,flag,fromm
       parameter( cen = 1 )
@@ -18,8 +17,8 @@
       parameter( flag = 3 )
       parameter( fromm = 4 )
 
+
       slope_order = 4
-      unlim       = 0
       
       if (slope_order .eq. 1) then
          do i = 0,nx-1
