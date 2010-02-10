@@ -1852,7 +1852,7 @@ HeatTransfer::post_init_press (Real&        dt_init,
         {
             int havedivu = 1;
             projector->initialSyncProject(0,sig,parent->dtLevel(0),cur_time,
-                                          dt_init,havedivu);
+                                          havedivu);
         }
         delete [] sig;
 
@@ -2414,7 +2414,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 
         ViscBndry  visc_bndry;
         diffusion->getBndryDataGivenS(visc_bndry,rho_and_species,rho_and_species_crse,
-                                      state_ind,comp+1,1,time,rho_flag[comp]);
+                                      state_ind,comp+1,1);
         bool bndry_already_filled = true;
 
 	Real           rhsscale;
@@ -3884,7 +3884,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
         const int state_ind = first_spec + comp;
 	ViscBndry visc_bndry;
 	diffusion->getBndryDataGivenS(visc_bndry,rho_and_species,rho_and_species_crse,
-                                      state_ind,comp+1,1,time,rho_flag[comp]);
+                                      state_ind,comp+1,1);
 
 	ABecLaplacian visc_op(visc_bndry,dx);
 	visc_op.setScalars(0.0,1.0);
