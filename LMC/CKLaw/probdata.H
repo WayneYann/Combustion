@@ -51,8 +51,8 @@
  
       integer lmodemin, lmodemax, lpeak
       parameter (lmodemin=14, lmodemax=20, lpeak=17)
-      REAL_T alphalm(0:lmodemax,lmodemin:lmodemax)
-      REAL_T betalm(0:lmodemax,lmodemin:lmodemax)
-      REAL_T gammalm(0:lmodemax,lmodemin:lmodemax)
+      REAL_T alphalm(lmodemin:lmodemax,0:lmodemax)
+      REAL_T betalm(lmodemin:lmodemax,0:lmodemax)
+      REAL_T gammalm(lmodemin:lmodemax,0:lmodemax)
       common /YlmRand/ alphalm, betalm, gammalm
 
