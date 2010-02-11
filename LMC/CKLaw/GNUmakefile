@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.3 2009-11-20 06:38:15 jbb Exp $
+# $Id: GNUmakefile,v 1.4 2010-02-11 19:14:19 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -126,7 +126,9 @@ endif
 ifeq ($(USE_VELOCITY), TRUE)
   MySrcDirs += $(TOP)/pAmrvis
 else
-  MySrcDirs += $(TOP)/pAmrvis
+  ifeq ($(USE_NEWMECH), TRUE)
+    MySrcDirs += $(TOP)/pAmrvis
+  endif
 endif
 
 vpath %.cpp $(MySrcDirs) ${PMFdir}
