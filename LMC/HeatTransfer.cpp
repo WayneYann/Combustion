@@ -231,8 +231,8 @@ HeatTransfer::center_to_edge_fancy (const FArrayBox& cfab,
             {
                 const int inc = +1;
                 FArrayBox ovlpFab;
-                for (BoxList::iterator bli = gCells.begin();
-                     bli != gCells.end();
+                for (BoxList::const_iterator bli = gCells.begin(), end = gCells.end();
+                     bli != end;
                      ++bli)
                 {
                     if (bc_lo == HT_Edge)
@@ -252,8 +252,8 @@ HeatTransfer::center_to_edge_fancy (const FArrayBox& cfab,
             {
                 const int inc = -1;
                 FArrayBox ovlpFab;
-                for (BoxList::iterator bli = gCells.begin();
-                     bli != gCells.end();
+                for (BoxList::const_iterator bli = gCells.begin(), end = gCells.end();
+                     bli != end;
                      ++bli)
                 {
                     if (bc_hi == HT_Edge)
@@ -479,8 +479,8 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
-    for (std::map<std::string,Array<std::string> >::iterator it=auxDiag_names.begin();
-         it!=auxDiag_names.end(); ++it)
+    for (std::map<std::string,Array<std::string> >::iterator it = auxDiag_names.begin(), end = auxDiag_names.end();
+         it != end; ++it)
     {
         auxDiag[it->first] = new MultiFab(grids,it->second.size(),0);
         auxDiag[it->first]->setVal(0);
@@ -499,8 +499,9 @@ HeatTransfer::~HeatTransfer ()
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxnp1);    
     }
 
-    for (std::map<std::string,MultiFab*>::iterator it=auxDiag.begin();
-         it!=auxDiag.end(); ++it)
+    for (std::map<std::string,MultiFab*>::iterator it = auxDiag.begin(), end = auxDiag.end();
+         it != end;
+         ++it)
     {
         delete it->second;
     }
@@ -702,8 +703,8 @@ HeatTransfer::restart (Amr&          papa,
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
-    for (std::map<std::string,Array<std::string> >::iterator it=auxDiag_names.begin();
-         it!=auxDiag_names.end(); ++it)
+    for (std::map<std::string,Array<std::string> >::iterator it = auxDiag_names.begin(), end = auxDiag_names.end();
+         it != end; ++it)
     {
         auxDiag[it->first] = new MultiFab(grids,it->second.size(),0);
         auxDiag[it->first]->setVal(0);
@@ -8516,17 +8517,18 @@ HeatTransfer::setPlotVariables ()
     {
         std::cout << "\nState Plot Vars: ";
 
-        std::list<std::string>::const_iterator li = parent->statePlotVars().begin();
+        std::list<std::string>::const_iterator li = parent->statePlotVars().begin(), end = parent->statePlotVars().end();
 
-        for ( ; li != parent->statePlotVars().end(); ++li)
+        for ( ; li != end; ++li)
             std::cout << *li << ' ';
         std::cout << '\n';
 
         std::cout << "\nDerive Plot Vars: ";
 
-        li = parent->derivePlotVars().begin();
+        li  = parent->derivePlotVars().begin();
+        end = parent->derivePlotVars().end();
 
-        for ( ; li != parent->derivePlotVars().end(); ++li)
+        for ( ; li != end; ++li)
             std::cout << *li << ' ';
         std::cout << '\n';
     }
@@ -8561,8 +8563,8 @@ HeatTransfer::writePlotFile (const std::string& dir,
     std::list<std::string> derive_names;
     const std::list<DeriveRec>& dlist = derive_lst.dlist();
 
-    for (std::list<DeriveRec>::const_iterator it = dlist.begin();
-         it != dlist.end();
+    for (std::list<DeriveRec>::const_iterator it = dlist.begin(), end = dlist.end();
+         it != end;
          ++it)
     {
         if (parent->isDerivePlotVar(it->name()))
@@ -8573,7 +8575,9 @@ HeatTransfer::writePlotFile (const std::string& dir,
     }
 
     int num_auxDiag = 0;
-    for (std::map<std::string,MultiFab*>::const_iterator it = auxDiag.begin(); it!=auxDiag.end(); ++it)
+    for (std::map<std::string,MultiFab*>::const_iterator it = auxDiag.begin(), end = auxDiag.end();
+         it != end;
+         ++it)
     {
         num_auxDiag += it->second->nComp();
     }
@@ -8603,8 +8607,8 @@ HeatTransfer::writePlotFile (const std::string& dir,
 	    os << desc_lst[typ].name(comp) << '\n';
         }
 
-	for (std::list<std::string>::const_iterator it = derive_names.begin();
-             it != derive_names.end();
+	for (std::list<std::string>::const_iterator it = derive_names.begin(), end = derive_names.end();
+             it != end;
              ++it)
         {
 	    const DeriveRec* rec = derive_lst.get(*it);
@@ -8614,8 +8618,9 @@ HeatTransfer::writePlotFile (const std::string& dir,
         //
         // Hack in additional diagnostics.
         //
-        for (std::map<std::string,Array<std::string> >::const_iterator it = auxDiag_names.begin();
-             it!=auxDiag_names.end(); ++it)
+        for (std::map<std::string,Array<std::string> >::const_iterator it = auxDiag_names.begin(), end = auxDiag_names.end();
+             it != end;
+             ++it)
         {
             for (i=0; i<it->second.size(); ++i)
                 os << it->second[i] << '\n';
@@ -8725,8 +8730,8 @@ HeatTransfer::writePlotFile (const std::string& dir,
 
     if (derive_names.size() > 0)
     {
-	for (std::list<std::string>::const_iterator it = derive_names.begin();
-             it != derive_names.end();
+	for (std::list<std::string>::const_iterator it = derive_names.begin(), end = derive_names.end();
+             it != end;
              ++it) 
 	{
             if (*it == "avg_pressure" ||
@@ -8760,7 +8765,9 @@ HeatTransfer::writePlotFile (const std::string& dir,
     //
     // Cull data from diagnostic multifabs.
     //
-    for (std::map<std::string,MultiFab*>::const_iterator it = auxDiag.begin(); it!=auxDiag.end(); ++it)
+    for (std::map<std::string,MultiFab*>::const_iterator it = auxDiag.begin(), end = auxDiag.end();
+         it != end;
+         ++it)
     {
         int nComp = it->second->nComp();
         MultiFab::Copy(plotMF,*it->second,0,cnt,nComp,nGrow);
