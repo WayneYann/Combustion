@@ -4874,7 +4874,7 @@ HeatTransfer::advance (Real time,
         {
             std::vector< std::pair<int,Box> > isects = crsndgrids.intersections(mfi.validbox());
 
-            for (int i = 0; i < isects.size(); i++)
+            for (int i = 0, N = isects.size(); i < N; i++)
             {
                 const Box& ovlp = isects[i].second;
 
@@ -5090,7 +5090,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
 
         std::vector< std::pair<int,Box> > isects = rhoh_BA.intersections(RhoY.box());
 
-        for (int i = 0; i < isects.size(); i++)
+        for (int i = 0, N = isects.size(); i < N; i++)
         {
             const Box& isect = isects[i].second;
 
@@ -7355,7 +7355,7 @@ HeatTransfer::reflux ()
     {
         std::vector< std::pair<int,Box> > isects = baf.intersections(grids[mfi.index()]);
 
-        for (int i = 0; i < isects.size(); i++)
+        for (int i = 0, N = isects.size(); i < N; i++)
         {
             (*Vsync)[mfi].setVal(0,isects[i].second,0,BL_SPACEDIM);
             (*Ssync)[mfi].setVal(0,isects[i].second,0,NUM_STATE-BL_SPACEDIM);
