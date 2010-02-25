@@ -3,24 +3,17 @@
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
-      real*8 rdghgy(0 :nx-1)
       real*8 visc(0 :nx-1)
       real*8 dx, time
       
-      integer i
-      real*8 beta_lo,beta_hi
-      real*8 flux_lo,flux_hi
-      
+
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
 C CEG:: the first thing rhoDgradHgradY() does is set grow cells
 C      call set_bc_grow_s(scal,dx,time)
-      call rhoDgradHgradY(scal,beta,rdghgy,dx,time)
+      call rhoDgradHgradY(scal,beta,visc,dx,time)
 
 c     Add Div( lambda Grad(T) )
       call addDivLambdaGradT(scal,beta,visc,dx,time)
-      do i = 0,nx-1
-         visc(i) = visc(i) + rdghgy(i)
-      enddo
 
       end
 
@@ -55,7 +48,11 @@ C       get_temp_visc_terms, so need this here
          flux_hi = beta_hi*(scal(i+1,Temp) - scal(i  ,Temp)) 
          flux_lo = beta_lo*(scal(i  ,Temp) - scal(i-1,Temp)) 
          visc(i) = visc(i) + (flux_hi - flux_lo) * dxsqinv
+
       enddo
+
+ 1001 FORMAT(E22.15,1X)      
+            
 
       end
 
@@ -75,6 +72,12 @@ C       get_temp_visc_terms, so need this here
       real*8 Y(maxspec,-1:nx)
 
 
+
+CCCCCCCCCCC debugging FIXME
+C 1011 FORMAT((I5,1X),2(E22.15,1X))      
+C         open(UNIT=11, FILE='tvt.dat', STATUS = 'REPLACE')
+CCCCCCCCC
+
 c     Compute rhoD Grad(Yi).Grad(hi) terms
 
       dxsqinv = 1.d0/(dx*dx)
@@ -90,6 +93,9 @@ c     Get Hi, Yi at cell centers
             Y(n,i) = scal(i,FirstSpec+n-1)/rho
          enddo
       enddo
+C      do n = 1,Nspec
+C         hi(n,-1) = hi(n,0)
+C      enddo
 
 c     Compute differences
       do i = 0,nx-1
@@ -106,11 +112,29 @@ c     Compute differences
             
             rdgydgh_lo = beta_lo*(Y(n,i)-Y(n,i-1))*(hi(n,i)-hi(n,i-1))
             rdgydgh_hi = beta_hi*(Y(n,i+1)-Y(n,i))*(hi(n,i+1)-hi(n,i))
-            
+
+C$$$CCCCCCCCCCCCCCCCC            
+C$$$            write(11,1011) i,Y(n,i),Y(n,i-1)
+C$$$            write(11,1011) i,(Y(n,i)-Y(n,i-1)),(hi(n,i)-hi(n,i-1))
+C$$$            write(11,1011) i,hi(n,i),hi(n,i-1)
+C$$$            write(11,1011) i,scal(i,Temp),scal(i-1,Temp)
+C$$$            write(11,*)
+CCCCCCCCCCCCCCCCCCc
             dv = dv + (rdgydgh_hi + rdgydgh_lo)*0.5d0
          enddo
          
+CCCCCCCCCCCCC
+C         write(11,*)
+C         write(11,*)
+CCCCCCCCCCCCC
+
          visc(i) = dv*dxsqinv
+
         end do
 
+CCCCCCCCCCCCCC
+C         close(11)
+C         write(*,*)'end of step'
+C         stop
+CCCCCCCCCCCCC      
       end

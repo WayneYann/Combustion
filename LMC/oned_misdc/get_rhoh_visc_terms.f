@@ -6,10 +6,12 @@
       real*8 visc(0 :nx-1)
       real*8 dx, time
       
+C      real*8 tmp(0 :nx-1)
       integer i
       real*8 beta_lo,beta_hi
       real*8 flux_lo,flux_hi
       real*8 dxsqinv, h_lo, h_mid, h_hi
+
       
 c     Compute Div( lambda/cp Grad(hmix) )
 
@@ -20,6 +22,9 @@ c     FIXME: Add NULN terms
       endif
 
       call set_bc_grow_s(scal,dx,time)
+
+C      call divBetaHgradY(scal,beta,tmp,dx,time)
+
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1         
          if (coef_avg_harm.eq.1) then
@@ -36,7 +41,9 @@ c     FIXME: Add NULN terms
 
          flux_hi = beta_hi*(h_hi - h_mid)
          flux_lo = beta_lo*(h_mid - h_lo)
-         visc(i) = (flux_hi - flux_lo) * dxsqinv
+         visc(i) = (flux_hi - flux_lo) * dxsqinv 
+C+ tmp(i)
       enddo
+
       end
 

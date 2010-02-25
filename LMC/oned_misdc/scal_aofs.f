@@ -125,22 +125,22 @@ c     NOTE: Assumes Le=1 (no Le terms in RhoH equation)
       enddo
 
 CCCCCCCCCCC debugging FIXME
- 1006 FORMAT(15(E22.15,1X))      
-         call compute_pthermo(sedge,ptherm)
-         open(UNIT=11, FILE='edge.dat', STATUS = 'REPLACE')
-         write(11,*)'# 256 12'
-         do i=0,nx-1
-            do n = 1,Nspec
-               Y(n) = sedge(i,FirstSpec+n-1)/sedge(i,Density)
-            enddo
-            write(11,1006) i*dx, macvel(i),
-     &                     sedge(i,Density),
-     &                     (Y(n),n=1,Nspec),
-     $                     sedge(i,RhoH),
-     $                     sedge(i,Temp),
-     $                     ptherm(i)
-         enddo
-         close(11)
+C$$$ 1006 FORMAT(15(E22.15,1X))      
+C$$$         call compute_pthermo(sedge,ptherm)
+C$$$         open(UNIT=11, FILE='edge.dat', STATUS = 'REPLACE')
+C$$$         write(11,*)'# 256 12'
+C$$$         do i=0,nx-1
+C$$$            do n = 1,Nspec
+C$$$               Y(n) = sedge(i,FirstSpec+n-1)/sedge(i,Density)
+C$$$            enddo
+C$$$            write(11,1006) i*dx, macvel(i),
+C$$$     &                     sedge(i,Density),
+C$$$     &                     (Y(n),n=1,Nspec),
+C$$$     $                     sedge(i,RhoH),
+C$$$     $                     sedge(i,Temp),
+C$$$     $                     ptherm(i)
+C$$$         enddo
+C$$$         close(11)
 C         stop
 CCCCCCCCCCCCC      
 

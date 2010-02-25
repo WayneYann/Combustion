@@ -23,7 +23,7 @@
       real*8 Y(Nspec)
 
 
-      if (use_temp_eqn .or. use_strang) then
+      if (use_temp_eqn .or. use_strang .or. use_rhoh2) then
 
          call get_rhoh_visc_terms(scal_old,beta,visc,dx,time)
 c     FIXME: Add NULN terms

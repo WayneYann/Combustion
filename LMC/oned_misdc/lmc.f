@@ -51,10 +51,11 @@ c     Local variables
       integer do_init, is, i, n, nd, ns
 
 C CEG debgging REMOVE ME
-      integer hi, lo, ncomp,j
+      integer hi, lo, ncomp,j,IWRK
       real*8 ptherm(-1:nx)
       real*8 Y(maxspec)
-      
+      real*8 RWRK
+
 c     New arrays for MISDC.
       real*8    const_src(0 :nx-1,maxscal)
       real*8  lin_src_old(0 :nx-1,maxscal)
@@ -71,7 +72,7 @@ c     New arrays for MISDC.
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  num_divu_iters, num_init_iters,fixed_dt,
      $                  nochem_hack, use_strang, use_temp_eqn,
-     $                  use_radau, V_in, lim_rxns
+     $                  use_radau, V_in, lim_rxns, use_rhoh2
 
 
 c     Initialize chem/tran database
@@ -105,9 +106,11 @@ c     Set defaults, change with namelist
       use_strang = .false.
       use_temp_eqn = .false.
       use_radau = .false.
+      use_rhoh2 = .false.
       V_in = 1.d20
       unlim = 0
       lim_rxns = 1
+
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
@@ -124,6 +127,7 @@ c     Set defaults, change with namelist
 
          print *,'CHKFILE ',chkfile
          
+C CEG FIXME this seg faults
          call read_check(chkfile,nx,vel_new,scal_new,press_new,
      $                   I_R_new,divu_new,dsdt,
      $                   time,at_nstep,dt_old,cfl_used)
@@ -159,7 +163,6 @@ C Does NOT fill ghost cells
          call initdata(vel_new,scal_new,I_R_new(0,0),dx)
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
      &                  dx,dt,99999,time)
-C         stop
 
 C FIXME?
 C I don't think scal(RhoRT) ever actually gets used for anything,
@@ -187,10 +190,19 @@ C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT
          print *,'initialVelocityProject: '
          dt_dummy = -1.d0
 
+
          do i=0,nx-1
             vel_old(i) = vel_new(i)
 C CEG:: for the event that divu_iters = 0
             divu_old(i) = divu_new(i)
+CCCCCCCCCCCCCCC
+C CEG makes no difference
+C$$$            do n = 1,Nspec
+C$$$               Y(n) = scal_new(i,FirstSpec+n-1)/scal_new(i,Density)
+C$$$            enddo
+C$$$            CALL CKHBMS(scal_new(i,Temp),Y,IWRK,RWRK,scal_new(i,RhoH))
+C$$$            scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
+CCCCCCCCCCCCCC
             do n = 1,nscal
                scal_old(i,n) = scal_new(i,n)
                beta_old(i,n) = beta_new(i,n) 
@@ -202,6 +214,10 @@ c     Define density for initial projection.
 C fills vel_new ghost cells, but not for vel_old 
          call project(vel_old,vel_new,rhohalf,divu_new,
      $                press_old,press_new,dx,dt_dummy,time)
+
+         call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+     &                  dx,dt,99998,time)
+
 
          if (fixed_dt > 0) then
             dt = fixed_dt
@@ -240,56 +256,28 @@ C  CEG:: needed for strang chemistry
 
             print *,' ...doing divu_iter number',nd,' dt=',dt
             
-            if (use_strang) then
+C            if (use_strang) then
                call strang_chem(scal_old,scal_new,
      $              const_src,lin_src_old,lin_src_new,
      $              I_R_new,dt*0.5d0)
-            else 
-C Using strang vs SDC seems to have practically no effect in the long run
+C            else 
+C Using strang vs SDC seems to have little effect in the long run
 C maybe sdc needs a better estimate of IR here
 C increasing sdc iters did not help
 C               sdc_iter = misdc_iterMAX
 C               misdc_iterMAX = 10
-               call advance(vel_old,vel_new,scal_old,scal_new,
-     $                   I_R_new,I_R_new,press_old,press_new,
-     $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,0.5d0*dt,time)
-               do i = 0,nx-1
-                  vel_new(i) =  vel_old(i)
-               enddo
+C               call advance(vel_old,vel_new,scal_old,scal_new,
+C     $                   I_R_new,I_R_new,press_old,press_new,
+C     $                   divu_old,divu_new,dsdt,beta_old,beta_new,
+C     $                   dx,0.5d0*dt,time)
+C               do i = 0,nx-1
+C                  vel_new(i) =  vel_old(i)
+C               enddo
 C               misdc_iterMAX = sdc_iter
-            endif
+C            endif
            
             call calc_divu(scal_old,beta_old,I_R_new,
      &                     divu_new,dx,time)
-
-CCCCCCCCCCC debugging FIXME
-C$$$ 1006 FORMAT((I5,1X),11(E22.15,1X))      
-C$$$ 1007 FORMAT((I5,1X),(E22.15,1X))      
-C$$$         call compute_pthermo(scal_new,ptherm)
-C$$$         open(UNIT=11, FILE='snew.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# 256 12'
-C$$$         do j=0,nx-1
-C$$$            do n = 1,Nspec
-C$$$               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
-C$$$            enddo
-C$$$            write(11,1006) j, vel_new(j)*1.d-2, 
-C$$$     &                     scal_new(j,Density)*1.d3,
-C$$$     &                     (Y(n),n=1,Nspec),
-C$$$     $                     scal_new(j,RhoH)*1.d-1,
-C$$$     $                     scal_new(j,Temp),
-C$$$     $                     ptherm(j)*1.d-1
-C$$$         enddo
-C$$$         close(11)
-C$$$         open(UNIT=11, FILE='divu.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# 256 2'
-C$$$         do j=0,nx-1
-C$$$            write(11,1007) j, divu_new(j)
-C$$$         enddo
-C$$$         close(11)
-C$$$         write(*,*)'init divu iters'
-C$$$         stop
-CCCCCCCCCCCCC      
 
             print *,'divu_iters velocity Project: '
             dt_dummy = -1.d0
@@ -367,10 +355,23 @@ c     Reset state, I_R
                do ns = 0,Nspec
                   I_R_new(i,ns) =  I_R_old(i,ns)
                enddo
+C ceg:: don't think this is needed.  advance overwrites what's in divu_new
                divu_new(i) = divu_old(i)
             enddo
             initial_iter = 0          
          enddo
+
+
+CCCCCCCCCCCCCCCCCC
+C CEG doesn't seem to make any real difference where i do this
+C         do i = 0,nx-1 
+C            do ns = 0,Nspec
+C john's code set I_R = 0 here so time lagged I_R always gets used
+C  this performs worse with SDC iters
+C               I_R_new(i,ns) =  I_R_old(i,ns)
+C            enddo
+C         enddo
+CCCCCCCCCCCCCCCCCCCc
 
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
      &                  dx,dt,0,time)
@@ -421,8 +422,15 @@ C-- Now advance
             else
                call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
      $                     cfl,umax,dx,dt_new)
-               dt = dt * change_max 
-               dt = min(dt,dt_new)            
+               if (nsteps_taken .eq. 1) then
+                  dt = dt*init_shrink
+                  dt = min(dt,dt_init)
+               else
+C CEG adding local change seems to have no effect for 2step mech
+                  local_change_max = min(change_max,cfl/cfl_used)
+                  dt = dt * local_change_max 
+                  dt = min(dt,dt_new)
+               endif            
             endif
          endif
 
@@ -435,6 +443,7 @@ C-- Now advance
      $                divu_old,divu_new,dsdt,beta_old,beta_new,
      $                dx,dt,time)
 
+         call minmax_vel(nx,vel_new)
 c     update state, I_R, time
          do i = 0,nx-1
             vel_old(i)  =   vel_new(i)
@@ -451,6 +460,8 @@ c     update state, I_R, time
          enddo
          time = time + dt
 
+         cfl_used = umax*dt/dx 
+
          if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
      &        nsteps_taken.eq.nsteps) then 
             call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
@@ -459,7 +470,7 @@ c     update state, I_R, time
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 
             call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $           I_R_new,divu_new,dsdt,dx,time,dt,cfl)
+     $           I_R_new,divu_new,dsdt,dx,time,dt,cfl_used)
          endif
       enddo
 

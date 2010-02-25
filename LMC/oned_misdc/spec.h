@@ -61,22 +61,23 @@ c     DVODE driver stuff
 c     LMC alg stuff
       integer probtype, misdc_iterMAX,on_lo,on_hi,max_order,
      &     divu_ceiling_flag, predict_temp_for_coeffs, initial_iter,
-     &     unlim, lim_rxns
+     &     unlim, lim_rxns,coef_avg_harm
       parameter (on_lo = 0, on_hi = 1, max_order = 3)
       common / lmci / probtype, misdc_iterMAX, divu_ceiling_flag,
-     &     predict_temp_for_coeffs, initial_iter, unlim, lim_rxns
+     &     predict_temp_for_coeffs, initial_iter, unlim, lim_rxns,
+     &     coef_avg_harm
       save /lmci/
 
-      logical use_strang, use_temp_eqn, use_radau
-      common / lmcl / use_strang, use_temp_eqn, use_radau
+      logical use_strang, use_temp_eqn, use_radau, use_rhoh2
+      common / lmcl / use_strang, use_temp_eqn, use_radau, use_rhoh2
       save /lmcl/
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),
      &     Y_bc(maxspec,0:1), h_bc(0:1), u_bc(0:1), flame_offset, 
-     &     coef_avg_harm, Pr, Sc, thickFacTR, thickFacCH, 
+     &     Pr, Sc, thickFacTR, thickFacCH, 
      &     rho_divu_ceiling, divu_dt_factor, V_in
       common / lmcr / dpdt_factor, Pcgs, T_bc, rho_bc,
      &     Y_bc, h_bc, u_bc, flame_offset,
-     &     coef_avg_harm, Pr, Sc, thickFacTR, thickFacCH,
+     &     Pr, Sc, thickFacTR, thickFacCH,
      &     rho_divu_ceiling, divu_dt_factor, V_in
       save /lmcr/

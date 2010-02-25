@@ -70,8 +70,9 @@ c----------------------------------------------------------------------
       double precision valsPMF(maxspec+3), RWRK, time, sum
       integer i, n, nPMF, IWRK
 
-       write(*,*)'*** initdata *****'
-       write(*,*)'Pcgs = ', Pcgs
+      write(*,*)'*** initdata *****'
+      write(*,*)'Pcgs = ', Pcgs
+
       if (probtype.eq.1) then
 
          time = 0.d0
@@ -81,6 +82,7 @@ c----------------------------------------------------------------------
             xPMFlo = x - flame_offset - 0.5*dx
             xPMFhi = x - flame_offset + 0.5*dx
             call pmf(xPMFlo,xPMFhi,valsPMF,nPMF)
+
             call CKXTY(valsPMF(4),IWRK,RWRK,Y)
             T = valsPMF(1)
 
@@ -135,7 +137,6 @@ c----------------------------------------------------------------------
          print *,'bcfunction: invalid probtype'
          stop
       endif
-
       end
 
 
@@ -252,6 +253,7 @@ c     On lo boundary grow cell, now have Y and T in state, get rho and h and fix
       enddo
       scal(-1,RhoH) = hext * rext
       scal(-1,Temp) = Text         
+
       end
 
 c----------------------------------------------------------------------

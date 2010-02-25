@@ -102,6 +102,16 @@ c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
          enddo
       endif
 
+CCCCCCCCCCC FIXME
+C      do n = 0, Nspec-1
+C         do i = -1, nx
+C            beta(i,FirstSpec+n) = 0.d0
+C            beta(i,RhoH) = 0.d0
+C            beta(i,Temp) = 0.d0
+C         enddo
+C      enddo
+CCCCCCCCCCCCCC
+
       if (thickFacTR.ne.1.d0) then
          do i=-1, nx
             do n=1,Nspec
@@ -253,11 +263,16 @@ C-----------------------------------------------------------------------
       
       double precision RHO, CPB, SUM, Y(maxspec),X(maxspec),sumX
       double precision HK(maxspec), WDOTK(maxspec), C(maxspec), RWRK
-      integer K, IWRK
+      integer K, IWRK, j
 
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
       double precision res(NiterMAX), errMAX, hmix, T, DEN
+CCCCCCCCCC FIXME??
+      double precision HK2(maxspec), WDOTK2(maxspec), C2(maxspec)
+      double precision ZP2(0:maxspec), CPB2
+CCCCCCCCCCCCCCCCCC
+
 C     For strang
 C     Variables in Z are:  Z(0)   = T
 C                          Z(K) = Y(K)
@@ -363,10 +378,18 @@ C$$$         endif
 c     print *,'  ** Fdiag',TIME,T,Z(1),Niter
 
 C CEG trying something new with the temp evolution FIXME??
-         call CKRHOPY(RHO,Pcgs,Y,IWRK,RWRK,T)
+C         call CKRHOPY(RHO,Pcgs,Y,IWRK,RWRK,T)
+         T = Z(0)
+C FIXME
+C$$$         errMax = ABS(hmix_TYP*1.e-12)
+C$$$c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
+C$$$         call FORT_TfromHYpt(T,Z(0),Y,Nspec,errMax,NiterMAX,res,Niter)
+C$$$         if (Niter.lt.0) then
+C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
+C$$$            stop
+C$$$         endif
 CCCCC
          call CKCPBS(T,Y,IWRK,RWRK,CPB)
-
       endif
 
       call CKHMS(T,IWRK,RWRK,HK)
@@ -378,12 +401,15 @@ CCCCC
          SUM = SUM - HK(K)*ZP(K)
       END DO
       ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
+C FIXME!!!!!!!
+C      ZP(0) = c_0(0) + c_1(0)*TIME 
 
-      if(use_strang) then
+ 100  if(use_strang) then
          DO K = 1, Nspec
             ZP(K) = ZP(K)/RHO
          enddo         
       endif
+
 
 C       write(*,1007)TIME,RHO,CPB,Pcgs
 C       write(*,1006)(Z(k),k=0,Nspec)
@@ -509,15 +535,6 @@ C      DVIWRK(10) = 0
          Z(n) = RYold(n)
       end do
 
-C don't need this anymore
-C for strang splitting need to initialize rho
-C      if (use_strang) then
-C         rho_strang = 0.d0
-C         do n=1,Nspec
-C            rho_strang = rho_strang + RYold(n)
-C         end do
-C      endif
-
 c     Always form Jacobian to start
       FIRST = .TRUE.
 
@@ -543,12 +560,6 @@ c     Always form Jacobian to start
          TT1save = TT1
          TT2 = TT1 + dtloc
          
-C         write(*,*)'NEQ, TT1, TT2, ITOL, RTOL ATOL'
-C         write(*,*)NEQ, TT1, TT2, dt
-C, ITOL, RTOL, ATOL
-C         write(*,*)'ITASK, ISTATE, IOPT, MF'
-C         write(*,*)ITASK, ISTATE, IOPT, MF
-C         stop
          CALL DVODE
      &        (vodeF_T_RhoY, NEQ, Z(0), TT1, TT2, ITOL, RTOL, ATOL,
      &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,

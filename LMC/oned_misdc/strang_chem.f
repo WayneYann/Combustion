@@ -39,8 +39,19 @@ c     Shut off diagnostics
 c     Evolve chem over grid
       do i = 0,nx-1
 
+C CEG:: done to mimick john's SNe code.  firstSpec should be the fuel (i think)
+C I don't think this is appropriate for the more complex reactions network here
+C$$$         if (scal_new(i,FirstSpec) .le. 0.d0) then
+C$$$            do n = 1, nscal
+C$$$               scal_new(i,n) = scal_old(i,n)+
+C$$$     &              + dt*const_src(i,n)
+C$$$     &              + 0.5d0*dt*(lin_src_old(i,n)+lin_src_new(i,n))
+C$$$            enddo
+C$$$            do n = 0,Nspec
+C$$$               I_R(i,n) = 0.d0
+C$$$            enddo
+C$$$         else
          if (use_strang) then
-
 C integrating Y_m's not rhoY_m
             do n = 1,Nspec
                RYold(n) = scal_old(i,FirstSpec+n-1)/scal_old(i,Density)
@@ -55,6 +66,8 @@ C integrating Y_m's not rhoY_m
                rho_old = rho_old + RYold(n)
             enddo
             Told = scal_old(i,Temp)
+C     FIXME!!!
+C            Told = scal_old(i,RhoH)
 
 c     Set linear source terms in common for ode integrators access
             do n = 1,Nspec
@@ -164,14 +177,17 @@ C     write(18,*)i,I_R(i,0),sum,diff
             else
 
                scal_new(i,Temp) =  Tnew
-C               CALL CKHBMS(Tnew,Y,IWRK,RWRK,scal_new(i,RhoH))
-C               scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
+               CALL CKHBMS(Tnew,Y,IWRK,RWRK,scal_new(i,RhoH))
+               scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
 CCCCCCCCCCCCCCC
-               scal_new(i,RhoH) = scal_old(i,RhoH)+
-     &              + dt*const_src(i,RhoH)
-     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
-C not a good idea with lobatto
+C               scal_new(i,RhoH) = Tnew
+C               scal_new(i,RhoH) = scal_old(i,RhoH)+
+C     &              + dt*const_src(i,RhoH)
+C     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
+C$$$C not a good idea with lobatto
 C$$$               errMax = hmix_TYP * 1.e-10
+C$$$C               call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
+C$$$C     &              Nspec,errMax,NiterMAX,res,Niter)
 C$$$               call FORT_TfromHYpt(Tnew,hmix,Y,
 C$$$     &              Nspec,errMax,NiterMAX,res,Niter)
 C$$$               if (Niter.lt.0) then
@@ -200,7 +216,7 @@ C$$$               write(*,*) scal_new(i,RhoH)-rhoh_intg
             endif
 
          endif
-
+C         endif
       enddo
 
       end
@@ -239,10 +255,22 @@ c     Shut off diagnostics
          return
       endif
 
+C      open(UNIT=11, FILE='ZP(0).dat', STATUS = 'REPLACE')
+
       print *,'... chemistry'
 c     Evolve chem over grid
       do i = 0,nx-1
+         
+C         write(11,*)'i = ', i
 
+C I don't think this is appropriate for the more complex reactions network here
+C CEG:: done to mimick john's SNe code.  firstSpec should be the fuel (i think)
+C$$$         if (scal_new(i,FirstSpec) .le. 0.d0) then
+C$$$            do n = 1, nscal
+C$$$               scal_new(i,n) = scal_old(i,n) + dt*const_src(i,n)
+C$$$     &              + 0.5d0*dt*dt*lin_src(i,n)               
+C$$$            enddo
+C$$$         else
          if (use_strang) then
 
 C integrating Y_m's not rhoY_m
@@ -307,6 +335,25 @@ C            call CKRHOPY(scal_new(i,Density),Pcgs,Y,IWRK,RWRK,Tnew)
             CALL CKHBMS(Tnew,Y,IWRK,RWRK,scal_new(i,RhoH))
             scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
 
+CCCCCCCCCCCC FIXME 
+C$$$            scal_new(i,RhoH) = scal_old(i,RhoH)
+C$$$     &           + dt*const_src(i,RhoH)
+C$$$     &           + 0.5d0*dt*dt*lin_src(i,RhoH)
+
+C$$$            hmix = scal_new(i,RhoH) / scal_new(i,Density)
+C$$$            errMax = hmix_TYP * 1.e-10
+C$$$            do n = 1,Nspec
+C$$$               Y(n) = scal_new(i,FirstSpec+n-1)/scal_new(i,Density)
+C$$$            enddo
+C$$$            call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
+C$$$     &           Nspec,errMax,NiterMAX,res,Niter)
+C$$$            if (Niter.lt.0) then
+C$$$               print *,'SC: H to T solve failed in F, Niter=',Niter
+C$$$               print *,'hmix_TYP:',hmix_TYP
+C$$$               stop
+C$$$            endif
+CCCCCCCCCCCCccCCC
+
             do n = 1,Nspec
                is = FirstSpec + n - 1
                I_R(i,n) =
@@ -314,9 +361,11 @@ C            call CKRHOPY(scal_new(i,Density),Pcgs,Y,IWRK,RWRK,Tnew)
      $              - const_src(i,is)
      $              - 0.5d0*dt*lin_src(i,is)
             enddo
-
+            
          endif
-
+C         endif
+C         write(11,*)
+C         write(11,*)
       enddo
-
+C      close (11)
       end
