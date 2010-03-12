@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.14 2008-09-18 17:51:08 marc Exp $
+// $Id: HT_setup.cpp,v 1.15 2010-03-12 23:14:50 lijewski Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -42,6 +42,7 @@
 #include <NAVIERSTOKES_F.H>
 #include <HEATTRANSFER_F.H>
 #include <SLABSTAT_HT_F.H>
+#include <Utility.H>
 
 #define DEF_LIMITS(fab,fabdat,fablo,fabhi)   \
 const int* fablo = (fab).loVect();           \
@@ -887,6 +888,7 @@ HeatTransfer::variableSetUp ()
         const std::string name = "Y("+flameTracName+")";
         err_list.add(name,nGrowErr,ErrorRec::Special,FORT_FLAMETRACERROR);
     }
+#ifdef USE_SLABSTAT
     //
     // Set up the running statistics
     //
@@ -931,6 +933,7 @@ HeatTransfer::variableSetUp ()
         }
         else if (advectionType[Trac] == Conservative)
         {
+
             AmrLevel::get_slabstat_lst().add("basicStats",
                                              nBasicStats,
                                              slabStatVars,
@@ -938,6 +941,7 @@ HeatTransfer::variableSetUp ()
                                              FORT_HT_BASICSTATS_NCTRAC);
         }
     }
+#endif /*USE_SLABSTAT*/
 }
 
 class HTBld
