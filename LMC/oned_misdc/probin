@@ -11,7 +11,7 @@
   init_shrink = 1.0
   probtype = 1
   flame_offset = -2.45
-  dpdt_factor = 0.
+  dpdt_factor = 0.3
   Patm = 1.0
   predict_temp_for_coeffs = 1
   num_divu_iters = 3
@@ -23,5 +23,5 @@
   use_radau = .false.
   use_rhoh2 = .false.
   lim_rxns = 0
-  fixed_dt = 0.00005
+  fixed_dt = -1
 /
