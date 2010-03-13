@@ -28,6 +28,7 @@
 #include <Interpolater.H>
 #include <Profiler.H>
 #include <ccse-mpi.H>
+#include <Utility.H>
 
 #if defined(BL_USE_NEWMECH) || defined(BL_USE_VELOCITY)
 #include <DataServices.H>
