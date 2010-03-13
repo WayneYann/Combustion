@@ -5,8 +5,8 @@ EXEname := lmc.exe
 # Choose pmf file
 #
 #pmf_source := H-flame_0370.f
-#pmf_source := 2stepSoln0.8.f
-pmf_source := chemHSoln_seed_0.00.f
+pmf_source := 2stepSoln0.8.f
+#pmf_source := chemHSoln_seed_0.00.f
 
 #
 # Choose reaction mechanism
@@ -15,11 +15,11 @@ pmf_source := chemHSoln_seed_0.00.f
 #REACTION_MECHANISM=GRI12
 #REACTION_MECHANISM=GRI30NON
 #REACTION_MECHANISM=GRI30
-#REACTION_MECHANISM=CH4-2STEP
+REACTION_MECHANISM=CH4-2STEP
 #REACTION_MECHANISM=GRI30HNO
 #REACTION_MECHANISM=DRM19
 #REACTION_MECHANISM=GLARBORG
-REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=CHEMH
 #REACTION_MECHANISM=LIDRYER
 
 ifeq (${USE_INTEL},TRUE)

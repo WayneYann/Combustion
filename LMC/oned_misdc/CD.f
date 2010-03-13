@@ -2,8 +2,8 @@
       block data chemdat
       include 'spec.h'
       data traninit / -1 /
-      data tranfile / 'tran.asc.chem-H' /
-C      data tranfile / 'tran.asc.CH4-2step' /
+c     data tranfile / 'tran.asc.chem-H' /
+      data tranfile / 'tran.asc.CH4-2step' /
       data TMIN_TRANS / 0.d0 /
       data Pr / 0.7d0 /
       data Sc / 0.7d0 /
@@ -445,8 +445,8 @@ C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
       common /VHACK/ YJ_SAVE, FIRST
       save   /VHACK/
 
-      integer do_diag, ifail
-      double precision RYold(*), RYnew(*), Told, Tnew, FuncCount
+      integer do_diag, ifail, FuncCount
+      double precision RYold(*), RYnew(*), Told, Tnew
       double precision dt, diag(*)
    
       integer NEQ, ITOL, IOPT, ITASK, open_vode_failure_file
@@ -514,6 +514,7 @@ C      DVIWRK(9) = 0
 C      DVIWRK(10) = 0
 
       if (do_diag.eq.1) nsubchem = nchemdiag
+
       
       MF = 22
       ATOL(1) = ATOLEPS

@@ -14,10 +14,10 @@
   dpdt_factor = 0.
   Patm = 1.0
   predict_temp_for_coeffs = 1
-  num_divu_iters = 0
-  num_init_iters = 0
-  misdc_iterMAX = 25
-  nochem_hack = .true.
+  num_divu_iters = 3
+  num_init_iters = 2
+  misdc_iterMAX = 2
+  nochem_hack = .false.
   use_strang = .true.
   use_temp_eqn = .false.
   use_radau = .false.
