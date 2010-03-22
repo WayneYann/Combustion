@@ -771,23 +771,25 @@ c
 
 #ifdef BL_USE_OMP
 
-!$omp single
-      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &               + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
-      egilen = Nspec
-      nthrds = omp_get_num_threads()
+!$omp critical
+      if (.not.associated(egrwrk)) then
+         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
+     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+         egilen = Nspec
+         nthrds = omp_get_num_threads()
 
-      allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
+         allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
 
-      do i = 1,nthrds
-         do n=1,egrlen
-            egrwrk(n,i) = RWRK(egbr+n-1)
-         enddo
-         do n=1,egilen
-            egiwrk(n,i) = IWRK(egbi+n-1)
-         enddo
-      end do
-!$omp end single
+         do i = 1,nthrds
+            do n=1,egrlen
+               egrwrk(n,i) = RWRK(egbr+n-1)
+            enddo
+            do n=1,egilen
+               egiwrk(n,i) = IWRK(egbi+n-1)
+            enddo
+         end do
+      end if
+!$omp end critical
 
 #define EGSRWK egrwrk(1,tid)
 #define EGSIWK egiwrk(1,tid)
@@ -879,23 +881,25 @@ c
 
 #ifdef BL_USE_OMP
 
-!$omp single
-      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &               + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
-      egilen = Nspec
-      nthrds = omp_get_num_threads()
+!$omp critical
+      if (.not.associated(egrwrk)) then
+         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
+     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+         egilen = Nspec
+         nthrds = omp_get_num_threads()
 
-      allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
+         allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
 
-      do i = 1,nthrds
-         do n=1,egrlen
-            egrwrk(n,i) = RWRK(egbr+n-1)
-         enddo
-         do n=1,egilen
-            egiwrk(n,i) = IWRK(egbi+n-1)
-         enddo
-      end do
-!$omp end single
+         do i = 1,nthrds
+            do n=1,egrlen
+               egrwrk(n,i) = RWRK(egbr+n-1)
+            enddo
+            do n=1,egilen
+               egiwrk(n,i) = IWRK(egbi+n-1)
+            enddo
+         end do
+      end if
+!$omp end critical
 
 #define EGSRWK egrwrk(1,tid)
 #define EGSIWK egiwrk(1,tid)

@@ -544,7 +544,7 @@ c
 
 #ifdef BL_USE_OMP
 
-!$omp single
+!$omp critical
       if (.not.associated(dvrwrk)) then
          dvrlen = 22 + 9*(Nspec+1) + 2*(Nspec+1)**2
          dvilen = 30 + Nspec + 1
@@ -561,7 +561,7 @@ c
             dviwrk(7,i) = 0
          end do
       endif
-!$omp end single
+!$omp end critical
 
 #define DVRWK   dvrwrk(1,tid)
 #define DVIWK   dviwrk(1,tid)
@@ -867,7 +867,7 @@ c
 
 #ifdef BL_USE_OMP
 
-!$omp single
+!$omp critical
       if (.not.associated(egrwrk)) then
          egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
      &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
@@ -887,7 +887,7 @@ c
             enddo
          end do
       endif
-!$omp end single
+!$omp end critical
 
 #define EGSRWK egrwrk(1,tid)
 #define EGSIWK egiwrk(1,tid)
@@ -980,7 +980,7 @@ c
 
 #ifdef BL_USE_OMP
 
-!$omp single
+!$omp critical
       if (.not.associated(egrwrk)) then
          egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
      &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
@@ -1000,7 +1000,7 @@ c
             enddo
          end do
       endif
-!$omp end single
+!$omp end critical
 
 #define EGSRWK egrwrk(1,tid)
 #define EGSIWK egiwrk(1,tid)
