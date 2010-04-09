@@ -2,7 +2,7 @@
       block data chemdat
       include 'spec.h'
       data traninit / -1 /
-c     data tranfile / 'tran.asc.chem-H' /
+C      data tranfile / 'tran.asc.chem-H' /
       data tranfile / 'tran.asc.CH4-2step' /
       data TMIN_TRANS / 0.d0 /
       data Pr / 0.7d0 /
@@ -366,20 +366,20 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
             Y(K) = Z(K)/RHO
          enddo
 
-C$$$         T = Z(0)
-C$$$         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
-C$$$         errMax = ABS(hmix_TYP*1.e-12)
-C$$$c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-C$$$         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
-C$$$         if (Niter.lt.0) then
-C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
-C$$$            stop
-C$$$         endif
+         T = Z(0)
+C         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
+C         errMax = ABS(hmix_TYP*1.e-12)
+c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
+C         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
+C         if (Niter.lt.0) then
+C            print *,'F: H to T solve failed in F, Niter=',Niter
+C            stop
+C         endif
 c     print *,'  ** Fdiag',TIME,T,Z(1),Niter
 
 C CEG trying something new with the temp evolution FIXME??
 C         call CKRHOPY(RHO,Pcgs,Y,IWRK,RWRK,T)
-         T = Z(0)
+C         T = Z(0)
 C FIXME
 C$$$         errMax = ABS(hmix_TYP*1.e-12)
 C$$$c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)

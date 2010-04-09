@@ -160,11 +160,6 @@ C     write(19,*)i,HK_old(n),HK(n),HK_new(n)
      &              IWRK,RWRK,cp)
 C     I_R(i,0) = -I_R(i,0)/(cp*rho_half)
 
-C     I_R(i,0) =  
-C     $           (scal_new(i,Temp)-scal_old(i,Temp)) / dt
-C     $            - (const_src(i,RhoH) - I_R(i,0)
-C     $           + 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
-C     $                         (rho_half*cp)
                I_R(i,0) =  
      $              (scal_new(i,Temp)-scal_old(i,Temp)) / dt
      $              - ( I_R(i,0) + const_src(i,RhoH)
@@ -180,11 +175,11 @@ C     write(18,*)i,I_R(i,0),sum,diff
                CALL CKHBMS(Tnew,Y,IWRK,RWRK,scal_new(i,RhoH))
                scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
 CCCCCCCCCCCCCCC
-C               scal_new(i,RhoH) = Tnew
-C               scal_new(i,RhoH) = scal_old(i,RhoH)+
-C     &              + dt*const_src(i,RhoH)
-C     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
-C$$$C not a good idea with lobatto
+C               scal_new(i,RhoH) = 
+C$$$               scal_new(i,RhoH) = scal_old(i,RhoH)+
+C$$$     &              + dt*const_src(i,RhoH)
+C$$$     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
+C$$$               hmix = scal_new(i,RhoH) / scal_new(i,Density)
 C$$$               errMax = hmix_TYP * 1.e-10
 C$$$C               call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
 C$$$C     &              Nspec,errMax,NiterMAX,res,Niter)

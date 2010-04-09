@@ -73,8 +73,8 @@ C         divu(i) = (divu(i)/(rho*cpmix) + I_R(i,0)) / T
 C         marc = MAX(ABS(divu(i)),marc)
          divu(i) = divu(i)/(rho*cpmix*T)
 CCCCCC
-         tmp(i) = divu(i)
-         cp(i) = cpmix
+C         tmp(i) = divu(i)
+C         cp(i) = cpmix
 CCCCC
 
          sum = 0.0d0
@@ -90,9 +90,10 @@ C     &           - HK(n)*(I_R(i,n)+ddivu(i,n))/(rho*cpmix*T)
 
 
 CCCCC
-            visc(i)= visc(i) + 
-     $           (ddivu(i,n) + I_R(i,n))*invmwt(n)*mwmix/rho
-     &           - HK(n)*I_R(i,n)/(rho*cpmix*T)
+C            visc(i)= visc(i) + 
+C     $           (ddivu(i,n) + I_R(i,n))*invmwt(n)*mwmix/rho
+C     &           - HK(n)*I_R(i,n)/(rho*cpmix*T)
+
 C     &           + (ddivu(i,n) + I_R(i,n))*invmwt(n)*mwmix/rho
 C     &           - HK(n)*(I_R(i,n)-ddivu(i,n))/(rho*cpmix*T)
 
@@ -103,19 +104,19 @@ C            sum = sum -HK(n)*I_R(i,n)/(rho*cpmix*T)
          enddo
        enddo
 
-       call get_rhoh_visc_terms(scal,beta,rhvt,dx,time)
+C       call get_rhoh_visc_terms(scal,beta,rhvt,dx,time)
 
 C debugging FIXME
- 1007  FORMAT((I5,1X),3(E22.15,1X))      
-      hi = 255
-      lo = 0
-      ncomp = 2
-      open(UNIT=11, FILE='visc.dat', STATUS = 'REPLACE')
-      write(11,*)'# ', hi-lo, ncomp 
-      do j=lo,hi
-         write(11,1007) j, tmp(j),visc(j),rhvt(j)
-      enddo
-      close(11)
+C$$$ 1007  FORMAT((I5,1X),3(E22.15,1X))      
+C$$$      hi = 255
+C$$$      lo = 0
+C$$$      ncomp = 2
+C$$$      open(UNIT=11, FILE='visc.dat', STATUS = 'REPLACE')
+C$$$      write(11,*)'# ', hi-lo, ncomp 
+C$$$      do j=lo,hi
+C$$$         write(11,1007) j, tmp(j),visc(j),rhvt(j)
+C$$$      enddo
+C$$$      close(11)
 C         stop
 CCCCCCCCCCCCC
 

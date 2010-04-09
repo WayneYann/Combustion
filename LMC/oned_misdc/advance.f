@@ -548,23 +548,23 @@ C get velocity visc terms to use as a forcing term for advection
       endif
 
 CCCCCCCCCCC debugging FIXME
- 1011 FORMAT((I5,1X),14(E22.15,1X))      
-         call compute_pthermo(scal_new,ptherm)
-         open(UNIT=11, FILE='corr.dat', STATUS = 'REPLACE')
-         write(11,*)'# 256 12'
-         do j=0,nx-1
-            do n = 1,Nspec
-               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
-            enddo
-            write(11,1011) j, vel_new(j)*1.d-2, 
-     &                     scal_new(j,Density)*1.d3,
-     &                     (Y(n),n=1,Nspec),
-     $                     scal_new(j,RhoH)*1.d-1,
-     $                     scal_new(j,Temp),
-     $                     ptherm(j)*1.d-1
-         enddo
-         close(11)
-         write(*,*)'end of step'
+C$$$ 1011 FORMAT((I5,1X),14(E22.15,1X))      
+C$$$         call compute_pthermo(scal_new,ptherm)
+C$$$         open(UNIT=11, FILE='corr.dat', STATUS = 'REPLACE')
+C$$$         write(11,*)'# 256 12'
+C$$$         do j=0,nx-1
+C$$$            do n = 1,Nspec
+C$$$               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
+C$$$            enddo
+C$$$            write(11,1011) j, vel_new(j)*1.d-2, 
+C$$$     &                     scal_new(j,Density)*1.d3,
+C$$$     &                     (Y(n),n=1,Nspec),
+C$$$     $                     scal_new(j,RhoH)*1.d-1,
+C$$$     $                     scal_new(j,Temp),
+C$$$     $                     ptherm(j)*1.d-1
+C$$$         enddo
+C$$$         close(11)
+C$$$         write(*,*)'end of step'
 C         stop
 CCCCCCCCCCCCC      
 
@@ -912,11 +912,11 @@ C     save a copy of diff_new(RhoH)
          print *,'... compute A with updated D+R source'
          call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
 CCCCCCCC fixme
-         do i = 0,nx-1
-            do n = 1,nscal
-               aofs(i,n) = 0.d0
-            enddo
-         enddo
+C$$$         do i = 0,nx-1
+C$$$            do n = 1,nscal
+C$$$               aofs(i,n) = 0.d0
+C$$$            enddo
+C$$$         enddo
 CCCCCCCCCCCCCCc
          print *,'... update rho'
          call update_rho(scal_old,scal_new,aofs,dx,dt)
@@ -943,14 +943,14 @@ c*****************************************************************
          enddo
 
 CCCCCCCCCCC debugging FIXME
- 1006 FORMAT((I5,1X),10(E22.15,1X))      
-         open(UNIT=11, FILE='drhs.dat', STATUS = 'REPLACE')
-         do j=0,nx-1
-            write(11,1006) j, 
-     &                     (dRhs(j,FirstSpec+n-1),n=1,Nspec),
-     $                     dRhs(j,0)
-         enddo
-         close(11)
+C$$$ 1006 FORMAT((I5,1X),10(E22.15,1X))      
+C$$$         open(UNIT=11, FILE='drhs.dat', STATUS = 'REPLACE')
+C$$$         do j=0,nx-1
+C$$$            write(11,1006) j, 
+C$$$     &                     (dRhs(j,FirstSpec+n-1),n=1,Nspec),
+C$$$     $                     dRhs(j,0)
+C$$$         enddo
+C$$$         close(11)
 CCCCCCCCCCCCC      
 
 C CEG:: HACK remove me!!!
@@ -1043,27 +1043,27 @@ C            write(*,*)n,change_min(n),change_max(n)
          enddo
 
 CCCCCCCCCCCCCCCCCc FIXME
-      do n = 1,nscal
-         if (ABS(scal_new(0,n)) .gt. 1.0d-10) then
-            tmp2(0,n) = dt*diff_new(0,n)/scal_old(0,n)
-         else
-            tmp2(0,n) = dt*diff_new(0,n)
-         endif
-         if (ABS(tmp2(0,n)) .gt. 1.0d-8) then
-            write(*,*)n,' diff_new too large ',scal_new(0,n),tmp2(0,n),
-     $           diff_new(0,n)
-         open(UNIT=11, FILE='scal.dat', STATUS = 'REPLACE')
-         do j=0,nx-1
-            write(11,1010) j,(scal_new(j,FirstSpec+i-1), i=1,Nspec),
-     $           scal_new(j,RhoH),scal_new(j,Temp)
-         enddo
-         close(11)
-C            stop
-         endif
-C         if (ABS(aofs(0,n)) .gt. 1.0d-10) then
-C            write(*,*)n,' aofs too large ',aofs(0,n)
-C         endif
-      enddo
+C$$$      do n = 1,nscal
+C$$$         if (ABS(scal_new(0,n)) .gt. 1.0d-10) then
+C$$$            tmp2(0,n) = dt*diff_new(0,n)/scal_old(0,n)
+C$$$         else
+C$$$            tmp2(0,n) = dt*diff_new(0,n)
+C$$$         endif
+C$$$         if (ABS(tmp2(0,n)) .gt. 1.0d-8) then
+C$$$            write(*,*)n,' diff_new too large ',scal_new(0,n),tmp2(0,n),
+C$$$     $           diff_new(0,n)
+C$$$         open(UNIT=11, FILE='scal.dat', STATUS = 'REPLACE')
+C$$$         do j=0,nx-1
+C$$$            write(11,1010) j,(scal_new(j,FirstSpec+i-1), i=1,Nspec),
+C$$$     $           scal_new(j,RhoH),scal_new(j,Temp)
+C$$$         enddo
+C$$$         close(11)
+C$$$C            stop
+C$$$         endif
+C$$$C         if (ABS(aofs(0,n)) .gt. 1.0d-10) then
+C$$$C            write(*,*)n,' aofs too large ',aofs(0,n)
+C$$$C         endif
+C$$$      enddo
 CCCCCCCCCCCCCCCCCCCCCC
 
       enddo
@@ -1571,14 +1571,12 @@ C     Implicit solve for Temp^n+1
      $        dx,dt_m,is,be_cn_theta,rho_flag)
       enddo
 
-CCCCCCCCCCCCCCCCCCCCC
       call update_rhoh(scal_old,scal_tmp,aofs,alpha,beta_old,
      &     dRhs(0,0),Rhs(0,Temp),dx,dt_m,theta,time)
 C     Implicit solve for Temp^n+1
       rho_flag = 1
       call cn_solve(scal_tmp,alpha,beta_tmp,Rhs(0,Temp),
      $     dx,dt_m,Temp,theta,rho_flag)
-CCCCCCCCCCCCCCCCCcc
 
       print *,'...   extract D sources'
 C     CEG;; note that neither of these 2 fns use rhoH_new
@@ -1602,7 +1600,7 @@ C     CEG;; note that neither of these 2 fns use rhoH_new
             do i = 0,nx-1
                const_src(i,n) = aofs(i,n) + diff_new(i,n)
                lin_src(i,n) = 0.d0
-C this doesn't help iwht the osc
+C this doesn't help with the osc
 C               const_src(i,n) = aofs(i,n) + diff_old(i,n)
 C               lin_src(i,n) = (diff_new(i,n) - diff_old(i,n))/dt_m
             enddo
@@ -1644,13 +1642,12 @@ C
  1008 FORMAT((I5,1X),(E22.15,1X))      
 
 CCC debugging fixme
-         call get_spec_visc_terms(scal_tmp,beta_tmp,
-     &        diff_tmp(0,FirstSpec),dx,time+dt/3.d0)
-         call divRhoDHgradY(scal_tmp,beta_tmp,diff_tmp(0,RhoH),
-     &        dx,time+dt/3.d0)
-         call addDivLambdaGradT(scal_tmp,beta_tmp,
-     &        diff_tmp(0,RhoH),dx,time+dt/3.d0)
-
+C$$$         call get_spec_visc_terms(scal_tmp,beta_tmp,
+C$$$     &        diff_tmp(0,FirstSpec),dx,time+dt/3.d0)
+C$$$         call divRhoDHgradY(scal_tmp,beta_tmp,diff_tmp(0,RhoH),
+C$$$     &        dx,time+dt/3.d0)
+C$$$         call addDivLambdaGradT(scal_tmp,beta_tmp,
+C$$$     &        diff_tmp(0,RhoH),dx,time+dt/3.d0)
 CCCCCCC
       dt_m = 2.d0*dt/3.d0
       print *,'... update rho from n+1/3 to n+1'
@@ -1676,7 +1673,6 @@ C     Implicit solve for Temp^n+1
 
       call update_spec(scal_tmp,scal_new,aofs,alpha,beta_tmp,
      &     dRhs(0,1),Rhs(0,FirstSpec),dx,dt_m,be_cn_theta,time+dt/3.d0)
-
       rho_flag = 2
       do n=1,Nspec
          is = FirstSpec + n - 1
@@ -1684,14 +1680,12 @@ C     Implicit solve for Temp^n+1
      $        dx,dt_m,is,be_cn_theta,rho_flag)
       enddo
 
-CCCCCCCCCCCCCCCCc
       call update_rhoh(scal_tmp,scal_new,aofs,alpha,beta_tmp,
      &     dRhs(0,0),Rhs(0,Temp),dx,dt_m,theta,time+dt/3.d0)
 C     Implicit solve for Temp^n+1
       rho_flag = 1
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,Temp),
      $     dx,dt_m,Temp,theta,rho_flag)
-CCCCCCCCCCCCCCCCCCCCC
 
       print *,'...   extract D sources'
 C     CEG;; note that neither of these 2 fns use rhoH_new
