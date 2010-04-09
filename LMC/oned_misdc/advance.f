@@ -190,11 +190,11 @@ C$$$         enddo
 C$$$         close(11)
 CCCCCCCCCCCCCCCCCCCCCCCC            
             call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
-         do i = 0,nx-1
-            do n = 1,nscal
-               aofs(i,n) = 0.d0
-            enddo
-         enddo
+C$$$         do i = 0,nx-1
+C$$$            do n = 1,nscal
+C$$$               aofs(i,n) = 0.d0
+C$$$            enddo
+C$$$         enddo
 
 c*****************************************************************
 
@@ -290,14 +290,14 @@ C     $                 + dt*(1.d0 - be_cn_theta)*diff_old(i,n)
                print *,'... react with A+D sources, reset I_R_new'
                do n = 1,nscal
                   do i = 0,nx-1
-C                     const_src(i,n) =     aofs(i,n)
-C                     lin_src_old(i,n) = diff_old(i,n)
-C                     lin_src_new(i,n) = diff_new(i,n)
-                     const_src(i,n) =  aofs(i,n) + 
-     $                    be_cn_theta*diff_new(i,n)
-     $                    + (1.d0 - be_cn_theta)*diff_old(i,n)
-                     lin_src_old(i,n) = 0.d0
-                     lin_src_new(i,n) = 0.d0
+                     const_src(i,n) =     aofs(i,n)
+                     lin_src_old(i,n) = diff_old(i,n)
+                     lin_src_new(i,n) = diff_new(i,n)
+C                     const_src(i,n) =  aofs(i,n) + 
+C     $                    be_cn_theta*diff_new(i,n)
+C     $                    + (1.d0 - be_cn_theta)*diff_old(i,n)
+C                     lin_src_old(i,n) = 0.d0
+C                     lin_src_new(i,n) = 0.d0
 C treating rhoh differently than the species doesn't change anything
 C                     const_src(i,RhoH) =   aofs(i,RhoH) +
 C     $                    theta*diff_new(i,n)+(1.d0-theta)*diff_old(i,n)
@@ -368,11 +368,11 @@ C----------------------------------------------------------------
                print *,'... compute A with updated D+R source'
                call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
 CCCCCCCCCCc FIXME
-         do i = 0,nx-1
-            do n = 1,nscal
-               aofs(i,n) = 0.d0
-            enddo
-         enddo
+C$$$         do i = 0,nx-1
+C$$$            do n = 1,nscal
+C$$$               aofs(i,n) = 0.d0
+C$$$            enddo
+C$$$         enddo
 CCCCCCCCCCCCCCc
                print *,'... update rho'
                call update_rho(scal_old,scal_new,aofs,dx,dt)
