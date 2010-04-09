@@ -565,7 +565,7 @@ c
                   if (isioproc.eq.1) then
                      print*, 'setupbc(): unknown fuel type'
                   end if
-                  call bl_abort()
+                  call bl_abort('')
                end if
 
                T_bc(zone) = Tin

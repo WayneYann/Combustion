@@ -222,7 +222,7 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, nCompFile, isioproc
+      integer maxlen, nCompFile, isioproc, ierr
       parameter (maxlen=256)
 
       character probin*(maxlen)
@@ -350,8 +350,12 @@ c      if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
       else
          if (flct_file.ne."") then
 #define FF_UNIT 20
+            ierr = 0
             write(6,*) '...initializing turbulence, reading header info'
-            open(FF_UNIT, file=trim(flct_file)//'/HDR',form='formatted',status='old')
+            open(FF_UNIT, file=trim(flct_file)//'/HDR',form='formatted',status='old',iostat=ierr)
+            if (ierr .ne. 0) then
+               call bl_abort('Problem opening file: ' // trim(flct_file) // '/HDR')
+            end if
             call RD_SCL_FLCTHD(FF_UNIT,nCompFile,dimFile,probSizeFile,dxFile)
             close(FF_UNIT)
          endif
