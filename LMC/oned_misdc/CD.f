@@ -367,14 +367,15 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
          enddo
 
          T = Z(0)
-C         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
-C         errMax = ABS(hmix_TYP*1.e-12)
-c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-C         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
-C         if (Niter.lt.0) then
-C            print *,'F: H to T solve failed in F, Niter=',Niter
-C            stop
-C         endif
+
+C$$$         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
+C$$$         errMax = ABS(hmix_TYP*1.e-12)
+C$$$C     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
+C$$$         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
+C$$$         if (Niter.lt.0) then
+C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
+C$$$            stop
+C$$$         endif
 c     print *,'  ** Fdiag',TIME,T,Z(1),Niter
 
 C CEG trying something new with the temp evolution FIXME??

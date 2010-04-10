@@ -16,12 +16,12 @@
   predict_temp_for_coeffs = 1
   num_divu_iters = 3
   num_init_iters = 2
-  misdc_iterMAX = 25
+  misdc_iterMAX = 4
   nochem_hack = .false.
   use_strang = .false.
   use_temp_eqn = .false.
   use_radau = .false.
-  use_rhoh2 = .false.
+  use_rhoh2 = .true.
   lim_rxns = 0
   fixed_dt = -1
 /

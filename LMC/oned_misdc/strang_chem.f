@@ -191,7 +191,7 @@ C$$$                  print *,'hmix_TYP:',hmix_TYP
 C$$$                  stop
 C$$$               endif
 C$$$               scal_new(i,Temp) = Tnew
-CCCCCCCCCCCc
+CCCCCCCCCCc
 
 C CEG just chekcing FIXME-- biggest difference ~5/10^5 
 C$$$               rhoh_intg = scal_old(i,RhoH)+
