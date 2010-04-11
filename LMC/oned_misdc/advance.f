@@ -2292,11 +2292,11 @@ CCCCCCCCCCCCC
          print *,'... react with A+D sources, reset I_R_new'
          do n = 1,nscal
             do i = 0,nx-1
-C               const_src(i,n) = aofs(i,n) + diff_new(i,n)
-C               lin_src(i,n) = 0.d0
+               const_src(i,n) = aofs(i,n) + diff_new(i,n)
+               lin_src(i,n) = 0.d0
 
-               const_src(i,n) = aofs(i,n) + diff_tmp(i,n)
-               lin_src(i,n) = (diff_new(i,n) - diff_tmp(i,n))/dt_m
+C               const_src(i,n) = aofs(i,n) + diff_tmp(i,n)
+C               lin_src(i,n) = (diff_new(i,n) - diff_tmp(i,n))/dt_m
             enddo
          enddo
 
