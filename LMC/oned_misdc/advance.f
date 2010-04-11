@@ -654,11 +654,12 @@ c*****************************************************************
       enddo
        
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
-         do i = 0,nx-1
-            do n = 1,nscal
-               aofs(i,n) = 0.d0
-            enddo
-         enddo
+C FIXME
+C$$$         do i = 0,nx-1
+C$$$            do n = 1,nscal
+C$$$               aofs(i,n) = 0.d0
+C$$$            enddo
+C$$$         enddo
 
 c*****************************************************************
 
