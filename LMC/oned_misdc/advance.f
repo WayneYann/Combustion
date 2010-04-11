@@ -1503,7 +1503,7 @@ CCCCCCCCCCCCCC
       be_cn_theta = 1.0d0
 
       print *,'... using RADAU quadrature'
-      print *,'... evolving without temperature equation'
+      print *,'... evolving without using temperature equation'
       print *,'... creating the diffusive terms with old data'
 
 C Rhoh solve assumes reasonable values inside scal_tmp
