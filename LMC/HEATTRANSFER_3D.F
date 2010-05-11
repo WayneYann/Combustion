@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.21 2009-11-19 23:13:57 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.22 2010-05-11 21:16:39 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -109,7 +109,7 @@ c
             do k=lo(3), hi(3)
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
-                     mu(i,j,k) = 1.85D-5*(T(i,j,k)/298.0)**.7
+                     mu(i,j,k) = 1.85D-5*(T(i,j,k)/298.D0)**0.7D0
                   end do
                end do
             end do
