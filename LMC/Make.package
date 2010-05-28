@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.19 2009-11-18 20:17:53 aaspden Exp $
+# $Id: Make.package,v 1.20 2010-05-29 00:00:37 marc Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -51,6 +51,9 @@ ifeq ($(REACTION_MECHANISM),PROPANE)
 endif
 ifeq ($(REACTION_MECHANISM),LIDRYER)
   C$(HT_BASE)_sources += LiDryer.cpp
+endif
+ifeq ($(REACTION_MECHANISM),LIDRYERMOD)
+  C$(HT_BASE)_sources += LiDryerMOD.cpp
 endif
 ifeq ($(REACTION_MECHANISM),HAI)
   C$(HT_BASE)_sources += Hai.cpp
