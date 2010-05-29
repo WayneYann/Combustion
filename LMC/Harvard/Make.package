@@ -1,0 +1,12 @@
+#
+# $Id: Make.package,v 1.1 2010-05-29 00:36:57 marc Exp $
+#
+CEXE_sources += HT_setup.cpp
+
+FEXE_sources += PROB_2D.F
+
+CEXE_headers += ArrayViewEXT.H
+
+FEXE_headers += probdata.H PROB_F.H
+
+fEXE_sources += 
