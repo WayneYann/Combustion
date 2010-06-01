@@ -25,9 +25,9 @@
       implicit none
 #include "probdata.H"
       integer fuel, oxid, prod, numspec
-      fuelID = fuel + 1
-      oxidID = oxid + 1
-      prodID = prod + 1
+      fuelID = fuel
+      oxidID = oxid
+      prodID = prod
       end
       
 c ::: -----------------------------------------------------------
@@ -59,18 +59,11 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 
-      namelist /fortin/ 
-     &     flowrate_fu_AR, flowrate_fu_CH4, flowrate_fu_H2, 
-     &     flowrate_fu_H2O, flowrate_fu_N2, flowrate_fu_NH3, 
-     &     flowrate_fu_NO, flowrate_fu_O2, T_fu, R_fu, flowrate_ox_AR,
-     &     flowrate_ox_H2O, flowrate_ox_O2, flowrate_ox_N2, 
-     &     T_ox, R_ox_1, R_ox_2, x_hot, y_hot_lo, y_hot_hi,
-     &     T_hot, temperr, adverr, vorterr, tempgrad, max_temp_lev,
-     &     max_vort_lev, flametracval, y_wall2, y_wall3, T_wall1,
-     &     T_wall2, T_wall3, Trad_bg, time_rad, dt_rad,
-     &     refine_nozzle, nozzlerefwidth, nozzlerefheight, 
-     &     nozzlerefloc, probtype, maximum_nozzle_level,noInletSpecDiff
-      namelist /heattransin/ pamb, dpdt_factor
+      namelist /fortin/ V_fu, V_ox, T_fu, T_ox, R_fu, R_hot, T_hot, T_wall,
+     &     y_hot_lo, y_hot_hi, temperr, vorterr, tempgrad, flametracval,
+     &     max_temp_lev, max_vort_lev, max_trac_lev, max_nozzle_lev,
+     &     nozzle_height, nozzle_radius, probtype
+      namelist /heattransin/ pamb, dpdt_factor, noInletSpecDiff
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
@@ -82,7 +75,7 @@ c
       if (namlen .gt. maxlen) then
          write(6,*) 'probin file name too long'
          stop
-      end if
+      endif
 
       if (namlen .eq. 0) then
          namlen = 6
@@ -90,62 +83,39 @@ c
       else
          do i = 1, namlen
             probin(i:i) = char(name(i))
-         end do
+         enddo
       endif
 
 c     Set defaults
-      flowrate_fu_AR = zero
-      flowrate_fu_CH4 = zero
-      flowrate_fu_H2 = zero
-      flowrate_fu_H2O = zero
-      flowrate_fu_N2 = zero
-      flowrate_fu_NH3 = zero
-      flowrate_fu_NO = zero
-      flowrate_fu_O2 = zero
-      T_fu = 300d0
-      R_fu = .01d0
-      flowrate_ox_AR = zero
-      flowrate_ox_H2O = zero
-      flowrate_ox_O2 = zero
-      flowrate_ox_N2 = zero
-      T_ox = 300d0
-      R_ox_1 = .02d0
-      R_ox_2 = .03d0
-      x_hot = R_fu
-      y_hot_hi = R_fu
+      V_fu = zero
+      V_ox = zero
+      T_fu = zero
+      T_ox = zero
+      R_fu = zero
+      R_hot = zero
+      T_hot = zero
+      T_wall = zero
       y_hot_lo = zero
-      T_hot = 2.d3
-      T_wall1 = 300.d0
-      T_wall2 = 300.d0
-      T_wall3 = 300.d0
-      y_wall2 = zero
-      y_wall3 = zero
-      Trad_bg = 300.d0
-      time_rad = zero
-      dt_rad = 1.e-9
-
-      temperr = zero
-      adverr = 1.e20
-      vorterr = 5.e3
-      tempgrad  = 50.0d0
-      max_temp_lev = 0
-      max_vort_lev = 0
-      flametracval = .005
-      
-      refine_nozzle = 0
-      nozzlerefwidth = zero
-      nozzlerefheight = zero
-      nozzlerefloc = zero
-      maximum_nozzle_level = 100
-      probtype = 0
-
-      noInletSpecDiff = 0
+      y_hot_hi = zero
+      temperr = 1.d5
+      vorterr = 1.d5
+      tempgrad = 1.d5
+      flametracval = one
+      max_temp_lev = 1000
+      max_vort_lev = 1000
+      max_trac_lev = 1000
+      max_nozzle_lev = 1000
+      nozzle_height = zero
+      nozzle_radius = zero
+      probtype = 1
 
       untin = 9
-      open(untin,file=probin(1:namlen),form='formatted',status='old')
-      
+      open(untin,file=probin(1:namlen),form='formatted',status='old')      
+      print *,'reading' 
       read(untin,fortin)
+      print *,'done' 
       
+      noInletSpecDiff = 0
       pamb = 101325.0
       dpdt_factor = 0.3
       read(untin,heattransin)
@@ -158,14 +128,6 @@ c     Load domain dimensions into common, and set up boundary functions
       domnhi(1) = probhi(1)
       domnhi(2) = probhi(2)
 
-c     Precompute some messy coeffs
-      a_ox = (R_ox_2**2 - R_ox_1**2)/(4*log(R_ox_1/R_ox_2))
-      b_ox = (log(R_ox_2)*R_ox_1**2 - log(R_ox_1)*R_ox_2**2) /
-     &     (4*log(R_ox_1/R_ox_2))
-      c_ox = (8.d0/(Pi*6.d7)) /
-     &     (R_ox_2**2*(-4*a_ox+8*b_ox+R_ox_2**2+8*a_ox*log(R_ox_2))
-     &     -R_ox_1**2*(-4*a_ox+8*b_ox+R_ox_1**2+8*a_ox*log(R_ox_1)))
-      
       call setupbc()
       bcinit = .true.
       
@@ -173,11 +135,17 @@ c     Precompute some messy coeffs
 
 c ::: -----------------------------------------------------------
 
+#define FUELZONE 1
+#define OXIDZONE 2
+#define HOTZONE  3
+#define LEFTWALL 4
+#define RGHTWALL 5
+
 #define XLO 0
-#define YLO 1
-#define XHI 2
+#define XHI 1
+#define YLO 2
 #define YHI 3
-      
+
       subroutine setupbc()
       implicit none
 #include "cdwrk.H"
@@ -185,9 +153,8 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 #include "htdata.H"
       
-      REAL_T Patm, X(0:maxspec-1), Y(0:maxspec-1), tot
-      REAL_T flowrate_fu_tot, flowrate_ox_tot
-      integer n, zone, iN2, lo(SDIM), hi(SDIM)
+      REAL_T Patm, X(0:maxspec-1), Y(0:maxspec-1)
+      integer n, zone, iN2, iFU, iO2, lo(SDIM), hi(SDIM)
       character*(maxspnml) name
       data lo / 1, 1 /
       data hi / 1, 1 /
@@ -197,127 +164,63 @@ c ::: -----------------------------------------------------------
       do n = 0,Nspec-1
          call get_spec_name(name, n+1)
          if (name .eq. 'N2' ) iN2 = n
-      end do
-c
-c	Glarborg and Bessler cases:
-c
-c	Boundary is divided into 5 zones
-	if ((probtype.eq.0).or.(probtype.eq.1)) then	      
-c     Compute inlet mass fracs based on input flowrates
-c
-c     ZONE 1: Fuel stream
-c     Needs: 
-c     flowrate_fu_AR, flowrate_fu_CH4, flowrate_fu_H2, flowrate_fu_H2O,
-c     flowrate_fu_N2, flowrate_fu_NH3, flowrate_fu_NO, flowrate_fu_O2, 
-c     T_fu, R_fu (flowrates in ml/min, R_fu in mm)
-c     
-c     Note: 6.e7 = 60 s/min * 1.e6 ml/m^3
-	   zone = 1
-	   tot = zero
-	   flowrate_fu_tot 
-     &          = flowrate_fu_AR + flowrate_fu_CH4 + flowrate_fu_H2
-     &          + flowrate_fu_H2O + flowrate_fu_N2 + flowrate_fu_NH3 
-     &          + flowrate_fu_NO + flowrate_fu_O2
+      enddo
+
+      if ( probtype .eq. 0 ) then 
+
+         zone = FUELZONE
          do n = 0,Nspec-1
-            call get_spec_name(name, n+1)
-            if (name .EQ. 'AR') then
-               X(n) = flowrate_fu_AR/flowrate_fu_tot
-            else if (name .EQ. 'CH4') then
-               X(n) = flowrate_fu_CH4/flowrate_fu_tot
-            else if (name .EQ. 'H2') then
-               X(n) = flowrate_fu_H2/flowrate_fu_tot
-            else if (name .EQ. 'H2O') then
-               X(n) = flowrate_fu_H2O/flowrate_fu_tot
-            else if (name .EQ. 'NH3') then
-               X(n) = flowrate_fu_NH3/flowrate_fu_tot
-            else if (name .EQ. 'NO') then
-               X(n) = flowrate_fu_NO/flowrate_fu_tot
-            else if (name .EQ. 'O2') then
-               X(n) = flowrate_fu_O2/flowrate_fu_tot
+            if ( n .eq. fuelID ) then
+               Y_bc(n,zone) = one
             else
-               X(n) = zero
+               Y_bc(n,zone) = zero
             endif
-            tot = tot + X(n)
-         end do
-         X(iN2) = one - tot
-         call FORT_MOLETOMASS(lo,hi,
-     &        X, ARLIM(lo),ARLIM(hi),
-     &        Y, ARLIM(lo),ARLIM(hi))
-         do n = 0,Nspec-1
-            Y_bc(n,zone) = Y(n)
-         end do 
+         enddo
          T_bc(zone) = T_fu
          u_bc(zone) = zero
-         v_bc(zone) = (flowrate_fu_tot/6.e7) / (Pi*R_fu**2)
+         v_bc(zone) = V_fu
       
-      
-c     ZONE 2: Oxidizer stream
-c     Needs: 
-c     flowrate_ox_AR, flowrate_ox_H2O, flowrate_ox_O2, flowrate_ox_N2, 
-c     T_ox, R_ox_1, R_ox_2 (flowrate in ml/min, R's in mm)
-         zone = 2
-         tot = zero
-         flowrate_ox_tot 
-     &        = flowrate_ox_AR
-     &        + flowrate_ox_H2O 
-     &        + flowrate_ox_O2 
-     &        + flowrate_ox_N2
-         do n = 0,Nspec-1
-            call get_spec_name(name, n+1)
-            if (name .EQ. 'AR') then
-               X(n) = flowrate_ox_AR / flowrate_ox_tot
-            else if (name .EQ. 'H2O') then
-               X(n) = flowrate_ox_H2O / flowrate_ox_tot
-            else if (name .EQ. 'O2') then
-               X(n) = flowrate_ox_O2 / flowrate_ox_tot
-            else
-               X(n) = zero
-            endif
-            tot = tot + X(n)
-         end do
-         X(iN2) = one - tot
+         zone = OXIDZONE
+         X(oxidID) = 0.21d0
+         X(iN2) = one - X(oxidID)
          call FORT_MOLETOMASS(lo,hi,
      &        X, ARLIM(lo),ARLIM(hi),
      &        Y, ARLIM(lo),ARLIM(hi))
          do n = 0,Nspec-1
             Y_bc(n,zone) = Y(n)
-         end do 
+         enddo 
          T_bc(zone) = T_ox
          u_bc(zone) = zero
-         v_bc(zone) = (flowrate_ox_tot/6.e7) / (Pi*(R_ox_2**2 - R_ox_1**2))
+         v_bc(zone) = V_ox
       
-      
-c     ZONE 3: Dead zone, like 2 but no inflow
-         zone = 3
+         zone = HOTZONE
          do n = 0,Nspec-1
             Y_bc(n,zone) = Y_bc(n,2)
-         end do
-         T_bc(zone) = T_bc(2)
-         u_bc(zone) = u_bc(2)
-         v_bc(zone) = zero
-      
-c     ZONE 4: Hot spot, like 2 but hotter
-         zone = 4
-         do n = 0,Nspec-1
-            Y_bc(n,zone) = Y_bc(n,2)
-         end do
+         enddo
          T_bc(zone) = T_hot
          u_bc(zone) = u_bc(2)
          v_bc(zone) = v_bc(2)
 
-c     ZONE 5: Outter wall
-         zone = 5
+         zone = LEFTWALL
          do n = 0,Nspec-1
             Y_bc(n,zone) = Y_bc(n,2)
-         end do
-         T_bc(zone) = T_wall3
+         enddo
+         T_bc(zone) = T_wall
+         u_bc(zone) = zero
+         v_bc(zone) = zero
+
+         zone = RGHTWALL
+         do n = 0,Nspec-1
+            Y_bc(n,zone) = Y_bc(n,2)
+         enddo
+         T_bc(zone) = T_wall
          u_bc(zone) = zero
          v_bc(zone) = zero
       else
-	   write(*,*) 'PROB_2D::setupbc: Dont know about probtype = ',
-     &      probtype
+         write(*,*) 'PROB_2D::setupbc: Dont know about probtype = ',
+     &        probtype
          stop
-	end if
+      endif
 
 c     Get rho and h for all zones
       do zone=1,Nzones
@@ -329,7 +232,7 @@ c     Get rho and h for all zones
      &                        h_bc(zone),ARLIM(lo),ARLIM(hi),
      &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
      &                        Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
-      end do
+      enddo
       end
          
 c ::: -----------------------------------------------------------
@@ -341,25 +244,33 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
       REAL_T x, y, epsilon
 
-      epsilon = 1.d-9
-      getZone = 2
-	if (y .le. domnlo(2)+epsilon) then
-c		if ((x.ge.domnlo(1)).and.(x.le.R_fu)) then
-		if (x.le.R_fu) then
-			getZone = 1
-		else if ((x.gt.R_fu).and.(x.le.R_ox_1)) then
-			getZone = 3
-c		else if ((x.gt.R_ox_1).and.(x.le.R_ox_2)) then
-		else if (x.le.R_ox_2) then
-			getZone = 2
-		endif
-      else if (x.ge.domnhi(1)-epsilon) then
-		getZone = 5
-	else
-		if ( (y .le. y_hot_hi) .AND.
-     &		  (y .ge. y_hot_lo) .AND.
-     &		  (x .le. x_hot)    ) getZone = 4
-	end if
+      epsilon = (domnhi(2)-domnlo(2))*1.d-9
+
+      getZone = OXIDZONE
+
+      if ( x .ge. domnhi(1)-epsilon ) then
+
+         getZone = RGHTWALL
+
+      else if ( x .le. domnlo(1)+epsilon ) then
+
+         getZone = LEFTWALL
+
+      else
+         
+         if ( (y .le. y_hot_lo) .and. (ABS(x) .le. R_fu) ) then
+
+            getZone = FUELZONE
+
+         else if ( (   y  .gt. y_hot_lo) .and.
+     &           (     y  .le. y_hot_hi) .and.
+     &           ( ABS(x) .le. R_hot) ) then
+
+            getZone = HOTZONE
+
+         endif
+
+      endif
       end
       
 c ::: -----------------------------------------------------------
@@ -372,39 +283,12 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
-      REAL_T flowrate_fu_tot, flowrate_ox_tot, Patm, xleft, xrght
-      REAL_T uavFU,R1FU,R2FU,FlowFU
-      REAL_T uavOX,R1OX,R2OX,FlowOX, OXInt, OXIntR1, OXIntR2
-      integer n, getZone, zone, lo(SDIM), hi(SDIM)
-      data lo / 1, 1 /
-      data hi / 1, 1 /
+      integer n, zone, getZone
       
-c     Compute the average velocity in the fuel stream between R1FU and R2FU
-c     Note: If R2FU > R_fu, the average is computed assuming the remainder
-c            extends into a no-flow zone (ie, the fuel tube is wider than dx(1))
-	uavFU(R1FU,R2FU,FlowFU) = 
-     &	(R_fu**2 * (MIN(R_fu,R2FU)**2 - R1FU**2)
-     &    -   half * (MIN(R_fu,R2FU)**4 - R1FU**4) )
-     &   *FlowFU/(Pi * BL_REAL_E(3.0,7) * (R1FU+R2FU) * dx(1) * R_fu**4)
-c	uavFU(R1FU,R2FU,FlowFU) = FlowFU/(BL_REAL_E(3.0,7)*Pi*R_fu**4)
-c     &	*(R_fu**2 - (half*(R1FU+R2FU))**2)
-
-c     Compute the average velocity in the oxidizer stream between R1OX and R2OX
-c     Note: If R1OX < R_ox_1, or if R2OX > R_ox_2, the average is computed assuming
-c            the remainder extends into a no-flow zone (ie, the fuel tube is
-c            wider than dx(1))
-      OXInt(OXIntR1,OXIntR2) = BL_REAL_E(16.0,-1)*
-     &   (OXIntR2**2*(OXIntR2**2+eight*b_ox+four*a_ox*(two*LOG(OXIntR2)-one))
-     &   -OXIntR1**2*(OXIntR1**2+eight*b_ox+four*a_ox*(two*LOG(OXIntR1)-one)))
-
-	uavOX(R1OX,R2OX,FlowOX) =
-     &   OXInt(MAX(R_ox_1,R1OX),MIN(R_ox_2,R2OX))/OxInt(R_ox_1,R_ox_2)
-     &   *(FlowOX/(BL_REAL_E(6.0,7)*Pi*(R1OX+R2OX)*dx(1))) 
-
       if (.not. bcinit) then
          write(6,*) 'Need to initialize boundary condition function'
          stop
-      end if
+      endif
 
       if (orient .lt. 4) then
          zone = getZone(x,y)
@@ -413,67 +297,13 @@ c            wider than dx(1))
          rho = rho_bc(zone)
          do n = 0,Nspec-1
             Yl(n) = Y_bc(n,zone)
-         end do
+         enddo
          T = T_bc(zone)
          h = h_bc(zone)
-c     Overwrite constant inflow velocities with profiles
-         flowrate_fu_tot 
-     &        = flowrate_fu_AR + flowrate_fu_CH4 + flowrate_fu_H2
-     &        + flowrate_fu_H2O + flowrate_fu_N2 + flowrate_fu_NH3 
-     &        + flowrate_fu_NO + flowrate_fu_O2
-         flowrate_ox_tot 
-     &        = flowrate_ox_AR + flowrate_ox_H2O + flowrate_ox_O2 
-     &        + flowrate_ox_N2
-
-         if (probtype .eq. 0) then
-            if (zone.eq.1) then
-               v = flowrate_fu_tot*(R_fu**2 - x**2)/(3.d7*Pi*R_fu**4)
-            else if (zone.eq.2) then
-               v = flowrate_ox_tot
-     &              * (fourth*c_ox*x**2 + a_ox*c_ox*log(x) + b_ox*c_ox)
-            endif
-	   else if (probtype .eq.1) then
-	      if (dx(1) .gt. R_ox_2 - R_ox_1) then
-	         write(6,*) 'bcfunction: Grid too coarse for inlet v bc'
-	         stop
-	      end if
-            xleft = x - half*dx(1)
-            xrght = x + half*dx(1)
-            if ((x+half*dx(1).ge.domnlo(1)).and.(x-half*dx(1).le.R_fu)) then
-	         v = uavFU(xleft,xrght,flowrate_fu_tot)
-            else if ((x+half*dx(1).ge.R_ox_1).and.(x-half*dx(1).le.R_ox_2)) then
-               v = uavOX(xleft,xrght,flowrate_ox_tot)
-      	  end if
-	   else
-	      write(*,*) 'PROB_2D::bcfunction: Dont know about probtype = ',
-     &         probtype
-            stop
-	   end if
-c	Overwrite constant T on wall with T profile, then recalc rho and h
-         if (zone.eq.5) then
-            Patm = pamb / 101325.0
-            if (y.lt.y_wall2) then
-               T = T_wall1
-     &              + (T_wall2-T_wall1)*(y-domnlo(2))/(y_wall2-domnlo(2))
-            else if (y.lt.y_wall3) then
-               T = T_wall2
-     &              + (T_wall3-T_wall2)*(y-y_wall2)/(y_wall3-y_wall2)
-            else
-               T = T_wall3
-            end if
-            call FORT_RHOfromPTY(lo,hi,
-     &                           rho,ARLIM(lo),ARLIM(hi),
-     &                           T,  ARLIM(lo),ARLIM(hi),
-     &                           Yl, ARLIM(lo),ARLIM(hi), Patm)
-            call FORT_HMIXfromTY(lo,hi,
-     &                           h, ARLIM(lo),ARLIM(hi),
-     &                           T, ARLIM(lo),ARLIM(hi),
-     &                           Yl,ARLIM(lo),ARLIM(hi))
-	   end if 
       else
          write(6,*) 'No boundary condition for orientation = ', orient
          stop
-      end if
+      endif
       end
       
 c ::: -----------------------------------------------------------
@@ -533,21 +363,18 @@ c     ::::: local variables
       if ((Temp.gt.0).neqv.(RhoH.gt.0)) then
          write(6,*) 'Need both Temp and RhoH, or neither'
          stop
-      end if
+      endif
       
       if ((Temp .LT. 0) .OR. (RhoH .LT. 0)) then
          write(6,*) 'No IC''s for system without T, RhoH'
          stop
       endif
 
-c
-c     Set IC's extended BC
-c     
       do j = lo(2), hi(2)
          y = (float(j)+.5)*delta(2)+domnlo(2)
          do i = lo(1), hi(1)
             x = (float(i)+.5)*delta(1)+domnlo(1)
-            call bcfunction(YLO, x, y, time, u, v, rho, Yl, T, h, delta)
+            call bcfunction(XLO, x, y, time, u, v, rho, Yl, T, h, delta)
             scal(i,j,Trac) = zero
             scal(i,j,Density) = rho
             scal(i,j,Temp) = T
@@ -618,11 +445,11 @@ c     Do only species equations
                if ((noInletSpecDiff.EQ.1) .OR. (zone .EQ. 3)) then
                   do n = ys - id + 1, ye - id + 1
                      diff(i,j,n) = zero
-                  end do
-               end if
-            end do
-         end if
-      end if
+                  enddo
+               endif
+            enddo
+         endif
+      endif
       end
 
 c ::: -----------------------------------------------------------
@@ -690,25 +517,25 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-            tag(i,j) = cvmgt(set,tag(i,j),ftrac(i,j,1).gt.flametracval)
-	 enddo
-      enddo
+      if (level .lt. max_trac_lev) then
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               tag(i,j) = cvmgt(set,tag(i,j),ftrac(i,j,1).gt.flametracval)
+            enddo
+         enddo
+      endif
 
-      if (refine_nozzle .eq. 1 .and. 
-     &     level .lt. maximum_nozzle_level) then
+      if (level .lt. max_nozzle_lev) then
          do j = lo(2), hi(2)
             y = (float(j)+.5)*dx(2)+problo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*dx(1)+problo(1)
-               in_refine_zone = (y - problo(2)) .le. nozzlerefheight
-               in_refine_zone = in_refine_zone .and.
-     &              (ABS(x-nozzlerefloc) .le. half*nozzlerefwidth)
+               in_refine_zone = (y .le. nozzle_height)
+     &              .and.  (ABS(x) .le. nozzle_radius)
                tag(i,j) = cvmgt(set,tag(i,j),in_refine_zone)
-            end do
-         end do
-      end if
+            enddo
+         enddo
+      endif
 
       end
 
@@ -749,16 +576,6 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
       
-      integer i, j
-
-      if ((probtype .eq. 8) .and. (time .eq. zero)) then
-         call FORT_MVERROR(tag,DIMS(tag),set,clear,
-     &                     adv,DIMS(adv),lo,hi,nvar,
-     &                     domlo,domhi,delta,xlo,
-     &			   problo,time,level)
-      end if
-      
-      return
       end
 
 c ::: -----------------------------------------------------------
@@ -803,31 +620,31 @@ c ::: -----------------------------------------------------------
 
 #if 0
       ng = min(ARG_H1(temp)-hi(1),ARG_H2(temp)-hi(2),lo(1)-ARG_L1(temp),lo(2)-ARG_L2(temp))
-
+      
       if (ng .lt. 1) then
          write(6,*) "TEMPERR cannot compute gradient, ng = ",ng
          stop
       endif
-
+      
 c     ::::: refine where there is temperature gradient
       if (level .lt. max_temp_lev) then
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-            ax = abs(temperature(i+1,j,1) - temperature(i-1,j,1))
-            ay = abs(temperature(i,j+1,1) - temperature(i,j-1,1))
-            aerr = max(ax,ay)
-            tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               ax = abs(temperature(i+1,j,1) - temperature(i-1,j,1))
+               ay = abs(temperature(i,j+1,1) - temperature(i,j-1,1))
+               aerr = max(ax,ay)
+               tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
+            enddo
          enddo
-      enddo
       endif
 #else
       if (level .lt. max_temp_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                tag(i,j) = cvmgt(set,tag(i,j),temperature(i,j,1).ge.temperr)
-            end do
-         end do
-      end if
+            enddo
+         enddo
+      endif
 #endif
       
       end
@@ -873,15 +690,13 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      if ((probtype.eq.8) .and. (level .lt. max_vort_lev)) then
+      if (level .lt. max_vort_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                tag(i,j) = cvmgt(set,tag(i,j),ABS(vort(i,j,1)).ge.vorterr)
-            end do
-         end do
-      end if
-
-      return
+            enddo
+         enddo
+      endif
       end
 
 c ::: -----------------------------------------------------------
@@ -992,8 +807,6 @@ c     that the bc values may often be set up ahead of time.
             enddo
          enddo
       endif
-
-      return
       end
 
 c ::: -----------------------------------------------------------
@@ -1049,9 +862,6 @@ c ::: -----------------------------------------------------------
       call filcc (adv,DIMS(adv),domlo,domhi,delta,xlo,bc)
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
-#if 0
-        stop 'ADVFILL: should not be here for pipe problem'
-#endif
            do i = lo(1), domlo(1)-1
              do j = lo(2), hi(2)
                adv(i,j) = zero
@@ -1060,9 +870,6 @@ c ::: -----------------------------------------------------------
       endif            
 
       if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
-#if 0
-        stop 'ADVFILL: should not be here for pipe problem'
-#endif
            do i = domhi(1)+1, hi(1)
              do j = lo(2), hi(2)
                adv(i,j) = zero
@@ -1071,8 +878,6 @@ c ::: -----------------------------------------------------------
       endif            
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
-c                               inflow for burner in a can (bic, biac)
-
            do j = lo(2), domlo(2)-1
               do i = lo(1), hi(1)
                  adv(i,j) = zero
@@ -1081,17 +886,12 @@ c                               inflow for burner in a can (bic, biac)
       endif            
 
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
-#if 0
-        stop 'ADVFILL: should not be here for pipe problem'
-#endif
            do j = domhi(2)+1, hi(2)
               do i = lo(1), hi(1)
                  adv(i,j) = zero
               enddo
            enddo
       endif            
-
-      return
       end
 
 
@@ -1202,8 +1002,6 @@ c     that the bc values may often be set up ahead of time.
             enddo
          enddo
       endif
-
-      return
       end
 
 c ::: -----------------------------------------------------------
@@ -1596,7 +1394,7 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
       do n = 1,Nspec
          call filcc (rhoY(lo(1),lo(2),n),
      $               DIMS(rhoY),domlo,domhi,delta,xlo,bc)
-      end do
+      enddo
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
@@ -1606,7 +1404,7 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
                call bcfunction(XLO,x,y,time,u,v,rho,Yl,T,h,delta)
                do n = 1,Nspec
                   rhoY(i,j,n) = rho*Yl(n)
-               end do
+               enddo
             enddo
          enddo
       endif
@@ -1619,7 +1417,7 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
                call bcfunction(XHI,x,y,time,u,v,rho,Yl,T,h,delta)
                do n = 1,Nspec
                   rhoY(i,j,n) = rho*Yl(n)
-               end do
+               enddo
             enddo
          enddo
       endif    
@@ -1632,7 +1430,7 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
                call bcfunction(YLO,x,y,time,u,v,rho,Yl,T,h,delta)
                do n = 1,Nspec
                   rhoY(i,j,n) = rho*Yl(n)
-               end do
+               enddo
             enddo
          enddo
       endif    
@@ -1645,7 +1443,7 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
                call bcfunction(YHI,x,y,time,u,v,rho,Yl,T,h,delta)
                do n = 1,Nspec
                   rhoY(i,j,n) = rho*Yl(n)
-               end do
+               enddo
             enddo
          enddo
       endif
@@ -1794,35 +1592,35 @@ c
          do i = ARG_L1(p), domlo(1)-1
             do j = jlo,jhi
                p(i,j) = p(ilo,j)
-            end do
-         end do
+            enddo
+         enddo
          if (fix_ylo) then
             do i = ARG_L1(p), domlo(1)-1
                do j = ARG_L2(p), domlo(2)-1
                   p(i,j) = p(ilo,jlo)
-               end do
-            end do
+               enddo
+            enddo
          else if (per_ylo) then
             do i = ARG_L1(p), domlo(1)-1
                do j = ARG_L2(p), domlo(2)-1
                   p(i,j) = p(ilo,j)
-               end do
-            end do
-         end if
+               enddo
+            enddo
+         endif
          if (fix_yhi) then
             do i = ARG_L1(p), domlo(1)-1
                do j = domhi(2)+1, ARG_H2(p)
                   p(i,j) = p(ilo,jhi)
-               end do
-            end do
+               enddo
+            enddo
          else if (per_yhi) then
             do i = ARG_L1(p), domlo(1)-1
                do j = domhi(2)+1, ARG_H2(p)
                   p(i,j) = p(ilo,j)
-               end do
-            end do
-         end if
-      end if
+               enddo
+            enddo
+         endif
+      endif
 c
 c     ::::: right side
 c
@@ -1830,79 +1628,79 @@ c
          do i = domhi(1)+1, ARG_H1(p)
             do j = jlo,jhi
                p(i,j) = p(ihi,j)
-            end do
-	 end do
+            enddo
+	 enddo
 	 if (fix_ylo) then
 	    do i = domhi(1)+1, ARG_H1(p)
                do j = ARG_L2(p), domlo(2)-1
                   p(i,j) = p(ihi,jlo)
-               end do
-	    end do
+               enddo
+	    enddo
 	 else if (per_ylo) then
 	    do i = domhi(1)+1, ARG_H1(p)
                do j = ARG_L2(p), domlo(2)-1
                   p(i,j) = p(ihi,j)
-               end do
-	    end do
-         end if
+               enddo
+	    enddo
+         endif
 	 if (fix_yhi) then
 	    do i = domhi(1)+1, ARG_H1(p)
                do j = domhi(2)+1, ARG_H2(p)
                   p(i,j) = p(ihi,jhi)
-               end do
-	    end do
+               enddo
+	    enddo
 	 else if (per_yhi) then
 	    do i = domhi(1)+1, ARG_H1(p)
                do j = domhi(2)+1, ARG_H2(p)
                   p(i,j) = p(ihi,j)
-               end do
-	    end do
-         end if
-      end if
+               enddo
+	    enddo
+         endif
+      endif
       
       if (fix_ylo) then
          do j = ARG_L2(p), domlo(2)-1
             do i = ilo, ihi
                p(i,j) = p(i,jlo)
-            end do
-	 end do
+            enddo
+	 enddo
 	 if (per_xlo) then
           do j = ARG_L2(p), domlo(2)-1
                do i = ARG_L1(p), domlo(1)-1
                   p(i,j) = p(i,jlo)
-               end do
-	    end do
-         end if
+               enddo
+	    enddo
+         endif
 	 if (per_xhi) then
            do j = ARG_L2(p), domlo(2)-1
                do i = domhi(1)+1, ARG_H1(p)
                   p(i,j) = p(i,jlo)
-               end do
-	    end do
-         end if
-      end if
+               enddo
+	    enddo
+         endif
+      endif
 
       if (fix_yhi) then
          do j = domhi(2)+1, ARG_H2(p)
             do i = ilo, ihi
                p(i,j) = p(i,jhi)
-            end do
-	 end do
+            enddo
+	 enddo
 	 if (per_xlo) then
 	    do j = domhi(2)+1, ARG_H2(p)
                do i = ARG_L1(p), domlo(1)-1
                   p(i,j) = p(i,jhi)
-               end do
-	    end do
-         end if
+               enddo
+	    enddo
+         endif
 	 if (per_xhi) then
 	    do j = domhi(2)+1, ARG_H2(p)
                do i = domhi(1)+1, ARG_H1(p)
                   p(i,j) = p(i,jhi)
-               end do
-	    end do
-         end if
-      end if
+               enddo
+	    enddo
+         endif
+      endif
 
       end
 
@@ -1957,8 +1755,6 @@ c            divu(i,j) = min(two,one+time/.05)
            divu(i,j) = cvmgt(one,zero,x.GE.0.5)
         enddo
       enddo
-
-      return
       end
 
       subroutine FORT_CHECK_TURB(add_turb_var,turb_length,
@@ -1994,8 +1790,8 @@ c            divu(i,j) = min(two,one+time/.05)
       do j = lo(2),hi(2)
          do i = lo(1),hi(1)
             rad(i,j) = zero
-         end do
-      end do
+         enddo
+      enddo
       end
 
 

@@ -22,12 +22,17 @@ amr.derive_plot_vars=mag_vort rhoRT rhominsumrhoY diveru avg_pressure gradpx gra
 
 # ------------------  INPUTS TO CLASS AMR ---------------------
 # set up for bubble
-geometry.coord_sys = 1  # 0 => cart, 1 => RZ
+geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 
-geometry.prob_lo =  0.   0. # m
-geometry.prob_hi = .014   .084  # 6:1 aspect ratio
-geometry.prob_hi = .014   .112  # 8:1 aspect ratio
-geometry.prob_hi = .01675 .3015
+geometry.prob_lo =  -0.075 0. # m
+geometry.prob_hi =  +0.075 0.3
+
+
+
+amr.n_cell    =  32  64
+amr.n_cell    = 128 256
+amr.n_cell    =  64 128
+
 
 # multigrid class
 mg.usecg = 1
@@ -56,13 +61,9 @@ mg.cg_solver=1
 cg.cg_solver=1
 cg.use_jacobi_precond=1
 
-
-amr.n_cell    = 28 168
-amr.n_cell    = 28 224 # 8:1
-amr.n_cell    = 16 288
-
 amr.v=1
 amr.max_level =  3            # maximum level number allowed
+amr.max_level =  0            # maximum level number allowed
 amr.ref_ratio       = 2 2 2   # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
@@ -73,8 +74,8 @@ amr.check_int       = 10     # number of timesteps between checkpoints
 amr.plot_file       = plt
 amr.plot_int        = 10
 amr.grid_log        = grdlog  # name of grid logging file
-amr.max_grid_size   = 32
-ns.max_grid_size_chem = 16
+amr.max_grid_size   = 64
+ns.max_grid_size_chem = 32
 #amr.derive_plot_vars=ALL
 
 amr.probin_file = probin-Harvard # This will default to file "probin" if not set
@@ -151,7 +152,7 @@ ns.schmidt = .75
 
 # ----------------  PROBLEM DEPENDENT INPUTS
 
-ns.lo_bc          = 3 1
+ns.lo_bc          = 5 1
 ns.hi_bc          = 5 2
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
@@ -246,3 +247,9 @@ DistributionMapping.strategy = KNAPSACK
 #StationData.coord = 0.00123 0.00123
 #StationData.coord = 0.0023 0.00153
 #StationData.coord = 0.00234 0.00234
+
+#max_step=0
+#ns.init_iter=0
+#ns.num_divu_iters=0
+#ns.hack_nospecdiff=1
+#ns.hack_nochem=1
