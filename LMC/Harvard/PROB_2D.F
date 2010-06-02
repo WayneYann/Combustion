@@ -62,7 +62,7 @@ c ::: -----------------------------------------------------------
       namelist /fortin/ V_fu, V_ox, T_fu, T_ox, R_fu, R_hot, T_hot, T_wall,
      &     y_hot_lo, y_hot_hi, temperr, vorterr, tempgrad, flametracval,
      &     max_temp_lev, max_vort_lev, max_trac_lev, max_nozzle_lev,
-     &     nozzle_height, nozzle_radius, probtype
+     &     nozzle_height, nozzle_radius, probtype, V_in_rampdt
       namelist /heattransin/ pamb, dpdt_factor, noInletSpecDiff
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
@@ -108,6 +108,7 @@ c     Set defaults
       nozzle_height = zero
       nozzle_radius = zero
       probtype = 1
+      V_in_rampdt = -one
 
       untin = 9
       open(untin,file=probin(1:namlen),form='formatted',status='old')      
@@ -159,7 +160,7 @@ c ::: -----------------------------------------------------------
       data lo / 1, 1 /
       data hi / 1, 1 /
       
-      Patm = pamb / 101325.0
+      Patm = pamb / 101325.d0
       iN2 = -1
       do n = 0,Nspec-1
          call get_spec_name(name, n+1)
@@ -195,15 +196,15 @@ c ::: -----------------------------------------------------------
       
          zone = HOTZONE
          do n = 0,Nspec-1
-            Y_bc(n,zone) = Y_bc(n,2)
+            Y_bc(n,zone) = Y_bc(n,OXIDZONE)
          enddo
          T_bc(zone) = T_hot
-         u_bc(zone) = u_bc(2)
-         v_bc(zone) = v_bc(2)
+         u_bc(zone) = u_bc(OXIDZONE)
+         v_bc(zone) = v_bc(OXIDZONE)
 
          zone = LEFTWALL
          do n = 0,Nspec-1
-            Y_bc(n,zone) = Y_bc(n,2)
+            Y_bc(n,zone) = Y_bc(n,OXIDZONE)
          enddo
          T_bc(zone) = T_wall
          u_bc(zone) = zero
@@ -211,7 +212,7 @@ c ::: -----------------------------------------------------------
 
          zone = RGHTWALL
          do n = 0,Nspec-1
-            Y_bc(n,zone) = Y_bc(n,2)
+            Y_bc(n,zone) = Y_bc(n,OXIDZONE)
          enddo
          T_bc(zone) = T_wall
          u_bc(zone) = zero
@@ -283,7 +284,15 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
-      integer n, zone, getZone
+      REAL_T xx, yy, Patm, vtmp
+      integer n, zone, getZone, Msub, Msqd, i, j
+c      parameter (Msub=10)
+      parameter (Msub=1)
+
+      integer lo(SDIM), hi(SDIM)
+      data lo / 1, 1 /
+      data hi / 1, 1 /
+
       
       if (.not. bcinit) then
          write(6,*) 'Need to initialize boundary condition function'
@@ -291,15 +300,77 @@ c ::: -----------------------------------------------------------
       endif
 
       if (orient .lt. 4) then
-         zone = getZone(x,y)
-         u = u_bc(zone)
-         v = v_bc(zone)
-         rho = rho_bc(zone)
-         do n = 0,Nspec-1
-            Yl(n) = Y_bc(n,zone)
-         enddo
-         T = T_bc(zone)
-         h = h_bc(zone)
+         
+         if (Msub.gt.1) then
+
+            Patm = pamb / 101325.d0
+            Msqd = Msub*Msub
+            
+            u = zero
+            v = zero
+            do n = 0,Nspec-1
+               Yl(n) = zero
+            enddo
+            T = zero
+            
+            do j=1,Msub
+               yy = y + (2*j - Msub - 1)*dx(2)/DBLE(2*Msub)
+               do i=1,Msub
+                  xx = x + (2*i - Msub - 1)*dx(1)/DBLE(2*Msub)
+                  zone = getZone(xx,yy)
+                  u = u + u_bc(zone)
+                  vtmp = v_bc(zone)
+                  if ((V_in_rampdt.gt.zero)
+     &                 .and. (time.le.V_in_rampdt)) then
+                     
+                     vtmp = v_bc(OXIDZONE)
+     &                    + time * (v_bc(FUELZONE)-v_bc(OXIDZONE))/V_in_rampdt
+                     
+                  endif
+                  v = v + vtmp
+                  do n = 0,Nspec-1
+                     Yl(n) = Yl(n) + Y_bc(n,zone)
+                  enddo
+                  T = T + T_bc(zone)
+               enddo
+            enddo
+            u = u/DBLE(Msqd)
+            v = v/DBLE(Msqd)
+            do n = 0,Nspec-1
+               Yl(n) = Yl(n)/DBLE(Msqd)
+            enddo
+            T = T/(Msqd)
+            
+            call FORT_RHOfromPTY(lo,hi,
+     &                           rho,ARLIM(lo),ARLIM(hi),
+     &                           T,ARLIM(lo),ARLIM(hi),
+     &                           Y_bc(0,1),ARLIM(lo),ARLIM(hi), Patm)
+            call FORT_HMIXfromTY(lo,hi,
+     &                           h,ARLIM(lo),ARLIM(hi),
+     &                           T,ARLIM(lo),ARLIM(hi),
+     &                           Y_bc(0,1),ARLIM(lo),ARLIM(hi))
+         else
+
+            zone = getZone(x,y)
+            u = u_bc(zone)
+            vtmp = v_bc(zone)
+
+            if ((V_in_rampdt.gt.zero)
+     &           .and. (time.le.V_in_rampdt)) then
+               
+               vtmp = v_bc(OXIDZONE)
+     &              + time * (v_bc(FUELZONE)-v_bc(OXIDZONE))/V_in_rampdt
+               
+            endif
+            v = vtmp
+            do n = 0,Nspec-1
+               Yl(n) = Y_bc(n,zone)
+            enddo
+            T = T_bc(zone)
+            rho = rho_bc(zone)
+            h = h_bc(zone)
+
+         endif
       else
          write(6,*) 'No boundary condition for orientation = ', orient
          stop
@@ -382,8 +453,8 @@ c     ::::: local variables
             do n = 0,Nspec-1
                scal(i,j,FirstSpec+n) = rho*Yl(n)
             enddo
-            vel(i,j,1) = zero
-            vel(i,j,2) = zero
+            vel(i,j,1) = u
+            vel(i,j,2) = v
          enddo
       enddo
       end

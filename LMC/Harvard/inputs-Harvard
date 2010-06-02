@@ -27,11 +27,14 @@ geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 geometry.prob_lo =  -0.075 0. # m
 geometry.prob_hi =  +0.075 0.3
 
+geometry.prob_lo =  -0.025 0. # m
+geometry.prob_hi =  +0.025 0.05
+
 
 
 amr.n_cell    =  32  64
 amr.n_cell    = 128 256
-amr.n_cell    =  64 128
+amr.n_cell    =  64  64
 
 
 # multigrid class
@@ -62,8 +65,7 @@ cg.cg_solver=1
 cg.use_jacobi_precond=1
 
 amr.v=1
-amr.max_level =  3            # maximum level number allowed
-amr.max_level =  0            # maximum level number allowed
+amr.max_level =  2            # maximum level number allowed
 amr.ref_ratio       = 2 2 2   # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
@@ -108,6 +110,7 @@ ns.do_MLsync_proj = 1
 ns.divu_relax_factor   = 0.0
 
 ns.be_cn_theta = 0.5
+ns.be_cn_theta = 1.0
 ns.do_predictor = 1
 ns.explicit_rhoh = 0
 ns.S_in_vel_diffusion = 1
@@ -250,6 +253,7 @@ DistributionMapping.strategy = KNAPSACK
 
 #max_step=0
 #ns.init_iter=0
+#ns.do_init_proj=0
 #ns.num_divu_iters=0
 #ns.hack_nospecdiff=1
 #ns.hack_nochem=1
