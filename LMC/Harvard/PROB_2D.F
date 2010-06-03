@@ -286,6 +286,8 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
       REAL_T xx, yy, Patm, vtmp
       integer n, zone, getZone, Msub, Msqd, i, j
+c     NOTE: FIXME - someting about this subsampling generates a state that LMC just
+c     doesnt like.  Msub=1 bypasses.
 c      parameter (Msub=10)
       parameter (Msub=1)
 
@@ -430,7 +432,11 @@ c     ::::: local variables
       REAL_T xcrit
       integer getZone, zone, zH, zL, zR, iN2
       character*(maxspnml) name
+      REAL_T vtmp, loc, dw, blend, r, f, fhot, del
       
+c     blend goes from 1 to 0 in r at loc, over a width of dw  
+      blend(r,loc,dw) = one - half*(one+TANH((r-loc)/(half*dw)))
+
       if ((Temp.gt.0).neqv.(RhoH.gt.0)) then
          write(6,*) 'Need both Temp and RhoH, or neither'
          stop
@@ -441,6 +447,7 @@ c     ::::: local variables
          stop
       endif
 
+#if 0
       do j = lo(2), hi(2)
          y = (float(j)+.5)*delta(2)+domnlo(2)
          do i = lo(1), hi(1)
@@ -457,6 +464,57 @@ c     ::::: local variables
             vel(i,j,2) = v
          enddo
       enddo
+#else
+      do j = lo(2), hi(2)
+         y = (DBLE(j)+.5)*delta(2)+domnlo(2)
+         do i = lo(1), hi(1)
+            x = (DBLE(i)+.5)*delta(1)+domnlo(1)
+
+            vtmp = v_bc(OXIDZONE)
+     &           + time * (v_bc(FUELZONE)-v_bc(OXIDZONE))/V_in_rampdt
+
+            del = 4*delta(1)
+            f = blend(ABS(x),R_fu,2*delta(1))
+     &           * blend(y,.5*(y_hot_lo+y_hot_hi),del)
+            fhot = blend(y,y_hot_hi,del)
+     &           * blend(ABS(x),R_hot,del)
+     &           * (1.d0 - blend(y,y_hot_lo,del))
+            
+            scal(i,j,Trac) = fhot
+            vel(i,j,1) = f*u_bc(FUELZONE) + (1-f)*u_bc(OXIDZONE)
+            vel(i,j,2) = f*vtmp + (1-f)*v_bc(OXIDZONE)
+            do n = 0,Nspec-1
+               scal(i,j,FirstSpec+n) = f*Y_bc(n,FUELZONE) + (1-f)*Y_bc(n,OXIDZONE)
+            enddo
+            scal(i,j,Temp) = f*T_bc(FUELZONE) + (1-f)*T_bc(OXIDZONE)
+
+            do n = 0,Nspec-1
+               scal(i,j,FirstSpec+n) = (1.d0-fhot)*scal(i,j,FirstSpec+n) + fhot*Y_bc(n,HOTZONE)
+            enddo
+            scal(i,j,Temp) = (1.d0-fhot)*scal(i,j,Temp) + fhot*T_bc(HOTZONE)
+
+         enddo
+      enddo
+      Patm = pamb / 101325.0d0
+      call FORT_RHOfromPTY(lo,hi,
+     &     scal(ARG_L1(state),ARG_L2(state),Density),  DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state),
+     &     Patm)
+      call FORT_HMIXfromTY(lo,hi,
+     &     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state))
+
+      do j = lo(2), hi(2)
+         do i = lo(1), hi(1)
+            do n = 0,Nspec-1
+               scal(i,j,FirstSpec+n) = scal(i,j,FirstSpec+n)*scal(i,j,Density)
+            enddo
+            scal(i,j,RhoH) = scal(i,j,RhoH)*scal(i,j,Density)
+         enddo
+      enddo
+#endif
       end
       
 c ::: -----------------------------------------------------------

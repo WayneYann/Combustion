@@ -27,15 +27,8 @@ geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 geometry.prob_lo =  -0.075 0. # m
 geometry.prob_hi =  +0.075 0.3
 
-geometry.prob_lo =  -0.025 0. # m
-geometry.prob_hi =  +0.025 0.05
-
-
-
 amr.n_cell    =  32  64
 amr.n_cell    = 128 256
-amr.n_cell    =  64  64
-
 
 # multigrid class
 mg.usecg = 1
@@ -109,8 +102,8 @@ ns.do_MLsync_proj = 1
 
 ns.divu_relax_factor   = 0.0
 
-ns.be_cn_theta = 0.5
 ns.be_cn_theta = 1.0
+ns.be_cn_theta = 0.5
 ns.do_predictor = 1
 ns.explicit_rhoh = 0
 ns.S_in_vel_diffusion = 1

@@ -20,8 +20,9 @@
       max_nozzle_lev = 1000
       nozzle_height = 0.015
       nozzle_radius = 0.005
-      V_in_rampdt = 1.e-3
+      nozzle_radius = 0.007
       V_in_rampdt = 1.e-4
+      V_in_rampdt = 1.e-3
       probtype = 0
  /
  &heattransin
