@@ -833,7 +833,8 @@ c     values.
                endif
                H = Hsec
                T = Tsec
-               stalled = (ABS(dT).le.errMAX)
+               stalled = (2*ABS(old_T-T)/(old_T+T).le.errMAX)
+c               stalled = (ABS(dT).le.errMAX)
                Niter = Niter + 1
                if (Niter.gt.NiterMAX+Discont_NiterMAX) then
                   Niter = -2
