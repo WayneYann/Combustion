@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile.scale,v 1.1 2009-06-15 23:34:19 lijewski Exp $
+# $Id: GNUmakefile.scale,v 1.2 2010-06-10 21:14:05 lijewski Exp $
 #
 PBOXLIB_HOME = ../..
 
@@ -14,7 +14,7 @@ PRECISION      = DOUBLE
 DEBUG	       = TRUE
 DEBUG	       = FALSE
 PROFILE        = FALSE
-DIM	       = 3
+DIM	           = 3
 PRVERSION      = v7
 COMP           = PathScale
 FCOMP          = PathScale
@@ -29,6 +29,7 @@ USE_SWIRL      = FALSE
 USE_SWIRL_DATA = FALSE
 USE_NEWMECH    = TRUE
 USE_NEWMECH    = FALSE
+USE_OMP        = TRUE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
@@ -62,7 +63,7 @@ DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
 
 include $(TOP)/mk/Make.defs
 
-Bdirs := LMC LMC/Cheng BoxLib iamrlib amrlib tensorMG mglib bndrylib hgproj
+Bdirs := LMC BoxLib iamrlib amrlib tensorMG mglib bndrylib hgproj
 
 ifeq ($(DIM),3)
   ifeq ($(findstring 7, $(PRVERSION)), 7)
@@ -96,7 +97,7 @@ endif
 Bpack	:= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	:= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
 
-include $(Bpack)
+include $(Bpack) Make.package.scale
 
 ifdef FBOXLIB_HOME
   DEFINES += -DMG_USE_FBOXLIB
