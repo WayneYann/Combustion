@@ -15,7 +15,6 @@ ns.do_heat_sink=0
 ht.plot_ydot = 0
 ht.plot_molefrac=1
 ht.plot_rhoY=0
-ns.max_grid_size_chem=128
 
 # ------------------  INPUTS TO CLASS AMR ---------------------
 # set up for bubble

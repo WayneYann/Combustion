@@ -12,7 +12,6 @@ stop_time =  10000000.0
 proj.proj_2 = 1
 ns.num_divu_iters =3
 ns.plot_tracer = 0
-ns.max_grid_size_chem = 16
 ht.plot_rhoY=0
 ht.plot_molefrac=1
 ht.plot_ydot=0
