@@ -15,16 +15,12 @@ ns.do_OT_radiation=0
 
 proj.proj_2 = 1
 ns.num_divu_iters =3
-ns.max_grid_size_chem = 64
-ns.max_grid_size_chem = 32
-ns.max_grid_size_chem = 16
 ns.do_active_control = false
 ht.plot_rhoY=0
 #ht.plot_molefrac=1
 ht.plot_molefrac=0
 ht.plot_massfrac=1
 ht.plot_ydot=0
-ns.use_chemeq2=0
 amr.derive_plot_vars=mag_vort rhoRT v_radial v_theta
 #ns.verbose_vode = 1
 #amr.restart=chk0060

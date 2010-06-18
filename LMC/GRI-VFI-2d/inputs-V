@@ -58,7 +58,6 @@ amr.plot_file       = plt
 amr.plot_int        = 5 
 amr.grid_log        = grdlog  # name of grid logging file
 amr.max_grid_size   = 256
-amr.max_grid_size_chem   = 256
 ht.plot_rhoY=0
 ht.plot_molefrac=1
 ht.plot_ydot=0
