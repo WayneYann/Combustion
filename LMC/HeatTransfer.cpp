@@ -5330,9 +5330,17 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
             BoxArray ba = mf.boxArray();
 
-            for (int cnt = 1; cnt <= 2; cnt++)
+            bool done = false;
+
+            for (int cnt = 1; !done; cnt *= 2)
             {
                 const int ChunkSize = parent->maxGridSize(level)/cnt;
+
+                if (ChunkSize < 16)
+                    //
+                    // Don't let grids get too small. 
+                    //
+                    break;
 
                 IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
 
@@ -5341,6 +5349,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                     chunk[j] /= 2;
 
                     ba.maxSize(chunk);
+
+                    if (ba.size() >= 2*NProcs) done = true;
                 }
             }
 
