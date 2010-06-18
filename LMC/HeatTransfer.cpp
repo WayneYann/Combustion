@@ -132,7 +132,6 @@ Real      HeatTransfer::mcdd_cfRelaxFactor        = 1.0;
 
 Real      HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
 
-static int  max_grid_size_chem   = 16;
 static bool do_not_use_funccount = false;
 static bool do_active_control    = false;
 static Real crse_dt = -1;
@@ -308,8 +307,6 @@ HeatTransfer::read_params ()
     BL_ASSERT(do_reflux_visc == 0 || do_reflux_visc == 1);
     pp.query("dpdt_option",dpdt_option);
     BL_ASSERT(dpdt_option >= 0 && dpdt_option <= 2);
-    pp.query("max_grid_size_chem",max_grid_size_chem);
-    BL_ASSERT(max_grid_size_chem > 0);
     pp.query("do_active_control",do_active_control);
 
     verbose = pp.contains("v");
@@ -5325,16 +5322,27 @@ HeatTransfer::strang_chem (MultiFab&  mf,
         }
         else
         {
+            //
+            // Let's chop the grids up a bit.
+            // We want to try and level out the chemistry work.
+            //
+            const int NProcs = ParallelDescriptor::NProcs();
+
             BoxArray ba = mf.boxArray();
 
-            ba.maxSize(max_grid_size_chem);
+            for (int cnt = 1; cnt <= 2; cnt++)
+            {
+                const int ChunkSize = parent->maxGridSize(level)/cnt;
 
-            if (ba.size() < 2*ParallelDescriptor::NProcs() && max_grid_size_chem >= 16)
-                //
-                // Let's chop the grids up a bit more.
-                // We want to try and level out the chemistry work.
-                //
-                ba.maxSize(max_grid_size_chem/2);
+                IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
+
+                for (int j = 0; j < BL_SPACEDIM && ba.size() < 2*NProcs; j++)
+                {
+                    chunk[j] /= 2;
+
+                    ba.maxSize(chunk);
+                }
+            }
 
             DistributionMapping dm = getFuncCountDM(ba,ngrow);
 
