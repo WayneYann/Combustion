@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.2 2004-07-13 21:16:37 lijewski Exp $
+# $Id: GNUmakefile,v 1.3 2010-06-20 01:35:02 almgren Exp $
 #
 PBOXLIB_HOME = ..
 
@@ -20,20 +20,10 @@ USE_TENSOR    = FALSE
 USE_WINDOWS   = FALSE
 USE_MPI       = TRUE
 #
-# Use hgproj-serial -- only for testing.
-#
-# Touch Projection.cpp if you want to change the state of USE_HGPROJ_SERIAL.
-#
-USE_HGPROJ_SERIAL = TRUE
-USE_HGPROJ_SERIAL = FALSE
-#
 # What stencil do you want to use?
 #
 PRVERSION = v9
 
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-DEFINES += -DBL_USE_HGPROJ_SERIAL
-endif
 #
 # The base name of the library we're building.
 #
@@ -41,14 +31,7 @@ LBASE = ht
 
 include $(TOP)/mk/Make.defs ./Make.package
 
-ifeq ($(USE_HGPROJ_SERIAL),FALSE)
 INCLUDE_LOCATIONS += . $(TOP)/include
-else
-INCLUDE_LOCATIONS += . $(TOP)/hgproj-serial
-INCLUDE_LOCATIONS += $(TOP)/hgproj-serial/include/$(DIM)d.$(PRVERSION)
-INCLUDE_LOCATIONS += $(TOP)/include
-endif
-
 
 ifeq ($(KCC_VERSION),3.3)
 CXXFLAGS += --one_instantiation_per_object
@@ -75,11 +58,7 @@ LibsToCloseAgainst += $(TOP)/lib/$(machineSuffix)/libmg$(DIM)d.a
 endif
 LibsToCloseAgainst += $(TOP)/lib/$(machineSuffix)/libamr$(DIM)d.a
 LibsToCloseAgainst += $(TOP)/lib/$(machineSuffix)/libbndry$(DIM)d.a
-ifeq ($(USE_HGPROJ_SERIAL),FALSE)
 LibsToCloseAgainst += $(TOP)/lib/$(machineSuffix)/libproj$(DIM)d.a
-else
-LibsToCloseAgainst += $(TOP)/hgproj-serial/lib/$(machineSuffix)/libproj$(DIM)d.$(PRVERSION).a
-endif
 LibsToCloseAgainst += $(TOP)/lib/$(machineSuffix)/libbox$(DIM)d.a
 
 $(optionsLib): $(LibsToCloseAgainst)
