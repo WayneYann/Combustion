@@ -5344,13 +5344,13 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
                 IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
 
-                for (int j = 0; j < BL_SPACEDIM && ba.size() < 2*NProcs; j++)
+                for (int j = 0; j < BL_SPACEDIM && ba.size() < 3*NProcs; j++)
                 {
                     chunk[j] /= 2;
 
                     ba.maxSize(chunk);
 
-                    if (ba.size() >= 2*NProcs) done = true;
+                    if (ba.size() >= 3*NProcs) done = true;
                 }
             }
 
