@@ -184,8 +184,10 @@ c
 #include "cdwrk.H"
       character*(maxspnml) CDUMMY
       character*16 CFMT, IFMT, LFMT, RFMT
-      PARAMETER
-     1     (CFMT='(8A16)', IFMT='(10I12)', LFMT='(L8)', RFMT='(1P,5E24.16)')
+      PARAMETER (CFMT='(8A16)')
+      PARAMETER (IFMT='(10I12)')
+      PARAMETER (LFMT='(L8)')
+      PARAMETER (RFMT='(1P,5E24.16)')
       integer MaxOrder, NOrd, NS, LINKEG, LINKMC, IDUMMY, K, NONS, NONSNS, N
       parameter (MaxOrder = 4, LINKEG=30)
       REAL_T RDUMMY, PATM
