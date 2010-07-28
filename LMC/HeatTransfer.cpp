@@ -1241,6 +1241,9 @@ HeatTransfer::initDataOtherTypes ()
             const Box& pdomain = state[State_Type].getDomain();
             const StateDescriptor&  desc    = desc_lst[State_Type];
 
+            int dummy_comp  = -1;
+            int dummy_state = -1;
+
             for (MFIter crsemfi(*turbVelFile); crsemfi.isValid(); ++crsemfi)
             {
                 const int  i    = crsemfi.index();
@@ -1251,7 +1254,7 @@ HeatTransfer::initDataOtherTypes ()
                                numVelComp, (*gridTurbVel).box(i),
                                refine_ratio,
                                crseGeom,fineGeom,
-                               bcr);
+                               bcr,dummy_comp,dummy_state);
             }
         }
 
