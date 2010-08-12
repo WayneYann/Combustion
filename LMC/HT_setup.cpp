@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.15 2010-03-12 23:14:50 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.16 2010-08-12 20:07:03 almgren Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -38,7 +38,6 @@
 #include <PROB_F.H>
 #include <DERIVE_F.H>
 #include <FArrayBox.H>
-#include <CoordSys.H>
 #include <NAVIERSTOKES_F.H>
 #include <HEATTRANSFER_F.H>
 #include <SLABSTAT_HT_F.H>

@@ -16,7 +16,6 @@
 #include <fstream>
 #include <vector>
 
-#include <CoordSys.H>
 #include <Geometry.H>
 #include <BoxDomain.H>
 #include <ParmParse.H>
@@ -9897,7 +9896,7 @@ HeatTransfer::writePlotFile (const std::string& dir,
                 os << parent->Geom(i).CellSize()[k] << ' ';
             os << '\n';
         }
-        os << (int) CoordSys::Coord() << '\n';
+        os << (int) Geometry::Coord() << '\n';
         os << "0\n"; // Write bndry data.
     }
     // Build the directory to hold the MultiFab at this level.
