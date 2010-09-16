@@ -40,6 +40,7 @@
       integer myproc,step,ierr,restart
       REAL_T r1,r2,r3,r4,r5,r6,r7
       REAL_T alpha,xsmb,vpmax,exp1 
+      REAL_T  V_x, V_xx,beta,tauloc
       integer i1
       logical found_it
 
@@ -95,10 +96,11 @@ c
       zbase_control = zbase_control + V_in*dt + dV_control*dt**2
       V_in_old = V_in
       V_in = V_in + dt*dV_control
+      corr = 0.5d0
 
       slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
       sest = (one - corr)*sest + corr*slocal
-#if 1
+#if 0
       vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
 
       V_new = V_in + dt*vslope
@@ -106,21 +108,30 @@ c
 #else
 
 
-      vpmax = max(V_in,V_in_old,one)*changeMax_control/dt
-      xsmb = -(cfix-coft)/scale_control
 
-      alpha = sqrt(abs(xsmb)/vpmax)
+c     vpmax = max(V_in,V_in_old,one)*changeMax_control/dt
+c     xsmb = -(cfix-coft)/scale_control
 
-      exp1 = dexp(-2.d0*tau_control/alpha)
+c     alpha = sqrt(abs(xsmb)/vpmax)
 
-      V_new = sest+ (xsmb)/alpha*
-     &   (exp1*dexp(dt/alpha)-dexp(-dt/alpha))/
-     &      (1.d0+exp1)
+c     exp1 = dexp(-2.d0*tau_control/alpha)
 
+c     V_new = sest+ (xsmb)/alpha*
+c    &   (exp1*dexp(dt/alpha)-dexp(-dt/alpha))/
+c    &      (1.d0+exp1)
+
+      tauloc = MAX(tau_control,10.d0*dt)
+      beta = (cfix-coft)/scale_control + sest * tauloc 
+      V_x = 6.d0*(beta - tauloc*V_in - tauloc*(sest-V_in)/3.d0)/tauloc**2
+      V_xx = 6.d0*(tauloc*(sest-V_in)/2.d0-(beta - tauloc*V_in))/tauloc**3
+
+      V_new = V_in + dt * V_x + dt**2 * V_xx
 
       dVmax = changeMax_control * max(one,V_in)
 #endif
-      V_new = MIN(MAX(V_new,V_in-dVmax),V_in+dVmax)
+c     V_new = MIN(MAX(V_new,V_in-dVmax),V_in+dVmax)
+c     V_new = MIN(V_new,V_in+dVmax)
+      V_new = MIN(MAX(V_new,V_in-2.d0*dVmax),V_in+dVmax)
       V_new = MAX(zero,V_new)
 
       tbase_control = time
@@ -132,7 +143,7 @@ c
          print *,'time,dt,coft,V_new:',time,dt,coft,V_new
          print *,'changeMax_control: ', changeMax_control
 #if 1
-         print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
+         print *,'vslope,sest,cfix,slocal,V_x,V_xx:',vslope,sest,cfix,slocal,V_x,V_xx
 #else
          print *,'alpha,sest,cfix,slocal:',alpha,sest,cfix,slocal
 #endif
@@ -147,7 +158,7 @@ c
      &        dV_control,sest,coft_old
          close(13)
       endif
- 1000 format(i7,7g26.18)
+ 1000 format(i7,8g26.18)
       end
 
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
