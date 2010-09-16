@@ -1,5 +1,5 @@
-#
-# $Id: GNUmakefile,v 1.17 2009-06-19 21:09:53 xinfeng Exp $
+
+# $Id: GNUmakefile,v 1.18 2010-09-16 17:25:37 jbb Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -19,8 +19,8 @@ BUILD_IN_PLACE    = TRUE
 EBASE             = amr
 HGDEBUG           = TRUE
 HGDEBUG           = FALSE
-USE_FLCTS         = TRUE
-USE_VELOCITY      = TRUE
+USE_FLCTS         = FALSE
+USE_VELOCITY      = FALSE
 USE_MPI           = TRUE
 
 
@@ -55,8 +55,10 @@ DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
 #REACTION_MECHANISM=GRI30
 #REACTION_MECHANISM=CH4-2STEP
 #REACTION_MECHANISM=GRI30HNO
-REACTION_MECHANISM=DRM19
+#REACTION_MECHANISM=DRM19
 #REACTION_MECHANISM=GLARBORG
+#REACTION_MECHANISM=LIDRYERFN2
+REACTION_MECHANISM=GRIMECH30-NON
 #
 # Packages below are of the form dir/lib.  dir=location of the lib sources,
 # lib=library root name.  This info is separated into to corresponding lists.  

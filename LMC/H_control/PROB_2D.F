@@ -131,7 +131,7 @@ c    &      (1.d0+exp1)
 #endif
 c     V_new = MIN(MAX(V_new,V_in-dVmax),V_in+dVmax)
 c     V_new = MIN(V_new,V_in+dVmax)
-      V_new = MIN(MAX(V_new,V_in-2.d0*dVmax),V_in+dVmax)
+      V_new = MIN(MAX(V_new,V_in-2.d0*dVmax),V_in+changeMax_control * min(one,V_in))
       V_new = MAX(zero,V_new)
 
       tbase_control = time

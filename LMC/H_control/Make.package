@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.8 2009-04-10 23:40:55 gilet Exp $
+# $Id: Make.package,v 1.9 2010-09-16 17:25:37 jbb Exp $
 #
 CEXE_sources += HT_setup.cpp 
 
@@ -26,10 +26,13 @@ ifeq ($(USE_NEWMECH), TRUE)
   FEXE_sources += FABUTIL_$(DIM)D.F
 endif
 
-fEXE_sources += chemHSoln_seed_0.00.f
+#fEXE_sources += chemHSoln_seed_0.00.f
 #fEXE_sources += drm19Soln_seed_0.00.f
 #fEXE_sources += drm19Soln_seed_0.125.f
 #fEXE_sources += drm19Soln_seed_0.25.f
 #fEXE_sources += drm19Soln_seed_0.50.f
 #fEXE_sources += drm19Soln_seed_0.75.f
 #fEXE_sources += drm19Soln_seed_1.00.f
+#fEXE_sources += pmf_LiDryer_060_01ATM.f
+#fEXE_sources +=  LiDryer-100-1.0atm.f
+fEXE_sources +=  pmf_grimech30-noN_070.f

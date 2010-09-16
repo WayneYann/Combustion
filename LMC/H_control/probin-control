@@ -6,6 +6,7 @@
   splitx = 2.0
   xfrontw = .005
   probtype = 1
+  probtype = 3
   v_strength = -4000.
   v_strength = 0.
   v_width = .00125
@@ -17,14 +18,21 @@
   vorterr = 1.e3
   vorterr = 100
   y_offset = -0.002
-  flametracval = 1.e-6
+  y_offset = -0.003
+  y_offset = -0.012
+  y_offset = -0.008
+  flametracval = 5.e-5
   V_in = .1527
   nchemdiag = 1
   phi_in = .37
+  phi_in = 1.0
+  phi_in = 0.7
   pertmag = .001
+  pertmag = .000
   turb_scale = 1.0	  
  /
  &heattransin
+  pamb = 506625.0
   pamb = 101325.0
   dpdt_factor = 0.3
  /
@@ -33,9 +41,10 @@
   forceInflow = .FALSE.
  /
  &control
-  tau_control = 1.5e-3
+  tau_control = 2.e-4
   sest = .3
-  h_control = .03
+  sest = .3
+  h_control = .01
   changeMax_control = .05
   zbase_control = 0.0
  /
