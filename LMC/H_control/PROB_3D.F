@@ -11,7 +11,9 @@
 #include "ArrayLim.H"
 #include "ChemDriver_F.H"
 #include "HEATTRANSFER_F.H"
+#if defined(BL_DO_FLCT)
 #include "infl_frc.H"
+#endif
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -174,7 +176,9 @@ c ::: -----------------------------------------------------------
 #include "htdata.H"
 #include "cdwrk.H"
 #include "bc.H"
+#if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
+#endif
 #include "visc.H"
 #include "conp.H"
 
@@ -197,8 +201,8 @@ c ::: -----------------------------------------------------------
       namelist /flctin/ tstart_turb, forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
 #endif
-      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control, zbase_control
-
+      namelist /control/ tau_control, sest, cfix, changeMax_control, h_control, 
+     &     zbase_control, pseudo_gravity
 #ifdef DO_LMC_FORCE
       REAL_T  twicePi, kxd, kyd, kzd
       REAL_T  thetaTmp, phiTmp
@@ -299,7 +303,7 @@ c     Initialize control variables
       dV_control = zero
       tbase_control = zero
       h_control = -one
-
+      pseudo_gravity = 0
       nchemdiag = 1
 
       read(untin,fortin)
@@ -1132,7 +1136,9 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
+#if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
+#endif
 
       integer i, j, k, n, iN2, iO2
       REAL_T x, y, z, zt, u, v, w, rho, Yl(maxspec), Xl(maxspec), T, h, Patm
@@ -2185,8 +2191,9 @@ c
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
+#if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
-
+#endif
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
       REAL_T  z, y, x
@@ -2552,8 +2559,10 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
+#if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
-      
+#endif      
+
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
       REAL_T  z, y, x
@@ -2779,7 +2788,9 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
+#if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
+#endif
       
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
@@ -3008,7 +3019,9 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
+#if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
+#endif
       
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
@@ -4774,6 +4787,8 @@ c
       REAL_T     kappa, kappaMax
 
 #include "probdata.H"
+#include "cdwrk.H"
+#include "bc.H"
 
 #ifdef DO_LMC_FORCE
 #include "forcedata.H"
@@ -4798,6 +4813,9 @@ c
       integer isioproc
       integer nXvel, nYvel, nZvel, nRho, nTrac
 
+      if (isioproc.eq.1 .and. pseudo_gravity.eq.1) then
+         write(*,*) "pseudo_gravity::dV_control = ",dV_control
+      endif
 
       hx = dx(1)
       hy = dx(2)
@@ -4922,6 +4940,16 @@ c     else to zero
                      force(i,j,k,nXvel) = zero
                      force(i,j,k,nYvel) = zero
                      force(i,j,k,nZvel) = zero
+                  enddo
+               enddo
+            enddo
+         endif
+c     Let's add the pseudo gravity afterwards...
+         if (pseudo_gravity.eq.1) then
+            do k = klo, khi
+               do j = jlo, jhi
+                  do i = ilo, ihi
+                     force(i,j,k,nZvel) = force(i,j,k,nZvel)  + dV_control*rho(i,j,k)
                   enddo
                enddo
             enddo

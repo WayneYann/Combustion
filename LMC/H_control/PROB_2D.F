@@ -300,7 +300,7 @@ c ::: -----------------------------------------------------------
      &     strmwse_dir, nCompInflow, flct_file
 #endif
       namelist /control/ tau_control, sest, cfix, changeMax_control, h_control,
-     &     zbase_control, tbase_control
+     &     zbase_control, tbase_control, pseudo_gravity
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
@@ -380,7 +380,7 @@ c
       phi_in = 1.d0
       zbase_control = 0.d0
       pertmag = 0.d0
-
+      pseudo_gravity = 0
 #if defined(BL_DO_FLCT)
 c
 c     Don't need to default 'nCompInflow' as it is block data'd to /3/
@@ -710,7 +710,7 @@ c ::: -----------------------------------------------------------
       data eps / 1.d-8 /
 
       if ((probtype.eq.1).or.(probtype.eq.3)) then
-         getZone = 1
+         getZone = M_FUEL
       else
          if (y.gt.domnlo(2)+eps) then
             getZone = M_WALL
@@ -802,7 +802,7 @@ c ::: -----------------------------------------------------------
 
          if ((probtype.eq.1).or.(probtype.eq.3)) then
 
-            v_bc(M_FUEL) = V_in + (time-tbase_control)*dV_control
+            v = V_in + (time-tbase_control)*dV_control
 
          else if (probtype.eq.2) then
 
@@ -840,6 +840,8 @@ c     Set stick temperature
           print*, 'No boundary condition for orientation = ', orient
           call bl_abort(' ')
       end if
+
+c      print*, x, v
       end
       
 c ::: -----------------------------------------------------------
@@ -2631,3 +2633,120 @@ c            divu(i,j) = min(two,one+time/.05)
          end do
       end do
       end
+
+c
+c
+c ::: -----------------------------------------------------------
+c
+c     This routine add the forcing terms to the momentum equation
+c
+      subroutine FORT_MAKEFORCE(time,force,rho,
+     &                          DIMS(istate),DIMS(state),
+     &                          dx,xlo,xhi,gravity,scomp,ncomp)
+
+      implicit none
+
+      integer    DIMDEC(state)
+      integer    DIMDEC(istate)
+      integer    scomp, ncomp
+      REAL_T     time, dx(SDIM)
+      REAL_T     xlo(SDIM), xhi(SDIM)
+      REAL_T     force  (DIMV(istate),scomp+1:scomp+ncomp)
+      REAL_T     rho    (DIMV(state))
+      REAL_T     gravity
+
+#include "probdata.H"
+#include "cdwrk.H"
+#include "bc.H"
+
+c
+c     ::::: local variables
+c
+      integer i, j, n
+      integer ilo, jlo
+      integer ihi, jhi
+      integer a2, a3, a4, a5
+      REAL_T  x, y
+      REAL_T  hx, hy
+      REAL_T  sga, cga
+      integer isioproc
+      integer nXvel, nYvel, nRho, nTrac
+
+      call bl_pd_is_ioproc(isioproc)
+
+      if (isioproc.eq.1 .and. pseudo_gravity.eq.1) then
+         write(*,*) "pseudo_gravity::dV_control = ",dV_control
+      endif
+
+      hx = dx(1)
+      hy = dx(2)
+
+      ilo = istate_l1
+      jlo = istate_l2
+      ihi = istate_h1
+      jhi = istate_h2
+
+c     Assumes components are in the following order
+      nXvel = 1
+      nYvel = 2
+      nRho  = 3
+      nTrac = 4
+
+      if (scomp.eq.0) then
+         if (abs(gravity).gt.0.0001) then
+            do j = jlo, jhi
+               do i = ilo, ihi
+                  force(i,j,nXvel) = zero
+                  force(i,j,nYvel) = gravity*rho(i,j)
+               enddo
+            enddo
+c     else to zero
+         else
+            do j = jlo, jhi
+               do i = ilo, ihi
+                  force(i,j,nXvel) = zero
+                  force(i,j,nYvel) = zero
+               enddo
+            enddo
+         endif
+c     Let's add the pseudo gravity afterwards...
+         if (pseudo_gravity.eq.1) then
+            do j = jlo, jhi
+               do i = ilo, ihi
+                  force(i,j,nYvel) = force(i,j,nYvel) + dV_control*rho(i,j)
+               enddo
+            enddo
+         endif
+c     End of velocity forcing
+      endif
+      
+      if ((scomp+ncomp).gt.BL_SPACEDIM) then
+c     Scalar forcing
+         do n = max(scomp+1,nRho), scomp+ncomp
+            if (n.eq.nRho) then
+c     Density
+               do j = jlo, jhi
+                  do i = ilo, ihi
+                     force(i,j,n) = zero
+                  enddo
+               enddo
+            else if (n.eq.nTrac) then
+c     Tracer
+               do j = jlo, jhi
+                  do i = ilo, ihi
+                     force(i,j,n) = zero
+                  enddo
+               enddo
+            else
+c     Other scalar
+               do j = jlo, jhi
+                  do i = ilo, ihi
+                     force(i,j,n) = zero
+                  enddo
+               enddo
+            endif
+         enddo
+      endif
+
+      end
+
