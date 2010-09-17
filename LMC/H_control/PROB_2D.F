@@ -421,6 +421,11 @@ c      if (max_vort_lev.lt.0) max_vort_lev=max_temp_lev
 #endif
 
       read(untin,control)
+#ifndef GENGETFORCE
+      if (pseudo_gravity.eq.1) then
+         call bl_abort('Pseudo gravity requires -DGENGETFORCE')
+      endif
+#endif
 
    10 close(unit=untin)
 
