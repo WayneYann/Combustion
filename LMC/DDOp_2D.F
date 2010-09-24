@@ -329,7 +329,7 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
       REAL_T crse(DIMV(crse),nc)
       integer face, ratio(SDIM)
       
-      integer i,j,n,ii,jj, clo1, chi1, clo2, chi2, offset, dir
+      integer icrse,jcrse,n,ii,jj,ifine,jfine, clo1, chi1, clo2, chi2, offset, dir
       
       if ((face.EQ.0).OR.(face.EQ.2)) then
          dir = 0
@@ -343,36 +343,40 @@ c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
          offset = 0
       end if
       
-c     NOTE: generalize to rz
+c     NOTE: need to generalize to rz
       if (dir .eq. 0) then
-         clo1 = (lo(1)-offset)/2
-         clo2 = lo(2)/2
-         chi1 = (hi(1)-offset)/2
-         chi2 = (hi(2)+1)/2 - 1
-         do j=clo2,chi2
-            do i=clo1,chi1
+         clo1 = (lo(1)+offset)/ratio(1)-offset
+         clo2 = lo(2)/ratio(2)
+         chi1 = (hi(1)+offset)/ratio(1)-offset
+         chi2 = (hi(2)+1)/ratio(2) - 1
+         do jcrse=clo2,chi2
+            do icrse=clo1,chi1
                do n=1,nc
-                  crse(i,j,n) = 0.d0
+                  crse(icrse,jcrse,n) = 0.d0
+                  ifine = ratio(1)*(icrse + offset) - offset
                   do jj = 1,ratio(2)
-                     crse(i,j,n) = crse(i,j,n) + fine(2*i+offset,2*j+jj-1,n)
+                     jfine = ratio(2)*jcrse + jj - 1
+                     crse(icrse,jcrse,n) = crse(icrse,jcrse,n) + fine(ifine,jfine,n)
                   enddo
-                  crse(i,j,n) = crse(i,j,n)/ratio(2)
+                  crse(icrse,jcrse,n) = crse(icrse,jcrse,n)/ratio(2)
                enddo
             enddo
          enddo
       else
-         clo1 = lo(1)/2
-         clo2 = (lo(2)-offset)/2
-         chi1 = (hi(1)+1)/2 - 1
-         chi2 = (hi(2)-offset)/2
-         do j=clo2,chi2
-            do i=clo1,chi1
+         clo1 = lo(1)/ratio(1)
+         clo2 = (lo(2)+offset)/ratio(2)-offset
+         chi1 = (hi(1)+1)/ratio(1) - 1
+         chi2 = (hi(2)+offset)/ratio(2)-offset
+         do jcrse=clo2,chi2
+            do icrse=clo1,chi1
                do n=1,nc
-                  crse(i,j,n) = 0.d0
+                  crse(icrse,jcrse,n) = 0.d0
+                  jfine = ratio(2)*(jcrse + offset) - offset
                   do ii = 1,ratio(1)
-                     crse(i,j,n) = crse(i,j,n) + fine(2*i+ii-1,2*j+offset,n)
+                     ifine = ratio(1)*icrse + ii - 1
+                     crse(icrse,jcrse,n) = crse(icrse,jcrse,n) + fine(ifine,jfine,n) 
                   enddo
-                  crse(i,j,n) = crse(i,j,n)/ratio(1)
+                  crse(icrse,jcrse,n) = crse(icrse,jcrse,n)/ratio(1)
                enddo
             enddo
          enddo
