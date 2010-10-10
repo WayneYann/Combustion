@@ -1,0 +1,97 @@
+TOP = $(PBOXLIB_HOME)
+
+EBASE     = CNSReact
+
+include $(TOP)/mk/Make.defs
+
+ifeq ($(USE_REACT), TRUE)
+  DEFINES += -DREACTIONS
+endif
+
+ifeq ($(USE_DIFFUSION), TRUE)
+  DEFINES += -DDIFFUSION
+endif
+
+include $(EOS_dir)/Make.package
+include $(Network_dir)/Make.package
+
+INCLUDE_LOCATIONS += $(EOS_dir) $(Network_dir)
+VPATH_LOCATIONS   += $(EOS_dir) $(Network_dir)
+
+ifeq ($(USE_REACT), TRUE)
+VODE_dir    := $(FBOXLIB_HOME)/extern/VODE
+include $(VODE_dir)/Make.package
+INCLUDE_LOCATIONS += $(VODE_dir) 
+VPATH_LOCATIONS   += $(VODE_dir) 
+endif
+
+# end EOS_dir and Network_dir section
+
+ifeq ($(DIM), 1)
+DEFINES += -DHAS_XGRAPH
+include $(PBOXLIB_HOME)/plot1d/Make.package
+INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/plot1d
+VPATH_LOCATIONS   += $(PBOXLIB_HOME)/plot1d
+endif
+
+# These set the directories in Parallel to be included
+
+Bdirs 	:= CNSReact/Source CNSReact/Source/Src_$(DIM)d BoxLib amrlib bndrylib 
+
+Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
+Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
+
+include $(Bpack)
+
+INCLUDE_LOCATIONS += $(Blocs)
+VPATH_LOCATIONS   += $(Blocs)
+
+# end Parallel directories
+
+include $(FBOXLIB_HOME)/extern/constants/Make.package
+INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/extern/constants
+VPATH_LOCATIONS   += $(FBOXLIB_HOME)/extern/constants
+
+USE_MG = TRUE
+   
+ifeq ($(USE_MG), TRUE)
+  include $(PBOXLIB_HOME)/mglib/Make.package
+  INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/mglib
+  VPATH_LOCATIONS   += $(PBOXLIB_HOME)/mglib
+
+  include $(PBOXLIB_HOME)/MGT_Solver/Make.package
+  INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/MGT_Solver
+  VPATH_LOCATIONS   += $(PBOXLIB_HOME)/MGT_Solver
+
+  include $(FBOXLIB_HOME)/mg/FParallelMG.mak
+  INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/mg/
+  VPATH_LOCATIONS   += $(FBOXLIB_HOME)/mg
+
+  INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/extern/SPARSKIT
+  VPATH_LOCATIONS   += $(FBOXLIB_HOME)/extern/SPARSKIT
+
+  INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/extern/LAPACK
+  VPATH_LOCATIONS   += $(FBOXLIB_HOME)/extern/LAPACK
+
+  include $(FBOXLIB_HOME)/extern/BLAS/Make.package
+  INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/extern/BLAS
+  VPATH_LOCATIONS   += $(FBOXLIB_HOME)/extern/BLAS
+else
+  include $(FBOXLIB_HOME)/boxlib/FParallelMG.mak
+endif
+
+INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/boxlib 
+VPATH_LOCATIONS   += $(FBOXLIB_HOME)/boxlib 
+
+vpath %.c   . $(VPATH_LOCATIONS)
+vpath %.cpp . $(VPATH_LOCATIONS)
+vpath %.h   . $(VPATH_LOCATIONS)
+vpath %.H   . $(VPATH_LOCATIONS)
+vpath %.F   . $(VPATH_LOCATIONS)
+vpath %.f90 . $(VPATH_LOCATIONS)
+vpath %.f   . $(VPATH_LOCATIONS)
+vpath %.fi  . $(VPATH_LOCATIONS)
+
+all: $(executable) 
+
+include $(TOP)/mk/Make.rules
