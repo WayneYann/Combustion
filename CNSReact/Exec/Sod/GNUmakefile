@@ -7,9 +7,9 @@ PROFILE    = FALSE
 DEBUG      = TRUE
 DEBUG      = FALSE
 
-#DIM        = 1
+DIM        = 1
 #DIM        = 2
-DIM        = 3
+#DIM        = 3
 
 COMP	   = gcc
 FCOMP	   = gfortran
