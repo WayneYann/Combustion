@@ -1,4 +1,5 @@
 USE_INTEL = TRUE
+USE_INTEL = FALSE
 EXEname := lmc.exe
 
 #
@@ -31,9 +32,9 @@ ifeq (${USE_INTEL},TRUE)
 #  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
-  fCOMP := gfortran -g -fbounds-check -O -Wuninitialized 
+  fCOMP := gfortran -g -fbounds-check -O -Wuninitialized -ffixed-line-length-132
   CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
-  XTRALIBS :=  -lm -lg2c
+  XTRALIBS := $(shell gfortran -print-file-name=libgfortran.a) $(shell gfortran -print-libgcc-file-name) -lm -lg2c
 endif
 
 ifeq ($(REACTION_MECHANISM),GLARBORG)

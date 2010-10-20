@@ -116,7 +116,7 @@ c     Right boundary grow cell
          
 c     Compute cc transport coeffs
          redFac = 1.d-4
-         dt = 1.e100
+         dt = 1.e30
          do i=0,nx+1
             call calc_beta(scal_old(Density,i),scal_old(Temp,i),scal_old(FirstSpec,i),
      &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i))
