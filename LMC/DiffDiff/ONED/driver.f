@@ -25,10 +25,9 @@
       real*8 Patm, flame_offset, pmfdata(maxspec+3), mole(maxspec), mass(maxspec)
       real*8 dtRedFac
 
-      integer Niter, NiterMAX, maxIters, step
-      parameter (NiterMAX=20)
-      real*8 res(NiterMAX), errMAX
+      integer Niter, maxIters, step
       integer probtype, alt_spec_update
+      real*8 res(NiterMAX)
 
 c     Initialize chem/tran database
       call initchem()
@@ -39,7 +38,6 @@ c     Set defaults, change with namelist
       probhi = 3.5
       flame_offset = 0.d0
       Patm = 1.d0
-      errMAX = 1.d-8
       probtype = 2
       dtRedFac = 1.d0
       big = 1.d30
@@ -284,9 +282,11 @@ c         print *,'t=',time,' RhoH->T maxIters: ',maxIters
       real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, CPMS,PTC
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
       real*8 Ye(maxspec), Te, dxInv2, He(maxspec)
-      real*8 sum, maxsum, reos
-      integer i,n,m
+      real*8 sum, maxsum, rhoe, enthe
+      integer i,n,m,setTfromH,Niter,maxIter
+      real*8 res(NiterMAX)
 
+      setTfromH = 0
       dxInv2 = 1.d0/(dx*dx)
       maxsum=0.d0
       do i=0,nx+1
@@ -301,21 +301,33 @@ c         print *,'t=',time,' RhoH->T maxIters: ',maxIters
       print *,'LinOp: maxsum Y = ',maxsum
 
       maxsum=0.d0
+      maxiter=0
       do i=1,nx+1
          do n=1,Nspec
             de(n,i) = (X(n,i)-X(n,i-1)) / dx
          enddo
          de(Nspec+1,i) = (S(Temp,i)-S(Temp,i-1)) / dx
 
-
-         Te = 0.5d0*(S(Temp,i)+S(Temp,i-1))
          do n=1,Nspec
             Ye(n) = 0.5d0*(Y(n,i)+Y(n,i-1))
          enddo
          call CKMMWY(Ye,IWRK,RWRK,WWe)
+
+         Te = 0.5d0*(S(Temp,i)+S(Temp,i-1))
+         rhoe = 0.5d0*(S(Density,i)+S(Density,i-1))
+         if (setTfromH.eq.1) then
+            enthe = 0.5d0*(S(RhoH,i)+S(RhoH,i-1))/rhoe
+            call FORT_TfromHYpt(Te,enthe,Ye,Nspec,errMax,NiterMAX,res,Niter)
+            if (Niter.lt.0) then
+               print *,'RhoH->T failed at i=',i
+               stop
+            endif
+            maxiter=MAX(maxiter,Niter)
+         else if (setTfromH.eq.0) then
+            Te = Pcgs * WWe / (rhoe * RU)
+         endif
          call CKHMS(Te,IWRK,RWRK,He) 
-         call CKRHOY(Pcgs,Te,Ye,IWRK,RWRK,reos)
-         
+
          q(i) = 0.d0
          sum = 0.d0
          do n = 1,Nspec
@@ -323,13 +335,17 @@ c         print *,'t=',time,' RhoH->T maxIters: ',maxIters
             do m = 1,Nspec
                F(n,i) = F(n,i) - rhoDijec(n,m,i)*de(m,i)
             enddo
-            sum = sum + F(n,i)
+c            sum = sum + F(n,i)
             q(i) = q(i) - (RU*Te/WWe)*rhoTDec(n,i)*de(n,i) + He(n)*F(n,i)
          enddo
+         sum = (Pcgs - rhoe*RU*Te/WWe)/Pcgs
          maxsum = MAX(ABS(sum),maxsum)
          q(i) = q(i) - PTCec(i)*de(Nspec+1,i)
       enddo
       print *,'LinOp: maxsum Y.theta = ',maxsum
+      if (setTfromH.eq.1) then
+         print *,'    maxiter: ',maxiter
+      endif
 
       maxsum=0.d0
       do i=1,nx
