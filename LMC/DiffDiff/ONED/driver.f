@@ -24,8 +24,9 @@
       real*8 x, time
       real*8 Patm, flame_offset, pmfdata(maxspec+3), mole(maxspec), mass(maxspec)
       real*8 dtRedFac
+      character*(72) outname
 
-      integer Niter, maxIters, step
+      integer Niter, maxIters, step, plot_int
       integer probtype, alt_spec_update, advance_RhoH
       real*8 res(NiterMAX)
 
@@ -33,18 +34,20 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults, change with namelist
-      nsteps = 1
+      nsteps = 5000
+      plot_int = 50
       problo = 0.0
       probhi = 3.5
-      flame_offset = 0.d0
+      flame_offset = 1.1d0
       Patm = 1.d0
-      probtype = 1
-      dtRedFac = 1.d0
+      probtype = 2
+      dtRedFac = 1.d1
       big = 1.d30
       small = 1.d-30
       smallDt = 1.d-12
       alt_spec_update = 0
       advance_RhoH = 0
+      outname = 'soln'
 
       call CKRP(IWRK,RWRK,RU,RUC,P1ATM)
       Pcgs = Patm * P1ATM
@@ -57,8 +60,8 @@ c     Set defaults, change with namelist
       dx = (probhi-problo)/nx
 
       do i=1,nx
-         x = (i+0.5d0)*dx - flame_offset
          if (probtype.eq.1) then
+            x = (i+0.5d0)*dx - flame_offset
             call pmf(x,x,pmfdata,Npmf)
             if (Npmf.ne.Nspec+3) then
                print *,'mismatched pmf'
@@ -69,6 +72,7 @@ c     Set defaults, change with namelist
                mole(n) = pmfdata(3+n)
             enddo
          else
+            x = (i+0.5d0)*dx
             scal_new(Temp,i) = 298.d0
             do n=1,Nspec
                mole(n) = 0.d0
@@ -82,6 +86,7 @@ c     Set defaults, change with namelist
                mole(4) = 0.21d0
                mole(9) = 0.79d0
                scal_new(Temp,i) = 600.d0
+               scal_new(Temp,i) = 298.d0
             endif
          endif
 
@@ -115,7 +120,7 @@ c     Right boundary grow cell
 
 
       time = 0.d0
-      call print_soln(time,scal_new,'soln_start.dat',dx,problo)
+      call print_soln(0,time,scal_new,outname,dx,problo)
       do step=1,nsteps
 
 c     Update state and compute Yold
@@ -180,35 +185,6 @@ c     Compute ec transport coeffs
             enddo
          enddo
 
-         maxsum = 0.d0
-         do i=1,nx
-            sum = 0.d0
-            do n=1,Nspec
-               sum = sum + rhoTDcc(n,i)*scal_old(FirstSpec+n-1,i)/scal_old(Density,i)**2
-            enddo
-            maxsum = MAX(maxsum,ABS(sum))
-         enddo
-         print *,'  cc max sum:',maxsum
-         
-         maxsum = 0.d0
-         do i=1,nx+1
-            rhop = scal_old(Density,i)
-            rhom = scal_old(Density,i-1)
-            rhoc = 0.5d0*(rhop+rhom)
-            sum = 0.d0
-            do n=1,Nspec
-               yp = scal_old(FirstSpec+n-1,i)/rhop
-               ym = scal_old(FirstSpec+n-1,i-1)/rhom
-               yc = 0.5d0*(yp+ym)
-c               sum = sum + yc*rhoTDec_old(n,i)/rhoc
-               do m=1,Nspec
-                  sum = sum + rhoDijec_old(n,m,i)
-               enddo
-            enddo
-            maxsum = MAX(ABS(sum),maxsum)
-         enddo
-         print *,'  ec max sum:',maxsum
-         
          if (advance_RhoH.eq.1) then
 
             call LinOpApply(LofS,scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
@@ -317,11 +293,14 @@ c     Form explicit update
             enddo
          endif
 
-c         print *,'t=',time,' RhoH->T maxIters: ',maxIters
+         if (MOD(step,plot_int).eq.0) then
+            call print_soln(step,time,scal_new,outname,dx,problo)
+         endif
+
          time = time + dt
          print *,'step=', step, ' t=',time,' dt=',dt
       enddo
- 100  call print_soln(time,scal_new,'soln_end.dat',dx,problo)
+ 100  continue
 
       end
 
@@ -482,9 +461,9 @@ c            sum = sum + F(n,i)
          do n = 1,Nspec
             Fnavg = 0.5d0*(F(n,i+1)+F(n,i))
             gTavg = 0.5d0*(de(Nspec+1,i+1)+de(Nspec+1,i))
-            LofS(Nspec+1,i) = LofS(Nspec+1,i) + Fnavg*gTavg*cpi(n)/(S(Density,i)*CPMS)
+            LofS(Nspec+1,i) = LofS(Nspec+1,i) - Fnavg*gTavg*cpi(n)
          enddo
-         LofS(Nspec+1,i) = LofS(Nspec+1,i) - dxInv2*(q(i+1) - q(i))
+         LofS(Nspec+1,i) = (LofS(Nspec+1,i) - dxInv2*(q(i+1) - q(i)))/(S(Density,i)*CPMS)
       enddo
 
       end
@@ -552,23 +531,35 @@ c     Mixture-averaged transport coefficients
       end
 
 
-      subroutine print_soln(time,scal,filename,dx,plo)
+      subroutine print_soln(step,time,scal,filename,dx,plo)
       include 'spec.h'
+      integer step
       real*8 time, scal(maxscal,0:nx+1), dx, plo
+      real*8 Peos(1:nx), Y(maxspec)
       character*(*) filename
+      character*(72) fname
       character*(maxspnml) names(maxspec)
       integer n,i,j, get_spec_name, nlen(maxspec)
       do n=1,Nspec
          nlen = get_spec_name(names(n), n)
       enddo
-      open(unit=12,file=filename)
-      write(12,'(50a)') 'VARIABLES=X Rho ',(names(n),n=1,Nspec),
-     &     ' RhoH Temp'
-      write(12,'(a,i5,a,g20.8,a)') 'ZONE I=',nx,' T= "',time,
-     &     '" DATAPACKING=POINT'
       do i=1,nx
-         write(12,'(50g20.8)') (i+0.5d0)*dx + plo, scal(1,i),
-     &        (scal(1+n,i)/scal(1,i),n=1,Nspec),scal(Nspec+2,i),scal(Nspec+3,i)
+         do n=1,Nspec
+            Y(n) = scal(FirstSpec+n-1,i)/scal(Density,i)
+         enddo
+         call CKPY(scal(Density,i),scal(Temp,i),Y,IWRK,RWRK,Peos(i))
+      enddo
+      write(fname,'(a,a,I0.6,a)') trim(filename),'_',step,'.dat'
+      open(unit=12,file=trim(fname))
+      write(12,'(50a)') 'VARIABLES=X Rho ',(trim(names(n)),' ',n=1,Nspec),
+     &     ' RhoH Temp Peos'
+      write(12,'(a,I0.6,a,I0.6,5(a,g20.12))') 'ZONE I=',nx,' T= "STEP=',step,
+     &     ' time=',time,'" DATAPACKING=POINT STRANDID=1 SOLUTIONTIME=',
+     &     time
+      do i=1,nx
+         write(12,'(50g20.12)') (i+0.5d0)*dx + plo, scal(1,i),
+     &        (scal(1+n,i)/scal(1,i),n=1,Nspec),scal(Nspec+2,i),
+     &        scal(Nspec+3,i),Peos(i)
       enddo
       close(12)
       end
