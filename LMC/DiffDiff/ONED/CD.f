@@ -262,9 +262,8 @@ C-----------------------------------------------------------------------
       double precision HK(maxspec), WDOTK(maxspec), C(maxspec)
       integer K, j
 
-      integer NiterMAX, Niter
-      parameter (NiterMAX = 30)
-      double precision res(NiterMAX), errMAX, hmix, T, DEN
+      integer Niter
+      double precision res(NiterMAX), hmix, T, DEN
 CCCCCCCCCC FIXME??
       double precision HK2(maxspec), WDOTK2(maxspec), C2(maxspec)
       double precision ZP2(0:maxspec), CPB2

@@ -26,24 +26,25 @@
       real*8 dtRedFac
 
       integer Niter, maxIters, step
-      integer probtype, alt_spec_update
+      integer probtype, alt_spec_update, advance_RhoH
       real*8 res(NiterMAX)
 
 c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults, change with namelist
-      nsteps = 1000
+      nsteps = 1
       problo = 0.0
       probhi = 3.5
       flame_offset = 0.d0
       Patm = 1.d0
-      probtype = 2
+      probtype = 1
       dtRedFac = 1.d0
       big = 1.d30
       small = 1.d-30
       smallDt = 1.d-12
       alt_spec_update = 0
+      advance_RhoH = 0
 
       call CKRP(IWRK,RWRK,RU,RUC,P1ATM)
       Pcgs = Patm * P1ATM
@@ -76,9 +77,11 @@ c     Set defaults, change with namelist
                mole(1) = 0.3d0
                mole(4) = 0.3d0
                mole(9) = 0.4d0
+               scal_new(Temp,i) = 298.d0
             else
                mole(4) = 0.21d0
                mole(9) = 0.79d0
+               scal_new(Temp,i) = 600.d0
             endif
          endif
 
@@ -206,64 +209,113 @@ c               sum = sum + yc*rhoTDec_old(n,i)/rhoc
          enddo
          print *,'  ec max sum:',maxsum
          
+         if (advance_RhoH.eq.1) then
 
-         
-         call LinOpApply(LofS,scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
+            call LinOpApply(LofS,scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
 
 c     Form explicit update
-         do i=1,nx+1
-
-            if (alt_spec_update .eq. 0) then
-
-               do n=1,Nspec
-                  scal_new(FirstSpec+n-1,i)=scal_old(FirstSpec+n-1,i) +
-     &                 dt*LofS(n,i)
-               enddo
-               scal_new(Density,i) = scal_old(Density,i)
-
-            else if (alt_spec_update .eq. 1) then
-
-               sum = 0.d0
-               do n=1,Nspec-1
-                  scal_new(FirstSpec+n-1,i)=scal_old(FirstSpec+n-1,i) +
-     &                 dt*LofS(n,i)
-                  sum = sum + scal_new(FirstSpec+n-1,i)
-               enddo
-               scal_new(Density,i) = scal_old(Density,i)
-               scal_new(LastSpec,i) = scal_new(Density,i) - sum
-
-            else if (alt_spec_update .eq. 2) then
-
-               sum = 0.d0
-               do n=1,Nspec
-                  scal_new(FirstSpec+n-1,i)=scal_old(FirstSpec+n-1,i) +
-     &                 dt*LofS(n,i)
-                  sum = sum + scal_new(FirstSpec+n-1,i)
-               enddo
-               scal_new(Density,i) = sum
-
-            else
-               print *,'invalid value for alt_spec_update: ',alt_spec_update
-            endif
-
-            scal_new(RhoH,i)=scal_old(RhoH,i) + dt*LofS(Nspec+1,i)
-         enddo
-         
-c     Recompute temperature
-         maxIters=0
-         do i=1,nx
-            do n=1,Nspec
-               mass(n) = scal_new(FirstSpec+n-1,i)/scal_new(Density,i)
+            do i=1,nx
+               
+               if (alt_spec_update .eq. 0) then
+                  
+                  do n=1,Nspec
+                     scal_new(FirstSpec+n-1,i)=scal_old(FirstSpec+n-1,i) +
+     &                    dt*LofS(n,i)
+                  enddo
+                  scal_new(Density,i) = scal_old(Density,i)
+                  
+               else if (alt_spec_update .eq. 1) then
+                  
+                  sum = 0.d0
+                  do n=1,Nspec-1
+                     scal_new(FirstSpec+n-1,i)=scal_old(FirstSpec+n-1,i) +
+     &                    dt*LofS(n,i)
+                     sum = sum + scal_new(FirstSpec+n-1,i)
+                  enddo
+                  scal_new(Density,i) = scal_old(Density,i)
+                  scal_new(LastSpec,i) = scal_new(Density,i) - sum
+                  
+               else if (alt_spec_update .eq. 2) then
+                  
+                  sum = 0.d0
+                  do n=1,Nspec
+                     scal_new(FirstSpec+n-1,i)=scal_old(FirstSpec+n-1,i) +
+     &                    dt*LofS(n,i)
+                     sum = sum + scal_new(FirstSpec+n-1,i)
+                  enddo
+                  scal_new(Density,i) = sum
+                  
+               else
+                  print *,'invalid value for alt_spec_update: ',alt_spec_update
+               endif
+               
+               scal_new(RhoH,i)=scal_old(RhoH,i) + dt*LofS(Nspec+1,i)
             enddo
-            enth = scal_new(RhoH,i)/scal_new(Density,i)
-            call FORT_TfromHYpt(scal_new(Temp,i),enth,mass,
-     &           Nspec,errMax,NiterMAX,res,Niter)
-            if (Niter.lt.0) then
-               print *,'RhoH->T failed at i=',i
-               goto 100
-            endif
-            maxIters = MAX(maxIters,Niter)
-         enddo
+
+c     Recompute temperature
+            maxIters=0
+            do i=1,nx
+               do n=1,Nspec
+                  mass(n) = scal_new(FirstSpec+n-1,i)/scal_new(Density,i)
+               enddo
+               enth = scal_new(RhoH,i)/scal_new(Density,i)
+               call FORT_TfromHYpt(scal_new(Temp,i),enth,mass,
+     &              Nspec,errMax,NiterMAX,res,Niter)
+               if (Niter.lt.0) then
+                  print *,'RhoH->T failed at i=',i
+                  goto 100
+               endif
+               maxIters = MAX(maxIters,Niter)
+            enddo
+
+         else
+
+            call LinOp1Apply(LofS,scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
+
+c     Form explicit update
+            do i=1,nx
+               
+               if (alt_spec_update .eq. 0) then
+                  
+                  do n=1,Nspec
+                     scal_new(FirstSpec+n-1,i)=scal_old(FirstSpec+n-1,i) +
+     &                    dt*LofS(n,i)
+                  enddo
+                  scal_new(Density,i) = scal_old(Density,i)
+                  
+               else if (alt_spec_update .eq. 1) then
+                  
+                  sum = 0.d0
+                  do n=1,Nspec-1
+                     scal_new(FirstSpec+n-1,i)=scal_old(FirstSpec+n-1,i) +
+     &                    dt*LofS(n,i)
+                     sum = sum + scal_new(FirstSpec+n-1,i)
+                  enddo
+                  scal_new(Density,i) = scal_old(Density,i)
+                  scal_new(LastSpec,i) = scal_new(Density,i) - sum
+                  
+               else if (alt_spec_update .eq. 2) then
+                  
+                  sum = 0.d0
+                  do n=1,Nspec
+                     scal_new(FirstSpec+n-1,i)=scal_old(FirstSpec+n-1,i) +
+     &                    dt*LofS(n,i)
+                     sum = sum + scal_new(FirstSpec+n-1,i)
+                  enddo
+                  scal_new(Density,i) = sum
+                  
+               else
+                  print *,'invalid value for alt_spec_update: ',alt_spec_update
+               endif
+               
+               scal_new(Temp,i)=scal_old(Temp,i) + dt*LofS(Nspec+1,i)
+               do n=1,Nspec
+                  mass(n) = scal_new(FirstSpec+n-1,i)/scal_new(Density,i)
+               enddo
+               call CKHBMS(scal_new(Temp,i),mass,IWRK,RWRK,scal_new(RhoH,i))
+               scal_new(RhoH,i) = scal_new(RhoH,i) * scal_new(Density,i)
+            enddo
+         endif
 
 c         print *,'t=',time,' RhoH->T maxIters: ',maxIters
          time = time + dt
@@ -286,7 +338,7 @@ c         print *,'t=',time,' RhoH->T maxIters: ',maxIters
       integer i,n,m,setTfromH,Niter,maxIter
       real*8 res(NiterMAX)
 
-      setTfromH = 0
+      setTfromH = 2
       dxInv2 = 1.d0/(dx*dx)
       maxsum=0.d0
       do i=0,nx+1
@@ -361,6 +413,81 @@ c            sum = sum + F(n,i)
 
       end
 
+      subroutine LinOp1Apply(LofS,S,PTCec,rhoTDec,rhoDijec,dx)
+      include 'spec.h'
+      real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
+      real*8 PTCec(1:nx+1)
+      real*8 rhoTDec(maxspec,1:nx+1),rhoDijec(maxspec,maxspec,1:nx+1),dx
+      real*8 coef(maxspec+1,1:nx)
+      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, CPMS,PTC
+      real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
+      real*8 Ye(maxspec), Te, dxInv2, cpi(maxspec)
+      real*8 sum, maxsum, rhoe, enthe, Fnavg, gTavg
+      integer i,n,m,setTfromH,Niter,maxIter
+      real*8 res(NiterMAX)
+
+      setTfromH = 2
+      dxInv2 = 1.d0/(dx*dx)
+      do i=0,nx+1
+         do n=1,Nspec
+            Y(n,i) = S(FirstSpec+n-1,i) / S(Density,i) 
+            sum = sum + Y(n,i)
+         enddo
+         call CKYTX(Y(1,i),IWRK,RWRK,X(1,i))
+      enddo
+
+      maxiter=0
+      do i=1,nx+1
+         do n=1,Nspec
+            de(n,i) = (X(n,i)-X(n,i-1)) / dx
+         enddo
+         de(Nspec+1,i) = (S(Temp,i)-S(Temp,i-1)) / dx
+
+         do n=1,Nspec
+            Ye(n) = 0.5d0*(Y(n,i)+Y(n,i-1))
+         enddo
+         call CKMMWY(Ye,IWRK,RWRK,WWe)
+
+         Te = 0.5d0*(S(Temp,i)+S(Temp,i-1))
+         if (setTfromH.eq.1) then
+            enthe = 0.5d0*(S(RhoH,i)+S(RhoH,i-1))/rhoe
+            call FORT_TfromHYpt(Te,enthe,Ye,Nspec,errMax,NiterMAX,res,Niter)
+            if (Niter.lt.0) then
+               print *,'RhoH->T failed at i=',i
+               stop
+            endif
+            maxiter=MAX(maxiter,Niter)
+         else if (setTfromH.eq.0) then
+            Te = Pcgs * WWe / (rhoe * RU)
+         endif
+
+         q(i) = 0.d0
+         do n = 1,Nspec
+            F(n,i) = - Ye(n)*rhoTDec(n,i)*de(Nspec+1,i)/Te
+            do m = 1,Nspec
+               F(n,i) = F(n,i) - rhoDijec(n,m,i)*de(m,i)
+            enddo
+            q(i) = q(i) - (RU*Te/WWe)*rhoTDec(n,i)*de(n,i)
+         enddo
+         q(i) = q(i) - PTCec(i)*de(Nspec+1,i)
+      enddo
+
+      do i=1,nx
+         do n = 1,Nspec
+            LofS(n,i) = - dxInv2*(F(n,i+1) - F(n,i))
+         enddo
+         call CKCPMS(S(Temp,i),IWRK,RWRK,cpi) 
+         call CKCPBS(T,Y,IWRK,RWRK,CPMS)
+         LofS(Nspec+1,i) = 0.d0
+         do n = 1,Nspec
+            Fnavg = 0.5d0*(F(n,i+1)+F(n,i))
+            gTavg = 0.5d0*(de(Nspec+1,i+1)+de(Nspec+1,i))
+            LofS(Nspec+1,i) = (-dxInv2*(q(i+1) - q(i)) + Fnavg*gTavg*cpi(n))/(S(Density,i)*CPMS)
+         enddo
+      enddo
+
+      end
+
 
       subroutine calc_beta(T,Y,PTC,rhoTD,rhoDij,rhoDi)
       include 'spec.h'
@@ -399,6 +526,7 @@ c     Mixture-averaged transport coefficients
       do j = 1, maxspnml
          coded(j) = names(maxspnml*(i-1)+j)
       end do
+      str_len = 1
       do j = 1, maxspnml
          if (coded(j).eq.ICHAR(' ')) then
             str_len = j

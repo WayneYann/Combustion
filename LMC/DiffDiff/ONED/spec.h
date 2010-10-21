@@ -60,7 +60,10 @@ c     DVODE driver stuff
 
 
 c     Driver stuff
-      real*8 Pcgs
+      real*8 Pcgs,errMax
+      integer NiterMAX
+      parameter (errMAX=1.d-8)
+      parameter (NiterMAX=20)
       common / drvcom / Pcgs
       save /drvcom/
 
