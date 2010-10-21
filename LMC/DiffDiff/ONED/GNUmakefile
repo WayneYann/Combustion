@@ -1,5 +1,5 @@
-USE_INTEL = TRUE
 USE_INTEL = FALSE
+USE_INTEL = TRUE
 EXEname := lmc.exe
 
 #
