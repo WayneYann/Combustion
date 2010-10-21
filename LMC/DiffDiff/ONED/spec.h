@@ -60,11 +60,11 @@ c     DVODE driver stuff
 
 
 c     Driver stuff
-      real*8 Pcgs,errMax
+      real*8 Pcgs,errMax,setTfromH
       integer NiterMAX
       parameter (errMAX=1.d-8)
       parameter (NiterMAX=20)
-      common / drvcom / Pcgs
+      common / drvcom / Pcgs,setTfromH
       save /drvcom/
 
 c     Dummy arrays for CK calls

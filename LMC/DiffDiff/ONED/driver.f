@@ -35,6 +35,7 @@ c     Initialize chem/tran database
 
 c     Set defaults, change with namelist
       nsteps = 5000
+      nsteps = 10
       plot_int = 50
       problo = 0.0
       probhi = 3.5
@@ -47,6 +48,7 @@ c     Set defaults, change with namelist
       smallDt = 1.d-12
       alt_spec_update = 0
       advance_RhoH = 0
+      setTfromH = 0
       outname = 'soln'
 
       call CKRP(IWRK,RWRK,RU,RUC,P1ATM)
@@ -293,7 +295,7 @@ c     Form explicit update
             enddo
          endif
 
-         if (MOD(step,plot_int).eq.0) then
+         if (MOD(step,plot_int).eq.0  .or.  step.eq.nsteps) then
             call print_soln(step,time,scal_new,outname,dx,problo)
          endif
 
@@ -314,10 +316,9 @@ c     Form explicit update
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
       real*8 Ye(maxspec), Te, dxInv2, He(maxspec)
       real*8 sum, maxsum, rhoe, enthe
-      integer i,n,m,setTfromH,Niter,maxIter
+      integer i,n,m,Niter,maxIter
       real*8 res(NiterMAX)
 
-      setTfromH = 2
       dxInv2 = 1.d0/(dx*dx)
       maxsum=0.d0
       do i=0,nx+1
@@ -402,10 +403,9 @@ c            sum = sum + F(n,i)
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
       real*8 Ye(maxspec), Te, dxInv2, cpi(maxspec)
       real*8 sum, maxsum, rhoe, enthe, Fnavg, gTavg
-      integer i,n,m,setTfromH,Niter,maxIter
+      integer i,n,m,Niter,maxIter
       real*8 res(NiterMAX)
 
-      setTfromH = 2
       dxInv2 = 1.d0/(dx*dx)
       do i=0,nx+1
          do n=1,Nspec
@@ -559,7 +559,7 @@ c     Mixture-averaged transport coefficients
       do i=1,nx
          write(12,'(50g20.12)') (i+0.5d0)*dx + plo, scal(1,i),
      &        (scal(1+n,i)/scal(1,i),n=1,Nspec),scal(Nspec+2,i),
-     &        scal(Nspec+3,i),Peos(i)
+     &        scal(Nspec+3,i),(Peos(i)-Pcgs)/Pcgs
       enddo
       close(12)
       end
