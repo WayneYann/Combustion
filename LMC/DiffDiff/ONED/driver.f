@@ -477,13 +477,14 @@ c            sum = sum + F(n,i)
             LofS(n,i) = - dxInv2*(F(n,i+1) - F(n,i))
          enddo
          call CKCPMS(S(Temp,i),IWRK,RWRK,cpi) 
-         call CKCPBS(T,Y,IWRK,RWRK,CPMS)
+         call CKCPBS(S(Temp,i),Y(1,i),IWRK,RWRK,CPMS)
          LofS(Nspec+1,i) = 0.d0
          do n = 1,Nspec
             Fnavg = 0.5d0*(F(n,i+1)+F(n,i))
             gTavg = 0.5d0*(de(Nspec+1,i+1)+de(Nspec+1,i))
-            LofS(Nspec+1,i) = (-dxInv2*(q(i+1) - q(i)) + Fnavg*gTavg*cpi(n))/(S(Density,i)*CPMS)
+            LofS(Nspec+1,i) = LofS(Nspec+1,i) + Fnavg*gTavg*cpi(n)/(S(Density,i)*CPMS)
          enddo
+         LofS(Nspec+1,i) = LofS(Nspec+1,i) - dxInv2*(q(i+1) - q(i))
       enddo
 
       end
