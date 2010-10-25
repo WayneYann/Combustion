@@ -9,16 +9,6 @@
       real*8  scal_new(maxscal,0:nx+1)
       real*8  LofS(maxspec+1,1:nx)
 
-      real*8  PTCcc(0:nx+1)
-      real*8  rhoTDcc(maxspec,0:nx+1)
-      real*8  rhoDijcc(maxspec,maxspec,0:nx+1)
-      real*8  rhoDicc(maxspec,0:nx+1)
-
-      real*8  PTCec_old(1:nx+1)
-      real*8  rhoTDec_old(maxspec,1:nx+1)
-      real*8  rhoDijec_old(maxspec,maxspec,1:nx+1)
-      real*8  rhoDiec_old(maxspec,1:nx+1)
-
       real*8 dx, dt, enth, cpb
       real*8 rhom, rhop, rhoc, ym, yp, yc
       real*8 sum, maxsum, maxDiff, avgMag, T, rho, Yhalf
@@ -34,7 +24,7 @@
 c     Initialize chem/tran database
       call initchem()
 
-c     Set defaults, change with namelist
+c     Set defaults
       nsteps = 100
       plot_int = 10
       problo = 0.0d0
@@ -70,12 +60,10 @@ c     Set defaults, change with namelist
          enddo
          call apply_bcs(scal_old,time,step)
 
-         call advance(scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,dt,dx)
-
          if (advance_RhoH.eq.1) then
-            call update_RhoH(scal_new,scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx,dt)
+            call update_RhoH(scal_new,scal_old,dx,dt)
          else
-            call update_Temp(scal_new,scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx,dt)
+            call update_Temp(scal_new,scal_old,dx,dt)
          endif
 
          if (MOD(step,plot_int).eq.0  .or.  step.eq.nsteps) then
@@ -89,7 +77,7 @@ c     Set defaults, change with namelist
 
       end
 
-      subroutine advance(S,PTCec,rhoTDec,rhoDijec,rhoDiec,dt,dx)
+      subroutine ecCoef_and_dt(S,PTCec,rhoTDec,rhoDijec,rhoDiec,dt,dx)
       implicit none
       include 'spec.h'
       integer nsteps
@@ -552,7 +540,7 @@ c     Right boundary grow cell
       S(RhoH,nx+1) = S(RhoH,nx)
       end
 
-      subroutine update_RhoH(S_new,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx,dt)
+      subroutine update_RhoH(S_new,S_old,dx,dt)
       implicit none
       include 'spec.h'
       integer nsteps
@@ -575,6 +563,7 @@ c     Right boundary grow cell
       integer Niter, maxIters
       real*8 res(NiterMAX)
 
+      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,dt,dx)
       call LinOpApply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
       
 c     Form explicit update
@@ -633,7 +622,7 @@ c     Recompute temperature
       enddo
  100  end
 
-      subroutine update_Temp(S_new,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx,dt)
+      subroutine update_Temp(S_new,S_old,dx,dt)
       implicit none
       include 'spec.h'
       integer nsteps
@@ -649,6 +638,7 @@ c     Recompute temperature
       real*8  LofS(maxspec+1,1:nx), mass(maxspec), sum
       integer i, n
 
+      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,dt,dx)
       call LinOp1Apply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
       
 c     Form explicit update
