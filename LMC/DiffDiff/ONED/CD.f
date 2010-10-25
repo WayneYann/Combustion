@@ -18,110 +18,6 @@ c      data tranfile / 'tran.asc.CH4-2step' /
 
 
 
-      subroutine calc_diffusivities(scal, beta, mu, dx, time)
-      implicit none
-      include 'spec.h'
-      double precision scal(-1:nx,*)
-      double precision beta(-1:nx,*)
-      double precision mu(-1:nx)
-      double precision time, dx
-
-      double precision Dt(maxspec), CPMS(maxspec), Y(maxspec)
-      double precision Tt, Wavg, rho
-      double precision X(maxspec), alpha, l1, l2, cpmix
-      integer n, i
-
-      double precision fourThirds
-
-      fourThirds = 4.d0 / 3.d0
-
-c     Ensure chem/tran initialized
-      if (traninit.lt.0) call initchem()
-
-c      call set_bc_s(scal,dx,time)
-      if (LeEQ1 .eq. 0) then
-         
-         do i=-1, nx         
-            Tt = MAX(scal(i,Temp),TMIN_TRANS) 
-            rho = 0.d0
-            do n=1,Nspec
-               rho = rho + scal(i,FirstSpec+n-1)
-            enddo
-            do n=1,Nspec
-C               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
-               Y(n) = scal(i,FirstSpec+n-1) / rho
-            enddo
-            
-            CALL CKMMWY(Y,IWRK,RWRK,Wavg)
-            CALL CKCPMS(Tt,IWRK,RWRK,CPMS)
-            CALL CKYTX(Y,IWRK,RWRK,X)
-            CALL EGSPAR(Tt,X,Y,CPMS,EGRWRK,EGIWRK)
-            CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
-c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
-
-            do n=1,Nspec
-               beta(i,FirstSpec+n-1)
-     &              = scal(i,Density) * Wavg * invmwt(n) * Dt(n)
-            end do
-         
-            alpha = 1.0D0
-            CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
-            alpha = -1.0D0
-            CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
-            beta(i,Temp) = .5 * (l1 + l2)
-            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
-            beta(i,RhoH) = beta(i,Temp) / CPMIX
-            
-            CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
-            mu(i) = fourThirds*mu(i)
-         enddo
-         
-      else
-         do i=-1, nx
-c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
-            mu(i) = 10.d0 * 1.85e-5*(MAX(scal(i,Temp),1.d0)/298.0)**.7
-c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
-            rho = 0.d0
-            do n=1,Nspec
-c               beta(i,FirstSpec+n-1) = mu(i) / Sc
-               beta(i,FirstSpec+n-1) = mu(i)
-               rho = rho + scal(i,FirstSpec+n-1)
-            enddo
-            
-            do n=1,Nspec
-               Y(n) = scal(i,FirstSpec+n-1) / rho
-            enddo
-            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
-c            beta(i,RhoH) = mu(i) / Pr
-            beta(i,RhoH) = mu(i)
-            beta(i,Temp) = beta(i,RhoH) * CPMIX
-
-            mu(i) = fourThirds*mu(i)
-         enddo
-      endif
-
-CCCCCCCCCCC FIXME
-C      do n = 0, Nspec-1
-C         do i = -1, nx
-C            beta(i,FirstSpec+n) = 0.d0
-C            beta(i,RhoH) = 0.d0
-C            beta(i,Temp) = 0.d0
-C         enddo
-C      enddo
-CCCCCCCCCCCCCC
-
-c      if (thickFacTR.ne.1.d0) then
-c         do i=-1, nx
-c            do n=1,Nspec
-c               beta(i,FirstSpec+n-1) = beta(i,FirstSpec+n-1)*thickFacTR
-c            end do
-c            beta(i,Temp) = beta(i,Temp) * thickFacTR
-c            beta(i,RhoH) = beta(i,RhoH) * thickFacTR
-c         enddo
-c      endif
-
-      end
-
       subroutine initchem
       implicit none
       include 'spec.h'
@@ -193,6 +89,7 @@ c
 c     Make sure the transport & chemistry files are consistent.
 c
       CALL CKINDX(IDUMMY,RDUMMY,Nelt,Nspec,Nreac,Nfit)
+
       if (Nelt.gt.maxelts) then
          print *,'Too many elements, increase maxelts'
          print *, 'Nelt = ',Nelt
@@ -250,366 +147,6 @@ C-----------------------------------------------------------------------
          endif
       enddo
       end
-
-
-      subroutine vodeF_T_RhoY(NEQ, TIME, Z, ZP, RPAR, IPAR)
-      implicit none
-      include 'spec.h'
-      double precision TIME, Z(0:maxspec+1), ZP(0:maxspec), RPAR(*)
-      integer NEQ, IPAR(*)
-      
-      double precision RHO, CPB, SUM, Y(maxspec),X(maxspec),sumX
-      double precision HK(maxspec), WDOTK(maxspec), C(maxspec)
-      integer K, j
-
-      integer Niter
-      double precision res(NiterMAX), hmix, T, DEN
-CCCCCCCCCC FIXME??
-      double precision HK2(maxspec), WDOTK2(maxspec), C2(maxspec)
-      double precision ZP2(0:maxspec), CPB2
-CCCCCCCCCCCCCCCCCC
-
-C     For strang
-C     Variables in Z are:  Z(0)   = T
-C                          Z(K) = Y(K)
-C     For SDC
-C     Variables in Z are:  Z(0)   = T
-C                          Z(K) = rho*Y(K)
-C
-
-      if (nochem_hack) then
-         print *,'WARNING: calling VODE with nochem_hack = true'
-         stop
-      endif
-
-      if (Pcgs.lt.0.d0) then
-         print *,'vodeF_T_RhoY: Must set Pcgs before calling vode'
-         stop
-      endif
-
-C$$$      do K = 1, Nspec
-C$$$         if (Z(K) .lt. -1.d-12) then
-C$$$C         if (Z(K) .lt. 0.d0) then
-C$$$            write(*,*)'WARNING!!!****************'
-C$$$            write(*,*)'Z_m < 0,  m = ',K, ',  Z_m = ',Z(K)
-C$$$            stop
-C$$$         endif
-C$$$      enddo
-
-c      if( use_strang) then
-C
-C CEG:: this was  a bad idea.  rho decreases a lot (compared with LMC rho)
-C       when done this way
-C
-C$$$         do K=1,Nspec
-C$$$            C(K) = MAX(0.d0,Z(K)*invmwt(K))
-C$$$            Y(K) = Z(K)/rho_strang
-C$$$         enddo
-C$$$         write(*,*)rho_strang
-C$$$C CEG:: maybe it's a better idea to do it like LMC, where rho is determined
-C$$$C       by Y_m's and enforcing P=1 atm
-C$$$         call CKRHOY(Pcgs,Z(0),Y,IWRK,RWRK,RHO)
-C$$$         rho_strang = RHO
-C$$$         write(*,*)RHO
-C$$$         T = Z(0)
-C
-C CEG:: this wasn't a good idea either.  rho decreases a lot (compared with 
-C       LMC rho) when done this way
-C
-C$$$         sumX = 0.d0
-C$$$         do K=1,Nspec
-C$$$            C(K) = MAX(0.d0,Z(K)*invmwt(K))
-C$$$            sumX = sumX + C(K)
-C$$$         enddo
-
-C$$$         do K=1,Nspec
-C$$$            X(K) = C(K)/sumX
-C$$$         enddo
-C$$$         call CKRHOX(Pcgs,Z(0),X,IWRK,RWRK,RHO)
-C$$$         do K=1,Nspec
-C$$$            Y(K) = Z(K)/RHO
-C$$$         enddo
-C$$$         T = Z(0)
-C
-C  Doing exactly what LMC does
-C
-ccc         T = Z(0)
-C     this function computes rho (= Pressure/(R* Temp* sum(Y_m/W_m)))  
-ccc         CALL CKRHOY(Pcgs,T,Z(1),IWRK,RWRK,RHO)
-C     calculate molar concentrations from mass fractions; result in RPAR(NC)
-ccc         CALL CKYTCP(Pcgs, T, Z(1), IWRK, RWRK, C)
-ccc         if (lim_rxns .gt. 0) then
-ccc            do K=1,Nspec
-ccc               C(K) = MAX(0.d0,C(K))
-ccc            enddo
-ccc         endif
-ccc         call CKCPBS(T,Z(1),IWRK,RWRK,CPB)
-      
-c      else
-
-         RHO = 0.d0
-         do K=1,Nspec
-            RHO = RHO + Z(K)
-         enddo
-         
-         sumX = 0.d0
-         do K=1,Nspec
-ccc            if (lim_rxns .eq. 0) then
-               C(K) = Z(K)*invmwt(K)
-ccc            else
-ccc               C(K) = MAX(0.d0,Z(K)*invmwt(K))
-ccc            endif
-            Y(K) = Z(K)/RHO
-         enddo
-
-         T = Z(0)
-
-C$$$         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
-C$$$         errMax = ABS(hmix_TYP*1.e-12)
-C$$$C     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-C$$$         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
-C$$$         if (Niter.lt.0) then
-C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
-C$$$            stop
-C$$$         endif
-c     print *,'  ** Fdiag',TIME,T,Z(1),Niter
-
-C CEG trying something new with the temp evolution FIXME??
-C         call CKRHOPY(RHO,Pcgs,Y,IWRK,RWRK,T)
-C         T = Z(0)
-C FIXME
-C$$$         errMax = ABS(hmix_TYP*1.e-12)
-C$$$c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-C$$$         call FORT_TfromHYpt(T,Z(0),Y,Nspec,errMax,NiterMAX,res,Niter)
-C$$$         if (Niter.lt.0) then
-C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
-C$$$            stop
-C$$$         endif
-CCCCC
-         call CKCPBS(T,Y,IWRK,RWRK,CPB)
-ccc      endif
-
-      call CKHMS(T,IWRK,RWRK,HK)
-      call CKWC(T,C,IWRK,RWRK,WDOTK)
-      SUM = 0.d0
-      DO K = 1, Nspec
-c          ZP(K) = WDOTK(K)*mwt(K)/thickFacCH
-          ZP(K) = WDOTK(K)*mwt(K)
-     &            + c_0(K) + c_1(K)*TIME
-         SUM = SUM - HK(K)*ZP(K)
-      END DO
-      ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
-C FIXME!!!!!!!
-C      ZP(0) = c_0(0) + c_1(0)*TIME 
-
- 100  continue
-ccc      if(use_strang) then
-ccc         DO K = 1, Nspec
-ccc            ZP(K) = ZP(K)/RHO
-ccc         enddo         
-ccc      endif
-
-
-C       write(*,1007)TIME,RHO,CPB,Pcgs
-C       write(*,1006)(Z(k),k=0,Nspec)
-C       write(*,1006)(ZP(k),k=0,Nspec)
-C       write(*,1008)(C(k),k=1,Nspec)
-C       write(*,*)'***********************************'
-C CEG debugging FIXME
-C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
- 1006 FORMAT(7(E22.15,1X))
- 1007 FORMAT(4(E22.15,1X))
- 1008 FORMAT(6(E22.15,1X))      
-
-      END
-
-      subroutine vodeJ(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
-      implicit none
-      integer NEQ, NRPD, ML, MU, IPAR(*)
-      double precision T, Y(NEQ), PD(NRPD,NEQ), RPAR(*)
-      print *,'Should not be in vodeJ'
-      stop
-      end
-
-
-
-
-      subroutine chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
-     &     diag, do_diag, ifail)
-      implicit none
-      include 'spec.h'
-
-      double precision YJ_SAVE(80)
-      logical FIRST
-      common /VHACK/ YJ_SAVE, FIRST
-      save   /VHACK/
-
-      integer do_diag, ifail, FuncCount
-      double precision RYold(*), RYnew(*), Told, Tnew
-      double precision dt, diag(*)
-   
-      integer NEQ, ITOL, IOPT, ITASK, open_vode_failure_file
-      parameter (ITOL=1, IOPT=1, ITASK=1)
-      double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
-C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
-      parameter (RTOL=1.0E-13, ATOLEPS=1.0E-13)
-      external vodeF_T_RhoY, vodeJ, open_vode_failure_file
-      integer n, MF, ISTATE, lout
-      character*(maxspnml) name
-
-      integer nsubchem, nsub, node
-      double precision dtloc, weight, TT1save
-      double precision C(maxspec),Q(maxreac), scale
-
-      double precision dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum
-      logical bad_soln
-
-c     DVODE workspace requirements      
-      integer dvr, dvi
-
-c     METH = 2 (backward diffs)
-c     MAXORD = 5
-c     NEQ = maxspec+1 
-c     NYH = NEQ = maxspec+1
-c     MITER = 2
-c     JSV = 1
-c     JSV = SIGN(MF)
-c     MF = JSV*(10*METH + MITER) = 22
-c     LWM = 2*(maxspec+1)**2 + 2    (MITER = 2, MF<0)
-c     lenr = 20 + NYH*(MAXORD + 1) + 3*NEQ + LWM
-c          = 20 + (maxspec+1)*(6) + 3*(maxspec+1) + 2*(maxspec+1)**2 + 2
-c          = 22 + (maxspec+1)*9 + 2*(maxspec+1)**2
-c     
-      parameter (dvr = 22 + 9*(maxspec+1) + 2*(maxspec+1)**2)
-      parameter (dvi = 30 + maxspec + 1)
-      
-      double precision DVRWRK(dvr)
-      integer DVIWRK(dvi)
-
-      double precision Z(0:maxspec)
-      double precision RPAR
-      integer IPAR
-
-c     IOPT=1 parameter settings for VODE
-C      DVRWRK(1) = 0.d0
-C      DVRWRK(2) = 0.d0
-C      DVRWRK(3) = 0.d0
-C      DVRWRK(4) = 0.d0
-      DVRWRK(5) = 0.d0
-      DVRWRK(6) = 0.d0
-      DVRWRK(7) = min_vode_timestep
-C      DVRWRK(8) = 0.d0
-C      DVRWRK(9) = 0.d0
-C      DVRWRK(10) = 0.d0
-C      DVIWRK(1) = 0
-C      DVIWRK(2) = 0
-C      DVIWRK(3) = 0
-C      DVIWRK(4) = 0
-      DVIWRK(5) = 0
-      DVIWRK(6) = max_vode_subcycles
-      DVIWRK(7) = 0
-C      DVIWRK(8) = 0
-C      DVIWRK(9) = 0
-C      DVIWRK(10) = 0
-
-      if (do_diag.eq.1) nsubchem = nchemdiag
-
-      
-      MF = 22
-      ATOL(1) = ATOLEPS
-      TT1 = 0.d0
-      TT2 = dt
-      if (do_diag.eq.1) then
-         nsub = nsubchem
-         dtloc = dt/nsubchem
-      else
-         nsub = 1
-         dtloc = dt
-      endif
-      ISTATE = 1
-      NEQ = Nspec + 1
-
-
-      Z(0) = Told
-      do n=1,Nspec
-         Z(n) = RYold(n)
-      end do
-
-c     Always form Jacobian to start
-      FIRST = .TRUE.
-
-      if (do_diag.eq.1) then
-         FuncCount = 0
-         do n=1,Nspec
-            C(n) = Z(n)*invmwt(n)
-         enddo
-         CALL CKQC(Z(0),C,IWRK,RWRK,Q)
-         do n=1,Nreac
-            diag(n) = diag(n) + 0.5*dtloc*Q(n)
-         enddo
-      endif
-
-      ifail = 0
-      do node = 1,nsub
-         if (node.lt.nsub) then
-            weight = 1.d0
-         else
-            weight = 0.5d0
-         endif
-
-         TT1save = TT1
-         TT2 = TT1 + dtloc
-         
-         CALL DVODE
-     &        (vodeF_T_RhoY, NEQ, Z(0), TT1, TT2, ITOL, RTOL, ATOL,
-     &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
-     &        dvi, vodeJ, MF, RPAR, IPAR)
-
-         TT1 = TT2
-
-         if (do_diag.eq.1) then
-            do n=1,Nspec
-               C(n) = Z(n)*invmwt(n)
-            enddo
-            CALL CKQC(Z(0),C,IWRK,RWRK,Q)
-            do n=1,Nreac
-               diag(n) = diag(n) + weight*dtloc*Q(n)
-            enddo
-            FuncCount = FuncCount + DVIWRK(11)
-         else
-            FuncCount = DVIWRK(11)
-         endif
-
-         if (ISTATE.LE.-1  .or.  verbose_vode .eq. 1) then
-            write(6,*) '......dvode done:'
-            write(6,*) ' last successful step size = ',DVRWRK(11)
-            write(6,*) '          next step to try = ',DVRWRK(12)
-            write(6,*) '   integrated time reached = ',DVRWRK(13)
-            write(6,*) '      number of time steps = ',DVIWRK(11)
-            write(6,*) '              number of fs = ',DVIWRK(12)
-            write(6,*) '              number of Js = ',DVIWRK(13)
-            write(6,*) '    method order last used = ',DVIWRK(14)
-            write(6,*) '   method order to be used = ',DVIWRK(15)
-            write(6,*) '            number of LUDs = ',DVIWRK(19)
-            write(6,*) ' number of Newton iterations ',DVIWRK(20)
-            write(6,*) ' number of Newton failures = ',DVIWRK(21)
-            write(6,*) '     comp with largest err = ',DVIWRK(16)
-
-            print *,'Input state:'
-            print *,'T:',Told
-            print *,'RY:',(RYold(n),n=1,Nspec)
-         end if
-
-         Tnew = Z(0)
-         do n=1,Nspec
-            RYnew(n) = Z(n)
-         end do
-
-         if (ISTATE.LE.-1) ifail = 1
-
-      enddo
-      end
-
 
       subroutine FORT_TfromHYpt(T,Hin,Y,Nspec,errMax,NiterMAX,res,Niter)
       implicit none
@@ -755,55 +292,140 @@ c
  998  format(a,d21.12)
       end
   
-      integer function open_vode_failure_file ()
-      implicit none
-      character*30 name, myproc
-      integer lout,i,j,k,idx
-
-c     Hardwire the unit number to 26 for the moment
-      lout = 26 
-c      call bl_pd_myproc(i)
-      i = 0
-      write(myproc, *) i
-      idx = 1 
-      do j = 1, 30
-         if (myproc(j:j) .ne. ' ') then
-            idx = j
-            goto 1
-         end if 
-      end do
- 1    continue
-      do k = 30, j+1, -1
-         if (myproc(k:k) .ne. ' ') then
-            goto 2
-         end if
-      end do
- 2    continue
-      write(name, '(2a)') 'vode.failed.', myproc(idx:k)
-c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
-      open(unit=lout, file=name, form='formatted', status='replace')
-      open_vode_failure_file = lout
-      end
-
-
-      subroutine get_hmix_given_T_RhoY(scal,dx)
-      implicit none
-      include 'spec.h'
-      real*8 scal(-1:nx,*)
-      real*8 dx
-      
-      integer i,n
-      real*8 Y(maxspec), rho, hmix
-
-      do i = 0,nx-1
-         rho = 0.d0
-         do n=1,Nspec
-            rho = rho + scal(i,FirstSpec+n-1)
-         enddo
-         do n=1,Nspec
-            Y(n) = scal(i,FirstSpec+n-1)/rho
-         enddo
-         call CKHBMS(scal(i,Temp),Y,IWRK,RWRK,hmix)
-         scal(i,RhoH) = hmix * rho
+      subroutine dscal (n,da,dx,incx)
+c
+c     scales a vector by a constant.
+c     uses unrolled loops for increment equal to one.
+c     jack dongarra, linpack, 3/11/78.
+c     modified 3/93 to return if incx .le. 0.
+c
+      double precision da,dx(*)
+      integer i,incx,m,mp1,n,nincx
+c
+      if ( n.le.0 .or. incx.le.0 ) return
+      if (incx.eq.1) goto 20
+c
+c     code for increment not equal to 1
+c
+      nincx = n*incx
+      do i = 1,nincx,incx
+        dx(i) = da*dx(i)
+      enddo
+      return
+c
+c     code for increment equal to 1
+c
+c
+c     clean-up loop
+c
+   20 m = mod(n,5)
+      if( m .eq. 0 ) go to 40
+      do i = 1,m
+        dx(i) = da*dx(i)
+      enddo
+      if( n .lt. 5 ) return
+   40 mp1 = m + 1
+      do i = mp1,n,5
+        dx(i) = da*dx(i)
+        dx(i + 1) = da*dx(i + 1)
+        dx(i + 2) = da*dx(i + 2)
+        dx(i + 3) = da*dx(i + 3)
+        dx(i + 4) = da*dx(i + 4)
       enddo
       end
+
+      double precision function vddot (n,dx,incx,dy,incy)
+c
+c     forms the dot product of two vectors.
+c     uses unrolled loops for increments equal to one.
+c     jack dongarra, linpack, 3/11/78.
+c
+      double precision dx(*),dy(*),dtemp
+      integer i,incx,incy,ix,iy,m,mp1,n
+c
+      vddot = 0.0d0
+      dtemp = 0.0d0
+      if (n.le.0) return
+      if (incx.eq.1.and.incy.eq.1) goto 20
+c
+c     code for unequal increments or equal increments not equal to 1
+c
+      ix = 1
+      iy = 1
+      if (incx.lt.0) ix = (-n+1)*incx + 1
+      if (incy.lt.0) iy = (-n+1)*incy + 1
+      do i = 1,n
+        dtemp = dtemp + dx(ix)*dy(iy)
+        ix = ix + incx
+        iy = iy + incy
+      enddo
+      vddot = dtemp
+      return
+c
+c     code for both increments equal to 1
+c
+c
+c     clean-up loop
+c
+   20 m = mod(n,5)
+      if ( m .eq. 0 ) goto 40
+      do i = 1,m
+        dtemp = dtemp + dx(i)*dy(i)
+      enddo
+      if( n .lt. 5 ) go to 60
+   40 mp1 = m + 1
+      do i = mp1,n,5
+        dtemp = dtemp + dx(i)*dy(i) + dx(i + 1)*dy(i + 1) +
+     *   dx(i + 2)*dy(i + 2) + dx(i + 3)*dy(i + 3) + dx(i + 4)*dy(i + 4)
+      enddo
+   60 vddot = dtemp
+      end
+
+      subroutine dcopy(n,dx,incx,dy,incy)
+c
+c     copies a vector, x, to a vector, y.
+c     uses unrolled loops for increments equal to one.
+c     jack dongarra, linpack, 3/11/78.
+c
+      double precision dx(*),dy(*)
+      integer i,incx,incy,ix,iy,m,mp1,n
+c
+      if (n.le.0) return
+      if (incx.eq.1.and.incy.eq.1) goto 20
+c
+c     code for unequal increments or equal increments not equal to 1
+c
+      ix = 1
+      iy = 1
+      if (incx.lt.0) ix = (-n+1)*incx + 1
+      if (incy.lt.0) iy = (-n+1)*incy + 1
+      do i = 1,n
+        dy(iy) = dx(ix)
+        ix = ix + incx
+        iy = iy + incy
+      enddo
+      return
+c
+c     code for both increments equal to 1
+c
+c
+c     clean-up loop
+c
+   20 m = mod(n,7)
+      if( m .eq. 0 ) goto 40
+      do i = 1,m
+        dy(i) = dx(i)
+      enddo
+      if( n .lt. 7 ) return
+   40 mp1 = m + 1
+      do i = mp1,n,7
+        dy(i) = dx(i)
+        dy(i + 1) = dx(i + 1)
+        dy(i + 2) = dx(i + 2)
+        dy(i + 3) = dx(i + 3)
+        dy(i + 4) = dx(i + 4)
+        dy(i + 5) = dx(i + 5)
+        dy(i + 6) = dx(i + 6)
+      enddo
+      end
+

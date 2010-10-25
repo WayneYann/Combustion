@@ -1,5 +1,5 @@
-USE_INTEL = FALSE
 USE_INTEL = TRUE
+USE_INTEL = FALSE
 EXEname := lmc.exe
 
 #
@@ -74,7 +74,7 @@ ifeq ($(REACTION_MECHANISM),LIDRYER)
   mech_source += LiDryer.cpp
 endif
 
-chem_sources := EGini.f EGSlib.f CD.f vode.f
+chem_sources := EGini.f EGSlib.f CD.f #vode.f
 
 pmf_object := $(pmf_source:%.f=%.o)
 mech_object := $(mech_source:%.cpp=%.o)

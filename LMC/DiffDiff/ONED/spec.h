@@ -15,8 +15,9 @@ c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
       logical nochem_hack
       common / speci / Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
-     &     RhoRT, FirstSpec, LastSpec, nscal, nochem_hack
-      save /speci/
+     &     RhoRT, FirstSpec, LastSpec, nscal
+      common / specL / nochem_hack
+      save /speci/, /specL/
 
       character*(maxspnml) specNames(maxspec)
       common / specc / specNames
@@ -38,7 +39,7 @@ c     EGLib stuff
      &     max_vode_subcycles, verbose_vode
       save /trani/
 
-      double precision EGRWRK(egr), invmwt(maxspec), mwt(maxspec),
+      real*8 EGRWRK(egr), invmwt(maxspec), mwt(maxspec),
      &     RU, RUC, P1ATM, TMIN_TRANS, min_vode_timestep
       common / tranr / EGRWRK, invmwt, mwt, RU, RUC, P1ATM, TMIN_TRANS,
      &     min_vode_timestep
@@ -53,19 +54,26 @@ c     DVODE driver stuff
       common / dvdi / nchemdiag, dvd_debug
       save /dvdi/
 
-      double precision c_0(0:maxspec), c_1(0:maxspec), rhoh_INIT,
+      real*8 c_0(0:maxspec), c_1(0:maxspec), rhoh_INIT,
      &     hmix_TYP
       common / dvdr / c_0, c_1, rhoh_INIT, hmix_TYP
       save /dvdr/
 
 
 c     Driver stuff
-      real*8 Pcgs,errMax,setTfromH
-      integer NiterMAX
+      real*8 Pcgs,errMax,dtRedFac,big,small,smallDt
+      integer NiterMAX,setTfromH,rhoInTrans,advance_RhoH,alt_spec_update
+      integer probtype
+      real*8 problo,probhi,flame_offset
       parameter (errMAX=1.d-8)
       parameter (NiterMAX=20)
-      common / drvcom / Pcgs,setTfromH
-      save /drvcom/
+      parameter (big=1.e30)
+      parameter (small=1.e-30)
+      parameter (smallDt=1.e-30)
+      common / drvcomr / Pcgs,dtRedFac,problo,probhi,flame_offset
+      common / drvcomi / setTfromH,rhoInTrans,advance_RhoH,alt_spec_update,
+     &     probtype
+      save /drvcomr/, /drvcomi/
 
 c     Dummy arrays for CK calls
       real*8 RWRK

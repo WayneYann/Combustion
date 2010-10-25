@@ -1,9 +1,9 @@
 #!MC 1200
 # Created by Tecplot 360 build 12.2.0.9077
 $!VarSet |LFDSFN1| = '"soln_start.dat"'
-$!VarSet |LFDSVL1| = '"X" "Rho" "H2" "H" "O" "O2" "OH" "H2O" "HO2" "H2O2" "N2" "RhoH" "Temp"'
+$!VarSet |LFDSVL1| = '"X" "Rho" "H2" "H" "O" "O2" "OH" "H2O" "HO2" "H2O2" "N2" "RhoH" "Temp" "Peos"'
 $!VarSet |LFDSFN2| = '"soln_end.dat"'
-$!VarSet |LFDSVL2| = '"X" "Rho" "H2" "H" "O" "O2" "OH" "H2O" "HO2" "H2O2" "N2" "RhoH" "Temp"'
+$!VarSet |LFDSVL2| = '"X" "Rho" "H2" "H" "O" "O2" "OH" "H2O" "HO2" "H2O2" "N2" "RhoH" "Temp" "Peos"'
 $!SETSTYLEBASE FACTORY
 $!GLOBALLINKING 
   LINKCOLORMAPS = YES
@@ -914,6 +914,8 @@ $!READDATASET  '|LFDSFN2|'
   VARNAMELIST = '|LFDSVL2|'
 $!REMOVEVAR |LFDSVL2|
 $!REMOVEVAR |LFDSFN2|
+$!ALTERDATA 
+  EQUATION = 'V14=V14/1013250'
 $!FRAMELAYOUT 
   SHOWHEADER = NO
   HEADERCOLOR = RED
@@ -922,7 +924,7 @@ $!FRAMELAYOUT
     X = 1
     Y = 0.25
     }
-  WIDTH = 7.1255
+  WIDTH = 8.9166
   HEIGHT = 6.9792
 $!THREEDAXIS 
   ASPECTRATIOLIMIT = 25
@@ -930,7 +932,7 @@ $!THREEDAXIS
 $!PLOTTYPE  = XYLINE
 $!FRAMENAME  = 'Frame 001'
 $!DELETELINEMAPS 
-$!ACTIVELINEMAPS  =  [1-6]
+$!ACTIVELINEMAPS  =  [4,6,8]
 $!GLOBALLINEPLOT 
   DATALABELS
     {
@@ -960,9 +962,14 @@ $!LINEMAP  [1]
     }
   SYMBOLS
     {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CIRCLE
+      }
     COLOR = BLUE
     FILLMODE = USELINECOLOR
     FILLCOLOR = GREEN
+    SIZE = 1.5
     }
   BARCHARTS
     {
@@ -992,6 +999,7 @@ $!LINEMAP  [2]
     COLOR = RED
     FILLMODE = USELINECOLOR
     FILLCOLOR = YELLOW
+    SIZE = 1.5
     }
   BARCHARTS
     {
@@ -1022,6 +1030,7 @@ $!LINEMAP  [3]
     COLOR = PURPLE
     FILLMODE = USELINECOLOR
     FILLCOLOR = PURPLE
+    SIZE = 1.5
     }
   BARCHARTS
     {
@@ -1049,6 +1058,7 @@ $!LINEMAP  [4]
     {
     COLOR = BLUE
     FILLCOLOR = CYAN
+    SIZE = 1.5
     }
   BARCHARTS
     {
@@ -1075,6 +1085,7 @@ $!LINEMAP  [5]
     {
     COLOR = RED
     FILLCOLOR = YELLOW
+    SIZE = 1.5
     }
   BARCHARTS
     {
@@ -1102,6 +1113,7 @@ $!LINEMAP  [6]
     {
     COLOR = PURPLE
     FILLCOLOR = PURPLE
+    SIZE = 1.5
     }
   BARCHARTS
     {
@@ -1112,28 +1124,111 @@ $!LINEMAP  [6]
     {
     COLOR = PURPLE
     }
+$!LINEMAP  [7]
+  NAME = '&DV&'
+  ASSIGN
+    {
+    ZONE = 1
+    XAXISVAR = 1
+    YAXISVAR = 14
+    YAXIS = 4
+    }
+  LINES
+    {
+    COLOR = GREEN
+    LINEPATTERN = DASHED
+    }
+  SYMBOLS
+    {
+    COLOR = GREEN
+    FILLMODE = USELINECOLOR
+    FILLCOLOR = RED
+    SIZE = 1.5
+    }
+  BARCHARTS
+    {
+    COLOR = RED
+    FILLCOLOR = RED
+    }
+  ERRORBARS
+    {
+    COLOR = RED
+    }
+$!LINEMAP  [8]
+  NAME = '&DV&'
+  ASSIGN
+    {
+    ZONE = 2
+    XAXISVAR = 1
+    YAXISVAR = 14
+    YAXIS = 4
+    }
+  LINES
+    {
+    COLOR = GREEN
+    }
+  SYMBOLS
+    {
+    COLOR = GREEN
+    FILLCOLOR = GREEN
+    SIZE = 1.5
+    }
+  BARCHARTS
+    {
+    COLOR = GREEN
+    FILLCOLOR = GREEN
+    }
+  ERRORBARS
+    {
+    COLOR = GREEN
+    }
 $!XYLINEAXIS 
   DEPXTOYRATIO = 1
+  VIEWPORTPOSITION
+    {
+    X1 = 18.354
+    X2 = 78.469
+    }
 $!XYLINEAXIS 
   XDETAIL 1
     {
-    RANGEMIN = 1.7009457954332208
-    RANGEMAX = 1.7975422393929339
-    GRSPACING = 0.02
+    RANGEMIN = 0.0205078125
+    RANGEMAX = 3.5071845703125
+    GRSPACING = 0.5
     }
 $!XYLINEAXIS 
   YDETAIL 1
     {
-    RANGEMIN = 0.14193512235634315
-    RANGEMAX = 0.82982099995238467
-    GRSPACING = 0.1
+    RANGEMIN = 0.14503630995750427
+    RANGEMAX = 0.23067202618867158
+    AUTOGRID = NO
+    GRSPACING = 0.04
+    TITLE
+      {
+      TEXTSHAPE
+        {
+        ISBOLD = NO
+        HEIGHT = 3.6
+        }
+      OFFSET = 1
+      }
     }
 $!XYLINEAXIS 
   YDETAIL 2
     {
-    RANGEMIN = 288.27241101213139
-    RANGEMAX = 300.82611063818922
-    GRSPACING = 2
+    RANGEMIN = 298
+    RANGEMAX = 1357.1127366210937
+    GRSPACING = 200
+    TITLE
+      {
+      TEXTSHAPE
+        {
+        ISBOLD = NO
+        HEIGHT = 3.6
+        }
+      OFFSET = 3
+      PERCENTALONGLINE = 58
+      }
     AXISLINE
       {
       AXISALIGNMENT = WITHGRIDMAX
@@ -1142,13 +1237,42 @@ $!XYLINEAXIS
 $!XYLINEAXIS 
   YDETAIL 3
     {
-    RANGEMIN = -0.04318321138382876
-    RANGEMAX = 0.1646399491585846
-    GRSPACING = 0.05
+    RANGEMIN = 9.9293067989947303E-008
+    RANGEMAX = 0.010742909633683495
+    GRSPACING = 0.002
+    TITLE
+      {
+      TEXTSHAPE
+        {
+        ISBOLD = NO
+        HEIGHT = 3.6
+        }
+      PERCENTALONGLINE = 45
+      }
     AXISLINE
       {
       AXISALIGNMENT = WITHGRIDMAX
-      OFFSET = 3
+      OFFSET = 9
+      }
+    }
+$!XYLINEAXIS 
+  YDETAIL 4
+    {
+    RANGEMIN = 0.94999999999999996
+    RANGEMAX = 1.05
+    GRSPACING = 0.01
+    TITLE
+      {
+      TEXTSHAPE
+        {
+        ISBOLD = NO
+        HEIGHT = 3.6
+        }
+      OFFSET = 4
+      }
+    AXISLINE
+      {
+      OFFSET = 5.383
       }
     }
 $!LINEPLOTLAYERS 
