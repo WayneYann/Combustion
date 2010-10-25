@@ -34,7 +34,7 @@
 c     Initialize chem/tran database
       call initchem()
 
-c     Set defaults
+c     Set defaults, change with namelist
       nsteps = 100
       plot_int = 10
       problo = 0.0d0
@@ -70,7 +70,7 @@ c     Set defaults
          enddo
          call apply_bcs(scal_old,time,step)
 
-         call ecCoef_and_dt(scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,dt,dx)
+         call advance(scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,dt,dx)
 
          if (advance_RhoH.eq.1) then
             call update_RhoH(scal_new,scal_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx,dt)
@@ -89,7 +89,7 @@ c     Set defaults
 
       end
 
-      subroutine ecCoef_and_dt(S,PTCec,rhoTDec,rhoDijec,rhoDiec,dt,dx)
+      subroutine advance(S,PTCec,rhoTDec,rhoDijec,rhoDiec,dt,dx)
       implicit none
       include 'spec.h'
       integer nsteps
