@@ -67,9 +67,9 @@ c     Driver stuff
       real*8 problo,probhi,flame_offset
       parameter (errMAX=1.d-8)
       parameter (NiterMAX=20)
-      parameter (big=1.e30)
-      parameter (small=1.e-30)
-      parameter (smallDt=1.e-30)
+      parameter (big=1.d30)
+      parameter (small=1.d-30)
+      parameter (smallDt=1.d-30)
       common / drvcomr / Pcgs,dtRedFac,problo,probhi,flame_offset
       common / drvcomi / setTfromH,rhoInTrans,advance_RhoH,alt_spec_update,
      &     probtype

@@ -32,7 +32,7 @@ ifeq (${USE_INTEL},TRUE)
 #  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
-  fCOMP := gfortran -g -fbounds-check -O -Wuninitialized -ffixed-line-length-132
+  fCOMP := gfortran -g -fbounds-check -O -Wuninitialized -ffixed-line-length-132 -Warray-bounds -Waliasing -Wconversion -Wextra
   CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
   XTRALIBS := $(shell gfortran -print-file-name=libgfortran.a) $(shell gfortran -print-libgcc-file-name) -lm -lg2c
 endif
@@ -74,7 +74,8 @@ ifeq ($(REACTION_MECHANISM),LIDRYER)
   mech_source += LiDryer.cpp
 endif
 
-chem_sources := EGini.f EGSlib.f CD.f #vode.f
+chem_headers := spec.h eg.cmn
+chem_sources := EGini.f EGSlib.f CD.f 
 
 pmf_object := $(pmf_source:%.f=%.o)
 mech_object := $(mech_source:%.cpp=%.o)
@@ -88,9 +89,6 @@ f_objects := $(f_sources:%.f=%.o)
 
 ${EXEname}: ${f_objects} ${C_objects} ${f_includes}
 	${CCOMP} -o ${EXEname} ${f_objects} ${C_objects} ${XTRALIBS}
-
-test.exe: CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects}
-	${CCOMP} CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects} -o test.exe ${XTRALIBS}
 
 clean:
 	\rm -rf ${EXEname} ${f_objects} ${C_objects}

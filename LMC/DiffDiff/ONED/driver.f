@@ -25,8 +25,8 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 100
-      plot_int = 10
+      nsteps = 10
+      plot_int = 1
       problo = 0.0d0
       probhi = 3.5d0
       flame_offset = 1.1d0
@@ -34,7 +34,7 @@ c     Set defaults
       probtype = 2
       dtRedFac = 5.d0
       alt_spec_update = 0
-      advance_RhoH = 0
+      advance_RhoH = 1
       setTfromH = 2
       rhoInTrans = 0
       outname = 'soln'
@@ -61,7 +61,8 @@ c     Set defaults
          call apply_bcs(scal_old,time,step)
 
          if (advance_RhoH.eq.1) then
-            call update_RhoH(scal_new,scal_old,dx,dt)
+            call update_RhoH_implicit(scal_new,scal_old,dx,dt)
+c            call update_RhoH(scal_new,scal_old,dx,dt)
          else
             call update_Temp(scal_new,scal_old,dx,dt)
          endif
@@ -77,7 +78,7 @@ c     Set defaults
 
       end
 
-      subroutine ecCoef_and_dt(S,PTCec,rhoTDec,rhoDijec,rhoDiec,dt,dx)
+      subroutine ecCoef_and_dt(S,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,dt,dx)
       implicit none
       include 'spec.h'
       integer nsteps
@@ -93,9 +94,10 @@ c     Set defaults
       real*8  rhoTDec(maxspec,1:nx+1)
       real*8  rhoDijec(maxspec,maxspec,1:nx+1)
       real*8  rhoDiec(maxspec,1:nx+1)
+      real*8  cpb(0:nx+1)
 
       real*8 dx, dt, mass(maxspec)
-      real*8 rhom, rhop, rhoc, ym, yp, yc, cpb, rhoFactor
+      real*8 rhom, rhop, rhoc, ym, yp, yc, rhoFactor
       integer i, n, m
 
 c     Compute cc transport coeffs
@@ -105,7 +107,7 @@ c     Compute cc transport coeffs
                mass(n) = S(FirstSpec+n-1,i) / S(Density,i)
             enddo
             call calc_rhobeta(S(Temp,i),mass,
-     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i))
+     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i),cpb(i))
          enddo
       else
          do i=0,nx+1
@@ -113,7 +115,7 @@ c     Compute cc transport coeffs
                mass(n) = S(FirstSpec+n-1,i) / S(Density,i)
             enddo
             call calc_beta(S(Temp,i),mass,
-     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i))
+     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i),cpb(i))
          enddo
       endif
 
@@ -132,12 +134,8 @@ c     If requested, compute timestep based on Di,m and lambda/(rho.cpb)
                   dt = MIN(dt,dtRedFac*S(FirstSpec+n-1,i)*dx*dx/(2.d0*rhoDicc(n,i)*rhoFactor))
                endif
             enddo
-            do n=1,Nspec
-               mass(n) = S(FirstSpec+n-1,i)/S(Density,i)
-            enddo
-            call CKCPBS(S(Temp,i),mass,IWRK,RWRK,cpb)
             if (PTCcc(i) .gt. small) then
-               dt = MIN(dt,dtRedFac*dx*dx*S(Density,i)*cpb/(2.d0*PTCcc(i)))
+               dt = MIN(dt,dtRedFac*dx*dx*S(Density,i)*cpb(i)/(2.d0*PTCcc(i)))
             endif
          enddo
          
@@ -261,13 +259,13 @@ c     Compute ec transport coeffs
 
       end
 
-      subroutine LinOp1Apply(LofS,S,PTCec,rhoTDec,rhoDijec,dx)
+      subroutine LinOp1Apply(LofS,S,PTCec,rhoTDec,rhoDijec,cpb,dx)
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1)
       real*8 rhoTDec(maxspec,1:nx+1),rhoDijec(maxspec,maxspec,1:nx+1),dx
       real*8 coef(maxspec+1,1:nx)
-      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, CPMS,PTC
+      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, cpb(0:nx+1), PTC
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
       real*8 Ye(maxspec), Te, dxInv2, cpi(maxspec)
       real*8 rhoe, enthe, Fnavg, gTavg, rFac
@@ -329,24 +327,23 @@ c     Compute ec transport coeffs
             LofS(n,i) = - dxInv2*(F(n,i+1) - F(n,i))
          enddo
          call CKCPMS(S(Temp,i),IWRK,RWRK,cpi) 
-         call CKCPBS(S(Temp,i),Y(1,i),IWRK,RWRK,CPMS)
          LofS(Nspec+1,i) = 0.d0
          do n = 1,Nspec
             Fnavg = 0.5d0*(F(n,i+1)+F(n,i))
             gTavg = 0.5d0*(de(Nspec+1,i+1)+de(Nspec+1,i))
             LofS(Nspec+1,i) = LofS(Nspec+1,i) - Fnavg*gTavg*cpi(n)
          enddo
-         LofS(Nspec+1,i) = (LofS(Nspec+1,i) - dxInv2*(q(i+1) - q(i)))/(S(Density,i)*CPMS)
+         LofS(Nspec+1,i) = (LofS(Nspec+1,i) - dxInv2*(q(i+1) - q(i)))/(S(Density,i)*cpb(i))
       enddo
 
       end
 
 
-      subroutine calc_rhobeta(T,Y,PTC,rhoTD,rhoDij,rhoDi)
+      subroutine calc_rhobeta(T,Y,PTC,rhoTD,rhoDij,rhoDi,cpb)
       include 'spec.h'
       real*8 T, Y(maxspec), X(maxspec), WW, CPMS(1:maxspec), PTC
       real*8 rhoTD(maxspec),rhoDij(maxspec,maxspec),rhoDijt(maxspec*maxspec)
-      real*8 rhoDi(maxspec)
+      real*8 rhoDi(maxspec), cpb
       integer n,m,cnt
 
       call CKYTX(Y,IWRK,RWRK,X)
@@ -361,19 +358,19 @@ c     Compute ec transport coeffs
             cnt = cnt+1
          enddo
       enddo
-
-c     Mixture-averaged transport coefficients
       CALL EGSVR1(T,Y,EGRWRK,rhoDi)
+      cpb = 0.d0
       do n=1,Nspec
+         cpb = cpb + Y(n)*CPMS(n)
          rhoDi(n) = Y(n) * WW * rhoDi(n) / mwt(n)
       end do
       end
 
-      subroutine calc_beta(T,Y,PTC,TD,Dij,Di)
+      subroutine calc_beta(T,Y,PTC,TD,Dij,Di,cpb)
       include 'spec.h'
       real*8 T, Y(maxspec), X(maxspec), WW, CPMS(maxspec),PTC
       real*8 TD(maxspec),Dij(maxspec,maxspec),Dijt(maxspec*maxspec)
-      real*8 Di(maxspec)
+      real*8 Di(maxspec), cpb
       integer n,m,cnt
 
       call CKYTX(Y,IWRK,RWRK,X)
@@ -382,7 +379,9 @@ c     Mixture-averaged transport coefficients
       call EGSPAR(T,X,Y,CPMS,EGRWRK,EGIWRK)
       call EGSLTD5(Pcgs,T,Y,WW,EGRWRK,EGIWRK,PTC,TD,Dijt)
       cnt = 1
+      cpb = 0.d0
       do n=1,Nspec
+         cpb = cpb + Y(n)*CPMS(n)
          do m=1,Nspec
             Dij(m,n) = Dijt(cnt)
             cnt = cnt+1
@@ -556,7 +555,7 @@ c     Right boundary grow cell
       real*8  rhoDijec_old(maxspec,maxspec,1:nx+1)
       real*8  rhoDiec_old(maxspec,1:nx+1)
 
-      real*8 dx, dt, enth, cpb
+      real*8 dx, dt, enth, cpb(0:nx+1)
       real*8 rhom, rhop, rhoc, ym, yp, yc
       real*8 sum, maxsum, maxDiff, avgMag, T, rho, Yhalf
       integer i, Npmf, n, m
@@ -567,7 +566,7 @@ c     Right boundary grow cell
 
 c     positive dt signals that ecCoef_and_dt is to return stable dt
       dt = big
-      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,dt,dx)
+      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,cpb,dt,dx)
       call LinOpApply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
       
 c     Form explicit update
@@ -626,27 +625,14 @@ c     Recompute temperature
       enddo
  100  end
 
-
-      subroutine RhoH_dot(S,Rhs,scale,dx)
+      subroutine RhoH_to_Temp(S)
       implicit none
       include 'spec.h'
       integer nsteps
-
-      real*8  S(maxscal,0:nx+1)
-      real*8  Rhs(maxspec+1,1:nx)
-      real*8  scale(maxspec+1), dx
-      real*8  LofS(maxspec+1,1:nx)
-
-      real*8  PTCec(1:nx+1)
-      real*8  rhoTDec(maxspec,1:nx+1)
-      real*8  rhoDijec(maxspec,maxspec,1:nx+1)
-      real*8  rhoDiec(maxspec,1:nx+1)
-
-      real*8 dt, mass(maxspec), enth
+      real*8 S(maxscal,0:nx+1)
+      real*8 mass(maxspec), enth
       integer Niter, maxIters, i, n
       real*8 res(NiterMAX)
-
-c     Ensure consistent temperature
       maxIters=0
       do i=1,nx
          do n=1,Nspec
@@ -661,19 +647,7 @@ c     Ensure consistent temperature
          endif
          maxIters = MAX(maxIters,Niter)
       enddo
-
-c     dt<=0 signals to avoid dt calc
-      dt = 0.d0
-      call ecCoef_and_dt(S,PTCec,rhoTDec,rhoDijec,rhoDiec,dt,dx)
-      call LinOpApply(LofS,S,PTCec,rhoTDec,rhoDijec,dx)
-      do i=1,nx
-         do n=1,Nspec
-            LofS(n,i) = LofS(n,i) * scale(n)
-         enddo
-         LofS(Nspec+1,i) = LofS(Nspec+1,i) * scale(Nspec+1)
-      enddo
  100  end
-
 
       subroutine update_RhoH_implicit(S_new,S_old,dx,dt)
       implicit none
@@ -682,32 +656,37 @@ c     dt<=0 signals to avoid dt calc
       real*8 S_new(maxscal,0:nx+1)
       real*8 S_old(maxscal,0:nx+1)
       real*8 dx, dt
-      real*8 PTCec_old(1:nx+1)
-      real*8 rhoTDec_old(maxspec,1:nx+1)
-      real*8 rhoDijec_old(maxspec,maxspec,1:nx+1)
-      real*8 rhoDiec_old(maxspec,1:nx+1)
+      real*8 PTCec(1:nx+1)
+      real*8 rhoTDec(maxspec,1:nx+1)
+      real*8 rhoDijec(maxspec,maxspec,1:nx+1)
+      real*8 rhoDiec(maxspec,1:nx+1)
+      real*8 LofS_old(maxspec+1,1:nx)
+      real*8 cpb(0:nx+1)
 
-      real*8 Rhs_old(maxspec+1,1:nx), Rhs_new(maxspec+1,1:nx), be_cn_theta
-      common /NLSOLV/ Rhs_old, Rhs_new, be_cn_theta
-      save /NLSOLV/
+      real*8 be_cn_theta, theta, mass(maxspec), fac, dtDxInv2
+      integer Niter, maxIters, i, n
+      real*8 res(NiterMAX)
 
       be_cn_theta = 0.5d0
 
-c     Solve the NL system Sdot = theta*L(S_new) + (1-theta)*L(S_old) = Rhs_new + Rhs_old
-      call RhoH_dot(S_old,Rhs_old,1.d0-be_cn_theta,dx)
+      call RhoH_to_Temp(S_old)
 
-      end
+c     dt<=0 signals coef to avoid dt calc
+      dt = big
+      call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,dt,dx)
+      dt = 100.d0 * dt
+      call LinOpApply(LofS_old,S_old,PTCec,rhoTDec,rhoDijec,dx)
 
-      subroutine F_RhoH(NEQ, time, Q, QDOT, RPAR, IPAR)
-      implicit none
-      include 'spec.h'
-      double precision time, Q(*), QDOT(*), RPAR(*)
-      integer NEQ, IPAR(*)
-
-      real*8 Rhs_old(maxspec+1,1:nx), Rhs_new(maxspec+1,1:nx), be_cn_theta
-      common /NLSOLV/ Rhs_old, Rhs_new, be_cn_theta
-      save /NLSOLV/
-      
+c     Initial guess 
+      dtDxInv2 = dt / (dx*dx)
+      do i=1,nx
+         do n=1,Nspec
+            fac = 1.d0 + (rhoDiec(n,i)+rhoDiec(n,i+1))*dtDxInv2
+            S_new(FirstSpec+n-1,i) = (S_old(FirstSpec+n-1,i)*fac + dt*LofS_old(n,i))/fac
+         enddo
+         fac = 1.d0 + (PTCec(i)/(S_old(Density,i)*cpb(i)) + PTCec(i+1)/(S_old(Density,i+1)*cpb(i+1)))*dtDxInv2
+         S_new(RhoH,i) = (S_old(RhoH,i)*fac + dt*LofS_old(Nspec+1,i))/fac
+      enddo
       end
 
       subroutine update_Temp(S_new,S_old,dx,dt)
@@ -722,13 +701,13 @@ c     Solve the NL system Sdot = theta*L(S_new) + (1-theta)*L(S_old) = Rhs_new +
       real*8 rhoDiec_old(maxspec,1:nx+1)
       real*8 dx, dt
 
-      real*8  LofS(maxspec+1,1:nx), mass(maxspec), sum
+      real*8  LofS(maxspec+1,1:nx), mass(maxspec), sum, cpb(0:nx+1)
       integer i, n
 
 c     positive dt signals that ecCoef_and_dt is to return stable dt
       dt = big
-      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,dt,dx)
-      call LinOp1Apply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
+      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,cpb,dt,dx)
+      call LinOp1Apply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,cpb,dx)
       
 c     Form explicit update
       do i=1,nx

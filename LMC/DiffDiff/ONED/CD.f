@@ -7,8 +7,8 @@ c      data tranfile / 'tran.asc.CH4-2step' /
       data TMIN_TRANS / 0.d0 /
       data LeEQ1 / 1 /
       data max_vode_subcycles / 15000 /
-      data min_vode_timestep / 1.e-19 /
-      data Pcgs / -1 /
+      data min_vode_timestep / 1.d-19 /
+      data Pcgs / -1.d0 /
       data iH2  / -1 /
       data iO2  / -1 /
       data iN2  / -1 /
@@ -153,7 +153,7 @@ C-----------------------------------------------------------------------
       double precision T,Y(*),H,Hin
       double precision TMIN,TMAX,errMAX
       integer Nspec,NiterMAX,Niter,n,NiterDAMP, Discont_NiterMAX
-      parameter (TMIN=250, TMAX=5000, Discont_NiterMAX=100)
+      parameter (TMIN=250.d0, TMAX=5000.d0, Discont_NiterMAX=100)
       double precision  T0,cp,cv,dH,temp,RoverWbar,Wbar,RU,RUC,P1ATM
       double precision res(0:NiterMAX-1),dT, Htarg
       logical out_of_bounds, converged, soln_bad, stalled, discont
