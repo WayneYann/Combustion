@@ -25,7 +25,7 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 10
+      nsteps = 1
       plot_int = 1
       problo = 0.0d0
       probhi = 3.5d0
@@ -67,12 +67,12 @@ c            call update_RhoH(scal_new,scal_old,dx,dt)
             call update_Temp(scal_new,scal_old,dx,dt)
          endif
 
+         time = time + dt
+         print *,'step=', step, ' t=',time,' dt=',dt
+
          if (MOD(step,plot_int).eq.0  .or.  step.eq.nsteps) then
             call print_soln(step,time,scal_new,outname,dx,problo)
          endif
-
-         time = time + dt
-         print *,'step=', step, ' t=',time,' dt=',dt
       enddo
  100  continue
 
