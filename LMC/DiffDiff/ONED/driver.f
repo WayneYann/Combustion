@@ -117,32 +117,34 @@ c     Compute cc transport coeffs
          enddo
       endif
 
-c     Compute timestep based on Di,m and lambda/(rho.cpb)
-      dt = big
-      do i=0,nx+1
-         if (rhoInTrans.eq.1) then
-            rhoFactor = 1.d0/S(Density,i)
-         else
-            rhoFactor = 1.d0
-         endif
-         
-         do n=1,Nspec
-            if (rhoFactor*rhoDicc(n,i) .gt. small) then
-               dt = MIN(dt,dtRedFac*S(FirstSpec+n-1,i)*dx*dx/(2.d0*rhoDicc(n,i)*rhoFactor))
+c     If requested, compute timestep based on Di,m and lambda/(rho.cpb)
+      if (dt.gt.0) then
+         dt = big
+         do i=0,nx+1
+            if (rhoInTrans.eq.1) then
+               rhoFactor = 1.d0/S(Density,i)
+            else
+               rhoFactor = 1.d0
+            endif
+            
+            do n=1,Nspec
+               if (rhoFactor*rhoDicc(n,i) .gt. small) then
+                  dt = MIN(dt,dtRedFac*S(FirstSpec+n-1,i)*dx*dx/(2.d0*rhoDicc(n,i)*rhoFactor))
+               endif
+            enddo
+            do n=1,Nspec
+               mass(n) = S(FirstSpec+n-1,i)/S(Density,i)
+            enddo
+            call CKCPBS(S(Temp,i),mass,IWRK,RWRK,cpb)
+            if (PTCcc(i) .gt. small) then
+               dt = MIN(dt,dtRedFac*dx*dx*S(Density,i)*cpb/(2.d0*PTCcc(i)))
             endif
          enddo
-         do n=1,Nspec
-            mass(n) = S(FirstSpec+n-1,i)/S(Density,i)
-         enddo
-         call CKCPBS(S(Temp,i),mass,IWRK,RWRK,cpb)
-         if (PTCcc(i) .gt. small) then
-            dt = MIN(dt,dtRedFac*dx*dx*S(Density,i)*cpb/(2.d0*PTCcc(i)))
+         
+         if (dt.le.smallDt) then
+            print *,'dt too small',dt
+            stop
          endif
-      enddo
-
-      if (dt.le.smallDt) then
-         print *,'dt too small',dt
-         stop
       endif
       
 c     Compute ec transport coeffs
@@ -563,6 +565,8 @@ c     Right boundary grow cell
       integer Niter, maxIters
       real*8 res(NiterMAX)
 
+c     positive dt signals that ecCoef_and_dt is to return stable dt
+      dt = big
       call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,dt,dx)
       call LinOpApply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
       
@@ -622,11 +626,94 @@ c     Recompute temperature
       enddo
  100  end
 
-      subroutine update_Temp(S_new,S_old,dx,dt)
+
+      subroutine RhoH_dot(S,Rhs,scale,dx)
       implicit none
       include 'spec.h'
       integer nsteps
 
+      real*8  S(maxscal,0:nx+1)
+      real*8  Rhs(maxspec+1,1:nx)
+      real*8  scale(maxspec+1), dx
+      real*8  LofS(maxspec+1,1:nx)
+
+      real*8  PTCec(1:nx+1)
+      real*8  rhoTDec(maxspec,1:nx+1)
+      real*8  rhoDijec(maxspec,maxspec,1:nx+1)
+      real*8  rhoDiec(maxspec,1:nx+1)
+
+      real*8 dt, mass(maxspec), enth
+      integer Niter, maxIters, i, n
+      real*8 res(NiterMAX)
+
+c     Ensure consistent temperature
+      maxIters=0
+      do i=1,nx
+         do n=1,Nspec
+            mass(n) = S(FirstSpec+n-1,i)/S(Density,i)
+         enddo
+         enth = S(RhoH,i)/S(Density,i)
+         call FORT_TfromHYpt(S(Temp,i),enth,mass,
+     &        Nspec,errMax,NiterMAX,res,Niter)
+         if (Niter.lt.0) then
+            print *,'RhoH->T failed at i=',i
+            goto 100
+         endif
+         maxIters = MAX(maxIters,Niter)
+      enddo
+
+c     dt<=0 signals to avoid dt calc
+      dt = 0.d0
+      call ecCoef_and_dt(S,PTCec,rhoTDec,rhoDijec,rhoDiec,dt,dx)
+      call LinOpApply(LofS,S,PTCec,rhoTDec,rhoDijec,dx)
+      do i=1,nx
+         do n=1,Nspec
+            LofS(n,i) = LofS(n,i) * scale(n)
+         enddo
+         LofS(Nspec+1,i) = LofS(Nspec+1,i) * scale(Nspec+1)
+      enddo
+ 100  end
+
+
+      subroutine update_RhoH_implicit(S_new,S_old,dx,dt)
+      implicit none
+      include 'spec.h'
+      integer nsteps
+      real*8 S_new(maxscal,0:nx+1)
+      real*8 S_old(maxscal,0:nx+1)
+      real*8 dx, dt
+      real*8 PTCec_old(1:nx+1)
+      real*8 rhoTDec_old(maxspec,1:nx+1)
+      real*8 rhoDijec_old(maxspec,maxspec,1:nx+1)
+      real*8 rhoDiec_old(maxspec,1:nx+1)
+
+      real*8 Rhs_old(maxspec+1,1:nx), Rhs_new(maxspec+1,1:nx), be_cn_theta
+      common /NLSOLV/ Rhs_old, Rhs_new, be_cn_theta
+      save /NLSOLV/
+
+      be_cn_theta = 0.5d0
+
+c     Solve the NL system Sdot = theta*L(S_new) + (1-theta)*L(S_old) = Rhs_new + Rhs_old
+      call RhoH_dot(S_old,Rhs_old,1.d0-be_cn_theta,dx)
+
+      end
+
+      subroutine F_RhoH(NEQ, time, Q, QDOT, RPAR, IPAR)
+      implicit none
+      include 'spec.h'
+      double precision time, Q(*), QDOT(*), RPAR(*)
+      integer NEQ, IPAR(*)
+
+      real*8 Rhs_old(maxspec+1,1:nx), Rhs_new(maxspec+1,1:nx), be_cn_theta
+      common /NLSOLV/ Rhs_old, Rhs_new, be_cn_theta
+      save /NLSOLV/
+      
+      end
+
+      subroutine update_Temp(S_new,S_old,dx,dt)
+      implicit none
+      include 'spec.h'
+      integer nsteps
       real*8 S_old(maxscal,0:nx+1)
       real*8 S_new(maxscal,0:nx+1)
       real*8 PTCec_old(1:nx+1)
@@ -638,6 +725,8 @@ c     Recompute temperature
       real*8  LofS(maxspec+1,1:nx), mass(maxspec), sum
       integer i, n
 
+c     positive dt signals that ecCoef_and_dt is to return stable dt
+      dt = big
       call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,dt,dx)
       call LinOp1Apply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
       
