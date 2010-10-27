@@ -5,9 +5,9 @@ c     Chem species, etc
       parameter (maxreac = 100, maxspec=30, maxelts=6,
      &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
 
-c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
+c     nscal: room for rho, rhoH, Temp + species (rho.Y)
       integer maxscal, nx
-      parameter (maxscal = maxspec + 4, nx = 256)
+      parameter (maxscal = maxspec + 3, nx = 256)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
@@ -61,18 +61,18 @@ c     DVODE driver stuff
 
 
 c     Driver stuff
-      real*8 Pcgs,errMax,dtRedFac,big,small,smallDt
+      real*8 Pcgs,errMax,dtRedFac,big,small,smallDt,typVal(maxscal)
       integer NiterMAX,setTfromH,rhoInTrans,advance_RhoH,alt_spec_update
-      integer probtype
+      integer probtype,Ncorrect
       real*8 problo,probhi,flame_offset
       parameter (errMAX=1.d-8)
       parameter (NiterMAX=20)
       parameter (big=1.d30)
       parameter (small=1.d-30)
       parameter (smallDt=1.d-30)
-      common / drvcomr / Pcgs,dtRedFac,problo,probhi,flame_offset
+      common / drvcomr / Pcgs,dtRedFac,typVal,problo,probhi,flame_offset
       common / drvcomi / setTfromH,rhoInTrans,advance_RhoH,alt_spec_update,
-     &     probtype
+     &     probtype,Ncorrect
       save /drvcomr/, /drvcomi/
 
 c     Dummy arrays for CK calls

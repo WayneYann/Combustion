@@ -25,7 +25,7 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 1
+      nsteps = 100
       plot_int = 1
       problo = 0.0d0
       probhi = 3.5d0
@@ -37,6 +37,7 @@ c     Set defaults
       advance_RhoH = 1
       setTfromH = 2
       rhoInTrans = 0
+      Ncorrect = 50
       outname = 'soln'
 
       call CKRP(IWRK,RWRK,RU,RUC,P1ATM)
@@ -52,6 +53,7 @@ c     Set defaults
 
       call print_soln(0,time,scal_new,outname,dx,problo)
 
+      dt = 3.d-7
       do step=1,nsteps
          do i=0,nx+1
             do n=1,maxscal
@@ -61,7 +63,7 @@ c     Set defaults
          call apply_bcs(scal_old,time,step)
 
          if (advance_RhoH.eq.1) then
-            call update_RhoH_implicit(scal_new,scal_old,dx,dt)
+            call update_RhoH_implicit(scal_new,scal_old,dx,dt,time,step)
 c            call update_RhoH(scal_new,scal_old,dx,dt)
          else
             call update_Temp(scal_new,scal_old,dx,dt)
@@ -474,6 +476,9 @@ c     Mixture-averaged transport coefficients
       integer i, n, Npmf
       real*8 pmfdata(maxspec+3), mole(maxspec), mass(maxspec)
 
+      typVal(Temp)    = 0.d0
+      typVal(RhoH)    = 0.d0
+      typVal(Density) = 0.d0
       do i=1,nx
          if (probtype.eq.1) then
             x = (i+0.5d0)*dx - flame_offset
@@ -500,8 +505,8 @@ c     Mixture-averaged transport coefficients
             else
                mole(4) = 0.21d0
                mole(9) = 0.79d0
-               S(Temp,i) = 600.d0
                S(Temp,i) = 298.d0
+               S(Temp,i) = 600.d0
             endif
          endif
 
@@ -514,8 +519,15 @@ c     Mixture-averaged transport coefficients
          enddo
          S(RhoH,i) = S(RhoH,i) * S(Density,i)
          
+         typVal(Temp)    = MAX(ABS(S(Temp,i)),   typVal(Temp))
+         typVal(Density) = MAX(ABS(S(Density,i)),typVal(Density))
+         typVal(RhoH   ) = MAX(ABS(S(RhoH,i)),   typVal(RhoH))
+      enddo
+      do n=1,Nspec
+         typVal(FirstSpec+n-1) = typVal(Density)
       enddo
       time = 0.d0
+
       end
 
       subroutine apply_bcs(S,time,step)
@@ -561,8 +573,7 @@ c     Right boundary grow cell
       integer i, Npmf, n, m
       real*8 x, time, mass(maxspec)
 
-      integer Niter, maxIters
-      real*8 res(NiterMAX)
+      integer Niters, RhoH_to_Temp
 
 c     positive dt signals that ecCoef_and_dt is to return stable dt
       dt = big
@@ -609,23 +620,14 @@ c     Form explicit update
       enddo
       
 c     Recompute temperature
-      maxIters=0
-      do i=1,nx
-         do n=1,Nspec
-            mass(n) = S_new(FirstSpec+n-1,i)/S_new(Density,i)
-         enddo
-         enth = S_new(RhoH,i)/S_new(Density,i)
-         call FORT_TfromHYpt(S_new(Temp,i),enth,mass,
-     &        Nspec,errMax,NiterMAX,res,Niter)
-         if (Niter.lt.0) then
-            print *,'RhoH->T failed at i=',i
-            goto 100
-         endif
-         maxIters = MAX(maxIters,Niter)
-      enddo
- 100  end
+      Niters = RhoH_to_Temp(S_new)
+      if (Niters.lt.0) then
+         print *,'RhoH->Temp failed after explicit RhoH update'
+         stop
+      endif
+      end
 
-      subroutine RhoH_to_Temp(S)
+      integer function RhoH_to_Temp(S)
       implicit none
       include 'spec.h'
       integer nsteps
@@ -647,45 +649,106 @@ c     Recompute temperature
          endif
          maxIters = MAX(maxIters,Niter)
       enddo
- 100  end
+ 100  RhoH_to_Temp = Niter
+      end
 
-      subroutine update_RhoH_implicit(S_new,S_old,dx,dt)
+      subroutine update_RhoH_implicit(S_new,S_old,dx,dt,time,step)
       implicit none
       include 'spec.h'
       integer nsteps
       real*8 S_new(maxscal,0:nx+1)
       real*8 S_old(maxscal,0:nx+1)
-      real*8 dx, dt
+      real*8 dx, dt, time, step
       real*8 PTCec(1:nx+1)
       real*8 rhoTDec(maxspec,1:nx+1)
       real*8 rhoDijec(maxspec,maxspec,1:nx+1)
       real*8 rhoDiec(maxspec,1:nx+1)
       real*8 LofS_old(maxspec+1,1:nx)
+      real*8 LofS_new(maxspec+1,1:nx)
       real*8 cpb(0:nx+1)
 
-      real*8 be_cn_theta, theta, mass(maxspec), fac, dtDxInv2
-      integer Niter, maxIters, i, n
-      real*8 res(NiterMAX)
+      real*8 be_cn_theta, theta, mass(maxspec), fac, dtDxInv2, dt_temp, newVal
+      real*8 err, L2err(maxscal),prev, Tprev(1:nx)
+      integer Niters, i, n, RhoH_to_Temp, icorrect
 
       be_cn_theta = 0.5d0
 
-      call RhoH_to_Temp(S_old)
+      Niters = RhoH_to_Temp(S_old)
+      if (Niters.lt.0) then
+         print *,'RhoH->Temp failed before predictor'
+         stop
+      endif
 
-c     dt<=0 signals coef to avoid dt calc
-      dt = big
-      call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,dt,dx)
-      dt = 100.d0 * dt
-      call LinOpApply(LofS_old,S_old,PTCec,rhoTDec,rhoDijec,dx)
-
-c     Initial guess 
-      dtDxInv2 = dt / (dx*dx)
-      do i=1,nx
-         do n=1,Nspec
-            fac = 1.d0 + (rhoDiec(n,i)+rhoDiec(n,i+1))*dtDxInv2
-            S_new(FirstSpec+n-1,i) = (S_old(FirstSpec+n-1,i)*fac + dt*LofS_old(n,i))/fac
+c     Initialize Snew to Sold
+      do i=0,nx+1
+         do n=1,maxscal
+            S_new(n,i) = S_old(n,i)
          enddo
-         fac = 1.d0 + (PTCec(i)/(S_old(Density,i)*cpb(i)) + PTCec(i+1)/(S_old(Density,i+1)*cpb(i+1)))*dtDxInv2
-         S_new(RhoH,i) = (S_old(RhoH,i)*fac + dt*LofS_old(Nspec+1,i))/fac
+      enddo
+
+      dt_temp = -1.d0
+      call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,dt_temp,dx)
+      call LinOpApply(LofS_old,S_old,PTCec,rhoTDec,rhoDijec,dx)
+      dtDxInv2 = dt / (dx*dx)
+
+c     Relaxation: Jacobi iteration based on BE (theta=1) and CN (theta=0.5)
+c
+c                    Snew-Sold = dt*( (1-theta).Lo + theta*(L* - a.S* + a.Snew))
+c
+c     (1-dt.a.theta).Snew = Sold + dt.( (1-theta).Lo + theta.(L* - a.S*))
+c
+c     (1+fac).Snew = Sold + dt.( (1-theta).Lo + theta.L* ) + fac.S*, where fac = -dt.a.theta = theta.(bL+bR).dt/dx2
+c
+c     Snew = (Sold + dt.( (1-theta).Lo + theta.L* ) + fac.S*))/(1+fac)
+c
+      do icorrect=1,Ncorrect
+         if (icorrect.gt.2) then
+            theta = be_cn_theta
+         else
+            theta = 1.d0
+         endif
+         call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,dt_temp,dx)
+         call LinOpApply(LofS_new,S_new,PTCec,rhoTDec,rhoDijec,dx)
+         do n=1,Nspec+3
+            L2err(n) = 0.d0
+         enddo
+         do i=1,nx
+            do n=1,Nspec
+               fac = (rhoDiec(n,i) + rhoDiec(n,i+1))*theta*dtDxInv2
+               prev = S_new(FirstSpec+n-1,i)
+               S_new(FirstSpec+n-1,i) = (S_old(FirstSpec+n-1,i) 
+     &              + dt*( (1.d0-theta)*LofS_old(n,i) + theta*LofS_new(n,i) )
+     &              + fac*S_old(FirstSpec+n-1,i) ) / (1.d0 + fac)
+               err = ABS(S_new(FirstSpec+n-1,i)-prev)/(typVal(FirstSpec+n-1)/typVal(Density))
+               L2err(FirstSpec+n-1) = L2err(FirstSpec+n-1) + err*err
+            enddo
+            fac = (PTCec(i)/(S_old(Density,i)*cpb(i)) + PTCec(i+1)/(S_old(Density,i+1)*cpb(i+1)))*theta*dtDxInv2
+            prev = S_new(RhoH,i)
+            S_new(RhoH,i) = (S_old(RhoH,i) 
+     &           + dt*( (1.d0-theta)*LofS_old(Nspec+1,i) + theta*LofS_new(Nspec+1,i) )
+     &           + fac*S_old(RhoH,i) ) / (1.d0 + fac)
+            err = ABS(S_new(RhoH,i) - prev)/typVal(RhoH)
+            L2err(RhoH) = L2Err(RhoH) + err*err
+            S_new(Density,i) = S_old(Density,i)
+         enddo
+         do i=1,nx
+            Tprev(i) = S_new(Temp,i)
+         enddo
+         call apply_bcs(S_new,time,step)
+         Niters = RhoH_to_Temp(S_new)
+         if (Niters.lt.0) then
+            print *,'RhoH->Temp failed after corrector',icorrect
+            stop
+         endif
+         do i=1,nx
+            err = ABS(S_new(Temp,i) - Tprev(i))/typVal(Temp)
+            L2err(Temp) = err*err
+         enddo
+         do n=1,Nspec+3
+            L2err(n) = SQRT(L2err(n))
+         enddo
+         write(6,12) 'Err:',(L2err(n),n=1,Nspec+3)
+ 12      format(a,12e9.2)
       enddo
       end
 
