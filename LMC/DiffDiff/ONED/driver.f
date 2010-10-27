@@ -25,7 +25,7 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 100
+      nsteps = 1
       plot_int = 1
       problo = 0.0d0
       probhi = 3.5d0
@@ -37,7 +37,7 @@ c     Set defaults
       advance_RhoH = 1
       setTfromH = 2
       rhoInTrans = 0
-      Ncorrect = 50
+      Ncorrect = 100
       outname = 'soln'
 
       call CKRP(IWRK,RWRK,RU,RUC,P1ATM)
@@ -53,7 +53,7 @@ c     Set defaults
 
       call print_soln(0,time,scal_new,outname,dx,problo)
 
-      dt = 3.d-7
+      dt = 3.d-6
       do step=1,nsteps
          do i=0,nx+1
             do n=1,maxscal
@@ -668,10 +668,18 @@ c     Recompute temperature
       real*8 cpb(0:nx+1)
 
       real*8 be_cn_theta, theta, mass(maxspec), fac, dtDxInv2, dt_temp, newVal
-      real*8 err, L2err(maxscal),prev, Tprev(1:nx)
+      real*8 err, L2err(maxscal),prev, Tprev(1:nx), URFac
       integer Niters, i, n, RhoH_to_Temp, icorrect
 
+      character*(50) junkname
+      real*8 plo
+      integer iRamp
+
+      plo = 0.d0
+      junkname = 'iter'
+
       be_cn_theta = 0.5d0
+      URFac = 0.5d0
 
       Niters = RhoH_to_Temp(S_old)
       if (Niters.lt.0) then
@@ -686,10 +694,8 @@ c     Initialize Snew to Sold
          enddo
       enddo
 
-      dt_temp = -1.d0
-      call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,dt_temp,dx)
+      call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,-1.d0,dx)
       call LinOpApply(LofS_old,S_old,PTCec,rhoTDec,rhoDijec,dx)
-      dtDxInv2 = dt / (dx*dx)
 
 c     Relaxation: Jacobi iteration based on BE (theta=1) and CN (theta=0.5)
 c
@@ -697,18 +703,31 @@ c                    Snew-Sold = dt*( (1-theta).Lo + theta*(L* - a.S* + a.Snew))
 c
 c     (1-dt.a.theta).Snew = Sold + dt.( (1-theta).Lo + theta.(L* - a.S*))
 c
-c     (1+fac).Snew = Sold + dt.( (1-theta).Lo + theta.L* ) + fac.S*, where fac = -dt.a.theta = theta.(bL+bR).dt/dx2
+c     (1+fac).Snew = Sold + dt.( (1-theta).Lo + theta.L* ) + fac.S*,
+c             where fac = -dt.a.theta = theta.(bL+bR).dt/dx2
 c
 c     Snew = (Sold + dt.( (1-theta).Lo + theta.L* ) + fac.S*))/(1+fac)
 c
       do icorrect=1,Ncorrect
-         if (icorrect.gt.2) then
+         if (icorrect.lt.0) then
             theta = be_cn_theta
          else
             theta = 1.d0
          endif
-         call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,dt_temp,dx)
+
+         iRamp = Ncorrect
+         if (icorrect.gt.iRamp) then
+            URFac = 1.d0
+         else
+            URFac = DBLE(icorrect)/DBLE(iRamp)
+         endif
+c         theta = 1.d0 - URFac*0.5d0
+
+         call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,-1.d0,dx)
          call LinOpApply(LofS_new,S_new,PTCec,rhoTDec,rhoDijec,dx)
+
+         dt_temp = URFac*dt
+         dtDxInv2 = dt_temp / (dx*dx)
          do n=1,Nspec+3
             L2err(n) = 0.d0
          enddo
@@ -717,7 +736,7 @@ c
                fac = (rhoDiec(n,i) + rhoDiec(n,i+1))*theta*dtDxInv2
                prev = S_new(FirstSpec+n-1,i)
                S_new(FirstSpec+n-1,i) = (S_old(FirstSpec+n-1,i) 
-     &              + dt*( (1.d0-theta)*LofS_old(n,i) + theta*LofS_new(n,i) )
+     &              + dt_temp*( (1.d0-theta)*LofS_old(n,i) + theta*LofS_new(n,i) )
      &              + fac*S_old(FirstSpec+n-1,i) ) / (1.d0 + fac)
                err = ABS(S_new(FirstSpec+n-1,i)-prev)/(typVal(FirstSpec+n-1)/typVal(Density))
                L2err(FirstSpec+n-1) = L2err(FirstSpec+n-1) + err*err
@@ -725,7 +744,7 @@ c
             fac = (PTCec(i)/(S_old(Density,i)*cpb(i)) + PTCec(i+1)/(S_old(Density,i+1)*cpb(i+1)))*theta*dtDxInv2
             prev = S_new(RhoH,i)
             S_new(RhoH,i) = (S_old(RhoH,i) 
-     &           + dt*( (1.d0-theta)*LofS_old(Nspec+1,i) + theta*LofS_new(Nspec+1,i) )
+     &           + dt_temp*( (1.d0-theta)*LofS_old(Nspec+1,i) + theta*LofS_new(Nspec+1,i) )
      &           + fac*S_old(RhoH,i) ) / (1.d0 + fac)
             err = ABS(S_new(RhoH,i) - prev)/typVal(RhoH)
             L2err(RhoH) = L2Err(RhoH) + err*err
@@ -735,6 +754,7 @@ c
             Tprev(i) = S_new(Temp,i)
          enddo
          call apply_bcs(S_new,time,step)
+
          Niters = RhoH_to_Temp(S_new)
          if (Niters.lt.0) then
             print *,'RhoH->Temp failed after corrector',icorrect
@@ -747,8 +767,10 @@ c
          do n=1,Nspec+3
             L2err(n) = SQRT(L2err(n))
          enddo
-         write(6,12) 'Err:',(L2err(n),n=1,Nspec+3)
- 12      format(a,12e9.2)
+c         write(6,12) 'Err:',(L2err(n),n=1,Nspec+3)
+c 12      format(a,12e9.2)
+
+         call print_soln(icorrect,DBLE(icorrect),S_new,junkname,dx,plo)
       enddo
       end
 
