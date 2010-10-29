@@ -766,6 +766,19 @@ c     Initialize Snew to Sold
          enddo
       enddo
 
+c     Iteratively solve the following system
+c
+c     (rho.Y)_t = Div( rho.D.Grad(Yi) )
+c
+c     rho.cp.(T)_t = Div(lambda.Grad(T) ) + cpi.rho.Di.Grad(Yi).Grad(T)
+c
+c     Use Backward-Euler, tridiagonal solver, and 
+c     (1) All gradients, transport coeffs evaluated on edges
+c     (2) All cp, cpi evaluated on centers
+c     (3) f=dt/dx2
+c     (4) Lag coefficients, rho.Di.Grad(Yi) in T eqn, and cps
+c
+
       call print_soln(0,0.d0,S_new,junkname,dx,plo)
       do iCorrect=1,Ncorrect
             
@@ -805,7 +818,7 @@ c     Initialize Snew to Sold
                else
                   a(idx) = -dtDxInv2*rFac*rhoDiec(n,i)
                   LT = LT - 
-     &                 dtDxInv2*( 0.25d0 * rhoDiec(n,i  )*(cpicc(n,i)+cpicc(n,i-1))
+     &                 dtDxInv2*dx*( 0.25d0 * rhoDiec(n,i  )*(cpicc(n,i)+cpicc(n,i-1))
      &                 * ( S_new(FirstSpec+n-1,i  )/S_new(Density,i  )
      &                 -   S_new(FirstSpec+n-1,i-1)/S_new(Density,i-1) ) )
                endif
@@ -815,7 +828,7 @@ c     Initialize Snew to Sold
                else
                   c(idx) = -dtDxInv2*rFac*rhoDiec(n,i+1)
                   RT = RT - 
-     &                 dtDxInv2*( 0.25d0 * rhoDiec(n,i+1)*(cpicc(n,i)+cpicc(n,i+1))
+     &                 dtDxInv2*dx*( 0.25d0 * rhoDiec(n,i+1)*(cpicc(n,i)+cpicc(n,i+1))
      &                 * ( S_new(FirstSpec+n-1,i+1)/S_new(Density,i+1)
      &                 -   S_new(FirstSpec+n-1,i  )/S_new(Density,i  ) ) )
                endif
