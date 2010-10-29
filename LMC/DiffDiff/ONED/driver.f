@@ -794,10 +794,10 @@ c
 
          N1d = (Nspec+1)*nx
          do n=1,N1d
-            a(n)=0
-            b(n)=0
-            c(n)=0
-            r(n)=0
+            a(n)=0.d0
+            b(n)=0.d0
+            c(n)=0.d0
+            r(n)=0.d0
          enddo
 
          do i=1,nx
