@@ -37,7 +37,7 @@ c     Set defaults
       advance_RhoH = 1
       setTfromH = 2
       rhoInTrans = 0
-      Ncorrect = 100
+      Ncorrect = 5
       outname = 'soln'
 
       call CKRP(IWRK,RWRK,RU,RUC,P1ATM)
@@ -63,7 +63,7 @@ c     Set defaults
          call apply_bcs(scal_old,time,step)
 
          if (advance_RhoH.eq.1) then
-            call update_RhoH_implicit(scal_new,scal_old,dx,dt,time,step)
+            call update_RhoH_pjImplicit(scal_new,scal_old,dx,dt,time,step)
 c            call update_RhoH(scal_new,scal_old,dx,dt)
          else
             call update_Temp(scal_new,scal_old,dx,dt)
@@ -80,26 +80,27 @@ c            call update_RhoH(scal_new,scal_old,dx,dt)
 
       end
 
-      subroutine ecCoef_and_dt(S,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,dt,dx)
+      subroutine ecCoef_and_dt(S,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,dt,dx)
       implicit none
       include 'spec.h'
       integer nsteps
 
       real*8  S(maxscal,0:nx+1)
+
+      real*8  PTCec(1:nx+1)
+      real*8  rhoTDec(maxspec,1:nx+1)
+      real*8  rhoDijec(maxspec,maxspec,1:nx+1)
+      real*8  rhoDiec(maxspec,1:nx+1)
+      real*8  cpicc(1:maxspec,0:nx+1)
+
       real*8  PTCcc(0:nx+1)
       real*8  rhoTDcc(maxspec,0:nx+1)
       real*8  rhoDijcc(maxspec,maxspec,0:nx+1)
       real*8  rhoDicc(maxspec,0:nx+1)
       real*8  LofS(maxspec+1,1:nx)
 
-      real*8  PTCec(1:nx+1)
-      real*8  rhoTDec(maxspec,1:nx+1)
-      real*8  rhoDijec(maxspec,maxspec,1:nx+1)
-      real*8  rhoDiec(maxspec,1:nx+1)
-      real*8  cpb(0:nx+1)
-
       real*8 dx, dt, mass(maxspec)
-      real*8 rhom, rhop, rhoc, ym, yp, yc, rhoFactor
+      real*8 rhom, rhop, rhoc, ym, yp, yc, rhoFactor, cpb
       integer i, n, m
 
 c     Compute cc transport coeffs
@@ -109,7 +110,7 @@ c     Compute cc transport coeffs
                mass(n) = S(FirstSpec+n-1,i) / S(Density,i)
             enddo
             call calc_rhobeta(S(Temp,i),mass,
-     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i),cpb(i))
+     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i),cpicc(1,i))
          enddo
       else
          do i=0,nx+1
@@ -117,7 +118,7 @@ c     Compute cc transport coeffs
                mass(n) = S(FirstSpec+n-1,i) / S(Density,i)
             enddo
             call calc_beta(S(Temp,i),mass,
-     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i),cpb(i))
+     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i),cpicc(1,i))
          enddo
       endif
 
@@ -130,14 +131,18 @@ c     If requested, compute timestep based on Di,m and lambda/(rho.cpb)
             else
                rhoFactor = 1.d0
             endif
-            
+
             do n=1,Nspec
                if (rhoFactor*rhoDicc(n,i) .gt. small) then
                   dt = MIN(dt,dtRedFac*S(FirstSpec+n-1,i)*dx*dx/(2.d0*rhoDicc(n,i)*rhoFactor))
                endif
             enddo
             if (PTCcc(i) .gt. small) then
-               dt = MIN(dt,dtRedFac*dx*dx*S(Density,i)*cpb(i)/(2.d0*PTCcc(i)))
+               cpb = 0.d0
+               do n=1,Nspec
+                  cpb = cpb + cpicc(n,i) * S(FirstSpec+n-1,i) / S(Density,i)
+               enddo
+               dt = MIN(dt,dtRedFac*dx*dx*S(Density,i)*cpb/(2.d0*PTCcc(i)))
             endif
          enddo
          
@@ -261,6 +266,70 @@ c     Compute ec transport coeffs
 
       end
 
+      subroutine LinOpApplyApprox(LofS,S,PTCec,rhoDiec,dx)
+      include 'spec.h'
+      real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
+      real*8 PTCec(1:nx+1)
+      real*8 rhoDiec(maxspec,1:nx+1),dx
+      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, CPBS,PTC
+      real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
+      real*8 Ye(maxspec), Te, dxInv2, He(maxspec)
+      real*8 rhoe, enthe, rFac
+      integer i,n,m,Niter,maxIter
+      real*8 res(NiterMAX), lamOverCp
+
+      dxInv2 = 1.d0/(dx*dx)
+      do i=0,nx+1
+         do n=1,Nspec
+            Y(n,i) = S(FirstSpec+n-1,i) / S(Density,i) 
+         enddo
+      enddo
+
+      maxiter=0
+      do i=1,nx+1
+         do n=1,Nspec
+            de(n,i) = (Y(n,i)-Y(n,i-1)) / dx
+         enddo
+         de(Nspec+1,i) = (S(RhoH,i)-S(RhoH,i-1)) / dx
+
+         Te = 0.5d0*(S(Temp,i)+S(Temp,i-1))
+         rhoe = 0.5d0*(S(Density,i)+S(Density,i-1))
+         if (setTfromH.eq.1) then
+            enthe = 0.5d0*(S(RhoH,i)+S(RhoH,i-1))/rhoe
+            call FORT_TfromHYpt(Te,enthe,Ye,Nspec,errMax,NiterMAX,res,Niter)
+            if (Niter.lt.0) then
+               print *,'RhoH->T failed at i=',i,'in LinOpApplyApprox'
+               stop
+            endif
+            maxiter=MAX(maxiter,Niter)
+         endif
+         call CKHMS(Te,IWRK,RWRK,He) 
+         call CKCPBS(Te,Y(1,i),IWRK,RWRK,CPBS) 
+
+         if (rhoInTrans.eq.1) then
+            rFac = 1.d0
+         else
+            rFac = rhoe
+         endif
+         lamOverCp = PTCec(i) / CPBS
+
+         q(i) = 0.d0
+         do n = 1,Nspec
+            F(n,i) = - rFac*rhoDiec(n,i)*de(n,i)
+            q(i) = q(i) + He(n)*(rFac*rhoDiec(n,i) - lamOverCp)*de(n,i)
+         enddo
+         q(i) = q(i) - PTCec(i)*de(Nspec+1,i)
+      enddo
+
+      do i=1,nx
+         do n = 1,Nspec
+            LofS(n,i) = - dxInv2*(F(n,i+1) - F(n,i))
+         enddo
+         LofS(Nspec+1,i) = - dxInv2*(q(i+1) - q(i))
+      enddo
+
+      end
+
       subroutine LinOp1Apply(LofS,S,PTCec,rhoTDec,rhoDijec,cpb,dx)
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
@@ -341,9 +410,9 @@ c     Compute ec transport coeffs
       end
 
 
-      subroutine calc_rhobeta(T,Y,PTC,rhoTD,rhoDij,rhoDi,cpb)
+      subroutine calc_rhobeta(T,Y,PTC,rhoTD,rhoDij,rhoDi,CPMS)
       include 'spec.h'
-      real*8 T, Y(maxspec), X(maxspec), WW, CPMS(1:maxspec), PTC
+      real*8 T, Y(maxspec), CPMS(maxspec), X(maxspec), WW, PTC
       real*8 rhoTD(maxspec),rhoDij(maxspec,maxspec),rhoDijt(maxspec*maxspec)
       real*8 rhoDi(maxspec), cpb
       integer n,m,cnt
@@ -361,18 +430,16 @@ c     Compute ec transport coeffs
          enddo
       enddo
       CALL EGSVR1(T,Y,EGRWRK,rhoDi)
-      cpb = 0.d0
       do n=1,Nspec
-         cpb = cpb + Y(n)*CPMS(n)
          rhoDi(n) = Y(n) * WW * rhoDi(n) / mwt(n)
       end do
       end
 
-      subroutine calc_beta(T,Y,PTC,TD,Dij,Di,cpb)
+      subroutine calc_beta(T,Y,PTC,TD,Dij,Di,CPMS)
       include 'spec.h'
-      real*8 T, Y(maxspec), X(maxspec), WW, CPMS(maxspec),PTC
+      real*8 T, Y(maxspec), CPMS(maxspec), X(maxspec), WW, PTC
       real*8 TD(maxspec),Dij(maxspec,maxspec),Dijt(maxspec*maxspec)
-      real*8 Di(maxspec), cpb
+      real*8 Di(maxspec)
       integer n,m,cnt
 
       call CKYTX(Y,IWRK,RWRK,X)
@@ -381,9 +448,7 @@ c     Compute ec transport coeffs
       call EGSPAR(T,X,Y,CPMS,EGRWRK,EGIWRK)
       call EGSLTD5(Pcgs,T,Y,WW,EGRWRK,EGIWRK,PTC,TD,Dijt)
       cnt = 1
-      cpb = 0.d0
       do n=1,Nspec
-         cpb = cpb + Y(n)*CPMS(n)
          do m=1,Nspec
             Dij(m,n) = Dijt(cnt)
             cnt = cnt+1
@@ -567,7 +632,7 @@ c     Right boundary grow cell
       real*8  rhoDijec_old(maxspec,maxspec,1:nx+1)
       real*8  rhoDiec_old(maxspec,1:nx+1)
 
-      real*8 dx, dt, enth, cpb(0:nx+1)
+      real*8 dx, dt, enth, cpicc(1:maxspec,0:nx+1)
       real*8 rhom, rhop, rhoc, ym, yp, yc
       real*8 sum, maxsum, maxDiff, avgMag, T, rho, Yhalf
       integer i, Npmf, n, m
@@ -577,7 +642,7 @@ c     Right boundary grow cell
 
 c     positive dt signals that ecCoef_and_dt is to return stable dt
       dt = big
-      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,cpb,dt,dx)
+      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,cpicc,dt,dx)
       call LinOpApply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,dx)
       
 c     Form explicit update
@@ -652,7 +717,230 @@ c     Recompute temperature
  100  RhoH_to_Temp = Niter
       end
 
-      subroutine update_RhoH_implicit(S_new,S_old,dx,dt,time,step)
+      subroutine update_RhoH_pjImplicit(S_new,S_old,dx,dt,time,step)
+      implicit none
+      include 'spec.h'
+      integer nsteps
+      real*8 S_new(maxscal,0:nx+1)
+      real*8 S_old(maxscal,0:nx+1)
+      real*8 dx, dt, time, step
+      real*8 PTCec(1:nx+1)
+      real*8 rhoTDec(maxspec,1:nx+1)
+      real*8 rhoDijec(maxspec,maxspec,1:nx+1)
+      real*8 rhoDiec(maxspec,1:nx+1)
+      real*8 cpicc(1:maxspec,0:nx+1)
+
+      real*8 LofS_old(maxspec+1,1:nx)
+      real*8 LofS_new(maxspec+1,1:nx)
+
+      real*8 be_cn_theta, theta, mass(maxspec), fac, dtDxInv2, dt_temp, newVal
+      real*8 err, L2err(maxscal),prev, Tprev(1:nx), sum
+      integer Niters, i, n, RhoH_to_Temp, iCorrect, idx
+      integer N1dMAX, N1d
+      parameter (N1dMAX=(maxspec+1)*nx)
+      real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
+      real*8 LT, RT, cpb, rFac, rhoCpInv
+      
+      character*(50) junkname
+      real*8 plo
+      integer iRamp
+
+      plo = 0.d0
+      junkname = 'iter'
+
+      be_cn_theta = 1.d0
+
+      Niters = RhoH_to_Temp(S_old)
+      if (Niters.lt.0) then
+         print *,'RhoH->Temp failed before predictor'
+         stop
+      endif
+
+      call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
+      call LinOpApplyApprox(LofS_old,S_old,PTCec,rhoDiec,dx)
+
+c     Initialize Snew to Sold
+      do i=0,nx+1
+         do n=1,maxscal
+            S_new(n,i) = S_old(n,i)
+         enddo
+      enddo
+
+      call print_soln(0,0.d0,S_new,junkname,dx,plo)
+      do iCorrect=1,Ncorrect
+            
+         theta = be_cn_theta
+         call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
+         call LinOpApplyApprox(LofS_new,S_new,PTCec,rhoDiec,dx)
+
+         dt_temp = dt
+         dtDxInv2 = dt_temp / (dx*dx)
+         do n=1,Nspec+3
+            L2err(n) = 0.d0
+         enddo
+
+         N1d = (Nspec+1)*nx
+         do n=1,N1d
+            a(n)=0
+            b(n)=0
+            c(n)=0
+            r(n)=0
+         enddo
+
+         do i=1,nx
+            if (rhoInTrans.eq.1) then
+               rFac = 1.d0
+            else
+               rFac = S_new(Density,i)
+            endif
+
+            LT = 0.d0
+            RT = 0.d0
+            cpb = 0.d0
+            do n=1,Nspec
+               idx = (Nspec+1)*(i-1)+n
+
+               if (i.eq.1) then
+                  a(idx) = 0.d0
+               else
+                  a(idx) = -dtDxInv2*rFac*rhoDiec(n,i)
+                  LT = LT - 
+     &                 dtDxInv2*( 0.25d0 * rhoDiec(n,i  )*(cpicc(n,i)+cpicc(n,i-1))
+     &                 * ( S_new(FirstSpec+n-1,i  )/S_new(Density,i  )
+     &                 -   S_new(FirstSpec+n-1,i-1)/S_new(Density,i-1) ) )
+               endif
+
+               if (i.eq.nx) then
+                  c(idx) = 0.d0
+               else
+                  c(idx) = -dtDxInv2*rFac*rhoDiec(n,i+1)
+                  RT = RT - 
+     &                 dtDxInv2*( 0.25d0 * rhoDiec(n,i+1)*(cpicc(n,i)+cpicc(n,i+1))
+     &                 * ( S_new(FirstSpec+n-1,i+1)/S_new(Density,i+1)
+     &                 -   S_new(FirstSpec+n-1,i  )/S_new(Density,i  ) ) )
+               endif
+
+               b(idx) = 1.d0 - a(idx) - c(idx)
+               r(idx) = S_new(FirstSpec+n-1,i)
+            enddo
+            idx = (Nspec+1)*(i-1)+Nspec + 1
+
+            if (i.eq.1) then
+               a(idx) = 0.d0
+            else
+               a(idx) = -dtDxInv2*PTCec(i) + LT
+            endif
+
+            if (i.eq.nx) then
+               c(idx) = 0.d0
+            else
+               c(idx) = -dtDxInv2*PTCec(i) + RT
+            endif
+            b(idx) = 1.d0 - a(idx) - c(idx)
+
+c     Scale the T entries by 1/rho.cp
+            cpb = 0.d0
+            do n=1,Nspec
+               cpb = cpb + cpicc(n,i)*S_new(FirstSpec+n-1,i)/S_new(Density,i)
+            enddo
+            rhoCpInv = 1.d0 / S_new(Density,i)*cpb
+            rhoCpInv = 1.d0
+            a(idx) = a(idx) * rhoCpInv
+            b(idx) = b(idx) * rhoCpInv
+            c(idx) = c(idx) * rhoCpInv
+            r(idx) = S_new(RhoH,i)
+         enddo
+
+         do n=1,N1d
+            print *,a(n),b(n),c(n)
+         enddo
+
+         print *,'solving'
+
+         call tridiag(a,b,c,r,v,gam,N1d)
+
+         do n=1,nx
+            idx = (Nspec+1)*(i-1)+Nspec + 1
+            print *,v(idx)
+         enddo
+
+         do i=0,nx+1
+            do n=1,Nspec
+               idx = (Nspec+1)*(i-1)+n
+               prev = S_new(FirstSpec+n-1,i)
+               S_new(FirstSpec+n-1,i) = v(idx)
+               err = ABS(S_new(FirstSpec+n-1,i)-prev)/(typVal(FirstSpec+n-1)/typVal(Density))
+               L2err(FirstSpec+n-1) = L2err(FirstSpec+n-1) + err*err
+            enddo
+            idx = (Nspec+1)*(i-1)+Nspec + 1
+            prev = S_new(RhoH,i)
+            S_new(RhoH,i) = v(idx)
+            err = ABS(S_new(RhoH,i) - prev)/typVal(RhoH)
+            L2err(RhoH) = L2Err(RhoH) + err*err
+         enddo
+         do i=1,nx
+            Tprev(i) = S_new(Temp,i)
+         enddo
+         call apply_bcs(S_new,time,step)
+
+         Niters = RhoH_to_Temp(S_new)
+         if (Niters.lt.0) then
+            print *,'RhoH->Temp failed after corrector',icorrect
+            stop
+         endif
+         do i=1,nx
+            err = ABS(S_new(Temp,i) - Tprev(i))/typVal(Temp)
+            L2err(Temp) = err*err
+         enddo
+         do n=1,Nspec+3
+            L2err(n) = SQRT(L2err(n))
+         enddo
+         write(6,12) 'Err:',iCorrect,(L2err(n),n=1,Nspec+3)
+ 12      format(a,i3,12e9.2)
+
+         call print_soln(icorrect,DBLE(icorrect),S_new,junkname,dx,plo)
+      enddo
+      end
+
+c *************************************************************************
+c ** TRIDIAG **
+c ** Do a tridiagonal solve 
+c *************************************************************************
+
+      subroutine tridiag(a,b,c,r,u,gam,n)
+
+      implicit none
+
+      integer n
+      real*8 a(n),b(n),c(n),r(n),u(n),gam(n)
+      integer j
+      real*8 bet 
+      if (b(1) .eq. 0) print *,'CANT HAVE B(1) = ZERO'
+
+      bet = b(1)
+      u(1) = r(1)/bet
+
+      do j = 2,n
+        gam(j) = c(j-1)/bet
+        bet = b(j) - a(j)*gam(j)
+        if (bet .eq. 0) then
+          print *,'TRIDIAG FAILED '
+          stop
+        endif
+        u(j) = (r(j)-a(j)*u(j-1))/bet
+      enddo
+
+      do j = n-1,1,-1
+        u(j) = u(j) - gam(j+1)*u(j+1)
+      enddo
+
+      return
+      end
+
+
+
+
+      subroutine update_RhoH_adImplicit(S_new,S_old,dx,dt,time,step)
       implicit none
       include 'spec.h'
       integer nsteps
@@ -669,7 +957,7 @@ c     Recompute temperature
 
       real*8 be_cn_theta, theta, mass(maxspec), fac, dtDxInv2, dt_temp, newVal
       real*8 err, L2err(maxscal),prev, Tprev(1:nx), URFac
-      integer Niters, i, n, RhoH_to_Temp, icorrect
+      integer Niters, i, n, RhoH_to_Temp, iCorrect
 
       character*(50) junkname
       real*8 plo
@@ -708,20 +996,11 @@ c             where fac = -dt.a.theta = theta.(bL+bR).dt/dx2
 c
 c     Snew = (Sold + dt.( (1-theta).Lo + theta.L* ) + fac.S*))/(1+fac)
 c
-      do icorrect=1,Ncorrect
-         if (icorrect.lt.0) then
-            theta = be_cn_theta
-         else
-            theta = 1.d0
-         endif
-
-         iRamp = Ncorrect
-         if (icorrect.gt.iRamp) then
-            URFac = 1.d0
-         else
-            URFac = DBLE(icorrect)/DBLE(iRamp)
-         endif
-c         theta = 1.d0 - URFac*0.5d0
+      call print_soln(0,0.d0,S_new,junkname,dx,plo)
+      do iCorrect=1,Ncorrect
+            
+         theta = 1.d0
+         URFac = 5.d-2
 
          call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,-1.d0,dx)
          call LinOpApply(LofS_new,S_new,PTCec,rhoTDec,rhoDijec,dx)
@@ -767,8 +1046,8 @@ c         theta = 1.d0 - URFac*0.5d0
          do n=1,Nspec+3
             L2err(n) = SQRT(L2err(n))
          enddo
-c         write(6,12) 'Err:',(L2err(n),n=1,Nspec+3)
-c 12      format(a,12e9.2)
+         write(6,12) 'Err:',iCorrect,(L2err(n),n=1,Nspec+3)
+ 12      format(a,i3,12e9.2)
 
          call print_soln(icorrect,DBLE(icorrect),S_new,junkname,dx,plo)
       enddo
