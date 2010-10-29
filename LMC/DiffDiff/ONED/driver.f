@@ -857,7 +857,6 @@ c     Scale the T entries by 1/rho.cp
                cpb = cpb + cpicc(n,i)*S_new(FirstSpec+n-1,i)/S_new(Density,i)
             enddo
             rhoCpInv = 1.d0 / S_new(Density,i)*cpb
-            rhoCpInv = 1.d0
             a(idx) = a(idx) * rhoCpInv
             b(idx) = b(idx) * rhoCpInv
             c(idx) = c(idx) * rhoCpInv
