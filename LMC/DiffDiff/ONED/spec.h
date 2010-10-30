@@ -7,7 +7,8 @@ c     Chem species, etc
 
 c     nscal: room for rho, rhoH, Temp + species (rho.Y)
       integer maxscal, nx
-      parameter (maxscal = maxspec + 3, nx = 256)
+c      parameter (maxscal = maxspec + 3, nx = 256)
+      parameter (maxscal = maxspec + 3, nx = 64)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
@@ -70,6 +71,8 @@ c     Driver stuff
       parameter (big=1.d30)
       parameter (small=1.d-30)
       parameter (smallDt=1.d-30)
+      integer N1dMAX
+      parameter (N1dMAX=(maxspec+1)*nx)
       common / drvcomr / Pcgs,dtRedFac,typVal,problo,probhi,flame_offset
       common / drvcomi / setTfromH,rhoInTrans,advance_RhoH,alt_spec_update,
      &     probtype,Ncorrect
