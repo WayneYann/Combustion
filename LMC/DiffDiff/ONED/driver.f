@@ -430,7 +430,7 @@ c     Compute ec transport coeffs
       enddo
       CALL EGSVR1(T,Y,EGRWRK,rhoDi)
       do n=1,Nspec
-         rhoDi(n) = Y(n) * WW * rhoDi(n) / mwt(n)
+         rhoDi(n) = WW * rhoDi(n) / mwt(n)
       end do
       end
 
@@ -457,7 +457,7 @@ c     Compute ec transport coeffs
 c     Mixture-averaged transport coefficients
       CALL EGSV1(Pcgs,T,Y,WW,EGRWRK,Di)
       do n=1,Nspec
-         Di(n) = Y(n) * WW * Di(n) / mwt(n)
+         Di(n) = WW * Di(n) / mwt(n)
       end do
       end
 
@@ -774,9 +774,7 @@ c
       call print_soln(0,0.d0,S_new,junkname,dx,plo)
       do iCorrect=1,Ncorrect
             
-         if (iCorrect.eq.1) then
-            call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
-         endif
+         call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
 
          call build_approx_Ax_b(S_new,S_old,PTCec,rhoDiec,cpicc,dx,dt,time,step,
      &                          a,b,c,r,N1d)
