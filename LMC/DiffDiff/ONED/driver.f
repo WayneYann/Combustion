@@ -36,7 +36,7 @@ c     Set defaults
       alt_spec_update = 0
       advance_RhoH = 1
       setTfromH = 2
-      rhoInTrans = 0
+      rhoInTrans = 1
       Ncorrect = 10
       outname = 'soln'
 
@@ -53,7 +53,7 @@ c     Set defaults
 
       call print_soln(0,time,scal_new,outname,dx,problo)
 
-      dt = 1.d-5
+      dt = 1.d-4
       do step=1,nsteps
          do i=0,nx+1
             do n=1,maxscal
@@ -99,41 +99,25 @@ c            call update_RhoH(scal_new,scal_old,dx,dt)
       real*8  LofS(maxspec+1,1:nx)
 
       real*8 dx, dt, mass(maxspec)
-      real*8 rhom, rhop, rhoc, ym, yp, yc, rhoFactor, cpb
+      real*8 rhom, rhop, rhoc, ym, yp, yc, cpb
       integer i, n, m
 
 c     Compute cc transport coeffs
-      if (rhoInTrans.eq.1) then
-         do i=0,nx+1
-            do n=1,Nspec
-               mass(n) = S(FirstSpec+n-1,i) / S(Density,i)
-            enddo
-            call calc_rhobeta(S(Temp,i),mass,
-     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i),cpicc(1,i))
+      do i=0,nx+1
+         do n=1,Nspec
+            mass(n) = S(FirstSpec+n-1,i) / S(Density,i)
          enddo
-      else
-         do i=0,nx+1
-            do n=1,Nspec
-               mass(n) = S(FirstSpec+n-1,i) / S(Density,i)
-            enddo
-            call calc_beta(S(Temp,i),mass,
-     &           PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i),cpicc(1,i))
-         enddo
-      endif
+         call calc_beta(S(Temp,i),mass,S(Density,i),
+     &        PTCcc(i),rhoTDcc(1,i),rhoDijcc(1,1,i),rhoDicc(1,i),cpicc(1,i))
+      enddo
 
 c     If requested, compute timestep based on Di,m and lambda/(rho.cpb)
       if (dt.gt.0) then
          dt = big
          do i=0,nx+1
-            if (rhoInTrans.eq.1) then
-               rhoFactor = 1.d0/S(Density,i)
-            else
-               rhoFactor = 1.d0
-            endif
-
             do n=1,Nspec
-               if (rhoFactor*rhoDicc(n,i) .gt. small) then
-                  dt = MIN(dt,dtRedFac*S(FirstSpec+n-1,i)*dx*dx/(2.d0*rhoDicc(n,i)*rhoFactor))
+               if (rhoDicc(n,i) .gt. small) then
+                  dt = MIN(dt,dtRedFac*S(FirstSpec+n-1,i)*S(Density,i)*dx*dx/(2.d0*rhoDicc(n,i)))
                endif
             enddo
             if (PTCcc(i) .gt. small) then
@@ -157,37 +141,20 @@ c     Compute ec transport coeffs
          rhop = S(Density,i)
          rhom = S(Density,i-1)
          rhoc = 0.5d0*(rhop+rhom)
-         if (rhoInTrans.eq.1) then
-            do n=1,Nspec
-               yp = S(FirstSpec+n-1,i)/S(Density,i)
-               ym = S(FirstSpec+n-1,i-1)/S(Density,i-1)
-               yc = 0.5d0*(yp+ym)
-               if (yc.lt.small) then
-                  rhoTDec(n,i) = 0.5d0*(rhoTDcc(n,i-1)+rhoTDcc(n,i))
-               else
-                  rhoTDec(n,i) = 0.5d0*(ym*rhoTDcc(n,i-1)+yp*rhoTDcc(n,i))/yc
-               endif
-               rhoDiec(n,i) = 0.5d0*(rhoDicc(n,i-1)+rhoDicc(n,i))
-               do m=1,Nspec
-                  rhoDijec(n,m,i) = 0.5d0*(rhoDijcc(n,m,i-1)+rhoDijcc(n,m,i))
-               enddo
+         do n=1,Nspec
+            yp = S(FirstSpec+n-1,i)/S(Density,i)
+            ym = S(FirstSpec+n-1,i-1)/S(Density,i-1)
+            yc = 0.5d0*(yp+ym)
+            if (yc.lt.small) then
+               rhoTDec(n,i) = 0.5d0*(rhoTDcc(n,i-1)+rhoTDcc(n,i))
+            else
+               rhoTDec(n,i) = 0.5d0*(ym*rhoTDcc(n,i-1)+yp*rhoTDcc(n,i))/yc
+            endif
+            rhoDiec(n,i) = 0.5d0*(rhoDicc(n,i-1)+rhoDicc(n,i))
+            do m=1,Nspec
+               rhoDijec(n,m,i) = 0.5d0*(rhoDijcc(n,m,i-1)+rhoDijcc(n,m,i))
             enddo
-         else
-            do n=1,Nspec
-               yp = S(FirstSpec+n-1,i)/S(Density,i)
-               ym = S(FirstSpec+n-1,i-1)/S(Density,i-1)
-               yc = 0.5d0*(yp+ym)
-               if (yc.lt.small) then
-                  rhoTDec(n,i) = 0.5d0*(rhoTDcc(n,i-1)*rhom+rhoTDcc(n,i)*rhop)/rhoc
-               else
-                  rhoTDec(n,i) = 0.5d0*(ym*rhoTDcc(n,i-1)*rhom+yp*rhoTDcc(n,i)*rhop)/(rhoc*yc)
-               endif
-               rhoDiec(n,i) = 0.5d0*(rhoDicc(n,i-1)*rhom+rhoDicc(n,i)*rhop)/rhoc
-               do m=1,Nspec
-                  rhoDijec(n,m,i) = 0.5d0*(rhoDijcc(n,m,i-1)*rhom+rhoDijcc(n,m,i)*rhop)/rhoc
-               enddo
-            enddo
-         endif
+         enddo
          
       enddo
       end
@@ -201,7 +168,7 @@ c     Compute ec transport coeffs
       real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, CPMS,PTC
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
       real*8 Ye(maxspec), Te, dxInv2, He(maxspec)
-      real*8 rhoe, enthe, rFac
+      real*8 rhoe, enthe
       integer i,n,m,Niter,maxIter
       real*8 res(NiterMAX)
 
@@ -240,18 +207,13 @@ c     Compute ec transport coeffs
          endif
          call CKHMS(Te,IWRK,RWRK,He) 
 
-         if (rhoInTrans.eq.1) then
-            rFac = 1.d0
-         else
-            rFac = rhoe
-         endif
          q(i) = 0.d0
          do n = 1,Nspec
-            F(n,i) = - Ye(n)*rFac*rhoTDec(n,i)*de(Nspec+1,i)/Te
+            F(n,i) = - Ye(n)*rhoTDec(n,i)*de(Nspec+1,i)/Te
             do m = 1,Nspec
-               F(n,i) = F(n,i) - rFac*rhoDijec(n,m,i)*de(m,i)
+               F(n,i) = F(n,i) - rhoDijec(n,m,i)*de(m,i)
             enddo
-            q(i) = q(i) - (RU*Te/WWe)*rFac*rhoTDec(n,i)*de(n,i) + He(n)*F(n,i)
+            q(i) = q(i) - (RU*Te/WWe)*rhoTDec(n,i)*de(n,i) + He(n)*F(n,i)
          enddo
          q(i) = q(i) - PTCec(i)*de(Nspec+1,i)
       enddo
@@ -273,7 +235,7 @@ c     Compute ec transport coeffs
       real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, CPBS,PTC
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
       real*8 Ye(maxspec), Te, dxInv2, He(maxspec)
-      real*8 rhoe, enthe, rFac
+      real*8 rhoe, enthe
       integer i,n,m,Niter,maxIter
       real*8 res(NiterMAX), lamOverCp
 
@@ -305,17 +267,12 @@ c     Compute ec transport coeffs
          call CKHMS(Te,IWRK,RWRK,He) 
          call CKCPBS(Te,Y(1,i),IWRK,RWRK,CPBS) 
 
-         if (rhoInTrans.eq.1) then
-            rFac = 1.d0
-         else
-            rFac = rhoe
-         endif
          lamOverCp = PTCec(i) / CPBS
 
          q(i) = 0.d0
          do n = 1,Nspec
-            F(n,i) = - rFac*rhoDiec(n,i)*de(n,i)
-            q(i) = q(i) + He(n)*(rFac*rhoDiec(n,i) - lamOverCp)*de(n,i)
+            F(n,i) = - rhoDiec(n,i)*de(n,i)
+            q(i) = q(i) + He(n)*(rhoDiec(n,i) - lamOverCp)*de(n,i)
          enddo
          q(i) = q(i) - PTCec(i)*de(Nspec+1,i)
       enddo
@@ -338,7 +295,7 @@ c     Compute ec transport coeffs
       real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, cpb(0:nx+1), PTC
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
       real*8 Ye(maxspec), Te, dxInv2, cpi(maxspec)
-      real*8 rhoe, enthe, Fnavg, gTavg, rFac
+      real*8 rhoe, enthe, Fnavg, gTavg
       integer i,n,m,Niter,maxIter
       real*8 res(NiterMAX)
 
@@ -376,18 +333,13 @@ c     Compute ec transport coeffs
             Te = Pcgs * WWe / (rhoe * RU)
          endif
 
-         if (rhoInTrans.eq.1) then
-            rFac = 1.d0
-         else
-            rFac = rhoe
-         endif
          q(i) = 0.d0
          do n = 1,Nspec
-            F(n,i) = - Ye(n)*rFac*rhoTDec(n,i)*de(Nspec+1,i)/Te
+            F(n,i) = - Ye(n)*rhoTDec(n,i)*de(Nspec+1,i)/Te
             do m = 1,Nspec
-               F(n,i) = F(n,i) - rFac*rhoDijec(n,m,i)*de(m,i)
+               F(n,i) = F(n,i) - rhoDijec(n,m,i)*de(m,i)
             enddo
-            q(i) = q(i) - (RU*Te/WWe)*rFac*rhoTDec(n,i)*de(n,i)
+            q(i) = q(i) - (RU*Te/WWe)*rhoTDec(n,i)*de(n,i)
          enddo
          q(i) = q(i) - PTCec(i)*de(Nspec+1,i)
       enddo
@@ -409,56 +361,47 @@ c     Compute ec transport coeffs
       end
 
 
-      subroutine calc_rhobeta(T,Y,PTC,rhoTD,rhoDij,rhoDi,CPMS)
+      subroutine calc_beta(T,Y,rho,PTC,rhoTD,rhoDij,rhoDi,CPMS)
       include 'spec.h'
-      real*8 T, Y(maxspec), CPMS(maxspec), X(maxspec), WW, PTC
-      real*8 rhoTD(maxspec),rhoDij(maxspec,maxspec),rhoDijt(maxspec*maxspec)
-      real*8 rhoDi(maxspec), cpb
+      real*8 T, Y(maxspec), rho, CPMS(maxspec), X(maxspec), WW, PTC
+      real*8 rhoTD(maxspec),rhoDij(maxspec,maxspec)
+      real*8 rhoDijt(maxspec*maxspec), rhoDi(maxspec)
       integer n,m,cnt
 
       call CKYTX(Y,IWRK,RWRK,X)
       call CKMMWY(Y,IWRK,RWRK,WW)
       call CKCPMS(T,IWRK,RWRK,CPMS)
       call EGSPAR(T,X,Y,CPMS,EGRWRK,EGIWRK)
-      call EGSLTDR5(T,Y,WW,EGRWRK,EGIWRK,PTC,rhoTD,rhoDijt)
-      cnt = 1
-      do n=1,Nspec
-         do m=1,Nspec
-            rhoDij(m,n) = rhoDijt(cnt)
-            cnt = cnt+1
+
+      if (rhoInTrans.eq.1) then
+         call EGSLTDR5(T,Y,WW,EGRWRK,EGIWRK,PTC,rhoTD,rhoDijt)
+         cnt = 1
+         do n=1,Nspec
+            do m=1,Nspec
+               rhoDij(m,n) = rhoDijt(cnt)
+               cnt = cnt+1
+            enddo
          enddo
-      enddo
-      CALL EGSVR1(T,Y,EGRWRK,rhoDi)
-      do n=1,Nspec
-         rhoDi(n) = WW * rhoDi(n) / mwt(n)
-      end do
-      end
-
-      subroutine calc_beta(T,Y,PTC,TD,Dij,Di,CPMS)
-      include 'spec.h'
-      real*8 T, Y(maxspec), CPMS(maxspec), X(maxspec), WW, PTC
-      real*8 TD(maxspec),Dij(maxspec,maxspec),Dijt(maxspec*maxspec)
-      real*8 Di(maxspec)
-      integer n,m,cnt
-
-      call CKYTX(Y,IWRK,RWRK,X)
-      call CKMMWY(Y,IWRK,RWRK,WW)
-      call CKCPMS(T,IWRK,RWRK,CPMS)
-      call EGSPAR(T,X,Y,CPMS,EGRWRK,EGIWRK)
-      call EGSLTD5(Pcgs,T,Y,WW,EGRWRK,EGIWRK,PTC,TD,Dijt)
-      cnt = 1
-      do n=1,Nspec
-         do m=1,Nspec
-            Dij(m,n) = Dijt(cnt)
-            cnt = cnt+1
+         CALL EGSVR1(T,Y,EGRWRK,rhoDi)
+         do n=1,Nspec
+            rhoDi(n) = WW * rhoDi(n) / mwt(n)
+         end do
+      else
+         call EGSPAR(T,X,Y,CPMS,EGRWRK,EGIWRK)
+         call EGSLTD5(Pcgs,T,Y,WW,EGRWRK,EGIWRK,PTC,rhoTD,rhoDijt)
+         rhoTD = rho * rhoTD
+         cnt = 1
+         do n=1,Nspec
+            do m=1,Nspec
+               rhoDij(m,n) = rhoDijt(cnt)
+               cnt = cnt+1
+            enddo
          enddo
-      enddo
-
-c     Mixture-averaged transport coefficients
-      CALL EGSV1(Pcgs,T,Y,WW,EGRWRK,Di)
-      do n=1,Nspec
-         Di(n) = WW * Di(n) / mwt(n)
-      end do
+         CALL EGSV1(Pcgs,T,Y,WW,EGRWRK,rhoDi)
+         do n=1,Nspec
+            rhoDi(n) = rho * WW * rhoDi(n) / mwt(n)
+         end do
+      endif
       end
 
       integer function FORT_GETCKSPECNAME(i, coded)
@@ -761,7 +704,7 @@ c     Recompute temperature
       real*8 update(maxscal,1:nx), rho_new(1:nx)
       integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
       real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
-      real*8 LT, RT, cpb, rFac, rhoCpInv, iterTol, Peos(1:nx)
+      real*8 LT, RT, cpb, rhoCpInv, iterTol, Peos(1:nx)
       integer maxerrComp
       parameter (iterTol=1.d-12)
 
@@ -868,8 +811,9 @@ c
                maxerrComp = n
             endif
          enddo
-         if (maxerrComp.lt.0) then
-            print *,'..completely converged after',iCorrect-1,'iters'
+
+         if (maxerr.lt.iterTol) then
+            print *,'..converged after',iCorrect-1,'iters'
             goto 100
          else            
             print *, 'Maxerr:',maxerr,', compoent:',maxerrComp
@@ -1114,7 +1058,7 @@ c     Form explicit update
 
       real*8 be_cn_theta, theta, dtDx2Inv, dt_temp
       integer Niters, i, n, RhoH_to_Temp, idx
-      real*8 LT, RT, cpb, rFac, rhoCpInv
+      real*8 LT, RT, cpb, rhoCpInv, rhop, rhom
 
       be_cn_theta = 1.d0
 
@@ -1147,29 +1091,27 @@ c     contains a guess for the solution state
       N1d = (Nspec+1)*nx
 
       do i=1,nx
-         if (rhoInTrans.eq.1) then
-            rFac = 1.d0
-         else
-            rFac = S_new(Density,i)
-         endif
-         
+
+         rhop = 0.5d0 * (S_new(Density,i+1)+S_new(Density,i))
+         rhom = 0.5d0 * (S_new(Density,i-1)+S_new(Density,i))
+
          LT = 0.d0
          RT = 0.d0
          do n=1,Nspec
             
             idx = nx*(n-1) + i
             
-            a(idx) = -dtDx2Inv*rFac*rhoDiec(n,i  )
-            c(idx) = -dtDx2Inv*rFac*rhoDiec(n,i+1)
+            a(idx) = -dtDx2Inv*rhoDiec(n,i  )/rhop
+            c(idx) = -dtDx2Inv*rhoDiec(n,i+1)/rhom
             r(idx) = S_old(FirstSpec+n-1,i)
             
             LT = LT + 
-     &           0.25d0*rFac*rhoDiec(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))
+     &           0.25d0*rhoDiec(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))
      &           * ( S_new(FirstSpec+n-1,i  )/S_new(Density,i  )
      &           -   S_new(FirstSpec+n-1,i-1)/S_new(Density,i-1) )
             
             RT = RT +
-     &           0.25d0*rFac*rhoDiec(n,i+1)*(cpicc(n,i  )+cpicc(n,i+1))
+     &           0.25d0*rhoDiec(n,i+1)*(cpicc(n,i  )+cpicc(n,i+1))
      &           * ( S_new(FirstSpec+n-1,i+1)/S_new(Density,i+1)
      &           -   S_new(FirstSpec+n-1,i  )/S_new(Density,i  ) )
 
@@ -1183,8 +1125,8 @@ c     contains a guess for the solution state
          enddo
          rhoCpInv = 2.d0 / (cpb*S_old(Density,i))
          
-         a(idx) = dtDx2Inv*( LT - PTCec(i  ) )*rhoCpInv
-         c(idx) = dtDx2Inv*(-RT - PTCec(i+1) )*rhoCpInv
+         a(idx) = -dtDx2Inv*( PTCec(i  ) - LT)*rhoCpInv
+         c(idx) = -dtDx2Inv*( PTCec(i+1) + RT)*rhoCpInv
          r(idx) = S_old(Temp,i)
          
          if (i.eq.1) then
