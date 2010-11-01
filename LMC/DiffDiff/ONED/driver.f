@@ -25,7 +25,7 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 10
+      nsteps = 1
       plot_int = 1
       problo = 0.0d0
       probhi = 3.5d0
@@ -531,6 +531,34 @@ c     Mixture-averaged transport coefficients
       close(12)
       end
 
+      subroutine print_update(step,time,scal,Peos,rho,filename,dx,plo)
+      include 'spec.h'
+      integer step
+      real*8 time, scal(maxscal,0:nx+1), Peos(1:nx), rho(1:nx), dx, plo
+      character*(*) filename
+      character*(100) fstr
+      character*(100) fname
+      character*(maxspnml) names(maxspec)
+      integer n,i,j, get_spec_name, nlen(maxspec)
+      do n=1,Nspec
+         nlen = get_spec_name(names(n), n)
+      enddo
+      write(fname,'(a,a,I0.6,a)') trim(filename),'_',step,'.dat'
+      open(unit=12,file=trim(fname))
+      write(fstr,'(a1,i2,a2)') '(',Nspec+2,'a)'
+      write(12,fstr) 'VARIABLES=X Rho ',(trim(names(n)),' ',n=1,Nspec),
+     &     ' RhoH Temp Peos'
+      write(12,'(a,I0.6,a,I0.6,5(a,g20.12))') 'ZONE I=',nx,' T= "STEP=',step,
+     &     ' time=',time,'" DATAPACKING=POINT STRANDID=1 SOLUTIONTIME=',
+     &     time
+      do i=1,nx
+         write(12,'(50g20.12)') (i+0.5d0)*dx + plo, scal(Density,i),
+     &        (scal(FirstSpec+n-1,i)/rho(i),n=1,Nspec),scal(RhoH,i),
+     &        scal(Nspec+3,i),(Peos(i)-Pcgs)/Pcgs
+      enddo
+      close(12)
+      end
+
       subroutine init_soln(S,time,dx)
       implicit none
       include 'spec.h'
@@ -729,17 +757,21 @@ c     Recompute temperature
       real*8 LofS_new(maxspec+1,1:nx)
 
       real*8 mass(maxspec), fac, dtDxInv, dtDx2Inv, dt_temp, newVal
-      real*8 err, L2err(maxscal),prev, RhoHprev(1:nx), sum
+      real*8 err, L2err(maxscal), maxerr, prev, sum
+      real*8 update(maxscal,1:nx), rho_new(1:nx)
       integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
       real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
-      real*8 LT, RT, cpb, rFac, rhoCpInv
-      
-      character*(50) junkname
+      real*8 LT, RT, cpb, rFac, rhoCpInv, iterTol, Peos(1:nx)
+      integer maxerrComp
+      parameter (iterTol=1.d-12)
+
+      character*(50) itername, updatename
       real*8 plo
       integer iRamp
 
       plo = 0.d0
-      junkname = 'iter'
+      itername = 'iter'
+      updatename = 'update'
 
       Niters = RhoH_to_Temp(S_old)
       if (Niters.lt.0) then
@@ -771,7 +803,8 @@ c     (3) f=dt/dx2
 c     (4) Lag coefficients, rho.Di.Grad(Yi) in T eqn, and cps
 c
 
-      call print_soln(0,0.d0,S_new,junkname,dx,plo)
+      call print_soln(0,0.d0,S_new,itername,dx,plo)
+
       do iCorrect=1,Ncorrect
             
          call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
@@ -781,49 +814,73 @@ c
 
          call tridiag(a,b,c,r,v,gam,N1d)
 
+         do n=1,Nspec+3
+            L2err(n) = 0.d0
+         enddo
+
          do i=1,nx
+            rho_new(i) = 0.d0
+            do n=1,Nspec
+               idx = nx*(n-1) + i
+               rho_new(i) = rho_new(i) + v(idx)
+            enddo
             do n=1,Nspec
                idx = nx*(n-1) + i
                prev = S_new(FirstSpec+n-1,i)
                S_new(FirstSpec+n-1,i) = v(idx)
-               err = ABS(S_new(FirstSpec+n-1,i)-prev)/(typVal(FirstSpec+n-1)/typVal(Density))
+               update(FirstSpec+n-1,i) = S_new(FirstSpec+n-1,i)-prev
+
+               err = ABS(update(FirstSpec+n-1,i))/(typVal(FirstSpec+n-1)/typVal(Density))
                L2err(FirstSpec+n-1) = L2err(FirstSpec+n-1) + err*err
+
+               mass(n) = S_new(FirstSpec+n-1,i) / rho_new(i)
             enddo
             idx = nx*Nspec + i
             prev = S_new(Temp,i)
             S_new(Temp,i) = v(idx)
-            err = ABS(S_new(Temp,i) - prev)/typVal(Temp)
-            L2err(Temp) = L2Err(Temp) + err*err
-         enddo
-         do i=1,nx
-            RhoHprev(i) = S_new(RhoH,i)
-         enddo
-         do i=1,nx
-            S_new(Density,i) = 0.d0
-            do n=1,Nspec
-               S_new(Density,i) = S_new(Density,i) + S_new(FirstSpec+n-1,i)
-            enddo
-            do n=1,Nspec
-               mass(n) = S_new(FirstSpec+n-1,i)/S_new(Density,i)
-            enddo
-            call CKHBMS(S_new(Temp,i),mass,IWRK,RWRK,S_new(RhoH,i))
-            S_new(RhoH,i) = S_new(RhoH,i)*S_new(Density,i)
-         enddo
-         call apply_bcs(S_new,time,step)
+            update(Temp,i) = S_new(Temp,i)-prev
+            err = ABS(update(Temp,i))/typVal(Temp)
+            L2err(Temp) = L2err(Temp) + err*err
 
-         do i=1,nx
-            err = ABS(S_new(RhoH,i) - RhoHprev(i))/typVal(RhoH)
-            L2err(RhoH) = err*err
+            prev = S_new(RhoH,i)
+            call CKHBMS(S_new(Temp,i),mass,IWRK,RWRK,S_new(RhoH,i))
+            S_new(RhoH,i) = S_new(RhoH,i)*rho_new(i)
+            update(RhoH,i) = S_new(RhoH,i)-prev
+            err = ABS(update(RhoH,i))/typVal(RhoH)
+            L2err(RhoH) = L2err(RhoH) + err*err
+
+            prev = S_new(Density,i)
+            S_new(Density,i) = rho_new(i)
+            update(Density,i) = S_new(Density,i)-prev
+            err = ABS(update(Density,i))/typVal(Density)
+            L2err(Density) = L2err(Density) + err*err
+
+            call CKPY(S_new(Density,i),S_new(Temp,i),mass,IWRK,RWRK,Peos(i))
+
          enddo
+
+         maxerr = 0.d0
+         maxerrComp = -1
          do n=1,Nspec+3
             L2err(n) = SQRT(L2err(n))
+            if (L2err(n).gt.maxerr) then
+               maxerr = L2err(n)
+               maxerrComp = n
+            endif
          enddo
-         write(6,12) 'Err:',iCorrect,(L2err(n),n=1,Nspec+3)
- 12      format(a,i3,12e9.2)
+         if (maxerrComp.lt.0) then
+            print *,'..completely converged after',iCorrect-1,'iters'
+            goto 100
+         else            
+            print *, 'Maxerr:',maxerr,', compoent:',maxerrComp
+         endif
 
-         call print_soln(icorrect,DBLE(icorrect),S_new,junkname,dx,plo)
+
+         call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx,plo)
+         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatename,dx,plo)
+
       enddo
-      end
+ 100  end
 
 c *************************************************************************
 c ** TRIDIAG **
