@@ -25,8 +25,9 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 1
-      plot_int = 1
+      nsteps = 50
+      nsteps = 2000
+      plot_int = 10
       problo = 0.0d0
       probhi = 3.5d0
       flame_offset = 1.1d0
@@ -37,7 +38,7 @@ c     Set defaults
       advance_RhoH = 1
       setTfromH = 2
       rhoInTrans = 1
-      Ncorrect = 10
+      Ncorrect = 1000
       outname = 'soln'
 
       call CKRP(IWRK,RWRK,RU,RUC,P1ATM)
@@ -63,10 +64,11 @@ c     Set defaults
          call apply_bcs(scal_old,time,step)
 
          if (advance_RhoH.eq.1) then
-            call update_RhoH_beImplicit(scal_new,scal_old,dx,dt,time,step)
+            call update_beImplicit(scal_new,scal_old,dx,dt,time,step)
 c            call update_RhoH(scal_new,scal_old,dx,dt)
          else
-            call update_Temp(scal_new,scal_old,dx,dt)
+            call update_beImplicit(scal_new,scal_old,dx,dt,time,step)
+c            call update_Temp(scal_new,scal_old,dx,dt)
          endif
 
          time = time + dt
@@ -154,8 +156,7 @@ c     Compute ec transport coeffs
             do m=1,Nspec
                rhoDijec(n,m,i) = 0.5d0*(rhoDijcc(n,m,i-1)+rhoDijcc(n,m,i))
             enddo
-         enddo
-         
+         enddo         
       enddo
       end
 
@@ -539,8 +540,8 @@ c     Compute ec transport coeffs
             else
                mole(4) = 0.21d0
                mole(9) = 0.79d0
-               S(Temp,i) = 298.d0
                S(Temp,i) = 600.d0
+               S(Temp,i) = 298.d0
             endif
          endif
 
@@ -684,7 +685,7 @@ c     Recompute temperature
  100  RhoH_to_Temp = Niter
       end
 
-      subroutine update_RhoH_beImplicit(S_new,S_old,dx,dt,time,step)
+      subroutine update_beImplicit(S_new,S_old,dx,dt,time,step)
       implicit none
       include 'spec.h'
       real*8 S_new(maxscal,0:nx+1)
@@ -705,12 +706,11 @@ c     Recompute temperature
       integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
       real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
       real*8 LT, RT, cpb, rhoCpInv, iterTol, Peos(1:nx)
-      integer maxerrComp
-      parameter (iterTol=1.d-12)
+      integer maxerrComp, relax_not_solve
+      parameter (iterTol=1.d-10)
 
       character*(50) itername, updatename
       real*8 plo
-      integer iRamp
 
       plo = 0.d0
       itername = 'iter'
@@ -748,14 +748,48 @@ c
 
       call print_soln(0,0.d0,S_new,itername,dx,plo)
 
+      relax_not_solve = 0
+
       do iCorrect=1,Ncorrect
             
+
+         call apply_bcs(S_new,time,step)
+
          call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
 
          call build_approx_Ax_b(S_new,S_old,PTCec,rhoDiec,cpicc,dx,dt,time,step,
-     &                          a,b,c,r,N1d)
+     &        a,b,c,r,N1d)
+            
+         if (relax_not_solve.eq.1) then
 
-         call tridiag(a,b,c,r,v,gam,N1d)
+            do i=1,nx
+               do n=1,Nspec
+                  idx = nx*(n-1) + i
+                  v(idx) = r(idx)
+                  if (i.ne.1) then
+                     v(idx) = v(idx) - a(idx)*S_new(FirstSpec+n-1,i-1)
+                  endif
+                  if (i.ne.nx) then
+                     v(idx) = v(idx) - c(idx)*S_new(FirstSpec+n-1,i+1)
+                  endif
+                  v(idx) = v(idx) / b(idx)
+               enddo
+               idx = nx*Nspec + i
+               v(idx) = r(idx)
+               if (i.ne.1) then
+                  v(idx) = v(idx) - a(idx)*S_new(Temp,i-1)
+               endif
+               if (i.ne.nx) then
+                  v(idx) = v(idx) - c(idx)*S_new(Temp,i+1)
+               endif
+               v(idx) = v(idx) / b(idx)
+            enddo
+
+         else
+
+            call tridiag(a,b,c,r,v,gam,N1d)
+
+         endif
 
          do n=1,Nspec+3
             L2err(n) = 0.d0
@@ -816,15 +850,125 @@ c
             print *,'..converged after',iCorrect-1,'iters'
             goto 100
          else            
-            print *, 'Maxerr:',maxerr,', compoent:',maxerrComp
+            print *, 'iter, err, component:',iCorrect,maxerr,maxerrComp
          endif
 
 
          call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx,plo)
-         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatename,dx,plo)
+c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatename,dx,plo)
 
       enddo
  100  end
+
+
+      subroutine build_approx_Ax_b(S_new,S_old,PTCec,rhoDiec,cpicc,dx,dt,time,step,
+     &                             a,b,c,r,N1d)
+      implicit none
+      include 'spec.h'
+      real*8 S_new(maxscal,0:nx+1)
+      real*8 S_old(maxscal,0:nx+1)
+      real*8 dx, dt, time
+      real*8 PTCec(1:nx+1)
+      real*8 rhoDiec(maxspec,1:nx+1)
+      real*8 cpicc(1:maxspec,0:nx+1)
+      real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX)
+      integer step, N1d
+
+      real*8 be_cn_theta, theta, dtDx2Inv, dt_temp
+      integer Niters, i, n, RhoH_to_Temp, idx
+      real*8 LT, RT, cpb, rhoCpInv, rhop, rhom
+
+      be_cn_theta = 1.d0
+
+      Niters = RhoH_to_Temp(S_old)
+      if (Niters.lt.0) then
+         print *,'RhoH->Temp failed before building matrix'
+         stop
+      endif
+
+c     Build tridiagonal matrix form of the following system:
+c
+c     (rho.Y)_t = Div( rho.D.Grad(Yi) )
+c
+c     and
+c
+c     rho.cp.(T)_t = Div(lambda.Grad(T) ) + cpi.rho.Di.Grad(Yi).Grad(T)
+c
+c     Use Backward-Euler, tridiagonal solver, and 
+c     (1) All gradients, transport coeffs evaluated on edges
+c     (2) All cp, cpi evaluated on centers
+c     (3) f=dt/dx2
+c     (4) Lag coefficients, rho.Di.Grad(Yi) in T eqn, and cps
+c
+c     Requires that S_old, S_new have grow cells.  Upon entry, S_new
+c     contains a guess for the solution state
+
+      theta = be_cn_theta
+      call apply_bcs(S_new,time,step)
+
+      dt_temp = dt
+      dtDx2Inv = dt_temp / (dx * dx)
+      N1d = (Nspec+1)*nx
+
+      do i=1,nx
+
+         rhop = 0.5d0 * (S_new(Density,i+1)+S_new(Density,i))
+         rhom = 0.5d0 * (S_new(Density,i-1)+S_new(Density,i))
+
+         LT = 0.d0
+         RT = 0.d0
+         do n=1,Nspec
+            
+            idx = nx*(n-1) + i
+            
+            a(idx) = -dtDx2Inv*rhoDiec(n,i  )/rhop
+            c(idx) = -dtDx2Inv*rhoDiec(n,i+1)/rhom
+            r(idx) = S_old(FirstSpec+n-1,i)
+            
+            LT = LT + 
+     &           0.25d0*rhoDiec(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))
+     &           * ( S_new(FirstSpec+n-1,i  )/S_new(Density,i  )
+     &           -   S_new(FirstSpec+n-1,i-1)/S_new(Density,i-1) )
+            
+            RT = RT +
+     &           0.25d0*rhoDiec(n,i+1)*(cpicc(n,i  )+cpicc(n,i+1))
+     &           * ( S_new(FirstSpec+n-1,i+1)/S_new(Density,i+1)
+     &           -   S_new(FirstSpec+n-1,i  )/S_new(Density,i  ) )
+
+         enddo
+
+         idx = nx*Nspec + i
+         
+         cpb = 0.d0
+         do n=1,Nspec
+            cpb = cpb + cpicc(n,i)*S_new(FirstSpec+n-1,i)/S_new(Density,i)
+         enddo
+         rhoCpInv = 2.d0 / (cpb*S_old(Density,i))
+         
+         a(idx) = -dtDx2Inv*( PTCec(i  ) - LT)*rhoCpInv
+         c(idx) = -dtDx2Inv*( PTCec(i+1) + RT)*rhoCpInv
+         r(idx) = S_old(Temp,i)
+         
+         if (i.eq.1) then
+            do n=1,Nspec+1
+               idx = nx*(n-1) + i
+               a(idx) = 0.d0
+               b(idx) = 1.d0 - c(idx)
+            enddo
+         else if (i.eq.nx) then
+            do n=1,Nspec+1
+               idx = nx*(n-1) + i
+               c(idx) = 0.d0
+               b(idx) = 1.d0 - a(idx)
+            enddo
+         else
+            do n=1,Nspec+1
+               idx = nx*(n-1) + i
+               b(idx) = 1.d0 - a(idx) - c(idx)
+            enddo
+         endif
+      enddo
+      end
 
 c *************************************************************************
 c ** TRIDIAG **
@@ -860,9 +1004,6 @@ c *************************************************************************
 
       end
 
-
-
-
       subroutine update_RhoH_pjImplicit(S_new,S_old,dx,dt,time,step)
       implicit none
       include 'spec.h'
@@ -884,7 +1025,6 @@ c *************************************************************************
 
       character*(50) junkname
       real*8 plo
-      integer iRamp
 
       plo = 0.d0
       junkname = 'iter'
@@ -1042,110 +1182,3 @@ c     Form explicit update
 
 
 
-
-      subroutine build_approx_Ax_b(S_new,S_old,PTCec,rhoDiec,cpicc,dx,dt,time,step,
-     &                             a,b,c,r,N1d)
-      implicit none
-      include 'spec.h'
-      real*8 S_new(maxscal,0:nx+1)
-      real*8 S_old(maxscal,0:nx+1)
-      real*8 dx, dt, time
-      real*8 PTCec(1:nx+1)
-      real*8 rhoDiec(maxspec,1:nx+1)
-      real*8 cpicc(1:maxspec,0:nx+1)
-      real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX)
-      integer step, N1d
-
-      real*8 be_cn_theta, theta, dtDx2Inv, dt_temp
-      integer Niters, i, n, RhoH_to_Temp, idx
-      real*8 LT, RT, cpb, rhoCpInv, rhop, rhom
-
-      be_cn_theta = 1.d0
-
-      Niters = RhoH_to_Temp(S_old)
-      if (Niters.lt.0) then
-         print *,'RhoH->Temp failed before building matrix'
-         stop
-      endif
-
-c     Build tridiagonal matrix form of the following system:
-c
-c     (rho.Y)_t = Div( rho.D.Grad(Yi) )
-c
-c     rho.cp.(T)_t = Div(lambda.Grad(T) ) + cpi.rho.Di.Grad(Yi).Grad(T)
-c
-c     Use Backward-Euler, tridiagonal solver, and 
-c     (1) All gradients, transport coeffs evaluated on edges
-c     (2) All cp, cpi evaluated on centers
-c     (3) f=dt/dx2
-c     (4) Lag coefficients, rho.Di.Grad(Yi) in T eqn, and cps
-c
-c     Requires that S_old, S_new have grow cells.  Upon entry, S_new
-c     contains a guess for the solution state
-
-      theta = be_cn_theta
-      call apply_bcs(S_new,time,step)
-
-      dt_temp = dt
-      dtDx2Inv = dt_temp / (dx * dx)
-      N1d = (Nspec+1)*nx
-
-      do i=1,nx
-
-         rhop = 0.5d0 * (S_new(Density,i+1)+S_new(Density,i))
-         rhom = 0.5d0 * (S_new(Density,i-1)+S_new(Density,i))
-
-         LT = 0.d0
-         RT = 0.d0
-         do n=1,Nspec
-            
-            idx = nx*(n-1) + i
-            
-            a(idx) = -dtDx2Inv*rhoDiec(n,i  )/rhop
-            c(idx) = -dtDx2Inv*rhoDiec(n,i+1)/rhom
-            r(idx) = S_old(FirstSpec+n-1,i)
-            
-            LT = LT + 
-     &           0.25d0*rhoDiec(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))
-     &           * ( S_new(FirstSpec+n-1,i  )/S_new(Density,i  )
-     &           -   S_new(FirstSpec+n-1,i-1)/S_new(Density,i-1) )
-            
-            RT = RT +
-     &           0.25d0*rhoDiec(n,i+1)*(cpicc(n,i  )+cpicc(n,i+1))
-     &           * ( S_new(FirstSpec+n-1,i+1)/S_new(Density,i+1)
-     &           -   S_new(FirstSpec+n-1,i  )/S_new(Density,i  ) )
-
-         enddo
-
-         idx = nx*Nspec + i
-         
-         cpb = 0.d0
-         do n=1,Nspec
-            cpb = cpb + cpicc(n,i)*S_new(FirstSpec+n-1,i)/S_new(Density,i)
-         enddo
-         rhoCpInv = 2.d0 / (cpb*S_old(Density,i))
-         
-         a(idx) = -dtDx2Inv*( PTCec(i  ) - LT)*rhoCpInv
-         c(idx) = -dtDx2Inv*( PTCec(i+1) + RT)*rhoCpInv
-         r(idx) = S_old(Temp,i)
-         
-         if (i.eq.1) then
-            do n=1,Nspec+1
-               idx = nx*(n-1) + i
-               a(idx) = 0.d0
-               b(idx) = 1.d0 - c(idx)
-            enddo
-         else if (i.eq.nx) then
-            do n=1,Nspec+1
-               idx = nx*(n-1) + i
-               c(idx) = 0.d0
-               b(idx) = 1.d0 - a(idx)
-            enddo
-         else
-            do n=1,Nspec+1
-               idx = nx*(n-1) + i
-               b(idx) = 1.d0 - a(idx) - c(idx)
-            enddo
-         endif
-      enddo
-      end

@@ -26,9 +26,9 @@ REACTION_MECHANISM=CHEMH
 ifeq (${USE_INTEL},TRUE)
 #  CCOMP := icpc -vec_report0 -DBL_FORT_USE_UNDERSCORE
 #  CCOMP := icpc -Wno-deprecated -g -Wunused-variable -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
-  CCOMP := icpc -Wno-deprecated -g -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
+  CCOMP := icpc -Wno-deprecated -g -O3 -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
 #  fCOMP := ifort -debug full -vec-report0
-  fCOMP := ifort -g -u -fpconstant -132
+  fCOMP := ifort -g -u -fpconstant -132 -O3
 #  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
