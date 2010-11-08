@@ -25,7 +25,7 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 500
+      nsteps = 1000
       plot_int = 10
       problo = 0.0d0
       probhi = 3.5d0
@@ -37,7 +37,7 @@ c     Set defaults
       advance_RhoH = 0
       setTfromH = 2
       rhoInTrans = 1
-      Ncorrect = 20
+      Ncorrect = 1000
       outname = 'soln'
 
       call CKRP(IWRK,RWRK,RU,RUC,P1ATM)
@@ -209,20 +209,20 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
 
       end
 
-      subroutine LinOp1Apply(LofS,S,PTCec,rhoTDec,rhoDijec,cpb,dx)
+      subroutine LinOp1Apply(LofS,S,PTCec,rhoTDec,rhoDijec,cpicc,dx)
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1)
       real*8 rhoTDec(maxspec,1:nx+1),rhoDijec(maxspec,maxspec,1:nx+1),dx
-      real*8 coef(maxspec+1,1:nx)
-      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, cpicc(1:maxspec,0:nx+1), PTC
+      real*8 cpicc(maxspec,1:nx)
+      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, PTC
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
-      real*8 Ye(maxspec), Te, dxInv2, cpi(maxspec)
-      real*8 rhoe, enthe, Fnavg, gTavg, cpb
+      real*8 Ye(maxspec), Te, dxInv, sum
+      real*8 rhoe, enthe, cpb
       integer i,n,m,Niter,maxIter
       real*8 res(NiterMAX)
 
-      dxInv2 = 1.d0/(dx*dx)
+      dxInv = 1.d0/dx
       do i=0,nx+1
          do n=1,Nspec
             Y(n,i) = S(FirstSpec+n-1,i) / S(Density,i) 
@@ -233,9 +233,9 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
       maxiter=0
       do i=1,nx+1
          do n=1,Nspec
-            de(n,i) = (X(n,i)-X(n,i-1)) / dx
+            de(n,i) = dxInv * (X(n,i)-X(n,i-1))
          enddo
-         de(Nspec+1,i) = (S(Temp,i)-S(Temp,i-1)) / dx
+         de(Nspec+1,i) = dxInv * (S(Temp,i)-S(Temp,i-1))
 
          do n=1,Nspec
             Ye(n) = 0.5d0*(Y(n,i)+Y(n,i-1))
@@ -269,20 +269,19 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
 
       do i=1,nx
          do n = 1,Nspec
-            LofS(n,i) = - dxInv2*(F(n,i+1) - F(n,i))
+            LofS(n,i) = - dxInv*(F(n,i+1) - F(n,i))
          enddo
-         call CKCPMS(S(Temp,i),IWRK,RWRK,cpi) 
-         LofS(Nspec+1,i) = 0.d0
+         sum = 0.d0
          cpb = 0.d0
          do n = 1,Nspec
-            Fnavg = 0.5d0*(F(n,i+1)+F(n,i))
-            gTavg = 0.5d0*(de(Nspec+1,i+1)+de(Nspec+1,i))
-            LofS(Nspec+1,i) = LofS(Nspec+1,i) - Fnavg*gTavg*cpicc(n,i)
-            cpb = cpb * Y(n,i)*cpicc(n,i)
-         enddo
-         LofS(Nspec+1,i) = (LofS(Nspec+1,i) - dxInv2*(q(i+1) - q(i)))/(S(Density,i)*cpb)
-      enddo
+            cpb = cpb + Y(n,i)*cpicc(n,i)
+            sum = sum - 0.25d0*dxInv*(
+     &           + F(n,i+1)*(cpicc(n,i  )+cpicc(n,i+1))*(S(Temp,i+1)-S(Temp,i  ) )
+     &           + F(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))*(S(Temp,i  )-S(Temp,i-1) ) )
 
+         enddo
+         LofS(Nspec+1,i) = -(dxInv * (q(i+1) - q(i))  -  sum)/(S(Density,i) * cpb)
+      enddo
       end
 
       subroutine LinOp1ApplyApprox(LofS,S,PTCec,rhoDiec,cpicc,dx)
@@ -303,20 +302,20 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
 
       do i=1,nx
          do n = 1,Nspec
-            LofS(n,i) = dxInv*(F(n,i+1) - F(n,i))
+            LofS(n,i) = -dxInv*(F(n,i+1) - F(n,i))
          enddo
          sum = 0.d0         
          cpb = 0.d0
          do n = 1,Nspec
-            Yp = rhoInv * S(FirstSpec+n-1,i+1) / S(Density,i+1)
-            Yc = rhoInv * S(FirstSpec+n-1,i  ) / S(Density,i  )
-            Ym = rhoInv * S(FirstSpec+n-1,i-1) / S(Density,i-1)
+            Yp = S(FirstSpec+n-1,i+1) / S(Density,i+1)
+            Yc = S(FirstSpec+n-1,i  ) / S(Density,i  )
+            Ym = S(FirstSpec+n-1,i-1) / S(Density,i-1)
             cpb = cpb + Yc*cpicc(n,i)
             sum = sum + 0.25d0*dxInv*(
      &           + rhoDiec(n,i+1)*(cpicc(n,i  )+cpicc(n,i+1))*(Yp-Yc)*(S(Temp,i+1)-S(Temp,i  ) )
      &           + rhoDiec(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))*(Yc-Ym)*(S(Temp,i  )-S(Temp,i-1) ) )
          enddo
-         LofS(Nspec+1,i) = (- dxInv * (q(i+1) - q(i))  -  sum)/(S(Density,i) * cpb)
+         LofS(Nspec+1,i) = -(dxInv * (q(i+1) - q(i))  -  sum)/(S(Density,i) * cpb)
       enddo
 
       end
@@ -674,6 +673,8 @@ c     Initialize S_star to S_old
          enddo
       enddo
 
+      call print_soln(0,0.d0,S_new,itername,dx,plo)
+
       do iCorrect=1,Ncorrect
             
          do i=0,nx+1
@@ -684,8 +685,8 @@ c     Initialize S_star to S_old
 
          call apply_bcs(S_star,time,step)
          call ecCoef_and_dt(S_star,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
-c         call LinOp1Apply(LofS_new,S_new,PTCec,rhoTDec,rhoDijec,cpicc,dx)
-         call LinOp1ApplyApprox(LofS_star,S_star,PTCec,rhoDiec,cpicc,dx)
+         call LinOp1Apply(LofS_star,S_star,PTCec,rhoTDec,rhoDijec,cpicc,dx)
+c         call LinOp1ApplyApprox(LofS_star,S_star,PTCec,rhoDiec,cpicc,dx)
 
          call build_approx_Ax_b(S_star,S_old,PTCec,rhoDiec,cpicc,dx,dt,time,step,
      &        a,b,c,r,N1d)
@@ -695,10 +696,10 @@ c     R = b - A.S_new, then S_new = S_new + R/lambda
          do i=1,nx
             do n=1,Nspec
                S_new(FirstSpec+n-1,i) = S_star(FirstSpec+n-1,i)
-     &              + ( S_old(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i) - dt*LofS_star(n,i) )/b(nx*(n-1)+i)
+     &              + ( S_old(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i) + dt*LofS_star(n,i) )/b(nx*(n-1)+i)
             enddo
             S_new(Temp,i) = S_star(Temp,i)
-     &           + ( S_old(Temp,i) - S_star(Temp,i) - dt*LofS_star(Nspec+1,i) )/b(nx*Nspec+i)
+     &           + ( S_old(Temp,i) - S_star(Temp,i) + dt*LofS_star(Nspec+1,i) )/b(nx*Nspec+i)
          enddo
 
 c     Update state, compute errors/etc
@@ -757,7 +758,7 @@ c     Update state, compute errors/etc
 
 
 c         call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx,plo)
-c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatename,dx,plo)
+c         call print_update(icorrect,DBLE(icorrect),update,Peos,S_new(Density,1),updatename,dx,plo)
 
       enddo
  100  end
