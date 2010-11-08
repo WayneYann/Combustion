@@ -16,8 +16,6 @@ c      data tranfile / 'tran.asc.CH4-2step' /
       data dvd_debug / 0 /
       end
 
-
-
       subroutine initchem
       implicit none
       include 'spec.h'
@@ -146,6 +144,40 @@ C-----------------------------------------------------------------------
             strLen = k
          endif
       enddo
+      end
+
+      integer function FORT_GETCKSPECNAME(i, coded)
+      include 'spec.h'
+      integer i
+      integer coded(*)
+      integer names(maxspec*maxspnml)
+      integer j, str_len
+      call CKSYMS(names, maxspnml)
+      do j = 1, maxspnml
+         coded(j) = names(maxspnml*(i-1)+j)
+      end do
+      str_len = 1
+      do j = 1, maxspnml
+         if (coded(j).eq.ICHAR(' ')) then
+            str_len = j
+            exit
+         endif 
+      end do
+      FORT_GETCKSPECNAME = str_len - 1
+      end
+
+      integer function get_spec_name(name, j)
+      include 'spec.h'
+      integer i, j, FORT_GETCKSPECNAME
+      integer coded(maxspnml)
+      character*(maxspnml) name
+      get_spec_name = FORT_GETCKSPECNAME(j, coded)
+      do i = 1, maxspnml
+         name(i:i) = ' '
+      end do
+      do i = 1, get_spec_name
+         name(i:i) = char(coded(i))
+      end do
       end
 
       subroutine FORT_TfromHYpt(T,Hin,Y,Nspec,errMax,NiterMAX,res,Niter)

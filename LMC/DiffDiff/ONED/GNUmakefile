@@ -28,7 +28,7 @@ ifeq (${USE_INTEL},TRUE)
 #  CCOMP := icpc -Wno-deprecated -g -Wunused-variable -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
   CCOMP := icpc -Wno-deprecated -g -O3 -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
 #  fCOMP := ifort -debug full -vec-report0
-  fCOMP := ifort -g -u -fpconstant -132 -O3
+  fCOMP := ifort -g -u -fpconstant -132 -O3 -check uninit -diag-disable vec
 #  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
@@ -81,7 +81,7 @@ pmf_object := $(pmf_source:%.f=%.o)
 mech_object := $(mech_source:%.cpp=%.o)
 chem_objects := $(chem_sources:%.f=%.o)
 
-f_sources += driver.f ${pmf_source} ${chem_sources}
+f_sources += driver.f util.f coef.f prob.f ${pmf_source} ${chem_sources}
 C_sources += main.cpp ${mech_source}
 
 C_objects := $(C_sources:%.cpp=%.o)
