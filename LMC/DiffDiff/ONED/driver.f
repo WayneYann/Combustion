@@ -25,7 +25,7 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 1000
+      nsteps = 100
       plot_int = 10
       problo = 0.0d0
       probhi = 3.5d0
@@ -647,7 +647,7 @@ c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatena
       real*8 update(maxscal,1:nx)
       integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
       real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
-      real*8 iterTol, Peos(1:nx)
+      real*8 iterTol, Peos(1:nx), rhom, rhop, bc, LT, RT, cpb, rhoCpInv
       integer maxerrComp
       parameter (iterTol=1.d-10)
 
@@ -675,6 +675,7 @@ c     Initialize S_star to S_old
 
       call print_soln(0,0.d0,S_new,itername,dx,plo)
 
+      dtDx2Inv = dt/(dx*dx)
       do iCorrect=1,Ncorrect
             
          do i=0,nx+1
@@ -686,20 +687,66 @@ c     Initialize S_star to S_old
          call apply_bcs(S_star,time,step)
          call ecCoef_and_dt(S_star,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
          call LinOp1Apply(LofS_star,S_star,PTCec,rhoTDec,rhoDijec,cpicc,dx)
-c         call LinOp1ApplyApprox(LofS_star,S_star,PTCec,rhoDiec,cpicc,dx)
 
-         call build_approx_Ax_b(S_star,S_old,PTCec,rhoDiec,cpicc,dx,dt,time,step,
-     &        a,b,c,r,N1d)
-
-
+c     
 c     R = b - A.S_new, then S_new = S_new + R/lambda
+c
+c     However, here, lambda comes from the mixture-averaged system:
+c
+c     d(rho.Yi)/dt = -Div(F)
+c     rho.Cp.dT/dt = -Div(q) + rho.Di.Cpi.Grad(Yi).Grad(T)
+c
+c     The BE discretization is:
+c
+c               phi - dt.L(phi) = phi_old  (Ax=b)
+c     
+c     The point-jacobi iteration is phi <- phi^s + R^s / lambda^s
+c
+c     or, explicitly:   phi = phi^s + (phi_old - phi^s + dt*L(phi^s) / lambda
+c
+c     where lambda is the diagonal entry in the matrix A defined above
+c
          do i=1,nx
+            rhom = 0.5d0*(S_star(Density,i-1)+S_star(Density,i  ))
+            rhop = 0.5d0*(S_star(Density,i  )+S_star(Density,i+1))
+
+            LT = 0.d0
+            RT = 0.d0
+
             do n=1,Nspec
+               bc=1.d0
+               if (i.ne.1) then
+                  bc = bc + dtDx2Inv*rhoDiec(n,i  )/rhom
+                  LT = LT + 0.25d0 * rhoDiec(n,i  ) * ( cpicc(n,i-1) + cpicc(n,i  ) )
+     &                 * ( S_star(FirstSpec+n-1,i  )/S_star(Density,i  )
+     &                 - ( S_star(FirstSpec+n-1,i-1)/S_star(Density,i-1) ) )
+               endif
+               if (i.ne.nx) then
+                  bc = bc + dtDx2Inv*rhoDiec(n,i+1)/rhop
+                  RT = RT + 0.25d0 * rhoDiec(n,i+1) * ( cpicc(n,i  ) + cpicc(n,i+1) )
+     &                 * ( S_star(FirstSpec+n-1,i+1)/S_star(Density,i+1)
+     &                 - ( S_star(FirstSpec+n-1,i  )/S_star(Density,i  ) ) )
+
+               endif
                S_new(FirstSpec+n-1,i) = S_star(FirstSpec+n-1,i)
-     &              + ( S_old(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i) + dt*LofS_star(n,i) )/b(nx*(n-1)+i)
+     &              + ( S_old(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i) + dt*LofS_star(n,i) )/bc
             enddo
+
+            cpb = 0.d0
+            do n=1,Nspec
+               cpb = cpb + cpicc(n,i)*S_star(FirstSpec+n-1,i)/S_star(Density,i)
+            enddo
+            rhoCpInv = 1.d0 / (cpb*S_star(Density,i))
+            
+            bc = 1.d0
+            if (i.ne.1) then
+               bc = bc + dtDx2Inv*(PTCec(i  ) - LT)*rhoCpInv
+            endif
+            if (i.ne.nx) then
+               bc = bc + dtDx2Inv*(PTCec(i+1) + RT)*rhoCpInv
+            endif
             S_new(Temp,i) = S_star(Temp,i)
-     &           + ( S_old(Temp,i) - S_star(Temp,i) + dt*LofS_star(Nspec+1,i) )/b(nx*Nspec+i)
+     &           + ( S_old(Temp,i) - S_star(Temp,i) + dt*LofS_star(Nspec+1,i) )/bc
          enddo
 
 c     Update state, compute errors/etc
@@ -846,7 +893,7 @@ c     contains a guess for the solution state
          do n=1,Nspec
             cpb = cpb + cpicc(n,i)*S_new(FirstSpec+n-1,i)/S_new(Density,i)
          enddo
-         rhoCpInv = 2.d0 / (cpb*S_old(Density,i))
+         rhoCpInv = 1.d0 / (cpb*S_new(Density,i))
          
          a(idx) = - dtDx2Inv*(PTCec(i  ) - LT)*rhoCpInv
          c(idx) = - dtDx2Inv*(PTCec(i+1) + RT)*rhoCpInv
