@@ -695,7 +695,7 @@ c      stop
          call apply_bcs(S_star,time,step)
          if (firstPass.eq.1) then
             call ecCoef_and_dt(S_star,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
-c            firstPass = 0
+            firstPass = 0
          endif
          call LinOp1Apply(LofS_star,S_star,PTCec,rhoTDec,rhoDijec,cpicc,dx)
 c         call LinOp1ApplyApprox(LofS_star,S_star,PTCec,rhoDiec,cpicc,dx)
@@ -752,10 +752,10 @@ c
             
             lambda = 1.d0
             if (i.ne.1) then
-               lambda = lambda + dtDx2Inv*(PTCec(i  ) + LT)*rhoCpInv
+               lambda = lambda + dtDx2Inv*(PTCec(i  ) - LT)*rhoCpInv
             endif
             if (i.ne.nx) then
-               lambda = lambda + dtDx2Inv*(PTCec(i+1) - RT)*rhoCpInv
+               lambda = lambda + dtDx2Inv*(PTCec(i+1) + RT)*rhoCpInv
             endif
             S_new(Temp,i) = S_star(Temp,i)
      &           + ULfac*( S_old(Temp,i) - S_star(Temp,i) + dt*LofS_star(Nspec+1,i) )/lambda
@@ -820,7 +820,6 @@ c     Update state, compute errors/etc
             tmp(i) = S_new(Density,i)
          enddo
          call print_update(icorrect,DBLE(icorrect),update,Peos,tmp,updatename,dx)
-
       enddo
  100  end
 
