@@ -7,6 +7,7 @@ c     Chem species, etc
 
 c     nscal: room for rho, rhoH, Temp + species (rho.Y)
       integer maxscal, nx
+c      parameter (maxscal = maxspec + 3, nx = 1024)
       parameter (maxscal = maxspec + 3, nx = 256)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,

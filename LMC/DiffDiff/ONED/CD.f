@@ -2,6 +2,7 @@
       block data chemdat
       include 'spec.h'
       data traninit / -1 /
+c      data tranfile / 'tran.asc.LiDryer' /
       data tranfile / 'tran.asc.chem-H' /
 c      data tranfile / 'tran.asc.CH4-2step' /
       data TMIN_TRANS / 0.d0 /

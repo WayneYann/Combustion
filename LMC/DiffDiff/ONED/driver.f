@@ -25,19 +25,25 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 100
+      nsteps = 1
       plot_int = 10
       problo = 0.0d0
       probhi = 3.5d0
       flame_offset = 1.1d0
+
+c     For LiDryer problems
+c      problo = 2.0d0
+c      probhi = 3.5d0
+c      flame_offset = 0.d0
+
       Patm = 1.d0
-      probtype = 2
+      probtype = 1
       dtRedFac = 5.d0
       alt_spec_update = 0
       advance_RhoH = 0
       setTfromH = 2
       rhoInTrans = 1
-      Ncorrect = 1000
+      Ncorrect = 200
       outname = 'soln'
 
       call CKRP(IWRK,RWRK,RU,RUC,P1ATM)
@@ -51,7 +57,7 @@ c     Set defaults
       dx = (probhi-problo)/nx
       call init_soln(scal_new,time,dx)
 
-      call print_soln(0,time,scal_new,outname,dx,problo)
+      call print_soln(0,time,scal_new,outname,dx)
 
       dt = 1.d-4
       do step=1,nsteps
@@ -75,7 +81,7 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
          print *,'step=', step, ' t=',time,' dt=',dt
 
          if (MOD(step,plot_int).eq.0  .or.  step.eq.nsteps) then
-            call print_soln(step,time,scal_new,outname,dx,problo)
+            call print_soln(step,time,scal_new,outname,dx)
          endif
       enddo
  100  continue
@@ -150,15 +156,15 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
 
       end
 
-      subroutine LinOpApplyApprox(LofS,S,PTCec,rhoDiec,dx)
+      subroutine LinOpApplyApprox(LofS,S,PTCec,rhoDiec,cpicc,dx)
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1)
-      real*8 rhoDiec(maxspec,1:nx+1),dx
-      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, CPBS,PTC
+      real*8 rhoDiec(maxspec,1:nx+1),cpicc(maxspec,0:nx+1),dx
+      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, PTC
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
       real*8 Ye(maxspec), Te, dxInv2, He(maxspec)
-      real*8 rhoe, enthe
+      real*8 rhoe, enthe, cpb
       integer i,n,m,Niter,maxIter
       real*8 res(NiterMAX), lamOverCp
 
@@ -188,9 +194,12 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
             maxiter=MAX(maxiter,Niter)
          endif
          call CKHMS(Te,IWRK,RWRK,He) 
-         call CKCPBS(Te,Y(1,i),IWRK,RWRK,CPBS) 
+         cpb = 0.d0
+         do n=1,Nspec
+            cpb = cpb + 0.5d0*(cpicc(n,i-1)+cpicc(n,i))
+         enddo
 
-         lamOverCp = PTCec(i) / CPBS
+         lamOverCp = PTCec(i) / cpb
 
          q(i) = 0.d0
          do n = 1,Nspec
@@ -214,7 +223,7 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1)
       real*8 rhoTDec(maxspec,1:nx+1),rhoDijec(maxspec,maxspec,1:nx+1),dx
-      real*8 cpicc(maxspec,1:nx)
+      real*8 cpicc(maxspec,0:nx+1)
       real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, PTC
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
       real*8 Ye(maxspec), Te, dxInv, sum
@@ -278,7 +287,6 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
             sum = sum - 0.25d0*dxInv*(
      &           + F(n,i+1)*(cpicc(n,i  )+cpicc(n,i+1))*(S(Temp,i+1)-S(Temp,i  ) )
      &           + F(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))*(S(Temp,i  )-S(Temp,i-1) ) )
-
          enddo
          LofS(Nspec+1,i) = -(dxInv * (q(i+1) - q(i))  -  sum)/(S(Density,i) * cpb)
       enddo
@@ -288,9 +296,8 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1), rhoDiec(maxspec,1:nx+1),cpicc(maxspec,0:nx+1),dx
-      real*8 q(1:nx+1), F(maxspec,1:nx+1),dxInv, sum,cpb,rhoInv,Yp,Ym,Yc
+      real*8 q(1:nx+1), F(maxspec,1:nx+1),dxInv,sum,cpb,rhoInv
       integer i,n,m
-
       dxInv = 1.d0/dx
       do i=1,nx+1
          rhoInv = 2.d0 / ( S(Density,i) + S(Density,i-1) )
@@ -307,13 +314,10 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
          sum = 0.d0         
          cpb = 0.d0
          do n = 1,Nspec
-            Yp = S(FirstSpec+n-1,i+1) / S(Density,i+1)
-            Yc = S(FirstSpec+n-1,i  ) / S(Density,i  )
-            Ym = S(FirstSpec+n-1,i-1) / S(Density,i-1)
-            cpb = cpb + Yc*cpicc(n,i)
-            sum = sum + 0.25d0*dxInv*(
-     &           + rhoDiec(n,i+1)*(cpicc(n,i  )+cpicc(n,i+1))*(Yp-Yc)*(S(Temp,i+1)-S(Temp,i  ) )
-     &           + rhoDiec(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))*(Yc-Ym)*(S(Temp,i  )-S(Temp,i-1) ) )
+            cpb = cpb + cpicc(n,i)*S(FirstSpec+n-1,i)/S(Density,i  )
+            sum = sum - 0.25d0*dxInv*(
+     &           + F(n,i+1)*(cpicc(n,i  )+cpicc(n,i+1))*(S(Temp,i+1)-S(Temp,i  ) )
+     &           + F(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))*(S(Temp,i  )-S(Temp,i-1) ) )
          enddo
          LofS(Nspec+1,i) = -(dxInv * (q(i+1) - q(i))  -  sum)/(S(Density,i) * cpb)
       enddo
@@ -440,9 +444,6 @@ c     Recompute temperature
       parameter (iterTol=1.d-10)
 
       character*(50) itername, updatename
-      real*8 plo
-
-      plo = 0.d0
       itername = 'iter'
       updatename = 'update'
 
@@ -472,7 +473,7 @@ c     (3) f=dt/dx2
 c     (4) Lag coefficients, rho.Di.Grad(Yi) in T eqn, and cps
 c
 
-c      call print_soln(0,0.d0,S_new,itername,dx,plo)
+c      call print_soln(0,0.d0,S_new,itername,dx)
 
       relax_not_solve = 1
 
@@ -621,8 +622,8 @@ c     Now compute S_new <- S_new + R/lambda
          endif
 
 
-c         call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx,plo)
-c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatename,dx,plo)
+c         call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx)
+c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatename,dx)
 
       enddo
  100  end
@@ -647,16 +648,12 @@ c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatena
       real*8 update(maxscal,1:nx)
       integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
       real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
-      real*8 iterTol, Peos(1:nx), rhom, rhop, bc, LT, RT, cpb, rhoCpInv
-      integer maxerrComp
+      real*8 iterTol, Peos(1:nx), rhom, rhop, lambda, LT, RT, cpb, rhoCpInv
+      real*8 tmp(1:nx), ULfac
+      integer maxerrComp, firstPass
       parameter (iterTol=1.d-10)
-
       character*(50) itername, updatename
-      real*8 plo
 
-      real*8 at,bt,ct
-
-      plo = 0.d0
       itername = 'iter'
       updatename = 'update'
 
@@ -673,9 +670,20 @@ c     Initialize S_star to S_old
          enddo
       enddo
 
-      call print_soln(0,0.d0,S_new,itername,dx,plo)
 
+c      do i=0,nx+1
+c         tmp(0) = (DBLE(i)+0.5d0)*dx+problo
+c         S_new(Temp,i) = 300.d0 + 1200.d0*(tmp(0)/(nx*dx))
+c      enddo
+c      call print_cp_prime(S_new,'cp.dat',dx)
+c      stop
+
+      call print_soln(0,0.d0,S_new,itername,dx)
+
+      ULfac = 1.d0
+      ULfac = .5d0
       dtDx2Inv = dt/(dx*dx)
+      firstPass = 1
       do iCorrect=1,Ncorrect
             
          do i=0,nx+1
@@ -685,8 +693,12 @@ c     Initialize S_star to S_old
          enddo
 
          call apply_bcs(S_star,time,step)
-         call ecCoef_and_dt(S_star,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
+         if (firstPass.eq.1) then
+            call ecCoef_and_dt(S_star,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
+c            firstPass = 0
+         endif
          call LinOp1Apply(LofS_star,S_star,PTCec,rhoTDec,rhoDijec,cpicc,dx)
+c         call LinOp1ApplyApprox(LofS_star,S_star,PTCec,rhoDiec,cpicc,dx)
 
 c     
 c     R = b - A.S_new, then S_new = S_new + R/lambda
@@ -714,39 +726,39 @@ c
             RT = 0.d0
 
             do n=1,Nspec
-               bc=1.d0
+               lambda=1.d0
                if (i.ne.1) then
-                  bc = bc + dtDx2Inv*rhoDiec(n,i  )/rhom
+                  lambda = lambda + dtDx2Inv*rhoDiec(n,i  )/rhom
                   LT = LT + 0.25d0 * rhoDiec(n,i  ) * ( cpicc(n,i-1) + cpicc(n,i  ) )
      &                 * ( S_star(FirstSpec+n-1,i  )/S_star(Density,i  )
      &                 - ( S_star(FirstSpec+n-1,i-1)/S_star(Density,i-1) ) )
                endif
                if (i.ne.nx) then
-                  bc = bc + dtDx2Inv*rhoDiec(n,i+1)/rhop
+                  lambda = lambda + dtDx2Inv*rhoDiec(n,i+1)/rhop
                   RT = RT + 0.25d0 * rhoDiec(n,i+1) * ( cpicc(n,i  ) + cpicc(n,i+1) )
      &                 * ( S_star(FirstSpec+n-1,i+1)/S_star(Density,i+1)
      &                 - ( S_star(FirstSpec+n-1,i  )/S_star(Density,i  ) ) )
 
                endif
                S_new(FirstSpec+n-1,i) = S_star(FirstSpec+n-1,i)
-     &              + ( S_old(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i) + dt*LofS_star(n,i) )/bc
+     &              + ULfac*( S_old(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i) + dt*LofS_star(n,i) )/lambda
             enddo
 
-            cpb = 0.d0
+            rhoCpInv = 0.d0
             do n=1,Nspec
-               cpb = cpb + cpicc(n,i)*S_star(FirstSpec+n-1,i)/S_star(Density,i)
+               rhoCpInv = rhoCpInv + cpicc(n,i)*S_star(FirstSpec+n-1,i)
             enddo
-            rhoCpInv = 1.d0 / (cpb*S_star(Density,i))
+            rhoCpInv = 1.d0 / rhoCpInv
             
-            bc = 1.d0
+            lambda = 1.d0
             if (i.ne.1) then
-               bc = bc + dtDx2Inv*(PTCec(i  ) - LT)*rhoCpInv
+               lambda = lambda + dtDx2Inv*(PTCec(i  ) + LT)*rhoCpInv
             endif
             if (i.ne.nx) then
-               bc = bc + dtDx2Inv*(PTCec(i+1) + RT)*rhoCpInv
+               lambda = lambda + dtDx2Inv*(PTCec(i+1) - RT)*rhoCpInv
             endif
             S_new(Temp,i) = S_star(Temp,i)
-     &           + ( S_old(Temp,i) - S_star(Temp,i) + dt*LofS_star(Nspec+1,i) )/bc
+     &           + ULfac*( S_old(Temp,i) - S_star(Temp,i) + dt*LofS_star(Nspec+1,i) )/lambda
          enddo
 
 c     Update state, compute errors/etc
@@ -803,9 +815,11 @@ c     Update state, compute errors/etc
             print *, 'iter, err, component:',iCorrect,maxerr,maxerrComp
          endif
 
-
-c         call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx,plo)
-c         call print_update(icorrect,DBLE(icorrect),update,Peos,S_new(Density,1),updatename,dx,plo)
+         call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx)
+         do i=1,nx
+            tmp(i) = S_new(Density,i)
+         enddo
+         call print_update(icorrect,DBLE(icorrect),update,Peos,tmp,updatename,dx)
 
       enddo
  100  end
@@ -940,9 +954,7 @@ c     contains a guess for the solution state
       integer Niters, i, n, RhoH_to_Temp, iCorrect
 
       character*(50) junkname
-      real*8 plo
 
-      plo = 0.d0
       junkname = 'iter'
 
       be_cn_theta = 0.5d0
@@ -975,7 +987,7 @@ c             where fac = -dt.a.theta = theta.(bL+bR).dt/dx2
 c
 c     Snew = (Sold + dt.( (1-theta).Lo + theta.L* ) + fac.S*))/(1+fac)
 c
-      call print_soln(0,0.d0,S_new,junkname,dx,plo)
+      call print_soln(0,0.d0,S_new,junkname,dx)
       do iCorrect=1,Ncorrect
             
          theta = 1.d0
@@ -1028,7 +1040,7 @@ c
          write(6,12) 'Err:',iCorrect,(L2err(n),n=1,Nspec+3)
  12      format(a,i3,12e9.2)
 
-         call print_soln(icorrect,DBLE(icorrect),S_new,junkname,dx,plo)
+         call print_soln(icorrect,DBLE(icorrect),S_new,junkname,dx)
       enddo
       end
 
