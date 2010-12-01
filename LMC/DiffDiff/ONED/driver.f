@@ -649,7 +649,7 @@ c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatena
       integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
       real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
       real*8 iterTol, Peos(1:nx), rhom, rhop, lambda, LT, RT, cpb, rhoCpInv
-      real*8 tmp(1:nx), ULfac
+      real*8 tmp(1:nx), URfac
       integer maxerrComp, firstPass
       parameter (iterTol=1.d-10)
       character*(50) itername, updatename
@@ -680,8 +680,7 @@ c      stop
 
       call print_soln(0,0.d0,S_new,itername,dx)
 
-      ULfac = 1.d0
-      ULfac = .5d0
+      URfac = .75d0
       dtDx2Inv = dt/(dx*dx)
       firstPass = 1
       do iCorrect=1,Ncorrect
@@ -729,19 +728,17 @@ c
                lambda=1.d0
                if (i.ne.1) then
                   lambda = lambda + dtDx2Inv*rhoDiec(n,i  )/rhom
-                  LT = LT + 0.25d0 * rhoDiec(n,i  ) * ( cpicc(n,i-1) + cpicc(n,i  ) )
-     &                 * ( S_star(FirstSpec+n-1,i  )/S_star(Density,i  )
-     &                 - ( S_star(FirstSpec+n-1,i-1)/S_star(Density,i-1) ) )
+                  LT = LT + 0.5d0 * rhoDiec(n,i  ) * ( cpicc(n,i-1) + cpicc(n,i  ) )
+     &                 * ( S_star(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i-1) )/rhom
                endif
                if (i.ne.nx) then
                   lambda = lambda + dtDx2Inv*rhoDiec(n,i+1)/rhop
-                  RT = RT + 0.25d0 * rhoDiec(n,i+1) * ( cpicc(n,i  ) + cpicc(n,i+1) )
-     &                 * ( S_star(FirstSpec+n-1,i+1)/S_star(Density,i+1)
-     &                 - ( S_star(FirstSpec+n-1,i  )/S_star(Density,i  ) ) )
+                  RT = RT + 0.5d0 * rhoDiec(n,i+1) * ( cpicc(n,i  ) + cpicc(n,i+1) )
+     &                 * ( S_star(FirstSpec+n-1,i+1) - S_star(FirstSpec+n-1,i) )/rhop
 
                endif
                S_new(FirstSpec+n-1,i) = S_star(FirstSpec+n-1,i)
-     &              + ULfac*( S_old(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i) + dt*LofS_star(n,i) )/lambda
+     &              + URfac*( S_old(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i) + dt*LofS_star(n,i) )/lambda
             enddo
 
             rhoCpInv = 0.d0
@@ -758,7 +755,7 @@ c
                lambda = lambda + dtDx2Inv*(PTCec(i+1) + RT)*rhoCpInv
             endif
             S_new(Temp,i) = S_star(Temp,i)
-     &           + ULfac*( S_old(Temp,i) - S_star(Temp,i) + dt*LofS_star(Nspec+1,i) )/lambda
+     &           + URfac*( S_old(Temp,i) - S_star(Temp,i) + dt*LofS_star(Nspec+1,i) )/lambda
          enddo
 
 c     Update state, compute errors/etc
