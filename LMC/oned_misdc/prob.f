@@ -126,6 +126,7 @@ c----------------------------------------------------------------------
                do n=1,Nspec
                   Z(n) = scal(i,FirstSpec+n-1)
                enddo
+               write(6,*)" time in initdata = ",time
                rhoh_INIT = scal(i,RhoH)
                call vodeF_T_RhoY(Nspec+1,time,Z(0),ZP(0),RWRK,IWRK)
                do n=0,Nspec
