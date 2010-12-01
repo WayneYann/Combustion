@@ -695,7 +695,7 @@ c      stop
          call apply_bcs(S_star,time,step)
          if (firstPass.eq.1) then
             call ecCoef_and_dt(S_star,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
-            firstPass = 0
+c            firstPass = 0
          endif
          call LinOp1Apply(LofS_star,S_star,PTCec,rhoTDec,rhoDijec,cpicc,dx)
 c         call LinOp1ApplyApprox(LofS_star,S_star,PTCec,rhoDiec,cpicc,dx)
