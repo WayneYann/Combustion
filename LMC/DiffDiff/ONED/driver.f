@@ -296,13 +296,13 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1), rhoDiec(maxspec,1:nx+1),cpicc(maxspec,0:nx+1),dx
-      real*8 q(1:nx+1), F(maxspec,1:nx+1),dxInv,sum,cpb,rhoInv
+      real*8 q(1:nx+1), F(maxspec,1:nx+1),dxInv,sum,cpb
       integer i,n,m
       dxInv = 1.d0/dx
       do i=1,nx+1
-         rhoInv = 2.d0 / ( S(Density,i) + S(Density,i-1) )
          do n = 1,Nspec
-            F(n,i) = -rhoDiec(n,i) * dxInv * rhoInv * (S(FirstSpec+n-1,i)-S(FirstSpec+n-1,i-1))
+            F(n,i) = -rhoDiec(n,i)*dxInv
+     &           * ( S(FirstSpec+n-1,i)/S(Density,i) - S(FirstSpec+n-1,i-1)/S(Density,i-1) )
          enddo
          q(i) = -PTCec(i) * dxInv * ( S(Temp,i) - S(Temp,i-1) )
       enddo
@@ -648,7 +648,7 @@ c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatena
       real*8 update(maxscal,1:nx)
       integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
       real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
-      real*8 iterTol, Peos(1:nx), rhom, rhop, lambda, LT, RT, cpb, rhoCpInv
+      real*8 iterTol, Peos(1:nx), cpnm, cpnp, rhom, rhop, lambda, LT, RT, cpb, rhoCpInv
       real*8 tmp(1:nx), URfac
       integer maxerrComp, firstPass
       parameter (iterTol=1.d-10)
@@ -727,13 +727,15 @@ c
             do n=1,Nspec
                lambda=1.d0
                if (i.ne.1) then
-                  lambda = lambda + dtDx2Inv*rhoDiec(n,i  )/rhom
-                  LT = LT + 0.25d0 * rhoDiec(n,i  ) * ( cpicc(n,i-1) + cpicc(n,i  ) )
+                  cpnm = 0.5d0 * ( cpicc(n,i-1) + cpicc(n,i  ) )
+                  lambda = lambda + dtDx2Inv*rhoDiec(n,i  )/S_star(Density,i)
+                  LT = LT + 0.5d0 * rhoDiec(n,i  ) * cpnm
      &                 * ( S_star(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i-1) )/rhom
                endif
                if (i.ne.nx) then
-                  lambda = lambda + dtDx2Inv*rhoDiec(n,i+1)/rhop
-                  RT = RT + 0.25d0 * rhoDiec(n,i+1) * ( cpicc(n,i  ) + cpicc(n,i+1) )
+                  cpnp = 0.5d0 * ( cpicc(n,i  ) + cpicc(n,i+1) )
+                  lambda = lambda + dtDx2Inv*rhoDiec(n,i+1)/S_star(Density,i)
+                  RT = RT + 0.5d0 * rhoDiec(n,i+1) * cpnp
      &                 * ( S_star(FirstSpec+n-1,i+1) - S_star(FirstSpec+n-1,i) )/rhop
 
                endif
