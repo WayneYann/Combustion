@@ -648,7 +648,7 @@ c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatena
       real*8 update(maxscal,1:nx)
       integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
       real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
-      real*8 iterTol, Peos(1:nx), cpnm, cpnp, rhom, rhop, lambda, LT, RT, cpb, rhoCpInv
+      real*8 iterTol, Peos(1:nx), cpnm, cpnp, lambda, LT, RT, cpb, rhoCpInv
       real*8 tmp(1:nx), URfac
       integer maxerrComp, firstPass
       parameter (iterTol=1.d-10)
@@ -718,8 +718,8 @@ c
 c     where lambda is the diagonal entry in the matrix A defined above
 c
          do i=1,nx
-            rhom = 0.5d0*(S_star(Density,i-1)+S_star(Density,i  ))
-            rhop = 0.5d0*(S_star(Density,i  )+S_star(Density,i+1))
+c            rhom = 0.5d0*(S_star(Density,i-1)+S_star(Density,i  ))
+c            rhop = 0.5d0*(S_star(Density,i  )+S_star(Density,i+1))
 
             LT = 0.d0
             RT = 0.d0
@@ -729,14 +729,20 @@ c
                if (i.ne.1) then
                   cpnm = 0.5d0 * ( cpicc(n,i-1) + cpicc(n,i  ) )
                   lambda = lambda + dtDx2Inv*rhoDiec(n,i  )/S_star(Density,i)
+c                  LT = LT + 0.5d0 * rhoDiec(n,i  ) * cpnm
+c     &                 * ( S_star(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i-1) )/rhom
                   LT = LT + 0.5d0 * rhoDiec(n,i  ) * cpnm
-     &                 * ( S_star(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i-1) )/rhom
+     &                 * ( S_star(FirstSpec+n-1,i  )/S_star(Density,i)
+     &                 -   S_star(FirstSpec+n-1,i-1)/S_star(Density,i-1) )
                endif
                if (i.ne.nx) then
                   cpnp = 0.5d0 * ( cpicc(n,i  ) + cpicc(n,i+1) )
                   lambda = lambda + dtDx2Inv*rhoDiec(n,i+1)/S_star(Density,i)
+c                  RT = RT + 0.5d0 * rhoDiec(n,i+1) * cpnp
+c     &                 * ( S_star(FirstSpec+n-1,i+1) - S_star(FirstSpec+n-1,i) )/rhop
                   RT = RT + 0.5d0 * rhoDiec(n,i+1) * cpnp
-     &                 * ( S_star(FirstSpec+n-1,i+1) - S_star(FirstSpec+n-1,i) )/rhop
+     &                 * ( S_star(FirstSpec+n-1,i+1)/S_star(Density,i+1)
+     &                 -   S_star(FirstSpec+n-1,i  )/S_star(Density,i) )
 
                endif
                S_new(FirstSpec+n-1,i) = S_star(FirstSpec+n-1,i)
