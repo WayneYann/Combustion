@@ -728,12 +728,12 @@ c
                lambda=1.d0
                if (i.ne.1) then
                   lambda = lambda + dtDx2Inv*rhoDiec(n,i  )/rhom
-                  LT = LT + 0.5d0 * rhoDiec(n,i  ) * ( cpicc(n,i-1) + cpicc(n,i  ) )
+                  LT = LT + 0.25d0 * rhoDiec(n,i  ) * ( cpicc(n,i-1) + cpicc(n,i  ) )
      &                 * ( S_star(FirstSpec+n-1,i) - S_star(FirstSpec+n-1,i-1) )/rhom
                endif
                if (i.ne.nx) then
                   lambda = lambda + dtDx2Inv*rhoDiec(n,i+1)/rhop
-                  RT = RT + 0.5d0 * rhoDiec(n,i+1) * ( cpicc(n,i  ) + cpicc(n,i+1) )
+                  RT = RT + 0.25d0 * rhoDiec(n,i+1) * ( cpicc(n,i  ) + cpicc(n,i+1) )
      &                 * ( S_star(FirstSpec+n-1,i+1) - S_star(FirstSpec+n-1,i) )/rhop
 
                endif
@@ -745,14 +745,14 @@ c
             do n=1,Nspec
                rhoCpInv = rhoCpInv + cpicc(n,i)*S_star(FirstSpec+n-1,i)
             enddo
-            rhoCpInv = 1.d0 / rhoCpInv
+            rhoCpInv = dtDx2Inv / rhoCpInv
             
             lambda = 1.d0
             if (i.ne.1) then
-               lambda = lambda + dtDx2Inv*(PTCec(i  ) - LT)*rhoCpInv
+               lambda = lambda + (PTCec(i  ) - LT)*rhoCpInv
             endif
             if (i.ne.nx) then
-               lambda = lambda + dtDx2Inv*(PTCec(i+1) + RT)*rhoCpInv
+               lambda = lambda + (PTCec(i+1) + RT)*rhoCpInv
             endif
             S_new(Temp,i) = S_star(Temp,i)
      &           + URfac*( S_old(Temp,i) - S_star(Temp,i) + dt*LofS_star(Nspec+1,i) )/lambda
