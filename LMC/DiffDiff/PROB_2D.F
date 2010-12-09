@@ -44,6 +44,8 @@
       integer i1
       logical found_it
 
+      do_control = 1
+
       if (restart.ne.0) then
          open(13,file=ac_hist_file,form='formatted',
      &        status='old',iostat=ierr)
@@ -200,8 +202,8 @@ c     V_new = MIN(V_new,V_in+dVmax)
       REAL_T   scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -267,9 +269,9 @@ c ::: -----------------------------------------------------------
 #define RANDOM rand()
       REAL_T rand
 
+#include "cdwrk.H"
 #include "probdata.H"
 #include "htdata.H"
-#include "cdwrk.H"
 #include "bc.H"
 #include "visc.H"
 #include "conp.H"
@@ -282,6 +284,7 @@ c ::: -----------------------------------------------------------
       integer lo(2), hi(2), n
       integer ifreq,zone,i,iH2,getZone
       character*(maxspnml) spName
+      REAL_T pmfVals(maxspec+3), x
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, flametracval, probtype,
      &			max_temp_lev, max_vort_lev, splitx, splity, traceSpecVal,
@@ -363,21 +366,21 @@ c
       V_in = zero
       V_co = zero
       stTh = zero
-      Rf = zero
+      Rf = 20*probhi(1)
       R_hot = half*probhi(1)
       R_hotBL = .1*probhi(1)
       Twall = 298.d0
       stBL = R_hotBL
       pipeTh = zero
       tV_in_l = 1.e6
-      tV_in_r = 2.e6
+      tV_in_r = 0.e6
       V_in_new = -100.d0
       tV_co_l = 1.e6
-      tV_co_r = 2.e6
+      tV_co_r = 0.e6
       V_co_new = -100.d0
       T_stick = -300.d0
       T_in = 300.d0
-      phi_in = 1.d0
+      phi_in = 0.d0
       zbase_control = 0.d0
       pertmag = 0.d0
       pseudo_gravity = 0
@@ -396,6 +399,7 @@ c
 #endif
 
 c     Initialize control variables
+      do_control = 0
       tau_control = one
       sest = zero
       corr = one
@@ -473,7 +477,11 @@ c     Load domain dimensions into common, and set up boundary functions
 #endif
          write(6,control)
       end if
-      
+
+c     Set typical values based on pmf 
+      x = (domnlo(2) - y_offset)*100.d0
+      call pmf(x,x,pmfVals,n)      
+
       end
 
 #define XLO 0
@@ -511,6 +519,10 @@ c     Load domain dimensions into common, and set up boundary functions
          if (name .eq. 'N2' ) iN2 = n
       enddo
 
+c
+c     For odd-numbered probdata, set M_FUEL mixture from the pmf file
+c     For even-numbered probdata, set M_FUEL mixture using phi_in
+c
       do zone=1,3
 
          do n=1,Nspec
@@ -531,7 +543,8 @@ c     Load domain dimensions into common, and set up boundary functions
                   X_bc(n) = pmfVals(3+n)
                enddo        
                T_bc(zone) = pmfVals(1)
-               v_bc(zone) = pmfVals(2)*100.d0
+               u_bc(zone) = 0.d0
+               v_bc(zone) = pmfVals(2)*1.d-2
 
             else
 
@@ -561,7 +574,7 @@ c     Load domain dimensions into common, and set up boundary functions
 
          else if (zone.eq.M_OXID) then
             
-            X_bc(oxidID) = 0.21d0/0.79d0
+            X_bc(oxidID) = 0.21d0
             X_bc(iN2) = 1.d0 - X_bc(oxidID)
             T_bc(zone) = T_in
             u_bc(zone) = 0.d0
@@ -614,23 +627,17 @@ c ::: -----------------------------------------------------------
       REAL_T x, y, eps, absx
       data eps / 1.d-8 /
 
-      if (probtype.lt.4) then
+      if (probtype.lt.5) then
 
          getZone = M_FUEL
 
-         if (ABS(x) .gt. Rf + pipeTh) then
+         if (ABS(x-xcen) .gt. Rf + pipeTh) then
             getZone = M_OXID
          endif
-         
-      else if (probtype.eq.4) then
 
-         if ((x.lt.domnlo(1)+eps).or.(x.gt.domnhi(1)-eps)) then
-            getZone = M_WALL
-         else
-            if (x .lt. 0.5d0*(domnlo(1)+domnhi(1))) then
-               getZone = M_FUEL
-            else
-               getZone = M_OXID
+         if (probtype.eq.4) then
+            if ((x.lt.domnlo(1)+eps).or.(x.gt.domnhi(1)-eps)) then
+               getZone = M_WALL
             endif
          endif
       else
@@ -638,48 +645,31 @@ c ::: -----------------------------------------------------------
       endif
       end
 
-      subroutine VAvg(V,x,y,dx)
+c ::: -----------------------------------------------------------
+
+      subroutine VAvg(V,x,y,dx,Msub)
       implicit none
 #include "probdata.H"
 #include "cdwrk.H"
 #include "bc.H"
       REAL_T V(SDIM)
       REAL_T x,y,dx(SDIM)
+      integer Msub
 
-      REAL_T incx,x1,eta
-      REAL_T Vincx,Vincy
-      integer i,M
-      parameter (M=10)
+      REAL_T x1, incx
+      integer i, zone, getZone
 
-c     size of sub-lengths, there are M of them
-      incx = dx(1) / M
+      incx = dx(1) / Msub
       V(1) = zero
       V(2) = zero
-      do i=1,M
+      do i=1,Msub
          x1 = ABS(x - half*dx(1) + (i-half)*incx)
-         Vincx = zero
-         Vincy = zero
-
-         if (x1.lt.Rf) then
-            Vincy = v_bc(M_FUEL)*TANH(two*(one - x1/Rf)/pipeBL)
-            if (stTh.gt.0) then
-               if (x1.le.half*stTh) then
-                  Vincy = zero
-               else
-                  Vincy =
-     &                 Vincy*TANH(two*(one - (Rf-x1)/((Rf-half*stTh)))/stBL)
-               endif
-            endif
-         else if (x1.gt.Rf+pipeTh) then
-            Vincy =
-     &         v_bc(M_OXID)*TANH(two*(one-MAX(zero,2*Rf+pipeTh-x1)/Rf)/pipeBL)
-         endif
-
-         V(1) = V(1) + Vincx
-         V(2) = V(2) + Vincy
+         zone = getZone(x1,y)
+         V(1) = V(1) + u_bc(zone)
+         V(2) = V(2) + v_bc(zone)
       enddo
-      V(1) = V(1)/M
-      V(2) = V(2)/M
+      V(1) = V(1)/Msub
+      V(2) = V(2)/Msub
       end
 
 c ::: -----------------------------------------------------------
@@ -688,19 +678,22 @@ c ::: -----------------------------------------------------------
       implicit none
       integer orient
       REAL_T x, y, time, u, v, rho, Yl(0:*), T, h, dx(SDIM)
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
       REAL_T Va(SDIM)
-      integer n, getZone, zone
+      integer n, getZone, zone, Msub
+      parameter (Msub=1)
+
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
       end if
 
       if (orient .lt. 4) then
          zone = getZone(x,y)
+
          u = u_bc(zone)
          v = v_bc(zone)
          rho = rho_bc(zone)
@@ -710,42 +703,57 @@ c ::: -----------------------------------------------------------
          T = T_bc(zone)
          h = h_bc(zone)
 
-         if ((probtype.eq.1).or.(probtype.eq.3)) then
+         if (do_control.eq.1) then
 
-            v = V_in + (time-tbase_control)*dV_control
-
-         else if (probtype.eq.2) then
-
-c     Set fueling velocity as a function of time
-            if (time .le. tV_in_l) then
-               v_bc(M_FUEL) = V_in
-            else if (time .ge. tV_in_r) then
-               v_bc(M_FUEL) = V_in_new
-            else
-               v_bc(M_FUEL) = V_in+(time-tV_in_l)*(V_in_new-V_in)/(tV_in_r-tV_in_l)
+            if (zone .eq. M_FUEL) then
+               u = 0
+               v = V_in + (time-tbase_control)*dV_control
             endif
+            
+         else
 
-c     Set coflow velocity as a function of time
-            if (time .le. tV_co_l) then
-               v_bc(M_OXID) = V_co
-            else if (time .ge. tV_co_r) then
-               v_bc(M_OXID) = V_co_new
-            else
-               v_bc(M_OXID) = V_co+(time-tV_co_l)*(V_co_new-V_co)/(tV_co_r-tV_co_l)
+c     Optionally, set time-dependent bc data
+            if (zone .eq. M_FUEL) then
+               if (tV_in_l.lt.tV_in_r) then
+                  if (time .le. tV_in_l) then
+                     v_bc(M_FUEL) = V_in
+                  else if (time .ge. tV_in_r) then
+                     v_bc(M_FUEL) = V_in_new
+                  else
+                     v_bc(M_FUEL) = V_in+(time-tV_in_l)*(V_in_new-V_in)/(tV_in_r-tV_in_l)
+                  endif
+               endif
+               
+            else if (zone .eq. M_OXID) then
+               
+               if (do_control.eq.0) then
+                  if (tV_co_l .lt. tV_co_r) then 
+                     if (time .le. tV_co_l) then
+                        v_bc(M_OXID) = V_co
+                     else if (time .ge. tV_co_r) then
+                        v_bc(M_OXID) = V_co_new
+                     else
+                        v_bc(M_OXID) = V_co+(time-tV_co_l)*(V_co_new-V_co)/(tV_co_r-tV_co_l)
+                     endif
+                  endif
+               endif
+               
             endif
-
-            call VAvg(Va,x,y,dx)
+               
+            call VAvg(Va,x,y,dx,Msub)         
             u = Va(1)
             v = Va(2)
 
-c     Set stick temperature
-            if (zone.eq.M_FUEL  .and.  ABS(x).le..5*stTh
-     &           .and. T_stick.gt.zero ) then
-               T = T_stick
-               rho = rho_stick
-               h = h_stick
-            endif
          endif
+
+c     If there is a flame-holder stick (gas mix will be fuel, and is loaded above
+         if ((ABS(x).le..5*stTh) .and. (T_stick.gt.zero) .and. (stTh.gt.zero) ) then
+            T = T_stick
+            rho = rho_stick
+            h = h_stick
+         endif
+               
+
       else
           print*, 'No boundary condition for orientation = ', orient
           call bl_abort(' ')
@@ -795,8 +803,8 @@ c ::: -----------------------------------------------------------
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -809,8 +817,8 @@ c ::: -----------------------------------------------------------
       
       integer zL, zR, zH
       REAL_T eta, xi, xblend, mdotb, mdotL, mdotR, r1sq, r2sq, ylo, yhi
-      REAL_T pmf_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
-      REAL_T ypert, Lx
+      REAL_T pmf_vals(maxspec+3), sum, Y_in(maxspec), rblob, theta
+      REAL_T ypert, Lx, u, v, rho, T, h
       integer iN2, iO2
       integer lo_chem(SDIM),hi_chem(SDIM)
       data lo_chem /1,1/
@@ -879,7 +887,7 @@ c
                endif
                call FORT_MOLETOMASS(lo_chem,hi_chem,
      &                              pmf_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
-     &                               Y_pmf,       ARLIM(lo_chem),ARLIM(hi_chem))
+     &                               Y_in,       ARLIM(lo_chem),ARLIM(hi_chem))
                
                
                rblob = sqrt( (v_xcen-x)**2 + (v_ycen-y)**2 )
@@ -890,7 +898,7 @@ c
                if (v_blob_r .le. zero) then
                   scal(i,j,Temp) = pmf_vals(1)
                   do n = 1,Nspec
-                     scal(i,j,firstSpec+n-1) = Y_pmf(n)
+                     scal(i,j,firstSpec+n-1) = Y_in(n)
                   end do
                   if (iN2.gt.0) then
                      sum = zero
@@ -906,9 +914,9 @@ c     Blend with air in blob, take air mix from bc(M_OXID)
                   
                   scal(i,j,Temp) = eta*pmf_vals(1) + (1.d0-eta)*v_blob_T
                   do n = 1,Nspec
-                     scal(i,j,firstSpec+n-1) = eta*Y_pmf(n)
+                     scal(i,j,firstSpec+n-1) = eta*Y_in(n)
      &                    +(1.d0-eta)*(v_blob_airfrac*Y_bc(n-1,M_OXID)
-     &                    +            (1.d0-v_blob_airfrac)*Y_pmf(n))
+     &                    +            (1.d0-v_blob_airfrac)*Y_in(n))
                   end do
                   
                   if (iN2.gt.0) then
@@ -940,11 +948,12 @@ c     Cut off initial pmf at R_hot so that air along wall
             enddo
          enddo
       else
-         do j = ARG_L2(press),ARG_H2(press)
-            y = float(j)*delta(2)+domnlo(2)
-            do i = ARG_L1(press),ARG_H1(press)
-               x = float(i)*delta(1)+domnlo(1)
+         do j = lo(2), hi(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)         
+            do i = lo(1), hi(1)
+               x = (float(i)+.5)*delta(1)+domnlo(1)
                
+#if 1
                eta = 0.5*(1.d0 + TANH((x - xcen)/xfrontw))
                do n = 0,Nspec-1
                   scal(i,j,firstSpec+n) =
@@ -955,6 +964,18 @@ c     Cut off initial pmf at R_hot so that air along wall
                scal(i,j,Trac) = 0.d0
                vel(i,j,1) = (1.d0-eta)*u_bc(M_FUEL) + eta*u_bc(M_OXID)
                vel(i,j,2) = (1.d0-eta)*v_bc(M_FUEL) + eta*v_bc(M_OXID)
+#else
+               y = domnlo(2)
+               zone = getZone(x,y)
+               call bcfunction(YLO, x, y, time, u, v, rho, Y_in, T, h, delta)
+               do n = 0,Nspec-1
+                  scal(i,j,firstSpec+n) = Y_in(n+1)
+               end do 
+               scal(i,j,Temp) = T
+               scal(i,j,Trac) = 0.d0
+               vel(i,j,1) = u
+               vel(i,j,2) = v
+#endif
             enddo
          enddo
       endif
@@ -1008,6 +1029,7 @@ c ::: -----------------------------------------------------------
       REAL_T  dx(SDIM)
       REAL_T  problo(SDIM)
       
+#include "cdwrk.H"
 #include "probdata.H"
 #include "htdata.H"
       integer i, j, n, Tid, RHid, YSid, YEid, ys, ye

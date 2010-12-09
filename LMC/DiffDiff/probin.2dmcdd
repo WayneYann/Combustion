@@ -1,14 +1,12 @@
  &fortin
-  probtype = 4
-  twall = 298
-  V_in = 1.0
-  T_in = 298.
+  probtype = 3
   max_trac_lev = 0
   max_temp_lev = 0
   max_vort_lev = 0
   flametracval = 1.e-6
-  xcen = .02
-  xfrontw = .001
+  y_offset = 0.016
+  y_offset = 0.011
+  y_offset = -0.001
  /
  &heattransin
   pamb = 101325.
