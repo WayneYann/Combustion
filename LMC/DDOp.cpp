@@ -4,6 +4,14 @@
 #include "DDOp_F.H"
 #include "LO_F.H"
 
+#include <iostream>
+using std::cout;
+using std::endl;
+
+#include <fstream>
+#include "BoxLib_Data_Dump.H"
+
+
 // Note: The ratio between the original grids and the coarse-fine boundary data
 //       registers can be anything, but the ratio between adjacent DD operators
 //       generated for multigrid will always be two.
@@ -31,6 +39,9 @@ DDOp::~DDOp ()
 
 bool can_coarsen(const BoxArray& ba)
 {
+    // FIXME
+    return false;
+
     // Ratio between levels here will always be MGIV
     for (int i = 0; i < ba.size(); ++i)
     {
@@ -105,8 +116,8 @@ DDOp::center_to_edge (const FArrayBox& cfab,
     BL_ASSERT(sComp+nComp <= cfab.nComp() && dComp+nComp <= efab.nComp());
 
     FORT_DDC2E(ccBox.loVect(),ccBox.hiVect(),
-               ARLIM(cfab.loVect()),ARLIM(cfab.hiVect()),cfab.dataPtr(sComp),
-               ARLIM(efab.loVect()),ARLIM(efab.hiVect()),efab.dataPtr(dComp),
+               cfab.dataPtr(sComp),ARLIM(cfab.loVect()),ARLIM(cfab.hiVect()),
+               efab.dataPtr(dComp),ARLIM(efab.loVect()),ARLIM(efab.hiVect()),
                &nComp, &dir);
 }    
 
@@ -232,26 +243,22 @@ DDOp::setBoundaryData(const MultiFab&      fineT,
 }
 
 void
-DDOp::setGrowCells(MultiFab& T,
+DDOp::setGrowCells(MultiFab& YT,
                    int       compT,
-                   MultiFab& Y,
                    int       compY) const
 {
-    BL_ASSERT(T.nGrow() >= 1);
-    BL_ASSERT(Y.nGrow() >= 1);
+    BL_ASSERT(YT.nGrow() >= 1);
     const int Nspec = ckdriver.numSpecies();
 
-    BL_ASSERT(T.nComp() > compT);
-    BL_ASSERT(Y.nComp() >= compY + Nspec);
-    BL_ASSERT(&T != &Y || (compT<compY || compT >= compY+Nspec));
+    BL_ASSERT(YT.nComp() > compT);
+    BL_ASSERT(YT.nComp() >= compY + Nspec);
 
-    BL_ASSERT(T.boxArray() == grids);
-    BL_ASSERT(Y.boxArray() == grids);
+    BL_ASSERT(YT.boxArray() == grids);
 
-    T.FillBoundary(compT,1);
-    Tbd.getGeom().FillPeriodicBoundary(T,compT,1);
-    Y.FillBoundary(compY,Nspec);
-    Ybd.getGeom().FillPeriodicBoundary(Y,compY,Nspec);
+    YT.FillBoundary(compT,1);
+    Tbd.getGeom().FillPeriodicBoundary(YT,compT,1);
+    YT.FillBoundary(compY,Nspec);
+    Ybd.getGeom().FillPeriodicBoundary(YT,compY,Nspec);
 
     const int flagbc  = 1;
     const int flagden = 0; // Use LinOp's bc interpolator, but don't save the coeff
@@ -275,13 +282,13 @@ DDOp::setGrowCells(MultiFab& T,
         const int                Ync = Nspec;
 
         const int comp = 0;
-        for (MFIter mfi(T); mfi.isValid(); ++mfi)
+        for (MFIter mfi(YT); mfi.isValid(); ++mfi)
         {
             const int   idx = mfi.index();
             const Box& vbox = mfi.validbox();
             BL_ASSERT(grids[idx] == vbox);
 
-            FArrayBox& Tfab = T[mfi];
+            FArrayBox& Tfab = YT[mfi];
             const FArrayBox& Tb = Tfs[mfi];
 
             const Mask& Tm  = Tbd.bndryMasks(face)[idx];
@@ -296,7 +303,7 @@ DDOp::setGrowCells(MultiFab& T,
                          dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
                          vbox.loVect(),vbox.hiVect(), &Tnc, dx);
 
-            FArrayBox& Yfab = Y[mfi];
+            FArrayBox& Yfab = YT[mfi];
             const FArrayBox& Yb = Yfs[mfi];
 
             const Mask& Ym  = Ybd.bndryMasks(face)[idx];
@@ -315,206 +322,152 @@ DDOp::setGrowCells(MultiFab& T,
 }
 
 void
-DDOp::applyOp(MultiFab&         outH,
-              int               dCompH,
-              MultiFab&         outY,
-              int               dCompY,
-              const MultiFab&   inT,
-              int               sCompT,
-              const MultiFab&   inY,
-              int               sCompY,
-              PArray<MultiFab>& fluxH,
-              int               dCompFH,
-              PArray<MultiFab>& fluxY,
-              int               dCompFY,
+DDOp::applyOp(MultiFab&         outYH,
+              const MultiFab&   inYT,
+              PArray<MultiFab>& fluxYH,
               DD_ApForTorRH     whichApp,
-              int               level) const
+              int               level,
+              bool              getAlpha,
+              MultiFab*         alpha) const
 {
     BL_ASSERT(level >= 0);
     if (level > 0)
     {
-        coarser->applyOp(outH,dCompH,outY,dCompY,inT,sCompT,inY,sCompY,
-                         fluxH,dCompFH,fluxY,dCompFY,whichApp,level-1);
+        coarser->applyOp(outYH,inYT,fluxYH,whichApp,level-1,getAlpha,alpha);
         return;
     }
 
     const int Nspec = ckdriver.numSpecies();
     const int nGrow = 1;
 
-    BL_ASSERT(outH.nComp() > dCompH);
-    BL_ASSERT(outY.nComp() >= dCompY + Nspec);
-    BL_ASSERT(&inT != &inY || (sCompT<sCompY || sCompT >= sCompY+Nspec));
-    BL_ASSERT(&outH != &outY || (dCompH<dCompY || dCompH >= dCompY+Nspec));
-    BL_ASSERT(outH.boxArray() == grids);
-    BL_ASSERT(outY.boxArray() == grids);
-    BL_ASSERT(inT.boxArray() == grids);
-    BL_ASSERT(inY.boxArray() == grids);
-    BL_ASSERT(inT.nGrow() >= nGrow);
-    BL_ASSERT(inY.nGrow() >= nGrow);
+    int nc = Nspec+1;
+    BL_ASSERT(outYH.nComp() >= nc);
+    BL_ASSERT(inYT.nComp() >= nc);
+    BL_ASSERT(outYH.boxArray() == grids);
+    BL_ASSERT(inYT.boxArray() == grids);
+    BL_ASSERT(inYT.nGrow() >= nGrow);
 
-    // Need grow cells in X,T to compute forcing, and to get Ye for evaluating coeffs
+    // Need grow cells in X,T to compute forcing
     // Promise to change only the grow cells in T,Y
-    setGrowCells(const_cast<MultiFab&>(inT),sCompT,const_cast<MultiFab&>(inY),sCompY);
-
-    // Get diffusion flux divergence
-    const Real* dx = Tbd.getGeom().CellSize();
-    FArrayBox de, et, Xc, TYe, Hie;
-    const int sCompde = 0;
-    const int sCompXc = 0;
-    const int sCompTe = Nspec;
-    const int sCompYe = 0;
-    const int do_add_enth_flux = (whichApp==DD_RhoH ? 1 : 0);
-
-    // Allocate/initialize output multifabs
-    outH.setVal(0.0,dCompH,1);
-    outY.setVal(0.0,dCompY,Nspec);
-
-    for (MFIter mfi(inY); mfi.isValid(); ++mfi)
-    {
-        FArrayBox& outHc = outH[mfi];
-        FArrayBox& outYc = outY[mfi];
-        const FArrayBox& Yc = inY[mfi];
-        const FArrayBox& Tc = inT[mfi];
-        const Box& box = mfi.validbox();
-        const Box gbox = BoxLib::grow(box,nGrow);
-
-        // Get cc mole frac in valid+grow so that we can compute grad(X)
-        // NOTE: No worries for corner cells, since C2E only fills surroundingNodes(box,dir)
-        Xc.resize(gbox,Nspec);
-        ckdriver.massFracToMoleFrac(Xc,Yc,gbox,sCompY,sCompXc);
-
-        for (int i=0; i<BL_SPACEDIM; ++i)
-        {
-            const Box ebox = BoxLib::surroundingNodes(box,i);
-            de.resize(ebox,Nspec+1); // force on edge
-            TYe.resize(ebox,Nspec+1); // state on edge
-
-            // Get ec values from cc values
-            center_to_edge(Tc,TYe,gbox,sCompT,sCompTe,1);
-            center_to_edge(Yc,TYe,gbox,sCompY,sCompYe,Nspec);
-
-            // cc X,T in and ec de out
-            FORT_DIFFFORCE(box.loVect(),box.hiVect(),
-                           de.dataPtr(sCompde),ARLIM(de.loVect()),ARLIM(de.hiVect()),
-                           Xc.dataPtr(sCompXc),ARLIM(Xc.loVect()),ARLIM(Xc.hiVect()),
-                           Tc.dataPtr(sCompT), ARLIM(Tc.loVect()),ARLIM(Tc.hiVect()),
-                           dx, &i);
-
-            // Get h_i(Te) on edge temperature
-            Hie.resize(ebox,Nspec);
-            ckdriver.getHGivenT(Hie,TYe,ebox,sCompTe,0);
-
-            // Get diffusion fluxes on edges based on edge state/forces
-            FArrayBox& Hfl = fluxH[i][mfi];
-            FArrayBox& Yfl = fluxY[i][mfi];
-            FORT_FLUX(box.loVect(),box.hiVect(),
-                      Hfl.dataPtr(dCompFH),ARLIM(Hfl.loVect()),ARLIM(Hfl.hiVect()),
-                      Yfl.dataPtr(dCompFY),ARLIM(Yfl.loVect()),ARLIM(Yfl.hiVect()),
-                      de.dataPtr(),        ARLIM(de.loVect()), ARLIM(de.hiVect()),
-                      TYe.dataPtr(sCompYe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
-                      TYe.dataPtr(sCompTe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
-                      Hie.dataPtr(),       ARLIM(Hie.loVect()),ARLIM(Hie.hiVect()),
-                      &i, &do_add_enth_flux);
-
-            // If whichApp==DD_Temp, this is being used for the Temperature equation.
-            //   We do not add hi.fluxi to the energy flux, but we do add
-            //     -(grad(T).sum(cpi.fluxi))/cpmix to the total result.
-            // HACK: need to implement
-
-            // Multiply fluxes times edge areas
-            Hfl.mult(area[i][mfi],0,dCompFH,1);
-            for (int n=0; n<Nspec; ++n)
-                Yfl.mult(area[i][mfi],0,dCompFY+n,1);
-
-            // Now get flux divergences ( really, Div(flux.Area.dx)/Vol -> dx cancels, not needed )
-            const int ncH = 1;
-            FORT_INCRDIV(box.loVect(),box.hiVect(),
-                         outHc.dataPtr(dCompH),ARLIM(outHc.loVect()),ARLIM(outHc.hiVect()),
-                         Hfl.dataPtr(dCompFH), ARLIM(Hfl.loVect()),  ARLIM(Hfl.hiVect()),
-                         &i, &ncH);
-
-            FORT_INCRDIV(box.loVect(),box.hiVect(),
-                         outYc.dataPtr(dCompY),ARLIM(outYc.loVect()),ARLIM(outYc.hiVect()),
-                         Yfl.dataPtr(dCompFY), ARLIM(Yfl.loVect()),  ARLIM(Yfl.hiVect()),
-                         &i, &Nspec);
-        }
-
-        const FArrayBox& v = volume[mfi];
-        outHc.divide(v,0,dCompH,1);
-        for (int n=0; n<Nspec; ++n)
-            outYc.divide(v,0,dCompY+n,1);
-    }
-    // Flux returned is extensive (i.e. flux.Area)
-}
-
-void
-DDOp::setRelax(MultiFab&         lambda,
-               int               dCompH,
-               const MultiFab&   inT,
-               int               sCompT,
-               const MultiFab&   inY,
-               int               sCompY,
-               int               level) const
-{
-    BL_ASSERT(level >= 0);
-    if (level > 0)
-    {
-        coarser->setRelax(lambda,dCompH,inT,sCompT,inY,sCompY,level-1);
-        return;
+    int sCompY = 0;
+    int sCompT = Nspec;
+    setGrowCells(const_cast<MultiFab&>(inYT),sCompT,sCompY);
+    MultiFab cpc(grids,Nspec,1);
+    for (MFIter mfi(cpc); mfi.isValid(); ++mfi) {
+        const Box gbox = Box(mfi.validbox()).grow(nGrow);
+        ckdriver.getCpGivenT(cpc[mfi],inYT[mfi],gbox,sCompT,0);
     }
 
-    const int Nspec = ckdriver.numSpecies();
-    const int nGrow = 1;
+    // Initialize output
+    outYH.setVal(0,0,nc);
+    for (int d=0; d<BL_SPACEDIM; ++d) {
+        fluxYH[d].setVal(0,0,nc);
+    }
 
-    BL_ASSERT(lambda.nComp() > dCompH);
-    BL_ASSERT(&inT != &inY || (sCompT<sCompY || sCompT >= sCompY+Nspec));
-    BL_ASSERT(lambda.boxArray() == grids);
-    BL_ASSERT(inT.boxArray() == grids);
-    BL_ASSERT(inY.boxArray() == grids);
-    BL_ASSERT(inT.nGrow() >= nGrow);
-    BL_ASSERT(inY.nGrow() >= nGrow);
+    const IntVect iv=IntVect::TheZeroVector();
+    FArrayBox dum(Box(iv,iv),1);
+    if (getAlpha) {
+        alpha->setVal(0);
+    }
 
-    // Need grow cells in X,T to get edge values of Y,T for evaluating relax factor
-    // Promise to change only the grow cells in T,Y
-    setGrowCells(const_cast<MultiFab&>(inT),sCompT,const_cast<MultiFab&>(inY),sCompY);
+    int for_T0_H1 = (whichApp==DD_Temp ? 0 : 1);
 
-    // Get relax factor
-    FArrayBox TYe;
-    const int sCompTe = Nspec;
-    const int sCompYe = 0;
+    FArrayBox cpe, aFcpDT;
     const Real* dx = Tbd.getGeom().CellSize();
-    for (MFIter mfi(lambda); mfi.isValid(); ++mfi)
+    const Box& domain = Tbd.getDomain();
+    for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
     {
-        FArrayBox& lam = lambda[mfi];
-        const FArrayBox& Yc = inY[mfi];
-        const FArrayBox& Tc = inT[mfi];
-
+        FArrayBox& outYHf = outYH[mfi];
+        const FArrayBox& YTf = inYT[mfi];
+        const FArrayBox& cpf = cpc[mfi];
         const Box& box = mfi.validbox();
-        const Box gbox = BoxLib::grow(box,nGrow);
+        aFcpDT.resize(box,1);
+        aFcpDT.setVal(0);
 
-        for (int i=0; i<BL_SPACEDIM; ++i)
-        {
-            Box ebox = BoxLib::surroundingNodes(box,i);
-            TYe.resize(ebox,Nspec+1);
-
-            // Get edge values from center values of input data
-            center_to_edge(Tc,TYe,gbox,0,sCompTe,1);
-            center_to_edge(Yc,TYe,gbox,0,sCompYe,Nspec);
-
-            // Compute thermal conductivity using edge-based data
-            FORT_THERM(box.loVect(),box.hiVect(),
-                       lam.dataPtr(dCompH), ARLIM(lam.loVect()),ARLIM(lam.hiVect()),
-                       TYe.dataPtr(sCompYe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
-                       TYe.dataPtr(sCompTe),ARLIM(TYe.loVect()),ARLIM(TYe.hiVect()),
-                       &i);
-        }
+        int fillAlpha = getAlpha;
+        FArrayBox& alf = (fillAlpha ? (*alpha)[mfi] : dum);
         
-        // Compute lambda / cpmix using cell-centered input data
-        FORT_CPSCALE(box.loVect(),box.hiVect(),
-                     lam.dataPtr(dCompH),ARLIM(lam.loVect()),ARLIM(lam.hiVect()),
-                     Yc.dataPtr(sCompY), ARLIM(Yc.loVect()), ARLIM(Yc.hiVect()),
-                     Tc.dataPtr(sCompT), ARLIM(Tc.loVect()), ARLIM(Tc.hiVect()));
+        for (int dir=0; dir<BL_SPACEDIM; ++dir) {
+            const Box ebox = BoxLib::surroundingNodes(box,dir);
+            cpe.resize(ebox,Nspec);
+            FArrayBox& f = fluxYH[dir][mfi];
 
+            FORT_DDC2E(box.loVect(),box.hiVect(),
+                       cpf.dataPtr(),ARLIM(cpf.loVect()),ARLIM(cpf.hiVect()),
+                       cpe.dataPtr(),ARLIM(cpe.loVect()),ARLIM(cpe.hiVect()),
+                       &Nspec, &dir);
+
+            // Note, this thrashes cpe if for T (contains Fn.cpn.gradT after this call)
+            Real thisDx = dx[dir];
+            FORT_DDFLUX(box.loVect(), box.hiVect(), &thisDx, &dir,
+                        f.dataPtr(), ARLIM(f.loVect()), ARLIM(f.hiVect()),
+                        YTf.dataPtr(), ARLIM(YTf.loVect()),  ARLIM(YTf.hiVect()),
+                        cpe.dataPtr(), ARLIM(cpe.loVect()),  ARLIM(cpe.hiVect()),
+                        &for_T0_H1, &fillAlpha, alf.dataPtr(), ARLIM(alf.loVect()), ARLIM(alf.hiVect()));
+
+            // FIXME: Hard code grad(T) and fluxes to zero on in/out
+            {
+                Box lo_ebox = BoxLib::bdryLo(domain,dir) & f.box();
+                if (lo_ebox.ok()) {
+                    f.setVal(0,lo_ebox,0,Nspec+1);
+                    lo_ebox &= cpe.box();
+                    if (lo_ebox.ok()) {
+                        cpe.setVal(0,lo_ebox,0,Nspec+1);
+                    }
+                }            
+                
+                Box hi_ebox = BoxLib::bdryHi(domain,dir) & f.box();
+                if (hi_ebox.ok()) {
+                    f.setVal(0,hi_ebox,0,Nspec+1);
+                    hi_ebox &= cpe.box();
+                    if (hi_ebox.ok()) {
+                        cpe.setVal(0,hi_ebox,0,Nspec+1);
+                    }
+                }        
+            }    
+
+            // If for T, increment running sum on cell centers with -avg(F.cp.gT) across faces (in cpe).
+            // If for H, q was incremented with +He.Fe inside DDFLUX, nothing more to do
+            if (for_T0_H1 == 0) {                
+                const int diff0_avg1 = 1;
+                const Real a = -1;
+                const int oc = 1;
+                for (int n=0; n<Nspec; ++n) {
+                    FORT_DDETC(box.loVect(),box.hiVect(),
+                               aFcpDT.dataPtr(),ARLIM(aFcpDT.loVect()),ARLIM(aFcpDT.hiVect()),
+                               cpe.dataPtr(n), ARLIM(cpe.loVect()), ARLIM(cpe.hiVect()),
+                               &a, &dir, &oc, &diff0_avg1);
+                }
+            }
+            
+            // Multiply fluxes by edge areas
+            for (int n=0; n<nc; ++n) {
+                f.mult(area[dir][mfi],0,n,1);
+            }
+
+            // Now form -Div(F.Area) add to running total
+            const int diff0_avg1 = 0;
+            const Real a = -1.;
+            FORT_DDETC(box.loVect(),box.hiVect(),
+                       outYHf.dataPtr(),ARLIM(outYHf.loVect()),ARLIM(outYHf.hiVect()),
+                       f.dataPtr(),ARLIM(f.loVect()),ARLIM(f.hiVect()), &a, &dir, &nc, &diff0_avg1);            
+        }
+        // Form -(1/Vol) Div(F.Area)
+        for (int n=0; n<nc; ++n) {
+            outYHf.divide(volume[mfi],0,n,1);
+        }
+
+        // For rho.DT/Dt, add [-avg(F.cp.DT)] to total and scale by 1/cpb
+        if (for_T0_H1 == 0) {
+            outYHf.plus(aFcpDT,0,Nspec,1);
+            cpc[mfi].invert(1);
+            outYHf.mult(cpc[mfi],0,Nspec,1);
+#if 0
+            if (getAlpha) {
+                alf.mult(cpc[mfi],0,Nspec,1);
+            }
+#endif
+        }
     }
 }
 

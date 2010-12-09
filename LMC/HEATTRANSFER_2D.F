@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.20 2009-10-16 16:00:56 lijewski Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.21 2010-12-09 23:44:56 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -95,7 +95,7 @@ c -------------------- begin here ----------------------------
       integer DIMDEC(mu)
       REAL_T  mu(DIMV(mu))
 
-      integer i, j, n
+      integer i, j
 
       if (.not.use_constant_mu) then
          if (.not. LeEQ1) then
@@ -123,9 +123,9 @@ c -------------------- begin here ----------------------------
      &     DIMS(rhoD), rhoD,
      &     ncompd, P1ATM_MKS, do_temp, do_VelVisc)
       implicit none
+#include "cdwrk.H"
 #include "visc.H"
 #include "htdata.H"
-#include "cdwrk.H"
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(T)
       integer DIMDEC(Y)
@@ -137,7 +137,7 @@ c -------------------- begin here ----------------------------
       
       integer i, j
       integer n, nspecies
-      REAL_T P1ATM_MKS, Ptmp, val, Patm
+      REAL_T P1ATM_MKS, Patm
       REAL_T Yt(maxspec)
       REAL_T cpmix, Tfac, Yfac
       integer lo_chem(SDIM),hi_chem(SDIM)
@@ -448,7 +448,6 @@ c===================================================================
 
       integer    i, j
       integer    ilo, ihi, jlo, jhi
-      REAL_T     y
 
       lo(1) = ARG_L1(dqrad)
       hi(1) = ARG_H1(dqrad)
@@ -572,7 +571,6 @@ c===================================================================
 
       integer    i, j
       integer    ilo, ihi, jlo, jhi
-      REAL_T     y
 
       integer lo(SDIM), hi(SDIM)
 
@@ -698,7 +696,6 @@ c===================================================================
 
       integer    i, j
       integer    ilo, ihi, jlo, jhi
-      REAL_T     y
 
       integer lo(SDIM), hi(SDIM)
 
@@ -759,7 +756,7 @@ c                               inflow for burner in a can (bic, biac)
 
       integer    i, j
       integer    jlo, jhi, ilo, ihi
-      REAL_T     x, joff
+      REAL_T     x
 
       integer lo(SDIM), hi(SDIM)
 
@@ -1068,4 +1065,68 @@ c     Returns the number of fine cells fixed up
 
          enddo
       enddo
+      end
+
+      subroutine FORT_HTDDRELAX(lo, hi, S, DIMS(S), yc, Tc, hc, rc,
+     &     L, DIMS(L), a, DIMS(a), R, DIMS(R), dt, fac, for_T0_H1, res_only)
+      implicit none
+#include "cdwrk.H"      
+      integer lo(SDIM), hi(SDIM), yc, Tc, hc, rc
+      integer DIMDEC(S)
+      integer DIMDEC(L)
+      integer DIMDEC(a)
+      integer DIMDEC(R)
+      REAL_T S(DIMV(s),0:*)
+      REAL_T L(DIMV(L),0:*)
+      REAL_T a(DIMV(a),0:*)
+      REAL_T R(DIMV(R),0:*)
+      REAL_T dt, fac
+      integer for_T0_H1, res_only
+      integer i, j, n
+      
+c     Helper function to compute Res = Rhs - A(S) = Rhs - rho.phi + dt.Lphi
+c     and then relax: phi = phi + Res/alpha
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            do n=0,Nspec-1
+               L(i,j,n) = R(i,j,n) - S(i,j,rc)*S(i,j,yc+n) + dt*L(i,j,n)
+            enddo
+         enddo
+      enddo
+      if (for_T0_H1.eq.0) then
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               L(i,j,Nspec) = R(i,j,Nspec) - S(i,j,Tc) + dt*L(i,j,Nspec)/S(i,j,rc)
+            enddo
+         enddo
+      else
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               L(i,j,Nspec) = R(i,j,Nspec) - S(i,j,rc)*S(i,j,hc) + dt*L(i,j,Nspec)
+            enddo
+         enddo
+      endif
+
+      if (res_only.ne.1) then
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               do n=0,Nspec-1
+                  S(i,j,yc+n) = S(i,j,yc+n)  +  fac * L(i,j,n) / (1.d0 + dt*a(i,j,n))
+               enddo
+            enddo
+         enddo
+         if (for_T0_H1.eq.0) then
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  S(i,j,Tc) = S(i,j,Tc)  +  fac * L(i,j,Nspec) / (1.d0 + dt*a(i,j,Nspec))
+               enddo
+            enddo
+         else
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  S(i,j,hc) = S(i,j,hc)  +  fac * L(i,j,Nspec) / (1.d0 + dt*a(i,j,Nspec))
+               enddo
+            enddo
+         endif
+      endif
       end

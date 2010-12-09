@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_F.F,v 1.3 2007-03-14 20:15:31 marc Exp $
+c $Id: HEATTRANSFER_F.F,v 1.4 2010-12-09 23:44:56 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -15,6 +15,7 @@ c
       subroutine FORT_SET_SCAL_NUMB(DensityIn, TempIn, TracIn, RhoHIn,
      &     FirstSpecIn, LastSpecIn)
       implicit none
+#include "cdwrk.H"
 #include "htdata.H"
       integer DensityIn, TempIn, TracIn, RhoHIn, FirstSpecIn, LastSpecIn
 c
@@ -67,6 +68,7 @@ c
 c-----------------------------------------------------------------------
 
       subroutine FORT_GETPAMB(pambout, dpdt_factorout)
+#include "cdwrk.H"
 #include "htdata.H"
       REAL_T dpdt_factorout, pambout
 
@@ -88,6 +90,8 @@ c     suck its functionality into some other initialization routine.
 c     -- rbp
 
       implicit none
+#include "cdwrk.H"
+#include "htdata.H"
 #include "visc.H"
       data use_constant_mu     /.true./
       data use_constant_lambda /.true./
@@ -98,6 +102,13 @@ c     -- rbp
       data Pr / one /
       data Sc / one /
       data thickFacTR / one /
+
+      data typVal_Density / 0.d0 /
+      data typVal_Temp / 0.d0 /
+      data typVal_RhoH / 0.d0 /
+      data typVal_Trac / 0.d0 /
+      data typVal_Y / maxspec*0.d0 /
+
       end
 
 

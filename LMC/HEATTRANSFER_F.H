@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.5 2009-10-15 21:06:39 lijewski Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.6 2010-12-09 23:44:56 marc Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -22,6 +22,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
+#    define FORT_HTDDRELAX                 htddrelax
 #    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent
 #    define FORT_RK_STEP_SELECTION         rkstepselection
@@ -47,6 +48,7 @@
 #    define FORT_INCRWEXTFLXDIV            INCRWEXTFLXDIV
 #    define FORT_SET_COMMON                SETCOMMON
 #    define FORT_COMPUTE_UGRADP            COMPUTEUGRADP
+#    define FORT_HTDDRELAX                 HTDDRELAX
 #    define FORT_RK_MIXTURE_AVERAGED       RKMIXTUREAVERAGED
 #    define FORT_RK_MULTICOMPONENT         RKMULTICOMPONENT
 #    define FORT_RK_STEP_SELECTION         RKSTEPSELECTION
@@ -71,6 +73,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
+#    define FORT_HTDDRELAX                 htddrelax
 #    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent
 #    define FORT_RK_STEP_SELECTION         rkstepselection
@@ -95,6 +98,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv_
 #    define FORT_SET_COMMON                setcommon_
 #    define FORT_COMPUTE_UGRADP            computeugradp_
+#    define FORT_HTDDRELAX                 htddrelax_
 #    define FORT_RK_MIXTURE_AVERAGED       rkmixtureaveraged_
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent_
 #    define FORT_RK_STEP_SELECTION         rkstepselection_
@@ -238,6 +242,16 @@ extern "C" {
                              const Real* wmac, ARLIM_P(wmac_lo),  ARLIM_P(wmac_hi),
 #endif
                              const int* lo, const int* hi, const Real* dx);
+
+    void FORT_HTDDRELAX(const int* lo, const int* hi,
+                        Real* s, ARLIM_P(slo),  ARLIM_P(shi),
+                        const int& sCompY, const int& sCompT,
+                        const int& sCompH, const int& sCompR,
+                        const Real* L, ARLIM_P(Llo),  ARLIM_P(Lhi),
+                        const Real* a, ARLIM_P(alo),  ARLIM_P(ahi),
+                        const Real* r, ARLIM_P(rlo),  ARLIM_P(rhi),
+                        const Real& dt, const Real& fac,
+                        const int& for_T0_H1, const int& res_only);
 
     void FORT_RK_MIXTURE_AVERAGED (
 	const int* domain_lo, const int* domain_hi,

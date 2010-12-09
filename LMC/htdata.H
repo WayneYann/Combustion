@@ -4,4 +4,7 @@
       integer Density, Temp, RhoH, Trac, FirstSpec, LastSpec
       common /scalID/ Density, Temp, RhoH, Trac, FirstSpec, LastSpec
 
-      save /htdata1/,/scalID/
+      REAL_T typVal_Density, typVal_Temp, typVal_RhoH, typVal_Trac, typVal_Y(maxspec)
+      common /typVals/ typVal_Density, typVal_Temp, typVal_RhoH, typVal_Trac, typVal_Y
+
+      save /htdata1/,/scalID/,/typVals/

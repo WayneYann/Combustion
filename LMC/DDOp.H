@@ -34,35 +34,19 @@ public:
                          const BCRec&         bcT,
                          const BCRec&         bcX);
 
-    void setGrowCells(MultiFab& T,
+    void setGrowCells(MultiFab& YT,
                       int       compT,
-                      MultiFab& Y,
                       int       compY) const;
 
     enum DD_ApForTorRH {DD_Temp, DD_RhoH};
 
-    void applyOp(MultiFab&         outH,
-                 int               dCompH,
-                 MultiFab&         outY,
-                 int               dCompY,
-                 const MultiFab&   inT,
-                 int               sCompT,
-                 const MultiFab&   inY,
-                 int               sCompY,
-                 PArray<MultiFab>& fluxH,
-                 int               dCompFH,
-                 PArray<MultiFab>& fluxY,
-                 int               dCompFY,
+    void applyOp(MultiFab&         outYH,
+                 const MultiFab&   inYT,
+                 PArray<MultiFab>& fluxYH,
                  DD_ApForTorRH     whichApp,
-                 int               level = 0) const;
-
-     void setRelax(MultiFab&         lambda,
-                   int               dCompH,
-                   const MultiFab&   inT,
-                   int               sCompT,
-                   const MultiFab&   inY,
-                   int               sCompY,
-                   int               level = 0) const;
+                 int               level = 0,
+                 bool              getAlpha = false,
+                 MultiFab*         alpha = 0) const;
 
     static void average(MultiFab&       mfC,
                         int             dCompC,

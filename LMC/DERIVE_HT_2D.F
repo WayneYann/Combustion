@@ -28,6 +28,7 @@ c
 c ::: This routine will computes rho - sum (rho*Y)
 c
 
+#include "cdwrk.H"
 #include "htdata.H"
 
       integer    lo(2), hi(2)
@@ -83,6 +84,7 @@ c
 c ::: This routine will computes sum (Ydot)
 c
 
+#include "cdwrk.H"
 #include "htdata.H"
 
       integer    lo(2), hi(2)
@@ -138,8 +140,8 @@ c
 c ::: This routine will derive rho*R*T
 c
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
       
       integer    lo(2), hi(2)
       integer    DIMDEC(e)

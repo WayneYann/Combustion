@@ -46,6 +46,7 @@ public:
     virtual void restart (Amr&          papa,
                           std::istream& is,
                           bool          bReadSpecial = false);
+
     //
     // Timestep estimation functions follow.
     //
@@ -441,86 +442,32 @@ protected:
     //
     void fill_mcdd_boundary_data(Real time);
 
-    void compute_mcdd_visc_terms(MultiFab&           vtermsY,
-                                 int                 dCompY,
-                                 MultiFab&           vtermsH,
-                                 int                 dCompH,
+    void compute_mcdd_visc_terms(MultiFab&           vtermsYH,
                                  Real                time,
                                  int                 nGrow,
                                  DDOp::DD_ApForTorRH whichApp,
-                                 PArray<MultiFab>*   flux = 0,
-                                 int                 dCompFY = 0,
-                                 int                 dCompFH = 0);
+                                 PArray<MultiFab>*   flux = 0);
 
-    void compute_mcdd_relax_parameter(MultiFab&       lambda,
-                                      int             dCompY,
-                                      int             dCompH,
-                                      const MultiFab& Y,
-                                      int             sCompY,
-                                      const MultiFab& T,
-                                      int             sCompT,
-                                      const MultiFab& Rho,
-                                      int             sCompR,
-                                      Real            dt,
-                                      int             mgLevel = 0);
-
-    void mcdd_average_state(const MultiFab& SF,
-                            int             sCompY,
-                            int             sCompH,
-                            const MultiFab& rhoF,
-                            int             sCompFR,
-                            MultiFab&       SC,
-                            int             dCompY,
-                            int             dCompH,
-                            const MultiFab& rhoC,
-                            int             sCompCR) const;
-
-    void mcdd_interp_state(const MultiFab& SC,
-                           int             sCompY,
-                           int             sCompH,
-                           const MultiFab& rhoC,
-                           int             sCompCR,
-                           MultiFab&       SF,
-                           int             dCompY,
-                           int             dCompH,
-                           const MultiFab& rhoF,
-                           int             sCompFR) const;
-
-    void mcdd_v_cycle(MultiFab&         S,
-                      int               sCompYS,
-                      int               sCompHS,
-                      const MultiFab&   Rhs,
-                      int               sCompYR,
-                      int               sCompHR,
-                      MultiFab&         T,
-                      int               sCompT,
-                      const MultiFab&   Rho,
-                      int               sCompR,
-                      PArray<MultiFab>& flux,
-                      int               dCompFY,
-                      int               dCompFH,
-                      Real              time,
-                      Real              dt,
-                      int               level = 0);
+    void mcdd_v_cycle(MultiFab&           S,
+                      const MultiFab&     Rhs,
+                      PArray<MultiFab>&   flux,
+                      Real                time,
+                      Real                dt,
+                      DDOp::DD_ApForTorRH whichApp,
+                      int                 level=0);
 
     void mcdd_update(Real time,
                      Real dt);
 
-    void mcdd_apply(MultiFab& AH, int dCompH, MultiFab& AY, int dCompY,
-                    const MultiFab& H, int sCompH, const MultiFab& Y, int sCompY,
-                    MultiFab& T, int sCompT, const MultiFab& Rho, int sCompR,
-                    PArray<MultiFab>& fluxH, int dCompFH,
-                    PArray<MultiFab>& fluxY, int dCompFY,
-                    Real time, Real dt, int level);
 
-    void mcdd_residual(MultiFab& ResH, int dCompH, MultiFab& ResY, int dCompY,
-                       const MultiFab& H, int sCompH, const MultiFab& Y, int sCompY,
-                       MultiFab& T, int sCompT, const MultiFab& Rho, int sCompR,
-                       const MultiFab& RhsH, int sCompRH,
-                       const MultiFab& RhsY, int sCompRY,
-                       PArray<MultiFab>& fluxH, int dCompFH,
-                       PArray<MultiFab>& fluxY, int dCompFY,
-                       Real time, Real dt, int level = 0);
+    void mcdd_apply(MultiFab&         outYH,
+                    const MultiFab&   inYT,
+                    PArray<MultiFab>& fluxYH,
+                    Real              time,
+                    DDOp::DD_ApForTorRH whichApp,
+                    int               level = 0,
+                    bool              getAlpha = false,
+                    MultiFab*         alpha = 0);
 
     void mcdd_diffuse_sync(Real dt);
     
@@ -603,6 +550,7 @@ protected:
     static int         mcdd_presmooth;
     static int         mcdd_postsmooth;
     static Real        mcdd_cfRelaxFactor;
+    static int         mcdd_verbose;
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
 };

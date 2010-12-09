@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.22 2010-05-11 21:16:39 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.23 2010-12-09 23:44:56 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1488,4 +1488,80 @@ c     Returns the number of fine cells fixed up
             enddo
          enddo
       enddo
+      end
+
+      subroutine FORT_HTDDRELAX(lo, hi, S, DIMS(S), yc, Tc, hc, rc,
+     &     L, DIMS(L), a, DIMS(a), R, DIMS(R), dt, fac, for_T0_H1, res_only)
+      implicit none
+#include "cdwrk.H"      
+      integer lo(SDIM), hi(SDIM), yc, Tc, hc, rc
+      integer DIMDEC(S)
+      integer DIMDEC(L)
+      integer DIMDEC(a)
+      integer DIMDEC(R)
+      REAL_T S(DIMV(s),0:*)
+      REAL_T L(DIMV(L),0:*)
+      REAL_T a(DIMV(a),0:*)
+      REAL_T R(DIMV(R),0:*)
+      REAL_T dt, fac
+      integer for_T0_H1, res_only
+      integer i, j, k, n
+      
+c     Helper function to compute Res = Rhs - A(S) = Rhs - rho.phi + dt.Lphi
+c     and then relax: phi = phi + Res/alpha
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               do n=0,Nspec-1
+                  L(i,j,k,n) = R(i,j,k,n) - S(i,j,k,rc)*S(i,j,k,yc+n) + dt*L(i,j,k,n)
+               enddo
+            enddo
+         enddo
+      enddo
+      if (for_T0_H1.eq.0) then
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  L(i,j,k,Nspec) = R(i,j,k,Nspec) - S(i,j,k,Tc) + dt*L(i,j,k,Nspec)/S(i,j,k,rc)
+               enddo
+            enddo
+         enddo
+      else
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  L(i,j,k,Nspec) = R(i,j,k,Nspec) - S(i,j,k,rc)*S(i,j,k,hc) + dt*L(i,j,k,Nspec)
+               enddo
+            enddo
+         enddo
+      endif
+
+      if (res_only.ne.1) then
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  do n=0,Nspec-1
+                     S(i,j,k,yc+n) = S(i,j,k,yc+n)  +  fac * L(i,j,k,n) / (1.d0 + dt*a(i,j,k,n))
+                  enddo
+               enddo
+            enddo
+         enddo
+         if (for_T0_H1.eq.0) then
+            do k=lo(3),hi(3)
+               do j=lo(2),hi(2)
+                  do i=lo(1),hi(1)
+                     S(i,j,k,Tc) = S(i,j,k,Tc)  +  fac * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec))
+                  enddo
+               enddo
+            enddo
+         else
+            do k=lo(3),hi(3)
+               do j=lo(2),hi(2)
+                  do i=lo(1),hi(1)
+                     S(i,j,k,hc) = S(i,j,k,hc)  +  fac * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec))
+                  enddo
+               enddo
+            enddo
+         endif
+      endif
       end

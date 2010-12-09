@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.16 2010-08-12 20:07:03 almgren Exp $
+// $Id: HT_setup.cpp,v 1.17 2010-12-09 23:44:56 marc Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -555,8 +555,8 @@ HeatTransfer::variableSetUp ()
     //
     // Set range of combination limit to include rho, rhoh and species, if they exist
     //
-    int combinLimit_lo = static_cast<int>(Density);
-    int combinLimit_hi = std::max(combinLimit_lo, RhoH);
+    //int combinLimit_lo = static_cast<int>(Density);
+    //int combinLimit_hi = std::max(combinLimit_lo, RhoH);
     set_scalar_bc(bc,phys_bc);
     desc_lst.setComponent(State_Type,Density,"density",bc,BndryFunc(FORT_DENFILL),
                           &cell_cons_interp);
@@ -1029,7 +1029,7 @@ HeatTransfer::ydotSetUp()
 			   StateDescriptor::Point,ngrow,nydot,
 			   &lincc_interp);
 	
-    const StateDescriptor& d_cell = desc_lst[State_Type];
+    //const StateDescriptor& d_cell = desc_lst[State_Type];
     const Array<std::string>& names   = getChemSolve().speciesNames();
 
     BCRec bc;	

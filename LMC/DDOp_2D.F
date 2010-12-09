@@ -5,50 +5,134 @@
 
 #define SDIM 2
 
-      subroutine FORT_DIFFFORCE(lo,hi,d,DIMS(d),
-     &                          X,DIMS(X),T,DIMS(T),dx,dir)
+      subroutine FORT_DDFLUX(lo, hi, delta, dir,
+     &                       fluxYH, DIMS(fluxYH),
+     &                       YTc, DIMS(YTc), cpe, DIMS(cpe),
+     &                       for_T0_H1, fillAlpha, alphaYH, DIMS(alphaYH) )
       implicit none
 #include "cdwrk.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(d)
-      integer DIMDEC(X)
-      integer DIMDEC(T)
-      REAL_T d(DIMV(d),1)
-      REAL_T X(DIMV(X),1)
-      REAL_T T(DIMV(X))
-      REAL_T dx(SDIM)
+      integer lo(SDIM), hi(SDIM)
+      integer DIMDEC(fluxYH)
+      integer DIMDEC(YTc)
+      integer DIMDEC(cpe)
+      integer for_T0_H1, fillAlpha
+      integer DIMDEC(alphaYH)
       integer dir
+      REAL_T  delta
+      REAL_T  fluxYH(DIMV(fluxYH),*)
+      REAL_T     YTc(DIMV(YTc)   ,*)
+      REAL_T     cpe(DIMV(cpe)   ,*)
+      REAL_T  alphaYH(DIMV(alphaYH),*)
 
-      REAL_T dxinv
-      integer i,j,n
+      integer i, j, n
+      REAL_T XM(maxspec), XP(maxspec), YM(maxspec), YP(maxspec), TM, TP, CP(maxspec)
+      REAL_T f(maxspec+1), alpha(maxspec+1)
 
-      dxinv = one / dx(dir+1)
+      if (dir.eq.0) then
 
-      if (dir .EQ. 0) then
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)+1
-               do n=1,Nspec
-                  d(i,j,n) = (X(i,j,n) - X(i-1,j,n))*dxinv
+         do j = lo(2), hi(2)
+            do n = 1,Nspec
+               YP(n)  = YTc(lo(1)-1,j,n)
+            enddo
+            CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
+            TP = YTc(lo(1)-1,j,Nspec+1)            
+            do i = lo(1), hi(1)+1
+               do n = 1,Nspec
+                  YM(n) = YP(n)
+                  YP(n) = YTc(i,j,n)
+                  XM(n) = XP(n)
+                  CP(n) = cpe(i,j,n)
                enddo
-               d(i,j,Nspec+1) = (T(i,j) - T(i-1,j))*dxinv
+               CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
+               TM = TP
+               TP = YTc(i,j,Nspec+1)
+
+               call DDFLUX_helper(XM,XP,YM,YP,TM,TP,CP,delta,for_T0_H1,fillAlpha,f,alpha)
+
+               do n = 1,Nspec+1
+                  fluxYH(i,j,n) = f(n)
+               enddo
+
+               if (for_T0_H1.eq.0) then
+                  do n=1,Nspec
+                     cpe(i,j,n) = CP(n)
+                  enddo
+               endif
+
+               if (fillAlpha.eq.1) then
+                  if (i.le.hi(1)) then
+                     do n=1,Nspec+1
+                        alphaYH(i,j,n) = alphaYH(i,j,n) + alpha(n)
+                     enddo
+                  endif
+                  if (i.gt.lo(1)) then
+                     do n=1,Nspec+1
+                        alphaYH(i-1,j,n) = alphaYH(i-1,j,n) + alpha(n)
+                     enddo
+                  endif
+               endif
+
             enddo
          enddo
-      else
-         do i=lo(1),hi(1)
-            do j=lo(2),hi(2)+1
-               do n=1,Nspec
-                  d(i,j,n) = (X(i,j,n) - X(i,j-1,n))*dxinv
+      else if (dir.eq.1) then
+         do i = lo(1), hi(1)
+            do n = 1,Nspec
+               YP(n)  = YTc(i,lo(2)-1,n)
+            enddo
+            CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
+            TP = YTc(i,lo(2)-1,Nspec+1)            
+            do j = lo(2), hi(2)+1
+               do n = 1,Nspec
+                  YM(n) = YP(n)
+                  YP(n) = YTc(i,j,n)
+                  XM(n) = XP(n)
+                  CP(n) = cpe(i,j,n)
                enddo
-               d(i,j,Nspec+1) = (T(i,j) - T(i,j-1))*dxinv
+               CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
+               TM = TP
+               TP = YTc(i,j,Nspec+1)
+               
+               call DDFLUX_helper(XM,XP,YM,YP,TM,TP,CP,delta,for_T0_H1,fillAlpha,f,alpha)
+
+               do n = 1,Nspec+1
+                  fluxYH(i,j,n) = f(n)
+               enddo
+
+               if (for_T0_H1.eq.0) then
+                  do n=1,Nspec
+                     cpe(i,j,n) = CP(n)
+                  enddo
+               endif
+
+               if (fillAlpha.eq.1) then
+                  if (j.le.hi(2)) then
+                     do n=1,Nspec+1
+                        alphaYH(i,j,n) = alphaYH(i,j,n) + alpha(n)
+                     enddo
+                  endif
+                  if (j.gt.lo(2)) then
+                     do n=1,Nspec+1
+                        alphaYH(i,j-1,n) = alphaYH(i,j-1,n) + alpha(n)
+                     enddo
+                  endif
+               endif
+
             enddo
          enddo
-      end if
+
+c         print *,'for_T0_H1:',for_T0_H1
+c         open(unit=21,file="junk")
+c         do j=115,125
+c            write(21,'(i4,20g13.5)') j,(j+0.5d0)*delta*100,(fluxYH(15,j,n),n=1,Nspec+1)
+c         enddo
+c         stop
+
+      endif
       end
 
       subroutine FORT_DDC2E(lo, hi, 
-     &                      DIMS(cfab), cfab,
-     &                      DIMS(efab), efab, nc, dir)
+     &                      cfab, DIMS(cfab),
+     &                      efab, DIMS(efab), nc, dir)
       implicit none
       integer lo(SDIM), hi(SDIM), nc, dir
       integer DIMDEC(cfab)
@@ -58,267 +142,81 @@
 
       integer i,j,n
 
-c     Here, the cc data is assumed to be computable over the box (lo,hi) 
-c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       if (dir .EQ. 0) then
-         do n = 1,nc
-            do j = lo(2)+1, hi(2)-1
-               do i = lo(1)+1, hi(1)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)+1
+               do n = 1,nc
                   efab(i,j,n) = half*(cfab(i-1,j,n) + cfab(i,j,n))
                enddo
             enddo
          enddo
       else
-         do n = 1,nc
-            do i = lo(1)+1, hi(1)-1
-               do j = lo(2)+1, hi(2)
+         do i = lo(1), hi(1)
+            do j = lo(2), hi(2)+1
+               do n = 1,nc
                   efab(i,j,n) = half*(cfab(i,j-1,n) + cfab(i,j,n))
                enddo
             enddo
          enddo
       end if
       end
-
-      subroutine FORT_FLUX(lo, hi, fluxH, DIMS(fluxH),
-     &                     fluxY, DIMS(fluxY), d, DIMS(d),
-     &                     Ye, DIMS(Ye), Te, DIMS(Te), He, DIMS(He),
-     &                     dir, add_enth_flux)
-      implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      integer lo(SDIM), hi(SDIM), dir
-      integer DIMDEC(fluxH)
-      integer DIMDEC(fluxY)
-      integer DIMDEC(d)
-      integer DIMDEC(Ye)
-      integer DIMDEC(Te)
-      integer DIMDEC(He)
-      integer DIMDEC(Y)
-      integer DIMDEC(T)
-      REAL_T  fluxH(DIMV(fluxH))
-      REAL_T  fluxY(DIMV(fluxY),1)
-      REAL_T      d(DIMV(d)    ,1)
-      REAL_T     Ye(DIMV(Ye)   ,1)
-      REAL_T     Te(DIMV(Te))
-      REAL_T     He(DIMV(He)   ,1)
-      integer add_enth_flux
-
-      integer i,j,lo1,lo2,hi1,hi2,K,L,n
-      REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec)
-      REAL_T rhoD, rhoDt(maxspec*maxspec), rhoTD(maxspec), PTC
-      REAL_T sum_rhoYV, sum_rhoHYV, sum_rhoThetaD, P1atm, RU, RUC, sum
-
-      rhoD(K,L) = rhoDt( (L-1)*Nspec + K )
-      
-      lo1 = lo(1)
-      lo2 = lo(2)
-      if (dir .EQ. 0) then
-         hi1 = hi(1) + 1
-         hi2 = hi(2)
-      else 
-         hi1 = hi(1)
-         hi2 = hi(2) + 1
-      end if
-      
-      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      
-      do j = lo2, hi2
-         do i = lo1, hi1
-
-c            do K = 1,Nspec
-c               Yt(K) = Ye(i,j,K)
-c            enddo
-            sum = 0.d0
-            do n=1,Nspec
-               Yt(n) = MAX(Ye(i,j,n),0.d0)
-               sum = sum+Yt(n)
-            end do
-            if (iN2 .gt. 0) then
-               Yt(iN2) = Yt(iN2)+one-sum
-            endif
-
-            CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
-            CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL CKMMWY(Yt, IWRK(ckbr), RWRK(ckbr), WW)
-            CALL EGSPAR(Te(i,j),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-            CALL EGSLTDR5(Te(i,j),Yt,WW,RWRK(egbr),IWRK(egbi),
-     &                    PTC,rhoTD,rhoDt)
             
-c     Note: scalings get cgs quantities from EGLib to MKS (assume He,d come in MKS)
-            sum_rhoYV     = zero
-            sum_rhoHYV    = zero
-            sum_rhoThetaD = zero
-
-            do K = 1,Nspec
-
-               sum_rhoYV = - Ye(i,j,K)*rhoTD(K)*d(i,j,Nspec+1)/Te(i,j)
-               do L= 1,Nspec
-                  sum_rhoYV = sum_rhoYV - rhoD(K,L)*d(i,j,L)
-               enddo
-               fluxY(i,j,K) = sum_rhoYV*1.d-1
-
-               sum_rhoHYV = sum_rhoHYV + He(i,j,K)*fluxY(i,j,K)
-               sum_rhoThetaD = sum_rhoThetaD + rhoTD(K)*d(i,j,K)
-
-            enddo
-
-            if (add_enth_flux.eq.1) then
-               fluxH(i,j) = sum_rhoHYV
-            else
-               fluxH(i,j) = 0.d0
-            endif
-
-c           Now add all the other terms
-            fluxH(i,j) = - (PTC*1.d-5)*d(i,j,Nspec+1)
-     &           - (RU*Te(i,j)/WW)*(sum_rhoThetaD*1.d-1)
-
-         enddo
-      enddo
-      
-      end
-      
-      subroutine FORT_INCRDIV(lo, hi, div, DIMS(div), V, DIMS(V),
-     &                        dir, nc)
+      subroutine FORT_DDETC(lo, hi, div, DIMS(div), V, DIMS(V),
+     &                      a, dir, nc, d0a1);
       implicit none
 #include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM), dir, nc
+      integer lo(SDIM), hi(SDIM), dir, nc, d0a1
       integer DIMDEC(div)
       integer DIMDEC(V)
-      REAL_T div(DIMV(div) ,1)
-      REAL_T   V(DIMV(V)   ,1)
+      REAL_T div(DIMV(div) ,*)
+      REAL_T   V(DIMV(V)   ,*)
+      REAL_T a
 
       integer i,j,n
 
-c     Note: We're incrementing with div(dx.Area.Flux), so the dx's
-c     cancel, and we assume V is extensive (ie. Flux.Area)
-      if (dir .EQ. 0) then
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-               do n= 1,nc
-                  div(i,j,n) = div(i,j,n)
-     &                 + (V(i+1,j,n) - V(i,j,n))
-               enddo
-            enddo               
-         enddo
-      else 
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-               do n= 1,nc
-                  div(i,j,n) = div(i,j,n)
-     &                 + (V(i,j+1,n) - V(i,j,n))
-               enddo
-            enddo               
-         enddo
-      end if
+      if (d0a1.eq.0) then
+         if (dir .EQ. 0) then
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  do n= 1,nc
+                     div(i,j,n) = div(i,j,n)
+     &                    +a*(V(i+1,j,n) - V(i,j,n))
+                  enddo
+               enddo               
+            enddo
+         else 
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  do n= 1,nc
+                     div(i,j,n) = div(i,j,n)
+     &                    + a*(V(i,j+1,n) - V(i,j,n))
+                  enddo
+               enddo               
+            enddo
+         endif
+      else
+         if (dir .EQ. 0) then
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  do n= 1,nc
+                     div(i,j,n) = div(i,j,n)
+     &                    + a*half*(V(i+1,j,n) + V(i,j,n))
+                  enddo
+               enddo               
+            enddo
+         else 
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  do n= 1,nc
+                     div(i,j,n) = div(i,j,n)
+     &                    + a*half*(V(i,j+1,n) + V(i,j,n))
+                  enddo
+               enddo               
+            enddo
+         endif
+      endif
       end
 
-
-      subroutine FORT_CPSCALE(lo,hi,lambda,DIMS(lambda),
-     &                        Y,DIMS(Y),T,DIMS(T))
-      implicit none
-#include "cdwrk.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(lambda)
-      integer DIMDEC(Y)
-      integer DIMDEC(T)
-      REAL_T lambda(DIMV(lambda))
-      REAL_T Y(DIMV(Y),1)
-      REAL_T T(DIMV(T))
-
-      REAL_T YT(maxspec),CPMIX
-      integer i,j,K
-      
-      do j = lo(2), hi(2)
-         do i = lo(1), hi(1)
-
-            do K = 1,Nspec
-               Yt(K) = Y(i,j,K)
-            enddo
-
-            CALL CKCPBS(T(i,j),Yt,IWRK(ckbi),RWRK(ckbr),CPMIX)
-            lambda(i,j) = lambda(i,j)/(CPMIX*1.d-4)
-            
-         enddo
-      enddo
-      end
-
-
-      subroutine FORT_THERM(lo, hi, lambda, DIMS(lambda),
-     &                     Ye, DIMS(Ye), Te, DIMS(Te), dir)
-      implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM), dir
-      integer DIMDEC(Ye)
-      integer DIMDEC(Te)
-      integer DIMDEC(Y)
-      integer DIMDEC(T)
-      integer DIMDEC(lambda)
-      REAL_T     Ye(DIMV(Ye)   ,1)
-      REAL_T     Te(DIMV(Te))
-      REAL_T     lambda(DIMV(lambda)   )
-
-      integer i,j,lo1,lo2,hi1,hi2,K,L
-      REAL_T Yt(maxspec), WW, CPMS(maxspec), X(maxspec), TC
-
-c     Note: scaling is to get D1 units of g/(s.cm^2) into MKS
-      
-      lo1 = lo(1)
-      lo2 = lo(2)
-      if (dir .EQ. 0) then
-         hi1 = hi(1) + 1
-         hi2 = hi(2)
-         
-         do j = lo2, hi2
-            do i = lo1, hi1
-               
-               do K = 1,Nspec
-                  Yt(K) = Ye(i,j,K)
-               enddo
-               
-               CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
-               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               CALL EGSPAR(Te(i,j),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-               CALL EGSL4(Te(i,j),Yt,RWRK(egbr),IWRK(egbi),TC)
-               
-               if(i-1.ge.lo(1))then
-                  lambda(i-1,j) = lambda(i-1,j)+TC*1.d-5
-               endif
-               if(i.le.hi(1))then
-                  lambda(i,j) = lambda(i,j)+TC*1.d-5
-               endif
-
-            enddo
-         enddo
-
-      else 
-
-         hi1 = hi(1)
-         hi2 = hi(2) + 1
-         do j = lo2, hi2
-            do i = lo1, hi1
-
-               do K = 1,Nspec
-                  Yt(K) = Ye(i,j,K)
-               enddo
-
-               CALL CKCPMS(Te(i,j),IWRK(ckbi),RWRK(ckbr),CPMS)
-               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               CALL EGSPAR(Te(i,j),X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-               CALL EGSL4(Te(i,j),Yt,RWRK(egbr),IWRK(egbi),TC)
-            
-               if(j-1.ge.lo(2))then
-                  lambda(i,j-1) = lambda(i,j-1)+TC*1.d-5
-               endif
-               if(j.le.hi(2))then
-                  lambda(i,j) = lambda(i,j)+TC*1.d-5
-               endif
-
-            enddo
-         enddo
-      end if
-      
-      end
 
       subroutine FORT_CRSNCCBND(lo, hi, fine, DIMS(fine),
      &                          crse, DIMS(crse), nc, face, ratio)
