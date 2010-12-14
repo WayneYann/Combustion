@@ -184,7 +184,7 @@ c     V_new = MIN(V_new,V_in+dVmax)
       prodID = prod + 1
       end
 
-   !
+      !
       ! This is a version of INITDATA in which the velocities,
       ! the temperature & the mass fractions are passed in.
       !
@@ -284,7 +284,6 @@ c ::: -----------------------------------------------------------
       integer lo(2), hi(2), n
       integer ifreq,zone,i,iH2,getZone
       character*(maxspnml) spName
-      REAL_T pmfVals(maxspec+3), x
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, flametracval, probtype,
      &			max_temp_lev, max_vort_lev, splitx, splity, traceSpecVal,
@@ -477,10 +476,6 @@ c     Load domain dimensions into common, and set up boundary functions
 #endif
          write(6,control)
       end if
-
-c     Set typical values based on pmf 
-      x = (domnlo(2) - y_offset)*100.d0
-      call pmf(x,x,pmfVals,n)      
 
       end
 
@@ -990,6 +985,24 @@ c     Cut off initial pmf at R_hot so that air along wall
      &                     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
      &                     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
      &                     scal(ARG_L1(state),ARG_L2(state),firstSpec),DIMS(state))
+
+c     Update typical values
+      do j = lo(2), hi(2)
+         do i = lo(1), hi(1)
+            do n = 0,Nspec-1
+               typVal_Y(n+1) = MAX(typVal_Y(n+1),scal(i,j,firstSpec+n)) 
+            enddo
+            typVal_Density = MAX(scal(i,j,Density),typVal_Density)
+            typVal_Temp    = MAX(scal(i,j,Temp),   typVal_Temp)
+            typVal_Trac    = MAX(scal(i,j,Trac),   typVal_Trac)
+            typVal_RhoH = MAX(ABS(scal(i,j,RhoH)*scal(i,j,Density)),typVal_RhoH)
+            do n = 1,BL_SPACEDIM
+               typVal_Vel  = MAX(ABS(vel(i,j,n)),typVal_Vel)
+            enddo
+         enddo
+      enddo
+
+
       do j = lo(2), hi(2)
          do i = lo(1), hi(1)
             do n = 0,Nspec-1
