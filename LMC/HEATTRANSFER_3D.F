@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.23 2010-12-09 23:44:56 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.24 2010-12-14 22:36:33 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1491,7 +1491,7 @@ c     Returns the number of fine cells fixed up
       end
 
       subroutine FORT_HTDDRELAX(lo, hi, S, DIMS(S), yc, Tc, hc, rc,
-     &     L, DIMS(L), a, DIMS(a), R, DIMS(R), dt, fac, for_T0_H1, res_only)
+     &     L, DIMS(L), a, DIMS(a), R, DIMS(R), dt, fac, maxCorr, for_T0_H1, res_only)
       implicit none
 #include "cdwrk.H"      
       integer lo(SDIM), hi(SDIM), yc, Tc, hc, rc
@@ -1503,12 +1503,18 @@ c     Returns the number of fine cells fixed up
       REAL_T L(DIMV(L),0:*)
       REAL_T a(DIMV(a),0:*)
       REAL_T R(DIMV(R),0:*)
-      REAL_T dt, fac
+      REAL_T dt, fac, maxCorr(0:*)
       integer for_T0_H1, res_only
       integer i, j, k, n
       
 c     Helper function to compute Res = Rhs - A(S) = Rhs - rho.phi + dt.Lphi
 c     and then relax: phi = phi + Res/alpha
+
+
+      do n=0,Nspec
+         maxCorr(n) = 0.d0
+      enddo
+
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1541,27 +1547,21 @@ c     and then relax: phi = phi + Res/alpha
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
                   do n=0,Nspec-1
-                     S(i,j,k,yc+n) = S(i,j,k,yc+n)  +  fac * L(i,j,k,n) / (1.d0 + dt*a(i,j,k,n))
+                     corr = fac * L(i,j,k,n) / (1.d0 + dt*a(i,j,k,n))
+                     maxCorr(n) = MAX(maxCorr(n),ABS(corr))
+                     S(i,j,k,yc+n) = S(i,j,k,yc+n)  +  corr
                   enddo
                enddo
             enddo
          enddo
-         if (for_T0_H1.eq.0) then
-            do k=lo(3),hi(3)
-               do j=lo(2),hi(2)
-                  do i=lo(1),hi(1)
-                     S(i,j,k,Tc) = S(i,j,k,Tc)  +  fac * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec))
-                  enddo
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  corr = fac * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec))
+                  maxCorr(Nspec) = MAX(maxCorr(n),ABS(corr))
+                  S(i,j,k,Tc) = S(i,j,k,Tc)  +  corr
                enddo
             enddo
-         else
-            do k=lo(3),hi(3)
-               do j=lo(2),hi(2)
-                  do i=lo(1),hi(1)
-                     S(i,j,k,hc) = S(i,j,k,hc)  +  fac * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec))
-                  enddo
-               enddo
-            enddo
-         endif
+         enddo
       endif
       end

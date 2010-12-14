@@ -16,6 +16,7 @@ using std::endl;
 //       registers can be anything, but the ratio between adjacent DD operators
 //       generated for multigrid will always be two.
 const IntVect MGIV = IntVect(D_DECL(2,2,2));
+DDOp::DD_Model DDOp::transport_model = DDOp::DD_Model_NumModels; // ...an invalid model choice, BTW
 
 DDOp::DDOp (const ChemDriver& ckd)
     : ckdriver(ckd), coarser(0)
@@ -82,6 +83,14 @@ DDOp::define (const BoxArray& _grids,
     geom.GetVolume(volume,grids,gGrow);
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
         geom.GetFaceArea(area[dir],grids,dir,gGrow);
+
+    // FIXME: This should be passed in from the ctr
+    transport_model = DD_Model_Full;
+
+    int model_DD0_MA1 = (transport_model==DD_Model_Full ? 0 : 1);
+    int nComp = FORT_DDNCOEFS(model_DD0_MA1);
+    int nGrow = 1;
+    coefs.define(grids,nComp,nGrow,Fab_allocate);
 
     // Generate coarser one (ratio = MGIV), if possible
     if (can_coarsen(grids))
@@ -322,18 +331,42 @@ DDOp::setGrowCells(MultiFab& YT,
 }
 
 void
+DDOp::setCoefficients(const MFIter&    mfi,
+                      const FArrayBox& inYT,
+                      const FArrayBox& cpi)
+{
+    int nGrow = 1;
+    int Nspec = ckdriver.numSpecies();
+    int sCompY = 0;
+    int sCompT = Nspec;
+    BL_ASSERT(inYT.nComp()>=Nspec+1);
+
+    const Box gbox = Box(grids[mfi.index()]).grow(nGrow);
+    BL_ASSERT(inYT.box().contains(gbox));
+    BL_ASSERT(cpi.box().contains(gbox));
+
+    int Full0_Mix1 = (transport_model == DD_Model_Full ? 0 : 1);
+    FORT_DDCOEFS(gbox.loVect(), gbox.hiVect(),
+                 coefs[mfi].dataPtr(), ARLIM(coefs[mfi].loVect()), ARLIM(coefs[mfi].hiVect()),
+                 inYT.dataPtr(), ARLIM(inYT.loVect()),  ARLIM(inYT.hiVect()),
+                 cpi.dataPtr(), ARLIM(cpi.loVect()),  ARLIM(cpi.hiVect()),
+                 Full0_Mix1);
+}
+
+void
 DDOp::applyOp(MultiFab&         outYH,
               const MultiFab&   inYT,
               PArray<MultiFab>& fluxYH,
               DD_ApForTorRH     whichApp,
               int               level,
               bool              getAlpha,
-              MultiFab*         alpha) const
+              MultiFab*         alpha,
+              bool              updateCoefs)
 {
     BL_ASSERT(level >= 0);
     if (level > 0)
     {
-        coarser->applyOp(outYH,inYT,fluxYH,whichApp,level-1,getAlpha,alpha);
+        coarser->applyOp(outYH,inYT,fluxYH,whichApp,level-1,getAlpha,alpha,updateCoefs);
         return;
     }
 
@@ -352,11 +385,6 @@ DDOp::applyOp(MultiFab&         outYH,
     int sCompY = 0;
     int sCompT = Nspec;
     setGrowCells(const_cast<MultiFab&>(inYT),sCompT,sCompY);
-    MultiFab cpc(grids,Nspec,1);
-    for (MFIter mfi(cpc); mfi.isValid(); ++mfi) {
-        const Box gbox = Box(mfi.validbox()).grow(nGrow);
-        ckdriver.getCpGivenT(cpc[mfi],inYT[mfi],gbox,sCompT,0);
-    }
 
     // Initialize output
     outYH.setVal(0,0,nc);
@@ -371,102 +399,131 @@ DDOp::applyOp(MultiFab&         outYH,
     }
 
     int for_T0_H1 = (whichApp==DD_Temp ? 0 : 1);
+    int Full0_Mix1 = (transport_model == DD_Model_Full ? 0 : 1);
 
-    FArrayBox cpe, aFcpDT;
+    FArrayBox FcpDTc, CPic, Xc;
+    FArrayBox Hic(Box(iv,iv),1);
+    FArrayBox FcpDTe(Box(iv,iv),1);
     const Real* dx = Tbd.getGeom().CellSize();
     const Box& domain = Tbd.getDomain();
     for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
     {
-        FArrayBox& outYHf = outYH[mfi];
-        const FArrayBox& YTf = inYT[mfi];
-        const FArrayBox& cpf = cpc[mfi];
+        FArrayBox& outYHc = outYH[mfi];
+        const FArrayBox& YTc = inYT[mfi];
+        const FArrayBox& c = coefs[mfi];
         const Box& box = mfi.validbox();
-        aFcpDT.resize(box,1);
-        aFcpDT.setVal(0);
+
+        // Actually only need this if for_T0_H1 == 1
+        FcpDTc.resize(box,1);
+        FcpDTc.setVal(0);
+
+        Box gbox = Box(box).grow(nGrow);
+        CPic.resize(gbox,Nspec);
+        ckdriver.getCpGivenT(CPic,YTc,gbox,sCompT,0);
+
+        // Actually only need this if for_T0_H1 == 1
+        Hic.resize(gbox,Nspec);
+        ckdriver.getHGivenT(Hic,YTc,gbox,Nspec,0);
+
+        Xc.resize(gbox,Nspec);
+        ckdriver.massFracToMoleFrac(Xc,YTc,gbox,sCompY,0);
+
+        if (updateCoefs) {
+            setCoefficients(mfi,YTc,CPic);
+        }
 
         int fillAlpha = getAlpha;
-        FArrayBox& alf = (fillAlpha ? (*alpha)[mfi] : dum);
+        FArrayBox& alfc = (fillAlpha ? (*alpha)[mfi] : dum);
         
+        int nCompCoef = coefs.nComp();
         for (int dir=0; dir<BL_SPACEDIM; ++dir) {
             const Box ebox = BoxLib::surroundingNodes(box,dir);
-            cpe.resize(ebox,Nspec);
-            FArrayBox& f = fluxYH[dir][mfi];
 
-            FORT_DDC2E(box.loVect(),box.hiVect(),
-                       cpf.dataPtr(),ARLIM(cpf.loVect()),ARLIM(cpf.hiVect()),
-                       cpe.dataPtr(),ARLIM(cpe.loVect()),ARLIM(cpe.hiVect()),
-                       &Nspec, &dir);
-
-            // Note, this thrashes cpe if for T (contains Fn.cpn.gradT after this call)
+            // Actually only need this if for_T0_H1 == 1
+            FcpDTe.resize(ebox,Nspec);
+            
+            // Returns fluxes (and Fn.cpn.gradT if for T)
+            FArrayBox& fe = fluxYH[dir][mfi];
             Real thisDx = dx[dir];
-            FORT_DDFLUX(box.loVect(), box.hiVect(), &thisDx, &dir,
-                        f.dataPtr(), ARLIM(f.loVect()), ARLIM(f.hiVect()),
-                        YTf.dataPtr(), ARLIM(YTf.loVect()),  ARLIM(YTf.hiVect()),
-                        cpe.dataPtr(), ARLIM(cpe.loVect()),  ARLIM(cpe.hiVect()),
-                        &for_T0_H1, &fillAlpha, alf.dataPtr(), ARLIM(alf.loVect()), ARLIM(alf.hiVect()));
 
+            FORT_DDFLUX(box.loVect(), box.hiVect(), &thisDx, &dir,
+                        fe.dataPtr(), ARLIM(fe.loVect()), ARLIM(fe.hiVect()),
+                        FcpDTe.dataPtr(), ARLIM(FcpDTe.loVect()),  ARLIM(FcpDTe.hiVect()),
+                        YTc.dataPtr(), ARLIM(YTc.loVect()),  ARLIM(YTc.hiVect()),
+                        Xc.dataPtr(), ARLIM(Xc.loVect()),  ARLIM(Xc.hiVect()),
+                        c.dataPtr(), ARLIM(c.loVect()),  ARLIM(c.hiVect()),
+                        CPic.dataPtr(), ARLIM(CPic.loVect()),  ARLIM(CPic.hiVect()),
+                        &for_T0_H1, Hic.dataPtr(), ARLIM(Hic.loVect()), ARLIM(Hic.hiVect()),
+                        &fillAlpha, alfc.dataPtr(), ARLIM(alfc.loVect()), ARLIM(alfc.hiVect()),
+                        Full0_Mix1);
+
+            /*
             // FIXME: Hard code grad(T) and fluxes to zero on in/out
             {
-                Box lo_ebox = BoxLib::bdryLo(domain,dir) & f.box();
+                Box lo_ebox = BoxLib::bdryLo(domain,dir) & fe.box();
                 if (lo_ebox.ok()) {
-                    f.setVal(0,lo_ebox,0,Nspec+1);
-                    lo_ebox &= cpe.box();
+                    fe.setVal(0,lo_ebox,0,Nspec+1);
+                    lo_ebox &= FcpDTe.box();
                     if (lo_ebox.ok()) {
-                        cpe.setVal(0,lo_ebox,0,Nspec+1);
+                        FcpDTe.setVal(0,lo_ebox,0,Nspec+1);
                     }
                 }            
                 
-                Box hi_ebox = BoxLib::bdryHi(domain,dir) & f.box();
+                Box hi_ebox = BoxLib::bdryHi(domain,dir) & fe.box();
                 if (hi_ebox.ok()) {
-                    f.setVal(0,hi_ebox,0,Nspec+1);
-                    hi_ebox &= cpe.box();
+                    fe.setVal(0,hi_ebox,0,Nspec+1);
+                    hi_ebox &= FcpDTe.box();
                     if (hi_ebox.ok()) {
-                        cpe.setVal(0,hi_ebox,0,Nspec+1);
+                        FcpDTe.setVal(0,hi_ebox,0,Nspec+1);
                     }
                 }        
             }    
+            */
 
-            // If for T, increment running sum on cell centers with -avg(F.cp.gT) across faces (in cpe).
+            // If for T, increment running sum on cell centers with -avg(F.cp.gT) across faces (in FcpDTe).
             // If for H, q was incremented with +He.Fe inside DDFLUX, nothing more to do
             if (for_T0_H1 == 0) {                
                 const int diff0_avg1 = 1;
                 const Real a = -1;
                 const int oc = 1;
-                for (int n=0; n<Nspec; ++n) {
-                    FORT_DDETC(box.loVect(),box.hiVect(),
-                               aFcpDT.dataPtr(),ARLIM(aFcpDT.loVect()),ARLIM(aFcpDT.hiVect()),
-                               cpe.dataPtr(n), ARLIM(cpe.loVect()), ARLIM(cpe.hiVect()),
-                               &a, &dir, &oc, &diff0_avg1);
-                }
+                FORT_DDETC(box.loVect(),box.hiVect(),
+                           FcpDTc.dataPtr(),ARLIM(FcpDTc.loVect()),ARLIM(FcpDTc.hiVect()),
+                           FcpDTe.dataPtr(),ARLIM(FcpDTe.loVect()),ARLIM(FcpDTe.hiVect()),
+                           &a, &dir, &oc, &diff0_avg1);
             }
             
             // Multiply fluxes by edge areas
             for (int n=0; n<nc; ++n) {
-                f.mult(area[dir][mfi],0,n,1);
+                fe.mult(area[dir][mfi],0,n,1);
             }
 
             // Now form -Div(F.Area) add to running total
             const int diff0_avg1 = 0;
             const Real a = -1.;
             FORT_DDETC(box.loVect(),box.hiVect(),
-                       outYHf.dataPtr(),ARLIM(outYHf.loVect()),ARLIM(outYHf.hiVect()),
-                       f.dataPtr(),ARLIM(f.loVect()),ARLIM(f.hiVect()), &a, &dir, &nc, &diff0_avg1);            
+                       outYHc.dataPtr(),ARLIM(outYHc.loVect()),ARLIM(outYHc.hiVect()),
+                       fe.dataPtr(),ARLIM(fe.loVect()),ARLIM(fe.hiVect()), &a, &dir, &nc, &diff0_avg1);            
         }
         // Form -(1/Vol) Div(F.Area)
         for (int n=0; n<nc; ++n) {
-            outYHf.divide(volume[mfi],0,n,1);
+            outYHc.divide(volume[mfi],0,n,1);
         }
 
         // For rho.DT/Dt, add [-avg(F.cp.DT)] to total and scale by 1/cpb
         if (for_T0_H1 == 0) {
-            outYHf.plus(aFcpDT,0,Nspec,1);
-            cpc[mfi].invert(1);
-            outYHf.mult(cpc[mfi],0,Nspec,1);
-#if 0
-            if (getAlpha) {
-                alf.mult(cpc[mfi],0,Nspec,1);
+            outYHc.plus(FcpDTc,0,Nspec,1);
+
+            // Build 1/cpb (CPic <- CPic.Y, CPic_0=sum(CPic_n)
+            CPic.mult(YTc,0,0,Nspec);
+            for (int n=1; n<Nspec; ++n) {
+                CPic.plus(CPic,n,0,1);
             }
-#endif
+            CPic.invert(1);
+
+            outYHc.mult(CPic,0,Nspec,1);
+            if (getAlpha) {
+                alfc.mult(CPic,0,Nspec,1);
+            }
         }
     }
 }

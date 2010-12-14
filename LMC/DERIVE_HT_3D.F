@@ -28,7 +28,6 @@ c
 c ::: This routine will computes rho - sum (rho*Y)
 c
 
-#include "cdwrk.H"
 #include "htdata.H"
 
       integer    lo(SDIM), hi(SDIM)
@@ -88,7 +87,6 @@ c
 c ::: This routine will computes sum (Ydot)
 c
 
-#include "cdwrk.H"
 #include "htdata.H"
 
       integer    lo(SDIM), hi(SDIM)
@@ -148,8 +146,8 @@ c
 c ::: This routine will derive rho*R*T
 c
 
-#include "cdwrk.H"
 #include "htdata.H"
+#include "cdwrk.H"
       
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)
@@ -311,7 +309,7 @@ c
 c
 c ::: This routine will computes the forcing term
 c
-#include "cdwrk.H"
+
 #include "htdata.H"
 
       integer    lo(SDIM), hi(SDIM)
@@ -463,7 +461,6 @@ c
 c ::: This routine will computes the forcing term
 c
 
-#include "cdwrk.H"
 #include "htdata.H"
 
       integer    lo(SDIM), hi(SDIM)
@@ -601,7 +598,6 @@ c
 c ::: This routine will computes the forcing term
 c
 
-#include "cdwrk.H"
 #include "htdata.H"
 
       integer    lo(SDIM), hi(SDIM)
@@ -739,7 +735,6 @@ c
 c ::: This routine will computes the forcing term
 c
 
-#include "cdwrk.H"
 #include "htdata.H"
 
       integer    lo(SDIM), hi(SDIM)

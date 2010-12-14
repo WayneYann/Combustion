@@ -38,7 +38,8 @@ public:
                       int       compT,
                       int       compY) const;
 
-    enum DD_ApForTorRH {DD_Temp, DD_RhoH};
+    enum DD_ApForTorRH {DD_Temp=0, DD_RhoH, DD_NumAppTypes};
+    enum DD_Model {DD_Model_Full=0, DD_Model_MixAvg, DD_Model_NumModels};
 
     void applyOp(MultiFab&         outYH,
                  const MultiFab&   inYT,
@@ -46,8 +47,13 @@ public:
                  DD_ApForTorRH     whichApp,
                  int               level = 0,
                  bool              getAlpha = false,
-                 MultiFab*         alpha = 0) const;
+                 MultiFab*         alpha = 0,
+                 bool              updateCoefs = true);
 
+    void setCoefficients(const MFIter&    mfi,
+                         const FArrayBox& inYT,
+                         const FArrayBox& cpi);
+    
     static void average(MultiFab&       mfC,
                         int             dCompC,
                         const MultiFab& mfF,
@@ -81,7 +87,9 @@ private:
     IntVect cfRatio;
     MultiFab volume;
     MultiFab area[BL_SPACEDIM];
+    MultiFab coefs;
     DDOp* coarser;
+    static DD_Model transport_model;
 };
 
 inline

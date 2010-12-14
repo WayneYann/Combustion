@@ -470,6 +470,8 @@ protected:
                     MultiFab*         alpha = 0);
 
     void mcdd_diffuse_sync(Real dt);
+
+    void set_typical_values();
     
 protected:
 
@@ -553,6 +555,7 @@ protected:
     static int         mcdd_verbose;
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
+    static Array<Real> typical_values;
 };
 
 #endif /*_HeatTransfer_H_*/

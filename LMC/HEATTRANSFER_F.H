@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.6 2010-12-09 23:44:56 marc Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.7 2010-12-14 22:36:33 marc Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -27,6 +27,7 @@
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent
 #    define FORT_RK_STEP_SELECTION         rkstepselection
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
+#    define FORT_GETTYPICALVALS            gettypvals
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -53,6 +54,7 @@
 #    define FORT_RK_MULTICOMPONENT         RKMULTICOMPONENT
 #    define FORT_RK_STEP_SELECTION         RKSTEPSELECTION
 #    define FORT_CONSERVATIVE_T_FLOOR      CONSTFLOOR
+#    define FORT_GETTYPICALVALS            GETTYPVALS
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -78,6 +80,7 @@
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent
 #    define FORT_RK_STEP_SELECTION         rkstepselection
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
+#    define FORT_GETTYPICALVALS            gettypvals
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -103,6 +106,7 @@
 #    define FORT_RK_MULTICOMPONENT         rkmulticomponent_
 #    define FORT_RK_STEP_SELECTION         rkstepselection_
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor_
+#    define FORT_GETTYPICALVALS            gettypvals_
 #  endif
 
 #include <ArrayLim.H>
@@ -250,8 +254,11 @@ extern "C" {
                         const Real* L, ARLIM_P(Llo),  ARLIM_P(Lhi),
                         const Real* a, ARLIM_P(alo),  ARLIM_P(ahi),
                         const Real* r, ARLIM_P(rlo),  ARLIM_P(rhi),
-                        const Real& dt, const Real& fac,
+                        const Real& dt, const Real& fac, Real* maxCorr,
                         const int& for_T0_H1, const int& res_only);
+
+
+    void FORT_GETTYPICALVALS(Real* vals, const int* nVals);
 
     void FORT_RK_MIXTURE_AVERAGED (
 	const int* domain_lo, const int* domain_hi,

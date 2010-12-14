@@ -134,3 +134,7 @@ c     Transport library
       REAL_T TMIN_TRANS
       common /tran2/ TMIN_TRANS
       save /tran2/
+
+      integer Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset
+      common /tran3/ Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset
+      save /tran3/

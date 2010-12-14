@@ -5,70 +5,168 @@
 
 #define SDIM 3
 
-      subroutine FORT_DDFLUX(lo, hi, delta, dir,
-     &                       fluxYH, DIMS(fluxYH),
-     &                       YTc, DIMS(YTc), cpe, DIMS(cpe),
-     &                       for_T0_H1, fillAlpha, alphaYH, DIMS(alphaYH) )
+      subroutine FORT_DDCOEFS(lo, hi, coefs, DIMS(coefs), S, DIMS(S), Cp, DIMS(Cp), Full0_Mix1)
       implicit none
 #include "cdwrk.H"
       integer lo(SDIM), hi(SDIM)
+      integer DIMDEC(coefs)
+      integer DIMDEC(S)
+      integer DIMDEC(Cp)
+      REAL_T coefs(DIMV(coefs),Ncoefs)
+      REAL_T S(DIMV(S), Nspec+1)
+      REAL_T Cp(DIMV(Cp),Nspec)
+      integer Full0_Mix1
+      REAL_T Y(maxspec), Cpi(maxspec), mwtInv(maxspec), T
+      integer i,j,k,n
+      REAL_T rhoDi(maxspec),PTC,rhoTD(maxspec),rhoDij(maxspec*maxspec)
+
+c     FIXME: These will never change...maybe should be set in common from the DDOp ctr
+      call CKWT(IWRK(ckbi), RWRK(ckbr), mwtInv)
+      do n=1,Nspec
+         mwtInv(n) = 1.d0 / mwtInv(n)
+      enddo
+
+c     FIXME: perhaps calling the EGFlib or EGMlib routines would make this faster,
+c     however, they do require the largest "pencil" size as part of the workspace setup
+c     Personally, I hate dealing with that, so I'm going to punt and call point-by-point
+c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               do n = 1,Nspec
+                  Y(n) = S(i,j,k,n)
+                  Cpi(n) = Cp(i,j,k,n)*1.d4
+               enddo
+               T = S(i,j,k,Nspec+1)
+               call calc_coefs(T,Y,Cpi,mwtInv,rhoDi,Full0_Mix1,PTC,rhoTD,rhoDij)
+               do n = 1,Nspec
+                  coefs(i,j,k,DMIXoffset+n) = rhoDi(n)
+               enddo
+               coefs(i,j,k,PTCoffset+1) = PTC
+               if (Full0_Mix1.eq.0) then
+                  do n = 1,Nspec
+                     coefs(i,j,k,TDoffset+n) = rhoTD(n)
+                  enddo
+                  do n = 1,Nspec*Nspec
+                     coefs(i,j,kDoffset+n) = rhoDij(n)
+                  enddo
+               endif            
+            enddo
+         enddo
+      enddo
+      end
+
+      subroutine FORT_DDFLUX(lo, hi, delta, dir,
+     &                       fluxYH, DIMS(fluxYH), FcpDTe, DIMS(FcpDTe),
+     &                       YTc, DIMS(YTc), Xc, DIMS(Xc), coefc, DIMS(coefc), CPic, DIMS(CPic),
+     &                       for_T0_H1, Hic, DIMS(Hic), fillAlpha, alphaYH, DIMS(alphaYH),
+     &                       Full0_Mix1)
+      implicit none
+#include "cdwrk.H"
+      integer lo(SDIM), hi(SDIM),dir
       integer DIMDEC(fluxYH)
+      integer DIMDEC(FcpDTe)
       integer DIMDEC(YTc)
-      integer DIMDEC(cpe)
+      integer DIMDEC(Xc)
+      integer DIMDEC(coefc)
+      integer DIMDEC(CPic)
+      integer DIMDEC(Hic)
       integer for_T0_H1, fillAlpha
       integer DIMDEC(alphaYH)
-      integer dir
+      integer Full0_Mix1
       REAL_T  delta
       REAL_T  fluxYH(DIMV(fluxYH),*)
-      REAL_T     YTc(DIMV(YTc)   ,*)
-      REAL_T     cpe(DIMV(cpe)   ,*)
+      REAL_T  FcpDTe(DIMV(FcpDTe))
+      REAL_T     YTc(DIMV(YTc),*)
+      REAL_T      Xc(DIMV(Xc)  ,*)
+      REAL_T    CPic(DIMV(CPic) ,*)
+      REAL_T   coefc(DIMV(coefc) ,*)
+      REAL_T     Hic(DIMV(Hic)   ,*)
       REAL_T  alphaYH(DIMV(alphaYH),*)
 
-      integer i, j, k, n
-      REAL_T XM(maxspec), XP(maxspec), YM(maxspec), YP(maxspec), TM, TP, CP(maxspec)
-      REAL_T f(maxspec+1), alpha(maxspec+1)
+      integer i, j, k, n, m, idx
+      REAL_T Te, Ye(maxspec), Hie, CPie, dX(maxspec), dY(maxspec), dT, mwtInv(maxspec)
+      REAL_T RU, RUC, P1atm, dxInv, dx2Inv, MMWe
+      REAL_T rhoTDe, rhoY_Dij, rDmixe, PTCe
 
-      if (dir.eq.0) then
+      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
+      RU = RU * 1.d-4
+      call CKWT(IWRK(ckbi), RWRK(ckbr), mwtInv)
+      do n=1,Nspec
+         mwtInv(n) = 1.d0 / mwtInv(n)
+      enddo
+
+      dxInv = 1.d0/delta
+      dx2Inv = dxInv*dxInv
+
+      if (dir.eq.0) then         
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
-               do n = 1,Nspec
-                  YP(n)  = YTc(lo(1)-1,j,k,n)
-               enddo
-               CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
-               TP = YTc(lo(1)-1,j,k,Nspec+1)            
                do i = lo(1), hi(1)+1
                   do n = 1,Nspec
-                     YM(n) = YP(n)
-                     YP(n) = YTc(i,j,k,n)
-                     XM(n) = XP(n)
-                     CP(n) = cpe(i,j,k,n)
+                     Ye(n) = ( YTc(i,j,k,n) + YTc(i-1,j,k,n)  ) * 0.5d0
+                     dX(n) = (  Xc(i,j,k,n) -  Xc(i-1,j,k,n)  ) * dxInv
+                     dY(n) = ( YTc(i,j,k,n) - YTc(i-1,j,k,n)  ) * dxInv
                   enddo
-                  CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
-                  TM = TP
-                  TP = YTc(i,j,k,Nspec+1)
+                  dT = ( YTc(i,j,k,Nspec+1) - YTc(i-1,j,k,Nspec+1) ) * dxInv
+                  Te = 0.5d0 * ( YTc(i,j,k,Nspec+1) + YTc(i-1,j,k,Nspec+1) )
+                  call CKMMWY(Ye, IWRK(ckbi), RWRK(ckbr), MMWe)
                   
-                  call DDFLUX_helper(XM,XP,YM,YP,TM,TP,CP,delta,for_T0_H1,fillAlpha,f,alpha)
-                  
-                  do n = 1,Nspec+1
-                     fluxYH(i,j,k,n) = f(n)
+                  fluxYH(i,j,k,Nspec+1) = 0.d0
+                  if (Full0_Mix1 .eq.0) then
+                     do n = 1,Nspec
+                        if (Ye(n).le.1.d-30) then
+                           rhoTDe = 0.5d0*(coefc(i-1,j,k,TDoffset+n) + coefc(i  ,j,k,TDoffset+n))
+                        else
+                           rhoTDe = 0.5d0*(coefc(i-1,j,k,TDoffset+n)*YTc(i-1,j,k,n)
+     &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i  ,j,k,n))/Ye(n)
+                        endif
+                        fluxYH(i,j,k,n) = - Ye(n) * rhoTDe * dT / Te
+c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varying fastest
+                        do m = 1,Nspec
+                           idx = Doffset + (m-1)*Nspec + n
+                           rhoY_Dij = 0.5d0*(coefc(i-1,j,k,idx)+coefc(i,j,k,idx))
+                           fluxYH(i,j,k,n) = fluxYH(i,j,k,n)  -  rhoY_Dij * dX(m)
+                        enddo
+                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te/MMWe)*rhoTDe*dX(n)
+                     enddo
+                  endif
+                  do n = 1,Nspec
+                     rDmixe = 0.5d0*(coefc(i-1,j,k,DMIXoffset+n)+coefc(i,j,k,DMIXoffset+n))
+                     if (Full0_Mix1.eq.1) then 
+                        fluxYH(i,j,k,n) = - rDmixe * dY(n)
+                     endif
+                     if (fillAlpha.eq.1) then
+                        if (i-1.ge.lo(1)) then
+                           alphaYH(i-1,j,k,n) = alphaYH(i-1,j,k,n)  +  rDmixe * dx2Inv
+                        endif
+                        if (i.le.hi(1)) then
+                           alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dx2Inv
+                        endif
+                     endif
                   enddo
                   
-                  if (for_T0_H1.eq.0) then
-                     do n=1,Nspec
-                        cpe(i,j,k,n) = CP(n)
+                  if (for_T0_H1.eq.1) then
+                     do n = 1,Nspec
+                        Hie = 0.5d0*(Hic(i-1,j,k,n)+Hic(i,j,k,n))
+                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  +  Hie * fluxYH(i,j,k,n)
+                     enddo
+                  else
+                     FcpDTe(i,j) = 0.d0               
+                     do n = 1,Nspec
+                        CPie = 0.5d0*(CPic(i-1,j,k,n)+CPic(i,j,k,n))
+                        FcpDTe(i,j) = FcpDTe(i,j,k)  +  CPie * fluxYH(i,j,k,n) * dT
                      enddo
                   endif
                   
+                  PTCe = 0.5d0*(coefc(i-1,j,k,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
+                  fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  -  PTCe * dT
                   if (fillAlpha.eq.1) then
-                     if (i.le.hi(1)) then
-                        do n=1,Nspec+1
-                           alphaYH(i,j,k,n) = alphaYH(i,j,k,n) + alpha(n)
-                        enddo
+                     if (i-1.ge.lo(1)) then
+                        alphaYH(i-1,j,k,Nspec+1) = alphaYH(i-1,j,k,Nspec+1)  +  PTCe * dx2Inv
                      endif
-                     if (i.gt.lo(1)) then
-                        do n=1,Nspec+1
-                           alphaYH(i-1,j,k,n) = alphaYH(i-1,j,k,n) + alpha(n)
-                        enddo
+                     if (i.le.hi(1)) then
+                        alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dx2Inv
                      endif
                   endif
                enddo
@@ -77,96 +175,151 @@
       else if (dir.eq.1) then
          do k = lo(3), hi(3)
             do i = lo(1), hi(1)
-               do n = 1,Nspec
-                  YP(n)  = YTc(i,lo(2)-1,k,n)
-               enddo
-               CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
-               TP = YTc(i,lo(2)-1,k,Nspec+1)            
                do j = lo(2), hi(2)+1
                   do n = 1,Nspec
-                     YM(n) = YP(n)
-                     YP(n) = YTc(i,j,k,n)
-                     XM(n) = XP(n)
-                     CP(n) = cpe(i,j,k,n)
+                     Ye(n) = ( YTc(i,j,k,n) + YTc(i,j-1,k,n)  ) * 0.5d0
+                     dX(n) = (  Xc(i,j,k,n) -  Xc(i,j-1,k,n)  ) * dxInv
+                     dY(n) = ( YTc(i,j,k,n) - YTc(i,j-1,k,n)  ) * dxInv
                   enddo
-                  CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
-                  TM = TP
-                  TP = YTc(i,j,k,Nspec+1)
+                  dT = ( YTc(i,j,k,Nspec+1) - YTc(i,j-1,k,Nspec+1) ) * dxInv
+                  Te = 0.5d0 * ( YTc(i,j,k,Nspec+1) + YTc(i,j-1,k,Nspec+1) )
+                  call CKMMWY(Ye, IWRK(ckbi), RWRK(ckbr), MMWe)
                   
-                  call DDFLUX_helper(XM,XP,YM,YP,TM,TP,CP,delta,for_T0_H1,fillAlpha,f,alpha)
-                  
-                  do n = 1,Nspec+1
-                     fluxYH(i,j,k,n) = f(n)
+                  fluxYH(i,j,k,Nspec+1) = 0.d0
+                  if (Full0_Mix1 .eq.0) then
+                     do n = 1,Nspec
+                        if (Ye(n).le.1.d-30) then
+                           rhoTDe = 0.5d0*(coefc(i,j-1,k,TDoffset+n) + coefc(i,j,k,TDoffset+n))
+                        else
+                           rhoTDe = 0.5d0*(coefc(i,j-1,k,TDoffset+n)*YTc(i,j-1,k,n)
+     &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i,j  ,k,n))/Ye(n)
+                        endif
+                        fluxYH(i,j,k,n) = - Ye(n) * rhoTDe * dT / Te
+c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varying fastest
+                        do m = 1,Nspec
+                           idx = Doffset + (m-1)*Nspec + n
+                           rhoY_Dij = 0.5d0*(coefc(i,j-1,k,idx)+coefc(i,j,k,idx))
+                           fluxYH(i,j,k,n) = fluxYH(i,j,k,n)  -  rhoY_Dij * dX(m)
+                        enddo
+                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te/MMWe)*rhoTDe*dX(n)
+                     enddo
+                  endif
+                  do n = 1,Nspec
+                     rDmixe = 0.5d0*(coefc(i,j-1,DMIXoffset+n)+coefc(i,j,DMIXoffset+n))
+                     if (Full0_Mix1.eq.1) then 
+                        fluxYH(i,j,k,n) = - rDmixe * dY(n)
+                     endif
+                     if (fillAlpha.eq.1) then
+                        if (j-1.ge.lo(2)) then
+                           alphaYH(i,j-1,k,n) = alphaYH(i,j-1,k,n)  +  rDmixe * dx2Inv
+                        endif
+                        if (j.le.hi(2)) then
+                           alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dx2Inv
+                        endif
+                     endif
                   enddo
-                  
-                  if (for_T0_H1.eq.0) then
-                     do n=1,Nspec
-                        cpe(i,j,k,n) = CP(n)
+                  if (for_T0_H1.eq.1) then
+                     do n = 1,Nspec
+                        Hie = 0.5d0*(Hic(i,j-1,k,n)+Hic(i,j,k,n))
+                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  +  Hie * fluxYH(i,j,k,n)
+                     enddo
+                  else
+                     FcpDTe(i,j) = 0.d0               
+                     do n = 1,Nspec
+                        CPie = 0.5d0*(CPic(i,j-1,k,n)+CPic(i,j,k,n))
+                        FcpDTe(i,j,k) = FcpDTe(i,j,k)  +  CPie * fluxYH(i,j,k,n) * dT
                      enddo
                   endif
                   
+                  PTCe = 0.5d0*(coefc(i,j-1,k,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
+                  fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  -  PTCe * dT
                   if (fillAlpha.eq.1) then
-                     if (j.le.hi(2)) then
-                        do n=1,Nspec+1
-                           alphaYH(i,j,k,n) = alphaYH(i,j,k,n) + alpha(n)
-                        enddo
+                     if (j-1.ge.lo(2)) then
+                        alphaYH(i,j-1,k,Nspec+1) = alphaYH(i,j-1,k,Nspec+1)  +  PTCe * dx2Inv
                      endif
-                     if (j.gt.lo(2)) then
-                        do n=1,Nspec+1
-                           alphaYH(i,j-1,k,n) = alphaYH(i,j-1,k,n) + alpha(n)
-                        enddo
+                     if (j  .le.hi(2)) then
+                        alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dx2Inv
                      endif
                   endif
+               enddo
             enddo
-         enddo
+         else
       else if (dir.eq.2) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               do n = 1,Nspec
-                  YP(n)  = YTc(i,j,lo(3)-1,n)
-               enddo
-               CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
-               TP = YTc(i,k,lo(3)-1,Nspec+1)            
-               do j = lo(3), hi(3)+1
+               do k = lo(3), hi(3)+1
                   do n = 1,Nspec
-                     YM(n) = YP(n)
-                     YP(n) = YTc(i,j,k,n)
-                     XM(n) = XP(n)
-                     CP(n) = cpe(i,j,k,n)
+                     Ye(n) = ( YTc(i,j,k,n) + YTc(i,j,k-1,n)  ) * 0.5d0
+                     dX(n) = (  Xc(i,j,k,n) -  Xc(i,j,k-1,n)  ) * dxInv
+                     dY(n) = ( YTc(i,j,k,n) - YTc(i,j,k-1,n)  ) * dxInv
                   enddo
-                  CALL CKYTX(YP,IWRK(ckbi),RWRK(ckbr),XP)
-                  TM = TP
-                  TP = YTc(i,j,k,Nspec+1)
+                  dT = ( YTc(i,j,k,Nspec+1) - YTc(i,j,k-1,Nspec+1) ) * dxInv
+                  Te = 0.5d0 * ( YTc(i,j,k,Nspec+1) + YTc(i,j,k-1,Nspec+1) )
+                  call CKMMWY(Ye, IWRK(ckbi), RWRK(ckbr), MMWe)
                   
-                  call DDFLUX_helper(XM,XP,YM,YP,TM,TP,CP,delta,for_T0_H1,fillAlpha,f,alpha)
-                  
-                  do n = 1,Nspec+1
-                     fluxYH(i,j,k,n) = f(n)
+                  fluxYH(i,j,k,Nspec+1) = 0.d0
+                  if (Full0_Mix1 .eq.0) then
+                     do n = 1,Nspec
+                        if (Ye(n).le.1.d-30) then
+                           rhoTDe = 0.5d0*(coefc(i,j,k-1,TDoffset+n) + coefc(i,j,k,TDoffset+n))
+                        else
+                           rhoTDe = 0.5d0*(coefc(i,j,k-1,TDoffset+n)*YTc(i,j-1,k,n)
+     &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i,j  ,k,n))/Ye(n)
+                        endif
+                        fluxYH(i,j,k,n) = - Ye(n) * rhoTDe * dT / Te
+c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varying fastest
+                        do m = 1,Nspec
+                           idx = Doffset + (m-1)*Nspec + n
+                           rhoY_Dij = 0.5d0*(coefc(i,j-1,k,idx)+coefc(i,j,k,idx))
+                           fluxYH(i,j,k,n) = fluxYH(i,j,k,n)  -  rhoY_Dij * dX(m)
+                        enddo
+                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te/MMWe)*rhoTDe*dX(n)
+                     enddo
+                  endif
+                  do n = 1,Nspec
+                     rDmixe = 0.5d0*(coefc(i,j,k-1,DMIXoffset+n)+coefc(i,j,k,DMIXoffset+n))
+                     if (Full0_Mix1.eq.1) then 
+                        fluxYH(i,j,k,n) = - rDmixe * dY(n)
+                     endif
+                     if (fillAlpha.eq.1) then
+                        if (j-1.ge.lo(2)) then
+                           alphaYH(i,j,k-1,n) = alphaYH(i,j,k-1,n)  +  rDmixe * dx2Inv
+                        endif
+                        if (j.le.hi(2)) then
+                           alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dx2Inv
+                        endif
+                     endif
                   enddo
-                  
-                  if (for_T0_H1.eq.0) then
-                     do n=1,Nspec
-                        cpe(i,j,k,n) = CP(n)
+                  if (for_T0_H1.eq.1) then
+                     do n = 1,Nspec
+                        Hie = 0.5d0*(Hic(i,j,k-1,n)+Hic(i,j,k,n))
+                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  +  Hie * fluxYH(i,j,k,n)
+                     enddo
+                  else
+                     FcpDTe(i,j) = 0.d0               
+                     do n = 1,Nspec
+                        CPie = 0.5d0*(CPic(i,j,k-1,n)+CPic(i,j,k,n))
+                        FcpDTe(i,j,k) = FcpDTe(i,j,k)  +  CPie * fluxYH(i,j,k,n) * dT
                      enddo
                   endif
                   
+                  PTCe = 0.5d0*(coefc(i,j,k-1,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
+                  fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  -  PTCe * dT
                   if (fillAlpha.eq.1) then
-                     if (k.le.hi(3)) then
-                        do n=1,Nspec+1
-                           alphaYH(i,j,k,n) = alphaYH(i,j,k,n) + alpha(n)
-                        enddo
+                     if (k-1.ge.lo(3)) then
+                        alphaYH(i,j,k-1,Nspec+1) = alphaYH(i,j,k-1,Nspec+1)  +  PTCe * dx2Inv
                      endif
-                     if (j.gt.lo(3)) then
-                        do n=1,Nspec+1
-                           alphaYH(i,j-1,k,n) = alphaYH(i,j-1,k,n) + alpha(n)
-                        enddo
+                     if (k  .le.hi(3)) then
+                        alphaYH(i ,j,k ,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dx2Inv
                      endif
                   endif
                enddo
             enddo
-         enddo
+         else
+            
       endif
       end
+
 
       subroutine FORT_DDC2E(lo, hi, 
      &                      DIMS(cfab), cfab,

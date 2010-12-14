@@ -13,6 +13,9 @@
 #include <cfloat>
 #include <fstream>
 #include <vector>
+using std::cout;
+using std::endl;
+using std::cerr;
 
 #include <Geometry.H>
 #include <BoxDomain.H>
@@ -124,6 +127,8 @@ Real      HeatTransfer::mcdd_cfRelaxFactor        = 1.0;
 int       HeatTransfer::mcdd_verbose              = 1;
 
 Real      HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
+
+Array<Real> HeatTransfer::typical_values;
 
 static bool do_not_use_funccount = false;
 static bool do_active_control    = false;
@@ -573,6 +578,11 @@ HeatTransfer::init_once ()
                             &var_cond, &constant_lambda_val,
                             &var_diff, &constant_rhoD_val,
                             &prandtl,  &schmidt, &unity_Le);
+
+    //
+    // make space for typical values
+    //
+    typical_values.resize(NUM_STATE);
     //
     // Get universal gas constant from Fortran.
     //
@@ -1486,6 +1496,42 @@ HeatTransfer::post_regrid (int lbase,
 }
 
 void
+HeatTransfer::set_typical_values()
+{
+    BL_ASSERT(typical_values.size()==NUM_STATE);
+
+    // Get values suggested in fortran
+    int nComp = typical_values.size();
+
+    Array<Real> tvTmp(nComp,0);
+    FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
+
+    for (int i=0; i<nComp; ++i) {
+        if (tvTmp[i]!=0) {
+            typical_values[i] = tvTmp[i];
+        }
+    }
+
+    cout << "Typical vals: " << endl;
+    cout << "\tDensity: " << typical_values[Density] << endl;
+    cout << "\tTemp: "    << typical_values[Temp]    << endl;
+    cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
+    const Array<std::string>& names = getChemSolve().speciesNames();
+    for (int i=0; i<nspecies; ++i) {
+        cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
+    }
+
+    // Verify good values for Density, Temp, RhoH, Y
+    for (int i=BL_SPACEDIM; i<nComp; ++i) {
+        if (i!=Trac && i!=RhoRT && typical_values[i]==0) {
+            cout << "component: " << i << " of " << nComp << endl;
+            BoxLib::Abort("Must have non-zero typical values");
+        }
+    }
+
+}
+
+void
 HeatTransfer::post_init (Real stop_time)
 {
     if (level > 0)
@@ -1511,6 +1557,10 @@ HeatTransfer::post_init (Real stop_time)
     // is zero.
     //
     post_init_state();
+    //
+    // Load typical values for each state component
+    //
+    set_typical_values();
     //
     // Estimate the initial timestepping.
     //
@@ -3199,6 +3249,7 @@ HeatTransfer::compute_mcdd_visc_terms(MultiFab&           vtermsYH,
     }
 
     MCDDOp.applyOp(vtermsYH,S,*tFlux,whichApp);
+
     //
     // Add heat source terms to RhoH/T component
     //
@@ -3282,12 +3333,14 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
 
     // Form Res = Rhs - (rho.phi)^np1 - dt*L(phi)^np1 
     //  (note that any theta weighting on dt has been taken care of by calling routine)
-    const int nGrow = 0;
-    const int nGrowOp = 1;
-    MultiFab Lphi(mg_grids,nspecies+1,nGrow);
-    MultiFab alpha(mg_grids,nspecies+1,nGrow);
+    int nGrow = 0;
+    int nGrowOp = 1;
+    int nComp = nspecies+1;
+    MultiFab Lphi(mg_grids,nComp,nGrow);
+    MultiFab alpha(mg_grids,nComp,nGrow);
     bool getAlpha = true;
 
+    Array<Real> maxCorr(nComp);
     int for_T0_H1 = (whichApp==DDOp::DD_Temp ? 0 : 1);
     for (int iter=0; iter<=mcdd_presmooth; ++iter)
     {
@@ -3309,8 +3362,8 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
             if (error_occurred && ParallelDescriptor::IOProcessor()) {
                 BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T (pre)");
             }
-            if (mcdd_verbose>0) {
-                std::string str("mcdd_V::RhoH->T (pre): max iters = ");
+            if (mcdd_verbose>1) {
+                std::string str("\tmcdd_V::RhoH->T (pre): max iters = ");
                 levWrite(std::cout,mg_level,str) << max_iters_taken << '\n';
             }
         }
@@ -3325,7 +3378,12 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
         // Compute Res = Rhs - A(S) = Rhs - rho.phi + dt.theta.Lphi (theta.dt passed in)
         // and then relax: phi = phi + f.Res/alpha
         mcdd_apply(Lphi,S,flux,time,whichApp,mg_level,getAlpha,&alpha);
+
         int res_only = (iter==mcdd_presmooth ? 1 : 0);
+        for (int i=0; i<nComp; ++i) {
+            maxCorr[i] = 0;
+        }
+        Array<Real> thisCorr(nComp);
         for (MFIter mfi(S); mfi.isValid(); ++mfi)
         {
             FArrayBox& s = S[mfi];
@@ -3340,10 +3398,28 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
                            L.dataPtr(),ARLIM(L.loVect()),ARLIM(L.hiVect()),
                            a.dataPtr(),ARLIM(a.loVect()),ARLIM(a.hiVect()),
                            r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
-                           dt, mcdd_relaxFactor, for_T0_H1, res_only);
-        }
+                           dt, mcdd_relaxFactor, thisCorr.dataPtr(), for_T0_H1, res_only);
 
-        if (mcdd_verbose>1) {
+            for (int i=0; i<nComp; ++i) {
+                maxCorr[i] = std::max(maxCorr[i],thisCorr[i]);
+            }
+        }
+        ParallelDescriptor::ReduceRealMax(maxCorr.dataPtr(),maxCorr.size());
+        if (ParallelDescriptor::IOProcessor()) {
+            Real maxNormCorr = 0;
+            for (int i=0; i<nspecies; ++i) {
+                Real tval = typical_values[first_spec+i] * typical_values[Density];
+                maxNormCorr = std::max(maxNormCorr,maxCorr[i]/tval);
+            }
+            int tc = (whichApp==DDOp::DD_Temp ? Temp : RhoH);
+            maxNormCorr = std::max(maxNormCorr,maxCorr[nspecies]/typical_values[tc]);
+            if (mcdd_verbose==1) {
+                std::string str("mcdd corr (pre): ");
+                levWrite(std::cout,mg_level,str) << maxNormCorr << ", iter: " << iter << '\n';
+            }
+        }
+        
+        if (mcdd_verbose>2) {
             std::string junkname = BoxLib::Concatenate("res_",mg_level,1);
             junkname += "_pre_";
             junkname = BoxLib::Concatenate(junkname,iter,4);
@@ -3436,8 +3512,8 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
             if (error_occurred && ParallelDescriptor::IOProcessor()) {
                 BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T (post)");
             }
-            if (mcdd_verbose>0) {
-                std::string str("mcdd_V::RhoH->T (post): max iters = ");
+            if (mcdd_verbose>1) {
+                std::string str("\tmcdd_V::RhoH->T (post): max iters = ");
                 levWrite(std::cout,mg_level,str) << max_iters_taken << '\n';
             }
         }
@@ -3453,6 +3529,10 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
         // and then relax: phi = phi + f.Res/alpha
         mcdd_apply(Lphi,S,flux,time,whichApp,mg_level,getAlpha,&alpha);
         int res_only = (iter==mcdd_postsmooth ? 1 : 0);
+        for (int i=0; i<nComp; ++i) {
+            maxCorr[i] = 0;
+        }
+        Array<Real> thisCorr(nComp);
         for (MFIter mfi(S); mfi.isValid(); ++mfi)
         {
             FArrayBox& s = S[mfi];
@@ -3467,9 +3547,28 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
                            L.dataPtr(),ARLIM(L.loVect()),ARLIM(L.hiVect()),
                            a.dataPtr(),ARLIM(a.loVect()),ARLIM(a.hiVect()),
                            r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
-                           dt, mcdd_relaxFactor, for_T0_H1, res_only);
+                           dt, mcdd_relaxFactor, maxCorr.dataPtr(), for_T0_H1, res_only);
+
+            for (int i=0; i<nComp; ++i) {
+                maxCorr[i] = std::max(maxCorr[i],thisCorr[i]);
+            }
         }
-        if (mcdd_verbose>1) {
+        ParallelDescriptor::ReduceRealMax(maxCorr.dataPtr(),maxCorr.size());
+        if (ParallelDescriptor::IOProcessor()) {
+            Real maxNormCorr = 0;
+            for (int i=0; i<nspecies; ++i) {
+                Real tval = typical_values[first_spec+i] * typical_values[Density];
+                maxNormCorr = std::max(maxNormCorr,maxCorr[i]/tval);
+            }
+            int tc = (whichApp==DDOp::DD_Temp ? Temp : RhoH);
+            maxNormCorr = std::max(maxNormCorr,maxCorr[nspecies]/typical_values[tc]);
+            if (mcdd_verbose==1) {
+                std::string str("mcdd corr (post): ");
+                levWrite(std::cout,mg_level,str) << maxNormCorr << ", iter: " << iter << '\n';
+            }
+        }
+        
+        if (mcdd_verbose>2) {
             std::string junkname = BoxLib::Concatenate("res_",mg_level,1);
             junkname += "_post_";
             junkname = BoxLib::Concatenate(junkname,iter,4);
@@ -3500,7 +3599,7 @@ HeatTransfer::mcdd_update(Real time,
     if (hack_nospecdiff==1)
         return;
 
-    MultiFab Rhs(grids,nspecies+1,nGrow,Fab_allocate); //stack H on Y's
+    MultiFab Rhs(grids,nspecies+1,nGrow); //stack H on Y's
     const int dCompY = 0;
     const int dCompH = nspecies;
 
@@ -3813,7 +3912,6 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     diffusion->getViscTerms(visc_terms,src_comp,Temp,time,rho_flag,0,beta);
     diffusion->removeFluxBoxesLevel(beta);
     add_heat_sources(visc_terms,Temp-src_comp,time,nGrow,1.0);
-
     MultiFab delta_visc_terms(grids,1,nGrow);
     //
     // + sum_l rho D grad Y_l dot grad h_l
@@ -7685,7 +7783,6 @@ HeatTransfer::calc_divu (Real      time,
         divu[iGrid].divide(rho[iGrid],grids[iGrid],sCompR,0,1);
         divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
     }
-
     MultiFab delta_divu(grids,1,nGrow), spec_visc_terms(grids,nspecies,0);
 
     delta_divu.setVal(0.0);
