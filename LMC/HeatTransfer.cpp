@@ -129,6 +129,7 @@ int       HeatTransfer::mcdd_verbose              = 1;
 Real      HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
 
 Array<Real> HeatTransfer::typical_values;
+std::string typical_values_filename = "typical_values.fab";
 
 static bool do_not_use_funccount = false;
 static bool do_active_control    = false;
@@ -714,6 +715,39 @@ HeatTransfer::restart (Amr&          papa,
 
     if (do_mcdd)
         MCDDOp.define(grids,Domain(),crse_ratio);
+
+    // Deal with typical values
+    if (level==0) {
+
+        int nComp = typical_values.size();
+        BL_ASSERT(nComp==NUM_STATE);
+        for (int i=0; i<nComp; ++i) {
+            typical_values[i] = 0;
+        }
+
+        if (ParallelDescriptor::IOProcessor())
+        {
+            
+            const std::string tvfile = parent->theRestartFile() + "/" + typical_values_filename;
+            std::ifstream tvis;
+            tvis.open(tvfile.c_str(),std::ios::in);
+            
+            if (tvis.good()) {
+                FArrayBox tvfab;
+                tvfab.readFrom(tvis);
+                if (tvfab.nComp() != typical_values.size()) {
+                    BoxLib::Abort("Typical values file has wrong number of components");
+                }
+                for (int i=0; i<typical_values.size(); ++i) {
+                    typical_values[i] = tvfab.dataPtr()[i];
+                }
+            }
+        }
+        ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
+        
+        set_typical_values_from_fortran();
+        
+    }
 }
 
 Real
@@ -1496,15 +1530,43 @@ HeatTransfer::post_regrid (int lbase,
 }
 
 void
-HeatTransfer::set_typical_values()
+HeatTransfer::checkPoint (const std::string& dir,
+                          std::ostream&      os,
+                          VisMF::How         how,
+                          bool               dump_old)
 {
-    BL_ASSERT(typical_values.size()==NUM_STATE);
+    NavierStokes::checkPoint(dir,os,how,dump_old);
 
-    // Get values suggested in fortran
+    if (level==0 && ParallelDescriptor::IOProcessor())
+    {
+        const std::string tvfile = dir + "/" + typical_values_filename;
+        std::ofstream tvos;
+        tvos.open(tvfile.c_str(),std::ios::out);
+        if (!tvos.good())
+            BoxLib::FileOpenFailed(tvfile);
+        Box tvbox(IntVect(),(NUM_STATE-1)*BoxLib::BASISV(0));
+        int nComp = typical_values.size();
+        FArrayBox tvfab(tvbox,nComp);
+        for (int i=0; i<nComp; ++i) {
+            tvfab.dataPtr()[i] = typical_values[i];
+        }
+        tvfab.writeOn(tvos);
+    }
+}
+
+void
+HeatTransfer::set_typical_values_from_fortran()
+{
+    if (level!=0) {
+        return;
+    }
+
     int nComp = typical_values.size();
-
     Array<Real> tvTmp(nComp,0);
+
+    // If values in fortran common are non-zero, override any other values
     FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
+    ParallelDescriptor::ReduceRealMax(tvTmp.dataPtr(),nComp);
 
     for (int i=0; i<nComp; ++i) {
         if (tvTmp[i]!=0) {
@@ -1520,7 +1582,7 @@ HeatTransfer::set_typical_values()
     for (int i=0; i<nspecies; ++i) {
         cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
     }
-
+    
     // Verify good values for Density, Temp, RhoH, Y
     for (int i=BL_SPACEDIM; i<nComp; ++i) {
         if (i!=Trac && i!=RhoRT && typical_values[i]==0) {
@@ -1528,7 +1590,6 @@ HeatTransfer::set_typical_values()
             BoxLib::Abort("Must have non-zero typical values");
         }
     }
-
 }
 
 void
@@ -1560,7 +1621,7 @@ HeatTransfer::post_init (Real stop_time)
     //
     // Load typical values for each state component
     //
-    set_typical_values();
+    set_typical_values_from_fortran();
     //
     // Estimate the initial timestepping.
     //

@@ -471,8 +471,13 @@ protected:
 
     void mcdd_diffuse_sync(Real dt);
 
-    void set_typical_values();
+    void set_typical_values_from_fortran();
     
+    virtual void checkPoint (const std::string& dir,
+                             std::ostream&      os,
+                             VisMF::How         how = VisMF::OneFilePerCPU,
+                             bool               dump_old = true);
+
 protected:
 
     DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
