@@ -58,7 +58,7 @@ c      flame_offset = 0.d0
       LastSpec = FirstSpec + Nspec - 1
       RhoH = LastSpec + 1
       Temp = RhoH + 1
-      dx = (probhi-problo)/nx
+      dx = (probhi-problo)/DBLE(nx)
       call init_soln(scal_new,time,dx)
 
       call print_soln(0,time,scal_new,outname,dx)
