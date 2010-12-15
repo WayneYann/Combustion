@@ -583,7 +583,7 @@ HeatTransfer::init_once ()
     //
     // make space for typical values
     //
-    typical_values.resize(NUM_STATE);
+    typical_values.resize(NUM_STATE,1); // One is reasonable, not great
     //
     // Get universal gas constant from Fortran.
     //
@@ -717,36 +717,72 @@ HeatTransfer::restart (Amr&          papa,
         MCDDOp.define(grids,Domain(),crse_ratio);
 
     // Deal with typical values
+    set_typical_values(true);
+}
+
+void
+HeatTransfer::set_typical_values(bool restart)
+{
     if (level==0) {
 
         int nComp = typical_values.size();
-        BL_ASSERT(nComp==NUM_STATE);
-        for (int i=0; i<nComp; ++i) {
-            typical_values[i] = 0;
-        }
 
-        if (ParallelDescriptor::IOProcessor())
-        {
+        if (restart) {
+
+            BL_ASSERT(nComp==NUM_STATE);
+            for (int i=0; i<nComp; ++i) {
+                typical_values[i] = 0;
+            }
             
-            const std::string tvfile = parent->theRestartFile() + "/" + typical_values_filename;
-            std::ifstream tvis;
-            tvis.open(tvfile.c_str(),std::ios::in);
-            
-            if (tvis.good()) {
-                FArrayBox tvfab;
-                tvfab.readFrom(tvis);
-                if (tvfab.nComp() != typical_values.size()) {
-                    BoxLib::Abort("Typical values file has wrong number of components");
-                }
-                for (int i=0; i<typical_values.size(); ++i) {
-                    typical_values[i] = tvfab.dataPtr()[i];
+            if (ParallelDescriptor::IOProcessor())
+            {
+                
+                const std::string tvfile = parent->theRestartFile() + "/" + typical_values_filename;
+                std::ifstream tvis;
+                tvis.open(tvfile.c_str(),std::ios::in);
+                
+                if (tvis.good()) {
+                    FArrayBox tvfab;
+                    tvfab.readFrom(tvis);
+                    if (tvfab.nComp() != typical_values.size()) {
+                        BoxLib::Abort("Typical values file has wrong number of components");
+                    }
+                    for (int i=0; i<typical_values.size(); ++i) {
+                        typical_values[i] = tvfab.dataPtr()[i];
+                    }
                 }
             }
+
+            ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
         }
-        ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
+
+        // Check fortan common values, if non-zero override
+        Array<Real> tvTmp(nComp,0);
+        FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
+        ParallelDescriptor::ReduceRealMax(tvTmp.dataPtr(),nComp);
         
-        set_typical_values_from_fortran();
+        for (int i=0; i<nComp; ++i) {
+            if (tvTmp[i]!=0) {
+                typical_values[i] = tvTmp[i];
+            }
+        }
+
+        cout << "Typical vals: " << endl;
+        cout << "\tDensity: " << typical_values[Density] << endl;
+        cout << "\tTemp: "    << typical_values[Temp]    << endl;
+        cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
+        const Array<std::string>& names = getChemSolve().speciesNames();
+        for (int i=0; i<nspecies; ++i) {
+            cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
+        }
         
+        // Verify good values for Density, Temp, RhoH, Y
+        for (int i=BL_SPACEDIM; i<nComp; ++i) {
+            if (i!=Trac && i!=RhoRT && typical_values[i]==0) {
+                cout << "component: " << i << " of " << nComp << endl;
+                BoxLib::Abort("Must have non-zero typical values");
+            }
+        }
     }
 }
 
@@ -1555,44 +1591,6 @@ HeatTransfer::checkPoint (const std::string& dir,
 }
 
 void
-HeatTransfer::set_typical_values_from_fortran()
-{
-    if (level!=0) {
-        return;
-    }
-
-    int nComp = typical_values.size();
-    Array<Real> tvTmp(nComp,0);
-
-    // If values in fortran common are non-zero, override any other values
-    FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
-    ParallelDescriptor::ReduceRealMax(tvTmp.dataPtr(),nComp);
-
-    for (int i=0; i<nComp; ++i) {
-        if (tvTmp[i]!=0) {
-            typical_values[i] = tvTmp[i];
-        }
-    }
-
-    cout << "Typical vals: " << endl;
-    cout << "\tDensity: " << typical_values[Density] << endl;
-    cout << "\tTemp: "    << typical_values[Temp]    << endl;
-    cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
-    const Array<std::string>& names = getChemSolve().speciesNames();
-    for (int i=0; i<nspecies; ++i) {
-        cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
-    }
-    
-    // Verify good values for Density, Temp, RhoH, Y
-    for (int i=BL_SPACEDIM; i<nComp; ++i) {
-        if (i!=Trac && i!=RhoRT && typical_values[i]==0) {
-            cout << "component: " << i << " of " << nComp << endl;
-            BoxLib::Abort("Must have non-zero typical values");
-        }
-    }
-}
-
-void
 HeatTransfer::post_init (Real stop_time)
 {
     if (level > 0)
@@ -1621,7 +1619,7 @@ HeatTransfer::post_init (Real stop_time)
     //
     // Load typical values for each state component
     //
-    set_typical_values_from_fortran();
+    set_typical_values(false);
     //
     // Estimate the initial timestepping.
     //
@@ -3474,7 +3472,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
             }
             int tc = (whichApp==DDOp::DD_Temp ? Temp : RhoH);
             maxNormCorr = std::max(maxNormCorr,maxCorr[nspecies]/typical_values[tc]);
-            if (mcdd_verbose==1) {
+            if (mcdd_verbose>0) {
                 std::string str("mcdd corr (pre): ");
                 levWrite(std::cout,mg_level,str) << maxNormCorr << ", iter: " << iter << '\n';
             }
@@ -3623,7 +3621,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
             }
             int tc = (whichApp==DDOp::DD_Temp ? Temp : RhoH);
             maxNormCorr = std::max(maxNormCorr,maxCorr[nspecies]/typical_values[tc]);
-            if (mcdd_verbose==1) {
+            if (mcdd_verbose>0) {
                 std::string str("mcdd corr (post): ");
                 levWrite(std::cout,mg_level,str) << maxNormCorr << ", iter: " << iter << '\n';
             }

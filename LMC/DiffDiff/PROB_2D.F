@@ -1002,7 +1002,6 @@ c     Update typical values
          enddo
       enddo
 
-
       do j = lo(2), hi(2)
          do i = lo(1), hi(1)
             do n = 0,Nspec-1

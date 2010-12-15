@@ -16,12 +16,16 @@ c     Note: Requires ckdwrk.H to obtain the value of maxspec
       REAL_T tau_control, cfix, coft_old, sest, V_in_old, corr,
      &     changeMax_control, tbase_control, dV_control, scale_control,
      &     zbase_control, h_control
+      integer do_control
 
-      common / control1 / tau_control, cfix, coft_old, sest, V_in_old,
+      common / control1 / ac_hist_file
+      common / control2 / tau_control, cfix, coft_old, sest, V_in_old,
      &     corr, changeMax_control, tbase_control, dV_control, scale_control,
-     &     zbase_control, h_control, ac_hist_file
+     &     zbase_control, h_control
+      common / control3 / do_control
+
 
       integer pseudo_gravity
-      common / control2 / pseudo_gravity
+      common / pseudog / pseudo_gravity
 
-      save /bcs/, /control1/, /control2/
+      save /bcs/, /control1/, /control2/, /control3/, /pseudog/

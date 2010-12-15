@@ -1,5 +1,5 @@
 
-# $Id: GNUmakefile,v 1.1 2010-10-01 16:41:20 marc Exp $
+# $Id: GNUmakefile,v 1.2 2010-12-15 00:21:44 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -8,14 +8,16 @@ PMFdir        = ../PMFfiles
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = FALSE
 DEBUG	          = TRUE
+DEBUG	          = FALSE
 PROFILE           = TRUE
 PROFILE           = FALSE
 DIM    	          = 3
 DIM    	          = 2
 FCOMP             = gfortran
 COMP              = g++
+FCOMP             = Intel
+COMP              = Intel
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
 HGDEBUG           = TRUE
@@ -143,6 +145,15 @@ else
 endif
 
 #CPPFLAGS += -DMPICH_SKIP_MPICXX
+
+ifeq ($(FCOMP), Intel)
+  FFLAGS+=-diag-disable vec
+  fFLAGS+=-diag-disable vec
+endif
+ifeq ($(CCOMP), Intel)
+  CPPFLAGS+=-diag-disable vec
+  CFLAGS+=-diag-disable vec
+endif
 
 vpath %.cpp $(MySrcDirs) ${PMFdir}
 vpath %.F   $(MySrcDirs) ${PMFdir}

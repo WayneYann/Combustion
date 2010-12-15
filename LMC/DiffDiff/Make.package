@@ -1,11 +1,12 @@
 #
-# $Id: Make.package,v 1.1 2010-10-01 16:40:23 marc Exp $
+# $Id: Make.package,v 1.2 2010-12-15 00:21:44 marc Exp $
 #
 CEXE_sources += HT_setup.cpp 
 
 FEXE_sources += PROB_$(DIM)D.F
 
 CEXE_headers += ArrayViewEXT.H
+CEXE_headers += BoxLib_Data_Dump.H
 
 FEXE_headers += probdata.H PROB_F.H
 

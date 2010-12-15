@@ -471,7 +471,7 @@ protected:
 
     void mcdd_diffuse_sync(Real dt);
 
-    void set_typical_values_from_fortran();
+    void set_typical_values(bool restart);
     
     virtual void checkPoint (const std::string& dir,
                              std::ostream&      os,
