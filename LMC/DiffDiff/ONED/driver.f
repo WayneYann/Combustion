@@ -25,11 +25,14 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 1
-      plot_int = 10
+      nsteps = 200
+      plot_int = 1
       problo = 0.0d0
       probhi = 3.5d0
       flame_offset = 1.1d0
+
+c      probhi = 1.d0
+c      flame_offset = -.1d0
 
 c     For LiDryer problems
 c      problo = 2.0d0
@@ -1033,11 +1036,11 @@ c     Update state, compute errors/etc
             print *, 'iter, err, component:',iCorrect,maxerr,maxerrComp
          endif
 
-         call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx)
-         do i=1,nx
-            tmp(i) = S_new(Density,i)
-         enddo
-         call print_update(icorrect,DBLE(icorrect),update,Peos,tmp,updatename,dx)
+c         call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx)
+c         do i=1,nx
+c            tmp(i) = S_new(Density,i)
+c         enddo
+c         call print_update(icorrect,DBLE(icorrect),update,Peos,tmp,updatename,dx)
       enddo
  100  end
 
