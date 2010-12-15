@@ -3647,10 +3647,21 @@ HeatTransfer::mcdd_update(Real time,
     BL_ASSERT(do_mcdd);
     const int nGrow = 0;
 
+    //DDOp::DD_ApForTorRH whichApp = DDOp::DD_RhoH;
+    DDOp::DD_ApForTorRH whichApp = DDOp::DD_Temp;
+
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... mcdd update for RhoH and RhoY" << '\n';
+        std::cout << "... mcdd update for "
+                  << (whichApp==DDOp::DD_Temp ? "Temp" : "RhoH") 
+                  << " and RhoY" << '\n';
 
     // Get advection updates into new-time state
+    // HACK
+    aofs->setVal(0,Density,1);
+    aofs->setVal(0,Temp,1);
+    aofs->setVal(0,RhoH,1);
+    aofs->setVal(0,first_spec,nspecies);
+
     scalar_advection_update(dt, Density, Density);
     scalar_advection_update(dt, first_spec, last_spec);
     scalar_advection_update(dt, RhoH, RhoH);
@@ -3668,10 +3679,7 @@ HeatTransfer::mcdd_update(Real time,
                                    nspecies+1,0)); //stack H on Y's
 
     // Build Rhs = rho.phi + (1-theta)*dt*L(phi) - dt*Div(u.rho.phi),
-    //   For species: L(phi) = Div(rho.Yi.Vi.Area)/Vol, Vi is diffusion velocity
-    //   For RhoH:    L(phi) = Div(q.Area)/Vol, Vi is diffusion velocity
     //   Note that at this point, S_new = rho.phi - Div(u.rho.phi)
-    DDOp::DD_ApForTorRH whichApp = DDOp::DD_RhoH;
     compute_mcdd_visc_terms(Rhs,time,nGrow,whichApp,&fluxn);
     Rhs.mult( (1.0-be_cn_theta)*dt );
 
@@ -3683,7 +3691,14 @@ HeatTransfer::mcdd_update(Real time,
         const Box& box = mfi.validbox();
 
         rhs.plus(snew,box,first_spec,dCompY,nspecies);
-        rhs.plus(snew,box,RhoH,dCompH,1);
+        if (whichApp==DDOp::DD_RhoH) {
+            rhs.plus(snew,box,RhoH,dCompH,1);
+        }
+        else
+        {
+            rhs.divide(snew,box,Density,dCompH,1);
+            rhs.plus(snew,box,Temp,dCompH,1);
+        }
     }
 
     PArray<MultiFab> fluxnp1(BL_SPACEDIM,PArrayManage);
@@ -3736,10 +3751,10 @@ HeatTransfer::mcdd_update(Real time,
         for (int i=0; i<nspecies; ++i)
             state.mult(state,box,Density,first_spec+i,1);
 
+        state.copy(YH,box,dCompST,box,Temp,1);
+
         state.copy(YH,box,dCompSH,box,RhoH,1);
         state.mult(state,box,Density,RhoH,1);
-
-        state.copy(YH,box,dCompST,box,Temp,1);
     }
 
     if (do_reflux)

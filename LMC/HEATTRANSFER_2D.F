@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.22 2010-12-14 22:36:33 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.23 2010-12-15 03:02:12 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1123,12 +1123,22 @@ c     and then relax: phi = phi + Res/alpha
                enddo
             enddo
          enddo
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               corr = fac * L(i,j,Nspec) / (1.d0 + dt*a(i,j,Nspec))
-               maxCorr(nspec) = MAX(maxCorr(Nspec),ABS(corr))
-               S(i,j,Tc) = S(i,j,Tc)  +  corr
+         if (for_T0_H1.eq.0) then
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  corr = fac * L(i,j,Nspec) / (1.d0 + dt*a(i,j,Nspec)/S(i,j,rc))
+                  maxCorr(nspec) = MAX(maxCorr(Nspec),ABS(corr))
+                  S(i,j,Tc) = S(i,j,Tc)  +  corr
+               enddo
             enddo
-         enddo
+         else
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  corr = fac * L(i,j,Nspec) / (1.d0 + dt*a(i,j,Nspec))
+                  maxCorr(nspec) = MAX(maxCorr(Nspec),ABS(corr))
+                  S(i,j,Tc) = S(i,j,Tc)  +  corr
+               enddo
+            enddo
+         endif
       endif
       end
