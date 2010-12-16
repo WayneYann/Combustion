@@ -974,9 +974,11 @@ c
             lambda = 1.d0
             if (i.ne.1) then
                lambda = lambda + (PTCec(i  ) - LT)*rhoCpInv
+c               lambda = lambda + PTCec(i  )*rhoCpInv
             endif
             if (i.ne.nx) then
                lambda = lambda + (PTCec(i+1) + RT)*rhoCpInv
+c               lambda = lambda + PTCec(i+1)*rhoCpInv
             endif
             S_new(Temp,i) = S_star(Temp,i)
      &           + URfac*( RHS(Nspec+1,i) - S_star(Temp,i) + theta*dt*LofS_star(Nspec+1,i) )/lambda
