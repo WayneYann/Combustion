@@ -886,13 +886,13 @@ c
      &                 + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
                endif
                
-               ylo =   j  *delta(2)+domnlo(2)-y_offset + ypert
-               yhi = (j+1)*delta(2)+domnlo(2)-y_offset + ypert
+               ylo = DBLE(j  )*delta(2)+domnlo(2)-y_offset + ypert
+               yhi = DBLE(j+1)*delta(2)+domnlo(2)-y_offset + ypert
                if (probtype.eq.2) then
                   ylo = ylo - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
                   yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
                endif
-               
+              
                call pmf(ylo*100,yhi*100,pmf_vals,n)
                if (n.ne.Nspec+3) then
                   print *,'PMF file thinks n=',n
@@ -1029,7 +1029,6 @@ c     Update typical values
             scal(i,j,RhoH) = scal(i,j,RhoH)*scal(i,j,Density)
          enddo
       enddo
-      
       end
 
 c ::: -----------------------------------------------------------
