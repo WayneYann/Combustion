@@ -40,7 +40,7 @@
       integer myproc,step,ierr,restart
       REAL_T r1,r2,r3,r4,r5,r6,r7
       REAL_T alpha,xsmb,vpmax,exp1 
-      REAL_T  V_x, V_xx,beta,tauloc
+      REAL_T  V_x, V_xx,beta,tauloc,hoft
       integer i1
       logical found_it
 
@@ -139,6 +139,8 @@ c     V_new = MIN(V_new,V_in+dVmax)
       tbase_control = time
       dV_control = (V_new - V_in)/dt
 
+      hoft = coft / scale_control
+
       if (myproc.eq.0) then
          print *
          print *,'****************** control:'
@@ -149,7 +151,7 @@ c     V_new = MIN(V_new,V_in+dVmax)
 #else
          print *,'alpha,sest,cfix,slocal:',alpha,sest,cfix,slocal
 #endif
-         print *,'coft_old,V_in_old:',coft_old,V_in_old
+         print *,'hoft,coft_old,V_in_old:',hoft,coft_old,V_in_old
       endif
 
       coft_old = coft
@@ -284,6 +286,8 @@ c ::: -----------------------------------------------------------
       integer lo(2), hi(2), n
       integer ifreq,zone,i,iH2,getZone
       character*(maxspnml) spName
+      REAL_T x, y, time, u, v, rho, Yl(maxspec), Xl(maxspec), T, h, dx
+      integer orient
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, flametracval, probtype,
      &			max_temp_lev, max_vort_lev, splitx, splity, traceSpecVal,
@@ -462,11 +466,19 @@ c     Load domain dimensions into common, and set up boundary functions
       call setupbc()
       bcinit = .true.
 
-      zone = getZone(half*(domnlo(1)+domnhi(1)),domnlo(2))
-      scale_control = Y_bc(fuelID-1,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))
+      orient = 1
+      x = half*(domnlo(1)+domnhi(1))
+      y = domnlo(2)
+      time = 0.d0
+      call bcfunction(orient, x, y, time, u, v, rho, Yl, T, h, dx)
+      call CKYTX(Yl,IWRK(ckbr),RWRK(ckbr),Xl)
+      scale_control = Yl(fuelID)*rho*(domnhi(1)-domnlo(1))
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
+      else
+         h_control = cfix / scale_control
       endif
+
 
       if (isioproc.eq.1) then
          write(6,fortin)
@@ -475,6 +487,13 @@ c     Load domain dimensions into common, and set up boundary functions
          write(6,flctin)
 #endif
          write(6,control)
+
+         print *,'CONTROL STUFF:'
+         print *,'  Fuel mass fraction:',Yl(fuelID)
+         print *,'  Fuel mole fraction:',Xl(fuelID)
+         print *,'  density at inlet:',rho
+         print *,'  h_control:',h_control
+         print *,'  scale_control:',scale_control
       end if
 
       end
