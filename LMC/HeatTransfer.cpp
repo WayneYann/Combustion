@@ -111,12 +111,13 @@ int       HeatTransfer::hack_nospecdiff           = 0;
 int       HeatTransfer::hack_noavgdivu            = 0;
 Real      HeatTransfer::trac_diff_coef            = 0.0;
 Real      HeatTransfer::P1atm_MKS                 = -1.0;
-std::string   HeatTransfer::turbFile                  ="";
+std::string   HeatTransfer::turbFile              ="";
 std::map<std::string, Array<std::string> > HeatTransfer::auxDiag_names;
 bool      HeatTransfer::plot_reactions            = false;
 bool      HeatTransfer::plot_consumption          = true;
 bool      HeatTransfer::plot_heat_release         = true;
 int       HeatTransfer::do_mcdd                   = 0;
+std::string HeatTransfer::mcdd_transport_model    = "";
 int       HeatTransfer::mcdd_NitersMAX            = 100;
 Real      HeatTransfer::mcdd_relaxFactor          = 1.0;
 Real      HeatTransfer::mcdd_relaxFactor1         = 1.0;
@@ -399,15 +400,28 @@ HeatTransfer::read_params ()
         visc_coef[i] = bogus_value;
 
     pp.query("do_mcdd",do_mcdd);
-    pp.query("mcdd_NitersMAX",mcdd_NitersMAX);
-    pp.query("mcdd_relaxFactor",mcdd_relaxFactor);
-    pp.query("mcdd_relaxFactor1",mcdd_relaxFactor1);
-    pp.query("mcdd_rtol",mcdd_rtol);
-    pp.query("mcdd_presmooth",mcdd_presmooth);
-    pp.query("mcdd_postsmooth",mcdd_postsmooth);
-    pp.query("mcdd_verbose",mcdd_verbose);
-    pp.query("mcdd_cfRelaxFactor",mcdd_cfRelaxFactor);
-
+    if (do_mcdd) {
+        pp.get("mcdd_transport_model",mcdd_transport_model);
+        if (mcdd_transport_model=="full") {
+            DDOp::set_transport_model(DDOp::DD_Model_Full);
+        }
+        else if (mcdd_transport_model=="mix") {
+            DDOp::set_transport_model(DDOp::DD_Model_MixAvg);
+        }
+        else
+        {
+            BoxLib::Abort("valid models: full, mix");
+        }
+        pp.query("mcdd_NitersMAX",mcdd_NitersMAX);
+        pp.query("mcdd_relaxFactor",mcdd_relaxFactor);
+        pp.query("mcdd_relaxFactor1",mcdd_relaxFactor1);
+        pp.query("mcdd_rtol",mcdd_rtol);
+        pp.query("mcdd_presmooth",mcdd_presmooth);
+        pp.query("mcdd_postsmooth",mcdd_postsmooth);
+        pp.query("mcdd_verbose",mcdd_verbose);
+        pp.query("mcdd_cfRelaxFactor",mcdd_cfRelaxFactor);
+    }
+        
     if (verbose && ParallelDescriptor::IOProcessor())
     {
         std::cout << "\nDumping ParmParse table:\n \n";

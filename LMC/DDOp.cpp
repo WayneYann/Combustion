@@ -20,7 +20,9 @@ DDOp::DD_Model DDOp::transport_model = DDOp::DD_Model_NumModels; // ...an invali
 
 DDOp::DDOp (const ChemDriver& ckd)
     : ckdriver(ckd), coarser(0)
-{}
+{
+    ensure_valid_transport_is_set();
+}
 
 DDOp::DDOp (const BoxArray&   grids,
             const Box&        box,
@@ -29,6 +31,7 @@ DDOp::DDOp (const BoxArray&   grids,
             int               mgLevel)
     : ckdriver(ckd), coarser(0)
 {
+    ensure_valid_transport_is_set();
     define(grids,box,ratio,mgLevel);
 }
 
@@ -36,6 +39,25 @@ DDOp::~DDOp ()
 {
     if (coarser)
         delete coarser;
+}
+
+void
+DDOp::ensure_valid_transport_is_set() const
+{
+    std::string id;
+    if (transport_model==DD_Model_Full)
+    {
+        id = "DD_Model_Full";
+    }
+    else if (transport_model==DD_Model_MixAvg) 
+    {
+        id = "DD_Model_MixAvg";
+    }
+    else
+    {
+        BoxLib::Abort("Must set the static DDOp::transport_model before creating a DDOp");
+    }
+    std::cout << "DDOp transport model: " << id << std::endl;
 }
 
 bool can_coarsen(const BoxArray& ba)
@@ -76,19 +98,25 @@ DDOp::define (const BoxArray& _grids,
 {
     grids = _grids;
     Geometry geom(box);
+    int Nspec = ckdriver.numSpecies();
     Tbd.define(grids,1,geom,mgLevel);
-    Ybd.define(grids,ckdriver.numSpecies(),geom,mgLevel);
+    Ybd.define(grids,Nspec,geom,mgLevel);
     cfRatio = ratio;
     const int gGrow = 0;
     geom.GetVolume(volInv,grids,gGrow);
     for (MFIter mfi(volInv); mfi.isValid(); ++mfi) {
         volInv[mfi].invert(1);
     }
-    for (int dir = 0; dir < BL_SPACEDIM; dir++)
+    area.resize(BL_SPACEDIM,PArrayManage);
+    for (int dir = 0; dir < BL_SPACEDIM; dir++) {
+        area.set(dir,new MultiFab());
         geom.GetFaceArea(area[dir],grids,dir,gGrow);
-
-    // FIXME: This should be passed in from the ctr
-    transport_model = DD_Model_Full;
+    }
+    flux.resize(BL_SPACEDIM,PArrayManage);
+    for (int dir = 0; dir < BL_SPACEDIM; dir++) {
+        BoxArray eba=BoxArray(grids).surroundingNodes(dir);
+        flux.set(dir,new MultiFab(eba,Nspec+1,0));
+    }
 
     int model_DD0_MA1 = (transport_model==DD_Model_Full ? 0 : 1);
     int nComp = FORT_DDNCOEFS(model_DD0_MA1);

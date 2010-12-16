@@ -1,12 +1,3 @@
-ns.do_mcdd                   = 1
-ns.mcdd_NitersMAX            = 100
-ns.mcdd_relaxFactor          = 0.75
-ns.mcdd_relaxFactor1         = 1.0
-ns.mcdd_rtol                 = 1.e-8
-ns.mcdd_presmooth            = 3
-ns.mcdd_postsmooth           = 3
-ns.mcdd_cfRelaxFactor        = 1.0
-
 #DistributionMapping.verbose=1
 #DistributionMapping.do_not_minimize_comm_costs=0
 
@@ -245,6 +236,8 @@ ns.mcdd_postsmooth = 80
 ns.mcdd_verbose = 1
 amr.plot_int = 1
 ns.do_mcdd=1
+ns.mcdd_transport_model=full
+ns.mcdd_transport_model=mix
 ns.be_cn_theta=0.5
 ns.mcdd_relaxFactor = 0.75
 ns.mcdd_relaxFactor = 1.00

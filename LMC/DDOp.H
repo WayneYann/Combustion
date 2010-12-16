@@ -40,6 +40,7 @@ public:
 
     enum DD_ApForTorRH {DD_Temp=0, DD_RhoH, DD_NumAppTypes};
     enum DD_Model {DD_Model_Full=0, DD_Model_MixAvg, DD_Model_NumModels};
+    static void set_transport_model(const DD_Model& model);
 
     void applyOp(MultiFab&         outYH,
                  const MultiFab&   inYT,
@@ -74,6 +75,8 @@ public:
 
 private:
 
+    void ensure_valid_transport_is_set() const;
+
     void center_to_edge (const FArrayBox& cfab,
                          FArrayBox&       efab,
                          const Box&       ccBox,
@@ -86,7 +89,8 @@ private:
     DDBndry Tbd, Ybd;
     IntVect cfRatio;
     MultiFab volInv;
-    MultiFab area[BL_SPACEDIM];
+    PArray<MultiFab> area;
+    PArray<MultiFab> flux;
     MultiFab coefs;
     DDOp* coarser;
     static DD_Model transport_model;
@@ -119,6 +123,13 @@ const BoxArray&
 DDOp::boxArray() const
 {
     return grids;
+}
+
+inline
+void
+DDOp::set_transport_model(const DD_Model& model)
+{
+    transport_model = model;
 }
 
 #endif

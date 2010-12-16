@@ -550,6 +550,7 @@ protected:
     static std::string fuelName;
     static Array<std::string> consumptionName;
     static int         do_mcdd;
+    static std::string mcdd_transport_model;
     static int         mcdd_NitersMAX;
     static Real        mcdd_relaxFactor;
     static Real        mcdd_relaxFactor1;
