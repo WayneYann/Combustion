@@ -172,9 +172,9 @@ c ::: -----------------------------------------------------------
       integer untin
       REAL_T problo(SDIM), probhi(SDIM)
 
+#include "cdwrk.H"
 #include "probdata.H"
 #include "htdata.H"
-#include "cdwrk.H"
 #include "bc.H"
 #if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
@@ -911,8 +911,8 @@ c ::: -----------------------------------------------------------
       REAL_T x, y, z, time, u, v, w, rho, Yl(0:*), T, h, dx(SDIM)
       logical getuvw
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -1050,8 +1050,8 @@ c      endif
       REAL_T   scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
  
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
  
@@ -1132,8 +1132,8 @@ c ::: -----------------------------------------------------------
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 #if defined(BL_DO_FLCT)
@@ -1354,6 +1354,7 @@ c ::: -----------------------------------------------------------
       REAL_T  dx(SDIM)
       REAL_T  problo(SDIM)
       
+#include "cdwrk.H"
 #include "probdata.H"
 #include "htdata.H"
       integer i, j, k, n, Tid, RHid, YSid, YEid, ys, ye
