@@ -85,7 +85,7 @@ private:
     BoxArray grids;
     DDBndry Tbd, Ybd;
     IntVect cfRatio;
-    MultiFab volume;
+    MultiFab volInv;
     MultiFab area[BL_SPACEDIM];
     MultiFab coefs;
     DDOp* coarser;

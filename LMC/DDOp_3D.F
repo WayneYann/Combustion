@@ -48,7 +48,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                      coefs(i,j,k,TDoffset+n) = rhoTD(n)
                   enddo
                   do n = 1,Nspec*Nspec
-                     coefs(i,j,kDoffset+n) = rhoDij(n)
+                     coefs(i,j,k,Doffset+n) = rhoDij(n)
                   enddo
                endif            
             enddo
@@ -58,7 +58,8 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
 
       subroutine FORT_DDFLUX(lo, hi, delta, dir,
      &                       fluxYH, DIMS(fluxYH), FcpDTe, DIMS(FcpDTe),
-     &                       YTc, DIMS(YTc), Xc, DIMS(Xc), coefc, DIMS(coefc), CPic, DIMS(CPic),
+     &                       YTc, DIMS(YTc), Xc, DIMS(Xc), coefc, DIMS(coefc),
+     &                       CPic, DIMS(CPic), Ae, DIMS(Ae),
      &                       for_T0_H1, Hic, DIMS(Hic), fillAlpha, alphaYH, DIMS(alphaYH),
      &                       Full0_Mix1)
       implicit none
@@ -70,6 +71,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       integer DIMDEC(Xc)
       integer DIMDEC(coefc)
       integer DIMDEC(CPic)
+      integer DIMDEC(Ae)
       integer DIMDEC(Hic)
       integer for_T0_H1, fillAlpha
       integer DIMDEC(alphaYH)
@@ -80,6 +82,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       REAL_T     YTc(DIMV(YTc),*)
       REAL_T      Xc(DIMV(Xc)  ,*)
       REAL_T    CPic(DIMV(CPic) ,*)
+      REAL_T      Ae(DIMV(Ae))
       REAL_T   coefc(DIMV(coefc) ,*)
       REAL_T     Hic(DIMV(Hic)   ,*)
       REAL_T  alphaYH(DIMV(alphaYH),*)
@@ -138,10 +141,10 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                      endif
                      if (fillAlpha.eq.1) then
                         if (i-1.ge.lo(1)) then
-                           alphaYH(i-1,j,k,n) = alphaYH(i-1,j,k,n)  +  rDmixe * dx2Inv
+                           alphaYH(i-1,j,k,n) = alphaYH(i-1,j,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
                         endif
                         if (i.le.hi(1)) then
-                           alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dx2Inv
+                           alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
                         endif
                      endif
                   enddo
@@ -152,21 +155,27 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                         fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  +  Hie * fluxYH(i,j,k,n)
                      enddo
                   else
-                     FcpDTe(i,j) = 0.d0               
+                     FcpDTe(i,j,k) = 0.d0               
                      do n = 1,Nspec
                         CPie = 0.5d0*(CPic(i-1,j,k,n)+CPic(i,j,k,n))
-                        FcpDTe(i,j) = FcpDTe(i,j,k)  +  CPie * fluxYH(i,j,k,n) * dT
+                        FcpDTe(i,j,k) = FcpDTe(i,j,k)  +  CPie * fluxYH(i,j,k,n) * dT
                      enddo
                   endif
                   
                   PTCe = 0.5d0*(coefc(i-1,j,k,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
                   fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  -  PTCe * dT
+
+c     Scale fluxes by area
+                  do n = 1,Nspec+1
+                     fluxYH(i,j,k,n) = fluxYH(i,j,k,n) * Ae(i,j,k)
+                  enddo
+
                   if (fillAlpha.eq.1) then
                      if (i-1.ge.lo(1)) then
-                        alphaYH(i-1,j,k,Nspec+1) = alphaYH(i-1,j,k,Nspec+1)  +  PTCe * dx2Inv
+                        alphaYH(i-1,j,k,Nspec+1) = alphaYH(i-1,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                      endif
                      if (i.le.hi(1)) then
-                        alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dx2Inv
+                        alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                      endif
                   endif
                enddo
@@ -205,16 +214,16 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                      enddo
                   endif
                   do n = 1,Nspec
-                     rDmixe = 0.5d0*(coefc(i,j-1,DMIXoffset+n)+coefc(i,j,DMIXoffset+n))
+                     rDmixe = 0.5d0*(coefc(i,j-1,k,DMIXoffset+n)+coefc(i,j,k,DMIXoffset+n))
                      if (Full0_Mix1.eq.1) then 
                         fluxYH(i,j,k,n) = - rDmixe * dY(n)
                      endif
                      if (fillAlpha.eq.1) then
                         if (j-1.ge.lo(2)) then
-                           alphaYH(i,j-1,k,n) = alphaYH(i,j-1,k,n)  +  rDmixe * dx2Inv
+                           alphaYH(i,j-1,k,n) = alphaYH(i,j-1,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
                         endif
                         if (j.le.hi(2)) then
-                           alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dx2Inv
+                           alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
                         endif
                      endif
                   enddo
@@ -224,7 +233,7 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                         fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  +  Hie * fluxYH(i,j,k,n)
                      enddo
                   else
-                     FcpDTe(i,j) = 0.d0               
+                     FcpDTe(i,j,k) = 0.d0               
                      do n = 1,Nspec
                         CPie = 0.5d0*(CPic(i,j-1,k,n)+CPic(i,j,k,n))
                         FcpDTe(i,j,k) = FcpDTe(i,j,k)  +  CPie * fluxYH(i,j,k,n) * dT
@@ -233,17 +242,23 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                   
                   PTCe = 0.5d0*(coefc(i,j-1,k,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
                   fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  -  PTCe * dT
+
+c     Scale fluxes by area
+                  do n = 1,Nspec+1
+                     fluxYH(i,j,k,n) = fluxYH(i,j,k,n) * Ae(i,j,k)
+                  enddo
+
                   if (fillAlpha.eq.1) then
                      if (j-1.ge.lo(2)) then
-                        alphaYH(i,j-1,k,Nspec+1) = alphaYH(i,j-1,k,Nspec+1)  +  PTCe * dx2Inv
+                        alphaYH(i,j-1,k,Nspec+1) = alphaYH(i,j-1,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                      endif
                      if (j  .le.hi(2)) then
-                        alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dx2Inv
+                        alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                      endif
                   endif
                enddo
             enddo
-         else
+         enddo
       else if (dir.eq.2) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
@@ -283,10 +298,10 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                      endif
                      if (fillAlpha.eq.1) then
                         if (j-1.ge.lo(2)) then
-                           alphaYH(i,j,k-1,n) = alphaYH(i,j,k-1,n)  +  rDmixe * dx2Inv
+                           alphaYH(i,j,k-1,n) = alphaYH(i,j,k-1,n)  +  rDmixe * dxInv * Ae(i,j,k)
                         endif
                         if (j.le.hi(2)) then
-                           alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dx2Inv
+                           alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
                         endif
                      endif
                   enddo
@@ -296,7 +311,7 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                         fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  +  Hie * fluxYH(i,j,k,n)
                      enddo
                   else
-                     FcpDTe(i,j) = 0.d0               
+                     FcpDTe(i,j,k) = 0.d0               
                      do n = 1,Nspec
                         CPie = 0.5d0*(CPic(i,j,k-1,n)+CPic(i,j,k,n))
                         FcpDTe(i,j,k) = FcpDTe(i,j,k)  +  CPie * fluxYH(i,j,k,n) * dT
@@ -305,18 +320,24 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                   
                   PTCe = 0.5d0*(coefc(i,j,k-1,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
                   fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1)  -  PTCe * dT
+
+
+c     Scale fluxes by area
+                  do n = 1,Nspec+1
+                     fluxYH(i,j,k,n) = fluxYH(i,j,k,n) * Ae(i,j,k)
+                  enddo
+
                   if (fillAlpha.eq.1) then
                      if (k-1.ge.lo(3)) then
-                        alphaYH(i,j,k-1,Nspec+1) = alphaYH(i,j,k-1,Nspec+1)  +  PTCe * dx2Inv
+                        alphaYH(i,j,k-1,Nspec+1) = alphaYH(i,j,k-1,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                      endif
                      if (k  .le.hi(3)) then
-                        alphaYH(i ,j,k ,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dx2Inv
+                        alphaYH(i ,j,k ,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                      endif
                   endif
                enddo
             enddo
-         else
-            
+         enddo            
       endif
       end
 

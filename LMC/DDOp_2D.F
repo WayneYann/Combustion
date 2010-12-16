@@ -56,7 +56,8 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
 
       subroutine FORT_DDFLUX(lo, hi, delta, dir,
      &                       fluxYH, DIMS(fluxYH), FcpDTe, DIMS(FcpDTe),
-     &                       YTc, DIMS(YTc), Xc, DIMS(Xc), coefc, DIMS(coefc), CPic, DIMS(CPic),
+     &                       YTc, DIMS(YTc), Xc, DIMS(Xc), coefc, DIMS(coefc),
+     &                       CPic, DIMS(CPic), Ae, DIMS(Ae),
      &                       for_T0_H1, Hic, DIMS(Hic), fillAlpha, alphaYH, DIMS(alphaYH),
      &                       Full0_Mix1)
       implicit none
@@ -68,6 +69,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       integer DIMDEC(Xc)
       integer DIMDEC(coefc)
       integer DIMDEC(CPic)
+      integer DIMDEC(Ae)
       integer DIMDEC(Hic)
       integer for_T0_H1, fillAlpha
       integer DIMDEC(alphaYH)
@@ -78,6 +80,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       REAL_T     YTc(DIMV(YTc),*)
       REAL_T      Xc(DIMV(Xc)  ,*)
       REAL_T    CPic(DIMV(CPic) ,*)
+      REAL_T      Ae(DIMV(Ae))
       REAL_T   coefc(DIMV(coefc) ,*)
       REAL_T     Hic(DIMV(Hic)   ,*)
       REAL_T  alphaYH(DIMV(alphaYH),*)
@@ -135,10 +138,10 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                   endif
                   if (fillAlpha.eq.1) then
                      if (i-1.ge.lo(1)) then
-                        alphaYH(i-1,j,n) = alphaYH(i-1,j,n)  +  rDmixe * dx2Inv
+                        alphaYH(i-1,j,n) = alphaYH(i-1,j,n)  +  rDmixe * dxInv * Ae(i,j)
                      endif
                      if (i.le.hi(1)) then
-                        alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dx2Inv
+                        alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
                      endif
                   endif
                enddo
@@ -158,12 +161,18 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
 
                PTCe = 0.5d0*(coefc(i-1,j,PTCoffset+1)+coefc(i,j,PTCoffset+1))
                fluxYH(i,j,Nspec+1) = fluxYH(i,j,Nspec+1)  -  PTCe * dT
+
+c     Scale fluxes by area
+               do n = 1,Nspec+1
+                  fluxYH(i,j,n) = fluxYH(i,j,n) * Ae(i,j)
+               enddo
+
                if (fillAlpha.eq.1) then
                   if (i-1.ge.lo(1)) then
-                     alphaYH(i-1,j,Nspec+1) = alphaYH(i-1,j,Nspec+1)  +  PTCe * dx2Inv
+                     alphaYH(i-1,j,Nspec+1) = alphaYH(i-1,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
                   endif
                   if (i.le.hi(1)) then
-                     alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dx2Inv
+                     alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
                   endif
                endif
             enddo
@@ -206,10 +215,10 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                   endif
                   if (fillAlpha.eq.1) then
                      if (j-1.ge.lo(2)) then
-                        alphaYH(i,j-1,n) = alphaYH(i,j-1,n)  +  rDmixe * dx2Inv
+                        alphaYH(i,j-1,n) = alphaYH(i,j-1,n)  +  rDmixe * dxInv * Ae(i,j)
                      endif
                      if (j.le.hi(2)) then
-                        alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dx2Inv
+                        alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
                      endif
                   endif
                enddo
@@ -228,12 +237,18 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
 
                PTCe = 0.5d0*(coefc(i,j-1,PTCoffset+1)+coefc(i,j,PTCoffset+1))
                fluxYH(i,j,Nspec+1) = fluxYH(i,j,Nspec+1)  -  PTCe * dT
+
+c     Scale fluxes by area
+               do n = 1,Nspec+1
+                  fluxYH(i,j,n) = fluxYH(i,j,n) * Ae(i,j)
+               enddo
+
                if (fillAlpha.eq.1) then
                   if (j-1.ge.lo(2)) then
-                     alphaYH(i,j-1,Nspec+1) = alphaYH(i,j-1,Nspec+1)  +  PTCe * dx2Inv
+                     alphaYH(i,j-1,Nspec+1) = alphaYH(i,j-1,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
                   endif
                   if (j  .le.hi(2)) then
-                     alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dx2Inv
+                     alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
                   endif
                endif
             enddo

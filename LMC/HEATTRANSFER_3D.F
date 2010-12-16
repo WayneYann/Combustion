@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.25 2010-12-15 03:02:12 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.26 2010-12-16 00:33:07 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -132,9 +132,9 @@ c
      &     DIMS(rhoD), rhoD,
      &     ncompd, P1ATM_MKS, do_temp, do_VelVisc)
       implicit none
+#include "cdwrk.H"
 #include "visc.H"
 #include "htdata.H"
-#include "cdwrk.H"
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(T)
       integer DIMDEC(Y)
@@ -1505,6 +1505,7 @@ c     Returns the number of fine cells fixed up
       REAL_T R(DIMV(R),0:*)
       REAL_T dt, fac, maxCorr(0:*)
       integer for_T0_H1, res_only
+      REAL_T corr
       integer i, j, k, n
       
 c     Helper function to compute Res = Rhs - A(S) = Rhs - rho.phi + dt.Lphi

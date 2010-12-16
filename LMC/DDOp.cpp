@@ -80,7 +80,10 @@ DDOp::define (const BoxArray& _grids,
     Ybd.define(grids,ckdriver.numSpecies(),geom,mgLevel);
     cfRatio = ratio;
     const int gGrow = 0;
-    geom.GetVolume(volume,grids,gGrow);
+    geom.GetVolume(volInv,grids,gGrow);
+    for (MFIter mfi(volInv); mfi.isValid(); ++mfi) {
+        volInv[mfi].invert(1);
+    }
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
         geom.GetFaceArea(area[dir],grids,dir,gGrow);
 
@@ -437,6 +440,7 @@ DDOp::applyOp(MultiFab&         outYH,
         
         int nCompCoef = coefs.nComp();
         for (int dir=0; dir<BL_SPACEDIM; ++dir) {
+
             const Box ebox = BoxLib::surroundingNodes(box,dir);
 
             // Actually only need this if for_T0_H1 == 1
@@ -444,6 +448,7 @@ DDOp::applyOp(MultiFab&         outYH,
             
             // Returns fluxes (and Fn.cpn.gradT if for T)
             FArrayBox& fe = fluxYH[dir][mfi];
+            const FArrayBox& ae = area[dir][mfi];
             Real thisDx = dx[dir];
 
             FORT_DDFLUX(box.loVect(), box.hiVect(), &thisDx, &dir,
@@ -453,6 +458,7 @@ DDOp::applyOp(MultiFab&         outYH,
                         Xc.dataPtr(), ARLIM(Xc.loVect()),  ARLIM(Xc.hiVect()),
                         c.dataPtr(), ARLIM(c.loVect()),  ARLIM(c.hiVect()),
                         CPic.dataPtr(), ARLIM(CPic.loVect()),  ARLIM(CPic.hiVect()),
+                        ae.dataPtr(), ARLIM(ae.loVect()),  ARLIM(ae.hiVect()),
                         &for_T0_H1, Hic.dataPtr(), ARLIM(Hic.loVect()), ARLIM(Hic.hiVect()),
                         &fillAlpha, alfc.dataPtr(), ARLIM(alfc.loVect()), ARLIM(alfc.hiVect()),
                         Full0_Mix1);
@@ -492,11 +498,6 @@ DDOp::applyOp(MultiFab&         outYH,
                            &a, &dir, &oc, &diff0_avg1);
             }
             
-            // Multiply fluxes by edge areas
-            for (int n=0; n<nc; ++n) {
-                fe.mult(area[dir][mfi],0,n,1);
-            }
-
             // Now form -Div(F.Area) add to running total
             const int diff0_avg1 = 0;
             const Real a = -1.;
@@ -506,24 +507,31 @@ DDOp::applyOp(MultiFab&         outYH,
         }
         // Form -(1/Vol) Div(F.Area)
         for (int n=0; n<nc; ++n) {
-            outYHc.divide(volume[mfi],0,n,1);
+            outYHc.mult(volInv[mfi],0,n,1);
         }
 
-        // For rho.DT/Dt, add [-avg(F.cp.DT)] to total and scale by 1/cpb
+        // For rho.DT/Dt, form -(1/Vol) Div(F.Area) - avg(F.cp.DT)
         if (for_T0_H1 == 0) {
             outYHc.plus(FcpDTc,0,Nspec,1);
+        }
 
-            // Build 1/cpb (CPic <- CPic.Y, CPic_0=sum(CPic_n)
-            CPic.mult(YTc,0,0,Nspec);
-            for (int n=1; n<Nspec; ++n) {
-                CPic.plus(CPic,n,0,1);
-            }
-            CPic.invert(1);
-
+        // Build 1/cpb (CPic <- CPic.Y, CPic_0=sum(CPic_n)
+        CPic.mult(YTc,0,0,Nspec);
+        for (int n=1; n<Nspec; ++n) {
+            CPic.plus(CPic,n,0,1);
+        }
+        CPic.invert(1,0,1);
+        
+        // For rho.DT/Dt, form (1/Cp) [ -(1/Vol) Div(F.Area) - avg(F.cp.DT) ]
+        if (for_T0_H1 == 0) {
             outYHc.mult(CPic,0,Nspec,1);
-            if (getAlpha) {
-                alfc.mult(CPic,0,Nspec,1);
+        }
+
+        if (getAlpha) {
+            for (int n=0; n<nc; ++n) {
+                alfc.mult(volInv[mfi],0,n,1);
             }
+            alfc.mult(CPic,0,Nspec,1);
         }
     }
 }

@@ -3364,6 +3364,27 @@ levWrite(std::ostream& os, int level, std::string& message)
     return os;
 }
 
+/*
+void
+writeProfile(const FArrayBox& fab,
+             int              nComp=-1)
+{
+    int nStart = (nComp<0 ? 0 : nComp);
+    int nEnd   = (nComp<0 ? fab.nComp()-1 : nComp);
+    int jStart = 115;
+    int jEnd   = 130;
+    int imid = (fab.box().smallEnd()[0] + fab.box().bigEnd()[0])*0.5;   
+    Box box(IntVect(imid,jStart),IntVect(imid,jEnd));
+    for (IntVect idx=box.smallEnd(); idx<=box.bigEnd(); box.next(idx))
+    {
+        cout << idx[1] << " ";
+        for (int n=nStart; n<=nEnd; ++n)
+            cout << fab(idx,n) << " ";
+        cout << endl;
+    }
+    BoxLib::Abort();
+}
+*/
 void
 HeatTransfer::mcdd_v_cycle(MultiFab&           S,
                            const MultiFab&     Rhs,
