@@ -3691,12 +3691,6 @@ HeatTransfer::mcdd_update(Real time,
                   << " and RhoY" << '\n';
 
     // Get advection updates into new-time state
-    // HACK
-    aofs->setVal(0,Density,1);
-    aofs->setVal(0,Temp,1);
-    aofs->setVal(0,RhoH,1);
-    aofs->setVal(0,first_spec,nspecies);
-
     scalar_advection_update(dt, Density, Density);
     scalar_advection_update(dt, first_spec, last_spec);
     scalar_advection_update(dt, RhoH, RhoH);
