@@ -137,12 +137,8 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                      fluxYH(i,j,n) = - rDmixe * dY(n)
                   endif
                   if (fillAlpha.eq.1) then
-                     if (i-1.ge.lo(1)) then
-                        alphaYH(i-1,j,n) = alphaYH(i-1,j,n)  +  rDmixe * dxInv * Ae(i,j)
-                     endif
-                     if (i.le.hi(1)) then
-                        alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
-                     endif
+                     alphaYH(i-1,j,n) = alphaYH(i-1,j,n)  +  rDmixe * dxInv * Ae(i,j)
+                     alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
                   endif
                enddo
 
@@ -168,12 +164,8 @@ c     Scale fluxes by area
                enddo
 
                if (fillAlpha.eq.1) then
-                  if (i-1.ge.lo(1)) then
-                     alphaYH(i-1,j,Nspec+1) = alphaYH(i-1,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
-                  endif
-                  if (i.le.hi(1)) then
-                     alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
-                  endif
+                  alphaYH(i-1,j,Nspec+1) = alphaYH(i-1,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
+                  alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
                endif
             enddo
          enddo
@@ -214,12 +206,8 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                      fluxYH(i,j,n) = - rDmixe * dY(n)
                   endif
                   if (fillAlpha.eq.1) then
-                     if (j-1.ge.lo(2)) then
-                        alphaYH(i,j-1,n) = alphaYH(i,j-1,n)  +  rDmixe * dxInv * Ae(i,j)
-                     endif
-                     if (j.le.hi(2)) then
-                        alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
-                     endif
+                     alphaYH(i,j-1,n) = alphaYH(i,j-1,n)  +  rDmixe * dxInv * Ae(i,j)
+                     alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
                   endif
                enddo
                if (for_T0_H1.eq.1) then
@@ -244,12 +232,8 @@ c     Scale fluxes by area
                enddo
 
                if (fillAlpha.eq.1) then
-                  if (j-1.ge.lo(2)) then
-                     alphaYH(i,j-1,Nspec+1) = alphaYH(i,j-1,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
-                  endif
-                  if (j  .le.hi(2)) then
-                     alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
-                  endif
+                  alphaYH(i,j-1,Nspec+1) = alphaYH(i,j-1,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
+                  alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
                endif
             enddo
          enddo

@@ -8,11 +8,10 @@ class DDOp
 {
 public:
 
-    DDOp (const ChemDriver& ckd);
+    DDOp ();
 
     DDOp (const BoxArray&   grids,
           const Box&        box,
-          const ChemDriver& ckd,
           const IntVect&    ratio,
           int               mgLevel = 0);
 
@@ -36,11 +35,13 @@ public:
 
     void setGrowCells(MultiFab& YT,
                       int       compT,
-                      int       compY) const;
+                      int       compY);
 
     enum DD_ApForTorRH {DD_Temp=0, DD_RhoH, DD_NumAppTypes};
     enum DD_Model {DD_Model_Full=0, DD_Model_MixAvg, DD_Model_NumModels};
+
     static void set_transport_model(const DD_Model& model);
+    static void set_chem_driver(ChemDriver& chem);
 
     void applyOp(MultiFab&         outYH,
                  const MultiFab&   inYT,
@@ -84,9 +85,10 @@ private:
                          int              dComp,
                          int              nComp) const;
 
-    const ChemDriver& ckdriver;
+    static ChemDriver* chem;
     BoxArray grids;
     DDBndry Tbd, Ybd;
+    BndryRegister stencilWeight;
     IntVect cfRatio;
     MultiFab volInv;
     PArray<MultiFab> area;
@@ -94,6 +96,7 @@ private:
     MultiFab coefs;
     DDOp* coarser;
     static DD_Model transport_model;
+    static int maxorder;
 };
 
 inline
@@ -130,6 +133,13 @@ void
 DDOp::set_transport_model(const DD_Model& model)
 {
     transport_model = model;
+}
+
+inline
+void
+DDOp::set_chem_driver(ChemDriver& chemdriver)
+{
+    chem = &chemdriver;
 }
 
 #endif

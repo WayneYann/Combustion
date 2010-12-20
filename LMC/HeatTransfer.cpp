@@ -401,6 +401,7 @@ HeatTransfer::read_params ()
 
     pp.query("do_mcdd",do_mcdd);
     if (do_mcdd) {
+        DDOp::set_chem_driver(getChemSolve());
         pp.get("mcdd_transport_model",mcdd_transport_model);
         if (mcdd_transport_model=="full") {
             DDOp::set_transport_model(DDOp::DD_Model_Full);
@@ -431,7 +432,6 @@ HeatTransfer::read_params ()
 }
 
 HeatTransfer::HeatTransfer ()
-    : MCDDOp(getChemSolve())
 {
     if (!init_once_done)
         init_once();
@@ -466,8 +466,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
     //
     aux_boundary_data_new(bl,LinOp_grow,2,level_geom),
-    FillPatchedOldState_ok(true),
-    MCDDOp(getChemSolve())
+    FillPatchedOldState_ok(true)
 {
     if (!init_once_done)
         init_once();
@@ -3431,7 +3430,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
     int nGrowOp = 1;
     int nComp = nspecies+1;
     MultiFab Lphi(mg_grids,nComp,nGrow);
-    MultiFab alpha(mg_grids,nComp,nGrow);
+    MultiFab alpha(mg_grids,nComp,nGrowOp);
     bool getAlpha = true;
 
     Array<Real> maxCorr(nComp);

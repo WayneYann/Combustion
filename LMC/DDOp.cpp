@@ -16,21 +16,33 @@ using std::endl;
 //       registers can be anything, but the ratio between adjacent DD operators
 //       generated for multigrid will always be two.
 const IntVect MGIV = IntVect(D_DECL(2,2,2));
-DDOp::DD_Model DDOp::transport_model = DDOp::DD_Model_NumModels; // ...an invalid model choice, BTW
+DDOp::DD_Model DDOp::transport_model = DDOp::DD_Model_NumModels; // ...must set prior to first ctr call
+ChemDriver* DDOp::chem = 0; // ...must set prior to first ctr call
+int DDOp::maxorder = 3;
 
-DDOp::DDOp (const ChemDriver& ckd)
-    : ckdriver(ckd), coarser(0)
+DDOp::DDOp ()
+    : coarser(0)
 {
     ensure_valid_transport_is_set();
+    if (!chem)
+        BoxLib::Abort("ChemDriver must be set prior to first DDOp ctr call");
 }
 
 DDOp::DDOp (const BoxArray&   grids,
             const Box&        box,
-            const ChemDriver& ckd,
             const IntVect&    ratio,
             int               mgLevel)
-    : ckdriver(ckd), coarser(0)
+    : coarser(0)
 {
+
+    for (OrientationIter oitr; oitr; ++oitr)
+    {
+        const Orientation& face = oitr();
+        FabSet&            Tst = stencilWeight[face];
+        std::cout << "dir,islo: " << face.coordDir() << ", " << face.isLow() << std::endl;
+        std::cout << "    FABSET (size,nComp): " << Tst.size() << ", " << Tst.nComp() << std::endl;
+    }
+
     ensure_valid_transport_is_set();
     define(grids,box,ratio,mgLevel);
 }
@@ -98,7 +110,7 @@ DDOp::define (const BoxArray& _grids,
 {
     grids = _grids;
     Geometry geom(box);
-    int Nspec = ckdriver.numSpecies();
+    int Nspec = chem->numSpecies();
     Tbd.define(grids,1,geom,mgLevel);
     Ybd.define(grids,Nspec,geom,mgLevel);
     cfRatio = ratio;
@@ -112,16 +124,28 @@ DDOp::define (const BoxArray& _grids,
         area.set(dir,new MultiFab());
         geom.GetFaceArea(area[dir],grids,dir,gGrow);
     }
+    /*  Not yet...
     flux.resize(BL_SPACEDIM,PArrayManage);
     for (int dir = 0; dir < BL_SPACEDIM; dir++) {
         BoxArray eba=BoxArray(grids).surroundingNodes(dir);
         flux.set(dir,new MultiFab(eba,Nspec+1,0));
     }
-
+    */
     int model_DD0_MA1 = (transport_model==DD_Model_Full ? 0 : 1);
     int nComp = FORT_DDNCOEFS(model_DD0_MA1);
     int nGrow = 1;
     coefs.define(grids,nComp,nGrow,Fab_allocate);
+
+    // Weights used to generate grow cell data
+    stencilWeight.setBoxes(grids);
+    for (OrientationIter face; face; ++face)
+    {
+        int in_rad_st = 1;
+        int out_rad_st = 0;
+        int extent_rad_st = 0;
+        int ncomp_st = 2;
+        stencilWeight.define(face(),IndexType::TheCellType(),in_rad_st,out_rad_st,extent_rad_st,ncomp_st);
+    }
 
     // Generate coarser one (ratio = MGIV), if possible
     if (can_coarsen(grids))
@@ -129,7 +153,7 @@ DDOp::define (const BoxArray& _grids,
         const BoxArray cGrids = BoxArray(grids).coarsen(MGIV);
         const Box cBox = Box(box).coarsen(MGIV);
         BL_ASSERT(Box(cBox).refine(MGIV) == box);
-        coarser = new DDOp(cGrids,cBox,ckdriver,cfRatio,mgLevel+1);
+        coarser = new DDOp(cGrids,cBox,cfRatio,mgLevel+1);
     }
 }
 
@@ -227,7 +251,7 @@ DDOp::setBoundaryData(const MultiFab&      fineT,
 {
     BL_ASSERT(fineT.boxArray() == grids);
     BL_ASSERT(fineY.boxArray() == grids);
-    const int Nspec = ckdriver.numSpecies();
+    const int Nspec = chem->numSpecies();
 
     if (coarser)  // if so, then it will be MGIV coarser
     {
@@ -285,10 +309,10 @@ DDOp::setBoundaryData(const MultiFab&      fineT,
 void
 DDOp::setGrowCells(MultiFab& YT,
                    int       compT,
-                   int       compY) const
+                   int       compY)
 {
     BL_ASSERT(YT.nGrow() >= 1);
-    const int Nspec = ckdriver.numSpecies();
+    const int Nspec = chem->numSpecies();
 
     BL_ASSERT(YT.nComp() > compT);
     BL_ASSERT(YT.nComp() >= compY + Nspec);
@@ -301,10 +325,7 @@ DDOp::setGrowCells(MultiFab& YT,
     Ybd.getGeom().FillPeriodicBoundary(YT,compY,Nspec);
 
     const int flagbc  = 1;
-    const int flagden = 0; // Use LinOp's bc interpolator, but don't save the coeff
-    const int maxorder = 3;
-    Real* dummy = 0;
-    Box dumbox(IntVect(D_DECL(0,0,0)),IntVect(D_DECL(0,0,0)));
+    const int flagden = 1;
     const Real* dx = Tbd.getGeom().CellSize();
     for (OrientationIter oitr; oitr; ++oitr)
     {
@@ -314,11 +335,13 @@ DDOp::setGrowCells(MultiFab& YT,
         const Array<Array<BoundCond> >& Tbc = Tbd.bndryConds(face);
         const Array<Real>&      Tloc = Tbd.bndryLocs(face);
         const FabSet&            Tfs = Tbd.bndryValues(face);
+        FabSet&                  Tst = stencilWeight[face];
         const int                Tnc = 1;
         
         const Array<Array<BoundCond> >&  Ybc = Ybd.bndryConds(face);
         const Array<Real>&      Yloc = Ybd.bndryLocs(face);
         const FabSet&            Yfs = Ybd.bndryValues(face);
+        FabSet&                  Yst = stencilWeight[face];
         const int                Ync = Nspec;
 
         const int comp = 0;
@@ -329,6 +352,7 @@ DDOp::setGrowCells(MultiFab& YT,
             BL_ASSERT(grids[idx] == vbox);
 
             FArrayBox& Tfab = YT[mfi];
+            FArrayBox& Tstfab = Tst[mfi];
             const FArrayBox& Tb = Tfs[mfi];
 
             const Mask& Tm  = Tbd.bndryMasks(face)[idx];
@@ -340,10 +364,11 @@ DDOp::setGrowCells(MultiFab& YT,
                          &iFace, &Tbct, &Tbcl,
                          Tb.dataPtr(), ARLIM(Tb.loVect()), ARLIM(Tb.hiVect()),
                          Tm.dataPtr(), ARLIM(Tm.loVect()), ARLIM(Tm.hiVect()),
-                         dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
+                         Tstfab.dataPtr(1), ARLIM(Tstfab.loVect()), ARLIM(Tstfab.hiVect()),
                          vbox.loVect(),vbox.hiVect(), &Tnc, dx);
 
             FArrayBox& Yfab = YT[mfi];
+            FArrayBox& Ystfab = Yst[mfi];
             const FArrayBox& Yb = Yfs[mfi];
 
             const Mask& Ym  = Ybd.bndryMasks(face)[idx];
@@ -355,7 +380,7 @@ DDOp::setGrowCells(MultiFab& YT,
                          &iFace, &Ybct, &Ybcl,
                          Yb.dataPtr(), ARLIM(Yb.loVect()), ARLIM(Yb.hiVect()),
                          Ym.dataPtr(), ARLIM(Ym.loVect()), ARLIM(Ym.hiVect()),
-                         dummy, ARLIM(dumbox.loVect()), ARLIM(dumbox.hiVect()),
+                         Ystfab.dataPtr(0), ARLIM(Ystfab.loVect()), ARLIM(Ystfab.hiVect()),
                          vbox.loVect(),vbox.hiVect(), &Ync, dx);
         }
     }
@@ -367,9 +392,7 @@ DDOp::setCoefficients(const MFIter&    mfi,
                       const FArrayBox& cpi)
 {
     int nGrow = 1;
-    int Nspec = ckdriver.numSpecies();
-    int sCompY = 0;
-    int sCompT = Nspec;
+    int Nspec = chem->numSpecies();
     BL_ASSERT(inYT.nComp()>=Nspec+1);
 
     const Box gbox = Box(grids[mfi.index()]).grow(nGrow);
@@ -401,7 +424,7 @@ DDOp::applyOp(MultiFab&         outYH,
         return;
     }
 
-    const int Nspec = ckdriver.numSpecies();
+    const int Nspec = chem->numSpecies();
     const int nGrow = 1;
 
     int nc = Nspec+1;
@@ -426,6 +449,7 @@ DDOp::applyOp(MultiFab&         outYH,
     const IntVect iv=IntVect::TheZeroVector();
     FArrayBox dum(Box(iv,iv),1);
     if (getAlpha) {
+        BL_ASSERT(alpha->nGrow()>=1);
         alpha->setVal(0);
     }
 
@@ -436,7 +460,6 @@ DDOp::applyOp(MultiFab&         outYH,
     FArrayBox Hic(Box(iv,iv),1);
     FArrayBox FcpDTe(Box(iv,iv),1);
     const Real* dx = Tbd.getGeom().CellSize();
-    const Box& domain = Tbd.getDomain();
     for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
     {
         FArrayBox& outYHc = outYH[mfi];
@@ -450,14 +473,14 @@ DDOp::applyOp(MultiFab&         outYH,
 
         Box gbox = Box(box).grow(nGrow);
         CPic.resize(gbox,Nspec);
-        ckdriver.getCpGivenT(CPic,YTc,gbox,sCompT,0);
+        chem->getCpGivenT(CPic,YTc,gbox,sCompT,0);
 
         // Actually only need this if for_T0_H1 == 1
         Hic.resize(gbox,Nspec);
-        ckdriver.getHGivenT(Hic,YTc,gbox,Nspec,0);
+        chem->getHGivenT(Hic,YTc,gbox,Nspec,0);
 
         Xc.resize(gbox,Nspec);
-        ckdriver.massFracToMoleFrac(Xc,YTc,gbox,sCompY,0);
+        chem->massFracToMoleFrac(Xc,YTc,gbox,sCompY,0);
 
         if (updateCoefs) {
             setCoefficients(mfi,YTc,CPic);
@@ -466,7 +489,6 @@ DDOp::applyOp(MultiFab&         outYH,
         int fillAlpha = getAlpha;
         FArrayBox& alfc = (fillAlpha ? (*alpha)[mfi] : dum);
         
-        int nCompCoef = coefs.nComp();
         for (int dir=0; dir<BL_SPACEDIM; ++dir) {
 
             const Box ebox = BoxLib::surroundingNodes(box,dir);
@@ -490,29 +512,6 @@ DDOp::applyOp(MultiFab&         outYH,
                         &for_T0_H1, Hic.dataPtr(), ARLIM(Hic.loVect()), ARLIM(Hic.hiVect()),
                         &fillAlpha, alfc.dataPtr(), ARLIM(alfc.loVect()), ARLIM(alfc.hiVect()),
                         Full0_Mix1);
-
-            /*
-            // FIXME: Hard code grad(T) and fluxes to zero on in/out
-            {
-                Box lo_ebox = BoxLib::bdryLo(domain,dir) & fe.box();
-                if (lo_ebox.ok()) {
-                    fe.setVal(0,lo_ebox,0,Nspec+1);
-                    lo_ebox &= FcpDTe.box();
-                    if (lo_ebox.ok()) {
-                        FcpDTe.setVal(0,lo_ebox,0,Nspec+1);
-                    }
-                }            
-                
-                Box hi_ebox = BoxLib::bdryHi(domain,dir) & fe.box();
-                if (hi_ebox.ok()) {
-                    fe.setVal(0,hi_ebox,0,Nspec+1);
-                    hi_ebox &= FcpDTe.box();
-                    if (hi_ebox.ok()) {
-                        FcpDTe.setVal(0,hi_ebox,0,Nspec+1);
-                    }
-                }        
-            }    
-            */
 
             // If for T, increment running sum on cell centers with -avg(F.cp.gT) across faces (in FcpDTe).
             // If for H, q was incremented with +He.Fe inside DDFLUX, nothing more to do
@@ -560,6 +559,37 @@ DDOp::applyOp(MultiFab&         outYH,
                 alfc.mult(volInv[mfi],0,n,1);
             }
             alfc.mult(CPic,0,Nspec,1);
+
+            // Modify coefficient based on what was needed to fill adjacent grow cells
+            for (OrientationIter oitr; oitr; ++oitr) {
+                const Orientation face = oitr();
+                const FabSet& stfs = stencilWeight[face];
+                int dir = face.coordDir();
+                int shiftCells = ( face.isLow() ? -1 : +1 ); 
+
+                for (FabSetIter mfi(stfs); mfi.isValid(); ++mfi) {
+                    const FArrayBox& src = stfs[mfi];
+                    const Box& srcBox = src.box();
+                    const Box dstBox = Box(srcBox).shift(dir,shiftCells); 
+                    
+                    // Do T component
+                    {
+                        int sComp = 1;
+                        int dComp = Nspec;
+                        alfc.mult(src,srcBox,dstBox,sComp,dComp,1);
+                        alfc.plus(alfc,dstBox,srcBox,dComp,dComp,1);
+                    }
+                    // Do Y component
+                    {
+                        int sComp = 0;
+                        for (int i=0; i<Nspec; ++i) {
+                            int dComp = i;
+                            alfc.mult(src,srcBox,dstBox,sComp,dComp,1);
+                            alfc.plus(alfc,dstBox,srcBox,dComp,dComp,1);
+                        }
+                    }
+                } 
+            }
         }
     }
 }
