@@ -136,8 +136,7 @@ DDOp::define (const BoxArray& _grids,
     }
 
     // Generate coarser one (ratio = MGIV), if possible
-    // FIXME
-    if (mgLevel==0 && can_coarsen(grids))
+    if (can_coarsen(grids))
     {
         const BoxArray cGrids = BoxArray(grids).coarsen(MGIV);
         const Box cBox = Box(box).coarsen(MGIV);
@@ -613,11 +612,11 @@ DDOp::interpolate (MultiFab&       mfF,
 {
     BL_ASSERT(mfF.nComp()>=dCompF+nComp);
     BL_ASSERT(mfC.nComp()>=sCompC+nComp);
-    for (MFIter mfi(mfF); mfi.isValid(); ++mfi)
+    for (MFIter mfi(mfC); mfi.isValid(); ++mfi)
     {
         FArrayBox& F = mfF[mfi];
         const FArrayBox& C = mfC[mfi];
-        const Box cbox = BoxLib::refine(mfi.validbox(),MGIV);
+        const Box cbox = mfi.validbox();
         FORT_DDCCINT(F.dataPtr(dCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
                      C.dataPtr(sCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
                      cbox.loVect(), cbox.hiVect(), &nComp, MGIV.getVect());
