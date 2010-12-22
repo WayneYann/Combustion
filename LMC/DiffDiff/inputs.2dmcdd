@@ -231,9 +231,9 @@ DistributionMapping.strategy = KNAPSACK
 #StationData.coord = 0.00234 0.00234
 
 #max_step=200
-ns.mcdd_presmooth = 80
-ns.mcdd_postsmooth = 80
-ns.mcdd_verbose = 1
+ns.mcdd_presmooth = 5
+ns.mcdd_postsmooth = 5
+ns.mcdd_verbose = 3
 amr.plot_int = 1
 ns.do_mcdd=1
 ns.mcdd_transport_model=full
@@ -250,3 +250,4 @@ ns.mcdd_relaxFactor = 1.00
 #ns.num_divu_iters=0
 #ns.fixed_dt=1.e-4
 ns.do_active_control=1
+amr.restart=chk00000

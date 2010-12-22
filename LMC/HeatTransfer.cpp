@@ -3435,37 +3435,41 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
 
     Array<Real> maxCorr(nComp);
     int for_T0_H1 = (whichApp==DDOp::DD_Temp ? 0 : 1);
-    for (int iter=0; iter<=mcdd_presmooth; ++iter)
+    //for (int iter=0; iter<=mcdd_presmooth; ++iter)
+    int thisPre = ( MCDDOp.coarser_exists(mg_level) ? mcdd_presmooth : 20);
+    for (int iter=0; iter<=thisPre; ++iter)
     {
         // Make T consistent with Y,H
-        if (whichApp == DDOp::DD_RhoH)
-        {
-            int  max_iters_taken = 0;
-            bool error_occurred  = false;
-            for (MFIter mfi(S); mfi.isValid(); ++mfi)
+        if (mg_level==0) {
+            if (whichApp == DDOp::DD_RhoH)
             {
-                int iters_taken = getChemSolve().getTGivenHY(S[mfi],S[mfi],S[mfi],
-                                                             mfi.validbox(),sCompH,sCompY,sCompT);            
-                error_occurred = error_occurred  ||  iters_taken < 0;
-                max_iters_taken = std::max(max_iters_taken, iters_taken);        
-            }    
-            ParallelDescriptor::ReduceBoolOr(error_occurred);
-            ParallelDescriptor::ReduceIntMax(max_iters_taken);
-
-            if (error_occurred && ParallelDescriptor::IOProcessor()) {
-                BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T (pre)");
+                int  max_iters_taken = 0;
+                bool error_occurred  = false;
+                for (MFIter mfi(S); mfi.isValid(); ++mfi)
+                {
+                    int iters_taken = getChemSolve().getTGivenHY(S[mfi],S[mfi],S[mfi],
+                                                                 mfi.validbox(),sCompH,sCompY,sCompT);
+                    error_occurred = error_occurred  ||  iters_taken < 0;
+                    max_iters_taken = std::max(max_iters_taken, iters_taken);        
+                }    
+                ParallelDescriptor::ReduceBoolOr(error_occurred);
+                ParallelDescriptor::ReduceIntMax(max_iters_taken);
+                
+                if (error_occurred && ParallelDescriptor::IOProcessor()) {
+                    BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T (pre)");
+                }
+                if (mcdd_verbose>1) {
+                    std::string str("\tmcdd_V::RhoH->T (pre): max iters = ");
+                    levWrite(std::cout,mg_level,str) << max_iters_taken << '\n';
+                }
             }
-            if (mcdd_verbose>1) {
-                std::string str("\tmcdd_V::RhoH->T (pre): max iters = ");
-                levWrite(std::cout,mg_level,str) << max_iters_taken << '\n';
+            else
+            {
+                for (MFIter mfi(S); mfi.isValid(); ++mfi) {
+                    getChemSolve().getHmixGivenTY(S[mfi],S[mfi],S[mfi],
+                                                  mfi.validbox(),sCompT,sCompY,sCompH);            
+                }    
             }
-        }
-        else
-        {
-            for (MFIter mfi(S); mfi.isValid(); ++mfi) {
-                getChemSolve().getHmixGivenTY(S[mfi],S[mfi],S[mfi],
-                                              mfi.validbox(),sCompT,sCompY,sCompH);            
-            }    
         }
 
         // Compute Res = Rhs - A(S) = Rhs - rho.phi + dt.theta.Lphi (theta.dt passed in)
@@ -3511,7 +3515,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
                 levWrite(std::cout,mg_level,str) << maxNormCorr << ", iter: " << iter << '\n';
             }
         }
-        
+
         if (mcdd_verbose>2) {
             std::string junkname = BoxLib::Concatenate("res_",mg_level,1);
             junkname += "_pre_";
@@ -3544,6 +3548,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
             }
             MultiFab::Multiply(S,S,sCompR,sCompH,1,nGrow);
             DDOp::average(S_avg,0,S,0,nspecies+3);
+
             for (int n=0; n<nspecies; ++n) {
                 MultiFab::Divide(S_avg,S_avg,sCompR,sCompY+n,1,nGrow);
             }
@@ -3585,37 +3590,41 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
     }
 
     // Do post smooth
-    for (int iter=0; iter<=mcdd_postsmooth; ++iter)
+    //for (int iter=0; iter<=mcdd_postsmooth; ++iter)
+    int thisPost = ( MCDDOp.coarser_exists(mg_level) ? mcdd_postsmooth : 0);
+    for (int iter=0; iter<=thisPost; ++iter)
     {
         // Make T consistent with Y,H
-        if (whichApp == DDOp::DD_RhoH)
-        {
-            int  max_iters_taken = 0;
-            bool error_occurred  = false;
-            for (MFIter mfi(S); mfi.isValid(); ++mfi)
+        if (mg_level==0) {
+            if (whichApp == DDOp::DD_RhoH)
             {
-                int iters_taken = getChemSolve().getTGivenHY(S[mfi],S[mfi],S[mfi],
-                                                             mfi.validbox(),sCompH,sCompY,sCompT);            
-                error_occurred = error_occurred  ||  iters_taken < 0;
-                max_iters_taken = std::max(max_iters_taken, iters_taken);        
-            }    
-            ParallelDescriptor::ReduceBoolOr(error_occurred);
-            ParallelDescriptor::ReduceIntMax(max_iters_taken);
-            
-            if (error_occurred && ParallelDescriptor::IOProcessor()) {
-                BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T (post)");
+                int  max_iters_taken = 0;
+                bool error_occurred  = false;
+                for (MFIter mfi(S); mfi.isValid(); ++mfi)
+                {
+                    int iters_taken = getChemSolve().getTGivenHY(S[mfi],S[mfi],S[mfi],
+                                                                 mfi.validbox(),sCompH,sCompY,sCompT);
+                    error_occurred = error_occurred  ||  iters_taken < 0;
+                    max_iters_taken = std::max(max_iters_taken, iters_taken);        
+                }    
+                ParallelDescriptor::ReduceBoolOr(error_occurred);
+                ParallelDescriptor::ReduceIntMax(max_iters_taken);
+                
+                if (error_occurred && ParallelDescriptor::IOProcessor()) {
+                    BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T (post)");
+                }
+                if (mcdd_verbose>1) {
+                    std::string str("\tmcdd_V::RhoH->T (post): max iters = ");
+                    levWrite(std::cout,mg_level,str) << max_iters_taken << '\n';
+                }
             }
-            if (mcdd_verbose>1) {
-                std::string str("\tmcdd_V::RhoH->T (post): max iters = ");
-                levWrite(std::cout,mg_level,str) << max_iters_taken << '\n';
+            else
+            {
+                for (MFIter mfi(S); mfi.isValid(); ++mfi) {
+                    getChemSolve().getHmixGivenTY(S[mfi],S[mfi],S[mfi],
+                                                  mfi.validbox(),sCompT,sCompY,sCompH);            
+                }    
             }
-        }
-        else
-        {
-            for (MFIter mfi(S); mfi.isValid(); ++mfi) {
-                getChemSolve().getHmixGivenTY(S[mfi],S[mfi],S[mfi],
-                                              mfi.validbox(),sCompT,sCompY,sCompH);            
-            }    
         }
 
         // Compute Res = Rhs - A(S) = Rhs - rho.phi + dt.theta.Lphi (theta.dt passed in)
