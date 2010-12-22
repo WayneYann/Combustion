@@ -3435,9 +3435,9 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
 
     Array<Real> maxCorr(nComp);
     int for_T0_H1 = (whichApp==DDOp::DD_Temp ? 0 : 1);
-    //for (int iter=0; iter<=mcdd_presmooth; ++iter)
-    int thisPre = ( MCDDOp.coarser_exists(mg_level) ? mcdd_presmooth : 20);
-    for (int iter=0; iter<=thisPre; ++iter)
+    for (int iter=0; iter<=mcdd_presmooth; ++iter)
+    //int thisPre = ( MCDDOp.coarser_exists(mg_level) ? mcdd_presmooth : 20);
+    //for (int iter=0; iter<=thisPre; ++iter)
     {
         // Make T consistent with Y,H
         if (mg_level==0) {
@@ -3475,6 +3475,15 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
         // Compute Res = Rhs - A(S) = Rhs - rho.phi + dt.theta.Lphi (theta.dt passed in)
         // and then relax: phi = phi + f.Res/alpha
         mcdd_apply(Lphi,S,flux,time,whichApp,mg_level,getAlpha,&alpha);
+
+
+        if (mg_level==1) {
+            std::string junkname = "JUNK";
+            std::ofstream osf(junkname.c_str());
+            Lphi[0].writeOn(osf);
+            osf.close();
+            BoxLib::Abort();
+        }
 
         int res_only = (iter==mcdd_presmooth ? 1 : 0);
         for (int i=0; i<nComp; ++i) {
@@ -3561,19 +3570,19 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
                                        nspecies+1,0));
 
         const int mgc_level = mg_level + 1;
-        MultiFab tmpC(c_grids,nspecies+1,nGrow);
+        MultiFab tmpC(c_grids,nspecies+3,nGrow);
         mcdd_apply(tmpC,S_avg,fluxC,time,whichApp,mgc_level);
 
         // Set Avg(Res) += L(Avg(S))
         MultiFab::Add(Rhs_avg,tmpC,0,0,nspecies+1,nGrow);
 
         // Save a copy of pre-relaxed coarse state
-        MultiFab::Copy(tmpC,S_avg,0,0,nspecies+1,nGrow);
+        MultiFab::Copy(tmpC,S_avg,0,0,nspecies+3,nGrow);
 
         mcdd_v_cycle(S_avg,Rhs_avg,fluxC,time,dt,whichApp,mgc_level);
 
         // Compute coarse-grid correction, dS = S_avg_post - S_avg_pre
-        MultiFab::Subtract(S_avg,tmpC,0,0,nspecies+1,nGrow);
+        MultiFab::Subtract(S_avg,tmpC,0,0,nspecies+3,nGrow);
         
         // Increment (rho-weighted) fine solution with interpolated correction, then unweight
         {
