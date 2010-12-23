@@ -3398,6 +3398,24 @@ writeProfile(const FArrayBox& fab,
     BoxLib::Abort();
 }
 */
+
+void
+dumpFab(const MultiFab& mf,
+        const std::string&   name,
+        int             lev,
+        int iter=-1)
+{
+    const Box& box = mf.boxArray()[0];
+    FArrayBox fab(box,mf.nComp());
+    std::string junkname = BoxLib::Concatenate(name+"_",lev,1);
+    if (iter>=0)
+        junkname = BoxLib::Concatenate(junkname+"_",iter,1);
+    std::ofstream osf(junkname.c_str());
+    fab.copy(mf[0]);
+    fab.writeOn(osf);
+    osf.close();
+}
+
 void
 HeatTransfer::mcdd_v_cycle(MultiFab&           S,
                            const MultiFab&     Rhs,
@@ -3435,9 +3453,8 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
 
     Array<Real> maxCorr(nComp);
     int for_T0_H1 = (whichApp==DDOp::DD_Temp ? 0 : 1);
+
     for (int iter=0; iter<=mcdd_presmooth; ++iter)
-    //int thisPre = ( MCDDOp.coarser_exists(mg_level) ? mcdd_presmooth : 20);
-    //for (int iter=0; iter<=thisPre; ++iter)
     {
         // Make T consistent with Y,H
         if (mg_level==0) {
@@ -3472,18 +3489,8 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
             }
         }
 
-        // Compute Res = Rhs - A(S) = Rhs - rho.phi + dt.theta.Lphi (theta.dt passed in)
-        // and then relax: phi = phi + f.Res/alpha
         mcdd_apply(Lphi,S,flux,time,whichApp,mg_level,getAlpha,&alpha);
-
-
-        if (mg_level==1) {
-            std::string junkname = "JUNK";
-            std::ofstream osf(junkname.c_str());
-            Lphi[0].writeOn(osf);
-            osf.close();
-            BoxLib::Abort();
-        }
+        dumpFab(Lphi,"LofS_nu",mg_level,iter);
 
         int res_only = (iter==mcdd_presmooth ? 1 : 0);
         for (int i=0; i<nComp; ++i) {
@@ -3498,18 +3505,27 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
             const FArrayBox& a = alpha[mfi];
             const Box& box = mfi.validbox();
 
+            // Compute Res (returned as Lphi):
+            //   Res = Rhs - A(S) = Rhs - rho.phi + dt.theta.Lphi
+            // Then relax: phi = phi + f.Res/alpha      (NOTE: theta.dt passed in as "dt")  
+            Real mult = -1;
             FORT_HTDDRELAX(box.loVect(),box.hiVect(),
                            s.dataPtr(),ARLIM(s.loVect()),ARLIM(s.hiVect()),
                            sCompY, sCompT, sCompH, sCompR,
                            L.dataPtr(),ARLIM(L.loVect()),ARLIM(L.hiVect()),
                            a.dataPtr(),ARLIM(a.loVect()),ARLIM(a.hiVect()),
                            r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
-                           dt, mcdd_relaxFactor, thisCorr.dataPtr(), for_T0_H1, res_only);
+                           dt, mcdd_relaxFactor, thisCorr.dataPtr(),
+                           for_T0_H1, res_only, mult);
 
             for (int i=0; i<nComp; ++i) {
                 maxCorr[i] = std::max(maxCorr[i],thisCorr[i]);
             }
         }
+
+        dumpFab(Lphi,"Res",mg_level,iter);
+        dumpFab(S,"S",mg_level,iter);
+
         ParallelDescriptor::ReduceRealMax(maxCorr.dataPtr(),maxCorr.size());
         if (ParallelDescriptor::IOProcessor()) {
             Real maxNormCorr = 0;
@@ -3543,12 +3559,13 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
         const IntVect MGIV(D_DECL(2,2,2));
         const BoxArray c_grids = BoxArray(mg_grids).coarsen(MGIV);
         MultiFab S_avg(c_grids,nspecies+3,nGrowOp);
-        MultiFab Rhs_avg(c_grids,nspecies+1,nGrow);
+        MultiFab Rhs_avg(c_grids,nspecies+3,nGrow);
         //
-        // Build Rhs for the coarse problem:
-        //   Avg(res) + L(Avg(S))
+        // Build Rhs for the coarse problem = Avg(res) + Op(Avg(S))
         //
         DDOp::average(Rhs_avg,0,Lphi,0,nspecies+1);
+
+        dumpFab(Rhs_avg,"Res_avg",mg_level);
 
         // Average rho.Y, rho.H, rho, T  (leave fine data rho-weighted for now...)
         {
@@ -3564,6 +3581,8 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
             MultiFab::Divide(S_avg,S_avg,sCompR,sCompH,1,nGrow);
         }
 
+        dumpFab(S_avg,"S_avg",mg_level);
+
         PArray<MultiFab> fluxC(BL_SPACEDIM,PArrayManage);
         for (int dir=0; dir<BL_SPACEDIM; ++dir)
             fluxC.set(dir,new MultiFab(BoxArray(c_grids).surroundingNodes(dir),
@@ -3573,28 +3592,61 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
         MultiFab tmpC(c_grids,nspecies+3,nGrow);
         mcdd_apply(tmpC,S_avg,fluxC,time,whichApp,mgc_level);
 
-        // Set Avg(Res) += L(Avg(S))
-        MultiFab::Add(Rhs_avg,tmpC,0,0,nspecies+1,nGrow);
+        dumpFab(tmpC,"LofS_avg",mg_level);
+
+        int res_only = 1;
+        Array<Real> thisCorr(nComp);
+        for (MFIter mfi(S_avg); mfi.isValid(); ++mfi)
+        {
+            FArrayBox& s = S[mfi];
+            const FArrayBox& r = Rhs_avg[mfi];
+            const FArrayBox& L = tmpC[mfi];
+            const FArrayBox& a = alpha[mfi]; // unused, but pass something
+            const Box& box = mfi.validbox();
+
+            // Compute Rhs to the coarse problem = Avg(Rhs) + Op(S_avg)
+            Real mult = 1;
+            FORT_HTDDRELAX(box.loVect(),box.hiVect(),
+                           s.dataPtr(),ARLIM(s.loVect()),ARLIM(s.hiVect()),
+                           sCompY, sCompT, sCompH, sCompR,
+                           L.dataPtr(),ARLIM(L.loVect()),ARLIM(L.hiVect()),
+                           a.dataPtr(),ARLIM(a.loVect()),ARLIM(a.hiVect()),
+                           r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
+                           dt, mcdd_relaxFactor, maxCorr.dataPtr(),
+                           for_T0_H1, res_only, mult);
+        }
+
+        dumpFab(tmpC,"Rhs_avg",mg_level);
 
         // Save a copy of pre-relaxed coarse state
-        MultiFab::Copy(tmpC,S_avg,0,0,nspecies+3,nGrow);
+        MultiFab::Copy(Rhs_avg,S_avg,0,0,nspecies+3,nGrow);
 
-        mcdd_v_cycle(S_avg,Rhs_avg,fluxC,time,dt,whichApp,mgc_level);
+        mcdd_v_cycle(S_avg,tmpC,fluxC,time,dt,whichApp,mgc_level);
 
-        // Compute coarse-grid correction, dS = S_avg_post - S_avg_pre
-        MultiFab::Subtract(S_avg,tmpC,0,0,nspecies+3,nGrow);
-        
+        // Compute increment from coarse solution
+        int eComp = (whichApp==DDOp::DD_Temp  ?  sCompT  : sCompH);
+        MultiFab::Subtract(S_avg,tmpC,sCompY,sCompY,nspecies,nGrow);
+        MultiFab::Subtract(S_avg,tmpC,eComp,eComp,1,nGrow);
+
+        dumpFab(S_avg,"e_avg",mg_level);
+        BoxLib::Abort();
         // Increment (rho-weighted) fine solution with interpolated correction, then unweight
         {
             for (int n=0; n<nspecies; ++n) {
                 MultiFab::Multiply(S_avg,S_avg,sCompR,sCompY+n,1,nGrow);
             }
-            MultiFab::Multiply(S_avg,S_avg,sCompR,sCompH,1,nGrow);
+            if (whichApp==DDOp::DD_RhoH) {
+                MultiFab::Multiply(S_avg,S_avg,sCompR,sCompH,1,nGrow);
+            }
+
             DDOp::interpolate(S,0,S_avg,0,nspecies+1);
+
             for (int n=0; n<nspecies; ++n) {
                 MultiFab::Divide(S,S,sCompR,sCompY+n,1,nGrow);
             }
-            MultiFab::Divide(S,S,sCompR,sCompH,1,nGrow);
+            if (whichApp==DDOp::DD_RhoH) {
+                MultiFab::Divide(S,S,sCompR,sCompH,1,nGrow);
+            }
         }
     }
 
@@ -3652,13 +3704,18 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
             const FArrayBox& a = alpha[mfi];
             const Box& box = mfi.validbox();
 
+            // Compute Res (returned as Lphi):
+            //   Res = Rhs - A(S) = Rhs - rho.phi + dt.theta.Lphi
+            // Then relax: phi = phi + f.Res/alpha      (NOTE: theta.dt passed in as "dt")  
+            Real mult = -1;
             FORT_HTDDRELAX(box.loVect(),box.hiVect(),
                            s.dataPtr(),ARLIM(s.loVect()),ARLIM(s.hiVect()),
                            sCompY, sCompT, sCompH, sCompR,
                            L.dataPtr(),ARLIM(L.loVect()),ARLIM(L.hiVect()),
                            a.dataPtr(),ARLIM(a.loVect()),ARLIM(a.hiVect()),
                            r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
-                           dt, mcdd_relaxFactor, maxCorr.dataPtr(), for_T0_H1, res_only);
+                           dt, mcdd_relaxFactor, maxCorr.dataPtr(),
+                           for_T0_H1, res_only, mult);
 
             for (int i=0; i<nComp; ++i) {
                 maxCorr[i] = std::max(maxCorr[i],thisCorr[i]);

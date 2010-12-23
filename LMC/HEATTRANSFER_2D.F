@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.23 2010-12-15 03:02:12 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.24 2010-12-23 02:24:04 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1068,7 +1068,8 @@ c     Returns the number of fine cells fixed up
       end
 
       subroutine FORT_HTDDRELAX(lo, hi, S, DIMS(S), yc, Tc, hc, rc,
-     &     L, DIMS(L), a, DIMS(a), R, DIMS(R), dt, fac, maxCorr, for_T0_H1, res_only)
+     &     L, DIMS(L), a, DIMS(a), R, DIMS(R), dt, fac, maxCorr,
+     &     for_T0_H1, res_only, mult)
       implicit none
 #include "cdwrk.H"      
       integer lo(SDIM), hi(SDIM), yc, Tc, hc, rc
@@ -1082,12 +1083,14 @@ c     Returns the number of fine cells fixed up
       REAL_T R(DIMV(R),0:*)
       REAL_T dt, fac, maxCorr(0:*)
       integer for_T0_H1, res_only
+      REAL_T mult
       REAL_T corr
       integer i, j, n
       
-c     Helper function to compute Res = Rhs - A(S) = Rhs - rho.phi + dt.Lphi
-c     and then relax: phi = phi + Res/alpha
-
+c     Helper function to compute:
+c     (a) dR = Rhs + (rho.phi - dt.Lphi)
+c     (b) Res = Rhs - A(S) = Rhs - (rho.phi - dt.Lphi)
+c               and then relax: phi = phi + Res/alpha
       do n=0,Nspec
          maxCorr(n) = 0.d0
       enddo
@@ -1095,20 +1098,20 @@ c     and then relax: phi = phi + Res/alpha
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=0,Nspec-1
-               L(i,j,n) = R(i,j,n) - S(i,j,rc)*S(i,j,yc+n) + dt*L(i,j,n)
+               L(i,j,n) = R(i,j,n) + mult*(S(i,j,rc)*S(i,j,yc+n) - dt*L(i,j,n))
             enddo
          enddo
       enddo
       if (for_T0_H1.eq.0) then
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
-               L(i,j,Nspec) = R(i,j,Nspec) - S(i,j,Tc) + dt*L(i,j,Nspec)/S(i,j,rc)
+               L(i,j,Nspec) = R(i,j,Nspec) + mult*(S(i,j,Tc) - dt*L(i,j,Nspec)/S(i,j,rc))
             enddo
          enddo
       else
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
-               L(i,j,Nspec) = R(i,j,Nspec) - S(i,j,rc)*S(i,j,hc) + dt*L(i,j,Nspec)
+               L(i,j,Nspec) = R(i,j,Nspec) + mult*(S(i,j,rc)*S(i,j,hc) - dt*L(i,j,Nspec))
             enddo
          enddo
       endif

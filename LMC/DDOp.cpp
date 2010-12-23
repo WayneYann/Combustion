@@ -136,7 +136,8 @@ DDOp::define (const BoxArray& _grids,
     }
 
     // Generate coarser one (ratio = MGIV), if possible
-    if (can_coarsen(grids))
+    // FIXME
+    if (mgLevel<1  && can_coarsen(grids))
     {
         const BoxArray cGrids = BoxArray(grids).coarsen(MGIV);
         const Box cBox = Box(box).coarsen(MGIV);

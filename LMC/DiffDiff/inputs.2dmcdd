@@ -239,8 +239,8 @@ ns.do_mcdd=1
 ns.mcdd_transport_model=full
 ns.mcdd_transport_model=mix
 ns.be_cn_theta=0.5
+ns.be_cn_theta=1.0
 ns.mcdd_relaxFactor = 0.75
-ns.mcdd_relaxFactor = 1.00
 
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
