@@ -96,6 +96,8 @@ DDOp::define (const BoxArray& _grids,
               const IntVect&  ratio,
               int             mgLevel)
 {
+    cout << "*************************** DDOp::define: " << mgLevel << " " << _grids << endl;
+
     grids = _grids;
     Geometry geom(box);
     int Nspec = chem->numSpecies();
@@ -136,8 +138,7 @@ DDOp::define (const BoxArray& _grids,
     }
 
     // Generate coarser one (ratio = MGIV), if possible
-    // FIXME
-    if (mgLevel<1  && can_coarsen(grids))
+    if (can_coarsen(grids))
     {
         const BoxArray cGrids = BoxArray(grids).coarsen(MGIV);
         const Box cBox = Box(box).coarsen(MGIV);

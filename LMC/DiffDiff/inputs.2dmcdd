@@ -34,6 +34,7 @@ geometry.prob_lo   =  0    0
 geometry.prob_hi   = .004375 0.035
 geometry.prob_hi   = .00015625 0.01
 geometry.prob_hi   = .0003125 0.01
+geometry.prob_hi   = 0.01 0.01
 
 # multigrid class
 mg.usecg = 1
@@ -60,6 +61,7 @@ mg.cg_solver=1
 amr.n_cell    = 4 256
 amr.n_cell    = 8 256
 amr.n_cell    = 4 128
+amr.n_cell    = 128 128
 
 amr.v=1
 amr.max_level =  0            # maximum level number allowed
@@ -231,9 +233,10 @@ DistributionMapping.strategy = KNAPSACK
 #StationData.coord = 0.00234 0.00234
 
 #max_step=200
-ns.mcdd_presmooth = 5
-ns.mcdd_postsmooth = 5
+ns.mcdd_presmooth = 2
+ns.mcdd_postsmooth = 2
 ns.mcdd_verbose = 3
+ns.mcdd_verbose = 1
 amr.plot_int = 1
 ns.do_mcdd=1
 ns.mcdd_transport_model=full
