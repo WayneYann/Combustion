@@ -133,8 +133,8 @@ extern "C" {
 #else
         std::string cmd = "amrvis3d -mf " + file + "/MultiFab &";
 #endif
-        system(cmd.c_str());
-        return true;
+        int ierr = system(cmd.c_str());
+        return bool(ierr);
     }
     
     // call amrvis to show a multifab, all comps
@@ -154,8 +154,8 @@ extern "C" {
 #else
         std::string cmd = "amrvis3d -fab " + file + " &";
 #endif
-        system(cmd.c_str());
-        return true;
+        int ierr = system(cmd.c_str());
+        return bool(ierr);
     }
 
     // call amrvis to show a fab
