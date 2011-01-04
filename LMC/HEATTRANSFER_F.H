@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.8 2010-12-23 02:24:04 marc Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.9 2011-01-04 21:43:27 marc Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -254,7 +254,7 @@ extern "C" {
                         const Real* L, ARLIM_P(Llo),  ARLIM_P(Lhi),
                         const Real* a, ARLIM_P(alo),  ARLIM_P(ahi),
                         const Real* r, ARLIM_P(rlo),  ARLIM_P(rhi),
-                        const Real& dt, const Real& fac, Real* maxCorr,
+                        const Real& dt, const Real& fac, Real* maxRes, Real* maxCor,
                         const int& for_T0_H1, const int& res_only, const Real& mult);
 
 

@@ -448,13 +448,14 @@ protected:
                                  DDOp::DD_ApForTorRH whichApp,
                                  PArray<MultiFab>*   flux = 0);
 
-    void mcdd_v_cycle(MultiFab&           S,
-                      const MultiFab&     Rhs,
-                      PArray<MultiFab>&   flux,
-                      Real                time,
-                      Real                dt,
-                      DDOp::DD_ApForTorRH whichApp,
-                      int                 level=0);
+    enum Solver_Status {HT_StillWorking, HT_Stalled, HT_Solved};
+    Solver_Status mcdd_v_cycle(MultiFab&           S,
+                               const MultiFab&     Rhs,
+                               PArray<MultiFab>&   flux,
+                               Real                time,
+                               Real                dt,
+                               DDOp::DD_ApForTorRH whichApp,
+                               int                 level=0);
 
     void mcdd_update(Real time,
                      Real dt);
@@ -465,6 +466,7 @@ protected:
                     PArray<MultiFab>& fluxYH,
                     Real              time,
                     DDOp::DD_ApForTorRH whichApp,
+                    bool              updateCoefs = true,
                     int               level = 0,
                     bool              getAlpha = false,
                     MultiFab*         alpha = 0);

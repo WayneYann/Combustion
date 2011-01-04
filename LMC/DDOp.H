@@ -47,10 +47,10 @@ public:
                  const MultiFab&   inYT,
                  PArray<MultiFab>& fluxYH,
                  DD_ApForTorRH     whichApp,
+                 bool              updateCoefs = true,
                  int               level = 0,
                  bool              getAlpha = false,
-                 MultiFab*         alpha = 0,
-                 bool              updateCoefs = true);
+                 MultiFab*         alpha = 0);
 
     void setCoefficients(const MFIter&    mfi,
                          const FArrayBox& inYT,
@@ -69,10 +69,10 @@ public:
                             int             nComp);
 
     bool coarser_exists(int level) const;
-    const Box& domain() const;
-    const BoxArray& boxArray() const;
-    const DDBndry& TBndry() const;
-    const DDBndry& YBndry() const;
+    const Box& domain(int level) const;
+    const BoxArray& boxArray(int level) const;
+    const DDBndry& TBndry(int level) const;
+    const DDBndry& YBndry(int level) const;
 
 private:
 
@@ -98,35 +98,6 @@ private:
     static DD_Model transport_model;
     static int maxorder;
 };
-
-inline
-const DDBndry&
-DDOp::TBndry() const
-{
-    return Tbd;
-}
-
-inline
-const DDBndry&
-DDOp::YBndry() const
-{
-    return Ybd;
-}
-
-inline
-const Box&
-DDOp::domain() const
-{
-    BL_ASSERT(Tbd.getGeom().Domain()==Ybd.getGeom().Domain());
-    return Tbd.getGeom().Domain();
-}
-
-inline
-const BoxArray&
-DDOp::boxArray() const
-{
-    return grids;
-}
 
 inline
 void

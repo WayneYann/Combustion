@@ -23,9 +23,6 @@ int DDOp::maxorder = 3;
 DDOp::DDOp ()
     : coarser(0)
 {
-    ensure_valid_transport_is_set();
-    if (!chem)
-        BoxLib::Abort("ChemDriver must be set prior to first DDOp ctr call");
 }
 
 DDOp::DDOp (const BoxArray&   grids,
@@ -34,7 +31,6 @@ DDOp::DDOp (const BoxArray&   grids,
             int               mgLevel)
     : coarser(0)
 {
-    ensure_valid_transport_is_set();
     define(grids,box,ratio,mgLevel);
 }
 
@@ -42,6 +38,51 @@ DDOp::~DDOp ()
 {
     if (coarser)
         delete coarser;
+}
+
+const DDBndry&
+DDOp::TBndry(int level) const
+{
+    BL_ASSERT(level >= 0);
+    if (level > 0)
+    {
+        return coarser->TBndry(level-1);
+    }
+    return Tbd;
+}
+
+const DDBndry&
+DDOp::YBndry(int level) const
+{
+    BL_ASSERT(level >= 0);
+    if (level > 0)
+    {
+        return coarser->YBndry(level-1);
+    }
+    return Ybd;
+}
+
+const Box&
+DDOp::domain(int level) const
+{
+    BL_ASSERT(level >= 0);
+    if (level > 0)
+    {
+        return coarser->domain(level-1);
+    }
+    BL_ASSERT(Tbd.getGeom().Domain()==Ybd.getGeom().Domain());
+    return Tbd.getGeom().Domain();
+}
+
+const BoxArray&
+DDOp::boxArray(int level) const
+{
+    BL_ASSERT(level >= 0);
+    if (level > 0)
+    {
+        return coarser->boxArray(level-1);
+    }
+    return grids;
 }
 
 void
@@ -58,9 +99,11 @@ DDOp::ensure_valid_transport_is_set() const
     }
     else
     {
-        BoxLib::Abort("Must set the static DDOp::transport_model before creating a DDOp");
+        BoxLib::Abort("Must set the static DDOp::transport_model");
     }
-    std::cout << "DDOp transport model: " << id << std::endl;
+    if (ParallelDescriptor::IOProcessor()) {
+        std::cout << "DDOp transport model: " << id << std::endl;
+    }
 }
 
 bool can_coarsen(const BoxArray& ba)
@@ -96,8 +139,12 @@ DDOp::define (const BoxArray& _grids,
               const IntVect&  ratio,
               int             mgLevel)
 {
-    cout << "*************************** DDOp::define: " << mgLevel << " " << _grids << endl;
-
+    if (!chem) {
+        BoxLib::Abort("ChemDriver must be set prior to first DDOp ctr call");
+    }
+    if (mgLevel==0) {
+        ensure_valid_transport_is_set();
+    }
     grids = _grids;
     Geometry geom(box);
     int Nspec = chem->numSpecies();
@@ -402,15 +449,15 @@ DDOp::applyOp(MultiFab&         outYH,
               const MultiFab&   inYT,
               PArray<MultiFab>& fluxYH,
               DD_ApForTorRH     whichApp,
+              bool              updateCoefs,
               int               level,
               bool              getAlpha,
-              MultiFab*         alpha,
-              bool              updateCoefs)
+              MultiFab*         alpha)
 {
     BL_ASSERT(level >= 0);
     if (level > 0)
     {
-        coarser->applyOp(outYH,inYT,fluxYH,whichApp,level-1,getAlpha,alpha,updateCoefs);
+        coarser->applyOp(outYH,inYT,fluxYH,whichApp,updateCoefs,level-1,getAlpha,alpha);
         return;
     }
 

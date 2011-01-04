@@ -780,15 +780,18 @@ HeatTransfer::set_typical_values(bool restart)
             }
         }
 
-        cout << "Typical vals: " << endl;
-        cout << "\tDensity: " << typical_values[Density] << endl;
-        cout << "\tTemp: "    << typical_values[Temp]    << endl;
-        cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
-        const Array<std::string>& names = getChemSolve().speciesNames();
-        for (int i=0; i<nspecies; ++i) {
-            cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
+        if (ParallelDescriptor::IOProcessor())
+        {
+            cout << "Typical vals: " << endl;
+            cout << "\tDensity: " << typical_values[Density] << endl;
+            cout << "\tTemp: "    << typical_values[Temp]    << endl;
+            cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
+            const Array<std::string>& names = getChemSolve().speciesNames();
+            for (int i=0; i<nspecies; ++i) {
+                cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
+            }
         }
-        
+            
         // Verify good values for Density, Temp, RhoH, Y
         for (int i=BL_SPACEDIM; i<nComp; ++i) {
             if (i!=Trac && i!=RhoRT && typical_values[i]==0) {
