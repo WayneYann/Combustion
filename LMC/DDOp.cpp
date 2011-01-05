@@ -604,28 +604,26 @@ DDOp::applyOp(MultiFab&         outYH,
                 int dir = face.coordDir();
                 int shiftCells = ( face.isLow() ? -1 : +1 ); 
 
-                for (FabSetIter mfi(stfs); mfi.isValid(); ++mfi) {
-                    const FArrayBox& src = stfs[mfi];
-                    const Box& srcBox = src.box();
-                    const Box dstBox = Box(srcBox).shift(dir,shiftCells); 
+                const FArrayBox& src = stfs[mfi];
+                const Box& srcBox = src.box();
+                const Box dstBox = Box(srcBox).shift(dir,shiftCells); 
                     
-                    // Do T component
-                    {
-                        int sComp = 1;
-                        int dComp = Nspec;
+                // Do T component
+                {
+                    int sComp = 1;
+                    int dComp = Nspec;
+                    alfc.mult(src,srcBox,dstBox,sComp,dComp,1);
+                    alfc.plus(alfc,dstBox,srcBox,dComp,dComp,1);
+                }
+                // Do Y component
+                {
+                    int sComp = 0;
+                    for (int i=0; i<Nspec; ++i) {
+                        int dComp = i;
                         alfc.mult(src,srcBox,dstBox,sComp,dComp,1);
                         alfc.plus(alfc,dstBox,srcBox,dComp,dComp,1);
                     }
-                    // Do Y component
-                    {
-                        int sComp = 0;
-                        for (int i=0; i<Nspec; ++i) {
-                            int dComp = i;
-                            alfc.mult(src,srcBox,dstBox,sComp,dComp,1);
-                            alfc.plus(alfc,dstBox,srcBox,dComp,dComp,1);
-                        }
-                    }
-                } 
+                }
             }
         }
     }
