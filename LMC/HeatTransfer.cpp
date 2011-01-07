@@ -7955,7 +7955,6 @@ HeatTransfer::calc_divu (Real      time,
         getViscTerms(visc_terms,Temp,1,time);
         MultiFab::Copy(divu,visc_terms,0,0,1,nGrow);
     }
-#if 0
     for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
     {
         const int iGrid = Divu_mfi.index();
@@ -8039,10 +8038,6 @@ HeatTransfer::calc_divu (Real      time,
             }
         }
     }
-#endif
-    VisMF::Write(divu,"DIVU");
-    BoxLib::Abort();
-
 }
 
 //
