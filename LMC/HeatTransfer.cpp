@@ -3398,6 +3398,50 @@ dumpFab(const MultiFab& mf,
     osf.close();
 }
 
+// Set T from H or H from T, depending on whichApp
+static void
+sync_H_T(MultiFab&                  S,
+         const ChemDriver&          cd,
+         const DDOp::DD_ApForTorRH& whichApp,
+         int                        compY,
+         int                        compT,
+         int                        compH,
+         int                        verbose,
+         int                        level,
+         const std::string&         id)
+{
+    if (whichApp == DDOp::DD_RhoH)
+    {
+        int  max_iters_taken = 0;
+        bool error_occurred  = false;
+        for (MFIter mfi(S); mfi.isValid(); ++mfi)
+        {
+            int iters_taken = cd.getTGivenHY(S[mfi],S[mfi],S[mfi],
+                                             mfi.validbox(),compH,compY,compT);
+            error_occurred = error_occurred  ||  iters_taken < 0;
+            max_iters_taken = std::max(max_iters_taken, iters_taken);        
+        }    
+        ParallelDescriptor::ReduceBoolOr(error_occurred);
+        ParallelDescriptor::ReduceIntMax(max_iters_taken);
+        
+        if (error_occurred && ParallelDescriptor::IOProcessor()) {
+            std::string msg = "RhoH_to_Temp: error in H->T"+id;
+            BoxLib::Error(msg.c_str());
+        }
+        if (verbose>1) {
+            std::string str = "\tmcdd_V::RhoH->T "+id+": max iters = ";
+            levWrite(std::cout,level,str) << max_iters_taken << '\n';
+        }
+    }
+    else
+    {
+        for (MFIter mfi(S); mfi.isValid(); ++mfi) {
+            cd.getHmixGivenTY(S[mfi],S[mfi],S[mfi],
+                              mfi.validbox(),compT,compY,compH);
+        }    
+    }
+}
+
 HeatTransfer::Solver_Status
 HeatTransfer::mcdd_v_cycle(MultiFab&           S,
                            const MultiFab&     Rhs,
@@ -3443,39 +3487,12 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
     Real solved_tol = 1.e-6;
     Solver_Status retVal = HT_StillWorking;
 
+    ChemDriver& cd = getChemSolve();
     for (int iter=0; (iter<=mcdd_presmooth) && (retVal==HT_StillWorking); ++iter)
     {
         // Make T consistent with Y,H
         if (mg_level==0) {
-            if (whichApp == DDOp::DD_RhoH)
-            {
-                int  max_iters_taken = 0;
-                bool error_occurred  = false;
-                for (MFIter mfi(S); mfi.isValid(); ++mfi)
-                {
-                    int iters_taken = getChemSolve().getTGivenHY(S[mfi],S[mfi],S[mfi],
-                                                                 mfi.validbox(),sCompH,sCompY,sCompT);
-                    error_occurred = error_occurred  ||  iters_taken < 0;
-                    max_iters_taken = std::max(max_iters_taken, iters_taken);        
-                }    
-                ParallelDescriptor::ReduceBoolOr(error_occurred);
-                ParallelDescriptor::ReduceIntMax(max_iters_taken);
-                
-                if (error_occurred && ParallelDescriptor::IOProcessor()) {
-                    BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T (pre)");
-                }
-                if (mcdd_verbose>1) {
-                    std::string str("\tmcdd_V::RhoH->T (pre): max iters = ");
-                    levWrite(std::cout,mg_level,str) << max_iters_taken << '\n';
-                }
-            }
-            else
-            {
-                for (MFIter mfi(S); mfi.isValid(); ++mfi) {
-                    getChemSolve().getHmixGivenTY(S[mfi],S[mfi],S[mfi],
-                                                  mfi.validbox(),sCompT,sCompY,sCompH);            
-                }    
-            }
+            sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (pre) ");
         }
 
         bool updateCoefs = (iter==0  &&  mg_level==0);
@@ -3645,35 +3662,7 @@ HeatTransfer::mcdd_v_cycle(MultiFab&           S,
         {
             // Make T consistent with Y,H
             if (mg_level==0) {
-                if (whichApp == DDOp::DD_RhoH)
-                {
-                    int  max_iters_taken = 0;
-                    bool error_occurred  = false;
-                    for (MFIter mfi(S); mfi.isValid(); ++mfi)
-                    {
-                        int iters_taken = getChemSolve().getTGivenHY(S[mfi],S[mfi],S[mfi],
-                                                                     mfi.validbox(),sCompH,sCompY,sCompT);
-                        error_occurred = error_occurred  ||  iters_taken < 0;
-                        max_iters_taken = std::max(max_iters_taken, iters_taken);        
-                    }    
-                    ParallelDescriptor::ReduceBoolOr(error_occurred);
-                    ParallelDescriptor::ReduceIntMax(max_iters_taken);
-                    
-                    if (error_occurred && ParallelDescriptor::IOProcessor()) {
-                        BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T (post)");
-                    }
-                    if (mcdd_verbose>1) {
-                        std::string str("\tmcdd_V::RhoH->T (post): max iters = ");
-                        levWrite(std::cout,mg_level,str) << max_iters_taken << '\n';
-                    }
-                }
-                else
-                {
-                    for (MFIter mfi(S); mfi.isValid(); ++mfi) {
-                        getChemSolve().getHmixGivenTY(S[mfi],S[mfi],S[mfi],
-                                                      mfi.validbox(),sCompT,sCompY,sCompH);            
-                    }    
-                }
+                sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (post) ");
             }
             
             // Compute Res = Rhs - A(S) = Rhs - rho.phi + dt.theta.Lphi (theta.dt passed in)
@@ -3840,9 +3829,16 @@ HeatTransfer::mcdd_update(Real time,
     }
 
     Real thetaDt = be_cn_theta * dt;
+    int max_iter = 10;
+
     Solver_Status retVal = HT_StillWorking;
-    for (int i=0; (i<10) && (retVal==HT_StillWorking); ++i) {
+    for (int iter=0; (iter<max_iter) && (retVal==HT_StillWorking); ++iter) {
         retVal = mcdd_v_cycle(S,Rhs,fluxnp1,time,thetaDt,whichApp);
+    }
+    if (ParallelDescriptor::IOProcessor()) {
+        if (retVal == HT_StillWorking) {
+            std::cout << "**************** mcdd solver failed after " << max_iter << "V-cycles!!" << std::endl;
+        }
     }
 
     // Put solution back into state (after scaling by rhonew)
@@ -7959,6 +7955,7 @@ HeatTransfer::calc_divu (Real      time,
         getViscTerms(visc_terms,Temp,1,time);
         MultiFab::Copy(divu,visc_terms,0,0,1,nGrow);
     }
+#if 0
     for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
     {
         const int iGrid = Divu_mfi.index();
@@ -8042,6 +8039,10 @@ HeatTransfer::calc_divu (Real      time,
             }
         }
     }
+#endif
+    VisMF::Write(divu,"DIVU");
+    BoxLib::Abort();
+
 }
 
 //

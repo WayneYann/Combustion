@@ -610,14 +610,14 @@ DDOp::applyOp(MultiFab&         outYH,
                     
                 // Do T component
                 {
-                    int sComp = 1;
+                    int sComp = 1; // Stencil coef for T in slot 1
                     int dComp = Nspec;
                     alfc.mult(src,srcBox,dstBox,sComp,dComp,1);
                     alfc.plus(alfc,dstBox,srcBox,dComp,dComp,1);
                 }
                 // Do Y component
                 {
-                    int sComp = 0;
+                    int sComp = 0; // stencil coef for all Y in slot 0
                     for (int i=0; i<Nspec; ++i) {
                         int dComp = i;
                         alfc.mult(src,srcBox,dstBox,sComp,dComp,1);

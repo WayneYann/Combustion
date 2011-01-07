@@ -262,7 +262,7 @@ c     Scale fluxes by area
                         if (Ye(n).le.1.d-30) then
                            rhoTDe = 0.5d0*(coefc(i,j,k-1,TDoffset+n) + coefc(i,j,k,TDoffset+n))
                         else
-                           rhoTDe = 0.5d0*(coefc(i,j,k-1,TDoffset+n)*YTc(i,j-1,k,n)
+                           rhoTDe = 0.5d0*(coefc(i,j,k-1,TDoffset+n)*YTc(i,j,k-1,n)
      &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i,j  ,k,n))/Ye(n)
                         endif
                         fluxYH(i,j,k,n) = - Ye(n) * rhoTDe * dT / Te
@@ -372,8 +372,8 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
       integer lo(SDIM), hi(SDIM), dir, nc, d0a1
       integer DIMDEC(div)
       integer DIMDEC(V)
-      REAL_T div(DIMV(div) ,1)
-      REAL_T   V(DIMV(V)   ,1)
+      REAL_T div(DIMV(div) ,*)
+      REAL_T   V(DIMV(V)   ,*)
       REAL_T a
 
       integer i,j,k,n
