@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.27 2011-01-04 21:43:27 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.28 2011-01-07 02:18:58 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1504,7 +1504,7 @@ c     Returns the number of fine cells fixed up
       REAL_T L(DIMV(L),0:*)
       REAL_T a(DIMV(a),0:*)
       REAL_T R(DIMV(R),0:*)
-      REAL_T dt, fac, maxCor(0:*)
+      REAL_T dt, fac, maxRes(0:*), maxCor(0:*)
       integer for_T0_H1, res_only
       REAL_T mult
       REAL_T cor
