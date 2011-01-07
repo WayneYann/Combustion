@@ -269,7 +269,7 @@ c     Scale fluxes by area
 c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varying fastest
                         do m = 1,Nspec
                            idx = Doffset + (m-1)*Nspec + n
-                           rhoY_Dij = 0.5d0*(coefc(i,j-1,k,idx)+coefc(i,j,k,idx))
+                           rhoY_Dij = 0.5d0*(coefc(i,j,k-1,idx)+coefc(i,j,k,idx))
                            fluxYH(i,j,k,n) = fluxYH(i,j,k,n)  -  rhoY_Dij * dX(m)
                         enddo
                         fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te/MMWe)*rhoTDe*dX(n)
@@ -282,7 +282,7 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                      endif
                      if (fillAlpha.eq.1) then
                         alphaYH(i,j,k-1,n) = alphaYH(i,j,k-1,n)  +  rDmixe * dxInv * Ae(i,j,k)
-                        alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
+                        alphaYH(i,j,k  ,n) = alphaYH(i,j,k  ,n)  +  rDmixe * dxInv * Ae(i,j,k)
                      endif
                   enddo
                   if (for_T0_H1.eq.1) then
@@ -309,7 +309,7 @@ c     Scale fluxes by area
 
                   if (fillAlpha.eq.1) then
                      alphaYH(i,j,k-1,Nspec+1) = alphaYH(i,j,k-1,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
-                     alphaYH(i ,j,k ,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
+                     alphaYH(i,j,k  ,Nspec+1) = alphaYH(i,j,k  ,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                   endif
                enddo
             enddo
