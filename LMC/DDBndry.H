@@ -4,7 +4,7 @@
 #define _DDBndry_H_
 
 //
-// $Id: DDBndry.H,v 1.2 2007-03-27 17:28:05 lijewski Exp $
+// $Id: DDBndry.H,v 1.3 2011-01-11 03:18:46 marc Exp $
 //
 
 #include <ViscBndry.H>
@@ -34,6 +34,8 @@ public:
     virtual void setBndryConds (const BCRec&       phys_bc,
                                 /*const*/ IntVect& ratio,
                                 int                comp = 0);
+
+    int mgLevel() const {return mg_level;}
 
 protected:
     int mg_level;

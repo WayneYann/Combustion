@@ -232,27 +232,40 @@ DistributionMapping.strategy = KNAPSACK
 #StationData.coord = 0.0023 0.00153
 #StationData.coord = 0.00234 0.00234
 
-#max_step=200
-ns.mcdd_presmooth = 2
-ns.mcdd_postsmooth = 2
-ns.mcdd_verbose = 3
-ns.mcdd_verbose = 1
 amr.plot_int = 5
 ns.do_mcdd=1
-ns.mcdd_transport_model=full
-#ns.mcdd_transport_model=mix
-#ns.be_cn_theta=1.0
-#ns.mcdd_relaxFactor = 0.75
-ns.mcdd_relaxFactor = 1.0
+ns.do_active_control=1
 
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0
-#max_step=0
-
-#max_step=20
 #ns.num_divu_iters=0
-#ns.fixed_dt=1.e-4
-ns.do_active_control=1
+#max_step=0
 #amr.restart=chk00000
+
+ns.mcdd_verbose = 2
+ns.mcdd_mgLevelsMAX = -1
+ns.mcdd_presmooth = 3 10
+ns.mcdd_postsmooth = 3 10 
+ns.mcdd_bottomsmooth = 20
+ns.mcdd_relaxFactor = 0.75
+ns.mcdd_transport_model=full
+#ns.mcdd_transport_model=mix
+#ns.be_cn_theta=1.0
+
+#ns.mcdd_mgLevelsMAX = 1
+#ns.mcdd_presmooth = 100
+#ns.mcdd_postsmooth = 100 
+
+#ns.mcdd_mgLevelsMAX = -1
+#ns.mcdd_presmooth = 10
+#ns.mcdd_postsmooth = 10 
+
+ns.mcdd_mgLevelsMAX = -1
+ns.mcdd_presmooth = 3
+ns.mcdd_postsmooth = 3 
+
+ns.mcdd_mgLevelsMAX = -1
+ns.mcdd_presmooth = 3 6 7 10 6
+ns.mcdd_postsmooth = 3 6 7 10 6

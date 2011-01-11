@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.25 2011-01-04 21:43:27 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.26 2011-01-11 03:18:46 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1086,7 +1086,9 @@ c     Returns the number of fine cells fixed up
       REAL_T mult
       REAL_T cor
       integer i, j, n
-      
+
+      REAL_T sum
+
 c     Helper function to compute:
 c     (a) dR = Rhs + (rho.phi - dt.Lphi)
 c     (b) Res = Rhs - A(S) = Rhs - (rho.phi - dt.Lphi)
@@ -1102,6 +1104,15 @@ c
             enddo
          enddo
       enddo
+
+c     HACK
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            L(i,j,Nspec-1) = 0.d0
+         enddo
+      enddo
+      maxRes(Nspec-1) = 0.d0
+
       if (for_T0_H1.eq.0) then
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1128,6 +1139,20 @@ c
                enddo
             enddo
          enddo
+
+
+c     HACK
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               sum = 0.d0
+               do n=0,Nspec-2
+                  sum = sum + S(i,j,yc+n)
+               enddo
+               S(i,j,yc+Nspec-1) = 1.d0 - sum
+            enddo
+         enddo
+         maxCor(Nspec-1) = 0.d0
+
          if (for_T0_H1.eq.0) then
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)

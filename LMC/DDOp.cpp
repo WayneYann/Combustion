@@ -19,6 +19,7 @@ const IntVect MGIV = IntVect(D_DECL(2,2,2));
 DDOp::DD_Model DDOp::transport_model = DDOp::DD_Model_NumModels; // ...must set prior to first ctr call
 ChemDriver* DDOp::chem = 0; // ...must set prior to first ctr call
 int DDOp::maxorder = 3;
+int DDOp::mgLevelsMAX = -1;
 
 DDOp::DDOp ()
     : coarser(0)
@@ -185,7 +186,7 @@ DDOp::define (const BoxArray& _grids,
     }
 
     // Generate coarser one (ratio = MGIV), if possible
-    if (can_coarsen(grids))
+    if ( (mgLevelsMAX<0  ||  mgLevel+1<mgLevelsMAX)  &&  can_coarsen(grids))
     {
         const BoxArray cGrids = BoxArray(grids).coarsen(MGIV);
         const Box cBox = Box(box).coarsen(MGIV);
@@ -520,6 +521,9 @@ DDOp::applyOp(MultiFab&         outYH,
         chem->massFracToMoleFrac(Xc,YTc,gbox,sCompY,0);
 
         if (updateCoefs) {
+
+            std::cout << "DDOp::apply: Setting coefficients at level : " << Tbd.mgLevel() << std::endl;
+
             setCoefficients(mfi,YTc,CPic);
         }
 

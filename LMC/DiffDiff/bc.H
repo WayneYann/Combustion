@@ -6,26 +6,22 @@ c     Note: Requires ckdwrk.H to obtain the value of maxspec
       integer Nzones
       parameter (Nzones=5)      
 
-      REAL_T u_bc(Nzones), v_bc(Nzones), rho_bc(Nzones)
+      REAL_T u_bc(Nzones), v_bc(Nzones), w_bc(Nzones), rho_bc(Nzones)
       REAL_T Y_bc(0:maxspec-1, Nzones), T_bc(Nzones)
       REAL_T h_bc(Nzones)
       
-      common / bcs / u_bc, v_bc, rho_bc, Y_bc, T_bc, h_bc
+      common / bcs / u_bc, v_bc, w_bc, rho_bc, Y_bc, T_bc, h_bc
 
       character(50) ac_hist_file
       REAL_T tau_control, cfix, coft_old, sest, V_in_old, corr,
      &     changeMax_control, tbase_control, dV_control, scale_control,
      &     zbase_control, h_control
-      integer do_control
 
-      common / control1 / ac_hist_file
-      common / control2 / tau_control, cfix, coft_old, sest, V_in_old,
+      common / control1 / tau_control, cfix, coft_old, sest, V_in_old,
      &     corr, changeMax_control, tbase_control, dV_control, scale_control,
-     &     zbase_control, h_control
-      common / control3 / do_control
+     &     zbase_control, h_control, ac_hist_file
 
+      integer pseudo_gravity, do_control
+      common / control2 / pseudo_gravity, do_control
 
-      integer pseudo_gravity
-      common / pseudog / pseudo_gravity
-
-      save /bcs/, /control1/, /control2/, /control3/, /pseudog/
+      save /bcs/, /control1/, /control2/

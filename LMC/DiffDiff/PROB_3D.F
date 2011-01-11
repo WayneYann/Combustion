@@ -173,9 +173,9 @@ c ::: -----------------------------------------------------------
       REAL_T problo(SDIM), probhi(SDIM)
 
 #include "cdwrk.H"
+#include "bc.H"
 #include "probdata.H"
 #include "htdata.H"
-#include "bc.H"
 #if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
 #endif
@@ -365,6 +365,8 @@ c     Load domain dimensions into common, and set up boundary functions
       scale_control = Y_bc(iH2,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))*(domnhi(2)-domnlo(2))
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
+      else
+         h_control = cfix / scale_control
       endif
 
 #ifdef DO_LMC_FORCE
@@ -753,7 +755,8 @@ c         Y_FU_O2  = 0.223771589041d0
          end do
          T_bc(zone) = T_in
          u_bc(zone) = zero
-         v_bc(zone) = V_in
+         v_bc(zone) = zero
+         w_bc(zone) = V_in
  
          call FORT_RHOfromPTY(lo,hi,
      &                        rho_bc(zone),ARLIM(lo),ARLIM(hi),
@@ -764,7 +767,6 @@ c         Y_FU_O2  = 0.223771589041d0
      &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
      &                        Y_bc(0,zone),ARLIM(lo),ARLIM(hi))
  
-
       end
 
       integer function getZone(x, y, z)
@@ -906,15 +908,15 @@ c ::: -----------------------------------------------------------
       subroutine bcfunction(orient,x,y,z,time,u,v,w,rho,Yl,T,h,dx,getuvw)
 
       implicit none
+#include "cdwrk.H"
+#include "htdata.H"
+#include "bc.H"
+#include "probdata.H"
 
       integer orient
       REAL_T x, y, z, time, u, v, w, rho, Yl(0:*), T, h, dx(SDIM)
       logical getuvw
 
-#include "cdwrk.H"
-#include "htdata.H"
-#include "bc.H"
-#include "probdata.H"
 
       REAL_T Vbndry(3), eta, Patm, r, rn
       integer n, getZone, zone, lo(SDIM), hi(SDIM)
@@ -1040,6 +1042,11 @@ c      endif
      &     vel,scal,DIMS(state),press,DIMS(press),
      &     delta,xlo,xhi)
       implicit none
+#include "cdwrk.H"
+#include "htdata.H"
+#include "bc.H"
+#include "probdata.H"
+
       integer  level, nscal, nvel
       integer  lo(SDIM), hi(SDIM)
       integer  DIMDEC(state)
@@ -1050,10 +1057,6 @@ c      endif
       REAL_T   scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
  
-#include "cdwrk.H"
-#include "htdata.H"
-#include "bc.H"
-#include "probdata.H"
  
       integer i, j, k, n
       REAL_T Patm
@@ -1133,8 +1136,8 @@ c ::: -----------------------------------------------------------
       REAL_T   press(DIMV(press))
 
 #include "cdwrk.H"
-#include "htdata.H"
 #include "bc.H"
+#include "htdata.H"
 #include "probdata.H"
 #if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
@@ -1289,6 +1292,10 @@ c         if (flct_file.ne.'') then
 c                  scal(i,j,k,Trac) = zero
                   scal(i,j,k,Trac) = -z
 
+                  vel(i,j,k,1) = zero
+                  vel(i,j,k,2) = zero
+                  vel(i,j,k,3) = pmf_vals(2) / 1.d2
+
                end do
             end do
          end do
@@ -1303,6 +1310,24 @@ c                  scal(i,j,k,Trac) = zero
      &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),RhoH),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Temp),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),FirstSpec),DIMS(state))
+
+c     Update typical values
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               do n = 0,Nspec-1
+                  typVal_Y(n+1) = MAX(typVal_Y(n+1),scal(i,j,k,firstSpec+n)) 
+               enddo
+               typVal_Density = MAX(scal(i,j,k,Density),typVal_Density)
+               typVal_Temp    = MAX(scal(i,j,k,Temp),   typVal_Temp)
+               typVal_Trac    = MAX(scal(i,j,k,Trac),   typVal_Trac)
+               typVal_RhoH = MAX(ABS(scal(i,j,k,RhoH)*scal(i,j,k,Density)),typVal_RhoH)
+               do n = 1,BL_SPACEDIM
+                  typVal_Vel  = MAX(ABS(vel(i,j,k,n)),typVal_Vel)
+               enddo
+            enddo
+         enddo
+      enddo
 
       do k = lo(3), hi(3)
          do j = lo(2), hi(2)
@@ -2525,688 +2550,35 @@ c                       vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_sca
       end
 
 c ::: -----------------------------------------------------------
-c ::: This routine is called during a filpatch operation when
-c ::: the patch to be filled falls outside the interior
-c ::: of the problem domain.  You are requested to supply the
-c ::: data outside the problem interior in such a way that the
-c ::: data is consistant with the types of the boundary conditions
-c ::: you specified in the C++ code.  
-c ::: 
-c ::: NOTE:  you can assume all interior cells have been filled
-c :::        with valid data.
-c ::: 
-c ::: INPUTS/OUTPUTS:
-c ::: 
-c ::: xvel     <=  x velocity array
-c ::: lo,hi     => index extent of xvel array
-c ::: domlo,hi  => index extent of problem domain
-c ::: delta     => cell spacing
-c ::: xlo       => physical location of lower left hand
-c :::	           corner of rho array
-c ::: time      => problem evolution time
-c ::: bc	=> array of boundary flags bc(BL_SPACEDIM,lo:hi)
-c ::: -----------------------------------------------------------
 
       subroutine FORT_XVELFILL (xvel,DIMS(xvel),domlo,domhi,delta,
      &                          xlo,time,bc)
-
       implicit none
-
       integer DIMDEC(xvel), bc(SDIM,2)
       integer domlo(SDIM), domhi(SDIM)
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  xvel(DIMV(xvel))
-
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
-#if defined(BL_DO_FLCT)
-#include "INFL_FORCE_F.H"
-#endif      
-
-      integer i, j, k
-      integer ilo, ihi, jlo, jhi, klo, khi
-      REAL_T  z, y, x
-      REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
-      REAL_T  cs,sg,r,scaler,scalet
-      REAL_T turbSclX,turbSclR,turbSclT
-#if defined(BL_DO_FLCT)
-      integer DIMDEC(uflct)
-      integer loFlctArray(SDIM), hiFlctArray(SDIM)
-      REAL_T uflct(:,:,:), vflct(:,:,:)
-      allocatable uflct, vflct
-#endif
-      integer lo(SDIM), hi(SDIM)
-
-      lo(1) = ARG_L1(xvel)
-      lo(2) = ARG_L2(xvel)
-      lo(3) = ARG_L3(xvel)
-      hi(1) = ARG_H1(xvel)
-      hi(2) = ARG_H2(xvel)
-      hi(3) = ARG_H3(xvel)
-
-      ilo = max(lo(1),domlo(1))
-      jlo = max(lo(2),domlo(2))
-      klo = max(lo(3),domlo(3))
-      ihi = min(hi(1),domhi(1))
-      jhi = min(hi(2),domhi(2))
-      khi = min(hi(3),domhi(3)) 
-
-#if defined(BL_DO_FLCT)
-      if (forceInflow) then
-         do i = 1, SDIM
-            loFlctArray(i) = lo(i)
-            hiFlctArray(i) = hi(i)
-         enddo
-         loFlctArray(strmwse_dir) = 1
-         hiFlctArray(strmwse_dir) = 1
-         call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
-         allocate(uflct(DIMV(uflct)))
-         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, time,
-     $                  bc, domnlo, domnhi)
-         allocate(vflct(DIMV(uflct)))
-         call INFL_FILL(FLCT_YVEL, DIMS(uflct), vflct, xlo, delta, time,
-     $                  bc, domnlo, domnhi)
-      endif
-#endif
-
-      call filcc (xvel,DIMS(xvel),domlo,domhi,delta,xlo,bc)
-
-      if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
-         do i = lo(1), domlo(1)-1
-            x = (float(i)+.5)*delta(1)+domnlo(1)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do j = lo(2), hi(2)
-                  y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 1) then
-                     xvel(i,j,k) = u + uflct(1,j,k)*turb_scale
-                  else
-                     xvel(i,j,k) = u
-                  endif
-#else
-                  xvel(i,j,k) = u
-#endif
-               enddo
-            enddo
-         enddo
-      endif
-      
-      if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
-         do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do j = lo(2), hi(2)
-                  y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 1) then
-                     xvel(i,j,k) = u + uflct(1,j,k)*turb_scale
-                  else
-                     xvel(i,j,k) = u
-                  endif
-#else
-                  xvel(i,j,k) = u
-#endif
-               enddo
-            enddo
-         enddo
-      endif    
-
-      if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
-         do j = lo(2), domlo(2)-1
-            y = (float(j)+.5)*delta(2)+domnlo(2)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 2) then
-                     xvel(i,j,k) = u + uflct(i,1,k)*turb_scale
-                  else
-                     xvel(i,j,k) = u
-                  endif
-#else
-                  xvel(i,j,k) = u
-#endif
-               enddo
-            enddo
-         enddo
-      endif    
-      
-      if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
-         do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 2) then
-                     xvel(i,j,k) = u + uflct(i,1,k)*turb_scale
-                  else
-                     xvel(i,j,k) = u
-                  endif
-#else
-                  xvel(i,j,k) = u
-#endif
-               enddo
-            enddo
-         enddo
-      endif
-
-      if (bc(3,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
-         do k = lo(3), domlo(3)-1
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do j = lo(2),hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 3) then
-                     xvel(i,j,k) = u + turb_scale
-                  else
-                     xvel(i,j,k) = u
-                  endif
-#else
-                  xvel(i,j,k) = u
-#endif
-               enddo
-            enddo
-         enddo
-      endif    
-      
-      if (bc(3,2).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
-         do k = domhi(3)+1, hi(3)
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do j = lo(2),hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 3) then
-                     xvel(i,j,k) = u + uflct(i,j,1)*turb_scale
-                  else
-                     xvel(i,j,k) = u
-                  endif
-#else
-                  xvel(i,j,k) = u
-#endif
-               enddo
-            enddo
-         enddo
-      endif
-
-#if defined(BL_DO_FLCT)
-      if (forceInflow) then
-         deallocate(uflct)
-         deallocate(vflct)
-      endif
-#endif
-
+      call bl_abort('In XVELFILL (use group boundary fills)...')
       end
-
-c ::: -----------------------------------------------------------
-c ::: This routine is called during a filpatch operation when
-c ::: the patch to be filled falls outside the interior
-c ::: of the problem domain.  You are requested to supply the
-c ::: data outside the problem interior in such a way that the
-c ::: data is consistant with the types of the boundary conditions
-c ::: you specified in the C++ code.  
-c ::: 
-c ::: NOTE:  you can assume all interior cells have been filled
-c :::        with valid data.
-c ::: 
-c ::: INPUTS/OUTPUTS:
-c ::: 
-c ::: yvel     <=  y velocity array
-c ::: lo,hi     => index extent of yvel array
-c ::: domlo,hi  => index extent of problem domain
-c ::: delta     => cell spacing
-c ::: xlo       => physical location of lower left hand
-c :::	           corner of rho array
-c ::: time      => problem evolution time
-c ::: bc	=> array of boundary flags bc(BL_SPACEDIM,lo:hi)
-c ::: -----------------------------------------------------------
 
       subroutine FORT_YVELFILL (yvel,DIMS(yvel),domlo,domhi,delta,
      &                          xlo,time,bc)
-
       implicit none
-
       integer DIMDEC(yvel), bc(SDIM,2)
       integer domlo(SDIM), domhi(SDIM)
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  yvel(DIMV(yvel))
-
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
-#if defined(BL_DO_FLCT)
-#include "INFL_FORCE_F.H"
-#endif
-      
-      integer i, j, k
-      integer ilo, ihi, jlo, jhi, klo, khi
-      REAL_T  z, y, x
-      REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
-      REAL_T  cs,sg,r,scaler,scalet
-      REAL_T turbSclY,turbSclR,turbSclT
-
-#if defined(BL_DO_FLCT)
-      integer DIMDEC(vflct)
-      integer loFlctArray(SDIM), hiFlctArray(SDIM)
-      REAL_T uflct(:,:,:), vflct(:,:,:)
-      allocatable uflct, vflct
-#endif
-
-      integer lo(SDIM), hi(SDIM)
-
-      lo(1) = ARG_L1(yvel)
-      lo(2) = ARG_L2(yvel)
-      lo(3) = ARG_L3(yvel)
-      hi(1) = ARG_H1(yvel)
-      hi(2) = ARG_H2(yvel)
-      hi(3) = ARG_H3(yvel)
-
-      ilo = max(lo(1),domlo(1))
-      jlo = max(lo(2),domlo(2))
-      klo = max(lo(3),domlo(3))
-      ihi = min(hi(1),domhi(1))
-      jhi = min(hi(2),domhi(2))
-      khi = min(hi(3),domhi(3))
-      
-#if defined(BL_DO_FLCT)
-      if (forceInflow) then
-         do i = 1, SDIM
-            loFlctArray(i) = lo(i)
-            hiFlctArray(i) = hi(i)
-         enddo
-         loFlctArray(strmwse_dir) = 1
-         hiFlctArray(strmwse_dir) = 1
-         call SET_ARGS(DIMS(vflct), loFlctArray, hiFlctArray)
-         allocate(uflct(DIMV(vflct)))
-         call INFL_FILL(FLCT_XVEL, DIMS(vflct), uflct, xlo, delta, time,
-     $                  bc, domnlo, domnhi)
-         allocate(vflct(DIMV(vflct)))
-         call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, time,
-     $                  bc, domnlo, domnhi)
-      endif
-#endif
-
-      call filcc (yvel,DIMS(yvel),domlo,domhi,delta,xlo,bc)
-
-      if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
-         do i = lo(1), domlo(1)-1
-            x = (float(i)+.5)*delta(1)+domnlo(1)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do j = lo(2), hi(2)
-                  y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 1) then
-                     yvel(i,j,k) = v + vflct(1,j,k)*turb_scale
-                  else
-                     yvel(i,j,k) = v
-                  endif
-#else
-                  yvel(i,j,k) = v
-#endif
-               enddo
-            enddo
-         enddo
-      endif
-      
-      if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
-         do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do j = lo(2), hi(2)
-                  y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 1) then
-                     yvel(i,j,k) = v + vflct(1,j,k)*turb_scale
-                  else
-                     yvel(i,j,k) = v
-                  endif
-#else
-                  yvel(i,j,k) = v
-#endif
-               enddo
-            enddo
-         enddo
-      endif    
-
-      if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
-         do j = lo(2), domlo(2)-1
-            y = (float(j)+.5)*delta(2)+domnlo(2)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 2) then
-                     yvel(i,j,k) = v + vflct(i,1,k)*turb_scale
-                  else
-                     yvel(i,j,k) = v
-                  endif
-#else
-                  yvel(i,j,k) = v
-#endif
-               enddo
-            enddo
-         enddo
-      endif    
-      
-      if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
-         do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 2) then
-                     yvel(i,j,k) = v + vflct(i,1,k)*turb_scale
-                  else
-                     yvel(i,j,k) = v
-                  endif
-#else
-                  yvel(i,j,k) = v
-#endif
-               enddo
-            enddo
-         enddo
-      endif
-
-      if (bc(3,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
-         do k = lo(3), domlo(3)-1
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do j = lo(2),hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 3) then
-                     yvel(i,j,k) = v + vflct(i,j,1)*turb_scale
-                  else
-                     yvel(i,j,k) = v
-                  endif
-#else
-                  yvel(i,j,k) = v
-#endif
-               enddo
-            enddo
-         enddo
-      endif    
-      
-      if (bc(3,2).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
-         do k = domhi(3)+1, hi(3)
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do j = lo(2),hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 3) then
-                     yvel(i,j,k) = v + vflct(i,j,1)*turb_scale
-                  else
-                     yvel(i,j,k) = v
-                  endif
-#else
-                  yvel(i,j,k) = v
-#endif
-               enddo
-            enddo
-         enddo
-      endif
-
-#if defined(BL_DO_FLCT)
-      if (forceInflow) then
-         deallocate(uflct)
-         deallocate(vflct)
-      endif
-#endif
-
+      call bl_abort('In YVELFILL (use group boundary fills)...')
       end
-
-c ::: -----------------------------------------------------------
-c ::: This routine is called during a filpatch operation when
-c ::: the patch to be filled falls outside the interior
-c ::: of the problem domain.  You are requested to supply the
-c ::: data outside the problem interior in such a way that the
-c ::: data is consistant with the types of the boundary conditions
-c ::: you specified in the C++ code.  
-c ::: 
-c ::: NOTE:  you can assume all interior cells have been filled
-c :::        with valid data.
-c ::: 
-c ::: INPUTS/OUTPUTS:
-c ::: 
-c ::: zvel     <=  z velocity array
-c ::: lo,hi     => index extent of zvel array
-c ::: domlo,hi  => index extent of problem domain
-c ::: delta     => cell spacing
-c ::: xlo       => physical location of lower left hand
-c :::	           corner of rho array
-c ::: time      => problem evolution time
-c ::: bc	=> array of boundary flags bc(BL_SPACEDIM,lo:hi)
-c ::: -----------------------------------------------------------
 
       subroutine FORT_ZVELFILL (zvel,DIMS(zvel),domlo,domhi,delta,
      &                          xlo,time,bc)
-
       implicit none
-
       integer DIMDEC(zvel), bc(SDIM,2)
       integer domlo(SDIM), domhi(SDIM)
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  zvel(DIMV(zvel))
-
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
-#if defined(BL_DO_FLCT)
-#include "INFL_FORCE_F.H"
-#endif
-      
-      integer i, j, k
-      integer ilo, ihi, jlo, jhi, klo, khi
-      REAL_T  z, y, x
-      REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
-      REAL_T turbSclZ
-#if defined(BL_DO_FLCT)
-      integer DIMDEC(wflct)
-      integer loFlctArray(SDIM), hiFlctArray(SDIM)
-      REAL_T wflct(:,:,:)
-      allocatable wflct
-#endif
-
-      integer lo(SDIM), hi(SDIM)
-
-      lo(1) = ARG_L1(zvel)
-      lo(2) = ARG_L2(zvel)
-      lo(3) = ARG_L3(zvel)
-      hi(1) = ARG_H1(zvel)
-      hi(2) = ARG_H2(zvel)
-      hi(3) = ARG_H3(zvel)
-
-      ilo = max(lo(1),domlo(1))
-      jlo = max(lo(2),domlo(2))
-      klo = max(lo(3),domlo(3))
-      ihi = min(hi(1),domhi(1))
-      jhi = min(hi(2),domhi(2))
-      khi = min(hi(3),domhi(3))
-
-#if defined(BL_DO_FLCT)
-      if (forceInflow) then
-         do i = 1, SDIM
-            loFlctArray(i) = lo(i)
-            hiFlctArray(i) = hi(i)
-         enddo
-         loFlctArray(strmwse_dir) = 1
-         hiFlctArray(strmwse_dir) = 1
-         call SET_ARGS(DIMS(wflct), loFlctArray, hiFlctArray)
-         allocate(wflct(DIMV(wflct)))
-         call INFL_FILL(FLCT_ZVEL, DIMS(wflct), wflct, xlo, delta, time,
-     $                  bc, domnlo, domnhi)
-      endif
-#endif
-      
-      call filcc (zvel,DIMS(zvel),domlo,domhi,delta,xlo,bc)
-
-      if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
-         do i = lo(1), domlo(1)-1
-            x = (float(i)+.5)*delta(1)+domnlo(1)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do j = lo(2), hi(2)
-                  y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 1) then
-                     zvel(i,j,k) = w + wflct(1,j,k)*turb_scale
-                  else
-                     zvel(i,j,k) = w
-                  endif
-#else
-                  zvel(i,j,k) = w
-#endif
-               enddo
-            enddo
-         enddo
-      endif
-      
-      if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
-         do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do j = lo(2), hi(2)
-                  y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 1) then
-                     zvel(i,j,k) = w + wflct(1,j,k)*turb_scale
-                  else
-                     zvel(i,j,k) = w
-                  endif
-#else
-                  zvel(i,j,k) = w
-#endif
-               enddo
-            enddo
-         enddo
-      endif    
-
-      if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
-         do j = lo(2), domlo(2)-1
-            y = (float(j)+.5)*delta(2)+domnlo(2)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 2) then
-                     zvel(i,j,k) = w + wflct(i,1,k)*turb_scale
-                  else
-                     zvel(i,j,k) = w
-                  endif
-#else
-                  zvel(i,j,k) = w
-#endif
-               enddo
-            enddo
-         enddo
-      endif    
-      
-      if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
-         do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
-            do k = lo(3),hi(3)
-               z = (float(k)+.5)*delta(3)+domnlo(3)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 2) then
-                     zvel(i,j,k) = w + wflct(i,1,k)*turb_scale
-                  else
-                     zvel(i,j,k) = w
-                  endif
-#else
-                  zvel(i,j,k) = w
-#endif
-               enddo
-            enddo
-         enddo
-      endif
-
-      if (bc(3,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
-         do k = lo(3), domlo(3)-1
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do j = lo(2),hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceLo .and. strmwse_dir .eq. 3) then
-                     zvel(i,j,k) = w + wflct(i,j,1)*turb_scale
-                  else
-                     zvel(i,j,k) = w
-                  endif
-#else
-                  zvel(i,j,k) = w
-#endif
-               enddo
-            enddo
-         enddo
-      endif    
-      
-      if (bc(3,2).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
-         do k = domhi(3)+1, hi(3)
-            z = (float(k)+.5)*delta(3)+domnlo(3)
-            do j = lo(2),hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
-               do i = lo(1), hi(1)
-                  x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-#if defined(BL_DO_FLCT)
-                  if (forceHi .and. strmwse_dir .eq. 3) then
-                     zvel(i,j,k) = w + wflct(i,j,1)*turb_scale
-                  else
-                     zvel(i,j,k) = w
-                  endif
-#else
-                  zvel(i,j,k) = w
-#endif
-               enddo
-            enddo
-         enddo
-      endif
-
-#if defined(BL_DO_FLCT)
-      if (forceInflow) then
-         deallocate(wflct)
-      endif
-#endif
-
+      call bl_abort('In ZVELFILL (use group boundary fills)...')
       end
 
       subroutine FORT_ALLCHEMFILL (rhoY,DIMS(rhoY),domlo,domhi,delta,

@@ -42,6 +42,7 @@ public:
 
     static void set_transport_model(const DD_Model& model);
     static void set_chem_driver(ChemDriver& chem);
+    static void set_mgLevelsMAX(int mgLevelsMAX);
 
     void applyOp(MultiFab&         outYH,
                  const MultiFab&   inYT,
@@ -97,6 +98,7 @@ private:
     DDOp* coarser;
     static DD_Model transport_model;
     static int maxorder;
+    static int mgLevelsMAX;
 };
 
 inline
@@ -111,6 +113,13 @@ void
 DDOp::set_chem_driver(ChemDriver& chemdriver)
 {
     chem = &chemdriver;
+}
+
+inline
+void
+DDOp::set_mgLevelsMAX(int mgLevelsMAX_)
+{
+    mgLevelsMAX = mgLevelsMAX_;
 }
 
 #endif

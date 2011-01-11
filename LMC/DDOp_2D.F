@@ -131,6 +131,7 @@ c     Note: Forming D_(n,m) . Grad(X_m), and assuming D was loaded with n varyin
                      fluxYH(i,j,Nspec+1) = fluxYH(i,j,Nspec+1) - (RU*Te/MMWe)*rhoTDe*dX(n)
                   enddo
                endif
+
                do n = 1,Nspec
                   rDmixe = 0.5d0*(coefc(i-1,j,DMIXoffset+n)+coefc(i,j,DMIXoffset+n))
                   if (Full0_Mix1.eq.1) then 

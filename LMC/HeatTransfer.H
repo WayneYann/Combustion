@@ -448,14 +448,38 @@ protected:
                                  DDOp::DD_ApForTorRH whichApp,
                                  PArray<MultiFab>*   flux = 0);
 
-    enum Solver_Status {HT_StillWorking, HT_Stalled, HT_Solved};
-    Solver_Status mcdd_v_cycle(MultiFab&           S,
-                               const MultiFab&     Rhs,
-                               PArray<MultiFab>&   flux,
-                               Real                time,
-                               Real                dt,
-                               DDOp::DD_ApForTorRH whichApp,
-                               int                 level=0);
+    enum Solver_Status {HT_InProgress, HT_Stalled, HT_Solved};
+    struct MCDD_Level_Status {
+        MCDD_Level_Status(int nComp)
+            {
+                maxRes.resize(nComp);
+                maxRes_initial.resize(nComp,0);
+                maxCor.resize(nComp);
+                maxRes_norm = 0;
+                maxCor_norm = 0;
+                iter=0;
+                status = HT_InProgress;
+            }
+        Array<Real> maxRes;
+        Array<Real> maxRes_initial;
+        Array<Real> maxCor;
+        Real        maxRes_norm;
+        Real        maxCor_norm;
+        bool        first;
+        int         iter;
+        Solver_Status status;
+    private:
+        MCDD_Level_Status();
+    };
+
+    void mcdd_v_cycle(MCDD_Level_Status&  status,
+                      MultiFab&           S,
+                      const MultiFab&     Rhs,
+                      PArray<MultiFab>&   flux,
+                      Real                time,
+                      Real                dt,
+                      DDOp::DD_ApForTorRH whichApp,
+                      int                 level=0);
 
     void mcdd_update(Real time,
                      Real dt);
@@ -557,8 +581,10 @@ protected:
     static Real        mcdd_relaxFactor;
     static Real        mcdd_relaxFactor1;
     static Real        mcdd_rtol;
-    static int         mcdd_presmooth;
-    static int         mcdd_postsmooth;
+    static int         mcdd_mgLevelsMAX;
+    static Array<int>  mcdd_presmooth;
+    static Array<int>  mcdd_postsmooth;
+    static int         mcdd_bottomsmooth;
     static Real        mcdd_cfRelaxFactor;
     static int         mcdd_verbose;
     static int         calcDiffusivity_count;
