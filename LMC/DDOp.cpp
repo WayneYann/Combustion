@@ -498,6 +498,10 @@ DDOp::applyOp(MultiFab&         outYH,
     FArrayBox Hic(Box(iv,iv),1);
     FArrayBox FcpDTe(Box(iv,iv),1);
     const Real* dx = Tbd.getGeom().CellSize();
+    if (updateCoefs && ParallelDescriptor::IOProcessor()) {
+            std::cout << "DDOp::apply: Setting coefficients at level : " << Tbd.mgLevel() << std::endl;
+    }
+
     for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
     {
         FArrayBox& outYHc = outYH[mfi];
@@ -521,9 +525,6 @@ DDOp::applyOp(MultiFab&         outYH,
         chem->massFracToMoleFrac(Xc,YTc,gbox,sCompY,0);
 
         if (updateCoefs) {
-
-            std::cout << "DDOp::apply: Setting coefficients at level : " << Tbd.mgLevel() << std::endl;
-
             setCoefficients(mfi,YTc,CPic);
         }
 
