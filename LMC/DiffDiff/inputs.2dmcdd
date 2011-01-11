@@ -268,4 +268,4 @@ ns.mcdd_postsmooth = 3
 
 ns.mcdd_mgLevelsMAX = -1
 ns.mcdd_presmooth = 3 6 7 10 6
-ns.mcdd_postsmooth = 3 6 7 10 6
+ns.mcdd_postsmooth = 3 4 5 15 6

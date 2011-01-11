@@ -3542,7 +3542,6 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  level_status,
             //   Res = Rhs - A(S) = Rhs - rho.phi + dt.theta.Lphi
             // Then relax: phi = phi + f.Res/alpha      (NOTE: theta.dt passed in as "dt")  
             Real mult = -1;
-            if (mg_level == 5) mult=-6;
             FORT_HTDDRELAX(box.loVect(),box.hiVect(),
                            s.dataPtr(),ARLIM(s.loVect()),ARLIM(s.hiVect()),
                            sCompY, sCompT, sCompH, sCompR,
@@ -3719,7 +3718,7 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  level_status,
             
             ParallelDescriptor::ReduceRealMax(maxCor.dataPtr(),maxCor.size());
             ParallelDescriptor::ReduceRealMax(maxRes.dataPtr(),maxRes.size());
-            
+
             Real& maxNormRes = level_status.maxRes_norm;
             maxNormRes = 0;
             for (int i=0; i<nComp; ++i) {
@@ -3770,7 +3769,7 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  level_status,
         ParallelDescriptor::Barrier();
         VisMF::Write(T1,"final_residual");
         ParallelDescriptor::Barrier();
-        BoxLib::Abort();
+        //BoxLib::Abort();
     }
 }
 

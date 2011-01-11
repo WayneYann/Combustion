@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.26 2011-01-11 03:18:46 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.27 2011-01-11 04:04:58 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1088,7 +1088,6 @@ c     Returns the number of fine cells fixed up
       integer i, j, n
 
       REAL_T sum
-
 c     Helper function to compute:
 c     (a) dR = Rhs + (rho.phi - dt.Lphi)
 c     (b) Res = Rhs - A(S) = Rhs - (rho.phi - dt.Lphi)
@@ -1099,32 +1098,28 @@ c
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=0,Nspec-1
-               L(i,j,n) = R(i,j,n) + mult*(S(i,j,rc)*S(i,j,yc+n) - dt*L(i,j,n))
-               maxRes(n) = MAX(maxRes(n),L(i,j,n))
+               if (n.eq.Nspec-1) then
+                  L(i,j,n) = 0.d0
+               else
+                  L(i,j,n) = R(i,j,n) + mult*(S(i,j,rc)*S(i,j,yc+n) - dt*L(i,j,n))
+               endif
+               maxRes(n) = MAX(maxRes(n),ABS(L(i,j,n)))
             enddo
          enddo
       enddo
-
-c     HACK
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-            L(i,j,Nspec-1) = 0.d0
-         enddo
-      enddo
-      maxRes(Nspec-1) = 0.d0
 
       if (for_T0_H1.eq.0) then
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                L(i,j,Nspec) = R(i,j,Nspec) + mult*(S(i,j,Tc) - dt*L(i,j,Nspec)/S(i,j,rc))
-               maxRes(Nspec) = MAX(maxRes(Nspec),L(i,j,n))
+               maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,n)))
             enddo
          enddo
       else
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                L(i,j,Nspec) = R(i,j,Nspec) + mult*(S(i,j,rc)*S(i,j,hc) - dt*L(i,j,Nspec))
-               maxRes(Nspec) = MAX(maxRes(Nspec),L(i,j,n))
+               maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,n)))
             enddo
          enddo
       endif
@@ -1133,25 +1128,20 @@ c     HACK
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                do n=0,Nspec-1
-                  cor = fac * L(i,j,n) / (1.d0 + dt*a(i,j,n))
-                  maxCor(n) = MAX(maxCor(n),ABS(cor))
-                  S(i,j,yc+n) = S(i,j,yc+n)  +  cor
+                  if (n.ne.Nspec-1) then
+                     cor = fac * L(i,j,n) / (1.d0 + dt*a(i,j,n))
+                     maxCor(n) = MAX(maxCor(n),ABS(cor))
+                     S(i,j,yc+n) = S(i,j,yc+n)  +  cor
+                  endif
                enddo
-            enddo
-         enddo
-
-
-c     HACK
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
                sum = 0.d0
                do n=0,Nspec-2
                   sum = sum + S(i,j,yc+n)
                enddo
                S(i,j,yc+Nspec-1) = 1.d0 - sum
+               maxCor(Nspec-1) = 0.d0
             enddo
          enddo
-         maxCor(Nspec-1) = 0.d0
 
          if (for_T0_H1.eq.0) then
             do j=lo(2),hi(2)
