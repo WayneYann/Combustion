@@ -69,7 +69,7 @@ public:
                             int             sCompC,
                             int             nComp);
 
-    bool coarser_exists(int level) const;
+    static int num_levels();
     const Box& domain(int level) const;
     const BoxArray& boxArray(int level) const;
     const DDBndry& TBndry(int level) const;
@@ -99,6 +99,7 @@ private:
     static DD_Model transport_model;
     static int maxorder;
     static int mgLevelsMAX;
+    static int mgLevels;
 };
 
 inline
@@ -119,7 +120,17 @@ inline
 void
 DDOp::set_mgLevelsMAX(int mgLevelsMAX_)
 {
+    if (mgLevelsMAX > mgLevels) {
+        BoxLib::Abort("DDOp::set_mgLevelsMAX: Cannot set mgLevelsMAX less than number presently used");
+    }
     mgLevelsMAX = mgLevelsMAX_;
+}
+
+inline
+int
+DDOp::num_levels()
+{
+    return mgLevels;
 }
 
 #endif

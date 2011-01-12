@@ -20,6 +20,7 @@ DDOp::DD_Model DDOp::transport_model = DDOp::DD_Model_NumModels; // ...must set 
 ChemDriver* DDOp::chem = 0; // ...must set prior to first ctr call
 int DDOp::maxorder = 3;
 int DDOp::mgLevelsMAX = -1;
+int DDOp::mgLevels = 0;
 
 DDOp::DDOp ()
     : coarser(0)
@@ -121,19 +122,6 @@ bool can_coarsen(const BoxArray& ba)
     return true;
 }
 
-bool
-DDOp::coarser_exists(int level) const
-{
-    BL_ASSERT(level >= 0);
-    if (level == 0)
-    {
-        if (coarser == 0)
-            return false;
-        return true;
-    }
-    return coarser->coarser_exists(--level);
-}
-
 void
 DDOp::define (const BoxArray& _grids,
               const Box&      box,
@@ -190,8 +178,10 @@ DDOp::define (const BoxArray& _grids,
     {
         const BoxArray cGrids = BoxArray(grids).coarsen(MGIV);
         const Box cBox = Box(box).coarsen(MGIV);
+        int mgLevelC = mgLevel + 1;
+        mgLevels = mgLevelC + 1;
         BL_ASSERT(Box(cBox).refine(MGIV) == box);
-        coarser = new DDOp(cGrids,cBox,cfRatio,mgLevel+1);
+        coarser = new DDOp(cGrids,cBox,cfRatio,mgLevelC);
     }
 }
 

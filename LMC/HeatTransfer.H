@@ -449,16 +449,17 @@ protected:
                                  PArray<MultiFab>*   flux = 0);
 
     enum Solver_Status {HT_InProgress, HT_Stalled, HT_Solved};
-    struct MCDD_Level_Status {
-        MCDD_Level_Status(int nComp_)
+    struct MCDD_MGParams {
+        MCDD_MGParams() {}
+        MCDD_MGParams(int nComp_)
             {
                 nComp = nComp_;
                 maxRes.resize(nComp);
                 maxRes_initial.resize(nComp,0);
                 maxCor.resize(nComp);
-                status      = HT_InProgress;
+                status = HT_InProgress;
             }
-        MCDD_Level_Status(const MCDD_Level_Status& rhs)
+        MCDD_MGParams(const MCDD_MGParams& rhs)
             {
                 nComp = rhs.nComp;
                 maxRes.resize(nComp);
@@ -475,9 +476,13 @@ protected:
                 res_nu2_tol = rhs.res_nu2_tol;
                 res_tot_tol = rhs.res_tot_tol;
                 stalled_tol = rhs.stalled_tol;
-                // Copy all but these, will always want to reset these
-                status = HT_InProgress;
-                iter = 0;
+                gamma = rhs.gamma;
+                num_coarser = rhs.num_coarser;
+                nu1 = rhs.nu1;
+                nu2 = rhs.nu2;
+                mg_level = rhs.mg_level;
+                status = rhs.status;
+                iter = rhs.iter;
             }
         Array<Real> maxRes;
         Array<Real> maxRes_initial;
@@ -492,19 +497,21 @@ protected:
         int         iter;
         int         nComp;
         Solver_Status status;
-    private:
-        MCDD_Level_Status();
+        int         num_coarser;
+        int         gamma;
+        int         nu1;
+        int         nu2;
+        int         mg_level;
     };
 
-    void mcdd_v_cycle(MCDD_Level_Status&  status,
-                      MultiFab&           S,
-                      const MultiFab&     Rhs,
-                      PArray<MultiFab>&   flux,
-                      Real                time,
-                      Real                dt,
-                      DDOp::DD_ApForTorRH whichApp,
-                      int                 level=0);
-
+    void mcdd_fas_cycle(MCDD_MGParams&      status,
+                        MultiFab&           S,
+                        const MultiFab&     Rhs,
+                        PArray<MultiFab>&   flux,
+                        Real                time,
+                        Real                dt,
+                        DDOp::DD_ApForTorRH whichApp);
+    
     void mcdd_update(Real time,
                      Real dt);
 
@@ -606,6 +613,7 @@ protected:
     static int         mcdd_mgLevelsMAX;
     static Array<int>  mcdd_nu1;
     static Array<int>  mcdd_nu2;
+    static int         mcdd_nub;
     static int         mcdd_numcycles;
     static Real        mcdd_res1_tol;
     static Real        mcdd_res2_tol;

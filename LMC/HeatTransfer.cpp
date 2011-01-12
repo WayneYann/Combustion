@@ -123,6 +123,7 @@ Real      HeatTransfer::mcdd_relaxFactor          = 1.0;
 int       HeatTransfer::mcdd_mgLevelsMAX          = -1;
 Array<int> HeatTransfer::mcdd_nu1;
 Array<int> HeatTransfer::mcdd_nu2;
+int       HeatTransfer::mcdd_nub                  = -1;
 int       HeatTransfer::mcdd_numcycles            = 10;
 int       HeatTransfer::mcdd_verbose              = 1;
 Real      HeatTransfer::mcdd_res1_tol             = 1.e-6;
@@ -445,6 +446,7 @@ HeatTransfer::read_params ()
             mcdd_nu2[i] = mcdd_nu2[npost-1];
         }
 
+        pp.query("mcdd_nub",mcdd_nub);
         pp.query("mcdd_res1_tol",mcdd_res1_tol);
         pp.query("mcdd_res2_tol",mcdd_res2_tol);
         pp.query("mcdd_stalled_tol",mcdd_stalled_tol);
@@ -3472,14 +3474,13 @@ sync_H_T(MultiFab&                  S,
 }
 
 void
-HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
-                           MultiFab&           S,
-                           const MultiFab&     Rhs,
-                           PArray<MultiFab>&   flux,
-                           Real                time,
-                           Real                dt,
-                           DDOp::DD_ApForTorRH whichApp,
-                           int                 mg_level)
+HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
+                             MultiFab&           S,
+                             const MultiFab&     Rhs,
+                             PArray<MultiFab>&   flux,
+                             Real                time,
+                             Real                dt,
+                             DDOp::DD_ApForTorRH whichApp)
 {
     // This routine implements a V-cycle to relax the mcdd system, A(phi)=Rhs, 
     // where A(phi) = (rho.phi) - theta*dt*L(phi)
@@ -3509,22 +3510,24 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
 
     int for_T0_H1 = (whichApp==DDOp::DD_Temp ? 0 : 1);
     ChemDriver& cd = getChemSolve();
-    Real iterRes_init;
+    Real iterRes_init = -1;
     bool is_relaxed_nu1 = false;
-    for (int iter=0; (iter<=mcdd_nu1[mg_level]) && (stat.status==HT_InProgress) && !is_relaxed_nu1; ++iter)
+    int mg_level = p.mg_level;
+
+    for (int iter=0; (iter<=p.nu1) && (p.status==HT_InProgress) && !is_relaxed_nu1; ++iter)
     {
         // Make T consistent with Y,H
         if (mg_level==0) {
             sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (pre) ");
         }
 
-        bool updateCoefs = (mg_level==0 && stat.iter==0 && iter==0);
+        bool updateCoefs = (mg_level==0 && p.iter==0 && iter==0);
         mcdd_apply(T1,S,flux,time,whichApp,updateCoefs,mg_level,getAlpha,&alpha);
 
         int res_only = (iter==mcdd_nu1[mg_level] ? 1 : 0);
         for (int i=0; i<nComp; ++i) {
-            stat.maxRes[i] = 0;
-            stat.maxCor[i] = 0;
+            p.maxRes[i] = 0;
+            p.maxCor[i] = 0;
         }
 
         for (MFIter mfi(S); mfi.isValid(); ++mfi)
@@ -3545,48 +3548,48 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
                            L.dataPtr(),ARLIM(L.loVect()),ARLIM(L.hiVect()),
                            a.dataPtr(),ARLIM(a.loVect()),ARLIM(a.hiVect()),
                            r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
-                           dt, mcdd_relaxFactor, stat.maxRes.dataPtr(), stat.maxCor.dataPtr(),
+                           dt, mcdd_relaxFactor, p.maxRes.dataPtr(), p.maxCor.dataPtr(),
                            for_T0_H1, res_only, mult);
         }
-        ParallelDescriptor::ReduceRealMax(stat.maxRes.dataPtr(),stat.maxRes.size());
-        ParallelDescriptor::ReduceRealMax(stat.maxCor.dataPtr(),stat.maxCor.size());
+        ParallelDescriptor::ReduceRealMax(p.maxRes.dataPtr(),p.maxRes.size());
+        ParallelDescriptor::ReduceRealMax(p.maxCor.dataPtr(),p.maxCor.size());
 
         // Set (unscaled) initial residual
-        if (stat.iter==0 && iter==0) {
+        if (p.iter==0 && iter==0) {
             for (int i=0; i<nComp; ++i) {
-                stat.maxRes_initial[i] = stat.maxRes[i];
+                p.maxRes_initial[i] = p.maxRes[i];
             }
             //HACK
-            //stat.maxRes_initial[nspecies-1] = 1;
+            //p.maxRes_initial[nspecies-1] = 1;
         }
 
-        stat.maxRes_norm = 0;
+        p.maxRes_norm = 0;
         for (int i=0; i<nComp; ++i) {
-            stat.maxRes_norm = std::max(stat.maxRes[i]/stat.maxRes_initial[i], stat.maxRes_norm);
+            p.maxRes_norm = std::max(p.maxRes[i]/p.maxRes_initial[i], p.maxRes_norm);
         }
-        if (stat.res_tot_tol>0  && stat.maxRes_norm<stat.res_tot_tol) {
-            stat.status = HT_Solved;
+        if (p.res_tot_tol>0  && p.maxRes_norm<p.res_tot_tol) {
+            p.status = HT_Solved;
         }
 
-        if (stat.res_nu1_tol>0) {
+        if (p.res_nu1_tol>0) {
             if (iter==0) {
-                iterRes_init = stat.maxRes_norm;
+                iterRes_init = p.maxRes_norm;
             }
             else {
-                if (stat.maxRes_norm/iterRes_init < stat.res_nu1_tol)
+                if (p.maxRes_norm/iterRes_init < p.res_nu1_tol)
                     is_relaxed_nu1 = true;
             }
         }
 
-        stat.maxCor_norm = 0;
+        p.maxCor_norm = 0;
         if (!res_only) {
             for (int i=0; i<nComp; ++i) {
                 int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
-                stat.maxCor_norm = std::max(stat.maxCor_norm,stat.maxCor[i]/typical_values[tc]);
+                p.maxCor_norm = std::max(p.maxCor_norm,p.maxCor[i]/typical_values[tc]);
             }
             
-            if (stat.stalled_tol>0  && stat.maxCor_norm<stat.stalled_tol && stat.status!=HT_Solved) {
-                stat.status = HT_Stalled;
+            if (p.stalled_tol>0  && p.maxCor_norm<p.stalled_tol && p.status!=HT_Solved) {
+                p.status = HT_Stalled;
             }
 
             if (ParallelDescriptor::IOProcessor() && mcdd_verbose>1)  {
@@ -3594,13 +3597,13 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
                 levWrite(std::cout,mg_level,str)
                     << mg_level << ", "
                     << iter << ", "
-                    << stat.maxRes_norm << ", "
-                    << stat.maxCor_norm << ") " << std::endl;
+                    << p.maxRes_norm << ", "
+                    << p.maxCor_norm << ") " << std::endl;
             }
         }
     }  // nu1 iters
 
-    if ((stat.status==HT_InProgress) && MCDDOp.coarser_exists(mg_level)) {
+    if ((p.status==HT_InProgress) && p.num_coarser!=0) {
 
         // FIXME: BA calcs + allocs can be done ahead of time
         const IntVect MGIV(D_DECL(2,2,2));
@@ -3628,12 +3631,23 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
             MultiFab::Divide(SC,SC,sCompR,n,1,nGrow);
         }
 
-        const int mg_levelC = mg_level + 1;
+        MCDD_MGParams pC(p);
+        pC.mg_level++;
+        pC.status = HT_InProgress;
+
+        pC.num_coarser--;
+        if (pC.num_coarser==0  &&  mcdd_nub>0) {
+            pC.nu1 = mcdd_nub;
+            pC.nu2 = 0;
+        } else {
+            pC.nu1 = mcdd_nu1[pC.mg_level];
+            pC.nu2 = mcdd_nu2[pC.mg_level];
+        }
+
         bool updateCoefsC = true; // Do once here, then never again in coarse relax
-        mcdd_apply(T1C,SC,fluxC,time,whichApp,updateCoefsC,mg_levelC);
+        mcdd_apply(T1C,SC,fluxC,time,whichApp,updateCoefsC,pC.mg_level);
 
         int res_only = 1; // here, using HTDDRELAX to build (RhsC-Op(SC)) only
-        MCDD_Level_Status statC(stat);
         for (MFIter mfi(SC); mfi.isValid(); ++mfi)
         {
             FArrayBox& sC = SC[mfi];
@@ -3650,18 +3664,20 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
                            lC.dataPtr(),ARLIM(lC.loVect()),ARLIM(lC.hiVect()),
                            aC.dataPtr(),ARLIM(aC.loVect()),ARLIM(aC.hiVect()),
                            rC.dataPtr(),ARLIM(rC.loVect()),ARLIM(rC.hiVect()),
-                           dt, mcdd_relaxFactor, statC.maxRes.dataPtr(), statC.maxCor.dataPtr(),
+                           dt, mcdd_relaxFactor, pC.maxRes.dataPtr(), pC.maxCor.dataPtr(),
                            for_T0_H1, res_only, mult);
 
         }
-        ParallelDescriptor::ReduceRealMax(statC.maxRes.dataPtr(),statC.maxRes.size());
-        ParallelDescriptor::ReduceRealMax(statC.maxCor.dataPtr(),statC.maxCor.size());
+        ParallelDescriptor::ReduceRealMax(pC.maxRes.dataPtr(),pC.maxRes.size());
+        ParallelDescriptor::ReduceRealMax(pC.maxCor.dataPtr(),pC.maxCor.size());
 
         // Save a copy of pre-relaxed coarse state, in T2C
         MultiFab::Copy(T2C,SC,0,0,nspecies+3,0);
 
         // Do coarser relax and ignore solver status
-        mcdd_v_cycle(statC,SC,T1C,fluxC,time,dt,whichApp,mg_levelC);
+        for (int j=0; j<p.gamma; ++j) {
+            mcdd_fas_cycle(pC,SC,T1C,fluxC,time,dt,whichApp);
+        }
 
         // Compute increment
         MultiFab::Subtract(SC,T2C,sCompY,sCompY,nspecies+2,nGrow);
@@ -3678,7 +3694,7 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
 
         // Do post smooth (if not at the bottom)
         bool is_relaxed_nu2 = false;
-        for (int iter=0; (iter<=mcdd_nu2[mg_level]) && (stat.status==HT_InProgress) && !is_relaxed_nu2; ++iter)
+        for (int iter=0; (iter<=p.nu2) && (p.status==HT_InProgress) && !is_relaxed_nu2; ++iter)
         {
             // Make T consistent with Y,H
             if (0 && mg_level==0) {
@@ -3691,8 +3707,8 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
             mcdd_apply(T1,S,flux,time,whichApp,updateCoefs,mg_level,getAlpha,&alpha);
             
             for (int i=0; i<nComp; ++i) {
-                stat.maxCor[i] = 0;
-                stat.maxRes[i] = 0;
+                p.maxCor[i] = 0;
+                p.maxRes[i] = 0;
             }
             
             int res_only = (iter==mcdd_nu2[mg_level] ? 1 : 0);
@@ -3714,41 +3730,41 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
                                L.dataPtr(),ARLIM(L.loVect()),ARLIM(L.hiVect()),
                                a.dataPtr(),ARLIM(a.loVect()),ARLIM(a.hiVect()),
                                r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
-                               dt, mcdd_relaxFactor, stat.maxRes.dataPtr(), stat.maxCor.dataPtr(),
+                               dt, mcdd_relaxFactor, p.maxRes.dataPtr(), p.maxCor.dataPtr(),
                                for_T0_H1, res_only, mult);
             } // S mfi
             
-            ParallelDescriptor::ReduceRealMax(stat.maxCor.dataPtr(),stat.maxCor.size());
-            ParallelDescriptor::ReduceRealMax(stat.maxRes.dataPtr(),stat.maxRes.size());
+            ParallelDescriptor::ReduceRealMax(p.maxCor.dataPtr(),p.maxCor.size());
+            ParallelDescriptor::ReduceRealMax(p.maxRes.dataPtr(),p.maxRes.size());
 
-            stat.maxRes_norm = 0;
+            p.maxRes_norm = 0;
             for (int i=0; i<nComp; ++i) {
-                stat.maxRes_norm = std::max(stat.maxRes[i]/stat.maxRes_initial[i], stat.maxRes_norm);
+                p.maxRes_norm = std::max(p.maxRes[i]/p.maxRes_initial[i], p.maxRes_norm);
             }
 
-            if (stat.res_tot_tol>0 && stat.maxRes_norm<stat.res_tot_tol) {
-                stat.status = HT_Solved;
+            if (p.res_tot_tol>0 && p.maxRes_norm<p.res_tot_tol) {
+                p.status = HT_Solved;
             }
 
-            if (stat.res_nu2_tol>0) {
+            if (p.res_nu2_tol>0) {
                 if (iter==0) {
-                    iterRes_init = stat.maxRes_norm;
+                    iterRes_init = p.maxRes_norm;
                 }
                 else {
-                    if (stat.maxRes_norm/iterRes_init < stat.res_nu2_tol)
+                    if (p.maxRes_norm/iterRes_init < p.res_nu2_tol)
                         is_relaxed_nu2 = true;
                 }
             }
 
             if (!res_only) {
-                stat.maxCor_norm = 0;
+                p.maxCor_norm = 0;
                 for (int i=0; i<nComp; ++i) {
                     int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
-                    stat.maxCor_norm = std::max(stat.maxCor_norm,stat.maxCor[i]/typical_values[tc]);
+                    p.maxCor_norm = std::max(p.maxCor_norm,p.maxCor[i]/typical_values[tc]);
                 }
                 
-                if (stat.stalled_tol>0 && stat.maxCor_norm<stat.stalled_tol) {
-                    stat.status = HT_Stalled;
+                if (p.stalled_tol>0 && p.maxCor_norm<p.stalled_tol) {
+                    p.status = HT_Stalled;
                 }
             
                 if (ParallelDescriptor::IOProcessor() && mcdd_verbose>1) {
@@ -3756,8 +3772,8 @@ HeatTransfer::mcdd_v_cycle(MCDD_Level_Status&  stat,
                     levWrite(std::cout,mg_level,str)
                         << mg_level << ", "
                         << iter << ", "
-                        << stat.maxRes_norm << ", "
-                        << stat.maxCor_norm << ")\n";
+                        << p.maxRes_norm << ", "
+                        << p.maxCor_norm << ")\n";
                 }
             }
         } // nu2 iters
@@ -3830,7 +3846,7 @@ HeatTransfer::mcdd_update(Real time,
     const int nGrowOp = 1;
     MultiFab S(grids,nspecies+3,nGrowOp);
 
-    // Build Y,H from state, add T and rho for use internal to v_cycle
+    // Build Y,H from state, add T and rho for use internal to fas_cycle
     // FIXME: Adjust arglist to avoid copy-out here.
     int dCompSY = 0;
     int dCompST = dCompSY + nspecies;
@@ -3856,31 +3872,36 @@ HeatTransfer::mcdd_update(Real time,
 
     Real thetaDt = be_cn_theta * dt;
 
-    MCDD_Level_Status stat(nspecies+1);
-    stat.stalled_tol = mcdd_stalled_tol;
-    stat.res_nu1_tol = mcdd_res1_tol;
-    stat.res_nu2_tol = mcdd_res2_tol;
-    stat.res_tot_tol = mcdd_restot_tol;
-    for (stat.iter=0; (stat.iter<mcdd_numcycles) && (stat.status==HT_InProgress); ++stat.iter) {
-        mcdd_v_cycle(stat,S,Rhs,fluxnp1,time,thetaDt,whichApp);
+    MCDD_MGParams p(nspecies+1);
+    p.stalled_tol = mcdd_stalled_tol;
+    p.res_nu1_tol = mcdd_res1_tol;
+    p.res_nu2_tol = mcdd_res2_tol;
+    p.res_tot_tol = mcdd_restot_tol;
+    p.nu1 = mcdd_nu1[0];
+    p.nu2 = mcdd_nu2[0];
+    p.gamma = 1; // FIXME: Want as input?
+    p.num_coarser = DDOp::num_levels() - 1;
+    p.status = HT_InProgress;
+    for (p.iter=0; (p.iter<mcdd_numcycles) && (p.status==HT_InProgress); ++p.iter) {
+        mcdd_fas_cycle(p,S,Rhs,fluxnp1,time,thetaDt,whichApp);
         if (ParallelDescriptor::IOProcessor() && (mcdd_verbose>0) ) {
             std::string str("mcdd - (iter,res,cor): (");
             levWrite(std::cout,-1,str)
-                << stat.iter << ", "
-                << stat.maxRes_norm << ", "
-                << stat.maxCor_norm << ") " << std::endl;
+                << p.iter << ", "
+                << p.maxRes_norm << ", "
+                << p.maxCor_norm << ") " << std::endl;
         }
     }
     if (ParallelDescriptor::IOProcessor()) {
-        if (stat.status == HT_InProgress) {
+        if (p.status == HT_InProgress) {
             std::cout << "**************** mcdd solver failed after " << mcdd_numcycles << " V-cycles!!" << std::endl;
 
             cout << "Residual redux (R,Ri,R/Ri): " << endl;
             for (int i=0; i<nspecies+1; ++i) {
                 cout << i << " "
-                     << stat.maxRes[i] << " "
-                     << stat.maxRes_initial[i] << " "
-                     << stat.maxRes[i]/stat.maxRes_initial[i] << endl;
+                     << p.maxRes[i] << " "
+                     << p.maxRes_initial[i] << " "
+                     << p.maxRes[i]/p.maxRes_initial[i] << endl;
             }
         }
     }

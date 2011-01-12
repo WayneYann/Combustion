@@ -268,10 +268,11 @@ ns.mcdd_mgLevelsMAX = -1
 ns.mcdd_nu1 = 10
 ns.mcdd_nu2 = 10
 ns.mcdd_numcycles = 8
-ns.mcdd_stalled_tol = -1.e-6
-ns.mcdd_restot_tol = -1.e-6
+ns.mcdd_stalled_tol = 1.e-8
+ns.mcdd_restot_tol =  1.e-8
 ns.mcdd_res1_tol = -.33333
 ns.mcdd_res2_tol = -.33333
+ns.mcdd_nub = 50
 
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
