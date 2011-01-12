@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.27 2011-01-11 04:04:58 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.28 2011-01-12 04:28:02 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1098,11 +1098,11 @@ c
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=0,Nspec-1
-               if (n.eq.Nspec-1) then
-                  L(i,j,n) = 0.d0
-               else
+c               if (n.eq.Nspec-1) then
+c                  L(i,j,n) = 0.d0
+c               else
                   L(i,j,n) = R(i,j,n) + mult*(S(i,j,rc)*S(i,j,yc+n) - dt*L(i,j,n))
-               endif
+c               endif
                maxRes(n) = MAX(maxRes(n),ABS(L(i,j,n)))
             enddo
          enddo
@@ -1128,18 +1128,18 @@ c
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                do n=0,Nspec-1
-                  if (n.ne.Nspec-1) then
+c                  if (n.ne.Nspec-1) then
                      cor = fac * L(i,j,n) / (1.d0 + dt*a(i,j,n))
                      maxCor(n) = MAX(maxCor(n),ABS(cor))
                      S(i,j,yc+n) = S(i,j,yc+n)  +  cor
-                  endif
+c                  endif
                enddo
-               sum = 0.d0
-               do n=0,Nspec-2
-                  sum = sum + S(i,j,yc+n)
-               enddo
-               S(i,j,yc+Nspec-1) = 1.d0 - sum
-               maxCor(Nspec-1) = 0.d0
+c               sum = 0.d0
+c               do n=0,Nspec-2
+c                  sum = sum + S(i,j,yc+n)
+c               enddo
+c               S(i,j,yc+Nspec-1) = 1.d0 - sum
+c               maxCor(Nspec-1) = 0.d0
             enddo
          enddo
 

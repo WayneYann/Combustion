@@ -498,7 +498,7 @@ DDOp::applyOp(MultiFab&         outYH,
     FArrayBox Hic(Box(iv,iv),1);
     FArrayBox FcpDTe(Box(iv,iv),1);
     const Real* dx = Tbd.getGeom().CellSize();
-    if (updateCoefs && ParallelDescriptor::IOProcessor()) {
+    if (0 && updateCoefs && ParallelDescriptor::IOProcessor()) {
             std::cout << "DDOp::apply: Setting coefficients at level : " << Tbd.mgLevel() << std::endl;
     }
 

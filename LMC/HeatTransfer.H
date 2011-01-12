@@ -450,23 +450,47 @@ protected:
 
     enum Solver_Status {HT_InProgress, HT_Stalled, HT_Solved};
     struct MCDD_Level_Status {
-        MCDD_Level_Status(int nComp)
+        MCDD_Level_Status(int nComp_)
             {
+                nComp = nComp_;
                 maxRes.resize(nComp);
                 maxRes_initial.resize(nComp,0);
                 maxCor.resize(nComp);
-                maxRes_norm = 0;
-                maxCor_norm = 0;
-                iter=0;
+                status      = HT_InProgress;
+            }
+        MCDD_Level_Status(const MCDD_Level_Status& rhs)
+            {
+                nComp = rhs.nComp;
+                maxRes.resize(nComp);
+                maxRes_initial.resize(nComp,0);
+                maxCor.resize(nComp);
+                for (int i=0; i<nComp; ++i) {
+                    maxRes[i] = rhs.maxRes[i];
+                    maxCor[i] = rhs.maxCor[i];
+                    maxRes_initial[i] = rhs.maxRes_initial[i];
+                }
+                maxRes_norm = rhs.maxRes_norm;
+                maxCor_norm = rhs.maxCor_norm;
+                res_nu1_tol = rhs.res_nu1_tol;
+                res_nu2_tol = rhs.res_nu2_tol;
+                res_tot_tol = rhs.res_tot_tol;
+                stalled_tol = rhs.stalled_tol;
+                // Copy all but these, will always want to reset these
                 status = HT_InProgress;
+                iter = 0;
             }
         Array<Real> maxRes;
         Array<Real> maxRes_initial;
         Array<Real> maxCor;
         Real        maxRes_norm;
         Real        maxCor_norm;
-        bool        first;
+        Real        solved_tol;
+        Real        res_nu1_tol;
+        Real        res_nu2_tol;
+        Real        res_tot_tol;
+        Real        stalled_tol;
         int         iter;
+        int         nComp;
         Solver_Status status;
     private:
         MCDD_Level_Status();
@@ -579,13 +603,15 @@ protected:
     static std::string mcdd_transport_model;
     static int         mcdd_NitersMAX;
     static Real        mcdd_relaxFactor;
-    static Real        mcdd_relaxFactor1;
-    static Real        mcdd_rtol;
     static int         mcdd_mgLevelsMAX;
-    static Array<int>  mcdd_presmooth;
-    static Array<int>  mcdd_postsmooth;
-    static int         mcdd_bottomsmooth;
-    static Real        mcdd_cfRelaxFactor;
+    static Array<int>  mcdd_nu1;
+    static Array<int>  mcdd_nu2;
+    static int         mcdd_numcycles;
+    static Real        mcdd_res1_tol;
+    static Real        mcdd_res2_tol;
+    static Real        mcdd_restot_tol;
+    static Real        mcdd_stalled_tol;
+    static Real        mcdd_min_residual_reduction;
     static int         mcdd_verbose;
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;

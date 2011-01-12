@@ -1,5 +1,5 @@
 
-# $Id: GNUmakefile,v 1.4 2011-01-11 03:19:24 marc Exp $
+# $Id: GNUmakefile,v 1.5 2011-01-12 04:28:25 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -24,8 +24,8 @@ HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_VELOCITY      = FALSE
-USE_MPI           = FALSE
 USE_MPI           = TRUE
+USE_MPI           = FALSE
 
 
 # This allows GetForce to call a Fortran routine
@@ -160,7 +160,7 @@ vpath %.F   $(MySrcDirs) ${PMFdir}
 vpath %.f90 $(MySrcDirs) ${PMFdir}
 vpath %.H   $(MySrcDirs) ${PMFdir}
 vpath %.h   $(MySrcDirs) ${PMFdir}
-vpath %.f   $(MySrcDirs) ${PMFdir}
+vpath %.f   ONED $(MySrcDirs) ${PMFdir}
 vpath %.a   $(LIBRARY_LOCATIONS)
 
 all: $(executable)

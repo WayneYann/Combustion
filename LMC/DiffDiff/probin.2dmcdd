@@ -1,6 +1,6 @@
  &fortin
   probtype = 3
-  max_trac_lev = 0
+  max_trac_lev = 10
   max_temp_lev = 0
   max_vort_lev = 0
   flametracval = 1.e-6
