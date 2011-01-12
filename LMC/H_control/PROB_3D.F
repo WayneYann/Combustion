@@ -173,8 +173,8 @@ c ::: -----------------------------------------------------------
       REAL_T problo(SDIM), probhi(SDIM)
 
 #include "probdata.H"
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
@@ -216,16 +216,12 @@ c ::: -----------------------------------------------------------
       REAL_T  kappa, kappaMax, freqMin, freqMax, freqDiff, pdk
 
       namelist /fortin/ nmodes, nxmodes, nymodes, nzmodes, mode_start, hack_lz,
-     &                  forcing_type, spectrum_type, time_offset,
+     &                  forcing_type, spectrum_type, time_offset, forcing_twice_wavelength,
      &                  forcing_xlength, forcing_ylength, forcing_zlength,
      &                  forcing_time_scale_min, forcing_time_scale_max, 
      &                  force_scale, forcing_epsilon, blrandseed,
      &                  use_rho_in_forcing, do_mode_division,
-     &                  AXY, BXY, CXY, DXY, PXY, QXY, RXY,
-     &                  AZX, BZX, CZX, DZX, PZX, QZX, RZX,
-     &                  AYZ, BYZ, CYZ, DYZ, PYZ, QYZ, RYZ,
-     &                  FTX, FTY, FTZ, TAT, TAP,
-     &                  FPX, FPY, FPZ, FAX, FAY, FAZ
+     &                  div_free_force, moderate_zero_modes
 #endif
 
 c
@@ -392,7 +388,7 @@ c     Load domain dimensions into common, and set up boundary functions
          Ly = domnhi(2)-domnlo(2)
          Lz = domnhi(3)-domnlo(3)
          
-         if (hack_lz) then 
+         if (hack_lz.eq.1) then 
             Lz = Lz/two
          endif
          
@@ -471,6 +467,26 @@ c     Phases
                      FPY(kx,ky,kz) = rn*twicePi
                      call blutilrand(rn)
                      FPZ(kx,ky,kz) = rn*twicePi
+                     if (div_free_force.eq.1) then
+                        call blutilrand(rn)
+                        FPXX(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPYX(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPZX(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPXY(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPYY(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPZY(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPXZ(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPYZ(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPZZ(kx,ky,kz) = rn*twicePi
+                     endif
 c     Amplitudes (alpha)
                      call blutilrand(rn)
                      thetaTmp      = rn*twicePi
@@ -486,8 +502,10 @@ c     Amplitudes (alpha)
                      pz =               cosPhiTmp
 
                      mp2           = px*px + py*py + pz*pz
-                     if (mp2 .lt. 0.000001) then
-                        write(*,*) "ZERO AMPLITUDE MODE ",kx,ky,kz
+                     if (kappa .lt. 0.000001) then
+                        if (isioproc .eq. 1) then
+                           write(*,*) "ZERO AMPLITUDE MODE ",kx,ky,kz
+                        endif
                         FAX(kx,ky,kz) = zero
                         FAY(kx,ky,kz) = zero
                         FAZ(kx,ky,kz) = zero
@@ -502,6 +520,14 @@ c     Set amplitudes
                         else
                            Ekh        = one
                         endif
+                        if (div_free_force.eq.1) then
+                           Ekh = Ekh / kappa
+                        endif
+                        if (moderate_zero_modes.eq.1) then
+                           if (kx.eq.0) Ekh = Ekh / two
+                           if (ky.eq.0) Ekh = Ekh / two
+                           if (kz.eq.0) Ekh = Ekh / two
+                        endif
                         if (force_scale.gt.zero) then
                            FAX(kx,ky,kz) = force_scale * px * Ekh / mp2
                            FAY(kx,ky,kz) = force_scale * py * Ekh / mp2
@@ -514,11 +540,17 @@ c     Set amplitudes
 
                         if (isioproc.eq.1) then
                            write (*,*) "Mode"
-                           write (*,*) "kappa = ",kx,ky,kz,kappa
-                           write (*,*) "Amplitudes"
+                           write (*,*) "kappa = ",kx,ky,kz,kappa, sqrt(FAX(kx,ky,kz)**2+FAY(kx,ky,kz)**2+FAZ(kx,ky,kz)**2)
+                           write (*,*) "Amplitudes - A"
                            write (*,*) FAX(kx,ky,kz), FAY(kx,ky,kz), FAZ(kx,ky,kz)
                            write (*,*) "Frequencies"
                            write (*,*) FTX(kx,ky,kz), FTY(kx,ky,kz), FTZ(kx,ky,kz)
+                           write (*,*) "TAT"
+                           write (*,*) TAT(kx,ky,kz), TAP(kx,ky,kz)
+                           write (*,*) "Amplitudes - AA"
+                           write (*,*) FPXX(kx,ky,kz), FPYX(kx,ky,kz), FPZX(kx,ky,kz)
+                           write (*,*) FPXY(kx,ky,kz), FPYY(kx,ky,kz), FPZY(kx,ky,kz)
+                           write (*,*) FPXZ(kx,ky,kz), FPYZ(kx,ky,kz), FPZZ(kx,ky,kz)
                         endif
                      endif
                   endif   
@@ -528,7 +560,7 @@ c     Set amplitudes
 
 c     Now let's break symmetry, have to assume high aspect ratio in z for now
          reduced_mode_count = 0
-         do kz = mode_start, zstep - 1
+         do kz = 1, zstep - 1
             kzd = dfloat(kz)
             do ky = mode_start, nymodes
                kyd = dfloat(ky)
@@ -556,6 +588,26 @@ c     Phases
                      FPY(kx,ky,kz) = rn*twicePi
                      call blutilrand(rn)
                      FPZ(kx,ky,kz) = rn*twicePi
+                     if (div_free_force.eq.1) then
+                        call blutilrand(rn)
+                        FPXX(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPYX(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPZX(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPXY(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPYY(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPZY(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPXZ(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPYZ(kx,ky,kz) = rn*twicePi
+                        call blutilrand(rn)
+                        FPZZ(kx,ky,kz) = rn*twicePi
+                     endif
 c     Amplitudes (alpha)
                      call blutilrand(rn)
                      thetaTmp      = rn*twicePi
@@ -571,8 +623,10 @@ c     Amplitudes (alpha)
                      pz =               cosPhiTmp
 
                      mp2           = px*px + py*py + pz*pz
-                     if (mp2 .lt. 0.000001) then
-                        write(*,*) "ZERO AMPLITUDE MODE ",kx,ky,kz
+                     if (kappa .lt. 0.000001) then
+                        if (isioproc .eq. 1) then
+                           write(*,*) "ZERO AMPLITUDE MODE ",kx,ky,kz
+                        endif
                         FAX(kx,ky,kz) = zero
                         FAY(kx,ky,kz) = zero
                         FAZ(kx,ky,kz) = zero
@@ -587,6 +641,14 @@ c     Set amplitudes
                         else
                            Ekh        = one
                         endif
+                        if (div_free_force.eq.1) then
+                           Ekh = Ekh / kappa
+                        endif
+                        if (moderate_zero_modes.eq.1) then
+                           if (kx.eq.0) Ekh = Ekh / two
+                           if (ky.eq.0) Ekh = Ekh / two
+                           if (kz.eq.0) Ekh = Ekh / two
+                        endif
                         if (force_scale.gt.zero) then
                            FAX(kx,ky,kz) = forcing_epsilon * force_scale * px * Ekh / mp2
                            FAY(kx,ky,kz) = forcing_epsilon * force_scale * py * Ekh / mp2
@@ -599,11 +661,17 @@ c     Set amplitudes
 
                         if (isioproc.eq.1) then
                            write (*,*) "Mode"
-                           write (*,*) "kappa = ",kx,ky,kz,kappa
-                           write (*,*) "Amplitudes"
+                           write (*,*) "kappa = ",kx,ky,kz,kappa, sqrt(FAX(kx,ky,kz)**2+FAY(kx,ky,kz)**2+FAZ(kx,ky,kz)**2)
+                           write (*,*) "Amplitudes - B"
                            write (*,*) FAX(kx,ky,kz), FAY(kx,ky,kz), FAZ(kx,ky,kz)
                            write (*,*) "Frequencies"
                            write (*,*) FTX(kx,ky,kz), FTY(kx,ky,kz), FTZ(kx,ky,kz)
+                           write (*,*) "TAT"
+                           write (*,*) TAT(kx,ky,kz), TAP(kx,ky,kz)
+                           write (*,*) "Amplitudes - BB"
+                           write (*,*) FPXX(kx,ky,kz), FPYX(kx,ky,kz), FPZX(kx,ky,kz)
+                           write (*,*) FPXY(kx,ky,kz), FPYY(kx,ky,kz), FPZY(kx,ky,kz)
+                           write (*,*) FPXZ(kx,ky,kz), FPYZ(kx,ky,kz), FPZZ(kx,ky,kz)
                         endif
                      endif
                   endif   
@@ -688,6 +756,10 @@ c     phi = 1.0
       data X_O2  /  0.190045d0, 0.21d0,  0.190045d0,  0.21d0,  zero /
       data T     / 3.d2,         3.d2,         3.d2,      3.d2 , zero/
 #endif
+
+      integer isioproc
+      call bl_pd_is_ioproc(isioproc)
+
       Patm = pamb / 101325.0d0
       iN2 = -1
       do n = 1,Nspec
@@ -721,8 +793,10 @@ c     For probtype == 3, set boundary conditions as constants
          Xfu(iH2) = X_FU_H2/ Xsum
          Xfu(iO2) = X_FU_O2/ Xsum
          Xfu(iN2) = X_FU_N2/ Xsum
- 
-         write(6,*)" in bc routine", Xfu(iH2),Xfu(iO2) ,Xfu(iN2)
+
+         if (isioproc.eq.1) then
+            write(6,*)" in bc routine", Xfu(iH2),Xfu(iO2) ,Xfu(iN2)
+         endif
  
  
          call FORT_MOLETOMASS(lo,hi,
@@ -911,8 +985,8 @@ c ::: -----------------------------------------------------------
       REAL_T x, y, z, time, u, v, w, rho, Yl(0:*), T, h, dx(SDIM)
       logical getuvw
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -1050,8 +1124,8 @@ c      endif
       REAL_T   scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
  
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
  
@@ -1132,8 +1206,8 @@ c ::: -----------------------------------------------------------
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 #if defined(BL_DO_FLCT)
@@ -1355,6 +1429,7 @@ c ::: -----------------------------------------------------------
       REAL_T  problo(SDIM)
       
 #include "probdata.H"
+#include "cdwrk.H"
 #include "htdata.H"
       integer i, j, k, n, Tid, RHid, YSid, YEid, ys, ye
       integer getZone
@@ -4783,7 +4858,7 @@ c
       REAL_T     rho    (DIMV(state))
       REAL_T     gravity
 
-      REAL_T     Lx, Ly, Lz, Lmin
+      REAL_T     Lx, Ly, Lz, Lmin, HLx, HLy, HLz
       REAL_T     kappa, kappaMax
 
 #include "probdata.H"
@@ -4853,7 +4928,7 @@ c     Adjust z offset for probtype 15
             Ly = domnhi(2)-domnlo(2)
             Lz = domnhi(3)-domnlo(3)
 
-            if (hack_lz) then 
+            if (hack_lz.eq.1) then 
                Lz = Lz/two
             endif
          
@@ -4866,6 +4941,16 @@ c     Adjust z offset for probtype 15
             xstep = int(Lx/Lmin+0.5)
             ystep = int(Ly/Lmin+0.5)
             zstep = int(Lz/Lmin+0.5)
+
+            if (forcing_twice_wavelength.eq.1) then
+               HLx = Lx/two
+               HLy = Ly/two
+               HLz = Lz/two
+            else
+               HLx = Lx
+               HLy = Ly
+               HLz = Lz
+            endif
 
             do k = klo, khi
                z = xlo(3) + hz*(float(k-klo) + half)
@@ -4884,15 +4969,24 @@ c     Adjust z offset for probtype 15
                               kxd = dfloat(kx)
                               kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                               if (kappa.le.kappaMax) then
-                                 xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                                 f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                                 f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                                 f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                                 xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                                 if (div_free_force.eq.1) then
+                                    f1 = f1 + xT * ( FAZ(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) 
+     &                                   -           FAY(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) )
+                                    f2 = f2 + xT * ( FAX(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) 
+     &                                   -           FAZ(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) )
+                                    f3 = f3 + xT * ( FAY(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) 
+     &                                   -           FAX(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) )
+                                 else
+                                    f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                                    f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                                    f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                                 endif
                               endif
                            enddo
                         enddo
                      enddo
-                     do kz = mode_start, zstep - 1
+                     do kz = 1, zstep - 1
                         kzd = dfloat(kz)
                         do ky = mode_start, nymodes
                            kyd = dfloat(ky)
@@ -4900,10 +4994,19 @@ c     Adjust z offset for probtype 15
                               kxd = dfloat(kx)
                               kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                               if (kappa.le.kappaMax) then
-                                 xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                                 f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                                 f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                                 f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                                 xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                                 if (div_free_force.eq.1) then
+                                    f1 = f1 + xT * ( FAZ(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) 
+     &                                   -           FAY(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) )
+                                    f2 = f2 + xT * ( FAX(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) 
+     &                                   -           FAZ(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) )
+                                    f3 = f3 + xT * ( FAY(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) 
+     &                                   -           FAX(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) )
+                                 else
+                                    f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                                    f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                                    f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                                 endif
                               endif
                            enddo
                         enddo

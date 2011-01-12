@@ -347,6 +347,7 @@ c
       REAL_T  force_time
       REAL_T  kxd, kyd, kzd
       REAL_T  xt, yt, zt
+      REAL_T  HLx, HLy, HLz
       REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
       REAL_T  rho, u, v, w
       integer kx, ky, kz, mode_count, xstep, ystep, zstep
@@ -379,7 +380,7 @@ c     Adjust z offset for probtype 15
       Ly = domnhi(2)-domnlo(2)
       Lz = domnhi(3)-domnlo(3)
 
-      if (hack_lz) then
+      if (hack_lz.eq.1) then
          Lz = Lz/two
       endif
       
@@ -392,6 +393,16 @@ c     Adjust z offset for probtype 15
       xstep = int(Lx/Lmin+0.5)
       ystep = int(Ly/Lmin+0.5)
       zstep = int(Lz/Lmin+0.5)
+
+      if (forcing_twice_wavelength.eq.1) then
+         HLx = Lx/two
+         HLy = Ly/two
+         HLz = Lz/two
+      else
+         HLx = Lx
+         HLy = Ly
+         HLz = Lz
+      endif
 
 !$omp parallel do private(i,j,k,x,y,z,f1,f2,f3,u,v,w,rho)
 !$omp&private(kz,kzd,ky,kyd,kx,kxd,kappa,xT)
@@ -412,15 +423,24 @@ c     Adjust z offset for probtype 15
                         kxd = dfloat(kx)
                         kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                         if (kappa.le.kappaMax) then
-                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                           f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                           f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                           f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                           if (div_free_force.eq.1) then
+                              f1 = f1 + xT * ( FAZ(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) 
+     &                             -           FAY(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) )
+                              f2 = f2 + xT * ( FAX(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) 
+     &                             -           FAZ(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) )
+                              f3 = f3 + xT * ( FAY(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) 
+     &                             -           FAX(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) )
+                           else
+                              f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                              f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                              f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                           endif
                         endif
                      enddo
                   enddo
                enddo
-               do kz = mode_start, zstep - 1
+               do kz = 1, zstep - 1
                   kzd = dfloat(kz)
                   do ky = mode_start, nymodes
                      kyd = dfloat(ky)
@@ -428,10 +448,19 @@ c     Adjust z offset for probtype 15
                         kxd = dfloat(kx)
                         kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                         if (kappa.le.kappaMax) then
-                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                           f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                           f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
-                           f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                           if (div_free_force.eq.1) then
+                              f1 = f1 + xT * ( FAZ(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) 
+     &                             -           FAY(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) )
+                              f2 = f2 + xT * ( FAX(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) 
+     &                             -           FAZ(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) )
+                              f3 = f3 + xT * ( FAY(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) 
+     &                             -           FAX(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) )
+                           else
+                              f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                              f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                              f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                           endif
                         endif
                      enddo
                   enddo
@@ -499,6 +528,7 @@ c
       REAL_T  force_time
       REAL_T  kxd, kyd, kzd
       REAL_T  xt, yt, zt
+      REAL_T  HLx, HLy, HLz
       REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
       integer kx, ky, kz, mode_count, xstep, ystep, zstep
       integer isioproc
@@ -530,7 +560,7 @@ c     Adjust z offset for probtype 15
       Ly = domnhi(2)-domnlo(2)
       Lz = domnhi(3)-domnlo(3)
 
-      if (hack_lz) then
+      if (hack_lz.eq.1) then
          Lz = Lz/two
       endif
       
@@ -543,6 +573,16 @@ c     Adjust z offset for probtype 15
       xstep = int(Lx/Lmin+0.5)
       ystep = int(Ly/Lmin+0.5)
       zstep = int(Lz/Lmin+0.5)
+
+      if (forcing_twice_wavelength.eq.1) then
+         HLx = Lx/two
+         HLy = Ly/two
+         HLz = Lz/two
+      else
+         HLx = Lx
+         HLy = Ly
+         HLz = Lz
+      endif
 
 !$omp parallel do private(i,j,k,x,y,z,f1)
 !$omp&private(kz,kzd,ky,kyd,kx,kxd,kappa,xT)      
@@ -561,13 +601,18 @@ c     Adjust z offset for probtype 15
                         kxd = dfloat(kx)
                         kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                         if (kappa.le.kappaMax) then
-                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                           f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                           if (div_free_force.eq.1) then
+                              f1 = f1 + xT * ( FAZ(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) 
+     &                             -           FAY(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) )
+                           else
+                              f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                           endif
                         endif
                      enddo
                   enddo
                enddo
-               do kz = mode_start, zstep - 1
+               do kz = 1, zstep - 1
                   kzd = dfloat(kz)
                   do ky = mode_start, nymodes
                      kyd = dfloat(ky)
@@ -575,8 +620,13 @@ c     Adjust z offset for probtype 15
                         kxd = dfloat(kx)
                         kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                         if (kappa.le.kappaMax) then
-                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                           f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                           if (div_free_force.eq.1) then
+                              f1 = f1 + xT * ( FAZ(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) 
+     &                             -           FAY(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) )
+                           else
+                              f1 = f1 + xT*FAX(kx,ky,kz)*cos(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                           endif
                         endif
                      enddo
                   enddo
@@ -637,6 +687,7 @@ c
       REAL_T  force_time
       REAL_T  kxd, kyd, kzd
       REAL_T  xt, yt, zt
+      REAL_T  HLx, HLy, HLz
       REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
       integer kx, ky, kz, mode_count, xstep, ystep, zstep
       integer isioproc
@@ -668,7 +719,7 @@ c     Adjust z offset for probtype 15
       Ly = domnhi(2)-domnlo(2)
       Lz = domnhi(3)-domnlo(3)
 
-      if (hack_lz) then
+      if (hack_lz.eq.1) then
          Lz = Lz/two
       endif
       
@@ -681,6 +732,16 @@ c     Adjust z offset for probtype 15
       xstep = int(Lx/Lmin+0.5)
       ystep = int(Ly/Lmin+0.5)
       zstep = int(Lz/Lmin+0.5)
+
+      if (forcing_twice_wavelength.eq.1) then
+         HLx = Lx/two
+         HLy = Ly/two
+         HLz = Lz/two
+      else
+         HLx = Lx
+         HLy = Ly
+         HLz = Lz
+      endif
 
 !$omp parallel do private(i,j,k,x,y,z,f2) 
 !$omp&private(kz,kzd,ky,kyd,kx,kxd,kappa,xT) 
@@ -699,13 +760,18 @@ c     Adjust z offset for probtype 15
                         kxd = dfloat(kx)
                         kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                         if (kappa.le.kappaMax) then
-                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                           f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                           if (div_free_force.eq.1) then
+                              f2 = f2 + xT * ( FAX(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) 
+     &                             -           FAZ(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) )
+                           else
+                              f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                           endif
                         endif
                      enddo
                   enddo
                enddo
-               do kz = mode_start, zstep - 1
+               do kz = 1, zstep - 1
                   kzd = dfloat(kz)
                   do ky = mode_start, nymodes
                      kyd = dfloat(ky)
@@ -713,8 +779,13 @@ c     Adjust z offset for probtype 15
                         kxd = dfloat(kx)
                         kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                         if (kappa.le.kappaMax) then
-                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                           f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                           if (div_free_force.eq.1) then
+                              f2 = f2 + xT * ( FAX(kx,ky,kz)*twicePi*(kzd/HLz)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) 
+     &                             -           FAZ(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPZX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPZY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZZ(kx,ky,kz)) )
+                           else
+                              f2 = f2 + xT*FAY(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                           endif
                         endif
                      enddo
                   enddo
@@ -775,6 +846,7 @@ c
       REAL_T  force_time
       REAL_T  kxd, kyd, kzd
       REAL_T  xt, yt, zt
+      REAL_T  HLx, HLy, HLz
       REAL_T  Lx, Ly, Lz, Lmin, kappa, kappaMax
       integer kx, ky, kz, mode_count, xstep, ystep, zstep
       integer isioproc
@@ -806,7 +878,7 @@ c     Adjust z offset for probtype 15
       Ly = domnhi(2)-domnlo(2)
       Lz = domnhi(3)-domnlo(3)
 
-      if (hack_lz) then
+      if (hack_lz.eq.1) then
          Lz = Lz/two
       endif
       
@@ -819,6 +891,16 @@ c     Adjust z offset for probtype 15
       xstep = int(Lx/Lmin+0.5)
       ystep = int(Ly/Lmin+0.5)
       zstep = int(Lz/Lmin+0.5)
+
+      if (forcing_twice_wavelength.eq.1) then
+         HLx = Lx/two
+         HLy = Ly/two
+         HLz = Lz/two
+      else
+         HLx = Lx
+         HLy = Ly
+         HLz = Lz
+      endif
 
 !$omp parallel do private(i,j,k,x,y,z,f3) 
 !$omp&private(kz,kzd,ky,kyd,kx,kxd,kappa,xT)      
@@ -837,13 +919,18 @@ c     Adjust z offset for probtype 15
                         kxd = dfloat(kx)
                         kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                         if (kappa.le.kappaMax) then
-                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                           f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                           if (div_free_force.eq.1) then
+                              f3 = f3 + xT * ( FAY(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) 
+     &                             -           FAX(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) )
+                           else
+                              f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                           endif
                         endif
                      enddo
                   enddo
                enddo
-               do kz = mode_start, zstep - 1
+               do kz = 1, zstep - 1
                   kzd = dfloat(kz)
                   do ky = mode_start, nymodes
                      kyd = dfloat(ky)
@@ -851,8 +938,13 @@ c     Adjust z offset for probtype 15
                         kxd = dfloat(kx)
                         kappa = sqrt( (kxd*kxd)/(Lx*Lx) + (kyd*kyd)/(Ly*Ly) + (kzd*kzd)/(Lz*Lz) )
                         if (kappa.le.kappaMax) then
-                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,kx,kz))
-                           f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/Lx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/Ly+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/Lz+FPZ(kx,ky,kz))
+                           xT = cos(FTX(kx,ky,kz)*force_time+TAT(kx,ky,kz))
+                           if (div_free_force.eq.1) then
+                              f3 = f3 + xT * ( FAY(kx,ky,kz)*twicePi*(kxd/HLx)*cos(twicePi*kxd*x/HLx+FPYX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPYY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPYZ(kx,ky,kz)) 
+     &                             -           FAX(kx,ky,kz)*twicePi*(kyd/HLy)*sin(twicePi*kxd*x/HLx+FPXX(kx,ky,kz)) * cos(twicePi*kyd*y/HLy+FPXY(kx,ky,kz)) * sin(twicePi*kzd*z/HLz+FPXZ(kx,ky,kz)) )
+                           else
+                              f3 = f3 + xT*FAZ(kx,ky,kz)*sin(twicePi*kxd*x/HLx+FPX(kx,ky,kz)) * sin(twicePi*kyd*y/HLy+FPY(kx,ky,kz)) * cos(twicePi*kzd*z/HLz+FPZ(kx,ky,kz))
+                           endif
                         endif
                      enddo
                   enddo
