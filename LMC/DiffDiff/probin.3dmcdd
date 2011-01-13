@@ -1,0 +1,43 @@
+ &fortin
+  probtype = 3
+
+  V_in = 0.185
+  turb_scale=1.
+
+  zstandoff = -0.002884
+  zstandoff = .014888
+  zstandoff = .01
+  max_trac_lev = 1
+  max_trac_lev = 3
+  max_trac_lev = 1
+  flametracval = 1.e-6
+  max_temp_lev = 1
+  temperr = 500
+  tempgrad = 300.0
+  max_vort_lev = 1
+  vorterr = 600.
+  vorterr = 1000.
+  phi_in = 0.37
+  T_in = 298.
+
+  pertmag = .0005
+ /
+ &heattransin
+  pamb = 101325.
+  dpdt_factor = .3
+ /
+  &flctin
+  flct_file = "Turb_n0850_vweak.bin"
+  forceInflow = .TRUE.
+  forceInflow = .FALSE.
+  nCompInflow = 3
+ /
+  &control
+  tau_control = 3.e-4
+  sest = .45
+  h_control = .02
+  changeMax_control = .05
+  zbase_control = .0451199
+  zbase_control = .04357289
+  zbase_control = .03604954
+ /
