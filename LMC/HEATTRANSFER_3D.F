@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.29 2011-01-13 18:48:18 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.30 2011-01-13 21:30:37 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1511,6 +1511,7 @@ c     Returns the number of fine cells fixed up
 
 #ifdef HT_SKIP_NITROGEN
       REAL_T sum
+      REAL_T, allocatable :: tfab(:,:,:)
 #endif
 
 c     Helper function to compute:
@@ -1522,12 +1523,12 @@ c               and then relax: phi = phi + Res/alpha
          maxCor(n) = 0.d0
       enddo
 
-      do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               do n=0,Nspec-1
+      do n=0,Nspec-1
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
                   L(i,j,k,n) = R(i,j,k,n) + mult*(S(i,j,k,rc)*S(i,j,k,yc+n) - dt*L(i,j,k,n))
-                  maxRes(n) = MAX(maxRes(n),L(i,j,k,n))
+                  maxRes(n) = MAX(maxRes(n),ABS(L(i,j,k,n)))
                enddo
             enddo
          enddo
@@ -1547,7 +1548,7 @@ c               and then relax: phi = phi + Res/alpha
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
                   L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,Tc) + dt*L(i,j,k,Nspec)/S(i,j,k,rc))
-                  maxRes(n) = MAX(maxRes(n),L(i,j,k,n))
+                  maxRes(n) = MAX(maxRes(n),ABS(L(i,j,k,n)))
                enddo
             enddo
          enddo
@@ -1556,17 +1557,17 @@ c               and then relax: phi = phi + Res/alpha
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
                   L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,rc)*S(i,j,k,hc) + dt*L(i,j,k,Nspec))
-                  maxRes(n) = MAX(maxRes(n),L(i,j,k,n))
+                  maxRes(n) = MAX(maxRes(n),ABS(L(i,j,k,n)))
                enddo
             enddo
          enddo
       endif
 
       if (res_only.ne.1) then
-         do k=lo(3),hi(3)
-            do j=lo(2),hi(2)
-               do i=lo(1),hi(1)
-                  do n=0,Nspec-1
+         do n=0,Nspec-1
+            do k=lo(3),hi(3)
+               do j=lo(2),hi(2)
+                  do i=lo(1),hi(1)
                      cor = fac * L(i,j,k,n) / (1.d0 + dt*a(i,j,k,n))
                      maxCor(n) = MAX(maxCor(n),ABS(cor))
                      S(i,j,k,yc+n) = S(i,j,k,yc+n)  +  cor
@@ -1575,18 +1576,26 @@ c               and then relax: phi = phi + Res/alpha
             enddo
          enddo
 #ifdef HT_SKIP_NITROGEN
-      do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               sum = 0.d0
-               do n=0,Nspec-2
-                  sum = sum + S(i,j,k,yc+n)
+         allocate(tfab(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
+         tfab = 0.0d0
+         do n=0,Nspec-2
+            do k=lo(3),hi(3)
+               do j=lo(2),hi(2)
+                  do i=lo(1),hi(1)
+                     tfab(i,j,k) = tfab(i,j,k) + S(i,j,k,yc+n)
+                  enddo
                enddo
-               S(i,j,k,Nspec-1) = 1.d0 - sum
+            enddo
+         end do
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  S(i,j,k,Nspec-1) = 1.d0 - tfab(i,j,k)
+               enddo
             enddo
          enddo
-      enddo
-      maxCor(Nspec-1) = 0.d0
+         maxCor(Nspec-1) = 0.d0
+         deallocate(tfab)
 #endif
          if (for_T0_H1.eq.0) then
             do k=lo(3),hi(3)
