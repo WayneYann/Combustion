@@ -152,7 +152,8 @@ public:
                      const Box&       box,
                      int              sCompH,
                      int              sCompY,
-                     int              sCompT) const;
+                     int              sCompT,
+                     const Real&      errMAX = -1) const;
 
     Array<Real> massFracToMoleFrac (const Array<Real>& Y) const;
     Array<Real> moleFracToMassFrac (const Array<Real>& X) const;

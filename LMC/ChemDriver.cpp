@@ -693,13 +693,13 @@ ChemDriver::getPGivenRTY(FArrayBox&       p,
 
 void
 ChemDriver::getTGivenPRY(FArrayBox&       T,
-                            Real             Patm,
-                            const FArrayBox& Rho,
-                            const FArrayBox& Y,
-                            const Box&       box,
-                            int              sCompR,
-                            int              sCompY,
-                            int              sCompT) const
+                         Real             Patm,
+                         const FArrayBox& Rho,
+                         const FArrayBox& Y,
+                         const Box&       box,
+                         int              sCompR,
+                         int              sCompY,
+                         int              sCompT) const
 {
     BL_ASSERT(Rho.nComp() > sCompR);
     BL_ASSERT(T.nComp() > sCompT);
@@ -841,12 +841,13 @@ ChemDriver::getHGivenT(FArrayBox&       h,
 
 int
 ChemDriver::getTGivenHY(FArrayBox&       T,
-			   const FArrayBox& H,
-			   const FArrayBox& Y,
-			   const Box&       box,
-			   int              sCompH,
-			   int              sCompY,
-			   int              sCompT) const
+                        const FArrayBox& H,
+                        const FArrayBox& Y,
+                        const Box&       box,
+                        int              sCompH,
+                        int              sCompY,
+                        int              sCompT,
+                        const Real&      errMAX) const
 {
     BL_ASSERT(T.nComp() > sCompT);
     BL_ASSERT(H.nComp() > sCompH);
@@ -855,12 +856,14 @@ ChemDriver::getTGivenHY(FArrayBox&       T,
     BL_ASSERT(T.box().contains(box));
     BL_ASSERT(H.box().contains(box));
     BL_ASSERT(Y.box().contains(box));
+
+    Real solveTOL = (errMAX<0 ? mHtoTerrMAX : errMAX);
     
     return FORT_TfromHY(box.loVect(), box.hiVect(),
 			T.dataPtr(sCompT), ARLIM(T.loVect()), ARLIM(T.hiVect()),
 			H.dataPtr(sCompH), ARLIM(H.loVect()), ARLIM(H.hiVect()),
 			Y.dataPtr(sCompY), ARLIM(Y.loVect()), ARLIM(Y.hiVect()),
-			&mHtoTerrMAX,&mHtoTiterMAX,mTmpData.dataPtr());
+			&solveTOL,&mHtoTiterMAX,mTmpData.dataPtr());
 }
 
 void
