@@ -823,11 +823,13 @@ HeatTransfer::set_typical_values(bool restart)
             }
         }
             
-        // Verify good values for Density, Temp, RhoH, Y
-        for (int i=BL_SPACEDIM; i<nComp; ++i) {
-            if (i!=Trac && i!=RhoRT && typical_values[i]==0) {
-                cout << "component: " << i << " of " << nComp << endl;
-                BoxLib::Abort("Must have non-zero typical values");
+        // Verify good values for Density, Temp, RhoH, Y -- currently only needed for mcdd problems
+        if (do_mcdd && ParallelDescriptor::IOProcessor()) {
+            for (int i=BL_SPACEDIM; i<nComp; ++i) {
+                if (i!=Trac && i!=RhoRT && typical_values[i]==0) {
+                    cout << "component: " << i << " of " << nComp << endl;
+                    BoxLib::Abort("Must have non-zero typical values");
+                }
             }
         }
     }
@@ -3559,8 +3561,9 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             for (int i=0; i<nComp; ++i) {
                 p.maxRes_initial[i] = p.maxRes[i];
             }
-            //HACK
-            //p.maxRes_initial[nspecies-1] = 1;
+#ifdef HT_SKIP_NITROGEN
+            p.maxRes_initial[nspecies-1] = 1;
+#endif
         }
 
         p.maxRes_norm = 0;

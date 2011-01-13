@@ -1,5 +1,5 @@
 
-# $Id: GNUmakefile,v 1.6 2011-01-12 21:26:40 marc Exp $
+# $Id: GNUmakefile,v 1.7 2011-01-13 18:47:09 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -12,8 +12,8 @@ DEBUG	          = FALSE
 DEBUG	          = TRUE
 PROFILE           = TRUE
 PROFILE           = FALSE
-DIM    	          = 3
 DIM    	          = 2
+DIM    	          = 3
 FCOMP             = Intel
 COMP              = Intel
 FCOMP             = gfortran
@@ -24,17 +24,13 @@ HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_VELOCITY      = FALSE
-USE_MPI           = TRUE
 USE_MPI           = FALSE
+USE_MPI           = TRUE
 
 
-# This allows GetForce to call a Fortran routine
+# Both of these are for the time-dependent turbulence forcing term
 #DEFINES += -DGENGETFORCE
-
-# This is for the time-dependent turbulence forcing term
 #DEFINES += -DDO_LMC_FORCE
-
-#NEEDS_FLUSH_F := TRUE
 #
 # Turn this on to restart from a plotfile.
 #
@@ -42,14 +38,20 @@ USE_MPI           = FALSE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
-
+#DEFINES += -DBL_USE_VELOCITY
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
 #DEFINES += -DBL_RHORT_IN_TRACER
-
+#
+# Not quite sure what this does...obvious where to look though...
+#
 DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
-
+#
+# This is used in the mcdd code, and sets the last species assuming sum(Y)=1
+#  (currently used in HEATTRANSFER_{2,3}D.F and HeatTransfer.cpp)
+#
+DEFINES += -DHT_SKIP_NITROGEN
 #
 # Choose your reaction mechanism & thermal properties.
 #

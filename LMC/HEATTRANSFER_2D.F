@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.28 2011-01-12 04:28:02 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.29 2011-01-13 18:48:18 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1083,11 +1083,14 @@ c     Returns the number of fine cells fixed up
       REAL_T R(DIMV(R),0:*)
       REAL_T dt, fac, maxRes(0:*), maxCor(0:*)
       integer for_T0_H1, res_only
-      REAL_T mult
-      REAL_T cor
+      REAL_T mult, cor
       integer i, j, n
 
+#ifdef HT_SKIP_NITROGEN
       REAL_T sum
+#endif
+
+c      REAL_T sum
 c     Helper function to compute:
 c     (a) dR = Rhs + (rho.phi - dt.Lphi)
 c     (b) Res = Rhs - A(S) = Rhs - (rho.phi - dt.Lphi)
@@ -1098,15 +1101,19 @@ c
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=0,Nspec-1
-c               if (n.eq.Nspec-1) then
-c                  L(i,j,n) = 0.d0
-c               else
-                  L(i,j,n) = R(i,j,n) + mult*(S(i,j,rc)*S(i,j,yc+n) - dt*L(i,j,n))
-c               endif
+               L(i,j,n) = R(i,j,n) + mult*(S(i,j,rc)*S(i,j,yc+n) - dt*L(i,j,n))
                maxRes(n) = MAX(maxRes(n),ABS(L(i,j,n)))
             enddo
          enddo
       enddo
+#ifdef HT_SKIP_NITROGEN
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            L(i,j,Nspec-1) = 0.d0
+         enddo
+      enddo
+      maxRes(Nspec-1) = 0.d0
+#endif
 
       if (for_T0_H1.eq.0) then
          do j=lo(2),hi(2)
@@ -1128,20 +1135,24 @@ c               endif
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                do n=0,Nspec-1
-c                  if (n.ne.Nspec-1) then
-                     cor = fac * L(i,j,n) / (1.d0 + dt*a(i,j,n))
-                     maxCor(n) = MAX(maxCor(n),ABS(cor))
-                     S(i,j,yc+n) = S(i,j,yc+n)  +  cor
-c                  endif
+                  cor = fac * L(i,j,n) / (1.d0 + dt*a(i,j,n))
+                  maxCor(n) = MAX(maxCor(n),ABS(cor))
+                  S(i,j,yc+n) = S(i,j,yc+n)  +  cor
                enddo
-c               sum = 0.d0
-c               do n=0,Nspec-2
-c                  sum = sum + S(i,j,yc+n)
-c               enddo
-c               S(i,j,yc+Nspec-1) = 1.d0 - sum
-c               maxCor(Nspec-1) = 0.d0
             enddo
          enddo
+#ifdef HT_SKIP_NITROGEN
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               sum = 0.d0
+               do n=0,Nspec-2
+                  sum = sum + S(i,j,yc+n)
+               enddo
+               S(i,j,Nspec-1) = 1.d0 - sum
+            enddo
+         enddo
+      maxCor(Nspec-1) = 0.d0
+#endif
 
          if (for_T0_H1.eq.0) then
             do j=lo(2),hi(2)

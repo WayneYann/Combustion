@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.28 2011-01-07 02:18:58 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.29 2011-01-13 18:48:18 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1506,10 +1506,13 @@ c     Returns the number of fine cells fixed up
       REAL_T R(DIMV(R),0:*)
       REAL_T dt, fac, maxRes(0:*), maxCor(0:*)
       integer for_T0_H1, res_only
-      REAL_T mult
-      REAL_T cor
+      REAL_T mult, cor
       integer i, j, k, n
-      
+
+#ifdef HT_SKIP_NITROGEN
+      REAL_T sum
+#endif
+
 c     Helper function to compute:
 c     (a) dR = Rhs + (rho.phi - dt.Lphi)
 c     (b) Res = Rhs - A(S) = Rhs - (rho.phi - dt.Lphi)
@@ -1529,6 +1532,16 @@ c               and then relax: phi = phi + Res/alpha
             enddo
          enddo
       enddo
+#ifdef HT_SKIP_NITROGEN
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               L(i,j,k,Nspec-1) = 0.d0
+            enddo
+         enddo
+      enddo
+      maxRes(Nspec-1) = 0.d0
+#endif
       if (for_T0_H1.eq.0) then
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
@@ -1561,6 +1574,20 @@ c               and then relax: phi = phi + Res/alpha
                enddo
             enddo
          enddo
+#ifdef HT_SKIP_NITROGEN
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               sum = 0.d0
+               do n=0,Nspec-2
+                  sum = sum + S(i,j,k,yc+n)
+               enddo
+               S(i,j,k,Nspec-1) = 1.d0 - sum
+            enddo
+         enddo
+      enddo
+      maxCor(Nspec-1) = 0.d0
+#endif
          if (for_T0_H1.eq.0) then
             do k=lo(3),hi(3)
                do j=lo(2),hi(2)
