@@ -528,6 +528,8 @@ protected:
 
     void mcdd_diffuse_sync(Real dt);
 
+    void set_htt_hmixTYP ();
+
     void set_typical_values(bool restart);
     
     virtual void checkPoint (const std::string& dir,
@@ -575,6 +577,7 @@ protected:
     static Real        divu_dt_factor;
     static Real        htt_tempmin;
     static Real        htt_tempmax;
+    static Real        htt_hmixTYP;
     static int         Trac;
     static int         have_trac;
     static int         RhoRT;

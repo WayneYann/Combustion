@@ -101,6 +101,7 @@ Real      HeatTransfer::constant_lambda_val       = -1;
 int       HeatTransfer::unity_Le                  = 1;
 Real      HeatTransfer::htt_tempmin               = 298.0;
 Real      HeatTransfer::htt_tempmax               = 40000.;
+Real      HeatTransfer::htt_hmixTYP               = -1.;
 int       HeatTransfer::siegel_test               = 0;
 int       HeatTransfer::zeroBndryVisc             = 0;
 ChemDriver* HeatTransfer::chemSolve            = 0;
@@ -4612,6 +4613,47 @@ const Real BL_BOGUS      = 1.e30;
 #endif
 
 void
+HeatTransfer::set_htt_hmixTYP ()
+{
+    const int finest_level = parent->finestLevel();
+
+    // set typical value for hmix, needed for TfromHY solves if not provided explicitly
+    if (typical_values[RhoH]==0) {
+        htt_hmixTYP = 0;
+        for (int k = 0; k <= finest_level; k++)
+        {
+            AmrLevel& ht = getLevel(k);
+            const MultiFab& S = ht.get_new_data(State_Type);
+            const BoxArray& ba = ht.boxArray();
+            MultiFab hmix(ba,1,0,Fab_allocate);
+            MultiFab::Copy(hmix,S,RhoH,0,1,0);
+            MultiFab::Divide(hmix,S,Density,0,1,0);
+            if (k!=finest_level) 
+            {
+                AmrLevel& htf = getLevel(k+1);
+                BoxArray baf = BoxArray(htf.boxArray()).coarsen(parent->refRatio(k));
+                for (MFIter mfi(hmix); mfi.isValid(); ++mfi)
+                {
+                    std::vector< std::pair<int,Box> > isects = baf.intersections(ba[mfi.index()]);
+                    for (int i = 0; i < isects.size(); i++)
+                    {
+                        hmix[mfi].setVal(0,isects[i].second,0,1);
+                    }
+                }
+            }
+            htt_hmixTYP = std::max(htt_hmixTYP,hmix.norm0(0));
+        }
+        ParallelDescriptor::ReduceRealMax(htt_hmixTYP);
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "setting htt_hmixTYP(via domain scan) = " << htt_hmixTYP << '\n';
+    } else {
+        htt_hmixTYP = typical_values[RhoH];
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "setting htt_hmixTYP(from user input) = " << htt_hmixTYP << '\n';
+    }
+}
+
+void
 HeatTransfer::advance_setup (Real time,
                              Real dt,
                              int  iteration,
@@ -4629,6 +4671,8 @@ HeatTransfer::advance_setup (Real time,
 
         MultiFab::Copy(nstate,ostate,0,0,nstate.nComp(),0);
     }
+    if (level == 0)
+        set_htt_hmixTYP();
 
     make_rho_curr_time();
 
@@ -8386,6 +8430,19 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 
     BL_ASSERT(S.nGrow() >= nGrow  &&  temp.nGrow() >= nGrow);
 
+    //
+    //  If this hasn't been set yet, we cannnot do it correct here (scan multilevel),
+    //   just wing it.
+    //
+    const Real htt_hmixTYP_SAVE = htt_hmixTYP; 
+    if (htt_hmixTYP <= 0)
+    {
+        htt_hmixTYP = S.norm0(RhoH);
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
+
+    }
+
     const BoxArray& sgrids = S.boxArray();
 
     const int sCompT    = 0;
@@ -8394,6 +8451,9 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
     MultiFab::Copy(temp,S,Temp,sCompT,1,nGrow);
 
     FArrayBox tmp;
+
+    const Real eps = getChemSolve().getHtoTerrMAX();
+    Real errMAX = eps*htt_hmixTYP;
 
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
@@ -8412,7 +8472,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
             S[k].mult(tmp,0,spec,1);
 
         int iters = getChemSolve().getTGivenHY(temp[k],S[k],S[k],
-                                               box,RhoH,first_spec,sCompT);
+                                               box,RhoH,first_spec,sCompT,errMAX);
         if (iters < 0)
             BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T");
 
@@ -8437,6 +8497,8 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "HeatTransfer::RhoH_to_Temp: max_iters = " << max_iters << '\n';
     }
+    // Reset it back
+    htt_hmixTYP = htt_hmixTYP_SAVE;
 }
 
 void
