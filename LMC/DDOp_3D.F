@@ -533,10 +533,10 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
 
       if (d0a1.eq.0) then
          if (dir .EQ. 0) then
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     do n= 1,nc
+            do n= 1,nc
+               do k = lo(3), hi(3)
+                  do j = lo(2), hi(2)
+                     do i = lo(1), hi(1)
                         div(i,j,k,n) = div(i,j,k,n)
      &                       + a*(V(i+1,j,k,n) - V(i,j,k,n))
                      enddo
@@ -544,10 +544,10 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
                enddo               
             enddo
          elseif (dir .EQ. 1) then
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     do n= 1,nc
+            do n= 1,nc
+               do k = lo(3), hi(3)
+                  do j = lo(2), hi(2)
+                     do i = lo(1), hi(1)
                         div(i,j,k,n) = div(i,j,k,n)
      &                       + a*(V(i,j+1,k,n) - V(i,j,k,n))
                      enddo
@@ -555,10 +555,10 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
                enddo               
             enddo
          else 
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     do n= 1,nc
+            do n= 1,nc
+               do k = lo(3), hi(3)
+                  do j = lo(2), hi(2)
+                     do i = lo(1), hi(1)
                         div(i,j,k,n) = div(i,j,k,n)
      &                       + a*(V(i,j,k+1,n) - V(i,j,k,n))
                      enddo
@@ -568,10 +568,10 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
          end if
       else
          if (dir .EQ. 0) then
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     do n= 1,nc
+            do n= 1,nc
+               do k = lo(3), hi(3)
+                  do j = lo(2), hi(2)
+                     do i = lo(1), hi(1)
                         div(i,j,k,n) = div(i,j,k,n)
      &                       + a*half*(V(i+1,j,k,n) + V(i,j,k,n))
                      enddo
@@ -579,10 +579,10 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
                enddo               
             enddo
          elseif (dir .EQ. 1) then
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     do n= 1,nc
+            do n= 1,nc
+               do k = lo(3), hi(3)
+                  do j = lo(2), hi(2)
+                     do i = lo(1), hi(1)
                         div(i,j,k,n) = div(i,j,k,n)
      &                       + a*half*(V(i,j+1,k,n) + V(i,j,k,n))
                      enddo
@@ -590,10 +590,10 @@ c     surroundingNodes of grow((lo,hi),-1) in the dir direction.
                enddo               
             enddo
          else 
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     do n= 1,nc
+            do n= 1,nc
+               do k = lo(3), hi(3)
+                  do j = lo(2), hi(2)
+                     do i = lo(1), hi(1)
                         div(i,j,k,n) = div(i,j,k,n)
      &                       + a*half*(V(i,j,k+1,n) + V(i,j,k,n))
                      enddo
