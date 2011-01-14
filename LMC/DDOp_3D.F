@@ -88,8 +88,8 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       REAL_T  alphaYH(DIMV(alphaYH),*)
 
       integer i, j, k, n, m, idx
-      REAL_T Te, Ye(maxspec), Hie, CPie, dX(maxspec), dY(maxspec), dT, mwtInv(maxspec)
-      REAL_T RU, RUC, P1atm, dxInv, dx2Inv, MMWe
+      REAL_T Te, Ye, Hie, CPie, dX, dY, dT, mwtInv(maxspec)
+      REAL_T RU, RUC, P1atm, dxInv, MMWe
       REAL_T rhoTDe, rhoY_Dij, rDmixe, PTCe
 
       REAL_T, allocatable :: tMMwe(:,:,:)
@@ -102,9 +102,8 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       enddo
 
       dxInv = 1.d0/delta
-      dx2Inv = dxInv*dxInv
 
-      fluxYH(:,:,:,1:Nspec+1) = 0.0d0
+      fluxYH(:,:,:,Nspec+1) = 0.0d0
 
       if ( dir.eq.0 ) then
 
@@ -117,8 +116,8 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do k = lo(3), hi(3)
                   do j = lo(2), hi(2)
                      do i = lo(1), hi(1)+1
-                        Ye(n) = ( YTc(i,j,k,n) + YTc(i-1,j,k,n)  ) * 0.5d0
-                        tMMwe(i,j,k) = tMMwe(i,j,k) + Ye(n)*mwtInv(n)
+                        Ye = ( YTc(i,j,k,n) + YTc(i-1,j,k,n)  ) * 0.5d0
+                        tMMwe(i,j,k) = tMMwe(i,j,k) + Ye*mwtInv(n)
                      end do
                   end do
                end do
@@ -128,20 +127,20 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do k = lo(3), hi(3)
                   do j = lo(2), hi(2)
                      do i = lo(1), hi(1)+1
-                        Ye(n) = ( YTc(i,j,k,n) + YTc(i-1,j,k,n)  ) * 0.5d0
+                        Ye = ( YTc(i,j,k,n) + YTc(i-1,j,k,n)  ) * 0.5d0
 
-                        if ( Ye(n).le.1.d-30 ) then
+                        if ( Ye .le. 1.d-30 ) then
                            rhoTDe = 0.5d0*(coefc(i-1,j,k,TDoffset+n) + coefc(i,j,k,TDoffset+n))
                         else
                            rhoTDe = 0.5d0*(coefc(i-1,j,k,TDoffset+n)*YTc(i-1,j,k,n)
-     &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i  ,j,k,n))/Ye(n)
+     &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i  ,j,k,n))/Ye
                         endif
 
-                        dX(n) = (  Xc(i,j,k,n) -  Xc(i-1,j,k,n)  ) * dxInv
+                        dX = (  Xc(i,j,k,n) -  Xc(i-1,j,k,n)  ) * dxInv
                         dT    = ( YTc(i,j,k,Nspec+1) - YTc(i-1,j,k,Nspec+1) ) * dxInv
                         Te    = 0.5d0 * ( YTc(i,j,k,Nspec+1) + YTc(i-1,j,k,Nspec+1) )
-                        fluxYH(i,j,k,n) = - Ye(n) * rhoTDe * dT / Te
-                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te*tMMwe(i,j,k))*rhoTDe*dX(n)
+                        fluxYH(i,j,k,n) = - Ye * rhoTDe * dT / Te
+                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te*tMMwe(i,j,k))*rhoTDe*dX
                      end do
                   end do
                end do
@@ -149,18 +148,19 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
 
             do n = 1,Nspec
                do m = 1,Nspec
+                  idx = Doffset + (m-1)*Nspec + n
                   do k = lo(3), hi(3)
                      do j = lo(2), hi(2)
                         do i = lo(1), hi(1)+1
-                           idx = Doffset + (m-1)*Nspec + n
                            rhoY_Dij = 0.5d0*(coefc(i-1,j,k,idx)+coefc(i,j,k,idx))
-                           dX(m) = (  Xc(i,j,k,m) -  Xc(i-1,j,k,m)  ) * dxInv
-                           fluxYH(i,j,k,n) = fluxYH(i,j,k,n) - rhoY_Dij * dX(m)
+                           dX = (  Xc(i,j,k,m) -  Xc(i-1,j,k,m)  ) * dxInv
+                           fluxYH(i,j,k,n) = fluxYH(i,j,k,n) - rhoY_Dij * dX
                         end do
                      end do
                   end do
                end do
             end do
+
          end if
 
          if ( Full0_Mix1.eq.1 ) then 
@@ -168,16 +168,16 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do k = lo(3), hi(3)
                   do j = lo(2), hi(2)
                      do i = lo(1), hi(1)+1
-                        dY(n) = ( YTc(i,j,k,n) - YTc(i-1,j,k,n)  ) * dxInv
+                        dY = ( YTc(i,j,k,n) - YTc(i-1,j,k,n)  ) * dxInv
                         rDmixe = 0.5d0*(coefc(i-1,j,k,DMIXoffset+n)+coefc(i,j,k,DMIXoffset+n))
-                        fluxYH(i,j,k,n) = - rDmixe * dY(n)
+                        fluxYH(i,j,k,n) = - rDmixe * dY
                      end do
                   end do
                end do
             end do
          end if
 
-         if (fillAlpha.eq.1) then
+         if ( fillAlpha.eq.1 ) then
             do n = 1,Nspec
                do k = lo(3), hi(3)
                   do j = lo(2), hi(2)
@@ -186,6 +186,16 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                         alphaYH(i-1,j,k,n) = alphaYH(i-1,j,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
                         alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
                      end do
+                  end do
+               end do
+            end do
+
+            do k = lo(3), hi(3)
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)+1
+                     PTCe = 0.5d0*(coefc(i-1,j,k,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
+                     alphaYH(i-1,j,k,Nspec+1) = alphaYH(i-1,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
+                     alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                   end do
                end do
             end do
@@ -238,18 +248,6 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
             end do
          enddo
 
-         if ( fillAlpha.eq.1 ) then
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)+1
-                     PTCe = 0.5d0*(coefc(i-1,j,k,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
-                     alphaYH(i-1,j,k,Nspec+1) = alphaYH(i-1,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
-                     alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
-                  end do
-               end do
-            end do
-         endif
-
       else if (dir.eq.1) then
 
          if ( Full0_Mix1 .eq.0 ) then
@@ -261,8 +259,8 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do k = lo(3), hi(3)
                   do j = lo(2), hi(2)+1
                      do i = lo(1), hi(1)
-                        Ye(n) = ( YTc(i,j,k,n) + YTc(i,j-1,k,n)  ) * 0.5d0
-                        tMMwe(i,j,k) = tMMwe(i,j,k) + Ye(n)*mwtInv(n)
+                        Ye = ( YTc(i,j,k,n) + YTc(i,j-1,k,n)  ) * 0.5d0
+                        tMMwe(i,j,k) = tMMwe(i,j,k) + Ye*mwtInv(n)
                      end do
                   end do
                end do
@@ -272,20 +270,20 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do k = lo(3), hi(3)
                   do j = lo(2), hi(2)+1
                      do i = lo(1), hi(1)
-                        Ye(n) = ( YTc(i,j,k,n) + YTc(i,j-1,k,n)  ) * 0.5d0
+                        Ye = ( YTc(i,j,k,n) + YTc(i,j-1,k,n)  ) * 0.5d0
 
-                        if ( Ye(n).le.1.d-30 ) then
+                        if ( Ye .le. 1.d-30 ) then
                            rhoTDe = 0.5d0*(coefc(i,j-1,k,TDoffset+n) + coefc(i,j,k,TDoffset+n))
                         else
                            rhoTDe = 0.5d0*(coefc(i,j-1,k,TDoffset+n)*YTc(i,j-1,k,n)
-     &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i,j  ,k,n))/Ye(n)
+     &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i,j  ,k,n))/Ye
                         endif
 
-                        dX(n) = (  Xc(i,j,k,n) -  Xc(i,j-1,k,n)  ) * dxInv
+                        dX = (  Xc(i,j,k,n) -  Xc(i,j-1,k,n)  ) * dxInv
                         dT = ( YTc(i,j,k,Nspec+1) - YTc(i,j-1,k,Nspec+1) ) * dxInv
                         Te = 0.5d0 * ( YTc(i,j,k,Nspec+1) + YTc(i,j-1,k,Nspec+1) )
-                        fluxYH(i,j,k,n) = - Ye(n) * rhoTDe * dT / Te
-                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te*tMMwe(i,j,k))*rhoTDe*dX(n)
+                        fluxYH(i,j,k,n) = - Ye * rhoTDe * dT / Te
+                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te*tMMwe(i,j,k))*rhoTDe*dX
                      end do
                   end do
                end do
@@ -293,13 +291,13 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
 
             do n = 1,Nspec
                do m = 1,Nspec
+                  idx = Doffset + (m-1)*Nspec + n
                   do k = lo(3), hi(3)
                      do j = lo(2), hi(2)+1
                         do i = lo(1), hi(1)
-                           idx = Doffset + (m-1)*Nspec + n
                            rhoY_Dij = 0.5d0*(coefc(i,j-1,k,idx)+coefc(i,j,k,idx))
-                           dX(m) = (  Xc(i,j,k,m) -  Xc(i,j-1,k,m)  ) * dxInv
-                           fluxYH(i,j,k,n) = fluxYH(i,j,k,n)  -  rhoY_Dij * dX(m)
+                           dX = (  Xc(i,j,k,m) -  Xc(i,j-1,k,m)  ) * dxInv
+                           fluxYH(i,j,k,n) = fluxYH(i,j,k,n)  -  rhoY_Dij * dX
                         end do
                      end do
                   end do
@@ -313,15 +311,15 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                   do j = lo(2), hi(2)+1
                      do i = lo(1), hi(1)
                         rDmixe = 0.5d0*(coefc(i,j-1,k,DMIXoffset+n)+coefc(i,j,k,DMIXoffset+n))
-                        dY(n) = ( YTc(i,j,k,n) - YTc(i,j-1,k,n)  ) * dxInv
-                        fluxYH(i,j,k,n) = - rDmixe * dY(n)
+                        dY = ( YTc(i,j,k,n) - YTc(i,j-1,k,n)  ) * dxInv
+                        fluxYH(i,j,k,n) = - rDmixe * dY
                      end do
                   end do
                end do
             end do
          end if
 
-         if (fillAlpha.eq.1) then
+         if ( fillAlpha.eq.1 ) then
             do n = 1,Nspec
                do k = lo(3), hi(3)
                   do j = lo(2), hi(2)+1
@@ -330,6 +328,16 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                         alphaYH(i,j-1,k,n) = alphaYH(i,j-1,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
                         alphaYH(i  ,j,k,n) = alphaYH(i  ,j,k,n)  +  rDmixe * dxInv * Ae(i,j,k)
                      end do
+                  end do
+               end do
+            end do
+
+            do k = lo(3), hi(3)
+               do j = lo(2), hi(2)+1
+                  do i = lo(1), hi(1)
+                     PTCe = 0.5d0*(coefc(i,j-1,k,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
+                     alphaYH(i,j-1,k,Nspec+1) = alphaYH(i,j-1,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
+                     alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                   end do
                end do
             end do
@@ -382,18 +390,6 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
             end do
          enddo
 
-         if ( fillAlpha.eq.1 ) then
-            do k = lo(3), hi(3)
-               do j = lo(2), hi(2)+1
-                  do i = lo(1), hi(1)
-                     PTCe = 0.5d0*(coefc(i,j-1,k,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
-                     alphaYH(i,j-1,k,Nspec+1) = alphaYH(i,j-1,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
-                     alphaYH(i  ,j,k,Nspec+1) = alphaYH(i  ,j,k,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
-                  end do
-               end do
-            end do
-         endif
-
       else if (dir.eq.2) then
 
          if ( Full0_Mix1 .eq.0 ) then
@@ -405,8 +401,8 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do k = lo(3), hi(3)+1
                   do j = lo(2), hi(2)
                      do i = lo(1), hi(1)
-                        Ye(n) = ( YTc(i,j,k,n) + YTc(i,j,k-1,n)  ) * 0.5d0
-                        tMMwe(i,j,k) = tMMwe(i,j,k) + Ye(n)*mwtInv(n)
+                        Ye = ( YTc(i,j,k,n) + YTc(i,j,k-1,n)  ) * 0.5d0
+                        tMMwe(i,j,k) = tMMwe(i,j,k) + Ye*mwtInv(n)
                      end do
                   end do
                end do
@@ -416,21 +412,21 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do k = lo(3), hi(3)+1
                   do j = lo(2), hi(2)
                      do i = lo(1), hi(1)
-                        Ye(n) = ( YTc(i,j,k,n) + YTc(i,j,k-1,n)  ) * 0.5d0
+                        Ye = ( YTc(i,j,k,n) + YTc(i,j,k-1,n)  ) * 0.5d0
 
-                        if ( Ye(n).le.1.d-30 ) then
+                        if ( Ye.le.1.d-30 ) then
                            rhoTDe = 0.5d0*(coefc(i,j,k-1,TDoffset+n) + coefc(i,j,k,TDoffset+n))
                         else
                            rhoTDe = 0.5d0*(coefc(i,j,k-1,TDoffset+n)*YTc(i,j,k-1,n)
-     &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i,j  ,k,n))/Ye(n)
+     &                          +          coefc(i,j  ,k,TDoffset+n)*YTc(i,j  ,k,n))/Ye
                         endif
 
-                        dX(n) = (  Xc(i,j,k,n) -  Xc(i,j,k-1,n)  ) * dxInv
+                        dX = (  Xc(i,j,k,n) -  Xc(i,j,k-1,n)  ) * dxInv
                         dT = ( YTc(i,j,k,Nspec+1) - YTc(i,j,k-1,Nspec+1) ) * dxInv
                         Te = 0.5d0 * ( YTc(i,j,k,Nspec+1) + YTc(i,j,k-1,Nspec+1) )
 
-                        fluxYH(i,j,k,n) = - Ye(n) * rhoTDe * dT / Te
-                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te*tMMwe(i,j,k))*rhoTDe*dX(n)
+                        fluxYH(i,j,k,n) = - Ye * rhoTDe * dT / Te
+                        fluxYH(i,j,k,Nspec+1) = fluxYH(i,j,k,Nspec+1) - (RU*Te*tMMwe(i,j,k))*rhoTDe*dX
                      end do
                   end do
                end do
@@ -438,13 +434,13 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
 
             do n = 1,Nspec
                do m = 1,Nspec
+                  idx = Doffset + (m-1)*Nspec + n
                   do k = lo(3), hi(3)+1
                      do j = lo(2), hi(2)
                         do i = lo(1), hi(1)
-                           idx = Doffset + (m-1)*Nspec + n
                            rhoY_Dij = 0.5d0*(coefc(i,j,k-1,idx)+coefc(i,j,k,idx))
-                           dX(m) = (  Xc(i,j,k,m) -  Xc(i,j,k-1,m)  ) * dxInv
-                           fluxYH(i,j,k,n) = fluxYH(i,j,k,n)  -  rhoY_Dij * dX(m)
+                           dX = (  Xc(i,j,k,m) -  Xc(i,j,k-1,m)  ) * dxInv
+                           fluxYH(i,j,k,n) = fluxYH(i,j,k,n)  -  rhoY_Dij * dX
                         end do
                      end do
                   end do
@@ -458,8 +454,8 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                   do j = lo(2), hi(2)
                      do i = lo(1), hi(1)
                         rDmixe = 0.5d0*(coefc(i,j,k-1,DMIXoffset+n)+coefc(i,j,k,DMIXoffset+n))
-                        dY(n) = ( YTc(i,j,k,n) - YTc(i,j,k-1,n)  ) * dxInv
-                        fluxYH(i,j,k,n) = - rDmixe * dY(n)
+                        dY = ( YTc(i,j,k,n) - YTc(i,j,k-1,n)  ) * dxInv
+                        fluxYH(i,j,k,n) = - rDmixe * dY
                      end do
                   end do
                end do
@@ -475,6 +471,16 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                         alphaYH(i,j,k-1,n) = alphaYH(i,j,k-1,n)  +  rDmixe * dxInv * Ae(i,j,k)
                         alphaYH(i,j,k  ,n) = alphaYH(i,j,k  ,n)  +  rDmixe * dxInv * Ae(i,j,k)
                      end do
+                  end do
+               end do
+            end do
+
+            do k = lo(3), hi(3)+1
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)
+                     PTCe = 0.5d0*(coefc(i,j,k-1,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
+                     alphaYH(i,j,k-1,Nspec+1) = alphaYH(i,j,k-1,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
+                     alphaYH(i,j,k  ,Nspec+1) = alphaYH(i,j,k  ,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
                   end do
                end do
             end do
@@ -526,18 +532,6 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                end do
             end do
          enddo
-
-         if ( fillAlpha.eq.1 ) then
-            do k = lo(3), hi(3)+1
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)
-                     PTCe = 0.5d0*(coefc(i,j,k-1,PTCoffset+1)+coefc(i,j,k,PTCoffset+1))
-                     alphaYH(i,j,k-1,Nspec+1) = alphaYH(i,j,k-1,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
-                     alphaYH(i,j,k  ,Nspec+1) = alphaYH(i,j,k  ,Nspec+1)  +  PTCe * dxInv * Ae(i,j,k)
-                  end do
-               end do
-            end do
-         endif
 
       endif
       end
