@@ -87,7 +87,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
 
       integer i, j, n, m, idx
       REAL_T Te, Ye, Hie, CPie, dX, dY, dT, mwtInv(maxspec)
-      REAL_T RU, RUC, P1atm, dxInv, MMWe
+      REAL_T RU, RUC, P1atm, dxInv
       REAL_T rhoTDe, rhoY_Dij, rDmixe, PTCe
 
       REAL_T, allocatable :: tMMwe(:,:)
@@ -440,69 +440,6 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       endif
       end
 
-
-      subroutine FORT_CRSNCCBND(lo, hi, fine, DIMS(fine),
-     &                          crse, DIMS(crse), nc, face, ratio)
-      integer lo(SDIM), hi(SDIM), nc
-      integer DIMDEC(fine)
-      integer DIMDEC(crse)
-      REAL_T fine(DIMV(fine),nc)
-      REAL_T crse(DIMV(crse),nc)
-      integer face, ratio(SDIM)
-      
-      integer icrse,jcrse,n,ii,jj,ifine,jfine, clo1, chi1, clo2, chi2, offset, dir
-      
-      if ((face.EQ.0).OR.(face.EQ.2)) then
-         dir = 0
-      else
-         dir = 1
-      end if
-
-      if (face .LT. SDIM) then
-         offset = 1
-      else
-         offset = 0
-      end if
-      
-c     NOTE: need to generalize to rz
-      if (dir .eq. 0) then
-         clo1 = (lo(1)+offset)/ratio(1)-offset
-         clo2 = lo(2)/ratio(2)
-         chi1 = (hi(1)+offset)/ratio(1)-offset
-         chi2 = (hi(2)+1)/ratio(2) - 1
-         do jcrse=clo2,chi2
-            do icrse=clo1,chi1
-               do n=1,nc
-                  crse(icrse,jcrse,n) = 0.d0
-                  ifine = ratio(1)*(icrse + offset) - offset
-                  do jj = 1,ratio(2)
-                     jfine = ratio(2)*jcrse + jj - 1
-                     crse(icrse,jcrse,n) = crse(icrse,jcrse,n) + fine(ifine,jfine,n)
-                  enddo
-                  crse(icrse,jcrse,n) = crse(icrse,jcrse,n)/ratio(2)
-               enddo
-            enddo
-         enddo
-      else
-         clo1 = lo(1)/ratio(1)
-         clo2 = (lo(2)+offset)/ratio(2)-offset
-         chi1 = (hi(1)+1)/ratio(1) - 1
-         chi2 = (hi(2)+offset)/ratio(2)-offset
-         do jcrse=clo2,chi2
-            do icrse=clo1,chi1
-               do n=1,nc
-                  crse(icrse,jcrse,n) = 0.d0
-                  jfine = ratio(2)*(jcrse + offset) - offset
-                  do ii = 1,ratio(1)
-                     ifine = ratio(1)*icrse + ii - 1
-                     crse(icrse,jcrse,n) = crse(icrse,jcrse,n) + fine(ifine,jfine,n) 
-                  enddo
-                  crse(icrse,jcrse,n) = crse(icrse,jcrse,n)/ratio(1)
-               enddo
-            enddo
-         enddo
-      end if
-      end
 
       subroutine FORT_DDCCAVG(c, DIMS(c), f, DIMS(f), lo, hi, nc, ratio)
       integer nc

@@ -603,6 +603,7 @@ protected:
     static int         do_check_divudt;
     static int         hack_nochem;
     static int         hack_nospecdiff;
+    static int         hack_nomcddsync;
     static int         hack_noavgdivu;
     static Real        trac_diff_coef;
     static Real        P1atm_MKS;

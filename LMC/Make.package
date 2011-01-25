@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.22 2010-12-14 22:36:33 marc Exp $
+# $Id: Make.package,v 1.23 2011-01-25 23:55:33 marc Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -10,8 +10,8 @@ endif
 #
 C$(HT_BASE)_sources += HeatTransfer.cpp DDBndry.cpp DDOp.cpp
 C$(HT_BASE)_headers += HeatTransfer.H DDBndry.H DDOp.H
-F$(HT_BASE)_headers += HEATTRANSFER_F.H htdata.H visc.H SLABSTAT_HT_F.H
-F$(HT_BASE)_sources += HEATTRANSFER_F.F HEATTRANSFER_$(DIM)D.F DDOp_$(DIM)D.F DDOp_F.F \
+F$(HT_BASE)_headers += HEATTRANSFER_F.H htdata.H visc.H SLABSTAT_HT_F.H DDOp_F.F DDBndry_F.H
+F$(HT_BASE)_sources += HEATTRANSFER_F.F HEATTRANSFER_$(DIM)D.F DDOp_$(DIM)D.F DDBndry_$(DIM)D.F DDOp_F.F \
   			DERIVE_HT_$(DIM)D.F SLABSTAT_HT_$(DIM)D.F
 #
 # The chemistry-specific stuff ...

@@ -109,6 +109,7 @@ int       HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
 int       HeatTransfer::do_check_divudt           = 1;
 int       HeatTransfer::hack_nochem               = 0;
 int       HeatTransfer::hack_nospecdiff           = 0;
+int       HeatTransfer::hack_nomcddsync           = 1;
 int       HeatTransfer::hack_noavgdivu            = 0;
 Real      HeatTransfer::trac_diff_coef            = 0.0;
 Real      HeatTransfer::P1atm_MKS                 = -1.0;
@@ -371,6 +372,7 @@ HeatTransfer::read_params ()
     pp.query("do_add_nonunityLe_corr_to_rhoh_adv_flux", do_add_nonunityLe_corr_to_rhoh_adv_flux);
     pp.query("hack_nochem",hack_nochem);
     pp.query("hack_nospecdiff",hack_nospecdiff);
+    pp.query("hack_nomcddsync",hack_nomcddsync);
     pp.query("hack_noavgdivu",hack_noavgdivu);
     pp.query("do_check_divudt",do_check_divudt);
 
@@ -3240,7 +3242,7 @@ HeatTransfer::fill_mcdd_boundary_data(Real time)
         cbr = new BndryRegister();
         cbr->setBoxes(cgrids);
         for (OrientationIter fi; fi; ++fi)
-            cbr->define(fi(),IndexType::TheCellType(),0,1,1,nspecies+1);
+            cbr->define(fi(),IndexType::TheCellType(),0,1,2,nspecies+1);
 
         const int nGrowC = 1;
         MultiFab SC(cgrids,nspecies+1,nGrowC,Fab_allocate);
@@ -3269,11 +3271,13 @@ HeatTransfer::fill_mcdd_boundary_data(Real time)
 
         cbr->copyFrom(SC,nGrowC,compY,compCY,nspecies);
         cbr->copyFrom(SC,nGrowC,compT,compCT,1);
+
     }
 
+    int max_order = InterpBndryData::maxOrderDEF();
     MCDDOp.setBoundaryData(S,compT,S,compY,cbr,compCT,cbr,compCY,
                            get_desc_lst()[State_Type].getBC(Temp),
-                           get_desc_lst()[State_Type].getBC(first_spec));
+                           get_desc_lst()[State_Type].getBC(first_spec),max_order);
 }
 
 void dumpProfileFab(const FArrayBox& fab,
@@ -3520,7 +3524,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
     for (int iter=0; (iter<=p.nu1) && (p.status==HT_InProgress) && !is_relaxed_nu1; ++iter)
     {
         // Make T consistent with Y,H
-        if (mg_level==0) {
+        if (0 && mg_level==0) {
             sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (pre) ");
         }
 
@@ -3556,7 +3560,6 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         }
         ParallelDescriptor::ReduceRealMax(p.maxRes.dataPtr(),p.maxRes.size());
         ParallelDescriptor::ReduceRealMax(p.maxCor.dataPtr(),p.maxCor.size());
-
         // Set (unscaled) initial residual
         if (p.iter==0 && iter==0) {
             for (int i=0; i<nComp; ++i) {
@@ -3607,7 +3610,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         }
     }  // nu1 iters
 
-    if ((p.status==HT_InProgress) && p.num_coarser!=0) {
+    if ((p.status==HT_InProgress) && p.num_coarser>0) {
 
         // FIXME: BA calcs + allocs can be done ahead of time
         const IntVect MGIV(D_DECL(2,2,2));
@@ -3625,22 +3628,32 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         //  (here, construct Avg(Res), then use HTDDRELAX to do Op and add)
         //
         DDOp::average(T2C,0,T1,0,nspecies+1);  // Avg(Res)=Avg(T1)=T2C
-        
+
         // Rho-weight the state, then average (leave fine data rho-weighted for now...)
-        for (int n=0; n<nspecies+2; ++n) {
-            MultiFab::Multiply(S,S,sCompR,n,1,nGrow);
-        }
-        DDOp::average(SC,0,S,0,nspecies+3);
-        for (int n=0; n<nspecies+2; ++n) {
-            MultiFab::Divide(SC,SC,sCompR,n,1,nGrow);
+        for (MFIter mfi(S); mfi.isValid(); ++mfi) {
+            FArrayBox& Sfab = S[mfi];
+            for (int n=0; n<nspecies; ++n) {
+                Sfab.mult(Sfab,sCompR,sCompY+n,1);
+            }
+            Sfab.mult(Sfab,sCompR,sCompH,1);
         }
 
+        DDOp::average(SC,0,S,0,nspecies+3); // Includes generation of rho on coarse
+        for (MFIter mfi(SC); mfi.isValid(); ++mfi) {
+            FArrayBox& SCfab = SC[mfi];
+            SCfab.invert(1.,sCompR,1);
+            for (int n=0; n<nspecies; ++n) {
+                SCfab.mult(SCfab,sCompR,sCompY+n,1);
+            }
+            SCfab.mult(SCfab,sCompR,sCompH,1);
+            SCfab.invert(1.,sCompR,1);
+        }
         MCDD_MGParams pC(p);
         pC.mg_level++;
         pC.status = HT_InProgress;
 
         pC.num_coarser--;
-        if (pC.num_coarser==0  &&  mcdd_nub>0) {
+        if (pC.num_coarser<1  &&  mcdd_nub>0) {
             pC.nu1 = mcdd_nub;
             pC.nu2 = 0;
         } else {
@@ -3650,8 +3663,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 
         bool updateCoefsC = true; // Do once here, then never again in coarse relax
         mcdd_apply(T1C,SC,fluxC,time,whichApp,updateCoefsC,pC.mg_level);
-
-        int res_only = 1; // here, using HTDDRELAX to build (RhsC-Op(SC)) only
+        int res_only = 1; // here, using HTDDRELAX to build (RhsC + Op(SC)) only
         for (MFIter mfi(SC); mfi.isValid(); ++mfi)
         {
             FArrayBox& sC = SC[mfi];
@@ -3688,12 +3700,28 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 
         // Increment (already rho-weighted) fine solution with (here w/rho-weighted)
         //   interpolated correction, then unweight
-        for (int n=0; n<nspecies+2; ++n) {
-            MultiFab::Multiply(SC,SC,sCompR,n,1,nGrow);
+        for (MFIter mfi(SC); mfi.isValid(); ++mfi) {
+            FArrayBox& SCfab = SC[mfi];
+            for (int n=0; n<nspecies; ++n) {
+                SCfab.mult(SCfab,sCompR,sCompY+n,1);
+            }
+            SCfab.mult(SCfab,sCompR,sCompH,1);
         }
+
         DDOp::interpolate(S,0,SC,0,nspecies+2); // S += I(dSC)
-        for (int n=0; n<nspecies+2; ++n) {
-            MultiFab::Divide(S,S,sCompR,n,1,nGrow);
+
+        for (MFIter mfi(S); mfi.isValid(); ++mfi) {
+            FArrayBox& Sfab = S[mfi];
+            Sfab.invert(1.,sCompR,1);
+            for (int n=0; n<nspecies; ++n) {
+                Sfab.mult(Sfab,sCompR,sCompY+n,1);
+            }
+            Sfab.mult(Sfab,sCompR,sCompH,1);
+            Sfab.invert(1.,sCompR,1);
+        }
+
+        if (mg_level==0) {
+            sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (post coarse) ");
         }
 
         // Do post smooth (if not at the bottom)
@@ -3701,7 +3729,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         for (int iter=0; (iter<=p.nu2) && (p.status==HT_InProgress) && !is_relaxed_nu2; ++iter)
         {
             // Make T consistent with Y,H
-            if (0 && mg_level==0) {
+            if (0 && mg_level==1) {
                 sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (post) ");
             }
             
@@ -3781,8 +3809,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                 }
             }
         } // nu2 iters
-
-    } // if not a V-bottom            
+   } // if not a V-bottom            
 }
 
 void
@@ -3881,10 +3908,17 @@ HeatTransfer::mcdd_update(Real time,
     p.res_nu1_tol = mcdd_res1_tol;
     p.res_nu2_tol = mcdd_res2_tol;
     p.res_tot_tol = mcdd_restot_tol;
-    p.nu1 = mcdd_nu1[0];
-    p.nu2 = mcdd_nu2[0];
+    p.mg_level = 0;
     p.gamma = 1; // FIXME: Want as input?
-    p.num_coarser = DDOp::num_levels() - 1;
+    p.num_coarser = DDOp::numLevels() - 1;
+    if (p.num_coarser<1  &&  mcdd_nub>0) {
+        p.nu1 = mcdd_nub;
+        p.nu2 = 0;
+    } else {
+        p.nu1 = mcdd_nu1[p.mg_level];
+        p.nu2 = mcdd_nu2[p.mg_level];
+    }
+
     p.status = HT_InProgress;
     for (p.iter=0; (p.iter<mcdd_numcycles) && (p.status==HT_InProgress); ++p.iter) {
         mcdd_fas_cycle(p,S,Rhs,fluxnp1,time,thetaDt,whichApp);
@@ -7298,7 +7332,7 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
     //  (rho.Y)^np1 - (rho.Y)^* + theta.dt(L(Y)^np1 - L(Y)^*) = -dt.Div(corr) = Ssync
     // where corr is the area.time weighted correction to add to the coarse to get fine
     //
-    if (hack_nospecdiff)
+    if (hack_nospecdiff || hack_nomcddsync)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "... HACK!!! skipping mcdd sync diffusion " << '\n';

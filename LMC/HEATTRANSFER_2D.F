@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.30 2011-01-14 22:14:23 lijewski Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.31 2011-01-25 23:55:34 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1090,7 +1090,7 @@ c     Returns the number of fine cells fixed up
       REAL_T, allocatable :: tfab(:,:)
 #endif
 
-c      REAL_T sum
+c
 c     Helper function to compute:
 c     (a) dR = Rhs + (rho.phi - dt.Lphi)
 c     (b) Res = Rhs - A(S) = Rhs - (rho.phi - dt.Lphi)
@@ -1132,15 +1132,6 @@ c
       endif
 
       if (res_only.ne.1) then
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               do n=0,Nspec-1
-                  cor = fac * L(i,j,n) / (1.d0 + dt*a(i,j,n))
-                  maxCor(n) = MAX(maxCor(n),ABS(cor))
-                  S(i,j,yc+n) = S(i,j,yc+n)  +  cor
-               enddo
-            enddo
-         enddo
 #ifdef HT_SKIP_NITROGEN
          allocate(tfab(lo(1):hi(1),lo(2):hi(2)))
          tfab = 0.0d0
@@ -1156,8 +1147,8 @@ c
                S(i,j,Nspec-1) = 1.d0 - tfab(i,j)
             enddo
          enddo
-      maxCor(Nspec-1) = 0.d0
-      deallocate(tfab)
+         maxCor(Nspec-1) = 0.d0
+         deallocate(tfab)
 #endif
 
          if (for_T0_H1.eq.0) then

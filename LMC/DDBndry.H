@@ -4,7 +4,7 @@
 #define _DDBndry_H_
 
 //
-// $Id: DDBndry.H,v 1.3 2011-01-11 03:18:46 marc Exp $
+// $Id: DDBndry.H,v 1.4 2011-01-25 23:55:33 marc Exp $
 //
 
 #include <ViscBndry.H>
@@ -21,24 +21,52 @@ public:
     DDBndry (const BoxArray& grids,
              int             ncomp,
              const Geometry& geom,
-             int             mgLevel = 0);
+             int             numMGlevels);
 
-    void define (const BoxArray& grids,
-                 int             ncomp,
-                 const Geometry& geom,
-                 int             mgLevel);
+    virtual void define  (const BoxArray& grids,
+                          int             ncomp,
+                          const Geometry& geom,
+                          int             numMGlevels);
 
-    virtual void setBndryConds (const BCRec& phys_bc,
-                                int          ratio);
+    virtual void setBndryValues (const MultiFab& mf,
+                                 int             mf_start,
+                                 int             bnd_start,
+                                 int             num_comp,
+                                 const BCRec&    bc);
 
-    virtual void setBndryConds (const BCRec&       phys_bc,
-                                /*const*/ IntVect& ratio,
-                                int                comp = 0);
+    virtual void setBndryValues (::BndryRegister&  crse,
+                                 int             c_start,
+                                 const MultiFab& fine,
+                                 int             f_start,
+                                 int             bnd_start,
+                                 int             num_comp,
+                                 int             ratio, 
+                                 const BCRec&    phys_bc,
+                                 int             max_order = InterpBndryData::IBD_max_order_DEF);    
 
-    int mgLevel() const {return mg_level;}
+    virtual void setBndryValues (::BndryRegister&  crse,
+                                 int             c_start,
+                                 const MultiFab& fine,
+                                 int             f_start,
+                                 int             bnd_start,
+                                 int             num_comp,
+                                 IntVect&        ratio, 
+                                 const BCRec&    phys_bc,
+                                 int             max_order = InterpBndryData::IBD_max_order_DEF);
+
+    const Geometry& getGeom(int level) const {return geoms[level];}
+    const FabSet& bndryValues (const Orientation& face,int level) const;
+    const PArray<Mask>& bndryMasks (const Orientation& face, int level) const;
 
 protected:
-    int mg_level;
+
+    // Hide these, since there is now a level associated with each
+    const Geometry& getGeom() const;
+    const FabSet& bndryValues (const Orientation& face) const;
+
+    int num_mg_levels;
+    PArray<BndryData> bnd_vals;
+    PArray<Geometry> geoms;
 };
 
 #endif /*_DDBndry_H_*/

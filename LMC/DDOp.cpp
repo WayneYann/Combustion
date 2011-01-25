@@ -21,70 +21,45 @@ ChemDriver* DDOp::chem = 0; // ...must set prior to first ctr call
 int DDOp::maxorder = 3;
 int DDOp::mgLevelsMAX = -1;
 int DDOp::mgLevels = 0;
+bool DDOp::first_define = true;
 
 DDOp::DDOp ()
-    : coarser(0)
 {
 }
 
 DDOp::DDOp (const BoxArray&   grids,
             const Box&        box,
-            const IntVect&    ratio,
-            int               mgLevel)
-    : coarser(0)
+            const IntVect&    amrRatio)
+    : Tbd(0), Ybd(0)
 {
-    define(grids,box,ratio,mgLevel);
+    BL_ASSERT(ddOps.size()==0);
+    ddOps.resize(1);
+    ddOps.set(0,this);
+    define(grids,box,amrRatio,0,this);
+}
+
+DDOp::DDOp (const BoxArray&   grids,
+            const Box&        box,
+            const IntVect&    amrRatio,
+            int               mgLevel,
+            DDOp*             parent)
+    : Tbd(0), Ybd(0)
+{
+    define(grids,box,amrRatio,mgLevel,parent);
 }
 
 DDOp::~DDOp ()
 {
-    if (coarser)
-        delete coarser;
-}
-
-const DDBndry&
-DDOp::TBndry(int level) const
-{
-    BL_ASSERT(level >= 0);
-    if (level > 0)
-    {
-        return coarser->TBndry(level-1);
-    }
-    return Tbd;
-}
-
-const DDBndry&
-DDOp::YBndry(int level) const
-{
-    BL_ASSERT(level >= 0);
-    if (level > 0)
-    {
-        return coarser->YBndry(level-1);
-    }
-    return Ybd;
-}
-
-const Box&
-DDOp::domain(int level) const
-{
-    BL_ASSERT(level >= 0);
-    if (level > 0)
-    {
-        return coarser->domain(level-1);
-    }
-    BL_ASSERT(Tbd.getGeom().Domain()==Ybd.getGeom().Domain());
-    return Tbd.getGeom().Domain();
+    delete Tbd;
+    delete Ybd;
 }
 
 const BoxArray&
 DDOp::boxArray(int level) const
 {
-    BL_ASSERT(level >= 0);
-    if (level > 0)
-    {
-        return coarser->boxArray(level-1);
-    }
-    return grids;
+    BL_ASSERT( (level>=0)  &&  (level<mgLevels) );
+    BL_ASSERT(mg_level==0);
+    return ddOps[level].grids;
 }
 
 void
@@ -116,30 +91,86 @@ bool can_coarsen(const BoxArray& ba)
         Box tmp = ba[i];
         Box ctmp  = BoxLib::coarsen(ba[i],MGIV);
         Box rctmp = BoxLib::refine(ctmp,MGIV);
-        if (tmp != rctmp || ctmp.numPts() == 1)
+        if (tmp != rctmp || ctmp.numPts() <= 1)
             return false;
     }
+    return true;
+}
+
+bool can_coarsen(const Box& box)
+{
+    // Ratio between levels here will always be MGIV
+    Box ctmp  = BoxLib::coarsen(box,MGIV);
+    Box rctmp = BoxLib::refine(ctmp,MGIV);
+    if (box != rctmp || ctmp.numPts() <= 1)
+        return false;
     return true;
 }
 
 void
 DDOp::define (const BoxArray& _grids,
               const Box&      box,
-              const IntVect&  ratio,
-              int             mgLevel)
+              const IntVect&  amrRatio)
 {
+    BL_ASSERT(ddOps.size()==0);
+    ddOps.resize(1);
+    ddOps.set(0,this);
+    define(_grids,box,amrRatio,0,this);
+}
+
+void
+DDOp::define (const BoxArray& _grids,
+              const Box&      box,
+              const IntVect&  amrRatio,
+              int             mgLevel,
+              DDOp*           parent)
+{
+    mg_parent = parent;
+    mg_level = mgLevel;
+
     if (!chem) {
         BoxLib::Abort("ChemDriver must be set prior to first DDOp ctr call");
     }
-    if (mgLevel==0) {
+    if (first_define) {
         ensure_valid_transport_is_set();
+        first_define = false;
     }
+    amr_ratio = amrRatio;
+    const IntVect mg_ratio = MGIV;
     grids = _grids;
-    Geometry geom(box);
+    geom.define(box);
+
     int Nspec = chem->numSpecies();
-    Tbd.define(grids,1,geom,mgLevel);
-    Ybd.define(grids,Nspec,geom,mgLevel);
-    cfRatio = ratio;
+
+    if (mgLevel==0) 
+    {
+        mgLevels = 1;
+
+        Box cbox(box);
+        BoxArray fgrids, cgrids;
+        bool not_done = can_coarsen(grids)  &&  ( (mgLevelsMAX<0) || (mgLevels < mgLevelsMAX) );
+        while (not_done)
+        {
+            fgrids = ddOps[mgLevels-1].grids;
+            cgrids = BoxArray(fgrids).coarsen(mg_ratio);
+            cbox.coarsen(mg_ratio);
+
+            mgLevels++;
+            ddOps.resize(mgLevels);
+            ddOps.set(mgLevels-1,new DDOp(cgrids,cbox,amr_ratio,mgLevels-1,parent));
+
+            not_done = can_coarsen(cgrids)  &&  can_coarsen(cbox) 
+                &&  ( (mgLevelsMAX<0) || (mgLevels < mgLevelsMAX) );
+        }
+
+        Tbd = new DDBndry(grids,1,geom,mgLevels);
+        Ybd = new DDBndry(grids,Nspec,geom,mgLevels);
+    }
+
+    dx.resize(BL_SPACEDIM);
+    for (int i=0; i<BL_SPACEDIM; ++i)
+        dx[i] = geom.CellSize()[i];
+    
     const int gGrow = 0;
     geom.GetVolume(volInv,grids,gGrow);
     for (MFIter mfi(volInv); mfi.isValid(); ++mfi) {
@@ -172,17 +203,6 @@ DDOp::define (const BoxArray& _grids,
         int ncomp_st = 2;
         stencilWeight.define(face(),IndexType::TheCellType(),in_rad_st,out_rad_st,extent_rad_st,ncomp_st);
     }
-
-    // Generate coarser one (ratio = MGIV), if possible
-    if ( (mgLevelsMAX<0  ||  mgLevel+1<mgLevelsMAX)  &&  can_coarsen(grids))
-    {
-        const BoxArray cGrids = BoxArray(grids).coarsen(MGIV);
-        const Box cBox = Box(box).coarsen(MGIV);
-        int mgLevelC = mgLevel + 1;
-        mgLevels = mgLevelC + 1;
-        BL_ASSERT(Box(cBox).refine(MGIV) == box);
-        coarser = new DDOp(cGrids,cBox,cfRatio,mgLevelC);
-    }
 }
 
 void
@@ -214,58 +234,6 @@ DDOp::center_to_edge (const FArrayBox& cfab,
 }    
 
 void
-coarsenBndryData(const MultiFab&      fmf,
-                 int                  fmf_sc,
-                 const BndryRegister* fbr,
-                 int                  fbr_sc,
-                 MultiFab&            cmf,
-                 int                  cmf_sc,
-                 BndryRegister*       cbr,
-                 int                  cbr_sc,
-                 int                  nc)
-{
-    // coarsen boundary data, always by MGIV
-    BL_ASSERT(fmf.boxArray() == BoxArray(cmf.boxArray()).refine(MGIV));
-    for (MFIter mfi(fmf); mfi.isValid(); ++mfi)
-    {
-        const FArrayBox& ffab = fmf[mfi];
-        FArrayBox& cfab = cmf[mfi];
-        const Box& gbox = mfi.validbox();
-        for (OrientationIter oitr; oitr; ++oitr)
-        {
-            const Box fbox = BoxLib::adjCell(gbox,oitr(),1);
-            const int face = (int)oitr();
-            FORT_CRSNCCBND(fbox.loVect(), fbox.hiVect(),
-                           ffab.dataPtr(fmf_sc), ARLIM(ffab.loVect()), ARLIM(ffab.hiVect()),
-                           cfab.dataPtr(cmf_sc), ARLIM(cfab.loVect()), ARLIM(cfab.hiVect()),
-                           &nc, &face, MGIV.getVect());
-        }
-    }
-
-    if (fbr && cbr)
-    {
-        const BoxArray& fgrids = fbr->boxes();
-        const BoxArray& cgrids = cbr->boxes();
-        BL_ASSERT(fgrids == BoxArray(cgrids).refine(MGIV));
-        for (OrientationIter oitr; oitr; ++oitr)
-        {
-            const FabSet& ffs = (*fbr)[oitr()];
-            for (FabSetIter ffsi(ffs); ffsi.isValid(); ++ffsi)
-            {
-                const Box fbox = BoxLib::adjCell(fgrids[ffsi.index()],oitr(),1);
-                const int face = (int)oitr();
-                const FArrayBox& ffab = ffs[ffsi];
-                FArrayBox& cfab = (*cbr)[oitr()][ffsi];
-                FORT_CRSNCCBND(fbox.loVect(), fbox.hiVect(),
-                               ffab.dataPtr(fbr_sc), ARLIM(ffab.loVect()), ARLIM(ffab.hiVect()),
-                               cfab.dataPtr(cbr_sc), ARLIM(cfab.loVect()), ARLIM(cfab.hiVect()),
-                               &nc, &face, MGIV.getVect());
-            }
-        }
-    }
-}                 
-
-void
 DDOp::setBoundaryData(const MultiFab&      fineT,
                       int                  fStartT,
                       const MultiFab&      fineY,
@@ -275,62 +243,25 @@ DDOp::setBoundaryData(const MultiFab&      fineT,
                       const BndryRegister* cbrY,
                       int                  cStartY,
                       const BCRec&         bcT,
-                      const BCRec&         bcY)
+                      const BCRec&         bcY,
+                      int                  max_order)
 {
-    BL_ASSERT(fineT.boxArray() == grids);
+    BL_ASSERT(mg_level==0);
     BL_ASSERT(fineY.boxArray() == grids);
     const int Nspec = chem->numSpecies();
+    BL_ASSERT( (cbrT==0 ? cbrY==0 : cbrY!=0 ) );
 
-    if (coarser)  // if so, then it will be MGIV coarser
-    {
-        const int newTmfComp = Nspec;
-        const int newTbrComp = Nspec;
-        const int newYmfComp = 0;
-        const int newYbrComp = 0;
-        const BoxArray cBA = BoxArray(grids).coarsen(MGIV);
-        MultiFab newMF(cBA,Nspec+1,1);
-#ifndef NDEBUG
-        newMF.setVal(-1.0);
-#endif
-        BoxArray ccBA = BoxArray(cBA).coarsen(MGIV);
-        BndryRegister* newBR = 0;
-        if (cbrT && cbrY && coarser->coarser)
-        {
-            newBR = new BndryRegister();
-            newBR->setBoxes(ccBA);
-            for (OrientationIter fi; fi; ++fi)
-                newBR->define(fi(),IndexType::TheCellType(),0,1,1,Nspec+1);
-#ifndef NDEBUG
-            newBR->setVal(-1.0);
-#endif
-        }
-        coarsenBndryData(fineT,fStartT,cbrT,cStartT,
-                         newMF,newTmfComp,newBR,newTbrComp,1);
-        coarsenBndryData(fineY,fStartY,cbrY,cStartY,
-                         newMF,newYmfComp,newBR,newYbrComp,Nspec);
-        coarser->setBoundaryData(newMF,newTmfComp,newMF,newYmfComp,
-                                 newBR,newTbrComp,newBR,newYbrComp,bcT,bcY);
-    }
+    if (cbrT==0) {
 
-    IntVect ratio(cfRatio); // To avoid const problems
-    if (cbrT == 0)
-    {
-        Tbd.setBndryValues(fineT,fStartT,0,1,bcT);
-    }
-    else
-    {
-        Tbd.setBndryValues(const_cast<BndryRegister&>(*cbrT),
-                           cStartT,fineT,fStartT,0,1,ratio,bcT);
-    }
+        Tbd->setBndryValues(fineT,fStartT,0,1,bcT);
+        Ybd->setBndryValues(fineY,fStartY,0,Nspec,bcY);
 
-    if (cbrY == 0)
-    {
-        Ybd.setBndryValues(fineY,fStartY,0,Nspec,bcY);
-    }
-    else
-    {
-        Ybd.setBndryValues(const_cast<BndryRegister&>(*cbrY),
-                           cStartY,fineY,fStartY,0,Nspec,ratio,bcY);
+    } else {
+
+        Tbd->setBndryValues(const_cast<BndryRegister&>(*cbrT),
+                           cStartT,fineT,fStartT,0,1,amr_ratio,bcT,max_order);
+        Ybd->setBndryValues(const_cast<BndryRegister&>(*cbrY),
+                           cStartY,fineY,fStartY,0,Nspec,amr_ratio,bcY,max_order);
     }
 }
 
@@ -348,27 +279,30 @@ DDOp::setGrowCells(MultiFab& YT,
     BL_ASSERT(YT.boxArray() == grids);
 
     YT.FillBoundary(compT,1);
-    Tbd.getGeom().FillPeriodicBoundary(YT,compT,1);
+    geom.FillPeriodicBoundary(YT,compT,1);
     YT.FillBoundary(compY,Nspec);
-    Ybd.getGeom().FillPeriodicBoundary(YT,compY,Nspec);
+    geom.FillPeriodicBoundary(YT,compY,Nspec);
 
     const int flagbc  = 1;
     const int flagden = 1;
-    const Real* dx = Tbd.getGeom().CellSize();
+
+    DDBndry& Tbndry = (*mg_parent->Tbd);
+    DDBndry& Ybndry = (*mg_parent->Ybd);
+
     for (OrientationIter oitr; oitr; ++oitr)
     {
         const Orientation&      face = oitr();
         const int              iFace = (int)face;
 
-        const Array<Array<BoundCond> >& Tbc = Tbd.bndryConds(face);
-        const Array<Real>&      Tloc = Tbd.bndryLocs(face);
-        const FabSet&            Tfs = Tbd.bndryValues(face);
+        const Array<Array<BoundCond> >& Tbc = Tbndry.bndryConds(face);
+        const Array<Real>&      Tloc = Tbndry.bndryLocs(face);
+        const FabSet&            Tfs = Tbndry.bndryValues(face,mg_level);
         FabSet&                  Tst = stencilWeight[face];
         const int                Tnc = 1;
         
-        const Array<Array<BoundCond> >&  Ybc = Ybd.bndryConds(face);
-        const Array<Real>&      Yloc = Ybd.bndryLocs(face);
-        const FabSet&            Yfs = Ybd.bndryValues(face);
+        const Array<Array<BoundCond> >&  Ybc = Ybndry.bndryConds(face);
+        const Array<Real>&      Yloc = Ybndry.bndryLocs(face);
+        const FabSet&            Yfs = Ybndry.bndryValues(face,mg_level);
         FabSet&                  Yst = stencilWeight[face];
         const int                Ync = Nspec;
 
@@ -383,7 +317,7 @@ DDOp::setGrowCells(MultiFab& YT,
             FArrayBox& Tstfab = Tst[mfi];
             const FArrayBox& Tb = Tfs[mfi];
 
-            const Mask& Tm  = Tbd.bndryMasks(face)[idx];
+            const Mask& Tm  = Tbndry.bndryMasks(face,mg_level)[idx];
             const Real Tbcl = Tloc[idx];
             const int Tbct  = Tbc[idx][comp];
 
@@ -393,13 +327,13 @@ DDOp::setGrowCells(MultiFab& YT,
                          Tb.dataPtr(), ARLIM(Tb.loVect()), ARLIM(Tb.hiVect()),
                          Tm.dataPtr(), ARLIM(Tm.loVect()), ARLIM(Tm.hiVect()),
                          Tstfab.dataPtr(1), ARLIM(Tstfab.loVect()), ARLIM(Tstfab.hiVect()),
-                         vbox.loVect(),vbox.hiVect(), &Tnc, dx);
+                         vbox.loVect(),vbox.hiVect(), &Tnc, dx.dataPtr());
 
             FArrayBox& Yfab = YT[mfi];
             FArrayBox& Ystfab = Yst[mfi];
             const FArrayBox& Yb = Yfs[mfi];
 
-            const Mask& Ym  = Ybd.bndryMasks(face)[idx];
+            const Mask& Ym  = Ybndry.bndryMasks(face,mg_level)[idx];
             const Real Ybcl = Yloc[idx];
             const int Ybct  = Ybc[idx][comp];
 
@@ -409,7 +343,7 @@ DDOp::setGrowCells(MultiFab& YT,
                          Yb.dataPtr(), ARLIM(Yb.loVect()), ARLIM(Yb.hiVect()),
                          Ym.dataPtr(), ARLIM(Ym.loVect()), ARLIM(Ym.hiVect()),
                          Ystfab.dataPtr(0), ARLIM(Ystfab.loVect()), ARLIM(Ystfab.hiVect()),
-                         vbox.loVect(),vbox.hiVect(), &Ync, dx);
+                         vbox.loVect(),vbox.hiVect(), &Ync, dx.dataPtr());
         }
     }
 }
@@ -435,6 +369,12 @@ DDOp::setCoefficients(const MFIter&    mfi,
                  Full0_Mix1);
 }
 
+bool
+DDOp::thisIsParent() const
+{
+    return ( (mg_level==0)  &&  (this == &(ddOps[0]))  );
+}
+
 void
 DDOp::applyOp(MultiFab&         outYH,
               const MultiFab&   inYT,
@@ -445,13 +385,20 @@ DDOp::applyOp(MultiFab&         outYH,
               bool              getAlpha,
               MultiFab*         alpha)
 {
-    BL_ASSERT(level >= 0);
-    if (level > 0)
-    {
-        coarser->applyOp(outYH,inYT,fluxYH,whichApp,updateCoefs,level-1,getAlpha,alpha);
-        return;
-    }
+    BL_ASSERT(level >= 0  &&  ((mgLevelsMAX<0) || (level<mgLevelsMAX)) );
+    BL_ASSERT(thisIsParent());
+    ddOps[level].applyOp_DoIt(outYH,inYT,fluxYH,whichApp,updateCoefs,getAlpha,alpha);
+}
 
+void
+DDOp::applyOp_DoIt(MultiFab&         outYH,
+                   const MultiFab&   inYT,
+                   PArray<MultiFab>& fluxYH,
+                   DD_ApForTorRH     whichApp,
+                   bool              updateCoefs,
+                   bool              getAlpha,
+                   MultiFab*         alpha)
+{
     const int Nspec = chem->numSpecies();
     const int nGrow = 1;
 
@@ -466,6 +413,7 @@ DDOp::applyOp(MultiFab&         outYH,
     // Promise to change only the grow cells in T,Y
     int sCompY = 0;
     int sCompT = Nspec;
+
     setGrowCells(const_cast<MultiFab&>(inYT),sCompT,sCompY);
 
     // Initialize output
@@ -487,9 +435,9 @@ DDOp::applyOp(MultiFab&         outYH,
     FArrayBox FcpDTc, CPic, Xc;
     FArrayBox Hic(Box(iv,iv),1);
     FArrayBox FcpDTe(Box(iv,iv),1);
-    const Real* dx = Tbd.getGeom().CellSize();
+
     if (0 && updateCoefs && ParallelDescriptor::IOProcessor()) {
-            std::cout << "DDOp::apply: Setting coefficients at level : " << Tbd.mgLevel() << std::endl;
+        std::cout << "DDOp::apply: Setting coefficients " << std::endl;
     }
 
     for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
@@ -531,9 +479,8 @@ DDOp::applyOp(MultiFab&         outYH,
             // Returns fluxes (and Fn.cpn.gradT if for T)
             FArrayBox& fe = fluxYH[dir][mfi];
             const FArrayBox& ae = area[dir][mfi];
-            Real thisDx = dx[dir];
 
-            FORT_DDFLUX(box.loVect(), box.hiVect(), &thisDx, &dir,
+            FORT_DDFLUX(box.loVect(), box.hiVect(), dx.dataPtr(), &dir,
                         fe.dataPtr(), ARLIM(fe.loVect()), ARLIM(fe.hiVect()),
                         FcpDTe.dataPtr(), ARLIM(FcpDTe.loVect()),  ARLIM(FcpDTe.hiVect()),
                         YTc.dataPtr(), ARLIM(YTc.loVect()),  ARLIM(YTc.hiVect()),

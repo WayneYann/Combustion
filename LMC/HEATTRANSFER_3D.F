@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.30 2011-01-13 21:30:37 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.31 2011-01-25 23:55:34 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1510,7 +1510,6 @@ c     Returns the number of fine cells fixed up
       integer i, j, k, n
 
 #ifdef HT_SKIP_NITROGEN
-      REAL_T sum
       REAL_T, allocatable :: tfab(:,:,:)
 #endif
 

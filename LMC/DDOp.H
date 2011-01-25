@@ -12,15 +12,13 @@ public:
 
     DDOp (const BoxArray&   grids,
           const Box&        box,
-          const IntVect&    ratio,
-          int               mgLevel = 0);
+          const IntVect&    amrRatio);
 
     ~DDOp ();
 
     void define (const BoxArray& grids,
                  const Box&      box,
-                 const IntVect&  ratio,
-                 int             mgLevel = 0);
+                 const IntVect&  amrRatio);
         
     void setBoundaryData(const MultiFab&      fineT,
                          int                  fStartT,
@@ -31,12 +29,9 @@ public:
                          const BndryRegister* cbrX,
                          int                  cStartX,
                          const BCRec&         bcT,
-                         const BCRec&         bcX);
-
-    void setGrowCells(MultiFab& YT,
-                      int       compT,
-                      int       compY);
-
+                         const BCRec&         bcX,
+                         int                  max_order = InterpBndryData::IBD_max_order_DEF);
+    
     enum DD_ApForTorRH {DD_Temp=0, DD_RhoH, DD_NumAppTypes};
     enum DD_Model {DD_Model_Full=0, DD_Model_MixAvg, DD_Model_NumModels};
 
@@ -69,13 +64,37 @@ public:
                             int             sCompC,
                             int             nComp);
 
-    static int num_levels();
-    const Box& domain(int level) const;
+    static int numLevels();
+    const Box& domain() const {return geom.Domain();}
     const BoxArray& boxArray(int level) const;
-    const DDBndry& TBndry(int level) const;
-    const DDBndry& YBndry(int level) const;
 
 private:
+
+    DDOp (const BoxArray& grids,
+          const Box&      box,
+          const IntVect&  amrRatio,
+          int             mgLevel,
+          DDOp*           parent);
+
+    void define (const BoxArray& grids,
+                 const Box&      box,
+                 const IntVect&  amrRatio,
+                 int             mgLevel,
+                 DDOp*           parent);
+        
+    bool thisIsParent() const;
+
+    void applyOp_DoIt(MultiFab&         outYH,
+                      const MultiFab&   inYT,
+                      PArray<MultiFab>& fluxYH,
+                      DD_ApForTorRH     whichApp,
+                      bool              updateCoefs,
+                      bool              getAlpha,
+                      MultiFab*         alpha);
+
+    void setGrowCells(MultiFab& YT,
+                      int       compT,
+                      int       compY);
 
     void ensure_valid_transport_is_set() const;
 
@@ -88,18 +107,23 @@ private:
 
     static ChemDriver* chem;
     BoxArray grids;
-    DDBndry Tbd, Ybd;
+    DDBndry *Tbd, *Ybd; // only reeally defined at mg_level=0
     BndryRegister stencilWeight;
-    IntVect cfRatio;
+    IntVect amr_ratio;
     MultiFab volInv;
     PArray<MultiFab> area;
     PArray<MultiFab> flux;
     MultiFab coefs;
-    DDOp* coarser;
+    DDOp* mg_parent;
+    PArray<DDOp> ddOps;
+    Array<Real> dx;
+    Geometry geom;
+    int mg_level;
     static DD_Model transport_model;
     static int maxorder;
     static int mgLevelsMAX;
     static int mgLevels;
+    static bool first_define;
 };
 
 inline
@@ -128,7 +152,7 @@ DDOp::set_mgLevelsMAX(int mgLevelsMAX_)
 
 inline
 int
-DDOp::num_levels()
+DDOp::numLevels()
 {
     return mgLevels;
 }
