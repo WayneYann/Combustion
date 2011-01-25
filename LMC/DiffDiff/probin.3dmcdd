@@ -7,19 +7,16 @@
   zstandoff = -0.002884
   zstandoff = .014888
   zstandoff = .01
-  max_trac_lev = 1
-  max_trac_lev = 3
-  max_trac_lev = 1
+  max_trac_lev = 10
+  max_temp_lev = 0
+  max_vort_lev = 0
   flametracval = 1.e-6
-  max_temp_lev = 1
   temperr = 500
   tempgrad = 300.0
-  max_vort_lev = 1
   vorterr = 600.
   vorterr = 1000.
   phi_in = 0.37
   T_in = 298.
-
   pertmag = .0005
  /
  &heattransin

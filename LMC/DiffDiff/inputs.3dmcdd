@@ -64,7 +64,7 @@ amr.n_cell    = 64 64 64
 #amr.n_cell    = 128 128 128
 
 amr.v=1
-amr.max_level =  0            # maximum level number allowed
+amr.max_level =  1            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 1 1 1 2 # number of buffer cells in error est
@@ -218,4 +218,4 @@ ns.mcdd_verbose = 2
 ns.mcdd_relaxFactor = 0.75
 ns.mcdd_transport_model=full
 #ns.mcdd_transport_model=mix
-
+ns.hack_nomcddsync = 1

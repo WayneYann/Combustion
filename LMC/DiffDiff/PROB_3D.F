@@ -658,6 +658,7 @@ c     Set amplitudes
       REAL_T X_FU_H2, X_FU_O2, X_FU_N2, Xsum
       REAL_T Xfu(maxspec)
       integer i, zone, n, lo(SDIM), hi(SDIM), iN2, iH2, iO2, getZone
+      integer isioproc
 
       character*(maxspnml) name
       data lo / 1, 1, 1 /
@@ -690,6 +691,9 @@ c     phi = 1.0
       data X_O2  /  0.190045d0, 0.21d0,  0.190045d0,  0.21d0,  zero /
       data T     / 3.d2,         3.d2,         3.d2,      3.d2 , zero/
 #endif
+
+      call bl_pd_is_ioproc(isioproc)
+
       Patm = pamb / 101325.0d0
       iN2 = -1
       do n = 1,Nspec
@@ -723,9 +727,10 @@ c     For probtype == 3, set boundary conditions as constants
          Xfu(iH2) = X_FU_H2/ Xsum
          Xfu(iO2) = X_FU_O2/ Xsum
          Xfu(iN2) = X_FU_N2/ Xsum
- 
-         write(6,*)" in bc routine", Xfu(iH2),Xfu(iO2) ,Xfu(iN2)
- 
+
+         if (isioproc.eq.1) then
+            write(6,*)" in bc routine", Xfu(iH2),Xfu(iO2) ,Xfu(iN2)
+         endif
  
          call FORT_MOLETOMASS(lo,hi,
      &        Xfu, ARLIM(lo),ARLIM(hi),

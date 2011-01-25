@@ -5,8 +5,10 @@
   max_vort_lev = 0
   flametracval = 1.e-6
   y_offset = -0.001
+  y_offset =  0.004
   V_in = 0.1524
   pertmag = 2.e-4
+  pertmag = 0.e-4
  /
  &heattransin
   pamb = 101325.
