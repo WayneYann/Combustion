@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.31 2011-01-25 23:55:34 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.32 2011-01-26 22:31:41 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1132,6 +1132,15 @@ c
       endif
 
       if (res_only.ne.1) then
+         do n=0,Nspec-1
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  cor = fac * L(i,j,n) / (1.d0 + dt*a(i,j,n))
+                  maxCor(n) = MAX(maxCor(n),ABS(cor))
+                  S(i,j,yc+n) = S(i,j,yc+n)  +  cor
+               enddo
+            enddo
+         enddo
 #ifdef HT_SKIP_NITROGEN
          allocate(tfab(lo(1):hi(1),lo(2):hi(2)))
          tfab = 0.0d0
