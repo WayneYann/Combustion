@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.32 2011-01-26 22:31:41 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.33 2011-01-27 00:55:17 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1098,9 +1098,9 @@ c               and then relax: phi = phi + Res/alpha
 c     
 c     NOTE: Assumes maxRes and maxCor have been initialized properly
 c
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-            do n=0,Nspec-1
+      do n=0,Nspec-1
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
                L(i,j,n) = R(i,j,n) + mult*(S(i,j,rc)*S(i,j,yc+n) - dt*L(i,j,n))
                maxRes(n) = MAX(maxRes(n),ABS(L(i,j,n)))
             enddo
