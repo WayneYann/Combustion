@@ -67,6 +67,8 @@ const Real* fabdat = (fab).dataPtr(comp);
 #define YDOT_GROW   1
 const int LinOp_grow = 1;
 
+static std::string SUPERVERBOSE = "";
+
 //
 // Initialization of static members.
 //
@@ -405,6 +407,9 @@ HeatTransfer::read_params ()
 
     for (int i = 0; i < visc_coef.size(); i++)
         visc_coef[i] = bogus_value;
+
+    // Useful for debugging
+    pp.query("SUPERVERBOSE",SUPERVERBOSE);
 
     pp.query("do_mcdd",do_mcdd);
     if (do_mcdd) {
@@ -3422,18 +3427,27 @@ void
 dumpFab(const MultiFab& mf,
         const std::string&   name,
         int             lev,
-        int iter=-1)
+        int             iter = -1) // Default value = no append 2nd integer
 {
-    return;
-    const Box& box = mf.boxArray()[0];
-    FArrayBox fab(box,mf.nComp());
-    std::string junkname = BoxLib::Concatenate(name+"_",lev,1);
-    if (iter>=0)
-        junkname = BoxLib::Concatenate(junkname+"_",iter,1);
-    std::ofstream osf(junkname.c_str());
-    fab.copy(mf[0]);
-    fab.writeOn(osf);
-    osf.close();
+    if (SUPERVERBOSE!="") 
+    {
+        std::string DebugDir(SUPERVERBOSE);
+        if (ParallelDescriptor::IOProcessor())
+            if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
+                BoxLib::CreateDirectoryFailed(DebugDir);
+        
+        const Box& box = mf.boxArray()[0];
+        FArrayBox fab(box,mf.nComp());
+        std::string junkname = BoxLib::Concatenate(name+"_",lev,1);
+        if (iter>=0)
+            junkname = BoxLib::Concatenate(junkname+"_",iter,1);
+        junkname = DebugDir + "/" + junkname;
+        std::ofstream osf(junkname.c_str());
+        fab.copy(mf[0]);
+        cout << "   ******************************  Debug: writing " << junkname << endl;
+        fab.writeOn(osf);
+        osf.close();
+    }
 }
 
 // Set T from H or H from T, depending on whichApp
@@ -3521,15 +3535,19 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
     bool is_relaxed_nu1 = false;
     int mg_level = p.mg_level;
 
+    dumpFab(S,"S_init",mg_level);
+
     for (int iter=0; (iter<=p.nu1) && (p.status==HT_InProgress) && !is_relaxed_nu1; ++iter)
     {
         // Make T consistent with Y,H
-        if (0 && mg_level==0) {
+        if (mg_level==0) {
             sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (pre) ");
         }
 
         bool updateCoefs = (mg_level==0 && p.iter==0 && iter==0);
         mcdd_apply(T1,S,flux,time,whichApp,updateCoefs,mg_level,getAlpha,&alpha);
+
+        dumpFab(S,"L_of_S",mg_level,iter);
 
         int res_only = (iter==mcdd_nu1[mg_level] ? 1 : 0);
         for (int i=0; i<nComp; ++i) {
@@ -3569,6 +3587,9 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             p.maxRes_initial[nspecies-1] = 1;
 #endif
         }
+
+        dumpFab(T1,"R_nu1",mg_level,iter);
+        dumpFab(S,"S_nu1",mg_level,iter);
 
         p.maxRes_norm = 0;
         for (int i=0; i<nComp; ++i) {
@@ -3629,6 +3650,8 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         //
         DDOp::average(T2C,0,T1,0,nspecies+1);  // Avg(Res)=Avg(T1)=T2C
 
+        dumpFab(T2C,"Avg_Res",mg_level);
+
         // Rho-weight the state, then average (leave fine data rho-weighted for now...)
         for (MFIter mfi(S); mfi.isValid(); ++mfi) {
             FArrayBox& Sfab = S[mfi];
@@ -3639,6 +3662,9 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         }
 
         DDOp::average(SC,0,S,0,nspecies+3); // Includes generation of rho on coarse
+
+        dumpFab(SC,"Avg_Srho",mg_level);
+
         for (MFIter mfi(SC); mfi.isValid(); ++mfi) {
             FArrayBox& SCfab = SC[mfi];
             SCfab.invert(1.,sCompR,1);
@@ -3648,6 +3674,9 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             SCfab.mult(SCfab,sCompR,sCompH,1);
             SCfab.invert(1.,sCompR,1);
         }
+
+        dumpFab(SC,"Avg_S",mg_level);
+
         MCDD_MGParams pC(p);
         pC.mg_level++;
         pC.status = HT_InProgress;
@@ -3663,6 +3692,9 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 
         bool updateCoefsC = true; // Do once here, then never again in coarse relax
         mcdd_apply(T1C,SC,fluxC,time,whichApp,updateCoefsC,pC.mg_level);
+
+        dumpFab(T1C,"L_of_Avg_S",mg_level);
+
         int res_only = 1; // here, using HTDDRELAX to build (RhsC + Op(SC)) only
         for (MFIter mfi(SC); mfi.isValid(); ++mfi)
         {
@@ -3687,6 +3719,8 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         ParallelDescriptor::ReduceRealMax(pC.maxRes.dataPtr(),pC.maxRes.size());
         ParallelDescriptor::ReduceRealMax(pC.maxCor.dataPtr(),pC.maxCor.size());
 
+        dumpFab(T1C,"Res_of_Avg_S",mg_level);
+
         // Save a copy of pre-relaxed coarse state, in T2C
         MultiFab::Copy(T2C,SC,0,0,nspecies+3,0);
 
@@ -3695,11 +3729,14 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             mcdd_fas_cycle(pC,SC,T1C,fluxC,time,dt,whichApp);
         }
 
+        dumpFab(SC,"SC_postV",mg_level);
+
         // Compute increment
         MultiFab::Subtract(SC,T2C,sCompY,sCompY,nspecies+2,nGrow);
 
-        // Increment (already rho-weighted) fine solution with (here w/rho-weighted)
-        //   interpolated correction, then unweight
+        dumpFab(SC,"eC",mg_level);
+
+        // Rho-weight the increment to the state
         for (MFIter mfi(SC); mfi.isValid(); ++mfi) {
             FArrayBox& SCfab = SC[mfi];
             for (int n=0; n<nspecies; ++n) {
@@ -3708,8 +3745,15 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             SCfab.mult(SCfab,sCompR,sCompH,1);
         }
 
+        dumpFab(SC,"eCrho",mg_level);
+
+        // Increment (already rho-weighted) fine solution with rho-weighted
+        //   interpolated correction, then unweight
         DDOp::interpolate(S,0,SC,0,nspecies+2); // S += I(dSC)
 
+        dumpFab(S,"Srho_plus_inc",mg_level);
+
+        // Unweight the fine state
         for (MFIter mfi(S); mfi.isValid(); ++mfi) {
             FArrayBox& Sfab = S[mfi];
             Sfab.invert(1.,sCompR,1);
@@ -3720,16 +3764,18 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             Sfab.invert(1.,sCompR,1);
         }
 
-        if (mg_level==0) {
+        if (0 && mg_level==0) {
             sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (post coarse) ");
         }
+
+        dumpFab(S,"S_pre_nu2",mg_level);
 
         // Do post smooth (if not at the bottom)
         bool is_relaxed_nu2 = false;
         for (int iter=0; (iter<=p.nu2) && (p.status==HT_InProgress) && !is_relaxed_nu2; ++iter)
         {
             // Make T consistent with Y,H
-            if (0 && mg_level==1) {
+            if (0 && mg_level==0 && iter==0) {
                 sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (post) ");
             }
             
@@ -3738,6 +3784,8 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             bool updateCoefs = false;
             mcdd_apply(T1,S,flux,time,whichApp,updateCoefs,mg_level,getAlpha,&alpha);
             
+            dumpFab(S,"L_of_S2",mg_level,iter);
+
             for (int i=0; i<nComp; ++i) {
                 p.maxCor[i] = 0;
                 p.maxRes[i] = 0;
@@ -3768,6 +3816,9 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             
             ParallelDescriptor::ReduceRealMax(p.maxCor.dataPtr(),p.maxCor.size());
             ParallelDescriptor::ReduceRealMax(p.maxRes.dataPtr(),p.maxRes.size());
+
+            dumpFab(T1,"R_nu2",mg_level,iter);
+            dumpFab(S,"S_nu2",mg_level,iter);
 
             p.maxRes_norm = 0;
             for (int i=0; i<nComp; ++i) {
