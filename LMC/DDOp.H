@@ -67,8 +67,12 @@ public:
     static int numLevels();
     const Box& domain() const {return geom.Domain();}
     const BoxArray& boxArray(int level) const;
+    void Write(std::string& outfile) const;
+    void WriteSub(std::string& outfile, int level) const;
 
-private:
+protected:
+
+    void WriteSub(std::string& outfile) const;
 
     DDOp (const BoxArray& grids,
           const Box&      box,

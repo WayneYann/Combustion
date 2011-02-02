@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.31 2011-01-25 23:55:34 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.32 2011-02-02 01:36:44 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1504,7 +1504,7 @@ c     Returns the number of fine cells fixed up
       REAL_T L(DIMV(L),0:*)
       REAL_T a(DIMV(a),0:*)
       REAL_T R(DIMV(R),0:*)
-      REAL_T dt, fac, maxRes(0:*), maxCor(0:*)
+      REAL_T dt, fac(0:*), maxRes(0:*), maxCor(0:*)
       integer for_T0_H1, res_only
       REAL_T mult, cor
       integer i, j, k, n
@@ -1546,7 +1546,7 @@ c               and then relax: phi = phi + Res/alpha
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
-                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,Tc) + dt*L(i,j,k,Nspec)/S(i,j,k,rc))
+                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,Tc) - dt*L(i,j,k,Nspec)/S(i,j,k,rc))
                   maxRes(n) = MAX(maxRes(n),ABS(L(i,j,k,n)))
                enddo
             enddo
@@ -1555,7 +1555,7 @@ c               and then relax: phi = phi + Res/alpha
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
-                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,rc)*S(i,j,k,hc) + dt*L(i,j,k,Nspec))
+                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,rc)*S(i,j,k,hc) - dt*L(i,j,k,Nspec))
                   maxRes(n) = MAX(maxRes(n),ABS(L(i,j,k,n)))
                enddo
             enddo
@@ -1567,7 +1567,7 @@ c               and then relax: phi = phi + Res/alpha
             do k=lo(3),hi(3)
                do j=lo(2),hi(2)
                   do i=lo(1),hi(1)
-                     cor = fac * L(i,j,k,n) / (1.d0 + dt*a(i,j,k,n))
+                     cor = fac(n) * L(i,j,k,n) / (1.d0 + dt*a(i,j,k,n))
                      maxCor(n) = MAX(maxCor(n),ABS(cor))
                      S(i,j,k,yc+n) = S(i,j,k,yc+n)  +  cor
                   enddo
@@ -1600,7 +1600,7 @@ c               and then relax: phi = phi + Res/alpha
             do k=lo(3),hi(3)
                do j=lo(2),hi(2)
                   do i=lo(1),hi(1)
-                     cor = fac * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec)/S(i,j,k,rc))
+                     cor = fac(Nspec) * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec)/S(i,j,k,rc))
                      maxCor(Nspec) = MAX(maxCor(n),ABS(cor))
                      S(i,j,k,Tc) = S(i,j,k,Tc)  +  cor
                   enddo
@@ -1610,7 +1610,7 @@ c               and then relax: phi = phi + Res/alpha
             do k=lo(3),hi(3)
                do j=lo(2),hi(2)
                   do i=lo(1),hi(1)
-                     cor = fac * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec))
+                     cor = fac(Nspec) * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec))
                      maxCor(Nspec) = MAX(maxCor(n),ABS(cor))
                      S(i,j,k,Tc) = S(i,j,k,Tc)  +  cor
                   enddo

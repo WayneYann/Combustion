@@ -47,6 +47,10 @@ public:
                           std::istream& is,
                           bool          bReadSpecial = false);
 
+#if 1
+    virtual Real predict_velocity (Real  dt,
+                                   Real& comp_cfl);
+#endif
     //
     // Timestep estimation functions follow.
     //
@@ -472,9 +476,10 @@ protected:
                 }
                 maxRes_norm = rhs.maxRes_norm;
                 maxCor_norm = rhs.maxCor_norm;
-                res_nu1_tol = rhs.res_nu1_tol;
-                res_nu2_tol = rhs.res_nu2_tol;
-                res_tot_tol = rhs.res_tot_tol;
+                res_nu1_rtol = rhs.res_nu1_rtol;
+                res_nu2_rtol = rhs.res_nu2_rtol;
+                res_redux_tol = rhs.res_redux_tol;
+                res_abs_tol = rhs.res_abs_tol;
                 stalled_tol = rhs.stalled_tol;
                 gamma = rhs.gamma;
                 num_coarser = rhs.num_coarser;
@@ -489,10 +494,10 @@ protected:
         Array<Real> maxCor;
         Real        maxRes_norm;
         Real        maxCor_norm;
-        Real        solved_tol;
-        Real        res_nu1_tol;
-        Real        res_nu2_tol;
-        Real        res_tot_tol;
+        Real        res_nu1_rtol;
+        Real        res_nu2_rtol;
+        Real        res_redux_tol;
+        Real        res_abs_tol;
         Real        stalled_tol;
         int         iter;
         int         nComp;
@@ -613,17 +618,18 @@ protected:
     static int         do_mcdd;
     static std::string mcdd_transport_model;
     static int         mcdd_NitersMAX;
-    static Real        mcdd_relaxFactor;
+    static Real        mcdd_relax_factor_T;
+    static Real        mcdd_relax_factor_Y;
     static int         mcdd_mgLevelsMAX;
     static Array<int>  mcdd_nu1;
     static Array<int>  mcdd_nu2;
     static int         mcdd_nub;
     static int         mcdd_numcycles;
-    static Real        mcdd_res1_tol;
-    static Real        mcdd_res2_tol;
-    static Real        mcdd_restot_tol;
+    static Real        mcdd_res_nu1_rtol;
+    static Real        mcdd_res_nu2_rtol;
+    static Real        mcdd_res_redux_tol;
+    static Real        mcdd_res_abs_tol;
     static Real        mcdd_stalled_tol;
-    static Real        mcdd_min_residual_reduction;
     static int         mcdd_verbose;
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;

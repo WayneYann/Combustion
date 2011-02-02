@@ -17,6 +17,9 @@ using std::endl;
 //       generated for multigrid will always be two.
 const IntVect MGIV = IntVect(D_DECL(2,2,2));
 DDOp::DD_Model DDOp::transport_model = DDOp::DD_Model_NumModels; // ...must set prior to first ctr call
+static std::string DD_FULL_NAME("DD_Model_Full"); // ParmParsed name for full
+static std::string DD_MIX_NAME("DD_Model_MixAvg"); // ParmParsed name for mixture-averaged
+
 ChemDriver* DDOp::chem = 0; // ...must set prior to first ctr call
 int DDOp::maxorder = 3;
 int DDOp::mgLevelsMAX = -1;
@@ -52,6 +55,10 @@ DDOp::~DDOp ()
 {
     delete Tbd;
     delete Ybd;
+    if (mg_parent==this) {
+        for (int i=1; i<mgLevels; ++i)
+            delete ddOps.remove(i);
+    }
 }
 
 const BoxArray&
@@ -68,11 +75,11 @@ DDOp::ensure_valid_transport_is_set() const
     std::string id;
     if (transport_model==DD_Model_Full)
     {
-        id = "DD_Model_Full";
+        id = DD_FULL_NAME;
     }
     else if (transport_model==DD_Model_MixAvg) 
     {
-        id = "DD_Model_MixAvg";
+        id = DD_MIX_NAME;
     }
     else
     {
@@ -112,9 +119,6 @@ DDOp::define (const BoxArray& _grids,
               const Box&      box,
               const IntVect&  amrRatio)
 {
-    BL_ASSERT(ddOps.size()==0);
-    ddOps.resize(1);
-    ddOps.set(0,this);
     define(_grids,box,amrRatio,0,this);
 }
 
@@ -145,6 +149,9 @@ DDOp::define (const BoxArray& _grids,
     if (mgLevel==0) 
     {
         mgLevels = 1;
+        BL_ASSERT(ddOps.size()==0);
+        ddOps.resize(1,PArrayNoManage);
+        ddOps.set(mgLevels-1,this);
 
         Box cbox(box);
         BoxArray fgrids, cgrids;
@@ -440,6 +447,14 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
         std::cout << "DDOp::apply: Setting coefficients " << std::endl;
     }
 
+    // HACK
+    bool do_abort = false;
+    if (0 && mg_level==3)
+    {
+        std::string str = "DDOpMARC";
+        cout << "writing DDOp special" << endl;
+        (*mg_parent).Write(str);
+    }
     for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
     {
         FArrayBox& outYHc = outYH[mfi];
@@ -468,6 +483,42 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
 
         int fillAlpha = getAlpha;
         FArrayBox& alfc = (fillAlpha ? (*alpha)[mfi] : dum);
+
+        IntVect pp(D_DECL(8,0,8));
+        if (0 && box.contains(pp))
+        {
+            IntVect ivs(D_DECL(6,0,8));
+            IntVect ive(D_DECL(9,1,9));
+
+            if (box==Box(ivs,ive))
+            {
+                std::ofstream osf;
+                osf.open("junk");
+                YTc.writeOn(osf);
+                osf.close();
+
+                cout << "************************************************found it" << endl;
+                cout << "************************************************level: " << mg_level << endl;
+
+                int model_DD0_MA1 = (transport_model==DD_Model_Full ? 0 : 1);
+                int nCoef = FORT_DDNCOEFS(model_DD0_MA1);
+                int nState = Nspec+1;
+                IntVect iv(D_DECL(8,0,8));
+                Box ibox(IntVect(D_DECL(-1,-1,-1)),IntVect(D_DECL(+1,+1,+1)));
+                for (IntVect idx=ibox.smallEnd(); idx<=ibox.bigEnd(); ibox.next(idx))
+                {
+                    IntVect ivp=iv+idx;
+                    cout << "pt: " << ivp << endl;
+                    cout << "YT: ";
+                    for (int n=0; n<nState; ++n) cout << YTc(ivp,n) << " (" << n << ") ";
+                    cout << endl;
+                    cout << "coef: ";
+                    for (int n=0; n<nCoef; ++n) cout << c(ivp,n) << " (" << n << ") ";
+                    cout << endl;
+                }
+                do_abort = true;
+            }
+        }
         
         for (int dir=0; dir<BL_SPACEDIM; ++dir) {
 
@@ -569,6 +620,10 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
             }
         }
     }
+    ParallelDescriptor::Barrier();
+    if (do_abort)
+        BoxLib::Abort();
+    ParallelDescriptor::Barrier();
 }
 
 void
@@ -609,5 +664,109 @@ DDOp::interpolate (MultiFab&       mfF,
         FORT_DDCCINT(F.dataPtr(dCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
                      C.dataPtr(sCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
                      cbox.loVect(), cbox.hiVect(), &nComp, MGIV.getVect());
+    }
+}
+#include "Utility.H"
+#ifdef WIN32
+static std::string sep = "\\";
+#else
+static std::string sep = "/";
+#endif
+
+void
+DDOp::Write(std::string& outfile) const 
+{
+    if (mg_parent!=this)
+    {
+        BoxLib::Abort("DDOp::Write: only the parent can write the DDOp structure");
+    }
+
+    // Set filenames
+    std::string DDOpNAME = outfile + sep + "DDOp" + sep + "MG_Level_";
+    std::string DDBndryTNAME = outfile + sep + "DDBndryT" + sep + "MG_Level_";
+    std::string DDBndryYNAME = outfile + sep + "DDBndryY" + sep + "MG_Level_";
+    Array<std::string> DDOpNAMElev(ddOps.size());
+    Array<std::string> DDBndryTNAMElev(ddOps.size());
+    Array<std::string> DDBndryYNAMElev(ddOps.size());
+
+    for (int i=0;i<ddOps.size(); ++i)
+    {
+        DDOpNAMElev[i] = BoxLib::Concatenate(DDOpNAME,i,2);
+        DDBndryTNAMElev[i] = BoxLib::Concatenate(DDBndryTNAME,i,2);
+        DDBndryYNAMElev[i] = BoxLib::Concatenate(DDBndryYNAME,i,2);
+    }
+
+
+    if (ParallelDescriptor::IOProcessor()) {
+        if (!BoxLib::UtilCreateDirectory(outfile, 0755))
+            BoxLib::CreateDirectoryFailed(outfile);
+
+        std::string hdrName("Header");
+        hdrName = outfile + sep + hdrName;
+        std::ofstream ofs;
+        ofs.open(hdrName.c_str());
+        ofs << BL_SPACEDIM << '\n';
+        ofs << geom.Domain() << '\n';
+        ofs << grids << '\n';
+        ofs << amr_ratio << '\n';
+        std::string modelName = (transport_model==DD_Model_Full ? DD_FULL_NAME : DD_MIX_NAME);
+        ofs << modelName << '\n';
+        ofs << maxorder << '\n';
+        ofs << mgLevels << '\n';
+        ofs << mgLevelsMAX << '\n';    
+        ofs.close();
+    }
+    ParallelDescriptor::Barrier();
+
+    for (int i=0;i<ddOps.size(); ++i)
+    {
+        ddOps[i].WriteSub(DDOpNAMElev[i]);
+        Tbd->Write(DDBndryTNAMElev[i]);
+        Ybd->Write(DDBndryYNAMElev[i]);
+    }
+}
+
+void
+DDOp::WriteSub(std::string& outfile, int level) const 
+{
+    if (mg_parent!=this)
+    {
+        BoxLib::Abort("DDOp::Write: only the parent can write");
+    }
+    if (level>=0  && level<mgLevels)
+    {
+        BL_ASSERT(ddOps.defined(level));
+        ddOps[level].WriteSub(outfile);
+    }
+}
+
+void
+DDOp::WriteSub(std::string& outfile) const 
+{
+    if (ParallelDescriptor::IOProcessor()) {
+        if (!BoxLib::UtilCreateDirectory(outfile, 0755))
+            BoxLib::CreateDirectoryFailed(outfile);
+        
+        std::ofstream osf;
+        std::string hdrName = "Header";
+        hdrName = outfile + sep + hdrName;
+        std::ofstream ofs;
+        ofs.open(hdrName.c_str());
+        ofs << grids << '\n';
+        ofs.close();
+    }
+    ParallelDescriptor::Barrier();
+
+    VisMF::Write(volInv,outfile+sep+"volInv");
+    VisMF::Write(coefs,outfile+sep+"coefs");
+    int mindigits = 1;
+    char buf[32];
+    for (int i=0; i<BL_SPACEDIM; ++i) {
+        sprintf(buf, "%0*d",  mindigits, i);
+        VisMF::Write(area[i],outfile+sep+"area_"+std::string(buf));
+    }
+    for (OrientationIter oitr; oitr; ++oitr) {
+        sprintf(buf, "%0*d",  mindigits, (int)oitr());
+        stencilWeight[oitr()].write(outfile+sep+"stencilWeight"+std::string(buf));
     }
 }

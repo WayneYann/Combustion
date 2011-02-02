@@ -29,15 +29,25 @@
 #include "cdwrk.H"
       REAL_T T, Y(*), CPMS(*), MWinv(*), rhoDi(*)
       REAL_T PTC, rhoTD(*),rhoDij(*)
-      REAL_T X(maxspec), WW
+      REAL_T X(maxspec), WW, Yt(maxspec), Tt, sum
       integer Full0_Mix1,n
 
-      call CKYTX(Y,IWRK(ckbi),RWRK(ckbr),X)
-      call CKMMWY(Y,IWRK(ckbi),RWRK(ckbr),WW)
-      call EGSPAR(T,X,Y,CPMS,RWRK(egbr),IWRK(egbi))
-      CALL EGSVR1(T,Y,RWRK(egbr),rhoDi)
+c     HACK: Clean up state to something "reasonable"
+      Tt = MAX(298.d0, MIN(6500.d0, T))
+      sum = 0.d0
+      do n=1,Nspec-1
+         Yt(n) =  MAX(0.d0, MIN(1.d0, Y(n)))
+         sum = sum + Yt(n)
+      enddo
+      Yt(Nspec) = 1.d0 - sum
+
+      call CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+      call CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),WW)
+      call EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+      CALL EGSVR1(Tt,Yt,RWRK(egbr),rhoDi)
+
       if (Full0_Mix1.eq.0) then
-         call EGSLTDR5(T,Y,WW,RWRK(egbr),IWRK(egbi),PTC,rhoTD,rhoDij)
+         call EGSLTDR5(Tt,Yt,WW,RWRK(egbr),IWRK(egbi),PTC,rhoTD,rhoDij)
          do n=1,Nspec
             rhoTD(n) = rhoTD(n) * 1.d-1
          end do
@@ -46,7 +56,7 @@
          enddo
       else
 c     FIXME: Need to replace with cheaper call...leave here to debug though
-         call EGSLTDR5(T,Y,WW,RWRK(egbr),IWRK(egbi),PTC,rhoTD,rhoDij)
+         call EGSLTDR5(Tt,Yt,WW,RWRK(egbr),IWRK(egbi),PTC,rhoTD,rhoDij)
       endif
       do n=1,Nspec
          rhoDi(n) = WW * rhoDi(n) * MWinv(n) * 1.d-1

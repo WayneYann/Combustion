@@ -1,7 +1,7 @@
 //BL_COPYRIGHT_NOTICE
 
 //
-// $Id: DDBndry.cpp,v 1.5 2011-01-25 23:55:33 marc Exp $
+// $Id: DDBndry.cpp,v 1.6 2011-02-02 01:36:44 marc Exp $
 //
 #include <winstd.H>
 #include <cmath>
@@ -13,7 +13,7 @@
 
 using std::cout;
 using std::endl;
-
+#include <fstream>
 
 const IntVect MGIV = IntVect(D_DECL(2,2,2));
 DDBndry::DDBndry (const BoxArray& grids,
@@ -192,4 +192,31 @@ DDBndry::bndryMasks (const Orientation& face, int level) const
     }
     BL_ASSERT(level<bnd_vals.size());
     return bnd_vals[level].bndryMasks(face);
+}
+
+#include "Utility.H"
+#ifdef WIN32
+static std::string sep = "\\";
+#else
+static std::string sep = "/";
+#endif
+void
+DDBndry::Write(std::string& outfile) const
+{
+    if (ParallelDescriptor::IOProcessor()) {
+        if (!BoxLib::UtilCreateDirectory(outfile, 0755))
+            BoxLib::CreateDirectoryFailed(outfile);
+    }
+    ParallelDescriptor::Barrier();
+
+    for (int lev=0; lev<bnd_vals.size(); ++lev)
+    {
+        int mindigits = 2;
+        for (OrientationIter oitr; oitr; ++oitr) {
+            char buf[32];
+            sprintf(buf, "%0*d",  mindigits, (int)oitr());
+            const FabSet& vals = bndryValues(oitr(),lev);
+            vals.write(outfile+sep+"bndVals_"+std::string(buf));
+        }
+    }
 }

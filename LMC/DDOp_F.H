@@ -10,6 +10,7 @@
 #    define FORT_DDCCINT         ddccint
 #    define FORT_DDNCOEFS        ddncoefs
 #    define FORT_DDCOEFS         ddcoefs
+#    define FORT_DDADJ           ddadj
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_DDFORCE         DDFORCE
@@ -20,6 +21,7 @@
 #    define FORT_DDCCINT         DDCCINT
 #    define FORT_DDNCOEFS        DDNCOEFS
 #    define FORT_DDCOEFS         DDCOEFS
+#    define FORT_DDADJ           DDADJ
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_DDFORCE         ddforce
 #    define FORT_DDC2E           ddc2e
@@ -29,6 +31,7 @@
 #    define FORT_DDCCINT         ddccint
 #    define FORT_DDNCOEFS        ddncoefs
 #    define FORT_DDCOEFS         ddcoefs
+#    define FORT_DDADJ           ddadj
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_DDFORCE         ddforce_
 #    define FORT_DDC2E           ddc2e_
@@ -38,6 +41,7 @@
 #    define FORT_DDCCINT         ddccint_
 #    define FORT_DDNCOEFS        ddncoefs_
 #    define FORT_DDCOEFS         ddcoefs_
+#    define FORT_DDADJ           ddadj_
 #  endif
 
 #include <ArrayLim.H>
@@ -81,6 +85,8 @@ extern "C" {
     void FORT_DDCCINT(Real*       fine, ARLIM_P(flo), ARLIM_P(fhi),
                       const Real* crse, ARLIM_P(clo), ARLIM_P(chi),
                       const int* lo, const int* hi, const int* nc, const int* ratio);
+
+    void FORT_DDADJ(Real* s, ARLIM_P(slo), ARLIM_P(shi), const int* nc);
 
     int FORT_DDNCOEFS(const int& nCoefs);
 

@@ -499,3 +499,27 @@ c     NOTE: generalize to rz
 c
       end
       
+      subroutine FORT_DDADJ(fab, DIMS(fab), nc)
+      implicit none
+      integer nc
+      integer DIMDEC(fab)
+      REAL_T  fab(DIMV(fab), nc)
+      integer i,j,n
+      REAL_T minVal, maxVal
+
+      if (nc.eq.1) then
+         minVal = 298.d0
+         maxVal = 1500.d0
+      else
+         minVal = 0.d0
+         maxVal = 1.d0
+      endif
+      do n = 1,nc
+         do j = ARG_L2(fab), ARG_H2(fab)
+            do i = ARG_L1(fab), ARG_H1(fab)
+               fab(i,j,n) = MAX(minVal,MIN(maxVal,fab(i,j,n)))
+            enddo
+         enddo
+      enddo
+      end
+

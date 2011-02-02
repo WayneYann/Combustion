@@ -4,7 +4,7 @@
 #define _DDBndry_H_
 
 //
-// $Id: DDBndry.H,v 1.4 2011-01-25 23:55:33 marc Exp $
+// $Id: DDBndry.H,v 1.5 2011-02-02 01:36:44 marc Exp $
 //
 
 #include <ViscBndry.H>
@@ -57,6 +57,7 @@ public:
     const Geometry& getGeom(int level) const {return geoms[level];}
     const FabSet& bndryValues (const Orientation& face,int level) const;
     const PArray<Mask>& bndryMasks (const Orientation& face, int level) const;
+    void Write(std::string& outfile) const;
 
 protected:
 
