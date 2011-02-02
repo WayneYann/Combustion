@@ -136,6 +136,7 @@ Real      HeatTransfer::mcdd_res_nu2_rtol         = 1.e-8;
 Real      HeatTransfer::mcdd_res_redux_tol        = 1.e-8;
 Real      HeatTransfer::mcdd_res_abs_tol          = 1.e-8;
 Real      HeatTransfer::mcdd_stalled_tol          = 1.e-8;
+Real      HeatTransfer::mcdd_advance_temp         = 1;
 Real      HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
 
 Array<Real> HeatTransfer::typical_values;
@@ -505,6 +506,7 @@ HeatTransfer::read_params ()
         pp.query("mcdd_res_redux_tol",mcdd_res_redux_tol);
         pp.query("mcdd_res_abs_tol",mcdd_res_abs_tol);
         pp.query("mcdd_stalled_tol",mcdd_stalled_tol);
+        pp.query("mcdd_advance_temp",mcdd_advance_temp);
 
         pp.query("mcdd_verbose",mcdd_verbose);
     }
@@ -3536,6 +3538,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
     int mg_level = p.mg_level;
 
     showMF(S,"S_init",mg_level);
+    showMF(Rhs,"Rhs",mg_level);
 
     for (int iter=0; (iter<=p.nu1) && (p.status==HT_InProgress) && !is_relaxed_nu1; ++iter)
     {
@@ -3952,8 +3955,7 @@ HeatTransfer::mcdd_update(Real time,
     BL_ASSERT(do_mcdd);
     const int nGrow = 0;
 
-    //DDOp::DD_ApForTorRH whichApp = DDOp::DD_RhoH;
-    DDOp::DD_ApForTorRH whichApp = DDOp::DD_Temp;
+    DDOp::DD_ApForTorRH whichApp = (mcdd_advance_temp==1 ? DDOp::DD_Temp : DDOp::DD_RhoH);
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mcdd update for "
@@ -4053,14 +4055,12 @@ HeatTransfer::mcdd_update(Real time,
         p.nu1 = mcdd_nu1[p.mg_level];
         p.nu2 = mcdd_nu2[p.mg_level];
     }
-
-    // HACK
-    if (0 && level==1)
-        SUPERVERBOSE="DEBUGDIR";
-
     p.status = HT_InProgress;
-    for (p.iter=0; (p.iter<mcdd_numcycles) && (p.status==HT_InProgress); ++p.iter) {
+
+    for (p.iter=0; (p.iter<mcdd_numcycles) && (p.status==HT_InProgress); ++p.iter)
+    {
         mcdd_fas_cycle(p,S,Rhs,fluxnp1,time,thetaDt,whichApp);
+
         if (ParallelDescriptor::IOProcessor() && (mcdd_verbose>0) ) {
             std::string str("mcdd - (iter,res,cor): (");
             levWrite(std::cout,-1,str)
@@ -4069,9 +4069,6 @@ HeatTransfer::mcdd_update(Real time,
                 << p.maxCor_norm << ") " << std::endl;
         }
     }
-    // HACK
-    if (0 && level==1)
-        BoxLib::Abort();
 
     if (ParallelDescriptor::IOProcessor()) {
         if (p.status == HT_InProgress) {

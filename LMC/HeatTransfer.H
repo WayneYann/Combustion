@@ -630,6 +630,7 @@ protected:
     static Real        mcdd_res_redux_tol;
     static Real        mcdd_res_abs_tol;
     static Real        mcdd_stalled_tol;
+    static Real        mcdd_advance_temp;
     static int         mcdd_verbose;
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
