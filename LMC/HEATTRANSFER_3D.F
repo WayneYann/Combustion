@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.32 2011-02-02 01:36:44 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.33 2011-02-02 21:31:32 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1547,7 +1547,7 @@ c               and then relax: phi = phi + Res/alpha
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
                   L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,Tc) - dt*L(i,j,k,Nspec)/S(i,j,k,rc))
-                  maxRes(n) = MAX(maxRes(n),ABS(L(i,j,k,n)))
+                  maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,k,Nspec)))
                enddo
             enddo
          enddo
@@ -1556,7 +1556,7 @@ c               and then relax: phi = phi + Res/alpha
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
                   L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,rc)*S(i,j,k,hc) - dt*L(i,j,k,Nspec))
-                  maxRes(n) = MAX(maxRes(n),ABS(L(i,j,k,n)))
+                  maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,k,Nspec)))
                enddo
             enddo
          enddo
@@ -1611,8 +1611,8 @@ c               and then relax: phi = phi + Res/alpha
                do j=lo(2),hi(2)
                   do i=lo(1),hi(1)
                      cor = fac(Nspec) * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec))
-                     maxCor(Nspec) = MAX(maxCor(n),ABS(cor))
-                     S(i,j,k,Tc) = S(i,j,k,Tc)  +  cor
+                     maxCor(Nspec) = MAX(maxCor(Nspec),ABS(cor))
+                     S(i,j,k,hc) = S(i,j,k,hc)  +  cor
                   enddo
                enddo
             enddo

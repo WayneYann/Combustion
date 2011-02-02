@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.34 2011-02-02 01:36:44 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.35 2011-02-02 21:31:31 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1119,14 +1119,14 @@ c
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                L(i,j,Nspec) = R(i,j,Nspec) + mult*(S(i,j,Tc) - dt*L(i,j,Nspec)/S(i,j,rc))
-               maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,n)))
+               maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,Nspec)))
             enddo
          enddo
       else
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                L(i,j,Nspec) = R(i,j,Nspec) + mult*(S(i,j,rc)*S(i,j,hc) - dt*L(i,j,Nspec))
-               maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,n)))
+               maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,Nspec)))
             enddo
          enddo
       endif
@@ -1173,7 +1173,7 @@ c
                do i=lo(1),hi(1)
                   cor = fac(Nspec) * L(i,j,Nspec) / (1.d0 + dt*a(i,j,Nspec))
                   maxCor(Nspec) = MAX(maxCor(Nspec),ABS(cor))
-                  S(i,j,Tc) = S(i,j,Tc)  +  cor
+                  S(i,j,hc) = S(i,j,hc)  +  cor
                enddo
             enddo
          endif
