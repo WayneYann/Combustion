@@ -188,19 +188,6 @@ mac.do_outflow_bcs = 1
 #
 fab.format = NATIVE
 
-#
-# Initializes distribution strategy from ParmParse.
-#
-# ParmParse options are:
-#
-#   DistributionMapping.strategy = ROUNDROBIN
-#   DistributionMapping.strategy = KNAPSACK
-#
-# The default strategy is ROUNDROBIN.
-#
-DistributionMapping.strategy = KNAPSACK
-DistributionMapping.verbose=0
-
 ns.hack_nochem=1
 #ns.hack_nospecdiff=1
 #ns.init_iter=0

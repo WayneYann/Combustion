@@ -1,9 +1,6 @@
 #amr.checkpoint_nfiles   = 1024
 #amr.plot_nfiles         = 1024
 
-
-DistributionMapping.verbose=1
-
 #ht.velocity_plotfile=vel_plt0400
 
 #amr.plotfile_on_restart=1
@@ -178,19 +175,6 @@ mac.do_outflow_bcs = 0
 #   8BIT   (eight-bit run-length-encoded)
 #
 fab.format = NATIVE
-#
-# Initializes distribution strategy from ParmParse.
-#
-# ParmParse options are:
-#
-#   DistributionMapping.strategy = ROUNDROBIN
-#   DistributionMapping.strategy = KNAPSACK
-#
-# The default strategy is ROUNDROBIN.
-#
-DistributionMapping.strategy = ROUNDROBIN
-DistributionMapping.strategy = KNAPSACK
-
 
 ns.do_mcdd=1
 ns.do_active_control=1

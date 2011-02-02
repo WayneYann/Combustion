@@ -3,10 +3,6 @@ amr.checkpoint_nfiles=64
 
 mg.smooth_on_cg_unstable=1
 
-DistributionMapping.verbose=0
-DistributionMapping.strategy = SFC
-DistributionMapping.sfc_threshold=2
-
 amr.checkpoint_files_output=0
 amr.plot_files_output=0
 

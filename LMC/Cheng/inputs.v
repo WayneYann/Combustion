@@ -4,8 +4,6 @@ amr.regrid_on_restart = 1
 
 ht.plot_auxDiags=1
 
-DistributionMapping.verbose=1
-
 ns.do_group_bndry_fills=1
 
 max_step  =  6000000 
@@ -174,5 +172,3 @@ mac.mac_abs_tol    = 1.0e-14
 mac.use_cg_solve   = 0
 
 fab.format = NATIVE
-
-DistributionMapping.strategy = KNAPSACK

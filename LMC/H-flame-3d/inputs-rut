@@ -1,6 +1,4 @@
 
-DistributionMapping.verbose=1
-
 #amr.restart=chk0156
 #ns.hack_nochem=1
 ns.do_active_control = false
@@ -151,16 +149,4 @@ mac.mac_abs_tol    = 1.0e-14
 mac.use_cg_solve   = 1
 mac.do_outflow_bcs = 1
 
-RunStats.statvar = vel_predict vel_advect scal_advect vel_update scal_update
-                   mac_project mac_sync level_project sync_project init_data
-                   write_pltfile write_chkfile processor_map
-                   fill_patch fill_boundary fill_periodic_bndry fabset_lincomb
-                   fabset_copyfrom fabset_plusfrom reflux fabarray_copy
-                   collect_data mpi_wait mpi_barrier mpi_reduce 
-                   mpi_broadcast mpi_gather mpi_recv mpi_send crse_init_finish
-                   regrid hg_irecv hg_isend hg_test
-	           mac_bc proj_bc strang_chem
-
 fab.format = NATIVE
-
-DistributionMapping.strategy = KNAPSACK
