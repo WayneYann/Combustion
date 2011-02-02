@@ -1,7 +1,6 @@
 ns.do_heat_sink=1
 
 DistributionMapping.verbose=1
-DistributionMapping.do_not_minimize_comm_costs=0
 
 #ht.plot_auxDiags=1
 

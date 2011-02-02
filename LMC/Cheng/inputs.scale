@@ -4,8 +4,6 @@ amr.checkpoint_nfiles=64
 mg.smooth_on_cg_unstable=1
 
 DistributionMapping.verbose=0
-DistributionMapping.do_not_minimize_comm_costs=1
-DistributionMapping.swap_n_test_count=1
 DistributionMapping.strategy = SFC
 DistributionMapping.sfc_threshold=2
 

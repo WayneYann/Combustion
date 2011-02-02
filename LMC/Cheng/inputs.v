@@ -5,7 +5,6 @@ amr.regrid_on_restart = 1
 ht.plot_auxDiags=1
 
 DistributionMapping.verbose=1
-DistributionMapping.do_not_minimize_comm_costs=0
 
 ns.do_group_bndry_fills=1
 

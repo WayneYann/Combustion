@@ -1,6 +1,5 @@
 
 DistributionMapping.verbose=1
-DistributionMapping.do_not_minimize_comm_costs=0
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 #max_step  =  1140 # maximum timestep

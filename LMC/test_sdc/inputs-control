@@ -199,7 +199,6 @@ fab.format = NATIVE
 # The default strategy is ROUNDROBIN.
 #
 DistributionMapping.strategy = KNAPSACK
-DistributionMapping.do_not_minimize_comm_costs=0
 DistributionMapping.verbose=0
 
 ns.hack_nochem=1
