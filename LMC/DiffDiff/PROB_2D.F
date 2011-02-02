@@ -356,7 +356,7 @@ c
       blobr = -one
       xcen = problo(1)
       v_strength = zero
-      v_width = zero
+      v_width = -one
       v_xcen = zero
       v_ycen = zero
       v_cl_x = probhi(1)
@@ -870,7 +870,6 @@ c
      &              (dexp(-r1sq/v_width**2)-dexp(-r2sq/v_width**2)) 
             end do
          end do
-         
          do j = lo(2), hi(2)
             y = (float(j)+.5)*delta(2)+domnlo(2)         
             do i = lo(1), hi(1)
@@ -886,23 +885,26 @@ c
      &                 + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
                endif
                
-               ylo = DBLE(j  )*delta(2)+domnlo(2)-y_offset + ypert
-               yhi = DBLE(j+1)*delta(2)+domnlo(2)-y_offset + ypert
+
+               ylo = (y-half*delta(2)-y_offset+ypert)*100.d0
+               yhi = (y+half*delta(2)-y_offset+ypert)*100.d0
+
                if (probtype.eq.2) then
                   ylo = ylo - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
                   yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
                endif
-              
-               call pmf(ylo*100,yhi*100,pmf_vals,n)
+
+               call pmf(ylo,yhi,pmf_vals,n)
+
                if (n.ne.Nspec+3) then
                   print *,'PMF file thinks n=',n
                   print *,'I think Nspec=',Nspec
                   call bl_abort('INITDATA: n .ne. Nspec+3, n:')
                endif
+
                call FORT_MOLETOMASS(lo_chem,hi_chem,
      &                              pmf_vals(4), ARLIM(lo_chem),ARLIM(hi_chem),
      &                               Y_in,       ARLIM(lo_chem),ARLIM(hi_chem))
-               
                
                rblob = sqrt( (v_xcen-x)**2 + (v_ycen-y)**2 )
                
