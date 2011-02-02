@@ -18,6 +18,7 @@
   phi_in = 0.37
   T_in = 298.
   pertmag = .0005
+  pertmag = 0.
  /
  &heattransin
   pamb = 101325.

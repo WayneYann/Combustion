@@ -1,5 +1,5 @@
-
-# $Id: GNUmakefile,v 1.7 2011-01-13 18:47:09 marc Exp $
+#
+# $Id: GNUmakefile,v 1.8 2011-02-02 01:35:36 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -8,8 +8,8 @@ PMFdir        = ../PMFfiles
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = FALSE
 DEBUG	          = TRUE
+DEBUG	          = FALSE
 PROFILE           = TRUE
 PROFILE           = FALSE
 DIM    	          = 2
@@ -26,8 +26,6 @@ USE_FLCTS         = FALSE
 USE_VELOCITY      = FALSE
 USE_MPI           = FALSE
 USE_MPI           = TRUE
-
-
 # Both of these are for the time-dependent turbulence forcing term
 #DEFINES += -DGENGETFORCE
 #DEFINES += -DDO_LMC_FORCE
@@ -117,23 +115,9 @@ MyLibRoots := $(notdir $(Packages))
 MyPackageDirs := $(dir $(Packages))
 MySrcDirs = .
 INCLUDE_LOCATIONS += ..
-ifeq ($(BUILD_IN_PLACE),TRUE)
-  MySrcDirs += $(MyPackageDirs)
-  INCLUDE_LOCATIONS += $(MySrcDirs)
-else
-  LIBRARIES += $(addsuffix $(DIM)d, $(addprefix -l, $(MyLibRoots)))
-  INCLUDE_LOCATIONS += $(TOP)/include
-  ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-    LIBRARY_LOCATIONS += $(dir $(ProjPackage))lib/$(machineSuffix)
-    LIBRARIES := $(patsubst -lproj$(DIM)d, -lproj$(DIM)d.$(PRVERSION), $(LIBRARIES))
-  endif
-  LIBRARY_LOCATIONS += $(TOP)/lib/$(machineSuffix)
-endif
+MySrcDirs += $(MyPackageDirs)
+INCLUDE_LOCATIONS += $(MySrcDirs)
 include $(addsuffix /Make.package, $(MySrcDirs))
-
-ifeq ($(HGDEBUG),TRUE)
-  DEFINES+=-DHG_DEBUG
-endif
 ifeq (${USE_FLCTS}, TRUE)
   DEFINES += -DBL_DO_FLCT
   INCLUDE_LOCATIONS += $(TOP)/iamrlib/InflowForce
@@ -163,18 +147,7 @@ vpath %.f90 $(MySrcDirs) ${PMFdir}
 vpath %.H   $(MySrcDirs) ${PMFdir}
 vpath %.h   $(MySrcDirs) ${PMFdir}
 vpath %.f   ONED $(MySrcDirs) ${PMFdir}
-vpath %.a   $(LIBRARY_LOCATIONS)
 
 all: $(executable)
-
-o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.PROF.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o
-
-o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o
-
-o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o
-
 
 include $(TOP)/mk/Make.rules
