@@ -7,6 +7,11 @@
 #include <ChemDriver.H>
 #include <DDOp.H>
 
+#ifdef PARTICLES
+#include "Particles.H"
+typedef ParticleContainer<0> HTParticleContainer;
+#endif
+
 #include <list>
 #include <map>
 #include <utility>
@@ -213,6 +218,10 @@ public:
     // Static member functions.
     //
     static ChemDriver& getChemSolve () { return *chemSolve; }
+
+#ifdef PARTICLES
+    static HTParticleContainer* theHTPC ();
+#endif
     //
     // Define data descriptors.
     //

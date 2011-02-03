@@ -146,6 +146,13 @@ static bool do_not_use_funccount = false;
 static bool do_active_control    = false;
 static Real crse_dt = -1;
 
+#ifdef PARTICLES
+static const std::string the_ht_particle_file_name("HT");
+static HTParticleContainer* HTPC = 0;  // There's really only one of these.
+static std::string the_particle_file;
+HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
+#endif
+
 #ifdef BL_USE_FLOAT
 #  define Real_MIN FLT_MIN
 #  define Real_MAX FLT_MAX
@@ -1256,6 +1263,19 @@ HeatTransfer::initData ()
 
     is_first_step_after_regrid = false;
     old_intersect_new          = grids;
+
+#ifdef PARTICLES
+    if (level == 0)
+    {
+        BL_ASSERT(HTPC == 0);
+
+        HTPC = new HTParticleContainer(parent);
+        //
+        // 2 gives more stuff than 1.
+        //
+        HTPC->Verbose(1);
+    }
+#endif
 }
 
 void
@@ -1652,6 +1672,21 @@ HeatTransfer::post_restart ()
 
     if (do_active_control)
         FORT_ACTIVECONTROL(&dummy,&dummy,&crse_dt,&MyProc,&step,&restart);
+
+#ifdef PARTICLES
+    if (level == 0)
+    {
+        BL_ASSERT(HTPC == 0);
+
+        HTPC = new HTParticleContainer(parent);
+        //
+        // 2 gives more stuff than 1.
+        //
+        HTPC->Verbose(1);
+
+        HTPC->Restart(parent->theRestartFile(), the_ht_particle_file_name);
+    }
+#endif
 }
 
 void
@@ -1669,6 +1704,11 @@ HeatTransfer::post_regrid (int lbase,
         if (parent->levelSteps(0)>0 && level>lbase)
             set_rho_to_species_sum(get_new_data(State_Type),0,nGrow,0);
     }
+
+#ifdef PARTICLES
+    if (level == 0 && HTPC != 0)
+        HTPC->Redistribute();
+#endif
 }
 
 void
@@ -1679,20 +1719,28 @@ HeatTransfer::checkPoint (const std::string& dir,
 {
     NavierStokes::checkPoint(dir,os,how,dump_old);
 
-    if (level==0 && ParallelDescriptor::IOProcessor())
+    if (level == 0)
     {
-        const std::string tvfile = dir + "/" + typical_values_filename;
-        std::ofstream tvos;
-        tvos.open(tvfile.c_str(),std::ios::out);
-        if (!tvos.good())
-            BoxLib::FileOpenFailed(tvfile);
-        Box tvbox(IntVect(),(NUM_STATE-1)*BoxLib::BASISV(0));
-        int nComp = typical_values.size();
-        FArrayBox tvfab(tvbox,nComp);
-        for (int i=0; i<nComp; ++i) {
-            tvfab.dataPtr()[i] = typical_values[i];
+        if (ParallelDescriptor::IOProcessor())
+        {
+            const std::string tvfile = dir + "/" + typical_values_filename;
+            std::ofstream tvos;
+            tvos.open(tvfile.c_str(),std::ios::out);
+            if (!tvos.good())
+                BoxLib::FileOpenFailed(tvfile);
+            Box tvbox(IntVect(),(NUM_STATE-1)*BoxLib::BASISV(0));
+            int nComp = typical_values.size();
+            FArrayBox tvfab(tvbox,nComp);
+            for (int i=0; i<nComp; ++i) {
+                tvfab.dataPtr()[i] = typical_values[i];
+            }
+            tvfab.writeOn(tvos);
         }
-        tvfab.writeOn(tvos);
+
+#ifdef PARTICLES
+        if (HTPC != 0)
+            HTPC->Checkpoint(dir,the_ht_particle_file_name);
+#endif
     }
 }
 
