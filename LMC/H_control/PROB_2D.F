@@ -200,8 +200,8 @@ c     V_new = MIN(V_new,V_in+dVmax)
       REAL_T   scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -268,8 +268,8 @@ c ::: -----------------------------------------------------------
       REAL_T rand
 
 #include "probdata.H"
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "visc.H"
 #include "conp.H"
@@ -783,8 +783,9 @@ c ::: -----------------------------------------------------------
       implicit none
       integer orient
       REAL_T x, y, time, u, v, rho, Yl(0:*), T, h, dx(SDIM)
-#include "htdata.H"
+
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -890,8 +891,8 @@ c ::: -----------------------------------------------------------
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -1091,6 +1092,7 @@ c ::: -----------------------------------------------------------
       REAL_T  problo(SDIM)
       
 #include "probdata.H"
+#include "cdwrk.H"
 #include "htdata.H"
       integer i, j, n, Tid, RHid, YSid, YEid, ys, ye
       integer getZone
@@ -2619,8 +2621,10 @@ c            divu(i,j) = min(two,one+time/.05)
       subroutine FORT_RADLOSS(lo,hi,rad,DIMS(rad),
      &                        T,DIMS(T),Y,DIMS(Y),dx,Patm,time)
       implicit none
+
 #include "cdwrk.H"
 #include "probdata.H"
+
       integer DIMDEC(rad)
       integer DIMDEC(T)
       integer DIMDEC(Y)
@@ -2664,9 +2668,6 @@ c
 #include "cdwrk.H"
 #include "bc.H"
 
-c
-c     ::::: local variables
-c
       integer i, j, n
       integer ilo, jlo
       integer ihi, jhi
