@@ -147,9 +147,17 @@ static bool do_active_control    = false;
 static Real crse_dt = -1;
 
 #ifdef PARTICLES
-static const std::string the_ht_particle_file_name("HT");
-static HTParticleContainer* HTPC = 0;  // There's really only one of these.
-static std::string the_particle_file;
+//
+// Name of subdirectory in chk???? holding checkpointed particles.
+// 
+static const std::string the_ht_particle_file_name("Particles");
+//
+// There's really only one of these.
+//
+static HTParticleContainer* HTPC = 0;
+//
+// In case someone outside of HeatTransfer needs a handle on the particles.
+//
 HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
 #endif
 
