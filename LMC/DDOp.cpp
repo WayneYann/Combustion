@@ -53,9 +53,10 @@ DDOp::DDOp (const BoxArray&   grids,
 
 DDOp::~DDOp ()
 {
-    delete Tbd;
-    delete Ybd;
     if (mg_parent==this) {
+        BL_ASSERT(mg_level==0);
+        delete Tbd;
+        delete Ybd;
         for (int i=1; i<mgLevels; ++i)
             delete ddOps.remove(i);
     }
