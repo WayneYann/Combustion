@@ -28,8 +28,78 @@ associated with multicomponent diffusion.
 \newcommand{\nua}{{\nu_1}}
 \newcommand{\nub}{{\nu_2}}
 
+\section{Model}
+In the zero Mach number limit with constant ambient pressure,
+the equations describing momentum transport
+and conservation of species and enthalpy are given by
+\begin{equation}
+\frac{\partial (\rho U)}{\partial t} + \nabla \cdot \rho UU \nabla \cdot \tau = -\nabla \pi 
+- \rho g \enskip , \label{eq:mom}
+\end{equation}
+\begin{equation}
+\frac{\partial (\rho Y_m)}{\partial t} + \nabla \cdot \rho U Y_m + \nabla \cdot {\cal F}_m
+= \rho \dot{\omega}_m \enskip , \label{eq:species}
+\end{equation}
+\begin{equation}
+\frac{ \partial (\rho h)}{ \partial t} + \nabla \cdot \rho U h + \nabla \cdot {\cal Q} = 0 \enskip ,
+\label{eq:enthalpy}
+\end{equation}
+where $\rho$ is the density, $U$ is the velocity, $\vec{g}$ is the
+gravitational acceleration vector, $Y_m$ is the mass fraction of
+species $m$, $h$ is the enthalpy of the fluid, $\tau$ is the stress
+tensor, and ${\cal {F}}_m,$ $\dot{\omega}_m$ represent the diffusion
+flux and mass production rate and species $m$ respectively, and $Q$ is
+heat flux.  Neither species diffusion nor reactions redistribute total
+mass, i.e.\ $\sum {\cal F}_{m} = \sum {\dot \omega}_{m} = 0$, and since
+$\sum_{m} Y_m = 1$, continuity is implied as the sum of equation
+(\ref{eq:species}):
+\begin{equation}
+\frac{\partial \rho}{\partial t} + \nabla \cdot  (\rho U) = 0 \enskip .
+\label{eq:cont}
+\end{equation}
+The production rates, $\rho \dot{\omega}_m$, due to chemical reactions
+are specified via a collection of fundamental reactions in a
+CHEMKIN-III compatible database.%\cite{KeeRupley1996}
 
-\section{Algorithm}
+The molecular transport fluxes in equations (\ref{eq:species}) and
+(\ref{eq:enthalpy}) are given by kinetic theory in terms of
+macroscopic variable gradients and transport coefficients:
+\begin{eqnarray}
+{\cal F}_{m} &=& \sum \rho Y_{m} {\cal D}_{mn} {\bf {\it d}}_{n} - \rho Y_{m}\theta_{m} \nabla \log T, \nonumber \\
+{\cal Q} &=& \sum h_{m} {\cal F} - \lambda \nabla T - p \sum \theta_{m} {\bf {\it d}}_{m}
+\label{eq:gensd}
+\end{eqnarray}
+Here ${\cal D}_{mn}$ are the binary mass diffusion coefficients and
+$\theta_{m}$ are the thermal diffusion coefficients for species $m$.
+In this model, ${\bf {\it d}}_{m}$ are the species diffusion driving
+forces, including mole fraction gradients, pressure gradients and
+differences between species-specific ``body'' forces (such as electric
+fields or inertial frame effects).  In the absence of these latter
+effects and in the zero Mach number limit, ${\bf {\it d}}_{m} = \nabla
+X_{m}$.  The second term in the expression for ${\cal F}_{m}$ is the
+Soret effect, and represents species transport due to temperature
+gradients.  The last term in the definition of $\cal Q$ is the Dufour
+effect, which represents heat diffusion due to concentration
+gradients.% See, for example \cite {Ern1994,Ern1996}.
+
+For many practical combustion systems, the Dufour and Soret
+contributions are negligible and nitrogen typically dominates the gas
+mixtures.  In such cases, the multicomponent transport can be
+well-approximated by a simpler ``mixture-averaged'' Fickian model.
+However, when the combustion fuel contains significant amounts of
+$H_2$, Soret effects can be significant
+%(see, e.g.\ \cite{Grcar2009,Grcar2009a}),
+and the general model described by
+equation (\ref{eq:gensd}) is more appropriate.  We describe a
+semi-implicit discretization of the full multicomponent diffusion
+system based on the full approximation scheme (FAS) 
+%\cite{Brandt1977}.
+FAS requires a ``relaxation''
+procedure to iteratively smooth the solution at the various multigrid
+levels.  We discuss a relatively simple, but effective smoother
+for the full transport model based on the diagonal mixture model.
+
+\section{FAS multigrid}
 The (nonlinear) equation
 \begin{equation}
    {\cal D}^{\ell} = {\cal R}^{\ell} - {\cal L}({\phi}^{\ell}) = 0 
