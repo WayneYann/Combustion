@@ -1,6 +1,4 @@
 
-# $Id: GNUmakefile,v 1.19 2010-12-15 00:21:45 marc Exp $
-#
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
 PMFdir        = ../PMFfiles
@@ -9,12 +7,13 @@ PMFdir        = ../PMFfiles
 #
 PRECISION         = DOUBLE
 DEBUG	          = FALSE
+DEBUG	          = TRUE
 PROFILE           = TRUE
 PROFILE           = FALSE
-DIM    	          = 2
 DIM    	          = 3
-FCOMP             = Intel
-COMP              = Intel
+DIM    	          = 2
+FCOMP             = gfortran
+COMP              = g++
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
 HGDEBUG           = TRUE
@@ -23,7 +22,8 @@ USE_FLCTS         = FALSE
 USE_VELOCITY      = FALSE
 USE_MPI           = TRUE
 USE_MPI           = FALSE
-
+USE_PARTICLES     = FALSE
+USE_PARTICLES     = TRUE
 
 # This allows GetForce to call a Fortran routine
 #DEFINES += -DGENGETFORCE
@@ -37,16 +37,11 @@ USE_MPI           = FALSE
 #
 #USE_NEWMECH = TRUE
 #
-# Turn this on to get the ability to set the velocities in initData() from a plotfile.
-#
-
-#
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
 #DEFINES += -DBL_RHORT_IN_TRACER
 
 DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
-
 #
 # Choose your reaction mechanism & thermal properties.
 #
@@ -56,17 +51,15 @@ DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
 #REACTION_MECHANISM=GRI30
 #REACTION_MECHANISM=CH4-2STEP
 #REACTION_MECHANISM=GRI30HNO
-#REACTION_MECHANISM=DRM19
 #REACTION_MECHANISM=GLARBORG
 #REACTION_MECHANISM=LIDRYERFN2
-REACTION_MECHANISM=GRIMECH30-NON
-#
-# Packages below are of the form dir/lib.  dir=location of the lib sources,
-# lib=library root name.  This info is separated into to corresponding lists.  
-#
-ProjPackage = $(TOP)/hgproj/proj
+#REACTION_MECHANISM=GRIMECH30-NON
+REACTION_MECHANISM=DRM19
+
+ProjPackage = $(TOP)/hgproj
+
 ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-  ProjPackage = $(TOP)/hgproj-serial/proj
+  ProjPackage = $(TOP)/hgproj-serial
   INCLUDE_LOCATIONS += $(dir $(ProjPackage))include/$(DIM)d.$(PRVERSION)
 endif
 
@@ -80,14 +73,19 @@ ifeq ($(USE_NEWMECH), TRUE)
   INCLUDE_LOCATIONS += $(TOP)/pAmrvis
 endif
 
-Packages := $(TOP)/LMC/ht \
-	    $(TOP)/iamrlib/iamr \
-	    $(TOP)/tensorMG/mcmg \
+Packages := $(TOP)/LMC \
+	    $(TOP)/iamrlib \
+	    $(TOP)/tensorMG \
 	    $(ProjPackage) \
-	    $(TOP)/mglib/mg \
-	    $(TOP)/amrlib/amr \
-	    $(TOP)/bndrylib/bndry \
-	    $(TOP)/BoxLib/box
+	    $(TOP)/mglib \
+	    $(TOP)/amrlib \
+	    $(TOP)/bndrylib \
+	    $(TOP)/BoxLib
+
+ifeq ($(USE_PARTICLES), TRUE)
+  DEFINES += -DPARTICLES
+  Packages += $(TOP)/particles
+endif
 #
 # Set standard definitions.
 #
@@ -107,22 +105,11 @@ endif
 #
 # Setup build locations/libraries.
 #
-MyLibRoots := $(notdir $(Packages))
-MyPackageDirs := $(dir $(Packages))
 MySrcDirs = .
 INCLUDE_LOCATIONS += ..
-ifeq ($(BUILD_IN_PLACE),TRUE)
-  MySrcDirs += $(MyPackageDirs)
-  INCLUDE_LOCATIONS += $(MySrcDirs)
-else
-  LIBRARIES += $(addsuffix $(DIM)d, $(addprefix -l, $(MyLibRoots)))
-  INCLUDE_LOCATIONS += $(TOP)/include
-  ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-    LIBRARY_LOCATIONS += $(dir $(ProjPackage))lib/$(machineSuffix)
-    LIBRARIES := $(patsubst -lproj$(DIM)d, -lproj$(DIM)d.$(PRVERSION), $(LIBRARIES))
-  endif
-  LIBRARY_LOCATIONS += $(TOP)/lib/$(machineSuffix)
-endif
+MySrcDirs += $(Packages)
+INCLUDE_LOCATIONS += $(MySrcDirs)
+
 include $(addsuffix /Make.package, $(MySrcDirs))
 
 ifeq ($(HGDEBUG),TRUE)
@@ -140,8 +127,6 @@ else
   MySrcDirs += $(TOP)/pAmrvis
 endif
 
-#CPPFLAGS += -DMPICH_SKIP_MPICXX
-
 vpath %.cpp $(MySrcDirs) ${PMFdir}
 vpath %.F   $(MySrcDirs) ${PMFdir}
 vpath %.f90 $(MySrcDirs) ${PMFdir}
@@ -151,15 +136,5 @@ vpath %.f   $(MySrcDirs) ${PMFdir}
 vpath %.a   $(LIBRARY_LOCATIONS)
 
 all: $(executable)
-
-o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.PROF.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.PROF.MPI.EXE/amr_real3d.2.o
-
-o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.MPI.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.MPI.EXE/amr_real3d.2.o
-
-o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o:
-	ifort -module o/3d.Linux.Intel.Intel.EXE -O3 -hlo0 -ip -c ../../hgproj/amr_real3d.2.f -o o/3d.Linux.Intel.Intel.EXE/amr_real3d.2.o
-
 
 include $(TOP)/mk/Make.rules

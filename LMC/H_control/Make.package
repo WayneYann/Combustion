@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.9 2010-09-16 17:25:37 jbb Exp $
+# $Id: Make.package,v 1.10 2011-02-03 22:12:31 lijewski Exp $
 #
 CEXE_sources += HT_setup.cpp 
 
@@ -30,9 +30,9 @@ endif
 #fEXE_sources += drm19Soln_seed_0.00.f
 #fEXE_sources += drm19Soln_seed_0.125.f
 #fEXE_sources += drm19Soln_seed_0.25.f
-#fEXE_sources += drm19Soln_seed_0.50.f
+fEXE_sources += drm19Soln_seed_0.50.f
 #fEXE_sources += drm19Soln_seed_0.75.f
 #fEXE_sources += drm19Soln_seed_1.00.f
 #fEXE_sources += pmf_LiDryer_060_01ATM.f
 #fEXE_sources +=  LiDryer-100-1.0atm.f
-fEXE_sources +=  pmf_grimech30-noN_070.f
+#fEXE_sources +=  pmf_grimech30-noN_070.f
