@@ -202,6 +202,11 @@ public:
     //
     virtual void post_timestep (int iteration);
 
+    //
+    // Contains operations to be done only after a full coarse timestep.
+    //
+    virtual void postCoarseTimeStep (Real cumtime);
+
     virtual void post_init_press (Real&        dt_init,
                                   Array<int>&  nc_save,
                                   Array<Real>& dt_save);

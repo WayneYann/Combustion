@@ -1307,7 +1307,6 @@ HeatTransfer::initData ()
             {
                 BoxLib::Abort("HT::initData(): do_initrandom_iseed must be > 0");
             }
-
             if (verbose && ParallelDescriptor::IOProcessor())
             {
                 std::cout << "\nInitializing HT with cloud of "
@@ -1315,7 +1314,6 @@ HeatTransfer::initData ()
                           << " random particles with initial seed: "
                           << do_initrandom_iseed << "\n\n";
             }
-
             HTPC->InitRandom(do_initrandom_count, do_initrandom_iseed, 0, do_initrandom_serialize);
         }
     }
@@ -1729,6 +1727,37 @@ HeatTransfer::post_restart ()
         HTPC->Verbose(1);
 
         HTPC->Restart(parent->theRestartFile(), the_ht_particle_file_name);
+    }
+#endif
+}
+
+void
+HeatTransfer::postCoarseTimeStep (Real cumtime)
+{
+    //
+    // postCoarseTimeStep() is only called by level 0.
+    //
+#ifdef PARTICLES
+    //
+    // This is mostly here for debugging ...
+    //
+    ParmParse pp("particles");
+
+    bool do_moverandom = false;
+
+    pp.query("do_moverandom", do_moverandom);
+
+    if (do_moverandom)
+    {
+        BL_ASSERT(level == 0);
+
+        if (HTPC != 0)
+        {
+            //
+            // This moves the particles a random amount & then redistributes'm.
+            //
+            HTPC->MoveRandom();
+        }
     }
 #endif
 }
