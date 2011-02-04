@@ -1282,6 +1282,42 @@ HeatTransfer::initData ()
         // 2 gives more stuff than 1.
         //
         HTPC->Verbose(1);
+        //
+        // This is mostly here for debugging ...
+        //
+        ParmParse pp("particles");
+
+        bool do_initrandom           = false;
+        bool do_initrandom_serialize = false;
+        int  do_initrandom_count     = 10000;
+        int  do_initrandom_iseed     = 987654321;
+
+        pp.query("do_initrandom",           do_initrandom);
+        pp.query("do_initrandom_serialize", do_initrandom_serialize);
+        pp.query("do_initrandom_count",     do_initrandom_count);
+        pp.query("do_initrandom_iseed",     do_initrandom_iseed);
+
+        if (do_initrandom)
+        {
+            if (do_initrandom_count <= 0)
+            {
+                BoxLib::Abort("HT::initData(): do_initrandom_count must be > 0");
+            }
+            if (do_initrandom_iseed <= 0)
+            {
+                BoxLib::Abort("HT::initData(): do_initrandom_iseed must be > 0");
+            }
+
+            if (verbose && ParallelDescriptor::IOProcessor())
+            {
+                std::cout << "\nInitializing HT with cloud of "
+                          << do_initrandom_count
+                          << " random particles with initial seed: "
+                          << do_initrandom_iseed << "\n\n";
+            }
+
+            HTPC->InitRandom(do_initrandom_count, do_initrandom_iseed, 0, do_initrandom_serialize);
+        }
     }
 #endif
 }
