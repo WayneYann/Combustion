@@ -1292,10 +1292,18 @@ HeatTransfer::initData ()
         int  do_initrandom_count     = 10000;
         int  do_initrandom_iseed     = 987654321;
 
+        std::string particle_file;
+
         pp.query("do_initrandom",           do_initrandom);
         pp.query("do_initrandom_serialize", do_initrandom_serialize);
         pp.query("do_initrandom_count",     do_initrandom_count);
         pp.query("do_initrandom_iseed",     do_initrandom_iseed);
+        pp.query("particle_file",           particle_file);
+
+        if (!particle_file.empty() && do_initrandom)
+        {
+            BoxLib::Abort("HT::initData(): particle_file and do_initrandom cannot both be specified");
+        }
 
         if (do_initrandom)
         {
@@ -1315,6 +1323,10 @@ HeatTransfer::initData ()
                           << do_initrandom_iseed << "\n\n";
             }
             HTPC->InitRandom(do_initrandom_count, do_initrandom_iseed, 0, do_initrandom_serialize);
+        }
+        else if (!particle_file.empty())
+        {
+            HTPC->Init(particle_file);
         }
     }
 #endif
@@ -1727,6 +1739,19 @@ HeatTransfer::post_restart ()
         HTPC->Verbose(1);
 
         HTPC->Restart(parent->theRestartFile(), the_ht_particle_file_name);
+        //
+        // We also want to be able to add new particles on a restart.
+        //
+        ParmParse pp("particles");
+
+        std::string particle_file;
+
+        pp.query("particle_file", particle_file);
+
+        if (!particle_file.empty())
+        {
+            HTPC->Init(particle_file);
+        }
     }
 #endif
 }
