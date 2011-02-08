@@ -1768,9 +1768,33 @@ HeatTransfer::postCoarseTimeStep (Real cumtime)
     //
     ParmParse pp("particles");
 
-    bool do_moverandom = false;
+    bool                     do_moverandom  = false;
+    std::string              timestamp_file = "TimeStamp";
+    std::vector<int>         timestamp_indices;
+    std::vector<std::string> timestamp_names;
 
     pp.query("do_moverandom", do_moverandom);
+
+    pp.query("timestamp_file", timestamp_file);
+
+    if (int nc = pp.countval("timestamp_indices"))
+    {
+        timestamp_indices.resize(nc);
+
+        pp.getarr("timestamp_indices", timestamp_indices, 0, nc);
+    }
+
+    if (int nc = pp.countval("timestamp_names"))
+    {
+        timestamp_names.resize(nc);
+
+        pp.getarr("timestamp_names", timestamp_names, 0, nc);
+    }
+
+    if (!timestamp_indices.empty() || !timestamp_names.empty())
+    {
+        BL_ASSERT(timestamp_indices.size() == timestamp_names.size());
+    }
 
     if (do_moverandom)
     {
@@ -1782,6 +1806,18 @@ HeatTransfer::postCoarseTimeStep (Real cumtime)
             // This moves the particles a random amount & then redistributes'm.
             //
             HTPC->MoveRandom();
+
+            if (!timestamp_indices.empty())
+            {
+                for (int lev = 0; lev <= parent->finestLevel(); lev++)
+                {
+                    HTPC->Timestamp(timestamp_file,
+                                    lev,
+                                    state[State_Type].curTime(),
+                                    timestamp_indices,
+                                    timestamp_names);
+                }
+            }
         }
     }
 #endif
