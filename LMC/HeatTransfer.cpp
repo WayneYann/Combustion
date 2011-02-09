@@ -1796,27 +1796,26 @@ HeatTransfer::postCoarseTimeStep (Real cumtime)
         BL_ASSERT(timestamp_indices.size() == timestamp_names.size());
     }
 
-    if (do_moverandom)
-    {
-        BL_ASSERT(level == 0);
 
-        if (HTPC != 0)
-        {
+    BL_ASSERT(level == 0);
+
+    if (HTPC != 0)
+    {
+        if (do_moverandom)
             //
             // This moves the particles a random amount & then redistributes'm.
             //
             HTPC->MoveRandom();
 
-            if (!timestamp_indices.empty())
+        if (!timestamp_indices.empty())
+        {
+            for (int lev = 0; lev <= parent->finestLevel(); lev++)
             {
-                for (int lev = 0; lev <= parent->finestLevel(); lev++)
-                {
-                    HTPC->Timestamp(timestamp_file,
-                                    lev,
-                                    state[State_Type].curTime(),
-                                    timestamp_indices,
-                                    timestamp_names);
-                }
+                HTPC->Timestamp(timestamp_file,
+                                lev,
+                                state[State_Type].curTime(),
+                                timestamp_indices,
+                                timestamp_names);
             }
         }
     }
@@ -5216,6 +5215,18 @@ HeatTransfer::advance (Real time,
     //
     Real dt_test = 0.0, dummy = 0.0;    
     dt_test = predict_velocity(dt,dummy);
+
+#ifdef PARTICLES
+    if (HTPC != 0)
+    {
+        //
+        // Currently this only works for single-level problems.
+        //
+        BL_ASSERT(level == 0);
+
+        HTPC->AdvectWithUmac(u_mac, level, dt);
+    }
+#endif
     
     showMF(u_mac[0],"adv_umac0",level);
     showMF(u_mac[1],"adv_umac1",level);
