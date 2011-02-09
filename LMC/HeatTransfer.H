@@ -9,7 +9,7 @@
 
 #ifdef PARTICLES
 #include "Particles.H"
-typedef ParticleContainer<0> HTParticleContainer;
+typedef ParticleContainer<BL_SPACEDIM> HTParticleContainer;
 #endif
 
 #include <list>
