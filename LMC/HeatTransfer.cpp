@@ -5216,17 +5216,7 @@ HeatTransfer::advance (Real time,
     Real dt_test = 0.0, dummy = 0.0;    
     dt_test = predict_velocity(dt,dummy);
 
-#ifdef PARTICLES
-    if (HTPC != 0)
-    {
-        //
-        // Currently this only works for single-level problems.
-        //
-        BL_ASSERT(level == 0);
 
-        HTPC->AdvectWithUmac(u_mac, level, dt);
-    }
-#endif
     
     showMF(u_mac[0],"adv_umac0",level);
     showMF(u_mac[1],"adv_umac1",level);
@@ -5253,6 +5243,18 @@ HeatTransfer::advance (Real time,
         showMF(*mac_rhs,"mac_rhs",level);
         mac_project(time,dt,S_old,mac_rhs,havedivu);
         delete mac_rhs;
+
+#ifdef PARTICLES
+        if (HTPC != 0)
+        {
+            //
+            // Currently this only works for single-level problems.
+            //
+            BL_ASSERT(level == 0);
+
+            HTPC->AdvectWithUmac(u_mac, level, dt);
+        }
+#endif
     }
 
     if (do_mom_diff == 0)
