@@ -1740,17 +1740,26 @@ HeatTransfer::post_restart ()
 
         HTPC->Restart(parent->theRestartFile(), the_ht_particle_file_name);
         //
-        // We also want to be able to add new particles on a restart.
+        // We want to be able to add new particles on a restart.
+        // As well as the ability to write the particles out to an ascii file.
         //
         ParmParse pp("particles");
 
-        std::string particle_file;
+        std::string particle_input_file;
+        std::string particle_output_file;
 
-        pp.query("particle_file", particle_file);
+        pp.query("particle_input_file", particle_input_file);
 
-        if (!particle_file.empty())
+        pp.query("particle_output_file", particle_output_file);
+
+        if (!particle_input_file.empty())
         {
-            HTPC->Init(particle_file);
+            HTPC->Init(particle_input_file);
+        }
+
+        if (!particle_output_file.empty())
+        {
+            HTPC->WriteAsciiFile(particle_output_file);
         }
     }
 #endif
