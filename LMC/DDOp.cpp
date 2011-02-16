@@ -320,6 +320,8 @@ DDOp::setGrowCells(MultiFab& YT,
             FArrayBox& Tstfab = Tst[mfi];
             const FArrayBox& Tb = Tfs[mfi];
 
+//            std::cout << "Tfab.box: " << Tfab.box() << ' ' << "Tb.box: " << Tb.box() << '\n';
+
             const Mask& Tm  = Tbndry.bndryMasks(face,mg_level)[idx];
             const Real Tbcl = Tloc[idx];
             const int Tbct  = Tbc[idx][comp];
@@ -350,6 +352,10 @@ DDOp::setGrowCells(MultiFab& YT,
         }
     }
 
+//    std::cout << "setGrowCells: geom: " << geom;
+//    for (int i = 0; i < BL_SPACEDIM; i++)
+//        std::cout << (geom.isPeriodic(i) ? " T " : " F ");
+//    std::cout << '\n';
 
     YT.FillBoundary(compT,1);
     geom.FillPeriodicBoundary(YT,compT,1,true);
@@ -434,9 +440,9 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
 
             for (IntVect p = bx.smallEnd(); p <= bx.bigEnd(); bx.next(p))
             {
-                if (isnan(fab(p)))
+                if (isnan(fab(p,sCompT)))
                 {
-                    std::cout << "Got a nan at " << p << '\n';
+                    std::cout << "Got a nan in Temp at " << p << '\n';
                 }
             }
         }
