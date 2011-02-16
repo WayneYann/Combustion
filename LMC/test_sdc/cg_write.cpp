@@ -1,6 +1,6 @@
 #include <Array.H>
 #include <FArrayBox.H>
-#include <fstream.h>
+#include <fstream>
 
 #include "cg_write.H"
 #include "cg_write_F.H"
