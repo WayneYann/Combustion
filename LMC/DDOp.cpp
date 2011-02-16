@@ -286,11 +286,6 @@ DDOp::setGrowCells(MultiFab& YT,
 
     BL_ASSERT(YT.boxArray() == grids);
 
-    YT.FillBoundary(compT,1);
-    geom.FillPeriodicBoundary(YT,compT,1);
-    YT.FillBoundary(compY,Nspec);
-    geom.FillPeriodicBoundary(YT,compY,Nspec);
-
     const int flagbc  = 1;
     const int flagden = 1;
 
@@ -354,6 +349,12 @@ DDOp::setGrowCells(MultiFab& YT,
                          vbox.loVect(),vbox.hiVect(), &Ync, dx.dataPtr());
         }
     }
+
+
+    YT.FillBoundary(compT,1);
+    geom.FillPeriodicBoundary(YT,compT,1,true);
+    YT.FillBoundary(compY,Nspec);
+    geom.FillPeriodicBoundary(YT,compY,Nspec,true);
 }
 
 void
@@ -423,6 +424,23 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
     int sCompT = Nspec;
 
     setGrowCells(const_cast<MultiFab&>(inYT),sCompT,sCompY);
+
+    if (true)
+    {
+        for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
+        {
+            const FArrayBox& fab = inYT[mfi];
+            Box              bx  = BoxLib::grow(mfi.validbox(),1);
+
+            for (IntVect p = bx.smallEnd(); p <= bx.bigEnd(); bx.next(p))
+            {
+                if (isnan(fab(p)))
+                {
+                    std::cout << "Got a nan at " << p << '\n';
+                }
+            }
+        }
+    }
 
     // Initialize output
     outYH.setVal(0,0,nc);
