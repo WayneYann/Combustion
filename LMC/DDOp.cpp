@@ -292,8 +292,21 @@ DDOp::setGrowCells(MultiFab& YT,
     DDBndry& Tbndry = (*mg_parent->Tbd);
     DDBndry& Ybndry = (*mg_parent->Ybd);
 
+    YT.FillBoundary(compT,1);
+    geom.FillPeriodicBoundary(YT,compT,1);
+    YT.FillBoundary(compY,Nspec);
+    geom.FillPeriodicBoundary(YT,compY,Nspec);
+
+    for (MFIter mfi(YT); mfi.isValid(); ++mfi)
+    {
+        BL_ASSERT(!YT[mfi].contains_nan(mfi.validbox(),compT,1));
+        BL_ASSERT(!YT[mfi].contains_nan(mfi.validbox(),compY,Nspec));
+    }
+
     for (OrientationIter oitr; oitr; ++oitr)
     {
+        if (geom.isPeriodic(oitr().coordDir())) continue;
+
         const Orientation&      face = oitr();
         const int              iFace = (int)face;
 
@@ -310,6 +323,7 @@ DDOp::setGrowCells(MultiFab& YT,
         const int                Ync = Nspec;
 
         const int comp = 0;
+
         for (MFIter mfi(YT); mfi.isValid(); ++mfi)
         {
             const int   idx = mfi.index();
@@ -320,7 +334,7 @@ DDOp::setGrowCells(MultiFab& YT,
             FArrayBox& Tstfab = Tst[mfi];
             const FArrayBox& Tb = Tfs[mfi];
 
-//            std::cout << "Tfab.box: " << Tfab.box() << ' ' << "Tb.box: " << Tb.box() << '\n';
+            BL_ASSERT(!Tb.contains_nan());
 
             const Mask& Tm  = Tbndry.bndryMasks(face,mg_level)[idx];
             const Real Tbcl = Tloc[idx];
@@ -334,9 +348,26 @@ DDOp::setGrowCells(MultiFab& YT,
                          Tstfab.dataPtr(1), ARLIM(Tstfab.loVect()), ARLIM(Tstfab.hiVect()),
                          vbox.loVect(),vbox.hiVect(), &Tnc, dx.dataPtr());
 
+            if (Tfab.contains_nan(Tb.box(),compT,1))
+            {
+                std::cout << "Tfab contains NaNs: " << Tfab.box() << ' ' << Tb.box() << '\n';
+
+                std::cout << "Tbcl: " << Tbcl << ", Tbct: " << Tbct << '\n';
+
+                for (IntVect p = Tb.box().smallEnd(); p <= Tb.box().bigEnd(); Tb.box().next(p))
+                {
+                    if (isnan(Tfab(p,compT)))
+                        std::cout << "T isnan @ p = " << p << '\n';
+                }
+            }
+
+            BL_ASSERT(!Tfab.contains_nan(Tb.box(),compT,1));
+
             FArrayBox& Yfab = YT[mfi];
             FArrayBox& Ystfab = Yst[mfi];
             const FArrayBox& Yb = Yfs[mfi];
+
+            BL_ASSERT(!Yb.contains_nan());
 
             const Mask& Ym  = Ybndry.bndryMasks(face,mg_level)[idx];
             const Real Ybcl = Yloc[idx];
@@ -349,18 +380,10 @@ DDOp::setGrowCells(MultiFab& YT,
                          Ym.dataPtr(), ARLIM(Ym.loVect()), ARLIM(Ym.hiVect()),
                          Ystfab.dataPtr(0), ARLIM(Ystfab.loVect()), ARLIM(Ystfab.hiVect()),
                          vbox.loVect(),vbox.hiVect(), &Ync, dx.dataPtr());
+
+            BL_ASSERT(!Yfab.contains_nan(Yb.box(),compY,Ync));
         }
     }
-
-//    std::cout << "setGrowCells: geom: " << geom;
-//    for (int i = 0; i < BL_SPACEDIM; i++)
-//        std::cout << (geom.isPeriodic(i) ? " T " : " F ");
-//    std::cout << '\n';
-
-    YT.FillBoundary(compT,1);
-    geom.FillPeriodicBoundary(YT,compT,1,true);
-    YT.FillBoundary(compY,Nspec);
-    geom.FillPeriodicBoundary(YT,compY,Nspec,true);
 }
 
 void
@@ -430,23 +453,6 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
     int sCompT = Nspec;
 
     setGrowCells(const_cast<MultiFab&>(inYT),sCompT,sCompY);
-
-    if (true)
-    {
-        for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
-        {
-            const FArrayBox& fab = inYT[mfi];
-            Box              bx  = BoxLib::grow(mfi.validbox(),1);
-
-            for (IntVect p = bx.smallEnd(); p <= bx.bigEnd(); bx.next(p))
-            {
-                if (isnan(fab(p,sCompT)))
-                {
-                    std::cout << "Got a nan in Temp at " << p << '\n';
-                }
-            }
-        }
-    }
 
     // Initialize output
     outYH.setVal(0,0,nc);
