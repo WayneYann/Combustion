@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.33 2011-02-02 21:31:32 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.34 2011-02-17 21:04:26 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -98,7 +98,7 @@ c
       integer DIMDEC(mu)
       REAL_T  mu(DIMV(mu))
       
-      integer i, j, k, n
+      integer i, j, k
 
       if (.not.use_constant_mu) then
          if (.not. LeEQ1) then
@@ -145,7 +145,7 @@ c
       REAL_T  rhoD(DIMV(rhoD),ncompd)
  
       integer i, j, k, n, nspecies
-      REAL_T P1ATM_MKS, Ptmp, val, Patm
+      REAL_T P1ATM_MKS, Patm
       REAL_T Yt(maxspec)
       REAL_T cpmix, Tfac, Yfac
       integer lo_chem(SDIM),hi_chem(SDIM)
@@ -1491,7 +1491,7 @@ c     Returns the number of fine cells fixed up
       end
 
       subroutine FORT_HTDDRELAX(lo, hi, S, DIMS(S), yc, Tc, hc, rc,
-     &     L, DIMS(L), a, DIMS(a), R, DIMS(R), dt, fac, maxRes, maxCor,
+     &     L, DIMS(L), a, DIMS(a), R, DIMS(R), thetaDt, fac, maxRes, maxCor,
      &     for_T0_H1, res_only, mult)
       implicit none
 #include "cdwrk.H"      
@@ -1504,49 +1504,51 @@ c     Returns the number of fine cells fixed up
       REAL_T L(DIMV(L),0:*)
       REAL_T a(DIMV(a),0:*)
       REAL_T R(DIMV(R),0:*)
-      REAL_T dt, fac(0:*), maxRes(0:*), maxCor(0:*)
+      REAL_T thetaDt, fac(0:*), maxRes(0:*), maxCor(0:*)
       integer for_T0_H1, res_only
       REAL_T mult, cor
-      integer i, j, k, n
+      integer i, j, k, n, ec
 
 #ifdef HT_SKIP_NITROGEN
       REAL_T, allocatable :: tfab(:,:,:)
 #endif
 
+c
 c     Helper function to compute:
-c     (a) dR = Rhs + (rho.phi - dt.Lphi)
-c     (b) Res = Rhs - A(S) = Rhs - (rho.phi - dt.Lphi)
+c     (a) dR = Rhs + (rho.phi - theta.dt.Lphi)
+c     (b) Res = Rhs - A(S) = Rhs - (rho.phi - theta.dt.Lphi) for RhoH
+c         or  Res = Rhs - (phi - theta.dt.Lphi) for Temp
 c               and then relax: phi = phi + Res/alpha
-      do n=0,Nspec
-         maxRes(n)  = 0.d0
-         maxCor(n) = 0.d0
-      enddo
-
+c     -- note that if for Temp both Lphi and alpha have been scaled by (1/rho.Cp)^nph
+c     
+c     NOTE: Assumes maxRes and maxCor have been initialized properly
+c
+      if (for_T0_H1.eq.0) then
+         ec = Tc
+      else
+         ec = hc
+      endif
+      
       do n=0,Nspec-1
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
-                  L(i,j,k,n) = R(i,j,k,n) + mult*(S(i,j,k,rc)*S(i,j,k,yc+n) - dt*L(i,j,k,n))
+                  L(i,j,k,n) = R(i,j,k,n) + mult*(S(i,j,k,rc)*S(i,j,k,yc+n) - thetaDt*L(i,j,k,n))
                   maxRes(n) = MAX(maxRes(n),ABS(L(i,j,k,n)))
                enddo
             enddo
          enddo
       enddo
 #ifdef HT_SKIP_NITROGEN
-      do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               L(i,j,k,Nspec-1) = 0.d0
-            enddo
-         enddo
-      enddo
+      L(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),Nspec-1) = 0.d0
       maxRes(Nspec-1) = 0.d0
 #endif
+
       if (for_T0_H1.eq.0) then
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
-                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,Tc) - dt*L(i,j,k,Nspec)/S(i,j,k,rc))
+                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,ec) - thetaDt*L(i,j,k,Nspec))
                   maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,k,Nspec)))
                enddo
             enddo
@@ -1555,7 +1557,7 @@ c               and then relax: phi = phi + Res/alpha
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
-                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,rc)*S(i,j,k,hc) - dt*L(i,j,k,Nspec))
+                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,rc)*S(i,j,k,ec) - thetaDt*L(i,j,k,Nspec))
                   maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,k,Nspec)))
                enddo
             enddo
@@ -1567,7 +1569,7 @@ c               and then relax: phi = phi + Res/alpha
             do k=lo(3),hi(3)
                do j=lo(2),hi(2)
                   do i=lo(1),hi(1)
-                     cor = fac(n) * L(i,j,k,n) / (1.d0 + dt*a(i,j,k,n))
+                     cor = fac(n) * L(i,j,k,n) / (1.d0 - thetaDt*a(i,j,k,n))
                      maxCor(n) = MAX(maxCor(n),ABS(cor))
                      S(i,j,k,yc+n) = S(i,j,k,yc+n)  +  cor
                   enddo
@@ -1596,26 +1598,14 @@ c               and then relax: phi = phi + Res/alpha
          maxCor(Nspec-1) = 0.d0
          deallocate(tfab)
 #endif
-         if (for_T0_H1.eq.0) then
-            do k=lo(3),hi(3)
-               do j=lo(2),hi(2)
-                  do i=lo(1),hi(1)
-                     cor = fac(Nspec) * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec)/S(i,j,k,rc))
-                     maxCor(Nspec) = MAX(maxCor(n),ABS(cor))
-                     S(i,j,k,Tc) = S(i,j,k,Tc)  +  cor
-                  enddo
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  cor = fac(Nspec) * L(i,j,k,Nspec) / (1.d0 - thetaDt*a(i,j,k,Nspec))
+                  maxCor(Nspec) = MAX(maxCor(n),ABS(cor))
+                  S(i,j,k,Tc) = S(i,j,k,Tc)  +  cor
                enddo
             enddo
-         else
-            do k=lo(3),hi(3)
-               do j=lo(2),hi(2)
-                  do i=lo(1),hi(1)
-                     cor = fac(Nspec) * L(i,j,k,Nspec) / (1.d0 + dt*a(i,j,k,Nspec))
-                     maxCor(Nspec) = MAX(maxCor(Nspec),ABS(cor))
-                     S(i,j,k,hc) = S(i,j,k,hc)  +  cor
-                  enddo
-               enddo
-            enddo
-         endif
+         enddo
       endif
       end

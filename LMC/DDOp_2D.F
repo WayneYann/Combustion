@@ -74,7 +74,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       integer for_T0_H1, fillAlpha
       integer DIMDEC(alphaYH)
       integer Full0_Mix1
-      REAL_T  delta
+      REAL_T  delta(0:SDIM-1)
       REAL_T  fluxYH(DIMV(fluxYH),*)
       REAL_T  FcpDTe(DIMV(FcpDTe))
       REAL_T     YTc(DIMV(YTc),*)
@@ -99,7 +99,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
          mwtInv(n) = 1.d0 / mwtInv(n)
       enddo
 
-      dxInv = 1.d0/delta
+      dxInv = 1.d0/delta(dir)
 
       fluxYH(:,:,Nspec+1) = 0.0d0
 

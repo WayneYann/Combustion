@@ -63,8 +63,8 @@ amr.n_cell    = 128 128
 amr.n_cell    = 64 64
 
 amr.v=1
-amr.max_level =  1            # maximum level number allowed
-#amr.max_level =  0            # maximum level number allowed
+amr.max_level =  2            # maximum level number allowed
+amr.max_level =  0            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 2 2 1 2 # number of buffer cells in error est
@@ -185,14 +185,14 @@ fab.format = NATIVE
 ns.do_mcdd=1
 ns.do_active_control=1
 
-ns.mcdd_relaxFactor_T = 0.75
-ns.mcdd_relaxFactor_Y = 1.0
+ns.mcdd_relax_factor_T = 0.75
+ns.mcdd_relax_factor_Y = 1.0
 ns.mcdd_transport_model=full
 #ns.mcdd_transport_model=mix
 ns.mcdd_mgLevelsMAX = -1
-ns.mcdd_nu1 = 3 10
-ns.mcdd_nu2 = 3 10
-ns.mcdd_numcycles = 10
+ns.mcdd_nu1 = 5 10
+ns.mcdd_nu2 = 5 10
+ns.mcdd_numcycles = 1
 ns.mcdd_stalled_tol = 1.e-8
 ns.mcdd_res_redux_tol =  1.e-8
 ns.mcdd_abs_tol =  1.e-8
@@ -203,17 +203,19 @@ ns.mcdd_nub = 50
 
 #amr.restart=chk00000
 max_step=5
-ns.mcdd_verbose = 1
+ns.mcdd_verbose = 3
 ns.hack_nomcddsync = 1
-#ns.SUPERVERBOSE=DD_DEBUG_2D
+ns.SUPERVERBOSE=DD_DEBUG_2D
 
+#ns.fixed_dt = 0.0001
+#ns.fixed_dt = 0.000001
+ns.init_shrink = 0.1
+
+amr.derive_plot_vars=rhoRT mag_vort rhominsumrhoY
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0
-#ns.num_divu_iters=1
+#ns.num_divu_iters=0
+max_step=1
 
-ns.fixed_dt = 0.00023
-ns.init_shrink = 1.0
-
-#amr.derive_plot_vars=rhoRT mag_vort rhominsumrhoY

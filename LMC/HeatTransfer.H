@@ -526,6 +526,7 @@ protected:
     void mcdd_fas_cycle(MCDD_MGParams&      status,
                         MultiFab&           S,
                         const MultiFab&     Rhs,
+                        const MultiFab&     rhoCpInv,
                         PArray<MultiFab>&   flux,
                         Real                time,
                         Real                dt,

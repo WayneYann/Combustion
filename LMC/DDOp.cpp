@@ -437,6 +437,10 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
                    bool              getAlpha,
                    MultiFab*         alpha)
 {
+    //
+    //  Compute - (1/V)Div(A.Fi) for Y components and -(1/V)Div(A.Q) for H
+    //   (if whichApp==Temp, compute -(1/V)Div(Q-Fi.hi) - Fi.cpi.Grad(T) )
+    //  And return diagnonal coefficient of the discrete operator.
     const int Nspec = chem->numSpecies();
     const int nGrow = 1;
 
@@ -478,14 +482,6 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
         std::cout << "DDOp::apply: Setting coefficients " << std::endl;
     }
 
-    // HACK
-    bool do_abort = false;
-    if (0 && mg_level==3)
-    {
-        std::string str = "DDOpMARC";
-        cout << "writing DDOp special" << endl;
-        (*mg_parent).Write(str);
-    }
     for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
     {
         FArrayBox& outYHc = outYH[mfi];
@@ -515,42 +511,6 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
         int fillAlpha = getAlpha;
         FArrayBox& alfc = (fillAlpha ? (*alpha)[mfi] : dum);
 
-        IntVect pp(D_DECL(8,0,8));
-        if (0 && box.contains(pp))
-        {
-            IntVect ivs(D_DECL(6,0,8));
-            IntVect ive(D_DECL(9,1,9));
-
-            if (box==Box(ivs,ive))
-            {
-                std::ofstream osf;
-                osf.open("junk");
-                YTc.writeOn(osf);
-                osf.close();
-
-                cout << "************************************************found it" << endl;
-                cout << "************************************************level: " << mg_level << endl;
-
-                int model_DD0_MA1 = (transport_model==DD_Model_Full ? 0 : 1);
-                int nCoef = FORT_DDNCOEFS(model_DD0_MA1);
-                int nState = Nspec+1;
-                IntVect iv(D_DECL(8,0,8));
-                Box ibox(IntVect(D_DECL(-1,-1,-1)),IntVect(D_DECL(+1,+1,+1)));
-                for (IntVect idx=ibox.smallEnd(); idx<=ibox.bigEnd(); ibox.next(idx))
-                {
-                    IntVect ivp=iv+idx;
-                    cout << "pt: " << ivp << endl;
-                    cout << "YT: ";
-                    for (int n=0; n<nState; ++n) cout << YTc(ivp,n) << " (" << n << ") ";
-                    cout << endl;
-                    cout << "coef: ";
-                    for (int n=0; n<nCoef; ++n) cout << c(ivp,n) << " (" << n << ") ";
-                    cout << endl;
-                }
-                do_abort = true;
-            }
-        }
-        
         for (int dir=0; dir<BL_SPACEDIM; ++dir) {
 
             const Box ebox = BoxLib::surroundingNodes(box,dir);
@@ -562,6 +522,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
             FArrayBox& fe = fluxYH[dir][mfi];
             const FArrayBox& ae = area[dir][mfi];
 
+            // Compute Fi.Area, and Q.Area for RhoH,  or (Q-Fi.hi).Area and Fi.cp.Grad(T) for Temp
             FORT_DDFLUX(box.loVect(), box.hiVect(), dx.dataPtr(), &dir,
                         fe.dataPtr(), ARLIM(fe.loVect()), ARLIM(fe.hiVect()),
                         FcpDTe.dataPtr(), ARLIM(FcpDTe.loVect()),  ARLIM(FcpDTe.hiVect()),
@@ -575,7 +536,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
                         Full0_Mix1);
 
             // If for T, increment running sum on cell centers with -avg(F.cp.gT) across faces (in FcpDTe).
-            // If for H, q was incremented with +He.Fe inside DDFLUX, nothing more to do
+            // If for H, Q.Area was incremented with sum(Fi.hi).Area inside DDFLUX, nothing more to do
             if (for_T0_H1 == 0) {                
                 const int diff0_avg1 = 1;
                 const Real a = -1;
@@ -586,7 +547,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
                            &a, &dir, &oc, &diff0_avg1);
             }
             
-            // Now form -Div(F.Area) add to running total
+            // Now form -Div(F.Area), add to running total
             const int diff0_avg1 = 0;
             const Real a = -1.;
             FORT_DDETC(box.loVect(),box.hiVect(),
@@ -603,23 +564,13 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
             outYHc.plus(FcpDTc,0,Nspec,1);
         }
 
-        // Build 1/cpb (CPic <- CPic.Y, CPic_0=sum(CPic_n)
-        CPic.mult(YTc,0,0,Nspec);
-        for (int n=1; n<Nspec; ++n) {
-            CPic.plus(CPic,n,0,1);
-        }
-        CPic.invert(1,0,1);
-        
-        // For rho.DT/Dt, form (1/Cp) [ -(1/Vol) Div(F.Area) - avg(F.cp.DT) ]
-        if (for_T0_H1 == 0) {
-            outYHc.mult(CPic,0,Nspec,1);
-        }
-
         if (getAlpha) {
+
+            // Scale alpha by -(1/Vol) to be consistent with construction above 
+            alfc.mult(-1,0,nc);
             for (int n=0; n<nc; ++n) {
                 alfc.mult(volInv[mfi],0,n,1);
             }
-            alfc.mult(CPic,0,Nspec,1);
 
             // Modify coefficient based on what was needed to fill adjacent grow cells
             for (OrientationIter oitr; oitr; ++oitr) {
@@ -651,10 +602,6 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
             }
         }
     }
-    ParallelDescriptor::Barrier();
-    if (do_abort)
-        BoxLib::Abort();
-    ParallelDescriptor::Barrier();
 }
 
 void
