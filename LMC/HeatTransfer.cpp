@@ -67,7 +67,9 @@ const Real* fabdat = (fab).dataPtr(comp);
 #define YDOT_GROW   1
 const int LinOp_grow = 1;
 
-static std::string SUPERVERBOSE = "";
+static std::set<std::string> VerboseSets;
+static std::string VerboseDir;
+static bool VerboseVerbose = true;
 
 //
 // Initialization of static members.
@@ -196,7 +198,8 @@ levWrite(std::ostream& os, int level, std::string& message)
     if (ParallelDescriptor::IOProcessor())
     {
         for (int lev=0; lev<=level; ++lev) {
-            os << '\t';
+            //os << '\t';
+            os << "  ";
         }
         os << message;
     }
@@ -204,14 +207,15 @@ levWrite(std::ostream& os, int level, std::string& message)
 }
 
 void
-showMF(const MultiFab& mf,
-        const std::string&   name,
-        int             lev = -1,
-        int             iter = -1) // Default value = no append 2nd integer
+showMF(const std::string&   mySet,
+       const MultiFab&      mf,
+       const std::string&   name,
+       int                  lev = -1,
+       int                  iter = -1) // Default value = no append 2nd integer
 {
-    if (SUPERVERBOSE!="") 
+    if (VerboseSets.count(mySet)>0)
     {
-        std::string DebugDir(SUPERVERBOSE);
+        std::string DebugDir(VerboseDir);
         if (ParallelDescriptor::IOProcessor())
             if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
                 BoxLib::CreateDirectoryFailed(DebugDir);
@@ -226,21 +230,32 @@ showMF(const MultiFab& mf,
         }
         junkname = DebugDir + "/" + junkname;
 
-        if (ParallelDescriptor::IOProcessor()) {
+        if (VerboseVerbose>0 && ParallelDescriptor::IOProcessor()) {
             cout << "   ******************************  Debug: writing " << junkname << endl;
         }
-
-#if 0        
-        const Box& box = mf.boxArray()[0];
-        FArrayBox fab(box,mf.nComp());
-        std::ofstream osf(junkname.c_str());
-        fab.copy(mf[0]);
-        cout << "   ******************************  Debug: writing " << junkname << endl;
-        fab.writeOn(osf);
-        osf.close();
-#else
         VisMF::Write(mf,junkname);
-#endif
+    }
+}
+
+void
+showMCDD(const std::string&   mySet,
+         const DDOp&          mcddop,
+         const std::string&   name)
+{
+    if (VerboseSets.count(mySet)>0)
+    {
+        std::string DebugDir(VerboseDir);
+        if (ParallelDescriptor::IOProcessor())
+            if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
+                BoxLib::CreateDirectoryFailed(DebugDir);
+        ParallelDescriptor::Barrier();
+
+        std::string junkname = DebugDir + "/" + name;
+
+        if (VerboseVerbose>0 && ParallelDescriptor::IOProcessor()) {
+            cout << "   ******************************  Debug: writing " << junkname << endl;
+        }
+        mcddop.Write(junkname);
     }
 }
 
@@ -480,7 +495,16 @@ HeatTransfer::read_params ()
         visc_coef[i] = bogus_value;
 
     // Useful for debugging
-    pp.query("SUPERVERBOSE",SUPERVERBOSE);
+    if (int nsv=pp.countval("VerboseSets"))
+    {
+        Array<std::string> VerboseSetNames(nsv);
+        pp.getarr("VerboseSets",VerboseSetNames);
+        for (int i=0; i<nsv; ++i) {
+            VerboseSets.insert(VerboseSetNames[i]);
+        }
+        VerboseDir="."; pp.query("VerboseDir",VerboseDir);
+        pp.query("VerboseVerbose",VerboseVerbose);
+    }
 
     pp.query("do_mcdd",do_mcdd);
     if (do_mcdd) {
@@ -3313,7 +3337,15 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 
         diffusion->allocFluxBoxesLevel(vel_visc);
         getViscosity(vel_visc, time);
+
+        showMF("velVT",*viscn_cc,"velVT_viscn_cc",level);
+        for (int dir=0; dir<BL_SPACEDIM; ++dir) {
+            showMF("velVT",*(vel_visc[dir]),BoxLib::Concatenate("velVT_viscn_",dir,1),level);
+        }
+
         diffusion->getTensorViscTerms(visc_terms,time,0,vel_visc);
+        showMF("velVT",visc_terms,"velVT_visc_terms_1",level);
+
         icomp = load_comp = BL_SPACEDIM;
     }
     //
@@ -3403,12 +3435,18 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
             BoxLib::Error("getViscTerms() need all v-components at once");
     
         MultiFab divmusi(grids,BL_SPACEDIM,1);
+#ifndef NDEBUG
+        calc_divu(time,-1,get_old_data(Divu_Type));
+        showMF("velVT",get_old_data(Divu_Type),"velVT_divu",level);
+#endif
         //
 	// Assume always using variable viscosity.
         //
 	diffusion->compute_divmusi(time,vel_visc,divmusi); // pre-computed visc above
 	divmusi.mult((-2./3.),0,BL_SPACEDIM,0);
+        showMF("velVT",divmusi,"velVT_divmusi",level);
         visc_terms.plus(divmusi,Xvel,BL_SPACEDIM,0);
+        showMF("velVT",visc_terms,"velVT_visc_terms_2",level);
     }
     //
     // Clean up your mess ...
@@ -3603,8 +3641,9 @@ HeatTransfer::compute_mcdd_visc_terms(MultiFab&           vtermsYH,
         }
     }
 
+    MCDDOp.setCoefficients(S,sCompT,S,sCompY);    
+    showMCDD("mcddOpVT",MCDDOp,"VT_DDOp");
     MCDDOp.applyOp(vtermsYH,S,*tFlux,whichApp);
-
     //
     // Add heat source terms to RhoH/T component
     //
@@ -3695,13 +3734,17 @@ sync_H_T(MultiFab&                  S,
             std::string msg = "RhoH_to_Temp: error in H->T"+id;
             BoxLib::Error(msg.c_str());
         }
-        if (verbose>3 && ParallelDescriptor::IOProcessor()) {
+        if (verbose>2 && ParallelDescriptor::IOProcessor()) {
             std::string str = "\tmcdd_V::RhoH->T "+id+": max iters = ";
             levWrite(std::cout,level,str) << max_iters_taken << '\n';
         }
     }
     else
     {
+        if (verbose>2 && ParallelDescriptor::IOProcessor()) {
+            std::string str = "\tmcdd_V:: recomputing RhoH from T "+id;
+            levWrite(std::cout,level,str) << '\n';
+        }
         for (MFIter mfi(S); mfi.isValid(); ++mfi) {
             cd.getHmixGivenTY(S[mfi],S[mfi],S[mfi],
                               mfi.validbox(),compT,compY,compH);
@@ -3759,29 +3802,26 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
     bool is_relaxed_nu1 = false;
     int mg_level = p.mg_level;
 
-    showMF(S,"S_init",mg_level);
-    showMF(Rhs,"Rhs",mg_level);
-    showMF(rhoCpInv,"rhoCpInv",mg_level);
+    std::string vgrp("mcdd");
+    showMF(vgrp,S,"S_init",mg_level);
+    showMF(vgrp,Rhs,"Rhs",mg_level);
+    showMF(vgrp,rhoCpInv,"rhoCpInv",mg_level);
 
     for (int iter=0; (iter<=p.nu1) && (p.status==HT_InProgress) && !is_relaxed_nu1; ++iter)
     {
         // Make T consistent with Y,H  FIXME: Seems to make sense only at level=0
-        if (mg_level==0 && p.iter==0) {
+        if (0 && mg_level==0 && p.iter==0 && iter==0) {
             sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (pre) ");
         }
 
-        bool updateCoefs = (mg_level==0 && p.iter==0 && iter==0); // FIXME: Currently first order!
         bool getAlpha = true;
-        MCDDOp.applyOp(T1,S,flux,whichApp,updateCoefs,mg_level,getAlpha,&alpha);
+        MCDDOp.applyOp(T1,S,flux,whichApp,mg_level,getAlpha,&alpha);
         if (whichApp==DDOp::DD_Temp) {
             MultiFab::Multiply(T1,rhoCpInv,0,dCompH,1,0);
             MultiFab::Multiply(alpha,rhoCpInv,0,dCompH,1,0);
         }
-        showMF(T1,"L_of_S",mg_level,iter);
-        showMF(alpha,"alpha",mg_level,iter);
-
-        showMF(S,"L_of_S",mg_level,iter);
-        showMF(alpha,"alpha",mg_level,iter);
+        showMF(vgrp,T1,"L_of_S",mg_level,iter);
+        showMF(vgrp,alpha,"alpha",mg_level,iter);
 
         int res_only = (iter==mcdd_nu1[mg_level] ? 1 : 0);
         for (int i=0; i<nComp; ++i) {
@@ -3815,6 +3855,9 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         }
         ParallelDescriptor::ReduceRealMax(p.maxRes.dataPtr(),p.maxRes.size());
         ParallelDescriptor::ReduceRealMax(p.maxCor.dataPtr(),p.maxCor.size());
+        showMF(vgrp,T1,"R_nu1",mg_level,iter);
+        showMF(vgrp,S,"S_nu1",mg_level,iter);
+
         // Set (unscaled) initial residual
         if (p.iter==0 && iter==0) {
             for (int i=0; i<nComp; ++i) {
@@ -3825,84 +3868,99 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 #endif
         }
 
-        showMF(T1,"R_nu1",mg_level,iter);
-        showMF(S,"S_nu1",mg_level,iter);
-
         // Test if converged or stalled
 
         // Reduction of peak residual norm over all calls at this level
-        if (p.res_redux_tol > 0)
+        int maxRes_redux_idx = 0;
+        p.maxRes_norm = -1;
+        Real peak_abs_res = -1.;
+        int peak_abs_res_idx = 0;
+        for (int i=0; i<nComp; ++i)
         {
-            p.maxRes_norm = 0;
-            for (int i=0; i<nComp; ++i) {
-                Real norm_res_i = std::abs(p.maxRes[i]/p.maxRes_initial[i]);
-                p.maxRes_norm = std::max(norm_res_i, p.maxRes_norm);
-            }
-            if (p.maxRes_norm<p.res_redux_tol) {
-                p.status = HT_Solved;
-
-                if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
-                    std::string str("mcdd - nu1: SOLVED - maxRes_norm(R1) < p.res_redux_tol (R2)  R1,R2:");
-                    levWrite(std::cout,mg_level,str)
-                        << p.maxRes_norm << ", "
-                        << p.res_redux_tol << std::endl;
-                }
+            int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
+            Real thisRes = p.maxRes[i]/typical_values[tc];
+            if (thisRes>peak_abs_res) {
+                peak_abs_res = thisRes;
+                peak_abs_res_idx = i;
             }
         }
-
-        // Absolute value peak residual norm
-        if (p.res_abs_tol > 0)
+        
+        if (peak_abs_res<p.res_abs_tol)
         {
-            Real peak_abs_res = 0.;
-            int peak_abs_res_idx = 0;
-            for (int i=1; i<nComp; ++i) {
-                Real thisRes = std::abs(p.maxRes[i]);
-                if (thisRes>peak_abs_res) {
-                    peak_abs_res = thisRes;
-                    peak_abs_res_idx = i;
+            p.status = HT_Solved;
+            if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
+                std::string str("mcdd - nu1: SOLVED - peak_abs_res (R1) < p.res_abs_tol (R2), I1 largest  R1,R2,I1:");
+                levWrite(std::cout,mg_level,str)
+                    << peak_abs_res << ", "
+                    << p.res_abs_tol << ", "
+                    << peak_abs_res_idx << std::endl;
+            }
+        }
+        else
+        {
+            // Check residual reduction, but only for components with scaled mag of residual larger than abs tol
+            for (int i=0; i<nComp; ++i)
+            {
+                int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
+                Real thisRes = p.maxRes[i]/typical_values[tc];
+                if ( (thisRes>p.res_abs_tol)  && (p.maxRes_initial[i]/typical_values[tc]>p.res_abs_tol)) {
+                    Real norm_res_i = std::abs(p.maxRes[i]/p.maxRes_initial[i]);
+                    if (norm_res_i > p.maxRes_norm) {
+                        p.maxRes_norm = norm_res_i;
+                        maxRes_redux_idx = i;
+                    }
                 }
             }
-            bool small_abs_res = (peak_abs_res < p.res_abs_tol);
 
-            if (small_abs_res) {
+            if (p.maxRes_norm<p.res_redux_tol) // Then all residuals bigger than abs_tol have been reduced by at least factor res_redux_tol
+            {
                 p.status = HT_Solved;
-
                 if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
-                    std::string str("mcdd - nu1: SOLVED - peak_abs_res (R1) < p.res_abs_tol (R2)  R1,R2:");
+                    std::string str("mcdd - nu1: SOLVED - maxRes_norm(R1) < p.res_redux_tol (R2), I1 largest  R1,R2,I1:");
                     levWrite(std::cout,mg_level,str)
-                        << peak_abs_res << ", "
-                        << p.res_abs_tol << std::endl;
+                        << p.maxRes_norm << ", "
+                        << p.res_redux_tol << ", "
+                        << maxRes_redux_idx << std::endl;
                 }
             }
         }
         
+#if 0   // NOT IMPLEMENTED SENSIBLY YET!!!
 
         // Reduction of peak residual norm over nu1 iterations
-        if (p.res_nu1_rtol>0) {
+        if (p.status != HT_Solved)
+        {
             if (iter==0) {
                 iterRes_init = p.maxRes_norm;
             }
-            else {
+            else
+            {
                 if (p.maxRes_norm/iterRes_init < p.res_nu1_rtol) {
                     is_relaxed_nu1 = true;
-
+                    
                     if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
-                        std::string str("mcdd - nu1: SOLVED - p.maxRes_norm/iterRes_init (R1) < p.res_nu1_rtol (R2)  R1,R2:");
+                        std::string str("mcdd - nu1: SOLVED - p.maxRes_norm/iterRes_init (R1) < p.res_nu1_rtol (R2), I1 largest  R1,R2,I1:");
                         levWrite(std::cout,mg_level,str)
                             << p.maxRes_norm/iterRes_init << ", "
-                            << p.res_nu1_rtol << std::endl;
+                            << p.res_nu1_rtol << ", "
+                            << maxRes_redux_idx << std::endl;
                     }
                 }
             }
         }
-
+#endif
+        
         // Magnitude of (scaled) correction during this relaxation sweep
+        int max_cor_norm_idx = -1;
         p.maxCor_norm = 0;
         if (!res_only)
         {
             for (int i=0; i<nComp; ++i) {
                 int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
-                p.maxCor_norm = std::max(p.maxCor_norm,p.maxCor[i]/typical_values[tc]);
+                if (p.maxCor[i]/typical_values[tc] > p.maxCor_norm) {
+                    p.maxCor_norm = p.maxCor[i]/typical_values[tc];
+                    max_cor_norm_idx = i;
+                }
             }
             
             if (p.stalled_tol>0  && p.maxCor_norm<p.stalled_tol && p.status!=HT_Solved) {
@@ -3914,14 +3972,69 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                         << p.stalled_tol << std::endl;
                 }
             }
+        }
 
-            if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
-                std::string str("mcdd - nu1: (lev,iter,res,cor): (");
+        if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2) {
+            if (mcdd_verbose < 6) 
+            {
+                std::string str("mcdd - nu1 (lev,iter,res,cor): (");
                 levWrite(std::cout,mg_level,str)
-                    << mg_level << ", "
-                    << iter << ", "
-                    << p.maxRes_norm << ", "
-                    << p.maxCor_norm << ") " << std::endl;
+                    << mg_level
+                    << ", " << iter
+                    << ", " << p.maxRes_norm;
+                if (mcdd_verbose>3) {
+                    std::cout << " [comp=" << maxRes_redux_idx;
+                    if (mcdd_verbose>4) {
+                        int tc = (peak_abs_res_idx<nspecies ? first_spec+peak_abs_res_idx : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
+                        std::cout << ", Redux(R=" << p.maxRes[maxRes_redux_idx]
+                                  << ", Rinit=" << p.maxRes_initial[maxRes_redux_idx]
+                                  << ") Abs(comp=" << peak_abs_res_idx
+                                  <<", R=" << p.maxRes[peak_abs_res_idx]/typical_values[tc]
+                                  << ")";
+                    }
+                    std::cout << "]";
+                }
+                std::cout << ", " << p.maxCor_norm;
+                if (mcdd_verbose>3) {
+                    std::cout << " [comp=" << max_cor_norm_idx << "]";
+                }
+                std::cout << ")\n";
+            }
+            else
+            {
+                std::string str("mcdd - nu1 (lev,iter): (");
+                levWrite(std::cout,mg_level,str)
+                    << mg_level
+                    << ", " << iter << ")" << endl;
+                str = "                         ";
+                levWrite(std::cout,mg_level,str)
+                    << '\t' << "Residual   " 
+                    << '\t' << "Res/typ    " 
+                    << '\t' << "Res init   " 
+                    << '\t' << "R_init/typ " 
+                    << '\t' << "Correction "
+                    << '\t' << "Corr/typ   "
+                    << '\t' << "TypicalVal "
+                    << endl; 
+                for (int i=0; i<nComp; ++i) 
+                {
+                    int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
+                    levWrite(std::cout,mg_level,str) << i
+                                                     << '\t' << p.maxRes[i]
+                                                     << '\t' <<  p.maxRes[i]/typical_values[tc]
+                                                     << '\t' <<  p.maxRes_initial[i]
+                                                     << '\t' <<  p.maxRes_initial[i]/typical_values[tc]
+                                                     << '\t' <<  p.maxCor[i]
+                                                     << '\t' <<  p.maxCor[i]/typical_values[tc]
+                                                     << '\t' <<  typical_values[tc]
+                                                     << endl;
+                }
+                levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized residual: " << peak_abs_res_idx << endl; 
+                levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum residual reduction: " << maxRes_redux_idx << endl; 
+                if (max_cor_norm_idx>=0)
+                    levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized correction: " << max_cor_norm_idx << endl << endl; 
+                else
+                    levWrite(std::cout,mg_level,str) << '\t' << "residual eval only - no correction" << endl<< endl; 
             }
         }
     }  // nu1 iters
@@ -3944,16 +4057,19 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         // Build Rhs for the coarse problem = Avg(Res) + Op(Avg(S))
         //  (here, construct Avg(Res), then use HTDDRELAX to do Op and add)
         //
-        const_cast<MultiFab&>(rhoCpInv).invert(1.,0,1,0); // Will un-invert just below...not really changing it...much
-        DDOp::average(rhoCpInvC,0,rhoCpInv,0,1);  // Avg(rho.cp)
-        const_cast<MultiFab&>(rhoCpInv).invert(1.,0,1,0);
-        rhoCpInvC.invert(1.,0,1,0);
-        showMF(rhoCpInvC,"Avg_RhoCpInvC",mg_level);
+        if (whichApp==DDOp::DD_Temp)
+        {
+            const_cast<MultiFab&>(rhoCpInv).invert(1.,0,1,0); // Will un-invert just below...not really changing it...much
+            DDOp::average(rhoCpInvC,0,rhoCpInv,0,1);  // Avg(rho.cp)
+            const_cast<MultiFab&>(rhoCpInv).invert(1.,0,1,0);
+            rhoCpInvC.invert(1.,0,1,0);
+            showMF(vgrp,rhoCpInvC,"Avg_RhoCpInvC",mg_level);
+        }
 
         // HACK
-        T2C.setVal(0);
+        T2C.setVal(0,nspecies+1,2); // top two components arent used, but the NaNs irritate amrvis
         DDOp::average(T2C,0,T1,0,nspecies+1);  // Avg(Res)=Avg(T1)=T2C
-        showMF(T2C,"Avg_Res",mg_level);
+        showMF(vgrp,T2C,"Avg_Res",mg_level);
 
         // Rho-weight the state, then average (leave fine data rho-weighted for now...)
         for (MFIter mfi(S); mfi.isValid(); ++mfi) {
@@ -3965,7 +4081,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         }
 
         DDOp::average(SC,0,S,0,nspecies+3); // Includes generation of rho, rhoh on coarse
-        showMF(SC,"Avg_Srho",mg_level);
+        showMF(vgrp,SC,"Avg_Srho",mg_level);
 
         // Unweight coarse state
         for (MFIter mfi(SC); mfi.isValid(); ++mfi) {
@@ -3977,9 +4093,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             SCfab.mult(SCfab,sCompR,sCompH,1);
             SCfab.invert(1.,sCompR,1);
         }
-        showMF(SC,"Avg_S",mg_level);
-
-        showMF(SC,"Avg_S",mg_level);
+        showMF(vgrp,SC,"Avg_S",mg_level);
 
         MCDD_MGParams pC(p);
         pC.mg_level++;
@@ -3994,19 +4108,15 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             pC.nu2 = mcdd_nu2[pC.mg_level];
         }
 
-        bool updateCoefsC = true; // Do once here, then never again in coarse relax
         bool getAlphaC = false;
         MultiFab* alphaC = 0;
-        MCDDOp.applyOp(T1C,SC,fluxC,whichApp,updateCoefsC,pC.mg_level,getAlphaC,alphaC);
+        MCDDOp.applyOp(T1C,SC,fluxC,whichApp,pC.mg_level,getAlphaC,alphaC);
         if (whichApp==DDOp::DD_Temp) {
             MultiFab::Multiply(T1,rhoCpInv,0,dCompH,1,0);
             MultiFab::Multiply(alpha,rhoCpInv,0,dCompH,1,0);
         }
-        showMF(T1C,"L_of_Avg_S",mg_level);
+        showMF(vgrp,T1C,"L_of_Avg_S",mg_level);
 
-        // HACK
-        T1C.mult(be_cn_theta*dt);
-        
         int res_only = 1; // here, using HTDDRELAX to build (RhsC + Op(SC)) only
         for (MFIter mfi(SC); mfi.isValid(); ++mfi)
         {
@@ -4032,22 +4142,21 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
         ParallelDescriptor::ReduceRealMax(pC.maxRes.dataPtr(),pC.maxRes.size());
         ParallelDescriptor::ReduceRealMax(pC.maxCor.dataPtr(),pC.maxCor.size());
 
-        showMF(T1C,"Res_of_Avg_S",mg_level);
+        showMF(vgrp,T1C,"Res_of_Avg_S",mg_level);
 
         // Save a copy of pre-relaxed coarse state, in T2C
         MultiFab::Copy(T2C,SC,0,0,nspecies+3,0);
 
         // Do coarser relax and ignore solver status
-        for (int j=0; j<p.gamma; ++j) {
+        for (pC.iter=0; pC.iter<p.gamma; ++pC.iter) {
             mcdd_fas_cycle(pC,SC,T1C,rhoCpInvC,fluxC,time,dt,whichApp);
         }
 
-        showMF(SC,"SC_postV",mg_level);
+        showMF(vgrp,SC,"SC_postV",mg_level);
 
         // Compute increment
         MultiFab::Subtract(SC,T2C,sCompY,sCompY,nspecies+2,nGrow);
-
-        showMF(SC,"eC",mg_level);
+        showMF(vgrp,SC,"eC",mg_level);
 
         // Rho-weight the increment to the state
         for (MFIter mfi(SC); mfi.isValid(); ++mfi) {
@@ -4058,13 +4167,13 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             SCfab.mult(SCfab,sCompR,sCompH,1);
         }
 
-        showMF(SC,"eCrho",mg_level);
+        showMF(vgrp,SC,"eCrho",mg_level);
 
         // Increment (already rho-weighted) fine solution with rho-weighted
         //   interpolated correction, then unweight
         DDOp::interpolate(S,0,SC,0,nspecies+2); // S += I(dSC)
 
-        showMF(S,"Srho_plus_inc",mg_level);
+        showMF(vgrp,S,"Srho_plus_inc",mg_level);
 
         // Unweight the fine state
         for (MFIter mfi(S); mfi.isValid(); ++mfi) {
@@ -4081,7 +4190,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             sync_H_T(S,cd,whichApp,sCompY,sCompT,sCompH,mcdd_verbose,mg_level," (post coarse) ");
         }
 
-        showMF(S,"S_pre_nu2",mg_level);
+        showMF(vgrp,S,"S_pre_nu2",mg_level);
 
         // Do post smooth (if not at the bottom)
         bool is_relaxed_nu2 = false;
@@ -4094,15 +4203,14 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             
             // Compute Res = Rhs - A(S) = Rhs - rho.phi + theta.dt.Lphi
             // and then relax: phi = phi + f.Res/alpha
-            bool updateCoefs = false;
             bool getAlpha = true;
-            MCDDOp.applyOp(T1,S,flux,whichApp,updateCoefs,mg_level,getAlpha,&alpha);
+            MCDDOp.applyOp(T1,S,flux,whichApp,mg_level,getAlpha,&alpha);
             if (whichApp==DDOp::DD_Temp) {
                 MultiFab::Multiply(T1,rhoCpInv,0,dCompH,1,0);
                 MultiFab::Multiply(alpha,rhoCpInv,0,dCompH,1,0);
             }
-            showMF(T1,"L_of_S2",mg_level,iter);
-            showMF(alpha,"alpha2",mg_level,iter);
+            showMF(vgrp,T1,"L_of_S2",mg_level,iter);
+            showMF(vgrp,alpha,"alpha2",mg_level,iter);
 
             for (int i=0; i<nComp; ++i) {
                 p.maxCor[i] = 0;
@@ -4136,105 +4244,119 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             ParallelDescriptor::ReduceRealMax(p.maxCor.dataPtr(),p.maxCor.size());
             ParallelDescriptor::ReduceRealMax(p.maxRes.dataPtr(),p.maxRes.size());
 
-            showMF(T1,"R_nu2",mg_level,iter);
-            showMF(S,"S_nu2",mg_level,iter);
+            showMF(vgrp,T1,"R_nu2",mg_level,iter);
+            showMF(vgrp,S,"S_nu2",mg_level,iter);
 
             // Test if converged or stalled
             
             // Reduction of peak residual norm over all calls at this level
-            if (p.res_redux_tol > 0)
+            int maxRes_redux_idx = 0;
+            p.maxRes_norm = -1;
+            Real peak_abs_res = -1.;
+            int peak_abs_res_idx = 0;
+            for (int i=0; i<nComp; ++i)
             {
-                p.maxRes_norm = 0;
-                for (int i=0; i<nComp; ++i) {
-                    Real norm_res_i = std::abs(p.maxRes[i]/p.maxRes_initial[i]);
-                    p.maxRes_norm = std::max(norm_res_i, p.maxRes_norm);
-                }
-                if (p.maxRes_norm<p.res_redux_tol) {
-                    p.status = HT_Solved;
-
-                    if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
-                        std::string str("mcdd - nu2: SOLVED - p.maxRes_norm (R1) < p.res_redux_tol (R2)  R1,R2:");
-                        levWrite(std::cout,mg_level,str)
-                            << p.maxRes_norm << ", "
-                            << p.res_redux_tol << std::endl;
-                    }
+                int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
+                Real thisRes = p.maxRes[i]/typical_values[tc];
+                if (thisRes>peak_abs_res) {
+                    peak_abs_res = thisRes;
+                    peak_abs_res_idx = i;
                 }
             }
             
-            // Absolute value peak residual norm
-            if (p.res_abs_tol > 0)
+            if (peak_abs_res<p.res_abs_tol)
             {
-                Real peak_abs_res = 0.;
-                int peak_abs_res_idx = 0;
-                for (int i=1; i<nComp; ++i) {
-                    Real thisRes = std::abs(p.maxRes[i]);
-                    if (thisRes>peak_abs_res) {
-                        peak_abs_res = thisRes;
-                        peak_abs_res_idx = i;
+                p.status = HT_Solved;
+                if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
+                    std::string str("mcdd - nu2: SOLVED - peak_abs_res (R1) < p.res_abs_tol (R2), I1 largest  R1,R2,I1:");
+                    levWrite(std::cout,mg_level,str)
+                        << peak_abs_res << ", "
+                        << p.res_abs_tol << ", "
+                        << peak_abs_res_idx << std::endl;
+                }
+            }
+            else
+            {
+                // Check residual reduction, but only for components with scaled mag of residual larger than abs tol
+                for (int i=0; i<nComp; ++i)
+                {
+                    int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
+                    Real thisRes = p.maxRes[i]/typical_values[tc];
+                    if ( (thisRes>p.res_abs_tol)  && (p.maxRes_initial[i]/typical_values[tc]>p.res_abs_tol)) {
+                        Real norm_res_i = std::abs(p.maxRes[i]/p.maxRes_initial[i]);
+                        if (norm_res_i > p.maxRes_norm) {
+                            p.maxRes_norm = norm_res_i;
+                            maxRes_redux_idx = i;
+                        }
                     }
                 }
-                bool small_abs_res = (peak_abs_res < p.res_abs_tol);
                 
-                if (small_abs_res) {
+                if (p.res_abs_tol>0  &&  (peak_abs_res<p.res_abs_tol)) 
+                {
                     p.status = HT_Solved;
-
                     if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
-                        std::string str("mcdd - nu2: SOLVED - peak_abs_res (R1) (comp=I1) < p.res_abs_tol (R2)  R1,R2,I1:");
+                        std::string str("mcdd - nu2: SOLVED - peak_abs_res (R1) < p.res_abs_tol (R2), I1 largest  R1,R2,I1:");
                         levWrite(std::cout,mg_level,str)
                             << peak_abs_res << ", "
                             << p.res_abs_tol << ", "
                             << peak_abs_res_idx << std::endl;
                     }
                 }
-            }
-
-            if (p.res_abs_tol > 0)
-            {
-                bool small_abs_res = true;
-                for (int i=0; i<nComp; ++i) {
-                    small_abs_res &= (p.maxRes[i] < p.res_abs_tol);
-                }
-                if (small_abs_res) {
-                    p.status = HT_Solved;
-
-                    if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
-                        std::string str("mcdd - nu2: SOLVED - maxRes < p.res_abs_tol (R1) for all comps R1:");
-                        levWrite(std::cout,mg_level,str)
-                            << p.res_abs_tol << std::endl;
+                else
+                {
+                    if (p.maxRes_norm<p.res_redux_tol) // Then have we reduced all by factor res_redux_tol
+                    {
+                        p.status = HT_Solved;
+                        if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
+                            std::string str("mcdd - nu2: SOLVED - maxRes_norm(R1) < p.res_redux_tol (R2), I1 largest  R1,R2,I1:");
+                            levWrite(std::cout,mg_level,str)
+                                << p.maxRes_norm << ", "
+                                << p.res_redux_tol << ", "
+                                << maxRes_redux_idx << std::endl;
+                        }
                     }
                 }
             }
-            
-            
+
+#if 0   // NOT IMPLEMENTED SENSIBLY YET!!!
+
             // Reduction of peak residual norm over nu2 iterations
-            if (p.res_nu2_rtol>0) {
+            if (p.status != HT_Solved)
+            {
                 if (iter==0) {
                     iterRes_init = p.maxRes_norm;
                 }
-                else {
+                else
+                {
                     if (p.maxRes_norm/iterRes_init < p.res_nu2_rtol) {
                         is_relaxed_nu2 = true;
-                        
-                        if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
-                            std::string str("mcdd - nu2: SOLVED - p.maxRes_norm/iterRes_init (R1) < p.res_nu2_rtol (R2)  R1,R2:");
-                        levWrite(std::cout,mg_level,str)
-                            << p.maxRes_norm/iterRes_init << ", "
-                            << p.res_nu2_rtol << std::endl;
-                    }
 
+                        if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
+                            std::string str("mcdd - nu2: SOLVED - p.maxRes_norm/iterRes_init (R1) < p.res_nu2_rtol (R2), I1 largest  R1,R2,I1:");
+                            levWrite(std::cout,mg_level,str)
+                                << p.maxRes_norm/iterRes_init << ", "
+                                << p.res_nu2_rtol << ", "
+                                << maxRes_redux_idx << std::endl;
+                        }
                     }
                 }
             }
+#endif
 
             // Magnitude of (scaled) correction during this relaxation sweep
-            if (!res_only) {
-                p.maxCor_norm = 0;
+            int max_cor_norm_idx = -1;
+            p.maxCor_norm = 0;
+            if (!res_only)
+            {
                 for (int i=0; i<nComp; ++i) {
                     int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
-                    p.maxCor_norm = std::max(p.maxCor_norm,p.maxCor[i]/typical_values[tc]);
+                    if (p.maxCor[i]/typical_values[tc] > p.maxCor_norm) {
+                        p.maxCor_norm = p.maxCor[i]/typical_values[tc];
+                        max_cor_norm_idx = i;
+                    }
                 }
-                
-                if (p.stalled_tol>0 && p.maxCor_norm<p.stalled_tol) {
+            
+                if (p.stalled_tol>0  && p.maxCor_norm<p.stalled_tol && p.status!=HT_Solved) {
                     p.status = HT_Stalled;
                     if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2)  {
                         std::string str("mcdd - nu2: STALLED - p.maxCor_norm (R1) < p.stalled_tol (R2)  R1,R2:");
@@ -4243,14 +4365,69 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                             << p.stalled_tol << std::endl;
                     }
                 }
-            
-                if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2) {
+            }
+                
+            if (ParallelDescriptor::IOProcessor() && mcdd_verbose>2) {
+                if (mcdd_verbose < 6) 
+                {
                     std::string str("mcdd - nu2: (lev,iter,res,cor): (");
                     levWrite(std::cout,mg_level,str)
-                        << mg_level << ", "
-                        << iter << ", "
-                        << p.maxRes_norm << ", "
-                        << p.maxCor_norm << ")\n";
+                        << mg_level
+                        << ", " << iter
+                        << ", " << p.maxRes_norm;
+                    if (mcdd_verbose>3) {
+                        std::cout << " [comp=" << maxRes_redux_idx;
+                        if (mcdd_verbose>4) {
+                            int tc = (peak_abs_res_idx<nspecies ? first_spec+peak_abs_res_idx : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
+                            std::cout << ", Redux(R=" << p.maxRes[maxRes_redux_idx]
+                                      << ", Rinit=" << p.maxRes_initial[maxRes_redux_idx]
+                                      << ") Abs(comp=" << peak_abs_res_idx
+                                      <<", R=" << p.maxRes[peak_abs_res_idx]/typical_values[tc]
+                                      << ")";
+                        }
+                        std::cout << "]";
+                    }
+                    std::cout << ", " << p.maxCor_norm;
+                    if (mcdd_verbose>3) {
+                        std::cout << " [comp=" << max_cor_norm_idx << "]";
+                    }
+                    std::cout << ")\n";
+                }
+                else
+                {
+                    std::string str("mcdd - nu1 (lev,iter): (");
+                    levWrite(std::cout,mg_level,str)
+                        << mg_level
+                        << ", " << iter << ")" << endl;
+                    str = "                         ";
+                    levWrite(std::cout,mg_level,str)
+                        << '\t' << "Residual   " 
+                        << '\t' << "Res/typ    " 
+                        << '\t' << "Res init   " 
+                        << '\t' << "R_init/typ " 
+                        << '\t' << "Correction "
+                        << '\t' << "Corr/typ   "
+                        << '\t' << "TypicalVal "
+                        << endl; 
+                    for (int i=0; i<nComp; ++i) 
+                    {
+                        int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
+                        levWrite(std::cout,mg_level,str) << i
+                                                         << '\t' << p.maxRes[i]
+                                                         << '\t' <<  p.maxRes[i]/typical_values[tc]
+                                                         << '\t' <<  p.maxRes_initial[i]
+                                                         << '\t' <<  p.maxRes_initial[i]/typical_values[tc]
+                                                         << '\t' <<  p.maxCor[i]
+                                                         << '\t' <<  p.maxCor[i]/typical_values[tc]
+                                                         << '\t' <<  typical_values[tc]
+                                                         << endl;
+                    }
+                    levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized residual: " << peak_abs_res_idx << endl; 
+                    levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum residual reduction: " << maxRes_redux_idx << endl; 
+                    if (max_cor_norm_idx>=0)
+                        levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized correction: " << max_cor_norm_idx << endl<< endl; 
+                    else
+                        levWrite(std::cout,mg_level,str) << '\t' << "residual eval only - no correction" << endl<< endl; 
                 }
             }
         } // nu2 iters
@@ -4264,11 +4441,14 @@ HeatTransfer::mcdd_update(Real time,
     BL_ASSERT(do_mcdd);
 
     DDOp::DD_ApForTorRH whichApp = (mcdd_advance_temp==1 ? DDOp::DD_Temp : DDOp::DD_RhoH);
+    std::string vgrp("mcdd"); // For verbose debugging info
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mcdd update for "
                   << (whichApp==DDOp::DD_Temp ? "Temp" : "RhoH") 
                   << " and RhoY" << '\n';
+
+    showMF(vgrp,*aofs,"aofs_mcdd_update");
 
     // Get advection updates into new-time state
     scalar_advection_update(dt, Density, Density);
@@ -4317,7 +4497,7 @@ HeatTransfer::mcdd_update(Real time,
 
     // Build (Y,T,H,rho) first with old data to evaluate Rhs
     MultiFab& S_old = get_old_data(State_Type);
-    showMF(S_old,"S_old_mcdd_update");
+    showMF(vgrp,S_old,"S_old_mcdd_update");
 
     const int nGrowOp = 1;
     MultiFab YTHR(grids,nspecies+3,nGrowOp);
@@ -4350,8 +4530,8 @@ HeatTransfer::mcdd_update(Real time,
             getChemSolve().getCpmixGivenTY(T1[mfi],ythr,ythr,box,dCompST,dCompSY,sCompCp);
         }
     }
-    showMF(YTHR,"YTHR_old_mcdd_update");
-    showMF(T1,"cp_old_mcdd_update");
+    showMF(vgrp,YTHR,"YTHR_old_mcdd_update");
+    showMF(vgrp,T1,"cp_old_mcdd_update");
 
     PArray<MultiFab> fluxn(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
@@ -4360,21 +4540,24 @@ HeatTransfer::mcdd_update(Real time,
 
     // Load boundary data in operator for old time, compute L(told)
     fill_mcdd_boundary_data(time);
-    bool updateCoefs = true;
+    MCDDOp.setCoefficients(YTHR,dCompST,YTHR,dCompSY);
+    showMCDD("mcddOp",MCDDOp,"MCDD_old");
     int level = 0;
     bool getAlpha = false;
     MultiFab* alpha = 0;
-    MCDDOp.applyOp(Rhs,YTHR,fluxn,whichApp,updateCoefs,level,getAlpha,alpha);
-    showMF(Rhs,"L_of_YTHR_old_mcdd_update");
+    MCDDOp.applyOp(Rhs,YTHR,fluxn,whichApp,level,getAlpha,alpha);
+    showMF(vgrp,Rhs,"L_of_YTHR_old_mcdd_update");
 
     add_heat_sources(Rhs,dCompH,time,0,1);
     Rhs.mult(1-be_cn_theta);
 
     add_heat_sources(Rhs,dCompH,time+dt,0,be_cn_theta); // Note: based on adv-predicted state
-    showMF(Rhs,"Rhs_old_stuff_mcdd_update");
+    showMF(vgrp,Rhs,"Rhs_old_stuff_mcdd_update");
 
     // Build YTHR_new, and complete the build of Rhs
     MultiFab& S_new = get_new_data(State_Type);
+    showMF(vgrp,S_new,"S_new_mcdd_update");
+
     FArrayBox cp_new, rho_half;
     for (MFIter mfi(YTHR); mfi.isValid(); ++mfi)
     {
@@ -4417,10 +4600,10 @@ HeatTransfer::mcdd_update(Real time,
             Rhs[mfi].plus(S_new[mfi],RhoH,dCompH,1);
         }
     }
-    showMF(S_new,"S_new_mcdd_update");
-    showMF(YTHR,"YTHR_new_mcdd_update");
-    showMF(Rhs,"Rhs_mcdd_update");
-    showMF(T1,"rhoCpInv_mcdd_update");
+
+    showMF(vgrp,YTHR,"YTHR_new_mcdd_update");
+    showMF(vgrp,Rhs,"Rhs_mcdd_update");
+    showMF(vgrp,T1,"rhoCpInv_mcdd_update");
 
     PArray<MultiFab> fluxnp1(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
@@ -4429,6 +4612,8 @@ HeatTransfer::mcdd_update(Real time,
 
     // Fill the boundary data for the solve (all the levels)
     fill_mcdd_boundary_data(time+dt);
+    MCDDOp.setCoefficients(YTHR,dCompST,YTHR,dCompSY);
+    showMCDD("mcddOp",MCDDOp,"MCDD_new");
 
     MCDD_MGParams p(nspecies+1);
     p.stalled_tol = mcdd_stalled_tol;
@@ -4447,6 +4632,8 @@ HeatTransfer::mcdd_update(Real time,
         p.nu2 = mcdd_nu2[p.mg_level];
     }
     p.status = HT_InProgress;
+
+    bool update_mcdd_coeffs = true;
     for (p.iter=0; (p.iter<mcdd_numcycles) && (p.status==HT_InProgress); ++p.iter)
     {
         mcdd_fas_cycle(p,YTHR,Rhs,T1,fluxnp1,time,dt,whichApp);
@@ -4457,6 +4644,19 @@ HeatTransfer::mcdd_update(Real time,
                 << p.iter << ", "
                 << p.maxRes_norm << ", "
                 << p.maxCor_norm << ") " << std::endl;
+        }
+
+        if (update_mcdd_coeffs && p.status==HT_InProgress)
+        {
+            sync_H_T(YTHR,getChemSolve(),whichApp,dCompSY,dCompST,dCompSH,mcdd_verbose,0," (outer loop) ");
+
+            if (ParallelDescriptor::IOProcessor()) {
+                std::string str("mcdd - updating transport coeffs ...");
+                levWrite(std::cout,-1,str) << endl;
+            }
+
+            MCDDOp.setCoefficients(YTHR,dCompST,YTHR,dCompSY);
+            //showMCDD("mcddOp",MCDDOp,"MCDD_new");
         }
     }
 
@@ -4536,21 +4736,6 @@ HeatTransfer::mcdd_update(Real time,
         if (level < parent->finestLevel())
             getLevel(level+1).getViscFluxReg().CrseInitFinish();
     }
-}
-
-void
-HeatTransfer::mcdd_apply(MultiFab&         outYH,
-                         const MultiFab&   inYT,
-                         PArray<MultiFab>& fluxYH,
-                         Real              time,
-                         DDOp::DD_ApForTorRH whichApp,
-                         bool              updateCoefs,
-                         int               level,
-                         bool              getAlpha,
-                         MultiFab*         alpha)
-{
-    MCDDOp.applyOp(outYH,inYT,fluxYH,whichApp,updateCoefs,level,getAlpha,alpha);
-    add_heat_sources(outYH,nspecies,time,0,1);
 }
 
 void
@@ -5313,7 +5498,18 @@ HeatTransfer::predict_velocity (Real  dt,
     
     FArrayBox* null_fab = 0;
 
-    showMF(Gp,"pv_Gp",level);
+    showMF("mac",Gp,"pv_Gp",level);
+    showMF("mac",get_old_data(State_Type),"pv_S_old",level);
+    showMF("mac",*rho_ptime,"pv_rho_old",level);
+    showMF("mac",visc_terms,"pv_visc_terms",level);
+
+#ifndef NDEBUG
+    for (int dir=0; dir<BL_SPACEDIM; ++dir) {
+        u_mac[dir].setVal(0.);
+    }
+    MultiFab Force(grids,BL_SPACEDIM,hyp_grow);
+    Force.setVal(0);
+#endif
 
     for (FillPatchIterator U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel,BL_SPACEDIM)
 #ifdef MOREGENGETFORCE
@@ -5337,6 +5533,7 @@ HeatTransfer::predict_velocity (Real  dt,
 #else
 	getForce(tforces,i,1,Xvel,BL_SPACEDIM,(*rho_ptime)[i]);
 #endif		 
+
         //
         // Test velocities, rho and cfl.
         //
@@ -5347,6 +5544,10 @@ HeatTransfer::predict_velocity (Real  dt,
         // Compute the total forcing.
         //
         godunov->Sum_tf_gp_visc(tforces,visc_terms[i],Gp[i],(*rho_ptime)[i]);
+
+#ifndef NDEBUG
+        Force[U_fpi].copy(tforces,0,0,BL_SPACEDIM);
+#endif
 
         D_TERM(bndry[0] = getBCArray(State_Type,i,0,1);,
                bndry[1] = getBCArray(State_Type,i,1,1);,
@@ -5369,10 +5570,13 @@ HeatTransfer::predict_velocity (Real  dt,
                              U_fpi(), tforces);
     }
 
-    showMF(u_mac[0],"pv_umac0",level);
-    showMF(u_mac[1],"pv_umac1",level);
+    showMF("mac",u_mac[0],"pv_umac0",level);
+    showMF("mac",u_mac[1],"pv_umac1",level);
 #if BL_SPACEDIM==3
-    showMF(u_mac[2],"pv_umac2",level);
+    showMF("mac",u_mac[2],"pv_umac2",level);
+#endif
+#ifndef NDEBUG
+    showMF("mac",Force,"pv_force",level);
 #endif
 
     Real tempdt = std::min(change_max,cfl/cflmax);
@@ -5424,10 +5628,10 @@ HeatTransfer::advance (Real time,
 
 
     
-    showMF(u_mac[0],"adv_umac0",level);
-    showMF(u_mac[1],"adv_umac1",level);
+    showMF("mac",u_mac[0],"adv_umac0",level);
+    showMF("mac",u_mac[1],"adv_umac1",level);
 #if BL_SPACEDIM==3
-    showMF(u_mac[2],"adv_umac2",level);
+    showMF("mac",u_mac[2],"adv_umac2",level);
 #endif
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "HeatTransfer::advance(): at start of time step\n";
@@ -5446,7 +5650,7 @@ HeatTransfer::advance (Real time,
     {
         int havedivu = 1;
         MultiFab* mac_rhs = create_mac_rhs(time,dt);
-        showMF(*mac_rhs,"mac_rhs",level);
+        showMF("mac",*mac_rhs,"mac_rhs",level);
         mac_project(time,dt,S_old,mac_rhs,havedivu);
         delete mac_rhs;
 
@@ -5883,8 +6087,8 @@ HeatTransfer::create_mac_rhs (Real time, Real dt)
        (*mac_rhs)[dsdtmfi].plus((*dsdt)[dsdtmfi]);
    }
 
-   showMF(*dsdt,"dsdt",level);
-   showMF(*mac_rhs,"mac_rhs0_",level);
+   showMF("mac",*dsdt,"dsdt",level);
+   showMF("mac",*mac_rhs,"mac_rhs0_",level);
    delete dsdt;
 
    if (dt > 0.0) 
@@ -5896,7 +6100,7 @@ HeatTransfer::create_mac_rhs (Real time, Real dt)
            (*mac_rhs)[mfi].plus(dpdt[mfi], grids[mfi.index()], 0,0,1);
    }
 
-   showMF(*mac_rhs,"mac_rhs1_",level);
+   showMF("mac",*mac_rhs,"mac_rhs1_",level);
 
    return mac_rhs;
 }

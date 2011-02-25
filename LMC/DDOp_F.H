@@ -7,6 +7,7 @@
 #    define FORT_DDFLUX          ddflux
 #    define FORT_DDETC           ddetc
 #    define FORT_DDCCAVG         ddccavg
+#    define FORT_DDECAVG         ddecavg
 #    define FORT_DDCCINT         ddccint
 #    define FORT_DDNCOEFS        ddncoefs
 #    define FORT_DDCOEFS         ddcoefs
@@ -18,6 +19,7 @@
 #    define FORT_DDFLUX          DDFLUX
 #    define FORT_DDETC           DDETC
 #    define FORT_DDCCAVG         DDCCAVG
+#    define FORT_DDECAVG         DDECAVG
 #    define FORT_DDCCINT         DDCCINT
 #    define FORT_DDNCOEFS        DDNCOEFS
 #    define FORT_DDCOEFS         DDCOEFS
@@ -28,6 +30,7 @@
 #    define FORT_DDFLUX          ddflux
 #    define FORT_DDETC           ddetc
 #    define FORT_DDCCAVG         ddccavg
+#    define FORT_DDECAVG         ddecavg
 #    define FORT_DDCCINT         ddccint
 #    define FORT_DDNCOEFS        ddncoefs
 #    define FORT_DDCOEFS         ddcoefs
@@ -38,6 +41,7 @@
 #    define FORT_DDFLUX          ddflux_
 #    define FORT_DDETC           ddetc_
 #    define FORT_DDCCAVG         ddccavg_
+#    define FORT_DDECAVG         ddecavg_
 #    define FORT_DDCCINT         ddccint_
 #    define FORT_DDNCOEFS        ddncoefs_
 #    define FORT_DDCOEFS         ddcoefs_
@@ -57,15 +61,14 @@ extern "C" {
     void FORT_DDC2E(const int* lo, const int* hi,
                     const Real* c,ARLIM_P(clo),ARLIM_P(chi),
                     Real* e,ARLIM_P(elo),ARLIM_P(ehi),
-                    const int* nComp, const int* dir);
+                    const int* nComp, const int* dir, const int* avg_H0_A1);
 
     void FORT_DDFLUX(const int* lo, const int* hi, const Real* dx, const int* dir,
                      Real*   fluxYH,  ARLIM_P(fluxYHlo), ARLIM_P(fluxYHhi),
-                     Real*   FcpDTe,   ARLIM_P(FcpDTelo),ARLIM_P(FcpDTehi),
+                     Real*   F_dTe,    ARLIM_P(F_dTelo), ARLIM_P(F_dTehi),
                      const Real* YTc,  ARLIM_P(YTclo),   ARLIM_P(YTchi),
                      const Real* Xc,   ARLIM_P(Xclo),    ARLIM_P(Xchi),
                      const Real* c,    ARLIM_P(clo),     ARLIM_P(chi),
-                     const Real* CPic, ARLIM_P(CPiclo),  ARLIM_P(CPichi),
                      const Real* ae,   ARLIM_P(aelo),    ARLIM_P(aehi),
                      const int* for_T_or_H,
                      const Real* Hic, ARLIM_P(Hiclo),    ARLIM_P(Hichi),
@@ -78,9 +81,16 @@ extern "C" {
                     const Real* V, ARLIM_P(Vlo),   ARLIM_P(Vhi),
                     const Real* a, const int* dir, const int* nc, const int* diff0_avg1);
 
-    void FORT_DDCCAVG(Real*       crse, ARLIM_P(clo), ARLIM_P(chi),
+    void FORT_DDCCAVG(const int* lo, const int* hi, 
+                      Real*       crse, ARLIM_P(clo), ARLIM_P(chi),
                       const Real* fine, ARLIM_P(flo), ARLIM_P(fhi),
-                      const int* lo, const int* hi, const int* nc, const int* ratio);
+                      const int* nc, const int* ratio);
+
+
+    void FORT_DDECAVG(const int* lo, const int* hi, 
+                      Real*       crse, ARLIM_P(clo), ARLIM_P(chi),
+                      const Real* fine, ARLIM_P(flo), ARLIM_P(fhi),
+                      const int* nc, const int* ratio, const int* dir, const int* avgTang_H0_A1);
 
     void FORT_DDCCINT(Real*       fine, ARLIM_P(flo), ARLIM_P(fhi),
                       const Real* crse, ARLIM_P(clo), ARLIM_P(chi),
@@ -92,7 +102,8 @@ extern "C" {
 
     void FORT_DDCOEFS(const int* lo, const int* hi,
                       Real* coefs,    ARLIM_P(clo),  ARLIM_P(chi),
-                      const Real* S,  ARLIM_P(Slo),  ARLIM_P(Shi),
+                      const Real* T,  ARLIM_P(Tlo),  ARLIM_P(Thi),
+                      const Real* Y,  ARLIM_P(Ylo),  ARLIM_P(Yhi),
                       const Real* Cp, ARLIM_P(Cplo), ARLIM_P(Cphi),
                       const int& full0_mix1);
 

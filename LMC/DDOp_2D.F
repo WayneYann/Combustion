@@ -5,18 +5,20 @@
 
 #define SDIM 2
 
-      subroutine FORT_DDCOEFS(lo, hi, coefs, DIMS(coefs), S, DIMS(S), Cp, DIMS(Cp), Full0_Mix1)
+      subroutine FORT_DDCOEFS(lo, hi, coefs, DIMS(coefs), T, DIMS(T), Y, DIMS(Y), Cp, DIMS(Cp), Full0_Mix1)
       implicit none
 #include "cdwrk.H"
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(coefs)
-      integer DIMDEC(S)
+      integer DIMDEC(T)
+      integer DIMDEC(Y)
       integer DIMDEC(Cp)
       REAL_T coefs(DIMV(coefs),Ncoefs)
-      REAL_T S(DIMV(S), Nspec+1)
+      REAL_T T(DIMV(T))
+      REAL_T Y(DIMV(Y), Nspec)
       REAL_T Cp(DIMV(Cp),Nspec)
       integer Full0_Mix1
-      REAL_T Y(maxspec), Cpi(maxspec), mwtInv(maxspec), T
+      REAL_T Ypt(maxspec), Cpi(maxspec), mwtInv(maxspec), Tpt
       integer i,j,n
       REAL_T rhoDi(maxspec),PTC,rhoTD(maxspec),rhoDij(maxspec*maxspec)
 
@@ -33,11 +35,11 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       do j = lo(2), hi(2)
          do i = lo(1), hi(1)
             do n = 1,Nspec
-               Y(n) = S(i,j,n)
+               Ypt(n) = Y(i,j,n)
                Cpi(n) = Cp(i,j,n)*1.d4
             enddo
-            T = S(i,j,Nspec+1)
-            call calc_coefs(T,Y,Cpi,mwtInv,rhoDi,Full0_Mix1,PTC,rhoTD,rhoDij)
+            Tpt = T(i,j)
+            call calc_coefs(Tpt,Ypt,Cpi,mwtInv,rhoDi,Full0_Mix1,PTC,rhoTD,rhoDij)
             do n = 1,Nspec
                coefs(i,j,DMIXoffset+n) = rhoDi(n)
             enddo
@@ -55,20 +57,19 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       end
 
       subroutine FORT_DDFLUX(lo, hi, delta, dir,
-     &                       fluxYH, DIMS(fluxYH), FcpDTe, DIMS(FcpDTe),
-     &                       YTc, DIMS(YTc), Xc, DIMS(Xc), coefc, DIMS(coefc),
-     &                       CPic, DIMS(CPic), Ae, DIMS(Ae),
+     &                       fluxYH, DIMS(fluxYH), F_dTe, DIMS(F_dTe),
+     &                       YTc, DIMS(YTc), Xc, DIMS(Xc),
+     &                       coefe, DIMS(coefe), Ae, DIMS(Ae),
      &                       for_T0_H1, Hic, DIMS(Hic), fillAlpha, alphaYH, DIMS(alphaYH),
      &                       Full0_Mix1)
       implicit none
 #include "cdwrk.H"
       integer lo(SDIM), hi(SDIM),dir
       integer DIMDEC(fluxYH)
-      integer DIMDEC(FcpDTe)
+      integer DIMDEC(F_dTe)
       integer DIMDEC(YTc)
       integer DIMDEC(Xc)
-      integer DIMDEC(coefc)
-      integer DIMDEC(CPic)
+      integer DIMDEC(coefe)
       integer DIMDEC(Ae)
       integer DIMDEC(Hic)
       integer for_T0_H1, fillAlpha
@@ -76,17 +77,16 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       integer Full0_Mix1
       REAL_T  delta(0:SDIM-1)
       REAL_T  fluxYH(DIMV(fluxYH),*)
-      REAL_T  FcpDTe(DIMV(FcpDTe))
+      REAL_T   F_dTe(DIMV(F_dTe),*)
       REAL_T     YTc(DIMV(YTc),*)
       REAL_T      Xc(DIMV(Xc)  ,*)
-      REAL_T    CPic(DIMV(CPic) ,*)
       REAL_T      Ae(DIMV(Ae))
-      REAL_T   coefc(DIMV(coefc) ,*)
+      REAL_T   coefe(DIMV(coefe) ,*)
       REAL_T     Hic(DIMV(Hic)   ,*)
       REAL_T  alphaYH(DIMV(alphaYH),*)
 
       integer i, j, n, m, idx
-      REAL_T Te, Ye, Hie, CPie, dX, dY, dT, mwtInv(maxspec)
+      REAL_T Te, Ye, Hie, dX, dY, mwtInv(maxspec)
       REAL_T RU, RUC, P1atm, dxInv
       REAL_T rhoTDe, rhoY_Dij, rDmixe, PTCe
 
@@ -104,6 +104,15 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       fluxYH(:,:,Nspec+1) = 0.0d0
 
       if (dir.eq.0) then         
+
+c     Put Grad(T) in F_dTe slot 1 until after we have computed F
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)+1
+               F_dTe(i,j,1) = ( YTc(i,j,Nspec+1) - YTc(i-1,j,Nspec+1) ) * dxInv
+               PTCe = coefe(i,j,PTCoffset+1)
+               fluxYH(i,j,Nspec+1) = -  PTCe * F_dTe(i,j,1)
+            end do
+         end do
 
          if ( Full0_Mix1 .eq.0 ) then
             allocate(tMMwe(lo(1):hi(1)+1,lo(2):hi(2)))
@@ -123,19 +132,10 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do j = lo(2), hi(2)
                   do i = lo(1), hi(1)+1
                      Ye = ( YTc(i,j,n) + YTc(i-1,j,n)  ) * 0.5d0
-
-                     if ( Ye .le. 1.d-30 ) then
-                        rhoTDe = 0.5d0*(coefc(i-1,j,TDoffset+n) + coefc(i,j  ,TDoffset+n))
-                     else
-                        rhoTDe = 0.5d0*(coefc(i-1,j,TDoffset+n)*YTc(i-1,j,n)
-     &                       +          coefc(i,j  ,TDoffset+n)*YTc(i,j  ,n))/Ye
-                     endif
-
+                     rhoTDe = coefe(i,j,TDoffset+n)
                      dX = (  Xc(i,j,n) -  Xc(i-1,j,n)  ) * dxInv
-                     dT = ( YTc(i,j,Nspec+1) - YTc(i-1,j,Nspec+1) ) * dxInv
                      Te = 0.5d0 * ( YTc(i,j,Nspec+1) + YTc(i-1,j,Nspec+1) )
-
-                     fluxYH(i,j,n) = - Ye * rhoTDe * dT / Te
+                     fluxYH(i,j,n) = - Ye * rhoTDe * F_dTe(i,j,1) / Te
                      fluxYH(i,j,Nspec+1) = fluxYH(i,j,Nspec+1) - (RU*Te*tMMWe(i,j)*rhoTDe*dX)
                   end do
                end do
@@ -146,7 +146,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                   idx = Doffset + (m-1)*Nspec + n
                   do j = lo(2), hi(2)
                      do i = lo(1), hi(1)+1
-                        rhoY_Dij = 0.5d0*(coefc(i-1,j,idx)+coefc(i,j,idx))
+                        rhoY_Dij = coefe(i,j,idx)
                         dX = (  Xc(i,j,m) -  Xc(i-1,j,m)  ) * dxInv
                         fluxYH(i,j,n) = fluxYH(i,j,n)  -  rhoY_Dij * dX
                      end do
@@ -161,29 +161,9 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do j = lo(2), hi(2)
                   do i = lo(1), hi(1)+1
                      dY = ( YTc(i,j,n) - YTc(i-1,j,n)  ) * dxInv
-                     rDmixe = 0.5d0*(coefc(i-1,j,DMIXoffset+n)+coefc(i,j,DMIXoffset+n))
+                     rDmixe = coefe(i,j,DMIXoffset+n)
                      fluxYH(i,j,n) = - rDmixe * dY
                   end do
-               end do
-            end do
-         end if
-
-         if ( fillAlpha.eq.1 ) then
-            do n = 1,Nspec
-               do j = lo(2), hi(2)
-                  do i = lo(1), hi(1)+1
-                     rDmixe = 0.5d0*(coefc(i-1,j,DMIXoffset+n)+coefc(i,j,DMIXoffset+n))
-                     alphaYH(i-1,j,n) = alphaYH(i-1,j,n)  +  rDmixe * dxInv * Ae(i,j)
-                     alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
-                  end do
-               end do
-            end do
-
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)+1
-                  PTCe = 0.5d0*(coefc(i-1,j,PTCoffset+1)+coefc(i,j,PTCoffset+1))
-                  alphaYH(i-1,j,Nspec+1) = alphaYH(i-1,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
-                  alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
                end do
             end do
          end if
@@ -198,25 +178,15 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                end do
             enddo
          else
-            FcpDTe(lo(1):hi(1)+1,lo(2):hi(2)) = 0.0d0
-            do n = 1,Nspec
+c     Go backwards on n so that we have slot 1 until the end
+            do n = Nspec,1,-1
                do j = lo(2), hi(2)
                   do i = lo(1), hi(1)+1
-                     dT = ( YTc(i,j,Nspec+1) - YTc(i-1,j,Nspec+1) ) * dxInv
-                     CPie = 0.5d0*(CPic(i-1,j,n)+CPic(i,j,n))
-                     FcpDTe(i,j) = FcpDTe(i,j)  +  CPie * fluxYH(i,j,n) * dT
+                     F_dTe(i,j,n) = fluxYH(i,j,n) * F_dTe(i,j,1)
                   end do
                end do
             enddo
          endif
-
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)+1
-               dT = ( YTc(i,j,Nspec+1) - YTc(i-1,j,Nspec+1) ) * dxInv
-               PTCe = 0.5d0*(coefc(i-1,j,PTCoffset+1)+coefc(i,j,PTCoffset+1))
-               fluxYH(i,j,Nspec+1) = fluxYH(i,j,Nspec+1)  -  PTCe * dT
-            end do
-         end do
 
          do n = 1,Nspec+1
             do j = lo(2), hi(2)
@@ -226,7 +196,36 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
             end do
          enddo
 
+         if ( fillAlpha.eq.1 ) then
+            do n = 1,Nspec
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)+1
+                     rDmixe = coefe(i,j,DMIXoffset+n)
+                     alphaYH(i-1,j,n) = alphaYH(i-1,j,n)  +  rDmixe * dxInv * Ae(i,j)
+                     alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
+                  end do
+               end do
+            end do
+
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)+1
+                  PTCe = coefe(i,j,PTCoffset+1)
+                  alphaYH(i-1,j,Nspec+1) = alphaYH(i-1,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
+                  alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
+               end do
+            end do
+         end if
+
       else
+
+c     Put Grad(T) in F_dTe slot 1 until after we have computed F
+         do j = lo(2), hi(2)+1
+            do i = lo(1), hi(1)
+               F_dTe(i,j,1) = ( YTc(i,j,Nspec+1) - YTc(i,j-1,Nspec+1) ) * dxInv
+               PTCe = coefe(i,j,PTCoffset+1)
+               fluxYH(i,j,Nspec+1) = PTCe * F_dTe(i,j,1)
+            end do
+         end do
 
          if ( Full0_Mix1 .eq.0 ) then
             allocate(tMMwe(lo(1):hi(1),lo(2):hi(2)+1))
@@ -246,19 +245,10 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do j = lo(2), hi(2)+1
                   do i = lo(1), hi(1)
                      Ye = ( YTc(i,j,n) + YTc(i,j-1,n)  ) * 0.5d0
-
-                     if ( Ye.le.1.d-30 ) then
-                        rhoTDe = 0.5d0*(coefc(i,j-1,TDoffset+n) + coefc(i,j  ,TDoffset+n))
-                     else
-                        rhoTDe = 0.5d0*(coefc(i,j-1,TDoffset+n)*YTc(i,j-1,n)
-     &                       +          coefc(i,j  ,TDoffset+n)*YTc(i,j  ,n))/Ye
-                     endif
-
+                     rhoTDe = coefe(i,j,TDoffset+n)
                      dX = (  Xc(i,j,n) -  Xc(i,j-1,n)  ) * dxInv
-                     dT = ( YTc(i,j,Nspec+1) - YTc(i,j-1,Nspec+1) ) * dxInv
                      Te = 0.5d0 * ( YTc(i,j,Nspec+1) + YTc(i,j-1,Nspec+1) )
-
-                     fluxYH(i,j,n) = - Ye * rhoTDe * dT / Te
+                     fluxYH(i,j,n) = - Ye * rhoTDe * F_dTe(i,j,1) / Te
                      fluxYH(i,j,Nspec+1) = fluxYH(i,j,Nspec+1) - (RU*Te*tMMWe(i,j)*rhoTDe*dX)
                   end do
                end do
@@ -269,7 +259,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                   idx = Doffset + (m-1)*Nspec + n
                   do j = lo(2), hi(2)+1
                      do i = lo(1), hi(1)
-                        rhoY_Dij = 0.5d0*(coefc(i,j-1,idx)+coefc(i,j,idx))
+                        rhoY_Dij = coefe(i,j,idx)
                         dX = (  Xc(i,j,m) -  Xc(i,j-1,m)  ) * dxInv
                         fluxYH(i,j,n) = fluxYH(i,j,n)  -  rhoY_Dij * dX
                      end do
@@ -284,29 +274,9 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                do j = lo(2), hi(2)+1
                   do i = lo(1), hi(1)
                      dY = ( YTc(i,j,n) - YTc(i,j-1,n)  ) * dxInv
-                     rDmixe = 0.5d0*(coefc(i,j-1,DMIXoffset+n)+coefc(i,j,DMIXoffset+n))
+                     rDmixe = coefe(i,j,DMIXoffset+n)
                      fluxYH(i,j,n) = - rDmixe * dY
                   end do
-               end do
-            end do
-         end if
-
-         if ( fillAlpha.eq.1 ) then
-            do n = 1,Nspec
-               do j = lo(2), hi(2)+1
-                  do i = lo(1), hi(1)
-                     rDmixe = 0.5d0*(coefc(i,j-1,DMIXoffset+n)+coefc(i,j,DMIXoffset+n))
-                     alphaYH(i,j-1,n) = alphaYH(i,j-1,n)  +  rDmixe * dxInv * Ae(i,j)
-                     alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
-                  end do
-               end do
-            end do
-
-            do j = lo(2), hi(2)+1
-               do i = lo(1), hi(1)
-                  PTCe = 0.5d0*(coefc(i,j-1,PTCoffset+1)+coefc(i,j,PTCoffset+1))
-                  alphaYH(i,j-1,Nspec+1) = alphaYH(i,j-1,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
-                  alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
                end do
             end do
          end if
@@ -321,25 +291,15 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                end do
             enddo
          else
-            FcpDTe(lo(1):hi(1),lo(2):hi(2)+1) = 0.0d0
-            do n = 1,Nspec
+c     Go backwards on n so that we have slot 1 until the end
+            do n = Nspec,1,-1
                do j = lo(2), hi(2)+1
                   do i = lo(1), hi(1)
-                     dT = ( YTc(i,j,Nspec+1) - YTc(i,j-1,Nspec+1) ) * dxInv
-                     CPie = 0.5d0*(CPic(i,j-1,n)+CPic(i,j,n))
-                     FcpDTe(i,j) = FcpDTe(i,j)  +  CPie * fluxYH(i,j,n) * dT
+                     F_dTe(i,j,n) = fluxYH(i,j,n) * F_dTe(i,j,1)
                   end do
                end do
             enddo
          endif
-
-         do j = lo(2), hi(2)+1
-            do i = lo(1), hi(1)
-               dT = ( YTc(i,j,Nspec+1) - YTc(i,j-1,Nspec+1) ) * dxInv
-               PTCe = 0.5d0*(coefc(i,j-1,PTCoffset+1)+coefc(i,j,PTCoffset+1))
-               fluxYH(i,j,Nspec+1) = fluxYH(i,j,Nspec+1)  -  PTCe * dT
-            end do
-         end do
 
          do n = 1,Nspec+1
             do j = lo(2), hi(2)+1
@@ -349,39 +309,89 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
             end do
          enddo
 
-      endif
+         if ( fillAlpha.eq.1 ) then
+            do n = 1,Nspec
+               do j = lo(2), hi(2)+1
+                  do i = lo(1), hi(1)
+                     rDmixe = coefe(i,j,DMIXoffset+n)
+                     alphaYH(i,j-1,n) = alphaYH(i,j-1,n)  +  rDmixe * dxInv * Ae(i,j)
+                     alphaYH(i  ,j,n) = alphaYH(i  ,j,n)  +  rDmixe * dxInv * Ae(i,j)
+                  end do
+               end do
+            end do
 
+            do j = lo(2), hi(2)+1
+               do i = lo(1), hi(1)
+                  PTCe = coefe(i,j,PTCoffset+1)
+                  alphaYH(i,j-1,Nspec+1) = alphaYH(i,j-1,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
+                  alphaYH(i  ,j,Nspec+1) = alphaYH(i  ,j,Nspec+1)  +  PTCe * dxInv * Ae(i,j)
+               end do
+            end do
+         end if
+
+      endif
       end
 
       subroutine FORT_DDC2E(lo, hi, 
      &                      cfab, DIMS(cfab),
-     &                      efab, DIMS(efab), nc, dir)
+     &                      efab, DIMS(efab), nc, dir, avg_H0_A1)
       implicit none
-      integer lo(SDIM), hi(SDIM), nc, dir
+      integer lo(SDIM), hi(SDIM), nc, dir, avg_H0_A1
       integer DIMDEC(cfab)
       integer DIMDEC(efab)
       REAL_T  cfab(DIMV(cfab), nc)
       REAL_T  efab(DIMV(efab), nc)
 
       integer i,j,n
+      REAL_T den
 
-      if (dir .EQ. 0) then
-         do n = 1,nc
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)+1
-                  efab(i,j,n) = half*(cfab(i-1,j,n) + cfab(i,j,n))
+      if (avg_H0_A1 .eq. 0) then
+         if (dir .EQ. 0) then
+            do n = 1,nc
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)+1
+                     den = cfab(i-1,j,n) + cfab(i,j,n)
+                     if (den .ne. 0.d0) then
+                        efab(i,j,n) = 2*(cfab(i-1,j,n) * cfab(i,j,n))/den
+                     else
+                        efab(i,j,n) = 0.d0
+                     endif
+                  enddo
                enddo
             enddo
-         enddo
-      else
-         do n = 1,nc
-            do i = lo(1), hi(1)
+         else
+            do n = 1,nc
                do j = lo(2), hi(2)+1
-                  efab(i,j,n) = half*(cfab(i,j-1,n) + cfab(i,j,n))
+                  do i = lo(1), hi(1)
+                     den = cfab(i,j-1,n) + cfab(i,j,n)
+                     if (den .ne. 0.d0) then
+                        efab(i,j,n) = 2*(cfab(i,j-1,n) * cfab(i,j,n))/den
+                     else
+                        efab(i,j,n) = 0.d0
+                     endif
+                  enddo
                enddo
             enddo
-         enddo
-      end if
+         endif
+      else
+         if (dir .EQ. 0) then
+            do n = 1,nc
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)+1
+                     efab(i,j,n) = half*(cfab(i-1,j,n) + cfab(i,j,n))
+                  enddo
+               enddo
+            enddo
+         else
+            do n = 1,nc
+               do j = lo(2), hi(2)+1
+                  do i = lo(1), hi(1)
+                     efab(i,j,n) = half*(cfab(i,j-1,n) + cfab(i,j,n))
+                  enddo
+               enddo
+            enddo
+         endif
+      endif
       end
             
       subroutine FORT_DDETC(lo, hi, div, DIMS(div), V, DIMS(V),
@@ -440,8 +450,99 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       endif
       end
 
+      subroutine FORT_DDECAVG(lo, hi, c, DIMS(c), f, DIMS(f), nc, ratio, dir, avg_H0_A1)
+      implicit none
+      integer lo(SDIM), hi(SDIM), nc, ratio(SDIM), dir, avg_H0_A1
+      integer DIMDEC(c)
+      integer DIMDEC(f)
+      REAL_T c(DIMV(c),nc)
+      REAL_T f(DIMV(f),nc)
 
-      subroutine FORT_DDCCAVG(c, DIMS(c), f, DIMS(f), lo, hi, nc, ratio)
+      integer i,j,n,ii,jj,fi,fj
+      REAL_T den, num, fac
+
+      if (dir .eq. 0 ) then
+         if (avg_H0_A1 .eq. 0) then 
+            do n = 1, nc
+               do j = lo(2), hi(2)
+                  fj = ratio(2)*j
+                  do i = lo(1), hi(1)
+                     fi = ratio(1)*i
+                     den = f(fi,fj,n)
+                     do jj=1,ratio(2)-1
+                        den = den + f(fi,fj+jj,n)
+                     enddo
+                     if (den .ne. 0.d0) then
+                        num = ratio(2) * f(fi,fj,n)
+                        do jj=1,ratio(2)-1
+                           num = num * f(fi,fj+jj,n)
+                        enddo
+                        c(i,j,n) = num / den
+                     else
+                        c(i,j,n) = 0.d0
+                     endif
+                  enddo
+               enddo
+            enddo
+         else
+            fac = 1.d0/DBLE(ratio(2))
+            do n = 1, nc
+               do j = lo(2), hi(2)
+                  fj = ratio(2)*j
+                  do i = lo(1), hi(1)
+                     fi = ratio(1)*i
+                     c(i,j,n) = f(fi,fj,n)
+                     do jj=1,ratio(2)-1
+                        c(i,j,n) = c(i,j,n) + f(fi,fj+jj,n)
+                     enddo
+                     c(i,j,n) = c(i,j,n) * fac
+                  enddo
+               enddo
+            enddo
+         endif
+      else
+         if (avg_H0_A1 .eq. 0) then 
+            do n = 1, nc
+               do j = lo(2), hi(2)
+                  fj = ratio(2)*j
+                  do i = lo(1), hi(1)
+                     fi = ratio(1)*i
+                     den = ratio(1) * f(fi,fj,n)
+                     do ii=1,ratio(1)-1
+                        den = den + f(fi+ii,fj,n)
+                     enddo
+                     if (den .ne. 0.d0) then
+                        num = f(fi,fj,n)
+                        do ii=1,ratio(1)-1
+                           num = num * f(fi+ii,fj,n)
+                        enddo
+                        c(i,j,n) = num / den
+                     else
+                        c(i,j,n) = 0.d0
+                     endif
+                  enddo
+               enddo
+            enddo
+         else
+            fac = 1.d0/DBLE(ratio(1))
+            do n = 1, nc
+               do j = lo(2), hi(2)
+                  fj = ratio(2)*j
+                  do i = lo(1), hi(1)
+                     fi = ratio(1)*i
+                     c(i,j,n) = f(fi,fj,n)
+                     do ii=1,ratio(1)-1
+                        c(i,j,n) = c(i,j,n) + f(fi+ii,fj,n)
+                     enddo
+                     c(i,j,n) = c(i,j,n) * fac
+                  enddo
+               enddo
+            enddo
+         endif
+      endif
+      end
+
+      subroutine FORT_DDCCAVG(lo, hi, c, DIMS(c), f, DIMS(f), nc, ratio)
       integer nc
       integer DIMDEC(f)
       integer DIMDEC(c)
@@ -461,9 +562,9 @@ c     NOTE: generalize to rz
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                c(i,j,n) = 0.d0
-               do jj = 1,ratio(2)
-                  do ii = 1,ratio(1)
-                     c(i,j,n) = c(i,j,n) + f(2*i+ii-1,2*j+jj-1,n)
+               do jj = 0,ratio(2)-1
+                  do ii = 0,ratio(1)-1
+                     c(i,j,n) = c(i,j,n) + f(ratio(1)*i+ii,ratio(2)*j+jj,n)
                   enddo
                enddo
                c(i,j,n) = c(i,j,n)*fac
@@ -481,45 +582,22 @@ c     NOTE: generalize to rz
       REAL_T f(DIMV(f),nc)
       REAL_T c(DIMV(c),nc)
       integer ratio(SDIM)
-c
-      integer i,j,n,ii,jj
+
+      integer i,j,n,ii,jj,fi,fj
 
 c     NOTE: generalize to rz
       do n = 1, nc
          do j = lo(2), hi(2)
+            fj = ratio(2)*j
             do i = lo(1), hi(1)
-               do jj = 1,ratio(2)
-                  do ii = 1,ratio(1)
-                     f(2*i+ii-1,2*j+jj-1,n) = c(i,j,n) + f(2*i+ii-1,2*j+jj-1,n)
+               fi = ratio(1)*i
+               do jj = 0,ratio(2)-1
+                  do ii = 0,ratio(1)-1
+                     f(fi+ii,fj+jj,n) = c(i,j,n) + f(fi+ii,fj+jj,n)
                   enddo
                enddo
             enddo
          enddo
       enddo
-c
       end
       
-      subroutine FORT_DDADJ(fab, DIMS(fab), nc)
-      implicit none
-      integer nc
-      integer DIMDEC(fab)
-      REAL_T  fab(DIMV(fab), nc)
-      integer i,j,n
-      REAL_T minVal, maxVal
-
-      if (nc.eq.1) then
-         minVal = 298.d0
-         maxVal = 1500.d0
-      else
-         minVal = 0.d0
-         maxVal = 1.d0
-      endif
-      do n = 1,nc
-         do j = ARG_L2(fab), ARG_H2(fab)
-            do i = ARG_L1(fab), ARG_H1(fab)
-               fab(i,j,n) = MAX(minVal,MIN(maxVal,fab(i,j,n)))
-            enddo
-         enddo
-      enddo
-      end
-

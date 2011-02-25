@@ -34,6 +34,7 @@ public:
     
     enum DD_ApForTorRH {DD_Temp=0, DD_RhoH, DD_NumAppTypes};
     enum DD_Model {DD_Model_Full=0, DD_Model_MixAvg, DD_Model_NumModels};
+    enum DD_Average {DD_Harmonic, DD_Arithmetic, DD_Average_NumSchemes};
 
     static void set_transport_model(const DD_Model& model);
     static void set_chem_driver(ChemDriver& chem);
@@ -43,15 +44,15 @@ public:
                  const MultiFab&   inYT,
                  PArray<MultiFab>& fluxYH,
                  DD_ApForTorRH     whichApp,
-                 bool              updateCoefs = true,
                  int               level = 0,
                  bool              getAlpha = false,
                  MultiFab*         alpha = 0);
 
-    void setCoefficients(const MFIter&    mfi,
-                         const FArrayBox& inYT,
-                         const FArrayBox& cpi);
-    
+    void setCoefficients(const MultiFab& T,
+                         int             sCompT,
+                         const MultiFab& Y,
+                         int             sCompY);
+
     static void average(MultiFab&       mfC,
                         int             dCompC,
                         const MultiFab& mfF,
@@ -92,22 +93,31 @@ protected:
                       const MultiFab&   inYT,
                       PArray<MultiFab>& fluxYH,
                       DD_ApForTorRH     whichApp,
-                      bool              updateCoefs,
                       bool              getAlpha,
                       MultiFab*         alpha);
 
-    void setGrowCells(MultiFab& YT,
-                      int       compT,
-                      int       compY);
+    void setGrowCells(MultiFab& T,
+                      int       sCompT,
+                      MultiFab& Y,
+                      int       sCompY);
 
     void ensure_valid_transport_is_set() const;
 
-    void center_to_edge (const FArrayBox& cfab,
-                         FArrayBox&       efab,
-                         const Box&       ccBox,
-                         int              sComp,
-                         int              dComp,
-                         int              nComp) const;
+    static void center_to_edge (const FArrayBox& cfab,
+                                FArrayBox&       efab,
+                                const Box&       ccBox,
+                                int              sComp,
+                                int              dComp,
+                                int              nComp,
+                                int              avgNormal_H0_A1);
+
+    static void average_ec(MultiFab&       mfC,
+                           int             dCompC,
+                           const MultiFab& mfF,
+                           int             sCompF,
+                           int             nComp,
+                           int             dir,
+                           int             avgTang_H0_A1);
 
     static ChemDriver* chem;
     BoxArray grids;
@@ -117,7 +127,8 @@ protected:
     MultiFab volInv;
     PArray<MultiFab> area;
     PArray<MultiFab> flux;
-    MultiFab coefs;
+    PArray<MultiFab> transport_coefs;
+    MultiFab cpi;
     DDOp* mg_parent;
     PArray<DDOp> ddOps;
     Array<Real> dx;
@@ -128,6 +139,9 @@ protected:
     static int mgLevelsMAX;
     static int mgLevels;
     static bool first_define;
+    static DD_Average average_normal;
+    static DD_Average average_tangential;
+    static int transport_coefs_nComp;
 };
 
 inline

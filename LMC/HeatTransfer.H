@@ -535,17 +535,6 @@ protected:
     void mcdd_update(Real time,
                      Real dt);
 
-
-    void mcdd_apply(MultiFab&         outYH,
-                    const MultiFab&   inYT,
-                    PArray<MultiFab>& fluxYH,
-                    Real              time,
-                    DDOp::DD_ApForTorRH whichApp,
-                    bool              updateCoefs = true,
-                    int               level = 0,
-                    bool              getAlpha = false,
-                    MultiFab*         alpha = 0);
-
     void mcdd_diffuse_sync(Real dt);
 
     void set_htt_hmixTYP ();

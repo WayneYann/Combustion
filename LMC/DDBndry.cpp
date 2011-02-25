@@ -1,7 +1,7 @@
 //BL_COPYRIGHT_NOTICE
 
 //
-// $Id: DDBndry.cpp,v 1.6 2011-02-02 01:36:44 marc Exp $
+// $Id: DDBndry.cpp,v 1.7 2011-02-25 19:20:51 marc Exp $
 //
 #include <winstd.H>
 #include <cmath>
@@ -203,20 +203,29 @@ static std::string sep = "/";
 void
 DDBndry::Write(std::string& outfile) const
 {
-    if (ParallelDescriptor::IOProcessor()) {
-        if (!BoxLib::UtilCreateDirectory(outfile, 0755))
-            BoxLib::CreateDirectoryFailed(outfile);
-    }
-    ParallelDescriptor::Barrier();
+    bool verbose = true;
 
+    std::string myName = outfile + sep + "MG_Level_";
     for (int lev=0; lev<bnd_vals.size(); ++lev)
     {
-        int mindigits = 2;
+        std::string levName = BoxLib::Concatenate(myName,lev,2);
+
+        if (verbose && ParallelDescriptor::IOProcessor())
+            cout << "DDBndry::Write: writing to " << levName << endl;
+
+        if (ParallelDescriptor::IOProcessor()) {
+            if (!BoxLib::UtilCreateDirectory(levName, 0755))
+                BoxLib::CreateDirectoryFailed(levName);
+        }
+        ParallelDescriptor::Barrier();
+        
+        levName += sep + "bndVals_";
         for (OrientationIter oitr; oitr; ++oitr) {
-            char buf[32];
-            sprintf(buf, "%0*d",  mindigits, (int)oitr());
+            if (verbose && ParallelDescriptor::IOProcessor())
+                cout << "DDBndry::Write: writing bndryvals " << oitr() << endl;
+            std::string olevName = BoxLib::Concatenate(levName,(int)oitr(),2);
             const FabSet& vals = bndryValues(oitr(),lev);
-            vals.write(outfile+sep+"bndVals_"+std::string(buf));
+            vals.write(olevName);
         }
     }
 }

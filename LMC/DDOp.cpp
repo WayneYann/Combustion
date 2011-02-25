@@ -25,6 +25,9 @@ int DDOp::maxorder = 3;
 int DDOp::mgLevelsMAX = -1;
 int DDOp::mgLevels = 0;
 bool DDOp::first_define = true;
+DDOp::DD_Average DDOp::average_normal = DD_Arithmetic; // Used to move transport coeffs evaluated at cc to edges
+DDOp::DD_Average DDOp::average_tangential = DD_Arithmetic; // Used to coarsen edge-based transport coeffients
+int DDOp::transport_coefs_nComp = -1; // Invalid until valid transport model identified
 
 DDOp::DDOp ()
 {
@@ -197,11 +200,17 @@ DDOp::define (const BoxArray& _grids,
     }
     */
     int model_DD0_MA1 = (transport_model==DD_Model_Full ? 0 : 1);
-    int nComp = FORT_DDNCOEFS(model_DD0_MA1);
-    int nGrow = 1;
-    coefs.define(grids,nComp,nGrow,Fab_allocate);
+    transport_coefs_nComp = FORT_DDNCOEFS(model_DD0_MA1);
+    transport_coefs.resize(BL_SPACEDIM);
 
-    // Weights used to generate grow cell data
+    // Note, no grow cells for any of these
+    for (int dir = 0; dir < BL_SPACEDIM; dir++) {
+        BoxArray egrids = BoxArray(grids).surroundingNodes(dir);
+        transport_coefs.set(dir,new MultiFab(egrids,transport_coefs_nComp,0,Fab_allocate));
+    }
+    cpi.define(grids,Nspec,0,Fab_allocate);
+
+    // Weights used to generate grow cell data, only two components here because all Ys have to have the same bc
     stencilWeight.setBoxes(grids);
     for (OrientationIter face; face; ++face)
     {
@@ -212,34 +221,6 @@ DDOp::define (const BoxArray& _grids,
         stencilWeight.define(face(),IndexType::TheCellType(),in_rad_st,out_rad_st,extent_rad_st,ncomp_st);
     }
 }
-
-void
-DDOp::center_to_edge (const FArrayBox& cfab,
-                      FArrayBox&       efab,
-                      const Box&       ccBox,
-                      int              sComp,
-                      int              dComp,
-                      int              nComp) const
-{
-    // Compute data on edges between each pair of cc values in the dir direction
-    const Box&      ebox = efab.box();
-    const IndexType ixt  = ebox.ixType();
-
-    BL_ASSERT(!(ixt.cellCentered()) && !(ixt.nodeCentered()));
-
-    int dir = -1;
-    for (int d = 0; d < BL_SPACEDIM; d++)
-        if (ixt.test(d))
-            dir = d;
-
-    BL_ASSERT(BoxLib::grow(ccBox,-BoxLib::BASISV(dir)).contains(BoxLib::enclosedCells(ebox)));
-    BL_ASSERT(sComp+nComp <= cfab.nComp() && dComp+nComp <= efab.nComp());
-
-    FORT_DDC2E(ccBox.loVect(),ccBox.hiVect(),
-               cfab.dataPtr(sComp),ARLIM(cfab.loVect()),ARLIM(cfab.hiVect()),
-               efab.dataPtr(dComp),ARLIM(efab.loVect()),ARLIM(efab.hiVect()),
-               &nComp, &dir);
-}    
 
 void
 DDOp::setBoundaryData(const MultiFab&      fineT,
@@ -274,17 +255,20 @@ DDOp::setBoundaryData(const MultiFab&      fineT,
 }
 
 void
-DDOp::setGrowCells(MultiFab& YT,
-                   int       compT,
-                   int       compY)
+DDOp::setGrowCells(MultiFab& T,
+                   int       sCompT,
+                   MultiFab& Y,
+                   int       sCompY)
 {
-    BL_ASSERT(YT.nGrow() >= 1);
+    BL_ASSERT(T.nGrow() >= 1);
+    BL_ASSERT(Y.nGrow() >= 1);
     const int Nspec = chem->numSpecies();
 
-    BL_ASSERT(YT.nComp() > compT);
-    BL_ASSERT(YT.nComp() >= compY + Nspec);
+    BL_ASSERT(T.nComp() > sCompT);
+    BL_ASSERT(Y.nComp() >= sCompY + Nspec);
 
-    BL_ASSERT(YT.boxArray() == grids);
+    BL_ASSERT(T.boxArray() == grids);
+    BL_ASSERT(Y.boxArray() == grids);
 
     const int flagbc  = 1;
     const int flagden = 1;
@@ -292,15 +276,15 @@ DDOp::setGrowCells(MultiFab& YT,
     DDBndry& Tbndry = (*mg_parent->Tbd);
     DDBndry& Ybndry = (*mg_parent->Ybd);
 
-    YT.FillBoundary(compT,1);
-    geom.FillPeriodicBoundary(YT,compT,1);
-    YT.FillBoundary(compY,Nspec);
-    geom.FillPeriodicBoundary(YT,compY,Nspec);
+    T.FillBoundary(sCompT,1);
+    geom.FillPeriodicBoundary(T,sCompT,1);
+    Y.FillBoundary(sCompY,Nspec);
+    geom.FillPeriodicBoundary(Y,sCompY,Nspec);
 
-    for (MFIter mfi(YT); mfi.isValid(); ++mfi)
+    for (MFIter mfi(T); mfi.isValid(); ++mfi)
     {
-        BL_ASSERT(!YT[mfi].contains_nan(mfi.validbox(),compT,1));
-        BL_ASSERT(!YT[mfi].contains_nan(mfi.validbox(),compY,Nspec));
+        BL_ASSERT(!T[mfi].contains_nan(mfi.validbox(),sCompT,1));
+        BL_ASSERT(!Y[mfi].contains_nan(mfi.validbox(),sCompY,Nspec));
     }
 
     for (OrientationIter oitr; oitr; ++oitr)
@@ -324,13 +308,13 @@ DDOp::setGrowCells(MultiFab& YT,
 
         const int comp = 0;
 
-        for (MFIter mfi(YT); mfi.isValid(); ++mfi)
+        for (MFIter mfi(T); mfi.isValid(); ++mfi)
         {
             const int   idx = mfi.index();
             const Box& vbox = mfi.validbox();
             BL_ASSERT(grids[idx] == vbox);
 
-            FArrayBox& Tfab = YT[mfi];
+            FArrayBox& Tfab = T[mfi];
             FArrayBox& Tstfab = Tst[mfi];
             const FArrayBox& Tb = Tfs[mfi];
 
@@ -341,14 +325,14 @@ DDOp::setGrowCells(MultiFab& YT,
             const int Tbct  = Tbc[idx][comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
-                         Tfab.dataPtr(compT), ARLIM(Tfab.loVect()), ARLIM(Tfab.hiVect()),
+                         Tfab.dataPtr(sCompT), ARLIM(Tfab.loVect()), ARLIM(Tfab.hiVect()),
                          &iFace, &Tbct, &Tbcl,
                          Tb.dataPtr(), ARLIM(Tb.loVect()), ARLIM(Tb.hiVect()),
                          Tm.dataPtr(), ARLIM(Tm.loVect()), ARLIM(Tm.hiVect()),
                          Tstfab.dataPtr(1), ARLIM(Tstfab.loVect()), ARLIM(Tstfab.hiVect()),
                          vbox.loVect(),vbox.hiVect(), &Tnc, dx.dataPtr());
 
-            if (Tfab.contains_nan(Tb.box(),compT,1))
+            if (Tfab.contains_nan(Tb.box(),sCompT,1))
             {
                 std::cout << "Tfab contains NaNs: " << Tfab.box() << ' ' << Tb.box() << '\n';
 
@@ -356,14 +340,14 @@ DDOp::setGrowCells(MultiFab& YT,
 
                 for (IntVect p = Tb.box().smallEnd(); p <= Tb.box().bigEnd(); Tb.box().next(p))
                 {
-                    if (isnan(Tfab(p,compT)))
+                    if (isnan(Tfab(p,sCompT)))
                         std::cout << "T isnan @ p = " << p << '\n';
                 }
             }
 
-            BL_ASSERT(!Tfab.contains_nan(Tb.box(),compT,1));
+            BL_ASSERT(!Tfab.contains_nan(Tb.box(),sCompT,1));
 
-            FArrayBox& Yfab = YT[mfi];
+            FArrayBox& Yfab = Y[mfi];
             FArrayBox& Ystfab = Yst[mfi];
             const FArrayBox& Yb = Yfs[mfi];
 
@@ -374,37 +358,100 @@ DDOp::setGrowCells(MultiFab& YT,
             const int Ybct  = Ybc[idx][comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
-                         Yfab.dataPtr(compY), ARLIM(Yfab.loVect()), ARLIM(Yfab.hiVect()),
+                         Yfab.dataPtr(sCompY), ARLIM(Yfab.loVect()), ARLIM(Yfab.hiVect()),
                          &iFace, &Ybct, &Ybcl,
                          Yb.dataPtr(), ARLIM(Yb.loVect()), ARLIM(Yb.hiVect()),
                          Ym.dataPtr(), ARLIM(Ym.loVect()), ARLIM(Ym.hiVect()),
                          Ystfab.dataPtr(0), ARLIM(Ystfab.loVect()), ARLIM(Ystfab.hiVect()),
                          vbox.loVect(),vbox.hiVect(), &Ync, dx.dataPtr());
 
-            BL_ASSERT(!Yfab.contains_nan(Yb.box(),compY,Ync));
+            BL_ASSERT(!Yfab.contains_nan(Yb.box(),sCompY,Ync));
         }
-    }
+    } // orientation
+
+    T.FillBoundary(sCompT,1);
+    geom.FillPeriodicBoundary(T,sCompT,1);
+    Y.FillBoundary(sCompY,Nspec);
+    geom.FillPeriodicBoundary(Y,sCompY,Nspec);
 }
 
 void
-DDOp::setCoefficients(const MFIter&    mfi,
-                      const FArrayBox& inYT,
-                      const FArrayBox& cpi)
+DDOp::setCoefficients(const MultiFab& T,
+                      int             sCompT,
+                      const MultiFab& Y,
+                      int             sCompY)
 {
+    // Only to be called at mg_level=0 currently, crse data generated automatically
+    //
+    // This computes transport coefs (and cp) on cell centers, including grow cells
+    // and then generates edge-based coef data for mg_level=0.  Then coarser data is 
+    // generated by averaging edge data.
+    BL_ASSERT(thisIsParent());
+
     int nGrow = 1;
     int Nspec = chem->numSpecies();
-    BL_ASSERT(inYT.nComp()>=Nspec+1);
+    BL_ASSERT(sCompT<T.nComp());
+    BL_ASSERT(sCompY+Nspec<Y.nComp());
+    BL_ASSERT(T.boxArray()==grids);
+    BL_ASSERT(Y.boxArray()==grids);
+    BL_ASSERT(T.nGrow()>=nGrow);
+    BL_ASSERT(Y.nGrow()>=nGrow);
+    BL_ASSERT(transport_coefs_nComp>0);
 
-    const Box gbox = Box(grids[mfi.index()]).grow(nGrow);
-    BL_ASSERT(inYT.box().contains(gbox));
-    BL_ASSERT(cpi.box().contains(gbox));
+    // Do const_cast...promise to change only grow cells
+#ifndef NDEBUG
+    const_cast<MultiFab&>(T).setBndry(0.,sCompT,1);
+    const_cast<MultiFab&>(Y).setBndry(0.,sCompY,Nspec);
+#endif
+    setGrowCells(const_cast<MultiFab&>(T),sCompT,const_cast<MultiFab&>(Y),sCompY);
 
-    int Full0_Mix1 = (transport_model == DD_Model_Full ? 0 : 1);
-    FORT_DDCOEFS(gbox.loVect(), gbox.hiVect(),
-                 coefs[mfi].dataPtr(), ARLIM(coefs[mfi].loVect()), ARLIM(coefs[mfi].hiVect()),
-                 inYT.dataPtr(), ARLIM(inYT.loVect()),  ARLIM(inYT.hiVect()),
-                 cpi.dataPtr(), ARLIM(cpi.loVect()),  ARLIM(cpi.hiVect()),
-                 Full0_Mix1);
+    FArrayBox tcpfab, tcoefs;
+    for (MFIter mfi(T); mfi.isValid(); ++mfi)
+    {
+        const Box& box = mfi.validbox();
+        const Box gbox = Box(box).grow(nGrow);
+        int Full0_Mix1 = (transport_model == DD_Model_Full ? 0 : 1);
+        const FArrayBox& Tfab = T[mfi];
+        const FArrayBox& Yfab = Y[mfi];
+        
+        tcpfab.resize(gbox,Nspec);
+        BL_ASSERT(transport_coefs_nComp>0);
+        tcoefs.resize(gbox,transport_coefs_nComp);
+
+        BL_ASSERT(!Tfab.contains_nan(gbox,sCompT,1));
+        chem->getCpGivenT(tcpfab,Tfab,gbox,sCompT,0);
+        BL_ASSERT(!tcpfab.contains_nan(gbox,0,Nspec));
+        cpi[mfi].copy(tcpfab); // will only need valid-region cp afterward
+
+        BL_ASSERT(!Yfab.contains_nan(gbox,sCompY,Nspec));
+        FORT_DDCOEFS(gbox.loVect(), gbox.hiVect(),
+                     tcoefs.dataPtr(), ARLIM(tcoefs.loVect()), ARLIM(tcoefs.hiVect()),
+                     Tfab.dataPtr(),   ARLIM(Tfab.loVect()),   ARLIM(Tfab.hiVect()),
+                     Yfab.dataPtr(),   ARLIM(Yfab.loVect()),   ARLIM(Yfab.hiVect()),
+                     tcpfab.dataPtr(), ARLIM(tcpfab.loVect()), ARLIM(tcpfab.hiVect()),
+                     Full0_Mix1);
+        BL_ASSERT(!tcoefs.contains_nan(gbox,0,transport_coefs_nComp));
+
+        for (int dir=0; dir<BL_SPACEDIM; ++dir)
+        {
+            int avgNormal_H0_A1 = (average_normal==DD_Harmonic ? 0 : 1);
+            center_to_edge(tcoefs,transport_coefs[dir][mfi],box,0,0,transport_coefs_nComp,avgNormal_H0_A1);
+        }
+    }
+
+    // Now, coarsen data
+    for (int lev=1; lev<mgLevels; ++lev)
+    {
+        BL_ASSERT(ddOps.size() > lev);
+        const DDOp& fine = ddOps[lev-1];
+        DDOp&       crse = ddOps[lev];
+        average(crse.cpi,0,fine.cpi,0,fine.cpi.nComp());
+        for (int dir=0; dir<BL_SPACEDIM; ++dir)
+        {
+            int avgTang_H0_A1 = (average_tangential==DD_Harmonic ? 0 : 1);
+            average_ec(crse.transport_coefs[dir],0,fine.transport_coefs[dir],0,transport_coefs_nComp,dir,avgTang_H0_A1);
+        }
+    }
 }
 
 bool
@@ -418,14 +465,13 @@ DDOp::applyOp(MultiFab&         outYH,
               const MultiFab&   inYT,
               PArray<MultiFab>& fluxYH,
               DD_ApForTorRH     whichApp,
-              bool              updateCoefs,
               int               level,
               bool              getAlpha,
               MultiFab*         alpha)
 {
     BL_ASSERT(level >= 0  &&  ((mgLevelsMAX<0) || (level<mgLevelsMAX)) );
     BL_ASSERT(thisIsParent());
-    ddOps[level].applyOp_DoIt(outYH,inYT,fluxYH,whichApp,updateCoefs,getAlpha,alpha);
+    ddOps[level].applyOp_DoIt(outYH,inYT,fluxYH,whichApp,getAlpha,alpha);
 }
 
 void
@@ -433,7 +479,6 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
                    const MultiFab&   inYT,
                    PArray<MultiFab>& fluxYH,
                    DD_ApForTorRH     whichApp,
-                   bool              updateCoefs,
                    bool              getAlpha,
                    MultiFab*         alpha)
 {
@@ -456,7 +501,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
     int sCompY = 0;
     int sCompT = Nspec;
 
-    setGrowCells(const_cast<MultiFab&>(inYT),sCompT,sCompY);
+    setGrowCells(const_cast<MultiFab&>(inYT),sCompT,const_cast<MultiFab&>(inYT),sCompY);
 
     // Initialize output
     outYH.setVal(0,0,nc);
@@ -474,77 +519,91 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
     int for_T0_H1 = (whichApp==DD_Temp ? 0 : 1);
     int Full0_Mix1 = (transport_model == DD_Model_Full ? 0 : 1);
 
-    FArrayBox FcpDTc, CPic, Xc;
+    FArrayBox sumFcpDTc, Xc, F_dTe, F_dTc;
     FArrayBox Hic(Box(iv,iv),1);
-    FArrayBox FcpDTe(Box(iv,iv),1);
-
-    if (0 && updateCoefs && ParallelDescriptor::IOProcessor()) {
-        std::cout << "DDOp::apply: Setting coefficients " << std::endl;
-    }
 
     for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
     {
         FArrayBox& outYHc = outYH[mfi];
         const FArrayBox& YTc = inYT[mfi];
-        const FArrayBox& c = coefs[mfi];
         const Box& box = mfi.validbox();
-
-        // Actually only need this if for_T0_H1 == 1
-        FcpDTc.resize(box,1);
-        FcpDTc.setVal(0);
-
         Box gbox = Box(box).grow(nGrow);
-        CPic.resize(gbox,Nspec);
-        chem->getCpGivenT(CPic,YTc,gbox,sCompT,0);
 
-        // Actually only need this if for_T0_H1 == 1
+#ifndef NDEBUG
+        BoxArray myRegion(2*BL_SPACEDIM+1);
+        myRegion.set(0,box);
+        int cnt=0;
+        for (OrientationIter oitr; oitr; ++oitr)
+        {
+            myRegion.set(++cnt,BoxLib::adjCell(box,oitr(),inYT.nGrow()));
+        }
+        BoxArray corners = BoxLib::complementIn(gbox,myRegion);
+#endif
+
         Hic.resize(gbox,Nspec);
-        chem->getHGivenT(Hic,YTc,gbox,Nspec,0);
+#ifndef NDEBUG
+        for (int i=0; i<corners.size(); ++i) {
+            const_cast<FArrayBox&>(YTc).setVal(0,corners[i],sCompT,1);
+            const_cast<FArrayBox&>(YTc).setVal(0,corners[i],sCompY,Nspec);
+        }
+#endif
+        BL_ASSERT(!YTc.contains_nan(gbox,sCompT,1));
+        BL_ASSERT(!YTc.contains_nan(gbox,sCompY,Nspec));
+        chem->getHGivenT(Hic,YTc,gbox,sCompT,0);
+#ifndef NDEBUG
+        for (int i=0; i<corners.size(); ++i)
+            Hic.setVal(0,corners[i],0,Nspec);
+#endif
+        BL_ASSERT(!Hic.contains_nan(gbox,0,Nspec));
 
         Xc.resize(gbox,Nspec);
         chem->massFracToMoleFrac(Xc,YTc,gbox,sCompY,0);
-
-        if (updateCoefs) {
-            setCoefficients(mfi,YTc,CPic);
-        }
+#ifndef NDEBUG
+        for (int i=0; i<corners.size(); ++i)
+            Xc.setVal(0,corners[i],0,Nspec);
+#endif
+        BL_ASSERT(!Xc.contains_nan(gbox,0,Xc.nComp()));
 
         int fillAlpha = getAlpha;
         FArrayBox& alfc = (fillAlpha ? (*alpha)[mfi] : dum);
+
+        F_dTc.resize(box,Nspec);
+        F_dTc.setVal(0);
 
         for (int dir=0; dir<BL_SPACEDIM; ++dir) {
 
             const Box ebox = BoxLib::surroundingNodes(box,dir);
 
-            // Actually only need this if for_T0_H1 == 1
-            FcpDTe.resize(ebox,Nspec);
+            // Actually only need this if for_T0_H1 == 1, but resize here so dataPtr call below wont fail...
+            F_dTe.resize(ebox,Nspec);
             
-            // Returns fluxes (and Fn.cpn.gradT if for T)
             FArrayBox& fe = fluxYH[dir][mfi];
             const FArrayBox& ae = area[dir][mfi];
+
+            const FArrayBox& c = transport_coefs[dir][mfi];
+            BL_ASSERT(!c.contains_nan(box,0,c.nComp()));
 
             // Compute Fi.Area, and Q.Area for RhoH,  or (Q-Fi.hi).Area and Fi.cp.Grad(T) for Temp
             FORT_DDFLUX(box.loVect(), box.hiVect(), dx.dataPtr(), &dir,
                         fe.dataPtr(), ARLIM(fe.loVect()), ARLIM(fe.hiVect()),
-                        FcpDTe.dataPtr(), ARLIM(FcpDTe.loVect()),  ARLIM(FcpDTe.hiVect()),
+                        F_dTe.dataPtr(), ARLIM(F_dTe.loVect()),  ARLIM(F_dTe.hiVect()),
                         YTc.dataPtr(), ARLIM(YTc.loVect()),  ARLIM(YTc.hiVect()),
                         Xc.dataPtr(), ARLIM(Xc.loVect()),  ARLIM(Xc.hiVect()),
                         c.dataPtr(), ARLIM(c.loVect()),  ARLIM(c.hiVect()),
-                        CPic.dataPtr(), ARLIM(CPic.loVect()),  ARLIM(CPic.hiVect()),
                         ae.dataPtr(), ARLIM(ae.loVect()),  ARLIM(ae.hiVect()),
                         &for_T0_H1, Hic.dataPtr(), ARLIM(Hic.loVect()), ARLIM(Hic.hiVect()),
                         &fillAlpha, alfc.dataPtr(), ARLIM(alfc.loVect()), ARLIM(alfc.hiVect()),
                         Full0_Mix1);
 
-            // If for T, increment running sum on cell centers with -avg(F.cp.gT) across faces (in FcpDTe).
+            // If for T, increment running sum on cell centers with -avg(F.grad(T)) across faces (in F_dTe).
             // If for H, Q.Area was incremented with sum(Fi.hi).Area inside DDFLUX, nothing more to do
-            if (for_T0_H1 == 0) {                
+            if (for_T0_H1 == 0) {
                 const int diff0_avg1 = 1;
                 const Real a = -1;
-                const int oc = 1;
                 FORT_DDETC(box.loVect(),box.hiVect(),
-                           FcpDTc.dataPtr(),ARLIM(FcpDTc.loVect()),ARLIM(FcpDTc.hiVect()),
-                           FcpDTe.dataPtr(),ARLIM(FcpDTe.loVect()),ARLIM(FcpDTe.hiVect()),
-                           &a, &dir, &oc, &diff0_avg1);
+                           F_dTc.dataPtr(),ARLIM(F_dTc.loVect()),ARLIM(F_dTc.hiVect()),
+                           F_dTe.dataPtr(),ARLIM(F_dTe.loVect()),ARLIM(F_dTe.hiVect()),
+                           &a, &dir, &Nspec, &diff0_avg1);
             }
             
             // Now form -Div(F.Area), add to running total
@@ -554,14 +613,24 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
                        outYHc.dataPtr(),ARLIM(outYHc.loVect()),ARLIM(outYHc.hiVect()),
                        fe.dataPtr(),ARLIM(fe.loVect()),ARLIM(fe.hiVect()), &a, &dir, &nc, &diff0_avg1);            
         }
+
         // Form -(1/Vol) Div(F.Area)
         for (int n=0; n<nc; ++n) {
             outYHc.mult(volInv[mfi],0,n,1);
         }
 
         // For rho.DT/Dt, form -(1/Vol) Div(F.Area) - avg(F.cp.DT)
-        if (for_T0_H1 == 0) {
-            outYHc.plus(FcpDTc,0,Nspec,1);
+        if (for_T0_H1 == 0)
+        {
+            F_dTc.mult(cpi[mfi],0,0,Nspec);
+
+            // Compute Sum(F.cp.dT) 
+            for (int i=1; i<Nspec; ++i) {
+                F_dTc.plus(F_dTc,i,0,1);
+            }
+
+            // Increment result
+            outYHc.plus(F_dTc,0,Nspec,1);
         }
 
         if (getAlpha) {
@@ -575,6 +644,8 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
             // Modify coefficient based on what was needed to fill adjacent grow cells
             for (OrientationIter oitr; oitr; ++oitr) {
                 const Orientation face = oitr();
+                if (geom.isPeriodic(oitr().coordDir())) continue;
+
                 const FabSet& stfs = stencilWeight[face];
                 int dir = face.coordDir();
                 int shiftCells = ( face.isLow() ? -1 : +1 ); 
@@ -605,6 +676,61 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
 }
 
 void
+DDOp::average_ec(MultiFab&       mfC,
+                 int             dCompC,
+                 const MultiFab& mfF,
+                 int             sCompF,
+                 int             nComp,
+                 int             dir,
+                 int             avgTang_H0_A1)
+{
+    BL_ASSERT(mfC.nComp()>=dCompC+nComp);
+    BL_ASSERT(mfF.nComp()>=sCompF+nComp);
+    const int* ratio = MGIV.getVect();
+    for (MFIter mfi(mfC); mfi.isValid(); ++mfi)
+    {
+        FArrayBox& C = mfC[mfi];
+        const FArrayBox& F = mfF[mfi];
+        const Box& ebox = mfi.validbox();
+
+        FORT_DDECAVG(ebox.loVect(),ebox.hiVect(),
+                     C.dataPtr(), ARLIM(C.loVect()), ARLIM(C.hiVect()),
+                     F.dataPtr(), ARLIM(F.loVect()), ARLIM(F.hiVect()),
+                     &nComp, ratio, &dir, &avgTang_H0_A1);
+    }
+}
+
+void
+DDOp::center_to_edge (const FArrayBox& cfab,
+                      FArrayBox&       efab,
+                      const Box&       ccBox,
+                      int              sComp,
+                      int              dComp,
+                      int              nComp,
+                      int              avgNormal_H0_A1)
+{
+    // Compute data on edges between each pair of cc values in the dir direction
+    const Box&      ebox = efab.box();
+    const IndexType ixt  = ebox.ixType();
+
+    BL_ASSERT(!(ixt.cellCentered()) && !(ixt.nodeCentered()));
+
+    int dir = -1;
+    for (int d = 0; d < BL_SPACEDIM; d++)
+        if (ixt.test(d))
+            dir = d;
+
+    BL_ASSERT(ccBox.contains(BoxLib::enclosedCells(ebox)));
+    BL_ASSERT(cfab.box().contains(Box(ccBox).grow(dir,1)));
+    BL_ASSERT(sComp+nComp <= cfab.nComp() && dComp+nComp <= efab.nComp());
+
+    FORT_DDC2E(ccBox.loVect(),ccBox.hiVect(),
+               cfab.dataPtr(sComp),ARLIM(cfab.loVect()),ARLIM(cfab.hiVect()),
+               efab.dataPtr(dComp),ARLIM(efab.loVect()),ARLIM(efab.hiVect()),
+               &nComp, &dir, &avgNormal_H0_A1);
+}    
+
+void
 DDOp::average (MultiFab&       mfC,
                int             dCompC,
                const MultiFab& mfF,
@@ -613,15 +739,16 @@ DDOp::average (MultiFab&       mfC,
 {
     BL_ASSERT(mfC.nComp()>=dCompC+nComp);
     BL_ASSERT(mfF.nComp()>=sCompF+nComp);
+    const int* ratio = MGIV.getVect();
     for (MFIter mfi(mfC); mfi.isValid(); ++mfi)
     {
         FArrayBox& C = mfC[mfi];
         const FArrayBox& F = mfF[mfi];
-
         const Box& cbox = mfi.validbox();
-        FORT_DDCCAVG(C.dataPtr(dCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
+        FORT_DDCCAVG(cbox.loVect(), cbox.hiVect(), 
+                     C.dataPtr(dCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
                      F.dataPtr(sCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
-                     cbox.loVect(), cbox.hiVect(), &nComp, MGIV.getVect());
+                     &nComp, ratio);
     }
 }
 
@@ -661,20 +788,15 @@ DDOp::Write(std::string& outfile) const
 
     // Set filenames
     std::string DDOpNAME = outfile + sep + "DDOp" + sep + "MG_Level_";
-    std::string DDBndryTNAME = outfile + sep + "DDBndryT" + sep + "MG_Level_";
-    std::string DDBndryYNAME = outfile + sep + "DDBndryY" + sep + "MG_Level_";
     Array<std::string> DDOpNAMElev(ddOps.size());
-    Array<std::string> DDBndryTNAMElev(ddOps.size());
-    Array<std::string> DDBndryYNAMElev(ddOps.size());
 
     for (int i=0;i<ddOps.size(); ++i)
     {
         DDOpNAMElev[i] = BoxLib::Concatenate(DDOpNAME,i,2);
-        DDBndryTNAMElev[i] = BoxLib::Concatenate(DDBndryTNAME,i,2);
-        DDBndryYNAMElev[i] = BoxLib::Concatenate(DDBndryYNAME,i,2);
     }
 
 
+    bool verbose = true;
     if (ParallelDescriptor::IOProcessor()) {
         if (!BoxLib::UtilCreateDirectory(outfile, 0755))
             BoxLib::CreateDirectoryFailed(outfile);
@@ -682,6 +804,8 @@ DDOp::Write(std::string& outfile) const
         std::string hdrName("Header");
         hdrName = outfile + sep + hdrName;
         std::ofstream ofs;
+        if (verbose)
+            cout << "DDOp::Write " << ": writing Header" << endl;
         ofs.open(hdrName.c_str());
         ofs << BL_SPACEDIM << '\n';
         ofs << geom.Domain() << '\n';
@@ -698,10 +822,20 @@ DDOp::Write(std::string& outfile) const
 
     for (int i=0;i<ddOps.size(); ++i)
     {
+        if (verbose && ParallelDescriptor::IOProcessor())
+            cout << "DDOp::Write: writing mg_level " << i << " to " << DDOpNAMElev[i] << endl;
         ddOps[i].WriteSub(DDOpNAMElev[i]);
-        Tbd->Write(DDBndryTNAMElev[i]);
-        Ybd->Write(DDBndryYNAMElev[i]);
     }
+
+    std::string DDBndryTNAME = outfile + sep + "DDBndryT";
+    if (verbose && ParallelDescriptor::IOProcessor())
+        cout << "DDOp::Write: writing DDBndryT to " << DDBndryTNAME << endl;
+    Tbd->Write(DDBndryTNAME);
+
+    std::string DDBndryYNAME = outfile + sep + "DDBndryY";
+    if (verbose && ParallelDescriptor::IOProcessor())
+        cout << "DDOp::Write: writing DDBndryY to " << DDBndryYNAME << endl;
+    Ybd->Write(DDBndryYNAME);
 }
 
 void
@@ -721,7 +855,8 @@ DDOp::WriteSub(std::string& outfile, int level) const
 void
 DDOp::WriteSub(std::string& outfile) const 
 {
-    if (ParallelDescriptor::IOProcessor()) {
+    bool verbose = true;
+    if (verbose && ParallelDescriptor::IOProcessor()) {
         if (!BoxLib::UtilCreateDirectory(outfile, 0755))
             BoxLib::CreateDirectoryFailed(outfile);
         
@@ -729,22 +864,35 @@ DDOp::WriteSub(std::string& outfile) const
         std::string hdrName = "Header";
         hdrName = outfile + sep + hdrName;
         std::ofstream ofs;
+        if (verbose)
+            cout << "DDOp::WriteSub mg_level " << mg_level << ": writing Header" << endl;
         ofs.open(hdrName.c_str());
         ofs << grids << '\n';
         ofs.close();
     }
     ParallelDescriptor::Barrier();
 
+    if (verbose && ParallelDescriptor::IOProcessor())
+        cout << "DDOp::WriteSub mg_level " << mg_level << ": writing volInv" << endl;
     VisMF::Write(volInv,outfile+sep+"volInv");
-    VisMF::Write(coefs,outfile+sep+"coefs");
+    if (verbose && ParallelDescriptor::IOProcessor())
+        cout << "DDOp::WriteSub mg_level " << mg_level << ": writing cpi" << endl;
+    VisMF::Write(cpi,outfile+sep+"cpi");
     int mindigits = 1;
     char buf[32];
     for (int i=0; i<BL_SPACEDIM; ++i) {
         sprintf(buf, "%0*d",  mindigits, i);
+        if (verbose && ParallelDescriptor::IOProcessor())
+            cout << "DDOp::WriteSub mg_level " << mg_level << ": writing area " << i << endl;
         VisMF::Write(area[i],outfile+sep+"area_"+std::string(buf));
+        if (verbose && ParallelDescriptor::IOProcessor())
+            cout << "DDOp::WriteSub mg_level " << mg_level << ": writing transport_coefs " << i << endl;
+        VisMF::Write(transport_coefs[i],outfile+sep+"transport_coefs_"+std::string(buf));
     }
     for (OrientationIter oitr; oitr; ++oitr) {
         sprintf(buf, "%0*d",  mindigits, (int)oitr());
+        if (verbose && ParallelDescriptor::IOProcessor())
+            cout << "DDOp::WriteSub mg_level " << mg_level << ": writing stencil weigts " << oitr() << endl;
         stencilWeight[oitr()].write(outfile+sep+"stencilWeight"+std::string(buf));
     }
 }
