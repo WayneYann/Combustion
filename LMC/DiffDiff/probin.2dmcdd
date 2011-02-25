@@ -4,12 +4,10 @@
   max_temp_lev = 0
   max_vort_lev = 0
   flametracval = 1.e-6
-  y_offset = -0.001
-  y_offset =  0.004
   y_offset =  0.01
   V_in = 0.1524
-  pertmag = 0.e-4
   pertmag = 2.e-4
+  pertmag = 0.e-4
  /
  &heattransin
   pamb = 101325.
@@ -18,8 +16,4 @@
   &flctin
  /
   &control
-  tbase_control = 0.01499640292
-  h_control = .00445
-  tau_control = 1.e-4
-  changeMax_control = .2
  /

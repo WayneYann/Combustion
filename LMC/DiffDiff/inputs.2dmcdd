@@ -1,17 +1,8 @@
-
-#ht.velocity_plotfile=PLT_TURB_1000
-#ht.velocity_plotfile=../Turb/plt0820
-
-#amr.plotfile_on_restart=1
-#amr.regrid_on_restart=1
-
-ns.do_active_control = 1
-ns.do_active_control = 0
-
-mg.smooth_on_cg_unstable=1
-
 max_step  = 10000
 stop_time = 4.00
+
+ns.do_active_control = 0
+mg.smooth_on_cg_unstable=1
 
 ns.do_fillPatchUMAC=1
 ns.zeroBndryVisc=1
@@ -29,11 +20,6 @@ amr.derive_plot_vars=rhoRT mag_vort
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 
 geometry.prob_lo   =  0    0
-geometry.prob_hi   = .004375 0.035
-geometry.prob_hi   = .00015625 0.01
-geometry.prob_hi   = .0003125 0.01
-geometry.prob_hi   = 0.01 0.01
-geometry.prob_hi   = 0.01 0.02
 geometry.prob_hi   = 0.03 0.03
 
 # multigrid class
@@ -58,17 +44,13 @@ ns.do_group_bndry_fills = 1
 mg.cg_solver=1
 #cg.cg_solver=1
 
-amr.n_cell    = 128 128
-amr.n_cell    = 128 128
 amr.n_cell    = 64 64
 
 amr.v=1
-amr.max_level =  2            # maximum level number allowed
 amr.max_level =  0            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
-amr.n_error_buf     = 2 2 1 2 # number of buffer cells in error est
-amr.grid_eff        = 0.9     # what constitutes an efficient grid
+amr.n_error_buf     = 1 1 1 2 # number of buffer cells in error est
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.check_file      = chk     # root name of checkpoint file
@@ -76,8 +58,7 @@ amr.check_int       = 1         # number of timesteps between checkpoints
 amr.plot_file       = plt
 amr.plot_int        = 1
 amr.grid_log        = grdlog  # name of grid logging file
-amr.max_grid_size   = 1280
-#amr.max_grid_size   = 32
+amr.max_grid_size   = 32
 #amr.derive_plot_vars=ALL
 
 amr.probin_file = probin.2dmcdd # This will default to file "probin" if not set
@@ -87,6 +68,7 @@ ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
 ns.visc_tol        = 1.0e-14  # tolerence for viscous solves
 ns.visc_abs_tol    = 1.0e-14  # tolerence for viscous solves
 ns.cfl            = 0.7       # cfl number for hyperbolic system
+ns.cfl            = 0.02       # cfl number for hyperbolic system
 ns.init_shrink    = 1.0       # scale back initial timestep
 ns.change_max     = 1.1       # scale back initial timestep
 ns.vel_visc_coef   = 1.983e-5
@@ -186,31 +168,38 @@ ns.do_mcdd=1
 ns.do_active_control=1
 
 ns.mcdd_relax_factor_T = 0.75
-ns.mcdd_relax_factor_Y = 1.0
+ns.mcdd_relax_factor_T = 1.0
+ns.mcdd_relax_factor_Y = 0.75
 ns.mcdd_transport_model=full
 #ns.mcdd_transport_model=mix
 ns.mcdd_mgLevelsMAX = -1
 ns.mcdd_nu1 = 5 10
 ns.mcdd_nu2 = 5 10
-ns.mcdd_numcycles = 1
-ns.mcdd_stalled_tol = 1.e-8
+ns.mcdd_numcycles = 10
 ns.mcdd_res_redux_tol =  1.e-8
-ns.mcdd_abs_tol =  1.e-8
-ns.mcdd_abs_tol =  1.e-6
-ns.mcdd_nu1_rtol = -.33333
-ns.mcdd_nu2_rtol = -.33333
+ns.mcdd_res_redux_tol = -1.e-8
+ns.mcdd_res_abs_tol =  1.e-8
+ns.mcdd_stalled_tol = 1.e-8
+ns.mcdd_res_nu1_rtol = -.33333
+ns.mcdd_res_nu2_rtol = -.33333
 ns.mcdd_nub = 50
+ns.mcdd_advance_temp=1
+ns.mcdd_advance_temp=0
+
 
 #amr.restart=chk00000
 max_step=5
-ns.mcdd_verbose = 3
+ns.mcdd_verbose = 6
+ns.mcdd_verbose = 5
+ns.mcdd_verbose =2 
 ns.hack_nomcddsync = 1
-ns.SUPERVERBOSE=DD_DEBUG_2D
 
-#ns.fixed_dt = 0.0001
-#ns.fixed_dt = 0.000001
-ns.init_shrink = 0.1
+#ns.VerboseDir=DD_DEBUG_2D
+#ns.VerboseVerbose=1
+#ns.VerboseSets=mcdd mcddOp
+#ns.VerboseSets=mcdd mcddOp mcddOpVT mac velVT
 
+ns.init_shrink = 0.01
 amr.derive_plot_vars=rhoRT mag_vort rhominsumrhoY
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
