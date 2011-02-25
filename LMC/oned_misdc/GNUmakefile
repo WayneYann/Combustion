@@ -32,7 +32,7 @@ ifeq (${USE_INTEL},TRUE)
 else
   fCOMP := gfortran -g -fbounds-check -O -Wuninitialized 
   CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
-  XTRALIBS :=  -lm -lg2c
+  XTRALIBS :=  -lm -lgfortran
 endif
 
 ifeq ($(REACTION_MECHANISM),GLARBORG)
