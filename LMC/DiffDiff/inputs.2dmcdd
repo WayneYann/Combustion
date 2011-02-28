@@ -194,10 +194,11 @@ ns.mcdd_verbose = 5
 ns.mcdd_verbose =2 
 ns.hack_nomcddsync = 1
 
-#ns.VerboseDir=DD_DEBUG_2D
-#ns.VerboseVerbose=1
-#ns.VerboseSets=mcdd mcddOp
-#ns.VerboseSets=mcdd mcddOp mcddOpVT mac velVT
+ns.ShowMF_Dir=DD_DEBUG_2D
+ns.ShowMF_Verbose=1
+#ns.ShowMF_Sets=mac velVT divu mcddVT mcddOpVT
+ns.ShowMF_Sets=mac velVT divu mcddVT
+ns.ShowMF_Check_Nans = true
 
 ns.init_shrink = 0.01
 amr.derive_plot_vars=rhoRT mag_vort rhominsumrhoY

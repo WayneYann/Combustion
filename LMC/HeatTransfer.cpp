@@ -67,9 +67,10 @@ const Real* fabdat = (fab).dataPtr(comp);
 #define YDOT_GROW   1
 const int LinOp_grow = 1;
 
-static std::set<std::string> VerboseSets;
-static std::string VerboseDir;
-static bool VerboseVerbose = true;
+static std::set<std::string> ShowMF_Sets;
+static std::string ShowMF_Dir;
+static bool ShowMF_Verbose = true;
+static bool ShowMF_Check_Nans = true;
 
 //
 // Initialization of static members.
@@ -213,9 +214,9 @@ showMF(const std::string&   mySet,
        int                  lev = -1,
        int                  iter = -1) // Default value = no append 2nd integer
 {
-    if (VerboseSets.count(mySet)>0)
+    if (ShowMF_Sets.count(mySet)>0)
     {
-        std::string DebugDir(VerboseDir);
+        std::string DebugDir(ShowMF_Dir);
         if (ParallelDescriptor::IOProcessor())
             if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
                 BoxLib::CreateDirectoryFailed(DebugDir);
@@ -230,8 +231,16 @@ showMF(const std::string&   mySet,
         }
         junkname = DebugDir + "/" + junkname;
 
-        if (VerboseVerbose>0 && ParallelDescriptor::IOProcessor()) {
+        if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
             cout << "   ******************************  Debug: writing " << junkname << endl;
+        }
+
+        if (ShowMF_Check_Nans)
+        {
+            for (MFIter mfi(mf); mfi.isValid(); ++mfi)
+            {
+                BL_ASSERT(!mf[mfi].contains_nan(mfi.validbox(),0,mf.nComp()));
+            }
         }
         VisMF::Write(mf,junkname);
     }
@@ -242,9 +251,9 @@ showMCDD(const std::string&   mySet,
          const DDOp&          mcddop,
          const std::string&   name)
 {
-    if (VerboseSets.count(mySet)>0)
+    if (ShowMF_Sets.count(mySet)>0)
     {
-        std::string DebugDir(VerboseDir);
+        std::string DebugDir(ShowMF_Dir);
         if (ParallelDescriptor::IOProcessor())
             if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
                 BoxLib::CreateDirectoryFailed(DebugDir);
@@ -252,7 +261,7 @@ showMCDD(const std::string&   mySet,
 
         std::string junkname = DebugDir + "/" + name;
 
-        if (VerboseVerbose>0 && ParallelDescriptor::IOProcessor()) {
+        if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
             cout << "   ******************************  Debug: writing " << junkname << endl;
         }
         mcddop.Write(junkname);
@@ -495,15 +504,16 @@ HeatTransfer::read_params ()
         visc_coef[i] = bogus_value;
 
     // Useful for debugging
-    if (int nsv=pp.countval("VerboseSets"))
+    if (int nsv=pp.countval("ShowMF_Sets"))
     {
-        Array<std::string> VerboseSetNames(nsv);
-        pp.getarr("VerboseSets",VerboseSetNames);
+        Array<std::string> ShowMF_set_names(nsv);
+        pp.getarr("ShowMF_Sets",ShowMF_set_names);
         for (int i=0; i<nsv; ++i) {
-            VerboseSets.insert(VerboseSetNames[i]);
+            ShowMF_Sets.insert(ShowMF_set_names[i]);
         }
-        VerboseDir="."; pp.query("VerboseDir",VerboseDir);
-        pp.query("VerboseVerbose",VerboseVerbose);
+        ShowMF_Dir="."; pp.query("ShowMF_Dir",ShowMF_Dir);
+        pp.query("ShowMF_Verbose",ShowMF_Verbose);
+        pp.query("ShowMF_Check_Nans",ShowMF_Check_Nans);
     }
 
     pp.query("do_mcdd",do_mcdd);
@@ -3436,7 +3446,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     
         MultiFab divmusi(grids,BL_SPACEDIM,1);
 #ifndef NDEBUG
-        calc_divu(time,-1,get_old_data(Divu_Type));
         showMF("velVT",get_old_data(Divu_Type),"velVT_divu",level);
 #endif
         //
@@ -3640,14 +3649,17 @@ HeatTransfer::compute_mcdd_visc_terms(MultiFab&           vtermsYH,
             Sfab.divide(StateFab,box,Density,sCompY+i,1);
         }
     }
+    showMF("mcddVT",S,"mcddVT_S");
 
     MCDDOp.setCoefficients(S,sCompT,S,sCompY);    
     showMCDD("mcddOpVT",MCDDOp,"VT_DDOp");
     MCDDOp.applyOp(vtermsYH,S,*tFlux,whichApp);
+    showMF("mcddVT",vtermsYH,"mcddVT_LofS");
     //
     // Add heat source terms to RhoH/T component
     //
     add_heat_sources(vtermsYH,nspecies,time,nGrow,1.0);
+    showMF("mcddVT",vtermsYH,"mcddVT_addHS");
 
     //
     // Divide whole mess by cpmix at this time
@@ -3666,6 +3678,7 @@ HeatTransfer::compute_mcdd_visc_terms(MultiFab&           vtermsYH,
             vtermsYH[mfi].divide(cp,0,nspecies,1);
         }
     }
+    showMF("mcddVT",vtermsYH,"mcddVT_divideCP");
 
     //
     // Ensure consistent grow cells
@@ -3690,6 +3703,7 @@ HeatTransfer::compute_mcdd_visc_terms(MultiFab&           vtermsYH,
         //
         geom.FillPeriodicBoundary(vtermsYH,0,nspecies+1,true);
     }
+    showMF("mcddVT",vtermsYH,"mcddVT_grow");
 }
 
 Real MFnorm(const MultiFab& mf,
@@ -5473,6 +5487,10 @@ HeatTransfer::predict_velocity (Real  dt,
     //
     MultiFab visc_terms(grids,nComp,1);
 
+#ifndef NDEBUG
+    calc_divu(prev_time,dt,get_old_data(Divu_Type));
+    showMF("mac",get_old_data(Divu_Type),"pv_divu",level);
+#endif
     if (be_cn_theta != 1.0)
     {
 	getViscTerms(visc_terms,Xvel,nComp,prev_time);
@@ -8905,6 +8923,7 @@ HeatTransfer::calc_divu (Real      time,
     {
         mcViscTerms.define(grids,nspecies+1,nGrow,Fab_allocate);
         compute_mcdd_visc_terms(mcViscTerms,time,nGrow,DDOp::DD_Temp);
+        showMF("divu",mcViscTerms,"divu_mcViscTerms",level);
     }
 
     MultiFab rho(grids,1,nGrow), temp(grids,1,nGrow);
@@ -8923,6 +8942,9 @@ HeatTransfer::calc_divu (Real      time,
     //
     // Note that state contains rho*species, so divide species by rho.
     //
+    showMF("divu",rho,"divu_rho",level);
+    showMF("divu",temp,"divu_temp",level);
+
     MultiFab species(grids,nspecies,nGrow);
 
     FArrayBox tmp;
@@ -8943,6 +8965,8 @@ HeatTransfer::calc_divu (Real      time,
             species[i].mult(tmp,0,ispecies,1);
     }
 
+    showMF("divu",species,"divu_species",level);
+
     MultiFab mwmix(grids,1,nGrow), cp(grids,1,nGrow);
 
     for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
@@ -8957,6 +8981,9 @@ HeatTransfer::calc_divu (Real      time,
         getChemSolve().getCpmixGivenTY(cp[iGrid],temp[iGrid],species[iGrid],
                                        box,sCompT,sCompY,sCompCp);
     }
+
+    showMF("divu",cp,"divu_cp",level);
+    showMF("divu",mwmix,"divu_mwmix",level);
 
     species.clear();
     //
@@ -8982,6 +9009,8 @@ HeatTransfer::calc_divu (Real      time,
         divu[iGrid].divide(rho[iGrid],grids[iGrid],sCompR,0,1);
         divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
     }
+    showMF("divu",divu,"divu_VT_T_over_rhoT",level);
+
     MultiFab delta_divu(grids,1,nGrow), spec_visc_terms(grids,nspecies,0);
 
     delta_divu.setVal(0.0);
@@ -9007,6 +9036,7 @@ HeatTransfer::calc_divu (Real      time,
             delta_divu[mfi].plus(spec_visc_terms[mfi],grids[iGrid],comp,0,1);
         }
     }
+    showMF("divu",delta_divu,"divu_sum_VT_Y_over_Wi",level);
 
     spec_visc_terms.clear();
 
@@ -9018,6 +9048,7 @@ HeatTransfer::calc_divu (Real      time,
         delta_divu[iGrid].mult(mwmix[iGrid],box,0,0,1);
         divu[iGrid].plus(delta_divu[iGrid],box,0,0,1);
     }
+    showMF("divu",divu,"divu_1",level);
 
     rho.clear();
 
@@ -9059,6 +9090,8 @@ HeatTransfer::calc_divu (Real      time,
             }
         }
     }
+
+    showMF("divu",divu,"divu_2",level);
 }
 
 //

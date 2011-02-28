@@ -671,7 +671,19 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
                     }
                 }
             }
+            BL_ASSERT(!alfc.contains_nan(box,0,Nspec));
+            BL_ASSERT(!alfc.contains_nan(box,Nspec,1));
         }
+
+        if (outYHc.contains_nan(box,0,Nspec))
+        {
+            for (int i=0; i<Nspec; ++i) {
+                if (outYHc.contains_nan(box,i,1))
+                    cout << "component " << i << " contains a nan" << endl;
+            }
+        }
+        BL_ASSERT(!outYHc.contains_nan(box,0,Nspec));
+        BL_ASSERT(!outYHc.contains_nan(box,Nspec,1));
     }
 }
 
@@ -892,7 +904,7 @@ DDOp::WriteSub(std::string& outfile) const
     for (OrientationIter oitr; oitr; ++oitr) {
         sprintf(buf, "%0*d",  mindigits, (int)oitr());
         if (verbose && ParallelDescriptor::IOProcessor())
-            cout << "DDOp::WriteSub mg_level " << mg_level << ": writing stencil weigts " << oitr() << endl;
+            cout << "DDOp::WriteSub mg_level " << mg_level << ": writing stencil weights " << oitr() << endl;
         stencilWeight[oitr()].write(outfile+sep+"stencilWeight"+std::string(buf));
     }
 }
