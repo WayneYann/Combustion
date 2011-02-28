@@ -1369,7 +1369,7 @@ HeatTransfer::initData ()
         }
         else if (!particle_file.empty())
         {
-            HTPC->Init(particle_file);
+            HTPC->InitFromAsciiFile(particle_file);
         }
     }
 #endif
@@ -1797,7 +1797,7 @@ HeatTransfer::post_restart ()
 
         if (!particle_input_file.empty())
         {
-            HTPC->Init(particle_input_file);
+            HTPC->InitFromAsciiFile(particle_input_file);
         }
 
         if (!particle_output_file.empty())
@@ -3793,7 +3793,6 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
     int sCompR = sCompH + 1;
     BL_ASSERT(sCompR<S.nComp());
 
-    int dCompY = 0;
     int dCompH = nspecies;
 
     const BoxArray& mg_grids = S.boxArray();
@@ -3808,7 +3807,6 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 
     MultiFab T1(mg_grids,nComp,nGrow); // Leave name generic since it is used both for Lphi and Res
     MultiFab alpha(mg_grids,nComp,nGrowOp);
-    bool getAlpha = true;
 
     int for_T0_H1 = (whichApp==DDOp::DD_Temp ? 0 : 1);
     ChemDriver& cd = getChemSolve();
