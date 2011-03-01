@@ -128,7 +128,7 @@ c     Set defaults, change with namelist
          print *,'CHKFILE ',chkfile
          
 C CEG FIXME this seg faults
-         call read_check(chkfile,nx,vel_new,scal_new,press_new,
+         call read_check(chkfile,vel_new,scal_new,press_new,
      $                   I_R_new,divu_new,dsdt,
      $                   time,at_nstep,dt_old,cfl_used)
          do_init = 0
