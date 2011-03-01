@@ -6,7 +6,7 @@
       real*8   vel(-1:nx)
       real*8  scal(-1:nx,nscal)
       real*8 press(0:nx)
-      real*8   I_R(0:nx-1,maxspec)
+      real*8   I_R(0:nx-1,0:maxspec)
       real*8  divu( 0:nx-1)
       real*8  dsdt( 0:nx-1)
       real*8 dx
