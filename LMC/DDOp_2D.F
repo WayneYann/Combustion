@@ -573,7 +573,7 @@ c     NOTE: generalize to rz
       enddo
       end
 
-      subroutine FORT_DDCCINT(f, DIMS(f), c, DIMS(c), lo, hi, nc, ratio)
+      subroutine FORT_DDCCINT(lo, hi, f, DIMS(f), c, DIMS(c), nc, ratio)
       integer nc
       integer DIMDEC(f)
       integer DIMDEC(c)

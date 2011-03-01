@@ -372,6 +372,17 @@ c     Go backwards on n so that we have slot 1 until the end
 
       else if (dir.eq.2) then
 
+c     Put Grad(T) in F_dTe slot 1 until after we have computed F
+         do k = lo(3), hi(3)+1
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  F_dTe(i,j,k,1) = ( YTc(i,j,k,Nspec+1) - YTc(i,j,k-1,Nspec+1) ) * dxInv
+                  PTCe = coefe(i,j,k,PTCoffset+1)
+                  fluxYH(i,j,k,Nspec+1) = -  PTCe * F_dTe(i,j,k,1)
+               end do
+            end do
+         end do
+
          do k = lo(3), hi(3)+1
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
@@ -853,7 +864,7 @@ c     Go backwards on n so that we have slot 1 until the end
       endif
       end
 
-      subroutine FORT_DDCCAVG(c, DIMS(c), f, DIMS(f), lo, hi, nc, ratio)
+      subroutine FORT_DDCCAVG(lo, hi, c, DIMS(c), f, DIMS(f), nc, ratio)
       integer nc
       integer DIMDEC(f)
       integer DIMDEC(c)
@@ -890,7 +901,7 @@ c     NOTE: generalize to rz
       enddo
       end
 
-      subroutine FORT_DDCCINT(f, DIMS(f), c, DIMS(c), lo, hi, nc, ratio)
+      subroutine FORT_DDCCINT(lo, hi, f, DIMS(f), c, DIMS(c), nc, ratio)
       integer nc
       integer DIMDEC(f)
       integer DIMDEC(c)
@@ -910,9 +921,9 @@ c     NOTE: generalize to rz
                fj = ratio(2)*j
                do i = lo(1), hi(1)
                   fi = ratio(1)*i
-                  do kk = 0,ratio(3)
-                     do jj = 0,ratio(2)
-                        do ii = 0,ratio(1)
+                  do kk = 0,ratio(3)-1
+                     do jj = 0,ratio(2)-1
+                        do ii = 0,ratio(1)-1
                            f(fi+ii,fj+jj,fk+kk,n) = c(i,j,k,n) + f(fi+ii,fj+jj,fk+kk,n)
                         enddo
                      enddo

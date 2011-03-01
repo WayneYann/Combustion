@@ -3810,14 +3810,14 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 
     int for_T0_H1 = (whichApp==DDOp::DD_Temp ? 0 : 1);
     ChemDriver& cd = getChemSolve();
-    Real iterRes_init = -1;
     bool is_relaxed_nu1 = false;
     int mg_level = p.mg_level;
 
     std::string vgrp("mcdd");
     showMF(vgrp,S,"S_init",mg_level);
     showMF(vgrp,Rhs,"Rhs",mg_level);
-    showMF(vgrp,rhoCpInv,"rhoCpInv",mg_level);
+    if (whichApp==DDOp::DD_Temp)
+        showMF(vgrp,rhoCpInv,"rhoCpInv",mg_level);
 
     for (int iter=0; (iter<=p.nu1) && (p.status==HT_InProgress) && !is_relaxed_nu1; ++iter)
     {
@@ -4080,7 +4080,21 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 
         // HACK
         T2C.setVal(0,nspecies+1,2); // top two components arent used, but the NaNs irritate amrvis
+
+        T2C.setVal(0);
+
+        for (MFIter mfi(T1); mfi.isValid(); ++mfi)
+        {
+            BL_ASSERT(!T1[mfi].contains_nan(mfi.validbox(),0,nspecies+1));
+        }
+
         DDOp::average(T2C,0,T1,0,nspecies+1);  // Avg(Res)=Avg(T1)=T2C
+
+        for (MFIter mfi(T2C); mfi.isValid(); ++mfi)
+        {
+            BL_ASSERT(!T2C[mfi].contains_nan(mfi.validbox(),0,nspecies+1));
+        }
+
         showMF(vgrp,T2C,"Avg_Res",mg_level);
 
         // Rho-weight the state, then average (leave fine data rho-weighted for now...)
@@ -4092,7 +4106,18 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
             Sfab.mult(Sfab,sCompR,sCompH,1);
         }
 
+        for (MFIter mfi(S); mfi.isValid(); ++mfi)
+        {
+            BL_ASSERT(!S[mfi].contains_nan(mfi.validbox(),0,nspecies+3));
+        }
+
         DDOp::average(SC,0,S,0,nspecies+3); // Includes generation of rho, rhoh on coarse
+
+        for (MFIter mfi(SC); mfi.isValid(); ++mfi)
+        {
+            BL_ASSERT(!SC[mfi].contains_nan(mfi.validbox(),0,nspecies+3));
+        }
+
         showMF(vgrp,SC,"Avg_Srho",mg_level);
 
         // Unweight coarse state
@@ -4543,7 +4568,8 @@ HeatTransfer::mcdd_update(Real time,
         }
     }
     showMF(vgrp,YTHR,"YTHR_old_mcdd_update");
-    showMF(vgrp,T1,"cp_old_mcdd_update");
+    if (whichApp == DDOp::DD_Temp)
+        showMF(vgrp,T1,"cp_old_mcdd_update");
 
     PArray<MultiFab> fluxn(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
@@ -4615,7 +4641,8 @@ HeatTransfer::mcdd_update(Real time,
 
     showMF(vgrp,YTHR,"YTHR_new_mcdd_update");
     showMF(vgrp,Rhs,"Rhs_mcdd_update");
-    showMF(vgrp,T1,"rhoCpInv_mcdd_update");
+    if (whichApp == DDOp::DD_Temp)
+        showMF(vgrp,T1,"rhoCpInv_mcdd_update");
 
     PArray<MultiFab> fluxnp1(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)

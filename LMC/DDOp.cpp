@@ -200,7 +200,7 @@ DDOp::define (const BoxArray& _grids,
     }
     */
     int model_DD0_MA1 = (transport_model==DD_Model_Full ? 0 : 1);
-    transport_coefs_nComp = FORT_DDNCOEFS(model_DD0_MA1);
+    transport_coefs_nComp = FORT_DDNCOEFS(&model_DD0_MA1);
     transport_coefs.resize(BL_SPACEDIM);
 
     // Note, no grow cells for any of these
@@ -429,7 +429,7 @@ DDOp::setCoefficients(const MultiFab& T,
                      Tfab.dataPtr(),   ARLIM(Tfab.loVect()),   ARLIM(Tfab.hiVect()),
                      Yfab.dataPtr(),   ARLIM(Yfab.loVect()),   ARLIM(Yfab.hiVect()),
                      tcpfab.dataPtr(), ARLIM(tcpfab.loVect()), ARLIM(tcpfab.hiVect()),
-                     Full0_Mix1);
+                     &Full0_Mix1);
         BL_ASSERT(!tcoefs.contains_nan(gbox,0,transport_coefs_nComp));
 
         for (int dir=0; dir<BL_SPACEDIM; ++dir)
@@ -593,7 +593,11 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
                         ae.dataPtr(), ARLIM(ae.loVect()),  ARLIM(ae.hiVect()),
                         &for_T0_H1, Hic.dataPtr(), ARLIM(Hic.loVect()), ARLIM(Hic.hiVect()),
                         &fillAlpha, alfc.dataPtr(), ARLIM(alfc.loVect()), ARLIM(alfc.hiVect()),
-                        Full0_Mix1);
+                        &Full0_Mix1);
+
+            BL_ASSERT(!fe.contains_nan(ebox,0,fe.nComp()));
+            
+            BL_ASSERT(!F_dTe.contains_nan(ebox,0,for_T0_H1 == 0 ? F_dTe.nComp() : 1));
 
             // If for T, increment running sum on cell centers with -avg(F.grad(T)) across faces (in F_dTe).
             // If for H, Q.Area was incremented with sum(Fi.hi).Area inside DDFLUX, nothing more to do
@@ -674,7 +678,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
             BL_ASSERT(!alfc.contains_nan(box,0,Nspec));
             BL_ASSERT(!alfc.contains_nan(box,Nspec,1));
         }
-
+#if 0
         if (outYHc.contains_nan(box,0,Nspec))
         {
             for (int i=0; i<Nspec; ++i) {
@@ -682,6 +686,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
                     cout << "component " << i << " contains a nan" << endl;
             }
         }
+#endif
         BL_ASSERT(!outYHc.contains_nan(box,0,Nspec));
         BL_ASSERT(!outYHc.contains_nan(box,Nspec,1));
     }
@@ -757,6 +762,7 @@ DDOp::average (MultiFab&       mfC,
         FArrayBox& C = mfC[mfi];
         const FArrayBox& F = mfF[mfi];
         const Box& cbox = mfi.validbox();
+        BL_ASSERT(cbox == BoxLib::coarsen(mfF.boxArray()[mfi.index()],MGIV));
         FORT_DDCCAVG(cbox.loVect(), cbox.hiVect(), 
                      C.dataPtr(dCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
                      F.dataPtr(sCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
@@ -777,10 +783,12 @@ DDOp::interpolate (MultiFab&       mfF,
     {
         FArrayBox& F = mfF[mfi];
         const FArrayBox& C = mfC[mfi];
-        const Box cbox = mfi.validbox();
-        FORT_DDCCINT(F.dataPtr(dCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
+        const Box& cbox = mfi.validbox();
+        BL_ASSERT(F.box().contains(BoxLib::refine(cbox,MGIV)));
+        FORT_DDCCINT(cbox.loVect(), cbox.hiVect(),
+                     F.dataPtr(dCompF),ARLIM(F.loVect()), ARLIM(F.hiVect()),
                      C.dataPtr(sCompC),ARLIM(C.loVect()), ARLIM(C.hiVect()),
-                     cbox.loVect(), cbox.hiVect(), &nComp, MGIV.getVect());
+                     &nComp, MGIV.getVect());
     }
 }
 #include "Utility.H"

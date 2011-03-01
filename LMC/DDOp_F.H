@@ -74,7 +74,7 @@ extern "C" {
                      const Real* Hic, ARLIM_P(Hiclo),    ARLIM_P(Hichi),
                      const int* fillA,
                      const Real* a,   ARLIM_P(alo),      ARLIM_P(ahi),
-                     const int& Full0_Mix1);
+                     const int* Full0_Mix1);
 
     void FORT_DDETC(const int* lo, const int* hi,
                     Real*     div, ARLIM_P(divlo), ARLIM_P(divhi),
@@ -86,26 +86,26 @@ extern "C" {
                       const Real* fine, ARLIM_P(flo), ARLIM_P(fhi),
                       const int* nc, const int* ratio);
 
-
     void FORT_DDECAVG(const int* lo, const int* hi, 
                       Real*       crse, ARLIM_P(clo), ARLIM_P(chi),
                       const Real* fine, ARLIM_P(flo), ARLIM_P(fhi),
                       const int* nc, const int* ratio, const int* dir, const int* avgTang_H0_A1);
 
-    void FORT_DDCCINT(Real*       fine, ARLIM_P(flo), ARLIM_P(fhi),
+    void FORT_DDCCINT(const int* lo, const int* hi,
+                      Real*       fine, ARLIM_P(flo), ARLIM_P(fhi),
                       const Real* crse, ARLIM_P(clo), ARLIM_P(chi),
-                      const int* lo, const int* hi, const int* nc, const int* ratio);
+                      const int* nc, const int* ratio);
 
     void FORT_DDADJ(Real* s, ARLIM_P(slo), ARLIM_P(shi), const int* nc);
 
-    int FORT_DDNCOEFS(const int& nCoefs);
+    int FORT_DDNCOEFS(const int* nCoefs);
 
     void FORT_DDCOEFS(const int* lo, const int* hi,
                       Real* coefs,    ARLIM_P(clo),  ARLIM_P(chi),
                       const Real* T,  ARLIM_P(Tlo),  ARLIM_P(Thi),
                       const Real* Y,  ARLIM_P(Ylo),  ARLIM_P(Yhi),
                       const Real* Cp, ARLIM_P(Cplo), ARLIM_P(Cphi),
-                      const int& full0_mix1);
+                      const int* full0_mix1);
 
 }
 
