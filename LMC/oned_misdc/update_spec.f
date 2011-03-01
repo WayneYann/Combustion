@@ -8,7 +8,7 @@
       real*8    alpha(0 :nx-1)
       real*8     beta(-1:nx  ,nscal)
       real*8      Rhs(0 :nx-1,*)
-      real*8      I_R(0:nx-1,maxspec)
+      real*8      I_R(0:nx-1,0:maxspec)
       real*8 dx,dt,be_cn_theta,time
       
       real*8 visc(0 :nx-1,Nspec)
