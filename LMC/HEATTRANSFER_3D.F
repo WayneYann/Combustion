@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.35 2011-02-25 19:20:51 marc Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.36 2011-03-01 00:29:20 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1604,7 +1604,7 @@ c
                do j=lo(2),hi(2)
                   do i=lo(1),hi(1)
                      cor = fac(Nspec) * L(i,j,k,Nspec) / (1.d0 - thetaDt*a(i,j,k,Nspec))
-                     maxCor(Nspec) = MAX(maxCor(n),ABS(cor))
+                     maxCor(Nspec) = MAX(maxCor(Nspec),ABS(cor))
                      S(i,j,k,Tc) = S(i,j,k,Tc)  +  cor
                   enddo
                enddo
@@ -1614,7 +1614,7 @@ c
                do j=lo(2),hi(2)
                   do i=lo(1),hi(1)
                      cor = fac(Nspec) * L(i,j,k,Nspec) / (S(i,j,k,rc) - thetaDt*a(i,j,k,Nspec))
-                     maxCor(Nspec) = MAX(maxCor(n),ABS(cor))
+                     maxCor(Nspec) = MAX(maxCor(Nspec),ABS(cor))
                      S(i,j,k,hc) = S(i,j,k,hc)  +  cor
                   enddo
                enddo
