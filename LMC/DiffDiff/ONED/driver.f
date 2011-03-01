@@ -28,8 +28,8 @@ c     Set defaults
       nsteps = 200
       plot_int = 1
       problo = 0.0d0
-      probhi = 3.5d0
-      flame_offset = 1.1d0
+      probhi = 3.0d0
+      flame_offset = 1.d0
 
 c      probhi = 1.d0
 c      flame_offset = -.1d0
@@ -43,7 +43,7 @@ c      flame_offset = 0.d0
       probtype = 1
       dtRedFac = 5.d0
       alt_spec_update = 0
-      advance_RhoH = 0
+      advance_RhoH = 1
       setTfromH = 2
       rhoInTrans = 1
       Ncorrect = 200
@@ -73,10 +73,11 @@ c      flame_offset = 0.d0
          call apply_bcs(scal_old,time,step)
 
          if (advance_RhoH.eq.1) then
-            call update_beImplicit(scal_new,scal_old,dx,dt,time,step)
+            call update_FULL1(scal_new,scal_old,dx,dt,be_cn_theta,time,step)
+c            call update_beImplicit(scal_new,scal_old,dx,dt,time,step)
 c            call update_RhoH(scal_new,scal_old,dx,dt)
          else
-            call update_FULL(scal_new,scal_old,dx,dt,be_cn_theta,time,step)
+            call update_FULL1(scal_new,scal_old,dx,dt,be_cn_theta,time,step)
 c            call update_beFULL(scal_new,scal_old,dx,dt,time,step)
 c            call update_beImplicit(scal_new,scal_old,dx,dt,time,step)
 c            call update_Temp(scal_new,scal_old,dx,dt)
@@ -863,6 +864,199 @@ c     Update state, compute errors/etc
       itername = 'iter'
       updatename = 'update'
 
+c      Niters = RhoH_to_Temp(S_old)
+c      if (Niters.lt.0) then
+c         print *,'RhoH->Temp failed before predictor'
+c         stop
+c      endif
+
+c     Initialize S_star to S_old
+      do i=0,nx+1
+         do n=1,maxscal
+            S_new(n,i) = S_old(n,i)
+         enddo
+      enddo
+
+      if ( (theta.lt.0.d0) .or. (theta.gt.1.d0) ) then
+         print *,'update_FULL: bad theta',theta
+         stop
+      endif
+
+      if (theta.lt.1.d0) then
+         call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
+         call LinOpApply(RHS,S_old,PTCec,rhoTDec,rhoDijec,cpicc,dx)
+         do i=1,nx
+            do n=1,Nspec
+               RHS(n,i) = RHS(n,i)*(1.d0-theta)*dt + S_old(FirstSpec+n-1,i)
+            enddo
+            RHS(Nspec+1,i) = RHS(Nspec+1,i)*(1.d0-theta)*dt + S_old(RhoH,i)
+         enddo
+      endif
+
+
+c      do i=0,nx+1
+c         tmp(0) = (DBLE(i)+0.5d0)*dx+problo
+c         S_new(Temp,i) = 300.d0 + 1200.d0*(tmp(0)/(nx*dx))
+c      enddo
+c      call print_cp_prime(S_new,'cp.dat',dx)
+c      stop
+
+      call print_soln(0,0.d0,S_new,itername,dx)
+
+      URfac = .75d0
+      dtDx2Inv = theta*dt/(dx*dx)
+      firstPass = 1
+      do iCorrect=1,Ncorrect
+            
+         do i=0,nx+1
+            do n=1,maxscal
+               S_star(n,i) = S_new(n,i)
+            enddo
+         enddo
+
+         call apply_bcs(S_star,time,step)
+         if (firstPass.eq.1) then
+            call ecCoef_and_dt(S_star,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
+c            firstPass = 0
+         endif
+         call LinOpApply(LofS_star,S_star,PTCec,rhoTDec,rhoDijec,cpicc,dx)
+
+c     
+c     R = b - A.S_new, then S_new = S_new + R/lambda
+c
+c     However, here, lambda comes from the mixture-averaged system:
+c
+c     d(rho.Yi)/dt = -Div(F)
+c     d(rho.H)/dt  = -Div(Q)
+c
+c     The CN discretization is:
+c
+c               phi - theta.dt.L(phi) = phi_old + (1-theta).dt.L(phi_old) = RHS (Ax=b)
+c     
+c     The point-jacobi iteration is phi <- phi^s + R^s / lambda^s
+c
+c     or, explicitly:   phi = phi^s + (RHS - phi^s + dt*L(phi^s) / lambda
+c
+c     where lambda is the diagonal entry in the matrix A defined above
+c
+         do i=1,nx
+
+            do n=1,Nspec
+               lambda=1.d0
+               if (i.ne.1) then
+                  cpnm = 0.5d0 * ( cpicc(n,i-1) + cpicc(n,i  ) )
+                  lambda = lambda + dtDx2Inv*rhoDiec(n,i  )/S_star(Density,i)
+               endif
+               if (i.ne.nx) then
+                  cpnp = 0.5d0 * ( cpicc(n,i  ) + cpicc(n,i+1) )
+                  lambda = lambda + dtDx2Inv*rhoDiec(n,i+1)/S_star(Density,i)
+               endif
+               S_new(FirstSpec+n-1,i) = S_star(FirstSpec+n-1,i)
+     &              + URfac*( RHS(n,i) - S_star(FirstSpec+n-1,i) + theta*dt*LofS_star(n,i) )/lambda
+            enddo
+
+            lambda = 1.d0
+            if (i.ne.1) then
+               lambda = lambda + PTCec(i  )
+            endif
+            if (i.ne.nx) then
+               lambda = lambda + PTCec(i+1)
+            endif
+            S_new(RhoH,i) = S_star(RhoH,i)
+     &           + URfac*( RHS(Nspec+1,i) - S_star(RhoH,i) + theta*dt*LofS_star(Nspec+1,i) )/lambda
+         enddo
+
+c     Update state, compute errors/etc
+         do n=1,Nspec+3
+            L2err(n) = 0.d0
+         enddo
+         
+         do i=1,nx
+
+            S_new(Density,i) = 0.d0
+            do n=1,Nspec
+               S_new(Density,i) = S_new(Density,i) + S_new(FirstSpec+n-1,i)
+            enddo
+            update(Density,i) = S_new(Density,i)-S_star(Density,i)
+            err = ABS(update(Density,i))/typVal(Density)
+            L2err(Density) = L2err(Density) + err*err
+
+            do n=1,Nspec
+               update(FirstSpec+n-1,i) = S_new(FirstSpec+n-1,i)-S_star(FirstSpec+n-1,i)
+               err = ABS(update(FirstSpec+n-1,i))/(typVal(FirstSpec+n-1)/typVal(Density))
+               L2err(FirstSpec+n-1) = L2err(FirstSpec+n-1) + err*err
+               mass(n) = S_new(FirstSpec+n-1,i) / S_new(Density,i)
+            enddo
+
+            update(RhoH,i) = S_new(RhoH,i)-S_star(RhoH,i)
+            err = ABS(update(RhoH,i))/typVal(RhoH)
+            L2err(RhoH) = L2err(RhoH) + err*err
+
+            Niters = RhoH_to_Temp(S_new)
+            if (Niters.lt.0) then
+               print *,'RhoH->Temp failed before predictor'
+               stop
+            endif
+
+            call CKPY(S_new(Density,i),S_new(Temp,i),mass,IWRK,RWRK,Peos(i))
+
+         enddo
+
+         maxerr = 0.d0
+         maxerrComp = -1
+         do n=1,Nspec+3
+            L2err(n) = SQRT(L2err(n))
+            if (L2err(n).gt.maxerr) then
+               maxerr = L2err(n)
+               maxerrComp = n
+            endif
+         enddo
+
+         if (maxerr.lt.iterTol) then
+            print *,'..converged after',iCorrect-1,
+     &           'iters, (maxerr,iterTol): ',maxerr,iterTol
+            goto 100
+         else            
+            print *, 'iter, err, component:',iCorrect,maxerr,maxerrComp
+         endif
+
+c         call print_soln(icorrect,DBLE(icorrect),S_new,itername,dx)
+c         do i=1,nx
+c            tmp(i) = S_new(Density,i)
+c         enddo
+c         call print_update(icorrect,DBLE(icorrect),update,Peos,tmp,updatename,dx)
+      enddo
+ 100  end
+
+      subroutine update_FULL1(S_new,S_old,dx,dt,theta,time,step)
+      implicit none
+      include 'spec.h'
+      real*8 S_new(maxscal,0:nx+1)
+      real*8 S_old(maxscal,0:nx+1)
+      real*8 dx, dt, theta, time, step
+      real*8 S_star(maxscal,0:nx+1)
+      real*8 PTCec(1:nx+1)
+      real*8 rhoTDec(maxspec,1:nx+1)
+      real*8 rhoDijec(maxspec,maxspec,1:nx+1)
+      real*8 rhoDiec(maxspec,1:nx+1)
+      real*8 cpicc(1:maxspec,0:nx+1)
+
+      real*8 LofS_star(maxspec+1,1:nx)
+      real*8 RHS(maxspec+1,1:nx)
+      real*8 mass(maxspec), fac, dtDx2Inv, dt_temp
+      real*8 err, L2err(maxscal), maxerr, prev, sum
+      real*8 update(maxscal,1:nx)
+      integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
+      real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
+      real*8 iterTol, Peos(1:nx), cpnm, cpnp, lambda, LT, RT, cpb, rhoCpInv
+      real*8 tmp(1:nx), URfac
+      integer maxerrComp, firstPass
+      parameter (iterTol=1.d-10)
+      character*(50) itername, updatename
+
+      itername = 'iter'
+      updatename = 'update'
+
       Niters = RhoH_to_Temp(S_old)
       if (Niters.lt.0) then
          print *,'RhoH->Temp failed before predictor'
@@ -877,7 +1071,7 @@ c     Initialize S_star to S_old
       enddo
 
       if ( (theta.lt.0.d0) .or. (theta.gt.1.d0) ) then
-         print *,'update_FULL: bad theta',theta
+         print *,'update_FULL1: bad theta',theta
          stop
       endif
 
