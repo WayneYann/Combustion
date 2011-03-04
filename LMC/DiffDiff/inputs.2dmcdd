@@ -54,9 +54,9 @@ amr.n_error_buf     = 1 1 1 2 # number of buffer cells in error est
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.check_file      = chk     # root name of checkpoint file
-amr.check_int       = 1         # number of timesteps between checkpoints
+amr.check_int       = 5         # number of timesteps between checkpoints
 amr.plot_file       = plt
-amr.plot_int        = 1
+amr.plot_int        = 5
 amr.grid_log        = grdlog  # name of grid logging file
 amr.max_grid_size   = 32
 amr.max_grid_size   = 1000
@@ -140,7 +140,7 @@ diffuse.Rhs_in_abs_tol = 1
 
 # ------------------  INPUTS TO PROJECTION CLASS -------------------
 proj.proj_tol       = 1.0e-1  # tolerence for projections
-proj.proj_tol       = 1.0e-11  # tolerence for projections
+proj.proj_tol       = 1.0e-9  # tolerence for projections
 proj.sync_tol       = 1.0e-8  # tolerence for projections
 proj.rho_wgt_vel_proj = 0      # 0 => const den proj, 1 => rho weighted
 proj.Pcode          = 0
@@ -185,23 +185,23 @@ ns.mcdd_nub = 50
 ns.mcdd_advance_temp=1
 ns.mcdd_advance_temp=0
 
-max_step=5
 ns.mcdd_verbose = 3
 ns.hack_nomcddsync = 1
 
 #ns.ShowMF_Dir=DD_DEBUG_2D
 #ns.ShowMF_Verbose=1
 #ns.ShowMF_Sets=mac velVT divu mcddOp mcddVT mcddOpVT
-#ns.ShowMF_Sets=mac velVT divu mcddVT
+#ns.ShowMF_Sets=divu
 #ns.ShowMF_Check_Nans = true
 
-ns.init_shrink = 0.01
+ns.init_shrink = 0.1
 amr.derive_plot_vars=rhoRT mag_vort rhominsumrhoY
-ns.fixed_dt = 1.e-6
-ns.init_shrink = 1.0
+#ns.fixed_dt = 1.e-6
+#ns.init_shrink = 1.0
 
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0
 #ns.num_divu_iters=0
+ns.be_cn_theta = 1.0

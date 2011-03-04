@@ -5,6 +5,7 @@
   turb_scale=1.
 
   zstandoff = .01
+  zstandoff = -.005
   max_trac_lev = 10
   max_temp_lev = 0
   max_vort_lev = 0
