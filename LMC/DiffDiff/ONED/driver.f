@@ -25,10 +25,11 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 1
+      nsteps = 100
       plot_int = 1
       problo = 0.0d0
       probhi = 3.0d0
+      flame_offset = 0.d0
       flame_offset = 1.d0
 
 c      probhi = 1.d0
@@ -43,10 +44,11 @@ c      flame_offset = 0.d0
       probtype = 1
       dtRedFac = 5.d0
       alt_spec_update = 0
-      advance_RhoH = 1
-      setTfromH = 2
+      advance_RhoH = 0
+      setTfromH = 1
       rhoInTrans = 1
       Ncorrect = 200
+      Ncorrect = 1000
       be_cn_theta = 0.5d0
       outname = 'soln'
 
@@ -78,8 +80,8 @@ c            call update_beImplicit(scal_new,scal_old,dx,dt,time,step)
 c            call update_RhoH(scal_new,scal_old,dx,dt)
          else
             call update_FULL1(scal_new,scal_old,dx,dt,be_cn_theta,time,step)
-c            call update_beFULL(scal_new,scal_old,dx,dt,time,step)
-c            call update_beImplicit(scal_new,scal_old,dx,dt,time,step)
+c            call update_beFULL1(scal_new,scal_old,dx,dt,time,step)
+c            call update_beImplicit1(scal_new,scal_old,dx,dt,time,step)
 c            call update_Temp(scal_new,scal_old,dx,dt)
          endif
 
@@ -91,23 +93,23 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
          endif
       enddo
  100  continue
-
       end
 
       subroutine LinOpApply(LofS,S,PTCec,rhoTDec,rhoDijec,dx)
+      implicit none
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1)
       real*8 rhoTDec(maxspec,1:nx+1),rhoDijec(maxspec,maxspec,1:nx+1),dx
       real*8 coef(maxspec+1,1:nx)
-      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, CPMS,PTC
+      real*8 Y(maxspec,0:nx+1), X(maxspec,0:nx+1), WWe, PTC
       real*8 de(maxspec+1,1:nx+1), q(1:nx+1), F(maxspec,1:nx+1)
-      real*8 Ye(maxspec), Te, dxInv2, He(maxspec)
+      real*8 Ye(maxspec), Te, dxInv, He(maxspec)
       real*8 rhoe, enthe
       integer i,n,m,Niter,maxIter
       real*8 res(NiterMAX)
 
-      dxInv2 = 1.d0/(dx*dx)
+      dxInv = 1.d0/dx
       do i=0,nx+1
          do n=1,Nspec
             Y(n,i) = S(FirstSpec+n-1,i) / S(Density,i) 
@@ -155,14 +157,15 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
 
       do i=1,nx
          do n = 1,Nspec
-            LofS(n,i) = - dxInv2*(F(n,i+1) - F(n,i))
+            LofS(n,i) = - dxInv*(F(n,i+1) - F(n,i))
          enddo
-         LofS(Nspec+1,i) = - dxInv2*(q(i+1) - q(i))
+         LofS(Nspec+1,i) = - dxInv*(q(i+1) - q(i))
       enddo
 
       end
 
-      subroutine LinOpApplyApprox(LofS,S,PTCec,rhoDiec,cpicc,dx)
+      subroutine LinOpApplyApprox(LofS,S,PTCec,rhoDiec,dx)
+      implicit none
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1)
@@ -225,6 +228,7 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
       end
 
       subroutine LinOp1Apply(LofS,S,PTCec,rhoTDec,rhoDijec,cpicc,dx)
+      implicit none
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1)
@@ -295,10 +299,12 @@ c            call update_Temp(scal_new,scal_old,dx,dt)
      &           + F(n,i  )*(cpicc(n,i-1)+cpicc(n,i  ))*(S(Temp,i  )-S(Temp,i-1) ) )
          enddo
          LofS(Nspec+1,i) = -(dxInv * (q(i+1) - q(i))  -  sum)/(S(Density,i) * cpb)
+c         LofS(Nspec+1,i) = -(dxInv * (q(i+1) - q(i))) 
       enddo
       end
 
       subroutine LinOp1ApplyApprox(LofS,S,PTCec,rhoDiec,cpicc,dx)
+      implicit none
       include 'spec.h'
       real*8 LofS(maxspec+1,1:nx), S(maxscal,0:nx+1)
       real*8 PTCec(1:nx+1), rhoDiec(maxspec,1:nx+1),cpicc(maxspec,0:nx+1),dx
@@ -635,7 +641,7 @@ c         call print_update(icorrect,DBLE(icorrect),update,Peos,rho_new,updatena
  100  end
 
 
-      subroutine update_beFULL(S_new,S_old,dx,dt,time,step)
+      subroutine update_beFULL1(S_new,S_old,dx,dt,time,step)
       implicit none
       include 'spec.h'
       real*8 S_new(maxscal,0:nx+1)
@@ -703,7 +709,6 @@ c      stop
 c            firstPass = 0
          endif
          call LinOp1Apply(LofS_star,S_star,PTCec,rhoTDec,rhoDijec,cpicc,dx)
-c         call LinOp1ApplyApprox(LofS_star,S_star,PTCec,rhoDiec,cpicc,dx)
 
 c     
 c     R = b - A.S_new, then S_new = S_new + R/lambda
@@ -855,7 +860,7 @@ c     Update state, compute errors/etc
       real*8 update(maxscal,1:nx)
       integer Niters, i, n, RhoH_to_Temp, iCorrect, idx, N1d
       real*8 a(N1dMAX), b(N1dMAX), c(N1dMAX), r(N1dMAX), v(N1dMAX), gam(N1dMAX)
-      real*8 iterTol, Peos(1:nx), cpnm, cpnp, lambda, LT, RT, cpb, rhoCpInv
+      real*8 iterTol, Peos(1:nx), lambda, cpb
       real*8 tmp(1:nx), URfac
       integer maxerrComp, firstPass
       parameter (iterTol=1.d-10)
@@ -884,7 +889,7 @@ c     Initialize S_star to S_old
 
       if (theta.lt.1.d0) then
          call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
-         call LinOpApply(RHS,S_old,PTCec,rhoTDec,rhoDijec,cpicc,dx)
+         call LinOpApply(RHS,S_old,PTCec,rhoTDec,rhoDijec,dx)
          do i=1,nx
             do n=1,Nspec
                RHS(n,i) = RHS(n,i)*(1.d0-theta)*dt + S_old(FirstSpec+n-1,i)
@@ -892,14 +897,6 @@ c     Initialize S_star to S_old
             RHS(Nspec+1,i) = RHS(Nspec+1,i)*(1.d0-theta)*dt + S_old(RhoH,i)
          enddo
       endif
-
-
-c      do i=0,nx+1
-c         tmp(0) = (DBLE(i)+0.5d0)*dx+problo
-c         S_new(Temp,i) = 300.d0 + 1200.d0*(tmp(0)/(nx*dx))
-c      enddo
-c      call print_cp_prime(S_new,'cp.dat',dx)
-c      stop
 
       call print_soln(0,0.d0,S_new,itername,dx)
 
@@ -919,7 +916,7 @@ c      stop
             call ecCoef_and_dt(S_star,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
 c            firstPass = 0
          endif
-         call LinOpApply(LofS_star,S_star,PTCec,rhoTDec,rhoDijec,cpicc,dx)
+         call LinOpApply(LofS_star,S_star,PTCec,rhoTDec,rhoDijec,dx)
 
 c     
 c     R = b - A.S_new, then S_new = S_new + R/lambda
@@ -941,27 +938,31 @@ c     where lambda is the diagonal entry in the matrix A defined above
 c
          do i=1,nx
 
+            cpb = 0.d0
             do n=1,Nspec
                lambda=1.d0
                if (i.ne.1) then
-                  cpnm = 0.5d0 * ( cpicc(n,i-1) + cpicc(n,i  ) )
                   lambda = lambda + dtDx2Inv*rhoDiec(n,i  )/S_star(Density,i)
                endif
                if (i.ne.nx) then
-                  cpnp = 0.5d0 * ( cpicc(n,i  ) + cpicc(n,i+1) )
                   lambda = lambda + dtDx2Inv*rhoDiec(n,i+1)/S_star(Density,i)
                endif
+
                S_new(FirstSpec+n-1,i) = S_star(FirstSpec+n-1,i)
      &              + URfac*( RHS(n,i) - S_star(FirstSpec+n-1,i) + theta*dt*LofS_star(n,i) )/lambda
+
+               cpb = cpb + cpicc(n,i)*S_star(FirstSpec+n-1,i)
             enddo
+            cpb = cpb / S_star(Density,i)
 
             lambda = 1.d0
             if (i.ne.1) then
-               lambda = lambda + PTCec(i  )
+               lambda = lambda + dtDx2Inv*PTCec(i  )/(S_star(Density,i)*cpb)
             endif
             if (i.ne.nx) then
-               lambda = lambda + PTCec(i+1)
+               lambda = lambda + dtDx2Inv*PTCec(i+1)/(S_star(Density,i)*cpb)
             endif
+
             S_new(RhoH,i) = S_star(RhoH,i)
      &           + URfac*( RHS(Nspec+1,i) - S_star(RhoH,i) + theta*dt*LofS_star(Nspec+1,i) )/lambda
          enddo
@@ -1363,7 +1364,7 @@ c     contains a guess for the solution state
       real*8 rhoDiec(maxspec,1:nx+1)
       real*8 LofS_old(maxspec+1,1:nx)
       real*8 LofS_new(maxspec+1,1:nx)
-      real*8 cpb(0:nx+1)
+      real*8 cpicc(1:maxspec,0:nx+1)
 
       real*8 be_cn_theta, theta, mass(maxspec), fac, dtDxInv2, dt_temp, newVal
       real*8 err, L2err(maxscal),prev, Tprev(1:nx), URFac
@@ -1389,7 +1390,7 @@ c     Initialize Snew to Sold
          enddo
       enddo
 
-      call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,-1.d0,dx)
+      call ecCoef_and_dt(S_old,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
       call LinOpApply(LofS_old,S_old,PTCec,rhoTDec,rhoDijec,dx)
 
 c     Relaxation: Jacobi iteration based on BE (theta=1) and CN (theta=0.5)
@@ -1409,7 +1410,7 @@ c
          theta = 1.d0
          URFac = 5.d-2
 
-         call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpb,-1.d0,dx)
+         call ecCoef_and_dt(S_new,PTCec,rhoTDec,rhoDijec,rhoDiec,cpicc,-1.d0,dx)
          call LinOpApply(LofS_new,S_new,PTCec,rhoTDec,rhoDijec,dx)
 
          dt_temp = URFac*dt
@@ -1427,7 +1428,7 @@ c
                err = ABS(S_new(FirstSpec+n-1,i)-prev)/(typVal(FirstSpec+n-1)/typVal(Density))
                L2err(FirstSpec+n-1) = L2err(FirstSpec+n-1) + err*err
             enddo
-            fac = (PTCec(i)/(S_old(Density,i)*cpb(i)) + PTCec(i+1)/(S_old(Density,i+1)*cpb(i+1)))*theta*dtDxInv2
+            fac = PTCec(i)/S_old(Density,i) + PTCec(i+1)/S_old(Density,i+1)
             prev = S_new(RhoH,i)
             S_new(RhoH,i) = (S_old(RhoH,i) 
      &           + dt_temp*( (1.d0-theta)*LofS_old(Nspec+1,i) + theta*LofS_new(Nspec+1,i) )
@@ -1471,13 +1472,13 @@ c
       real*8 rhoDiec_old(maxspec,1:nx+1)
       real*8 dx, dt
 
-      real*8  LofS(maxspec+1,1:nx), mass(maxspec), sum, cpb(0:nx+1)
+      real*8  LofS(maxspec+1,1:nx), mass(maxspec), sum, cpb(0:nx+1), cpicc(1:maxspec,0:nx+1)
       integer i, n
 
 c     positive dt signals that ecCoef_and_dt is to return stable dt
       dt = big
-      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,cpb,dt,dx)
-      call LinOp1Apply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,cpb,dx)
+      call ecCoef_and_dt(S_old,PTCec_old,rhoTDec_old,rhoDijec_old,rhoDiec_old,cpicc,dt,dx)
+      call LinOp1Apply(LofS,S_old,PTCec_old,rhoTDec_old,rhoDijec_old,cpicc,dx)
       
 c     Form explicit update
       do i=1,nx

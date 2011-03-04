@@ -33,6 +33,7 @@ c *************************************************************************
       end
 
       subroutine print_soln(step,time,scal,filename,dx)
+      implicit none
       include 'spec.h'
       integer step
       real*8 time, scal(maxscal,0:nx+1), dx
@@ -69,6 +70,7 @@ c *************************************************************************
       end
 
       subroutine print_update(step,time,scal,Peos,rho,filename,dx)
+      implicit none
       include 'spec.h'
       integer step
       real*8 time, scal(maxscal,1:nx), Peos(1:nx), rho(1:nx), dx
@@ -97,6 +99,7 @@ c *************************************************************************
       end
 
       subroutine print_cp_prime(S,fname,dx)
+      implicit none
       include 'spec.h'
       real*8 S(maxscal,0:nx+1), dx, mass(maxspec)
       real*8 cpip(maxspec), cpim(maxspec), cpbp, cpbm, dcpdt, T, dT, deltaT
@@ -149,6 +152,7 @@ c *************************************************************************
       end
 
       subroutine print_cp(S,fname,dx)
+      implicit none
       include 'spec.h'
       real*8 S(maxscal,0:nx+1), dx, mass(maxspec)
       real*8 cpi(maxspec), cpb

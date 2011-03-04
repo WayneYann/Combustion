@@ -79,6 +79,7 @@ c     Compute ec transport coeffs
       end
 
       subroutine calc_beta(T,Y,rho,PTC,rhoTD,rhoDij,rhoDi,CPMS)
+      implicit none
       include 'spec.h'
       real*8 T, Y(maxspec), rho, CPMS(maxspec), X(maxspec), WW, PTC
       real*8 rhoTD(maxspec),rhoDij(maxspec,maxspec)
