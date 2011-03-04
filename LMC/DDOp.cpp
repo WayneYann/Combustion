@@ -653,9 +653,9 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
                 cpmix.copy(cpi[mfi],box,0,box,0,Nspec);
                 cpmix.mult(YTc,box,box,sCompY,0,Nspec);
                 for (int n=1; n<Nspec; ++n)
-                    cpi.plus(cpi,box,box,n,0,1);
-                cpi.invert(1,box,0,1);
-                alfc.mult(cpi,box,box,0,sCompT,1);
+                    cpmix.plus(cpmix,box,box,n,0,1);
+                cpmix.invert(1,box,0,1);
+                alfc.mult(cpmix,box,box,0,sCompT,1);
             }
 
             // Modify coefficient based on what was needed to fill adjacent grow cells
