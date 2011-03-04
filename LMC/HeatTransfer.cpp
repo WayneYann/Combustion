@@ -3651,7 +3651,7 @@ HeatTransfer::compute_mcdd_visc_terms(MultiFab&           vtermsYH,
     }
     showMF("mcddVT",S,"mcddVT_S");
 
-    MCDDOp.setCoefficients(S,sCompT,S,sCompY);    
+    MCDDOp.setCoefficients(S,sCompT,S,sCompY);
     showMCDD("mcddOpVT",MCDDOp,"VT_DDOp");
     MCDDOp.applyOp(vtermsYH,S,*tFlux,whichApp);
     showMF("mcddVT",vtermsYH,"mcddVT_LofS");
