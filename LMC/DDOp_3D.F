@@ -383,16 +383,6 @@ c     Put Grad(T) in F_dTe slot 1 until after we have computed F
             end do
          end do
 
-         do k = lo(3), hi(3)+1
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)
-                  dT = ( YTc(i,j,k,Nspec+1) - YTc(i,j,k-1,Nspec+1) ) * dxInv
-                  PTCe = coefe(i,j,k,PTCoffset+1)
-                  fluxYH(i,j,k,Nspec+1) = -  PTCe * dT
-               end do
-            end do
-         end do
-
          if ( Full0_Mix1 .eq.0 ) then
             allocate(tMMwe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1))
 
