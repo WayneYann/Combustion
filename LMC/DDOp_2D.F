@@ -44,6 +44,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
                coefs(i,j,DMIXoffset+n) = rhoDi(n)
             enddo
             coefs(i,j,PTCoffset+1) = PTC
+
             if (Full0_Mix1.eq.0) then
                do n = 1,Nspec
                   coefs(i,j,TDoffset+n) = rhoTD(n)
@@ -223,7 +224,7 @@ c     Put Grad(T) in F_dTe slot 1 until after we have computed F
             do i = lo(1), hi(1)
                F_dTe(i,j,1) = ( YTc(i,j,Nspec+1) - YTc(i,j-1,Nspec+1) ) * dxInv
                PTCe = coefe(i,j,PTCoffset+1)
-               fluxYH(i,j,Nspec+1) = PTCe * F_dTe(i,j,1)
+               fluxYH(i,j,Nspec+1) = - PTCe * F_dTe(i,j,1)
             end do
          end do
 
