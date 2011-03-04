@@ -25,7 +25,7 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 200
+      nsteps = 1
       plot_int = 1
       problo = 0.0d0
       probhi = 3.0d0
@@ -73,7 +73,7 @@ c      flame_offset = 0.d0
          call apply_bcs(scal_old,time,step)
 
          if (advance_RhoH.eq.1) then
-            call update_FULL1(scal_new,scal_old,dx,dt,be_cn_theta,time,step)
+            call update_FULL(scal_new,scal_old,dx,dt,be_cn_theta,time,step)
 c            call update_beImplicit(scal_new,scal_old,dx,dt,time,step)
 c            call update_RhoH(scal_new,scal_old,dx,dt)
          else
