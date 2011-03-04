@@ -168,18 +168,15 @@ fab.format = NATIVE
 ns.do_mcdd=1
 ns.do_active_control=1
 
-ns.mcdd_relax_factor_T = 0.75
-ns.mcdd_relax_factor_Y = 0.75
 #ns.mcdd_relax_factor_T = 1.0
 #ns.mcdd_relax_factor_Y = 1.0
 ns.mcdd_transport_model=full
 #ns.mcdd_transport_model=mix
 ns.mcdd_mgLevelsMAX = -1
-ns.mcdd_nu1 = 5 10
-ns.mcdd_nu2 = 5 10
+ns.mcdd_nu1 = 4 10
+ns.mcdd_nu2 = 4 10
 ns.mcdd_numcycles = 10
 ns.mcdd_res_redux_tol =  1.e-8
-ns.mcdd_res_redux_tol = -1.e-8
 ns.mcdd_res_abs_tol =  1.e-8
 ns.mcdd_stalled_tol = 1.e-8
 ns.mcdd_res_nu1_rtol = -.33333
@@ -188,11 +185,8 @@ ns.mcdd_nub = 50
 ns.mcdd_advance_temp=1
 ns.mcdd_advance_temp=0
 
-
-#amr.restart=chk00000
 max_step=5
-ns.mcdd_verbose = 5
-ns.mcdd_verbose = 2
+ns.mcdd_verbose = 3
 ns.hack_nomcddsync = 1
 
 #ns.ShowMF_Dir=DD_DEBUG_2D
@@ -203,12 +197,11 @@ ns.hack_nomcddsync = 1
 
 ns.init_shrink = 0.01
 amr.derive_plot_vars=rhoRT mag_vort rhominsumrhoY
+ns.fixed_dt = 1.e-6
+ns.init_shrink = 1.0
+
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0
 #ns.num_divu_iters=0
-max_step=1
-ns.fixed_dt = 1.e-6
-ns.init_shrink = 1.0
-
