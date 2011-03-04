@@ -4,7 +4,7 @@
 
       real*8  S(maxscal,0:nx+1), time, dx, x, xl, xh
       integer i, n, Npmf
-      real*8 pmfdata(maxspec+3), mole(maxspec), mass(maxspec)
+      real*8 pmfdata(maxspec+3), mole(maxspec), mass(maxspec), fiducial
 
       typVal(Temp)    = 0.d0
       typVal(RhoH)    = 0.d0
@@ -47,6 +47,11 @@ c            call pmf(x,x,pmfdata,Npmf)
          call CKRHOY(Pcgs,S(Temp,i),mass,IWRK,RWRK,S(Density,i))
          call CKHBMS(S(Temp,i),mass,IWRK,RWRK,S(RhoH,i))
 
+
+c         call CKHBMS(298.15d0,mass,IWRK,RWRK,fiducial)
+c         x = problo + (i+0.5d0)*dx - flame_offset
+c         print *,x,S(RhoH,i)-fiducial,(S(RhoH,i)-fiducial)*S(Density,i)
+
          do n=1,Nspec
             S(FirstSpec+n-1,i) = mass(n) * S(Density,i)
          enddo
@@ -60,6 +65,8 @@ c            call pmf(x,x,pmfdata,Npmf)
          typVal(FirstSpec+n-1) = typVal(Density)
       enddo
       time = 0.d0
+      
+c      stop
 
       end
 
