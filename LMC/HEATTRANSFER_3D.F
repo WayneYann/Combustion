@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.36 2011-03-01 00:29:20 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.37 2011-03-04 06:51:55 marc Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1557,7 +1557,7 @@ c
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
-                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,rc)*S(i,j,k,Tc) - thetaDt*L(i,j,k,Nspec))
+                  L(i,j,k,Nspec) = R(i,j,k,Nspec) + mult*(S(i,j,k,rc)*S(i,j,k,hc) - thetaDt*L(i,j,k,Nspec))
                   maxRes(Nspec) = MAX(maxRes(Nspec),ABS(L(i,j,k,Nspec)))
                enddo
             enddo
