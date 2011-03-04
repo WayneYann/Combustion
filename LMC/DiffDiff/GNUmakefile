@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.9 2011-02-25 19:21:24 marc Exp $
+# $Id: GNUmakefile,v 1.10 2011-03-04 03:28:38 marc Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -24,8 +24,8 @@ HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_VELOCITY      = FALSE
-USE_MPI           = TRUE
 USE_MPI           = FALSE
+USE_MPI           = TRUE
 # Both of these are for the time-dependent turbulence forcing term
 #DEFINES += -DGENGETFORCE
 #DEFINES += -DDO_LMC_FORCE

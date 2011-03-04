@@ -20,7 +20,7 @@ amr.derive_plot_vars=rhoRT mag_vort
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 
 geometry.prob_lo   =  0    0
-geometry.prob_hi   = 0.03 0.03
+geometry.prob_hi   = 0.02 0.02
 
 # multigrid class
 mg.usecg = 1
@@ -59,6 +59,7 @@ amr.plot_file       = plt
 amr.plot_int        = 1
 amr.grid_log        = grdlog  # name of grid logging file
 amr.max_grid_size   = 32
+amr.max_grid_size   = 1000
 #amr.derive_plot_vars=ALL
 
 amr.probin_file = probin.2dmcdd # This will default to file "probin" if not set
@@ -168,8 +169,9 @@ ns.do_mcdd=1
 ns.do_active_control=1
 
 ns.mcdd_relax_factor_T = 0.75
-ns.mcdd_relax_factor_T = 1.0
 ns.mcdd_relax_factor_Y = 0.75
+#ns.mcdd_relax_factor_T = 1.0
+#ns.mcdd_relax_factor_Y = 1.0
 ns.mcdd_transport_model=full
 #ns.mcdd_transport_model=mix
 ns.mcdd_mgLevelsMAX = -1
@@ -189,16 +191,15 @@ ns.mcdd_advance_temp=0
 
 #amr.restart=chk00000
 max_step=5
-ns.mcdd_verbose = 6
 ns.mcdd_verbose = 5
-ns.mcdd_verbose =2 
+ns.mcdd_verbose = 2
 ns.hack_nomcddsync = 1
 
-ns.ShowMF_Dir=DD_DEBUG_2D
-ns.ShowMF_Verbose=1
-#ns.ShowMF_Sets=mac velVT divu mcddVT mcddOpVT
-ns.ShowMF_Sets=mac velVT divu mcddVT
-ns.ShowMF_Check_Nans = true
+#ns.ShowMF_Dir=DD_DEBUG_2D
+#ns.ShowMF_Verbose=1
+#ns.ShowMF_Sets=mac velVT divu mcddOp mcddVT mcddOpVT
+#ns.ShowMF_Sets=mac velVT divu mcddVT
+#ns.ShowMF_Check_Nans = true
 
 ns.init_shrink = 0.01
 amr.derive_plot_vars=rhoRT mag_vort rhominsumrhoY
@@ -208,4 +209,6 @@ amr.derive_plot_vars=rhoRT mag_vort rhominsumrhoY
 #ns.do_init_proj=0
 #ns.num_divu_iters=0
 max_step=1
+ns.fixed_dt = 1.e-6
+ns.init_shrink = 1.0
 
