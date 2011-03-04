@@ -499,6 +499,8 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
 
     // Need grow cells in X,T to compute forcing
     // Promise to change only the grow cells in T,Y
+    // FIXME: Should probably pass these in, as they assume the layout of inYT
+    //   Also then enforce the layout of outYH, fluxYH and alpha
     int sCompY = 0;
     int sCompT = Nspec;
 
@@ -644,6 +646,16 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
             alfc.mult(-1,0,nc);
             for (int n=0; n<nc; ++n) {
                 alfc.mult(volInv[mfi],0,n,1);
+            }
+            // For RhoH equation, scale lambda by 1/cpmix_cc (use Xc container since its already about the correct size)
+            if (for_T0_H1 == 1) {
+                FArrayBox& cpmix = Xc;
+                cpmix.copy(cpi[mfi],box,0,box,0,Nspec);
+                cpmix.mult(YTc,box,box,sCompY,0,Nspec);
+                for (int n=1; n<Nspec; ++n)
+                    cpi.plus(cpi,box,n,box,0,1);
+                cpi.invert(1,box,0,1);
+                alfc.mult(cpi,box,box,0,sCompT,1);
             }
 
             // Modify coefficient based on what was needed to fill adjacent grow cells
