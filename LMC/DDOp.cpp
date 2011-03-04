@@ -423,11 +423,12 @@ DDOp::setCoefficients(const MultiFab& T,
         BL_ASSERT(!tcpfab.contains_nan(gbox,0,Nspec));
         cpi[mfi].copy(tcpfab); // will only need valid-region cp afterward
 
+        BL_ASSERT(!Tfab.contains_nan(gbox,sCompT,1));
         BL_ASSERT(!Yfab.contains_nan(gbox,sCompY,Nspec));
         FORT_DDCOEFS(gbox.loVect(), gbox.hiVect(),
                      tcoefs.dataPtr(), ARLIM(tcoefs.loVect()), ARLIM(tcoefs.hiVect()),
-                     Tfab.dataPtr(),   ARLIM(Tfab.loVect()),   ARLIM(Tfab.hiVect()),
-                     Yfab.dataPtr(),   ARLIM(Yfab.loVect()),   ARLIM(Yfab.hiVect()),
+                     Tfab.dataPtr(sCompT), ARLIM(Tfab.loVect()),   ARLIM(Tfab.hiVect()),
+                     Yfab.dataPtr(sCompY), ARLIM(Yfab.loVect()),   ARLIM(Yfab.hiVect()),
                      tcpfab.dataPtr(), ARLIM(tcpfab.loVect()), ARLIM(tcpfab.hiVect()),
                      &Full0_Mix1);
         BL_ASSERT(!tcoefs.contains_nan(gbox,0,transport_coefs_nComp));
