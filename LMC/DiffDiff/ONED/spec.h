@@ -8,14 +8,14 @@ c     Chem species, etc
 c     nscal: room for rho, rhoH, Temp + species (rho.Y)
       integer maxscal, nx
 c      parameter (maxscal = maxspec + 3, nx = 128)
-      parameter (maxscal = maxspec + 3, nx = 64)
+      parameter (maxscal = maxspec + 4, nx = 64)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
-     &     iN2, specNameLen, Density, Temp, RhoH, 
+     &     iN2, specNameLen, Vel, Density, Temp, RhoH, 
      &     RhoRT, FirstSpec, LastSpec, nscal
       logical nochem_hack
       common / speci / Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
-     &     iN2, specNameLen, Density, Temp, RhoH, 
+     &     iN2, specNameLen, Vel, Density, Temp, RhoH, 
      &     RhoRT, FirstSpec, LastSpec, nscal
       common / specL / nochem_hack
       save /speci/, /specL/
@@ -63,8 +63,8 @@ c     DVODE driver stuff
 
 c     Driver stuff
       real*8 Pcgs,errMax,dtRedFac,big,small,smallDt,typVal(maxscal)
-      integer NiterMAX,setTfromH,rhoInTrans,advance_RhoH,alt_spec_update
-      integer probtype,Ncorrect
+      integer NiterMAX,setTfromH,rhoInTrans,mcdd_do_RhoH
+      integer alt_spec_diffuse,probtype,Ncorrect
       real*8 problo,probhi,flame_offset
       parameter (errMAX=1.d-8)
       parameter (NiterMAX=20)
@@ -74,8 +74,8 @@ c     Driver stuff
       integer N1dMAX
       parameter (N1dMAX=(maxspec+1)*nx)
       common / drvcomr / Pcgs,dtRedFac,typVal,problo,probhi,flame_offset
-      common / drvcomi / setTfromH,rhoInTrans,advance_RhoH,alt_spec_update,
-     &     probtype,Ncorrect
+      common / drvcomi / setTfromH,rhoInTrans,mcdd_do_RhoH,
+     &     alt_spec_diffuse,probtype,Ncorrect
       save /drvcomr/, /drvcomi/
 
 c     Dummy arrays for CK calls

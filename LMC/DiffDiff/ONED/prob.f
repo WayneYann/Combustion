@@ -11,8 +11,6 @@
       typVal(Density) = 0.d0
       do i=1,nx
          if (probtype.eq.1) then
-c            x = problo + (i+0.5d0)*dx - flame_offset
-c            call pmf(x,x,pmfdata,Npmf)
             xl = problo + i*dx - flame_offset
             xh = problo + (i+1)*dx - flame_offset
             call pmf(xl,xh,pmfdata,Npmf)
@@ -21,12 +19,14 @@ c            call pmf(x,x,pmfdata,Npmf)
                stop
             endif
             S(Temp,i) = pmfdata(1)
+            S(Vel,i)  = pmfdata(2)
             do n=1,Nspec
                mole(n) = pmfdata(3+n)
             enddo
          else
             x = problo + (i+0.5d0)*dx
             S(Temp,i) = 298.d0
+            S(Vel,i)  = 10.d0
             do n=1,Nspec
                mole(n) = 0.d0
             enddo
@@ -77,6 +77,7 @@ c      stop
       real*8 time
       integer step,n
 c     Left boundary grow cell
+      S(Vel,0) = S(Vel,1)
       S(Density,0) = S(Density,1)
       S(Temp,0) = S(Temp,1)
       do n=1,Nspec
@@ -85,6 +86,7 @@ c     Left boundary grow cell
       S(RhoH,0) = S(RhoH,1)
       
 c     Right boundary grow cell
+      S(vel,nx+1) = S(Vel,nx)
       S(Density,nx+1) = S(Density,nx)
       S(Temp,nx+1) = S(Temp,nx)
       do n=1,Nspec

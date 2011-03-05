@@ -462,3 +462,27 @@ c
       enddo
       end
 
+      integer function RhoH_to_Temp(S)
+      implicit none
+      include 'spec.h'
+      real*8 S(maxscal,0:nx+1)
+      real*8 mass(maxspec), enth
+      integer Niter, maxIters, i, n
+      real*8 res(NiterMAX)
+      maxIters=0
+      do i=1,nx
+         do n=1,Nspec
+            mass(n) = S(FirstSpec+n-1,i)/S(Density,i)
+         enddo
+         enth = S(RhoH,i)/S(Density,i)
+         call FORT_TfromHYpt(S(Temp,i),enth,mass,
+     &        Nspec,errMax,NiterMAX,res,Niter)
+         if (Niter.lt.0) then
+            print *,'RhoH->T failed at i=',i
+            goto 100
+         endif
+         maxIters = MAX(maxIters,Niter)
+      enddo
+ 100  RhoH_to_Temp = Niter
+      end
+
