@@ -83,13 +83,16 @@ c     Compute ec transport coeffs
       include 'spec.h'
       real*8 T, Y(maxspec), rho, CPMS(maxspec), X(maxspec), WW, PTC
       real*8 rhoTD(maxspec),rhoDij(maxspec,maxspec)
-      real*8 rhoDijt(maxspec*maxspec), rhoDi(maxspec)
+      real*8 rhoDijt(maxspec*maxspec), rhoDi(maxspec), visc
       integer n,m,cnt
 
       call CKYTX(Y,IWRK,RWRK,X)
       call CKMMWY(Y,IWRK,RWRK,WW)
       call CKCPMS(T,IWRK,RWRK,CPMS)
       call EGSPAR(T,X,Y,CPMS,EGRWRK,EGIWRK)
+
+c     presently unused
+c      CALL EGSE3(T,Y,EGRWRK,visc)
 
       if (rhoInTrans.eq.1) then
          call EGSLTDR5(T,Y,WW,EGRWRK,EGIWRK,PTC,rhoTD,rhoDijt)

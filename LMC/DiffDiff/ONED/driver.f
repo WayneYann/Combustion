@@ -7,6 +7,8 @@
 
       real*8  scal_old(maxscal,0:nx+1)
       real*8  scal_new(maxscal,0:nx+1)
+      real*8  p_old(0:nx)
+      real*8  p_new(0:nx)
       real*8  LofS(maxspec+1,1:nx)
 
       real*8 dx, dt, enth, cpb
@@ -25,7 +27,7 @@ c     Initialize chem/tran database
       call initchem()
 
 c     Set defaults
-      nsteps = 100
+      nsteps = 1
       plot_int = 100
       problo = 0.0d0
       probhi = 3.0d0
@@ -64,6 +66,11 @@ c      flame_offset = 0.d0
       Temp = RhoH + 1
       dx = (probhi-problo)/DBLE(nx)
       call init_soln(scal_new,time,dx)
+
+c      do i,0,nx
+c         p_old(i) = 0.d0
+c      enddo
+c      call calc_divu(scal_new,divu,dx,time)
 
       call print_soln(0,time,scal_new,outname,dx)
 
@@ -110,11 +117,15 @@ c      flame_offset = 0.d0
       real*8 dx, dt, theta, time
       integer step, i, n, idx, Niters, RhoH_to_Temp
       real*8 SL(maxscal), SR(maxscal), aofs, dxInv
+      real*8  divu(0:nx+1)
 
       if ( (theta.lt.0.d0) .or. (theta.gt.1.d0) ) then
          print *,'advect: bad theta',theta
          stop
       endif
+
+      call calc_divu(S_old,divu,dx,time)
+
 
       dxInv = 1.d0/dx
       do i=1,nx

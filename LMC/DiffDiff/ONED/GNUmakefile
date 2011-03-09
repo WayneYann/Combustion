@@ -72,7 +72,8 @@ pmf_object := $(pmf_source:%.f=%.o)
 mech_object := $(mech_source:%.cpp=%.o)
 chem_objects := $(chem_sources:%.f=%.o)
 
-f_sources += driver.f util.f coef.f prob.f ${pmf_source} ${chem_sources} diffusionOp.f diffuse.f
+f_sources += driver.f util.f coef.f prob.f ${pmf_source} ${chem_sources}
+f_sources += diffusionOp.f diffuse.f calc_divu.f
 C_sources += main.cpp ${mech_source}
 
 C_objects := $(C_sources:%.cpp=%.o)
