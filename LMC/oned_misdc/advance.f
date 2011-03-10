@@ -895,19 +895,16 @@ C----------------------------------------------------------------
      &                           dx,time+dt)
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_hat(0,FirstSpec),dx,time+dt)
-C recomputing rhoh_hat was not a good idea -- kinks
-C         call get_rhoh_visc_terms(scal_new,beta_new,
-C     &                            diff_hat(0,RhoH),dx,time)
+         call get_rhoh_visc_terms(scal_new,beta_new,
+     &                            diff_hat(0,RhoH),dx,time+dt)
 
          do i = 0,nx-1
-C     save a copy of diff_new(RhoH)
-            diff_hat(i,RhoH) = diff_new(i,RhoH)
             do n = 1,Nspec
                ispec = FirstSpec + n - 1
                tforce(i,ispec) = I_R_new(i,n)
-     &              + 0.5d0*(diff_old(i,ispec)+diff_hat(i,ispec))
+     &              + diff_old(i,ispec)
             enddo
-            tforce(i,RhoH) = 0.5d0*(diff_old(i,RhoH)+diff_hat(i,RhoH))
+            tforce(i,RhoH) = diff_old(i,RhoH)
          enddo
          
          print *,'... compute A with updated D+R source'
@@ -932,7 +929,7 @@ c*****************************************************************
      &              + 0.5d0*(diff_old(i,is) - diff_hat(i,is)))
             enddo
             dRhs(i,0) = dt*(
-     &           + 0.5d0*(diff_old(i,RhoH) - diff_new(i,RhoH)))
+     &           + 0.5d0*(diff_old(i,RhoH) - diff_hat(i,RhoH)))
          enddo
          call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &        dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
@@ -1002,8 +999,10 @@ C$$$         endif
                   
                   const_src(i,n) = aofs(i,n)
      $                 + diff_new(i,n) - diff_hat(i,n)
-                  lin_src_old(i,n) = diff_old(i,n)
-                  lin_src_new(i,n) = diff_hat(i,n)
+     $                 + 0.5d0*(diff_old(i,n)+diff_hat(i,n))
+
+                  lin_src_old(i,n) = 0.d0
+                  lin_src_new(i,n) = 0.d0
                enddo
             enddo
             
