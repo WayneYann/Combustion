@@ -985,6 +985,11 @@ C$$$         else
 C$$$            print *,'ERROR:: not set up to work with be_cn_theta=0.0d0'
 C$$$            stop
 C$$$         endif
+
+c     AJN this seems to help but isn't formally correct
+c         call calc_diffusivities(scal_new,beta_new,mu_dummy,
+c     &                           dx,time+dt)
+
          call get_spec_visc_terms(scal_new,beta_new,
      &        diff_new(0,FirstSpec),dx,time+dt)
          call get_rhoh_visc_terms(scal_new,beta_new,
