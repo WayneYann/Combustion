@@ -33,7 +33,6 @@ c     Local variables
       real*8 problo,probhi
       real*8 dx
       real*8 time
-      real*8 dt_old
       real*8 dt_init,dt_new
       real*8 init_shrink
       real*8 change_max
@@ -130,8 +129,10 @@ c     Set defaults, change with namelist
 C CEG FIXME this seg faults
          call read_check(chkfile,vel_new,scal_new,press_new,
      $                   I_R_new,divu_new,dsdt,
-     $                   time,at_nstep,dt_old,cfl_used)
+     $                   time,at_nstep,dt,cfl_used)
          do_init = 0
+
+         dt_init = dt
             
          do i = -1,nx
             vel_old(i) =  vel_new(i)

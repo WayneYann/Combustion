@@ -33,7 +33,7 @@
      $            vel(i)
       enddo
       do i = 0,nx-1
-         read(10) x,(I_R(i,n),n=1,Nspec),divu(i),dsdt(i)
+         read(10) x,(I_R(i,n),n=0,Nspec),divu(i),dsdt(i)
       enddo
       do i = 0,nx
          read(10) x,press(i)

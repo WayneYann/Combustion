@@ -38,7 +38,7 @@
      $                        vel(i)
         enddo
         do i = 0,nx-1
-           write(10) (i+.5)*dx,(I_R(i,n),n=1,Nspec),divu(i),dsdt(i)
+           write(10) (i+.5)*dx,(I_R(i,n),n=0,Nspec),divu(i),dsdt(i)
         enddo
         do i = 0,nx
            write(10) i*dx,press(i)
