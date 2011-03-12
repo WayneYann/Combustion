@@ -1,5 +1,5 @@
       subroutine update_spec(scal_old,scal_new,aofs,
-     &     alpha,beta,I_R,Rhs,dx,dt,be_cn_theta,time)
+     &     alpha,beta,dRhs,Rhs,dx,dt,be_cn_theta,time)
       implicit none
       include 'spec.h'
       real*8 scal_old(-1:nx  ,nscal)
@@ -8,7 +8,7 @@
       real*8    alpha(0 :nx-1)
       real*8     beta(-1:nx  ,nscal)
       real*8      Rhs(0 :nx-1,*)
-      real*8      I_R(0:nx-1,0:maxspec)
+      real*8     dRhs(0:nx-1,0:maxspec)
       real*8 dx,dt,be_cn_theta,time
       
       real*8 visc(0 :nx-1,Nspec)
@@ -28,7 +28,7 @@
             visc_term = dt*(1.d0 - be_cn_theta)*visc(i,n)
 
             scal_new(i,is) = scal_old(i,is) + dt*aofs(i,is)
-            Rhs(i,n) = I_R(i,n) + visc_term + scal_new(i,is)
+            Rhs(i,n) = dRhs(i,n) + visc_term + scal_new(i,is)
             alpha(i) = scal_new(i,Density)
          enddo
       enddo
