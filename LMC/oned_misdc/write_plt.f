@@ -28,9 +28,9 @@ C 1006 FORMAT(20(E15.8,1X))
       
       open(10,file=pltfile,form='formatted')
       print *,'...writing data to ',pltfile
-      write(10,*) '# ',nsteps
-      write(10,*) '# ',nx
-      write(10,*) '# ',time, dt
+      write(10,*) nsteps
+      write(10,*) nx
+      write(10,*) time
 
       do i = 0,nx-1
          do n = 1,Nspec
