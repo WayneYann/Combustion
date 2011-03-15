@@ -23,7 +23,7 @@
       pltfile(4:8) = char_of_int
  1005 format(i5.5)
 C 1006 FORMAT(20(E15.8,1X))      
- 1006 FORMAT(26(E23.15E3,1X))      
+ 1006 FORMAT(200(E23.15E3,1X))      
       call compute_pthermo(scal,ptherm)
       
       open(10,file=pltfile,form='formatted')
