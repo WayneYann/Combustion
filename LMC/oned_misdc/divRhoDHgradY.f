@@ -93,7 +93,9 @@ c     Get Hi, Yi at cell centers
          do n=1,Nspec
             Y(n,i) = scal(i,FirstSpec+n-1)/rho
          enddo
-         call CKRHOPY(rho,Pcgs,Y,IWRK,RWRK,Tloc)
+c         call CKRHOPY(rho,Pcgs,Y,IWRK,RWRK,Tloc)
+         print*,"ABORT: AJN Removed 3/15/11 to get GRI30 to work"
+         stop
 C         call CKHMS(scal(i,Temp),IWRK,RWRK,hi(1,i))
          call CKHMS(Tloc,IWRK,RWRK,hi(1,i))
          do n=1,Nspec
