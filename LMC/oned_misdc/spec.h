@@ -2,12 +2,12 @@
 c     Chem species, etc
       integer maxreac, maxspec, maxelts, maxthrdb, maxtp, maxsp,
      &     maxspnml
-      parameter (maxreac = 100, maxspec=30, maxelts=6,
+      parameter (maxreac = 100, maxspec=65, maxelts=6,
      &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml = 16)
 
 c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
       integer maxscal, nx
-      parameter (maxscal = maxspec + 4, nx = 2048)
+      parameter (maxscal = maxspec + 4, nx = 128)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
