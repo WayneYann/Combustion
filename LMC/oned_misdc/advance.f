@@ -644,18 +644,19 @@ CCCCCCCCCCCCC
       real*8      tmp(0 :nx-1)
       real*8      tmp2(0 :nx-1,maxscal)
 
+      rho_flag = 2
+
       be_cn_theta = 1.0d0
 
       print*,'... using algorithm in /Papers/MAESTRO/SDC/'
 
-      print *,'... creating the diffusive terms with old data'
+      print *,'... computing D(U^n)'
       call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),dx,time)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
       
-      print *,'... computing aofs with D(old) + R(guess)'
-
+      print *,'... computing advective forcing term = D(U^n) + I_R^kmax'
       do i = 0,nx-1
          do n = 1,Nspec
             is = FirstSpec + n - 1
@@ -683,7 +684,6 @@ CCCCCCCCCCCCC
       print *,'... predict rhoh, Temp for diffusivities'
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
      &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
-      rho_flag = 2
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
@@ -694,7 +694,6 @@ CCCCCCCCCCCCC
 
 C     finish updating species
       print *,'... do predictor for species (MISDC terms=0)'
-      rho_flag = 2
       do n=1,Nspec
          is = FirstSpec + n - 1
          call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
@@ -706,7 +705,6 @@ C redo rhoh with better diffusivity
 
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
      &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
-      rho_flag = 2
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
@@ -730,7 +728,7 @@ C redo rhoh with better diffusivity
       if (nochem_hack) then
          write(*,*)'WARNING! doing nochem_hack--skipping reactions'
       else
-         print *,'... react with A+D sources, reset I_R_new'
+         print *,'... react with constant sources'
          do n = 1,nscal
             do i = 0,nx-1
                const_src(i,n) = aofs(i,n) + be_cn_theta*diff_hat(i,n)
@@ -754,7 +752,7 @@ C----------------------------------------------------------------
       do misdc = 1, misdc_iterMAX
          print *,'... doing SDC iter ',misdc
 
-         print *,'... create new diff_new_lagged from current state'
+         print *,'... compute diff_new_lagged = D(U^{n+1,k-1})'
          call calc_diffusivities(scal_new,beta_new,mu_dummy,
      &                           dx,time+dt)
          call get_spec_visc_terms(scal_new,beta_new,
@@ -763,6 +761,7 @@ C----------------------------------------------------------------
          call get_rhoh_visc_terms(scal_new,beta_new,
      &                            diff_new_lagged(0,RhoH),dx,time+dt)
 
+         print*,'... compute advective forcing'
          do i = 0,nx-1
             do n = 1,Nspec
                ispec = FirstSpec + n - 1
@@ -789,7 +788,6 @@ C----------------------------------------------------------------
          enddo
          call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &        dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
-         rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
             call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
@@ -799,7 +797,6 @@ C----------------------------------------------------------------
          print *,'... update D for rhoh with A + R + MISDC(D)'
          call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
      &        dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
-         rho_flag = 2
          call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $                 dx,dt,RhoH,be_cn_theta,rho_flag)
          print *,'... create new temp from new RhoH, spec'
@@ -823,7 +820,7 @@ C----------------------------------------------------------------
          if (nochem_hack) then
             write(*,*)'WARNING:: SDC nochem_hack--skipping reactions'
          else
-            print *,'... react with const and linear sources'
+            print *,'... react with const sources'
             do n = 1,nscal
                do i = 0,nx-1
                   
