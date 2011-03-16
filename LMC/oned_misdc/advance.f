@@ -646,7 +646,7 @@ CCCCCCCCCCCCC
 
       rho_flag = 2
 
-      be_cn_theta = 1.0d0
+      be_cn_theta = 0.5d0
 
       print*,'... using algorithm in /Papers/MAESTRO/SDC/'
 
@@ -656,6 +656,8 @@ CCCCCCCCCCCCC
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
       
+      beta_new = beta_old
+
       print *,'... computing advective forcing term = D(U^n) + I_R^kmax'
       do i = 0,nx-1
          do n = 1,Nspec
@@ -670,7 +672,7 @@ CCCCCCCCCCCCC
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
       
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+!      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
 
       do i=0,nx-1
          dRhs(i,0) = 0.0d0
@@ -681,15 +683,17 @@ CCCCCCCCCCCCC
       call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &     dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
 
-      print *,'... predict rhoh, Temp for diffusivities'
-      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
-      call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,be_cn_theta,rho_flag)
+c      print *,'... predict rhoh, Temp for diffusivities'
+c      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
+c     &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
+c      call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
+c     $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
-      call rhoh_to_temp(scal_new)
+c     AJN - don't think calls to rhoh_to_temp are needed.
+c           They don't affect the solution.
+c      call rhoh_to_temp(scal_new)
 
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+c      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
 
 
 C     finish updating species
@@ -708,6 +712,8 @@ C redo rhoh with better diffusivity
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
+c     AJN - don't think calls to rhoh_to_temp are needed.
+c           They don't affect the solution.
       call rhoh_to_temp(scal_new)
 
       print *,'...   extract D sources'
@@ -743,18 +749,25 @@ C redo rhoh with better diffusivity
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_new,dt)
+
+           print*,"HACK",
+     $           scal_new(63,FirstSpec+13)/scal_new(63,Density),
+     $           scal_old(63,FirstSpec+13)/scal_old(63,Density),
+     $           scal_new(63,FirstSpec+13)-scal_old(63,FirstSpec+13)
+
       endif
 
 C----------------------------------------------------------------
 c       Begin MISDC iterations
 C----------------------------------------------------------------
 
+      be_cn_theta = 1.d0
+
       do misdc = 1, misdc_iterMAX
          print *,'... doing SDC iter ',misdc
 
          print *,'... compute diff_new_lagged = D(U^{n+1,k-1})'
-         call calc_diffusivities(scal_new,beta_new,mu_dummy,
-     &                           dx,time+dt)
+         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_new_lagged(0,FirstSpec),
      &                            dx,time+dt)
@@ -800,6 +813,8 @@ C----------------------------------------------------------------
          call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $                 dx,dt,RhoH,be_cn_theta,rho_flag)
          print *,'... create new temp from new RhoH, spec'
+c     AJN - don't think calls to rhoh_to_temp are needed.
+c           They don't affect the solution.
          call rhoh_to_temp(scal_new)
 
          print *,'... create diff_hat from RhoH and spec solutions'
@@ -836,6 +851,12 @@ C----------------------------------------------------------------
             call strang_chem(scal_old,scal_new,
      $           const_src,lin_src_old,lin_src_new,
      $           I_R_new,dt)
+
+           print*,"HACK",
+     $           scal_new(63,FirstSpec+13)/scal_new(63,Density),
+     $           scal_old(63,FirstSpec+13)/scal_old(63,Density),
+     $           scal_new(63,FirstSpec+13)-scal_old(63,FirstSpec+13)
+
          endif
 
 c*****************************************************************
