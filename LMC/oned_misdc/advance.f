@@ -646,11 +646,9 @@ CCCCCCCCCCCCC
 
       be_cn_theta = 1.0d0
 
-      print *,'... using LOBATTO quaadrature'
-      print *,'... evolving WITHOUT using temperature equation'
-      print *,'     --Version 2'
-      print *,'... creating the diffusive terms with old data'
+      print*,'... using algorithm in /Papers/MAESTRO/SDC/'
 
+      print *,'... creating the diffusive terms with old data'
       call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),dx,time)
       call get_rhoh_visc_terms(scal_old,beta_old,
@@ -715,25 +713,20 @@ C redo rhoh with better diffusivity
       call rhoh_to_temp(scal_new)
 
       print *,'...   extract D sources'
-C$$$         do i = 0,nx-1
-C$$$            diff_hat(i,RhoH) = (
-C$$$     $           (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-C$$$     $           - aofs(i,RhoH) -
-C$$$     $           (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
-C$$$            do n=1,Nspec
-C$$$               is = FirstSpec + n - 1
-C$$$               diff_hat(i,is) = (
-C$$$     $              (scal_new(i,is)-scal_old(i,is))/dt 
-C$$$     $              - aofs(i,is) - I_R_new(i,n) - 
-C$$$     $              (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
-C$$$            enddo
-C$$$         enddo
+      do i = 0,nx-1
+         diff_hat(i,RhoH) = (
+     $        (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
+     $        - aofs(i,RhoH) -
+     $        (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
+         do n=1,Nspec
+            is = FirstSpec + n - 1
+            diff_hat(i,is) = (
+     $           (scal_new(i,is)-scal_old(i,is))/dt 
+     $           - aofs(i,is) - I_R_new(i,n) - 
+     $           (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
+         enddo
+      enddo
 
-      call get_spec_visc_terms(scal_new,beta_new,
-     &                         diff_hat(0,FirstSpec),dx,time+dt)
-      call get_rhoh_visc_terms(scal_new,beta_new,
-     &                         diff_hat(0,RhoH),dx,time+dt)
-            
       if (nochem_hack) then
          write(*,*)'WARNING! doing nochem_hack--skipping reactions'
       else
@@ -813,25 +806,19 @@ C----------------------------------------------------------------
          call rhoh_to_temp(scal_new)
 
          print *,'... create diff_hat from RhoH and spec solutions'
-C               do i = 0,nx-1
-C                  diff_hat(i,RhoH) = (
-C        $              (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-C        $              - aofs(i,RhoH) - dRhs(i,0)/dt - 
-C        $              (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
-C                  do n=1,Nspec
-C                     is = FirstSpec + n - 1
-C                     diff_hat(i,is) = (
-C        $                 (scal_new(i,is)-scal_old(i,is))/dt 
-C        $                 - aofs(i,is) - dRhs(i,n)/dt - 
-C        $                 (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
-C                  enddo
-C               enddo
-
-
-         call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_hat(0,FirstSpec),dx,time+dt)
-         call get_rhoh_visc_terms(scal_new,beta_new,
-     &                            diff_hat(0,RhoH),dx,time+dt)
+         do i = 0,nx-1
+            diff_hat(i,RhoH) = (
+     $           (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
+     $           - aofs(i,RhoH) - dRhs(i,0)/dt - 
+     $           (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
+            do n=1,Nspec
+               is = FirstSpec + n - 1
+               diff_hat(i,is) = (
+     $              (scal_new(i,is)-scal_old(i,is))/dt 
+     $              - aofs(i,is) - dRhs(i,n)/dt - 
+     $              (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
+            enddo
+         enddo
          
          if (nochem_hack) then
             write(*,*)'WARNING:: SDC nochem_hack--skipping reactions'
