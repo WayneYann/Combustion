@@ -289,8 +289,6 @@ DDOp::setGrowCells(MultiFab& T,
 
     for (OrientationIter oitr; oitr; ++oitr)
     {
-        if (geom.isPeriodic(oitr().coordDir())) continue;
-
         const Orientation&      face = oitr();
         const int              iFace = (int)face;
 
@@ -525,6 +523,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
     FArrayBox sumFcpDTc, Xc, F_dTe, F_dTc;
     FArrayBox Hic(Box(iv,iv),1);
 
+    bool bad_skip=false;
     for (MFIter mfi(inYT); mfi.isValid(); ++mfi)
     {
         FArrayBox& outYHc = outYH[mfi];
@@ -541,6 +540,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
             myRegion.set(++cnt,BoxLib::adjCell(box,oitr(),inYT.nGrow()));
         }
         BoxArray corners = BoxLib::complementIn(gbox,myRegion);
+        //BoxArray corners = BoxLib::complementIn(gbox,grids);
 #endif
 
         Hic.resize(gbox,Nspec);
@@ -556,6 +556,32 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
 #ifndef NDEBUG
         for (int i=0; i<corners.size(); ++i)
             Hic.setVal(0,corners[i],0,Nspec);
+#endif
+        // FIXME
+#ifndef NDEBUG
+        if (Hic.contains_nan(gbox,0,Nspec)) {
+            cout << "Hic" << endl;
+            cout << "box,id: " << box << " " << mfi.index() << endl;
+            cout << "gbox: " << gbox << endl;
+            BoxArray bat = BoxLib::complementIn(gbox,outYH.boxArray());
+            cout << "uncovered: " << bat;
+            for (int k=0; k<bat.size(); ++k) {
+                FArrayBox tf(bat[k],Nspec);
+                tf.copy(Hic);
+                if (tf.contains_nan()) {
+                    FArrayBox tt(tf.box(),1);
+                    tt.copy(YTc,sCompT,0,1);
+                    cout << tt << endl;
+                    cout << tf << endl;
+                }
+                else
+                {
+                    cout << bat[k] << " is ok" << endl;
+                }
+            }
+            bad_skip = true;
+            continue;
+        }
 #endif
         BL_ASSERT(!Hic.contains_nan(gbox,0,Nspec));
 
@@ -703,6 +729,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
         BL_ASSERT(!outYHc.contains_nan(box,0,Nspec));
         BL_ASSERT(!outYHc.contains_nan(box,Nspec,1));
     }
+    if (bad_skip) BoxLib::Abort();
 }
 
 void
