@@ -123,6 +123,10 @@ C CEG:: make sure to get diffusivities at time n (old time)
      $                   I_R_old,I_R_new,beta_old,beta_new,
      $                   dx,dt,time)
       else if (use_radau) then
+
+         print*,"AJN - use_radau not fixed"
+         stop
+
          if (use_temp_eqn) then
             call advance_radau_temp(macvel,scal_old,scal_new,
      $           I_R_old,I_R_new,beta_old,beta_new,
@@ -133,14 +137,28 @@ C CEG:: make sure to get diffusivities at time n (old time)
      $           dx,dt,time)
          endif
       else if (use_temp_eqn) then
+
+         print*,"AJN - use_temp_eqn not fixed"
+         stop
+
          call advance_temp(macvel,scal_old,scal_new,
      $        I_R_old,I_R_new,beta_old,beta_new,
      $        dx,dt,time)
       else if (use_rhoh2) then
+
+c*****************************************************************
+c     AJN - this is the only SDC option that works right now
+
          call advance_rhoh2(macvel,scal_old,scal_new,
      $        I_R_old,I_R_new,beta_old,beta_new,
      $        dx,dt,time)
+
+c*****************************************************************
+
       else
+
+         print*,"AJN - this option not fixed"
+         stop
 
             print *,'... using LOBATTO quadtrature'
             print *,'... evolving WITHOUT using temp eqn'
@@ -594,11 +612,11 @@ CCCCCCCCCCCCC
       real*8 dt
       real*8 time
       real*8 be_cn_theta
-      real*8 theta
       
-      real*8    diff_old(0:nx-1,nscal)
-      real*8    diff_new(0:nx-1,nscal)
-      real*8    diff_hat(0:nx-1,nscal)
+      real*8        diff_old(0:nx-1,nscal)
+      real*8 diff_new_lagged(0:nx-1,nscal)
+      real*8        diff_hat(0:nx-1,nscal)
+
       real*8   const_src(0:nx-1,nscal)
       real*8 lin_src_old(0:nx-1,nscal)
       real*8 lin_src_new(0:nx-1,nscal)
@@ -618,7 +636,6 @@ CCCCCCCCCCCCC
       integer IWRK, is, rho_flag
       integer misdc
 
-C CEG debugging FIXME
       real*8 ptherm(-1:nx)
       integer j
       real*8  Schange(-1:nx  ,nscal)
@@ -634,14 +651,10 @@ C CEG debugging FIXME
       print *,'     --Version 2'
       print *,'... creating the diffusive terms with old data'
 
-C CEG:: each one of these functions first calls set_bc(scal_old)
-C   maybe should change this
       call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),dx,time)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
-      
-c*****************************************************************
       
       print *,'... computing aofs with D(old) + R(guess)'
 
@@ -654,21 +667,12 @@ c*****************************************************************
       enddo
        
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
-C FIXME
-C$$$         do i = 0,nx-1
-C$$$            do n = 1,nscal
-C$$$               aofs(i,n) = 0.d0
-C$$$            enddo
-C$$$         enddo
-
-c*****************************************************************
 
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
       
       call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
 
-C update species with advection--perhaps a good idea when Le!=1
       do i=0,nx-1
          dRhs(i,0) = 0.0d0
          do n=1,Nspec
@@ -678,28 +682,19 @@ C update species with advection--perhaps a good idea when Le!=1
       call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &     dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
 
-      theta = 1.d0
-C CEG:: HACK remove me!!!
-C      call divBetaHgradY(scal_old,beta_old,tmp,dx,time+dt)
-C      do i=0,nx-1
-C         dRhs(i,0) = dt*tmp(i)
-C      enddo
-CCCCCC
       print *,'... predict rhoh, Temp for diffusivities'
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &     dRhs(0,0),Rhs(0,RhoH),dx,dt,theta,time)
+     &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
       rho_flag = 2
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,theta,rho_flag)
+     $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
       call rhoh_to_temp(scal_new)
 
       call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
 
-C      be_cn_theta = .5d0
 
-c*****************************************************************
-C finish updating species
+C     finish updating species
       print *,'... do predictor for species (MISDC terms=0)'
       rho_flag = 2
       do n=1,Nspec
@@ -710,12 +705,7 @@ C finish updating species
 
 C redo rhoh with better diffusivity
       print *,'... do predictor for rhoh (MISDC terms=0)'
-C CEG:: HACK remove me!!!
-C      call divBetaHgradY(scal_new,beta_new,tmp,dx,time+dt)
-C      do i=0,nx-1
-C         dRhs(i,0) = dt*tmp(i)
-C      enddo
-CCCCCC
+
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
      &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
       rho_flag = 2
@@ -725,211 +715,84 @@ CCCCCC
       call rhoh_to_temp(scal_new)
 
       print *,'...   extract D sources'
-C$$$      if (be_cn_theta .ne. 0.d0) then
 C$$$         do i = 0,nx-1
-C$$$            diff_new(i,RhoH) = (
+C$$$            diff_hat(i,RhoH) = (
 C$$$     $           (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
 C$$$     $           - aofs(i,RhoH) -
 C$$$     $           (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
 C$$$            do n=1,Nspec
 C$$$               is = FirstSpec + n - 1
-C$$$               diff_new(i,is) = (
+C$$$               diff_hat(i,is) = (
 C$$$     $              (scal_new(i,is)-scal_old(i,is))/dt 
 C$$$     $              - aofs(i,is) - I_R_new(i,n) - 
 C$$$     $              (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
 C$$$            enddo
 C$$$         enddo
-C$$$      else
-C$$$         print *,'ERROR:: not set up to work with be_cn_theta=0.0d0'
-C$$$         stop
-C$$$      endif
-      call get_spec_visc_terms(scal_new,beta_new,
-     &     diff_new(0,FirstSpec),dx,time+dt)
-      call get_rhoh_visc_terms(scal_new,beta_new,
-     &     diff_new(0,RhoH),dx,time+dt)
-            
 
+      call get_spec_visc_terms(scal_new,beta_new,
+     &                         diff_hat(0,FirstSpec),dx,time+dt)
+      call get_rhoh_visc_terms(scal_new,beta_new,
+     &                         diff_hat(0,RhoH),dx,time+dt)
+            
       if (nochem_hack) then
          write(*,*)'WARNING! doing nochem_hack--skipping reactions'
       else
          print *,'... react with A+D sources, reset I_R_new'
          do n = 1,nscal
             do i = 0,nx-1
-               const_src(i,n) = aofs(i,n) + be_cn_theta*diff_new(i,n)
+               const_src(i,n) = aofs(i,n) + be_cn_theta*diff_hat(i,n)
      $              + (1.d0-be_cn_theta)*diff_old(i,n)
-C CEG:: if use linear diffusion and don't do any sdc iterations then
-C       the solution develops kinks.  Using only D^n+1 leads to a solution
-C       that drifts far off the equation of state (dp/dt thing not
-C       implemented yet)
-C               lin_src_old(i,n) = diff_old(i,n)
-C               lin_src_new(i,n) = diff_new(i,n)
+
                lin_src_old(i,n) = 0.d0
                lin_src_new(i,n) = 0.d0
 
             enddo
          enddo
-C         be_cn_theta = 1.d0
+
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_new,dt)
       endif
 
-C CEG debugging FIXME
-C
-C Find the estimated change in S over the timestep
-C
-      do n = 1,nscal
-         change_max(n) = 0.d0
-         change_min(n) = 0.d0
-      enddo
-      do i = 0,nx-1
-         do n = 1,nscal
-            Schange(i,n) = scal_new(i,n) - scal_old(i,n)
-            change_max(n) = MAX(change_max(n),Schange(i,n))
-            change_min(n) = MIN(change_min(n),Schange(i,n))
-         enddo 
-      enddo
-      write(*,*)
-      write(*,*)'Change in S over the timestep'
-      write(*,*)'index      min      max'
-      do n = 1,nscal
-         write(*,*)n,MAX(ABS(change_min(n)),ABS(change_max(n)))
-      enddo
-      do i = 0,nx-1
-         do n = 1,nscal
-            Schange(i,n) = scal_new(i,n)
-         enddo
-      enddo
- 1008 FORMAT((I5,1X),(E22.15,1X))      
-
-CCCCCCCCCCCCCCCCCCCCCc
-      do n = 1,nscal
-         if (ABS(scal_new(0,n)) .gt. 1.0d-10) then
-            tmp2(0,n) = dt*diff_new(0,n)/scal_old(0,n)
-         else
-            tmp2(0,n) = dt*diff_new(0,n)
-         endif
-         if (ABS(tmp2(0,n)) .gt. 1.0d-8) then
-            write(*,*)n,' diff_new too large ',scal_new(0,n),tmp2(0,n),
-     $           diff_new(0,n)
-         open(UNIT=11, FILE='scal.dat', STATUS = 'REPLACE')
- 1010    FORMAT((I5,1X),11(E22.15,1X))      
-         do j=0,nx-1
-            write(11,1010) j,(scal_new(j,FirstSpec+i-1), i=1,Nspec),
-     $           scal_new(j,RhoH),scal_new(j,Temp)
-         enddo
-         close(11)
-C            stop
-         endif
-C         if (ABS(aofs(0,n)) .gt. 1.0d-10) then
-C            write(*,*)n,' aofs too large ',aofs(0,n)
-C         endif
-      enddo
-C$$$            call divRhoDHgradY(scal_new,beta_new,visc,
-C$$$     &           dx,time+dt)
-C$$$            write(*,*)n,' div rdhgy  ',visc(0)
-C$$$            do n = 0, Nspec
-C$$$               if (ABS(I_R_new(0,n)).gt. 1.0d-9) then
-C$$$                  write(*,*)n,' I_R too large ',I_R_new(0,n)
-C$$$                  stop 
-C$$$               endif
-C$$$            enddo
-C$$$            call get_temp_visc_terms(scal_new,beta_new,
-C$$$     $           visc,dx,time+dt)
-C$$$            if (ABS(dt*visc(0)/scal_old(0,Temp)) .gt. 1.0d-10) then
-C$$$               write(*,*)n,' temp vt too large ',visc(0)
-C$$$               call rhoDgradHgradY(scal_new,beta_new,visc,dx,time+dt)
-C$$$               write(*,*)n,' rdghgy  ',visc(0)
-C$$$            endif
-C$$$            do i = 0,nx-1
-C$$$               visc(i) = 0.d0
-C$$$            enddo
-C$$$            call addDivLambdaGradT(scal_new,beta_new,visc,dx,time+dt)
-C$$$            if (ABS(visc(0)) .gt. 1.0d-10) then
-C$$$               write(*,*)n,' divlgT too large ',visc(0)
-C$$$            endif
-
-C$$$         open(UNIT=11, FILE='source.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# 256 12'
-C$$$         do j=0,nx-1
-C$$$            do n = 1,Nspec
-C$$$               Y(n) = scal_old(j,FirstSpec+n-1)/scal_old(j,Density)
-C$$$            enddo
-C$$$            write(11,1006) (j+.5)*dx, 
-C$$$     &                     (const_src(j,FirstSpec+n-1),n=1,Nspec),
-C$$$     $                     const_src(j,RhoH)
-C$$$         enddo
-C$$$         close(11)
-C$$$         open(UNIT=11, FILE='aofs.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# 256 12'
-C$$$         do j=0,nx-1
-C$$$            do n = 1,Nspec
-C$$$               Y(n) = scal_old(j,FirstSpec+n-1)/scal_old(j,Density)
-C$$$            enddo
-C$$$            write(11,1006) (j+.5)*dx, 
-C$$$     &                     (aofs(j,FirstSpec+n-1),n=1,Nspec),
-C$$$     $                     aofs(j,RhoH)
-C$$$         enddo
-C$$$         close(11)
-C$$$         open(UNIT=11, FILE='diff.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# 256 12'
-C$$$         do j=0,nx-1
-C$$$            do n = 1,Nspec
-C$$$               Y(n) = scal_old(j,FirstSpec+n-1)/scal_old(j,Density)
-C$$$            enddo
-C$$$            write(11,1006) (j+.5)*dx, 
-C$$$     &                     (diff_new(j,FirstSpec+n-1),n=1,Nspec),
-C$$$     $                     diff_new(j,RhoH)
-C$$$         enddo
-C$$$         close(11)
-CCCCCCCCCCCCCCCCCCCCCCCC            
-
-
 C----------------------------------------------------------------
+c       Begin MISDC iterations
 C----------------------------------------------------------------
+
       do misdc = 1, misdc_iterMAX
          print *,'... doing SDC iter ',misdc
 
-         print *,'... create new diff_hat from current state'
+         print *,'... create new diff_new_lagged from current state'
          call calc_diffusivities(scal_new,beta_new,mu_dummy,
      &                           dx,time+dt)
          call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_hat(0,FirstSpec),dx,time+dt)
+     &                            diff_new_lagged(0,FirstSpec),
+     &                            dx,time+dt)
          call get_rhoh_visc_terms(scal_new,beta_new,
-     &                            diff_hat(0,RhoH),dx,time+dt)
+     &                            diff_new_lagged(0,RhoH),dx,time+dt)
 
          do i = 0,nx-1
             do n = 1,Nspec
                ispec = FirstSpec + n - 1
-               tforce(i,ispec) = I_R_new(i,n)
-     &              + diff_old(i,ispec)
+               tforce(i,ispec) = I_R_new(i,n) + diff_old(i,ispec)
             enddo
             tforce(i,RhoH) = diff_old(i,RhoH)
          enddo
          
          print *,'... compute A with updated D+R source'
          call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
-CCCCCCCC fixme
-C$$$         do i = 0,nx-1
-C$$$            do n = 1,nscal
-C$$$               aofs(i,n) = 0.d0
-C$$$            enddo
-C$$$         enddo
-CCCCCCCCCCCCCCc
+
          print *,'... update rho'
          call update_rho(scal_old,scal_new,aofs,dx,dt)
-
-c*****************************************************************
 
          print *,'... update D for species with A + R + MISDC(D)'
          do i=0,nx-1
             do n=1,Nspec
                is = FirstSpec + n - 1
                dRhs(i,n) = dt*(I_R_new(i,n) 
-     &              + 0.5d0*(diff_old(i,is) - diff_hat(i,is)))
+     &              + 0.5d0*(diff_old(i,is) - diff_new_lagged(i,is)))
             enddo
             dRhs(i,0) = dt*(
-     &           + 0.5d0*(diff_old(i,RhoH) - diff_hat(i,RhoH)))
+     &           + 0.5d0*(diff_old(i,RhoH) - diff_new_lagged(i,RhoH)))
          enddo
          call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &        dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
@@ -940,23 +803,6 @@ c*****************************************************************
      $                    dx,dt,is,be_cn_theta,rho_flag)
          enddo
 
-CCCCCCCCCCC debugging FIXME
-C$$$ 1006 FORMAT((I5,1X),10(E22.15,1X))      
-C$$$         open(UNIT=11, FILE='drhs.dat', STATUS = 'REPLACE')
-C$$$         do j=0,nx-1
-C$$$            write(11,1006) j, 
-C$$$     &                     (dRhs(j,FirstSpec+n-1),n=1,Nspec),
-C$$$     $                     dRhs(j,0)
-C$$$         enddo
-C$$$         close(11)
-CCCCCCCCCCCCC      
-
-C CEG:: HACK remove me!!!
-C      call divBetaHgradY(scal_new,beta_new,tmp,dx,time+dt)
-C      do i=0,nx-1
-C         dRhs(i,0) = dRhs(i,0) + dt*tmp(i)
-C      enddo
-CCCCCC
          print *,'... update D for rhoh with A + R + MISDC(D)'
          call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
      &        dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
@@ -966,34 +812,26 @@ CCCCCC
          print *,'... create new temp from new RhoH, spec'
          call rhoh_to_temp(scal_new)
 
-         print *,'... create diff_new from RhoH and spec solutions'
-C$$$         if (be_cn_theta .ne. 0.d0) then
-C$$$            do i = 0,nx-1
-C$$$               diff_new(i,RhoH) = (
-C$$$     $              (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-C$$$     $              - aofs(i,RhoH) - dRhs(i,0)/dt - 
-C$$$     $              (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
-C$$$               do n=1,Nspec
-C$$$                  is = FirstSpec + n - 1
-C$$$                  diff_new(i,is) = (
-C$$$     $                 (scal_new(i,is)-scal_old(i,is))/dt 
-C$$$     $                 - aofs(i,is) - dRhs(i,n)/dt - 
-C$$$     $                 (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
-C$$$               enddo
-C$$$            enddo
-C$$$         else
-C$$$            print *,'ERROR:: not set up to work with be_cn_theta=0.0d0'
-C$$$            stop
-C$$$         endif
+         print *,'... create diff_hat from RhoH and spec solutions'
+C               do i = 0,nx-1
+C                  diff_hat(i,RhoH) = (
+C        $              (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
+C        $              - aofs(i,RhoH) - dRhs(i,0)/dt - 
+C        $              (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
+C                  do n=1,Nspec
+C                     is = FirstSpec + n - 1
+C                     diff_hat(i,is) = (
+C        $                 (scal_new(i,is)-scal_old(i,is))/dt 
+C        $                 - aofs(i,is) - dRhs(i,n)/dt - 
+C        $                 (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
+C                  enddo
+C               enddo
 
-c     AJN this seems to help but isn't formally correct
-c         call calc_diffusivities(scal_new,beta_new,mu_dummy,
-c     &                           dx,time+dt)
 
          call get_spec_visc_terms(scal_new,beta_new,
-     &        diff_new(0,FirstSpec),dx,time+dt)
+     &                            diff_hat(0,FirstSpec),dx,time+dt)
          call get_rhoh_visc_terms(scal_new,beta_new,
-     &        diff_new(0,RhoH),dx,time+dt)
+     &                            diff_hat(0,RhoH),dx,time+dt)
          
          if (nochem_hack) then
             write(*,*)'WARNING:: SDC nochem_hack--skipping reactions'
@@ -1003,8 +841,8 @@ c     &                           dx,time+dt)
                do i = 0,nx-1
                   
                   const_src(i,n) = aofs(i,n)
-     $                 + diff_new(i,n) - diff_hat(i,n)
-     $                 + 0.5d0*(diff_old(i,n)+diff_hat(i,n))
+     $                 + 0.5d0*(diff_old(i,n)+diff_new_lagged(i,n))
+     $                 + diff_hat(i,n) - diff_new_lagged(i,n)
 
                   lin_src_old(i,n) = 0.d0
                   lin_src_new(i,n) = 0.d0
@@ -1019,57 +857,6 @@ c     &                           dx,time+dt)
 c*****************************************************************
 c       End of MISDC iterations
 c*****************************************************************
-C     CEG debugging FIXME
-C     
-C     Find the size of the correction, ie the change in S_new
-C     
-         do n = 1,nscal
-            change_max(n) = 0.d0
-            change_min(n) = 0.d0
-         enddo
-         do i = 0,nx-1
-            do n = 1,nscal
-               Schange(i,n) = scal_new(i,n) - Schange(i,n)
-               change_max(n) = MAX(change_max(n),Schange(i,n))
-               change_min(n) = MIN(change_min(n),Schange(i,n))
-            enddo 
-         enddo
-         write(*,*)
-         write(*,*)'Size of the correction (Change in S_new)'
-         write(*,*)'index      min      max'
-         do n = 1,nscal
-C            write(*,*)n,change_min(n),change_max(n)
-            write(*,*)n,MAX(ABS(change_min(n)),ABS(change_max(n)))
-         enddo
-         do i = 0,nx-1
-            do n = 1,nscal
-               Schange(i,n) = scal_new(i,n)
-            enddo
-         enddo
-
-CCCCCCCCCCCCCCCCCc FIXME
-C$$$      do n = 1,nscal
-C$$$         if (ABS(scal_new(0,n)) .gt. 1.0d-10) then
-C$$$            tmp2(0,n) = dt*diff_new(0,n)/scal_old(0,n)
-C$$$         else
-C$$$            tmp2(0,n) = dt*diff_new(0,n)
-C$$$         endif
-C$$$         if (ABS(tmp2(0,n)) .gt. 1.0d-8) then
-C$$$            write(*,*)n,' diff_new too large ',scal_new(0,n),tmp2(0,n),
-C$$$     $           diff_new(0,n)
-C$$$         open(UNIT=11, FILE='scal.dat', STATUS = 'REPLACE')
-C$$$         do j=0,nx-1
-C$$$            write(11,1010) j,(scal_new(j,FirstSpec+i-1), i=1,Nspec),
-C$$$     $           scal_new(j,RhoH),scal_new(j,Temp)
-C$$$         enddo
-C$$$         close(11)
-C$$$C            stop
-C$$$         endif
-C$$$C         if (ABS(aofs(0,n)) .gt. 1.0d-10) then
-C$$$C            write(*,*)n,' aofs too large ',aofs(0,n)
-C$$$C         endif
-C$$$      enddo
-CCCCCCCCCCCCCCCCCCCCCC
 
       enddo
 
