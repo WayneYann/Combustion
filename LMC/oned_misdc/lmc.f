@@ -418,6 +418,8 @@ CCCCCCCCCCCCC
 C-- Now advance 
       do nsteps_taken = 1, nsteps
 
+         if (time.ge.stop_time) exit
+
          if (time > 0.d0) then 
             if (fixed_dt > 0) then
                dt = fixed_dt
@@ -435,6 +437,8 @@ C CEG adding local change seems to have no effect for 2step mech
                endif            
             endif
          endif
+
+          dt = min(dt,stop_time-time)
 
          write(6,*)
          write(6,1001 )time,dt
@@ -475,6 +479,16 @@ c     update state, I_R, time
      $           I_R_new,divu_new,dsdt,dx,time,dt,cfl_used)
          endif
       enddo
+
+
+      call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+     $     dx,dt,nsteps_taken,time)
+
+
+      call write_check(nsteps_taken,vel_new,scal_new,press_new,
+     $     I_R_new,divu_new,dsdt,dx,time,dt,cfl_used)
+
+
 
       print *,' '      
       print *,'COMPLETED SUCCESSFULLY'
