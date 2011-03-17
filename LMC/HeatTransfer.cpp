@@ -3567,6 +3567,8 @@ HeatTransfer::fill_mcdd_boundary_data(Real time)
     MCDDOp.setBoundaryData(S,compT,S,compY,cbr,compCT,cbr,compCY,
                            get_desc_lst()[State_Type].getBC(Temp),
                            get_desc_lst()[State_Type].getBC(first_spec),max_order);
+
+    if (level != 0) delete cbr;
 }
 
 void dumpProfileFab(const FArrayBox& fab,
@@ -4673,6 +4675,7 @@ HeatTransfer::mcdd_update(Real time,
     p.status = HT_InProgress;
 
     bool update_mcdd_coeffs = true;
+    //bool update_mcdd_coeffs = false;
     for (p.iter=0; (p.iter<mcdd_numcycles) && (p.status==HT_InProgress); ++p.iter)
     {
         mcdd_fas_cycle(p,YTHR,Rhs,T1,fluxnp1,time,dt,whichApp);
