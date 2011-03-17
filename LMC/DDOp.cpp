@@ -39,7 +39,7 @@ DDOp::DDOp (const BoxArray&   grids,
     : Tbd(0), Ybd(0)
 {
     BL_ASSERT(ddOps.size()==0);
-    ddOps.resize(1);
+    ddOps.resize(1,PArrayNoManage); // Kinda weird, since ddOps[0] is me.  Will explicitly manage in dtr
     ddOps.set(0,this);
     define(grids,box,amrRatio,0,this);
 }
@@ -60,9 +60,13 @@ DDOp::~DDOp ()
         BL_ASSERT(mg_level==0);
         delete Tbd;
         delete Ybd;
-        for (int i=1; i<mgLevels; ++i)
+        for (int i=1; i<ddOps.size(); ++i) {
             delete ddOps.remove(i);
+        }
+        ddOps.remove(0); // returns "this", don't delete
+        ddOps.clear();
     }
+    volInv.clear();
 }
 
 const BoxArray&
@@ -167,7 +171,7 @@ DDOp::define (const BoxArray& _grids,
             cbox.coarsen(mg_ratio);
 
             mgLevels++;
-            ddOps.resize(mgLevels);
+            ddOps.resize(mgLevels,PArrayNoManage);
             ddOps.set(mgLevels-1,new DDOp(cgrids,cbox,amr_ratio,mgLevels-1,parent));
 
             not_done = can_coarsen(cgrids)  &&  can_coarsen(cbox) 
@@ -178,7 +182,7 @@ DDOp::define (const BoxArray& _grids,
         Ybd = new DDBndry(grids,Nspec,geom,mgLevels);
     }
 
-    dx.resize(BL_SPACEDIM);
+    dx.resize(BL_SPACEDIM,PArrayManage);
     for (int i=0; i<BL_SPACEDIM; ++i)
         dx[i] = geom.CellSize()[i];
     
@@ -201,9 +205,7 @@ DDOp::define (const BoxArray& _grids,
     */
     int model_DD0_MA1 = (transport_model==DD_Model_Full ? 0 : 1);
     transport_coefs_nComp = FORT_DDNCOEFS(&model_DD0_MA1);
-    transport_coefs.resize(BL_SPACEDIM);
-
-    // Note, no grow cells for any of these
+    transport_coefs.resize(BL_SPACEDIM,PArrayManage);
     for (int dir = 0; dir < BL_SPACEDIM; dir++) {
         BoxArray egrids = BoxArray(grids).surroundingNodes(dir);
         transport_coefs.set(dir,new MultiFab(egrids,transport_coefs_nComp,0,Fab_allocate));

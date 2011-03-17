@@ -1,7 +1,7 @@
 //BL_COPYRIGHT_NOTICE
 
 //
-// $Id: DDBndry.cpp,v 1.7 2011-02-25 19:20:51 marc Exp $
+// $Id: DDBndry.cpp,v 1.8 2011-03-17 00:48:10 marc Exp $
 //
 #include <winstd.H>
 #include <cmath>
@@ -34,8 +34,8 @@ DDBndry::define (const BoxArray& grids,
     ViscBndry::define(grids,ncomp,geom);
     num_mg_levels = numMGlevels;
     
-    bnd_vals.resize(num_mg_levels);
-    geoms.resize(num_mg_levels);
+    bnd_vals.resize(num_mg_levels,PArrayManage);
+    geoms.resize(num_mg_levels,PArrayManage);
 
     geoms.set(0,new Geometry(geom));
     BoxArray cgrids = grids;
