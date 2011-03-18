@@ -688,13 +688,10 @@ c      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
 c     &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
 c      call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
 c     $              dx,dt,RhoH,be_cn_theta,rho_flag)
-
-c     AJN - don't think calls to rhoh_to_temp are needed.
-c           They don't affect the solution.
+c
 c      call rhoh_to_temp(scal_new)
-
+c
 c      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
-
 
 C     finish updating species
       print *,'... do predictor for species (MISDC terms=0)'
@@ -712,9 +709,9 @@ C redo rhoh with better diffusivity
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
-c     AJN - don't think calls to rhoh_to_temp are needed.
-c           They don't affect the solution.
-      call rhoh_to_temp(scal_new)
+c     AJN - This call to rhoh_to_temp not needed;
+c           it doesn't affect the solution
+c      call rhoh_to_temp(scal_new)
 
       print *,'...   extract D sources'
       do i = 0,nx-1
@@ -813,9 +810,9 @@ C----------------------------------------------------------------
          call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $                 dx,dt,RhoH,be_cn_theta,rho_flag)
          print *,'... create new temp from new RhoH, spec'
-c     AJN - don't think calls to rhoh_to_temp are needed.
-c           They don't affect the solution.
-         call rhoh_to_temp(scal_new)
+c     AJN - This call to rhoh_to_temp not needed;
+c           it doesn't affect the solution
+c         call rhoh_to_temp(scal_new)
 
          print *,'... create diff_hat from RhoH and spec solutions'
          do i = 0,nx-1
