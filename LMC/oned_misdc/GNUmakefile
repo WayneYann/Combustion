@@ -31,7 +31,7 @@ ifeq (${USE_INTEL},TRUE)
 #  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
-  fCOMP := gfortran -g -fbounds-check -O -Wuninitialized 
+  fCOMP := gfortran -g -fbounds-check -O -Wuninitialized -Wall
   CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
   XTRALIBS :=  -lm -lgfortran
 endif
