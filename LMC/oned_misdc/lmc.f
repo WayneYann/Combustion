@@ -269,7 +269,7 @@ C increasing sdc iters did not help
 C               sdc_iter = misdc_iterMAX
 C               misdc_iterMAX = 10
 C               call advance(vel_old,vel_new,scal_old,scal_new,
-C     $                   I_R_new,I_R_new,press_old,press_new,
+C     $                   I_R_new,press_old,press_new,
 C     $                   divu_old,divu_new,dsdt,beta_old,beta_new,
 C     $                   dx,0.5d0*dt,time)
 C               do i = 0,nx-1
@@ -337,7 +337,7 @@ C   probably doesn't matter that much
             write(6,1001) time,dt
 
             call advance(vel_old,vel_new,scal_old,scal_new,
-     $                   I_R_new,I_R_new,press_old,press_new,
+     $                   I_R_new,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
      $                   dx,dt,time)
 
@@ -445,7 +445,7 @@ C CEG adding local change seems to have no effect for 2step mech
          write(6,*)'STEP = ',nsteps_taken
          
          call advance(vel_old,vel_new,scal_old,scal_new,
-     $                I_R_new,I_R_new,press_old,press_new,
+     $                I_R_new,press_old,press_new,
      $                divu_old,divu_new,dsdt,beta_old,beta_new,
      $                dx,dt,time)
 
