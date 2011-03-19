@@ -80,9 +80,13 @@ c     compute diffusivities at time n (old time)
 
       if (use_strang) then
 
+c*****************************************************************
+c     Strang split advance
+
          call strang_advance(macvel,scal_old,scal_new,
      $                   I_R_new,beta_old,beta_new,
      $                   dx,dt,time)
+c*****************************************************************
 
       else if (use_radau) then
 
@@ -97,9 +101,8 @@ c     compute diffusivities at time n (old time)
       else if (use_rhoh2) then
 
 c*****************************************************************
-c     AJN - This is the only SDC option that works
-c           The other options live in the repository in 
-c           the 3/19/11 version
+c     This is the only SDC option that works.  The other options 
+c     live in the repository in the 3/19/11 version
 
          call advance_rhoh2(macvel,scal_old,scal_new,
      $        I_R_new,beta_old,beta_new,
@@ -108,7 +111,6 @@ c           the 3/19/11 version
 c*****************************************************************
 
       end if
-C end which integration scheme
             
       call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
       call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time+dt)
@@ -116,23 +118,13 @@ C end which integration scheme
       do i = 0,nx-1
          rhohalf(i) = 0.5d0*(scal_old(i,Density)+scal_new(i,Density))
          dsdt(i) = (divu_new(i) - divu_old(i)) / dt
-      enddo         
-C debugging FIXME
-C$$$ 1007 FORMAT((I5,1X),(E22.15,1X))      
-C$$$         open(UNIT=11, FILE='dsdt.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# 256 2'
-C$$$         do i=0,nx-1
-C$$$            write(11,1007) i, dsdt(i)
-C$$$         enddo
-C$$$         close(11)
-C$$$         write(*,*)'divu update'
-C$$$         stop
-CCCCCCCCCCCCC
+      enddo
 
       print *,'... update velocities'
 
       vel_theta = 0.5d0
-C get velocity visc terms to use as a forcing term for advection
+
+C     get velocity visc terms to use as a forcing term for advection
       call get_vel_visc_terms(vel_old,mu_old,visc,dx,time)
       do i = 0, nx-1
          visc(i) = visc(i)/scal_old(i,Density)
@@ -203,9 +195,12 @@ C get velocity visc terms to use as a forcing term for advection
 
       rho_flag = 2
 
-      be_cn_theta = 0.5d0
+C----------------------------------------------------------------
+c     Begin initial predictor
+C----------------------------------------------------------------
 
-      print*,'... using algorithm in /Papers/MAESTRO/SDC/'
+c     diffusion solves in predictor are regular Crank-Nicolson
+      be_cn_theta = 0.5d0
 
       print *,'... computing D(U^n)'
       call get_spec_visc_terms(scal_old,beta_old,
@@ -213,6 +208,8 @@ C get velocity visc terms to use as a forcing term for advection
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
       
+c     in predictor, new-time coefficients are set equal to
+c     old-time coefficients
       beta_new = beta_old
 
       print *,'... computing advective forcing term = D(U^n) + I_R^kmax'
@@ -223,34 +220,39 @@ C get velocity visc terms to use as a forcing term for advection
          enddo
          tforce(i,RhoH) = diff_old(i,RhoH) 
       enddo
-       
+
+c     compute advection term
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
 
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
 
+c     this is part of the RHS for the species and enthalpy
+c     diffusion solves
       do i=0,nx-1
          dRhs(i,0) = 0.0d0
          do n=1,Nspec
             dRhs(i,n) = dt*I_R_new(i,n)
          enddo
       enddo
+
+c     compute RHS for species diffusion solve
       call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &     dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
 
 C     finish updating species
-      print *,'... do predictor for species (MISDC terms=0)'
+      print *,'... do initial diffusion solve for species'
       do n=1,Nspec
          is = FirstSpec + n - 1
          call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
      $                 dx,dt,is,be_cn_theta,rho_flag)
       enddo
 
-C redo rhoh with better diffusivity
-      print *,'... do predictor for rhoh (MISDC terms=0)'
-
+c     compute RHS for enthalpy diffusion solve
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
      &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
+
+c     finish updating enthalpy
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
@@ -291,9 +293,15 @@ C redo rhoh with better diffusivity
       endif
 
 C----------------------------------------------------------------
-c       Begin MISDC iterations
+c     End initial predictor
 C----------------------------------------------------------------
 
+C----------------------------------------------------------------
+c     Begin MISDC iterations
+C----------------------------------------------------------------
+
+c     diffusion solves in SDC iterations are iterative corrections
+c     that have a backward Euler character
       be_cn_theta = 1.d0
 
       do misdc = 1, misdc_iterMAX
@@ -384,9 +392,9 @@ C----------------------------------------------------------------
 
          endif
 
-c*****************************************************************
-c       End of MISDC iterations
-c*****************************************************************
+C----------------------------------------------------------------
+c     End MISDC iterations
+C----------------------------------------------------------------
 
       enddo
 
