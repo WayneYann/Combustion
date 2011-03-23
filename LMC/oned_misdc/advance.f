@@ -28,7 +28,6 @@
       real*8 dx
       real*8 dt
       real*8 time
-      real*8 be_cn_theta
       real*8 vel_theta
       real*8 divu_max
       
@@ -41,7 +40,6 @@
       integer rho_flag
       
       print *,'advance: at start of time step'
-      be_cn_theta = 1.d0
 
 c     
 c*****************************************************************
@@ -54,25 +52,30 @@ c
 
       print *,'... predict edge velocities'
 c     this fills ghost cells for vel_old
-      call pre_mac_predict(vel_old,scal_old,gp,
-     $                     macvel,dx,dt,time)
+      call pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt,time)
       
       call compute_pthermo(scal_old,pthermo)
 
       do i = 0,nx-1
          divu_tmp(i) = divu_old(i) + 0.5d0 * dt * dsdt(i)
       enddo
+
+c     diagnostics only
       divu_max = ABS(divu_tmp(0))
       do i = 1,nx-1
          divu_max = MAX(divu_max,ABS(divu_tmp(i)))
       enddo
-      print *,'DIVU norm old = ',divu_max 
+      print *,'DIVU norm before dpdt = ',divu_max 
+
       call add_dpdt(scal_old,pthermo,divu_tmp,macvel,dx,dt)
+
+c     diagnostics only
       divu_max = ABS(divu_tmp(0))
       do i = 1,nx-1
          divu_max = MAX(divu_max,ABS(divu_tmp(i)))
       enddo
-      print *,'DIVU norm new = ',divu_max 
+      print *,'DIVU norm after dpdt = ',divu_max 
+
       call macproj(nx,macvel,divu_tmp,dx)
 
 c     compute diffusivities at time n (old time)
@@ -202,16 +205,18 @@ C----------------------------------------------------------------
 c     diffusion solves in predictor are regular Crank-Nicolson
       be_cn_theta = 0.5d0
 
+c     compute diffusion term at time n
       print *,'... computing D(U^n)'
       call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),dx,time)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
       
-c     in predictor, new-time coefficients are set equal to
-c     old-time coefficients
+c     in predictor, new-time coefficients are set equal
+c     to old-time coefficients
       beta_new = beta_old
 
+c     compute advective forcing term
       print *,'... computing advective forcing term = D(U^n) + I_R^kmax'
       do i = 0,nx-1
          do n = 1,Nspec
@@ -224,10 +229,11 @@ c     old-time coefficients
 c     compute advection term
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
 
+c     update density
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
 
-c     this is part of the RHS for the species and enthalpy
+c     compute part of the RHS for the enthalpy and species
 c     diffusion solves
       do i=0,nx-1
          dRhs(i,0) = 0.0d0
@@ -237,10 +243,10 @@ c     diffusion solves
       enddo
 
 c     compute RHS for species diffusion solve
-      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
-     &     dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
+      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,dRhs(0,1),
+     &                 Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
 
-C     finish updating species
+C     update species with diffusion solve
       print *,'... do initial diffusion solve for species'
       do n=1,Nspec
          is = FirstSpec + n - 1
@@ -249,10 +255,10 @@ C     finish updating species
       enddo
 
 c     compute RHS for enthalpy diffusion solve
-      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
+      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,dRhs(0,0),
+     &                 Rhs(0,RhoH),dx,dt,be_cn_theta,time)
 
-c     finish updating enthalpy
+c     update enthalpy with diffusion solve
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
