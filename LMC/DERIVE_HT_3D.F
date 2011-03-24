@@ -64,7 +64,9 @@ c
          enddo
       enddo
 
+!$omp parallel private(i,j,k,n)
       do n=2,ncomp
+!$omp do
          do k=lo(3),hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
@@ -72,7 +74,9 @@ c
                enddo
             enddo
          enddo
+!$omp end do nowait
       enddo
+!$omp end parallel
 
       end
 
@@ -122,7 +126,9 @@ c
          enddo
       enddo
       
+!$omp parallel private(i,j,k,n)
       do n=1,ncomp
+!$omp do
          do k=lo(3),hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
@@ -130,7 +136,9 @@ c
                enddo
             enddo
          enddo
+!$omp end do nowait
       enddo
+!$omp end parallel
 
       end
 

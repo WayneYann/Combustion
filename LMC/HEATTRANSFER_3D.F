@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_3D.F,v 1.38 2011-03-17 22:00:02 lijewski Exp $
+c $Id: HEATTRANSFER_3D.F,v 1.39 2011-03-24 21:44:39 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -168,7 +168,9 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             call FORT_MIXAVG_RHODIFF_TEMP(lo, hi, rhoD, DIMS(rhoD),
      &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
             if (thickFacTR.ne.1.d0) then
+!$omp parallel private(i,j,k,n)
                do n=1,ncompd-1
+!$omp do
                   do k=lo(3), hi(3)
                      do j=lo(2), hi(2)
                         do i=lo(1), hi(1)
@@ -176,7 +178,9 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                         end do
                      end do
                   end do
+!$omp end do nowait
                end do
+!$omp end parallel
             endif
          else
             call FORT_VELVISC(lo,hi,DIMS(T),T,DIMS(Y),Y,
@@ -556,7 +560,9 @@ c===================================================================
 
       integer i,j,k,n
 
+!$omp parallel private(i,j,k,n)
       do n = 1,nc
+!$omp do
          do k=lo(3),hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
@@ -564,7 +570,9 @@ c===================================================================
                end do
             end do
          end do
+!$omp end do nowait
       end do
+!$omp end parallel
       end
 
       subroutine FORT_REPAIR_FLUX(lo, hi,
@@ -668,8 +676,9 @@ c===================================================================
 
       integer i, j, k, n
 
+!$omp parallel private(i,j,k,n)
       do n=1,nc
-!$omp parallel do private(i,j,k)
+!$omp do
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
@@ -680,8 +689,9 @@ c===================================================================
                end do
             end do
          end do
-!$omp end parallel do
+!$omp end do nowait
       end do
+!$omp end parallel
       end
 
       subroutine  FORT_INCRWEXTFLXDIV(lo, hi,
