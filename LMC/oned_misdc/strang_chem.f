@@ -118,7 +118,7 @@ C         endif
 
             if (use_temp_eqn) then
 
-               scal_new(i,RhoH) = scal_old(i,RhoH)+
+               scal_new(i,RhoH) = scal_old(i,RhoH)
      &              + dt*const_src(i,RhoH)
      &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
                hmix = scal_new(i,RhoH) / scal_new(i,Density)
