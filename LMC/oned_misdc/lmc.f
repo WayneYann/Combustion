@@ -71,11 +71,10 @@ c     New arrays for MISDC.
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  num_divu_iters, num_init_iters,fixed_dt,
      $                  nochem_hack, use_strang, use_temp_eqn,
-     $                  use_radau, V_in, lim_rxns, use_rhoh2
-
-
-c     Initialize chem/tran database
-      call initchem()
+     $                  use_radau, V_in, lim_rxns, use_rhoh2, 
+     $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
+     $                  thickFacTR, thickFacCH, max_vode_subcycles,
+     $                  min_vode_timestep, dvd_debug
 
 c     Set defaults, change with namelist
       nsteps = 10
@@ -110,11 +109,24 @@ c     Set defaults, change with namelist
       unlim = 0
       lim_rxns = 1
 
+      tranfile = 'tran.asc.grimech30'
+      TMIN_TRANS = 0.d0
+      Pr = 0.7d0
+      Sc = 0.7d0
+      LeEQ1 = 0
+      thickFacTR = 1.d0
+      thickFacCH = 1.d0
+      max_vode_subcycles = 15000
+      min_vode_timestep = 1.e-19
+      dvd_debug = 0
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)
       write(*,fortin)
+
+c     Initialize chem/tran database
+      call initchem()
 
       Pcgs = Patm * P1ATM
       

@@ -26,4 +26,6 @@
   lim_rxns = 0
   fixed_dt = -1
 !  V_in = 33.
+  LeEQ1 = 0
+  tranfile = 'tran.asc.grimech30'
 /

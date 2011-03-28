@@ -1,26 +1,13 @@
-
+c     Initialize some values
       block data chemdat
       include 'spec.h'
       data traninit / -1 /
-C      data tranfile / 'tran.asc.chem-H' /
-      data tranfile / 'tran.asc.CH4-2step' /
-      data TMIN_TRANS / 0.d0 /
-      data Pr / 0.7d0 /
-      data Sc / 0.7d0 /
-      data LeEQ1 / 1 /
-      data thickFacTR / 1.d0 /
-      data thickFacCH / 1.d0 /
-      data max_vode_subcycles / 15000 /
-      data min_vode_timestep / 1.e-19 /
       data Pcgs / -1 /
       data iH2  / -1 /
       data iO2  / -1 /
       data iN2  / -1 /
       data iCH4 / -1 /
-      data dvd_debug / 0 /
       end
-
-
 
       subroutine calc_diffusivities(scal, beta, mu, dx, time)
       implicit none
@@ -67,7 +54,7 @@ c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
                beta(i,FirstSpec+n-1)
      &              = scal(i,Density) * Wavg * invmwt(n) * Dt(n)
             end do
-         
+
             alpha = 1.0D0
             CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
             alpha = -1.0D0
@@ -79,7 +66,7 @@ c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
             CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
             mu(i) = fourThirds*mu(i)
          enddo
-         
+
       else
          do i=-1, nx
 c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
