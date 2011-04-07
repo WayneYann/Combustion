@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.10 2011-03-04 03:28:38 marc Exp $
+# $Id: GNUmakefile,v 1.11 2011-04-07 21:19:36 lijewski Exp $
 #
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
@@ -12,20 +12,19 @@ DEBUG	          = FALSE
 DEBUG	          = TRUE
 PROFILE           = TRUE
 PROFILE           = FALSE
-DIM    	          = 3
 DIM    	          = 2
+DIM    	          = 3
 FCOMP             = gfortran
 COMP              = g++
-FCOMP             = Intel
-COMP              = Intel
 BUILD_IN_PLACE    = TRUE
 EBASE             = amr
 HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_VELOCITY      = FALSE
-USE_MPI           = FALSE
 USE_MPI           = TRUE
+USE_MPI           = FALSE
+USE_OMP           = TRUE
 # Both of these are for the time-dependent turbulence forcing term
 #DEFINES += -DGENGETFORCE
 #DEFINES += -DDO_LMC_FORCE

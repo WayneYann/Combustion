@@ -20,8 +20,8 @@ HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = FALSE
 USE_VELOCITY      = FALSE
-USE_MPI           = TRUE
 USE_MPI           = FALSE
+USE_MPI           = TRUE
 USE_PARTICLES     = FALSE
 USE_PARTICLES     = TRUE
 
