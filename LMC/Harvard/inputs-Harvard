@@ -70,7 +70,6 @@ amr.plot_file       = plt
 amr.plot_int        = 10
 amr.grid_log        = grdlog  # name of grid logging file
 amr.max_grid_size   = 64
-ns.max_grid_size_chem = 32
 #amr.derive_plot_vars=ALL
 
 amr.probin_file = probin-Harvard # This will default to file "probin" if not set
