@@ -162,6 +162,14 @@ static HTParticleContainer* HTPC = 0;
 // In case someone outside of HeatTransfer needs a handle on the particles.
 //
 HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
+
+static std::string              timestamp_file = "TimeStamp";
+static std::vector<int>         timestamp_indices;
+static std::vector<std::string> timestamp_names;
+static std::string              particle_init_file;
+static std::string              particle_restart_file;
+static std::string              particle_output_file;
+static int                      pverbose = 2;
 #endif
 
 #ifdef BL_USE_FLOAT
@@ -568,6 +576,48 @@ HeatTransfer::read_params ()
 
         pp.query("mcdd_verbose",mcdd_verbose);
     }
+
+#ifdef PARTICLES
+    //
+    // Some particle stuff.
+    //
+    ParmParse ppp("particles");
+
+    ppp.query("timestamp_file", timestamp_file);
+
+    if (int nc = ppp.countval("timestamp_indices"))
+    {
+        timestamp_indices.resize(nc);
+
+        ppp.getarr("timestamp_indices", timestamp_indices, 0, nc);
+    }
+
+    if (int nc = ppp.countval("timestamp_names"))
+    {
+        timestamp_names.resize(nc);
+
+        ppp.getarr("timestamp_names", timestamp_names, 0, nc);
+    }
+
+    if (!timestamp_indices.empty() || !timestamp_names.empty())
+    {
+        BL_ASSERT(timestamp_indices.size() == timestamp_names.size());
+    }
+
+    ppp.query("pverbose",pverbose);
+    //
+    // Used in initData() on startup to read in a file of particles.
+    //
+    ppp.query("particle_init_file", particle_init_file);
+    //
+    // Used in post_restart() to read in a file of particles.
+    //
+    ppp.query("particle_restart_file", particle_restart_file);
+    //
+    // Used in post_restart() to write out the file of particles.
+    //
+    ppp.query("particle_output_file", particle_output_file);
+#endif
         
     if (verbose && ParallelDescriptor::IOProcessor())
     {
@@ -1321,55 +1371,12 @@ HeatTransfer::initData ()
         BL_ASSERT(HTPC == 0);
 
         HTPC = new HTParticleContainer(parent);
-        //
-        // 2 gives more stuff than 1.
-        //
-        HTPC->SetVerbose(1);
-        //
-        // This is mostly here for debugging ...
-        //
-        ParmParse pp("particles");
 
-        bool do_initrandom           = false;
-        bool do_initrandom_serialize = false;
-        int  do_initrandom_count     = 10000;
-        int  do_initrandom_iseed     = 987654321;
+        HTPC->SetVerbose(pverbose);
 
-        std::string particle_file;
-
-        pp.query("do_initrandom",           do_initrandom);
-        pp.query("do_initrandom_serialize", do_initrandom_serialize);
-        pp.query("do_initrandom_count",     do_initrandom_count);
-        pp.query("do_initrandom_iseed",     do_initrandom_iseed);
-        pp.query("particle_file",           particle_file);
-
-        if (!particle_file.empty() && do_initrandom)
+        if (!particle_init_file.empty())
         {
-            BoxLib::Abort("HT::initData(): particle_file and do_initrandom cannot both be specified");
-        }
-
-        if (do_initrandom)
-        {
-            if (do_initrandom_count <= 0)
-            {
-                BoxLib::Abort("HT::initData(): do_initrandom_count must be > 0");
-            }
-            if (do_initrandom_iseed <= 0)
-            {
-                BoxLib::Abort("HT::initData(): do_initrandom_iseed must be > 0");
-            }
-            if (verbose && ParallelDescriptor::IOProcessor())
-            {
-                std::cout << "\nInitializing HT with cloud of "
-                          << do_initrandom_count
-                          << " random particles with initial seed: "
-                          << do_initrandom_iseed << "\n\n";
-            }
-            HTPC->InitRandom(do_initrandom_count, do_initrandom_iseed, 0, do_initrandom_serialize);
-        }
-        else if (!particle_file.empty())
-        {
-            HTPC->InitFromAsciiFile(particle_file);
+            HTPC->InitFromAsciiFile(particle_init_file);
         }
     }
 #endif
@@ -1776,30 +1783,18 @@ HeatTransfer::post_restart ()
         BL_ASSERT(HTPC == 0);
 
         HTPC = new HTParticleContainer(parent);
-        //
-        // 2 gives more stuff than 1.
-        //
-        HTPC->SetVerbose(1);
+
+        HTPC->SetVerbose(pverbose);
 
         HTPC->Restart(parent->theRestartFile(), the_ht_particle_file_name);
         //
         // We want to be able to add new particles on a restart.
         // As well as the ability to write the particles out to an ascii file.
         //
-        ParmParse pp("particles");
-
-        std::string particle_input_file;
-        std::string particle_output_file;
-
-        pp.query("particle_input_file", particle_input_file);
-
-        pp.query("particle_output_file", particle_output_file);
-
-        if (!particle_input_file.empty())
+        if (!particle_restart_file.empty())
         {
-            HTPC->InitFromAsciiFile(particle_input_file);
+            HTPC->InitFromAsciiFile(particle_restart_file);
         }
-
         if (!particle_output_file.empty())
         {
             HTPC->WriteAsciiFile(particle_output_file);
@@ -1814,64 +1809,7 @@ HeatTransfer::postCoarseTimeStep (Real cumtime)
     //
     // postCoarseTimeStep() is only called by level 0.
     //
-#ifdef PARTICLES
-    //
-    // This is mostly here for debugging ...
-    //
-    ParmParse pp("particles");
-
-    bool                     do_moverandom  = false;
-    std::string              timestamp_file = "TimeStamp";
-    std::vector<int>         timestamp_indices;
-    std::vector<std::string> timestamp_names;
-
-    pp.query("do_moverandom", do_moverandom);
-
-    pp.query("timestamp_file", timestamp_file);
-
-    if (int nc = pp.countval("timestamp_indices"))
-    {
-        timestamp_indices.resize(nc);
-
-        pp.getarr("timestamp_indices", timestamp_indices, 0, nc);
-    }
-
-    if (int nc = pp.countval("timestamp_names"))
-    {
-        timestamp_names.resize(nc);
-
-        pp.getarr("timestamp_names", timestamp_names, 0, nc);
-    }
-
-    if (!timestamp_indices.empty() || !timestamp_names.empty())
-    {
-        BL_ASSERT(timestamp_indices.size() == timestamp_names.size());
-    }
-
-
     BL_ASSERT(level == 0);
-
-    if (HTPC != 0)
-    {
-        if (do_moverandom)
-            //
-            // This moves the particles a random amount & then redistributes'm.
-            //
-            HTPC->MoveRandom();
-
-        if (!timestamp_indices.empty())
-        {
-            for (int lev = 0; lev <= parent->finestLevel(); lev++)
-            {
-                HTPC->Timestamp(timestamp_file,
-                                lev,
-                                state[State_Type].curTime(),
-                                timestamp_indices,
-                                timestamp_names);
-            }
-        }
-    }
-#endif
 }
 
 void
@@ -1891,8 +1829,13 @@ HeatTransfer::post_regrid (int lbase,
     }
 
 #ifdef PARTICLES
-    if (level == 0 && HTPC != 0)
+    if (HTPC != 0)
+    {
         HTPC->Redistribute();
+        //
+        // TODO - remove particle that are no longer at the finest level?
+        //
+    }
 #endif
 }
 
@@ -5706,9 +5649,19 @@ HeatTransfer::advance (Real time,
             //
             // Currently this only works for single-level problems.
             //
-            BL_ASSERT(level == 0);
-
             HTPC->AdvectWithUmac(u_mac, level, dt);
+
+            if (!timestamp_file.empty())
+            {
+                for (int lev = 0; lev <= parent->finestLevel(); lev++)
+                {
+                    HTPC->Timestamp(timestamp_file,
+                                    lev,
+                                    state[State_Type].curTime(),
+                                    timestamp_indices,
+                                    timestamp_names);
+                }
+            }
         }
 #endif
     }
