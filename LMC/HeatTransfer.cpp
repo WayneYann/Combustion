@@ -1324,7 +1324,7 @@ HeatTransfer::initData ()
         //
         // 2 gives more stuff than 1.
         //
-        HTPC->Verbose(1);
+        HTPC->SetVerbose(1);
         //
         // This is mostly here for debugging ...
         //
@@ -1779,7 +1779,7 @@ HeatTransfer::post_restart ()
         //
         // 2 gives more stuff than 1.
         //
-        HTPC->Verbose(1);
+        HTPC->SetVerbose(1);
 
         HTPC->Restart(parent->theRestartFile(), the_ht_particle_file_name);
         //
