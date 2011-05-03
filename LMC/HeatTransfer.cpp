@@ -5646,9 +5646,6 @@ HeatTransfer::advance (Real time,
 #ifdef PARTICLES
         if (HTPC != 0)
         {
-            //
-            // Currently this only works for single-level problems.
-            //
             HTPC->AdvectWithUmac(u_mac, level, dt);
 
             if (!timestamp_file.empty())
@@ -9984,3 +9981,100 @@ HeatTransfer::writePlotFile (const std::string& dir,
     TheFullPath += BaseName;
     VisMF::Write(plotMF,TheFullPath,how);
 }
+
+MultiFab*
+HeatTransfer::derive (const std::string& name,
+                      Real               time,
+                      int                ngrow)
+{
+#ifdef PARTICLES
+    return ParticleDerive(name,time,ngrow);
+#else
+    return AmrLevel::derive(name,time,ngrow);
+#endif
+}
+
+void
+HeatTransfer::derive (const std::string& name,
+                      Real               time,
+                      MultiFab&          mf,
+                      int                dcomp)
+{
+    AmrLevel::derive(name,time,mf,dcomp);
+}
+
+
+#ifdef PARTICLES
+MultiFab*
+HeatTransfer::ParticleDerive(const std::string& name,
+                             Real               time,
+                             int                ngrow)
+{
+    if (HTPC && name == "particle_count")
+    {
+        MultiFab* derive_dat = new MultiFab(grids,1,0);
+        MultiFab    temp_dat(grids,1,0);
+        temp_dat.setVal(0);
+        HTPC->Increment(temp_dat,level);
+        MultiFab::Copy(*derive_dat,temp_dat,0,0,1,0);
+        return derive_dat;
+    }
+    else if (HTPC && name == "total_particle_count")
+    {
+        //
+        // We want the total particle count at this level or higher.
+        //
+        MultiFab* derive_dat = ParticleDerive("particle_count",time,ngrow);
+
+        IntVect trr(D_DECL(1,1,1));
+
+        for (int lev = level+1; lev <= parent->finestLevel(); lev++)
+        {
+            BoxArray ba = parent->boxArray(lev);
+
+            MultiFab temp_dat(ba,1,0);
+
+            trr *= parent->refRatio(lev-1);
+
+            ba.coarsen(trr);
+
+            MultiFab ctemp_dat(ba,1,0);
+
+            temp_dat.setVal(0);
+            ctemp_dat.setVal(0);
+
+            HTPC->Increment(temp_dat,lev);
+
+            for (MFIter mfi(temp_dat); mfi.isValid(); ++mfi)
+            {
+                const FArrayBox& ffab =  temp_dat[mfi];
+                FArrayBox&       cfab = ctemp_dat[mfi];
+                const Box&       fbx  = ffab.box();
+
+                BL_ASSERT(cfab.box() == BoxLib::coarsen(fbx,trr));
+
+                for (IntVect p = fbx.smallEnd(); p <= fbx.bigEnd(); fbx.next(p))
+                {
+                    const Real val = ffab(p);
+                    if (val > 0)
+                        cfab(BoxLib::coarsen(p,trr)) += val;
+                }
+            }
+
+            temp_dat.clear();
+
+            MultiFab dat(grids,1,0);
+            dat.setVal(0);
+            dat.copy(ctemp_dat);
+
+            MultiFab::Add(*derive_dat,dat,0,0,1,0);
+        }
+
+        return derive_dat;
+    }
+    else
+    {
+        return AmrLevel::derive(name,time,ngrow);
+    }
+}
+#endif

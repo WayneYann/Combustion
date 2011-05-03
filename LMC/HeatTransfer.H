@@ -226,7 +226,25 @@ public:
 
 #ifdef PARTICLES
     static HTParticleContainer* theHTPC ();
+
+    MultiFab* ParticleDerive (const std::string& name, Real time, int ngrow);
 #endif
+    //
+    // Returns a MultiFab containing the derived data for this level.
+    // The user is responsible for deleting this pointer when done
+    // with it.  If ngrow>0 the MultiFab is built on the appropriately
+    // grown BoxArray.
+    //
+    MultiFab* derive (const std::string& name,
+                      Real               time,
+                      int                ngrow);
+    //
+    // This version of derive() fills the dcomp'th component of mf with the derived quantity.
+    //
+    void derive (const std::string& name,
+                 Real               time,
+                 MultiFab&          mf,
+                 int                dcomp);
     //
     // Define data descriptors.
     //
