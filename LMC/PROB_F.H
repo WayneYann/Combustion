@@ -1,5 +1,5 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.7 2007-06-15 23:27:46 aaspden Exp $
+#define _PROB_F_H_ $Id: PROB_F.H,v 1.8 2011-05-03 22:20:22 lijewski Exp $
 
 #include <PROB_NS_F.H>
 
@@ -8,6 +8,7 @@
 #    define FORT_SET_PROB_SPEC          setpspec
 #    define FORT_CENTERLINE_TEMP_STATS  cltstats
 #    define FORT_FLAMETRACERROR         fterror
+#    define FORT_DERNULL                dernull
 #    define FORT_DERRHOMINUSSUMRHOY     drhomry
 #    define FORT_DERSUMYDOT             dsydot
 #    define FORT_RHOHFILL               rhohfill
@@ -33,6 +34,7 @@
 #    define FORT_SET_PROB_SPEC          SETPSPEC
 #    define FORT_CENTERLINE_TEMP_STATS  CLTSTATS
 #    define FORT_FLAMETRACERROR         FTERROR
+#    define FORT_DERNULL                DERNULL
 #    define FORT_DERRHOMINUSSUMRHOY     DRHOMRY
 #    define FORT_DERSUMYDOT             DSYDOT
 #    define FORT_RHOHFILL               RHOHFILL
@@ -57,6 +59,7 @@
 #    define FORT_SET_PROB_SPEC          setpspec
 #    define FORT_CENTERLINE_TEMP_STATS  cltstats
 #    define FORT_FLAMETRACERROR         fterror
+#    define FORT_DERNULL                dernull
 #    define FORT_DERRHOMINUSSUMRHOY     drhomry
 #    define FORT_DERSUMYDOT             dsydot
 #    define FORT_RHOHFILL               rhohfill
@@ -80,6 +83,7 @@
 #    define FORT_SET_PROB_SPEC          setpspec_
 #    define FORT_CENTERLINE_TEMP_STATS  cltstats_
 #    define FORT_FLAMETRACERROR         fterror_
+#    define FORT_DERNULL                dernull_
 #    define FORT_DERRHOMINUSSUMRHOY     drhomry_
 #    define FORT_DERSUMYDOT             dsydot_
 #    define FORT_RHOHFILL               rhohfill_
@@ -147,6 +151,16 @@
                           const Real* dx, const Real* xlo,
                           const Real* prob_lo, const Real* time,
                           const int* level);
+
+     void FORT_DERNULL
+                          (Real* data, ARLIM_P(dat_lo), ARLIM_P(dat_hi),
+                           const int* nvar, const Real* compdat,
+			   ARLIM_P(clo), ARLIM_P(chi), const int* ncomp,
+			   const int* lo, const int* hi,
+			   const int* domain_lo, const int* domain_hi,
+			   const Real* delta, const Real* xlo,
+			   const Real* time,  const Real* dt, const int* bcrec, 
+                           const int* level, const int* grid_no) ;
 
      void FORT_DERRHOMINUSSUMRHOY
                           (Real* data, ARLIM_P(dat_lo), ARLIM_P(dat_hi),
