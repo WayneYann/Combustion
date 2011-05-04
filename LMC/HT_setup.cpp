@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.18 2011-05-03 22:27:11 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.19 2011-05-04 16:36:21 lijewski Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -875,13 +875,17 @@ HeatTransfer::variableSetUp ()
     derive_lst.add("particle_count",IndexType::TheCellType(),1,
                    FORT_DERNULL,the_same_box);
     derive_lst.addComponent("particle_count",desc_lst,State_Type,Density,1);
-#endif
     //
     // The total # of particles at our level or above.
     //
     derive_lst.add("total_particle_count",IndexType::TheCellType(),1,
                    FORT_DERNULL,the_same_box);
     derive_lst.addComponent("total_particle_count",desc_lst,State_Type,Density,1);
+    //
+    // Force all particles to be tagged.
+    //
+    err_list.add("total_particle_count",1,ErrorRec::Special,FORT_PART_CNT_ERR);
+#endif
     //
     // **************  DEFINE ERROR ESTIMATION QUANTITIES  *************
     //
