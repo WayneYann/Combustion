@@ -1,5 +1,5 @@
 c
-c $Id: HEATTRANSFER_2D.F,v 1.36 2011-02-17 21:04:26 marc Exp $
+c $Id: HEATTRANSFER_2D.F,v 1.37 2011-05-04 16:35:27 lijewski Exp $
 c
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
@@ -1182,3 +1182,49 @@ c
          endif
       endif
       end
+
+! ::: -----------------------------------------------------------
+! ::: This routine will tag high error cells based on whether or not
+! ::: they contain any particles.
+! :::
+! ::: INPUTS/OUTPUTS:
+! :::
+! ::: tag      <=  integer tag array
+! ::: lo,hi     => index extent of tag array
+! ::: set       => integer value to tag cell for refinement
+! ::: clear     => integer value to untag cell
+! ::: var       => array of data
+! ::: nd        => number of components in var array (should be 1)
+! ::: domlo,hi  => index extent of problem domain
+! ::: delta     => cell spacing
+! ::: xlo       => physical location of lower left hand
+! :::              corner of tag array
+! ::: problo    => phys loc of lower left corner of prob domain
+! ::: time      => problem evolution time
+! ::: level     => refinement level of this array
+! ::: -----------------------------------------------------------
+      subroutine FORT_PART_CNT_ERR(tag,tagl1,tagl2,tagh1,tagh2,
+     &     set,clear,
+     &     var,varl1,varl2,varh1,varh2,
+     &     lo,hi,nd,domlo,domhi,
+     &     delta,xlo,problo,time,level)
+
+      implicit none
+
+      integer          :: set, clear, nd, level
+      integer          :: tagl1,tagl2,tagh1,tagh2
+      integer          :: varl1,varl2,varh1,varh2
+      integer          :: lo(2), hi(2), domlo(2), domhi(2)
+      integer          :: tag(tagl1:tagh1,tagl2:tagh2)
+      double precision :: var(varl1:varh1,varl2:varh2,nd)
+      double precision :: delta(2), xlo(2), problo(2), time
+      integer          :: i,j
+
+      do j = lo(2),hi(2)
+      do i = lo(1),hi(1)
+         if (var(i,j,1) .gt. 0.0d0) tag(i,j) = set
+         !if (var(i,j,1) .gt. 0.0d0) print *,'TAGGING ',i,j
+      end do
+      end do
+
+      end subroutine

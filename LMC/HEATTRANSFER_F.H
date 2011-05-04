@@ -1,6 +1,6 @@
 
 #ifndef _HEATTRANSFER_H_
-#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.11 2011-02-17 21:04:26 marc Exp $
+#define _HEATTRANSFER_H_  $Id: HEATTRANSFER_F.H,v 1.12 2011-05-04 16:36:36 lijewski Exp $
 
 #ifdef BL_LANG_FORT
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -28,6 +28,7 @@
 #    define FORT_RK_STEP_SELECTION         rkstepselection
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #    define FORT_GETTYPICALVALS            gettypvals
+#    define FORT_PART_CNT_ERR              particlecnterr
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -55,6 +56,7 @@
 #    define FORT_RK_STEP_SELECTION         RKSTEPSELECTION
 #    define FORT_CONSERVATIVE_T_FLOOR      CONSTFLOOR
 #    define FORT_GETTYPICALVALS            GETTYPVALS
+#    define FORT_PART_CNT_ERR              PARTICLECNTERR
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -81,6 +83,7 @@
 #    define FORT_RK_STEP_SELECTION         rkstepselection
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #    define FORT_GETTYPICALVALS            gettypvals
+#    define FORT_PART_CNT_ERR              particlecnterr
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -107,6 +110,7 @@
 #    define FORT_RK_STEP_SELECTION         rkstepselection_
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor_
 #    define FORT_GETTYPICALVALS            gettypvals_
+#    define FORT_PART_CNT_ERR              particlecnterr_
 #  endif
 
 #include <ArrayLim.H>
@@ -336,7 +340,14 @@ extern "C" {
                                   const int* first_comp, const int* last_spec, const int* RhoH,
                                   const int* ratio, Real* tmp, const int* nt);
     
-
+     void FORT_PART_CNT_ERR(int* tag, ARLIM_P(tlo), ARLIM_P(thi),
+                           const int* tagval, const int* clearval,
+                           Real* data, ARLIM_P(data_lo), ARLIM_P(data_hi),
+                           const int* lo, const int* hi, const int* nvar,
+                           const int* domain_lo, const int* domain_hi,
+                           const Real* dx, const Real* xlo,
+                           const Real* prob_lo, const Real* time,
+                           const int* level);
 }
 #endif
 
