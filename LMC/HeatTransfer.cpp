@@ -1832,9 +1832,9 @@ HeatTransfer::post_regrid (int lbase,
     if (HTPC != 0)
     {
         HTPC->Redistribute();
-        //
-        // TODO - remove particle that are no longer at the finest level?
-        //
+
+        if (parent->finestLevel() > 0)
+            HTPC->RemoveParticlesNotAtFinestLevel();
     }
 #endif
 }
@@ -5642,25 +5642,6 @@ HeatTransfer::advance (Real time,
         showMF("mac",*mac_rhs,"mac_rhs",level);
         mac_project(time,dt,S_old,mac_rhs,havedivu);
         delete mac_rhs;
-
-#ifdef PARTICLES
-        if (HTPC != 0)
-        {
-            HTPC->AdvectWithUmac(u_mac, level, dt);
-
-            if (!timestamp_file.empty())
-            {
-                for (int lev = 0; lev <= parent->finestLevel(); lev++)
-                {
-                    HTPC->Timestamp(timestamp_file,
-                                    lev,
-                                    state[State_Type].curTime(),
-                                    timestamp_indices,
-                                    timestamp_names);
-                }
-            }
-        }
-#endif
     }
 
     if (do_mom_diff == 0)
@@ -6039,6 +6020,30 @@ HeatTransfer::advance (Real time,
     // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
     //
     velocity_update(dt);
+
+#ifdef PARTICLES
+    if (HTPC != 0)
+    {
+        HTPC->AdvectWithUmac(u_mac, level, dt);
+
+        if (parent->finestLevel() > 0)
+            HTPC->RemoveParticlesNotAtFinestLevel();
+
+        if (!timestamp_file.empty())
+        {
+            get_new_data(State_Type).FillBoundary();
+
+            geom.FillPeriodicBoundary(get_new_data(State_Type),true);
+
+            HTPC->Timestamp(timestamp_file,
+                            level,
+                            state[State_Type].curTime(),
+                            timestamp_indices,
+                            timestamp_names);
+        }
+    }
+#endif
+
     advance_cleanup(dt,iteration,ncycle);
     //
     // Increment rho average.
