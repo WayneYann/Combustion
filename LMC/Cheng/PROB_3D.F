@@ -183,8 +183,8 @@ c ::: -----------------------------------------------------------
       REAL_T problo(SDIM), probhi(SDIM)
 
 #include "probdata.H"
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
@@ -790,8 +790,8 @@ c ::: -----------------------------------------------------------
 
       integer isioproc
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -1133,8 +1133,8 @@ c ::: -----------------------------------------------------------
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 #if defined(BL_DO_FLCT)
@@ -1538,8 +1538,8 @@ c                  scal(i,j,k,Trac) = zero
       REAL_T   scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -1613,6 +1613,7 @@ c ::: -----------------------------------------------------------
       REAL_T  problo(SDIM)
       
 #include "probdata.H"
+#include "cdwrk.H"
 #include "htdata.H"
       integer i, j, k, n, Tid, RHid, YSid, YEid, ys, ye
       integer getZone
