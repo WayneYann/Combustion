@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.20 2007-10-05 21:09:37 lijewski Exp $
+# $Id: GNUmakefile,v 1.21 2011-05-06 22:35:03 lijewski Exp $
 #
 PBOXLIB_HOME = ../..
 
@@ -16,8 +16,8 @@ DEBUG	       = FALSE
 PROFILE        = FALSE
 DIM	       = 3
 PRVERSION      = v7
-COMP           = CC
-FCOMP          = ftn
+COMP           = PGI
+FCOMP          = PGI
 USE_FLCTS      = FALSE
 USE_FLCTS      = TRUE
 USE_MPI        = FALSE
@@ -27,8 +27,13 @@ EBASE          = amr
 USE_SWIRL      = TRUE
 USE_SWIRL      = FALSE
 USE_SWIRL_DATA = FALSE
+USE_SWIRL_DATA = TRUE
 USE_NEWMECH    = TRUE
 USE_NEWMECH    = FALSE
+USE_OMP        = FALSE
+USE_OMP        = TRUE
+USE_PARTICLES  = FALSE
+USE_PARTICLES  = TRUE
 #
 # Turn this on to get the ability to set the velocities in initData() from a plotfile.
 #
@@ -37,26 +42,18 @@ USE_NEWMECH    = FALSE
 #
 # Uncomment the following if you want RhoRT stored in Tracer slot.
 #
-DEFINES += -DBL_RHORT_IN_TRACER
-#
-# If you want to plot reaction rates uncomment the following
-#
-#DEFINES += -DBL_PLOT_REACS 
-#
-# If you want to plot fuel consumption rates uncomment the following
-#
-DEFINES += -DBL_PLOT_CONSUMPTION
+#DEFINES += -DBL_RHORT_IN_TRACER
 #
 # Choose your reaction mechanism & thermal properties.
 #
-REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=GRI12
 REACTION_MECHANISM=INERT30
 REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=CH4-2STEP
 REACTION_MECHANISM=PROPANE
-REACTION_MECHANISM=CHEMH
+REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=CHEMH
 
 DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
 
@@ -91,6 +88,11 @@ endif
 ifeq ($(USE_NEWMECH), TRUE)
   DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
   #Bdirs   += pAmrvis
+endif
+
+ifeq ($(USE_PARTICLES), TRUE)
+  DEFINES += -DPARTICLES
+  Bdirs   += particles
 endif
 
 Bpack	:= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
