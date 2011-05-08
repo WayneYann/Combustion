@@ -163,7 +163,7 @@ static HTParticleContainer* HTPC = 0;
 //
 HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
 
-static std::string              timestamp_file = "TimeStamp";
+static std::string              timestamp_dir = "Timestamps";
 static std::vector<int>         timestamp_indices;
 static std::vector<std::string> timestamp_names;
 static std::string              particle_init_file;
@@ -583,8 +583,20 @@ HeatTransfer::read_params ()
     // Some particle stuff.
     //
     ParmParse ppp("particles");
-
-    ppp.query("timestamp_file", timestamp_file);
+    //
+    // The directory in which to store timestamp files.
+    //
+    ppp.query("timestamp_dir", timestamp_dir);
+    //
+    // Only the I/O processor makes the directory if it doesn't already exist.
+    //
+    if (ParallelDescriptor::IOProcessor())
+        if (!BoxLib::UtilCreateDirectory(timestamp_dir, 0755))
+            BoxLib::CreateDirectoryFailed(timestamp_dir);
+    //
+    // Force other processors to wait till directory is built.
+    //
+    ParallelDescriptor::Barrier();
 
     if (int nc = ppp.countval("timestamp_indices"))
     {
@@ -6039,15 +6051,23 @@ HeatTransfer::advance (Real time,
         HTPC->AdvectWithUmac(u_mac, level, dt);
 
         if (parent->finestLevel() > 0)
+        {
             HTPC->RemoveParticlesNotAtFinestLevel();
+        }
 
-        if (!timestamp_file.empty())
+        if (!timestamp_dir.empty())
         {
             get_new_data(State_Type).FillBoundary();
 
             geom.FillPeriodicBoundary(get_new_data(State_Type),true);
 
-            HTPC->Timestamp(timestamp_file,
+            std::string basename = timestamp_dir;
+
+            if (basename[basename.length()-1] != '/') basename += '/';
+
+            basename += "Timestamp";
+
+            HTPC->Timestamp(basename,
                             level,
                             state[State_Type].curTime(),
                             timestamp_indices,
