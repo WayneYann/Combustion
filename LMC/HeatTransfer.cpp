@@ -169,6 +169,7 @@ static std::vector<std::string> timestamp_names;
 static std::string              particle_init_file;
 static std::string              particle_restart_file;
 static std::string              particle_output_file;
+static bool                     restart_from_nonparticle_chkfile = false;
 static int                      pverbose = 2;
 #endif
 
@@ -613,6 +614,13 @@ HeatTransfer::read_params ()
     // Used in post_restart() to read in a file of particles.
     //
     ppp.query("particle_restart_file", particle_restart_file);
+    //
+    // This must be true the first time you try to restart from a checkpoint
+    // that was written with USE_PARTICLES=FALSE; i.e. one that doesn't have
+    // the particle checkpoint stuff (even if there are no active particles).
+    // Otherwise the code will fail when trying to read the checkpointed particles.
+    //
+    ppp.query("restart_from_nonparticle_chkfile", restart_from_nonparticle_chkfile);
     //
     // Used in post_restart() to write out the file of particles.
     //
@@ -1785,16 +1793,20 @@ HeatTransfer::post_restart ()
         HTPC = new HTParticleContainer(parent);
 
         HTPC->SetVerbose(pverbose);
-
-        HTPC->Restart(parent->theRestartFile(), the_ht_particle_file_name);
         //
         // We want to be able to add new particles on a restart.
         // As well as the ability to write the particles out to an ascii file.
         //
+        if (!restart_from_nonparticle_chkfile)
+        {
+            HTPC->Restart(parent->theRestartFile(), the_ht_particle_file_name);
+        }
+
         if (!particle_restart_file.empty())
         {
             HTPC->InitFromAsciiFile(particle_restart_file);
         }
+
         if (!particle_output_file.empty())
         {
             HTPC->WriteAsciiFile(particle_output_file);
