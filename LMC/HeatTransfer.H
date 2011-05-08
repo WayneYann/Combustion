@@ -9,6 +9,9 @@
 
 #ifdef PARTICLES
 #include "Particles.H"
+//
+// The "BL_SPACEDIM" bytes in m_data[] are to hold temporary positions in AdvectWithUmac().
+//
 typedef ParticleContainer<BL_SPACEDIM> HTParticleContainer;
 #endif
 
