@@ -1396,7 +1396,7 @@ HeatTransfer::initData ()
 
         if (!particle_init_file.empty())
         {
-            HTPC->InitFromAsciiFile(particle_init_file);
+            HTPC->InitFromAsciiFile(particle_init_file,0);
         }
     }
 #endif
@@ -1816,7 +1816,7 @@ HeatTransfer::post_restart ()
 
         if (!particle_restart_file.empty())
         {
-            HTPC->InitFromAsciiFile(particle_restart_file);
+            HTPC->InitFromAsciiFile(particle_restart_file,0);
         }
 
         if (!particle_output_file.empty())
