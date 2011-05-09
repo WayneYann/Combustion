@@ -6057,9 +6057,11 @@ HeatTransfer::advance (Real time,
 
         if (!timestamp_dir.empty())
         {
-            get_new_data(State_Type).FillBoundary();
+            MultiFab& mf = get_new_data(State_Type);
 
-            geom.FillPeriodicBoundary(get_new_data(State_Type),true);
+            mf.FillBoundary();
+
+            geom.FillPeriodicBoundary(mf,true);
 
             std::string basename = timestamp_dir;
 
@@ -6068,6 +6070,7 @@ HeatTransfer::advance (Real time,
             basename += "Timestamp";
 
             HTPC->Timestamp(basename,
+                            mf,
                             level,
                             state[State_Type].curTime(),
                             timestamp_indices,
