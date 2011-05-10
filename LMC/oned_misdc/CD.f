@@ -30,6 +30,7 @@ c     Ensure chem/tran initialized
       if (traninit.lt.0) call initchem()
 
       call set_bc_s(scal,dx,time)
+
       if (LeEQ1 .eq. 0) then
          
          do i=-1, nx         
@@ -43,11 +44,25 @@ C               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
                Y(n) = scal(i,FirstSpec+n-1) / rho
             enddo
             
+c           given y[species]: maxx fractions
+c           returns mean molecular weight (gm/mole)
             CALL CKMMWY(Y,IWRK,RWRK,Wavg)
+
+c           returns the specific heats at constant pressure
+c           in mass units
             CALL CKCPMS(Tt,IWRK,RWRK,CPMS)
+
+c           convert y[species] (mass fracs) to x[species] (mole fracs)
             CALL CKYTX(Y,IWRK,RWRK,X)
+
+c           initialize the thermomolecular parameters that are needed in order
+c           to evaluate the transport linear systems
             CALL EGSPAR(Tt,X,Y,CPMS,EGRWRK,EGIWRK)
+
+c           compute flux diffusion coefficients
             CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
+
+cc           compute rho = P*W(y)/RT
 c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
 
             do n=1,Nspec
@@ -56,13 +71,17 @@ c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
             end do
 
             alpha = 1.0D0
+c           compute thermal conductivity
             CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
             alpha = -1.0D0
+c           compute thermal conductivity with a different averating parameters
             CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
             beta(i,Temp) = .5 * (l1 + l2)
+c           Returns the mean specific heat at CP
             CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
             beta(i,RhoH) = beta(i,Temp) / CPMIX
-            
+
+c           compute shear viscosity
             CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
             mu(i) = fourThirds*mu(i)
          enddo
@@ -81,6 +100,7 @@ c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
             do n=1,Nspec
                Y(n) = scal(i,FirstSpec+n-1) / rho
             enddo
+c           Returns the mean specific heat at CP
             CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
             beta(i,RhoH) = mu(i) / Pr
             beta(i,Temp) = beta(i,RhoH) * CPMIX
