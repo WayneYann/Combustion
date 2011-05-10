@@ -39,34 +39,42 @@
             flux_hi(n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
             flux_lo(n) = beta_lo*(Y(i  ,n) - Y(i-1,n)) 
  
-c           need to correct fluxes so they add to zero on each face
-c           build up the sum of species fluxes on lo and hi faces
-c           this will be "rho * V_c"
-            sum_lo = sum_lo + flux_lo(n)
-            sum_hi = sum_hi + flux_hi(n)
+            visc(i,n) =  (flux_hi(n) - flux_lo(n))*dxsqinv
+
+            if (LeEQ1 .eq. 0) then
+
+c              need to correct fluxes so they add to zero on each face
+c              build up the sum of species fluxes on lo and hi faces
+c              this will be "rho * V_c"
+               sum_lo = sum_lo + flux_lo(n)
+               sum_hi = sum_hi + flux_hi(n)
                
-c           build up the sum of rho*Y_m
-c           this will be the density
-            sumRhoY_lo = sumRhoY_lo+0.5d0*(scal(i-1,is)+scal(i,is))
-            sumRhoY_hi = sumRhoY_hi+0.5d0*(scal(i,is)+scal(i+1,is))
+c              build up the sum of rho*Y_m
+c              this will be the density
+               sumRhoY_lo = sumRhoY_lo+0.5d0*(scal(i-1,is)+scal(i,is))
+               sumRhoY_hi = sumRhoY_hi+0.5d0*(scal(i,is)+scal(i+1,is))
+               
+            end if
 
          enddo
 
-c        correct the fluxes so they add up to zero before computing visc
-         do n=1,Nspec
-            is = FirstSpec + n - 1
+         if (LeEQ1 .eq. 0) then
+c           correct the fluxes so they add up to zero before computing visc
+            do n=1,Nspec
+               is = FirstSpec + n - 1
 
-c           compute rho*Y_m on each face
-            RhoYe_lo = .5d0*(scal(i-1,is)+scal(i,is))
-            RhoYe_hi = .5d0*(scal(i,is)+scal(i+1,is))
+c              compute rho*Y_m on each face
+               RhoYe_lo = .5d0*(scal(i-1,is)+scal(i,is))
+               RhoYe_hi = .5d0*(scal(i,is)+scal(i+1,is))
 
-c           set flux = flux - (rho*V_c)*(rho*Y_m)/rho
-            flux_lo(n) = flux_lo(n) - sum_lo*RhoYe_lo/sumRhoY_lo
-            flux_hi(n) = flux_hi(n) - sum_hi*RhoYe_hi/sumRhoY_hi
+c              set flux = flux - (rho*V_c)*(rho*Y_m)/rho
+               flux_lo(n) = flux_lo(n) - sum_lo*RhoYe_lo/sumRhoY_lo
+               flux_hi(n) = flux_hi(n) - sum_hi*RhoYe_hi/sumRhoY_hi
                
-            visc(i,n) =  (flux_hi(n) - flux_lo(n))*dxsqinv
-         end do
-         
+               visc(i,n) =  (flux_hi(n) - flux_lo(n))*dxsqinv
+            end do
+         end if
+
       end do
         
       end
