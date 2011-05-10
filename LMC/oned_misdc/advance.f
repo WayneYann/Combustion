@@ -181,7 +181,7 @@ C     get velocity visc terms to use as a forcing term for advection
       real*8 be_cn_theta
       
       real*8        diff_old(0:nx-1,nscal)
-      real*8 diff_new_lagged(0:nx-1,nscal)
+      real*8        diff_new(0:nx-1,nscal)
       real*8        diff_hat(0:nx-1,nscal)
 
       real*8   const_src(0:nx-1,nscal)
@@ -195,6 +195,10 @@ C     get velocity visc terms to use as a forcing term for advection
       real*8      dRhs(0:nx-1,0:maxspec)
       integer is, rho_flag
       integer misdc
+
+      real*8 diffdiff_old(0:nx-1)
+      real*8 diffdiff_new(0:nx-1)
+      real*8 diffdiff_hat(0:nx-1)
 
       rho_flag = 2
 
@@ -211,6 +215,15 @@ c     compute diffusion term at time n
      &                         diff_old(0,FirstSpec),dx,time)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
+
+c     calculate differential diffusion
+      if (LeEQ1 .eq. 1) then
+         diffdiff_old = 0.d0
+      else
+         call get_diffdiff_terms(scal_old,scal_old,beta_old,
+     $                           diffdiff_old,dx)
+      end if
+
       
 c     in predictor, new-time coefficients are set equal
 c     to old-time coefficients
@@ -223,7 +236,7 @@ c     compute advective forcing term
             is = FirstSpec + n - 1
             tforce(i,is) = diff_old(i,is) + I_R_new(i,n)
          enddo
-         tforce(i,RhoH) = diff_old(i,RhoH) 
+         tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
       enddo
 
 c     compute advection term
@@ -284,6 +297,20 @@ c        update species with conservative diffusion fluxes
          
       end if
 
+c     calculate differential diffusion
+      if (LeEQ1 .eq. 1) then
+         diffdiff_hat = 0.d0
+      else
+         call get_diffdiff_terms(scal_old,scal_new,beta_old,
+     $                           diffdiff_hat,dx)
+      end if
+
+c     add differential diffusion to forcing for enthalpy solve
+      do i=0,nx-1
+         dRhs(i,0) = dRhs(i,0) 
+     $        + 0.5d0*(diffdiff_old(i) + diffdiff_hat(i))
+      end do
+
 c     compute RHS for enthalpy diffusion solve
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,dRhs(0,0),
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta,time)
@@ -336,13 +363,21 @@ c     that have a backward Euler character
       do misdc = 1, misdc_iterMAX
          print *,'... doing SDC iter ',misdc
 
-         print *,'... compute diff_new_lagged = D(U^{n+1,k-1})'
+         print *,'... compute diff_new = D(U^{n+1,k-1})'
          call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
          call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_new_lagged(0,FirstSpec),
+     &                            diff_new(0,FirstSpec),
      &                            dx,time+dt)
          call get_rhoh_visc_terms(scal_new,beta_new,
-     &                            diff_new_lagged(0,RhoH),dx,time+dt)
+     &                            diff_new(0,RhoH),dx,time+dt)
+
+c     calculate differential diffusion
+      if (LeEQ1 .eq. 1) then
+         diffdiff_new = 0.d0
+      else
+         call get_diffdiff_terms(scal_new,scal_new,beta_new,
+     $                           diffdiff_new,dx)
+      end if
 
          print*,'... compute advective forcing'
          do i = 0,nx-1
@@ -350,7 +385,7 @@ c     that have a backward Euler character
                ispec = FirstSpec + n - 1
                tforce(i,ispec) = I_R_new(i,n) + diff_old(i,ispec)
             enddo
-            tforce(i,RhoH) = diff_old(i,RhoH)
+            tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
          enddo
          
          print *,'... compute A with updated D+R source'
@@ -364,10 +399,10 @@ c     that have a backward Euler character
             do n=1,Nspec
                is = FirstSpec + n - 1
                dRhs(i,n) = dt*(I_R_new(i,n) 
-     &              + 0.5d0*(diff_old(i,is) - diff_new_lagged(i,is)))
+     &              + 0.5d0*(diff_old(i,is) - diff_new(i,is)))
             enddo
             dRhs(i,0) = dt*(
-     &           + 0.5d0*(diff_old(i,RhoH) - diff_new_lagged(i,RhoH)))
+     &           + 0.5d0*(diff_old(i,RhoH) - diff_new(i,RhoH)))
          enddo
          call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &        dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
@@ -407,6 +442,12 @@ c           update species with conservative diffusion fluxes
 
          end if
 
+c     add differential diffusion to forcing for enthalpy solve
+      do i=0,nx-1
+         dRhs(i,0) = dRhs(i,0) 
+     $        + 0.5d0*(diffdiff_old(i) + diffdiff_new(i))
+      end do
+
          print *,'... update D for rhoh with A + R + MISDC(D)'
          call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
      &        dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
@@ -430,8 +471,8 @@ c        extract D for RhoH
                do i = 0,nx-1
                   
                   const_src(i,n) = aofs(i,n)
-     $                 + 0.5d0*(diff_old(i,n)+diff_new_lagged(i,n))
-     $                 + diff_hat(i,n) - diff_new_lagged(i,n)
+     $                 + 0.5d0*(diff_old(i,n)+diff_new(i,n))
+     $                 + diff_hat(i,n) - diff_new(i,n)
 
                   lin_src_old(i,n) = 0.d0
                   lin_src_new(i,n) = 0.d0

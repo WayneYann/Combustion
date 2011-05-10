@@ -16,10 +16,10 @@ C      real*8 tmp(0 :nx-1)
 c     Compute Div( lambda/cp Grad(hmix) )
 
 c     FIXME: Add NULN terms
-      if (LeEQ1 .ne. 1) then
-         print *,'get_rhoh_visc_terms does yet support non-unity Le'
-         stop
-      endif
+c      if (LeEQ1 .ne. 1) then
+c         print *,'get_rhoh_visc_terms does yet support non-unity Le'
+c         stop
+c      endif
 
       call set_bc_grow_s(scal,dx,time)
 
@@ -44,6 +44,64 @@ C      call divBetaHgradY(scal,beta,tmp,dx,time)
          visc(i) = (flux_hi - flux_lo) * dxsqinv 
 C+ tmp(i)
       enddo
+
+      end
+
+
+      subroutine get_diffdiff_terms(scal_for_coeff,scal_for_grad,
+     $                              beta,diffdiff,dx)
+
+      implicit none
+      include 'spec.h'
+
+      real*8 scal_for_coeff(-1:nx  ,*)
+      real*8 scal_for_grad (-1:nx  ,*)
+      real*8 beta(-1:nx  ,*)
+      real*8 diffdiff(0:nx-1)
+      real*8 dx
+
+      real*8 dxsqinv,RWRK
+      integer i,is,n,IWRK
+      real*8 hi(maxspec,-1:nx)
+      real*8 flux_lo(maxspec),flux_hi(maxspec)
+      real*8 Y(maxspec,-1:nx)
+      real*8 beta_lo, beta_hi, rho
+
+      dxsqinv = 1.d0/(dx*dx)
+
+      diffdiff = 0.d0
+
+      do i=-1,nx
+         rho = 0.d0
+c        compute density
+         do n=1,Nspec
+            rho = rho + scal_for_grad(i,FirstSpec+n-1)
+         enddo
+c        compute Y = (rho*Y)/rho
+         do n=1,Nspec
+            Y(n,i) = scal_for_grad(i,FirstSpec+n-1)/rho
+         enddo
+c        compute cell-centered h_m
+         call CKHMS(scal_for_coeff(i,Temp),IWRK,RWRK,hi(1,i))
+      end do
+
+      do i=0,nx-1
+         do n=1,Nspec
+            is = FirstSpec + n - 1
+
+            beta_lo = ( hi(n,i  )*(beta(i  ,is) - beta(i  ,RhoH)) 
+     $                 +hi(n,i-1)*(beta(i-1,is) - beta(i-1,RhoH)) )/2.d0
+            beta_hi = ( hi(n,i  )*(beta(i  ,is) - beta(i  ,RhoH)) 
+     $                 +hi(n,i+1)*(beta(i+1,is) - beta(i+1,RhoH)) )/2.d0
+
+            flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i)) 
+            flux_lo(n) = beta_lo*(Y(n  ,i) - Y(n,i-1)) 
+ 
+            diffdiff(i) = diffdiff(i) + 
+     $           (flux_hi(n) - flux_lo(n))*dxsqinv
+
+         end do
+      end do
 
       end
 

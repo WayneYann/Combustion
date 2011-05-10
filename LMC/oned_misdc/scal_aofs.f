@@ -101,12 +101,12 @@ CCCCCCCC
          endif
       enddo
       
-c     Compute Rho on edges as sum of (Rho Y_i) on edges, rho.hmix as sum of (H_i.Rho.Y_i)
-c     NOTE: Assumes Le=1 (no Le terms in RhoH equation)
-      if (LeEQ1 .ne. 1) then
-         print *,'Le != 1 terms not yet in aofs for RhoH'
-         stop
-      endif
+cc     Compute Rho on edges as sum of (Rho Y_i) on edges, rho.hmix as sum of (H_i.Rho.Y_i)
+cc     NOTE: Assumes Le=1 (no Le terms in RhoH equation)
+c      if (LeEQ1 .ne. 1) then
+c         print *,'Le != 1 terms not yet in aofs for RhoH'
+c         stop
+c      endif
 
       do i = 0,nx
          sedge(i,Density) = 0.d0

@@ -27,10 +27,10 @@
 
          call get_rhoh_visc_terms(scal_old,beta,visc,dx,time)
 c     FIXME: Add NULN terms
-         if (LeEQ1 .ne. 1) then
-            print *,'update_rhoh does yet support non-unity Le'
-            stop
-         endif
+c         if (LeEQ1 .ne. 1) then
+c            print *,'update_rhoh does yet support non-unity Le'
+c            stop
+c         endif
 
          do i = 0,nx-1
             visc_term = dt*(1.d0 - be_cn_theta)*visc(i)
