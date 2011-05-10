@@ -254,6 +254,36 @@ C     update species with diffusion solve
      $                 dx,dt,is,be_cn_theta,rho_flag)
       enddo
 
+      if (LeEQ1 .eq. 1) then
+
+c        simply extract D for RhoX
+         do i=0,nx-1
+            do n=1,Nspec
+               is = FirstSpec + n - 1
+               diff_hat(i,is) = (
+     $              (scal_new(i,is)-scal_old(i,is))/dt 
+     $              - aofs(i,is) - I_R_new(i,n) - 
+     $              (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
+            enddo
+         end do
+
+      else
+
+c        apply correction velocity so species fluxes sum to zero
+         call get_spec_visc_terms(scal_new,beta_new,
+     $                            diff_hat(0,FirstSpec),dx,time)
+
+c        update species with conservative diffusion fluxes
+         do i=0,nx-1
+            do n=1,Nspec
+               scal_new(i,n) = scal_old(i,n) + 
+     $              dt*(aofs(i,n) + I_R_new(i,n)
+     $              + 0.5d0*diff_old(i,n) + 0.5d0*diff_hat(i,n))
+            end do
+         end do
+         
+      end if
+
 c     compute RHS for enthalpy diffusion solve
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,dRhs(0,0),
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta,time)
@@ -262,19 +292,12 @@ c     update enthalpy with diffusion solve
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
-      print *,'...   extract D sources'
+c     extract D for RhoH
       do i = 0,nx-1
          diff_hat(i,RhoH) = (
      $        (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
      $        - aofs(i,RhoH) -
      $        (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
-         do n=1,Nspec
-            is = FirstSpec + n - 1
-            diff_hat(i,is) = (
-     $           (scal_new(i,is)-scal_old(i,is))/dt 
-     $           - aofs(i,is) - I_R_new(i,n) - 
-     $           (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
-         enddo
       enddo
 
       if (nochem_hack) then
@@ -354,6 +377,36 @@ c     that have a backward Euler character
      $                    dx,dt,is,be_cn_theta,rho_flag)
          enddo
 
+         if (LeEQ1 .eq. 1) then
+
+c           simply extract D for RhoX
+            do i=0,nx-1
+               do n=1,Nspec
+                  is = FirstSpec + n - 1
+                  diff_hat(i,is) = (
+     $                 (scal_new(i,is)-scal_old(i,is))/dt 
+     $                 - aofs(i,is) - dRhs(i,n)/dt - 
+     $                 (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
+               enddo
+            enddo
+
+         else
+
+c           apply correction velocity so species fluxes sum to zero
+            call get_spec_visc_terms(scal_new,beta_new,
+     $                               diff_hat(0,FirstSpec),dx,time)
+
+c           update species with conservative diffusion fluxes
+            do i=0,nx-1
+               do n=1,Nspec
+                  scal_new(i,n) = scal_old(i,n) + 
+     $                 dt*(aofs(i,n) + I_R_new(i,n)
+     $                 + 0.5d0*diff_old(i,n) + 0.5d0*diff_hat(i,n))
+               end do
+            end do
+
+         end if
+
          print *,'... update D for rhoh with A + R + MISDC(D)'
          call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
      &        dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
@@ -361,19 +414,12 @@ c     that have a backward Euler character
      $                 dx,dt,RhoH,be_cn_theta,rho_flag)
          print *,'... create new temp from new RhoH, spec'
 
-         print *,'... create diff_hat from RhoH and spec solutions'
+c        extract D for RhoH
          do i = 0,nx-1
             diff_hat(i,RhoH) = (
      $           (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
      $           - aofs(i,RhoH) - dRhs(i,0)/dt - 
      $           (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
-            do n=1,Nspec
-               is = FirstSpec + n - 1
-               diff_hat(i,is) = (
-     $              (scal_new(i,is)-scal_old(i,is))/dt 
-     $              - aofs(i,is) - dRhs(i,n)/dt - 
-     $              (1.d0-be_cn_theta)*diff_old(i,is) )/be_cn_theta
-            enddo
          enddo
          
          if (nochem_hack) then
