@@ -3336,11 +3336,8 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 	BL_ASSERT( !has_spec || (num_comp>=nspecies+non_spec_comps));
 	if (has_spec)
 	{
-	    const int sCompY = first_spec - src_comp + load_comp;
-            const int sCompT = Temp - src_comp + load_comp;
             if (do_mcdd)
             {
-                BL_ASSERT(sCompT > 0 && sCompT < visc_terms.nComp());
                 if (load_comp!=0) {
                     BoxLib::Abort("Need to work out memory issues in getViscTerms for mcdd");
                 }
@@ -3348,6 +3345,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
             }
 	    else 
 	    {
+                const int sCompY = first_spec - src_comp + load_comp;
 		compute_differential_diffusion_terms(visc_terms,sCompY,time);
             }
         }
