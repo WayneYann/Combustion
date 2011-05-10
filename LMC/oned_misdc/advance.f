@@ -308,7 +308,7 @@ c     calculate differential diffusion
 c     add differential diffusion to forcing for enthalpy solve
       do i=0,nx-1
          dRhs(i,0) = dRhs(i,0) 
-     $        + 0.5d0*(diffdiff_old(i) + diffdiff_hat(i))
+     $        + 0.5d0*dt*(diffdiff_old(i) + diffdiff_hat(i))
       end do
 
 c     compute RHS for enthalpy diffusion solve
@@ -445,7 +445,7 @@ c           update species with conservative diffusion fluxes
 c     add differential diffusion to forcing for enthalpy solve
       do i=0,nx-1
          dRhs(i,0) = dRhs(i,0) 
-     $        + 0.5d0*(diffdiff_old(i) + diffdiff_new(i))
+     $        + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
       end do
 
          print *,'... update D for rhoh with A + R + MISDC(D)'
