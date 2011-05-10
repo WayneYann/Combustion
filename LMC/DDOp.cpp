@@ -30,6 +30,10 @@ DDOp::DD_Average DDOp::average_tangential = DD_Arithmetic; // Used to coarsen ed
 int DDOp::transport_coefs_nComp = -1; // Invalid until valid transport model identified
 
 DDOp::DDOp ()
+    :
+    Tbd(0),
+    Ybd(0),
+    mg_parent(0)
 {
 }
 
