@@ -1817,6 +1817,33 @@ HeatTransfer::post_restart ()
         if (!particle_restart_file.empty())
         {
             HTPC->InitFromAsciiFile(particle_restart_file,0);
+            //
+            // Write out initial position of new particles.
+            //
+            if (!timestamp_dir.empty())
+            {
+                for (int i = 0; i <= parent->finestLevel(); i++)
+                {
+                    MultiFab& mf = getLevel(i).get_new_data(State_Type);
+
+                    mf.FillBoundary();
+
+                    parent->Geom(i).FillPeriodicBoundary(mf,true);
+
+                    std::string basename = timestamp_dir;
+
+                    if (basename[basename.length()-1] != '/') basename += '/';
+
+                    basename += "Timestamp";
+
+                    HTPC->Timestamp(basename,
+                                    mf,
+                                    i,
+                                    state[State_Type].curTime(),
+                                    timestamp_indices,
+                                    timestamp_names);
+                }
+            }
         }
 
         if (!particle_output_file.empty())
