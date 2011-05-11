@@ -1,14 +1,16 @@
-      subroutine get_spec_visc_terms(scal,beta,visc,dx,time)
+      subroutine get_spec_visc_terms(scal,beta,visc,flux_lo,flux_hi,
+     $                               dx,time)
+
       implicit none
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1,*)
+      real*8 flux_lo(maxspec),flux_hi(maxspec)
       real*8 dx,time
       
       integer i,n,is,IWRK
       real*8 beta_lo,beta_hi
-      real*8 flux_lo(maxspec),flux_hi(maxspec)
       real*8 dxsqinv,RWRK
       real*8 Y(-1:nx,maxspec), sum_lo, sum_hi, sumRhoY_lo, sumRhoY_hi
       real*8 RhoYe_lo, RhoYe_hi

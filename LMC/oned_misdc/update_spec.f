@@ -20,8 +20,11 @@
       real*8 RhoYe_lo(maxspec), RhoYe_hi(maxspec)
       real*8 Y_L, Y_C, Y_R, sum_lo, sum_hi, sumRhoYe_lo, sumRhoYe_hi
       
+      real*8 spec_flux_lo(maxspec)
+      real*8 spec_flux_hi(maxspec)
 
-      call get_spec_visc_terms(scal_old,beta,visc,dx,time)
+      call get_spec_visc_terms(scal_old,beta,visc,
+     $                         spec_flux_lo,spec_flux_hi,dx,time)
       do i = 0,nx-1
          do n=1,Nspec
             is = FirstSpec + n - 1

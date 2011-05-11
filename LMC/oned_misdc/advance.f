@@ -196,6 +196,9 @@ C     get velocity visc terms to use as a forcing term for advection
       integer is, rho_flag
       integer misdc
 
+      real*8 spec_flux_lo(maxspec)
+      real*8 spec_flux_hi(maxspec)
+
       real*8 diffdiff_old(0:nx-1)
       real*8 diffdiff_new(0:nx-1)
       real*8 diffdiff_hat(0:nx-1)
@@ -212,7 +215,8 @@ c     diffusion solves in predictor are regular Crank-Nicolson
 c     compute diffusion term at time n
       print *,'... computing D(U^n)'
       call get_spec_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,FirstSpec),dx,time)
+     &                         diff_old(0,FirstSpec),
+     &                         spec_flux_lo,spec_flux_hi,dx,time)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
 
@@ -284,7 +288,8 @@ c        simply extract D for RhoX
 
 c        apply correction velocity so species fluxes sum to zero
          call get_spec_visc_terms(scal_new,beta_new,
-     $                            diff_hat(0,FirstSpec),dx,time)
+     $                            diff_hat(0,FirstSpec),
+     &                            spec_flux_lo,spec_flux_hi,dx,time)
 
 c        update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -373,7 +378,7 @@ c     that have a backward Euler character
          call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_new(0,FirstSpec),
-     &                            dx,time+dt)
+     &                            spec_flux_lo,spec_flux_hi,dx,time+dt)
          call get_rhoh_visc_terms(scal_new,beta_new,
      &                            diff_new(0,RhoH),dx,time+dt)
 
@@ -435,7 +440,8 @@ c           simply extract D for RhoX
 
 c           apply correction velocity so species fluxes sum to zero
             call get_spec_visc_terms(scal_new,beta_new,
-     $                               diff_hat(0,FirstSpec),dx,time)
+     $                               diff_hat(0,FirstSpec),
+     $                               spec_flux_lo,spec_flux_hi,dx,time)
 
 c           update species with conservative diffusion fluxes
             do i=0,nx-1
@@ -542,6 +548,9 @@ C----------------------------------------------------------------
       real*8 RWRK, cpmix
       integer IWRK, is, rho_flag
 
+      real*8 spec_flux_lo(maxspec)
+      real*8 spec_flux_hi(maxspec)
+
       be_cn_theta = 0.5d0
 
       if (nochem_hack) then
@@ -583,7 +592,8 @@ c     maybe should change this
       call get_temp_visc_terms(scal_old,beta_old,
      &                         diff_old(0,Temp),dx,time)
       call get_spec_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,FirstSpec),dx,time)
+     &                         diff_old(0,FirstSpec),
+     &                         spec_flux_lo,spec_flux_hi,dx,time)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
             

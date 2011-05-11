@@ -22,8 +22,12 @@ C debugging FIXME
       integer hi, lo, ncomp, j
       real*8 visc(0:nx-1),tmp(0:nx-1),cp(0:nx-1),rhvt(0:nx-1)
 
+      real*8 spec_flux_lo(maxspec)
+      real*8 spec_flux_hi(maxspec)
+
       call get_temp_visc_terms(scal,beta,divu,dx,time)
-      call get_spec_visc_terms(scal,beta,ddivu,dx,time)
+      call get_spec_visc_terms(scal,beta,ddivu,
+     $                         spec_flux_lo,spec_flux_hi,dx,time)
 C      call get_rhoh_visc_terms(scal,beta,divu,dx,time)
 
 C debugging FIXME
