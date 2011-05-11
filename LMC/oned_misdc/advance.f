@@ -342,6 +342,12 @@ c     extract D for RhoH
             enddo
          enddo
 
+c        add differential diffusion
+         do i=0,nx-1
+            const_src(i,RhoH) = const_src(i,RhoH)
+     $           + 0.5d0*(diffdiff_old(i)+diffdiff_hat(i))
+         end do
+
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_new,dt)
@@ -478,6 +484,12 @@ c        extract D for RhoH
                   lin_src_new(i,n) = 0.d0
                enddo
             enddo
+
+c           add differential diffusion
+            do i=0,nx-1
+               const_src(i,RhoH) = const_src(i,RhoH)
+     $              + 0.5d0*(diffdiff_old(i)+diffdiff_new(i))
+            end do
             
             call strang_chem(scal_old,scal_new,
      $           const_src,lin_src_old,lin_src_new,
