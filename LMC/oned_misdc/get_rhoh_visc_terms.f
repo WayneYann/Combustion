@@ -1,4 +1,5 @@
       subroutine get_rhoh_visc_terms(scal,beta,visc,dx,time)
+
       implicit none
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
@@ -49,6 +50,7 @@ C+ tmp(i)
 
 
       subroutine get_diffdiff_terms(scal_for_coeff,scal_for_grad,
+     $                              spec_flux_lo,spec_flux_hi,
      $                              beta,diffdiff,dx)
 
       implicit none
@@ -56,8 +58,10 @@ C+ tmp(i)
 
       real*8 scal_for_coeff(-1:nx  ,*)
       real*8 scal_for_grad (-1:nx  ,*)
-      real*8 beta(-1:nx  ,*)
-      real*8 diffdiff(0:nx-1)
+      real*8 spec_flux_lo  ( 0:nx-1,*)
+      real*8 spec_flux_hi  ( 0:nx-1,*)
+      real*8 beta          (-1:nx  ,*)
+      real*8 diffdiff      ( 0:nx-1)
       real*8 dx
 
       real*8 dxsqinv,RWRK
@@ -89,13 +93,18 @@ c        compute cell-centered h_m
          do n=1,Nspec
             is = FirstSpec + n - 1
 
-            beta_lo = ( hi(n,i  )*(beta(i  ,is) - beta(i  ,RhoH)) 
-     $                 +hi(n,i-1)*(beta(i-1,is) - beta(i-1,RhoH)) )/2.d0
-            beta_hi = ( hi(n,i  )*(beta(i  ,is) - beta(i  ,RhoH)) 
-     $                 +hi(n,i+1)*(beta(i+1,is) - beta(i+1,RhoH)) )/2.d0
+            beta_lo = ( hi(n,i  )*(-beta(i  ,RhoH)) 
+     $                 +hi(n,i-1)*(-beta(i-1,RhoH)) )/2.d0
+            beta_hi = ( hi(n,i  )*(-beta(i  ,RhoH)) 
+     $                 +hi(n,i+1)*(-beta(i+1,RhoH)) )/2.d0
+ 
+            flux_lo(n) = beta_lo*(Y(n  ,i) - Y(n,i-1))
+            flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i))
 
-            flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i)) 
-            flux_lo(n) = beta_lo*(Y(n  ,i) - Y(n,i-1)) 
+            flux_lo(n) = flux_lo(n) + spec_flux_lo(i,n)*
+     $           (hi(n,i-1)+hi(n,i))/2.d0
+            flux_hi(n) = flux_hi(n) + spec_flux_hi(i,n)*
+     $           (hi(n,i+1)+hi(n,i))/2.d0
  
             diffdiff(i) = diffdiff(i) + 
      $           (flux_hi(n) - flux_lo(n))*dxsqinv

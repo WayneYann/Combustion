@@ -199,6 +199,9 @@ C     get velocity visc terms to use as a forcing term for advection
       real*8 spec_flux_lo(0:nx-1,maxspec)
       real*8 spec_flux_hi(0:nx-1,maxspec)
 
+      real*8 spec_flux_lo_tmp(0:nx-1,maxspec)
+      real*8 spec_flux_hi_tmp(0:nx-1,maxspec)
+
       real*8 diffdiff_old(0:nx-1)
       real*8 diffdiff_new(0:nx-1)
       real*8 diffdiff_hat(0:nx-1)
@@ -224,8 +227,8 @@ c     calculate differential diffusion
       if (LeEQ1 .eq. 1) then
          diffdiff_old = 0.d0
       else
-         call get_diffdiff_terms(scal_old,scal_old,beta_old,
-     $                           diffdiff_old,dx)
+         call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
+     $                           spec_flux_hi,beta_old,diffdiff_old,dx)
       end if
 
       
@@ -289,7 +292,8 @@ c        simply extract D for RhoX
 c        apply correction velocity so species fluxes sum to zero
          call get_spec_visc_terms(scal_new,beta_new,
      $                            diff_hat(0,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,dx,time)
+     $                            spec_flux_lo_tmp,spec_flux_hi_tmp,
+     $                            dx,time)
 
 c        update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -306,8 +310,8 @@ c     calculate differential diffusion
       if (LeEQ1 .eq. 1) then
          diffdiff_hat = 0.d0
       else
-         call get_diffdiff_terms(scal_old,scal_new,beta_old,
-     $                           diffdiff_hat,dx)
+         call get_diffdiff_terms(scal_old,scal_new,spec_flux_lo,
+     $                           spec_flux_hi,beta_old,diffdiff_hat,dx)
       end if
 
 c     add differential diffusion to forcing for enthalpy solve
@@ -382,13 +386,14 @@ c     that have a backward Euler character
          call get_rhoh_visc_terms(scal_new,beta_new,
      &                            diff_new(0,RhoH),dx,time+dt)
 
-c     calculate differential diffusion
-      if (LeEQ1 .eq. 1) then
-         diffdiff_new = 0.d0
-      else
-         call get_diffdiff_terms(scal_new,scal_new,beta_new,
-     $                           diffdiff_new,dx)
-      end if
+c        calculate differential diffusion
+         if (LeEQ1 .eq. 1) then
+            diffdiff_new = 0.d0
+         else
+            call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
+     $                              spec_flux_hi,beta_new,
+     $                              diffdiff_new,dx)
+         end if
 
          print*,'... compute advective forcing'
          do i = 0,nx-1
