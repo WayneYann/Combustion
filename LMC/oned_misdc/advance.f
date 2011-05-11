@@ -196,8 +196,8 @@ C     get velocity visc terms to use as a forcing term for advection
       integer is, rho_flag
       integer misdc
 
-      real*8 spec_flux_lo(maxspec)
-      real*8 spec_flux_hi(maxspec)
+      real*8 spec_flux_lo(0:nx-1,maxspec)
+      real*8 spec_flux_hi(0:nx-1,maxspec)
 
       real*8 diffdiff_old(0:nx-1)
       real*8 diffdiff_new(0:nx-1)
@@ -548,8 +548,8 @@ C----------------------------------------------------------------
       real*8 RWRK, cpmix
       integer IWRK, is, rho_flag
 
-      real*8 spec_flux_lo(maxspec)
-      real*8 spec_flux_hi(maxspec)
+      real*8 spec_flux_lo(0:nx-1,maxspec)
+      real*8 spec_flux_hi(0:nx-1,maxspec)
 
       be_cn_theta = 0.5d0
 

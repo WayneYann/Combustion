@@ -6,7 +6,8 @@
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1,*)
-      real*8 spec_flux_lo(maxspec),spec_flux_hi(maxspec)
+      real*8 spec_flux_lo(0:nx-1,*)
+      real*8 spec_flux_hi(0:nx-1,*)
       real*8 dx,time
       
       integer i,n,is,IWRK
@@ -38,18 +39,18 @@
                beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
             endif
 
-            spec_flux_hi(n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
-            spec_flux_lo(n) = beta_lo*(Y(i  ,n) - Y(i-1,n)) 
+            spec_flux_hi(i,n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
+            spec_flux_lo(i,n) = beta_lo*(Y(i  ,n) - Y(i-1,n)) 
  
-            visc(i,n) =  (spec_flux_hi(n) - spec_flux_lo(n))*dxsqinv
+            visc(i,n) = (spec_flux_hi(i,n)-spec_flux_lo(i,n))*dxsqinv
 
             if (LeEQ1 .eq. 0) then
 
 c              need to correct fluxes so they add to zero on each face
 c              build up the sum of species fluxes on lo and hi faces
 c              this will be "rho * V_c"
-               sum_lo = sum_lo + spec_flux_lo(n)
-               sum_hi = sum_hi + spec_flux_hi(n)
+               sum_lo = sum_lo + spec_flux_lo(i,n)
+               sum_hi = sum_hi + spec_flux_hi(i,n)
                
 c              build up the sum of rho*Y_m
 c              this will be the density
@@ -70,12 +71,12 @@ c              compute rho*Y_m on each face
                RhoYe_hi = .5d0*(scal(i,is)+scal(i+1,is))
 
 c              set flux = flux - (rho*V_c)*(rho*Y_m)/rho
-               spec_flux_lo(n) = 
-     $              spec_flux_lo(n) - sum_lo*RhoYe_lo/sumRhoY_lo
-               spec_flux_hi(n) = 
-     $              spec_flux_hi(n) - sum_hi*RhoYe_hi/sumRhoY_hi
+               spec_flux_lo(i,n) = spec_flux_lo(i,n) 
+     $              - sum_lo*RhoYe_lo/sumRhoY_lo
+               spec_flux_hi(i,n) = spec_flux_hi(i,n) 
+     $              - sum_hi*RhoYe_hi/sumRhoY_hi
                
-               visc(i,n) =  (spec_flux_hi(n) - spec_flux_lo(n))*dxsqinv
+               visc(i,n) = (spec_flux_hi(i,n)-spec_flux_lo(i,n))*dxsqinv
             end do
          end if
 
