@@ -231,11 +231,6 @@ c     calculate differential diffusion
      $                           spec_flux_hi,beta_old,diffdiff_old,dx)
       end if
 
-      
-c     in predictor, new-time coefficients are set equal
-c     to old-time coefficients
-      beta_new = beta_old
-
 c     compute advective forcing term
       print *,'... computing advective forcing term = D(U^n) + I_R^kmax'
       do i = 0,nx-1
@@ -270,7 +265,7 @@ C     update species with diffusion solve
       print *,'... do initial diffusion solve for species'
       do n=1,Nspec
          is = FirstSpec + n - 1
-         call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
+         call cn_solve(scal_new,alpha,beta_old,Rhs(0,is),
      $                 dx,dt,is,be_cn_theta,rho_flag)
       enddo
 
@@ -290,7 +285,7 @@ c        simply extract D for RhoX
       else
 
 c        apply correction velocity so species fluxes sum to zero
-         call get_spec_visc_terms(scal_new,beta_new,
+         call get_spec_visc_terms(scal_new,beta_old,
      $                            diff_hat(0,FirstSpec),
      $                            spec_flux_lo_tmp,spec_flux_hi_tmp,
      $                            dx,time)
@@ -325,7 +320,7 @@ c     compute RHS for enthalpy diffusion solve
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta,time)
 
 c     update enthalpy with diffusion solve
-      call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
+      call cn_solve(scal_new,alpha,beta_old,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
 c     extract D for RhoH
