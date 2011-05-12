@@ -165,7 +165,6 @@ HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
 
 static std::string              timestamp_dir = "Timestamps";
 static std::vector<int>         timestamp_indices;
-static std::vector<std::string> timestamp_names;
 static std::string              particle_init_file;
 static std::string              particle_restart_file;
 static std::string              particle_output_file;
@@ -603,18 +602,6 @@ HeatTransfer::read_params ()
         timestamp_indices.resize(nc);
 
         ppp.getarr("timestamp_indices", timestamp_indices, 0, nc);
-    }
-
-    if (int nc = ppp.countval("timestamp_names"))
-    {
-        timestamp_names.resize(nc);
-
-        ppp.getarr("timestamp_names", timestamp_names, 0, nc);
-    }
-
-    if (!timestamp_indices.empty() || !timestamp_names.empty())
-    {
-        BL_ASSERT(timestamp_indices.size() == timestamp_names.size());
     }
 
     ppp.query("pverbose",pverbose);
@@ -1840,8 +1827,7 @@ HeatTransfer::post_restart ()
                                     mf,
                                     i,
                                     state[State_Type].curTime(),
-                                    timestamp_indices,
-                                    timestamp_names);
+                                    timestamp_indices);
                 }
             }
         }
@@ -6098,8 +6084,7 @@ HeatTransfer::advance (Real time,
                             mf,
                             level,
                             state[State_Type].curTime(),
-                            timestamp_indices,
-                            timestamp_names);
+                            timestamp_indices);
         }
     }
 #endif
