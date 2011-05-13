@@ -248,7 +248,7 @@ c        we take the gradient of Y from the second scal argument
       end if
 
 c     compute advective forcing term
-      print *,'... computing advective forcing term = D(U^n) + I_R^kmax'
+      print *,'... computing advective forcing term = D^n + I_R^kmax'
       do i = 0,nx-1
          do n = 1,Nspec
             is = FirstSpec + n - 1
@@ -411,12 +411,13 @@ c           we take the gradient of Y from the second scal argument
      $                              diffdiff_new,dx)
          end if
 
-         print*,'... compute advective forcing'
+         print *,'... computing advective forcing term = D^n + I_R^k-1'
          do i = 0,nx-1
             do n = 1,Nspec
-               ispec = FirstSpec + n - 1
-               tforce(i,ispec) = I_R_new(i,n) + diff_old(i,ispec)
+               is = FirstSpec + n - 1
+               tforce(i,is) = diff_old(i,is) + I_R_new(i,n)
             enddo
+c           really no need to recompute this since it doesn't change
             tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
          enddo
          
@@ -430,9 +431,12 @@ c           we take the gradient of Y from the second scal argument
          do i=0,nx-1
             do n=1,Nspec
                is = FirstSpec + n - 1
+c              includes deferred correction term for species
                dRhs(i,n) = dt*(I_R_new(i,n) 
      &              + 0.5d0*(diff_old(i,is) - diff_new(i,is)))
             enddo
+c           includes deferred correction term for enthalpy
+c           differential diffusion will be added later
             dRhs(i,0) = dt*(
      &           + 0.5d0*(diff_old(i,RhoH) - diff_new(i,RhoH)))
          enddo
@@ -469,17 +473,18 @@ c           update species with conservative diffusion fluxes
                do n=1,Nspec
                   scal_new(i,n) = scal_old(i,n) + 
      $                 dt*(aofs(i,n) + I_R_new(i,n)
-     $                 + 0.5d0*diff_old(i,n) + 0.5d0*diff_hat(i,n))
+     $                 + 0.5d0*diff_old(i,n) - 0.5d0*diff_new(i,n)
+     $                 + diff_hat(i,n))
                end do
             end do
 
-         end if
+c           add differential diffusion to forcing for enthalpy solve
+            do i=0,nx-1
+               dRhs(i,0) = dRhs(i,0) 
+     $              + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
+            end do
 
-c        add differential diffusion to forcing for enthalpy solve
-         do i=0,nx-1
-            dRhs(i,0) = dRhs(i,0) 
-     $           + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
-         end do
+         end if
 
          print *,'... update D for rhoh with A + R + MISDC(D)'
          call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
