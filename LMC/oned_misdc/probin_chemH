@@ -27,5 +27,4 @@
 !  V_in = 33.
   LeEQ1 = 0
   tranfile = 'tran.asc.chem-H'
-  tranfile = 'tran.asc.grimech30'
 /

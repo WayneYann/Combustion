@@ -8,9 +8,13 @@ pmf_source := gri30_070.f
 #pmf_source := H-flame_0370.f
 #pmf_source := 2stepSoln0.8.f
 #pmf_source := chemHSoln_seed_0.00.f
+#pmf_source := H-flame_0370_MCDD.f
 
 #
 # Choose reaction mechanism
+# Use GRI30 for pmf_source := gri30_070.f
+# Use CHEMH for pmf_source := chemHSoln_seed_0.00.f
+# Use CHEMH for pmf_source := H-flame_0370_MCDD.f
 #
 #REACTION_MECHANISM=INERT30
 #REACTION_MECHANISM=GRI12
