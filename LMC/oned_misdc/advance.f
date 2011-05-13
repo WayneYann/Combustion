@@ -208,9 +208,6 @@ C     get velocity visc terms to use as a forcing term for advection
       real*8 spec_flux_lo(0:nx-1,maxspec)
       real*8 spec_flux_hi(0:nx-1,maxspec)
 
-      real*8 spec_flux_lo_tmp(0:nx-1,maxspec)
-      real*8 spec_flux_hi_tmp(0:nx-1,maxspec)
-
       real*8 diffdiff_old(0:nx-1)
       real*8 diffdiff_new(0:nx-1)
       real*8 diffdiff_hat(0:nx-1)
@@ -305,7 +302,7 @@ c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_old,
      $                            diff_hat(0,FirstSpec),
-     $                            spec_flux_lo_tmp,spec_flux_hi_tmp,
+     $                            spec_flux_lo,spec_flux_hi,
      $                            dx,time)
 
 c        update species with conservative diffusion fluxes
@@ -317,10 +314,7 @@ c        update species with conservative diffusion fluxes
             end do
          end do
          
-      end if
-
-c     calculate differential diffusion
-      if (LeEQ1 .eq. 0) then
+c        calculate differential diffusion
 c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
 c        we pass in conservative rho D grad Y via spec_flux
 c        we take lambda / cp from beta
@@ -328,13 +322,14 @@ c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_new,spec_flux_lo,
      $                           spec_flux_hi,beta_old,diffdiff_hat,dx)
-      end if
 
-c     add differential diffusion to forcing for enthalpy solve
-      do i=0,nx-1
-         dRhs(i,0) = dRhs(i,0) 
-     $        + 0.5d0*dt*(diffdiff_old(i) + diffdiff_hat(i))
-      end do
+c        add differential diffusion to forcing for enthalpy solve
+         do i=0,nx-1
+            dRhs(i,0) = dRhs(i,0) 
+     $           + 0.5d0*dt*(diffdiff_old(i) + diffdiff_hat(i))
+         end do
+
+      end if
 
 c     compute RHS for enthalpy diffusion solve
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,dRhs(0,0),
