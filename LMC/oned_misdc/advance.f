@@ -327,7 +327,7 @@ c     extract D for RhoH
       do i = 0,nx-1
          diff_hat(i,RhoH) = (
      $        (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-     $        - aofs(i,RhoH) -
+     $        - aofs(i,RhoH) - dRhs(i,0)/dt -
      $        (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
       enddo
 
@@ -471,7 +471,7 @@ c        extract D for RhoH
          do i = 0,nx-1
             diff_hat(i,RhoH) = (
      $           (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-     $           - aofs(i,RhoH) - dRhs(i,0)/dt - 
+     $           - aofs(i,RhoH) - dRhs(i,0)/dt -
      $           (1.d0-be_cn_theta)*diff_old(i,RhoH) )/be_cn_theta
          enddo
          
