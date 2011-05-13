@@ -79,12 +79,19 @@ c     diagnostics only
       call macproj(nx,macvel,divu_tmp,dx)
 
 c     compute diffusivities at time n (old time)
+c     this computes rho D_m     (for species)
+c                   lambda / cp (for enthalpy)
+c                   lambda      (for temperature)
       call calc_diffusivities(scal_old,beta_old,mu_old,dx,time)
 
       if (use_strang) then
 
 c*****************************************************************
 c     Strang split advance
+
+         if (LeEQ1 .eq. 0) then
+            print*,"LeEQ1 for use_strang not completed"
+         end if
 
          call strang_advance(macvel,scal_old,scal_new,
      $                   I_R_new,beta_old,beta_new,
@@ -108,13 +115,16 @@ c     This is the only SDC option that works.  The other options
 c     live in the repository in the 3/19/11 version
 
          call advance_rhoh2(macvel,scal_old,scal_new,
-     $        I_R_new,beta_old,beta_new,
-     $        dx,dt,time)
+     $                      I_R_new,beta_old,beta_new,
+     $                      dx,dt,time)
 
 c*****************************************************************
 
       end if
-            
+
+c     this computes rho D_m     (for species)
+c                   lambda / cp (for enthalpy)
+c                   lambda      (for temperature)           
       call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
       call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time+dt)
 
@@ -148,21 +158,20 @@ C     get velocity visc terms to use as a forcing term for advection
       else
          rho_flag = 1
          call cn_solve(vel_new,alpha,mu_new,vel_Rhs,
-     $        dx,dt,1,vel_theta,rho_flag)
+     $                 dx,dt,1,vel_theta,rho_flag)
       endif
 
       print *,'...nodal projection...'
       if (initial_iter .eq. 0) then
          call project(vel_old,vel_new,rhohalf,divu_new,
-     $        press_old,press_new,dx,dt)
+     $                press_old,press_new,dx,dt)
       endif
 
       end
 
 
-      subroutine advance_rhoh2 (macvel,scal_old,scal_new,
-     $                   I_R_new,
-     $                   beta_old,beta_new,dx,dt,time)
+      subroutine advance_rhoh2(macvel,scal_old,scal_new,I_R_new,
+     $                         beta_old,beta_new,dx,dt,time)
 
       implicit none
       include 'spec.h'
@@ -217,9 +226,11 @@ c     diffusion solves in predictor are regular Crank-Nicolson
 
 c     compute diffusion term at time n
       print *,'... computing D(U^n)'
+c     compute del dot rho D grad Y and make it conservative
       call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),
      &                         spec_flux_lo,spec_flux_hi,dx,time)
+c     compute del dot lambda/cp grad h (no differential diffusion)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
 
@@ -227,6 +238,11 @@ c     calculate differential diffusion
       if (LeEQ1 .eq. 1) then
          diffdiff_old = 0.d0
       else
+c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
+c        we pass in conservative rho D grad Y vis spec_flux
+c        we take lambda / cp from beta
+c        we compute h_m from the first scal argument
+c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
      $                           spec_flux_hi,beta_old,diffdiff_old,dx)
       end if
@@ -284,7 +300,7 @@ c        simply extract D for RhoX
 
       else
 
-c        apply correction velocity so species fluxes sum to zero
+c        compute del dot rho D grad Y and make it conservative
          call get_spec_visc_terms(scal_new,beta_old,
      $                            diff_hat(0,FirstSpec),
      $                            spec_flux_lo_tmp,spec_flux_hi_tmp,
@@ -305,6 +321,11 @@ c     calculate differential diffusion
       if (LeEQ1 .eq. 1) then
          diffdiff_hat = 0.d0
       else
+c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
+c        we pass in conservative rho D grad Y vis spec_flux
+c        we take lambda / cp from beta
+c        we compute h_m from the first scal argument
+c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_new,spec_flux_lo,
      $                           spec_flux_hi,beta_old,diffdiff_hat,dx)
       end if
@@ -374,10 +395,15 @@ c     that have a backward Euler character
          print *,'... doing SDC iter ',misdc
 
          print *,'... compute diff_new = D(U^{n+1,k-1})'
+c        this computes rho D_m     (for species)
+c                      lambda / cp (for enthalpy)
+c                      lambda      (for temperature) 
          call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+c        compute del dot rho D grad Y and make it conservative
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_new(0,FirstSpec),
      &                            spec_flux_lo,spec_flux_hi,dx,time+dt)
+c        compute del dot lambda/cp grad h (no differential diffusion)
          call get_rhoh_visc_terms(scal_new,beta_new,
      &                            diff_new(0,RhoH),dx,time+dt)
 
@@ -385,6 +411,11 @@ c        calculate differential diffusion
          if (LeEQ1 .eq. 1) then
             diffdiff_new = 0.d0
          else
+c           calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
+c           we pass in conservative rho D grad Y vis spec_flux
+c           we take lambda / cp from beta
+c           we compute h_m from the first scal argument
+c           we take the gradient of Y from the second scal argument
             call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
      $                              spec_flux_hi,beta_new,
      $                              diffdiff_new,dx)
@@ -416,7 +447,8 @@ c        calculate differential diffusion
      &           + 0.5d0*(diff_old(i,RhoH) - diff_new(i,RhoH)))
          enddo
          call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
-     &        dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
+     &                    dRhs(0,1),Rhs(0,FirstSpec),dx,dt,
+     &                    be_cn_theta,time)
          do n=1,Nspec
             is = FirstSpec + n - 1
             call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
@@ -438,7 +470,7 @@ c           simply extract D for RhoX
 
          else
 
-c           apply correction velocity so species fluxes sum to zero
+c           compute del dot rho D grad Y and make it conservative
             call get_spec_visc_terms(scal_new,beta_new,
      $                               diff_hat(0,FirstSpec),
      $                               spec_flux_lo,spec_flux_hi,dx,time)
@@ -454,15 +486,15 @@ c           update species with conservative diffusion fluxes
 
          end if
 
-c     add differential diffusion to forcing for enthalpy solve
-      do i=0,nx-1
-         dRhs(i,0) = dRhs(i,0) 
-     $        + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
-      end do
+c        add differential diffusion to forcing for enthalpy solve
+         do i=0,nx-1
+            dRhs(i,0) = dRhs(i,0) 
+     $           + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
+         end do
 
          print *,'... update D for rhoh with A + R + MISDC(D)'
          call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &        dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
+     &                    dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
          call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $                 dx,dt,RhoH,be_cn_theta,rho_flag)
          print *,'... create new temp from new RhoH, spec'
@@ -481,7 +513,6 @@ c        extract D for RhoH
             print *,'... react with const sources'
             do n = 1,nscal
                do i = 0,nx-1
-                  
                   const_src(i,n) = aofs(i,n)
      $                 + 0.5d0*(diff_old(i,n)+diff_new(i,n))
      $                 + diff_hat(i,n) - diff_new(i,n)
@@ -498,8 +529,8 @@ c           add differential diffusion
             end do
             
             call strang_chem(scal_old,scal_new,
-     $           const_src,lin_src_old,lin_src_new,
-     $           I_R_new,dt)
+     $                       const_src,lin_src_old,lin_src_new,
+     $                       I_R_new,dt)
 
          endif
 
@@ -512,9 +543,8 @@ C----------------------------------------------------------------
       end
 
 
-      subroutine strang_advance (macvel,scal_old,scal_new,
-     $                   I_R_new,
-     $                   beta_old,beta_new,dx,dt,time)
+      subroutine strang_advance(macvel,scal_old,scal_new,I_R_new,
+     $                          beta_old,beta_new,dx,dt,time)
 
       implicit none
       include 'spec.h'
@@ -584,6 +614,9 @@ c*****************************************************************
 c     
 
       print *,'... creating the diffusive terms with old data'
+c     these compute rho D_m     (for species)
+c                   lambda / cp (for enthalpy)
+c                   lambda      (for temperature) 
       call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
       call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time)
 
@@ -591,9 +624,11 @@ c     each one of these functions first calls set_bc(scal_old)
 c     maybe should change this
       call get_temp_visc_terms(scal_old,beta_old,
      &                         diff_old(0,Temp),dx,time)
+c     compute del dot rho D grad Y and make it conservative
       call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),
      &                         spec_flux_lo,spec_flux_hi,dx,time)
+c     compute del dot lambda/cp grad h (no differential diffusion)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
             
@@ -619,6 +654,9 @@ c     maybe should change this
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
 
+c     this computes rho D_m     (for species)
+c                   lambda / cp (for enthalpy)
+c                   lambda      (for temperature) 
       call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time)
 
 c*****************************************************************
@@ -634,14 +672,17 @@ c     coeffs, or simply start by copying from previous time step
          call update_temp(scal_old,scal_new,aofs,
      $                    alpha,beta_old,beta_new,dRhs(0,0),
      $                    Rhs(0,Temp),dx,dt,theta,time)
-c     just uses RHS and overwrites snew
-c     does not fill ghost cells
+c        just uses RHS and overwrites snew
+c        does not fill ghost cells
          call cn_solve(scal_new,alpha,beta_old,Rhs(0,Temp),
      $                 dx,dt,Temp,theta,rho_flag)
 
          call get_hmix_given_T_RhoY(scal_new,dx)
 
          print *,'... compute new coeffs'
+c        this computes rho D_m     (for species)
+c                      lambda / cp (for enthalpy)
+c                      lambda      (for temperature) 
          call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
       else
          print *,'... set new coeffs to old values for predictor'
@@ -661,7 +702,8 @@ c     does not fill ghost cells
          enddo
       enddo
       call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
-     &     dRhs(0,1),Rhs(0,FirstSpec),dx,dt,be_cn_theta,time)
+     &                 dRhs(0,1),Rhs(0,FirstSpec),dx,dt,
+     &                 be_cn_theta,time)
 
       rho_flag = 2
       do n=1,Nspec
@@ -672,7 +714,7 @@ c     does not fill ghost cells
 
       print *,'... do predictor for rhoh (MISDC terms=0)'
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &     dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
+     &                 dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
       rho_flag = 2
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
@@ -683,6 +725,9 @@ C----------------------------------------------------------------
 C   Corrector
 
       print *,'... compute new coeffs'
+c     this computes rho D_m     (for species)
+c                   lambda / cp (for enthalpy)
+c                   lambda      (for temperature) 
       call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
 
       call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
