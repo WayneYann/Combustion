@@ -611,8 +611,8 @@ c                   lambda / cp (for enthalpy)
 c                   lambda      (for temperature) 
       call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
 
-c     each one of these functions first calls set_bc(scal_old)
-c     maybe should change this
+c     compute del dot lambda grad T + del dot rho D grad h grad Y
+c     the rho D grad Y term is now computed conservatively
       call get_temp_visc_terms(scal_old,beta_old,
      &                         diff_old(0,Temp),dx,time)
 c     compute del dot rho D grad Y and make it conservative
