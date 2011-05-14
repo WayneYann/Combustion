@@ -610,7 +610,6 @@ c     these compute rho D_m     (for species)
 c                   lambda / cp (for enthalpy)
 c                   lambda      (for temperature) 
       call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time)
 
 c     each one of these functions first calls set_bc(scal_old)
 c     maybe should change this
