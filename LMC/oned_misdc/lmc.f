@@ -120,6 +120,12 @@ c     Set defaults, change with namelist
       min_vode_timestep = 1.e-19
       dvd_debug = 0
 
+      divu_old = 0.d0
+      press_old = 0.d0
+
+      divu_new = 0.d0
+      press_new = 0.d0
+
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)
