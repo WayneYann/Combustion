@@ -1375,9 +1375,8 @@ HeatTransfer::initData ()
 #ifdef PARTICLES
     if (level == 0)
     {
-        BL_ASSERT(HTPC == 0);
-
-        HTPC = new HTParticleContainer(parent);
+        if (HTPC == 0)
+            HTPC = new HTParticleContainer(parent);
 
         HTPC->SetVerbose(pverbose);
 
