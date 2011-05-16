@@ -56,9 +56,6 @@ c     4th order slopes
       else
          
          if (unlim .eq. 0) then
-C CEG:: i think this indexing is a bug...
-C            do i = 1,nx-1
-C hopefully this is the right fix
             do i = 0,nx-1
                shi = 2.0d0*(s(i+1) - s(i  ))
                slo = 2.0d0*(s(i  ) - s(i-1))
@@ -91,7 +88,7 @@ c     Inflow (EXT_DIR) boundary value specified at i=0
             slxscr(0,flag) = sign(1.d0,slxscr(0,cen))
             slxscr(0,fromm) = slope(0)
             
-            do i = 1,nx-1
+            do i = 1,nx-2
                ds = (4.d0/3.d0) * slxscr(i,cen) -
      &              (1.d0/6.d0) * (slxscr(i+1,fromm)+slxscr(i-1,fromm))
                slope(i) = slxscr(i,flag)*min(abs(ds),slxscr(i,lim))
