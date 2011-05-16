@@ -308,9 +308,10 @@ c        save species fluxes for differential diffusion
 c        update species with conservative diffusion fluxes
          do i=0,nx-1
             do n=1,Nspec
-               scal_new(i,n) = scal_old(i,n) + 
-     $              dt*(aofs(i,n) + I_R_new(i,n)
-     $              + 0.5d0*diff_old(i,n) + 0.5d0*diff_hat(i,n))
+               is = FirstSpec + n - 1
+               scal_new(i,is) = scal_old(i,is) + 
+     $              dt*(aofs(i,is) + I_R_new(i,is)
+     $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_hat(i,is))
             end do
          end do
          
@@ -471,10 +472,11 @@ c           save species fluxes for differential diffusion
 c           update species with conservative diffusion fluxes
             do i=0,nx-1
                do n=1,Nspec
-                  scal_new(i,n) = scal_old(i,n) + 
-     $                 dt*(aofs(i,n) + I_R_new(i,n)
-     $                 + 0.5d0*diff_old(i,n) - 0.5d0*diff_new(i,n)
-     $                 + diff_hat(i,n))
+                  is = FirstSpec + n - 1
+                  scal_new(i,is) = scal_old(i,is) + 
+     $                 dt*(aofs(i,is) + I_R_new(i,is)
+     $                 + 0.5d0*diff_old(i,is) - 0.5d0*diff_new(i,is)
+     $                 + diff_hat(i,is))
                end do
             end do
 
