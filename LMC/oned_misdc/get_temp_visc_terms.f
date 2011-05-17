@@ -8,8 +8,6 @@
       
 
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-C CEG:: the first thing rhoDgradHgradY() does is set grow cells
-C      call set_bc_grow_s(scal,dx,time)
       call rhoDgradHgradY(scal,beta,visc,dx,time)
 
 c     Add Div( lambda Grad(T) )
@@ -31,8 +29,8 @@ c     Add Div( lambda Grad(T) )
       real*8 dxsqinv
 
 
-C CEG:: this function will sometimes be called independently from 
-C       get_temp_visc_terms, so need this here
+c     this function will sometimes be called independently from 
+c     get_temp_visc_terms, so need this here
       call set_bc_grow_s(scal,dx,time)
 
       dxsqinv = 1.d0/(dx*dx)
@@ -78,16 +76,13 @@ C       get_temp_visc_terms, so need this here
       real*8 sumRhoY_lo,sumRhoY_hi
       real*8 RhoYe_lo,RhoYe_hi
 
-CCCCCCCCCCC debugging FIXME
-C 1011 FORMAT((I5,1X),2(E22.15,1X))      
-C         open(UNIT=11, FILE='tvt.dat', STATUS = 'REPLACE')
-CCCCCCCCC
-
 c     Compute rhoD Grad(Yi).Grad(hi) terms
 
       dxsqinv = 1.d0/(dx*dx)
-c     Get Hi, Yi at cell centers
+
       call set_bc_grow_s(scal,dx,time)
+
+c     Get Hi, Yi at cell centers
       do i = -1,nx
          rho = 0.d0
          do n=1,Nspec
