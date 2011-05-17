@@ -51,7 +51,7 @@ C+ tmp(i)
 
       subroutine get_diffdiff_terms(scal_for_coeff,scal_for_grad,
      $                              spec_flux_lo,spec_flux_hi,
-     $                              beta,diffdiff,dx)
+     $                              beta,diffdiff,dx,time)
 
       implicit none
       include 'spec.h'
@@ -63,6 +63,7 @@ C+ tmp(i)
       real*8 beta          (-1:nx  ,*)
       real*8 diffdiff      ( 0:nx-1)
       real*8 dx
+      real*8 time
 
       real*8 dxsqinv,RWRK
       integer i,is,n,IWRK
@@ -70,6 +71,9 @@ C+ tmp(i)
       real*8 flux_lo(maxspec),flux_hi(maxspec)
       real*8 Y(maxspec,-1:nx)
       real*8 beta_lo, beta_hi, rho
+
+      call set_bc_grow_s(scal_for_coeff,dx,time)
+      call set_bc_grow_s(scal_for_grad,dx,time)
 
       dxsqinv = 1.d0/(dx*dx)
 

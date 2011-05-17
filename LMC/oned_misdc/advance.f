@@ -244,7 +244,8 @@ c        we take lambda / cp from beta
 c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
-     $                           spec_flux_hi,beta_old,diffdiff_old,dx)
+     $                           spec_flux_hi,beta_old,diffdiff_old,
+     $                           dx,time)
       end if
 
 c     compute advective forcing term
@@ -322,7 +323,8 @@ c        we take lambda / cp from beta
 c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_new,spec_flux_lo,
-     $                           spec_flux_hi,beta_old,diffdiff_hat,dx)
+     $                           spec_flux_hi,beta_old,diffdiff_hat,
+     $                           dx,time)
 
 c        add differential diffusion to forcing for enthalpy solve
          do i=0,nx-1
@@ -409,7 +411,7 @@ c           we compute h_m from the first scal argument
 c           we take the gradient of Y from the second scal argument
             call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
      $                              spec_flux_hi,beta_new,
-     $                              diffdiff_new,dx)
+     $                              diffdiff_new,dx,time)
          end if
 
          print *,'... computing advective forcing term = D^n + I_R^k-1'
@@ -640,7 +642,8 @@ c        we take lambda / cp from beta
 c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
-     $                           spec_flux_hi,beta_old,diffdiff_old,dx)
+     $                           spec_flux_hi,beta_old,diffdiff_old,
+     $                           dx,time)
       end if
             
       print *,'... computing aofs with D(old)'
@@ -737,7 +740,7 @@ c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
      $                           spec_flux_hi,beta_new,
-     $                           diffdiff_new,dx)
+     $                           diffdiff_new,dx,time)
       end if
 
       do i=0,nx-1
@@ -788,7 +791,7 @@ c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
      $                           spec_flux_hi,beta_new,
-     $                           diffdiff_new,dx)
+     $                           diffdiff_new,dx,time)
       end if
 
       do i=0,nx-1
