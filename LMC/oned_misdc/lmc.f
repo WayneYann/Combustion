@@ -149,6 +149,11 @@ C CEG FIXME this seg faults
      $                   I_R_new,divu_new,dsdt,
      $                   time,at_nstep,dt,cfl_used)
 
+         call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+     $                  dx,dt,at_nstep,time)
+
+         at_nstep = at_nstep + 1
+
          do_init = 0
 
          dt_init = dt
