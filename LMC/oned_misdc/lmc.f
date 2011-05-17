@@ -149,11 +149,6 @@ C CEG FIXME this seg faults
      $                   I_R_new,divu_new,dsdt,
      $                   time,at_nstep,dt,cfl_used)
 
-
-
-         call set_bc_v(vel_new,dx,time)
-         call set_bc_grow_s(scal_new,dx,time)
-
          do_init = 0
 
          dt_init = dt
