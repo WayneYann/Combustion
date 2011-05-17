@@ -311,7 +311,7 @@ c        update species with conservative diffusion fluxes
             do n=1,Nspec
                is = FirstSpec + n - 1
                scal_new(i,is) = scal_old(i,is) + 
-     $              dt*(aofs(i,is) + I_R_new(i,is)
+     $              dt*(aofs(i,is) + I_R_new(i,n)
      $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_hat(i,is))
             end do
          end do
