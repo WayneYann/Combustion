@@ -175,7 +175,7 @@ c     call minmax_vel(nx,vel_new)
          
          do_init = 1
          time = 0.d0
-         at_nstep = 0
+         at_nstep = 1
 
 C take vals from PMF and fills vel, spec (rhoY), Temp
 C                              computes rho, rhoH, I_R
@@ -435,7 +435,7 @@ C$$$         stop
 CCCCCCCCCCCCC
 
 C-- Now advance 
-      do nsteps_taken = 1, nsteps
+      do nsteps_taken = at_nstep, nsteps
 
          if (time.ge.stop_time) exit
 
