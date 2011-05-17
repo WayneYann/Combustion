@@ -148,6 +148,7 @@ C CEG FIXME this seg faults
          call read_check(chkfile,vel_new,scal_new,press_new,
      $                   I_R_new,divu_new,dsdt,
      $                   time,at_nstep,dt,cfl_used)
+
          do_init = 0
 
          dt_init = dt
@@ -497,14 +498,6 @@ c     update state, I_R, time
      $           I_R_new,divu_new,dsdt,dx,time,dt,cfl_used)
          endif
       enddo
-
-
-      call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
-     $     dx,dt,nsteps_taken,time)
-
-
-      call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $     I_R_new,divu_new,dsdt,dx,time,dt,cfl_used)
 
 
 
