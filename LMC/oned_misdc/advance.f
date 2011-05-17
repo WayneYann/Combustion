@@ -471,6 +471,16 @@ c           save species fluxes for differential diffusion
      $                               diff_hat(0,FirstSpec),
      $                               spec_flux_lo,spec_flux_hi,dx,time)
 
+c     HACK
+c     the inflow boundary condition is a bit touchy
+c     for some reason this result doesn't match what comes
+c     out of get_spec_visc_terms
+            do n=1,Nspec
+               is = FirstSpec + n - 1
+               diff_hat(0,is) = (scal_new(0,is)-scal_old(0,is))/dt 
+     $              - aofs(0,is) - dRhs(0,n)/dt
+            enddo
+
 c           update species with conservative diffusion fluxes
             do i=0,nx-1
                do n=1,Nspec
