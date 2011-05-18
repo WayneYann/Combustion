@@ -51,7 +51,6 @@ c     dirichlet inflow using ghost cell value
          r(i+1) = Rhs(i)
          a(i+1) = -fac*beta(i  )
          c(i+1) = -fac*beta(i+1)
-         if (i.eq.nx-1) c(i+1) =  0.d0
          b(i+1) = alpha(i) - (a(i+1)+c(i+1))
          if (i.eq.0   ) then
             a(i+1) = 0.d0
@@ -62,7 +61,18 @@ c     dirichlet inflow using ghost cell value
                r(i+1) = r(i+1) + 
      $              fac*beta(i)*scal_new(-1,n)
             end if
+         else if (i.eq.nx-1) then
+            c(i+1) = 0.d0
+            if (rho_flag .eq. 2) then
+               r(i+1) = r(i+1) + 
+     $              fac*beta(i+1)*scal_new(nx,n)/scal_new(nx,Density)
+            else
+               r(i+1) = r(i+1) + 
+     $              fac*beta(i+1)*scal_new(nx,n)
+            end if
          end if
+
+
       enddo
 
       call tridiag(a,b,c,r,u,gam,nx)

@@ -468,19 +468,12 @@ c           simply extract D for RhoX
 
 c           compute del dot rho D grad Y and make it conservative
 c           save species fluxes for differential diffusion
-            call get_spec_visc_terms(scal_new,beta_new,
-     $                               diff_hat(0,FirstSpec),
-     $                               spec_flux_lo,spec_flux_hi,dx,time)
-
-c     HACK
-c     the inflow boundary condition is a bit touchy
-c     for some reason this result doesn't match what comes
-c     out of get_spec_visc_terms
-            do n=1,Nspec
-               is = FirstSpec + n - 1
-c               diff_hat(0,is) = (scal_new(0,is)-scal_old(0,is))/dt 
-c     $              - aofs(0,is) - dRhs(0,n)/dt
-            enddo
+c           DON'T FILL GHOST CELLS OR ELSE VISC WILL BE INCONSISTENT
+c           WITH GHOST CELLS USED IN CN_SOLVE
+            call get_spec_visc_terms_nosetbc(scal_new,beta_new,
+     $                                       diff_hat(0,FirstSpec),
+     $                                       spec_flux_lo,spec_flux_hi,
+     $                                       dx,time)
 
 c           update species with conservative diffusion fluxes
             do i=0,nx-1
