@@ -446,6 +446,7 @@ c           differential diffusion will be added later
          call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
      &                    dRhs(0,1),Rhs(0,FirstSpec),dx,dt,
      &                    be_cn_theta,time)
+
          do n=1,Nspec
             is = FirstSpec + n - 1
             call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
@@ -477,8 +478,8 @@ c     for some reason this result doesn't match what comes
 c     out of get_spec_visc_terms
             do n=1,Nspec
                is = FirstSpec + n - 1
-               diff_hat(0,is) = (scal_new(0,is)-scal_old(0,is))/dt 
-     $              - aofs(0,is) - dRhs(0,n)/dt
+c               diff_hat(0,is) = (scal_new(0,is)-scal_old(0,is))/dt 
+c     $              - aofs(0,is) - dRhs(0,n)/dt
             enddo
 
 c           update species with conservative diffusion fluxes

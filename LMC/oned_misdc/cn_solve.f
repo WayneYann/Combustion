@@ -34,14 +34,35 @@ c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
 
       fac = be_cn_theta * dt / (dx*dx)
 
+cc     homogeneous neumann inflow
+c      do i = 0,nx-1
+c         u(i+1) = 0.d0
+c         r(i+1) = Rhs(i)
+c         a(i+1) = -fac*beta(i  )
+c         c(i+1) = -fac*beta(i+1)
+c         if (i.eq.0   ) a(i+1) = 0.d0
+c         if (i.eq.nx-1) c(i+1) =  0.d0
+c         b(i+1) = alpha(i) - (a(i+1)+c(i+1))
+c      enddo
+
+c     dirichlet inflow using ghost cell value
       do i = 0,nx-1
          u(i+1) = 0.d0
          r(i+1) = Rhs(i)
          a(i+1) = -fac*beta(i  )
          c(i+1) = -fac*beta(i+1)
-         if (i.eq.0   ) a(i+1) = 0.d0
          if (i.eq.nx-1) c(i+1) =  0.d0
          b(i+1) = alpha(i) - (a(i+1)+c(i+1))
+         if (i.eq.0   ) then
+            a(i+1) = 0.d0
+            if (rho_flag .eq. 2) then
+               r(i+1) = r(i+1) + 
+     $              fac*beta(i)*scal_new(-1,n)/scal_new(-1,Density)
+            else
+               r(i+1) = r(i+1) + 
+     $              fac*beta(i)*scal_new(-1,n)
+            end if
+         end if
       enddo
 
       call tridiag(a,b,c,r,u,gam,nx)
