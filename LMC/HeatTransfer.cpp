@@ -1805,6 +1805,10 @@ HeatTransfer::post_restart ()
             HTPC->InitFromAsciiFile(particle_restart_file,0);
             //
             // Write out initial position of new particles.
+            // These haven't necessarily been forced to the finest
+            // level yet since we haven't done a regrid.  On restart
+            // with new particles we force a regrid, but it happens
+            // later in the cycle.
             //
             if (!timestamp_dir.empty())
             {
@@ -1812,9 +1816,16 @@ HeatTransfer::post_restart ()
                 {
                     MultiFab& mf = getLevel(i).get_new_data(State_Type);
 
-                    mf.FillBoundary();
+                    const Real curr_time = state[State_Type].curTime();
 
-                    parent->Geom(i).FillPeriodicBoundary(mf,true);
+                    MultiFab tmf(mf.boxArray(), mf.nComp(), 1);
+
+                    for (FillPatchIterator fpi(*this,tmf,1,curr_time,State_Type,0,tmf.nComp());
+                         fpi.isValid();
+                         ++fpi)
+                    {
+                        tmf[fpi.index()].copy(fpi());
+                    }
 
                     std::string basename = timestamp_dir;
 
@@ -1822,11 +1833,7 @@ HeatTransfer::post_restart ()
 
                     basename += "Timestamp";
 
-                    HTPC->Timestamp(basename,
-                                    mf,
-                                    i,
-                                    state[State_Type].curTime(),
-                                    timestamp_indices);
+                    HTPC->Timestamp(basename, tmf, i, curr_time, timestamp_indices);
                 }
             }
         }
@@ -6054,44 +6061,6 @@ HeatTransfer::advance (Real time,
     // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
     //
     velocity_update(dt);
-
-#ifdef PARTICLES
-    if (HTPC != 0)
-    {
-        HTPC->AdvectWithUmac(u_mac, level, dt);
-
-        if (parent->finestLevel() > 0)
-        {
-            HTPC->RemoveParticlesNotAtFinestLevel();
-        }
-
-        if (!timestamp_dir.empty())
-        {
-            const MultiFab& mf = get_new_data(State_Type);
-
-            MultiFab tmf(mf.boxArray(), mf.nComp(), 1);
-
-            const Real curr_time = state[State_Type].curTime();
-
-            for (FillPatchIterator fpi(*this,tmf,1,curr_time,State_Type,0,tmf.nComp());
-                 fpi.isValid();
-                 ++fpi)
-            {
-                tmf[fpi.index()].copy(fpi());
-            }
-
-            std::string basename = timestamp_dir;
-
-            if (basename[basename.length()-1] != '/') basename += '/';
-
-            basename += "Timestamp";
-
-            HTPC->Timestamp(basename, tmf, level, curr_time, timestamp_indices);
-        }
-    }
-#endif
-
-    advance_cleanup(dt,iteration,ncycle);
     //
     // Increment rho average.
     //
@@ -6111,6 +6080,47 @@ HeatTransfer::advance (Real time,
 
         if (level > 0 && iteration == 1) p_avg->setVal(0);
     }
+
+#ifdef PARTICLES
+    if (HTPC != 0)
+    {
+        if (level == parent->finestLevel())
+        {
+            const MultiFab& mf = get_new_data(State_Type);
+
+            const Real curr_time = state[State_Type].curTime();
+
+            HTPC->AdvectWithUmac(u_mac, level, dt);
+
+            if (!timestamp_dir.empty())
+            {
+                MultiFab tmf(mf.boxArray(), mf.nComp(), 1);
+
+                for (FillPatchIterator fpi(*this,tmf,1,curr_time,State_Type,0,tmf.nComp());
+                     fpi.isValid();
+                     ++fpi)
+                {
+                    tmf[fpi.index()].copy(fpi());
+                }
+
+                std::string basename = timestamp_dir;
+
+                if (basename[basename.length()-1] != '/') basename += '/';
+
+                basename += "Timestamp";
+
+                HTPC->Timestamp(basename, tmf, level, curr_time, timestamp_indices);
+            }
+        }
+
+        if (parent->finestLevel() > 0)
+        {
+            HTPC->RemoveParticlesNotAtFinestLevel();
+        }
+    }
+#endif
+
+    advance_cleanup(dt,iteration,ncycle);
     //
     // Update estimate for allowable time step.
     //
