@@ -11,8 +11,8 @@ DIM        = 1
 DIM        = 2
 DIM        = 3
 
-COMP	   = Intel
-FCOMP	   = Intel
+COMP	   = gcc
+FCOMP	   = gfortran
 
 USE_MPI    = FALSE
 
