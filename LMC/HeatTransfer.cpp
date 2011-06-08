@@ -6067,11 +6067,18 @@ HeatTransfer::advance (Real time,
 
         if (!timestamp_dir.empty())
         {
-            MultiFab& mf = get_new_data(State_Type);
+            const MultiFab& mf = get_new_data(State_Type);
 
-            mf.FillBoundary();
+            MultiFab tmf(mf.boxArray(), mf.nComp(), 1);
 
-            geom.FillPeriodicBoundary(mf,true);
+            const Real curr_time = state[State_Type].curTime();
+
+            for (FillPatchIterator fpi(*this,tmf,1,curr_time,State_Type,0,tmf.nComp());
+                 fpi.isValid();
+                 ++fpi)
+            {
+                tmf[fpi.index()].copy(fpi());
+            }
 
             std::string basename = timestamp_dir;
 
@@ -6079,11 +6086,7 @@ HeatTransfer::advance (Real time,
 
             basename += "Timestamp";
 
-            HTPC->Timestamp(basename,
-                            mf,
-                            level,
-                            state[State_Type].curTime(),
-                            timestamp_indices);
+            HTPC->Timestamp(basename, tmf, level, curr_time, timestamp_indices);
         }
     }
 #endif
