@@ -1820,7 +1820,7 @@ HeatTransfer::post_restart ()
 
                     MultiFab tmf(mf.boxArray(), mf.nComp(), 1);
 
-                    for (FillPatchIterator fpi(*this,tmf,1,curr_time,State_Type,0,tmf.nComp());
+                    for (FillPatchIterator fpi(getLevel(i),tmf,1,curr_time,State_Type,0,tmf.nComp());
                          fpi.isValid();
                          ++fpi)
                     {
