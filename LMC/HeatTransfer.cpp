@@ -1818,9 +1818,9 @@ HeatTransfer::post_restart ()
 
                     const Real curr_time = state[State_Type].curTime();
 
-                    MultiFab tmf(mf.boxArray(), mf.nComp(), 1);
+                    MultiFab tmf(mf.boxArray(), mf.nComp(), 2);
 
-                    for (FillPatchIterator fpi(getLevel(i),tmf,1,curr_time,State_Type,0,tmf.nComp());
+                    for (FillPatchIterator fpi(getLevel(i),tmf,2,curr_time,State_Type,0,tmf.nComp());
                          fpi.isValid();
                          ++fpi)
                     {
@@ -6094,9 +6094,9 @@ HeatTransfer::advance (Real time,
 
             if (!timestamp_dir.empty())
             {
-                MultiFab tmf(mf.boxArray(), mf.nComp(), 1);
+                MultiFab tmf(mf.boxArray(), mf.nComp(), 2);
 
-                for (FillPatchIterator fpi(*this,tmf,1,curr_time,State_Type,0,tmf.nComp());
+                for (FillPatchIterator fpi(*this,tmf,2,curr_time,State_Type,0,tmf.nComp());
                      fpi.isValid();
                      ++fpi)
                 {
