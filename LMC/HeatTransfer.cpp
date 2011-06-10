@@ -1803,39 +1803,6 @@ HeatTransfer::post_restart ()
         if (!particle_restart_file.empty())
         {
             HTPC->InitFromAsciiFile(particle_restart_file,0);
-            //
-            // Write out initial position of new particles.
-            // These haven't necessarily been forced to the finest
-            // level yet since we haven't done a regrid.  On restart
-            // with new particles we force a regrid, but it happens
-            // later in the cycle.
-            //
-            if (!timestamp_dir.empty())
-            {
-                for (int i = 0; i <= parent->finestLevel(); i++)
-                {
-                    MultiFab& mf = getLevel(i).get_new_data(State_Type);
-
-                    const Real curr_time = state[State_Type].curTime();
-
-                    MultiFab tmf(mf.boxArray(), mf.nComp(), 2);
-
-                    for (FillPatchIterator fpi(getLevel(i),tmf,2,curr_time,State_Type,0,tmf.nComp());
-                         fpi.isValid();
-                         ++fpi)
-                    {
-                        tmf[fpi.index()].copy(fpi());
-                    }
-
-                    std::string basename = timestamp_dir;
-
-                    if (basename[basename.length()-1] != '/') basename += '/';
-
-                    basename += "Timestamp";
-
-                    HTPC->Timestamp(basename, tmf, i, curr_time, timestamp_indices);
-                }
-            }
         }
 
         if (!particle_output_file.empty())
