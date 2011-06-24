@@ -48,4 +48,6 @@ C         write(10,1006) (i+.5)*dx,(scal(i,FirstSpec+n),n=0,Nspec-1),
      $                     (I_R(i,n),n=1,Nspec)
       enddo
 
+      close(10)
+
       end

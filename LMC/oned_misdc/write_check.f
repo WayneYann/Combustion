@@ -36,11 +36,14 @@
      $                        scal(i,Temp),
      $                        scal(i,RhoH),
      $                        vel(i)
-        enddo
-        do i = 0,nx-1
-           write(10) (i+.5)*dx,(I_R(i,n),n=0,Nspec),divu(i),dsdt(i)
-        enddo
-        do i = 0,nx
-           write(10) i*dx,press(i)
-        enddo
-        end
+      enddo
+      do i = 0,nx-1
+         write(10) (i+.5)*dx,(I_R(i,n),n=0,Nspec),divu(i),dsdt(i)
+      enddo
+      do i = 0,nx
+         write(10) i*dx,press(i)
+      enddo
+
+      close(10)
+
+      end
