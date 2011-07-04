@@ -18,7 +18,7 @@ USE_DIFFUSION = TRUE
 USE_REACT     = TRUE
 USE_CHEM      = TRUE
 
-REACTION_MECHANISM=DRM19
+REACTION_MECHANISM=CHEMH
 
 # These set the EOS and reaction network directories
 EOS_dir     := $(FBOXLIB_HOME)/extern/EOS/gamma_law
