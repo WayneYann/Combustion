@@ -70,46 +70,9 @@ endif
 
 ifeq ($(USE_CHEM), TRUE)
 
+  include $(PBOXLIB_HOME)/Chemistry/Make.package
   INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/Chemistry
   VPATH_LOCATIONS   += $(PBOXLIB_HOME)/Chemistry
-
-  ifeq ($(REACTION_MECHANISM),DRM19)
-    CEXE_sources += drm19.cpp
-  endif
-  ifeq ($(REACTION_MECHANISM),GRI12)
-    CEXE_sources += gri12.cpp
-  endif
-  ifeq ($(REACTION_MECHANISM),GRI30)
-    CEXE_sources += gri30.cpp
-    fEXE_sources += pmf_gri30_ch4_075.f
-  endif
-  ifeq ($(REACTION_MECHANISM),GRI30NON)
-    CEXE_sources += gri30-noN.cpp
-  endif
-  ifeq ($(REACTION_MECHANISM),GRI30HNO)
-    CEXE_sources += gri30_hno.cpp
-  endif
-  ifeq ($(REACTION_MECHANISM),GRI211HNO)
-    CEXE_sources += gri211-hno.cpp
-  endif
-  ifeq ($(REACTION_MECHANISM),CHEMH)
-    CEXE_sources += chem-H.cpp
-  endif
-  ifeq ($(REACTION_MECHANISM),INERT30)
-    CEXE_sources += inert30.cpp
-  endif
-  ifeq ($(REACTION_MECHANISM),CH4-2STEP)
-    CEXE_sources += chem-CH4-2step.cpp
-  endif
-  ifeq ($(REACTION_MECHANISM),PROPANE)
-    CEXE_sources += propane.cpp
-  endif
-
-  CEXE_sources += ChemDriver.cpp
-  CEXE_headers += ChemDriver.H
-  FEXE_sources += ChemDriver_F.F ChemDriver_$(DIM)D.F
-  FEXE_headers += ChemDriver_F.H cdwrk.H
-  fEXE_sources += vode.f EGSlib.f EGini.f
 
 endif
 
