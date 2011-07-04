@@ -58,6 +58,11 @@
       double precision vol(vol_l1:vol_h1,vol_l2:vol_h2, vol_l3:vol_h3)
       double precision delta(3),dt,time,courno
 
+      ! For call to chemsolv
+      integer          :: idbg
+      integer          :: lobig(3), hibig(3)
+      double precision :: hdt
+
       ! Automatic arrays for workspace
       double precision, allocatable:: q(:,:,:,:)
       double precision, allocatable:: gamc(:,:,:)
@@ -69,7 +74,7 @@
       double precision, allocatable:: srcQ(:,:,:,:)
 
       double precision dx,dy,dz
-      integer ngq,ngf,iflaten
+      integer ngp,ngq,ngf,iflaten
 
       allocate(     q(uin_l1:uin_h1,uin_l2:uin_h2,uin_l3:uin_h3,QVAR))
       allocate(  gamc(uin_l1:uin_h1,uin_l2:uin_h2,uin_l3:uin_h3))
@@ -85,10 +90,24 @@
       dx = delta(1)
       dy = delta(2)
       dz = delta(3)
+      hdt = 0.5d0 * dt
 
       ngq = NHYP
       ngf = 1
       iflaten = 1
+
+      ! Chemically react input state (incl. all grow cells) for half time step
+!     if (do_chem.eq.1) then
+ 
+         ngp = NHYP + 1
+         lobig(1:3)= lo(1:3)-ngp
+         hibig(1:3)= hi(1:3)+ngp
+ 
+         call chemsolv(lobig, hibig, &
+                       uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                       hdt, idbg)
+
+!     endif
 
       ! Translate to primitive variables, compute sound speeds
       ! Note that (q,c,gamc,csml,flatn) are all dimensioned the same
@@ -129,6 +148,13 @@
                   area3,area3_l1,area3_l2,area3_l3,area3_h1,area3_h2,area3_h3, &
                   vol,vol_l1,vol_l2,vol_l3,vol_h1,vol_h2,vol_h3, &
                   div,pdivu,lo,hi,dx,dy,dz,dt)
+
+      ! Chemically react output state (not incl. grow cells) for half time step
+!     if (do_chem.eq.1) then
+         call chemsolv(lo, hi, &
+                       uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                       hdt, idbg)
+!     endif
 
       ! Enforce the density >= small_dens.
       call enforce_minimum_density(uin, uin_l1, uin_l2, uin_l3, uin_h1, uin_h2, uin_h3, &
