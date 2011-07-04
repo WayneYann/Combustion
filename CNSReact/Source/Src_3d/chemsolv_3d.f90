@@ -17,7 +17,7 @@
       external consteFY, conpJY
 
       double precision   :: TT1, TT2
-      integer            :: i, j, k, n, MF, ISTATE, T_from_eY, Niter, iC2H2, iO2
+      integer            :: i, j, k, n, MF, ISTATE, T_from_eY, Niter
       integer            :: hardestCase, mostfs, lout, open_vode_failure_file
       character*(maxspnml) name
 
@@ -40,7 +40,7 @@
 
       double precision :: Ytemp(maxspec),Yres(maxspec),sum
 
-      logical          :: newJ_triggered, bad_soln
+      logical          :: newJ_triggered
 
       double precision YJ_SAVE(80)
       LOGICAL FIRST
@@ -238,9 +238,6 @@
             end do
          end do
       end do
-! #ifdef BL_USE_MIB
-!       call FORT_MIB_CHEM(lo,hi,u,DIMS(u))
-! #endif
 
 !     write(6,*) 'FORT_CHEMSOLVE: hardest case took ',hardestCase,' time steps'
 !     write(6,*) 'FORT_CHEMSOLVE: biggest number of f evals was ',mostfs
@@ -258,27 +255,30 @@
       implicit none
 
       double precision :: TIME, Z(NEQ), ZP(NEQ), RPAR(*)
-      integer N, IPAR(*)
+      integer          :: N, IPAR(*)
       
       double precision :: RHOcgs, CPB, SUM, H, WDOT, WT, EINT, TEMP
-      integer K, Niter, T_from_eY
+      integer          :: K, Niter, T_from_eY
 
       EINT = RPAR(NP)
       Niter = T_from_eY(Z(1),Z(2),EINT)
-      if (Niter.lt.0) then
-         write(6,*) 'consteFY: T_from_eY failed!!!!'
-         stop
-      end if
+
+      if (Niter.lt.0) &
+         call bl_error('consteFY: T_from_eY failed!!!!')
+
       CALL CKCPBS(Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CPB)
-      RHOcgs = RWRK(NRHO)*onetominus3
+
+      RHOcgs = RWRK(NRHO)*1.d-3
       CALL CKYTCR(RHOcgs, Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
-      TEMP = MAX(one,Z(1))
+      TEMP = MAX(1.d0,Z(1))
+
       do K=1,Nspec
          RPAR(NC+K-1) = max(RPAR(NC+K-1),0d0)
-      enddo
+      end do
+
       CALL CKWC(TEMP, RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
       CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), RPAR(NH))
-      SUM = zero
+      SUM = 0.d0
 
       do K = 1, Nspec
          H    = RPAR(NH    + K - 1)
@@ -286,11 +286,10 @@
          WT   = RPAR(NWT   + K - 1)
          ZP(K+1) = WDOT * WT / RHOcgs
          SUM = SUM + H * WDOT * WT
-      continue
+      end do
 
       ZP(1) = -SUM / (RHOcgs*CPB)
 
-      return
       end subroutine consteFY
 
 !     
@@ -305,9 +304,9 @@
       double precision T,Y(1),e,ein
       double precision TMIN,TMAX,errMAX
       integer NiterMAX,Niter,n,NiterDAMP
-c      parameter (TMIN=10, TMAX=8000, errMAX=1.e-8, NiterMAX=20)
+!      parameter (TMIN=10, TMAX=8000, errMAX=1.e-8, NiterMAX=20)
       parameter (TMIN=300, TMAX=6500, errMAX=1.e-8, NiterMAX=20)
-c      parameter (NiterDAMP = NiterMAX/2)
+!      parameter (NiterDAMP = NiterMAX/2)
       parameter (NiterDAMP = NiterMAX)
       double precision  T0,h,cp,cv,de,temp,RoverWbar,Wbar,RU,RUC,P1ATM
       double precision res(0:NiterMAX-1),dT, etarg
@@ -315,41 +314,41 @@ c      parameter (NiterDAMP = NiterMAX/2)
       double precision e300,cv300,e6500,cv6500
       integer ihitlo,ihithi
 
-      out_of_bounds(temp) = (temp.lt.TMIN-one) .or. (temp.gt.TMAX)
+      out_of_bounds(temp) = (temp.lt.TMIN-1.d0) .or. (temp.gt.TMAX)
 
       if ((T.GE.TMIN).and.(T.LE.TMAX)) then
          T0 = T
       else
-         T0 = half*(TMIN+TMAX)
+         T0 = 0.5d0*(TMIN+TMAX)
          T = T0
       end if
       Niter = 0
-      de = zero
+      de = 0.d0
       soln_bad = .FALSE.
-      etarg = ein * onetofour
+      etarg = ein * 1.d4
       ihitlo = 0
       ihithi = 0
 
       CALL CKUBMS(T,Y,IWRK(ckbi),RWRK(ckbr),e)
-c     CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),h)
-c     CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
-c     call CKMMWY(Y,IWRK(ckbi),RWRK(ckbr),Wbar)
-c     RoverWbar = RU / Wbar
-c     e  = h - T*RoverWbar
-      de = two*ABS(e - etarg)/(one + ABS(e) + ABS(etarg))
+!     CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),h)
+!     CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
+!     call CKMMWY(Y,IWRK(ckbi),RWRK(ckbr),Wbar)
+!     RoverWbar = RU / Wbar
+!     e  = h - T*RoverWbar
+      de = 2.d0*ABS(e - etarg)/(1.d0 + ABS(e) + ABS(etarg))
       res(Niter) = de
       converged = de.le.errMAX
 
       do while ((.not.converged) .and. (.not.soln_bad))
-c        CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cp)
+!        CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cp)
          CALL CKCVBS(T,Y,IWRK(ckbi),RWRK(ckbr),cv)
          dT = (etarg - e)/cv
          if ((Niter.le.NiterDAMP).and.(T+dT.ge.TMAX)) then
-c           T = half*(T + TMAX)
+!           T = 0.5d0*(T + TMAX)
             T = TMAX
             ihithi = 1
          else if ((Niter.le.NiterDAMP).and.(T+dT.le.TMIN)) then
-c           T = half*(T + TMIN)
+!           T = 0.5d0*(T + TMIN)
             T = TMIN
             ihitlo = 1
          else
@@ -360,10 +359,10 @@ c           T = half*(T + TMIN)
             T_from_eY = -1
             goto 100
          else
-c           CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),h)
-c           e  = h - T*RoverWbar
+!           CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),h)
+!           e  = h - T*RoverWbar
             CALL CKUBMS(T,Y,IWRK(ckbi),RWRK(ckbr),e)
-            de = two*ABS(e - etarg)/(one + ABS(e) + ABS(etarg))
+            de = 2.d0*ABS(e - etarg)/(1.d0 + ABS(e) + ABS(etarg))
             res(Niter) = de
             Niter = Niter + 1
          end if
@@ -390,30 +389,30 @@ c           e  = h - T*RoverWbar
 
       end do
 
-c     Set max iters taken during this solve, and exit
+!     Set max iters taken during this solve, and exit
       T_from_eY = Niter
       return
 
-c     Error condition....dump state and bail out
+!     Error condition....dump state and bail out
  100  continue
 
-#ifdef VERBOSE_FAILURE
-      write(6,997) 'T from (e,Y): failed'
-      write(6,997) 'iterations tried = ',Niter
-      write(6,998) 'initial T = ',T0
-      write(6,998) 'current T = ',T
-      write(6,998) 'species mass fracs:'
-      do n = 1,Nspec
-         write(6,998) '  ',Y(n)
-      end do
-      write(6,998)
-      write(6,998) 'residual = e - h + RT/Wbar [cgs]'
-      do n = 0,Niter-1
-         write(6,998) '  ',res(n)
-      end do
-
- 997  format(a,3(i4,a))
- 998  format(a,d21.12)
-#endif
-      return
-      end
+! #ifdef VERBOSE_FAILURE
+!      write(6,997) 'T from (e,Y): failed'
+!      write(6,997) 'iterations tried = ',Niter
+!      write(6,998) 'initial T = ',T0
+!      write(6,998) 'current T = ',T
+!      write(6,998) 'species mass fracs:'
+!      do n = 1,Nspec
+!         write(6,998) '  ',Y(n)
+!      end do
+!      write(6,998)
+!      write(6,998) 'residual = e - h + RT/Wbar [cgs]'
+!      do n = 0,Niter-1
+!         write(6,998) '  ',res(n)
+!      end do
+!
+! 997  format(a,3(i4,a))
+! 998  format(a,d21.12)
+!#endif
+      
+      end function T_from_eY
