@@ -260,6 +260,8 @@
       double precision :: RHOcgs, CPB, SUM, H, WDOT, WT, EINT, TEMP
       integer          :: K, Niter, T_from_eY
 
+      double precision :: Conc(maxspec),Enthalpy(maxspec),wdots(maxspec)
+
       EINT = RPAR(NP)
       Niter = T_from_eY(Z(1),Z(2),EINT)
 
@@ -269,20 +271,20 @@
       CALL CKCPBS(Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CPB)
 
       RHOcgs = RWRK(NRHO)*1.d-3
-      CALL CKYTCR(RHOcgs, Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), RPAR(NC))
+      CALL CKYTCR(RHOcgs, Z(1), Z(2), IPAR(ckbi), RPAR(ckbr), Conc)
       TEMP = MAX(1.d0,Z(1))
 
       do K=1,Nspec
-         RPAR(NC+K-1) = max(RPAR(NC+K-1),0d0)
+         Conc(K) = max(Conc(K),0d0)
       end do
 
-      CALL CKWC(TEMP, RPAR(NC), IPAR(ckbi), RPAR(ckbr), RPAR(NWDOT))
-      CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), RPAR(NH))
+      CALL CKWC(TEMP, Conc, IPAR(ckbi), RPAR(ckbr), wdots)
+      CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), Enthalpy)
       SUM = 0.d0
 
       do K = 1, Nspec
-         H    = RPAR(NH    + K - 1)
-         WDOT = RPAR(NWDOT + K - 1)
+         H    = Enthalpy(K)
+         WDOT = wdots(K)
          WT   = RPAR(NWT   + K - 1)
          ZP(K+1) = WDOT * WT / RHOcgs
          SUM = SUM + H * WDOT * WT

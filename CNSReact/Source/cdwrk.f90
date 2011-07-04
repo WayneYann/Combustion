@@ -52,7 +52,7 @@
       
 !     DVODE driver (for transient ODE integration) workspace requirements
       integer, parameter ::dvdi = 0, dvdl = 0, dvdc = 0
-      integer, parameter :: dvdr = 2*(maxspec+1)
+      integer, parameter :: dvdr = 2*(maxspec+1)+1
 
 !     Workspace memory layout
       integer, parameter :: ckbr=1,ckbi=1,ckbl=1,ckbc=1 
