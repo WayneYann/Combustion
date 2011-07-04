@@ -18,6 +18,8 @@ USE_DIFFUSION = TRUE
 USE_REACT     = TRUE
 USE_CHEM      = TRUE
 
+REACTION_MECHANISM=DRM19
+
 # These set the EOS and reaction network directories
 EOS_dir     := $(FBOXLIB_HOME)/extern/EOS/gamma_law
 Network_dir := $(FBOXLIB_HOME)/extern/networks/gammalaw
