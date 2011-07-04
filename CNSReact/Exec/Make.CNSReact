@@ -18,21 +18,14 @@ include $(Network_dir)/Make.package
 INCLUDE_LOCATIONS += $(EOS_dir) $(Network_dir)
 VPATH_LOCATIONS   += $(EOS_dir) $(Network_dir)
 
-ifeq ($(USE_REACT), TRUE)
-VODE_dir    := $(FBOXLIB_HOME)/extern/VODE
-include $(VODE_dir)/Make.package
-INCLUDE_LOCATIONS += $(VODE_dir) 
-VPATH_LOCATIONS   += $(VODE_dir) 
-endif
+#ifeq ($(USE_REACT), TRUE)
+#VODE_dir    := $(FBOXLIB_HOME)/extern/VODE
+#include $(VODE_dir)/Make.package
+#INCLUDE_LOCATIONS += $(VODE_dir) 
+#VPATH_LOCATIONS   += $(VODE_dir) 
+#endif
 
 # end EOS_dir and Network_dir section
-
-ifeq ($(DIM), 1)
-DEFINES += -DHAS_XGRAPH
-include $(PBOXLIB_HOME)/plot1d/Make.package
-INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/plot1d
-VPATH_LOCATIONS   += $(PBOXLIB_HOME)/plot1d
-endif
 
 # These set the directories in Parallel to be included
 
