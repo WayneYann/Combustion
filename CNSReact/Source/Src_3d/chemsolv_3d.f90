@@ -31,9 +31,6 @@
       double precision, parameter :: NEWJ_TOL = 1.d100
 
       integer         , parameter :: NSPECMAX = 53
-      
-      ! HACK HACK HACK 
-      integer         , parameter :: NRHO = 1
 
       double precision :: deriv(NSPECMAX+1)
       double precision :: ATOL(maxspec+1)
@@ -48,6 +45,9 @@
       SAVE   /VHACK/
       double precision scale, ekin, u1, u2, u3
 !     integer is_bad
+      
+      ! NRHO is declared in conp_module, but set here
+      NRHO = 1
       
 !     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
