@@ -7,15 +7,16 @@ PROFILE    = FALSE
 DEBUG      = FALSE
 DEBUG      = TRUE
 
-DIM        = 2
+DIM        = 3
 
-COMP	   = Intel
-FCOMP	   = Intel
+COMP	   = gcc
+FCOMP	   = gfortran
 
 USE_MPI    = FALSE
 
 USE_DIFFUSION = TRUE
 USE_REACT     = TRUE
+USE_CHEM      = TRUE
 
 # These set the EOS and reaction network directories
 EOS_dir     := $(FBOXLIB_HOME)/extern/EOS/gamma_law
