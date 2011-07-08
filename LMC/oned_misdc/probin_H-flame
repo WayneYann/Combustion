@@ -10,7 +10,7 @@
   change_max = 1.1
   init_shrink = 0.1
   probtype = 1
-  flame_offset = 0.4
+  flame_offset = -1
   dpdt_factor = .3
   Patm = 1.0
   predict_temp_for_coeffs = 1
