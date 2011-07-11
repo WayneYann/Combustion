@@ -66,6 +66,10 @@ program gri_converge
   L1 = L1 / dble(nx)
   L2 = sqrt(L2/nx)
 
+  write(*,*) "nsteps =",nsteps
+  write(*,*) "nx     =",nx
+  write(*,*) "time   =",time
+  write(*,*)
   write(*,*) "L0 NORM: H2          =",L0(2)
   write(*,*) "L0 NORM: Density     =",L0(55)
   write(*,*) "L0 NORM: Temperature =",L0(56)
