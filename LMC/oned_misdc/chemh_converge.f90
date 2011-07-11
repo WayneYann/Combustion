@@ -1,7 +1,7 @@
 program chemh_converge
 
-  character in1*(16)
-  character in2*(16)
+  character in1*(32)
+  character in2*(32)
 
   integer i,j,nsteps,nx
   real*8 time
