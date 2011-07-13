@@ -308,10 +308,12 @@ c        simply extract D for RhoX
 
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
-         call get_spec_visc_terms(scal_new,beta_old,
-     $                            diff_hat(0,FirstSpec),
-     $                            spec_flux_lo,spec_flux_hi,
-     $                            dx,time)
+c        DON'T FILL GHOST CELLS OR ELSE VISC WILL BE INCONSISTENT
+c        WITH GHOST CELLS USED IN CN_SOLVE
+         call get_spec_visc_terms_nosetbc(scal_new,beta_old,
+     $                                    diff_hat(0,FirstSpec),
+     $                                    spec_flux_lo,spec_flux_hi,
+     $                                    dx,time)
 
 c        update species with conservative diffusion fluxes
          do i=0,nx-1
