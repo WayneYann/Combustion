@@ -3,11 +3,12 @@ program chemh_converge
   character in1*(32)
   character in2*(32)
 
-  integer i,j,nsteps,nx
-  real*8 time
+  integer i,j,k,nsteps_c,nsteps_f,nx_c,nx_f,rr
+  real*8 time_c,time_f,sum
   
-  real*8 data1(1024,26)
-  real*8 data2(1024,26)
+  real*8 data1  (1024,26)
+  real*8 data2_f(4096,26)
+  real*8 data2_c(1024,26)
 
   real*8 L0(26)
   real*8 L1(26)
@@ -17,11 +18,11 @@ program chemh_converge
   read(*,*) in2
 
   open(10,file=in1,form='formatted')
-  read(10,*) nsteps
-  read(10,*) nx
-  read(10,*) time
+  read(10,*) nsteps_c
+  read(10,*) nx_c
+  read(10,*) time_c
 
-  do i=0,nx-1
+  do i=0,nx_c-1
      read(10,*) data1(i,1), &
                 data1(i,2:10), &
                 data1(i,11), &
@@ -35,40 +36,54 @@ program chemh_converge
   end do
 
   open(20,file=in2,form='formatted')
-  read(20,*) nsteps
-  read(20,*) nx
-  read(20,*) time
+  read(20,*) nsteps_f
+  read(20,*) nx_f
+  read(20,*) time_f
 
-  do i=0,nx-1
-     read(20,*) data2(i,1), &
-                data2(i,2:10), &
-                data2(i,11), &
-                data2(i,12), &
-                data2(i,13), &
-                data2(i,14), &
-                data2(i,15), &
-                data2(i,16), &
-                data2(i,17), &
-                data2(i,18:26)
+  do i=0,nx_f-1
+     read(20,*) data2_f(i,1), &
+                data2_f(i,2:10), &
+                data2_f(i,11), &
+                data2_f(i,12), &
+                data2_f(i,13), &
+                data2_f(i,14), &
+                data2_f(i,15), &
+                data2_f(i,16), &
+                data2_f(i,17), &
+                data2_f(i,18:26)
   end do
 
+  rr = nx_f / nx_c
+
+  !  coarsen fine data
+  do i=0,nx_c-1
+     do j=1,26
+        sum = 0.d0
+        do k=0,rr-1
+           sum = sum + data2_f(rr*i+k,j)
+        end do
+        data2_c(i,j) = sum / dble(rr)
+     end do
+  end do
+  
   L0 = 0.d0
   L1 = 0.d0
   L2 = 0.d0
 
-  do i=0,nx-1
+  do i=0,nx_c-1
      do j=1,26
-        L0(j) = max(L0(j), abs(data1(i,j)-data2(i,j)))
-        L1(j) = L1(j) + abs(data1(i,j)-data2(i,j))
-        L2(j) = L2(j) + (data1(i,j)-data2(i,j))**2
+        L0(j) = max(L0(j), abs(data1(i,j)-data2_c(i,j)))
+        L1(j) = L1(j) + abs(data1(i,j)-data2_c(i,j))
+        L2(j) = L2(j) + (data1(i,j)-data2_c(i,j))**2
      end do
   end do
-  L1 = L1 / dble(nx)
-  L2 = sqrt(L2/nx)
+  L1 = L1 / dble(nx_c)
+  L2 = sqrt(L2/nx_c)
 
-  write(*,*) "nsteps =",nsteps
-  write(*,*) "nx     =",nx
-  write(*,*) "time   =",time
+  write(*,*) "nsteps =",nsteps_c,nsteps_f
+  write(*,*) "nx     =",nx_c,nx_f
+  write(*,*) "time   =",time_c,time_f
+  write(*,*) "rr     =",rr
   write(*,*)
   write(*,*) "L0 NORM: O2          =",L0(21)
   write(*,*) "L0 NORM: Density     =",L0(11)
