@@ -109,14 +109,6 @@
                   if (iN2 .gt. 0) then
                      Ytemp(iN2) = Ytemp(iN2) + 1.d0 - sum
                   endif
-
-!               if(idbg.eq.1 .and.i.eq.270 .and. j.eq. 15 .and. k.eq.32)then
-!                   write(*,*) "going in with ",u(i,j,k,1),u(i,j,k,6)
-!                   write(*,*) "eint = ",RWRK(NP)
-!                   do n=1,Nspec
-!                   write(*,*)Ytemp(n)
-!                   enddo
-!               endif
                 
 !     Note: ensure that T initialized to a good value, load Y,T into IC
                   do n = 1,Nspec
@@ -133,10 +125,6 @@
                      enddo
                      stop
                   end if
-
-!                if(i.eq.16 .and. j.eq. 21 .and. k.eq.7)then
-!                    write(6,*) u(i,j,k,NTHERM+1),RWRK(NZ),RWRK(NP)
-!                endif
                   
                   newJ_triggered = .FALSE.
                   sum = 0.d0
