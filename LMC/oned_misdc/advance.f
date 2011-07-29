@@ -687,7 +687,7 @@ c        simply extract D for RhoX
 
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
-         call get_spec_visc_terms(scal_new,beta_old,
+         call get_spec_visc_terms_nosetbc(scal_new,beta_old,
      $                            diff_hat(0,FirstSpec),
      $                            spec_flux_lo,spec_flux_hi,
      $                            dx,time)
