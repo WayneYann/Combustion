@@ -97,19 +97,22 @@ c        compute cell-centered h_m
          do n=1,Nspec
             is = FirstSpec + n - 1
 
+c     compute -h_m * lambda/cp on faces
             beta_lo = ( hi(n,i  )*(-beta(i  ,RhoH)) 
      $                 +hi(n,i-1)*(-beta(i-1,RhoH)) )/2.d0
             beta_hi = ( hi(n,i  )*(-beta(i  ,RhoH)) 
      $                 +hi(n,i+1)*(-beta(i+1,RhoH)) )/2.d0
- 
+c     set face fluxes to (-h_m * lambda/cp) * grad X
             flux_lo(n) = beta_lo*(Y(n  ,i) - Y(n,i-1))
             flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i))
 
+c     add (h_m * rho D_m) * grad X to face fluxes
             flux_lo(n) = flux_lo(n) + spec_flux_lo(i,n)*
      $           (hi(n,i-1)+hi(n,i))/2.d0
             flux_hi(n) = flux_hi(n) + spec_flux_hi(i,n)*
      $           (hi(n,i+1)+hi(n,i))/2.d0
  
+c     differential diffusion is divergence of face fluxes
             diffdiff(i) = diffdiff(i) + 
      $           (flux_hi(n) - flux_lo(n))*dxsqinv
 
