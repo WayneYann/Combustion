@@ -1014,7 +1014,7 @@ c                   lambda^n / cp^n (for enthalpy)
 c                   lambda^n        (for temperature) 
       call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
 
-c     compute del dot lambda grad T + del dot rho D grad h grad Y
+c     compute del dot lambda grad T + rho D grad h dot grad Y
 c     the rho D grad Y term is now computed conservatively
       call get_temp_visc_terms(scal_old,beta_old,
      &                         diff_old(0,Temp),dx,time)
