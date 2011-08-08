@@ -20,6 +20,7 @@
   misdc_iterMAX = 1
   nochem_hack = .false.
   use_strang = .false.
+  use_pl = .false.
   use_temp_eqn = .false.
   use_radau = .false.
   use_rhoh2 = .true.
