@@ -1,5 +1,5 @@
 //
-// $Id: HT_setup.cpp,v 1.19 2011-05-04 16:36:21 lijewski Exp $
+// $Id: HT_setup.cpp,v 1.20 2011-08-08 23:01:03 lijewski Exp $
 //
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
@@ -415,8 +415,8 @@ protected:
 private:
 
     ChemBndryFunc_FortBndryFunc m_func;
-    std::string       m_stateName;
-    int           m_stateID;
+    std::string                 m_stateName;
+    int                         m_stateID;
 };
 
 //
@@ -440,7 +440,7 @@ HeatTransfer::variableSetUp ()
 	phys_bc.setHi(dir,SlipWall);
     }
 
-    read_params();
+    Initialize();
     BCRec bc;
     //
     // Set state variable Id's (Density, velocities and Temp set already).

@@ -358,7 +358,8 @@ protected:
     //
     // Protected static member functions.
     //
-    static void read_params ();
+    static void Initialize ();
+    static void Finalize ();
 
     static void RhoH_to_Temp (MultiFab& S, int nGrow = 0);
 

@@ -13,6 +13,7 @@
 #include <cfloat>
 #include <fstream>
 #include <vector>
+
 using std::cout;
 using std::endl;
 using std::cerr;
@@ -57,6 +58,14 @@ const int* fablo = (fab).loVect();                    \
 const int* fabhi = (fab).hiVect();                    \
 const Real* fabdat = (fab).dataPtr(comp);
 
+#ifdef BL_USE_FLOAT
+#  define Real_MIN FLT_MIN
+#  define Real_MAX FLT_MAX
+#else
+#  define Real_MIN DBL_MIN
+#  define Real_MAX DBL_MAX
+#endif
+
 #define GEOM_GROW   1
 #define HYP_GROW    3
 #define PRESS_GROW  1
@@ -65,89 +74,98 @@ const Real* fabdat = (fab).dataPtr(comp);
 #define bogus_value 1.e20
 #define DQRAD_GROW  1
 #define YDOT_GROW   1
+
 const int LinOp_grow = 1;
 
-static std::set<std::string> ShowMF_Sets;
-static std::string ShowMF_Dir;
-static bool ShowMF_Verbose = true;
-static bool ShowMF_Check_Nans = true;
+static const std::string typical_values_filename("typical_values.fab");
 
+namespace
+{
+    bool initialized = false;
+}
 //
-// Initialization of static members.
+// Set all default values in Initialize()!!!
 //
-int       HeatTransfer::num_divu_iters        = 1;
-int       HeatTransfer::init_once_done        = 0;
-int       HeatTransfer::do_OT_radiation       = 0;
-int       HeatTransfer::do_heat_sink          = 0;
-int       HeatTransfer::RhoH                  = -1;
-int       HeatTransfer::do_diffuse_sync       = 1;
-int       HeatTransfer::do_reflux_visc        = 1;
-int       HeatTransfer::dpdt_option           = 2;
-int       HeatTransfer::Ydot_Type             = -1;
-int       HeatTransfer::FuncCount_Type           = -1;
-int       HeatTransfer::divu_ceiling          = 0;
-Real      HeatTransfer::divu_dt_factor        = .5;
-Real      HeatTransfer::min_rho_divu_ceiling  = -1.e20;
-int       HeatTransfer::have_trac                 = 0;
-int       HeatTransfer::have_rhort                = 0;
-int       HeatTransfer::Trac                      = -1;
-int       HeatTransfer::RhoRT                     = -1;
-int       HeatTransfer::first_spec                = -1;
-int       HeatTransfer::last_spec                 = -2;
-int       HeatTransfer::nspecies                  = 0;
-int       HeatTransfer::floor_species             = 0;
-int       HeatTransfer::do_set_rho_to_species_sum = 1;
-Real      HeatTransfer::rgas                      = -1.0;
-Real      HeatTransfer::prandtl                   = .7;
-Real      HeatTransfer::schmidt                   = .7;
-Real      HeatTransfer::constant_mu_val           = -1;
-Real      HeatTransfer::constant_rhoD_val         = -1;
-Real      HeatTransfer::constant_lambda_val       = -1;
-int       HeatTransfer::unity_Le                  = 1;
-Real      HeatTransfer::htt_tempmin               = 298.0;
-Real      HeatTransfer::htt_tempmax               = 40000.;
-Real      HeatTransfer::htt_hmixTYP               = -1.;
-int       HeatTransfer::siegel_test               = 0;
-int       HeatTransfer::zeroBndryVisc             = 0;
-ChemDriver* HeatTransfer::chemSolve            = 0;
-int       HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
-int       HeatTransfer::do_check_divudt           = 1;
-int       HeatTransfer::hack_nochem               = 0;
-int       HeatTransfer::hack_nospecdiff           = 0;
-int       HeatTransfer::hack_nomcddsync           = 1;
-int       HeatTransfer::hack_noavgdivu            = 0;
-Real      HeatTransfer::trac_diff_coef            = 0.0;
-Real      HeatTransfer::P1atm_MKS                 = -1.0;
-std::string   HeatTransfer::turbFile              ="";
+namespace
+{
+    std::set<std::string> ShowMF_Sets;
+    std::string           ShowMF_Dir;
+    bool                  ShowMF_Verbose;
+    bool                  ShowMF_Check_Nans;
+    bool                  do_not_use_funccount;
+    bool                  do_active_control;
+    Real                  crse_dt;
+}
+
+int  HeatTransfer::num_divu_iters;
+int  HeatTransfer::init_once_done;
+int  HeatTransfer::do_OT_radiation;
+int  HeatTransfer::do_heat_sink;
+int  HeatTransfer::RhoH;
+int  HeatTransfer::do_diffuse_sync;
+int  HeatTransfer::do_reflux_visc;
+int  HeatTransfer::dpdt_option;
+int  HeatTransfer::Ydot_Type;
+int  HeatTransfer::FuncCount_Type;
+int  HeatTransfer::divu_ceiling;
+Real HeatTransfer::divu_dt_factor;
+Real HeatTransfer::min_rho_divu_ceiling;
+int  HeatTransfer::have_trac;
+int  HeatTransfer::have_rhort;
+int  HeatTransfer::Trac;
+int  HeatTransfer::RhoRT;
+int  HeatTransfer::first_spec;
+int  HeatTransfer::last_spec;
+int  HeatTransfer::nspecies;
+int  HeatTransfer::floor_species;
+int  HeatTransfer::do_set_rho_to_species_sum;
+Real HeatTransfer::rgas;
+Real HeatTransfer::prandtl;
+Real HeatTransfer::schmidt;
+Real HeatTransfer::constant_mu_val;
+Real HeatTransfer::constant_rhoD_val;
+Real HeatTransfer::constant_lambda_val;
+int  HeatTransfer::unity_Le;
+Real HeatTransfer::htt_tempmin;
+Real HeatTransfer::htt_tempmax;
+Real HeatTransfer::htt_hmixTYP;
+int  HeatTransfer::siegel_test;
+int  HeatTransfer::zeroBndryVisc;
+int  HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux;
+int  HeatTransfer::do_check_divudt;
+int  HeatTransfer::hack_nochem;
+int  HeatTransfer::hack_nospecdiff;
+int  HeatTransfer::hack_nomcddsync;
+int  HeatTransfer::hack_noavgdivu;
+Real HeatTransfer::trac_diff_coef;
+Real HeatTransfer::P1atm_MKS;
+bool HeatTransfer::plot_reactions;
+bool HeatTransfer::plot_consumption;
+bool HeatTransfer::plot_heat_release;
+int  HeatTransfer::do_mcdd;
+int  HeatTransfer::mcdd_NitersMAX;
+Real HeatTransfer::mcdd_relax_factor_T;
+Real HeatTransfer::mcdd_relax_factor_Y;
+int  HeatTransfer::mcdd_mgLevelsMAX;
+int  HeatTransfer::mcdd_nub;
+int  HeatTransfer::mcdd_numcycles;
+int  HeatTransfer::mcdd_verbose;
+Real HeatTransfer::mcdd_res_nu1_rtol;
+Real HeatTransfer::mcdd_res_nu2_rtol;
+Real HeatTransfer::mcdd_res_redux_tol;
+Real HeatTransfer::mcdd_res_abs_tol;
+Real HeatTransfer::mcdd_stalled_tol;
+Real HeatTransfer::mcdd_advance_temp;
+Real HeatTransfer::new_T_threshold;
+
+std::string                                HeatTransfer::turbFile;
+ChemDriver*                                HeatTransfer::chemSolve;
 std::map<std::string, Array<std::string> > HeatTransfer::auxDiag_names;
-bool      HeatTransfer::plot_reactions            = false;
-bool      HeatTransfer::plot_consumption          = true;
-bool      HeatTransfer::plot_heat_release         = true;
-int       HeatTransfer::do_mcdd                   = 0;
-std::string HeatTransfer::mcdd_transport_model    = "";
-int       HeatTransfer::mcdd_NitersMAX            = 100;
-Real      HeatTransfer::mcdd_relax_factor_T       = 1.0;
-Real      HeatTransfer::mcdd_relax_factor_Y       = 1.0;
-int       HeatTransfer::mcdd_mgLevelsMAX          = -1;
-Array<int> HeatTransfer::mcdd_nu1;
-Array<int> HeatTransfer::mcdd_nu2;
-int       HeatTransfer::mcdd_nub                  = -1;
-int       HeatTransfer::mcdd_numcycles            = 10;
-int       HeatTransfer::mcdd_verbose              = 1;
-Real      HeatTransfer::mcdd_res_nu1_rtol         = 1.e-8;
-Real      HeatTransfer::mcdd_res_nu2_rtol         = 1.e-8;
-Real      HeatTransfer::mcdd_res_redux_tol        = 1.e-8;
-Real      HeatTransfer::mcdd_res_abs_tol          = 1.e-8;
-Real      HeatTransfer::mcdd_stalled_tol          = 1.e-8;
-Real      HeatTransfer::mcdd_advance_temp         = 1;
-Real      HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
+std::string                                HeatTransfer::mcdd_transport_model;
 
+Array<int>  HeatTransfer::mcdd_nu1;
+Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
-std::string typical_values_filename = "typical_values.fab";
-
-static bool do_not_use_funccount = false;
-static bool do_active_control    = false;
-static Real crse_dt = -1;
 
 #ifdef PARTICLES
 //
@@ -163,252 +181,103 @@ static HTParticleContainer* HTPC = 0;
 //
 HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
 
-static std::string              timestamp_dir = "Timestamps";
-static std::vector<int>         timestamp_indices;
-static std::string              particle_init_file;
-static std::string              particle_restart_file;
-static std::string              particle_output_file;
-static bool                     restart_from_nonparticle_chkfile = false;
-static int                      pverbose = 2;
-#endif
-
-#ifdef BL_USE_FLOAT
-#  define Real_MIN FLT_MIN
-#  define Real_MAX FLT_MAX
-#else
-#  define Real_MIN DBL_MIN
-#  define Real_MAX DBL_MAX
-#endif
-
-static
-void
-FabMinMax (FArrayBox& fab,
-           const Box& box,
-           Real       fmin,
-           Real       fmax,
-           int        sComp,
-           int        nComp)
+namespace
 {
-    BL_ASSERT(fab.box().contains(box));
-    BL_ASSERT(sComp + nComp <= fab.nComp());
+    std::string      timestamp_dir = "Timestamps";
+    std::vector<int> timestamp_indices;
+    std::string      particle_init_file;
+    std::string      particle_restart_file;
+    std::string      particle_output_file;
+    bool             restart_from_nonparticle_chkfile = false;
+    int              pverbose = 2;
+}
+#endif /*PARTICLES*/
 
-    const int* lo     = box.loVect();
-    const int* hi     = box.hiVect();
-    Real*      fabdat = fab.dataPtr(sComp);
+void
+HeatTransfer::Initialize ()
+{
+    if (initialized) return;
+
+    NavierStokes::Initialize();
+    //
+    // Set all default values here!!!
+    //
+    ShowMF_Verbose       = true;
+    ShowMF_Check_Nans    = true;
+    do_not_use_funccount = false;
+    do_active_control    = false;
+    crse_dt              = -1;
     
-    FORT_FABMINMAX(lo, hi,
-                   fabdat, ARLIM(fab.loVect()), ARLIM(fab.hiVect()),
-                   &fmin, &fmax, &nComp);
-}
+    HeatTransfer::num_divu_iters            = 1;
+    HeatTransfer::init_once_done            = 0;
+    HeatTransfer::do_OT_radiation           = 0;
+    HeatTransfer::do_heat_sink              = 0;
+    HeatTransfer::RhoH                      = -1;
+    HeatTransfer::do_diffuse_sync           = 1;
+    HeatTransfer::do_reflux_visc            = 1;
+    HeatTransfer::dpdt_option               = 2;
+    HeatTransfer::Ydot_Type                 = -1;
+    HeatTransfer::FuncCount_Type            = -1;
+    HeatTransfer::divu_ceiling              = 0;
+    HeatTransfer::divu_dt_factor            = .5;
+    HeatTransfer::min_rho_divu_ceiling      = -1.e20;
+    HeatTransfer::have_trac                 = 0;
+    HeatTransfer::have_rhort                = 0;
+    HeatTransfer::Trac                      = -1;
+    HeatTransfer::RhoRT                     = -1;
+    HeatTransfer::first_spec                = -1;
+    HeatTransfer::last_spec                 = -2;
+    HeatTransfer::nspecies                  = 0;
+    HeatTransfer::floor_species             = 0;
+    HeatTransfer::do_set_rho_to_species_sum = 1;
+    HeatTransfer::rgas                      = -1.0;
+    HeatTransfer::prandtl                   = .7;
+    HeatTransfer::schmidt                   = .7;
+    HeatTransfer::constant_mu_val           = -1;
+    HeatTransfer::constant_rhoD_val         = -1;
+    HeatTransfer::constant_lambda_val       = -1;
+    HeatTransfer::unity_Le                  = 1;
+    HeatTransfer::htt_tempmin               = 298.0;
+    HeatTransfer::htt_tempmax               = 40000.;
+    HeatTransfer::htt_hmixTYP               = -1.;
+    HeatTransfer::siegel_test               = 0;
+    HeatTransfer::zeroBndryVisc             = 0;
+    HeatTransfer::chemSolve                 = 0;
+    HeatTransfer::do_check_divudt           = 1;
+    HeatTransfer::hack_nochem               = 0;
+    HeatTransfer::hack_nospecdiff           = 0;
+    HeatTransfer::hack_nomcddsync           = 1;
+    HeatTransfer::hack_noavgdivu            = 0;
+    HeatTransfer::trac_diff_coef            = 0.0;
+    HeatTransfer::P1atm_MKS                 = -1.0;
+    HeatTransfer::turbFile                  = "";
+    HeatTransfer::plot_reactions            = false;
+    HeatTransfer::plot_consumption          = true;
+    HeatTransfer::plot_heat_release         = true;
+    HeatTransfer::do_mcdd                   = 0;
+    HeatTransfer::mcdd_transport_model      = "";
+    HeatTransfer::mcdd_NitersMAX            = 100;
+    HeatTransfer::mcdd_relax_factor_T       = 1.0;
+    HeatTransfer::mcdd_relax_factor_Y       = 1.0;
+    HeatTransfer::mcdd_mgLevelsMAX          = -1;
+    HeatTransfer::mcdd_nub                  = -1;
+    HeatTransfer::mcdd_numcycles            = 10;
+    HeatTransfer::mcdd_verbose              = 1;
+    HeatTransfer::mcdd_res_nu1_rtol         = 1.e-8;
+    HeatTransfer::mcdd_res_nu2_rtol         = 1.e-8;
+    HeatTransfer::mcdd_res_redux_tol        = 1.e-8;
+    HeatTransfer::mcdd_res_abs_tol          = 1.e-8;
+    HeatTransfer::mcdd_stalled_tol          = 1.e-8;
+    HeatTransfer::mcdd_advance_temp         = 1;
+    HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
 
-static std::ostream&
-levWrite(std::ostream& os, int level, std::string& message)
-{
-    if (ParallelDescriptor::IOProcessor())
-    {
-        for (int lev=0; lev<=level; ++lev) {
-            //os << '\t';
-            os << "  ";
-        }
-        os << message;
-    }
-    return os;
-}
+    HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
 
-void
-showMF(const std::string&   mySet,
-       const MultiFab&      mf,
-       const std::string&   name,
-       int                  lev = -1,
-       int                  iter = -1) // Default value = no append 2nd integer
-{
-    if (ShowMF_Sets.count(mySet)>0)
-    {
-        std::string DebugDir(ShowMF_Dir);
-        if (ParallelDescriptor::IOProcessor())
-            if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
-                BoxLib::CreateDirectoryFailed(DebugDir);
-        ParallelDescriptor::Barrier();
-
-        std::string junkname = name;
-        if (lev>=0) {
-            junkname = BoxLib::Concatenate(junkname+"_",lev,1);
-        }
-        if (iter>=0) {
-            junkname = BoxLib::Concatenate(junkname+"_",iter,1);
-        }
-        junkname = DebugDir + "/" + junkname;
-
-        if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
-            cout << "   ******************************  Debug: writing " << junkname << endl;
-        }
-
-        if (ShowMF_Check_Nans)
-        {
-            for (MFIter mfi(mf); mfi.isValid(); ++mfi)
-            {
-                BL_ASSERT(!mf[mfi].contains_nan(mfi.validbox(),0,mf.nComp()));
-            }
-        }
-        VisMF::Write(mf,junkname);
-    }
-}
-
-void
-showMCDD(const std::string&   mySet,
-         const DDOp&          mcddop,
-         const std::string&   name)
-{
-    if (ShowMF_Sets.count(mySet)>0)
-    {
-        std::string DebugDir(ShowMF_Dir);
-        if (ParallelDescriptor::IOProcessor())
-            if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
-                BoxLib::CreateDirectoryFailed(DebugDir);
-        ParallelDescriptor::Barrier();
-
-        std::string junkname = DebugDir + "/" + name;
-
-        if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
-            cout << "   ******************************  Debug: writing " << junkname << endl;
-        }
-        mcddop.Write(junkname);
-    }
-}
-
-HeatTransfer::FPLoc 
-HeatTransfer::fpi_phys_loc (int p_bc)
-{
-    //
-    // Location of data that FillPatchIterator returns at physical boundaries
-    //
-    if (p_bc == EXT_DIR || p_bc == HOEXTRAP || p_bc == FOEXTRAP)
-    {
-        return HT_Edge;
-    }
-    return HT_Center;
-}
-    
-void
-HeatTransfer::center_to_edge_fancy (const FArrayBox& cfab,
-                                    FArrayBox&       efab,
-                                    const Box&       ccBox,
-                                    int              sComp,
-                                    int              dComp,
-                                    int              nComp,
-                                    const Box&       domain,
-                                    const FPLoc&     bc_lo,
-                                    const FPLoc&     bc_hi)
-{
-    BL_PROFILE("HeatTransfer::center_to_edge_fancy()");
-
-    const Box&      ebox = efab.box();
-    const IndexType ixt  = ebox.ixType();
-
-    BL_ASSERT(!(ixt.cellCentered()) && !(ixt.nodeCentered()));
-
-    int dir = -1;
-    for (int d = 0; d < BL_SPACEDIM; d++)
-        if (ixt.test(d))
-            dir = d;
-
-    BL_ASSERT(BoxLib::grow(ccBox,-BoxLib::BASISV(dir)).contains(BoxLib::enclosedCells(ebox)));
-    BL_ASSERT(sComp+nComp <= cfab.nComp() && dComp+nComp <= efab.nComp());
-    //
-    // Exclude unnecessary cc->ec calcs
-    //
-    Box ccVBox = ccBox;
-    if (bc_lo!=HT_Center)
-        ccVBox.setSmall(dir,std::max(domain.smallEnd(dir),ccVBox.smallEnd(dir)));
-    if (bc_hi!=HT_Center)
-        ccVBox.setBig(dir,std::min(domain.bigEnd(dir),ccVBox.bigEnd(dir)));
-    //
-    // Shift cell-centered data to edges
-    //
-    const int isharm = def_harm_avg_cen2edge?1:0;
-    FORT_CEN2EDG(ccVBox.loVect(),ccVBox.hiVect(),
-                 ARLIM(cfab.loVect()),ARLIM(cfab.hiVect()),cfab.dataPtr(sComp),
-                 ARLIM(efab.loVect()),ARLIM(efab.hiVect()),efab.dataPtr(dComp),
-                 &nComp, &dir, &isharm);
-    //
-    // Fix boundary...i.e. fill-patched data in cfab REALLY lives on edges
-    //
-    if ( !(domain.contains(ccBox)) )
-    {
-        if (bc_lo==HT_Edge)
-        {
-            BoxList gCells = BoxLib::boxDiff(ccBox,domain);
-            if (gCells.ok())
-            {
-                const int inc = +1;
-                FArrayBox ovlpFab;
-                for (BoxList::const_iterator bli = gCells.begin(), end = gCells.end();
-                     bli != end;
-                     ++bli)
-                {
-                    if (bc_lo == HT_Edge)
-                    {
-                        ovlpFab.resize(*bli,nComp);
-                        ovlpFab.copy(cfab,sComp,0,nComp);
-                        ovlpFab.shiftHalf(dir,inc);
-                        efab.copy(ovlpFab,0,dComp,nComp);
-                    }
-                }
-            }
-        }
-        if (bc_hi==HT_Edge)
-        {
-            BoxList gCells = BoxLib::boxDiff(ccBox,domain);
-            if (gCells.ok())
-            {
-                const int inc = -1;
-                FArrayBox ovlpFab;
-                for (BoxList::const_iterator bli = gCells.begin(), end = gCells.end();
-                     bli != end;
-                     ++bli)
-                {
-                    if (bc_hi == HT_Edge)
-                    {
-                        ovlpFab.resize(*bli,nComp);
-                        ovlpFab.copy(cfab,sComp,0,nComp);
-                        ovlpFab.shiftHalf(dir,inc);
-                        efab.copy(ovlpFab,0,dComp,nComp);
-                    }
-                }
-            }
-        }
-    }
-}    
-
-void
-HeatTransfer::variableCleanUp ()
-{
-    NavierStokes::variableCleanUp();
-
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "Deleting chemSolver in variableCleanUp ... ";
-
-    delete chemSolve;
-
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "done" << '\n';
-
-    chemSolve = 0;
-}
-
-void
-HeatTransfer::read_params ()
-{
-    //
-    // Read parameters from input file and command line.
-    //
-    static bool done = false;
-
-    if (done) return;
-
-    done = true;
-
-    NavierStokes::read_params();
+#ifdef PARTICLES
+    timestamp_dir                    = "Timestamps";
+    restart_from_nonparticle_chkfile = false;
+    pverbose                         = 2;
+#endif /*PARTICLES*/
 
     ParmParse pp("ns");
 
@@ -632,6 +501,237 @@ HeatTransfer::read_params ()
         ParmParse::dumpTable(std::cout);
         std::cout << "\n... done dumping ParmParse table.\n" << '\n';
     }
+
+    BoxLib::ExecOnFinalize(HeatTransfer::Finalize);
+
+    initialized = true;
+}
+
+void
+HeatTransfer::Finalize ()
+{
+    initialized = false;
+}
+
+static
+void
+FabMinMax (FArrayBox& fab,
+           const Box& box,
+           Real       fmin,
+           Real       fmax,
+           int        sComp,
+           int        nComp)
+{
+    BL_ASSERT(fab.box().contains(box));
+    BL_ASSERT(sComp + nComp <= fab.nComp());
+
+    const int* lo     = box.loVect();
+    const int* hi     = box.hiVect();
+    Real*      fabdat = fab.dataPtr(sComp);
+    
+    FORT_FABMINMAX(lo, hi,
+                   fabdat, ARLIM(fab.loVect()), ARLIM(fab.hiVect()),
+                   &fmin, &fmax, &nComp);
+}
+
+static
+std::ostream&
+levWrite(std::ostream& os, int level, std::string& message)
+{
+    if (ParallelDescriptor::IOProcessor())
+    {
+        for (int lev=0; lev<=level; ++lev) {
+            //os << '\t';
+            os << "  ";
+        }
+        os << message;
+    }
+    return os;
+}
+
+void
+showMF(const std::string&   mySet,
+       const MultiFab&      mf,
+       const std::string&   name,
+       int                  lev = -1,
+       int                  iter = -1) // Default value = no append 2nd integer
+{
+    if (ShowMF_Sets.count(mySet)>0)
+    {
+        std::string DebugDir(ShowMF_Dir);
+        if (ParallelDescriptor::IOProcessor())
+            if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
+                BoxLib::CreateDirectoryFailed(DebugDir);
+        ParallelDescriptor::Barrier();
+
+        std::string junkname = name;
+        if (lev>=0) {
+            junkname = BoxLib::Concatenate(junkname+"_",lev,1);
+        }
+        if (iter>=0) {
+            junkname = BoxLib::Concatenate(junkname+"_",iter,1);
+        }
+        junkname = DebugDir + "/" + junkname;
+
+        if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
+            cout << "   ******************************  Debug: writing " << junkname << endl;
+        }
+
+        if (ShowMF_Check_Nans)
+        {
+            for (MFIter mfi(mf); mfi.isValid(); ++mfi)
+            {
+                BL_ASSERT(!mf[mfi].contains_nan(mfi.validbox(),0,mf.nComp()));
+            }
+        }
+        VisMF::Write(mf,junkname);
+    }
+}
+
+void
+showMCDD(const std::string&   mySet,
+         const DDOp&          mcddop,
+         const std::string&   name)
+{
+    if (ShowMF_Sets.count(mySet)>0)
+    {
+        std::string DebugDir(ShowMF_Dir);
+        if (ParallelDescriptor::IOProcessor())
+            if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
+                BoxLib::CreateDirectoryFailed(DebugDir);
+        ParallelDescriptor::Barrier();
+
+        std::string junkname = DebugDir + "/" + name;
+
+        if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
+            cout << "   ******************************  Debug: writing " << junkname << endl;
+        }
+        mcddop.Write(junkname);
+    }
+}
+
+HeatTransfer::FPLoc 
+HeatTransfer::fpi_phys_loc (int p_bc)
+{
+    //
+    // Location of data that FillPatchIterator returns at physical boundaries
+    //
+    if (p_bc == EXT_DIR || p_bc == HOEXTRAP || p_bc == FOEXTRAP)
+    {
+        return HT_Edge;
+    }
+    return HT_Center;
+}
+    
+void
+HeatTransfer::center_to_edge_fancy (const FArrayBox& cfab,
+                                    FArrayBox&       efab,
+                                    const Box&       ccBox,
+                                    int              sComp,
+                                    int              dComp,
+                                    int              nComp,
+                                    const Box&       domain,
+                                    const FPLoc&     bc_lo,
+                                    const FPLoc&     bc_hi)
+{
+    BL_PROFILE("HeatTransfer::center_to_edge_fancy()");
+
+    const Box&      ebox = efab.box();
+    const IndexType ixt  = ebox.ixType();
+
+    BL_ASSERT(!(ixt.cellCentered()) && !(ixt.nodeCentered()));
+
+    int dir = -1;
+    for (int d = 0; d < BL_SPACEDIM; d++)
+        if (ixt.test(d))
+            dir = d;
+
+    BL_ASSERT(BoxLib::grow(ccBox,-BoxLib::BASISV(dir)).contains(BoxLib::enclosedCells(ebox)));
+    BL_ASSERT(sComp+nComp <= cfab.nComp() && dComp+nComp <= efab.nComp());
+    //
+    // Exclude unnecessary cc->ec calcs
+    //
+    Box ccVBox = ccBox;
+    if (bc_lo!=HT_Center)
+        ccVBox.setSmall(dir,std::max(domain.smallEnd(dir),ccVBox.smallEnd(dir)));
+    if (bc_hi!=HT_Center)
+        ccVBox.setBig(dir,std::min(domain.bigEnd(dir),ccVBox.bigEnd(dir)));
+    //
+    // Shift cell-centered data to edges
+    //
+    const int isharm = def_harm_avg_cen2edge?1:0;
+    FORT_CEN2EDG(ccVBox.loVect(),ccVBox.hiVect(),
+                 ARLIM(cfab.loVect()),ARLIM(cfab.hiVect()),cfab.dataPtr(sComp),
+                 ARLIM(efab.loVect()),ARLIM(efab.hiVect()),efab.dataPtr(dComp),
+                 &nComp, &dir, &isharm);
+    //
+    // Fix boundary...i.e. fill-patched data in cfab REALLY lives on edges
+    //
+    if ( !(domain.contains(ccBox)) )
+    {
+        if (bc_lo==HT_Edge)
+        {
+            BoxList gCells = BoxLib::boxDiff(ccBox,domain);
+            if (gCells.ok())
+            {
+                const int inc = +1;
+                FArrayBox ovlpFab;
+                for (BoxList::const_iterator bli = gCells.begin(), end = gCells.end();
+                     bli != end;
+                     ++bli)
+                {
+                    if (bc_lo == HT_Edge)
+                    {
+                        ovlpFab.resize(*bli,nComp);
+                        ovlpFab.copy(cfab,sComp,0,nComp);
+                        ovlpFab.shiftHalf(dir,inc);
+                        efab.copy(ovlpFab,0,dComp,nComp);
+                    }
+                }
+            }
+        }
+        if (bc_hi==HT_Edge)
+        {
+            BoxList gCells = BoxLib::boxDiff(ccBox,domain);
+            if (gCells.ok())
+            {
+                const int inc = -1;
+                FArrayBox ovlpFab;
+                for (BoxList::const_iterator bli = gCells.begin(), end = gCells.end();
+                     bli != end;
+                     ++bli)
+                {
+                    if (bc_hi == HT_Edge)
+                    {
+                        ovlpFab.resize(*bli,nComp);
+                        ovlpFab.copy(cfab,sComp,0,nComp);
+                        ovlpFab.shiftHalf(dir,inc);
+                        efab.copy(ovlpFab,0,dComp,nComp);
+                    }
+                }
+            }
+        }
+    }
+}    
+
+void
+HeatTransfer::variableCleanUp ()
+{
+    NavierStokes::variableCleanUp();
+
+    delete chemSolve;
+    chemSolve = 0;
+
+    mcdd_nu1.clear();
+    mcdd_nu2.clear();
+    ShowMF_Sets.clear();
+    auxDiag_names.clear();
+    typical_values.clear();
+
+#ifdef PARTICLES
+    delete HTPC;
+    HTPC = 0;
+#endif
 }
 
 HeatTransfer::HeatTransfer ()
@@ -10031,7 +10131,6 @@ HeatTransfer::derive (const std::string& name,
 {
     AmrLevel::derive(name,time,mf,dcomp);
 }
-
 
 #ifdef PARTICLES
 MultiFab*
