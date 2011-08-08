@@ -109,6 +109,30 @@
 
 !     endif
 
+
+c     Get primitives for hyperbolic on g1 + NHYP, no flattening yet
+      ngp = NHYP + 1
+      ngf = 0
+      iflaten = 0
+
+      call ctoprim(lo,hi,uin,DIMS(uin),q,c,gamc,csml,flatn,DIMS(uin),
+     $     courno,dx,dy,dz,dt,ngp,ngf,iflaten,idbg)
+
+c     Get extensive diffusion fluxes for computing Dn on g2, multiply by dt/2
+      ngd = 2
+      initFlux = 1
+      do k=1,3
+         lobig(k)= lo(k)-ngd
+         hibig(k)= hi(k)+ngd
+      enddo
+      call diffFlux(lobig,hibig,q,DIMS(uin),
+     1              dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
+     1              dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
+     1              dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
+     &              dx,dy,dz,half*dt,bcx,bcy,bcz,initFlux)
+
+
+
       ! Translate to primitive variables, compute sound speeds
       ! Note that (q,c,gamc,csml,flatn) are all dimensioned the same
       ! and set to correspond to coordinates of (lo:hi)
@@ -148,6 +172,55 @@
                   area3,area3_l1,area3_l2,area3_l3,area3_h1,area3_h2,area3_h3, &
                   vol,vol_l1,vol_l2,vol_l3,vol_h1,vol_h2,vol_h3, &
                   div,pdivu,lo,hi,dx,dy,dz,dt)
+
+c     Get u** by adding Dn.dt (=Dn.dt/2 * 2    HACK the 2 into the dx factor here)
+      call diffup(lot,hit,uout,DIMS(uin),uout,DIMS(uin),
+     1            dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
+     1            dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
+     1            dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
+     &            dx*2,dy,dz)
+
+c     Get primitives on u** over g1, do not need flattening coeffs
+      ngp = 1
+      ngf = 0
+      iflaten = 0
+      call ctoprim(lo,hi,uout,DIMS(uout),q,c,gamc,csml,flatn,DIMS(q),
+     $     courno,dx,dy,dz,dt,ngp,ngf,iflaten,idbg)
+
+
+c     Get u* on g1 back by subtracting Dn*dt (=Dn*dt/2 * 2)  from u**,  HACK the 2 into the dx factor here
+      call diffup(lot,hit,uout,DIMS(uin),uout,DIMS(uin),
+     1            dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
+     1            dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
+     1            dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
+     &            -dx*2,dy,dz)
+
+
+c     Compute D**.dt/2 on (lo,hi), add to Dn.dt/2 already there
+      initFlux = 0
+      call diffFlux(lo,hi,q,DIMS(q),
+     1              dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
+     1              dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
+     1              dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
+     &              dx,dy,dz,half*dt,bcx,bcy,bcz,initFlux)
+
+
+c     Get uout from u* by adding (Dn + D**)*dt/2 
+      call diffup(lot,hit,uout,DIMS(uin),uout,DIMS(uin),
+     1            dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
+     1            dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
+     1            dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
+     &            dx,dy,dz)
+
+
+c     Add diffusion fluxes to hyperbolic fluxes to pass back to AMR
+      call incFlux(lo,hi,flux1,DIMS(flux1),flux2,DIMS(flux2),flux3,DIMS(flux3),
+     &             dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
+     &             dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
+     &             dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
+     &             NVAR);
+
+
 
       ! Chemically react output state (not incl. grow cells) for half time step
 !     if (do_chem.eq.1) then
