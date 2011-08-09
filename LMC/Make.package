@@ -1,5 +1,5 @@
 #
-# $Id: Make.package,v 1.23 2011-01-25 23:55:33 marc Exp $
+# $Id: Make.package,v 1.24 2011-08-09 23:16:25 aaspden Exp $
 #
 HT_BASE=EXE
 ifeq ($(LBASE),ht)
@@ -16,8 +16,20 @@ F$(HT_BASE)_sources += HEATTRANSFER_F.F HEATTRANSFER_$(DIM)D.F DDOp_$(DIM)D.F DD
 #
 # The chemistry-specific stuff ...
 #
+ifeq ($(REACTION_MECHANISM),INERT30)
+  C$(HT_BASE)_sources += inert30.cpp
+endif
+ifeq ($(REACTION_MECHANISM),CHEMH)
+  C$(HT_BASE)_sources += chem-H.cpp
+endif
+ifeq ($(REACTION_MECHANISM),CHEMHFN)
+  C$(HT_BASE)_sources += chem-H-FN.cpp
+endif
 ifeq ($(REACTION_MECHANISM),GLARBORG)
   C$(HT_BASE)_sources += glarSkel.cpp
+endif
+ifeq ($(REACTION_MECHANISM),GLARSKELFN)
+  C$(HT_BASE)_sources += glarSkelFN.cpp
 endif
 ifeq ($(REACTION_MECHANISM),DRM19)
   C$(HT_BASE)_sources += drm19.cpp
@@ -31,38 +43,38 @@ endif
 ifeq ($(REACTION_MECHANISM),GRI30NON)
   C$(HT_BASE)_sources += grimech30-noN.cpp
 endif
+ifeq ($(REACTION_MECHANISM),GRIMECH30-NON)
+  C$(HT_BASE)_sources += GriMech30-NoN.cpp
+endif
+ifeq ($(REACTION_MECHANISM),GRIMECH30-NOARN)
+  C$(HT_BASE)_sources += grimech30-noArN.cpp
+endif
 ifeq ($(REACTION_MECHANISM),GRI30HNO)
   C$(HT_BASE)_sources += gri30_hno.cpp
 endif
 ifeq ($(REACTION_MECHANISM),GRI211HNO)
   C$(HT_BASE)_sources += gri211-hno.cpp
 endif
-ifeq ($(REACTION_MECHANISM),CHEMH)
-  C$(HT_BASE)_sources += chem-H.cpp
-endif
-ifeq ($(REACTION_MECHANISM),INERT30)
-  C$(HT_BASE)_sources += inert30.cpp
-endif
 ifeq ($(REACTION_MECHANISM),CH4-2STEP)
   C$(HT_BASE)_sources += chem-CH4-2step.cpp
-endif
-ifeq ($(REACTION_MECHANISM),PROPANE)
-  C$(HT_BASE)_sources += propane.cpp
 endif
 ifeq ($(REACTION_MECHANISM),LIDRYER)
   C$(HT_BASE)_sources += LiDryer.cpp
 endif
+ifeq ($(REACTION_MECHANISM),LIDRYERFN)
+  C$(HT_BASE)_sources += LiDryerFN.cpp
+endif
 ifeq ($(REACTION_MECHANISM),LIDRYERMOD)
   C$(HT_BASE)_sources += LiDryerMOD.cpp
+endif
+ifeq ($(REACTION_MECHANISM),PROPANE)
+  C$(HT_BASE)_sources += propane.cpp
 endif
 ifeq ($(REACTION_MECHANISM),HAI)
   C$(HT_BASE)_sources += Hai.cpp
 endif
 ifeq ($(REACTION_MECHANISM),USCC1-3OPT)
   C$(HT_BASE)_sources += uscC1-3opt.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRIMECH30-NON)
-  C$(HT_BASE)_sources += GriMech30-NoN.cpp
 endif
 
 C$(HT_BASE)_sources += ChemDriver.cpp
