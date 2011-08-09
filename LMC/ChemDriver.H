@@ -388,8 +388,6 @@ protected:
 private:
 
     void initOnce (const std::string& TransportFile);
-    
-    static bool mInitialized;
 
     Array<std::string> mSpeciesNames;
     Array<std::string> mElementNames;

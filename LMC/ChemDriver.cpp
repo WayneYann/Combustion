@@ -4,11 +4,16 @@
 #include "ChemDriver_F.H"
 #include <ParallelDescriptor.H>
 
-bool ChemDriver::mInitialized = false;
+namespace
+{
+    bool initialized = false;
 
-const Real HtoTerrMAX_DEF = 1.e-8;
-const int HtoTiterMAX_DEF = 20;
-const Real Tmin_trans_DEF = 0.;
+    void ChemDriver_Finalize() { initialized = false; }
+}
+
+const Real HtoTerrMAX_DEF  = 1.e-8;
+const int  HtoTiterMAX_DEF = 20;
+const Real Tmin_trans_DEF  = 0.;
 
 
 ChemDriver::ChemDriver (const std::string TransportFile)
@@ -20,10 +25,11 @@ ChemDriver::ChemDriver (const std::string TransportFile)
 
     //FORT_SETVERBOSEVODE();
 
-    if (!mInitialized)
+    if (!initialized)
     {
         initOnce(TransportFile);
-        mInitialized = true;
+        BoxLib::ExecOnFinalize(ChemDriver_Finalize);
+        initialized = true;
     }
     mTmpData.resize(mHtoTiterMAX);
 }
