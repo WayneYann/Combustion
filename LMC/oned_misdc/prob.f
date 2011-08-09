@@ -222,6 +222,8 @@ c     Set coeffs for polynomial extrap to fill grow cells
 c     Set Dirichlet values into grow cells
       call set_bc_s(scal,dx,time)
 
+      if (.false.) then
+
 c     Do extrap
       ib = -1
       do n=1,Nspec
@@ -253,6 +255,8 @@ c     On lo boundary grow cell, now have Y and T in state, get rho and h and fix
       enddo
       scal(-1,RhoH) = hext * rext
       scal(-1,Temp) = Text         
+
+      end if
 
       end
 
