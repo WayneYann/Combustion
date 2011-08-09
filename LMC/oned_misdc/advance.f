@@ -1083,7 +1083,8 @@ c        does not fill ghost cells
          call cn_solve(scal_new,alpha,beta_old,Rhs(0,Temp),
      $                 dx,dt,Temp,be_cn_theta,rho_flag)
 
-         call get_hmix_given_T_RhoY(scal_new,dx)
+c     AJN - moved this call lower
+c         call get_hmix_given_T_RhoY(scal_new,dx)
 
          print *,'... compute new coeffs'
 c        this computes rho^n+1 D_m^n+1,*       (for species)
@@ -1136,6 +1137,9 @@ c     update species with conservative diffusion fluxes
      $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_tmp(i,is))
             end do
          end do
+
+c     AJN - moved this call from above
+         call get_hmix_given_T_RhoY(scal_new,dx)
 
 c     calculate differential diffusion
 c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
