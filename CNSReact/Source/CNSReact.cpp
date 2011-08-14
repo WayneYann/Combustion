@@ -13,6 +13,7 @@ using std::ostream;
 using std::pair;
 using std::string;
 
+#include <ParmParse.H>
 #include <Utility.H>
 #include <CONSTANTS.H>
 #include <CNSReact.H>
