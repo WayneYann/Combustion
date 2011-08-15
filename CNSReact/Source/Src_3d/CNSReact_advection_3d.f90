@@ -2,7 +2,7 @@
 ! ::: ----------------------------------------------------------------
 ! :::
 
-      subroutine ca_umdrv(is_finest_level,time,lo,hi,domlo,domhi, &
+      subroutine ca_umdrv(lo,hi,&
            uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
            uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
            ugdnvx_out,ugdnvx_l1,ugdnvx_l2,ugdnvx_l3,ugdnvx_h1,ugdnvx_h2,ugdnvx_h3, &
@@ -22,46 +22,50 @@
 
       use meth_params_module, only : URHO, QVAR, NVAR, NHYP, &
                                      allow_negative_energy, normalize_species
+      use diff_flux_module
 
       implicit none
 
-      integer is_finest_level
-      integer lo(3),hi(3),verbose
-      integer domlo(3),domhi(3)
-      integer uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3
-      integer uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3
-      integer ugdnvx_l1,ugdnvx_l2,ugdnvx_l3,ugdnvx_h1,ugdnvx_h2,ugdnvx_h3
-      integer ugdnvy_l1,ugdnvy_l2,ugdnvy_l3,ugdnvy_h1,ugdnvy_h2,ugdnvy_h3
-      integer ugdnvz_l1,ugdnvz_l2,ugdnvz_l3,ugdnvz_h1,ugdnvz_h2,ugdnvz_h3
-      integer flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3
-      integer flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3
-      integer flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3
-      integer area1_l1,area1_l2,area1_l3,area1_h1,area1_h2,area1_h3
-      integer area2_l1,area2_l2,area2_l3,area2_h1,area2_h2,area2_h3
-      integer area3_l1,area3_l2,area3_l3,area3_h1,area3_h2,area3_h3
-      integer vol_l1,vol_l2,vol_l3,vol_h1,vol_h2,vol_h3
-      integer src_l1,src_l2,src_l3,src_h1,src_h2,src_h3
-      integer gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3
-      double precision   uin(  uin_l1:uin_h1,    uin_l2:uin_h2,     uin_l3:uin_h3,  NVAR)
-      double precision  uout( uout_l1:uout_h1,  uout_l2:uout_h2,   uout_l3:uout_h3, NVAR)
-      double precision ugdnvx_out(ugdnvx_l1:ugdnvx_h1,ugdnvx_l2:ugdnvx_h2,ugdnvx_l3:ugdnvx_h3)
-      double precision ugdnvy_out(ugdnvy_l1:ugdnvy_h1,ugdnvy_l2:ugdnvy_h2,ugdnvy_l3:ugdnvy_h3)
-      double precision ugdnvz_out(ugdnvz_l1:ugdnvz_h1,ugdnvz_l2:ugdnvz_h2,ugdnvz_l3:ugdnvz_h3)
-      double precision   src(  src_l1:src_h1,    src_l2:src_h2,     src_l3:src_h3,  NVAR)
-      double precision  grav( gv_l1:gv_h1,  gv_l2:gv_h2,   gv_l3:gv_h3,    3)
-      double precision flux1(flux1_l1:flux1_h1,flux1_l2:flux1_h2, flux1_l3:flux1_h3,NVAR)
-      double precision flux2(flux2_l1:flux2_h1,flux2_l2:flux2_h2, flux2_l3:flux2_h3,NVAR)
-      double precision flux3(flux3_l1:flux3_h1,flux3_l2:flux3_h2, flux3_l3:flux3_h3,NVAR)
-      double precision area1(area1_l1:area1_h1,area1_l2:area1_h2, area1_l3:area1_h3)
-      double precision area2(area2_l1:area2_h1,area2_l2:area2_h2, area2_l3:area2_h3)
-      double precision area3(area3_l1:area3_h1,area3_l2:area3_h2, area3_l3:area3_h3)
-      double precision vol(vol_l1:vol_h1,vol_l2:vol_h2, vol_l3:vol_h3)
-      double precision delta(3),dt,time,courno
+      integer :: lo(3),hi(3),verbose
+      integer :: uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3
+      integer :: uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3
+      integer :: ugdnvx_l1,ugdnvx_l2,ugdnvx_l3,ugdnvx_h1,ugdnvx_h2,ugdnvx_h3
+      integer :: ugdnvy_l1,ugdnvy_l2,ugdnvy_l3,ugdnvy_h1,ugdnvy_h2,ugdnvy_h3
+      integer :: ugdnvz_l1,ugdnvz_l2,ugdnvz_l3,ugdnvz_h1,ugdnvz_h2,ugdnvz_h3
+      integer :: flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3
+      integer :: flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3
+      integer :: flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3
+      integer :: area1_l1,area1_l2,area1_l3,area1_h1,area1_h2,area1_h3
+      integer :: area2_l1,area2_l2,area2_l3,area2_h1,area2_h2,area2_h3
+      integer :: area3_l1,area3_l2,area3_l3,area3_h1,area3_h2,area3_h3
+      integer :: vol_l1,vol_l2,vol_l3,vol_h1,vol_h2,vol_h3
+      integer :: src_l1,src_l2,src_l3,src_h1,src_h2,src_h3
+      integer :: gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3
+
+      double precision ::   uin(  uin_l1:uin_h1,    uin_l2:uin_h2,     uin_l3:uin_h3,  NVAR)
+      double precision ::  uout( uout_l1:uout_h1,  uout_l2:uout_h2,   uout_l3:uout_h3, NVAR)
+      double precision :: ugdnvx_out(ugdnvx_l1:ugdnvx_h1,ugdnvx_l2:ugdnvx_h2,ugdnvx_l3:ugdnvx_h3)
+      double precision :: ugdnvy_out(ugdnvy_l1:ugdnvy_h1,ugdnvy_l2:ugdnvy_h2,ugdnvy_l3:ugdnvy_h3)
+      double precision :: ugdnvz_out(ugdnvz_l1:ugdnvz_h1,ugdnvz_l2:ugdnvz_h2,ugdnvz_l3:ugdnvz_h3)
+      double precision ::   src(  src_l1:src_h1,    src_l2:src_h2,     src_l3:src_h3,  NVAR)
+      double precision ::  grav( gv_l1:gv_h1,  gv_l2:gv_h2,   gv_l3:gv_h3,    3)
+      double precision :: flux1(flux1_l1:flux1_h1,flux1_l2:flux1_h2, flux1_l3:flux1_h3,NVAR)
+      double precision :: flux2(flux2_l1:flux2_h1,flux2_l2:flux2_h2, flux2_l3:flux2_h3,NVAR)
+      double precision :: flux3(flux3_l1:flux3_h1,flux3_l2:flux3_h2, flux3_l3:flux3_h3,NVAR)
+      double precision :: area1(area1_l1:area1_h1,area1_l2:area1_h2, area1_l3:area1_h3)
+      double precision :: area2(area2_l1:area2_h1,area2_l2:area2_h2, area2_l3:area2_h3)
+      double precision :: area3(area3_l1:area3_h1,area3_l2:area3_h2, area3_l3:area3_h3)
+      double precision :: vol(vol_l1:vol_h1,vol_l2:vol_h2, vol_l3:vol_h3)
+      double precision :: delta(3),dt,courno
+
+      integer          :: lo_chem(3),hi_chem(3)
+      integer          :: lo_diff(3),hi_diff(3)
+      integer          :: lo_t(3),hi_t(3)
+      integer          :: initFlux
+      double precision :: hdt
 
       ! For call to chemsolv
       integer          :: idbg
-      integer          :: lobig(3), hibig(3)
-      double precision :: hdt
 
       ! Automatic arrays for workspace
       double precision, allocatable:: q(:,:,:,:)
@@ -72,6 +76,10 @@
       double precision, allocatable:: div(:,:,:)
       double precision, allocatable:: pdivu(:,:,:)
       double precision, allocatable:: srcQ(:,:,:,:)
+
+      double precision, allocatable:: dfluxx(:,:,:,:)
+      double precision, allocatable:: dfluxy(:,:,:,:)
+      double precision, allocatable:: dfluxz(:,:,:,:)
 
       double precision dx,dy,dz
       integer ngp,ngq,ngf,iflaten
@@ -87,6 +95,20 @@
 
       allocate(  srcQ(src_l1:src_h1,src_l2:src_h2,src_l3:src_h3,QVAR))
 
+      ngp = NHYP + 1
+      lo_chem(1:3) = lo(1:3)-ngp
+      hi_chem(1:3) = hi(1:3)+ngp
+
+      lo_diff(1:3)= lo(1:3)-2
+      hi_diff(1:3)= hi(1:3)+2
+
+      lo_t(1:3) = lo(1:3)-1
+      hi_t(1:3) = hi(1:3)+1
+
+      allocate(dfluxx(lo_diff(1):hi_diff(1)+1,lo_diff(2):hi_diff(2)  ,lo_diff(3):hi_diff(3)  ,NVAR))
+      allocate(dfluxx(lo_diff(1):hi_diff(1)  ,lo_diff(2):hi_diff(2)+1,lo_diff(3):hi_diff(3)  ,NVAR))
+      allocate(dfluxx(lo_diff(1):hi_diff(1)  ,lo_diff(2):hi_diff(2)  ,lo_diff(3):hi_diff(3)+1,NVAR))
+
       dx = delta(1)
       dy = delta(2)
       dz = delta(3)
@@ -97,40 +119,30 @@
       iflaten = 1
 
       ! Chemically react input state (incl. all grow cells) for half time step
-!     if (do_chem.eq.1) then
- 
-         ngp = NHYP + 1
-         lobig(1:3)= lo(1:3)-ngp
-         hibig(1:3)= hi(1:3)+ngp
- 
-         call chemsolv(lobig, hibig, &
-                       uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
-                       hdt, idbg)
 
-!     endif
+      call chemsolv(lo_chem, hi_chem, &
+                    uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                    hdt, idbg)
 
-
-c     Get primitives for hyperbolic on g1 + NHYP, no flattening yet
+      ! Translate to primitive variables, compute sound speeds
+      ! Note that (q,c,gamc,csml,flatn) are all dimensioned the same
+      ! and set to correspond to coordinates of (lo:hi)
       ngp = NHYP + 1
       ngf = 0
       iflaten = 0
+      call ctoprim(lo,hi,uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                   q,c,gamc,csml,flatn,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                   src,srcQ,src_l1,src_l2,src_l3,src_h1,src_h2,src_h3, &
+                   courno,dx,dy,dz,dt,ngq,ngf,iflaten)
 
-      call ctoprim(lo,hi,uin,DIMS(uin),q,c,gamc,csml,flatn,DIMS(uin),
-     $     courno,dx,dy,dz,dt,ngp,ngf,iflaten,idbg)
-
-c     Get extensive diffusion fluxes for computing Dn on g2, multiply by dt/2
-      ngd = 2
+      ! Get extensive diffusion fluxes for computing Dn on g2, multiply by dt/2
       initFlux = 1
-      do k=1,3
-         lobig(k)= lo(k)-ngd
-         hibig(k)= hi(k)+ngd
-      enddo
-      call diffFlux(lobig,hibig,q,DIMS(uin),
-     1              dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
-     1              dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
-     1              dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
-     &              dx,dy,dz,half*dt,bcx,bcy,bcz,initFlux)
 
+      call diffFlux(lo_diff,hi_diff,q,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                    dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3), &
+                    dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3), &
+                    dfluxz,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3)+1, &
+                    dx,dy,dz,hdt,initFlux)
 
 
       ! Translate to primitive variables, compute sound speeds
@@ -173,54 +185,61 @@ c     Get extensive diffusion fluxes for computing Dn on g2, multiply by dt/2
                   vol,vol_l1,vol_l2,vol_l3,vol_h1,vol_h2,vol_h3, &
                   div,pdivu,lo,hi,dx,dy,dz,dt)
 
-c     Get u** by adding Dn.dt (=Dn.dt/2 * 2    HACK the 2 into the dx factor here)
-      call diffup(lot,hit,uout,DIMS(uin),uout,DIMS(uin),
-     1            dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
-     1            dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
-     1            dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
-     &            dx*2,dy,dz)
+      !Get u** by adding Dn.dt (=Dn.dt/2 * 2    HACK the 2 into the dx factor here)
+      call diffup(lo_t,hi_t, &
+                  uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                  uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                  dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3), &
+                  dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3), &
+                  dfluxz,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3)+1, &
+                  dx*2,dy,dz)
 
-c     Get primitives on u** over g1, do not need flattening coeffs
+      ! Get primitives on u** over g1, do not need flattening coeffs
       ngp = 1
       ngf = 0
       iflaten = 0
-      call ctoprim(lo,hi,uout,DIMS(uout),q,c,gamc,csml,flatn,DIMS(q),
-     $     courno,dx,dy,dz,dt,ngp,ngf,iflaten,idbg)
+      call ctoprim(lo,hi,uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                   q,c,gamc,csml,flatn,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                   src,srcQ,src_l1,src_l2,src_l3,src_h1,src_h2,src_h3, &
+                   courno,dx,dy,dz,dt,ngq,ngf,iflaten)
 
+      ! Get u* on g1 back by subtracting Dn*dt (=Dn*dt/2 * 2)  from u**,  HACK the 2 into the dx factor here
+      call diffup(lo_t,hi_t, &
+                  uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                  uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                  dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3), &
+                  dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3), &
+                  dfluxz,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3)+1, &
+                  -dx*2,dy,dz)
 
-c     Get u* on g1 back by subtracting Dn*dt (=Dn*dt/2 * 2)  from u**,  HACK the 2 into the dx factor here
-      call diffup(lot,hit,uout,DIMS(uin),uout,DIMS(uin),
-     1            dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
-     1            dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
-     1            dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
-     &            -dx*2,dy,dz)
-
-
-c     Compute D**.dt/2 on (lo,hi), add to Dn.dt/2 already there
+      ! Compute D**.dt/2 on (lo,hi), add to Dn.dt/2 already there
       initFlux = 0
-      call diffFlux(lo,hi,q,DIMS(q),
-     1              dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
-     1              dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
-     1              dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
-     &              dx,dy,dz,half*dt,bcx,bcy,bcz,initFlux)
+      call diffFlux(lo,hi,q,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                    dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3), &
+                    dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3), &
+                    dfluxz,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3)+1, &
+                    dx,dy,dz,hdt,initFlux)
 
 
-c     Get uout from u* by adding (Dn + D**)*dt/2 
-      call diffup(lot,hit,uout,DIMS(uin),uout,DIMS(uin),
-     1            dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
-     1            dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
-     1            dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
-     &            dx,dy,dz)
+      ! Get uout from u* by adding (Dn + D**)*dt/2 
+      call diffup(lo_t,hi_t, &
+                  uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                  uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, &
+                  dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3), &
+                  dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3), &
+                  dfluxz,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3)+1, &
+                  dx,dy,dz)
 
 
-c     Add diffusion fluxes to hyperbolic fluxes to pass back to AMR
-      call incFlux(lo,hi,flux1,DIMS(flux1),flux2,DIMS(flux2),flux3,DIMS(flux3),
-     &             dfluxx,lobig(1),lobig(2),lobig(3),hibig(1)+1,hibig(2),hibig(3),
-     &             dfluxy,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2)+1,hibig(3),
-     &             dfluxz,lobig(1),lobig(2),lobig(3),hibig(1),hibig(2),hibig(3)+1,
-     &             NVAR);
-
-
+      ! Add diffusion fluxes to hyperbolic fluxes to pass back to AMR
+      call incFlux(lo,hi, &
+                   flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
+                   flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
+                   flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
+                   dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3), &
+                   dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3), &
+                   dfluxz,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3)+1, &
+                   NVAR);
 
       ! Chemically react output state (not incl. grow cells) for half time step
 !     if (do_chem.eq.1) then
@@ -245,6 +264,7 @@ c     Add diffusion fluxes to hyperbolic fluxes to pass back to AMR
       end if
       
       deallocate(q,gamc,flatn,c,csml,div,srcQ,pdivu)
+      deallocate(dfluxx,dfluxy,dfluxz)
 
       end subroutine ca_umdrv
 

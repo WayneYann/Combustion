@@ -201,10 +201,7 @@ BL_FORT_PROC_DECL(CA_ESTDT_BURNING,ca_estdt_burning)
      int* initial_step);
 
 BL_FORT_PROC_DECL(CA_UMDRV,ca_umdrv)
-    (const int* is_finest_level,
-     const Real* time, 
-     const int    lo[], const int    hi[],
-     const int domlo[], const int domhi[],
+    (const int    lo[], const int    hi[],
      const BL_FORT_FAB_ARG(state),
      BL_FORT_FAB_ARG(stateout),
      const BL_FORT_FAB_ARG(ugdnvx),

@@ -3,8 +3,7 @@
 ! ::: ----------------------------------------------------------------
 ! ::: 
 
-      subroutine ca_umdrv(is_finest_level,time,&
-                          lo,hi,domlo,domhi,&
+      subroutine ca_umdrv(lo,hi, &
                           uin,uin_l1,uin_h1,&
                           uout,uout_l1,uout_h1,&
                           ugdnv,ugdnv_l1,ugdnv_h1,&
@@ -20,9 +19,7 @@
 
       implicit none
 
-      integer is_finest_level
       integer lo(1),hi(1),verbose
-      integer domlo(1),domhi(1)
       integer uin_l1,uin_h1
       integer uout_l1,uout_h1
       integer ugdnv_l1,ugdnv_h1
@@ -41,7 +38,7 @@
       double precision  area( area_l1: area_h1     )
       double precision dloga(dloga_l1:dloga_h1     )
       double precision   vol(  vol_l1: vol_h1      )
-      double precision delta(1),dt,time,courno
+      double precision delta(1),dt,courno
 
 !     Automatic arrays for workspace
       double precision, allocatable:: q(:,:)

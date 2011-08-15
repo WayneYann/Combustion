@@ -211,43 +211,12 @@ public:
 
     static int numGrow();
 
-#ifdef REACTIONS
-    void react_first_half_dt(MultiFab& S_new, 
-                             Real time, 
-                             Real dt);
-
-    void react_second_half_dt(MultiFab& S_new, 
-                              Real time, 
-                              Real dt);
-
-    void strang_chem (MultiFab&  state,
-                      MultiFab&  react_mf,
-                      Real       time,
-                      Real       dt);
-
-    void reactState (FArrayBox&  Snew,
-                     FArrayBox&  Sold,
-                     FArrayBox&  ReactionTerms,
-                     const Box&  bx,
-                     Real        time,
-                     Real        dt_react);
-#endif
-
     void reset_internal_energy (MultiFab& State);
 
     void computeTemp (MultiFab& State);
 
     void getOldSource (Real old_time,                Real dt, MultiFab& Rhs);
     void getNewSource (Real old_time, Real new_time, Real dt, MultiFab& Rhs);
-
-#ifdef DIFFUSION
-    void getTempDiffusionTerm (Real time, MultiFab& TempDiffTerm);
-    void add_diffusion_to_old_source (MultiFab& S_new, MultiFab& OldTempDiffTerm, 
-                                      Real prev_time);
-    void time_center_diffusion       (MultiFab& S_new, MultiFab& OldTempDiffTerm, 
-                                      Real  cur_time, Real dt);
-    void full_diffusion_update       (MultiFab& S_new, Real prev_time, Real cur_time, Real dt);
-#endif
 
     Real volWgtSum (const std::string& name, Real time);
 
@@ -357,10 +326,6 @@ protected:
     static Real      small_temp;
     static Real      small_pres;
     static Real      gamma;
-
-#ifdef DIFFUSION
-    static int       diffuse_temp;
-#endif
 
     bool             FillPatchedOldState_ok;
 

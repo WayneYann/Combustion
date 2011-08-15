@@ -22,10 +22,6 @@ using std::string;
 #include <VisMF.H>
 #include <TagBox.H>
 
-#ifdef DIFFUSION
-#include "Diffusion.H"
-#endif
-
 static int  sum_interval = -1;
 static Real fixed_dt     = -1.0;
 static Real initial_dt   = -1.0;
@@ -74,11 +70,6 @@ int          CNSReact::do_hydro = -1;
 int          CNSReact::do_react = -1;
 int          CNSReact::add_ext_src = 0;
 
-#ifdef DIFFUSION
-Diffusion*    CNSReact::diffusion  = 0;
-int           CNSReact::diffuse_temp = 0;
-#endif
-
 int          CNSReact::allow_untagging = 0;
 int          CNSReact::normalize_species = 0;
 int          CNSReact::allow_negative_energy = 1;
@@ -90,16 +81,6 @@ int          CNSReact::ppm_type = 2;
 void
 CNSReact::variableCleanUp () 
 {
-#ifdef DIFFUSION
-  if (diffusion != 0) {
-    if (verbose && ParallelDescriptor::IOProcessor()) {
-      cout << "Deleting diffusion in variableCleanUp..." << '\n';
-    }
-    delete diffusion;
-    diffusion = 0;
-  }
-#endif
-
     desc_lst.clear();
 }
 
@@ -231,10 +212,6 @@ CNSReact::read_params ()
     pp.get("do_react",do_react);
     pp.query("add_ext_src",add_ext_src);
 
-#ifdef DIFFUSION
-    pp.query("diffuse_temp",diffuse_temp);
-#endif
-
     pp.query("allow_untagging",allow_untagging);
     pp.query("normalize_species",normalize_species);
     pp.query("allow_negative_energy",allow_negative_energy);
@@ -260,15 +237,6 @@ CNSReact::CNSReact (Amr&            papa,
     flux_reg = 0;
     if (level > 0 && do_reflux)
         flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
-
-#ifdef DIFFUSION
-      // diffusion is a static object, only alloc if not already there
-      if (diffusion == 0) 
-	diffusion = new Diffusion(parent,&phys_bc);
-
-      diffusion->install_level(level,this,volume,area);
-#endif
-
 }
 
 CNSReact::~CNSReact () 
@@ -290,13 +258,6 @@ CNSReact::restart (Amr&     papa,
         flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
 
     const Real* dx  = geom.CellSize();
-
-#ifdef DIFFUSION
-    if (level == 0) {
-       BL_ASSERT(diffusion == 0);
-       diffusion = new Diffusion(parent,&phys_bc);
-    }
-#endif
 }
 
 void
@@ -934,21 +895,7 @@ void
 CNSReact::post_restart ()
 {
    Real cur_time = state[State_Type].curTime();
-
-#ifdef DIFFUSION
-      // diffusion is a static object, only alloc if not already there
-      if (diffusion == 0)
-        diffusion = new Diffusion(parent,&phys_bc);
-
-      if (level == 0) 
-         for (int lev = 0; lev <= parent->finestLevel(); lev++) {
-            AmrLevel& this_level = getLevel(lev);
-                CNSReact& cs_level = getLevel(lev);
-            diffusion->install_level(lev,&this_level,
-                                     cs_level.Volume(),cs_level.Area());
-         }
-#endif
-      set_special_tagging_flag(cur_time);
+   set_special_tagging_flag(cur_time);
 }
 
 void
@@ -1044,70 +991,6 @@ CNSReact::getNewSource (Real old_time, Real new_time, Real dt, MultiFab& ext_src
    }
    geom.FillPeriodicBoundary(ext_src,0,NUM_STATE);
 }
-
-#ifdef DIFFUSION
-
-void
-CNSReact::getTempDiffusionTerm (Real time, MultiFab& TempDiffTerm)
-{
-   MultiFab& S_old = get_old_data(State_Type);
-   if (verbose && ParallelDescriptor::IOProcessor()) 
-      std::cout << "Calculating diffusion term at time " << time << std::endl;
-
-   // Fill temperature at this level.
-   MultiFab Temperature(grids,1,1,Fab_allocate);
-   for (FillPatchIterator fpi(*this,S_old,1,time,State_Type,Temp,1);
-                          fpi.isValid();++fpi)
-   {
-       Temperature[fpi].copy(fpi(),fpi().box());
-   }
-
-   // Fill coefficients at this level.
-   PArray<MultiFab> coeffs(BL_SPACEDIM,PArrayManage);
-   for (int dir = 0; dir < BL_SPACEDIM ; dir++) {
-      coeffs.set(dir,new MultiFab);
-      BoxArray edge_boxes(grids);
-      edge_boxes.surroundingNodes(dir);
-      coeffs[dir].define(edge_boxes,1,0,Fab_allocate);
-   }
-
-   const Geometry& fine_geom = parent->Geom(parent->finestLevel());
-   const Real*       dx_fine = fine_geom.CellSize();
-
-   for (FillPatchIterator fpi(*this,S_old,1,time,State_Type,0,NUM_STATE);
-                          fpi.isValid();++fpi)
-   {
-       Box bx(fpi.validbox());
-       int i = fpi.index();
-       BL_FORT_PROC_CALL(CA_FILL_TEMP_COND,ca_fill_temp_cond)
-                (bx.loVect(), bx.hiVect(),
-                 BL_TO_FORTRAN(fpi()),
-                 D_DECL(BL_TO_FORTRAN(coeffs[0][i]),
-                        BL_TO_FORTRAN(coeffs[1][i]),
-                        BL_TO_FORTRAN(coeffs[2][i])),
-                 dx_fine);
-   }
-
-   if (Geometry::isAnyPeriodic())
-     for (int d = 0; d < BL_SPACEDIM; d++)
-       geom.FillPeriodicBoundary(coeffs[d]);
-
-   if (level == 0) {
-      diffusion->applyop(level,Temperature,TempDiffTerm,coeffs);
-   } else if (level > 0) {
-      // Fill temperature at next coarser level, if it exists.
-      const BoxArray& crse_grids = getLevel(level-1).boxArray();
-      MultiFab CrseTemp(crse_grids,1,1,Fab_allocate);
-      for (FillPatchIterator fpi(getLevel(level-1),CrseTemp,1,time,State_Type,Temp,1);
-          fpi.isValid();
-          ++fpi)
-      {
-        CrseTemp[fpi].copy(fpi());
-      }
-      diffusion->applyop(level,Temperature,CrseTemp,TempDiffTerm,coeffs);
-   }
-}
-#endif
 
 void
 CNSReact::reflux ()

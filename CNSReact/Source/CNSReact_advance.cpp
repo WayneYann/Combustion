@@ -3,10 +3,6 @@
 #include "CNSReact.H"
 #include "CNSReact_F.H"
 
-#ifdef DIFFUSION
-#include "Diffusion.H"
-#endif
-
 using std::string;
 
 Real
@@ -65,10 +61,6 @@ CNSReact::advance_hydro (Real time,
 
     const Real prev_time = state[State_Type].prevTime();
 
-#ifdef REACTIONS
-    react_first_half_dt(S_old,time,dt);
-#endif
-
     Real dt_new = dt;
 
     Real cur_time = state[State_Type].curTime();
@@ -123,10 +115,6 @@ CNSReact::advance_hydro (Real time,
        if (add_ext_src)
           getOldSource(prev_time,dt,ext_src_old);
 
-#ifdef DIFFUSION
-       MultiFab OldTempDiffTerm(grids,1,1);
-       add_diffusion_to_old_source(ext_src_old,OldTempDiffTerm,prev_time);
-#endif
        ext_src_old.FillBoundary();
         
        for (FillPatchIterator fpi(*this, S_new, NUM_GROW,
@@ -167,9 +155,7 @@ CNSReact::advance_hydro (Real time,
             int is_finest_level = 0;
             if (level == finest_level) is_finest_level = 1;
             BL_FORT_PROC_CALL(CA_UMDRV,ca_umdrv)
-                (&is_finest_level,&time,
-                 bx.loVect(), bx.hiVect(),
-                 domain_lo, domain_hi,
+                (bx.loVect(), bx.hiVect(),
                  BL_TO_FORTRAN(state), BL_TO_FORTRAN(stateout),
 		 BL_TO_FORTRAN(u_gdnv[0][fpi]),
 #if (BL_SPACEDIM >= 2)
@@ -246,15 +232,7 @@ CNSReact::advance_hydro (Real time,
            computeTemp(S_new);
         }
 
-#ifdef DIFFUSION
-     time_center_diffusion(S_new, OldTempDiffTerm, cur_time, dt);
-#endif
-
-     reset_internal_energy(S_new);
-
-#ifdef REACTIONS
-    react_second_half_dt(S_new,cur_time,dt);
-#endif
+    reset_internal_energy(S_new);
 
     delete [] u_gdnv;
 
