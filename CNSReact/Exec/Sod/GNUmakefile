@@ -1,5 +1,8 @@
 PBOXLIB_HOME= ../../..
+
 FBOXLIB_HOME= ../../../../fParallel
+
+TOP = ../..
 
 PRECISION  = DOUBLE
 PROFILE    = FALSE
@@ -14,9 +17,7 @@ FCOMP	   = gfortran
 
 USE_MPI    = FALSE
 
-USE_DIFFUSION = TRUE
-USE_REACT     = TRUE
-USE_CHEM      = TRUE
+USE_CHEM = TRUE
 
 REACTION_MECHANISM=CHEMH
 
