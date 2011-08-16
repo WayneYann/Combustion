@@ -1,31 +1,25 @@
-TOP = $(PBOXLIB_HOME)
 
 EBASE     = CNSReact
 
-include $(TOP)/mk/Make.defs
+include $(PBOXLIB_HOME)/mk/Make.defs
 
-ifeq ($(USE_REACT), TRUE)
-  DEFINES += -DREACTIONS
-endif
+include $(TOP)/Source/EOS/Make.package
+include $(TOP)/Source/Network/Make.package
 
-ifeq ($(USE_DIFFUSION), TRUE)
-  DEFINES += -DDIFFUSION
-endif
-
-include $(EOS_dir)/Make.package
-include $(Network_dir)/Make.package
-
-INCLUDE_LOCATIONS += $(EOS_dir) $(Network_dir)
-VPATH_LOCATIONS   += $(EOS_dir) $(Network_dir)
-
-# end EOS_dir and Network_dir section
+INCLUDE_LOCATIONS += $(TOP)/Source/EOS $(TOP)/Source/Network
+VPATH_LOCATIONS   += $(TOP)/Source/EOS $(TOP)/Source/Network
 
 # These set the directories in Parallel to be included
 
-Bdirs 	:= CNSReact/Source CNSReact/Source/Src_$(DIM)d BoxLib amrlib bndrylib 
+Bdirs 	:= Source Source/Src_$(DIM)d
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
+
+Pdirs 	:= BoxLib amrlib bndrylib Chemistry
+
+Bpack	+= $(foreach dir, $(Pdirs), $(PBOXLIB_HOME)/$(dir)/Make.package)
+Blocs	+= $(foreach dir, $(Pdirs), $(PBOXLIB_HOME)/$(dir))
 
 include $(Bpack)
 
@@ -68,14 +62,6 @@ else
   include $(FBOXLIB_HOME)/boxlib/FParallelMG.mak
 endif
 
-ifeq ($(USE_CHEM), TRUE)
-
-  include $(PBOXLIB_HOME)/Chemistry/Make.package
-  INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/Chemistry
-  VPATH_LOCATIONS   += $(PBOXLIB_HOME)/Chemistry
-
-endif
-
 INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/boxlib 
 VPATH_LOCATIONS   += $(FBOXLIB_HOME)/boxlib 
 
@@ -90,4 +76,4 @@ vpath %.fi  . $(VPATH_LOCATIONS)
 
 all: $(executable) 
 
-include $(TOP)/mk/Make.rules
+include $(PBOXLIB_HOME)/mk/Make.rules
