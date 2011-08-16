@@ -1,0 +1,6 @@
+At the moment, the mean molecular weight is hardcoded
+into this routine.  We should actually compute it from the mass
+fractions, as
+
+1/Abar = 1 / (sum_k X_k/A_k)
+
