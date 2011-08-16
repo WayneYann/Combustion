@@ -1,9 +1,9 @@
 module chemsolv_module
 
-contains
-!     
-!     *********************************************************************************************     
-!     
+   implicit none
+
+   contains
+
       subroutine consteFY(N, TIME, Z, ZP, RPAR, IPAR)
 
       use  conp_module
