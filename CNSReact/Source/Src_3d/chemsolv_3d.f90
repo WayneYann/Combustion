@@ -1,10 +1,11 @@
       subroutine chemsolv(lo, hi, u, u_l1, u_l2, u_l3, u_h1, u_h2, u_h3, dt, idbg)
 
-      use chemsolv_module
       use meth_params_module, only : NTHERM, NVAR, nadv 
       use phys_params_module, only : NSPECMAX
-      use cdwrk_module
-      use  conp_module
+
+      use chemsolv_module
+      use    cdwrk_module
+      use     conp_module
 
       implicit none
 

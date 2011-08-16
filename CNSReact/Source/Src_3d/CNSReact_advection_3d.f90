@@ -106,8 +106,8 @@
       hi_t(1:3) = hi(1:3)+1
 
       allocate(dfluxx(lo_diff(1):hi_diff(1)+1,lo_diff(2):hi_diff(2)  ,lo_diff(3):hi_diff(3)  ,NVAR))
-      allocate(dfluxx(lo_diff(1):hi_diff(1)  ,lo_diff(2):hi_diff(2)+1,lo_diff(3):hi_diff(3)  ,NVAR))
-      allocate(dfluxx(lo_diff(1):hi_diff(1)  ,lo_diff(2):hi_diff(2)  ,lo_diff(3):hi_diff(3)+1,NVAR))
+      allocate(dfluxy(lo_diff(1):hi_diff(1)  ,lo_diff(2):hi_diff(2)+1,lo_diff(3):hi_diff(3)  ,NVAR))
+      allocate(dfluxz(lo_diff(1):hi_diff(1)  ,lo_diff(2):hi_diff(2)  ,lo_diff(3):hi_diff(3)+1,NVAR))
 
       dx = delta(1)
       dy = delta(2)
