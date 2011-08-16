@@ -3,8 +3,10 @@
       use chemsolv_module
       use meth_params_module, only : NTHERM, NVAR, nadv 
       use phys_params_module, only : NSPECMAX
-      use cdwrk_module
-      use  conp_module
+
+      use chemsolv_module
+      use    cdwrk_module
+      use     conp_module
 
       implicit none
 
@@ -207,7 +209,6 @@
                           u(i,j,NTHERM+NADV+n)+(Yres(n)-Ytemp(n))*u(i,j,1)
                   end do
 !               end if
-            end do
          end do
       end do
 

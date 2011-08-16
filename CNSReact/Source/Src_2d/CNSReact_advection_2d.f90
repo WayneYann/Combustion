@@ -51,6 +51,15 @@
       double precision vol(vol_l1:vol_h1,vol_l2:vol_h2)
       double precision delta(2),dt,courno
 
+      integer          :: lo_chem(2),hi_chem(2)
+      integer          :: lo_diff(2),hi_diff(2)
+      integer          :: lo_t(2),hi_t(2)
+      integer          :: ngp,initFlux
+      double precision :: hdt
+
+      ! For call to chemsolv
+      integer          :: idbg
+
 !     Automatic arrays for workspace
       double precision, allocatable:: q(:,:,:)
       double precision, allocatable:: gamc(:,:)
@@ -62,6 +71,9 @@
       double precision, allocatable:: pgdy(:,:)
       double precision, allocatable:: srcQ(:,:,:)
       double precision, allocatable:: pdivu(:,:)
+
+      double precision, allocatable:: dfluxx(:,:,:)
+      double precision, allocatable:: dfluxy(:,:,:)
 
       integer ngq,ngf,iflaten
 !     integer i_c,j_c
@@ -81,6 +93,19 @@
       allocate(  pgdx(lo(1)  :hi(1)+1,lo(2)-1:hi(2)+1))
       allocate(  pgdy(lo(1)-1:hi(1)+1,lo(2)  :hi(2)+1))
 
+      ngp = NHYP + 1
+      lo_chem(1:2) = lo(1:2)-ngp
+      hi_chem(1:2) = hi(1:2)+ngp
+
+      lo_diff(1:2)= lo(1:2)-2
+      hi_diff(1:2)= hi(1:2)+2
+
+      lo_t(1:2) = lo(1:2)-1
+      hi_t(1:2) = hi(1:2)+1
+
+      allocate(dfluxx(lo_diff(1):hi_diff(1)+1,lo_diff(2):hi_diff(2)  ,NVAR))
+      allocate(dfluxy(lo_diff(1):hi_diff(1)  ,lo_diff(2):hi_diff(2)+1,NVAR))
+
       dx = delta(1)
       dy = delta(2)
 
@@ -88,12 +113,34 @@
       ngf = 1
       iflaten = 1
 
+      ! Chemically react input state (incl. all grow cells) for half time step
+
+      call chemsolv(lo_chem, hi_chem, &
+                    uin,uin_l1,uin_l2,uin_h1,uin_h2, &
+                    hdt, idbg)
+
 !     Translate to primitive variables, compute sound speeds
 !     Note that (q,c,gamc,csml,flatn) are all dimensioned the same
 !       and set to correspond to coordinates of (lo:hi)
       call ctoprim(lo,hi,uin,uin_l1,uin_l2,uin_h1,uin_h2, &
                    q,c,gamc,csml,flatn,uin_l1,uin_l2,uin_h1,uin_h2, &
                    src,srcQ,src_l1,src_l2,src_h1,src_h2, &
+                   courno,dx,dy,dt,ngq,ngf,iflaten)
+
+      ! Get extensive diffusion fluxes for computing Dn on g2, multiply by dt/2
+      initFlux = 1
+
+      call diffFlux(lo_diff,hi_diff,q,uin_l1,uin_l2,uin_h1,uin_h2,&
+                    dfluxx,lo_diff(1),lo_diff(2),hi_diff(1)+1,hi_diff(2), &
+                    dfluxy,lo_diff(1),lo_diff(2),hi_diff(1),hi_diff(2)+1, &
+                    dx,dy,hdt,initFlux)
+
+      ! Translate to primitive variables, compute sound speeds
+      ! Note that (q,c,gamc,csml,flatn) are all dimensioned the same
+      ! and set to correspond to coordinates of (lo:hi)
+      call ctoprim(lo,hi,uin,uin_l1,uin_l2,uin_h1,uin_h2,&
+                   q,c,gamc,csml,flatn,uin_l1,uin_l2,uin_h1,uin_h2,&
+                   src,srcQ,src_l1,src_l2,src_h1,src_h2,&
                    courno,dx,dy,dt,ngq,ngf,iflaten)
 
 !     Compute hyperbolic fluxes using unsplit Godunov
@@ -129,6 +176,64 @@
                   area2,area2_l1,area2_l2,area2_h1,area2_h2, &
                   vol,    vol_l1,  vol_l2,  vol_h1,  vol_h2, &
                   div,pdivu,lo,hi,dx,dy,dt)
+
+      !Get u** by adding Dn.dt (=Dn.dt/2 * 2    HACK the 2 into the dx factor here)
+      call diffup(lo_t,hi_t, &
+                  uout,uout_l1,uout_l2,uout_h1,uout_h2,&
+                  uout,uout_l1,uout_l2,uout_h1,uout_h2,&
+                  dfluxx,lo_diff(1),lo_diff(2),hi_diff(1)+1,hi_diff(2)  , &
+                  dfluxy,lo_diff(1),lo_diff(2),hi_diff(1)  ,hi_diff(2)+1, &
+                  dx*2,dy)
+
+      ! Get primitives on u** over g1, do not need flattening coeffs
+      ngp = 1
+      ngf = 0
+      iflaten = 0
+      call ctoprim(lo,hi,uout,uout_l1,uout_l2,uout_h1,uout_h2, &
+                   q,c,gamc,csml,flatn,uin_l1,uin_l2,uin_h1,uin_h2, &
+                   src,srcQ,src_l1,src_l2,src_h1,src_h2, &
+                   courno,dx,dy,dt,ngq,ngf,iflaten)
+
+      ! Get u* on g1 back by subtracting Dn*dt (=Dn*dt/2 * 2)  from u**,  HACK the 2 into the dx factor here
+      call diffup(lo_t,hi_t, &
+                  uout,uout_l1,uout_l2,uout_h1,uout_h2, &
+                  uout,uout_l1,uout_l2,uout_h1,uout_h2, &
+                  dfluxx,lo_diff(1),lo_diff(2),hi_diff(1)+1,hi_diff(2), &
+                  dfluxy,lo_diff(1),lo_diff(2),hi_diff(1),hi_diff(2)+1, &
+                  -dx*2,dy)
+
+      ! Compute D**.dt/2 on (lo,hi), add to Dn.dt/2 already there
+      initFlux = 0
+      call diffFlux(lo,hi,q,uin_l1,uin_l2,uin_h1,uin_h2, &
+                    dfluxx,lo_diff(1),lo_diff(2),hi_diff(1)+1,hi_diff(2), &
+                    dfluxy,lo_diff(1),lo_diff(2),hi_diff(1),hi_diff(2)+1, &
+                    dx,dy,hdt,initFlux)
+
+
+      ! Get uout from u* by adding (Dn + D**)*dt/2
+      call diffup(lo_t,hi_t, &
+                  uout,uout_l1,uout_l2,uout_h1,uout_h2, &
+                  uout,uout_l1,uout_l2,uout_h1,uout_h2, &
+                  dfluxx,lo_diff(1),lo_diff(2),hi_diff(1)+1,hi_diff(2), &
+                  dfluxy,lo_diff(1),lo_diff(2),hi_diff(1),hi_diff(2)+1, &
+                  dx,dy)
+
+
+      ! Add diffusion fluxes to hyperbolic fluxes to pass back to AMR
+      call incFlux(lo,hi, &
+                   flux1,flux1_l1,flux1_l2,flux1_h1,flux1_h2, &
+                   flux2,flux2_l1,flux2_l2,flux2_h1,flux2_h2, &
+                   dfluxx,lo_diff(1),lo_diff(2),hi_diff(1)+1,hi_diff(2), &
+                   dfluxy,lo_diff(1),lo_diff(2),hi_diff(1),hi_diff(2)+1, &
+                   NVAR);
+
+      ! Chemically react output state (not incl. grow cells) for half time step
+!     if (do_chem.eq.1) then
+         call chemsolv(lo, hi, &
+                       uout,uout_l1,uout_l2,uout_h1,uout_h2, &
+                       hdt, idbg)
+!     endif
+
 
       ! Enforce the density >= small_dens.
       call enforce_minimum_density( uin, uin_l1, uin_l2, uin_h1, uin_h2, &
