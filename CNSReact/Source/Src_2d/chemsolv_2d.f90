@@ -96,6 +96,8 @@
                   u1 = u(i,j,2)/u(i,j,1)
                   u2 = u(i,j,3)/u(i,j,1)
                   ekin = 0.5d0*(u1**2 + u2**2)
+
+                  ! Components: 1 = URHO, 2 = UMX, 3 = UMY, 4 = UEDEN
                   RWRK(NP) = u(i,j,4)/u(i,j,1) - ekin
                   RWRK(NRHO) = u(i,j,1)
                      
