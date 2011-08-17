@@ -1,0 +1,24 @@
+PBOXLIB_HOME= /home/almgren/bin/BoxLib
+
+TOP = ../..
+
+PRECISION  = DOUBLE
+PROFILE    = FALSE
+
+DEBUG      = FALSE
+DEBUG      = TRUE
+
+DIM        = 2
+
+COMP	   = gcc
+FCOMP	   = gfortran
+
+USE_MPI    = FALSE
+
+USE_CHEM   = TRUE
+REACTION_MECHANISM=CHEMH
+
+Bpack   := ./Make.package
+Blocs   := .
+
+include ../Make.CNSReact.git

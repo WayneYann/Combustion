@@ -1,0 +1,39 @@
+
+EBASE     = CNSReact
+
+include $(PBOXLIB_HOME)/Tools/C_mk/Make.defs
+
+Bdirs 	:= Source Source/Src_$(DIM)d Source/EOS Source/Network
+
+Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
+Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
+
+Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
+
+Bpack	+= $(foreach dir, $(Pdirs), $(PBOXLIB_HOME)/Src/$(dir)/Make.package)
+Blocs	+= $(foreach dir, $(Pdirs), $(PBOXLIB_HOME)/Src/$(dir))
+
+Bpack	+= ../../../Chemistry/Make.package
+Blocs	+= ../../../Chemistry
+
+include $(Bpack)
+
+INCLUDE_LOCATIONS += $(Blocs)
+VPATH_LOCATIONS   += $(Blocs)
+
+#include $(PBOXLIB_HOME)/Src/F_BaseLib/FParallelMG.mak
+#INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/Src/F_BaseLib
+#VPATH_LOCATIONS   += $(PBOXLIB_HOME)/Src/F_BaseLib
+
+vpath %.c   . $(VPATH_LOCATIONS)
+vpath %.cpp . $(VPATH_LOCATIONS)
+vpath %.h   . $(VPATH_LOCATIONS)
+vpath %.H   . $(VPATH_LOCATIONS)
+vpath %.F   . $(VPATH_LOCATIONS)
+vpath %.f90 . $(VPATH_LOCATIONS)
+vpath %.f   . $(VPATH_LOCATIONS)
+vpath %.fi  . $(VPATH_LOCATIONS)
+
+all: $(executable) 
+
+include $(PBOXLIB_HOME)/Tools/C_mk/Make.rules
