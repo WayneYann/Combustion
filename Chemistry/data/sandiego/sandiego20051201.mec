@@ -1,0 +1,544 @@
+ELEMENTS
+N  AR H  O  C HE
+END
+
+SPECIES
+N2       AR       HE       H        O2       OH       O        H2       H2O      
+HO2      H2O2     CO       CO2      HCO      CH2O     CH4      CH3      
+T-CH2    S-CH2    C2H4     CH3O     C2H5     C2H6     CH       C2H2     
+C2H3     CH2CHO   C2H4O    CH2CO    HCCO     C2H      CH2OH    CH3OH 
+
+C2H5OH          CH3CHO          CH3CHOH      CH2CH2OH    CH3CO CH3CH2O
+   
+C3H4     C3H3     C3H5     C3H6     C3H8     I-C3H7   N-C3H7 
+END
+
+REACTIONS
+
+! HYDROGEN-OXYGEN CHAIN
+
+!Ref: Rightley and Williams, 1997
+H+O2<=>OH+O                              3.520e+16   -0.700  17069.79
+H2+O<=>OH+H                              5.060e+04    2.670   6290.63
+H2+OH<=>H2O+H                            1.170e+09    1.300   3635.28  
+H2O+O<=>2 OH                             7.600e+00    3.840  12779.64
+
+! DIRECT RECOMBINATION
+
+!Ref: Saxena and Williams, 2005
+H+H+M<=>H2+M                             1.300e+18   -1.000      0.00  
+H2/2.5/ H2O/12.0/ CO/1.90/ CO2/3.80/ AR/0.5/ HE/0.5/
+H+OH+M<=>H2O+M                           4.00e+22   -2.000      0.00
+H2/2.50/ H2O/12.0/ CO/1.90/ CO2/3.80/ AR/0.38/ HE/0.38/
+O+O+M<=>O2+M                             6.170e+15   -0.500      0.00
+H2/2.50/ H2O/12.00/ CO/1.90/ CO2/3.80/ AR/0.2/ HE/0.2/ 
+H+O+M<=>OH+M                             4.71E+18   -1.000      0.00        
+H2/2.5/ H2O/12.0/ AR/0.75/ HE/0.75/ CO/1.90/ CO2/3.80/
+O+OH+M<=>HO2+M                           8.0E15      0.000      0.00
+H2/2.5/ H2O/12.0/ AR/0.75/ HE/0.75/CO/1.90/ CO2/3.80/
+
+! HYDROPEROXYL REACTIONS
+
+!Ref: Troe, 2000; Saxena and Williams, 2005
+H+O2(+M)<=>HO2(+M)                       4.650e+12    0.440      0.00
+	LOW  /5.75E+19    -1.4   0.0 /
+	TROE/ 0.5    1E-30       1E+30  /
+AR/0.7/ HE/0.7/ O2/1.0/ H2O/16.00/  H2/2.5/ CO/1.2/ CO2/2.4/ C2H6/1.5/ 
+
+!Ref: Mueller et al., 1999
+HO2+H<=>2 OH                             7.08E+13     0.000    295.0   
+HO2+H<=>H2+O2                            1.66E+13     0.000   8.23E+02   
+!Ref: Rightley and Williams, 1997
+HO2+H<=>H2O+O                            3.100e+13    0.000   1720.84
+!Ref: Warnatz, 1984
+HO2+O<=>OH+O2                            2.000e+13    0.000      0.00
+!Ref: Rightley and Williams, 1997
+HO2+OH<=>H2O+O2                          2.890e+13    0.000   -497.13
+
+! HYDROGEN PEROXIDE REACTIONS
+
+!Ref: Petersen et al., 1999; Saxena and Williams, 2005
+! Change due to new OH thermodata
+2 OH(+M)<=>H2O2(+M)                      7.400e+13   -0.370      0.00
+     LOW  /  2.300e+18   -0.900  -1701.72 /
+     TROE/   0.735       94      1756      5182 /
+AR/0.40/ HE/0.40/ H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.0/ C2H6/3.0/
+!Ref: Rightley and Williams, 1997
+2 HO2<=>H2O2+O2                          3.020e+12    0.000   1386.23
+!Ref: Yetter et al., 1991
+H2O2+H<=>HO2+H2                          4.790e+13    0.000   7958.89
+H2O2+H<=>H2O+OH                          1.000e+13    0.000   3585.09
+!Ref: Rightley and Williams, 1997
+H2O2+OH<=>H2O+HO2                        7.080e+12    0.000   1434.03
+H2O2+O<=>HO2+OH                          9.630e+06    2.000   3991.40
+
+! CONVERSION OF CO TO CO2
+
+!Ref: Rightley and Williams, 1997
+CO+OH<=>CO2+H                            4.400e+06    1.500   -740.92
+CO+HO2<=>CO2+OH                          6.00e+13     0.000  22944.55
+!Ref: Saxena and Williams, 2005
+CO+O2=CO2+O               		 1.0E+12      0.00    47700
+
+! FORMYL (HCO) REACTIONS
+
+!Ref: Lindstedt et al., 1997
+HCO+M<=>CO+H+M                           1.860e+17   -1.000  17000.48
+H2/1.90/ H2O/12.00/ CO/2.50/ CO2/2.50/ 
+!Ref: Saxena and Williams, work in progress
+HCO+H<=>CO+H2                            5.000e+13    0.000      0.00
+!Ref: Rightley and Williams, 1997
+HCO+O<=>CO+OH                            3.000e+13    0.000      0.00
+HCO+O<=>CO2+H                            3.000e+13    0.000      0.00
+!Ref: Tsang, 1986
+HCO+OH<=>CO+H2O                          3.0e+13      0.000      0.00
+!Ref: Timonen et al., 1988		
+HCO+O2=CO+HO2             		 7.58E+12     0.00  	410.0	
+!Ref: Saxena and Williams, work in progress
+HCO+ CH3 = CO + CH4                      5.00E+13     0.00  	0.00            
+
+! FORMALDEHYDE (CH2O) REACTIONS
+
+!Ref: GRI v. 1.2
+H+HCO(+M)<=>CH2O(+M)                      1.090E+12     0.480   -260.00		
+     LOW  /  1.350E+24   -2.570    425.00/	
+     TROE/   .7824  271.00  2755.00  6570.00 /
+H2/2.00/ H2O/6.00/ CH4/2.00/ CO/1.50/ CO2/2.00/ C2H6/3.00/ AR/ .70/ 
+!Ref: Juan Li, 2004
+CH2O + H = HCO + H2                      5.74E+07  	1.9  	2748.6	
+!Ref: Rightley and Williams, 1997	
+CH2O+O<=>HCO+OH                          3.500e+13    	0.000   3513.38
+CH2O+OH<=>HCO+H2O                        3.900e+10    	0.890   406.31
+!Ref Baulch et al., 1992
+CH2O + O2 = HCO + HO2            	 6E+13 		0 	40674.	
+!Ref Eiteneer et al., 1998	
+CH2O + HO2 = HCO + H2O2          	 4.11e+4   	2.5  	10210.3  
+
+! METHANE (CH4) Consumption
+
+!Ref: Hewson and Williams, 1999
+CH4+H<=>H2+CH3                           1.300e+04    3.000   8037.76
+CH4+OH<=>H2O+CH3                         1.600e+07    1.830   2782.03
+!Ref: Frenklach et al., 1992
+CH4+O<=>CH3+OH                           1.900e+09    1.440   8675.91
+!Ref: Lindstedt et al., 1997:acetylene; Li, 2000:methaneign
+CH4+O2<=>CH3+HO2                         3.980e+13    0.000  56890.54
+CH4+HO2<=>CH3+H2O2                       9.030e+12    0.000  24641.49
+
+! METHYL (CH3) Reactions
+
+!Ref: Frenklach et al., 1992
+CH3+H<=>T-CH2+H2                         1.800e+14    0.000  15105.16
+CH3+H<=>S-CH2+H2                         1.550e+14    0.000  13479.92
+!Ref: Grotheer et al., 1992; Saxena and Williams, work in progress
+CH3+OH<=>S-CH2+H2O                       4.000e+13    0.000   2502.39 
+!Ref: Frenklach et al., 1992
+CH3+O<=>CH2O+H                           8.430e+13    0.000      0.00
+!Ref: Baulch et al., 1992
+CH3+T-CH2<=>C2H4+H                       4.220e+13    0.000      0.00
+!Ref: Frenklach et al., 1992
+!modification: preexponential 'a' has been changed to improve ignition-time calculations
+CH3+HO2<=>CH3O+OH                        5.000e+12    0.000      0.00
+!Ref: Zellner et al. 1988
+CH3+O2<=>CH2O+OH                         3.300e+11    0.000   8941.20 
+CH3+O2<=>CH3O+O			   	 1.1E13     	0.0   27.82E3 
+!Ref: Hidaka et al., 1990
+CH3+CH3<=>C2H4+H2                        1.000e+14    0.000  32002.87
+!Ref: Lim and Michael, 1994
+CH3+CH3<=>C2H5+H                         3.160e+13    0.000  14698.85
+!GRI v. 3.0
+H+CH3(+M)<=>CH4(+M)                      12.70E+15    -.63     383.00   
+     LOW  /  2.470E+33   -4.760   2440.00/
+     TROE/   .7830   74.00  2941.00  6964.00 /
+H2/2.00/ H2O/6.00/ CH4/2.00/ CO/1.50/ CO2/2.00/  AR/ .70/ 
+!Ref: Hewson and Williams, 1999
+2 CH3(+M)<=>C2H6(+M)                     1.810e+13    0.000      0.00
+     LOW  /  1.270e+41   -7.000   2762.91 /
+     TROE/    0.62    73.00   1180.00        /
+H2/2.00/ H2O/6.00/ CH4/2.00/ CO/1.50/ CO2/2.00/ C2H6/3.00/ AR/ .70/ 
+
+! SINGLET METHYLENE (S-CH2) REACTIONS
+
+!Ref: Frenklach et al., 1992
+S-CH2+OH<=>CH2O+H                        3.000e+13    0.000      0.00
+S-CH2+O2<=>CO+OH+H                       3.130e+13    0.000      0.00
+!Ref: Leung et al., 1995
+S-CH2+CO2<=>CO+CH2O                      3.000e+12    0.000      0.00
+!Ref: Frenklach et al., 1992
+S-CH2+M<=>T-CH2+M                        6.000e+12    0.000      0.00
+H2/2.40/ H2O/15.40/ CO/1.80/ CO2/3.60/ 
+
+! TRIPLET METHYLENE (T-CH2) REACTIONS
+
+!Ref: Baulch et al., 1992
+T-CH2+H<=>CH+H2                          6.020e+12    0.000  -1787.76
+!Ref: Frenklach et al., 1992
+T-CH2+OH<=>CH2O+H                        2.500e+13    0.000      0.00
+T-CH2+OH<=>CH+H2O                        1.130e+07    2.000   2999.52
+!Ref: Frank et al., 1986: 21stsymp
+T-CH2+O<=>CO+2H                          8.000e+13    0.000      0.00
+T-CH2+O<=>CO+H2                          4.000e+13    0.000      0.00
+!Ref: Leung et al. 1995
+T-CH2+O2<=>CO2+H2                        2.630e+12    0.000   1491.40
+T-CH2+O2<=>CO+OH+H                       6.580e+12    0.000   1491.40
+!Ref: Frenklach et al., 1992
+T-CH2+T-CH2<=>C2H2+2H                    1.000e+14    0.000      0.00
+
+! METHYNE (CH) REACTIONS
+!Ref: Peters, 1993
+CH+O<=>CO+H                              4.000e+13    0.000      0.00
+!Ref: Markus et al., 1996
+CH+O2<=>HCO+O                            1.770e+11    0.760   -478.01
+!Ref: Leung et al., 1995
+CH+H2O<=>CH2O+H                          1.170e+15   -0.750      0.00
+!Ref: Markus et al., 1996
+CH+CO2<=>HCO+CO                          4.800e+01    3.220  -3226.58
+
+! METHOXY (CH3O) REACTIONS
+
+!Ref: Li and Williams, 1998
+CH3O+H<=>CH2O+H2                         2.000e+13    0.000      0.00
+CH3O+H<=>S-CH2+H2O                       1.600e+13    0.000      0.00
+CH3O+OH<=>CH2O+H2O                       5.000e+12    0.000      0.00
+CH3O+O<=>OH+CH2O                         1.000e+13    0.000      0.00
+CH3O+O2<=>CH2O+HO2                       4.280e-13    7.600  -3537.28
+!Ref: Saxena and Williams, work in progress
+CH3O+M<=>CH2O+H+M                        7.7800e+13    0.000  13513.3    
+H2/2.00/ H2O/6.00/ CH4/2.00/ CO/1.50/ CO2/2.00/ AR/ .70/ 
+
+! ETHANE (C2H6) REACTION
+
+!Ref: Frenklach et al., 1992
+C2H6+H<=>C2H5+H2                         5.400e+02    3.500   5210.33
+C2H6+O<=>C2H5+OH                         1.400e+00    4.300   2772.47
+C2H6+OH<=>C2H5+H2O                       2.200e+07    1.900   1123.33
+C2H6+CH3<=>C2H5+CH4                      5.500e-01    4.000   8293.50
+!Ref: Hewson and Williams, 1999; GRI v. 2.11
+!Ref: Saxena and Williams, work in progress
+C2H6(+M)<=>C2H5+H(+M)                    8.850e+20   -1.230 102222.75
+     LOW  /  4.900e+42   -6.430 107170.17 /
+     TROE/    0.84   125.00   2219.00   6882.00 /
+H2/2.00/ H2O/6.00/ CH4/2.00/ CO/1.50/ CO2/2.00/ C2H6/3.00/ AR/ .70/ 
+!Ref: Baulch et al., 1992; Saxena and Williams, work in progress
+C2H6+HO2<=>C2H5+H2O2                     1.32E13      0       20470
+
+! ETHYL (C2H5) REACTIONS
+!Ref: Frenklach et al., 1992
+C2H5+H<=>C2H4+H2                         3.000e+13    0.000      0.00
+C2H5+O<=>C2H4+OH                         3.060e+13    0.000      0.00
+C2H5+O<=>CH3+CH2O                        4.240e+13    0.000      0.00
+C2H5+O2<=>C2H4+HO2                       2.000e+12    0.000   4995.22
+!Ref: Feng, 1993; Saxena and Williams, work in progress
+C2H5(+M)<=>C2H4+H(+M)                    1.110e+10    1.037  36768.64
+     LOW  /  3.990e+33   -4.990  40000.00 /
+     TROE/   0.168  1203.00      0.00        /
+H2/2.00/ H2O/6.00/ CH4/2.00/ CO/1.50/ CO2/2.00/ AR/ .70/ 
+
+! ETHENE (C2H4) REACTIONS
+!Ref: Bhargava et al., 1998
+C2H4+H<=>C2H3+H2                         4.490e+07    2.120  13360.42
+C2H4+OH<=>C2H3+H2O                       5.530e+05    2.310   2963.67
+!Ref: Baulch et al., 1992
+C2H4+O<=>CH3+HCO                         2.250e+06    2.080      0.00
+C2H4+O<=>CH2CHO+H                        1.210e+06    2.080      0.00
+!Ref: Hidaka et al., 1999
+C2H4+C2H4<=>C2H3+C2H5                    5.010e+14    0.000  64700.05
+!Ref: Marinov, 1995
+C2H4+O2<=>C2H3+HO2                       4.220e+13    0.000  57623.09
+!Ref: Baulch et al., 1992
+C2H4+HO2<=>C2H4O+OH                      2.230e+12    0.000  17189.29
+C2H4O+HO2<=>CH3+CO+H2O2                  4.000e+12    0.000  17007.65
+!Ref: Baulch et al., 1994; Saxena and Williams, work in progress
+C2H4+M<=>C2H3+H+M                        2.600e+17    0.000  96568.12
+H2/2.00/ H2O/6.00/ CH4/2.00/ CO/1.50/ CO2/2.00/ AR/ .70/ 
+C2H4+M<=>C2H2+H2+M                       3.500e+16    0.000  71532.03
+H2/2.00/ H2O/6.00/ CH4/2.00/ CO/1.50/ CO2/2.00/ AR/ .70/ 
+
+! VINYL (C2H3) REACTIONS
+!Ref: Saxena and Williams, work in progress
+C2H3+H<=>C2H2+H2                         4.0e+13    0.000      0.00 
+!Ref: Varatharajan and Williams, 2001; Saxena and Williams, work in progress
+C2H3(+M)<=>C2H2+H(+M)                    6.380e+09    1.000  37626.67
+     LOW  /  1.510e+14    0.100  32686.42 /
+     TROE/   0.3 1e+30   1e-30     /
+H2/2.00/ H2O/6.00/ CH4/2.00/ CO/1.50/ CO2/2.00/ AR/ .70/ 
+!Ref: Marinov and Pitz, 1998
+C2H3+O2<=>CH2O+HCO                       1.700e+29   -5.312   6503.11
+!Ref: Varatharajan and Williams, 2001; Marinov and Pitz, 1998
+C2H3+O2<=>CH2CHO+O                       7.000e+14   -0.611   5262.43
+!Ref: Varatharajan and Williams, 2001; Marinov and Pitz, 1998
+C2H3+O2<=>C2H2+HO2                       5.190e+15   -1.260   3312.62
+
+
+
+! ACETYLENE (C2H2) REACTIONS
+!Ref: Frank et al., 1986
+C2H2+O<=>HCCO+H                          4.000e+14    0.000  10659.66
+C2H2+O<=>T-CH2+CO                        1.600e+14    0.000   9894.84
+!Ref: Laskin et al., 1999
+C2H2+O2<=>CH2O+CO                        4.600e+15   -0.540  44933.08
+!Ref: Lindstedt et al., 1997; Waly and Williams, 2001
+C2H2+OH<=>CH2CO+H                        1.900e+07    1.700    999.04
+C2H2+OH<=>C2H+H2O                        3.370e+07    2.000  14000.96
+
+! CH2CO REACTIONS
+!Ref: Petrova and Williams, 2005 
+CH2CO+H<=>CH3+CO                         1.500e+09    1.430   2688.81
+!Ref: Lindstedt et al., 1997; Waly and Williams, 2001
+CH2CO+O<=>T-CH2+CO2                      2.000e+13    0.000   2294.46
+CH2CO+O<=>HCCO+OH                        1.000e+13    0.000   2000.48
+CH2CO+CH3<=>C2H5+CO                      9.000e+10    0.000      0.00
+
+! HCCO REACTIONS
+!Ref: Frank et al., 1986
+HCCO+H<=>S-CH2+CO                        1.500e+14    0.000      0.00
+!Ref: Westbrook, 1984
+HCCO+OH<=>HCO+CO+H                       2.000e+12    0.000      0.00
+!Ref: Frank et al., 1986
+HCCO+O<=>2 CO+H                          9.640e+13    0.000      0.00
+!Ref: Varatharajan and Williams, 2001
+HCCO+O2<=>2 CO+OH                        2.880e+07    1.700   1001.43
+HCCO+O2<=>CO2+CO+H                       1.400e+07    1.700   1001.43
+
+! C2H FORMATION AND CONSUMPTION
+!Ref: Frenklach et al., 1992; Waly and Williams, 2001
+C2H+OH<=>HCCO+H                          2.000e+13    0.000      0.00
+C2H+O<=>CO+CH                            1.020e+13    0.000      0.00
+C2H+O2<=>HCCO+O                          6.020e+11    0.000      0.00
+C2H+O2<=>CH+CO2                          4.500e+15    0.000  25095.60
+C2H+O2<=>HCO+CO                          2.410e+12    0.000      0.00          
+
+! HYDROXYMETHYL (CH2OH)  REACTIONS
+!Ref: Li and Williams, 1998
+CH2OH + H = CH2O + H2                    3.000E+13  	0.00   0.000E+00
+!Ref: Saxena and Williams, work in progress
+CH2OH+H<=>CH3+OH                         2.5E+17   	-0.93   5126.8
+!Ref: Li and Williams, 1998
+CH2OH+OH<=>CH2O+H2O                      2.400e+13    	0.000      0.00
+CH2OH+O2<=>CH2O+HO2                      5.000e+12    	0.000      0.00
+CH2OH+M<=>CH2O+H+M                       5.000e+13    0.000  25119.50
+H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ AR/ .70/ 
+CH3O+M<=>CH2OH+M                         1.000e+14    0.000  19120.46
+H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ AR/ .70/ 
+CH2CO+OH<=>CH2OH+CO                      1.020e+13    0.000      0.00
+
+! METHANOL (CH3OH) REACTIONS
+!Ref: Li and Williams, 1998
+CH3OH+OH<=>CH2OH+H2O                     1.440e+06    	2.000   -838.91
+!Ref: Saxena and Williams, work in progress
+CH3OH+OH<=>CH3O+H2O                      4.40e6    	2.000   1505.74  
+!Ref: Jodkowski et al., 1999: RRKM
+CH3OH + H = CH2OH + H2            	 1353.8    	3.2     3490.7 
+CH3OH + H = CH3O + H2             	 68.3      	3.4     7240 
+!Ref: Li and Williams, 1998
+CH3OH+O<=>CH2OH+OH                       1.000e+13    	0.000   4684.51
+CH3OH+HO2<=>CH2OH+H2O2                   6.200e+12    	0.000  19383.37
+CH3OH+O2<=>CH2OH+HO2                     2.000e+13    	0.000  44933.08
+!Ref: Held et al., 1999; Saxena and Williams,work in progress
+CH3OH(+M)<=>CH3+OH(+M)                   1.9e16     	0   	91730		
+     LOW  /  2.95e44     -7.35   95460/
+     TROE/     0.414  279     5459     /
+H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ AR/ .70/ 
+
+! CH2CHO REACTIONS
+
+!Ref: Marinov, 1995
+CH2CHO<=>CH2CO+H                1.047e+37   -7.189  44340.34
+!Ref: Juan Li, 2004:thesis
+CH2CHO+H=CH3+HCO		 5.0E+13		0.0	0.0
+CH2CHO+H=CH2CO+H2		 2.0E+13		0.0	0.0
+CH2CHO+O=CH2O+HCO		 1.0E+14		0.0	0.0
+CH2CHO+OH=CH2CO+H2O		 3.0E+13		0.0	0.0
+CH2CHO+O2=CH2O+CO+OH		 3.0E+10		0.0	0.0
+CH2CHO+CH3=C2H5+CO+H		 4.9E+14		-0.5	0.0
+CH2CHO+HO2=CH2O+HCO+OH		 7.0E+12		0.0	0.0
+CH2CHO+HO2=CH3CHO+O2		 3.0E+12		0.0	0.0
+CH2CHO=CH3+CO			 1.17E+43	     -9.8	43800
+
+!ETHANOL (C2H5OH) SUBMECHANISM
+
+!ACETALDEHYDE (CH3CHO) REACTIONS
+!Ref: Juan Li, 2004:thesis
+CH3CHO<=>CH3+HCO		7.0E+15		0.0	8.17E+04
+CH3CO(+M)<=>CH3+CO(+M)		3.0E+12 	0.0     1.67E+04
+	LOW  /  1.2E+15		0.0	1.25E+04/
+H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ AR/ .70/
+
+CH3CHO+OH<=>CH3CO+H2O		3.37E+12	0.0	-6.2E+02
+CH3CHO+OH<=>CH2CHO+H2O		3.37E+11	0.0	-6.2E+02
+CH3CHO+O<=>CH3CO+OH		1.77E+18	-1.9	2.98E+03
+CH3CHO+O<=>CH2CHO+OH		3.72E+13	-0.2	3.56E+03
+CH3CHO+H<=>CH3CO+H2		4.66E+13	-0.3	2.99E+03
+CH3CHO+H<=>CH2CHO+H2		1.85E+12	0.4	5.36E+03
+CH3CHO+CH3<=>CH3CO+CH4		3.9E-07	5.8	2.20E+03
+CH3CHO+CH3<=>CH2CHO+CH4		2.45E+01	3.1	5.73E+03
+CH3CHO+HO2<=>CH3CO+H2O2		3.60E+19	-2.2	1.40E+04
+CH3CHO+HO2<=>CH2CHO+H2O2	2.32E+11	0.4	1.49E+04
+CH3CHO+O2<=>CH3CO+HO2		1.0E+14	0.0	4.22E+04
+
+!ETHANOL (C2H5OH) REACTIONS
+
+!Ref: Saxena and Williams, work in progress
+C2H5OH(+M)=CH3+CH2OH(+M) 	5E15  0.0  82000  
+	LOW /3E16    0.0    58000/
+TROE/       0.5    1E-30       1E+30  /
+H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ AR/ .70/
+C2H5OH(+M)<=>C2H4+H2O(+M)    	8E13	0.0	65000           
+	LOW /1E17    0.0   54000/
+TROE/       0.5    1E-30       1E+30  /
+H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ AR/ .70/
+!Ref: Juan Li, 2004:thesis
+C2H5OH+OH<=>CH2CH2OH+H2O	1.81E+11	0.4	7.17E+02
+C2H5OH+OH<=>CH3CHOH+H2O		3.09E+10	0.5	-3.8E+02
+C2H5OH+OH<=>CH3CH2O+H2O		1.05E+10	0.8	7.17E+02
+C2H5OH+H<=>CH2CH2OH+H2		1.9E+07	1.8	5.10E+03
+C2H5OH+H<=>CH3CHOH+H2		2.58E+07	1.6	2.83E+03
+C2H5OH+H<=>CH3CH2O+H2		1.5E+07	1.6	3.04E+03
+C2H5OH+O<=>CH2CH2OH+OH		9.41E+07	1.7	5.46E+03
+C2H5OH+O<=>CH3CHOH+OH		1.88E+07	1.9	1.82E+03
+C2H5OH+O<=>CH3CH2O+OH		1.58E+07	2.0	4.45E+03
+C2H5OH+CH3<=>CH2CH2OH+CH4	2.19E+02	3.2	9.62E+03
+C2H5OH+CH3<=>CH3CHOH+CH4	7.28E+02	3.0	7.95E+03
+C2H5OH+CH3<=>CH3CH2O+CH4	1.45E+02	3.0	7.65E+03
+C2H5OH+HO2<=>CH3CHOH+H2O2	8.2E+03	2.5	1.08E+04
+C2H5OH+HO2<=>CH2CH2OH+H2O2	2.43E+04	2.5	1.58E+04
+C2H5OH+HO2<=>CH3CH2O+H2O2	3.8E+12	0.0	2.4E+04
+
+! C2H5O REACTIONS
+C2H4+OH<=>CH2CH2OH		2.41E+11	0.0	-2.38E+03
+C2H5+HO2<=>CH3CH2O+OH		4.0E+13	0.0	0.0
+CH3CH2O+M<=>CH3CHO+H+M		5.6E+34		-5.9	2.53E+04
+H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ AR/ .70/
+CH3CH2O+M<=>CH3+CH2O+M		5.35E+37	-7.0	2.38E+04
+H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ AR/ .70/
+CH3CH2O+O2<=>CH3CHO+HO2		4.0E+10	0.0	1.1E+03
+CH3CH2O+CO<=>C2H5+CO2		4.68E+02	3.2	5.38E+03
+CH3CH2O+H<=>CH3+CH2OH		3.0E+13	0.0	0.0
+CH3CH2O+H<=>C2H4+H2O		3.0E+13	0.0	0.0
+CH3CH2O+OH<=>CH3CHO+H2O		1.0E+13	0.0	0.0
+CH3CHOH+O2<=>CH3CHO+HO2		4.82E+13	0.0	5.02E+03
+CH3CHOH+O<=>CH3CHO+OH		1.0E+14	0.0	0.0
+CH3CHOH+H<=>C2H4+H2O		3.0E+13	0.0	0.0
+CH3CHOH+H<=>CH3+CH2OH		3.0E+13	0.0	0.0
+CH3CHOH+HO2<=>CH3CHO+OH+OH	4.0E+13	0.0	0.0
+CH3CHOH+OH<=>CH3CHO+H2O		5.0E+12	0.0	0.0
+CH3CHOH+M<=>CH3CHO+H+M		1.0E+14	0.0	2.5E+04
+H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ AR/ .70/
+
+
+! C3 REACTIONS
+!Ref: Davis et al., 1999
+C3H4+O<=>C2H4+CO                         2.000e+07    1.800   1000.00
+!Davis et al. 1 atm  propyne reactions
+CH3+C2H2<=>C3H4+H                        2.560e+09    1.100  13643.88
+!Ref: Petrova and Williams, 2005
+C3H4+O<=>HCCO+CH3                        7.300e+12    0.000   2250.00
+!  C3H3 rxns added to improve allyl ignition
+!  San Diego fit of Troe falloff for several values of pressure 
+!Ref: Petrova and Williams, 2005
+C3H3+H(+M)<=>C3H4(+M)                    3.000e+13    0.000      0.00
+     LOW  /  9.000e+15    1.000      0.00 /
+     TROE/     0.5 1e+30      0.00        /
+C3H3+HO2<=>C3H4+O2                       2.500e+12    0.000      0.00
+
+! ALLYL REACTIONS
+
+!Ref: Wang, 1997
+C3H4+OH<=>C3H3+H2O                       5.300e+06    2.000   2000.00
+!Ref: Slagle, 1986
+C3H3+O2<=>CH2CO+HCO                      3.000e+10    0.000   2868.07
+
+!  C3H5 REACTIONS 
+!  San Diego fit of Troe falloff for several values of pressure
+!Ref: Petrova and Williams, 2005
+C3H4+H(+M)<=>C3H5(+M)                    4.000e+13    0.000      0.00
+     LOW  /  3.000e+24   -2.000      0.00 /
+     TROE/     0.8 1e+30      0.00        /
+!Ref: Tsang, 1991
+C3H5+H<=>C3H4+H2                         1.800e+13    0.000      0.00
+!Ref: Bozelli and Dean, 1993
+C3H5+O2<=>C3H4+HO2                       4.990e+15   -1.400  22428.06
+!Ref: Petrova and Williams, 2005
+C3H5+CH3<=>C3H4+CH4                      3.000e+12   -0.320   -130.98
+!   San Diego fit of Troe falloff for several values of pressure
+C2H2+CH3(+M)<=>C3H5(+M)                  6.000e+08    0.000      0.00
+     LOW  /  2.000e+09    1.000      0.00 /
+     TROE/     0.5 1e+30      0.00        /
+C3H5+OH<=>C3H4+H2O                       6.000e+12    0.000      0.00
+!Reactions added in DE, after C3H4 thermodata was changed to davis's aC3H4
+!Ref: Wang, 1997
+C3H3+HCO<=>C3H4+CO                       2.500e+13    0.000      0.00
+!Ref: Davis et al., 1999
+C3H3+HO2<=>OH+CO+C2H3                    8.000e+11    0.000      0.00
+!Ref: Wang, 2001
+C3H4+O2<=>CH3+HCO+CO                     4.000e+14    0.000  41826.00
+
+! PROPENE (C3H6) REACTIONS
+!Ref: Tsang, 1991
+C3H6+O<=>C2H5+HCO                        3.500e+07    1.650   -972.75
+C3H6+OH<=>C3H5+H2O                       3.100e+06    2.000   -298.28
+C3H6+O<=>CH2CO+CH3+H                     1.200e+08    1.650    327.44
+C3H6+H<=>C3H5+H2                         1.700e+05    2.500   2492.83
+!Ref: Davis et al., 1999
+C3H5+H(+M)<=>C3H6(+M)                    2.000e+14    0.000      0.00
+     LOW  /  1.330e+60  -12.000   5967.97 /
+     TROE/    0.02     1097      1097      6860 /
+AR/0.70/ H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ C2H6/3.00/ 
+!Ref: Baulch et al., 1992
+C3H5+HO2<=>C3H6+O2                       2.660e+12    0.000      0.00
+! the rate from Baulch has been modified in San Diego Mechanism
+C3H5+HO2<=>OH+C2H3+CH2O                  3.000e+12    0.000      0.00
+!Ref: Davis et al., 1999
+C2H3+CH3(+M)<=>C3H6(+M)                  2.500e+13    0.000      0.00
+     LOW  /  4.270e+58  -11.940   9770.55 /
+     TROE/   0.175     1341     6e+04 1.014e+04 /
+AR/0.70/ H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ C2H6/3.00/ 
+C3H6+H<=>C2H4+CH3                        1.600e+22   -2.390  11185.47
+CH3+C2H3<=>C3H5+H                        1.500e+24   -2.830  18618.55
+
+!PROPANE (C3H8) REACTIONS
+
+!Ref: Baulch et al., 1994
+C3H8(+M)<=>CH3+C2H5(+M)                  1.100e+17    0.000  84392.93
+     LOW  /  7.830e+18    0.000  64978.49 /
+     TROE/    0.76  1946.00     38.00        / 
+!Ref: Varatharajan and Williams, 2000; Davis et al., 1999; Tsang, 1988
+C3H8+O2<=>I-C3H7+HO2                     4.000e+13    0.000  47500.00
+C3H8+O2<=>N-C3H7+HO2                     4.000e+13    0.000  50932.12
+C3H8+H<=>I-C3H7+H2                       1.300e+06    2.400   4471.08
+!Ref: Tsang, 1988;  Marinov, 1996
+C3H8+H<=>N-C3H7+H2                       1.330e+06    2.540   6761.47
+!Ref: Tsang, 1988; Davis et al., 1999
+C3H8+O<=>I-C3H7+OH                       4.760e+04    2.710   2107.31
+C3H8+O<=>N-C3H7+OH                       1.900e+05    2.680   3718.45
+!Ref: Davis et al., 1999
+C3H8+OH<=>N-C3H7+H2O                     1.400e+03    2.660    527.25
+C3H8+OH<=>I-C3H7+H2O                     2.700e+04    2.390    393.16
+!Ref: Tsang, 1988;  Marinov, 1996;  Davis et al., 1999
+C3H8+HO2<=>I-C3H7+H2O2                   9.640e+03    2.600  13917.30
+C3H8+HO2<=>N-C3H7+H2O2                   4.760e+04    2.550  16491.40
+
+! I-C3H7 REACTIONS
+
+!Ref: Tsang, 1988; Qin, 2000:thesis
+I-C3H7+C3H8<=>N-C3H7+C3H8                8.400e-03    4.200   8675.91
+!Ref: Davis et al., 1999
+C3H6+H(+M)<=>I-C3H7(+M)                  1.330e+13    0.000   1560.71
+     LOW  /  8.700e+42   -7.500   4732.31 /
+     TROE/       1     1000     645.4      6844 /
+AR/0.70/ H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ C2H6/3.00/ 
+!Ref: Tsang, 1988; Davis et al., 1999
+I-C3H7+O2<=>C3H6+HO2                     1.300e+11    0.000      0.00
+N-C3H7(+M)<=>CH3+C2H4(+M)                1.230e+13   -0.100  30210.33
+     LOW  /  5.490e+49  -10.000  35779.16 /
+     TROE/   -1.17      251     1e-15      1185 /
+!Ref: Davis et al., 1999
+! REVERSE
+H+C3H6(+M)<=>N-C3H7(+M)                  1.330e+13    0.000   3260.04
+     LOW  /  6.260e+38   -6.660   7000.48 /
+     TROE/       1     1000      1310  4.81e+04 /
+AR/0.70/ H2/2.00/ H2O/6.00/ CO/1.50/ CO2/2.00/ CH4/2.00/ C2H6/3.00/ 
+!Ref: Tsang, 1988; Davis et al., 1999
+N-C3H7+O2<=>C3H6+HO2                     9.000e+10    0.000      0.00
+
+END

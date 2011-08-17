@@ -1,0 +1,8 @@
+ELEMENTS                                                                        
+O  H  C  N
+END                                                                             
+SPECIES                                                                         
+O2      CH4     N2
+END                                                                             
+REACTIONS                                                                       
+END                                                                             

@@ -1,0 +1,67 @@
+Return-Path: <haiw@usc.edu>
+Received: from relay2.decf.berkeley.edu (relay2.DECF.Berkeley.EDU [169.229.204.214])
+	by maxwell.berkeley.edu (8.12.11.20060308/8.12.8) with ESMTP id l2CJfxdh015823
+	for <myf@me.berkeley.edu>; Mon, 12 Mar 2007 11:41:59 -0800 Received: from relay2.decf.berkeley.edu (localhost [127.0.0.1])
+	by relay2.decf.berkeley.edu (8.12.11.20060308/8.12.11) with ESMTP id l2CJfxmu020176
+	for <myf@me.berkeley.edu>; Mon, 12 Mar 2007 11:41:59 -0800 Received: from msg-mx0.usc.edu (msg-mx0.usc.edu [128.125.137.5])
+	by relay2.decf.berkeley.edu (8.12.11.20060308/8.12.11) with ESMTP id l2CJfxeX020167
+	for <myf@me.berkeley.edu>; Mon, 12 Mar 2007 11:41:59 -0800 Received: from VULCAN2 ([128.125.124.172])  by msg-mx0.usc.edu (Sun Java System Messaging Server 6.2-7.05 (built Sep  5  2006)) with ESMTPA id <0JET009XQ2PY6X40@msg-mx0.usc.edu> for  myf@me.berkeley.edu; Mon, 12 Mar 2007 12:41:58 -0700 (PDT) Date: Mon, 12 Mar 2007 12:42:13 -0700
+From: Hai Wang <haiw@usc.edu>
+Subject: Re: references
+Sender: haiw@usc.edu
+To: Michael Frenklach <myf@me.berkeley.edu> Message-id: <002a01c764de$8894a9f0$ac7c7d80@VULCAN2> MIME-version: 1.0
+X-MIMEOLE: Produced By Microsoft MimeOLE V6.00.2900.3028 X-Mailer: Microsoft Outlook Express 6.00.2900.3028 Content-type: text/plain; format=flowed; charset=iso-8859-1; reply-type=response Content-transfer-encoding: 7BIT
+X-Priority: 3
+X-MSMail-priority: Normal
+References: <7.0.1.0.2.20070311162950.033407d0@me.berkeley.edu> X-Spam-Status: No, hits=0 required=5.1 tests= X-Spam-Level: 
+X-Scanned-By: MIMEDefang 2.53 on 169.229.204.214 X-UIDL: nO1"!S&9!!-Oc!!)PF"!
+
+<x-flowed>
+Michael,
+
+The reference is
+Davis, S. G., Law, C. K. and Wang, H., "Propene pyrolysis and oxidation kinetics in flow reactor and laminar flames." Combustion and Flame 119, pp. 
+375-399 (1999).
+
+I will email Fokion about your second question.
+
+Best,
+
+Hai
+
+
+
+----- Original Message ----- 
+From: "Michael Frenklach" <myf@me.berkeley.edu> To: "Hai Wang" <haiw@usc.edu>
+Sent: Sunday, March 11, 2007 5:38 PM
+Subject: references
+
+
+> Hi Hai,
+>
+> I imported your propane mechanism into Reactionlab without much 
+> difficulties (there were a couple of glitches with the thermo file: 
+> Matlab, following C, cannot handle the empty space instead plus in the 
+> number exponents, e.g., it has to be 1.23E+03 and not 1.23E 03, and also C 
+> does not know about D format). In any event, it took me a couple of 
+> minutes, and I could run your propane mechanism in Reactionlab (PFR 
+> simulations).  Thank you very much!
+>
+> The question I have is: what is the reference to be used for this 
+> mechanism?
+>
+> At this opportunity, I have another question: Is there another reference 
+> for the data we used for the StF8 target (for GRI-Mech 3.0)?  On the web 
+> page we list
+>
+> Vagelopoulos, C.N., and Egolfopoulos,F.N., 'Direct Experimental 
+> Determination of Laminar Flame Speeds,' Paper WSS/CI 97S-022, Western 
+> States Section/Combustion Institute Meeting, Livermore, CA, April 1997.
+>
+> Is there a paper for this?
+>
+> With best regards,
+>                            Michael
+> 
+
+</x-flowed>

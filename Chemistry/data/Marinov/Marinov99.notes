@@ -1,0 +1,10 @@
+UCRL-WEB-204236
+Review and release date: May 19, 2004.
+11/19/04, ethanol_v1b.therm: WJP:
+Fixed thermo for ch2chch2o  It had a slight discontinuty at the low to high temperature
+transition point that was causing Cantera to complain.  
+I kept the Hf and S298 the same as Nick Marinov's value and used the Cp's from
+therm which were very similar to Nick Marinov's values.  I used this info. to make a new lst file 
+and used that to make a new NASA coef.
+Jun 18, 1999 WJP tran.dat, WJP:
+I added hoc2h4o2 which was missing.  I made it the same as c2h5oh.

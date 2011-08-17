@@ -1,0 +1,310 @@
+!
+!Roehl, O. and Peters, N. "A Reduced Mechanism for Ethanol Oxidation"
+!European Combustion Meeting 2009 
+!Institute of Combustion Technology, RWTH Aachen University, Germany 
+!Date: 6 Feb 2009
+!From: "Olaf Roehl" <roehl@itv.rwth-aachen.de>
+!
+elements
+ h   o    c  n       
+end
+species
+h2 h
+ch4 ch3 ch2 ch ch2o hco co2 co o2 o oh ho2 h2o2 h2o
+c2h hcco c2h2 c2h3 c2h4 c2h5 c2h6 ch2oh ch3o hccoh h2ccch
+c3h2 ch2s ch2co 
+ch2hco 
+ch3co 
+ch3hco 
+c2h5oh c2h4oh  ch3choh  
+ch3ch2o n2 
+end    
+thermo
+end
+reactions
+   oh+h2 = h+h2o             2.14E+08  1.52  3449.0 !Marinov 1995a
+   o+oh = o2+h               2.02E+14  -0.4     0.0 !Marinov 1995a
+   o+h2 = oh+h               5.06E+04  2.67  6290.0 !Marinov 1995a
+   h+o2(+m) = ho2(+m)        4.52E+13  0.0      0.0 !Marinov 1995a
+   low /  1.05E+19  -1.257  0.0 /	          !Marinov 1995a
+   h2o/0.0/ h2/0.0/ n2/0.0/ ch4/10.0/ co2/3.8/ co/1.9/
+   h+o2(+n2) = ho2(+n2)      4.52E+13  0.0      0.0 !Marinov 1995a
+   low / 2.03E+20  -1.59    0.0  / 	          !Marinov 1995a
+   h+o2(+h2) = ho2(+h2)      4.52E+13  0.0      0.0 !Marinov 1995a
+   low / 1.52E+19  -1.133   0.0 /        	  !Marinov 1995a
+   h+o2(+h2o) = ho2(+h2o)    4.52E+13  0.0      0.0 !Marinov 1995a
+   low / 2.10E+23  -2.437   0.0 /        	  !Marinov 1995a
+   oh+ho2 = h2o+o2           2.13E+28 -4.827 3500.0 !Hippler 1995
+    dup
+   oh+ho2 = h2o+o2  	   9.10E+14  0.0  10964.0 !Hippler 1995  
+    dup
+   h+ho2 = oh+oh             1.50E+14  0.0  1000.0  !Marinov 1995a
+   h+ho2 = h2+o2             6.63E+13  0.0  2126.0  !Tsang   1986x
+   h+ho2 = o+h2o        	   3.01E+13  0.0  1721.0  !Marinov 1995a
+   o+ho2 = o2+oh         	   3.25E+13  0.0     0.0  !Marinov 1995a
+   oh+oh = o+h2o             3.57E+04  2.4 -2112.0  !Marinov 1995a
+   h+h+m = h2+m              1.00E+18 -1.0     0.0  !Marinov 1995a
+   h2o/0.0/ h2/0.0/	
+   h+h+h2 = h2+h2            9.20E+16 -0.6     0.0  !Marinov 1995a
+   h+h+h2o = h2+h2o          6.00E+19 -1.25    0.0  !Marinov 1995a
+   h+oh+m = h2o+m            2.21E+22 -2.0     0.0  !Marinov 1995a  
+    h2o/6.4/
+   h+o+m = oh+m              4.71E+18 -1.0     0.0  !Marinov 1995a 
+    h2o/6.4/
+   o+o+m = o2+m              1.89E+13  0.0 -1788.0  !Marinov 1995a
+   ho2+ho2 = h2o2+o2         4.20E+14  0.0 11982.0  !Marinov 1995a
+   dup
+   ho2+ho2 = h2o2+o2         1.30E+11  0.0 -1629.0  !Marinov 1995a
+   dup
+   oh+oh(+m) = h2o2(+m)      1.24E+14 -0.37    0.0  !Marinov 1995a
+   low /  3.04E+30   -4.63   2049.0 /   	  !Marinov 1995a
+    troe / 0.470   100.0   2000.0  1.0E+15/
+   h2o2+h = ho2+h2           1.98E+06  2.0  2435.0  !Marinov 1995a
+   h2o2+h = oh+h2o           3.07E+13  0.0  4217.0  !Marinov 1995a
+   h2o2+o = oh+ho2           9.55E+06  2.0  3970.0  !Marinov 1995a
+   h2o2+oh = h2o+ho2         2.40E+00 4.042 -2162.0 !Marinov 1995a
+   ch3+ch3(+m) = c2h6(+m)    9.22E+16 -1.174 636.0  !Walter  1990
+   low / 1.14E+36 -5.246 1705.0/ 	          !Walter  1990  
+   troe/ 0.405  1120.0   69.6    1.0E+15/
+    h2o/5.0/ h2/2.0/ co2/3.0/ co/2.0/
+   ch3+h(+m) = ch4(+m)       2.14E+15 -0.4    0.0	  !Tsang 1986 
+   low/  3.31E+30   -4.0  2108.0 /	          !Marinov 1996
+   troe / 0.0   1.0E-15   1.0E-15   40.0/
+   h2o/5.0/ h2/2.0/ co2/3.0/ co/2.0/ 	
+   ch4+h = ch3+h2            2.20E+04 3.0   8750.0  !Miller 1992
+   ch4+oh = ch3+h2o     	   4.19E+06 2.0   2547.0  !Marinov 1995
+   ch4+o = ch3+oh      	   6.92E+08 1.56  8485.0  !Marinov 1995
+   ch4+ho2 = ch3+h2o2        1.12E+13 0.0   24640.0 !Marinov 1995
+   ch3+ho2 = ch3o+oh         7.00E+12 0.0      0.0  !Troe  1993
+   ch3+ho2 = ch4+o2	   3.00E+12 0.0      0.0  !Marinov 1995
+   ch3+o = ch2o+h    	   8.00E+13 0.0      0.0  !Marinov 1995
+   ch3+o2 = ch3o+o 	   1.45E+13 0.0   29209.0 !Klatt 1991
+   ch3+o2 = ch2o+oh   	   2.51E+11 0.0   14640.0 !Marinov 1995
+   ch3o+h = ch3+oh           1.00E+13 0.0      0.0  !Marinov 1998
+   ch2oh+h = ch3+oh          1.00E+13 0.0      0.0  !Marinov 1998
+   ch3+oh = ch2s+h2o       2.00E+13 0.0    550.0  !Pilling 1997
+   ch3+oh = ch2+h2o          3.00E+06 2.0   2500.0  !Marinov 1996
+   ch3+h = ch2+h2            9.00E+13 0.0   15100.0 !Miller 1992
+   ch3+m = ch+h2+m           6.90E+14 0.0   82469.0 !Markus 1992
+   ch3+m = ch2+h+m           1.90E+16 0.0   91411.0 !Markus 1992
+   ch2o+h(+m) = ch3o(+m)     5.40E+11  0.454  2600.0   !GRI-Mech2.11
+   low/ 1.50E+30 -4.80 5560./
+   troe/ 0.758 94. 1555. 4200./
+   h2o/5.0/
+   ch2o+h(+m) = ch2oh(+m)    5.40E+11  0.454  3600.0   !GRI-Mech2.11
+   low / 9.10E+31 -4.82 6530./
+   troe/ 0.7187 103. 1291. 4160./
+   h2o/5.0/
+   ch3o+ch3 = ch2o+ch4       1.20E+13  0.0      0.0   !Tsang  1986
+   ch3o+h = ch2o+h2          2.00E+13  0.0      0.0   !Miller 1992
+   ch2oh+h = ch2o+h2         2.00E+13  0.0      0.0   !Miller 1992
+   ch3o+oh = ch2o+h2o        1.00E+13  0.0      0.0   !Miller 1992
+   ch2oh+oh = ch2o+h2o       1.00E+13  0.0      0.0   !Miller 1992
+   ch3o+o = ch2o+oh          1.00E+13  0.0      0.0   !Miller 1992
+   ch2oh+o = ch2o+oh         1.00E+13  0.0      0.0   !Miller 1992
+   ch3o+o2 = ch2o+ho2        6.30E+10  0.0   2600.0   !Miller 1992
+   ch3o+co = ch3+co2         4.68E+02  3.16  5380.0   !Wantuck 1987
+   ch2oh+o2 = ch2o+ho2       1.57E+15  -1.0     0.0   !Baulch 1992
+    dup
+   ch2oh+o2 = ch2o+ho2       7.23E+13  0.0   3577.0   !Baulch 1992
+    dup
+   ch2+h = ch+h2             1.00E+18  -1.56    0.0   !Miller 1992
+   ch2+oh = ch+h2o           1.13E+07  2.0   3000.0   !Miller 1992 
+   ch2+oh = ch2o+h           2.50E+13  0.0      0.0   !Miller 1992
+   ch2+co2 = ch2o+co         1.10E+11  0.0   1000.0   !Miller 1992
+   ch2+o = co+h+h            5.00E+13  0.0      0.0   !Miller 1992
+   ch2+o = co+h2     	   3.00E+13  0.0      0.0   !Miller 1992
+   ch2+o2 = ch2o+o           3.29E+21 -3.3   2868.0   !Marinov 1996
+   ch2+o2 = co2+h+h          3.29E+21 -3.3   2868.0   !Marinov 1996
+   ch2+o2 = co2+h2           1.01E+21 -3.3   1508.0   !Marinov 1996
+   ch2+o2 = co+h2o           7.28E+19 -2.54  1809.0   !Marinov 1996
+   ch2+o2 = hco+oh           1.29E+20 -3.3    284.0   !Marinov 1996
+   ch2+ch3 = c2h4+h          4.00E+13  0.0      0.0   ! Miller 1992
+   ch2+ch2 = c2h2+h+h        4.00E+13  0.0      0.0   ! Miller 1992
+   ch2+hcco = c2h3+co        3.00E+13  0.0      0.0   ! Miller 1992
+   ch2+c2h2 = h2ccch+h       1.20E+13  0.0   6600.0   ! Miller 1992
+   ch2s+m = ch2+m          1.00E+13  0.0      0.0   ! Miller 1992
+   h /12.0/ c2h2 /4.0/ h2o/3.0/
+   ch2s+ch4 = ch3+ch3      4.00E+13  0.0      0.0   ! Miller 1992
+   ch2s+c2h6 = ch3+c2h5    1.20E+14  0.0      0.0   ! Miller 1992
+   ch2s+o2 = co+oh+h       7.00E+13  0.0      0.0   ! Miller 1992
+   ch2s+h2 = ch3+h         7.00E+13  0.0      0.0   ! Miller 1992
+   ch2s+c2h2 = h2ccch+h    1.50E+14  0.0      0.0   ! Canosa-Mas85
+   ch2s+o = co+h+h         3.00E+13  0.0      0.0   ! Miller 1992
+   ch2s+oh = ch2o+h        3.00E+13  0.0      0.0   ! Miller 1992
+   ch2s+h = ch+h2          3.00E+13  0.0      0.0   ! Miller 1992
+   ch2s+co2 = ch2o+co      3.00E+12  0.0      0.0   ! Miller 1992
+   ch2s+ch3 = c2h4+h       2.00E+13  0.0      0.0   ! Miller 1992
+   ch2s+ch2co = c2h4+co    1.60E+14  0.0      0.0   ! Miller 1992
+   ch+o2 = hco+o             3.30E+13  0.0      0.0   ! Miller 1992
+   ch+o = co+h     	   5.70E+13  0.0      0.0   ! Miller 1992
+   ch+oh = hco+h             3.00E+13  0.0      0.0   ! Miller 1992
+   ch+co2 = hco+co           3.40E+12  0.0    690.0   ! Miller 1992
+   ch+h2o = ch2o+h           1.17E+15  -0.75    0.0   ! Miller 1992
+   ch+ch2o = ch2co+h         9.46E+13  0.0   -515.0   ! Miller 1992
+   ch+c2h2 = c3h2+h          1.00E+14  0.0      0.0   ! Miller 1992
+   ch+ch2 = c2h2+h           4.00E+13  0.0      0.0   ! Miller 1992
+   ch+ch3 = c2h3+h           3.00E+13  0.0      0.0   ! Miller 1992
+   ch+ch4 = c2h4+h           6.00E+13  0.0      0.0   ! Miller 1992
+   ch2o+oh = hco+h2o         3.43E+09  1.18  -447.0   ! Tsang  1986
+   ch2o+h = hco+h2           2.19E+08  1.77  3000.0   ! Miller 1992
+   ch2o+m = hco+h+m          3.31E+16  0.0   81000.0  ! Miller 1992
+   ch2o+o = hco+oh           1.80E+13  0.0   3080.0   ! Miller 1992
+   hco+o2 = co+ho2           7.58E+12  0.0    410.0   ! Timonen 1988
+   hco+m = h+co+m            1.86E+17  -1.0 17000.0   ! Timonen 1987
+   h2o/5.0/ h2/1.87/ co2/3.0/ co/1.87/ ch4/2.81/
+   hco+oh = h2o+co           1.00E+14  0.0     0.0    ! Miller 1992
+   hco+h = co+h2             1.19E+13  0.25    0.0    ! Miller 1992
+   hco+o = co+oh   	   3.00E+13  0.0     0.0    ! Miller 1992
+   hco+o = co2+h             3.00E+13  0.0     0.0    ! Miller 1992
+   co+oh = co2+h             9.42E+03  2.25 -2351.0   !Marinov 1996
+   co+o+m = co2+m            6.17E+14  0.0   3000.0   ! Miller 1992
+   co+o2 = co2+o             2.53E+12  0.0  47688.0   ! Miller 1992
+   co+ho2 = co2+oh           5.80E+13  0.0  22934.0   ! Miller 1992
+   c2h5oh(+m) = ch3+ch2oh(+m) 5.94E+23 -1.68 91163.0  !Marinov 1998
+   low /2.88E+85 -18.9 109914./
+   troe/0.5 200. 890.  4600./
+   h2o/5./ h2/2.0/ co2/3.0/ co/2.0/ 
+   c2h5oh(+m) = c2h5+oh(+m)  1.25E+23 -1.54 96005.0   !Marinov 1998
+   low /3.252E+85 -18.81 114930./
+   troe/0.5 300. 900. 5000./
+   h2o/5./ h2/2.0/ co2/3.0/ co/2.0/  
+   c2h5oh(+m) = c2h4+h2o(+m)  2.79E+13 0.09  66136.0   !Marinov 1998
+   low/2.57E+83 -18.85 86452./
+   troe/0.70 350. 800. 3800./
+   h2o/5./
+   c2h5oh(+m) = ch3hco+h2(+m) 7.24E+11 0.095  91007.0   !Marinov 1998
+   low /4.46e87 -19.42 115586./
+   troe/0.9 900. 1100. 3500./
+   h2o/5./ 
+   c2h5oh+oh = c2h4oh+h2o     1.74E+11   0.27    600.0 !Marinov 1998
+   c2h5oh+oh = ch3choh+h2o    4.64E+11   0.15      0.0 !Marinov 1998
+   c2h5oh+oh = ch3ch2o+h2o    7.46E+11   0.30   1634.0 !Marinov 1998
+   c2h5oh+h = c2h4oh+h2       1.23E+7    1.8    5098.0 !Marinov 1998
+   c2h5oh+h = ch3choh+h2      2.58E+7    1.65   2827.0 !Marinov 1998
+   c2h5oh+h = ch3ch2o+h2      1.50E+7    1.60   3038.0 !Marinov 1998
+   c2h5oh+o = c2h4oh+oh       9.41E+7    1.70   5459.0 !Marinov 1998
+   c2h5oh+o = ch3choh+oh      1.88E+7    1.85   1824.0 !Marinov 1998  
+   c2h5oh+o = ch3ch2o+oh      1.58E+7    2.00   4448.0 !Marinov 1998
+   c2h5oh+ch3 = c2h4oh+ch4    2.19E+2    3.18   9622.0 !Marinov 1998
+   c2h5oh+ch3 = ch3choh+ch4   7.28E+2    2.99   7948.0 !Marinov 1998
+   c2h5oh+ch3 = ch3ch2o+ch4   1.45E+2    2.99   7649.0 !Marinov 1998 
+   c2h5oh+ho2 = ch3choh+h2o2  8.20E+3    2.55  10750.0 !Marinov 1998 
+   c2h5oh+ho2 = c2h4oh+h2o2   1.23E+4    2.55  15750.0 !Marinov 1998 
+   c2h5oh+ho2 = ch3ch2o+h2o2  2.50E+12   0.0   24000.0 !Marinov 1998 
+   ch3ch2o+m = ch3hco+h+m     1.16E+35  -5.89  25274.0 !Marinov 1998
+   ch3ch2o+m = ch3+ch2o+m     1.35E+38  -6.96  23800.0 !Marinov 1998
+   ch3ch2o+o2 = ch3hco+ho2    4.00E+10   0.0    1100.0 !Hartmann 1990 
+   ch3ch2o+co = c2h5+co2      4.68E+2    3.16   5380.0 !Marinov 1998 
+   ch3ch2o+h = ch3+ch2oh      3.00E+13   0.0       0.0 !Marinov 1998 
+   ch3ch2o+h = c2h4+h2o       3.00E+13   0.0       0.0 !Marinov 1998
+   ch3ch2o+oh = ch3hco+h2o    1.00E+13   0.0       0.0 !Marinov 1998
+   ch3choh+o2 = ch3hco+ho2    4.82E+14   0.0    5017.0 !Marinov 1998
+   dup
+   ch3choh+o2 = ch3hco+ho2    8.43E+15  -1.2       0.0 !Marinov 1998
+   dup
+   ch3choh+o = ch3hco+oh      1.00E+14   0.0       0.0 !Marinov 1998
+   ch3choh+h = c2h4+h2o       3.00E+13   0.0       0.0 !Marinov 1998
+   ch3choh+h = ch3+ch2oh      3.00E+13   0.0       0.0 !Marinov 1998
+   ch3choh+ho2 = ch3hco+oh+oh 4.00E+13   0.0       0.0 !Marinov 1998
+   ch3choh+oh = ch3hco+h2o    5.00E+12   0.0       0.0 !Marinov 1998
+   ch3choh+m = ch3hco+h+m     1.00E+14   0.0   25000.0 !Marinov 1998
+   ch3hco+oh = ch3co+h2o      9.24E+6    1.5    -962.0 !Taylor 1996
+   ch3hco+oh = ch2hco+h2o     1.72E+5    2.4     815.0 !Taylor 1996
+   ch3hco+o = ch3co+oh        1.77E+18  -1.9    2975.0 !Marinov 1998
+   ch3hco+o = ch2hco+oh       3.72E+13  -0.2    3556.0 !Marinov 1998
+   ch3hco+h = ch3co+h2        4.66E+13  -0.35   2988.0 !Marinov 1998
+   ch3hco+h = ch2hco+h2       1.85E+12   0.40   5359.0 !Marinov 1998
+   ch3hco+ch3 = ch3co+ch4     3.90E-7    5.8    2200.0 !Marinov 1998
+   ch3hco+ch3 = ch2hco+ch4    2.45E+1    3.15   5727.0 !Marinov 1998
+   ch3hco+ho2 = ch3co+h2o2    2.40E+19  -2.2   14030.0 !Marinov 1998
+   ch3hco+ho2 = ch2hco+h2o2   2.32E+11   0.40  14864.0 !Marinov 1998
+   ch3hco+o2 = ch3co+ho2      1.00E+14   0.00  42200.0 ! xxxxx
+   c2h6+ch3 = c2h5+ch4       5.50E-01  4.0   8300.0   ! Miller 1992
+   c2h6+h = c2h5+h2          5.40E+02  3.5   5210.0   ! Miller 1992
+   c2h6+o = c2h5+oh          3.00E+07  2.0   5115.0   ! Miller 1992
+   c2h6+oh = c2h5+h2o        7.23E+06  2.0    864.0   ! Baulch 1992
+   c2h5+h = c2h4+h2          1.25E+14  0.0   8000.0   ! Marinov 1995
+   c2h5+h = ch3+ch3          3.00E+13  0.0      0.0   ! Warnatz 1984
+   c2h5+h = c2h6             3.00E+13  0.0      0.0   ! Marinov 1998
+   c2h5+oh = c2h4+h2o        4.00E+13  0.0      0.0   ! Marinov 1995
+   c2h5+o = ch3+ch2o         1.00E+14  0.0      0.0   ! Herron 1988
+   c2h5+ho2 = c2h6+o2        3.00E+12  0.0      0.0   ! Marinov 1998
+   c2h5+ho2 = ch3ch2o+oh     3.00E+13  0.0      0.0   ! Tsang 1986
+   c2h5+o2 = c2h4+ho2        2.89E+28  -5.4  7585.0   ! Marinov 1998 
+   c2h5+o2 = ch3hco+oh       4.90E+11 -0.48  8357.0   ! Marinov 1998 
+   c2h4+oh = c2h4oh          1.29E+12  0.0    -817.0  ! Atkinson 1986
+   c2h4+oh = c2h3+h2o        2.02E+13  0.0   5936.0   ! Miller 1992
+   c2h4+o = ch3+hco   	   1.02E+07  1.88   179.0   ! Baulch 1994
+   c2h4+o = ch2hco+h         3.39E+06  1.88   179.0   ! Baulch 1994
+   c2h4+ch3 = c2h3+ch4       6.62E+00  3.7   9500.0   ! Marinov 1995
+   c2h4+h = c2h3+h2          3.36E-07  6.0   1692.0   ! Dagaut 1990
+   c2h4+h (+m) = c2h5(+m)    1.08E+12  0.454 1822.0   ! Feng  1993
+   low / 1.112E+34  -5.0    4448.0 /	            ! Marinov 1996 
+   troe / 1.0   1.0E-15   95.0  200.0 /
+   h2o /5.0/ h2/2.0/ co2/3.0/ co/2.0/
+   c2h4(+m) = c2h2+h2(+m)    1.8e14  0.0  87000.      ! Marinov 1997
+   low / 1.5e15 0.0  55443. /
+   c2h3+h(+m) = c2h4(+m)   6.1e12 0.27 280.           !GRI-Mech2.11
+   low/9.8e29 -3.86 3320./
+   troe/ 0.782 208. 2663. 6095./
+   h2o/5.0/
+   c2h3+h = c2h2+h2          9.00E+13  0.0      0.0   ! Tsang 1986 
+   c2h3+o = ch2co+h          3.00E+13  0.0      0.0   ! Miller 1992
+   c2h3+o2 = ch2o+hco        1.70E+29  -5.312 6500.0  ! Marinov 1997
+   c2h3+o2 = ch2hco+o        5.50E+14  -0.611 5260.0  ! Marinov 1997
+   c2h3+o2 = c2h2+ho2        2.12E-06  6.0   9484.0   !cfm/nmm 1996
+   c2h3+oh = c2h2+h2o        2.00E+13  0.0      0.0   ! Miller 1992
+   c2h3+c2h = c2h2+c2h2      3.00E+13  0.0      0.0   ! Miller 1992
+   c2h3+ch = ch2+c2h2        5.00E+13  0.0      0.0   ! Miller 1992
+   c2h3+ch3 = c2h2+ch4       2.00E+13  0.0      0.0   ! Fahr  1991
+   c2h2+oh = c2h+h2o         3.37E+07  2.0  14000.0   ! Miller 1992
+   c2h2+oh = hccoh+h         5.04E+05  2.3  13500.0   ! Miller 1992
+   c2h2+oh = ch2co+h         2.18E-04  4.5  -1000.0   ! Miller 1992
+   dup
+   c2h2+oh = ch2co+h         2.00E+11  0.0      0.0   ! Vandooren 1977
+   dup
+   c2h2+oh = ch3+co          4.83E-04  4.0  -2000.0   ! Miller 1992
+   hccoh+h = ch2co+h         1.00E+13  0.0      0.0   ! Miller 1992
+   c2h2+o = ch2+co           6.12E+06  2.0   1900.0   ! Marinov 1996 
+   c2h2+o = hcco+h           1.43E+07  2.0   1900.0   ! Marinov 1996 
+   c2h2+o = c2h+oh           3.16E+15 -0.6   15000.0  ! Miller 1992
+   c2h2+ch3 = c2h+ch4        1.81E+11  0.0   17289.0  ! Tsang  1986
+   c2h2+o2 = hcco+oh         4.00e+07  1.5   30100.0  ! Marinov 1997
+   c2h2+m = c2h+h+m          4.20E+16  0.0  107000.0  ! Miller 1992
+   c2h2+h (+m) = c2h3(+m)    3.11E+11  0.58   2589.0  ! Knyazev 1995
+   low / 2.25E+40  -7.269   6577.0 /	            ! Marinov 1996 
+   troe /1.0 1.0E-15  675.0 1.0E+15 /
+   h2o /5.0/ h2/2.0/ co2/3.0/ co/2.0/
+   ch2hco+h = ch3+hco         5.00E+13   0.0       0.0 !Marinov 1998
+   ch2hco+h = ch2co+h2        2.00E+13   0.0       0.0 !Marinov 1998 
+   ch2hco+o = ch2o+hco        1.00E+14   0.0       0.0 !Marinov 1996
+   ch2hco+oh = ch2co+h2o      3.00E+13   0.0       0.0 !Marinov 1996
+   ch2hco+o2 = ch2o+co+oh     3.00E+10   0.0       0.0 !Baulch  1992
+   ch2hco+ch3 = c2h5+co+h     4.90E+14  -0.50      0.0 !Marinov 1998
+   ch2hco+ho2 = ch2o+hco+oh   7.00E+12   0.0       0.0 !Marinov 1998
+   ch2hco+ho2 = ch3hco+o2     3.00E+12   0.0       0.0 !Marinov 1998
+   ch2hco = ch3+co            1.17E+43  -9.83  43756.0 !Marinov 1998
+   ch2hco = ch2co+h           1.81E+43  -9.61  45868.0 !Marinov 1998
+   ch3co(+m) = ch3+co(+m)    3.00E+12  0.0   16722.0  ! Warnatz 1984  
+   low / 1.20E+15    0.0     12518.0 /              ! Warnatz 1984
+   ch2co+o = co2+ch2         1.75E+12  0.0    1350.0  ! Marinov 1995
+   ch2co+h = ch3+co          2.71E+4   2.75    714.0  ! Marinov 1996
+   ch2co+h = hcco+h2         2.00E+14  0.0    8000.0  ! Marinov 1996 
+   ch2co+o = hcco+oh         1.00E+13  0.0    8000.0  ! Miller 1992
+   ch2co+oh = hcco+h2o       1.00E+13  0.0    2000.0  ! Marinov 1996
+   ch2co+oh = ch2oh+co       3.73E+12  0.0   -1013.0  ! Brown 1989
+   ch2co(+m) = ch2+co(+m)    3.00E+14  0.0   70980.0  ! Miller 1992   
+   low /  3.60E+15    0.0    59270.0 /              ! Miller 1992
+   c2h+h2 = c2h2+h  	   4.09E+05  2.39    864.3  ! Miller 1992
+   c2h+o = ch+co             5.00E+13  0.0       0.0  ! Miller 1992
+   c2h+oh = hcco+h           2.00E+13  0.        0.0  ! Miller 1992
+   c2h+o2 = co+co+h          9.04E+12  0.0    -457.0  ! Opansky 1993
+   hcco+c2h2 = h2ccch+co     1.00E+11  0.0    3000.0  ! Miller 1992
+   hcco+h = ch2s+co        1.00E+14  0.0       0.0  ! Miller 1992
+   hcco+o = h+co+co          8.00E+13  0.0       0.0  ! Peeters 1995
+   hcco+o = ch+co2           2.95E+13  0.0    1113.0  ! Peeters 1995
+   hcco+o2 = hco+co+o        2.50E+8   1.0       0.0  ! Marinov 1997
+   hcco+o2 = co2+hco         2.40E+11  0.0    -854.0  ! Marinov 1997
+   hcco+ch = c2h2+co         5.00E+13  0.0       0.0  ! Miller 1992
+   hcco+hcco = c2h2+co+co    1.00E+13  0.0       0.0  ! Miller 1992

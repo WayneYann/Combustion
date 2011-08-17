@@ -1,0 +1,100 @@
+!
+! This Mechanism used by Smooke's student Rahima Mohammed, in transient calculations
+! presented at 27th Comb. Symp.  It consists of all reactions in Puri, etc (CST 56 p1,
+! '87) and reactions 4a, 6, 8a, 9 and 10a from Norton, etc (CST 76 p1, '91).
+!
+ELEMENTS C H O N END
+SPECIES 
+H2      H       O       O2      OH      H2O     HO2     H2O2
+CH      CH2     CH3     CH4     CO      CO2     HCO     CH2O
+CH3O    C2H     C2H2    C2H3    C2H4    C2H5    C2H6    HCCO
+CH2CO   N2
+END
+REACTIONS CAL
+   CH3+H=CH4                     1.90E+36  -7.000   9050.
+   CH4+O2=CH3+HO2                7.90E+13   0.000  56000.
+   CH4+H=CH3+H2                  2.20E+04   3.000   8750.
+   CH4+O=CH3+OH                  1.60E+06   2.360   7400.
+   CH4+OH=CH3+H2O                1.60E+06   2.100   2460.
+   CH2O+OH=HCO+H2O               7.53E+12   0.000    167.
+   CH2O+H=HCO+H2                 3.31E+14   0.000  10500.
+   CH2O+M=HCO+H+M                3.31E+16   0.000  81000.
+   CH2O+O=HCO+OH                 1.81E+13   0.000   3082.
+   HCO+OH=CO+H2O                 5.00E+12   0.000      0.
+   HCO+M=H+CO+M                  1.60E+14   0.000  14700.
+   HCO+H=CO+H2                   4.00E+13   0.000      0.
+   HCO+O=OH+CO                   1.00E+13   0.000      0.
+   HCO+O2=HO2+CO                 3.00E+12   0.000      0.
+   CO+O+M=CO2+M                  3.20E+13   0.000  -4200.
+   CO+OH=CO2+H                   1.51E+07   1.300   -758.
+   CO+O2=CO2+O                   1.60E+13   0.000  41000.
+   CH3+O2=CH3O+O                 7.00E+12   0.000  25652.
+   CH3O+M=CH2O+H+M               2.40E+13   0.000  28812.
+   CH3O+H=CH2O+H2                2.00E+13   0.000      0.
+   CH3O+OH=CH2O+H2O              1.00E+13   0.000      0.
+   CH3O+O=CH2O+OH                1.00E+13   0.000      0.
+   CH3O+O2=CH2O+HO2              6.30E+10   0.000   2600.
+   CH3+O2=CH2O+OH                5.20E+13   0.000  34574.
+   CH3+O=CH2O+H                  6.80E+13   0.000      0.
+   CH3+OH=CH2O+H2                7.50E+12   0.000      0.
+   CH2+H=CH+H2                   4.00E+13   0.000      0.
+   CH2+O=CO+H+H                  5.00E+13   0.000      0.
+   CH2+O2=CO2+H+H                1.30E+13   0.000   1500.
+   CH2+CH3=C2H4+H                4.00E+13   0.000      0.
+   CH+O=CO+H                     4.00E+13   0.000      0.
+   CH+O2=HCO+O                   3.30E+13   0.000      0.
+   CH+OH=HCO+H                   3.00E+13   0.000      0.
+   CH+H2O=CH2O+H                 1.17E+15  -0.750      0.
+   CH+CO2=HCO+CO                 3.40E+12   0.000    690.
+   CH+CH4=C2H4+H                 6.00E+13   0.000      0.
+   CH+O2=CO+OH                   2.00E+13   0.000      0.
+   CH3+CH3=C2H6                  1.70E+53 -12.000  19400.
+   CH3+CH3=C2H5+H                8.00E+13   0.000  26500.
+   C2H6+H=C2H5+H2                5.40E+02   3.500   5240.
+   C2H6+O=C2H5+OH                3.00E+07   2.000   5100.
+   C2H6+OH=C2H5+H2O              6.00E+12   0.000  19400.
+   C2H5+O2=C2H4+HO2              2.00E+13   0.000   5000.
+   C2H5=C2H4+H                   2.60E+43  -9.250  52580.
+   C2H4+O=HCO+CH3                1.60E+09   1.200    740.
+   C2H4+OH=C2H3+H2O              4.80E+12   0.000   1230.
+   C2H4+H=C2H3+H2                1.10E+14   0.000   8500.
+   C2H3+H=C2H2+H2                6.00E+12   0.000      0.
+   C2H3+O2=C2H2+HO2              1.58E+13   0.000  10060.
+   C2H3=C2H2+H                   1.60E+32  -5.500  46200.
+   C2H2+O=CH2+CO                 2.20E+10   1.000   2583.
+   C2H2+OH=CH2CO+H               3.20E+11   0.000    200.
+   CH2CO+H=CH3+CO                7.00E+12   0.000   3000.
+   CH2CO+O=HCO+HCO               2.00E+13   0.000   2300.
+   CH2CO+OH=CH2O+HCO             1.00E+13   0.000      0.
+   CH2CO+M=CH2+CO+M              1.00E+16   0.000  59250.
+   C2H2+O=HCCO+H                 3.56E+04   2.700   1391.
+   HCCO+H=CH2+CO                 3.00E+13   0.000      0.
+   HCCO+O=CO+CO+H                1.20E+12   0.000      0.
+   C2H2+OH=C2H+H2O               1.00E+13   0.000   7000.
+   C2H+O=CO+CH                   1.00E+13   0.000      0.
+   C2H+H2=C2H2+H                 3.50E+12   0.000   2100.
+   C2H+O2=CO+HCO                 5.00E+13   0.000   1500.
+   HO2+CO=CO2+OH                 5.80E+13   0.000  22934.
+   H2+O2=2OH                     1.70E+13   0.000  47780.
+   OH+H2=H2O+H                   1.17E+09   1.300   3626.
+   H+O2=OH+O                     2.00E+14   0.000  16800.
+   O+H2=OH+H                     1.80E+10   1.000   8826.
+   H+O2+M=HO2+M                  2.10E+18  -1.000      0.
+      H2O /21.0/  H2 /3.3/  O2 /0.0/ N2 /0.0/
+   H+O2+O2=HO2+O2                6.70E+19  -1.420      0.
+   H+O2+N2=HO2+N2                6.70E+19  -1.420      0.
+   OH+HO2=H2O+O2                 5.00E+13   0.000   1000.
+   H+HO2=2OH                     2.50E+14   0.000   1900.
+   O+HO2=O2+OH                   4.80E+13   0.000   1000.
+   2OH=O+H2O                     6.00E+08   1.300      0.
+   H2+M=H+H+M                    2.23E+12   0.500  92600.
+      H2O /6.0/  H /2.0/  H2 /3.0/
+   O2+M=O+O+M                    1.85E+11   0.500  95560.
+   H+OH+M=H2O+M                  7.50E+23  -2.600      0.
+      H2O /20.0/
+   H+HO2=H2+O2                   2.50E+13   0.000    700.
+   HO2+HO2=H2O2+O2               2.00E+12   0.000      0.
+   H2O2+M=OH+OH+M                1.30E+17   0.000  45500.
+   H2O2+H=HO2+H2                 1.60E+12   0.000   3800.
+   H2O2+OH=H2O+HO2               1.00E+13   0.000   1800.
+END
