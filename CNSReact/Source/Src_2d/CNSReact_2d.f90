@@ -267,7 +267,7 @@
                sum = 0.d0
                do n = UFS, UFS+nspec-1
                   sum = sum + flux1(i,j,n)
-      	       end do
+               end do
                if (sum .ne. 0.d0) then
                   fac = flux1(i,j,URHO) / sum
                else
@@ -275,7 +275,7 @@
                end if
                do n = UFS, UFS+nspec-1
                   flux1(i,j,n) = flux1(i,j,n) * fac
-      	       end do
+               end do
             end do
       end do
       do j = lo(2),hi(2)+1
@@ -283,7 +283,7 @@
                sum = 0.d0
                do n = UFS, UFS+nspec-1
                   sum = sum + flux2(i,j,n)
-      	       end do
+               end do
                if (sum .ne. 0.d0) then
                   fac = flux2(i,j,URHO) / sum
                else
@@ -291,7 +291,7 @@
                end if
                do n = UFS, UFS+nspec-1
                   flux2(i,j,n) = flux2(i,j,n) * fac
-      	       end do
+               end do
             end do
       end do
 
@@ -412,7 +412,7 @@
       double precision :: uout(uout_l1:uout_h1,uout_l2:uout_h2,NVAR)
 
       ! Local variables
-      integer          :: i,j,n,nn
+      integer          :: i,j,n
       integer          :: int_dom_spec
       logical          :: any_negative
       double precision :: dom_spec,x,eps

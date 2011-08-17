@@ -1,9 +1,5 @@
 module castro_burner_module
 
-  use bl_types
-  use bl_constants_module
-  use bl_error_module
-  use eos_module
   use network
 
 contains
@@ -12,15 +8,15 @@ contains
 
     implicit none
     
-    real(kind=dp_t), intent(in) :: dens, temp, Xin(nspec), ein, dt, time
-    real(kind=dp_t), intent(out) :: Xout(nspec), eout
+    double precision, intent(in) :: dens, temp, Xin(nspec), ein, dt, time
+    double precision, intent(out) :: Xout(nspec), eout
     
     integer :: n
-    real(kind=dp_t) :: enuc, dX
+    double precision :: enuc, dX
     
     Xout(:) = Xin(:)
     
-    enuc = 0.0_dp_t
+    enuc = 0.0d0
     do n = 1, nspec
        dX = Xout(n)-Xin(n) 
        enuc = enuc - ebin(n) * dX

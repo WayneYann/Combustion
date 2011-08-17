@@ -1,15 +1,18 @@
 module eos_module 
  
-  use bl_types
-  use fundamental_constants_module, only: n_A, k_B
-
   implicit none
 
-  real(kind=dp_t), save, private :: smalld
-  real(kind=dp_t), save, private :: smallt
-  real(kind=dp_t), save, private :: smallp
-  real(kind=dp_t), save, private :: smallc
-  real(kind=dp_t), save          :: gamma_const
+  ! Avogradro's Number
+  double precision, parameter :: n_A    = 6.02214129d23   ! mol^-1
+
+  ! Boltzmann's constant
+  double precision, parameter :: k_B    = 1.3806488d-16   ! erg/K
+
+  double precision, save, private :: smalld
+  double precision, save, private :: smallt
+  double precision, save, private :: smallp
+  double precision, save, private :: smallc
+  double precision, save          :: gamma_const 
 
   ! abar is the mean molecular weight.  Ideally, this should
   ! be computed from X_k, using aion and zion from the network
@@ -17,7 +20,7 @@ module eos_module
   ! we use a value of 0.6.  This is what you get for a fully
   ! ionized gas consisting of 0.75 H and 0.25 He-4 by mass
   ! (roughly a solar composition)
-  real(kind=dp_t), parameter :: Abar = 0.6_dp_t
+  double precision, parameter :: Abar = 0.6d0
 
 contains
 
@@ -25,9 +28,9 @@ contains
 
     implicit none
  
-    real(kind=dp_t), intent(in), optional :: small_temp
-    real(kind=dp_t), intent(in), optional :: small_dens
-    real(kind=dp_t), intent(in), optional :: gamma_in
+    double precision, intent(in), optional :: small_temp
+    double precision, intent(in), optional :: small_dens
+    double precision, intent(in), optional :: gamma_in
 
     if (present(gamma_in)) then
        gamma_const = gamma_in
@@ -62,7 +65,7 @@ contains
 
   subroutine eos_get_small_temp(small_temp_out)
 
-    real(kind=dp_t), intent(out) :: small_temp_out
+    double precision, intent(out) :: small_temp_out
 
     small_temp_out = smallt
 
@@ -70,7 +73,7 @@ contains
 
   subroutine eos_get_small_dens(small_dens_out)
 
-    real(kind=dp_t), intent(out) :: small_dens_out
+    double precision, intent(out) :: small_dens_out
 
     small_dens_out = smalld
 
@@ -135,8 +138,8 @@ contains
   subroutine eos_get_cv(cv, R, T, Y)
 
 ! input/output variables
-    real(kind=dp_t), intent(out) :: cv
-    real(kind=dp_t), intent(in)  :: R, T, Y(:)
+    double precision, intent(out) :: cv
+    double precision, intent(in)  :: R, T, Y(:)
 
     cv = k_B*n_A/ (abar * (gamma_const - 1.d0))
 

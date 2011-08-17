@@ -19,7 +19,7 @@
 
 module network
 
-  use bl_types
+! use bl_types
 
   implicit none
 
@@ -30,7 +30,7 @@ module network
   character (len= 5), save :: short_spec_names(nspec)
   character (len= 5), save :: short_aux_names(naux)
 
-  real(kind=dp_t), save :: aion(nspec), zion(nspec), ebin(nspec)
+  double precision, save :: aion(nspec), zion(nspec), ebin(nspec)
 
   logical, save :: network_initialized = .false.
 
@@ -41,9 +41,9 @@ contains
     spec_names(1) = "X"
     short_spec_names(1) = "X"
 
-    aion(1) = 1.0_dp_t
-    zion(1) = 1.0_dp_t
-    ebin(1) = 0.0_dp_t
+    aion(1) = 1.0d0
+    zion(1) = 1.0d0
+    ebin(1) = 0.0d0
 
     network_initialized = .true.
 
