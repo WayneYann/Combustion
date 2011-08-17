@@ -1,0 +1,120 @@
+
+BOXLIB_HOME = ${BOXLIB_DIR}
+include ${BOXLIB_DIR}/Tools/C_mk/Make.defs 
+
+fincludes=${includes}
+
+# LMC
+Bdirs += ${COMBUSTION_DIR}/LMC/src
+
+# Chemistry
+Bdirs += ${COMBUSTION_DIR}/Chemistry/src
+
+# IAMR
+Bdirs += ${IAMR_DIR}/Source
+Bdirs += ${IAMR_DIR}/Source/InflowForce
+
+# BoxLib 
+Bdirs   += ${BOXLIB_DIR}/Src/C_BaseLib
+Bdirs   += ${BOXLIB_DIR}/Src/C_AMRLib
+Bdirs   += ${BOXLIB_DIR}/Src/C_BoundaryLib
+Bdirs   += ${BOXLIB_DIR}/Src/LinearSolvers/C_CellMG
+Bdirs   += ${BOXLIB_DIR}/Src/LinearSolvers/C_NodalMG
+Bdirs   += ${BOXLIB_DIR}/Src/LinearSolvers/C_TensorMG
+
+Bpack	+= $(foreach dir, $(Bdirs), $(dir)/Make.package)
+Blocs	+= $(foreach dir, $(Bdirs), $(dir))
+
+include $(Bpack)
+INCLUDE_LOCATIONS += $(Blocs)
+VPATH_LOCATIONS   += $(Blocs)
+
+ifdef USE_F90_SOLVERS
+  DEFINES += -DMG_USE_F90_SOLVERS
+
+  include $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG/Make.package
+  INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG
+  VPATH_LOCATIONS   += $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG
+ 
+  include $(BOXLIB_DIR)/Src/LinearSolvers/F_MG/FParallelMG.mak
+  INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/LinearSolvers/F_MG
+  VPATH_LOCATIONS   += $(BOXLIB_DIR)/Src/LinearSolvers/F_MG
+
+  INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/F_BaseLib
+  VPATH_LOCATIONS   += $(BOXLIB_DIR)/Src/F_BaseLib
+endif
+
+
+# Hack in some LMC stuff
+
+ifeq (${USE_FLCTS}, TRUE)
+   FEXE_sources += FLUCTFILE.F INFL_FORCE_$(DIM)D.F INFL_FORCE_F.F
+   CEXE_sources += inflow.cpp
+endif
+
+ifeq ($(USE_VELOCITY), TRUE)
+  CEXE_headers += DataServices.H AmrData.H XYPlotDataList.H AmrvisConstants.H
+  CEXE_sources += DataServices.cpp AmrData.cpp
+  FEXE_sources += FABUTIL_$(DIM)D.F
+endif
+
+ifeq ($(USE_NEWMECH), TRUE)
+  CEXE_headers += DataServices.H AmrData.H XYPlotDataList.H AmrvisConstants.H
+  CEXE_sources += DataServices.cpp AmrData.cpp
+  FEXE_sources += FABUTIL_$(DIM)D.F
+endif
+
+ifeq (${CHEMISTRY_MODEL}, DRM19)
+  CEXE_sources += drm19.cpp
+  vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri
+  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri
+endif
+
+
+VPATH_LOCATIONS   += . $(Blocs)
+INCLUDE_LOCATIONS += . $(Blocs)
+
+ifeq ($(USE_BGL),TRUE)
+  MACHINE=BGL
+  CXX=mpicxx.ibm
+  FC=blrts_xlf
+  fC=blrts_xlf
+  CPPFLAGS+= -DMPICH_SKIP_MPICXX
+  LDFLAGS+=-L/bgl/BlueLight/ppcfloor/bglsys/lib
+  LDFLAGS+=-L/opt/ibmcmp/xlf/bg/10.1/blrts_lib
+  BL_MPI_LIBS=-lxlf90 -lxlfmath
+  FORTLINK:=LOWERCASE
+endif
+ 
+ifeq ($(USE_VELOCITY), TRUE)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_VELOCITY -DBL_PARALLEL_IO
+  INCLUDE_LOCATIONS += $(AMRVIS_DIR)
+  VPATH_LOCATIONS   += $(AMRVIS_DIR)
+endif
+
+ifeq ($(USE_HYPRE),TRUE)
+  Bdirs   += HypreABec
+  HYPRE_DIR=$(HOME)/amr/hypre
+  INCLUDE_LOCATIONS += $(HYPRE_DIR)/include
+  LIBRARY_LOCATIONS += $(HYPRE_DIR)/lib
+  LIBRARIES += -lHYPRE_struct_ls -lHYPRE_struct_mv -lHYPRE_blas -lHYPRE_utilities
+  DEFINES += -DMG_USE_HYPRE
+endif
+ifeq ($(USE_METIS),TRUE)
+  Bdirs += metis-4.0/Lib
+  DEFINES += -DBL_USE_METIS
+endif
+
+vpath %.c   $(VPATH_LOCATIONS)
+vpath %.cpp $(VPATH_LOCATIONS)
+vpath %.h   $(VPATH_LOCATIONS)
+vpath %.H   $(VPATH_LOCATIONS)
+vpath %.F   $(VPATH_LOCATIONS)
+vpath %.f   $(VPATH_LOCATIONS)
+vpath %.f90 $(VPATH_LOCATIONS)
+
+all: $(executable)
+
+$(executable):
+
+include $(BOXLIB_DIR)/Tools/C_mk/Make.rules

@@ -1,58 +1,6 @@
-HT_BASE = EXE
-#
-# The chemistry-specific stuff ...
-#
-ifeq ($(REACTION_MECHANISM),GLARBORG)
-  C$(HT_BASE)_sources += glarSkel.cpp
-endif
-ifeq ($(REACTION_MECHANISM),DRM19)
-  C$(HT_BASE)_sources += drm19.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRI12)
-  C$(HT_BASE)_sources += gri12.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRI30)
-  C$(HT_BASE)_sources += gri30.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRI30NON)
-  C$(HT_BASE)_sources += grimech30-noN.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRI30HNO)
-  C$(HT_BASE)_sources += gri30_hno.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRI211HNO)
-  C$(HT_BASE)_sources += gri211-hno.cpp
-endif
-ifeq ($(REACTION_MECHANISM),CHEMH)
-  C$(HT_BASE)_sources += chem-H.cpp
-endif
-ifeq ($(REACTION_MECHANISM),INERT30)
-  C$(HT_BASE)_sources += inert30.cpp
-endif
-ifeq ($(REACTION_MECHANISM),CH4-2STEP)
-  C$(HT_BASE)_sources += chem-CH4-2step.cpp
-endif
-ifeq ($(REACTION_MECHANISM),PROPANE)
-  C$(HT_BASE)_sources += propane.cpp
-endif
-ifeq ($(REACTION_MECHANISM),LIDRYER)
-  C$(HT_BASE)_sources += LiDryer.cpp
-endif
-ifeq ($(REACTION_MECHANISM),LIDRYERMOD)
-  C$(HT_BASE)_sources += LiDryerMOD.cpp
-endif
-ifeq ($(REACTION_MECHANISM),HAI)
-  C$(HT_BASE)_sources += Hai.cpp
-endif
-ifeq ($(REACTION_MECHANISM),USCC1-3OPT)
-  C$(HT_BASE)_sources += uscC1-3opt.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRIMECH30-NON)
-  C$(HT_BASE)_sources += GriMech30-NoN.cpp
-endif
 
-C$(HT_BASE)_sources += ChemDriver.cpp
-C$(HT_BASE)_headers += ChemDriver.H
-F$(HT_BASE)_sources += ChemDriver_F.F ChemDriver_$(DIM)D.F
-F$(HT_BASE)_headers += ChemDriver_F.H cdwrk.H conp.H vode.H
-f$(HT_BASE)_sources += EGSlib.f EGini.f vode.f
+CEXE_sources += ChemDriver.cpp
+CEXE_headers += ChemDriver.H
+FEXE_sources += ChemDriver_F.F ChemDriver_$(DIM)D.F
+FEXE_headers += ChemDriver_F.H cdwrk.H conp.H vode.H
+fEXE_sources += EGSlib.f EGini.f vode.f

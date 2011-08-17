@@ -1,150 +1,56 @@
+TOP = ../../../..
+BOXLIB_DIR = ${TOP}/BoxLib
+IAMR_DIR = ${TOP}/IAMR
+COMBUSTION_DIR = ${TOP}/Combustion
 
-PBOXLIB_HOME  = ../..
-TOP           = $(PBOXLIB_HOME)
-PMFdir        = ../PMFfiles
 #
-# User-settable variables.
+# Build configuration
 #
-PRECISION         = DOUBLE
-DEBUG	          = FALSE
-DEBUG	          = TRUE
-PROFILE           = TRUE
-PROFILE           = FALSE
-DIM    	          = 3
-DIM    	          = 2
-FCOMP             = gfortran
-COMP              = g++
-BUILD_IN_PLACE    = TRUE
-EBASE             = amr
-HGDEBUG           = TRUE
-HGDEBUG           = FALSE
-USE_FLCTS         = FALSE
-USE_VELOCITY      = FALSE
-USE_MPI           = FALSE
-USE_MPI           = TRUE
-USE_PARTICLES     = FALSE
-USE_PARTICLES     = TRUE
+
+PRECISION       = DOUBLE
+
+DEBUG           = TRUE
+
+DIM             = 2
+
+COMP            = g++
+FCOMP           = gfortran
+
+USE_MPI         = TRUE
+USE_MPI         = FALSE
+
+USE_OMP         = TRUE
+USE_OMP         = FALSE
+
+#USE_F90_SOLVERS = TRUE
+USE_F90_SOLVERS = FALSE
+
+# Enable flctin namelist
+USE_FLCTS       = TRUE
+
+USE_PARTICLES   = TRUE
+
+# Enable ht.velocity_plotfile option
+USE_VELOCITY    = TRUE
 
 # This allows GetForce to call a Fortran routine
 #DEFINES += -DGENGETFORCE
 
-# This is for the time-dependent turbulence forcing term
-#DEFINES += -DDO_LMC_FORCE
+# Choose model from list below
+CHEMISTRY_MODEL = DRM19
+fEXE_sources += drm19Soln_seed_0.50.f
 
-#NEEDS_FLUSH_F := TRUE
-#
-# Turn this on to restart from a plotfile.
-#
-#USE_NEWMECH = TRUE
-#
-# Uncomment the following if you want RhoRT stored in Tracer slot.
-#
-#DEFINES += -DBL_RHORT_IN_TRACER
+EBASE = amr
+Blocs   := .
 
-DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
-#
-# Choose your reaction mechanism & thermal properties.
-#
-#REACTION_MECHANISM=INERT30
-#REACTION_MECHANISM=CHEMH
-#REACTION_MECHANISM=CHEMHFN
-#REACTION_MECHANISM=GLARBORG
-#REACTION_MECHANISM=GLARSKELFN
-REACTION_MECHANISM=DRM19
-#REACTION_MECHANISM=GRI12
-#REACTION_MECHANISM=GRI30
-#REACTION_MECHANISM=GRI30NON
-#REACTION_MECHANISM=GRIMECH30-NON
-#REACTION_MECHANISM=GRIMECH30-NOARN
-#REACTION_MECHANISM=GRI30HNO
-#REACTION_MECHANISM=GRI211HNO
-#REACTION_MECHANISM=CH4-2STEP
-#REACTION_MECHANISM=LIDRYER
-#REACTION_MECHANISM=LIDRYERFN
-#REACTION_MECHANISM=LIDRYERMOD
-#REACTION_MECHANISM=PROPANE
-#REACTION_MECHANISM=HAI
-#REACTION_MECHANISM=USCC1-3OPT
+CEXE_sources +=
+FEXE_sources += PROB_$(DIM)D.F
+CEXE_headers += ArrayViewEXT.H
+FEXE_headers += probdata.H PROB_F.H
 
-ProjPackage = $(TOP)/hgproj
 
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-  ProjPackage = $(TOP)/hgproj-serial
-  INCLUDE_LOCATIONS += $(dir $(ProjPackage))include/$(DIM)d.$(PRVERSION)
-endif
+include $(COMBUSTION_DIR)/LMC/Make.LMC
 
-ifeq ($(USE_VELOCITY), TRUE)
-  DEFINES += -DBL_NOLINEVALUES -DBL_USE_VELOCITY -DBL_PARALLEL_IO
-  INCLUDE_LOCATIONS += $(TOP)/pAmrvis
-endif
-
-ifeq ($(USE_NEWMECH), TRUE)
-  DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
-  INCLUDE_LOCATIONS += $(TOP)/pAmrvis
-endif
-
-Packages := $(TOP)/LMC \
-	    $(TOP)/iamrlib \
-	    $(TOP)/tensorMG \
-	    $(ProjPackage) \
-	    $(TOP)/mglib \
-	    $(TOP)/amrlib \
-	    $(TOP)/bndrylib \
-	    $(TOP)/BoxLib
-
-ifeq ($(USE_PARTICLES), TRUE)
-  DEFINES += -DPARTICLES
-  Packages += $(TOP)/particles
-endif
-#
-# Set standard definitions.
-#
-include $(TOP)/mk/Make.defs
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-  DEFINES += -DBL_USE_HGPROJ_SERIAL
-endif
-
-ifeq ($(DIM),2)
-  ifeq ($(findstring 5, $(PRVERSION)), 5)
-    DEFINES += -DBL_PRVERSION=5
-  endif
-  ifeq ($(findstring 9, $(PRVERSION)), 9)
-    DEFINES += -DBL_PRVERSION=9
-  endif
-endif
-#
-# Setup build locations/libraries.
-#
-MySrcDirs = .
-INCLUDE_LOCATIONS += ..
-MySrcDirs += $(Packages)
-INCLUDE_LOCATIONS += $(MySrcDirs)
-
-include $(addsuffix /Make.package, $(MySrcDirs))
-
-ifeq ($(HGDEBUG),TRUE)
-  DEFINES+=-DHG_DEBUG
-endif
-ifeq (${USE_FLCTS}, TRUE)
-  DEFINES += -DBL_DO_FLCT
-  INCLUDE_LOCATIONS += $(TOP)/iamrlib/InflowForce
-  MySrcDirs += $(TOP)/iamrlib/InflowForce
-endif
-
-ifeq ($(USE_VELOCITY), TRUE)
-  MySrcDirs += $(TOP)/pAmrvis
-else
-  MySrcDirs += $(TOP)/pAmrvis
-endif
-
-vpath %.cpp $(MySrcDirs) ${PMFdir}
-vpath %.F   $(MySrcDirs) ${PMFdir}
-vpath %.f90 $(MySrcDirs) ${PMFdir}
-vpath %.H   $(MySrcDirs) ${PMFdir}
-vpath %.h   $(MySrcDirs) ${PMFdir}
-vpath %.f   $(MySrcDirs) ${PMFdir}
-vpath %.a   $(LIBRARY_LOCATIONS)
-
-all: $(executable)
-
-include $(TOP)/mk/Make.rules
+# Available chemistry models:
+# CanuH2 chem-CH4-2step chem-H dme glar gri Hai H-CW header inert Konnov
+# LiDryer Marinov prf_ethanol Roehl sandiego smooke usc
