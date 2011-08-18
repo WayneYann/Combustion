@@ -49,7 +49,7 @@ CEXE_headers += ArrayViewEXT.H
 FEXE_headers += probdata.H PROB_F.H
 
 
-include $(COMBUSTION_DIR)/LMC/Make.LMC
+include $(COMBUSTION_DIR)/LMC/tools/make/Make.LMC
 
 # Available chemistry models:
 # CanuH2 chem-CH4-2step chem-H dme glar gri Hai H-CW header inert Konnov
