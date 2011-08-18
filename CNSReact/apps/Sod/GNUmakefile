@@ -1,6 +1,4 @@
-PBOXLIB_HOME= ../../..
-
-FBOXLIB_HOME= ../../../../fParallel
+BOXLIB_HOME = /scratch1/jbb/BoxLib
 
 TOP = ../..
 
@@ -15,15 +13,14 @@ DIM        = 3
 COMP	   = gcc
 FCOMP	   = gfortran
 
+COMP	   = Intel
+FCOMP	   = Intel
+
 USE_MPI    = FALSE
 
-USE_CHEM = TRUE
+USE_CHEM   = TRUE
 
 REACTION_MECHANISM=CHEMH
-
-# These set the EOS and reaction network directories
-EOS_dir     := $(FBOXLIB_HOME)/extern/EOS/gamma_law
-Network_dir := $(FBOXLIB_HOME)/extern/networks/gammalaw
 
 Bpack   := ./Make.package
 Blocs   := .

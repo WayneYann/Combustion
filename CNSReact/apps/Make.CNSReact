@@ -1,69 +1,29 @@
 
 EBASE     = CNSReact
 
-include $(PBOXLIB_HOME)/mk/Make.defs
+include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 
-include $(TOP)/Source/EOS/Make.package
-include $(TOP)/Source/Network/Make.package
-
-INCLUDE_LOCATIONS += $(TOP)/Source/EOS $(TOP)/Source/Network
-VPATH_LOCATIONS   += $(TOP)/Source/EOS $(TOP)/Source/Network
-
-# These set the directories in Parallel to be included
-
-Bdirs 	:= Source Source/Src_$(DIM)d
+Bdirs 	:= src src/Src_$(DIM)d src/EOS src/Network
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
 
-Pdirs 	:= BoxLib amrlib bndrylib Chemistry
+Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 
-Bpack	+= $(foreach dir, $(Pdirs), $(PBOXLIB_HOME)/$(dir)/Make.package)
-Blocs	+= $(foreach dir, $(Pdirs), $(PBOXLIB_HOME)/$(dir))
+Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
+Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
+
+Bpack	+= ../../../Chemistry/src/Make.package
+Blocs	+= ../../../Chemistry/src
 
 include $(Bpack)
 
 INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
 
-# end Parallel directories
-
-include $(FBOXLIB_HOME)/extern/constants/Make.package
-INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/extern/constants
-VPATH_LOCATIONS   += $(FBOXLIB_HOME)/extern/constants
-
-USE_MG = TRUE
-   
-ifeq ($(USE_MG), TRUE)
-  include $(PBOXLIB_HOME)/mglib/Make.package
-  INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/mglib
-  VPATH_LOCATIONS   += $(PBOXLIB_HOME)/mglib
-
-  include $(PBOXLIB_HOME)/MGT_Solver/Make.package
-  INCLUDE_LOCATIONS += $(PBOXLIB_HOME)/MGT_Solver
-  VPATH_LOCATIONS   += $(PBOXLIB_HOME)/MGT_Solver
-
-  include $(FBOXLIB_HOME)/mg/source/FParallelMG.mak
-  INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/mg/source
-  VPATH_LOCATIONS   += $(FBOXLIB_HOME)/mg/source
-
-  INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/extern/SPARSKIT
-  VPATH_LOCATIONS   += $(FBOXLIB_HOME)/extern/SPARSKIT
-
-  INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/extern/LAPACK
-  VPATH_LOCATIONS   += $(FBOXLIB_HOME)/extern/LAPACK
-
-# include $(FBOXLIB_HOME)/extern/BLAS/Make.package
-  fEXE_sources += daxpy.f
-  fEXE_sources += ddot.f
-  INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/extern/BLAS
-  VPATH_LOCATIONS   += $(FBOXLIB_HOME)/extern/BLAS
-else
-  include $(FBOXLIB_HOME)/boxlib/FParallelMG.mak
-endif
-
-INCLUDE_LOCATIONS += $(FBOXLIB_HOME)/boxlib 
-VPATH_LOCATIONS   += $(FBOXLIB_HOME)/boxlib 
+#include $(BOXLIB_HOME)/Src/F_BaseLib/FParallelMG.mak
+#INCLUDE_LOCATIONS += $(BOXLIB_HOME)/Src/F_BaseLib
+#VPATH_LOCATIONS   += $(BOXLIB_HOME)/Src/F_BaseLib
 
 vpath %.c   . $(VPATH_LOCATIONS)
 vpath %.cpp . $(VPATH_LOCATIONS)
@@ -76,4 +36,4 @@ vpath %.fi  . $(VPATH_LOCATIONS)
 
 all: $(executable) 
 
-include $(PBOXLIB_HOME)/mk/Make.rules
+include $(BOXLIB_HOME)/Tools/C_mk/Make.rules

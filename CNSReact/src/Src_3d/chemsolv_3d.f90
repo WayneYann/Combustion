@@ -1,7 +1,6 @@
       subroutine chemsolv(lo, hi, u, u_l1, u_l2, u_l3, u_h1, u_h2, u_h3, dt, idbg)
 
       use meth_params_module, only : NTHERM, NVAR, nadv 
-      use phys_params_module, only : NSPECMAX
 
       use chemsolv_module
       use    cdwrk_module
@@ -33,7 +32,7 @@
       double precision, parameter :: spec_scalT = 2000.d0
       double precision, parameter :: NEWJ_TOL = 1.d100
 
-      double precision :: deriv(NSPECMAX+1)
+      double precision :: deriv(maxspec+1)
       double precision :: ATOL(maxspec+1)
 
       double precision :: Ytemp(maxspec),Yres(maxspec),sum
