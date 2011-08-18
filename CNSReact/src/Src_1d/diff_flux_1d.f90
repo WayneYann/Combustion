@@ -1,6 +1,6 @@
 module diff_flux_module
 
-  use phys_params_module
+  use cdwrk_module
   use meth_params_module
  
   implicit none
@@ -36,7 +36,7 @@ contains
       loD(1) = lo(1)-1
       hiD(1) = hi(1)+1
 
-      allocate(   D(loD(1):hiD(1),DVAR))
+      allocate(   D(loD(1):hiD(1),Nspec+3))
       allocate(TEMP(q_l1:q_h1))
       allocate(  CP(q_l1:q_h1))
 
@@ -64,7 +64,6 @@ contains
 
       ! Note that lo,hi in this routine correspond to lo-1,hi+1 from the calling routine
 
-      use cdwrk_module
 
       implicit none
 
@@ -74,7 +73,7 @@ contains
       double precision ::    q(q_l1:q_h1, QVAR)
       double precision :: TEMP(q_l1:q_h1)
       double precision ::   CP(q_l1:q_h1) 
-      double precision ::    D(D_l1:D_h1, DVAR)
+      double precision ::    D(D_l1:D_h1, Nspec+3)
 
       ! Local variables
       integer          :: i,doVelVisc,doTemp
@@ -127,8 +126,6 @@ contains
                             flux1,flux1_l1,flux1_h1, &
                             dx,dt)
 
-      use cdwrk_module
-      use meth_params_module
 
       implicit none
 
@@ -137,20 +134,18 @@ contains
       integer          :: D_l1, D_h1
       integer          :: flux1_l1, flux1_h1
       double precision :: q(q_l1:q_h1,,QVAR)
-      double precision :: D(D_l1:D_h1,,DVAR)
+      double precision :: D(D_l1:D_h1,,Nspec+3)
       double precision :: flux1(flux1_l1:flux1_h1,NVAR)
 
       double precision :: dx,dt
 
       ! Local variables
       integer          :: i,n,ifirstSp
-      double precision :: tauxym,tauyym
-      double precision :: tauyxm,tauzxm
-      double precision :: tauzzm,tauzxm
-      double precision :: divxm,divym
-      double precision :: muxm,muym
-      double precision :: lamxm,lamym
-      double precision :: kxm,kym
+      double precision :: tauxxm
+      double precision :: divxm
+      double precision :: muxm
+      double precision :: lamxm
+      double precision :: kxm
       double precision :: phiflx
 
       double precision :: rhoDm(maxspec)
@@ -176,9 +171,7 @@ contains
               +     divxm*(q(i,QU)+q(i-1,QU))
          
          flux1(i,2) = flux1(i,2) - dt*(tauxxm+divxm)
-         flux1(i,3) = flux1(i,3) - dt*tauyxm
-         flux1(i,4) = flux1(i,4) - dt*tauzxm
-         flux1(i,5) = flux1(i,5) - dt*(0.5d0*phiflx  &
+         flux1(i,3) = flux1(i,3) - dt*(0.5d0*phiflx  &
               + kxm*( (q(i  ,QREINT)+q(i  ,QPRES))/q(i  ,QRHO) &
               -       (q(i-1,QREINT)+q(i-1,QPRES))/q(i-1,QRHO) )/dx)
 
@@ -202,7 +195,6 @@ contains
                            P, P_l1, P_h1, &
                            do_temp, do_VelVisc)
 
-      use cdwrk_module
 
       implicit none
 
@@ -212,9 +204,9 @@ contains
       integer          ::  T_l1, T_h1
       integer          ::  Y_l1, Y_h1
       integer          ::  P_l1, P_h1
-      double precision :: rd(rd_l1:rd_h1,*)
+      double precision :: rd(rd_l1:rd_h1,:)
       double precision ::  T( T_l1: T_h1)
-      double precision ::  Y( Y_l1: Y_h1,*)
+      double precision ::  Y( Y_l1: Y_h1,:)
       double precision ::  P( P_l1: P_h1)
 
       ! Local variables

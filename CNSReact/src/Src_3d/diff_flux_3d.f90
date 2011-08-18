@@ -1,6 +1,6 @@
 module diff_flux_module
 
-  use phys_params_module
+  use cdwrk_module
   use meth_params_module
  
   implicit none
@@ -39,7 +39,7 @@ contains
       double precision, allocatable :: TEMP(:,:,:)
       double precision, allocatable ::   CP(:,:,:)
 
-      allocate(   D(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,DVAR))
+      allocate(   D(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,Nspec+3))
       allocate(TEMP(q_l1:q_h1,q_l2:q_h2,q_l3:q_h3))
       allocate(  CP(q_l1:q_h1,q_l2:q_h2,q_l3:q_h3))
 
@@ -77,17 +77,16 @@ contains
 
       ! Note that lo,hi in this routine correspond to lo-1,hi+1 from the calling routine
 
-      use cdwrk_module
 
       implicit none
 
       integer          :: lo(3), hi(3)
       integer          :: q_l1, q_l2, q_l3, q_h1, q_h2, q_h3
       integer          :: D_l1, D_l2, D_l3, D_h1, D_h2, D_h3
-      double precision ::    q(q_l1:q_h1, q_l2:q_h2, q_l3:q_h3, QVAR)
+      double precision ::    q(q_l1:q_h1, q_l2:q_h2, q_l3:q_h3,QVAR)
       double precision :: TEMP(q_l1:q_h1, q_l2:q_h2, q_l3:q_h3)
       double precision ::   CP(q_l1:q_h1, q_l2:q_h2, q_l3:q_h3) 
-      double precision ::    D(D_l1:D_h1, D_l2:D_h2, D_l3:D_h3, DVAR)
+      double precision ::    D(D_l1:D_h1, D_l2:D_h2, D_l3:D_h3,Nspec+3)
 
       ! Local variables
       integer          :: i,j,k,doVelVisc,doTemp
@@ -150,8 +149,6 @@ contains
                             flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
                             dx,dy,dz,dt)
 
-      use cdwrk_module
-      use meth_params_module
 
       implicit none
 
@@ -162,7 +159,7 @@ contains
       integer          :: flux2_l1, flux2_l2, flux2_l3, flux2_h1, flux2_h2, flux2_h3
       integer          :: flux3_l1, flux3_l2, flux3_l3, flux3_h1, flux3_h2, flux3_h3
       double precision :: q(q_l1:q_h1, q_l2:q_h2, q_l3:q_h3, QVAR)
-      double precision :: D(D_l1:D_h1, D_l2:D_h2, D_l3:D_h3, DVAR)
+      double precision :: D(D_l1:D_h1, D_l2:D_h2, D_l3:D_h3, Nspec+3)
       double precision :: flux1(flux1_l1:flux1_h1, flux1_l2:flux1_h2, flux1_l3:flux1_h3, NVAR)
       double precision :: flux2(flux2_l1:flux2_h1, flux2_l2:flux2_h2, flux2_l3:flux2_h3, NVAR)
       double precision :: flux3(flux3_l1:flux3_h1, flux3_l2:flux3_h2, flux3_l3:flux3_h3, NVAR)
@@ -346,7 +343,6 @@ contains
                            P, P_l1, P_l2, P_l3, P_h1, P_h2, P_h3, &
                            do_temp, do_VelVisc)
 
-      use cdwrk_module
 
       implicit none
 
@@ -356,9 +352,9 @@ contains
       integer          ::  T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
       integer          ::  Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
       integer          ::  P_l1, P_l2, P_l3, P_h1, P_h2, P_h3
-      double precision :: rd(rd_l1:rd_h1, rd_l2:rd_h2, rd_l3:rd_h3, *)
+      double precision :: rd(rd_l1:rd_h1, rd_l2:rd_h2, rd_l3:rd_h3,:)
       double precision ::  T( T_l1: T_h1,  T_l2: T_h2,  T_l3: T_h3)
-      double precision ::  Y( Y_l1: Y_h1,  Y_l2: Y_h2,  Y_l3: Y_h3, *)
+      double precision ::  Y( Y_l1: Y_h1,  Y_l2: Y_h2,  Y_l3: Y_h3,:)
       double precision ::  P( P_l1: P_h1,  P_l2: P_h2,  P_l3: P_h3)
 
       ! Local variables

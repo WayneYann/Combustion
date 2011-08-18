@@ -1,4 +1,4 @@
-PBOXLIB_HOME= /home/almgren/bin/BoxLib
+BOXLIB_HOME = /scratch1/jbb/BoxLib
 
 TOP = ../..
 
@@ -8,17 +8,21 @@ PROFILE    = FALSE
 DEBUG      = FALSE
 DEBUG      = TRUE
 
-DIM        = 2
+DIM        = 3
 
 COMP	   = gcc
 FCOMP	   = gfortran
 
+COMP	   = Intel
+FCOMP	   = Intel
+
 USE_MPI    = FALSE
 
 USE_CHEM   = TRUE
+
 REACTION_MECHANISM=CHEMH
 
 Bpack   := ./Make.package
 Blocs   := .
 
-include ../Make.CNSReact.git
+include ../Make.CNSReact
