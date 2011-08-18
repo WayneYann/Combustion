@@ -1,0 +1,5 @@
+To use Fuego to generate c++
+
+1) Unpack Fuego.tgz in Combustion/Chemistry/tools/fuego/
+2) Source the appropriate setup.sh having set DV_DIR to Combustion/Chemistry/tools/fuego/Fuego/Pythia
+3) Run the make script in the appropriate mechanism directory (i.e. cd chem-H; sh make-chem-H.sh)

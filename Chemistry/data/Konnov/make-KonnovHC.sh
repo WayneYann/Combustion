@@ -1,4 +1,4 @@
-python ../fmc.py -mechanism=KonnovHC.mec-hack -thermo=KonnovHC.therm-hack -name=mec.cpp
+python ../../tools/fuego/Fuego/Pythia/products/bin/fmc.py -mechanism=KonnovHC.mec-hack -thermo=KonnovHC.therm-hack -name=mec.cpp
 echo Compiling KonnovHC.cpp...
 cat mec.cpp ../header/header.start\
             ../header/header.mec   KonnovHC.mec-hack\

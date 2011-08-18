@@ -5091,7 +5091,9 @@ char* fesymname_(int sn)
 
 
 
+
 #if 0
+
 
 
 
@@ -5360,6 +5362,7 @@ H2O2+OH=HO2+H2O           5.800E+14  0.00  9.557E+03
     DUPLICATE
 
 END
+
 \\
 \\
 \\  This is the therm file
@@ -5404,6 +5407,7 @@ N2                121286N   2               G  0300.00   5000.00  1000.00      1
 -0.09227977E+04 0.05980528E+02 0.03298677E+02 0.01408240E-01-0.03963222E-04    3
  0.05641515E-07-0.02444855E-10-0.01020900E+05 0.03950372E+02                   4
 END
+
 \\
 \\
 \\  This is the tran file
@@ -5543,4 +5547,5 @@ CH3CO              2   436.000     3.970     0.000     0.000     2.000
         Rotational relaxation number, Zrot at 298K                              
         Comments                                                                
                                                                                 
+
 #endif

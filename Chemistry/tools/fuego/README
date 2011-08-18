@@ -1,0 +1,5 @@
+Example:
+1) tar xzf Fuego.tgz
+2) Set DV_DIR in Fuego/Pythia/setup.sh (or .csh)
+3) source setup.sh
+4) python Fuego/Pythia/products/bin/fmc.py -mechanism=grimech30-noN.mec -thermo=grimech30.therm -name=grimech30.cpp

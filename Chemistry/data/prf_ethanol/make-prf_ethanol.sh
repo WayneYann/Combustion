@@ -1,4 +1,4 @@
-python ../fmc.py -mechanism=prf_ethanol.mec -thermo=prf_ethanol.therm-hack -name=mec.cpp
+python ../../tools/fuego/Fuego/Pythia/products/bin/fmc.py -mechanism=prf_ethanol.mec -thermo=prf_ethanol.therm-hack -name=mec.cpp
 echo Compiling prf_ethanol.cpp...
 cat mec.cpp ../header/header.start\
             ../header/header.mec   prf_ethanol.mec\

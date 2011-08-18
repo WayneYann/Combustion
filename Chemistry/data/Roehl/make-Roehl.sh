@@ -1,4 +1,4 @@
-python ../fmc.py -mechanism=Roehl.mec -thermo=Roehl.therm-hack -name=mec.cpp
+python ../../tools/fuego/Fuego/Pythia/products/bin/fmc.py -mechanism=Roehl.mec -thermo=Roehl.therm-hack -name=mec.cpp
 echo Compiling Roehl.cpp...
 cat mec.cpp ../header/header.start\
             ../header/header.mec   Roehl.mec\
