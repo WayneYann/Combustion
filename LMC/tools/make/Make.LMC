@@ -70,6 +70,13 @@ ifeq (${CHEMISTRY_MODEL}, DRM19)
   vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri
 endif
 
+# Enable time-dependent turbulence forcing term
+ifeq (${USE_TDEPFORCING}, TRUE)
+  DEFINES += -DGENGETFORCE
+  DEFINES += -DDO_LMC_FORCE
+endif
+
+DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
 
 VPATH_LOCATIONS   += . $(Blocs)
 INCLUDE_LOCATIONS += . $(Blocs)

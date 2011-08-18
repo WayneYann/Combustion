@@ -8,21 +8,12 @@ COMBUSTION_DIR = ${TOP}/Combustion
 #
 
 PRECISION       = DOUBLE
-
 DEBUG           = TRUE
-
 DIM             = 2
-
 COMP            = g++
 FCOMP           = gfortran
-
-USE_MPI         = TRUE
 USE_MPI         = FALSE
-
-USE_OMP         = TRUE
 USE_OMP         = FALSE
-
-#USE_F90_SOLVERS = TRUE
 USE_F90_SOLVERS = FALSE
 
 # Enable flctin namelist
@@ -33,10 +24,10 @@ USE_PARTICLES   = TRUE
 # Enable ht.velocity_plotfile option
 USE_VELOCITY    = TRUE
 
-# This allows GetForce to call a Fortran routine
-#DEFINES += -DGENGETFORCE
+# Enable time-dependent forcing term
+USE_TDEPFORCING = TRUE
 
-# Choose model from list below
+# Choose model (from list below), and pmf file
 CHEMISTRY_MODEL = DRM19
 fEXE_sources += drm19Soln_seed_0.50.f
 
@@ -45,7 +36,7 @@ Blocs   := .
 
 CEXE_sources +=
 FEXE_sources += PROB_$(DIM)D.F
-CEXE_headers += ArrayViewEXT.H
+CEXE_headers += 
 FEXE_headers += probdata.H PROB_F.H
 
 
