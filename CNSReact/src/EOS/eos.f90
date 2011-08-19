@@ -1,61 +1,42 @@
 module eos_module 
  
+  use cdwrk_module
+  use chemsolv_module
+
   implicit none
-
-  ! Avogradro's Number
-  double precision, parameter :: n_A    = 6.02214129d23   ! mol^-1
-
-  ! Boltzmann's constant
-  double precision, parameter :: k_B    = 1.3806488d-16   ! erg/K
 
   double precision, save, private :: smalld
   double precision, save, private :: smallt
   double precision, save, private :: smallp
   double precision, save, private :: smallc
-  double precision, save          :: gamma_const 
-
-  ! abar is the mean molecular weight.  Ideally, this should
-  ! be computed from X_k, using aion and zion from the network
-
-  ! we use a value of 0.6.  This is what you get for a fully
-  ! ionized gas consisting of 0.75 H and 0.25 He-4 by mass
-  ! (roughly a solar composition)
-  double precision, parameter :: Abar = 0.6d0
 
 contains
 
-  subroutine eos_init(small_temp, small_dens, gamma_in)
+  subroutine eos_init(small_temp, small_dens)
 
     implicit none
  
     double precision, intent(in), optional :: small_temp
     double precision, intent(in), optional :: small_dens
-    double precision, intent(in), optional :: gamma_in
 
-    if (present(gamma_in)) then
-       gamma_const = gamma_in
-    else
-       gamma_const = 1.4d0
-    end if
- 
     if (present(small_temp)) then
       if (small_temp > 0.d0) then
        smallt = small_temp
       else
-       smallt = 5.d6
+       smallt = 250.d0
       end if
     else
-       smallt = 5.d6
+       smallt = 250.d0
     endif
  
     if (present(small_dens)) then
        if (small_dens > 0.d0) then
          smalld = small_dens
        else
-         smalld = 1.d-8
+         smalld = 1.d-3
        end if
     else
-       smalld = 1.d-8
+       smalld = 1.d-3
     endif
  
     smallp = 1.d-6
@@ -79,61 +60,68 @@ contains
 
   end subroutine eos_get_small_dens
 
-  subroutine eos_given_ReX(G, P, C, T, dpdr, dpde, R, e, X, pt_index)
+  subroutine eos_given_ReY(G, P, C, T, dpdr, dpde, R, e, Y, pt_index)
  
      implicit none
  
+     double precision, parameter :: SCALP = 0.1d0, SCALR = 0.001d0
      double precision, intent(  out) :: G, P, C, T, dpdr, dpde
-     double precision, intent(in   ) :: R, e, X(:)
+     double precision, intent(in   ) :: R, e, Y(:)
      integer, optional, intent(in   ) :: pt_index(:)
 
-     double precision :: c_v
+     double precision :: cv,cp
 
-     G = gamma_const
-     P = (gamma_const - 1.d0) * R * e
+     integer NiterCheck
+
+     NiterCheck = T_from_eY(T,Y,e)
+     call CKCVBS(T,Y,iwrk,rwrk,cv)
+     call CKCPBS(T,Y,iwrk,rwrk,cp)
+     G = cp / cv
+     call CKPY(R,T,Y,iwrk,rwrk,P)
      P = max(P,smallp)
-     C = sqrt(gamma_const*ABS(P)/MAX(R,smalld))
+     C = sqrt(G*ABS(P)/MAX(R,smalld))
      C = max(C,smallc)
 
-     ! specific heat
-     c_v = k_B*n_A/ (abar * (gamma_const - 1.d0))
-     T = e / c_v
-
-     dpdr = (gamma_const-1.d0)*e
-     dpde = (gamma_const-1.d0)*R
+!  next two lines merit checking
+     dpdr = P/R
+     dpde = 1.d0 / cv
  
-  end subroutine eos_given_ReX
+  end subroutine eos_given_ReY
 
-  subroutine eos_S_given_ReX(S, R, e, T, X, pt_index)
+  subroutine eos_S_given_ReY(S, R, e, T, Y, pt_index)
  
      implicit none
  
      double precision, intent(  out) :: S
-     double precision, intent(in   ) :: R, e, T, X(:)
+     double precision, intent(in   ) :: R, e, T, Y(:)
      integer, optional, intent(in   ) :: pt_index(:)
 
      S = 0.d0
 
-  end subroutine eos_S_given_ReX
+  end subroutine eos_S_given_ReY
 
-  subroutine eos_given_RTX(e, P, R, T, X, pt_index)
+  subroutine eos_given_RTY(e, P, R, T, Y, pt_index)
 
      implicit none
 
      ! in/out variables
      double precision, intent(  out) :: e, P
-     double precision, intent(in   ) :: R, T, X(:)
+     double precision, intent(in   ) :: R, T, Y(:)
      integer, optional, intent(in   ) :: pt_index(:)
 
-     double precision :: c_v
+     double precision :: c_v, h
 
-     c_v = k_B*n_A/ (abar * (gamma_const - 1.d0))
- 
-     e = T * c_v
-     P = (gamma_const - 1.d0) * R * e
+     call CKPY(R,T,Y,iwrk,rwrk,P)
      P = max(P,smallp)
+
+!  hack . . . Fuego doesn't appear to make a CKUBMS function  
+    
+     call CKSMBS(P,T,Y,iwrk,rwrk,h)
+
+     e = h - P/R
+
  
-  end subroutine eos_given_RTX
+  end subroutine eos_given_RTY
 
   subroutine eos_get_cv(cv, R, T, Y)
 
@@ -141,7 +129,7 @@ contains
     double precision, intent(out) :: cv
     double precision, intent(in)  :: R, T, Y(:)
 
-    cv = k_B*n_A/ (abar * (gamma_const - 1.d0))
+     call CKCVBS(T,Y,iwrk,rwrk,cv)
 
   end subroutine eos_get_cv
 
