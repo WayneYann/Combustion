@@ -116,7 +116,7 @@ contains
 
 !  hack . . . Fuego doesn't appear to make a CKUBMS function  
     
-     call CKSMBS(P,T,Y,iwrk,rwrk,h)
+     call CKSBMS(P,T,Y,iwrk,rwrk,h)
 
      e = h - P/R
 

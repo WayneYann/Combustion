@@ -165,7 +165,7 @@
          pt_index(1) = i
          pt_index(2) = j
          pt_index(3) = k
-         call eos_given_ReX(dummy_gam, dummy_pres , dummy_c, state(i,j,k,UTEMP), &
+         call eos_given_ReY(dummy_gam, dummy_pres , dummy_c, state(i,j,k,UTEMP), &
                             dummy_dpdr, dummy_dpde, state(i,j,k,URHO), eint, xn, pt_index)
 
       enddo
@@ -661,7 +661,7 @@
                  pt_index(1) = i
                  pt_index(2) = j
                  pt_index(3) = k
-                 call eos_given_RTX(eint_new, dummy_pres, u(i,j,k,URHO), small_temp, x_in, pt_index)
+                 call eos_given_RTY(eint_new, dummy_pres, u(i,j,k,URHO), small_temp, x_in, pt_index)
 
                  if (verbose .gt. 0) then
                     print *,'   '

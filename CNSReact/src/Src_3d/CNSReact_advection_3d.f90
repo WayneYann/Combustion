@@ -914,7 +914,7 @@
                ! If necessary, reset the energy using small_temp
                if ((allow_negative_energy .eq. 0) .and. (q(i,j,k,QREINT) .lt. 0)) then
                   q(i,j,k,QTEMP) = small_temp
-                  call eos_given_RTX(q(i,j,k,QREINT),q(i,j,k,QPRES),q(i,j,k,QRHO), &
+                  call eos_given_RTY(q(i,j,k,QREINT),q(i,j,k,QPRES),q(i,j,k,QRHO), &
                                      q(i,j,k,QTEMP),q(i,j,k,QFS:),pt_index)
                   if (q(i,j,k,QREINT) .lt. 0.d0) then
                      print *,'   '
@@ -926,7 +926,7 @@
                   end if
                end if
 
-               call eos_given_ReX(gamc(i,j,k), q(i,j,k,QPRES), c(i,j,k), q(i,j,k,QTEMP), &
+               call eos_given_ReY(gamc(i,j,k), q(i,j,k,QPRES), c(i,j,k), q(i,j,k,QTEMP), &
                                   dpdrho(i,j,k), dpde(i,j,k), &
                                   q(i,j,k,QRHO), q(i,j,k,QREINT), q(i,j,k,QFS:), pt_index)
                csml(i,j,k) = max(small, small * c(i,j,k))

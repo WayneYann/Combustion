@@ -411,9 +411,9 @@
                ! Protect against negative internal energy.
                !
                if (allow_negative_energy .eq. 0 .and. e .le. 0.d0) then
-                  call eos_given_RTX(e, p(i,j,k,1), u(i,j,k,URHO), T, Y)
+                  call eos_given_RTY(e, p(i,j,k,1), u(i,j,k,URHO), T, Y)
                else
-                  call eos_given_ReX(gamc, p(i,j,k,1), c, T, dpdr, dpde, &
+                  call eos_given_ReY(gamc, p(i,j,k,1), c, T, dpdr, dpde, &
                                      u(i,j,k,URHO), e, Y)
                end if
 
@@ -540,7 +540,7 @@
                enddo
 
                if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
-                  call eos_given_ReX(gamc, p, c(i,j,k,1), T, dpdr, dpde, &
+                  call eos_given_ReY(gamc, p, c(i,j,k,1), T, dpdr, dpde, &
                                      u(i,j,k,URHO), e, Y)
                end if
 
@@ -597,7 +597,7 @@
                enddo
 
                if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
-                  call eos_given_ReX(gamc, p, c, T, dpdr, dpde, u(i,j,k,URHO), e, Y)
+                  call eos_given_ReY(gamc, p, c, T, dpdr, dpde, u(i,j,k,URHO), e, Y)
                   mach(i,j,k,1) = sqrt(ux**2 + uy**2 + uz**2) / c
                end if
 
@@ -654,7 +654,7 @@
                enddo
 
                if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
-                  call eos_S_given_ReX(s(i,j,k,1), u(i,j,k,URHO), e, T, Y)
+                  call eos_S_given_ReY(s(i,j,k,1), u(i,j,k,URHO), e, T, Y)
                end if
             enddo
          enddo

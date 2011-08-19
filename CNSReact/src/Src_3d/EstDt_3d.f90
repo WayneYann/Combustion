@@ -44,7 +44,7 @@
                   pt_index(1) = i
                   pt_index(2) = j
                   pt_index(3) = k
-                  call eos_given_ReX(gamc,p,c,T,dpdr,dpde,u(i,j,k,URHO),e,xn,pt_index)
+                  call eos_given_ReY(gamc,p,c,T,dpdr,dpde,u(i,j,k,URHO),e,xn,pt_index)
                else
                   c = 0.d0
                end if
