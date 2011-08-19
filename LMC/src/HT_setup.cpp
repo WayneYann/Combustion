@@ -1,6 +1,4 @@
 //
-// $Id: HT_setup.cpp,v 1.20 2011-08-08 23:01:03 lijewski Exp $
-//
 // Note: define TEMPERATURE if you want variables T and rho*h, h = c_p*T,in the 
 //       State_Type part of the state
 //       whose component indices are Temp and RhoH

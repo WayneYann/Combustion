@@ -1,10 +1,6 @@
 #ifndef _DDBndry_F_H_
 #define _DDBndry_F_H_
 
-/*
-** $Id: DDBndry_F.H,v 1.1 2011-01-25 22:41:36 marc Exp $
-*/
-
 #ifdef BL_LANG_FORT
 #    define FORT_DDBNDCCAVG   ddbndccavg
 #    define FORT_CRSNCCBND    crsnccbnd

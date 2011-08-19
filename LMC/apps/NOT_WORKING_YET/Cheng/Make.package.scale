@@ -1,6 +1,4 @@
-#
-# $Id: Make.package.scale,v 1.1 2009-06-15 23:26:20 lijewski Exp $
-#
+
 CEXE_sources += HT_setup.cpp
 
 FEXE_sources += PROB_SCALE_$(DIM)D.F

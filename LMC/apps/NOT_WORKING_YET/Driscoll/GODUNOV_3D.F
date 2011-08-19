@@ -1,6 +1,4 @@
 
-c $Id: GODUNOV_3D.F,v 1.4 2005-10-08 20:31:13 lijewski Exp $
-c
 #undef  BL_LANG_CC
 #ifndef BL_LANG_FORT
 #define BL_LANG_FORT

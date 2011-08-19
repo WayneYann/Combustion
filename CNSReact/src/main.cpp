@@ -1,6 +1,4 @@
-//
-// $Id: main.cpp,v 1.1 2010-10-10 05:53:02 almgren Exp $
-//
+
 #include <winstd.H>
 
 #include <new>

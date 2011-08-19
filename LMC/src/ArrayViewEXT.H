@@ -1,8 +1,4 @@
 
-//
-// $Id: ArrayViewEXT.H,v 1.1 2003-08-08 20:09:41 lijewski Exp $
-//
-
 #ifndef _ArrayViewEXT_H_
 #define _ArrayViewEXT_H_
 

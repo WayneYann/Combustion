@@ -1,6 +1,4 @@
-#
-# $Id: GNUmakefile.scale,v 1.2 2010-06-10 21:14:05 lijewski Exp $
-#
+
 PBOXLIB_HOME = ../..
 
 FBOXLIB_HOME = ../../../fParallel
