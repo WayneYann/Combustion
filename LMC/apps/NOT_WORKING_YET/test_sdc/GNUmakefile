@@ -1,6 +1,4 @@
-#
-# $Id: GNUmakefile,v 1.11 2011-04-07 21:19:36 lijewski Exp $
-#
+
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
 PMFdir        = ../PMFfiles

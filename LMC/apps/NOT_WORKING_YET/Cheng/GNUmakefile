@@ -1,6 +1,4 @@
-#
-# $Id: GNUmakefile,v 1.21 2011-05-06 22:35:03 lijewski Exp $
-#
+
 PBOXLIB_HOME = ../..
 
 FBOXLIB_HOME = ../../../fParallel

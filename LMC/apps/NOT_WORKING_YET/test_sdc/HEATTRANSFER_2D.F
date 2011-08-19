@@ -1,6 +1,4 @@
-c
-c $Id: HEATTRANSFER_2D.F,v 1.9 2010-01-05 19:19:32 gilet Exp $
-c
+
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
 #define BL_LANG_FORT

@@ -1,5 +1,5 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.2 2009-04-23 13:46:31 gilet Exp $
+#define _PROB_F_H_
 
 #include <PROB_NS_F.H>
 

@@ -1,10 +1,6 @@
 #ifndef _SLABSTAT_HT_F_H_
 #define _SLABSTAT_HT_F_H_
 
-/*
-** $Id: SLABSTAT_HT_F.H,v 1.1 2003-08-08 20:09:41 lijewski Exp $
-*/
-
 #ifdef BL_LANG_FORT
 #    define FORT_HT_BASICSTATS_NCTRAC    ht_basicstats_nctrac
 #    define FORT_HT_BASICSTATS_CTRAC     ht_basicstats_ctrac

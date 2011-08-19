@@ -1,11 +1,6 @@
-//BL_COPYRIGHT_NOTICE
 
 #ifndef _DDBndry_H_
 #define _DDBndry_H_
-
-//
-// $Id: DDBndry.H,v 1.5 2011-02-02 01:36:44 marc Exp $
-//
 
 #include <ViscBndry.H>
 #include <BC_TYPES.H>

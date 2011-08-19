@@ -1,5 +1,5 @@
 #ifndef _PROB_F_H_
-#define _PROB_F_H_ $Id: PROB_F.H,v 1.8 2011-05-03 22:20:22 lijewski Exp $
+#define _PROB_F_H_
 
 #include <PROB_NS_F.H>
 

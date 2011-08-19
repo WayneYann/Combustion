@@ -1,6 +1,4 @@
-c
-c $Id: HEATTRANSFER_3D.F,v 1.40 2011-05-04 16:35:27 lijewski Exp $
-c
+
 #undef BL_LANG_CC
 #ifndef BL_LANG_FORT
 #define BL_LANG_FORT

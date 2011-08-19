@@ -1,6 +1,4 @@
-#
-# $Id: GNUmakefile,v 1.22 2007-09-10 19:47:56 sepp Exp $
-#
+
 PBOXLIB_HOME  = ../..
 TOP           = $(PBOXLIB_HOME)
 #

@@ -1,6 +1,4 @@
-c
-c $Id: DDBndry_2D.F,v 1.1 2011-01-25 22:41:36 marc Exp $
-c
+
 #undef  BL_LANG_CC
 #ifndef BL_LANG_FORT
 #define BL_LANG_FORT
