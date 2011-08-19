@@ -2,4 +2,4 @@ CEXE_sources += HT_setup.cpp HeatTransfer.cpp DDBndry.cpp DDOp.cpp
 CEXE_headers += HeatTransfer.H DDBndry.H DDOp.H ArrayViewEXT.H BoxLib_Data_Dump.H
 FEXE_headers += HEATTRANSFER_F.H htdata.H visc.H SLABSTAT_HT_F.H DDOp_F.F DDBndry_F.H
 FEXE_sources += HEATTRANSFER_F.F HEATTRANSFER_$(DIM)D.F DDOp_$(DIM)D.F DDBndry_$(DIM)D.F DDOp_F.F \
-  			DERIVE_HT_$(DIM)D.F SLABSTAT_HT_$(DIM)D.F
+  			SLABSTAT_HT_$(DIM)D.F DERIVE_HT_$(DIM)D.F
