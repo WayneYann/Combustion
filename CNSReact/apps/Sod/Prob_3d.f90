@@ -2,7 +2,7 @@
       subroutine PROBINIT (init,name,namlen,problo,probhi)
 
       use probdata_module
-      use eos_module, only : gamma_const
+      use eos_module         !, only : gamma_const
       use network   , only : network_init
       implicit none
 
@@ -12,6 +12,8 @@
 
       double precision vctr
       integer untin,i
+
+      double precision, parameter :: gamma_const = 1.4d0
 
       namelist /fortin/ p_l, u_l, rho_l, p_r, u_r, rho_r, frac, idir, &
            denerr,  dengrad,  max_denerr_lev,  max_dengrad_lev, &
@@ -73,6 +75,8 @@
       center(3) = frac*(problo(3)+probhi(3))
 
 ! compute the internal energy (erg/cc) for the left and right state
+
+      
       rhoe_l = p_l/(gamma_const - 1.d0)
       rhoe_r = p_r/(gamma_const - 1.d0)
 

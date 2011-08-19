@@ -783,7 +783,8 @@
       !     Also, uflaten call assumes ngp>=ngf+3 (ie, primitve data is used by the
       !     routine that computes flatn).  
       !
-      use network, only : nspec, naux
+      use cdwrk_module, only : nspec
+      use network, only : naux
       use eos_module
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
                                      UEDEN, UEINT, UTEMP, UFA, UFS, UFX, &

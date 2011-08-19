@@ -101,7 +101,8 @@
       subroutine ca_compute_temp(lo,hi,state,state_l1,state_l2,state_l3, &
                                  state_h1,state_h2,state_h3)
 
-      use network, only : nspec, naux
+      use cdwrk_module, only : nspec
+      use network, only : naux
       use eos_module
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEINT, UTEMP, &
                                      UFS, UFX, small_temp, allow_negative_energy
@@ -609,7 +610,8 @@
       subroutine ca_reset_internal_energy(u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,lo,hi,verbose)
 
       use eos_module
-      use network, only : nspec, naux
+      use cdwrk_module, only : nspec
+      use network, only : naux
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UFX, &
                                      small_temp, allow_negative_energy
 

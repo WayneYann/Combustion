@@ -16,7 +16,7 @@
 
       ! Local variables
 
-      external consteFY, conpJY
+      external conpJY
 
       double precision   :: TT1, TT2
       integer            :: i, j, k, n, MF, ISTATE, T_from_eY, Niter
