@@ -219,6 +219,11 @@ C     get velocity visc terms to use as a forcing term for advection
       real*8 diffdiff_new(0:nx-1)
       real*8 diffdiff_hat(0:nx-1)
 
+      real*8 Y(maxspec)
+      real*8 hi(maxspec,-1:nx)
+      real*8 RWRK, cpmix, rhocp_old
+      integer IWRK
+
       diffdiff_old = 0.d0
       diffdiff_new = 0.d0
       diffdiff_hat = 0.d0
@@ -253,6 +258,34 @@ c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
      $                           spec_flux_hi,beta_old,diffdiff_old,
      $                           dx,time)
+      end if
+
+      if (predict_T) then
+
+c        compute del dot lambda grad T + rho D grad h dot grad Y
+c        the rho D grad Y term is now computed conservatively
+         call get_temp_visc_terms(scal_old,beta_old,
+     &                            diff_old(0,Temp),dx,time)
+
+         do i=-1,nx
+            call CKHMS(scal_old(i,Temp),IWRK,RWRK,hi(1,i))
+         end do
+
+         do i = 0,nx-1
+            do n = 1,Nspec
+               Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
+            enddo
+            call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
+            rhocp_old = cpmix * scal_old(i,Density)
+            tforce(i,Temp) = diff_old(i,Temp)/rhocp_old
+
+            do n=1,Nspec
+               tforce(i,Temp) = tforce(i,Temp) 
+     &              - I_R_new(i,n)*hi(n,i)/rhocp_old
+            end do
+         enddo
+         
+
       end if
 
 c     compute advective forcing term
@@ -432,6 +465,20 @@ c           we take the gradient of Y from the second scal argument
 c           really no need to recompute this since it doesn't change
             tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
          enddo
+
+         if (predict_T) then
+
+            do i = 0,nx-1
+               tforce(i,Temp) = diff_old(i,Temp)/rhocp_old
+
+               do n=1,Nspec
+                  tforce(i,Temp) = tforce(i,Temp) 
+     &                 - I_R_new(i,n)*hi(n,i)/rhocp_old
+               end do
+            enddo
+         
+
+      end if
          
          print *,'... compute A with updated D+R source'
          call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)

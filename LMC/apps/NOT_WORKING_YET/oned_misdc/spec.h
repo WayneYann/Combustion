@@ -69,9 +69,9 @@ c     LMC alg stuff
       save /lmci/
 
       logical use_strang, use_pl, use_temp_eqn, use_radau,
-     &     use_rhoh2
+     &     use_rhoh2, predict_T
       common / lmcl / use_strang, use_pl, use_temp_eqn, use_radau, 
-     &     use_rhoh2
+     &     use_rhoh2, predict_T
       save /lmcl/
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),

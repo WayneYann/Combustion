@@ -42,7 +42,7 @@ CCCCCCCC
       enddo
       compute_comp(Density) = .false.
 
-      if (use_temp_eqn .or. use_strang) then
+      if (use_temp_eqn .or. use_strang .or. predict_T) then
          compute_comp(RhoH) = .false.
       else
          compute_comp(Temp) = .false.
