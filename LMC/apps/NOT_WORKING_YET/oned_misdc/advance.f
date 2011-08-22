@@ -65,7 +65,7 @@ c     diagnostics only
       do i = 1,nx-1
          divu_max = MAX(divu_max,ABS(divu_tmp(i)))
       enddo
-      print *,'DIVU norm before dpdt = ',divu_max 
+      print *,'DIVU_TMP norm before dpdt = ',divu_max 
 
       call add_dpdt(scal_old,pthermo,divu_tmp,macvel,dx,dt)
 
@@ -74,7 +74,7 @@ c     diagnostics only
       do i = 1,nx-1
          divu_max = MAX(divu_max,ABS(divu_tmp(i)))
       enddo
-      print *,'DIVU norm after dpdt = ',divu_max 
+      print *,'DIVU_TMP norm after dpdt = ',divu_max 
 
       call macproj(nx,macvel,divu_tmp,dx)
 
@@ -167,6 +167,24 @@ C     get velocity visc terms to use as a forcing term for advection
          call cn_solve(vel_new,alpha,mu_new,vel_Rhs,
      $                 dx,dt,1,vel_theta,rho_flag)
       endif
+
+      call compute_pthermo(scal_new,pthermo)
+
+c     diagnostics only
+      divu_max = ABS(divu_new(0))
+      do i = 1,nx-1
+         divu_max = MAX(divu_max,ABS(divu_new(i)))
+      enddo
+      print *,'DIVU_NEW norm before dpdt = ',divu_max 
+
+      call add_dpdt_nodal(scal_new,pthermo,divu_new,vel_new,dx,dt)
+
+c     diagnostics only
+      divu_max = ABS(divu_new(0))
+      do i = 1,nx-1
+         divu_max = MAX(divu_max,ABS(divu_new(i)))
+      enddo
+      print *,'DIVU_NEW norm after dpdt = ',divu_max 
 
       print *,'...nodal projection...'
       if (initial_iter .eq. 0) then
