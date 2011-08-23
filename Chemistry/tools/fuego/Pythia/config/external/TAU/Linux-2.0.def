@@ -1,0 +1,43 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 2001 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: Linux-2.0.def,v $
+# Revision 1.4  2002/11/18 21:06:38  cummings
+# Corrected passing of -rpath argument.
+#
+# Revision 1.3  2002/11/18 20:20:30  cummings
+# Added check for Linux IA64 platform.
+#
+# Revision 1.2  2001/12/26 23:55:28  cummings
+# Added a -rpath option to the EXTERNAL_LIBPATH macro, so that the
+# Tau shared library can be found and dynamically loaded by Python.
+#
+# Revision 1.1  2001/11/10 02:05:47  cummings
+# Platform-specific TAU definitions file for Linux.  This file gets
+# TAU macro definitions from the appropriate Makefile within the
+# TAU installation.  Note that the environment variable TAUROOTDIR
+# must be defined to point to the TAU installation directory.
+#
+#
+
+#
+# Linux settings from platform-specific TAU Makefile
+#
+
+ifeq (x86,$(findstring x86,$(TARGET_ID)))
+    include $(TAUROOTDIR)/i386_linux/lib/Makefile.tau
+    EXTERNAL_LIBPATH += -Wl,-rpath -Wl,$(TAUROOTDIR)/i386_linux/lib
+endif
+
+ifeq (ia64,$(findstring ia64,$(TARGET_ID)))
+    include $(TAUROOTDIR)/ia64/lib/Makefile.tau
+    EXTERNAL_LIBPATH += -Wl,-rpath -Wl,$(TAUROOTDIR)/ia64/lib
+endif
+
+#
+# End of file

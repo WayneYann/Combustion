@@ -1,0 +1,85 @@
+# -*- Makefile -*-
+#
+#--------------------------------------------------------------------------
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+
+# Default settings for all project variables
+#
+    PROJECT =
+    PACKAGE =
+    PROJ_LIB =
+    PROJ_CXX_LIB =
+    PROJ_SRCS =
+
+# project-specific directories for output files
+# binary and library directories are not project-specific because
+# the binary and library names should be project-specific already
+
+    PROJ_BINDIR = $(BLD_BINDIR)
+    PROJ_LIBDIR = $(BLD_LIBDIR)
+    PROJ_TMPDIR = $(BLD_TMPDIR)/$(PROJECT)
+    PROJ_INCDIR = $(BLD_INCDIR)/$(PROJECT)
+
+# The list of objects in the project library
+
+    PROJ_OBJS = ${addprefix ${PROJ_TMPDIR}/, ${addsuffix .${EXT_OBJ}, ${basename ${PROJ_SRCS}}}}
+
+# The list of automatically generated dependency files
+
+    PROJ_DEPENDENCIES = empty.def
+    PROJ_DEPENDENCIES += ${addprefix ${PROJ_TMPDIR}/, ${addsuffix .${EXT_DEPEND}, ${basename ${PROJ_SRCS}}}}
+
+# Backwards compatibility 
+
+    PROJ_DEPENDS = empty.def
+
+#
+# Variables that local.def may override
+#
+
+# Compiler flags
+
+    PROJ_CC_FLAGS =
+    PROJ_CXX_FLAGS =
+    PROJ_F77_FLAGS =
+
+    PROJ_CC_INCLUDES =
+    PROJ_CXX_INCLUDES =
+    PROJ_F77_INCLUDES =
+
+    PROJ_CC_DEFINES =
+    PROJ_CXX_DEFINES =
+    PROJ_F77_DEFINES =
+
+    PROJ_LCC_FLAGS =
+    PROJ_LCXX_FLAGS =
+    PROJ_LF77_FLAGS =
+
+    PROJ_LCC_LIBPATH =
+    PROJ_LCXX_LIBPATH =
+    PROJ_LF77_LIBPATH =
+
+    PROJ_F90_MODULES =
+
+# Others
+
+    PROJ_TIDY = core *~ *.bak *.pyc
+    PROJ_CLEAN = \
+        $(PROJ_LIB) $(PROJ_CXX_LIB) $(PROJ_OBJS) $(PROJ_TMPDIR) $(PROJ_TIDY)
+    PROJ_DISTCLEAN = $(PROJ_DEPENDENCIES) $(PROJ_CLEAN)
+
+    PROJ_TAU_GROUP = 0
+    PROJ_TAU_SELECT = $(BLD_CONFIG)/external/TAU/select
+
+    PROJ_EXTERNAL_PACKAGES = 
+
+# version
+# $Id: std-project.def,v 1.21 2003/02/27 02:27:44 cummings Exp $
+
+#
+# End of file

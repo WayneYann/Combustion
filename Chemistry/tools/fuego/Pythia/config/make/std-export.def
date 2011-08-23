@@ -1,0 +1,165 @@
+# -*- Makefile -*-
+#
+#--------------------------------------------------------------------------
+#
+#                       VTF Development Team
+#                California Institute of Technology
+#                   (C) 2003 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+#
+# Support for exporting header files and products
+#
+
+# Exported packages directories
+# EXPORT_ROOT must be set by user
+# include directory is project-specific, so that include file path
+# will always begin with project name
+
+    EXPORT_INCDIR = $(EXPORT_ROOT)/include/$(PROJECT)
+    EXPORT_LIBDIR = $(EXPORT_ROOT)/lib
+    EXPORT_BINDIR = $(EXPORT_ROOT)/bin
+    EXPORT_MODULEDIR = $(EXPORT_ROOT)/modules/$(PROJECT)
+    EXPORT_ETCDIR = $(EXPORT_ROOT)/etc/$(PROJECT)
+
+$(EXPORT_ROOT):
+	$(MKDIR) $(MKPARENTS) $(EXPORT_ROOT)
+
+$(EXPORT_INCDIR):
+	$(MKDIR) $(MKPARENTS) $(EXPORT_INCDIR)
+
+$(EXPORT_LIBDIR):
+	$(MKDIR) $(MKPARENTS) $(EXPORT_LIBDIR)
+
+$(EXPORT_BINDIR):
+	$(MKDIR) $(MKPARENTS) $(EXPORT_BINDIR)
+
+$(EXPORT_MODULEDIR):
+	$(MKDIR) $(MKPARENTS) $(EXPORT_MODULEDIR)
+
+$(EXPORT_ETCDIR):
+	$(MKDIR) $(MKPARENTS) $(EXPORT_ETCDIR)
+
+#---------------------------------------------------------------------------
+#
+# Export targets make stuff available for other local packages
+# or for dynamic loading, while release targets make things
+# visible to third-party software packages
+#
+
+export:: $(EXPORT_ROOT)
+
+# Add proper directory prefix to export header filenames
+
+    EXPORTED_HEADERS = ${addprefix ${PROJ_INCDIR}/, ${EXPORT_HEADERS}}
+    EXPORTED_PKG_HEADERS = ${addprefix ${PROJ_INCDIR}/${PACKAGE}/, ${EXPORT_HEADERS}}
+
+# Create dependencies between exported header files and originals
+
+$(PROJ_INCDIR)/%.$(EXT_CHH): %.$(EXT_CHH)
+	-$(CP_F) $< $(PROJ_INCDIR)
+
+$(PROJ_INCDIR)/$(PACKAGE)/%.$(EXT_CHH): %.$(EXT_CHH)
+	-$(CP_F) $< $(PROJ_INCDIR)/$(PACKAGE)
+
+$(PROJ_INCDIR)/%.$(EXT_CXX): %.$(EXT_CXX)
+	-$(CP_F) $< $(PROJ_INCDIR)
+
+$(PROJ_INCDIR)/$(PACKAGE)/%.$(EXT_CXX): %.$(EXT_CXX)
+	-$(CP_F) $< $(PROJ_INCDIR)/$(PACKAGE)
+
+$(PROJ_INCDIR)/%.$(EXT_ICC): %.$(EXT_ICC)
+	-$(CP_F) $< $(PROJ_INCDIR)
+
+$(PROJ_INCDIR)/$(PACKAGE)/%.$(EXT_ICC): %.$(EXT_ICC)
+	-$(CP_F) $< $(PROJ_INCDIR)/$(PACKAGE)
+
+# Place headers in project-specific build include dir
+export-headers:: $(PROJ_INCDIR) $(EXPORTED_HEADERS)
+	-$(CHMOD) -R +w $(PROJ_INCDIR)/*
+
+# Place headers in package-specific subdir of project include dir
+export-package-headers:: export-package-dir $(EXPORTED_PKG_HEADERS)
+	-$(CHMOD) -R +w $(PROJ_INCDIR)/$(PACKAGE)/*
+
+export-package-dir::
+	-$(MKDIR) $(MKPARENTS) $(PROJ_INCDIR)/$(PACKAGE)
+
+# Place project headers in project-specific build include dir
+# (needed when some headers are at project level, others at package level)
+export-project-headers::
+	EXPORT_HEADERS=$(EXPORT_PROJ_HEADERS) $(MM) export-headers
+
+# Place headers in project-specific export include dir
+release-headers:: $(EXPORT_INCDIR)
+	-$(CP_F) $(EXPORT_HEADERS) $(EXPORT_INCDIR)
+
+# Place headers in package-specific subdir of export include dir
+release-package-headers::
+	-$(MKDIR) $(MKPARENTS) $(EXPORT_INCDIR)/$(PACKAGE)
+	-$(CP_F) $(EXPORT_HEADERS) $(EXPORT_INCDIR)/$(PACKAGE)
+
+# Copy libraries to export lib dir
+export-libraries:: $(EXPORT_LIBDIR)
+	for x in $(EXPORT_LIBS); do { \
+            if [ -f $$x ]; then { \
+                $(CP_F) $$x $(EXPORT_LIBDIR); \
+            } fi; \
+        } done
+
+# Same
+release-libraries:: export-libraries
+
+# Move binaries to build-specific bin dir
+export-binaries:: $(PROJ_BINDIR)
+	for x in $(EXPORT_BINS); do { \
+            if [ -f $$x ]; then { \
+                $(CP_F) $$x $(PROJ_BINDIR); \
+            } fi; \
+        } done
+
+# Move binaries to build-specific export bin dir
+release-binaries:: $(EXPORT_BINDIR)
+	for x in $(EXPORT_BINS); do { \
+            if [ -f $$x ]; then { \
+                $(CP_F) $$x $(EXPORT_BINDIR); \
+            } fi; \
+        } done
+
+# Compile python scripts and move all modules to project-specific export dir
+export-python-modules:: $(EXPORT_MODULEDIR)
+	python $(PYTHON_LIBDIR)/compileall.py -l `pwd`
+	for x in $(EXPORT_PYTHON_MODULES); do { \
+            if [ -f $$x ]; then { \
+                $(MV_F) $$x[cod] $(EXPORT_MODULEDIR); \
+                $(CHMOD) +w $(EXPORT_MODULEDIR)/$$x[cod]; \
+            } fi; \
+        } done
+
+# Compile python scripts and move all modules to package subdirectory
+# of project-specific export dir
+export-package-python-modules:: export-package-moduledir
+	python $(PYTHON_LIBDIR)/compileall.py -l `pwd`
+	for x in $(EXPORT_PYTHON_MODULES); do { \
+            if [ -f $$x ]; then { \
+                $(MV_F) $$x[cod] $(EXPORT_MODULEDIR)/$(PACKAGE); \
+                $(CHMOD) +w $(EXPORT_MODULEDIR)/$(PACKAGE)/$$x[cod]; \
+            } fi; \
+        } done
+
+export-package-moduledir::
+	-$(MKDIR) $(MKPARENTS) $(EXPORT_MODULEDIR)/$(PACKAGE)
+
+export-package-etcdir::
+	-$(MKDIR) $(MKPARENTS) $(EXPORT_ETCDIR)/$(PACKAGE)
+
+export-etc:: export-package-etcdir
+	-$(CP_F) $(EXPORT_ETC) $(EXPORT_ETCDIR)/$(PACKAGE)
+
+
+# version
+# $Id: std-export.def,v 1.8 2003/06/06 20:22:44 aivazis Exp $
+
+#
+# End of file

@@ -1,0 +1,24 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: cpp.def,v $
+# Revision 1.2  2001/07/11 02:10:33  cummings
+# Updated gcc compiler definition files to point to the latest version of gcc, which is 3.0.
+#
+# Revision 1.1  2000/08/17 22:00:50  cummings
+# Added new build system compiler definition files for GCC compiler.
+# These files defer to the most current version of gcc, which is 2.95.2.
+#
+#
+
+#
+# Use the latest version of the GNU C++ compiler
+#
+include gcc-3.0/cpp.def
+#
+# End of file

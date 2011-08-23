@@ -1,0 +1,71 @@
+# -*- Makefile -*-
+#
+#--------------------------------------------------------------------------
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+
+# The text of the tags
+
+LOGTAG_COMPILING = "<** Compiling **>"
+LOGTAG_DEPENDS = "<** Dependencies **>"
+
+LOGTAG_PROJLIB = "<** Updating archive **>"
+LOGTAG_LINKING = "<** Linking **>"
+
+# Functions to do the text emission
+
+LOGEMIT_ARCHIVING_START =
+LOGEMIT_ARCHIVING_END =
+LOGEMIT_COMPILING_START =
+LOGEMIT_COMPILING_END =
+LOGEMIT_DEPENDS_START = 
+LOGEMIT_DEPENDS_END = 
+LOGEMIT_EXECUTABLE_START =
+LOGEMIT_EXECUTABLE_END =
+LOGEMIT_NEWDIR_START = echo " --- Entering \"$$dir\""
+LOGEMIT_NEWDIR_END = echo " --- Done with \"$$dir\""
+LOGEMIT_PROJLIB_START =
+LOGEMIT_PROJLIB_END =
+
+ifdef XML
+LOGEMIT_ARCHIVING_START = echo "<archive-start file=\"$@\"/>"
+LOGEMIT_ARCHIVING_END = echo "<archive-end file=\"$@\"/>"
+LOGEMIT_COMPILING_START = echo "<compile-start source=\"$<\" target=\"$@\"/>"
+LOGEMIT_COMPILING_END = echo "<compile-end source=\"$<\" target=\"$@\"/>"
+LOGEMIT_DEPENDS_START = echo "<depends-start source=\"$<\" target=\"$<\"/>"
+LOGEMIT_DEPENDS_END = echo "<depends-end source=\"$<\" target=\"$<\"/>"
+LOGEMIT_EXECUTABLE_START = echo "<executable-start file=\"$@\"/>"
+LOGEMIT_EXECUTABLE_END = echo "<executable-end file=\"$@\"/>"
+LOGEMIT_NEWDIR_START = echo "<directory-start name=\"$$dir\"/>"
+LOGEMIT_NEWDIR_END = echo "<directory-end name=\"$$dir\"/>"
+LOGEMIT_PROJLIB_START = echo "<project-lib-start/>"
+LOGEMIT_PROJLIB_END = echo "<project-lib-end/>"
+endif
+
+ifdef LOGTAGS
+ifeq ($(LOGTAGS), on)
+LOGEMIT_ARCHIVING_START = echo $(LOGTAG_COMPILING) "$< -> $@($%)"
+LOGEMIT_COMPILING_START = echo $(LOGTAG_COMPILING) "$< -> $@"
+LOGEMIT_DEPENDS_START = echo $(LOGTAG_DEPENDS) "$< -> $@"
+LOGEMIT_PROJLIB_START = echo $(LOGTAG_PROJLIB) $(PROJ_LIB)
+endif
+endif
+
+# The marking targets
+
+tag_projlib_start :
+	@$(LOGEMIT_PROJLIB_START)
+
+tag_projlib_end :
+	@$(LOGEMIT_PROJLIB_END)
+
+
+# version
+# $Id: std-markers.def,v 1.6 2003/02/27 18:34:43 cummings Exp $
+
+#
+# End of file

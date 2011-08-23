@@ -1,0 +1,54 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: default.def,v $
+# Revision 1.7  2003/06/04 02:00:09  cummings
+# Upgrade our default PYTHON_VERSION setting to 2.2.  This can be overridden in the user's environment or cummings.def file, but we are now making extensive use of Python 2.2 features in Pyre.
+#
+# Revision 1.6  2001/08/18 03:21:28  cummings
+# Added "config" after $(PYTHON_LIBDIR) in absolute pathname for Python
+# static library archive.  Most people set $(PYTHON_LIBDIR) to be
+# $(PYTHON_DIR)/lib/python$(PYTHON_VERSION), where $(PYTHON_VERSION)
+# is currently 2.1.  It turns out that the Python install Makefile target
+# actually installs the library in a subdirectory of this directory called
+# "config".  This change may mess people up if their PYTHON_DIR environment
+# variables are pointing to an installation that has been set up manually.
+# But I think it makes more sense to configure things such that if you
+# check out, build and install Python-2.1 yourself, everything is correct.
+#
+# Revision 1.5  2001/08/02 22:09:51  cummings
+# Changed location for Python library from TOOLS_DIR to PYTHON_LIBDIR, since Python may be built locally and not installed in TOOLS_DIR.
+#
+# Revision 1.4  2001/04/21 19:59:08  aivazis
+# Added support for embedding python
+#
+# Revision 1.3  2000/05/17 23:37:26  aivazis
+# Major update in the way defines and include paths are handled
+#
+# Revision 1.2  1999/06/09 01:38:48  mga
+# Fixed typos and added header
+#
+
+#
+# Read the local settigs
+#
+
+include Python/$(TARGET_PLATFORM).def
+
+    PYTHON_VERSION = 2.2
+    PYTHON_APILIB = $(PYTHON_LIBDIR)/config/libpython$(PYTHON_VERSION).$(EXT_AR) $(PYTHON_APIREQS)
+
+#
+# Adjust the external variables to include Python
+#
+
+    EXTERNAL_INCLUDES += $(PYTHON_INCLUDES)
+    EXTERNAL_LIBS += $(PYTHON_LIBS)
+
+#
+# End of file

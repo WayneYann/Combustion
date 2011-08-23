@@ -1,0 +1,43 @@
+# -*- Makefile -*-
+#
+#--------------------------------------------------------------------------
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# Place the "project" objects into the "project" library
+#
+
+$(PROJ_LIB) : tag_projlib_start product_dirs $(PROJ_OBJS) subpackages
+	@$(LOGEMIT_ARCHIVING_START)
+	$(AR_CREATE) $@ $(PROJ_TMPDIR)/*.$(EXT_OBJ)
+	$(RANLIB) $(RANFLAGS) $@
+	@$(LOGEMIT_ARCHIVING_END)
+	@$(LOGEMIT_PROJLIB_END)
+
+# Special rule for archiving C++ template library
+
+$(PROJ_CXX_LIB) : tag_projlib_start product_dirs $(PROJ_OBJS) subpackages
+	@$(LOGEMIT_ARCHIVING_START)
+ifdef CXX_PRELINK_CMD
+	$(CXX_PRELINK_CMD) $(PROJ_TMPDIR)/*.$(EXT_OBJ)
+endif
+	$(AR_CXX_CREATE) $@ $(PROJ_TMPDIR)/*.$(EXT_OBJ)
+	$(RANLIB) $(RANFLAGS) $@
+	@$(LOGEMIT_ARCHIVING_END)
+	@$(LOGEMIT_PROJLIB_END)
+
+# Include dependency info files and config info file
+
+include $(PROJ_TMPDIR)/.config
+-include $(PROJ_DEPENDENCIES)
+
+#---------------------------------------------------------------------------
+
+# version
+# $Id: std-builds.def,v 1.20 2003/02/27 18:34:43 cummings Exp $
+
+#
+# End of file

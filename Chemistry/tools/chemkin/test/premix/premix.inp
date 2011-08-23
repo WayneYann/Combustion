@@ -1,0 +1,85 @@
+/ Centered differencing 
+/ CDIF
+/  freely propagating flame
+FREE
+ENRG
+/ Multicomponent
+MULT
+/ Thermal diffusion
+TDIF
+/  initial flow-rate estimate
+FLRT  .07   ! gm/cm**2-sec
+/   atmospheric pressure
+PRES  1.0   ! atmospheres
+/   initial grid and profile specification
+NPTS      7
+RSTR
+XEND      5.0 ! cm
+XCEN      0.8 ! cm
+/   temperature to fixed for the flame speed computation
+TFIX  400.
+/   mesh adaptation criteria
+GRAD     0.9
+CURV     0.9
+/   unreacted fuel-oxidizer makeup
+MOLE
+/For hydrogen at phi = 0.37
+REAC H2   0.134498874849
+REAC O2   0.181755236282
+REAC N2   0.683745888869
+/   estimated product mole fractions
+PROD  H2O  0.14
+PROD  O2   0.1
+PROD  N2   0.76
+/   estimated peak intermediate mole fractions
+INTM  HO2   0.0001
+INTM   O    0.0001
+INTM  H2O2  0.0001
+INTM   H    0.01
+INTM   OH   0.01
+INTM  H2  .02
+INTM  H   .001
+INTM  O   .00004
+INTM  O2  .125
+/   convergence tolerance for Newton
+ATOL  1.E-9
+RTOL  1.E-4
+/   convergence tolerance for timestepping
+ATIM  1.E-5
+RTIM  1.E-5
+/   maximum printing
+PRNT    1
+/   time step control
+TIME   500   5.0E-7  ! sec
+TIM2   500   1.0E-6  ! sec
+/   estimated temperature profile
+TEMP -10.0    298.
+TEMP   1.00   298.
+TEMP   1.50   300.
+TEMP   1.82   404.
+TEMP   1.93   600.
+TEMP   2.00   800.
+TEMP   2.05  1000.
+TEMP   2.23  1182.
+TEMP   2.3   1187.
+TEMP  10.0   1188.
+CNTN
+END
+GRAD   0.9
+CURV   0.9
+CNTN
+END
+GRAD   0.1
+CURV   0.5
+CNTN
+END
+GRAD   0.15
+CURV   0.15
+CNTN
+END
+CDIF
+CNTN
+END
+GRAD   0.01
+CURV   0.01
+END

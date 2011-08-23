@@ -1,0 +1,119 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: cpp.def,v $
+# Revision 1.11  2001/08/09 01:52:43  cummings
+# Removed use of CXX_INSTANTIATION_OBJS macro.  Instead we add to COMPILER_CXX_INSTFLAGS the appropriate flag to direct template instantiation object files to PROJ_TMPDIR, where all the PROJ_OBJS go.
+#
+# Revision 1.10  2001/07/18 18:54:46  cummings
+# Added empty definition of COMPILER_CXX_ISCXX macro to eliminate
+# warning from make.
+#
+# Revision 1.9  2001/07/18 03:42:18  cummings
+# Changed PGI compiler optimization flag from -O2 to -fast.  This is like
+# -O2 but also adds -Mnoframe, -Munroll and some Pentium-specific stuff.
+# Also added flag --no_using_std to C++ compiles, which turns off the
+# implicit "using namespace std;" statement that pgCC normally includes
+# by default.
+#
+# Revision 1.8  2001/05/04 00:38:11  cummings
+# Added check for "insure" in user's build target before utilizing
+# combined dependency info generation and code compilation.
+#
+# Revision 1.7  2001/03/21 22:09:34  cummings
+# Updated PGI compiler definitions to use combined compilation and
+# make dependency file generation.
+#
+# Revision 1.6  2000/10/11 19:21:06  cummings
+# Added flag for code instrumentation and profiling with pgprof.
+# Changed debug flag from -g to -O0 because using the -g flag
+# and the --one_instantiation_per_object flag together triggers
+# a bug in the pgprelnk prelinker.  Added -rwstl flag to command
+# that builds dependencies when on TFLOPS platform, so that we
+# get the right set of C++ standard header files.  Added template
+# instantiation info files to COMPILER_CXX_DISTCLEAN list.
+#
+# Revision 1.5  2000/10/03 02:30:25  cummings
+# Added COMPILER_CXX_INSTFLAGS to prelink command line.
+#
+# Revision 1.4  2000/10/03 02:20:19  cummings
+# Moved --one_instantiation_per_object flag to COMPILER_CXX_INSTFLAGS.
+#
+# Revision 1.3  2000/09/21 21:30:29  cummings
+# Changed compile-time SOFLAG to -fpic and added link-time SOFLAG
+# with value of -shared.  Added the compile-time CXX_FLAG
+# --one_instantiation_per_object, which is needed with this
+# compiler when preparing C++ code for inclusion in an archive.
+# Added special prelinking command needed for C++ library template
+# closure.  Added compiler-specific files for clean up.
+#
+# Revision 1.2  2000/05/17 23:37:26  aivazis
+# Major update in the way defines and include paths are handled
+#
+# Revision 1.1  1999/09/15 04:27:01  aivazis
+# Original source
+#
+
+#
+# Definitions for Portland Group C++ compiler
+#
+    CXX_ID = PGI-3.0
+#
+# The name of the binary
+#
+    COMPILER_CXX_NAME = pgCC
+#
+# Command line options
+#
+    COMPILER_CXX_FLAGS = --no_using_std
+    COMPILER_CXX_INSTFLAGS = --one_instantiation_per_object \
+	--instantiation_dir $(PROJ_TMPDIR)
+    COMPILER_CXX_INCLUDES = $(DIR_COMPILER)/$(CXX_ID)
+    COMPILER_CXX_DEFINES = CXX_ID="$(CXX_ID)"
+
+    COMPILER_CXX_SOFLAGS = -fpic
+#
+    CXX_OPT_FLAGS = -fast          # Optimization flags
+    CXX_DEBUG_FLAGS = -O0          # Debug flags (-g does not work!)
+    CXX_PROF_FLAGS = -Mprof=func   # Profiling flags
+#
+# Recognize non-standard extensions
+#
+    COMPILER_CXX_ISCXX =
+#
+# When using the C++ compiler to preprocess
+#
+    COMPILER_CXX_PREPROCESS = $(COMPILER_CXX_NAME) -E
+#
+# When using the C++ compiler to make dependencies
+#
+    COMPILER_CXX_DEPENDS = $(COMPILER_CXX_NAME) -M
+ifeq (,${findstring insure, $(BLD_USER_TARGET)})
+    COMPILER_CXX_DEPENDS = $(COMPILER_CXX_NAME) -MD
+    CXX_MAKEDEPENDS_COMBINED = true
+endif
+#
+# Special C++ prelinking for library template closure
+#
+    CXX_PRELINK_CMD = $(COMPILER_CXX_NAME) --prelink_objects \
+	$(COMPILER_CXX_INSTFLAGS) $(CXXFLAGS)
+#
+# When using the C++ compiler to link:
+#
+    COMPILER_LCXX_NAME = $(COMPILER_CXX_NAME)
+    COMPILER_LCXX_FLAGS =
+    COMPILER_LCXX_LIBPATH =
+    COMPILER_LCXX_SOFLAGS = -shared
+#
+# Clean up
+#
+    COMPILER_CXX_CLEAN = 
+    COMPILER_CXX_DISTCLEAN = $(PROJ_TMPDIR)/*.ii $(PROJ_TMPDIR)/*.ti \
+	*.ii *.ti
+#
+# End of file

@@ -1,0 +1,114 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+#
+# $Log: default.def,v $
+# Revision 1.12  2002/09/04 21:51:32  cummings
+# Set BLITZ_LIBDIR to be format-specific for 32-bit or 64-bit if building
+# on Irix platform.
+#
+# Revision 1.11  2002/07/18 01:24:17  cummings
+# Set BLITZ_DIR to $TOOLS_DIR/Blitz++ and BLITZ_INCDIR to $BLITZ_DIR/include.
+# There is now an official installed version of the Blitz package on asap in
+# /home/tools/Blitz++, and this is what we should begin using from now on.
+# The official Blitz cvs repository at oonumerics.org is now being updated
+# regularly, so we can use this version to build and install Blitz as needed.
+# We will soon phase out the use of our private copy of the Blitz sources
+# in /VTF/tools/blitz, as it is no longer current.
+#
+# Revision 1.10  2002/05/15 18:27:02  cummings
+# I managed to convince Michael that we should undo the previous change
+# and set BLITZ_INCDIR to BLITZ_DIR rather than BLITZ_DIR/include.  This
+# default setting matches what blitz does by default when you build it,
+# which is to leave the blitz headers under the blitz installation directory.
+# If you checkout blitz in BLD_ROOT/tools/blitz and build it, the default
+# settings will work for you, and you do not need to set any environment
+# variables.  If you decide to build blitz somewhere else or move the
+# include or library files after the build, you can set the environment
+# variables BLITZ_DIR, BLITZ_INCDIR or BLITZ_LIBDIR accordingly.
+#
+# Revision 1.9  2002/05/15 03:39:13  aivazis
+# Reset the default INCDIR
+#
+# Revision 1.8  2002/05/15 02:48:29  cirak
+# changed the default INC directory to $(BLITZ_DIR)
+#
+# Revision 1.7  2002/05/14 20:23:39  aivazis
+# Added derivations of the LIB and INC directories
+#
+# Revision 1.6  2002/05/14 20:21:20  aivazis
+# Fixed a typo
+#
+# Revision 1.5  2002/05/14 20:15:21  aivazis
+# Added blitz to the include path
+#
+# Revision 1.4  2002/05/13 16:10:32  cummings
+# Add -DBZ_TAU_PROFILING to BLITZ_FLAGS if we are using the tau build
+# target.  This will enable Tau macros within Blitz code.
+#
+# Revision 1.3  2001/07/11 23:32:20  cummings
+# Removed the --strict-warnings flag from the list of BLITZ_FLAGS
+# when compiling with KCC.  This flag is not needed to make Blitz
+# compile properly and generates a lot of annoying warnings about
+# the use of the non-standard long long type in the C standard
+# header files.  We don't need to see this stuff.
+#
+# Revision 1.2  2001/07/07 02:15:11  cummings
+# Updated this definitions file for the Blitz package.
+# Removed the inclusion of a platform-specific Blitz
+# definitions file, since there does not seem to be
+# any use for this at the moment.  Instead, we define
+# BLITZ_FLAGS to contain any C++ compiler flags needed
+# by Blitz and define BLITZ_DIR to point to the Blitz
+# installation, which is in $(BLD_ROOT)/tools/blitz.
+# We also add the Blitz library to EXTERNAL_LIBRARIES.
+#
+# Revision 1.1  1999/06/09 17:52:27  aivazis
+# Original source
+#
+#
+
+#
+# Compiler-specific options for Blitz
+#
+
+    BLITZ_FLAGS = 
+
+ifeq (KAI, ${findstring KAI, $(TARGET_CXX)})
+    BLITZ_FLAGS += --restrict
+endif
+
+ifeq (MIPSpro-7.3, ${findstring MIPSpro-7.3, $(TARGET_CXX)})
+    BLITZ_FLAGS += -LANG:restrict
+endif
+
+ifeq (gcc, ${findstring gcc, $(TARGET_CXX)})
+    BLITZ_FLAGS += -ftemplate-depth-30
+endif
+
+ifeq (tau, ${findstring tau, $(BLD_USER_TARGET)})
+    BLITZ_FLAGS += -DBZ_TAU_PROFILING
+endif
+
+#
+# Adjust the external variables to include blitz
+#
+    BLITZ_DIR = $(TOOLS_DIR)/Blitz++
+ifeq (Irix, ${findstring Irix, $(TARGET_PLATFORM)})
+    BLITZ_LIBDIR = $(BLITZ_DIR)/$(COMPILER_LIB_FORMAT)
+else
+    BLITZ_LIBDIR = $(BLITZ_DIR)/lib
+endif
+    BLITZ_INCDIR = $(BLITZ_DIR)/include
+
+    EXTERNAL_INCLUDES += $(BLITZ_INCDIR)
+    EXTERNAL_LIBPATH += -L$(BLITZ_LIBDIR)
+    EXTERNAL_LIBS += -lblitz
+
+#
+# End of file

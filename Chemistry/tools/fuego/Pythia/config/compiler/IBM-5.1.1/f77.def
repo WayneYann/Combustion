@@ -1,0 +1,136 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: f77.def,v $
+# Revision 1.12  2003/04/18 21:53:35  cummings
+# Updated each of the current f77.def files to add an explicit definition
+# for COMPILER_F90_NAME, the name of the F90 compiler.  Some systems allow
+# you to use F90 for either F90 or F77 code, while others have separate tools.
+# Because of this, you must set F77 to $(COMPILER_F90_NAME) in your local.def
+# file if you need the F90 compiler.
+#
+# Revision 1.11  2002/02/11 20:10:17  cummings
+# Added the flag -qfixed=132 to allow Fortran source code line widths of
+# up to 132 characters.  This is necessary when using Tau auto-instrumentation
+# because some of the inserted macros can be several characters long.
+#
+# Revision 1.10  2002/01/11 05:08:02  cummings
+# Adjusted the Fortran optimization flags slightly to eliminate
+# some problems with the code failing to run properly on the IBM
+# SP2 at SDSC.  Through process of elimination, I figured out
+# which flags were causing the problem.  Also added -qmaxmem flag
+# to increase the size of subroutine that can be optimized, to
+# eliminate warnings from the compiler about some routines not
+# being optimized.
+#
+# Revision 1.9  2001/01/31 22:04:03  cummings
+# Added -bmaxdata and -bmaxstack flags to IBM compiler link line so that we have the maximum possible amount of memory per node available for allocating large arrays.
+#
+# Revision 1.8  2001/01/31 18:34:06  cummings
+# Changed optimization flag from -O4 to -O3, since interprocedural analysis is causing internal compiler errors when building VTF.  Removed -qfloat flags and added recommended -qhot flag.
+#
+# Revision 1.7  2001/01/30 22:48:26  cummings
+# Added format flag to archive command to specify 32-bit or 64-bit archive format.\n
+#
+# Revision 1.6  2001/01/30 21:33:17  cummings
+# Added 32-bit and 64-bit compile options for IBM compiler.
+#
+# Revision 1.5  2000/09/27 00:26:20  cummings
+# Changed name of compiler binary from mpxlf to xlf,
+# since we handle MPI linkage explicitly.  Simplified
+# flags for optimization by using -O4, which automatically
+# provides most of the flags we were specifying already,
+# such as -qhot, -qipa, and -qtune=auto.  Added appropriate
+# flags for profiling code and for module file search
+# directories.  Added mixed language support when linking
+# with the C or C++ compiler.  Added *.mod files to the
+# list of files to be cleaned up with "mm clean".
+#
+# Revision 1.4  2000/05/19 22:22:05  sharon
+# fixed IBM preprocessor flags for proper handling of defines
+#
+# Revision 1.3  2000/05/17 23:37:26  aivazis
+# Major update in the way defines and include paths are handled
+#
+# Revision 1.2  2000/05/16 22:34:52  sharon
+# fixed IBM compilation flags. Now they apply to both the 604's and power3's
+#
+# Revision 1.1  2000/05/03 16:33:21  sharon
+# add f77.def to repository
+#
+# Revision 1.4  1999/07/01 05:31:39  aivazis
+# Optimization flag is -O; -O2 is not supported
+#
+# Revision 1.3  1999/06/24 22:18:13  aivazis
+# Added headers
+#
+
+#
+# Definitions for IBM FORTRAN compiler
+#
+#
+    F77_ID = IBM-5.1.1
+    COMMA = ,
+#
+# The name of the binary
+#
+    COMPILER_F77_NAME = xlf
+    COMPILER_F90_NAME = xlf
+#
+# Command line options
+#
+    COMPILER_F77_FLAGS = $(COMPILER_EXE_FORMAT) -qfixed=132
+    COMPILER_F77_INCLUDES = $(DIR_COMPILER)/$(F77_ID)
+    COMPILER_F77_DEFINES = F77_ID="$(F77_ID)"
+#
+    F77_OPT_FLAGS = -O2 -qstrict_induction -qhot -Q -qnosave -qmaxmem=8192
+    F77_DEBUG_FLAGS = -g   # Debug flags
+    F77_PROF_FLAGS = -pg   # Profiling flags
+    F77_MODULE_FLAGS = -I
+#
+# Format flags
+#
+    COMPILER_EXE_32BIT = -q32
+    COMPILER_EXE_64BIT = -q64
+    COMPILER_LIB_32BIT = -X32
+    COMPILER_LIB_64BIT = -X64
+#
+# Override preprocessor command line generation
+#
+    F77_BUILD_DEFINES =${addprefix -WF$(COMMA)-D,$(F77_DEFINES)}
+#
+#
+# When using the FORTRAN compiler to preprocess #
+    COMPILER_F77_PREPROCESS = $(COMPILER_F77_NAME) -E	
+#
+# When using the FORTRAN compiler to make dependencies
+#
+    COMPILER_F77_DEPENDS = mm_dummy
+#
+# When using the FORTRAN compiler to link
+#
+    COMPILER_LF77_NAME = $(COMPILER_F77_NAME)
+    COMPILER_LF77_FLAGS = -bmaxdata:0x80000000 -bmaxstack:0x10000000
+    COMPILER_LF77_LIBPATH =
+#
+# Mixed language support
+#
+    COMPILER_LF90_LIBRARIES = -lxlf90
+    COMPILER_LCC_FORTRAN = $(COMPILER_LF90_LIBRARIES)
+    COMPILER_LCXX_FORTRAN = $(COMPILER_LF90_LIBRARIES)
+#
+# Clean up
+#
+    COMPILER_F77_CLEAN = *.mod
+    COMPILER_F77_DISTCLEAN =
+#
+# Archive flag
+#
+    AR = ar $(COMPILER_LIB_FORMAT)
+#
+# End of file
