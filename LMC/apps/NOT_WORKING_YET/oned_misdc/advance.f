@@ -1074,9 +1074,9 @@ c*****************************************************************
 c     
 
       print *,'... creating the diffusive terms with old data'
-c     these compute rho^n D_m^n     (for species)
-c                   lambda^n / cp^n (for enthalpy)
-c                   lambda^n        (for temperature) 
+c    compute rho^(1) D_m^(1)     (for species)
+c            lambda^(1) / cp^(1) (for enthalpy)
+c            lambda^(1)          (for temperature) 
       call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
 
 c     compute del dot lambda grad T + rho D grad h dot grad Y
@@ -1127,11 +1127,6 @@ c        we take the gradient of Y from the second scal argument
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
 
-c     this computes rho^n+1 D_m^n     (for species)
-c                   lambda^n / cp^n   (for enthalpy)
-c                   lambda^n          (for temperature) 
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time)
-
 c*****************************************************************
 c     Either do c-n solve for new T prior to computing new 
 c     coeffs, or simply start by copying from previous time step
@@ -1149,13 +1144,10 @@ c        does not fill ghost cells
          call cn_solve(scal_new,alpha,beta_old,Rhs(0,Temp),
      $                 dx,dt,Temp,be_cn_theta,rho_flag)
 
-c     AJN - moved this call lower
-c         call get_hmix_given_T_RhoY(scal_new,dx)
-
          print *,'... compute new coeffs'
-c        this computes rho^n+1 D_m^n+1,*       (for species)
-c                      lambda^n+1,* / cp^n+1,* (for enthalpy)
-c                      lambda^n+1,*             (for temperature) 
+c        compute rho^(2) D_m^(2),* (for species)
+c            lambda/cp (for enthalpy) won't be used
+c            lambda^(1) (for temperature) won't be used
          call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
       else
          print *,'... set new coeffs to old values for predictor'
@@ -1204,8 +1196,17 @@ c     update species with conservative diffusion fluxes
             end do
          end do
 
-c     AJN - moved this call from above
+c     compute h_m^(2),*
          call get_hmix_given_T_RhoY(scal_new,dx)
+
+      end if
+
+c     this computes rho D_m                 (for species) won't be used
+c                   lambda^(2),* / cp^(2),* (for enthalpy)
+c                   lambda^(2),*            (for temperature) 
+      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+
+      if (LeEQ1 .eq. 0) then
 
 c     calculate differential diffusion
 c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
@@ -1237,9 +1238,9 @@ C----------------------------------------------------------------
 C   Corrector
 
       print *,'... compute new coeffs'
-c     this computes rho^n+1 D_m^n+1     (for species)
-c                   lambda^n+1 / cp^n+1 (for enthalpy)
-c                   lambda^n+1          (for temperature) 
+c     this computes rho^(2) D_m^(2)     (for species)
+c                   lambda^(2) / cp^(2) (for enthalpy)
+c                   lambda^(2)          (for temperature) 
       call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
 
       do i=0,nx-1
