@@ -1119,6 +1119,7 @@ c        we take the gradient of Y from the second scal argument
             tforce(i,is) = diff_old(i,is)
          enddo
          tforce(i,Temp) = diff_old(i,Temp)
+         tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
       enddo
        
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
