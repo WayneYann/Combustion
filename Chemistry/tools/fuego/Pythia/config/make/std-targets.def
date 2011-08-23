@@ -1,0 +1,129 @@
+# -*- Makefile -*-
+#
+#--------------------------------------------------------------------------
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 2003 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+
+#
+# This file contains frequently used standard makefile targets
+#
+
+#
+# Build the project library
+#
+
+project_library : tag_projlib product_dirs
+	$(MM) -f $(DIR_CONFIG)/make/std-builds.def
+
+
+# Create the product directory structure
+
+product_dirs: $(BLD_BINDIR) $(BLD_LIBDIR) $(BLD_INCDIR) $(BLD_TMPDIR) \
+    $(PROJ_TMPDIR)
+
+$(BLD_BINDIR):
+	$(MKDIR) $(MKPARENTS) $(BLD_BINDIR)
+
+$(BLD_LIBDIR):
+	$(MKDIR) $(MKPARENTS) $(BLD_LIBDIR)
+
+$(BLD_INCDIR):
+	$(MKDIR) $(MKPARENTS) $(BLD_INCDIR)
+
+$(BLD_TMPDIR):
+	$(MKDIR) $(MKPARENTS) $(BLD_TMPDIR)
+
+$(PROJ_TMPDIR):
+	$(MKDIR) $(MKPARENTS) $(PROJ_TMPDIR)
+
+$(PROJ_TMPDIR)/.config: $(PROJ_TMPDIR)
+	echo "TARGET_BUILT = $(TARGET_TAG)" > $@
+
+$(PROJ_INCDIR):
+	$(MKDIR) $(MKPARENTS) $(PROJ_INCDIR)
+
+#---------------------------------------------------------------------------
+#
+# Cleaning up
+#
+
+tidy::
+	@-$(RM) $(RMFLAGS) $(COMPILER_CLEAN) $(PROJ_TIDY)
+
+clean::
+	@-$(RM) $(RMFLAGS) $(PROJ_CLEAN)
+
+distclean::
+	@-$(RM) $(RMFLAGS) $(COMPILER_DISTCLEAN) $(PROJ_DISTCLEAN)
+
+wipe::
+	@-$(RM) $(RMFLAGS) $(BLD_BINDIR) $(BLD_LIBDIR) $(BLD_INCDIR) $(BLD_TMPDIR)
+
+# Target to just build the TAGS file
+
+tags:: 
+	-$(TAGS) $(TAGS_FLAGS) -o $(TAGS_FILE) $(PROJ_SRCS) \
+	$(EXPORT_HEADERS) $(EXPORT_PROJ_HEADERS)
+
+#---------------------------------------------------------------------------
+#
+# Backup
+#
+
+
+backup::
+	@-$(TAR) $(TAR_FLAGS) -f $(TAR_FILE) $(SAVE)
+
+
+#---------------------------------------------------------------------------
+#
+# Recurse into platform-specific subdirectory, if it exists
+#
+platform_dir:
+	@if [ -d $(STANDARD_TARGET) ]; then \
+            { cd $(STANDARD_TARGET); $(MM); }\
+	fi
+
+#---------------------------------------------------------------------------
+#
+# Recurse into a list of subdirectories
+#
+recurse:
+ifneq ($(RECURSE_DIRS),)
+	@for dir in $(RECURSE_DIRS); do { \
+            if [ -d $$dir ]; then { \
+                $(LOGEMIT_NEWDIR_START); \
+                (cd $$dir; $(MM) $(BLD_ACTION) || exit 1;); \
+                $(LOGEMIT_NEWDIR_END); \
+            }; else { \
+                echo "Subdirectory '$$dir' not found"; \
+            }; fi; \
+        } done
+endif
+
+#---------------------------------------------------------------------------
+#
+# Recurse into package-specific subdirectories, if they exist
+#
+subpackages:
+ifneq ($(SUBPACKAGES),)
+	@for x in $(SUBPACKAGES); do { \
+            if [ -d $$x ]; then { \
+                (cd $$x; $(MM);); \
+            }; else { \
+                echo "Subpackage '$$x' not found"; \
+            }; fi; \
+        } done
+endif
+
+#---------------------------------------------------------------------------
+
+# version
+# $Id: std-targets.def,v 1.49 2003/04/24 00:44:20 cummings Exp $
+
+#
+# End of file

@@ -1,0 +1,73 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 2001 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: f77.def,v $
+# Revision 1.2  2003/04/18 21:53:36  cummings
+# Updated each of the current f77.def files to add an explicit definition
+# for COMPILER_F90_NAME, the name of the F90 compiler.  Some systems allow
+# you to use F90 for either F90 or F77 code, while others have separate tools.
+# Because of this, you must set F77 to $(COMPILER_F90_NAME) in your local.def
+# file if you need the F90 compiler.
+#
+# Revision 1.1  2001/10/05 20:21:33  cummings
+# Original sources, copied from Absoft Fortran 90 compiler and suitably
+# modified for the NAG Fortran 95 compiler.
+#
+#
+
+#
+# Definitions for the NAG FORTRAN 95 compiler
+#
+#
+    F77_ID = NAG-4.1
+#
+# The name of the binary
+#
+    COMPILER_F77_NAME = f95
+    COMPILER_F90_NAME = f95
+#
+# Command line options
+#
+    COMPILER_F77_FLAGS =
+    COMPILER_F77_INCLUDES =
+    COMPILER_F77_DEFINES =
+
+    COMPILER_F77_SOFLAGS = 
+#
+    F77_OPT_FLAGS = -O       # Optimization flags
+    F77_DEBUG_FLAGS = -g     # Debug flags
+    F77_PROF_FLAGS = -pg     # Profiling flags
+    F77_MODULE_FLAGS = -I
+#
+# When using the FORTRAN compiler to preprocess
+#
+    COMPILER_F77_PREPROCESS = mm_dummy
+#
+# When using the FORTRAN compiler to make dependencies
+#
+    COMPILER_F77_DEPENDS = mm_dummy
+#
+# When using the FORTRAN compiler to link
+#
+    COMPILER_LF77_NAME =
+    COMPILER_LF77_FLAGS =
+    COMPILER_LF77_LIBPATH = -L/usr/local/lib/NAGWare
+    COMPILER_LF77_SOFLAGS = -Wl,-rpath /usr/local/lib/NAGWare
+#
+# Mixed language linking
+#
+    COMPILER_LF90_LIBRARIES = /usr/local/lib/NAGWare/quickfit.o -lf96
+    COMPILER_LCC_FORTRAN = $(COMPILER_LF77_LIBPATH) $(COMPILER_LF90_LIBRARIES)
+    COMPILER_LCXX_FORTRAN = $(COMPILER_LF77_LIBPATH) -Wl,-rpath /usr/local/lib/NAGWare $(COMPILER_LF90_LIBRARIES)
+#
+# Clean up
+#
+    COMPILER_F77_CLEAN =
+    COMPILER_F77_DISTCLEAN =
+#
+# End of file

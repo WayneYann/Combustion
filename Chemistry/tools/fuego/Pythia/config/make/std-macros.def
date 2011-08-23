@@ -1,0 +1,85 @@
+# -*- Makefile -*-
+#
+#--------------------------------------------------------------------------
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+#
+# Default settings
+#
+
+# Configuration layout
+
+    DIR_CONFIG = $(BLD_CONFIG)
+
+    DIR_TARGET = $(DIR_CONFIG)/target
+    DIR_COMPILER = $(DIR_CONFIG)/compiler
+    DIR_PLATFORM = $(DIR_CONFIG)/platform
+
+# Output generation directories
+
+    BLD_BINDIR = $(BLD_ROOT)/bin/$(TARGET_TAG)
+    BLD_LIBDIR = $(BLD_ROOT)/lib/$(TARGET_TAG)
+    BLD_INCDIR = $(BLD_ROOT)/include/$(TARGET_TAG)
+    BLD_TMPDIR = $(BLD_ROOT)/tmp/$(TARGET_TAG)
+
+# Date
+
+    DATE_STAMP = `date +"%y-%m-%d"`
+
+# Clean up
+
+    COMPILER_CLEAN = $(COMPILER_CC_CLEAN) $(COMPILER_CXX_CLEAN) \
+		   $(COMPILER_F77_CLEAN)
+    COMPILER_DISTCLEAN = $(COMPILER_CC_DISTCLEAN) $(COMPILER_CXX_DISTCLEAN) \
+		       $(COMPILER_F77_DISTCLEAN) 
+
+# File extensions
+
+    EXT_C = c
+    EXT_CH = h
+    EXT_CXX = cc
+    EXT_CHH = h
+    EXT_ICC = icc
+    EXT_F77 = f
+    EXT_FH = h
+
+    EXT_DEPEND = d
+    EXT_OBJ = o
+    EXT_AR = a
+#   EXT_SAR = sa  # This extension is not recognized by some compilers!
+    EXT_SAR = a
+    EXT_SO = so
+    EXT_YACC = y
+
+    EXT_LIB = $(EXT_AR)
+#
+# Functions
+#
+
+    RECURSE = \
+        for x in $(SUBPACKAGES); do { \
+            if [ -d $$x ]; then { \
+                (cd $$x; $(MM) $@ || exit 1; ) \
+            } else { \
+                echo "Subdirectory $$x not found"; \
+            } fi \
+        } done
+
+    export SILENCE = > /dev/null
+
+# these macros may be redefined locally
+
+    SUBPACKAGES = 
+    RECURSE_DIRS = 
+    EXPORT_HEADERS = 
+    EXPORT_PROJ_HEADERS = 
+
+# version
+# $Id: std-macros.def,v 1.50 2003/02/27 21:24:02 cummings Exp $
+
+#
+# End of file

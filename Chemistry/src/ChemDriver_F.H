@@ -2,12 +2,10 @@
 #define _ChemDriver_F_H_
 
 #ifdef BL_LANG_FORT
-#    define FORT_SETUPCKIO       dsetckio
-#    define FORT_CLOSECKIO       dclsckio
 #    define FORT_SETVERBOSEVODE  dverbose
 #    define FORT_SETVODESUBCYC   dmxsubcy
 #    define FORT_SETSPECSCALY    dsetscal
-#    define FORT_INTERPCHEM      dintrpch
+#    define FORT_INITCHEM        dinitchem
 #    define FORT_GETCKMAXNAMELEN dckmxnml
 #    define FORT_GETCKNUMSPEC    dcknspec
 #    define FORT_GETCKNUMELT     dcknelt
@@ -56,12 +54,10 @@
 #    define FORT_SETNU           dsetnu
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
-#    define FORT_SETUPCKIO       DSETCKIO
-#    define FORT_CLOSECKIO       DCLSCKIO
 #    define FORT_SETVERBOSEVODE  DVERBOSE
 #    define FORT_SETVODESUBCYC   DMXSUBCY
 #    define FORT_SETSPECSCALY    DSETSCAL
-#    define FORT_INTERPCHEM      DINTRPCH
+#    define FORT_INITCHEM        DINITCHEM
 #    define FORT_GETCKMAXNAMELEN DCKMXNML
 #    define FORT_GETCKNUMSPEC    DCKNSPEC
 #    define FORT_GETCKNUMELT     DCKNELT
@@ -109,12 +105,10 @@
 #    define FORT_SETTMINTRANS    DSETTTRANS
 #    define FORT_SETNU           DSETNU
 #  elif defined(BL_FORT_USE_LOWERCASE)
-#    define FORT_SETUPCKIO       dsetckio
-#    define FORT_CLOSECKIO       dclsckio
 #    define FORT_SETVERBOSEVODE  dverbose
 #    define FORT_SETVODESUBCYC   dmxsubcy
 #    define FORT_SETSPECSCALY    dsetscal
-#    define FORT_INTERPCHEM      dintrpch
+#    define FORT_INITCHEM        dinitchem
 #    define FORT_GETCKMAXNAMELEN dckmxnml
 #    define FORT_GETCKNUMSPEC    dcknspec
 #    define FORT_GETCKNUMELT     dcknelt
@@ -162,12 +156,10 @@
 #    define FORT_SETTMINTRANS    dsetttrans
 #    define FORT_SETNU           dsetnu
 #  elif defined(BL_FORT_USE_UNDERSCORE)
-#    define FORT_SETUPCKIO       dsetckio_
-#    define FORT_CLOSECKIO       dclsckio_
 #    define FORT_SETVERBOSEVODE  dverbose_
 #    define FORT_SETVODESUBCYC   dmxsubcy_
 #    define FORT_SETSPECSCALY    dsetscal_
-#    define FORT_INTERPCHEM      dintrpch_
+#    define FORT_INITCHEM        dinitchem_
 #    define FORT_GETCKMAXNAMELEN dckmxnml_
 #    define FORT_GETCKNUMSPEC    dcknspec_
 #    define FORT_GETCKNUMELT     dcknelt_
@@ -223,13 +215,11 @@
 
 extern "C" {
 
-    void FORT_SETUPCKIO(const int* nametran,  const int* nametranlen);
     void FORT_SETTMINTRANS(const Real* Tmin);
     void FORT_SETVERBOSEVODE();
     void FORT_SETVODESUBCYC(const int* maxcyc);
     void FORT_SETSPECSCALY(const int* name, const int* length);
-    void FORT_CLOSECKIO();
-    void FORT_INTERPCHEM();
+    void FORT_INITCHEM();
     int FORT_GETCKMAXNAMELEN();
     int FORT_GETCKNUMSPEC();
     int FORT_GETCKNUMELT();

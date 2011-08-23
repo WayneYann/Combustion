@@ -16,7 +16,7 @@ const int  HtoTiterMAX_DEF = 20;
 const Real Tmin_trans_DEF  = 0.;
 
 
-ChemDriver::ChemDriver (const std::string TransportFile)
+ChemDriver::ChemDriver ()
     :
     mHtoTerrMAX(HtoTerrMAX_DEF),
     mHtoTiterMAX(HtoTiterMAX_DEF)
@@ -27,7 +27,7 @@ ChemDriver::ChemDriver (const std::string TransportFile)
 
     if (!initialized)
     {
-        initOnce(TransportFile);
+        initOnce();
         BoxLib::ExecOnFinalize(ChemDriver_Finalize);
         initialized = true;
     }
@@ -35,28 +35,9 @@ ChemDriver::ChemDriver (const std::string TransportFile)
 }
 
 void
-ChemDriver::initOnce (const std::string& TransportFile)
+ChemDriver::initOnce ()
 {
-    const int NPROCS = ParallelDescriptor::NProcs();
-    const int MYPROC = ParallelDescriptor::MyProc();
-    //
-    // Serialize access to files.
-    // Some systems have severe limits on # of files open at any one time.
-    //
-    for (int i = 0; i < NPROCS; i++)
-    {
-        if (i == MYPROC)
-        {
-            Array<int> tranFile = encodeStringForFortran(TransportFile);
-            int        lentran  = TransportFile.size();
-
-            FORT_SETUPCKIO(tranFile.dataPtr(), &lentran);
-            FORT_INTERPCHEM();
-            FORT_CLOSECKIO();
-        }
-        ParallelDescriptor::Barrier();
-    }
-
+    FORT_INITCHEM();
     getSpeciesNames();
     getElementNames();
     FORT_GETCKDIMPARAMS(&mMaxreac, &mMaxspec, &mMaxelts,  &mMaxord,

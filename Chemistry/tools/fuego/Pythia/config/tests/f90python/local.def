@@ -1,0 +1,31 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: local.def,v $
+# Revision 1.2  2000/09/19 06:33:01  aivazis
+# Removed RM3d dependencies
+#
+# Revision 1.1  2000/09/11 02:15:13  aivazis
+# Original source
+#
+# Revision 1.1  2000/09/06 17:40:09  aivazis
+# Original source
+#
+
+# Local (project) definitions
+
+# Python
+    include Python/default.def
+
+# MPI
+ifeq (mpi, ${findstring mpi, $(BLD_USER_TARGET)})
+    include MPI/default.def
+endif
+
+#
+# End of file

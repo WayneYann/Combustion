@@ -1,0 +1,51 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: target.def,v $
+# Revision 1.8  2001/03/04 06:22:42  rapa
+# added DEBUG to TARGET_CXX_DEFINES, which was missing
+#
+# Revision 1.7  2000/05/17 23:37:27  aivazis
+# Major update in the way defines and include paths are handled
+#
+# Revision 1.6  1999/07/15 23:09:57  mga
+# Removed include BLD_STANDARD_TARGET/target.def as this is no longer required.
+#     mm now supports multiple targets and includes the default target.def for
+#     the current platform automatically.
+#
+# Revision 1.5  1999/07/01 21:27:58  aivazis
+# Added -DDEBUG
+#
+# Revision 1.4  1999/07/01 05:15:41  aivazis
+# Accept comma separated list of targets in TARGET
+#
+# Revision 1.3  1999/06/20 16:17:55  aivazis
+# Added header
+#
+
+#
+# Here are the build-specific flags
+#
+# C
+#
+    TARGET_CC_DEFINES += DEBUG
+    TARGET_CC_FLAGS += $(CC_DEBUG_FLAGS)
+    TARGET_LCC_FLAGS += $(CC_DEBUG_FLAGS)
+#
+# C++
+#
+    TARGET_CXX_DEFINES += DEBUG
+    TARGET_CXX_FLAGS += $(CXX_DEBUG_FLAGS)
+    TARGET_LCXX_FLAGS += $(CXX_DEBUG_FLAGS)
+#
+# FORTRAN
+#
+    TARGET_F77_FLAGS += $(F77_DEBUG_FLAGS)
+    TARGET_LF77_FLAGS += $(F77_DEBUG_FLAGS)
+#
+# END OF FILE

@@ -78,6 +78,11 @@ ifeq (${CHEMISTRY_MODEL}, DRM19)
   vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri/PMFs
   vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri
 endif
+ifeq (${CHEMISTRY_MODEL}, CHEMH)
+  CEXE_sources += chem-H.cpp
+  vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/chem-H/PMFs
+  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/chem-H
+endif
 
 # Enable time-dependent turbulence forcing term
 ifeq (${USE_TDEPFORCING}, TRUE)
@@ -130,9 +135,6 @@ vpath %.H   $(VPATH_LOCATIONS)
 vpath %.F   $(VPATH_LOCATIONS)
 vpath %.f   $(VPATH_LOCATIONS)
 vpath %.f90 $(VPATH_LOCATIONS)
-
-junk:
-	echo $(executable)
 
 all: $(executable)
 

@@ -1,0 +1,23 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: CompaqTru64Unix-5.0.def,v $
+# Revision 1.1  2001/08/02 22:06:59  cummings
+# Python definitions file for Compaq platform.
+#
+#
+
+#
+# Default settings for Python
+#
+
+PYTHON_INCLUDES = $(PYTHON_INCDIR)
+PYTHON_LIBS = -lpthread -lm
+
+#
+# End of file

@@ -1,0 +1,69 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: f77.def,v $
+# Revision 1.4  2003/04/18 21:53:36  cummings
+# Updated each of the current f77.def files to add an explicit definition
+# for COMPILER_F90_NAME, the name of the F90 compiler.  Some systems allow
+# you to use F90 for either F90 or F77 code, while others have separate tools.
+# Because of this, you must set F77 to $(COMPILER_F90_NAME) in your local.def
+# file if you need the F90 compiler.
+#
+# Revision 1.3  2002/02/07 23:13:22  aivazis
+# Removed the -G from COMPILER_F77_SOFLAGS. It forces the creation of a .so
+# instead of an executable.
+#
+# Revision 1.2  2000/05/17 23:37:26  aivazis
+# Major update in the way defines and include paths are handled
+#
+# Revision 1.1  1999/10/23 03:25:53  aivazis
+# Original source
+#
+
+#
+# Definitions for the Sun FORTRAN compiler
+#
+#
+    F77_ID = SC-5.0
+#
+# The name of the binary
+#
+    COMPILER_F77_NAME = f77
+    COMPILER_F90_NAME = f90
+#
+# Command line options
+#
+    COMPILER_F77_FLAGS =
+    COMPILER_F77_INCLUDES = $(DIR_COMPILER)/$(F77_ID)
+    COMPILER_F77_DEFINES = F77_ID="$(F77_ID)"
+
+    COMPILER_F77_SOFLAGS = -KPIC
+#
+    F77_OPT_FLAGS = -O2      # Optimization flags
+    F77_DEBUG_FLAGS = -g     # Debug flags
+#
+# When using the FORTRAN compiler to preprocess
+#
+    COMPILER_F77_PREPROCESS = $(COMPILER_F77_NAME) -E	
+#
+# When using the FORTRAN compiler to make dependencies
+#
+    COMPILER_F77_DEPENDS = mm_dummy
+#
+# When using the FORTRAN compiler to link
+#
+    COMPILER_LF77_NAME = $(COMPILER_F77_NAME)
+    COMPILER_LF77_FLAGS =
+    COMPILER_LF77_LIBPATH =
+#
+# Clean up
+#
+    COMPILER_F77_CLEAN =
+    COMPILER_F77_DISTCLEAN =
+#
+# End of file
