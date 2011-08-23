@@ -23,16 +23,7 @@ program chemh_converge
   read(10,*) time_c
 
   do i=0,nx_c-1
-     read(10,*) data1(i,1), &
-                data1(i,2:10), &
-                data1(i,11), &
-                data1(i,12), &
-                data1(i,13), &
-                data1(i,14), &
-                data1(i,15), &
-                data1(i,16), &
-                data1(i,17), &
-                data1(i,18:26)
+     read(10,*) data1(i,1:26)
   end do
 
   open(20,file=in2,form='formatted')
@@ -41,16 +32,7 @@ program chemh_converge
   read(20,*) time_f
 
   do i=0,nx_f-1
-     read(20,*) data2_f(i,1), &
-                data2_f(i,2:10), &
-                data2_f(i,11), &
-                data2_f(i,12), &
-                data2_f(i,13), &
-                data2_f(i,14), &
-                data2_f(i,15), &
-                data2_f(i,16), &
-                data2_f(i,17), &
-                data2_f(i,18:26)
+     read(20,*) data2_f(i,1:26)
   end do
 
   rr = nx_f / nx_c

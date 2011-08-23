@@ -1,4 +1,4 @@
-program chemh_converge
+program chemh_converge2
 
   character in1*(32)
   character in2*(32)
@@ -29,16 +29,7 @@ program chemh_converge
   read(10,*) time_1
 
   do i=0,nx_1-1
-     read(10,*) data1(i,1), &
-                data1(i,2:10), &
-                data1(i,11), &
-                data1(i,12), &
-                data1(i,13), &
-                data1(i,14), &
-                data1(i,15), &
-                data1(i,16), &
-                data1(i,17), &
-                data1(i,18:26)
+     read(10,*) data1(i,1:26)
   end do
 
   open(20,file=in2,form='formatted')
@@ -47,16 +38,7 @@ program chemh_converge
   read(20,*) time_2
 
   do i=0,nx_2-1
-     read(20,*) data2(i,1), &
-                data2(i,2:10), &
-                data2(i,11), &
-                data2(i,12), &
-                data2(i,13), &
-                data2(i,14), &
-                data2(i,15), &
-                data2(i,16), &
-                data2(i,17), &
-                data2(i,18:26)
+     read(20,*) data2(i,1:26)
   end do
 
   open(30,file=in3,form='formatted')
@@ -65,18 +47,8 @@ program chemh_converge
   read(30,*) time_3
 
   do i=0,nx_3-1
-     read(30,*) data3_f(i,1), &
-                data3_f(i,2:10), &
-                data3_f(i,11), &
-                data3_f(i,12), &
-                data3_f(i,13), &
-                data3_f(i,14), &
-                data3_f(i,15), &
-                data3_f(i,16), &
-                data3_f(i,17), &
-                data3_f(i,18:26)
+     read(30,*) data3_f(i,1:26)
   end do
-
 
   !!!!!!!!!!!!!!!!!!!
   ! error for input1
@@ -189,4 +161,4 @@ program chemh_converge
   write(*,1001) "L2 NORM: rhoh =",L2_13(13),L2_23(13),log(L2_13(13)/L2_23(13))/log(2.d0)
   write(*,1001) "L2 NORM: vel  =",L2_13(14),L2_23(14),log(L2_13(14)/L2_23(14))/log(2.d0)
 
-end program chemh_converge
+end program chemh_converge2
