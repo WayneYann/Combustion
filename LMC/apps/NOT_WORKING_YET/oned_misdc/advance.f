@@ -1021,6 +1021,8 @@ C----------------------------------------------------------------
       real*8   const_src(0:nx-1,nscal)
       real*8 lin_src_old(0:nx-1,nscal)
       real*8 lin_src_new(0:nx-1,nscal)
+
+      real*8   I_R_temp(0:nx-1,0:maxspec)
       
       integer i,n
       
@@ -1316,7 +1318,10 @@ c     we take the gradient of Y from the second scal argument
 
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R_new,dt/2.d0)
+     $                    I_R_temp,dt/2.d0)
+
+         I_R_new = I_R_new + I_R_temp
+         I_R_new = I_R_new / 2.d0
       endif
 
       end
