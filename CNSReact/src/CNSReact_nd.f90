@@ -16,7 +16,7 @@
 
       subroutine get_num_spec(nspec_out)
 
-        use network, only : nspec
+        use cdwrk_module, only : nspec
 
         implicit none 
 
@@ -123,7 +123,8 @@
         ! Passing data from C++ into f90
 
         use meth_params_module
-        use network, only : nspec, naux
+        use cdwrk_module, only : nspec
+        use network, only : naux
         use eos_module
 
         implicit none 
@@ -218,11 +219,7 @@
           small_pres = 1.d-8
         end if
 
-        if (gamma_in .gt. 0.d0) then
-           call eos_init(small_dens=small_dens_in, small_temp=small_temp_in, gamma_in=gamma_in)
-        else
-           call eos_init(small_dens=small_dens_in, small_temp=small_temp_in)
-        end if
+        call eos_init(small_dens=small_dens_in, small_temp=small_temp_in)
 
         call eos_get_small_dens(small_dens)
         call eos_get_small_temp(small_temp)

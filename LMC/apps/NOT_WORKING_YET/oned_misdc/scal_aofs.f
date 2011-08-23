@@ -24,10 +24,7 @@
       integer IWRK
 
       logical compute_comp(nscal)
-
-CCCCCCCC
       real*8 ptherm(0 :nx)
-CCCCCCCC
       
       dth  = 0.5d0 * dt
       dthx = 0.5d0 * dt / dx
@@ -42,11 +39,19 @@ CCCCCCCC
       enddo
       compute_comp(Density) = .false.
 
-      if (use_temp_eqn .or. use_strang) then
-         compute_comp(RhoH) = .false.
+!     AJN - Forcing strang to predict rhoX, rhoh, and T
+!      if (use_temp_eqn .or. use_strang .or. predict_T) then
+!         compute_comp(RhoH) = .false.
+!      else
+!         compute_comp(Temp) = .false.
+!      endif
+
+      if (use_strang) then
+         ! predict everything
       else
+         ! no need to predict temperature
          compute_comp(Temp) = .false.
-      endif
+      end if
 
       do n = 1,nscal
          if (compute_comp(n) ) then
@@ -101,48 +106,23 @@ CCCCCCCC
          endif
       enddo
       
-cc     Compute Rho on edges as sum of (Rho Y_i) on edges, rho.hmix as sum of (H_i.Rho.Y_i)
-cc     NOTE: Assumes Le=1 (no Le terms in RhoH equation)
-c      if (LeEQ1 .ne. 1) then
-c         print *,'Le != 1 terms not yet in aofs for RhoH'
-c         stop
-c      endif
-
       do i = 0,nx
          sedge(i,Density) = 0.d0
+c        compute Rho on edges as sum of (Rho Y_i) on edges, 
          do n = 1,nspec
             ispec = FirstSpec-1+n
             sedge(i,Density) = sedge(i,Density) + sedge(i,ispec)
          enddo
-         do n = 1,nspec
-            ispec = FirstSpec-1+n
-            Y(n) = sedge(i,ispec) / sedge(i,Density)
-         enddo
+c        compute rho.hmix as sum of (H_i.Rho.Y_i)
          if ( .not.compute_comp (RhoH) ) then 
+            do n = 1,nspec
+               ispec = FirstSpec-1+n
+               Y(n) = sedge(i,ispec) / sedge(i,Density)
+            enddo
             call CKHBMS(sedge(i,Temp),Y,IWRK,RWRK,Hmix)
             sedge(i,RhoH) = Hmix * sedge(i,Density)
          endif
       enddo
-
-CCCCCCCCCCC debugging FIXME
-C$$$ 1006 FORMAT(15(E22.15,1X))      
-C$$$         call compute_pthermo(sedge,ptherm)
-C$$$         open(UNIT=11, FILE='edge.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# 256 12'
-C$$$         do i=0,nx-1
-C$$$            do n = 1,Nspec
-C$$$               Y(n) = sedge(i,FirstSpec+n-1)/sedge(i,Density)
-C$$$            enddo
-C$$$            write(11,1006) i*dx, macvel(i),
-C$$$     &                     sedge(i,Density),
-C$$$     &                     (Y(n),n=1,Nspec),
-C$$$     $                     sedge(i,RhoH),
-C$$$     $                     sedge(i,Temp),
-C$$$     $                     ptherm(i)
-C$$$         enddo
-C$$$         close(11)
-C         stop
-CCCCCCCCCCCCC      
 
       do n = 1,nscal
          if (n.eq.Temp) then
@@ -195,17 +175,15 @@ c     Make these negative here so we can add as source terms later.
       integer IWRK
 
       logical compute_comp(nscal)
-
-CCCCCCCC
       real*8 ptherm(0 :nx)
-CCCCCCCC
       
-      dth  = 0.5d0 * dt
-      dthx = 0.5d0 * dt / dx
-      eps = 1.e-6
+!      dth  = 0.5d0 * dt
+!      dthx = 0.5d0 * dt / dx
 
       dth = 0.d0
       dthx = 0.d0
+
+      eps = 1.e-6
       
       use_bds = 0
       
@@ -216,11 +194,19 @@ CCCCCCCC
       enddo
       compute_comp(Density) = .false.
 
-      if (use_temp_eqn .or. use_strang) then
-         compute_comp(RhoH) = .false.
+!     AJN - Forcing all algorithms to predict rhoX, rhoh, and T
+!      if (use_temp_eqn .or. use_strang .or. predict_T) then
+!         compute_comp(RhoH) = .false.
+!      else
+!         compute_comp(Temp) = .false.
+!      endif
+
+      if (use_strang) then
+         ! predict everything
       else
+         ! no need to predict temperature
          compute_comp(Temp) = .false.
-      endif
+      end if
 
       do n = 1,nscal
          if (compute_comp(n) ) then
@@ -275,48 +261,23 @@ CCCCCCCC
          endif
       enddo
       
-cc     Compute Rho on edges as sum of (Rho Y_i) on edges, rho.hmix as sum of (H_i.Rho.Y_i)
-cc     NOTE: Assumes Le=1 (no Le terms in RhoH equation)
-c      if (LeEQ1 .ne. 1) then
-c         print *,'Le != 1 terms not yet in aofs for RhoH'
-c         stop
-c      endif
-
       do i = 0,nx
          sedge(i,Density) = 0.d0
+c        compute Rho on edges as sum of (Rho Y_i) on edges, 
          do n = 1,nspec
             ispec = FirstSpec-1+n
             sedge(i,Density) = sedge(i,Density) + sedge(i,ispec)
          enddo
-         do n = 1,nspec
-            ispec = FirstSpec-1+n
-            Y(n) = sedge(i,ispec) / sedge(i,Density)
-         enddo
+c        compute rho.hmix as sum of (H_i.Rho.Y_i)
          if ( .not.compute_comp (RhoH) ) then 
+            do n = 1,nspec
+               ispec = FirstSpec-1+n
+               Y(n) = sedge(i,ispec) / sedge(i,Density)
+            enddo
             call CKHBMS(sedge(i,Temp),Y,IWRK,RWRK,Hmix)
             sedge(i,RhoH) = Hmix * sedge(i,Density)
          endif
       enddo
-
-CCCCCCCCCCC debugging FIXME
-C$$$ 1006 FORMAT(15(E22.15,1X))      
-C$$$         call compute_pthermo(sedge,ptherm)
-C$$$         open(UNIT=11, FILE='edge.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# 256 12'
-C$$$         do i=0,nx-1
-C$$$            do n = 1,Nspec
-C$$$               Y(n) = sedge(i,FirstSpec+n-1)/sedge(i,Density)
-C$$$            enddo
-C$$$            write(11,1006) i*dx, macvel(i),
-C$$$     &                     sedge(i,Density),
-C$$$     &                     (Y(n),n=1,Nspec),
-C$$$     $                     sedge(i,RhoH),
-C$$$     $                     sedge(i,Temp),
-C$$$     $                     ptherm(i)
-C$$$         enddo
-C$$$         close(11)
-C         stop
-CCCCCCCCCCCCC      
 
       do n = 1,nscal
          if (n.eq.Temp) then

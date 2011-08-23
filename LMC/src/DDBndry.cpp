@@ -1,8 +1,4 @@
-//BL_COPYRIGHT_NOTICE
 
-//
-// $Id: DDBndry.cpp,v 1.8 2011-03-17 00:48:10 marc Exp $
-//
 #include <winstd.H>
 #include <cmath>
 

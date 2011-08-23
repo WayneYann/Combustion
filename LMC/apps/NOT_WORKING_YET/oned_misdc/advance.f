@@ -65,7 +65,7 @@ c     diagnostics only
       do i = 1,nx-1
          divu_max = MAX(divu_max,ABS(divu_tmp(i)))
       enddo
-      print *,'DIVU norm before dpdt = ',divu_max 
+      print *,'DIVU_TMP norm before dpdt = ',divu_max 
 
       call add_dpdt(scal_old,pthermo,divu_tmp,macvel,dx,dt)
 
@@ -74,7 +74,7 @@ c     diagnostics only
       do i = 1,nx-1
          divu_max = MAX(divu_max,ABS(divu_tmp(i)))
       enddo
-      print *,'DIVU norm after dpdt = ',divu_max 
+      print *,'DIVU_TMP norm after dpdt = ',divu_max 
 
       call macproj(nx,macvel,divu_tmp,dx)
 
@@ -168,6 +168,24 @@ C     get velocity visc terms to use as a forcing term for advection
      $                 dx,dt,1,vel_theta,rho_flag)
       endif
 
+      call compute_pthermo(scal_new,pthermo)
+
+c     diagnostics only
+      divu_max = ABS(divu_new(0))
+      do i = 1,nx-1
+         divu_max = MAX(divu_max,ABS(divu_new(i)))
+      enddo
+      print *,'DIVU_NEW norm before dpdt = ',divu_max 
+
+      call add_dpdt_nodal(scal_new,pthermo,divu_new,vel_new,dx,dt)
+
+c     diagnostics only
+      divu_max = ABS(divu_new(0))
+      do i = 1,nx-1
+         divu_max = MAX(divu_max,ABS(divu_new(i)))
+      enddo
+      print *,'DIVU_NEW norm after dpdt = ',divu_max 
+
       print *,'...nodal projection...'
       if (initial_iter .eq. 0) then
          call project(vel_old,vel_new,rhohalf,divu_new,
@@ -219,6 +237,11 @@ C     get velocity visc terms to use as a forcing term for advection
       real*8 diffdiff_new(0:nx-1)
       real*8 diffdiff_hat(0:nx-1)
 
+      real*8 Y(maxspec)
+      real*8 hi(maxspec,-1:nx)
+      real*8 RWRK, cpmix, rhocp_old
+      integer IWRK
+
       diffdiff_old = 0.d0
       diffdiff_new = 0.d0
       diffdiff_hat = 0.d0
@@ -253,6 +276,34 @@ c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
      $                           spec_flux_hi,beta_old,diffdiff_old,
      $                           dx,time)
+      end if
+
+      if (predict_T) then
+
+c        compute del dot lambda grad T + rho D grad h dot grad Y
+c        the rho D grad Y term is now computed conservatively
+         call get_temp_visc_terms(scal_old,beta_old,
+     &                            diff_old(0,Temp),dx,time)
+
+         do i=-1,nx
+            call CKHMS(scal_old(i,Temp),IWRK,RWRK,hi(1,i))
+         end do
+
+         do i = 0,nx-1
+            do n = 1,Nspec
+               Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
+            enddo
+            call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
+            rhocp_old = cpmix * scal_old(i,Density)
+            tforce(i,Temp) = diff_old(i,Temp)/rhocp_old
+
+            do n=1,Nspec
+               tforce(i,Temp) = tforce(i,Temp) 
+     &              - I_R_new(i,n)*hi(n,i)/rhocp_old
+            end do
+         enddo
+         
+
       end if
 
 c     compute advective forcing term
@@ -432,6 +483,20 @@ c           we take the gradient of Y from the second scal argument
 c           really no need to recompute this since it doesn't change
             tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
          enddo
+
+         if (predict_T) then
+
+            do i = 0,nx-1
+               tforce(i,Temp) = diff_old(i,Temp)/rhocp_old
+
+               do n=1,Nspec
+                  tforce(i,Temp) = tforce(i,Temp) 
+     &                 - I_R_new(i,n)*hi(n,i)/rhocp_old
+               end do
+            enddo
+         
+
+      end if
          
          print *,'... compute A with updated D+R source'
          call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
@@ -1009,9 +1074,9 @@ c*****************************************************************
 c     
 
       print *,'... creating the diffusive terms with old data'
-c     these compute rho^n D_m^n     (for species)
-c                   lambda^n / cp^n (for enthalpy)
-c                   lambda^n        (for temperature) 
+c    compute rho^(1) D_m^(1)     (for species)
+c            lambda^(1) / cp^(1) (for enthalpy)
+c            lambda^(1)          (for temperature) 
       call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
 
 c     compute del dot lambda grad T + rho D grad h dot grad Y
@@ -1054,17 +1119,13 @@ c        we take the gradient of Y from the second scal argument
             tforce(i,is) = diff_old(i,is)
          enddo
          tforce(i,Temp) = diff_old(i,Temp)
+         tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
       enddo
        
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
 
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
-
-c     this computes rho^n+1 D_m^n     (for species)
-c                   lambda^n / cp^n   (for enthalpy)
-c                   lambda^n          (for temperature) 
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time)
 
 c*****************************************************************
 c     Either do c-n solve for new T prior to computing new 
@@ -1083,13 +1144,10 @@ c        does not fill ghost cells
          call cn_solve(scal_new,alpha,beta_old,Rhs(0,Temp),
      $                 dx,dt,Temp,be_cn_theta,rho_flag)
 
-c     AJN - moved this call lower
-c         call get_hmix_given_T_RhoY(scal_new,dx)
-
          print *,'... compute new coeffs'
-c        this computes rho^n+1 D_m^n+1,*       (for species)
-c                      lambda^n+1,* / cp^n+1,* (for enthalpy)
-c                      lambda^n+1,*             (for temperature) 
+c        compute rho^(2) D_m^(2),* (for species)
+c            lambda/cp (for enthalpy) won't be used
+c            lambda^(1) (for temperature) won't be used
          call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
       else
          print *,'... set new coeffs to old values for predictor'
@@ -1138,8 +1196,17 @@ c     update species with conservative diffusion fluxes
             end do
          end do
 
-c     AJN - moved this call from above
+c     compute h_m^(2),*
          call get_hmix_given_T_RhoY(scal_new,dx)
+
+      end if
+
+c     this computes rho D_m                 (for species) won't be used
+c                   lambda^(2),* / cp^(2),* (for enthalpy)
+c                   lambda^(2),*            (for temperature) 
+      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+
+      if (LeEQ1 .eq. 0) then
 
 c     calculate differential diffusion
 c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
@@ -1171,9 +1238,9 @@ C----------------------------------------------------------------
 C   Corrector
 
       print *,'... compute new coeffs'
-c     this computes rho^n+1 D_m^n+1     (for species)
-c                   lambda^n+1 / cp^n+1 (for enthalpy)
-c                   lambda^n+1          (for temperature) 
+c     this computes rho^(2) D_m^(2)     (for species)
+c                   lambda^(2) / cp^(2) (for enthalpy)
+c                   lambda^(2)          (for temperature) 
       call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
 
       do i=0,nx-1

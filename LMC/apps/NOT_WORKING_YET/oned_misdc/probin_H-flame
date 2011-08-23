@@ -22,6 +22,7 @@
   use_temp_eqn = .false.
   use_radau = .false.
   use_rhoh2 = .true.
+  predict_T = .false.
   lim_rxns = 0
   fixed_dt = -1
 !  V_in = 33.

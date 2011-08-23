@@ -352,9 +352,9 @@ contains
       integer          ::  T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
       integer          ::  Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
       integer          ::  P_l1, P_l2, P_l3, P_h1, P_h2, P_h3
-      double precision :: rd(rd_l1:rd_h1, rd_l2:rd_h2, rd_l3:rd_h3,:)
+      double precision :: rd(rd_l1:rd_h1, rd_l2:rd_h2, rd_l3:rd_h3,*)
       double precision ::  T( T_l1: T_h1,  T_l2: T_h2,  T_l3: T_h3)
-      double precision ::  Y( Y_l1: Y_h1,  Y_l2: Y_h2,  Y_l3: Y_h3,:)
+      double precision ::  Y( Y_l1: Y_h1,  Y_l2: Y_h2,  Y_l3: Y_h3,*)
       double precision ::  P( P_l1: P_h1,  P_l2: P_h2,  P_l3: P_h3)
 
       ! Local variables

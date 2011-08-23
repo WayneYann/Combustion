@@ -4,11 +4,8 @@ EXEname := lmc.exe
 #
 # Choose pmf file
 #
-pmf_source := gri30_070.f
-#pmf_source := H-flame_0370.f
-#pmf_source := 2stepSoln0.8.f
-#pmf_source := chemHSoln_seed_0.00.f
-#pmf_source := H-flame_0370_MCDD.f
+pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
+#pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
 
 #
 # Choose reaction mechanism
@@ -16,16 +13,8 @@ pmf_source := gri30_070.f
 # Use CHEMH for pmf_source := chemHSoln_seed_0.00.f
 # Use CHEMH for pmf_source := H-flame_0370_MCDD.f
 #
-#REACTION_MECHANISM=INERT30
-#REACTION_MECHANISM=GRI12
-#REACTION_MECHANISM=GRI30NON
 REACTION_MECHANISM=GRI30
-#REACTION_MECHANISM=CH4-2STEP
-#REACTION_MECHANISM=GRI30HNO
-#REACTION_MECHANISM=DRM19
-#REACTION_MECHANISM=GLARBORG
 #REACTION_MECHANISM=CHEMH
-#REACTION_MECHANISM=LIDRYER
 
 ifeq (${USE_INTEL},TRUE)
 #  CCOMP := icpc -vec_report0 -DBL_FORT_USE_UNDERSCORE
@@ -40,44 +29,14 @@ else
   XTRALIBS :=  -lm -lgfortran
 endif
 
-ifeq ($(REACTION_MECHANISM),GLARBORG)
-  mech_source += glarSkel.cpp
-endif
-ifeq ($(REACTION_MECHANISM),DRM19)
-  mech_source += drm19.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRI12)
-  mech_source += gri12.cpp
-endif
 ifeq ($(REACTION_MECHANISM),GRI30)
-  mech_source += gri30.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRI30NON)
-  mech_source += gri30-noN.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRI30HNO)
-  mech_source += gri30_hno.cpp
-endif
-ifeq ($(REACTION_MECHANISM),GRI211HNO)
-  mech_source += gri211-hno.cpp
+  mech_source += ../../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.cpp
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
-  mech_source += chem-H.cpp
-endif
-ifeq ($(REACTION_MECHANISM),INERT30)
-  mech_source += inert30.cpp
-endif
-ifeq ($(REACTION_MECHANISM),CH4-2STEP)
-  mech_source += chem-CH4-2step.cpp
-endif
-ifeq ($(REACTION_MECHANISM),PROPANE)
-  mech_source += propane.cpp
-endif
-ifeq ($(REACTION_MECHANISM),LIDRYER)
-  mech_source += LiDryer.cpp
+  mech_source += ../../../../Chemistry/data/chem-H/chem-H.cpp
 endif
 
-chem_sources := CD.f vode.f EGini.f EGSlib.f
+chem_sources := CD.f ../../../../Chemistry/src/vode.f ../../../../Chemistry/src/EGini.f ../../../../Chemistry/src/EGSlib.f
 
 pmf_object := $(pmf_source:%.f=%.o)
 mech_object := $(mech_source:%.cpp=%.o)

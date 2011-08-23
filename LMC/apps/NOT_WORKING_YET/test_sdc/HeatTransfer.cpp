@@ -27,7 +27,6 @@
 #include <ArrayLim.H>
 #include <SPACE.H>
 #include <Interpolater.H>
-#include <Profiler.H>
 #include <ccse-mpi.H>
 #include <PArray.H>
 #include <PROB_F.H>
@@ -229,8 +228,6 @@ HeatTransfer::center_to_edge_fancy (const FArrayBox& cfab,
                                     const FPLoc&     bc_lo,
                                     const FPLoc&     bc_hi)
 {
-    BL_PROFILE("HeatTransfer::center_to_edge_fancy()");
-
     const Box&      ebox = efab.box();
     const IndexType ixt  = ebox.ixType();
 
@@ -769,8 +766,6 @@ HeatTransfer::restart (Amr&          papa,
 Real
 HeatTransfer::estTimeStep ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::estTimeStep()");
-
     Real estdt = NavierStokes::estTimeStep();
 
     if (fixed_dt > 0.0 || !divu_ceiling)
@@ -871,8 +866,6 @@ HeatTransfer::estTimeStep ()
 void
 HeatTransfer::checkTimeStep (Real dt)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::checkTimeStep()");
-
     if (fixed_dt > 0.0 || !divu_ceiling) 
         return;
 
@@ -948,7 +941,6 @@ HeatTransfer::setTimeLevel (Real time,
 void
 HeatTransfer::initData ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::initData()");
     //
     // Initialize the state and the pressure.
     //
@@ -1154,8 +1146,6 @@ HeatTransfer::initData ()
 void
 HeatTransfer::initDataOtherTypes ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::initDataOtherTypes()");
-
     const Real* dx = geom.CellSize();
 
     int add_turb = 0, box_offset[BL_SPACEDIM];
@@ -1398,8 +1388,6 @@ HeatTransfer::initDataOtherTypes ()
 void
 HeatTransfer::init (AmrLevel& old)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::init(AmrLEvel&)");
-
     NavierStokes::init(old);
 
     HeatTransfer* oldht    = (HeatTransfer*) &old;
@@ -1435,8 +1423,6 @@ HeatTransfer::init (AmrLevel& old)
 void
 HeatTransfer::init ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::init()");
-
     NavierStokes::init();
  
     HeatTransfer& old      = getLevel(level-1);
@@ -1570,8 +1556,6 @@ HeatTransfer::post_init (Real stop_time)
         // Nothing to sync up at level > 0.
         //
         return;
-
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::post_init()");
 
     const Real cur_time     = state[State_Type].curTime();
     const int  finest_level = parent->finestLevel();
@@ -1737,8 +1721,6 @@ HeatTransfer::post_init (Real stop_time)
 void
 HeatTransfer::sum_integrated_quantities ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::sum_integrated_quantities()");
-
     const int finest_level = parent->finestLevel();
     const Real time        = state[State_Type].curTime();
 
@@ -1887,8 +1869,6 @@ HeatTransfer::post_init_press (Real&        dt_init,
 			       Array<int>&  nc_save,
 			       Array<Real>& dt_save)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::post_init_press()");
-
     const int  nState          = desc_lst[State_Type].nComp();
     const int  nGrow           = 0;
     const Real cur_time        = state[State_Type].curTime();
@@ -2131,8 +2111,6 @@ HeatTransfer::scalar_diffusion_update (Real dt,
                                        int  last_scalar,
                                        int  corrector)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::scalar_diffusion_update()");
-
     const Real strt_time = ParallelDescriptor::second();
     //
     // Build single component edge-centered array of MultiFabs for fluxes
@@ -2226,8 +2204,6 @@ void
 HeatTransfer::differential_spec_diffusion_update (Real dt,
 						  int  corrector)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::differential_spec_diffusion_update()");
-
     const Real strt_time = ParallelDescriptor::second();
 
     if (hack_nospecdiff)
@@ -2411,8 +2387,6 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 void
 HeatTransfer::make_rho_prev_time ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_rho_prev_time()");
-
     const Real prev_time = state[State_Type].prevTime();
 
     for (FillPatchIterator fpi(*this,*rho_ptime,1,prev_time,State_Type,Density,1);
@@ -2426,8 +2400,6 @@ HeatTransfer::make_rho_prev_time ()
 void
 HeatTransfer::make_rho_curr_time ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_rho_curr_time()");
-
     const Real curr_time = state[State_Type].curTime();
 
     for (FillPatchIterator fpi(*this,*rho_ctime,1,curr_time,State_Type,Density,1);
@@ -2452,7 +2424,6 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 					    const MultiFab* const* betanp1,
 					    bool                   save_diffsn)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::adjust_spec_diffusion_update()");
     //
     // Here, we're going to compute an update using fluxes computed from
     // the old state and a guess for the new one.  These fluxes are modified
@@ -2695,7 +2666,6 @@ HeatTransfer::diffuse_scalar_setup (Real        dt,
                                     MultiFab**& betan,
                                     MultiFab**& betanp1)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::diffuse_scalar_setup()");
     //
     // Do setup for implicit c-n solve for an arbitrary scalar.
     //
@@ -2761,7 +2731,6 @@ HeatTransfer::compute_OT_radloss (Real      time,
                                   int       nGrow,
                                   MultiFab& dqrad)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_OT_radloss()");
     //
     // Get optically thin radiation losses (+ve when energy LOST).
     //
@@ -2862,7 +2831,6 @@ HeatTransfer::diffuse_temp_setup (Real       prev_time,
                                   MultiFab*& delta_rhs,
                                   MultiFab*& alpha)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::diffuse_temp_setup()");
     //
     // Do set-up for implicit c-n solve for T.
     //
@@ -2944,7 +2912,6 @@ HeatTransfer::diffuse_cleanup (MultiFab*&  delta_rhs,
 void
 HeatTransfer::velocity_diffusion_update (Real dt)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::velocity_diffusion_update()");
     //
     // Do implicit c-n solve for velocity
     // compute the viscous forcing
@@ -3041,7 +3008,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                             int       num_comp,
                             Real      time)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getViscTerms()");
     //
     // Load "viscous" terms, starting from component = 0.
     //
@@ -4059,8 +4025,6 @@ HeatTransfer::rk_diffusion_operator (const Real time,
   MultiFab **& flux_for_Y         ! OUTPUT extensive rho Y flux
 */
 
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::rk_diffusion_operator()");
-
     // check that time is either prev_time or cur_time
     const TimeLevel whichTime = which_time(State_Type, time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
@@ -4253,8 +4217,6 @@ HeatTransfer::rk_step_selection (const Real time)
   returned Real ! OUTPUT the time step
 */
 
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::rk_step_selection()");
-
     // check that time is either prev_time or cur_time
     const TimeLevel whichTime = which_time(State_Type, time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
@@ -4353,8 +4315,6 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 						    int       sComp,
                                                     Real      time)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_differential_diffusion_terms()");
-
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
@@ -4492,7 +4452,6 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
                                 int       src_comp, 
                                 Real      time)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getTempViscTerms()");
     //
     // If only one species,
     // this computes 1/c_p (div lambda grad T + div q_rad)
@@ -4581,8 +4540,6 @@ HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
     // (for example, if RhoH is extrapolated to cell edges), the
     // one needs to be sure to add that missing term.
     //
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getRhoHViscTerms()");
-    //
     // NOTE: This routine does not fill grow cells
     //
     BL_ASSERT(visc_terms.boxArray()==grids);
@@ -4658,8 +4615,6 @@ HeatTransfer::set_rho_to_species_sum (MultiFab& S_in,
                                       int       minzero)
 
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::set_rho_to_species_sum()");
-
     const BoxArray& sgrids = S_in.boxArray();
 
     BL_ASSERT(sgrids == S_out.boxArray());
@@ -4715,8 +4670,6 @@ HeatTransfer::scale_species (MultiFab& S,
     // that the components of S "align" with those in the state.
     //
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::scale_species()");
-
     const BoxArray& sgrids = S.boxArray();
     const int s_density    = Density-strtcomp;
 
@@ -4851,7 +4804,6 @@ HeatTransfer::temperature_stats (MultiFab& S)
 {
     if (verbose)
     {
-        BL_PROFILE(BL_PROFILE_THIS_NAME() + "::temperature_stats()");
         //
         // Calculate some minimums and maximums.
         //
@@ -4927,8 +4879,6 @@ HeatTransfer::compute_rhoRT (const MultiFab& S,
                              int             pComp,
                              const MultiFab* temp)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_rhoRT()");
-
     BL_ASSERT(pComp<p.nComp());
 
     const BoxArray& sgrids = S.boxArray();
@@ -5063,8 +5013,6 @@ HeatTransfer::advance (Real time,
     dt_test = advance_sdc(time,dt,iteration,ncycle);
   else 
   {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::advance(Real,...");
-
     if (level == 0)
     {
         crse_dt = dt;
@@ -5334,9 +5282,6 @@ HeatTransfer::advance (Real time,
     if (do_mom_diff == 1)
 	momentum_advection(dt,do_reflux);
 
-    BL_PROFILE_TIMER(diffusiontimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-diffusion");
-    BL_PROFILE_START(diffusiontimer);
-
     if (do_rk_diffusion)
     {
         //
@@ -5512,9 +5457,6 @@ HeatTransfer::advance (Real time,
         //
         // Set tnp1 coeffs to tn values in first round of predictor
         //
-        BL_PROFILE_TIMER(ptimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-predictor");
-        BL_PROFILE_START(ptimer);
-        
         MultiFab::Copy(*diffnp1_cc,*diffn_cc,0,0,nScalDiffs,diffn_cc->nGrow());
 
         temp_update(dt,corrector);         // Here, predict n+1 coeffs using n coeffs
@@ -5536,15 +5478,9 @@ HeatTransfer::advance (Real time,
 
         RhoH_to_Temp(S_new);
         temperature_stats(S_new);
-
-
-        BL_PROFILE_STOP(ptimer);
         //
         // Corrector
         //
-        BL_PROFILE_TIMER(ctimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-corrector");
-        BL_PROFILE_START(ctimer);
-        
         corrector = 1;
         calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
         tracer_update(dt,corrector);
@@ -5561,12 +5497,7 @@ HeatTransfer::advance (Real time,
         rhoh_update(time,dt,corrector);
 
         RhoH_to_Temp(S_new); 
-        
-        BL_PROFILE_STOP(ctimer);
     }
-
-    BL_PROFILE_STOP(diffusiontimer);
-
     //
     // Second half of Strang-split chemistry (first half done in
     // compute_edge_states) This takes new-time data, and returns new-time
@@ -5771,7 +5702,6 @@ HeatTransfer::reset_rho_in_rho_states (const MultiFab& rho,
                                        const int       sComp,
                                        const int       nComp)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::reset_rho_in_rho_states()");
     //
     // Divide the given rho from the states with diffusion terms of the
     // form Laplacian_SoverRho and multiply by the new Rho.
@@ -5866,7 +5796,6 @@ HeatTransfer::reset_rho_in_rho_states (const MultiFab& rho,
 void
 HeatTransfer::set_overdetermined_boundary_cells (Real time)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::set_overdetermined_boundary_cells()");
 
     BL_ASSERT(first_spec == Density+1);
 
@@ -5960,8 +5889,6 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
     // Sometimes it's the region covered by AuxBoundaryData.
     // When ngrow>0 were doing AuxBoundaryData with nGrow()==ngrow.
     //
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getFuncCountDM()");
-
     DistributionMapping rr;
     rr.RoundRobinProcessorMap(bxba.size(),ParallelDescriptor::NProcs());
 
@@ -6068,8 +5995,6 @@ HeatTransfer::strang_chem (MultiFab&  mf,
     // Sometimes it's the region covered by AuxBoundaryData.
     // When ngrow>0 we're doing AuxBoundaryData with nGrow()==ngrow.
     //
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::strang_chem(MultiFab&,...");
-
     const Real strt_time = ParallelDescriptor::second();
     //
     // I intend that this function be called just prior to the Godunov
@@ -6309,7 +6234,6 @@ void
 HeatTransfer::compute_edge_states (Real               dt,
                                    std::vector<bool>* state_comps_to_compute)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_edge_states()");
     //
     // Compute edge states, store internally.  Do this to
     // avoid recomputing these, and to allow inter-equation consistency.  Note,
@@ -6840,7 +6764,6 @@ HeatTransfer::scalar_advection (Real dt,
                                 int  lscalar,
                                 bool do_adv_reflux)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::scalar_advection()");
     //
     // Compute the advection flux divergences
     //
@@ -7182,7 +7105,6 @@ HeatTransfer::spec_update (Real time,
                            Real dt,
                            int  corrector) 
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::spec_update()");
     //
     // Do implicit c-n solve for rho*Y_l, l=0,nspecies-1.
     //
@@ -7242,8 +7164,6 @@ HeatTransfer::compute_rhoDgradYgradH (Real      time,
     //
     // FIXME: Shouldn't this really be the species diffusion fluxes
     //        dotted with grad(h_i) to be consistent? I dunno....
-    //
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_rhoDgradYgradH()");
     //
     // Get edge-centered rho.D
     // (copy spec visc from internal database directly (before inflow "zeroing"))
@@ -7330,8 +7250,6 @@ enum SYNC_SCHEME {ReAdvect, UseEdgeState, Other};
 void
 HeatTransfer::mac_sync ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::mac_sync()");
-
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mac_sync\n";
 
@@ -8012,8 +7930,6 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
 void
 HeatTransfer::differential_spec_diffuse_sync(Real dt)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::differential_spec_diffuse_sync()");
-
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
@@ -8124,8 +8040,6 @@ HeatTransfer::reflux ()
     if (level == parent->finestLevel())
         return;
 
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::reflux()");
-
     BL_ASSERT(do_reflux);
 
     MultiFab& S_crse = get_new_data(State_Type);
@@ -8225,7 +8139,6 @@ HeatTransfer::set_preferred_boundary_values (MultiFab& S,
                                              int       num_comp,
                                              Real      time) const
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::set_preferred_boundary_values()");
     //
     // Only do copy if request contains affected states,
     // and fillpatched data known to be no good.
@@ -8288,8 +8201,6 @@ HeatTransfer::calcDiffusivity (const Real time,
 			       const int  num_comp,
                                bool       do_VelVisc)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calcDiffusivity()");
-
     if (do_mcdd || do_rk_diffusion) return;
 
     const TimeLevel whichTime = which_time(State_Type, time);
@@ -8416,8 +8327,6 @@ void
 HeatTransfer::getViscosity (MultiFab*  beta[BL_SPACEDIM],
                             const Real time)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getViscosity()");
-
     const TimeLevel whichTime = which_time(State_Type, time);
 
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
@@ -8448,8 +8357,6 @@ HeatTransfer::getDiffusivity (MultiFab*  beta[BL_SPACEDIM],
                               const int  dst_comp,
                               const int  ncomp)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getDiffusivity()");
-
     BL_ASSERT(state_comp > Density);
 
     const TimeLevel whichTime = which_time(State_Type, time);
@@ -8516,8 +8423,6 @@ void
 HeatTransfer::compute_vel_visc (Real      time,
                                 MultiFab* beta)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_vel_visc()");
-
     const int nGrow = beta->nGrow();
 
     BL_ASSERT(nGrow == 1);
@@ -8559,8 +8464,6 @@ HeatTransfer::calc_divu (Real      time,
                          Real      dt,
                          MultiFab& divu)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calc_divu()");
-
     if(use_sdc){
       //
       // Get Mwmix, cpmix and pressure
@@ -9142,8 +9045,6 @@ HeatTransfer::calc_dpdt (Real      time,
                          MultiFab& dpdt,
                          MultiFab* u_mac)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::calc_dpdt()");
-
     Real dt = crse_dt;
 
     Real p_amb, dpdt_factor;
@@ -9408,8 +9309,6 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
                             int       nGrow,
                             int       dominmax)
 {
-    BL_PROFILE("HeatTransfer::RhoH_to_Temp()");
-
     BL_ASSERT(S.nGrow() >= nGrow  &&  temp.nGrow() >= nGrow);
 
     const BoxArray& sgrids = S.boxArray();
@@ -9547,8 +9446,6 @@ void
 HeatTransfer::compute_cp (Real      time,
                           MultiFab& cp)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_cp()");
-
     const int nGrow   = cp.nGrow();
     const int sComp   = std::min(std::min((int)Density,(int)Temp),first_spec);
     const int eComp   = std::max(std::max((int)Density,(int)Temp),first_spec+nspecies-1);
@@ -9608,8 +9505,6 @@ void
 HeatTransfer::compute_rhohmix (Real      time,
                                MultiFab& rhohmix)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_rhohmix()");
-
     const int ngrow  = 0; // We only do this on the valid region
     const int sComp  = std::min(std::min((int)Density,(int)Temp),first_spec);
     const int eComp  = std::max(std::max((int)Density,(int)Temp),first_spec+nspecies-1);
@@ -9787,7 +9682,6 @@ HeatTransfer::writePlotFile (const std::string& dir,
                              std::ostream&  os,
                              VisMF::How     how)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::writePlotFile()");
     if ( ! Amr::Plot_Files_Output() ) return;
     //
     // Note that this is really the same as its NavierStokes counterpart,
@@ -10044,8 +9938,6 @@ HeatTransfer::advance_sdc (Real time,
 			   int  iteration,
 			   int  ncycle)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::advance_sdc(Real,...");
-
     if (level == 0)
     {
         crse_dt = dt;
@@ -10395,8 +10287,6 @@ HeatTransfer::advance_sdc (Real time,
       tracer_update(dt,1);
     }
 
-    BL_PROFILE_STOP(ptimer);
-    
     // change in state over timestep
     Real comp_min, comp_max;
     MultiFab::Subtract(difference,S_new,0,0,NUM_STATE,0);
@@ -10440,9 +10330,6 @@ HeatTransfer::advance_sdc (Real time,
     ////////////////////
     // SDC iterations //
     ////////////////////
-
-    BL_PROFILE_TIMER(ctimer, BL_PROFILE_THIS_NAME() + "::advance()" + "-sdc_iters");
-    BL_PROFILE_START(ctimer);
 
     for (int n_sdc = 1; n_sdc <= sdc_iters; n_sdc++)        
     {
@@ -10733,9 +10620,6 @@ HeatTransfer::advance_sdc (Real time,
     if (ParallelDescriptor::IOProcessor())  
       std::cout<<"done with sdc_iters loop...\n"<<std::endl;
 
-    BL_PROFILE_STOP(ctimer); 
-    BL_PROFILE_STOP(diffusiontimer);
-
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "HeatTransfer::advance(): after scalar_update\n";
 
@@ -10948,8 +10832,6 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
 			int        sdc_flag,
 			int        ngrow)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::chem_sdc(MultiFab&,...");
-
     const Real strt_time = ParallelDescriptor::second();
     const int ycomp     = first_spec;
     const int Tcomp     = Temp;
@@ -11136,7 +11018,6 @@ void
 HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>* 
 				       state_comps_to_compute)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::compute_edge_states_sdc()");
     //
     // For SDC: Taking out Temp equation.
     //
@@ -11474,8 +11355,6 @@ HeatTransfer::differential_spec_diffusion_update_sdc (Real dt,
 						      int  corrector,
 						      bool save_diffsn)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::differential_spec_diffusion_update_sdc()");
-
     const Real strt_time = ParallelDescriptor::second();
 
     if (hack_nospecdiff)
@@ -11716,8 +11595,6 @@ HeatTransfer::getViscTerms_sdc (MultiFab& visc_terms,
 				Real      dt,
 				bool      do_diffsn_reflux)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getViscTerms_sdc()");
-
     BL_ASSERT(visc_terms.boxArray()==grids);
     //
     // Load "viscous" terms, starting from component = 0.
@@ -11818,8 +11695,6 @@ HeatTransfer::scalar_advection_update_sdc (Real dt,
 					   int  lcomp,
                                        MultiFab *forces)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::scalar_advection_update_sdc()");
-
     MultiFab&  S_old     = get_old_data(State_Type);
     MultiFab&  S_new     = get_new_data(State_Type);
     MultiFab&  Aofs      = *aofs;
@@ -11953,8 +11828,6 @@ HeatTransfer::Sum_extF_sdcF (FArrayBox& S,
 void
 HeatTransfer::make_I_AD ()
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_I_AD()");
-   
 //     for (MFIter f_mfi(*I_AD[0]); f_mfi.isValid(); ++f_mfi)
 //     {       
 //       const int i = f_mfi.index();
@@ -12155,8 +12028,6 @@ HeatTransfer::make_advection_sdcForce ( int       src_comp,
 					int       num_comp,
 					int       corrector)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_advection_sdcForce()");
-
     BL_ASSERT((src_comp>=first_spec && src_comp<=last_spec) ? num_comp<=nspecies
 	                                                    : true );
 
@@ -12327,8 +12198,6 @@ void
 HeatTransfer::make_diffusion_sdcForce ( int       src_comp, 
 					int       num_comp)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::make_diffusion_sdcForce()");
-
     // might not need to copy I_AD, sdcForces should already conatin it
     //   from compute_edge_states solves
 
@@ -12375,8 +12244,6 @@ HeatTransfer::make_diffusion_sdcForce ( int       src_comp,
 HeatTransfer::rhoh_advection_sdc (Real dt,
 				  bool do_adv_reflux)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::rhoh_advection_sdc()");
-
     Box edge_bx[BL_SPACEDIM];
     FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM], volume;
 
@@ -12667,8 +12534,6 @@ void
 void
 HeatTransfer::rhoh_diffusion_update_sdc (Real dt, bool save_diffsn)
 {
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::scalar_diffusion_update_sdc()");
-
     const Real strt_time = ParallelDescriptor::second();
     //
     // Build single component edge-centered array of MultiFabs for fluxes
@@ -12854,8 +12719,6 @@ HeatTransfer::getRhoHViscTerms_sdc (MultiFab& visc_terms,
     // algorithm changes to require the full RhoH forcing term
     // (for example, if RhoH is extrapolated to cell edges), the
     // one needs to be sure to add that missing term.
-    //
-    BL_PROFILE(BL_PROFILE_THIS_NAME() + "::getRhoHViscTerms()");
     //
     // NOTE: This routine does not fill grow cells
     //

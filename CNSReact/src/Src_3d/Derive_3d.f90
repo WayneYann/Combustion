@@ -373,7 +373,8 @@
            u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
+      use cdwrk_module, only : nspec
+      use network, only : naux
       use eos_module
       use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
                                      allow_negative_energy
@@ -502,7 +503,8 @@
            u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
+      use cdwrk_module, only : nspec
+      use network, only : naux
       use eos_module
       use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
                                      allow_negative_energy
@@ -555,7 +557,8 @@
            u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
+      use cdwrk_module, only : nspec
+      use network, only : naux
       use eos_module
       use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
                                      allow_negative_energy
@@ -611,7 +614,8 @@
            u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
+      use cdwrk_module, only : nspec
+      use network, only : naux
       use eos_module
       use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
                                      allow_negative_energy

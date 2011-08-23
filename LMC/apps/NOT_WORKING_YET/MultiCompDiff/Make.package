@@ -1,7 +1,4 @@
 
-#
-# $Id: Make.package,v 1.3 2007-08-09 22:37:16 sepp Exp $
-#
 CEXE_sources += HT_setup.cpp
 
 FEXE_sources += PROB_2D.F

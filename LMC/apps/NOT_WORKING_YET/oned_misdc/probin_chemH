@@ -2,7 +2,7 @@
   nsteps = 10
   plot_int = 10
   chk_int = 1000
-  fixed_dt = 0.5e-4
+  fixed_dt = 0.8e-4
   stop_time = 1.e4
   cfl = 0.5
   problo = 0.
@@ -24,6 +24,7 @@
   use_temp_eqn = .false.
   use_radau = .false.
   use_rhoh2 = .true.
+  predict_T = .false.
   lim_rxns = 0
 !  V_in = 33.
   LeEQ1 = 0

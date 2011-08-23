@@ -24,6 +24,7 @@
   use_temp_eqn = .false.
   use_radau = .false.
   use_rhoh2 = .true.
+  predict_T = .false.
   lim_rxns = 0
 !  V_in = 33.
   LeEQ1 = 0
