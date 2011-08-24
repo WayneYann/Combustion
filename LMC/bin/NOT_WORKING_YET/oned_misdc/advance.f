@@ -1114,13 +1114,12 @@ c        we take the gradient of Y from the second scal argument
          enddo
          call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
          rhocp_old = cpmix * scal_old(i,Density)
-         diff_old(i,Temp) = diff_old(i,Temp)/rhocp_old
 
          do n = 1,Nspec
             is = FirstSpec + n - 1
             tforce(i,is) = diff_old(i,is)
          enddo
-         tforce(i,Temp) = diff_old(i,Temp)
+         tforce(i,Temp) = diff_old(i,Temp)/rhocp_old
          tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
       enddo
        
@@ -1197,9 +1196,6 @@ c     update species with conservative diffusion fluxes
      $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_tmp(i,is))
             end do
          end do
-
-c     compute h_m^(2),*
-         call get_hmix_given_T_RhoY(scal_new,dx)
 
       end if
 
