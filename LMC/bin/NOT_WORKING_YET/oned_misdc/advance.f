@@ -1147,9 +1147,10 @@ c        does not fill ghost cells
 
          print *,'... compute new coeffs'
 c        compute rho^(2) D_m^(2),* (for species)
-c            lambda/cp (for enthalpy) won't be used
-c            lambda^(1) (for temperature) won't be used
-         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+c        lambda/cp (for enthalpy) won't be used
+c        lambda^(1) (for temperature) won't be used
+         call calc_diffusivities_nosetbc(scal_new,beta_new,mu_dummy,dx,
+     $                                   time+dt)
       else
          print *,'... set new coeffs to old values for predictor'
          do n=1,nscal
@@ -1230,7 +1231,9 @@ c     we take the gradient of Y from the second scal argument
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag)
 
-      call rhoh_to_temp(scal_new)    
+      call rhoh_to_temp(scal_new)
+
+      return
 
 C----------------------------------------------------------------
 C   Corrector
