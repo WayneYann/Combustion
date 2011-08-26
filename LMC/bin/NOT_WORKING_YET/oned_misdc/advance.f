@@ -1068,9 +1068,14 @@ C----------------------------------------------------------------
             do n = FirstSpec,LastSpec
                scal_old(i,n) = scal_new(i,n)
             enddo
-            scal_old(i,Temp) = scal_new(i,Temp)
          enddo
       endif
+
+c     we only care about updated species out of strang_chem
+c     rho and rhoh remain constant
+c     call the EOS to get consistent temperature
+      call rhoh_to_temp(scal_new)
+
 c     
 c*****************************************************************
 c     
@@ -1318,6 +1323,11 @@ c     we take the gradient of Y from the second scal argument
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_temp,dt/2.d0)
+
+c        we only care about updated species out of strang_chem
+c        rho and rhoh remain constant
+c        call the EOS to get consistent temperature
+         call rhoh_to_temp(scal_new)
 
          I_R_new = I_R_new + I_R_temp
          I_R_new = I_R_new / 2.d0
