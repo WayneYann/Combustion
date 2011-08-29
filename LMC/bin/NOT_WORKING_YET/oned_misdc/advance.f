@@ -104,14 +104,14 @@ c     This is the only SDC option that works.  The other options
 c     live in the repository in the 3/19/11 version
 
          if (sdc_piecewise_linear) then
-            call sdc_advance(macvel,scal_old,scal_new,
-     $                       I_R_new,beta_old,beta_new,
-     $                       dx,dt,time)
-
-         else
             call sdc_advance_pl(macvel,scal_old,scal_new,
      $                          I_R_new,beta_old,beta_new,
      $                          dx,dt,time)
+
+         else
+            call sdc_advance(macvel,scal_old,scal_new,
+     $                       I_R_new,beta_old,beta_new,
+     $                       dx,dt,time)
          end if
 
 c*****************************************************************

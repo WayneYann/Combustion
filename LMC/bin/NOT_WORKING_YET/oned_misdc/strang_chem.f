@@ -125,14 +125,15 @@ c     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
             else
                scal_new(i,RhoH) = Tnew
                hmix = scal_new(i,RhoH) / scal_new(i,Density)
-               errMax = ABS(hmix*1.e-15)
+               errMax = ABS(hmix*1.e-12)
 c               errMax = hmix_TYP * 1.e-10
 
                call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
      &              Nspec,errMax,NiterMAX,res,Niter)
 
                if (Niter.lt.0) then
-                  print *,'H to T solve failed, Niter=',Niter
+                  print *,'strang_chem: H to T solve failed'
+                  print *,'Niter=',Niter
                   stop
                endif
 
