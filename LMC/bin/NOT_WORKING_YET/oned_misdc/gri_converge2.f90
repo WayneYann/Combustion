@@ -7,10 +7,10 @@ program gri_converge2
   integer i,j,k,nsteps_1,nsteps_2,nsteps_3,nx_1,nx_2,nx_3,rr_13,rr_23
   real*8 time_1,time_3,sum
   
-  real*8 data1  (1024,114)
-  real*8 data2  (2048,114)
+  real*8 data1  (4096,114)
+  real*8 data2  (4096,114)
   real*8 data3_f(4096,114)
-  real*8 data3_c(1024,114)
+  real*8 data3_c(4096,114)
 
   real*8 L0_13(114)
   real*8 L1_13(114)

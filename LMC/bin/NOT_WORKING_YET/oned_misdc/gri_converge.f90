@@ -6,9 +6,9 @@ program gri_converge
   integer i,j,k,nsteps_c,nsteps_f,nx_c,nx_f,rr
   real*8 time_c,time_f,sum
   
-  real*8 data1  (1024,114)
+  real*8 data1  (4096,114)
   real*8 data2_f(4096,114)
-  real*8 data2_c(1024,114)
+  real*8 data2_c(4096,114)
 
   real*8 L0(114)
   real*8 L1(114)
