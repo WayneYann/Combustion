@@ -116,64 +116,9 @@ C         endif
                Y(n) = RYnew(n)/scal_new(i,Density)
             enddo
 
-            if (use_temp_eqn) then
-
-               scal_new(i,RhoH) = scal_old(i,RhoH)
-     &              + dt*const_src(i,RhoH)
-     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
-               hmix = scal_new(i,RhoH) / scal_new(i,Density)
-
-               TSAVE = Tnew
-               errMax = hmix_TYP * 1.e-10
-               call FORT_TfromHYpt(Tnew,hmix,Y,
-     &              Nspec,errMax,NiterMAX,res,Niter)
-               if (Niter.lt.0) then
-                  print *,'SC: H to T solve failed in F, Niter=',Niter
-                  print *,'hmix_TYP:',hmix_TYP
-                  stop
-               endif
-               scal_new(i,Temp) = Tnew
-
-c     Define change in state due to chemistry.
-               call CKHMS(0.5d0*(Told+Tnew),IWRK,RWRK,HK)
-               call CKHMS(Told,IWRK,RWRK,HK_old)
-               call CKHMS(Tnew,IWRK,RWRK,HK_new)
-
-               I_R(i,0) = 0.d0
-               sum = 0.d0
-               do n = 1,Nspec
-                  is = FirstSpec + n - 1
-                  I_R(i,n) =
-     $                 (scal_new(i,is)-scal_old(i,is)) / dt
-     $                 - const_src(i,is)
-     $                 - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
-                  Yhalf(n) = 0.5d0*(scal_old(i,is)/rho_old
-     &                 +           Y(n)/scal_new(i,Density))
-                  I_R(i,0) = I_R(i,0) - ( HK(n)*const_src(i,is)
-     &                 + 0.5d0*(HK_old(n)*lin_src_old(i,is)
-     &                 + HK_new(n)*lin_src_new(i,is)) )
-C     sum = sum - I_R(i,n) * HK(n)
-C     write(19,*)i,HK_old(n),HK(n),HK_new(n)
-               enddo
-               rho_half = 0.5d0*(rho_old + scal_new(i,Density))
-               CALL CKCPBS(0.5d0*(scal_old(i,Temp)+Tnew),Yhalf,
-     &              IWRK,RWRK,cp)
-C     I_R(i,0) = -I_R(i,0)/(cp*rho_half)
-
-               I_R(i,0) =  
-     $              (scal_new(i,Temp)-scal_old(i,Temp)) / dt
-     $              - ( I_R(i,0) + const_src(i,RhoH)
-     $              + 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
-     $              (rho_half*cp)
-
-C     diff = sum - I_R(i,0)
-C     write(18,*)i,I_R(i,0),sum,diff
-
-            else
-
-               scal_new(i,Temp) =  Tnew
-               CALL CKHBMS(Tnew,Y,IWRK,RWRK,scal_new(i,RhoH))
-               scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
+            scal_new(i,Temp) =  Tnew
+            CALL CKHBMS(Tnew,Y,IWRK,RWRK,scal_new(i,RhoH))
+            scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
 CCCCCCCCCCCCCCC
 C               scal_new(i,RhoH) = 
 C$$$               scal_new(i,RhoH) = scal_old(i,RhoH)+
@@ -200,18 +145,16 @@ C$$$     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
 C$$$               write(*,*) scal_new(i,RhoH), rhoh_intg
 C$$$               write(*,*) scal_new(i,RhoH)-rhoh_intg
 
-               do n = 1,Nspec
-                  is = FirstSpec + n - 1
-                  I_R(i,n) =
-     $                 (scal_new(i,is)-scal_old(i,is)) / dt
-     $                 - const_src(i,is)
-     $                 - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
-               enddo
-
-            endif
+            do n = 1,Nspec
+               is = FirstSpec + n - 1
+               I_R(i,n) =
+     $              (scal_new(i,is)-scal_old(i,is)) / dt
+     $              - const_src(i,is)
+     $              - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
+            enddo
 
          endif
-C         endif
+
       enddo
 
       end

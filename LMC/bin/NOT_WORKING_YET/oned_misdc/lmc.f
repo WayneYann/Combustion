@@ -70,9 +70,9 @@ c     New arrays for MISDC.
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  num_divu_iters, num_init_iters,fixed_dt,
-     $                  nochem_hack, use_strang, use_pl, use_temp_eqn,
+     $                  nochem_hack, use_strang, use_pl,
      $                  predict_T,
-     $                  use_radau, V_in, lim_rxns, use_rhoh2, 
+     $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  thickFacTR, thickFacCH, max_vode_subcycles,
      $                  min_vode_timestep, dvd_debug
@@ -104,10 +104,7 @@ c     Set defaults, change with namelist
       nochem_hack = .false.
       use_strang = .false.
       use_pl = .false.
-      use_temp_eqn = .false.
       predict_T = .false.
-      use_radau = .false.
-      use_rhoh2 = .false.
       V_in = 1.d20
       unlim = 0
       lim_rxns = 1

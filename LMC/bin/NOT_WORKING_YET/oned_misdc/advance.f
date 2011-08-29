@@ -96,33 +96,22 @@ c     Strang split advance
          call strang_advance(macvel,scal_old,scal_new,
      $                   I_R_new,beta_old,beta_new,
      $                   dx,dt,time)
-c*****************************************************************
 
-      else if (use_radau) then
-
-         print*,"AJN - use_radau not fixed"
-         stop
-
-      else if (use_temp_eqn) then
-
-         print*,"AJN - use_temp_eqn not fixed"
-         stop
-
-      else if (use_rhoh2) then
+      else
 
 c*****************************************************************
 c     This is the only SDC option that works.  The other options 
 c     live in the repository in the 3/19/11 version
 
          if (use_pl) then
-            call advance_rhoh2_pl(macvel,scal_old,scal_new,
-     $                            I_R_new,beta_old,beta_new,
-     $                            dx,dt,time)
+            call sdc_advance(macvel,scal_old,scal_new,
+     $                       I_R_new,beta_old,beta_new,
+     $                       dx,dt,time)
 
          else
-            call advance_rhoh2(macvel,scal_old,scal_new,
-     $                         I_R_new,beta_old,beta_new,
-     $                         dx,dt,time)
+            call sdc_advance_pl(macvel,scal_old,scal_new,
+     $                          I_R_new,beta_old,beta_new,
+     $                          dx,dt,time)
          end if
 
 c*****************************************************************
@@ -195,8 +184,8 @@ c     diagnostics only
       end
 
 
-      subroutine advance_rhoh2(macvel,scal_old,scal_new,I_R_new,
-     $                         beta_old,beta_new,dx,dt,time)
+      subroutine sdc_advance(macvel,scal_old,scal_new,I_R_new,
+     $                       beta_old,beta_new,dx,dt,time)
 
       implicit none
       include 'spec.h'
@@ -616,8 +605,8 @@ C----------------------------------------------------------------
 
       end
 
-      subroutine advance_rhoh2_pl(macvel,scal_old,scal_new,I_R_new,
-     $                            beta_old,beta_new,dx,dt,time)
+      subroutine sdc_advance_pl(macvel,scal_old,scal_new,I_R_new,
+     $                          beta_old,beta_new,dx,dt,time)
 
       implicit none
       include 'spec.h'
@@ -708,7 +697,7 @@ c     compute advective forcing term
       enddo
 
 c     compute advection term
-      call scal_aofs_pl(scal_old,macvel,aofs_old,tforce,dx,dt,time)
+      call scal_aofs(scal_old,macvel,aofs_old,tforce,dx,dt,time)
 
 c     update density
       print *,'... update rho'
@@ -877,9 +866,7 @@ c           really no need to recompute this since it doesn't change
          enddo
          
 c         print *,'... compute A with updated D+R source'
-c         call scal_aofs_pl(scal_old,macvel,aofs,tforce,dx,dt,time)
-         call scal_aofs_pl(scal_new,macvel,aofs_new,tforce,dx,dt,
-     &                     time+dt)
+         call scal_aofs(scal_new,macvel,aofs_new,tforce,dx,dt,time+dt)
          aofs_avg = aofs_old + aofs_new
 
          print *,'... update rho'
