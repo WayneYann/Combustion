@@ -68,10 +68,10 @@ c     LMC alg stuff
      &     coef_avg_harm
       save /lmci/
 
-      logical use_strang, use_pl, use_temp_eqn, use_radau,
-     &     use_rhoh2, predict_T
-      common / lmcl / use_strang, use_pl, use_temp_eqn, use_radau, 
-     &     use_rhoh2, predict_T
+      logical use_strang, sdc_piecewise_linear, sdc_pred_T_into_rhoh
+      logical sdc_evolve_T_in_VODE
+      common / lmcl / use_strang, sdc_piecewise_linear, 
+     &     sdc_pred_T_into_rhoh, sdc_evolve_T_in_VODE
       save /lmcl/
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),

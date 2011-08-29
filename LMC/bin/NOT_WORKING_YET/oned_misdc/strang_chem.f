@@ -26,7 +26,6 @@
 C debugging remove me
       real*8 sum, diff, rhoh_intg
 
-
 c     Shut off diagnostics
       do_diag = 0
 
@@ -52,7 +51,7 @@ C$$$               I_R(i,n) = 0.d0
 C$$$            enddo
 C$$$         else
          if (use_strang) then
-C integrating Y_m's not rhoY_m
+C           integrating Y_m's not rhoY_m
             do n = 1,Nspec
                RYold(n) = scal_old(i,FirstSpec+n-1)/scal_old(i,Density)
             enddo
@@ -65,9 +64,12 @@ C integrating Y_m's not rhoY_m
                RYold(n) = scal_old(i,FirstSpec+n-1)
                rho_old = rho_old + RYold(n)
             enddo
-            Told = scal_old(i,Temp)
-C     FIXME!!!
-C            Told = scal_old(i,RhoH)
+            
+            if (sdc_evolve_T_in_VODE) then
+               Told = scal_old(i,Temp)
+            else
+               Told = scal_old(i,RhoH)
+            end if
 
 c     Set linear source terms in common for ode integrators access
             do n = 1,Nspec
@@ -81,18 +83,12 @@ c     Set linear source terms in common for ode integrators access
 
          endif
 
-C         write(*,*)i
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag, ifail)
          if (ifail.ne.0) then
             print *,'solve failed, i=',i
             stop
          endif
-CCC CEWG debugging fixme
-C         if (i .eq. 125) then
-C            write(*,*) 'hit 125'
-C            stop
-C         endif
 
          if(use_strang) then
 
@@ -116,102 +112,42 @@ C         endif
                Y(n) = RYnew(n)/scal_new(i,Density)
             enddo
 
-            if (use_temp_eqn) then
-
-               scal_new(i,RhoH) = scal_old(i,RhoH)
-     &              + dt*const_src(i,RhoH)
-     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
-               hmix = scal_new(i,RhoH) / scal_new(i,Density)
-
-               TSAVE = Tnew
-               errMax = hmix_TYP * 1.e-10
-               call FORT_TfromHYpt(Tnew,hmix,Y,
-     &              Nspec,errMax,NiterMAX,res,Niter)
-               if (Niter.lt.0) then
-                  print *,'SC: H to T solve failed in F, Niter=',Niter
-                  print *,'hmix_TYP:',hmix_TYP
-                  stop
-               endif
-               scal_new(i,Temp) = Tnew
-
-c     Define change in state due to chemistry.
-               call CKHMS(0.5d0*(Told+Tnew),IWRK,RWRK,HK)
-               call CKHMS(Told,IWRK,RWRK,HK_old)
-               call CKHMS(Tnew,IWRK,RWRK,HK_new)
-
-               I_R(i,0) = 0.d0
-               sum = 0.d0
-               do n = 1,Nspec
-                  is = FirstSpec + n - 1
-                  I_R(i,n) =
-     $                 (scal_new(i,is)-scal_old(i,is)) / dt
-     $                 - const_src(i,is)
-     $                 - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
-                  Yhalf(n) = 0.5d0*(scal_old(i,is)/rho_old
-     &                 +           Y(n)/scal_new(i,Density))
-                  I_R(i,0) = I_R(i,0) - ( HK(n)*const_src(i,is)
-     &                 + 0.5d0*(HK_old(n)*lin_src_old(i,is)
-     &                 + HK_new(n)*lin_src_new(i,is)) )
-C     sum = sum - I_R(i,n) * HK(n)
-C     write(19,*)i,HK_old(n),HK(n),HK_new(n)
-               enddo
-               rho_half = 0.5d0*(rho_old + scal_new(i,Density))
-               CALL CKCPBS(0.5d0*(scal_old(i,Temp)+Tnew),Yhalf,
-     &              IWRK,RWRK,cp)
-C     I_R(i,0) = -I_R(i,0)/(cp*rho_half)
-
-               I_R(i,0) =  
-     $              (scal_new(i,Temp)-scal_old(i,Temp)) / dt
-     $              - ( I_R(i,0) + const_src(i,RhoH)
-     $              + 0.5d0*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH)) )/
-     $              (rho_half*cp)
-
-C     diff = sum - I_R(i,0)
-C     write(18,*)i,I_R(i,0),sum,diff
-
-            else
+            if (sdc_evolve_T_in_VODE) then
 
                scal_new(i,Temp) =  Tnew
                CALL CKHBMS(Tnew,Y,IWRK,RWRK,scal_new(i,RhoH))
                scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
-CCCCCCCCCCCCCCC
-C               scal_new(i,RhoH) = 
-C$$$               scal_new(i,RhoH) = scal_old(i,RhoH)+
-C$$$     &              + dt*const_src(i,RhoH)
-C$$$     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
-C$$$               hmix = scal_new(i,RhoH) / scal_new(i,Density)
-C$$$               errMax = hmix_TYP * 1.e-10
-C$$$C               call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
-C$$$C     &              Nspec,errMax,NiterMAX,res,Niter)
-C$$$               call FORT_TfromHYpt(Tnew,hmix,Y,
-C$$$     &              Nspec,errMax,NiterMAX,res,Niter)
-C$$$               if (Niter.lt.0) then
-C$$$                  print *,'SC: H to T solve failed in F, Niter=',Niter
-C$$$                  print *,'hmix_TYP:',hmix_TYP
-C$$$                  stop
-C$$$               endif
-C$$$               scal_new(i,Temp) = Tnew
-CCCCCCCCCCc
 
-C CEG just chekcing FIXME-- biggest difference ~5/10^5 
-C$$$               rhoh_intg = scal_old(i,RhoH)+
-C$$$     &              + dt*const_src(i,RhoH)
-C$$$     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
-C$$$               write(*,*) scal_new(i,RhoH), rhoh_intg
-C$$$               write(*,*) scal_new(i,RhoH)-rhoh_intg
+c               scal_new(i,RhoH) = scal_old(i,RhoH)+
+c     &              + dt*const_src(i,RhoH)
+c     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
 
-               do n = 1,Nspec
-                  is = FirstSpec + n - 1
-                  I_R(i,n) =
-     $                 (scal_new(i,is)-scal_old(i,is)) / dt
-     $                 - const_src(i,is)
-     $                 - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
-               enddo
+            else
+               scal_new(i,RhoH) = Tnew
+               hmix = scal_new(i,RhoH) / scal_new(i,Density)
+               errMax = ABS(hmix*1.e-15)
+c               errMax = hmix_TYP * 1.e-10
 
-            endif
+               call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
+     &              Nspec,errMax,NiterMAX,res,Niter)
+
+               if (Niter.lt.0) then
+                  print *,'H to T solve failed, Niter=',Niter
+                  stop
+               endif
+
+            end if
+
+            do n = 1,Nspec
+               is = FirstSpec + n - 1
+               I_R(i,n) =
+     $              (scal_new(i,is)-scal_old(i,is)) / dt
+     $              - const_src(i,is)
+     $              - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
+            enddo
 
          endif
-C         endif
+
       enddo
 
       end

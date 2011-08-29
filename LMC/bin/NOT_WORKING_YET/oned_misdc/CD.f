@@ -405,7 +405,12 @@ CCCCCCCCCCCCCCCCCC
 C     For strang
 C     Variables in Z are:  Z(0)   = T
 C                          Z(K) = Y(K)
-C     For SDC
+C
+C     For SDC and sdc_evolve_T_in_VODE = .false.
+C     Variables in Z are:  Z(0)   = rho*h
+C                          Z(K) = rho*Y(K)
+C
+C     For SDC and sdc_evolve_T_in_VODE = .true.
 C     Variables in Z are:  Z(0)   = T
 C                          Z(K) = rho*Y(K)
 C
@@ -495,44 +500,49 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
             Y(K) = Z(K)/RHO
          enddo
 
-         T = Z(0)
+         if (sdc_evolve_T_in_VODE) then
 
-C$$$         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
-C$$$         errMax = ABS(hmix_TYP*1.e-12)
-C$$$C     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-C$$$         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
-C$$$         if (Niter.lt.0) then
-C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
-C$$$            stop
-C$$$         endif
-c     print *,'  ** Fdiag',TIME,T,Z(1),Niter
+            T = Z(0)
+            call CKCPBS(T,Y,IWRK,RWRK,CPB)
 
-C CEG trying something new with the temp evolution FIXME??
-C         call CKRHOPY(RHO,Pcgs,Y,IWRK,RWRK,T)
-C         T = Z(0)
-C FIXME
-C$$$         errMax = ABS(hmix_TYP*1.e-12)
-C$$$c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-C$$$         call FORT_TfromHYpt(T,Z(0),Y,Nspec,errMax,NiterMAX,res,Niter)
-C$$$         if (Niter.lt.0) then
-C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
-C$$$            stop
-C$$$         endif
-CCCCC
-         call CKCPBS(T,Y,IWRK,RWRK,CPB)
+         else
+
+            hmix = (rhoh_INIT + c_0(0)*
+     &           TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
+            errMax = ABS(hmix*1.e-15)
+c            errMax = ABS(hmix_TYP*1.e-12)
+            call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,
+     &                          res,Niter)
+            if (Niter.lt.0) then
+               print *,'F: H to T solve failed in F, Niter=',Niter
+               stop
+            endif
+
+         end if
+
       endif
 
-      call CKHMS(T,IWRK,RWRK,HK)
-      call CKWC(T,C,IWRK,RWRK,WDOTK)
-      SUM = 0.d0
-      DO K = 1, Nspec
-          ZP(K) = WDOTK(K)*mwt(K)/thickFacCH
-     &            + c_0(K) + c_1(K)*TIME
-         SUM = SUM - HK(K)*ZP(K)
-      END DO
-      ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
-C FIXME!!!!!!!
-C      ZP(0) = c_0(0) + c_1(0)*TIME 
+      if (use_strang .or. sdc_evolve_T_in_VODE) then
+
+         call CKHMS(T,IWRK,RWRK,HK)
+         call CKWC(T,C,IWRK,RWRK,WDOTK)
+         SUM = 0.d0
+         DO K = 1, Nspec
+            ZP(K) = WDOTK(K)*mwt(K)/thickFacCH
+     &           + c_0(K) + c_1(K)*TIME
+            SUM = SUM - HK(K)*ZP(K)
+         END DO
+         ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
+      else
+
+         call CKWC(T,C,IWRK,RWRK,WDOTK)
+         do k= 1, Nspec
+            ZP(k) = WDOTK(k)*mwt(k)/thickFacCH
+     &           + c_0(k) + c_1(k)*TIME
+         end do
+         ZP(0) = c_0(0) + c_1(0)*TIME 
+
+      end if
 
  100  if(use_strang) then
          DO K = 1, Nspec
@@ -669,7 +679,8 @@ C      DVIWRK(10) = 0
 c     Always form Jacobian to start
       FIRST = .TRUE.
 
-      if (do_diag.eq.1) then
+      if (do_diag .eq. 1 .and. 
+     &     (use_strang .or. sdc_evolve_T_in_VODE)) then
          FuncCount = 0
          do n=1,Nspec
             C(n) = Z(n)*invmwt(n)
@@ -698,7 +709,8 @@ c     Always form Jacobian to start
 
          TT1 = TT2
 
-         if (do_diag.eq.1) then
+         if (do_diag .eq. 1 .and. 
+     &        (use_strang .or. sdc_evolve_T_in_VODE)) then
             do n=1,Nspec
                C(n) = Z(n)*invmwt(n)
             enddo

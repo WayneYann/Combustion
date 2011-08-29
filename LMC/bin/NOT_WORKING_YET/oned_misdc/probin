@@ -20,11 +20,9 @@
   misdc_iterMAX = 1
   nochem_hack = .false.
   use_strang = .false.
-  use_pl = .false.
-  use_temp_eqn = .false.
-  use_radau = .false.
-  use_rhoh2 = .true.
-  predict_T = .false.
+  sdc_piecewise_linear = .false.
+  sdc_pred_T_into_rhoh = .false.
+  sdc_evolve_T_in_VODE = .false.
   lim_rxns = 0
 !  V_in = 33.
   LeEQ1 = 0
