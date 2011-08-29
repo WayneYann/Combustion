@@ -30,7 +30,7 @@
       dthx = 0.5d0 * dt / dx
       eps = 1.e-6
       
-      if (use_pl) then
+      if (sdc_piecewise_linear) then
          dth = 0.d0
          dthx = 0.d0
       end if

@@ -68,8 +68,9 @@ c     LMC alg stuff
      &     coef_avg_harm
       save /lmci/
 
-      logical use_strang, use_pl, predict_T
-      common / lmcl / use_strang, use_pl, predict_T
+      logical use_strang, sdc_piecewise_linear, sdc_pred_T_into_rhoh
+      common / lmcl / use_strang, sdc_piecewise_linear, 
+     &     sdc_pred_T_into_rhoh
       save /lmcl/
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),

@@ -103,7 +103,7 @@ c*****************************************************************
 c     This is the only SDC option that works.  The other options 
 c     live in the repository in the 3/19/11 version
 
-         if (use_pl) then
+         if (sdc_piecewise_linear) then
             call sdc_advance(macvel,scal_old,scal_new,
      $                       I_R_new,beta_old,beta_new,
      $                       dx,dt,time)
@@ -267,7 +267,7 @@ c        we take the gradient of Y from the second scal argument
      $                           dx,time)
       end if
 
-      if (predict_T) then
+      if (sdc_pred_T_into_rhoh) then
 
 c        compute del dot lambda grad T + rho D grad h dot grad Y
 c        the rho D grad Y term is now computed conservatively
@@ -473,7 +473,7 @@ c           really no need to recompute this since it doesn't change
             tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
          enddo
 
-         if (predict_T) then
+         if (sdc_pred_T_into_rhoh) then
 
             do i = 0,nx-1
                tforce(i,Temp) = diff_old(i,Temp)/rhocp_old
