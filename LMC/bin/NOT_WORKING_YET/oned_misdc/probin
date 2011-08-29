@@ -22,6 +22,7 @@
   use_strang = .false.
   sdc_piecewise_linear = .false.
   sdc_pred_T_into_rhoh = .false.
+  sdc_evolve_T_in_VODE = .false.
   lim_rxns = 0
 !  V_in = 33.
   LeEQ1 = 0

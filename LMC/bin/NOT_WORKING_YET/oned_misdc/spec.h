@@ -69,8 +69,9 @@ c     LMC alg stuff
       save /lmci/
 
       logical use_strang, sdc_piecewise_linear, sdc_pred_T_into_rhoh
+      logical sdc_evolve_T_in_VODE
       common / lmcl / use_strang, sdc_piecewise_linear, 
-     &     sdc_pred_T_into_rhoh
+     &     sdc_pred_T_into_rhoh, sdc_evolve_T_in_VODE
       save /lmcl/
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),

@@ -71,7 +71,7 @@ c     New arrays for MISDC.
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  num_divu_iters, num_init_iters,fixed_dt,
      $                  nochem_hack, use_strang, sdc_piecewise_linear,
-     $                  sdc_pred_T_into_rhoh,
+     $                  sdc_pred_T_into_rhoh, sdc_evolve_T_in_VODE,
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  thickFacTR, thickFacCH, max_vode_subcycles,
@@ -105,6 +105,7 @@ c     Set defaults, change with namelist
       use_strang = .false.
       sdc_piecewise_linear = .false.
       sdc_pred_T_into_rhoh = .false.
+      sdc_evolve_T_in_VODE = .false.
       V_in = 1.d20
       unlim = 0
       lim_rxns = 1
