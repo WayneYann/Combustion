@@ -1264,8 +1264,6 @@ c     we take the gradient of Y from the second scal argument
 
       call rhoh_to_temp(scal_new)
 
-      return
-
 C----------------------------------------------------------------
 C   Corrector
 
