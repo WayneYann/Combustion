@@ -88,11 +88,6 @@ c                   lambda      (for temperature)
 
 c*****************************************************************
 c     Strang split advance
-
-         if (LeEQ1 .eq. 0) then
-            print*,"LeEQ1 for use_strang not completed"
-         end if
-
          call strang_advance(macvel,scal_old,scal_new,
      $                   I_R_new,beta_old,beta_new,
      $                   dx,dt,time)
@@ -1106,8 +1101,7 @@ C----------------------------------------------------------------
 c     we only care about updated species out of strang_chem
 c     rho and rhoh remain constant
 c     call the EOS to get consistent temperature
-      call rhoh_to_temp(scal_new)
-
+      call rhoh_to_temp(scal_old)
 c     
 c*****************************************************************
 c     
@@ -1175,7 +1169,7 @@ c     coeffs, or simply start by copying from previous time step
             dRhs(i,0) = 0.0d0
          enddo
          call update_temp(scal_old,scal_new,aofs,
-     $                    alpha,beta_old,beta_new,dRhs(0,0),
+     $                    alpha,beta_old,beta_old,dRhs(0,0),
      $                    Rhs(0,Temp),dx,dt,be_cn_theta,time)
 c        just uses RHS and overwrites snew
 c        does not fill ghost cells
