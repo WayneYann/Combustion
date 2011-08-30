@@ -484,8 +484,7 @@ c           really no need to recompute this since it doesn't change
                end do
             enddo
          
-
-      end if
+         end if
          
          print *,'... compute A with updated D+R source'
          call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
@@ -614,6 +613,7 @@ C----------------------------------------------------------------
       real*8  scal_old(-1:nx  ,nscal)
       real*8   I_R_new(0:nx-1,0:maxspec)
       real*8    macvel(0 :nx  )
+      real*8  aofs_old(0 :nx-1,nscal)
       real*8  beta_old(-1:nx,nscal)
       real*8  beta_new(-1:nx,nscal)
       real*8  mu_dummy(-1:nx)
@@ -622,14 +622,13 @@ C----------------------------------------------------------------
       real*8 dt
       real*8 time
       real*8 be_cn_theta
-
-      real*8  aofs_old(0 :nx-1,nscal)
-      real*8  aofs_new(0 :nx-1,nscal)
-      real*8  aofs_avg(0 :nx-1,nscal)
       
       real*8        diff_old(0:nx-1,nscal)
       real*8        diff_new(0:nx-1,nscal)
       real*8        diff_hat(0:nx-1,nscal)
+
+      real*8  aofs_new(0 :nx-1,nscal)
+      real*8  aofs_avg(0 :nx-1,nscal)
 
       real*8   const_src(0:nx-1,nscal)
       real*8 lin_src_old(0:nx-1,nscal)
@@ -649,6 +648,11 @@ C----------------------------------------------------------------
       real*8 diffdiff_old(0:nx-1)
       real*8 diffdiff_new(0:nx-1)
       real*8 diffdiff_hat(0:nx-1)
+
+      real*8 Y(maxspec)
+      real*8 hi(maxspec,-1:nx)
+      real*8 RWRK, cpmix, rhocp_old
+      integer IWRK
 
       diffdiff_old = 0.d0
       diffdiff_new = 0.d0
@@ -684,6 +688,33 @@ c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
      $                           spec_flux_hi,beta_old,diffdiff_old,
      $                           dx,time)
+      end if
+
+      if (sdc_pred_T_into_rhoh) then
+
+c        compute del dot lambda grad T + rho D grad h dot grad Y
+c        the rho D grad Y term is now computed conservatively
+         call get_temp_visc_terms(scal_old,beta_old,
+     &                            diff_old(0,Temp),dx,time)
+
+         do i=-1,nx
+            call CKHMS(scal_old(i,Temp),IWRK,RWRK,hi(1,i))
+         end do
+
+         do i = 0,nx-1
+            do n = 1,Nspec
+               Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
+            enddo
+            call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
+            rhocp_old = cpmix * scal_old(i,Density)
+            tforce(i,Temp) = diff_old(i,Temp)/rhocp_old
+
+            do n=1,Nspec
+               tforce(i,Temp) = tforce(i,Temp) 
+     &              - I_R_new(i,n)*hi(n,i)/rhocp_old
+            end do
+         enddo
+      
       end if
 
 c     compute advective forcing term
@@ -741,10 +772,12 @@ c        simply extract D for RhoX
 
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
+c        DON'T FILL GHOST CELLS OR ELSE VISC WILL BE INCONSISTENT
+c        WITH GHOST CELLS USED IN CN_SOLVE
          call get_spec_visc_terms_nosetbc(scal_new,beta_old,
-     $                            diff_hat(0,FirstSpec),
-     $                            spec_flux_lo,spec_flux_hi,
-     $                            dx,time)
+     $                                    diff_hat(0,FirstSpec),
+     $                                    spec_flux_lo,spec_flux_hi,
+     $                                    dx,time)
 
 c        update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -786,7 +819,7 @@ c     extract D for RhoH
       do i = 0,nx-1
          diff_hat(i,RhoH) = 2.d0*((scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
      $        - aofs_old(i,RhoH) - dRhs(i,0)/dt 
-     $        - 0.5d0*diff_old(i,RhoH) )
+     &        - 0.5d0*diff_old(i,RhoH) )
       enddo
 
       if (nochem_hack) then
@@ -796,16 +829,15 @@ c     extract D for RhoH
          do n = 1,nscal
             do i = 0,nx-1
                const_src(i,n) = aofs_old(i,n) 
-     $              + 0.5d0*diff_hat(i,n) + 0.5d0*diff_old(i,n)
-               lin_src_old(i,n) = 0.d0
-               lin_src_new(i,n) = 0.d0
+               lin_src_old(i,n) = diff_old(i,n)
+               lin_src_new(i,n) = diff_hat(i,n)
             enddo
          enddo
 
 c        add differential diffusion
          do i=0,nx-1
-            const_src(i,RhoH) = const_src(i,RhoH)
-     $           + 0.5d0*(diffdiff_old(i)+diffdiff_hat(i))
+            lin_src_old(i,RhoH) = lin_src_old(i,RhoH) + diffdiff_old(i)
+            lin_src_new(i,RhoH) = lin_src_new(i,RhoH) + diffdiff_hat(i)
          end do
 
          call strang_chem(scal_old,scal_new,
@@ -864,10 +896,23 @@ c           we take the gradient of Y from the second scal argument
 c           really no need to recompute this since it doesn't change
             tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
          enddo
+
+         if (sdc_pred_T_into_rhoh) then
+
+            do i = 0,nx-1
+               tforce(i,Temp) = diff_old(i,Temp)/rhocp_old
+
+               do n=1,Nspec
+                  tforce(i,Temp) = tforce(i,Temp) 
+     &                 - I_R_new(i,n)*hi(n,i)/rhocp_old
+               end do
+            enddo
          
-c         print *,'... compute A with updated D+R source'
-         call scal_aofs(scal_new,macvel,aofs_new,tforce,dx,dt,time+dt)
-         aofs_avg = aofs_old + aofs_new
+         end if
+         
+         call scal_aofs(scal_new,macvel,aofs_new,tforce,dx,dt,time)
+
+         aofs_avg = (aofs_old + aofs_new ) / 2.d0
 
          print *,'... update rho'
          call update_rho(scal_old,scal_new,aofs_avg,dx,dt)
@@ -955,8 +1000,7 @@ c        extract D for RhoH
             print *,'... react with const sources'
             do n = 1,nscal
                do i = 0,nx-1
-                  const_src(i,n) = 
-     $                 + diff_hat(i,n) - diff_new(i,n)
+                  const_src(i,n) = diff_hat(i,n) - diff_new(i,n)
 
                   lin_src_old(i,n) = aofs_old(i,n) + diff_old(i,n)
                   lin_src_new(i,n) = aofs_new(i,n) + diff_new(i,n)
@@ -965,8 +1009,10 @@ c        extract D for RhoH
 
 c           add differential diffusion
             do i=0,nx-1
-               const_src(i,RhoH) = const_src(i,RhoH)
-     $              + 0.5d0*(diffdiff_old(i)+diffdiff_new(i))
+               lin_src_old(i,RhoH) = lin_src_old(i,RhoH) 
+     &              + diffdiff_old(i)
+               lin_src_new(i,RhoH) = lin_src_new(i,RhoH) 
+     &              + diffdiff_new(i)
             end do
             
             call strang_chem(scal_old,scal_new,
@@ -982,7 +1028,6 @@ C----------------------------------------------------------------
       enddo
 
       end
-
 
       subroutine strang_advance(macvel,scal_old,scal_new,I_R_new,
      $                          beta_old,beta_new,dx,dt,time)
