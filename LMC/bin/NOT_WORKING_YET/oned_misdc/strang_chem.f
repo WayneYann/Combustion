@@ -125,8 +125,7 @@ c     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
             else
                scal_new(i,RhoH) = Tnew
                hmix = scal_new(i,RhoH) / scal_new(i,Density)
-               errMax = ABS(hmix*1.e-12)
-c               errMax = hmix_TYP * 1.e-10
+               errMax = hmix_TYP*1.e-20
 
                call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
      &              Nspec,errMax,NiterMAX,res,Niter)
@@ -273,7 +272,7 @@ C$$$     &           + dt*const_src(i,RhoH)
 C$$$     &           + 0.5d0*dt*dt*lin_src(i,RhoH)
 
 C$$$            hmix = scal_new(i,RhoH) / scal_new(i,Density)
-C$$$            errMax = hmix_TYP * 1.e-10
+C$$$            errMax = hmix_TYP*1.e-20
 C$$$            do n = 1,Nspec
 C$$$               Y(n) = scal_new(i,FirstSpec+n-1)/scal_new(i,Density)
 C$$$            enddo
