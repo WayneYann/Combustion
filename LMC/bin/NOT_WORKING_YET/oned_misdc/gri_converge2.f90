@@ -1,11 +1,13 @@
 program gri_converge2
 
+  implicit none
+
   character in1*(32)
   character in2*(32)
   character in3*(32)
 
   integer i,j,k,nsteps_1,nsteps_2,nsteps_3,nx_1,nx_2,nx_3,rr_13,rr_23
-  real*8 time_1,time_3,sum
+  real*8 time_1,time_2,time_3,sum
   
   real*8 data1  (4096,114)
   real*8 data2  (4096,114)
@@ -117,7 +119,7 @@ program gri_converge2
 
   print*,"nsteps =",nsteps_1,nsteps_2,nsteps_3
   print*,"nx     =",nx_1,nx_2,nx_3
-  write(*,1000) "time   =",time_1,time_3,time_3
+  write(*,1000) "time   =",time_1,time_2,time_3
   print*,""
   write(*,1001) "L1 NORM: H2     =",L1_13( 2),L1_23( 2),log(L1_13( 2)/L1_23( 2))/log(2.d0)
   write(*,1001) "L1 NORM: H      =",L1_13( 3),L1_23( 3),log(L1_13( 3)/L1_23( 3))/log(2.d0)
