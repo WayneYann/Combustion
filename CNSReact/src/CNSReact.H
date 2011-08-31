@@ -5,6 +5,7 @@
 #include <AmrLevel.H>
 #include <ErrorList.H>
 #include <FluxRegister.H>
+#include <ChemKinDriver.H>
 
 #include <iostream>
 
@@ -12,9 +13,6 @@ using std::istream;
 using std::ostream;
 
 enum StateType { State_Type = 0,
-#ifdef REACTIONS
-                 Reactions_Type,
-#endif
                  NUM_STATE_TYPE };
 
 //
@@ -232,6 +230,8 @@ public:
     static int       FirstSpec, LastSpec, NumSpec;
     static int       FirstAux,  LastAux,  NumAux;
 
+    static ChemKinDriver& getChemDriver ();
+
 protected:
 
     //
@@ -242,7 +242,7 @@ protected:
     //
     //  Call extern/networks/.../network.f90::network_init()
     //
-    static void network_init ();
+    // static void network_init ();
 
     static void read_params ();
 
@@ -343,6 +343,11 @@ protected:
 
     // There can be only one Diffusion object, it covers all levels:
     static class Diffusion *diffusion;
+
+    static ChemKinDriver* chemDriver;
+    static int       FirstSpec;
+    static int       LastSpec;
+
 };    
 
 //
@@ -398,4 +403,12 @@ CNSReact::getFluxReg (int lev)
 {
     return getLevel(lev).getFluxReg();
 }
+
+inline
+ChemKinDriver&
+HyperCLaw::getChemDriver ()
+{
+    return *chemDriver;
+}
+
 #endif /*_CNSReact_H_*/

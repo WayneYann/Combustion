@@ -8,18 +8,6 @@ BL_FORT_PROC_DECL(FILCC,filcc)
                  const Real * dx_crse, const Real * xlo,
                  const int * bc);
 
-BL_FORT_PROC_DECL(CA_NETWORK_INIT,ca_network_init)();
-
-BL_FORT_PROC_DECL(GET_NUM_SPEC,get_num_spec)(int* nspec);
-
-BL_FORT_PROC_DECL(GET_NUM_AUX,get_num_aux)(int* naux);
-
-BL_FORT_PROC_DECL(GET_SPEC_NAMES,get_spec_names)(int* spec_names, int* ispec, int* len);
-
-BL_FORT_PROC_DECL(GET_AUX_NAMES,get_aux_names)(int* aux_names, int* iaux, int* len);
-
-BL_FORT_PROC_DECL(GET_METHOD_PARAMS,get_method_params)(int* HYP_GROW);
-
 BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
     (const int& dm,
      const int& Density, const int& Xmom, 
@@ -192,13 +180,6 @@ BL_FORT_PROC_DECL(CA_ESTDT,ca_estdt)
     (const BL_FORT_FAB_ARG(state),
      const int lo[], const int hi[],
      const Real dx[], Real* dt);
-
-BL_FORT_PROC_DECL(CA_ESTDT_BURNING,ca_estdt_burning)
-    (const BL_FORT_FAB_ARG(state),
-     const BL_FORT_FAB_ARG(reaction_terms),
-     const int lo[], const int hi[],
-     Real* dt_hydro, Real* dt_nuc, 
-     int* initial_step);
 
 BL_FORT_PROC_DECL(CA_UMDRV,ca_umdrv)
     (const int    lo[], const int    hi[],

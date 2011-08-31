@@ -73,9 +73,9 @@
 
       subroutine ca_compute_temp(lo,hi,state,state_l1,state_h1)
 
-      use network, only : nspec, naux
       use eos_module
-      use meth_params_module, only : NVAR, URHO, UMX, UEINT, UTEMP, UFS, UFX, &
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : NVAR, URHO, UMX, UEINT, UTEMP, UFS, &
                                      small_temp, allow_negative_energy
 
       implicit none
@@ -85,7 +85,7 @@
 
       integer          :: i
       integer          :: pt_index(1)
-      double precision :: eint,xn(nspec+naux)
+      double precision :: eint,xn(nspec)
       double precision :: dummy_gam,dummy_pres,dummy_c,dummy_dpdr,dummy_dpde
 
       do i = lo(1),hi(1)
@@ -111,8 +111,6 @@
       do i = lo(1),hi(1)
 
          xn(1:nspec)  = state(i,UFS:UFS+nspec-1) / state(i,URHO)
-         if (naux > 0) &
-           xn(nspec+1:nspec+naux) = state(i,UFX:UFX+naux-1) / state(i,URHO)
 
          eint = state(i,UEINT) / state(i,URHO)
 
@@ -131,7 +129,7 @@
 
       subroutine normalize_species_fluxes(flux,flux_l1,flux_h1,lo,hi)
 
-      use network, only : nspec
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : NVAR, URHO, UFS
 
       implicit none
@@ -168,8 +166,8 @@
       subroutine enforce_minimum_density( uin,  uin_l1, uin_h1, &
                                           uout,uout_l1,uout_h1,&
                                           lo, hi, verbose)
-      use network, only : nspec, naux
-      use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UEINT, UFS, UFX, UFA, small_dens, nadv
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UEINT, UFS, UFA, small_dens, nadv
 
       implicit none
 
@@ -239,9 +237,6 @@
             do n = UFS, UFS+nspec-1
                uout(i,n) = uout(i,n) * fac(i)
             end do
-            do n = UFX, UFX+naux-1
-               uout(i,n) = uout(i,n) * fac(i)
-            end do
             do n = UFA, UFA+nadv-1
                uout(i,n) = uout(i,n) * fac(i)
             end do
@@ -260,7 +255,7 @@
 
       subroutine ca_enforce_nonnegative_species(uout,uout_l1,uout_h1,lo,hi)
 
-      use network, only : nspec
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : NVAR, URHO, UFS
 
       implicit none
@@ -353,7 +348,7 @@
 
       subroutine normalize_new_species(u,u_l1,u_h1,lo,hi)
 
-      use network, only : nspec
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : NVAR, URHO, UFS
 
       implicit none
@@ -390,8 +385,8 @@
       subroutine ca_reset_internal_energy(u,u_l1,u_h1,lo,hi,verbose)
 
       use eos_module
-      use network, only : nspec, naux
-      use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UEINT, UFS, UFX, small_temp, allow_negative_energy
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UEINT, UFS, small_temp, allow_negative_energy
 
       implicit none
 
@@ -401,7 +396,7 @@
 
       ! Local variables
       integer          :: i
-      double precision :: Up, ke, rho_eint, eint_new, x_in(1:nspec+naux), dummy_pres
+      double precision :: Up, ke, rho_eint, eint_new, x_in(1:nspec), dummy_pres
 
       ! Reset internal energy if negative.
       if (allow_negative_energy .eq. 0) then
@@ -426,8 +421,6 @@
             else if (u(i,UEINT) .le. 0.d0) then
    
                x_in(1:nspec) = u(i,UFS:UFS+nspec-1) / u(i,URHO)
-               if (naux > 0) &
-                 x_in(nspec+1:nspec+naux)  = u(i,UFX:UFX+naux -1) / u(i,URHO)
    
                call eos_given_RTX(eint_new, dummy_pres, u(i,URHO), small_temp, x_in)
                if (verbose .gt. 0) then

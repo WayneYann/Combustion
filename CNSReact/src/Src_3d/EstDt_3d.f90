@@ -1,10 +1,9 @@
      subroutine ca_estdt(u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,lo,hi,dx,dt)
 
      use cdwrk_module, only : nspec
-     use network, only : naux
      use eos_module
      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, &
-                                    UFX, allow_negative_energy
+                                    allow_negative_energy
 
      implicit none
 
@@ -13,7 +12,7 @@
      double precision :: u(u_l1:u_h1,u_l2:u_h2,u_l3:u_h3,NVAR)
      double precision :: dx(3), dt
 
-     double precision :: p, e, gamc, c, T, dpdr, dpde, xn(nspec+naux)
+     double precision :: p, e, gamc, c, T, dpdr, dpde, xn(nspec)
      double precision :: rhoInv,ux,uy,uz,dt1,dt2,dt3
      integer          :: i,j,k
      integer          :: pt_index(3)
@@ -35,9 +34,6 @@
                e  = u(i,j,k,UEINT)*rhoInv
 
                xn(1:nspec)=u(i,j,k,UFS:UFS+nspec-1)*rhoInv
-
-               if (naux > 0) &
-                  xn(nspec+1:nspec+naux)=u(i,j,k,UFX:UFX+naux-1)*rhoInv
 
                ! Protect against negative e
                if (e .gt. 0.d0 .or. allow_negative_energy.eq.1) then

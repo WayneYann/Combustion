@@ -76,12 +76,20 @@ int          CNSReact::allow_negative_energy = 1;
 int          CNSReact::do_special_tagging = 0;
 int          CNSReact::ppm_type = 2;
 
+ChemDriver*    CNSReact::chemDriver = 0;
+int            CNSReact::NumSpec    = 0;
+int            CNSReact::FirstSpec  = -1;
+int            CNSReact::LastSpec   = -1;
+
+
 // Note: CNSReact::variableSetUp is in CNSReact_setup.cpp
 
 void
 CNSReact::variableCleanUp () 
 {
     desc_lst.clear();
+    delete chemDriver;
+    chemDriver = 0;
 }
 
 void
@@ -112,7 +120,9 @@ CNSReact::read_params ()
     pp.query("small_dens",small_dens);
     pp.query("small_temp",small_temp);
     pp.query("small_pres",small_pres);
-    pp.query("gamma",gamma);
+
+    std::string tranfile=""; pp.query("tranfile",tranfile);
+    chemDriver = new ChemDriver(tranfile);
 
     // Get boundary conditions
     Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
@@ -232,6 +242,8 @@ CNSReact::CNSReact (Amr&            papa,
     :
     AmrLevel(papa,lev,level_geom,bl,time) 
 {
+    BL_ASSERT(numSpecMax >= getChemDriver().numSpecies());
+
     buildMetrics();
 
     flux_reg = 0;
@@ -250,6 +262,7 @@ CNSReact::restart (Amr&     papa,
                  bool     bReadSpecial)
 {
     AmrLevel::restart(papa,is,bReadSpecial);
+    BL_ASSERT(numSpecMax >= getChemDriver().numSpecies());
 
     buildMetrics();
 
@@ -285,42 +298,89 @@ CNSReact::setPlotVariables ()
 {
   AmrLevel::setPlotVariables();
 
+  const Array<std::string>& names = getChemSolve().speciesNames();
+
   ParmParse pp("cnsreact");
 
-  bool plot_X;
+    bool plot_rhoY,plot_massFrac,plot_moleFrac,plot_conc;
+    plot_rhoY=plot_massFrac=plot_moleFrac=plot_conc = false;
 
-  if (pp.query("plot_X",plot_X))
-  {
-      if (plot_X)
-      {
-          //
-	  // Get the number of species from the network model.
-          //
-	  BL_FORT_PROC_CALL(GET_NUM_SPEC, get_num_spec)(&NumSpec);
-          //
-	  // Get the species names from the network model.
-          //
-	  for (int i = 0; i < NumSpec; i++)
-          {
-              int len = 20;
-              Array<int> int_spec_names(len);
-              //
-              // This call return the actual length of each string in "len"
-              //
-              BL_FORT_PROC_CALL(GET_SPEC_NAMES, get_spec_names)
-                  (int_spec_names.dataPtr(),&i,&len);
-              char* spec_name = new char[len+1];
-              for (int j = 0; j < len; j++) 
-                  spec_name[j] = int_spec_names[j];
-              spec_name[len] = '\0';
-	      string spec_string = "X(";
-              spec_string += spec_name;
-              spec_string += ')';
-	      parent->addDerivePlotVar(spec_string);
-              delete [] spec_name;
-	  }
-      }
-  }
+    if (pp.query("plot_massfrac",plot_massFrac))
+    {
+        if (plot_massFrac)
+        {
+            for (int i = 0; i < names.size(); i++)
+            {
+                const std::string name = "Y("+names[i]+")";
+                parent->addDerivePlotVar(name);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < names.size(); i++)
+            {
+                const std::string name = "Y("+names[i]+")";
+                parent->deleteDerivePlotVar(name);
+            }
+        }
+    }
+
+    if (pp.query("plot_molefrac",plot_moleFrac))
+    {
+        if (plot_moleFrac)
+            parent->addDerivePlotVar("molefrac");
+        else
+            parent->deleteDerivePlotVar("molefrac");
+    }
+
+    if (pp.query("plot_concentration",plot_conc))
+    {
+        if (plot_conc)
+            parent->addDerivePlotVar("concentration");
+        else
+            parent->deleteDerivePlotVar("concentration");
+    }
+
+    if (pp.query("plot_rhoY",plot_rhoY))
+    {
+        if (plot_rhoY)
+        {
+            for (int i = 0; i < names.size(); i++)
+            {
+                const std::string name = "rho.Y("+names[i]+")";
+                parent->addStatePlotVar(name);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < names.size(); i++)
+            {
+                const std::string name = "rho.Y("+names[i]+")";
+                parent->deleteStatePlotVar(name);
+            }
+        }
+    }
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+    {
+        std::cout << "\nState Plot Vars: ";
+
+        std::list<std::string>::const_iterator li = parent->statePlotVars().begin(), end = parent->statePlotVars().end();
+
+        for ( ; li != end; ++li)
+            std::cout << *li << ' ';
+        std::cout << '\n';
+
+        std::cout << "\nDerive Plot Vars: ";
+
+        li  = parent->derivePlotVars().begin();
+        end = parent->derivePlotVars().end();
+
+        for ( ; li != end; ++li)
+            std::cout << *li << ' ';
+        std::cout << '\n';
+    }
+
 }
 
 void
@@ -594,10 +654,6 @@ CNSReact::initData ()
     if (verbose && ParallelDescriptor::IOProcessor())
        std::cout << "Initializing the data at level " << level << std::endl;
 
-#ifdef REACTIONS
-    MultiFab &React_new = get_new_data(Reactions_Type);
-    React_new.setVal(0.);
-#endif
 
     for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
@@ -1020,9 +1076,6 @@ CNSReact::avgDown ()
 
   avgDown(State_Type);
 
-#ifdef REACTIONS
-  avgDown(Reactions_Type);
-#endif
 }
 
 void
@@ -1421,11 +1474,11 @@ CNSReact::SyncInterp (MultiFab&      CrseSync,
     delete [] bc_new;
 }
 
-void
-CNSReact::network_init ()
-{
-   BL_FORT_PROC_CALL(CA_NETWORK_INIT,ca_network_init) ();
-}
+//  void
+//  CNSReact::network_init ()
+//  {
+//     BL_FORT_PROC_CALL(CA_NETWORK_INIT,ca_network_init) ();
+//  }
 
 void
 CNSReact::reset_internal_energy(MultiFab& S_new)

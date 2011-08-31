@@ -1,97 +1,3 @@
-! :::
-! ::: ----------------------------------------------------------------
-! :::
-
-      subroutine ca_network_init()
-
-        use network
-
-        call network_init()
-
-      end subroutine ca_network_init
-
-! ::: 
-! ::: ----------------------------------------------------------------
-! ::: 
-
-      subroutine get_num_spec(nspec_out)
-
-        use cdwrk_module, only : nspec
-
-        implicit none 
-
-        integer, intent(out) :: nspec_out
-
-        nspec_out = nspec
-
-      end subroutine get_num_spec
-
-! ::: 
-! ::: ----------------------------------------------------------------
-! ::: 
-
-      subroutine get_num_aux(naux_out)
-
-        use network, only : naux
-
-        implicit none 
-
-        integer, intent(out) :: naux_out
-
-        naux_out = naux
-
-      end subroutine get_num_aux
-
-! :::
-! ::: ----------------------------------------------------------------
-! :::
-
-      subroutine get_spec_names(spec_names,ispec,len)
-
-        use network, only : nspec, short_spec_names
-
-        implicit none 
-
-        integer, intent(in   ) :: ispec
-        integer, intent(inout) :: len
-        integer, intent(inout) :: spec_names(len)
-
-        ! Local variables
-        integer   :: i
-
-        len = len_trim(short_spec_names(ispec+1))
-
-        do i = 1,len
-           spec_names(i) = ichar(short_spec_names(ispec+1)(i:i))
-        end do
-
-      end subroutine get_spec_names
-
-! :::
-! ::: ----------------------------------------------------------------
-! :::
-
-      subroutine get_aux_names(aux_names,iaux,len)
-
-        use network, only : naux, short_aux_names
-
-        implicit none 
-
-        integer, intent(in   ) :: iaux
-        integer, intent(inout) :: len
-        integer, intent(inout) :: aux_names(len)
-
-        ! Local variables
-        integer   :: i
-
-        len = len_trim(short_aux_names(iaux+1))
-
-        do i = 1,len
-           aux_names(i) = ichar(short_aux_names(iaux+1)(i:i))
-        end do
-
-      end subroutine get_aux_names
-
 ! ::: 
 ! ::: ----------------------------------------------------------------
 ! ::: 
@@ -124,7 +30,6 @@
 
         use meth_params_module
         use cdwrk_module, only : nspec
-        use network, only : naux
         use eos_module
 
         implicit none 
@@ -146,7 +51,7 @@
         ! NVAR  : number of total variables in initial system
         ! dm refers to mometum components, '4' refers to rho, rhoE, rhoe and T
         NTHERM = dm + 4
-        NVAR = NTHERM + nspec + naux + numadv
+        NVAR = NTHERM + nspec +  numadv
 
         nadv = numadv
 
@@ -167,18 +72,12 @@
 
         UFS   = FirstSpec + 1
 
-        if (naux .ge. 1) then
-          UFX = FirstAux  + 1
-        else 
-          UFX = 1
-        end if
-
         ! QTHERM: number of primitive variables, which includes pressure (+1), but
         !         not little e (-1)
         ! QVAR  : number of total variables in primitive form
 
         QTHERM = NTHERM
-        QVAR = QTHERM + nspec + naux + numadv
+        QVAR = QTHERM + nspec + numadv
 
         ! We use these to index into the state "Q"
         QRHO  = 1
@@ -206,11 +105,6 @@
         else 
           QFA = 1
           QFS = QTHERM + 1
-        end if
-        if (naux .ge. 1) then
-          QFX = QFS + nspec
-        else 
-          QFX = 1
         end if
 
         if (small_pres_in > 0.d0) then

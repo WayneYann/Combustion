@@ -374,9 +374,8 @@
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
 
       implicit none
@@ -389,7 +388,7 @@
       double precision dx(3), xlo(3), time, dt
       integer bc(3,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, c, T, dpdr, dpde, Y(nspec+naux), rhoInv
+      double precision :: e, gamc, c, T, dpdr, dpde, Y(nspec), rhoInv
       integer          :: i,j,k,n
       !
       ! Compute pressure from the EOS
@@ -403,9 +402,6 @@
                T  = u(i,j,k,UTEMP)
                do n = 1,nspec
                   Y(n)=u(i,j,k,UFS+n-1)*rhoInv
-               enddo
-               do n = 1,naux
-                  Y(nspec+n)=u(i,j,k,UFX+n-1)*rhoInv
                enddo
                !
                ! Protect against negative internal energy.
@@ -504,9 +500,8 @@
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
       implicit none
 
@@ -518,7 +513,7 @@
       double precision dx(3), xlo(3), time, dt
       integer bc(3,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, p, T, dpdr, dpde, Y(nspec+naux), rhoInv
+      double precision :: e, gamc, p, T, dpdr, dpde, Y(nspec), rhoInv
       integer          :: i,j,k,n
 
       c = 0.d0
@@ -534,9 +529,6 @@
                T  = u(i,j,k,UTEMP)
                do n = 1,nspec
                   Y(n)=u(i,j,k,UFS+n-1)*rhoInv
-               enddo
-               do n = 1,naux
-                  Y(nspec+n)=u(i,j,k,UFX+n-1)*rhoInv
                enddo
 
                if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
@@ -558,9 +550,8 @@
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
       implicit none
 
@@ -572,7 +563,7 @@
       double precision :: dx(3), xlo(3), time, dt
       integer          :: bc(3,2,ncomp_u), level, grid_no
 
-      double precision :: c, e, gamc, p, T, dpdr, dpde, Y(nspec+naux), rhoInv,ux,uy,uz
+      double precision :: c, e, gamc, p, T, dpdr, dpde, Y(nspec), rhoInv,ux,uy,uz
       integer          :: i,j,k,n
 
       mach = 0.d0
@@ -591,9 +582,6 @@
                T  = u(i,j,k,UTEMP)
                do n = 1,nspec
                   Y(n)=u(i,j,k,UFS+n-1)*rhoInv
-               enddo
-               do n = 1,naux
-                  Y(nspec+n)=u(i,j,k,UFX+n-1)*rhoInv
                enddo
 
                if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
@@ -615,9 +603,8 @@
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
       implicit none
 
@@ -629,7 +616,7 @@
       double precision dx(3), xlo(3), time, dt
       integer bc(3,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, T, Y(nspec+naux), rhoInv,ux,uy,uz
+      double precision :: e, gamc, T, Y(nspec), rhoInv,ux,uy,uz
       integer i,j,k,n
 
       s = 0.d0
@@ -648,9 +635,6 @@
                T  = u(i,j,k,UTEMP)
                do n = 1,nspec
                   Y(n)=u(i,j,k,UFS+n-1)*rhoInv
-               enddo
-               do n = 1,naux
-                  Y(nspec+n)=u(i,j,k,UFX+n-1)*rhoInv
                enddo
 
                if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
@@ -694,8 +678,114 @@
          end do
       end do
       !$OMP END PARALLEL DO
- 
+
       end subroutine ca_derspec
+
+!-----------------------------------------------------------------------
+
+      subroutine ca_dermolefrac (spec,spec_l1,spec_l2,spec_l3,spec_h1,spec_h2,spec_h3,nv, &
+                            dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
+                            domhi,delta,xlo,time,dt,bc,level,grid_no)
+
+      use module cdwrk
+
+      implicit none
+
+      integer          lo(3), hi(3)
+      integer          spec_l1,spec_l2,spec_l3,spec_h1,spec_h2,spec_h3,nv
+      integer          dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc
+      integer          domlo(3), domhi(3)
+      integer          bc(3,2,nc)
+      double precision delta(3), xlo(3), time, dt
+      double precision spec(spec_l1:spec_h1,spec_l2:spec_h2,spec_l3:spec_h3,nv)
+      double precision dat(dat_l1:dat_h1,dat_l2:dat_h2,dat_l3:dat_h3,nc)
+      integer    level, grid_no
+
+      integer i,j,k,n
+      REAL_T Yt(maxspec),Xt(maxspec)
+      integer fS,rho
+      integer lo_chem(SDIM),hi_chem(SDIM)
+      data lo_chem /1,1,1/
+      data hi_chem /1,1,1/
+
+      rho = 1
+      fS  = 2
+
+!$omp parallel do private(i,j,k,n,Xt,Yt)
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               do n = 1,Nspec
+                  Yt(n) = dat(i,j,k,fS+n-1)/dat(i,j,k,rho)
+               enddo
+               call FORT_MASSTOMOLE(lo_chem, hi_chem,
+     &              Yt, ARLIM(lo_chem),ARLIM(hi_chem),
+     &              Xt, ARLIM(lo_chem),ARLIM(hi_chem))
+               do n = 1,Nspec
+                  spec(i,j,k,n) = Xt(n)
+               enddo
+            enddo
+         enddo
+      enddo
+!$omp end parallel do
+
+      end subroutine ca_dermolefrac
+
+!-----------------------------------------------------------------------
+
+      subroutine ca_derconcentration(C,C_l1,C_l2,C_l3,C_h1,C_h2,C_h3,nv, &
+                            dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
+                            domhi,delta,xlo,time,dt,bc,level,grid_no)
+
+      use module cdwrk
+
+      implicit none
+
+      integer          lo(3), hi(3)
+      integer          C_l1,C_l2,C_l3,C_h1,C_h2,C_h3,nv
+      integer          dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc
+      integer          domlo(3), domhi(3)
+      integer          bc(3,2,nc)
+      double precision delta(3), xlo(3), time, dt
+      double precision C(C_l1:C_h1,C_l2:C_h2,C_l3:C_h3,nv)
+      double precision dat(dat_l1:dat_h1,dat_l2:dat_h2,dat_l3:dat_h3,nc)
+      integer    level, grid_no
+
+
+      integer i,j,k,n
+      REAL_T Yt(maxspec),Ct(maxspec)
+      integer fS,rho,T
+      integer lo_chem(SDIM),hi_chem(SDIM)
+      data lo_chem /1,1,1/
+      data hi_chem /1,1,1/
+
+      rho = 1
+      T   = 2
+      fS  = 3
+
+!$omp parallel do private(i,j,k,n,Ct,Yt)
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               do n = 1,Nspec
+                  Yt(n) = dat(i,j,k,fS+n-1)/dat(i,j,k,rho)
+               enddo
+               call FORT_MASSR_TO_CONC(lo_chem,hi_chem,
+     &           Yt,             ARLIM(lo_chem),ARLIM(hi_chem),
+     &           dat(i,j,k,T),   ARLIM(lo_chem),ARLIM(hi_chem),
+     &           dat(i,j,k,rho), ARLIM(lo_chem),ARLIM(hi_chem),
+     &           Ct,             ARLIM(lo_chem),ARLIM(hi_chem))
+               do n = 1,Nspec
+                  C(i,j,k,n) = Ct(n)
+               enddo
+            enddo
+         enddo
+      enddo
+!$omp end parallel do
+
+      end ca_derconcentration
+
+
 
 !-----------------------------------------------------------------------
 

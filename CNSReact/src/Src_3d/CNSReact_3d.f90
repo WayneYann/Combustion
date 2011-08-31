@@ -102,10 +102,9 @@
                                  state_h1,state_h2,state_h3)
 
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEINT, UTEMP, &
-                                     UFS, UFX, small_temp, allow_negative_energy
+                                     UFS, small_temp, allow_negative_energy
 
       implicit none
       integer         , intent(in   ) :: lo(3),hi(3)
@@ -115,7 +114,7 @@
                                                state_l3:state_h3,NVAR)
 
       integer          :: i,j,k
-      double precision :: rhoInv,eint,xn(nspec+naux)
+      double precision :: rhoInv,eint,xn(nspec)
       double precision :: dummy_gam,dummy_pres,dummy_c,dummy_dpdr,dummy_dpde
       integer          :: pt_index(3)
 
@@ -157,8 +156,6 @@
          rhoInv = 1.d0 / state(i,j,k,URHO)
 
          xn(1:nspec)  = state(i,j,k,UFS:UFS+nspec-1) * rhoInv
-         if (naux > 0) &
-           xn(nspec+1:nspec+naux) = state(i,j,k,UFX:UFX+naux -1) * rhoInv
 
          eint = state(i,j,k,UEINT) / state(i,j,k,URHO)
 
@@ -352,8 +349,8 @@
                                          uout_h1,uout_h2,uout_h3, &
                                          lo,hi,verbose)
 
-      use network, only : nspec, naux
-      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UFX, &
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, &
                                      UFA, small_dens, nadv
 
       implicit none
@@ -433,9 +430,6 @@
                   uout(i,j,k,UMZ  ) = uout(i,j,k,UMZ  ) * fac(i,j,k)
    
                   do n = UFS, UFS+nspec-1
-                     uout(i,j,k,n) = uout(i,j,k,n) * fac(i,j,k)
-                  end do
-                  do n = UFX, UFX+naux-1
                      uout(i,j,k,n) = uout(i,j,k,n) * fac(i,j,k)
                   end do
                   do n = UFA, UFA+nadv-1
@@ -611,8 +605,7 @@
 
       use eos_module
       use cdwrk_module, only : nspec
-      use network, only : naux
-      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UFX, &
+      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, &
                                      small_temp, allow_negative_energy
 
       implicit none
@@ -624,7 +617,7 @@
       ! Local variables
       integer          :: i,j,k
       integer          :: pt_index(3)
-      double precision :: Up, Vp, Wp, ke, rho_eint, eint_new, x_in(1:nspec+naux), dummy_pres
+      double precision :: Up, Vp, Wp, ke, rho_eint, eint_new, x_in(1:nspec), dummy_pres
 
       ! Reset internal energy
       if (allow_negative_energy .eq. 0) then
@@ -655,8 +648,6 @@
               else if (u(i,j,k,UEINT) .le. 0.d0) then
 
                  x_in(1:nspec) = u(i,j,k,UFS:UFS+nspec-1) / u(i,j,k,URHO)
-                 if (naux > 0) &
-                   x_in(nspec+1:nspec+naux)  = u(i,j,k,UFX:UFX+naux -1) / u(i,j,k,URHO)
 
                  pt_index(1) = i
                  pt_index(2) = j
