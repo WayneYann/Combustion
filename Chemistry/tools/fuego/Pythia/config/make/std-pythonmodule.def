@@ -1,0 +1,83 @@
+# -*- Makefile -*-
+#
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+#                               Michael A.G. Aivazis
+#                        California Institute of Technology
+#                        (C) 1998-2002  All Rights Reserved
+#
+# <LicenseText>
+#
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+
+# Python
+include Python/default.def
+
+# common project settings
+ifeq (${PACKAGE},)
+    PACKAGE = $(PROJECT)module
+endif
+
+PROJ_DLL = $(BLD_BINDIR)/$(PACKAGE).$(EXT_SO)
+PROJ_TMPDIR = $(BLD_TMPDIR)/$(PROJECT)/$(PACKAGE)
+PROJ_CXX_LIB = $(BLD_LIBDIR)/lib$(PACKAGE).$(EXT_AR)
+PROJ_CXX_SRCLIB =
+
+PROJ_CXX_FLAGS = $(CXX_SOFLAGS)
+PROJ_LCXX_FLAGS = $(LCXX_SOFLAGS)
+
+# I don't like the fact that this references VTF_LIBS
+PROJ_LIBRARIES = \
+    $(PROJ_CXX_LIB) \
+    $(PROJ_CXX_SRCLIB) \
+    $(VTF_LIBS) \
+    $(EXTERNAL_LIBS)
+
+
+# the module initialization file
+MODULE_INIT_FILE = $(PACKAGE).$(EXT_CXX)
+PROJ_CLEAN += $(PROJ_DLL)
+
+all: $(PROJ_EXTERNAL_PACKAGES) bindings export
+
+.PHONY: bindings
+bindings: $(PROJ_DLL)
+
+#--------------------------------------------------------------------------
+#
+# export
+
+PROJ_BINDIR = $(EXPORT_MODULEDIR)
+
+EXPORT_BINS = $(PROJ_DLL)
+export:: export-binaries
+
+
+#--------------------------------------------------------------------------
+#
+# build
+
+ifeq (tau, ${findstring tau, $(BLD_USER_TARGET)})
+ifdef NO_TAU_INSTRUMENTATION
+$(PROJ_DLL): $(MODULE_INIT_FILE) $(PROJ_CXX_LIB)
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LCXXFLAGS) $(PROJ_LIBRARIES)
+else
+$(PROJ_DLL): $(MODULE_INIT_FILE) $(PROJ_CXX_LIB)
+	$(PDTCXXPARSE) $< $(CXX_BUILD_DEFINES) -DWITH_TAU $(CXX_BUILD_INCLUDES)
+	$(TAUINSTR) $(PACKAGE).pdb $< -o $(PACKAGE).inst.$(EXT_CXX) \
+	-g $(PROJ_TAU_GROUP) -f $(PROJ_TAU_SELECT)
+	$(CXX) $(CXXFLAGS) -o $@ $(PACKAGE).inst.$(EXT_CXX) \
+	$(LCXXFLAGS) $(PROJ_LIBRARIES)
+	$(RM) $(RMFLAGS) $(PACKAGE).pdb $(PACKAGE).inst.$(EXT_CXX)
+endif
+else
+$(PROJ_DLL): $(MODULE_INIT_FILE) $(PROJ_CXX_LIB)
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LCXXFLAGS) $(PROJ_LIBRARIES)
+endif
+
+# version
+# $Id: std-pythonmodule.def,v 1.9 2003/06/09 17:47:50 aivazis Exp $
+
+#
+# End of file

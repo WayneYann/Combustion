@@ -19,47 +19,6 @@
 #define ten2minus18 1.0d-18
 #endif
       
-      subroutine FORT_SETUPCKIO (nametr,nametrlen)
-      implicit none
-      integer nametrlen
-      integer nametr(nametrlen)
-#include "cdwrk.H"
-#include "conp.H"
-      integer maxlen, i
-      parameter (maxlen=256)
-      character filet*(maxlen)
-      integer isioproc
-c
-c     Convert encoded name to a Fortran string.
-c
-      if (nametrlen.GT.maxlen) then
-         call bl_abort('FORT_CKINTERP: tran file name too long')
-      else if (nametrlen.NE.0) then
-         do i = 1, nametrlen
-            filet(i:i) = char(nametr(i))
-         end do
-c
-c        Open problem-specific transport file for EGlib.
-c
-         LLINKMC = 51
-         open(unit=LLINKMC,status='OLD',form='FORMATTED',
-     &        file=filet(1:nametrlen), err=300)
-      else
-         call bl_abort('FORT_CKINTERP: transport file must be provided')
-      endif
-      return
- 300  call bl_pd_is_ioproc(isioproc)
-      if (isioproc .eq. 1) then
-         print *,'Transfile = ',filet(1:nametrlen)
-         call bl_abort('File not found')
-      endif
-      end
-
-      subroutine FORT_LINKCKDB()
-      implicit none
-#include "cdwrk.H"
-      end
-
       subroutine FORT_SETTMINTRANS(TminTRANS)
       implicit none
       REAL_T TminTRANS
@@ -117,13 +76,7 @@ c
  40   continue 
       end
 
-      subroutine FORT_CLOSECKIO()
-      implicit none
-#include "cdwrk.H"
-      close(LLINKMC)
-      end
-
-      subroutine FORT_INTERPCHEM()
+      subroutine FORT_INITCHEM()
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
@@ -134,20 +87,9 @@ c
       character*(maxspnml) name
       integer coded(maxspnml)
 
-      call BL_PD_MYPROC(myid)
-      
-      if (myid .eq. ioproc) then
-c
-c        Suck in mc linking file, spit out EG linking file.
-c
-         call CNVTTR (LLINKMC)
-      endif
-      
-      call BL_PD_BARRIER()
-      
-      lout = 6
-      call EGINI(eg_nodes, lout, eg_IFLAG, eg_ITLS,
+      call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
      &     RWRK(egbr), egr, IWRK(egbi), egi)
+
 c      
 c     Set pointers in conp common blocks (used in conpF evaluations)
 c
@@ -179,74 +121,310 @@ c
      &     write(6,*) '.....warning: no N2 in chemistry species list'
       end
 
-      subroutine CNVTTR (LINKMC)
-      implicit none
-#include "cdwrk.H"
-      character*(maxspnml) CDUMMY
-      character*16 CFMT, IFMT, LFMT, RFMT
-      PARAMETER (CFMT='(8A16)')
-      PARAMETER (IFMT='(10I12)')
-      PARAMETER (LFMT='(L8)')
-      PARAMETER (RFMT='(1P,5E24.16)')
-      integer MaxOrder, NOrd, NS, LINKEG, LINKMC, IDUMMY, K, NONS, NONSNS, N
-      parameter (MaxOrder = 4, LINKEG=30)
-      REAL_T RDUMMY, PATM
-      logical LDUMMY
 
-      REAL_T WT(maxspec), POLA(maxspec), DIPO(maxspec), SIGM(maxspec),
-     &     EPSI(maxspec), ZROT(maxspec), COFE(maxspec*MaxOrder),
-     &     COFL(maxspec*MaxOrder), COFD(maxspec*maxspec*MaxOrder)
-      integer LINA(maxspec)
+      SUBROUTINE EGINICD (NP, LOUT, IFLAG, ITLS, 
+     &                    WEG, LWEG, IWEG, LIWEG)
 C-----------------------------------------------------------------------
-C     CHEMKIN-III TRANSPORT LINKING FILE (Warning: CK I and II different)
+C
+C     This subroutine initializes the pointers for the work arrays
+C     WEG and IWEG and checks their length.
+C     This subroutine should be called by the user once at the
+C     beginning of the program.
+C
+C     Input
+C     -----
+C        NP        number of nodes
+C        LOUT      output file number
+C        IFLAG     flag for evaluating parameters and space allocation
+C                  (see below)
+C        ITLS      flag for space allocation (see below)
+C        WEG       double precision work array for EGLIB
+C        LWEG      length of WEG declared in main code
+C        IWEG      integer work array for EGLIB
+C        LIWEG     length of IWEG declared in main code
+C
+C        
+C     The value of IFLAG and ITLS depends on the subroutines that
+C     will be used as indicated by the following table
+C
+C
+C     Subroutine     ITLS      IFLAG
+C
+C     EG*D(R)1         1         2
+C     EG*D(R)2         1         2
+C
+C     EG*E1            0         1
+C     EG*E2            1         2
+C     EG*E3            1         3
+C     EG*E4            1         3
+C 
+C     EG*K1            0         4
+C     EG*K2            1         4
+C     EG*K3            1         5
+C     EG*K4            2         4
+C     EG*K5            2         5
+C     EG*K6            2         5
+C  
+C     EG*L1            0         1
+C     EG*L2            1         6
+C     EG*L3            1         7
+C     EG*L4            2         6
+C     EG*L5            2         7
+C  
+C     EG*LC1           1         7
+C     EG*LC2           1         7
+C     EG*LC3           2         7
+C     EG*LC4           2         7
+C  
+C     EG*LTD(R)1       2         7
+C     EG*LTD(R)2       2         7
+C     EG*LTD(R)3       3         7
+C     EG*LTD(R)4       3         7
+C     EG*LTD(R)5       3         7
+C     EG*LTD(R)6       3         7
+C   
+C     EG*TD(R)1        3         7
+C  
+C     EG*V(R)1         0         2
+C
+C
+C     EGINI should be called with the highest possible values for
+C     IFLAG and ITLS as read from the table.
+C
 C-----------------------------------------------------------------------
-      READ (LINKMC,CFMT) CDUMMY
-      READ (LINKMC,CFMT) CDUMMY
-      READ (LINKMC,CFMT) CDUMMY
-      READ (LINKMC,LFMT) LDUMMY
-      READ (LINKMC,IFMT) IDUMMY, IDUMMY, NOrd, NS, IDUMMY
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      DIMENSION WEG(*), IWEG(*)
+      INCLUDE 'eg.cmn'
+C-----------------------------------------------------------------------
+C     Check values for IFLAG and ITLS
+C-----------------------------------------------------------------------
+      IERROR = 0
+      IF ( IFLAG .LT. 0 .OR. IFLAG .GT. 7 ) THEN
+         WRITE(LOUT,'(1X,''IFLAG should be between 0 and 7'')')
+         WRITE(LOUT,'(1X,''value read in EGini is'',2x,I5//)') IFLAG
+         IERROR = 1
+      ENDIF
+      IF ( ITLS .LT. 0 .OR. ITLS .GT. 3 ) THEN
+         WRITE(LOUT,'(1X,''ITLS should be between 0 and 3'')')
+         WRITE(LOUT,'(1X,''value read in EGini is'',2x,I5//)') ITLS
+         IERROR = 1
+      ENDIF
+      IF ( IERROR .EQ. 1 ) STOP
+C-----------------------------------------------------------------------
+C     Read the Linkeg file
+C-----------------------------------------------------------------------
+      LLEG   = 11
+C-----------------------------------------------------------------------
+c      OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
+c        READ (LLEG) NSLK, NO
+c      CLOSE(UNIT=LLEG)
 
+      call egtransetKK(NSLK)
+      call egtransetNO(NO)
 
-      if (NOrd .GT. MaxOrder) then
-         call bl_abort('Polyfit too large for EGLib!')
-      end if
+C-----------------------------------------------------------------------
+C     Store IFLAG and the number of species in common 'eg.cmn'
+C-----------------------------------------------------------------------
+      JFLAG = IFLAG
+C-----------------------------------------------------------------------
+      NS = NSLK
+      IF ( NS .LE. 1 ) THEN
+         WRITE(LOUT,'(1X,''Error: the number of species must '',
+     &                   '' be larger or equal to 2'')')
+         STOP
+      ENDIF
+C-----------------------------------------------------------------------
+C     Compute the size of the transport linear system.
+C-----------------------------------------------------------------------
+      NSS  = ITLS * NS
+C-----------------------------------------------------------------------
+C     NFIT is the degree for the polynomial fitting Aij -- Cij
+C-----------------------------------------------------------------------
+      NFIT = 7
+      NAIJ = MAX0(NS*NS,NP)
+C-----------------------------------------------------------------------
+      IEGRU  = 1
+      IEGPA  = IEGRU  + 1
+      IFITA  = IEGPA  + 1
+      IFITB  = IFITA  + NFIT * NS*NS
+      IFITC  = IFITB  + NFIT * NS*NS
+      IFITA0 = IFITC  + NFIT * NS*NS
+      IFITB0 = IFITA0 + NFIT
+      IFITC0 = IFITB0 + NFIT
+      ICTAIJ = IFITC0 + NFIT
+      ICTBIJ = ICTAIJ + NS*NS
+      ICTCIJ = ICTBIJ + NS*NS
+      IDLT1  = ICTCIJ + NS*NS
+      IDLT2  = IDLT1  + NP
+      IDLT3  = IDLT2  + NP
+      IDLT4  = IDLT3  + NP
+      IDLT5  = IDLT4  + NP
+      IDLT6  = IDLT5  + NP
+      IEGEPS = IDLT6  + NP
+      IEGPOL = IEGEPS + NS
+      IEGSIG = IEGPOL + NS
+      IEGDIP = IEGSIG + NS
+      IEPSIJ = IEGDIP + NS
+      IEGCFD = IEPSIJ + NS*NS
+      IEGCFE = IEGCFD + 4 * NS*NS
+      IEGCFL = IEGCFE + 4 * NS
+      IEGZRT = IEGCFL + 4 * NS
+      IEGWT  = IEGZRT + NS 
+      IAAA   = IEGWT  + NS
+      IBBB   = IAAA   + NP
+      IAUX   = IBBB   + NP
+      IETA   = IAUX   + NS * NP
+      IETALG = IETA   + NS * NP
+      IXTR   = IETALG + NS * NP
+      IYTR   = IXTR   + NS * NP
+      IAIJ   = IYTR   + NS * NP
+      IBIJ   = IAIJ   + NAIJ
+      ICIJ   = IBIJ   + NAIJ
+      IBIN   = ICIJ   + NAIJ
+      ICINT  = IBIN   + (NS*(NS+1))/2 * NP
+      ICXI   = ICINT  + NS * NP
+      IEND   = ICXI   + NS * NP
+C.....
+      IF ( IFLAG .EQ. 1 ) THEN
+         IEND = IBIN
+      ELSEIF ( IFLAG .LE. 3 ) THEN
+         IEND = ICINT
+      ENDIF
+C.....
+      IDMI   = IEND
+      IG     = IDMI   + NS*(ITLS*(ITLS+1))/2 * NP
+      IAN    = IG     + (ITLS*NS*(ITLS*NS+1))/2 * NP
+      IZN    = IAN    + NSS * NP
+      IRN    = IZN    + NSS * NP
+      ITEMP  = IRN    + NSS * NP
+      IBETA  = ITEMP  + NSS * NP
+      INEXT  = IBETA  + NSS * NP - 1
+C.....
+      IEGLIN = 1
+      IINXT  = IEGLIN + NS - 1
+C-----------------------------------------------------------------------
+      ILOW = 0
+      IF ( INEXT .GT. LWEG ) THEN
+         WRITE(LOUT,'(//1X,''Error: the length of WEG should be '',
+     &                   ''at least'',I12//)') INEXT
+         ILOW = 1
+      ENDIF
+      IF ( IINXT .GT. LIWEG ) THEN
+         WRITE(LOUT,'(//1X,''Error: the length of IWEG should be '',
+     &                   ''at least'',I12//)') IINXT
+         ILOW = 1
+      ENDIF
+      IF ( ILOW .EQ. 1 ) STOP
+c     WRITE(LOUT,'(//1X,''The array WEG requires '',I12,
+c    &                '' storage locations'')') INEXT
+c     WRITE(LOUT,'(1X,''The array IWEG requires '',I12,
+c    &                '' storage locations''//)') IINXT
+C-----------------------------------------------------------------------
+C     Store the universal gas constant and the atmospheric pressure
+C     units: [erg/mol.K] for RU and [dyne/cm^2] for PA
+C-----------------------------------------------------------------------
+      WEG(IEGRU)  = 8.314D7
+      WEG(IEGPA)  = 1.01325D6
+C-----------------------------------------------------------------------
+C     Read the Linkeg file
+C-----------------------------------------------------------------------
+      LLEG   = 11
+      NONS   = NO*NS
+      NONSNS = NO*NS*NS
+C-----------------------------------------------------------------------
 c
-c     Make sure the transport & chemistry files are consistent.
+c     Set required data from funcs rather than Linkeg
 c
-      CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
+      call egtransetWT(WEG(IEGWT))
+      call egtransetEPS(WEG(IEGEPS))
+      call egtransetSIG(WEG(IEGSIG))
+      call egtransetDIP(WEG(IEGDIP))
+      call egtransetPOL(WEG(IEGPOL))
+      call egtransetZROT(WEG(IEGZRT))
+      call egtransetNLIN(IWEG(IEGLIN))
+      call egtransetCOFETA(WEG(IEGCFE))
+      call egtransetCOFLAM(WEG(IEGCFL))
+      call egtransetCOFD(WEG(IEGCFD))
 
-      if (NS .NE. Nspec) then
-         print*, 'transport database thinks Nspec = ', NS
-         print*, 'chemistry database thinks Nspec = ', Nspec
-         call bl_abort("chemistry & transport are not consistent")
-      endif
+c      OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
+c        READ (LLEG) NSLK, NO, (WEG(IEGWT+K-1), K=1, NS), 
+c     &              (WEG(IEGEPS+K-1), K=1, NS), 
+c     &              (WEG(IEGSIG+K-1), K=1, NS), 
+c     &              (WEG(IEGDIP+K-1), K=1, NS), 
+c     &              (WEG(IEGPOL+K-1), K=1, NS), 
+c     &              (WEG(IEGZRT+K-1), K=1, NS), 
+c     &              (IWEG(IEGLIN+K-1), K=1, NS), 
+c     &              (WEG(IEGCFE+N-1), N=1, NONS), 
+c     &              (WEG(IEGCFL+N-1), N=1, NONS), 
+c     &              (WEG(IEGCFD+N-1), N=1, NONSNS)
+c      CLOSE(UNIT=LLEG)
+C-----------------------------------------------------------------------
+      CALL LEVEPS (NS, WEG(IEGEPS), WEG(IEGSIG), WEG(IEGDIP), 
+     &             WEG(IEGPOL), WEG(IEPSIJ) )
+C-----------------------------------------------------------------------
+C     Initialize the coefficients for fitting Aij, Bij and Cij
+C-----------------------------------------------------------------------
+      WEG(IFITA0    ) =  .1106910525D+01
+      WEG(IFITA0 + 1) = -.7065517161D-02
+      WEG(IFITA0 + 2) = -.1671975393D-01
+      WEG(IFITA0 + 3) =  .1188708609D-01
+      WEG(IFITA0 + 4) =  .7569367323D-03
+      WEG(IFITA0 + 5) = -.1313998345D-02
+      WEG(IFITA0 + 6) =  .1720853282D-03
+C.....
+      WEG(IFITB0    ) =  .1199673577D+01
+      WEG(IFITB0 + 1) = -.1140928763D+00
+      WEG(IFITB0 + 2) = -.2147636665D-02
+      WEG(IFITB0 + 3) =  .2512965407D-01
+      WEG(IFITB0 + 4) = -.3030372973D-02
+      WEG(IFITB0 + 5) = -.1445009039D-02
+      WEG(IFITB0 + 6) =  .2492954809D-03
+C.....
+      WEG(IFITC0    ) =  .8386993788D+00
+      WEG(IFITC0 + 1) =  .4748325276D-01
+      WEG(IFITC0 + 2) =  .3250097527D-01
+      WEG(IFITC0 + 3) = -.1625859588D-01
+      WEG(IFITC0 + 4) = -.2260153363D-02
+      WEG(IFITC0 + 5) =  .1844922811D-02
+      WEG(IFITC0 + 6) = -.2115417788D-03
+C-----------------------------------------------------------------------
+C     Evaluate Aij, Bij and Cij at the reference temperature of 1000K.
+C-----------------------------------------------------------------------
+      DDD = DLOG(1.0D3)
+      DO J = 1, NS
+        DO I = 1, NS
+         IJ = (J-1) * NS + I-1
+         TSLOG = DDD - WEG( IEPSIJ + IJ )
+         T1 = TSLOG
+         T2 = TSLOG * T1
+         T3 = TSLOG * T2
+         T4 = TSLOG * T3
+         T5 = TSLOG * T4
+         T6 = TSLOG * T5
+         WEG(ICTAIJ+IJ) = WEG(IFITA0  )    + WEG(IFITA0+1)*T1
+     1                    + WEG(IFITA0+2)*T2 + WEG(IFITA0+3)*T3
+     2                    + WEG(IFITA0+4)*T4 + WEG(IFITA0+5)*T5
+     3                    + WEG(IFITA0+6)*T6 
+         WEG(ICTBIJ+IJ) = WEG(IFITB0  )    + WEG(IFITB0+1)*T1
+     1                    + WEG(IFITB0+2)*T2 + WEG(IFITB0+3)*T3
+     2                    + WEG(IFITB0+4)*T4 + WEG(IFITB0+5)*T5
+     3                    + WEG(IFITB0+6)*T6 
+         WEG(ICTCIJ+IJ) = WEG(IFITC0  )    + WEG(IFITC0+1)*T1
+     1                    + WEG(IFITC0+2)*T2 + WEG(IFITC0+3)*T3
+     2                    + WEG(IFITC0+4)*T4 + WEG(IFITC0+5)*T5
+     3                    + WEG(IFITC0+6)*T6 
+         ENDDO
+      ENDDO
+C-----------------------------------------------------------------------
+C     Evaluate FITA, FITB and FITC 
+C-----------------------------------------------------------------------
+      CALL EGABC ( NS, NFIT, WEG(IFITA), WEG(IFITB), WEG(IFITC),
+     &             WEG(IFITA0), WEG(IFITB0), WEG(IFITC0),
+     &             WEG(IEPSIJ) )
+C-----------------------------------------------------------------------
+      RETURN
+      END
 
-      NONS = NOrd * NS
-      NONSNS = NONS * NS
-      READ (LINKMC,RFMT) PATM
-      READ (LINKMC,RFMT) (WT(K),   K=1, NS)
-      READ (LINKMC,RFMT) (EPSI(K), K=1, NS) 
-      READ (LINKMC,RFMT) (SIGM(K), K=1, NS)
-      READ (LINKMC,RFMT) (DIPO(K), K=1, NS)
-      READ (LINKMC,RFMT) (POLA(K), K=1, NS)
-      READ (LINKMC,RFMT) (ZROT(K), K=1, NS) 
-      READ (LINKMC,IFMT) (LINA(K), K=1, NS)
-      READ (LINKMC,RFMT) (COFL(N), N=1, NONS)
-      READ (LINKMC,RFMT) (COFE(N), N=1, NONS)
-      READ (LINKMC,RFMT) (COFD(N), N=1, NONSNS)
-      rewind(unit=LLINKMC)
-C-----------------------------------------------------------------------
-C     WRITE EGLIB TRANSPORT LINKING FILE
-C-----------------------------------------------------------------------
-      OPEN (UNIT=LINKEG,STATUS='unknown',FORM='UNFORMATTED',
-     &     FILE='Linkeg')
-      WRITE (LINKEG) NS, NOrd, (WT(K), K=1, NS), (EPSI(K), K=1, NS), 
-     &                (SIGM(K), K=1, NS), (DIPO(K), K=1, NS), 
-     &                (POLA(K), K=1, NS), (ZROT(K), K=1, NS), 
-     &                (LINA(K), K=1, NS), (COFE(N), N=1, NONS), 
-     &                (COFL(N), N=1, NONS), (COFD(N), N=1, NONSNS)
-      CLOSE(UNIT=LINKEG)
-      end
 
       integer function FORT_GETCKMAXNAMELEN()
       implicit none

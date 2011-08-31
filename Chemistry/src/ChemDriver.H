@@ -7,15 +7,11 @@
 #include <Array.H>
 #include <FArrayBox.H>
 
-// STRINGIFY is a macro to expand its argument and surround it with strings
-#define HACKSTRINGIFY(x) #x
-#define STRINGIFY(x) HACKSTRINGIFY(x)
-
 class ChemDriver
 {
 public:
 
-    ChemDriver (const std::string TransportFile = STRINGIFY(TRANFILE));	  
+    ChemDriver ();	  
 
     ~ChemDriver () {}
 
@@ -387,7 +383,7 @@ protected:
 
 private:
 
-    void initOnce (const std::string& TransportFile);
+    void initOnce ();
 
     Array<std::string> mSpeciesNames;
     Array<std::string> mElementNames;

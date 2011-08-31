@@ -1,0 +1,63 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: default.def,v $
+# Revision 1.9  2001/12/27 00:02:07  cummings
+# Check that we are not using the tau build target before adding the
+# MPI library search path and MPI libraries to the external variables.
+# If we are using Tau, the tau definitions file will handle this.
+#
+# Revision 1.8  2001/09/20 22:56:56  aivazis
+# Added default values for the new symbols
+#
+# Revision 1.7  2001/08/18 03:42:56  cummings
+# Add MPI_LIBPATH to EXTERNAL_LIBPATH.
+#
+# Revision 1.6  2001/06/30 23:51:39  aivazis
+# Moved here the logic that disables mpi unless it is a build target.
+# This is no longer the burden of client makefiles
+#
+# Revision 1.5  2000/05/17 23:37:26  aivazis
+# Major update in the way defines and include paths are handled
+#
+# Revision 1.4  1999/07/01 21:23:27  aivazis
+# Added a -DPARALLEL for parallel builds
+#
+# Revision 1.3  1999/06/20 00:08:18  aivazis
+# Added preprocessor sysmbols WITH_MPI and WITH_PARALLEL_IO
+#
+# Revision 1.2  1999/06/09 01:39:33  mga
+# Fixed typos and added header
+#
+
+#
+# Read the local settigs
+#
+
+ifeq (mpi, ${findstring mpi, $(BLD_USER_TARGET)})
+
+    MPI_LIBS =
+    MPI_F90LIBS =
+
+    include MPI/$(TARGET_PLATFORM).def
+
+#
+# Adjust the external variables to include MPI
+#
+
+    EXTERNAL_DEFINES += WITH_MPI PARALLEL WITH_PARALLEL_IO
+    EXTERNAL_INCLUDES += $(MPI_INCLUDES)
+ifeq (, ${findstring tau, $(BLD_USER_TARGET)})
+    EXTERNAL_LIBPATH += $(MPI_LIBPATH)
+    EXTERNAL_LIBS += $(MPI_LIBS)
+endif
+
+endif
+
+#
+# End of file

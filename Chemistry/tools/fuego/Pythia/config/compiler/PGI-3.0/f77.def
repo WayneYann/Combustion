@@ -1,0 +1,110 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: f77.def,v $
+# Revision 1.11  2003/04/18 21:53:36  cummings
+# Updated each of the current f77.def files to add an explicit definition
+# for COMPILER_F90_NAME, the name of the F90 compiler.  Some systems allow
+# you to use F90 for either F90 or F77 code, while others have separate tools.
+# Because of this, you must set F77 to $(COMPILER_F90_NAME) in your local.def
+# file if you need the F90 compiler.
+#
+# Revision 1.10  2001/07/18 03:42:18  cummings
+# Changed PGI compiler optimization flag from -O2 to -fast.  This is like
+# -O2 but also adds -Mnoframe, -Munroll and some Pentium-specific stuff.
+# Also added flag --no_using_std to C++ compiles, which turns off the
+# implicit "using namespace std;" statement that pgCC normally includes
+# by default.
+#
+# Revision 1.9  2000/10/11 19:12:37  cummings
+# Added flag for code instrumentation and profiling with pgprof.
+#
+# Revision 1.8  2000/10/03 01:38:12  cummings
+# Removed -Msecond_underscore flag, since the normal symbol translation
+# stuff can handle this.  Added mixed language support.
+#
+# Revision 1.7  2000/09/21 21:24:50  cummings
+# Changed compiler to pgf90, since we need the F90 compiler for our code.
+# Changed compile-time SOFLAG to -fpic and added link-time SOFLAG with
+# value of -shared.
+#
+# Revision 1.6  2000/05/19 23:07:06  aivazis
+# Changed the way module paths are generated
+#
+# Revision 1.5  2000/05/17 23:37:26  aivazis
+# Major update in the way defines and include paths are handled
+#
+# Revision 1.4  2000/04/06 23:03:21  aivazis
+# Added module path flag name
+#
+# Revision 1.3  2000/04/06 22:55:21  aivazis
+# Stubbed out dependency generation, for now
+#
+# Revision 1.2  1999/09/16 20:34:14  aivazis
+# Added generation of an extra trailing underscore on FORTRAN externals for
+# g77 compatibility. Added PGI library path to the command line
+#
+# Revision 1.1  1999/09/15 04:27:01  aivazis
+# Original source
+#
+
+#
+# Definitions for Portland Group FORTRAN compiler
+#
+#
+    F77_ID = PGI-3.0
+#
+# The name of the binary
+#
+    COMPILER_F77_NAME = pgf77
+    COMPILER_F90_NAME = pgf90
+#
+# Command line options
+#
+    COMPILER_F77_FLAGS = 
+    COMPILER_F77_INCLUDES = $(DIR_COMPILER)/$(F77_ID)
+    COMPILER_F77_DEFINES = F77_ID="$(F77_ID)"
+
+    COMPILER_F77_SOFLAGS = -fpic
+#
+    F77_OPT_FLAGS = -fast          # Optimization flags
+    F77_DEBUG_FLAGS = -g           # Debug flags
+    F77_PROF_FLAGS = -Mprof=func   # Profiling flags
+    F77_MODULE_FLAGS = -module
+#
+# When using the FORTRAN compiler to preprocess
+#
+    COMPILER_F77_PREPROCESS = $(COMPILER_F77_NAME) -E	
+#
+# When using the FORTRAN compiler to make dependencies
+#
+    COMPILER_F77_DEPENDS = mm_dummy # $(COMPILER_F77_NAME) -M
+#
+# When using the FORTRAN compiler to link
+#
+    COMPILER_LF77_NAME = $(COMPILER_F77_NAME)
+    COMPILER_LF77_FLAGS = ${addprefix -L, $(PGI_LIBDIR)}
+    COMPILER_LF77_LIBPATH =
+    COMPILER_LF77_SOFLAGS = -shared
+#
+# Mixed language support
+#
+ifeq ($(PLATFORM_ID),TFLOPS)
+    COMPILER_LF90_LIBRARIES = -lpgf90_cgr -lpgf90_rpm1 -lpgf902_cgr -lpgf90rtl_cgr -lpgftnrtl_cgr
+else
+    COMPILER_LF90_LIBRARIES = -lpgf90 -lpgf90_rpm1 -lpgf902 -lpgf90rtl -lpgftnrtl -lpghpf
+endif
+    COMPILER_LCC_FORTRAN = $(COMPILER_LF90_LIBRARIES)
+    COMPILER_LCXX_FORTRAN = $(COMPILER_LF90_LIBRARIES)
+#
+# Clean up
+#
+    COMPILER_F77_CLEAN =
+    COMPILER_F77_DISTCLEAN =
+#
+# End of file

@@ -1,0 +1,18389 @@
+C     CVS $Revision: 1.1.1.1 $ reposited $Date: 2006/05/26 19:09:33 $
+
+      SUBROUTINE OVEN00
+     +  (ERROR, TEXT,
+     +   CODE, STRING)
+
+C     Copyright 1990, Sandia Corporation.  The United States Government
+C     retains a nonexclusive license in this software as prescribed in
+C     AL 88-1 and AL 91-7.  Export of this program may require a license
+C     from the United States Government.
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEND
+C
+C     VERSION 3.08 OF DECEMBER 1997
+C
+C
+C      OOOO   O    O  OOOOOO  O    O  OOOOO
+C     O    O  O    O  O       OO   O  O    O
+C     O    O  O    O  OOOOO   O O  O  O    O
+C     O    O  O    O  O       O  O O  O    O
+C     O    O   O  O   O       O   OO  O    O
+C      OOOO     OO    OOOOOO  O    O  OOOOO
+C
+C
+C     SURFACE CHEMISTRY ON MANY FACING WAFERS AND GAS CHEMISTRY
+C     BETWEEN THEM IN A LOW PRESSURE, HIGH TEMPERATURE OVEN
+C
+C     DR. JOSEPH F. GRCAR               DR. WILLIAM G. HOUF
+C     DEPARTMENT 8345                   DEPARTMENT 8345
+C     MAIL STOP 9051                    MAIL STOP 9042
+C     SANDIA NATIONAL LABORATORIES      SANDIA NATIONAL LABORATORIES
+C     LIVERMORE, CA 94551-0969 USA      LIVERMORE, CA 94551-0969 USA
+C
+C     (510) 294-2662                    (510) 294-3184
+C
+C     sepp@california.sandia.gov        will@california.sandia.gov
+C     na.grcar@na-net.ornl.gov
+C
+C///////////////////////////////////////////////////////////////////////
+C
+C     DOCUMENTATION:
+C
+C     J. F. Grcar and W. G. Houf, "The Ovend Program for Batch Lpcvd
+C     Reactors," Sandia National Laboratories Report SANDXX-XXXX,
+C     Livermore, California.
+C
+C///////////////////////////////////////////////////////////////////////
+C
+C     MAIN PROGRAM:
+C
+C     OVEND        MAIN PROGRAM
+C
+C     SUBROUTINES:
+C
+C     OVEN00       KEEP TRACK OF VERSION DATA
+C     OVEN01       CHANGE THE MODEL
+C       OVEN11       READ TEMPERATURE DATA
+C     OVEN02       DEFINE A MODEL
+C       OVEN21       BUILD A ONE DIMENSIONAL GRID
+C       OVEN22       PREPARE TO BUILD THE AXIAL GRID
+C       OVEN23       PREPARE THE DATA STRUCTURE AND POINTERS
+C         OVEN24       LINEAR INTERPOLATION
+C     OVEN03       INITIALIZE THE CHEMKIN LIBRARIES
+C     OVEN04       PLOT THE SOLUTION
+C       OVEN41       WRITE PLOT1D DATA
+C       OVEN42       WRITE PLOT2D DATA
+C       OVEN43       WRITE TECPLOT 1D GAS DATA
+C       OVEN44       WRITE TECPLOT 1D SURFACE DATA
+C       OVEN45       WRITE TECPLOT 2D GAS DATA
+C       OVEN46       WRITE TECPLOT 2D SURFACE DATA
+C     OVEN05       PRINT THE DEPOSITION UNIFORMITY
+C       OVEN51       DETERMINE THE UNIFORMITY
+C     OVEN06       PRINT THE SOLUTION
+C       OVEN61       PRINT THE AXIAL SOLUTION
+C       OVEN62       PRINT ELEMENT BUDGET
+C     OVEN07       READ A MODEL
+C     OVEN08       SOLVE THE MODEL
+C       OVEN81       PREPARE TO SOLVE THE MODEL
+C       OVEN82       FIND MAJOR SPECIES
+C       OVEN83       EVALUATE THE RESIDUAL
+C     OVEN09       WRITE THE MODEL
+C
+C///////////////////////////////////////////////////////////////////////
+C
+C     CHANGES FROM THE PREVIOUS VERSION:
+C
+C     1) CORRECTED ADDRESS.
+C
+C     2) IN OVEN83, PUT EXTERNAL STATEMENTS IN CHANGE BLOCKS TO AVOID
+C        LINKING THE VPLIB ROUTINES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN00
+C
+C     KEEP TRACK OF VERSION DATA
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   CODE*(*), DATE*16, ID*9, STRING*(*), VCOM*8, VDAT*16, WORD*80
+      EXTERNAL
+     +   EXTENT, SQUEEZ
+      INTEGER
+     +   J, LENGTH, TEXT, VCOMS, VDATS
+      LOGICAL
+     +   ERROR, FOUND
+
+      PARAMETER (ID = 'OVEN00:  ')
+      PARAMETER (DATE = 'APRIL 1997')
+      PARAMETER (VCOMS = 8)
+      PARAMETER (VDATS = 8)
+
+      DIMENSION
+     +   VCOM(VCOMS), VDAT(VDATS)
+
+      DATA VCOM
+     +   / '3.00', '3.01', '3.02', '3.03', '3.04', '3.05', '3.06',
+     +     '3.07' /
+
+      DATA VDAT
+     +   / '3.00', '3.01', '3.02', '3.03', '3.04', '3.05', '3.06',
+     +     '3.07' /
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PERFORM THE TASK INDICATED BY THE CODE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE VERSION FOR OVEND.DAT.
+
+      IF (CODE .EQ. 'CHECK DATA VERSION') THEN
+         FOUND = .FALSE.
+         DO 1010 J = 1, VDATS
+            FOUND = FOUND .OR. STRING .EQ.
+C*****PRECISION > DOUBLE
+     +         'OVEND DOUBLE PRECISION VERSION ' // VDAT(J)
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C     +         'OVEND SINGLE PRECISION VERSION ' // VDAT(J)
+C*****END PRECISION > SINGLE
+1010     CONTINUE
+         ERROR = .NOT. FOUND
+         IF (ERROR) GO TO 9101
+
+C///  CHECK THE VERSION FOR OVEND.IN.
+
+      ELSE IF (CODE .EQ. 'CHECK SCRIPT VERSION') THEN
+         FOUND = .FALSE.
+         DO 1020 J = 1, VCOMS
+            FOUND = FOUND .OR. STRING .EQ. VCOM(J)
+1020     CONTINUE
+         ERROR = .NOT. FOUND
+         IF (ERROR) GO TO 9102
+
+C///  STATE THE VERSION FOR OVEND.OUT.
+
+      ELSE IF (CODE .EQ. 'DATE PRECISION VERSION') THEN
+C*****PRECISION > DOUBLE
+         STRING = 'DOUBLE'
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         STRING = 'SINGLE'
+C*****END PRECISION > SINGLE
+     +   // ' PRECISION VERSION ' // VCOM(VCOMS) // ' OF ' // DATE
+         CALL SQUEEZ (LENGTH, STRING)
+
+C///  STATE THE VERSION FOR OVEND.DAT.
+
+      ELSE IF (CODE .EQ. 'NAME PRECISION VERSION') THEN
+C*****PRECISION > DOUBLE
+         STRING = 'OVEND DOUBLE'
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         STRING = 'OVEND SINGLE'
+C*****END PRECISION > SINGLE
+     +   // ' PRECISION VERSION ' // VCOM(VCOMS)
+         CALL SQUEEZ (LENGTH, STRING)
+
+C///  WRONG CODE.
+
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9103
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, STRING)
+         WRITE (TEXT, 99101) ID, STRING (1 : LENGTH)
+         DO 8010 J = 1, VDATS
+            WORD =
+C*****PRECISION > DOUBLE
+     +         'OVEND DOUBLE PRECISION VERSION ' // VDAT(J)
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C     +         'OVEND SINGLE PRECISION VERSION ' // VDAT(J)
+C*****END PRECISION > SINGLE
+            CALL EXTENT (LENGTH, WORD)
+            WRITE (TEXT, '(10X, A, A)')
+     +         ' ACCEPTED:  ', WORD (1 : LENGTH)
+8010     CONTINUE
+      END IF
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, STRING)
+         WRITE (TEXT, 99102) ID, STRING (1 : LENGTH)
+         DO 8020 J = 1, VCOMS
+            WORD = VCOM(J)
+            CALL EXTENT (LENGTH, WORD)
+            WRITE (TEXT, '(10X, A, A)')
+     +         ' ACCEPTED:  ', WORD (1 : LENGTH)
+8020     CONTINUE
+      END IF
+      GO TO 99999
+
+9103  IF (0 .LT. TEXT) WRITE (TEXT, 99103) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FILE WAS WRITTEN BY A VERSION OF'
+     +   /10X, 'OVEND THAT IS NOT COMPATIBLE WITH THE PRESENT VERSION.'
+     +  //10X, '   WRITER:  ', A
+     +   /)
+
+99102 FORMAT
+     +   (/1X, A9, 'ERROR.  THE INPUT SCRIPT IS INTENDED FOR A VERSION'
+     +   /10X, 'OF OVEND THAT MAY BE INCOMPATIBLE WITH THE PRESENT'
+     +   /10X, 'VERSION.  CHANGE THE VERSION NUMBER IN THE SCRIPT FILE'
+     +   /10X, 'TO ONE THAT IS ACCEPTED AND TRY AGAIN.'
+     +  //10X, ' INTENDED:  ', A
+     +   /)
+
+99103 FORMAT
+     +   (/1X, A9, 'ERROR.  THE COMMAND CODE IS UNRECOGNIZED.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      END
+      SUBROUTINE OVEN01
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ADJUST, BTYPES, DEPTH, ENERGY, FACTOR, FRAC, GASES, INFLOW,
+     +   INJECS, INLOC, INMOLE, INNAME, INTEMP, KNUDSN, LINE, LPAR,
+     +   LPARS, MULTIC, NUMBER, PRESS, PRINT, QFIRST, QLAST, QNMBR,
+     +   RLOC, RPAR, RPARS, RPNTS, RTUBE, RWAFER, SCRIPT, SITES, SNAME,
+     +   SOLVED, STEMP, STYPES, SURFS, THRMLD, TNAME, UNIT, WFIRST,
+     +   WLAST, ZLOC)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN01
+C
+C     CHANGE THE MODEL
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   BNAME*80, CVALUE*80, CWORK*16, ID*9, INNAME*16, KEY*80,
+     +   LINE*82, SNAME*16, TNAME*16, TYPE*80, WORD*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   DEPTH, EPS, FACTOR, FRAC, INFLOW, INLOC, INMOLE, INTEMP, PRESS,
+     +   RLOC, RPAR, RTUBE, RVALUE, RWAFER, RWORK, STEMP, SUM, WFIRST,
+     +   WLAST, ZLOC
+      EXTERNAL
+     +   EXTENT, OVEN11, READV2, READW, RESERV, TWEPS, VERIFY
+      INTEGER
+     +   BLOCK, BLOCKS, BTYPES, CLAST, CMARK, CMAX, COUNT, CSAVE, CSIZE,
+     +   FINDEX, GAS, GASES, ILAST, IMARK, IMAX, INDEX, INJEC, INJECS,
+     +   ISAVE, ISIZE, IVALUE, IWORK, J, KEYS, KMAX, LENGTH, LLAST,
+     +   LMARK, LMAX, LPARS, LSAVE, LSIZE, NINDEX, NUMBER, PRINT, Q,
+     +   QCORR, QCVALU, QDIFF, QENER, QFACT, QFILE, QFIRST, QFOUND,
+     +   QGEOM, QGUESS, QINJE, QIVALU, QKEY, QKNUD, QLAST, QLVALU,
+     +   QNEED, QNMBR, QOPER, QORAD, QPRESS, QPROP, QRVALU, QTEMP,
+     +   QTHRM, QTYPE, QWSPAC, RLAST, RMARK, RMAX, RPARS, RPNTS, RSAVE,
+     +   RSIZE, SCRIPT, SITES, STYPES, SURF, SURFS, TEXT, TINDEX, UNIT
+      INTRINSIC
+     +   ABS
+      LOGICAL
+     +   ADJUST, BFOUND, BNEED, ENERGY, ERROR, FOUND, KNUDSN, LPAR,
+     +   LVALUE, LWORK, MULTIC, NEED, SOLVED, THRMLD
+
+      PARAMETER (ID = 'OVEN01:  ')
+      PARAMETER (KMAX = 30)
+      PARAMETER
+     +   (QGEOM = 1, QGUESS = 2, QINJE = 3, QOPER = 4, QPROP = 5,
+     +   BLOCKS = 5)
+
+      DIMENSION
+     +   BFOUND(BLOCKS), BNAME(BLOCKS), BNEED(BLOCKS),
+     +   CVALUE(KMAX, BLOCKS), CWORK(CSIZE), FOUND(KMAX, BLOCKS),
+     +   FRAC(GASES + SITES), INFLOW(INJECS), INLOC(INJECS),
+     +   INMOLE(GASES, INJECS), INNAME(INJECS), INTEMP(INJECS),
+     +   IVALUE(KMAX, BLOCKS), IWORK(ISIZE), KEY(KMAX, BLOCKS),
+     +   KEYS(BLOCKS), LPAR(LPARS), LVALUE(KMAX, BLOCKS), LWORK(LSIZE),
+     +   NEED(KMAX, BLOCKS), QFIRST(1 + STYPES + BTYPES),
+     +   QLAST(1 + STYPES + BTYPES), QNMBR(1 + STYPES + BTYPES),
+     +   RLOC(SURFS), RPAR(RPARS), RVALUE(KMAX, BLOCKS), RWORK(RSIZE),
+     +   SNAME(GASES + SITES), STEMP(SURFS), TNAME(1 + STYPES + BTYPES),
+     +   TYPE(KMAX, BLOCKS), ZLOC(SURFS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CSAVE = CLAST
+      ISAVE = ILAST
+      LSAVE = LLAST
+      RSAVE = RLAST
+
+C///  CHECK THE DIMENSIONAL ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. CSIZE  .AND. 0 .LT. GASES  .AND.
+     +   0 .LT. INJECS .AND. 0 .LT. ISIZE  .AND. 0 .LT. LPARS  .AND.
+     +   0 .LT. LSIZE  .AND. 0 .LT. RPARS  .AND. 0 .LT. RSIZE  .AND.
+     +   0 .LT. SITES  .AND. 0 .LT. STYPES)
+      IF (ERROR) GO TO 9101
+
+C///  ESTIMATE MACHINE EPSILON
+
+      CALL TWEPS (EPS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) DEFINE THE KEYWORDS AND THEIR DEFAULTS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE.
+
+      DO 2010 BLOCK = 1, BLOCKS
+         BNEED(BLOCK) = .FALSE.
+         DO 2010 Q = 1, KMAX
+            FOUND(Q, BLOCK) = .FALSE.
+            NEED(Q, BLOCK) = .FALSE.
+2010  CONTINUE
+
+C///  SPECIFY AN INJECTOR.
+C 1>     SPECIFY AN INJECTOR
+C 2>        FLOW RATE = ?(sccm)
+C 2>        NAME = ?(injector name)
+C 2>        POSITION = ?(cm)
+C 2>        TEMPERATURE = ?(Kelvin)
+C 2>        ?(gas species name) = ?(0.0 mole fraction)
+C 2>        END
+
+      BNAME(QINJE) = 'SPECIFY AN INJECTOR'
+      BNEED(QINJE) = .TRUE.
+
+      KEYS(QINJE) = 4 + GASES
+
+C///  SPECIFY THE GEOMETRY.
+C 1>     SPECIFY THE GEOMETRY
+C 2>        OVEN RADIUS = ?(cm)
+C 2>        WAFER RADIUS = ?(cm)
+C 2>        WAFER SPACING = ?(cm)
+C 2>        END
+
+      Q = 0
+      BNAME(QGEOM) = 'SPECIFY THE GEOMETRY'
+
+      Q = Q + 1
+      QORAD = Q
+      TYPE(Q, QGEOM) = 'R'
+      KEY(Q, QGEOM) = 'OVEN RADIUS ='
+
+      Q = Q + 1
+      QWSPAC = Q
+      TYPE(Q, QGEOM) = 'R'
+      KEY(Q, QGEOM) = 'WAFER SPACING ='
+
+      KEYS(QGEOM) = Q
+
+C///  SPECIFY THE GUESS FOR GAS MOLE FRACTIONS.
+C 1>     SPECIFY THE GUESS FOR GAS MOLE FRACTIONS
+C 2>        ?(gas species name) = ?(0.0 mole fraction)
+C 2>        END
+
+C///  SPECIFY THE GUESS FOR SURFACE SITE FRACTIONS.
+C 1>     SPECIFY THE GUESS FOR SURFACE ?(name) SITE FRACTIONS
+C 2>        ?(site species name) = ?(0.0 site fraction)
+C 2>        END
+
+      BNAME(QGUESS) = 'SPECIFY THE GUESS FOR ...'
+      BNEED(QGUESS) = .FALSE.
+
+C///  SPECIFY THE MATERIAL PROPERTIES.
+C 1>     SPECIFY THE MATERIAL PROPERTIES
+C 2>        CONSERVE ENERGY = ?(NO)
+C 2>        CORRECT THE DIFFUSION VELOCITIES = ?(YES)
+C 2>        DIFFUSION COEFFICIENTS = ?(MIXTURE-AVERAGED)
+C 2>        INCLUDE KNUDSEN DIFFUSION = ?(NO)
+C 2>        INCLUDE THERMAL DIFFUSION = ?(NO)
+C 2>        SCALE FACTOR FOR REACTION RATES = ?(1.0)
+C 2>        END
+
+      Q = 0
+      BNAME(QPROP) = 'SPECIFY THE MATERIAL PROPERTIES'
+
+      Q = Q + 1
+      QENER = Q
+      TYPE(Q, QPROP) = 'L'
+      KEY(Q, QPROP) = 'CONSERVE ENERGY ='
+
+      Q = Q + 1
+      QCORR = Q
+      TYPE(Q, QPROP) = 'L'
+      KEY(Q, QPROP) = 'CORRECT THE DIFFUSION VELOCITIES ='
+
+      Q = Q + 1
+      QDIFF = Q
+      TYPE(Q, QPROP) = 'C'
+      KEY(Q, QPROP) = 'DIFFUSION COEFFICIENTS ='
+
+      Q = Q + 1
+      QKNUD = Q
+      TYPE(Q, QPROP) = 'L'
+      KEY(Q, QPROP) = 'INCLUDE KNUDSEN DIFFUSION ='
+
+      Q = Q + 1
+      QTHRM = Q
+      TYPE(Q, QPROP) = 'L'
+      KEY(Q, QPROP) = 'INCLUDE THERMAL DIFFUSION ='
+
+      Q = Q + 1
+      QFACT = Q
+      TYPE(Q, QPROP) = 'R'
+      KEY(Q, QPROP) = 'SCALE FACTOR FOR REACTION RATES ='
+
+      KEYS(QPROP) = Q
+
+C///  SPECIFY THE OPERATING CONDITIONS.
+C 1>     SPECIFY THE OPERATING CONDITIONS
+C 2>        PRESSURE = ?(Torr)
+C 2>        TEMPERATURE = ?(Kelvin)
+C 2>        TEMPERATURE FILE NAME = ?(name)
+C 2>        END
+
+      Q = 0
+      BNAME(QOPER) = 'SPECIFY THE OPERATING CONDITIONS'
+
+      Q = Q + 1
+      QPRESS = Q
+      TYPE(Q, QOPER) = 'R'
+      KEY(Q, QOPER) = 'PRESSURE ='
+
+      Q = Q + 1
+      QTEMP = Q
+      TYPE(Q, QOPER) = 'R'
+      KEY(Q, QOPER) = 'TEMPERATURE ='
+
+      Q = Q + 1
+      QFILE = Q
+      TYPE(Q, QOPER) = 'C'
+      KEY(Q, QOPER) = 'TEMPERATURE FILE NAME ='
+
+      KEYS(QOPER) = Q
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) READ THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE THE BLOCK FOUND FLAGS.
+
+      DO 3010 J = 1, BLOCKS
+         BFOUND(J) = .FALSE.
+3010  CONTINUE
+
+C///  TOP OF THE LOOP THROUGH THE SCRIPT FILE.
+
+3020  CONTINUE
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9301
+
+C///  TOP OF THE "SPECIFY" BLOCKS.
+
+      IF (WORD .EQ. 'SPECIFY') THEN
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9301
+
+C///  TOP OF THE "SPECIFY AN" BLOCKS.
+
+      IF (WORD .EQ. 'AN') THEN
+
+C///  SPECIFY AN INJECTOR.
+
+      CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'INJECTOR')
+      IF (ERROR) GO TO 9302
+
+      Q = QINJE
+      BFOUND(Q) = .TRUE.
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CMARK = CLAST
+      IMARK = ILAST
+      LMARK = LLAST
+      RMARK = RLAST
+
+C///  RESERVE SPACE FOR THE CALL TO READV.
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QCVALU', 4 + GASES, QCVALU)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QFOUND', 4 + GASES, QFOUND)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., ILAST, IMAX, ISIZE,
+     +   'QIVALU', 4 + GASES, QIVALU)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QKEY', 4 + GASES, QKEY)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QLVALU', 4 + GASES, QLVALU)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QNEED', 4 + GASES, QNEED)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QRVALU', 4 + GASES, QRVALU)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QTYPE', 4 + GASES, QTYPE)
+      IF (ERROR) GO TO 9303
+
+C///  CALL READV.
+
+      CWORK(QKEY + 0) = 'FLOW RATE'
+      LWORK(QNEED + 0) = .FALSE.
+      CWORK(QTYPE + 0) = 'R'
+
+      CWORK(QKEY + 1) = 'NAME'
+      LWORK(QNEED + 1) = .TRUE.
+      CWORK(QTYPE + 1) = 'C'
+
+      CWORK(QKEY + 2) = 'POSITION'
+      LWORK(QNEED + 2) = .FALSE.
+      CWORK(QTYPE + 2) = 'R'
+
+      CWORK(QKEY + 3) = 'TEMPERATURE'
+      LWORK(QNEED + 3) = .FALSE.
+      CWORK(QTYPE + 3) = 'R'
+
+      DO 3030 GAS = 1, GASES
+         CWORK(QKEY + 3 + GAS) = SNAME(GAS)
+         LWORK(QNEED + 3 + GAS) = .FALSE.
+         CWORK(QTYPE + 3 + GAS) = 'R'
+         RWORK(QRVALU + 3 + GAS) = 0.0
+3030  CONTINUE
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CPAR, ESIGN, FOUND, KEY, KEYS, IPAR, LINE, LPAR, NEED,
+C    +   NUMBER, PRINT, RPAR, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+      CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL READV1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   CWORK(QCVALU), .TRUE., LWORK(QFOUND), CWORK(QKEY), KEYS(Q),
+     +   IWORK(QIVALU), LINE, LWORK(QLVALU), LWORK(QNEED), NUMBER,
+     +   PRINT, RWORK(QRVALU), SCRIPT, CWORK(QTYPE))
+         IF (ERROR) GO TO 9304
+
+C///  FIND THE INJECTOR.
+
+      COUNT = 0
+      DO 3040 INJEC = 1, INJECS
+         IF (INNAME(INJEC) .EQ. CWORK(QCVALU + 1)) THEN
+            COUNT = COUNT + 1
+            INDEX = INJEC
+         END IF
+3040  CONTINUE
+
+      ERROR = COUNT .EQ. 0
+      IF (ERROR) GO TO 9305
+
+      ERROR = COUNT .GT. 1
+      IF (ERROR) GO TO 9306
+
+C///  CHANGE THE INJECTOR.
+
+      IF (LWORK(QFOUND + 0)) INFLOW(INDEX) = RWORK(QRVALU + 0)
+      IF (LWORK(QFOUND + 2)) INLOC(INDEX) = RWORK(QRVALU + 2)
+      IF (LWORK(QFOUND + 3)) INTEMP(INDEX) = RWORK(QRVALU + 3)
+
+      DO 3050 GAS = 1, GASES
+         IF (LWORK(QFOUND + 2 + GAS))
+     +      INMOLE(GAS, INDEX) = RWORK(QRVALU + 3 + GAS)
+3050  CONTINUE
+
+C///  CHECK THE FRACTIONS.
+
+      SUM = 0.0
+      DO 3060 GAS = 1, GASES
+         ERROR = .NOT. (0.0 .LE. INMOLE(GAS, INDEX))
+         IF (ERROR) GO TO 9307
+         SUM = SUM + INMOLE(GAS, INDEX)
+3060  CONTINUE
+
+      IF (SUM .EQ. 0.0) THEN
+         IF (0 .LT. TEXT) WRITE (TEXT, 10001) ID
+      ELSE
+         ERROR = .NOT. ABS (1.0 - SUM) .LE. 10 * GASES * EPS
+         IF (ERROR) GO TO 9308
+      END IF
+
+C///  BOTTOM OF THE BLOCK TO SPECIFY AN INJECTOR.  RELEASE THE WORK
+C///  SPACE.
+
+      CLAST = CMARK
+      ILAST = IMARK
+      LLAST = LMARK
+      RLAST = RMARK
+
+C///  TOP OF THE "SPECIFY THE" BLOCKS.
+
+      ELSE IF (WORD .EQ. 'THE') THEN
+         CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+         IF (ERROR) GO TO 9301
+
+C///  SPECIFY THE GEOMETRY.
+
+      IF (WORD .EQ. 'GEOMETRY') THEN
+         Q = QGEOM
+         ERROR = BFOUND(Q)
+         IF (ERROR) GO TO 9309
+         BFOUND(Q) = .TRUE.
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CVALUE(1, Q), .FALSE., FOUND(1, Q), KEY(1, Q), KEYS(Q),
+     +      IVALUE(1, Q), LINE, LVALUE(1, Q), NEED(1, Q), NUMBER, PRINT,
+     +      RVALUE(1, Q), SCRIPT, TYPE(1, Q))
+         IF (ERROR) GO TO 9304
+
+C///  TOP OF THE "SPECIFY THE GUESS FOR" BLOCKS.
+
+      ELSE IF (WORD .EQ. 'GUESS') THEN
+         Q = QGUESS
+
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'FOR')
+         IF (ERROR) GO TO 9302
+
+         CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+         IF (ERROR) GO TO 9301
+
+C///  SPECIFY THE GUESS FOR GAS MOLE FRACTIONS.
+
+      IF (WORD .EQ. 'GAS') THEN
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +      'MOLE FRACTIONS')
+         IF (ERROR) GO TO 9302
+
+         TINDEX = 1
+
+C///  SPECIFY THE GUESS FOR SURFACE ? SITE FRACTIONS.
+
+      ELSE IF (WORD .EQ. 'SURFACE') THEN
+         CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+         IF (ERROR) GO TO 9301
+
+         COUNT = 0
+         DO 3070 J = 2, 1 + STYPES
+            IF (TNAME(J) .EQ. WORD) THEN
+               COUNT = COUNT + 1
+               TINDEX = J
+            END IF
+3070     CONTINUE
+
+         ERROR = COUNT .EQ. 0
+         IF (ERROR) GO TO 9310
+
+         ERROR = 1 .LT. COUNT
+         IF (ERROR) GO TO 9311
+
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +      'SITE FRACTIONS')
+         IF (ERROR) GO TO 9302
+
+C///  BOTTOM OF THE GUESS SPECIFICATION BLOCKS.
+
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9312
+      END IF
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CMARK = CLAST
+      IMARK = ILAST
+      LMARK = LLAST
+      RMARK = RLAST
+
+C///  RESERVE SPACE FOR THE CALL TO READV.
+
+      ERROR = .NOT. (0 .LT. QNMBR(TINDEX))
+      IF (ERROR) GO TO 9313
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QCVALU', QNMBR(TINDEX), QCVALU)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QFOUND', QNMBR(TINDEX), QFOUND)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., ILAST, IMAX, ISIZE,
+     +   'QIVALU', QNMBR(TINDEX), QIVALU)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QLVALU', QNMBR(TINDEX), QLVALU)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QNEED', QNMBR(TINDEX), QNEED)
+      IF (ERROR) GO TO 9303
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QTYPE', QNMBR(TINDEX), QTYPE)
+      IF (ERROR) GO TO 9303
+
+C///  CALL READV.
+
+      FINDEX = QFIRST(TINDEX)
+      NINDEX = QFIRST(TINDEX)
+
+      DO 3080 J = 0, QNMBR(TINDEX) - 1
+         FRAC(FINDEX + J) = 0.0
+         LWORK(QNEED + J) = .FALSE.
+         CWORK(QTYPE + J) = 'R'
+3080  CONTINUE
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CPAR, ESIGN, FOUND, KEY, KEYS, IPAR, LINE, LPAR, NEED,
+C    +   NUMBER, PRINT, RPAR, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+      CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL READV1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   CWORK(QCVALU), .TRUE., LWORK(QFOUND), SNAME(NINDEX),
+     +   QNMBR(TINDEX), IWORK(QIVALU), LINE, LWORK(QLVALU),
+     +   LWORK(QNEED), NUMBER, PRINT, FRAC(FINDEX), SCRIPT,
+     +   CWORK(QTYPE))
+         IF (ERROR) GO TO 9304
+
+C///  CHECK THE FRACTIONS.
+
+      SUM = 0.0
+      DO 3090 J = QFIRST(TINDEX), QLAST(TINDEX)
+         ERROR = .NOT. (0.0 .LE. FRAC(J))
+         IF (ERROR) GO TO 9307
+         SUM = SUM + FRAC(J)
+3090  CONTINUE
+
+      IF (SUM .EQ. 0.0) THEN
+         IF (0 .LT. TEXT) WRITE (TEXT, 10001) ID
+      ELSE
+         ERROR = .NOT. ABS (1.0 - SUM) .LE. 10 * QNMBR(TINDEX) * EPS
+         IF (ERROR) GO TO 9308
+      END IF
+
+C///  BOTTOM OF THE BLOCK TO SPECIFY THE GUESS FOR SURFACE SITE
+C///  FRACTIONS.  RELEASE THE WORK SPACE.
+
+      CLAST = CMARK
+      ILAST = IMARK
+      LLAST = LMARK
+      RLAST = RMARK
+
+C///  SPECIFY THE MATERIAL PROPERTIES.
+
+      ELSE IF (WORD .EQ. 'MATERIAL') THEN
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +      'PROPERTIES')
+         IF (ERROR) GO TO 9302
+
+         Q = QPROP
+         ERROR = BFOUND(Q)
+         IF (ERROR) GO TO 9309
+         BFOUND(Q) = .TRUE.
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CVALUE(1, Q), .FALSE., FOUND(1, Q), KEY(1, Q), KEYS(Q),
+     +      IVALUE(1, Q), LINE, LVALUE(1, Q), NEED(1, Q), NUMBER, PRINT,
+     +      RVALUE(1, Q), SCRIPT, TYPE(1, Q))
+         IF (ERROR) GO TO 9304
+
+C///  SPECIFY THE OPERATING CONDITIONS.
+
+      ELSE IF (WORD .EQ. 'OPERATING') THEN
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +      'CONDITIONS')
+         IF (ERROR) GO TO 9302
+
+         Q = QOPER
+         ERROR = BFOUND(Q)
+         IF (ERROR) GO TO 9309
+         BFOUND(Q) = .TRUE.
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CVALUE(1, Q), .FALSE., FOUND(1, Q), KEY(1, Q), KEYS(Q),
+     +      IVALUE(1, Q), LINE, LVALUE(1, Q), NEED(1, Q), NUMBER, PRINT,
+     +      RVALUE(1, Q), SCRIPT, TYPE(1, Q))
+         IF (ERROR) GO TO 9304
+
+         ERROR = FOUND(QFILE, QOPER) .AND. FOUND(QTEMP, QOPER)
+         IF (ERROR) GO TO 9314
+
+C///  BOTTOM OF THE SPECIFICATION BLOCKS.
+
+         ELSE
+            ERROR = .TRUE.
+            GO TO 9312
+         END IF
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9312
+      END IF
+
+C///  BOTTOM OF THE LOOP THROUGH THE SCRIPT FILE.
+
+      ELSE IF (WORD .EQ. 'END') THEN
+         GO TO 3100
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9312
+      END IF
+      GO TO 3020
+3100  CONTINUE
+
+C///  CHOOSE THE GEOMETRY.
+
+      IF (FOUND(QORAD, QGEOM)) RTUBE = RVALUE(QORAD, QGEOM)
+
+C///  CHOOSE THE MATERIAL PROPERTIES.
+
+      IF (FOUND(QCORR, QPROP)) ADJUST = LVALUE(QCORR, QPROP)
+
+      IF (FOUND(QDIFF, QPROP)) THEN
+         IF (CVALUE(QDIFF, QPROP) .EQ. 'MIXTURE-AVERAGED') THEN
+             MULTIC = .FALSE.
+         ELSE IF (CVALUE(QDIFF, QPROP) .EQ. 'MULTICOMPONENT') THEN
+            MULTIC = .TRUE.
+         ELSE
+            ERROR = .TRUE.
+            GO TO 9315
+         END IF
+      END IF
+
+      IF (FOUND(QENER, QPROP)) ENERGY = LVALUE(QENER, QPROP)
+      IF (FOUND(QFACT, QPROP)) FACTOR = RVALUE(QFACT, QPROP)
+      IF (FOUND(QKNUD, QPROP)) KNUDSN = LVALUE(QKNUD, QPROP)
+      IF (FOUND(QTHRM, QPROP)) THRMLD = LVALUE(QTHRM, QPROP)
+
+C///  CHOOSE THE OPERATING CONDITIONS.
+
+      IF (FOUND(QPRESS, QOPER))
+     +   PRESS = RVALUE(QPRESS, QOPER) * 1.01325E6 / 760.0
+
+      IF (FOUND(QFILE, QOPER)) THEN
+
+C     SUBROUTINE OVEN11
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   DEPTH, NAME, RLOC, RPNTS, RTUBE, RWAFER, STEMP, SURFS, UNIT,
+C    +   WFIRST, WLAST, ZLOC)
+
+      CALL OVEN11
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   DEPTH, CVALUE(QFILE, QOPER), RLOC, RPNTS, RTUBE, RWAFER, STEMP,
+     +   SURFS, UNIT, WFIRST, WLAST, ZLOC)
+      IF (ERROR) GO TO 9316
+
+      ELSE IF (FOUND(QTEMP, QOPER)) THEN
+         DO 3110 SURF = 1, SURFS
+            STEMP(SURF) = RVALUE(QTEMP, QOPER)
+3110     CONTINUE
+      END IF
+
+C///  MARK THE MODEL NOT SOLVED.
+
+      SOLVED = .FALSE.
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) STORE THE PARAMETERS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  LOGICAL PARAMETERS.
+
+      Q = 0
+
+C     ADJUST: ADJUST THE DIFFUSION COEFFICIENTS
+      Q = Q + 1
+      IF (Q .LE. LPARS) LPAR(Q) = ADJUST
+
+C     ENERGY: CONSERVE ENERGY
+      Q = Q + 1
+      IF (Q .LE. LPARS) LPAR(Q) = ENERGY
+
+C     GUESS: A SOLUTION HAS BEEN FOUND FOR ANY MODEL
+      Q = Q + 1
+
+C     KNUDSN: INCLUDE KNUDSEN DIFFUSION
+      Q = Q + 1
+      IF (Q .LE. LPARS) LPAR(Q) = KNUDSN
+
+C     MULTIC: USE MULTICOMPONENT DIFFUSION COEFFICIENTS
+      Q = Q + 1
+      IF (Q .LE. LPARS) LPAR(Q) = MULTIC
+
+C     OPTIM: FIND AN OPTIMAL GRID
+      Q = Q + 1
+
+C     SOLVED: A SOLUTION HAS BEEN FOUND FOR THE CURRENT MODEL
+      Q = Q + 1
+      IF (Q .LE. LPARS) LPAR(Q) = SOLVED
+
+C     THRMLD: INCLUDE THERMAL DIFFUSION
+      Q = Q + 1
+      IF (Q .LE. LPARS) LPAR(Q) = THRMLD
+
+C     ZONLY: MODEL ONLY THE ANNULAR PROBLEM
+      Q = Q + 1
+
+      ERROR = .NOT. (Q .EQ. LPARS)
+      IF (ERROR) GO TO 9401
+
+C///  REAL PARAMETERS.
+
+      Q = 0
+
+C     DEPTH: OVEN LENGTH
+      Q = Q + 1
+
+C     FACTOR: SCALE FACTOR FOR REACTION RATES
+      Q = Q + 1
+      IF (Q .LE. RPARS) RPAR(Q) = FACTOR
+
+C     PRESS: PRESSURE
+      Q = Q + 1
+      IF (Q .LE. RPARS) RPAR(Q) = PRESS
+
+C     REDGE: RADIAL STEP AT RADIAL EDGE
+      Q = Q + 1
+
+C     RRATIO: MAXIMUM RADIAL RATIO
+      Q = Q + 1
+
+C     RSTEP: MAXIMUM RADIAL STEP
+      Q = Q + 1
+
+C     RTUBE: OVEN RADIUS
+      Q = Q + 1
+      IF (Q .LE. RPARS) RPAR(Q) = RTUBE
+
+C     RWAFER: WAFER RADIUS
+      Q = Q + 1
+
+C     SPACE: WAFER SPACING
+      Q = Q + 1
+
+C     THICK: WAFER THICKNESS
+      Q = Q + 1
+
+C     WFIRST: FIRST WAFER POSITION
+      Q = Q + 1
+
+C     WLAST: LAST WAFER POSITION
+      Q = Q + 1
+
+C     ZINJEC: AXIAL STEP AT INJECTORS
+      Q = Q + 1
+
+C     ZOVEN: AXIAL STEP AT OVEN END
+      Q = Q + 1
+
+C     ZRATIO: MAXIMUM AXIAL STEP RATIOS
+      Q = Q + 3
+
+C     ZSTEP: MAXIMUM AXIAL STEPS
+      Q = Q + 3
+
+      ERROR = .NOT. (Q .EQ. RPARS)
+      IF (ERROR) GO TO 9402
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     INFORMATIVE MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +  (/1X, A9, 'WARNING.  ALL THE FRACTIONS ARE ZERO.')
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, CSIZE, GASES, INJECS, ISIZE, LPARS, LSIZE, RPARS,
+     +   RSIZE, SITES, STYPES
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID
+      GO TO 99999
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID
+      GO TO 99999
+
+9303  IF (0 .LT. TEXT) WRITE (TEXT, 99303) ID
+      GO TO 99999
+
+9304  IF (0 .LT. TEXT) WRITE (TEXT, 99304) ID
+      GO TO 99999
+
+9305  IF (0 .LT. TEXT) WRITE (TEXT, 99305) ID
+      GO TO 99999
+
+9306  IF (0 .LT. TEXT) WRITE (TEXT, 99306) ID
+      GO TO 99999
+
+9307  IF (0 .LT. TEXT) WRITE (TEXT, 99307) ID
+      GO TO 99999
+
+9308  IF (0 .LT. TEXT) WRITE (TEXT, 99308) ID
+      GO TO 99999
+
+9309  IF (0 .LT. TEXT) THEN
+         WORD = BNAME(Q)
+         CALL EXTENT (LENGTH, WORD)
+         IF (58 .LT. LENGTH) WORD (54 : ) = ' ...'
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99309) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9310  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99310) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9311  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99311) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9312  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99312) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9313  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99313) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9314  IF (0 .LT. TEXT) WRITE (TEXT, 99314) ID
+      GO TO 99999
+
+9315  IF (0 .LT. TEXT) WRITE (TEXT, 99315) ID
+      GO TO 99999
+
+9316  IF (0 .LT. TEXT) WRITE (TEXT, 99316) ID
+      GO TO 99999
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID
+      GO TO 99999
+
+9402  IF (0 .LT. TEXT) WRITE (TEXT, 99402) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  CSIZE',
+     +   /10X, I10, '  GASES',
+     +   /10X, I10, '  INJECS',
+     +   /10X, I10, '  ISIZE',
+     +   /10X, I10, '  LPARS',
+     +   /10X, I10, '  LSIZE',
+     +   /10X, I10, '  RPARS',
+     +   /10X, I10, '  RSIZE',
+     +   /10X, I10, '  SITES')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  READW FAILS.')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  VERIFY FAILS.')
+
+99303 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99304 FORMAT
+     +   (/1X, A9, 'ERROR.  READV FAILS.')
+
+99305 FORMAT
+     +   (/1X, A9, 'ERROR.  THERE IS NO INJECTOR WITH THIS NAME.')
+
+99306 FORMAT
+     +   (/1X, A9, 'ERROR.  THERE ARE TWO INJECTORS WITH THIS NAME.')
+
+99307 FORMAT
+     +   (/1X, A9, 'ERROR.  A FRACTION IS NEGATIVE.')
+
+99308 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FRACTIONS DO NOT SUM TO 1.')
+
+99309 FORMAT
+     +   (/1X, A9, 'ERROR.  THE INPUT SCRIPT REPEATS A KEYWORD.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, '  KEYWORD:  ', A)
+
+99310 FORMAT
+     +   (/1X, A9, 'ERROR.  THE NAME OF A SURFACE TYPE IS UNKNOWN.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, '     NAME:  ', A)
+
+99311 FORMAT
+     +   (/1X, A9, 'ERROR.  THE CHEMKIN DATABASE REPEATS THE NAME OF A'
+     +   /10X, 'SURFACE TYPE.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, '     NAME:  ', A)
+
+99312 FORMAT
+     +   (/1X, A9, 'ERROR.  A KEYWORD IS MISPLACED OR UNKNOWN.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, '  KEYWORD:  ', A)
+
+99313 FORMAT
+     +   (/1X, A9, 'ERROR.  THE CHEMKIN DATABASE HAS NO SPECIES OF A'
+     +   /10X, 'CERTAIN TYPE.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, 'TYPE NAME:  ', A)
+
+99314 FORMAT
+     +   (/1X, A9, 'ERROR.  NOT BOTH A TEMPERATURE AND A TEMPERATURE'
+     +   /10X, 'FILE CAN BE SPECIFIED.')
+
+99315 FORMAT
+     +   (/1X, A9, 'ERROR.  THE DIFFUSION COEFFICIENTS ARE NEITHER'
+     +   /10X, 'MIXTURE-AVERAGED NOR MULTICOMPONENT.')
+
+99316 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN11 FAILS.')
+
+99401 FORMAT
+     +   (/1X, A9, 'ERROR.  THE LOGICAL PARAMETER ARRAY IS THE WRONG'
+     +   /10X, 'SIZE.')
+
+99402 FORMAT
+     +   (/1X, A9, 'ERROR.  THE REAL PARAMETER ARRAY IS THE WRONG'
+     +   /10X, 'SIZE.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+      RETURN
+      END
+      SUBROUTINE OVEN02
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ADJUST, BTYPES, CELLS, DEPTH, ENERGY, FACTOR, GASES, GUESS,
+     +   INJECS, IPARS, KNUDSN, LINE, LPARS, MULTIC, NUMBER, PRESS,
+     +   PRINT, Q01, Q02, Q03, Q04, Q05, Q06, Q07, Q08, Q09, Q10, Q11,
+     +   QCVOL, QFIRST, QFRAC, QINABL, QINCEL, QINFLO, QINLOC, QINMOL,
+     +   QINNAM, QINTEM, QINZPN, QIPAR, QLAST, QLPAR, QNMBR, QR, QR10,
+     +   QR11, QRLOC, QRPAR, QSAREA, QSINDX, QSLTN, QSMAGE, QSTEMP,
+     +   QWAREA, QWCODE, QWCOEF, QWINDX, QZ, QZ10, QZ11, QZLOC, R10SIZ,
+     +   R11SIZ, RPARS, RPNTS, RTUBE, RWAFER, SCOUNT, SCRIPT, SITES,
+     +   SNAME, SOLVED, SPACE, STYPES, SURFS, THICK, THRMLD, TNAME,
+     +   UNIT, VBLES, WAFERS, WALLS, WCOUNT, WFIRST, WLAST, Z10SIZ,
+     +   Z11SIZ, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN02
+C
+C     DEFINE A MODEL
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   BNAME*80, CPAR*32, CWORK*16, ID*9, KEY*80, LINE*82, NAME*80,
+     +   SNAME*16, TNAME*16, TYPE*80, WORD*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   DEPTH, EPS, FACTOR, POINT, PRESS, REDGE, RPAR, RRATIO, RSTEP,
+     +   RTUBE, RWAFER, RWORK, SPACE, SUM, TEMP, THICK, WALL0, WALL2,
+     +   WFIRST, WLAST, ZINJEC, ZOVEN, ZRATIO, ZSTEP
+      EXTERNAL
+     +   EXTENT, OVEN11, OVEN21, OVEN22, OVEN23, READV2, READW, RESERV,
+     +   TWEPS, VERIFY
+      INTEGER
+     +   BLOCK, BLOCKS, BTYPES, CELL, CELLS, CLAST, CMARK, CMAX, COUNT,
+     +   CSAVE, CSAVE0, CSIZE, FINDEX, GAS, GASES, ILAST, IMARK, IMAX,
+     +   INJEC, INJECS, IPAR, IPARS, ISAVE, ISIZE, IWORK, J, K, KEYS,
+     +   KMAX, LENGTH, LLAST, LMARK, LMAX, LPARS, LSAVE, LSIZE, NINDEX,
+     +   NMAX, NTRVLS, NUMBER, PRINT, Q, Q01, Q02, Q03, Q04, Q05, Q06,
+     +   Q07, Q08, Q09, Q1, Q10, Q11, Q2, QBPOIN, QCMAP, QCORR, QCSAVE,
+     +   QCVALU, QCVOL, QDIFF, QENER, QFACT, QFILE, QFIRST, QFOUND,
+     +   QFRAC, QGEOM, QGRID, QGUESS, QINABL, QINCEL, QINFLO, QINJE,
+     +   QINLOC, QINMOL, QINNAM, QINTEM, QINZPN, QIPAR, QIVALU, QKEY,
+     +   QKNUD, QLAST, QLPAR, QLVALU, QM1, QM2, QMAXR, QMAXS, QNAME
+      INTEGER
+     +   QNEED, QNMBR, QOLEN, QOPER, QOPTIM, QORAD, QPRESS, QPROP, QR,
+     +   QR10, QR11, QRBOUN, QREDGE, QRLOC, QRPAR, QRRATI, QRSAVE,
+     +   QRSTEP, QRVALU, QSAREA, QSBOUN, QSINDX, QSKIP, QSLTN, QSMAGE,
+     +   QSNMBR, QSTEMP, QSTEP, QTEMP, QTHICK, QTHRM, QTYPE, QWALL,
+     +   QWAREA, QWCNT, QWCODE, QWCOEF, QWFRST, QWINDX, QWLAST, QWNMBR,
+     +   QWRAD, QWSPAC, QZ, QZ0, QZ1, QZ10, QZ11, QZ2, QZINJE, QZLOC,
+     +   QZONLY, QZOVEN, QZRAT1, QZRAT2, QZRAT3, QZSTP1, QZSTP2, QZSTP3,
+     +   R10SIZ, R11SIZ, RLAST, RMARK, RMAX, RPARS, RPNTS, RSAVE,
+     +   RSAVE0, RSIZE, SCOUNT, SCRIPT, SITES, STYPES, SURFS, TEXT,
+     +   TINDEX, UNIT, VBLES, WAFERS, WALLS, WCOUNT, Z10SIZ, Z11SIZ,
+     +   ZPNT, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      INTRINSIC
+     +   ABS, MAX, REAL
+      LOGICAL
+     +   ADJUST, BFOUND, BNEED, ENERGY, ERROR, FOUND, GUESS, HAVE,
+     +   KNUDSN, LPAR, LWORK, MULTIC, NEED, OPTIM, SOLVED, THRMLD,
+     +   ZONLY
+
+      PARAMETER (ID = 'OVEN02:  ')
+      PARAMETER (KMAX = 30)
+      PARAMETER
+     +  (QGEOM = 1, QGRID = 2, QGUESS = 3, QINJE = 4, QOPER = 5,
+     +   QPROP = 6, BLOCKS = 6)
+
+      DIMENSION
+     +   BFOUND(BLOCKS), BNAME(BLOCKS), BNEED(BLOCKS),
+     +   CPAR(KMAX, BLOCKS), CWORK(CSIZE), FOUND(KMAX, BLOCKS),
+     +   IPAR(KMAX, BLOCKS), IWORK(ISIZE), KEY(KMAX, BLOCKS),
+     +   KEYS(BLOCKS), LPAR(KMAX, BLOCKS), LWORK(LSIZE),
+     +   NEED(KMAX, BLOCKS), QFIRST(1 + STYPES + BTYPES),
+     +   QLAST(1 + STYPES + BTYPES), QNMBR(1 + STYPES + BTYPES),
+     +   RPAR(KMAX, BLOCKS), RWORK(RSIZE), SNAME(GASES + SITES),
+     +   TNAME(1 + STYPES + BTYPES), TYPE(KMAX, BLOCKS), ZRATIO(3),
+     +   ZSTEP(3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CSAVE = CLAST
+      ISAVE = ILAST
+      LSAVE = LLAST
+      RSAVE = RLAST
+
+C///  CHECK THE DIMENSIONAL ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. CSIZE  .AND. 0 .LT. GASES  .AND.
+     +   0 .LT. ISIZE  .AND. 0 .LT. LSIZE  .AND. 0 .LT. RSIZE  .AND.
+     +   0 .LT. SITES  .AND. 0 .LT. STYPES)
+      IF (ERROR) GO TO 9101
+
+C///  ESTIMATE MACHINE EPSILON
+
+      CALL TWEPS (EPS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) DEFINE THE KEYWORDS AND THEIR DEFAULTS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE.
+
+      DO 2010 BLOCK = 1, BLOCKS
+         BNEED(BLOCK) = .FALSE.
+         DO 2010 Q = 1, KMAX
+            FOUND(Q, BLOCK) = .FALSE.
+            NEED(Q, BLOCK) = .FALSE.
+2010  CONTINUE
+
+C///  SPECIFY AN INJECTOR.
+C 1>     SPECIFY AN INJECTOR
+C 2>        FLOW RATE = ?(sccm)
+C 2>        NAME = ?(injector name)
+C 2>        POSITION = ?(cm)
+C 2>        TEMPERATURE = ?(Kelvin)
+C 2>        ?(gas species name) = ?(0.0 mole fraction)
+C 2>        END
+
+      BNAME(QINJE) = 'SPECIFY AN INJECTOR'
+      BNEED(QINJE) = .TRUE.
+
+      KEYS(QINJE) = 4 + GASES
+
+      INJECS = 0
+
+C///  SPECIFY THE GEOMETRY.
+C 1>     SPECIFY THE GEOMETRY
+C 2>        FAR END WAFER POSITION = ?(cm)
+C 2>        NEAR END WAFER POSITION = ?(cm)
+C 2>        NUMBER OF WAFERS = ?(integer)
+C 2>        OVEN LENGTH = ?(cm)
+C 2>        OVEN RADIUS = ?(cm)
+C 2>        WAFER RADIUS = ?(cm)
+C 2>        WAFER SPACING = ?(cm)
+C 2>        WAFER THICKNESS = ?(0.06 cm)
+C 2>        END
+
+      Q = 0
+      BNAME(QGEOM) = 'SPECIFY THE GEOMETRY'
+      BNEED(QGEOM) = .TRUE.
+
+      Q = Q + 1
+      QWLAST = Q
+      TYPE(Q, QGEOM) = 'R'
+      KEY(Q, QGEOM) = 'FAR END WAFER POSITION ='
+      NEED(Q, QGEOM) = .TRUE.
+
+      Q = Q + 1
+      QWFRST = Q
+      TYPE(Q, QGEOM) = 'R'
+      KEY(Q, QGEOM) = 'NEAR END WAFER POSITION ='
+      NEED(Q, QGEOM) = .TRUE.
+
+      Q = Q + 1
+      QWCNT = Q
+      TYPE(Q, QGEOM) = 'I'
+      KEY(Q, QGEOM) = 'NUMBER OF WAFERS ='
+      NEED(Q, QGEOM) = .TRUE.
+
+      Q = Q + 1
+      QOLEN = Q
+      TYPE(Q, QGEOM) = 'R'
+      KEY(Q, QGEOM) = 'OVEN LENGTH ='
+      NEED(Q, QGEOM) = .TRUE.
+
+      Q = Q + 1
+      QORAD = Q
+      TYPE(Q, QGEOM) = 'R'
+      KEY(Q, QGEOM) = 'OVEN RADIUS ='
+      NEED(Q, QGEOM) = .TRUE.
+
+      Q = Q + 1
+      QWRAD = Q
+      TYPE(Q, QGEOM) = 'R'
+      KEY(Q, QGEOM) = 'WAFER RADIUS ='
+      NEED(Q, QGEOM) = .TRUE.
+
+      Q = Q + 1
+      QWSPAC = Q
+      TYPE(Q, QGEOM) = 'R'
+      KEY(Q, QGEOM) = 'WAFER SPACING ='
+      NEED(Q, QGEOM) = .TRUE.
+
+      Q = Q + 1
+      QTHICK = Q
+      TYPE(Q, QGEOM) = 'R'
+      KEY(Q, QGEOM) = 'WAFER THICKNESS ='
+      NEED(Q, QGEOM) = .FALSE.
+      RPAR(Q, QGEOM) = 0.06
+
+      KEYS(QGEOM) = Q
+
+C///  SPECIFY THE GRID.
+C 1>     SPECIFY THE GRID
+C 2>        ANNULAR MODEL ONLY = ?(NO)
+C 2>        FIND OPTIMAL GRIDS = ?(YES)
+C 2>        MAXIMUM AXIAL STEP AFTER WAFERS = ?(10.0 cm)
+C 2>        MAXIMUM AXIAL STEP AMONG WAFERS = ?(10.0 cm)
+C 2>        MAXIMUM AXIAL STEP BEFORE WAFERS = ?(10.0 cm)
+C 2>        MAXIMUM AXIAL STEP RATIO AFTER WAFERS = ?(3.0 cm)
+C 2>        MAXIMUM AXIAL STEP RATIO AMONG WAFERS = ?(3.0 cm)
+C 2>        MAXIMUM AXIAL STEP RATIO BEFORE WAFERS = ?(3.0 cm)
+C 2>        MAXIMUM RADIAL STEP = ?(2.0 cm)
+C 2>        MAXIMUM RADIAL STEP RATIO = ?(3.0 cm)
+C 2>        STEP AT INJECTORS = ?(2.0 cm)
+C 2>        STEP AT OVEN END = ?(10.0 cm)
+C 2>        STEP AT WAFER EDGE = ?(0.5 cm)
+C 2>        END
+
+      Q = 0
+      BNAME(QGRID) = 'SPECIFY THE GRID'
+      BNEED(QGRID) = .FALSE.
+
+      Q = Q + 1
+      QZONLY = Q
+      TYPE(Q, QGRID) = 'L'
+      KEY(Q, QGRID) = 'ANNULAR PROBLEM ONLY ='
+      NEED(Q, QGRID) = .FALSE.
+      LPAR(Q, QGRID) = .FALSE.
+
+      Q = Q + 1
+      QOPTIM = Q
+      TYPE(Q, QGRID) = 'L'
+      KEY(Q, QGRID) = 'FIND OPTIMAL GRIDS ='
+      NEED(Q, QGRID) = .FALSE.
+      LPAR(Q, QGRID) = .TRUE.
+
+      Q = Q + 1
+      QZSTP1 = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'MAXIMUM AXIAL STEP BEFORE WAFERS ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 10.0
+
+      Q = Q + 1
+      QZSTP2 = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'MAXIMUM AXIAL STEP AMONG WAFERS ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 10.0
+
+      Q = Q + 1
+      QZSTP3 = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'MAXIMUM AXIAL STEP AFTER WAFERS ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 10.0
+
+      Q = Q + 1
+      QZRAT1 = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'MAXIMUM AXIAL STEP RATIO BEFORE WAFERS ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 3.0
+
+      Q = Q + 1
+      QZRAT2 = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'MAXIMUM AXIAL STEP RATIO AMONG WAFERS ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 3.0
+
+      Q = Q + 1
+      QZRAT3 = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'MAXIMUM AXIAL STEP RATIO AFTER WAFERS ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 3.0
+
+      Q = Q + 1
+      QRSTEP = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'MAXIMUM RADIAL STEP ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 2.0
+
+      Q = Q + 1
+      QRRATI = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'MAXIMUM RADIAL STEP RATIO ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 3.0
+
+      Q = Q + 1
+      QZINJE = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'STEP AT INJECTORS ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 2.0
+
+      Q = Q + 1
+      QZOVEN = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'STEP AT OVEN END ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 10.0
+
+      Q = Q + 1
+      QREDGE = Q
+      TYPE(Q, QGRID) = 'R'
+      KEY(Q, QGRID) = 'STEP AT WAFER EDGE ='
+      NEED(Q, QGRID) = .FALSE.
+      RPAR(Q, QGRID) = 0.5
+
+      KEYS(QGRID) = Q
+
+C///  SPECIFY THE GUESS FOR GAS MOLE FRACTIONS.
+C 1>     SPECIFY THE GUESS FOR GAS MOLE FRACTIONS
+C 2>        ?(gas species name) = ?(0.0 mole fraction)
+C 2>        END
+
+C///  SPECIFY THE GUESS FOR SURFACE SITE FRACTIONS.
+C 1>     SPECIFY THE GUESS FOR SURFACE ?(name) SITE FRACTIONS
+C 2>        ?(site species name) = ?(0.0 site fraction)
+C 2>        END
+
+      BNAME(QGUESS) = 'SPECIFY THE GUESS FOR ...'
+      BNEED(QGUESS) = .FALSE.
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QFRAC', GASES + SITES, QFRAC)
+      IF (ERROR) GO TO 9201
+
+      DO 2020 J = 1, 1 + STYPES
+         DO 2020 K = QFIRST(J) - 1, QLAST(J) - 1
+C           SET FRACTIONS TO THE RECIPROCAL OF THE TOTAL SPECIES
+C*****PRECISION > DOUBLE
+            RWORK(QFRAC + K) = 1.D0 / DBLE (QNMBR(J))
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C            RWORK(QFRAC + K) = 1.0 / REAL (QNMBR(J))
+C*****END PRECISION > SINGLE
+2020  CONTINUE
+
+C///  SPECIFY THE MATERIAL PROPERTIES.
+C 1>     SPECIFY THE MATERIAL PROPERTIES
+C 2>        CONSERVE ENERGY = ?(NO)
+C 2>        CORRECT THE DIFFUSION VELOCITIES = ?(YES)
+C 2>        DIFFUSION COEFFICIENTS = ?(MIXTURE-AVERAGED)
+C 2>        INCLUDE KNUDSEN DIFFUSION = ?(NO)
+C 2>        INCLUDE THERMAL DIFFUSION = ?(NO)
+C 2>        SCALE FACTOR FOR REACTION RATES = ?(1.0)
+C 2>        END
+
+      Q = 0
+      BNAME(QPROP) = 'SPECIFY THE MATERIAL PROPERTIES'
+
+      Q = Q + 1
+      QENER = Q
+      TYPE(Q, QPROP) = 'L'
+      KEY(Q, QPROP) = 'CONSERVE ENERGY ='
+      LPAR(Q, QPROP) = .FALSE.
+
+      Q = Q + 1
+      QCORR = Q
+      TYPE(Q, QPROP) = 'L'
+      KEY(Q, QPROP) = 'CORRECT THE DIFFUSION VELOCITIES ='
+      LPAR(Q, QPROP) = .TRUE.
+
+      Q = Q + 1
+      QDIFF = Q
+      TYPE(Q, QPROP) = 'C'
+      KEY(Q, QPROP) = 'DIFFUSION COEFFICIENTS ='
+      CPAR(Q, QPROP) = 'MIXTURE-AVERAGED'
+
+      Q = Q + 1
+      QKNUD = Q
+      TYPE(Q, QPROP) = 'L'
+      KEY(Q, QPROP) = 'INCLUDE KNUDSEN DIFFUSION ='
+      LPAR(Q, QPROP) = .FALSE.
+
+      Q = Q + 1
+      QTHRM = Q
+      TYPE(Q, QPROP) = 'L'
+      KEY(Q, QPROP) = 'INCLUDE THERMAL DIFFUSION ='
+      LPAR(Q, QPROP) = .FALSE.
+
+      Q = Q + 1
+      QFACT = Q
+      TYPE(Q, QPROP) = 'R'
+      KEY(Q, QPROP) = 'SCALE FACTOR FOR REACTION RATES ='
+      RPAR(Q, QPROP) = 1.0
+
+      KEYS(QPROP) = Q
+
+C///  SPECIFY THE OPERATING CONDITIONS.
+C 1>     SPECIFY THE OPERATING CONDITIONS
+C 2>        PRESSURE = ?(Torr)
+C 2>        TEMPERATURE = ?(Kelvin)
+C 2>        TEMPERATURE FILE NAME = ?(name)
+C 2>        END
+
+      Q = 0
+      BNAME(QOPER) = 'SPECIFY THE OPERATING CONDITIONS'
+      BNEED(QOPER) = .TRUE.
+
+      Q = Q + 1
+      QPRESS = Q
+      TYPE(Q, QOPER) = 'R'
+      KEY(Q, QOPER) = 'PRESSURE ='
+      NEED(Q, QOPER) = .TRUE.
+
+      Q = Q + 1
+      QTEMP = Q
+      TYPE(Q, QOPER) = 'R'
+      KEY(Q, QOPER) = 'TEMPERATURE ='
+      NEED(Q, QOPER) = .FALSE.
+
+      Q = Q + 1
+      QFILE = Q
+      TYPE(Q, QOPER) = 'C'
+      KEY(Q, QOPER) = 'TEMPERATURE FILE NAME ='
+      NEED(Q, QOPER) = .FALSE.
+
+      KEYS(QOPER) = Q
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) READ THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CSAVE0 = CLAST
+      RSAVE0 = RLAST
+
+C///  INITIALIZE THE BLOCK FOUND FLAGS.
+
+      DO 3010 J = 1, BLOCKS
+         BFOUND(J) = .FALSE.
+3010  CONTINUE
+
+C///  TOP OF THE LOOP THROUGH THE SCRIPT FILE.
+
+3020  CONTINUE
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9301
+
+C///  TOP OF THE "SPECIFY" BLOCKS.
+
+      IF (WORD .EQ. 'SPECIFY') THEN
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9301
+
+C///  TOP OF THE "SPECIFY AN" BLOCKS.
+
+      IF (WORD .EQ. 'AN') THEN
+
+C///  SPECIFY AN INJECTOR.
+
+      CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'INJECTOR')
+      IF (ERROR) GO TO 9302
+
+      Q = QINJE
+      BFOUND(Q) = .TRUE.
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CMARK = CLAST
+      IMARK = ILAST
+      LMARK = LLAST
+      RMARK = RLAST
+
+C///  RESERVE SCRATCH SPACE FOR THE CALL TO READV.
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QCVALU', 4 + GASES, QCVALU)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QFOUND', 4 + GASES, QFOUND)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., ILAST, IMAX, ISIZE,
+     +   'QIVALU', 4 + GASES, QIVALU)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QKEY', 4 + GASES, QKEY)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QLVALU', 4 + GASES, QLVALU)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QNEED', 4 + GASES, QNEED)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QRVALU', 4 + GASES, QRVALU)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QTYPE', 4 + GASES, QTYPE)
+      IF (ERROR) GO TO 9201
+
+C///  CALL READV.
+
+      CWORK(QKEY + 0) = 'FLOW RATE'
+      LWORK(QNEED + 0) = .TRUE.
+      CWORK(QTYPE + 0) = 'R'
+
+      CWORK(QKEY + 1) = 'NAME'
+      LWORK(QNEED + 1) = .TRUE.
+      CWORK(QTYPE + 1) = 'C'
+
+      CWORK(QKEY + 2) = 'POSITION'
+      LWORK(QNEED + 2) = .TRUE.
+      CWORK(QTYPE + 2) = 'R'
+
+      CWORK(QKEY + 3) = 'TEMPERATURE'
+      LWORK(QNEED + 3) = .TRUE.
+      CWORK(QTYPE + 3) = 'R'
+
+      DO 3030 GAS = 1, GASES
+         CWORK(QKEY + 3 + GAS) = SNAME(GAS)
+         LWORK(QNEED + 3 + GAS) = .FALSE.
+         CWORK(QTYPE + 3 + GAS) = 'R'
+         RWORK(QRVALU + 3 + GAS) = 0.0
+3030  CONTINUE
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CPAR, ESIGN, FOUND, KEY, KEYS, IPAR, LINE, LPAR, NEED,
+C    +   NUMBER, PRINT, RPAR, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+      CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL READV1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   CWORK(QCVALU), .TRUE., LWORK(QFOUND), CWORK(QKEY), KEYS(Q),
+     +   IWORK(QIVALU), LINE, LWORK(QLVALU), LWORK(QNEED), NUMBER,
+     +   PRINT, RWORK(QRVALU), SCRIPT, CWORK(QTYPE))
+         IF (ERROR) GO TO 9303
+
+C///  CHECK THE FRACTIONS.
+
+      SUM = 0.0
+      DO 3040 GAS = 1, GASES
+         ERROR = .NOT. (0.0 .LE. RWORK(QRVALU + 3 + GAS))
+         IF (ERROR) GO TO 9304
+         SUM = SUM + RWORK(QRVALU + 3 + GAS)
+3040  CONTINUE
+
+      IF (SUM .EQ. 0.0) THEN
+         IF (0 .LT. TEXT) WRITE (TEXT, 10001) ID
+      ELSE
+         ERROR = .NOT. ABS (1.0 - SUM) .LE. 10 * GASES * EPS
+         IF (ERROR) GO TO 9305
+      END IF
+
+C///  BOTTOM OF THE BLOCK TO SPECIFY AN INJECTOR.  UPDATE THE COUNT AND
+C///  POINTER.  RELEASE THE WORK SPACE.  THE CWORK AND RWORK SPACES ARE
+C///  RETAINED.
+
+      INJECS = INJECS + 1
+      IF (INJECS .EQ. 1) THEN
+         QCSAVE = QCVALU
+         QRSAVE = QRVALU
+      END IF
+
+      CLAST = CMARK + 4 + GASES
+      ILAST = IMARK
+      LLAST = LMARK
+      RLAST = RMARK + 4 + GASES
+
+C///  TOP OF THE "SPECIFY THE" BLOCKS.
+
+      ELSE IF (WORD .EQ. 'THE') THEN
+         CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+         IF (ERROR) GO TO 9301
+
+C///  SPECIFY THE GEOMETRY.
+
+      IF (WORD .EQ. 'GEOMETRY') THEN
+         Q = QGEOM
+         ERROR = BFOUND(Q)
+         IF (ERROR) GO TO 9306
+         BFOUND(Q) = .TRUE.
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CPAR, ESIGN, FOUND, KEY, KEYS, IPAR, LINE, LPAR, NEED,
+C    +   NUMBER, PRINT, RPAR, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CPAR(1, Q), .FALSE., FOUND(1, Q), KEY(1, Q), KEYS(Q),
+     +      IPAR(1, Q), LINE, LPAR(1, Q), NEED(1, Q), NUMBER, PRINT,
+     +      RPAR(1, Q), SCRIPT, TYPE(1, Q))
+         IF (ERROR) GO TO 9303
+
+      ERROR = .NOT. (RPAR(QWFRST, Q) .LT. RPAR(QWLAST, Q) .AND.
+     +   0.0 .LT. RPAR(QWSPAC, Q) .AND. 1 .LT. IPAR(QWCNT, Q))
+      IF (ERROR) GO TO 9307
+
+      TEMP = (RPAR(QWLAST, Q) - RPAR(QWFRST, Q))
+     +   / ((IPAR(QWCNT, Q) - 1) * RPAR(QWSPAC, Q))
+      ERROR = .NOT. (ABS (TEMP - 1.0) .LE. 0.001)
+      IF (ERROR) GO TO 9308
+
+C///  SPECIFY THE GRID.
+
+      ELSE IF (WORD .EQ. 'GRID') THEN
+         Q = QGRID
+         ERROR = BFOUND(Q)
+         IF (ERROR) GO TO 9306
+         BFOUND(Q) = .TRUE.
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CPAR(1, Q), .FALSE., FOUND(1, Q), KEY(1, Q), KEYS(Q),
+     +      IPAR(1, Q), LINE, LPAR(1, Q), NEED(1, Q), NUMBER, PRINT,
+     +      RPAR(1, Q), SCRIPT, TYPE(1, Q))
+         IF (ERROR) GO TO 9303
+
+         ERROR = LPAR(QZONLY, Q) .AND. (LPAR(QRSTEP, Q) .OR.
+     +      LPAR(QRRATI, Q) .OR. LPAR(QREDGE, Q))
+         IF (ERROR) GO TO 9309
+
+C///  TOP OF THE "SPECIFY THE GUESS FOR" BLOCKS.
+
+      ELSE IF (WORD .EQ. 'GUESS') THEN
+         Q = QGUESS
+
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'FOR')
+         IF (ERROR) GO TO 9302
+
+         CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+         IF (ERROR) GO TO 9301
+
+C///  SPECIFY THE GUESS FOR GAS MOLE FRACTIONS.
+
+      IF (WORD .EQ. 'GAS') THEN
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +      'MOLE FRACTIONS')
+         IF (ERROR) GO TO 9302
+
+         TINDEX = 1
+
+C///  SPECIFY THE GUESS FOR SURFACE ? SITE FRACTIONS.
+
+      ELSE IF (WORD .EQ. 'SURFACE') THEN
+         CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+         IF (ERROR) GO TO 9301
+
+         COUNT = 0
+         DO 3050 J = 2, 1 + STYPES
+            IF (TNAME(J) .EQ. WORD) THEN
+               COUNT = COUNT + 1
+               TINDEX = J
+            END IF
+3050     CONTINUE
+
+         ERROR = COUNT .EQ. 0
+         IF (ERROR) GO TO 9310
+
+         ERROR = 1 .LT. COUNT
+         IF (ERROR) GO TO 9311
+
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +      'SITE FRACTIONS')
+         IF (ERROR) GO TO 9302
+
+C///  BOTTOM OF THE GUESS SPECIFICATION BLOCKS.
+
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9312
+      END IF
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CMARK = CLAST
+      IMARK = ILAST
+      LMARK = LLAST
+      RMARK = RLAST
+
+C///  RESERVE SCRATCH SPACE FOR THE CALL TO READV.
+
+      ERROR = .NOT. (0 .LT. QNMBR(TINDEX))
+      IF (ERROR) GO TO 9313
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QCVALU', QNMBR(TINDEX), QCVALU)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QFOUND', QNMBR(TINDEX), QFOUND)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., ILAST, IMAX, ISIZE,
+     +   'QIVALU', QNMBR(TINDEX), QIVALU)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QLVALU', QNMBR(TINDEX), QLVALU)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QNEED', QNMBR(TINDEX), QNEED)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QTYPE', QNMBR(TINDEX), QTYPE)
+      IF (ERROR) GO TO 9201
+
+C///  CALL READV.
+
+      FINDEX = QFRAC - 1 + QFIRST(TINDEX)
+      NINDEX = QFIRST(TINDEX)
+
+      DO 3060 J = 0, QNMBR(TINDEX) - 1
+         RWORK(FINDEX + J) = 0.0
+         LWORK(QNEED + J) = .FALSE.
+         CWORK(QTYPE + J) = 'R'
+3060  CONTINUE
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CPAR, ESIGN, FOUND, KEY, KEYS, IPAR, LINE, LPAR, NEED,
+C    +   NUMBER, PRINT, RPAR, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+      CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL READV1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   CWORK(QCVALU), .TRUE., LWORK(QFOUND), SNAME(NINDEX),
+     +   QNMBR(TINDEX), IWORK(QIVALU), LINE, LWORK(QLVALU),
+     +   LWORK(QNEED), NUMBER, PRINT, RWORK(FINDEX), SCRIPT,
+     +   CWORK(QTYPE))
+         IF (ERROR) GO TO 9303
+
+C///  CHECK THE FRACTIONS.
+
+      SUM = 0.0
+      DO 3070 J = 0, QNMBR(TINDEX) - 1
+         ERROR = .NOT. (0.0 .LE. RWORK(FINDEX + J))
+         IF (ERROR) GO TO 9304
+         SUM = SUM + RWORK(FINDEX + J)
+3070  CONTINUE
+
+      IF (SUM .EQ. 0.0) THEN
+         IF (0 .LT. TEXT) WRITE (TEXT, 10001) ID
+      ELSE
+         ERROR = .NOT. ABS (1.0 - SUM) .LE. 10 * QNMBR(TINDEX) * EPS
+         IF (ERROR) GO TO 9305
+      END IF
+
+C///  BOTTOM OF THE BLOCK TO SPECIFY THE GUESS FRACTIONS.  RELEASE THE
+C///  WORK SPACE.
+
+      CLAST = CMARK
+      ILAST = IMARK
+      LLAST = LMARK
+      RLAST = RMARK
+
+C///  SPECIFY THE MATERIAL PROPERITES.
+
+      ELSE IF (WORD .EQ. 'MATERIAL') THEN
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +      'PROPERTIES')
+         IF (ERROR) GO TO 9302
+
+         Q = QPROP
+         ERROR = BFOUND(Q)
+         IF (ERROR) GO TO 9306
+         BFOUND(Q) = .TRUE.
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CPAR(1, Q), .FALSE., FOUND(1, Q), KEY(1, Q), KEYS(Q),
+     +      IPAR(1, Q), LINE, LPAR(1, Q), NEED(1, Q), NUMBER, PRINT,
+     +      RPAR(1, Q), SCRIPT, TYPE(1, Q))
+         IF (ERROR) GO TO 9303
+
+C///  SPECIFY THE OPERATING CONDITIONS.
+
+      ELSE IF (WORD .EQ. 'OPERATING') THEN
+         CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +      'CONDITIONS')
+         IF (ERROR) GO TO 9302
+
+         Q = QOPER
+         ERROR = BFOUND(Q)
+         IF (ERROR) GO TO 9306
+         BFOUND(Q) = .TRUE.
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CPAR, ESIGN, FOUND, KEY, KEYS, IPAR, LINE, LPAR, NEED,
+C    +   NUMBER, PRINT, RPAR, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CPAR(1, Q), .FALSE., FOUND(1, Q), KEY(1, Q), KEYS(Q),
+     +      IPAR(1, Q), LINE, LPAR(1, Q), NEED(1, Q), NUMBER, PRINT,
+     +      RPAR(1, Q), SCRIPT, TYPE(1, Q))
+         IF (ERROR) GO TO 9303
+
+         ERROR = FOUND(QFILE, Q) .EQV. FOUND(QTEMP, Q)
+         IF (ERROR) GO TO 9314
+
+C///  BOTTOM OF THE SPECIFICATION BLOCKS.
+
+         ELSE
+            ERROR = .TRUE.
+            GO TO 9312
+         END IF
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9312
+      END IF
+
+C///  BOTTOM OF THE LOOP THROUGH THE SCRIPT FILE.
+
+      ELSE IF (WORD .EQ. 'END') THEN
+         GO TO 3080
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9312
+      END IF
+      GO TO 3020
+3080  CONTINUE
+
+C///  CHECK THAT ALL PARAMETERS ARE SPECIFIED.
+
+      DO 3100 BLOCK = 1, BLOCKS
+         IF (BLOCK .EQ. QGUESS .OR. BLOCK .EQ. QINJE) THEN
+            BNEED(BLOCK) = .FALSE.
+         ELSE
+            HAVE = .TRUE.
+            DO 3090 Q = 1, KEYS(BLOCK)
+               HAVE = HAVE .AND.
+     +            (.NOT. NEED(Q, BLOCK) .OR. FOUND(Q, BLOCK))
+3090        CONTINUE
+            BNEED(BLOCK) = .NOT. HAVE
+            ERROR = ERROR .OR. .NOT. HAVE
+         END IF
+3100  CONTINUE
+      IF (ERROR) GO TO 9315
+
+C///  CHOOSE THE GEOMETRY.
+
+      DEPTH = RPAR(QOLEN, QGEOM)
+      WFIRST = RPAR(QWFRST, QGEOM)
+      WLAST = RPAR(QWLAST, QGEOM)
+      RTUBE = RPAR(QORAD, QGEOM)
+      RWAFER = RPAR(QWRAD, QGEOM)
+      SPACE = (RPAR(QWLAST, QGEOM) - RPAR(QWFRST, QGEOM))
+     +   / (IPAR(QWCNT, QGEOM) - 1)
+      THICK = RPAR(QTHICK, QGEOM)
+
+C///  CHOOSE THE GRID PARAMETERS.
+
+      OPTIM = LPAR(QOPTIM, QGRID)
+      REDGE = RPAR(QREDGE, QGRID)
+      RRATIO = RPAR(QRRATI, QGRID)
+      RSTEP = RPAR(QRSTEP, QGRID)
+      ZINJEC = RPAR(QZINJE, QGRID)
+      ZONLY = LPAR(QZONLY, QGRID)
+      ZOVEN = RPAR(QZOVEN, QGRID)
+      ZRATIO(1) = RPAR(QZRAT1, QGRID)
+      ZRATIO(2) = RPAR(QZRAT2, QGRID)
+      ZRATIO(3) = RPAR(QZRAT3, QGRID)
+      ZSTEP(1) = RPAR(QZSTP1, QGRID)
+      ZSTEP(2) = RPAR(QZSTP2, QGRID)
+      ZSTEP(3) = RPAR(QZSTP3, QGRID)
+
+C///  CHOOSE THE MATERIAL PROPERTIES.
+
+      ADJUST = LPAR(QCORR, QPROP)
+
+      IF (CPAR(QDIFF, QPROP) .EQ. 'MIXTURE-AVERAGED') THEN
+         MULTIC = .FALSE.
+      ELSE IF (CPAR(QDIFF, QPROP) .EQ. 'MULTICOMPONENT') THEN
+         MULTIC = .TRUE.
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9316
+      END IF
+
+      ENERGY = LPAR(QENER, QPROP)
+      FACTOR = RPAR(QFACT, QPROP)
+      KNUDSN = LPAR(QKNUD, QPROP)
+      THRMLD = LPAR(QTHRM, QPROP)
+
+C///  CHOOSE THE OPERATING CONDITIONS.
+
+      PRESS = RPAR(QPRESS, QOPER) * 1.01325E6 / 760.0
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) FORM THE DATA STRUCTURE FOR INJECTORS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      ERROR = .NOT. (0 .LT. INJECS)
+      IF (ERROR) GO TO 9401
+
+C///  RESERVE PERMANENT SPACE FOR THE INJECTORS.
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QINFLO', INJECS, QINFLO)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QINLOC', INJECS, QINLOC)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QINMOL', GASES * INJECS, QINMOL)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QINNAM', INJECS, QINNAM)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QINTEM', INJECS, QINTEM)
+      IF (ERROR) GO TO 9201
+
+C///  COPY DATA INTO THE DATA SPACE.
+
+      DO 4010 INJEC = 1, INJECS
+         Q1 = QCSAVE + (4 + GASES) * (INJEC - 1) - 1
+         CWORK(QINNAM - 1 + INJEC) = CWORK(Q1 + 2)
+
+         Q1 = QRSAVE + (4 + GASES) * (INJEC - 1) - 1
+         RWORK(QINFLO - 1 + INJEC) = RWORK(Q1 + 1)
+         RWORK(QINLOC - 1 + INJEC) = RWORK(Q1 + 3)
+         RWORK(QINTEM - 1 + INJEC) = RWORK(Q1 + 4)
+
+         Q2 = QINMOL + GASES * (INJEC - 1) - 1
+         DO 4010 GAS = 1, GASES
+            RWORK(Q2 + GAS) = RWORK(Q1 + 4 + GAS)
+4010  CONTINUE
+
+C///  RELEASE THE TEMPORARY DATA SPACE FOR INJECTORS.
+
+      CLAST = CSAVE0
+      RLAST = RSAVE0
+
+C///  REPOSITION THE PERMANENT DATA SPACE.
+
+      Q = QINFLO
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QINFLO', INJECS, QINFLO)
+      IF (ERROR) GO TO 9201
+
+      DO 4020 J = 1, INJECS
+         RWORK(QINFLO - 1 + J) = RWORK(Q - 1 + J)
+4020  CONTINUE
+
+      Q = QINLOC
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QINLOC', INJECS, QINLOC)
+      IF (ERROR) GO TO 9201
+
+      DO 4030 J = 1, INJECS
+         RWORK(QINLOC - 1 + J) = RWORK(Q - 1 + J)
+4030  CONTINUE
+
+      Q = QINNAM
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QINNAM', INJECS, QINNAM)
+      IF (ERROR) GO TO 9201
+
+      DO 4040 J = 1, INJECS
+         CWORK(QINNAM - 1 + J) = CWORK(Q - 1 + J)
+4040  CONTINUE
+
+      Q = QINMOL
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QINMOL', GASES * INJECS, QINMOL)
+      IF (ERROR) GO TO 9201
+
+      DO 4050 J = 1, GASES * INJECS
+         RWORK(QINMOL - 1 + J) = RWORK(Q - 1 + J)
+4050  CONTINUE
+
+      Q = QINTEM
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QINTEM', INJECS, QINTEM)
+      IF (ERROR) GO TO 9201
+
+      DO 4060 J = 1, INJECS
+         RWORK(QINTEM - 1 + J) = RWORK(Q - 1 + J)
+4060  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (5) BUILD THE GRIDS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  WRITE THE HEADER.
+
+      IF (0 .LT. TEXT) WRITE (TEXT, 10002)
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CMARK = CLAST
+      IMARK = ILAST
+      LMARK = LLAST
+      RMARK = RLAST
+
+C///  BOUND THE NUMBER OF INTERVALS.
+
+      NMAX = 4 + INJECS - 1
+
+C///  RESERVE SCRATCH SPACE FOR OVEN21.
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QBPOIN', 1 + NMAX, QBPOIN)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QMAXR', NMAX, QMAXR)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QMAXS', NMAX, QMAXS)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QM1', NMAX, QM1)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QM2', NMAX, QM2)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QNAME', 1 + NMAX, QNAME)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QRBOUN', NMAX, QRBOUN)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QSBOUN', NMAX, QSBOUN)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QSKIP', 1 + NMAX, QSKIP)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QSTEP', 1 + NMAX, QSTEP)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .TRUE., ILAST, IMAX, ISIZE,
+     +   'QWALL', 3 * NMAX, QWALL)
+      IF (ERROR) GO TO 9201
+
+C///  FORM THE TRIVIAL RADIAL GRID.
+
+      IF (ZONLY) THEN
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QR', 1, QR)
+      IF (ERROR) GO TO 9201
+
+      RWORK(QR) = RWAFER
+      RPNTS = 1
+
+C///  FORM A NON-TRIVIAL RADIAL GRID.
+
+      ELSE
+
+C///  WRITE THE HEADER.
+
+      IF (0 .LT. TEXT) WRITE (TEXT, 10003) ID,
+     +   'BUILDING THE RADIAL GRID.'
+
+      RWORK(QBPOIN + 0) = 0.0
+      RWORK(QBPOIN + 1) = RWAFER
+
+      CWORK(QNAME + 0) = 'WAFER CENTER'
+      CWORK(QNAME + 1) = 'WAFER EDGE'
+
+      RWORK(QRBOUN + 0) = RRATIO
+
+      RWORK(QSBOUN + 0) = RSTEP
+
+      LWORK(QSKIP + 0) = .FALSE.
+      LWORK(QSKIP + 1) = .FALSE.
+
+      RWORK(QSTEP + 0) = RSTEP
+      RWORK(QSTEP + 1) = REDGE
+
+      NTRVLS = 1
+
+C     SUBROUTINE OVEN21
+C    +  (ERROR, TEXT,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   BPOINT, MAXR, MAXS, MULTI1, MULTI2, NAME, NTRVLS, OPTIM, QGRID,
+C    +   RBOUND, SBOUND, SIZE, SKIP, STEP, WALL)
+
+      CALL OVEN21
+     +  (ERROR, TEXT,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   RWORK(QBPOIN), RWORK(QMAXR), RWORK(QMAXS), RWORK(QM1),
+     +   RWORK(QM2), CWORK(QNAME), NTRVLS, OPTIM, QR, RWORK(QRBOUN),
+     +   RWORK(QSBOUN), RPNTS, LWORK(QSKIP), RWORK(QSTEP),
+     +   IWORK(QWALL))
+      IF (ERROR) GO TO 9501
+
+      END IF
+
+C///  FORM THE AXIAL GRID.
+
+C     SUBROUTINE OVEN22
+C    +  (ERROR, TEXT,
+C    +   BPOINT, DEPTH, INJECS, INLOC, NAME, NMAX, NTRVLS, RBOUND,
+C    +   SBOUND, SKIP, SPACE, STEP, WAFERS, WFIRST, WLAST, ZINJEC,
+C    +   ZOVEN, ZRATIO, ZSTEP)
+
+      CALL OVEN22
+     +  (ERROR, TEXT,
+     +   RWORK(QBPOIN), DEPTH, INJECS, RWORK(QINLOC), CWORK(QNAME),
+     +   NMAX, NTRVLS, RWORK(QRBOUN), RWORK(QSBOUN), LWORK(QSKIP),
+     +   SPACE, RWORK(QSTEP), IPAR(QWCNT, QGEOM), WFIRST, WLAST, ZINJEC,
+     +   ZOVEN, ZRATIO, ZSTEP)
+      IF (ERROR) GO TO 9502
+
+      IF (0 .LT. TEXT) WRITE (TEXT, 10003) ID,
+     +   'BUILDING THE AXIAL GRID.'
+
+C     SUBROUTINE OVEN21
+C    +  (ERROR, TEXT,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   BPOINT, MAXR, MAXS, MULTI1, MULTI2, NAME, NTRVLS, OPTIM, QGRID,
+C    +   RBOUND, SBOUND, SIZE, SKIP, STEP, WALL)
+
+      CALL OVEN21
+     +  (ERROR, TEXT,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   RWORK(QBPOIN), RWORK(QMAXR), RWORK(QMAXS), RWORK(QM1),
+     +   RWORK(QM2), CWORK(QNAME), NTRVLS, OPTIM, QZ, RWORK(QRBOUN),
+     +   RWORK(QSBOUN), ZPNTS, LWORK(QSKIP), RWORK(QSTEP),
+     +   IWORK(QWALL))
+      IF (ERROR) GO TO 9501
+
+C///  RELEASE THE WORK SPACE.
+
+      CLAST = CMARK
+      ILAST = IMARK
+      LLAST = LMARK
+      RLAST = RMARK
+
+C///  REPOSITION THE PERMANENT DATA SPACE.
+
+      Q = QR
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QR', RPNTS, QR)
+      IF (ERROR) GO TO 9201
+
+      DO 5010 J = 1, RPNTS
+         RWORK(QR - 1 + J) = RWORK(Q - 1 + J)
+5010  CONTINUE
+
+      Q = QZ
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QZ', ZPNTS, QZ)
+      IF (ERROR) GO TO 9201
+
+      DO 5020 J = 1, ZPNTS
+         RWORK(QZ - 1 + J) = RWORK(Q - 1 + J)
+5020  CONTINUE
+
+C///  COUNT THE GRID POINTS IN THE VARIOUS REGIONS OF THE Z AXIS.
+
+      ZPNTS1 = 0
+      ZPNTS2 = 0
+      ZPNTS3 = 0
+
+      DO 5030 ZPNT = QZ, QZ - 1 + ZPNTS
+         IF (RWORK(ZPNT) .LT. WFIRST) THEN
+            ZPNTS1 = ZPNTS1 + 1
+         ELSE IF (RWORK(ZPNT) .LT. WLAST) THEN
+            ZPNTS2 = ZPNTS2 + 1
+         ELSE
+            ZPNTS3 = ZPNTS3 + 1
+         END IF
+5030  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (6) FINISH INITIALIZING THE MODEL.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  MARK THE MODEL NOT SOLVED.
+
+      GUESS = .FALSE.
+      SOLVED = .FALSE.
+
+C///  COUNT CELLS, SURFACES, WAFERS, WALLS AND VARIABLES.
+
+      SCOUNT = MAX (3, RPNTS + 1)
+      WCOUNT = 3
+
+      CELLS = ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3
+      SURFS = ZPNTS1 + (2 * RPNTS + 1) * ZPNTS2 + ZPNTS3 + 2 * RPNTS + 2
+      WAFERS = IPAR(QWCNT, QGEOM)
+      WALLS = ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3 - 1
+
+      VBLES = (2 + GASES) * CELLS + SITES * SURFS
+
+C///  COUNT SIZES OF PLOTTING DATA STRUCTURES AND POINTERS.
+
+      R10SIZ = MAX (2, RPNTS) + 1
+      Z10SIZ = ZPNTS
+
+      R11SIZ = MAX (2, RPNTS)
+      Z11SIZ = ZPNTS2 + 1
+
+C///  POINT TO INJECTABLE CELLS.
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QINABL', ZPNTS, QINABL)
+      IF (ERROR) GO TO 9201
+
+      CELL = 0
+      DO 6010 ZPNT = 1, ZPNTS
+         IF (ZPNT .LE. ZPNTS1) THEN
+            CELL = CELL + 1
+         ELSE IF (ZPNT .LE. ZPNTS1 + ZPNTS2) THEN
+            CELL = CELL + RPNTS
+         ELSE
+            CELL = CELL + 1
+         END IF
+
+         IWORK(QINABL - 1 + ZPNT) = CELL
+6010  CONTINUE
+
+C///  POINT TO INJECTED CELLS.
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QINCEL', INJECS, QINCEL)
+      IF (ERROR) GO TO 9201
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QINZPN', INJECS, QINZPN)
+      IF (ERROR) GO TO 9201
+
+      DO 6020 INJEC = 1, INJECS
+         IWORK(QINCEL - 1 + INJEC) = 0
+6020  CONTINUE
+
+      CELL = 0
+      DO 6030 ZPNT = 1, ZPNTS
+         IF (ZPNT .LE. ZPNTS1) THEN
+            CELL = CELL + 1
+         ELSE IF (ZPNT .LE. ZPNTS1 + ZPNTS2) THEN
+            CELL = CELL + RPNTS
+         ELSE
+            CELL = CELL + 1
+         END IF
+
+         QZ0 = QZ - 2 + ZPNT
+         QZ1 = QZ - 1 + ZPNT
+         QZ2 = QZ - 0 + ZPNT
+
+         IF (ZPNT .EQ. 1) THEN
+            WALL0 = RWORK(QZ1)
+            WALL2 = 0.5 * (RWORK(QZ1) + RWORK(QZ2))
+         ELSE IF (ZPNT .EQ. ZPNTS) THEN
+            WALL0 = 0.5 * (RWORK(QZ0) + RWORK(QZ1))
+            WALL2 = RWORK(QZ1)
+         ELSE
+            WALL0 = 0.5 * (RWORK(QZ0) + RWORK(QZ1))
+            WALL2 = 0.5 * (RWORK(QZ1) + RWORK(QZ2))
+         END IF
+
+         DO 6030 INJEC = 1, INJECS
+            POINT = RWORK(QINLOC - 1 + INJEC)
+
+            ERROR = (1 .LT. ZPNT .AND. POINT .EQ. WALL0)
+     +         .OR. (ZPNT .LT. ZPNTS .AND. POINT .EQ. WALL2)
+            IF (ERROR) GO TO 9601
+
+            IF ((ZPNT .EQ. 1 .AND. POINT .EQ. WALL0) .OR.
+     +         (ZPNT .EQ. ZPNTS .AND. POINT .EQ. WALL2) .OR.
+     +         (WALL0 .LT. POINT .AND. POINT .LT. WALL2)) THEN
+               IWORK(QINCEL - 1 + INJEC) = CELL
+               IWORK(QINZPN - 1 + INJEC) = ZPNT
+            END IF
+6030  CONTINUE
+
+      COUNT = 0
+      DO 6040 INJEC = 1, INJECS
+         IF (IWORK(QINCEL - 1 + INJEC) .EQ. 0) COUNT = COUNT + 1
+6040  CONTINUE
+      ERROR = COUNT .NE. 0
+      IF (ERROR) GO TO 9602
+
+C///  RESERVE PERMANENT SPACE FOR THE RESIDUAL POINTERS AND DATA.
+
+C     CVOL(CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCVOL', CELLS, QCVOL)
+      IF (ERROR) GO TO 9201
+
+C     P01(CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q01', CELLS, Q01)
+      IF (ERROR) GO TO 9201
+
+C     P02(SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q02', SURFS, Q02)
+      IF (ERROR) GO TO 9201
+
+C     P03(SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q03', SURFS, Q03)
+      IF (ERROR) GO TO 9201
+
+C     P04(WALLS, 2)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q04', WALLS * 2, Q04)
+      IF (ERROR) GO TO 9201
+
+C     P05(SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q05', SURFS, Q05)
+      IF (ERROR) GO TO 9201
+
+C     P06(CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q06', CELLS, Q06)
+      IF (ERROR) GO TO 9201
+
+C     P07(2 * WALLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q07', 2 * WALLS, Q07)
+      IF (ERROR) GO TO 9201
+
+C     P08(CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q08', CELLS, Q08)
+      IF (ERROR) GO TO 9201
+
+C     P09(ZPNTS, 3)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q09', ZPNTS * 3, Q09)
+      IF (ERROR) GO TO 9201
+
+C     P10(R10SIZ, Z10SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q10', R10SIZ * Z10SIZ, Q10)
+      IF (ERROR) GO TO 9201
+
+C     P11(R11SIZ, 2, Z11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q11', R11SIZ * 2 * Z11SIZ, Q11)
+      IF (ERROR) GO TO 9201
+
+C     R10(R10SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QR10', R10SIZ, QR10)
+      IF (ERROR) GO TO 9201
+
+C     R11(R11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QR11', R11SIZ, QR11)
+      IF (ERROR) GO TO 9201
+
+C     RLOC(SURFS)
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QRLOC', SURFS, QRLOC)
+      IF (ERROR) GO TO 9201
+
+C     SAREA(SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSAREA', SURFS, QSAREA)
+      IF (ERROR) GO TO 9201
+
+C     SINDEX(SCOUNT)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QSINDX', SCOUNT, QSINDX)
+      IF (ERROR) GO TO 9201
+
+C     SLTN(VBLES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSLTN', VBLES, QSLTN)
+      IF (ERROR) GO TO 9201
+
+C     SMAGIC(SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSMAGE', SURFS, QSMAGE)
+      IF (ERROR) GO TO 9201
+
+C     STEMP(SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSTEMP', SURFS, QSTEMP)
+      IF (ERROR) GO TO 9201
+
+C     WAREA(WALLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWAREA', WALLS, QWAREA)
+      IF (ERROR) GO TO 9201
+
+C     WCODE(WALLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QWCODE', WALLS, QWCODE)
+      IF (ERROR) GO TO 9201
+
+C     WCOEFF(WALLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWCOEF', WALLS, QWCOEF)
+      IF (ERROR) GO TO 9201
+
+C     WINDEX(WCOUNT)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QWINDX', WCOUNT, QWINDX)
+      IF (ERROR) GO TO 9201
+
+C     Z10(Z10SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QZ10', Z10SIZ, QZ10)
+      IF (ERROR) GO TO 9201
+
+C     Z11(Z11SIZ)
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QZ11', Z11SIZ, QZ11)
+      IF (ERROR) GO TO 9201
+
+C     ZLOC(SURFS)
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QZLOC', SURFS, QZLOC)
+      IF (ERROR) GO TO 9201
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CMARK = CLAST
+      IMARK = ILAST
+      LMARK = LLAST
+      RMARK = RLAST
+
+C///  RESERVE SCRATCH SPACE FOR OVEN23.
+
+C     CMAP(CELLS, 3)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QCMAP', CELLS * 3, QCMAP)
+      IF (ERROR) GO TO 9201
+
+C     SNMBR(CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QSNMBR', CELLS, QSNMBR)
+      IF (ERROR) GO TO 9201
+
+C     WNMBR(CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QWNMBR', CELLS, QWNMBR)
+      IF (ERROR) GO TO 9201
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9603
+
+C///  PREPARE THE RESIDUAL POINTERS AND DATA.
+
+C     SUBROUTINE OVEN23
+C    +  (ERROR, TEXT,
+C    +   CELLS, CMAP, CVOL, GASES, P01, P02, P03, P04, P05, P06, P07,
+C    +   P08, P09, P10, P11, R, R10, R10SIZ, R11, R11SIZ, RLOC, RPNTS,
+C    +   RTUBE, RWAFER, SAREA, SCOUNT, SINDEX, SITES, SMAGIC, SNMBR,
+C    +   SPACE, SURFS, WALLS, WAREA, WCODE, WCOEFF, WCOUNT, WFIRST,
+C    +   WINDEX, WLAST, WNMBR, Z, Z10, Z10SIZ, Z11, Z11SIZ, ZLOC, ZPNTS,
+C    +   ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN23
+     +  (ERROR, TEXT,
+     +   CELLS, IWORK(QCMAP), RWORK(QCVOL), GASES, IWORK(Q01),
+     +   IWORK(Q02), IWORK(Q03), IWORK(Q04), IWORK(Q05), IWORK(Q06),
+     +   IWORK(Q07), IWORK(Q08), IWORK(Q09), IWORK(Q10), IWORK(Q11),
+     +   RWORK(QR), RWORK(QR10), R10SIZ, RWORK(QR11), R11SIZ,
+     +   RWORK(QRLOC), RPNTS, RTUBE, RWAFER, RWORK(QSAREA), SCOUNT,
+     +   IWORK(QSINDX), SITES, RWORK(QSMAGE), IWORK(QSNMBR), SPACE,
+     +   SURFS, WALLS, RWORK(QWAREA), IWORK(QWCODE), RWORK(QWCOEF),
+     +   WCOUNT, WFIRST, IWORK(QWINDX), WLAST, IWORK(QWNMBR), RWORK(QZ),
+     +   RWORK(QZ10), Z10SIZ, RWORK(QZ11), Z11SIZ, RWORK(QZLOC), ZPNTS,
+     +   ZPNTS1, ZPNTS2, ZPNTS3)
+      IF (ERROR) GO TO 9604
+
+C///  ACQUIRE THE SURFACE TEMPERATURES.
+
+      IF (FOUND(QFILE, QOPER)) THEN
+
+C     SUBROUTINE OVEN11
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   DEPTH, NAME, RLOC, RPNTS, RTUBE, RWAFER, STEMP, SURFS, UNIT,
+C    +   WFIRST, WLAST, ZLOC)
+
+      NAME = CPAR(QFILE, QOPER)
+      CALL OVEN11
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   DEPTH, NAME, RWORK(QRLOC), RPNTS, RTUBE, RWAFER, RWORK(QSTEMP),
+     +   SURFS, UNIT, WFIRST, WLAST, RWORK(QZLOC))
+      IF (ERROR) GO TO 9605
+
+      ELSE IF (FOUND(QTEMP, QOPER)) THEN
+         DO 6050 J = 0, SURFS - 1
+            RWORK(QSTEMP + J) = RPAR(QTEMP, QOPER)
+6050     CONTINUE
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9314
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (7) STORE THE PARAMETERS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INTEGER PARAMETERS.
+
+      Q = ILAST
+
+C     BTYPES: NUMBER OF BULK TYPES
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = BTYPES
+
+C     CELLS: NUMBER OF CELLS
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = CELLS
+
+C     GASES: NUMBER OF GAS SPECIES
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = GASES
+
+C     INJECS: NUMBER OF INJECTORS
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = INJECS
+
+C     R10SIZ: NUMBER OF RADIAL GRID POINTS FOR PLOT 10
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = R10SIZ
+
+C     R11SIZ: NUMBER OF RADIAL GRID POINTS FOR PLOT 11
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = R11SIZ
+
+C     RPNTS: NUMBER OF RADIAL GRID POINTS
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = RPNTS
+
+C     SCOUNT: MAXIMUM SURFACES PER CELL
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = SCOUNT
+
+C     SITES: NUMBER OF SURFACE SITES
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = SITES
+
+C     STYPES: NUMBER OF SURFACE SPECIES TYPES
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = STYPES
+
+C     SURFS: NUMBER OF SURFACES
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = SURFS
+
+C     VBLES: NUMBER OF VARIABLES
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = VBLES
+
+C     WAFERS: NUMBER OF WAFERS
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = WAFERS
+
+C     WALLS: NUMBER OF WALLS
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = WALLS
+
+C     WCOUNT: MAXIMUM WALLS PER CELL
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = WCOUNT
+
+C     Z10SIZ: NUMBER OF RADIAL AXIAL POINTS FOR PLOT 10
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = Z10SIZ
+
+C     Z11SIZ: NUMBER OF RADIAL AXIAL POINTS FOR PLOT 11
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = Z11SIZ
+
+C     ZPNTS: NUMBER OF AXIAL GRID POINTS
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = ZPNTS
+
+C     ZPNTS1: NUMBER OF AXIAL GRID POINTS BEFORE THE WAFERS
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = ZPNTS1
+
+C     ZPNTS2: NUMBER OF AXIAL GRID POINTS ALONG THE WAFERS
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = ZPNTS2
+
+C     ZPNTS3: NUMBER OF AXIAL GRID POINTS AFTER THE WAFERS
+      Q = Q + 1
+      IF (Q .LE. ISIZE) IWORK(Q) = ZPNTS3
+
+      IPARS = Q - ILAST
+      CALL RESERV (ERROR, TEXT, .TRUE., ILAST, IMAX, ISIZE,
+     +   'QIPAR', IPARS, QIPAR)
+      IF (ERROR) GO TO 9201
+
+C///  LOGICAL PARAMETERS.
+
+      Q = LLAST
+
+C     ADJUST: ADJUST THE DIFFUSION COEFFICIENTS
+      Q = Q + 1
+      IF (Q .LE. LSIZE) LWORK(Q) = ADJUST
+
+C     ENERGY: CONSERVE ENERGY
+      Q = Q + 1
+      IF (Q .LE. LSIZE) LWORK(Q) = ENERGY
+
+C     GUESS: A SOLUTION HAS BEEN FOUND FOR ANY MODEL
+      Q = Q + 1
+      IF (Q .LE. LSIZE) LWORK(Q) = GUESS
+
+C     KNUDSN: INCLUDE KNUDSEN DIFFUSION
+      Q = Q + 1
+      IF (Q .LE. LSIZE) LWORK(Q) = KNUDSN
+
+C     MULTIC: USE MULTICOMPONENT DIFFUSION COEFFICIENTS
+      Q = Q + 1
+      IF (Q .LE. LSIZE) LWORK(Q) = MULTIC
+
+C     OPTIM: FIND AN OPTIMAL GRID
+      Q = Q + 1
+      IF (Q .LE. LSIZE) LWORK(Q) = OPTIM
+
+C     SOLVED: A SOLUTION HAS BEEN FOUND FOR THE CURRENT MODEL
+      Q = Q + 1
+      IF (Q .LE. LSIZE) LWORK(Q) = SOLVED
+
+C     THRMDL: INCLUDE THERMAL DIFFUSION
+      Q = Q + 1
+      IF (Q .LE. LSIZE) LWORK(Q) = THRMLD
+
+C     ZONLY: MODEL ONLY THE ANNULAR PROBLEM
+      Q = Q + 1
+      IF (Q .LE. LSIZE) LWORK(Q) = ZONLY
+
+      LPARS = Q - LLAST
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QLPAR', LPARS, QLPAR)
+      IF (ERROR) GO TO 9201
+
+C///  REAL PARAMETERS.
+
+      Q = RLAST
+
+C     DEPTH: OVEN LENGTH
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = DEPTH
+
+C     FACTOR: SCALE FACTOR FOR REACTION RATES
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = FACTOR
+
+C     PRESS: PRESSURE
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = PRESS
+
+C     REDGE: RADIAL STEP AT RADIAL EDGE
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = REDGE
+
+C     RRATIO: MAXIMUM RADIAL RATIO
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = RRATIO
+
+C     RSTEP: MAXIMUM RADIAL STEP
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = RSTEP
+
+C     RTUBE: OVEN RADIUS
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = RTUBE
+
+C     RWAFER: WAFER RADIUS
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = RWAFER
+
+C     SPACE: WAFER SPACING
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = SPACE
+
+C     THICK: WAFER THICKNESS
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = THICK
+
+C     WFIRST: NEAR END WAFER POSITION
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = WFIRST
+
+C     WLAST: FAR END WAFER POSITION
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = WLAST
+
+C     ZINJEC: AXIAL STEP AT INJECTORS
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = ZINJEC
+
+C     ZOVEN: AXIAL STEP AT OVEN END
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = ZOVEN
+
+C     ZRATIO: MAXIMUM AXIAL STEP RATIOS
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = ZRATIO(1)
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = ZRATIO(2)
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = ZRATIO(3)
+
+C     ZSTEP: MAXIMUM AXIAL STEPS
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = ZSTEP(1)
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = ZSTEP(2)
+      Q = Q + 1
+      IF (Q .LE. RSIZE) RWORK(Q) = ZSTEP(3)
+
+      RPARS = Q - RLAST
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QRPAR', RPARS, QRPAR)
+      IF (ERROR) GO TO 9201
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     INFORMATIVE MESSAGES AND DATA FORMATS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +  (/1X, A9, 'WARNING.  ALL THE FRACTIONS ARE ZERO.')
+
+10002 FORMAT
+     +  (/9X, 35(' /'))
+
+10003 FORMAT
+     +  (/1X, A9, A)
+
+20001 FORMAT
+     +  (I3)
+
+20002 FORMAT
+     +  (E14.7, 1X, E14.7)
+
+20003 FORMAT
+     +  (2I3)
+
+20004 FORMAT
+     +  (E14.7)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, CSIZE, GASES, ISIZE, LSIZE, RSIZE, SITES, STYPES
+      GO TO 99998
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99998
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID
+      GO TO 99998
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID
+      GO TO 99998
+
+9303  IF (0 .LT. TEXT) WRITE (TEXT, 99303) ID
+      GO TO 99998
+
+9304  IF (0 .LT. TEXT) WRITE (TEXT, 99304) ID
+      GO TO 99998
+
+9305  IF (0 .LT. TEXT) WRITE (TEXT, 99305) ID
+      GO TO 99998
+
+9306  IF (0 .LT. TEXT) THEN
+         WORD = BNAME(Q)
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99306) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99998
+
+9307  IF (0 .LT. TEXT) WRITE (TEXT, 99307) ID,
+     +   RPAR(QWFRST, Q), RPAR(QWLAST, Q), RPAR(QWSPAC, Q),
+     +   IPAR(QWCNT, Q)
+      GO TO 99998
+
+9308  IF (0 .LT. TEXT) WRITE (TEXT, 99308) ID,
+     +   RPAR(QWSPAC, Q),
+     +  (RPAR(QWLAST, Q) - RPAR(QWFRST, Q)) / (IPAR(QWCNT, Q) - 1)
+      GO TO 99998
+
+9309  IF (0 .LT. TEXT) WRITE (TEXT, 99309) ID
+      GO TO 99998
+
+9310  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99310) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99998
+
+9311  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99311) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99998
+
+9312  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99312) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99998
+
+9313  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99313) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99998
+
+9314  IF (0 .LT. TEXT) WRITE (TEXT, 99314) ID
+      GO TO 99998
+
+9315  IF (0 .LT. TEXT) THEN
+         WRITE (TEXT, 99315) ID
+         DO 9030 BLOCK = 1, BLOCKS
+            IF (BNEED(BLOCK)) THEN
+               WORD = BNAME(BLOCK)
+               CALL EXTENT (LENGTH, WORD)
+               WRITE (TEXT, '(10X, A)') WORD (1 : LENGTH)
+            END IF
+9030     CONTINUE
+      END IF
+      GO TO 99998
+
+9316  IF (0 .LT. TEXT) WRITE (TEXT, 99316) ID
+      GO TO 99998
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID
+      GO TO 99998
+
+9501  IF (0 .LT. TEXT) WRITE (TEXT, 99501) ID
+      GO TO 99998
+
+9502  IF (0 .LT. TEXT) WRITE (TEXT, 99502) ID
+      GO TO 99998
+
+9601  IF (0 .LT. TEXT) WRITE (TEXT, 99601) ID, POINT
+      GO TO 99998
+
+9602  IF (0 .LT. TEXT) WRITE (TEXT, 99602) ID, INJECS, COUNT
+      GO TO 99998
+
+9603  IF (0 .LT. TEXT) WRITE (TEXT, 99603) ID,
+     +   CSIZE, ISIZE, LSIZE, RSIZE, CLAST, ILAST, LLAST, RLAST
+      GO TO 99998
+
+9604  IF (0 .LT. TEXT) WRITE (TEXT, 99604) ID
+      GO TO 99998
+
+9605  IF (0 .LT. TEXT) WRITE (TEXT, 99605) ID
+      GO TO 99998
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES',
+     +   /10X, I10, '  CSIZE',
+     +   /10X, I10, '  GASES',
+     +   /10X, I10, '  ISIZE',
+     +   /10X, I10, '  LSIZE',
+     +   /10X, I10, '  RSIZE',
+     +   /10X, I10, '  SITES',
+     +   /10X, I10, '  STYPES')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  READW FAILS.')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  VERIFY FAILS.')
+
+99303 FORMAT
+     +   (/1X, A9, 'ERROR.  READV FAILS.')
+
+99304 FORMAT
+     +   (/1X, A9, 'ERROR.  A FRACTION IS NEGATIVE.')
+
+99305 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FRACTIONS DO NOT SUM TO 1.')
+
+99306 FORMAT
+     +   (/1X, A9, 'ERROR.  THE INPUT SCRIPT REPEATS A KEYWORD.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, '  KEYWORD:  ', A)
+
+99307 FORMAT
+     +   (/1X, A9, 'ERROR.  THE END WAFERS ARE OUT OF ORDER.'
+     +  //10X, F20.10, '  NEAR END WAFER POSITION'
+     +   /10X, F20.10, '  FAR END WAFER POSITION'
+     +   /10X, F20.10, '  WAFER SPACING'
+     +   /10X, I10, 10X, '  NUMBER OF WAFERS')
+
+99308 FORMAT
+     +   (/1X, A9, 'ERROR.  THE WAFER SPACING IS INCONSISTENT.'
+     +  //10X, F20.10, '  WAFER SPACING'
+     +   /10X, F20.10, '  (LAST - FIRST) / (NUMBER - 1)')
+
+99309 FORMAT
+     +   (/1X, A9, 'ERROR.  IF ONLY THE ANNULAR MODEL IS TO BE USED,'
+     +   /10X, 'THEN NO RADIAL GRID PARAMETERS SHOULD BE SPECIFIED.')
+
+99310 FORMAT
+     +   (/1X, A9, 'ERROR.  THE NAME OF A SURFACE TYPE IS UNKNOWN.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, '     NAME:  ', A)
+
+99311 FORMAT
+     +   (/1X, A9, 'ERROR.  THE CHEMKIN DATABASE REPEATS THE NAME OF A'
+     +   /10X, 'SURFACE TYPE.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, '     NAME:  ', A)
+
+99312 FORMAT
+     +   (/1X, A9, 'ERROR.  A KEYWORD IS MISPLACED OR UNKNOWN.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, '  KEYWORD:  ', A)
+
+99313 FORMAT
+     +   (/1X, A9, 'ERROR.  THE CHEMKIN DATABASE HAS NO SPECIES OF A'
+     +   /10X, 'CERTAIN TYPE.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, 'TYPE NAME:  ', A)
+
+99314 FORMAT
+     +   (/1X, A9, 'ERROR.  EITHER A TEMPERATURE OR A TEMPERATURE FILE'
+     +   /10X, 'MUST BE SPECIFIED.')
+
+99315 FORMAT
+     +   (/1X, A9, 'ERROR.  PARAMETERS IN ONE OR MORE SPECIFICATION'
+     +   /10X, 'BLOCKS ARE MISSING.'
+     +   /)
+
+99316 FORMAT
+     +   (/1X, A9, 'ERROR.  THE DIFFUSION COEFFICIENTS ARE NEITHER'
+     +   /10X, 'MIXTURE-AVERAGED NOR MULTICOMPONENT.')
+
+99401 FORMAT
+     +   (/1X, A, 'ERROR.  NO INJECTORS WERE SPECIFIED.')
+
+99501 FORMAT
+     +   (/1X, A, 'ERROR.  OVEN21 FAILS.')
+
+99502 FORMAT
+     +   (/1X, A, 'ERROR.  OVEN22 FAILS.')
+
+99601 FORMAT
+     +   (/1X, A, 'ERROR.  AN INJECTOR LIES EXACTLY ON THE WALL BETWEEN'
+     +   /10X, 'TWO CELLS.  EITHER MOVE THE INJECTOR TO ONE SIDE, OR'
+     +   /10X, 'CHANGE THE GRID.'
+     +  //10X, F13.7, '  INJECTOR POSITION')
+
+99602 FORMAT
+     +   (/1X, A, 'ERROR.  SOME INJECTORS HAVE NOT BEEN ASSIGNED TO'
+     +   /10X, 'CELLS.'
+     +  //10X, I10, '  TOTAL INJECTORS'
+     +   /10X, I10, '  INJECTORS NOT ASSIGNED')
+
+99603 FORMAT
+     +   (/1X, A9, 'ERROR.  SOME WORKSPACES ARE TOO SMALL.'
+C               123456789_  123456789_  123456789_  123456789_
+     +  //25X, ' CHARACTER     INTEGER     LOGICAL        REAL'
+C               123456789_12345
+     +  //10X, ' PRESENT SIZE', 4I12
+     +   /10X, 'REQUIRED SIZE', 4I12
+     +  //10X, 'EVEN MORE SPACE MAY BE NEEDED LATER.')
+
+99604 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN23 FAILS.')
+
+99605 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN11 FAILS.')
+
+C///  EXIT.
+
+99998 CONTINUE
+C     RESTORE THE WORK SPACES ON ERROR
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN03
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   QCCK, CCKSIZ, QCSK, CSKSIZ,
+     +   QICK, ICKSIZ, QIMC, IMCSIZ, QISK, ISKSIZ,
+     +   QRCK, RCKSIZ, QRMC, RMCSIZ, QRSK, RSKSIZ,
+     +   BTYPES, BULKS, ELEMS, GASES, LINE, NUMBER, PRINT, QENAME,
+     +   QFIRST, QLAST, QNMBR, QSNAME, QTNAME, SCRIPT, SITES, STYPES,
+     +   UNIT)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN03
+C
+C     INITIALIZE CHEMKIN
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   CVALUE*80, CWORK*16, FORM*80, ID*9, KEY*80, LINE*82, NAME*80,
+     +   STRING*80, TYPE*80, WORD*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   RVALUE, RWORK
+      EXTERNAL
+     +   CKINDX, CKINIT, CKLEN, CKSYME, EXTENT, MCINIT, MCLEN, READV2,
+     +   RESERV, SKINDX, SKINIT, SKLEN, SKPKK, SKSYMP, SKSYMS
+      INTEGER
+     +   BTYPES, BULKS, CCKSIZ, CLAST, CMAX, CSAVE, CSIZE, CSKSIZ,
+     +   DUMMY, ELEMS, FILE, FILES, FLAG , GASES, ICKSIZ, ILAST, IMAX,
+     +   IMCSIZ, ISAVE, ISIZE, ISKSIZ, IVALUE, IWORK, J, KMAX, LENGTH,
+     +   LLAST, LMAX, LSAVE, LSIZE, NUMBER, PRINT, QCCK, QCSK, QENAME,
+     +   QFIRST, QICK, QIMC, QISK, QLAST, QLCK, QLMC, QLSK, QNMBR, QRCK,
+     +   QRMC, QRSK, QSNAME, QTNAME, RCKSIZ, RLAST, RMAX, RMCSIZ, RSAVE,
+     +   RSIZE, RSKSIZ, SCRIPT, SITES, STATUS, STYPES, TEXT, UNIT
+      INTRINSIC
+     +   MAX
+      LOGICAL
+     +   ERROR, EXIST, FOUND, LVALUE, LWORK, NEED, OPEN
+
+      PARAMETER (ID = 'OVEN03:  ')
+      PARAMETER (FILES = 3, KMAX = 20)
+      PARAMETER (QLCK = 1, QLMC = 2, QLSK = 3)
+
+      DIMENSION
+     +   CVALUE(KMAX), CWORK(CSIZE), DUMMY(8), FORM(FILES),
+     +   FOUND(KMAX), IVALUE(KMAX), IWORK(ISIZE), KEY(KMAX),
+     +   LVALUE(KMAX), LWORK(LSIZE), NAME(FILES), NEED(KMAX),
+     +   RWORK(RSIZE), TYPE(KMAX), UNIT(FILES)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CSAVE = CLAST
+      ISAVE = ILAST
+      LSAVE = LLAST
+      RSAVE = RLAST
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. CSIZE  .AND. 0 .LT. ISIZE  .AND. 0 .LT. LSIZE  .AND.
+     +   0 .LT. RSIZE)
+      IF (ERROR) GO TO 9101
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) READ THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  READ THE BLOCK.
+C 1>  INITIALIZE CHEMKIN
+C 2>     GAS KINETICS DATAFILE = ?(chem.asc)
+C 2>     GAS TRANSPORT DATAFILE = ?(tran.asc)
+C 2>     SURFACE KINETICS DATAFILE = ?(surf.asc)
+C 2>     GAS KINETICS DATAFILE TYPE =
+C 2>     GAS TRANSPORT DATAFILE TYPE =
+C 2>     SURFACE KINETICS DATAFILE TYPE =
+C 1>     END
+
+      DATA
+     +   (TYPE(J), NEED(J), KEY(J), J = 1, 6)
+     + / 'C', .FALSE., 'GAS KINETICS DATAFILE =',
+     +   'C', .FALSE., 'GAS TRANSPORT DATAFILE =',
+     +   'C', .FALSE., 'SURFACE KINETICS DATAFILE =',
+     +   'C', .FALSE., 'GAS KINETICS DATAFILE TYPE =',
+     +   'C', .FALSE., 'GAS TRANSPORT DATAFILE TYPE =',
+     +   'C', .FALSE., 'SURFACE KINETICS DATAFILE TYPE =' /
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CVALUE, .FALSE., FOUND, KEY, 6, IVALUE, LINE, LVALUE, NEED,
+     +      NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+         IF (ERROR) GO TO 9201
+
+C///  CHOOSE THE FILE NAMES.
+
+      NAME(1) = 'chem.asc'
+      NAME(2) = 'tran.asc'
+      NAME(3) = 'surf.asc'
+
+      DO 2010 FILE = 1, FILES
+         IF (FOUND(FILE)) THEN
+            NAME(FILE) = CVALUE(FILE)
+         END IF
+
+         ERROR = NAME(FILE) .EQ. ' '
+         IF (ERROR) GO TO 9202
+2010  CONTINUE
+
+C///  CHOOSE THE FILE TYPES.
+
+      DO 2020 FILE = 1, FILES
+         IF (FOUND(3 + FILE)) THEN
+            WORD = CVALUE(3 + FILE)
+            IF (WORD .EQ. 'BINARY' .OR. WORD .EQ. 'UNFORMATTED') THEN
+               FORM(FILE) = 'UNFORMATTED'
+            ELSE IF (WORD .EQ. 'ASCII' .OR. WORD .EQ. 'FORMATTED') THEN
+               FORM(FILE) = 'FORMATTED'
+            ELSE
+               ERROR = .TRUE.
+               GO TO 9203
+            END IF
+         ELSE
+            CALL EXTENT (LENGTH, NAME(FILE))
+            WORD = NAME (FILE) (MAX (1, LENGTH - 3) : LENGTH)
+            IF (WORD .EQ. '.bin' .OR. WORD .EQ. '.BIN') THEN
+               FORM(FILE) = 'UNFORMATTED'
+            ELSE IF (WORD .EQ. '.asc' .OR. WORD .EQ. '.ASC') THEN
+               FORM(FILE) = 'FORMATTED'
+            ELSE
+               ERROR = .TRUE.
+               GO TO 9204
+            END IF
+         END IF
+2020  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) OPEN THE FILES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      DO 3010 FILE = 1, FILES
+         STRING = NAME(FILE)
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = STRING,
+     +   ERR = 9301,
+     +   EXIST = EXIST,
+     +   FORMATTED = WORD,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      ERROR = .NOT. EXIST
+      IF (ERROR) GO TO 9302
+
+      ERROR = OPEN
+      IF (ERROR) GO TO 9303
+
+      ERROR = .NOT.
+     +   (WORD .EQ. 'UNKNOWN' .OR.
+     +   (WORD .EQ. 'YES' .AND. FORM(FILE) .EQ. 'FORMATTED') .OR.
+     +   (WORD .EQ. 'NO' .AND. FORM(FILE) .EQ. 'UNFORMATTED'))
+      IF (ERROR) GO TO 9304
+
+C///  OPEN THE FILE.
+
+      ERROR = .TRUE.
+      OPEN
+     +   (ACCESS = 'SEQUENTIAL',
+     +   ERR = 9305,
+     +   FILE = STRING,
+     +   FORM = FORM(FILE),
+     +   IOSTAT = STATUS,
+     +   STATUS = 'OLD',
+     +   UNIT = UNIT(FILE))
+      ERROR = .FALSE.
+
+C///  BOTTOM OF THE LOOP OVER THE FILES.
+
+3010  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) USE THE FILES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  GET DIMENSIONS FOR THE CHEMISTRY WORK SPACE.
+
+C     (CKLIB VERSION 5.3)
+C     SUBROUTINE CKLEN (LINC, LOUT, LI, LR, LC, IFLAG)
+
+      CALL CKLEN (UNIT(QLCK), TEXT, ICKSIZ, RCKSIZ, CCKSIZ, FLAG)
+      ERROR = .NOT. (FLAG .EQ. 0)
+      IF (ERROR) GO TO 9401
+
+C     (MCLIB VERSION 4.1)
+C     SUBROUTINE MCLEN (LINKMC, LOUT, LI, LR, IFLAG)
+
+      CALL MCLEN (UNIT(QLMC), TEXT, IMCSIZ, RMCSIZ, FLAG)
+      ERROR = .NOT. (FLAG .EQ. 0)
+      IF (ERROR) GO TO 9402
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKLEN  (LINSK, LOUT, LENI, LENR, LENC, IFLAG)
+
+      CALL SKLEN (UNIT(QLSK), TEXT, ISKSIZ, RSKSIZ, CSKSIZ, FLAG)
+      ERROR = .NOT. (FLAG .EQ. 0)
+      IF (ERROR) GO TO 9403
+
+C///  INCREASE THE WORK SPACE TO ACCOMMODATE POINTERS TO NULL DATA.
+
+      CCKSIZ = CCKSIZ + 1
+      CSKSIZ = CSKSIZ + 1
+
+      ICKSIZ = ICKSIZ + 1
+      IMCSIZ = IMCSIZ + 1
+      ISKSIZ = ISKSIZ + 1
+
+      RCKSIZ = RCKSIZ + 1
+      RMCSIZ = RMCSIZ + 1
+      RSKSIZ = RSKSIZ + 1
+
+C///  PARTITION THE WORK SPACE.
+
+C     CCK(CCKSIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., CLAST, CMAX, CSIZE,
+     +   'CHARACTER QCCK', CCKSIZ, QCCK)
+      IF (ERROR) GO TO 9404
+
+C     ICK(ICKSIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'INTEGER QICK', ICKSIZ, QICK)
+      IF (ERROR) GO TO 9404
+
+C     RCK(RCKSIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'REAL QRCK', RCKSIZ, QRCK)
+      IF (ERROR) GO TO 9404
+
+C     IMC(IMCSIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'INTEGER QIMC', IMCSIZ, QIMC)
+      IF (ERROR) GO TO 9404
+
+C     RMC(RMCSIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'REAL QRMC', RMCSIZ, QRMC)
+      IF (ERROR) GO TO 9404
+
+C     CSK(CSKSIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., CLAST, CMAX, CSIZE,
+     +   'CHARACTER QCSK', CSKSIZ, QCSK)
+      IF (ERROR) GO TO 9404
+
+C     ISK(ISKSIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'INTEGER QISK', ISKSIZ, QISK)
+      IF (ERROR) GO TO 9404
+
+C     RSK(RSKSIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'REAL QRSK', RSKSIZ, QRSK)
+      IF (ERROR) GO TO 9404
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9405
+
+C///  INITIALIZE CHEMKIN.
+
+C     (CKLIB VERSION 5.3)
+C     SUBROUTINE CKINIT
+C    +   (LENICK, LENRCK, LENCCK, LINC, LOUT, ICKWRK, RCKWRK, CCKWRK,
+C    +   IFLAG)
+
+      CALL CKINIT
+     +   (ICKSIZ, RCKSIZ, CCKSIZ, UNIT(QLCK), TEXT, IWORK(QICK),
+     +   RWORK(QRCK), CWORK(QCCK), FLAG)
+      ERROR = .NOT. (FLAG .EQ. 0)
+      IF (ERROR) GO TO 9406
+
+C     (TRANLIB VERSION 4.1)
+C     SUBROUTINE MCINIT
+C    +   (LINKMC, LOUT, LENIMC, LENRMC, IMCWRK, RMCWRK, IFLAG)
+
+      CALL MCINIT
+     +   (UNIT(QLMC), TEXT, IMCSIZ, RMCSIZ, IWORK(QIMC), RWORK(QRMC),
+     +   FLAG)
+      ERROR = .NOT. (FLAG .EQ. 0)
+      IF (ERROR) GO TO 9407
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKINIT
+C    +   (LENISK, LENRSK, LENCSK, LINSK, LOUT, ISKWRK, RSKWRK, CSKWRK,
+C    +   IFLAG)
+
+      CALL SKINIT
+     +   (ISKSIZ, RSKSIZ, CSKSIZ, UNIT(QLSK), TEXT, IWORK(QISK),
+     +   RWORK(QRSK), CWORK(QCSK), FLAG)
+      ERROR = .NOT. (FLAG .EQ. 0)
+      IF (ERROR) GO TO 9408
+
+      IF (0 .LT. TEXT) WRITE (TEXT, '()')
+
+C///  OBTAIN ELEMENT COUNTS FROM CKLIB.
+
+C     (CKLIB VERSION 2.3)
+C     SUBROUTINE CKINDX (ICKWRK, RCKWRK, MM, KK, II, NFIT)
+
+      CALL CKINDX
+     +   (IWORK(QICK), RWORK(QRCK), ELEMS, DUMMY(1), DUMMY(2), DUMMY(3))
+
+C///  OBTAIN ELEMENT NAMES FROM CKLIB.
+
+C     ENAME(GASES)
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QENAME', ELEMS, QENAME)
+      IF (ERROR) GO TO 9404
+
+C     (CKLIB VERSION 2.3)
+C     SUBROUTINE CKSYME (CCKWRK, LOUT, ENAME, KERR)
+
+      CALL CKSYME (CWORK(QCCK), TEXT, CWORK(QENAME), ERROR)
+      IF (ERROR) GO TO 9409
+
+C///  OBTAIN SPECIES AND TYPE COUNTS FROM SKLIB.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKINDX
+C    +  (ISKWRK, NELM, KKGAS, KKSUR, KKBULK, KKTOT, NNPHAS, NNSURF,
+C    +   NFSURF, NLSURF, NNBULK, NFBULK, NLBULK, IISUR)
+
+      CALL SKINDX
+     +  (IWORK(QISK), DUMMY(1), GASES, SITES, BULKS, DUMMY(2), DUMMY(3),
+     +   STYPES, DUMMY(4), DUMMY(5), BTYPES, DUMMY(6), DUMMY(7),
+     +   DUMMY(8))
+
+C///  OBTAIN SPECIES NAMES FROM SKLIB.
+
+C     SNAME(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QSNAME', GASES + SITES + BULKS, QSNAME)
+      IF (ERROR) GO TO 9404
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSYMS (ISKWRK, CSKWRK, LOUT, KNAM, KERR)
+
+      CALL SKSYMS (IWORK(QISK), CWORK(QCSK), TEXT, CWORK(QSNAME), ERROR)
+      IF (ERROR) GO TO 9410
+
+C///  OBTAIN SPECIES TYPE NAMES FROM SKLIB.
+
+C     TNAME(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., CLAST, CMAX, CSIZE,
+     +   'QTNAME', 1 + STYPES + BTYPES, QTNAME)
+      IF (ERROR) GO TO 9404
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSYMP (ISKWRK, CSKWRK, LOUT, PNAM, KERR)
+
+      CALL SKSYMP (IWORK(QISK), CWORK(QCSK), TEXT, CWORK(QTNAME), ERROR)
+      IF (ERROR) GO TO 9411
+
+C///  OBTAIN POINTERS TO SPECIES LISTS FROM FROM SKLIB.
+
+C     QFIRST(1 + STYPES + BTYPES)
+C     QLAST(1 + STYPES + BTYPES)
+C     QNMBR(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QFIRST', 1 + STYPES + BTYPES, QFIRST)
+      IF (ERROR) GO TO 9404
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QLAST', 1 + STYPES + BTYPES, QLAST)
+      IF (ERROR) GO TO 9404
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QNMBR', 1 + STYPES + BTYPES, QNMBR)
+      IF (ERROR) GO TO 9404
+
+C     (SKLIB VERISON 3.5)
+C     SUBROUTINE SKPKK (ISKWRK, KKPHAS, KFIRST, KLAST)
+
+      CALL SKPKK
+     +   (IWORK(QISK), IWORK(QNMBR), IWORK(QFIRST), IWORK(QLAST))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (5) CLOSE THE FILES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      DO 5010 FILE = 1, FILES
+         ERROR = .TRUE.
+         CLOSE
+     +     (ERR = 9501,
+     +      IOSTAT = STATUS,
+     +      UNIT = UNIT(FILE))
+         ERROR = .FALSE.
+5010  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   CSIZE, ISIZE, LSIZE, RSIZE
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99998
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID
+      GO TO 99998
+
+9203  IF (0 .LT. TEXT) WRITE (TEXT, 99203) ID
+      GO TO 99998
+
+9204  IF (0 .LT. TEXT) WRITE (TEXT, 99204) ID
+      GO TO 99998
+
+9301  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, NAME(FILE))
+         WRITE (TEXT, 99301) ID, NAME(FILE) (1 : LENGTH), STATUS
+      END IF
+      GO TO 99998
+
+9302  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, NAME(FILE))
+         WRITE (TEXT, 99302) ID, NAME(FILE) (1 : LENGTH)
+      END IF
+      GO TO 99998
+
+9303  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, NAME(FILE))
+         WRITE (TEXT, 99303) ID, NAME(FILE) (1 : LENGTH)
+      END IF
+      GO TO 99998
+
+9304  IF (0 .LT. TEXT) WRITE (TEXT, 99304) ID
+      GO TO 99998
+
+9305  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, NAME(FILE))
+         WRITE (TEXT, 99305)
+     +      ID, NAME(FILE) (1 : LENGTH), UNIT(FILE), STATUS
+      END IF
+      GO TO 99998
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID
+      GO TO 99998
+
+9402  IF (0 .LT. TEXT) WRITE (TEXT, 99402) ID
+      GO TO 99998
+
+9403  IF (0 .LT. TEXT) WRITE (TEXT, 99403) ID
+      GO TO 99998
+
+9404  IF (0 .LT. TEXT) WRITE (TEXT, 99404) ID
+      GO TO 99998
+
+9405  IF (0 .LT. TEXT) WRITE (TEXT, 99405) ID,
+     +   CSIZE, ISIZE, LSIZE, RSIZE, CLAST, ILAST, LLAST, RLAST
+      GO TO 99998
+
+9406  IF (0 .LT. TEXT) WRITE (TEXT, 99406) ID
+      GO TO 99998
+
+9407  IF (0 .LT. TEXT) WRITE (TEXT, 99407) ID
+      GO TO 99998
+
+9408  IF (0 .LT. TEXT) WRITE (TEXT, 99408) ID
+      GO TO 99998
+
+9409  IF (0 .LT. TEXT) WRITE (TEXT, 99409) ID
+      GO TO 99998
+
+9410  IF (0 .LT. TEXT) WRITE (TEXT, 99410) ID
+      GO TO 99998
+
+9411  IF (0 .LT. TEXT) WRITE (TEXT, 99411) ID
+      GO TO 99998
+
+9501  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, NAME(FILE))
+         WRITE (TEXT, 99501)
+     +      ID, NAME(FILE) (1 : LENGTH), UNIT(FILE), STATUS
+      END IF
+      GO TO 99998
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  CSIZE',
+     +   /10X, I10, '  ISIZE',
+     +   /10X, I10, '  LSIZE',
+     +   /10X, I10, '  RSIZE')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  READV FAILS.')
+
+99202 FORMAT
+     +   (/1X, A9, 'ERROR.  A FILE NAME IS BLANK.')
+
+99203 FORMAT
+     +   (/1X, A9, 'ERROR.  A FILE TYPE IS UNRECOGNIZED.')
+
+99204 FORMAT
+     +   (/1X, A9, 'ERROR.  A FILE TYPE (EITHER ASCII OR BINARY) COULD'
+     +   /10X, 'NOT BE DETERMINED.')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  INQUIRE FAILS.'
+     +  //10X, ' FILE NAME  ', A
+     +   /10X, I10, '  I/O STATUS')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FILE DOES NOT EXIST.'
+     +  //10X, ' FILE NAME  ', A)
+
+99303 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FILE EXISTS AND IS OPEN.'
+     +  //10X, ' FILE NAME  ', A)
+
+99304 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FILE TYPE IS UNEXPECTED.')
+
+99305 FORMAT
+     +   (/1X, A9, 'ERROR.  OPEN FAILS.'
+     +  //10X, ' FILE NAME  ', A
+     +   /10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+99401 FORMAT
+     +   (/1X, A9, 'ERROR.  CKLEN FAILS.')
+
+99402 FORMAT
+     +   (/1X, A9, 'ERROR.  MCLEN FAILS.')
+
+99403 FORMAT
+     +   (/1X, A9, 'ERROR.  SKLEN FAILS.')
+
+99404 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99405 FORMAT
+     +   (/1X, A9, 'ERROR.  ONE OR MORE WORK SPACES ARE TOO SMALL TO'
+     +   /10X, 'INITIALIZE THE KINETICS AND TRANPORT LIBRARIES.'
+C               123456789_  123456789_  123456789_  123456789_
+     +  //25X, ' CHARACTER     INTEGER     LOGICAL        REAL'
+C               123456789_123
+     +  //10X, ' PRESENT SIZE', 4I12
+     +   /10X, 'REQUIRED SIZE', 4I12
+     +  //10X, 'EVEN MORE SPACE MAY BE NEEDED LATER.')
+
+99406 FORMAT
+     +   (/1X, A9, 'ERROR.  CKINIT FAILS.')
+
+99407 FORMAT
+     +   (/1X, A9, 'ERROR.  MCINIT FAILS.')
+
+99408 FORMAT
+     +   (/1X, A9, 'ERROR.  SKINIT FAILS.')
+
+99409 FORMAT
+     +   (/1X, A9, 'ERROR.  CKSYME FAILS.')
+
+99410 FORMAT
+     +   (/1X, A9, 'ERROR.  SKSYMS FAILS.')
+
+99411 FORMAT
+     +   (/1X, A9, 'ERROR.  SKSYMP FAILS.')
+
+99501 FORMAT
+     +   (/1X, A9, 'ERROR.  CLOSE FAILS.'
+     +  //10X, ' FILE NAME', A
+     +   /10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+C///  EXIT.
+
+99998 CONTINUE
+C     RESTORE THE WORK SPACES ON ERROR
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN04
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   BTYPES, BULKS, CELLS, GASES, LINE, NUMBER, P01, P02, P03, P09,
+     +   P10, P11, PRESS, PRINT, QFIRST, QLAST, QNMBR, R, R10, R10SIZ,
+     +   R11, R11SIZ, RPNTS, SCRIPT, SITES, SLTN, SNAME, STEMP, STYPES,
+     +   SURFS, THICK, TNAME, UNIT, VBLES, Z, Z10, Z10SIZ, Z11, Z11SIZ,
+     +   ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN04
+C
+C     PLOT THE SOLUTION.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   CVALUE*32, CWORK*16, FILE*80, ID*9, KEY*80, LINE*82, NAME*80,
+     +   SNAME*16, TNAME*16, TYPE*80, WORD*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   PRESS, R, R10, R11, RCK, RSK, RVALUE, RWORK, SLTN, STEMP,
+     +   THICK, Z, Z10, Z11
+      EXTERNAL
+     +   EXTENT, OVEN41, OVEN42, OVEN43, OVEN44, OVEN45, OVEN46, READV2,
+     +   READW, RESERV, VERIFY
+      INTEGER
+     +   BTYPES, BULKS, CELLS, CLAST, CMAX, CSAVE, CSIZE, GASES, ICK,
+     +   ICKSIZ, ILAST, IMAX, ISAVE, ISIZE, ISK, ISKSIZ, IVALUE, IWORK,
+     +   KMAX, LENGTH, LLAST, LMAX, LSAVE, LSIZE, NUMBER, P01, P02, P03,
+     +   P09, P10, P11, PMAX, PRINT, QACT, QCOEFF, QDEN, QFIRST, QLAST,
+     +   QMOLE, QNMBR, QRATE, QSDEN, QSDOT, QSITD, QTEMP, QWT, QX, QY,
+     +   QYCOOR, R10SIZ, R11SIZ, RCKSIZ, RLAST, RMAX, RPNTS, RSAVE,
+     +   RSIZE, RSKSIZ, SCRIPT, SITES, STATUS, STYPES, SURFS, TEXT,
+     +   TSIZE, UNIT, VBLES, VMAX , YMAX, Z10SIZ, Z11SIZ, ZPNTS, ZPNTS1,
+     +   ZPNTS2, ZPNTS3
+      INTRINSIC
+     +   MAX
+      LOGICAL
+     +   ERROR, EXIST, FOUND, LVALUE, LWORK, NEED, OPEN, SMOOTH
+
+      PARAMETER (ID = 'OVEN04:  ')
+      PARAMETER (KMAX = 20)
+
+      DIMENSION
+     +   CVALUE(KMAX), CWORK(CSIZE), FILE(4), FOUND(KMAX), ICK(ICKSIZ),
+     +   ISK(ISKSIZ), IVALUE(KMAX), IWORK(ISIZE), KEY(KMAX),
+     +   LVALUE(KMAX), LWORK(LSIZE), NEED(KMAX), P01(CELLS), P02(SURFS),
+     +   P03(SURFS), P09(ZPNTS), P10(R10SIZ, Z10SIZ),
+     +   P11(R11SIZ, 2, Z11SIZ), R(RPNTS), R10(R10SIZ), R11(R11SIZ),
+     +   RCK(RCKSIZ), RSK(RSKSIZ), RVALUE(KMAX), RWORK(RSIZE),
+     +   SLTN(VBLES), SNAME(GASES + SITES + BULKS), STEMP(SURFS),
+     +   TNAME(1 + STYPES + BTYPES), TYPE(KMAX), Z(ZPNTS), Z10(Z10SIZ),
+     +   Z11(Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CSAVE = CLAST
+      ISAVE = ILAST
+      LSAVE = LLAST
+      RSAVE = RLAST
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RPNTS  .AND. 0 .LT. RSKSIZ .AND.
+     +   0 .LT. SITES  .AND. 0 .LT. STYPES .AND. 0 .LT. SURFS  .AND.
+     +   0 .LT. VBLES  .AND. 0 .LT. ZPNTS  .AND. 0 .LT. ZPNTS1 .AND.
+     +   0 .LT. ZPNTS2 .AND. 0 .LT. ZPNTS3)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT.
+     +  (ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3 .EQ. CELLS .AND.
+     +   ZPNTS1 + ZPNTS2 + ZPNTS3 .EQ. ZPNTS)
+      IF (ERROR) GO TO 9102
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) READ THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  TOP OF THE LOOP THROUGH THE SCRIPT FILE.
+C 1>  PLOT THE SOLUTION
+
+2010  CONTINUE
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9201
+
+C///  TOP OF THE "WRITE THE" BLOCKS.
+
+      IF (WORD .EQ. 'WRITE') THEN
+
+      CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'THE')
+      IF (ERROR) GO TO 9202
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9201
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) WRITE THE PLOT1D AND PLOT2D FILES
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  TOP OF THE "PLOT1D AND PLOT2D FILES" BLOCKS.
+C 2>     WRITE THE PLOT1D AND PLOT2D FILES
+
+      IF (WORD .EQ. 'PLOT1D') THEN
+
+      CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +   'AND PLOT2D FILES')
+      IF (ERROR) GO TO 9202
+
+C///  READ THE BLOCK.
+C 3>        DEPOSIT RATES AVERAGED OVER WAFER SIDES = ?(YES)
+C 3>        PLOT1D FILE NAME = ?(plot1d.dat)
+C 3>        PLOT2D FILE NAME = ?(plot2d.dat)
+C 2>        END
+
+      TYPE(1) = 'L'
+      KEY(1) = 'DEPOSIT RATES AVERAGED OVER WAFER SIDES ='
+      NEED(1) = .FALSE.
+
+      TYPE(2) = 'C'
+      KEY(2) = 'PLOT1D FILE NAME ='
+      NEED(2) = .FALSE.
+
+      TYPE(3) = 'C'
+      KEY(3) = 'PLOT2D FILE NAME ='
+      NEED(3) = .FALSE.
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CVALUE, .FALSE., FOUND, KEY, 3, IVALUE, LINE, LVALUE, NEED,
+     +      NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+         IF (ERROR) GO TO 9203
+
+C///  CHOOSE THE SMOOTHING.
+
+      IF (FOUND(1)) THEN
+         SMOOTH = LVALUE(1)
+      ELSE
+         SMOOTH = .TRUE.
+      END IF
+
+C///  CHOOSE THE FILE NAMES.
+
+      IF (FOUND(2)) THEN
+         FILE(1) = CVALUE(2)
+      ELSE
+         FILE(1) = 'plot1d.dat'
+      END IF
+
+      IF (FOUND(3)) THEN
+         FILE(2) = CVALUE(3)
+      ELSE
+         FILE(2) = 'plot2d.dat'
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     WRITE THE PLOT1D FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      PMAX = MAX (2 * Z11SIZ, ZPNTS)
+
+C///  PARTITION THE WORK SPACE.
+
+C     ACT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QACT', GASES + SITES + BULKS, QACT)
+      IF (ERROR) GO TO 9301
+
+C     COEFF(R11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCOEFF', R11SIZ, QCOEFF)
+      IF (ERROR) GO TO 9301
+
+C     DEN(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDEN', GASES + SITES + BULKS, QDEN)
+      IF (ERROR) GO TO 9301
+
+C     MOLE(GASES, CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', GASES * CELLS, QMOLE)
+      IF (ERROR) GO TO 9301
+
+C     RATE(R11SIZ, 2, Z11SIZE)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QRATE', R11SIZ * 2 * Z11SIZ, QRATE)
+      IF (ERROR) GO TO 9301
+
+C     SDEN(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDEN', 1 + STYPES + BTYPES, QSDEN)
+      IF (ERROR) GO TO 9301
+
+C     SDOT(GASES + SITES + BULKS, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDOT', (GASES + SITES + BULKS) * SURFS, QSDOT)
+      IF (ERROR) GO TO 9301
+
+C     SITDOT(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSITD', 1 + STYPES + BTYPES, QSITD)
+      IF (ERROR) GO TO 9301
+
+C     WT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES + SITES + BULKS, QWT)
+      IF (ERROR) GO TO 9301
+
+C     XCOORD(PMAX)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QX', PMAX, QX)
+      IF (ERROR) GO TO 9301
+
+C     YCOORD(PMAX)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QY', PMAX, QY)
+      IF (ERROR) GO TO 9301
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9302
+
+C///  GET THE FILE NAME.
+
+      NAME = FILE(1)
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = NAME,
+     +   ERR = 9303,
+     +   EXIST = EXIST,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      IF (EXIST) THEN
+         ERROR = OPEN
+         IF (ERROR) GO TO 9304
+      END IF
+
+C///  OPEN THE FILE.
+
+      IF (EXIST) THEN
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'OLD',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+
+C///  CREATE THE FILE.
+
+      ELSE
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'NEW',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+      END IF
+
+C///  POSITION THE FILE.
+
+      REWIND UNIT
+
+C///  WRITE THE FILE.
+
+C     SUBROUTINE OVEN41
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   ACT, BTYPES, BULKS, CELLS, COEFF, DEN, GASES, MOLE, P01, P02,
+C    +   P03, P09, P11, PMAX, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ,
+C    +   RATE, RPNTS, SDEN, SDOT, SITDOT, SITES, SLTN, SMOOTH, SNAME,
+C    +   STEMP, STYPES, SURFS, TNAME, UNIT, VBLES, WT, XCOORD, YCOORD,
+C    +   Z, Z11, Z11SIZ, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN41
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   RWORK(QACT), BTYPES, BULKS, CELLS, RWORK(QCOEFF), RWORK(QDEN),
+     +   GASES, RWORK(QMOLE), P01, P02, P03, P09, P11, PMAX, PRESS,
+     +   QFIRST, QLAST, QNMBR, R11, R11SIZ, RWORK(QRATE), RPNTS,
+     +   RWORK(QSDEN), RWORK(QSDOT), RWORK(QSITD), SITES, SLTN, SMOOTH,
+     +   SNAME, STEMP, STYPES, SURFS, TNAME, UNIT, VBLES, RWORK(QWT),
+     +   RWORK(QX), RWORK(QY), Z, Z11, Z11SIZ, ZPNTS, ZPNTS1, ZPNTS2,
+     +   ZPNTS3)
+      IF (ERROR) GO TO 9306
+
+C///  CLOSE THE FILE.
+
+      ERROR = .TRUE.
+      CLOSE
+     +  (ERR = 9307,
+     +   IOSTAT = STATUS,
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///  RESTORE THE WORK SPACES.
+
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     WRITE THE PLOT2D FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  PARTITION THE WORK SPACE.
+
+C     ACT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QACT', GASES + SITES + BULKS, QACT)
+      IF (ERROR) GO TO 9301
+
+C     DEN(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDEN', GASES + SITES + BULKS, QDEN)
+      IF (ERROR) GO TO 9301
+
+C     MOLE(GASES, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', GASES * SURFS, QMOLE)
+      IF (ERROR) GO TO 9301
+
+C     SDEN(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDEN', 1 + STYPES + BTYPES, QSDEN)
+      IF (ERROR) GO TO 9301
+
+C     SDOT(GASES + SITES + BULKS, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDOT', (GASES + SITES + BULKS) * SURFS, QSDOT)
+      IF (ERROR) GO TO 9301
+
+C     SITDOT(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSITD', 1 + STYPES + BTYPES, QSITD)
+      IF (ERROR) GO TO 9301
+
+C     TEMP(TSIZE)
+
+      TSIZE = MAX (R10SIZ * Z10SIZ, 2 * R11SIZ * Z11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QTEMP', TSIZE, QTEMP)
+      IF (ERROR) GO TO 9301
+
+C     WT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES + SITES + BULKS, QWT)
+      IF (ERROR) GO TO 9301
+
+C     YCOORD(YMAX)
+
+      YMAX = 2 * Z11SIZ
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QYCOOR', YMAX, QYCOOR)
+      IF (ERROR) GO TO 9301
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9302
+
+C///  GET THE FILE NAME.
+
+      NAME = FILE(2)
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = NAME,
+     +   ERR = 9303,
+     +   EXIST = EXIST,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      IF (EXIST) THEN
+         ERROR = OPEN
+         IF (ERROR) GO TO 9304
+      END IF
+
+C///  OPEN THE FILE.
+
+      IF (EXIST) THEN
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'OLD',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+
+C///  CREATE THE FILE.
+
+      ELSE
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'NEW',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+      END IF
+
+C///  POSITION THE FILE.
+
+      REWIND UNIT
+
+C///  WRITE THE FILE.
+
+C     SUBROUTINE OVEN42
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   ACT, BTYPES, BULKS, CELLS, DEN, GASES, MOLE, P01, P02, P03,
+C    +   P10, P11, PRESS, QFIRST, QLAST, QNMBR, R10, R10SIZ, R11,
+C    +   R11SIZ, SDEN, SDOT, SITDOT, SITES, SLTN, SMOOTH, SNAME, STEMP,
+C    +   STYPES, SURFS, TEMP, THICK, TNAME, TSIZE, UNIT, VBLES, WT,
+C    +   YCOORD, YMAX, Z10, Z10SIZ, Z11, Z11SIZ)
+
+      CALL OVEN42
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   RWORK(QACT), BTYPES, BULKS, CELLS, RWORK(QDEN), GASES,
+     +   RWORK(QMOLE), P01, P02, P03, P10, P11, PRESS, QFIRST, QLAST,
+     +   QNMBR, R10, R10SIZ, R11, R11SIZ, RWORK(QSDEN), RWORK(QSDOT),
+     +   RWORK(QSITD), SITES, SLTN, SMOOTH, SNAME, STEMP, STYPES, SURFS,
+     +   RWORK(QTEMP), THICK, TNAME, TSIZE, UNIT, VBLES, RWORK(QWT),
+     +   RWORK(QYCOOR), YMAX, Z10, Z10SIZ, Z11, Z11SIZ)
+      IF (ERROR) GO TO 9308
+
+C///  CLOSE THE FILE.
+
+      ERROR = .TRUE.
+      CLOSE
+     +  (ERR = 9307,
+     +   IOSTAT = STATUS,
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///  RESTORE THE WORK SPACES.
+
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) WRITE THE TECPLOT FILES
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  TOP OF THE "TECPLOT FILES" BLOCKS.
+C 2>     WRITE THE TECPLOT FILES
+
+      ELSE IF (WORD .EQ. 'TECPLOT') THEN
+
+      CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'FILES')
+      IF (ERROR) GO TO 9202
+
+C///  READ THE BLOCK.
+C 3>        DEPOSIT RATES AVERAGED OVER WAFER SIDES = ?(YES)
+C 3>        FILE NAME FOR 1D GAS DATA = ?(1d_gas.dat)
+C 3>        FILE NAME FOR 1D SURFACE DATA = ?(1d_surface.dat)
+C 3>        FILE NAME FOR 2D GAS DATA = ?(2d_gas.dat)
+C 3>        FILE NAME FOR 2D SURFACE DATA = ?(2d_surface.dat)
+C 2>        END
+
+      TYPE(1) = 'L'
+      KEY(1) = 'DEPOSIT RATES AVERAGED OVER WAFER SIDES ='
+      NEED(1) = .FALSE.
+
+      TYPE(2) = 'C'
+      KEY(2) = 'FILE NAME FOR 1D GAS DATA ='
+      NEED(2) = .FALSE.
+
+      TYPE(3) = 'C'
+      KEY(3) = 'FILE NAME FOR 1D SURFACE DATA ='
+      NEED(3) = .FALSE.
+
+      TYPE(4) = 'C'
+      KEY(4) = 'FILE NAME FOR 2D GAS DATA ='
+      NEED(4) = .FALSE.
+
+      TYPE(5) = 'C'
+      KEY(5) = 'FILE NAME FOR 2D SURFACE DATA ='
+      NEED(5) = .FALSE.
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CVALUE, .FALSE., FOUND, KEY, 5, IVALUE, LINE, LVALUE, NEED,
+     +      NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+         IF (ERROR) GO TO 9203
+
+C///  CHOOSE THE SMOOTHING.
+
+      IF (FOUND(1)) THEN
+         SMOOTH = LVALUE(1)
+      ELSE
+         SMOOTH = .TRUE.
+      END IF
+
+C///  CHOOSE THE FILE NAMES.
+
+      IF (FOUND(2)) THEN
+         FILE(1) = CVALUE(2)
+      ELSE
+         FILE(1) = '1d_gas.dat'
+      END IF
+
+      IF (FOUND(3)) THEN
+         FILE(2) = CVALUE(3)
+      ELSE
+         FILE(2) = '1d_surface.dat'
+      END IF
+
+      IF (FOUND(4)) THEN
+         FILE(3) = CVALUE(4)
+      ELSE
+         FILE(3) = '2d_gas.dat'
+      END IF
+
+      IF (FOUND(5)) THEN
+         FILE(4) = CVALUE(5)
+      ELSE
+         FILE(4) = '2d_surface.dat'
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     WRITE THE TECPLOT 1d_gas.dat FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  PARTITION THE WORK SPACE.
+
+C     ACT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QACT', GASES + SITES + BULKS, QACT)
+      IF (ERROR) GO TO 9301
+
+C     COEFF(R11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCOEFF', R11SIZ, QCOEFF)
+      IF (ERROR) GO TO 9301
+
+C     DEN(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDEN', GASES + SITES + BULKS, QDEN)
+      IF (ERROR) GO TO 9301
+
+C     MOLE(GASES, CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', GASES * CELLS, QMOLE)
+      IF (ERROR) GO TO 9301
+
+C     RATE(R11SIZ, 2, Z11SIZE)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QRATE', R11SIZ * 2 * Z11SIZ, QRATE)
+      IF (ERROR) GO TO 9301
+
+C     SDEN(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDEN', 1 + STYPES + BTYPES, QSDEN)
+      IF (ERROR) GO TO 9301
+
+C     SDOT(GASES + SITES + BULKS, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDOT', (GASES + SITES + BULKS) * SURFS, QSDOT)
+      IF (ERROR) GO TO 9301
+
+C     SITDOT(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSITD', 1 + STYPES + BTYPES, QSITD)
+      IF (ERROR) GO TO 9301
+
+C     WT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES + SITES + BULKS, QWT)
+      IF (ERROR) GO TO 9301
+
+C     XCOORD(ZPNTS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QX', ZPNTS, QX)
+      IF (ERROR) GO TO 9301
+
+C     YCOORD(ZPNTS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QY', ZPNTS, QY)
+      IF (ERROR) GO TO 9301
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9302
+
+C///  GET THE FILE NAME.
+
+      NAME = FILE(1)
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = NAME,
+     +   ERR = 9303,
+     +   EXIST = EXIST,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      IF (EXIST) THEN
+         ERROR = OPEN
+         IF (ERROR) GO TO 9304
+      END IF
+
+C///  OPEN THE FILE.
+
+      IF (EXIST) THEN
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'OLD',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+
+C///  CREATE THE FILE.
+
+      ELSE
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'NEW',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+      END IF
+
+C///  POSITION THE FILE.
+
+      REWIND UNIT
+
+C///  WRITE THE FILE.
+
+C     SUBROUTINE OVEN43
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   ACT, BTYPES, BULKS, CELLS, COEFF, DEN, GASES, MOLE, P01, P02,
+C    +   P03, P09, P11, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ, RATE,
+C    +   RPNTS, SDEN, SDOT, SITDOT, SITES, SLTN, SMOOTH, SNAME, STEMP,
+C    +   STYPES, SURFS, THICK, UNIT, VBLES, WT, YCOORD, Z, Z11SIZ,
+C    +   ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN43
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   RWORK(QACT), BTYPES, BULKS, CELLS, RWORK(QCOEFF), RWORK(QDEN),
+     +   GASES, RWORK(QMOLE), P01, P02, P03, P09, P11, PRESS, QFIRST,
+     +   QLAST, QNMBR, R11, R11SIZ, RWORK(QRATE), RPNTS, RWORK(QSDEN),
+     +   RWORK(QSDOT), RWORK(QSITD), SITES, SLTN, SMOOTH, SNAME, STEMP,
+     +   STYPES, SURFS, THICK, UNIT, VBLES, RWORK(QWT), RWORK(QY), Z,
+     +   Z11SIZ, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+      IF (ERROR) GO TO 9401
+
+C///  CLOSE THE FILE.
+
+      ERROR = .TRUE.
+      CLOSE
+     +  (ERR = 9307,
+     +   IOSTAT = STATUS,
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///  RESTORE THE WORK SPACES.
+
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     WRITE THE TECPLOT 1d_surface.dat FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IF (SMOOTH) THEN
+         VMAX = R11SIZ * Z11SIZ
+      ELSE
+         VMAX = R11SIZ * 2 * Z11SIZ
+      END IF
+
+C///  PARTITION THE WORK SPACE.
+
+C     ACT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QACT', GASES + SITES + BULKS, QACT)
+      IF (ERROR) GO TO 9301
+
+C     COEFF(R11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCOEFF', R11SIZ, QCOEFF)
+      IF (ERROR) GO TO 9301
+
+C     DEN(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDEN', GASES + SITES + BULKS, QDEN)
+      IF (ERROR) GO TO 9301
+
+C     MOLE(GASES, CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', GASES * CELLS, QMOLE)
+      IF (ERROR) GO TO 9301
+
+C     RATE(R11SIZ, 2, Z11SIZE)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QRATE', R11SIZ * 2 * Z11SIZ, QRATE)
+      IF (ERROR) GO TO 9301
+
+C     SDEN(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDEN', 1 + STYPES + BTYPES, QSDEN)
+      IF (ERROR) GO TO 9301
+
+C     SDOT(GASES + SITES + BULKS, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDOT', (GASES + SITES + BULKS) * SURFS, QSDOT)
+      IF (ERROR) GO TO 9301
+
+C     SITDOT(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSITD', 1 + STYPES + BTYPES, QSITD)
+      IF (ERROR) GO TO 9301
+
+C     VALUE(VMAX)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QVALUE', VMAX, QVALUE)
+      IF (ERROR) GO TO 9301
+
+C     WT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES + SITES + BULKS, QWT)
+      IF (ERROR) GO TO 9301
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9302
+
+C///  GET THE FILE NAME.
+
+      NAME = FILE(2)
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = NAME,
+     +   ERR = 9303,
+     +   EXIST = EXIST,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      IF (EXIST) THEN
+         ERROR = OPEN
+         IF (ERROR) GO TO 9304
+      END IF
+
+C///  OPEN THE FILE.
+
+      IF (EXIST) THEN
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'OLD',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+
+C///  CREATE THE FILE.
+
+      ELSE
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'NEW',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+      END IF
+
+C///  POSITION THE FILE.
+
+      REWIND UNIT
+
+C///  WRITE THE FILE.
+
+C     SUBROUTINE OVEN44
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   ACT, BTYPES, BULKS, CELLS, COEFF, DEN, GASES, MOLE, P01, P02,
+C    +   P03, P11, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ, RATE,
+C    +   RPNTS, SDEN, SDOT, SITDOT, SITES, SLTN, SMOOTH, STEMP, STYPES,
+C    +   SURFS, THICK, UNIT, VALUE, VBLES, VMAX, WT, Z11, Z11SIZ)
+
+      CALL OVEN44
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   RWORK(QACT), BTYPES, BULKS, CELLS, RWORK(QCOEFF), RWORK(QDEN),
+     +   GASES, RWORK(QMOLE), P01, P02, P03, P11, PRESS, QFIRST, QLAST,
+     +   QNMBR, R11, R11SIZ, RWORK(QRATE), RPNTS, RWORK(QSDEN),
+     +   RWORK(QSDOT), RWORK(QSITD), SITES, SLTN, SMOOTH, STEMP, STYPES,
+     +   SURFS, THICK, UNIT, RWORK(QVALUE), VBLES, VMAX, RWORK(QWT),
+     +   Z11, Z11SIZ)
+      IF (ERROR) GO TO 9402
+
+C///  CLOSE THE FILE.
+
+      ERROR = .TRUE.
+      CLOSE
+     +  (ERR = 9307,
+     +   IOSTAT = STATUS,
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///  RESTORE THE WORK SPACES.
+
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     WRITE THE TECPLOT 2d_gas.dat FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  PARTITION THE WORK SPACE.
+
+C     ACT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QACT', GASES + SITES + BULKS, QACT)
+      IF (ERROR) GO TO 9301
+
+C     DEN(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDEN', GASES + SITES + BULKS, QDEN)
+      IF (ERROR) GO TO 9301
+
+C     MOLE(GASES, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', GASES * SURFS, QMOLE)
+      IF (ERROR) GO TO 9301
+
+C     SDEN(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDEN', 1 + STYPES + BTYPES, QSDEN)
+      IF (ERROR) GO TO 9301
+
+C     SDOT(GASES + SITES + BULKS, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDOT', (GASES + SITES + BULKS) * SURFS, QSDOT)
+      IF (ERROR) GO TO 9301
+
+C     SITDOT(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSITD', 1 + STYPES + BTYPES, QSITD)
+      IF (ERROR) GO TO 9301
+
+C     TEMP(R10SIZ * Z10SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QTEMP', R10SIZ * Z10SIZ, QTEMP)
+      IF (ERROR) GO TO 9301
+
+C     WT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES + SITES + BULKS, QWT)
+      IF (ERROR) GO TO 9301
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9302
+
+C///  GET THE FILE NAME.
+
+      NAME = FILE(3)
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = NAME,
+     +   ERR = 9303,
+     +   EXIST = EXIST,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      IF (EXIST) THEN
+         ERROR = OPEN
+         IF (ERROR) GO TO 9304
+      END IF
+
+C///  OPEN THE FILE.
+
+      IF (EXIST) THEN
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'OLD',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+
+C///  CREATE THE FILE.
+
+      ELSE
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'NEW',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+      END IF
+
+C///  POSITION THE FILE.
+
+      REWIND UNIT
+
+C///  WRITE THE FILE.
+
+C     SUBROUTINE OVEN45
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   ACT, BTYPES, BULKS, CELLS, DEN, GASES, MOLE, P01, P02, P03,
+C    +   P10, PRESS, QFIRST, QLAST, QNMBR, R10, R10SIZ, SDEN, SDOT,
+C    +   SITDOT, SITES, SLTN, SNAME, STEMP, STYPES, SURFS, TEMP, THICK,
+C    +   UNIT, VBLES, WT, Z10, Z10SIZ)
+
+      CALL OVEN45
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   RWORK(QACT), BTYPES, BULKS, CELLS, RWORK(QDEN), GASES,
+     +   RWORK(QMOLE), P01, P02, P03, P10, PRESS, QFIRST, QLAST, QNMBR,
+     +   R10, R10SIZ, RWORK(QSDEN), RWORK(QSDOT), RWORK(QSITD), SITES,
+     +   SLTN, SNAME, STEMP, STYPES, SURFS, RWORK(QTEMP), THICK, UNIT,
+     +   VBLES, RWORK(QWT), Z10, Z10SIZ)
+      IF (ERROR) GO TO 9403
+
+C///  CLOSE THE FILE.
+
+      ERROR = .TRUE.
+      CLOSE
+     +  (ERR = 9307,
+     +   IOSTAT = STATUS,
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///  RESTORE THE WORK SPACES.
+
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     WRITE THE TECPLOT 2d_surface.dat FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  PARTITION THE WORK SPACE.
+
+C     ACT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QACT', GASES + SITES + BULKS, QACT)
+      IF (ERROR) GO TO 9301
+
+C     DEN(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDEN', GASES + SITES + BULKS, QDEN)
+      IF (ERROR) GO TO 9301
+
+C     MOLE(GASES, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', GASES * SURFS, QMOLE)
+      IF (ERROR) GO TO 9301
+
+C     SDEN(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDEN', 1 + STYPES + BTYPES, QSDEN)
+      IF (ERROR) GO TO 9301
+
+C     SDOT(GASES + SITES + BULKS, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDOT', (GASES + SITES + BULKS) * SURFS, QSDOT)
+      IF (ERROR) GO TO 9301
+
+C     SITDOT(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSITD', 1 + STYPES + BTYPES, QSITD)
+      IF (ERROR) GO TO 9301
+
+C     TEMP(TSIZE)
+
+      TSIZE = MAX (R10SIZ * Z10SIZ, 2 * R11SIZ * Z11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QTEMP', TSIZE, QTEMP)
+      IF (ERROR) GO TO 9301
+
+C     WT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES + SITES + BULKS, QWT)
+      IF (ERROR) GO TO 9301
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9302
+
+C///  GET THE FILE NAME.
+
+      NAME = FILE(4)
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = NAME,
+     +   ERR = 9303,
+     +   EXIST = EXIST,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      IF (EXIST) THEN
+         ERROR = OPEN
+         IF (ERROR) GO TO 9304
+      END IF
+
+C///  OPEN THE FILE.
+
+      IF (EXIST) THEN
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'OLD',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+
+C///  CREATE THE FILE.
+
+      ELSE
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9305,
+     +      FILE = NAME,
+     +      FORM = 'FORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'NEW',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+      END IF
+
+C///  POSITION THE FILE.
+
+      REWIND UNIT
+
+C///  WRITE THE FILE.
+
+C     SUBROUTINE OVEN46
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   ACT, BTYPES, BULKS, CELLS, DEN, GASES, MOLE, P01, P02, P03,
+C    +   P11, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ, SDEN, SDOT,
+C    +   SITDOT, SITES, SLTN, SMOOTH, SNAME, STEMP, STYPES, SURFS, TEMP,
+C    +   THICK, TNAME, TSIZE, UNIT, VBLES, WT, Z11, Z11SIZ)
+
+      CALL OVEN46
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   RWORK(QACT), BTYPES, BULKS, CELLS, RWORK(QDEN), GASES,
+     +   RWORK(QMOLE), P01, P02, P03, P11, PRESS, QFIRST, QLAST, QNMBR,
+     +   R11, R11SIZ, RWORK(QSDEN), RWORK(QSDOT), RWORK(QSITD), SITES,
+     +   SLTN, SMOOTH, SNAME, STEMP, STYPES, SURFS, RWORK(QTEMP), THICK,
+     +   TNAME, TSIZE, UNIT, VBLES, RWORK(QWT), Z11, Z11SIZ)
+      IF (ERROR) GO TO 9404
+
+C///  CLOSE THE FILE.
+
+      ERROR = .TRUE.
+      CLOSE
+     +  (ERR = 9307,
+     +   IOSTAT = STATUS,
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///  RESTORE THE WORK SPACES.
+
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     FINISH READING THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  BOTTOM OF THE "WRITE THE" BLOCKS.
+
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9204
+      END IF
+
+C///  BOTTOM OF THE LOOP THROUGH THE SCRIPT FILE.
+C 1>     END
+
+      ELSE IF (WORD .EQ. 'END') THEN
+         GO TO 2020
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9204
+      END IF
+      GO TO 2010
+2020  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RPNTS,
+     +   RSKSIZ, SITES, STYPES, SURFS, VBLES, ZPNTS, ZPNTS1, ZPNTS2,
+     +   ZPNTS3
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID,
+     +   RPNTS, ZPNTS1, ZPNTS2, ZPNTS3, CELLS, ZPNTS
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99999
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID
+      GO TO 99999
+
+9203  IF (0 .LT. TEXT) WRITE (TEXT, 99203) ID
+      GO TO 99999
+
+9204  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99204) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID
+      GO TO 99999
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID,
+     +   CSIZE, ISIZE, LSIZE, RSIZE, CLAST, ILAST, LLAST, RLAST
+      GO TO 99999
+
+9303  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, NAME)
+         WRITE (TEXT, 99303) ID, NAME (1 : LENGTH), STATUS
+      END IF
+      GO TO 99999
+
+9304  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, NAME)
+         WRITE (TEXT, 99304) ID, NAME (1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9305  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, NAME)
+         WRITE (TEXT, 99305) ID, NAME (1 : LENGTH), UNIT, STATUS
+      END IF
+      GO TO 99999
+
+9306  IF (0 .LT. TEXT) WRITE (TEXT, 99306) ID
+      GO TO 99999
+
+9307  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, NAME)
+         WRITE (TEXT, 99307) ID, NAME (1 : LENGTH), UNIT, STATUS
+      END IF
+      GO TO 99999
+
+9308  IF (0 .LT. TEXT) WRITE (TEXT, 99308) ID
+      GO TO 99999
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID
+      GO TO 99999
+
+9402  IF (0 .LT. TEXT) WRITE (TEXT, 99402) ID
+      GO TO 99999
+
+9403  IF (0 .LT. TEXT) WRITE (TEXT, 99403) ID
+      GO TO 99999
+
+9404  IF (0 .LT. TEXT) WRITE (TEXT, 99404) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES'
+     +   /10X, I10, '  BULKS'
+     +   /10X, I10, '  CELLS'
+     +   /10X, I10, '  GASES'
+     +   /10X, I10, '  ICKSIZ'
+     +   /10X, I10, '  ISKSIZ'
+     +   /10X, I10, '  RCKSIZ'
+     +   /10X, I10, '  RPNTS'
+     +   /10X, I10, '  RSKSIZ'
+     +   /10X, I10, '  SITES'
+     +   /10X, I10, '  STYPES'
+     +   /10X, I10, '  SURFS'
+     +   /10X, I10, '  VBLES'
+     +   /10X, I10, '  ZPNTS'
+     +   /10X, I10, '  ZPNTS1'
+     +   /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3')
+
+99102 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     +  //10X, I10, '  RPNTS'
+     +   /10X, I10, '  ZPNTS1'
+     +   /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3'
+     +  //10X, I10, '  CELLS'
+     +   /10X, I10, '  ZPNTS')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  READW FAILS.')
+
+99202 FORMAT
+     +   (/1X, A9, 'ERROR.  VERIFY FAILS.')
+
+99203 FORMAT
+     +   (/1X, A9, 'ERROR.  READV FAILS.')
+
+99204 FORMAT
+     +   (/1X, A9, 'ERROR.  A KEYWORD IS MISPLACED OR UNKNOWN.'
+     +  //10X, I10, '  LINE NUMBER'
+     +  //10X, '  KEYWORD:  ', A)
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  SOME WORKSPACES ARE TOO SMALL.'
+C               123456789_  123456789_  123456789_  123456789_
+     +  //25X, ' CHARACTER     INTEGER     LOGICAL        REAL'
+C               123456789_12345
+     +  //10X, ' PRESENT SIZE', 4I12
+     +   /10X, 'REQUIRED SIZE', 4I12
+     +  //10X, 'NO MORE SPACE WILL BE NEEDED TO PLOT THE SOLUTION.')
+
+99303 FORMAT
+     +   (/1X, A9, 'ERROR.  INQUIRE FAILS.'
+C               123456789_12
+     +  //10X, 'FILE NAME:  ', A
+     +  //10X, I10, '  I/O STATUS')
+
+99304 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FILE EXISTS AND IS OPEN.'
+C               123456789_12
+     +  //10X, 'FILE NAME:  ', A)
+
+99305 FORMAT
+     +  (/1X, A9, 'ERROR.  OPEN FAILS.'
+C               123456789_12
+     + //10X, 'FILE NAME:  ', A
+     + //10X, I10, '  UNIT NUMBER'
+     +  /10X, I10, '  I/O STATUS')
+
+99306 FORMAT
+     +  (/1X, A9, 'ERROR.  OVEN41 FAILS.')
+
+99307 FORMAT
+     +  (/1X, A9, 'ERROR.  CLOSE FAILS.'
+C               123456789_12
+     + //10X, 'FILE NAME:  ', A
+     + //10X, I10, '  UNIT NUMBER'
+     +  /10X, I10, '  I/O STATUS')
+
+99308 FORMAT
+     +  (/1X, A9, 'ERROR.  OVEN42 FAILS.')
+
+99401 FORMAT
+     +  (/1X, A9, 'ERROR.  OVEN43 FAILS.')
+
+99402 FORMAT
+     +  (/1X, A9, 'ERROR.  OVEN44 FAILS.')
+
+99403 FORMAT
+     +  (/1X, A9, 'ERROR.  OVEN45 FAILS.')
+
+99404 FORMAT
+     +  (/1X, A9, 'ERROR.  OVEN46 FAILS.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+      RETURN
+      END
+      SUBROUTINE OVEN05
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   BTYPES, BULKS, CELLS, GASES, LINE, NUMBER, P01, P02, P03, P11,
+     +   PRESS, PRINT, QFIRST, QLAST, QNMBR, R11, R11SIZ, RWAFER,
+     +   SCRIPT, SITES, SLTN, SPACE, STEMP, STYPES, SURFS, TNAME, VBLES,
+     +   WAFERS, WFIRST, WLAST, Z11, Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN05
+C
+C     PRINT THE UNIFORMITY.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   CVALUE*32, CWORK*16, ID*9, KEY*80, LINE*82, TNAME*16, TYPE*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   PRESS, R11, RADIUS, RCK, RSK, RVALUE, RWAFER, RWORK, SLTN,
+     +   SPACE, STEMP, WFIRST, WLAST, Z11
+      EXTERNAL
+     +   EXTENT, OVEN51, READV2, RESERV
+      INTEGER
+     +   BTYPE, BTYPES, BULKS, CELLS, CLAST, CMAX, CSAVE, CSIZE, FIRST,
+     +   GASES, ICK, ICKSIZ, ILAST, IMAX, ISAVE, ISIZE, ISK, ISKSIZ,
+     +   IVALUE, IWORK, J, KMAX, LAST, LENGTH, LLAST, LMAX, LSAVE,
+     +   LSIZE, NUMBER, OFFSET, P01, P02, P03, P11, PRINT, QACT, QDEN,
+     +   QFIRST, QLAST, QMOLE, QNMBR, QRATE, QSDEN, QSDOT, QSITD,
+     +   QVALUE, QWT, R11SIZ, RCKSIZ, RLAST, RMAX, RSAVE, RSIZE, RSKSIZ,
+     +   SCRIPT, SITES, STYPES, SURFS, TEXT, VBLES, WAFERS, Z11SIZ
+      LOGICAL
+     +   ERROR, FOUND, LVALUE, LWORK, NEED
+
+      PARAMETER (ID = 'OVEN05:  ')
+      PARAMETER (KMAX = 20)
+
+      DIMENSION
+     +   CVALUE(KMAX), CWORK(CSIZE), FOUND(KMAX), ICK(ICKSIZ),
+     +   ISK(ISKSIZ), IVALUE(KMAX), IWORK(ISIZE), KEY(KMAX),
+     +   LVALUE(KMAX), LWORK(LSIZE), NEED(KMAX), P01(CELLS), P02(SURFS),
+     +   P03(SURFS), P11(R11SIZ, Z11SIZ), R11(R11SIZ), RCK(RCKSIZ),
+     +   RSK(RSKSIZ), RVALUE(KMAX), RWORK(RSIZE), SLTN(VBLES),
+     +   STEMP(SURFS), TNAME(1 + STYPES + BTYPES), TYPE(KMAX),
+     +   Z11(Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CSAVE = CLAST
+      ISAVE = ILAST
+      LSAVE = LLAST
+      RSAVE = RLAST
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RSKSIZ .AND. 0 .LT. SITES  .AND.
+     +   0 .LT. STYPES .AND. 0 .LT. SURFS  .AND. 0 .LT. VBLES)
+      IF (ERROR) GO TO 9101
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) READ THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  READ THE BLOCK.
+C 1>  PRINT THE DEPOSITION UNIFORMITY
+C 2>     FIRST USABLE WAFER = ?(1)
+C 2>     LAST USABLE WAFER = ?(last wafer)
+C 2>     USABLE WAFER RADIUS = ?(wafer radius)
+C 1>     END
+
+      DATA
+     +   (TYPE(J), NEED(J), KEY(J), J = 1, 3)
+     + / 'I', .FALSE., 'FIRST USABLE WAFER =',
+     +   'I', .FALSE., 'LAST USABLE WAFER =',
+     +   'R', .FALSE., 'USABLE WAFER RADIUS =' /
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CVALUE, .FALSE., FOUND, KEY, 3, IVALUE, LINE, LVALUE, NEED,
+     +      NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+         IF (ERROR) GO TO 9201
+
+C///  CHOOSE THE FIRST AND LAST WAFERS.
+
+      IF (FOUND(1)) THEN
+         FIRST = IVALUE(1)
+      ELSE
+         FIRST = 1
+      END IF
+
+      IF (FOUND(2)) THEN
+         LAST = IVALUE(2)
+      ELSE
+         LAST = WAFERS
+      END IF
+
+      ERROR = .NOT. (1 .LE. FIRST .AND. FIRST .LE. LAST .AND.
+     +   LAST .LE. WAFERS)
+      IF (ERROR) GO TO 9202
+
+C///  CHOOSE THE USABLE RADIUS.
+
+      IF (FOUND(3)) THEN
+         RADIUS = RVALUE(3)
+      ELSE
+         RADIUS = RWAFER
+      END IF
+
+      ERROR = .NOT. (0.0 .LT. RADIUS .AND. RADIUS .LE. RWAFER)
+      IF (ERROR) GO TO 9203
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) FORM AND PRINT THE UNIFORMITY DATA.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  PARTITION THE WORK SPACE.
+
+C     ACT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QACT', GASES + SITES + BULKS, QACT)
+      IF (ERROR) GO TO 9301
+
+C     DEN(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDEN', GASES + SITES + BULKS, QDEN)
+      IF (ERROR) GO TO 9301
+
+C     MOLE(GASES, CELLS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', GASES * CELLS, QMOLE)
+      IF (ERROR) GO TO 9301
+
+C     RATE(R11SIZ, 2, Z11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QRATE', R11SIZ * 2 * Z11SIZ, QRATE)
+      IF (ERROR) GO TO 9301
+
+C     SDEN(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDEN', 1 + STYPES + BTYPES, QSDEN)
+      IF (ERROR) GO TO 9301
+
+C     SDOT(GASES + SITES + BULKS, SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDOT', (GASES + SITES + BULKS) * SURFS, QSDOT)
+      IF (ERROR) GO TO 9301
+
+C     SITDOT(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSITD', 1 + STYPES + BTYPES, QSITD)
+      IF (ERROR) GO TO 9301
+
+C     VALUE(3, BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QVALUE', 3 * BTYPES, QVALUE)
+      IF (ERROR) GO TO 9301
+
+C     WT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES + SITES + BULKS, QWT)
+      IF (ERROR) GO TO 9301
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9302
+
+C///  CALL OVEN51.
+
+C     SUBROUTINE OVEN51
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   ACT, BTYPES, BULKS, CELLS, DEN, FIRST, GASES, LAST, MOLE, P01,
+C    +   P02, P03, P11, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ,
+C    +   RADIUS, RATE, SDEN, SDOT, SITDOT, SITES, SLTN, STEMP, STYPES,
+C    +   SURFS, VALUE, VBLES, WAFERS, WFIRST, WLAST, WT, Z11, Z11SIZ)
+
+      CALL OVEN51
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   RWORK(QACT), BTYPES, BULKS, CELLS, RWORK(QDEN), FIRST, GASES,
+     +   LAST, RWORK(QMOLE), P01, P02, P03, P11, PRESS, QFIRST, QLAST,
+     +   QNMBR, R11, R11SIZ, RADIUS, RWORK(QRATE), RWORK(QSDEN),
+     +   RWORK(QSDOT), RWORK(QSITD), SITES, SLTN, STEMP, STYPES, SURFS,
+     +   RWORK(QVALUE), VBLES, WAFERS, WFIRST, WLAST, RWORK(QWT), Z11,
+     +   Z11SIZ)
+      IF (ERROR) GO TO 9303
+
+C///  PRINT THE VALUES.
+
+      IF (0 .LT. TEXT) THEN
+         WRITE (TEXT, 10001) ID
+         OFFSET = QVALUE
+         DO 1010 BTYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+            CALL EXTENT (LENGTH, TNAME(BTYPE))
+            WRITE (TEXT, 10002)
+     +         (RWORK(J), J = OFFSET, OFFSET + 2),
+     +         TNAME(BTYPE) (1 : LENGTH)
+            OFFSET = OFFSET + 3
+1010     CONTINUE
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     INFORMATIVE MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +   (/9X, 35(' /')
+     +   //1X, A9, 'DEPOSITION VARIATION (PERCENT CHANGE):'
+C               1234567890  1234567890  1234567890   1234567890123456
+     +  //10X, '  FOR BEST   FOR WORST    OVER ALL'
+     +   /10X, '     WAFER       WAFER     WAFFERS   SPECIES'
+     +   /)
+
+10002 FORMAT
+     +   (10X, F10.3, 2X, F10.3, 2X, F10.3, 3X, A)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RSKSIZ,
+     +   SITES, STYPES, SURFS, VBLES
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99999
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID, FIRST, LAST, WAFERS
+      GO TO 99999
+
+9203  IF (0 .LT. TEXT) WRITE (TEXT, 99203) ID, RADIUS, RWAFER
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID
+      GO TO 99999
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID,
+     +   CSIZE, ISIZE, LSIZE, RSIZE, CLAST, ILAST, LLAST, RLAST
+      GO TO 99999
+
+9303  IF (0 .LT. TEXT) WRITE (TEXT, 99303) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES'
+     +   /10X, I10, '  BULKS'
+     +   /10X, I10, '  CELLS'
+     +   /10X, I10, '  GASES'
+     +   /10X, I10, '  ICKSIZ'
+     +   /10X, I10, '  ISKSIZ'
+     +   /10X, I10, '  RCKSIZ'
+     +   /10X, I10, '  RSKSIZ'
+     +   /10X, I10, '  SITES'
+     +   /10X, I10, '  STYPES'
+     +   /10X, I10, '  SURFS'
+     +   /10X, I10, '  VBLES')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  READV FAILS.')
+
+99202 FORMAT
+     +   (/1X, A, 'ERROR.  THE FIRST AND LAST USABLE WAFERS ARE OUT OF'
+     +   /10X, 'ORDER OR OUT OF RANGE.'
+     +  //10X, I10, '  FIRST'
+     +   /10X, I10, '  LAST'
+     +   /10X, I10, '  WAFERS')
+
+99203 FORMAT
+     +   (/1X, A, 'ERROR.  THE USABLE RADIUS IS OUT OF RANGE.'
+     +  //10X, F10.5, '  USABLE RADIUS'
+     +   /10X, F10.5, '  WAFER RADIUS')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  SOME WORKSPACES ARE TOO SMALL.'
+C               123456789_  123456789_  123456789_  123456789_
+     +  //25X, ' CHARACTER     INTEGER     LOGICAL        REAL'
+C               123456789_12345
+     +  //10X, ' PRESENT SIZE', 4I12
+     +   /10X, 'REQUIRED SIZE', 4I12
+     +  //10X, 'NO MORE SPACE WILL BE NEEDED TO PLOT THE SOLUTION.')
+
+99303 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN51 FAILS.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+      RETURN
+      END
+      SUBROUTINE OVEN06
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   BTYPES, BULKS, CELLS, ELEMS, ENAME, GASES, INFLOW, INJECS,
+     +   INMOLE, P01, P02, P03, P09, PRESS, QFIRST, QLAST, QNMBR, R,
+     +   RPNTS, SCRIPT, SITES, SLTN, SNAME, SPACE, STEMP, STYPES, SURFS,
+     +   TNAME, VBLES, Z, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN06
+C
+C     PRINT THE SOLUTION.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER CWORK*16, ENAME*16, ID*9, SNAME*16, TNAME*16
+      INTEGER
+     +   BTYPES, BULKS, CELLS, CLAST, CMAX, COLMAX, CSAVE, CSIZE, ELEMS,
+     +   GASES, ICK, ICKSIZ, ILAST, IMAX, INJECS, ISAVE, ISIZE, ISK,
+     +   ISKSIZ, IWORK, LLAST, LMAX, LSAVE, LSIZE, P01, P02, P03, P09,
+     +   RCKSIZ, RLAST, RMAX, RPNTS, RSAVE, RSIZE, RSKSIZ, SCRIPT,
+     +   SITES, STYPES, SURFS, TEXT, VBLES, ZPNTS, ZPNTS1, ZPNTS2,
+     +   ZPNTS3
+      LOGICAL ERROR, LWORK
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   INFLOW, INMOLE, PRESS, R, RCK, RSK, RWORK, SLTN, SPACE, STEMP,
+     +   Z
+
+      PARAMETER (ID = 'OVEN06:  ')
+
+      DIMENSION
+     +   CWORK(CSIZE), ENAME(ELEMS), ICK(ICKSIZ), INFLOW(INJECS),
+     +   INMOLE(GASES, INJECS), ISK(ISKSIZ), IWORK(ISIZE), LWORK(LSIZE),
+     +   P01(CELLS), P02(SURFS), P03(SURFS), P09(ZPNTS),
+     +   QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES + BTYPES),
+     +   QNMBR(1 + STYPES + BTYPES), R(RPNTS), RCK(RCKSIZ), RSK(RSKSIZ),
+     +   RWORK(RSIZE), SLTN(VBLES), SNAME(GASES + SITES + BULKS),
+     +   STEMP(SURFS), TNAME(1 + STYPES + BTYPES), Z(ZPNTS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE LEVELS OF THE WORKSPACES.
+
+      CSAVE = CLAST
+      ISAVE = ILAST
+      LSAVE = LLAST
+      RSAVE = RLAST
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. CSIZE  .AND. 0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND.
+     +   0 .LT. INJECS .AND. 0 .LT. ISIZE  .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. LSIZE  .AND. 0 .LT. RCKSIZ .AND. 0 .LT. RPNTS  .AND.
+     +   0 .LT. RSIZE  .AND. 0 .LT. RSKSIZ .AND. 0 .LT. SITES  .AND.
+     +   0 .LT. STYPES .AND. 0 .LT. VBLES  .AND. 0 .LT. ZPNTS  .AND.
+     +   0 .LT. ZPNTS1 .AND. 0 .LT. ZPNTS2 .AND. 0 .LT. ZPNTS3)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT.
+     +  (ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3 .EQ. CELLS .AND.
+     +   ZPNTS1 + ZPNTS2 + ZPNTS3 .EQ. ZPNTS)
+      IF (ERROR) GO TO 9102
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) PRINT THE SOLUTION.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  DEFINE DIMENSIONAL PARAMETERS.
+
+C     COLUMNS OF OUTPUT
+
+      COLMAX = 2 + GASES + SITES + BULKS
+
+C///  PARTITION THE WORKSPACE.
+
+C     ACT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QACT', GASES + SITES + BULKS, QACT)
+      IF (ERROR) GO TO 9201
+
+C     DEN(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDEN', GASES + SITES + BULKS, QDEN)
+      IF (ERROR) GO TO 9201
+
+C     HEADER(5, COLMAX)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., CLAST, CMAX, CSIZE,
+     +   'QHEAD', 5 * COLMAX, QHEAD)
+      IF (ERROR) GO TO 9201
+
+C     MOLE(GASES, ZPNTS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', GASES * ZPNTS, QMOLE)
+      IF (ERROR) GO TO 9201
+
+C     SDEN(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDEN', 1 + STYPES + BTYPES, QSDEN)
+      IF (ERROR) GO TO 9201
+
+C     SDOT(GASES + SITES + BULKS, ZPNTS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDOT', (GASES + SITES + BULKS) * ZPNTS, QSDOT)
+      IF (ERROR) GO TO 9201
+
+C     SITDOT(1 + STYPES + BTYPES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSITD', 1 + STYPES + BTYPES, QSITD)
+      IF (ERROR) GO TO 9201
+
+C     VALUE(ZPNTS + 1, COLMAX)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QVALUE', (ZPNTS + 1) * COLMAX, QVALUE)
+      IF (ERROR) GO TO 9201
+
+C     WT(GASES + SITES + BULKS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES + SITES + BULKS, QWT)
+      IF (ERROR) GO TO 9201
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9202
+
+C///  PRINT THE SOLUTION.
+
+C     SUBROUTINE OVEN61
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   ACT, BTYPES, BULKS, CELLS, COLMAX, DEN, GASES, HEADER, MOLE,
+C    +   P01, P02, P03, P09, PRESS, QFIRST, QLAST, QNMBR, RPNTS, SDEN,
+C    +   SDOT, SITDOT, SITES, SLTN, SNAME, STEMP, STYPES, SURFS, TNAME,
+C    +   VALUE, VBLES, WT, Z, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN61
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   RWORK(QACT), BTYPES, BULKS, CELLS, COLMAX, RWORK(QDEN), GASES,
+     +   CWORK(QHEAD), RWORK(QMOLE), P01, P02, P03, P09, PRESS, QFIRST,
+     +   QLAST, QNMBR, RPNTS, RWORK(QSDEN), RWORK(QSDOT), RWORK(QSITD),
+     +   SITES, SLTN, SNAME, STEMP, STYPES, SURFS, TNAME, RWORK(QVALUE),
+     +   VBLES, RWORK(QWT), Z, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+      IF (ERROR) GO TO 9203
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) PRINT THE ELEMENT BUDGET.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  RESTORE THE LEVELS OF THE WORKSPACES.
+
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+
+C///  PARTITION THE WORKSPACE.
+
+C     AWT(ELEMS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QAWT', ELEMS, QAWT)
+      IF (ERROR) GO TO 9201
+
+C     COLUMN(6, ELEMS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., CLAST, CMAX, CSIZE,
+     +   'QCOL', 6 * ELEMS, QCOL)
+      IF (ERROR) GO TO 9201
+
+C     COMPO(ELEMS, GASES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QCOMP', ELEMS * GASES, QCOMP)
+      IF (ERROR) GO TO 9201
+
+C     EMOLE(ELEMS, 3)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QEMOLE', ELEMS * 3, QEMOLE)
+      IF (ERROR) GO TO 9201
+
+C     MOLE(GASES, 3)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', GASES * 3, QMOLE)
+      IF (ERROR) GO TO 9201
+
+C     WT(GASES)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES, QWT)
+      IF (ERROR) GO TO 9201
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9202
+
+C///  PRINT THE BUDGET.
+
+C     SUBROUTINE OVEN62
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, RCK, RCKSIZ,
+C    +   AWT, CELLS, COLUMN, COMPO, ELEMS, EMOLE, ENAME, GASES, INFLOW,
+C    +   INJECS, INMOLE, MOLE, P01, RPNTS, SLTN, VBLES, WT, ZPNTS
+
+      CALL OVEN62
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, RCK, RCKSIZ,
+     +   RWORK(QAWT), CELLS, CWORK(QCOL), IWORK(QCOMP), ELEMS,
+     +   RWORK(QEMOLE), ENAME, GASES, INFLOW, INJECS, INMOLE,
+     +   RWORK(QMOLE), P01, RPNTS, SLTN, VBLES, RWORK(QWT), ZPNTS)
+      IF (ERROR) GO TO 9301
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, CSIZE, GASES, ICKSIZ, INJECS, ISIZE,
+     +   ISKSIZ, LSIZE, RCKSIZ, RPNTS, RSIZE, RSKSIZ, SITES, STYPES,
+     +   VBLES, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID,
+     +   RPNTS, ZPNTS1, ZPNTS2, ZPNTS3, CELLS, ZPNTS
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99999
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID,
+     +   CSIZE, ISIZE, LSIZE, RSIZE, CLAST, ILAST, LLAST, RLAST
+      GO TO 99999
+
+9203  IF (0 .LT. TEXT) WRITE (TEXT, 99203) ID
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES' /10X, I10, '  BULKS'
+     +   /10X, I10, '  CELLS'  /10X, I10, '  CSIZE'
+     +   /10X, I10, '  GASES'  /10X, I10, '  ICKSIZ'
+     +   /10X, I10, '  INJECS' /10X, I10, '  ISIZE'
+     +   /10X, I10, '  ISKSIZ' /10X, I10, '  LSIZE'
+     +   /10X, I10, '  RCKSIZ' /10X, I10, '  RPNTS'
+     +   /10X, I10, '  RSIZE'  /10X, I10, '  RSKSIZ'
+     +   /10X, I10, '  SITES'  /10X, I10, '  STYPES'
+     +   /10X, I10, '  VBLES'  /10X, I10, '   ZPNTS'
+     +   /10X, I10, '  ZPNTS1' /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3')
+
+99102 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     +  //10X, I10, '  RPNTS'
+     +   /10X, I10, '  ZPNTS1'
+     +   /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3'
+     +  //10X, I10, '  CELLS'
+     +   /10X, I10, '  ZPNTS')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99202 FORMAT
+     +   (/1X, A9, 'ERROR.  SOME WORKSPACES ARE TOO SMALL.'
+C               123456789_  123456789_  123456789_  123456789_
+     +  //25X, ' CHARACTER     INTEGER     LOGICAL        REAL'
+C               123456789_12345
+     +  //10X, ' PRESENT SIZE', 4I12
+     +   /10X, 'REQUIRED SIZE', 4I12
+     +  //10X, 'NO MORE SPACE WILL BE NEEDED TO PRINT THE SOLUTION.')
+
+99203 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN61 FAILS.')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN62 FAILS.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+      RETURN
+      END
+      SUBROUTINE OVEN07
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ADJUST, BTYPES, BULKS, CELLS, DEPTH, ENERGY, FACTOR, GASES,
+     +   GUESS, INJECS, IPARS, KNUDSN, LINE, LPARS, MULTIC, NUMBER,
+     +   PRESS, PRINT, Q01, Q02, Q03, Q04, Q05, Q06, Q07, Q08, Q09, Q10,
+     +   Q11, QCVOL, QFRAC, QINABL, QINCEL, QINFLO, QINLOC, QINMOL,
+     +   QINNAM, QINTEM, QIPAR, QLPAR, QR, QR10, QR11, QRLOC, QRPAR,
+     +   QSAREA, QSINDX, QSLTN, QSMAGE, QSTEMP, QWAREA, QWCODE, QWCOEF,
+     +   QWINDX, QZ, QZ10, QZ11, QZLOC, R10SIZ, R11SIZ, RPARS, RPNTS,
+     +   RTUBE, RWAFER, SCOUNT, SCRIPT, SITES, SNAME, SOLVED, SPACE,
+     +   STYPES, SURFS, THICK, THRMLD, TNAME, UNIT, VBLES, WAFERS,
+     +   WALLS, WCOUNT, WFIRST, WLAST, Z10SIZ, Z11SIZ, ZPNTS, ZPNTS1,
+     +   ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN07
+C
+C     READ A MODEL
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   CVALUE*32, CWORK*16, ID*9, KEY*80, LINE*82, NAME*80, SNAME*16,
+     +   STRING*80, TNAME*16, TYPE*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   DEPTH, FACTOR, PRESS, RTUBE, RVALUE, RWAFER, RWORK, SPACE,
+     +   THICK, WFIRST, WLAST
+      EXTERNAL
+     +   OVEN00, READV2, RESERV
+      INTEGER
+     +   BTYPES, BULKS, CELLS, CLAST, CMARK, CMAX, CSAVE, CSIZE, GASES,
+     +   ILAST, IMAX, INJECS, IPARS, ISAVE, ISIZE, IVALUE, IWORK, J,
+     +   KMAX, LAST, LLAST, LMAX, LPARS, LSAVE, LSIZE, NUMBER, PRINT, Q,
+     +   Q01, Q02, Q03, Q04, Q05, Q06, Q07, Q08, Q09, Q10, Q11, QCVOL,
+     +   QFRAC, QINABL, QINCEL, QINFLO, QINLOC, QINMOL, QINNAM, QINTEM,
+     +   QIPAR, QLPAR, QR, QR10, QR11, QRLOC, QRPAR, QSAREA, QSINDX,
+     +   QSLTN, QSMAGE, QSNAME, QSTEMP, QTNAME, QWAREA, QWCODE, QWCOEF,
+     +   QWINDX, QZ, QZ10, QZ11, QZLOC, R10SIZ, R11SIZ, RECORD, RLAST,
+     +   RMAX, RPARS, RPNTS, RSAVE, RSIZE, SCOUNT, SCRIPT, SITES,
+     +   STATUS, STYPES, SURFS, TEXT, UNIT, VBLES, WAFERS, WALLS,
+     +   WCOUNT, Z10SIZ, Z11SIZ, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      LOGICAL
+     +   ADJUST, ENERGY, ERROR, EXIST, FOUND, GUESS, KNUDSN, LVALUE,
+     +   LWORK, MULTIC, NEED, OPEN, SOLVED, THRMLD
+
+      PARAMETER (ID = 'OVEN07:  ')
+      PARAMETER (KMAX = 20)
+
+      DIMENSION
+     +   CVALUE(KMAX), CWORK(CSIZE), FOUND(KMAX), IVALUE(KMAX),
+     +   IWORK(ISIZE), KEY(KMAX), LVALUE(KMAX), LWORK(LSIZE),
+     +   NEED(KMAX), RWORK(RSIZE), SNAME(GASES + SITES + BULKS),
+     +   TNAME(1 + STYPES + BTYPES), TYPE(KMAX)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE MARKS OF THE WORK SPACES.
+
+      CSAVE = CLAST
+      ISAVE = ILAST
+      LSAVE = LLAST
+      RSAVE = RLAST
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CSIZE  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ISIZE  .AND. 0 .LT. LSIZE  .AND.
+     +   0 .LT. RSIZE  .AND. 0 .LT. SITES  .AND. 0 .LT. STYPES)
+      IF (ERROR) GO TO 9101
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) READ THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  READ THE BLOCK.
+C 1>  READ A MODEL
+C 2>     FILE NAME = ?(ovend.dat)
+C 1>     END
+
+      DATA
+     +   (TYPE(J), NEED(J), KEY(J), J = 1, 1)
+     + / 'C', .FALSE., 'FILE NAME =' /
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CVALUE, .FALSE., FOUND, KEY, 1, IVALUE, LINE, LVALUE, NEED,
+     +      NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+         IF (ERROR) GO TO 9201
+
+C///  CHOOSE THE FILE NAME.
+
+      IF (FOUND(1)) THEN
+         NAME = CVALUE(1)
+      ELSE
+         NAME = 'ovend.dat'
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) OPEN THE FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = NAME,
+     +   ERR = 9301,
+     +   EXIST = EXIST,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      ERROR = .NOT. EXIST
+      IF (ERROR) GO TO 9302
+
+      ERROR = OPEN
+      IF (ERROR) GO TO 9303
+
+C///  OPEN THE FILE.
+
+      ERROR = .TRUE.
+      OPEN
+     +  (ACCESS = 'SEQUENTIAL',
+     +   ERR = 9304,
+     +   FILE = NAME,
+     +   FORM = 'UNFORMATTED',
+     +   IOSTAT = STATUS,
+     +   STATUS = 'OLD',
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///  POSITION THE FILE.
+
+      REWIND UNIT
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) READ THE FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      RECORD = 0
+
+C///  VERSION.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS) STRING
+      ERROR = .FALSE.
+
+C     SUBROUTINE OVEN00
+C    +  (ERROR, TEXT,
+C    +   CODE, STRING)
+
+      CALL OVEN00
+     +  (ERROR, TEXT,
+     +   'CHECK DATA VERSION', STRING)
+      IF (ERROR) GO TO 9402
+
+C///  INTEGER SCALARS.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS) IPARS
+      ERROR = .FALSE.
+
+      CALL RESERV (ERROR, TEXT, .TRUE., ILAST, IMAX, ISIZE,
+     +   'QIPAR', IPARS, QIPAR)
+      IF (ERROR) GO TO 9403
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   (IWORK(Q), Q = QIPAR, QIPAR + IPARS - 1)
+      ERROR = .FALSE.
+
+C///  LOGICAL SCALARS.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS) LPARS
+      ERROR = .FALSE.
+
+      CALL RESERV (ERROR, TEXT, .TRUE., LLAST, LMAX, LSIZE,
+     +   'QLPAR', LPARS, QLPAR)
+      IF (ERROR) GO TO 9403
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   (LWORK(Q), Q = QLPAR, QLPAR + LPARS - 1)
+      ERROR = .FALSE.
+
+C///  REAL SCALARS.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS) RPARS
+      ERROR = .FALSE.
+
+      CALL RESERV (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE,
+     +   'QRPAR', RPARS, QRPAR)
+      IF (ERROR) GO TO 9403
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   (RWORK(Q), Q = QRPAR, QRPAR + RPARS - 1)
+      ERROR = .FALSE.
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (5) EXTRACT AND CHECK THE SCALARS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INTEGER PARAMETERS.
+
+      Q = QIPAR - 1
+      LAST = Q + IPARS
+
+C     BTYPES: NUMBER OF BULK TYPES
+      Q = Q + 1
+      IF (Q .LE. LAST) ERROR = .NOT. (IWORK(Q) .EQ. BTYPES)
+      IF (ERROR) GO TO 9501
+
+C     CELLS: NUMBER OF CELLS
+      Q = Q + 1
+      IF (Q .LE. LAST) CELLS = IWORK(Q)
+
+C     GASES: NUMBER OF GAS SPECIES
+      Q = Q + 1
+      IF (Q .LE. LAST) ERROR = .NOT. (IWORK(Q) .EQ. GASES)
+      IF (ERROR) GO TO 9502
+
+C     INJECS: NUMBER OF INJECTORS
+      Q = Q + 1
+      IF (Q .LE. LAST) INJECS = IWORK(Q)
+
+C     R10SIZ: NUMBER OF RADIAL GRID POINTS FOR PLOT 10
+      Q = Q + 1
+      IF (Q .LE. ISIZE) R10SIZ = IWORK(Q)
+
+C     R11SIZ: NUMBER OF RADIAL GRID POINTS FOR PLOT 11
+      Q = Q + 1
+      IF (Q .LE. ISIZE) R11SIZ = IWORK(Q)
+
+C     RPNTS: NUMBER OF RADIAL GRID POINTS
+      Q = Q + 1
+      IF (Q .LE. LAST) RPNTS = IWORK(Q)
+
+C     SCOUNT: MAXIMUM SURFACES PER CELL
+      Q = Q + 1
+      IF (Q .LE. LAST) SCOUNT = IWORK(Q)
+
+C     SITES: NUMBER OF SURFACE SITES
+      Q = Q + 1
+      IF (Q .LE. LAST) ERROR = .NOT. (IWORK(Q) .EQ. SITES)
+      IF (ERROR) GO TO 9503
+
+C     STYPES: NUMBER OF SURFACE SPECIES TYPES
+      Q = Q + 1
+      IF (Q .LE. LAST) ERROR = .NOT. (IWORK(Q) .EQ. STYPES)
+      IF (ERROR) GO TO 9504
+
+C     SURFS: NUMBER OF SURFACES
+      Q = Q + 1
+      IF (Q .LE. LAST) SURFS = IWORK(Q)
+
+C     VBLES: NUMBER OF VARIABLES
+      Q = Q + 1
+      IF (Q .LE. LAST) VBLES = IWORK(Q)
+
+C     WAFERS: NUMBER OF WAFERS
+      Q = Q + 1
+      IF (Q .LE. LAST) WAFERS = IWORK(Q)
+
+C     WALLS: NUMBER OF WALLS
+      Q = Q + 1
+      IF (Q .LE. LAST) WALLS = IWORK(Q)
+
+C     WCOUNT: MAXIMUM WALLS PER CELL
+      Q = Q + 1
+      IF (Q .LE. LAST) WCOUNT = IWORK(Q)
+
+C     Z10SIZ: NUMBER OF AXIAL POINTS FOR PLOT 10
+      Q = Q + 1
+      IF (Q .LE. ISIZE) Z10SIZ = IWORK(Q)
+
+C     Z11SIZ: NUMBER OF AXIAL POINTS FOR PLOT 11
+      Q = Q + 1
+      IF (Q .LE. ISIZE) Z11SIZ = IWORK(Q)
+
+C     ZPNTS: NUMBER OF AXIAL GRID POINTS
+      Q = Q + 1
+      IF (Q .LE. LAST) ZPNTS = IWORK(Q)
+
+C     ZPNTS1: NUMBER OF AXIAL GRID POINTS BEFORE THE WAFERS
+      Q = Q + 1
+      IF (Q .LE. LAST) ZPNTS1 = IWORK(Q)
+
+C     ZPNTS2: NUMBER OF AXIAL GRID POINTS ALONG THE WAFERS
+      Q = Q + 1
+      IF (Q .LE. LAST) ZPNTS2 = IWORK(Q)
+
+C     ZPNTS3: NUMBER OF AXIAL GRID POINTS AFTER THE WAFERS
+      Q = Q + 1
+      IF (Q .LE. LAST) ZPNTS3 = IWORK(Q)
+
+      ERROR = .NOT. (Q .EQ. LAST)
+      IF (ERROR) GO TO 9506
+
+C///  LOGICAL PARAMETERS.
+
+      Q = QLPAR - 1
+      LAST = Q + LPARS
+
+C     ADJUST: ADJUST THE DIFFUSION COEFFICIENTS
+      Q = Q + 1
+      IF (Q .LE. LAST) ADJUST = LWORK(Q)
+
+C     ENERGY: ENFORCE ENERGY CONSERVATION
+      Q = Q + 1
+      IF (Q .LE. LAST) ENERGY = LWORK(Q)
+
+C     GUESS: A SOLUTION HAS BEEN FOUND FOR ANY MODEL
+      Q = Q + 1
+      IF (Q .LE. LAST) GUESS = LWORK(Q)
+
+C     KNUDSN: INCLUDE KNUDSEN DIFFUSION
+      Q = Q + 1
+      IF (Q .LE. LAST) KNUDSN = LWORK(Q)
+
+C     MULTIC: USE MULTICOMPONENT DIFFUSION COEFFICIENTS
+      Q = Q + 1
+      IF (Q .LE. LAST) MULTIC = LWORK(Q)
+
+C     OPTIM: FIND AN OPTIMAL GRID
+      Q = Q + 1
+
+C     SOLVED: A SOLUTION HAS BEEN FOUND FOR THE CURRENT MODEL
+      Q = Q + 1
+      IF (Q .LE. LAST) SOLVED = LWORK(Q)
+
+C     THRMLD: INCLUDE THERMAL DIFFUSION
+      Q = Q + 1
+      IF (Q .LE. LAST) THRMLD = LWORK(Q)
+
+C     ZONLY: MODEL ONLY THE ANNULAR PROBLEM
+      Q = Q + 1
+
+      ERROR = .NOT. (Q .EQ. LAST)
+      IF (ERROR) GO TO 9507
+
+C///  REAL PARAMETERS.
+
+      Q = QRPAR - 1
+      LAST = Q + RPARS
+
+C     DEPTH: OVEN LENGTH
+      Q = Q + 1
+      IF (Q .LE. LAST) DEPTH = RWORK(Q)
+
+C     FACTOR: SCALE FACTOR FOR REACTION RATES
+      Q = Q + 1
+      IF (Q .LE. LAST) FACTOR = RWORK(Q)
+
+C     PRESS: PRESSURE
+      Q = Q + 1
+      IF (Q .LE. LAST) PRESS = RWORK(Q)
+
+C     REDGE: RADIAL STEP AT RADIAL EDGE
+      Q = Q + 1
+
+C     RRATIO: MAXIMUM RADIAL RATIO
+      Q = Q + 1
+
+C     RSTEP: MAXIMUM RADIAL STEP
+      Q = Q + 1
+
+C     RTUBE: OVEN RADIUS
+      Q = Q + 1
+      IF (Q .LE. LAST) RTUBE = RWORK(Q)
+
+C     RWAFER: WAFER RADIUS
+      Q = Q + 1
+      IF (Q .LE. LAST) RWAFER = RWORK(Q)
+
+C     SPACE: WAFER SPACING
+      Q = Q + 1
+      IF (Q .LE. LAST) SPACE = RWORK(Q)
+
+C     THICK: WAFER THICKNESS
+      Q = Q + 1
+      IF (Q .LE. LAST) THICK = RWORK(Q)
+
+C     WFIRST: FIRST WAFER POSITION
+      Q = Q + 1
+      IF (Q .LE. LAST) WFIRST = RWORK(Q)
+
+C     WLAST: LAST WAFER POSITION
+      Q = Q + 1
+      IF (Q .LE. LAST) WLAST = RWORK(Q)
+
+C     ZINJEC: AXIAL STEP AT INJECTORS
+      Q = Q + 1
+
+C     ZOVEN: AXIAL STEP AT OVEN END
+      Q = Q + 1
+
+C     ZRATIO: MAXIMUM AXIAL STEP RATIOS
+      Q = Q + 3
+
+C     ZSTEP: MAXIMUM AXIAL STEPS
+      Q = Q + 3
+
+      ERROR = .NOT. (Q .EQ. LAST)
+      IF (ERROR) GO TO 9508
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (6) EXTRACT AND CHECK THE ARRAYS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHARACTER ARRAYS.
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QINNAM', INJECS, QINNAM)
+      IF (ERROR) GO TO 9403
+
+      CMARK = CLAST
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QSNAME', GASES + SITES + BULKS, QSNAME)
+      IF (ERROR) GO TO 9403
+
+      CALL RESERV (ERROR, TEXT, .TRUE., CLAST, CMAX, CSIZE,
+     +   'QTNAME', 1 + STYPES + BTYPES, QTNAME)
+      IF (ERROR) GO TO 9403
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   (CWORK(QINNAM - 1 + J), J = 1, INJECS),
+     +   (CWORK(QSNAME - 1 + J), J = 1, GASES + SITES + BULKS),
+     +   (CWORK(QTNAME - 1 + J), J = 1, 1 + STYPES + BTYPES)
+      ERROR = .FALSE.
+
+      DO 7010 J = 1, GASES + SITES + BULKS
+         ERROR = ERROR .OR. SNAME(J) .NE. CWORK(QSNAME - 1 + J)
+7010  CONTINUE
+
+      DO 7020 J = 1, 1 + STYPES + BTYPES
+         ERROR = ERROR .OR. TNAME(J) .NE. CWORK(QTNAME - 1 + J)
+7020  CONTINUE
+
+      IF (ERROR) GO TO 9505
+
+      CLAST = CMARK
+
+C///  INTEGER ARRAYS.
+
+C     INABLE(INJECS): INJECTABLE CELLS
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QINABL', ZPNTS, QINABL)
+      IF (ERROR) GO TO 9403
+
+C     INCELL(INJECS): CELLS WITH INJECTORS
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QINCEL', INJECS, QINCEL)
+      IF (ERROR) GO TO 9403
+
+C     P01(CELLS): POINTERS TO GAS DATA IN SOLUTION
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q01', CELLS, Q01)
+      IF (ERROR) GO TO 9403
+
+C     P02(SURFS): POINTERS TO GAS DATA IN P01
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q02', SURFS, Q02)
+      IF (ERROR) GO TO 9403
+
+C     P03(SURFS): POINTERS TO SURFACE DATA IN SOLUTION
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q03', SURFS, Q03)
+      IF (ERROR) GO TO 9403
+
+C     P04(WALLS, 2): POINTERS TO GAS DATA IN P01
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q04', WALLS * 2, Q04)
+      IF (ERROR) GO TO 9403
+
+C     P05(SURFS): POINTERS TO SURFACE DATA IN P03
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q05', SURFS, Q05)
+      IF (ERROR) GO TO 9403
+
+C     P06(CELLS): POINTERS TO SURFACE DATA IN P05
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q06', CELLS, Q06)
+      IF (ERROR) GO TO 9403
+
+C     P07(WALLS * 2): POINTERS TO WALL DATA IN P04
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q07', WALLS * 2, Q07)
+      IF (ERROR) GO TO 9403
+
+C     P08(CELLS): POINTERS TO WALL DATA IN P07
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q08', CELLS, Q08)
+      IF (ERROR) GO TO 9403
+
+C     P09(ZPNTS): POINTERS TO OVEN WALL SURFACES
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q09', ZPNTS, Q09)
+      IF (ERROR) GO TO 9403
+
+C     P10(R10SIZ, Z10SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q10', R10SIZ * Z10SIZ, Q10)
+      IF (ERROR) GO TO 9403
+
+C     P11(R11SIZ, 2, Z11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'Q11', R11SIZ * 2 * Z11SIZ, Q11)
+      IF (ERROR) GO TO 9403
+
+C     SINDEX(SCOUNT): COUNT OF BLOCKS IN P05 LIST
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QSINDX', SCOUNT, QSINDX)
+      IF (ERROR) GO TO 9403
+
+C     WCODE(WALLS): WALL CODE
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QWCODE', WALLS, QWCODE)
+      IF (ERROR) GO TO 9403
+
+C     WINDEX(WCOUNT): COUNT OF BLOCKS IN P07 LIST
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QWINDX', WCOUNT, QWINDX)
+      IF (ERROR) GO TO 9403
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   (IWORK(QINABL - 1 + J), J = 1, ZPNTS),
+     +   (IWORK(QINCEL - 1 + J), J = 1, INJECS),
+     +   (IWORK(Q01 - 1 + J), J = 1, CELLS),
+     +   (IWORK(Q02 - 1 + J), J = 1, SURFS),
+     +   (IWORK(Q03 - 1 + J), J = 1, SURFS),
+     +   (IWORK(Q04 - 1 + J), J = 1, WALLS * 2),
+     +   (IWORK(Q05 - 1 + J), J = 1, SURFS),
+     +   (IWORK(Q06 - 1 + J), J = 1, CELLS),
+     +   (IWORK(Q07 - 1 + J), J = 1, WALLS * 2),
+     +   (IWORK(Q08 - 1 + J), J = 1, CELLS),
+     +   (IWORK(Q09 - 1 + J), J = 1, ZPNTS),
+     +   (IWORK(Q10 - 1 + J), J = 1, R10SIZ * Z10SIZ),
+     +   (IWORK(Q11 - 1 + J), J = 1, R11SIZ * 2 * Z11SIZ),
+     +   (IWORK(QSINDX - 1 + J), J = 1, SCOUNT),
+     +   (IWORK(QWCODE - 1 + J), J = 1, WALLS),
+     +   (IWORK(QWINDX - 1 + J), J = 1, WCOUNT)
+      ERROR = .FALSE.
+
+C///  REAL ARRAYS.
+
+C     CVOL(CELLS): CELL VOLUME
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCVOL', CELLS, QCVOL)
+      IF (ERROR) GO TO 9403
+
+C     FRAC(GASES + SITES): GUESSES FOR SPECIES FRACTIONS
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QFRAC', GASES + SITES, QFRAC)
+      IF (ERROR) GO TO 9403
+
+C     INFLOW(INJECS): FLOW RATES THROUGH INJECTORS
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QINFLO', INJECS, QINFLO)
+      IF (ERROR) GO TO 9403
+
+C     INLOC(INJECS): AXIAL LOCATIONS OF INJECTORS
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QINLOC', INJECS, QINLOC)
+      IF (ERROR) GO TO 9403
+
+C     INMOL(GASES, INJECS): MOLE FRACTIONS FOR INJECTED GASES
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QINMOL', GASES * INJECS, QINMOL)
+      IF (ERROR) GO TO 9403
+
+C     INTEMP(INJECS): TEMPERATURE OF INJECTORS
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QINTEM', INJECS, QINTEM)
+      IF (ERROR) GO TO 9403
+
+C     R(RPNTS): RADIAL MESH
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QR', RPNTS, QR)
+      IF (ERROR) GO TO 9403
+
+C     R10(R10SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QR10', R10SIZ, QR10)
+      IF (ERROR) GO TO 9403
+
+C     R11(R11SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QR11', R11SIZ, QR11)
+      IF (ERROR) GO TO 9403
+
+C     RLOC(SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QRLOC', SURFS, QRLOC)
+      IF (ERROR) GO TO 9403
+
+C     SAREA(SURFS): SURFACE AREA
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSAREA', SURFS, QSAREA)
+      IF (ERROR) GO TO 9403
+
+C     SLTN(VBLES): SOLUTION
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSLTN', VBLES, QSLTN)
+      IF (ERROR) GO TO 9403
+
+C     SMAGIC(SURFS): MAGIC NUMBERS FOR HEAT TRANSFER COEFFICIENTS
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSMAGE', SURFS, QSMAGE)
+      IF (ERROR) GO TO 9403
+
+C     STEMP(SURFS): SURFACE TEMPERATURE
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSTEMP', SURFS, QSTEMP)
+      IF (ERROR) GO TO 9403
+
+C     WAREA(WALLS): WALL AREA
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWAREA', WALLS, QWAREA)
+      IF (ERROR) GO TO 9403
+
+C     WCOEFF(WALLS, 2): COEFFICIENTS FOR DERIVATIVES AT WALLS
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWCOEF', WALLS * 2, QWCOEF)
+      IF (ERROR) GO TO 9403
+
+C     Z(ZPNTS): AXIAL MESH
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QZ', ZPNTS, QZ)
+      IF (ERROR) GO TO 9403
+
+C     Z10(Z10SIZ)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QZ10', Z10SIZ, QZ10)
+      IF (ERROR) GO TO 9403
+
+C     Z11(Z11SIZ)
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QZ11', Z11SIZ, QZ11)
+      IF (ERROR) GO TO 9403
+
+C     ZLOC(SURFS)
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QZLOC', SURFS, QZLOC)
+      IF (ERROR) GO TO 9403
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   (RWORK(QCVOL - 1 + J), J = 1, CELLS),
+     +   (RWORK(QFRAC - 1 + J), J = 1, GASES + SITES),
+     +   (RWORK(QINFLO - 1 + J), J = 1, INJECS),
+     +   (RWORK(QINLOC - 1 + J), J = 1, INJECS),
+     +   (RWORK(QINMOL - 1 + J), J = 1, GASES * INJECS),
+     +   (RWORK(QINTEM - 1 + J), J = 1, INJECS),
+     +   (RWORK(QR - 1 + J), J = 1, RPNTS),
+     +   (RWORK(QR10 - 1 + J), J = 1, R10SIZ),
+     +   (RWORK(QR11 - 1 + J), J = 1, R11SIZ),
+     +   (RWORK(QRLOC - 1 + J), J = 1, SURFS)
+
+      READ (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   (RWORK(QSAREA - 1 + J), J = 1, SURFS),
+     +   (RWORK(QSLTN - 1 + J), J = 1, VBLES),
+     +   (RWORK(QSMAGE - 1 + J), J = 1, SURFS),
+     +   (RWORK(QSTEMP - 1 + J), J = 1, SURFS),
+     +   (RWORK(QWAREA - 1 + J), J = 1, WALLS),
+     +   (RWORK(QWCOEF - 1 + J), J = 1, WALLS * 2),
+     +   (RWORK(QZ - 1 + J), J = 1, ZPNTS),
+     +   (RWORK(QZ10 - 1 + J), J = 1, Z10SIZ),
+     +   (RWORK(QZ11 - 1 + J), J = 1, Z11SIZ),
+     +   (RWORK(QZLOC - 1 + J), J = 1, SURFS)
+      ERROR = .FALSE.
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (7) CLOSE THE FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CLOSE THE FILE.
+
+      ERROR = .TRUE.
+      CLOSE
+     +  (ERR = 9701,
+     +   IOSTAT = STATUS,
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CSIZE, GASES, ISIZE, LSIZE, RSIZE, SITES,
+     +   STYPES
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99998
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID, STATUS
+      GO TO 99998
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID
+      GO TO 99998
+
+9303  IF (0 .LT. TEXT) WRITE (TEXT, 99303) ID
+      GO TO 99998
+
+9304  IF (0 .LT. TEXT) WRITE (TEXT, 99304) ID, UNIT, STATUS
+      GO TO 99998
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID, UNIT, RECORD, STATUS
+      GO TO 99998
+
+9402  IF (0 .LT. TEXT) WRITE (TEXT, 99402) ID
+      GO TO 99999
+
+9403  IF (0 .LT. TEXT) WRITE (TEXT, 99403) ID
+      GO TO 99998
+
+9501  IF (0 .LT. TEXT) WRITE (TEXT, 99501) ID, BTYPES, IWORK(Q)
+      GO TO 99998
+
+9502  IF (0 .LT. TEXT) WRITE (TEXT, 99502) ID, GASES, IWORK(Q)
+      GO TO 99998
+
+9503  IF (0 .LT. TEXT) WRITE (TEXT, 99503) ID, SITES, IWORK(Q)
+      GO TO 99998
+
+9504  IF (0 .LT. TEXT) WRITE (TEXT, 99504) ID, STYPES, IWORK(Q)
+      GO TO 99998
+
+9505  IF (0 .LT. TEXT) WRITE (TEXT, 99505) ID
+      GO TO 99998
+
+9506  IF (0 .LT. TEXT) WRITE (TEXT, 99506) ID
+      GO TO 99998
+
+9507  IF (0 .LT. TEXT) WRITE (TEXT, 99507) ID
+      GO TO 99998
+
+9508  IF (0 .LT. TEXT) WRITE (TEXT, 99508) ID
+      GO TO 99998
+
+9701  IF (0 .LT. TEXT) WRITE (TEXT, 99701) ID, UNIT, STATUS
+      GO TO 99998
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES',
+     +   /10X, I10, '  BULKS',
+     +   /10X, I10, '  CSIZE',
+     +   /10X, I10, '  GASES',
+     +   /10X, I10, '  ISIZE',
+     +   /10X, I10, '  LSIZE',
+     +   /10X, I10, '  RSIZE',
+     +   /10X, I10, '  SITES',
+     +   /10X, I10, '  STYPES')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  READV FAILS.')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  INQUIRE FAILS.'
+     +  //10X, I10, '  I/O STATUS')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FILE DOES NOT EXIST.')
+
+99303 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FILE EXISTS AND IS OPEN.')
+
+99304 FORMAT
+     +   (/1X, A9, 'ERROR.  OPEN FAILS.'
+     +  //10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+99401 FORMAT
+     +   (/1X, A9, 'ERROR.  READ FAILS.'
+     +  //10X, I10, '  UNIT NUMBER'
+     +  //10X, I10, '  RECORD NUMBER WITHIN THE BLOCK'
+     +   /10X, I10, '  I/O STATUS')
+
+99402 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN00 FAILS.')
+
+99403 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99501 FORMAT
+     +   (/1X, A9, 'ERROR.  THE MODEL EXPECTS DIFFERENT CHEMISTRY DATA'
+     +   /10X, 'FILES.'
+     +  //10X, I10, '  BULK TYPES WITHIN CHEMKIN'
+     +   /10X, I10, '  BULK TYPES WITHIN THE MODEL')
+
+99502 FORMAT
+     +   (/1X, A9, 'ERROR.  THE MODEL EXPECTS DIFFERENT CHEMISTRY DATA'
+     +   /10X, 'FILES.'
+     +  //10X, I10, '  GASES WITHIN CHEMKIN'
+     +   /10X, I10, '  GASES WITHIN THE MODEL')
+
+99503 FORMAT
+     +   (/1X, A9, 'ERROR.  THE MODEL EXPECTS DIFFERENT CHEMISTRY DATA'
+     +   /10X, 'FILES.'
+     +  //10X, I10, '  SITES WITHIN CHEMKIN'
+     +   /10X, I10, '  SITES WITHIN THE MODEL')
+
+99504 FORMAT
+     +   (/1X, A9, 'ERROR.  THE MODEL EXPECTS DIFFERENT CHEMISTRY DATA'
+     +   /10X, 'FILES.'
+     +  //10X, I10, '  SURFACE TYPES WITHIN CHEMKIN'
+     +   /10X, I10, '  SURFACE TYPES WITHIN THE MODEL')
+
+99505 FORMAT
+     +   (/1X, A9, 'ERROR.  THE MODEL EXPECTS DIFFERENT CHEMISTRY DATA'
+     +   /10X, 'FILES.')
+
+99506 FORMAT
+     +   (/1X, A9, 'ERROR.  THE INTEGER PARAMETER ARRAY IS THE WRONG'
+     +   /10X, 'SIZE.')
+
+99507 FORMAT
+     +   (/1X, A9, 'ERROR.  THE LOGICAL PARAMETER ARRAY IS THE WRONG'
+     +   /10X, 'SIZE.')
+
+99508 FORMAT
+     +   (/1X, A9, 'ERROR.  THE REAL PARAMETER ARRAY IS THE WRONG'
+     +   /10X, 'SIZE.')
+
+99701 FORMAT
+     +   (/1X, A9, 'ERROR.  CLOSE FAILS.'
+     +  //10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+C///  EXIT.
+
+99998 CONTINUE
+C     RESTORE THE WORK SPACES ON ERROR
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN08
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWK,
+     +   LLAST, LMAX, LSIZE, LWK,
+     +   RLAST, RMAX, RSIZE, RWK,
+     +   ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RMC, RMCSIZ, RSK, RSKSIZ,
+     +   ADJUST, BTYPES, BULKS, CELLS, CVOL, ENERGY, FACTOR, FRAC,
+     +   GASES, GUESS, INCELL, INFLOW, INJECS, INMOLE, INTEMP, KNUDSN,
+     +   LINE, LPAR, LPARS, MULTIC, NUMBER, P01, P02, P03, P04, P05,
+     +   P06, P07, P08, P09, PRESS, PRINT, QFIRST, QLAST, QNMBR, R,
+     +   RPNTS, RTUBE, RWAFER, SAREA, SCOUNT, SCRIPT, SINDEX, SITES,
+     +   SLTN, SMAGIC, SNAME, SOLVED, SPACE, STEMP, STYPES, SURFS,
+     +   THRMLD, TNAME, VBLES, WALLS, WAREA, WCODE, WCOEFF, WCOUNT,
+     +   WINDEX, Z, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN08
+C
+C     SOLVE THE MODEL.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   CKEY*32, CWORK*16, ID*9, KEY*80, LINE*82, REPORT*80, SIGNAL*16,
+     +   SNAME*16, TNAME*16, TYPE*80, VERSIO*80, WORD*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   CONDIT, CVOL, FACTOR, FRAC, INFLOW, INMOLE, INTEMP, PRESS, R,
+     +   RCK, RDUMMY, RKEY, RMC, RSK, RTUBE, RWAFER, RWK, SAREA, SLTN,
+     +   SMAGIC, SPACE, SSABS, SSREL, STEMP, STRID0, STRIDE, TDABS,
+     +   TDEC, TDREL, TINC, TMAX, TMIN, WAREA, WCOEFF, Z
+      EXTERNAL
+     +   BLFAC, BLJAC, BLMAK, BLSOL, EXTENT, OVEN61, OVEN81, OVEN82,
+     +   OVEN83, READV2, READW, RESERV, TWOPNT, TWSETI, TWSETL, TWSETR,
+     +   VERIFY
+      INTEGER
+     +   BLOCKS, BORDER, BTYPES, BULKS, CASE, CELLS, CLAST, CMAX,
+     +   CNTRLS, COLMAX, COMPS, CSAVE, CSIZE, FILL, GASES, GROUPA,
+     +   GROUPB, ICK, ICKSIZ, IDSIZ, IKEY, ILAST, IMAX, IMC, IMCSIZ,
+     +   INCELL, INJECS, ISAVE, ISIZE, ISK, ISKSIZ, IWK, J, KMAX,
+     +   LENGTH, LEVELD, LEVELM, LLAST, LMAX, LPARS, LSAVE, LSIZE,
+     +   NUMBER, P01, P02, P03, P04, P05, P06, P07, P08, P09, POINTS,
+     +   PRINT, Q, QABOVE, QACT, QBELOW, QBUF, QCDATA, QCENT, QCENT0,
+     +   QCKOND, QCMAJ, QCMAS0, QCMASS, QCMOLE, QCNEW, QCOEF1, QCOEF2,
+     +   QCOEFF, QCOPY1, QCOPY2, QCPNT, QCPOIN, QCRES, QCRHO, QCRHO0,
+     +   QCSUM, QCSURF, QCTEM0, QCTEMP, QCWALL, QDEN, QDIAM, QF, QFIRST,
+     +   QFTEMP, QGDOT, QHEAD, QIDAT, QIDUM, QINMAS, QIWORK, QKNLEN,
+     +   QLAST, QMOLE, QNAME, QNMBR, QRDAT, QRDUM, QRINDX, QRWORK,
+     +   QSDATA, QSDEN, QSDOT, QSENT, QSINDX, QSITD, QSIZE, QSMAJ,
+     +   QSMOLE, QSNEW, QSPOIN, QSRES, QSSIT0, QSSITE, QSTEMP, QSTFLX,
+     +   QSUM1, QSUM2, QTDC, QU, QU0, QVALUE, QWDATA, QWENT, QWFLUX,
+     +   QWGRAD, QWINDX, QWKOND, QWMASS, QWMMW, QWMOLE, QWNMBR, QWRHO,
+     +   QWSIDE, QWT, QWTEMP, QWVEL, RCKSIZ, RDSIZ, RLAST, RMAX, RMCSIZ,
+     +   RPNTS, RSAVE, RSIZE, RSKSIZ, SCOUNT, SCRIPT, SINDEX, SITES,
+     +   SSAGE, STEPS0, STEPS1, STEPS2, STYPES, SURF, SURFS, TDAGE,
+     +   TEXT, TOTAL, VBLES, WALLS, WCODE, WCOUNT, WINDEX, XISIZE,
+     +   XRSIZE, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      INTRINSIC
+     +   MAX
+      LOGICAL
+     +   ADJUST, DIFFUS, ENERGY, ERROR, FIRST, FLAG, FOUND, GUESS,
+     +   KNUDSN, LDUMMY, LKEY, LPAR, LWK, MULTIC, NEED, SOLVED, STEADY,
+     +   THRMLD, TIME
+
+      PARAMETER (ID = 'OVEN08:  ')
+      PARAMETER (CNTRLS = 17, KMAX = 20)
+
+      DIMENSION
+     +   CKEY(KMAX), CVOL(CELLS), CWORK(CSIZE), FOUND(KMAX), FRAC(GASES
+     +   + SITES), ICK(ICKSIZ), IKEY(KMAX), IMC(IMCSIZ), INCELL(INJECS),
+     +   INFLOW(INJECS), INMOLE(GASES, INJECS), INTEMP(INJECS),
+     +   ISK(ISKSIZ), IWK(ISIZE), KEY(KMAX), LEVELD(2), LEVELM(2),
+     +   LKEY(KMAX), LPAR(LPARS), LWK(LSIZE), NEED(KMAX), P01(CELLS),
+     +   P02(SURFS), P03(SURFS), P04(WALLS, 2), P05(SURFS), P06(CELLS),
+     +   P07(WALLS * 2), P08(CELLS), P09(ZPNTS), QFIRST(1 + STYPES +
+     +   BTYPES), QLAST(1 + STYPES + BTYPES), QNMBR(1 + STYPES +
+     +   BTYPES), RCK(RCKSIZ), RKEY(KMAX), RMC(RMCSIZ), RSK(RSKSIZ),
+     +   RWK(RSIZE), SAREA(SURFS), SINDEX(SCOUNT), SLTN(VBLES),
+     +   SMAGIC(SURFS), SNAME(GASES + SITES + BULKS), SSABS(2),
+     +   SSAGE(2), SSREL(2), STEADY(2), STEMP(SURFS), STEPS0(2),
+     +   STEPS1(2), STEPS2(2), STRID0(2), TDABS(2), TDAGE(2), TDEC(2),
+     +   TDREL(2), TINC(2), TMAX(2), TMIN(2), TNAME(1 + STYPES +
+     +   BTYPES), TYPE(KMAX), WAREA(WALLS), WCODE(WALLS), WCOEFF(WALLS,
+     +   2), WINDEX(WCOUNT), Z(ZPNTS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  MARK THE MODEL NOT SOLVED.
+
+      SOLVED = .FALSE.
+
+C///  SAVE THE LEVELS OF THE WORKSPACES.
+
+      CSAVE = CLAST
+      ISAVE = ILAST
+      LSAVE = LLAST
+      RSAVE = RLAST
+
+C///  CHECK THE DIMENSIONAL ARGUMENTS.
+
+C     MUST CHECK SURFS, SCOUNT, WALLS, WCOUNT
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CSIZE  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. IMCSIZ .AND.
+     +   0 .LT. INJECS .AND. 0 .LT. ISIZE  .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. LPARS  .AND. 0 .LT. LSIZE  .AND. 0 .LT. RCKSIZ .AND.
+     +   0 .LT. RMCSIZ .AND. 0 .LT. RPNTS  .AND. 0 .LT. RSIZE  .AND.
+     +   0 .LT. RSKSIZ .AND. 0 .LT. SITES  .AND. 0 .LT. STYPES .AND.
+     +   0 .LT. VBLES  .AND. 0 .LT. ZPNTS)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT.
+     +  (ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3 .EQ. CELLS .AND.
+     +   ZPNTS1 + ZPNTS2 + ZPNTS3 .EQ. ZPNTS)
+      IF (ERROR) GO TO 9102
+
+C///  CHECK THE DIFFUSION COEFFICIENT CHOICES.
+
+      ERROR = KNUDSN .AND. (.NOT. ADJUST .OR. MULTIC)
+      IF (ERROR) GO TO 9103
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) SET THE DEFAULTS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C     INFORMATION PRINTING DEPTH
+      DATA LEVELM / 2 * 2 /
+
+C     INITIAL STRIDE
+      DATA STRID0 / 2 * 1.0E-5 /
+
+C     INITIAL TIME STEPS
+      DATA STEPS0 / 2 * 0 /
+
+C     MAXIMUM STRIDE
+      DATA TMAX   / 2 * 1.0E-2 /
+
+C     MINIMUM STRIDE
+      DATA TMIN   / 2 * 1.0E-10 /
+
+C     SEARCH FOR THE STEADY STATE
+      DATA STEADY / 2 * .TRUE. /
+
+C     SOLUTION PRINTING DEPTH
+      DATA LEVELD / 2 * 0 /
+
+C     STEADY STATE ABSOLUTE CONVERGENCE TEST
+      DATA SSABS  / 2 * 1.0E-9 /
+
+C     STEADY STATE JACOBIAN RETIREMENT AGE
+      DATA SSAGE  / 2 * 20 /
+
+C     STEADY STATE RELATIVE CONVERGENCE TEST
+      DATA SSREL  / 2 * 1.0E-6 /
+
+C     STRIDE DECREASE FACTOR
+      DATA TDEC   / 2 * 4.0 /
+
+C     STRIDE INCREASE FACTOR
+      DATA TINC   / 2 * 2.0 /
+
+C     TIME DEPENDENT ABSOLUTE CONVERGENCE TEST
+      DATA TDABS  / 2 * 1.0E-9 /
+
+C     TIME DEPENDENT JACOBIAN RETIREMENT AGE
+      DATA TDAGE  / 2 * 20 /
+
+C     TIME DEPENDENT RELATIVE CONVERGENCE TEST
+      DATA TDREL  / 2 * 1.0E-6 /
+
+C     TIME STEPS AFTER FAILING TO CONVERGE
+      DATA STEPS1 / 2 * 50 /
+
+C     TIME STEPS BEFORE STRIDE INCREASE
+      DATA STEPS2 / 2 * 200 /
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) READ THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  TOP OF THE LOOP THROUGH THE SCRIPT FILE.
+C 1>  SOLVE THE MODEL
+
+      FIRST = .TRUE.
+3020  CONTINUE
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9301
+
+C///  RESET THE DEFAULTS.
+C 2>     RESET THE DEFAULTS
+
+      IF (WORD .EQ. 'RESET') THEN
+
+      CALL VERIFY
+     +   (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'THE DEFAULTS')
+      IF (ERROR) GO TO 9302
+
+      ERROR = .NOT. FIRST
+      IF (ERROR) GO TO 9303
+
+      LEVELM(1) = LEVELM(2)
+      LEVELD(1) = LEVELD(2)
+      SSABS(1)  = SSABS(2)
+      SSREL(1)  = SSREL(2)
+      SSAGE(1)  = SSAGE(2)
+      STEADY(1) = STEADY(2)
+      STEPS0(1) = STEPS0(2)
+      STRID0(1) = STRID0(2)
+      TMAX(1)   = TMAX(2)
+      TMIN(1)   = TMIN(2)
+      TDABS(1)  = TDABS(2)
+      TDAGE(1)  = TDAGE(2)
+      TDREL(1)  = TDREL(2)
+      TDEC(1)   = TDEC(2)
+      TINC(1)   = TINC(2)
+      STEPS1(1) = STEPS1(2)
+      STEPS2(1) = STEPS2(2)
+
+C///  SPECIFY THE TWOPNT CONTROLS
+C 2>     SPECIFY THE TWOPNT CONTROLS
+C 3>        INFORMATION PRINTING DEPTH = ?(2)
+C 3>        INITIAL STRIDE = ?(1.0E-5)
+C 3>        INITIAL TIME STEPS = ?(0)
+C 3>        MAXIMUM STRIDE = ?(1.0E-2)
+C 3>        MINIMUM STRIDE = ?(1.0E-10)
+C 3>        SEARCH FOR THE STEADY STATE = ?(YES)
+C 3>        SOLUTION PRINTING DEPTH = ?(0)
+C 3>        STEADY STATE ABSOLUTE CONVERGENCE TEST = ?(1.0E-9)
+C 3>        STEADY STATE JACOBIAN RETIREMENT AGE = ?(20)
+C 3>        STEADY STATE RELATIVE CONVERGENCE TEST = ?(1.0E-6)
+C 3>        STRIDE DECREASE FACTOR = ?(4.0)
+C 3>        STRIDE INCREASE FACTOR = ?(4.0)
+C 3>        TIME DEPENDENT ABSOLUTE CONVERGENCE TEST = ?(1.0E-9)
+C 3>        TIME DEPENDENT JACOBIAN RETIREMENT AGE = ?(20)
+C 3>        TIME DEPENDENT RELATIVE CONVERGENCE TEST = ?(1.0E-6)
+C 3>        TIME STEPS AFTER FAILING TO CONVERGE = ?(50)
+C 3>        TIME STEPS BEFORE STRIDE INCREASE = ?(200)
+C 2>        END
+
+      ELSE IF (WORD .EQ. 'SPECIFY') THEN
+
+      CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +   'THE TWOPNT CONTROLS')
+      IF (ERROR) GO TO 9302
+
+      DATA
+     +   (TYPE(J), NEED(J), KEY(J), J = 1, 17)
+     + / 'I', .FALSE., 'INFORMATION PRINTING DEPTH =',
+     +   'R', .FALSE., 'INITIAL STRIDE =',
+     +   'I', .FALSE., 'INITIAL TIME STEPS =',
+     +   'R', .FALSE., 'MAXIMUM STRIDE =',
+     +   'R', .FALSE., 'MINIMUM STRIDE =',
+     +   'L', .FALSE., 'SEARCH FOR THE STEADY STATE =',
+     +   'I', .FALSE., 'SOLUTION PRINTING DEPTH =',
+     +   'R', .FALSE., 'STEADY STATE ABSOLUTE CONVERGENCE TEST =',
+     +   'I', .FALSE., 'STEADY STATE JACOBIAN RETIREMENT AGE =',
+     +   'R', .FALSE., 'STEADY STATE RELATIVE CONVERGENCE TEST =',
+     +   'R', .FALSE., 'STRIDE DECREASE FACTOR =',
+     +   'R', .FALSE., 'STRIDE INCREASE FACTOR =',
+     +   'R', .FALSE., 'TIME DEPENDENT ABSOLUTE CONVERGENCE TEST =',
+     +   'I', .FALSE., 'TIME DEPENDENT JACOBIAN RETIREMENT AGE =',
+     +   'R', .FALSE., 'TIME DEPENDENT RELATIVE CONVERGENCE TEST =',
+     +   'I', .FALSE., 'TIME STEPS AFTER FAILING TO CONVERGE =',
+     +   'I', .FALSE., 'TIME STEPS BEFORE STRIDE INCREASE =' /
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CKEY, .FALSE., FOUND, KEY, 17, IKEY, LINE, LKEY, NEED,
+     +      NUMBER, PRINT, RKEY, SCRIPT, TYPE)
+         IF (ERROR) GO TO 9305
+
+C     INFORMATION PRINTING DEPTH
+      IF (FOUND(01)) LEVELM(1) = IKEY(01)
+
+C     INITIAL STRIDE
+      IF (FOUND(02)) STRID0(1) = RKEY(02)
+
+C     INITIAL TIME STEPS
+      IF (FOUND(03)) STEPS0(1) = IKEY(03)
+
+C     MAXIMUM STRIDE
+      IF (FOUND(04)) TMAX(1)   = RKEY(04)
+
+C     MINIMUM STRIDE
+      IF (FOUND(05)) TMIN(1)   = RKEY(05)
+
+C     SEARCH FOR THE STEADY STATE
+      IF (FOUND(06)) STEADY(1) = LKEY(06)
+
+C     SOLUTION PRINTING DEPTH
+      IF (FOUND(07)) LEVELD(1) = IKEY(07)
+
+C     STEADY STATE ABSOLUTE CONVERGENCE TEST
+      IF (FOUND(08)) SSABS(1)  = RKEY(08)
+
+C     STEADY STATE JACOBIAN RETIREMENT AGE
+      IF (FOUND(09)) SSAGE(1)  = IKEY(09)
+
+C     STEADY STATE RELATIVE CONVERGENCE TEST
+      IF (FOUND(10)) SSREL(1)  = RKEY(10)
+
+C     STRIDE DECREASE FACTOR
+      IF (FOUND(11)) TDEC(1)   = RKEY(11)
+
+C     STRIDE INCREASE FACTOR
+      IF (FOUND(12)) TINC(1)   = RKEY(12)
+
+C     TIME DEPENDENT ABSOLUTE CONVERGENCE TEST
+      IF (FOUND(13)) TDABS(1)  = RKEY(13)
+
+C     TIME DEPENDENT JACOBIAN RETIREMENT AGE
+      IF (FOUND(14)) TDAGE(1)  = IKEY(14)
+
+C     TIME DEPENDENT RELATIVE CONVERGENCE TEST
+      IF (FOUND(15)) TDREL(1)  = RKEY(15)
+
+C     TIME STEPS AFTER FAILING TO FIND A STEADY STATE
+      IF (FOUND(16)) STEPS1(1) = IKEY(16)
+
+C     TIME STEPS BEFORE STRIDE INCREASE
+      IF (FOUND(17)) STEPS2(1) = IKEY(17)
+
+C///  BOTTOM OF THE LOOP THROUGH THE SCRIPT FILE.
+C 1>     END
+
+      ELSE IF (WORD .EQ. 'END') THEN
+         GO TO 3030
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9306
+      END IF
+
+      FIRST = .FALSE.
+      GO TO 3020
+3030  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) PARTITION AND INITIALIZE THE WORKSPACE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  DEFINE DIMENSIONAL PARAMETERS FOR THE BLOCK MATRIX PACKAGE.
+
+      BLOCKS = CELLS
+      BORDER = 0
+      FILL = BLOCKS
+      TOTAL = 3 * CELLS - 2
+
+C///  DEFINE OTHER DIMENSIONAL PARAMETERS.
+
+C     COLUMNS OF OUTPUT
+
+      COLMAX = 2 + GASES + SITES + BULKS
+
+C     TWOPNT DIMENSIONS
+
+      COMPS = 0
+      GROUPA = VBLES
+      GROUPB = 0
+      POINTS = 0
+
+C     TWOPNT INTEGER AND REAL WORKSPACE SIZES
+
+      XISIZE = 3
+      XRSIZE = 3 + 9 * VBLES
+
+C///  PARTITION THE WORKSPACE.
+
+C     ABOVE(VBLES)
+C     REAL OVEN81 TWOPNT
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QABOVE', VBLES, QABOVE)
+      IF (ERROR) GO TO 9401
+
+C     ACT(GASES + SITES + BULKS)
+C     REAL OVEN61 OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QACT', GASES + SITES + BULKS, QACT)
+      IF (ERROR) GO TO 9401
+
+C     BELOW(VBLES)
+C     REAL OVEN81 TWOPNT
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QBELOW', VBLES, QBELOW)
+      IF (ERROR) GO TO 9401
+
+C     BUFFER(VBLES)
+C     REAL OVEN83 TWOPNT
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QBUF', VBLES, QBUF)
+      IF (ERROR) GO TO 9401
+
+C     CDATA(CELLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCDATA', CELLS, QCDATA)
+      IF (ERROR) GO TO 9401
+
+C     CENTH(CELLS, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCENT', CELLS * 3, QCENT)
+      IF (ERROR) GO TO 9401
+
+C     CENTH0(CELLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCENT0', CELLS, QCENT0)
+      IF (ERROR) GO TO 9401
+
+C     CKOND(CELLS, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCKOND', CELLS * 3, QCKOND)
+      IF (ERROR) GO TO 9401
+
+C     CMAJOR(CELLS)
+C     INTEGER OVEN83 OVEN82
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QCMAJ', CELLS, QCMAJ)
+      IF (ERROR) GO TO 9401
+
+C     CMASS(CELLS, GASES, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCMASS', CELLS * GASES * 3, QCMASS)
+      IF (ERROR) GO TO 9401
+
+C     CMASS0(CELLS, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCMAS0', CELLS * GASES, QCMAS0)
+      IF (ERROR) GO TO 9401
+
+C     CMOLE(CELLS, GASES, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCMOLE', CELLS * GASES * 3, QCMOLE)
+      IF (ERROR) GO TO 9401
+
+C     CNEW(CELLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., LLAST, LMAX, LSIZE,
+     +   'QCNEW', CELLS, QCNEW)
+
+C     COEFF(GASES, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCOEFF', GASES * GASES, QCOEFF)
+
+C     COEFF1(WALLS, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCOEF1', WALLS * GASES, QCOEF1)
+
+C     COEFF2(WALLS, GASES, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCOEF2', WALLS * GASES * GASES, QCOEF2)
+
+C     COPY1(GASES + SITES + BULKS)
+C     REAL OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCOPY1', GASES + SITES + BULKS, QCOPY1)
+
+C     COPY2(GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCOPY2', GASES, QCOPY2)
+
+C     CPOINT(BLOCKS)
+C     INTEGER BLMAK OVEN81
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QCPNT', BLOCKS, QCPNT)
+      IF (ERROR) GO TO 9401
+
+C     CPOINT(CELLS)
+C     INTEGER OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QCPOIN', CELLS, QCPOIN)
+      IF (ERROR) GO TO 9401
+
+C     CRESID(CELLS, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCRES', CELLS * GASES, QCRES)
+      IF (ERROR) GO TO 9401
+
+C     CRHO(CELLS, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCRHO', CELLS * 3, QCRHO)
+      IF (ERROR) GO TO 9401
+
+C     CRHO0(CELLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCRHO0', CELLS, QCRHO0)
+      IF (ERROR) GO TO 9401
+
+C     CSUM(CELLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCSUM', CELLS, QCSUM)
+      IF (ERROR) GO TO 9401
+
+C     CSURF(CELLS, 0 : GASES + 1)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCSURF', CELLS * (2 + GASES), QCSURF)
+      IF (ERROR) GO TO 9401
+
+C     CTEMP(CELLS, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCTEMP', CELLS * 3, QCTEMP)
+      IF (ERROR) GO TO 9401
+
+C     CTEMP0(CELLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCTEM0', CELLS, QCTEM0)
+      IF (ERROR) GO TO 9401
+
+C     CWALL(CELLS, 0 : GASES + 1)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QCWALL', CELLS * (2 + GASES), QCWALL)
+      IF (ERROR) GO TO 9401
+
+C     DEN(GASES + SITES + BULKS)
+C     REAL OVEN61
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDEN', GASES + SITES + BULKS, QDEN)
+      IF (ERROR) GO TO 9401
+
+C     DIAM(GASES)
+C     REAL OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDIAM', GASES, QDIAM)
+      IF (ERROR) GO TO 9401
+
+C     F(VBLES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QF', VBLES, QF)
+      IF (ERROR) GO TO 9401
+
+C     FTEMP(CELLS)
+C     REAL OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QFTEMP', CELLS, QFTEMP)
+      IF (ERROR) GO TO 9401
+
+C     GDOT(CELLS, GASES, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QGDOT', CELLS * GASES * 3, QGDOT)
+      IF (ERROR) GO TO 9401
+
+C     HEADER(5, COLMAX)
+C     CHARACTER OVEN61
+
+      CALL RESERV (ERROR, TEXT, .FALSE., CLAST, CMAX, CSIZE,
+     +   'QHEAD', 5 * COLMAX, QHEAD)
+      IF (ERROR) GO TO 9401
+
+C     IDUMMY(GASES)
+C     REAL OVEN81
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QIDUM', GASES, QIDUM)
+      IF (ERROR) GO TO 9401
+
+C     INMASS(0 : GASES, INJECS)
+C     REAL OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QINMAS', (1 + GASES) * INJECS, QINMAS)
+      IF (ERROR) GO TO 9401
+
+C     IWORK(ISIZE)
+C     INTEGER TWOPNT
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QIWORK', XISIZE, QIWORK)
+      IF (ERROR) GO TO 9401
+
+C     KNLEN(WALLS)
+C     REAL OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QKNLEN', WALLS, QKNLEN)
+      IF (ERROR) GO TO 9401
+
+C     MOLE(GASES + SITES + BULKS, ZPNTS)
+C     REAL OVEN61
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QMOLE', (GASES + SITES + BULKS) * ZPNTS, QMOLE)
+      IF (ERROR) GO TO 9401
+
+C     NAME(VBLES)
+C     CHARACTER OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., CLAST, CMAX, CSIZE,
+     +   'QNAME', VBLES, QNAME)
+      IF (ERROR) GO TO 9401
+
+C     RDUMMY(GASES, 5)
+C     REAL OVEN81
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QRDUM', GASES * 5, QRDUM)
+      IF (ERROR) GO TO 9401
+
+C     RINDEX(TOTAL)
+C     INTEGER BLMAK OVEN81
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QRINDX', TOTAL, QRINDX)
+      IF (ERROR) GO TO 9401
+
+C     RWORK(RSIZE)
+C     REAL TWOPNT
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QRWORK', XRSIZE, QRWORK)
+      IF (ERROR) GO TO 9401
+
+C     SDATA(SURFS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDATA', SURFS, QSDATA)
+      IF (ERROR) GO TO 9401
+
+C     SDEN(1 + STYPES + BTYPES)
+C     REAL OVEN61 OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDEN', 1 + STYPES + BTYPES, QSDEN)
+      IF (ERROR) GO TO 9401
+
+C     SDOT(GASES + SITES + BULKS, ZPNTS)
+C     REAL OVEN61
+
+C     SDOT(SURFS, GASES + SITES + BULKS, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSDOT',
+     +   MAX ((GASES + SITES + BULKS) * ZPNTS,
+     +      SURFS * (GASES + SITES + BULKS) * 3),
+     +   QSDOT)
+      IF (ERROR) GO TO 9401
+
+C     SENTH(SURFS, GASES, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSENT', SURFS * GASES * 3, QSENT)
+      IF (ERROR) GO TO 9401
+
+C     SINDEX(SCOUNT)
+C     INTEGER OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QSINDX', SCOUNT, QSINDX)
+      IF (ERROR) GO TO 9401
+
+C     SITDOT(1 + STYPES + BTYPES)
+C     REAL OVEN61 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSITD', 1 + STYPES + BTYPES, QSITD)
+      IF (ERROR) GO TO 9401
+
+C     SIZE(BLOCKS)
+C     INTEGER BLMAK OVEN81
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QSIZE', BLOCKS, QSIZE)
+      IF (ERROR) GO TO 9401
+
+C     SMAJOR(SURFS, STYPES)
+C     INTEGER OVEN81 OVEN83 OVEN82
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QSMAJ', SURFS * STYPES, QSMAJ)
+      IF (ERROR) GO TO 9401
+
+C     SMOLE(SURFS, GASES, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSMOLE', SURFS * GASES * 3, QSMOLE)
+      IF (ERROR) GO TO 9401
+
+C     SNEW(SURFS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., LLAST, LMAX, LSIZE,
+     +   'QSNEW', SURFS, QSNEW)
+      IF (ERROR) GO TO 9401
+
+C     SPOINT(SURFS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QSPOIN', SURFS, QSPOIN)
+      IF (ERROR) GO TO 9401
+
+C     SRESID(SURFS, SITES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSRES', SURFS * SITES, QSRES)
+      IF (ERROR) GO TO 9401
+
+C     SSITE(SURFS, SITES, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSSITE', SURFS * SITES * 3, QSSITE)
+      IF (ERROR) GO TO 9401
+
+C     SSITE0(SURFS, SITES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSSIT0', SURFS * SITES, QSSIT0)
+      IF (ERROR) GO TO 9401
+
+C     STEMP(SURFS, 3)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSTEMP', SURFS * 3, QSTEMP)
+      IF (ERROR) GO TO 9401
+
+C     STFLUX(SURFS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSTFLX', SURFS, QSTFLX)
+      IF (ERROR) GO TO 9401
+
+C     SUM1(WALLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSUM1', WALLS, QSUM1)
+
+C     SUM2(WALLS, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QSUM2', WALLS * GASES, QSUM2)
+
+C     TDC(WALLS, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QTDC', WALLS * GASES, QTDC)
+      IF (ERROR) GO TO 9401
+
+C     U(VBLES)
+C     REAL OVEN61 OVEN81 OVEN82 TWOPNT
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QU', VBLES, QU)
+      IF (ERROR) GO TO 9401
+
+C     U0(VBLES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QU0', VBLES, QU0)
+      IF (ERROR) GO TO 9401
+
+C     VALUE(ZPNTS + 1, COLMAX)
+C     REAL OVEN61
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QVALUE', (ZPNTS + 1) * COLMAX, QVALUE)
+      IF (ERROR) GO TO 9401
+
+C     WDATA(2 * WALLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWDATA', 2 * WALLS, QWDATA)
+      IF (ERROR) GO TO 9401
+
+C     WENTH(WALLS, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWENT', WALLS * GASES, QWENT)
+      IF (ERROR) GO TO 9401
+
+C     WFLUX(2 * WALLS, 0 : GASES + 1)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWFLUX', 2 * WALLS * (2 + GASES), QWFLUX)
+      IF (ERROR) GO TO 9401
+
+C     WGRAD(WALLS, GASES + 1)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWGRAD', WALLS * (GASES + 1), QWGRAD)
+      IF (ERROR) GO TO 9401
+
+C     WINDEX(WCOUNT)
+C     INTEGER OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QWINDX', WCOUNT, QWINDX)
+      IF (ERROR) GO TO 9401
+
+C     WKOND(WALLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWKOND', WALLS, QWKOND)
+      IF (ERROR) GO TO 9401
+
+C     WMASS(WALLS, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWMASS', WALLS * GASES, QWMASS)
+      IF (ERROR) GO TO 9401
+
+C     WMMW(WALLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWMMW', WALLS, QWMMW)
+
+C     WMOLE(WALLS, GASES)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWMOLE', WALLS * GASES, QWMOLE)
+
+C     WNMBR(CELLS)
+C     REAL OVEN81
+
+      CALL RESERV (ERROR, TEXT, .FALSE., ILAST, IMAX, ISIZE,
+     +   'QWNMBR', CELLS, QWNMBR)
+      IF (ERROR) GO TO 9401
+
+C     WRHO(WALLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWRHO', WALLS, QWRHO)
+      IF (ERROR) GO TO 9401
+
+C     WSIDE(WALLS, 2)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWSIDE', WALLS * 2, QWSIDE)
+      IF (ERROR) GO TO 9401
+
+C     WT(GASES + SITES + BULKS)
+C     REAL OVEN61 OVEN81 OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWT', GASES + SITES + BULKS, QWT)
+      IF (ERROR) GO TO 9401
+
+C     WTEMP(WALLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWTEMP', WALLS, QWTEMP)
+      IF (ERROR) GO TO 9401
+
+C     WVEL(WALLS)
+C     REAL OVEN83
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QWVEL', WALLS, QWVEL)
+      IF (ERROR) GO TO 9401
+
+      ERROR = .NOT. (CLAST .LE. CSIZE .AND. ILAST .LE. ISIZE .AND.
+     +   LLAST .LE. LSIZE .AND. RLAST .LE. RSIZE)
+      IF (ERROR) GO TO 9402
+
+C///  PREPARE TO SOLVE THE MODEL.
+
+C     SUBROUTINE OVEN81
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RMC, RMCSIZ, RSK, RSKSIZ,
+C    +   ABOVE, ACT, BELOW, BLOCKS, BTYPES, BULKS, CELLS, CPOINT, DIAM,
+C    +   FRAC, FTEMP, GASES, GUESS, IDUMMY, INFLOW, INJECS, INMASS,
+C    +   INMOLE, KNLEN, NAME, P01, P02, P03, P04, PRESS, QFIRST, QLAST,
+C    +   RDUMMY, RINDEX, RTUBE, RWAFER, SCOUNT, SDEN, SITES, SIZE, SLTN,
+C    +   SNAME, SPACE, STEMP, STYPES, SURFS, TEMP, TOTAL, U, VBLES,
+C    +   WALLS, WCODE, WCOUNT, WNMBR, WT)
+
+      CALL OVEN81
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RMC, RMCSIZ, RSK, RSKSIZ,
+     +   RWK(QABOVE), RWK(QACT), RWK(QBELOW), BLOCKS, BTYPES, BULKS,
+     +   CELLS, IWK(QCPNT), RWK(QDIAM), FRAC, RWK(QFTEMP), GASES, GUESS,
+     +   IWK(QIDUM), INFLOW, INJECS, RWK(QINMAS), INMOLE, RWK(QKNLEN),
+     +   CWORK(QNAME), P01, P02, P03, P04, PRESS, QFIRST, QLAST,
+     +   RWK(QRDUM), IWK(QRINDX), RTUBE, RWAFER, SCOUNT, RWK(QSDEN),
+     +   SITES, IWK(QSIZE), SLTN, SNAME, SPACE, STEMP, STYPES, SURFS,
+     +   RWK(QCOPY1), TOTAL, RWK(QU), VBLES, WALLS, WCODE, WCOUNT,
+     +   IWK(QWNMBR), RWK(QWT))
+      IF (ERROR) GO TO 9403
+
+C///  COPY SURFACE TEMPERATURES TO THE LARGER ARRAY NEEDED BY OVEN83.
+
+      DO 4010 SURF = 1, SURFS
+         RWK(QSTEMP - 1 + SURF) = STEMP(SURF)
+4010  CONTINUE
+
+C///  FIND MAJOR SPECIES.
+
+C     SUBROUTINE OVEN82
+C    +  (ERROR, TEXT,
+C    +   BTYPES, CELLS, CMAJOR, GASES, P01, P03, QFIRST, QLAST, SITES,
+C    +   SMAJOR, STYPES, SURFS, U, VBLES)
+
+      CALL OVEN82
+     +  (ERROR, TEXT,
+     +   BTYPES, CELLS, IWK(QCMAJ), GASES, P01, P03, QFIRST, QLAST,
+     +   SITES, IWK(QSMAJ), STYPES, SURFS, RWK(QU), VBLES)
+      IF (ERROR) GO TO 9404
+
+C///  CALL BLMAK.
+
+C     SUBROUTINE BLMAK
+C    +  (ERROR, TEXT, PRINT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   QIDAT, QRDAT,
+C    +   IDSIZ, RDSIZ,
+C    +   BLOCKS, BORDER, CPOINT, FILL, RINDEX, SIZE, TOTAL)
+
+      CALL BLMAK
+     +  (ERROR, TEXT, 0,
+     +   ILAST, IMAX, ISIZE, IWK,
+     +   LLAST, LMAX, LSIZE, LWK,
+     +   RLAST, RMAX, RSIZE, RWK,
+     +   QIDAT, QRDAT,
+     +   IDSIZ, RDSIZ,
+     +   BLOCKS, BORDER, IWK(QCPNT), FILL, IWK(QRINDX),
+     +   IWK(QSIZE), TOTAL)
+      IF (ERROR) GO TO 9405
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (5) CALL TWOPNT.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IF (0 .LT. TEXT) WRITE (TEXT, 10001) ID, 'CALLING TWOPNT.'
+
+C///  CHOOSE THE VERSION.
+
+C*****PRECISION > DOUBLE
+      VERSIO = 'DOUBLE PRECISION VERSION 3.21'
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      VERSIO = 'SINGLE PRECISION VERSION 3.21'
+C*****END PRECISION > SINGLE
+
+C///  SET THE CONTROLS.
+
+      CALL TWSETL (ERROR, TEXT, 'ADAPT', .FALSE.)
+      IF (ERROR) GO TO 9501
+
+      CALL TWSETI (ERROR, TEXT, 'LEVELD', LEVELD(1))
+      IF (ERROR) GO TO 9502
+
+      CALL TWSETI (ERROR, TEXT, 'LEVELM', LEVELM(1))
+      IF (ERROR) GO TO 9502
+
+      CALL TWSETI (ERROR, TEXT, 'PADD', 0)
+      IF (ERROR) GO TO 9502
+
+      CALL TWSETR (ERROR, TEXT, 'SSABS', SSABS(1))
+      IF (ERROR) GO TO 9503
+
+      CALL TWSETI (ERROR, TEXT, 'SSAGE', SSAGE(1))
+      IF (ERROR) GO TO 9502
+
+      CALL TWSETR (ERROR, TEXT, 'SSREL', SSREL(1))
+      IF (ERROR) GO TO 9503
+
+      CALL TWSETL (ERROR, TEXT, 'STEADY', STEADY(1))
+      IF (ERROR) GO TO 9501
+
+      CALL TWSETI (ERROR, TEXT, 'STEPS0', STEPS0(1))
+      IF (ERROR) GO TO 9502
+
+      CALL TWSETI (ERROR, TEXT, 'STEPS1', STEPS1(1))
+      IF (ERROR) GO TO 9502
+
+      CALL TWSETI (ERROR, TEXT, 'STEPS2', STEPS2(1))
+      IF (ERROR) GO TO 9502
+
+      CALL TWSETR (ERROR, TEXT, 'STRID0', STRID0(1))
+      IF (ERROR) GO TO 9503
+
+      CALL TWSETR (ERROR, TEXT, 'TDABS', TDABS(1))
+      IF (ERROR) GO TO 9503
+
+      CALL TWSETI (ERROR, TEXT, 'TDAGE', TDAGE(1))
+      IF (ERROR) GO TO 9502
+
+      CALL TWSETR (ERROR, TEXT, 'TDEC', TDEC(1))
+      IF (ERROR) GO TO 9503
+
+      CALL TWSETR (ERROR, TEXT, 'TDREL', TDREL(1))
+      IF (ERROR) GO TO 9503
+
+      CALL TWSETR (ERROR, TEXT, 'TINC', TINC(1))
+      IF (ERROR) GO TO 9503
+
+      CALL TWSETR (ERROR, TEXT, 'TMAX', TMAX(1))
+      IF (ERROR) GO TO 9503
+
+      CALL TWSETR (ERROR, TEXT, 'TMIN', TMIN(1))
+      IF (ERROR) GO TO 9503
+
+C///  CALL TWOPNT.
+
+C     SUBROUTINE TWOPNT
+C    +  (ERROR, TEXT, VERSIO,
+C    +   ABOVE, ACTIVE, BELOW, BUFFER, COMPS, CONDIT, GROUPA, GROUPB,
+C    +   ISIZE, IWORK, MARK, NAME, NAMES, PMAX, POINTS, REPORT, RSIZE,
+C    +   RWORK, SIGNAL, STRIDE, TIME, U, X)
+
+      SIGNAL = ' '
+5010  CONTINUE
+      CALL TWOPNT
+     +  (ERROR, TEXT, VERSIO,
+     +   RWK(QABOVE), .FALSE., RWK(QBELOW), RWK(QBUF), COMPS, CONDIT,
+     +   GROUPA, GROUPB, XISIZE, IWK(QIWORK), LDUMMY, CWORK(QNAME),
+     +   VBLES, POINTS, POINTS, REPORT, XRSIZE, RWK(QRWORK), SIGNAL,
+     +   STRIDE, TIME, RWK(QU), RDUMMY)
+      IF (ERROR) GO TO 9504
+
+C///  TOP OF THE BLOCK TO SERVICE REQUESTS FROM TWOPNT.
+
+      IF (SIGNAL .NE. ' ') THEN
+
+C///  EVALUATE THE RESIDUAL.
+
+      IF (SIGNAL .EQ. 'RESIDUAL') THEN
+      CASE = 1
+      DIFFUS = .TRUE.
+
+C     SUBROUTINE OVEN83
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RMC, RMCSIZ, RSK, RSKSIZ,
+C    +   ACT, ADJUST, BTYPES, BULKS, CASE, CDATA, CELLS, CENTH, CENTH0,
+C    +   CKOND, CMAJOR, CMASS, CMASS0, CMOLE, CNEW, COEFF, COEFF1,
+C    +   COEFF2, COPY1, COPY2, CPOINT, CRESID, CRHO, CRHO0, CSUM, CSURF,
+C    +   CTEMP, CTEMP0, CVOL, CWALL, DIAM, DIFFUS, ENERGY, F, FACTOR,
+C    +   FTEMP, GASES, GDOT, INCELL, INJECS, INMASS, INTEMP, KNLEN,
+C    +   KNUDSN, MULTIC, P01, P02, P03, P04, P05, P06, P07, P08, PRESS,
+C    +   QFIRST, QLAST, RPNTS, SAREA, SCOUNT, SDATA, SDEN, SDOT, SENTH,
+C    +   SINDEX, SITDOT, SITES, SMAGIC, SMAJOR, SMOLE, SNEW, SPOINT,
+C    +   SRESID, SSITE, SSITE0, STEMP, STFLUX, STRIDE, STYPES, SUM1,
+C    +   SUM2, SURFS, TDC, THRMLD, TIME, U, U0, VBLES, WALLS, WAREA,
+C    +   WCOEFF, WCOUNT, WDATA, WENTH, WFLUX, WGRAD, WINDEX, WKOND,
+C    +   WMASS, WMMW, WMOLE, WRHO, WSIDE, WT, WTEMP, WVEL, ZPNTS)
+
+C     BOTH CALLS TO OVEN83 HAVE THE SAME ARGUMENT LIST
+      CALL OVEN83 (ERROR, TEXT, ILAST, IMAX, ISIZE, IWK, RLAST, RMAX,
+     +   RSIZE, RWK, ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ, RCK, RCKSIZ,
+     +   RMC, RMCSIZ, RSK, RSKSIZ, RWK(QACT), ADJUST, BTYPES, BULKS,
+     +   CASE, RWK(QCDATA), CELLS, RWK(QCENT), RWK(QCENT0), RWK(QCKOND),
+     +   IWK(QCMAJ), RWK(QCMASS), RWK(QCMAS0), RWK(QCMOLE), LWK(QCNEW),
+     +   RWK(QCOEFF), RWK(QCOEF1), RWK(QCOEF2), RWK(QCOPY1),
+     +   RWK(QCOPY2), IWK(QCPOIN), RWK(QCRES), RWK(QCRHO), RWK(QCRHO0),
+     +   RWK(QCSUM), RWK(QCSURF), RWK(QCTEMP), RWK(QCTEM0), CVOL,
+     +   RWK(QCWALL), RWK(QDIAM), DIFFUS, ENERGY, RWK(QF), FACTOR,
+     +   RWK(QFTEMP), GASES, RWK(QGDOT), INCELL, INJECS, RWK(QINMAS),
+     +   INTEMP, RWK(QKNLEN), KNUDSN, MULTIC, P01, P02, P03, P04, P05,
+     +   P06, P07, P08, PRESS, QFIRST, QLAST, RPNTS, SAREA, SCOUNT,
+     +   RWK(QSDATA), RWK(QSDEN), RWK(QSDOT), RWK(QSENT), SINDEX,
+     +   RWK(QSITD), SITES, SMAGIC, IWK(QSMAJ), RWK(QSMOLE), LWK(QSNEW),
+     +   IWK(QSPOIN), RWK(QSRES), RWK(QSSITE), RWK(QSSIT0), RWK(QSTEMP),
+     +   RWK(QSTFLX), STRIDE, STYPES, RWK(QSUM1), RWK(QSUM2), SURFS,
+     +   RWK(QTDC), THRMLD, TIME, RWK(QBUF), RWK(QU0), VBLES, WALLS,
+     +   WAREA, WCOEFF, WCOUNT, RWK(QWDATA), RWK(QWENT), RWK(QWFLUX),
+     +   RWK(QWGRAD), WINDEX, RWK(QWKOND), RWK(QWMASS), RWK(QWMMW),
+     +   RWK(QWMOLE), RWK(QWRHO), RWK(QWSIDE), RWK(QWT), RWK(QWTEMP),
+     +   RWK(QWVEL), ZPNTS)
+      IF (ERROR) GO TO 9505
+
+      DO 5020 J = 0, VBLES - 1
+         RWK(QBUF + J) = RWK(QF + J)
+5020  CONTINUE
+
+C///  PREPARE THE JACOBIAN MATRIX.
+
+      ELSE IF (SIGNAL .EQ. 'PREPARE') THEN
+
+C     SUBROUTINE OVEN82
+C    +  (ERROR, TEXT,
+C    +   BTYPES, CELLS, CMAJOR, GASES, P01, P03, QFIRST, QLAST, SITES,
+C    +   SMAJOR, STYPES, SURFS, U, VBLES)
+
+      CALL OVEN82
+     +  (ERROR, TEXT,
+     +   BTYPES, CELLS, IWK(QCMAJ), GASES, P01, P03, QFIRST, QLAST,
+     +   SITES, IWK(QSMAJ), STYPES, SURFS, RWK(QBUF), VBLES)
+      IF (ERROR) GO TO 9404
+
+      CASE = 2
+      DIFFUS = .TRUE.
+      FLAG = .FALSE.
+5030  CONTINUE
+
+C     SUBROUTINE BLJAC
+C    +  (ERROR, TEXT, PRINT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   IDATA, IDSIZ, RDATA, RDSIZ,
+C    +   N, RETURN, X, Y)
+
+      CALL BLJAC
+     +  (ERROR, TEXT, 0,
+     +   ILAST, IMAX, ISIZE, IWK,
+     +   LLAST, LMAX, LSIZE, LWK,
+     +   RLAST, RMAX, RSIZE, RWK,
+     +   IWK(QIDAT), IDSIZ, RWK(QRDAT), RDSIZ,
+     +   VBLES, FLAG, RWK(QBUF), RWK(QF))
+      IF (ERROR) GO TO 9506
+
+      IF (FLAG) THEN
+
+C     SUBROUTINE OVEN83
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RMC, RMCSIZ, RSK, RSKSIZ,
+C    +   ACT, ADJUST, BTYPES, BULKS, CASE, CDATA, CELLS, CENTH, CENTH0,
+C    +   CKOND, CMAJOR, CMASS, CMASS0, CMOLE, CNEW, COEFF, COEFF1,
+C    +   COEFF2, COPY1, COPY2, CPOINT, CRESID, CRHO, CRHO0, CSUM, CSURF,
+C    +   CTEMP, CTEMP0, CVOL, CWALL, DIAM, DIFFUS, ENERGY, F, FACTOR,
+C    +   FTEMP, GASES, GDOT, INCELL, INJECS, INMASS, INTEMP, KNLEN,
+C    +   KNUDSN, MULTIC, P01, P02, P03, P04, P05, P06, P07, P08, PRESS,
+C    +   QFIRST, QLAST, RPNTS, SAREA, SCOUNT, SDATA, SDEN, SDOT, SENTH,
+C    +   SINDEX, SITDOT, SITES, SMAGIC, SMAJOR, SMOLE, SNEW, SPOINT,
+C    +   SRESID, SSITE, SSITE0, STEMP, STFLUX, STRIDE, STYPES, SUM1,
+C    +   SUM2, SURFS, TDC, THRMLD, TIME, U, U0, VBLES, WALLS, WAREA,
+C    +   WCOEFF, WCOUNT, WDATA, WENTH, WFLUX, WGRAD, WINDEX, WKOND,
+C    +   WMASS, WMMW, WMOLE, WRHO, WSIDE, WT, WTEMP, WVEL, ZPNTS)
+
+C     BOTH CALLS TO OVEN83 HAVE THE SAME ARGUMENT LIST
+      CALL OVEN83 (ERROR, TEXT, ILAST, IMAX, ISIZE, IWK, RLAST, RMAX,
+     +   RSIZE, RWK, ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ, RCK, RCKSIZ,
+     +   RMC, RMCSIZ, RSK, RSKSIZ, RWK(QACT), ADJUST, BTYPES, BULKS,
+     +   CASE, RWK(QCDATA), CELLS, RWK(QCENT), RWK(QCENT0), RWK(QCKOND),
+     +   IWK(QCMAJ), RWK(QCMASS), RWK(QCMAS0), RWK(QCMOLE), LWK(QCNEW),
+     +   RWK(QCOEFF), RWK(QCOEF1), RWK(QCOEF2), RWK(QCOPY1),
+     +   RWK(QCOPY2), IWK(QCPOIN), RWK(QCRES), RWK(QCRHO), RWK(QCRHO0),
+     +   RWK(QCSUM), RWK(QCSURF), RWK(QCTEMP), RWK(QCTEM0), CVOL,
+     +   RWK(QCWALL), RWK(QDIAM), DIFFUS, ENERGY, RWK(QF), FACTOR,
+     +   RWK(QFTEMP), GASES, RWK(QGDOT), INCELL, INJECS, RWK(QINMAS),
+     +   INTEMP, RWK(QKNLEN), KNUDSN, MULTIC, P01, P02, P03, P04, P05,
+     +   P06, P07, P08, PRESS, QFIRST, QLAST, RPNTS, SAREA, SCOUNT,
+     +   RWK(QSDATA), RWK(QSDEN), RWK(QSDOT), RWK(QSENT), SINDEX,
+     +   RWK(QSITD), SITES, SMAGIC, IWK(QSMAJ), RWK(QSMOLE), LWK(QSNEW),
+     +   IWK(QSPOIN), RWK(QSRES), RWK(QSSITE), RWK(QSSIT0), RWK(QSTEMP),
+     +   RWK(QSTFLX), STRIDE, STYPES, RWK(QSUM1), RWK(QSUM2), SURFS,
+     +   RWK(QTDC), THRMLD, TIME, RWK(QBUF), RWK(QU0), VBLES, WALLS,
+     +   WAREA, WCOEFF, WCOUNT, RWK(QWDATA), RWK(QWENT), RWK(QWFLUX),
+     +   RWK(QWGRAD), WINDEX, RWK(QWKOND), RWK(QWMASS), RWK(QWMMW),
+     +   RWK(QWMOLE), RWK(QWRHO), RWK(QWSIDE), RWK(QWT), RWK(QWTEMP),
+     +   RWK(QWVEL), ZPNTS)
+      IF (ERROR) GO TO 9505
+
+      CASE = 3
+      DIFFUS = .FALSE.
+      GO TO 5030
+      END IF
+
+C     SUBROUTINE BLFAC
+C    +  (ERROR, TEXT, PRINT,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   IDATA, IDSIZ, RDATA, RDSIZ)
+
+      CALL BLFAC
+     +  (ERROR, TEXT, 0,
+     +   RLAST, RMAX, RSIZE, RWK,
+     +   IWK(QIDAT), IDSIZ, RWK(QRDAT), RDSIZ)
+      IF (ERROR) GO TO 9507
+
+      CONDIT = 0.0
+
+C///  SHOW THE SOLUTION.
+
+      ELSE IF (SIGNAL .EQ. 'SHOW') THEN
+
+C     SUBROUTINE OVEN61
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   ACT, BTYPES, BULKS, CELLS, COLMAX, DEN, GASES, HEADER, MOLE,
+C    +   P01, P02, P03, P09, PRESS, QFIRST, QLAST, QNMBR, RPNTS, SDEN,
+C    +   SDOT, SITDOT, SITES, SLTN, SNAME, STEMP, STYPES, SURFS, TNAME,
+C    +   VALUE, VBLES, WT, Z, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN61
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   RWK(QACT), BTYPES, BULKS, CELLS, COLMAX, RWK(QDEN), GASES,
+     +   CWORK(QHEAD), RWK(QMOLE), P01, P02, P03, P09, PRESS, QFIRST,
+     +   QLAST, QNMBR, RPNTS, RWK(QSDEN), RWK(QSDOT), RWK(QSITD),
+     +   SITES, RWK(QU), SNAME, STEMP, STYPES, SURFS, TNAME,
+     +   RWK(QVALUE), VBLES, RWK(QWT), Z, ZPNTS, ZPNTS1, ZPNTS2,
+     +   ZPNTS3)
+      IF (ERROR) GO TO 9508
+
+      IF (0 .LT. TEXT) WRITE (TEXT, 10002)
+
+C///  SOLVE THE LINEAR EQUATIONS.
+
+      ELSE IF (SIGNAL .EQ. 'SOLVE') THEN
+
+C     SUBROUTINE BLSOL
+C    +  (ERROR, TEXT, PRINT,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   IDATA, IDSIZ, RDATA, RDSIZ,
+C    +   BORDER, N, YB)
+
+      CALL BLSOL
+     +  (ERROR, TEXT, 0,
+     +   RLAST, RMAX, RSIZE, RWK,
+     +   IWK(QIDAT), IDSIZ, RWK(QRDAT), RDSIZ,
+     +   BORDER, VBLES, RWK(QBUF))
+      IF (ERROR) GO TO 9509
+
+C///  RETAIN THE SOLUTION FOR TIME INTEGRATION.
+
+      ELSE IF (SIGNAL .EQ. 'RETAIN') THEN
+
+      DO 5040 J = 0, VBLES - 1
+         RWK(QU0 + J) = RWK(QBUF + J)
+5040  CONTINUE
+
+C///  BOTTOM OF THE BLOCK TO SERVICE REQUESTS FROM TWOPNT.
+
+         END IF
+         GO TO 5010
+      END IF
+
+C///  TWOPNT FINISHES.
+
+      ERROR = .NOT. (REPORT .EQ. ' ')
+      IF (ERROR) GO TO 9510
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (6) EPILOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  MARK THE MODEL SOLVED.
+
+      GUESS = .TRUE.
+      SOLVED = .TRUE.
+
+C///  COPY THE SOLUTION.
+
+      DO 6010 J = 0, VBLES - 1
+         SLTN(1 + J) = RWK(QU + J)
+6010  CONTINUE
+
+C///  STORE THE LOGICAL PARAMETERS.
+
+      Q = 0
+
+C     ADJUST: ADJUST THE DIFFUSION COEFFICIENTS
+      Q = Q + 1
+
+C     ENERGY: ENFORCE ENERGY CONSERVATION
+      Q = Q + 1
+
+C     GUESS: A SOLUTION HAS BEEN FOUND FOR ANY MODEL
+      Q = Q + 1
+      IF (Q .LE. LPARS) LPAR(Q) = GUESS
+
+C     KNUDS: INCLUDE KNUDSEN DIFFUSION
+      Q = Q + 1
+
+C     MULTIC: USE MULTICOMPONENT DIFFUSION COEFFICIENTS
+      Q = Q + 1
+
+C     OPTIM: FIND AN OPTIMAL GRID
+      Q = Q + 1
+
+C     SOLVED: A SOLUTION HAS BEEN FOUND FOR THE CURRENT MODEL
+      Q = Q + 1
+      IF (Q .LE. LPARS) LPAR(Q) = SOLVED
+
+C     THRMLD: INCLUDE THERMAL DIFFUSION
+      Q = Q + 1
+
+C     ZONLY: MODEL ONLY THE ANNULAR PROBLEM
+      Q = Q + 1
+
+      ERROR = .NOT. (Q .EQ. LPARS)
+      IF (ERROR) GO TO 9601
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     INFORMATIVE MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +  (/9X, 35(' /')
+     +  //1X, A9, A)
+
+10002 FORMAT
+     +  (/9X, 35(' /'))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CSIZE, GASES, ICKSIZ, IMCSIZ, INJECS, ISIZE,
+     +   ISKSIZ, LPARS, LSIZE, RCKSIZ, RMCSIZ, RPNTS, RSIZE, RSKSIZ,
+     +   SITES, STYPES, VBLES, ZPNTS
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID,
+     +   RPNTS, ZPNTS1, ZPNTS2, ZPNTS3, CELLS, ZPNTS
+      GO TO 99999
+
+9103  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID
+      GO TO 99999
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID
+      GO TO 99999
+
+9303  IF (0 .LT. TEXT) WRITE (TEXT, 99303) ID
+      GO TO 99999
+
+9305  IF (0 .LT. TEXT) WRITE (TEXT, 99305) ID
+      GO TO 99999
+
+9306  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99306) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID
+      GO TO 99999
+
+9402  IF (0 .LT. TEXT) WRITE (TEXT, 99402) ID,
+     +   CSIZE, ISIZE, LSIZE, RSIZE, CLAST, ILAST, LLAST, RLAST
+      GO TO 99999
+
+9403  IF (0 .LT. TEXT) WRITE (TEXT, 99403) ID
+      GO TO 99999
+
+9404  IF (0 .LT. TEXT) WRITE (TEXT, 99404) ID
+      GO TO 99999
+
+9405  IF (0 .LT. TEXT) WRITE (TEXT, 99405) ID
+      GO TO 99999
+
+9501  IF (0 .LT. TEXT) WRITE (TEXT, 99501) ID
+      GO TO 99999
+
+9502  IF (0 .LT. TEXT) WRITE (TEXT, 99502) ID
+      GO TO 99999
+
+9503  IF (0 .LT. TEXT) WRITE (TEXT, 99503) ID
+      GO TO 99999
+
+9504  IF (0 .LT. TEXT) WRITE (TEXT, 99504) ID
+      GO TO 99999
+
+9505  IF (0 .LT. TEXT) WRITE (TEXT, 99505) ID
+      GO TO 99999
+
+9506  IF (0 .LT. TEXT) WRITE (TEXT, 99506) ID
+      GO TO 99999
+
+9507  IF (0 .LT. TEXT) WRITE (TEXT, 99507) ID
+      GO TO 99999
+
+9508  IF (0 .LT. TEXT) WRITE (TEXT, 99508) ID
+      GO TO 99999
+
+9509  IF (0 .LT. TEXT) WRITE (TEXT, 99509) ID
+      GO TO 99999
+
+9510  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, REPORT)
+         WRITE (TEXT, 99510) ID, REPORT(1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9601  IF (0 .LT. TEXT) WRITE (TEXT, 99601) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES'  /10X, I10, '  BULKS',
+     +   /10X, I10, '  CSIZE'   /10X, I10, '  GASES',
+     +   /10X, I10, '  ICKSIZ'  /10X, I10, '  IMCSIZ',
+     +   /10X, I10, '  INJECS'  /10X, I10, '  ISIZE',
+     +   /10X, I10, '  ISKSIZ'  /10X, I10, '  LPARS',
+     +   /10X, I10, '  LSIZE'   /10X, I10, '  RCKSIZ',
+     +   /10X, I10, '  RMCSIZ'  /10X, I10, '  RPNTS',
+     +   /10X, I10, '  RSIZE'   /10X, I10, '  RSKSIZ',
+     +   /10X, I10, '  SITES',  /10X, I10, '  STYPES'
+     +   /10X, I10, '  VBLES',  /10X, I10, '  ZPNTS')
+
+99102 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     +   //10X, I10, '  RPNTS'
+     +    /10X, I10, '  ZPNTS1'
+     +    /10X, I10, '  ZPNTS2'
+     +    /10X, I10, '  ZPNTS3'
+     +   //10X, I10, '  CELLS'
+     +    /10X, I10, '  ZPNTS')
+
+99103 FORMAT
+     +   (/1X, A9, 'ERROR.  FOR KNUDSEN DIFFUSION, THE DIFFUSION'
+     +  //10X, 'COEFFICIENTS MUST BE CORRECTED AND MIXTURE-AVERAGED.')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  READW FAILS.')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  VERIFY FAILS.')
+
+99303 FORMAT
+     +   (/1X, A9, 'ERROR.  THE RESET KEYWORD MUST APPEAR FIRST OR NOT'
+     +  //10X, 'AT ALL.')
+
+99305 FORMAT
+     +   (/1X, A9, 'ERROR.  READV FAILS.')
+
+99306 FORMAT
+     +   (/1X, A9, 'ERROR.  A KEYWORD IS MISPLACED OR UNKNOWN.'
+     +   //10X, I10, '  LINE NUMBER'
+     +   //10X, '  KEYWORD:  ', A)
+
+99401 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99402 FORMAT
+     +   (/1X, A9, 'ERROR.  SOME WORKSPACES ARE TOO SMALL.'
+C               123456789_  123456789_  123456789_  123456789_
+     +  //25X, ' CHARACTER     INTEGER     LOGICAL        REAL'
+C               123456789_12345
+     +  //10X, ' PRESENT SIZE', 4I12
+     +   /10X, 'REQUIRED SIZE', 4I12
+     +  //10X, 'NO MORE SPACE WILL BE NEEDED TO SOLVE THE MODEL.')
+
+99403 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN81 FAILS.')
+
+99404 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN82 FAILS.')
+
+99405 FORMAT
+     +   (/1X, A9, 'ERROR.  BLMAK FAILS.')
+
+99501 FORMAT
+     +   (/1X, A9, 'ERROR.  TWSETL FAILS.')
+
+99502 FORMAT
+     +   (/1X, A9, 'ERROR.  TWSETI FAILS.')
+
+99503 FORMAT
+     +   (/1X, A9, 'ERROR.  TWSETR FAILS.')
+
+99504 FORMAT
+     +   (/1X, A9, 'ERROR.  TWOPNT FAILS.')
+
+99505 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN83 FAILS.')
+
+99506 FORMAT
+     +   (/1X, A9, 'ERROR.  BLJAC FAILS.')
+
+99507 FORMAT
+     +   (/1X, A9, 'ERROR.  BLFAC FAILS.')
+
+99508 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN61 FAILS.')
+
+99509 FORMAT
+     +   (/1X, A9, 'ERROR.  BLSOL FAILS.')
+
+99510 FORMAT
+     +   (/1X, A9, 'ERROR.  TWOPNT FAILS.'
+C               1234567890
+     +  //10X, '   REPORT:  ', A)
+
+99601 FORMAT
+     +   (/1X, A9, 'ERROR.  THE LOGICAL PARAMETER ARRAY IS THE WRONG'
+     +   /10X, 'SIZE.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+      RETURN
+      END
+      SUBROUTINE OVEN09
+     +  (ERROR, TEXT,
+     +   BTYPES, BULKS, CELLS, CVOL, FRAC, GASES, INABLE, INCELL,
+     +   INFLOW, INJECS, INLOC, INMOLE, INNAME, INTEMP, IPAR, IPARS,
+     +   LINE, LPAR, LPARS, NUMBER, P01, P02, P03, P04, P05, P06, P07,
+     +   P08, P09, P10, P11, PRINT, R, R10, R10SIZ, R11, R11SIZ, RLOC,
+     +   RPAR, RPARS, RPNTS, SAREA, SCOUNT, SCRIPT, SINDEX, SITES, SLTN,
+     +   SMAGIC, SNAME, STEMP, STYPES, SURFS, TNAME, UNIT, VBLES, VRSN,
+     +   WALLS, WAREA, WCODE, WCOEFF, WCOUNT, WINDEX, Z, Z10, Z10SIZ,
+     +   Z11, Z11SIZ, ZLOC, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN09
+C
+C     WRITE THE MODEL
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   CVALUE*32, ID*9, INNAME*16, KEY*80, LINE*82, NAME*80, SNAME*16,
+     +   TNAME*16, TYPE*80, VRSN*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   CVOL, FRAC, INFLOW, INLOC, INMOLE, INTEMP, R, R10, R11, RLOC,
+     +   RPAR, RVALUE, SAREA, SLTN, SMAGIC, STEMP, WAREA, WCOEFF, Z,
+     +   Z10, Z11, ZLOC
+      EXTERNAL
+     +   READV2
+      INTEGER
+     +   BTYPES, BULKS, CELLS, GASES, INABLE, INCELL, INJECS, IPAR,
+     +   IPARS, IVALUE, J, KMAX, LPARS, NUMBER, P01, P02, P03, P04, P05,
+     +   P06, P07, P08, P09, P10, P11, PRINT, R10SIZ, R11SIZ, RECORD,
+     +   RPARS, RPNTS, SCOUNT, SCRIPT, SINDEX, SITES, STATUS, STYPES,
+     +   SURFS, TEXT, UNIT, VBLES, WALLS, WCODE, WCOUNT, WINDEX, Z10SIZ,
+     +   Z11SIZ, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      LOGICAL
+     +   ERROR, EXIST, FOUND, LPAR, LVALUE, NEED, OPEN
+
+      PARAMETER (ID = 'OVEN09:  ')
+      PARAMETER (KMAX = 20)
+
+      DIMENSION
+     +   CVALUE(KMAX), CVOL(CELLS), FOUND(KMAX), FRAC(GASES + SITES),
+     +   INABLE(ZPNTS), INCELL(INJECS), INFLOW(INJECS), INLOC(INJECS),
+     +   INMOLE(GASES, INJECS), INNAME(INJECS), INTEMP(INJECS),
+     +   IPAR(IPARS), IVALUE(KMAX), KEY(KMAX), LPAR(LPARS),
+     +   LVALUE(KMAX), NEED(KMAX), P01(CELLS), P02(SURFS), P03(SURFS),
+     +   P04(WALLS, 2), P05(SURFS), P06(CELLS), P07(WALLS * 2),
+     +   P08(CELLS), P09(ZPNTS), P10(R10SIZ, Z10SIZ), P11(R11SIZ, 2,
+     +   Z11SIZ), R(RPNTS), R10(R10SIZ), R11(R11SIZ), RLOC(SURFS),
+     +   RPAR(RPARS), SAREA(SURFS), SINDEX(SCOUNT), SLTN(VBLES),
+     +   SMAGIC(SURFS), SNAME(GASES + SITES + BULKS), STEMP(SURFS),
+     +   TNAME(1 + STYPES + BTYPES), TYPE(KMAX), WAREA(WALLS),
+     +   WCODE(WALLS), WCOEFF(WALLS, 2), WINDEX(WCOUNT), Z(ZPNTS),
+     +   Z10(Z10SIZ), Z11(Z11SIZ), ZLOC(SURFS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. INJECS .AND. 0 .LT. IPARS  .AND.
+     +   0 .LT. LPARS  .AND. 0 .LT. RPARS  .AND. 0 .LT. RPNTS  .AND.
+     +   0 .LT. SCOUNT .AND. 0 .LT. SITES  .AND. 0 .LT. STYPES .AND.
+     +   0 .LT. SURFS  .AND. 0 .LT. VBLES  .AND. 0 .LT. WCOUNT .AND.
+     +   0 .LT. ZPNTS  .AND. 0 .LT. ZPNTS1 .AND. 0 .LT. ZPNTS2 .AND.
+     +   0 .LT. ZPNTS3)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT.
+     +  (ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3 .EQ. CELLS .AND.
+     +   ZPNTS1 + ZPNTS2 + ZPNTS3 .EQ. ZPNTS)
+      IF (ERROR) GO TO 9102
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) READ THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  READ THE BLOCK.
+C 1>  WRITE THE MODEL
+C 2>     FILE NAME = ?(ovend.dat)
+C 1>     END
+
+      DATA
+     +   (TYPE(J), NEED(J), KEY(J), J = 1, 1)
+     + / 'C', .FALSE., 'FILE NAME =' /
+
+C     SUBROUTINE READV
+C    +  (ERROR, TEXT,
+C    +   CVALUE, ESIGN, FOUND, KEY, KEYS, IVALUE, LINE, LVALUE, NEED,
+C    +   NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+
+C*****PRECISION > DOUBLE
+         CALL READV2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL READV1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      CVALUE, .FALSE., FOUND, KEY, 1, IVALUE, LINE, LVALUE, NEED,
+     +      NUMBER, PRINT, RVALUE, SCRIPT, TYPE)
+         IF (ERROR) GO TO 9201
+
+C///  CHOOSE THE FILE NAME.
+
+      IF (FOUND(1)) THEN
+         NAME = CVALUE(1)
+      ELSE
+         NAME = 'ovend.dat'
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) OPEN THE FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = NAME,
+     +   ERR = 9301,
+     +   EXIST = EXIST,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      IF (EXIST) THEN
+         ERROR = OPEN
+         IF (ERROR) GO TO 9302
+      END IF
+
+C///  OPEN THE FILE.
+
+      IF (EXIST) THEN
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9303,
+     +      FILE = NAME,
+     +      FORM = 'UNFORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'OLD',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+
+C///  CREATE THE FILE.
+
+      ELSE
+         ERROR = .TRUE.
+         OPEN
+     +     (ACCESS = 'SEQUENTIAL',
+     +      ERR = 9303,
+     +      FILE = NAME,
+     +      FORM = 'UNFORMATTED',
+     +      IOSTAT = STATUS,
+     +      STATUS = 'NEW',
+     +      UNIT = UNIT)
+         ERROR = .FALSE.
+      END IF
+
+C///  POSITION THE FILE.
+
+      REWIND UNIT
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) WRITE THE FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      RECORD = 0
+
+C///  VERSION.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS) VRSN
+      ERROR = .FALSE.
+
+C///  INTEGER SCALARS.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS) IPARS
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS) IPAR
+      ERROR = .FALSE.
+
+C///  LOGICAL SCALARS.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS) LPARS
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS) LPAR
+      ERROR = .FALSE.
+
+C///  REAL SCALARS.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS) RPARS
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS) RPAR
+      ERROR = .FALSE.
+
+C///  CHARACTER ARRAYS.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS) INNAME, SNAME, TNAME
+      ERROR = .FALSE.
+
+C///  INTEGER ARRAYS.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   INABLE, INCELL, P01, P02, P03, P04, P05, P06, P07, P08, P09,
+     +   P10, P11, SINDEX, WCODE, WINDEX
+      ERROR = .FALSE.
+
+C///  REAL ARRAYS.
+
+      RECORD = RECORD + 1
+
+      ERROR = .TRUE.
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   CVOL, FRAC, INFLOW, INLOC, INMOLE, INTEMP, R, R10, R11, RLOC
+      WRITE (UNIT, ERR = 9401, IOSTAT = STATUS)
+     +   SAREA, SLTN, SMAGIC, STEMP, WAREA, WCOEFF, Z, Z10, Z11, ZLOC
+      ERROR = .FALSE.
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (5) CLOSE THE FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CLOSE THE FILE.
+
+      ERROR = .TRUE.
+      CLOSE
+     +  (ERR = 9501,
+     +   IOSTAT = STATUS,
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, IPARS, LPARS, RPARS, RPNTS,
+     +   SCOUNT, SITES, STYPES, SURFS, VBLES, WCOUNT, ZPNTS, ZPNTS1,
+     +   ZPNTS2, ZPNTS3
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID,
+     +   RPNTS, ZPNTS1, ZPNTS2, ZPNTS3, CELLS, ZPNTS
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID, STATUS
+      GO TO 99999
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID
+      GO TO 99999
+
+9303  IF (0 .LT. TEXT) WRITE (TEXT, 99303) ID, UNIT, STATUS
+      GO TO 99999
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID, UNIT, RECORD, STATUS
+      GO TO 99999
+
+9501  IF (0 .LT. TEXT) WRITE (TEXT, 99501) ID, UNIT, STATUS
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES'
+     +   /10X, I10, '  BULKS'
+     +   /10X, I10, '  CELLS'
+     +   /10X, I10, '  GASES'
+     +   /10X, I10, '  IPARS'
+     +   /10X, I10, '  LPARS'
+     +   /10X, I10, '  RPARS'
+     +   /10X, I10, '  RPNTS'
+     +   /10X, I10, '  SCOUNT'
+     +   /10X, I10, '  SITES'
+     +   /10X, I10, '  STYPES'
+     +   /10X, I10, '  SURFS'
+     +   /10X, I10, '  VBLES'
+     +   /10X, I10, '  WCOUNT'
+     +   /10X, I10, '  ZPNTS'
+     +   /10X, I10, '  ZPNTS1'
+     +   /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3')
+
+99102 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     +  //10X, I10, '  RPNTS'
+     +   /10X, I10, '  ZPNTS1'
+     +   /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3'
+     +  //10X, I10, '  CELLS'
+     +   /10X, I10, '  ZPNTS')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  READV FAILS.')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  INQUIRE FAILS.'
+     +  //10X, I10, '  I/O STATUS')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FILE EXISTS AND IS OPEN.')
+
+99303 FORMAT
+     +   (/1X, A9, 'ERROR.  OPEN FAILS.'
+     +  //10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+99401 FORMAT
+     +   (/1X, A9, 'ERROR.  WRITE FAILS.'
+     +  //10X, I10, '  UNIT NUMBER'
+     +  //10X, I10, '  RECORD NUMBER WITHIN THE BLOCK'
+     +   /10X, I10, '  I/O STATUS')
+
+99501 FORMAT
+     +   (/1X, A9, 'ERROR.  CLOSE FAILS.'
+     +  //10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN11
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   DEPTH, NAME, RLOC, RPNTS, RTUBE, RWAFER, STEMP, SURFS, UNIT,
+     +   WFIRST, WLAST, ZLOC)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN11
+C
+C     READ TEMPERATURE DATA
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER CWORK*16, ID*9, NAME*(*)
+      INTEGER
+     +   CLAST, CMAX, CSAVE, CSIZE, DIM1, DIMR, DIMZ, ILAST, IMAX,
+     +   ISAVE, ISIZE, IWORK, J, KMAX, KR, KZ, LLAST, LMAX, LSAVE,
+     +   LSIZE, OFFSET, RLAST, RMAX, RPNT, RPNTS, RSAVE, RSIZE, STATUS,
+     +   SURF, SURFS, TEXT, UNIT, ZPNT
+      LOGICAL ERROR, EXIST, LWORK, OPEN
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   DEPTH, R0, R1, R2, RLOC, RTUBE, RWAFER, RWORK, STEMP, WFIRST,
+     +   WLAST, Z0, Z1, Z2, ZLOC
+
+      PARAMETER (ID = 'OVEN11:  ')
+      PARAMETER (KMAX = 30)
+
+      DIMENSION
+     +   CWORK(CSIZE), IWORK(ISIZE), LWORK(LSIZE), RLOC(SURFS),
+     +   RWORK(RSIZE), STEMP(SURFS), ZLOC(SURFS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      CSAVE = CLAST
+      ISAVE = ILAST
+      LSAVE = LLAST
+      RSAVE = RLAST
+
+C///  CHECK THE DIMENSIONAL ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. CSIZE  .AND. 0 .LT. ISIZE  .AND. 0 .LT. LSIZE  .AND.
+     +   0 .LT. RSIZE  .AND. 0 .LT. SURFS)
+      IF (ERROR) GO TO 9101
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) READ THE TEMPERATURE DATA.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE FILE.
+
+      ERROR = .TRUE.
+      INQUIRE
+     +  (FILE = NAME,
+     +   ERR = 9201,
+     +   EXIST = EXIST,
+     +   IOSTAT = STATUS,
+     +   OPENED = OPEN)
+      ERROR = .FALSE.
+
+      ERROR = .NOT. EXIST
+      IF (ERROR) GO TO 9202
+
+      ERROR = OPEN
+      IF (ERROR) GO TO 9203
+
+C///  OPEN THE FILE.
+
+      ERROR = .TRUE.
+      OPEN
+     +  (ACCESS = 'SEQUENTIAL',
+     +   ERR = 9204,
+     +   FILE = NAME,
+     +   FORM = 'FORMATTED',
+     +   IOSTAT = STATUS,
+     +   STATUS = 'OLD',
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///  POSITION THE FILE.
+
+      REWIND UNIT
+
+C///  RESERVE SCRATCH SPACE FOR AND READ THE TEMPERATURE DATA.
+
+      READ (UNIT, 20001, ERR = 9205, IOSTAT = STATUS) DIM1
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDATA1', DIM1, QDATA1)
+      IF (ERROR) GO TO 9206
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QGRID1', DIM1, QGRID1)
+      IF (ERROR) GO TO 9206
+
+      READ (UNIT, 20002, ERR = 9205, IOSTAT = STATUS)
+     +   (RWORK(QGRID1 - 1 + J), RWORK(QDATA1 - 1 + J), J = 1, DIM1)
+
+      READ (UNIT, 20003, ERR = 9205, IOSTAT = STATUS) DIMZ, DIMR
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QDATA2', DIMR * DIMZ, QDATA2)
+      IF (ERROR) GO TO 9206
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QGRIDR', DIMR, QGRIDR)
+      IF (ERROR) GO TO 9206
+
+      CALL RESERV (ERROR, TEXT, .FALSE., RLAST, RMAX, RSIZE,
+     +   'QGRIDZ', DIMZ, QGRIDZ)
+      IF (ERROR) GO TO 9206
+
+      READ (UNIT, 20004, ERR = 9205, IOSTAT = STATUS)
+     +   (RWORK(QGRIDZ - 1 + J), J = 1, DIMZ),
+     +   (RWORK(QGRIDR - 1 + J), J = 1, DIMR),
+     +   (RWORK(QDATA2 - 1 + J), J = 1, DIMR * DIMZ)
+
+C///  CLOSE THE FILE.
+
+      ERROR = .TRUE.
+      CLOSE
+     +  (ERR = 9207,
+     +   IOSTAT = STATUS,
+     +   UNIT = UNIT)
+      ERROR = .FALSE.
+
+C///  CHECK THE REACTOR DIMENSIONS.
+
+      ERROR = .NOT.
+     +  (RWORK(QGRID1) .EQ. 0.0 .AND.
+     +   RWORK(QGRID1 + DIM1 - 1) .EQ. DEPTH .AND.
+     +   RWORK(QGRIDZ) .EQ. WFIRST .AND.
+     +   RWORK(QGRIDZ + DIMZ - 1) .EQ. WLAST .AND.
+     +   RWORK(QGRIDR) .EQ. 0.0 .AND.
+     +   RWORK(QGRIDR + DIMR - 1) .EQ. RWAFER)
+      IF (ERROR) GO TO 9208
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) INTERPOLATE THE TEMPERATURE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  TOP OF THE LOOP.
+
+      DO 3070 SURF = 1, SURFS
+         R0 = RLOC(SURF)
+         Z0 = ZLOC(SURF)
+
+C///  OVEN WALLS.
+
+      IF (R0 .EQ. RTUBE) THEN
+         DO 3010 ZPNT = 1, DIM1 - 1
+            Z1 = RWORK(QGRID1 - 1 + ZPNT)
+            Z2 = RWORK(QGRID1 + ZPNT)
+
+            IF (Z1 .LE. Z0 .AND. Z0 .LE. Z2) THEN
+               STEMP(SURF) =
+     +             ((Z2 - Z0) * RWORK(QDATA1 - 1 + ZPNT)
+     +            + (Z0 - Z1) * RWORK(QDATA1 + ZPNT)) / (Z2 - Z1)
+               GO TO 3020
+            END IF
+3010     CONTINUE
+         ERROR = .TRUE.
+         GO TO 9301
+3020     CONTINUE
+
+C///  WAFERS.
+
+      ELSE IF (0.0 .LE. R0 .AND. R0 .LE. RWAFER) THEN
+         DO 3030 RPNT = 1, DIMR - 1
+            R1 = RWORK(QGRIDR - 1 + RPNT)
+            R2 = RWORK(QGRIDR + RPNT)
+
+            IF (R1 .LE. R0 .AND. R0 .LE. R2) THEN
+               KR = RPNT
+               GO TO 3040
+            END IF
+3030     CONTINUE
+         ERROR = .TRUE.
+         GO TO 9302
+3040     CONTINUE
+
+         DO 3050 ZPNT = 1, DIMZ - 1
+            Z1 = RWORK(QGRIDZ - 1 + ZPNT)
+            Z2 = RWORK(QGRIDZ + ZPNT)
+
+            IF (0.999 * Z1 .LE. Z0 .AND. Z0 .LE. Z2 * 1.001) THEN
+               KZ = ZPNT
+               GO TO 3060
+            END IF
+3050     CONTINUE
+         ERROR = .TRUE.
+         GO TO 9303
+3060     CONTINUE
+
+         OFFSET = QDATA2 + KR - 1 + DIMR * (KZ - 1)
+         STEMP(SURF) =
+     +       ((R2 - R0) * (Z2 - Z0) * RWORK(OFFSET)
+     +      + (R0 - R1) * (Z2 - Z0) * RWORK(OFFSET + 1)
+     +      + (R2 - R0) * (Z0 - Z1) * RWORK(OFFSET + DIMR)
+     +      + (R0 - R1) * (Z0 - Z1) * RWORK(OFFSET + DIMR + 1))
+     +      / ((R2 - R1) * (Z2 - Z1))
+
+C///  BOTTOM OF THE LOOP.
+
+          ELSE
+             ERROR = .TRUE.
+             GO TO 9304
+          END IF
+3070  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     DATA FORMATS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+20001 FORMAT
+     +  (I3)
+
+20002 FORMAT
+     +  (E14.7, 1X, E14.7)
+
+20003 FORMAT
+     +  (2I3)
+
+20004 FORMAT
+     +  (E14.7)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   CSIZE, ISIZE, LSIZE, RSIZE, SURFS
+      GO TO 99998
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID, STATUS
+      GO TO 99998
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID
+      GO TO 99998
+
+9203  IF (0 .LT. TEXT) WRITE (TEXT, 99203) ID
+      GO TO 99998
+
+9204  IF (0 .LT. TEXT) WRITE (TEXT, 99204) ID, UNIT, STATUS
+      GO TO 99998
+
+9205  IF (0 .LT. TEXT) WRITE (TEXT, 99205) ID, UNIT, STATUS
+      GO TO 99998
+
+9206  IF (0 .LT. TEXT) WRITE (TEXT, 99206) ID
+      GO TO 99998
+
+9207  IF (0 .LT. TEXT) WRITE (TEXT, 99207) ID, UNIT, STATUS
+      GO TO 99998
+
+9208  IF (0 .LT. TEXT) WRITE (TEXT, 99208) ID,
+     +   0.0, RWORK(QGRID1), DEPTH, RWORK(QGRID1 + DIM1 - 1),
+     +   WFIRST, RWORK(QGRIDZ), WLAST, RWORK(QGRIDZ + DIMZ - 1),
+     +   0.0, RWORK(QGRIDR), RWAFER, RWORK(QGRIDR + DIMR - 1)
+      GO TO 99998
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID
+      GO TO 99998
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID
+      GO TO 99998
+
+9303  IF (0 .LT. TEXT) WRITE (TEXT, 99303) ID,
+     +   RWORK(QGRIDZ), Z0, RWORK(QGRIDZ + DIMZ - 1)
+      GO TO 99998
+
+9304  IF (0 .LT. TEXT) WRITE (TEXT, 99304) ID
+      GO TO 99998
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  CSIZE',
+     +   /10X, I10, '  ISIZE',
+     +   /10X, I10, '  LSIZE',
+     +   /10X, I10, '  RSIZE',
+     +   /10X, I10, '  SURFS')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  INQUIRE FAILS.'
+     +  //10X, I10, '  I/O STATUS')
+
+99202 FORMAT
+     +   (/1X, A9, 'ERROR.  THE TEMPERATURE DATA FILE IS MISSING.')
+
+99203 FORMAT
+     +   (/1X, A9, 'ERROR.  THE FILE EXISTS AND IS OPEN.')
+
+99204 FORMAT
+     +   (/1X, A9, 'ERROR.  OPEN FAILS.'
+     +  //10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+99205 FORMAT
+     +   (/1X, A, 'ERROR.  FORMATTED READ OF TEMPERATURE DATA FAILS.'
+     +  //10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+99206 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99207 FORMAT
+     +   (/1X, A9, 'ERROR.  CLOSE FAILS.'
+     +  //10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+99208 FORMAT
+     +   (/1X, A, 'ERROR.  THE GEOMETRY IN THE TEMPERATURE FILE IS NOT'
+     +  //10X, 'THE EXPECTED GEOMETRY.'
+     +  //10X, F20.10, '  OVEN FRONT'
+     +   /10X, F20.10, '  IN FILE'
+     +  //10X, F20.10, '  OVEN BACK'
+     +   /10X, F20.10, '  IN FILE'
+     +  //10X, F20.10, '  FIRST WAFER'
+     +   /10X, F20.10, '  IN FILE'
+     +  //10X, F20.10, '  LAST WAFER'
+     +   /10X, F20.10, '  IN FILE'
+     +  //10X, F20.10, '  WAFER CENTER'
+     +   /10X, F20.10, '  IN FILE'
+     +  //10X, F20.10, '  WAFER RADIUS'
+     +   /10X, F20.10, '  IN FILE')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  THE AXIAL POSITION OF AN OVEN SURFACE'
+     +   /10X, 'CANNOT FOUND IN THE TEMPERATURE DATA.')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  THE RADIAL POSITION OF A WAFER CANNOT BE'
+     +   /10X, 'FOUND IN THE TEMPERATURE DATA.')
+
+99303 FORMAT
+     +   (/1X, A9, 'ERROR.  THE AXIAL POSITION OF A WAFER CANNOT BE'
+     +   /10X, 'FOUND IN THE TEMPERATURE DATA.'
+     +  //10X, F20.10, '  FIRST AXIAL WAFER POSITION'
+     +   /10X, F20.10, '  WAFER POSITION'
+     +   /10X, F20.10, '  LAST AXIAL WAFER POSITION')
+
+99304 FORMAT
+     +   (/1X, A9, 'ERROR.  A SURFACE IS NEITHER ON THE OVEN WALL NOR'
+     +   /10X, 'ON A WAFER.')
+
+C///  EXIT.
+
+99998 CONTINUE
+C     RESTORE THE WORK SPACES ON ERROR
+      CLAST = CSAVE
+      ILAST = ISAVE
+      LLAST = LSAVE
+      RLAST = RSAVE
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN21
+     +  (ERROR, TEXT,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   BPOINT, MAXR, MAXS, MULTI1, MULTI2, NAME, NTRVLS, OPTIM, QGRID,
+     +   RBOUND, SBOUND, SIZE, SKIP, STEP, WALL)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN21
+C
+C     BUILD A ONE DIMENSIONAL GRID
+C
+C     THE GRID IS BUILT FROM CONSECUTIVE SUB-GRIDS THAT HAVE SEPARATE
+C     CONSTRAINTS ON STEP SIZES AND STEP RATIOS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   ID*9, LABEL*80, MARK1*80, MARK2*80, MARK3*80, MARK4*80,
+     +   NAME*(*), STRING*80, WORD*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   APPROX, BPOINT, DELTA, DM1, DM2, DSUM, DWIDTH, END1, END2,
+     +   ENDS, EPS, EXACT, LONG, M1, M2, MAXR, MAXS, MULTI1, MULTI2,
+     +   NEXT, RATIO, RBOUND, RWORK, SBOUND, SHORT, SMIN, STEP, STEP1,
+     +   STEP2, SUM, TEMP, TOTAL, VALUE, WIDTH, X
+      EXTERNAL
+     +   RESERV, SQUEEZ, TWEPS
+      INTEGER
+     +   COUNT, FIRST, J, LAST, LENGTH, LIMIT, NOTE1, NOTE2, NOTE3,
+     +   NOTE4, NTRVL, NTRVLS, POINT, QGRID, QLEFT, QRIGHT, RLAST, RMAX,
+     +   RSAVE, RSIZE, SIZE, TEXT, WALL, WALL1, WALL2, WALL3, WALLS,
+     +   WMAX
+      INTRINSIC
+     +   ABS, MAX, MIN, REAL, SQRT
+      LOGICAL
+     +   ERROR, FINISH, FOUND, GOOD, HALF1, HALF2, OPTIM, SAVE, SKIP
+
+      PARAMETER (ID = 'OVEN21:  ')
+      PARAMETER (QLEFT = - 1, QRIGHT = 0)
+      PARAMETER (LIMIT = 100)
+
+C     WMAX LIMITS THE NUMBER OF WALLS (THAT IS, THE NUMBER OF POINTS IN
+C     THE GRID) TO GUARD AGAINST LONG SEARCHES.  IT CAN BE ENLARGED AS
+C     NEEDED.
+      PARAMETER (WMAX = 100)
+
+      DIMENSION
+     +   BPOINT(0 : NTRVLS), LABEL(2, 3), MAXR(NTRVLS), MAXS(NTRVLS),
+     +   MULTI1(NTRVLS), MULTI2(NTRVLS), NAME(0 : NTRVLS),
+     +   RBOUND(NTRVLS), RWORK(RSIZE), SBOUND(NTRVLS), SKIP(0 : NTRVLS),
+     +   STEP(0 : NTRVLS), WALL(3, NTRVLS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SAVE THE LEVELS OF THE WORK SPACES.
+
+      RSAVE = RLAST
+
+C///  CHECK THE DIMENSIONAL ARGUMENTS.
+
+      ERROR = .NOT. (0 .LT. NTRVLS .AND. 0 .LT. RSIZE)
+      IF (ERROR) GO TO 9101
+
+C///  CHECK THE ARGUMENTS.
+
+      NOTE1 = - 100
+      NOTE2 = - 100
+      NOTE3 = - 100
+      NOTE4 = - 100
+
+      DO 1010 NTRVL = 1, NTRVLS
+         ERROR = .NOT. (BPOINT(NTRVL + QLEFT)
+     +      .LT. BPOINT(NTRVL + QRIGHT))
+         IF (ERROR) GO TO 9102
+
+         ERROR = .NOT. (1.0 .LE. RBOUND(NTRVL))
+         IF (ERROR) GO TO 9103
+
+         ERROR = .NOT. (0.0 .LT. SBOUND(NTRVL))
+         IF (ERROR) GO TO 9104
+
+         STEP1 = STEP(NTRVL + QLEFT)
+         STEP2 = STEP(NTRVL + QRIGHT)
+
+         ERROR = .NOT. (0.0 .LT. MIN (STEP1, STEP2))
+         IF (ERROR) GO TO 9105
+
+         ERROR = .NOT. (MAX (STEP1, STEP2) .LE. SBOUND(NTRVL))
+         IF (ERROR) GO TO 9106
+1010  CONTINUE
+
+C///  FORM THE SQUARE ROOT OF MACHINE EPSILON TO USE AS THE PERTURBATION
+C///  FOR FUZZY COMPARISONS.
+
+      CALL TWEPS (EPS)
+      EPS = SQRT (EPS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     TOP OF THE LOOP OVER THE INTERVALS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      DO 3010 NTRVL = 1, NTRVLS
+         FOUND = .FALSE.
+
+C///  COPY THE INTERVAL PARAMETERS.
+
+      STEP1 = STEP(NTRVL + QLEFT)
+      STEP2 = STEP(NTRVL + QRIGHT)
+      HALF1 = SKIP(NTRVL + QLEFT)
+      HALF2 = SKIP(NTRVL + QRIGHT)
+      TOTAL = BPOINT(NTRVL + QRIGHT) - BPOINT(NTRVL + QLEFT)
+
+C///  DETERMINE THE CONTRIBUTIONS OF THE END CELLS.
+
+      IF (HALF1) THEN
+         END1 = 0.5 * STEP1
+      ELSE
+         END1 = STEP1
+      END IF
+
+      IF (HALF2) THEN
+         END2 = 0.5 * STEP2
+      ELSE
+         END2 = STEP2
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     NO WALLS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IF (TOTAL .LE. (1.0 + EPS) * MAX (END1, END2)) THEN
+         ERROR = .NOT. (
+     +      (.NOT. HALF1 .OR. .NOT. HALF2) .AND.
+     +      (HALF1 .OR. ABS (END2 - TOTAL) .LE. EPS * TOTAL) .AND.
+     +      (HALF2 .OR. ABS (END1 - TOTAL) .LE. EPS * TOTAL))
+C     +      ABS (END1 - END2) .LE. EPS * MIN (END1, END2))
+         IF (ERROR) GO TO 9107
+
+         FOUND = .TRUE.
+         MAXS(NTRVL) = MAX (STEP1, STEP2)
+         WALL(1, NTRVL) = 0
+         WALL(2, NTRVL) = 0
+         WALL(3, NTRVL) = 0
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     SOME WALLS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      ELSE
+
+C///  DETERMINE THE CONTRIBUTION OF THE END CELLS.
+
+      ENDS = END1 + END2
+
+C///  CHECK THAT THE INTERVAL IS NOT TOO SMALL.
+
+      ERROR = .NOT. (ENDS .LE. (1.0 + EPS) * TOTAL)
+      IF (ERROR) GO TO 9107
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ONE WALL.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      LONG = MAX (STEP1, STEP2)
+      SHORT = MIN (STEP1, STEP2)
+      M1 = STEP2 / STEP1
+      M2 = M1
+      RATIO = MAX (M1, 1.0 / M1, M2, 1.0 / M2)
+
+      SUM = ENDS
+
+C     CHECK TOTAL LENGTH, SHORTEST STEP, LONGEST STEP, AND RATIO.
+
+      GOOD = ABS (SUM - TOTAL) .LE. EPS * TOTAL
+     +   .AND. (1.0 - EPS) * MIN (STEP1, STEP2) .LE. SHORT
+     +   .AND. LONG .LE. (1.0 + EPS) * SBOUND(NTRVL)
+     +   .AND. 1.0 - EPS .LE. RATIO
+     +   .AND. RATIO .LE. (1.0 + EPS) * RBOUND(NTRVL)
+
+      IF (GOOD) THEN
+         FOUND = .TRUE.
+         MAXS(NTRVL) = LONG
+         MAXR(NTRVL) = RATIO
+         MULTI1(NTRVL) = M1
+         MULTI2(NTRVL) = M2
+         WALL(1, NTRVL) = 1
+         WALL(2, NTRVL) = 0
+         WALL(3, NTRVL) = 0
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) SEARCH OVER INCREASING NUMBERS OF WALLS FOR A GOOD GRID.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      ELSE
+
+C///  DETERMINE A LOWER BOUND ON THE NUMBER OF WALLS.
+
+      SUM = ENDS
+      TEMP = MAX (STEP1, STEP2)
+      WALLS = 1
+2010  CONTINUE
+      IF (SUM .LT. (1.0 - EPS) * TOTAL) THEN
+         TEMP = MIN (TEMP * RBOUND(NTRVL), SBOUND(NTRVL))
+         WALLS = WALLS + 1
+         SUM = SUM + TEMP
+         GO TO 2010
+      END IF
+      WALLS = MAX (2, WALLS)
+
+C///  TOP OF THE LOOP OVER THE NUMBER OF INTERIOR WALLS.
+
+2020  CONTINUE
+
+C///  CHECK WHETHER THE NUMBER OF WALLS IS EVEN FEASIBLE.
+
+      SUM = ENDS + REAL (WALLS - 1) * MIN (STEP1, STEP2)
+
+      IF (SUM .LT. (1.0 + EPS) * TOTAL) THEN
+
+C///  TOP OF THE LOOP OVER ALL PARTITIONS OF THE NUMBER OF WALLS.
+
+      DO 2070 WALL1 = 1, WALLS
+         DO 2070 WALL3 = 1, WALLS - WALL1
+            WALL2 = WALLS - WALL1 - WALL3
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     APPLY THE NEWTON ALGORITHM TO DETERMINE THE GRID.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  GUESS THE INDEPENDENT VARIABLE.
+
+      X = 1.0
+
+C///  TOP OF THE LOOP OVER THE NEWTON STEPS.
+
+      COUNT = 0
+2030  CONTINUE
+
+C///  FORM THE MULTIPLIERS AND THEIR DERIVATIVES.
+
+C     THE FIRST MULTIPLIER IS THE INDEPENDENT VARIABLE.  THE SECOND IS
+C     CHOSEN SO THE FINAL STEP LENGTH IS STEP2.
+
+      M1 = X
+      DM1 = 1.0
+
+      M2 = (STEP2 / (STEP1 * M1 ** WALL1)) ** (1.0 / REAL (WALL3))
+      DM2 = (- REAL (WALL1) / REAL (WALL3)) * (M2 / M1) * DM1
+
+C///  SUM THE STEP WIDTHS AND THE DERIVATIVES OF THE STEP WIDTHS.  FIND
+C///  THE LONGEST AND SHORTEST STEPS.
+
+      DWIDTH = 0.0
+      WIDTH = STEP1
+
+      DSUM = 0.0
+      SUM = END1
+
+      LONG = STEP1
+      SHORT = STEP1
+
+      DO 2040 J = 1, WALL1
+         DWIDTH = DWIDTH * M1 + WIDTH * DM1
+         WIDTH = WIDTH * M1
+
+         DSUM = DSUM + DWIDTH
+         SUM = SUM + WIDTH
+
+         LONG = MAX (WIDTH, LONG)
+         SHORT = MIN (WIDTH, SHORT)
+2040  CONTINUE
+
+      DSUM = DSUM + WALL2 * DWIDTH
+      SUM = SUM + WALL2 * WIDTH
+
+      DO 2050 J = 1, WALL3 - 1
+         DWIDTH = DWIDTH * M2 + WIDTH * DM2
+         WIDTH = WIDTH * M2
+
+         DSUM = DSUM + DWIDTH
+         SUM = SUM + WIDTH
+
+         LONG = MAX (WIDTH, LONG)
+         SHORT = MIN (WIDTH, SHORT)
+2050  CONTINUE
+
+      SUM = SUM + END2
+      LONG = MAX (STEP2, LONG)
+      SHORT = MIN (STEP2, SHORT)
+
+C///  TEST THE RESIDUAL FOR COMPLETION OF THE NEWTON ALGORITHM.
+
+      FINISH = ABS (SUM - TOTAL) .LE. EPS * ABS (TOTAL)
+
+      IF (FINISH .OR. COUNT .EQ. LIMIT) GO TO 2060
+
+C///  FORM THE NEWTON STEP.
+
+      ERROR = DSUM .EQ. 0.0
+      IF (ERROR) GO TO 9201
+      DELTA = (SUM - TOTAL) / DSUM
+
+C///  TEST THE CHANGE FOR COMPLETION OF THE NEWTON ALGORITHM.
+
+      FINISH = ABS (DELTA) .LE. EPS * ABS (X)
+
+C///  TAKE THE NEWTON STEP.
+
+      COUNT = COUNT + 1
+
+      IF (X - DELTA .LE. 0.0) THEN
+         X = 0.5 * X
+      ELSE
+         X = X - DELTA
+      END IF
+
+C///  BOTTOM OF THE LOOP OVER THE NEWTON STEPS.
+
+      IF (.NOT. FINISH .AND. COUNT .LT. LIMIT) GO TO 2030
+2060  CONTINUE
+
+      ERROR = .NOT. FINISH
+      IF (ERROR) GO TO 9202
+
+C///  FORM THE GRID RATIO.
+
+      RATIO = MAX (M1, 1.0 / M1, M2, 1.0 / M2)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     EXAMINE THE GRID AND SAVE THE BEST.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C     CHECK TOTAL LENGTH, SHORTEST STEP, LONGEST STEP, AND RATIO.
+
+      GOOD = ABS (SUM - TOTAL) .LE. EPS * TOTAL
+     +   .AND. (1.0 - EPS) * MIN (STEP1, STEP2) .LE. SHORT
+     +   .AND. LONG .LE. (1.0 + EPS) * SBOUND(NTRVL)
+     +   .AND. 1.0 - EPS .LE. RATIO
+     +   .AND. RATIO .LE. (1.0 + EPS) * RBOUND(NTRVL)
+
+      IF (GOOD) THEN
+         IF (FOUND) THEN
+            SAVE = LONG .LT. MAXS(NTRVL) .OR.
+     +         (LONG .LE. (1.0 + EPS) * SMIN .AND.
+     +         RATIO .LT. MAXR(NTRVL))
+         ELSE
+            FOUND = .TRUE.
+            SAVE = .TRUE.
+            SMIN = LONG
+         END IF
+
+         IF (SAVE) THEN
+            MAXS(NTRVL) = LONG
+            MAXR(NTRVL) = RATIO
+            MULTI1(NTRVL) = M1
+            MULTI2(NTRVL) = M2
+            SMIN = MIN (SMIN, LONG)
+            WALL(1, NTRVL) = WALL1
+            WALL(2, NTRVL) = WALL2
+            WALL(3, NTRVL) = WALL3
+         END IF
+
+C        IF THE GRID IS UNIFORM OR NEEDN'T BE OPTIMAL, THEN EXIT
+         IF (RATIO .LE. 1.0 + EPS .OR. .NOT. OPTIM) GO TO 2080
+      END IF
+
+C///  BOTTOM OF THE LOOP OVER ALL PARTITIONS OF THE NUMBER OF WALLS.
+
+2070     CONTINUE
+2080     CONTINUE
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     BOTTOM OF THE LOOP OVER THE NUMBER OF WALLS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+            IF (.NOT. FOUND) THEN
+               WALLS = WALLS + 1
+               ERROR = .NOT. (WALLS .LE. WMAX)
+               IF (ERROR) GO TO 9203
+               GO TO 2020
+            END IF
+         END IF
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) BOTTOM OF THE LOOP OVER THE INTERVALS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      ERROR = .NOT. FOUND
+      IF (ERROR) GO TO 9301
+
+3010  CONTINUE
+
+C///  DETERMINE THE SIZE OF THE GRID.
+
+      SIZE = 0
+
+      DO 3020 J = 0, NTRVLS
+         IF (.NOT. SKIP(J)) SIZE = SIZE + 1
+3020  CONTINUE
+
+      DO 3030 J = 1, NTRVLS
+         SIZE = SIZE + WALL(1, J) + WALL(2, J) + WALL(3, J)
+3030  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) FORM THE GRID.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  RESERVE SPACE FOR THE GRID.
+
+      CALL RESERV
+     +   (ERROR, TEXT, .TRUE., RLAST, RMAX, RSIZE, 'QGRID', SIZE, QGRID)
+      IF (ERROR) GO TO 9401
+
+      FIRST = QGRID
+      LAST = QGRID + SIZE - 1
+
+C///  INITIAL BOUNDARY POINT.
+
+      POINT = FIRST
+
+      IF (SKIP(0)) THEN
+         VALUE = BPOINT(0) - 0.5 * STEP(0)
+      ELSE
+         VALUE = BPOINT(0)
+         RWORK(POINT) = VALUE
+         POINT = POINT + 1
+      END IF
+
+C///  TOP OF THE LOOP OVER THE INTERVALS.
+
+      DO 4040 NTRVL = 1, NTRVLS
+
+C///  PLACE THE POINTS IN THE INTERVAL.
+
+      WIDTH = STEP(NTRVL + QLEFT)
+
+      DO 4010 J = 1, WALL(1, NTRVL)
+         VALUE = VALUE + WIDTH
+         RWORK(POINT) = VALUE
+         POINT = POINT + 1
+         WIDTH = WIDTH * MULTI1(NTRVL)
+4010  CONTINUE
+
+      DO 4020 J = 1, WALL(2, NTRVL)
+         VALUE = VALUE + WIDTH
+         RWORK(POINT) = VALUE
+         POINT = POINT + 1
+4020  CONTINUE
+
+      DO 4030 J = 1, WALL(3, NTRVL)
+         VALUE = VALUE + WIDTH
+         RWORK(POINT) = VALUE
+         POINT = POINT + 1
+         WIDTH = WIDTH * MULTI2(NTRVL)
+4030  CONTINUE
+
+C///  BOUNDARY POINT.
+
+      IF (.NOT. SKIP(NTRVL + QRIGHT)) THEN
+         VALUE = BPOINT(NTRVL + QRIGHT)
+         RWORK(POINT) = VALUE
+         POINT = POINT + 1
+      END IF
+
+C///  BOTTOM OF THE LOOP OVER THE INTERVALS.
+
+4040  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (5) CHECK THE GRID.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ORDER.
+
+      DO 5010 POINT = FIRST, LAST - 1
+         ERROR = .NOT. (RWORK(POINT) .LT. RWORK(POINT + 1))
+         IF (ERROR) GO TO 9501
+5010  CONTINUE
+
+C///  TOP OF THE LOOP TO CHECK BOUNDARY POINTS.
+
+      POINT = FIRST
+      DO 5020 J = 0, NTRVLS
+C        THE GRID POINT LIES EITHER ON OR RIGHT OF THE BOUNDARY POINT
+         IF (0 .LT. J) THEN
+            IF (.NOT. SKIP(J + QLEFT)) POINT = POINT + 1
+            POINT = POINT + WALL(1, J) + WALL(2, J) + WALL(3, J)
+         END IF
+
+C///  CHECK SKIPPED BOUNDARY POINTS.
+
+      IF (SKIP(J)) THEN
+         IF (FIRST .LT. POINT) THEN
+            EXACT = BPOINT(J) - 0.5 * STEP(J)
+            APPROX = RWORK(POINT - 1)
+            ERROR = .NOT. (ABS(APPROX - EXACT)
+     +         .LE. MAX (EPS, EPS * EXACT))
+            IF (ERROR) GO TO 9502
+         END IF
+         IF (POINT .LE. LAST) THEN
+            EXACT = BPOINT(J) + 0.5 * STEP(J)
+            APPROX = RWORK(POINT)
+            ERROR = .NOT. (ABS(APPROX - EXACT)
+     +         .LE. MAX (EPS, EPS * EXACT))
+            IF (ERROR) GO TO 9502
+         END IF
+
+C///  CHECK NOT-SKIPPED BOUNDARY POINTS.
+
+      ELSE
+         IF (FIRST .LT. POINT) THEN
+            EXACT = BPOINT(J) - STEP(J)
+            APPROX = RWORK(POINT - 1)
+            ERROR = .NOT. (ABS(APPROX - EXACT)
+     +         .LE. MAX (EPS, EPS * EXACT))
+            IF (ERROR) GO TO 9502
+         END IF
+         IF (POINT .LT. LAST) THEN
+            EXACT = BPOINT(J) + STEP(J)
+            APPROX = RWORK(POINT + 1)
+            ERROR = .NOT. (ABS(APPROX - EXACT)
+     +         .LE. MAX (EPS, EPS * EXACT))
+            IF (ERROR) GO TO 9502
+         END IF
+      END IF
+
+C///  BOTTOM OF THE LOOP TO CHECK BOUNDARY POINTS.
+
+5020  CONTINUE
+
+C///  TOP OF THE LOOP OVER THE INTERVALS.
+
+      IF (SKIP(0)) THEN
+         POINT = FIRST - 1
+         NEXT = STEP(0)
+      ELSE
+         POINT = FIRST
+         NEXT = RWORK(FIRST + 1) - RWORK(FIRST)
+      END IF
+
+      DO 5040 NTRVL = 1, NTRVLS
+C        THE GRID POINT LIES EITHER ON OR BEFORE THE BOUNDARY POINT
+
+C///  GATHER STATISTICS FOR THE INTERVAL.
+
+      LONG = NEXT
+      SHORT = NEXT
+      RATIO = 1.0
+      DO 5030 J = 1, WALL(1, NTRVL) + WALL(2, NTRVL) + WALL(3, NTRVL)
+         POINT = POINT + 1
+
+         WIDTH = NEXT
+         IF (POINT + 1 .LE. LAST) THEN
+            NEXT = RWORK(POINT + 1) - RWORK(POINT)
+         ELSE
+            NEXT = STEP (NTRVL + QRIGHT)
+         END IF
+
+         LONG = MAX (LONG, NEXT)
+         SHORT = MIN (SHORT, NEXT)
+         RATIO = MAX (RATIO, WIDTH / NEXT, NEXT / WIDTH)
+5030  CONTINUE
+
+      MAXR(NTRVL) = RATIO
+      MAXS(NTRVL) = LONG
+
+C///  CHECK THE SHORTEST STEP.
+
+      ERROR = .NOT.
+     +   ((1.0 - EPS) * STEP(NTRVL + QLEFT) .LE. SHORT .OR.
+     +   (1.0 - EPS) * STEP(NTRVL + QRIGHT) .LE. SHORT)
+      IF (ERROR) GO TO 9503
+
+C///  CHECK THE LONGEST STEP.
+
+      ERROR = .NOT. (LONG .LE. (1.0 + EPS) * SBOUND(NTRVL))
+      IF (ERROR) GO TO 9504
+
+C///  CHECK THE RATIO.
+
+      ERROR = .NOT. (RATIO .LE. (1.0 + EPS) * RBOUND(NTRVL))
+      IF (ERROR) GO TO 9505
+
+C///  BOTTOM OF THE LOOP OVER THE INTERVALS.
+
+         IF (.NOT. SKIP(NTRVL + QRIGHT)) POINT = POINT + 1
+5040  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (6) EPILOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  PRINT THE GRID CHARACTERISTICS.
+
+C                    123456789_123456789_123456789_1
+C                    123456789_123  123456789_123456
+      LABEL(1, 1) = '                               '
+      LABEL(1, 2) = '     BOUNDARY  TYPE OF BOUNDARY'
+      LABEL(1, 3) = '-------------  ----------------'
+
+C                    123456789_123456789_123456789_12
+C                      123456789_  123456789_  123456
+      LABEL(2, 1) = '     LONGEST     LARGEST        '
+      LABEL(2, 2) = '        STEP       RATIO  POINTS'
+      LABEL(2, 3) = '  ----------  ----------  ------'
+
+      IF (0 .LT. TEXT) THEN
+         WRITE (TEXT, 10001) LABEL
+
+         DO 6010 J = 0, NTRVLS
+            IF (0 .LT. J) THEN
+               WRITE (TEXT, 10002) MAXS(J), MAXR(J),
+     +            WALL(1, J) + WALL(2, J) + WALL(3, J)
+            END IF
+
+            STRING = NAME(J)
+            CALL SQUEEZ (LENGTH, STRING)
+            IF (16 .LT. LENGTH) STRING (14 : 16) = '...'
+
+            IF (SKIP(J) .AND. J .NE. 0 .AND. J .NE. NTRVLS) THEN
+               WRITE (TEXT, 10003) BPOINT(J), STRING, 0
+            ELSE
+               WRITE (TEXT, 10003) BPOINT(J), STRING, 1
+            END IF
+6010     CONTINUE
+
+         WRITE (STRING, '(I10)') SIZE
+         CALL SQUEEZ (LENGTH, STRING)
+         WRITE (TEXT, 10004) STRING (1 : LENGTH)
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (7) PRINT THE GRID PARAMETERS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+7010  CONTINUE
+
+C                    123456789_123456789_123456789_123
+C                    123456789_123  123456789_  123456
+      LABEL(1, 1) = '                          STEP TO'
+      LABEL(1, 2) = '     BOUNDARY  AND NAME   OR OVER'
+      LABEL(1, 3) = '-------------  ---------  -------'
+
+C                    123456789_123456789_123456789_123456
+C                      123456789_  123456789_  123456789_
+      LABEL(2, 1) = '   STEP SIZE    LIMIT ON    LIMIT ON'
+      LABEL(2, 2) = '    AT POINT   STEP SIZE  STEP RATIO'
+      LABEL(2, 3) = '  ----------  ----------  ----------'
+
+      IF (0 .LT. TEXT) THEN
+         WRITE (TEXT, 10005) LABEL
+         DO 7020 J = 0, NTRVLS
+            MARK1 = ' '
+            MARK2 = ' '
+            MARK3 = ' '
+            MARK4 = ' '
+            IF (J .EQ. NOTE1 + QLEFT .OR. J .EQ. NOTE1 + QRIGHT)
+     +         MARK1 = '*'
+            IF (J .EQ. NOTE2) MARK2 = '*'
+            IF (J .EQ. NOTE3) MARK3 = '*'
+            IF (J .EQ. NOTE4) MARK4 = '*'
+
+            IF (0 .LT. J) THEN
+               WRITE (TEXT, 10006) SBOUND(J), MARK3, RBOUND(J), MARK2
+            END IF
+
+            STRING = NAME(J)
+            CALL SQUEEZ (LENGTH, STRING)
+            IF (10 .LT. LENGTH) STRING (8 : 10) = '...'
+
+            IF (SKIP(J) .AND. J .NE. 0 .AND. J .NE. NTRVLS) THEN
+               WORD = '  OVER'
+            ELSE
+               WORD = '    TO'
+            END IF
+
+            WRITE (TEXT, 10007)
+     +         BPOINT(J), MARK1, STRING, WORD, STEP(J), MARK4
+7020     CONTINUE
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     INFORMATIVE MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     + (/(10X, A31, A32))
+
+10002 FORMAT
+     +   (41X, 2X, F10.5, 2X, F10.5, 2X, I6)
+
+10003 FORMAT
+     +   (10X, F13.7, 2X, A16, 26X, I6)
+
+10004 FORMAT
+     +  (/10X, 'THE GRID HAS ', A, ' POINTS.')
+
+10005 FORMAT
+     +  (/10X, 'THE GRID PARAMETERS (* MARKS TROUBLE):'
+     + //(10X, A33, A36))
+
+10006 FORMAT
+     +   (55X, 2X, F10.5, A1, 1X, F10.5, A1)
+
+10007 FORMAT
+     +   (10X, F13.7, A1, 1X, A10, 2X, A6, 2X, F10.5, A1)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID, NTRVLS, RSIZE
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID
+      NOTE1 = NTRVL
+      GO TO 7010
+
+9103  IF (0 .LT. TEXT) WRITE (TEXT, 99103) ID
+      NOTE2 = NTRVL
+      GO TO 7010
+
+9104  IF (0 .LT. TEXT) WRITE (TEXT, 99104) ID
+      NOTE3 = NTRVL
+      GO TO 7010
+
+9105  IF (0 .LT. TEXT) WRITE (TEXT, 99105) ID
+      IF (.NOT. (0.0 .LT. STEP2)) NOTE4 = NTRVL + QRIGHT
+      IF (.NOT. (0.0 .LT. STEP1)) NOTE4 = NTRVL + QLEFT
+      GO TO 7010
+
+9106  IF (0 .LT. TEXT) WRITE (TEXT, 99106) ID
+      NOTE3 = NTRVL
+      IF (.NOT. (STEP2 .LE. SBOUND(NTRVL))) NOTE4 = NTRVL + QRIGHT
+      IF (.NOT. (STEP1 .LE. SBOUND(NTRVL))) NOTE4 = NTRVL + QLEFT
+      GO TO 7010
+
+9107  IF (0 .LT. TEXT) WRITE (TEXT, 99107) ID
+      NOTE1 = NTRVL
+      GO TO 7010
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID, DSUM
+      GO TO 99999
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID
+      GO TO 99999
+
+9203  IF (0 .LT. TEXT) WRITE (TEXT, 99203) ID,
+     +   WMAX, BPOINT(NTRVL + QLEFT), BPOINT(NTRVL + QRIGHT)
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID,
+     +   BPOINT(NTRVL + QLEFT), BPOINT(NTRVL + QRIGHT)
+      GO TO 7010
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID
+      GO TO 99999
+
+9501  IF (0 .LT. TEXT) WRITE (TEXT, 99501) ID
+      GO TO 99999
+
+9502  IF (0 .LT. TEXT) WRITE (TEXT, 99502) ID
+      GO TO 99999
+
+9503  IF (0 .LT. TEXT) WRITE (TEXT, 99503) ID,
+     +   NTRVL, STEP(NTRVL + QLEFT), STEP(NTRVL + QRIGHT), SHORT
+      GO TO 99999
+
+9504  IF (0 .LT. TEXT) WRITE (TEXT, 99504) ID
+      GO TO 99999
+
+9505  IF (0 .LT. TEXT) WRITE (TEXT, 99505) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  NTRVLS'
+     +   /10X, I10, '  RSIZE')
+
+99102 FORMAT
+     +   (/1X, A9, 'ERROR.  THE BOUNDARY POINTS ARE OUT OF ORDER.')
+
+99103 FORMAT
+     +   (/1X, A9, 'ERROR.  THE STEP RATIO LIMITS MUST BE AT LEAST 1.')
+
+99104 FORMAT
+     +   (/1X, A9, 'ERROR.  THE STEP SIZE LIMITS MUST BE POSITIVE.')
+
+99105 FORMAT
+     +   (/1X, A9, 'ERROR.  THE STEP SIZES MUST BE POSITIVE.')
+
+99106 FORMAT
+     +   (/1X, A9, 'ERROR.  THE STEP SIZE AT A POINT EXCEEDS THE LIMIT'
+     +   /10X, 'FOR AN ADJOINING INTERVAL.')
+
+99107 FORMAT
+     +   (/1X, A9, 'ERROR.  TWO POINTS HAVE STEPS TOO LARGE FOR THE'
+     +   /10X, 'DISTANCE SEPARATING THEM.')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  THE DERIVATIVE IN THE NEWTON ALGORITHM'
+     +   /10X, 'VANISHES.')
+
+99202 FORMAT
+     +   (/1X, A9, 'ERROR.  THE NEWTON ALGORITHM DID NOT FINISH.')
+
+99203 FORMAT
+     +   (/1X, A9, 'ERROR.  AN ACCEPTABLE GRID FOR A SUBINTERVAL NEEDS'
+     +   /10X, 'TOO MANY POINTS.  THE FOLLOWING ARBITRARY LIMIT, WMAX,'
+     +   /10X, 'HAS BEEN SET TO AVOID RUN-AWAY SEARCHES.'
+     +  //10X, I20, '  WMAX'
+     +  //10X, F20.10, '  LEFT BOUNDARY'
+     +   /10X, F20.10, '  RIGHT BOUNDARY')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  NO ACCEPTABLE GRID WAS FOUND FOR A'
+     +   /10X, 'SUBINTERVAL.'
+     +  //10X, F20.10, '  LEFT BOUNDARY'
+     +   /10X, F20.10, '  RIGHT BOUNDARY')
+
+99401 FORMAT
+     +   (/1X, A9, 'ERROR.  RESERV FAILS.')
+
+99501 FORMAT
+     +   (/1X, A9, 'ERROR.  THE COMPUTED GRID IS OUT OF ORDER.')
+
+99502 FORMAT
+     +   (/1X, A9, 'ERROR.  THE COMPUTED GRID MISPLACES A BOUNDARY'
+     +   /10X, 'POINT''S NEIGHBORS.')
+
+99503 FORMAT
+     +   (/1X, A9, 'ERROR.  A STEP IN THE COMPUTED GRID IS TOO SHORT.'
+     +  //10X, I20, '  INTERVAL'
+     +   /10X, F20.10, '  STEP AT LEFT BOUNDARY'
+     +   /10X, F20.10, '  SHORTEST STEP BETWEEN BOUNDARIES'
+     +   /10X, F20.10, '  STEP AT RIGHT BOUNDARY')
+
+99504 FORMAT
+     +   (/1X, A9, 'ERROR.  A STEP IN THE COMPUTED GRID IS TOO LONG.')
+
+99505 FORMAT
+     +   (/1X, A9, 'ERROR.  A STEP RATIO IN THE COMPUTED GRID IS TOO'
+     +   /10X, 'LARGE.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN22
+     +  (ERROR, TEXT,
+     +   BPOINT, DEPTH, INJECS, INLOC, NAME, NMAX, NTRVLS, RBOUND,
+     +   SBOUND, SKIP, SPACE, STEP, WAFERS, WFIRST, WLAST, ZINJEC,
+     +   ZOVEN, ZRATIO, ZSTEP)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN22
+C
+C     PREPARE TO BUILD THE AXIAL GRID
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER ID*9, NAME*(*)
+      INTEGER INDEX, INJEC, INJECS, J, NMAX, NTRVL, NTRVLS, TEXT, WAFERS
+      LOGICAL ERROR, SKIP
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   BPOINT, DEPTH, INLOC, RBOUND, SBOUND, SPACE, STEP, TEMP,
+     +   WFIRST, WLAST, ZINJEC, ZOVEN, ZRATIO, ZSTEP
+
+      PARAMETER (ID = 'OVEN22:  ')
+
+      DIMENSION
+     +   BPOINT(0 : NMAX), INLOC(INJECS), NAME(0 : NMAX), RBOUND(NMAX),
+     +   SBOUND(NMAX), SKIP(0 : NMAX), STEP(0 : NMAX), ZRATIO(3),
+     +   ZSTEP(3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE DIMENSIONAL ARGUMENTS.
+
+      ERROR = .NOT. (0 .LT. INJECS .AND. 0 .LT. NMAX)
+      IF (ERROR) GO TO 9101
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) PACK THE ARRAYS FOR OVEN21.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  PACK THE BOAT AND OVEN BOUNDARIES.
+
+      ERROR = .NOT. (0.0 .LT. WFIRST .AND. WFIRST .LT. WLAST .AND.
+     +   WLAST .LT. DEPTH)
+      IF (ERROR) GO TO 9201
+
+      NTRVLS = 3
+      ERROR = .NOT. (NTRVLS .LE. NMAX)
+      IF (ERROR) GO TO 9202
+
+      BPOINT(0) = 0.0
+      BPOINT(1) = WFIRST
+      BPOINT(2) = WLAST
+      BPOINT(3) = DEPTH
+
+      NAME(0) = 'OVEN END'
+      NAME(1) = 'END WAFER'
+      NAME(2) = 'END WAFER'
+      NAME(3) = 'OVEN OUTFLOW END'
+
+      SBOUND(1) = ZSTEP(1)
+      SBOUND(2) = ZSTEP(2)
+      SBOUND(3) = ZSTEP(3)
+
+      SKIP(0) = .FALSE.
+      SKIP(1) = .TRUE.
+      SKIP(2) = .TRUE.
+      SKIP(3) = .FALSE.
+
+      RBOUND(1) = ZRATIO(1)
+      RBOUND(2) = ZRATIO(2)
+      RBOUND(3) = ZRATIO(3)
+
+      STEP(0) = ZOVEN
+      STEP(1) = SPACE
+      STEP(2) = SPACE
+      STEP(3) = ZOVEN
+
+C///  PACK THE INJECTORS.
+
+      DO 2030 INJEC = 1, INJECS
+         ERROR = .NOT. (0.0 .LE. INLOC(INJEC) .AND.
+     +      INLOC(INJEC) .LE. DEPTH)
+         IF (ERROR) GO TO 9203
+
+         IF (INLOC(INJEC) .EQ. BPOINT(0)) THEN
+            IF (NAME(0) .EQ. 'END & INJECTOR') THEN
+               NAME(0) = 'END & INJECTORS'
+            ELSE
+               NAME(0) = 'END & INJECTOR'
+            END IF
+            STEP(0) = MIN (ZOVEN, ZINJEC)
+         ELSE IF (INLOC(INJEC) .EQ. BPOINT(NTRVLS)) THEN
+            IF (NAME(NTRVLS) .EQ. 'OUTFLOW & INJECTOR') THEN
+               NAME(NTRVLS) = 'OUTFLOW & INJECTORS'
+            ELSE
+               NAME(NTRVLS) = 'OUTFLOW & INJECTOR'
+            END IF
+            STEP(NTRVLS) = MIN (ZOVEN, ZINJEC)
+         ELSE
+C           REPOSITION INJECTORS AMONG WAFERS MIDWAY BETWEEN WAFERS
+            IF (WFIRST .LE. INLOC(INJEC)
+     +         .AND. INLOC(INJEC) .LE. WLAST) THEN
+               TEMP = WFIRST + SPACE * (0.5 + MAX (0, MIN (WAFERS - 1,
+     +            NINT ((INLOC(INJEC) - WFIRST) / SPACE - 0.5))))
+            ELSE
+               TEMP = INLOC(INJEC)
+            END IF
+
+            INDEX = NTRVLS
+            DO 2010 NTRVL = NTRVLS, 1, - 1
+               IF (TEMP .LE. BPOINT(NTRVL)) INDEX = NTRVL
+2010        CONTINUE
+
+            IF (TEMP .EQ. BPOINT(INDEX)) THEN
+               NAME(INDEX) = 'INJECTORS'
+            ELSE
+               ERROR = .NOT. (NTRVLS .LT. NMAX)
+               IF (ERROR) GO TO 9202
+
+               DO 2020 J = NTRVLS, INDEX, - 1
+                  BPOINT(J + 1) = BPOINT(J)
+                  NAME(J + 1) = NAME(J)
+                  RBOUND(J + 1) = RBOUND(J)
+                  SBOUND(J + 1) = SBOUND(J)
+                  SKIP(J + 1) = SKIP(J)
+                  STEP(J + 1) = STEP(J)
+2020           CONTINUE
+               NTRVLS = NTRVLS + 1
+
+               BPOINT(INDEX) = TEMP
+               NAME(INDEX) = 'INJECTOR'
+               SKIP(INDEX) = .FALSE.
+               IF (WFIRST .LE. TEMP .AND. TEMP .LE. WLAST) THEN
+                  STEP(INDEX) = SPACE
+               ELSE
+                  STEP(INDEX) = ZINJEC
+               END IF
+            END IF
+         END IF
+2030  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID, INJECS, NMAX
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID, 0.0, WFIRST, WLAST, DEPTH
+      GO TO 99999
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID, INJECS, NMAX
+      GO TO 99999
+
+9203  IF (0 .LT. TEXT) WRITE (TEXT, 99203) ID,
+     +   0.0, DEPTH, (INLOC(INJEC), INJEC = 1, INJECS)
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  INJECS'
+     +   /10X, I10, '  NMAX')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  THE ENDS OF THE OVEN AND OF THE WAFER BOAT'
+     +   /10X, 'ARE OUT OF ORDER'
+     +  //10X, F20.10, '  OVEN END'
+     +   /10X, F20.10, '  END WAFER'
+     +   /10X, F20.10, '  OTHER END WAFER'
+     +   /10X, F20.10, '  OVEN OUTFLOW END')
+
+99202 FORMAT
+     +   (/1X, A9, 'ERROR.  THE SPACE FOR INTERVALS IS TOO SMALL.'
+     +  //10X, F20.10, '  INJECTORS'
+     +   /10X, F20.10, '  NMAX')
+
+99203 FORMAT
+     +   (/1X, A9, 'ERROR.  AN INJECTOR LIES BEFORE OR AFTER THE ENDS'
+     +   /10X, 'OF THE OVEN.'
+     +  //10X, F20.10, '  OVEN END'
+     +   /10X, F20.10, '  OVEN OUTFLOW END'
+     + //(10X, F20.10, '  INJECTOR LOCATION'))
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN23
+     +  (ERROR, TEXT,
+     +   CELLS, CMAP, CVOL, GASES, P01, P02, P03, P04, P05, P06, P07,
+     +   P08, P09, P10, P11, R, R10, R10SIZ, R11, R11SIZ, RLOC, RPNTS,
+     +   RTUBE, RWAFER, SAREA, SCOUNT, SINDEX, SITES, SMAGIC, SNMBR,
+     +   SPACE, SURFS, WALLS, WAREA, WCODE, WCOEFF, WCOUNT, WFIRST,
+     +   WINDEX, WLAST, WNMBR, Z, Z10, Z10SIZ, Z11, Z11SIZ, ZLOC, ZPNTS,
+     +   ZPNTS1, ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN23
+C
+C     PREPARE THE DATA STRUCTURE AND POINTERS
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   ID*9
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   CVOL, MAGIC1, MAGIC2, NUSSEL, PI, R, R1, R10, R11, R2, RADIUS,
+     +   RATIO, RLOC, RTUBE, RWAFER, SAREA, SMAGIC, SPACE, TEMP, WAREA,
+     +   WCOEFF, WFIRST, WLAST, Z, Z10, Z11, ZERO, ZLOC, ZSIZE
+      EXTERNAL
+     +   OVEN24
+      INTEGER
+     +   CELL, CELLS, CMAP, COUNT, ENTRY, GASES, INDEX, INDEX1, INDEX2,
+     +   NUMBER, P01, P02, P03, P04, P05, P06, P07, P08, P09, P10, P11,
+     +   QANNUL, QEXTRA, QINTRA, R10SIZ, R11SIZ, RADII, RPNT, RPNTS,
+     +   SCOUNT, SIDE, SINDEX, SITES, SNMBR, SURF, SURFS, TEXT, UINDEX,
+     +   WAFER, WALL, WALLS, WCODE, WCOUNT, WINDEX, WNMBR, Z10SIZ,
+     +   Z11SIZ, ZPNT, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      INTRINSIC
+     +   ABS, MAX, MIN, SIGN
+      LOGICAL
+     +   ERROR
+
+      PARAMETER (ID = 'OVEN23:  ')
+      PARAMETER (PI = 3.141592653589793238462643383279502884197169399D0)
+      PARAMETER (RADII = 6)
+
+C     CODES FOR WALL LOCATIONS
+      PARAMETER (QANNUL = 1, QEXTRA = 2, QINTRA = 3)
+
+      DIMENSION
+     +   CMAP(CELLS, WCOUNT), CVOL(CELLS), NUSSEL(RADII), P01(CELLS),
+     +   P02(SURFS), P03(SURFS), P04(WALLS, 2), P05(SURFS), P06(CELLS),
+     +   P07(2 * WALLS), P08(CELLS), P09(ZPNTS), P10(R10SIZ, Z10SIZ),
+     +   P11(R11SIZ, 2, ZPNTS2 + 1), R(RPNTS), R10(R10SIZ), R11(R11SIZ),
+     +   RADIUS(RADII), RLOC(SURFS), SAREA(SURFS), SINDEX(SCOUNT),
+     +   SMAGIC(SURFS), SNMBR(CELLS), WAREA(WALLS), WCOEFF(WALLS),
+     +   WINDEX(WCOUNT), WNMBR(CELLS), Z(ZPNTS), Z10(Z10SIZ),
+     +   Z11(ZPNTS2 + 1), ZLOC(SURFS), WCODE(WALLS)
+
+C*****PRECISION > DOUBLE
+      DATA RADIUS / 0.00D0, 0.05D0, 0.10D0, 0.25D0, 0.50D0, 1.00D0 /
+      DATA NUSSEL / 3.66D0, 4.06D0, 4.11D0, 4.23D0, 4.43D0, 4.86D0 /
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      DATA RADIUS / 0.00E0, 0.05E0, 0.10E0, 0.25E0, 0.50E0, 1.00E0 /
+C      DATA NUSSEL / 3.66E0, 4.06E0, 4.11E0, 4.23E0, 4.43E0, 4.86E0 /
+C*****END PRECISION > SINGLE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT. (
+     +   0 .LT. CELLS  .AND. 0 .LT. SCOUNT .AND. 0 .LT. WCOUNT .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. RPNTS  .AND. 0 .LT. SITES  .AND.
+     +   0 .LT. WALLS  .AND. 0 .LT. WCOUNT .AND. 0 .LT. ZPNTS)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT.
+     +  (ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3 .EQ. CELLS .AND.
+     +   ZPNTS1 + ZPNTS2 + ZPNTS3 .EQ. ZPNTS)
+      IF (ERROR) GO TO 9102
+
+      ERROR = .NOT. (2 .LE. MIN (ZPNTS1, ZPNTS2, ZPNTS3))
+      IF (ERROR) GO TO 9103
+
+C///  FORM THE MAGIC HEAT TRANSFER NUMBERS.
+
+C     SUBROUTINE OVEN24
+C    +   (ERROR, TEXT, N, X, X0, Y, Y0)
+
+      ZERO = 0.0
+
+      CALL OVEN24
+     +   (ERROR, TEXT, RADII, RADIUS, ZERO, NUSSEL, TEMP)
+      IF (ERROR) GO TO 9104
+
+      MAGIC1 = TEMP / (2.0 * RTUBE)
+
+      CALL OVEN24
+     +   (ERROR, TEXT, RADII, RADIUS, RWAFER / RTUBE, NUSSEL, TEMP)
+      IF (ERROR) GO TO 9104
+
+      MAGIC2 = TEMP / (2.0 * (RTUBE - RWAFER))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE THE DATA STRUCTURES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  TOP OF THE LOOP OVER THE CELLS.
+
+      CELL = 0
+      SURF = 0
+      WALL = 0
+      UINDEX = 1
+      DO 2050 ZPNT = 1, ZPNTS
+         INDEX1 = MAX (1, ZPNT - 1)
+         INDEX2 = MIN (ZPNTS, ZPNT + 1)
+         ZSIZE = 0.5 * (Z(INDEX2) - Z(INDEX1))
+         RATIO = ZSIZE / SPACE
+
+C///  END CELLS.
+
+      IF (ZPNT .EQ. 1 .OR. ZPNT .EQ. ZPNTS) THEN
+         CELL = CELL + 1
+         IF (CELL .LE. CELLS) THEN
+
+C           GAS
+            CVOL(CELL) = ZSIZE * PI * RTUBE ** 2
+            P01(CELL) = UINDEX
+            UINDEX = UINDEX + (2 + GASES)
+
+C           SURFACES
+            SNMBR(CELL) = 2
+            SURF = SURF + 1
+            IF (SURF .LE. SURFS) THEN
+               RLOC(SURF) = RTUBE
+               ZLOC(SURF) = Z(ZPNT)
+               P02(SURF) = CELL
+               P03(SURF) = UINDEX
+               P09(ZPNT) = SURF
+               SAREA(SURF) = ZSIZE * 2.0 * PI * RTUBE
+               SMAGIC(SURF) = MAGIC1
+               UINDEX = UINDEX + SITES
+            END IF
+            SURF = SURF + 1
+            IF (SURF .LE. SURFS) THEN
+               RLOC(SURF) = RTUBE
+               ZLOC(SURF) = Z(ZPNT)
+               P02(SURF) = CELL
+               P03(SURF) = UINDEX
+               SAREA(SURF) = PI * RTUBE ** 2
+               SMAGIC(SURF) = 0.0
+               UINDEX = UINDEX + SITES
+            END IF
+
+C           WALLS
+            IF (ZPNT .LT. ZPNTS) THEN
+               WALL = WALL + 1
+               IF (WALL .LE. WALLS) THEN
+                  WAREA(WALL) = PI * RTUBE ** 2
+                  WCODE(WALL) = QEXTRA
+                  WCOEFF(WALL) = 1.0 / (Z(ZPNT) - Z(ZPNT + 1))
+                  P04(WALL, 1) = CELL
+                  P04(WALL, 2) = - (CELL + 1)
+               END IF
+            END IF
+         END IF
+
+C///  CELLS BETWEEN OVEND ENDS AND BOAT ENDS.
+
+      ELSE IF ((1 .LT. ZPNT .AND. ZPNT .LT. ZPNTS1) .OR.
+     +   (ZPNTS1 + ZPNTS2 + 1 .LT. ZPNT .AND. ZPNT .LT. ZPNTS)) THEN
+         CELL = CELL + 1
+         IF (CELL .LE. CELLS) THEN
+
+C           GAS
+            CVOL(CELL) = ZSIZE * PI * RTUBE ** 2
+            P01(CELL) = UINDEX
+            UINDEX = UINDEX + (2 + GASES)
+
+C           SURFACES
+            SNMBR(CELL) = 1
+            SURF = SURF + 1
+            IF (SURF .LE. SURFS) THEN
+               RLOC(SURF) = RTUBE
+               ZLOC(SURF) = Z(ZPNT)
+               P02(SURF) = CELL
+               P03(SURF) = UINDEX
+               P09(ZPNT) = SURF
+               SAREA(SURF) = ZSIZE * 2.0 * PI * RTUBE
+               SMAGIC(SURF) = MAGIC1
+               UINDEX = UINDEX + SITES
+            END IF
+
+C           WALLS
+            WALL = WALL + 1
+            IF (WALL .LE. WALLS) THEN
+               WAREA(WALL) = PI * RTUBE ** 2
+               WCODE(WALL) = QEXTRA
+               WCOEFF(WALL) = 1.0 / (Z(ZPNT) - Z(ZPNT + 1))
+               P04(WALL, 1) = CELL
+               P04(WALL, 2) = - (CELL + 1)
+            END IF
+         END IF
+
+C///  CELLS AT BOAT ENDS.
+
+      ELSE IF (ZPNT .EQ. ZPNTS1 .OR. ZPNT .EQ. ZPNTS1 + ZPNTS2 + 1) THEN
+         CELL = CELL + 1
+         IF (CELL .LE. CELLS) THEN
+
+C           GAS
+            CVOL(CELL) = ZSIZE * PI * RTUBE ** 2
+            P01(CELL) = UINDEX
+            UINDEX = UINDEX + (2 + GASES)
+
+C           SURFACES
+            SNMBR(CELL) = RPNTS + 1
+            SURF = SURF + 1
+            IF (SURF .LE. SURFS) THEN
+               RLOC(SURF) = RTUBE
+               ZLOC(SURF) = Z(ZPNT)
+               P02(SURF) = CELL
+               P03(SURF) = UINDEX
+               P09(ZPNT) = SURF
+               SAREA(SURF) = ZSIZE * 2.0 * PI * RTUBE
+               SMAGIC(SURF) = MAGIC1
+               UINDEX = UINDEX + SITES
+            END IF
+
+            DO 2010 RPNT = 1, RPNTS
+               IF (RPNTS .EQ. 1) THEN
+                  R1 = 0.0
+                  R2 = RWAFER
+               ELSE IF (RPNT .EQ. 1) THEN
+                  R1 = 0.0
+                  R2 = 0.5 * (R(1) + R(2))
+               ELSE IF (RPNT .EQ. RPNTS) THEN
+                  R1 = 0.5 * (R(RPNTS - 1) + RWAFER)
+                  R2 = RWAFER
+               ELSE
+                  R1 = 0.5 * (R(RPNT - 1) + R(RPNT))
+                  R2 = 0.5 * (R(RPNT) + R(RPNT + 1))
+               END IF
+
+               SURF = SURF + 1
+               IF (SURF .LE. SURFS) THEN
+                  RLOC(SURF) = R(RPNT)
+                  IF (ZPNT .EQ. ZPNTS1) THEN
+                     ZLOC(SURF) = 0.5 * (Z(ZPNT) + Z(ZPNT + 1))
+                  ELSE
+                     ZLOC(SURF) = 0.5 * (Z(ZPNT) + Z(ZPNT - 1))
+                  END IF
+                  P02(SURF) = CELL
+                  P03(SURF) = UINDEX
+                  SAREA(SURF) = PI * (R2 ** 2 - R1 ** 2)
+                  SMAGIC(SURF) = 0.0
+                  UINDEX = UINDEX + SITES
+               END IF
+
+               IF (ZPNT .EQ. ZPNTS1) THEN
+                  SIDE = 1
+                  WAFER = 1
+               ELSE
+                  SIDE = 2
+                  WAFER = ZPNTS2 + 1
+               END IF
+               IF (RPNTS .EQ. 1) THEN
+                  P11(1, SIDE, WAFER) = SURF
+                  P11(2, SIDE, WAFER) = SURF
+               ELSE
+                  P11(RPNT, SIDE, WAFER) = SURF
+               END IF
+2010        CONTINUE
+
+C           WALLS
+            WALL = WALL + 1
+            IF (WALL .LE. WALLS) THEN
+               WCOEFF(WALL) = 1.0 / (Z(ZPNT) - Z(ZPNT + 1))
+               P04(WALL, 1) = CELL
+               IF (ZPNT .EQ. ZPNTS1) THEN
+                  P04(WALL, 2) = - (CELL + RPNTS)
+                  WAREA(WALL) = PI * (RTUBE ** 2 - RWAFER ** 2)
+                  WCODE(WALL) = QANNUL
+               ELSE
+                  P04(WALL, 2) = - (CELL + 1)
+                  WAREA(WALL) = PI * RTUBE ** 2
+                  WCODE(WALL) = QEXTRA
+               END IF
+            END IF
+         END IF
+
+C///  BOAT CELLS.
+
+      ELSE IF (ZPNTS1 .LT. ZPNT .AND. ZPNT .LE. ZPNTS1 + ZPNTS2) THEN
+
+C///  INNER CELLS.
+
+      DO 2030 RPNT = 1, RPNTS - 1
+         CELL = CELL + 1
+         IF (CELL .LE. CELLS) THEN
+            IF (RPNT .EQ. 1) THEN
+               R1 = 0.0
+               R2 = 0.5 * (R(RPNT) + R(RPNT + 1))
+            ELSE
+               R1 = 0.5 * (R(RPNT - 1) + R(RPNT))
+               R2 = 0.5 * (R(RPNT) + R(RPNT + 1))
+            END IF
+
+C           GAS
+            CVOL(CELL) = ZSIZE * PI * (R2 ** 2 - R1 ** 2)
+            P01(CELL) = UINDEX
+            UINDEX = UINDEX + (2 + GASES)
+
+C           SURFACES
+            SNMBR(CELL) = 2
+            DO 2020 COUNT = 1, 2
+               SURF = SURF + 1
+               IF (SURF .LE. SURFS) THEN
+                  RLOC(SURF) = R(RPNT)
+                  IF (COUNT .EQ. 1) THEN
+                     ZLOC(SURF) = 0.5 * (Z(ZPNT) + Z(ZPNT - 1))
+                  ELSE
+                     ZLOC(SURF) = 0.5 * (Z(ZPNT) + Z(ZPNT + 1))
+                  END IF
+                  P02(SURF) = CELL
+                  P03(SURF) = UINDEX
+                  SAREA(SURF) = RATIO * PI * (R2 ** 2 - R1 ** 2)
+                  SMAGIC(SURF) = 0.0
+                  UINDEX = UINDEX + SITES
+               END IF
+
+               IF (COUNT .EQ. 1) THEN
+                  SIDE = 2
+                  WAFER = ZPNT - ZPNTS1
+               ELSE
+                  SIDE = 1
+                  WAFER = ZPNT - ZPNTS1 + 1
+               END IF
+               P11(RPNT, SIDE, WAFER) = SURF
+2020        CONTINUE
+
+C           WALLS
+            WALL = WALL + 1
+            IF (WALL .LE. WALLS) THEN
+               WAREA(WALL) = ZSIZE * PI * (R(RPNT) + R(RPNT + 1))
+               WCODE(WALL) = QINTRA
+               WCOEFF(WALL) = 1.0 / (R(RPNT) - R(RPNT + 1))
+               P04(WALL, 1) = CELL
+               P04(WALL, 2) = - (CELL + 1)
+            END IF
+         END IF
+2030  CONTINUE
+
+C///  EDGE CELLS.
+
+      CELL = CELL + 1
+      IF (CELL .LE. CELLS) THEN
+         IF (RPNTS .EQ. 1) THEN
+            R1 = 0.0
+         ELSE
+            R1 = 0.5 * (R(RPNTS - 1) + RWAFER)
+         END IF
+         R2 = RWAFER
+
+C        GAS
+         CVOL(CELL) = ZSIZE * PI * (RTUBE ** 2 - R1 ** 2)
+         P01(CELL) = UINDEX
+         UINDEX = UINDEX + (2 + GASES)
+
+C        SURFACES
+         SNMBR(CELL) = 3
+         SURF = SURF + 1
+         IF (SURF .LE. SURFS) THEN
+            RLOC(SURF) = RTUBE
+            ZLOC(SURF) = Z(ZPNT)
+            P02(SURF) = CELL
+            P03(SURF) = UINDEX
+            P09(ZPNT) = SURF
+            SAREA(SURF) = ZSIZE * 2.0 * PI * RTUBE
+            SMAGIC(SURF) = MAGIC2
+            UINDEX = UINDEX + SITES
+         END IF
+         DO 2040 COUNT = 1, 2
+            SURF = SURF + 1
+            IF (SURF .LE. SURFS) THEN
+               RLOC(SURF) = RWAFER
+               IF (COUNT .EQ. 1) THEN
+                  ZLOC(SURF) = 0.5 * (Z(ZPNT) + Z(ZPNT - 1))
+               ELSE
+                  ZLOC(SURF) = 0.5 * (Z(ZPNT) + Z(ZPNT + 1))
+               END IF
+               P02(SURF) = CELL
+               P03(SURF) = UINDEX
+               SAREA(SURF) = RATIO * PI * (R2 ** 2 - R1 ** 2)
+               SMAGIC(SURF) = 0.0
+               UINDEX = UINDEX + SITES
+            END IF
+
+            IF (COUNT .EQ. 1) THEN
+               SIDE = 2
+               WAFER = ZPNT - ZPNTS1
+            ELSE
+               SIDE = 1
+               WAFER = ZPNT - ZPNTS1 + 1
+            END IF
+            IF (RPNTS .EQ. 1) THEN
+               P11(1, SIDE, WAFER) = SURF
+               P11(2, SIDE, WAFER) = SURF
+            ELSE
+               P11(RPNTS, SIDE, WAFER) = SURF
+            END IF
+2040     CONTINUE
+
+C        WALLS
+         WALL = WALL + 1
+         IF (WALL .LE. WALLS) THEN
+            WAREA(WALL) = PI * (RTUBE ** 2 - RWAFER ** 2)
+            WCODE(WALL) = QANNUL
+            WCOEFF(WALL) = 1.0 / (Z(ZPNT) - Z(ZPNT + 1))
+            P04(WALL, 1) = CELL
+            IF (ZPNT .EQ. ZPNTS1 + ZPNTS2) THEN
+               P04(WALL, 2) = - (CELL + 1)
+            ELSE
+               P04(WALL, 2) = - (CELL + RPNTS)
+            END IF
+         END IF
+      END IF
+
+C///  BOTTOM OF THE LOOP OVER THE CELLS.
+
+         END IF
+2050  CONTINUE
+
+      ERROR = .NOT. (CELL .EQ. CELLS .AND. SURF .EQ. SURFS .AND.
+     +   WALL .EQ. WALLS)
+      IF (ERROR) GO TO 9201
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) FORM THE CMAP POINTERS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      DO 3010 CELL = 1, CELLS
+         WNMBR(CELL) = 0
+3010  CONTINUE
+
+      DO 3020 SIDE = 1, 2
+         DO 3020 WALL = 1, WALLS
+            CELL = ABS (P04(WALL, SIDE))
+            ERROR = .NOT. (1 .LE. CELL .AND. CELL .LE. CELLS)
+            IF (ERROR) GO TO 9301
+3020  CONTINUE
+
+C     THE SIDE=1 CELL IN P04 MUST BE WHERE THE WALL DATA RESIDES
+
+      DO 3030 SIDE = 1, 2
+         DO 3030 WALL = 1, WALLS
+            CELL = ABS (P04(WALL, SIDE))
+            WNMBR(CELL) = WNMBR(CELL) + 1
+            COUNT = WNMBR(CELL)
+            IF (COUNT .LE. WCOUNT)
+     +         CMAP(CELL, COUNT) = SIGN (P04(WALL, 1), P04(WALL, SIDE))
+3030  CONTINUE
+
+      DO 3040 CELL = 1, CELLS
+         COUNT = WNMBR(CELL)
+         ERROR = .NOT. (1 .LE. COUNT .AND. COUNT .LE. WCOUNT)
+         IF (ERROR) GO TO 9302
+3040  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) INITIALIZE THE REMAINING POINTERS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  P04: FROM WALLS TO GAS DATA IN P01
+
+      DO 4010 SIDE = 1, 2
+         DO 4010 WALL = 1, WALLS
+            P04(WALL, SIDE) = ABS (P04(WALL, SIDE))
+4010  CONTINUE
+
+C///  P05: FROM SURFACES IN SUMMING ORDER TO SURFACE DATA IN P03
+
+      SURF = 0
+      DO 4030 ENTRY = 1, SCOUNT
+         COUNT = 0
+         DO 4020 NUMBER = SCOUNT, ENTRY, - 1
+            INDEX = 0
+            DO 4020 CELL = 1, CELLS
+               IF (NUMBER .EQ. SNMBR(CELL)) THEN
+                  COUNT = COUNT + 1
+                  SURF = SURF + 1
+                  IF (SURF .LE. SURFS) P05(SURF) = INDEX + ENTRY
+               END IF
+               INDEX = INDEX + SNMBR(CELL)
+4020     CONTINUE
+         SINDEX(ENTRY) = COUNT
+4030  CONTINUE
+
+      ERROR = .NOT. (SURF .EQ. SURFS)
+      IF (ERROR) GO TO 9403
+
+C///  P06: FROM CELLS TO SUMMED SURFACES IN P05 LIST
+
+      ERROR = .NOT. (SINDEX(1) .EQ. CELLS)
+      IF (ERROR) GO TO 9404
+
+      INDEX = 0
+      DO 4040 NUMBER = SCOUNT, 1, - 1
+         DO 4040 CELL = 1, CELLS
+            IF (NUMBER .EQ. SNMBR(CELL)) THEN
+               INDEX = INDEX + 1
+               P06(CELL) = INDEX
+            END IF
+4040  CONTINUE
+
+C///  P07: FROM DOUBLED WALLS IN SUMMING ORDER TO WALLS IN P04
+
+      WALL = 0
+      DO 4060 ENTRY = 1, WCOUNT
+         COUNT = 0
+         DO 4050 NUMBER = WCOUNT, ENTRY, - 1
+            DO 4050 CELL = 1, CELLS
+               IF (NUMBER .EQ. WNMBR(CELL)) THEN
+                  COUNT = COUNT + 1
+                  WALL = WALL + 1
+                  IF (WALL .LE. 2 * WALLS) P07(WALL) = CMAP(CELL, ENTRY)
+               END IF
+4050     CONTINUE
+         WINDEX(ENTRY) = COUNT
+4060  CONTINUE
+
+      ERROR = .NOT. (WALL .EQ. 2 * WALLS)
+      IF (ERROR) GO TO 9405
+
+C///  P08: FROM CELLS TO SUMMED WALLS IN P05 LIST
+
+      ERROR = .NOT. (WINDEX(1) .EQ. CELLS)
+      IF (ERROR) GO TO 9406
+
+      INDEX = 0
+      DO 4070 NUMBER = WCOUNT, 1, - 1
+         DO 4070 CELL = 1, CELLS
+            IF (NUMBER .EQ. WNMBR(CELL)) THEN
+               INDEX = INDEX + 1
+               P08(CELL) = INDEX
+            END IF
+4070  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (5) INITIALIZE THE DATA STRUCTURES AND POINTERS FOR 2D PLOTS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  P10: GAS VALUES.
+
+      CELL = 1
+      INDEX = 0
+      DO 5010 ZPNT = 1, ZPNTS
+         DO 5010 RPNT = 1, R10SIZ
+C           CELL
+            INDEX = INDEX + 1
+            P10(RPNT, ZPNT) = CELL
+
+            IF ((1 .LT. RPNTS .AND. RPNT .LT. RPNTS .AND.
+     +         ZPNTS1 .LT. ZPNT .AND. ZPNT .LE. ZPNTS1 + ZPNTS2) .OR.
+     +         (RPNT .EQ. R10SIZ)) CELL = CELL + 1
+5010  CONTINUE
+
+C     AXIAL GRID
+      DO 5020 ZPNT = 1, ZPNTS
+         Z10(ZPNT) = Z(ZPNT)
+5020  CONTINUE
+
+C     RADIAL GRID
+      IF (RPNTS .EQ. 1) THEN
+         R10(1) = 0.0
+         R10(2) = RWAFER
+      ELSE
+         DO 5030 RPNT = 1, RPNTS
+            R10(RPNT) = R(RPNT)
+5030     CONTINUE
+      END IF
+      R10(R10SIZ) = RTUBE
+
+C///  P11: SURFACE VALUES.
+
+C     AXIAL GRID
+      Z11(1) = WFIRST
+      Z11(ZPNTS2 + 1) = WLAST
+      DO 5040 ZPNT = 2, ZPNTS2
+         Z11(ZPNT) = 0.5 * (Z(ZPNTS1 - 1 + ZPNT) + Z(ZPNTS1 + ZPNT))
+5040  CONTINUE
+
+C     RADIAL GRID
+      IF (RPNTS .EQ. 1) THEN
+         R11(1) = 0.0
+         R11(2) = RWAFER
+      ELSE
+         DO 5050 RPNT = 1, RPNTS
+            R11(RPNT) = R(RPNT)
+5050     CONTINUE
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   CELLS, SCOUNT, WCOUNT, GASES, RPNTS,
+     +   SITES, WALLS, WCOUNT, ZPNTS
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID,
+     +   RPNTS, ZPNTS1, ZPNTS2, ZPNTS3, CELLS, ZPNTS
+      GO TO 99999
+
+9103  IF (0 .LT. TEXT) WRITE (TEXT, 99103) ID, ZPNTS1, ZPNTS2, ZPNTS3
+      GO TO 99999
+
+9104  IF (0 .LT. TEXT) WRITE (TEXT, 99104) ID
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID,
+     +   CELL, SURF, WALL, CELLS, SURFS, WALLS
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID,
+     +   WALL, P04(WALL, 1), P04(WALL, 2), CELLS
+      GO TO 99999
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID,
+     +   CELL, WNMBR(CELL), WCOUNT
+      GO TO 99999
+
+9403  IF (0 .LT. TEXT) WRITE (TEXT, 99403) ID, SURFS, SURF
+      GO TO 99999
+
+9404  IF (0 .LT. TEXT) WRITE (TEXT, 99404) ID, CELLS, SINDEX(1), SCOUNT
+      GO TO 99999
+
+9405  IF (0 .LT. TEXT) WRITE (TEXT, 99405) ID, 2 * WALLS, WALL
+      GO TO 99999
+
+9406  IF (0 .LT. TEXT) WRITE (TEXT, 99406) ID, CELLS, WINDEX(1), WCOUNT
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  THE DIMENSIONAL ARGUMENTS ARE INCONSISTENT.'
+     +  //10X, I10, '  CELLS'
+     +   /10X, I10, '  SCOUNT'
+     +   /10X, I10, '  WCOUNT'
+     +   /10X, I10, '  GASES'
+     +   /10X, I10, '  RPNTS'
+     +   /10X, I10, '  SITES'
+     +   /10X, I10, '  WALLS'
+     +   /10X, I10, '  WCOUNT'
+     +   /10X, I10, '  ZPNTS')
+
+99102 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     +   //10X, I10, '  RPNTS'
+     +    /10X, I10, '  ZPNTS1'
+     +    /10X, I10, '  ZPNTS2'
+     +    /10X, I10, '  ZPNTS3'
+     +   //10X, I10, '  CELLS'
+     +    /10X, I10, '  ZPNTS')
+
+99103 FORMAT
+     +   (/1X, A, 'ERROR.  THE Z MESH MUST HAVE AT LEAST TWO POINTS'
+     +   /10X, 'IN EACH OF THE THREE OVEN REGIONS.'
+     +  //10X, I10, '  BEFORE THE WAFER BOAT'
+     +   /10X, I10, '  ALONG THE BOAT'
+     +   /10X, I10, '  AFTER')
+
+99104 FORMAT
+     +   (/1X, A, 'ERROR.  OVEN24 FAILS.')
+
+99201 FORMAT
+     +   (/1X, A, 'ERROR.  THE NUMBER OF GEOMETRY COMPONENTS IS WRONG.'
+C               123456789_  123456789_  123456789_  123456789_
+     +  //10X, '                 CELLS    SURFACES       WALLS'
+     +   /10X, '     BUILT', 3I12
+     +   /10X, '  EXPECTED', 3I12)
+
+99301 FORMAT
+     +   (/1X, A, 'ERROR.  P04 POINTS OUT OF RANGE.'
+     +  //10X, I10, '  WALL'
+     +   /10X, I10, '  CELL ON SIDE 1'
+     +   /10X, I10, '  CELL ON SIDE 2'
+     +   /10X, I10, '  CELLS')
+
+99302 FORMAT
+     +   (/1X, A, 'ERROR.  A CELL''S NUMBER OF WALLS IS OUT OF RANGE.'
+     +  //10X, I10, '  CELL'
+     +   /10X, I10, '  NUMBER'
+     +   /10X, I10, '  LIMIT')
+
+99403 FORMAT
+     +   (/1X, A, 'ERROR.  THE NUMBER OF SURFACES IS WRONG.'
+     +  //10X, I10, '  EXPECTED'
+     +   /10X, I10, '  COUNTED')
+
+99404 FORMAT
+     +   (/1X, A, 'ERROR.  THE NUMBER OF SURFACES IN THE FIRST'
+     +   /10X, 'SUMMATION BLOCK MUST EQUAL THE NUMBER OF CELLS.'
+     +  //10X, I10, '  CELLS'
+     +   /10X, I10, '  SURFACES IN THE FIRST BLOCK'
+     +   /10X, I10, '  BLOCKS')
+
+99405 FORMAT
+     +   (/1X, A, 'ERROR.  THE DOUBLED NUMBER OF WALLS IS WRONG.'
+     +  //10X, I10, '  EXPECTED'
+     +   /10X, I10, '  COUNTED')
+
+99406 FORMAT
+     +   (/1X, A, 'ERROR.  THE NUMBER OF WALLS IN THE FIRST SUMMATION'
+     +   /10X, 'BLOCK MUST EQUAL THE NUMBER OF CELLS.'
+     +  //10X, I10, '  CELLS'
+     +   /10X, I10, '  WALLS IN THE FIRST BLOCK'
+     +   /10X, I10, '  BLOCKS')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN24
+     +   (ERROR, TEXT, N, X, X0, Y, Y0)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN24
+C
+C     LINEAR INTERPOLATION
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER ID*9
+      INTEGER J, N, TEXT
+      LOGICAL ERROR
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   X, X0, Y, Y0
+
+      PARAMETER (ID = 'OVEN24:  ')
+
+      DIMENSION X(N), Y(N)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT. (1 .LT. N)
+      IF (ERROR) GO TO 9101
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INTERPOLATE
+C
+C///////////////////////////////////////////////////////////////////////
+
+      DO 2010 J = 1, N - 1
+         ERROR = .NOT. (X(J) .LT. X(J + 1))
+         IF (ERROR) GO TO 9201
+
+         IF (X(J) .LE. X0 .AND. X0 .LE. X(J + 1)) THEN
+            Y0 = ((X(J + 1) - X0) / (X(J + 1) - X(J))) * Y(J)
+     +         + ((X0 - X(J)) / (X(J + 1) - X(J))) * Y(J + 1)
+            GO TO 2020
+         END IF
+2010  CONTINUE
+      ERROR = .TRUE.
+      GO TO 9202
+2020  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID, N
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99999
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  THE DIMENSIONAL ARGUMENTS ARE INCONSISTENT.'
+     +  //10X, I10, '  N')
+
+99201 FORMAT
+     +   (/1X, A, 'ERROR.  THE X COORDINATES ARE OUT OF ORDER.')
+
+99202 FORMAT
+     +   (/1X, A, 'ERROR.  X0 DOES NOT LIE BETWEEN THE X COORDINATES.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN41
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   ACT, BTYPES, BULKS, CELLS, COEFF, DEN, GASES, MOLE, P01, P02,
+     +   P03, P09, P11, PMAX, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ,
+     +   RATE, RPNTS, SDEN, SDOT, SITDOT, SITES, SLTN, SMOOTH, SNAME,
+     +   STEMP, STYPES, SURFS, TNAME, UNIT, VBLES, WT, XCOORD, YCOORD,
+     +   Z, Z11, Z11SIZ, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN41
+C
+C     WRITE PLOT1D DATA.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   ID*9, LEGE*80, NAME*80, SNAME*(*), STRING*80, SUBT*80, TITL*80,
+     +   TNAME*(*), XLAB*80, YLAB*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ACT, COEFF, DEN, DUMMY, MOLE, PRESS, R1, R11, R2, RATE, RCK,
+     +   RSK, SDEN, SDOT, SITDOT, SLTN, STEMP, SUM, WT, XCOORD, YCOORD,
+     +   Z, Z11
+      EXTERNAL
+     +   CKYTX, EXTENT, SKDEN, SKRAT, SKSDEN, SKWT, SQUEEZ, WRT1D2
+      INTEGER
+     +   BTYPES, BULK, BULKS, CELL, CELLS, COUNT, CURVES, GAS, GASES,
+     +   ICK, ICKSIZ, ISK, ISKSIZ, J, LENGTH, OFFSET, P01, P02, P03,
+     +   P09, P11, PMAX, QFIRST, QGAS, QLAST, QNMBR, QT, QVEL, R11SIZ,
+     +   RCKSIZ, RPNT, RPNTS, RSKSIZ, SIDE, SIDES , SITE, SITES, SIZE,
+     +   STATUS, STYPES, SURF, SURFS, TEXT, TYPE, UNIT, VBLES, YINC,
+     +   Z11SIZ, ZPNT, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      INTRINSIC
+     +   REAL
+      LOGICAL
+     +   ERROR, SMOOTH
+
+      PARAMETER (ID = 'OVEN41:  ')
+      PARAMETER (QT = 0, QVEL = 1, QGAS = 2)
+
+      DIMENSION
+     +   ACT(GASES + SITES + BULKS), COEFF(R11SIZ),
+     +   DEN(GASES + SITES + BULKS), ICK(ICKSIZ), ISK(ISKSIZ),
+     +   MOLE(GASES, CELLS), P01(CELLS), P02(SURFS), P03(SURFS),
+     +   P09(ZPNTS), P11(R11SIZ, 2, Z11SIZ),
+     +   QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES + BTYPES),
+     +   QNMBR(1 + STYPES + BTYPES), R11(R11SIZ), RCK(RCKSIZ),
+     +   RSK(RSKSIZ), SDEN(1 + STYPES + BTYPES),
+     +   SDOT(GASES + SITES + BULKS, SURFS),
+     +   SITDOT(1 + STYPES + BTYPES), SLTN(VBLES),
+     +   SNAME(GASES + SITES + BULKS), STEMP(SURFS),
+     +   TNAME(1 + STYPES + BTYPES), WT(GASES + SITES + BULKS),
+     +   XCOORD(PMAX), YCOORD(PMAX), Z(ZPNTS), Z11(Z11SIZ),
+     +   RATE(R11SIZ, 2, Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RPNTS  .AND. 0 .LT. RSKSIZ .AND.
+     +   0 .LT. SITES  .AND. 0 .LT. STYPES .AND. 0 .LT. SURFS  .AND.
+     +   0 .LT. ZPNTS  .AND. 0 .LT. ZPNTS1 .AND. 0 .LT. ZPNTS2 .AND.
+     +   0 .LT. ZPNTS3)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT.
+     +  (ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3 .EQ. CELLS .AND.
+     +   ZPNTS1 + ZPNTS2 + ZPNTS3 .EQ. ZPNTS)
+      IF (ERROR) GO TO 9102
+
+C///  WRITE THE PLOT1D HEADER.
+
+      REWIND UNIT
+
+      STRING = 'PLOT1D VERSION 1.03'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(1X, A)', ERR = 9103, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+C///  INITIALIZE THE COUNT OF CURVES.
+
+      CURVES = 0
+
+C///  INITIALIZE COEFFICIENTS FOR MEAN DEPOSIT RATES.
+
+      DO 1010 RPNT = 1, R11SIZ
+         IF (RPNT .EQ. 1) THEN
+            R1 = R11(1)
+         ELSE
+            R1 = 0.5 * (R11(RPNT - 1) + R11(RPNT))
+         END IF
+
+         IF (RPNT .EQ. R11SIZ) THEN
+            R2 = R11(RPNT)
+         ELSE
+            R2 = 0.5 * (R11(RPNT) + R11(RPNT + 1))
+         END IF
+
+         COEFF(RPNT) = (R2 ** 2 - R1 ** 2) / (R11(R11SIZ) ** 2)
+1010  CONTINUE
+
+C///  CHOOSE THE NUMBER OF SIDES.
+
+      IF (SMOOTH) THEN
+         SIDES = 1
+      ELSE
+         SIDES = 2
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE ACTIVITIES FOR BULK SPECIES.
+
+C     THEY PROBABLY AREN'T USED
+
+      DO 2010 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 2010 J = QFIRST(TYPE), QLAST(TYPE)
+            ACT(J) = 1.0 / REAL (QNMBR(TYPE))
+2010  CONTINUE
+
+C///  INITIALIZE SDEN.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSDEN (ISKWRK, RSKWRK, SDEN0)
+
+      CALL SKSDEN (ISK, RSK, SDEN)
+
+C///  INITIALIZE DEN FOR BULK SPECIES.
+
+C     ONLY BULK SPECIES VALUES FROM DEN ARE USED.  THEY ARE INDEPENDENT
+C     OF ACTIVITIES AND TEMPERATURE, WHICH ARE HERE GIVEN SOME VALUES
+C     FOR SAFETY.
+
+      DO 2020 J = 1, GASES + SITES
+         ACT(J) = 1.0
+2020  CONTINUE
+
+      DUMMY = 300.0
+
+C     (SKLIB VERSION 3.5)
+C     SUBROUTINE SKDEN (P, T, ACT, SDEN, ISKWRK, RSKWRK, DEN)
+
+      CALL SKDEN (PRESS, DUMMY, ACT, SDEN, ISK, RSK, DEN)
+
+C///  INITIALIZE MOLE FRACTIONS.
+
+      DO 2030 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKYTX (SLTN(OFFSET), ICK, RCK, MOLE(1, CELL))
+2030  CONTINUE
+
+C///  INITIALIZE SDOT.
+
+C     (SKLIB VERSION 3.7)
+C     SUBROUTINE SKRAT (P, T, ACT, SDEN, ISKWRK, RSKWRK, SDOT, SITDOT)
+
+      DO 2060 SURF = 1, SURFS
+         CELL = P02(SURF)
+         DO 2040 GAS = 1, GASES
+            ACT(GAS) = MOLE(GAS, CELL)
+2040     CONTINUE
+
+         OFFSET = P03(SURF) - 1
+         DO 2050 SITE = 1, SITES
+            ACT(GASES + SITE) = SLTN(OFFSET + SITE)
+2050     CONTINUE
+
+         CALL SKRAT
+     +     (PRESS, STEMP(SURF), ACT, SDEN, ISK, RSK, SDOT(1, SURF),
+     +      SITDOT)
+2060  CONTINUE
+
+C///  INITIALIZE WT.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKWT (ISKWRK, RSKWRK, WT)
+
+      CALL SKWT (ISK, RSK, WT)
+
+C///  OVERWRITE SDOT BY DEPOSIT RATE (SCALED FROM CM / SEC TO
+C///  ANGSTROMS / MIN)
+
+      DO 2070 SURF = 1, SURFS
+         DO 2070 J = GASES + SITES + 1, GASES + SITES + BULKS
+            SDOT(J, SURF) = 6.0E9 * SDOT(J, SURF) * WT(J) / DEN(J)
+2070  CONTINUE
+
+C///  FORM THE DEPOSIT RATE.
+
+      DO 2090 ZPNT = 1, Z11SIZ
+         DO 2090 SIDE = 1, 2
+            DO 2090 RPNT = 1, R11SIZ
+               SUM = 0.0
+               SURF = P11(RPNT, SIDE, ZPNT)
+               DO 2080 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+                  DO 2080 BULK = QFIRST(TYPE), QLAST(TYPE)
+                     SUM = SUM + SDOT(BULK, SURF)
+2080           CONTINUE
+               RATE(RPNT, SIDE, ZPNT) = SUM
+2090  CONTINUE
+
+C///  AVERAGE THE RATES.
+
+      IF (SMOOTH) THEN
+         DO 2100 ZPNT = 1, Z11SIZ
+            DO 2100 RPNT = 1, R11SIZ
+               RATE(RPNT, 1, ZPNT) = 0.5 *
+     +            (RATE(RPNT, 1, ZPNT) + RATE(RPNT, 2, ZPNT))
+2100     CONTINUE
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) PLOT THE GAS VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  GAS TEMPERATURE.
+
+      CURVES = CURVES + 1
+
+      NAME = 'GAS TEMPERATURE'
+      TITL = 'GAS TEMPERATURE'
+      SUBT = ' '
+      LEGE = 'GAS TEMP'
+      XLAB = 'AXIAL POSITION (CM)'
+      YLAB = 'KELVIN'
+      SIZE = ZPNTS
+
+      DO 3010 ZPNT = 1, ZPNTS
+         SURF = P09(ZPNT)
+         CELL = P02(SURF)
+         OFFSET = P01(CELL) + QT
+         YCOORD(ZPNT) = SLTN(OFFSET)
+3010  CONTINUE
+
+C*****PRECISION > DOUBLE
+      CALL WRT1D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL WRT1D1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   UNIT, LEGE, NAME, SIZE, SUBT, TITL, Z, 1, XLAB, YCOORD, 1,
+     +   YLAB)
+      IF (ERROR) GO TO 9301
+
+C///  MOLE FRACTIONS.
+
+      DO 3030 J = 1, GASES
+         CURVES = CURVES + 1
+
+         NAME = SNAME(J) // ' MOLE FRACTION OF GAS'
+         CALL SQUEEZ (LENGTH, NAME)
+         TITL = SNAME(J)
+         CALL SQUEEZ (LENGTH, TITL)
+         SUBT = ' '
+         LEGE = TITL
+         YINC = GASES
+         XLAB = 'AXIAL POSITION (CM)'
+         YLAB = 'MOLE FRACTION'
+         SIZE = ZPNTS
+
+         DO 3020 ZPNT = 1, ZPNTS
+            SURF = P09(ZPNT)
+            CELL = P02(SURF)
+            YCOORD(ZPNT) = MOLE(J, CELL)
+3020     CONTINUE
+
+C*****PRECISION > DOUBLE
+         CALL WRT1D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL WRT1D1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      UNIT, LEGE, NAME, SIZE, SUBT, TITL, Z, 1, XLAB, YCOORD, 1,
+     +      YLAB)
+         IF (ERROR) GO TO 9301
+3030  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) PLOT THE SURFACE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SURFACE TEMPERATURE.
+
+      CURVES = CURVES + 1
+
+      NAME = 'WALL SURFACE TEMPERATURE'
+      TITL = 'WALL SURFACE TEMPERATURE'
+      SUBT = ' '
+      LEGE = 'OVEN WALL'
+      XLAB = 'AXIAL POSITION (CM)'
+      YLAB = 'KELVIN'
+      SIZE = ZPNTS
+
+      DO 4010 ZPNT = 1, ZPNTS
+         SURF = P09(ZPNT)
+         YCOORD(ZPNT) = STEMP(SURF)
+4010  CONTINUE
+
+C*****PRECISION > DOUBLE
+      CALL WRT1D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL WRT1D1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   UNIT, LEGE, NAME, SIZE, SUBT, TITL, Z, 1, XLAB, YCOORD, 1,
+     +   YLAB)
+      IF (ERROR) GO TO 9301
+
+C///  SURFACE FRACTIONS ON OVEN WALL.
+
+      DO 4030 TYPE = 1 + 1, 1 + STYPES
+         DO 4030 SITE = QFIRST(TYPE), QLAST(TYPE)
+            CURVES = CURVES + 1
+
+            NAME = SNAME(SITE) // ' WALL FRACTION OF SURFACE '
+     +         // TNAME(TYPE)
+            CALL SQUEEZ (LENGTH, NAME)
+
+            TITL = SNAME(SITE) // ' WALL FRACTION'
+            CALL SQUEEZ (LENGTH, TITL)
+
+            SUBT = 'OF SURFACE ' // TNAME(TYPE)
+            CALL SQUEEZ (LENGTH, SUBT)
+
+            LEGE = 'WALL ' // SNAME(SITE)
+            CALL SQUEEZ (LENGTH, LEGE)
+
+            XLAB = 'AXIAL POSITION (CM)'
+            YLAB = 'FRACTION'
+            SIZE = ZPNTS
+
+            DO 4020 ZPNT = 1, ZPNTS
+               SURF = P09(ZPNT)
+               OFFSET = P03(SURF) - 1 + SITE - GASES
+               YCOORD(ZPNT) = SLTN(OFFSET)
+4020        CONTINUE
+
+C*****PRECISION > DOUBLE
+            CALL WRT1D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C            CALL WRT1D1
+C*****END PRECISION > SINGLE
+     +        (ERROR, TEXT,
+     +         UNIT, LEGE, NAME, SIZE, SUBT, TITL, Z, 1, XLAB, YCOORD,
+     +         1, YLAB)
+            IF (ERROR) GO TO 9301
+4030  CONTINUE
+
+C///  TUBE WALL DEPOSIT RATE.
+
+      CURVES = CURVES + 1
+
+      NAME = 'WALL DEPOSIT RATE'
+      TITL = 'DEPOSIT RATE'
+      SUBT = 'WALL'
+      LEGE = 'WALL'
+      XLAB = 'AXIAL POSITION (CM)'
+      YLAB = 'ANGSTROMS / MINUTE'
+
+      SIZE = ZPNTS
+
+      DO 4040 ZPNT = 1, ZPNTS
+         YCOORD(ZPNT) = 0.0
+         DO 4040 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+            DO 4040 J = QFIRST(TYPE), QLAST(TYPE)
+               SURF = P09(ZPNT)
+               YCOORD(ZPNT) = YCOORD(ZPNT) + SDOT(J, SURF)
+4040  CONTINUE
+
+C*****PRECISION > DOUBLE
+      CALL WRT1D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL WRT1D1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   UNIT, LEGE, NAME, SIZE, SUBT, TITL, Z, 1, XLAB, YCOORD, 1,
+     +   YLAB)
+      IF (ERROR) GO TO 9301
+
+C///  EDGE DEPOSIT RATE.
+
+      CURVES = CURVES + 1
+
+      NAME = 'EDGE DEPOSIT RATE'
+      TITL = 'DEPOSIT RATE'
+      SUBT = 'EDGE'
+      LEGE = 'EDGE'
+      XLAB = 'AXIAL POSITION (CM)'
+      YLAB = 'ANGSTROMS / MINUTE'
+
+      COUNT = 0
+      DO 4050 ZPNT = 1, Z11SIZ
+         DO 4050 SIDE = 1, SIDES
+            COUNT = COUNT + 1
+            XCOORD(COUNT) = Z11(ZPNT)
+            YCOORD(COUNT) = RATE(RPNTS, SIDE, ZPNT)
+4050  CONTINUE
+
+      SIZE = COUNT
+
+C*****PRECISION > DOUBLE
+      CALL WRT1D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL WRT1D1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   UNIT, LEGE, NAME, SIZE, SUBT, TITL, XCOORD, 1, XLAB, YCOORD,
+     +   1, YLAB)
+      IF (ERROR) GO TO 9301
+
+C///  MEAN DEPOSIT RATE.
+
+      CURVES = CURVES + 1
+
+      NAME = 'MEAN DEPOSIT RATE'
+      TITL = 'DEPOSIT RATE'
+      SUBT = 'MEAN'
+      LEGE = 'MEAN'
+      XLAB = 'AXIAL POSITION (CM)'
+      YLAB = 'ANGSTROMS / MINUTE'
+
+      COUNT = 0
+      DO 4060 ZPNT = 1, Z11SIZ
+         DO 4060 SIDE = 1, SIDES
+            COUNT = COUNT + 1
+            XCOORD(COUNT) = Z11(ZPNT)
+            YCOORD(COUNT) = 0.0
+            DO 4060 RPNT = 1, R11SIZ
+               YCOORD(COUNT) = YCOORD(COUNT)
+     +            + COEFF(RPNT) * RATE(RPNT, SIDE, ZPNT)
+4060  CONTINUE
+
+      SIZE = COUNT
+
+C*****PRECISION > DOUBLE
+      CALL WRT1D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL WRT1D1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   UNIT, LEGE, NAME, SIZE, SUBT, TITL, XCOORD, 1, XLAB, YCOORD,
+     +   1, YLAB)
+      IF (ERROR) GO TO 9301
+
+C///  CENTER DEPOSIT RATE.
+
+      CURVES = CURVES + 1
+
+      NAME = 'CENTER DEPOSIT RATE'
+      TITL = 'DEPOSIT RATE'
+      SUBT = 'CENTER'
+      LEGE = 'CENTER'
+      XLAB = 'AXIAL POSITION (CM)'
+      YLAB = 'ANGSTROMS / MINUTE'
+
+      COUNT = 0
+      DO 4070 ZPNT = 1, Z11SIZ
+         DO 4070 SIDE = 1, SIDES
+            COUNT = COUNT + 1
+            XCOORD(COUNT) = Z11(ZPNT)
+            YCOORD(COUNT) = RATE(1, SIDE, ZPNT)
+4070  CONTINUE
+
+      SIZE = COUNT
+
+C*****PRECISION > DOUBLE
+      CALL WRT1D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL WRT1D1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   UNIT, LEGE, NAME, SIZE, SUBT, TITL, XCOORD, 1, XLAB, YCOORD,
+     +   1, YLAB)
+      IF (ERROR) GO TO 9301
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (5) PLOT THE WALL VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CELL WALLS.
+
+      DO 5010 ZPNT = 1, ZPNTS - 1
+         XCOORD(ZPNT) = 0.5 * (Z(ZPNT) + Z(ZPNT + 1))
+5010  CONTINUE
+
+C///  VELOCITY.
+
+      CURVES = CURVES + 1
+
+      NAME = 'AXIAL VELOCITY'
+      TITL = 'AXIAL VELOCITY'
+      SUBT = ' '
+      LEGE = 'VELOCITY'
+      XLAB = 'AXIAL POSITION (CM)'
+      YLAB = 'CM / SEC'
+      SIZE = ZPNTS - 1
+
+      DO 5020 ZPNT = 1, ZPNTS - 1
+         SURF = P09(ZPNT)
+         CELL = P02(SURF)
+         OFFSET = P01(CELL) + QVEL
+         YCOORD(ZPNT) = SLTN(OFFSET)
+5020  CONTINUE
+
+C     SUBROUTINE WRT1D1
+C    +  (ERROR, TEXT,
+C    +   DATA, LEGE, NAME, SIZE, SUBT, TITL, XCOORD, XINC, XLAB, YCOORD,
+C    +   YINC, YLAB)
+
+C*****PRECISION > DOUBLE
+      CALL WRT1D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL WRT1D1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   UNIT, LEGE, NAME, SIZE, SUBT, TITL, XCOORD, 1, XLAB, YCOORD, 1,
+     +   YLAB)
+      IF (ERROR) GO TO 9301
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RPNTS,
+     +   RSKSIZ, SITES, STYPES, SURFS, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID,
+     +   RPNTS, ZPNTS1, ZPNTS2, ZPNTS3, CELLS, ZPNTS
+      GO TO 99999
+
+9103  IF (0 .LT. TEXT) WRITE (TEXT, 99103) ID, UNIT, STATUS
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID, CURVES
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES'
+     +   /10X, I10, '  BULKS'
+     +   /10X, I10, '  CELLS'
+     +   /10X, I10, '  GASES'
+     +   /10X, I10, '  ICKSIZ'
+     +   /10X, I10, '  ISKSIZ'
+     +   /10X, I10, '  RCKSIZ'
+     +   /10X, I10, '  RPNTS'
+     +   /10X, I10, '  RSKSIZ'
+     +   /10X, I10, '  SITES'
+     +   /10X, I10, '  STYPES'
+     +   /10X, I10, '  SURFS'
+     +   /10X, I10, '  ZPNTS'
+     +   /10X, I10, '  ZPNTS1'
+     +   /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3')
+
+99102 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     +  //10X, I10, '  RPNTS'
+     +   /10X, I10, '  ZPNTS1'
+     +   /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3'
+     +  //10X, I10, '  CELLS'
+     +   /10X, I10, '  ZPNTS')
+
+99103 FORMAT
+     +   (/1X, A9, 'ERROR.  FORMATTED WRITE FILE FAILS.'
+     +   //10X, I10, '  UNIT NUMBER'
+     +   /10X, I10, '  I/O STATUS')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  WRT1D1 OR WRT1D2 FAILS TO WRITE THE PLOT1D'
+     +   /10X, 'RECORD.'
+     +  //10X, I10, '  CURVE')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN42
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   ACT, BTYPES, BULKS, CELLS, DEN, GASES, MOLE, P01, P02, P03,
+     +   P10, P11, PRESS, QFIRST, QLAST, QNMBR, R10, R10SIZ, R11,
+     +   R11SIZ, SDEN, SDOT, SITDOT, SITES, SLTN, SMOOTH, SNAME, STEMP,
+     +   STYPES, SURFS, TEMP, THICK, TNAME, TSIZE, UNIT, VBLES, WT,
+     +   YCOORD, YMAX, Z10, Z10SIZ, Z11, Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN42
+C
+C     WRITE PLOT2D DATA.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   ID*9, LEGE*80, NAME*80, SNAME*(*), STRING*80, SUBT*80, TITL*80,
+     +   TNAME*(*), XLAB*80, YLAB*80, ZLAB*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ACT, DELTA, DEN, DUMMY, MOLE, PRESS, R10, R11, RCK, RSK, SDEN,
+     +   SDOT, SITDOT, SLTN, STEMP, TEMP, THICK, WT, YCOORD, Z10, Z11
+      EXTERNAL
+     +   CKYTX, EXTENT, SKDEN, SKRAT, SKSDEN, SKWT, SQUEEZ, WRT2D2
+      INTEGER
+     +   BTYPES, BULK, BULKS, CELL, CELLS, COUNT, CURVES, GAS, GASES,
+     +   ICK, ICKSIZ, ISK, ISKSIZ, J, K, LENGTH, OFFSET, P01, P02, P03,
+     +   P10, P11, QFIRST, QGAS, QLAST, QNMBR, QT, R10SIZ, R11SIZ,
+     +   RCKSIZ, RSKSIZ, SIDE, SITE, SITES, STATUS, STYPES, SURF, SURF1,
+     +   SURF2, SURFS, TEXT, TSIZE, TYPE, UNIT, VBLES, XINC, XSIZE,
+     +   YINC, YMAX, YSIZE, Z10SIZ, Z11SIZ
+      INTRINSIC
+     +   REAL
+      LOGICAL
+     +   ERROR, SMOOTH
+
+      PARAMETER (ID = 'OVEN42:  ')
+      PARAMETER (QT = 0, QGAS = 2)
+
+      DIMENSION
+     +   ACT(GASES + SITES + BULKS), DELTA(2), DEN(GASES + SITES +
+     +   BULKS), ICK(ICKSIZ), ISK(ISKSIZ), MOLE(GASES, CELLS),
+     +   P01(CELLS), P02(SURFS), P03(SURFS), P10(R10SIZ * Z10SIZ),
+     +   P11(R11SIZ, 2, Z11SIZ), QFIRST(1 + STYPES + BTYPES), QLAST(1 +
+     +   STYPES + BTYPES), QNMBR(1 + STYPES + BTYPES), R10(R10SIZ),
+     +   R11(R11SIZ), RCK(RCKSIZ), RSK(RSKSIZ), SDEN(1 + STYPES +
+     +   BTYPES), SDOT(GASES + SITES + BULKS, SURFS), SITDOT(1 + STYPES
+     +   + BTYPES), SLTN(VBLES), SNAME(GASES + SITES + BULKS),
+     +   STEMP(SURFS), TEMP(TSIZE), TNAME(1 + STYPES + BTYPES), WT(GASES
+     +   + SITES + BULKS), YCOORD(YMAX), Z10(Z10SIZ), Z11(Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RSKSIZ .AND. 0 .LT. SITES  .AND.
+     +   0 .LT. STYPES .AND. 0 .LT. SURFS  .AND. 0 .LT. YMAX)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT. (2 * Z11SIZ .LE. YMAX)
+      IF (ERROR) GO TO 9102
+
+C///  WRITE THE PLOT2D HEADER.
+
+      REWIND UNIT
+
+      STRING = 'PLOT2D VERSION 1.00'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(1X, A)', ERR = 9103, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+C///  INITIALIZE THE COUNT OF CURVES.
+
+      CURVES = 0
+
+C///  FORM THE Z COORDINATE OFFSET FOR PLOTTING SURFACE SIDES.
+
+      DELTA(1) = - 0.5 * THICK
+      DELTA(2) = 0.5 * THICK
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE ACTIVITIES FOR BULK SPECIES.
+
+      DO 2010 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 2010 J = QFIRST(TYPE), QLAST(TYPE)
+            ACT(J) = 1.0 / REAL (QNMBR(TYPE))
+2010  CONTINUE
+
+C///  INITIALIZE SDEN.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSDEN (ISKWRK, RSKWRK, SDEN0)
+
+      CALL SKSDEN (ISK, RSK, SDEN)
+
+C///  INITIALIZE DEN FOR BULK SPECIES.
+
+C     ONLY BULK SPECIES VALUES FROM DEN ARE USED.  THEY ARE INDEPENDENT
+C     OF ACTIVITIES AND TEMPERATURE, WHICH ARE HERE GIVEN SOME VALUES
+C     FOR SAFETY.
+
+      DO 2020 J = 1, GASES + SITES
+         ACT(J) = 1.0
+2020  CONTINUE
+
+      DUMMY = 300.0
+
+C     (SKLIB VERSION 3.5)
+C     SUBROUTINE SKDEN (P, T, ACT, SDEN, ISKWRK, RSKWRK, DEN)
+
+      CALL SKDEN (PRESS, DUMMY, ACT, SDEN, ISK, RSK, DEN)
+
+C///  INITIALIZE MOLE FRACTIONS.
+
+      DO 2030 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKYTX (SLTN(OFFSET), ICK, RCK, MOLE(1, CELL))
+2030  CONTINUE
+
+C///  INTIALIZE SDOT.
+
+C     (SKLIB VERSION 3.7)
+C     SUBROUTINE SKRAT (P, T, ACT, SDEN, ISKWRK, RSKWRK, SDOT, SITDOT)
+
+      DO 2060 SURF = 1, SURFS
+         CELL = P02(SURF)
+         DO 2040 GAS = 1, GASES
+            ACT(GAS) = MOLE(GAS, CELL)
+2040     CONTINUE
+
+         OFFSET = P03(SURF) - 1
+         DO 2050 SITE = 1, SITES
+            ACT(GASES + SITE) = SLTN(OFFSET + SITE)
+2050     CONTINUE
+
+         CALL SKRAT
+     +     (PRESS, STEMP(SURF), ACT, SDEN, ISK, RSK, SDOT(1, SURF),
+     +      SITDOT)
+2060  CONTINUE
+
+C///  INITIALIZE WT.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKWT (ISKWRK, RSKWRK, WT)
+
+      CALL SKWT (ISK, RSK, WT)
+
+C///  OVERWRITE SDOT BY DEPOSIT RATE.
+
+      DO 2070 SURF = 1, SURFS
+         DO 2070 J = GASES + SITES + 1, GASES + SITES + BULKS
+            SDOT(J, SURF) = 6.0E5 * SDOT(J, SURF) * WT(J) / DEN(J)
+2070  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) PLOT THE GAS VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      ERROR = .NOT. (R10SIZ * Z10SIZ .LE. TSIZE)
+      IF (ERROR) GO TO 9301
+
+C///  MOLE FRACTIONS.
+
+C     SUBROUTINE WRT2D1
+C    +  (ERROR, TEXT,
+C    +   DATA, LEGE, NAME, SUBT, TITL, XCOORD, XINC, XLAB, XSIZE,
+C    +   YCOORD, YINC, YLAB, YSIZE, ZCOORD, ZLAB)
+
+      DO 3020 GAS = 1, GASES
+         CURVES = CURVES + 1
+
+         NAME = SNAME(GAS) // ' MOLE FRACTION OF GAS'
+         CALL SQUEEZ (LENGTH, NAME)
+         TITL = SNAME(GAS)
+         CALL SQUEEZ (LENGTH, TITL)
+         SUBT = 'MOLE FRACTION'
+         LEGE = TITL
+         XINC = 1
+         YINC = R10SIZ
+         XLAB = 'RADIAL POSITION (CM)'
+         YLAB = 'AXIAL POSITION (CM)'
+         ZLAB = ' '
+         XSIZE = R10SIZ
+         YSIZE = Z10SIZ
+
+         DO 3010 J = 1, R10SIZ * Z10SIZ
+            CELL = P10(J)
+            TEMP(J) = MOLE(GAS, CELL)
+3010     CONTINUE
+
+C*****PRECISION > DOUBLE
+         CALL WRT2D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C         CALL WRT2D1
+C*****END PRECISION > SINGLE
+     +     (ERROR, TEXT,
+     +      UNIT, LEGE, NAME, SUBT, TITL, R10, XINC, XLAB, XSIZE, Z10,
+     +      YINC, YLAB, YSIZE, TEMP, ZLAB)
+         IF (ERROR) GO TO 9302
+3020  CONTINUE
+
+C///  TEMPERATURE.
+
+C     SUBROUTINE WRT2D1
+C    +  (ERROR, TEXT,
+C    +   DATA, LEGE, NAME, SUBT, TITL, XCOORD, XINC, XLAB, XSIZE,
+C    +   YCOORD, YINC, YLAB, YSIZE, ZCOORD, ZLAB)
+
+      CURVES = CURVES + 1
+
+      NAME = 'GAS TEMPERATURE'
+      TITL = NAME
+      SUBT = ' '
+      LEGE = NAME
+      XINC = 1
+      YINC = R10SIZ
+      XLAB = 'RADIAL POSITION (CM)'
+      YLAB = 'AXIAL POSITION (CM)'
+      ZLAB = 'KELVIN'
+      XSIZE = R10SIZ
+      YSIZE = Z10SIZ
+
+      DO 3030 J = 1, R10SIZ * Z10SIZ
+         CELL = P10(J)
+         OFFSET = P01(CELL) + QT
+         TEMP(J) = SLTN(OFFSET)
+3030  CONTINUE
+
+C*****PRECISION > DOUBLE
+      CALL WRT2D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL WRT2D1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   UNIT, LEGE, NAME, SUBT, TITL, R10, XINC, XLAB, XSIZE, Z10,
+     +   YINC, YLAB, YSIZE, TEMP, ZLAB)
+      IF (ERROR) GO TO 9302
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) PLOT THE SURFACE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      ERROR = .NOT. (R11SIZ * 2 * Z11SIZ .LE. TSIZE)
+      IF (ERROR) GO TO 9401
+
+C///  TEMPERATURE.
+
+      CURVES = CURVES + 1
+
+      NAME = 'SURFACE TEMPERATURE'
+      TITL = NAME
+      SUBT = ' '
+      LEGE = 'SURFACE TEMPERATURE'
+
+      XINC = 1
+      YINC = R11SIZ
+      XLAB = 'RADIAL POSITION (CM)'
+      YLAB = 'AXIAL POSITION (CM)'
+      ZLAB = 'KELVIN'
+      XSIZE = R11SIZ
+      YSIZE = 2 * Z11SIZ
+
+      COUNT = 0
+      DO 4010 K = 1, Z11SIZ
+         DO 4010 SIDE = 1, 2
+            YCOORD(SIDE + 2 * (K - 1)) = Z11(K) + DELTA(SIDE)
+            DO 4010 J = 1, R11SIZ
+               COUNT = COUNT + 1
+               SURF = P11(J, SIDE, K)
+               TEMP(COUNT) = STEMP(SURF)
+4010  CONTINUE
+
+C*****PRECISION > DOUBLE
+      CALL WRT2D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      CALL WRT2D1
+C*****END PRECISION > SINGLE
+     +  (ERROR, TEXT,
+     +   UNIT, LEGE, NAME, SUBT, TITL, R11, XINC, XLAB, XSIZE,
+     +   YCOORD, YINC, YLAB, YSIZE, TEMP, ZLAB)
+      IF (ERROR) GO TO 9302
+
+C///  SITE FRACTIONS.
+
+      DO 4030 TYPE = 1 + 1, 1 + STYPES
+         DO 4030 SITE = QFIRST(TYPE), QLAST(TYPE)
+            CURVES = CURVES + 1
+
+            NAME = SNAME(SITE) // ' FRACTION OF SURFACE ' // TNAME(TYPE)
+            CALL SQUEEZ (LENGTH, NAME)
+
+            TITL = SNAME(SITE) // ' FRACTION'
+            CALL SQUEEZ (LENGTH, TITL)
+
+            SUBT = 'SURFACE ' // TNAME(TYPE)
+            CALL SQUEEZ (LENGTH, SUBT)
+
+            LEGE = SNAME(SITE)
+            CALL SQUEEZ (LENGTH, LEGE)
+
+            XINC = 1
+            YINC = R11SIZ
+            XLAB = 'RADIAL POSITION (CM)'
+            YLAB = 'AXIAL POSITION (CM)'
+            ZLAB = 'FRACTION'
+            XSIZE = R11SIZ
+            YSIZE = 2 * Z11SIZ
+
+            COUNT = 0
+            DO 4020 K = 1, Z11SIZ
+               DO 4020 SIDE = 1, 2
+                  YCOORD(SIDE + 2 * (K - 1)) = Z11(K) + DELTA(SIDE)
+                  DO 4020 J = 1, R11SIZ
+                     COUNT = COUNT + 1
+                     SURF = P11(J, SIDE, K)
+                     OFFSET = P03(SURF) - 1 + SITE - GASES
+                     TEMP(COUNT) = SLTN(OFFSET)
+4020        CONTINUE
+
+C*****PRECISION > DOUBLE
+            CALL WRT2D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C            CALL WRT2D1
+C*****END PRECISION > SINGLE
+     +        (ERROR, TEXT,
+     +         UNIT, LEGE, NAME, SUBT, TITL, R11, XINC, XLAB, XSIZE,
+     +         YCOORD, YINC, YLAB, YSIZE, TEMP, ZLAB)
+            IF (ERROR) GO TO 9302
+4030  CONTINUE
+
+C///  DEPOSIT RATES.
+
+      IF (.NOT. SMOOTH) THEN
+
+      DO 4050 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 4050 BULK = QFIRST(TYPE), QLAST(TYPE)
+            CURVES = CURVES + 1
+
+            NAME = SNAME(BULK) // ' PORTION OF ' // TNAME(TYPE)
+     +         // ' DEPOSIT RATE'
+            CALL SQUEEZ (LENGTH, NAME)
+
+            TITL = SNAME(BULK)
+            CALL SQUEEZ (LENGTH, TITL)
+
+            SUBT = TNAME(TYPE) // ' DEPOSIT RATE'
+            CALL SQUEEZ (LENGTH, SUBT)
+
+            LEGE = SNAME(BULK)
+            CALL SQUEEZ (LENGTH, LEGE)
+
+            XINC = 1
+            YINC = R11SIZ
+            XLAB = 'RADIAL POSITION (CM)'
+            YLAB = 'AXIAL POSITION (CM)'
+            ZLAB = 'ANGSTROM / MIN'
+            XSIZE = R11SIZ
+            YSIZE = 2 * Z11SIZ
+
+            COUNT = 0
+            DO 4040 K = 1, Z11SIZ
+               DO 4040 SIDE = 1, 2
+                  YCOORD(SIDE + 2 * (K - 1)) = Z11(K) + DELTA(SIDE)
+                  DO 4040 J = 1, R11SIZ
+                     COUNT = COUNT + 1
+                     SURF = P11(J, SIDE, K)
+                     TEMP(COUNT) = 10000.0 * SDOT(BULK, SURF)
+4040        CONTINUE
+
+C*****PRECISION > DOUBLE
+            CALL WRT2D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C            CALL WRT2D1
+C*****END PRECISION > SINGLE
+     +        (ERROR, TEXT,
+     +         UNIT, LEGE, NAME, SUBT, TITL, R11, XINC, XLAB, XSIZE,
+     +         YCOORD, YINC, YLAB, YSIZE, TEMP, ZLAB)
+            IF (ERROR) GO TO 9302
+4050  CONTINUE
+
+      END IF
+
+C///  SMOOTH, AVERAGED DEPOSIT RATES.
+
+      IF (SMOOTH) THEN
+
+      DO 4070 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 4070 BULK = QFIRST(TYPE), QLAST(TYPE)
+            CURVES = CURVES + 1
+
+            NAME = SNAME(BULK) // ' PORTION OF ' // TNAME(TYPE)
+     +         // ' DEPOSIT RATE'
+            CALL SQUEEZ (LENGTH, NAME)
+
+            TITL = SNAME(BULK)
+            CALL SQUEEZ (LENGTH, TITL)
+
+            SUBT = TNAME(TYPE) // ' DEPOSIT RATE'
+            CALL SQUEEZ (LENGTH, SUBT)
+
+            LEGE = SNAME(BULK)
+            CALL SQUEEZ (LENGTH, LEGE)
+
+            XINC = 1
+            YINC = R11SIZ
+            XLAB = 'RADIAL POSITION (CM)'
+            YLAB = 'AXIAL POSITION (CM)'
+            ZLAB = 'ANGSTROM / MIN'
+            XSIZE = R11SIZ
+            YSIZE = Z11SIZ
+
+            COUNT = 0
+            DO 4060 K = 1, Z11SIZ
+               YCOORD(K) = Z11(K)
+               DO 4060 J = 1, R11SIZ
+                  COUNT = COUNT + 1
+                  SURF1 = P11(J, 1, K)
+                  SURF2 = P11(J, 2, K)
+                  TEMP(COUNT) = 10000.0
+     +               * 0.5 * (SDOT(BULK, SURF1) + SDOT(BULK, SURF2))
+4060        CONTINUE
+
+C*****PRECISION > DOUBLE
+            CALL WRT2D2
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C            CALL WRT2D1
+C*****END PRECISION > SINGLE
+     +        (ERROR, TEXT,
+     +         UNIT, LEGE, NAME, SUBT, TITL, R11, XINC, XLAB, XSIZE,
+     +         YCOORD, YINC, YLAB, YSIZE, TEMP, ZLAB)
+            IF (ERROR) GO TO 9302
+4070  CONTINUE
+
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RSKSIZ,
+     +   SITES, STYPES, SURFS, YMAX
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID, YMAX, Z11SIZ
+      GO TO 99999
+
+9103  IF (0 .LT. TEXT) WRITE (TEXT, 99103) ID, UNIT, STATUS
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID
+      GO TO 99999
+
+9302  IF (0 .LT. TEXT) WRITE (TEXT, 99302) ID, CURVES
+      GO TO 99999
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +   //10X, I10, '  BTYPES'
+     +    /10X, I10, '  BULKS'
+     +    /10X, I10, '  CELLS'
+     +    /10X, I10, '  GASES'
+     +    /10X, I10, '  ICKSIZ'
+     +    /10X, I10, '  ISKSIZ'
+     +    /10X, I10, '  RCKSIZ'
+     +    /10X, I10, '  RSKSIZ'
+     +    /10X, I10, '  SITES'
+     +    /10X, I10, '  STYPES'
+     +    /10X, I10, '  SURFS'
+     +    /10X, I10, '  YMAX')
+
+99102 FORMAT
+     +   (/1X, A9, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     +   //10X, I10, '  YMAX'
+     +    /10X, I10, '  Z11SIZ')
+
+99103 FORMAT
+     +   (/1X, A9, 'ERROR.  FORMATTED WRITE FILE FAILS.'
+     +   //10X, I10, '  UNIT NUMBER'
+     +    /10X, I10, '  I/O STATUS')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  THE TEMP ARRAY IS TOO SMALL FOR P10 PLOTS.')
+
+99302 FORMAT
+     +   (/1X, A9, 'ERROR.  WRT2D1 OR WRT2D2 FAILS TO WRITE A PLOT2D'
+     +   /10X, 'RECORD.'
+     +   //10X, I10, '  CURVE')
+
+99401 FORMAT
+     +   (/1X, A9, 'ERROR.  THE TEMP ARRAY IS TOO SMALL FOR P11 PLOTS.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN43
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   ACT, BTYPES, BULKS, CELLS, COEFF, DEN, GASES, MOLE, P01, P02,
+     +   P03, P09, P11, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ, RATE,
+     +   RPNTS, SDEN, SDOT, SITDOT, SITES, SLTN, SMOOTH, SNAME, STEMP,
+     +   STYPES, SURFS, THICK, UNIT, VBLES, WT, YCOORD, Z, Z11SIZ,
+     +   ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN43
+C
+C     WRITE TECPLOT 1D GAS DATA.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   ID*9, SNAME*(*), STRING*80, WORD1*120, WORD2*120,
+     +   WORD3*120
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ACT, COEFF, DELTA, DEN, DUMMY, MOLE, PRESS, R1, R11, R2,
+     +   RATE, RCK, RSK, SDEN, SDOT, SITDOT, SLTN, STEMP, SUM, THICK,
+     +   WT, YCOORD, Z
+      EXTERNAL
+     +   CKYTX, EXTENT, SKDEN, SKRAT, SKSDEN, SKWT, SQUEEZ
+      INTEGER
+     +   BTYPES, BULK, BULKS, CELL, CELLS, CURVE, CURVES, GAS, GASES,
+     +   ICK, ICKSIZ, ISK, ISKSIZ, J, LEN1, LEN2, LEN3, LENGTH, OFFSET,
+     +   P01, P02, P03, P09, P11, QFIRST, QGAS, QLAST, QNMBR, QT, QVEL,
+     +   R11SIZ, RCKSIZ, RPNT, RPNTS, RSKSIZ, SIDE, SIDES, SITE, SITES,
+     +   STATUS, STYPES, SURF, SURFS, TEXT, TYPE, UNIT, VBLES, Z11SIZ,
+     +   ZPNT, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      INTRINSIC
+     +   REAL
+      LOGICAL
+     +   ERROR, SMOOTH
+
+      PARAMETER (ID = 'OVEN43:  ')
+      PARAMETER (QT = 0, QVEL = 1, QGAS = 2)
+
+      DIMENSION
+     +   ACT(GASES + SITES + BULKS), COEFF(R11SIZ), DELTA(2), DEN(GASES
+     +   + SITES + BULKS), ICK(ICKSIZ), ISK(ISKSIZ), MOLE(GASES, CELLS),
+     +   P01(CELLS), P02(SURFS), P03(SURFS), P09(ZPNTS), P11(R11SIZ, 2,
+     +   Z11SIZ), QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES +
+     +   BTYPES), QNMBR(1 + STYPES + BTYPES), R11(R11SIZ), RATE(R11SIZ,
+     +   2, Z11SIZ), RCK(RCKSIZ), RSK(RSKSIZ), SDEN(1 + STYPES +
+     +   BTYPES), SDOT(GASES + SITES + BULKS, SURFS), SITDOT(1 + STYPES
+     +   + BTYPES), SLTN(VBLES), SNAME(GASES + SITES + BULKS),
+     +   STEMP(SURFS), WT(GASES + SITES +
+     +   BULKS), YCOORD(ZPNTS), Z(ZPNTS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RPNTS  .AND. 0 .LT. RSKSIZ .AND.
+     +   0 .LT. SITES  .AND. 0 .LT. STYPES .AND. 0 .LT. SURFS  .AND.
+     +   0 .LT. ZPNTS  .AND. 0 .LT. ZPNTS1 .AND. 0 .LT. ZPNTS2 .AND.
+     +   0 .LT. ZPNTS3)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT.
+     +  (ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3 .EQ. CELLS .AND.
+     +   ZPNTS1 + ZPNTS2 + ZPNTS3 .EQ. ZPNTS)
+      IF (ERROR) GO TO 9102
+
+C///  INITIALIZE THE COUNT OF CURVES.
+
+      CURVES = 0
+
+C///  INITIALIZE COEFFICIENTS FOR MEAN DEPOSIT RATES.
+
+      DO 1010 RPNT = 1, R11SIZ
+         IF (RPNT .EQ. 1) THEN
+            R1 = R11(1)
+         ELSE
+            R1 = 0.5 * (R11(RPNT - 1) + R11(RPNT))
+         END IF
+
+         IF (RPNT .EQ. R11SIZ) THEN
+            R2 = R11(RPNT)
+         ELSE
+            R2 = 0.5 * (R11(RPNT) + R11(RPNT + 1))
+         END IF
+
+         COEFF(RPNT) = (R2 ** 2 - R1 ** 2) / (R11(R11SIZ) ** 2)
+1010  CONTINUE
+
+C///  FORM THE Z COORDINATE INDEX FOR PLOTTING SURFACE SIDES.
+
+      DELTA(1) = - 0.5 * THICK
+      DELTA(2) = 0.5 * THICK
+
+C///  CHOOSE THE NUMBER OF SIDES.
+
+      IF (SMOOTH) THEN
+         SIDES = 1
+      ELSE
+         SIDES = 2
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE ACTIVITIES FOR BULK SPECIES.
+
+C     THEY PROBABLY AREN'T USED
+
+      DO 2010 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 2010 J = QFIRST(TYPE), QLAST(TYPE)
+            ACT(J) = 1.0 / REAL (QNMBR(TYPE))
+2010  CONTINUE
+
+C///  INITIALIZE SDEN.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSDEN (ISKWRK, RSKWRK, SDEN0)
+
+      CALL SKSDEN (ISK, RSK, SDEN)
+
+C///  INITIALIZE DEN FOR BULK SPECIES.
+
+C     ONLY BULK SPECIES VALUES FROM DEN ARE USED.  THEY ARE INDEPENDENT
+C     OF ACTIVITIES AND TEMPERATURE, WHICH ARE HERE GIVEN SOME VALUES
+C     FOR SAFETY.
+
+      DO 2020 J = 1, GASES + SITES
+         ACT(J) = 1.0
+2020  CONTINUE
+
+      DUMMY = 300.0
+
+C     (SKLIB VERSION 3.5)
+C     SUBROUTINE SKDEN (P, T, ACT, SDEN, ISKWRK, RSKWRK, DEN)
+
+      CALL SKDEN (PRESS, DUMMY, ACT, SDEN, ISK, RSK, DEN)
+
+C///  INITIALIZE MOLE FRACTIONS.
+
+      DO 2030 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKYTX (SLTN(OFFSET), ICK, RCK, MOLE(1, CELL))
+2030  CONTINUE
+
+C///  INITIALIZE SDOT.
+
+C     (SKLIB VERSION 3.7)
+C     SUBROUTINE SKRAT (P, T, ACT, SDEN, ISKWRK, RSKWRK, SDOT, SITDOT)
+
+      DO 2060 SURF = 1, SURFS
+         CELL = P02(SURF)
+         DO 2040 GAS = 1, GASES
+            ACT(GAS) = MOLE(GAS, CELL)
+2040     CONTINUE
+
+         OFFSET = P03(SURF) - 1
+         DO 2050 SITE = 1, SITES
+            ACT(GASES + SITE) = SLTN(OFFSET + SITE)
+2050     CONTINUE
+
+         CALL SKRAT
+     +     (PRESS, STEMP(SURF), ACT, SDEN, ISK, RSK, SDOT(1, SURF),
+     +      SITDOT)
+2060  CONTINUE
+
+C///  INITIALIZE WT.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKWT (ISKWRK, RSKWRK, WT)
+
+      CALL SKWT (ISK, RSK, WT)
+
+C///  OVERWRITE SDOT BY DEPOSIT RATE (SCALED FROM CM / SEC TO
+C///  ANGSTROMS / MIN)
+
+      DO 2070 SURF = 1, SURFS
+         DO 2070 J = GASES + SITES + 1, GASES + SITES + BULKS
+            SDOT(J, SURF) = 6.0E9 * SDOT(J, SURF) * WT(J) / DEN(J)
+2070  CONTINUE
+
+C///  FORM THE DEPOSIT RATE.
+
+      DO 2090 ZPNT = 1, Z11SIZ
+         DO 2090 SIDE = 1, 2
+            DO 2090 RPNT = 1, R11SIZ
+               SUM = 0.0
+               SURF = P11(RPNT, SIDE, ZPNT)
+               DO 2080 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+                  DO 2080 BULK = QFIRST(TYPE), QLAST(TYPE)
+                     SUM = SUM + SDOT(BULK, SURF)
+2080           CONTINUE
+               RATE(RPNT, SIDE, ZPNT) = SUM
+2090  CONTINUE
+
+C///  AVERAGE THE RATES.
+
+      IF (SMOOTH) THEN
+         DO 2100 ZPNT = 1, Z11SIZ
+            DO 2100 RPNT = 1, R11SIZ
+               RATE(RPNT, 1, ZPNT) = 0.5 *
+     +            (RATE(RPNT, 1, ZPNT) + RATE(RPNT, 2, ZPNT))
+2100     CONTINUE
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) WRITE THE BEGINNING OF THE TECPLOT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      REWIND UNIT
+
+C///  WRITE THE TECPLOT TITLE.
+
+      STRING = 'TITLE = "OVEND 1D GAS DATA"'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+C///  WRITE THE TECPLOT VARIABLE NAMES.
+
+      CURVES = 0
+
+      STRING = 'VARIABLES ='
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+      STRING = 'Z'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+      DO 3010 GAS = 1, GASES
+         STRING = SNAME(GAS)
+         CALL SQUEEZ (LENGTH, STRING)
+         WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +      STRING (1 : LENGTH)
+         CURVES = CURVES + 1
+3010  CONTINUE
+
+      STRING = 'TEMPERATURE'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+C///  WRITE THE BEGINNING OF THE TECPLOT ZONE RECORD.
+
+      WRITE (STRING, 10002) 'ANNULAR REGION', ZPNTS
+      CALL SQUEEZ (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +      STRING (1 : LENGTH)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) WRITE THE ANNULAR VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      CURVE = 0
+
+C///  WRITE THE Z COORDINATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WRITE (WORD2, 10004) 'Z'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'CM'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3), Z
+
+C///  WRITE THE MOLE FRACTIONS.
+
+      DO 4020 GAS = 1, GASES
+         CURVE = CURVE + 1
+
+         WRITE (WORD1, 10003) CURVE, CURVES
+         CALL SQUEEZ (LEN1, WORD1)
+
+         WORD2 = SNAME(GAS)
+         CALL SQUEEZ (LEN2, WORD2)
+
+         WRITE (WORD3, 10004) 'MOLE FRACTION'
+         CALL SQUEEZ (LEN3, WORD3)
+
+         DO 4010 ZPNT = 1, ZPNTS
+            SURF = P09(ZPNT)
+            CELL = P02(SURF)
+            YCOORD(ZPNT) = MOLE(GAS, CELL)
+4010     CONTINUE
+
+         WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +      WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3), YCOORD
+4020  CONTINUE
+
+C///  WRITE THE TEMPERATURE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WORD2 = 'TEMPERATURE'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'KELVIN'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      DO 4030 ZPNT = 1, ZPNTS
+         SURF = P09(ZPNT)
+         CELL = P02(SURF)
+         OFFSET = P01(CELL) + QT
+         YCOORD(ZPNT) = SLTN(OFFSET)
+4030  CONTINUE
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3), YCOORD
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     DATA FORMATS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +   ('   "', A, '"')
+
+10002 FORMAT
+     +   ('ZONE T = "', A, '", I = ', I10, ', F = BLOCK')
+
+10003 FORMAT
+     +   ('CURVE: ', I10, ' OF ', I10)
+
+10004 FORMAT
+     +   (A)
+
+10005 FORMAT
+     +   ('#'
+     +   /'#///  ', A
+     +   /'#'
+     +   /'#///  TITLE: ', A
+     +   /'#'
+     +   /'#///  UNITS: ', A
+     +   /'#'
+     +   /(1P, E10.3, 5(1X, E11.3)))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RPNTS,
+     +   RSKSIZ, SITES, STYPES, SURFS, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID,
+     +   RPNTS, ZPNTS1, ZPNTS2, ZPNTS3, CELLS, ZPNTS
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID, CURVES
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES'
+     +   /10X, I10, '  BULKS'
+     +   /10X, I10, '  CELLS'
+     +   /10X, I10, '  GASES'
+     +   /10X, I10, '  ICKSIZ'
+     +   /10X, I10, '  ISKSIZ'
+     +   /10X, I10, '  RCKSIZ'
+     +   /10X, I10, '  RPNTS'
+     +   /10X, I10, '  RSKSIZ'
+     +   /10X, I10, '  SITES'
+     +   /10X, I10, '  STYPES'
+     +   /10X, I10, '  SURFS'
+     +   /10X, I10, '  ZPNTS'
+     +   /10X, I10, '  ZPNTS1'
+     +   /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3')
+
+99102 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     +  //10X, I10, '  RPNTS'
+     +   /10X, I10, '  ZPNTS1'
+     +   /10X, I10, '  ZPNTS2'
+     +   /10X, I10, '  ZPNTS3'
+     +  //10X, I10, '  CELLS'
+     +   /10X, I10, '  ZPNTS')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  WRITE FAILS.'
+     +  //10X, I10, '  CURVE')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN44
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   ACT, BTYPES, BULKS, CELLS, COEFF, DEN, GASES, MOLE, P01, P02,
+     +   P03, P11, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ, RATE,
+     +   RPNTS, SDEN, SDOT, SITDOT, SITES, SLTN, SMOOTH, STEMP, STYPES,
+     +   SURFS, THICK, UNIT, VALUE, VBLES, VMAX, WT, Z11, Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN44
+C
+C     WRITE TECPLOT 1D WAFER SURFACE DATA.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   ID*9, STRING*80, WORD1*120, WORD2*120, WORD3*120
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ACT, COEFF, DELTA, DEN, DUMMY, MOLE, PRESS, R1, R11, R2, RATE,
+     +   RCK, RSK, SDEN, SDOT, SITDOT, SLTN, STEMP, SUM, THICK, WT,
+     +   VALUE, Z11
+      EXTERNAL
+     +   CKYTX, EXTENT, SKDEN, SKRAT, SKSDEN, SKWT, SQUEEZ
+      INTEGER
+     +   BTYPES, BULK, BULKS, CELL, CELLS, COUNT, CURVE, CURVES, GAS,
+     +   GASES, ICK, ICKSIZ, ISK, ISKSIZ, J, K, LEN1, LEN2, LEN3,
+     +   LENGTH, OFFSET, P01, P02, P03, P11, VMAX, QFIRST, QGAS, QLAST,
+     +   QNMBR, R11SIZ, RCKSIZ, RPNT, RPNTS, RSKSIZ, SIDE, SIDES, SITE,
+     +   SITES, STATUS, STYPES, SURF, SURFS, TEXT, TYPE, UNIT, VBLES,
+     +   Z11SIZ, ZPNT
+      INTRINSIC
+     +   REAL
+      LOGICAL
+     +   ERROR, SMOOTH
+
+      PARAMETER (ID = 'OVEN44:  ')
+      PARAMETER (QGAS = 2)
+
+      DIMENSION
+     +   ACT(GASES + SITES + BULKS), COEFF(R11SIZ), DELTA(2), DEN(GASES
+     +   + SITES + BULKS), ICK(ICKSIZ), ISK(ISKSIZ), MOLE(GASES, CELLS),
+     +   P01(CELLS), P02(SURFS), P03(SURFS), P11(R11SIZ, 2, Z11SIZ),
+     +   QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES + BTYPES),
+     +   QNMBR(1 + STYPES + BTYPES), R11(R11SIZ), RATE(R11SIZ, 2,
+     +   Z11SIZ), RCK(RCKSIZ), RSK(RSKSIZ), SDEN(1 + STYPES + BTYPES),
+     +   SDOT(GASES + SITES + BULKS, SURFS), SITDOT(1 + STYPES +
+     +   BTYPES), SLTN(VBLES), STEMP(SURFS), VALUE(VMAX), WT(GASES +
+     +   SITES + BULKS), Z11(Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHOOSE THE NUMBER OF SIDES.
+
+      IF (SMOOTH) THEN
+         SIDES = 1
+      ELSE
+         SIDES = 2
+      END IF
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RPNTS  .AND. 0 .LT. RSKSIZ .AND.
+     +   0 .LT. SITES  .AND. 0 .LT. STYPES .AND. 0 .LT. SURFS)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT. (R11SIZ * SIDES * Z11SIZ .LE. VMAX)
+      IF (ERROR) GO TO 9102
+
+C///  INITIALIZE THE COUNT OF CURVES.
+
+      CURVES = 0
+
+C///  INITIALIZE COEFFICIENTS FOR MEAN DEPOSIT RATES.
+
+      DO 1010 RPNT = 1, R11SIZ
+         IF (RPNT .EQ. 1) THEN
+            R1 = R11(1)
+         ELSE
+            R1 = 0.5 * (R11(RPNT - 1) + R11(RPNT))
+         END IF
+
+         IF (RPNT .EQ. R11SIZ) THEN
+            R2 = R11(RPNT)
+         ELSE
+            R2 = 0.5 * (R11(RPNT) + R11(RPNT + 1))
+         END IF
+
+         COEFF(RPNT) = (R2 ** 2 - R1 ** 2) / (R11(R11SIZ) ** 2)
+1010  CONTINUE
+
+C///  FORM THE Z COORDINATE INDEX FOR PLOTTING SURFACE SIDES.
+
+      DELTA(1) = - 0.5 * THICK
+      DELTA(2) = 0.5 * THICK
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE ACTIVITIES FOR BULK SPECIES.
+
+C     THEY PROBABLY AREN'T USED
+
+      DO 2010 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 2010 J = QFIRST(TYPE), QLAST(TYPE)
+            ACT(J) = 1.0 / REAL (QNMBR(TYPE))
+2010  CONTINUE
+
+C///  INITIALIZE SDEN.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSDEN (ISKWRK, RSKWRK, SDEN0)
+
+      CALL SKSDEN (ISK, RSK, SDEN)
+
+C///  INITIALIZE DEN FOR BULK SPECIES.
+
+C     ONLY BULK SPECIES VALUES FROM DEN ARE USED.  THEY ARE INDEPENDENT
+C     OF ACTIVITIES AND TEMPERATURE, WHICH ARE HERE GIVEN SOME VALUES
+C     FOR SAFETY.
+
+      DO 2020 J = 1, GASES + SITES
+         ACT(J) = 1.0
+2020  CONTINUE
+
+      DUMMY = 300.0
+
+C     (SKLIB VERSION 3.5)
+C     SUBROUTINE SKDEN (P, T, ACT, SDEN, ISKWRK, RSKWRK, DEN)
+
+      CALL SKDEN (PRESS, DUMMY, ACT, SDEN, ISK, RSK, DEN)
+
+C///  INITIALIZE MOLE FRACTIONS.
+
+      DO 2030 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKYTX (SLTN(OFFSET), ICK, RCK, MOLE(1, CELL))
+2030  CONTINUE
+
+C///  INITIALIZE SDOT.
+
+C     (SKLIB VERSION 3.7)
+C     SUBROUTINE SKRAT (P, T, ACT, SDEN, ISKWRK, RSKWRK, SDOT, SITDOT)
+
+      DO 2060 SURF = 1, SURFS
+         CELL = P02(SURF)
+         DO 2040 GAS = 1, GASES
+            ACT(GAS) = MOLE(GAS, CELL)
+2040     CONTINUE
+
+         OFFSET = P03(SURF) - 1
+         DO 2050 SITE = 1, SITES
+            ACT(GASES + SITE) = SLTN(OFFSET + SITE)
+2050     CONTINUE
+
+         CALL SKRAT
+     +     (PRESS, STEMP(SURF), ACT, SDEN, ISK, RSK, SDOT(1, SURF),
+     +      SITDOT)
+2060  CONTINUE
+
+C///  INITIALIZE WT.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKWT (ISKWRK, RSKWRK, WT)
+
+      CALL SKWT (ISK, RSK, WT)
+
+C///  OVERWRITE SDOT BY DEPOSIT RATE (SCALED FROM CM / SEC TO
+C///  ANGSTROMS / MIN)
+
+      DO 2070 SURF = 1, SURFS
+         DO 2070 J = GASES + SITES + 1, GASES + SITES + BULKS
+            SDOT(J, SURF) = 6.0E9 * SDOT(J, SURF) * WT(J) / DEN(J)
+2070  CONTINUE
+
+C///  FORM THE DEPOSIT RATE.
+
+      DO 2090 ZPNT = 1, Z11SIZ
+         DO 2090 SIDE = 1, 2
+            DO 2090 RPNT = 1, R11SIZ
+               SUM = 0.0
+               SURF = P11(RPNT, SIDE, ZPNT)
+               DO 2080 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+                  DO 2080 BULK = QFIRST(TYPE), QLAST(TYPE)
+                     SUM = SUM + SDOT(BULK, SURF)
+2080           CONTINUE
+               RATE(RPNT, SIDE, ZPNT) = SUM
+2090  CONTINUE
+
+C///  AVERAGE THE RATES.
+
+      IF (SMOOTH) THEN
+         DO 2100 ZPNT = 1, Z11SIZ
+            DO 2100 RPNT = 1, R11SIZ
+               RATE(RPNT, 1, ZPNT) = 0.5 *
+     +            (RATE(RPNT, 1, ZPNT) + RATE(RPNT, 2, ZPNT))
+2100     CONTINUE
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) WRITE THE BEGINNING OF THE TECPLOT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      REWIND UNIT
+
+C///  WRITE THE TECPLOT TITLE.
+
+      STRING = 'TITLE = "OVEND 1D SURFACE DATA"'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+C///  WRITE THE TECPLOT VARIABLE NAMES.
+
+      CURVES = 0
+
+      STRING = 'VARIABLES ='
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+      STRING = 'Z'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+      STRING = 'EDGE DEPOSIT RATE'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+      STRING = 'MEAN DEPOSIT RATE'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+      STRING = 'CENTER DEPOSIT RATE'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+C///  WRITE THE BEGINNING OF THE TECPLOT ZONE RECORD.
+
+      IF (SMOOTH) THEN
+         WRITE (STRING, 10002) 'WAFER LOAD', Z11SIZ
+      ELSE
+         WRITE (STRING, 10002) 'WAFER LOAD', 2 * Z11SIZ
+      END IF
+
+      CALL SQUEEZ (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +      STRING (1 : LENGTH)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) WRITE THE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      CURVE = 0
+
+C///  WRITE THE Z COORDINATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WRITE (WORD2, 10004) 'Z'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'CM'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      IF (SMOOTH) THEN
+         WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +      WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +      (Z11(K), K = 1, Z11SIZ)
+      ELSE
+         WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +      WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +      ((Z11(K) + DELTA(SIDE), SIDE = 1, 2), K = 1, Z11SIZ)
+      END IF
+
+C///  WRITE THE EDGE DEPOSIT RATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WORD2 = 'EDGE DEPOSIT RATE'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'ANGSTROMS / MINUTE'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      COUNT = 0
+      DO 4010 ZPNT = 1, Z11SIZ
+         DO 4010 SIDE = 1, SIDES
+            COUNT = COUNT + 1
+            VALUE(COUNT) = RATE(RPNTS, SIDE, ZPNT)
+4010  CONTINUE
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +   (VALUE(J), J = 1, COUNT)
+
+C///  WRITE THE MEAN DEPOSIT RATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WORD2 = 'MEAN DEPOSIT RATE'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'ANGSTROMS / MINUTE'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      COUNT = 0
+      DO 4020 ZPNT = 1, Z11SIZ
+         DO 4020 SIDE = 1, SIDES
+            COUNT = COUNT + 1
+            VALUE(COUNT) = 0.0
+            DO 4020 RPNT = 1, R11SIZ
+               VALUE(COUNT) = VALUE(COUNT)
+     +            + COEFF(RPNT) * RATE(RPNT, SIDE, ZPNT)
+4020  CONTINUE
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +   (VALUE(J), J = 1, COUNT)
+
+C///  WRITE THE CENTER DEPOSIT RATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WORD2 = 'CENTER DEPOSIT RATE'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'ANGSTROMS / MINUTE'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      COUNT = 0
+      DO 4030 ZPNT = 1, Z11SIZ
+         DO 4030 SIDE = 1, SIDES
+            COUNT = COUNT + 1
+            VALUE(COUNT) = RATE(1, SIDE, ZPNT)
+4030  CONTINUE
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +   (VALUE(J), J = 1, COUNT)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     DATA FORMATS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +   ('   "', A, '"')
+
+10002 FORMAT
+     +   ('ZONE T = "', A, '", I = ', I10, ', F = BLOCK')
+
+10003 FORMAT
+     +   ('CURVE: ', I10, ' OF ', I10)
+
+10004 FORMAT
+     +   (A)
+
+10005 FORMAT
+     +   ('#'
+     +   /'#///  ', A
+     +   /'#'
+     +   /'#///  TITLE: ', A
+     +   /'#'
+     +   /'#///  UNITS: ', A
+     +   /'#'
+     +   /(1P, E10.3, 6(1X, E11.3)))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RPNTS,
+     +   RSKSIZ, SITES, STYPES, SURFS
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID, R11SIZ, Z11SIZ
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID, CURVES
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +  //10X, I10, '  BTYPES'
+     +   /10X, I10, '  BULKS'
+     +   /10X, I10, '  CELLS'
+     +   /10X, I10, '  GASES'
+     +   /10X, I10, '  ICKSIZ'
+     +   /10X, I10, '  ISKSIZ'
+     +   /10X, I10, '  RCKSIZ'
+     +   /10X, I10, '  RPNTS'
+     +   /10X, I10, '  RSKSIZ'
+     +   /10X, I10, '  SITES'
+     +   /10X, I10, '  STYPES'
+     +   /10X, I10, '  SURFS')
+
+99102 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     +  //10X, I10, '  R11SIZ'
+     +   /10X, I10, '  Z11SIZ'
+     +  //10X, I10, '  VMAX')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  WRITE FAILS.'
+     +  //10X, I10, '  CURVE')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN45
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   ACT, BTYPES, BULKS, CELLS, DEN, GASES, MOLE, P01, P02, P03,
+     +   P10, PRESS, QFIRST, QLAST, QNMBR, R10, R10SIZ, SDEN, SDOT,
+     +   SITDOT, SITES, SLTN, SNAME, STEMP, STYPES, SURFS, TEMP, THICK,
+     +   UNIT, VBLES, WT, Z10, Z10SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN45
+C
+C     WRITE TECPLOT 2D GAS DATA.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   ID*9, SNAME*(*), STRING*80, WORD1*120, WORD2*120, WORD3*120
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ACT, DELTA, DEN, DUMMY, MOLE, PRESS, R10, RCK, RSK, SDEN, SDOT,
+     +   SITDOT, SLTN, STEMP, TEMP, THICK, WT, Z10
+      EXTERNAL
+     +   CKYTX, EXTENT, SKDEN, SKRAT, SKSDEN, SKWT, SQUEEZ
+      INTEGER
+     +   BTYPES, BULKS, CELL, CELLS, COUNT, CURVE, CURVES, GAS, GASES,
+     +   ICK, ICKSIZ, ISK, ISKSIZ, J, K, LEN1, LEN2, LEN3, LENGTH,
+     +   OFFSET, P01, P02, P03, P10, QFIRST, QGAS, QLAST, QNMBR, QT,
+     +   R10SIZ, RCKSIZ, RSKSIZ, SITE, SITES, STATUS, STYPES, SURF,
+     +   SURFS, TEXT, TYPE, UNIT, VBLES, Z10SIZ
+      INTRINSIC
+     +   REAL
+      LOGICAL
+     +   ERROR
+
+      PARAMETER (ID = 'OVEN45:  ')
+      PARAMETER (QT = 0, QGAS = 2)
+
+      DIMENSION
+     +   ACT(GASES + SITES + BULKS), DELTA(2), DEN(GASES + SITES +
+     +   BULKS), ICK(ICKSIZ), ISK(ISKSIZ), MOLE(GASES, CELLS),
+     +   P01(CELLS), P02(SURFS), P03(SURFS), P10(R10SIZ * Z10SIZ),
+     +   QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES + BTYPES),
+     +   QNMBR(1 + STYPES + BTYPES), R10(R10SIZ), RCK(RCKSIZ),
+     +   RSK(RSKSIZ), SDEN(1 + STYPES + BTYPES), SDOT(GASES + SITES +
+     +   BULKS, SURFS), SITDOT(1 + STYPES + BTYPES), SLTN(VBLES),
+     +   SNAME(GASES + SITES + BULKS), STEMP(SURFS), TEMP(R10SIZ *
+     +   Z10SIZ), WT(GASES + SITES + BULKS), Z10(Z10SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RSKSIZ .AND. 0 .LT. SITES  .AND.
+     +   0 .LT. STYPES .AND. 0 .LT. SURFS)
+      IF (ERROR) GO TO 9101
+
+C///  FORM THE Z COORDINATE OFFSET FOR PLOTTING SURFACE SIDES.
+
+      DELTA(1) = - 0.5 * THICK
+      DELTA(2) = 0.5 * THICK
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE ACTIVITIES FOR BULK SPECIES.
+
+      DO 2010 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 2010 J = QFIRST(TYPE), QLAST(TYPE)
+            ACT(J) = 1.0 / REAL (QNMBR(TYPE))
+2010  CONTINUE
+
+C///  INITIALIZE SDEN.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSDEN (ISKWRK, RSKWRK, SDEN0)
+
+      CALL SKSDEN (ISK, RSK, SDEN)
+
+C///  INITIALIZE DEN FOR BULK SPECIES.
+
+C     ONLY BULK SPECIES VALUES FROM DEN ARE USED.  THEY ARE INDEPENDENT
+C     OF ACTIVITIES AND TEMPERATURE, WHICH ARE HERE GIVEN SOME VALUES
+C     FOR SAFETY.
+
+      DO 2020 J = 1, GASES + SITES
+         ACT(J) = 1.0
+2020  CONTINUE
+
+      DUMMY = 300.0
+
+C     (SKLIB VERSION 3.5)
+C     SUBROUTINE SKDEN (P, T, ACT, SDEN, ISKWRK, RSKWRK, DEN)
+
+      CALL SKDEN (PRESS, DUMMY, ACT, SDEN, ISK, RSK, DEN)
+
+C///  INITIALIZE MOLE FRACTIONS.
+
+      DO 2030 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKYTX (SLTN(OFFSET), ICK, RCK, MOLE(1, CELL))
+2030  CONTINUE
+
+C///  INTIALIZE SDOT.
+
+C     (SKLIB VERSION 3.7)
+C     SUBROUTINE SKRAT (P, T, ACT, SDEN, ISKWRK, RSKWRK, SDOT, SITDOT)
+
+      DO 2060 SURF = 1, SURFS
+         CELL = P02(SURF)
+         DO 2040 GAS = 1, GASES
+            ACT(GAS) = MOLE(GAS, CELL)
+2040     CONTINUE
+
+         OFFSET = P03(SURF) - 1
+         DO 2050 SITE = 1, SITES
+            ACT(GASES + SITE) = SLTN(OFFSET + SITE)
+2050     CONTINUE
+
+         CALL SKRAT
+     +     (PRESS, STEMP(SURF), ACT, SDEN, ISK, RSK, SDOT(1, SURF),
+     +      SITDOT)
+2060  CONTINUE
+
+C///  INITIALIZE WT.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKWT (ISKWRK, RSKWRK, WT)
+
+      CALL SKWT (ISK, RSK, WT)
+
+C///  OVERWRITE SDOT BY DEPOSIT RATE.
+
+      DO 2070 SURF = 1, SURFS
+         DO 2070 J = GASES + SITES + 1, GASES + SITES + BULKS
+            SDOT(J, SURF) = 6.0E5 * SDOT(J, SURF) * WT(J) / DEN(J)
+2070  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) WRITE THE BEGINNING OF THE TECPLOT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      REWIND UNIT
+
+C///  WRITE THE TECPLOT TITLE.
+
+      STRING = 'TITLE = "OVEND 2D GAS DATA"'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+C///  WRITE THE TECPLOT VARIABLE NAMES.
+
+      CURVES = 0
+
+      STRING = 'VARIABLES ='
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+      STRING = 'R'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+      STRING = 'Z'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+      DO 3010 GAS = 1, GASES
+         STRING = SNAME(GAS)
+         CALL SQUEEZ (LENGTH, STRING)
+         WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +      STRING (1 : LENGTH)
+         CURVES = CURVES + 1
+3010  CONTINUE
+
+      STRING = 'TEMPERATURE'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+C///  WRITE THE BEGINNING OF THE TECPLOT ZONE RECORD.
+
+      WRITE (STRING, 10002) 'RECTOR INTERIOR', R10SIZ, Z10SIZ
+
+      CALL SQUEEZ (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +      STRING (1 : LENGTH)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) WRITE THE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      CURVE = 0
+
+C///  WRITE THE R COORDINATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WRITE (WORD2, 10004) 'R'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'CM'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +   ((R10(J), J = 1, R10SIZ), K = 1, Z10SIZ)
+
+C///  WRITE THE Z COORDINATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WRITE (WORD2, 10004) 'Z'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'CM'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +   ((Z10(K), J = 1, R10SIZ), K = 1, Z10SIZ)
+
+C///  WRITE THE MOLE FRACTIONS.
+
+      DO 4020 GAS = 1, GASES
+         CURVE = CURVE + 1
+
+         WRITE (WORD1, 10003) CURVE, CURVES
+         CALL SQUEEZ (LEN1, WORD1)
+
+         WORD2 = SNAME(GAS)
+         CALL SQUEEZ (LEN2, WORD2)
+
+         WRITE (WORD3, 10004) 'MOLE FRACTION'
+         CALL SQUEEZ (LEN3, WORD3)
+
+         COUNT = 0
+         DO 4010 J = 1, R10SIZ * Z10SIZ
+            COUNT = COUNT + 1
+            CELL = P10(J)
+            TEMP(COUNT) = MOLE(GAS, CELL)
+4010     CONTINUE
+
+         WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +      WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +      (TEMP(J), J = 1, COUNT)
+4020  CONTINUE
+
+C///  WRITE THE GAS TEMPERATURE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WRITE (WORD2, 10004) 'TEMPERATURE'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'KELVIN'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      COUNT = 0
+      DO 4030 J = 1, R10SIZ * Z10SIZ
+         COUNT = COUNT + 1
+         CELL = P10(J)
+         OFFSET = P01(CELL) + QT
+         TEMP(COUNT) = SLTN(OFFSET)
+4030  CONTINUE
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +   (TEMP(J), J = 1, COUNT)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     DATA FORMATS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +   ('   "', A, '"')
+
+10002 FORMAT
+     +   ('ZONE T = "', A, '", I = ', I10, ', J = ', I10, ', F = BLOCK')
+
+10003 FORMAT
+     +   ('CURVE: ', I10, ' OF ', I10)
+
+10004 FORMAT
+     +   (A)
+
+10005 FORMAT
+     +   ('#'
+     +   /'#///  ', A
+     +   /'#'
+     +   /'#///  TITLE: ', A
+     +   /'#'
+     +   /'#///  UNITS: ', A
+     +   /'#'
+     +   /(1P, E10.3, 6(1X, E11.3)))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RSKSIZ,
+     +   SITES, STYPES, SURFS
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID, UNIT, STATUS
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +   //10X, I10, '  BTYPES'
+     +    /10X, I10, '  BULKS'
+     +    /10X, I10, '  CELLS'
+     +    /10X, I10, '  GASES'
+     +    /10X, I10, '  ICKSIZ'
+     +    /10X, I10, '  ISKSIZ'
+     +    /10X, I10, '  RCKSIZ'
+     +    /10X, I10, '  RSKSIZ'
+     +    /10X, I10, '  SITES'
+     +    /10X, I10, '  STYPES'
+     +    /10X, I10, '  SURFS')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  WRITE FAILS.'
+     +   //10X, I10, '  UNIT NUMBER'
+     +    /10X, I10, '  I/O STATUS')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN46
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   ACT, BTYPES, BULKS, CELLS, DEN, GASES, MOLE, P01, P02, P03,
+     +   P11, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ, SDEN, SDOT,
+     +   SITDOT, SITES, SLTN, SMOOTH, SNAME, STEMP, STYPES, SURFS, TEMP,
+     +   THICK, TNAME, TSIZE, UNIT, VBLES, WT, Z11, Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN46
+C
+C     WRITE TECPLOT 2D WAFER SURFACE DATA.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   ID*9, SNAME*(*), STRING*80, TNAME*(*), WORD1*120, WORD2*120,
+     +   WORD3*120
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ACT, DELTA, DEN, DUMMY, MOLE, PRESS, R11, RCK, RSK, SDEN, SDOT,
+     +   SITDOT, SLTN, STEMP, TEMP, THICK, WT, Z11
+      EXTERNAL
+     +   CKYTX, EXTENT, SKDEN, SKRAT, SKSDEN, SKWT, SQUEEZ
+      INTEGER
+     +   BTYPES, BULK, BULKS, CELL, CELLS, COUNT, CURVE, CURVES, GAS,
+     +   GASES, ICK, ICKSIZ, INDEX, INDEX1, INDEX2, ISK, ISKSIZ, J, K,
+     +   LEN1, LEN2, LEN3, LENGTH, P01, P02, P03, P11, QFIRST, QGAS,
+     +   QLAST, QNMBR, R11SIZ, RCKSIZ, RSKSIZ, SIDE, SITE, SITES,
+     +   STATUS, STYPES, SURF, SURF1, SURF2, SURFS, TEXT, TSIZE, TYPE,
+     +   UNIT, VBLES, Z11SIZ
+      INTRINSIC
+     +   REAL
+      LOGICAL
+     +   ERROR, SMOOTH
+
+      PARAMETER (ID = 'OVEN46:  ')
+      PARAMETER (QGAS = 2)
+
+      DIMENSION
+     +   ACT(GASES + SITES + BULKS), DELTA(2), DEN(GASES + SITES +
+     +   BULKS), ICK(ICKSIZ), ISK(ISKSIZ), MOLE(GASES, CELLS),
+     +   P01(CELLS), P02(SURFS), P03(SURFS), P11(R11SIZ, 2, Z11SIZ),
+     +   QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES + BTYPES),
+     +   QNMBR(1 + STYPES + BTYPES), R11(R11SIZ), RCK(RCKSIZ),
+     +   RSK(RSKSIZ), SDEN(1 + STYPES + BTYPES), SDOT(GASES + SITES +
+     +   BULKS, SURFS), SITDOT(1 + STYPES + BTYPES), SLTN(VBLES),
+     +   SNAME(GASES + SITES + BULKS), STEMP(SURFS), TEMP(TSIZE),
+     +   TNAME(1 + STYPES + BTYPES), WT(GASES + SITES + BULKS),
+     +   Z11(Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RSKSIZ .AND. 0 .LT. SITES  .AND.
+     +   0 .LT. STYPES .AND. 0 .LT. SURFS)
+      IF (ERROR) GO TO 9101
+
+C///  FORM THE Z COORDINATE INDEX FOR PLOTTING SURFACE SIDES.
+
+      DELTA(1) = - 0.5 * THICK
+      DELTA(2) = 0.5 * THICK
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE ACTIVITIES FOR BULK SPECIES.
+
+      DO 2010 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 2010 J = QFIRST(TYPE), QLAST(TYPE)
+            ACT(J) = 1.0 / REAL (QNMBR(TYPE))
+2010  CONTINUE
+
+C///  INITIALIZE SDEN.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSDEN (ISKWRK, RSKWRK, SDEN0)
+
+      CALL SKSDEN (ISK, RSK, SDEN)
+
+C///  INITIALIZE DEN FOR BULK SPECIES.
+
+C     ONLY BULK SPECIES VALUES FROM DEN ARE USED.  THEY ARE INDEPENDENT
+C     OF ACTIVITIES AND TEMPERATURE, WHICH ARE HERE GIVEN SOME VALUES
+C     FOR SAFETY.
+
+      DO 2020 J = 1, GASES + SITES
+         ACT(J) = 1.0
+2020  CONTINUE
+
+      DUMMY = 300.0
+
+C     (SKLIB VERSION 3.5)
+C     SUBROUTINE SKDEN (P, T, ACT, SDEN, ISKWRK, RSKWRK, DEN)
+
+      CALL SKDEN (PRESS, DUMMY, ACT, SDEN, ISK, RSK, DEN)
+
+C///  INITIALIZE MOLE FRACTIONS.
+
+      DO 2030 CELL = 1, CELLS
+         INDEX = P01(CELL) + QGAS
+         CALL CKYTX (SLTN(INDEX), ICK, RCK, MOLE(1, CELL))
+2030  CONTINUE
+
+C///  INTIALIZE SDOT.
+
+C     (SKLIB VERSION 3.7)
+C     SUBROUTINE SKRAT (P, T, ACT, SDEN, ISKWRK, RSKWRK, SDOT, SITDOT)
+
+      DO 2060 SURF = 1, SURFS
+         CELL = P02(SURF)
+         DO 2040 GAS = 1, GASES
+            ACT(GAS) = MOLE(GAS, CELL)
+2040     CONTINUE
+
+         INDEX = P03(SURF) - 1
+         DO 2050 SITE = 1, SITES
+            ACT(GASES + SITE) = SLTN(INDEX + SITE)
+2050     CONTINUE
+
+         CALL SKRAT
+     +     (PRESS, STEMP(SURF), ACT, SDEN, ISK, RSK, SDOT(1, SURF),
+     +      SITDOT)
+2060  CONTINUE
+
+C///  INITIALIZE WT.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKWT (ISKWRK, RSKWRK, WT)
+
+      CALL SKWT (ISK, RSK, WT)
+
+C///  OVERWRITE SDOT BY DEPOSIT RATE (SCALED FROM CM / SEC TO
+C///  ANGSTROMS / MIN)
+
+      DO 2070 SURF = 1, SURFS
+         DO 2070 J = GASES + SITES + 1, GASES + SITES + BULKS
+            SDOT(J, SURF) = 6.0E9 * SDOT(J, SURF) * WT(J) / DEN(J)
+2070  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) WRITE THE BEGINNING OF THE TECPLOT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      REWIND UNIT
+
+C///  WRITE THE TECPLOT TITLE.
+
+      STRING = 'TITLE = "OVEND 2D SURFACE DATA"'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+C///  WRITE THE TECPLOT VARIABLE NAMES.
+
+      CURVES = 0
+
+      STRING = 'VARIABLES ='
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+
+      STRING = 'R'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+      STRING = 'Z'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+      STRING = 'DEPOSIT RATE'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+      DO 3010 TYPE = 1 + 1, 1 + STYPES
+         DO 3010 SITE = QFIRST(TYPE), QLAST(TYPE)
+            STRING = SNAME(SITE) // ' / ' // TNAME(TYPE)
+            CALL SQUEEZ (LENGTH, STRING)
+            WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +         STRING (1 : LENGTH)
+            CURVES = CURVES + 1
+3010  CONTINUE
+
+      DO 3020 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 3020 BULK = QFIRST(TYPE), QLAST(TYPE)
+            STRING = SNAME(BULK) // ' / ' // TNAME(TYPE)
+            CALL SQUEEZ (LENGTH, STRING)
+            WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +         STRING (1 : LENGTH)
+            CURVES = CURVES + 1
+3020  CONTINUE
+
+      STRING = 'TEMPERATURE'
+      CALL EXTENT (LENGTH, STRING)
+      WRITE (UNIT, 10001, ERR = 9301, IOSTAT = STATUS)
+     +   STRING (1 : LENGTH)
+      CURVES = CURVES + 1
+
+C///  WRITE THE BEGINNING OF THE TECPLOT ZONE RECORD.
+
+      IF (SMOOTH) THEN
+         WRITE (STRING, 10002) 'WAFER LOAD', R11SIZ, Z11SIZ
+      ELSE
+         WRITE (STRING, 10002) 'WAFER LOAD', R11SIZ, 2 * Z11SIZ
+      END IF
+
+      CALL SQUEEZ (LENGTH, STRING)
+      WRITE (UNIT, '(A)', ERR = 9301, IOSTAT = STATUS)
+     +      STRING (1 : LENGTH)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) WRITE THE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IF (SMOOTH) THEN
+         COUNT = R11SIZ * Z11SIZ
+      ELSE
+         COUNT = R11SIZ * 2 * Z11SIZ
+      END IF
+      ERROR = .NOT. (COUNT .LE. TSIZE)
+      IF (ERROR) GO TO 9401
+
+      CURVE = 0
+
+C///  WRITE THE R COORDINATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WRITE (WORD2, 10004) 'R'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'CM'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      IF (SMOOTH) THEN
+         WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +      WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +      ((R11(J), J = 1, R11SIZ), K = 1, Z11SIZ)
+      ELSE
+         WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +      WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +      (((R11(J), J = 1, R11SIZ), SIDE = 1, 2), K = 1, Z11SIZ)
+      END IF
+
+C///  WRITE THE Z COORDINATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WRITE (WORD2, 10004) 'Z'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'CM'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      IF (SMOOTH) THEN
+         WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +      WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +      ((Z11(K), J = 1, R11SIZ), K = 1, Z11SIZ)
+      ELSE
+         WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +      WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +      (((Z11(K) + DELTA(SIDE), J = 1, R11SIZ), SIDE = 1, 2),
+     +      K = 1, Z11SIZ)
+      END IF
+
+C///  WRITE THE DEPOSIT RATE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WORD2 = 'DEPOSIT RATE'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'ANGSTROMS / MINUTE'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      IF (SMOOTH) THEN
+         COUNT = R11SIZ * Z11SIZ
+      ELSE
+         COUNT = R11SIZ * 2 * Z11SIZ
+      END IF
+
+      DO 4010 J = 1, COUNT
+         TEMP(J) = 0.0
+4010  CONTINUE
+
+      DO 4040 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 4040 BULK = QFIRST(TYPE), QLAST(TYPE)
+            IF (SMOOTH) THEN
+               COUNT = 0
+               DO 4020 K = 1, Z11SIZ
+                  DO 4020 J = 1, R11SIZ
+                     COUNT = COUNT + 1
+                     SURF1 = P11(J, 1, K)
+                     SURF2 = P11(J, 2, K)
+                     TEMP(COUNT) = TEMP(COUNT)
+     +                 + 0.5 * (SDOT(BULK, SURF1) + SDOT(BULK, SURF2))
+4020           CONTINUE
+            ELSE
+               COUNT = 0
+               DO 4030 K = 1, Z11SIZ
+                  DO 4030 SIDE = 1, 2
+                     DO 4030 J = 1, R11SIZ
+                        COUNT = COUNT + 1
+                        SURF = P11(J, SIDE, K)
+                        TEMP(COUNT) = TEMP(COUNT) + SDOT(BULK, SURF)
+4030           CONTINUE
+            END IF
+4040  CONTINUE
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +   (TEMP(J), J = 1, COUNT)
+
+C///  WRITE THE SURFACE TEMPERATURE.
+
+      CURVE = CURVE + 1
+
+      WRITE (WORD1, 10003) CURVE, CURVES
+      CALL SQUEEZ (LEN1, WORD1)
+
+      WRITE (WORD2, 10004) 'TEMPERATURE'
+      CALL SQUEEZ (LEN2, WORD2)
+
+      WRITE (WORD3, 10004) 'KELVIN'
+      CALL SQUEEZ (LEN3, WORD3)
+
+      IF (SMOOTH) THEN
+         COUNT = 0
+         DO 4050 K = 1, Z11SIZ
+            DO 4050 J = 1, R11SIZ
+               COUNT = COUNT + 1
+               SURF1 = P11(J, 1, K)
+               SURF2 = P11(J, 2, K)
+               TEMP(COUNT) = 0.5 * (STEMP(SURF1) + STEMP(SURF2))
+4050     CONTINUE
+      ELSE
+         COUNT = 0
+         DO 4060 K = 1, Z11SIZ
+            DO 4060 SIDE = 1, 2
+               DO 4060 J = 1, R11SIZ
+                  COUNT = COUNT + 1
+                  SURF = P11(J, SIDE, K)
+                  TEMP(COUNT) = STEMP(SURF)
+4060     CONTINUE
+      END IF
+
+      WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +   WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +   (TEMP(J), J = 1, COUNT)
+
+C///  WRITE THE SITE FRACTIONS.
+
+      DO 4090 TYPE = 1 + 1, 1 + STYPES
+         DO 4090 SITE = QFIRST(TYPE), QLAST(TYPE)
+            CURVE = CURVE + 1
+
+            WRITE (WORD1, 10003) CURVE, CURVES
+            CALL SQUEEZ (LEN1, WORD1)
+
+            WORD2 = SNAME(SITE) // ' / ' // TNAME(TYPE)
+            CALL SQUEEZ (LEN2, WORD2)
+
+            WRITE (WORD3, 10004) 'SITE FRACTION'
+            CALL SQUEEZ (LEN3, WORD3)
+
+            IF (SMOOTH) THEN
+               COUNT = 0
+               DO 4070 K = 1, Z11SIZ
+                  DO 4070 J = 1, R11SIZ
+                     COUNT = COUNT + 1
+                     SURF1 = P11(J, 1, K)
+                     SURF2 = P11(J, 2, K)
+                     INDEX1 = P03(SURF1) - 1 + SITE - GASES
+                     INDEX2 = P03(SURF2) - 1 + SITE - GASES
+                     TEMP(COUNT) = 0.5 * (SLTN(INDEX1) + SLTN(INDEX2))
+4070           CONTINUE
+            ELSE
+               COUNT = 0
+               DO 4080 K = 1, Z11SIZ
+                  DO 4080 SIDE = 1, 2
+                     DO 4080 J = 1, R11SIZ
+                        COUNT = COUNT + 1
+                        SURF = P11(J, SIDE, K)
+                        INDEX = P03(SURF) - 1 + SITE - GASES
+                        TEMP(COUNT) = SLTN(INDEX)
+4080           CONTINUE
+            END IF
+
+            WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +         WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +         (TEMP(J), J = 1, COUNT)
+4090  CONTINUE
+
+C///  WRITE THE DEPOSIT RATES.
+
+      DO 4120 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 4120 BULK = QFIRST(TYPE), QLAST(TYPE)
+            CURVE = CURVE + 1
+
+            WRITE (WORD1, 10003) CURVE, CURVES
+            CALL SQUEEZ (LEN1, WORD1)
+
+            WORD2 = SNAME(BULK) // ' / ' // TNAME(TYPE)
+            CALL SQUEEZ (LEN2, WORD2)
+
+            WRITE (WORD3, 10004) 'ANGSTROMS / MINUTE'
+            CALL SQUEEZ (LEN3, WORD3)
+
+            IF (SMOOTH) THEN
+               COUNT = 0
+               DO 4100 K = 1, Z11SIZ
+                  DO 4100 J = 1, R11SIZ
+                     COUNT = COUNT + 1
+                     SURF1 = P11(J, 1, K)
+                     SURF2 = P11(J, 2, K)
+                     TEMP(COUNT) = 10000.0
+     +                 * 0.5 * (SDOT(BULK, SURF1) + SDOT(BULK, SURF2))
+4100           CONTINUE
+            ELSE
+               COUNT = 0
+               DO 4110 K = 1, Z11SIZ
+                  DO 4110 SIDE = 1, 2
+                     DO 4110 J = 1, R11SIZ
+                        COUNT = COUNT + 1
+                        SURF = P11(J, SIDE, K)
+                        TEMP(COUNT) = 10000.0 * SDOT(BULK, SURF)
+4110           CONTINUE
+            END IF
+
+            WRITE (UNIT, 10005, ERR = 9301, IOSTAT = STATUS)
+     +         WORD1 (1 : LEN1), WORD2 (1 : LEN2), WORD3 (1 : LEN3),
+     +         (TEMP(J), J = 1, COUNT)
+4120  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     DATA FORMATS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +   ('   "', A, '"')
+
+10002 FORMAT
+     +   ('ZONE T = "', A, '", I = ', I10, ', J = ', I10, ', F = BLOCK')
+
+10003 FORMAT
+     +   ('CURVE: ', I10, ' OF ', I10)
+
+10004 FORMAT
+     +   (A)
+
+10005 FORMAT
+     +   ('#'
+     +   /'#///  ', A
+     +   /'#'
+     +   /'#///  TITLE: ', A
+     +   /'#'
+     +   /'#///  UNITS: ', A
+     +   /'#'
+     +   /(1P, E10.3, 6(1X, E11.3)))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RSKSIZ,
+     +   SITES, STYPES, SURFS
+      GO TO 99999
+
+9301  ERROR = .TRUE.
+      IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID, UNIT, STATUS
+      GO TO 99999
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +   //10X, I10, '  BTYPES'
+     +    /10X, I10, '  BULKS'
+     +    /10X, I10, '  CELLS'
+     +    /10X, I10, '  GASES'
+     +    /10X, I10, '  ICKSIZ'
+     +    /10X, I10, '  ISKSIZ'
+     +    /10X, I10, '  RCKSIZ'
+     +    /10X, I10, '  RSKSIZ'
+     +    /10X, I10, '  SITES'
+     +    /10X, I10, '  STYPES'
+     +    /10X, I10, '  SURFS')
+
+99301 FORMAT
+     +   (/1X, A9, 'ERROR.  WRITE FAILS.'
+     +   //10X, I10, '  UNIT NUMBER'
+     +    /10X, I10, '  I/O STATUS')
+
+99401 FORMAT
+     +   (/1X, A9, 'ERROR.  THE TEMP ARRAY IS TOO SMALL FOR P11 PLOTS.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN51
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   ACT, BTYPES, BULKS, CELLS, DEN, FIRST, GASES, LAST, MOLE, P01,
+     +   P02, P03, P11, PRESS, QFIRST, QLAST, QNMBR, R11, R11SIZ,
+     +   RADIUS, RATE, SDEN, SDOT, SITDOT, SITES, SLTN, STEMP, STYPES,
+     +   SURFS, VALUE, VBLES, WAFERS, WFIRST, WLAST, WT, Z11, Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN51
+C
+C     DETERMINE THE UNIFORMITY.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER
+     +   ID*9
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ACT, ALL1, ALL2, COEFF1, COEFF2, DEN, DUMMY, MOLE, PRESS, R11,
+     +   RADIUS, RANGE, RANGE1, RANGE2, RATE, RCK, RSK, SDEN, SDOT,
+     +   SITDOT, SLTN, STEMP, TEMP, VALUE, WAFER1, WAFER2, WFIRST,
+     +   WLAST, WT, Z11
+      EXTERNAL
+     +   CKYTX, SKDEN, SKRAT, SKSDEN, SKWT
+      INTEGER
+     +   BTYPE, BTYPES, BULK, BULKS, CELL, CELLS, FIRST, GAS, GASES,
+     +   ICK, ICKSIZ, ISK, ISKSIZ, J, JMAX, K, KMAX, KMIN, LAST, OFFSET,
+     +   P01, P02, P03, P11, QALL, QBEST, QFIRST, QGAS, QLAST, QNMBR,
+     +   QT, QVEL, QWORST, R11SIZ, RCKSIZ, RSKSIZ, SIDE, SITE, SITES,
+     +   STYPES, SURF, SURFS, TEXT, TYPE, VBLES, WAFERS, Z11SIZ
+      INTRINSIC
+     +   MAX, MIN, REAL
+      LOGICAL
+     +   ERROR, FOUND
+
+      PARAMETER (ID = 'OVEN51:  ')
+      PARAMETER (QT = 0, QVEL = 1, QGAS = 2)
+      PARAMETER (QBEST = 1, QWORST = 2, QALL = 3)
+
+      DIMENSION
+     +   ACT(GASES + SITES + BULKS), DEN(GASES + SITES + BULKS),
+     +   ICK(ICKSIZ), ISK(ISKSIZ), MOLE(GASES, CELLS), P01(CELLS),
+     +   P02(SURFS), P03(SURFS), P11(R11SIZ, 2, Z11SIZ),
+     +   QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES + BTYPES),
+     +   QNMBR(1 + STYPES + BTYPES), R11(R11SIZ),
+     +   RATE(R11SIZ, 2, Z11SIZ), RCK(RCKSIZ), RSK(RSKSIZ),
+     +   SDEN(1 + STYPES + BTYPES), SDOT(GASES + SITES + BULKS, SURFS),
+     +   SITDOT(1 + STYPES + BTYPES), SLTN(VBLES), STEMP(SURFS),
+     +   VALUE(3, BTYPES), WT(GASES + SITES + BULKS), Z11(Z11SIZ)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RSKSIZ .AND. 0 .LT. SITES  .AND.
+     +   0 .LT. STYPES .AND. 0 .LT. SURFS)
+      IF (ERROR) GO TO 9101
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE ACTIVITIES FOR BULK SPECIES.
+
+      DO 2010 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 2010 J = QFIRST(TYPE), QLAST(TYPE)
+            ACT(J) = 1.0 / REAL (QNMBR(TYPE))
+2010  CONTINUE
+
+C///  INITIALIZE SDEN.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSDEN (ISKWRK, RSKWRK, SDEN0)
+
+      CALL SKSDEN (ISK, RSK, SDEN)
+
+C///  INITIALIZE DEN FOR BULK SPECIES.
+
+C     ONLY BULK SPECIES VALUES FROM DEN ARE USED.  THEY ARE INDEPENDENT
+C     OF ACTIVITIES AND TEMPERATURE, WHICH ARE HERE GIVEN SOME VALUES
+C     FOR SAFETY.
+
+      DO 2020 J = 1, GASES + SITES
+         ACT(J) = 1.0
+2020  CONTINUE
+
+      DUMMY = 300.0
+
+C     (SKLIB VERSION 3.5)
+C     SUBROUTINE SKDEN (P, T, ACT, SDEN, ISKWRK, RSKWRK, DEN)
+
+      CALL SKDEN (PRESS, DUMMY, ACT, SDEN, ISK, RSK, DEN)
+
+C///  INITIALIZE MOLE FRACTIONS.
+
+      DO 2030 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKYTX (SLTN(OFFSET), ICK, RCK, MOLE(1, CELL))
+2030  CONTINUE
+
+C///  INTIALIZE SDOT.
+
+C     (SKLIB VERSION 3.7)
+C     SUBROUTINE SKRAT (P, T, ACT, SDEN, ISKWRK, RSKWRK, SDOT, SITDOT)
+
+      DO 2060 SURF = 1, SURFS
+         CELL = P02(SURF)
+         DO 2040 GAS = 1, GASES
+            ACT(GAS) = MOLE(GAS, CELL)
+2040     CONTINUE
+
+         OFFSET = P03(SURF) - 1
+         DO 2050 SITE = 1, SITES
+            ACT(GASES + SITE) = SLTN(OFFSET + SITE)
+2050     CONTINUE
+
+         CALL SKRAT
+     +     (PRESS, STEMP(SURF), ACT, SDEN, ISK, RSK, SDOT(1, SURF),
+     +      SITDOT)
+2060  CONTINUE
+
+C///  INITIALIZE WT.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKWT (ISKWRK, RSKWRK, WT)
+
+      CALL SKWT (ISK, RSK, WT)
+
+C///  OVERWRITE SDOT BY DEPOSIT RATE.
+
+      DO 2070 SURF = 1, SURFS
+         DO 2070 J = GASES + SITES + 1, GASES + SITES + BULKS
+            SDOT(J, SURF) = 6.0E5 * SDOT(J, SURF) * WT(J) / DEN(J)
+2070  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) DETERMINE THE UNIFORMITIES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  TOP OF THE LOOP OVER THE TYPES.
+
+      DO 3120 BTYPE = 1, BTYPES
+         TYPE = 1 + STYPES + BTYPE
+
+C///  FORM THE TOTAL DEPOSIT RATE FOR THE TYPE.
+
+      DO 3010 K = 1, Z11SIZ
+         DO 3010 SIDE = 1, 2
+            DO 3010 J = 1, R11SIZ
+               RATE(J, SIDE, K) = 0.0
+3010  CONTINUE
+
+      DO 3020 BULK = QFIRST(TYPE), QLAST(TYPE)
+         DO 3020 K = 1, Z11SIZ
+            DO 3020 SIDE = 1, 2
+               DO 3020 J = 1, R11SIZ
+                  SURF = P11(J, SIDE, K)
+                  RATE(J, SIDE, K)
+     +               = RATE(J, SIDE, K) + SDOT(BULK, SURF)
+3020  CONTINUE
+
+C///  FIND THE MAXIMUM RADIAL INDEX AND INTERPOLATE THE EDGE VALUES.
+
+      DO 3030 J = 1, R11SIZ
+         IF (R11(J) .LE. RADIUS) JMAX = J
+3030  CONTINUE
+
+      IF (JMAX .LT. R11SIZ) THEN
+         JMAX = JMAX + 1
+         COEFF1 = (R11(JMAX) - RADIUS) / (R11(JMAX) - R11(JMAX - 1))
+         COEFF2 = (RADIUS - R11(JMAX - 1)) / (R11(JMAX) - R11(JMAX - 1))
+         DO 3040 SIDE = 1, 2
+            DO 3040 K = 1, Z11SIZ
+               RATE(JMAX, SIDE, K)
+     +            = COEFF1 * RATE(JMAX - 1, SIDE, K)
+     +            + COEFF2 * RATE(JMAX, SIDE, K)
+3040     CONTINUE
+      END IF
+
+C///  FIND THE MAXIMUM AXIAL INDEX AND INTERPOLATE THE EDGE VALUES.
+
+      TEMP = WFIRST * REAL (WAFERS - LAST) / REAL (WAFERS - 1)
+     +   + WLAST * REAL (LAST - 1) / REAL (WAFERS - 1)
+      DO 3050 K = 1, Z11SIZ
+         IF (Z11(K) .LE. TEMP) KMAX = K
+3050  CONTINUE
+
+      IF (KMAX .LT. Z11SIZ) THEN
+         KMAX = KMAX + 1
+         COEFF1 = (Z11(KMAX) - TEMP) / (Z11(KMAX) - Z11(KMAX - 1))
+         COEFF2 = (TEMP - Z11(KMAX - 1)) / (Z11(KMAX) - Z11(KMAX - 1))
+         DO 3060 SIDE = 1, 2
+            DO 3060 J = 1, JMAX
+               RATE(J, SIDE, KMAX)
+     +            = COEFF1 * RATE(J, SIDE, KMAX - 1)
+     +            + COEFF2 * RATE(J, SIDE, KMAX)
+3060     CONTINUE
+      END IF
+
+C///  FIND THE MINIMUM AXIAL INDEX AND INTERPOLATE THE EDGE VALUES.
+
+      TEMP = WFIRST * REAL (WAFERS - FIRST) / REAL (WAFERS - 1)
+     +   + WLAST * REAL (FIRST - 1) / REAL (WAFERS - 1)
+      DO 3070 K = Z11SIZ, 1, - 1
+         IF (TEMP .LE. Z11(K)) KMIN = K
+3070  CONTINUE
+
+      IF (1 .LT. KMIN) THEN
+         KMIN = KMIN - 1
+         COEFF1 = (Z11(KMIN + 1) - TEMP) / (Z11(KMIN + 1) - Z11(KMIN))
+         COEFF2 = (TEMP - Z11(KMIN)) / (Z11(KMIN + 1) - Z11(KMIN))
+         DO 3080 SIDE = 1, 2
+            DO 3080 J = 1, JMAX
+               RATE(J, SIDE, KMIN)
+     +            = COEFF1 * RATE(J, SIDE, KMIN)
+     +            + COEFF2 * RATE(J, SIDE, KMIN + 1)
+3080     CONTINUE
+      END IF
+
+C///  REMOVE THE OUTER FACE OF THE END WAFERS.
+
+      DO 3090 J = 1, JMAX
+         RATE(J, 1, 1) = RATE(J, 2, 1)
+         RATE(J, 2, Z11SIZ) = RATE(J, 1, Z11SIZ)
+3090  CONTINUE
+
+C///  COLLECT THE DATA.
+
+      FOUND = .FALSE.
+      ALL1 = RATE(1, 1, KMIN)
+      ALL2 = RATE(1, 1, KMIN)
+      DO 3110 K = KMIN, KMAX
+         DO 3110 SIDE = 1, 2
+            WAFER1 = RATE(1, SIDE, K)
+            WAFER2 = RATE(1, SIDE, K)
+            DO 3100 J = 2, JMAX
+               WAFER1 = MIN (WAFER1, RATE(J, SIDE, K))
+               WAFER2 = MAX (WAFER2, RATE(J, SIDE, K))
+3100        CONTINUE
+            ALL1 = MIN (ALL1, WAFER1)
+            ALL2 = MAX (ALL2, WAFER2)
+
+            IF (0.0 .LT. WAFER1) THEN
+               RANGE = 200.0 * (WAFER2 - WAFER1) / (WAFER1 + WAFER2)
+            ELSE
+               RANGE = 0.0
+            END IF
+
+            IF (FOUND) THEN
+               RANGE1 = MIN (RANGE1, RANGE)
+               RANGE2 = MAX (RANGE2, RANGE)
+            ELSE
+               FOUND = .TRUE.
+               RANGE1 = RANGE
+               RANGE2 = RANGE
+            END IF
+3110  CONTINUE
+
+C///  STORE THE DATA.
+
+      VALUE(QBEST, BTYPE) = RANGE1
+      VALUE(QWORST, BTYPE) = RANGE2
+
+      IF (0.0 .LT. ALL1) THEN
+         VALUE(QALL, BTYPE) = 200.0 * (ALL2 - ALL1) / (ALL1 + ALL2)
+      ELSE
+         VALUE(QALL, BTYPE) = 0.0
+      END IF
+
+C///  BOTTOM OF THE LOOP OVER TYPES.
+
+3120  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RSKSIZ,
+     +   SITES, STYPES, SURFS
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +   //10X, I10, '  BTYPES'
+     +    /10X, I10, '  BULKS'
+     +    /10X, I10, '  CELLS'
+     +    /10X, I10, '  GASES'
+     +    /10X, I10, '  ICKSIZ'
+     +    /10X, I10, '  ISKSIZ'
+     +    /10X, I10, '  RCKSIZ'
+     +    /10X, I10, '  RSKSIZ'
+     +    /10X, I10, '  SITES'
+     +    /10X, I10, '  STYPES'
+     +    /10X, I10, '  SURFS')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN61
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RSK, RSKSIZ,
+     +   ACT, BTYPES, BULKS, CELLS, COLMAX, DEN, GASES, HEADER, MOLE,
+     +   P01, P02, P03, P09, PRESS, QFIRST, QLAST, QNMBR, RPNTS, SDEN,
+     +   SDOT, SITDOT, SITES, SLTN, SNAME, STEMP, STYPES, SURFS, TNAME,
+     +   VALUE, VBLES, WT, Z, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN61
+C
+C     PRINT THE AXIAL PORTION.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER ID*9, HEADER*(*), SNAME*(*), STRING*80, TNAME*(*)
+      INTEGER
+     +   BTYPES, BULKS, CELL, CELLS, COL, COLMAX, COLS, FIRST, GAS,
+     +   GASES, ICK, ICKSIZ, ISK, ISKSIZ, J, K, LAST, OFFSET, P01, P02,
+     +   P03, P09, QFIRST, QLAST, QNMBR, RCKSIZ, RPNTS, RSKSIZ, SAVE,
+     +   SITE, SITES, STYPES, SURF, SURFS, TEXT, TYPE, VBLES, WIDTH,
+     +   ZPNT, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3
+      LOGICAL BLANK, ERROR
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ACT, DEN, DUMMY, MOLE, PI, PRESS, RCK, RSK, SDEN, SDOT, SITDOT,
+     +   SLTN, STEMP, VALUE, WT, Z
+
+      PARAMETER (ID = 'OVEN61:  ')
+      PARAMETER (WIDTH = 12)
+      PARAMETER (PI = 3.141592653589793238462643383279502884197169399D0)
+      PARAMETER (QT = 0, QVEL = 1, QGAS = 2)
+
+      DIMENSION
+     +   ACT(GASES + SITES + BULKS), DEN(GASES + SITES + BULKS),
+     +   HEADER(5, COLMAX), ICK(ICKSIZ), ISK(ISKSIZ),
+     +   MOLE(GASES, ZPNTS), P01(CELLS), P02(SURFS), P03(SURFS),
+     +   P09(ZPNTS), QFIRST(1 + STYPES + BTYPES),
+     +   QLAST(1 + STYPES + BTYPES), QNMBR(1 + STYPES + BTYPES),
+     +   RCK(RCKSIZ), RSK(RSKSIZ), SDEN(1 + STYPES + BTYPES),
+     +   SDOT(GASES + SITES + BULKS, ZPNTS),
+     +   SITDOT(1 + STYPES + BTYPES), SLTN(VBLES),
+     +   SNAME(GASES + SITES + BULKS), STEMP(SURFS),
+     +   TNAME(1 + STYPES + BTYPES), VALUE(ZPNTS + 1, COLMAX),
+     +   WT(GASES + SITES + BULKS), Z(ZPNTS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +   0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RPNTS  .AND. 0 .LT. RSKSIZ .AND.
+     +   0 .LT. SITES  .AND. 0 .LT. STYPES .AND. 0 .LT. SURFS  .AND.
+     +   0 .LT. VBLES  .AND. 0 .LT. ZPNTS  .AND. 0 .LT. ZPNTS1 .AND.
+     +   0 .LT. ZPNTS2 .AND. 0 .LT. ZPNTS3)
+      IF (ERROR) GO TO 9101
+
+      ERROR = .NOT.
+     +  (ZPNTS1 + RPNTS * ZPNTS2 + ZPNTS3 .EQ. CELLS .AND.
+     +   ZPNTS1 + ZPNTS2 + ZPNTS3 .EQ. ZPNTS)
+      IF (ERROR) GO TO 9102
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE ACTIVITIES FOR BULK SPECIES.
+
+      DO 2010 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 2010 J = QFIRST(TYPE), QLAST(TYPE)
+            ACT(J) = 1.0 / REAL (QNMBR(TYPE))
+2010  CONTINUE
+
+C///  INITIALIZE SDEN.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSDEN (ISKWRK, RSKWRK, SDEN0)
+
+      CALL SKSDEN (ISK, RSK, SDEN)
+
+C///  INITIALIZE DEN FOR BULK SPECIES.
+
+C     ONLY BULK SPECIES VALUES FROM DEN ARE USED.  THEY ARE INDEPENDENT
+C     OF ACTIVITIES AND TEMPERATURE, WHICH ARE HERE GIVEN SOME VALUES
+C     FOR SAFETY.
+
+      DO 2020 J = 1, GASES + SITES
+         ACT(J) = 1.0
+2020  CONTINUE
+
+      DUMMY = 300.0
+
+C     (SKLIB VERSION 3.5)
+C     SUBROUTINE SKDEN (P, T, ACT, SDEN, ISKWRK, RSKWRK, DEN)
+
+      CALL SKDEN (PRESS, DUMMY, ACT, SDEN, ISK, RSK, DEN)
+
+C///  INITIALIZE MOLE FRACTIONS.
+
+      DO 2030 ZPNT = 1, ZPNTS
+         SURF = P09(ZPNT)
+         CELL = P02(SURF)
+         OFFSET = P01(CELL) + QGAS
+         CALL CKYTX (SLTN(OFFSET), ICK, RCK, MOLE(1, ZPNT))
+2030  CONTINUE
+
+C///  INITIALIZE SDOT.
+
+C     (SKLIB VERSION 3.7)
+C     SUBROUTINE SKRAT (P, T, ACT, SDEN, ISKWRK, RSKWRK, SDOT, SITDOT)
+
+      DO 2060 ZPNT = 1, ZPNTS
+         SURF = P09(ZPNT)
+
+         DO 2040 GAS = 1, GASES
+            ACT(GAS) = MOLE(GAS, ZPNT)
+2040     CONTINUE
+
+         OFFSET = P03(SURF) - 1
+         DO 2050 SITE = 1, SITES
+            ACT(GASES + SITE) = SLTN(OFFSET + SITE)
+2050     CONTINUE
+
+         CALL SKRAT
+     +     (PRESS, STEMP(SURF), ACT, SDEN, ISK, RSK, SDOT(1, ZPNT),
+     +      SITDOT)
+2060  CONTINUE
+
+C///  INITIALIZE WT.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKWT (ISKWRK, RSKWRK, WT)
+
+      CALL SKWT (ISK, RSK, WT)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) PRINT THE WALL VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  TOP OF THE BLOCKS TO PREPARE THE COLUMNS.
+
+      COL = 0
+
+C///  CELL WALLS.
+
+      COL = COL + 1
+      IF (COL .LE. COLMAX) THEN
+
+      HEADER(1, COL) = '            '
+      HEADER(2, COL) = '            '
+      HEADER(3, COL) = '  CELL WALLS'
+      HEADER(4, COL) = '(CENTIMETERS'
+      HEADER(5, COL) = ' FROM FRONT)'
+
+      DO 3010 ZPNT = 1, ZPNTS - 1
+         VALUE(ZPNT, COL) = 0.5 * (Z(ZPNT) + Z(ZPNT + 1))
+3010  CONTINUE
+
+      END IF
+
+C///  VELOCITY.
+
+      COL = COL + 1
+      IF (COL .LE. COLMAX) THEN
+
+      HEADER(1, COL) = '            '
+      HEADER(2, COL) = '            '
+      HEADER(3, COL) = '       AXIAL'
+      HEADER(4, COL) = '    VELOCITY'
+      HEADER(5, COL) = '    (CM/SEC)'
+
+      DO 3020 ZPNT = 1, ZPNTS - 1
+         SURF = P09(ZPNT)
+         CELL = P02(SURF)
+         OFFSET = P01(CELL) + QVEL
+         VALUE(ZPNT, COL) = SLTN(OFFSET)
+3020  CONTINUE
+
+      END IF
+
+C///  BOTTOM OF THE BLOCKS TO PREPARE THE COLUMNS.
+
+      COLS = COL
+      ERROR = .NOT. (COLS .LE. COLMAX)
+      IF (ERROR) GO TO 9301
+
+C///  PRINT THE COLUMNS.
+
+      DO 3050 FIRST = 2, COLS, 4
+         LAST = MIN (FIRST + 3, COLS)
+
+         WRITE (TEXT, '()')
+         WRITE (STRING, '(A, I2, A)')
+     +      '(10X, A12,', LAST - FIRST + 1, '(2X, A12))'
+
+         DO 3040 J = 1, 5
+            BLANK = HEADER(J, 1) .EQ. ' '
+            DO 3030 K = FIRST, LAST
+               BLANK = BLANK .AND. (HEADER(J, K) .EQ. ' ')
+3030        CONTINUE
+            IF (.NOT. BLANK) WRITE (TEXT, STRING)
+     +         HEADER(J, 1), (HEADER(J, K), K = FIRST, LAST)
+3040     CONTINUE
+
+         WRITE (STRING, '(A, I2, A)')
+     +      '(/ 1P, (1X, I7, 2X, E12.4,',
+     +      LAST - FIRST + 1, '(2X, E12.4)))'
+         WRITE (TEXT, STRING)
+     +      (J, VALUE(J, 1), (VALUE(J, K), K = FIRST, LAST),
+     +      J = 1, ZPNTS - 1)
+3050  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) PRINT THE CELL VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  TOP OF THE BLOCKS TO PREPARE THE COLUMNS.
+
+      COL = 0
+
+C///  CELL CENTERS.
+
+      COL = COL + 1
+      IF (COL .LE. COLMAX) THEN
+
+      HEADER(1, COL) = '            '
+      HEADER(2, COL) = '            '
+      HEADER(3, COL) = 'CELL CENTERS'
+      HEADER(4, COL) = '(CENTIMETERS'
+      HEADER(5, COL) = ' FROM FRONT)'
+
+      DO 4010 ZPNT = 1, ZPNTS
+         VALUE(ZPNT, COL) = Z(ZPNT)
+4010  CONTINUE
+
+      END IF
+
+C///  MOLE FRACTIONS.
+
+      IF (COL + GASES .LE. COLMAX) THEN
+
+      DO 4020 J = 1, GASES
+         HEADER(1, COL + J) = '            '
+         HEADER(2, COL + J) = '        MOLE'
+         HEADER(3, COL + J) = '    FRACTION'
+         HEADER(4, COL + J) = '  OF GASEOUS'
+         CALL RIGHTJ (SNAME(J), HEADER(5, COL + J), WIDTH)
+
+         DO 4020 ZPNT = 1, ZPNTS
+            VALUE(ZPNT, COL + J) = MOLE(J, ZPNT)
+4020  CONTINUE
+
+      END IF
+      COL = COL + GASES
+
+C///  SURFACE FRACTIONS.
+
+      SAVE = COL
+      IF (COL + SITES .LE. COLMAX) THEN
+
+      DO 4030 TYPE = 1 + 1, 1 + STYPES
+         DO 4030 SITE = QFIRST(TYPE), QLAST(TYPE)
+            COL = COL + 1
+            HEADER(1, COL) = ' '
+            CALL RIGHTJ (SNAME(SITE), HEADER(2, COL), WIDTH)
+            HEADER(3, COL) = '    FRACTION'
+            HEADER(4, COL) = '  OF SURFACE'
+            CALL RIGHTJ (TNAME(TYPE), HEADER(5, COL), WIDTH)
+
+            DO 4030 ZPNT = 1, ZPNTS
+               SURF = P09(ZPNT)
+               OFFSET = P03(SURF) - 1 + SITE - GASES
+               VALUE(ZPNT, COL) = SLTN(OFFSET)
+4030  CONTINUE
+
+      END IF
+      COL = SAVE + SITES
+
+C///  DEPOSIT RATES.
+
+      SAVE = COL
+      IF (COL + BULKS .LE. COLMAX) THEN
+
+      DO 4040 TYPE = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 4040 J = QFIRST(TYPE), QLAST(TYPE)
+            COL = COL + 1
+            IF (QFIRST(TYPE) .EQ. QLAST(TYPE) .AND.
+     +         SNAME(J) .EQ. TNAME(TYPE)) THEN
+               HEADER(1, COL) = ' '
+            ELSE
+               CALL RIGHTJ (SNAME(J), HEADER(1, COL), WIDTH)
+            END IF
+            HEADER(2, COL) = '     DEPOSIT'
+            HEADER(3, COL) = '    RATE FOR'
+            CALL RIGHTJ (TNAME(TYPE), HEADER(4, COL), WIDTH)
+            HEADER(5, COL) = '(MICRON/MIN)'
+
+            DO 4040 ZPNT = 1, ZPNTS
+               VALUE(ZPNT, COL) = 6.0E5 * SDOT(J, ZPNT) * WT(J) / DEN(J)
+4040  CONTINUE
+
+      END IF
+      COL = SAVE + BULKS
+
+C///  BOTTOM OF THE BLOCKS TO PREPARE THE COLUMNS.
+
+      COLS = COL
+      ERROR = .NOT. (COLS .LE. COLMAX)
+      IF (ERROR) GO TO 9301
+
+C///  PRINT THE COLUMNS.
+
+      DO 4070 FIRST = 2, COLS, 4
+         LAST = MIN (FIRST + 3, COLS)
+
+         WRITE (TEXT, '()')
+         WRITE (STRING, '(A, I2, A)')
+     +      '(10X, A12,', LAST - FIRST + 1, '(2X, A12))'
+
+         DO 4060 J = 1, 5
+            BLANK = HEADER(J, 1) .EQ. ' '
+            DO 4050 K = FIRST, LAST
+               BLANK = BLANK .AND. (HEADER(J, K) .EQ. ' ')
+4050        CONTINUE
+            IF (.NOT. BLANK) WRITE (TEXT, STRING)
+     +         HEADER(J, 1), (HEADER(J, K), K = FIRST, LAST)
+4060     CONTINUE
+
+         WRITE (STRING, '(A, I2, A)')
+     +      '(/ 1P, (1X, I7, 2X, E12.4,',
+     +      LAST - FIRST + 1, '(2X, E12.4)))'
+         WRITE (TEXT, STRING)
+     +      (J, VALUE(J, 1), (VALUE(J, K), K = FIRST, LAST),
+     +      J = 1, ZPNTS)
+4070  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     INFORMATIVE MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +   (/ (10X, A12, 4(2X, A12)))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, ISKSIZ, RCKSIZ, RPNTS,
+     +   RSKSIZ, SITES, STYPES, SURFS, VBLES, ZPNTS, ZPNTS1, ZPNTS2,
+     +   ZPNTS3
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID,
+     +   RPNTS, ZPNTS1, ZPNTS2, ZPNTS3, CELLS, ZPNTS
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID, COLS, COLMAX
+      GO TO 99999
+
+99101 FORMAT
+     +  (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     + //10X, I10, '  BTYPES'
+     +  /10X, I10, '  BULKS'
+     +  /10X, I10, '  CELLS'
+     +  /10X, I10, '  GASES'
+     +  /10X, I10, '  ICKSIZ'
+     +  /10X, I10, '  ISKSIZ'
+     +  /10X, I10, '  RCKSIZ'
+     +  /10X, I10, '  RPNTS'
+     +  /10X, I10, '  RSKSIZ'
+     +  /10X, I10, '  SITES'
+     +  /10X, I10, '  STYPES'
+     +  /10X, I10, '  SURFS'
+     +  /10X, I10, '  VBLES'
+     +  /10X, I10, '  ZPNTS'
+     +  /10X, I10, '  ZPNTS1'
+     +  /10X, I10, '  ZPNTS2'
+     +  /10X, I10, '  ZPNTS3')
+
+99102 FORMAT
+     +  (/1X, A, 'ERROR.  SOME DIMENSIONS ARE INCONSISTENT.'
+     + //10X, I10, '  RPNTS'
+     +  /10X, I10, '  ZPNTS1'
+     +  /10X, I10, '  ZPNTS2'
+     +  /10X, I10, '  ZPNTS3'
+     + //10X, I10, '  CELLS'
+     +  /10X, I10, '  ZPNTS')
+
+99301 FORMAT
+     +  (/1X, A9, 'ERROR.  THE SPACE FOR COLUMNS IS TOO SMALL.'
+     + //10X, I10, '  COLS'
+     +  /10X, I10, '  COLMAX')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN62
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, RCK, RCKSIZ,
+     +   AWT, CELLS, COLUMN, COMPO, ELEMS, EMOLE, ENAME, GASES, INFLOW,
+     +   INJECS, INMOLE, MOLE, P01, RPNTS, SLTN, VBLES, WT, ZPNTS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN62
+C
+C     PRINT MASS AND MOLE DEPOSITION AND FLOW RATES FOR THE ELEMENTS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER COLUMN*(*), ENAME*(*), ID*9, HEADER*80
+      INTEGER
+     +   CELLS, COMPO, ELEM, ELEMS, GAS, GASES, ICK, ICKSIZ, INJEC,
+     +   INJECS, J, OFFSET, P01, RCKSIZ, RPNTS, TEXT, VBLES, WIDTH,
+     +   ZPNTS
+      LOGICAL ERROR
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   AWT, EMOLE, FOUT, INFLOW, INMOLE, MOLE, RCK, SLTN, WT
+
+      PARAMETER (ID = 'OVEN62:  ')
+      PARAMETER (WIDTH = 8)
+      PARAMETER (QT = 0, QVEL = 1, QGAS = 2)
+
+      DIMENSION
+     +   AWT(ELEMS), COLUMN(6, ELEMS), COMPO(ELEMS, GASES),
+     +   EMOLE(ELEMS, 3), ENAME(ELEMS), HEADER(3), ICK(ICKSIZ),
+     +   INFLOW(INJECS), INMOLE(GASES, INJECS), MOLE(GASES, 3),
+     +   P01(CELLS), RCK(RCKSIZ), SLTN(VBLES), WT(GASES)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +  (0 .LT. CELLS  .AND. 0 .LT. ELEMS  .AND. 0 .LT. GASES  .AND.
+     +   0 .LT. ICKSIZ .AND. 0 .LT. INJECS .AND. 0 .LT. RCKSIZ .AND.
+     +   0 .LT. RPNTS  .AND. 0 .LT. VBLES  .AND. 0 .LT. ZPNTS)
+      IF (ERROR) GO TO 9101
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  ATOMIC WEIGHTS.
+
+C     (CKLIB VERSION 2.3)
+C     SUBROUTINE CKAWT (ICKWRK, RCKWRK, AWT)
+
+      CALL CKAWT (ICK, RCK, AWT)
+
+C///  MOLECULAR WEIGHTS.
+
+C     (CKLIB VERSION 2.3)
+C     SUBROUTINE CKWT (ICKWRK, RCKWRK, WT)
+
+      CALL CKWT (ICK, RCK, WT)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) FORM THE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  OUTFLOW VELOCITY.
+
+      OFFSET = P01(CELLS) + QVEL
+      FOUT = SLTN(OFFSET)
+
+C///  MOLES OF SPECIES.
+
+      OFFSET = P01(CELLS) + QGAS - 1
+      DO 3020 GAS = 1, GASES
+C        INJECTORS
+         MOLE(GAS, 1) = 0.0
+         DO 3010 INJEC = 1, INJECS
+            MOLE(GAS, 1) = MOLE(GAS, 1)
+     +         + INMOLE(GAS, INJEC) * INFLOW(INJEC) * 1.01325E6
+     +         / (60.0 * 8.314E7 * 273.0)
+3010     CONTINUE
+
+C        OUTLET
+         MOLE(GAS, 2) = - FOUT * SLTN(OFFSET + GAS) / WT(GAS)
+
+C        RETAINED
+         MOLE(GAS, 3) = MOLE(GAS, 1) - MOLE(GAS, 2)
+3020  CONTINUE
+
+C///  MOLES OF ELEMENTS.
+
+C     (CKLIB VERSION 2.3)
+C     SUBROUTINE CKNCF (MDIM, ICKWRK, RCKWRK, NCF)
+
+      CALL CKNCF (ELEMS, ICK, RCK, COMPO)
+
+      DO 3030 J = 1, 3
+         DO 3030 ELEM = 1, ELEMS
+            EMOLE(ELEM, J) = 0.0
+            DO 3030 GAS = 1, GASES
+               EMOLE(ELEM, J) = EMOLE(ELEM, J)
+     +            + COMPO(ELEM, GAS) * MOLE(GAS, J)
+3030  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) PRINT THE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      DATA HEADER
+     + / '          MOLES PER SECOND    CONSUME PER SECOND',
+     +   '          ------------------  ------------------   PERCENT',
+     +   ' ELEMENT      FEED      VENT     MOLES     GRAMS  CONSUMED' /
+C         12345678  12345678  12345678  12345678  12345678  12345678
+C         123456789_123456789_123456789_123456789_123456789_12345678
+
+      DO 4010 ELEM = 1, ELEMS
+         CALL RIGHTJ (ENAME(ELEM), COLUMN(1, ELEM), WIDTH)
+
+         WRITE (COLUMN(2, ELEM), '(1P, E10.2)') EMOLE(ELEM, 1)
+         WRITE (COLUMN(3, ELEM), '(1P, E10.2)') EMOLE(ELEM, 2)
+         WRITE (COLUMN(4, ELEM), '(1P, E10.2)') EMOLE(ELEM, 3)
+         WRITE (COLUMN(5, ELEM), '(1P, E10.2)')
+     +      EMOLE(ELEM, 3) * AWT(ELEM)
+
+         IF (0.0 .LT. EMOLE(ELEM, 1) .AND.
+     +      EMOLE(ELEM, 2) .LT. EMOLE(ELEM, 1)) THEN
+            WRITE (COLUMN(6, ELEM), '(F10.3)')
+     +         100.0 * (EMOLE(ELEM, 1) - EMOLE(ELEM, 2))
+     +         / EMOLE(ELEM, 1)
+         ELSE
+            COLUMN(6, ELEM) = ' '
+         END IF
+4010  CONTINUE
+
+      WRITE (TEXT, 10001) HEADER, COLUMN
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     INFORMATIVE MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+10001 FORMAT
+     +   (/10X, 'ATOMIC ELEMENT BUDGET:'
+     +   //10X, A48
+     +    /10X, A58
+     +    /10X, A58
+     +  //(10X, A8, 5A10))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   CELLS, ELEMS, GASES, ICKSIZ, INJECS, RCKSIZ, RPNTS, VBLES,
+     +   ZPNTS
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +   //10X, I10, '  CELLS'
+     +    /10X, I10, '  ELEMS'
+     +    /10X, I10, '  GASES'
+     +    /10X, I10, '  ICKSIZ'
+     +    /10X, I10, '  INJECS'
+     +    /10X, I10, '  RCKSIZ'
+     +    /10X, I10, '  RPNTS'
+     +    /10X, I10, '  VBLES'
+     +    /10X, I10, '  ZPNTS')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN81
+     +  (ERROR, TEXT,
+     +   ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RMC, RMCSIZ, RSK, RSKSIZ,
+     +   ABOVE, ACT, BELOW, BLOCKS, BTYPES, BULKS, CELLS, CPOINT, DIAM,
+     +   FRAC, FTEMP, GASES, GUESS, IDUMMY, INFLOW, INJECS, INMASS,
+     +   INMOLE, KNLEN, NAME, P01, P02, P03, P04, PRESS, QFIRST, QLAST,
+     +   RDUMMY, RINDEX, RTUBE, RWAFER, SCOUNT, SDEN, SITES, SIZE, SLTN,
+     +   SNAME, SPACE, STEMP, STYPES, SURFS, TEMP, TOTAL, U, VBLES,
+     +   WALLS, WCODE, WCOUNT, WNMBR, WT)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN81
+C
+C     PREPARE TO SOLVE THE MODEL
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   ID*9, NAME*16, SNAME*16
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ABOVE, ACT, BELOW, DIAM, FRAC, FTEMP, INFLOW, INMASS, INMOLE,
+     +   KNLEN, PI, PRESS, RCK, RDUMMY, RMC, RSK, RTUBE, RWAFER, SDEN,
+     +   SLTN, SPACE, STEMP, TEMP, U, WT
+      EXTERNAL
+     +   MCPRAM, SKSDEN, SKWT
+      INTEGER
+     +   BLOCKS, BTYPES, BULKS, CELL, CELLS, COUNT, CPOINT, GAS, GASES,
+     +   ICK, ICKSIZ, IDUMMY, IMC, IMCSIZ, INJEC, INJECS, ISK, ISKSIZ,
+     +   J, K, LAST, OFFSET, P01, P02, P03, P04, Q, QANNUL, QEXTRA,
+     +   QFIRST, QGAS, QINTRA, QLAST, QT, QVEL, RCKSIZ, RINDEX, RMCSIZ,
+     +   RSKSIZ, SCOUNT, SIDE, SITE, SITES, SIZE, STYPES, SURF, SURFS,
+     +   TEXT, TOTAL, VBLES, WALL, WALLS, WCODE, WCOUNT, WNMBR
+      INTRINSIC
+     +   MAX, REAL
+      LOGICAL
+     +   ERROR, GUESS
+
+      PARAMETER (ID = 'OVEN81:  ')
+      PARAMETER (PI = 3.141592653589793238462643383279502884197169399D0)
+      PARAMETER (QT = 0, QVEL = 1, QGAS = 2)
+
+C     CODES FOR WALL LOCATIONS
+      PARAMETER (QANNUL = 1, QEXTRA = 2, QINTRA = 3)
+
+      DIMENSION
+     +   ABOVE(VBLES), ACT(GASES + SITES + BULKS), BELOW(VBLES),
+     +   CPOINT(BLOCKS), DIAM(WALLS), FRAC(GASES + SITES), FTEMP(CELLS),
+     +   ICK(ICKSIZ), IDUMMY(GASES), IMC(IMCSIZ), INFLOW(INJECS),
+     +   INMASS(0 : GASES, INJECS), INMOLE(GASES, INJECS), ISK(ISKSIZ),
+     +   KNLEN(WALLS), NAME(VBLES), P01(CELLS), P02(SURFS), P03(SURFS),
+     +   P04(WALLS, 2), QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES +
+     +   BTYPES), RCK(RCKSIZ), RDUMMY(GASES, 5), RINDEX(TOTAL),
+     +   RMC(RMCSIZ), RSK(RSKSIZ), SDEN(1 + STYPES + BTYPES),
+     +   SIZE(BLOCKS), SLTN(VBLES), SNAME(GASES + SITES), STEMP(SURFS),
+     +   TEMP(GASES), U(VBLES), WCODE(WALLS), WNMBR(CELLS), WT(GASES +
+     +   SITES + BULKS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT. (
+     +   0 .LT. BLOCKS .AND. 0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND.
+     +   0 .LT. CELLS  .AND. 0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND.
+     +   0 .LT. IMCSIZ .AND. 0 .LT. INJECS .AND. 0 .LT. ISKSIZ .AND.
+     +   0 .LT. RCKSIZ .AND. 0 .LT. RMCSIZ .AND. 0 .LT. RSKSIZ .AND.
+     +   0 .LT. SITES  .AND. 0 .LT. STYPES .AND. 0 .LT. SURFS  .AND.
+     +   0 .LT. TOTAL  .AND. 0 .LT. VBLES  .AND. 0 .LT. WALLS)
+      IF (ERROR) GO TO 9101
+
+C///  COUNT THE WALLS PER CELL.
+
+      DO 1010 CELL = 1, CELLS
+         WNMBR(CELL) = 0
+1010  CONTINUE
+
+      DO 1020 SIDE = 1, 2
+         DO 1020 WALL = 1, WALLS
+            CELL = P04(WALL, SIDE)
+            WNMBR(CELL) = WNMBR(CELL) + 1
+1020  CONTINUE
+
+      DO 1030 CELL = 1, CELLS
+         COUNT = WNMBR(CELL)
+         ERROR = .NOT. (1 .LE. COUNT .AND. COUNT .LE. WCOUNT)
+         IF (ERROR) GO TO 9102
+1030  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) INITIALIZE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE ACTIVITIES.
+
+      DO 2010 J = 1, GASES + SITES
+         ACT(J) = 0.0
+2010  CONTINUE
+
+      DO 2020 J = 1 + STYPES + 1, 1 + STYPES + BTYPES
+         DO 2020 K = QFIRST(J), QLAST(J)
+            ACT(K) = 1.0 / REAL (QLAST(J) - QFIRST(J) + 1)
+2020  CONTINUE
+
+C///  INITIALIZE SDEN.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKSDEN (ISKWRK, RSKWRK, SDEN0)
+
+      CALL SKSDEN (ISK, RSK, SDEN)
+
+C///  INITIALIZE DIAM.
+
+C     (MCLIB VERSION 1.3)
+C     SUBROUTINE MCPRAM (IMCWRK, RMCWRK, EPS, SIG, DIP, POL, ZROT, NLIN)
+
+      CALL MCPRAM
+     +   (IMC, RMC, RDUMMY(1, 1), DIAM, RDUMMY(1, 3), RDUMMY(1, 4),
+     +   RDUMMY(1, 5), IDUMMY)
+
+C///  INITIALIZE WT.
+
+C     (SKLIB VERSION 6.3)
+C     SUBROUTINE SKWT (ISKWRK, RSKWRK, WT)
+
+      CALL SKWT (ISK, RSK, WT)
+
+C///  INITIALIZE ABOVE AND BELOW FOR TWOPNT.
+
+      DO 2030 CELL = 1, CELLS
+         OFFSET = P01(CELL)
+
+C        TEMPERATURE
+         ABOVE(OFFSET + QT) = 1.0E30
+         BELOW(OFFSET + QT) = 100.0
+
+C        VELOCITY
+         ABOVE(OFFSET + QVEL) = 1.0E30
+         BELOW(OFFSET + QVEL) = - 1.0E30
+
+C        GASES
+         OFFSET = OFFSET + QGAS - 1
+         DO 2030 GAS = 1, GASES
+            ABOVE(OFFSET + GAS) = 1.01
+            BELOW(OFFSET + GAS) = - 1.0E-6
+2030  CONTINUE
+
+C     SITES
+      DO 2040 SURF = 1, SURFS
+         OFFSET = P03(SURF) - 1
+         DO 2040 SITE = 1, SITES
+            ABOVE(OFFSET + SITE) = 1.01
+            BELOW(OFFSET + SITE) = - 1.0E-6
+2040  CONTINUE
+
+C///  INITIALIZE THE CHARACTERISTIC LENGTHS FOR KNUDSEN DIFFUSION.
+
+      DO 2050 WALL = 1, WALLS
+         IF (WCODE(WALL) .EQ. QANNUL) THEN
+            KNLEN(WALL) = RTUBE - RWAFER
+         ELSE IF (WCODE(WALL) .EQ. QEXTRA) THEN
+            KNLEN(WALL) = 2.0 * RTUBE
+         ELSE IF (WCODE(WALL) .EQ. QINTRA) THEN
+            KNLEN(WALL) = SPACE
+         ELSE
+            ERROR = .TRUE.
+            GO TO 9201
+         END IF
+2050  CONTINUE
+
+C///  INITIALIZE INJECTOR MASS FLOW RATES (GRAM / SEC).
+
+      DO 2060 INJEC = 1, INJECS
+         INMASS(0, INJEC) = 0.0
+         DO 2060 GAS = 1, GASES
+            INMASS(GAS, INJEC) = INMOLE(GAS, INJEC) * WT(GAS)
+     +         * INFLOW(INJEC) * 1.01325E6 / (60.0 * 8.314E7 * 273.0)
+            INMASS(0, INJEC) = INMASS(0, INJEC) + INMASS(GAS, INJEC)
+2060  CONTINUE
+
+C///  FIND HIGHEST SURFACE TEMPERATURES FOR EACH CELL.
+
+      DO 2070 CELL = 1, CELLS
+         FTEMP(CELL) = 0.0
+2070  CONTINUE
+
+      DO 2080 SURF = 1, SURFS
+         CELL = P02(SURF)
+         FTEMP(CELL) = MAX (FTEMP(CELL), STEMP(SURF))
+2080  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) INITIALIZE THE SOLUTION.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  MAKE A GUESS.
+
+      IF (.NOT. GUESS) THEN
+         DO 3010 CELL = 1, CELLS
+            OFFSET = P01(CELL)
+
+C           TEMPERATURE
+            SLTN(OFFSET + QT) = FTEMP(CELL)
+
+C           VELOCITY
+            SLTN(OFFSET + QVEL) = 0.0
+
+C           GASES
+            OFFSET = OFFSET + QGAS - 1
+            DO 3010 GAS = 1, GASES
+               SLTN(OFFSET + GAS) = FRAC(GAS)
+3010     CONTINUE
+
+         DO 3020 SURF = 1, SURFS
+C           SITES
+            OFFSET = P03(SURF) - 1
+            DO 3020 SITE = 1, SITES
+               SLTN(OFFSET + SITE) = FRAC(GASES + SITE)
+3020     CONTINUE
+      END IF
+
+C///  COPY THE SOLUTION.
+
+      DO 3030 J = 1, VBLES
+         U(J) = SLTN(J)
+3030  CONTINUE
+
+C///  ASSIGN VARIABLE NAMES.
+
+      DO 3040 CELL = 1, CELLS
+         OFFSET = P01(CELL)
+
+C        TEMPERATURE
+         NAME(OFFSET + QT) = 'TEMPERATURE'
+
+C        VELOCITY
+         NAME(OFFSET + QVEL) = 'VELOCITY'
+
+C        GASES
+         OFFSET = OFFSET + QGAS - 1
+         DO 3040 GAS = 1, GASES
+            NAME(OFFSET + GAS) = SNAME(GAS)
+3040  CONTINUE
+
+      DO 3050 SURF = 1, SURFS
+C        SITES
+         OFFSET = P03(SURF) - 1
+         DO 3050 SITE = 1, SITES
+            NAME(OFFSET + SITE) = SNAME(GASES + SITE)
+3050  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) INITIALIZE THE MATRIX BLOCK STRUCTURE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      ERROR = .NOT. (BLOCKS .EQ. CELLS)
+      IF (ERROR) GO TO 9401
+
+C///  SET THE BLOCKS' SIZE.
+
+      DO 4010 CELL = 1, CELLS
+         SIZE(CELL) = 2 + GASES
+4010  CONTINUE
+
+      DO 4020 SURF = 1, SURFS
+         CELL = P02(SURF)
+         SIZE(CELL) = SIZE(CELL) + SITES
+4020  CONTINUE
+
+C///  SET THE COLUMN POINTERS.
+
+      LAST = 0
+      DO 4030 CELL = 1, CELLS
+         CPOINT(CELL) = LAST + 1
+         LAST = LAST + 1 + WNMBR(CELL)
+4030  CONTINUE
+
+      ERROR = .NOT. (LAST .EQ. TOTAL)
+      IF (ERROR) GO TO 9402
+
+C///  SET THE ROW INDICES.
+
+      DO 4040 CELL = 1, CELLS
+         Q = CPOINT(CELL)
+         RINDEX(Q) = CELL
+4040  CONTINUE
+
+      DO 4050 WALL = 1, WALLS
+         CELL = P04(WALL, 1)
+         Q = CPOINT(CELL) + WNMBR(CELL)
+         RINDEX(Q) = P04(WALL, 2)
+         WNMBR(CELL) = WNMBR(CELL) - 1
+
+         CELL = P04(WALL, 2)
+         Q = CPOINT(CELL) + WNMBR(CELL)
+         RINDEX(Q) = P04(WALL, 1)
+         WNMBR(CELL) = WNMBR(CELL) - 1
+4050  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   BLOCKS, BTYPES, BULKS, CELLS, GASES, ICKSIZ, IMCSIZ, INJECS,
+     +   ISKSIZ, RCKSIZ, RMCSIZ, RSKSIZ, SITES, STYPES, SURFS, TOTAL,
+     +   VBLES, WALLS
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID, CELL, WNMBR(CELL), WCOUNT
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID, WALL, WCODE(WALL)
+      GO TO 99999
+
+9401  IF (0 .LT. TEXT) WRITE (TEXT, 99401) ID, BLOCKS, CELLS
+      GO TO 99999
+
+9402  IF (0 .LT. TEXT) WRITE (TEXT, 99402) ID, LAST, TOTAL
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  THE DIMENSIONAL ARGUMENTS ARE INCONSISTENT.'
+     +  //10X, I10, '  BLOCKS' /10X, I10, '  BTYPES'
+     +   /10X, I10, '  BULKS'  /10X, I10, '  CELLS'
+     +   /10X, I10, '  GASES'  /10X, I10, '  ICKSIZ'
+     +   /10X, I10, '  IMCSIZ' /10X, I10, '  INJECS'
+     +   /10X, I10, '  ISKSIZ' /10X, I10, '  RCKSIZ'
+     +   /10X, I10, '  RMCSIZ' /10X, I10, '  RSKSIZ'
+     +   /10X, I10, '  SITES'  /10X, I10, '  STYPES'
+     +   /10X, I10, '  SURFS'  /10X, I10, '  TOTAL'
+     +   /10X, I10, '  VBLES'  /10X, I10, '  WALLS')
+
+99102 FORMAT
+     +   (/1X, A, 'ERROR.  A CELL''S NUMBER OF WALLS IS OUT OF RANGE.'
+     +  //10X, I10, '  CELL'
+     +   /10X, I10, '  NUMBER'
+     +   /10X, I10, '  LIMIT')
+
+99201 FORMAT
+     +   (/1X, A, 'ERROR.  A WALL''S CODE IS NOT RECOGNIZED.'
+     +  //10X, I10, '  WALL'
+     +   /10X, I10, '  CODE')
+
+99401 FORMAT
+     +   (/1X, A, 'ERROR.  THE MATRIX BLOCK DIMENSION IS WRONG.'
+     +  //10X, I10, '  BLOCKS'
+     +   /10X, I10, '  CELLS')
+
+99402 FORMAT
+     +   (/1X, A, 'ERROR.  THE NUMBER OF MATRIX BLOCKS IS UNEXPECTED.'
+     +  //10X, I10, '  BLOCKS COUNTED'
+     +   /10X, I10, '  TOTAL EXPECTED')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN82
+     +  (ERROR, TEXT,
+     +   BTYPES, CELLS, CMAJOR, GASES, P01, P03, QFIRST, QLAST, SITES,
+     +   SMAJOR, STYPES, SURFS, U, VBLES)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN82
+C
+C     FORM POINTERS TO THE MAJOR SPECIES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - P, R - Z), INTEGER (Q)
+      CHARACTER ID*9
+      INTEGER
+     +   BTYPES, CELL, CELLS, CMAJOR, FIRST, GAS, GASES, LAST, P01, P03,
+     +   SAVE, SITE, SITES, SMAJOR, STYPES, SURF, SURFS, TEXT, TYPE,
+     +   VBLES
+      LOGICAL ERROR
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   U
+
+      PARAMETER (ID = 'OVEN82:  ')
+
+      DIMENSION
+     +   CMAJOR(CELLS), P01(CELLS), P03(SURFS),
+     +   QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES + BTYPES),
+     +   SMAJOR(SURFS, STYPES), U(VBLES)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT. (
+     +   0 .LT. CELLS  .AND. 0 .LT. GASES  .AND. 0 .LT. SITES  .AND.
+     +   0 .LT. STYPES .AND. 0 .LT. SURFS  .AND. 0 .LT. VBLES)
+      IF (ERROR) GO TO 9101
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) FIND THE MAJOR GAS SPECIES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      DO 2020 CELL = 1, CELLS
+         Q = P01(CELL)
+         SAVE = 1
+         DO 2010 GAS = 2, GASES
+            IF (ABS (U(Q + SAVE)) .LT. ABS (U(Q + GAS))) SAVE = GAS
+2010     CONTINUE
+         CMAJOR(CELL) = SAVE
+2020  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) FIND THE MAJOR SURFACE SITES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      DO 3020 SURF = 1, SURFS
+         Q = P03(SURF) - 1
+         SAVE = 1
+         DO 3020 TYPE = 1, STYPES
+            FIRST = QFIRST(1 + TYPE) - GASES
+            LAST = QLAST(1 + TYPE) - GASES
+            SAVE = FIRST
+            DO 3010 SITE = FIRST + 1, LAST
+               IF (ABS (U(Q + SAVE)) .LT. ABS (U(Q + SITE))) SAVE = SITE
+3010        CONTINUE
+            SMAJOR(SURF, TYPE) = SAVE
+3020  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID,
+     +   CELLS, GASES, SITES, STYPES, SURFS, VBLES
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A, 'ERROR.  THE DIMENSIONAL ARGUMENTS ARE INCONSISTENT.'
+     +   //10X, I10, '  CELLS'
+     +    /10X, I10, '  GASES'
+     +    /10X, I10, '  SITES'
+     +    /10X, I10, '  STYPES'
+     +    /10X, I10, '  SURFS'
+     +    /10X, I10, '  VBLES')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      SUBROUTINE OVEN83
+     +  (ERROR, TEXT,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ,
+     +   RCK, RCKSIZ, RMC, RMCSIZ, RSK, RSKSIZ,
+     +   ACT, ADJUST, BTYPES, BULKS, CASE, CDATA, CELLS, CENTH, CENTH0,
+     +   CKOND, CMAJOR, CMASS, CMASS0, CMOLE, CNEW, COEFF, COEFF1,
+     +   COEFF2, COPY1, COPY2, CPOINT, CRESID, CRHO, CRHO0, CSUM, CSURF,
+     +   CTEMP, CTEMP0, CVOL, CWALL, DIAM, DIFFUS, ENERGY, F, FACTOR,
+     +   FTEMP, GASES, GDOT, INCELL, INJECS, INMASS, INTEMP, KNLEN,
+     +   KNUDSN, MULTIC, P01, P02, P03, P04, P05, P06, P07, P08, PRESS,
+     +   QFIRST, QLAST, RPNTS, SAREA, SCOUNT, SDATA, SDEN, SDOT, SENTH,
+     +   SINDEX, SITDOT, SITES, SMAGIC, SMAJOR, SMOLE, SNEW, SPOINT,
+     +   SRESID, SSITE, SSITE0, STEMP, STFLUX, STRIDE, STYPES, SUM1,
+     +   SUM2, SURFS, TDC, THRMLD, TIME, U, U0, VBLES, WALLS, WAREA,
+     +   WCOEFF, WCOUNT, WDATA, WENTH, WFLUX, WGRAD, WINDEX, WKOND,
+     +   WMASS, WMMW, WMOLE, WRHO, WSIDE, WT, WTEMP, WVEL, ZPNTS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEN83
+C
+C     EVALUATE THE RESIDUAL.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   ID*9
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   ACT, ALPHA, CDATA, CENTH, CENTH0, CKOND, CMASS, CMASS0, CMOLE,
+     +   COEFF, COEFF1, COEFF2, COPY1, COPY2, CRESID, CRHO, CRHO0, CSUM,
+     +   CSURF, CTEMP, CTEMP0, CVOL, CWALL, DIAM, F, FACTOR, FTEMP,
+     +   GDOT, INMASS, INTEMP, KNLEN, PI, PRESS, RCK, RMC, RSK, RWORK,
+     +   SAREA, SDATA, SDEN, SDOT, SENTH, SITDOT, SMAGIC, SMOLE, SRESID,
+     +   SSITE, SSITE0, STEMP, STFLUX, STRIDE, SUM, SUM1, SUM2, TDC,
+     +   TEMP, TEMP1, TEMP2, U, U0, WAREA, WCOEFF, WDATA, WENTH, WFLUX,
+     +   WGRAD, WKOND, WMASS, WMMW, WMOLE, WRHO, WSIDE, WT, WTEMP, WVEL
+C*****PROPERTY LIBRARIES > SCALAR
+      EXTERNAL
+     +   CKHBMS, CKHMS, CKMMWY, CKRHOY, CKWYP, CKYTX, MCACON, MCADIF,
+     +   MCMCDT, MCMDIF, SKRAT
+C*****END PROPERTY LIBRARIES > SCALAR
+C*****PROPERTY LIBRARIES > VECTOR
+C      EXTERNAL
+C     +   CKHMS, MCMCDT, MCMDIF
+C      EXTERNAL
+C     +   VPCOND, VPDEN, VPENTH, VPGDOT, VPMENT, VPMIX, VPMMW, VPMOLE,
+C     +   VPSDOT
+C*****END PROPERTY LIBRARIES > VECTOR
+      INTEGER
+     +   BTYPES, BULKS, CASE, CELL, CELLS, CMAJOR, COMP, COMPS, COUNT,
+     +   CPOINT, GAS, GASES, GASI, GASJ, ICK, ICKSIZ, ILAST, IMAX, IMC,
+     +   IMCSIZ, INCELL, INDEX, INJEC, INJECS, ISIZE, ISK, ISKSIZ,
+     +   IWORK, J, K, LAST, NUMBER, OFFSET, P01, P02, P03, P04, P05,
+     +   P06, P07, P08, QBULK, QFIRST, QGAS, QLAST, QT, QTEMP, QVEL,
+     +   RCKSIZ, RLAST, RMAX, RMCSIZ, RPNTS, RSIZE, RSKSIZ, SCOUNT,
+     +   SIDE, SINDEX, SITE, SITES, SMAJOR, SPOINT, STYPES, SURF, SURFS,
+     +   TEXT, TYPE, VBLES, WALL, WALLS, WCOUNT, WINDEX, ZPNTS
+      INTRINSIC
+     +   ABS, SIGN, SQRT
+      LOGICAL
+     +   ADJUST, CNEW, DIFFUS, ENERGY, ERROR, KNUDSN, MULTIC, SNEW,
+     +   THRMLD, TIME
+
+      PARAMETER (ID = 'OVEN83:  ')
+      PARAMETER (PI = 3.141592653589793238462643383279502884197169399D0)
+      PARAMETER (QT = 0, QVEL = 1, QGAS = 2)
+
+      DIMENSION
+     +   ACT(GASES + SITES + BULKS), CDATA(CELLS), CENTH(CELLS, 3),
+     +   CENTH0(CELLS), CKOND(CELLS, 3), CMAJOR(CELLS), CMASS(CELLS,
+     +   GASES, 3), CMASS0(CELLS, GASES), CMOLE(CELLS, GASES, 3),
+     +   CNEW(CELLS), COEFF(GASES, GASES), COEFF1(WALLS, GASES),
+     +   COEFF2(WALLS, GASES, GASES), COPY1(GASES + SITES + BULKS),
+     +   COPY2(GASES), CPOINT(CELLS), CRESID(CELLS, GASES), CRHO(CELLS,
+     +   3), CRHO0(CELLS), CSUM(CELLS), CSURF(CELLS, 0 : GASES + 1),
+     +   CTEMP(CELLS, 3), CTEMP0(CELLS), CVOL(CELLS), CWALL(CELLS, 0 :
+     +   GASES + 1), DIAM(GASES), F(VBLES), FTEMP(CELLS), GDOT(CELLS,
+     +   GASES, 3), ICK(ICKSIZ), IMC(IMCSIZ), INCELL(INJECS)
+
+      DIMENSION
+     +   INMASS(0 : GASES, INJECS), INTEMP(INJECS), ISK(ISKSIZ),
+     +   IWORK(ISIZE), KNLEN(WALLS), P01(CELLS), P02(SURFS), P03(SURFS),
+     +   P04(WALLS, 2), P05(SURFS), P06(CELLS), P07(2 * WALLS),
+     +   P08(CELLS), QFIRST(1 + STYPES + BTYPES), QLAST(1 + STYPES +
+     +   BTYPES), RCK(RCKSIZ), RMC(RMCSIZ), RSK(RSKSIZ), RWORK(RSIZE),
+     +   SAREA(SURFS), SDATA(SURFS), SDEN(1 + STYPES + BTYPES),
+     +   SDOT(SURFS, GASES + SITES + BULKS, 3), SENTH(SURFS, GASES, 3),
+     +   SINDEX(SCOUNT), SITDOT(1 + STYPES + BTYPES), SMAGIC(SURFS),
+     +   SMAJOR(SURFS, STYPES), SMOLE(SURFS, GASES, 3), SNEW(SURFS),
+     +   SPOINT(SURFS), SRESID(SURFS, SITES), SSITE(SURFS, SITES, 3)
+
+      DIMENSION
+     +   SSITE0(SURFS, SITES), STEMP(SURFS, 3), STFLUX(SURFS),
+     +   SUM1(WALLS), SUM2(WALLS, GASES), TDC(WALLS, GASES), U(VBLES),
+     +   U0(VBLES), WAREA(WALLS), WCOEFF(WALLS), WDATA(2 * WALLS),
+     +   WENTH(WALLS, GASES), WFLUX(2 * WALLS, 0 : GASES + 1),
+     +   WGRAD(WALLS, GASES + 1), WINDEX(WCOUNT), WKOND(WALLS),
+     +   WMASS(WALLS, GASES), WMMW(WALLS), WMOLE(WALLS, GASES),
+     +   WRHO(WALLS), WSIDE(WALLS, 2), WT(GASES + SITES + BULKS),
+     +   WTEMP(WALLS), WVEL(WALLS)
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (0) PROLOGUE
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT.
+     +   (0 .LT. BTYPES .AND. 0 .LT. BULKS  .AND. 0 .LT. CELLS  .AND.
+     +    0 .LT. GASES  .AND. 0 .LT. ICKSIZ .AND. 0 .LT. IMCSIZ .AND.
+     +    0 .LT. INJECS .AND. 0 .LT. ISKSIZ .AND. 0 .LT. RCKSIZ .AND.
+     +    0 .LT. RMCSIZ .AND. 0 .LT. RPNTS  .AND. 0 .LT. RSKSIZ .AND.
+     +    0 .LT. SCOUNT .AND. 0 .LT. SITES  .AND. 0 .LT. STYPES .AND.
+     +    0 .LT. SURFS  .AND. 0 .LT. WALLS  .AND. 0 .LT. WCOUNT .AND.
+     +    0 .LT. ZPNTS)
+      IF (ERROR) GO TO 9001
+
+      ERROR = .NOT. (1 .LE. CASE .AND. CASE .LE. 3)
+      IF (ERROR) GO TO 9002
+
+C///  POINTERS TO BULK AND TEMPERATURE VALUES IN COMMON ARRAYS.
+
+      QBULK = 0
+      QTEMP = GASES + 1
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) FORM CELL VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE MARKERS FOR CELLS WITH NEW DATA.
+
+      IF (CASE .EQ. 3) THEN
+         DO 1010 CELL = 1, CELLS
+            CNEW(CELL) = .FALSE.
+1010     CONTINUE
+      END IF
+
+C///  COPY GAS MASS FRACTIONS.
+
+      DO 1020 GAS = 1, GASES
+         DO 1020 CELL = 1, CELLS
+            OFFSET = P01(CELL) + QGAS - 1 + GAS
+            CMASS(CELL, GAS, 1) = U(OFFSET)
+1020  CONTINUE
+
+      IF (CASE .EQ. 2) THEN
+         DO 1030 GAS = 1, GASES
+            DO 1030 CELL = 1, CELLS
+               CMASS(CELL, GAS, 2) = CMASS(CELL, GAS, 1)
+1030     CONTINUE
+      ELSE IF (CASE .EQ. 3) THEN
+         DO 1040 GAS = 1, GASES
+            DO 1040 CELL = 1, CELLS
+               CNEW(CELL) = CNEW(CELL)
+     +            .OR. (CMASS(CELL, GAS, 1) .NE. CMASS(CELL, GAS, 2))
+1040     CONTINUE
+      END IF
+
+      IF (TIME) THEN
+         DO 1050 GAS = 1, GASES
+            DO 1050 CELL = 1, CELLS
+               OFFSET = P01(CELL) + QGAS - 1 + GAS
+               CMASS0(CELL, GAS) = U0(OFFSET)
+1050     CONTINUE
+      END IF
+
+C///  COPY GAS TEMPERATURES.
+
+      DO 1060 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QT
+         CTEMP(CELL, 1) = U(OFFSET)
+1060  CONTINUE
+
+      IF (CASE .EQ. 2) THEN
+         DO 1070 CELL = 1, CELLS
+            CTEMP(CELL, 2) = CTEMP(CELL, 1)
+1070     CONTINUE
+      ELSE IF (CASE .EQ. 3) THEN
+         DO 1080 CELL = 1, CELLS
+            CNEW(CELL) = CNEW(CELL)
+     +         .OR. (CTEMP(CELL, 1) .NE. CTEMP(CELL, 2))
+1080     CONTINUE
+      END IF
+
+      IF (TIME) THEN
+         DO 1090 CELL = 1, CELLS
+            OFFSET = P01(CELL) + QT
+            CTEMP0(CELL) = U0(OFFSET)
+1090     CONTINUE
+      END IF
+
+C///  FORM POINTERS TO CELLS WITH NEW DATA.
+
+      IF (CASE .EQ. 3) THEN
+         COUNT = 0
+         DO 1100 CELL = 1, CELLS
+            IF (CNEW(CELL)) THEN
+               COUNT = COUNT + 1
+               CPOINT(COUNT) = CELL
+            END IF
+1100     CONTINUE
+
+         IF (0 .LT. COUNT) THEN
+            DO 1110 INDEX = 1, COUNT
+               CELL = CPOINT(INDEX)
+               CTEMP(INDEX, 3) = CTEMP(CELL, 1)
+1110        CONTINUE
+
+            DO 1120 GAS = 1, GASES
+               DO 1120 INDEX = 1, COUNT
+                  CELL = CPOINT(INDEX)
+                  CMASS(INDEX, GAS, 3) = CMASS(CELL, GAS, 1)
+1120        CONTINUE
+         END IF
+      END IF
+
+C///  GAS DENSITY.
+
+      IF (TIME) THEN
+
+C     SUBROUTINE CKRHOY (P, T, Y, ICKWRK, RCKWRK, RHO)
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 1130 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKRHOY
+     +      (PRESS, CTEMP(CELL, 1), U(OFFSET), ICK, RCK, CRHO(CELL, 1))
+1130  CONTINUE
+
+      IF (TIME) THEN
+         DO 1140 CELL = 1, CELLS
+            OFFSET = P01(CELL) + QGAS
+            CALL CKRHOY
+     +         (PRESS, CTEMP0(CELL), U0(OFFSET), ICK, RCK, CRHO0(CELL))
+1140     CONTINUE
+      END IF
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPDEN
+C    +  (ERROR, TEXT,
+C    +   ICK, ICKSIZ, RCK, RCKSIZ,
+C    +   GASES, MASS, PRESS, RHO, TEMP, VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C      IF (CASE .EQ. 1) THEN
+C         CALL VPDEN
+C     +     (ERROR, TEXT,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      GASES, CMASS(1, 1, 1), PRESS, CRHO(1, 1), CTEMP(1, 1),
+C     +      CELLS, CELLS)
+C         IF (ERROR) GO TO 9101
+C
+C      ELSE IF (CASE .EQ. 2) THEN
+C         CALL VPDEN
+C     +     (ERROR, TEXT,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      GASES, CMASS(1, 1, 1), PRESS, CRHO(1, 1), CTEMP(1, 1),
+C     +      CELLS, CELLS)
+C         IF (ERROR) GO TO 9101
+C
+C         DO 1150 CELL = 1, CELLS
+C            CRHO(CELL, 2) = CRHO(CELL, 1)
+C1150     CONTINUE
+C
+C      ELSE IF (CASE .EQ. 3) THEN
+C         DO 1160 CELL = 1, CELLS
+C            CRHO(CELL, 1) = CRHO(CELL, 2)
+C1160     CONTINUE
+C
+C         IF (0 .LT. COUNT) THEN
+C            CALL VPDEN
+C     +        (ERROR, TEXT,
+C     +         ICK, ICKSIZ, RCK, RCKSIZ,
+C     +         GASES, CMASS(1, 1, 3), PRESS, CRHO(1, 3), CTEMP(1, 3),
+C     +         COUNT, CELLS)
+C            IF (ERROR) GO TO 9101
+C
+C            DO 1170 INDEX = 1, COUNT
+C               CELL = CPOINT(INDEX)
+C               CRHO(CELL, 1) = CRHO(INDEX, 3)
+C1170        CONTINUE
+C         END IF
+C      END IF
+C
+C      CALL VPDEN
+C     +  (ERROR, TEXT,
+C     +   ICK, ICKSIZ, RCK, RCKSIZ,
+C     +   GASES, CMASS0, PRESS, CRHO0, CTEMP0, CELLS, CELLS)
+C      IF (ERROR) GO TO 9101
+C*****END PROPERTY LIBRARIES > VECTOR
+
+      END IF
+
+C///  MOLE FRACTIONS.
+
+C     SUBROUTINE CKYTX (Y, ICKWRK, RCKWRK, X)
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 1180 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKYTX (U(OFFSET), ICK, RCK, COPY1)
+         DO 1180 GAS = 1, GASES
+            CMOLE(CELL, GAS, 1) = COPY1(GAS)
+1180  CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPMOLE
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, RCK, RCKSIZ,
+C    +   GASES, MASS, MOLE, VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C      IF (CASE .EQ. 1) THEN
+C         CALL VPMOLE
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      GASES, CMASS(1, 1, 1), CMOLE(1, 1, 1), CELLS, CELLS)
+C         IF (ERROR) GO TO 9102
+C
+C      ELSE IF (CASE .EQ. 2) THEN
+C         CALL VPMOLE
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      GASES, CMASS(1, 1, 1), CMOLE(1, 1, 1), CELLS, CELLS)
+C         IF (ERROR) GO TO 9102
+C
+C         DO 1190 GAS = 1, GASES
+C            DO 1190 CELL = 1, CELLS
+C               CMOLE(CELL, GAS, 2) = CMOLE(CELL, GAS, 1)
+C1190     CONTINUE
+C
+C      ELSE IF (CASE .EQ. 3) THEN
+C         DO 1200 GAS = 1, GASES
+C            DO 1200 CELL = 1, CELLS
+C               CMOLE(CELL, GAS, 1) = CMOLE(CELL, GAS, 2)
+C1200     CONTINUE
+C
+C         IF (0 .LT. COUNT) THEN
+C            CALL VPMOLE
+C     +        (ERROR, TEXT,
+C     +         ILAST, IMAX, ISIZE, IWORK,
+C     +         RLAST, RMAX, RSIZE, RWORK,
+C     +         ICK, ICKSIZ, RCK, RCKSIZ,
+C     +         GASES, CMASS(1, 1, 3), CMOLE(1, 1, 3), COUNT, CELLS)
+C            IF (ERROR) GO TO 9102
+C
+C            DO 1210 GAS = 1, GASES
+C               DO 1210 INDEX = 1, COUNT
+C                  CELL = CPOINT(INDEX)
+C                  CMOLE(CELL, GAS, 1) = CMOLE(INDEX, GAS, 3)
+C1210        CONTINUE
+C         END IF
+C      END IF
+C*****END PROPERTY LIBRARIES > VECTOR
+
+C///  MEAN ENTHALPY.
+
+      IF (ENERGY .AND. TIME) THEN
+
+C     SUBROUTINE CKHBMS (T, Y, ICKWRK, RCKWRK, HBMS)
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 1220 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKHBMS
+     +      (CTEMP(CELL, 1), U(OFFSET), ICK, RCK, CENTH(CELL, 1))
+1220  CONTINUE
+
+      DO 1230 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKHBMS
+     +      (CTEMP0(CELL), U0(OFFSET), ICK, RCK, CENTH0(CELL))
+1230  CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPMENT
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, RCK, RCKSIZ,
+C    +   ENTHAL, GASES, MASS, TEMP, VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C      IF (CASE .EQ. 1) THEN
+C         CALL VPMENT
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      CENTH(1, 1), GASES, CMASS(1, 1, 1), CTEMP(1, 1), CELLS,
+C     +      CELLS)
+C         IF (ERROR) GO TO 9103
+C
+C      ELSE IF (CASE .EQ. 2) THEN
+C         CALL VPMENT
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      CENTH(1, 1), GASES, CMASS(1, 1, 1), CTEMP(1, 1), CELLS,
+C     +      CELLS)
+C         IF (ERROR) GO TO 9103
+C
+C         DO 1240 CELL = 1, CELLS
+C            CENTH(CELL, 2) = CENTH(CELL, 1)
+C1240     CONTINUE
+C
+C      ELSE IF (CASE .EQ. 3) THEN
+C         DO 1250 CELL = 1, CELLS
+C            CENTH(CELL, 1) = CENTH(CELL, 2)
+C1250     CONTINUE
+C
+C         IF (0 .LT. COUNT) THEN
+C            CALL VPMENT
+C     +        (ERROR, TEXT,
+C     +         ILAST, IMAX, ISIZE, IWORK,
+C     +         RLAST, RMAX, RSIZE, RWORK,
+C     +         ICK, ICKSIZ, RCK, RCKSIZ,
+C     +         CENTH(1, 3), GASES, CMASS(1, 1, 3), CTEMP(1, 3), COUNT,
+C     +         CELLS)
+C            IF (ERROR) GO TO 9103
+C
+C            DO 1260 INDEX = 1, COUNT
+C               CELL = CPOINT(INDEX)
+C               CENTH(CELL, 1) = CENTH(INDEX, 3)
+C1260        CONTINUE
+C         END IF
+C      END IF
+C
+C      CALL VPMENT
+C     +  (ERROR, TEXT,
+C     +   ILAST, IMAX, ISIZE, IWORK,
+C     +   RLAST, RMAX, RSIZE, RWORK,
+C     +   ICK, ICKSIZ, RCK, RCKSIZ,
+C     +   CENTH0, GASES, CMASS0, CTEMP0, CELLS, CELLS)
+C      IF (ERROR) GO TO 9103
+C*****END PROPERTY LIBRARIES > VECTOR
+
+      END IF
+
+C///  THERMAL CONDUCTIVITY.
+
+      IF (DIFFUS .AND. ENERGY) THEN
+
+C     SUBROUTINE MCACON (T, X, RMCWRK, CONMIX)
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 1280 CELL = 1, CELLS
+         DO 1270 GAS = 1, GASES
+            COPY1(GAS) = CMOLE(CELL, GAS, 1)
+1270     CONTINUE
+
+         CALL MCACON (CTEMP(CELL, 1), COPY1, RMC, CKOND(CELL, 1))
+1280  CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPCOND
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   RMC, RMCSIZ,
+C    +   COND, GASES, MOLE, TEMP, VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C      IF (CASE .EQ. 1) THEN
+C         CALL VPCOND
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      RMC, RMCSIZ,
+C     +      CKOND(1, 1), GASES, CMOLE(1, 1, 1), CTEMP(1, 1), CELLS,
+C     +      CELLS)
+C         IF (ERROR) GO TO 9104
+C
+C      ELSE IF (CASE .EQ. 2) THEN
+C         CALL VPCOND
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      RMC, RMCSIZ,
+C     +      CKOND(1, 1), GASES, CMOLE(1, 1, 1), CTEMP(1, 1), CELLS,
+C     +      CELLS)
+C         IF (ERROR) GO TO 9104
+C
+C         DO 1290 CELL = 1, CELLS
+C            CKOND(CELL, 2) = CKOND(CELL, 1)
+C1290     CONTINUE
+C
+C      ELSE IF (CASE .EQ. 3) THEN
+C         DO 1300 CELL = 1, CELLS
+C            CKOND(CELL, 1) = CKOND(CELL, 2)
+C1300     CONTINUE
+C
+C         IF (0 .LT. COUNT) THEN
+C            CALL VPCOND
+C     +        (ERROR, TEXT,
+C     +         ILAST, IMAX, ISIZE, IWORK,
+C     +         RLAST, RMAX, RSIZE, RWORK,
+C     +         RMC, RMCSIZ,
+C     +         CKOND(1, 3), GASES, CMOLE(1, 1, 3), CTEMP(1, 3), COUNT,
+C     +         CELLS)
+C            IF (ERROR) GO TO 9104
+C
+C            DO 1310 INDEX = 1, COUNT
+C               CELL = CPOINT(INDEX)
+C               CKOND(CELL, 1) = CKOND(INDEX, 3)
+C1310        CONTINUE
+C         END IF
+C      END IF
+C*****END PROPERTY LIBRARIES > VECTOR
+
+      END IF
+
+C///  GAS PRODUCTION RATES FROM GAS REACTIONS.
+
+C     SUBROUTINE CKWYP (P, T, Y, ICKWRK, RCKWRK, WDOT)
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 1320 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QGAS
+         CALL CKWYP (PRESS, CTEMP(CELL, 1), U(OFFSET), ICK, RCK, COPY1)
+         DO 1320 GAS = 1, GASES
+            GDOT(CELL, GAS, 1) = COPY1(GAS)
+1320  CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPGDOT
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, RCK, RCKSIZ,
+C    +   GASES, GDOT, MASS, PRESS, TEMP, VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C      IF (CASE .EQ. 1) THEN
+C         CALL VPGDOT
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      GASES, GDOT(1, 1, 1), CMASS(1, 1, 1), PRESS, CTEMP(1, 1),
+C     +      CELLS, CELLS)
+C         IF (ERROR) GO TO 9105
+C
+C      ELSE IF (CASE .EQ. 2) THEN
+C         CALL VPGDOT
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      GASES, GDOT(1, 1, 1), CMASS(1, 1, 1), PRESS, CTEMP(1, 1),
+C     +      CELLS, CELLS)
+C         IF (ERROR) GO TO 9105
+C
+C         DO 1330 GAS = 1, GASES
+C            DO 1330 CELL = 1, CELLS
+C               GDOT(CELL, GAS, 2) = GDOT(CELL, GAS, 1)
+C1330     CONTINUE
+C
+C      ELSE IF (CASE .EQ. 3) THEN
+C         DO 1340 GAS = 1, GASES
+C            DO 1340 CELL = 1, CELLS
+C               GDOT(CELL, GAS, 1) = GDOT(CELL, GAS, 2)
+C1340     CONTINUE
+C
+C         IF (0 .LT. COUNT) THEN
+C            CALL VPGDOT
+C     +        (ERROR, TEXT,
+C     +         ILAST, IMAX, ISIZE, IWORK,
+C     +         RLAST, RMAX, RSIZE, RWORK,
+C     +         ICK, ICKSIZ, RCK, RCKSIZ,
+C     +         GASES, GDOT(1, 1, 3), CMASS(1, 1, 3), PRESS,
+C     +         CTEMP(1, 3), COUNT, CELLS)
+C            IF (ERROR) GO TO 9105
+C
+C            DO 1350 GAS = 1, GASES
+C               DO 1350 INDEX = 1, COUNT
+C                  CELL = CPOINT(INDEX)
+C                  GDOT(CELL, GAS, 1) = GDOT(INDEX, GAS, 3)
+C1350        CONTINUE
+C         END IF
+C      END IF
+C*****END PROPERTY LIBRARIES > VECTOR
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) FORM SURFACE VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INITIALIZE MARKERS FOR SURFACES WITH NEW DATA.
+
+      IF (CASE .EQ. 3) THEN
+         DO 2010 SURF = 1, SURFS
+            SNEW(SURF) = .FALSE.
+2010     CONTINUE
+      END IF
+
+C///  COPY GAS MOLE FRACTIONS.
+
+      DO 2020 GAS = 1, GASES
+         DO 2020 SURF = 1, SURFS
+            OFFSET = P02(SURF)
+            SMOLE(SURF, GAS, 1) = CMOLE(OFFSET, GAS, 1)
+2020  CONTINUE
+
+      DO 2030 SURF = 1, SURFS
+         OFFSET = P02(SURF)
+         SNEW(SURF) = SNEW(SURF) .OR. CNEW(OFFSET)
+2030  CONTINUE
+
+C///  COPY SURFACE SITE FRACTIONS.
+
+      DO 2040 SITE = 1, SITES
+         DO 2040 SURF = 1, SURFS
+            OFFSET = P03(SURF) - 1 + SITE
+            SSITE(SURF, SITE, 1) = U(OFFSET)
+2040  CONTINUE
+
+      IF (CASE .EQ. 2) THEN
+         DO 2050 SITE = 1, SITES
+            DO 2050 SURF = 1, SURFS
+               SSITE(SURF, SITE, 2) = SSITE(SURF, SITE, 1)
+2050     CONTINUE
+      ELSE IF (CASE .EQ. 3) THEN
+         DO 2060 SITE = 1, SITES
+            DO 2060 SURF = 1, SURFS
+               SNEW(SURF) = SNEW(SURF)
+     +            .OR. (SSITE(SURF, SITE, 1) .NE. SSITE(SURF, SITE, 2))
+2060     CONTINUE
+      END IF
+
+      IF (TIME) THEN
+         DO 2070 SITE = 1, SITES
+            DO 2070 SURF = 1, SURFS
+               OFFSET = P03(SURF) - 1 + SITE
+               SSITE0(SURF, SITE) = U0(OFFSET)
+2070     CONTINUE
+      END IF
+
+C///  FORM POINTERS TO SURFACES WITH NEW DATA.
+
+      IF (CASE .EQ. 3) THEN
+         COUNT = 0
+         DO 2080 SURF = 1, SURFS
+            IF (SNEW(SURF)) THEN
+               COUNT = COUNT + 1
+               SPOINT(COUNT) = SURF
+            END IF
+2080     CONTINUE
+
+         IF (0 .LT. COUNT) THEN
+            DO 2090 INDEX = 1, COUNT
+               SURF = SPOINT(INDEX)
+               STEMP(INDEX, 3) = STEMP(SURF, 1)
+2090        CONTINUE
+
+            DO 2100 SITE = 1, SITES
+               DO 2100 INDEX = 1, COUNT
+                  SURF = SPOINT(INDEX)
+                  SSITE(INDEX, SITE, 3) = SSITE(SURF, SITE, 1)
+2100        CONTINUE
+
+            DO 2110 GAS = 1, GASES
+               DO 2110 INDEX = 1, COUNT
+                  SURF = SPOINT(INDEX)
+                  SMOLE(INDEX, GAS, 3) = SMOLE(SURF, GAS, 1)
+2110        CONTINUE
+         END IF
+      END IF
+
+C///  ENTHALPIES.
+
+      IF (ENERGY) THEN
+
+C     SUBROUTINE CKHMS (T, ICKWRK, RCKWRK, HMS)
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 2120 SURF = 1, SURFS
+         CALL CKHMS (STEMP(SURF, 1), ICK, RCK, COPY1)
+
+         DO 2120 GAS = 1, GASES
+            SENTH(SURF, GAS, 1) = COPY1(GAS)
+2120  CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPENTH
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, RCK, RCKSIZ,
+C    +   ENTHAL, GASES, TEMP, VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C      IF (CASE .EQ. 1) THEN
+C         CALL VPENTH
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      SENTH(1, 1, 1), GASES, STEMP(1, 1), SURFS, SURFS)
+C         IF (ERROR) GO TO 9201
+C
+C      ELSE IF (CASE .EQ. 2) THEN
+C         CALL VPENTH
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      SENTH(1, 1, 1), GASES, STEMP(1, 1), SURFS, SURFS)
+C         IF (ERROR) GO TO 9201
+C
+C         DO 2130 GAS = 1, GASES
+C            DO 2130 SURF = 1, SURFS
+C               SENTH(SURF, GAS, 2) = SENTH(SURF, GAS, 1)
+C2130     CONTINUE
+C
+C      ELSE IF (CASE .EQ. 3) THEN
+C         DO 2140 GAS = 1, GASES
+C            DO 2140 SURF = 1, SURFS
+C               SENTH(SURF, GAS, 1) = SENTH(SURF, GAS, 2)
+C2140     CONTINUE
+C
+C         IF (0 .LT. COUNT) THEN
+C            CALL VPENTH
+C     +        (ERROR, TEXT,
+C     +         ILAST, IMAX, ISIZE, IWORK,
+C     +         RLAST, RMAX, RSIZE, RWORK,
+C     +         ICK, ICKSIZ, RCK, RCKSIZ,
+C     +         SENTH(1, 1, 3), GASES, STEMP(1, 3), COUNT, SURFS)
+C            IF (ERROR) GO TO 9201
+C
+C            DO 2150 GAS = 1, GASES
+C               DO 2150 INDEX = 1, COUNT
+C                  SURF = SPOINT(INDEX)
+C                  SENTH(SURF, GAS, 1) = SENTH(INDEX, GAS, 3)
+C2150        CONTINUE
+C         END IF
+C      END IF
+C*****END PROPERTY LIBRARIES > VECTOR
+
+      END IF
+
+C///  PRODUCTION RATES FROM SURFACE REACTIONS.
+
+C     (SKLIB VERSION 3.7)
+C     SUBROUTINE SKRAT (P, T, ACT, SDEN, ISKWRK, RSKWRK, SDOT, SITDOT)
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 2180 SURF = 1, SURFS
+         DO 2160 GAS = 1, GASES
+            ACT(GAS) = SMOLE(SURF, GAS, 1)
+2160     CONTINUE
+
+         DO 2170 SITE = 1, SITES
+            ACT(GASES + SITE) = SSITE(SURF, SITE, 1)
+2170     CONTINUE
+
+C        SKRAT DOES NOT CHANGE THE BULK VALUES IN ACT
+
+         CALL SKRAT
+     +      (PRESS, STEMP(SURF, 1), ACT, SDEN, ISK, RSK, COPY1, SITDOT)
+
+         DO 2180 K = 1, GASES + SITES + BULKS
+            SDOT(SURF, K, 1) = COPY1(K)
+2180  CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPSDOT
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ISK, ISKSIZ, RSK, RSKSIZ,
+C    +   ACT, BULKS, GASES, MOLE, PRESS, SDOT, SITES, SSITE, TEMP,
+C    +   VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C      IF (CASE .EQ. 1) THEN
+C         CALL VPSDOT
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ISK, ISKSIZ, RSK, RSKSIZ,
+C     +      ACT, BULKS, GASES, SMOLE(1, 1, 1), PRESS, SDOT(1, 1, 1),
+C     +      SITES, SSITE(1, 1, 1), STEMP(1, 1), SURFS, SURFS)
+C         IF (ERROR) GO TO 9106
+C
+C      ELSE IF (CASE .EQ. 2) THEN
+C         CALL VPSDOT
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ISK, ISKSIZ, RSK, RSKSIZ,
+C     +      ACT, BULKS, GASES, SMOLE(1, 1, 1), PRESS, SDOT(1, 1, 1),
+C     +      SITES, SSITE(1, 1, 1), STEMP(1, 1), SURFS, SURFS)
+C         IF (ERROR) GO TO 9106
+C
+C         DO 2190 K = 1, GASES + SITES + BULKS
+C            DO 2190 SURF = 1, SURFS
+C               SDOT(SURF, K, 2) = SDOT(SURF, K, 1)
+C2190     CONTINUE
+C
+C      ELSE IF (CASE .EQ. 3) THEN
+C         DO 2200 K = 1, GASES + SITES + BULKS
+C            DO 2200 SURF = 1, SURFS
+C               SDOT(SURF, K, 1) = SDOT(SURF, K, 2)
+C2200     CONTINUE
+C
+C         IF (0 .LT. COUNT) THEN
+C            CALL VPSDOT
+C     +        (ERROR, TEXT,
+C     +         ILAST, IMAX, ISIZE, IWORK,
+C     +         RLAST, RMAX, RSIZE, RWORK,
+C     +         ISK, ISKSIZ, RSK, RSKSIZ,
+C     +         ACT, BULKS, GASES, SMOLE(1, 1, 3), PRESS, SDOT(1, 1, 3),
+C     +         SITES, SSITE(1, 1, 3), STEMP(1, 3), COUNT, SURFS)
+C            IF (ERROR) GO TO 9106
+C
+C            DO 2210 K = 1, GASES + SITES + BULKS
+C               DO 2210 INDEX = 1, COUNT
+C                  SURF = SPOINT(INDEX)
+C                  SDOT(SURF, K, 1) = SDOT(INDEX, K, 3)
+C2210        CONTINUE
+C         END IF
+C      END IF
+C*****END PROPERTY LIBRARIES > VECTOR
+
+C///  FORM THE SURFACE PRODUCTION RATE OF GAS, AND SCALE ALL PRODUCTION
+C///  RATES EXCEPT THOSE FOR BULK SPECIES.
+
+      DO 2220 GAS = 1, GASES
+         DO 2220 SURF = 1, SURFS
+            SDOT(SURF, GAS, 1)
+     +         = FACTOR * SDOT(SURF, GAS, 1) * SAREA(SURF) * WT(GAS)
+2220  CONTINUE
+
+      DO 2230 SITE = GASES + 1, GASES + SITES
+         DO 2230 SURF = 1, SURFS
+            SDOT(SURF, SITE, 1) = FACTOR * SDOT(SURF, SITE, 1)
+2230  CONTINUE
+
+C///  SURFACE FLUX OF ENERGY TO THE GAS.
+
+      IF (ENERGY) THEN
+
+      DO 2240 SURF = 1, SURFS
+         CELL = P02(SURF)
+         STFLUX(SURF)
+     +      = (STEMP(SURF, 1) - CTEMP(CELL, 1))
+     +      * SAREA(SURF) * CKOND(CELL, 1) * SMAGIC(SURF)
+2240  CONTINUE
+
+      DO 2250 GAS = 1, GASES
+         DO 2250 SURF = 1, SURFS
+            STFLUX(SURF) = STFLUX(SURF)
+     +         + SDOT(SURF, GAS, 1) * SENTH(SURF, GAS, 1)
+2250  CONTINUE
+
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) FORM WALL VALUES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  COPY VELOCITIES.
+
+      DO 3010 WALL = 1, WALLS
+         OFFSET = P01(WALL) + QVEL
+         WVEL(WALL) = U(OFFSET)
+3010  CONTINUE
+
+C///  MASS FRACTIONS.
+
+      DO 3030 GAS = 1, GASES
+         DO 3020 SIDE = 1, 2
+            DO 3020 WALL = 1, WALLS
+               CELL = P04(WALL, SIDE)
+               WSIDE(WALL, SIDE) = CMASS(CELL, GAS, 1)
+3020     CONTINUE
+
+         DO 3030 WALL = 1, WALLS
+            WMASS(WALL, GAS) = 0.5 * (WSIDE(WALL, 1) + WSIDE(WALL, 2))
+3030  CONTINUE
+
+C///  MOLE GRADIENTS.
+
+      DO 3050 GAS = 1, GASES
+         DO 3040 SIDE = 1, 2
+            DO 3040 WALL = 1, WALLS
+               CELL = P04(WALL, SIDE)
+               WSIDE(WALL, SIDE) = CMOLE(CELL, GAS, 1)
+3040     CONTINUE
+
+         DO 3050 WALL = 1, WALLS
+            WGRAD(WALL, GAS)
+     +         = WCOEFF(WALL) * (WSIDE(WALL, 1) - WSIDE(WALL, 2))
+3050  CONTINUE
+
+C///  TEMPERATURES AND TEMPERATURE GRADIENTS.
+
+      DO 3070 SIDE = 1, 2
+         DO 3060 WALL = 1, WALLS
+            CELL = P04(WALL, SIDE)
+            WSIDE(WALL, SIDE) = CTEMP(CELL, 1)
+3060     CONTINUE
+
+         DO 3070 WALL = 1, WALLS
+            WTEMP(WALL) = 0.5 * (WSIDE(WALL, 1) + WSIDE(WALL, 2))
+            WGRAD(WALL, QTEMP)
+     +         = WCOEFF(WALL) * (WSIDE(WALL, 1) - WSIDE(WALL, 2))
+3070  CONTINUE
+
+C///  FORM MEAN MOLECULAR WEIGHT, DENSITY AND MOLE FRACTIONS.
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 3100 WALL = 1, WALLS
+         DO 3080 GAS = 1, GASES
+            COPY1(GAS) = WMASS(WALL, GAS)
+3080     CONTINUE
+
+         CALL CKMMWY (COPY1, ICK, RCK, WMMW(WALL))
+
+         CALL CKRHOY (PRESS, WTEMP(WALL), COPY1, ICK, RCK, WRHO(WALL))
+
+         IF (DIFFUS) THEN
+            CALL CKYTX (COPY1, ICK, RCK, COPY2)
+
+            DO 3090 GAS = 1, GASES
+               WMOLE(WALL, GAS) = COPY2(GAS)
+3090        CONTINUE
+         END IF
+3100  CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C*****PROPERTY LIBRARIES > VECTOR
+CC     SUBROUTINE VPMMW
+CC    +  (ERROR, TEXT,
+CC    +   ICK, ICKSIZ, RCK, RCKSIZ,
+CC    +   GASES, MASS, MMW, VALUES, VMAX)
+C
+C      CALL VPMMW
+C     +  (ERROR, TEXT,
+C     +   ICK, ICKSIZ, RCK, RCKSIZ,
+C     +   GASES, WMASS, WMMW, WALLS, WALLS)
+C      IF (ERROR) GO TO 9202
+C
+CC     SUBROUTINE VPDEN
+CC    +  (ERROR, TEXT,
+CC    +   ICK, ICKSIZ, RCK, RCKSIZ,
+CC    +   GASES, MASS, PRESS, RHO, TEMP, VALUES, VMAX)
+C
+C      CALL VPDEN
+C     +  (ERROR, TEXT,
+C     +   ICK, ICKSIZ, RCK, RCKSIZ,
+C     +   GASES, WMASS, PRESS, WRHO, WTEMP, WALLS, WALLS)
+C      IF (ERROR) GO TO 9101
+C
+CC     SUBROUTINE VPMOLE
+CC    +  (ERROR, TEXT,
+CC    +   ILAST, IMAX, ISIZE, IWORK,
+CC    +   RLAST, RMAX, RSIZE, RWORK,
+CC    +   ICK, ICKSIZ, RCK, RCKSIZ,
+CC    +   GASES, MASS, MOLE, VALUES, VMAX)
+C
+C      IF (DIFFUS) THEN
+C         CALL VPMOLE
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      ICK, ICKSIZ, RCK, RCKSIZ,
+C     +      GASES, WMASS, WMOLE, WALLS, WALLS)
+C         IF (ERROR) GO TO 9102
+C      END IF
+C*****END PROPERTY LIBRARIES > VECTOR
+
+C///  ENTHALPIES.
+
+      IF (ENERGY) THEN
+
+C     SUBROUTINE CKHMS (T, ICKWRK, RCKWRK, HMS)
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 3110 WALL = 1, WALLS
+         CALL CKHMS (WTEMP(WALL), ICK, RCK, COPY1)
+
+         DO 3110 GAS = 1, GASES
+            WENTH(WALL, GAS) = COPY1(GAS)
+3110  CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPENTH
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, RCK, RCKSIZ,
+C    +   ENTHAL, GASES, TEMP, VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C      CALL VPENTH
+C     +  (ERROR, TEXT,
+C     +   ILAST, IMAX, ISIZE, IWORK,
+C     +   RLAST, RMAX, RSIZE, RWORK,
+C     +   ICK, ICKSIZ, RCK, RCKSIZ,
+C     +   WENTH, GASES, WTEMP, WALLS, WALLS)
+C      IF (ERROR) GO TO 9201
+C*****END PROPERTY LIBRARIES > VECTOR
+
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (4) FORM THE DIFFUSION COEFFICIENTS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IF (DIFFUS) THEN
+
+C///  THERMAL CONDUCTIVITY.
+
+      IF (ENERGY) THEN
+
+      IF (THRMLD) THEN
+
+C     SUBROUTINE MCMCDT
+C    +   (P, T, X, IMCWRK, RMCWRK, ICKWRK, CKWRK, DT, COND)
+
+      DO 4020 WALL = 1, WALLS
+         DO 4010 GAS = 1, GASES
+            COPY1(GAS) = WMOLE(WALL, GAS)
+4010     CONTINUE
+
+         CALL MCMCDT
+     +      (PRESS, WTEMP(WALL), COPY1, IMC, RMC, ICK, RCK, COPY2,
+     +      WKOND(WALL))
+
+         DO 4020 GAS = 1, GASES
+            TDC(WALL, GAS) = COPY2(GAS)
+4020  CONTINUE
+
+      ELSE
+
+C     SUBROUTINE MCACON (T, X, RMCWRK, CONMIX)
+
+C*****PROPERTY LIBRARIES > SCALAR
+      DO 4040 WALL = 1, WALLS
+         DO 4030 GAS = 1, GASES
+            COPY1(GAS) = WMOLE(WALL, GAS)
+4030     CONTINUE
+
+         CALL MCACON (WTEMP(WALL), COPY1, RMC, WKOND(WALL))
+4040  CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPCOND
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   RMC, RMCSIZ,
+C    +   COND, GASES, MOLE, TEMP, VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C      CALL VPCOND
+C     +  (ERROR, TEXT,
+C     +   ILAST, IMAX, ISIZE, IWORK,
+C     +   RLAST, RMAX, RSIZE, RWORK,
+C     +   RMC, RMCSIZ,
+C     +   WKOND, GASES, WMOLE, WTEMP, WALLS, WALLS)
+C      IF (ERROR) GO TO 9104
+C*****END PROPERTY LIBRARIES > VECTOR
+
+      END IF
+
+      END IF
+
+C///  MULTICOMPONENT SPECIES DIFFUSION.
+
+      IF (MULTIC) THEN
+         DO 4060 WALL = 1, WALLS
+            DO 4050 GAS = 1, GASES
+               COPY2(GAS) = WMOLE(WALL, GAS)
+4050        CONTINUE
+
+            CALL MCMDIF
+     +         (PRESS, WTEMP(WALL), COPY2, GASES, IMC, RMC, COEFF)
+
+            DO 4060 K = 1, GASES
+               DO 4060 J = 1, GASES
+                  COEFF2(WALL, J, K) = COEFF(J, K)
+4060     CONTINUE
+
+C///  MIXTURE-AVERAGED SPECIES DIFFUSION.
+
+      ELSE
+
+C*****PROPERTY LIBRARIES > SCALAR
+         DO 4080 WALL = 1, WALLS
+            DO 4070 GAS = 1, GASES
+               COPY2(GAS) = WMOLE(WALL, GAS)
+4070        CONTINUE
+
+            CALL MCADIF (PRESS, WTEMP(WALL), COPY2, RMC, COEFF)
+
+            DO 4080 GAS = 1, GASES
+               COEFF1(WALL, GAS) = COEFF(GAS, 1)
+4080     CONTINUE
+C*****END PROPERTY LIBRARIES > SCALAR
+
+C     SUBROUTINE VPMIX
+C    +  (ERROR, TEXT,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   RMC, RMCSIZ,
+C    +   COEFF, GASES, MOLE, PRESS, TEMP, VALUES, VMAX)
+
+C*****PROPERTY LIBRARIES > VECTOR
+C         CALL VPMIX
+C     +     (ERROR, TEXT,
+C     +      ILAST, IMAX, ISIZE, IWORK,
+C     +      RLAST, RMAX, RSIZE, RWORK,
+C     +      RMC, RMCSIZ,
+C     +      COEFF1, GASES, WMOLE, PRESS, WTEMP, WALLS, WALLS)
+C         IF (ERROR) GO TO 9301
+C*****END PROPERTY LIBRARIES > VECTOR
+
+C///  PERTURB THE MIXTURE-AVERAGED SPECIES DIFFUSION COEFFICIENTS TO
+C///  ACCOUNT FOR KNUDSEN DIFFUSION.
+
+      IF (KNUDSN) THEN
+         DO 4140 GASI = 1, GASES
+            DO 4090 WALL = 1, WALLS
+               SUM1(WALL) = 0.0
+4090        CONTINUE
+
+            DO 4110 GASJ = 1, GASES
+               ALPHA = PI * (6.023E23 / WT(GASJ))
+     +            * 0.25E-16 * (DIAM(GASI) + DIAM(GASJ)) ** 2
+     +            * SQRT (1.0 + (WT(GASI) / WT(GASJ)))
+               DO 4100 WALL = 1, WALLS
+                  SUM1(WALL) = SUM1(WALL)
+     +               + ALPHA * WRHO(WALL) * WMASS(WALL, GASJ)
+4100           CONTINUE
+4110        CONTINUE
+C           SUM1 IS NOW THE RECIPROCAL OF THE MEAN FREE PATH FOR GASI
+
+            DO 4120 WALL = 1, WALLS
+               SUM1(WALL) = SUM1(WALL) * KNLEN(WALL)
+4120        CONTINUE
+C           SUM1 IS NOW THE RECIPROCAL OF THE KNUDSEN NUMBER FOR GASI
+
+            DO 4130 WALL = 1, WALLS
+               COEFF1(WALL, GASI) = COEFF1(WALL, GASI)
+     +            * SUM1(WALL) / (1.0 + SUM1(WALL))
+4130        CONTINUE
+4140     CONTINUE
+      END IF
+
+C///  BOTTOM OF THE BLOCK FOR MIXTURE-AVERAGED SPECIES DIFFUSION.
+
+      END IF
+
+C///  BOTTOM OF THE BLOCK TO FORM THE DIFFUSION COEFFICIENTS.
+
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     FORM THE FLUXES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  MULTICOMPONENT SPECIES DIFFUSION.
+
+      IF (MULTIC) THEN
+         DO 4170 GAS = 1, GASES
+            DO 4150 WALL = 1, WALLS
+               SUM2(WALL, GAS) = 0.0
+4150        CONTINUE
+
+            DO 4160 K = 1, GASES
+               DO 4160 WALL = 1, WALLS
+                  SUM2(WALL, GAS) = SUM2(WALL, GAS)
+     +               + WT(K) * COEFF2(WALL, GAS, K) * WGRAD(WALL, K)
+4160        CONTINUE
+
+            DO 4170 WALL = 1, WALLS
+               SUM2(WALL, GAS) = SUM2(WALL, GAS) * WT(GAS)
+     +            / WMMW(WALL) ** 2
+4170     CONTINUE
+
+C///  MIXTURE-AVERAGED SPECIES DIFFUSION.
+
+      ELSE
+         DO 4180 GAS = 1, GASES
+            DO 4180 WALL = 1, WALLS
+               SUM2(WALL, GAS) = - COEFF1(WALL, GAS)
+     +            * WGRAD(WALL, GAS) * WT(GAS) / WMMW(WALL)
+4180     CONTINUE
+      ENDIF
+
+C///  THERMAL DIFFUSION.
+
+      IF (THRMLD) THEN
+         DO 4190 GAS = 1, GASES
+            DO 4190 WALL = 1, WALLS
+               SUM2(WALL, GAS) = SUM2(WALL, GAS)
+     +            - TDC(WALL, GAS) * WGRAD(WALL, QTEMP)
+     +            / (WRHO(WALL) * WTEMP(WALL))
+4190     CONTINUE
+      END IF
+
+C///  COMPLETE THE SPECIES FLUXES.
+
+      DO 4200 WALL = 1, WALLS
+         SUM1(WALL) = WVEL(WALL)
+4200  CONTINUE
+
+      IF (ADJUST) THEN
+         DO 4210 GAS = 1, GASES
+            DO 4210 WALL = 1, WALLS
+               SUM1(WALL) = SUM1(WALL) - SUM2(WALL, GAS)
+4210     CONTINUE
+      END IF
+
+      DO 4220 GAS = 1, GASES
+         DO 4220 WALL = 1, WALLS
+            WFLUX(WALL, GAS) = WAREA(WALL) * WRHO(WALL)
+     +         * (WMASS(WALL, GAS) * SUM1(WALL) + SUM2(WALL, GAS))
+4220  CONTINUE
+
+C///  BULK FLUX OF GAS.
+
+      DO 4230 WALL = 1, WALLS
+         WFLUX(WALL, QBULK) = WAREA(WALL) * WRHO(WALL) * WVEL(WALL)
+4230  CONTINUE
+
+C///  FLUX OF ENERGY.
+
+      IF (ENERGY) THEN
+
+      DO 4240 WALL = 1, WALLS
+         SUM1(WALL) = 0.0
+4240  CONTINUE
+
+      DO 4250 GAS = 1, GASES
+         DO 4250 WALL = 1, WALLS
+            SUM1(WALL) = SUM1(WALL)
+     +         + WFLUX(WALL, GAS) * WENTH(WALL, GAS)
+4250  CONTINUE
+
+      DO 4260 WALL = 1, WALLS
+         WFLUX(WALL, QTEMP) = SUM1(WALL)
+     +      - WAREA(WALL) * WKOND(WALL) * WGRAD(WALL, QTEMP)
+4260  CONTINUE
+
+      END IF
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (5) ASSEMBLE SURFACE AND WALL VALUES FOR CELLS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  SURFACE PRODUCTION OF GAS AND ENERGY.
+
+      IF (ENERGY) THEN
+         COMPS = GASES + 1
+      ELSE
+         COMPS = GASES
+      END IF
+
+C     THIS LOOP MAY INCLUDE QTEMP
+      DO 5060 COMP = 1, COMPS
+         IF (COMP .NE. QTEMP) THEN
+            DO 5010 SURF = 1, SURFS
+               OFFSET = P05(SURF)
+               SDATA(SURF) = SDOT(OFFSET, COMP, 1)
+5010        CONTINUE
+         ELSE
+            DO 5020 SURF = 1, SURFS
+               OFFSET = P05(SURF)
+               SDATA(SURF) = STFLUX(OFFSET)
+5020        CONTINUE
+         END IF
+
+         DO 5030 CELL = 1, CELLS
+            CDATA(CELL) = 0.0
+5030     CONTINUE
+
+         LAST = 0
+         DO 5040 COUNT = 1, SCOUNT
+            NUMBER = SINDEX(COUNT)
+            OFFSET = LAST
+            LAST = LAST + NUMBER
+            DO 5040 J = 1, NUMBER
+               CDATA(J) = CDATA(J) + SDATA(OFFSET + J)
+5040     CONTINUE
+
+         DO 5050 CELL = 1, CELLS
+            OFFSET = P06(CELL)
+            CSURF(CELL, COMP) = CDATA(OFFSET)
+5050     CONTINUE
+5060  CONTINUE
+
+C///  TOTAL SURFACE PRODUCTION OF GAS.
+
+      DO 5070 CELL = 1, CELLS
+         CSURF(CELL, QBULK) = 0.0
+5070  CONTINUE
+
+      DO 5080 GAS = 1, GASES
+         DO 5080 CELL = 1, CELLS
+            CSURF(CELL, QBULK) = CSURF(CELL, QBULK) + CSURF(CELL, GAS)
+5080  CONTINUE
+
+C///  WALL FLUX OF BULK GAS, GAS SPECIES, AND ENERGY.
+
+      IF (ENERGY) THEN
+         COMPS = GASES + 1
+      ELSE
+         COMPS = GASES
+      END IF
+
+C     THIS LOOP INCLUDES QBULK AND MAY INCLUDE QTEMP
+      DO 5140 COMP = 0, COMPS
+         DO 5090 WALL = 1, 2 * WALLS
+            OFFSET = ABS (P07(WALL))
+            WDATA(WALL) = WFLUX(OFFSET, COMP)
+5090     CONTINUE
+
+         DO 5100 WALL = 1, 2 * WALLS
+            WDATA(WALL) = SIGN (1, P07(WALL)) * WDATA(WALL)
+5100     CONTINUE
+
+         DO 5110 CELL = 1, CELLS
+            CDATA(CELL) = 0.0
+5110     CONTINUE
+
+         LAST = 0
+         DO 5120 COUNT = 1, WCOUNT
+            NUMBER = WINDEX(COUNT)
+            OFFSET = LAST
+            LAST = LAST + NUMBER
+            DO 5120 J = 1, NUMBER
+               CDATA(J) = CDATA(J) + WDATA(OFFSET + J)
+5120     CONTINUE
+
+         DO 5130 CELL = 1, CELLS
+            OFFSET = P08(CELL)
+            CWALL(CELL, COMP) = CDATA(OFFSET)
+5130     CONTINUE
+5140  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (6) BULK GAS RESIDUALS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IF (TIME) THEN
+         TEMP = 1.0 / STRIDE
+         DO 6010 CELL = 1, CELLS
+            CDATA(CELL) = - CSURF(CELL, QBULK) + CWALL(CELL, QBULK)
+     +         + (CRHO(CELL, 1) - CRHO0(CELL)) * CVOL(CELL) * TEMP
+6010        CONTINUE
+      ELSE
+         DO 6020 CELL = 1, CELLS
+            CDATA(CELL) = - CSURF(CELL, QBULK) + CWALL(CELL, QBULK)
+6020     CONTINUE
+      END IF
+
+C///  INJECTORS.
+
+      DO 6030 INJEC = 1, INJECS
+         CELL = INCELL(INJEC)
+         CDATA(CELL) = CDATA(CELL) - INMASS(0, INJEC)
+6030  CONTINUE
+
+C///  OUTLET.
+
+      OFFSET = P01(CELLS) + QVEL
+      CDATA(CELLS) = CDATA(CELLS) - U(OFFSET)
+
+C///  COPY TO RESIDUAL VECTOR.
+
+      DO 6040 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QVEL
+         F(OFFSET) = CDATA(CELL)
+6040  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     TEMPERATURE RESIDUALS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IF (ENERGY) THEN
+
+C///  ENERGY CONSERVATION.
+
+      IF (TIME) THEN
+         TEMP = 1.0 / STRIDE
+         DO 6050 CELL = 1, CELLS
+            CDATA(CELL) = - CSURF(CELL, QTEMP) + CWALL(CELL, QTEMP)
+     +         + (CENTH(CELL, 1) * CRHO(CELL, 1)
+     +            - CENTH0(CELL) * CRHO0(CELL))
+     +         * CVOL(CELL) * TEMP
+6050        CONTINUE
+      ELSE
+         DO 6060 CELL = 1, CELLS
+            CDATA(CELL) = - CSURF(CELL, QTEMP) + CWALL(CELL, QTEMP)
+6060     CONTINUE
+      END IF
+
+C///  INJECTORS.
+
+C     SUBROUTINE CKHMS (T, ICKWRK, RCKWRK, HMS)
+
+      DO 6080 INJEC = 1, INJECS
+         CALL CKHMS (INTEMP(INJEC), ICK, RCK, COPY1)
+
+         SUM = 0.0
+         DO 6070 GAS = 1, GASES
+            SUM = SUM + INMASS(GAS, INJEC) * COPY1(GAS)
+6070     CONTINUE
+
+         CELL = INCELL(INJEC)
+         CDATA(CELL) = CDATA(CELL) - SUM
+6080  CONTINUE
+
+C///  OUTLET.
+
+C     SUBROUTINE CKHMS (T, ICKWRK, RCKWRK, HMS)
+
+      CALL CKHMS (CTEMP(CELLS, 1), ICK, RCK, COPY1)
+
+      SUM = 0.0
+      DO 6090 GAS = 1, GASES
+         SUM = SUM + CMASS(CELLS, GAS, 1) * COPY1(GAS)
+6090  CONTINUE
+
+      OFFSET = P01(CELLS) + QVEL
+      CDATA(CELLS) = CDATA(CELLS) - U(OFFSET) * SUM
+
+C///  FIXED TEMPERATURE.
+
+      ELSE
+         DO 6100 CELL = 1, CELLS
+            CDATA(CELL) = CTEMP(CELL, 1) - FTEMP(CELL)
+6100     CONTINUE
+      END IF
+
+C///  COPY TO RESIDUAL VECTOR.
+
+      DO 6110 CELL = 1, CELLS
+         OFFSET = P01(CELL) + QT
+         F(OFFSET) = CDATA(CELL)
+6110  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (7) GAS SPECIES RESIDUALS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IF (TIME) THEN
+         TEMP = 1.0 / STRIDE
+         DO 7010 GAS = 1, GASES
+            DO 7010 CELL = 1, CELLS
+               CRESID(CELL, GAS) =
+     +            - CSURF(CELL, GAS) + CWALL(CELL, GAS)
+     +            - CVOL(CELL) * GDOT(CELL, GAS, 1) * WT(GAS)
+     +            + (CRHO(CELL, 1) * CMASS(CELL, GAS, 1)
+     +               - CRHO0(CELL) * CMASS0(CELL, GAS))
+     +            * CVOL(CELL) * TEMP
+7010     CONTINUE
+      ELSE
+         DO 7020 GAS = 1, GASES
+            DO 7020 CELL = 1, CELLS
+               CRESID(CELL, GAS) =
+     +            - CSURF(CELL, GAS) + CWALL(CELL, GAS)
+     +            - CVOL(CELL) * GDOT(CELL, GAS, 1) * WT(GAS)
+7020     CONTINUE
+      END IF
+
+C///  INJECTORS.
+
+      DO 7030 INJEC = 1, INJECS
+         CELL = INCELL(INJEC)
+         DO 7030 GAS = 1, GASES
+            CRESID(CELL, GAS) = CRESID(CELL, GAS) - INMASS(GAS, INJEC)
+7030  CONTINUE
+
+C///  OUTLET.
+
+      OFFSET = P01(CELLS) + QVEL
+      DO 7050 GAS = 1, GASES
+         CRESID(CELLS, GAS) = CRESID(CELLS, GAS)
+     +      - U(OFFSET) * CMASS(CELLS, GAS, 1)
+7050  CONTINUE
+
+C///  OVERWRITE MAJOR GAS SPECIES RESIDUAL BY CONSERVATION RESIDUAL.
+
+      DO 7060 CELL = 1, CELLS
+         CSUM(CELL) = - 1.0
+7060  CONTINUE
+
+      DO 7070 GAS = 1, GASES
+         DO 7070 CELL = 1, CELLS
+            CSUM(CELL) = CSUM(CELL) + CMASS(CELL, GAS, 1)
+7070  CONTINUE
+
+      DO 7080 CELL = 1, CELLS
+         GAS = CMAJOR(CELL)
+         CRESID(CELL, GAS) = CSUM(CELL)
+7080  CONTINUE
+
+C///  COPY TO RESIDUAL VECTOR.
+
+      DO 7090 GAS = 1, GASES
+         DO 7090 CELL = 1, CELLS
+            OFFSET = P01(CELL) + QGAS - 1 + GAS
+            F(OFFSET) = CRESID(CELL, GAS)
+7090  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (8) FORM RESIDUALS FOR SURFACE SPECIES EQUATIONS.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IF (TIME) THEN
+         DO 8010 TYPE = 2, 1 + STYPES
+            TEMP1 = 1.0 / SDEN(TYPE)
+            TEMP2 = 1.0 / STRIDE
+            DO 8010 SITE = QFIRST(TYPE) - GASES, QLAST(TYPE) - GASES
+               DO 8010 SURF = 1, SURFS
+                  SRESID(SURF, SITE) =
+     +               - SDOT(SURF, GASES + SITE, 1) * TEMP1
+     +               + (SSITE(SURF, SITE, 1) - SSITE0(SURF, SITE))
+     +                  * TEMP2
+8010        CONTINUE
+      ELSE
+         DO 8020 TYPE = 2, 1 + STYPES
+            TEMP1 = 1.0 / SDEN(TYPE)
+            DO 8020 SITE = QFIRST(TYPE) - GASES, QLAST(TYPE) - GASES
+               DO 8020 SURF = 1, SURFS
+                  SRESID(SURF, SITE) =
+     +               - SDOT(SURF, GASES + SITE, 1) * TEMP1
+8020     CONTINUE
+      END IF
+
+C///  OVERWRITE MAJOR SURFACE SITES RESIDUALS BY CONSERVATION RESIDUALS.
+
+      DO 8050 TYPE = 1, STYPES
+         DO 8030 SURF = 1, SURFS
+            SDATA(SURF) = - 1.0
+8030     CONTINUE
+
+         DO 8040 SITE = QFIRST(1 + TYPE) - GASES,
+     +      QLAST(1 + TYPE) - GASES
+            DO 8040 SURF = 1, SURFS
+               SDATA(SURF) = SDATA(SURF) + SSITE(SURF, SITE, 1)
+8040     CONTINUE
+
+         DO 8050 SURF = 1, SURFS
+            SITE = SMAJOR(SURF, TYPE)
+            SRESID(SURF, SITE) = SDATA(SURF)
+8050  CONTINUE
+
+C///  COPY TO RESIDUAL VECTOR.
+
+      DO 8060 SITE = 1, SITES
+         DO 8060 SURF = 1, SURFS
+            OFFSET = P03(SURF) - 1 + SITE
+            F(OFFSET) = SRESID(SURF, SITE)
+8060  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9001  IF (0 .LT. TEXT) WRITE (TEXT, 99001) ID,
+     +   BTYPES, BULKS, CELLS, GASES, ICKSIZ, IMCSIZ, INJECS, ISKSIZ,
+     +   RCKSIZ, RMCSIZ, RPNTS, RSKSIZ, SCOUNT, SITES, STYPES, SURFS,
+     +   WALLS, WCOUNT, ZPNTS
+      GO TO 99999
+
+9002  IF (0 .LT. TEXT) WRITE (TEXT, 99002) ID, CASE
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID
+      GO TO 99999
+
+9103  IF (0 .LT. TEXT) WRITE (TEXT, 99103) ID
+      GO TO 99999
+
+9104  IF (0 .LT. TEXT) WRITE (TEXT, 99104) ID
+      GO TO 99999
+
+9105  IF (0 .LT. TEXT) WRITE (TEXT, 99105) ID
+      GO TO 99999
+
+9106  IF (0 .LT. TEXT) WRITE (TEXT, 99106) ID
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99999
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID
+      GO TO 99999
+
+9301  IF (0 .LT. TEXT) WRITE (TEXT, 99301) ID
+      GO TO 99999
+
+99001 FORMAT
+     +   (/1X, A, 'ERROR.  SOME DIMENSIONS ARE NOT POSITIVE.'
+     +   //10X, I10, '  BTYPES' /10X, I10, '  BULKS'
+     +    /10X, I10, '  CELLS'  /10X, I10, '  GASES'
+     +    /10X, I10, '  ICKSIZ' /10X, I10, '  IMCSIZ'
+     +    /10X, I10, '  INJECS' /10X, I10, '  ISKSIZ'
+     +    /10X, I10, '  RCKSIZ' /10X, I10, '  RMCSIZ'
+     +    /10X, I10, '  RPNTS'  /10X, I10, '  RSKSIZ'
+     +    /10X, I10, '  SCOUNT' /10X, I10, '  SITES'
+     +    /10X, I10, '  STYPES' /10X, I10, '  SURFS'
+     +    /10X, I10, '  WALLS'  /10X, I10, '  WCOUNT'
+     +    /10X, I10, '  ZPNTS')
+
+99002 FORMAT
+     +   (/1X, A, 'ERROR.  THE CASE MUST BE 1, 2 OR 3.'
+     +  //10X, I10, '  CASE')
+
+99101 FORMAT (/1X, A, 'ERROR.  VPDEN FAILS.')
+
+99102 FORMAT (/1X, A, 'ERROR.  VPMOLE FAILS.')
+
+99103 FORMAT (/1X, A, 'ERROR.  VPMENT FAILS.')
+
+99104 FORMAT (/1X, A, 'ERROR.  VPCOND FAILS.')
+
+99105 FORMAT (/1X, A, 'ERROR.  VPGDOT FAILS.')
+
+99106 FORMAT (/1X, A, 'ERROR.  VPSDOT FAILS.')
+
+99201 FORMAT (/1X, A, 'ERROR.  VPENTH FAILS.')
+
+99202 FORMAT (/1X, A, 'ERROR.  VPMMW FAILS.')
+
+99301 FORMAT (/1X, A, 'ERROR.  VPMIX FAILS.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      RETURN
+      END
+      PROGRAM OVEND
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     OVEND
+C
+C     SURFACE CHEMISTRY ON MULTIPLE WAFERS AND GAS CHEMISTRY BETWEEN
+C     THEM IN A LOW PRESSURE, HIGH TEMPERATURE OVEN
+C
+C     DIRECT SOLUTION OF LINEAR EQUATIONS FOR NEWTON'S METHOD
+C
+C///////////////////////////////////////////////////////////////////////
+
+      IMPLICIT COMPLEX (A - Z)
+      CHARACTER
+     +   AUTHOR*80, BANNER*80, CWORK*16, ID*9, LINE*82, STRING*80,
+     +   WORD*80
+C*****PRECISION > DOUBLE
+      DOUBLE PRECISION
+C*****END PRECISION > DOUBLE
+C*****PRECISION > SINGLE
+C      REAL
+C*****END PRECISION > SINGLE
+     +   DEPTH, FACTOR, PRESS, RTUBE, RWAFER, RWORK, SPACE, THICK,
+     +   WFIRST, WLAST
+      EXTERNAL
+     +   EXTENT, OVEN00, OVEN01, OVEN02, OVEN03, OVEN04, OVEN05, OVEN06,
+     +   OVEN07, OVEN08, OVEN09, READW, SQUEEZ, VERIFY
+      INTEGER
+     +   BTYPES, BULKS, CCKSIZ, CELLS, CLAST, CMARK, CMAX, CSIZE,
+     +   CSKSIZ, DUMMY, ELEMS, GASES, ICKSIZ, ILAST, IMARK, IMAX,
+     +   IMCSIZ, INJECS, IPARS, ISIZE, ISKSIZ, IWORK, J, LENGTH, LLAST,
+     +   LMARK, LMAX, LPARS, LSIZE, NUMBER, PRINT, Q01, Q02, Q03, Q04,
+     +   Q05, Q06, Q07, Q08, Q09, Q10, Q11, QCCK, QCSK, QCVOL, QENAME,
+     +   QFIRST, QFRAC, QICK, QIMC, QINABL, QINCEL, QINFLO, QINLOC,
+     +   QINMOL, QINNAM, QINTEM, QINZPN, QIPAR, QISK, QLAST, QLPAR,
+     +   QNMBR, QR, QR10, QR11, QRCK, QRLOC, QRMC, QRPAR, QRSK, QSAREA,
+     +   QSINDX, QSLTN, QSMAGE, QSNAME, QSTEMP, QTNAME, QWAREA, QWCODE,
+     +   QWCOEF, QWINDX, QZ, QZ10, QZ11, QZLOC, R10SIZ, R11SIZ, RCKSIZ,
+     +   RLAST, RMARK, RMAX, RMCSIZ, RPARS, RPNTS, RSIZE, RSKSIZ,
+     +   SCOUNT, SCRIPT, SITES, STYPES, SURFS, TEXT, UNIT, UNITS, VBLES,
+     +   WAFERS, WALLS, WCOUNT, Z10SIZ, Z11SIZ, ZPNTS, ZPNTS1, ZPNTS2,
+     +   ZPNTS3
+      LOGICAL
+     +   ADJUST, CHEMIS, ENERGY, ERROR, GUESS, KNUDSN, LWORK, MODEL,
+     +   MULTIC, SOLVED, THRMLD
+
+      PARAMETER
+     +  (SCRIPT = 5, TEXT = 6, UNIT = 16)
+      PARAMETER
+C*****MEMORY SIZE > 60 / 60 / 300 / 3000
+C     +  (CSIZE = 60 000, ISIZE = 300 000,
+C     +   LSIZE = 60 000, RSIZE = 3 000 000)
+C*****END MEMORY SIZE > 60 / 60 / 300 / 3000
+C*****MEMORY SIZE > 10 / 10 / 50 / 500
+     +  (CSIZE = 10 000, ISIZE = 50 000,
+     +   LSIZE = 10 000, RSIZE = 500 000)
+C*****END MEMORY SIZE > 10 / 10 / 50 / 500
+
+      PARAMETER (ID = ' OVEND:  ')
+      PARAMETER (PRINT = 1)
+
+      DIMENSION
+     +   AUTHOR(10, 2), BANNER(17), CWORK(CSIZE), IWORK(ISIZE),
+     +   LWORK(LSIZE), RWORK(RSIZE), UNITS(3)
+
+      DATA CHEMIS, MODEL, UNITS / .FALSE., .FALSE., 31, 32, 33 /
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (1) PROLOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  INTIALIZE ERROR.
+
+      ERROR = .FALSE.
+
+C///  OPEN IN AND OUT FILES.
+
+C*****INPUT > FILE (ovend.in)
+      OPEN (FILE = 'ovend.in', FORM = 'FORMATTED',
+     +   STATUS = 'OLD', UNIT = SCRIPT)
+C*****END INPUT > FILE (ovend.in)
+
+C*****INPUT > STANDARD INPUT, UNIX REDIRECTABLE <
+C      DUMMY = 0
+C*****END INPUT > STANDARD INPUT, UNIX REDIRECTABLE <
+      DUMMY = 0
+
+C///  OUTPUT.
+
+C*****OUTPUT > FILE (ovend.out)
+      OPEN (FILE = 'ovend.out', FORM = 'FORMATTED',
+     +   STATUS = 'UNKNOWN', UNIT = TEXT)
+C*****END OUTPUT > FILE (ovend.out)
+
+C*****OUTPUT > STANDARD OUTPUT, UNIX REDIRECTABLE >
+C      DUMMY = 0
+C*****END OUTPUT > STANDARD OUTPUT, UNIX REDIRECTABLE >
+      DUMMY = 0
+
+C///  INITIALIZE THE LEVELS OF THE WORK SPACES.
+
+      CLAST = 0
+      ILAST = 0
+      LLAST = 0
+      RLAST = 0
+
+      CMAX = 0
+      IMAX = 0
+      LMAX = 0
+      RMAX = 0
+
+C///  PRINT.
+
+C     SUBROUTINE OVEN00
+C    +  (ERROR, TEXT,
+C    +   CODE, STRING)
+
+      CALL OVEN00
+     +  (ERROR, TEXT,
+     +   'DATE PRECISION VERSION', STRING)
+      IF (ERROR) GO TO 9101
+
+      IF (0 .LT. TEXT) THEN
+         CALL SQUEEZ (LENGTH, STRING)
+         WRITE (TEXT, 10001) ID, STRING (1 : LENGTH)
+
+         WRITE (TEXT, 10002)
+         WRITE (TEXT, 10002)
+
+         DO 1010 J = 1, 17
+            STRING = BANNER(J)
+            CALL EXTENT (LENGTH, STRING)
+            WRITE (TEXT, 10003) STRING (1 : LENGTH)
+1010     CONTINUE
+
+         WRITE (TEXT, 10002)
+
+         DO 1020 J = 1, 10
+            STRING = AUTHOR(J, 1) (1 : 34) // AUTHOR(J, 2)
+            CALL EXTENT (LENGTH, STRING)
+            WRITE (TEXT, 10003) STRING (1 : LENGTH)
+1020     CONTINUE
+      END IF
+
+C///  CHECK THE ARGUMENTS.
+
+      ERROR = .NOT. (1 .LE. CSIZE)
+      IF (ERROR) GO TO 9102
+
+      ERROR = .NOT. (1 .LE. ISIZE)
+      IF (ERROR) GO TO 9103
+
+      ERROR = .NOT. (1 .LE. LSIZE)
+      IF (ERROR) GO TO 9104
+
+      ERROR = .NOT. (1 .LE. RSIZE)
+      IF (ERROR) GO TO 9105
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (2) READ THE SCRIPT FILE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  PRINT.
+
+      IF (0 .LT. TEXT) THEN
+         WRITE (TEXT, 10001) ID, 'READING THE SCRIPT FILE.'
+         WRITE (TEXT, '()')
+      END IF
+
+C///  INITIALIZE THE LINE COUNTER.
+
+      NUMBER = 0
+
+C///  CHECK THE VERSION NUMBER.
+C 0>  OVEN VERSION ?.??
+
+      CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +   'OVEN VERSION')
+      IF (ERROR) GO TO 9201
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9202
+
+C     SUBROUTINE OVEN00
+C    +  (ERROR, TEXT,
+C    +   CODE, STRING)
+
+      CALL OVEN00
+     +  (ERROR, TEXT,
+     +   'CHECK SCRIPT VERSION', WORD)
+      IF (ERROR) GO TO 9101
+
+C///  TOP OF THE LOOP THROUGH THE SCRIPT FILE.
+
+2020  CONTINUE
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9202
+
+C///  CHANGE THE MODEL.
+C 1>  CHANGE THE MODEL
+
+      IF (WORD .EQ. 'CHANGE') THEN
+
+      CALL VERIFY
+     +   (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'THE MODEL')
+      IF (ERROR) GO TO 9201
+
+      ERROR = .NOT. MODEL
+      IF (ERROR) GO TO 9203
+
+C     SUBROUTINE OVEN01
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ADJUST, BTYPES, DEPTH, ENERGY, FACTOR, FRAC, GASES, INFLOW,
+C    +   INJECS, INLOC, INMOLE, INNAME, INTEMP, KNUDSN, LINE, LPAR,
+C    +   LPARS, MULTIC, NUMBER, PRESS, PRINT, QFIRST, QLAST, QNMBR,
+C    +   RLOC, RPAR, RPARS, RPNTS, RTUBE, RWAFER, SCRIPT, SITES, SNAME,
+C    +   SOLVED, STEMP, STYPES, SURFS, THRMLD, TNAME, UNIT, WFIRST,
+C    +   WLAST, ZLOC)
+
+      CALL OVEN01
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ADJUST, BTYPES, DEPTH, ENERGY, FACTOR, RWORK(QFRAC), GASES,
+     +   RWORK(QINFLO), INJECS, RWORK(QINLOC), RWORK(QINMOL),
+     +   CWORK(QINNAM), RWORK(QINTEM), KNUDSN, LINE, LWORK(QLPAR),
+     +   LPARS, MULTIC, NUMBER, PRESS, PRINT, IWORK(QFIRST),
+     +   IWORK(QLAST), IWORK(QNMBR), RWORK(QRLOC), RWORK(QRPAR), RPARS,
+     +   RPNTS, RTUBE, RWAFER, SCRIPT, SITES, CWORK(QSNAME), SOLVED,
+     +   RWORK(QSTEMP), STYPES, SURFS, THRMLD, CWORK(QTNAME), UNIT,
+     +   WFIRST, WLAST, RWORK(QZLOC))
+      IF (ERROR) GO TO 9204
+
+C///  DEFINE A MODEL.
+C 1>  DEFINE A MODEL
+
+      ELSE IF (WORD .EQ. 'DEFINE') THEN
+
+      CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'A MODEL')
+      IF (ERROR) GO TO 9201
+
+      ERROR = MODEL
+      IF (ERROR) GO TO 9205
+
+      ERROR = .NOT. CHEMIS
+      IF (ERROR) GO TO 9206
+
+      CMARK = CLAST
+      IMARK = ILAST
+      LMARK = LLAST
+      RMARK = RLAST
+
+C     SUBROUTINE OVEN02
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ADJUST, BTYPES, CELLS, DEPTH, ENERGY, FACTOR, GASES, GUESS,
+C    +   INJECS, IPARS, KNUDSN, LINE, LPARS, MULTIC, NUMBER, PRESS,
+C    +   PRINT, Q01, Q02, Q03, Q04, Q05, Q06, Q07, Q08, Q09, Q10, Q11,
+C    +   QCVOL, QFIRST, QFRAC, QINABL, QINCEL, QINFLO, QINLOC, QINMOL,
+C    +   QINNAM, QINTEM, QINZPN, QIPAR, QLAST, QLPAR, QNMBR, QR, QR10,
+C    +   QR11, QRLOC, QRPAR, QSAREA, QSINDX, QSLTN, QSMAGE, QSTEMP,
+C    +   QWAREA, QWCODE, QWCOEF, QWINDX, QZ, QZ10, QZ11, QZLOC, R10SIZ,
+C    +   R11SIZ, RPARS, RPNTS, RTUBE, RWAFER, SCOUNT, SCRIPT, SITES,
+C    +   SNAME, SOLVED, SPACE, STYPES, SURFS, THICK, THRMLD, TNAME,
+C    +   UNIT, VBLES, WAFERS, WALLS, WCOUNT, WFIRST, WLAST, Z10SIZ,
+C    +   Z11SIZ, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN02
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ADJUST, BTYPES, CELLS, DEPTH, ENERGY, FACTOR, GASES, GUESS,
+     +   INJECS, IPARS, KNUDSN, LINE, LPARS, MULTIC, NUMBER, PRESS,
+     +   PRINT, Q01, Q02, Q03, Q04, Q05, Q06, Q07, Q08, Q09, Q10, Q11,
+     +   QCVOL, IWORK(QFIRST), QFRAC, QINABL, QINCEL, QINFLO, QINLOC,
+     +   QINMOL, QINNAM, QINTEM, QINZPN, QIPAR, IWORK(QLAST), QLPAR,
+     +   IWORK(QNMBR), QR, QR10, QR11, QRLOC, QRPAR, QSAREA, QSINDX,
+     +   QSLTN, QSMAGE, QSTEMP, QWAREA, QWCODE, QWCOEF, QWINDX, QZ,
+     +   QZ10, QZ11, QZLOC, R10SIZ, R11SIZ, RPARS, RPNTS, RTUBE, RWAFER,
+     +   SCOUNT, SCRIPT, SITES, CWORK(QSNAME), SOLVED, SPACE, STYPES,
+     +   SURFS, THICK, THRMLD, CWORK(QTNAME), UNIT, VBLES, WAFERS,
+     +   WALLS, WCOUNT, WFIRST, WLAST, Z10SIZ, Z11SIZ, ZPNTS, ZPNTS1,
+     +   ZPNTS2, ZPNTS3)
+      IF (ERROR) GO TO 9207
+
+      MODEL = .TRUE.
+
+      IF (0 .LT. TEXT) THEN
+         WRITE (TEXT, 10001) ID, 'CONTINUING READING THE SCRIPT FILE.'
+         WRITE (TEXT, '()')
+      END IF
+
+C///  INITIALIZE CHEMKIN.
+C 1>  INITIALIZE CHEMKIN
+
+      ELSE IF (WORD .EQ. 'INITIALIZE') THEN
+
+      CALL VERIFY
+     +   (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT,
+     +   'CHEMKIN')
+      IF (ERROR) GO TO 9201
+
+      ERROR = CHEMIS
+      IF (ERROR) GO TO 9208
+
+      CHEMIS = .TRUE.
+
+C     SUBROUTINE OVEN03
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   QCCK, CCKSIZ, QCSK, CSKSIZ,
+C    +   QICK, ICKSIZ, QIMC, IMCSIZ, QISK, ISKSIZ,
+C    +   QRCK, RCKSIZ, QRMC, RMCSIZ, QRSK, RSKSIZ,
+C    +   BTYPES, BULKS, ELEMS, GASES, LINE, NUMBER, PRINT, QENAME,
+C    +   QFIRST, QLAST, QNMBR, QSNAME, QTNAME, SCRIPT, SITES, STYPES,
+C    +   UNIT)
+
+      CALL OVEN03
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   QCCK, CCKSIZ, QCSK, CSKSIZ,
+     +   QICK, ICKSIZ, QIMC, IMCSIZ, QISK, ISKSIZ,
+     +   QRCK, RCKSIZ, QRMC, RMCSIZ, QRSK, RSKSIZ,
+     +   BTYPES, BULKS, ELEMS, GASES, LINE, NUMBER, PRINT, QENAME,
+     +   QFIRST, QLAST, QNMBR, QSNAME, QTNAME, SCRIPT, SITES, STYPES,
+     +   UNITS)
+      IF (ERROR) GO TO 9209
+
+C///  DESTROY THE MODEL.
+C 1>  DESTROY THE MODEL
+
+      ELSE IF (WORD .EQ. 'DESTROY') THEN
+
+      CALL VERIFY
+     +   (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'THE MODEL')
+      IF (ERROR) GO TO 9201
+
+      ERROR = .NOT. MODEL
+      IF (ERROR) GO TO 9203
+
+      MODEL = .FALSE.
+
+      CLAST = CMARK
+      ILAST = IMARK
+      LLAST = LMARK
+      RLAST = RMARK
+
+C///  PLOT THE SOLUTION.
+C 1>  PLOT THE SOLUTION
+
+      ELSE IF (WORD .EQ. 'PLOT') THEN
+
+      CALL VERIFY
+     +   (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'THE SOLUTION')
+      IF (ERROR) GO TO 9201
+
+      ERROR = .NOT. MODEL
+      IF (ERROR) GO TO 9203
+
+      ERROR = .NOT. SOLVED
+      IF (ERROR) GO TO 9210
+
+C     SUBROUTINE OVEN04
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   BTYPES, BULKS, CELLS, GASES, LINE, NUMBER, P01, P02, P03, P09,
+C    +   P10, P11, PRESS, PRINT, QFIRST, QLAST, QNMBR, R, R10, R10SIZ,
+C    +   R11, R11SIZ, RPNTS, SCRIPT, SITES, SLTN, SNAME, STEMP, STYPES,
+C    +   SURFS, THICK, TNAME, UNIT, VBLES, Z, Z10, Z10SIZ, Z11, Z11SIZ,
+C    +   ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN04
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   IWORK(QICK), ICKSIZ, IWORK(QISK), ISKSIZ,
+     +   RWORK(QRCK), RCKSIZ, RWORK(QRSK), RSKSIZ,
+     +   BTYPES, BULKS, CELLS, GASES, LINE, NUMBER, IWORK(Q01),
+     +   IWORK(Q02), IWORK(Q03), IWORK(Q09), IWORK(Q10), IWORK(Q11),
+     +   PRESS, PRINT, IWORK(QFIRST), IWORK(QLAST), IWORK(QNMBR),
+     +   RWORK(QR), RWORK(QR10), R10SIZ, RWORK(QR11), R11SIZ, RPNTS,
+     +   SCRIPT, SITES, RWORK(QSLTN), CWORK(QSNAME), RWORK(QSTEMP),
+     +   STYPES, SURFS, THICK, CWORK(QTNAME), UNIT, VBLES, RWORK(QZ),
+     +   RWORK(QZ10), Z10SIZ, RWORK(QZ11), Z11SIZ, ZPNTS, ZPNTS1,
+     +   ZPNTS2, ZPNTS3)
+      IF (ERROR) GO TO 9211
+
+C///  TOP OF THE BLOCKS TO PRINT.
+
+      ELSE IF (WORD .EQ. 'PRINT') THEN
+
+      CALL VERIFY (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'THE')
+      IF (ERROR) GO TO 9201
+
+      ERROR = .NOT. MODEL
+      IF (ERROR) GO TO 9203
+
+      ERROR = .NOT. SOLVED
+      IF (ERROR) GO TO 9210
+
+      CALL READW (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, WORD)
+      IF (ERROR) GO TO 9202
+
+C///  PRINT THE DEPOSITION UNIFORMITY.
+C 1>  PRINT THE DEPOSITION UNIFORMITY
+
+      IF (WORD .EQ. 'DEPOSITION') THEN
+
+      CALL VERIFY
+     +   (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'UNIFORMITY')
+      IF (ERROR) GO TO 9201
+
+C     SUBROUTINE OVEN05
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   BTYPES, BULKS, CELLS, GASES, LINE, NUMBER, P01, P02, P03, P11,
+C    +   PRESS, PRINT, QFIRST, QLAST, QNMBR, R11, R11SIZ, RWAFER,
+C    +   SCRIPT, SITES, SLTN, SPACE, STEMP, STYPES, SURFS, TNAME, VBLES,
+C    +   WAFERS, WFIRST, WLAST, Z11, Z11SIZ)
+
+      CALL OVEN05
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   IWORK(QICK), ICKSIZ, IWORK(QISK), ISKSIZ,
+     +   RWORK(QRCK), RCKSIZ, RWORK(QRSK), RSKSIZ,
+     +   BTYPES, BULKS, CELLS, GASES, LINE, NUMBER, IWORK(Q01),
+     +   IWORK(Q02), IWORK(Q03), IWORK(Q11), PRESS, PRINT,
+     +   IWORK(QFIRST), IWORK(QLAST), IWORK(QNMBR), RWORK(QR11), R11SIZ,
+     +   RWAFER, SCRIPT, SITES, RWORK(QSLTN), SPACE, RWORK(QSTEMP),
+     +   STYPES, SURFS, CWORK(QTNAME), VBLES, WAFERS, WFIRST, WLAST,
+     +   RWORK(QZ11), Z11SIZ)
+      IF (ERROR) GO TO 9212
+
+C///  PRINT THE SOLUTION.
+C 1>  PRINT THE SOLUTION
+
+      ELSE IF (WORD .EQ. 'SOLUTION') THEN
+
+C     SUBROUTINE OVEN06
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ICK, ICKSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RSK, RSKSIZ,
+C    +   BTYPES, BULKS, CELLS, ELEMS, ENAME, GASES, INFLOW, INJECS,
+C    +   INMOLE, P01, P02, P03, P09, PRESS, QFIRST, QLAST, QNMBR, R,
+C    +   RPNTS, SCRIPT, SITES, SLTN, SNAME, SPACE, STEMP, STYPES, SURFS,
+C    +   TNAME, VBLES, Z, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN06
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   IWORK(QICK), ICKSIZ, IWORK(QISK), ISKSIZ,
+     +   RWORK(QRCK), RCKSIZ, RWORK(QRSK), RSKSIZ,
+     +   BTYPES, BULKS, CELLS, ELEMS, CWORK(QENAME), GASES,
+     +   RWORK(QINFLO), INJECS, RWORK(QINMOL), IWORK(Q01), IWORK(Q02),
+     +   IWORK(Q03), IWORK(Q09), PRESS, IWORK(QFIRST), IWORK(QLAST),
+     +   IWORK(QNMBR), RWORK(QR), RPNTS, SCRIPT, SITES, RWORK(QSLTN),
+     +   CWORK(QSNAME), SPACE, RWORK(QSTEMP), STYPES, SURFS,
+     +   CWORK(QTNAME), VBLES, RWORK(QZ), ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+      IF (ERROR) GO TO 9213
+
+C///  BOTTOM OF THE BLOCKS TO PRINT.
+
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9214
+      END IF
+
+      IF (0 .LT. TEXT) THEN
+         WRITE (TEXT, 10001) ID, 'CONTINUING READING THE SCRIPT FILE.'
+         WRITE (TEXT, '()')
+      END IF
+
+C///  READ A MODEL.
+C 1>  READ A MODEL
+
+      ELSE IF (WORD .EQ. 'READ') THEN
+
+      CALL VERIFY
+     +   (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'A MODEL')
+      IF (ERROR) GO TO 9201
+
+      ERROR = MODEL
+      IF (ERROR) GO TO 9205
+
+      ERROR = .NOT. CHEMIS
+      IF (ERROR) GO TO 9206
+
+      CALL SQUEEZ (LENGTH, STRING)
+
+      CMARK = CLAST
+      IMARK = ILAST
+      LMARK = LLAST
+      RMARK = RLAST
+
+C     SUBROUTINE OVEN07
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWORK,
+C    +   LLAST, LMAX, LSIZE, LWORK,
+C    +   RLAST, RMAX, RSIZE, RWORK,
+C    +   ADJUST, BTYPES, BULKS, CELLS, DEPTH, ENERGY, FACTOR, GASES,
+C    +   GUESS, INJECS, IPARS, KNUDSN, LINE, LPARS, MULTIC, NUMBER,
+C    +   PRESS, PRINT, Q01, Q02, Q03, Q04, Q05, Q06, Q07, Q08, Q09, Q10,
+C    +   Q11, QCVOL, QFRAC, QINABL, QINCEL, QINFLO, QINLOC, QINMOL,
+C    +   QINNAM, QINTEM, QIPAR, QLPAR, QR, QR10, QR11, QRLOC, QRPAR,
+C    +   QSAREA, QSINDX, QSLTN, QSMAGE, QSTEMP, QWAREA, QWCODE, QWCOEF,
+C    +   QWINDX, QZ, QZ10, QZ11, QZLOC, R10SIZ, R11SIZ, RPARS, RPNTS,
+C    +   RTUBE, RWAFER, SCOUNT, SCRIPT, SITES, SNAME, SOLVED, SPACE,
+C    +   STYPES, SURFS, THICK, THRMLD, TNAME, UNIT, VBLES, WAFERS,
+C    +   WALLS, WCOUNT, WFIRST, WLAST, Z10SIZ, Z11SIZ, ZPNTS, ZPNTS1,
+C    +   ZPNTS2, ZPNTS3)
+
+      CALL OVEN07
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   ADJUST, BTYPES, BULKS, CELLS, DEPTH, ENERGY, FACTOR, GASES,
+     +   GUESS, INJECS, IPARS, KNUDSN, LINE, LPARS, MULTIC, NUMBER,
+     +   PRESS, PRINT, Q01, Q02, Q03, Q04, Q05, Q06, Q07, Q08, Q09, Q10,
+     +   Q11, QCVOL, QFRAC, QINABL, QINCEL, QINFLO, QINLOC, QINMOL,
+     +   QINNAM, QINTEM, QIPAR, QLPAR, QR, QR10, QR11, QRLOC, QRPAR,
+     +   QSAREA, QSINDX, QSLTN, QSMAGE, QSTEMP, QWAREA, QWCODE, QWCOEF,
+     +   QWINDX, QZ, QZ10, QZ11, QZLOC, R10SIZ, R11SIZ, RPARS, RPNTS,
+     +   RTUBE, RWAFER, SCOUNT, SCRIPT, SITES, CWORK(QSNAME), SOLVED,
+     +   SPACE, STYPES, SURFS, THICK, THRMLD, CWORK(QTNAME), UNIT,
+     +   VBLES, WAFERS, WALLS, WCOUNT, WFIRST, WLAST, Z10SIZ, Z11SIZ,
+     +   ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+      IF (ERROR) GO TO 9215
+
+      MODEL = .TRUE.
+
+C///  SOLVE THE MODEL.
+C 1>  SOLVE THE MODEL
+
+      ELSE IF (WORD .EQ. 'SOLVE') THEN
+
+      CALL VERIFY
+     +   (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'THE MODEL')
+      IF (ERROR) GO TO 9201
+
+      ERROR = .NOT. MODEL
+      IF (ERROR) GO TO 9203
+
+C     SUBROUTINE OVEN08
+C    +  (ERROR, TEXT,
+C    +   CLAST, CMAX, CSIZE, CWORK,
+C    +   ILAST, IMAX, ISIZE, IWK,
+C    +   LLAST, LMAX, LSIZE, LWK,
+C    +   RLAST, RMAX, RSIZE, RWK,
+C    +   ICK, ICKSIZ, IMC, IMCSIZ, ISK, ISKSIZ,
+C    +   RCK, RCKSIZ, RMC, RMCSIZ, RSK, RSKSIZ,
+C    +   ADJUST, BTYPES, BULKS, CELLS, CVOL, ENERGY, FACTOR, FRAC,
+C    +   GASES, GUESS, INCELL, INFLOW, INJECS, INMOLE, INTEMP, KNUDSN,
+C    +   LINE, LPAR, LPARS, MULTIC, NUMBER, P01, P02, P03, P04, P05,
+C    +   P06, P07, P08, P09, PRESS, PRINT, QFIRST, QLAST, QNMBR, R,
+C    +   RPNTS, RTUBE, RWAFER, SAREA, SCOUNT, SCRIPT, SINDEX, SITES,
+C    +   SLTN, SMAGIC, SNAME, SOLVED, SPACE, STEMP, STYPES, SURFS,
+C    +   THRMLD, TNAME, VBLES, WALLS, WAREA, WCODE, WCOEFF, WCOUNT,
+C    +   WINDEX, Z, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN08
+     +  (ERROR, TEXT,
+     +   CLAST, CMAX, CSIZE, CWORK,
+     +   ILAST, IMAX, ISIZE, IWORK,
+     +   LLAST, LMAX, LSIZE, LWORK,
+     +   RLAST, RMAX, RSIZE, RWORK,
+     +   IWORK(QICK), ICKSIZ, IWORK(QIMC), IMCSIZ, IWORK(QISK), ISKSIZ,
+     +   RWORK(QRCK), RCKSIZ, RWORK(QRMC), RMCSIZ, RWORK(QRSK), RSKSIZ,
+     +   ADJUST, BTYPES, BULKS, CELLS, RWORK(QCVOL), ENERGY, FACTOR,
+     +   RWORK(QFRAC), GASES, GUESS, IWORK(QINCEL), RWORK(QINFLO),
+     +   INJECS, RWORK(QINMOL), RWORK(QINTEM), KNUDSN, LINE,
+     +   LWORK(QLPAR), LPARS, MULTIC, NUMBER, IWORK(Q01), IWORK(Q02),
+     +   IWORK(Q03), IWORK(Q04), IWORK(Q05), IWORK(Q06), IWORK(Q07),
+     +   IWORK(Q08), IWORK(Q09), PRESS, PRINT, IWORK(QFIRST),
+     +   IWORK(QLAST), IWORK(QNMBR), RWORK(QR), RPNTS, RTUBE, RWAFER,
+     +   RWORK(QSAREA), SCOUNT, SCRIPT, IWORK(QSINDX), SITES,
+     +   RWORK(QSLTN), RWORK(QSMAGE), CWORK(QSNAME), SOLVED, SPACE,
+     +   RWORK(QSTEMP), STYPES, SURFS, THRMLD, CWORK(QTNAME), VBLES,
+     +   WALLS, RWORK(QWAREA), IWORK(QWCODE), RWORK(QWCOEF), WCOUNT,
+     +   IWORK(QWINDX), RWORK(QZ), ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+      IF (ERROR) GO TO 9216
+
+      IF (0 .LT. TEXT) THEN
+         WRITE (TEXT, 10001) ID, 'CONTINUING READING THE SCRIPT FILE.'
+         WRITE (TEXT, '()')
+      END IF
+
+C///  WRITE THE MODEL.
+C 1>  WRITE THE MODEL
+
+      ELSE IF (WORD .EQ. 'WRITE') THEN
+
+      CALL VERIFY
+     +   (ERROR, TEXT, LINE, NUMBER, PRINT, SCRIPT, 'THE MODEL')
+      IF (ERROR) GO TO 9201
+
+      ERROR = .NOT. MODEL
+      IF (ERROR) GO TO 9203
+
+      CALL OVEN00
+     +  (ERROR, TEXT,
+     +   'NAME PRECISION VERSION', STRING)
+      IF (ERROR) GO TO 9101
+
+      CALL SQUEEZ (LENGTH, STRING)
+
+C     SUBROUTINE OVEN09
+C    +  (ERROR, TEXT,
+C    +   BTYPES, BULKS, CELLS, CVOL, FRAC, GASES, INABLE, INCELL,
+C    +   INFLOW, INJECS, INLOC, INMOLE, INNAME, INTEMP, IPAR, IPARS,
+C    +   LINE, LPAR, LPARS, NUMBER, P01, P02, P03, P04, P05, P06, P07,
+C    +   P08, P09, P10, P11, PRINT, R, R10, R10SIZ, R11, R11SIZ, RLOC,
+C    +   RPAR, RPARS, RPNTS, SAREA, SCOUNT, SCRIPT, SINDEX, SITES, SLTN,
+C    +   SMAGIC, SNAME, STEMP, STYPES, SURFS, TNAME, UNIT, VBLES, VRSN,
+C    +   WALLS, WAREA, WCODE, WCOEFF, WCOUNT, WINDEX, Z, Z10, Z10SIZ,
+C    +   Z11, Z11SIZ, ZLOC, ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+
+      CALL OVEN09
+     +  (ERROR, TEXT,
+     +   BTYPES, BULKS, CELLS, RWORK(QCVOL), RWORK(QFRAC), GASES,
+     +   IWORK(QINABL), IWORK(QINCEL), RWORK(QINFLO), INJECS,
+     +   RWORK(QINLOC), RWORK(QINMOL), CWORK(QINNAM), RWORK(QINTEM),
+     +   IWORK(QIPAR), IPARS, LINE, LWORK(QLPAR), LPARS, NUMBER,
+     +   IWORK(Q01), IWORK(Q02), IWORK(Q03), IWORK(Q04), IWORK(Q05),
+     +   IWORK(Q06), IWORK(Q07), IWORK(Q08), IWORK(Q09), IWORK(Q10),
+     +   IWORK(Q11), PRINT, RWORK(QR), RWORK(QR10), R10SIZ, RWORK(QR11),
+     +   R11SIZ, RWORK(QRLOC), RWORK(QRPAR), RPARS, RPNTS,
+     +   RWORK(QSAREA), SCOUNT, SCRIPT, IWORK(QSINDX), SITES,
+     +   RWORK(QSLTN), RWORK(QSMAGE), CWORK(QSNAME), RWORK(QSTEMP),
+     +   STYPES, SURFS, CWORK(QTNAME), UNIT, VBLES, STRING, WALLS,
+     +   RWORK(QWAREA), IWORK(QWCODE), RWORK(QWCOEF), WCOUNT,
+     +   IWORK(QWINDX), RWORK(QZ), RWORK(QZ10), Z10SIZ, RWORK(QZ11),
+     +   Z11SIZ, RWORK(QZLOC), ZPNTS, ZPNTS1, ZPNTS2, ZPNTS3)
+      IF (ERROR) GO TO 9217
+
+C///  BOTTOM OF THE LOOP THROUGH THE SCRIPT FILE.
+C 0>  END
+
+      ELSE IF (WORD .EQ. 'END') THEN
+         GO TO 2030
+      ELSE
+         ERROR = .TRUE.
+         GO TO 9214
+      END IF
+
+      GO TO 2020
+2030  CONTINUE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     (3) EPILOGUE.
+C
+C///////////////////////////////////////////////////////////////////////
+
+C///  WRITE MEMORY USE.
+
+      IF (0 .LT. TEXT) WRITE (TEXT, 10004) ID,
+     +   CMAX, IMAX, LMAX, RMAX,
+     +   CSIZE - CMAX, ISIZE - IMAX, LSIZE - LMAX, RSIZE - RMAX,
+     +   CSIZE, ISIZE, LSIZE, RSIZE
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     INFORMATIVE MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      DATA BANNER /
+     +   'Copyright 1990, Sandia Corporation.  The United States',
+     +   'Government retains a nonexclusive license in this software',
+     +   'as prescribed in AL 88-1 and AL 91-7.  Export of this',
+     +   'program may require a license from the United States',
+     +   'Government.',
+     +   ' ',
+     +   ' ',
+     +   ' OOOO   O    O  OOOOOO  O    O  OOOOO',
+     +   'O    O  O    O  O       OO   O  O    O',
+     +   'O    O  O    O  OOOOO   O O  O  O    O',
+     +   'O    O  O    O  O       O  O O  O    O',
+     +   'O    O   O  O   O       O   OO  O    O',
+     +   ' OOOO     OO    OOOOOO  O    O  OOOOO',
+     +   ' ',
+     +   ' ',
+     +   'SURFACE CHEMISTRY ON MANY FACING WAFERS AND GAS CHEMISTRY',
+     +   'BETWEEN THEM IN A LOW PRESSURE, HIGH TEMPERATURE OVEN' /
+
+      DATA (AUTHOR(J, 1), J = 1, 10) /
+     +   'DR. JOSEPH F. GRCAR',
+     +   'DEPARTMENT 8345',
+     +   'MAIL STOP 9042',
+     +   'SANDIA NATIONAL LABORATORIES',
+     +   'LIVERMORE, CA 94551-0969 USA',
+     +   ' ',
+     +   '(510) 294-2662',
+     +   ' ',
+     +   'sepp@california.sandia.gov',
+     +   'na.grcar@na-net.ornl.gov' /
+C         123456789_123456789_12345678
+
+      DATA (AUTHOR(J, 2), J = 1, 10) /
+     +   'DR. WILLIAM G. HOUF',
+     +   'DEPARTMENT 8345',
+     +   'MAIL STOP 9042',
+     +   'SANDIA NATIONAL LABORATORIES',
+     +   'LIVERMORE, CA 94551-0969 USA',
+     +   ' ',
+     +   '(510) 294-3184',
+     +   ' ',
+     +   'will@california.sandia.gov',
+     +   ' ' /
+C         123456789_123456789_12345678
+
+10001 FORMAT
+     +  (/9X, 35(' /'),
+     +  //1X, A9, A)
+
+10002 FORMAT
+     +   ()
+
+10003 FORMAT
+     +  (10X, A)
+
+10004 FORMAT
+     +  (/1X, A9, 'THE WORK SPACE REQUIREMENTS ARE AS FOLLOWS.'
+C               123456789  123456789  123456789  123456789  12345678o
+     +  //10X, '           CHARACTER    INTEGER    LOGICAL       REAL'
+     +  //10X, '     USED', 4(2X, I9)
+     +   /10X, '   EXCESS', 4(2X, I9)
+     +   /10X, '    TOTAL', 4(2X, I9))
+
+C///////////////////////////////////////////////////////////////////////
+C
+C     ERROR MESSAGES.
+C
+C///////////////////////////////////////////////////////////////////////
+
+      GO TO 99999
+
+9101  IF (0 .LT. TEXT) WRITE (TEXT, 99101) ID
+      GO TO 99999
+
+9102  IF (0 .LT. TEXT) WRITE (TEXT, 99102) ID, CSIZE
+      GO TO 99999
+
+9103  IF (0 .LT. TEXT) WRITE (TEXT, 99103) ID, ISIZE
+      GO TO 99999
+
+9104  IF (0 .LT. TEXT) WRITE (TEXT, 99104) ID, LSIZE
+      GO TO 99999
+
+9105  IF (0 .LT. TEXT) WRITE (TEXT, 99105) ID, RSIZE
+      GO TO 99999
+
+9201  IF (0 .LT. TEXT) WRITE (TEXT, 99201) ID
+      GO TO 99999
+
+9202  IF (0 .LT. TEXT) WRITE (TEXT, 99202) ID
+      GO TO 99999
+
+9203  IF (0 .LT. TEXT) WRITE (TEXT, 99203) ID
+      GO TO 99999
+
+9204  IF (0 .LT. TEXT) WRITE (TEXT, 99204) ID
+      GO TO 99999
+
+9205  IF (0 .LT. TEXT) WRITE (TEXT, 99205) ID
+      GO TO 99999
+
+9206  IF (0 .LT. TEXT) WRITE (TEXT, 99206) ID
+      GO TO 99999
+
+9207  IF (0 .LT. TEXT) WRITE (TEXT, 99207) ID
+      GO TO 99999
+
+9208  IF (0 .LT. TEXT) WRITE (TEXT, 99208) ID
+      GO TO 99999
+
+9209  IF (0 .LT. TEXT) WRITE (TEXT, 99209) ID
+      GO TO 99999
+
+9210  IF (0 .LT. TEXT) WRITE (TEXT, 99210) ID
+      GO TO 99999
+
+9211  IF (0 .LT. TEXT) WRITE (TEXT, 99211) ID
+      GO TO 99999
+
+9212  IF (0 .LT. TEXT) WRITE (TEXT, 99212) ID
+      GO TO 99999
+
+9213  IF (0 .LT. TEXT) WRITE (TEXT, 99213) ID
+      GO TO 99999
+
+9214  IF (0 .LT. TEXT) THEN
+         CALL EXTENT (LENGTH, WORD)
+         WRITE (TEXT, 99214) ID, NUMBER, WORD (1 : LENGTH)
+      END IF
+      GO TO 99999
+
+9215  IF (0 .LT. TEXT) WRITE (TEXT, 99215) ID
+      GO TO 99999
+
+9216  IF (0 .LT. TEXT) WRITE (TEXT, 99216) ID
+      GO TO 99999
+
+9217  IF (0 .LT. TEXT) WRITE (TEXT, 99217) ID
+      GO TO 99999
+
+99101 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN00 FAILS.')
+
+99102 FORMAT
+     +   (/1X, A9, 'ERROR.  THE SIZE OF THE CHARACTER WORK SPACE MUST'
+     +   /10X, 'BE POSITIVE.'
+     +   //10X, I10, '  SIZE')
+
+99103 FORMAT
+     +   (/1X, A9, 'ERROR.  THE SIZE OF THE INTEGER WORK SPACE MUST BE'
+     +   /10X, 'POSITIVE.'
+     +   //10X, I10, '  SIZE')
+
+99104 FORMAT
+     +   (/1X, A9, 'ERROR.  THE SIZE OF THE LOGICAL WORK SPACE MUST BE'
+     +   /10X, 'POSITIVE.'
+     +   //10X, I10, '  SIZE')
+
+99105 FORMAT
+     +   (/1X, A9, 'ERROR.  THE SIZE OF THE REAL WORK SPACE MUST BE'
+     +   /10X, 'POSITIVE.'
+     +   //10X, I10, '  SIZE')
+
+99201 FORMAT
+     +   (/1X, A9, 'ERROR.  VERIFY FAILS.')
+
+99202 FORMAT
+     +   (/1X, A9, 'ERROR.  READW FAILS.')
+
+99203 FORMAT
+     +   (/1X, A9, 'ERROR.  THERE IS NO MODEL.')
+
+99204 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN01 FAILS.')
+
+99205 FORMAT
+     +   (/1X, A9, 'ERROR.  A MODEL ALREADY EXISTS.')
+
+99206 FORMAT
+     +   (/1X, A9, 'ERROR.  CHEMKIN HAS NOT BEEN INITIALIZED.')
+
+99207 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN02 FAILS.')
+
+99208 FORMAT
+     +   (/1X, A9, 'ERROR.  CHEMKIN HAS BEEN INITIALIZED ALREADY.')
+
+99209 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN03 FAILS.')
+
+99210 FORMAT
+     +   (/1X, A9, 'ERROR.  THERE IS NO SOLUTION.')
+
+99211 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN04 FAILS.')
+
+99212 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN05 FAILS.')
+
+99213 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN06 FAILS.')
+
+99214 FORMAT
+     +   (/1X, A9, 'ERROR.  A KEYWORD IS MISPLACED OR UNKNOWN.'
+     +   //10X, I10, '  LINE NUMBER'
+     +   //10X, '  KEYWORD:  ', A)
+
+99215 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN07 FAILS.')
+
+99216 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN08 FAILS.')
+
+99217 FORMAT
+     +   (/1X, A9, 'ERROR.  OVEN09 FAILS.')
+
+C///  EXIT.
+
+99999 CONTINUE
+      END

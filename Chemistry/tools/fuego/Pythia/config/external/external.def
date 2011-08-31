@@ -1,0 +1,59 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: external.def,v $
+# Revision 1.9  2001/08/18 03:03:47  cummings
+# Added EXTERNAL_SOFLAGS for use when linking shared objects with the
+# C or C++ compiler.  It is empty by default.
+#
+# Revision 1.8  2000/09/19 03:16:05  aivazis
+# Set and use EXTERNAL_LIBPATH
+#
+# Revision 1.7  2000/09/18 18:18:35  aivazis
+# Removed EXPORT_ROOT from the INCLUDES
+#
+# Revision 1.6  2000/06/07 16:54:32  aivazis
+# Added EXTERNAL_F90_MODULES
+#
+# Revision 1.5  2000/05/17 23:37:26  aivazis
+# Major update in the way defines and include paths are handled
+#
+# Revision 1.4  1999/06/09 18:24:31  aivazis
+# Corrected the location of the exported packages include directory
+#
+# Revision 1.3  1999/06/09 17:58:45  aivazis
+# Added EXPORT_INCDIR to the include path
+#
+# Revision 1.2  1999/06/09 01:42:25  mga
+# Fixed typos and added header
+#
+
+#
+# This files creates the variables used to handle external dependencies
+#
+
+# Currently it supports only locating the include directories and 
+# adjusting the link line
+
+#
+# Compile-time flags
+#
+    EXTERNAL_DEFINES =
+    EXTERNAL_INCLUDES = $(BLD_ROOT) $(TOOLS_INCDIR)
+
+    EXTERNAL_F90_MODULES =
+
+#
+# Link time flags
+#
+    EXTERNAL_LIBPATH = -L$(BLD_LIBDIR)
+    EXTERNAL_LIBS =
+    EXTERNAL_SOFLAGS = 
+
+#
+# End of file

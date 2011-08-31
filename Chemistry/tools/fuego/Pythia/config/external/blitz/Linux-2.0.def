@@ -1,0 +1,21 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+# $Log: Linux-2.0.def,v $
+# Revision 1.1  1999/11/09 17:04:08  aivazis
+# Original source
+#
+
+#
+# Linux settings for blitz
+#
+
+BLITZ_LIB = $(TOOLS_LIBDIR)/libblitz.a
+
+#
+# End of file

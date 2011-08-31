@@ -1,0 +1,25 @@
+# -*- Makefile -*-
+#
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+#                               Julian C. Cummings
+#                        California Institute of Technology
+#                           (C) 2003 All Rights Reserved
+#
+# <LicenseText>
+#
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+
+#
+# default settings for Xdmf
+#
+
+    EXTERNAL_DEFINES += WITH_XDMF
+    EXTERNAL_INCLUDES += $(XDMF_DIR)/include $(HDF5_DIR)/include
+    EXTERNAL_LIBS += -L$(XDMF_DIR)/lib -L$(HDF5_DIR)/lib -lXdmf -lhdf5
+
+# version
+# $Id: default.def,v 1.2 2003/05/14 20:39:21 cummings Exp $
+
+# End of file

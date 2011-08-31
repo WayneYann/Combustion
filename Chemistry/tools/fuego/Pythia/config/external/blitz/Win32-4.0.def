@@ -1,0 +1,22 @@
+#--------------------------------------------------------------------------
+#
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+#
+# $Log: Win32-4.0.def,v $
+# Revision 1.1  1999/06/09 17:52:27  aivazis
+# Original source
+#
+
+#
+# Win32 settings for blitz
+#
+
+BLITZ_LIB = $(TOOLS_LIBDIR)/libblitz.a
+
+#
+# End of file

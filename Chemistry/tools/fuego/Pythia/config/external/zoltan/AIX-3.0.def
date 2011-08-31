@@ -1,0 +1,20 @@
+#--------------------------------------------------------------------------
+#
+#                       VTF Development Team
+#                California Institute of Technology
+#                   (C) 2002 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+#
+#  $Log: AIX-3.0.def,v $
+#  Revision 1.1  2002/09/06 01:37:48  cummings
+#  Definitions file for using zoltan on AIX platform.
+#
+#
+
+# Platform-specific settings for AIX
+
+    ZOLTAN_LIBDIR = $(ZOLTAN_DIR)/Obj_aix
+
+#
+# End of file

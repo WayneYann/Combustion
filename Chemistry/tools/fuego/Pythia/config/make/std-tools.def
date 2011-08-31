@@ -1,0 +1,92 @@
+# -*- Makefile -*-
+#
+#--------------------------------------------------------------------------
+#                       Michael A.G. Aivazis
+#                California Institute of Technology
+#                   (C) 1999 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+
+# Make
+
+    MM = $(DIR_CONFIG)/make/mm --recursive
+    MKCMD = make
+
+# Librarian
+
+    AR = ar
+    AR_CREATE_FLAGS = rcv
+    AR_UPDATE_FLAGS = ruv
+    AR_REMOVE_FLAGS = dv
+    AR_EXTRACT_FLAGS = xv
+    AR_CREATE = $(AR) $(AR_CREATE_FLAGS)
+    AR_UPDATE = $(AR) $(AR_UPDATE_FLAGS)
+    AR_REMOVE = $(AR) $(AR_REMOVE_FLAGS)
+    AR_EXTRACT = $(AR) $(AR_EXTRACT_FLAGS)
+
+    RANLIB = ranlib
+    RANFLAGS =
+
+# C++ Archiving
+
+    AR_CXX = $(AR)
+    AR_CXX_FLAGS = $(AR_CREATE_FLAGS)
+    AR_CXX_CREATE = $(AR_CXX) $(AR_CXX_FLAGS)
+
+# Loader
+
+    LD = ld
+    LD_OUTPUT_FLAG = -o
+    LD_SHARED_FLAG = -shared
+
+# cp, mkdir, mv
+
+    CP = cp
+    CP_F = cp -f
+    MV = mv
+    MV_F = mv -f
+    MKDIR = mkdir
+    MKPARENTS = -p
+    RM = rm
+    RMFLAGS = -rf
+
+# File attibutes
+
+    CHMOD = chmod
+
+# Concurrent builds
+
+    LOCK = true
+    UNLOCK = true
+
+# TAGS
+
+    TAGS = true
+    TAGS_FLAGS = 
+    TAGS_DIR = $(BLD_ROOT)
+    TAGS_FILE = $(TAGS_DIR)/TAGS
+
+# tar
+
+    TAR = tar
+    TAR_FLAGS = -cvz
+    TAR_DIR = $(HOME)/Backups
+    TAR_FILE = $(TAR_DIR)/$(PROJECT).$(DATE_STAMP).tgz
+
+
+# yacc
+
+    YACC = yacc
+    YACC_CFILE = y.tab.c
+    YACC_HFILE = y.tab.h
+
+# C preprocessor
+
+    CPP = cpp
+
+# version
+# $Id: std-tools.def,v 1.8 2003/02/27 18:34:43 cummings Exp $
+
+#
+# End of file

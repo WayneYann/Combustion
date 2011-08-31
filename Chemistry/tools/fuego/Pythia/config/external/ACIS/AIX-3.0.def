@@ -1,0 +1,17 @@
+#--------------------------------------------------------------------------
+#
+#                       Julian C. Cummings
+#                California Institute of Technology
+#                   (C) 2003 All Rights Reserved
+#
+#--------------------------------------------------------------------------
+
+#
+# AIX settings for ACIS
+#
+
+ACIS_INCLUDES = ${addprefix $(ACIS_INCDIR)/, $(ACIS_INCLUDE_DIRS)}
+ACIS_LIBS = -L$(ACIS_LIBDIR) ${addprefix -l, $(ACIS_LIBRARIES)}
+
+#
+# End of file

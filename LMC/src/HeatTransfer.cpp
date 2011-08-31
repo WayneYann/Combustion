@@ -354,8 +354,7 @@ HeatTransfer::Initialize ()
     pp.query("do_heat_sink",do_heat_sink);
     do_heat_sink = (do_heat_sink ? 1 : 0);
 
-    std::string tranfile=""; pp.query("tranfile",tranfile);
-    chemSolve = new ChemDriver(tranfile);
+    chemSolve = new ChemDriver();
 
     pp.query("turbFile",turbFile);
 
