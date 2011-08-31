@@ -3,7 +3,7 @@ EBASE     = CNSReact
 
 include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 
-Bdirs 	:= src src/Src_$(DIM)d src/EOS src/Network
+Bdirs 	:= src src/Src_$(DIM)d src/EOS
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))

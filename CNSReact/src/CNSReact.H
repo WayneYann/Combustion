@@ -5,7 +5,7 @@
 #include <AmrLevel.H>
 #include <ErrorList.H>
 #include <FluxRegister.H>
-#include <ChemKinDriver.H>
+#include <ChemDriver.H>
 
 #include <iostream>
 
