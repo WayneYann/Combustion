@@ -127,7 +127,8 @@
 ! ::: ----------------------------------------------------------------
 ! ::: 
 
-      subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in,Outflow_in,Symmetry_in,coord_type_in)
+      subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
+         phys_prob_hi_in, Outflow_in,Symmetry_in,coord_type_in)
 
         ! Passing data from C++ into f90
 
@@ -140,12 +141,18 @@
         integer, intent(in) :: Outflow_in
         integer, intent(in) :: Symmetry_in
         integer, intent(in) :: coord_type_in
+        double precision, intent(in) :: phys_prob_lo_in(dm),phys_prob_hi_in(dm)
 
         allocate(physbc_lo(dm))
         allocate(physbc_hi(dm))
+        allocate(phys_prob_lo(dm))
+        allocate(phys_prob_hi(dm))
 
         physbc_lo(:) = physbc_lo_in(:)
         physbc_hi(:) = physbc_hi_in(:)
+
+        phys_prob_lo(:) = phys_prob_lo_in(:)
+        phys_prob_hi(:) = phys_prob_hi_in(:)
 
         Outflow  = Outflow_in
         Symmetry = Symmetry_in

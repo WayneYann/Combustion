@@ -218,10 +218,6 @@ public:
 
     Real volWgtSum (const std::string& name, Real time);
 
-    Real volWgtSquaredSum (const std::string& name, Real time);
-
-    Real locWgtSum (const std::string& name, Real time, int idir);
-
     void set_special_tagging_flag (Real time);
 
     static int       NUM_STATE;

@@ -16,12 +16,6 @@ Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 Bpack	+= ../../../Chemistry/src/Make.package
 Blocs	+= ../../../Chemistry/src
 
-ifeq (${CHEMISTRY_MODEL}, DRM19)
-  CEXE_sources += drm19.cpp
-  vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri
-endif
-
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
   MECHDIR = ../../../Chemistry/data
   CEXE_sources += chem-H.cpp

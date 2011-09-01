@@ -24,6 +24,7 @@ BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
     (const int& dm,
      const int* physbc_lo, const int* physbc_hi,
+     const Real* phys_lo, const Real* phys_hi,
      const int& Outflow_value, 
      const int& Symmetry_value, const int& coord_type);
 
