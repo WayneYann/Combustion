@@ -687,7 +687,7 @@
                             dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
                             domhi,delta,xlo,time,dt,bc,level,grid_no)
 
-      use module cdwrk
+      use cdwrk_module
 
       implicit none
 
@@ -702,9 +702,9 @@
       integer    level, grid_no
 
       integer i,j,k,n
-      REAL_T Yt(maxspec),Xt(maxspec)
+      double precision Yt(maxspec),Xt(maxspec)
       integer fS,rho
-      integer lo_chem(SDIM),hi_chem(SDIM)
+      integer lo_chem(3),hi_chem(3)
       data lo_chem /1,1,1/
       data hi_chem /1,1,1/
 
@@ -718,9 +718,9 @@
                do n = 1,Nspec
                   Yt(n) = dat(i,j,k,fS+n-1)/dat(i,j,k,rho)
                enddo
-               call FORT_MASSTOMOLE(lo_chem, hi_chem,
-     &              Yt, ARLIM(lo_chem),ARLIM(hi_chem),
-     &              Xt, ARLIM(lo_chem),ARLIM(hi_chem))
+               call dmstomol(lo_chem, hi_chem,   &
+                    Yt, lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3), &
+                    Xt, lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3) )
                do n = 1,Nspec
                   spec(i,j,k,n) = Xt(n)
                enddo
@@ -737,7 +737,7 @@
                             dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
                             domhi,delta,xlo,time,dt,bc,level,grid_no)
 
-      use module cdwrk
+      use cdwrk_module
 
       implicit none
 
@@ -753,9 +753,9 @@
 
 
       integer i,j,k,n
-      REAL_T Yt(maxspec),Ct(maxspec)
+      double precision Yt(maxspec),Ct(maxspec)
       integer fS,rho,T
-      integer lo_chem(SDIM),hi_chem(SDIM)
+      integer lo_chem(3),hi_chem(3)
       data lo_chem /1,1,1/
       data hi_chem /1,1,1/
 
@@ -770,11 +770,11 @@
                do n = 1,Nspec
                   Yt(n) = dat(i,j,k,fS+n-1)/dat(i,j,k,rho)
                enddo
-               call FORT_MASSR_TO_CONC(lo_chem,hi_chem,
-     &           Yt,             ARLIM(lo_chem),ARLIM(hi_chem),
-     &           dat(i,j,k,T),   ARLIM(lo_chem),ARLIM(hi_chem),
-     &           dat(i,j,k,rho), ARLIM(lo_chem),ARLIM(hi_chem),
-     &           Ct,             ARLIM(lo_chem),ARLIM(hi_chem))
+               call dmsrtocon(lo_chem,hi_chem,   &
+                 Yt,             lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3), &
+                 dat(i,j,k,T),   lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3), &
+                 dat(i,j,k,rho), lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3), &
+                 Ct,             lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3))
                do n = 1,Nspec
                   C(i,j,k,n) = Ct(n)
                enddo
@@ -783,7 +783,7 @@
       enddo
 !$omp end parallel do
 
-      end ca_derconcentration
+      end subroutine ca_derconcentration
 
 
 

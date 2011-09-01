@@ -21,10 +21,10 @@
 ! ::: 
 
       subroutine set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
-                                   FirstAdv,FirstSpec,FirstAux,numadv, &
+                                   FirstAdv,FirstSpec,numadv, &
                                    small_dens_in, small_temp_in, small_pres_in, &
                                    allow_negative_energy_in,ppm_type_in, &
-                                   gamma_in,normalize_species_in)
+                                   normalize_species_in)
 
         ! Passing data from C++ into f90
 
@@ -35,11 +35,10 @@
         implicit none 
  
         integer, intent(in) :: dm
-        integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec, FirstAux
+        integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec
         integer, intent(in) :: numadv
         integer, intent(in) :: allow_negative_energy_in, ppm_type_in
         double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in
-        double precision, intent(in) :: gamma_in
         integer, intent(in) :: normalize_species_in
 
         integer             :: QLAST

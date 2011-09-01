@@ -135,24 +135,13 @@ CNSReact::variableSetUp ()
 
     // Get the number of species from the network model.
     // JBB  BL_FORT_PROC_CALL(GET_NUM_SPEC, get_num_spec)(&NumSpec);
-    NumSpec = getChemDriver().numSpecies();
+    NumSpec = getChemSolve().numSpecies();
 
     if (NumSpec > 0)
     {
         FirstSpec = cnt++;
         cnt += NumSpec - 2;
         LastSpec = cnt++;
-    }
-
-    // Get the number of species from the network model.
-  //   BL_FORT_PROC_CALL(GET_NUM_AUX, get_num_aux)(&NumAux);
-     NumAux = 0;
-
-    if (NumAux > 0)
-    {
-        FirstAux = cnt++;
-        cnt += NumAux - 2;
-        LastAux = cnt++;
     }
 
     NUM_STATE = cnt;
@@ -163,10 +152,10 @@ CNSReact::variableSetUp ()
     const Real run_strt = ParallelDescriptor::second() ; 
 
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
-        (dm, Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec, FirstAux, 
+        (dm, Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec,
          NumAdv, small_dens, small_temp, small_pres, 
          allow_negative_energy,ppm_type,
-         gamma,normalize_species);
+         normalize_species);
 
     Real run_stop = ParallelDescriptor::second() - run_strt;
  
@@ -218,28 +207,22 @@ CNSReact::variableSetUp ()
 
     // Get the species names from the chemdriver.
 
-    const Array<std::string>& names = getChemDriver().speciesNames();
+    const Array<std::string>& spec_names = getChemSolve().speciesNames();
     if (ParallelDescriptor::IOProcessor())
     {
         std::cout << NumSpec << " Chemical species interpreted:\n { ";
-        for (int i = 0; i < names.size(); i++)
-            std::cout << names[i] << ' ' << ' ';
+        for (int i = 0; i < spec_names.size(); i++)
+            std::cout << spec_names[i] << ' ' << ' ';
         std::cout << '}' << '\n' << '\n';
     }
 
 
 
-    set_species_bc(bc,phys_bc);
     for (int i=0; i<NumSpec; i++)
     {
-        bcs[BL_SPACEDIM+2+NADV+i]  = bc;
-        name[BL_SPACEDIM+2+NADV+i] = "rho.Y(" + names[i] + ")";
+        cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc;
+        name[cnt] = "rho.Y(" + spec_names[i] + ")";
 
-        desc_lst.setComponent(State_Type,
-                              FirstSpec+i,
-                              name[BL_SPACEDIM+2+NADV+i].c_str(),
-                              bc,
-                              ChemBndryFunc(FORT_CHEMFILL,names[i]));
     }
 
     desc_lst.setComponent(State_Type,
@@ -340,11 +323,10 @@ CNSReact::variableSetUp ()
     //
     // Species mass fractions.
     //
-    for (i = 0; i < nspecies; i++)
+    for (int i = 0; i < NumSpec; i++)
     {
-        const std::string name = "Y("+names[i]+")";
+        const std::string name = "Y("+spec_names[i]+")";
         derive_lst.add(name,IndexType::TheCellType(),1,
-                   FORT_DERDVRHO,the_same_box);
                    BL_FORT_PROC_CALL(CA_DERSPEC,ca_derspec),the_same_box);
         derive_lst.addComponent(name,desc_lst,State_Type,Density,1);
         derive_lst.addComponent(name,desc_lst,State_Type,FirstSpec + i,1);
@@ -352,26 +334,26 @@ CNSReact::variableSetUp ()
     //
     // Species mole fractions
     //
-    Array<std::string> var_names_molefrac(nspecies);
-    for (i = 0; i < nspecies; i++)
-        var_names_molefrac[i] = "X("+names[i]+")";
-    derive_lst.add("molefrac",IndexType::TheCellType(),nspecies, var_names_molefrac,
+    Array<std::string> var_names_molefrac(NumSpec);
+    for (int i = 0; i < NumSpec; i++)
+        var_names_molefrac[i] = "X("+spec_names[i]+")";
+    derive_lst.add("molefrac",IndexType::TheCellType(),NumSpec, var_names_molefrac,
                    BL_FORT_PROC_CALL(CA_DERMOLEFRAC,ca_dermolefrac),the_same_box);
     derive_lst.addComponent("molefrac",desc_lst,State_Type,Density,1);
-    derive_lst.addComponent("molefrac",desc_lst,State_Type,FirstSpec,nspecies);
+    derive_lst.addComponent("molefrac",desc_lst,State_Type,FirstSpec,NumSpec);
 
     //
     // Species concentrations
     //
-    Array<std::string> var_names_conc(nspecies);
-    for (i = 0; i < nspecies; i++)
-        var_names_conc[i] = "C("+names[i]+")";
-    derive_lst.add("concentration",IndexType::TheCellType(),nspecies, var_names_conc,
+    Array<std::string> var_names_conc(NumSpec);
+    for (int i = 0; i < NumSpec; i++)
+        var_names_conc[i] = "C("+spec_names[i]+")";
+    derive_lst.add("concentration",IndexType::TheCellType(),NumSpec, var_names_conc,
                    BL_FORT_PROC_CALL(CA_DERCONCENTRATION,ca_derconcentration),the_same_box);
     derive_lst.addComponent("concentration",desc_lst,State_Type,Density,1);
     derive_lst.addComponent("concentration",desc_lst,State_Type,Temp,1);
     derive_lst.addComponent("concentration",desc_lst,State_Type,
-                            FirstSpec,nspecies);
+                            FirstSpec,NumSpec);
 
     //
     // Velocities
@@ -405,12 +387,6 @@ CNSReact::variableSetUp ()
           BL_FORT_PROC_CALL(CA_DERMAGMOM,ca_dermagmom),the_same_box);
     derive_lst.addComponent("magmom",desc_lst,State_Type,Xmom,BL_SPACEDIM);
 
-    for (int i = 0; i < NumSpec; i++)  {
-      derive_lst.add(names[i],IndexType::TheCellType(),1,
-          BL_FORT_PROC_CALL(CA_DERSPEC,ca_derspec),the_same_box);
-      derive_lst.addComponent(spec_string,desc_lst,State_Type,Density,1);
-      derive_lst.addComponent(spec_string,desc_lst,State_Type,FirstSpec+i,1);
-    }
 
 #if 0
     //

@@ -2919,7 +2919,7 @@
 
       use cdwrk_module      , only : nspec
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, &
-                                     QPRES, QREINT, QFA, QFS, 
+                                     QPRES, QREINT, QFA, QFS,  &
                                      URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv
       implicit none

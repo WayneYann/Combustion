@@ -101,7 +101,7 @@
       subroutine ca_compute_temp(lo,hi,state,state_l1,state_l2,state_l3, &
                                  state_h1,state_h2,state_h3)
 
-      use cdwrk_module, only : nspec
+      use cdwrk_module, only : Nspec
       use eos_module
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEINT, UTEMP, &
                                      UFS, small_temp, allow_negative_energy
@@ -114,7 +114,7 @@
                                                state_l3:state_h3,NVAR)
 
       integer          :: i,j,k
-      double precision :: rhoInv,eint,xn(nspec)
+      double precision :: rhoInv,eint,xn(Nspec)
       double precision :: dummy_gam,dummy_pres,dummy_c,dummy_dpdr,dummy_dpde
       integer          :: pt_index(3)
 
@@ -155,7 +155,7 @@
 
          rhoInv = 1.d0 / state(i,j,k,URHO)
 
-         xn(1:nspec)  = state(i,j,k,UFS:UFS+nspec-1) * rhoInv
+         xn(1:Nspec)  = state(i,j,k,UFS:UFS+Nspec-1) * rhoInv
 
          eint = state(i,j,k,UEINT) / state(i,j,k,URHO)
 
@@ -254,7 +254,7 @@
                                           flux3_h1,flux3_h2,flux3_h3, &
                                           lo,hi)
 
-      use network, only : nspec
+      use cdwrk_module, only : Nspec
       use meth_params_module, only : NVAR, URHO, UFS
 
       implicit none
@@ -278,7 +278,7 @@
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)+1
                sum = 0.d0
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   sum = sum + flux1(i,j,k,n)
                end do
                if (sum .ne. 0.d0) then
@@ -286,7 +286,7 @@
                else
                   fac = 1.d0
                end if
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   flux1(i,j,k,n) = flux1(i,j,k,n) * fac
                end do
             end do
@@ -299,7 +299,7 @@
          do j = lo(2),hi(2)+1
             do i = lo(1),hi(1)
                sum = 0.d0
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   sum = sum + flux2(i,j,k,n)
                end do
                if (sum .ne. 0.d0) then
@@ -307,7 +307,7 @@
                else
                   fac = 1.d0
                end if
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   flux2(i,j,k,n) = flux2(i,j,k,n) * fac
                end do
             end do
@@ -320,7 +320,7 @@
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)
                sum = 0.d0
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   sum = sum + flux3(i,j,k,n)
                end do
                if (sum .ne. 0.d0) then
@@ -328,7 +328,7 @@
                else
                   fac = 1.d0
                end if
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   flux3(i,j,k,n) = flux3(i,j,k,n) * fac
                end do
             end do
@@ -349,7 +349,7 @@
                                          uout_h1,uout_h2,uout_h3, &
                                          lo,hi,verbose)
 
-      use cdwrk_module      , only : nspec
+      use cdwrk_module      , only : Nspec
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, &
                                      UFA, small_dens, nadv
 
@@ -429,7 +429,7 @@
                   uout(i,j,k,UMY  ) = uout(i,j,k,UMY  ) * fac(i,j,k)
                   uout(i,j,k,UMZ  ) = uout(i,j,k,UMZ  ) * fac(i,j,k)
    
-                  do n = UFS, UFS+nspec-1
+                  do n = UFS, UFS+Nspec-1
                      uout(i,j,k,n) = uout(i,j,k,n) * fac(i,j,k)
                   end do
                   do n = UFA, UFA+nadv-1
@@ -454,7 +454,7 @@
       subroutine ca_enforce_nonnegative_species(uout,uout_l1,uout_l2,uout_l3, &
                                                 uout_h1,uout_h2,uout_h3,lo,hi)
 
-      use network, only : nspec
+      use cdwrk_module, only : Nspec
       use meth_params_module, only : NVAR, URHO, UFS
 
       implicit none
@@ -480,7 +480,7 @@
          !
          ! First deal with tiny undershoots by just setting them to zero.
          !
-         do n = UFS, UFS+nspec-1
+         do n = UFS, UFS+Nspec-1
            if (uout(i,j,k,n) .lt. 0.d0) then
               x = uout(i,j,k,n)/uout(i,j,k,URHO)
               if (x .gt. eps) then
@@ -500,7 +500,7 @@
             int_dom_spec = UFS
             dom_spec     = uout(i,j,k,int_dom_spec)
 
-            do n = UFS,UFS+nspec-1
+            do n = UFS,UFS+Nspec-1
               if (uout(i,j,k,n) .gt. dom_spec) then
                 dom_spec     = uout(i,j,k,n)
                 int_dom_spec = n
@@ -509,7 +509,7 @@
            !
            ! Now take care of undershoots greater in magnitude than 1e-16.
            !
-           do n = UFS, UFS+nspec-1
+           do n = UFS, UFS+Nspec-1
 
               if (uout(i,j,k,n) .lt. 0.d0) then
 
@@ -561,7 +561,7 @@
 
       subroutine normalize_new_species(u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,lo,hi)
 
-      use network, only : nspec
+      use cdwrk_module, only : Nspec
       use meth_params_module, only : NVAR, URHO, UFS
 
       implicit none
@@ -579,7 +579,7 @@
       do j = lo(2),hi(2)
          do i = lo(1),hi(1)
             sum = 0.d0
-            do n = UFS, UFS+nspec-1
+            do n = UFS, UFS+Nspec-1
                sum = sum + u(i,j,k,n)
             end do
             if (sum .ne. 0.d0) then
@@ -587,7 +587,7 @@
             else
                fac = 1.d0
             end if
-            do n = UFS, UFS+nspec-1
+            do n = UFS, UFS+Nspec-1
                u(i,j,k,n) = u(i,j,k,n) * fac
             end do
          end do
@@ -604,7 +604,7 @@
       subroutine ca_reset_internal_energy(u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,lo,hi,verbose)
 
       use eos_module
-      use cdwrk_module, only : nspec
+      use cdwrk_module, only : Nspec
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, &
                                      small_temp, allow_negative_energy
 
@@ -617,7 +617,7 @@
       ! Local variables
       integer          :: i,j,k
       integer          :: pt_index(3)
-      double precision :: Up, Vp, Wp, ke, rho_eint, eint_new, x_in(1:nspec), dummy_pres
+      double precision :: Up, Vp, Wp, ke, rho_eint, eint_new, x_in(1:Nspec), dummy_pres
 
       ! Reset internal energy
       if (allow_negative_energy .eq. 0) then
@@ -647,7 +647,7 @@
               ! If not resetting and little e is negative ...
               else if (u(i,j,k,UEINT) .le. 0.d0) then
 
-                 x_in(1:nspec) = u(i,j,k,UFS:UFS+nspec-1) / u(i,j,k,URHO)
+                 x_in(1:Nspec) = u(i,j,k,UFS:UFS+Nspec-1) / u(i,j,k,URHO)
 
                  pt_index(1) = i
                  pt_index(2) = j

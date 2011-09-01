@@ -48,14 +48,10 @@ int          CNSReact::Xmom          = -1;
 int          CNSReact::Ymom          = -1;
 int          CNSReact::Zmom          = -1;
 
-
+ChemDriver*    CNSReact::chemSolve = 0;
 int          CNSReact::NumSpec       = 0;
 int          CNSReact::FirstSpec     = -1;
 int          CNSReact::LastSpec      = -1;
-
-int          CNSReact::NumAux        = 0;
-int          CNSReact::FirstAux      = -1;
-int          CNSReact::LastAux       = -1;
 
 int          CNSReact::NumAdv        = 0;
 int          CNSReact::FirstAdv      = -1;
@@ -64,7 +60,6 @@ int          CNSReact::LastAdv       = -1;
 Real         CNSReact::small_dens    = -1.e20;
 Real         CNSReact::small_temp    = -1.e20;
 Real         CNSReact::small_pres    = -1.e20;
-Real         CNSReact::gamma         =  0.0;
 
 int          CNSReact::do_hydro = -1;
 int          CNSReact::do_react = -1;
@@ -76,11 +71,6 @@ int          CNSReact::allow_negative_energy = 1;
 int          CNSReact::do_special_tagging = 0;
 int          CNSReact::ppm_type = 2;
 
-ChemDriver*    CNSReact::chemDriver = 0;
-int            CNSReact::NumSpec    = 0;
-int            CNSReact::FirstSpec  = -1;
-int            CNSReact::LastSpec   = -1;
-
 
 // Note: CNSReact::variableSetUp is in CNSReact_setup.cpp
 
@@ -88,8 +78,8 @@ void
 CNSReact::variableCleanUp () 
 {
     desc_lst.clear();
-    delete chemDriver;
-    chemDriver = 0;
+    delete chemSolve;
+    chemSolve = 0;
 }
 
 void
@@ -121,8 +111,8 @@ CNSReact::read_params ()
     pp.query("small_temp",small_temp);
     pp.query("small_pres",small_pres);
 
-    std::string tranfile=""; pp.query("tranfile",tranfile);
-    chemDriver = new ChemDriver(tranfile);
+    // std::string tranfile=""; pp.query("tranfile",tranfile);
+    chemSolve = new ChemDriver();
 
     // Get boundary conditions
     Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
@@ -242,7 +232,6 @@ CNSReact::CNSReact (Amr&            papa,
     :
     AmrLevel(papa,lev,level_geom,bl,time) 
 {
-    BL_ASSERT(numSpecMax >= getChemDriver().numSpecies());
 
     buildMetrics();
 
@@ -262,7 +251,6 @@ CNSReact::restart (Amr&     papa,
                  bool     bReadSpecial)
 {
     AmrLevel::restart(papa,is,bReadSpecial);
-    BL_ASSERT(numSpecMax >= getChemDriver().numSpecies());
 
     buildMetrics();
 

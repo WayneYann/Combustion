@@ -8,17 +8,18 @@ BL_FORT_PROC_DECL(FILCC,filcc)
                  const Real * dx_crse, const Real * xlo,
                  const int * bc);
 
+BL_FORT_PROC_DECL(GET_METHOD_PARAMS,get_method_params)
+    (const int* nHYP);
+
 BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
     (const int& dm,
      const int& Density, const int& Xmom, 
      const int& Eden,    const int& Eint, 
      const int& Temp     , const int& FirstAdv, 
-     const int& FirstSpec, const int& FirstAux, 
-     const int& NumAdv, 
+     const int& FirstSpec, const int& NumAdv, 
      const Real& small_dens, const Real& small_temp,
      const Real& small_pres, const int& allow_negative_energy,
-     const int& ppm_type, const Real& gamma_in,
-     const int& normalize_species);
+     const int& ppm_type, const int& normalize_species);
 
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
     (const int& dm,

@@ -843,7 +843,7 @@ contains
                          qxm,qxp,qym,qyp,qpd_l1,qpd_l2,qpd_l3,qpd_h1,qpd_h2,qpd_h3, &
                          ilo1,ilo2,ihi1,ihi2,dx,dy,dt,kc,k3d)
 
-    use network, only : nspec
+    use cdwrk_module, only : Nspec
     use meth_params_module, only : iorder, QVAR, QRHO, QU, QV, QW, &
          QREINT, QPRES, QFA, QFS, nadv, small_dens, &
          ppm_type
@@ -1090,8 +1090,8 @@ contains
     enddo
     !$OMP END PARALLEL DO
 
-    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,u) IF(nspec.gt.1)
-    do ispec = 1, nspec
+    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,u) IF(Nspec.gt.1)
+    do ispec = 1, Nspec
        ns = QFS + ispec - 1
 
        do j = ilo2-1, ihi2+1
@@ -1320,8 +1320,8 @@ contains
     enddo
     !$OMP END PARALLEL DO
 
-    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,v) IF(nspec.gt.1)
-    do ispec = 1, nspec
+    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,v) IF(Nspec.gt.1)
+    do ispec = 1, Nspec
        ns = QFS + ispec - 1
        do i = ilo1-1, ihi1+1
 
@@ -1368,7 +1368,7 @@ contains
                         qzm,qzp,qpd_l1,qpd_l2,qpd_l3,qpd_h1,qpd_h2,qpd_h3, &
                         ilo1,ilo2,ihi1,ihi2,dz,dt,km,kc,k3d)
 
-    use network, only : nspec
+    use cdwrk_module, only : Nspec
     use meth_params_module, only : iorder, QVAR, QRHO, QU, QV, QW, &
          QREINT, QPRES, QFA, QFS, nadv, small_dens, &
          ppm_type
@@ -1618,8 +1618,8 @@ contains
     enddo
     !$OMP END PARALLEL DO
 
-    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,w) IF(nspec.gt.1)
-    do ispec = 1, nspec
+    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,w) IF(Nspec.gt.1)
+    do ispec = 1, Nspec
        ns = QFS + ispec - 1
        do j = ilo2-1, ihi2+1
           do i = ilo1-1, ihi1+1

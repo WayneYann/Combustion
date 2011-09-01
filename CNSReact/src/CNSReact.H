@@ -228,9 +228,8 @@ public:
     static int       Density, Xmom, Ymom, Zmom, Eden, Eint, Temp;
     static int       FirstAdv,  LastAdv,  NumAdv;
     static int       FirstSpec, LastSpec, NumSpec;
-    static int       FirstAux,  LastAux,  NumAux;
 
-    static ChemKinDriver& getChemDriver ();
+    static ChemDriver& getChemSolve () {return *chemSolve;} 
 
 protected:
 
@@ -325,7 +324,6 @@ protected:
     static Real      small_dens;
     static Real      small_temp;
     static Real      small_pres;
-    static Real      gamma;
 
     bool             FillPatchedOldState_ok;
 
@@ -344,9 +342,7 @@ protected:
     // There can be only one Diffusion object, it covers all levels:
     static class Diffusion *diffusion;
 
-    static ChemKinDriver* chemDriver;
-    static int       FirstSpec;
-    static int       LastSpec;
+    static ChemDriver* chemSolve;
 
 };    
 
@@ -402,13 +398,6 @@ FluxRegister&
 CNSReact::getFluxReg (int lev)
 {
     return getLevel(lev).getFluxReg();
-}
-
-inline
-ChemKinDriver&
-HyperCLaw::getChemDriver ()
-{
-    return *chemDriver;
 }
 
 #endif /*_CNSReact_H_*/
