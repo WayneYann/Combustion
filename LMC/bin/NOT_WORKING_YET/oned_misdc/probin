@@ -6,12 +6,12 @@
   stop_time = 1.e4
   cfl = 0.5
   problo = 0.
-  probhi = 1.6
+  probhi = 1.2
   chkfile = 'null'
   change_max = 1.1
   init_shrink = 0.1
   probtype = 1
-  flame_offset = -2.25
+  flame_offset = -2.4
   dpdt_factor = .3
   Patm = 1.0
   predict_temp_for_coeffs = 1
@@ -24,7 +24,7 @@
   sdc_pred_T_into_rhoh = .false.
   sdc_evolve_T_in_VODE = .false.
   lim_rxns = 0
-!  V_in = 0.
+  V_in = 0.
   LeEQ1 = 0
   tranfile = 'tran.asc.grimech30'
 /
