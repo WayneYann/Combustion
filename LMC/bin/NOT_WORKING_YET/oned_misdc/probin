@@ -1,10 +1,10 @@
 &fortin
-  nsteps = 40
-  plot_int = 40
+  nsteps = 80
+  plot_int = 80
   chk_int = 1000
-  fixed_dt = 0.5e-4
+  fixed_dt = 0.125e-4
   stop_time = 1.e4
-  cfl = 0.5
+  cfl = 0.25
   problo = 0.
   probhi = 1.2
   chkfile = 'null'
