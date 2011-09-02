@@ -112,8 +112,8 @@ program chemh_converge2
   L1_23 = L1_23 / dble(nx_2)
   L2_23 = sqrt(L2_23/nx_2)
 
-1000 format(a,e12.5,e12.5,e12.5)
-1001 format(a,e12.3,e12.3,f7.2)
+1000 format(a,es12.4,es12.4,es12.4)
+1001 format(a,es12.2,es12.2,f7.2)
 
   print*,"nsteps =",nsteps_1,nsteps_2,nsteps_3
   print*,"nx     =",nx_1,nx_2,nx_3
