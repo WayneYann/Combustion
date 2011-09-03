@@ -30,6 +30,7 @@
       write(10) time
       write(10) dt_old
       write(10) cfl_used
+      write(10) hmix_TYP
       do i = -1,nx
          write(10) (i+.5)*dx,(scal(i,FirstSpec+n),n=0,Nspec-1),
      $                        scal(i,Density),
