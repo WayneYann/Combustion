@@ -677,7 +677,7 @@ C      DVIWRK(10) = 0
       end do
 
 c     Always form Jacobian to start
-      FIRST = .TRUE.
+c      FIRST = .TRUE.
 
       if (do_diag .eq. 1 .and. 
      &     (use_strang .or. sdc_evolve_T_in_VODE)) then
