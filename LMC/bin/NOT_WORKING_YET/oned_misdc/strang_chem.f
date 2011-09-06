@@ -84,7 +84,7 @@ c     Set linear source terms in common for ode integrators access
          endif
 
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
-     &                  diag, do_diag, ifail)
+     &                  diag, do_diag, ifail, i)
          if (ifail.ne.0) then
             print *,'solve failed, i=',i
             stop
@@ -232,7 +232,7 @@ c     Set linear source terms in common for ode integrators access
          endif
 
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
-     &                  diag, do_diag, ifail)
+     &                  diag, do_diag, ifail, i)
          if (ifail.ne.0) then
             print *,'solve failed, i=',i
             stop

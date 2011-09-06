@@ -576,7 +576,7 @@ C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
 
 
       subroutine chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
-     &     diag, do_diag, ifail)
+     &     diag, do_diag, ifail, i)
       implicit none
       include 'spec.h'
 
@@ -585,7 +585,7 @@ C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
       common /VHACK/ YJ_SAVE, FIRST
       save   /VHACK/
 
-      integer do_diag, ifail, FuncCount
+      integer do_diag, ifail, FuncCount, i
       double precision RYold(*), RYnew(*), Told, Tnew
       double precision dt, diag(*)
    
@@ -677,7 +677,11 @@ C      DVIWRK(10) = 0
       end do
 
 c     Always form Jacobian to start
-c      FIRST = .TRUE.
+      if (i .eq. 0) then
+         FIRST = .TRUE.
+      else
+         FIRST = .FALSE.
+      end if
 
       if (do_diag .eq. 1 .and. 
      &     (use_strang .or. sdc_evolve_T_in_VODE)) then
