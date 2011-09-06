@@ -6,9 +6,9 @@ program gri_converge
   integer i,j,k,nsteps_c,nsteps_f,nx_c,nx_f,rr
   real*8 time_c,time_f,sum
   
-  real*8 data1  (1024,114)
+  real*8 data1  (4096,114)
   real*8 data2_f(4096,114)
-  real*8 data2_c(1024,114)
+  real*8 data2_c(4096,114)
 
   real*8 L0(114)
   real*8 L1(114)
@@ -23,16 +23,7 @@ program gri_converge
   read(10,*) time_c
 
   do i=0,nx_c-1
-     read(10,*) data1(i,1), &
-                data1(i,2:10), &
-                data1(i,11), &
-                data1(i,12), &
-                data1(i,13), &
-                data1(i,14), &
-                data1(i,15), &
-                data1(i,16), &
-                data1(i,17), &
-                data1(i,18:114)
+     read(10,*) data1(i,1:114)
   end do
 
   open(20,file=in2,form='formatted')
@@ -41,16 +32,7 @@ program gri_converge
   read(20,*) time_f
 
   do i=0,nx_f-1
-     read(20,*) data2_f(i,1), &
-                data2_f(i,2:10), &
-                data2_f(i,11), &
-                data2_f(i,12), &
-                data2_f(i,13), &
-                data2_f(i,14), &
-                data2_f(i,15), &
-                data2_f(i,16), &
-                data2_f(i,17), &
-                data2_f(i,18:114)
+     read(20,*) data2_f(i,1:114)
   end do
 
   rr = nx_f / nx_c
@@ -83,26 +65,63 @@ program gri_converge
   write(*,*) "nsteps =",nsteps_c,nsteps_f
   write(*,*) "nx     =",nx_c,nx_f
   write(*,*) "time   =",time_c,time_f
-  write(*,*) "rr     =",rr
   write(*,*)
-  write(*,*) "L0 NORM: H2          =",L0(2)
-  write(*,*) "L0 NORM: Density     =",L0(55)
-  write(*,*) "L0 NORM: Temperature =",L0(56)
-  write(*,*) "L0 NORM: RhoH        =",L0(57)
-  write(*,*) "L0 NORM: velocity    =",L0(58)
-  write(*,*)
-  write(*,*) "L1 NORM: H2          =",L1(2)
-  write(*,*) "L1 NORM: Density     =",L1(55)
-  write(*,*) "L1 NORM: Temperature =",L1(56)
-  write(*,*) "L1 NORM: RhoH        =",L1(57)
-  write(*,*) "L1 NORM: velocity    =",L1(58)
-  write(*,*)
-  write(*,*) "L2 NORM: H2          =",L2(2)
-  write(*,*) "L2 NORM: Density     =",L2(55)
-  write(*,*) "L2 NORM: Temperature =",L2(56)
-  write(*,*) "L2 NORM: RhoH        =",L2(57)
-  write(*,*) "L2 NORM: velocity    =",L2(58)
-
-
+  write(*,*) "L1 NORM: H2     =",L1( 2)
+  write(*,*) "L1 NORM: H      =",L1( 3)
+  write(*,*) "L1 NORM: O      =",L1( 4)
+  write(*,*) "L1 NORM: O2     =",L1( 5)
+  write(*,*) "L1 NORM: OH     =",L1( 6)
+  write(*,*) "L1 NORM: H2O    =",L1( 7)
+  write(*,*) "L1 NORM: HO2    =",L1( 8)
+  write(*,*) "L1 NORM: H2O2   =",L1( 9)
+  write(*,*) "L1 NORM: C      =",L1(10)
+  write(*,*) "L1 NORM: CH     =",L1(11)
+  write(*,*) "L1 NORM: CH2    =",L1(12)
+  write(*,*) "L1 NORM: CH2(S) =",L1(13)
+  write(*,*) "L1 NORM: CH3    =",L1(14)
+  write(*,*) "L1 NORM: CH4    =",L1(15)
+  write(*,*) "L1 NORM: CO     =",L1(16)
+  write(*,*) "L1 NORM: CO2    =",L1(17)
+  write(*,*) "L1 NORM: HCO    =",L1(18)
+  write(*,*) "L1 NORM: CH2O   =",L1(19)
+  write(*,*) "L1 NORM: CH2OH  =",L1(20)
+  write(*,*) "L1 NORM: CH3O   =",L1(21)
+  write(*,*) "L1 NORM: CH3OH  =",L1(22)
+  write(*,*) "L1 NORM: C2H    =",L1(23)
+  write(*,*) "L1 NORM: C2H2   =",L1(24)
+  write(*,*) "L1 NORM: C2H3   =",L1(25)
+  write(*,*) "L1 NORM: C2H4   =",L1(26)
+  write(*,*) "L1 NORM: C2H5   =",L1(27)
+  write(*,*) "L1 NORM: C2H6   =",L1(28)
+  write(*,*) "L1 NORM: HCCO   =",L1(29)
+  write(*,*) "L1 NORM: CH2CO  =",L1(30)
+  write(*,*) "L1 NORM: HCCOH  =",L1(31)
+  write(*,*) "L1 NORM: N      =",L1(32)
+  write(*,*) "L1 NORM: NH     =",L1(33)
+  write(*,*) "L1 NORM: NH2    =",L1(34)
+  write(*,*) "L1 NORM: NH3    =",L1(35)
+  write(*,*) "L1 NORM: NH4    =",L1(36)
+  write(*,*) "L1 NORM: NO     =",L1(37)
+  write(*,*) "L1 NORM: NO2    =",L1(38)
+  write(*,*) "L1 NORM: N2O    =",L1(39)
+  write(*,*) "L1 NORM: HNO    =",L1(40)
+  write(*,*) "L1 NORM: CN     =",L1(41)
+  write(*,*) "L1 NORM: HCN    =",L1(42)
+  write(*,*) "L1 NORM: H2CN   =",L1(43)
+  write(*,*) "L1 NORM: HCNN   =",L1(44)
+  write(*,*) "L1 NORM: HCNO   =",L1(45)
+  write(*,*) "L1 NORM: HOCN   =",L1(46)
+  write(*,*) "L1 NORM: HNCO   =",L1(47)
+  write(*,*) "L1 NORM: NCO    =",L1(48)
+  write(*,*) "L1 NORM: N2     =",L1(49)
+  write(*,*) "L1 NORM: AR     =",L1(50)
+  write(*,*) "L1 NORM: C3H7   =",L1(51)
+  write(*,*) "L1 NORM: C3H8   =",L1(52)
+  write(*,*) "L1 NORM: CH2CHO =",L1(53)
+  write(*,*) "L1 NORM: CH3CHO =",L1(54)
+  write(*,*) "L1 NORM: rho    =",L1(55)
+  write(*,*) "L1 NORM: temp   =",L1(56)
+  write(*,*) "L1 NORM: rhoh   =",L1(57)
+  write(*,*) "L1 NORM: vel    =",L1(58)
 
 end program gri_converge

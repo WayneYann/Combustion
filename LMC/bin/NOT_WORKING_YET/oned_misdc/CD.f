@@ -131,6 +131,128 @@ CCCCCCCCCCCCCC
 
       end
 
+      subroutine calc_diffusivities_nosetbc(scal, beta, mu, dx, time)
+      implicit none
+      include 'spec.h'
+      double precision scal(-1:nx,*)
+      double precision beta(-1:nx,*)
+      double precision mu(-1:nx)
+      double precision time, dx
+
+      double precision Dt(maxspec), CPMS(maxspec), Y(maxspec)
+      double precision Tt, Wavg, rho
+      double precision X(maxspec), alpha, l1, l2, cpmix, RWRK
+      integer n, i, IWRK
+
+      double precision fourThirds
+
+      fourThirds = 4.d0 / 3.d0
+
+c     Ensure chem/tran initialized
+      if (traninit.lt.0) call initchem()
+
+c      call set_bc_s(scal,dx,time)
+
+      if (LeEQ1 .eq. 0) then
+         
+         do i=-1, nx         
+            Tt = MAX(scal(i,Temp),TMIN_TRANS) 
+            rho = 0.d0
+            do n=1,Nspec
+               rho = rho + scal(i,FirstSpec+n-1)
+            enddo
+            do n=1,Nspec
+C               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
+               Y(n) = scal(i,FirstSpec+n-1) / rho
+            enddo
+            
+c           given y[species]: maxx fractions
+c           returns mean molecular weight (gm/mole)
+            CALL CKMMWY(Y,IWRK,RWRK,Wavg)
+
+c           returns the specific heats at constant pressure
+c           in mass units
+            CALL CKCPMS(Tt,IWRK,RWRK,CPMS)
+
+c           convert y[species] (mass fracs) to x[species] (mole fracs)
+            CALL CKYTX(Y,IWRK,RWRK,X)
+
+c           initialize the thermomolecular parameters that are needed in order
+c           to evaluate the transport linear systems
+            CALL EGSPAR(Tt,X,Y,CPMS,EGRWRK,EGIWRK)
+
+c           compute flux diffusion coefficients
+            CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
+
+cc           compute rho = P*W(y)/RT
+c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
+
+            do n=1,Nspec
+               beta(i,FirstSpec+n-1)
+     &              = scal(i,Density) * Wavg * invmwt(n) * Dt(n)
+            end do
+
+            alpha = 1.0D0
+c           compute thermal conductivity
+            CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
+            alpha = -1.0D0
+c           compute thermal conductivity with a different averating parameters
+            CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
+            beta(i,Temp) = .5 * (l1 + l2)
+c           Returns the mean specific heat at CP
+            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
+            beta(i,RhoH) = beta(i,Temp) / CPMIX
+
+c           compute shear viscosity
+            CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
+            mu(i) = fourThirds*mu(i)
+         enddo
+
+      else
+         do i=-1, nx
+c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
+            mu(i) = 10.d0 * 1.85e-5*(MAX(scal(i,Temp),1.d0)/298.0)**.7
+c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
+            rho = 0.d0
+            do n=1,Nspec
+               beta(i,FirstSpec+n-1) = mu(i) / Sc
+               rho = rho + scal(i,FirstSpec+n-1)
+            enddo
+            
+            do n=1,Nspec
+               Y(n) = scal(i,FirstSpec+n-1) / rho
+            enddo
+c           Returns the mean specific heat at CP
+            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
+            beta(i,RhoH) = mu(i) / Pr
+            beta(i,Temp) = beta(i,RhoH) * CPMIX
+
+            mu(i) = fourThirds*mu(i)
+         enddo
+      endif
+
+CCCCCCCCCCC FIXME
+C      do n = 0, Nspec-1
+C         do i = -1, nx
+C            beta(i,FirstSpec+n) = 0.d0
+C            beta(i,RhoH) = 0.d0
+C            beta(i,Temp) = 0.d0
+C         enddo
+C      enddo
+CCCCCCCCCCCCCC
+
+      if (thickFacTR.ne.1.d0) then
+         do i=-1, nx
+            do n=1,Nspec
+               beta(i,FirstSpec+n-1) = beta(i,FirstSpec+n-1)*thickFacTR
+            end do
+            beta(i,Temp) = beta(i,Temp) * thickFacTR
+            beta(i,RhoH) = beta(i,RhoH) * thickFacTR
+         enddo
+      endif
+
+      end
+
       subroutine initchem
       implicit none
       include 'spec.h'
@@ -283,7 +405,12 @@ CCCCCCCCCCCCCCCCCC
 C     For strang
 C     Variables in Z are:  Z(0)   = T
 C                          Z(K) = Y(K)
-C     For SDC
+C
+C     For SDC and sdc_evolve_T_in_VODE = .false.
+C     Variables in Z are:  Z(0)   = rho*h
+C                          Z(K) = rho*Y(K)
+C
+C     For SDC and sdc_evolve_T_in_VODE = .true.
 C     Variables in Z are:  Z(0)   = T
 C                          Z(K) = rho*Y(K)
 C
@@ -373,44 +500,49 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
             Y(K) = Z(K)/RHO
          enddo
 
-         T = Z(0)
+         if (sdc_evolve_T_in_VODE) then
 
-C$$$         hmix = (rhoh_INIT + c_0(0)*TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
-C$$$         errMax = ABS(hmix_TYP*1.e-12)
-C$$$C     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-C$$$         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
-C$$$         if (Niter.lt.0) then
-C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
-C$$$            stop
-C$$$         endif
-c     print *,'  ** Fdiag',TIME,T,Z(1),Niter
+            T = Z(0)
+            call CKCPBS(T,Y,IWRK,RWRK,CPB)
 
-C CEG trying something new with the temp evolution FIXME??
-C         call CKRHOPY(RHO,Pcgs,Y,IWRK,RWRK,T)
-C         T = Z(0)
-C FIXME
-C$$$         errMax = ABS(hmix_TYP*1.e-12)
-C$$$c     print *,'Fdiag',hmix*RHO,rhoh_INIT,(Y(K),K=1,Nspec)
-C$$$         call FORT_TfromHYpt(T,Z(0),Y,Nspec,errMax,NiterMAX,res,Niter)
-C$$$         if (Niter.lt.0) then
-C$$$            print *,'F: H to T solve failed in F, Niter=',Niter
-C$$$            stop
-C$$$         endif
-CCCCC
-         call CKCPBS(T,Y,IWRK,RWRK,CPB)
+         else
+
+            hmix = (rhoh_INIT + c_0(0)*
+     &           TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
+            errMax = hmix_TYP*1.e-20
+            call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,
+     &                          res,Niter)
+            if (Niter.lt.0) then
+               print *,'vodeF_T_RhoY: H to T solve failed'
+               print *,'Niter=',Niter
+               stop
+            endif
+
+         end if
+
       endif
 
-      call CKHMS(T,IWRK,RWRK,HK)
-      call CKWC(T,C,IWRK,RWRK,WDOTK)
-      SUM = 0.d0
-      DO K = 1, Nspec
-          ZP(K) = WDOTK(K)*mwt(K)/thickFacCH
-     &            + c_0(K) + c_1(K)*TIME
-         SUM = SUM - HK(K)*ZP(K)
-      END DO
-      ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
-C FIXME!!!!!!!
-C      ZP(0) = c_0(0) + c_1(0)*TIME 
+      if (use_strang .or. sdc_evolve_T_in_VODE) then
+
+         call CKHMS(T,IWRK,RWRK,HK)
+         call CKWC(T,C,IWRK,RWRK,WDOTK)
+         SUM = 0.d0
+         DO K = 1, Nspec
+            ZP(K) = WDOTK(K)*mwt(K)/thickFacCH
+     &           + c_0(K) + c_1(K)*TIME
+            SUM = SUM - HK(K)*ZP(K)
+         END DO
+         ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
+      else
+
+         call CKWC(T,C,IWRK,RWRK,WDOTK)
+         do k= 1, Nspec
+            ZP(k) = WDOTK(k)*mwt(k)/thickFacCH
+     &           + c_0(k) + c_1(k)*TIME
+         end do
+         ZP(0) = c_0(0) + c_1(0)*TIME 
+
+      end if
 
  100  if(use_strang) then
          DO K = 1, Nspec
@@ -444,7 +576,7 @@ C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
 
 
       subroutine chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
-     &     diag, do_diag, ifail)
+     &     diag, do_diag, ifail, i)
       implicit none
       include 'spec.h'
 
@@ -453,7 +585,7 @@ C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
       common /VHACK/ YJ_SAVE, FIRST
       save   /VHACK/
 
-      integer do_diag, ifail, FuncCount
+      integer do_diag, ifail, FuncCount, i
       double precision RYold(*), RYnew(*), Told, Tnew
       double precision dt, diag(*)
    
@@ -545,9 +677,14 @@ C      DVIWRK(10) = 0
       end do
 
 c     Always form Jacobian to start
-      FIRST = .TRUE.
+      if (i .eq. 0) then
+         FIRST = .TRUE.
+      else
+         FIRST = .FALSE.
+      end if
 
-      if (do_diag.eq.1) then
+      if (do_diag .eq. 1 .and. 
+     &     (use_strang .or. sdc_evolve_T_in_VODE)) then
          FuncCount = 0
          do n=1,Nspec
             C(n) = Z(n)*invmwt(n)
@@ -576,7 +713,8 @@ c     Always form Jacobian to start
 
          TT1 = TT2
 
-         if (do_diag.eq.1) then
+         if (do_diag .eq. 1 .and. 
+     &        (use_strang .or. sdc_evolve_T_in_VODE)) then
             do n=1,Nspec
                C(n) = Z(n)*invmwt(n)
             enddo

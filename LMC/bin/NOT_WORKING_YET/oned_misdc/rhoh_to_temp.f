@@ -13,16 +13,9 @@
 
       integer IWRK
       double precision RWRK
-
-      
-C      hmixTYP = scal(0,RhoH) / scal(0,Density)
-C      do i = 1,nx-1
-C         hmixTYP = MAX(ABS(scal(i,RhoH) / scal(i,Density)),hmixTYP)
-C      enddo
-C      errMAX = hmixTYP * epsHtoTemp
- 
-C CEG:: LMC just sets errMAX = 1.d-8
-      errMAX = 1.d-8
+  
+C CEG:: LMC just sets errMAX to 1.d-8
+      errMAX = hmix_TYP*1.d-20
 
       do i = 0,nx-1
          rho = 0.d0
