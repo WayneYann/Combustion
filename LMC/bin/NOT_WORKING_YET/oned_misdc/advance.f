@@ -31,11 +31,15 @@
       real*8 vel_theta
       real*8 divu_max
       
-      integer i
+      integer i,j
       
       real*8     alpha(0:nx-1)
       real*8   vel_Rhs(0:nx-1)
       real*8   pthermo(-1:nx  )
+
+      real*8   I_R_divu(0:nx-1,0:maxspec)
+      real*8 WDOTK(maxspec), C(maxspec), RWRK, T
+      integer IWRK
 
       integer rho_flag
       
@@ -113,11 +117,34 @@ c*****************************************************************
 
       end if
 
+      if (use_strang) then
+
+         ! omegadot for divu computation is average omegadot
+         ! over both strang calls
+         I_R_divu = I_R_new
+
+      else
+
+         ! omegadot for divu computation is instantaneous
+         ! value at t^{n+1}
+         do i=0,nx-1
+            do j=1,Nspec
+               C(j) = scal_new(i,FirstSpec+j-1)*invmwt(j)
+            end do
+            call CKWC(scal_new(i,Temp),C,IWRK,RWRK,WDOTK)
+            do j=1,Nspec
+               I_R_divu(i,j) = WDOTK(j)*mwt(j)/thickFacCH
+            end do
+         end do
+
+      end if
+
+
 c     this computes rho D_m     (for species)
 c                   lambda / cp (for enthalpy)
 c                   lambda      (for temperature)           
       call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
-      call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time+dt)
+      call calc_divu(scal_new,beta_new,I_R_divu,divu_new,dx,time+dt)
 
       do i = 0,nx-1
          rhohalf(i) = 0.5d0*(scal_old(i,Density)+scal_new(i,Density))
