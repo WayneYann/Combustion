@@ -332,6 +332,10 @@ c        the rho D grad Y term is now computed conservatively
             end do
          enddo
 
+c     recompute advection term for temperature
+c     all other terms computed too - should fix this
+         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
+
       end if
 
 c     compute part of the RHS for the enthalpy and species
@@ -526,6 +530,10 @@ c     the rho D grad Y term is now computed conservatively
      &                 - I_R_new(i,n)*hi(n,i)/rhocp
                end do
             enddo
+
+c     recompute advection term for temperature
+c     all other terms computed too - should fix this
+            call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
 
          end if
 
@@ -769,6 +777,10 @@ c        the rho D grad Y term is now computed conservatively
      &              - I_R_new(i,n)*hi(n,i)/rhocp
             end do
          enddo
+
+c     recompute advection term for temperature
+c     all other terms computed too - should fix this
+         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
       
       end if
 
@@ -967,6 +979,10 @@ c     the rho D grad Y term is now computed conservatively
      &                 - I_R_new(i,n)*hi(n,i)/rhocp
                end do
             enddo
+
+c     recompute advection term for temperature
+c     all other terms computed too - should fix this
+         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
             
          end if
 
