@@ -735,15 +735,8 @@ c        we take the gradient of Y from the second scal argument
      $                           dx,time)
       end if
 
-c     compute advective forcing term
-      print *,'... computing advective forcing term = D^n + I_R^kmax'
-      do i = 0,nx-1
-         do n = 1,Nspec
-            is = FirstSpec + n - 1
-            tforce(i,is) = diff_old(i,is) + I_R_new(i,n)
-         enddo
-         tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
-      enddo
+c     no need to compute forcing terms since Godunov integrator
+c     extrapolates in space only
 
 c     compute advection term
       call scal_aofs(scal_old,macvel,aofs_old,tforce,dx,dt,time)
@@ -751,38 +744,6 @@ c     compute advection term
 c     update density
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs_old,dx,dt)
-
-      if (sdc_pred_T_into_rhoh) then
-
-c        compute del dot lambda grad T + rho D grad h dot grad Y
-c        the rho D grad Y term is now computed conservatively
-         call get_temp_visc_terms(scal_old,beta_old,
-     &                            diff_old(0,Temp),dx,time)
-
-         do i=-1,nx
-            call CKHMS(scal_old(i,Temp),IWRK,RWRK,hi(1,i))
-         end do
-
-         do i = 0,nx-1
-            do n = 1,Nspec
-               Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
-            enddo
-            call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
-            rhocp = cpmix * 
-     &           (scal_old(i,Density) + scal_new(i,Density)) / 2.d0
-            tforce(i,Temp) = diff_old(i,Temp)/rhocp
-
-            do n=1,Nspec
-               tforce(i,Temp) = tforce(i,Temp) 
-     &              - I_R_new(i,n)*hi(n,i)/rhocp
-            end do
-         enddo
-
-c     recompute advection term for temperature
-c     all other terms computed too - should fix this
-         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
-      
-      end if
 
 c     compute part of the RHS for the enthalpy and species
 c     diffusion solves
@@ -936,16 +897,6 @@ c           we take the gradient of Y from the second scal argument
      $                              spec_flux_hi,beta_new,
      $                              diffdiff_new,dx,time)
          end if
-
-         print *,'... computing advective forcing term = D^n + I_R^k-1'
-         do i = 0,nx-1
-            do n = 1,Nspec
-               is = FirstSpec + n - 1
-               tforce(i,is) = diff_old(i,is) + I_R_new(i,n)
-            enddo
-c           really no need to recompute this since it doesn't change
-            tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
-         enddo
          
          call scal_aofs(scal_new,macvel,aofs_new,tforce,dx,dt,time)
 
@@ -953,38 +904,6 @@ c           really no need to recompute this since it doesn't change
 
          print *,'... update rho'
          call update_rho(scal_old,scal_new,aofs_avg,dx,dt)
-
-         if (sdc_pred_T_into_rhoh) then
-
-c     compute del dot lambda grad T + rho D grad h dot grad Y
-c     the rho D grad Y term is now computed conservatively
-            call get_temp_visc_terms(scal_old,beta_old,
-     &                               diff_old(0,Temp),dx,time)
-
-            do i=-1,nx
-               call CKHMS(scal_old(i,Temp),IWRK,RWRK,hi(1,i))
-            end do
-
-            do i = 0,nx-1
-               do n = 1,Nspec
-                  Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
-               enddo
-               call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
-               rhocp = cpmix * 
-     &              (scal_old(i,Density) + scal_new(i,Density)) / 2.d0
-               tforce(i,Temp) = diff_old(i,Temp)/rhocp
-
-               do n=1,Nspec
-                  tforce(i,Temp) = tforce(i,Temp) 
-     &                 - I_R_new(i,n)*hi(n,i)/rhocp
-               end do
-            enddo
-
-c     recompute advection term for temperature
-c     all other terms computed too - should fix this
-         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
-            
-         end if
 
          print *,'... update D for species with A + R + MISDC(D)'
          do i=0,nx-1
