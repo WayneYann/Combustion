@@ -1,0 +1,52 @@
+***************
+* inputs.2dcontrol_sdc
+***************
+-Same as inputs.2dcontrol, but amr.max_level=0 and ns.do_sdc=1.
+
+***************
+* cdwrk.H
+***************
+-Added c_0(maxspec+1) to the newly created sdc_interp_coef common block.
+
+
+***************
+* ChemDriver_2D.F
+***************
+-Copied subroutine FORT_CONPSOLV to FORT_CONPSOLV_SDC.
+  -Changed the DVODE call to use conpFY_sdc rather than conpFY
+
+***************
+* ChemDriver.cpp
+***************
+<>
+
+***************
+* ChemDriver_F.F
+***************
+-Copied subroutine conpFY to conpFY_sdc.
+  -Modified to compute ZP for rhoh and rhoY with reaction term and 
+   piecewise-constant advection-diffusion term, c_0.
+
+***************
+* ChemDriver_F.H
+***************
+<>
+
+
+***************
+* ChemDriver.H
+***************
+<>
+
+
+***************
+* HeatTransfer.cpp
+***************
+-Make do_sdc default to 0 and then read it in from the inputs file.
+-Added some commented out code testing out averating Ydot from both Strang calls
+ to compute divu at the new time.  Causes seg faults if you uncomment.
+
+***************
+* HeatTransfer.H
+***************
+Added static int do_sdc.
