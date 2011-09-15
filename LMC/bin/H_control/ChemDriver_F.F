@@ -788,9 +788,9 @@ C
       REAL_T RHO, H, WDOT, WT, THFAC, T
       integer K
 
-      REAL_T CONC(maxspec), WDOTS(maxspec)
-      REAL_T Y(maxspec)
+      REAL_T CONC(maxspec), WDOTS(maxspec), Y(maxspec)
 
+C     Needed to compute T from h
       REAL_T HtoTerrMAX
       integer HtoTiterMAX, Niter
       parameter (HtoTerrMAX = BL_REAL_E(1.0,-8))
@@ -807,15 +807,10 @@ C                          Z(K+1) = rhoY(K)
       end do
 
       do k=1,Nspec
-         CONC(k) = Z(k+1) / RWRK(NWT+k-1)
          Y(k) = Z(k+1) / RHO
       end do
-#ifdef MAKE_C_POS
-      do k=1,Nspec
-         CONC(k) = MAX(CONC(k),zero)
-      end do 
-#endif
 
+c     Compute T from h
       H = Z(1) / RHO
       call FORT_TfromHYpt(T,H,Y,HtoTerrMax,HtoTiterMAX,res,Niter)
       if (Niter.lt.0) then
@@ -824,7 +819,27 @@ C                          Z(K+1) = rhoY(K)
          stop
       endif
 
-      CALL CKWC(Z(1), CONC, IPAR(ckbi), RPAR(ckbr), WDOTS)
+      CALL CKYTCP(RPAR(NP),T,Y,IPAR(ckbi),RPAR(ckbr),CONC)
+c
+c     Get net production rates.  Compute such that production from -ve
+c     reactants gives zero contrib.
+c      
+c      do k=1,Nspec
+c         if (CONC(k) .lt. zero) write(6,*) '.....negative C',k
+c      end do
+      
+#define MAKE_C_POS
+#undef MAKE_C_POS
+#ifdef MAKE_C_POS
+      do k=1,Nspec
+         CONC(k) = MAX(CONC(k),zero)
+      end do 
+#endif
+
+      CALL CKWC(T, CONC, IPAR(ckbi), RPAR(ckbr), WDOTS)
+C
+C     Form governing equation
+C
       THFAC = one / thickFacCH
       do k=1,Nspec
          WDOT = WDOTS(k) * THFAC
