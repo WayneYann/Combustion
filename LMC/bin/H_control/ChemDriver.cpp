@@ -576,7 +576,7 @@ ChemDriver::solveTransient_sdc(FArrayBox&        Ynew,
                       Told.dataPtr(sCompT), ARLIM(Told.loVect()), ARLIM(Told.hiVect()),
                       FuncCount.dataPtr(),
 		      ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
-		      &Patm, &dt, diagData, &do_diag, sdc_vode_force);
+		      &Patm, &dt, diagData, &do_diag, set_const_src_sdc);
 }
 
 void

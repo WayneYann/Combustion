@@ -867,21 +867,21 @@ C
 
       END
 
-      subroutine sdc_vode_force(vodeforce)
+      subroutine set_const_src_sdc(const_src)
       implicit none
 #include "cdwrk.H"
 
-      REAL_T,  intent(in   ) :: vodeforce(0:)
+      REAL_T,  intent(in   ) :: const_src(0:)
 
       integer n
 
       do n=1,Nspec
-         c_0(n) = vodeforce(n-1)
+         c_0(n) = const_src(n-1)
       end do
 C     make for RhoH 
-      c_0(Nspec+1) = vodeforce(Nspec)
+      c_0(Nspec+1) = const_src(Nspec)
 
-      end subroutine sdc_vode_force
+      end subroutine set_const_src_sdc
 
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
