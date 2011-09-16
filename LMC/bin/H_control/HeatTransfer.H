@@ -608,7 +608,6 @@ protected:
     static int         do_OT_radiation;
     static int         do_heat_sink;
     static int         unity_Le;
-    static int         do_sdc;
     static int         FuncCount_Type;
     static int         Ydot_Type;
     static int         divu_ceiling;
@@ -669,6 +668,14 @@ protected:
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
     static Array<Real> typical_values;
+
+
+///////////////////////////////
+// SDC Stuff
+    static int         do_sdc;
+    static int         sdc_iters;
+///////////////////////////////
+
 };
 
 #endif /*_HeatTransfer_H_*/

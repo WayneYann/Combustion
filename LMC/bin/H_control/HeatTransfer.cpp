@@ -125,7 +125,6 @@ Real HeatTransfer::constant_mu_val;
 Real HeatTransfer::constant_rhoD_val;
 Real HeatTransfer::constant_lambda_val;
 int  HeatTransfer::unity_Le;
-int  HeatTransfer::do_sdc;
 Real HeatTransfer::htt_tempmin;
 Real HeatTransfer::htt_tempmax;
 Real HeatTransfer::htt_hmixTYP;
@@ -166,6 +165,15 @@ std::string                                HeatTransfer::mcdd_transport_model;
 Array<int>  HeatTransfer::mcdd_nu1;
 Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
+
+///////////////////////////////
+// SDC Stuff
+int HeatTransfer::do_sdc;
+int HeatTransfer::sdc_iters;
+
+MultiFab* const_src;
+PArray<MultiFab> I_R;
+///////////////////////////////
 
 #ifdef PARTICLES
 //
@@ -237,7 +245,6 @@ HeatTransfer::Initialize ()
     HeatTransfer::constant_rhoD_val         = -1;
     HeatTransfer::constant_lambda_val       = -1;
     HeatTransfer::unity_Le                  = 1;
-    HeatTransfer::do_sdc                    = 0;
     HeatTransfer::htt_tempmin               = 298.0;
     HeatTransfer::htt_tempmax               = 40000.;
     HeatTransfer::htt_hmixTYP               = -1.;
@@ -273,6 +280,12 @@ HeatTransfer::Initialize ()
     HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
 
     HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
+
+///////////////////////////////
+// SDC Stuff
+    HeatTransfer::do_sdc                    = 0;
+    HeatTransfer::sdc_iters                 = 1;
+///////////////////////////////
 
 #ifdef PARTICLES
     timestamp_dir                    = "Timestamps";
