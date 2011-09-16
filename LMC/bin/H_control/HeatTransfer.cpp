@@ -5645,6 +5645,523 @@ HeatTransfer::advance (Real time,
                        int  iteration,
                        int  ncycle)
 {
+  Real dt_test = 0.0;
+
+  if (do_sdc)
+  {
+    dt_test = advance_sdc(time,dt,iteration,ncycle);
+  }
+  else
+  {
+    if (level == 0)
+    {
+        crse_dt = dt;
+        int thisLevelStep = parent->levelSteps(0);
+        FORT_SET_COMMON(&time,&thisLevelStep);
+    }
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+    {
+        std::cout << "Advancing level "    << level
+                  << " : starting time = " << time
+                  << " with dt = "         << dt << '\n';
+    }
+
+    advance_setup(time,dt,iteration,ncycle);
+
+    if (do_check_divudt)
+        checkTimeStep(dt);
+    
+    MultiFab& S_new = get_new_data(State_Type);
+    MultiFab& S_old = get_old_data(State_Type);
+    //
+    // Reset flag that fill patched state data is good
+    //
+    FillPatchedOldState_ok = true;
+    //
+    // Compute traced states for normal comp of velocity at half time level.
+    //
+    Real dummy = 0.0;    
+    dt_test = predict_velocity(dt,dummy);
+
+
+    
+    showMF("mac",u_mac[0],"adv_umac0",level);
+    showMF("mac",u_mac[1],"adv_umac1",level);
+#if BL_SPACEDIM==3
+    showMF("mac",u_mac[2],"adv_umac2",level);
+#endif
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::advance(): at start of time step\n";
+
+    temperature_stats(S_old);
+
+    const Real prev_time = state[State_Type].prevTime();
+    const Real cur_time  = state[State_Type].curTime();
+#if 0
+    setThermoPress(prev_time);
+#endif
+    //
+    // Do MAC projection and update edge velocities.
+    //
+    if (do_mac_proj) 
+    {
+        int havedivu = 1;
+        MultiFab* mac_rhs = create_mac_rhs(time,dt);
+        showMF("mac",*mac_rhs,"mac_rhs",level);
+        mac_project(time,dt,S_old,mac_rhs,havedivu);
+        delete mac_rhs;
+    }
+
+    if (do_mom_diff == 0)
+        velocity_advection(dt);
+    //
+    // Set old-time boundary data for RhoH
+    // 
+    set_overdetermined_boundary_cells(time);
+    //
+    // Advance the old state for a Strang-split dt/2.  Include grow cells in
+    // advance, and squirrel these away for diffusion and Godunov guys to
+    // access for overwriting non-advanced fill-patched grow cell data.
+    //
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "... advancing chem\n";
+
+    BL_ASSERT(S_new.boxArray() == S_old.boxArray());
+
+    const int nComp = NUM_STATE - BL_SPACEDIM;
+    Array<int> consumptionComps; // Put in scope for work below
+    if (plot_consumption)
+    {
+        //
+        // Save off a copy of the pre-chem state
+        //
+        consumptionComps.resize(consumptionName.size());
+        for (int j=0; j<consumptionComps.size(); ++j)
+        {
+            consumptionComps[j] = getChemSolve().index(consumptionName[j]) + first_spec;
+            auxDiag["CONSUMPTION"]->copy(S_old,consumptionComps[j],j,1);
+        }
+    }
+
+    MultiFab Qtmp; // Put in scope for work below
+    if (plot_heat_release)
+    {
+        //
+        // Save off a copy of the pre-chem state
+        //
+        Qtmp.define(grids,getChemSolve().numSpecies(),0,Fab_allocate);
+        MultiFab::Copy(Qtmp,S_old,first_spec,0,Qtmp.nComp(),0);
+    }
+    //
+    // Build a MultiFab parallel to "fabs".  Force it to have the
+    // same distribution as aux_boundary_data_old.  This'll cut out a
+    // parallel copy.  It doesn't happen by default (like you might think)
+    // due to not being recached appropriately after regridding.
+    //
+    {
+        MultiFab tmpFABs;
+
+        tmpFABs.define(aux_boundary_data_old.equivBoxArray(),
+                       NUM_STATE,
+                       0,
+                       aux_boundary_data_old.DistributionMap(),
+                       Fab_allocate);
+
+        const int ngrow = aux_boundary_data_old.nGrow();
+
+        {
+            BoxArray ba = S_old.boxArray();
+
+            ba.grow(ngrow);
+            //
+            // This MF is guaranteed to cover tmpFABs & valid region of S_old.
+            //
+            // Note that S_old & tmpS_old have the same distribution.
+            //
+            MultiFab tmpS_old(ba,NUM_STATE,0);
+
+            for (FillPatchIterator fpi(*this,S_old,ngrow,prev_time,State_Type,0,NUM_STATE);
+                 fpi.isValid();
+                 ++fpi)
+            {
+                tmpS_old[fpi.index()].copy(fpi());
+            }
+
+            tmpFABs.copy(tmpS_old);
+        }
+
+        strang_chem(S_old,  dt,HT_LeaveYdotAlone);
+        strang_chem(tmpFABs,dt,HT_LeaveYdotAlone,ngrow);
+
+	/* doesn't work
+	strang_chem(S_old,  dt,HT_EstimateYdotNew);
+	strang_chem(tmpFABs,dt,HT_EstimateYdotNew,ngrow);
+	*/
+
+        aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
+    }
+    //
+    // Find change due to first Strang step.
+    //
+    if (plot_consumption)
+    {
+        MultiFab tmp(auxDiag["CONSUMPTION"]->boxArray(),consumptionComps.size(),0);
+        tmp.setVal(0);
+        for (int j=0; j<consumptionComps.size(); ++j)
+        {
+            tmp.copy(S_old,consumptionComps[j],j,1);
+        }
+        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
+        {
+            (*auxDiag["CONSUMPTION"])[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
+        }
+    }
+    if (plot_heat_release)
+    {
+        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
+        {
+            Qtmp[mfi].minus(S_old[mfi],first_spec,0,Qtmp.nComp());
+        }
+    }
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::advance(): after first Strang step\n";
+
+    temperature_stats(S_old);
+    //
+    // Activate hook in FillPatch hack to get better data now.
+    //
+    FillPatchedOldState_ok = false;
+    //
+    // Compute tn coeffs based on chem-advance tn data
+    //  (these are used in the Godunov extrapolation)
+    //
+    const int nScalDiffs = NUM_STATE-BL_SPACEDIM-1;
+    calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+    //
+    // Godunov-extrapolate states to cell edges
+    //
+    compute_edge_states(dt);
+    //
+    // Compute advective fluxes divergences, where possible
+    // NOTE: If Le!=1 cannot do RhoH advection until after spec update fills
+    //       spec diffusion fluxes.  Since it is never a bad idea to do this
+    //       later (i.e. S_old does not change), we do it later always.
+    //
+    const int first_scalar = Density;
+    const int last_scalar = first_scalar + NUM_SCALARS - 1;
+    bool do_adv_reflux = true;
+    //
+    //  Load the advective flux registers into aofs.
+    //
+    if (RhoH > first_scalar)
+	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
+    if (RhoH < last_scalar)
+	scalar_advection(dt,RhoH+1,last_scalar,do_adv_reflux);
+    //
+    // Copy old-time boundary Density & RhoH into estimate for new-time RhoH.
+    //
+    aux_boundary_data_new.copy(aux_boundary_data_old,Density-BL_SPACEDIM,0,1);
+    aux_boundary_data_new.copy(aux_boundary_data_old,RhoH-BL_SPACEDIM,   1,1);
+    //
+    // Save rho used in rho-states, needed for replacing with new one
+    //  NOTE: WE LOAD/USE GROW CELLS HERE SO WE CAN FIX BOUNDARY DATA AS WELL
+    //
+    MultiFab Rho_hold(grids,1,LinOp_grow);
+
+    BL_ASSERT(LinOp_grow == 1);
+
+    for (MFIter mfi(*rho_ctime); mfi.isValid(); ++mfi)
+    {
+        const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
+        Rho_hold[mfi.index()].copy((*rho_ctime)[mfi],box,0,box,0,1);
+    }
+    //
+    // Compute new and half-time densities.
+    //
+    const int rho_corr = 1;
+    scalar_update(dt,Density,Density,rho_corr);
+    //
+    // Set saved rho at current time.
+    //
+    make_rho_curr_time();
+    //
+    // Reset rho-states to contain new rho.
+    //
+    reset_rho_in_rho_states(Rho_hold,cur_time,first_scalar+1,NUM_SCALARS-1);
+
+    Rho_hold.clear();
+    //
+    // Compute the update to momentum
+    //
+    if (do_mom_diff == 1)
+	momentum_advection(dt,do_reflux);
+    //
+    // Update energy and species.
+    //
+    if (do_mcdd)
+    {
+        scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // RhoH aofs, already did others
+        mcdd_update(time,dt);
+    }
+    else
+    {
+        //
+        // Predictor
+        //
+        int corrector = 0;
+        //
+        // Set tnp1 coeffs to tn values in first round of predictor
+        //
+        MultiFab::Copy(*diffnp1_cc,*diffn_cc,0,0,nScalDiffs,diffn_cc->nGrow());
+        temp_update(dt,corrector);         // Here, predict n+1 coeffs using n coeffs
+        temperature_stats(S_new);
+        
+        calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+        spec_update(time,dt,corrector);
+        
+        set_overdetermined_boundary_cells(time + dt); // RhoH BC's to see new Y's at n+1
+        
+        do_adv_reflux = false;
+        scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // Get aofs for RhoH now
+        
+        rhoh_update(time,dt,corrector);
+        RhoH_to_Temp(S_new);
+        temperature_stats(S_new);
+        //
+        // Corrector
+        //
+        corrector = 1;
+        calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+        tracer_update(dt,corrector);
+        spec_update(time,dt,corrector);
+        
+        set_overdetermined_boundary_cells(time + dt);// RhoH BC's to see new Y's at n+1
+        
+        do_adv_reflux = true;
+        scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // Get aofs for RhoH now
+        
+        rhoh_update(time,dt,corrector);
+        RhoH_to_Temp(S_new); 
+    }
+    //
+    // Second half of Strang-split chemistry (first half done in
+    // compute_edge_states) This takes new-time data, and returns new-time
+    // data, as well as providing a predicted Ydot for the velocity
+    // constraint.  We write the result over the new state, but only care
+    // about stuff in the valid region.
+    //
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::advance(): after scalar_update\n";
+
+    temperature_stats(S_new);
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "... advancing chem\n";
+    //
+    // Adjust chemistry diagnostic before and after reactions.
+    //
+    if (plot_consumption)
+    {
+        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
+        {
+            for (int j=0; j<consumptionComps.size(); ++j)
+            {
+                (*auxDiag["CONSUMPTION"])[mfi].plus(S_new[mfi],consumptionComps[j],j,1);
+            }
+        }
+    }
+    if (plot_heat_release)
+    {
+        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
+        {
+            Qtmp[mfi].plus(S_new[mfi],first_spec,0,Qtmp.nComp());
+        }
+    }
+
+    strang_chem(S_new,dt,HT_EstimateYdotNew);
+
+    /* doesn't work
+    strang_chem(S_new,dt,HT_ImproveYdotOld);
+    */
+
+    if (plot_consumption)
+    {
+        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
+        {
+            for (int j=0; j<consumptionComps.size(); ++j)
+            {
+                (*auxDiag["CONSUMPTION"])[mfi].minus(S_new[mfi],consumptionComps[j],j,1);
+            }
+            (*auxDiag["CONSUMPTION"])[mfi].mult(1.0/dt);
+        }
+    }
+    if (plot_heat_release)
+    {
+        FArrayBox enthi, T;
+        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
+        {
+            Qtmp[mfi].minus(S_new[mfi],first_spec,0,Qtmp.nComp());
+            Qtmp[mfi].mult(1.0/dt);
+
+            const Box& box = mfi.validbox();
+            T.resize(mfi.validbox(),1);
+            T.setVal(298.15);
+
+            enthi.resize(mfi.validbox(),Qtmp.nComp());
+            getChemSolve().getHGivenT(enthi,T,box,0,0);
+
+            // Form heat release
+            (*auxDiag["HEATRELEASE"])[mfi].setVal(0.);
+            for (int j=0; j<Qtmp.nComp(); ++j)
+            {
+                Qtmp[mfi].mult(enthi,j,j,1);
+                (*auxDiag["HEATRELEASE"])[mfi].plus(Qtmp[mfi],j,0,1);
+            }
+        }
+    }
+    //
+    //  HACK!!  What are we really supposed to do here?
+    //  Deactivate hook in FillPatch hack so that old data really is old data again
+    //
+    FillPatchedOldState_ok = true;
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+	std::cout << "HeatTransfer::advance(): after second Strang-split step\n";
+    
+    temperature_stats(S_new);
+    //
+    // S appears in rhs of the velocity update, so we better do it now.
+    // (be sure to use most recent version of state to get
+    // viscosity/diffusivity).
+    //
+    calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
+    //
+    // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
+    // the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
+    // not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
+    //
+    setThermoPress(cur_time);
+
+    calc_divu(time+dt, dt, get_new_data(Divu_Type));
+
+    if (!NavierStokes::initial_step && level != parent->finestLevel())
+    {
+        //
+        // Set new divu to old div + dt*dsdt_old where covered by fine.
+        //
+        BoxArray crsndgrids = getLevel(level+1).grids;
+
+        crsndgrids.coarsen(fine_ratio);
+            
+        MultiFab& divu_new = get_new_data(Divu_Type);
+        MultiFab& divu_old = get_old_data(Divu_Type);
+        MultiFab& dsdt_old = get_old_data(Dsdt_Type);
+            
+        for (MFIter mfi(divu_new); mfi.isValid();++mfi)
+        {
+            std::vector< std::pair<int,Box> > isects = crsndgrids.intersections(mfi.validbox());
+
+            for (int i = 0, N = isects.size(); i < N; i++)
+            {
+                const Box& ovlp = isects[i].second;
+
+                divu_new[mfi].copy(dsdt_old[mfi],ovlp,0,ovlp,0,1);
+                divu_new[mfi].mult(dt,ovlp,0,1);
+                divu_new[mfi].plus(divu_old[mfi],ovlp,0,0,1);
+            }
+        }
+    }
+        
+    calc_dsdt(time, dt, get_new_data(Dsdt_Type));
+
+    if (NavierStokes::initial_step)
+        MultiFab::Copy(get_old_data(Dsdt_Type),get_new_data(Dsdt_Type),0,0,1,0);
+    //
+    // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
+    //
+    velocity_update(dt);
+    //
+    // Increment rho average.
+    //
+    if (!initial_step)
+    {
+        if (level > 0)
+        {
+            Real alpha = 1.0/Real(ncycle);
+            if (iteration == ncycle)
+                alpha = 0.5/Real(ncycle);
+            incrRhoAvg(alpha);
+        }
+        //
+        // Do a level project to update the pressure and velocity fields.
+        //
+        level_projector(dt,time,iteration);
+
+        if (level > 0 && iteration == 1) p_avg->setVal(0);
+    }
+
+#ifdef PARTICLES
+    if (HTPC != 0)
+    {
+        if (level == parent->finestLevel())
+        {
+            const MultiFab& mf = get_new_data(State_Type);
+
+            const Real curr_time = state[State_Type].curTime();
+
+            HTPC->AdvectWithUmac(u_mac, level, dt);
+
+            if (!timestamp_dir.empty())
+            {
+                MultiFab tmf(mf.boxArray(), mf.nComp(), 2);
+
+                for (FillPatchIterator fpi(*this,tmf,2,curr_time,State_Type,0,tmf.nComp());
+                     fpi.isValid();
+                     ++fpi)
+                {
+                    tmf[fpi.index()].copy(fpi());
+                }
+
+                std::string basename = timestamp_dir;
+
+                if (basename[basename.length()-1] != '/') basename += '/';
+
+                basename += "Timestamp";
+
+                HTPC->Timestamp(basename, tmf, level, curr_time, timestamp_indices);
+            }
+        }
+
+        if (parent->finestLevel() > 0)
+        {
+            HTPC->RemoveParticlesNotAtFinestLevel();
+        }
+    }
+#endif
+
+    advance_cleanup(dt,iteration,ncycle);
+    //
+    // Update estimate for allowable time step.
+    //
+    dt_test = std::min(dt_test, estTimeStep());
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::advance(): at end of time step\n";
+
+    temperature_stats(S_new);
+  }
+
+    return dt_test;
+}
+
+Real
+HeatTransfer::advance_sdc (Real time,
+			   Real dt,
+			   int  iteration,
+			   int  ncycle)
+{
     if (level == 0)
     {
         crse_dt = dt;

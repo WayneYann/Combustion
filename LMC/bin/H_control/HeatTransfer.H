@@ -105,6 +105,13 @@ public:
                           int  iteration,
                           int  ncycle);
     //
+    // Advance grids at this level in time.
+    //
+    virtual Real advance_sdc (Real time,
+			      Real dt,
+			      int  iteration,
+			      int  ncycle);
+    //
     // Worker functions used by level advance function.
     //
     virtual MultiFab* create_mac_rhs (Real time, Real dt);

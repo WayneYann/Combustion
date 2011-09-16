@@ -48,8 +48,10 @@
 -Make do_sdc default to 0 and then read it in from the inputs file.
 -Added some commented out code testing out averating Ydot from both Strang calls
  to compute divu at the new time.  Causes seg faults if you uncomment.
+-Created advance_sdc, which for now is a copy of advance.
 
 ***************
 * HeatTransfer.H
 ***************
-Added static int do_sdc.
+-Added static int do_sdc.
+-Added header for advance_sdc
