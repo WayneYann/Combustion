@@ -27,6 +27,18 @@ public:
                          Real              Patm,
                          FArrayBox*        chemDiag=0) const;
 
+    void solveTransient_sdc (FArrayBox&        Ynew,
+			     FArrayBox&        Tnew,
+			     const FArrayBox&  Yold,
+			     const FArrayBox&  Told,
+			     FArrayBox&        FuncCount,
+			     const Box&        box,
+			     int               sCompY,
+			     int               sCompT,
+			     Real              dt,
+			     Real              Patm,
+			     FArrayBox*        chemDiag=0) const;
+
     void set_verbose_vode ();
     void set_max_vode_subcycles (int max_cyc);
     void set_species_Yscales (const std::string& scalesFile);

@@ -547,6 +547,39 @@ ChemDriver::solveTransient(FArrayBox&        Ynew,
 }
 
 void
+ChemDriver::solveTransient_sdc(FArrayBox&        Ynew,
+			       FArrayBox&        Tnew,
+			       const FArrayBox&  Yold,
+			       const FArrayBox&  Told,
+			       FArrayBox&        FuncCount,
+			       const Box&        box,
+			       int               sCompY,
+			       int               sCompT,
+			       Real              dt,
+			       Real              Patm,
+			       FArrayBox*        chemDiag) const
+{
+    BL_ASSERT(sCompY+numSpecies() <= Ynew.nComp());
+    BL_ASSERT(sCompY+numSpecies() <= Yold.nComp());
+    BL_ASSERT(sCompT < Tnew.nComp());
+    BL_ASSERT(sCompT < Told.nComp());
+    
+    BL_ASSERT(Ynew.box().contains(box) && Yold.box().contains(box));
+    BL_ASSERT(Tnew.box().contains(box) && Told.box().contains(box));
+
+    const int do_diag  = (chemDiag!=0);
+    Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
+    FORT_CONPSOLV_SDC(box.loVect(), box.hiVect(),
+                      Ynew.dataPtr(sCompY), ARLIM(Ynew.loVect()), ARLIM(Ynew.hiVect()),
+                      Tnew.dataPtr(sCompT), ARLIM(Tnew.loVect()), ARLIM(Tnew.hiVect()),
+                      Yold.dataPtr(sCompY), ARLIM(Yold.loVect()), ARLIM(Yold.hiVect()),
+                      Told.dataPtr(sCompT), ARLIM(Told.loVect()), ARLIM(Told.hiVect()),
+                      FuncCount.dataPtr(),
+		      ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
+		      &Patm, &dt, diagData, &do_diag);
+}
+
+void
 ChemDriver::getMixAveragedRhoDiff(FArrayBox&       rhoD,
                                      const FArrayBox& Y,
                                      const FArrayBox& T,

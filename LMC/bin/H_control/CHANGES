@@ -18,7 +18,8 @@
 ***************
 * ChemDriver.cpp
 ***************
-<>
+-Copied ChemDriver::solveTransient to ChemDriver::solveTransient_sdc
+  -Modified to call FORT_CONPSOLV_SDC rather than FORT_CONPSOLV
 
 ***************
 * ChemDriver_F.F
@@ -36,7 +37,7 @@
 ***************
 * ChemDriver.H
 ***************
-<>
+-Added header for ChemDriver::solveTransient_sdc
 
 
 ***************
