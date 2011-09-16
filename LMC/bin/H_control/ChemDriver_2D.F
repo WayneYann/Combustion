@@ -739,7 +739,7 @@ c
      &     Patm,
      &     dt,
      &     diag, do_diag,
-     &     sdc_func)
+     &     set_c_0_sdc)
       implicit none
 
 #include "cdwrk.H"
@@ -762,9 +762,9 @@ c
       REAL_T diag(DIMV(FuncCount),*)
 
       interface
-         subroutine sdc_func(vodeforce)
-         REAL_T,  intent(in   ) :: vodeforce(0:)
-         end subroutine sdc_func
+         subroutine set_c_0_sdc(const_src)
+         REAL_T,  intent(in   ) :: const_src(0:)
+         end subroutine set_c_0_sdc
       end interface
    
       integer ITOL, IOPT, ITASK, open_vode_failure_file

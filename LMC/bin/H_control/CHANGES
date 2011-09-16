@@ -21,7 +21,7 @@
 ***************
 -Copied ChemDriver::solveTransient to ChemDriver::solveTransient_sdc
   -Modified to call FORT_CONPSOLV_SDC rather than FORT_CONPSOLV
-    -Pass in set_const_src_sdc interface for RHS.
+    -Pass in set_c_0_simple_sdc interface for RHS.
 
 ***************
 * ChemDriver_F.F
@@ -29,12 +29,12 @@
 -Copied subroutine conpFY to conpFY_sdc.
   -Modified to compute ZP for rhoh and rhoY with reaction term and 
    piecewise-constant advection-diffusion term, c_0.
--Created subroutine set_const_src_sdc, which sets c_0 for the VODE solve.
+-Created subroutine set_c_0_simple_sdc, which sets c_0 for the VODE solve.
 
 ***************
 * ChemDriver_F.H
 ***************
--Added headers for FORT_CONPSOLV_SDC and set_const_src_sdc
+-Added headers for FORT_CONPSOLV_SDC and set_c_0_simple_sdc
 
 ***************
 * ChemDriver.H

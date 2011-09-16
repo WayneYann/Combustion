@@ -867,7 +867,7 @@ C
 
       END
 
-      subroutine set_const_src_sdc(const_src)
+      subroutine set_c_0_simple_sdc(const_src)
       implicit none
 #include "cdwrk.H"
 
@@ -881,7 +881,7 @@ C
 C     make for RhoH 
       c_0(Nspec+1) = const_src(Nspec)
 
-      end subroutine set_const_src_sdc
+      end subroutine set_c_0_simple_sdc
 
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
