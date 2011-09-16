@@ -738,7 +738,8 @@ c
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
      &     dt,
-     &     diag, do_diag)
+     &     diag, do_diag,
+     &     sdc_func)
       implicit none
 
 #include "cdwrk.H"
@@ -759,6 +760,12 @@ c
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
+
+      interface
+         subroutine sdc_func(vodeforce)
+         REAL_T,  intent(in   ) :: vodeforce(0:)
+         end subroutine sdc_func
+      end interface
    
       integer ITOL, IOPT, ITASK, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)

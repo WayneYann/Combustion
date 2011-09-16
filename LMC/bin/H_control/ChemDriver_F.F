@@ -867,7 +867,7 @@ C
 
       END
 
-      subroutine FORT_SDC_VODE_FORCE(vodeforce)
+      subroutine sdc_vode_force(vodeforce)
       implicit none
 #include "cdwrk.H"
 
@@ -881,7 +881,7 @@ C
 C     make for RhoH 
       c_0(Nspec+1) = vodeforce(Nspec)
 
-      end subroutine FORT_SDC_VODE_FORCE
+      end subroutine sdc_vode_force
 
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
