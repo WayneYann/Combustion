@@ -547,33 +547,33 @@ ChemDriver::solveTransient(FArrayBox&        Ynew,
 }
 
 void
-ChemDriver::solveTransient_sdc(FArrayBox&        Ynew,
-			       FArrayBox&        Tnew,
-			       const FArrayBox&  Yold,
-			       const FArrayBox&  Told,
+ChemDriver::solveTransient_sdc(FArrayBox&        rhoYnew,
+			       FArrayBox&        rhohnew,
+			       const FArrayBox&  rhoYold,
+			       const FArrayBox&  rhohold,
 			       FArrayBox&        FuncCount,
 			       const Box&        box,
-			       int               sCompY,
-			       int               sCompT,
+			       int               sComprhoY,
+			       int               sComprhoh,
 			       Real              dt,
 			       Real              Patm,
 			       FArrayBox*        chemDiag) const
 {
-    BL_ASSERT(sCompY+numSpecies() <= Ynew.nComp());
-    BL_ASSERT(sCompY+numSpecies() <= Yold.nComp());
-    BL_ASSERT(sCompT < Tnew.nComp());
-    BL_ASSERT(sCompT < Told.nComp());
+    BL_ASSERT(sComprhoY+numSpecies() <= rhoYnew.nComp());
+    BL_ASSERT(sComprhoY+numSpecies() <= rhoYold.nComp());
+    BL_ASSERT(sComprhoh < rhohnew.nComp());
+    BL_ASSERT(sComprhoh < rhohold.nComp());
     
-    BL_ASSERT(Ynew.box().contains(box) && Yold.box().contains(box));
-    BL_ASSERT(Tnew.box().contains(box) && Told.box().contains(box));
+    BL_ASSERT(rhoYnew.box().contains(box) && rhoYold.box().contains(box));
+    BL_ASSERT(rhohnew.box().contains(box) && rhohold.box().contains(box));
 
     const int do_diag  = (chemDiag!=0);
     Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
     FORT_CONPSOLV_SDC(box.loVect(), box.hiVect(),
-                      Ynew.dataPtr(sCompY), ARLIM(Ynew.loVect()), ARLIM(Ynew.hiVect()),
-                      Tnew.dataPtr(sCompT), ARLIM(Tnew.loVect()), ARLIM(Tnew.hiVect()),
-                      Yold.dataPtr(sCompY), ARLIM(Yold.loVect()), ARLIM(Yold.hiVect()),
-                      Told.dataPtr(sCompT), ARLIM(Told.loVect()), ARLIM(Told.hiVect()),
+                      rhoYnew.dataPtr(sComprhoY), ARLIM(rhoYnew.loVect()), ARLIM(rhoYnew.hiVect()),
+                      rhohnew.dataPtr(sComprhoh), ARLIM(rhohnew.loVect()), ARLIM(rhohnew.hiVect()),
+                      rhoYold.dataPtr(sComprhoY), ARLIM(rhoYold.loVect()), ARLIM(rhoYold.hiVect()),
+                      rhohold.dataPtr(sComprhoh), ARLIM(rhohold.loVect()), ARLIM(rhohold.hiVect()),
                       FuncCount.dataPtr(),
 		      ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
 		      &Patm, &dt, diagData, &do_diag, set_c_0_simple_sdc);

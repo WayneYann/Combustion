@@ -731,10 +731,10 @@ c
       end
 
       subroutine FORT_CONPSOLV_SDC(lo, hi,
-     &     Ynew, DIMS(Ynew), 
-     &     Tnew, DIMS(Tnew),
-     &     Yold, DIMS(Yold), 
-     &     Told, DIMS(Told),
+     &     rhoYnew, DIMS(rhoYnew), 
+     &     rhohnew, DIMS(rhohnew),
+     &     rhoYold, DIMS(rhoYold), 
+     &     rhohold, DIMS(rhohold),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
      &     dt,
@@ -747,16 +747,16 @@ c
 #include "vode.H"
 
       integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(Yold)
-      integer DIMDEC(Told)
-      integer DIMDEC(Ynew)
-      integer DIMDEC(Tnew)
+      integer DIMDEC(rhoYold)
+      integer DIMDEC(rhohold)
+      integer DIMDEC(rhoYnew)
+      integer DIMDEC(rhohnew)
       integer DIMDEC(FuncCount)
       integer do_diag
-      REAL_T Yold(DIMV(Yold),*)
-      REAL_T Told(DIMV(Told))
-      REAL_T Ynew(DIMV(Ynew),*)
-      REAL_T Tnew(DIMV(Tnew))
+      REAL_T rhoYold(DIMV(rhoYold),*)
+      REAL_T rhohold(DIMV(rhohold))
+      REAL_T rhoYnew(DIMV(rhoYnew),*)
+      REAL_T rhohnew(DIMV(rhohnew))
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
@@ -782,7 +782,7 @@ c
       REAL_T dtloc, weight, TT1save
       REAL_T Ct(maxspec),Qt(maxreac), scale
 
-      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
+      REAL_T dY(maxspec), rhoYtemp(maxspec),rhoYres(maxspec),sum,zp(maxspec+1)
       logical newJ_triggered, bad_soln
 
 c     Set IOPT=1 parameter settings for VODE
@@ -836,31 +836,31 @@ c     Set up ATOL
 #ifdef SOLN_IS_1D
             if (i.ne.lo(1))then
                do m=1,Nspec
-                  Ynew(i,j,m) = Ynew(lo(1),j,m)
+                  rhoYnew(i,j,m) = rhoYnew(lo(1),j,m)
                end do
-               Tnew(i,j) = Tnew(lo(1),j)
+               rhohnew(i,j) = rhohnew(lo(1),j)
             else
 #endif
 
-            RWRK(NZ) = Told(i,j)
+            RWRK(NZ) = rhohold(i,j)
 
 #ifdef DO_JBB_HACK
             sum = zero
             do m=1,Nspec
-               Ytemp(m) = Yold(i,j,m)
-               Ytemp(m) = MAX(Yold(i,j,m),zero)
-               sum = sum+Ytemp(m)
+               rhoYtemp(m) = rhoYold(i,j,m)
+               rhoYtemp(m) = MAX(rhoYold(i,j,m),zero)
+               sum = sum+rhoYtemp(m)
             end do
             if (iN2 .gt. 0) then
-               Ytemp(iN2) = Ytemp(iN2)+one-sum
+               rhoYtemp(iN2) = rhoYtemp(iN2)+one-sum
             endif
 #else
             do m=1,Nspec
-               Ytemp(m) = Yold(i,j,m)
+               rhoYtemp(m) = rhoYold(i,j,m)
             end do
 #endif
             do m=1,Nspec
-               RWRK(NZ+m) = Ytemp(m)
+               RWRK(NZ+m) = rhoYtemp(m)
             end do
 
 #ifdef TRIGGER_NEW_J
@@ -920,9 +920,9 @@ c
                   if (bad_soln .EQV. .TRUE.) then
                      TT1 = TT1SAVE
                      FIRST = .TRUE.
-                     RWRK(NZ) = Told(i,j)
+                     RWRK(NZ) = rhohold(i,j)
                      do m=1,Nspec
-                        RWRK(NZ+m) = Ytemp(m)
+                        RWRK(NZ+m) = rhoYtemp(m)
                      end do
 
                      ISTATE = 1
@@ -976,12 +976,13 @@ c
                   write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
      &                 '),   Return code = ',ISTATE
                   write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-                 write(lout,995)'State ID, old, last, dY/dt, dY/dt*(dt)'
-                  write(lout,996) 'T               ',
-     &                 Told(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
+                  write(lout,995)
+     &                 'State ID,old,last,d(rhoh)/dt,d(rhoh)/dt*(dt)'
+                  write(lout,996) 'rhoh            ',
+     &                 rhohold(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
                   do m=1,Nspec
                      call get_spec_name(name,m)
-                     write(lout,996) name,Yold(i,j,m),
+                     write(lout,996) name,rhoYold(i,j,m),
      &                    RWRK(NZ+m),zp(1+m),zp(1+m)*(dt-TT1)
                   end do
 995               format(a,3(i4,a))
@@ -991,19 +992,19 @@ c
                end if
             enddo
 
-            Tnew(i,j) = RWRK(NZ)
+            rhohnew(i,j) = RWRK(NZ)
 
             do m= 1,Nspec
-               Yres(m) = RWRK(NZ+m)
+               rhoYres(m) = RWRK(NZ+m)
             end do
 
 #ifdef DO_JBB_HACK
             do m=1,Nspec
-               Ynew(i,j,m) = Yold(i,j,m)+Yres(m)-Ytemp(m)
+               rhoYnew(i,j,m) = rhoYold(i,j,m)+rhoYres(m)-rhoYtemp(m)
             end do
 #else
             do m=1,Nspec
-               Ynew(i,j,m) = Yres(m)
+               rhoYnew(i,j,m) = rhoYres(m)
             end do
 #endif
 

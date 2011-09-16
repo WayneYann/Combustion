@@ -15,6 +15,7 @@
 -Copied subroutine FORT_CONPSOLV to FORT_CONPSOLV_SDC.
   -Changed the DVODE call to use conpFY_sdc rather than conpFY
   -Set up sdc_func interface to set RHS
+  -Change inputs to reflect how we are updated rhoY and rhoh instead of Y and T
 
 ***************
 * ChemDriver.cpp
@@ -22,6 +23,7 @@
 -Copied ChemDriver::solveTransient to ChemDriver::solveTransient_sdc
   -Modified to call FORT_CONPSOLV_SDC rather than FORT_CONPSOLV
     -Pass in set_c_0_simple_sdc interface for RHS.
+    -Change inputs to reflect how we are updated rhoY and rhoh instead of Y and T
 
 ***************
 * ChemDriver_F.F
