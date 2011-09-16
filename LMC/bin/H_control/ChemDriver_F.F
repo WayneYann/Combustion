@@ -867,6 +867,22 @@ C
 
       END
 
+      subroutine FORT_SDC_VODE_FORCE(vodeforce)
+      implicit none
+#include "cdwrk.H"
+
+      REAL_T,  intent(in   ) :: vodeforce(0:)
+
+      integer n
+
+      do n=1,Nspec
+         c_0(n) = vodeforce(n-1)
+      end do
+C     make for RhoH 
+      c_0(Nspec+1) = vodeforce(Nspec)
+
+      end subroutine FORT_SDC_VODE_FORCE
+
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
       implicit none

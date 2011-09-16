@@ -26,12 +26,12 @@
 -Copied subroutine conpFY to conpFY_sdc.
   -Modified to compute ZP for rhoh and rhoY with reaction term and 
    piecewise-constant advection-diffusion term, c_0.
+-Created subroutine FORT_SDC_VODE_FORCE, which sets c_0 for the VODE solve.
 
 ***************
 * ChemDriver_F.H
 ***************
-<>
-
+-Added headers for FORT_CONPSOLV_SDC and FORT_SDC_VODE_FORCE
 
 ***************
 * ChemDriver.H
