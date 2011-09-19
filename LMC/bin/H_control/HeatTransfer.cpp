@@ -173,6 +173,10 @@ int HeatTransfer::sdc_iters;
 
 MultiFab* const_src;
 PArray<MultiFab> I_R;
+PArray<MultiFab> DofS;
+
+const int n_I_R = 1;
+const int n_DofS = 3;
 ///////////////////////////////
 
 #ifdef PARTICLES
@@ -5494,6 +5498,29 @@ HeatTransfer::advance_setup (Real time,
     //
     for (int i = 0; i < spec_diffusion_flux_computed.size(); ++i)
 	spec_diffusion_flux_computed[i] = HT_None;
+
+}
+
+void
+HeatTransfer::advance_setup_sdc (Real time,
+                                 Real dt,
+				 int  iteration,
+				 int  ncycle)
+{
+
+  I_R.resize(n_I_R, PArrayManage);
+  for (int i = 0; i < n_I_R; ++i)
+    {
+      I_R.set(i,new MultiFab(grids,NUM_STATE,0));
+      (I_R[i]).setVal(0.0);
+    }
+
+  DofS.resize(n_DofS, PArrayManage);
+  for (int i = 0; i < n_DofS; ++i)
+    {
+      DofS.set(i,new MultiFab(grids,NUM_STATE,0));
+      (DofS[i]).setVal(0.0);
+    }
 
 }
 

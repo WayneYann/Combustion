@@ -47,6 +47,7 @@
 ***************
 * HeatTransfer.cpp
 ***************
+-Create advance_setup_sdc
 -Make do_sdc default to 0 and then read it in from the inputs file.
 -Added some commented out code testing out averating Ydot from both Strang calls
  to compute divu at the new time.  Causes seg faults if you uncomment.
@@ -55,5 +56,6 @@
 ***************
 * HeatTransfer.H
 ***************
+-Added header for advance_setup_sdc
 -Added static int do_sdc.
 -Added header for advance_sdc

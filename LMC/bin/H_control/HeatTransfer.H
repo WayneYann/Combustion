@@ -98,6 +98,14 @@ public:
                                 int  iteration,
                                 int  ncycle);
     //
+    // SDC specific setup
+    //
+    virtual void advance_setup_sdc (Real time,
+				    Real dt,
+				    int  iteration,
+				    int  ncycle);
+
+    //
     // Advance grids at this level in time.
     //
     virtual Real advance (Real time,
