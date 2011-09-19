@@ -735,6 +735,7 @@ c
      &     rhohnew, DIMS(rhohnew),
      &     rhoYold, DIMS(rhoYold), 
      &     rhohold, DIMS(rhohold),
+     &     const_src, DIMS(const_src),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
      &     dt,
@@ -751,12 +752,14 @@ c
       integer DIMDEC(rhohold)
       integer DIMDEC(rhoYnew)
       integer DIMDEC(rhohnew)
+      integer DIMDEC(const_src)
       integer DIMDEC(FuncCount)
       integer do_diag
       REAL_T rhoYold(DIMV(rhoYold),*)
       REAL_T rhohold(DIMV(rhohold))
       REAL_T rhoYnew(DIMV(rhoYnew),*)
       REAL_T rhohnew(DIMV(rhohnew))
+      REAL_T const_src(DIMV(const_src),*)
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
