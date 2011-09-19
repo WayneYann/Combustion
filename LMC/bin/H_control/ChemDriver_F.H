@@ -311,6 +311,7 @@ extern "C" {
 			   Real* Tnew, ARLIM_P(Tnlo), ARLIM_P(Tnhi),
 			   const Real* Yold, ARLIM_P(Yolo), ARLIM_P(Yohi),
 			   const Real* Told, ARLIM_P(Tolo), ARLIM_P(Tohi),
+			   const Real* const_src, ARLIM_P(cslo), ARLIM_P(cshi),
 			   Real* FuncCount, ARLIM_P(FuncCountlo), ARLIM_P(FuncCounthi),
 			   const Real* p, const Real* dt, Real* diag, const int* do_diag, 
 			   void (*sdc_func)(Real* vodeforce));
