@@ -171,11 +171,9 @@ Array<Real> HeatTransfer::typical_values;
 int HeatTransfer::do_sdc;
 int HeatTransfer::sdc_iters;
 
-MultiFab* const_src;
-PArray<MultiFab> I_R;
-PArray<MultiFab> DofS;
+MultiFab* const_src, I_R;
 
-const int n_I_R = 1;
+PArray<MultiFab> DofS;
 const int n_DofS = 3;
 ///////////////////////////////
 
@@ -5508,13 +5506,6 @@ HeatTransfer::advance_setup_sdc (Real time,
 				 int  ncycle)
 {
 
-  I_R.resize(n_I_R, PArrayManage);
-  for (int i = 0; i < n_I_R; ++i)
-    {
-      I_R.set(i,new MultiFab(grids,NUM_STATE,0));
-      (I_R[i]).setVal(0.0);
-    }
-
   DofS.resize(n_DofS, PArrayManage);
   for (int i = 0; i < n_DofS; ++i)
     {
@@ -7285,7 +7276,14 @@ HeatTransfer::compute_edge_states (Real              dt,
     for (int sigma=first_spec; sigma<=last_spec; ++sigma)
         do_predict[sigma] = false; // Will get these in a special way
     
-    do_predict[RhoH] = false; // Current thought is that we always predict Temp, RhoY and eval Rho, RhoH
+    if (do_sdc)
+    {
+      do_predict[Temp] = false; // For SDC, predict rhoh and rhoY, and construct rho = sum rhoY
+    }
+    else
+    {
+      do_predict[RhoH] = false; // Current thought is that we always predict Temp, RhoY and eval Rho, RhoH
+    }
 
     if (do_set_rho_to_species_sum)
     {
@@ -7478,6 +7476,13 @@ HeatTransfer::compute_edge_states (Real              dt,
 #endif		 
 				   Rho);
 
+	    // add I_R to forcing
+	    if (do_sdc)
+            {
+	      // set tforces += I_R for species components
+	      tforces.plus(I_R[i],S_fpi().box(),0,first_spec,nspecies);
+	    }
+
             for (int comp = 0 ; comp < nspecies ; comp++)
             {
                 int state_ind = first_spec + comp;
@@ -7569,6 +7574,11 @@ HeatTransfer::compute_edge_states (Real              dt,
             FArrayBox& vt = (do_mcdd ? visc_terms[first_spec][i] : visc_terms[state_ind][i] );
             int vtComp = (do_mcdd ? nspecies : 0 );
 
+	    if (do_sdc)
+            {
+	      BoxLib::Error("HeatTransfer.cpp: should not be predicting T with do_sdc=T");
+	    }
+
             NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,
 #ifdef GENGETFORCE
 				   prev_time,
@@ -7624,11 +7634,85 @@ HeatTransfer::compute_edge_states (Real              dt,
 
         if (compute_comp[RhoH])
         {
+	  if (do_sdc)
+          {
+            //
+            // Get rhoh edge states via extrap.
+            //
+            const int comp = 0;
+            const int state_ind = RhoH;
+            int use_conserv_diff = (advectionType[state_ind] == Conservative) ? true : false;
+            state.resize(S_fpi().box(),1);
+            state.copy(S_fpi(),state_ind,0,1);
+            FArrayBox& vt = (do_mcdd ? visc_terms[first_spec][i] : visc_terms[state_ind][i] );
+            int vtComp = (do_mcdd ? nspecies : 0 );
+
+            NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,
+#ifdef GENGETFORCE
+				   prev_time,
+#endif		 
+
+				   Rho);
+
+	    // add I_R to forcing
+	    if (do_sdc)
+            {
+	      // set tforces += I_R for species components
+	      tforces.plus(I_R[i],S_fpi().box(),comp,state_ind,1);
+	    }
+
+            Array<int> bc = getBCArray(State_Type,i,state_ind,1);
+
+            AdvectionScheme adv_scheme = FPU;
+
+            if (adv_scheme == PRE_MAC)
+            {
+                godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
+                                          vt, vtComp,
+                                          (*divu_fp)[i], Rho, use_conserv_diff);
+
+                int iconserv_dummy = 0;
+                godunov->edge_states(grids[i], dx, dt, velpred,
+                                     u_mac[0][i], edge[0],
+                                     u_mac[1][i], edge[1],
+#if (BL_SPACEDIM==3)
+                                     u_mac[2][i], edge[2],
+#endif
+                                     U, state, tforces, (*divu_fp)[i],
+                                     comp, state_ind, bc.dataPtr(),
+                                     iconserv_dummy, PRE_MAC);
+
+            }
+            else
+            {
+                FArrayBox junkDivu(tforces.box(),1);
+                junkDivu.setVal(0);
+                godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
+                                          vt, vtComp,
+                                          junkDivu, Rho, use_conserv_diff);
+
+                godunov->edge_states(grids[i], dx, dt, velpred,
+                                     u_mac[0][i], edge[0],
+                                     u_mac[1][i], edge[1],
+#if (BL_SPACEDIM==3)
+                                     u_mac[2][i], edge[2],
+#endif
+                                     U, state, tforces, (*divu_fp)[i],
+                                     comp, state_ind, bc.dataPtr(), 
+                                     use_conserv_diff, FPU);
+            }
+
+            for (int d=0; d<BL_SPACEDIM; ++d)
+                (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
+
+	  }
+	  else
+          {
             //
             // Set rhoh on edges = sum(rho.Y.H)
             //
             for (int d=0; d<BL_SPACEDIM; ++d)
-            {
+	      {
                 (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
                 h.resize(edge[d].box(),nspecies);
                 getChemSolve().getHGivenT(h,(*EdgeState[d])[i],
@@ -7639,8 +7723,10 @@ HeatTransfer::compute_edge_states (Real              dt,
                 (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
                 for (int comp=0; comp<nspecies; ++comp)
                     (*EdgeState[d])[i].plus(h,edge[d].box(),comp,RhoH,1);
-            }
-            this_edge_state_computed[RhoH] = true;
+	      }
+	  }
+
+	  this_edge_state_computed[RhoH] = true;
         }
         //
         // Now do the rest as normal
