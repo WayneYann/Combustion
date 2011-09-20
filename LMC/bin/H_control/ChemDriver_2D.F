@@ -766,7 +766,7 @@ c
 
       interface
          subroutine set_c_0_sdc(const_src)
-         REAL_T,  intent(in   ) :: const_src(0:)
+         REAL_T,  intent(in   ) :: const_src(1:)
          end subroutine set_c_0_sdc
       end interface
    
@@ -824,6 +824,9 @@ c     Set up ATOL
                
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
+
+           call set_c_0_simple_sdc(const_src(i,j,1))
+
            if(j.ge.0)then
 
             TT1 = zero

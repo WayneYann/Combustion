@@ -840,13 +840,17 @@ c      end do
 C
 C     Form governing equation
 C
+
+c     rhoh
+      ZP(1) = c_0(1)
+
+c     rhoY
       THFAC = one / thickFacCH
       do k=1,Nspec
          WDOT = WDOTS(k) * THFAC
          WT   = RPAR(NWT+k-1)
-         ZP(k+1) = WDOT * WT + c_0(k)
+         ZP(k+1) = WDOT * WT + c_0(k+1)
       end do
-      ZP(1) = c_0(Nspec+1)
 
 #if 0
       print*, 'Z:'
@@ -871,15 +875,16 @@ C
       implicit none
 #include "cdwrk.H"
 
-      REAL_T,  intent(in   ) :: const_src(0:)
+      REAL_T,  intent(in   ) :: const_src(1:)
 
       integer n
 
+C     rhoh
+      c_0(1) = const_src(1)
+
       do n=1,Nspec
-         c_0(n) = const_src(n-1)
+         c_0(n+1) = const_src(n+1)
       end do
-C     make for RhoH 
-      c_0(Nspec+1) = const_src(Nspec)
 
       end subroutine set_c_0_simple_sdc
 
