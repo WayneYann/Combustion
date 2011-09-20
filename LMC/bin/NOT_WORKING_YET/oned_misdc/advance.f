@@ -213,6 +213,9 @@ c     diagnostics only
       include 'spec.h'
       real*8  scal_new(-1:nx  ,nscal)
       real*8  scal_old(-1:nx  ,nscal)
+c     in the full LMC code, I_R only needs 0:maxspec components
+c     component 0 is for rhoh
+c     components 1:maxspec are for rhoX
       real*8   I_R_new(0:nx-1,0:maxspec)
       real*8    macvel(0 :nx  )
       real*8      aofs(0 :nx-1,nscal)
@@ -223,16 +226,43 @@ c     diagnostics only
       real*8 dx
       real*8 dt
       real*8 time
-      real*8 be_cn_theta
-      
+      real*8 be_cn_theta      
+
+ccccccccccccccccccccccccccccccccc
+c     SDC TEMPORARIES - I_R is also a temporary, but allocated above
+ccccccccccccccccccccccccccccccccc
+
+c     in the full LMC code, these are also called
+c     diff_old, diff_new, and diff_hat.
+c     they only contain 0:maxspec components
+c     component 0 is for rhoh
+c     components 1:maxspec are for rhoX
+c     differential diffusion terms for rhoh are stored elsewhere (see below)
       real*8        diff_old(0:nx-1,nscal)
       real*8        diff_new(0:nx-1,nscal)
       real*8        diff_hat(0:nx-1,nscal)
 
+c     in the full LMC code, these are called fluxNULN
+      real*8 spec_flux_lo(0:nx-1,maxspec)
+      real*8 spec_flux_hi(0:nx-1,maxspec)
+
+c     in the full LMC code, these are called
+c     div_fluxNULN_old, div_fluxNULN_new, div_fluxNULN_hat
+      real*8 diffdiff_old(0:nx-1)
+      real*8 diffdiff_new(0:nx-1)
+
+c     in the full LMC code, we only need const_src
+c     it will only contain 0:maxspec components
+c     component 0 is for rhoh
+c     components 1:maxspec are for rhoX
       real*8   const_src(0:nx-1,nscal)
       real*8 lin_src_old(0:nx-1,nscal)
       real*8 lin_src_new(0:nx-1,nscal)
       
+ccccccccccccccccccccccccccccccccc
+c     END SDC TEMPORARIES
+ccccccccccccccccccccccccccccccccc
+
       integer i,n
       
       real*8     alpha(0:nx-1)
@@ -240,12 +270,6 @@ c     diagnostics only
       real*8      dRhs(0:nx-1,0:maxspec)
       integer is, rho_flag
       integer misdc
-
-      real*8 spec_flux_lo(0:nx-1,maxspec)
-      real*8 spec_flux_hi(0:nx-1,maxspec)
-
-      real*8 diffdiff_old(0:nx-1)
-      real*8 diffdiff_new(0:nx-1)
       real*8 diffdiff_hat(0:nx-1)
 
       real*8 Y(maxspec)
