@@ -226,7 +226,12 @@ c     components 1:maxspec are for rhoX
       real*8 dx
       real*8 dt
       real*8 time
-      real*8 be_cn_theta      
+      real*8 be_cn_theta
+
+c     storage for conservatively corrected species flux for NULN rhoh diffusion term
+c     in the full LMC code, these are called fluxNULN
+      real*8 spec_flux_lo(0:nx-1,maxspec)
+      real*8 spec_flux_hi(0:nx-1,maxspec)
 
 ccccccccccccccccccccccccccccccccc
 c     SDC TEMPORARIES - I_R is also a temporary, but allocated above
@@ -241,10 +246,6 @@ c     differential diffusion terms for rhoh are stored elsewhere (see below)
       real*8        diff_old(0:nx-1,nscal)
       real*8        diff_new(0:nx-1,nscal)
       real*8        diff_hat(0:nx-1,nscal)
-
-c     in the full LMC code, these are called fluxNULN
-      real*8 spec_flux_lo(0:nx-1,maxspec)
-      real*8 spec_flux_hi(0:nx-1,maxspec)
 
 c     in the full LMC code, these are called
 c     div_fluxNULN_old, div_fluxNULN_new, div_fluxNULN_hat
