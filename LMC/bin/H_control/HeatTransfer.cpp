@@ -168,8 +168,13 @@ Array<Real> HeatTransfer::typical_values;
 
 ///////////////////////////////
 // SDC Stuff
+
+// these can be set in the inputs file
 int HeatTransfer::do_sdc;
 int HeatTransfer::sdc_iters;
+
+// all of the MultiFab*'s below are built in advance_setup_sdc
+// and deleted in ~HeatTransfer
 
 // forcing term for VODE
 MultiFab* const_src;
@@ -177,10 +182,15 @@ MultiFab* const_src;
 // estimate of reactions over time step
 MultiFab* I_R;
 
-// storage for diff_old, diff_new, and diff_hat
+// storage for rhoX and rhoh diffusion terms, excluding the NULN rhoh term
 MultiFab* diff_old;
 MultiFab* diff_new;
 MultiFab* diff_hat;
+
+// storage for NULN rhoh diffusion terms
+MultiFab* div_fluxNULN_old;
+MultiFab* div_fluxNULN_new;
+MultiFab* div_fluxNULN_hat;
 ///////////////////////////////
 
 #ifdef PARTICLES
@@ -846,6 +856,9 @@ HeatTransfer::~HeatTransfer ()
     delete diff_old;
     delete diff_new;
     delete diff_hat;
+    delete div_fluxNULN_old;
+    delete div_fluxNULN_new;
+    delete div_fluxNULN_hat;
 
 }
 
@@ -5553,6 +5566,27 @@ HeatTransfer::advance_setup_sdc (Real time,
   {
     diff_hat = new MultiFab(grids,nspecies+1,0);
     (*diff_hat).setVal(0.0);
+  }
+
+  // build div_fluxNULN_old - only one component
+  if (div_fluxNULN_old == 0)
+  {
+    div_fluxNULN_old = new MultiFab(grids,1,0);
+    (*div_fluxNULN_old).setVal(0.0);
+  }
+
+  // build div_fluxNULN_new - only one component
+  if (div_fluxNULN_new == 0)
+  {
+    div_fluxNULN_new = new MultiFab(grids,1,0);
+    (*div_fluxNULN_new).setVal(0.0);
+  }
+
+  // build div_fluxNULN_hat - only one component
+  if (div_fluxNULN_hat == 0)
+  {
+    div_fluxNULN_hat = new MultiFab(grids,1,0);
+    (*div_fluxNULN_hat).setVal(0.0);
   }
 
 }
