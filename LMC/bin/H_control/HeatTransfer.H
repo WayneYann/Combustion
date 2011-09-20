@@ -409,7 +409,6 @@ protected:
 
     virtual void strang_chem_sdc (MultiFab&  state,
 				  Real       dt,
-				  YdotAction Ydot_action,
 				  int        ngrow = 0);
 
     virtual void calcViscosity (const Real time,

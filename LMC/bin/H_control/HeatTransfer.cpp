@@ -7316,7 +7316,6 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 void
 HeatTransfer::strang_chem_sdc (MultiFab&  mf,
 			       Real       dt,
-			       YdotAction Ydot_action,
 			       int        ngrow)
 {
     //
@@ -7325,26 +7324,6 @@ HeatTransfer::strang_chem_sdc (MultiFab&  mf,
     // When ngrow>0 we're doing AuxBoundaryData with nGrow()==ngrow.
     //
     const Real strt_time = ParallelDescriptor::second();
-    //
-    // I intend that this function be called just prior to the Godunov
-    // extrapolation step for species and temperature (i.e. with FillPatched
-    // data in the valid and grow cells), or just after other processes to
-    // finish the chem evolve  Here, we:
-    //
-    //  (1) Carry out the Strang-split chemistry advance (for half time step).
-    //
-    //  (2) [potentially] Estimate, or improve the value of ydot.
-    //       For improving ydot, it is assumed that ydot presently holds the
-    //       effective changes in mass fraction, in terms of a rate computed
-    //       over the second half of the timestep prior.  We can center that
-    //       estimate by averaging with the effective rate over this first half
-    // Note:
-    //   The dt passed in is the full time step for this level ... and
-    //   mf is in State_Type ordering, but starts at the scalars.
-    //
-    const int rho_comp  = Density; // mf and State_Type completely aligned here
-    const int rhoycomp  = first_spec - Density + rho_comp;
-    const int rhohcomp  = RhoH - Density + rho_comp;
 
     if (hack_nochem)
     {
@@ -7378,7 +7357,7 @@ HeatTransfer::strang_chem_sdc (MultiFab&  mf,
                     chemDiag = &( (*auxDiag["REACTIONS"])[Smfi] );
                 }
 
-                getChemSolve().solveTransient_sdc(fb,fb,fb,fb,fd,fe,fc,bx,rhoycomp,rhohcomp,dt,Patm,chemDiag);
+                getChemSolve().solveTransient_sdc(fb,fb,fb,fb,fd,fe,fc,bx,first_spec,RhoH,dt,Patm,chemDiag);
             }
             //
             // When ngrow>0 this does NOT properly update FuncCount_Type since parallel
@@ -7412,7 +7391,7 @@ HeatTransfer::strang_chem_sdc (MultiFab&  mf,
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::strang_chem time: " << run_time << '\n';
+            std::cout << "HeatTransfer::strang_chem_sdc time: " << run_time << '\n';
     }
 }
 
