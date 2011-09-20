@@ -407,7 +407,8 @@ protected:
 			      YdotAction Ydot_action,
                               int        ngrow = 0);
 
-    virtual void strang_chem_sdc (MultiFab&  state,
+    virtual void strang_chem_sdc (MultiFab&  state_old,
+				  MultiFab&  state_new,
 				  Real       dt,
 				  int        ngrow = 0);
 

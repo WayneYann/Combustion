@@ -6408,14 +6408,6 @@ HeatTransfer::advance_sdc (Real time,
             tmpFABs.copy(tmpS_old);
         }
 
-        strang_chem(S_old,  dt,HT_LeaveYdotAlone);
-        strang_chem(tmpFABs,dt,HT_LeaveYdotAlone,ngrow);
-
-	/* attempt at averaging both omegadot calls doesn't work - causes SEG faults
-	strang_chem(S_old,  dt,HT_EstimateYdotNew);
-	strang_chem(tmpFABs,dt,HT_EstimateYdotNew,ngrow);
-	*/
-
         aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
     }
     //
@@ -6597,11 +6589,7 @@ HeatTransfer::advance_sdc (Real time,
         }
     }
 
-    strang_chem(S_new,dt,HT_EstimateYdotNew);
-
-    /* attempt at averaging both omegadot calls doesn't work - causes SEG faults
-    strang_chem(S_new,dt,HT_ImproveYdotOld);
-    */
+    strang_chem_sdc(S_new,S_old,dt);
 
     if (plot_consumption)
     {
@@ -7314,7 +7302,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 }
 
 void
-HeatTransfer::strang_chem_sdc (MultiFab&  mf,
+HeatTransfer::strang_chem_sdc (MultiFab&  mf_old,
+			       MultiFab&  mf_new,
 			       Real       dt,
 			       int        ngrow)
 {
@@ -7341,23 +7330,24 @@ HeatTransfer::strang_chem_sdc (MultiFab&  mf,
         {
 	    MultiFab tmp;
 
-            tmp.define(mf.boxArray(), 1, 0, mf.DistributionMap(), Fab_allocate);
+            tmp.define(mf_old.boxArray(), 1, 0, mf_old.DistributionMap(), Fab_allocate);
 
-            for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi)
+            for (MFIter Smfi(mf_old); Smfi.isValid(); ++Smfi)
             {
-                FArrayBox& fb = mf[Smfi];
+       	        FArrayBox& fa = mf_new[Smfi];
+                FArrayBox& fb = mf_old[Smfi];
                 const Box& bx = Smfi.validbox();
 		FArrayBox& fc = tmp[Smfi];
 		FArrayBox& fd = (*const_src)[Smfi];
 		FArrayBox& fe = (*I_R)[Smfi];
 
                 if (plot_reactions &&
-                    BoxLib::intersect(mf.boxArray(),auxDiag["REACTIONS"]->boxArray()).size() != 0)
+                    BoxLib::intersect(mf_old.boxArray(),auxDiag["REACTIONS"]->boxArray()).size() != 0)
                 {
                     chemDiag = &( (*auxDiag["REACTIONS"])[Smfi] );
                 }
 
-                getChemSolve().solveTransient_sdc(fb,fb,fb,fb,fd,fe,fc,bx,first_spec,RhoH,dt,Patm,chemDiag);
+                getChemSolve().solveTransient_sdc(fa,fa,fb,fb,fd,fe,fc,bx,first_spec,RhoH,dt,Patm,chemDiag);
             }
             //
             // When ngrow>0 this does NOT properly update FuncCount_Type since parallel
@@ -7371,13 +7361,13 @@ HeatTransfer::strang_chem_sdc (MultiFab&  mf,
 	  BoxLib::Error("HeatTransfer.cpp: do_not_use_funccount = F not supported yet for SDC");
         }
 
-        for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi) {
+        for (MFIter Smfi(mf_new); Smfi.isValid(); ++Smfi) {
 #ifdef DO_JBB_HACK_POST
             const Box& box = Smfi.validbox();
-            getChemSolve().getHmixGivenTY(mf[Smfi],mf[Smfi],mf[Smfi],box,Temp,first_spec,RhoH);
+            getChemSolve().getHmixGivenTY(mf_new[Smfi],mf_new[Smfi],mf_new[Smfi],box,Temp,first_spec,RhoH);
             const Real Patm = p_amb / P1atm_MKS;
-            getChemSolve().getRhoGivenPTY(mf[Smfi],Patm,mf[Smfi],mf[Smfi],box,Temp,first_spec,Density);
-            mf[Smfi].mult(mf[Smfi],box,Density,RhoH,1);
+            getChemSolve().getRhoGivenPTY(mf_new[Smfi],Patm,mf_new[Smfi],mf_new[Smfi],box,Temp,first_spec,Density);
+            mf_new[Smfi].mult(mf_new[Smfi],box,Density,RhoH,1);
 #endif
         }
 
