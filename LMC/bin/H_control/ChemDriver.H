@@ -32,6 +32,7 @@ public:
 			     const FArrayBox&  Yold,
 			     const FArrayBox&  Told,
 			     const FArrayBox&  const_src,
+			     FArrayBox&        I_R,
 			     FArrayBox&        FuncCount,
 			     const Box&        box,
 			     int               sCompY,

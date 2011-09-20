@@ -731,11 +731,12 @@ c
       end
 
       subroutine FORT_CONPSOLV_SDC(lo, hi,
-     &     rhoYnew, DIMS(rhoYnew), 
-     &     rhohnew, DIMS(rhohnew),
-     &     rhoYold, DIMS(rhoYold), 
-     &     rhohold, DIMS(rhohold),
+     &     rhoYnew,   DIMS(rhoYnew), 
+     &     rhohnew,   DIMS(rhohnew),
+     &     rhoYold,   DIMS(rhoYold), 
+     &     rhohold,   DIMS(rhohold),
      &     const_src, DIMS(const_src),
+     &     I_R,       DIMS(I_R),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
      &     dt,
@@ -753,6 +754,7 @@ c
       integer DIMDEC(rhoYnew)
       integer DIMDEC(rhohnew)
       integer DIMDEC(const_src)
+      integer DIMDEC(I_R)
       integer DIMDEC(FuncCount)
       integer do_diag
       REAL_T rhoYold(DIMV(rhoYold),*)
@@ -760,6 +762,7 @@ c
       REAL_T rhoYnew(DIMV(rhoYnew),*)
       REAL_T rhohnew(DIMV(rhohnew))
       REAL_T const_src(DIMV(const_src),*)
+      REAL_T I_R(DIMV(I_R),*)
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
@@ -1013,6 +1016,16 @@ c
                rhoYnew(i,j,m) = rhoYres(m)
             end do
 #endif
+
+c     compute I_R
+c     I_R for rhoh should be zero
+            I_R(i,j,1) = ( rhohnew(i,j) - rhohold(i,j) ) /dt - c_0(1)
+
+c     I_R for rhoY
+            do m=1,Nspec
+               I_R(i,j,m+1) = (rhoYnew(i,j,m) - rhoYold(i,j,m)) / dt 
+     &              - c_0(m+1)
+            end do
 
 #ifdef SOLN_IS_1D
          endif
