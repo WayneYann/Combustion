@@ -6278,7 +6278,7 @@ HeatTransfer::advance_sdc (Real time,
 
     if (verbose && ParallelDescriptor::IOProcessor())
     {
-        std::cout << "Advancing level "    << level
+        std::cout << "SDC Advancing level " << level
                   << " : starting time = " << time
                   << " with dt = "         << dt << '\n';
     }
@@ -6309,7 +6309,7 @@ HeatTransfer::advance_sdc (Real time,
     showMF("mac",u_mac[2],"adv_umac2",level);
 #endif
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "HeatTransfer::advance(): at start of time step\n";
+        std::cout << "HeatTransfer::advance_sdc(): at start of time step\n";
 
     temperature_stats(S_old);
 
@@ -6336,40 +6336,10 @@ HeatTransfer::advance_sdc (Real time,
     // Set old-time boundary data for RhoH
     // 
     set_overdetermined_boundary_cells(time);
-    //
-    // Advance the old state for a Strang-split dt/2.  Include grow cells in
-    // advance, and squirrel these away for diffusion and Godunov guys to
-    // access for overwriting non-advanced fill-patched grow cell data.
-    //
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... advancing chem\n";
 
     BL_ASSERT(S_new.boxArray() == S_old.boxArray());
 
     const int nComp = NUM_STATE - BL_SPACEDIM;
-    Array<int> consumptionComps; // Put in scope for work below
-    if (plot_consumption)
-    {
-        //
-        // Save off a copy of the pre-chem state
-        //
-        consumptionComps.resize(consumptionName.size());
-        for (int j=0; j<consumptionComps.size(); ++j)
-        {
-            consumptionComps[j] = getChemSolve().index(consumptionName[j]) + first_spec;
-            auxDiag["CONSUMPTION"]->copy(S_old,consumptionComps[j],j,1);
-        }
-    }
-
-    MultiFab Qtmp; // Put in scope for work below
-    if (plot_heat_release)
-    {
-        //
-        // Save off a copy of the pre-chem state
-        //
-        Qtmp.define(grids,getChemSolve().numSpecies(),0,Fab_allocate);
-        MultiFab::Copy(Qtmp,S_old,first_spec,0,Qtmp.nComp(),0);
-    }
     //
     // Build a MultiFab parallel to "fabs".  Force it to have the
     // same distribution as aux_boundary_data_old.  This'll cut out a
@@ -6410,32 +6380,6 @@ HeatTransfer::advance_sdc (Real time,
 
         aux_boundary_data_old.copyFrom(tmpFABs,BL_SPACEDIM,0,nComp);
     }
-    //
-    // Find change due to first Strang step.
-    //
-    if (plot_consumption)
-    {
-        MultiFab tmp(auxDiag["CONSUMPTION"]->boxArray(),consumptionComps.size(),0);
-        tmp.setVal(0);
-        for (int j=0; j<consumptionComps.size(); ++j)
-        {
-            tmp.copy(S_old,consumptionComps[j],j,1);
-        }
-        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
-        {
-            (*auxDiag["CONSUMPTION"])[mfi].minus(tmp[mfi],0,0,consumptionComps.size());
-        }
-    }
-    if (plot_heat_release)
-    {
-        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
-        {
-            Qtmp[mfi].minus(S_old[mfi],first_spec,0,Qtmp.nComp());
-        }
-    }
-
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "HeatTransfer::advance(): after first Strang step\n";
 
     temperature_stats(S_old);
     //
@@ -6448,6 +6392,11 @@ HeatTransfer::advance_sdc (Real time,
     //
     const int nScalDiffs = NUM_STATE-BL_SPACEDIM-1;
     calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+
+    // 
+    // SDC Thermodynamic Advance - Predictor
+    //
+
     //
     // Godunov-extrapolate states to cell edges
     //
@@ -6554,86 +6503,40 @@ HeatTransfer::advance_sdc (Real time,
         rhoh_update(time,dt,corrector);
         RhoH_to_Temp(S_new); 
     }
-    //
-    // Second half of Strang-split chemistry (first half done in
-    // compute_edge_states) This takes new-time data, and returns new-time
-    // data, as well as providing a predicted Ydot for the velocity
-    // constraint.  We write the result over the new state, but only care
-    // about stuff in the valid region.
-    //
+
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "HeatTransfer::advance(): after scalar_update\n";
+        std::cout << "HeatTransfer::advance_sdc(): after predictor A/D update\n";
 
     temperature_stats(S_new);
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... advancing chem\n";
-    //
-    // Adjust chemistry diagnostic before and after reactions.
-    //
     if (plot_consumption)
     {
-        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
-        {
-            for (int j=0; j<consumptionComps.size(); ++j)
-            {
-                (*auxDiag["CONSUMPTION"])[mfi].plus(S_new[mfi],consumptionComps[j],j,1);
-            }
-        }
+      BoxLib::Error("HeatTransfer.cpp: plot_consumption = T not supported yet for SDC");
     }
     if (plot_heat_release)
     {
-        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
-        {
-            Qtmp[mfi].plus(S_new[mfi],first_spec,0,Qtmp.nComp());
-        }
+      BoxLib::Error("HeatTransfer.cpp: plot_heat_release = T not supported yet for SDC");
     }
 
+    if (verbose && ParallelDescriptor::IOProcessor())
+	std::cout << "HeatTransfer::advance_sdc(): before predictor chemistry solve\n";
+    //
+    // Strang-split chemistry.  This takes old-time data, and returns new-time
+    // data, as well as computing I_R.  We do not compute Ydot anymore,
+    // and need to compute a Ydot later for the final projection.
+    // We write the result over the new state, but only care
+    // about stuff in the valid region.
+    //
     strang_chem_sdc(S_new,S_old,dt);
 
-    if (plot_consumption)
-    {
-        for (MFIter mfi(*auxDiag["CONSUMPTION"]); mfi.isValid(); ++mfi)
-        {
-            for (int j=0; j<consumptionComps.size(); ++j)
-            {
-                (*auxDiag["CONSUMPTION"])[mfi].minus(S_new[mfi],consumptionComps[j],j,1);
-            }
-            (*auxDiag["CONSUMPTION"])[mfi].mult(1.0/dt);
-        }
-    }
-    if (plot_heat_release)
-    {
-        FArrayBox enthi, T;
-        for (MFIter mfi(Qtmp); mfi.isValid(); ++mfi)
-        {
-            Qtmp[mfi].minus(S_new[mfi],first_spec,0,Qtmp.nComp());
-            Qtmp[mfi].mult(1.0/dt);
+    if (verbose && ParallelDescriptor::IOProcessor())
+	std::cout << "HeatTransfer::advance_sdc(): after predictor chemistry solve\n";
 
-            const Box& box = mfi.validbox();
-            T.resize(mfi.validbox(),1);
-            T.setVal(298.15);
-
-            enthi.resize(mfi.validbox(),Qtmp.nComp());
-            getChemSolve().getHGivenT(enthi,T,box,0,0);
-
-            // Form heat release
-            (*auxDiag["HEATRELEASE"])[mfi].setVal(0.);
-            for (int j=0; j<Qtmp.nComp(); ++j)
-            {
-                Qtmp[mfi].mult(enthi,j,j,1);
-                (*auxDiag["HEATRELEASE"])[mfi].plus(Qtmp[mfi],j,0,1);
-            }
-        }
-    }
     //
     //  HACK!!  What are we really supposed to do here?
     //  Deactivate hook in FillPatch hack so that old data really is old data again
     //
     FillPatchedOldState_ok = true;
-
-    if (verbose && ParallelDescriptor::IOProcessor())
-	std::cout << "HeatTransfer::advance(): after second Strang-split step\n";
     
     temperature_stats(S_new);
     //
@@ -6648,6 +6551,62 @@ HeatTransfer::advance_sdc (Real time,
     // not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
     //
     setThermoPress(cur_time);
+
+    // 
+    // SDC Thermodynamic Advance - Corrector
+    //
+    for (int iter=0; iter<sdc_iters; iter++)
+      {
+	// AJN - I'd recommend implementing and testing the predictor before writing
+	// the corrector.  The algorithm should still work reasonable well, and the
+	// corrector is essentially the same thing as the predictor, with
+	// the following changes:
+	//
+	// 1.  Godunov extrapolation has updated I_R forcing.  You should be able to
+	//     just recall compute_edge_states since I_R should have been updated.
+	//
+	// 2.  Diffusion solves have a different RHS, and also are not Crank-Nicolson
+	//     solves anymore, but backward-Euler correction equations.
+	//
+	// 3.  The forcing term in VODE needs to be updated, and recast as a correction
+	//     equation, similar to how the RHS changed in the diffusion solves.
+	//
+
+	if (verbose && ParallelDescriptor::IOProcessor())
+	  std::cout << "HeatTransfer::advance_sdc(): before corrector chemistry solve\n";
+	//
+	// Strang-split chemistry.  This takes old-time data, and returns new-time
+	// data, as well as computing I_R.  We do not compute Ydot anymore,
+	// and need to compute a Ydot later for the final projection.
+	// We write the result over the new state, but only care
+	// about stuff in the valid region.
+	//
+	strang_chem_sdc(S_new,S_old,dt);
+	
+	if (verbose && ParallelDescriptor::IOProcessor())
+	  std::cout << "HeatTransfer::advance_sdc(): after corrector chemistry solve\n";
+
+	//
+	//  HACK!!  What are we really supposed to do here?
+	//  Deactivate hook in FillPatch hack so that old data really is old data again
+	//
+	FillPatchedOldState_ok = true;
+    
+	temperature_stats(S_new);
+	//
+	// S appears in rhs of the velocity update, so we better do it now.
+	// (be sure to use most recent version of state to get
+	// viscosity/diffusivity).
+	//
+	calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
+	//
+	// Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
+	// the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
+	// not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
+	//
+	setThermoPress(cur_time);
+
+      }
 
     calc_divu(time+dt, dt, get_new_data(Divu_Type));
 
