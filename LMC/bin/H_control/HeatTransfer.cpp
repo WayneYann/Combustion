@@ -5867,7 +5867,7 @@ HeatTransfer::advance (Real time,
         strang_chem(S_old,  dt,HT_LeaveYdotAlone);
         strang_chem(tmpFABs,dt,HT_LeaveYdotAlone,ngrow);
 
-	/* doesn't work
+	/* attempt at averaging both omegadot calls doesn't work - causes SEG faults
 	strang_chem(S_old,  dt,HT_EstimateYdotNew);
 	strang_chem(tmpFABs,dt,HT_EstimateYdotNew,ngrow);
 	*/
@@ -6055,7 +6055,7 @@ HeatTransfer::advance (Real time,
 
     strang_chem(S_new,dt,HT_EstimateYdotNew);
 
-    /* doesn't work
+    /* attempt at averaging both omegadot calls doesn't work - causes SEG faults
     strang_chem(S_new,dt,HT_ImproveYdotOld);
     */
 
@@ -6377,7 +6377,7 @@ HeatTransfer::advance_sdc (Real time,
         strang_chem(S_old,  dt,HT_LeaveYdotAlone);
         strang_chem(tmpFABs,dt,HT_LeaveYdotAlone,ngrow);
 
-	/* doesn't work
+	/* attempt at averaging both omegadot calls doesn't work - causes SEG faults
 	strang_chem(S_old,  dt,HT_EstimateYdotNew);
 	strang_chem(tmpFABs,dt,HT_EstimateYdotNew,ngrow);
 	*/
@@ -6565,7 +6565,7 @@ HeatTransfer::advance_sdc (Real time,
 
     strang_chem(S_new,dt,HT_EstimateYdotNew);
 
-    /* doesn't work
+    /* attempt at averaging both omegadot calls doesn't work - causes SEG faults
     strang_chem(S_new,dt,HT_ImproveYdotOld);
     */
 
