@@ -171,10 +171,16 @@ Array<Real> HeatTransfer::typical_values;
 int HeatTransfer::do_sdc;
 int HeatTransfer::sdc_iters;
 
-MultiFab* const_src, I_R;
+// forcing term for VODE
+MultiFab* const_src;
 
-PArray<MultiFab> DofS;
-const int n_DofS = 3;
+// estimate of reactions over time step
+MultiFab* I_R;
+
+// storage for diff_old, diff_new, and diff_hat
+MultiFab* diff_old;
+MultiFab* diff_new;
+MultiFab* diff_hat;
 ///////////////////////////////
 
 #ifdef PARTICLES
@@ -833,6 +839,14 @@ HeatTransfer::~HeatTransfer ()
     {
         delete it->second;
     }
+
+    // SDC cleanup
+    delete const_src;
+    delete I_R;
+    delete diff_old;
+    delete diff_new;
+    delete diff_hat;
+
 }
 
 void
@@ -5506,12 +5520,40 @@ HeatTransfer::advance_setup_sdc (Real time,
 				 int  ncycle)
 {
 
-  DofS.resize(n_DofS, PArrayManage);
-  for (int i = 0; i < n_DofS; ++i)
-    {
-      DofS.set(i,new MultiFab(grids,NUM_STATE,0));
-      (DofS[i]).setVal(0.0);
-    }
+  // I_R - just enough space for rhoh and rhoY
+  if (I_R == 0)
+  {
+    I_R = new MultiFab(grids,nspecies+1,0);
+    (*I_R).setVal(0.0);
+  }
+
+  // build const_src - just enough space for rhoh and rhoY
+  if (const_src == 0)
+  {
+    const_src = new MultiFab(grids,nspecies+1,0);
+    (*const_src).setVal(0.0);
+  }
+
+  // build diff_old - just enough space for rhoh and rhoY
+  if (diff_old == 0)
+  {
+    diff_old = new MultiFab(grids,nspecies+1,0);
+    (*diff_old).setVal(0.0);
+  }
+
+  // build diff_new - just enough space for rhoh and rhoY
+  if (diff_new == 0)
+  {
+    diff_new = new MultiFab(grids,nspecies+1,0);
+    (*diff_new).setVal(0.0);
+  }
+
+  // build diff_hat - just enough space for rhoh and rhoY
+  if (diff_hat == 0)
+  {
+    diff_hat = new MultiFab(grids,nspecies+1,0);
+    (*diff_hat).setVal(0.0);
+  }
 
 }
 
@@ -6208,6 +6250,7 @@ HeatTransfer::advance_sdc (Real time,
     }
 
     advance_setup(time,dt,iteration,ncycle);
+    advance_setup_sdc(time,dt,iteration,ncycle);
 
     if (do_check_divudt)
         checkTimeStep(dt);
@@ -7480,7 +7523,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 	    if (do_sdc)
             {
 	      // set tforces += I_R for species components
-	      tforces.plus(I_R[i],S_fpi().box(),0,first_spec,nspecies);
+	      tforces.plus((*I_R)[i],S_fpi().box(),0,first_spec,nspecies);
 	    }
 
             for (int comp = 0 ; comp < nspecies ; comp++)
@@ -7658,7 +7701,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 	    if (do_sdc)
             {
 	      // set tforces += I_R for species components
-	      tforces.plus(I_R[i],S_fpi().box(),comp,state_ind,1);
+	      tforces.plus((*I_R)[i],S_fpi().box(),comp,state_ind,1);
 	    }
 
             Array<int> bc = getBCArray(State_Type,i,state_ind,1);
