@@ -1,61 +1,84 @@
-***************
-* inputs.2dcontrol_sdc
-***************
--Same as inputs.2dcontrol, but amr.max_level=0 and ns.do_sdc=1.
+Strategy: In SDC there is a predictor followed by SDC corrections.  The goal here is to first write the 
+code for the predictor, since it should work just fine as long as you keep the CFL reasonable small 
+(around 0.25?).  Recall that the predictor does the following steps:
 
-***************
-* cdwrk.H
-***************
--Added c_0(maxspec+1) to the newly created sdc_interp_coef common block.
+(See Papers/SDC/LMC for super specific details)
 
+1.  Compute advection terms with explicit viscous forcing and lagged reaction forcing (the "I_R" term,
+    which only needs to be added for the rhoY equation since I_R for rhoh should be zero).
+2.  Update density.
+3.  Update rhoY.  The diffusion solve is Crank-nicolson, except that it uses t^n coefficients.
+4.  Update rhoH.  The diffusion solve is Crank-nicolson, where the time-advanced differential diffusion 
+    come from the time-advanced species, but all coefficients in the solve are at t^n.
+5.  Call the chemistry.
 
-***************
-* ChemDriver_2D.F
-***************
--Copied subroutine FORT_CONPSOLV to FORT_CONPSOLV_SDC.
-  -Changed the DVODE call to use conpFY_sdc rather than conpFY
-  -Set up sdc_func interface to set RHS
-  -Change inputs to reflect how we are updated rhoY and rhoh instead of Y and T
+The corrector looks almost the same, except for the following.
 
-***************
-* ChemDriver.cpp
-***************
--Copied ChemDriver::solveTransient to ChemDriver::solveTransient_sdc
-  -Modified to call FORT_CONPSOLV_SDC rather than FORT_CONPSOLV
-    -Pass in set_c_0_simple_sdc interface for RHS.
-    -Change inputs to reflect how we are updated rhoY and rhoh instead of Y and T
+1.  Same as above, just make sure you update the forcing to reflect the updated I_R.
+2.  Same as above.
+3.  Same as above, but the solve is actually backward-Euler with a correction term appearing in the RHS.
+    Also, the time-advanced coefficients come from the end of the predictor (or previous SDC iteration).
+4.  Same as above, but the solve is actually backward-Euler with a correction term appearing in the RHS.
+    Also, the time-advanced coefficients come from the end of the predictor (or previous SDC iteration).
+5.  Same as above, but the forcing is modified to includ the correction terms.
 
-***************
-* ChemDriver_F.F
-***************
--Copied subroutine conpFY to conpFY_sdc.
-  -Modified to compute ZP for rhoh and rhoY with reaction term and 
-   piecewise-constant advection-diffusion term, c_0.
--Created subroutine set_c_0_simple_sdc, which sets c_0 for the VODE solve.
+As mentioned above, I haven't worked on corrector-specific changes yet, but here's a checklist of things 
+I think need to be done for the predictor, and a current status.  I haven't actually written the code
+to piece together the changes in sdc_advance(), but the items below are in preparation for that.
 
-***************
-* ChemDriver_F.H
-***************
--Added headers for FORT_CONPSOLV_SDC and set_c_0_simple_sdc
+***************************
+Item: Make "do_sdc" and "sdc_iters" part of the HeatTransfer class.
 
-***************
-* ChemDriver.H
-***************
--Added header for ChemDriver::solveTransient_sdc
+Status: Done.  You can set them in the inputs file as well.  The defaults are do_sdc=0 and sdc_iters=1.
+	There is also an inputs.2dcontrol_sdc, which is a copy of inputs.2dcontrol, except it does not
+	use AMR, and do_sdc is set to 1.
+***************************
+Item: Declare and build SDC temporary multifabs that I *think* we'll need.
 
+Status: The temporary multifabs, "const_src, I_R, diff_old/new/hat, div_fluxNULN_old/new/hat" are 
+        declared in HeatTransfer.cpp and built in HeatTransfer::advance_setup_sdc().  The
+	const_src, I_R, and diff_old/new/hat multifabs are built with nspecies+1 components, with
+	the intention being that the 0th component is for rhoh, and 1:nspecies components are
+	for rhoY.  The div_fluxNULN_old/new/hat are built with only 1 component.  The multifabs
+	are destroyed in ~HeatTransfer().
+***************************
+Item: Reconfigure Godunov to predict rhoY and rhoh to edges.
 
-***************
-* HeatTransfer.cpp
-***************
--Create advance_setup_sdc
--Make do_sdc default to 0 and then read it in from the inputs file.
--Added some commented out code testing out averating Ydot from both Strang calls
- to compute divu at the new time.  Causes seg faults if you uncomment.
--Created advance_sdc, which for now is a copy of advance.
+Status: In HeatTransfer::compute_edge_states(), the "do_sdc" flag controls whether you predict Temp
+	or RhoH.  I also had to add code to predict RhoH, since in the original code, RhoH on edges
+	was computed with the EOS.  Now it does the Godunov thing.  I'm not sure if the viscous
+	forcing for RhoH edge prediction is set up correctly yet.
+***************************
+Item: Add I_R forcing for species edge-state prediction.
 
-***************
-* HeatTransfer.H
-***************
--Added header for advance_setup_sdc
--Added static int do_sdc.
--Added header for advance_sdc
+Status: Done.  In HeatTransfer::compute_edge_states(), grep for "I_R" to make sure this is implemented
+	correctly.
+***************************
+Item: After the rhoY advective update, add dt*I_R to the new state so it will be included in the 
+      RHS for the diffusion solve.
+
+Status: Done.  In HeatTransfer::spec_update(), grep for "I_R" to make sure this is implemented
+	correctly.
+***************************
+Item: Reconfigure VODE to solve a rhoY and rhoh equation instead of a Y and T equation
+
+Status: In ChemDriver_2D.F, there is a subroutine FORT_CONPSOLV_SDC that calls conpFY_sdc (also
+	in ChemDriver_F.F)  The input Z is not rhoh and rhoY.  
+	-FORT_CONPSOLVE_SDC does the the same thing as FORT_CONPSOLVE except:
+	  1.  Calls set_c_0_simple_sdc (which is in ChemDriver_F.F) to set c_0 to const_src
+	  2.  Works in terms of rhoh and rhoY, but the details of this are really handled
+	      within conpFY_sdc
+	  3.  Computes I_R
+	-conpFY_sdc does the follwoing:
+	  1.  Compute rho = sum(rhoY)
+	  2.  Convert rhoY to Y
+	  3.  Compute T = T(h,Y)
+	  4.  Compute C = C(Y,T)
+	  5.  Compute Wdot = Wdot(C,T)
+	  6.  Set ZP(rhoh) = c_0(1)
+	  7.  Set ZP(rhoY) = Wdot * THFAC * WT + c_0(rhoY)
+	-There is a new function ChemDriver::solveTransient_sdc() that calls FORT_CONPSOLV_SDC,
+	which in turn calls conpFY_sdc.
+	-c_0 is now in the sdc_interp_coef common block in cdwrk.H
+	-HeatTransfer::strang_chem_sdc() calls the solveTransient_sdc()
+***************************
