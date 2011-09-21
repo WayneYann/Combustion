@@ -7762,12 +7762,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 
 				   Rho);
 
-	    // add I_R to forcing
-	    if (do_sdc)
-            {
-	      // set tforces += I_R for species components
-	      tforces.plus((*I_R)[i],S_fpi().box(),comp,state_ind,1);
-	    }
+	    // I_R for rhoh should be zero, thus you don't have to add it to the forcing
 
             Array<int> bc = getBCArray(State_Type,i,state_ind,1);
 
@@ -8310,7 +8305,8 @@ HeatTransfer::rhoh_update (Real time,
 {
     //
     // Do implicit c-n solve for RhoH
-    //
+    // NOTE: for sdc, I_R for rhoh is zero so we don't have to add it to S_new before
+    // viscous solve, as we do for species.
     scalar_update(dt,RhoH,RhoH,corrector);
 }
 
@@ -8318,6 +8314,11 @@ void
 HeatTransfer::temp_update (Real dt,
                            int  corrector) 
 {
+    if (do_sdc)
+    {
+      BoxLib::Error("HeatTransfer.cpp::temp_update - should not be here if do_sdc = T");
+    }
+
     //
     // Do implicit c-n solve for temperature.
     //
@@ -8333,6 +8334,20 @@ HeatTransfer::spec_update (Real time,
     // Do implicit c-n solve for rho*Y_l, l=0,nspecies-1.
     //
     scalar_advection_update(dt, first_spec, last_spec);
+
+    // add dt*I_R to S_new
+    if (do_sdc)
+    {
+      MultiFab& S_new = get_new_data(State_Type);
+
+      // I_R isn't used again after this until you recompute it in the chemistry,
+      // so we can scale it by dt here
+      for (MFIter mfi(*I_R); mfi.isValid(); ++mfi)
+        {
+	  (*I_R)[mfi].mult(dt,mfi.validbox(),0,nspecies+1);
+	  S_new[mfi].plus((*I_R)[mfi],mfi.validbox(),first_spec,1,nspecies);
+	}
+    }
 	    
     if (unity_Le)
     {
@@ -8342,6 +8357,7 @@ HeatTransfer::spec_update (Real time,
     {
         differential_spec_diffusion_update(dt, corrector);
     }
+
     //
     // Enforce sum_l rho U Y_l equals rho.
     //
