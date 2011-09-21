@@ -6300,8 +6300,6 @@ HeatTransfer::advance_sdc (Real time,
     //
     Real dt_test = 0.0, dummy = 0.0;    
     dt_test = predict_velocity(dt,dummy);
-
-
     
     showMF("mac",u_mac[0],"adv_umac0",level);
     showMF("mac",u_mac[1],"adv_umac1",level);
@@ -6387,15 +6385,14 @@ HeatTransfer::advance_sdc (Real time,
     //
     FillPatchedOldState_ok = false;
     //
-    // Compute tn coeffs based on chem-advance tn data
-    //  (these are used in the Godunov extrapolation)
+    // Compute t^n coeffs 
     //
     const int nScalDiffs = NUM_STATE-BL_SPACEDIM-1;
     calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs);
 
-    // 
+    /////////////////////////////////////////
     // SDC Thermodynamic Advance - Predictor
-    //
+    /////////////////////////////////////////
 
     //
     // Godunov-extrapolate states to cell edges
@@ -6456,58 +6453,20 @@ HeatTransfer::advance_sdc (Real time,
     if (do_mom_diff == 1)
 	momentum_advection(dt,do_reflux);
     //
-    // Update energy and species.
+    // Compute A and D terms for VODE forcing
     //
-    if (do_mcdd)
-    {
-        scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // RhoH aofs, already did others
-        mcdd_update(time,dt);
-    }
-    else
-    {
-        //
-        // Predictor
-        //
-        int corrector = 0;
-        //
-        // Set tnp1 coeffs to tn values in first round of predictor
-        //
-        MultiFab::Copy(*diffnp1_cc,*diffn_cc,0,0,nScalDiffs,diffn_cc->nGrow());
-        temp_update(dt,corrector);         // Here, predict n+1 coeffs using n coeffs
-        temperature_stats(S_new);
-        
-        calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
-        spec_update(time,dt,corrector);
-        
-        set_overdetermined_boundary_cells(time + dt); // RhoH BC's to see new Y's at n+1
-        
-        do_adv_reflux = false;
-        scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // Get aofs for RhoH now
-        
-        rhoh_update(time,dt,corrector);
-        RhoH_to_Temp(S_new);
-        temperature_stats(S_new);
-        //
-        // Corrector
-        //
-        corrector = 1;
-        calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
-        tracer_update(dt,corrector);
-        spec_update(time,dt,corrector);
-        
-        set_overdetermined_boundary_cells(time + dt);// RhoH BC's to see new Y's at n+1
-        
-        do_adv_reflux = true;
-        scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // Get aofs for RhoH now
-        
-        rhoh_update(time,dt,corrector);
-        RhoH_to_Temp(S_new); 
-    }
-
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "HeatTransfer::advance_sdc(): after predictor A/D update\n";
+      std::cout << "HeatTransfer::advance_sdc(): Computing A and D forcing terms for VODE predictor\n";
 
-    temperature_stats(S_new);
+    // Advance rhoY with advection and diffusion
+    // Store advection and diffusion in const_src
+
+
+
+    // Advance rhoH with advection and diffusion
+    // Store advection and diffusion in const_src
+
+
 
     if (plot_consumption)
     {
@@ -6521,7 +6480,7 @@ HeatTransfer::advance_sdc (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "HeatTransfer::advance_sdc(): before predictor chemistry solve\n";
     //
-    // Strang-split chemistry.  This takes old-time data, and returns new-time
+    // SDC chemistry.  This takes old-time data, and returns new-time
     // data, as well as computing I_R.  We do not compute Ydot anymore,
     // and need to compute a Ydot later for the final projection.
     // We write the result over the new state, but only care
@@ -6539,22 +6498,11 @@ HeatTransfer::advance_sdc (Real time,
     FillPatchedOldState_ok = true;
     
     temperature_stats(S_new);
-    //
-    // S appears in rhs of the velocity update, so we better do it now.
-    // (be sure to use most recent version of state to get
-    // viscosity/diffusivity).
-    //
-    calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
-    //
-    // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
-    // the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
-    // not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
-    //
-    setThermoPress(cur_time);
 
-    // 
+    /////////////////////////////////////////
     // SDC Thermodynamic Advance - Corrector
-    //
+    /////////////////////////////////////////
+
     for (int iter=0; iter<sdc_iters; iter++)
       {
 	// AJN - I'd recommend implementing and testing the predictor before writing
@@ -6572,10 +6520,32 @@ HeatTransfer::advance_sdc (Real time,
 	//     equation, similar to how the RHS changed in the diffusion solves.
 	//
 
+	// Compute coefficients at t^{n+1} from predictor or previous SDC iteration
+	calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
+	//
+	// Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
+	// the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
+	// not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
+	//
+	setThermoPress(cur_time);
+
+	if (verbose && ParallelDescriptor::IOProcessor())
+	  std::cout << "HeatTransfer::advance_sdc(): Computing A and D forcing terms for VODE corrector\n";
+
+	// Advance rhoY with advection and diffusion
+	// Store advection and diffusion in const_src
+
+
+
+	// Advance rhoH with advection and diffusion
+	// Store advection and diffusion in const_src
+
+
+
 	if (verbose && ParallelDescriptor::IOProcessor())
 	  std::cout << "HeatTransfer::advance_sdc(): before corrector chemistry solve\n";
 	//
-	// Strang-split chemistry.  This takes old-time data, and returns new-time
+	// SDC chemistry.  This takes old-time data, and returns new-time
 	// data, as well as computing I_R.  We do not compute Ydot anymore,
 	// and need to compute a Ydot later for the final projection.
 	// We write the result over the new state, but only care
@@ -6593,20 +6563,16 @@ HeatTransfer::advance_sdc (Real time,
 	FillPatchedOldState_ok = true;
     
 	temperature_stats(S_new);
-	//
-	// S appears in rhs of the velocity update, so we better do it now.
-	// (be sure to use most recent version of state to get
-	// viscosity/diffusivity).
-	//
-	calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
-	//
-	// Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
-	// the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
-	// not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
-	//
-	setThermoPress(cur_time);
-
       }
+
+    // compute t^{n+1} coefficients
+    calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
+    //
+    // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
+    // the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
+    // not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
+    //
+    setThermoPress(cur_time);
 
     calc_divu(time+dt, dt, get_new_data(Divu_Type));
 
