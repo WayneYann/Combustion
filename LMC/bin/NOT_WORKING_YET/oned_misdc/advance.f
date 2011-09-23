@@ -325,7 +325,7 @@ c     compute advective forcing term
       enddo
 
 c     compute advection term
-      call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
+      call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
 
 c     update density
       print *,'... update rho'
@@ -359,7 +359,7 @@ c        the rho D grad Y term is now computed conservatively
 
 c     recompute advection term for temperature
 c     all other terms computed too - should fix this
-         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
+         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
 
       end if
 
@@ -525,7 +525,7 @@ c           really no need to recompute this since it doesn't change
          enddo
          
          print *,'... compute A with updated D+R source'
-         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
+         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
 
          print *,'... update rho'
          call update_rho(scal_old,scal_new,aofs,dx,dt)
@@ -558,7 +558,7 @@ c     the rho D grad Y term is now computed conservatively
 
 c     recompute advection term for temperature
 c     all other terms computed too - should fix this
-            call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
+            call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
 
          end if
 
@@ -764,7 +764,7 @@ c     no need to compute forcing terms since Godunov integrator
 c     extrapolates in space only
 
 c     compute advection term
-      call scal_aofs(scal_old,macvel,aofs_old,tforce,dx,dt,time)
+      call scal_aofs(scal_old,macvel,aofs_old,tforce,dx,dt)
 
 c     update density
       print *,'... update rho'
@@ -923,7 +923,7 @@ c           we take the gradient of Y from the second scal argument
      $                              diffdiff_new,dx,time)
          end if
          
-         call scal_aofs(scal_new,macvel,aofs_new,tforce,dx,dt,time)
+         call scal_aofs(scal_new,macvel,aofs_new,tforce,dx,dt)
 
          aofs_avg = (aofs_old + aofs_new ) / 2.d0
 
@@ -1165,7 +1165,7 @@ c        we take the gradient of Y from the second scal argument
          tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
       enddo
        
-      call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,time)
+      call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
 
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
