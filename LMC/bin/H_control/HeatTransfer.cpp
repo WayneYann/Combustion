@@ -818,8 +818,8 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     diffusion->allocFluxBoxesLevel(EdgeState,nGrow,nEdgeStates);
     if (nspecies>0 && !unity_Le)
     {
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,  nGrow,nspecies);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1,nGrow,nspecies);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,  nGrow,nspecies+1);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1,nGrow,nspecies+1); // top comp for enthalpy flux
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
@@ -1058,8 +1058,8 @@ HeatTransfer::restart (Amr&          papa,
     {
 	BL_ASSERT(SpecDiffusionFluxn == 0);
 	BL_ASSERT(SpecDiffusionFluxnp1 == 0);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,  nGrow,nspecies);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1,nGrow,nspecies);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,  nGrow,nspecies+1);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1,nGrow,nspecies+1); // top comp for enthalpy diffusion
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
@@ -1445,8 +1445,8 @@ HeatTransfer::initData ()
             DataServices::Dispatch(DataServices::ExitRequest, NULL);
 
         AmrData&                  amrData   = dataServices.AmrDataRef();
-        const int                 nspecies  = getChemSolve().numSpecies();
-        const Array<std::string>& names     = getChemSolve().speciesNames();   
+        //const int                 nspecies  = getChemSolve().numSpecies();
+        //const Array<std::string>& names     = getChemSolve().speciesNames();   
         Array<std::string>        plotnames = amrData.PlotVarNames();
 
         if (amrData.FinestLevel() < level)
@@ -2625,8 +2625,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 
         for (int d = 0; d < BL_SPACEDIM; ++d)
         {
-            SpecDiffusionFluxn[d]->setVal(0,0,nspecies);
-            SpecDiffusionFluxnp1[d]->setVal(0,0,nspecies);
+            SpecDiffusionFluxn[d]->setVal(0,0,nspecies+1);
+            SpecDiffusionFluxnp1[d]->setVal(0,0,nspecies+1);
         }
         for (int comp = 0; comp < nspecies; ++comp)
             spec_diffusion_flux_computed[comp] = HT_Diffusion;
@@ -2834,18 +2834,18 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 					    int                    dataComp,
 					    const MultiFab*        delta_rhs, 
 					    const MultiFab*        alpha, 
-					    const MultiFab* const* betanp1)
+					    const MultiFab* const* beta)
 {
     //
     // Here, we're going to compute an update using fluxes computed from
     // the old state and a guess for the new one.  These fluxes are modified
     // arbitrarily however to preserve that the sum over all species of the
     // diffusive fluxes is zero.  We do this by marching though each edge 
-    // and adjusting the flux of the downstream state that is the "dominant"
-    // species.  Improved fluxes are left in SpecDiffusionFlux.
+    // and adjusting the fluxes by adding a correction velocity component,
+    // weighted by mass fraction.  Improved fluxes are left in SpecDiffusionFlux.
     //
     BL_ASSERT(!alpha ^ (alpha&&alpha->nComp()  == nspecies));
-    BL_ASSERT(betanp1 && betanp1[0]->nComp()   == nspecies);
+    BL_ASSERT(beta && beta[0]->nComp()   == nspecies);
     BL_ASSERT(!delta_rhs || delta_rhs->nComp() == nspecies);
 
     const TimeLevel whichTime = which_time(State_Type,time);
@@ -2921,7 +2921,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
         ABecLaplacian* visc_op;
 	visc_op = diffusion->getViscOp(state_ind,a,b,time,visc_bndry,
                                        rho_half,rho_flag[comp],&rhsscale,
-                                       dataComp+comp,betanp1,alpha,bndry_already_filled);
+                                       dataComp+comp,beta,alpha,bndry_already_filled);
 	visc_op->maxOrder(diffusion->maxOrder());
 
 	rho_and_species.setBndry(bogus_value,comp+1,1); // Ensure computable corners
@@ -2941,8 +2941,18 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     }
 
     rho_and_species_crse.clear();    
+
+
+    // Note: All that stuff above was to find a robust way to generate values of the mass
+    // fractions on the cell edges for use in the REPAIR routine below - in fact, grow cell
+    // are filled, and the edge values of RhoY are computed as arithmetic avgs.  An alternative
+    // approach is to use the center_to_edge_fancy routine based on fill-patched data.  In
+    // the original HT, the latter was used to set T_edge for evaluating hi_edge.  We reproduce 
+    // that choice below after "repairing" the fluxes so that they sum to zero
+
+
     //
-    // "Repair" fluxes to ensure they sum to zero, use rho_and_species to pick dominant comp
+    // "Repair" fluxes to ensure they sum to zero, use rho_and_species with grow cells filled
     //  Note that rho_and_species is now rho and rho.Y, not rho and Y.
     //
     for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
@@ -2960,7 +2970,53 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
         }
     }
 
+    // Compute non-unity lewis number flux terms for enthalpy equation
+
+    MultiFab** rhoh_visc;
+    diffusion->allocFluxBoxesLevel(rhoh_visc,0,1);
+    getDiffusivity(rhoh_visc, time, RhoH, 0, 1);
+
+    FArrayBox efab, eOne, h;
+    for (FillPatchIterator T_fpi(*this,Phi_new,nGrowOp,time,State_Type,Temp,1);
+         T_fpi.isValid();
+         ++T_fpi)
+    {
+        const int i    = T_fpi.index();
+        const Box& box = T_fpi.validbox();
+        
+        for (int d = 0; d < BL_SPACEDIM; ++d)
+        {
+            const Box ebox = BoxLib::surroundingNodes(box,d);
+
+            FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
+            FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
+            
+            efab.resize(ebox,1);
+            center_to_edge_fancy(T_fpi(),efab,
+                                 BoxLib::grow(box,BoxLib::BASISV(d)),0,0,1,
+                                 geom.Domain(),bc_lo,bc_hi);
+            
+            h.resize(ebox,nspecies);
+            getChemSolve().getHGivenT(h,efab,ebox,0,0);
+            
+            // Accumulate sum(h_i . flux_i . (lambda/(cp.rho.D) - 1) )
+            eOne.resize(ebox,1);
+            eOne.setVal(1.0);
+            (*flux[d]).setVal(0,ebox,nspecies,1);
+            for (int comp=0; comp<nspecies; ++comp) {
+                efab.copy( (*beta[d])[i], ebox, comp, ebox, 0, 1);
+                efab.invert(1);
+                efab.mult( (*rhoh_visc[d])[i], ebox, 0, 0, 1);
+                efab.minus( eOne, ebox, 0, 0, 1);
+                efab.mult(h,ebox,comp,0,1);
+                efab.mult( (*flux[d])[i], ebox, comp, 0, 1);
+                (*flux[d])[i].plus(efab,ebox,0,nspecies,1);
+            }
+        }
+    }
+
     rho_and_species.clear();
+
     //
     // Reset Phi_new using "repaired" fluxes.  Here, we assume the following
     // arrangement of terms:

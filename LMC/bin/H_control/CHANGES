@@ -5,15 +5,16 @@ reasonably small (~0.25 or smaller).
 The predictor does the following steps (see Papers/SDC/LMC for super specific details):
 
 1.  Compute advection terms with explicit viscous forcing and lagged reaction forcing (the "I_R" term)
-    in the edge state prediciton.  Reaction forcing only needs to be added to the RhoY equation 
+    in the edge state prediction.  Reaction forcing only needs to be added to the RhoY equation 
     since I_R for RhoH should be zero.
 2.  Update density as in the Strang splitting algorithm.
 3.  Update RhoY.  The diffusion solve is Crank-Nicolson, except that it uses t^n coefficients 
     everywhere.  Unlike Strang splitting, we include the reaction forcing.
 4.  Update RhoH.  The diffusion solve is Crank-Nicolson, except that is uses t^n coefficients
     everywhere.  However, the gradients in the time-advanced NULN terms are evaluted using
-    the time-advanced species.
-5.  Call VODE to advance the solution from t^n to t^{n+1,(1)} and also compute I_R.
+    the time-advanced species, and the h_i multipliers in front of them are evaluated at t^n.
+5.  Call VODE to advance the solution from t^n to t^{n+1,(1)} including a piecewise constant
+    source term representing the advection diffusion, return I_R.
 
 The corrector looks almost the same, except for the following.
 
@@ -97,12 +98,31 @@ TODO
 
 -Develop some interface for computing const_src.  Adding I_R to const_src is easy.  Adding the 
  diffusion terms means writing a new standalone function that computes the diffusion terms
- explicitly and stores them in diff_old/new/hat.  Perhaps cronnomg frp, HeatTransfer::getViscTerms to 
+ explicitly and stores them in diff_old/new/hat.  Perhaps cribbing from HeatTransfer::getViscTerms to 
  evaluate the viscous terms, and the following code to evaluate NULN terms on the fly will help.
 
 -Piece together the predictor in HeatTransfer::advance_sdc().  Once all these other changes are
- completely, hopefully it's just a matter of writing function calls, rather than extensive amounts
+ complete, hopefully it's just a matter of writing function calls, rather than extensive amounts
  of new code.
 
 -Need to compute Ydot for the divu calculation.  I've had success in 1D with simply computing Ydot
  as a function of the new state.
+
+
+
+Notes and potential issues:
+(A) In LMC, diffuse_scalar computes its own visc_terms, and for species, this will not be
+consistent with the version of visc_terms computed in HT.cpp
+
+(B) SHould the edge values of rho.Y used to distribute the correction fluxes be based on 
+fill patch + center-to-edge-fancy, or arithmetic averaging using grow cell based on
+LinOp::applyBC (the latter is currectly used in the adjust routine, but the former is 
+used to get T at edge for h_i calc in sclar_advection).
+
+(C) Diffdiff terms for (1) are not comuputed efficiently, but rather done to reproduce
+prior results - could probably be greatly simplified.
+
+
+(1) Need diffdiff (Andy's name) terms for Godunov predict, move computation of these out
+of scalar_advect and put into a new added slot in SpecDiffTerms after adjusting the fluxes
+
