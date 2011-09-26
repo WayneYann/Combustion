@@ -12,7 +12,7 @@
       integer untin,i
 
 
-      namelist /fortin/ zstandoff, pertmag, pAmb, idir, &
+      namelist /fortin/ zstandoff, pertmag, pAmb, idir, probtype, &
            denerr,  dengrad,  max_denerr_lev,  max_dengrad_lev, &
            velgrad,  max_velgrad_lev, &
            presserr,pressgrad,max_presserr_lev,max_pressgrad_lev
@@ -140,6 +140,7 @@
                   call pmf(z1,z2,pmf_vals,n)
 
                   if (n.ne.Nspec+3) then
+                     write(6,*)"n,Nspec",n,Nspec
                      call bl_abort('INITDATA: n .ne. Nspec+3')
                   endif
 

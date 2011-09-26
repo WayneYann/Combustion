@@ -608,7 +608,7 @@
                             dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
                             domhi,delta,xlo,time,dt,bc,level,grid_no)
 
-      use cdwrk_module
+      use cdwrk_module, only : Nspec, maxspec
 
       implicit none
 
@@ -658,7 +658,7 @@
                             dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
                             domhi,delta,xlo,time,dt,bc,level,grid_no)
 
-      use cdwrk_module
+      use cdwrk_module, only : Nspec, maxspec
 
       implicit none
 
