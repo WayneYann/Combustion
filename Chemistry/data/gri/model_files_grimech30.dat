@@ -1,0 +1,8 @@
+ &files
+   CHEMKIN_input = "grimech30.mec"
+   THERMO_input = "grimech30.therm"
+   TRANLIB_input = "grimech30.trans"
+   CHEMKIN_linking_file = "grimech30.asc"
+   TRANLIB_cpp_file = "grimech30-tran.cpp"
+   log_file = "grimech30.log"
+ /

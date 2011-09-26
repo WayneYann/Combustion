@@ -1,0 +1,128 @@
+Strategy: In SDC there is a predictor followed an SDC corrector loop.  A good strategy would be
+to write code for the predictor only, since it should work just fine as long as you keep the CFL 
+reasonably small (~0.25 or smaller).
+
+The predictor does the following steps (see Papers/SDC/LMC for super specific details):
+
+1.  Compute advection terms with explicit viscous forcing and lagged reaction forcing (the "I_R" term)
+    in the edge state prediction.  Reaction forcing only needs to be added to the RhoY equation 
+    since I_R for RhoH should be zero.
+2.  Update density as in the Strang splitting algorithm.
+3.  Update RhoY.  The diffusion solve is Crank-Nicolson, except that it uses t^n coefficients 
+    everywhere.  Unlike Strang splitting, we include the reaction forcing.
+4.  Update RhoH.  The diffusion solve is Crank-Nicolson, except that is uses t^n coefficients
+    everywhere.  However, the gradients in the time-advanced NULN terms are evaluted using
+    the time-advanced species, and the h_i multipliers in front of them are evaluated at t^n.
+5.  Call VODE to advance the solution from t^n to t^{n+1,(1)} including a piecewise constant
+    source term representing the advection diffusion, return I_R.
+
+The corrector looks almost the same, except for the following.
+
+1.  Same as the predictor, but with an updated I_R.
+2.  Same as above.
+3.  Same as above, but we are solving a correction equation (with a backward Euler discretization),
+    and thus the RHS side has a different form as compared to the predictor.  Also, the 
+    time-advanced coefficients come from the end of the predictor (or previous SDC iteration).
+4.  Same as above, but we are solving a correction equation (with a backward Euler discretization),
+    and thus the RHS side has a different form as compared to the predictor.
+    Also, the time-advanced coefficients come from the end of the predictor (or previous SDC iteration).
+5.  Same as above, but the forcing is modified to include the correction terms.
+
+As mentioned above, I haven't worked on corrector-specific changes yet, but here's a checklist of things 
+I think need to be done for the predictor, and a current status.  These items are all in preparation
+with re-writing advance_sdc with a minimal amount of coding.
+
+***************************
+Item: Make "do_sdc" and "sdc_iters" part of the HeatTransfer class.
+
+Status: Done.  You can set them in the inputs file as well.  The defaults are do_sdc=0 and sdc_iters=1.
+	There is also an inputs.2dcontrol_sdc, which is a copy of inputs.2dcontrol, except it does not
+	use AMR, and do_sdc is set to 1.
+***************************
+Item: Declare and build SDC temporary multifabs that I *think* we'll need.
+
+Status: The temporary multifabs, "const_src, I_R, diff_old/new/hat, div_fluxNULN_old/new/hat" are 
+        declared in HeatTransfer.cpp and built in HeatTransfer::advance_setup_sdc().  The
+	const_src, I_R, and diff_old/new/hat multifabs are built with nspecies+1 components, with
+	the intention being that the 0th component is for RhoH, and 1:nspecies components are
+	for RhoY.  The div_fluxNULN_old/new/hat are built with only 1 component.  The multifabs
+	are destroyed in ~HeatTransfer().
+***************************
+Item: Reconfigure Godunov to predict RhoY and RhoH to edges.
+
+Status: In HeatTransfer::compute_edge_states(), the "do_sdc" flag controls whether you predict Temp
+	or RhoH.  I also had to add code to predict RhoH, since in the original code, RhoH on edges
+	was computed with the EOS.  Now the code predicts RhoH to edges with the Godunov integrator.
+	Note that the RhoH visc terms are not accounted for yet in the forcing.
+***************************
+Item: Add I_R forcing for species edge-state prediction.
+
+Status: Done.  In HeatTransfer::compute_edge_states(), grep for "I_R" to make sure this is implemented
+	correctly.
+***************************
+Item: After the RhoY advective update, add dt*I_R to the new state so it will be included in the 
+      RHS for the diffusion solve.
+
+Status: Done.  In HeatTransfer::spec_update(), grep for "I_R" to make sure this is implemented
+	correctly.
+***************************
+Item: Reconfigure VODE to solve a RhoY and RhoH equation instead of a Y and T equation
+
+Status: In ChemDriver_2D.F, there is a subroutine FORT_CONPSOLV_SDC that calls conpFY_sdc (also
+	in ChemDriver_F.F)  The input Z is now RhoH and RhoY.  
+	-FORT_CONPSOLVE_SDC does the the same thing as FORT_CONPSOLVE except:
+	  1.  Calls set_c_0_simple_sdc (which is in ChemDriver_F.F) to set c_0 to const_src
+	  2.  Works in terms of RhoH and RhoY, but the details of this are really handled
+	      within conpFY_sdc
+	  3.  Computes I_R
+	-conpFY_sdc does the follwoing:
+	  1.  Compute rho = sum(RhoY)
+	  2.  Convert RhoY to Y
+	  3.  Compute T = T(h,Y)
+	  4.  Compute C = C(Y,T)
+	  5.  Compute Wdot = Wdot(C,T)
+	  6.  Set ZP(RhoH) = c_0(1)
+	  7.  Set ZP(RhoY) = Wdot * THFAC * WT + c_0(RhoY)
+	-There is a new function ChemDriver::solveTransient_sdc() that calls FORT_CONPSOLV_SDC,
+	which in turn calls conpFY_sdc.
+	-c_0 is now in the sdc_interp_coef common block in cdwrk.H
+	-HeatTransfer::strang_chem_sdc() calls the solveTransient_sdc()
+***************************
+
+TODO
+
+-Add explicit RhoH visc terms, including NULN terms, to the Godunov integrator forcing.  I think 
+ this needs to be added to HeatTransfer::getViscTerms().  The computation of the NULN terms
+ can probably be cribbed from HeatTransfer::scalar_advection(), which computes the fluxes,
+ but not the divergence.
+
+-Develop some interface for computing const_src.  Adding I_R to const_src is easy.  Adding the 
+ diffusion terms means writing a new standalone function that computes the diffusion terms
+ explicitly and stores them in diff_old/new/hat.  Perhaps cribbing from HeatTransfer::getViscTerms to 
+ evaluate the viscous terms, and the following code to evaluate NULN terms on the fly will help.
+
+-Piece together the predictor in HeatTransfer::advance_sdc().  Once all these other changes are
+ complete, hopefully it's just a matter of writing function calls, rather than extensive amounts
+ of new code.
+
+-Need to compute Ydot for the divu calculation.  I've had success in 1D with simply computing Ydot
+ as a function of the new state.
+
+
+
+Notes and potential issues:
+(A) In LMC, diffuse_scalar computes its own visc_terms, and for species, this will not be
+consistent with the version of visc_terms computed in HT.cpp
+
+(B) SHould the edge values of rho.Y used to distribute the correction fluxes be based on 
+fill patch + center-to-edge-fancy, or arithmetic averaging using grow cell based on
+LinOp::applyBC (the latter is currectly used in the adjust routine, but the former is 
+used to get T at edge for h_i calc in sclar_advection).
+
+(C) Diffdiff terms for (1) are not comuputed efficiently, but rather done to reproduce
+prior results - could probably be greatly simplified.
+
+
+(1) Need diffdiff (Andy's name) terms for Godunov predict, move computation of these out
+of scalar_advect and put into a new added slot in SpecDiffTerms after adjusting the fluxes
+

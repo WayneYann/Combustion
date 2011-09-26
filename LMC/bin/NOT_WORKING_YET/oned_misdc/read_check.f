@@ -25,6 +25,7 @@
       read(10) time
       read(10) dt_old
       read(10) cfl_used
+      read(10) hmix_TYP
       do i = -1,nx
          read(10) x,(scal(i,FirstSpec+n),n=0,Nspec-1),
      $            scal(i,Density),
