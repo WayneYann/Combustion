@@ -761,7 +761,7 @@ c
       REAL_T rhohold(DIMV(rhohold))
       REAL_T rhoYnew(DIMV(rhoYnew),*)
       REAL_T rhohnew(DIMV(rhohnew))
-      REAL_T const_src(DIMV(const_src),*)
+      REAL_T const_src(DIMV(const_src),1:Nspec+1)
       REAL_T I_R(DIMV(I_R),*)
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
@@ -828,7 +828,7 @@ c     Set up ATOL
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
 
-           call set_c_0_simple_sdc(const_src(i,j,1))
+           call set_c_0_sdc(const_src(i,j,:))
 
            if(j.ge.0)then
 

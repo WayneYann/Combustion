@@ -15,6 +15,7 @@ FCOMP           = gfortran
 USE_MPI         = FALSE
 USE_OMP         = FALSE
 USE_F90_SOLVERS = FALSE
+VERBOSE         = FALSE
 
 # Enable flctin namelist
 USE_FLCTS       = TRUE

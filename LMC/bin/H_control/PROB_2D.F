@@ -350,7 +350,7 @@ c
       blobr = -one
       xcen = problo(1)
       v_strength = zero
-      v_width = zero
+      v_width = 1.d0
       v_xcen = zero
       v_ycen = zero
       v_cl_x = probhi(1)
@@ -970,8 +970,12 @@ c
      &              + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
             endif
             
-            ylo =   j  *delta(2)+domnlo(2)-y_offset + ypert
-            yhi = (j+1)*delta(2)+domnlo(2)-y_offset + ypert
+c            ylo =   j  *delta(2)+domnlo(2)-y_offset + ypert
+c            yhi = (j+1)*delta(2)+domnlo(2)-y_offset + ypert
+            y = (DBLE(j)+0.5d0)*delta(2)
+            ylo = y - 0.5*delta(2) + ypert
+            yhi = y + 0.5*delta(2) + ypert
+
             if (probtype.eq.2) then
                ylo = ylo - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
                yhi = yhi - MAX(zero,ABS(x)-half*stTh)*TAN(theta)
@@ -1060,7 +1064,6 @@ c     Cut off initial pmf at R_hot so that air along wall
             scal(i,j,RhoH) = scal(i,j,RhoH)*scal(i,j,Density)
          enddo
       enddo
-      
       end
 
 c ::: -----------------------------------------------------------
@@ -2666,6 +2669,7 @@ c
 
 #include "probdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 
       integer i, j, n
@@ -2692,13 +2696,15 @@ c
       ihi = istate_h1
       jhi = istate_h2
 
-c     Assumes components are in the following order
       nXvel = 1
       nYvel = 2
-      nRho  = 3
-      nTrac = 4
+      nRho  = Density + SDIM
+      nTrac = Trac + SDIM
 
       if (scomp.eq.0) then
+         if (ncomp.lt.SDIM) then
+            call bl_pd_abort('MAKEFORCE loads all momentum forces')
+         endif
          if (abs(gravity).gt.0.0001) then
             do j = jlo, jhi
                do i = ilo, ihi
@@ -2726,9 +2732,9 @@ c     Let's add the pseudo gravity afterwards...
 c     End of velocity forcing
       endif
       
-      if ((scomp+ncomp).gt.BL_SPACEDIM) then
 c     Scalar forcing
-         do n = max(scomp+1,nRho), scomp+ncomp
+      do n = scomp+1, scomp+ncomp
+         if (n.ge.BL_SPACEDIM) then
             if (n.eq.nRho) then
 c     Density
                do j = jlo, jhi
@@ -2751,8 +2757,8 @@ c     Other scalar
                   enddo
                enddo
             endif
-         enddo
-      endif
+         endif
+      enddo
 
       end
 

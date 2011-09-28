@@ -116,7 +116,7 @@ consistent with the version of visc_terms computed in HT.cpp
 
 (B) SHould the edge values of rho.Y used to distribute the correction fluxes be based on 
 fill patch + center-to-edge-fancy, or arithmetic averaging using grow cell based on
-LinOp::applyBC (the latter is currectly used in the adjust routine, but the former is 
+LinOp::applyBC (the latter is currently used in the adjust routine, but the former is 
 used to get T at edge for h_i calc in sclar_advection).
 
 (C) Diffdiff terms for (1) are not comuputed efficiently, but rather done to reproduce
@@ -125,4 +125,58 @@ prior results - could probably be greatly simplified.
 
 (1) Need diffdiff (Andy's name) terms for Godunov predict, move computation of these out
 of scalar_advect and put into a new added slot in SpecDiffTerms after adjusting the fluxes
+
+(2) Rearrange how diffdiff terms are computed because we need to separate the various pieces.
+
+     (a) Make new function, HT::adjust_spec_diffusion_fluxes.  Takes time, and edge-based
+      rhoD (and starting component).  Uses the LinOp code to generate grow values, and
+      arithmetic averaging to generate face values which are then used to repair the fluxes.
+      The results are left in place (SpecDiffusionFluxn/np1) and are used to compute
+      the NULN fluxes (sum(hi.Fi)) directly.  Prior to this, the NULN terms were done on
+      the fly in scalar_advection and treated as simply another part of the time-explicit
+      component of the flux.  In the new form, the diffusion fluxes are more likely to be
+      consistent.  Need to add NULN terms to the Godunov forcing.
+
+      Also, to be consistent with the 1D code, the "visc_terms" are computed using this same
+      machinery as is the rhs for the species diffusion solves.  (previously, the rhs for
+      the diffusion solves was formed on the fly in diffuse_scalar, and was therefore not
+      consistent with how the rest of LMC computed it...in particular, the old-time fluxes
+      used to compute that term should be the adjusted ones).  This required that I add a new
+      bool argument to Diffusion::diffuse_scalar to tell it not to add the time-explicit flux 
+      divergence term to the Rhs (which, of course, defaults to act as before).
+
+    (b) So, the following is now done instead:
+
+        (i) differential_spec_diffusion_update calls compute_differential_diffusion_terms
+                 to get the Div(Fdi) terms at t^n, including Div(hi.Fdi) in the nspecies slot
+                 These are scaled by (1-theta) and added to S_new for RhoY and RhoH.
+                 compute_differential_diffusion_terms calls set_differential_diffusion_fluxes
+                 to fill the SpecDiffusionFluxn/np1 MF's, depending on "time".
+                 In turn, set_differential_diffusion_fluxes builds the LinOps and calls the
+                 compFlux routine for each species, and then calls adjust_spec_diffusion_fluxes.
+        (ii) If theta == 0, the np1 Fdi's are zerod and the new-time state for (RhoY,RhoH) is
+                 recomputed using (i).  Otherwise, we loop through the species, solving
+                 the c-n eqns for each component individually.  diffuse_scalar_setup is called
+                 for each these, optionally creating a dRhs that we add to the terms computed
+                 in (i).  As we march through, we save each component of the edge coeffs and Rhs.
+                 The set of new-time fluxes coming out of the solve are repaired, and NULN
+                 fluxes are updated based on the edge coeffs and the fillpatched/c-to-e Temp.
+        (iii) The new-time (RhoY,RhoH) values are recomputed with the theta-weighted fluxes
+                 and Rhs for the diffusion solve.  However, since the Rhs already has already
+                 added in the time-explicit parts of the diffusion flux (plus S_new-S_old when
+                 we entered the routine), we build the recomputed diffused state using:
+                            S_new = Sold + Rhs + theta.dt.Div(Fdi)^np1.
+                 Note however that the reflux for this update needs to be computed with the
+                 both of the (theta-weighted) fluxes from n and np1.
+
+(3) getViscTerms calls compute_differential_diffusion_terms(t) which goes through the same
+   machinery as before.  Notably, this term is computed on the fly using set_differential_diffusion_fluxes
+   which is based on the state at time = t.  The SpecDiffusionFluxn/np1 structures are used only
+   as an intermediate, and the Divergence of these is never saved beyond a single stage in the
+   algorithm.
+
+
+
+
+ 
 

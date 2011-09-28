@@ -678,9 +678,10 @@ void DataServices::Dispatch(DSRequestType requestType, DataServices *ds, ...) {
 
     } 
 #endif
-
+  default:
+    ;
   }  // end switch
-
+  
   if(ParallelDescriptor::IOProcessor()) {
     va_end(ap);
   }

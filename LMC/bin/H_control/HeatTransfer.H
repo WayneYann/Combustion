@@ -182,20 +182,15 @@ public:
                         int  do_viscreflux);
 
     void differential_spec_diffusion_update (Real dt,
-					     int  corrector);
+                                             int  corrector,
+                                             Real theta);
     
-    void adjust_spec_diffusion_update (MultiFab&              S_new,
-				       const MultiFab*        S_old,
-				       int                    sCompS,
-				       Real                   dt,
-				       Real                   time,
-				       const Array<int>&      rho_flag,
-				       const MultiFab*        rho_half,
-				       int                    dataComp,
-				       const MultiFab*        delta_rhs, 
-				       const MultiFab*        alpha, 
-				       const MultiFab* const* betanp1);
-    
+    void set_differential_diffusion_fluxes (const Real& time);
+
+    void adjust_spec_diffusion_fluxes (Real                   time,
+                                       const MultiFab* const* beta,
+                                       int                    beta_comp);
+
     virtual void scalar_diffusion_update (Real dt,
                                           int  first_scalar, 
                                           int  last_scalar,
@@ -376,12 +371,13 @@ protected:
     static void Initialize ();
     static void Finalize ();
 
-    static void RhoH_to_Temp (MultiFab& S, int nGrow = 0);
-
     static void RhoH_to_Temp (MultiFab& S,
-                              MultiFab& temp,
-                              int nGrow = 0,
-                              int dominmax = 1);
+                              int       nGrow = 0,
+                              int       dominmax = false);
+
+    static int RhoH_to_Temp (FArrayBox& S,
+                             const Box& box,
+                             int        dominmax = false);
 
     static void compute_cp_and_hmix (const MultiFab& S,
                                      MultiFab&       cp, 
@@ -407,10 +403,10 @@ protected:
 			      YdotAction Ydot_action,
                               int        ngrow = 0);
 
-    virtual void strang_chem_sdc (MultiFab&  state_old,
-				  MultiFab&  state_new,
-				  Real       dt,
-				  int        ngrow = 0);
+    virtual void advance_chemistry (MultiFab&  state_old,
+                                    MultiFab&  state_new,
+                                    Real       dt,
+                                    int        ngrow = 0);
 
     virtual void calcViscosity (const Real time,
                                 const Real dt,
@@ -598,9 +594,6 @@ protected:
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
 
-    enum CurrentFluxType {HT_None, HT_Diffusion, HT_SyncDiffusion, HT_ExplicitDiffusion};
-
-    Array<CurrentFluxType> spec_diffusion_flux_computed;
     AuxBoundaryData        aux_boundary_data_old;
     AuxBoundaryData        aux_boundary_data_new;
     bool                   FillPatchedOldState_ok;

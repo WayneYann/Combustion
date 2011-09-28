@@ -1022,11 +1022,12 @@ c     Error condition....dump state and bail out
       REAL_T res(0:NiterMAX-1),dT, Htarg
       logical out_of_bounds, converged, soln_bad, stalled, discont
       REAL_T HMIN,cpMIN,HMAX,cpMAX
-      integer ihitlo,ihithi,j
+      integer ihitlo,ihithi,j,errCode
       REAL_T old_T, old_H, Tsec, Hsec
 
       out_of_bounds(temp) = (temp.lt.TMIN-one) .or. (temp.gt.TMAX)
 
+      errCode = 0
       NiterDAMP = NiterMAX
       if ((T.GE.TMIN).and.(T.LE.TMAX)) then
          T0 = T
@@ -1068,7 +1069,8 @@ c     Error condition....dump state and bail out
          end if
          soln_bad = out_of_bounds(T)
          if (soln_bad) then
-            Niter = -1
+            errCode = -1
+            Niter = -Niter
             goto 100
          else
             old_H = H
@@ -1082,8 +1084,8 @@ c     Error condition....dump state and bail out
             if(abs(T-1000.d0).le.1.d-3.and. dH.le.1.d-5)then
               converged = .true.
             else  
-              write(6,*)" missing my test",T,dH
-              Niter = -2
+              errCode = -2
+              Niter = -Niter
               goto 100
             endif
          endif
@@ -1114,7 +1116,8 @@ c     values.
                Tsec = T + dT
                soln_bad = out_of_bounds(Tsec)
                if (soln_bad) then
-                  Niter = -3
+                  errCode = -3
+                  Niter = -Niter
                   goto 100
                endif
                CALL CKHBMS(Tsec,Y,IWRK(ckbi),RWRK(ckbr),Hsec)
@@ -1128,7 +1131,8 @@ c     values.
 c               stalled = (ABS(dT).le.errMAX)
                Niter = Niter + 1
                if (Niter.gt.NiterMAX+Discont_NiterMAX) then
-                  Niter = -2
+                  errCode = -2
+                  Niter = -Niter
                   goto 100
                endif
             enddo
@@ -1143,6 +1147,7 @@ c
  100  continue
 
       write(6,997) 'T from (H,Y): failed'
+      write(6,997) 'errCode = ',errCode
       write(6,997) 'iterations tried = ',Niter
       write(6,998) 'initial T = ',T0
       write(6,998) 'current T = ',T
