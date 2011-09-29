@@ -944,21 +944,20 @@ DDOp::WriteSub(std::string& outfile) const
     if (verbose && ParallelDescriptor::IOProcessor())
         cout << "DDOp::WriteSub mg_level " << mg_level << ": writing cpi" << endl;
     VisMF::Write(cpi,outfile+sep+"cpi");
-    int mindigits = 1;
-    char buf[32];
+
     for (int i=0; i<BL_SPACEDIM; ++i) {
-        sprintf(buf, "%0*d",  mindigits, i);
+        std::string dim = BoxLib::Concatenate("", i, 1);
         if (verbose && ParallelDescriptor::IOProcessor())
             cout << "DDOp::WriteSub mg_level " << mg_level << ": writing area " << i << endl;
-        VisMF::Write(area[i],outfile+sep+"area_"+std::string(buf));
+        VisMF::Write(area[i],outfile+sep+"area_"+dim);
         if (verbose && ParallelDescriptor::IOProcessor())
             cout << "DDOp::WriteSub mg_level " << mg_level << ": writing transport_coefs " << i << endl;
-        VisMF::Write(transport_coefs[i],outfile+sep+"transport_coefs_"+std::string(buf));
+        VisMF::Write(transport_coefs[i],outfile+sep+"transport_coefs_"+dim);
     }
     for (OrientationIter oitr; oitr; ++oitr) {
-        sprintf(buf, "%0*d",  mindigits, (int)oitr());
+        std::string face = BoxLib::Concatenate("", oitr(), 1);
         if (verbose && ParallelDescriptor::IOProcessor())
             cout << "DDOp::WriteSub mg_level " << mg_level << ": writing stencil weights " << oitr() << endl;
-        stencilWeight[oitr()].write(outfile+sep+"stencilWeight"+std::string(buf));
+        stencilWeight[oitr()].write(outfile+sep+"stencilWeight"+face);
     }
 }

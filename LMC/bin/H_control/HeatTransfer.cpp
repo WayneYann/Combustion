@@ -9,14 +9,9 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
-#include <cstdio>
 #include <cfloat>
 #include <fstream>
 #include <vector>
-
-using std::cout;
-using std::endl;
-using std::cerr;
 
 #include <Geometry.H>
 #include <BoxDomain.H>
@@ -41,6 +36,10 @@ using std::cerr;
 #include <NAVIERSTOKES_F.H>
 #include <VISCOPERATOR_F.H>
 #include <DERIVE_F.H>
+
+using std::cout;
+using std::endl;
+using std::cerr;
 
 #define DEF_LIMITS(fab,fabdat,fablo,fabhi)   \
 const int* fablo = (fab).loVect();           \
@@ -10721,9 +10720,8 @@ HeatTransfer::writePlotFile (const std::string& dir,
     // The name is relative to the directory containing the Header file.
     //
     static const std::string BaseName = "/Cell";
-    char buf[64];
-    sprintf(buf, "Level_%d", level);
-    std::string Level = buf;
+
+    std::string Level = BoxLib::Concatenate("Level_", level, 1);
     //
     // Now for the full pathname of that directory.
     //

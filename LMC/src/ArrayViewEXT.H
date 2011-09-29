@@ -3,6 +3,7 @@
 #define _ArrayViewEXT_H_
 
 #include <iostream>
+#include <cstdio>
 #include <cfloat>
 
 #include <MultiFab.H>
@@ -60,7 +61,8 @@ std::string FPMax(const FArrayBox& fab, const Box& inBox, int nComp)
     if (!badVal)
     {
 	char tmp[MAXSTRINGWIDTH];
-	sprintf(tmp, formatString.c_str(), dataMax);
+	if (snprintf(tmp, MAXSTRINGWIDTH, formatString.c_str(), dataMax) >= MAXSTRINGWIDTH)
+            BoxLib::Abort("FPMax: buffer too small");
 	dataString = tmp;
     }
     return "Max: " + dataString;
@@ -86,7 +88,8 @@ std::string FPMin(const FArrayBox& fab, const Box& inBox, int nComp)
     if (!badVal)
     {
 	char tmp[MAXSTRINGWIDTH];
-	sprintf(tmp, formatString.c_str(), dataMin);
+	if (snprintf(tmp, MAXSTRINGWIDTH, formatString.c_str(), dataMin) >= MAXSTRINGWIDTH)
+            BoxLib::Abort("FPMin: buffer too small");
 	dataString = tmp;
     }
     return "Min: " + dataString;
