@@ -303,7 +303,7 @@ c
 
       do i = imin,imax+1
          do j = jmin-1,jmax+1
-            uad = cvmgp(ulo(i,j),uhi(i,j),ulo(i,j)+uhi(i,j))
+            uad = merge(ulo(i,j),uhi(i,j),(ulo(i,j)+uhi(i,j))>=zero)
             ltm = ulo(i,j) .le. zero  .and.  uhi(i,j) .ge. zero
             ltm = ltm .or. (abs(ulo(i,j)+uhi(i,j)) .lt. eps)
             ulo(i,j) = merge(zero,uad,ltm)
@@ -336,7 +336,7 @@ c
 
       do i = imin-1,imax+1
          do j = jmin,jmax+1
-            vad = cvmgp(vlo(i,j),vhi(i,j),vlo(i,j)+vhi(i,j))
+            vad = merge(vlo(i,j),vhi(i,j),(vlo(i,j)+vhi(i,j))>=zero)
             ltm = vlo(i,j) .le. zero  .and.  vhi(i,j) .ge. zero
             ltm = ltm .or. (abs(vlo(i,j)+vhi(i,j)) .lt. eps)
             vlo(i,j) = merge(zero,vad,ltm)
@@ -432,7 +432,7 @@ c
       do i = imin, imax+1
          do j = jmin-1,jmax+1
             fu  = merge(zero,one,abs(uad(i,j)).lt.eps)
-            stx = cvmgp(xlo(i,j),xhi(i,j),uad(i,j))
+            stx = merge(xlo(i,j),xhi(i,j),uad(i,j)>=zero)
             xlo(i,j) = fu*stx + (one - fu)*half*(xhi(i,j)+xlo(i,j))
          end do
       end do
@@ -459,7 +459,7 @@ c
       do j = jmin,jmax+1
          do i = imin-1,imax+1
             fv  = merge(zero,one,abs(vad(i,j)).lt.eps)
-            sty = cvmgp(ylo(i,j),yhi(i,j),vad(i,j))
+            sty = merge(ylo(i,j),yhi(i,j),vad(i,j)>=zero)
             ylo(i,j) = fv*sty + (one - fv)*half*(yhi(i,j)+ylo(i,j))
          end do
       end do
@@ -536,12 +536,12 @@ c------------------------------------------------------------------
                do i = imin, imax+1
                   ltx = stxlo(i) .le. zero  .and.  stxhi(i) .ge. zero
                   ltx = ltx .or. (abs(stxlo(i)+stxhi(i)) .lt. eps)
-                  stx = cvmgp(stxlo(i),stxhi(i),stxlo(i)+stxhi(i))
+                  stx = merge(stxlo(i),stxhi(i),(stxlo(i)+stxhi(i))>=zero)
                   xstate(i,j) = merge(zero,stx,ltx)
                end do
             else
                do i = imin, imax+1
-                  xstate(i,j) = cvmgp(stxlo(i),stxhi(i),uedge(i,j))
+                  xstate(i,j) = merge(stxlo(i),stxhi(i),uedge(i,j)>=zero)
                   xstate(i,j) = merge(half*(stxlo(i)+stxhi(i)),xstate(i,j),
      &                 abs(uedge(i,j)).lt.eps)
                end do
@@ -603,12 +603,12 @@ c
                do j = jmin, jmax+1
                   lty = stylo(j) .le. zero  .and.  styhi(j) .ge. zero
                   lty = lty .or. (abs(stylo(j)+styhi(j)) .lt. eps)
-                  sty = cvmgp(stylo(j),styhi(j),stylo(j)+styhi(j))
+                  sty = merge(stylo(j),styhi(j),(stylo(j)+styhi(j))>=zero)
                   ystate(i,j)=merge(zero,sty,lty)
                end do
             else
                do j=jmin,jmax+1
-                  ystate(i,j) = cvmgp(stylo(j),styhi(j),vedge(i,j))
+                  ystate(i,j) = merge(stylo(j),styhi(j),vedge(i,j)>=zero)
                   ystate(i,j) = merge(half*(stylo(j)+styhi(j)),ystate(i,j),
      &                 abs(vedge(i,j)).lt.eps)
                end do
@@ -728,7 +728,7 @@ c
       do j = jmin-1,jmax+1
          do i = imin,  imax+1
             fu  = merge(zero,one,abs(uedge(i,j)).lt.eps)
-            stx = cvmgp(xlo(i,j),xhi(i,j),uedge(i,j))
+            stx = merge(xlo(i,j),xhi(i,j),uedge(i,j)>=zero)
             xlo(i,j) = fu*stx + (one - fu)*half*(xhi(i,j)+xlo(i,j))
          end do
       end do
@@ -765,7 +765,7 @@ c
       do j = jmin,  jmax+1
          do i = imin-1,imax+1
             fv  = merge(zero,one,abs(vedge(i,j)).lt.eps)
-            sty = cvmgp(ylo(i,j),yhi(i,j),vedge(i,j))
+            sty = merge(ylo(i,j),yhi(i,j),vedge(i,j)>=zero)
             ylo(i,j) = fv*sty + (one - fv)*half*(yhi(i,j)+ylo(i,j))
          end do
       end do
@@ -846,7 +846,7 @@ c
             end if
             
             do i = imin, imax+1
-               xstate(i,j) = cvmgp(stxlo(i),stxhi(i),uedge(i,j))
+               xstate(i,j) = merge(stxlo(i),stxhi(i),uedge(i,j)>=zero)
                xstate(i,j) = merge(half*(stxlo(i)+stxhi(i)),xstate(i,j)
      &              ,abs(uedge(i,j)).lt.eps)
             end do
@@ -921,7 +921,7 @@ c
             end if
             
             do j=jmin,jmax+1
-               ystate(i,j) = cvmgp(stylo(j),styhi(j),vedge(i,j))
+               ystate(i,j) = merge(stylo(j),styhi(j),vedge(i,j)>=zero)
                ystate(i,j) = merge(half*(stylo(j)+styhi(j)),ystate(i,j),
      &              abs(vedge(i,j)).lt.eps)
             end do
@@ -1373,7 +1373,7 @@ c
                   dpls = two*(s(i+1,j) - s(i ,j))
                   dmin = two*(s(i ,j) - s(i-1,j))
                   slim = min(abs(dpls), abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   slx(i,j)= sflg*min(slim,abs(del))
                end do
@@ -1386,7 +1386,7 @@ c
                   dpls = two*(s(imin+1,j) - s(imin  ,j))
                   dmin = two*(s(imin  ,j) - s(imin-1,j))
                   slim = min(abs(dpls), abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   slx(imin,j)= sflg*min(slim,abs(del))
                end do
@@ -1398,7 +1398,7 @@ c
                   dpls = two*(s(imax+1,j) - s(imax  ,j))
                   dmin = two*(s(imax  ,j) - s(imax-1,j))
                   slim = min(abs(dpls), abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   slx(imax,j)= sflg*min(slim,abs(del))
                end do
@@ -1432,7 +1432,7 @@ c
                   dpls = two*(s(i,j+1) - s(i,j ))
                   dmin = two*(s(i,j ) - s(i,j-1))
                   slim = min(abs(dpls),abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   sly(i,j)= sflg*min(slim,abs(del))
                end do
@@ -1445,7 +1445,7 @@ c
                   dpls = two*(s(i,jmin+1) - s(i,jmin  ))
                   dmin = two*(s(i,jmin  ) - s(i,jmin-1))
                   slim = min(abs(dpls), abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   sly(i,jmin)= sflg*min(slim,abs(del))
                end do
@@ -1457,7 +1457,7 @@ c
                   dpls = two*(s(i,jmax+1) - s(i,jmax  ))
                   dmin = two*(s(i,jmax  ) - s(i,jmax-1))
                   slim = min(abs(dpls), abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   sly(i,jmax)= sflg*min(slim,abs(del))
                end do
@@ -1509,7 +1509,7 @@ c
                   dpls           =  two*(s(i+1,j)-s(i  ,j))
                   slxscr(i,cen)  = half*(s(i+1,j)-s(i-1,j))
                   slxscr(i,lim)  = min(abs(dmin),abs(dpls))
-                  slxscr(i,lim)  = cvmgp(slxscr(i,lim),zero,dpls*dmin)
+                  slxscr(i,lim)  = merge(slxscr(i,lim),zero,dpls*dmin>=zero)
                   slxscr(i,flag) = sign(one,slxscr(i,cen))
                   slxscr(i,fromm)= slxscr(i,flag)*
      &                 min(slxscr(i,lim),abs(slxscr(i,cen)))
@@ -1527,7 +1527,7 @@ c
                   dmin = two*(s(imin  ,j)-s(imin-1,j))
                   dpls = two*(s(imin+1,j)-s(imin  ,j))
                   slim = min(abs(dpls), abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   slx(imin-1,j) = zero
                   slx(imin,  j) = sflg*min(slim,abs(del))
@@ -1545,7 +1545,7 @@ c                 Recalculate the slope at imin+1 using the revised slxscr(imin,
                   dmin = two*(s(imax  ,j)-s(imax-1,j))
                   dpls = two*(s(imax+1,j)-s(imax  ,j))
                   slim = min(abs(dpls), abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   slx(imax,  j) = sflg*min(slim,abs(del))
                   slx(imax+1,j) = zero
@@ -1593,7 +1593,7 @@ c
                   dpls           =  two*(s(i,j+1)-s(i,j  ))
                   slyscr(j,cen)  = half*(s(i,j+1)-s(i,j-1))
                   slyscr(j,lim)  = min(abs(dmin),abs(dpls))
-                  slyscr(j,lim)  = cvmgp(slyscr(j,lim),zero,dpls*dmin)
+                  slyscr(j,lim)  = merge(slyscr(j,lim),zero,dpls*dmin>=zero)
                   slyscr(j,flag) = sign(one,slyscr(j,cen))
                   slyscr(j,fromm)= slyscr(j,flag)*
      &                 min(slyscr(j,lim),abs(slyscr(j,cen)))
@@ -1610,7 +1610,7 @@ c
                   dmin = two*(s(i,jmin  )-s(i,jmin-1))
                   dpls = two*(s(i,jmin+1)-s(i,jmin  ))
                   slim = min(abs(dpls), abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   sly(i,jmin-1) = zero
                   sly(i,jmin  ) = sflg*min(slim,abs(del))
@@ -1628,7 +1628,7 @@ c                 Recalculate the slope at jmin+1 using the revised slyscr(jmin,
                   dmin = two*(s(i,jmax  )-s(i,jmax-1))
                   dpls = two*(s(i,jmax+1)-s(i,jmax  ))
                   slim = min(abs(dpls), abs(dmin))
-                  slim = cvmgp(slim, zero, dpls*dmin)
+                  slim = merge(slim, zero, dpls*dmin>=zero)
                   sflg = sign(one,del)
                   sly(i,jmax  ) = sflg*min(slim,abs(del))
                   sly(i,jmax+1) = zero
@@ -2101,10 +2101,10 @@ c
             diff(i,2) = (sc(i,j,2) - s(i,j))*sgndif(i)
             diff(i,1) = (sc(i,j,1) - s(i,j))*sgndif(i)
 
-            inc1 = cvmgp(1,0,diff(i,1) - eps)
-            inc2 = cvmgp(1,0,diff(i,2) - eps)
-            inc3 = cvmgp(1,0,diff(i,3) - eps)
-            inc4 = cvmgp(1,0,diff(i,4) - eps)
+            inc1 = merge(1,0,(diff(i,1) - eps)>=zero)
+            inc2 = merge(1,0,(diff(i,2) - eps)>=zero)
+            inc3 = merge(1,0,(diff(i,3) - eps)>=zero)
+            inc4 = merge(1,0,(diff(i,4) - eps)>=zero)
             kdp(i) = inc1 + inc2 + inc3 + inc4
           enddo
 
@@ -2116,7 +2116,7 @@ c
               kdp(i) = merge(kdp(i) - 1,kdp(i),diff(i,k) .gt. eps)
               choice1 = sc(i,j,k) - smin(i,k)
               choice2 = smax(i,k) - sc(i,j,k)
-              redmax = cvmgp(choice1,choice2,sgndif(i))
+              redmax = merge(choice1,choice2,sgndif(i)>=zero)
               redfac = min(redfac,redmax)
               sumdif(i) = sumdif(i) - redfac*sgndif(i)
               sc(i,j,k) = sc(i,j,k) - redfac*sgndif(i)
@@ -2230,7 +2230,7 @@ c
       do j = js,je 
 
         do i = is-1,ie 
-          choose_hi(i+1) = cvmgp(0,1,uedge(i+1,j))
+          choose_hi(i+1) = merge(0,1,uedge(i+1,j)>=zero)
         end do 
         if (bc(1,1).eq.FOEXTRAP.or.bc(1,1).eq.HOEXTRAP
      &          .or.bc(1,1).eq.REFLECT_EVEN) then
@@ -2245,11 +2245,11 @@ c
           iup   = merge(i,i+1,choose_hi(i+1).eq.0)
           isign = merge(1,-1, choose_hi(i+1).eq.0)
           vtrans = vedge(iup,j+1)
-          jup = cvmgp(j,j+1,vtrans)
-          jsign = cvmgp(1,-1,vtrans)
-          vmult = cvmgp(uedge(i+1,j),half*(uedge(i+1,j)+uedge(i+1,j+1)),vtrans)
+          jup = merge(j,j+1,vtrans>=zero)
+          jsign = merge(1,-1,vtrans>=zero)
+          vmult = merge(uedge(i+1,j),half*(uedge(i+1,j)+uedge(i+1,j+1)),vtrans>=zero)
           xm(i) = isign*half*hx - two3rd*dt*vmult
-          xm(i) = cvmgp(xm(i), isign*min(isign*xm(i),hx*half), vtrans)
+          xm(i) = merge(xm(i), isign*min(isign*xm(i),hx*half), vtrans>=zero)
           ym(i) = jsign*half*hy - dt3rd*vedge(iup,j+1)
 
           c(i,1) = sc(iup,jup,1)
@@ -2276,11 +2276,11 @@ c       Impose BCs on gamp.
           iup   = merge(i,i+1,choose_hi(i+1).eq.0)
           isign = merge(1,-1, choose_hi(i+1).eq.0)
           vtrans = vedge(iup,j)
-          jup = cvmgp(j-1,j,vtrans)
-          jsign = cvmgp(1,-1,vtrans)
-          vmult = cvmgp(half*(uedge(i+1,j)+uedge(i+1,j-1)),uedge(i+1,j),vtrans)
+          jup = merge(j-1,j,vtrans>=zero)
+          jsign = merge(1,-1,vtrans>=zero)
+          vmult = merge(half*(uedge(i+1,j)+uedge(i+1,j-1)),uedge(i+1,j),vtrans>=zero)
           xm(i) = isign*half*hx - two3rd*dt*vmult
-          xm(i) = cvmgp(isign*min(isign*xm(i),hx*half), xm(i), vtrans)
+          xm(i) = merge(isign*min(isign*xm(i),hx*half), xm(i), vtrans>=zero)
           ym(i) = jsign*half*hy - dt3rd*vedge(iup,j)
 
           c(i,1) = sc(iup,jup,1)
@@ -2325,7 +2325,7 @@ c         Change per JBB - dont use stem here!
       do j = js-1,je 
 
         do i = is,ie 
-          choose_hi(i) = cvmgp(0,1,vedge(i,j+1))
+          choose_hi(i) = merge(0,1,vedge(i,j+1)>=zero)
           if ( (j .eq. js-1) .and. 
      &       (bc(2,1).eq.FOEXTRAP.or.bc(2,1).eq.HOEXTRAP
      &                           .or.bc(2,1).eq.REFLECT_EVEN) )
@@ -2340,12 +2340,12 @@ c         Change per JBB - dont use stem here!
           jup   = merge(j,j+1,choose_hi(i).eq.0)
           jsign = merge(1, -1,choose_hi(i).eq.0)
           vtrans = uedge(i+1,jup)
-          iup = cvmgp(i,i+1,vtrans)
-          isign = cvmgp(1,-1,vtrans)
-          vmult = cvmgp(vedge(i,j+1),half*(vedge(i,j+1)+vedge(i+1,j+1)),vtrans)
+          iup = merge(i,i+1,vtrans>=zero)
+          isign = merge(1,-1,vtrans>=zero)
+          vmult = merge(vedge(i,j+1),half*(vedge(i,j+1)+vedge(i+1,j+1)),vtrans>=zero)
           xm(i) = isign*half*hx - dt3rd*uedge(i+1,jup)
           ym(i) = jsign*half*hy - two3rd*dt*vmult
-          ym(i) = cvmgp(ym(i),jsign*min(jsign*ym(i),hy*half),vtrans)
+          ym(i) = merge(ym(i),jsign*min(jsign*ym(i),hy*half),vtrans>=zero)
 
           c(i,1) = sc(iup,jup,1)
           c(i,2) = sc(iup,jup,2)
@@ -2366,12 +2366,12 @@ c       Impose BCs on gamp.
           jup   = merge(j,j+1,choose_hi(i).eq.0)
           jsign = merge(1, -1,choose_hi(i).eq.0)
           vtrans = uedge(i,jup)
-          iup = cvmgp(i-1,i,vtrans)
-          isign = cvmgp(1,-1,vtrans)
-          vmult = cvmgp(half*(vedge(i,j+1)+vedge(i-1,j+1)),vedge(i,j+1),vtrans)
+          iup = merge(i-1,i,vtrans>=zero)
+          isign = merge(1,-1,vtrans>=zero)
+          vmult = merge(half*(vedge(i,j+1)+vedge(i-1,j+1)),vedge(i,j+1),vtrans>=zero)
           xm(i) = isign*half*hx - dt3rd*uedge(i,jup)
           ym(i) = jsign*half*hy - two3rd*dt*vmult
-          ym(i) = cvmgp(jsign*min(jsign*ym(i),hy*half),ym(i),vtrans)
+          ym(i) = merge(jsign*min(jsign*ym(i),hy*half),ym(i),vtrans>=zero)
 
           c(i,1) = sc(iup,jup,1)
           c(i,2) = sc(iup,jup,2)
