@@ -1759,9 +1759,14 @@ Diffusion::getViscOp (int                    comp,
     // Rewrite slightly to avoid requiring rho_half when usehoop and useden are false
     // (leave function arguments for now though)
     //
-    if ( (!usehoop) && (!useden) )
+    if (!usehoop)
     {
         caller->Geom().GetVolume(alpha,grids,GEOM_GROW);
+        
+        if (useden) 
+        {
+            MultiFab::Multiply(alpha,*rho_half,0,0,1,alpha.nGrow());
+        }
     }
     else
     {

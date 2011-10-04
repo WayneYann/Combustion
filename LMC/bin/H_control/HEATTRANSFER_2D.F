@@ -21,6 +21,111 @@
 
 #define SDIM 2
 
+      subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dx, T, DIMS(T), Y, DIMS(Y),
+     &                                rhoDx, DIMS(rhoDx), Fx, DIMS(Fx), 
+     &                                rhoDy, DIMS(rhoDy), Fy, DIMS(Fy),
+     &                                FiGHi, DIMS(FiGHi) )
+
+      implicit none
+
+#include "cdwrk.H"      
+
+      integer lo(SDIM), hi(SDIM)
+      REAL_T  dx(SDIM)
+      integer DIMDEC(T)
+      REAL_T  T(DIMV(T))
+      integer DIMDEC(Y)
+      REAL_T  Y(DIMV(Y),*)
+
+      integer DIMDEC(rhoDx)
+      REAL_T  rhoDx(DIMV(rhoDx),*)
+      integer DIMDEC(Fx)
+      REAL_T  Fx(DIMV(Fx),*)
+
+      integer DIMDEC(rhoDy)
+      REAL_T  rhoDy(DIMV(rhoDy),*)
+      integer DIMDEC(Fy)
+      REAL_T  Fy(DIMV(Fy),*)
+
+      integer DIMDEC(FiGHi)
+      REAL_T  FiGHi(DIMV(FiGHi))
+
+      integer DIMDEC(H)
+      REAL_T, allocatable :: H(:,:,:)
+
+      integer i, j, d, n
+      integer lob(SDIM), hib(SDIM)
+      REAL_T hdx, hdy, dxinv, dyinv, FiHi
+
+c     Compute species enthalpies on box grown by one
+      do d=1,SDIM
+         lob(d) = lo(d)-1
+         hib(d) = hi(d)+1
+      enddo
+      ARG_L1(H) = lob(1)
+      ARG_L2(H) = lob(2)
+      ARG_H1(H) = hib(1)
+      ARG_H2(H) = hib(2)
+
+      allocate( H(DIMV(H),1:Nspec) )
+
+      call FORT_HfromT(lob, hib, H, DIMS(H), T, DIMS(T))
+
+c     Set FiGHi = (species flux) dot Grad(species enthalpy)
+c        compute Grad(H) on each face, and average across faces in each coordinate
+      hdx = 0.5d0 / dx(1)
+      hdy = 0.5d0 / dx(2)
+      do j=lo(2),hi(2)
+        do i=lo(1),hi(1)
+           FiGHi(i,j) = 0.d0
+           do n=1,Nspec
+              FiGHi(i,j) = FiGHi(i,j)
+     &             + hdx*(H(i+1,j,n)-H(i,j,n))*(Fx(i+1,j,n)+Fx(i,j,n))
+     &             + hdy*(H(i,j+1,n)-H(i,j,n))*(Fy(i,j+1,n)+Fy(i,j,n))
+           enddo
+        enddo
+      enddo
+
+c     On entry, Fx(1:Nspec) = spec flux, Fx(Nspec+1) = - (lambda/cp).Grad(Hmix)
+c     On exit, Fx(Nspec+1) is the heat flux = - lambda.Grad(T) + (species flux).(species enthalpy)
+c       Since Hmix = sum(Yi.Hi), lambda.Grad(T) = (lambda/cp).(Grad(Hmix) - Hi.Grad(Y)
+c       In the mixtured-averaged model (species flux) = -rhoDi.Grad(Y), so we get that
+c       heat flux = - (lambda/cp).Grad(Hmix) + Hi.(species flux).(1 - (lambda/(cp.rhoDi))
+c
+c     Also, conduction = - lambda.Grad(T) = (heat flux) - (species flux).(species enthalpy)
+c                (or, simply -lambda.Grad(T) computed using T and lambda passed in)
+
+      dxinv = 1.d0 / dx(1)
+      do j=lo(2),hi(2)
+        do i=lo(1),hi(1)+1
+           Fx(i,j,Nspec+2) = 0.d0
+           do n=1,Nspec
+              FiHi = + 0.5d0*(H(i,j,n)+H(i-1,j,n))*Fx(i,j,n)
+              Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
+              Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2) + FiHi
+           enddo
+           Fx(i,j,Nspec+2) = Fx(i,j,Nspec+1) - Fx(i,j,Nspec+2)
+c           Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))*dxinv
+         enddo
+      enddo
+
+      dyinv = 1.d0 / dx(2)
+      do j=lo(2),hi(2)+1
+        do i=lo(1),hi(1)
+           Fy(i,j,Nspec+2) = 0.d0
+           do n=1,Nspec
+              FiHi = + 0.5d0*(H(i,j,n)+H(i,j-1,n))*Fy(i,j,n)
+              Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
+              Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2) + FiHi
+           enddo
+           Fy(i,j,Nspec+2) = Fy(i,j,Nspec+1) - Fy(i,j,Nspec+2)
+c           Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))*dyinv
+        enddo
+      enddo
+      end
+
+
+
       subroutine FORT_COMPUTE_RHODGRADHDOTGRADY(dx,
      &         lo, hi, DIMS(species), species,
      &         DIMS(h), h, DIMS(betax), betax,
@@ -873,12 +978,12 @@ c                               inflow for pipe
       end if
       end
 
-      subroutine  FORT_NEG_FLUXDIV(lo, hi,
-     &                             update, DIMS(update),
-     &                             xflux,  DIMS(xflux),
-     &                             yflux,  DIMS(yflux),
-     &                             vol,    DIMS(vol),
-     &                             nc)
+      subroutine  FORT_FLUXDIV(lo, hi,
+     &                         update, DIMS(update),
+     &                         xflux,  DIMS(xflux),
+     &                         yflux,  DIMS(yflux),
+     &                         vol,    DIMS(vol),
+     &                         scal, nc)
       implicit none
       integer lo(SDIM), hi(SDIM), nc
       integer DIMDEC(update)
@@ -889,51 +994,17 @@ c                               inflow for pipe
       REAL_T xflux(DIMV(xflux),nc)
       REAL_T yflux(DIMV(yflux),nc)
       REAL_T vol(DIMV(vol))
+      REAL_T scal
 
       integer i, j, n
       
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,nc
-               update(i,j,n)=-((xflux(i+1,j,n)-xflux(i,j,n))
-     &              +          (yflux(i,j+1,n)-yflux(i,j,n)))/vol(i,j)
+               update(i,j,n)=scal*
+     &              ( (xflux(i+1,j,n)-xflux(i,j,n))
+     &              + (yflux(i,j+1,n)-yflux(i,j,n)) )/vol(i,j)
             end do
-         end do
-      end do
-      end
-      
-      subroutine  FORT_INCRWEXTFLXDIV(lo, hi,
-     &                                xflux,  DIMS(xflux),
-     &                                yflux,  DIMS(yflux),
-     &                                stateo, DIMS(stateo),
-     &                                staten, DIMS(staten),
-     &                                vol,    DIMS(vol),
-     &                                nc, dt)
-      implicit none
-      integer lo(SDIM), hi(SDIM), nc
-      integer DIMDEC(xflux)
-      integer DIMDEC(yflux)
-      integer DIMDEC(stateo)
-      integer DIMDEC(staten)
-      integer DIMDEC(vol)
-      REAL_T xflux(DIMV(xflux),nc)
-      REAL_T yflux(DIMV(yflux),nc)
-      REAL_T stateo(DIMV(stateo))
-      REAL_T staten(DIMV(staten))
-      REAL_T vol(DIMV(vol))
-      REAL_T dt
-
-      integer i, j, n
-      REAL_T dF
-      
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-            dF = zero
-            do n=1,nc
-               dF = dF + ( xflux(i+1,j,n) - xflux(i,j,n) )
-     &              +    ( yflux(i,j+1,n) - yflux(i,j,n) ) 
-            end do
-            staten(i,j) = stateo(i,j) + dF*dt/vol(i,j)
          end do
       end do
       end

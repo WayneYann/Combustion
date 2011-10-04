@@ -173,10 +173,19 @@ of scalar_advect and put into a new added slot in SpecDiffTerms after adjusting 
    machinery as before.  Notably, this term is computed on the fly using set_differential_diffusion_fluxes
    which is based on the state at time = t.  The SpecDiffusionFluxn/np1 structures are used only
    as an intermediate, and the Divergence of these is never saved beyond a single stage in the
-   algorithm.
+   algorithm.  There is the possibility for optimization here, but the time-n state may be 
+   modified (by a mac_sync, for example) between places where the term is needed, so it might be
+   tricky to do correctly.
 
+(4) repair compute_edge_states so that it predicts RhoH and computes Temp (actually, predicts Temp
+   on edges to use as a guess for the RhoH->T solve).  There were a few little inidexing problems.
+   Still need to verify getRhoHViscTerms returns something sensible.  In doing so, and comparing
+   to the oned code, found differences in transport coefficients which may be the result of
+   changes to how ChemDriver initializes things now.  Also, still need to removed NULN code from 
+   scalar_advection for RhoH, and weave the Fi terms into the proper places....
 
+(5) Fix up the code to set the chem SDC source term.  Also, rename the strang_chem_sdc routine and
+   the RECOMPUPDT to NEG_FLUXDIV 
 
 
  
-

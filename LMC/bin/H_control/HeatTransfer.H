@@ -98,14 +98,6 @@ public:
                                 int  iteration,
                                 int  ncycle);
     //
-    // SDC specific setup
-    //
-    virtual void advance_setup_sdc (Real time,
-				    Real dt,
-				    int  iteration,
-				    int  ncycle);
-
-    //
     // Advance grids at this level in time.
     //
     virtual Real advance (Real time,
@@ -122,7 +114,7 @@ public:
     //
     // Worker functions used by level advance function.
     //
-    virtual MultiFab* create_mac_rhs (Real time, Real dt);
+    virtual void create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow = 0);
 
     virtual void getViscTerms (MultiFab& visc_terms,
                                int       src_comp, 
@@ -181,15 +173,26 @@ public:
                         int  last_scalar,
                         int  do_viscreflux);
 
-    void differential_spec_diffusion_update (Real dt,
-                                             int  corrector,
-                                             Real theta);
-    
+    void compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
+                                                         Real      dt);
+
+    void differential_diffusion_update (MultiFab& Force,
+                                        int       FComp,
+                                        Real      theta,
+                                        MultiFab* D = 0,
+                                        int       DComp = 0);
+
+    void diffusion_flux_divergence (MultiFab& visc_terms,
+                                    int       load_comp,
+                                    Real      time,
+                                    Real      scale) const;
+
+    void compute_differential_diffusion_fluxes (const Real& time);
+
     void set_differential_diffusion_fluxes (const Real& time);
 
     void adjust_spec_diffusion_fluxes (Real                   time,
-                                       const MultiFab* const* beta,
-                                       int                    beta_comp);
+                                       const MultiFab* const* beta);
 
     virtual void scalar_diffusion_update (Real dt,
                                           int  first_scalar, 
@@ -403,10 +406,12 @@ protected:
 			      YdotAction Ydot_action,
                               int        ngrow = 0);
 
-    virtual void advance_chemistry (MultiFab&  state_old,
-                                    MultiFab&  state_new,
-                                    Real       dt,
-                                    int        ngrow = 0);
+    virtual void advance_chemistry (MultiFab&       mf_old,
+                                    MultiFab&       mf_new,
+                                    Real            dt,
+                                    int             ngrow = 0,
+                                    const MultiFab* Force = 0,
+                                    int             nCompF = -1);
 
     virtual void calcViscosity (const Real time,
                                 const Real dt,
@@ -587,12 +592,12 @@ protected:
 protected:
 
     DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
-    //
-    // Protected data.
-    //
+
     MultiFab**  EdgeState;
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
+    MultiFab    sumSpecFluxDotGradHn;
+    MultiFab    sumSpecFluxDotGradHnp1;
 
     AuxBoundaryData        aux_boundary_data_old;
     AuxBoundaryData        aux_boundary_data_new;
@@ -605,9 +610,7 @@ protected:
     static std::map<std::string,Array<std::string> > auxDiag_names;
 
     DDOp MCDDOp;
-    //
-    // Protected static data.
-    //
+
     static int         num_divu_iters;
     static int         init_once_done;
     static int         RhoH;
@@ -675,12 +678,14 @@ protected:
     static Real        new_T_threshold;
     static Array<Real> typical_values;
 
-
-///////////////////////////////
-// SDC Stuff
     static int         do_sdc;
-    static int         sdc_iters;
-///////////////////////////////
+    static int         sdc_iterMAX;
+    static int nGrowAdvForcing;
+    MultiFab Forcing;
+    MultiFab Dn;
+    MultiFab Dnp1;
+    MultiFab Dhat;
+
 
 };
 

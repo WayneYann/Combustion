@@ -35,8 +35,8 @@ public:
 			     FArrayBox&        I_R,
 			     FArrayBox&        FuncCount,
 			     const Box&        box,
-			     int               sCompY,
-			     int               sCompT,
+			     int               sCompRY,
+			     int               sCompRH,
 			     Real              dt,
 			     Real              Patm,
 			     FArrayBox*        chemDiag=0) const;
