@@ -852,7 +852,7 @@ c ::: -----------------------------------------------------------
       if (level .lt. max_trac_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               tag(i,j) = cvmgt(set,tag(i,j),ftrac(i,j,1).gt.flametracval)
+               tag(i,j) = merge(set,tag(i,j),ftrac(i,j,1).gt.flametracval)
             enddo
          enddo
       endif
@@ -865,7 +865,7 @@ c ::: -----------------------------------------------------------
                in_refine_zone = (y - problo(2)) .le. nozzlerefheight
                in_refine_zone = in_refine_zone .and.
      &              (ABS(x-nozzlerefloc) .le. half*nozzlerefwidth)
-               tag(i,j) = cvmgt(set,tag(i,j),in_refine_zone)
+               tag(i,j) = merge(set,tag(i,j),in_refine_zone)
             end do
          end do
       end if
@@ -975,7 +975,7 @@ c     ::::: refine where there is temperature gradient
             ax = abs(temperature(i+1,j,1) - temperature(i-1,j,1))
             ay = abs(temperature(i,j+1,1) - temperature(i,j-1,1))
             aerr = max(ax,ay)
-            tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
+            tag(i,j) = merge(set,tag(i,j),aerr.ge.tempgrad)
          enddo
       enddo
       endif
@@ -983,7 +983,7 @@ c     ::::: refine where there is temperature gradient
       if (level .lt. max_temp_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               tag(i,j) = cvmgt(set,tag(i,j),temperature(i,j,1).ge.temperr)
+               tag(i,j) = merge(set,tag(i,j),temperature(i,j,1).ge.temperr)
             end do
          end do
       end if
@@ -1034,7 +1034,7 @@ c ::: -----------------------------------------------------------
       if (level .lt. max_vort_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               tag(i,j) = cvmgt(set,tag(i,j),ABS(vort(i,j,1)*dx(1)).ge.vorterr)
+               tag(i,j) = merge(set,tag(i,j),ABS(vort(i,j,1)*dx(1)).ge.vorterr)
             end do
          end do
       end if
@@ -2014,14 +2014,14 @@ c            divu(i,j) = min(two,one+time/.05)
 #if 0
       do j=dlo(2),dhi(2)
         do i = dlo(1), dhi(1)
-            divu(i,j) = time/.0125
+            divu(i,j) = time/.0125d0
         enddo
       enddo
 #endif
       do j=dlo(2),dhi(2)
         do i = dlo(1), dhi(1)
            x = xlo(1) + (i-plo(1)+.5)*dx(1)
-           divu(i,j) = cvmgt(one,zero,x.GE.0.5)
+           divu(i,j) = merge(one,zero,x.GE.0.5d0)
         enddo
       enddo
 

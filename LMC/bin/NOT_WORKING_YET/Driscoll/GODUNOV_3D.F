@@ -447,7 +447,7 @@ c
      &              ( (ulo(i,j,k) .le. zero) .and.
      &              (uhi(i,j,k) .ge. zero) ) .or.
      &              (abs(tst)   .lt. eps )
-               ulo(i,j,k) = cvmgt(zero,val,ltm)
+               ulo(i,j,k) = merge(zero,val,ltm)
             end do
          end do
       end do
@@ -461,7 +461,7 @@ c
      &              ( (vlo(i,j,k) .le. zero) .and.
      &              (vhi(i,j,k) .ge. zero) ) .or.
      &              (abs(tst)   .lt. eps )
-               vlo(i,j,k) = cvmgt(zero,val,ltm)
+               vlo(i,j,k) = merge(zero,val,ltm)
             end do
          end do
       end do
@@ -475,7 +475,7 @@ c
      &              ( (wlo(i,j,k) .le. zero) .and.
      &              (whi(i,j,k) .ge. zero) ) .or.
      &              (abs(tst)   .lt. eps )
-               wlo(i,j,k) = cvmgt(zero,val,ltm)
+               wlo(i,j,k) = merge(zero,val,ltm)
             end do
          end do
       end do
@@ -595,7 +595,7 @@ c
       do k = kmin-1,kmax+1
          do j = jmin-1,jmax+1
             do i = imin,  imax+1
-               fu  = cvmgt(zero,one,abs(uad(i,j,k)).lt.eps)
+               fu  = merge(zero,one,abs(uad(i,j,k)).lt.eps)
                stx = cvmgp(xlo(i,j,k),xhi(i,j,k),uad(i,j,k))
                xlo(i,j,k) = fu*stx + (one - fu)*half*(xhi(i,j,k)+xlo(i,j,k))
             end do
@@ -630,7 +630,7 @@ c
       do k = kmin-1,kmax+1
          do j = jmin,  jmax+1
             do i = imin-1,imax+1
-               fv  = cvmgt(zero,one,abs(vad(i,j,k)).lt.eps)
+               fv  = merge(zero,one,abs(vad(i,j,k)).lt.eps)
                sty = cvmgp(ylo(i,j,k),yhi(i,j,k),vad(i,j,k))
                ylo(i,j,k) = fv*sty + (one - fv)*half*(yhi(i,j,k)+ylo(i,j,k))
             end do
@@ -665,7 +665,7 @@ c
       do k = kmin,kmax+1
          do j = jmin-1,jmax+1
             do i = imin-1,imax+1
-               fw  = cvmgt(zero,one,abs(wad(i,j,k)).lt.eps)
+               fw  = merge(zero,one,abs(wad(i,j,k)).lt.eps)
                stz = cvmgp(zlo(i,j,k),zhi(i,j,k),wad(i,j,k))
                zlo(i,j,k) = fw*stz + (one-fw)*half*(zhi(i,j,k)+zlo(i,j,k))
             end do
@@ -781,12 +781,12 @@ c
                      ltx = stxlo(i) .le. zero  .and.  stxhi(i) .ge. zero
                      ltx = ltx .or. (abs(stxlo(i)+stxhi(i)) .lt. eps)
                      stx = cvmgp(stxlo(i),stxhi(i),stxlo(i)+stxhi(i))
-                     xstate(i,j,k) = cvmgt(zero,stx,ltx)
+                     xstate(i,j,k) = merge(zero,stx,ltx)
                   end do
                else
                   do i = imin, imax+1
                      xstate(i,j,k) = cvmgp(stxlo(i),stxhi(i),uedge(i,j,k))
-                     xstate(i,j,k) = cvmgt(half*(stxlo(i)+stxhi(i)),xstate(i,j,k)
+                     xstate(i,j,k) = merge(half*(stxlo(i)+stxhi(i)),xstate(i,j,k)
      &                    ,abs(uedge(i,j,k)).lt.eps)
                   end do
                end if
@@ -903,12 +903,12 @@ c
                      lty = stylo(j) .le. zero  .and.  styhi(j) .ge. zero
                      lty = lty .or. (abs(stylo(j)+styhi(j)) .lt. eps)
                      sty = cvmgp(stylo(j),styhi(j),stylo(j)+styhi(j))
-                     ystate(i,j,k) = cvmgt(zero,sty,lty)
+                     ystate(i,j,k) = merge(zero,sty,lty)
                   end do
                else
                   do j=jmin,jmax+1
                      ystate(i,j,k) = cvmgp(stylo(j),styhi(j),vedge(i,j,k))
-                     ystate(i,j,k) = cvmgt(half*(stylo(j)+styhi(j)),ystate(i,j,k),
+                     ystate(i,j,k) = merge(half*(stylo(j)+styhi(j)),ystate(i,j,k),
      &                    abs(vedge(i,j,k)).lt.eps)
                   end do
                end if
@@ -1022,12 +1022,12 @@ c
                      ltz = stzlo(k) .le. zero  .and.  stzhi(k) .ge. zero
                      ltz = ltz .or. (abs(stzlo(k)+stzhi(k)) .lt. eps)
                      stz = cvmgp(stzlo(k),stzhi(k),stzlo(k)+stzhi(k))
-                     zstate(i,j,k) = cvmgt(zero,stz,ltz)
+                     zstate(i,j,k) = merge(zero,stz,ltz)
                   end do
                else
                   do k = kmin,kmax+1
                      zstate(i,j,k) = cvmgp(stzlo(k),stzhi(k),wedge(i,j,k))
-                     zstate(i,j,k) = cvmgt(half*(stzlo(k)+stzhi(k)),zstate(i,j,k),
+                     zstate(i,j,k) = merge(half*(stzlo(k)+stzhi(k)),zstate(i,j,k),
      &                    abs(wedge(i,j,k)).lt.eps)
                   end do
                end if
@@ -1165,7 +1165,7 @@ c
       do k = kmin-1,kmax+1
          do j = jmin-1,jmax+1
             do i = imin,  imax+1
-               fu  = cvmgt(zero,one,abs(uedge(i,j,k)).lt.eps)
+               fu  = merge(zero,one,abs(uedge(i,j,k)).lt.eps)
                stx = cvmgp(xlo(i,j,k),xhi(i,j,k),uedge(i,j,k))
                xlo(i,j,k) = fu*stx + (one - fu)*half*(xhi(i,j,k)+xlo(i,j,k))
             end do
@@ -1210,7 +1210,7 @@ c
       do k = kmin-1,kmax+1
          do j = jmin,  jmax+1
             do i = imin-1,imax+1
-               fv  = cvmgt(zero,one,abs(vedge(i,j,k)).lt.eps)
+               fv  = merge(zero,one,abs(vedge(i,j,k)).lt.eps)
                sty = cvmgp(ylo(i,j,k),yhi(i,j,k),vedge(i,j,k))
                ylo(i,j,k) = fv*sty + (one - fv)*half*(yhi(i,j,k)+ylo(i,j,k))
             end do
@@ -1255,7 +1255,7 @@ c
       do k = kmin,kmax+1
          do j = jmin-1,jmax+1
             do i = imin-1,imax+1
-               fw  = cvmgt(zero,one,abs(wedge(i,j,k)).lt.eps)
+               fw  = merge(zero,one,abs(wedge(i,j,k)).lt.eps)
                stz = cvmgp(zlo(i,j,k),zhi(i,j,k),wedge(i,j,k))
                zlo(i,j,k) = fw*stz + (one-fw)*half*(zhi(i,j,k)+zlo(i,j,k))
             end do
@@ -1344,7 +1344,7 @@ c    &                    - dth*s(i,j,k)*(uedge(i+1,j,k)-uedge(i,j,k))/hx
 
                do i = imin, imax+1
                   xstate(i,j,k) = cvmgp(stxlo(i),stxhi(i),uedge(i,j,k))
-                  xstate(i,j,k) = cvmgt(half*(stxlo(i)+stxhi(i)),xstate(i,j,k)
+                  xstate(i,j,k) = merge(half*(stxlo(i)+stxhi(i)),xstate(i,j,k)
      &                 ,abs(uedge(i,j,k)).lt.eps)
                end do
                place_to_break = 1
@@ -1434,7 +1434,7 @@ c    &                    - dth*s(i,j,k)*(vedge(i,j+1,k)-vedge(i,j,k))/hy
 
                do j=jmin,jmax+1
                   ystate(i,j,k) = cvmgp(stylo(j),styhi(j),vedge(i,j,k))
-                  ystate(i,j,k) = cvmgt(half*(stylo(j)+styhi(j)),ystate(i,j,k),
+                  ystate(i,j,k) = merge(half*(stylo(j)+styhi(j)),ystate(i,j,k),
      &                 abs(vedge(i,j,k)).lt.eps)
                end do
                place_to_break = 1
@@ -1522,7 +1522,7 @@ c    &                    - dth*s(i,j,k)*(wedge(i,j,k+1)-wedge(i,j,k))/hz
 
                do k = kmin,kmax+1
                   zstate(i,j,k) = cvmgp(stzlo(k),stzhi(k),wedge(i,j,k))
-                  zstate(i,j,k) = cvmgt(half*(stzlo(k)+stzhi(k)),zstate(i,j,k),
+                  zstate(i,j,k) = merge(half*(stzlo(k)+stzhi(k)),zstate(i,j,k),
      &                 abs(wedge(i,j,k)).lt.eps)
                end do
                place_to_break = 1
@@ -1805,7 +1805,7 @@ c
             do j = jmin-1,jmax+1
                do k = kmin-1,kmax+1
                   ltest = uad(imin,j,k).le.eps
-                  stx   = cvmgt(xhi(imin,j,k),s(imin-1,j,k),ltest)
+                  stx   = merge(xhi(imin,j,k),s(imin-1,j,k),ltest)
                   xlo(imin,j,k) = stx
                   xhi(imin,j,k) = stx
                end do
@@ -1845,7 +1845,7 @@ c
             do j = jmin-1,jmax+1
                do k = kmin-1,kmax+1
                   ltest = uad(imax+1,j,k).ge.-eps
-                  stx   = cvmgt(xlo(imax+1,j,k),s(imax+1,j,k),ltest)
+                  stx   = merge(xlo(imax+1,j,k),s(imax+1,j,k),ltest)
                   xlo(imax+1,j,k) = stx
                   xhi(imax+1,j,k) = stx
                end do
@@ -1921,7 +1921,7 @@ c
             do i = imin-1,imax+1
                do k = kmin-1,kmax+1
                   ltest = vad(i,jmin,k).le.eps
-                  sty   = cvmgt(yhi(i,jmin,k),s(i,jmin-1,k),ltest)
+                  sty   = merge(yhi(i,jmin,k),s(i,jmin-1,k),ltest)
                   ylo(i,jmin,k) = sty
                   yhi(i,jmin,k) = sty
                end do
@@ -1961,7 +1961,7 @@ c
             do i = imin-1,imax+1
                do k = kmin-1,kmax+1
                   ltest = vad(i,jmax+1,k).ge.-eps
-                  sty   = cvmgt(ylo(i,jmax+1,k),s(i,jmax+1,k),ltest)
+                  sty   = merge(ylo(i,jmax+1,k),s(i,jmax+1,k),ltest)
                   ylo(i,jmax+1,k) = sty
                   yhi(i,jmax+1,k) = sty
                end do
@@ -2037,7 +2037,7 @@ c
             do i = imin-1,imax+1
                do j = jmin-1,jmax+1
                   ltest = wad(i,j,kmin).le.eps
-                  stz   = cvmgt(zhi(i,j,kmin),s(i,j,kmin-1),ltest)
+                  stz   = merge(zhi(i,j,kmin),s(i,j,kmin-1),ltest)
                   zhi(i,j,kmin) = stz
                   zlo(i,j,kmin) = stz
                end do
@@ -2077,7 +2077,7 @@ c
             do i = imin-1,imax+1
                do j = jmin-1,jmax+1
                   ltest = wad(i,j,kmax+1).ge.-eps
-                  stz   = cvmgt(zlo(i,j,kmax+1),s(i,j,kmax+1),ltest)
+                  stz   = merge(zlo(i,j,kmax+1),s(i,j,kmax+1),ltest)
                   zhi(i,j,kmax+1) = stz
                   zlo(i,j,kmax+1) = stz
                end do
@@ -2158,7 +2158,7 @@ c
       do k = lo(3)-ng, hi(3)+ng
          do j = lo(2)-ng, hi(2)+ng
             do i = lo(1)-ng, hi(1)+ng
-               s(i,j,k) = cvmgt(s(i,j,k), zero, abs(s(i,j,k)).gt.1.0D-20)
+               s(i,j,k) = merge(s(i,j,k), zero, abs(s(i,j,k)).gt.1.0D-20)
             end do
          end do
       end do

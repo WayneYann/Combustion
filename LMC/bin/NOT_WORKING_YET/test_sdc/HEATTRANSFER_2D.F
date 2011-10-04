@@ -1016,7 +1016,7 @@ c                               inflow for pipe
 #  if (METH == N2DOM)
                maxs = iN2
 #  elif (METH == FINDDOM)
-               pm = cvmgt(0,-1,sum.gt.zero)
+               pm = merge(0,-1,sum.gt.zero)
                maxs=1
                maxv=state(i+pm,j,maxs)
                do n=2,nc
@@ -1049,7 +1049,7 @@ c                               inflow for pipe
 #  if (METH == N2DOM)
                maxs = iN2
 #  elif (METH == FINDDOM)
-               pm = cvmgt(0,-1,sum.gt.zero)
+               pm = merge(0,-1,sum.gt.zero)
                maxs=1
                maxv=state(i,j+pm,maxs)
                do n=2,nc
@@ -1132,7 +1132,7 @@ c
                      sumy = sumy + y(n)
                   end do
                   alphabar = - sump/sumn
-                  beta=cvmgt(sumn*(one-alphabar)/sumy,zero,sumy.NE.zero)
+                  beta=merge(sumn*(one-alphabar)/sumy,zero,sumy.NE.zero)
                else
                   do n=1,Nspec
                      y(n) = MAX(zero,state(i,j,n))
@@ -1140,7 +1140,7 @@ c
                      sumy = sumy + y(n)
                   end do
                   alphabar = - sumn/sump
-                  beta=cvmgt(sump*(one-alphabar)/sumy,zero,sumy.NE.zero)
+                  beta=merge(sump*(one-alphabar)/sumy,zero,sumy.NE.zero)
                end if
                if (alphabar .GT. one) goto 100
                do n=1,Nspec
