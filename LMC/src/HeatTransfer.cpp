@@ -1400,8 +1400,6 @@ HeatTransfer::initData ()
             DataServices::Dispatch(DataServices::ExitRequest, NULL);
 
         AmrData&                  amrData   = dataServices.AmrDataRef();
-        const int                 nspecies  = getChemSolve().numSpecies();
-        const Array<std::string>& names     = getChemSolve().speciesNames();   
         Array<std::string>        plotnames = amrData.PlotVarNames();
 
         if (amrData.FinestLevel() < level)
