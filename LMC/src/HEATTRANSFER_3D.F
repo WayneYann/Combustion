@@ -1376,12 +1376,12 @@ c  interior cell.
                uadv = half*(umac(i,j,k) + umac(i+1,j,k))
                vadv = half*(vmac(i,j,k) + vmac(i,j+1,k))
                wadv = half*(wmac(i,j,k) + wmac(i,j,k+1))
-               p_x_hi = cvmgp(p(i  ,j,k),p(i+1,j,k),umac(i+1,j,k))
-               p_x_lo = cvmgp(p(i-1,j,k),p(i  ,j,k),umac(i  ,j,k))
-               p_y_hi = cvmgp(p(i,j  ,k),p(i,j+1,k),vmac(i,j+1,k))
-               p_y_lo = cvmgp(p(i,j-1,k),p(i,j  ,k),vmac(i,j  ,k))
-               p_z_hi = cvmgp(p(i,j,k  ),p(i,j,k+1),wmac(i,j,k+1))
-               p_z_lo = cvmgp(p(i,j,k-1),p(i,j,k  ),wmac(i,j,k  ))
+               p_x_hi = merge(p(i  ,j,k),p(i+1,j,k),umac(i+1,j,k)>=zero)
+               p_x_lo = merge(p(i-1,j,k),p(i  ,j,k),umac(i  ,j,k)>=zero)
+               p_y_hi = merge(p(i,j  ,k),p(i,j+1,k),vmac(i,j+1,k)>=zero)
+               p_y_lo = merge(p(i,j-1,k),p(i,j  ,k),vmac(i,j  ,k)>=zero)
+               p_z_hi = merge(p(i,j,k  ),p(i,j,k+1),wmac(i,j,k+1)>=zero)
+               p_z_lo = merge(p(i,j,k-1),p(i,j,k  ),wmac(i,j,k  )>=zero)
                ugradp(i,j,k) = uadv * (p_x_hi - p_x_lo) / dx(1) +
      &              vadv * (p_y_hi - p_y_lo) / dx(2) +    
      &              wadv * (p_z_hi - p_z_lo) / dx(3)

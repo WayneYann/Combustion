@@ -964,10 +964,10 @@ c                               inflow for pipe
          do i=lo(1),hi(1)
             uadv = half*(umac(i,j) + umac(i+1,j))
             vadv = half*(vmac(i,j) + vmac(i,j+1))
-            p_x_hi = cvmgp(p(i  ,j),p(i+1,j),umac(i+1,j))
-            p_x_lo = cvmgp(p(i-1,j),p(i  ,j),umac(i  ,j))
-            p_y_hi = cvmgp(p(i,j  ),p(i,j+1),vmac(i,j+1))
-            p_y_lo = cvmgp(p(i,j-1),p(i,j  ),vmac(i,j  ))
+            p_x_hi = merge(p(i  ,j),p(i+1,j),umac(i+1,j)>=zero)
+            p_x_lo = merge(p(i-1,j),p(i  ,j),umac(i  ,j)>=zero)
+            p_y_hi = merge(p(i,j  ),p(i,j+1),vmac(i,j+1)>=zero)
+            p_y_lo = merge(p(i,j-1),p(i,j  ),vmac(i,j  )>=zero)
             ugradp(i,j) = uadv * (p_x_hi - p_x_lo) / dx(1) +
      &                    vadv * (p_y_hi - p_y_lo) / dx(2)      
          end do
