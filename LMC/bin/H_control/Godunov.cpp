@@ -1581,9 +1581,9 @@ Godunov::Sum_tf_divu_visc (const FArrayBox& S,
 {
     BL_ASSERT(S.nComp()       >= s_ind+num_comp);
     BL_ASSERT(tforces.nComp() >= t_ind+num_comp);
-    BL_ASSERT(divu.nComp()    < d_ind          );
+    BL_ASSERT(divu.nComp()    >  d_ind);
     BL_ASSERT(visc.nComp()    >= v_ind+num_comp);
-    BL_ASSERT(rho.nComp()     < r_ind          );
+    BL_ASSERT(rho.nComp()     >  r_ind);
     
     const int *slo    = S.loVect();
     const int *shi    = S.hiVect();

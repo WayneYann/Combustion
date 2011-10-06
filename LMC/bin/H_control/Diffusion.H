@@ -73,11 +73,14 @@ public:
 			 int                    rho_flag,
 			 MultiFab* const*       fluxn,
 			 MultiFab* const*       fluxnp1,
-			 int                    dataComp = 0,
+			 int                    fluxComp = 0,
 			 MultiFab*              delta_rhs = 0, 
+                         int                    rhsComp = 0,
 			 const MultiFab*        alpha = 0, 
+                         int                    alphaComp = 0,
 			 const MultiFab* const* betan = 0, 
 			 const MultiFab* const* betanp1 = 0,
+                         int                    betaComp = 0,
 			 const SolveMode&       solve_mode = ONEPASS,
                          bool                   add_old_time_divFlux = true);
     
@@ -86,28 +89,34 @@ public:
                            const MultiFab*        rho_half,
                            int                    rho_flag,
                            MultiFab*              delta_rhs = 0, 
+                           int                    rhsComp = 0,
                            const MultiFab* const* betan = 0, 
-                           const MultiFab* const* betanp1 = 0);
+                           const MultiFab* const* betanp1 = 0,
+                           int                    betaComp = 0);
 
     void diffuse_velocity_constant_mu (Real            dt,
                                        Real            be_cn_theta,
                                        const MultiFab* rho_half,
-                                       MultiFab*       delta_rhs);
+                                       MultiFab*       delta_rhs,
+                                       int             rhsComp = 0);
 
     void diffuse_tensor_velocity (Real                   dt,
                                   Real                   be_cn_theta,
                                   const MultiFab*        rho_half,
                                   int                    rho_flag,
                                   MultiFab*              delta_rhs, 
+                                  int                    rhsComp,
                                   const MultiFab* const* betan, 
-                                  const MultiFab* const* betanp1);
+                                  const MultiFab* const* betanp1,
+                                  int                    betaComp);
 
     void diffuse_Vsync (MultiFab*              Vsync,
                         Real                   dt,
                         Real                   be_cn_theta,
                         const MultiFab*        rho_half,
                         int                    rho_flag,
-                        const MultiFab* const* beta = 0);
+                        const MultiFab* const* beta = 0,
+                        int                    betaComp = 0);
 
     void diffuse_Vsync_constant_mu (MultiFab*       Vsync,
                                     Real            dt,
@@ -120,7 +129,8 @@ public:
                                Real                   be_cn_theta,
                                const MultiFab*        rho_half,
                                int                    rho_flag,
-                               const MultiFab* const* beta);
+                               const MultiFab* const* beta,
+                               int                    betaComp);
 
     void diffuse_Ssync (MultiFab*              Ssync,
                         int                    sigma,
@@ -129,9 +139,11 @@ public:
                         const MultiFab*        rho_half,
                         int                    rho_flag,
 			MultiFab* const*       flux,
-			int                    dataComp = 0,
+			int                    fluxComp = 0,
                         const MultiFab* const* beta = 0,
-			const MultiFab*        alpha = 0);
+                        int                    betaComp = 0,
+			const MultiFab*        alpha = 0,
+                        int                    alphaComp = 0);
 
     ABecLaplacian* getViscOp (int                    src_comp,
                               Real                   a,
@@ -141,9 +153,10 @@ public:
                               const MultiFab*        rho_half,
                               int                    rho_flag,
                               Real*                  rhsscale = 0,
-			      int                    dataComp = 0,
                               const MultiFab* const* beta = 0,
+			      int                    betaComp = 0,
                               const MultiFab*        alpha_in = 0,
+			      int                    alphaComp = 0,
                               bool		     bndry_already_filled = false);
 
     ABecLaplacian* getViscOp (int                    src_comp,
@@ -152,38 +165,39 @@ public:
                               const MultiFab*        rho_half,
                               int                    rho_flag,
                               Real*                  rhsscale = 0,
-			      int                    dataComp = 0,
                               const MultiFab* const* beta = 0,
-                              const MultiFab*        alpha_in = 0);
+			      int                    betaComp = 0,
+                              const MultiFab*        alpha_in = 0,
+			      int                    alphaComp = 0);
 
     DivVis* getTensorOp (Real                   a,
                          Real                   b, 
                          Real                   time, 
                          ViscBndryTensor&       visc_bndry,
                          const MultiFab*        rho_half,
-			 int                    dataComp,
-                         const MultiFab* const* beta);
+                         const MultiFab* const* beta,
+			 int                    betaComp);
 
     void getTensorBndryData (ViscBndryTensor& bndry, Real time);
 
     DivVis* getTensorOp (Real                   a,
                          Real                   b, 
                          const MultiFab*        rho_half,
-			 int                    dataComp,
-                         const MultiFab* const* beta);
+                         const MultiFab* const* beta,
+			 int                    betaComp);
 
     void getViscTerms (MultiFab&              visc_terms,
                        int                    src_comp,
                        int                    comp,
                        Real                   time,
                        int                    rho_flag,
-		       int                    dataComp = 0,
-                       const MultiFab* const* beta = 0);
+                       const MultiFab* const* beta = 0,
+		       int                    betaComp = 0);
 
     void getTensorViscTerms (MultiFab&              visc_terms, 
                              Real                   time,
-			     int                    dataComp,
-                             const MultiFab* const* beta);
+                             const MultiFab* const* beta,
+			     int                    dataComp);
 
     void getBndryData (ViscBndry&         bndry,
                        int                state_ind,

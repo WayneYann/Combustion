@@ -34,6 +34,22 @@ typedef ParticleContainer<2*BL_SPACEDIM> HTParticleContainer;
 //       multigrid code.
 //
 
+struct LocalMF
+{
+    LocalMF() : m_init(false) {};
+    LocalMF(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf);
+    ~LocalMF() {}
+    bool ok() const {return m_init;}
+    int size(int i) const;
+    const FArrayBox& Fab(int i, int j) const;
+    FArrayBox& Fab(int i, int j);
+
+protected:
+    void BuildFabs(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf);
+    std::map<int,PArray<FArrayBox> > m_fabs;
+    bool m_init;
+};
+
 
 class HeatTransfer
     :
@@ -192,7 +208,8 @@ public:
     void set_differential_diffusion_fluxes (const Real& time);
 
     void adjust_spec_diffusion_fluxes (Real                   time,
-                                       const MultiFab* const* beta);
+                                       const MultiFab* const* beta,
+                                       const LocalMF&         Y_grow);
 
     virtual void scalar_diffusion_update (Real dt,
                                           int  first_scalar, 
@@ -205,6 +222,11 @@ public:
                                          MultiFab*&  delta_rhs,
                                          MultiFab**& betan, 
                                          MultiFab**& betanp1);
+
+    void compute_instantaneous_reaction_rates(MultiFab&       R,
+                                              const MultiFab& S,
+                                              int             nGrow);
+        
     //
     // Make rho at time n.
     //

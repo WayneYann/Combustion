@@ -37,6 +37,10 @@
 #include <VISCOPERATOR_F.H>
 #include <DERIVE_F.H>
 
+
+static Box stripBox; // used for debugging
+
+
 using std::cout;
 using std::endl;
 using std::cerr;
@@ -620,7 +624,8 @@ getStrip(const Geometry& geom)
 {
     const Box& box = geom.Domain();
     IntVect be = box.bigEnd();
-    const IntVect& se = box.smallEnd();
+    IntVect se = box.smallEnd();
+    se[0] = 0.5*(se[0]+be[0]);
     be[0] = se[0];
     return Box(se,be);
 }
@@ -657,7 +662,13 @@ showMFsub(const std::string&   mySet,
         }
 
         FArrayBox sub(box,mf.nComp());
-        mf.copy(sub,0,0,mf.nComp());
+
+        MultiFab mfg(BoxArray(mf.boxArray()).grow(mf.nGrow()),mf.nComp(),0);
+        for (MFIter mfi(mf); mfi.isValid(); ++mfi)
+        {
+            mfg[mfi].copy(mf[mfi]);
+        }
+        mfg.copy(sub,0,0,mf.nComp());
 
         if (ShowMF_Check_Nans)
         {
@@ -732,6 +743,106 @@ showMCDD(const std::string&   mySet,
             cout << "   ******************************  Debug: writing " << junkname << endl;
         }
         mcddop.Write(junkname);
+    }
+}
+
+LocalMF::LocalMF(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf)
+    : m_init(false)
+{
+    BuildFabs(nGrow,nComp,geom,mf);
+    m_init = true;
+}
+
+int
+LocalMF::size(int i) const
+{
+    if (m_fabs.count(i) > 0)
+    {
+        return (*m_fabs.find(i)).second.size();
+    }
+    return 0;
+}
+
+const FArrayBox&
+LocalMF::Fab(int i, int j) const
+{
+    BL_ASSERT(m_fabs.count(i) > 0);
+    return (*m_fabs.find(i)).second[j];
+}
+
+FArrayBox&
+LocalMF::Fab(int i, int j)
+{
+    BL_ASSERT(m_fabs.count(i) > 0);
+    return (*m_fabs.find(i)).second[j];
+}
+
+void
+LocalMF::BuildFabs(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf)
+{
+    const BoxArray& grids = mf.boxArray();
+    BoxList gcells, bcells;
+    for (MFIter mfi(mf); mfi.isValid(); ++mfi)
+    {
+        int i = mfi.index();
+
+        bcells.clear();
+        gcells = BoxLib::boxDiff(Box(grids[i]).grow(nGrow),grids[i]);
+
+        for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
+        {
+            std::vector< std::pair<int,Box> > isects = grids.intersections(*it);            
+
+            if (isects.empty())
+            {
+                bcells.push_back(*it);
+            } else
+            {
+                BoxList pieces;
+                for (int i = 0, N = isects.size(); i < N; i++)
+                {
+                    pieces.push_back(isects[i].second);
+                }
+                BoxList leftover = BoxLib::complementIn(*it,pieces);
+                bcells.catenate(leftover);
+            }
+        }
+        //
+        // Remove any intersections with periodically shifted valid region.
+        //
+        if (geom.isAnyPeriodic())
+        {
+            Box dmn = geom.Domain();
+            
+            for (int d = 0; d < BL_SPACEDIM; d++)
+                if (!geom.isPeriodic(d)) 
+                    dmn.grow(d,nGrow);
+            
+            for (BoxList::iterator it = bcells.begin(); it != bcells.end(); )
+            {
+                const Box isect = *it & dmn;
+                
+                if (isect.ok())
+                {
+                    *it++ = isect;
+                }
+                else
+                {
+                    bcells.remove(it++);
+                }
+            }
+        }
+
+        bcells.simplify();
+
+        if (bcells.size()) {
+            m_fabs[i].resize(bcells.size());
+            int cnt = 0;
+            for (BoxList::iterator it = bcells.begin(); it != bcells.end(); ++it)
+            {
+                m_fabs[i].set(cnt++,new FArrayBox(*it,nComp));
+            }
+        }
     }
 }
 
@@ -934,6 +1045,11 @@ HeatTransfer::HeatTransfer (Amr&            papa,
         Dhat.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
         Dnp1.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     }
+
+    // HACK for debugging
+    if (level==0)
+        stripBox = getStrip(geom);
+
 }
 
 HeatTransfer::~HeatTransfer ()
@@ -1517,7 +1633,6 @@ HeatTransfer::initData ()
 #endif
     }
 
-    Box stripBox = getStrip(geom);
     showMFsub("1D",S_new,stripBox,"1D_S",level);
 
 #ifdef BL_USE_VELOCITY
@@ -1869,11 +1984,49 @@ HeatTransfer::initDataOtherTypes ()
     //
     // Assume that by now, S_new has "good" data
     //
-    get_new_data(Ydot_Type).setVal(0);
+    MultiFab& R = get_new_data(Ydot_Type);
+    if (do_sdc)
+    {
+        int nGrow = 0;
+        compute_instantaneous_reaction_rates(R,get_new_data(State_Type),nGrow);
+    }
+    else
+    {
+        R.setVal(0);
+    }
 
     get_new_data(FuncCount_Type).setVal(1);
 
     setThermoPress(cur_time);
+}
+
+void
+HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
+                                                   const MultiFab& S,
+                                                   int             nGrow)
+{
+    Real p_amb, dpdt_factor;
+    FORT_GETPAMB(&p_amb, &dpdt_factor);
+    const Real Patm = p_amb / P1atm_MKS;
+
+    FArrayBox tmp, Y;
+    for (MFIter mfi(S); mfi.isValid(); ++mfi)
+    {
+        FArrayBox& r = R[mfi];
+        const FArrayBox& s = S[mfi];
+        const Box& box = Box(mfi.validbox()).grow(nGrow);
+
+        Y.resize(box,nspecies);
+        Y.copy(s,first_spec,0,nspecies);
+
+        tmp.resize(box,nspecies);
+        tmp.copy(s,Density,0,1);
+        tmp.invert(1);
+        for (int sigma=0; sigma<nspecies; ++sigma)
+            Y.mult(tmp,0,sigma,1);
+
+        getChemSolve().reactionRateY(r,Y,s,Patm,box,0,Temp,0);
+    }
 }
 
 void
@@ -2681,11 +2834,14 @@ HeatTransfer::scalar_diffusion_update (Real dt,
             //
             // Note: dt taken care of in diffuse_scalar.
             //
-	    const int dataComp = 0; // Component of dR, alpha, betas to use.
+	    const int alphaComp = 0;
+	    const int betaComp = 0;
+	    const int rhsComp = 0;
+	    const int fluxComp = 0;
 
             diffusion->diffuse_scalar(dt,sigma,be_cn_theta,Rh,rho_flag,fluxSCn,
-                                      fluxSCnp1,dataComp,delta_rhs,alpha,betan,
-                                      betanp1,solve_mode);
+                                      fluxSCnp1,fluxComp,delta_rhs,rhsComp,alpha,alphaComp,betan,
+                                      betanp1,betaComp,solve_mode);
 	    //
 	    // If corrector, increment the viscous flux registers.
             // Assume corrector called only ONCE!.
@@ -2776,7 +2932,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
     const int nGrow = 0;
 
-    // Do explicit update based on Force
+    // Do explicit update of (RhoY,RhoH) based on Force
     MultiFab::Copy(S_new,Force,0,first_spec,nspecies+1,0);
     S_new.mult(dt);
     MultiFab::Add(S_new,S_old,first_spec,first_spec,nspecies+1,0);
@@ -2785,13 +2941,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     {    
         MultiFab delta_rhs(grids,nspecies+2,nGrow);
         delta_rhs.setVal(0);
-
-        MultiFab** fluxSCn = 0; // Do not need these for this step w/flag below
-        MultiFab** fluxSCnp1;
         MultiFab* rho_half = 0;
-        int nCompSC = 1;
-        int sCompSC = 0;
-        diffusion->allocFluxBoxesLevel(fluxSCnp1,nGrow,nCompSC);
         //
         // Set diffusion solve mode so that inside diffuse_scalar, (S_new-S_old)-> delta_rhs
         //
@@ -2806,27 +2956,23 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         //
         // Diffuse RhoY and RhoH
         //
+        int alphaComp = 0;
+        int betaComp = 0;
         for (int sigma = 0; sigma < nspecies+1; ++sigma)
         {
             const int state_ind = first_spec + sigma;
             bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit terms
             int rho_flag = 2;
             diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
-                                      fluxSCn,fluxSCnp1,sigma,&delta_rhs,alpha,
-                                      betan,betanp1,solve_mode,add_old_time_divFlux);
-            //
-            // Save new-time fluxes to be adjusted below
-            //
-            for (int d = 0; d < BL_SPACEDIM; ++d)
-            {
-                MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSCnp1[d],sCompSC,sigma,nCompSC,nGrow);
-            }
+                                      SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&delta_rhs,sigma,alpha,
+                                      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
         }
         //
         // Modify/update new-time fluxes to ensure sum of species fluxes = 0, set heat flux and
         //  conduction terms, compute temperature sink (Fi.Grad(Hi)) -- all stored in class data
         //
-        adjust_spec_diffusion_fluxes(curr_time,betanp1);
+        LocalMF Y_grow;
+        adjust_spec_diffusion_fluxes(curr_time,betanp1,Y_grow);
         diffusion->removeFluxBoxesLevel(betanp1);
 
 
@@ -2898,7 +3044,8 @@ HeatTransfer::make_rho_curr_time ()
 
 void
 HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
-					    const MultiFab* const* beta)
+					    const MultiFab* const* beta,
+                                            const LocalMF&         Y_grow)
 {
     //
     // Here, assume that SpecDiffFluxn/np1 are filled for t=time.  In this function
@@ -2916,45 +3063,124 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
     MultiFab& sumSpecFluxDotGradH = (whichTime == AmrOldTime) ? sumSpecFluxDotGradHn : sumSpecFluxDotGradHnp1;
 
-    // Get one grow cell filled for (Y,T) using linear operator so that we can get edge values by
-    //  a simple average.  Will get c-f correct, but need coarse data filled to do it.
-
-    //
-    // Create and fill (rho,Y,T) at this level
-    //
     const int nGrowOp = 1;
     MultiFab rho_spec_T(grids,nspecies+2,nGrowOp);
-    FArrayBox tmp;
+    const MultiFab& rho_gr = get_rho(time);
 
-    for (FillPatchIterator fpi(*this,rho_spec_T,nGrowOp,time,State_Type,Density,nspecies+1),
-             Tfpi(*this,rho_spec_T,nGrowOp,time,State_Type,Temp,1);
-         fpi.isValid() && Tfpi.isValid();
-         ++fpi, ++Tfpi)
-    {
-        FArrayBox& rsT_fab = rho_spec_T[fpi];
-        rsT_fab.copy(fpi(),0,0,nspecies+1);
-        rsT_fab.copy(Tfpi(),0,nspecies+1,1);
+    MultiFab rho_spec_T_crse;
+    if (Y_grow.ok() == grids.size()) {
 
-        tmp.resize(rsT_fab.box(),1);
-        tmp.copy(rsT_fab,0,0,1);
-        tmp.invert(1);
+        // 
+        // Pull Y from Y_grow arg
+        //
+        MultiFab& S = get_data(State_Type,time);
+        FArrayBox tmp;
+        for (MFIter mfi(rho_spec_T); mfi.isValid(); ++mfi)
+        {
+            FArrayBox& rsT = rho_spec_T[mfi];
+            const FArrayBox& s = S[mfi];
+            const FArrayBox& rho_fab = rho_gr[mfi];
+            const Box& box = mfi.validbox();
 
-        for (int comp = 0; comp < nspecies; ++comp) 
-            rsT_fab.mult(tmp,0,comp+1,1);
+            // Get Rho, RhoY, T on valid
+            rsT.copy(s,box,Density,box,0,nspecies+1);
+            rsT.copy(s,box,Temp,box,nspecies,1);
+
+            tmp.resize(box,1);
+            tmp.copy(s,Density,0,1);
+            tmp.invert(1);
+            for (int sigma=0; sigma<nspecies; ++sigma)
+                rsT.mult(tmp,0,sigma+1,1);
+
+            // Get Rho, Y on grow
+            int i = mfi.index();
+            for (int j=0; j<Y_grow.size(i); ++j)
+            {
+                const FArrayBox& Yg_fab = Y_grow.Fab(i,j);
+                rsT.copy(Yg_fab,0,1,nspecies);
+                rsT.copy(rho_fab,0,0,1);
+            }
+        }
     }
+    else
+    {
+        // Get one grow cell filled for Y using linear operator so that we can get edge values by
+        //  a simple average.  Will get c-f correct, but need coarse data filled to do it.
+        //
+        FArrayBox tmp;
+        for (FillPatchIterator fpi(*this,rho_spec_T,nGrowOp,time,State_Type,first_spec,nspecies),
+                 Tfpi(*this,rho_spec_T,nGrowOp,time,State_Type,Temp,1);
+             fpi.isValid() && Tfpi.isValid();
+             ++fpi, ++Tfpi)
+        {
+            FArrayBox& rsT_fab = rho_spec_T[fpi];
+            const FArrayBox& rho_fab = rho_gr[fpi];
+            
+            rsT_fab.copy(fpi(),0,1,nspecies);
+            rsT_fab.copy(rho_fab,0,0,1);
+            rsT_fab.copy(Tfpi(),0,nspecies+1,1);
 
+            tmp.resize(rsT_fab.box(),1);
+            tmp.copy(rsT_fab,0,0,1);
+            tmp.invert(1);
+
+            for (int comp = 0; comp < nspecies; ++comp) 
+                rsT_fab.mult(tmp,0,comp+1,1);
+        }
+
+        Real a = 1.0;
+        Real b = -1.0;
+        int rho_flag = 2; // Always, for RhoY equations
+        const MultiFab* alpha = 0; // Never needed for RhoY equations
+        int alphaComp = 0;
+        const MultiFab* rho_half = 0; // Neve needed for RhoY equations
+        
+        rho_spec_T.setBndry(bogus_value,0,nspecies); // Ensure computable corners
+
+        for (int comp = 0; comp < nspecies; ++comp)
+        {
+            const int state_ind = first_spec + comp;
+            
+            ViscBndry  visc_bndry;
+            diffusion->getBndryDataGivenS(visc_bndry,rho_spec_T,rho_spec_T_crse,
+                                          state_ind,comp+1,1);
+            bool bndry_already_filled = true;
+            
+            Real* rhsscale = 0;
+            ABecLaplacian* visc_op;
+            visc_op = diffusion->getViscOp(state_ind,a,b,time,visc_bndry,
+                                           rho_half,rho_flag,rhsscale,
+                                           beta,nspecies+1,alpha,alphaComp,bndry_already_filled);
+            
+            visc_op->maxOrder(diffusion->maxOrder());
+            visc_op->applyBC(rho_spec_T,comp+1,1);
+            delete visc_op;
+            
+            for (MFIter Smfi(rho_spec_T); Smfi.isValid(); ++Smfi)
+            {
+                FArrayBox& rst_fab = rho_spec_T[Smfi];
+                rst_fab.mult(rst_fab,rst_fab.box(),0,comp+1,1);
+            }
+        }
+        
+        
+    }
+    
+    //
+    // Now get T ... FIXME: have to go through the LinOp stuff to do this...
+    //
 
     //
     // Create and fill (rho,Y,T) at coarser level
     //
-    MultiFab rho_spec_T_crse;
     if (level > 0) 
     {
         const int     nGrow   = 1; // FIXME: Do we really need a grow cell for this?
         HeatTransfer& coarser = *(HeatTransfer*) &(parent->getLevel(level-1));
-
+        
         rho_spec_T_crse.define(coarser.grids,nspecies+2,nGrowOp,Fab_allocate);
-
+     
+        FArrayBox tmp;
         for (FillPatchIterator fpi(coarser,rho_spec_T_crse,nGrow,time,State_Type,Density,nspecies+1),
                  Tfpi(coarser,rho_spec_T_crse,nGrow,time,State_Type,Temp,1);
              fpi.isValid() && Tfpi.isValid();
@@ -2963,71 +3189,47 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
             FArrayBox& rst_fab = rho_spec_T_crse[fpi];
             rst_fab.copy(fpi(),0,0,nspecies+1);
             rst_fab.copy(Tfpi(),0,nspecies+1,1);
-
+            
             tmp.resize(rst_fab.box(),1);
             tmp.copy(rst_fab,0,0,1);
             tmp.invert(1);
-
+            
             for (int comp = 0; comp < nspecies; ++comp) 
                 rst_fab.mult(tmp,0,comp+1,1);
         }
     }
 
     //
-    // Use LinOp to load grow cell data.  First load Y, then multiply by Rho
+    // Use LinOp to load grow cell data.  
     //
     const Real a = 1.0;
     const Real b = -1.0;
-    const int rho_flag = 2; // Always, for RhoY equations
-    const MultiFab* alpha = 0; // Never needed for RhoY equations
-    const MultiFab* rho_half = 0; // Neve needed for RhoY equations
-
-    rho_spec_T.setBndry(bogus_value,0,nspecies+2); // Ensure computable corners
-
-    for (int comp = 0; comp < nspecies; ++comp)
-    {
-	const int state_ind = first_spec + comp;
-
-        ViscBndry  visc_bndry;
-        diffusion->getBndryDataGivenS(visc_bndry,rho_spec_T,rho_spec_T_crse,
-                                      state_ind,comp+1,1);
-        bool bndry_already_filled = true;
-
-	Real           rhsscale;
-        ABecLaplacian* visc_op;
-	visc_op = diffusion->getViscOp(state_ind,a,b,time,visc_bndry,
-                                       rho_half,rho_flag,&rhsscale,
-                                       comp,beta,alpha,bndry_already_filled);
-
-	visc_op->maxOrder(diffusion->maxOrder());
-	visc_op->applyBC(rho_spec_T,comp+1,1);
-	delete visc_op;
-
-        for (MFIter Smfi(rho_spec_T); Smfi.isValid(); ++Smfi)
-        {
-            FArrayBox& rst_fab = rho_spec_T[Smfi];
-            rst_fab.mult(rst_fab,rst_fab.box(),0,comp+1,1);
-        }
-    }
-    //
-    // Repeat procedure for T
-    //
+    const MultiFab* alpha = 0;
+    int alphaComp = 0;
     const int rho_flagT = 1; // Usually for T, but not for applyBC
-    {
-        ViscBndry  T_bndry;
-        diffusion->getBndryDataGivenS(T_bndry,rho_spec_T,rho_spec_T_crse,Temp,nspecies+1,1);
-        bool bndry_already_filled = true;
 
-	Real           rhsscale;
-        ABecLaplacian* T_op = diffusion->getViscOp(Temp,a,b,time,T_bndry,
-                                                   &rho_spec_T,rho_flagT,&rhsscale,
-                                                   nspecies+1,beta,alpha,bndry_already_filled);
-        
-	T_op->maxOrder(diffusion->maxOrder());
-	T_op->applyBC(rho_spec_T,nspecies+1,1);
-	delete T_op;
-    }
+    rho_spec_T.setBndry(bogus_value,nspecies+1,1); // Ensure computable corners
+
+    ViscBndry  T_bndry;
+    diffusion->getBndryDataGivenS(T_bndry,rho_spec_T,rho_spec_T_crse,Temp,nspecies+1,1);
+    bool bndry_already_filled = true;
+    
+    Real*          rhsscale = 0;
+    ABecLaplacian* T_op = diffusion->getViscOp(Temp,a,b,time,T_bndry,
+                                               &rho_spec_T,rho_flagT,rhsscale,
+                                               beta,nspecies+1,alpha,alphaComp,bndry_already_filled);
+    
+    T_op->maxOrder(diffusion->maxOrder());
+    T_op->applyBC(rho_spec_T,nspecies+1,1);
+    delete T_op;
+
     rho_spec_T_crse.clear();    
+
+    //
+    // Final touch up to make sure all grow cells consistent
+    //
+    rho_spec_T.FillBoundary();
+    geom.FillPeriodicBoundary(rho_spec_T,0,nspecies+2,true);
 
     // 
     // The following REPAIR_FLUX routine modifies the fluxes of all the species
@@ -3377,8 +3579,10 @@ HeatTransfer::velocity_diffusion_update (Real dt)
 
         diffuse_velocity_setup(dt, delta_rhs, betan, betanp1);
 
+        int rhsComp = 0;
+        int betaComp = 0;
         diffusion->diffuse_velocity(dt,be_cn_theta,get_rho_half_time(),rho_flag,
-                                    delta_rhs,betan,betanp1);
+                                    delta_rhs,rhsComp,betan,betanp1,betaComp);
 
         diffuse_cleanup(delta_rhs, betan, betanp1);
     }
@@ -3491,7 +3695,8 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
             showMF("velVT",*(vel_visc[dir]),BoxLib::Concatenate("velVT_viscn_",dir,1),level);
         }
 
-        diffusion->getTensorViscTerms(visc_terms,time,0,vel_visc);
+        int viscComp = 0;
+        diffusion->getTensorViscTerms(visc_terms,time,vel_visc,viscComp);
         showMF("velVT",visc_terms,"velVT_visc_terms_1",level);
 
         icomp = load_comp = BL_SPACEDIM;
@@ -3569,8 +3774,9 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                     diffusion->allocFluxBoxesLevel(beta);
                     getDiffusivity(beta, time, icomp, 0, 1);
 
+                    int betaComp = 0;
                     diffusion->getViscTerms(visc_terms,icomp-load_comp,
-                                            icomp,time,rho_flag,0,beta);
+                                            icomp,time,rho_flag,beta,betaComp);
                     
                     diffusion->removeFluxBoxesLevel(beta);
                 }
@@ -4922,6 +5128,35 @@ HeatTransfer::mcdd_update(Real time,
     }
 }
 
+static
+int HY_to_Temp_DoIt(FArrayBox&       Tfab,
+                    const FArrayBox& Hfab,
+                    const FArrayBox& Yfab,
+                    const Box&       box,
+                    int              sCompH,
+                    int              sCompY,
+                    int              dCompT,
+                    Real             htt_hmixTYP,
+                    ChemDriver&      cd)
+{
+    if (htt_hmixTYP <= 0)
+    {
+        htt_hmixTYP = Hfab.norm(0,sCompH,1);
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';        
+    }
+
+    const Real eps = cd.getHtoTerrMAX();
+    Real errMAX = eps*htt_hmixTYP;
+
+    int iters = cd.getTGivenHY(Tfab,Yfab,Hfab,box,sCompH,sCompY,dCompT,errMAX);
+
+    if (iters < 0)
+        BoxLib::Error("HeatTransfer::RhoH_to_Temp(fab): error in H->T");
+
+    return iters;
+}
+
 void
 HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
 {
@@ -4943,21 +5178,16 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
 
         return;
     }
-    //
-    // Build single component edge-centered array of MultiFabs in order
-    // to interact with Diffusion functions to get fluxes
-    //
 
-    MultiFab* alpha = 0; // Never need alpha for RhoY
     MultiFab* rho_half = 0; // Never need alpha for RhoY
     const Real a = 0;
     const Real b = 1;
     const int rho_flag = 2;
-    Real rhsscale = 0; // Not used, but required in diffusion call
+    Real* rhsscale = 0; // Not used for fluxes, but required to build LinOp
     MultiFab **beta = 0;
     diffusion->allocFluxBoxesLevel(beta,0,nspecies+2); // Species and heat fluxes
     getDiffusivity(beta, time, first_spec, 0, nspecies+1);
-    getDiffusivity(beta, time, Temp, nspecies, 1);
+    getDiffusivity(beta, time, Temp, nspecies+1, 1);
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         showMF("dd",*(beta[dir]),BoxLib::Concatenate("dd_beta_",dir,1),level);
     }
@@ -4967,39 +5197,59 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
 
     int nGrowOp = 1;
     MultiFab Soln(grids,1,nGrowOp);
+    int sComp = 0;
 
-    MultiFab** fluxSC;
-    diffusion->allocFluxBoxesLevel(fluxSC,0,1);
+    // Get stashed away rho with grow cells filled
+    const MultiFab& rho = get_rho(time);
+    BL_ASSERT(rho.boxArray()==grids);
+    int rhoComp = 0;
 
+    LocalMF grow_data(nGrowOp,nspecies,geom,S);
     for (int sigma = 0; sigma < nspecies+1; ++sigma)
     {
         const int state_ind = first_spec + sigma;
         ViscBndry      visc_bndry;
         ABecLaplacian* visc_op;
-        
+
+        int betaComp = sigma;
         visc_op = diffusion->getViscOp(state_ind,a,b,time,visc_bndry,
-                                       rho_half,rho_flag,&rhsscale,sigma,
-                                       beta,alpha);
+                                       rho_half,rho_flag,rhsscale,
+                                       beta,betaComp);
         
         visc_op->maxOrder(diffusion->maxOrder());
+
         MultiFab::Copy(Soln,S,state_ind,0,1,0);
+        for (MFIter mfi(Soln); mfi.isValid(); ++mfi)
+            Soln[mfi].divide(rho[mfi],mfi.validbox(),rhoComp,0,1);
 
-        for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
-            Soln[Smfi].divide(S[Smfi],Smfi.validbox(),Density,0,1);
+        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Soln,LinOp::Inhomogeneous_BC,sComp,sigma);
 
-        visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
-        for (int d=0; d < BL_SPACEDIM; ++d) {
-            fluxSC[d]->mult(-b/geom.CellSize()[d]);
-            flux[d]->copy(*fluxSC[d],0,sigma,1);
-        }
+        visc_op->applyBC(Soln,0,1);
+
+        // Copy out grow cells
+        if (sigma<nspecies) 
+        {
+            for (MFIter mfi(Soln); mfi.isValid(); ++mfi)
+            {
+                int i = mfi.index();
+                for (int j = 0; j < grow_data.size(i); ++j) {
+                    grow_data.Fab(i,j).copy(Soln[mfi],0,sigma,1);
+                }
+            }
+        }                
 
         delete visc_op;
+    }
+
+    // Remove scaling for solve
+    for (int d=0; d < BL_SPACEDIM; ++d) {
+        flux[d]->mult(-b/geom.CellSize()[d]);
     }
 
     //
     // Modify update/fluxes to preserve flux sum = 0, build heat flux and temperature source terms
     //
-    adjust_spec_diffusion_fluxes(time,beta);
+    adjust_spec_diffusion_fluxes(time,beta,grow_data);
 
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         showMF("dd",*(flux[dir]),BoxLib::Concatenate("dd_flux_after_",dir,1),level);
@@ -5114,10 +5364,10 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     //
     getDiffusivity(beta, time, Temp, 0, 1);
 
-    Box stripBox = getStrip(geom);
     showMFsub("1D",*beta[1],BoxLib::surroundingNodes(stripBox,1),"1D_viscT_beta",level);
 
-    diffusion->getViscTerms(visc_terms,src_comp,Temp,time,rho_flag,0,beta);
+    int betaComp = 0;
+    diffusion->getViscTerms(visc_terms,src_comp,Temp,time,rho_flag,beta,betaComp);
     diffusion->removeFluxBoxesLevel(beta);
     add_heat_sources(visc_terms,Temp-src_comp,time,nGrow,1.0);
     MultiFab delta_visc_terms(grids,1,nGrow);
@@ -5187,7 +5437,8 @@ HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
     const int rhoh_rho_flag = 2;
     getDiffusivity(beta, time, RhoH, 0, 1);
 
-    diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,0,beta);
+    int betaComp = 0;
+    diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,beta,betaComp);
     diffusion->removeFluxBoxesLevel(beta);
     add_heat_sources(visc_terms,RhoH-src_comp,time,nGrow,1.0);
 }
@@ -6360,6 +6611,8 @@ HeatTransfer::advance_sdc (Real time,
     {
         int havedivu = 1;
         create_mac_rhs(Forcing,time,dt,nGrowAdvForcing); // Use MF laying around
+        showMFsub("1D",Forcing,stripBox,"1D_mac_rhs",level);
+
         showMF("mac",Forcing,"mac_rhs",level);
         mac_project(time,dt,S_old,&Forcing,havedivu);
     }
@@ -6373,7 +6626,7 @@ HeatTransfer::advance_sdc (Real time,
     //
     // Set old-time boundary data for RhoH
     // 
-    //set_overdetermined_boundary_cells(time);  FIXME: Still needed?
+    set_overdetermined_boundary_cells(time);  //FIXME: Still needed?
 
     // FIXME: Any of these needed any more?
 #if 0
@@ -6428,6 +6681,9 @@ HeatTransfer::advance_sdc (Real time,
     FillPatchedOldState_ok = false;
 #endif
 
+    //
+    // Build a copy of rho(tn) with grow cells for use in the diffusion solves
+    make_rho_prev_time();
 
     //
     // Compute t^n coeffs 
@@ -6464,6 +6720,7 @@ HeatTransfer::advance_sdc (Real time,
       std::cout << "A (SDC predictor) \n";
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
     scalar_advection_update(dt, Density, Density);
+    make_rho_curr_time();
 
     // 
     // Compute Dhat (F = A + R)  nGrow=0
@@ -8706,8 +8963,10 @@ HeatTransfer::mac_sync ()
                     MultiFab* alpha = 0;
                     getDiffusivity(beta, cur_time, state_ind, 0, 1);
                     
+                    int fluxComp = 0;
+                    int betaComp = 0;
 		    diffusion->diffuse_Ssync(Ssync,sigma,dt,be_cn_theta,Rh,
-					     rho_flag,flux,0,beta,alpha);
+					     rho_flag,flux,fluxComp,beta,betaComp,alpha);
 		    if (do_viscsyncflux && level > 0)
 		    {
 			for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
@@ -9071,10 +9330,6 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // Some standard settings
     //
     const Array<int> rho_flag(nspecies,2);
-    const MultiFab* alpha = 0;
-    MultiFab** fluxSC;
-    diffusion->allocFluxBoxesLevel(fluxSC,0,1);
-
     const MultiFab* Rh = get_rho_half_time();
 
     for (int sigma = 0; sigma < nspecies; ++sigma)
@@ -9087,21 +9342,15 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         //
 	const int ssync_ind = first_spec + sigma - Density;
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
-				 Rh,rho_flag[sigma],fluxSC,
-                                 sigma,betanp1,alpha);
-	//
-	// Pull fluxes into flux array
-	//
-	for (int d=0; d<BL_SPACEDIM; ++d)
-	    MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);
-
+				 Rh,rho_flag[sigma],SpecDiffusionFluxnp1,sigma,
+                                 betanp1,sigma);
     }
-    diffusion->removeFluxBoxesLevel(fluxSC);
     //
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
     //
-    adjust_spec_diffusion_fluxes(cur_time,betanp1);
+    LocalMF Y_grow;
+    adjust_spec_diffusion_fluxes(cur_time,betanp1,Y_grow);
 
     //
     // Recompute update with adjusted diffusion fluxes
@@ -9287,13 +9536,13 @@ HeatTransfer::set_preferred_boundary_values (MultiFab& S,
     // Only do copy if request contains affected states,
     // and fillpatched data known to be no good.
     //
-    if (state_index == State_Type)
+    if (state_index == State_Type  && !FillPatchedOldState_ok)
     {
         const TimeLevel whichTime = which_time(State_Type,time);
         //
         // To get chem-advanced data instead of FP'd data at old time
         //
-        if (!FillPatchedOldState_ok && whichTime == AmrOldTime && src_comp > BL_SPACEDIM)
+        if (whichTime == AmrOldTime && src_comp > BL_SPACEDIM)
         {
             aux_boundary_data_old.copyTo(S,src_comp-BL_SPACEDIM,dst_comp,num_comp);
         }
@@ -9387,7 +9636,6 @@ HeatTransfer::calcDiffusivity (const Real time,
 
     BL_ASSERT(nspecies > 0 && has_spec);
 
-    Box stripBox = getStrip(geom);
     showMFsub("1D",temp,stripBox,"1D_calcD_temp",level);
     showMFsub("1D",rhospec,stripBox,"1D_calcD_rhospec",level);
 
@@ -9637,6 +9885,7 @@ HeatTransfer::calc_divu (Real      time,
         compute_differential_diffusion_terms(mcViscTerms,0,time);
         showMF("divu",mcViscTerms,"divu_mcViscTerms",level);
     }
+    showMFsub("1D",mcViscTerms,stripBox,"1D_divuA",level);
 
     MultiFab rho(grids,1,nGrow), temp(grids,1,nGrow);
 
@@ -9707,7 +9956,6 @@ HeatTransfer::calc_divu (Real      time,
     //
     MultiFab::Copy(divu,mcViscTerms,vtCompT,0,1,nGrow);
 
-    Box stripBox = getStrip(geom);
     showMFsub("1D",divu,stripBox,"1D_calcdivu_viscT",level);
 
     for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
@@ -10009,22 +10257,6 @@ HeatTransfer::RhoH_to_Temp (FArrayBox& S,
 {
     BL_ASSERT(S.box().contains(box));
     //
-    //  If this hasn't been set yet, we cannot do it correctly here (requires multilevel scan),
-    //   just wing it.
-    //
-    const Real htt_hmixTYP_SAVE = htt_hmixTYP; 
-    if (htt_hmixTYP <= 0)
-    {
-        htt_hmixTYP = S.norm(0,RhoH,1);
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
-
-    }
-
-    const Real eps = getChemSolve().getHtoTerrMAX();
-    Real errMAX = eps*htt_hmixTYP;
-
-    //
     // Convert rho to 1/rho, rho*h to h and rho*Y to Y for this operation.
     //
     S.invert(1,box,Density,1);    
@@ -10032,9 +10264,7 @@ HeatTransfer::RhoH_to_Temp (FArrayBox& S,
     for (int spec = first_spec; spec <= last_spec; spec++)
         S.mult(S,Density,spec,1);
 
-    int iters = getChemSolve().getTGivenHY(S,S,S,box,RhoH,first_spec,Temp,errMAX);
-    if (iters < 0)
-        BoxLib::Error("HeatTransfer::RhoH_to_Temp(fab): error in H->T");
+    int iters = HY_to_Temp_DoIt(S,S,S,box,RhoH,first_spec,Temp,htt_hmixTYP,getChemSolve());
 
     if (dominmax)
         FabMinMax(S, box, htt_tempmin, htt_tempmax, Temp, 1);
@@ -10045,9 +10275,6 @@ HeatTransfer::RhoH_to_Temp (FArrayBox& S,
     S.mult(S,box,Density,RhoH,1);
     for (int spec = first_spec; spec <= last_spec; spec++)
         S.mult(S,box,Density,spec,1);
-
-    // Reset it back
-    htt_hmixTYP = htt_hmixTYP_SAVE;
 
     return iters;
 }
