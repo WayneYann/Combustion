@@ -983,7 +983,7 @@ c                               inflow for pipe
      &                         xflux,  DIMS(xflux),
      &                         yflux,  DIMS(yflux),
      &                         vol,    DIMS(vol),
-     &                         scal, nc)
+     &                         nc, scal)
       implicit none
       integer lo(SDIM), hi(SDIM), nc
       integer DIMDEC(update)
@@ -998,9 +998,9 @@ c                               inflow for pipe
 
       integer i, j, n
       
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-            do n=1,nc
+      do n=1,nc
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
                update(i,j,n)=scal*
      &              ( (xflux(i+1,j,n)-xflux(i,j,n))
      &              + (yflux(i,j+1,n)-yflux(i,j,n)) )/vol(i,j)

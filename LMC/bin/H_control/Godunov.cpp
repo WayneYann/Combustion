@@ -876,16 +876,12 @@ Godunov::AdvectState (const Box&  grd,
                 D_DECL(U,U,U), D_DECL(0,1,2),
                 S, fab_ind, tforces, fab_ind, divu, 0, state_ind, bc, 
                 iconserv, scheme);
-    //
-    // Compute the advective tendency.
-    //
-    ComputeAofs( grd,
-                 areax, uedge, xflux,  
-                 areay, vedge, yflux,  
-#if (BL_SPACEDIM == 3)                             
-                 areaz, wedge, zflux,
-#endif                     
-                 vol, aofs, aofs_ind, iconserv);
+
+    ComputeAofs (grd,
+                 D_DECL(areax,areay,areaz),D_DECL(0,0,0),
+                 D_DECL(uedge,vedge,wedge),D_DECL(0,0,0),
+                 D_DECL(xflux,yflux,zflux),D_DECL(0,0,0),
+                 vol,0,aofs,aofs_ind,iconserv);
 }
 
 //
@@ -894,40 +890,39 @@ Godunov::AdvectState (const Box&  grd,
 
 void
 Godunov::ComputeAofs (const Box& grd, 
-                      FArrayBox& areax,
-                      FArrayBox& uedge,
-                      FArrayBox& xflux,  
-                      FArrayBox& areay,
-                      FArrayBox& vedge,
-                      FArrayBox& yflux,  
-#if (BL_SPACEDIM == 3)                               
-                      FArrayBox& areaz,
-                      FArrayBox& wedge,
-                      FArrayBox& zflux,
-#endif
-                      FArrayBox& vol,
-                      FArrayBox& aofs,
-                      int        aofs_ind,
-                      int        iconserv )
+                      D_DECL(const FArrayBox& areax,
+                             const FArrayBox& areay,
+                             const FArrayBox& areaz),
+                      D_DECL(int axcomp,int aycomp,int azcomp),
+                      D_DECL(const FArrayBox& uedge,
+                             const FArrayBox& vedge,
+                             const FArrayBox& wedge),
+                      D_DECL(int ucomp, int vcomp, int wcomp),
+                      D_DECL(const FArrayBox& xflux,
+                             const FArrayBox& yflux,
+                             const FArrayBox& zflux),
+                      D_DECL(int fxcomp,int fycomp,int fzcomp),
+                      const FArrayBox& vol, int volcomp, 
+                      FArrayBox& aofs,int acomp, int iconserv ) const
 {
     const int *lo         = grd.loVect();
     const int *hi         = grd.hiVect();
 
-    FORT_ADV_FORCING( aofs.dataPtr(aofs_ind),ARLIM(aofs.loVect()), ARLIM(aofs.hiVect()),
+    FORT_ADV_FORCING( aofs.dataPtr(acomp),ARLIM(aofs.loVect()), ARLIM(aofs.hiVect()),
 
-                     xflux.dataPtr(), ARLIM(xflux.loVect()), ARLIM(xflux.hiVect()),
-                     uedge.dataPtr(), ARLIM(uedge.loVect()), ARLIM(uedge.hiVect()),
-                     areax.dataPtr(), ARLIM(areax.loVect()), ARLIM(areax.hiVect()),
+                      xflux.dataPtr(fxcomp), ARLIM(xflux.loVect()), ARLIM(xflux.hiVect()),
+                      uedge.dataPtr(ucomp),  ARLIM(uedge.loVect()), ARLIM(uedge.hiVect()),
+                      areax.dataPtr(axcomp), ARLIM(areax.loVect()), ARLIM(areax.hiVect()),
 
-                     yflux.dataPtr(), ARLIM(yflux.loVect()), ARLIM(yflux.hiVect()),
-                     vedge.dataPtr(), ARLIM(vedge.loVect()), ARLIM(vedge.hiVect()),
-                     areay.dataPtr(), ARLIM(areay.loVect()), ARLIM(areay.hiVect()),
+                      yflux.dataPtr(fycomp), ARLIM(yflux.loVect()), ARLIM(yflux.hiVect()),
+                      vedge.dataPtr(vcomp),  ARLIM(vedge.loVect()), ARLIM(vedge.hiVect()),
+                      areay.dataPtr(aycomp), ARLIM(areay.loVect()), ARLIM(areay.hiVect()),
 #if (BL_SPACEDIM == 3)                                                    
-                     zflux.dataPtr(), ARLIM(zflux.loVect()), ARLIM(zflux.hiVect()),
-                     wedge.dataPtr(), ARLIM(wedge.loVect()), ARLIM(wedge.hiVect()),
-                     areaz.dataPtr(), ARLIM(areaz.loVect()), ARLIM(areaz.hiVect()),
+                     zflux.dataPtr(fzcomp), ARLIM(zflux.loVect()), ARLIM(zflux.hiVect()),
+                     wedge.dataPtr(wcomp),  ARLIM(wedge.loVect()), ARLIM(wedge.hiVect()),
+                     areaz.dataPtr(azcomp), ARLIM(areaz.loVect()), ARLIM(areaz.hiVect()),
 #endif
-                     vol.dataPtr(), ARLIM(vol.loVect()), ARLIM(vol.hiVect()),
+                     vol.dataPtr(volcomp), ARLIM(vol.loVect()), ARLIM(vol.hiVect()),
                      lo, hi, &iconserv);
 }
 

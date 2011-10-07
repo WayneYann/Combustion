@@ -110,14 +110,21 @@ public:      // public access functions
                               AdvectionScheme scheme, FArrayBox &vol );
 
     // compute the advective derivative from fluxes
-    void ComputeAofs( const Box &grd, 
-                      FArrayBox &areax, FArrayBox &uedge, FArrayBox &xflux,  
-                      FArrayBox &areay, FArrayBox &vedge, FArrayBox &yflux,  
-#if (BL_SPACEDIM == 3 )
-                      FArrayBox &areaz, FArrayBox &wedge, FArrayBox &zflux,
-#endif
-                      FArrayBox &vol,
-                      FArrayBox &aofs,  int aofs_ind, int iconserv );
+    void ComputeAofs (const Box& grd, 
+                      D_DECL(const FArrayBox& areax,
+                             const FArrayBox& areay,
+                             const FArrayBox& areaz),
+                      D_DECL(int axcomp,int aycomp,int azcomp),
+                      D_DECL(const FArrayBox& uedge,
+                             const FArrayBox& vedge,
+                             const FArrayBox& wedge),
+                      D_DECL(int ucomp, int vcomp, int wcomp),
+                      D_DECL(const FArrayBox& xflux,
+                             const FArrayBox& yflux,
+                             const FArrayBox& zflux),
+                      D_DECL(int fxcomp,int fycomp,int fzcomp),
+                      const FArrayBox& vol, int volcomp, 
+                      FArrayBox& aofs,int acomp, int iconserv ) const;
 
     // sync advect a state component
     virtual void SyncAdvect( const Box &grd, const Real *dx, Real dt, int level,

@@ -3084,7 +3084,6 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
 
             // Get Rho, RhoY, T on valid
             rsT.copy(s,box,Density,box,0,nspecies+1);
-            rsT.copy(s,box,Temp,box,nspecies,1);
 
             tmp.resize(box,1);
             tmp.copy(s,Density,0,1);
@@ -3104,21 +3103,19 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     }
     else
     {
+        //
         // Get one grow cell filled for Y using linear operator so that we can get edge values by
         //  a simple average.  Will get c-f correct, but need coarse data filled to do it.
         //
         FArrayBox tmp;
-        for (FillPatchIterator fpi(*this,rho_spec_T,nGrowOp,time,State_Type,first_spec,nspecies),
-                 Tfpi(*this,rho_spec_T,nGrowOp,time,State_Type,Temp,1);
-             fpi.isValid() && Tfpi.isValid();
-             ++fpi, ++Tfpi)
+        for (FillPatchIterator fpi(*this,rho_spec_T,nGrowOp,time,State_Type,first_spec,nspecies);
+             fpi.isValid(); ++fpi)
         {
             FArrayBox& rsT_fab = rho_spec_T[fpi];
             const FArrayBox& rho_fab = rho_gr[fpi];
             
             rsT_fab.copy(fpi(),0,1,nspecies);
             rsT_fab.copy(rho_fab,0,0,1);
-            rsT_fab.copy(Tfpi(),0,nspecies+1,1);
 
             tmp.resize(rsT_fab.box(),1);
             tmp.copy(rsT_fab,0,0,1);
@@ -3166,9 +3163,12 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
         
     }
     
-    //
-    // Now get T ... FIXME: have to go through the LinOp stuff to do this...
-    //
+    FArrayBox tmp;
+    for (FillPatchIterator fpi(*this,rho_spec_T,nGrowOp,time,State_Type,Temp,1); fpi.isValid(); ++fpi)
+    {
+        rho_spec_T[fpi].copy(fpi(),0,nspecies+1,1);
+    }
+    showMF("dd",rho_spec_T,"dd_rsT_fp",level);
 
     //
     // Create and fill (rho,Y,T) at coarser level
@@ -3208,8 +3208,6 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     int alphaComp = 0;
     const int rho_flagT = 1; // Usually for T, but not for applyBC
 
-    rho_spec_T.setBndry(bogus_value,nspecies+1,1); // Ensure computable corners
-
     ViscBndry  T_bndry;
     diffusion->getBndryDataGivenS(T_bndry,rho_spec_T,rho_spec_T_crse,Temp,nspecies+1,1);
     bool bndry_already_filled = true;
@@ -3221,6 +3219,9 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     
     T_op->maxOrder(diffusion->maxOrder());
     T_op->applyBC(rho_spec_T,nspecies+1,1);
+    showMF("dd",rho_spec_T,"dd_rsT",level);
+
+ 
     delete T_op;
 
     rho_spec_T_crse.clear();    
@@ -5246,6 +5247,9 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
         flux[d]->mult(-b/geom.CellSize()[d]);
     }
 
+    for (int dir=0; dir<BL_SPACEDIM; ++dir) {
+        showMF("dd",*(flux[dir]),BoxLib::Concatenate("dd_flux_before_",dir,1),level);
+    }
     //
     // Modify update/fluxes to preserve flux sum = 0, build heat flux and temperature source terms
     //
@@ -5269,6 +5273,7 @@ HeatTransfer::diffusion_flux_divergence (MultiFab& visc_terms,
     const TimeLevel whichTime = which_time(State_Type,time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
+    showMFsub("dddt",*flux[1],BoxLib::surroundingNodes(stripBox,1),"dddt_yfluxD",level);
 
     FArrayBox volume;
     PArray<FArrayBox> f(BL_SPACEDIM,PArrayNoManage);
@@ -5283,8 +5288,8 @@ HeatTransfer::diffusion_flux_divergence (MultiFab& visc_terms,
 
         geom.GetVolume(volume,grids,iGrid,GEOM_GROW);
 
-        int nComp = nspecies + 2;
         FArrayBox& update = visc_terms[mfi];
+        int nComp = nspecies + 2; 
 
 	FORT_FLUXDIV(box.loVect(), box.hiVect(),
                      update.dataPtr(load_comp), ARLIM(update.loVect()), ARLIM(update.hiVect()),
@@ -5296,6 +5301,7 @@ HeatTransfer::diffusion_flux_divergence (MultiFab& visc_terms,
                      volume.dataPtr(), ARLIM(volume.loVect()), ARLIM(volume.hiVect()),
                      &nComp, &scale);
     }	
+    showMFsub("dddt",visc_terms,stripBox,"dddt_ddfd_vt",level);
 }
 
 void
@@ -5328,9 +5334,13 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     // Compute/adjust species fluxes/heat flux/conduction, save in class data
     compute_differential_diffusion_fluxes(time);
 
+    MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
+    showMFsub("dddt",*flux[1],BoxLib::surroundingNodes(stripBox,1),"dddt_yflux",level);
+
     // Get -Div(Fi), -Div(Q), -Div(lambda.Grad(T))
     Real scale = -1;
     diffusion_flux_divergence(visc_terms,load_comp,time,scale);
+    showMFsub("dddt",visc_terms,stripBox,"dddd_vt1",level);
 
     // Add external heating terms for RhoH
     int nGrow = 0;
@@ -6718,8 +6728,11 @@ HeatTransfer::advance_sdc (Real time,
     }
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "A (SDC predictor) \n";
+    showMF("dd",Forcing,"dd_adv_forcing",level);
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+    showMF("dd",*aofs,"dd_aofs",level);
     scalar_advection_update(dt, Density, Density);
+    showMF("dd",S_new,"dd_newrho",level);
     make_rho_curr_time();
 
     // 
@@ -6743,6 +6756,7 @@ HeatTransfer::advance_sdc (Real time,
     // FIXME: This 1/2 here needs to be generalized, consistent with the
     //  SDC correction equation below.
     Real theta = 0.5;
+    MultiFab::Copy(*diffnp1_cc,*diffn_cc,0,0,nScalDiffs,diffn_cc->nGrow());
     differential_diffusion_update(Forcing,0,theta,&Dhat,0);
     temperature_stats(S_new);
 
@@ -8039,7 +8053,9 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     MultiFab DivU(grids,1,nGrowAdvForcing);
     create_mac_rhs(DivU,prev_time,dt,nGrowAdvForcing);
 
-    FArrayBox eState[BL_SPACEDIM], tforces;
+    showMF("dd",DivU,"dd_divu_in_aofs",level);
+
+    FArrayBox tforces, volume, area[BL_SPACEDIM];
     const int  nState          = desc_lst[State_Type].nComp();
     for (FillPatchIterator S_fpi(*this,DivU,HYP_GROW,prev_time,State_Type,0,nState);
          S_fpi.isValid();
@@ -8052,14 +8068,17 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
         const Box gbox = S_fpi().box();
         tforces.resize(gbox,1);
 
-        for (int d=0; d<BL_SPACEDIM; ++d)
-        {
-            eState[d].resize(BoxLib::surroundingNodes(box,d),NUM_SCALARS);
-        }
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+            geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
+        geom.GetVolume(volume,grids,i,GEOM_GROW);
 
         //
         // Get edge states for RhoY, RhoH
         //
+        for (int d=0; d<BL_SPACEDIM; ++d)
+        {
+            (*EdgeState[d])[i].setVal(0,(*EdgeState[d])[i].box(),Density,1);
+        }        
         for (int comp = 0 ; comp < nspecies+1 ; comp++)
         {
             int state_ind = first_spec + comp;
@@ -8069,30 +8088,39 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
             godunov->edge_states_fpu(box, dx, dt,
                                      D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0), 
-                                     D_DECL(eState[0],eState[1],eState[2]),D_DECL(dComp,dComp,dComp),
+                                     D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+                                     D_DECL(dComp,dComp,dComp),
                                      S,state_ind,Force[S_fpi],comp,divu,0,state_ind,bc.dataPtr(),iconserv);
+
+            int avcomp = 0;
+            int ucomp = 0;
+            godunov->ComputeAofs (grids[i],
+                                  D_DECL(area[0],area[1],area[2]),D_DECL(avcomp,avcomp,avcomp),
+                                  D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]),D_DECL(ucomp,ucomp,ucomp),
+                                  D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+                                  D_DECL(state_ind,state_ind,state_ind), volume, avcomp,
+                                  (*aofs)[i], first_spec+comp, iconserv);
+
+            // Accumulate rho
+            if (comp<nspecies)
+            {
+                for (int d=0; d<BL_SPACEDIM; ++d)
+                {
+                    (*EdgeState[d])[i].plus((*EdgeState[d])[i],dComp,Density,1);
+                }        
+            }
         }
-#if 0
-        // 
-        // Compute edge state for T - FIXME: Is this needed?
-        //
-        for (int d=0; d<BL_SPACEDIM; ++d)
-        {
-            // Predict T with Godunov
-            int state_ind = first_spec + comp;
-            Array<int> bc = getBCArray(State_Type,i,Temp,1);
-            int dComp = Temp;
-            int TComp = nspecies + 1;
-            godunov->edge_states_fpu(box, dx, dt,
-                                     D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0), 
-                                     D_DECL(eState[0],eState[1],eState[2]),D_DECL(dComp,dComp,dComp),
-                                     S,state_ind,tforces,TComp,divu,0,state_ind,bc.dataPtr(),iconserv);
-            //
-            // Now do solve for T
-            //
-            RhoH_to_Temp(eState[d],eState[d].box());
-        }
-#endif
+
+        int avcomp = 0;
+        int ucomp = 0;
+        int iconserv = 1;
+        godunov->ComputeAofs (grids[i],
+                              D_DECL(area[0],area[1],area[2]),D_DECL(avcomp,avcomp,avcomp),
+                              D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]),D_DECL(ucomp,ucomp,ucomp),
+                              D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+                              D_DECL(Density,Density,Density), volume, avcomp,
+                              (*aofs)[i], Density, iconserv);
+        
     }
 }
 
@@ -8104,7 +8132,7 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
 
     const int finest_level = parent->finestLevel();
 
-    FArrayBox edge[BL_SPACEDIM], area[BL_SPACEDIM], volume;
+    FArrayBox area[BL_SPACEDIM], volume;
     //
     // Compute the advective forcing for momentum.
     //
@@ -8122,9 +8150,6 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
     {
         const int i = AofS_mfi.index();
 
-        for (int d=0; d<BL_SPACEDIM; ++d)
-            edge[d].resize(BoxLib::surroundingNodes(grids[i],d),1);
-
         for (int dir = 0; dir < BL_SPACEDIM; dir++)
             geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
 
@@ -8135,36 +8160,32 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
             // 
             // If here, edge states at n+1/2 have already been computed, get a copy
             // 
-            for (int d=0; d<BL_SPACEDIM; ++d)
-                edge[d].copy((*EdgeState[d])[i],edge[d].box(),comp,edge[d].box(),0,1);
- 
-            godunov->ComputeAofs(grids[i],
-                                 area[0],u_mac[0][i],edge[0],
-                                 area[1],u_mac[1][i],edge[1],
-#if BL_SPACEDIM==3
-                                 area[2],u_mac[2][i],edge[2],
-#endif
-                                 volume,(*aofs)[i],comp,
-                                 use_conserv_diff);
+            int avcomp = 0;
+            int ucomp = 0;
+            godunov->ComputeAofs (grids[i],
+                                  D_DECL(area[0],area[1],area[2]),D_DECL(avcomp,avcomp,avcomp),
+                                  D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]),D_DECL(ucomp,ucomp,ucomp),
+                                  D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+                                  D_DECL(0,1,2), volume, avcomp, (*aofs)[i], comp, use_conserv_diff);
+            
             if (do_adv_reflux)
             {
                 if (level < parent->finestLevel())
                 {
                     for (int d=0; d<BL_SPACEDIM; ++d)
-                        fluxes[d][i].copy(edge[d],0,comp,1);
+                        fluxes[d][i].copy((*EdgeState[d])[i],comp,comp,1);
                 }
 
                 if (level > 0)
                 {
                     for (int d=0; d<BL_SPACEDIM; ++d)
-                        advflux_reg->FineAdd(edge[d],d,i,0,comp,1,dt);
+                        advflux_reg->FineAdd((*EdgeState[d])[i],d,i,comp,comp,1,dt);
                 }
             }
         }
     }
 
     D_TERM(area[0].clear();, area[1].clear();, area[2].clear(););
-    D_TERM(edge[0].clear();, edge[1].clear();, edge[2].clear(););
 
     if (do_adv_reflux && level < finest_level)
     {
@@ -8426,14 +8447,13 @@ HeatTransfer::scalar_advection (Real dt,
             
             int use_conserv_diff = (advectionType[sigma] == Conservative) ? true : false;
 
-            godunov->ComputeAofs(grids[i],
-                                 area[0],u_mac[0][i],edge[0],
-                                 area[1],u_mac[1][i],edge[1],
-#if BL_SPACEDIM==3
-                                 area[2],u_mac[2][i],edge[2],
-#endif
-                                 volume,(*aofs)[i],sigma,
-                                 use_conserv_diff);
+            int avcomp=0;
+            int ucomp = 0;
+            godunov->ComputeAofs (grids[i],
+                                  D_DECL(area[0],area[1],area[2]),D_DECL(avcomp,avcomp,avcomp),
+                                  D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]),D_DECL(ucomp,ucomp,ucomp),
+                                  D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+                                  D_DECL(0,1,2), volume, avcomp, (*aofs)[i], sigma, use_conserv_diff);
 
 #if 0
             //
@@ -9963,10 +9983,11 @@ HeatTransfer::calc_divu (Real      time,
         const int iGrid = Divu_mfi.index();
         divu[iGrid].divide(rho[iGrid],grids[iGrid],sCompR,0,1);
         divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
+        divu[iGrid].divide(cp[iGrid],grids[iGrid],sCompCp,0,1);
     }
     showMF("divu",divu,"divu_VT_T_over_rhoT",level);
 
-    MultiFab delta_divu(grids,1,nGrow), spec_visc_terms(grids,nspecies+1,0);
+    MultiFab delta_divu(grids,1,nGrow), spec_visc_terms(grids,nspecies+1,nGrow);
 
     delta_divu.setVal(0.0);
 
