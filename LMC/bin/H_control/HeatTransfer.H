@@ -37,7 +37,7 @@ typedef ParticleContainer<2*BL_SPACEDIM> HTParticleContainer;
 struct LocalMF
 {
     LocalMF() : m_init(false) {};
-    LocalMF(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf);
+    LocalMF(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf, bool rm_ovlps=true);
     ~LocalMF() {}
     bool ok() const {return m_init;}
     int size(int i) const;
@@ -48,6 +48,7 @@ protected:
     void BuildFabs(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf);
     std::map<int,PArray<FArrayBox> > m_fabs;
     bool m_init;
+    bool m_rm_ovlps;
 };
 
 

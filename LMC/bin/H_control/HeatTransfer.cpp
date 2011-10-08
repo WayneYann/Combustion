@@ -746,8 +746,8 @@ showMCDD(const std::string&   mySet,
     }
 }
 
-LocalMF::LocalMF(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf)
-    : m_init(false)
+LocalMF::LocalMF(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf, bool rm_ovlps)
+    : m_init(false), m_rm_ovlps(rm_ovlps)
 {
     BuildFabs(nGrow,nComp,geom,mf);
     m_init = true;
@@ -789,51 +789,57 @@ LocalMF::BuildFabs(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf)
         bcells.clear();
         gcells = BoxLib::boxDiff(Box(grids[i]).grow(nGrow),grids[i]);
 
-        for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
+        if (m_rm_ovlps) 
         {
-            std::vector< std::pair<int,Box> > isects = grids.intersections(*it);            
+            for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
+            {
+                std::vector< std::pair<int,Box> > isects = grids.intersections(*it);            
 
-            if (isects.empty())
-            {
-                bcells.push_back(*it);
-            } else
-            {
-                BoxList pieces;
-                for (int i = 0, N = isects.size(); i < N; i++)
+                if (isects.empty())
                 {
-                    pieces.push_back(isects[i].second);
+                    bcells.push_back(*it);
+                } else
+                {
+                    BoxList pieces;
+                    for (int i = 0, N = isects.size(); i < N; i++)
+                    {
+                        pieces.push_back(isects[i].second);
+                    }
+                    BoxList leftover = BoxLib::complementIn(*it,pieces);
+                    bcells.catenate(leftover);
                 }
-                BoxList leftover = BoxLib::complementIn(*it,pieces);
-                bcells.catenate(leftover);
             }
-        }
-        //
-        // Remove any intersections with periodically shifted valid region.
-        //
-        if (geom.isAnyPeriodic())
-        {
-            Box dmn = geom.Domain();
-            
-            for (int d = 0; d < BL_SPACEDIM; d++)
-                if (!geom.isPeriodic(d)) 
-                    dmn.grow(d,nGrow);
-            
-            for (BoxList::iterator it = bcells.begin(); it != bcells.end(); )
+            //
+            // Remove any intersections with periodically shifted valid region.
+            //
+            if (geom.isAnyPeriodic())
             {
-                const Box isect = *it & dmn;
+                Box dmn = geom.Domain();
+            
+                for (int d = 0; d < BL_SPACEDIM; d++)
+                    if (!geom.isPeriodic(d)) 
+                        dmn.grow(d,nGrow);
+            
+                for (BoxList::iterator it = bcells.begin(); it != bcells.end(); )
+                {
+                    const Box isect = *it & dmn;
                 
-                if (isect.ok())
-                {
-                    *it++ = isect;
-                }
-                else
-                {
-                    bcells.remove(it++);
+                    if (isect.ok())
+                    {
+                        *it++ = isect;
+                    }
+                    else
+                    {
+                        bcells.remove(it++);
+                    }
                 }
             }
+            bcells.simplify();
         }
-
-        bcells.simplify();
+        else
+        {
+            bcells = gcells;
+        }
 
         if (bcells.size()) {
             m_fabs[i].resize(bcells.size());
@@ -1994,6 +2000,7 @@ HeatTransfer::initDataOtherTypes ()
     {
         R.setVal(0);
     }
+    showMFsub("1D",R,stripBox,"1D_dd_idot_R",level);
 
     get_new_data(FuncCount_Type).setVal(1);
 
@@ -2026,6 +2033,10 @@ HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
             Y.mult(tmp,0,sigma,1);
 
         getChemSolve().reactionRateY(r,Y,s,Patm,box,0,Temp,0);
+
+        tmp.invert(-1);
+        for (int sigma=0; sigma<nspecies; ++sigma)
+            r.mult(tmp,0,sigma,1);
     }
 }
 
@@ -3260,6 +3271,8 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     //  required for the temperature equation.  Both the fluxes and the Fi.Grad(Hi) terms are stored
     //  in the class data.  (FIXME: lots of memory bloat here that might be cleanable)
     //
+    showMFsub("1D",*beta[1],BoxLib::surroundingNodes(stripBox,1),"1D_dd_adj_beta",level);
+
     for (MFIter mfi(rho_spec_T); mfi.isValid(); ++mfi)
     {
         const int i    = mfi.index();
@@ -3303,6 +3316,8 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
 #endif
                              fh.dataPtr(),     ARLIM(fh.loVect()), ARLIM(fh.hiVect()) );
     }
+    showMFsub("1D",sumSpecFluxDotGradH,stripBox,"1D_dd_adj_FiGHi",level);
+    showMFsub("1D",*flux[1],BoxLib::surroundingNodes(stripBox,1),"1D_dd_adj_flux",level);
 }
 
 void
@@ -5205,7 +5220,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     BL_ASSERT(rho.boxArray()==grids);
     int rhoComp = 0;
 
-    LocalMF grow_data(nGrowOp,nspecies,geom,S);
+    bool localmf_rm_ovlp = true;
+    LocalMF grow_data(nGrowOp,nspecies,geom,S,localmf_rm_ovlp);
     for (int sigma = 0; sigma < nspecies+1; ++sigma)
     {
         const int state_ind = first_spec + sigma;
@@ -5242,21 +5258,43 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
         delete visc_op;
     }
 
-    // Remove scaling for solve
+    // Remove scaling left in fluxes from solve
     for (int d=0; d < BL_SPACEDIM; ++d) {
         flux[d]->mult(-b/geom.CellSize()[d]);
     }
 
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
-        showMF("dd",*(flux[dir]),BoxLib::Concatenate("dd_flux_before_",dir,1),level);
+        showMFsub("dd",*flux[dir],BoxLib::surroundingNodes(stripBox,dir),BoxLib::Concatenate("dd_flux_before_",dir,1),level);
     }
     //
     // Modify update/fluxes to preserve flux sum = 0, build heat flux and temperature source terms
     //
     adjust_spec_diffusion_fluxes(time,beta,grow_data);
 
+    //
+    // Make fluxes extensive
+    //
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
-        showMF("dd",*(flux[dir]),BoxLib::Concatenate("dd_flux_after_",dir,1),level);
+        showMFsub("dd",*flux[dir],BoxLib::surroundingNodes(stripBox,dir),BoxLib::Concatenate("dd_flux_after_",dir,1),level);
+    }
+    FArrayBox area;
+    for (MFIter mfi(Soln); mfi.isValid(); ++mfi)
+    {
+        int i = mfi.index();
+        int dComp = 0;
+
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+        {
+            geom.GetFaceArea(area,grids,i,dir,flux[dir]->nGrow());
+            for (int n=0; n<(*flux[dir])[i].nComp(); ++n)
+            {
+                (*flux[dir])[i].mult(area,0,dComp+n,1);
+            }
+        }
+    }
+
+    for (int dir=0; dir<BL_SPACEDIM; ++dir) {
+        showMFsub("dd",*flux[dir],BoxLib::surroundingNodes(stripBox,dir),BoxLib::Concatenate("dd_flux_after1_",dir,1),level);
     }
 }
 
@@ -5281,16 +5319,14 @@ HeatTransfer::diffusion_flux_divergence (MultiFab& visc_terms,
     {
 	int        iGrid = mfi.index();
 	const Box& box   = mfi.validbox();
+        int nComp        = nspecies + 2; 
 
-        for (int d=0; d<BL_SPACEDIM; ++d) {
-            f.set(d,&(*flux[d])[mfi]); // easier to read below
-        }
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+            f.set(dir,&(*flux[dir])[mfi]); // easier to read below
 
         geom.GetVolume(volume,grids,iGrid,GEOM_GROW);
 
         FArrayBox& update = visc_terms[mfi];
-        int nComp = nspecies + 2; 
-
 	FORT_FLUXDIV(box.loVect(), box.hiVect(),
                      update.dataPtr(load_comp), ARLIM(update.loVect()), ARLIM(update.hiVect()),
                      f[0].dataPtr(),   ARLIM(f[0].loVect()),   ARLIM(f[0].hiVect()),
@@ -5349,7 +5385,9 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 
     // Add sum(Fi.Grad(Hi)) + external heating for Temp
     MultiFab::Add(visc_terms,sumSpecFluxDotGradH,0,load_comp+nspecies+1,1,0);
+    showMFsub("1D",sumSpecFluxDotGradH,stripBox,"1D_viscT_F.Gh",level);
     MultiFab::Add(visc_terms,visc_terms,load_comp+nspecies,load_comp+nspecies+1,1,0);
+    showMFsub("1D",visc_terms,stripBox,"1D_viscT",level);
 }
 
 void
@@ -9985,7 +10023,8 @@ HeatTransfer::calc_divu (Real      time,
         divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
         divu[iGrid].divide(cp[iGrid],grids[iGrid],sCompCp,0,1);
     }
-    showMF("divu",divu,"divu_VT_T_over_rhoT",level);
+    showMF("divu",divu,"divu_VT_T_over_rhoTcp",level);
+    showMFsub("1D",divu,stripBox,"1D_divu_VT_T_over_rhoTcp",level);
 
     MultiFab delta_divu(grids,1,nGrow), spec_visc_terms(grids,nspecies+1,nGrow);
 
@@ -10018,7 +10057,8 @@ HeatTransfer::calc_divu (Real      time,
 
     rho.clear();
 
-    if (dt > 0.0)
+    showMFsub("1D",get_data(Ydot_Type,time),stripBox,"1D_Ydot",level);
+    if (dt > 0.0 || do_sdc)
     {
         //
         // Increment divu by
@@ -10058,6 +10098,8 @@ HeatTransfer::calc_divu (Real      time,
     }
 
     showMF("divu",divu,"divu_2",level);
+    showMFsub("1D",divu,stripBox,"1D_divu_2",level);
+    BoxLib::Abort("DEBUG");
 }
 
 //

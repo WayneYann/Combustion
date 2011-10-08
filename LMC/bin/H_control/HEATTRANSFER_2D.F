@@ -104,8 +104,8 @@ c                (or, simply -lambda.Grad(T) computed using T and lambda passed 
               Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
               Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2) + FiHi
            enddo
-           Fx(i,j,Nspec+2) = Fx(i,j,Nspec+1) - Fx(i,j,Nspec+2)
-c           Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))*dxinv
+c           Fx(i,j,Nspec+2) = Fx(i,j,Nspec+1) - Fx(i,j,Nspec+2)
+           Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))*dxinv
          enddo
       enddo
 
@@ -118,8 +118,8 @@ c           Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))*dxinv
               Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
               Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2) + FiHi
            enddo
-           Fy(i,j,Nspec+2) = Fy(i,j,Nspec+1) - Fy(i,j,Nspec+2)
-c           Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))*dyinv
+c           Fy(i,j,Nspec+2) = Fy(i,j,Nspec+1) - Fy(i,j,Nspec+2)
+           Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))*dyinv
         enddo
       enddo
       end
@@ -997,7 +997,7 @@ c                               inflow for pipe
       REAL_T scal
 
       integer i, j, n
-      
+
       do n=1,nc
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
