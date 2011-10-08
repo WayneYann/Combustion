@@ -5207,6 +5207,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         showMF("dd",*(beta[dir]),BoxLib::Concatenate("dd_beta_",dir,1),level);
     }
+    showMFsub("dd",*beta[1],BoxLib::surroundingNodes(stripBox,1),"1D_dd_beta",level);
 
     MultiFab& S = get_data(State_Type,time);
     showMF("dd",S,"dd_S",level);
@@ -5270,28 +5271,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     // Modify update/fluxes to preserve flux sum = 0, build heat flux and temperature source terms
     //
     adjust_spec_diffusion_fluxes(time,beta,grow_data);
-
-    //
-    // Make fluxes extensive
-    //
-    for (int dir=0; dir<BL_SPACEDIM; ++dir) {
-        showMFsub("dd",*flux[dir],BoxLib::surroundingNodes(stripBox,dir),BoxLib::Concatenate("dd_flux_after_",dir,1),level);
-    }
-    FArrayBox area;
-    for (MFIter mfi(Soln); mfi.isValid(); ++mfi)
-    {
-        int i = mfi.index();
-        int dComp = 0;
-
-        for (int dir = 0; dir < BL_SPACEDIM; dir++)
-        {
-            geom.GetFaceArea(area,grids,i,dir,flux[dir]->nGrow());
-            for (int n=0; n<(*flux[dir])[i].nComp(); ++n)
-            {
-                (*flux[dir])[i].mult(area,0,dComp+n,1);
-            }
-        }
-    }
 
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         showMFsub("dd",*flux[dir],BoxLib::surroundingNodes(stripBox,dir),BoxLib::Concatenate("dd_flux_after1_",dir,1),level);
@@ -5380,13 +5359,12 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 
     // Add external heating terms for RhoH
     int nGrow = 0;
-    visc_terms.setVal(0,load_comp+nspecies,1);
     add_heat_sources(visc_terms,load_comp+nspecies,time,nGrow,1.0);
 
     // Add sum(Fi.Grad(Hi)) + external heating for Temp
-    MultiFab::Add(visc_terms,sumSpecFluxDotGradH,0,load_comp+nspecies+1,1,0);
+    add_heat_sources(visc_terms,load_comp+nspecies+1,time,nGrow,1.0);
     showMFsub("1D",sumSpecFluxDotGradH,stripBox,"1D_viscT_F.Gh",level);
-    MultiFab::Add(visc_terms,visc_terms,load_comp+nspecies,load_comp+nspecies+1,1,0);
+    MultiFab::Add(visc_terms,sumSpecFluxDotGradH,0,load_comp+nspecies+1,1,0);
     showMFsub("1D",visc_terms,stripBox,"1D_viscT",level);
 }
 
@@ -10055,8 +10033,6 @@ HeatTransfer::calc_divu (Real      time,
     }
     showMF("divu",divu,"divu_1",level);
 
-    rho.clear();
-
     showMFsub("1D",get_data(Ydot_Type,time),stripBox,"1D_Ydot",level);
     if (dt > 0.0 || do_sdc)
     {
@@ -10086,16 +10062,20 @@ HeatTransfer::calc_divu (Real      time,
                 delta_divu[i].copy(h,ispec,0,1);
                 delta_divu[i].divide(cp[i]);
                 delta_divu[i].divide(temp[i]);
+                delta_divu[i].divide(rho[i]);
                 delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
                 divu[i].plus(delta_divu[i]);
 
                 delta_divu[i].copy(mwmix[i],0,0,1);
                 delta_divu[i].divide(mwt[ispec]);
                 delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
+                delta_divu[i].divide(rho[i]);
                 divu[i].minus(delta_divu[i]);
             }
         }
     }
+    rho.clear();
+
 
     showMF("divu",divu,"divu_2",level);
     showMFsub("1D",divu,stripBox,"1D_divu_2",level);

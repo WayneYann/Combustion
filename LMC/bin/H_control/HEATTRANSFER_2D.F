@@ -105,7 +105,8 @@ c                (or, simply -lambda.Grad(T) computed using T and lambda passed 
               Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2) + FiHi
            enddo
 c           Fx(i,j,Nspec+2) = Fx(i,j,Nspec+1) - Fx(i,j,Nspec+2)
-           Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))*dxinv
+c     Make extensive...need to do properly with areas
+           Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))*dxinv*dx(2)
          enddo
       enddo
 
@@ -119,7 +120,8 @@ c           Fx(i,j,Nspec+2) = Fx(i,j,Nspec+1) - Fx(i,j,Nspec+2)
               Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2) + FiHi
            enddo
 c           Fy(i,j,Nspec+2) = Fy(i,j,Nspec+1) - Fy(i,j,Nspec+2)
-           Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))*dyinv
+c     Make extensive...need to do properly with areas
+           Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))*dyinv*dx(1)
         enddo
       enddo
       end
