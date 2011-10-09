@@ -1,7 +1,7 @@
 //
 // "Divu_Type" means S, where divergence U = S
 // "Dsdt_Type" means pd S/pd t, where S is as above
-// "Ydot_Type" means -omega_l/rho, i.e., the mass rate of decrease of species l due
+// "RhoYchemProd_Type" means -omega_l/rho, i.e., the mass rate of decrease of species l due
 //             to kinetics divided by rho
 //
 #include <winstd.H>
@@ -109,7 +109,7 @@ int  HeatTransfer::RhoH;
 int  HeatTransfer::do_diffuse_sync;
 int  HeatTransfer::do_reflux_visc;
 int  HeatTransfer::dpdt_option;
-int  HeatTransfer::Ydot_Type;
+int  HeatTransfer::RhoYchemProd_Type;
 int  HeatTransfer::FuncCount_Type;
 int  HeatTransfer::divu_ceiling;
 Real HeatTransfer::divu_dt_factor;
@@ -268,7 +268,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::do_diffuse_sync           = 1;
     HeatTransfer::do_reflux_visc            = 1;
     HeatTransfer::dpdt_option               = 2;
-    HeatTransfer::Ydot_Type                 = -1;
+    HeatTransfer::RhoYchemProd_Type                 = -1;
     HeatTransfer::FuncCount_Type            = -1;
     HeatTransfer::divu_ceiling              = 0;
     HeatTransfer::divu_dt_factor            = .5;
@@ -1186,18 +1186,18 @@ HeatTransfer::init_once ()
     //
     // Chemistry.
     //
-    int ydot_good = Ydot_Type >= 0 && Ydot_Type <desc_lst.size()
-        && Ydot_Type != Divu_Type
-        && Ydot_Type != Dsdt_Type
-        && Ydot_Type != State_Type;
+    int ydot_good = RhoYchemProd_Type >= 0 && RhoYchemProd_Type <desc_lst.size()
+        && RhoYchemProd_Type != Divu_Type
+        && RhoYchemProd_Type != Dsdt_Type
+        && RhoYchemProd_Type != State_Type;
     
     if (!ydot_good)
-        BoxLib::Error("HeatTransfer::init_once(): need Ydot_Type if do_chemistry");
+        BoxLib::Error("HeatTransfer::init_once(): need RhoYchemProd_Type if do_chemistry");
     
-    const StateDescriptor& ydot_cell = desc_lst[Ydot_Type];
+    const StateDescriptor& ydot_cell = desc_lst[RhoYchemProd_Type];
     int nydot = ydot_cell.nComp();
     if (nydot < nspecies)
-        BoxLib::Error("HeatTransfer::init_once(): Ydot_Type needs nspecies components");
+        BoxLib::Error("HeatTransfer::init_once(): RhoYchemProd_Type needs nspecies components");
     //
     // Enforce Le = 1, unless !unity_Le
     //
@@ -1523,7 +1523,7 @@ HeatTransfer::setTimeLevel (Real time,
 {
     NavierStokes::setTimeLevel(time, dt_old, dt_new);    
 
-    state[Ydot_Type].setTimeLevel(time,dt_old,dt_new);
+    state[RhoYchemProd_Type].setTimeLevel(time,dt_old,dt_new);
 
     state[FuncCount_Type].setTimeLevel(time,dt_old,dt_new);
 }
@@ -1990,7 +1990,7 @@ HeatTransfer::initDataOtherTypes ()
     //
     // Assume that by now, S_new has "good" data
     //
-    MultiFab& R = get_new_data(Ydot_Type);
+    MultiFab& R = get_new_data(RhoYchemProd_Type);
     if (do_sdc)
     {
         int nGrow = 0;
@@ -2050,9 +2050,9 @@ HeatTransfer::init (AmrLevel& old)
     //
     // Get best ydot data.
     //
-    MultiFab& Ydot = get_new_data(Ydot_Type);
+    MultiFab& Ydot = get_new_data(RhoYchemProd_Type);
 
-    for (FillPatchIterator fpi(*oldht,Ydot,Ydot.nGrow(),cur_time,Ydot_Type,0,nspecies);
+    for (FillPatchIterator fpi(*oldht,Ydot,Ydot.nGrow(),cur_time,RhoYchemProd_Type,0,nspecies);
          fpi.isValid();
          ++fpi)
     {
@@ -2085,7 +2085,7 @@ HeatTransfer::init ()
     //
     // Get best ydot data.
     //
-    FillCoarsePatch(get_new_data(Ydot_Type),0,cur_time,Ydot_Type,0,nspecies);
+    FillCoarsePatch(get_new_data(RhoYchemProd_Type),0,cur_time,RhoYchemProd_Type,0,nspecies);
 
     RhoH_to_Temp(get_new_data(State_Type));
 
@@ -2694,8 +2694,8 @@ HeatTransfer::resetState (Real time,
 {
     NavierStokes::resetState(time,dt_old,dt_new);
 
-    state[Ydot_Type].reset();
-    state[Ydot_Type].setTimeLevel(time,dt_old,dt_new);
+    state[RhoYchemProd_Type].reset();
+    state[RhoYchemProd_Type].setTimeLevel(time,dt_old,dt_new);
 
     state[FuncCount_Type].reset();
     state[FuncCount_Type].setTimeLevel(time,dt_old,dt_new);
@@ -5261,7 +5261,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
 
     // Remove scaling left in fluxes from solve
     for (int d=0; d < BL_SPACEDIM; ++d) {
-        flux[d]->mult(-b/geom.CellSize()[d]);
+        flux[d]->mult(b/geom.CellSize()[d]);
     }
 
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
@@ -6734,7 +6734,7 @@ HeatTransfer::advance_sdc (Real time,
     {
         FArrayBox& f = Forcing[mfi];
         const FArrayBox& d = Dn[mfi];
-        const FArrayBox& r = get_old_data(Ydot_Type)[mfi];
+        const FArrayBox& r = get_old_data(RhoYchemProd_Type)[mfi];
 
         // Note: assumes that Forcing is never used outside domain
         const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing) & geom.Domain(); 
@@ -6761,7 +6761,7 @@ HeatTransfer::advance_sdc (Real time,
         const Box& box = mfi.validbox();
         FArrayBox& f = Forcing[mfi];
         const FArrayBox& a = (*aofs)[mfi];
-        const FArrayBox& r = get_old_data(Ydot_Type)[mfi];
+        const FArrayBox& r = get_old_data(RhoYchemProd_Type)[mfi];
         
         f.copy(a,box,first_spec,box,0,nspecies+1);
         f.plus(r,box,box,0,0,nspecies);
@@ -6823,7 +6823,7 @@ HeatTransfer::advance_sdc (Real time,
         {
             FArrayBox& f = Forcing[mfi];
             const FArrayBox& d = Dn[mfi];
-            const FArrayBox& r = get_new_data(Ydot_Type)[mfi];
+            const FArrayBox& r = get_new_data(RhoYchemProd_Type)[mfi];
             
             const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
             
@@ -6846,7 +6846,7 @@ HeatTransfer::advance_sdc (Real time,
             const Box& box = mfi.validbox();
             FArrayBox& f = Forcing[mfi];
             const FArrayBox& a = (*aofs)[mfi];
-            const FArrayBox& r = get_old_data(Ydot_Type)[mfi];
+            const FArrayBox& r = get_old_data(RhoYchemProd_Type)[mfi];
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& dnp1 = Dnp1[mfi];
             
@@ -7316,13 +7316,13 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
     if (Ydot_action == HT_ImproveYdotOld)
     {
-        MultiFab& ydot_old = get_old_data(Ydot_Type);
+        MultiFab& ydot_old = get_old_data(RhoYchemProd_Type);
   	junk.define(ydot_old.boxArray(),nspecies,0,Fab_allocate);
 	ydot_tmp = &junk;
     }
     else if (Ydot_action == HT_EstimateYdotNew)
     {
-	ydot_tmp = &get_new_data(Ydot_Type);
+	ydot_tmp = &get_new_data(RhoYchemProd_Type);
     }
 
     if (hack_nochem)
@@ -7509,7 +7509,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
         {
             BL_ASSERT(ydot_tmp != 0);
 
-            MultiFab& ydot_old = get_old_data(Ydot_Type);
+            MultiFab& ydot_old = get_old_data(RhoYchemProd_Type);
 
             for (MFIter Ymfi(*ydot_tmp); Ymfi.isValid(); ++Ymfi)
             {
@@ -7571,7 +7571,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                 const Box& bx = Smfi.validbox();
 		FArrayBox& fc = tmp[Smfi];
 		const FArrayBox& fd = (*Force)[Smfi];
-		FArrayBox& fe = get_new_data(Ydot_Type)[Smfi];
+		FArrayBox& fe = get_new_data(RhoYchemProd_Type)[Smfi];
 
                 if (plot_reactions &&
                     BoxLib::intersect(mf_old.boxArray(),auxDiag["REACTIONS"]->boxArray()).size() != 0)
@@ -10020,6 +10020,7 @@ HeatTransfer::calc_divu (Real      time,
             delta_divu[mfi].plus(mcViscTerms[mfi],grids[iGrid],comp,0,1);
         }
     }
+
     showMF("divu",delta_divu,"divu_sum_VT_Y_over_Wi",level);
     mcViscTerms.clear();
 
@@ -10033,7 +10034,7 @@ HeatTransfer::calc_divu (Real      time,
     }
     showMF("divu",divu,"divu_1",level);
 
-    showMFsub("1D",get_data(Ydot_Type,time),stripBox,"1D_Ydot",level);
+    showMFsub("1D",get_data(RhoYchemProd_Type,time),stripBox,"1D_Ydot",level);
     if (dt > 0.0 || do_sdc)
     {
         //
@@ -10045,7 +10046,7 @@ HeatTransfer::calc_divu (Real      time,
 
         const int sCompH = 0;
 
-        for (FillPatchIterator Ydot_fpi(*this,delta_divu,0,time,Ydot_Type,0,nspecies);
+        for (FillPatchIterator Ydot_fpi(*this,delta_divu,0,time,RhoYchemProd_Type,0,nspecies);
              Ydot_fpi.isValid();
              ++Ydot_fpi)
         {
@@ -10071,15 +10072,14 @@ HeatTransfer::calc_divu (Real      time,
                 delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
                 delta_divu[i].divide(rho[i]);
                 divu[i].minus(delta_divu[i]);
+
             }
         }
     }
     rho.clear();
 
-
     showMF("divu",divu,"divu_2",level);
     showMFsub("1D",divu,stripBox,"1D_divu_2",level);
-    BoxLib::Abort("DEBUG");
 }
 
 //

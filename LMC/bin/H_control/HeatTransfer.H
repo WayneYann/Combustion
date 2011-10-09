@@ -641,7 +641,7 @@ protected:
     static int         do_heat_sink;
     static int         unity_Le;
     static int         FuncCount_Type;
-    static int         Ydot_Type;
+    static int         RhoYchemProd_Type;
     static int         divu_ceiling;
     static Real        min_rho_divu_ceiling;
     static Real        divu_dt_factor;
