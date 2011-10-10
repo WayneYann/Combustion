@@ -543,7 +543,11 @@ c     For probtype == 1, set boundary conditions from premixed flame profile in 
          end if
          T_bc(zone) = pmf_vals(1)
          u_bc(zone) = zero
-         v_bc(zone) = V_in
+         if (V_in.gt.0.d0) then
+            v_bc(zone) = V_in
+         else
+            v_bc(zone) = pmf_vals(2)
+         endif
          call FORT_RHOfromPTY(lo,hi,
      &                        rho_bc(zone),ARLIM(lo),ARLIM(hi),
      &                        T_bc(zone),ARLIM(lo),ARLIM(hi),
@@ -806,7 +810,7 @@ c ::: -----------------------------------------------------------
          T = T_bc(zone)
          h = h_bc(zone)
 
-         if ((probtype.eq.1).or.(probtype.eq.3)) then
+         if (((probtype.eq.1).or.(probtype.eq.3)).and.V_in.gt.0.d0) then
 
             v = V_in + (time-tbase_control)*dV_control
 
