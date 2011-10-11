@@ -1,12 +1,11 @@
  &fortin
-  probtype = 1
+  probtype = 'premixed_fixed_inlet'
 
   V_in = 0.45
-  V_in = 0.0
   V_in = 0.152
+  V_in = 0.0
 
-  y_offset = -.004
-  y_offset = 0.
+  standoff = 0.
 
   pertmag = 0.00016
   pertmag = 0.
