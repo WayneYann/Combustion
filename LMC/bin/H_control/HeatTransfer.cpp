@@ -3259,7 +3259,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
             FArrayBox& fab = (*flux[d])[mfi.index()];
             FORT_REPAIR_FLUX(box.loVect(), box.hiVect(),
                              fab.dataPtr(),  ARLIM(fab.loVect()),  ARLIM(fab.hiVect()),
-                             state.dataPtr(1),ARLIM(state.loVect()),ARLIM(state.hiVect()),
+                             state.dataPtr(),ARLIM(state.loVect()),ARLIM(state.hiVect()),
                              &nspecies, &d);
         }
     }

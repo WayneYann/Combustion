@@ -942,10 +942,10 @@ c                               inflow for pipe
       integer DIMDEC(flux)
       integer DIMDEC(state)
       REAL_T flux(DIMV(flux),nc)
-      REAL_T state(DIMV(state),nc)
+      REAL_T state(DIMV(state),nc+1)
       
-      integer i, j, n
-      REAL_T sum, yedge, sumRhoY
+      integer i, j, n, speccomp
+      REAL_T sum, RhoYedge, sumRhoY
 
       if (dir.eq.0) then
          do j = lo(2),hi(2)
@@ -953,12 +953,17 @@ c                               inflow for pipe
                sum = zero
                sumRhoY = zero
                do n=1,nc
+                  speccomp = n+1
                   sum = sum + flux(i,j,n)
-                  sumRhoY = sumRhoY + half*(state(i-1,j,n)+state(i,j,n))
+                  sumRhoY = sumRhoY + half*
+     &                 (state(i-1,j,1)*state(i-1,j,speccomp)
+     &                 +state(i,j,1)*state(i,j,speccomp))
                end do               
                do n=1,nc
-                  yedge = half*(state(i-1,j,n)+state(i,j,n))
-                  flux(i,j,n) = flux(i,j,n) - sum*yedge/sumRhoY
+                  speccomp = n+1
+                  RhoYedge = half*(state(i-1,j,1)*state(i-1,j,speccomp) 
+     &                 + state(i,j,1)*state(i,j,speccomp))
+                  flux(i,j,n) = flux(i,j,n) - sum*RhoYedge/sumRhoY
                end do
             end do
          end do
@@ -968,12 +973,17 @@ c                               inflow for pipe
                sum = zero
                sumRhoY = zero
                do n=1,nc
+                  speccomp = n+1
                   sum = sum + flux(i,j,n)
-                  sumRhoY = sumRhoY + half*(state(i,j-1,n)+state(i,j,n))
+                  sumRhoY = sumRhoY + half*
+     &                 (state(i,j-1,1)*state(i,j-1,speccomp)
+     &                 +state(i,j,1)*state(i,j,speccomp))
                end do
                do n=1,nc
-                  yedge = half*(state(i,j-1,n)+state(i,j,n))
-                  flux(i,j,n) = flux(i,j,n) - sum*yedge/sumRhoY
+                  speccomp = n+1
+                  RhoYedge = half*(state(i,j-1,1)*state(i,j-1,speccomp) 
+     &                 + state(i,j,1)*state(i,j,speccomp))
+                  flux(i,j,n) = flux(i,j,n) - sum*RhoYedge/sumRhoY
                end do
             end do
          end do
