@@ -80,8 +80,10 @@ c        compute Grad(H) on each face, and average across faces in each coordina
            FiGHi(i,j) = 0.d0
            do n=1,Nspec
               FiGHi(i,j) = FiGHi(i,j)
-     &             + hdx*(H(i+1,j,n)-H(i,j,n))*(Fx(i+1,j,n)+Fx(i,j,n))
-     &             + hdy*(H(i,j+1,n)-H(i,j,n))*(Fy(i,j+1,n)+Fy(i,j,n))
+     &             - 0.5d0*(H(i,j,n)-H(i-1,j,n))*Fx(i,j,n) / dx(1)**2
+     &             - 0.5d0*(H(i+1,j,n)-H(i,j,n))*Fx(i+1,j,n) / dx(1)**2
+     &             - 0.5d0*(H(i,j,n)-H(i,j-1,n))*Fy(i,j,n) / dx(2)**2
+     &             - 0.5d0*(H(i,j+1,n)-H(i,j,n))*Fy(i,j+1,n) / dx(2)**2
            enddo
         enddo
       enddo
