@@ -625,7 +625,7 @@ getStrip(const Geometry& geom)
     const Box& box = geom.Domain();
     IntVect be = box.bigEnd();
     IntVect se = box.smallEnd();
-    se[0] = 0.5*(se[0]+be[0]);
+    se[0] = (int) 0.5*(se[0]+be[0]);
     be[0] = se[0];
     return Box(se,be);
 }
@@ -3273,10 +3273,14 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     //
     showMFsub("1D",*beta[1],BoxLib::surroundingNodes(stripBox,1),"1D_dd_adj_beta",level);
 
+    FArrayBox area[BL_SPACEDIM];
     for (MFIter mfi(rho_spec_T); mfi.isValid(); ++mfi)
     {
         const int i    = mfi.index();
         const Box& box = mfi.validbox();
+
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+            geom.GetFaceArea(area[dir],grids,i,dir,0);
 
         FArrayBox& fh = sumSpecFluxDotGradH[mfi];
         int FComp = 0;
@@ -3307,12 +3311,15 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
 
                              rDx.dataPtr(dComp),ARLIM(rDx.loVect()),ARLIM(rDx.hiVect()),
                              fix.dataPtr(FComp),ARLIM(fix.loVect()),ARLIM(fix.hiVect()),
+                             area[0].dataPtr(), ARLIM(area[0].loVect()),ARLIM(area[0].hiVect()),
 
                              rDy.dataPtr(dComp),ARLIM(rDy.loVect()),ARLIM(rDy.hiVect()),
                              fiy.dataPtr(FComp),ARLIM(fiy.loVect()),ARLIM(fiy.hiVect()),
+                             area[1].dataPtr(), ARLIM(area[1].loVect()),ARLIM(area[1].hiVect()),
 #if BL_SPACEDIM == 3
                              rDz.dataPtr(dComp),ARLIM(rDz.loVect()),ARLIM(rDz.hiVect()),
                              fiz.dataPtr(FComp),ARLIM(fiz.loVect()),ARLIM(fiz.hiVect()),
+                             area[2].dataPtr(), ARLIM(area[2].loVect()),ARLIM(area[2].hiVect()),
 #endif
                              fh.dataPtr(),     ARLIM(fh.loVect()), ARLIM(fh.hiVect()) );
     }

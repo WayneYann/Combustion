@@ -22,8 +22,8 @@
 #define SDIM 2
 
       subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dx, T, DIMS(T), Y, DIMS(Y),
-     &                                rhoDx, DIMS(rhoDx), Fx, DIMS(Fx), 
-     &                                rhoDy, DIMS(rhoDy), Fy, DIMS(Fy),
+     &                                rhoDx, DIMS(rhoDx), Fx, DIMS(Fx), Ax, DIMS(Ax), 
+     &                                rhoDy, DIMS(rhoDy), Fy, DIMS(Fy), Ay, DIMS(Ay), 
      &                                FiGHi, DIMS(FiGHi) )
 
       implicit none
@@ -41,11 +41,15 @@
       REAL_T  rhoDx(DIMV(rhoDx),*)
       integer DIMDEC(Fx)
       REAL_T  Fx(DIMV(Fx),*)
+      integer DIMDEC(Ax)
+      REAL_T  Ax(DIMV(Ax))
 
       integer DIMDEC(rhoDy)
       REAL_T  rhoDy(DIMV(rhoDy),*)
       integer DIMDEC(Fy)
       REAL_T  Fy(DIMV(Fy),*)
+      integer DIMDEC(Ay)
+      REAL_T  Ay(DIMV(Ay))
 
       integer DIMDEC(FiGHi)
       REAL_T  FiGHi(DIMV(FiGHi))
@@ -55,7 +59,7 @@
 
       integer i, j, d, n
       integer lob(SDIM), hib(SDIM)
-      REAL_T hdx, hdy, dxinv, dyinv, FiHi
+      REAL_T AxDxInv_lo, AxDxInv_hi, AyDyInv_lo, AyDyInv_hi, dxInv, dyInv, FiHi
 
 c     Compute species enthalpies on box grown by one
       do d=1,SDIM
@@ -73,15 +77,20 @@ c     Compute species enthalpies on box grown by one
 
 c     Set FiGHi = (species flux) dot Grad(species enthalpy)
 c        compute Grad(H) on each face, and average across faces in each coordinate
-      hdx = 0.5d0 / dx(1)
-      hdy = 0.5d0 / dx(2)
+c        Fi is extensive here, so need to remove area
       do j=lo(2),hi(2)
         do i=lo(1),hi(1)
            FiGHi(i,j) = 0.d0
+           AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
+           AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
+           AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
+           AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
            do n=1,Nspec
-              FiGHi(i,j) = FiGHi(i,j)
-     &             + hdx*(H(i+1,j,n)-H(i,j,n))*(Fx(i+1,j,n)+Fx(i,j,n))
-     &             + hdy*(H(i,j+1,n)-H(i,j,n))*(Fy(i,j+1,n)+Fy(i,j,n))
+              FiGHi(i,j) = FiGHi(i,j) + 0.5d0*
+     &             ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &             + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &             + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &             + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
            enddo
         enddo
       enddo
@@ -94,34 +103,31 @@ c       heat flux = - (lambda/cp).Grad(Hmix) + Hi.(species flux).(1 - (lambda/(c
 c
 c     Also, conduction = - lambda.Grad(T) = (heat flux) - (species flux).(species enthalpy)
 c                (or, simply -lambda.Grad(T) computed using T and lambda passed in)
-
-      dxinv = 1.d0 / dx(1)
+      dxInv = 1.d0 / dx(1)
       do j=lo(2),hi(2)
         do i=lo(1),hi(1)+1
-           Fx(i,j,Nspec+2) = 0.d0
+c           Fx(i,j,Nspec+2) = 0.d0
            do n=1,Nspec
               FiHi = + 0.5d0*(H(i,j,n)+H(i-1,j,n))*Fx(i,j,n)
               Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
-              Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2) + FiHi
+c              Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2) + FiHi
            enddo
 c           Fx(i,j,Nspec+2) = Fx(i,j,Nspec+1) - Fx(i,j,Nspec+2)
-c     Make extensive...need to do properly with areas
-           Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))*dxinv*dx(2)
+           Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
          enddo
       enddo
 
-      dyinv = 1.d0 / dx(2)
+      dyInv = 1.d0 / dx(2)
       do j=lo(2),hi(2)+1
         do i=lo(1),hi(1)
-           Fy(i,j,Nspec+2) = 0.d0
+c           Fy(i,j,Nspec+2) = 0.d0
            do n=1,Nspec
               FiHi = + 0.5d0*(H(i,j,n)+H(i,j-1,n))*Fy(i,j,n)
               Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
-              Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2) + FiHi
+c              Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2) + FiHi
            enddo
 c           Fy(i,j,Nspec+2) = Fy(i,j,Nspec+1) - Fy(i,j,Nspec+2)
-c     Make extensive...need to do properly with areas
-           Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))*dyinv*dx(1)
+           Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1)) * dyInv * Ay(i,j)
         enddo
       enddo
       end
@@ -945,20 +951,20 @@ c                               inflow for pipe
       REAL_T state(DIMV(state),nc)
       
       integer i, j, n
-      REAL_T sum, yedge, sumRhoY
+      REAL_T sum, RhoYe, sumRhoYe
 
       if (dir.eq.0) then
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)+1
                sum = zero
-               sumRhoY = zero
+               sumRhoYe = zero
                do n=1,nc
                   sum = sum + flux(i,j,n)
-                  sumRhoY = sumRhoY + half*(state(i-1,j,n)+state(i,j,n))
+                  sumRhoYe = sumRhoYe + half*(state(i-1,j,n)+state(i,j,n))
                end do               
                do n=1,nc
-                  yedge = half*(state(i-1,j,n)+state(i,j,n))
-                  flux(i,j,n) = flux(i,j,n) - sum*yedge/sumRhoY
+                  RhoYe = half*(state(i-1,j,n)+state(i,j,n))
+                  flux(i,j,n) = flux(i,j,n) - sum*RhoYe/sumRhoYe
                end do
             end do
          end do
@@ -966,14 +972,14 @@ c                               inflow for pipe
          do j = lo(2),hi(2)+1
             do i = lo(1),hi(1)
                sum = zero
-               sumRhoY = zero
+               sumRhoYe = zero
                do n=1,nc
                   sum = sum + flux(i,j,n)
-                  sumRhoY = sumRhoY + half*(state(i,j-1,n)+state(i,j,n))
+                  sumRhoYe = sumRhoYe + half*(state(i,j-1,n)+state(i,j,n))
                end do
                do n=1,nc
-                  yedge = half*(state(i,j-1,n)+state(i,j,n))
-                  flux(i,j,n) = flux(i,j,n) - sum*yedge/sumRhoY
+                  RhoYe = half*(state(i,j-1,n)+state(i,j,n))
+                  flux(i,j,n) = flux(i,j,n) - sum*RhoYe/sumRhoYe
                end do
             end do
          end do

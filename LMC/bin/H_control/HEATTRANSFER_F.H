@@ -226,12 +226,15 @@ extern "C" {
 
                               const Real* rDx,ARLIM_P(rDxlo),ARLIM_P(rDxhi),
                               const Real* Fix,ARLIM_P(Fixlo),ARLIM_P(Fixhi),
+                              const Real* ax, ARLIM_P(axlo), ARLIM_P(axhi),
 
                               const Real* rDy,ARLIM_P(rDylo),ARLIM_P(rDyhi),
                               const Real* Fiy,ARLIM_P(Fiylo),ARLIM_P(Fiyhi),
+                              const Real* ay, ARLIM_P(aylo), ARLIM_P(ayhi),
 #if BL_SPACEDIM == 3
                               const Real* rDz,ARLIM_P(rDzlo),ARLIM_P(rDzhi),
                               const Real* Fiz,ARLIM_P(Fizlo),ARLIM_P(Fizhi),
+                              const Real* az, ARLIM_P(azlo), ARLIM_P(azhi),
 #endif
                               Real* fh,      ARLIM_P(fhlo), ARLIM_P(fhhi)  );
 
