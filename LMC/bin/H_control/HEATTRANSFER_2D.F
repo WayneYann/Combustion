@@ -86,11 +86,18 @@ c        Fi is extensive here, so need to remove area
            AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
            AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
            do n=1,Nspec
-              FiGHi(i,j) = FiGHi(i,j) + 0.5d0*
+              FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
      &             ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
      &             + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
      &             + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
      &             + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+
+              FiGHi(i,j) = FiGHi(i,j)
+     &             - 0.5d0*(H(i,j,n)-H(i-1,j,n))*Fx(i,j,n) / dx(1)**2
+     &             - 0.5d0*(H(i+1,j,n)-H(i,j,n))*Fx(i+1,j,n) / dx(1)**2
+     &             - 0.5d0*(H(i,j,n)-H(i,j-1,n))*Fy(i,j,n) / dx(2)**2
+     &             - 0.5d0*(H(i,j+1,n)-H(i,j,n))*Fy(i,j+1,n) / dx(2)**2
+
            enddo
         enddo
       enddo
@@ -948,10 +955,15 @@ c                               inflow for pipe
       integer DIMDEC(flux)
       integer DIMDEC(state)
       REAL_T flux(DIMV(flux),nc)
-      REAL_T state(DIMV(state),nc)
+      REAL_T state(DIMV(state),nc+1)
       
+<<<<<<< HEAD
       integer i, j, n
       REAL_T sum, RhoYe, sumRhoYe
+=======
+      integer i, j, n, speccomp
+      REAL_T sum, RhoYedge, sumRhoY
+>>>>>>> 2bc8cf5e72c5fc3f90b916c99548502040ae21fe
 
       if (dir.eq.0) then
          do j = lo(2),hi(2)
@@ -959,12 +971,25 @@ c                               inflow for pipe
                sum = zero
                sumRhoYe = zero
                do n=1,nc
+                  speccomp = n+1
                   sum = sum + flux(i,j,n)
+<<<<<<< HEAD
                   sumRhoYe = sumRhoYe + half*(state(i-1,j,n)+state(i,j,n))
                end do               
                do n=1,nc
                   RhoYe = half*(state(i-1,j,n)+state(i,j,n))
                   flux(i,j,n) = flux(i,j,n) - sum*RhoYe/sumRhoYe
+=======
+                  sumRhoY = sumRhoY + half*
+     &                 (state(i-1,j,1)*state(i-1,j,speccomp)
+     &                 +state(i,j,1)*state(i,j,speccomp))
+               end do               
+               do n=1,nc
+                  speccomp = n+1
+                  RhoYedge = half*(state(i-1,j,1)*state(i-1,j,speccomp) 
+     &                 + state(i,j,1)*state(i,j,speccomp))
+                  flux(i,j,n) = flux(i,j,n) - sum*RhoYedge/sumRhoY
+>>>>>>> 2bc8cf5e72c5fc3f90b916c99548502040ae21fe
                end do
             end do
          end do
@@ -974,12 +999,25 @@ c                               inflow for pipe
                sum = zero
                sumRhoYe = zero
                do n=1,nc
+                  speccomp = n+1
                   sum = sum + flux(i,j,n)
+<<<<<<< HEAD
                   sumRhoYe = sumRhoYe + half*(state(i,j-1,n)+state(i,j,n))
                end do
                do n=1,nc
                   RhoYe = half*(state(i,j-1,n)+state(i,j,n))
                   flux(i,j,n) = flux(i,j,n) - sum*RhoYe/sumRhoYe
+=======
+                  sumRhoY = sumRhoY + half*
+     &                 (state(i,j-1,1)*state(i,j-1,speccomp)
+     &                 +state(i,j,1)*state(i,j,speccomp))
+               end do
+               do n=1,nc
+                  speccomp = n+1
+                  RhoYedge = half*(state(i,j-1,1)*state(i,j-1,speccomp) 
+     &                 + state(i,j,1)*state(i,j,speccomp))
+                  flux(i,j,n) = flux(i,j,n) - sum*RhoYedge/sumRhoY
+>>>>>>> 2bc8cf5e72c5fc3f90b916c99548502040ae21fe
                end do
             end do
          end do
