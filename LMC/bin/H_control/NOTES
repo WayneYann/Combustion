@@ -26,14 +26,16 @@ calc_divu()
 	FORT_ENTH_DIFF_TERMS()
 	  *compute sumSpecFluxDotGradH = FiGHi = sum_m (rho D_m grad Y_m dot grad h_m)
  	  *compute "heat flux", i.e., all the diffusive terms in the rhoh equation
-	  *compute the lambda grad T piece of the temperature diffusion.  For some reason it's overwriting what
-           was done in above.
+	  *compute the lambda grad T piece of the temperature diffusion.  For some 
+           reason it's overwriting what was done in above.
     diffusion_flux_divergence()
       *takes divergence of diffusive fluxes
-    *add sumSpecFluxDotGradH = FiGHi = sum_m (rho D_m grad Y_m dot grad h_m) to the temperature diffusion term
+    *add sumSpecFluxDotGradH = FiGHi = sum_m (rho D_m grad Y_m dot grad h_m) to the 
+     temperature diffusion term
 
 
-diffusion_flux_divergence() simply takes the divergences of fluxes and stores them in viscTerms.
+diffusion_flux_divergence() simply takes the divergences of fluxes and stores them 
+ in viscTerms.
 
 calcDiffusivity() computes cell-centered diffusion coefficients
 
