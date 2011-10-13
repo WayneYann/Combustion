@@ -197,12 +197,15 @@ fab.format = NATIVE
 #ns.do_init_proj=0
 max_step=0
 #ShowMF_Sets = mac velVT dd estate
-ShowMF_Sets = dddt dd divu 1D mac
+#ShowMF_Sets = dddt dd divu 1D mac
+ShowMF_Sets = 1D
 ShowMF_Dir = JUNK
 ShowMF_Verbose = true
-#ShowMF_Fab_Format = ascii
+ShowMF_Fab_Format = ascii
 #ShowMF_Check_Nans = true
 ShowMF_Check_Nans = false
 
 ns.do_not_use_funccount = 1
 ns.num_divu_iters=0
+diffuse.max_order = 2
+diffuse.tensor_max_order = 2

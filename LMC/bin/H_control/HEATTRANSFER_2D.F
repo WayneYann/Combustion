@@ -21,7 +21,7 @@
 
 #define SDIM 2
 
-      subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dx, T, DIMS(T), Y, DIMS(Y),
+      subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dx, T, DIMS(T),
      &                                rhoDx, DIMS(rhoDx), Fx, DIMS(Fx), Ax, DIMS(Ax), 
      &                                rhoDy, DIMS(rhoDy), Fy, DIMS(Fy), Ay, DIMS(Ay), 
      &                                FiGHi, DIMS(FiGHi) )
@@ -34,20 +34,18 @@
       REAL_T  dx(SDIM)
       integer DIMDEC(T)
       REAL_T  T(DIMV(T))
-      integer DIMDEC(Y)
-      REAL_T  Y(DIMV(Y),*)
 
       integer DIMDEC(rhoDx)
-      REAL_T  rhoDx(DIMV(rhoDx),*)
+      REAL_T  rhoDx(DIMV(rhoDx),Nspec+2)
       integer DIMDEC(Fx)
-      REAL_T  Fx(DIMV(Fx),*)
+      REAL_T  Fx(DIMV(Fx),Nspec+2)
       integer DIMDEC(Ax)
       REAL_T  Ax(DIMV(Ax))
 
       integer DIMDEC(rhoDy)
-      REAL_T  rhoDy(DIMV(rhoDy),*)
+      REAL_T  rhoDy(DIMV(rhoDy),Nspec+2)
       integer DIMDEC(Fy)
-      REAL_T  Fy(DIMV(Fy),*)
+      REAL_T  Fy(DIMV(Fy),Nspec+2)
       integer DIMDEC(Ay)
       REAL_T  Ay(DIMV(Ay))
 
@@ -91,13 +89,6 @@ c        Fi is extensive here, so need to remove area
      &             + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
      &             + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
      &             + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
-
-              FiGHi(i,j) = FiGHi(i,j)
-     &             - 0.5d0*(H(i,j,n)-H(i-1,j,n))*Fx(i,j,n) / dx(1)**2
-     &             - 0.5d0*(H(i+1,j,n)-H(i,j,n))*Fx(i+1,j,n) / dx(1)**2
-     &             - 0.5d0*(H(i,j,n)-H(i,j-1,n))*Fy(i,j,n) / dx(2)**2
-     &             - 0.5d0*(H(i,j+1,n)-H(i,j,n))*Fy(i,j+1,n) / dx(2)**2
-
            enddo
         enddo
       enddo
@@ -253,8 +244,7 @@ c -------------------- begin here ----------------------------
       REAL_T  Y(DIMV(Y),*)
       REAL_T  rhoD(DIMV(rhoD),ncompd)
       
-      integer i, j
-      integer n, nspecies
+      integer i, j, n, nc, ncs
       REAL_T P1ATM_MKS, Patm
       REAL_T Yt(maxspec)
       REAL_T cpmix, Tfac, Yfac
@@ -262,10 +252,20 @@ c -------------------- begin here ----------------------------
       data lo_chem /1,1/
       data hi_chem /1,1/
 
-      nspecies = ncompd - 2
-
-c     ncompd-1 is Temp stuff
-c     ncompd   is Velocity stuff 
+c     Nspec+1 is Temp stuff, if requested
+c     Nspec+2 is Velocity stuff, if requested
+      nc = Nspec
+      ncs = nc
+      if (do_temp.eq.1) then
+         nc = nc + 1
+         ncs = nc
+      endif
+      if (do_VelVisc.eq.1) then
+         nc = nc + 1
+      endif
+      if (ncompd.lt.nc) then
+         call bl_pd_abort("not enough components in rhoD")
+      endif
 
 c     Warning, FORT_VELVISC is called separately from this routine, so if there's
 c     any hacking to be done on viscosity, be sure to catch it there as well.
@@ -278,7 +278,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             call FORT_MIXAVG_RHODIFF_TEMP(lo, hi, rhoD, DIMS(rhoD),
      &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
             if (thickFacTR.ne.1.d0) then
-               do n=1,ncompd-1
+               do n=1,ncs
                   do j=lo(2), hi(2)
                      do i=lo(1), hi(1)
                         rhoD(i,j,n) = rhoD(i,j,n)*thickFacTR
@@ -291,14 +291,11 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
      &           DIMS(rhoD),rhoD)
             do j=lo(2), hi(2)
                do i=lo(1), hi(1)
-                  rhoD(i,j,ncompd-1) = rhoD(i,j,1)
-                  rhoD(i,j,ncompd  ) = rhoD(i,j,1)
-                  rhoD(i,j,1)        = rhoD(i,j,1) * Yfac
-               end do
-            end do
-            do n=2,nspecies
-               do j=lo(2), hi(2)
-                  do i=lo(1), hi(1)
+                  do n=Nspec+1,nc
+                     rhoD(i,j,n) = rhoD(i,j,1)
+                  end do
+                  rhoD(i,j,1) = rhoD(i,j,1) * Yfac
+                  do n=2,Nspec
                      rhoD(i,j,n) = rhoD(i,j,1)
                   end do
                end do
@@ -307,20 +304,20 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             if (do_temp .ne. 0) then
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
-                     do n=1,nspecies
+                     do n=1,Nspec
                         Yt(n) = Y(i,j,n)
                      end do
                      CALL FORT_CPMIXfromTY(lo_chem, hi_chem, 
      &                    cpmix,  ARLIM(lo_chem), ARLIM(hi_chem),
      &                    T(i,j), ARLIM(lo_chem), ARLIM(hi_chem),
      &                    Yt,     ARLIM(lo_chem), ARLIM(hi_chem))
-                     rhoD(i,j,ncompd-1) = rhoD(i,j,ncompd-1)*cpmix*Tfac
+                     rhoD(i,j,Nspec+1) = rhoD(i,j,Nspec+1)*cpmix*Tfac
                   end do
                end do
             end if
          end if
       else
-         do n=1,nspecies
+         do n=1,Nspec
             do j=lo(2), hi(2)
                do i=lo(1), hi(1)
                   rhoD(i,j,n) = constant_rhoD_val
@@ -944,84 +941,125 @@ c                               inflow for pipe
       end do
       end
 
-      subroutine FORT_REPAIR_FLUX(lo, hi,
+      subroutine FORT_REPAIR_FLUX(lo, hi, dlo, dhi,
      &                            flux, DIMS(flux),
-     &                            state, DIMS(state), nc, dir)
+     &                            RhoY, DIMS(RhoY), dir, Ybc)
       implicit none
 
 #include "cdwrk.H"
 
-      integer lo(SDIM), hi(SDIM), nc, dir
+      integer lo(SDIM), hi(SDIM), dlo(SDIM), dhi(SDIM), dir, Ybc(SDIM,2)
       integer DIMDEC(flux)
-      integer DIMDEC(state)
-      REAL_T flux(DIMV(flux),nc)
-      REAL_T state(DIMV(state),nc+1)
+      integer DIMDEC(RhoY)
+      REAL_T flux(DIMV(flux),Nspec)
+      REAL_T RhoY(DIMV(RhoY),Nspec)
       
-<<<<<<< HEAD
       integer i, j, n
-      REAL_T sum, RhoYe, sumRhoYe
-=======
-      integer i, j, n, speccomp
-      REAL_T sum, RhoYedge, sumRhoY
->>>>>>> 2bc8cf5e72c5fc3f90b916c99548502040ae21fe
+      REAL_T sumFlux, RhoYe, sumRhoYe
+
 
       if (dir.eq.0) then
+
+c     First, assume away from physical boundaries, then use boundary-aware version below if applicable
          do j = lo(2),hi(2)
-            do i = lo(1),hi(1)+1
-               sum = zero
-               sumRhoYe = zero
-               do n=1,nc
-                  speccomp = n+1
-                  sum = sum + flux(i,j,n)
-<<<<<<< HEAD
-                  sumRhoYe = sumRhoYe + half*(state(i-1,j,n)+state(i,j,n))
+            do i = MAX(lo(1),dlo(1)+1),MIN(hi(1)+1,dhi(1)+1)
+               sumFlux = 0.d0
+               sumRhoYe = 0.d0
+               do n=1,Nspec
+                  sumFlux = sumFlux + flux(i,j,n)
+                  RhoYe = 0.5d0*(RhoY(i-1,j,n) + RhoY(i,j,n))
+                  sumRhoYe = sumRhoYe + RhoYe
                end do               
-               do n=1,nc
-                  RhoYe = half*(state(i-1,j,n)+state(i,j,n))
-                  flux(i,j,n) = flux(i,j,n) - sum*RhoYe/sumRhoYe
-=======
-                  sumRhoY = sumRhoY + half*
-     &                 (state(i-1,j,1)*state(i-1,j,speccomp)
-     &                 +state(i,j,1)*state(i,j,speccomp))
-               end do               
-               do n=1,nc
-                  speccomp = n+1
-                  RhoYedge = half*(state(i-1,j,1)*state(i-1,j,speccomp) 
-     &                 + state(i,j,1)*state(i,j,speccomp))
-                  flux(i,j,n) = flux(i,j,n) - sum*RhoYedge/sumRhoY
->>>>>>> 2bc8cf5e72c5fc3f90b916c99548502040ae21fe
+               do n=1,Nspec
+                  RhoYe = 0.5d0*(RhoY(i-1,j,n) + RhoY(i,j,n))
+                  flux(i,j,n) = flux(i,j,n) - sumFlux*RhoYe/sumRhoYe
                end do
             end do
          end do
-      else
-         do j = lo(2),hi(2)+1
+c     xlo
+         if (Ybc(1,1).eq.EXT_DIR) then
+            do j = lo(2),hi(2)
+               do i = lo(1),dlo(1)
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,n)
+                     sumRhoYe = sumRhoYe + RhoY(i-1,j,n)
+                  enddo
+                  do n=1,Nspec
+                     flux(i,j,n) = flux(i,j,n) - sumFlux*RhoY(i-1,j,n)/sumRhoYe
+                  enddo
+               enddo
+            enddo
+         endif
+c     xhi
+         if (Ybc(1,2).eq.EXT_DIR) then
+            do j = lo(2),hi(2)
+               do i = dhi(1)+1,hi(1)+1
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,n)
+                     sumRhoYe = sumRhoYe + RhoY(i,j,n)
+                  enddo
+                  do n=1,Nspec
+                     flux(i,j,n) = flux(i,j,n) - sumFlux*RhoY(i,j,n)/sumRhoYe
+                  enddo
+               enddo
+            enddo
+         endif
+
+      else if (dir.eq.1) then
+
+c     First, assume away from physical boundaries, then replace with boundary-aware version below if applicable
+         do j = MAX(lo(2),dlo(2)+1),MIN(hi(2)+1,dhi(2)+1)
             do i = lo(1),hi(1)
-               sum = zero
-               sumRhoYe = zero
-               do n=1,nc
-                  speccomp = n+1
-                  sum = sum + flux(i,j,n)
-<<<<<<< HEAD
-                  sumRhoYe = sumRhoYe + half*(state(i,j-1,n)+state(i,j,n))
-               end do
-               do n=1,nc
-                  RhoYe = half*(state(i,j-1,n)+state(i,j,n))
-                  flux(i,j,n) = flux(i,j,n) - sum*RhoYe/sumRhoYe
-=======
-                  sumRhoY = sumRhoY + half*
-     &                 (state(i,j-1,1)*state(i,j-1,speccomp)
-     &                 +state(i,j,1)*state(i,j,speccomp))
-               end do
-               do n=1,nc
-                  speccomp = n+1
-                  RhoYedge = half*(state(i,j-1,1)*state(i,j-1,speccomp) 
-     &                 + state(i,j,1)*state(i,j,speccomp))
-                  flux(i,j,n) = flux(i,j,n) - sum*RhoYedge/sumRhoY
->>>>>>> 2bc8cf5e72c5fc3f90b916c99548502040ae21fe
+               sumFlux = 0.d0
+               sumRhoYe = 0.d0
+               do n=1,Nspec
+                  sumFlux = sumFlux + flux(i,j,n)
+                  RhoYe = 0.5d0*(RhoY(i,j-1,n) + RhoY(i,j,n))
+                  sumRhoYe = sumRhoYe + RhoYe
+               enddo
+               do n=1,Nspec
+                  RhoYe = 0.5d0*(RhoY(i,j-1,n) + RhoY(i,j,n))
+                  flux(i,j,n) = flux(i,j,n) - sumFlux*RhoYe/sumRhoYe
                end do
             end do
          end do
-      end if
+c     ylo
+         if (Ybc(2,1).eq.EXT_DIR) then
+            do j = lo(2),dlo(2)
+               do i = lo(1),hi(1)
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,n)
+                     sumRhoYe = sumRhoYe + RhoY(i,j-1,n)
+                  enddo
+                  do n=1,Nspec
+                     flux(i,j,n) = flux(i,j,n) - sumFlux*RhoY(i,j-1,n)/sumRhoYe
+                  enddo
+               enddo
+            enddo
+         endif
+c     yhi
+         if (Ybc(2,2).eq.EXT_DIR) then
+            do j = dhi(2)+1,hi(2)+1
+               do i = lo(1),hi(1)
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,n)
+                     sumRhoYe = sumRhoYe + RhoY(i,j,n)
+                  enddo
+                  do n=1,Nspec
+                     flux(i,j,n) = flux(i,j,n) - sumFlux*RhoY(i,j,n)/sumRhoYe
+                  enddo
+               enddo
+            enddo
+         endif
+      endif
       end
 
       subroutine  FORT_FLUXDIV(lo, hi,

@@ -27,18 +27,20 @@ c     Take fuel mixture from prob data
          zone = getZone(region, domnlo(1), domnlo(2))
          num_zones_defined = 1
          
-         if (phi_in.ge.zero) then
+         if (phi_in.gt.zero) then
 
             call set_Y_from_Phi(phi_in,Yt)
             do n=1,Nspec
                Y_bc(n-1,zone) = Yt(n)
             end do
             T_bc(zone) = T_in
+            u_bc(zone) = zero
+            v_bc(zone) = V_in
 
          else 
 
 c     Take fuel mixture from pmf file
-            loc = (domnlo(3)-standoff)*100.d0
+            loc = (domnlo(2)-standoff)*100.d0
             call pmf(loc,loc,pmf_vals,n)
             if (n.ne.Nspec+3) then
                call bl_pd_abort('INITDATA: n(pmf) .ne. Nspec+3')
@@ -54,14 +56,13 @@ c     Take fuel mixture from pmf file
                Y_bc(n-1,zone) = Yt(n)
             end do
             T_bc(zone) = pmf_vals(1)
+            u_bc(zone) = zero
+            if (V_in .lt. 0) then
+               v_bc(zone) = pmf_vals(2)*1.d-2
+            else
+               v_bc(zone) = V_in
+            endif
             
-         endif
-
-         u_bc(zone) = zero
-         if (V_in .lt. 0) then
-            v_bc(zone) = pmf_vals(1)
-         else
-            v_bc(zone) = V_in
          endif
 
       else if (trim(probtype).eq.BL_PROB_DIFFUSION) then
@@ -126,6 +127,10 @@ c     Set density and hmix consistent with data
      &                        T_bc(zone),   DIMARG(b), DIMARG(b),
      &                        Y_bc(0,zone), DIMARG(b), DIMARG(b))
       enddo
+
+      print *,'bc:'
+      print *,v_bc(1),rho_bc(1),Y_bc(0,1)
+
       bcinit = .true.
       end
 
@@ -219,7 +224,7 @@ c ::: -----------------------------------------------------------
                if (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) then               
                   v =  V_in + (time-tbase_control)*dV_control
                else if (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) then
-                  v = V_in
+                  v = v_bc(zone)
                endif
             endif
 
@@ -383,7 +388,7 @@ c               y2 = (y+half*delta(2)-standoff+pert)*100.d0
                scal(i,j,Trac) = 0.d0
 
                vel(i,j,1) = 0.d0
-               vel(i,j,2) = pmf_vals(2)
+               vel(i,j,2) = pmf_vals(2)*1.d-2
 
             end do
          end do
@@ -432,6 +437,13 @@ c     Superimpose blob of hot air
      &     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state))
+
+
+      print *,'ic'
+      i=64
+      do j = lo(2), 10
+         print *,j,scal(i,j,Density),scal(i,j,FirstSpec)
+      enddo
 
       do j = lo(2), hi(2)
          do i = lo(1), hi(1)
@@ -847,6 +859,9 @@ c ::: -----------------------------------------------------------
                x = (float(i)+.5)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
+               if (i.eq.64) then
+                  print *,'denfill: ',rho
+               endif
             enddo
          enddo
       endif    
