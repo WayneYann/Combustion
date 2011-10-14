@@ -20,7 +20,7 @@ c     Set boundary data
       call pmf(xPMF,xPMF,valsPMF,nPMF)
       call CKXTY(valsPMF(4),IWRK,RWRK,Y_bc(1,0))
       T_bc(0) = valsPMF(1)
-      if (ABS(V_in) .lt. 1.d20) then
+      if (V_in .ge. 0.d0) then
          u_bc(0) = V_in
       else
          u_bc(0) = valsPMF(2)
@@ -222,7 +222,7 @@ c     Set coeffs for polynomial extrap to fill grow cells
 c     Set Dirichlet values into grow cells
       call set_bc_s(scal,dx,time)
 
-      if (.false.) then
+      if (cheat_on_boundaries .eq. 0) then
 
 c     Do extrap
       ib = -1
