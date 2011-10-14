@@ -653,7 +653,7 @@ C      DVIWRK(8) = 0
 C      DVIWRK(9) = 0
 C      DVIWRK(10) = 0
 
-      if (do_diag.eq.1) nsubchem = nchemdiag
+c      if (do_diag.eq.1) nsubchem = nchemdiag
 
       
       MF = 22
@@ -661,8 +661,8 @@ C      DVIWRK(10) = 0
       TT1 = 0.d0
       TT2 = dt
       if (do_diag.eq.1) then
-         nsub = nsubchem
-         dtloc = dt/nsubchem
+         nsub = nchemdiag
+         dtloc = dt/nsub
       else
          nsub = 1
          dtloc = dt
