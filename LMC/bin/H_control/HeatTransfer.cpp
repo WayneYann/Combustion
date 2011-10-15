@@ -4972,6 +4972,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
         }
     }
     showMF("dd",S,"dd_rsT_fp",level);
+    cout << "fp: " << endl;
+    dump(S[0],-1);
     //
     // Create and fill (Rho,RhoY,RhoH,T) at coarser level
     //
@@ -9408,9 +9410,7 @@ HeatTransfer::calcDiffusivity (const Real time,
     const int  nGrow           = 1;
     const int  offset          = BL_SPACEDIM + 1; // No diffusion coeff for vels or rho
     MultiFab&  diff            = (whichTime == AmrOldTime) ? (*diffn_cc) : (*diffnp1_cc);
-
     FArrayBox tmp, bcen;
-
     for (FillPatchIterator Rho_and_spec_fpi(*this,diff,nGrow,time,State_Type,Density,nspecies+1),
              Temp_fpi(*this,diff,nGrow,time,State_Type,Temp,1);
          Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();

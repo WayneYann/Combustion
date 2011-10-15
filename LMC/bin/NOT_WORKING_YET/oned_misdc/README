@@ -1,0 +1,49 @@
+-Using Nspec and maxspec interchangably here
+
+****************
+ARRAYS
+****************
+
+scal(-1:nx,nscal)
+1           = Density
+2           = Temp
+3           = RhoH
+4           = RhoRT
+5:5+Nspec-1 = FirstSpec:LastSpec (contains RhoY, not Y)
+
+beta(-1:nx,nscal)
+1           = NULL (for Density)
+2           = lambda (for Temp)
+3           = lambda/cp (for RhoH)
+4           = NULL (for RhoRT)
+5:5+Nspec-1 = rho*D_m (for RhoY)
+
+diff(0:nx-1,nscal)
+1    = NULL (for Density)
+2    = del dot lambda grad T + sum_m rho D_m grad h_m dot grad Y_m (for Temp)
+3    = del dot (lambda/cp) grad h (for RhoH)
+4    = NULL (for RhoRT)
+5:13 = del dot Gamma_m (for RhoY)
+
+diffdiff(0:nx-1)
+ -> sum_m h_m * (rho*D_m - lamba/cp) grad Y_m
+  = sum_m h_m Gamma_m - h_m lambda/cp grad Y_m (for RhoH)
+
+I_R(0:nx-1,0:maxspec)
+0       = for RhoH
+1:Nspec = rho RhoY
+
+****************
+FUNCTIONS
+****************
+
+get_spec_visc_terms - computes del dot Gamma_m
+
+get_rhoh_visc_terms - computes del dot (lambda/cp) grad h
+
+get_diffdiff_terms - computes sum_m h_m * (rho*D_m - lamba/cp) grad Y_m
+                            = sum_m h_m Gamma_m - h_m lambda/cp grad Y_m
+
+get_temp_visc_terms - computes del dot lambda grad T + sum_m rho D_m grad h_m dot grad Y_m
+		      does not divide by rho*cp
+

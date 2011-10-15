@@ -1,0 +1,42 @@
+SpecDiffusionFluxn/np1(nspecies+2) - stores rho D_m grad Y_m
+
+sumSpecFluxDotGradHn/np1(1) - stores sum_m D_m grad Y_m
+
+beta(nspecies+2)
+0:nspec-1 - rho*D_m
+nspec     - lambda/cp
+nspec+1   - lambda
+
+
+mcViscTerms(nspecies+2) - temporary Multifab local to calc_divu
+0:nspec-1 - species
+nspec     - RhoH
+nspec+1   - Temperature
+
+
+calc_divu()
+  compute_differential_diffusion_terms(mcViscTerms)
+    compute_differential_diffusion_fluxes()
+      getDiffusivity()
+        *interpolate diffusion coefficients from cell-centers to faces
+        *compute fluxes (rho*D_m grad Y_m, (lambda/cp)*grad h, lambda*grad T)
+      adjust_spec_diffusion_fluxes()
+        FORT_REPAIR_FLUX()
+	  *convert \widetilde\Gamma to \Gamma
+	FORT_ENTH_DIFF_TERMS()
+	  *compute sumSpecFluxDotGradH = FiGHi = sum_m (rho D_m grad Y_m dot grad h_m)
+ 	  *compute "heat flux", i.e., all the diffusive terms in the rhoh equation
+	  *compute the lambda grad T piece of the temperature diffusion.  For some 
+           reason it's overwriting what was done in above.
+    diffusion_flux_divergence()
+      *takes divergence of diffusive fluxes
+    *add sumSpecFluxDotGradH = FiGHi = sum_m (rho D_m grad Y_m dot grad h_m) to the 
+     temperature diffusion term
+
+
+diffusion_flux_divergence() simply takes the divergences of fluxes and stores them 
+ in viscTerms.
+
+calcDiffusivity() computes cell-centered diffusion coefficients
+
+getDiffusivity() interpolates diffusion coefficients to edges

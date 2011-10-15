@@ -859,6 +859,9 @@ c ::: -----------------------------------------------------------
                x = (float(i)+.5)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
+               if (i.eq.64) then
+                  print *,'denfill: ',rho
+               endif
             enddo
          enddo
       endif    
