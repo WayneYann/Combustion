@@ -217,55 +217,24 @@ Godunov::~Godunov ()
 //
 
 void
-Godunov::Setup (const Box& grd, const Real* dx, Real dt, int velpred,
-                D_DECL(FArrayBox& xflux,FArrayBox& yflux,FArrayBox& zflux),
-                D_DECL(const int* ubc,const int* vbc,const int* wbc),
-                D_DECL(FArrayBox& U,FArrayBox& V,FArrayBox& W),
-                D_DECL(int Ucomp,int Vcomp,int Wcomp),
-                const FArrayBox& tforces, int Tcomp)
+Godunov::BuildWorkSpace (const Box& grd, const Real* dx, Real dt)
 {
-    BL_ASSERT(U.nComp() > Ucomp);
-    BL_ASSERT(V.nComp() > Vcomp);
-#if BL_SPACEDIM==3
-    BL_ASSERT(W.nComp() > Wcomp);
-#endif
-    //
-    // Compute the edge boxes.
-    //
-    D_TERM(xflux_bx = grd; xflux_bx.surroundingNodes(0);,
-           yflux_bx = grd; yflux_bx.surroundingNodes(1);,
-           zflux_bx = grd; zflux_bx.surroundingNodes(2););
-    //
-    // Create storage for fluxes.
-    //
-    if (!velpred)
-    {
-        D_TERM(xflux.resize(xflux_bx,1);,
-               yflux.resize(yflux_bx,1);,
-               zflux.resize(zflux_bx,1););
-    }
     //
     // Ensure 1D scratch space is large enough.
     //
     SetScratch(BoxLib::grow(grd,hyp_grow).longside());
-    //
-    // Create the advective velocities and FAB workspace for GODUNOV Box.
-    //
+
     work_bx = BoxLib::grow(grd,1);
-    
-#if (BL_SPACEDIM == 2)
-    work.resize(work_bx,5);
-#endif
-#if (BL_SPACEDIM == 3)
-    work.resize(work_bx,19);
-#endif
+    D_TERM(;,
+           work.resize(work_bx,5);,
+           work.resize(work_bx,19););
+
     D_TERM(uad.resize(work_bx,1);,
            vad.resize(work_bx,1);,
            wad.resize(work_bx,1););
 
     SetBogusScratch();
 
-    // Build some scratch areas
     Box g1box = Box(grd).grow(1);
     smp.resize(g1box,2);
     I.resize(g1box,2*BL_SPACEDIM);
@@ -275,15 +244,59 @@ Godunov::Setup (const Box& grd, const Real* dx, Real dt, int velpred,
     
     if (ppm_type == 2) g1box = Box(grd).grow(2);
 
-    D_TERM(sedgex.resize(g1box.surroundingNodes(0),1);,
-           sedgey.resize(g1box.surroundingNodes(1),1);,
-           sedgez.resize(g1box.surroundingNodes(2),1););
+    D_TERM(sedgex.resize(BoxLib::surroundingNodes(g1box,0),1);,
+           sedgey.resize(BoxLib::surroundingNodes(g1box,1),1);,
+           sedgez.resize(BoxLib::surroundingNodes(g1box,2),1););
+}
 
+void
+Godunov::AllocEdgeBoxes (const Box& grd,
+                         D_DECL(FArrayBox& xflux,FArrayBox& yflux,FArrayBox& zflux))
+{
     //
-    // Test the cell-centered velocities.
+    // Create storage for fluxes to be used by calling routine
     //
-    // Real u_max[3];
-    // test_u_rho( S, rho, grd, dx, dt, u_max );
+    D_TERM(xflux_bx = BoxLib::surroundingNodes(grd,0);,
+           yflux_bx = BoxLib::surroundingNodes(grd,1);,
+           zflux_bx = BoxLib::surroundingNodes(grd,2););
+
+    D_TERM(xflux.resize(xflux_bx,1);,
+           yflux.resize(yflux_bx,1);,
+           zflux.resize(zflux_bx,1););
+}
+
+void
+Godunov::ComputeTransverVelocities (const Box& grd, const Real* dx, Real dt,
+                                    D_DECL(const int* ubc,const int* vbc,const int* wbc),
+                                    D_DECL(const FArrayBox& U,const FArrayBox& V,const FArrayBox& W),
+                                    D_DECL(int Ucomp,int Vcomp,int Wcomp),
+                                    const FArrayBox& tforces, int Tcomp)
+{
+    D_TERM(BL_ASSERT(U.nComp() > Ucomp);,
+           BL_ASSERT(V.nComp() > Vcomp);,
+           BL_ASSERT(W.nComp() > Wcomp););
+
+    BL_ASSERT(work_bx.contains(BoxLib::grow(grd,1)));
+    D_TERM(;,
+           BL_ASSERT(work.nComp() >= 5);,
+           BL_ASSERT(work.nComp() >= 19););    
+
+    D_TERM(BL_ASSERT(uad.box().contains(work_bx));,
+           BL_ASSERT(vad.box().contains(work_bx));,
+           BL_ASSERT(wad.box().contains(work_bx)););
+
+    BL_ASSERT(smp.box().contains(BoxLib::grow(grd,1)));
+    BL_ASSERT(I.box().contains(BoxLib::grow(grd,1)));
+    BL_ASSERT(I.nComp() >= 2*BL_SPACEDIM);
+
+    BL_ASSERT(dsvl.box().contains(BoxLib::grow(grd,2)));
+
+    int nGrow = ppm_type==2 ? 2 : 1;
+    const Box gbox = Box(grd).grow(nGrow);
+    D_TERM(BL_ASSERT(sedgex.box().contains(BoxLib::surroundingNodes(gbox,0)));,
+           BL_ASSERT(sedgey.box().contains(BoxLib::surroundingNodes(gbox,1)));,
+           BL_ASSERT(sedgez.box().contains(BoxLib::surroundingNodes(gbox,2))););
+
     //
     // Create the bounds and pointers.
     //
@@ -346,6 +359,23 @@ Godunov::Setup (const Box& grd, const Real* dx, Real dt, int velpred,
                   dsvl.dataPtr(), ARLIM(dsvl.loVect()), ARLIM(dsvl.hiVect()),
                   sm, sp, ARLIM(smp.loVect()), ARLIM(smp.hiVect()),
                   lo, hi, &dt, dx, &use_forces_in_trans, tforcedat, &ppm_type);
+}
+
+void
+Godunov::Setup (const Box& grd, const Real* dx, Real dt, int velpred,
+                D_DECL(FArrayBox& xflux,FArrayBox& yflux,FArrayBox& zflux),
+                D_DECL(const int* ubc,const int* vbc,const int* wbc),
+                D_DECL(const FArrayBox& U,const FArrayBox& V,const FArrayBox& W),
+                D_DECL(int Ucomp,int Vcomp,int Wcomp),
+                const FArrayBox& tforces, int Tcomp)
+{
+    BuildWorkSpace(grd,dx,dt);
+
+    if (!velpred)
+        AllocEdgeBoxes(grd,D_DECL(xflux,yflux,zflux));
+
+    ComputeTransverVelocities(grd,dx,dt,D_DECL(ubc,vbc,wbc),D_DECL(U,V,W),
+                              D_DECL(Ucomp,Vcomp,Wcomp),tforces,Tcomp);
 }
 
 //
@@ -551,7 +581,8 @@ Godunov::edge_states_fpu( const Box &grd, const Real *dx, Real dt,
                           D_DECL(int mCompX,       int mCompY,       int mCompZ),
                           D_DECL(FArrayBox &stx,   FArrayBox &sty,   FArrayBox &stz  ),
                           D_DECL(int eCompX,       int eCompY,       int eCompZ),
-                          const FArrayBox &S, int Scomp, const FArrayBox &tforces, int Tcomp, const FArrayBox& divu, int Dcomp,
+                          const FArrayBox &S, int Scomp, const FArrayBox &tforces, int Tcomp, 
+                          const FArrayBox& divu, int Dcomp,
                           int state_ind, const int *bc, int iconserv)
 {
     //
@@ -584,7 +615,11 @@ Godunov::edge_states_fpu( const Box &grd, const Real *dx, Real dt,
     const int *ww_hi      = work.hiVect();
     const Real *s_dat     = S.dataPtr(Scomp);
     const Real *tfr_dat   = tforces.dataPtr(Tcomp);
+    const int *t_lo       = tforces.loVect();
+    const int *t_hi       = tforces.hiVect();
     const Real *divu_dat  = divu.dataPtr(Dcomp);
+    const int *d_lo       = divu.loVect();
+    const int *d_hi       = divu.hiVect();
     //
     // Set work space to bogus values.
     //
@@ -653,7 +688,9 @@ Godunov::edge_states_fpu( const Box &grd, const Real *dx, Real dt,
     //
     int fort_ind = state_ind+1;  
 
-    FORT_ESTATE_FPU(s_dat, tfr_dat, divu_dat, ARLIM(s_lo), ARLIM(s_hi),
+    FORT_ESTATE_FPU(s_dat,    ARLIM(s_lo), ARLIM(s_hi),
+                    tfr_dat,  ARLIM(t_lo), ARLIM(t_hi),
+                    divu_dat, ARLIM(d_lo), ARLIM(d_hi),
                     
                     xlo_dat, xhi_dat, slx_dat,
                     slxscr, stxlo, stxhi,
@@ -686,6 +723,14 @@ Godunov::edge_states_fpu( const Box &grd, const Real *dx, Real dt,
                     sm, sp, ARLIM(smp.loVect()), ARLIM(smp.hiVect()),
                     bc, lo, hi, &dt, dx, &fort_ind,
                     &use_forces_in_trans, &iconserv, &ppm_type);
+
+#if 0
+    Box strip(IntVect(64,0),IntVect(64,127));
+    FArrayBox junk(Box(strip).surroundingNodes(1),1);
+    junk.copy(sty,eCompY,0,1);
+    std::cout << "ystate:" << junk << std::endl;
+    BoxLib::Abort();
+#endif
 }
 
 void
@@ -974,13 +1019,13 @@ Godunov::SyncAdvect (const Box&  grd,
     BL_ASSERT(tforces.nComp() >= fab_ind    );
     BL_ASSERT(sync.nComp()    >= sync_ind   );
 
-    BL_ASSERT(ucorr.box()     == xflux_bx   );
+    BL_ASSERT(ucorr.box()     == xflux.box());
     BL_ASSERT(ucorr.nComp()   >= 1          );
 
-    BL_ASSERT(vcorr.box()     == yflux_bx   );
+    BL_ASSERT(vcorr.box()     == yflux.box());
     BL_ASSERT(vcorr.nComp()   >= 1          );
 #if (BL_SPACEDIM == 3)
-    BL_ASSERT(wcorr.box()     == zflux_bx   );
+    BL_ASSERT(wcorr.box()     == zflux.box());
     BL_ASSERT(wcorr.nComp()   >= 1          );
 #endif    
     //

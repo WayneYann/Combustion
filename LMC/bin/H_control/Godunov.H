@@ -31,10 +31,22 @@ public:      // public access functions
     virtual ~Godunov();
 
     // set up the Godunov Box
+    virtual void BuildWorkSpace (const Box& grd, const Real* dx, Real dt);
+
+    virtual void AllocEdgeBoxes (const Box& grd, D_DECL(FArrayBox& xflux,
+                                                        FArrayBox& yflux,
+                                                        FArrayBox& zflux));
+
+    virtual void ComputeTransverVelocities (const Box& grd, const Real* dx, Real dt,
+                                            D_DECL(const int* ubc,const int* vbc,const int* wbc),
+                                            D_DECL(const FArrayBox& U,const FArrayBox& V,const FArrayBox& W),
+                                            D_DECL(int Ucomp,int Vcomp,int Wcomp),
+                                            const FArrayBox& tforces, int Tcomp);
+
     virtual void Setup (const Box& grd, const Real* dx, Real dt, int velpred,
                         D_DECL(FArrayBox& xflux,FArrayBox& yflux,FArrayBox& zflux),
                         D_DECL(const int* ubc,const int* vbc,const int* wbc),
-                        D_DECL(FArrayBox& U,FArrayBox& V,FArrayBox& W),
+                        D_DECL(const FArrayBox& U,const FArrayBox& V,const FArrayBox& W),
                         D_DECL(int Ucomp,int Vcomp,int Wcomp),
                         const FArrayBox& tforces, int Tcomp);
 

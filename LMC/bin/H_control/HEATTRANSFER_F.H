@@ -215,23 +215,26 @@ extern "C" {
 			Real* fabdat, ARLIM_P(flo), ARLIM_P(fhi),
 			const Real* min, const Real* max, const int* nc);
     
-    void FORT_REPAIR_FLUX(const int* lo, const int* hi,
-                          Real* flux,  ARLIM_P(flo), ARLIM_P(fhi),
-                          const Real* state, ARLIM_P(slo), ARLIM_P(shi),
-                          const int* nc, const int* dir);
+    void FORT_REPAIR_FLUX(const int* lo,  const int* hi,
+                          const int* dlo, const int* dhi,
+                          Real* flux,    ARLIM_P(flo),  ARLIM_P(fhi),
+                          const Real* RY,ARLIM_P(RYlo), ARLIM_P(RYhi),
+                          const int* dir, const int* bc);
 
     void FORT_ENTH_DIFF_TERMS(const int* lo, const int* hi, const Real* dx,
                               const Real* T, ARLIM_P(Tlo),  ARLIM_P(Thi),
-                              const Real* Y, ARLIM_P(Ylo),  ARLIM_P(Yhi),
 
                               const Real* rDx,ARLIM_P(rDxlo),ARLIM_P(rDxhi),
                               const Real* Fix,ARLIM_P(Fixlo),ARLIM_P(Fixhi),
+                              const Real* ax, ARLIM_P(axlo), ARLIM_P(axhi),
 
                               const Real* rDy,ARLIM_P(rDylo),ARLIM_P(rDyhi),
                               const Real* Fiy,ARLIM_P(Fiylo),ARLIM_P(Fiyhi),
+                              const Real* ay, ARLIM_P(aylo), ARLIM_P(ayhi),
 #if BL_SPACEDIM == 3
                               const Real* rDz,ARLIM_P(rDzlo),ARLIM_P(rDzhi),
                               const Real* Fiz,ARLIM_P(Fizlo),ARLIM_P(Fizhi),
+                              const Real* az, ARLIM_P(azlo), ARLIM_P(azhi),
 #endif
                               Real* fh,      ARLIM_P(fhlo), ARLIM_P(fhhi)  );
 

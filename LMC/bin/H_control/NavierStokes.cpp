@@ -1470,7 +1470,7 @@ NavierStokes::advance_setup (Real time,
 
     if (variable_vel_visc)
     {
-        calcViscosity(prev_time,dt,iteration,ncycle);
+        calcViscosity(prev_time);
 
         for (MFIter np1Mfi(*viscnp1_cc); np1Mfi.isValid(); ++np1Mfi)
         {
@@ -1482,7 +1482,7 @@ NavierStokes::advance_setup (Real time,
     {
         const int num_diff = NUM_STATE-Density-1;
 
-        calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,num_diff);
+        calcDiffusivity(prev_time);
 
         for (MFIter np1Mfi(*diffnp1_cc); np1Mfi.isValid(); ++np1Mfi)
         {
@@ -1904,6 +1904,7 @@ NavierStokes::predict_velocity (Real  dt,
 
 
         int velpred = 1;
+
         godunov->Setup(grids[i], dx, dt, velpred,
                        D_DECL(*null_fab,*null_fab,*null_fab),
                        D_DECL(bndry[0].dataPtr(),bndry[1].dataPtr(),bndry[2].dataPtr()),
@@ -5488,7 +5489,8 @@ NavierStokes::getForce (FArrayBox&       force,
                         int              scomp,
                         int              ncomp,
                         const Real       time,
-                        const FArrayBox& Rho)
+                        const FArrayBox& Rho,
+                        int              RComp)
 {
     BL_ASSERT(Rho.nComp() == 1);
 
@@ -5705,9 +5707,10 @@ NavierStokes::getForce (FArrayBox&       force,
                         int              ngrow,
                         int              scomp,
                         int              ncomp,
-                        const FArrayBox& Rho)
+                        const FArrayBox& Rho,
+                        int              RComp)
 {
-    BL_ASSERT(Rho.nComp() == 1);
+    BL_ASSERT(Rho.nComp() > RComp);
 
     force.resize(BoxLib::grow(grids[gridno],ngrow),ncomp);
 
@@ -5728,7 +5731,7 @@ NavierStokes::getForce (FArrayBox&       force,
             //
             // Set force to -rho*g.
             //
-            force.copy(Rho,0,dc,1);
+            force.copy(Rho,RComp,dc,1);
             force.mult(grav,dc,1);
         }
         else
@@ -6190,10 +6193,7 @@ NavierStokes::getViscTerms (MultiFab& visc_terms,
 // wants variable coefficients.
 //
 void 
-NavierStokes::calcViscosity (const Real time, 
-                             const Real dt,
-                             const int  iteration,
-                             const int  ncycle)
+NavierStokes::calcViscosity (const Real time)
 {
     //
     // Select time level to work with (N or N+1)
@@ -6231,22 +6231,17 @@ NavierStokes::calcViscosity (const Real time,
 }
 
 void 
-NavierStokes::calcDiffusivity (const Real time, 
-                               const Real dt,
-                               const int  iteration,
-                               const int  ncycle,
-                               const int  src_comp, 
-                               const int  ncomp)
+NavierStokes::calcDiffusivity (const Real time)
 {
     //
-    // NOTE:  The component numbers passed into NavierStokes::calcDiffusivity
-    //        correspond to the components in the state.  In the diffusivity 
+    // NOTE:  In the diffusivity 
     //        arrays, there is an offset since no diffusivity array
     //        is kept for the velocities or the density.  So, the scalar
     //        component Density+1 in the state corresponds to component
     //        0 in the arrays diffn and diffnp1.
     //
-    BL_ASSERT(src_comp > Density);
+    int src_comp = Density+1;
+    int ncomp = NUM_STATE - BL_SPACEDIM -1;
     //
     // Select time level to work with (N or N+1)
     //

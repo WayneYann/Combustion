@@ -562,7 +562,8 @@ protected:
 #ifdef GENGETFORCE
 		   const Real       time,
 #endif		 
-                   const FArrayBox& Rho);
+                   const FArrayBox& Rho,
+                   int              RComp = 0);
 #endif		 
     //
     // Get state data.
@@ -592,17 +593,9 @@ protected:
     //
     // Calculate nonuniform viscosity and diffusivity
     //
-    virtual void calcViscosity (const Real time,
-                                const Real dt,
-                                const int  iteration,
-                                const int  ncycle);
+    virtual void calcViscosity (const Real time);
 
-    virtual void calcDiffusivity (const Real time,
-                                  const Real dt,
-                                  const int  iteration,
-                                  const int  ncycle,
-                                  const int  src_comp = 0,
-                                  const int  num_comp = 1);
+    virtual void calcDiffusivity (const Real time);
 
     virtual void getViscosity (MultiFab*  viscosity[BL_SPACEDIM],
                                const Real time);

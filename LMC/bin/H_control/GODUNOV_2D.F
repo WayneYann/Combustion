@@ -704,7 +704,7 @@ c
       end if
       end
 
-      subroutine FORT_ESTATE_FPU(s, tforces, divu, DIMS(s),
+      subroutine FORT_ESTATE_FPU(s, DIMS(s), tforces, DIMS(t), divu, DIMS(d),
      &     xlo, xhi, sx, slxscr, stxlo, stxhi,
      &     uedge, DIMS(uedge), xstate, DIMS(xstate), Imx, Ipx, sedgex, DIMS(sedgex),
 
@@ -733,6 +733,8 @@ c
       parameter( eps_for_bc = 1.0D-10 )
 
       integer DIMDEC(s)
+      integer DIMDEC(t)
+      integer DIMDEC(d)
       integer DIMDEC(work)
       integer DIMDEC(uedge)
       integer DIMDEC(xstate)
@@ -756,8 +758,8 @@ c
       REAL_T ylo(DIMV(work)), yhi(DIMV(work))
       REAL_T  sx(DIMV(work))
       REAL_T  sy(DIMV(work))
-      REAL_T tforces(DIMV(work))
-      REAL_T divu(DIMV(work))
+      REAL_T tforces(DIMV(t))
+      REAL_T divu(DIMV(d))
 
 #if 0
       REAL_T extra_work(DIMV(work),6)
@@ -1063,6 +1065,8 @@ c
             end do
             place_to_break = 1
       end do
+
+      print *,ystate(64,65)
 
       end
 
@@ -1468,7 +1472,8 @@ c     COMPUTE 0TH order slopes
 c
       if (slope_order.eq.1) then
         if (ng .lt. 1) then
-	   call bl_abort("FORT_SLOPES: not enough bndry cells for 1st order")
+            print *,'currently, ng=',ng
+	   call bl_abort("not enough bndry cells for 1st order")
         end if
         do j = jmin-1,jmax+1
            do i = imin-1,imax+1
@@ -1482,7 +1487,8 @@ c     COMPUTE 2nd order slopes
 c
       if (slope_order.eq.2) then
          if (ng .lt. 2) then
-            call bl_abort("SLOPE_2D: not enough bndry cells for 2nd order")
+            print *,'currently, ng=',ng
+            call bl_abort("not enough bndry cells for 2nd order")
          end if
 c
 c     ------------------------ x slopes
@@ -1611,7 +1617,8 @@ c     COMPUTE 4TH order slopes
 c
       if (slope_order.eq.4) then
          if (ng .lt. 3) then
-            call bl_abort("SLOPE_2D: not enough bndry cells for 4th order")
+            print *,'currently, ng=',ng
+            call bl_abort("not enough bndry cells for 4th order")
          end if
 c         
 c     ------------------------ x slopes

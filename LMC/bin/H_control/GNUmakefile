@@ -39,7 +39,7 @@ EBASE = amr
 Blocs   := .
 
 CEXE_sources +=
-FEXE_sources += PROB_$(DIM)D.F
+FEXE_sources += PROB_$(DIM)D.F PROB_F.F
 CEXE_headers += 
 FEXE_headers += probdata.H PROB_F.H
 

@@ -34,24 +34,6 @@ typedef ParticleContainer<2*BL_SPACEDIM> HTParticleContainer;
 //       multigrid code.
 //
 
-struct LocalMF
-{
-    LocalMF() : m_init(false) {};
-    LocalMF(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf, bool rm_ovlps=true);
-    ~LocalMF() {}
-    bool ok() const {return m_init;}
-    int size(int i) const;
-    const FArrayBox& Fab(int i, int j) const;
-    FArrayBox& Fab(int i, int j);
-
-protected:
-    void BuildFabs(int nGrow,int nComp,const Geometry& geom,const MultiFab& mf);
-    std::map<int,PArray<FArrayBox> > m_fabs;
-    bool m_init;
-    bool m_rm_ovlps;
-};
-
-
 class HeatTransfer
     :
     public NavierStokes
@@ -209,8 +191,7 @@ public:
     void set_differential_diffusion_fluxes (const Real& time);
 
     void adjust_spec_diffusion_fluxes (Real                   time,
-                                       const MultiFab* const* beta,
-                                       const LocalMF&         Y_grow);
+                                       const MultiFab* const* beta);
 
     virtual void scalar_diffusion_update (Real dt,
                                           int  first_scalar, 
@@ -436,24 +417,11 @@ protected:
                                     const MultiFab* Force = 0,
                                     int             nCompF = -1);
 
-    virtual void calcViscosity (const Real time,
-                                const Real dt,
-                                const int  iteration,
-                                const int  ncycle);
+    virtual void calcViscosity (const Real time);
 
-    virtual void calcDiffusivity (const Real time,
-                                  const Real dt,
-                                  const int  iteration,
-                                  const int  ncycle,
-                                  const int  src_comp = 0,
-                                  const int  num_comp = 1);
+    virtual void calcDiffusivity (const Real time);
 
     void calcDiffusivity (const Real time,
-                          const Real dt,
-                          const int  iteration,
-                          const int  ncycle,
-                          const int  src_comp,
-                          const int  num_comp,
                           bool       doCalcVisc);
 
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
