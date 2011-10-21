@@ -1902,7 +1902,7 @@ Diffusion::getViscOp (int                    comp,
     if (!usehoop)
     {
         caller->Geom().GetVolume(alpha,grids,GEOM_GROW);
-        
+
         if (useden) 
         {
             MultiFab::Multiply(alpha,*rho_half,0,0,1,alpha.nGrow());
@@ -1956,6 +1956,16 @@ Diffusion::getViscOp (int                    comp,
             BL_ASSERT(grids[alphamfi.index()] == alphamfi.validbox());
             alpha[alphamfi].mult(S[alphamfi],alphamfi.validbox(),Density,0,1);
         }
+#if 1
+    if (comp==3)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "building viscop: S" << std::endl;
+        VisMF::Write(S,"junka");
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+        
     }
     if (alpha_in != 0)
     {

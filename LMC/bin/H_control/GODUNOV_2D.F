@@ -928,7 +928,8 @@ c
 
                   st = -(vedge(i,j+1)*ylo(i,j+1) - vedge(i,j)*ylo(i,j))/hy
      &                 + s(i,j)*(vedge(i,j+1)-vedge(i,j))/hy
-     &                 - s(i,j)*divu(i,j)
+c    &                 - s(i,j)*divu(i,j)
+     &                 - s(i,j)*(uedge(i+1,j)-uedge(i,j))/hx
 
                else
 
@@ -1011,7 +1012,7 @@ c
                   st = -(uedge(i+1,j)*xlo(i+1,j) - uedge(i,j)*xlo(i,j))/hx
      &                 + s(i,j)*(uedge(i+1,j)-uedge(i,j))/hx
 c     &                 - s(i,j)*divu(i,j)
-     &                 - s(i,j)*(vedge(i,j+1)-vedge(i,j))/hx
+     &                 - s(i,j)*(vedge(i,j+1)-vedge(i,j))/hy
 
                else
 

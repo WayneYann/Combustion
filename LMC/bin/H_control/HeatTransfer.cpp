@@ -2883,6 +2883,17 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies+1,0);
 #endif
 
+#if 1
+    if (1)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "HT DD update: S_new" << std::endl;
+        VisMF::Write(Force,"junkS");
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+
+
     if (theta > 0)  // then need to do solve (and np1 species diffusion fluxes are nonzero)
     {    
 #if 0
@@ -2896,9 +2907,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         //
         //Diffusion::SolveMode solve_mode = Diffusion::PREDICTOR;
         Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
-        MultiFab* alpha = 0; // Never need alpha for RhoY, RhoH
-        MultiFab **betan, **betanp1;
-        betan = 0; // Will not need these since time-explicit pieces computed above
+        MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
 
         diffusion->allocFluxBoxesLevel(betanp1,nGrow,nspecies+2); // fill rhoD, lambda/cp and lambda
         getDiffusivity(betanp1, curr_time, first_spec, 0, nspecies+1);
@@ -2906,6 +2915,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         //
         // Diffuse RhoY and RhoH
         //
+        MultiFab* alpha = 0; // Never need alpha for RhoY, RhoH
         int alphaComp = 0;
         for (int sigma = 0; sigma < nspecies+1; ++sigma)
         {
@@ -2913,7 +2923,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             const int state_ind = first_spec + sigma;
             bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
             int rho_flag = 2;
-
 #if 0
             diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
                                       SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&delta_rhs,sigma,alpha,
@@ -5101,6 +5110,16 @@ HeatTransfer::scalar_advection_update (Real dt,
         MultiFab& S_new = get_new_data(State_Type);
         const MultiFab& S_old = get_old_data(State_Type);
         
+#if 1
+    if (1)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "HT advSDC: for rho_new" << std::endl;
+        VisMF::Write(*aofs,"junkF");
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+
         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
         {
             const Box& box   = mfi.validbox();
@@ -6582,6 +6601,9 @@ HeatTransfer::advance_sdc (Real time,
         f.copy(d,gbox,0,gbox,0,nspecies+1);
         f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
     }
+    Forcing.setBndry(0);
+    Forcing.FillBoundary(0,nspecies+1);
+    geom.FillPeriodicBoundary(Forcing,0,nspecies);
 
     //cout << "Tforce at pt: " << Forcing[0](IntVect(64,64)) << endl;
 
@@ -6592,7 +6614,7 @@ HeatTransfer::advance_sdc (Real time,
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
     showMF("dd",*aofs,"dd_aofs",level);
 
-    scalar_advection_update(dt, Density, Density);
+    scalar_advection_update(dt, Density, RhoH);
 #if 1
     {
         int old_prec = std::cout.precision(20);
@@ -8038,8 +8060,20 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
         // NOTE: Changes sense of aofs here so that d/dt ~ aofs...be sure we use our own update
         //  function
-        (*aofs)[i].mult(-1);
+        (*aofs)[i].mult(-1,Density,nspecies+2);
     }
+
+#if 1
+    if (1)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "AofS: aofs" << std::endl;
+        VisMF::Write((*EdgeState[0]),"junkD");
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+
+
 }
 
 void
