@@ -334,6 +334,7 @@ c ::: -----------------------------------------------------------
       REAL_T     vel(DIMV(state),SDIM)
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
+      integer tmpi, nPMF
 
 #include "cdwrk.H"
 #include "htdata.H"
@@ -342,16 +343,16 @@ c ::: -----------------------------------------------------------
 
       integer i, j, n, airZone, fuelZone, getZone
       REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm
-      REAL_T pmf_vals(maxspec+3), y1, y2
+      REAL_T pmf_vals(maxspec+3), y1, y2, dx
       REAL_T pert,Lx,FORT_P1ATMMKS,eta
            
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          do j = lo(2), hi(2)
-            y = (float(j)+5)*delta(2)+domnlo(2)
+            y = (float(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (float(i)+.5d0)*delta(1)+domnlo(1)
                
                pert = 0.d0
                if (pertmag .gt. 0.d0) then
@@ -365,13 +366,21 @@ c ::: -----------------------------------------------------------
                   
 c               y1 = (y-half*delta(2)-standoff+pert)*100.d0
 c               y2 = (y+half*delta(2)-standoff+pert)*100.d0
-               y = (DBLE(j)+0.5d0)*delta(2)
                y1 = (y - standoff - 0.5d0*delta(2))*100.d0
                y2 = (y - standoff + 0.5d0*delta(2))*100.d0
                
-               call pmf(y1,y2,pmf_vals,n)
+               call pmf(y1,y2,pmf_vals,nPMF)
+c               tmpi = INT(pmf_vals(1)*  10000)
+c               pmf_vals(1) = DBLE(tmpi)/10000
+c               if (i.eq.64 .and. j.eq.64) then
+c                  print *,'init:',pmf_vals(1)
+c               endif
+c               do n=4,nPMF
+c                  tmpi = INT(pmf_vals(n)*  10000000)
+c                  pmf_vals(n) = DBLE(tmpi)/10000000
+c               enddo
                
-               if (n.ne.Nspec+3) then
+               if (nPMF.ne.Nspec+3) then
                   call bl_abort('INITDATA: n .ne. Nspec+3')
                endif
                
@@ -385,6 +394,11 @@ c               y2 = (y+half*delta(2)-standoff+pert)*100.d0
                do n = 1,Nspec
                   scal(i,j,FirstSpec+n-1) = Yl(n)
                end do
+
+               if (i.eq.64  .and.  j.ge.60  .and.  j.le.70 ) then
+                  print *,'init:',j,Yl(1)
+               endif
+
                scal(i,j,Trac) = 0.d0
 
                vel(i,j,1) = 0.d0
@@ -433,17 +447,27 @@ c     Superimpose blob of hot air
      &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state),
      &     Patm)
+
+c      do j = lo(2), hi(2)
+c         do i = lo(1), hi(1)
+c            tmpi = INT(scal(i,j,Density)*1000)
+c            scal(i,j,Density) = DBLE(tmpi)/1000
+c         enddo
+c      enddo
+
+c      print *,'init:',scal(64,64,Density)
+
       call FORT_HMIXfromTY(lo,hi,
      &     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state))
 
 
-      print *,'ic'
-      i=64
-      do j = lo(2), 10
-         print *,j,scal(i,j,Density),scal(i,j,FirstSpec)
-      enddo
+c      print *,'ic'
+c      i=64
+c      do j = lo(2), 10
+c         print *,j,scal(i,j,Density),scal(i,j,FirstSpec)
+c      enddo
 
       do j = lo(2), hi(2)
          do i = lo(1), hi(1)
@@ -859,9 +883,6 @@ c ::: -----------------------------------------------------------
                x = (float(i)+.5)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
-               if (i.eq.64) then
-                  print *,'denfill: ',rho
-               endif
             enddo
          enddo
       endif    

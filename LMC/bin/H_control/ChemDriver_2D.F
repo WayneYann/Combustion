@@ -215,6 +215,60 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       end do
       end
 
+      subroutine FORT_RRATERHOY(lo,hi,RhoY,DIMS(RhoY),RhoH,DIMS(RhoH),T,DIMS(T),
+     &                          RhoYdot,DIMS(RhoYdot),Patm)
+      implicit none
+
+#include "cdwrk.H"
+#include "conp.H"
+
+      integer lo(SDIM)
+      integer hi(SDIM)
+      integer DIMDEC(RhoY)
+      integer DIMDEC(RhoH)
+      integer DIMDEC(T)
+      integer DIMDEC(RhoYdot)
+      REAL_T RhoY(DIMV(RhoY),Nspec)
+      REAL_T RhoH(DIMV(RhoH))
+      REAL_T T(DIMV(T))
+      REAL_T RhoYdot(DIMV(RhoYdot),Nspec)
+      REAL_T Patm
+
+      REAL_T Zt(maxspec+1),Zdott(maxspec+1)
+      integer i,j,n
+      REAL_T TIME,P1atm,RU,RUC
+
+      NEQ = Nspec+1
+      TIME = 0.
+      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
+      RWRK(NP) = Patm * P1atm
+
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            c_0(1:Nspec+1) = 0.d0
+            c_1(1:Nspec+1) = 0.d0
+            rhoh_INIT = RhoH(i,j)
+
+            Zt(1) = T(i,j)
+            do n=1,Nspec
+               Zt(n+1) = RhoY(i,j,n)
+            end do
+
+            if(i.eq.64  .and. j.eq.64) then
+               idbg = 1
+               print *,Zt(1)
+            else
+               idbg = 0
+            endif
+
+            call conpFY_sdc(NEQ,TIME,Zt,Zdott,RWRK,IWRK)
+            do n=1,Nspec
+               RhoYdot(i,j,n) = Zdott(n+1)
+            end do
+         end do
+      end do
+      end
+
       subroutine FORT_MASSTOMOLE(lo, hi, Y, DIMS(Y), X, DIMS(X))
       implicit none
 
@@ -1052,7 +1106,7 @@ c     I_R for rhoY
 
       integer i, j, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec), CPMS(maxspec)
-      REAL_T RHO, SCAL, TSCAL, Tt, Wavg, invmwt(maxspec), X(maxspec)
+      REAL_T RHO, SCAL, TSCAL, Tt, Wavg, X(maxspec)
       REAL_T alpha, l1, l2
 
 #ifdef BL_USE_OMP
@@ -1066,11 +1120,6 @@ c     I_R for rhoY
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
-      call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
-
-      do n=1,Nspec
-         invmwt(n) = one / invmwt(n)
-      end do
 
 !$omp parallel private(egrlen,egilen,nthrds)
 

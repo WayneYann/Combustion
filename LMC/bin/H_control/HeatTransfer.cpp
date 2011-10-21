@@ -1905,35 +1905,63 @@ HeatTransfer::initDataOtherTypes ()
 void
 HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
                                                    const MultiFab& S,
-                                                   int             nGrow)
+                                                   int             nGrow,
+                                                   HowToFillGrow   how)
 {
     Real p_amb, dpdt_factor;
     FORT_GETPAMB(&p_amb, &dpdt_factor);
     const Real Patm = p_amb / P1atm_MKS;
 
-    FArrayBox tmp, Y;
+    BL_ASSERT((nGrow==0)  ||  (how == HT_ZERO_GROW_CELLS) || (how == HT_EXTRAP_GROW_CELLS));
+
+    if ((nGrow>0) && (how == HT_ZERO_GROW_CELLS))
+    {
+        R.setBndry(0,0,nspecies);
+    }
+    
+    int sCompRhoH = RhoH;
+    int sCompRhoY = first_spec;
+    int sCompT    = Temp;
+    int sCompRhoYdot = 0;
+    
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
-        FArrayBox& r = R[mfi];
-        const FArrayBox& s = S[mfi];
-        const Box& box = Box(mfi.validbox()).grow(nGrow);
+        const FArrayBox& rhoY = S[mfi];
+        const FArrayBox& rhoH = S[mfi];
+        const FArrayBox& T    = S[mfi];
+        const Box& box = mfi.validbox();
+        FArrayBox& rhoYdot = R[mfi];
 
-        Y.resize(box,nspecies);
-        Y.copy(s,first_spec,0,nspecies);
-
-        tmp.resize(box,nspecies);
-        tmp.copy(s,Density,0,1);
-        tmp.invert(1);
-        for (int sigma=0; sigma<nspecies; ++sigma)
-            Y.mult(tmp,0,sigma,1);
-
-        getChemSolve().reactionRateY(r,Y,s,Patm,box,0,Temp,0);
-
-        tmp.invert(1);
-        for (int sigma=0; sigma<nspecies; ++sigma)
-            r.mult(tmp,0,sigma,1);
+        getChemSolve().reactionRateRhoY(rhoYdot,rhoY,rhoH,T,Patm,box,sCompRhoY,sCompRhoH,sCompT,sCompRhoYdot);
     }
-}
+    
+    
+    if ((nGrow>0) && (how == HT_EXTRAP_GROW_CELLS))
+    {
+        const int N = R.IndexMap().size();
+        
+#ifdef BL_USE_OMP
+#pragma omp parallel for
+#endif
+        for (int i = 0; i < N; i++)
+        {
+            const int  k   = R.IndexMap()[i];
+            FArrayBox& r   = R[k];
+            const Box& box = R.box(k);
+            FORT_VISCEXTRAP(r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
+                            box.loVect(),box.hiVect(),&nspecies);
+        }
+        R.FillBoundary(0,nspecies);
+        //
+        // Note: this is a special periodic fill in that we want to
+        // preserve the extrapolated grow values when periodic --
+        // usually we preserve only valid data.  The scheme relies on
+        // the fact that there is good data in the "non-periodic" grow cells.
+        // ("good" data produced via VISCEXTRAP above)
+        //
+        geom.FillPeriodicBoundary(R,0,nspecies,true);
+    }
+} 
 
 void
 HeatTransfer::init (AmrLevel& old)
@@ -2799,18 +2827,20 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     // 
     // for X = (RhoY, RhoH) return D.  If theta<1,
     // the time-explicit parts of the diffusion forcing
-    // are assumed to be included in Force already/
+    // are assumed to be included in Force already.
     //
-    // F(0:Nspec) contains the forcing for (species,RhoH).
+    // F(0:Nspec) contains the forcing for (RhoY,RhoH).
     // After call, SpecDiffusionFluxn/np1 will be consistent
     // with the discrete update.  
     //
-    //     D[0:Nspec] = Div(SpecDiffusionFluxnp1[1:Nspec])
+    //     D[0:Nspec] = - Div(SpecDiffusionFluxnp1[1:Nspec])
     //     where the Nspec comp of SpecDiffusionFluxnp1 = heat flux
-    //     D[Nspec+1] = -Div(lambda.Grad(T))
+    //     and the Nspec+1 component is -lambda.Grad(T)
     //
-    // NOTE: S_new is reset in this routine.  All non-diffusion increments
-    //       are to be combined beforehand into the Force argument
+    // NOTE: S_new is reset in this routine.  Unlike the Diffusion
+    //  class semantics where S_new contains all the non-diffusion
+    //  increments to the state already, here all forcing is assumed
+    //  to be combined beforehand into the Force argument
     //
     BL_ASSERT(Force.boxArray() == grids);
     BL_ASSERT(FComp+Force.nComp()>=nspecies+1);
@@ -2845,19 +2875,27 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     const int nGrow = 0;
 
     // Do explicit update of (RhoY,RhoH) based on Force
+#if 0
     MultiFab::Copy(S_new,Force,0,first_spec,nspecies+1,0);
-    S_new.mult(dt);
+    S_new.mult(dt,first_spec,nspecies);
     MultiFab::Add(S_new,S_old,first_spec,first_spec,nspecies+1,0);
+#else
+    MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies+1,0);
+#endif
 
     if (theta > 0)  // then need to do solve (and np1 species diffusion fluxes are nonzero)
     {    
+#if 0
         MultiFab delta_rhs(grids,nspecies+2,nGrow);
         delta_rhs.setVal(0);
+#endif
         MultiFab* rho_half = 0;
         //
         // Set diffusion solve mode so that inside diffuse_scalar, (S_new-S_old)-> delta_rhs
+        // FIXME
         //
-        Diffusion::SolveMode solve_mode = Diffusion::PREDICTOR;
+        //Diffusion::SolveMode solve_mode = Diffusion::PREDICTOR;
+        Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
         MultiFab* alpha = 0; // Never need alpha for RhoY, RhoH
         MultiFab **betan, **betanp1;
         betan = 0; // Will not need these since time-explicit pieces computed above
@@ -2869,15 +2907,23 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         // Diffuse RhoY and RhoH
         //
         int alphaComp = 0;
-        int betaComp = 0;
         for (int sigma = 0; sigma < nspecies+1; ++sigma)
         {
+            int betaComp = sigma;
             const int state_ind = first_spec + sigma;
-            bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit terms
+            bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
             int rho_flag = 2;
+
+#if 0
             diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
                                       SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&delta_rhs,sigma,alpha,
                                       alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
+#else
+            diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
+                                      SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
+                                      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
+#endif
+
         }
         //
         // Modify/update new-time fluxes to ensure sum of species fluxes = 0, set heat flux and
@@ -2890,7 +2936,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         // Now, re-diffuse the state with the modified fluxes, save the new-time D term
         //   (note that delta_rhs = (1-theta)*Dold + Force)
         //
-        diffusion_flux_divergence(S_new,first_spec,curr_time,-1);
+        diffusion_flux_divergence(S_new,first_spec,curr_time,-1); // -ve because fluxes on LHS, D on RHS
         if (D) 
         {
             MultiFab::Copy(*D,S_new,first_spec,DComp,nspecies+1,0);
@@ -2898,9 +2944,9 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
         {
-            S_new[mfi].plus(delta_rhs[mfi],0,0,nspecies+1);
-            S_new[mfi].mult( dt*theta );
-
+            //S_new[mfi].plus(delta_rhs[mfi],0,0,nspecies+1);
+            S_new[mfi].plus(Force[mfi],0,first_spec,nspecies+1);
+            S_new[mfi].mult(dt*theta,first_spec,nspecies+1);
             S_new[mfi].plus(S_old[mfi],first_spec,first_spec,nspecies+1);
         }
     }
@@ -4972,8 +5018,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
         }
     }
     showMF("dd",S,"dd_rsT_fp",level);
-    cout << "fp: " << endl;
-    dump(S[0],-1);
     //
     // Create and fill (Rho,RhoY,RhoH,T) at coarser level
     //
@@ -5038,6 +5082,35 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
 
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         showMFsub("dd",*flux[dir],BoxLib::surroundingNodes(stripBox,dir),BoxLib::Concatenate("dd_flux_after1_",dir,1),level);
+    }
+}
+
+void
+HeatTransfer::scalar_advection_update (Real dt,
+                                       int  first_scalar,
+                                       int  last_scalar)
+{
+    // Careful: If here, the sign of aofs is flipped (wrt the usual NS treatment)
+    if (!do_sdc)
+    {
+        NavierStokes::scalar_advection_update(dt,first_scalar,last_scalar);
+    }
+    else
+    {
+        FArrayBox tmp;
+        MultiFab& S_new = get_new_data(State_Type);
+        const MultiFab& S_old = get_old_data(State_Type);
+        
+        for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+        {
+            const Box& box   = mfi.validbox();
+            const int nc = last_scalar - first_scalar + 1; 
+            FArrayBox& snew = S_new[mfi];
+
+            snew.copy( (*aofs)[mfi],box,first_scalar,box,first_scalar,nc);
+            snew.mult(dt,first_scalar,nc);
+            snew.plus(S_old[mfi],first_scalar,first_scalar,nc);            
+        }
     }
 }
 
@@ -6484,6 +6557,19 @@ HeatTransfer::advance_sdc (Real time,
     //    1) nGrow=nGrowAdvForcing
     //    2) A stored in class as aofs
     //
+#if 0
+        const int old_prec = std::cout.precision(15);
+        cout << "Force" << endl;
+        for (int i=60; i<=70; ++i) {
+            IntVect iv(64,i);
+            cout << i
+                 << " " << Dn[0](iv,0)
+                 << " " << get_new_data(RhoYchemProd_Type)[0](iv,0)
+                 << " " << Dn[0](iv,0)+get_new_data(RhoYchemProd_Type)[0](iv,0) << endl;
+        }
+        std::cout << std::setprecision(old_prec);
+#endif
+
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
     {
         FArrayBox& f = Forcing[mfi];
@@ -6497,21 +6583,36 @@ HeatTransfer::advance_sdc (Real time,
         f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
     }
 
+    //cout << "Tforce at pt: " << Forcing[0](IntVect(64,64)) << endl;
+
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "A (SDC predictor) \n";
     showMF("dd",Forcing,"dd_adv_forcing",level);
+
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
-
-    BoxLib::Abort();
-
     showMF("dd",*aofs,"dd_aofs",level);
 
     scalar_advection_update(dt, Density, Density);
+#if 1
+    {
+        int old_prec = std::cout.precision(20);
+        cout << "rho" << endl;
+        for (int i=60; i<=70; ++i) {
+            IntVect iv(64,i);
+            cout << i
+                 << " " << get_old_data(State_Type)[0](iv,Density)
+                 << " " << get_new_data(State_Type)[0](iv,Density)
+                 << endl;
+        }
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+
     showMF("dd",S_new,"dd_newrho",level);
     make_rho_curr_time();
 
-    cout << "New predicted density" << endl;
-    dump(S_new,Density);
+    //cout << "New predicted density" << endl;
+    //dump(S_new,Density);
 
     // 
     // Compute Dhat (F = A + R)  nGrow=0
@@ -6527,8 +6628,6 @@ HeatTransfer::advance_sdc (Real time,
         
         f.copy(a,box,first_spec,box,0,nspecies+1);
         f.plus(r,box,box,0,0,nspecies);
-
-        cout << "R: " << r(IntVect(64,64)) << endl;
     }
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Dhat (SDC predictor) \n";
@@ -6536,6 +6635,17 @@ HeatTransfer::advance_sdc (Real time,
     // FIXME: This 1/2 here needs to be generalized, consistent with the
     //  SDC correction equation below.
     Real theta = 0.5;
+#if 1
+    {
+        int old_prec = std::cout.precision(20);
+        std::cout << "just before diffusion" << std::endl;
+        for (int i=60; i<=70; ++i) {
+            IntVect iv(64,i);
+            std::cout << i << " " << get_new_data(State_Type)[0](iv,first_spec)/get_new_data(State_Type)[0](iv,Density) << std::endl;
+        }
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
     differential_diffusion_update(Forcing,0,theta,&Dhat,0);
     temperature_stats(S_new);
 
@@ -6593,6 +6703,7 @@ HeatTransfer::advance_sdc (Real time,
             f.copy(d,gbox,0,gbox,0,nspecies+1);
             f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
         }
+
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  A (SDC corrector " << sdc_iter << ")\n";
         compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
@@ -7813,23 +7924,26 @@ void
 HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                                                               Real      dt)
 {
-    // FIXME: What about fluxes for reflux?
-
+    BL_ASSERT(do_sdc); // If here, we're going to redefine the sense of aofs
     //
-    // Compute -Div(advective fluxes)
+    // FIXME: Still need to deal with refluxing stuff
+    //
+    //
+    // Compute -Div(advective fluxes)  [ which is -aofs in NS, BTW ... careful...
+    //
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... computing edge states\n";
-    //
-    // Get simulation parameters.
-    //
+        std::cout << "... computing advection terms\n";
     const Real* dx        = geom.CellSize();
     const Real prev_time = state[State_Type].prevTime();
 
+    //
+    // Gather info necesary to build transverse velocities
+    // (stored internal to Godunov)
+    // 
     MultiFab DivU(grids,1,nGrowAdvForcing);
     create_mac_rhs(DivU,prev_time,dt,nGrowAdvForcing);
 
     MultiFab Gp, VelViscTerms;
-
     const int use_forces_in_trans = godunov->useForcesInTrans();
     if (use_forces_in_trans || (do_mom_diff == 1))
     {
@@ -7842,8 +7956,6 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
     showMF("dd",DivU,"dd_divu_in_aofs",level);
 
-    cout << "Getting aofs" << endl;
-
     FArrayBox tforces, volume, area[BL_SPACEDIM], tvelforces, jdivu;
     const int  nState          = desc_lst[State_Type].nComp();
     for (FillPatchIterator S_fpi(*this,DivU,HYP_GROW,prev_time,State_Type,0,nState);
@@ -7853,8 +7965,6 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
         const Box& box = S_fpi.validbox();
         const int i = S_fpi.index();
         const FArrayBox& S = S_fpi();
-        jdivu.resize(DivU[S_fpi].box(),1); jdivu.setVal(0);
-        //const FArrayBox& divu = jdivu;
         const FArrayBox& divu = DivU[S_fpi];
         const Box gbox = S_fpi().box();
         tforces.resize(gbox,1);
@@ -7903,6 +8013,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                                      D_DECL(state_ind,state_ind,state_ind),
                                      S,state_ind,Force[S_fpi],comp,divu,0,state_ind,bc.dataPtr(),iconserv);
 
+
             int avcomp = 0;
             int ucomp = 0;
             // Compute Div(flux.Area), return Area-scaled fluxes
@@ -7922,7 +8033,12 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                     (*EdgeState[d])[i].plus((*EdgeState[d])[i],state_ind,Density,1);
                 }        
             }
+
         }
+
+        // NOTE: Changes sense of aofs here so that d/dt ~ aofs...be sure we use our own update
+        //  function
+        (*aofs)[i].mult(-1);
     }
 }
 
@@ -9602,6 +9718,9 @@ HeatTransfer::compute_vel_visc (Real      time,
 
         (*beta)[i].copy(tmp,0,0,1);
     }
+
+    cout << "HACKING zero vis" << endl;
+    beta->setVal(0);
 }
 
 void

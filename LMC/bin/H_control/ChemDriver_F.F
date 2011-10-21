@@ -96,8 +96,7 @@ c
       CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
       NEQ   = Nspec + 1
       NP    = dvdbr
-      NWT   = NP  + 1
-      NZ    = NWT + Nspec
+      NZ    = NP  + 1
       RTOT  = NZ  + NEQ - 1
 
       if (RTOT .GT. dvder) then
@@ -108,7 +107,10 @@ c
 c
 c     Set molecular weights
 c
-      CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
+      CALL CKWT(IWRK(ckbi), RWRK(ckbr), mwt)
+      do i=1,Nspec
+         invmwt(i) = 1.d0 / mwt(i)
+      enddo
 c
 c     Find N2 in the list.
 c
@@ -685,13 +687,15 @@ c
       end do
       end
 
-      subroutine FORT_GETCKMWT(mwt)
+      subroutine FORT_GETCKMWT(tmwt)
       implicit none
 #include "cdwrk.H"
-      REAL_T mwt(*)
+      REAL_T tmwt(*)
       integer n
 c     Result in kg/kmole
-      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
+      do n=1,Nspec
+         tmwt(n) = mwt(n)
+      enddo
       end
 
       subroutine FORT_GETCKAWT(awt)
@@ -744,6 +748,7 @@ c      end do
       
       CALL CKWC(Z(1), CONC, IPAR(ckbi), RPAR(ckbr), WDOTS)
       CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), ENTHALPY)
+
 C
 C     Form governing equation
 C
@@ -785,22 +790,78 @@ C
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
-      REAL_T RHO, H, WDOT, WT, THFAC, T
+      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, T, HMIX_MKS, RINV_MKS
       integer K
 
-      REAL_T CONC(maxspec), WDOTS(maxspec), Y(maxspec)
+      REAL_T CONC_CGS(maxspec), WDOTS(maxspec), Y(maxspec)
 
 C     Needed to compute T from h
       REAL_T HtoTerrMAX
       integer HtoTiterMAX, Niter
-      parameter (HtoTerrMAX = BL_REAL_E(1.0,-8))
+      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
       parameter (HtoTiterMAX = 20)
       REAL_T res(0:HtoTiterMAX-1)
 
+      REAL_T RHO_CGS, RINV_CGS
+
 C
-C     Variables in Z are:  Z(1)   = rhoh
+C     Variables in Z are:  Z(1)   = T
 C                          Z(K+1) = rhoY(K)
+
+#if 1
+      RHO_MKS = 0.d0
+      do K=1,Nspec
+         RHO_MKS = RHO_MKS + Z(K+1)
+      enddo
+      RINV_MKS = 1.d0 / RHO_MKS
       
+      RHO_CGS = 0.d0
+      do K=1,Nspec
+         RHO_CGS = RHO_CGS + Z(K+1)*1.d-3
+         if (idbg.eq.1) then
+            print *,'rhoY:',K,Z(K+1)*1.d-3
+         endif
+      enddo
+      if (idbg.eq.1) then
+         print *,'inside',Z(1)
+         print *,'inside',RHO_CGS
+      endif
+      RINV_CGS = 1.d0 / RHO_CGS
+
+      do K=1,Nspec
+         CONC_CGS(K) = Z(K+1)*invmwt(K)*1.d-3
+c         Y(K) = Z(K+1) * RINV_MKS
+         Y(K) = Z(K+1) * RINV_CGS*1.d-3
+      enddo
+      T = Z(1)
+
+      HMIX_MKS = (rhoh_INIT + c_0(1)*TIME
+     &     + c_1(1)*TIME*TIME*0.5d0) * RINV_MKS
+
+c     FIXME: Get proper stopping stopping criteria here
+      call FORT_TfromHYpt(T,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
+
+      if (Niter.lt.0) then
+         print *,'conpFY_sdc: H to T solve failed'
+         print *,'Niter=',Niter
+         stop
+      endif
+      
+      call CKWC(T,CONC_CGS,IWRK,RWRK,WDOT_CGS)
+      THFAC = 1.d3/thickFacCH
+      do k= 1, Nspec
+         ZP(k+1) = WDOT_CGS(k)*mwt(k)*THFAC
+     &        + c_0(k+1) + c_1(k+1)*TIME
+         if (idbg.eq.1) then
+            print *,'ZP',k+1,ZP(k+1)
+         endif
+      end do
+      ZP(1) = c_0(1) + c_1(1)*TIME 
+
+      if (idbg.eq.1) then
+c         stop
+      endif
+#else      
       RHO = 0.d0
       do k=1,Nspec
          RHO = RHO + Z(k+1)
@@ -812,7 +873,7 @@ C                          Z(K+1) = rhoY(K)
 
 c     Compute T from h
       H = Z(1) / RHO
-      call FORT_TfromHYpt(T,H,Y,HtoTerrMax,HtoTiterMAX,res,Niter)
+      call FORT_TfromHYpt(T,H,Y,errMax,HtoTiterMAX,res,Niter)
       if (Niter.lt.0) then
          print *,'conpFY_sdc: H to T solve failed'
          print *,'Niter=',Niter
@@ -820,26 +881,7 @@ c     Compute T from h
       endif
 
       CALL CKYTCP(RPAR(NP),T,Y,IPAR(ckbi),RPAR(ckbr),CONC)
-c
-c     Get net production rates.  Compute such that production from -ve
-c     reactants gives zero contrib.
-c      
-c      do k=1,Nspec
-c         if (CONC(k) .lt. zero) write(6,*) '.....negative C',k
-c      end do
-      
-#define MAKE_C_POS
-#undef MAKE_C_POS
-#ifdef MAKE_C_POS
-      do k=1,Nspec
-         CONC(k) = MAX(CONC(k),zero)
-      end do 
-#endif
-
-      CALL CKWC(T, CONC, IPAR(ckbi), RPAR(ckbr), WDOTS)
-C
-C     Form governing equation
-C
+      CALL CKWC(T, CONC, IPAR(ckbi), RPAR(ckbr), WDOT)
 
 c     rhoh
       ZP(1) = c_0(1)
@@ -847,11 +889,9 @@ c     rhoh
 c     rhoY
       THFAC = one / thickFacCH
       do k=1,Nspec
-         WDOT = WDOTS(k) * THFAC
-         WT   = RPAR(NWT+k-1)
-         ZP(k+1) = WDOT * WT + c_0(k+1)
+         ZP(k+1) = WDOT(k) * mwt(k) + c_0(k+1)
       end do
-
+#endif
 #if 0
       print*, 'Z:'
       do k = 1, Nspec+1

@@ -281,6 +281,8 @@ c
       integer use_minion, ppm_type
       REAL_T tforces(DIMV(work),SDIM)
 
+      integer idbg
+
       dth  = half*dt
       dthx = half*dt / dx(1)
       dthy = half*dt / dx(2)
@@ -303,8 +305,9 @@ c
      &        eps_for_bc,ppm_type)
 
       else
+         idbg = 0
          call FORT_SLOPES(u,DIMS(s),
-     &        sx,sy,DIMS(work),lo,hi,slxscr,slyscr,ubc)
+     &        sx,sy,DIMS(work),lo,hi,slxscr,slyscr,ubc,idbg)
       end if
          
       if (ppm_type .gt. 0) then
@@ -353,7 +356,7 @@ c
      &        eps_for_bc,ppm_type)
       else
          call FORT_SLOPES(v,DIMS(s),
-     &        sx,sy,DIMS(work),lo,hi,slxscr,slyscr,vbc)
+     &        sx,sy,DIMS(work),lo,hi,slxscr,slyscr,vbc,idbg)
       end if
 
       if (ppm_type .gt. 0) then
@@ -446,7 +449,7 @@ c
       REAL_T  sy(DIMV(work)), vad(DIMV(work)) 
       REAL_T tforces(DIMV(work))
 
-      integer use_minion, ppm_type
+      integer use_minion, ppm_type, idbg
 
       dth  = half*dt
       dthx = half*dt/dx(1)
@@ -469,8 +472,9 @@ c
      &        sedgex,DIMS(sedgex),sedgey,DIMS(sedgey),lo,hi,dx,dt,bc,
      &        eps_for_bc,ppm_type)
       else
+         idbg = 0
          call FORT_SLOPES(s,DIMS(s),
-     &        sx,sy,DIMS(work),lo,hi,slxscr,slyscr,bc)
+     &        sx,sy,DIMS(work),lo,hi,slxscr,slyscr,bc,idbg)
       end if
 c
 c     trace the state to the cell edges
@@ -712,7 +716,7 @@ c
      &     vedge, DIMS(vedge), ystate, DIMS(ystate), Imy, Ipy, sedgey, DIMS(sedgey),
 
      &     DIMS(work), DIMS(I), dsvl, DIMS(dsvl), sm, sp, DIMS(smp),
-     &     bc,lo,hi,dt,dx,n,use_minion,iconserv,ppm_type)
+     &     bc,lo,hi,dt,dx,n,use_minion,iconserv,ppm_type,idbg)
 c
 c     This subroutine computes edges states, right now it uses
 c     a lot of memory, but there becomes a trade off between
@@ -721,7 +725,7 @@ c     and complexity in the old way.  By eliminating loops over
 c     state components though, the new way uses much less memory.
 c
       implicit none
-      integer i,j,n
+      integer i,j,n,idbg
       integer lo(SDIM),hi(SDIM),bc(SDIM,2)
       integer imin,jmin,imax,jmax
       REAL_T place_to_break
@@ -782,20 +786,32 @@ c
       imax = hi(1)
       jmax = hi(2)
 
+#if 0
+      do j = jmin-1,jmax+1
+         do i = imin,  imax+1
+            uedge(i,j) = 0.d0
+         enddo
+      enddo
+      do j = jmin,jmax+1
+         do i = imin-1,  imax+1
+            vedge(i,j) = .1524d0
+         enddo
+      enddo
+#endif
 c
 c     compute the slopes
 c
       if (ppm_type .gt. 0) then
-         call FORT_PPM_FPU(s,DIMS(s),uedge,vedge,DIMS(uedge),
+         call FORT_PPM_FPU(s,DIMS(s),uedge,DIMS(uedge),vedge,DIMS(vedge),
      &        Ipx,Imx,Ipy,Imy,DIMS(work),sm,sp,DIMS(smp),dsvl,DIMS(dsvl),
      &        sedgex,DIMS(sedgex),sedgey,DIMS(sedgey),lo,hi,dx,dt,bc, 
-     &        eps_for_bc,ppm_type)
+     &        eps_for_bc,ppm_type,idbg)
 
       else
          call FORT_SLOPES(
      &        s,DIMS(s),
      &        sx,sy,DIMS(work),
-     &        lo,hi,slxscr,slyscr,bc)
+     &        lo,hi,slxscr,slyscr,bc,idbg)
       end if
 
 c
@@ -994,7 +1010,8 @@ c
 
                   st = -(uedge(i+1,j)*xlo(i+1,j) - uedge(i,j)*xlo(i,j))/hx
      &                 + s(i,j)*(uedge(i+1,j)-uedge(i,j))/hx
-     &                 - s(i,j)*divu(i,j)
+c     &                 - s(i,j)*divu(i,j)
+     &                 - s(i,j)*(vedge(i,j+1)-vedge(i,j))/hx
 
                else
 
@@ -1029,9 +1046,11 @@ c
                   styhi(j  )= s(i,j) - (half+dthy*vedge(i,j  ))*sy(i,j)
      &                 + dth*(st + tforces(i,j))
                end if
+                  stylo(j+1)= s(i,j) + (half-dthy*vedge(i,j+1))*sy(i,j)
+     &                 + dth*(st + tforces(i,j))
 
             end do
-            
+ 
             if (bc(2,1).eq.EXT_DIR .and. vedge(i,jmin).ge.zero) then
                styhi(jmin) = s(i,jmin-1)
                stylo(jmin) = s(i,jmin-1)
@@ -1063,10 +1082,15 @@ c
                ystate(i,j) = merge(half*(stylo(j)+styhi(j)),ystate(i,j),
      &              abs(vedge(i,j)).lt.eps)
             end do
+
+c            if (i.eq.65 .and. idbg.eq.1) then
+c               do j = 60,70
+c                  print *,j,s(i,j-1),sy(i,j-1),tforces(i,j-1),ystate(i,j)
+c               enddo
+c            endif
+
             place_to_break = 1
       end do
-
-      print *,ystate(64,65)
 
       end
 
@@ -1080,13 +1104,13 @@ c
      &     vedge,DIMS(vedge),
      &     areay,DIMS(ay),
      &     vol,DIMS(vol),
-     &     lo,hi,iconserv )
+     &     lo,hi,iconserv,idbg )
 c
 c     This subroutine uses scalar edge states to compute
 c     an advective tendency
 c
       implicit none
-      integer i,j
+      integer i,j, idbg
       integer iconserv
       REAL_T divux,divuy
       integer imin,jmin,imax,jmax
@@ -1138,11 +1162,21 @@ c
             xflux(i,j) = xflux(i,j)*uedge(i,j)*areax(i,j)
          end do
       end do
+
+c      if (idbg.eq.1) then
+c         print *,'fluxes'
+c         do j = 50,60
+c            i=64
+c            print *,j,yflux(i,j),vedge(i,j),yflux(i,j)*vedge(i,j)*areay(i,j)
+c         end do
+c      endif
+
       do j = jmin,jmax+1
          do i = imin,imax
             yflux(i,j) = yflux(i,j)*vedge(i,j)*areay(i,j)
          end do
       end do
+
 c     
 c     compute part of advective tendency that depends on the flux convergence
 c     
@@ -1416,7 +1450,7 @@ c
       end
 
       subroutine FORT_SLOPES (s,DIMS(s),slx,sly,DIMS(sl),
-     &     lo,hi,slxscr,slyscr,bc)
+     &     lo,hi,slxscr,slyscr,bc,idbg)
 c 
 c     this subroutine computes first, second or forth order slopes of
 c     a 2D scalar field.
@@ -1441,6 +1475,7 @@ c
       REAL_T   sly(DIMV(sl))
       REAL_T slxscr(DIM1(s), 4)
       REAL_T slyscr(DIM2(s), 4)
+      integer idbg
 
       integer cen,lim,flag,fromm
       parameter( cen = 1 )
@@ -2753,10 +2788,10 @@ c     compute y-component of Ip and Im
 
       end
 
-      subroutine FORT_PPM_FPU(s,DIMS(s),uedge,vedge,DIMS(uedge),
+      subroutine FORT_PPM_FPU(s,DIMS(s),uedge,DIMS(uedge),vedge,DIMS(vedge),
      &     Ipx,Imx,Ipy,Imy,DIMS(work),sm,sp,DIMS(smp),dsvl,DIMS(dsvl),
      &     sedgex,DIMS(sedgex),sedgey,DIMS(sedgey),lo,hi,dx,dt,bc,eps,
-     &     ppm_type)
+     &     ppm_type,idbg)
 
       implicit none
 
@@ -2764,6 +2799,7 @@ c     compute y-component of Ip and Im
       integer bc(SDIM,2)
       integer DIMDEC(s)
       integer DIMDEC(uedge)
+      integer DIMDEC(vedge)
       integer DIMDEC(work)
       integer DIMDEC(smp)
       integer DIMDEC(dsvl)
@@ -2771,7 +2807,7 @@ c     compute y-component of Ip and Im
       integer DIMDEC(sedgey)
       REAL_T  s(DIMV(s))
       REAL_T  uedge(DIMV(uedge))
-      REAL_T  vedge(DIMV(uedge))
+      REAL_T  vedge(DIMV(vedge))
       REAL_T  Ipx(DIMV(work))
       REAL_T  Imx(DIMV(work))
       REAL_T  Ipy(DIMV(work))
@@ -2784,7 +2820,7 @@ c     compute y-component of Ip and Im
       REAL_T eps
       REAL_T dx(SDIM)
       REAL_T dt
-      integer ppm_type
+      integer ppm_type,idbg
 
 c     local
       integer i,j
@@ -2801,6 +2837,11 @@ c     constant used in Colella 2008
 c     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 c     x-direction
 c     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      if (ppm_type .ne. 1  .and.  ppm_type .ne. 2) then
+         call bl_pd_abort('FORT_PPM_FPU supports only ppm_type=1,2')
+      endif
+
 
 c     compute s at x-edges
       if (ppm_type .eq. 1) then

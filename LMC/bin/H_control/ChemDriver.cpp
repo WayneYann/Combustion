@@ -364,6 +364,43 @@ ChemDriver::reactionRateY(FArrayBox&       Ydot,
                 &Patm);
 }
 
+#include <iostream>
+using std::cout;
+using std::endl;
+void
+ChemDriver::reactionRateRhoY(FArrayBox&       RhoYdot,
+                             const FArrayBox& RhoY,
+                             const FArrayBox& RhoH,
+                             const FArrayBox& T,
+                             Real             Patm,
+                             const Box&       box,
+                             int              sCompRhoY,
+                             int              sCompRhoH,
+                             int              sCompT,
+                             int              sCompRhoYdot) const
+{
+    const int Nspec = numSpecies();
+    BL_ASSERT(RhoYdot.nComp() >= sCompRhoYdot + Nspec);
+    BL_ASSERT(RhoY.nComp() >= sCompRhoY + Nspec);
+    BL_ASSERT(RhoH.nComp() > sCompRhoH);
+    BL_ASSERT(T.nComp() > sCompT);
+
+    const Box& mabx = RhoY.box();
+    const Box& mbbx = RhoH.box();
+    const Box& mcbx = T.box();
+    const Box& mobx = RhoYdot.box();
+    
+    Box ovlp = box & mabx & mbbx & mcbx & mobx;
+    if( ! ovlp.ok() ) return;
+    
+    FORT_RRATERHOY(ovlp.loVect(), ovlp.hiVect(),
+                   RhoY.dataPtr(sCompRhoY),       ARLIM(mabx.loVect()), ARLIM(mabx.hiVect()),
+                   RhoH.dataPtr(sCompRhoH),       ARLIM(mbbx.loVect()), ARLIM(mbbx.hiVect()),
+                   T.dataPtr(sCompT),             ARLIM(mcbx.loVect()), ARLIM(mcbx.hiVect()),
+                   RhoYdot.dataPtr(sCompRhoYdot), ARLIM(mobx.loVect()), ARLIM(mobx.hiVect()),
+                   &Patm);
+}
+
 void
 ChemDriver::massFracToMoleFrac(FArrayBox&       X,
 				  const FArrayBox& Y,

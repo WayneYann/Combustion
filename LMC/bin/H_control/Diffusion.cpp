@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <iomanip>
 
 #if defined(BL_OSF1)
 #if defined(BL_USE_DOUBLE)
@@ -330,6 +331,7 @@ Diffusion::diffuse_scalar (Real                   dt,
     // on the valid region (i.e., on the valid region the new state is the old
     // state + dt*Div(explicit_fluxes), e.g.)
     //
+
     NavierStokes& ns = *(NavierStokes*) &(parent->getLevel(level));
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -346,10 +348,10 @@ Diffusion::diffuse_scalar (Real                   dt,
     MultiFab& S_old = caller->get_old_data(State_Type);
     MultiFab& S_new = caller->get_new_data(State_Type);
 
-    MultiFab Rhs(grids,1,0), Soln(grids,1,1);
     //
     // Set up Rhs.
     //
+    MultiFab Rhs(grids,1,0), Soln(grids,1,1);
     if (add_old_time_divFlux)
     {
         Real a = 0.0;
@@ -422,6 +424,39 @@ Diffusion::diffuse_scalar (Real                   dt,
             Rhs[mfi].plus(tmpfab,box,0,0,1);
         }
     }
+
+#if 1
+    if (sigma==3)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "inside diffusion drhs" << std::endl;
+        if (delta_rhs==0) {
+            std::cout << " none " << std::endl;
+        }
+        else
+        {
+            for (int i=60; i<=70; ++i) {
+                IntVect iv(64,i);
+                std::cout << i << " " << (*delta_rhs)[0](iv) << std::endl;
+            }
+        }
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+#if 1
+    if (sigma==3)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "inside diffusion Rhs" << std::endl;
+        for (int i=60; i<=70; ++i) {
+            IntVect iv(64,i);
+            std::cout << i << " " << Rhs[0](iv) << std::endl;
+        }
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+
+
     //
     // Add hoop stress for x-velocity in r-z coordinates
     // Note: we have to add hoop stress explicitly because the hoop
@@ -490,6 +525,7 @@ Diffusion::diffuse_scalar (Real                   dt,
             Rhs[mfi].plus(Soln[mfi],box,0,0,1);
         }
     }
+
     //
     // Make a good guess for Soln
     //
@@ -497,6 +533,31 @@ Diffusion::diffuse_scalar (Real                   dt,
     if (rho_flag == 2)
         for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
             Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
+
+#if 1
+    if (sigma==3)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "inside diffusion Soln_init" << std::endl;
+        for (int i=60; i<=70; ++i) {
+            IntVect iv(64,i);
+            std::cout << i << " " << Soln[0](iv) << std::endl;
+        }
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+#if 1
+    if (sigma==3)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "inside diffusion betanp1_y" << std::endl;
+        for (int i=60; i<=70; ++i) {
+            IntVect iv(64,i);
+            std::cout << i << " " << (*betanp1[1])[0](iv,betaComp) << std::endl;
+        }
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
     //
     // Construct viscous operator with bndry data at time N+1.
     //
@@ -510,8 +571,30 @@ Diffusion::diffuse_scalar (Real                   dt,
 
     ABecLaplacian* visc_op  = getViscOp(sigma,a,b,cur_time,visc_bndry,rho_half,
                                         rho_flag,&rhsscale,betanp1,betaComp,alpha,alphaComp);
+#if 0
+    if (sigma==3)
+    {
+
+        visc_op->maxOrder(max_order);
+        visc_op->apply(Rhs,Soln);
+
+
+        const int old_prec = std::cout.precision(20);
+        std::cout << "inside diffusion L(soln_init)" << std::endl;
+        //for (int i=60; i<=70; ++i) {
+        for (int i=0; i<=127; ++i) {
+            IntVect iv(64,i);
+            std::cout << i << " " << Rhs[0](iv) << std::endl;
+        }
+        std::cout << std::setprecision(old_prec);
+        BoxLib::Abort();
+    }
+#endif
+
+
     Rhs.mult(rhsscale,0,1);
     visc_op->maxOrder(max_order);
+
     //
     // Construct solver and call it.
     //
@@ -605,9 +688,54 @@ Diffusion::diffuse_scalar (Real                   dt,
 #endif
     else
     {
+
+#if 1
+    if (sigma==3)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "going into mg solve: Soln" << std::endl;
+        for (int i=60; i<=70; ++i) {
+            IntVect iv(64,i);
+            std::cout << i << " " << Soln[0](iv) << std::endl;
+        }
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+#if 1
+    if (sigma==3)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "going into mg solve: Rhs" << std::endl;
+        for (int i=60; i<=70; ++i) {
+            IntVect iv(64,i);
+            std::cout << i << " " << Rhs[0](iv) << std::endl;
+        }
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
+#if 1
+    if (sigma==3)
+    {
+        std::string outfile("MyOp");
+        visc_op->Write(outfile);
+    }
+#endif
+
         MultiGrid mg(*visc_op);
         mg.solve(Soln,Rhs,S_tol,S_tol_abs);
     }
+#if 1
+    if (sigma==3)
+    {
+        const int old_prec = std::cout.precision(20);
+        std::cout << "inside diffusion 2" << std::endl;
+        for (int i=60; i<=70; ++i) {
+            IntVect iv(64,i);
+            std::cout << i << " " << Soln[0](iv) << std::endl;
+        }
+        std::cout << std::setprecision(old_prec);
+    }
+#endif
     Rhs.clear();
     //
     // Get extensivefluxes from new-time op
