@@ -199,6 +199,20 @@ public:
                         int              sCompT,
                         int              sCompYdot) const;
 
+    //
+    // Compute dRhoY/dt based on the input temp, press and mass densities.
+    //
+    void reactionRateRhoY(FArrayBox&       RhoYdot,
+                          const FArrayBox& RhoY,
+                          const FArrayBox& RhoH,
+                          const FArrayBox& T,
+                          Real             Patm,
+                          const Box&       box,
+                          int              sCompRhoY,
+                          int              sCompRhoH,
+                          int              sCompT,
+                          int              sCompRhoYdot) const;
+
     void fwdRevReacRatesGivenXTP (FArrayBox&        FwdK,
                                   FArrayBox&        RevK,
                                   const Array<int>& rxnIDs,

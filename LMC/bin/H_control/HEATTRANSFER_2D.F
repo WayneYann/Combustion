@@ -259,12 +259,15 @@ c     Nspec+2 is Velocity stuff, if requested
       if (do_temp.eq.1) then
          nc = nc + 1
          ncs = nc
-      endif
-      if (do_VelVisc.eq.1) then
-         nc = nc + 1
+         if (do_VelVisc.eq.1) then
+            nc = nc + 1
+         endif
       endif
       if (ncompd.lt.nc) then
          call bl_pd_abort("not enough components in rhoD")
+      endif
+      if (do_temp.eq.0 .and. do_VelVisc.eq.1) then
+         call bl_pd_abort("if do_VelVisc, rhoD requires do_temp")
       endif
 
 c     Warning, FORT_VELVISC is called separately from this routine, so if there's

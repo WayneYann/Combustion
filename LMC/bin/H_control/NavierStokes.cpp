@@ -1904,6 +1904,7 @@ NavierStokes::predict_velocity (Real  dt,
 
 
         int velpred = 1;
+
         godunov->Setup(grids[i], dx, dt, velpred,
                        D_DECL(*null_fab,*null_fab,*null_fab),
                        D_DECL(bndry[0].dataPtr(),bndry[1].dataPtr(),bndry[2].dataPtr()),
@@ -5488,7 +5489,8 @@ NavierStokes::getForce (FArrayBox&       force,
                         int              scomp,
                         int              ncomp,
                         const Real       time,
-                        const FArrayBox& Rho)
+                        const FArrayBox& Rho,
+                        int              RComp)
 {
     BL_ASSERT(Rho.nComp() == 1);
 
@@ -5705,9 +5707,10 @@ NavierStokes::getForce (FArrayBox&       force,
                         int              ngrow,
                         int              scomp,
                         int              ncomp,
-                        const FArrayBox& Rho)
+                        const FArrayBox& Rho,
+                        int              RComp)
 {
-    BL_ASSERT(Rho.nComp() == 1);
+    BL_ASSERT(Rho.nComp() > RComp);
 
     force.resize(BoxLib::grow(grids[gridno],ngrow),ncomp);
 
@@ -5728,7 +5731,7 @@ NavierStokes::getForce (FArrayBox&       force,
             //
             // Set force to -rho*g.
             //
-            force.copy(Rho,0,dc,1);
+            force.copy(Rho,RComp,dc,1);
             force.mult(grav,dc,1);
         }
         else

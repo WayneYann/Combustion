@@ -167,6 +167,9 @@ public:
 			   int  last_scalar,
 			   bool do_adv_reflux);
     
+    virtual void scalar_advection_update (Real dt,
+                                          int  first_scalar,
+                                          int  last_scalar);
     void scalar_update (Real dt,
                         int  first_scalar,
                         int  last_scalar,
@@ -205,10 +208,14 @@ public:
                                          MultiFab**& betan, 
                                          MultiFab**& betanp1);
 
+
+    enum HowToFillGrow {HT_ZERO_GROW_CELLS, HT_EXTRAP_GROW_CELLS, HT_NUM_GROW_OPTIONS};
+
     void compute_instantaneous_reaction_rates(MultiFab&       R,
                                               const MultiFab& S,
-                                              int             nGrow);
-        
+                                              int             nGrow = 0,
+                                              HowToFillGrow   how = HT_ZERO_GROW_CELLS);
+
     //
     // Make rho at time n.
     //

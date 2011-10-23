@@ -122,12 +122,13 @@ c     I/O
       save /ckdio1/
 
 c     Integrator
-      REAL_T spec_scalY(maxspec)
-      common /vode1/ spec_scalY
+      REAL_T spec_scalY(maxspec), mwt(maxspec), invmwt(maxspec)
+      common /vode1/ spec_scalY, mwt, invmwt
       save /vode1/
 
       REAL_T thickFacCH
-      common /vode2/ thickFacCH
+      integer idbg
+      common /vode2/ thickFacCH, idbg
       save /vode2/
             
 c     Transport library
@@ -140,6 +141,6 @@ c     Transport library
       save /tran3/
 
 c     SDC additions
-      REAL_T c_0(maxspec+1)
-      common /sdc_interp_coef/ c_0
+      REAL_T c_0(maxspec+1), c_1(maxspec+1), rhoh_INIT
+      common /sdc_interp_coef/ c_0, c_1, rhoh_INIT
       save /sdc_interp_coef/

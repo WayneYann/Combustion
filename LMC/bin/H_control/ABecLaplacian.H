@@ -145,6 +145,8 @@ public:
 
     virtual Real norm (int nm = 0, int level = 0, const bool local = false);
   
+    void Write(std::string& outfile) const;
+
 protected:
     //
     // initialize a full set (a,b) of coefficients on the box array
@@ -187,6 +189,8 @@ protected:
     //
     Real beta;
     
+    void WriteSub(std::string& outfile, int level) const;
+
 private:
     //
     // Flag, can a coeffs be trusted at a level.
