@@ -316,6 +316,12 @@ c        we take the gradient of Y from the second scal argument
 
 c     compute advective forcing term
       print *,'... computing advective forcing term = D^n + I_R^kmax'
+
+c      print *,'Force'
+c      do i=60,70
+c         print *,i,diff_old(i,FirstSpec),I_R_new(i,1),diff_old(i,FirstSpec)+I_R_new(i,1)
+c      enddo
+
       do i = 0,nx-1
          do n = 1,Nspec
             is = FirstSpec + n - 1
@@ -326,10 +332,17 @@ c     compute advective forcing term
 
 c     compute advection term
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
+      print *,'aofs'
+      do i=60,70
+         print *,i,aofs(i,Density)
+      enddo
 
 c     update density
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
+      do i=60,70
+         print *,i,scal_old(i,Density),scal_new(i,Density)
+      enddo
 
       if (sdc_pred_T_into_rhoh) then
 

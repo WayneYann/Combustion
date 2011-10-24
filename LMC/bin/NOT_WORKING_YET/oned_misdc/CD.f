@@ -76,7 +76,7 @@ c           compute thermal conductivity
             alpha = -1.0D0
 c           compute thermal conductivity with a different averating parameters
             CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
-            beta(i,Temp) = .5 * (l1 + l2)
+            beta(i,Temp) = .5d0 * (l1 + l2)
 c           Returns the mean specific heat at CP
             CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
             beta(i,RhoH) = beta(i,Temp) / CPMIX
@@ -84,12 +84,20 @@ c           Returns the mean specific heat at CP
 c           compute shear viscosity
             CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
             mu(i) = fourThirds*mu(i)
+
+c            do n=1,Nspec
+c               beta(i,FirstSpec+n-1) = 0.d0
+c            end do
+c            beta(i,RhoH) = 0.d0
+c            beta(i,Temp) = 0.d0
+c            mu(i) = 0.d0
+
          enddo
 
       else
          do i=-1, nx
 c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
-            mu(i) = 10.d0 * 1.85e-5*(MAX(scal(i,Temp),1.d0)/298.0)**.7
+            mu(i) = 10.d0 * 1.85d-5*(MAX(scal(i,Temp),1.d0)/298.d0)**.7d0
 c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
             rho = 0.d0
             do n=1,Nspec
@@ -488,8 +496,16 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
          RHO = 0.d0
          do K=1,Nspec
             RHO = RHO + Z(K)
+            if (dvd_debug.eq.1) then
+               print *,'rhoY:',K,Z(K)
+            endif
          enddo
-         
+
+         if (dvd_debug.eq.1) then
+            print *,'inside',Z(0)
+            print *,'inside',RHO
+          endif
+
          sumX = 0.d0
          do K=1,Nspec
             if (lim_rxns .eq. 0) then
@@ -513,8 +529,8 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
             errMax = hmix_TYP*1.e-20
             call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,
      &                          res,Niter)
-            T_INIT = T
 
+            T_INIT = T
             if (Niter.lt.0) then
                print *,'vodeF_T_RhoY: H to T solve failed'
                print *,'Niter=',Niter
@@ -539,11 +555,26 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
       else
 
          call CKWC(T,C,IWRK,RWRK,WDOTK)
+
+c            if (Y(1).gt..00297  .and. Y(1) .lt. .00298) then
+c               print *,'found it',WDOTK(1:Nspec),thickFacCH
+c               print *,'c_0',c_0(0:Nspec)
+c               print *,'c_1',c_1(0:Nspec)
+c               stop
+c            endif
+         
          do k= 1, Nspec
             ZP(k) = WDOTK(k)*mwt(k)/thickFacCH
      &           + c_0(k) + c_1(k)*TIME
+            if (dvd_debug.eq.1) then
+               print *,'ZP',K,ZP(K)
+            endif
          end do
          ZP(0) = c_0(0) + c_1(0)*TIME 
+         if (dvd_debug.eq.1) then
+c            stop
+         endif
+
 
       end if
 
@@ -656,7 +687,7 @@ C      DVIWRK(8) = 0
 C      DVIWRK(9) = 0
 C      DVIWRK(10) = 0
 
-      if (do_diag.eq.1) nsubchem = nchemdiag
+c      if (do_diag.eq.1) nsubchem = nchemdiag
 
       
       MF = 22
@@ -664,8 +695,8 @@ C      DVIWRK(10) = 0
       TT1 = 0.d0
       TT2 = dt
       if (do_diag.eq.1) then
-         nsub = nsubchem
-         dtloc = dt/nsubchem
+         nsub = nchemdiag
+         dtloc = dt/nsub
       else
          nsub = 1
          dtloc = dt
