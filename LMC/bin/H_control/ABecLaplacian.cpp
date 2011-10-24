@@ -192,13 +192,6 @@ ABecLaplacian::invalidate_b_to_level (int lev)
 
 void
 ABecLaplacian::compFlux (D_DECL(MultiFab &xflux, MultiFab &yflux, MultiFab &zflux),
-			 MultiFab& in, const BC_Mode& bc_mode, int sComp, int dComp)
-{
-    compFlux(D_DECL(xflux, yflux, zflux), in, bc_mode, true, sComp, dComp);
-}
-
-void
-ABecLaplacian::compFlux (D_DECL(MultiFab &xflux, MultiFab &yflux, MultiFab &zflux),
                          MultiFab& in, const BC_Mode& bc_mode, bool do_ApplyBC, int src_comp, int dst_comp)
 {
     int level = 0;
