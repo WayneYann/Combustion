@@ -89,9 +89,9 @@
       scale = million
 
 #define DO_JBB_HACK
+#undef DO_JBB_HACK
 #define TRIGGER_NEW_J
 #undef ALWAYS_NEW_J
-#undef SOLN_IS_1D
 
 #ifdef MIKE1
       do n=1,Nrxns
@@ -602,15 +602,6 @@ c     Set up ATOL
             endif
             ISTATE = 1
 
-#ifdef SOLN_IS_1D
-            if (i.ne.lo(1))then
-               do m=1,Nspec
-                  Ynew(i,j,m) = Ynew(lo(1),j,m)
-               end do
-               Tnew(i,j) = Tnew(lo(1),j)
-            else
-#endif
-
             RWRK(NZ) = Told(i,j)
 
 #ifdef DO_JBB_HACK
@@ -776,9 +767,6 @@ c
             end do
 #endif
 
-#ifdef SOLN_IS_1D
-         endif
-#endif
       endif
       end do
       end do
@@ -786,9 +774,11 @@ c
 
       subroutine FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
-     &     rhohnew,   DIMS(rhohnew),
+     &     rhoHnew,   DIMS(rhoHnew),
+     &     Tnew,      DIMS(Tnew),
      &     rhoYold,   DIMS(rhoYold), 
-     &     rhohold,   DIMS(rhohold),
+     &     rhoHold,   DIMS(rhoHold),
+     &     Told,      DIMS(Told),
      &     const_src, DIMS(const_src),
      &     I_R,       DIMS(I_R),
      &     FuncCount, DIMS(FuncCount),
@@ -804,17 +794,21 @@ c
 
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(rhoYold)
-      integer DIMDEC(rhohold)
+      integer DIMDEC(rhoHold)
+      integer DIMDEC(Told)
       integer DIMDEC(rhoYnew)
-      integer DIMDEC(rhohnew)
+      integer DIMDEC(rhoHnew)
+      integer DIMDEC(Tnew)
       integer DIMDEC(const_src)
       integer DIMDEC(I_R)
       integer DIMDEC(FuncCount)
       integer do_diag
       REAL_T rhoYold(DIMV(rhoYold),*)
-      REAL_T rhohold(DIMV(rhohold))
+      REAL_T rhoHold(DIMV(rhoHold))
+      REAL_T Told(DIMV(Told))
       REAL_T rhoYnew(DIMV(rhoYnew),*)
-      REAL_T rhohnew(DIMV(rhohnew))
+      REAL_T rhoHnew(DIMV(rhoHnew))
+      REAL_T Tnew(DIMV(rhoHnew))
       REAL_T const_src(DIMV(const_src),1:Nspec+1)
       REAL_T I_R(DIMV(I_R),*)
       REAL_T FuncCount(DIMV(FuncCount))
@@ -837,6 +831,8 @@ c
       REAL_T TT1, TT2, RU, RUC, P1atm
       integer i, j, m, MF, ISTATE, lout
       character*(maxspnml) name
+
+      REAL_T rho, rhoInv, h_INIT, Yt(maxspec),hmix_ck
 
       integer nsubchem, nsub, node
       REAL_T dtloc, weight, TT1save
@@ -882,10 +878,6 @@ c     Set up ATOL
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
 
-           call set_c_0_sdc(const_src(i,j,:))
-
-           if(j.ge.0)then
-
             TT1 = zero
             if (do_diag.eq.1) then
                nsub = nsubchem
@@ -896,35 +888,16 @@ c     Set up ATOL
             endif
             ISTATE = 1
 
-#ifdef SOLN_IS_1D
-            if (i.ne.lo(1))then
-               do m=1,Nspec
-                  rhoYnew(i,j,m) = rhoYnew(lo(1),j,m)
-               end do
-               rhohnew(i,j) = rhohnew(lo(1),j)
-            else
-#endif
-
-            RWRK(NZ) = rhohold(i,j)
-
-#ifdef DO_JBB_HACK
-            sum = zero
             do m=1,Nspec
                rhoYtemp(m) = rhoYold(i,j,m)
-               rhoYtemp(m) = MAX(rhoYold(i,j,m),zero)
-               sum = sum+rhoYtemp(m)
-            end do
-            if (iN2 .gt. 0) then
-               rhoYtemp(iN2) = rhoYtemp(iN2)+one-sum
-            endif
-#else
-            do m=1,Nspec
-               rhoYtemp(m) = rhoYold(i,j,m)
-            end do
-#endif
-            do m=1,Nspec
                RWRK(NZ+m) = rhoYtemp(m)
             end do
+
+            rhoH_INIT = rhoHold(i,j)
+            T_INIT = Told(i,j)
+            RWRK(NZ) = rhoH_INIT
+            call set_c_0_sdc(const_src(i,j,:))
+
 
 #ifdef TRIGGER_NEW_J
             newJ_triggered = .FALSE.
@@ -943,6 +916,9 @@ c     Set up ATOL
 #ifdef ALWAYS_NEW_J
             FIRST = .TRUE.
 #endif
+
+#if 0
+c     Needs to be fixed rhoH->T
             if (do_diag.eq.1) then
                FuncCount(i,j) = 0
                CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
@@ -951,6 +927,7 @@ c     Set up ATOL
                   diag(i,j,m) = diag(i,j,m)+half*dtloc*Qt(m)*million
                enddo
             endif
+#endif
 
             do node = 1,nsub
                if (node.lt.nsub) then
@@ -983,7 +960,7 @@ c
                   if (bad_soln .EQV. .TRUE.) then
                      TT1 = TT1SAVE
                      FIRST = .TRUE.
-                     RWRK(NZ) = rhohold(i,j)
+                     RWRK(NZ) = rhoHold(i,j)
                      do m=1,Nspec
                         RWRK(NZ+m) = rhoYtemp(m)
                      end do
@@ -1002,6 +979,10 @@ c
 #endif
                TT1 = TT2
 
+
+#if 0
+c     Needs to be fixed rhoH->T
+               
                if (do_diag.eq.1) then
                   CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
                   CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
@@ -1040,9 +1021,9 @@ c
      &                 '),   Return code = ',ISTATE
                   write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
                   write(lout,995)
-     &                 'State ID,old,last,d(rhoh)/dt,d(rhoh)/dt*(dt)'
-                  write(lout,996) 'rhoh            ',
-     &                 rhohold(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
+     &                 'State ID,old,last,d(rhoH)/dt,d(rhoH)/dt*(dt)'
+                  write(lout,996) 'rhoH            ',
+     &                 rhoHold(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
                   do m=1,Nspec
                      call get_spec_name(name,m)
                      write(lout,996) name,rhoYold(i,j,m),
@@ -1053,39 +1034,27 @@ c
                   close(lout)
                   call bl_abort('VODE failed, see drop file, exiting...')
                end if
-            enddo
-
-            rhohnew(i,j) = RWRK(NZ)
-
-            do m= 1,Nspec
-               rhoYres(m) = RWRK(NZ+m)
-            end do
-
-#ifdef DO_JBB_HACK
-            do m=1,Nspec
-               rhoYnew(i,j,m) = rhoYold(i,j,m)+rhoYres(m)-rhoYtemp(m)
-            end do
-#else
-            do m=1,Nspec
-               rhoYnew(i,j,m) = rhoYres(m)
-            end do
 #endif
 
+            enddo
+            
+            rhoHnew(i,j) = RWRK(NZ)
+            Tnew(i,j) = T_INIT
+            do m= 1,Nspec
+               rhoYnew(i,j,m) = RWRK(NZ+m)
+            end do
+            
 c     compute I_R
-c     I_R for rhoh should be zero
-            I_R(i,j,1) = ( rhohnew(i,j) - rhohold(i,j) ) /dt - c_0(1)
-
+c     I_R for rhoH should be zero
+            I_R(i,j,1) = ( rhoHnew(i,j) - rhoHold(i,j) ) /dt - c_0(1)
+            
 c     I_R for rhoY
             do m=1,Nspec
                I_R(i,j,m+1) = (rhoYnew(i,j,m) - rhoYold(i,j,m)) / dt 
      &              - c_0(m+1)
             end do
 
-#ifdef SOLN_IS_1D
-         endif
-#endif
-      endif
-      end do
+         end do
       end do
       end
 

@@ -318,9 +318,11 @@ extern "C" {
 		       const Real* p, const Real* dt, Real* diag, const int* do_diag);
 
     void FORT_CONPSOLV_SDC(const int* lo, const int* hi,
-			   Real* Ynew, ARLIM_P(Ynlo), ARLIM_P(Ynhi),
+			   Real* rhoYnew, ARLIM_P(rhoYnlo), ARLIM_P(rhoYnhi),
+			   Real* rhoHnew, ARLIM_P(rhoHnlo), ARLIM_P(rhoHnhi),
 			   Real* Tnew, ARLIM_P(Tnlo), ARLIM_P(Tnhi),
-			   const Real* Yold, ARLIM_P(Yolo), ARLIM_P(Yohi),
+			   const Real* rhoYold, ARLIM_P(rhoYolo), ARLIM_P(rhoYohi),
+			   const Real* rhoHold, ARLIM_P(rhoHolo), ARLIM_P(rhoHohi),
 			   const Real* Told, ARLIM_P(Tolo), ARLIM_P(Tohi),
 			   const Real* const_src, ARLIM_P(cslo), ARLIM_P(cshi),
 			   Real* I_R, ARLIM_P(I_Rlo), ARLIM_P(I_Rhi),
