@@ -2934,6 +2934,17 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 #endif
 
         }
+#if 1
+        {
+            int old_prec = std::cout.precision(20);
+            std::cout << "just after diffuse scalars: flux RhoH" << std::endl;
+            for (int i=60; i<=70; ++i) {
+                IntVect iv(64,i);
+                std::cout << i << " " << (*SpecDiffusionFluxnp1[0])[0](iv,nspecies) << " " << (*SpecDiffusionFluxnp1[1])[0](iv,nspecies) << std::endl;
+            }
+            std::cout << std::setprecision(old_prec);
+        }
+#endif
         //
         // Modify/update new-time fluxes to ensure sum of species fluxes = 0, set heat flux and
         //  conduction terms, compute temperature sink (Fi.Grad(Hi)) -- all stored in class data
@@ -5071,8 +5082,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
                                                       rho_half,rho_flag,rhsscale,
                                                       beta,betaComp,alpha,alphaComp,bndry_already_filled);
         visc_op->maxOrder(diffusion->maxOrder());
-        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Phi,LinOp::Inhomogeneous_BC,phiComp,sigma);
-
+        bool do_applyBC = true;
+        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Phi,LinOp::Inhomogeneous_BC,do_applyBC,phiComp,sigma);
         delete visc_op;
     }
 
@@ -8232,7 +8243,8 @@ HeatTransfer::scalar_advection (Real dt,
             for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 Soln[Smfi].divide(S_old[Smfi],Smfi.validbox(),Density,0,1);
 
-            visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
+            bool do_applyBC = true;
+            visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln,LinOp::InhomgeneousBC,0,0);
             for (int d=0; d < BL_SPACEDIM; ++d)
                 fluxSC[d]->mult(-b/geom.CellSize()[d]);
             //
@@ -8307,7 +8319,8 @@ HeatTransfer::scalar_advection (Real dt,
             for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
 
-            visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
+            bool do_applyBC = true;
+            visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln,LinOp::InhomogeneousBC,0,0);
             for (int d=0; d < BL_SPACEDIM; ++d)
                 fluxSC[d]->mult(-b/geom.CellSize()[d]);
             //
@@ -8798,7 +8811,8 @@ HeatTransfer::mac_sync ()
                     for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                         Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
 
-		    visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
+                    bool do_applyBC = true;
+		    visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln,LinOp::InhomogeneousBC,do_applyBC,0,0);
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                         fluxSC[d]->mult(-b/geom.CellSize()[d]);
                     //

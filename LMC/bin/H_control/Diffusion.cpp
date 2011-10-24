@@ -371,7 +371,7 @@ Diffusion::diffuse_scalar (Real                   dt,
             for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 Soln[Smfi].divide(S_old[Smfi],Smfi.validbox(),Density,0,1);
         visc_op->apply(Rhs,Soln);
-        visc_op->compFlux(D_DECL(*fluxn[0],*fluxn[1],*fluxn[2]),Soln,LinOp::Inhomogeneous_BC,false);
+        visc_op->compFlux(D_DECL(*fluxn[0],*fluxn[1],*fluxn[2]),Soln,LinOp::Inhomogeneous_BC,false,0,fluxComp);
         for (int i = 0; i < BL_SPACEDIM; ++i)
             (*fluxn[i]).mult(-b/(dt*caller->Geom().CellSize()[i]));
         delete visc_op;
@@ -740,7 +740,8 @@ Diffusion::diffuse_scalar (Real                   dt,
     //
     // Get extensivefluxes from new-time op
     //
-    visc_op->compFlux(D_DECL(*fluxnp1[0],*fluxnp1[1],*fluxnp1[2]),Soln);
+    bool do_applyBC = true;
+    visc_op->compFlux(D_DECL(*fluxnp1[0],*fluxnp1[1],*fluxnp1[2]),Soln,LinOp::Inhomogeneous_BC,do_applyBC,0,fluxComp);
     for (int i = 0; i < BL_SPACEDIM; ++i)
         (*fluxnp1[i]).mult(b/(dt*caller->Geom().CellSize()[i]));
     delete visc_op;
@@ -1600,7 +1601,8 @@ Diffusion::diffuse_Ssync (MultiFab*              Ssync,
     checkBeta(flux, flux_allthere, flux_allnull);
     if (flux_allthere)
     {
-        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Soln,LinOp::Inhomogeneous_BC,0,fluxComp);
+        bool do_applyBC = true;
+        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Soln,LinOp::Inhomogeneous_BC,do_applyBC,0,fluxComp);
         for (int i = 0; i < BL_SPACEDIM; ++i)
             (*flux[i]).mult(b/(dt*caller->Geom().CellSize()[i]),0);
     }
