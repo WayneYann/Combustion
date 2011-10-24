@@ -181,8 +181,8 @@ public:
     void differential_diffusion_update (MultiFab& Force,
                                         int       FComp,
                                         Real      theta,
-                                        MultiFab* D = 0,
-                                        int       DComp = 0);
+                                        MultiFab& D,
+                                        int       DComp);
 
     void diffusion_flux_divergence (MultiFab& visc_terms,
                                     int       load_comp,
