@@ -507,11 +507,14 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
 
          else
 
+            T = T_INIT
             hmix = (rhoh_INIT + c_0(0)*
      &           TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
             errMax = hmix_TYP*1.e-20
             call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,
      &                          res,Niter)
+            T_INIT = T
+
             if (Niter.lt.0) then
                print *,'vodeF_T_RhoY: H to T solve failed'
                print *,'Niter=',Niter

@@ -80,7 +80,7 @@ c     Set linear source terms in common for ode integrators access
             c_0(0) = const_src(i,RhoH) + lin_src_old(i,RhoH)
             c_1(0) = (lin_src_new(i,RhoH) - lin_src_old(i,RhoH))/dt
             rhoh_INIT = scal_old(i,RhoH)
-
+            T_INIT = scal_old(i,Temp)
          endif
 
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
