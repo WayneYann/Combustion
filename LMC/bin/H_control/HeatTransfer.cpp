@@ -2230,12 +2230,7 @@ HeatTransfer::post_init (Real stop_time)
     // estimate of constraint, coarse levels are fine level averages, pressure
     // is zero.
     //
-    cout << "R1: " << get_new_data(RhoYchemProd_Type)[0](IntVect(64,64)) << endl;
-
     post_init_state();
-
-    cout << "R1: " << get_new_data(RhoYchemProd_Type)[0](IntVect(64,64)) << endl;
-
     //
     // Load typical values for each state component
     //
@@ -2875,18 +2870,17 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     const int nGrow = 0;
 
     // Do explicit update of (RhoY,RhoH) based on Force
+#if 0
     MultiFab::Copy(S_new,Force,0,first_spec,nspecies+1,0);
     S_new.mult(dt,first_spec,nspecies);
     MultiFab::Add(S_new,S_old,first_spec,first_spec,nspecies+1,0);
+#else
+    MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies+1,0);
+#endif
 
     if (theta > 0)  // then need to do solve (and np1 species diffusion fluxes are nonzero)
     {    
         MultiFab* rho_half = 0;
-        //
-        // Set diffusion solve mode so that inside diffuse_scalar, (S_new-S_old)-> delta_rhs
-        // FIXME
-        //
-        //Diffusion::SolveMode solve_mode = Diffusion::PREDICTOR;
         Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
         MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
 
@@ -5794,7 +5788,6 @@ HeatTransfer::predict_velocity (Real  dt,
     //
     MultiFab visc_terms(grids,nComp,1);
 
-    std::cout << "ht: pv1" << std::endl;
     if (be_cn_theta != 1.0)
     {
 	getViscTerms(visc_terms,Xvel,nComp,prev_time);
@@ -6563,19 +6556,6 @@ HeatTransfer::advance_sdc (Real time,
     //    1) nGrow=nGrowAdvForcing
     //    2) A stored in class as aofs
     //
-#if 0
-        const int old_prec = std::cout.precision(15);
-        cout << "Force" << endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            cout << i
-                 << " " << Dn[0](iv,0)
-                 << " " << get_new_data(RhoYchemProd_Type)[0](iv,0)
-                 << " " << Dn[0](iv,0)+get_new_data(RhoYchemProd_Type)[0](iv,0) << endl;
-        }
-        std::cout << std::setprecision(old_prec);
-#endif
-
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
     {
         FArrayBox& f = Forcing[mfi];
@@ -6592,20 +6572,9 @@ HeatTransfer::advance_sdc (Real time,
     Forcing.FillBoundary(0,nspecies+1);
     geom.FillPeriodicBoundary(Forcing,0,nspecies);
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-      std::cout << "A (SDC predictor) \n";
-    showMF("dd",Forcing,"dd_adv_forcing",level);
-
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
-    showMF("dd",*aofs,"dd_aofs",level);
-
     scalar_advection_update(dt, Density, RhoH);
-
-    showMF("dd",S_new,"dd_newrho",level);
     make_rho_curr_time();
-
-    //cout << "New predicted density" << endl;
-    //dump(S_new,Density);
 
     // 
     // Compute Dhat (F = A + R)  nGrow=0
@@ -6655,7 +6624,6 @@ HeatTransfer::advance_sdc (Real time,
     advance_chemistry(S_old,S_new,dt,0,&Forcing,0);
     temperature_stats(S_new);
 
-
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
@@ -6685,11 +6653,15 @@ HeatTransfer::advance_sdc (Real time,
             f.copy(d,gbox,0,gbox,0,nspecies+1);
             f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
         }
+        Forcing.setBndry(0);
+        Forcing.FillBoundary(0,nspecies+1);
+        geom.FillPeriodicBoundary(Forcing,0,nspecies);
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  A (SDC corrector " << sdc_iter << ")\n";
         compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
-        scalar_advection_update(dt, Density, Density);
+        scalar_advection_update(dt, Density, RhoH);
+        make_rho_curr_time();
 
         // 
         // Compute Dhat (F = A + R + 0.5(Dn - Dnp1))  nGrow=0
@@ -6702,7 +6674,7 @@ HeatTransfer::advance_sdc (Real time,
             const Box& box = mfi.validbox();
             FArrayBox& f = Forcing[mfi];
             const FArrayBox& a = (*aofs)[mfi];
-            const FArrayBox& r = get_old_data(RhoYchemProd_Type)[mfi];
+            const FArrayBox& r = get_new_data(RhoYchemProd_Type)[mfi];
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& dnp1 = Dnp1[mfi];
             
@@ -6730,7 +6702,7 @@ HeatTransfer::advance_sdc (Real time,
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& dhat = Dhat[mfi];
             const FArrayBox& dnp1 = Dnp1[mfi];
-            
+
             f.copy(dn,box,0,box,0,nspecies+1);
             f.minus(dnp1,box,box,0,0,nspecies+1);
             f.mult(0.5);
@@ -9724,9 +9696,6 @@ HeatTransfer::compute_vel_visc (Real      time,
 
         (*beta)[i].copy(tmp,0,0,1);
     }
-
-    cout << "HACKING zero vis" << endl;
-    beta->setVal(0);
 }
 
 void

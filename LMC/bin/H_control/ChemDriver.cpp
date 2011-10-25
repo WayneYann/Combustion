@@ -625,7 +625,7 @@ ChemDriver::solveTransient_sdc(FArrayBox&        rhoYnew,
                       const_src.dataPtr(0),       ARLIM(const_src.loVect()), ARLIM(const_src.hiVect()),
 		      I_R.dataPtr(0),             ARLIM(I_R.loVect()),       ARLIM(I_R.hiVect()),
                       FuncCount.dataPtr(),        ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
-		      &Patm, &dt, diagData, &do_diag, set_c_0_simple_sdc);
+		      &Patm, &dt, diagData, &do_diag);
 }
 
 void
