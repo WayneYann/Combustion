@@ -548,9 +548,9 @@ c           We use the latter because it is more robust
 
 c===================================================================
 
-c ... The routines YDOTFILL, DIVUFILL, DQRADFILL, and DSDTFILL
+c ... The routines RHOYDOTFILL, DIVUFILL, DQRADFILL, and DSDTFILL
 c     are here instead of in the problem dependent code because
-c     we always fill the quantitities ydot, divu, dqrad, and dsdt
+c     we always fill the quantitities rhoydot, divu, dqrad, and dsdt
 c     the same way
 
 c===================================================================
@@ -864,13 +864,13 @@ c                               inflow for burner in a can (bic, biac)
       endif            
       end
 
-      subroutine FORT_YDOTFILL (ydot,DIMS(ydot),domlo,domhi,delta,
-     &                          xlo,time,bc)
+      subroutine FORT_RHOYDOTFILL (rhoydot,DIMS(rhoydot),domlo,domhi,delta,
+     &                             xlo,time,bc)
 
-      integer    DIMDEC(ydot), bc(SDIM,2)
+      integer    DIMDEC(rhoydot), bc(SDIM,2)
       integer    domlo(SDIM), domhi(SDIM)
       REAL_T     delta(SDIM), xlo(SDIM), time
-      REAL_T     ydot(DIMV(ydot))
+      REAL_T     rhoydot(DIMV(rhoydot))
 
       integer    i, j
       integer    jlo, jhi, ilo, ihi
@@ -878,23 +878,23 @@ c                               inflow for burner in a can (bic, biac)
 
       integer lo(SDIM), hi(SDIM)
 
-      lo(1) = ARG_L1(ydot)
-      hi(1) = ARG_H1(ydot)
-      lo(2) = ARG_L2(ydot)
-      hi(2) = ARG_H2(ydot)
+      lo(1) = ARG_L1(rhoydot)
+      hi(1) = ARG_H1(rhoydot)
+      lo(2) = ARG_L2(rhoydot)
+      hi(2) = ARG_H2(rhoydot)
 
       ilo = max(lo(1),domlo(1))
       ihi = min(hi(1),domhi(1))
       jlo = max(lo(2),domlo(2))
       jhi = min(hi(2),domhi(2))
 
-      call filcc (ydot,DIMS(ydot),domlo,domhi,delta,xlo,bc)
+      call filcc (rhoydot,DIMS(rhoydot),domlo,domhi,delta,xlo,bc)
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
 c                               inflow for pipe
            do j = lo(2), domlo(2)-1
               do i = lo(1), hi(1)
-                 ydot(i,j) = 0.0
+                 rhoydot(i,j) = 0.0
               enddo
            enddo
       endif            
@@ -902,7 +902,7 @@ c                               inflow for pipe
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
            do j = domhi(2)+1, hi(2)
               do i = lo(1), hi(1)
-                 ydot(i,j) = 0.0
+                 rhoydot(i,j) = 0.0
               enddo
            enddo
       endif            
@@ -910,7 +910,7 @@ c                               inflow for pipe
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
            do i = lo(1), domlo(1)-1
              do j = lo(2), hi(2)
-               ydot(i,j) = zero
+               rhoydot(i,j) = zero
              enddo
            enddo
       endif            
@@ -919,7 +919,7 @@ c                               inflow for pipe
          do i = domhi(1)+1, hi(1)
            do j = lo(2),hi(2)
                 x = (float(i-lo(1))+.5)*delta(1)+xlo(1)
-	       ydot(i,j) = zero
+	       rhoydot(i,j) = zero
 	    enddo
 	 enddo
       endif            

@@ -9,7 +9,7 @@
 #    define FORT_DIVUFILL                  divufill
 #    define FORT_DSDTFILL                  dsdtfill
 #    define FORT_DQRADFILL                 dqradfill
-#    define FORT_YDOTFILL                  ydotfill
+#    define FORT_RHOYDOTFILL               rhoydotfill
 #    define FORT_EST_DIVU_DT               estdivudt
 #    define FORT_CHECK_DIVU_DT             checkdivudt
 #    define FORT_INIT_VISC_DATA            initviscdata
@@ -64,7 +64,7 @@
 #    define FORT_DIVUFILL                  divufill
 #    define FORT_DSDTFILL                  dsdtfill
 #    define FORT_DQRADFILL                 dqradfill
-#    define FORT_YDOTFILL                  ydotfill
+#    define FORT_RHOYDOTFILL               rhoydotfill
 #    define FORT_EST_DIVU_DT               estdivudt
 #    define FORT_CHECK_DIVU_DT             checkdivudt
 #    define FORT_INIT_VISC_DATA            initviscdata
@@ -91,7 +91,7 @@
 #    define FORT_DIVUFILL                  divufill_
 #    define FORT_DSDTFILL                  dsdtfill_
 #    define FORT_DQRADFILL                 dqradfill_
-#    define FORT_YDOTFILL                  ydotfill_
+#    define FORT_RHOYDOTFILL               rhoydotfill_
 #    define FORT_EST_DIVU_DT               estdivudt_
 #    define FORT_CHECK_DIVU_DT             checkdivudt_
 #    define FORT_INIT_VISC_DATA            initviscdata_
@@ -152,10 +152,10 @@ extern "C" {
                          const Real* dx, const Real* grd_lo,
                          const Real* time, const int* bc);
 
-    void FORT_YDOTFILL (Real* data, ARLIM_P(data_lo), ARLIM_P(data_hi),
-                         const int* dom_lo, const int* dom_hi,
-                         const Real* dx, const Real* grd_lo,
-                         const Real* time, const int* bc);
+    void FORT_RHOYDOTFILL (Real* data, ARLIM_P(data_lo), ARLIM_P(data_hi),
+                           const int* dom_lo, const int* dom_hi,
+                           const Real* dx, const Real* grd_lo,
+                           const Real* time, const int* bc);
 
     void FORT_EST_DIVU_DT(const int& flag,  const Real* divu_dt_factor,
                         const Real* dx, 

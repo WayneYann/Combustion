@@ -617,7 +617,7 @@ protected:
     static int         do_heat_sink;
     static int         unity_Le;
     static int         FuncCount_Type;
-    static int         RhoYchemProd_Type;
+    static int         RhoYdot_Type;
     static int         divu_ceiling;
     static Real        min_rho_divu_ceiling;
     static Real        divu_dt_factor;
@@ -677,13 +677,16 @@ protected:
     static Real        new_T_threshold;
     static Array<Real> typical_values;
 
-    static int         do_sdc;
-    static int         sdc_iterMAX;
+    static Array<std::string> speciesStateNames;
+    static Array<std::string> rhoydotNames;
+
+    static int do_sdc;
+    static int sdc_iterMAX;
     static int nGrowAdvForcing;
-    MultiFab Forcing;
-    MultiFab Dn;
-    MultiFab Dnp1;
-    MultiFab Dhat;
+    MultiFab   Forcing;
+    MultiFab   Dn;
+    MultiFab   Dnp1;
+    MultiFab   Dhat;
 
 
 };

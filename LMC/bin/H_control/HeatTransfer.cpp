@@ -109,7 +109,7 @@ int  HeatTransfer::RhoH;
 int  HeatTransfer::do_diffuse_sync;
 int  HeatTransfer::do_reflux_visc;
 int  HeatTransfer::dpdt_option;
-int  HeatTransfer::RhoYchemProd_Type;
+int  HeatTransfer::RhoYdot_Type;
 int  HeatTransfer::FuncCount_Type;
 int  HeatTransfer::divu_ceiling;
 Real HeatTransfer::divu_dt_factor;
@@ -171,6 +171,8 @@ std::string                                HeatTransfer::mcdd_transport_model;
 Array<int>  HeatTransfer::mcdd_nu1;
 Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
+Array<std::string> HeatTransfer::speciesStateNames;
+Array<std::string> HeatTransfer::rhoydotNames;
 
 void dump(const FArrayBox& fab, int comp)
 {
@@ -288,7 +290,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::do_diffuse_sync           = 1;
     HeatTransfer::do_reflux_visc            = 1;
     HeatTransfer::dpdt_option               = 2;
-    HeatTransfer::RhoYchemProd_Type                 = -1;
+    HeatTransfer::RhoYdot_Type                 = -1;
     HeatTransfer::FuncCount_Type            = -1;
     HeatTransfer::divu_ceiling              = 0;
     HeatTransfer::divu_dt_factor            = .5;
@@ -1100,18 +1102,18 @@ HeatTransfer::init_once ()
     //
     // Chemistry.
     //
-    int ydot_good = RhoYchemProd_Type >= 0 && RhoYchemProd_Type <desc_lst.size()
-        && RhoYchemProd_Type != Divu_Type
-        && RhoYchemProd_Type != Dsdt_Type
-        && RhoYchemProd_Type != State_Type;
+    int ydot_good = RhoYdot_Type >= 0 && RhoYdot_Type <desc_lst.size()
+        && RhoYdot_Type != Divu_Type
+        && RhoYdot_Type != Dsdt_Type
+        && RhoYdot_Type != State_Type;
     
     if (!ydot_good)
-        BoxLib::Error("HeatTransfer::init_once(): need RhoYchemProd_Type if do_chemistry");
+        BoxLib::Error("HeatTransfer::init_once(): need RhoYdot_Type if do_chemistry");
     
-    const StateDescriptor& ydot_cell = desc_lst[RhoYchemProd_Type];
+    const StateDescriptor& ydot_cell = desc_lst[RhoYdot_Type];
     int nydot = ydot_cell.nComp();
     if (nydot < nspecies)
-        BoxLib::Error("HeatTransfer::init_once(): RhoYchemProd_Type needs nspecies components");
+        BoxLib::Error("HeatTransfer::init_once(): RhoYdot_Type needs nspecies components");
     //
     // Enforce Le = 1, unless !unity_Le
     //
@@ -1437,7 +1439,7 @@ HeatTransfer::setTimeLevel (Real time,
 {
     NavierStokes::setTimeLevel(time, dt_old, dt_new);    
 
-    state[RhoYchemProd_Type].setTimeLevel(time,dt_old,dt_new);
+    state[RhoYdot_Type].setTimeLevel(time,dt_old,dt_new);
 
     state[FuncCount_Type].setTimeLevel(time,dt_old,dt_new);
 }
@@ -1885,7 +1887,7 @@ HeatTransfer::initDataOtherTypes ()
     //
     // Assume that by now, S_new has "good" data
     //
-    MultiFab& R = get_new_data(RhoYchemProd_Type);
+    MultiFab& R = get_new_data(RhoYdot_Type);
     if (do_sdc)
     {
         int nGrow = 0;
@@ -1973,9 +1975,9 @@ HeatTransfer::init (AmrLevel& old)
     //
     // Get best ydot data.
     //
-    MultiFab& Ydot = get_new_data(RhoYchemProd_Type);
+    MultiFab& Ydot = get_new_data(RhoYdot_Type);
 
-    for (FillPatchIterator fpi(*oldht,Ydot,Ydot.nGrow(),cur_time,RhoYchemProd_Type,0,nspecies);
+    for (FillPatchIterator fpi(*oldht,Ydot,Ydot.nGrow(),cur_time,RhoYdot_Type,0,nspecies);
          fpi.isValid();
          ++fpi)
     {
@@ -2008,7 +2010,7 @@ HeatTransfer::init ()
     //
     // Get best ydot data.
     //
-    FillCoarsePatch(get_new_data(RhoYchemProd_Type),0,cur_time,RhoYchemProd_Type,0,nspecies);
+    FillCoarsePatch(get_new_data(RhoYdot_Type),0,cur_time,RhoYdot_Type,0,nspecies);
 
     RhoH_to_Temp(get_new_data(State_Type));
 
@@ -2482,7 +2484,7 @@ HeatTransfer::sum_integrated_quantities ()
             
             for (int lev = 0; lev <= finest_level; lev++)
             {
-                MultiFab* mf = getLevel(lev).derive("sumYdot",time,0);
+                MultiFab* mf = getLevel(lev).derive("sumRhoYdot",time,0);
                 Real this_min = mf->min(0);
                 Real this_max = mf->max(0);
                 if (lev==0) {
@@ -2496,7 +2498,7 @@ HeatTransfer::sum_integrated_quantities ()
             }
             
             if (ParallelDescriptor::IOProcessor()) {
-                std::cout << "min,max sum Ydot = "
+                std::cout << "min,max sum RhoYdot = "
                           << min_sum << ", " << max_sum << '\n';
             }
         }       
@@ -2618,8 +2620,8 @@ HeatTransfer::resetState (Real time,
 {
     NavierStokes::resetState(time,dt_old,dt_new);
 
-    state[RhoYchemProd_Type].reset();
-    state[RhoYchemProd_Type].setTimeLevel(time,dt_old,dt_new);
+    state[RhoYdot_Type].reset();
+    state[RhoYdot_Type].setTimeLevel(time,dt_old,dt_new);
 
     state[FuncCount_Type].reset();
     state[FuncCount_Type].setTimeLevel(time,dt_old,dt_new);
@@ -6560,7 +6562,7 @@ HeatTransfer::advance_sdc (Real time,
     {
         FArrayBox& f = Forcing[mfi];
         const FArrayBox& d = Dn[mfi];
-        const FArrayBox& r = get_old_data(RhoYchemProd_Type)[mfi];
+        const FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
 
         // Note: assumes that Forcing is never used outside domain
         const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing) & geom.Domain(); 
@@ -6586,7 +6588,7 @@ HeatTransfer::advance_sdc (Real time,
         const Box& box = mfi.validbox();
         FArrayBox& f = Forcing[mfi];
         const FArrayBox& a = (*aofs)[mfi];
-        const FArrayBox& r = get_old_data(RhoYchemProd_Type)[mfi];
+        const FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
         
         f.copy(a,box,first_spec,box,0,nspecies+1);
         f.plus(r,box,box,0,0,nspecies);
@@ -6646,7 +6648,7 @@ HeatTransfer::advance_sdc (Real time,
         {
             FArrayBox& f = Forcing[mfi];
             const FArrayBox& d = Dn[mfi];
-            const FArrayBox& r = get_new_data(RhoYchemProd_Type)[mfi];
+            const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
             
             const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
             
@@ -6674,7 +6676,7 @@ HeatTransfer::advance_sdc (Real time,
             const Box& box = mfi.validbox();
             FArrayBox& f = Forcing[mfi];
             const FArrayBox& a = (*aofs)[mfi];
-            const FArrayBox& r = get_new_data(RhoYchemProd_Type)[mfi];
+            const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& dnp1 = Dnp1[mfi];
             
@@ -7145,13 +7147,13 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
     if (Ydot_action == HT_ImproveYdotOld)
     {
-        MultiFab& ydot_old = get_old_data(RhoYchemProd_Type);
+        MultiFab& ydot_old = get_old_data(RhoYdot_Type);
   	junk.define(ydot_old.boxArray(),nspecies,0,Fab_allocate);
 	ydot_tmp = &junk;
     }
     else if (Ydot_action == HT_EstimateYdotNew)
     {
-	ydot_tmp = &get_new_data(RhoYchemProd_Type);
+	ydot_tmp = &get_new_data(RhoYdot_Type);
     }
 
     if (hack_nochem)
@@ -7338,7 +7340,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
         {
             BL_ASSERT(ydot_tmp != 0);
 
-            MultiFab& ydot_old = get_old_data(RhoYchemProd_Type);
+            MultiFab& ydot_old = get_old_data(RhoYdot_Type);
 
             for (MFIter Ymfi(*ydot_tmp); Ymfi.isValid(); ++Ymfi)
             {
@@ -7401,7 +7403,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 		FArrayBox& fc = tmp[Smfi];
 		const FArrayBox& frc = (*Force)[Smfi];
 
-		FArrayBox& rYdot = get_new_data(RhoYchemProd_Type)[Smfi];
+		FArrayBox& rYdot = get_new_data(RhoYdot_Type)[Smfi];
 
                 if (plot_reactions &&
                     BoxLib::intersect(mf_old.boxArray(),auxDiag["REACTIONS"]->boxArray()).size() != 0)
@@ -8001,18 +8003,6 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
         //  function
         (*aofs)[i].mult(-1,Density,nspecies+2);
     }
-
-#if 1
-    if (1)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "AofS: aofs" << std::endl;
-        VisMF::Write((*EdgeState[0]),"junkD");
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-
-
 }
 
 void
@@ -9845,7 +9835,7 @@ HeatTransfer::calc_divu (Real      time,
     }
     showMF("divu",divu,"divu_1",level);
 
-    showMFsub("1D",get_data(RhoYchemProd_Type,time),stripBox,"1D_Ydot",level);
+    showMFsub("1D",get_data(RhoYdot_Type,time),stripBox,"1D_Ydot",level);
     if (dt > 0.0 || do_sdc)
     {
         //
@@ -9857,7 +9847,7 @@ HeatTransfer::calc_divu (Real      time,
 
         const int sCompH = 0;
 
-        for (FillPatchIterator Ydot_fpi(*this,delta_divu,0,time,RhoYchemProd_Type,0,nspecies);
+        for (FillPatchIterator Ydot_fpi(*this,delta_divu,0,time,RhoYdot_Type,0,nspecies);
              Ydot_fpi.isValid();
              ++Ydot_fpi)
         {
@@ -10405,26 +10395,6 @@ HeatTransfer::setPlotVariables ()
             parent->deleteDerivePlotVar("concentration");
     }
 
-    if (pp.query("plot_ydot",plot_ydot))
-    {
-        if (plot_ydot)
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "d[Y("+names[i]+")]/dt";
-                parent->addStatePlotVar(name);
-            }
-        }
-        else
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "d[Y("+names[i]+")]/dt";
-                parent->deleteStatePlotVar(name);
-            }
-        }
-    }
-  
     if (pp.query("plot_rhoY",plot_rhoY))
     {
         if (plot_rhoY)
