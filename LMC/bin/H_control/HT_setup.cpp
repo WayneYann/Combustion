@@ -573,18 +573,18 @@ HeatTransfer::variableSetUp ()
     // ***************  DEFINE SPECIES **************************
     //
     bcs.resize(nspecies);
-    name.resize(nspecies);
+    speciesStateNames.resize(nspecies);
 
     set_species_bc(bc,phys_bc);
 
     for (i = 0; i < nspecies; i++)
     {
         bcs[i]  = bc;
-        name[i] = "rho.Y(" + names[i] + ")";
+        speciesStateNames[i] = "rho.Y(" + names[i] + ")";
 
         desc_lst.setComponent(State_Type,
                               FirstSpec+i,
-                              name[i].c_str(),
+                              speciesStateNames[i].c_str(),
                               bc,
                               ChemBndryFunc(FORT_CHEMFILL,names[i]),
                               &cell_cons_interp);
@@ -798,10 +798,10 @@ HeatTransfer::variableSetUp ()
     //
     // Sum Ydot.
     //
-    derive_lst.add("sumYdot",IndexType::TheCellType(),1,FORT_DERSUMYDOT,the_same_box);
+    derive_lst.add("sumRhoYdot",IndexType::TheCellType(),1,FORT_DERSUMRHOYDOT,the_same_box);
     for (i = 0; i < nspecies; i++)
     {
-        derive_lst.addComponent("sumYdot",desc_lst,RhoYchemProd_Type,i,1);
+        derive_lst.addComponent("sumRhoYdot",desc_lst,RhoYdot_Type,i,1);
     }
     //
     // **************  DEFINE DERIVED QUANTITIES ********************
@@ -1011,49 +1011,49 @@ HTBld::operator() (Amr&            papa,
 
 static
 int
-ydot_bc[] =
+rhoydot_bc[] =
 {
     INT_DIR, EXT_DIR, FOEXTRAP, REFLECT_EVEN, REFLECT_EVEN, REFLECT_EVEN
 };
 
 static
 void
-set_ydot_bc (BCRec&       bc,
-             const BCRec& phys_bc)
+set_rhoydot_bc (BCRec&       bc,
+                const BCRec& phys_bc)
 {
     const int* lo_bc = phys_bc.lo();
     const int* hi_bc = phys_bc.hi();
 
     for (int i = 0; i < BL_SPACEDIM; i++)
     {
-	bc.setLo(i,ydot_bc[lo_bc[i]]);
-	bc.setHi(i,ydot_bc[hi_bc[i]]);
+	bc.setLo(i,rhoydot_bc[lo_bc[i]]);
+	bc.setHi(i,rhoydot_bc[hi_bc[i]]);
     }
 }
 
 void
 HeatTransfer::ydotSetUp()
 {
-    RhoYchemProd_Type       = desc_lst.size();
+    RhoYdot_Type = desc_lst.size();
     const int ngrow = 1;
-    const int nydot = getChemSolve().numSpecies();
+    const int num_rhoydot = getChemSolve().numSpecies();
 
     if (ParallelDescriptor::IOProcessor())
-	std::cout << "RhoYchemProd_Type, nydot = " << RhoYchemProd_Type << ' ' << nydot << '\n';
+	std::cout << "RhoYdot_Type, num_rhoydot = " << RhoYdot_Type << ' ' << num_rhoydot << '\n';
 
-    desc_lst.addDescriptor(RhoYchemProd_Type,IndexType::TheCellType(),
-			   StateDescriptor::Point,ngrow,nydot,
+    desc_lst.addDescriptor(RhoYdot_Type,IndexType::TheCellType(),
+			   StateDescriptor::Point,ngrow,num_rhoydot,
 			   &lincc_interp);
 	
-    //const StateDescriptor& d_cell = desc_lst[State_Type];
-    const Array<std::string>& names   = getChemSolve().speciesNames();
+    const Array<std::string>& names = getChemSolve().speciesNames();
 
     BCRec bc;	
-    set_ydot_bc(bc,phys_bc);
-    for (int i = 0; i < nydot; i++)
+    set_rhoydot_bc(bc,phys_bc);
+    rhoydotNames.resize(num_rhoydot);
+    for (int i = 0; i < num_rhoydot; i++)
     {
-	const std::string name = "d[Y("+names[i]+")]/dt";
-	desc_lst.setComponent(RhoYchemProd_Type, i, name.c_str(), bc,
-			      BndryFunc(FORT_YDOTFILL), &lincc_interp, 0, nydot-1);
+	rhoydotNames[i] = "d[RhoY("+names[i]+")]/dt";
+	desc_lst.setComponent(RhoYdot_Type, i, rhoydotNames[i].c_str(), bc,
+			      BndryFunc(FORT_RHOYDOTFILL), &lincc_interp, 0, num_rhoydot-1);
     }
 }
