@@ -140,7 +140,9 @@ c     Initialize chem/tran database
 
       Pcgs = Patm * P1ATM
       
-      dx = (probhi-problo)/DBLE(nx)
+
+c      dx = (probhi-problo)/DBLE(nx)
+      dx = 1.d2*(1.d-2*probhi - 1.d-2*problo)/DBLE(128)
       
       call probinit(problo,probhi)
       

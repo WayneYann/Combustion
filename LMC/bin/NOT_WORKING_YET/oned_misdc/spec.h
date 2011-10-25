@@ -55,8 +55,8 @@ c     DVODE driver stuff
       save /dvdi/
 
       double precision c_0(0:maxspec), c_1(0:maxspec), rhoh_INIT,
-     &     hmix_TYP
-      common / dvdr / c_0, c_1, rhoh_INIT, hmix_TYP
+     &     T_INIT, hmix_TYP
+      common / dvdr / c_0, c_1, rhoh_INIT, T_INIT, hmix_TYP
       save /dvdr/
 
 c     LMC alg stuff

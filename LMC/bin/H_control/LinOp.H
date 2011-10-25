@@ -142,7 +142,7 @@ public:
     // Compute flux associated with the op
     //
     virtual void compFlux (D_DECL(MultiFab &xflux, MultiFab &yflux, MultiFab &zflux),
-			   MultiFab& in, const BC_Mode& bc_mode=Inhomogeneous_BC, int sComp=0, int dComp=0) = 0;
+			   MultiFab& in, const BC_Mode& bc_mode, bool do_ApplyBC, int sComp, int dComp) = 0;
     //
     // Return the boundary data object.
     //

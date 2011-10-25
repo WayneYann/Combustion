@@ -181,8 +181,8 @@ public:
     void differential_diffusion_update (MultiFab& Force,
                                         int       FComp,
                                         Real      theta,
-                                        MultiFab* D = 0,
-                                        int       DComp = 0);
+                                        MultiFab& D,
+                                        int       DComp);
 
     void diffusion_flux_divergence (MultiFab& visc_terms,
                                     int       load_comp,
@@ -194,7 +194,8 @@ public:
     void set_differential_diffusion_fluxes (const Real& time);
 
     void adjust_spec_diffusion_fluxes (Real                   time,
-                                       const MultiFab* const* beta);
+                                       const MultiFab* const* beta,
+                                       bool                   grow_cells_already_filled);
 
     virtual void scalar_diffusion_update (Real dt,
                                           int  first_scalar, 

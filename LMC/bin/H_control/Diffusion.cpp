@@ -371,9 +371,9 @@ Diffusion::diffuse_scalar (Real                   dt,
             for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 Soln[Smfi].divide(S_old[Smfi],Smfi.validbox(),Density,0,1);
         visc_op->apply(Rhs,Soln);
-        visc_op->compFlux(D_DECL(*fluxn[0],*fluxn[1],*fluxn[2]),Soln,LinOp::Inhomogeneous_BC,false);
+        visc_op->compFlux(D_DECL(*fluxn[0],*fluxn[1],*fluxn[2]),Soln,LinOp::Inhomogeneous_BC,false,0,fluxComp);
         for (int i = 0; i < BL_SPACEDIM; ++i)
-            (*fluxn[i]).mult(-b/(dt*caller->Geom().CellSize()[i]));
+            (*fluxn[i]).mult(-b/(dt*caller->Geom().CellSize()[i]),fluxComp,1,0);
         delete visc_op;
     }
     else
@@ -424,38 +424,6 @@ Diffusion::diffuse_scalar (Real                   dt,
             Rhs[mfi].plus(tmpfab,box,0,0,1);
         }
     }
-
-#if 1
-    if (sigma==3)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "inside diffusion drhs" << std::endl;
-        if (delta_rhs==0) {
-            std::cout << " none " << std::endl;
-        }
-        else
-        {
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << (*delta_rhs)[0](iv) << std::endl;
-            }
-        }
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-#if 1
-    if (sigma==3)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "inside diffusion Rhs" << std::endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            std::cout << i << " " << Rhs[0](iv) << std::endl;
-        }
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-
 
     //
     // Add hoop stress for x-velocity in r-z coordinates
@@ -534,30 +502,6 @@ Diffusion::diffuse_scalar (Real                   dt,
         for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
             Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
 
-#if 1
-    if (sigma==3)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "inside diffusion Soln_init" << std::endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            std::cout << i << " " << Soln[0](iv) << std::endl;
-        }
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-#if 1
-    if (sigma==3)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "inside diffusion betanp1_y" << std::endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            std::cout << i << " " << (*betanp1[1])[0](iv,betaComp) << std::endl;
-        }
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
     //
     // Construct viscous operator with bndry data at time N+1.
     //
@@ -571,27 +515,6 @@ Diffusion::diffuse_scalar (Real                   dt,
 
     ABecLaplacian* visc_op  = getViscOp(sigma,a,b,cur_time,visc_bndry,rho_half,
                                         rho_flag,&rhsscale,betanp1,betaComp,alpha,alphaComp);
-#if 0
-    if (sigma==3)
-    {
-
-        visc_op->maxOrder(max_order);
-        visc_op->apply(Rhs,Soln);
-
-
-        const int old_prec = std::cout.precision(20);
-        std::cout << "inside diffusion L(soln_init)" << std::endl;
-        //for (int i=60; i<=70; ++i) {
-        for (int i=0; i<=127; ++i) {
-            IntVect iv(64,i);
-            std::cout << i << " " << Rhs[0](iv) << std::endl;
-        }
-        std::cout << std::setprecision(old_prec);
-        BoxLib::Abort();
-    }
-#endif
-
-
     Rhs.mult(rhsscale,0,1);
     visc_op->maxOrder(max_order);
 
@@ -688,61 +611,17 @@ Diffusion::diffuse_scalar (Real                   dt,
 #endif
     else
     {
-
-#if 1
-    if (sigma==3)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "going into mg solve: Soln" << std::endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            std::cout << i << " " << Soln[0](iv) << std::endl;
-        }
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-#if 1
-    if (sigma==3)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "going into mg solve: Rhs" << std::endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            std::cout << i << " " << Rhs[0](iv) << std::endl;
-        }
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-#if 1
-    if (sigma==3)
-    {
-        std::string outfile("MyOp");
-        visc_op->Write(outfile);
-    }
-#endif
-
         MultiGrid mg(*visc_op);
         mg.solve(Soln,Rhs,S_tol,S_tol_abs);
     }
-#if 1
-    if (sigma==3)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "inside diffusion 2" << std::endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            std::cout << i << " " << Soln[0](iv) << std::endl;
-        }
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
     Rhs.clear();
     //
     // Get extensivefluxes from new-time op
     //
-    visc_op->compFlux(D_DECL(*fluxnp1[0],*fluxnp1[1],*fluxnp1[2]),Soln);
+    bool do_applyBC = true;
+    visc_op->compFlux(D_DECL(*fluxnp1[0],*fluxnp1[1],*fluxnp1[2]),Soln,LinOp::Inhomogeneous_BC,do_applyBC,0,fluxComp);
     for (int i = 0; i < BL_SPACEDIM; ++i)
-        (*fluxnp1[i]).mult(b/(dt*caller->Geom().CellSize()[i]));
+        (*fluxnp1[i]).mult(b/(dt*caller->Geom().CellSize()[i]),fluxComp,1,0);
     delete visc_op;
     //
     // Copy into state variable at new time, without bc's
@@ -1600,9 +1479,10 @@ Diffusion::diffuse_Ssync (MultiFab*              Ssync,
     checkBeta(flux, flux_allthere, flux_allnull);
     if (flux_allthere)
     {
-        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Soln,LinOp::Inhomogeneous_BC,0,fluxComp);
+        bool do_applyBC = true;
+        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Soln,LinOp::Inhomogeneous_BC,do_applyBC,0,fluxComp);
         for (int i = 0; i < BL_SPACEDIM; ++i)
-            (*flux[i]).mult(b/(dt*caller->Geom().CellSize()[i]),0);
+            (*flux[i]).mult(b/(dt*caller->Geom().CellSize()[i]),fluxComp,1,0);
     }
 
     MultiFab::Copy(*Ssync,Soln,0,sigma,1,0);
@@ -1956,16 +1836,6 @@ Diffusion::getViscOp (int                    comp,
             BL_ASSERT(grids[alphamfi.index()] == alphamfi.validbox());
             alpha[alphamfi].mult(S[alphamfi],alphamfi.validbox(),Density,0,1);
         }
-#if 1
-    if (comp==3)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "building viscop: S" << std::endl;
-        VisMF::Write(S,"junka");
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-        
     }
     if (alpha_in != 0)
     {
