@@ -790,10 +790,9 @@ C
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
-      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, T, HMIX_MKS, RINV_MKS
+      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
+      REAL_T rhoYDOT_MKS, Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
       integer K
-
-      REAL_T CONC_CGS(maxspec), WDOTS(maxspec), Y(maxspec)
 
 C     Needed to compute T from h
       REAL_T HtoTerrMAX
@@ -802,131 +801,62 @@ C     Needed to compute T from h
       parameter (HtoTiterMAX = 20)
       REAL_T res(0:HtoTiterMAX-1)
 
-      REAL_T RHO_CGS, RINV_CGS
+      REAL_T RHO_CGS, RINV_CGS, rhohmixDOT_MKS
 
 C
-C     Variables in Z are:  Z(1)   = T
-C                          Z(K+1) = rhoY(K)
-
-#if 1
+C     Variables in Z are:  Z(1:K) = rhoY(K)
+C                          Z(K+1) = RhoH
       RHO_MKS = 0.d0
       do K=1,Nspec
-         RHO_MKS = RHO_MKS + Z(K+1)
+         RHO_MKS = RHO_MKS + Z(K)
       enddo
       RINV_MKS = 1.d0 / RHO_MKS
       
-      RHO_CGS = 0.d0
       do K=1,Nspec
-         RHO_CGS = RHO_CGS + Z(K+1)*1.d-3
-         if (idbg.eq.1) then
-            print *,'rhoY:',K,Z(K+1)*1.d-3
-         endif
+         CONC_CGS(K) = Z(K)*invmwt(K)*1.d-3
+         Y(K) = Z(K) * RINV_MKS
       enddo
-      if (idbg.eq.1) then
-         print *,'inside',Z(1)
-         print *,'inside',RHO_CGS
-      endif
-      RINV_CGS = 1.d0 / RHO_CGS
 
-      do K=1,Nspec
-         CONC_CGS(K) = Z(K+1)*invmwt(K)*1.d-3
-c         Y(K) = Z(K+1) * RINV_MKS
-         Y(K) = Z(K+1) * RINV_CGS*1.d-3
-      enddo
-      T = Z(1)
-
-      HMIX_MKS = (rhoh_INIT + c_0(1)*TIME
-     &     + c_1(1)*TIME*TIME*0.5d0) * RINV_MKS
+      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
+     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
+      T = T_cell
 
 c     FIXME: Get proper stopping stopping criteria here
       call FORT_TfromHYpt(T,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
-
       if (Niter.lt.0) then
          print *,'conpFY_sdc: H to T solve failed'
+         print *,'  at cell:',i_cell,j_cell
          print *,'Niter=',Niter
+         print *,'RINV_MKS',RINV_MKS
+         print *,'RhoH_INIT',rhoh_INIT
+         print *,'H_INIT',rhoh_INIT*RINV_MKS
+         print *,'HMIX_MKS',HMIX_MKS
+         print *,'c_0(Nspec+1)',c_0(Nspec+1)
+         print *,'c_1(Nspec+1)',c_1(Nspec+1)
+         print *,'initial T',T_cell
+         print *,'current T',T
+         print *,'current RHOY',Z(1:Nspec)
+         print *,'initial RHOY',rhoY_INIT(1:Nspec)
+
+         CALL CKHBMS(T_cell,Y,IWRK(ckbi),RWRK(ckbr),HMIX_CGS)
+         print*,'hmix at current state:',HMIX_CGS*1.d-4
+
          stop
       endif
-      
+
+      T_cell = T      
       call CKWC(T,CONC_CGS,IWRK,RWRK,WDOT_CGS)
+
+      rhohmixDOT_MKS = c_0(Nspec+1) + c_1(Nspec+1)*TIME
+      ZP(Nspec+1) = rhohmixDOT_MKS
+
       THFAC = 1.d3/thickFacCH
       do k= 1, Nspec
-         ZP(k+1) = WDOT_CGS(k)*mwt(k)*THFAC
-     &        + c_0(k+1) + c_1(k+1)*TIME
-         if (idbg.eq.1) then
-            print *,'ZP',k+1,ZP(k+1)
-         endif
+         rhoYDOT_MKS = c_0(k) + c_1(k)*TIME
+         ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
       end do
-      ZP(1) = c_0(1) + c_1(1)*TIME 
-
-      if (idbg.eq.1) then
-c         stop
-      endif
-#else      
-      RHO = 0.d0
-      do k=1,Nspec
-         RHO = RHO + Z(k+1)
-      end do
-
-      do k=1,Nspec
-         Y(k) = Z(k+1) / RHO
-      end do
-
-c     Compute T from h
-      H = Z(1) / RHO
-      call FORT_TfromHYpt(T,H,Y,errMax,HtoTiterMAX,res,Niter)
-      if (Niter.lt.0) then
-         print *,'conpFY_sdc: H to T solve failed'
-         print *,'Niter=',Niter
-         stop
-      endif
-
-      CALL CKYTCP(RPAR(NP),T,Y,IPAR(ckbi),RPAR(ckbr),CONC)
-      CALL CKWC(T, CONC, IPAR(ckbi), RPAR(ckbr), WDOT)
-
-c     rhoh
-      ZP(1) = c_0(1)
-
-c     rhoY
-      THFAC = one / thickFacCH
-      do k=1,Nspec
-         ZP(k+1) = WDOT(k) * mwt(k) + c_0(k+1)
-      end do
-#endif
-#if 0
-      print*, 'Z:'
-      do k = 1, Nspec+1
-         write(6,996) Z(K)
-      end do
-      print*, 'ZP:'
-      do k = 1, Nspec+1
-         write(6,996) ZP(K)
-      end do
-      print*, 'WDOT:'
-      do k = 1, Nspec
-         write(6,996) WDOTS(K)
-      end do
-
-996   format(e30.22)
-#endif
 
       END
-
-      subroutine set_c_0_simple_sdc(const_src)
-      implicit none
-#include "cdwrk.H"
-
-      REAL_T,  intent(in   ) :: const_src(1:)
-
-      integer n
-
-C     rhoh
-      c_0(1) = const_src(1)
-
-      do n=1,Nspec
-         c_0(n+1) = const_src(n+1)
-      end do
-
-      end subroutine set_c_0_simple_sdc
 
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)

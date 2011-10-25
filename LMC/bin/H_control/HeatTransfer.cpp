@@ -2230,12 +2230,7 @@ HeatTransfer::post_init (Real stop_time)
     // estimate of constraint, coarse levels are fine level averages, pressure
     // is zero.
     //
-    cout << "R1: " << get_new_data(RhoYchemProd_Type)[0](IntVect(64,64)) << endl;
-
     post_init_state();
-
-    cout << "R1: " << get_new_data(RhoYchemProd_Type)[0](IntVect(64,64)) << endl;
-
     //
     // Load typical values for each state component
     //
@@ -2883,29 +2878,9 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies+1,0);
 #endif
 
-#if 1
-    if (1)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "HT DD update: S_new" << std::endl;
-        VisMF::Write(Force,"junkS");
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-
-
     if (theta > 0)  // then need to do solve (and np1 species diffusion fluxes are nonzero)
     {    
-#if 0
-        MultiFab delta_rhs(grids,nspecies+2,nGrow);
-        delta_rhs.setVal(0);
-#endif
         MultiFab* rho_half = 0;
-        //
-        // Set diffusion solve mode so that inside diffuse_scalar, (S_new-S_old)-> delta_rhs
-        // FIXME
-        //
-        //Diffusion::SolveMode solve_mode = Diffusion::PREDICTOR;
         Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
         MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
 
@@ -2923,104 +2898,31 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             const int state_ind = first_spec + sigma;
             bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
             int rho_flag = 2;
-#if 0
-            diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
-                                      SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&delta_rhs,sigma,alpha,
-                                      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
-#else
             diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
                                       SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
                                       alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
-#endif
 
         }
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "just after diffuse: RhoH" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << S_new[0](iv,RhoH) << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "just after diffuse scalars: flux RhoH" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << (*SpecDiffusionFluxnp1[0])[0](iv,nspecies) << " " << (*SpecDiffusionFluxnp1[1])[0](iv,nspecies) << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
         //
         // Modify/update new-time fluxes to ensure sum of species fluxes = 0, set heat flux and
         //  conduction terms, compute temperature sink (Fi.Grad(Hi)) -- all stored in class data
         //
-        adjust_spec_diffusion_fluxes(curr_time,betanp1);
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "just after diffuse scalars: flux RhoH after adjustment" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << (*SpecDiffusionFluxnp1[0])[0](iv,nspecies) << " " << (*SpecDiffusionFluxnp1[1])[0](iv,nspecies) << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
+        bool grow_cells_already_filled = false;
+        adjust_spec_diffusion_fluxes(curr_time,betanp1,grow_cells_already_filled);
         diffusion->removeFluxBoxesLevel(betanp1);
 
         //
         // Now, re-diffuse the state with the modified fluxes, save the new-time D term
         //   (note that delta_rhs = (1-theta)*Dold + Force)
         //
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "just after adjust, before divergence: RhoH" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << S_new[0](iv,RhoH) << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
         diffusion_flux_divergence(D,DComp,curr_time,-1); // -ve because fluxes on LHS, D on RHS
 
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "just after diffuse: D, F" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << D[0](iv,DComp+nspecies) << " " << Force[0](iv,nspecies) << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
         {
             S_new[mfi].plus(Force[mfi],0,first_spec,nspecies+1);
             S_new[mfi].mult(dt*theta,first_spec,nspecies+1);
             S_new[mfi].plus(S_old[mfi],first_spec,first_spec,nspecies+1);
         }
-
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "just after diffuse: RhoH" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << S_new[0](iv,RhoH) << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
-
     }
     else
     {
@@ -3071,7 +2973,8 @@ HeatTransfer::make_rho_curr_time ()
 
 void
 HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
-					    const MultiFab* const* beta)
+					    const MultiFab* const* beta,
+                                            bool                   grow_cells_already_filled)
 {
     //
     // Here, assume that SpecDiffFluxn/np1 and grow cells in S are filled correctly for t=time.  In this function
@@ -3088,7 +2991,31 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
     MultiFab& sumSpecFluxDotGradH = (whichTime == AmrOldTime) ? sumSpecFluxDotGradHn : sumSpecFluxDotGradHnp1;
+
     MultiFab& S = get_data(State_Type,time);
+    if (!grow_cells_already_filled)
+    {
+        // Fill grow cells in the state for (Rho,RhoY,RhoH,T)
+        // For Dirichlet physical boundary grow cells, this data will live on the cell face, otherwise
+        // it will live at cell centers
+        int nGrow = 1;
+        BL_ASSERT(S.nGrow()>=nGrow);
+        FillPatchIterator Yfpi(*this,S,nGrow,time,State_Type,Density,nspecies+2);
+        FillPatchIterator Tfpi(*this,S,nGrow,time,State_Type,Temp,1);
+        for ( ; Yfpi.isValid() && Tfpi.isValid(); ++Yfpi, ++Tfpi)
+        {
+            const Box& vbox = Yfpi.validbox();
+            FArrayBox& fab = S[Tfpi];
+            BoxList gcells = BoxLib::boxDiff(Box(vbox).grow(nGrow),vbox);
+            for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
+            {
+                const Box& gbox = *it;
+                fab.copy(Yfpi(),gbox,0,gbox,Density,nspecies+2);
+                fab.copy(Tfpi(),gbox,0,gbox,Temp,1);
+            }
+        }
+    }
+
 
     // Get boundary info for Y (assume all Ys have the same boundary type
     const BCRec& Ybc = get_desc_lst()[State_Type].getBC(first_spec);
@@ -3101,17 +3028,6 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     showMFsub("1D",*flux[1],BoxLib::surroundingNodes(stripBox,1),"1D_dd_adj_fluxbefore",level);
     showMFsub("1D",S,Box(stripBox).grow(1,1),"1D_dd_adj_state",level);
     const Box& domain = geom.Domain();
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "in adjust: just before Fort call: RhoH fluxes" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << (*flux[0])[0](iv,nspecies) << " " << (*flux[1])[0](iv,nspecies) << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
         const Box& box   = mfi.validbox();
@@ -3127,32 +3043,6 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
                              &d, Ybc.vect());
         }
     }
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "in adjust: just after Fort call: RhoH fluxes" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << (*flux[0])[0](iv,nspecies) << " " << (*flux[1])[0](iv,nspecies) << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "in adjust: just after Fort call: y fluxes" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " ";
-                for (int n=0; n<nspecies+1; ++n) {
-                    std::cout << (*flux[1])[0](iv,n) << " " ;
-                }
-                std::cout << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
     showMFsub("1D",*flux[1],BoxLib::surroundingNodes(stripBox,1),"1D_dd_adj_fluxafter",level);
 
     //
@@ -3210,17 +3100,6 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
 #endif
                              fh.dataPtr(),     ARLIM(fh.loVect()), ARLIM(fh.hiVect()) );
     }
-#if 1
-        {
-            int old_prec = std::cout.precision(20);
-            std::cout << "in adjust: just after Fort enth terms call: RhoH fluxes" << std::endl;
-            for (int i=60; i<=70; ++i) {
-                IntVect iv(64,i);
-                std::cout << i << " " << (*flux[0])[0](iv,nspecies) << " " << (*flux[1])[0](iv,nspecies) << std::endl;
-            }
-            std::cout << std::setprecision(old_prec);
-        }
-#endif
     showMFsub("1D",sumSpecFluxDotGradH,stripBox,"1D_dd_adj_FiGHi",level);
     showMFsub("1D",*flux[1],BoxLib::surroundingNodes(stripBox,1),"1D_dd_adj_flux",level);
 }
@@ -5189,7 +5068,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
 
     // Remove scaling left in fluxes from solve
     for (int d=0; d < BL_SPACEDIM; ++d) {
-        flux[d]->mult(b/geom.CellSize()[d]);
+        flux[d]->mult(b/geom.CellSize()[d],0,nspecies+1);
     }
 
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
@@ -5198,7 +5077,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     //
     // Modify update/fluxes to preserve flux sum = 0, build heat flux and temperature source terms
     //
-    adjust_spec_diffusion_fluxes(time,beta);
+    bool grow_cells_already_filled = true;
+    adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
 
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         showMFsub("dd",*flux[dir],BoxLib::surroundingNodes(stripBox,dir),BoxLib::Concatenate("dd_flux_after1_",dir,1),level);
@@ -5221,16 +5101,6 @@ HeatTransfer::scalar_advection_update (Real dt,
         MultiFab& S_new = get_new_data(State_Type);
         const MultiFab& S_old = get_old_data(State_Type);
         
-#if 1
-    if (1)
-    {
-        const int old_prec = std::cout.precision(20);
-        std::cout << "HT advSDC: for rho_new" << std::endl;
-        VisMF::Write(*aofs,"junkF");
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-
         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
         {
             const Box& box   = mfi.validbox();
@@ -5918,7 +5788,6 @@ HeatTransfer::predict_velocity (Real  dt,
     //
     MultiFab visc_terms(grids,nComp,1);
 
-    std::cout << "ht: pv1" << std::endl;
     if (be_cn_theta != 1.0)
     {
 	getViscTerms(visc_terms,Xvel,nComp,prev_time);
@@ -6687,19 +6556,6 @@ HeatTransfer::advance_sdc (Real time,
     //    1) nGrow=nGrowAdvForcing
     //    2) A stored in class as aofs
     //
-#if 0
-        const int old_prec = std::cout.precision(15);
-        cout << "Force" << endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            cout << i
-                 << " " << Dn[0](iv,0)
-                 << " " << get_new_data(RhoYchemProd_Type)[0](iv,0)
-                 << " " << Dn[0](iv,0)+get_new_data(RhoYchemProd_Type)[0](iv,0) << endl;
-        }
-        std::cout << std::setprecision(old_prec);
-#endif
-
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
     {
         FArrayBox& f = Forcing[mfi];
@@ -6716,36 +6572,9 @@ HeatTransfer::advance_sdc (Real time,
     Forcing.FillBoundary(0,nspecies+1);
     geom.FillPeriodicBoundary(Forcing,0,nspecies);
 
-    //cout << "Tforce at pt: " << Forcing[0](IntVect(64,64)) << endl;
-
-    if (verbose && ParallelDescriptor::IOProcessor())
-      std::cout << "A (SDC predictor) \n";
-    showMF("dd",Forcing,"dd_adv_forcing",level);
-
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
-    showMF("dd",*aofs,"dd_aofs",level);
-
     scalar_advection_update(dt, Density, RhoH);
-#if 1
-    {
-        int old_prec = std::cout.precision(20);
-        cout << "rho" << endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            cout << i
-                 << " " << get_old_data(State_Type)[0](iv,Density)
-                 << " " << get_new_data(State_Type)[0](iv,Density)
-                 << endl;
-        }
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
-
-    showMF("dd",S_new,"dd_newrho",level);
     make_rho_curr_time();
-
-    //cout << "New predicted density" << endl;
-    //dump(S_new,Density);
 
     // 
     // Compute Dhat (F = A + R)  nGrow=0
@@ -6768,17 +6597,6 @@ HeatTransfer::advance_sdc (Real time,
     // FIXME: This 1/2 here needs to be generalized, consistent with the
     //  SDC correction equation below.
     Real theta = 0.5;
-#if 1
-    {
-        int old_prec = std::cout.precision(20);
-        std::cout << "just before diffusion" << std::endl;
-        for (int i=60; i<=70; ++i) {
-            IntVect iv(64,i);
-            std::cout << i << " " << get_new_data(State_Type)[0](iv,first_spec)/get_new_data(State_Type)[0](iv,Density) << std::endl;
-        }
-        std::cout << std::setprecision(old_prec);
-    }
-#endif
     differential_diffusion_update(Forcing,0,theta,Dhat,0);
     temperature_stats(S_new);
 
@@ -6802,10 +6620,9 @@ HeatTransfer::advance_sdc (Real time,
         f.plus(a,box,box,first_spec,0,nspecies+1);
     }
     if (verbose && ParallelDescriptor::IOProcessor())
-      std::cout << "R (SDC predictor) \n";
+        std::cout << "R (SDC predictor) \n";
     advance_chemistry(S_old,S_new,dt,0,&Forcing,0);
     temperature_stats(S_new);
-
 
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
     {
@@ -6836,11 +6653,15 @@ HeatTransfer::advance_sdc (Real time,
             f.copy(d,gbox,0,gbox,0,nspecies+1);
             f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
         }
+        Forcing.setBndry(0);
+        Forcing.FillBoundary(0,nspecies+1);
+        geom.FillPeriodicBoundary(Forcing,0,nspecies);
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  A (SDC corrector " << sdc_iter << ")\n";
         compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
-        scalar_advection_update(dt, Density, Density);
+        scalar_advection_update(dt, Density, RhoH);
+        make_rho_curr_time();
 
         // 
         // Compute Dhat (F = A + R + 0.5(Dn - Dnp1))  nGrow=0
@@ -6853,7 +6674,7 @@ HeatTransfer::advance_sdc (Real time,
             const Box& box = mfi.validbox();
             FArrayBox& f = Forcing[mfi];
             const FArrayBox& a = (*aofs)[mfi];
-            const FArrayBox& r = get_old_data(RhoYchemProd_Type)[mfi];
+            const FArrayBox& r = get_new_data(RhoYchemProd_Type)[mfi];
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& dnp1 = Dnp1[mfi];
             
@@ -6881,9 +6702,9 @@ HeatTransfer::advance_sdc (Real time,
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& dhat = Dhat[mfi];
             const FArrayBox& dnp1 = Dnp1[mfi];
-            
+
             f.copy(dn,box,0,box,0,nspecies+1);
-            f.minus(dnp1,box,box,0,nspecies+1);
+            f.minus(dnp1,box,box,0,0,nspecies+1);
             f.mult(0.5);
             
             f.plus(dhat,box,box,0,0,nspecies+1);
@@ -7569,12 +7390,18 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
             for (MFIter Smfi(mf_old); Smfi.isValid(); ++Smfi)
             {
-       	        FArrayBox& fa = mf_new[Smfi];
-                FArrayBox& fb = mf_old[Smfi];
-                const Box& bx = Smfi.validbox();
+       	        FArrayBox& rYn = mf_new[Smfi];
+       	        FArrayBox& rHn = mf_new[Smfi];
+       	        FArrayBox& Tn  = mf_new[Smfi];
+       	        const FArrayBox& rYo = mf_old[Smfi];
+       	        const FArrayBox& rHo = mf_old[Smfi];
+       	        const FArrayBox& To  = mf_old[Smfi];
+
+                const Box& box = Smfi.validbox();
 		FArrayBox& fc = tmp[Smfi];
-		const FArrayBox& fd = (*Force)[Smfi];
-		FArrayBox& fe = get_new_data(RhoYchemProd_Type)[Smfi];
+		const FArrayBox& frc = (*Force)[Smfi];
+
+		FArrayBox& rYdot = get_new_data(RhoYchemProd_Type)[Smfi];
 
                 if (plot_reactions &&
                     BoxLib::intersect(mf_old.boxArray(),auxDiag["REACTIONS"]->boxArray()).size() != 0)
@@ -7582,7 +7409,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                     chemDiag = &( (*auxDiag["REACTIONS"])[Smfi] );
                 }
 
-                getChemSolve().solveTransient_sdc(fa,fa,fb,fb,fd,fe,fc,bx,first_spec,RhoH,dt,Patm,chemDiag);
+                getChemSolve().solveTransient_sdc(rYn,rHn,Tn,  rYo,rHo,To,  frc, rYdot, fc, box, 
+                                                  first_spec, RhoH, Temp, dt, Patm, chemDiag);
             }
             //
             // When ngrow>0 this does NOT properly update FuncCount_Type since parallel
@@ -9436,7 +9264,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
     //
-    adjust_spec_diffusion_fluxes(cur_time,betanp1);
+    bool grow_cells_already_filled = false;
+    adjust_spec_diffusion_fluxes(cur_time,betanp1,grow_cells_already_filled);
     //
     // Recompute update with adjusted diffusion fluxes
     // 
@@ -9867,9 +9696,6 @@ HeatTransfer::compute_vel_visc (Real      time,
 
         (*beta)[i].copy(tmp,0,0,1);
     }
-
-    cout << "HACKING zero vis" << endl;
-    beta->setVal(0);
 }
 
 void

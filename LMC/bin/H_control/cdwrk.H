@@ -141,6 +141,10 @@ c     Transport library
       save /tran3/
 
 c     SDC additions
-      REAL_T c_0(maxspec+1), c_1(maxspec+1), rhoh_INIT
-      common /sdc_interp_coef/ c_0, c_1, rhoh_INIT
-      save /sdc_interp_coef/
+      REAL_T c_0(maxspec+1), c_1(maxspec+1), rhoH_INIT, T_cell, rhoY_INIT(maxspec)
+      common /sdc_function/ c_0, c_1, rhoH_INIT, T_cell, rhoY_INIT
+      save /sdc_function/
+
+      integer i_cell, j_cell, k_cell
+      common /sdc_cell_data/ i_cell, j_cell, k_cell
+      save /sdc_cell_data/

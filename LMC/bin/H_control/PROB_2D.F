@@ -81,11 +81,6 @@ c     Fuel
          u_bc(fuelZone) = 0.d0
          v_bc(fuelZone) = V_in
 
-
-         print *,'fuelID in Y: ',fuelID-1
-         print *,'fuelZone: ',fuelZone
-
-
 c     Air
          do n=1,Nspec
             Xt(n) = zero
@@ -93,17 +88,10 @@ c     Air
          Xt(oxidID) = 0.21d0
          Xt(iN2)    = 1.d0 - Xt(oxidID)
 
-         print *,'oxidID in Xt: ',oxidID
-         print *,'N2 in Xt: ',iN2
-         print *,'airZone: ',airZone
-
-         print *,'Xt in air: ',Xt(1:Nspec)
          CALL CKXTY (Xt, IWRK, RWRK, Yt)         
-         print *,'Yt in air: ',Yt(1:Nspec)
          do n=1,Nspec
             Y_bc(n-1,airZone) = Yt(n)
          end do
-         print *,'Y_bc in air: ',Y_bc(0:Nspec-1,airZone)
          
          T_bc(airZone) = T_in
          u_bc(airZone) = 0.d0
@@ -127,10 +115,6 @@ c     Set density and hmix consistent with data
      &                        T_bc(zone),   DIMARG(b), DIMARG(b),
      &                        Y_bc(0,zone), DIMARG(b), DIMARG(b))
       enddo
-
-      print *,'bc:'
-      print *,v_bc(1),rho_bc(1),Y_bc(0,1)
-
       bcinit = .true.
       end
 
@@ -364,22 +348,10 @@ c ::: -----------------------------------------------------------
      &                             + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
                endif
                   
-c               y1 = (y-half*delta(2)-standoff+pert)*100.d0
-c               y2 = (y+half*delta(2)-standoff+pert)*100.d0
-               y1 = (y - standoff - 0.5d0*delta(2))*100.d0
-               y2 = (y - standoff + 0.5d0*delta(2))*100.d0
+               y1 = (y - standoff - 0.5d0*delta(2) + pert)*100.d0
+               y2 = (y - standoff + 0.5d0*delta(2) + pert)*100.d0
                
-               call pmf(y1,y2,pmf_vals,nPMF)
-c               tmpi = INT(pmf_vals(1)*  10000)
-c               pmf_vals(1) = DBLE(tmpi)/10000
-c               if (i.eq.64 .and. j.eq.64) then
-c                  print *,'init:',pmf_vals(1)
-c               endif
-c               do n=4,nPMF
-c                  tmpi = INT(pmf_vals(n)*  10000000)
-c                  pmf_vals(n) = DBLE(tmpi)/10000000
-c               enddo
-               
+               call pmf(y1,y2,pmf_vals,nPMF)               
                if (nPMF.ne.Nspec+3) then
                   call bl_abort('INITDATA: n .ne. Nspec+3')
                endif
@@ -394,10 +366,6 @@ c               enddo
                do n = 1,Nspec
                   scal(i,j,FirstSpec+n-1) = Yl(n)
                end do
-
-               if (i.eq.64  .and.  j.ge.60  .and.  j.le.70 ) then
-                  print *,'init:',j,Yl(1)
-               endif
 
                scal(i,j,Trac) = 0.d0
 
@@ -448,26 +416,10 @@ c     Superimpose blob of hot air
      &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state),
      &     Patm)
 
-c      do j = lo(2), hi(2)
-c         do i = lo(1), hi(1)
-c            tmpi = INT(scal(i,j,Density)*1000)
-c            scal(i,j,Density) = DBLE(tmpi)/1000
-c         enddo
-c      enddo
-
-c      print *,'init:',scal(64,64,Density)
-
       call FORT_HMIXfromTY(lo,hi,
      &     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state))
-
-
-c      print *,'ic'
-c      i=64
-c      do j = lo(2), 10
-c         print *,j,scal(i,j,Density),scal(i,j,FirstSpec)
-c      enddo
 
       do j = lo(2), hi(2)
          do i = lo(1), hi(1)

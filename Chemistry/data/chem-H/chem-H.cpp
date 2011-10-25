@@ -340,8 +340,8 @@ void fecvrhs_(double * time, double * phi, double * phidot, double * rckwrk, int
 int fecvdim_();
 void fezndrhs_(double * time, double * z, double * zdot, double * rckwrk, int * ickwrk);
 int feznddim_();
-char* femechfile_();
-char* fesymname_(int sn);
+const char* femechfile_();
+const char* fesymname_(int sn);
 int fesymnum_(const char* s1);
 }
 
@@ -5414,7 +5414,7 @@ int feznddim_()
 
 
 /*returns the name of the source mechanism file  */
-char* femechfile_()
+const char* femechfile_()
 {
     return "";
 }
@@ -5438,7 +5438,7 @@ int fesymnum_(const char* s1)
 
 
 /*returns the species name */
-char* fesymname_(int sn)
+const char* fesymname_(int sn)
 {
     if (sn==0) return "H2"; 
     if (sn==1) return "H"; 

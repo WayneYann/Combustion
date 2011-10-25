@@ -26,7 +26,6 @@
 #    define FORT_CONC_TO_MOLE    dcontomol
 #    define FORT_CONPSOLV        dcpsolv
 #    define FORT_CONPSOLV_SDC    dcpsolv_sdc
-#    define set_c_0_simple_sdc   dset_c_0_simple_sdc
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
 #    define FORT_MIX_SHEAR_VISC  dmixshvis
 #    define FORT_RHOfromPTY      drhopty
@@ -81,7 +80,6 @@
 #    define FORT_CONC_TO_MOLE    DCONTOMOL
 #    define FORT_CONPSOLV        DCPSOLV
 #    define FORT_CONPSOLV_SDC    DCPSOLV_SDC
-#    define set_c_0_simple_sdc   DSET_C_0_SIMPLE_SDC
 #    define FORT_MIXAVG_RHODIFF_TEMP DMAVGDIFTEMP
 #    define FORT_MIX_SHEAR_VISC  DMIXSHVIS
 #    define FORT_RHOfromPTY      DRHOPTY
@@ -135,7 +133,6 @@
 #    define FORT_MOLETOMASS      dmoltoms
 #    define FORT_CONPSOLV        dcpsolv
 #    define FORT_CONPSOLV_SDC    dcpsolv_sdc
-#    define set_c_0_simple_sdc   dset_c_0_simple_sdc
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
 #    define FORT_MIX_SHEAR_VISC  dmixshvis
 #    define FORT_RHOfromPTY      drhopty
@@ -189,7 +186,6 @@
 #    define FORT_MOLETOMASS      dmoltoms_
 #    define FORT_CONPSOLV        dcpsolv_
 #    define FORT_CONPSOLV_SDC    dcpsolv_sdc_
-#    define set_c_0_simple_sdc   dset_c_0_simple_sdc_
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp_
 #    define FORT_MIX_SHEAR_VISC  dmixshvis_
 #    define FORT_RHOfromPTY      drhopty_
@@ -318,17 +314,16 @@ extern "C" {
 		       const Real* p, const Real* dt, Real* diag, const int* do_diag);
 
     void FORT_CONPSOLV_SDC(const int* lo, const int* hi,
-			   Real* Ynew, ARLIM_P(Ynlo), ARLIM_P(Ynhi),
+			   Real* rhoYnew, ARLIM_P(rhoYnlo), ARLIM_P(rhoYnhi),
+			   Real* rhoHnew, ARLIM_P(rhoHnlo), ARLIM_P(rhoHnhi),
 			   Real* Tnew, ARLIM_P(Tnlo), ARLIM_P(Tnhi),
-			   const Real* Yold, ARLIM_P(Yolo), ARLIM_P(Yohi),
+			   const Real* rhoYold, ARLIM_P(rhoYolo), ARLIM_P(rhoYohi),
+			   const Real* rhoHold, ARLIM_P(rhoHolo), ARLIM_P(rhoHohi),
 			   const Real* Told, ARLIM_P(Tolo), ARLIM_P(Tohi),
 			   const Real* const_src, ARLIM_P(cslo), ARLIM_P(cshi),
 			   Real* I_R, ARLIM_P(I_Rlo), ARLIM_P(I_Rhi),
 			   Real* FuncCount, ARLIM_P(FuncCountlo), ARLIM_P(FuncCounthi),
-			   const Real* p, const Real* dt, Real* diag, const int* do_diag, 
-			   void (*sdc_func)(Real* vodeforce));
-
-    void set_c_0_simple_sdc(Real* const_src);
+			   const Real* p, const Real* dt, Real* diag, const int* do_diag);
 
     void FORT_MIXAVG_RHODIFF_TEMP(const int* lo, const int* hi,
                                   Real*       RD, ARLIM_P(RDlo), ARLIM_P(RDhi),
