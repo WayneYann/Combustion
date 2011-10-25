@@ -221,7 +221,8 @@ extern "C" {
                           const Real* RY,ARLIM_P(RYlo), ARLIM_P(RYhi),
                           const int* dir, const int* bc);
 
-    void FORT_ENTH_DIFF_TERMS(const int* lo, const int* hi, const Real* dx,
+    void FORT_ENTH_DIFF_TERMS(const int* lo, const int* hi, 
+                              const int* dlo, const int* dhi, const Real* dx,
                               const Real* T, ARLIM_P(Tlo),  ARLIM_P(Thi),
 
                               const Real* rDx,ARLIM_P(rDxlo),ARLIM_P(rDxhi),
@@ -236,7 +237,8 @@ extern "C" {
                               const Real* Fiz,ARLIM_P(Fizlo),ARLIM_P(Fizhi),
                               const Real* az, ARLIM_P(azlo), ARLIM_P(azhi),
 #endif
-                              Real* fh,      ARLIM_P(fhlo), ARLIM_P(fhhi)  );
+                              Real* fh,      ARLIM_P(fhlo), ARLIM_P(fhhi),
+                              const int* Tbc);
 
     void FORT_FLUXDIV(const int* lo, const int* hi,
                       const Real* updat, ARLIM_P(uplo), ARLIM_P(uphi),

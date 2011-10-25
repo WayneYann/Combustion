@@ -3056,6 +3056,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     //
     showMFsub("1D",*beta[1],BoxLib::surroundingNodes(stripBox,1),"1D_dd_adj_beta",level);
 
+    const BCRec& Tbc = get_desc_lst()[State_Type].getBC(Temp);
     FArrayBox area[BL_SPACEDIM];
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
@@ -3085,7 +3086,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
 #endif
         const Real* dx = geom.CellSize();
 
-        FORT_ENTH_DIFF_TERMS(box.loVect(), box.hiVect(), dx,
+        FORT_ENTH_DIFF_TERMS(box.loVect(), box.hiVect(), domain.loVect(), domain.hiVect(), dx,
                              T.dataPtr(TComp), ARLIM(T.loVect()),  ARLIM(T.hiVect()),
 
                              rDx.dataPtr(dComp),ARLIM(rDx.loVect()),ARLIM(rDx.hiVect()),
@@ -3100,7 +3101,8 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
                              fiz.dataPtr(FComp),ARLIM(fiz.loVect()),ARLIM(fiz.hiVect()),
                              area[2].dataPtr(), ARLIM(area[2].loVect()),ARLIM(area[2].hiVect()),
 #endif
-                             fh.dataPtr(),     ARLIM(fh.loVect()), ARLIM(fh.hiVect()) );
+                             fh.dataPtr(),     ARLIM(fh.loVect()), ARLIM(fh.hiVect()),
+                             Tbc.vect() );
     }
     showMFsub("1D",sumSpecFluxDotGradH,stripBox,"1D_dd_adj_FiGHi",level);
     showMFsub("1D",*flux[1],BoxLib::surroundingNodes(stripBox,1),"1D_dd_adj_flux",level);
