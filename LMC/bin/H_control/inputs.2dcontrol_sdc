@@ -37,10 +37,6 @@ amr.derive_plot_vars=rhoRT mag_vort particle_count
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 
-geometry.prob_lo   = 0.000 0.00
-geometry.prob_hi   = 0.008 0.032
-geometry.prob_hi   = 0.008 0.008
-geometry.prob_hi   = 0.012 0.012
 
 # multigrid class
 mg.usecg = 1
@@ -64,10 +60,22 @@ ns.do_group_bndry_fills = 1
 mg.cg_solver=1
 #cg.cg_solver=1
 
-amr.n_cell    = 128 512
-amr.n_cell    = 128 128
-#amr.n_cell    = 64 256
-#amr.n_cell    = 32 64
+geometry.prob_lo   = 0.000 0.00
+geometry.prob_hi   = 0.00075 0.012
+
+amr.n_cell          = 8 128
+amr.blocking_factor = 8
+geometry.prob_hi   = 0.00075 0.012
+
+amr.n_cell          = 8 256
+amr.blocking_factor = 8
+geometry.prob_hi   = 0.000375 0.012
+
+amr.n_cell          = 8 512
+amr.blocking_factor = 8
+geometry.prob_hi   = 0.0001875 0.012
+
+amr.max_grid_size   = 32
 
 amr.v=1
 amr.max_level =  0            # maximum level number allowed
@@ -76,14 +84,11 @@ amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 4 2 1 2 # number of buffer cells in error est
 amr.grid_eff        = 0.9     # what constitutes an efficient grid
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
-amr.blocking_factor = 16      # block factor in grid generation
 amr.check_file      = chk     # root name of checkpoint file
 amr.check_int       = 10       # number of timesteps between checkpoints
 amr.plot_file       = plt
 amr.plot_int        = 10
 amr.grid_log        = grdlog  # name of grid logging file
-amr.max_grid_size   = 64
-amr.max_grid_size   = 128
 #amr.derive_plot_vars=ALL
 
 amr.probin_file = probin.2dcontrol_sdc # This will default to file "probin" if not set
@@ -130,7 +135,9 @@ ns.fuelName        = H2
 ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
+
 ns.do_sdc = 1
+ns.sdc_iterMAX = 3
 
 ns.dpdt_option = 0
 #macop.max_order = 3

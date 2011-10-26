@@ -328,7 +328,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
 
     HeatTransfer::do_sdc                    = 0;
-    HeatTransfer::sdc_iterMAX               = 3;
+    HeatTransfer::sdc_iterMAX               = 1;
 
 #ifdef PARTICLES
     timestamp_dir                    = "Timestamps";
@@ -379,6 +379,8 @@ HeatTransfer::Initialize ()
     }
 
     pp.query("do_sdc",do_sdc);
+    pp.query("sdc_iterMAX",sdc_iterMAX);
+
     pp.query("constant_mu_val",constant_mu_val);
     pp.query("constant_rhoD_val",constant_rhoD_val);
     pp.query("constant_lambda_val",constant_lambda_val);
@@ -5101,13 +5103,13 @@ HeatTransfer::diffusion_flux_divergence (MultiFab& visc_terms,
     showMFsub("dddt",*flux[1],BoxLib::surroundingNodes(stripBox,1),"dddt_yfluxD",level);
 
     FArrayBox volume;
-    PArray<FArrayBox> f(BL_SPACEDIM,PArrayNoManage);
     for (MFIter mfi(visc_terms); mfi.isValid(); ++mfi)
     {
 	int        iGrid = mfi.index();
 	const Box& box   = mfi.validbox();
         int nComp        = nspecies + 2; 
 
+        PArray<FArrayBox> f(BL_SPACEDIM,PArrayNoManage);
         for (int dir = 0; dir < BL_SPACEDIM; dir++)
             f.set(dir,&(*flux[dir])[mfi]); // easier to read below
 
