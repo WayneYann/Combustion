@@ -75,31 +75,6 @@ c     actually be centered on the edge, so the stencils below must reflect this
 
       call FORT_HfromT(lob, hib, H, DIMS(T), T, DIMS(T))
 
-c     Set FiGHi = (species flux) dot Grad(species enthalpy)
-c        compute Grad(H) on each face, and average across faces in each coordinate
-c        Fi is extensive here, so need to remove area.  Also, assume that we are 
-c        away from domain boundary, fix afterward
-c
-c     FIXME: This will fail for r-z since Ax(dlo(1),:)=0
-c
-      do n=1,Nspec
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               FiGHi(i,j) = 0.d0
-               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
-               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
-               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
-               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
-               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
-     &             ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
-     &             + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
-     &             + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
-     &             + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
-            enddo
-         enddo
-      enddo
-
-
 c     On entry, Fx(1:Nspec) = spec flux, Fx(Nspec+1) = - (lambda/cp).Grad(Hmix)
 c     On exit, Fx(Nspec+1) is the heat flux = - lambda.Grad(T) + (species flux).(species enthalpy)
 c       Since Hmix = sum(Yi.Hi), lambda.Grad(T) = (lambda/cp).(Grad(Hmix) - Hi.Grad(Y)
@@ -108,6 +83,7 @@ c       heat flux = - (lambda/cp).Grad(Hmix) + Hi.(species flux).(1 - (lambda/(c
 c
 c     Also, conduction = - lambda.Grad(T) = (heat flux) - (species flux).(species enthalpy)
 c                (or, simply -lambda.Grad(T) computed using T and lambda passed in)
+
       dxInv = 1.d0 / dx(1)
       if (lo(1).eq.dlo(1)  .and.  Tbc(1,1).eq.EXT_DIR) then
          fix_xlo = .true.
@@ -167,25 +143,9 @@ c                (or, simply -lambda.Grad(T) computed using T and lambda passed 
          enddo
       enddo
 
-c     Now do it all again for phys boundaries
 
 c     xlo
       if (fix_xlo) then
-         do n=1,Nspec
-            do j=lo(2),hi(2)
-               i = lo(1)
-               FiGHi(i,j) = 0.d0
-               AxDxInv_lo = 2.d0/(Ax(i,j)*dx(1))
-               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
-               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
-               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
-               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
-     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
-     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
-     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
-     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
-            enddo
-         enddo
          do n=1,Nspec
             do j=lo(2),hi(2)
                i=lo(1)
@@ -203,21 +163,6 @@ c     xhi
       if (fix_xhi) then
          do n=1,Nspec
             do j=lo(2),hi(2)
-               i = hi(1)
-               FiGHi(i,j) = 0.d0
-               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
-               AxDxInv_hi = 2.d0/(Ax(i+1,j)*dx(1))
-               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
-               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
-               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
-     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
-     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
-     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
-     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
-            enddo
-         enddo
-         do n=1,Nspec
-            do j=lo(2),hi(2)
                i=hi(1)+1
                FiHi = H(i,j,n)*Fx(i,j,n)
                Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
@@ -231,21 +176,6 @@ c     xhi
 
 c     ylo
       if (fix_ylo) then
-         do n=1,Nspec
-            do i=lo(1),hi(1)
-               j = lo(2)
-               FiGHi(i,j) = 0.d0
-               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
-               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
-               AyDyInv_lo = 2.d0/(Ay(i,j)*dx(2))
-               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
-               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
-     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
-     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
-     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
-     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
-            enddo
-         enddo
          do n=1,Nspec
             do i=lo(1),hi(1)
                j=lo(2)
@@ -263,21 +193,6 @@ c     yhi
       if (fix_yhi) then
          do n=1,Nspec
             do i=lo(1),hi(1)
-               j = hi(2)
-               FiGHi(i,j) = 0.d0
-               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
-               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
-               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
-               AyDyInv_hi = 2.d0/(Ay(i,j+1)*dx(2))
-               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
-     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
-     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
-     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
-     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
-            enddo
-         enddo
-         do n=1,Nspec
-            do i=lo(1),hi(1)
                j=hi(2)+1
                FiHi = H(i,j,n)*Fy(i,j,n)
                Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
@@ -289,9 +204,121 @@ c     yhi
          enddo
       endif
 
+
+
+
+c     Set FiGHi = (species flux) dot Grad(species enthalpy)
+c        compute Grad(H) on each face, and average across faces in each coordinate
+c        Fi is extensive here, so need to remove area.  Also, assume that we are 
+c        away from domain boundary, fix afterward
+c
+c     FIXME: This will fail for r-z since Ax(dlo(1),:)=0
+c
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            FiGHi(i,j) = 0.d0
+         enddo
+      enddo
+      do n=1,Nspec
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &             ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &             + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &             + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &             + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      enddo
+
+c     xlo
+      if (fix_xlo) then
+         i = lo(1)
+         do j=lo(2),hi(2)
+            FiGHi(i,j) = 0.d0
+         enddo
+         do n=1,Nspec
+            do j=lo(2),hi(2)
+               AxDxInv_lo = 2.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      endif
+
+c     xhi
+      if (fix_xhi) then
+         i = hi(1)
+         do j=lo(2),hi(2)
+            FiGHi(hi(1),j) = 0.d0
+         enddo
+         do n=1,Nspec
+            do j=lo(2),hi(2)
+               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 2.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      endif
+
+c     ylo
+      if (fix_ylo) then
+         j = lo(2)
+         do i=lo(1),hi(1)
+            FiGHi(i,j) = 0.d0
+         enddo
+         do n=1,Nspec
+            do i=lo(1),hi(1)
+               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 2.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      endif
+
+c     yhi
+      if (fix_yhi) then
+         j = hi(2)
+         do i=lo(1),hi(1)
+            FiGHi(i,j) = 0.d0
+         enddo
+         do n=1,Nspec
+            do i=lo(1),hi(1)
+               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 2.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      endif
       end
-
-
 
       subroutine FORT_COMPUTE_RHODGRADHDOTGRADY(dx,
      &         lo, hi, DIMS(species), species,

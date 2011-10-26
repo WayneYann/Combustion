@@ -496,17 +496,8 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
          RHO = 0.d0
          do K=1,Nspec
             RHO = RHO + Z(K)
-            if (dvd_debug.eq.1) then
-               print *,'rhoY:',K,Z(K)
-            endif
          enddo
 
-         if (dvd_debug.eq.1) then
-            print *,'inside',Z(0)
-            print *,'inside',RHO
-          endif
-
-         sumX = 0.d0
          do K=1,Nspec
             if (lim_rxns .eq. 0) then
                C(K) = Z(K)*invmwt(K)

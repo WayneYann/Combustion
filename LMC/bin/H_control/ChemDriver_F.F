@@ -817,8 +817,10 @@ C                          Z(K+1) = RhoH
          Y(K) = Z(K) * RINV_MKS
       enddo
 
-      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
-     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
+c      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
+c     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
+
+      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
       T = T_cell
 
 c     FIXME: Get proper stopping stopping criteria here
@@ -832,7 +834,6 @@ c     FIXME: Get proper stopping stopping criteria here
          print *,'H_INIT',rhoh_INIT*RINV_MKS
          print *,'HMIX_MKS',HMIX_MKS
          print *,'c_0(Nspec+1)',c_0(Nspec+1)
-         print *,'c_1(Nspec+1)',c_1(Nspec+1)
          print *,'initial T',T_cell
          print *,'current T',T
          print *,'current RHOY',Z(1:Nspec)
@@ -847,12 +848,14 @@ c     FIXME: Get proper stopping stopping criteria here
       T_cell = T      
       call CKWC(T,CONC_CGS,IWRK,RWRK,WDOT_CGS)
 
-      rhohmixDOT_MKS = c_0(Nspec+1) + c_1(Nspec+1)*TIME
+c      rhohmixDOT_MKS = c_0(Nspec+1) + c_1(Nspec+1)*TIME
+      rhohmixDOT_MKS = c_0(Nspec+1)
       ZP(Nspec+1) = rhohmixDOT_MKS
 
       THFAC = 1.d3/thickFacCH
       do k= 1, Nspec
-         rhoYDOT_MKS = c_0(k) + c_1(k)*TIME
+c         rhoYDOT_MKS = c_0(k) + c_1(k)*TIME
+         rhoYDOT_MKS = c_0(k)
          ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
       end do
 
