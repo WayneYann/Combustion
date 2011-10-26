@@ -317,11 +317,6 @@ c        we take the gradient of Y from the second scal argument
 c     compute advective forcing term
       print *,'... computing advective forcing term = D^n + I_R^kmax'
 
-c      print *,'Force'
-c      do i=60,70
-c         print *,i,diff_old(i,FirstSpec),I_R_new(i,1),diff_old(i,FirstSpec)+I_R_new(i,1)
-c      enddo
-
       do i = 0,nx-1
          do n = 1,Nspec
             is = FirstSpec + n - 1
@@ -332,17 +327,10 @@ c      enddo
 
 c     compute advection term
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
-      print *,'aofs'
-      do i=60,70
-         print *,i,aofs(i,Density)
-      enddo
 
 c     update density
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
-      do i=60,70
-         print *,i,scal_old(i,Density),scal_new(i,Density)
-      enddo
 
       if (sdc_pred_T_into_rhoh) then
 
@@ -429,6 +417,7 @@ c        update species with conservative diffusion fluxes
             end do
          end do
          
+
 c        calculate differential diffusion
 c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
 c        we pass in conservative rho D grad Y via spec_flux
@@ -483,7 +472,6 @@ c        add differential diffusion
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_new,dt)
-
       endif
 
 C----------------------------------------------------------------
@@ -536,7 +524,7 @@ c           we take the gradient of Y from the second scal argument
 c           really no need to recompute this since it doesn't change
             tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
          enddo
-         
+
          print *,'... compute A with updated D+R source'
          call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
 
@@ -619,7 +607,6 @@ c           WITH GHOST CELLS USED IN CN_SOLVE
      $                                       diff_hat(0,FirstSpec),
      $                                       spec_flux_lo,spec_flux_hi,
      $                                       dx,time)
-
 c           update species with conservative diffusion fluxes
             do i=0,nx-1
                do n=1,Nspec
@@ -672,7 +659,6 @@ c           add differential diffusion
                const_src(i,RhoH) = const_src(i,RhoH)
      $              + 0.5d0*(diffdiff_old(i)+diffdiff_new(i))
             end do
-            
             call strang_chem(scal_old,scal_new,
      $                       const_src,lin_src_old,lin_src_new,
      $                       I_R_new,dt)
@@ -682,7 +668,6 @@ c           add differential diffusion
 C----------------------------------------------------------------
 c     End MISDC iterations
 C----------------------------------------------------------------
-
       enddo
 
       end
