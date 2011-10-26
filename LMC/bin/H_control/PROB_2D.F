@@ -81,11 +81,6 @@ c     Fuel
          u_bc(fuelZone) = 0.d0
          v_bc(fuelZone) = V_in
 
-
-         print *,'fuelID in Y: ',fuelID-1
-         print *,'fuelZone: ',fuelZone
-
-
 c     Air
          do n=1,Nspec
             Xt(n) = zero
@@ -93,17 +88,10 @@ c     Air
          Xt(oxidID) = 0.21d0
          Xt(iN2)    = 1.d0 - Xt(oxidID)
 
-         print *,'oxidID in Xt: ',oxidID
-         print *,'N2 in Xt: ',iN2
-         print *,'airZone: ',airZone
-
-         print *,'Xt in air: ',Xt(1:Nspec)
          CALL CKXTY (Xt, IWRK, RWRK, Yt)         
-         print *,'Yt in air: ',Yt(1:Nspec)
          do n=1,Nspec
             Y_bc(n-1,airZone) = Yt(n)
          end do
-         print *,'Y_bc in air: ',Y_bc(0:Nspec-1,airZone)
          
          T_bc(airZone) = T_in
          u_bc(airZone) = 0.d0
@@ -127,10 +115,6 @@ c     Set density and hmix consistent with data
      &                        T_bc(zone),   DIMARG(b), DIMARG(b),
      &                        Y_bc(0,zone), DIMARG(b), DIMARG(b))
       enddo
-
-      print *,'bc:'
-      print *,v_bc(1),rho_bc(1),Y_bc(0,1)
-
       bcinit = .true.
       end
 
@@ -334,6 +318,7 @@ c ::: -----------------------------------------------------------
       REAL_T     vel(DIMV(state),SDIM)
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
+      integer tmpi, nPMF
 
 #include "cdwrk.H"
 #include "htdata.H"
@@ -342,16 +327,16 @@ c ::: -----------------------------------------------------------
 
       integer i, j, n, airZone, fuelZone, getZone
       REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm
-      REAL_T pmf_vals(maxspec+3), y1, y2
+      REAL_T pmf_vals(maxspec+3), y1, y2, dx
       REAL_T pert,Lx,FORT_P1ATMMKS,eta
            
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          do j = lo(2), hi(2)
-            y = (float(j)+5)*delta(2)+domnlo(2)
+            y = (float(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (float(i)+.5d0)*delta(1)+domnlo(1)
                
                pert = 0.d0
                if (pertmag .gt. 0.d0) then
@@ -363,15 +348,11 @@ c ::: -----------------------------------------------------------
      &                             + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
                endif
                   
-c               y1 = (y-half*delta(2)-standoff+pert)*100.d0
-c               y2 = (y+half*delta(2)-standoff+pert)*100.d0
-               y = (DBLE(j)+0.5d0)*delta(2)
-               y1 = (y - standoff - 0.5d0*delta(2))*100.d0
-               y2 = (y - standoff + 0.5d0*delta(2))*100.d0
+               y1 = (y - standoff - 0.5d0*delta(2) + pert)*100.d0
+               y2 = (y - standoff + 0.5d0*delta(2) + pert)*100.d0
                
-               call pmf(y1,y2,pmf_vals,n)
-               
-               if (n.ne.Nspec+3) then
+               call pmf(y1,y2,pmf_vals,nPMF)               
+               if (nPMF.ne.Nspec+3) then
                   call bl_abort('INITDATA: n .ne. Nspec+3')
                endif
                
@@ -385,6 +366,7 @@ c               y2 = (y+half*delta(2)-standoff+pert)*100.d0
                do n = 1,Nspec
                   scal(i,j,FirstSpec+n-1) = Yl(n)
                end do
+
                scal(i,j,Trac) = 0.d0
 
                vel(i,j,1) = 0.d0
@@ -433,17 +415,11 @@ c     Superimpose blob of hot air
      &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state),
      &     Patm)
+
       call FORT_HMIXfromTY(lo,hi,
      &     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state))
-
-
-      print *,'ic'
-      i=64
-      do j = lo(2), 10
-         print *,j,scal(i,j,Density),scal(i,j,FirstSpec)
-      enddo
 
       do j = lo(2), hi(2)
          do i = lo(1), hi(1)
@@ -859,9 +835,6 @@ c ::: -----------------------------------------------------------
                x = (float(i)+.5)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
-               if (i.eq.64) then
-                  print *,'denfill: ',rho
-               endif
             enddo
          enddo
       endif    

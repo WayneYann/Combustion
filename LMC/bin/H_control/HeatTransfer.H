@@ -167,6 +167,9 @@ public:
 			   int  last_scalar,
 			   bool do_adv_reflux);
     
+    virtual void scalar_advection_update (Real dt,
+                                          int  first_scalar,
+                                          int  last_scalar);
     void scalar_update (Real dt,
                         int  first_scalar,
                         int  last_scalar,
@@ -178,8 +181,8 @@ public:
     void differential_diffusion_update (MultiFab& Force,
                                         int       FComp,
                                         Real      theta,
-                                        MultiFab* D = 0,
-                                        int       DComp = 0);
+                                        MultiFab& D,
+                                        int       DComp);
 
     void diffusion_flux_divergence (MultiFab& visc_terms,
                                     int       load_comp,
@@ -191,7 +194,8 @@ public:
     void set_differential_diffusion_fluxes (const Real& time);
 
     void adjust_spec_diffusion_fluxes (Real                   time,
-                                       const MultiFab* const* beta);
+                                       const MultiFab* const* beta,
+                                       bool                   grow_cells_already_filled);
 
     virtual void scalar_diffusion_update (Real dt,
                                           int  first_scalar, 
@@ -205,10 +209,14 @@ public:
                                          MultiFab**& betan, 
                                          MultiFab**& betanp1);
 
+
+    enum HowToFillGrow {HT_ZERO_GROW_CELLS, HT_EXTRAP_GROW_CELLS, HT_NUM_GROW_OPTIONS};
+
     void compute_instantaneous_reaction_rates(MultiFab&       R,
                                               const MultiFab& S,
-                                              int             nGrow);
-        
+                                              int             nGrow = 0,
+                                              HowToFillGrow   how = HT_ZERO_GROW_CELLS);
+
     //
     // Make rho at time n.
     //
@@ -609,7 +617,7 @@ protected:
     static int         do_heat_sink;
     static int         unity_Le;
     static int         FuncCount_Type;
-    static int         RhoYchemProd_Type;
+    static int         RhoYdot_Type;
     static int         divu_ceiling;
     static Real        min_rho_divu_ceiling;
     static Real        divu_dt_factor;
@@ -669,13 +677,16 @@ protected:
     static Real        new_T_threshold;
     static Array<Real> typical_values;
 
-    static int         do_sdc;
-    static int         sdc_iterMAX;
+    static Array<std::string> speciesStateNames;
+    static Array<std::string> rhoydotNames;
+
+    static int do_sdc;
+    static int sdc_iterMAX;
     static int nGrowAdvForcing;
-    MultiFab Forcing;
-    MultiFab Dn;
-    MultiFab Dnp1;
-    MultiFab Dhat;
+    MultiFab   Forcing;
+    MultiFab   Dn;
+    MultiFab   Dnp1;
+    MultiFab   Dhat;
 
 
 };

@@ -4,8 +4,8 @@ EXEname := lmc.exe
 #
 # Choose pmf file
 #
-pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
-#pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
+#pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
+pmf_source := ../../../../Chemistry/data/chem-H/PMFs/H-flame_0370.f
 
 #
 # Choose reaction mechanism
@@ -13,8 +13,8 @@ pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
 # Use CHEMH for pmf_source := chemHSoln_seed_0.00.f
 # Use CHEMH for pmf_source := H-flame_0370_MCDD.f
 #
-REACTION_MECHANISM=GRI30
-#REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=GRI30
+REACTION_MECHANISM=CHEMH
 
 ifeq (${USE_INTEL},TRUE)
 #  CCOMP := icpc -vec_report0 -DBL_FORT_USE_UNDERSCORE
@@ -24,16 +24,19 @@ ifeq (${USE_INTEL},TRUE)
 #  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
-  fCOMP := gfortran -g -fbounds-check -O -Wuninitialized -Wall
-  CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
+  #fCOMP := gfortran -g -fbounds-check -O -Wuninitialized -Wall
+  fCOMP := gfortran -g -fbounds-check -O1 -Wuninitialized -Waliasing -Wampersand -Wsurprising -Wintrinsics-std -Wno-tabs -Wintrinsic-shadow -Wline-truncation -ffixed-line-length-none
+  CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
   XTRALIBS :=  -lm -lgfortran
+#  XTRALIBS :=  /usr/local/gfortran/lib/gcc/i686-pc-cygwin/4.6.0/libgfortran.a /usr/local/gfortran/lib/gcc/i686-pc-cygwin/4.6.0/libgcc.a -lm -lg2c
 endif
 
 ifeq ($(REACTION_MECHANISM),GRI30)
   mech_source += ../../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.cpp
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
-  mech_source += ../../../../Chemistry/data/chem-H/chem-H.cpp
+  #mech_source += ../../../../Chemistry/data/chem-H/chem-H.cpp
+  mech_source += ./chem-H.cpp
 endif
 
 chem_sources := CD.f ../../../../Chemistry/src/vode.f ../../../../Chemistry/src/EGini.f ../../../../Chemistry/src/EGSlib.f

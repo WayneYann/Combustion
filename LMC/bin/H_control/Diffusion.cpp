@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <iomanip>
 
 #if defined(BL_OSF1)
 #if defined(BL_USE_DOUBLE)
@@ -330,6 +331,7 @@ Diffusion::diffuse_scalar (Real                   dt,
     // on the valid region (i.e., on the valid region the new state is the old
     // state + dt*Div(explicit_fluxes), e.g.)
     //
+
     NavierStokes& ns = *(NavierStokes*) &(parent->getLevel(level));
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -346,10 +348,10 @@ Diffusion::diffuse_scalar (Real                   dt,
     MultiFab& S_old = caller->get_old_data(State_Type);
     MultiFab& S_new = caller->get_new_data(State_Type);
 
-    MultiFab Rhs(grids,1,0), Soln(grids,1,1);
     //
     // Set up Rhs.
     //
+    MultiFab Rhs(grids,1,0), Soln(grids,1,1);
     if (add_old_time_divFlux)
     {
         Real a = 0.0;
@@ -369,9 +371,9 @@ Diffusion::diffuse_scalar (Real                   dt,
             for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 Soln[Smfi].divide(S_old[Smfi],Smfi.validbox(),Density,0,1);
         visc_op->apply(Rhs,Soln);
-        visc_op->compFlux(D_DECL(*fluxn[0],*fluxn[1],*fluxn[2]),Soln,LinOp::Inhomogeneous_BC,false);
+        visc_op->compFlux(D_DECL(*fluxn[0],*fluxn[1],*fluxn[2]),Soln,LinOp::Inhomogeneous_BC,false,0,fluxComp);
         for (int i = 0; i < BL_SPACEDIM; ++i)
-            (*fluxn[i]).mult(-b/(dt*caller->Geom().CellSize()[i]));
+            (*fluxn[i]).mult(-b/(dt*caller->Geom().CellSize()[i]),fluxComp,1,0);
         delete visc_op;
     }
     else
@@ -422,6 +424,7 @@ Diffusion::diffuse_scalar (Real                   dt,
             Rhs[mfi].plus(tmpfab,box,0,0,1);
         }
     }
+
     //
     // Add hoop stress for x-velocity in r-z coordinates
     // Note: we have to add hoop stress explicitly because the hoop
@@ -490,6 +493,7 @@ Diffusion::diffuse_scalar (Real                   dt,
             Rhs[mfi].plus(Soln[mfi],box,0,0,1);
         }
     }
+
     //
     // Make a good guess for Soln
     //
@@ -497,6 +501,7 @@ Diffusion::diffuse_scalar (Real                   dt,
     if (rho_flag == 2)
         for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
             Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
+
     //
     // Construct viscous operator with bndry data at time N+1.
     //
@@ -512,6 +517,7 @@ Diffusion::diffuse_scalar (Real                   dt,
                                         rho_flag,&rhsscale,betanp1,betaComp,alpha,alphaComp);
     Rhs.mult(rhsscale,0,1);
     visc_op->maxOrder(max_order);
+
     //
     // Construct solver and call it.
     //
@@ -612,9 +618,10 @@ Diffusion::diffuse_scalar (Real                   dt,
     //
     // Get extensivefluxes from new-time op
     //
-    visc_op->compFlux(D_DECL(*fluxnp1[0],*fluxnp1[1],*fluxnp1[2]),Soln);
+    bool do_applyBC = true;
+    visc_op->compFlux(D_DECL(*fluxnp1[0],*fluxnp1[1],*fluxnp1[2]),Soln,LinOp::Inhomogeneous_BC,do_applyBC,0,fluxComp);
     for (int i = 0; i < BL_SPACEDIM; ++i)
-        (*fluxnp1[i]).mult(b/(dt*caller->Geom().CellSize()[i]));
+        (*fluxnp1[i]).mult(b/(dt*caller->Geom().CellSize()[i]),fluxComp,1,0);
     delete visc_op;
     //
     // Copy into state variable at new time, without bc's
@@ -1472,9 +1479,10 @@ Diffusion::diffuse_Ssync (MultiFab*              Ssync,
     checkBeta(flux, flux_allthere, flux_allnull);
     if (flux_allthere)
     {
-        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Soln,LinOp::Inhomogeneous_BC,0,fluxComp);
+        bool do_applyBC = true;
+        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Soln,LinOp::Inhomogeneous_BC,do_applyBC,0,fluxComp);
         for (int i = 0; i < BL_SPACEDIM; ++i)
-            (*flux[i]).mult(b/(dt*caller->Geom().CellSize()[i]),0);
+            (*flux[i]).mult(b/(dt*caller->Geom().CellSize()[i]),fluxComp,1,0);
     }
 
     MultiFab::Copy(*Ssync,Soln,0,sigma,1,0);
@@ -1774,7 +1782,7 @@ Diffusion::getViscOp (int                    comp,
     if (!usehoop)
     {
         caller->Geom().GetVolume(alpha,grids,GEOM_GROW);
-        
+
         if (useden) 
         {
             MultiFab::Multiply(alpha,*rho_half,0,0,1,alpha.nGrow());

@@ -21,16 +21,16 @@
 
 #define SDIM 2
 
-      subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dx, T, DIMS(T),
+      subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dlo, dhi, dx, T, DIMS(T),
      &                                rhoDx, DIMS(rhoDx), Fx, DIMS(Fx), Ax, DIMS(Ax), 
      &                                rhoDy, DIMS(rhoDy), Fy, DIMS(Fy), Ay, DIMS(Ay), 
-     &                                FiGHi, DIMS(FiGHi) )
+     &                                FiGHi, DIMS(FiGHi), Tbc )
 
       implicit none
 
 #include "cdwrk.H"      
 
-      integer lo(SDIM), hi(SDIM)
+      integer lo(SDIM), hi(SDIM), dlo(SDIM), dhi(SDIM), Tbc(SDIM,2)
       REAL_T  dx(SDIM)
       integer DIMDEC(T)
       REAL_T  T(DIMV(T))
@@ -52,46 +52,28 @@
       integer DIMDEC(FiGHi)
       REAL_T  FiGHi(DIMV(FiGHi))
 
-      integer DIMDEC(H)
       REAL_T, allocatable :: H(:,:,:)
 
-      integer i, j, d, n
+      integer i, j, d, n, elo, ehi
       integer lob(SDIM), hib(SDIM)
-      REAL_T AxDxInv_lo, AxDxInv_hi, AyDyInv_lo, AyDyInv_hi, dxInv, dyInv, FiHi
+      REAL_T AxDxInv_lo, AxDxInv_hi, dxInv
+      REAL_T AyDyInv_lo, AyDyInv_hi, dyInv
+      REAL_T FiHi
+      logical fix_xlo, fix_xhi, fix_ylo, fix_yhi
 
 c     Compute species enthalpies on box grown by one
       do d=1,SDIM
          lob(d) = lo(d)-1
          hib(d) = hi(d)+1
       enddo
-      ARG_L1(H) = lob(1)
-      ARG_L2(H) = lob(2)
-      ARG_H1(H) = hib(1)
-      ARG_H2(H) = hib(2)
 
-      allocate( H(DIMV(H),1:Nspec) )
+c     Make space for Hi, use T box, since this better be big enough as well.
+c     Note that any cells on a physical boundary with Dirichlet conditions will 
+c     actually be centered on the edge, so the stencils below must reflect this
 
-      call FORT_HfromT(lob, hib, H, DIMS(H), T, DIMS(T))
+      allocate( H(DIMV(T),1:Nspec) )
 
-c     Set FiGHi = (species flux) dot Grad(species enthalpy)
-c        compute Grad(H) on each face, and average across faces in each coordinate
-c        Fi is extensive here, so need to remove area
-      do j=lo(2),hi(2)
-        do i=lo(1),hi(1)
-           FiGHi(i,j) = 0.d0
-           AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
-           AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
-           AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
-           AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
-           do n=1,Nspec
-              FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
-     &             ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
-     &             + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
-     &             + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
-     &             + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
-           enddo
-        enddo
-      enddo
+      call FORT_HfromT(lob, hib, H, DIMS(T), T, DIMS(T))
 
 c     On entry, Fx(1:Nspec) = spec flux, Fx(Nspec+1) = - (lambda/cp).Grad(Hmix)
 c     On exit, Fx(Nspec+1) is the heat flux = - lambda.Grad(T) + (species flux).(species enthalpy)
@@ -101,36 +83,242 @@ c       heat flux = - (lambda/cp).Grad(Hmix) + Hi.(species flux).(1 - (lambda/(c
 c
 c     Also, conduction = - lambda.Grad(T) = (heat flux) - (species flux).(species enthalpy)
 c                (or, simply -lambda.Grad(T) computed using T and lambda passed in)
+
       dxInv = 1.d0 / dx(1)
+      if (lo(1).eq.dlo(1)  .and.  Tbc(1,1).eq.EXT_DIR) then
+         fix_xlo = .true.
+         elo = dlo(1) + 1
+      else
+         fix_xlo = .false.
+         elo = lo(1)
+      endif
+      if (hi(1).eq.dhi(1)  .and.  Tbc(1,2).eq.EXT_DIR) then
+         fix_xhi = .true.
+         ehi = dhi(1)
+      else
+         fix_xhi = .false.
+         ehi = hi(1)+1
+      endif
+      do n=1,Nspec
+         do j=lo(2),hi(2)
+            do i=elo,ehi
+               FiHi = + 0.5d0*(H(i,j,n)+H(i-1,j,n))*Fx(i,j,n)
+               Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
+            enddo
+         enddo
+      enddo
       do j=lo(2),hi(2)
-        do i=lo(1),hi(1)+1
-c           Fx(i,j,Nspec+2) = 0.d0
-           do n=1,Nspec
-              FiHi = + 0.5d0*(H(i,j,n)+H(i-1,j,n))*Fx(i,j,n)
-              Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
-c              Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2) + FiHi
-           enddo
-c           Fx(i,j,Nspec+2) = Fx(i,j,Nspec+1) - Fx(i,j,Nspec+2)
-           Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
+         do i=elo,ehi
+            Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
          enddo
       enddo
 
+
       dyInv = 1.d0 / dx(2)
-      do j=lo(2),hi(2)+1
-        do i=lo(1),hi(1)
-c           Fy(i,j,Nspec+2) = 0.d0
-           do n=1,Nspec
-              FiHi = + 0.5d0*(H(i,j,n)+H(i,j-1,n))*Fy(i,j,n)
-              Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
-c              Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2) + FiHi
-           enddo
-c           Fy(i,j,Nspec+2) = Fy(i,j,Nspec+1) - Fy(i,j,Nspec+2)
-           Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1)) * dyInv * Ay(i,j)
-        enddo
+      if (lo(2).eq.dlo(2)  .and.  Tbc(2,1).eq.EXT_DIR) then
+         fix_ylo = .true.
+         elo = dlo(2) + 1
+      else
+         fix_ylo = .false.
+         elo = lo(2)
+      endif
+      if (hi(2).eq.dhi(2)  .and.  Tbc(2,2).eq.EXT_DIR) then
+         fix_yhi = .true.
+         ehi = dhi(2)
+      else
+         fix_yhi = .false.
+         ehi = hi(2)+1
+      endif
+      do n=1,Nspec
+         do j=elo,ehi
+            do i=lo(1),hi(1)
+               FiHi = + 0.5d0*(H(i,j,n)+H(i,j-1,n))*Fy(i,j,n)
+               Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
+            enddo
+         enddo
       enddo
+      do j=elo,ehi
+         do i=lo(1),hi(1)
+            Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1)) * dyInv * Ay(i,j)
+         enddo
+      enddo
+
+
+c     xlo
+      if (fix_xlo) then
+         do n=1,Nspec
+            do j=lo(2),hi(2)
+               i=lo(1)
+               FiHi = H(i-1,j,n)*Fx(i,j,n)
+               Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
+            enddo
+         enddo         
+         do j=lo(2),hi(2)
+            i=lo(1)
+            Fx(i,j,Nspec+2) = - 2.d0*rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
+         enddo
+      endif
+
+c     xhi
+      if (fix_xhi) then
+         do n=1,Nspec
+            do j=lo(2),hi(2)
+               i=hi(1)+1
+               FiHi = H(i,j,n)*Fx(i,j,n)
+               Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
+            enddo
+         enddo         
+         do j=lo(2),hi(2)
+            i=hi(1)+1
+            Fx(i,j,Nspec+2) = - 2.d0*rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
+         enddo
+      endif
+
+c     ylo
+      if (fix_ylo) then
+         do n=1,Nspec
+            do i=lo(1),hi(1)
+               j=lo(2)
+               FiHi = H(i,j-1,n)*Fy(i,j,n)
+               Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
+            enddo
+         enddo         
+         do i=lo(1),hi(1)
+            j=lo(2)
+            Fy(i,j,Nspec+2) = - 2.d0*rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))* dyInv * Ay(i,j)
+         enddo
+      endif
+
+c     yhi
+      if (fix_yhi) then
+         do n=1,Nspec
+            do i=lo(1),hi(1)
+               j=hi(2)+1
+               FiHi = H(i,j,n)*Fy(i,j,n)
+               Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
+            enddo
+         enddo         
+         do i=lo(1),hi(1)
+            j=hi(2)+1
+            Fy(i,j,Nspec+2) = - 2.d0*rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))* dyInv * Ay(i,j)
+         enddo
+      endif
+
+
+
+
+c     Set FiGHi = (species flux) dot Grad(species enthalpy)
+c        compute Grad(H) on each face, and average across faces in each coordinate
+c        Fi is extensive here, so need to remove area.  Also, assume that we are 
+c        away from domain boundary, fix afterward
+c
+c     FIXME: This will fail for r-z since Ax(dlo(1),:)=0
+c
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            FiGHi(i,j) = 0.d0
+         enddo
+      enddo
+      do n=1,Nspec
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &             ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &             + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &             + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &             + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      enddo
+
+c     xlo
+      if (fix_xlo) then
+         i = lo(1)
+         do j=lo(2),hi(2)
+            FiGHi(i,j) = 0.d0
+         enddo
+         do n=1,Nspec
+            do j=lo(2),hi(2)
+               AxDxInv_lo = 2.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      endif
+
+c     xhi
+      if (fix_xhi) then
+         i = hi(1)
+         do j=lo(2),hi(2)
+            FiGHi(hi(1),j) = 0.d0
+         enddo
+         do n=1,Nspec
+            do j=lo(2),hi(2)
+               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 2.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      endif
+
+c     ylo
+      if (fix_ylo) then
+         j = lo(2)
+         do i=lo(1),hi(1)
+            FiGHi(i,j) = 0.d0
+         enddo
+         do n=1,Nspec
+            do i=lo(1),hi(1)
+               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 2.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 1.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      endif
+
+c     yhi
+      if (fix_yhi) then
+         j = hi(2)
+         do i=lo(1),hi(1)
+            FiGHi(i,j) = 0.d0
+         enddo
+         do n=1,Nspec
+            do i=lo(1),hi(1)
+               AxDxInv_lo = 1.d0/(Ax(i,j)*dx(1))
+               AxDxInv_hi = 1.d0/(Ax(i+1,j)*dx(1))
+               AyDyInv_lo = 1.d0/(Ay(i,j)*dx(2))
+               AyDyInv_hi = 2.d0/(Ay(i,j+1)*dx(2))
+               FiGHi(i,j) = FiGHi(i,j) - 0.5d0*
+     &              ( ( H(i+1,j,n) - H(i,j,n) )*Fx(i+1,j,n)*AxDxInv_hi
+     &              + ( H(i,j,n) - H(i-1,j,n) )*Fx(i  ,j,n)*AxDxInv_lo
+     &              + ( H(i,j+1,n) - H(i,j,n) )*Fy(i,j+1,n)*AyDyInv_hi
+     &              + ( H(i,j,n) - H(i,j-1,n) )*Fy(i  ,j,n)*AyDyInv_lo )
+            enddo
+         enddo
+      endif
       end
-
-
 
       subroutine FORT_COMPUTE_RHODGRADHDOTGRADY(dx,
      &         lo, hi, DIMS(species), species,
@@ -548,9 +736,9 @@ c           We use the latter because it is more robust
 
 c===================================================================
 
-c ... The routines YDOTFILL, DIVUFILL, DQRADFILL, and DSDTFILL
+c ... The routines RHOYDOTFILL, DIVUFILL, DQRADFILL, and DSDTFILL
 c     are here instead of in the problem dependent code because
-c     we always fill the quantitities ydot, divu, dqrad, and dsdt
+c     we always fill the quantitities rhoydot, divu, dqrad, and dsdt
 c     the same way
 
 c===================================================================
@@ -864,13 +1052,13 @@ c                               inflow for burner in a can (bic, biac)
       endif            
       end
 
-      subroutine FORT_YDOTFILL (ydot,DIMS(ydot),domlo,domhi,delta,
-     &                          xlo,time,bc)
+      subroutine FORT_RHOYDOTFILL (rhoydot,DIMS(rhoydot),domlo,domhi,delta,
+     &                             xlo,time,bc)
 
-      integer    DIMDEC(ydot), bc(SDIM,2)
+      integer    DIMDEC(rhoydot), bc(SDIM,2)
       integer    domlo(SDIM), domhi(SDIM)
       REAL_T     delta(SDIM), xlo(SDIM), time
-      REAL_T     ydot(DIMV(ydot))
+      REAL_T     rhoydot(DIMV(rhoydot))
 
       integer    i, j
       integer    jlo, jhi, ilo, ihi
@@ -878,23 +1066,23 @@ c                               inflow for burner in a can (bic, biac)
 
       integer lo(SDIM), hi(SDIM)
 
-      lo(1) = ARG_L1(ydot)
-      hi(1) = ARG_H1(ydot)
-      lo(2) = ARG_L2(ydot)
-      hi(2) = ARG_H2(ydot)
+      lo(1) = ARG_L1(rhoydot)
+      hi(1) = ARG_H1(rhoydot)
+      lo(2) = ARG_L2(rhoydot)
+      hi(2) = ARG_H2(rhoydot)
 
       ilo = max(lo(1),domlo(1))
       ihi = min(hi(1),domhi(1))
       jlo = max(lo(2),domlo(2))
       jhi = min(hi(2),domhi(2))
 
-      call filcc (ydot,DIMS(ydot),domlo,domhi,delta,xlo,bc)
+      call filcc (rhoydot,DIMS(rhoydot),domlo,domhi,delta,xlo,bc)
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
 c                               inflow for pipe
            do j = lo(2), domlo(2)-1
               do i = lo(1), hi(1)
-                 ydot(i,j) = 0.0
+                 rhoydot(i,j) = 0.0
               enddo
            enddo
       endif            
@@ -902,7 +1090,7 @@ c                               inflow for pipe
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
            do j = domhi(2)+1, hi(2)
               do i = lo(1), hi(1)
-                 ydot(i,j) = 0.0
+                 rhoydot(i,j) = 0.0
               enddo
            enddo
       endif            
@@ -910,7 +1098,7 @@ c                               inflow for pipe
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
            do i = lo(1), domlo(1)-1
              do j = lo(2), hi(2)
-               ydot(i,j) = zero
+               rhoydot(i,j) = zero
              enddo
            enddo
       endif            
@@ -919,7 +1107,7 @@ c                               inflow for pipe
          do i = domhi(1)+1, hi(1)
            do j = lo(2),hi(2)
                 x = (float(i-lo(1))+.5)*delta(1)+xlo(1)
-	       ydot(i,j) = zero
+	       rhoydot(i,j) = zero
 	    enddo
 	 enddo
       endif            
@@ -965,7 +1153,7 @@ c                               inflow for pipe
 
 c     First, assume away from physical boundaries, then use boundary-aware version below if applicable
          do j = lo(2),hi(2)
-            do i = MAX(lo(1),dlo(1)+1),MIN(hi(1)+1,dhi(1)+1)
+            do i = lo(1),hi(1)+1
                sumFlux = 0.d0
                sumRhoYe = 0.d0
                do n=1,Nspec
@@ -1015,7 +1203,7 @@ c     xhi
       else if (dir.eq.1) then
 
 c     First, assume away from physical boundaries, then replace with boundary-aware version below if applicable
-         do j = MAX(lo(2),dlo(2)+1),MIN(hi(2)+1,dhi(2)+1)
+         do j = lo(2),hi(2)+1
             do i = lo(1),hi(1)
                sumFlux = 0.d0
                sumRhoYe = 0.d0

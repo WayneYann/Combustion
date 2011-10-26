@@ -221,7 +221,7 @@ extern "C"
                         Real* sm, Real* sp, ARLIM_P(smp_lo),ARLIM_P(smp_hi),
                         const int* bc, const int* lo, const int* hi, 
                         Real* dt, const Real* dx, int* fort_ind, 
-                        int* use_forces_in_trans, int* iconserv, int* ppm_type);
+                        int* use_forces_in_trans, int* iconserv, int* ppm_type, int* idbg);
     
    void FORT_ESTATE_BDS(const Real* s_dat, const Real* tfr_dat, const Real* divu_dat,
 		    ARLIM_P(s_lo),ARLIM_P(s_hi),
@@ -262,7 +262,7 @@ extern "C"
 			 const Real* areaz_dat, ARLIM_P(az_lo), ARLIM_P(az_hi),
 #endif
 			 const Real* vol_dat, ARLIM_P(v_lo),ARLIM_P(v_hi),
-			 const int* lo, const int* hi, int* iconserv);
+			 const int* lo, const int* hi, int* iconserv, int* idbg);
    
    void FORT_SYNC_ADV_FORCING(const Real* sync_dat,ARLIM_P(s_lo),ARLIM_P(s_hi),
 			      

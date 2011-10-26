@@ -18,6 +18,7 @@
 #    define FORT_FRrateXTP       dfrrtxtp
 #    define FORT_HTRLS           dhtrls
 #    define FORT_RRATEY          drratey
+#    define FORT_RRATERHOY       drraterhoy
 #    define FORT_RRATEC          drratec
 #    define FORT_MOLETOMASS      dmoltoms
 #    define FORT_MASSTP_TO_CONC  dmstptocon
@@ -25,7 +26,6 @@
 #    define FORT_CONC_TO_MOLE    dcontomol
 #    define FORT_CONPSOLV        dcpsolv
 #    define FORT_CONPSOLV_SDC    dcpsolv_sdc
-#    define set_c_0_simple_sdc   dset_c_0_simple_sdc
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
 #    define FORT_MIX_SHEAR_VISC  dmixshvis
 #    define FORT_RHOfromPTY      drhopty
@@ -72,6 +72,7 @@
 #    define FORT_FRrateXTP       DFRRTXTP
 #    define FORT_HTRLS           DHTRLS
 #    define FORT_RRATEY          DRRATEY
+#    define FORT_RRATERHOY       DRRATERHOY
 #    define FORT_RRATEC          DRRATEC
 #    define FORT_MOLETOMASS      DMOLTOMS
 #    define FORT_MASSTP_TO_CONC  DMSTPTOCON
@@ -79,7 +80,6 @@
 #    define FORT_CONC_TO_MOLE    DCONTOMOL
 #    define FORT_CONPSOLV        DCPSOLV
 #    define FORT_CONPSOLV_SDC    DCPSOLV_SDC
-#    define set_c_0_simple_sdc   DSET_C_0_SIMPLE_SDC
 #    define FORT_MIXAVG_RHODIFF_TEMP DMAVGDIFTEMP
 #    define FORT_MIX_SHEAR_VISC  DMIXSHVIS
 #    define FORT_RHOfromPTY      DRHOPTY
@@ -128,11 +128,11 @@
 #    define FORT_FRrateXTP       dfrrtxtp
 #    define FORT_HTRLS           dhtrls
 #    define FORT_RRATEY          drratey
+#    define FORT_RRATERHOY       drraterhoy
 #    define FORT_RRATEC          drratec
 #    define FORT_MOLETOMASS      dmoltoms
 #    define FORT_CONPSOLV        dcpsolv
 #    define FORT_CONPSOLV_SDC    dcpsolv_sdc
-#    define set_c_0_simple_sdc   dset_c_0_simple_sdc
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
 #    define FORT_MIX_SHEAR_VISC  dmixshvis
 #    define FORT_RHOfromPTY      drhopty
@@ -181,11 +181,11 @@
 #    define FORT_FRrateXTP       dfrrtxtp_
 #    define FORT_HTRLS           dhtrls_
 #    define FORT_RRATEY          drratey_
+#    define FORT_RRATERHOY       drraterhoy_
 #    define FORT_RRATEC          drratec_
 #    define FORT_MOLETOMASS      dmoltoms_
 #    define FORT_CONPSOLV        dcpsolv_
 #    define FORT_CONPSOLV_SDC    dcpsolv_sdc_
-#    define set_c_0_simple_sdc   dset_c_0_simple_sdc_
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp_
 #    define FORT_MIX_SHEAR_VISC  dmixshvis_
 #    define FORT_RHOfromPTY      drhopty_
@@ -265,6 +265,13 @@ extern "C" {
                      Real*    Ydot, ARLIM_P(Ydotlo), ARLIM_P(Ydothi),
                      Real* Patm);
 
+    void FORT_RRATERHOY(const int* lo, const int* hi,
+                        const Real* RhoY, ARLIM_P(RhoYlo),    ARLIM_P(RhoYhi),
+                        const Real* RhoH, ARLIM_P(RhoHlo),    ARLIM_P(RhoHhi),
+                        const Real* T,    ARLIM_P(Tlo),       ARLIM_P(Thi),
+                        Real*    RhoYdot, ARLIM_P(RhoYdotlo), ARLIM_P(RhoYdothi),
+                        Real* Patm);
+
     void FORT_RRATEC(const int* lo, const int* hi,
                      const Real* C, ARLIM_P(Clo),    ARLIM_P(Chi),
                      const Real* T, ARLIM_P(Tlo),    ARLIM_P(Thi),
@@ -307,17 +314,16 @@ extern "C" {
 		       const Real* p, const Real* dt, Real* diag, const int* do_diag);
 
     void FORT_CONPSOLV_SDC(const int* lo, const int* hi,
-			   Real* Ynew, ARLIM_P(Ynlo), ARLIM_P(Ynhi),
+			   Real* rhoYnew, ARLIM_P(rhoYnlo), ARLIM_P(rhoYnhi),
+			   Real* rhoHnew, ARLIM_P(rhoHnlo), ARLIM_P(rhoHnhi),
 			   Real* Tnew, ARLIM_P(Tnlo), ARLIM_P(Tnhi),
-			   const Real* Yold, ARLIM_P(Yolo), ARLIM_P(Yohi),
+			   const Real* rhoYold, ARLIM_P(rhoYolo), ARLIM_P(rhoYohi),
+			   const Real* rhoHold, ARLIM_P(rhoHolo), ARLIM_P(rhoHohi),
 			   const Real* Told, ARLIM_P(Tolo), ARLIM_P(Tohi),
 			   const Real* const_src, ARLIM_P(cslo), ARLIM_P(cshi),
 			   Real* I_R, ARLIM_P(I_Rlo), ARLIM_P(I_Rhi),
 			   Real* FuncCount, ARLIM_P(FuncCountlo), ARLIM_P(FuncCounthi),
-			   const Real* p, const Real* dt, Real* diag, const int* do_diag, 
-			   void (*sdc_func)(Real* vodeforce));
-
-    void set_c_0_simple_sdc(Real* const_src);
+			   const Real* p, const Real* dt, Real* diag, const int* do_diag);
 
     void FORT_MIXAVG_RHODIFF_TEMP(const int* lo, const int* hi,
                                   Real*       RD, ARLIM_P(RDlo), ARLIM_P(RDhi),

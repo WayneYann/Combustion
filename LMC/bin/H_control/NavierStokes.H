@@ -318,9 +318,9 @@ protected:
                         int  first_scalar,
                         int  last_scalar);
 
-    void scalar_advection_update (Real dt,
-                                  int  first_scalar,
-                                  int  last_scalar);
+    virtual void scalar_advection_update (Real dt,
+                                          int  first_scalar,
+                                          int  last_scalar);
 
     void scalar_diffusion_update (Real dt,
                                   int  first_scalar,
