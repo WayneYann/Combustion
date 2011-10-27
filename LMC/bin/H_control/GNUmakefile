@@ -24,7 +24,7 @@ USE_FLCTS       = TRUE
 USE_PARTICLES   = TRUE
 
 # Enable ht.velocity_plotfile option
-USE_VELOCITY    = TRUE
+USE_VELOCITY    = FALSE
 
 # Enable time-dependent forcing term
 USE_TDEPFORCING = TRUE

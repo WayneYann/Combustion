@@ -421,9 +421,8 @@ protected:
     virtual void advance_chemistry (MultiFab&       mf_old,
                                     MultiFab&       mf_new,
                                     Real            dt,
-                                    int             ngrow = 0,
-                                    const MultiFab* Force = 0,
-                                    int             nCompF = -1);
+                                    const MultiFab& Force,
+                                    int             nCompF);
 
     virtual void calcViscosity (const Real time);
 

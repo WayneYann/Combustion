@@ -6309,7 +6309,7 @@ HeatTransfer::advance_sdc (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "R (SDC predictor) \n";
 
-    advance_chemistry(S_old,S_new,dt,0,&Forcing,0);
+    advance_chemistry(S_old,S_new,dt,Forcing,0);
     temperature_stats(S_new);
 
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
@@ -6397,7 +6397,7 @@ HeatTransfer::advance_sdc (Real time,
         }
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  R (SDC corrector " << sdc_iter << ")\n";
-        advance_chemistry(S_old,S_new,dt,0,&Forcing,0);
+        advance_chemistry(S_old,S_new,dt,Forcing,0);
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -7052,8 +7052,7 @@ void
 HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                                  MultiFab&       mf_new,
                                  Real            dt,
-                                 int             ngrow,
-                                 const MultiFab* Force,
+                                 const MultiFab& Force,
                                  int             nCompF)
 {
     const Real strt_time = ParallelDescriptor::second();
@@ -7088,7 +7087,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
                 const Box& box = Smfi.validbox();
 		FArrayBox& fc = tmp[Smfi];
-		const FArrayBox& frc = (*Force)[Smfi];
+		const FArrayBox& frc = Force[Smfi];
 
 		FArrayBox& rYdot = get_new_data(RhoYdot_Type)[Smfi];
 
