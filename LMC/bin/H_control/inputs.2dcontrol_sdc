@@ -58,19 +58,36 @@ ns.do_group_bndry_fills = 1
 mg.cg_solver=1
 #cg.cg_solver=1
 
-geometry.prob_lo   = 0.000 0.00
-geometry.prob_hi   = 0.00075 0.012
 
-amr.n_cell          = 8 128
-amr.blocking_factor = 8
-geometry.prob_hi   = 0.00075 0.012
-ns.fixed_dt         = 2.e-5
+
+
+geometry.prob_lo   = 0.000 0.00
+geometry.prob_hi   = 0.012 0.012
+
+amr.n_cell          = 128 128
+amr.blocking_factor = 32
 max_step            = 10
 max_step            = 100
 amr.check_file      = chk_0128_
 amr.plot_file       = plt_0128_
 amr.check_int       = 1000
-amr.plot_int        = 1
+amr.plot_int        = 5
+
+
+
+#geometry.prob_lo   = 0.000 0.00
+#geometry.prob_hi   = 0.00075 0.012
+
+#amr.n_cell          = 8 128
+#amr.blocking_factor = 8
+#geometry.prob_hi   = 0.00075 0.012
+#ns.fixed_dt         = 2.e-5
+#max_step            = 10
+#max_step            = 100
+#amr.check_file      = chk_0128_
+#amr.plot_file       = plt_0128_
+#amr.check_int       = 1000
+#amr.plot_int        = 1
 
 #amr.n_cell          = 8 256
 #amr.blocking_factor = 8
