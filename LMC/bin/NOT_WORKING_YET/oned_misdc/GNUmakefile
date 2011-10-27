@@ -35,8 +35,7 @@ ifeq ($(REACTION_MECHANISM),GRI30)
   mech_source += ../../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.cpp
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
-  #mech_source += ../../../../Chemistry/data/chem-H/chem-H.cpp
-  mech_source += ./chem-H.cpp
+  mech_source += ../../../../Chemistry/data/chem-H/chem-H.cpp
 endif
 
 chem_sources := CD.f ../../../../Chemistry/src/vode.f ../../../../Chemistry/src/EGini.f ../../../../Chemistry/src/EGSlib.f
