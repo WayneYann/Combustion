@@ -1000,6 +1000,10 @@ c     Error condition....dump state and bail out
 
       out_of_bounds(temp) = (temp.lt.TMIN-one) .or. (temp.gt.TMAX)
 
+      if (idbg.eq.1) then
+         print *,'Inside',Hin,T
+      endif
+
       errCode = 0
       NiterDAMP = NiterMAX
       if ((T.GE.TMIN).and.(T.LE.TMAX)) then

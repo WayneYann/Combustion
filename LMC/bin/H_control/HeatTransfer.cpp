@@ -133,7 +133,6 @@ int  HeatTransfer::unity_Le;
 Real HeatTransfer::htt_tempmin;
 Real HeatTransfer::htt_tempmax;
 Real HeatTransfer::htt_hmixTYP;
-int  HeatTransfer::siegel_test;
 int  HeatTransfer::zeroBndryVisc;
 int  HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux;
 int  HeatTransfer::do_check_divudt;
@@ -294,7 +293,6 @@ HeatTransfer::Initialize ()
     HeatTransfer::htt_tempmin               = 298.0;
     HeatTransfer::htt_tempmax               = 40000.;
     HeatTransfer::htt_hmixTYP               = -1.;
-    HeatTransfer::siegel_test               = 0;
     HeatTransfer::zeroBndryVisc             = 0;
     HeatTransfer::chemSolve                 = 0;
     HeatTransfer::do_check_divudt           = 1;
@@ -419,7 +417,6 @@ HeatTransfer::Initialize ()
 
     pp.query("turbFile",turbFile);
 
-    pp.query("siegel_test",siegel_test);
     pp.query("zeroBndryVisc",zeroBndryVisc);
     //
     // Set variability/visc for velocities.
@@ -1449,7 +1446,7 @@ HeatTransfer::initData ()
         std::cout << "initData: reading data from: " << pltfile << '\n';
 
     DataServices::SetBatchMode();
-    FileType fileType(NEWPLT);
+    Amrvis::FileType fileType(Amrvis::NEWPLT);
     DataServices dataServices(pltfile, fileType);
 
     if (!dataServices.AmrDataOk())
@@ -1551,7 +1548,7 @@ HeatTransfer::initData ()
             std::cout << "initData: reading data from: " << velocity_plotfile << '\n';
 
         DataServices::SetBatchMode();
-        FileType fileType(NEWPLT);
+        Amrvis::FileType fileType(Amrvis::NEWPLT);
         DataServices dataServices(velocity_plotfile, fileType);
 
         if (!dataServices.AmrDataOk())
@@ -1644,217 +1641,6 @@ HeatTransfer::initData ()
 void
 HeatTransfer::initDataOtherTypes ()
 {
-    const Real* dx = geom.CellSize();
-
-    int add_turb = 0, box_offset[BL_SPACEDIM];
-    Real turb_size[BL_SPACEDIM], turb_scale;
-    //
-    // FORT_CHECK_TURB should be located in PROB_?D.F.
-    // If it is not, merely comment out the call below and everything
-    // should be ok.
-    //
-    FORT_CHECK_TURB(&add_turb,turb_size,box_offset,&turb_scale,dx);
-  
-    if (add_turb) 
-    {
-        MultiFab& S_new = get_new_data(State_Type);
-
-        const int numVelComp = BL_SPACEDIM;
-        const int numVelGrow = 0;
-        //
-        // Read in data about turbulent velocity field.
-        //
-        Real fileProbSize[BL_SPACEDIM];
-        int vel_size[BL_SPACEDIM];
-        {
-            std::string dxFileName = turbFile + "/Size";
-            std::ifstream is(dxFileName.c_str(),std::ios::in);
-            if (is.fail())
-            {
-                std::string msg("HeatTransfer: cannot open velocity file: ");
-                msg += turbFile;
-                BoxLib::Error(msg.c_str());
-            }
-            for (int i = 0; i < BL_SPACEDIM; i++)
-                is >> fileProbSize[i];
-            for (int i = 0; i < BL_SPACEDIM; i++)
-                is >> vel_size[i];
-        }
-        //
-        // Make sure turbulent velocity field is correct size.
-        //
-        if (D_TERM(fileProbSize[0] != turb_size[0],
-                   || fileProbSize[1] != turb_size[1],
-                   || fileProbSize[2] != turb_size[2]))
-        {
-            if (ParallelDescriptor::IOProcessor())
-                std::cout << "warning turb field is wrong size" << '\n';
-        }
-        //
-        // Read in turbulent velocity field ... store in turbVelFile.
-        //
-        std::string MFPath = turbFile +"/MultiFab";
-        MultiFab* turbVelFile = new MultiFab();
-        VisMF::Read(*turbVelFile,MFPath);
-        //
-        // Compute refinement ratio between turbulence file data and this level.
-        // 
-        bool    do_avgdown;
-        IntVect avgdown_ratio(IntVect::TheZeroVector());
-        IntVect refine_ratio(IntVect::TheZeroVector());
-
-        for (int i = 0;i < BL_SPACEDIM; i++)
-        {
-            Real dxFile = fileProbSize[i]/Real(vel_size[i]);
-            if (dxFile > geom.CellSize(i))
-            {
-                refine_ratio[i] = int(dxFile/geom.CellSize(i));
-                do_avgdown = false;
-            }
-            else
-            {
-                avgdown_ratio[i] = int(geom.CellSize(i)/dxFile);
-                do_avgdown = true;
-            }
-        }
-        //
-        // Check for consistency in ratios.
-        //
-        if (do_avgdown) 
-        {
-            if (D_TERM(avgdown_ratio[0] < 1, 
-                       || avgdown_ratio[1] < 1, 
-                       || avgdown_ratio[2] < 1)
-                || refine_ratio != IntVect::TheZeroVector())
-                BoxLib::Error("bad sizing");
-        }
-        else
-        {
-            if (D_TERM(refine_ratio[0] < 1, 
-                       || refine_ratio[1] < 1, 
-                       || refine_ratio[2] < 1)
-                || avgdown_ratio != IntVect::TheZeroVector())
-                BoxLib::Error("bad sizing");
-        }
-
-        MultiFab* gridTurbVel;
-
-        if (do_avgdown) 
-        {
-            //
-            // Avg down data from fine level to this level.
-            // The case where they are on the same level falls through here.
-            //
-            if (verbose && ParallelDescriptor::IOProcessor())
-                std::cout << "averaging down turb data by factor of " 
-                          << avgdown_ratio << '\n';
-
-            BoxArray fileTurbBA(turbVelFile->boxArray());
-            BoxArray crseTurbBA(fileTurbBA);
-            crseTurbBA.coarsen(avgdown_ratio);
-            gridTurbVel = new MultiFab(crseTurbBA,numVelComp,numVelGrow);
-	  
-            Box fineDomain = BoxLib::refine(geom.Domain(),avgdown_ratio);
-            Geometry fineGeom(fineDomain);
-            MultiFab* crseVol = new MultiFab;
-            MultiFab* fineVol = new MultiFab;
-            geom.GetVolume(*crseVol,crseTurbBA,numVelGrow);
-            fineGeom.GetVolume(*fineVol,fileTurbBA,numVelGrow);
-	  
-            for (MFIter finemfi(*turbVelFile); finemfi.isValid(); ++finemfi)
-            {
-                const int i       = finemfi.index();
-                const int f_level = 0;
-                const int c_level = 0;
-                const Box ovlp    = (*gridTurbVel).box(i);
-	      
-                NavierStokes::avgDown_doit((*turbVelFile)[finemfi],
-                                           (*gridTurbVel)[finemfi],
-                                           (*fineVol)[finemfi],
-                                           (*crseVol)[finemfi],
-                                           f_level,c_level,
-                                           ovlp,Xvel,numVelComp,avgdown_ratio);
-            }
-
-            delete crseVol;
-            delete fineVol;
-        }
-        else
-        {
-            //
-            // Interpolate data from this level to finer level.
-            //
-            if (verbose && ParallelDescriptor::IOProcessor())
-                std::cout << "interpolating turb data by factor of " << refine_ratio << '\n';
-
-            if (turbVelFile->nGrow() == 0)
-                BoxLib::Error("need ghost cells to interp -- use new turb fcn");
-            BoxArray fileTurbBA(turbVelFile->boxArray());
-            BoxArray gridTurbBA(fileTurbBA);
-            gridTurbBA.refine(refine_ratio);
-            gridTurbVel = new MultiFab(gridTurbBA,numVelComp,numVelGrow);
-
-            Box fineDomain = BoxLib::refine(geom.Domain(),refine_ratio);
-            Geometry fineGeom(fineDomain);
-            const Geometry& crseGeom = geom;
-            Array<BCRec> bcr(numVelComp);
-            Interpolater* mapper = &pc_interp;
-            const Box& pdomain = state[State_Type].getDomain();
-            const StateDescriptor&  desc    = desc_lst[State_Type];
-
-            int dummy_comp  = -1;
-            int dummy_state = -1;
-
-            for (MFIter crsemfi(*turbVelFile); crsemfi.isValid(); ++crsemfi)
-            {
-                const int  i    = crsemfi.index();
-                const Box& dbox = gridTurbBA[i];
-                BoxLib::setBC(dbox,pdomain,Xvel,Xvel,numVelComp,desc.getBCs(),bcr);
-                mapper->interp((*turbVelFile)[crsemfi],Xvel,
-                               (*gridTurbVel)[crsemfi],Xvel,
-                               numVelComp, (*gridTurbVel).box(i),
-                               refine_ratio,
-                               crseGeom,fineGeom,
-                               bcr,dummy_comp,dummy_state);
-            }
-        }
-
-        delete turbVelFile;
-        //
-        // Shift grid velocity by offset.
-        //
-        BoxArray gridTurbBA = gridTurbVel->boxArray();
-        BoxArray shiftedGridTurbBA(gridTurbBA);
-        for (int dir=0; dir < BL_SPACEDIM; dir++)
-            shiftedGridTurbBA.shift(dir,box_offset[dir]);
-        MultiFab* shiftedGridTurbVel
-            = new MultiFab(shiftedGridTurbBA,numVelComp,numVelGrow);
-
-        for (MFIter gridmfi(*gridTurbVel); gridmfi.isValid(); ++gridmfi)
-        {
-
-            (*shiftedGridTurbVel)[gridmfi].copy((*gridTurbVel)[gridmfi],
-                                                gridmfi.validbox(),Xvel,
-                                                (*shiftedGridTurbVel).box(gridmfi.index()),
-                                                Xvel,numVelComp);
-        }
-
-        delete gridTurbVel;
-        //
-        // Copy vel into boxarray used by S_new,
-        // multiply by turbulence scale and then add to S_new.
-        //
-        MultiFab* Vel = new MultiFab(S_new.boxArray(),numVelComp,numVelGrow);
-        Vel->setVal(0.0);
-        Vel->copy(*shiftedGridTurbVel,Xvel,Xvel,numVelComp);
-
-        Vel->mult(turb_scale,Xvel,numVelComp,numVelGrow);
-
-        S_new.plus(*Vel,Xvel,numVelComp,numVelGrow);
-
-        delete shiftedGridTurbVel;
-        delete Vel;
-    }
     //
     // Assume that by now, S_new has "good" data
     //
@@ -9495,9 +9281,6 @@ HeatTransfer::getDiffusivity (MultiFab*  beta[BL_SPACEDIM],
         }
     }
 
-    if (siegel_test && (state_comp == Temp || state_comp == RhoH))
-        beta[1]->setVal(0);
-
     if (zeroBndryVisc > 0)
         zeroBoundaryVisc(beta,time,state_comp,dst_comp,ncomp);
 }
@@ -9577,16 +9360,7 @@ HeatTransfer::calc_divu (Real      time,
                          Real      dt,
                          MultiFab& divu)
 {
-    //
-    // Get Mwmix, cpmix and pressure
-    //
     const int nGrow = 0;
-
-    int sCompR, sCompT, sCompY, sCompCp, sCompMw;
-    sCompR=sCompT=sCompY=sCompCp=sCompMw=0;	
-    //
-    // mcdd: get Y,T visc terms together, use in place of individual calls below
-    //
     MultiFab mcViscTerms;
     int vtCompY;
     int vtCompT;
@@ -9596,7 +9370,6 @@ HeatTransfer::calc_divu (Real      time,
         vtCompY = 0;
         mcViscTerms.define(grids,nspecies+1,nGrow,Fab_allocate);
         compute_mcdd_visc_terms(mcViscTerms,time,nGrow,DDOp::DD_Temp);
-        showMF("divu",mcViscTerms,"divu_mcViscTerms",level);
     }
     else
     {
@@ -9604,167 +9377,34 @@ HeatTransfer::calc_divu (Real      time,
         vtCompY = 0;
         mcViscTerms.define(grids,nspecies+2,nGrow,Fab_allocate);
         compute_differential_diffusion_terms(mcViscTerms,0,time);
-        showMF("divu",mcViscTerms,"divu_mcViscTerms",level);
-    }
-    showMFsub("1D",mcViscTerms,stripBox,"1D_divuA",level);
-
-    MultiFab rho(grids,1,nGrow), temp(grids,1,nGrow);
-
-    const MultiFab& Rho_time = get_rho(time);
-
-    for (FillPatchIterator Temp_fpi(*this,temp,nGrow,time,State_Type,Temp,1);
-         Temp_fpi.isValid();
-         ++Temp_fpi)
-    {
-        const int i = Temp_fpi.index();
-
-        rho[i].copy(Rho_time[i],0,sCompR,1);
-        temp[i].copy(Temp_fpi(),0,sCompT,1);
-    }
-    //
-    // Note that state contains rho*species, so divide species by rho.
-    //
-    showMF("divu",rho,"divu_rho",level);
-    showMF("divu",temp,"divu_temp",level);
-
-    MultiFab species(grids,nspecies,nGrow);
-
-    FArrayBox tmp;
-
-    for (FillPatchIterator Spec_fpi(*this,species,nGrow,time,State_Type,first_spec,nspecies);
-         Spec_fpi.isValid();
-         ++Spec_fpi)
-    {
-        const int i = Spec_fpi.index();
-
-        species[i].copy(Spec_fpi(),0,sCompY,nspecies);
-
-        tmp.resize(grids[i],1);
-        tmp.copy(rho[i],sCompR,0,1);
-        tmp.invert(1);
-
-        for (int ispecies = 0; ispecies < nspecies; ispecies++)
-            species[i].mult(tmp,0,ispecies,1);
     }
 
-    showMF("divu",species,"divu_species",level);
-
-    MultiFab mwmix(grids,1,nGrow), cp(grids,1,nGrow);
-
-    for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
     {
-        const int  iGrid = Rho_mfi.index();
-        const Box& box   = Rho_mfi.validbox();
-
-        BL_ASSERT(box == grids[iGrid]);
-
-        getChemSolve().getMwmixGivenY(mwmix[iGrid],species[iGrid],
-                                      box,sCompY,sCompMw);
-        getChemSolve().getCpmixGivenTY(cp[iGrid],temp[iGrid],species[iGrid],
-                                       box,sCompT,sCompY,sCompCp);
-    }
-
-    showMF("divu",cp,"divu_cp",level);
-    showMF("divu",mwmix,"divu_mwmix",level);
-
-    species.clear();
-    //
-    // divu = 1/T DT/dt + W_mix * sum (1/W)DY/Dt
-    //
-    // Compute rho*DT/Dt as
-    //
-    //   1/c_p (div lambda grad T + sum_l rho D grad h_l dot grad Y_l)
-    //
-    MultiFab::Copy(divu,mcViscTerms,vtCompT,0,1,nGrow);
-
-    showMFsub("1D",divu,stripBox,"1D_calcdivu_viscT",level);
-
-    for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
-    {
-        const int iGrid = Divu_mfi.index();
-        divu[iGrid].divide(rho[iGrid],grids[iGrid],sCompR,0,1);
-        divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
-        divu[iGrid].divide(cp[iGrid],grids[iGrid],sCompCp,0,1);
-    }
-    showMF("divu",divu,"divu_VT_T_over_rhoTcp",level);
-    showMFsub("1D",divu,stripBox,"1D_divu_VT_T_over_rhoTcp",level);
-
-    MultiFab delta_divu(grids,1,nGrow), spec_visc_terms(grids,nspecies+1,nGrow);
-
-    delta_divu.setVal(0.0);
-
-    const Array<Real> mwt = getChemSolve().speciesMolecWt();
-
-    for (MFIter mfi(mcViscTerms); mfi.isValid(); ++mfi)
-    {
-        const int iGrid = mfi.index();
-
-        for (int comp = 0; comp < nspecies; ++comp)
+        MultiFab& S = get_data(State_Type,time);
+#if 0
+        MultiFab& RhoYdot = get_data(RhoYdot_Type,time);
+#else
+        MultiFab RhoYdot(grids,nspecies,0);
+        compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);        
+#endif
+        for (MFIter mfi(S); mfi.isValid(); ++mfi)
         {
-            mcViscTerms[mfi].mult(1.0/mwt[comp],comp,1);
-            delta_divu[mfi].plus(mcViscTerms[mfi],grids[iGrid],comp,0,1);
+            const Box& box = mfi.validbox();            
+            FArrayBox& du = divu[mfi];
+            const FArrayBox& vtY = mcViscTerms[mfi];
+            const FArrayBox& vtT = mcViscTerms[mfi];
+            const FArrayBox& rhoY = S[mfi];
+            const FArrayBox& rYdot = RhoYdot[mfi];
+            const FArrayBox& T = S[mfi];
+            FORT_CALCDIVU(box.loVect(), box.hiVect(),
+                          du.dataPtr(),             ARLIM(du.loVect()),    ARLIM(du.hiVect()),
+                          rYdot.dataPtr(),          ARLIM(rYdot.loVect()), ARLIM(rYdot.hiVect()),
+                          vtY.dataPtr(vtCompY),     ARLIM(vtY.loVect()),   ARLIM(vtY.hiVect()),
+                          vtT.dataPtr(vtCompT),     ARLIM(vtT.loVect()),   ARLIM(vtT.hiVect()),
+                          rhoY.dataPtr(first_spec), ARLIM(rhoY.loVect()),  ARLIM(rhoY.hiVect()),
+                          T.dataPtr(Temp),          ARLIM(T.loVect()),     ARLIM(T.hiVect()));
         }
     }
-
-    showMF("divu",delta_divu,"divu_sum_VT_Y_over_Wi",level);
-    mcViscTerms.clear();
-
-    for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
-    {
-        const int  iGrid = Divu_mfi.index();
-        const Box& box   = Divu_mfi.validbox();
-        delta_divu[iGrid].divide(rho[iGrid],box,sCompR,0,1);
-        delta_divu[iGrid].mult(mwmix[iGrid],box,0,0,1);
-        divu[iGrid].plus(delta_divu[iGrid],box,0,0,1);
-    }
-    showMF("divu",divu,"divu_1",level);
-
-    showMFsub("1D",get_data(RhoYdot_Type,time),stripBox,"1D_Ydot",level);
-    if (dt > 0.0 || do_sdc)
-    {
-        //
-        // Increment divu by
-        //    sum_l (h_l/(c_p*T) - mw_mix/mw_l)*delta Y_l/dt 
-        // (i.e., Y_l"dot")
-        //
-        FArrayBox h;
-
-        const int sCompH = 0;
-
-        for (FillPatchIterator Ydot_fpi(*this,delta_divu,0,time,RhoYdot_Type,0,nspecies);
-             Ydot_fpi.isValid();
-             ++Ydot_fpi)
-        {
-            const int i = Ydot_fpi.index();
-
-            h.resize(BoxLib::grow(grids[i],nGrow),nspecies);
-
-            getChemSolve().getHGivenT(h,temp[i],grids[i],sCompT,sCompH);
-
-            for (int istate = first_spec; istate <= last_spec; istate++)
-            {
-                const int ispec = istate-first_spec;
-
-                delta_divu[i].copy(h,ispec,0,1);
-                delta_divu[i].divide(cp[i]);
-                delta_divu[i].divide(temp[i]);
-                delta_divu[i].divide(rho[i]);
-                delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
-                divu[i].minus(delta_divu[i]);
-
-                delta_divu[i].copy(mwmix[i],0,0,1);
-                delta_divu[i].divide(mwt[ispec]);
-                delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
-                delta_divu[i].divide(rho[i]);
-                divu[i].plus(delta_divu[i]);
-
-            }
-        }
-    }
-    rho.clear();
-
-    showMF("divu",divu,"divu_2",level);
-    showMFsub("1D",divu,stripBox,"1D_divu_2",level);
 }
 
 //

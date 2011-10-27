@@ -334,8 +334,8 @@ Diffusion::diffuse_scalar (Real                   dt,
 
     NavierStokes& ns = *(NavierStokes*) &(parent->getLevel(level));
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... diffusing scalar: " << caller->get_desc_lst()[State_Type].name(sigma) << '\n';
+    //if (verbose && ParallelDescriptor::IOProcessor())
+    //  std::cout << "... diffusing scalar: " << caller->get_desc_lst()[State_Type].name(sigma) << '\n';
 
     int allnull, allthere;
     checkBeta(betan, allthere, allnull);

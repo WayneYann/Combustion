@@ -19,6 +19,7 @@
 #    define FORT_FABMINMAX                 fabminmax
 #    define FORT_REPAIR_FLUX               rparflux
 #    define FORT_FLUXDIV                   flxdiv
+#    define FORT_CALCDIVU                  calcdivu
 #    define FORT_ENTH_DIFF_TERMS           enthdiff
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
@@ -48,6 +49,7 @@
 #    define FORT_REPAIR_FLUX               RPARFLUX
 #    define FORT_FLUXDIV                   FLXDIV
 #    define FORT_ENTH_DIFF_TERMS           ENTHDIFF
+#    define FORT_CALCDIVU                  CALCDIVU
 #    define FORT_SET_COMMON                SETCOMMON
 #    define FORT_COMPUTE_UGRADP            COMPUTEUGRADP
 #    define FORT_HTDDRELAX                 HTDDRELAX
@@ -74,6 +76,7 @@
 #    define FORT_FABMINMAX                 fabminmax
 #    define FORT_REPAIR_FLUX               rparflux
 #    define FORT_FLUXDIV                   flxdiv
+#    define FORT_CALCDIVU                  calcdivu
 #    define FORT_ENTH_DIFF_TERMS           enthdiff
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
@@ -101,6 +104,7 @@
 #    define FORT_FABMINMAX                 fabminmax_
 #    define FORT_REPAIR_FLUX               rparflux_
 #    define FORT_FLUXDIV                   flxdiv_
+#    define FORT_CALCDIVU                  calcdivu_
 #    define FORT_ENTH_DIFF_TERMS           enthdiff_
 #    define FORT_SET_COMMON                setcommon_
 #    define FORT_COMPUTE_UGRADP            computeugradp_
@@ -249,6 +253,14 @@ extern "C" {
 #endif
                       const Real* vol,   ARLIM_P(vlo),  ARLIM_P(vhi),
                       const int* nc, const Real* scale);
+    
+    void FORT_CALCDIVU(const int* lo,  const int* hi,
+                       Real* divu,         ARLIM_P(dulo),    ARLIM_P(duhi),
+                       const Real* rYdot,  ARLIM_P(rYdotlo), ARLIM_P(rYdothi),
+                       const Real* vtY,    ARLIM_P(vtYlo),   ARLIM_P(vtYhi),
+                       const Real* vtT,    ARLIM_P(vtTlo),   ARLIM_P(vtThi),
+                       const Real* rhoY,   ARLIM_P(rYlo),    ARLIM_P(rYhi),
+                       const Real* T,      ARLIM_P(Tlo),     ARLIM_P(Thi));
     
     void FORT_SET_COMMON (const Real* time, const int* iteration);
 

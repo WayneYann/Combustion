@@ -898,6 +898,7 @@ c     Set up ATOL
             c_0(1:Nspec+1) = const_src(i,j,1:Nspec+1)
 
             FIRST = .TRUE.
+            FuncCount(i,j) = 0
             do node = 1,nsub
                if (node.lt.nsub) then
                   weight = one
@@ -914,6 +915,7 @@ c     Set up ATOL
      &              dvi, CONPJ_FILE, MF, RWRK, IWRK)
 
                TT1 = TT2
+               FuncCount(i,j) = FuncCount(i,j) + IWRK(dvbi+11)
             enddo
             
             rhoHnew(i,j) = RWRK(NZ+Nspec)
