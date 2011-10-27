@@ -14,8 +14,6 @@ particles.timestamp_names = u v rhoY(H2) rhoY(H) rhoY(O) rhoY(O2) rhoY(OH) rhoY(
 particles.pverbose = 2
 
 ns.do_active_control = 0
-ns.do_active_control = 1
-
 mg.smooth_on_cg_unstable=1
 
 max_step  = 10000
@@ -66,16 +64,37 @@ geometry.prob_hi   = 0.00075 0.012
 amr.n_cell          = 8 128
 amr.blocking_factor = 8
 geometry.prob_hi   = 0.00075 0.012
+ns.fixed_dt         = 2.e-5
+max_step            = 10
+max_step            = 100
+amr.check_file      = chk_0128_
+amr.plot_file       = plt_0128_
+amr.check_int       = 1000
+amr.plot_int        = 1
 
-amr.n_cell          = 8 256
-amr.blocking_factor = 8
-geometry.prob_hi   = 0.000375 0.012
+#amr.n_cell          = 8 256
+#amr.blocking_factor = 8
+#geometry.prob_hi   = 0.000375 0.012
+#ns.fixed_dt         = 1.e-5
+#max_step            = 20
+#max_step            = 200
+#amr.check_file      = chk_0256_
+#amr.plot_file       = plt_0256_
+#amr.check_int       = 2000
+#amr.plot_int        = 2
 
-amr.n_cell          = 8 512
-amr.blocking_factor = 8
-geometry.prob_hi   = 0.0001875 0.012
+#amr.n_cell          = 8 512
+#amr.blocking_factor = 8
+#geometry.prob_hi    = 0.0001875 0.012
+#ns.fixed_dt         = 5.e-6
+#max_step            = 40
+#max_step            = 400
+#amr.check_file      = chk_0512_
+#amr.plot_file       = plt_0512_
+#amr.check_int       = 4000
+#amr.plot_int        = 4
 
-amr.max_grid_size   = 32
+amr.max_grid_size   = 256
 
 amr.v=1
 amr.max_level =  0            # maximum level number allowed
@@ -84,10 +103,6 @@ amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 4 2 1 2 # number of buffer cells in error est
 amr.grid_eff        = 0.9     # what constitutes an efficient grid
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
-amr.check_file      = chk     # root name of checkpoint file
-amr.check_int       = 10       # number of timesteps between checkpoints
-amr.plot_file       = plt
-amr.plot_int        = 10
 amr.grid_log        = grdlog  # name of grid logging file
 #amr.derive_plot_vars=ALL
 
@@ -98,7 +113,7 @@ ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
 ns.visc_tol        = 1.0e-14  # tolerence for viscous solves
 ns.visc_abs_tol    = 1.0e-14  # tolerence for viscous solves
 ns.cfl            = 0.7       # cfl number for hyperbolic system
-ns.cfl            = 0.25      # cfl number for hyperbolic system
+ns.cfl            = 0.5       # cfl number for hyperbolic system
 ns.init_shrink    = 1.0       # scale back initial timestep
 ns.change_max     = 1.1       # scale back initial timestep
 ns.vel_visc_coef   = 1.983e-5
@@ -137,7 +152,7 @@ ns.flameTracName   = H
 ns.unity_Le = 0
 
 ns.do_sdc = 1
-ns.sdc_iterMAX = 3
+ns.sdc_iterMAX = 1
 
 ns.dpdt_option = 0
 #macop.max_order = 3
@@ -202,7 +217,6 @@ fab.format = NATIVE
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0
-max_step=0
 #ShowMF_Sets = mac velVT dd estate
 #ShowMF_Sets = dddt dd divu 1D mac
 #ShowMF_Sets = 1D
@@ -216,4 +230,4 @@ ns.do_not_use_funccount = 1
 ns.num_divu_iters=0
 diffuse.max_order = 2
 diffuse.tensor_max_order = 2
-ns.fixed_dt=3.e-5
+

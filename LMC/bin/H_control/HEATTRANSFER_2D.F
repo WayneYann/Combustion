@@ -21,6 +21,61 @@
 
 #define SDIM 2
 
+      subroutine FORT_CALCDIVU(lo, hi,
+     &                         divu, DIMS(divu), rYdot, DIMS(rYdot),
+     &                         vtY,  DIMS(vtY),    vtT, DIMS(vtT),
+     &                         rhoY, DIMS(rhoY),     T, DIMS(T))
+      implicit none
+#include "cdwrk.H"
+#include "visc.H"
+#include "htdata.H"
+      integer lo(SDIM),hi(SDIM)
+      integer DIMDEC(divu)
+      integer DIMDEC(rYdot)
+      integer DIMDEC(vtY)
+      integer DIMDEC(vtT)
+      integer DIMDEC(rhoY)
+      integer DIMDEC(T)
+      REAL_T  divu(DIMV(divu))
+      REAL_T  rYdot(DIMV(rYdot),1:Nspec)
+      REAL_T  vtY(DIMV(vtY),1:Nspec)
+      REAL_T  vtT(DIMV(vtT))
+      REAL_T  rhoY(DIMV(rhoY),1:Nspec)
+      REAL_T  T(DIMV(T))
+      
+      integer i, j, n
+      REAL_T Y(maxspec), H(maxspec), cpmix, rhoInv, tmp, mmw
+
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            rhoInv = 0.d0
+            do n=1,Nspec
+               rhoInv = rhoInv + rhoY(i,j,n)
+            enddo
+            rhoInv = 1.d0 / rhoInv
+            do n=1,Nspec
+               Y(n) = rhoInv*rhoY(i,j,n)
+            enddo
+            CALL CKCPBS(T(i,j),Y,IWRK(ckbi),RWRK(ckbr),cpmix)
+            CALL CKHMS(T(i,j),IWRK(ckbi),RWRK(ckbr),H)
+            CALL CKMMWY(Y,IWRK(ckbi),RWRK(ckbr),mmw)
+
+            cpmix = cpmix*1.d-4
+            do n=1,Nspec
+               H(n) = H(n)*1.d-4
+            enddo
+
+            tmp = 0.d0
+            divu(i,j) = vtT(i,j)
+            do n=1,Nspec
+               tmp = tmp + (rYdot(i,j,n)+vtY(i,j,n))*invmwt(n)
+               divu(i,j) = divu(i,j) - rYdot(i,j,n)*H(n)
+            enddo
+            divu(i,j) = ( divu(i,j)/(cpmix*T(i,j)) + tmp*mmw ) * rhoInv
+         enddo
+      enddo
+      end
+
       subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dlo, dhi, dx, T, DIMS(T),
      &                                rhoDx, DIMS(rhoDx), Fx, DIMS(Fx), Ax, DIMS(Ax), 
      &                                rhoDy, DIMS(rhoDy), Fy, DIMS(Fy), Ay, DIMS(Ay), 
@@ -318,6 +373,8 @@ c     yhi
             enddo
          enddo
       endif
+
+      deallocate(H)
       end
 
       subroutine FORT_COMPUTE_RHODGRADHDOTGRADY(dx,
