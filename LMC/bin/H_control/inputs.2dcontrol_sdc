@@ -230,4 +230,3 @@ ns.do_not_use_funccount = 1
 ns.num_divu_iters=0
 diffuse.max_order = 2
 diffuse.tensor_max_order = 2
-
