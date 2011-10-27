@@ -2628,17 +2628,20 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
     const int nGrow = 0;
 
-    // Do explicit update of (RhoY,RhoH) based on Force
-#if 0
-    MultiFab::Copy(S_new,Force,0,first_spec,nspecies+1,0);
-    S_new.mult(dt,first_spec,nspecies);
-    MultiFab::Add(S_new,S_old,first_spec,first_spec,nspecies+1,0);
-#else
-    MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies+1,0);
-#endif
-
-    if (theta > 0)  // then need to do solve (and np1 species diffusion fluxes are nonzero)
-    {    
+    if (theta == 0) // fully explicit update, assume all RHS terms in Force, zero np1 flux-based terms
+    {
+        MultiFab::Copy(S_new,Force,0,first_spec,nspecies+1,0);
+        S_new.mult(dt,first_spec,nspecies);
+        MultiFab::Add(S_new,S_old,first_spec,first_spec,nspecies+1,0);
+        for (int d = 0; d < BL_SPACEDIM; ++d)
+        {
+            SpecDiffusionFluxnp1[d]->setVal(0);
+        }
+        sumSpecFluxDotGradHnp1.setVal(0);
+    }
+    else
+    {   
+        MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies+1,0);
         MultiFab* rho_half = 0;
         Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
         MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
@@ -2673,6 +2676,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         //
         // Now, re-diffuse the state with the modified fluxes, save the new-time D term (remove theta below)
         //
+        //  ie, S_new = S_old + dt*(Force + theta*Dnp1)
+        //
         diffusion_flux_divergence(D,DComp,curr_time,-1); // -ve because fluxes on LHS, D on RHS
 
         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
@@ -2685,14 +2690,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         }
 
         D.mult(1/theta);
-    }
-    else
-    {
-        for (int d = 0; d < BL_SPACEDIM; ++d)
-        {
-            SpecDiffusionFluxnp1[d]->setVal(0);
-        }
-        sumSpecFluxDotGradHnp1.setVal(0);
     }
 
     if (verbose)
@@ -4926,6 +4923,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     //  data for fluxes, etc
     //
     int nComp = nspecies + 2;
+    int nGrow = 0;
     BL_ASSERT(visc_terms.boxArray() == grids);
     BL_ASSERT(visc_terms.nComp() >= load_comp+nComp);// spec+heat+conduction
 
@@ -4940,28 +4938,16 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     const TimeLevel whichTime = which_time(State_Type,time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
     MultiFab& sumSpecFluxDotGradH = (whichTime == AmrOldTime) ? sumSpecFluxDotGradHn : sumSpecFluxDotGradHnp1;
-
-
-    // Compute/adjust species fluxes/heat flux/conduction, save in class data
-    compute_differential_diffusion_fluxes(time);
-
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
-    showMFsub("dddt",*flux[1],BoxLib::surroundingNodes(stripBox,1),"dddt_yflux",level);
-
-    // Get -Div(Fi), -Div(Q), -Div(lambda.Grad(T))
-    Real scale = -1;
-    diffusion_flux_divergence(visc_terms,load_comp,time,scale);
-    showMFsub("dddt",visc_terms,stripBox,"dddd_vt1",level);
-
-    // Add external heating terms for RhoH
-    int nGrow = 0;
+    //
+    // Compute/adjust species fluxes/heat flux/conduction, save in class data
+    // Then compute -Div(Fi), -Div(Q) + heating, -Div(lambda.Grad(T)) + heating + sum(Fi.Grad(Hi)) 
+    //
+    compute_differential_diffusion_fluxes(time);
+    diffusion_flux_divergence(visc_terms,load_comp,time,-1); // -1 scale here because fluxes on LHS, D on RHS
     add_heat_sources(visc_terms,load_comp+nspecies,time,nGrow,1.0);
-
-    // Add sum(Fi.Grad(Hi)) + external heating for Temp
     add_heat_sources(visc_terms,load_comp+nspecies+1,time,nGrow,1.0);
-    showMFsub("1D",sumSpecFluxDotGradH,stripBox,"1D_viscT_F.Gh",level);
     MultiFab::Add(visc_terms,sumSpecFluxDotGradH,0,load_comp+nspecies+1,1,0);
-    showMFsub("1D",visc_terms,stripBox,"1D_viscT",level);
 }
 
 void
@@ -6309,7 +6295,7 @@ HeatTransfer::advance_sdc (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "R (SDC predictor) \n";
 
-    advance_chemistry(S_old,S_new,dt,0,&Forcing,0);
+    advance_chemistry(S_old,S_new,dt,Forcing,0);
     temperature_stats(S_new);
 
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
@@ -6397,7 +6383,7 @@ HeatTransfer::advance_sdc (Real time,
         }
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  R (SDC corrector " << sdc_iter << ")\n";
-        advance_chemistry(S_old,S_new,dt,0,&Forcing,0);
+        advance_chemistry(S_old,S_new,dt,Forcing,0);
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -7052,8 +7038,7 @@ void
 HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                                  MultiFab&       mf_new,
                                  Real            dt,
-                                 int             ngrow,
-                                 const MultiFab* Force,
+                                 const MultiFab& Force,
                                  int             nCompF)
 {
     const Real strt_time = ParallelDescriptor::second();
@@ -7088,7 +7073,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
                 const Box& box = Smfi.validbox();
 		FArrayBox& fc = tmp[Smfi];
-		const FArrayBox& frc = (*Force)[Smfi];
+		const FArrayBox& frc = Force[Smfi];
 
 		FArrayBox& rYdot = get_new_data(RhoYdot_Type)[Smfi];
 

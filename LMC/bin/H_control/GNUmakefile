@@ -14,6 +14,7 @@ DIM             = 2
 COMP            = g++
 FCOMP           = gfortran
 USE_MPI         = FALSE
+USE_MPI         = TRUE
 USE_OMP         = FALSE
 USE_F90_SOLVERS = FALSE
 VERBOSE         = FALSE
@@ -24,7 +25,7 @@ USE_FLCTS       = TRUE
 USE_PARTICLES   = TRUE
 
 # Enable ht.velocity_plotfile option
-USE_VELOCITY    = TRUE
+USE_VELOCITY    = FALSE
 
 # Enable time-dependent forcing term
 USE_TDEPFORCING = TRUE
