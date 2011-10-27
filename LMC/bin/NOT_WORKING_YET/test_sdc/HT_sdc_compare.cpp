@@ -967,7 +967,7 @@ HeatTransfer::initData ()
         std::cout << "initData: reading data from: " << pltfile << std::endl;
 
     DataServices::SetBatchMode();
-    FileType fileType(NEWPLT);
+    Amrvis::FileType fileType(Amrvis::NEWPLT);
     DataServices dataServices(pltfile, fileType);
 
     if (!dataServices.AmrDataOk())
@@ -1067,7 +1067,7 @@ HeatTransfer::initData ()
             std::cout << "initData: reading data from: " << velocity_plotfile << std::endl;
 
         DataServices::SetBatchMode();
-        FileType fileType(NEWPLT);
+        Amrvis::FileType fileType(Amrvis::NEWPLT);
         DataServices dataServices(velocity_plotfile, fileType);
 
         if (!dataServices.AmrDataOk())
