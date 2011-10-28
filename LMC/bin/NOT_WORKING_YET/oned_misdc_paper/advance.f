@@ -275,6 +275,8 @@ ccccccccccccccccccccccccccccccccc
 
       real*8 Y(maxspec)
       real*8 hi(maxspec,-1:nx)
+
+      real*8 WDOTK(maxspec), C(maxspec), T
       real*8 RWRK, cpmix, rhocp
       integer IWRK
 
@@ -313,6 +315,17 @@ c        we take the gradient of Y from the second scal argument
      $                           spec_flux_hi,beta_old,diffdiff_old,
      $                           dx,time)
       end if
+
+c     I_R in predictor is instantaneous value at t^n
+      do i=0,nx-1
+         do n=1,Nspec
+            C(n) = scal_old(i,FirstSpec+n-1)*invmwt(n)
+         end do
+         call CKWC(scal_old(i,Temp),C,IWRK,RWRK,WDOTK)
+         do n=1,Nspec
+            I_R_new(i,n) = WDOTK(n)*mwt(n)/thickFacCH
+         end do
+      end do
 
 c     compute advective forcing term
       print *,'... computing advective forcing term = D^n + I_R^kmax'
