@@ -142,7 +142,7 @@ c     Initialize chem/tran database
       
 
 c      dx = (probhi-problo)/DBLE(nx)
-      dx = 1.d2*(1.d-2*probhi - 1.d-2*problo)/DBLE(128)
+      dx = 1.d2*(1.d-2*probhi - 1.d-2*problo)/DBLE(nx)
       
       call probinit(problo,probhi)
       
