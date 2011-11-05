@@ -144,13 +144,6 @@ c            endif
                   Z(n) = scal(i,FirstSpec+n-1)
                enddo
                rhoh_INIT = scal(i,RhoH)
-
-               if (i.eq.64)then
-                  dvd_debug=1
-                  print *,Z(0)
-               else
-                  dvd_debug=0
-               endif
                call vodeF_T_RhoY(Nspec+1,time,Z(0),ZP(0),RWRK,IWRK)
                do n=0,Nspec
                   I_R(i,n) = ZP(N)

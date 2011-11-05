@@ -557,15 +557,8 @@ c            endif
          do k= 1, Nspec
             ZP(k) = WDOTK(k)*mwt(k)/thickFacCH
      &           + c_0(k) + c_1(k)*TIME
-            if (dvd_debug.eq.1) then
-               print *,'ZP',K,ZP(K)
-            endif
          end do
          ZP(0) = c_0(0) + c_1(0)*TIME 
-         if (dvd_debug.eq.1) then
-c            stop
-         endif
-
 
       end if
 
