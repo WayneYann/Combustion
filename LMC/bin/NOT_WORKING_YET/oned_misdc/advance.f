@@ -472,6 +472,7 @@ c        add differential diffusion
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_new,dt)
+
       endif
 
 C----------------------------------------------------------------
@@ -514,6 +515,13 @@ c           we take the gradient of Y from the second scal argument
      $                              spec_flux_hi,beta_new,
      $                              diffdiff_new,dx,time)
          end if
+
+
+      do i=60,70
+         print *,i,diff_new(i,FirstSpec+3)
+      enddo
+      stop
+
 
          print *,'... computing advective forcing term = D^n + I_R^k-1'
          do i = 0,nx-1

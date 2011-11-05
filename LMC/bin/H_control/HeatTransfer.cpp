@@ -6311,9 +6311,9 @@ HeatTransfer::advance_sdc (Real time,
         compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time);
 
 
-
-        dump(DDnp1,0);
+        dump(Dnp1,3);
     BoxLib::Abort();
+
 
         //
         // Compute A (F = Dn + R)

@@ -25,6 +25,7 @@
   sdc_evolve_T_in_VODE = .false.
   lim_rxns = 0
   V_in = 0.0
+  V_in = -1
   LeEQ1 = 0
   tranfile = 'tran.asc.chem-H'
   coef_avg_harm = 0
