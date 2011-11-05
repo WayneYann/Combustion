@@ -182,12 +182,16 @@ public:
                                         int       FComp,
                                         Real      theta,
                                         MultiFab& D,
-                                        int       DComp);
+                                        int       DComp,
+                                        MultiFab& DD,
+                                        Real      theta_enthalpy);
 
-    void diffusion_flux_divergence (MultiFab& visc_terms,
-                                    int       load_comp,
-                                    Real      time,
-                                    Real      scale) const;
+    void flux_divergence (MultiFab&        fdiv,
+                          int              fdivComp,
+                          const MultiFab* const* extensive_fluxes,
+                          int              fluxComp,
+                          int              nComp,
+                          Real             scale) const;
 
     void compute_differential_diffusion_fluxes (const Real& time);
 
@@ -195,6 +199,7 @@ public:
 
     void adjust_spec_diffusion_fluxes (Real                   time,
                                        const MultiFab* const* beta,
+                                       bool                   update_enthalpy_fluxes,
                                        bool                   grow_cells_already_filled);
 
     virtual void scalar_diffusion_update (Real dt,
@@ -407,8 +412,8 @@ protected:
     virtual void compute_edge_states (Real dt,
                                       std::vector<int>* state_comps_to_compute = 0);
     virtual void differential_spec_diffuse_sync (Real dt);
-    virtual void compute_differential_diffusion_terms (MultiFab& visc_terms,
-						       int       sComp,
+    virtual void compute_differential_diffusion_terms (MultiFab& D,
+                                                       MultiFab& DD,
 						       Real      time);
 
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
@@ -685,8 +690,8 @@ protected:
     MultiFab   Dn;
     MultiFab   Dnp1;
     MultiFab   Dhat;
-
-
+    MultiFab   DDn;
+    MultiFab   DDnp1;
 };
 
 #endif /*_HeatTransfer_H_*/

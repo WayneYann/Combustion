@@ -161,8 +161,9 @@ protected:
     virtual void Fsmooth (MultiFab&       solnL,
                           const MultiFab& rhsL,
                           int             level,
-                          int             rgbflag);
-    //
+                          int             rgbflag,
+                          Array<Real>&    max_update);
+
     // apply Jacobi smoother to improve residual to L(solnL)=rhsL
     //
     virtual void Fsmooth_jacobi (MultiFab&       solnL,

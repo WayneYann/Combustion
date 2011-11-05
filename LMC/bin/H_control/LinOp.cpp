@@ -327,13 +327,14 @@ LinOp::residual (MultiFab&       residL,
 void
 LinOp::smooth (MultiFab&       solnL,
                const MultiFab& rhsL,
+               Array<Real>&    max_update,
                int             level,
                LinOp::BC_Mode  bc_mode)
 {
     for (int redBlackFlag = 0; redBlackFlag < 2; redBlackFlag++)
     {
         applyBC(solnL, 0, 1, level, bc_mode);
-        Fsmooth(solnL, rhsL, level, redBlackFlag);
+        Fsmooth(solnL, rhsL, level, redBlackFlag, max_update);
     }
 }
 

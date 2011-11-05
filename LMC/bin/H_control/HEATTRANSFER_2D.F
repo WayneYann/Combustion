@@ -93,14 +93,14 @@
       integer DIMDEC(rhoDx)
       REAL_T  rhoDx(DIMV(rhoDx),Nspec+2)
       integer DIMDEC(Fx)
-      REAL_T  Fx(DIMV(Fx),Nspec+2)
+      REAL_T  Fx(DIMV(Fx),Nspec+3)
       integer DIMDEC(Ax)
       REAL_T  Ax(DIMV(Ax))
 
       integer DIMDEC(rhoDy)
       REAL_T  rhoDy(DIMV(rhoDy),Nspec+2)
       integer DIMDEC(Fy)
-      REAL_T  Fy(DIMV(Fy),Nspec+2)
+      REAL_T  Fy(DIMV(Fy),Nspec+3)
       integer DIMDEC(Ay)
       REAL_T  Ay(DIMV(Ay))
 
@@ -116,6 +116,9 @@
       REAL_T FiHi
       logical fix_xlo, fix_xhi, fix_ylo, fix_yhi
 
+
+      REAL_T sum
+
 c     Compute species enthalpies on box grown by one
       do d=1,SDIM
          lob(d) = lo(d)-1
@@ -130,14 +133,14 @@ c     actually be centered on the edge, so the stencils below must reflect this
 
       call FORT_HfromT(lob, hib, H, DIMS(T), T, DIMS(T))
 
-c     On entry, Fx(1:Nspec) = spec flux, Fx(Nspec+1) = - (lambda/cp).Grad(Hmix)
-c     On exit, Fx(Nspec+1) is the heat flux = - lambda.Grad(T) + (species flux).(species enthalpy)
-c       Since Hmix = sum(Yi.Hi), lambda.Grad(T) = (lambda/cp).(Grad(Hmix) - Hi.Grad(Y)
-c       In the mixtured-averaged model (species flux) = -rhoDi.Grad(Y), so we get that
-c       heat flux = - (lambda/cp).Grad(Hmix) + Hi.(species flux).(1 - (lambda/(cp.rhoDi))
-c
-c     Also, conduction = - lambda.Grad(T) = (heat flux) - (species flux).(species enthalpy)
-c                (or, simply -lambda.Grad(T) computed using T and lambda passed in)
+c     On entry, Fx(1:Nspec) = spec flux
+c     On exit:
+c     Fx(Nspec+1) = untouched
+c     Fx(Nspec+2) = sum[ (species flux).(species enthalpy) ]
+c     Fx(Nspec+3) = extensive heat conduction
+
+      Fx(lo(1):hi(1)+1,lo(2):hi(2),Nspec+2) = 0.d0
+      Fy(lo(1):hi(1),lo(2):hi(2)+1,Nspec+2) = 0.d0
 
       dxInv = 1.d0 / dx(1)
       if (lo(1).eq.dlo(1)  .and.  Tbc(1,1).eq.EXT_DIR) then
@@ -158,13 +161,13 @@ c                (or, simply -lambda.Grad(T) computed using T and lambda passed 
          do j=lo(2),hi(2)
             do i=elo,ehi
                FiHi = + 0.5d0*(H(i,j,n)+H(i-1,j,n))*Fx(i,j,n)
-               Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
+               Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2) + FiHi*(rhoDx(i,j,Nspec+1)/rhoDx(i,j,n) - 1.d0)
             enddo
          enddo
       enddo
       do j=lo(2),hi(2)
          do i=elo,ehi
-            Fx(i,j,Nspec+2) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
+            Fx(i,j,Nspec+3) = - rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
          enddo
       enddo
 
@@ -184,20 +187,20 @@ c                (or, simply -lambda.Grad(T) computed using T and lambda passed 
          fix_yhi = .false.
          ehi = hi(2)+1
       endif
+
       do n=1,Nspec
          do j=elo,ehi
             do i=lo(1),hi(1)
                FiHi = + 0.5d0*(H(i,j,n)+H(i,j-1,n))*Fy(i,j,n)
-               Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
+               Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2) + FiHi*(rhoDy(i,j,Nspec+1)/rhoDy(i,j,n) - 1.d0)
             enddo
          enddo
       enddo
       do j=elo,ehi
          do i=lo(1),hi(1)
-            Fy(i,j,Nspec+2) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1)) * dyInv * Ay(i,j)
+            Fy(i,j,Nspec+3) = - rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1)) * dyInv * Ay(i,j)
          enddo
       enddo
-
 
 c     xlo
       if (fix_xlo) then
@@ -205,12 +208,12 @@ c     xlo
             do j=lo(2),hi(2)
                i=lo(1)
                FiHi = H(i-1,j,n)*Fx(i,j,n)
-               Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
+               Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2) + FiHi*(rhoDx(i,j,Nspec+1)/rhoDx(i,j,n) - 1.d0)
             enddo
          enddo         
          do j=lo(2),hi(2)
             i=lo(1)
-            Fx(i,j,Nspec+2) = - 2.d0*rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
+            Fx(i,j,Nspec+3) = - 2.d0*rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
          enddo
       endif
 
@@ -220,12 +223,12 @@ c     xhi
             do j=lo(2),hi(2)
                i=hi(1)+1
                FiHi = H(i,j,n)*Fx(i,j,n)
-               Fx(i,j,Nspec+1) = Fx(i,j,Nspec+1) + FiHi*(1.d0 - rhoDx(i,j,Nspec+1)/rhoDx(i,j,n))
+               Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2) + FiHi*(rhoDx(i,j,Nspec+1)/rhoDx(i,j,n) - 1.d0)
             enddo
          enddo         
          do j=lo(2),hi(2)
             i=hi(1)+1
-            Fx(i,j,Nspec+2) = - 2.d0*rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
+            Fx(i,j,Nspec+3) = - 2.d0*rhoDx(i,j,Nspec+2)*(T(i,j) - T(i-1,j))* dxInv * Ax(i,j)
          enddo
       endif
 
@@ -235,12 +238,12 @@ c     ylo
             do i=lo(1),hi(1)
                j=lo(2)
                FiHi = H(i,j-1,n)*Fy(i,j,n)
-               Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
+               Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2) + FiHi*(rhoDy(i,j,Nspec+1)/rhoDy(i,j,n) - 1.d0)
             enddo
          enddo         
          do i=lo(1),hi(1)
             j=lo(2)
-            Fy(i,j,Nspec+2) = - 2.d0*rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))* dyInv * Ay(i,j)
+            Fy(i,j,Nspec+3) = - 2.d0*rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))* dyInv * Ay(i,j)
          enddo
       endif
 
@@ -250,12 +253,12 @@ c     yhi
             do i=lo(1),hi(1)
                j=hi(2)+1
                FiHi = H(i,j,n)*Fy(i,j,n)
-               Fy(i,j,Nspec+1) = Fy(i,j,Nspec+1) + FiHi*(1.d0 - rhoDy(i,j,Nspec+1)/rhoDy(i,j,n))
+               Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2) + FiHi*(rhoDy(i,j,Nspec+1)/rhoDy(i,j,n) - 1.d0)
             enddo
          enddo         
          do i=lo(1),hi(1)
             j=hi(2)+1
-            Fy(i,j,Nspec+2) = - 2.d0*rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))* dyInv * Ay(i,j)
+            Fy(i,j,Nspec+3) = - 2.d0*rhoDy(i,j,Nspec+2)*(T(i,j) - T(i,j-1))* dyInv * Ay(i,j)
          enddo
       endif
 

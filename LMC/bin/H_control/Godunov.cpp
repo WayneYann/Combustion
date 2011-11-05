@@ -18,6 +18,30 @@
 #define YVEL 1
 #define ZVEL 2
 
+using std::cout;
+using std::endl;
+static
+void dump(const FArrayBox& fab, int comp=-1)
+{
+    int sComp = comp < 0 ? 0 : comp;
+    int nComp = comp < 0 ? fab.nComp() : 1;
+
+    for (int j=60; j<=70; ++j) {
+        IntVect iv(1,j);
+        cout << j << " ";
+        for (int n=sComp; n<sComp+nComp; ++n) {
+            cout << fab(iv,n) << " ";
+        }
+        cout << endl;
+    }
+    BoxLib::Abort();
+}
+static
+void dump(const MultiFab& mf, int comp=-1)
+{
+    dump(mf[0],comp);
+}
+
 namespace
 {
     bool initialized = false;
@@ -688,7 +712,7 @@ Godunov::edge_states_fpu( const Box &grd, const Real *dx, Real dt,
     //
     int fort_ind = state_ind+1;  
 
-    int idbg = (state_ind == 3 ? 1 : 0);
+    int idbg = (state_ind == 6 ? 1 : 0);
     FORT_ESTATE_FPU(s_dat,    ARLIM(s_lo), ARLIM(s_hi),
                     tfr_dat,  ARLIM(t_lo), ARLIM(t_hi),
                     divu_dat, ARLIM(d_lo), ARLIM(d_hi),
@@ -724,6 +748,7 @@ Godunov::edge_states_fpu( const Box &grd, const Real *dx, Real dt,
                     sm, sp, ARLIM(smp.loVect()), ARLIM(smp.hiVect()),
                     bc, lo, hi, &dt, dx, &fort_ind,
                     &use_forces_in_trans, &iconserv, &ppm_type, &idbg);
+
 }
 
 void

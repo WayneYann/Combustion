@@ -49,7 +49,8 @@ c-----------------------------------------------------------------------
      $     f3, DIMS(f3),
      $     m3, DIMS(m3),
      $     lo,hi,nc,
-     $     h,redblack
+     $     h,redblack,
+     $     max_update
      $     )
 
       implicit none
@@ -85,6 +86,7 @@ c-----------------------------------------------------------------------
       REAL_T     a(DIMV(a))
       REAL_T    bX(DIMV(bX))
       REAL_T    bY(DIMV(bY))
+      REAL_T max_update(nc)
 c
       integer  i, j, ioff, n
 c
@@ -98,6 +100,8 @@ c
       REAL_T c_ls(0:LSDIM)
       REAL_T r_ls(0:LSDIM)
       REAL_T u_ls(0:LSDIM)
+
+      REAL_T oldphi
 
       integer do_line
       integer ilen,jlen
@@ -120,11 +124,14 @@ c
         do_line = 0
       end if
 
+
 c
       dhx = beta/h(1)**2
       dhy = beta/h(2)**2
+      max_update = 0.d0
       do n = 1, nc
        if (do_line .eq. 0) then
+
          do j = lo(2), hi(2)
             ioff = MOD(j + redblack,2)
             do i = lo(1) + ioff,hi(1),2
@@ -148,9 +155,11 @@ c
                rho = dhx*(bX(i,j)*phi(i-1,j,n) + bX(i+1,j)*phi(i+1,j,n))
      $              +dhy*(bY(i,j)*phi(i,j-1,n) + bY(i,j+1)*phi(i,j+1,n))
 c     
+               oldphi = phi(i,j,n)
                phi(i,j,n) = (rhs(i,j,n) + rho - phi(i,j,n)*delta)
      $              /                (gamma - delta)
-c     
+
+               max_update(n) = MAX(ABS(phi(i,j,n) - oldphi),max_update(n))
             end do
          end do
        else if (do_line .eq. 2) then

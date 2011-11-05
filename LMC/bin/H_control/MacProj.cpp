@@ -320,7 +320,8 @@ MacProj::mac_project (int             level,
                       Real            dt,
                       Real            time,
                       const MultiFab& divu,
-                      int             have_divu)
+                      int             have_divu,
+                      Real            typical_phi_value)
 {
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mac_project at level " << level << '\n';
@@ -425,7 +426,7 @@ MacProj::mac_project (int             level,
 
         mac_level_driver(parent, mac_bndry, *phys_bc, grids, the_solver, level, Density,
                          dx, dt, mac_tol, mac_abs_tol, rhs_scale, 
-                         area, volume, S, Rhs, u_mac, mac_phi);
+                         area, volume, S, Rhs, u_mac, mac_phi, typical_phi_value);
     }
 
     Rhs.clear();

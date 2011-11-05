@@ -85,10 +85,7 @@ int         Diffusion::use_tensor_cg_solve;
 bool        Diffusion::use_mg_precond_flag;
 
 Array<Real> Diffusion::visc_coef;
-Array<Real> Diffusion::typical_vals;
 Array<int>  Diffusion::is_diffusive;
-
-const Real typical_vals_DEF = 1.0;
 
 namespace
 {
@@ -104,7 +101,6 @@ void
 Diffusion::Finalize ()
 {
     visc_coef.clear();
-    typical_vals.clear();
     is_diffusive.clear();
 
     initialized = false;
@@ -205,20 +201,6 @@ Diffusion::Diffusion (Amr*               Parent,
             is_diffusive[i] = _is_diffusive[i];
             visc_coef[i] = _visc_coef[i];
         }
-        //
-        // Read in typical state sizes.
-        //
-        typical_vals.resize(NUM_STATE);
-        for (int i = 0; i < NUM_STATE; i++)
-        {
-            typical_vals[i] = typical_vals_DEF;
-        }
-
-        int n_typical_vals = std::min(NUM_STATE, ppdiff.countval("typical_vals"));
-        if (n_typical_vals > 0)
-        {
-            ppdiff.queryarr("typical_vals",typical_vals,0,n_typical_vals);
-        }
 
         echo_settings();
 
@@ -271,10 +253,6 @@ Diffusion::echo_settings () const
         std::cout << "   tensor_max_order    = " << tensor_max_order    << '\n';
         std::cout << "   scale_abec          = " << scale_abec          << '\n';
     
-        std::cout << "   typical_vals =";
-        for (int i = 0; i <NUM_STATE; i++)
-            std::cout << "  " << typical_vals[i];
-
         std::cout << "\n\n  From ns:\n";
         std::cout << "   do_reflux           = " << do_reflux << '\n';
         std::cout << "   visc_tol            = " << visc_tol  << '\n';
@@ -319,6 +297,7 @@ Diffusion::diffuse_scalar (Real                   dt,
                            const MultiFab* const* betan, 
                            const MultiFab* const* betanp1,
                            int                    betaComp,
+                           Real                   typical_value,
                            const SolveMode&       solve_mode,
                            bool                   add_old_time_divFlux)
 {
@@ -334,8 +313,8 @@ Diffusion::diffuse_scalar (Real                   dt,
 
     NavierStokes& ns = *(NavierStokes*) &(parent->getLevel(level));
 
-    //if (verbose && ParallelDescriptor::IOProcessor())
-    //  std::cout << "... diffusing scalar: " << caller->get_desc_lst()[State_Type].name(sigma) << '\n';
+    if (verbose && ParallelDescriptor::IOProcessor())
+      std::cout << "... diffusing scalar: " << caller->get_desc_lst()[State_Type].name(sigma) << '\n';
 
     int allnull, allthere;
     checkBeta(betan, allthere, allnull);
@@ -612,7 +591,7 @@ Diffusion::diffuse_scalar (Real                   dt,
     else
     {
         MultiGrid mg(*visc_op);
-        mg.solve(Soln,Rhs,S_tol,S_tol_abs);
+        mg.solve(Soln,Rhs,S_tol,S_tol_abs,typical_value);
     }
     Rhs.clear();
     //

@@ -836,6 +836,13 @@ c
 
       REAL_T dY(maxspec), rhoYtemp(maxspec),rhoYres(maxspec),sum,zp(maxspec+1)
 
+C     Needed to compute T from h
+      REAL_T HtoTerrMAX
+      integer HtoTiterMAX, Niter
+      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
+      parameter (HtoTiterMAX = 20)
+      REAL_T res(0:HtoTiterMAX-1)
+
 c     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
@@ -920,10 +927,17 @@ c     Set up ATOL
             
             rhoHnew(i,j) = RWRK(NZ+Nspec)
             Tnew(i,j) = T_cell
+            rho  = 0.d0
             do m= 1,Nspec
                rhoYnew(i,j,m) = RWRK(NZ+m-1)
+               rho = rho + rhoYnew(i,j,m)
             end do
-            
+            rhoInv = 1.d0 / rho
+            do m=1,Nspec
+               Yt(m) = rhoYnew(i,j,m) * rhoInv
+            enddo
+            call FORT_TfromHYpt(Tnew(i,j),rhoHnew(i,j)*rhoInv,Yt,HtoTerrMAX,HtoTiterMAX,res,Niter)
+
             do m=1,Nspec
                I_R(i,j,m) = (rhoYnew(i,j,m) - rhoYold(i,j,m))/dt - c_0(m)
             end do
