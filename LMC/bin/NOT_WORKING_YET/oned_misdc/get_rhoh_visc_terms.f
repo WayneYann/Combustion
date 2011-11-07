@@ -111,8 +111,6 @@ c        compute cell-centered h_m
             flux_hi(n) = beta_hi*spec_flux_hi(i,n)
      &           *(hi(n,i+1)+hi(n,i))/2.d0
 
-            sum = sum - flux_lo(n)
-
 c     compute -lambda/cp on faces
 c            beta_lo = (-beta(i  ,RhoH)-beta(i-1,RhoH)) /2.d0
 c            beta_hi = (-beta(i+1,RhoH)-beta(i  ,RhoH)) /2.d0

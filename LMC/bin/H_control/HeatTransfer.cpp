@@ -2839,6 +2839,9 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
             FArrayBox& T = S[mfi];
             int TComp = Temp;
             
+            FArrayBox& RhoY = S[mfi];
+            int RhoYComp = first_spec;
+            
             int dComp = 0;
             
             const FArrayBox& rDx = (*beta[0])[i];
@@ -2855,6 +2858,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
             
             FORT_ENTH_DIFF_TERMS(box.loVect(), box.hiVect(), domain.loVect(), domain.hiVect(), dx,
                                  T.dataPtr(TComp), ARLIM(T.loVect()),  ARLIM(T.hiVect()),
+                                 RhoY.dataPtr(RhoYComp), ARLIM(RhoY.loVect()),  ARLIM(RhoY.hiVect()),
                                  
                                  rDx.dataPtr(dComp),ARLIM(rDx.loVect()),ARLIM(rDx.hiVect()),
                                  fix.dataPtr(FComp),ARLIM(fix.loVect()),ARLIM(fix.hiVect()),
@@ -6268,7 +6272,6 @@ HeatTransfer::advance_sdc (Real time,
 
     Real theta_enthalpy = theta;
     differential_diffusion_update(Forcing,0,theta,Dhat,0,DDnp1,theta_enthalpy);
-
     // 
     // Compute R, react with F = A + 0.5*(Dn + Dhat)
     // 
@@ -6293,7 +6296,6 @@ HeatTransfer::advance_sdc (Real time,
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "R (SDC predictor) \n";
-
     advance_chemistry(S_old,S_new,dt,Forcing,0);
 
 
@@ -6302,20 +6304,19 @@ HeatTransfer::advance_sdc (Real time,
 
 
     temperature_stats(S_new);
+
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  Update np1 coeffs (SDC corrector " << sdc_iter << ") \n";
 
         calcDiffusivity(cur_time);
-
         //
         // Compute Dnp1, including diff-diff energy terms using current guess for S_new
         //
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  Computing Dnp1 (SDC corrector " << sdc_iter << ")\n";
         compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time);
-
         //
         // Compute A (F = Dn + R)
         //
@@ -9155,9 +9156,6 @@ void
 HeatTransfer::calcDiffusivity (const Real time,
                                bool       do_VelVisc)
 {
-
-  std::cout << "CALLING CALCD" << std::endl;
-
     if (do_mcdd) return;
 
     const TimeLevel whichTime = which_time(State_Type, time);

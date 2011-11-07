@@ -472,7 +472,6 @@ c        add differential diffusion
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R_new,dt)
-
       endif
 
 C----------------------------------------------------------------
@@ -497,6 +496,15 @@ c                      lambda      (for temperature)
          call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
+
+
+         do i=60,70
+            print *,i,beta_new(i,FirstSpec+3)
+         enddo
+         print *,'stop'
+         stop
+
+
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_new(0,FirstSpec),
      &                            spec_flux_lo,spec_flux_hi,dx,time+dt)
