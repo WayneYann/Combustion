@@ -516,13 +516,6 @@ c           we take the gradient of Y from the second scal argument
      $                              diffdiff_new,dx,time)
          end if
 
-
-      do i=60,70
-         print *,i,diff_new(i,FirstSpec+3)
-      enddo
-      stop
-
-
          print *,'... computing advective forcing term = D^n + I_R^k-1'
          do i = 0,nx-1
             do n = 1,Nspec

@@ -131,11 +131,6 @@ c     differential diffusion is divergence of face fluxes
             diffdiff(i) = diffdiff(i) + 
      $           (flux_hi(n) - flux_lo(n))*dxsqinv
          end do
-
-
-         if (i.ge.60 .and. i.le.70) then
-            print *,'flux tot',i,spec_flux_lo(i,4)
-         endif
       end do
       end
 
