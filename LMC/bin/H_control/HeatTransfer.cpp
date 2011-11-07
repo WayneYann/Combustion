@@ -6295,6 +6295,12 @@ HeatTransfer::advance_sdc (Real time,
         std::cout << "R (SDC predictor) \n";
 
     advance_chemistry(S_old,S_new,dt,Forcing,0);
+
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "DONE WITH R (SDC predictor) \n";
+
+
     temperature_stats(S_new);
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
     {
@@ -6309,11 +6315,6 @@ HeatTransfer::advance_sdc (Real time,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  Computing Dnp1 (SDC corrector " << sdc_iter << ")\n";
         compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time);
-
-
-        dump(Dnp1,3);
-    BoxLib::Abort();
-
 
         //
         // Compute A (F = Dn + R)
@@ -6352,12 +6353,14 @@ HeatTransfer::advance_sdc (Real time,
             const FArrayBox& a = (*aofs)[mfi];
             const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
             const FArrayBox& dn = Dn[mfi];
-            const FArrayBox& ddn = Dn[mfi];
+            const FArrayBox& ddn = DDn[mfi];
             const FArrayBox& dnp1 = Dnp1[mfi];
+	    const FArrayBox& ddnp1 = DDnp1[mfi];
             
             f.copy(dn,box,0,box,0,nspecies+1);
             f.minus(dnp1,box,box,0,0,nspecies+1);
-            f.plus(ddn,box,box,nspecies+1,nspecies,1);
+            f.plus(ddn  ,box,box,0,nspecies,1);
+	    f.plus(ddnp1,box,box,0,nspecies,1);
             f.mult(0.5);
             f.plus(a,box,box,first_spec,0,nspecies+1);
             f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
@@ -6368,10 +6371,8 @@ HeatTransfer::advance_sdc (Real time,
         theta_enthalpy = -1; // Do not recompute enthalpy diffusion terms
         differential_diffusion_update(Forcing,0,sdc_theta,Dhat,0,DDnp1,theta_enthalpy);
 
-        dump(Dhat,3);
-
         // 
-        // Compute R (F = A + 0.5(Dn + Dnp1) + Dhat - Dnp1)
+        // Compute R (F = A + 0.5(Dn - Dnp1 + DDn + DDnp1) + Dhat )
         // 
         for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
         {
@@ -6379,23 +6380,20 @@ HeatTransfer::advance_sdc (Real time,
             FArrayBox& f = Forcing[mfi];
             const FArrayBox& a = (*aofs)[mfi];
             const FArrayBox& dn = Dn[mfi];
-            const FArrayBox& dhat = Dhat[mfi];
-            const FArrayBox& ddn = Dn[mfi];
             const FArrayBox& dnp1 = Dnp1[mfi];
-            const FArrayBox& ddnp1 = Dnp1[mfi];
+            const FArrayBox& dhat = Dhat[mfi];
+            const FArrayBox& ddn = DDn[mfi];
+            const FArrayBox& ddnp1 = DDnp1[mfi];
 
             f.copy(dn,box,0,box,0,nspecies+1);
-            f.plus(dnp1,box,box,0,0,nspecies+1);
-            f.plus(ddn,box,box,nspecies+1,nspecies,1);
-            f.plus(ddnp1,box,box,nspecies+1,nspecies,1);
+            f.minus(dnp1,box,box,0,0,nspecies+1);
+            f.plus(ddn  ,box,box,0,nspecies,1);
+            f.plus(ddnp1,box,box,0,nspecies,1);
             f.mult(0.5);
             
             f.plus(dhat,box,box,0,0,nspecies+1);
-            f.minus(dnp1,box,box,0,0,nspecies+1);
             f.plus(a,box,box,first_spec,0,nspecies+1);
         }
-
-        dump(Dn,nspecies);
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  R (SDC corrector " << sdc_iter << ")\n";
@@ -9157,6 +9155,9 @@ void
 HeatTransfer::calcDiffusivity (const Real time,
                                bool       do_VelVisc)
 {
+
+  std::cout << "CALLING CALCD" << std::endl;
+
     if (do_mcdd) return;
 
     const TimeLevel whichTime = which_time(State_Type, time);
@@ -9182,8 +9183,8 @@ HeatTransfer::calcDiffusivity (const Real time,
         tmp.copy(RYfab,0,0,1);
         tmp.invert(1);
 
-        for (int n = 1; n < nspecies+1; n++)
-            RYfab.mult(tmp,0,n,1);
+	//	for (int n = 1; n < nspecies+1; n++)
+	//	  RYfab.mult(tmp,0,n,1);
 
         const int  vflag   = do_VelVisc;
         const int nc_bcen = nspecies+2; // rhoD + lambda + mu
@@ -9202,9 +9203,13 @@ HeatTransfer::calcDiffusivity (const Real time,
 
         if (do_VelVisc)
         {
-            MultiFab& visc = (whichTime==AmrOldTime) ? (*viscn_cc) : (*viscnp1_cc);            
+            MultiFab& visc = (whichTime==AmrOldTime) ? (*viscn_cc) : (*viscnp1_cc);
             visc[Rho_and_spec_fpi].copy(bcen,nspecies+1,0,1);
         }
+
+
+	for (int n = 1; n < nspecies+1; n++)
+	  RYfab.mult(tmp,0,n,1);
 
         for (int icomp = RhoH; icomp <= NUM_STATE; icomp++)
         {

@@ -1021,9 +1021,16 @@ c     Set up ATOL
 #endif
          do i=lo(1),hi(1)
 
+            RHO = 0.d0
             do n=1,Nspec
-               Yt(n) = Y(i,j,n)
+               RHO = RHO + Y(i,j,n)
             end do
+
+            do n=1,Nspec
+               Yt(n) = Y(i,j,n) / RHO
+            end do
+
+            RHO = RHO*1.d-3
 
             Tt = MAX(T(i,j),TMIN_TRANS) 
             CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
@@ -1031,7 +1038,6 @@ c     Set up ATOL
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
             CALL EGSPAR(Tt,X,Yt,CPMS,EGSRWK,EGSIWK)
             CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGSRWK,Dt)
-            CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
 
             do n=1,Nspec
                RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
