@@ -821,7 +821,7 @@ c
       parameter (ITOL=1, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
+      parameter (RTOL=1.0E-13, ATOLEPS=1.0E-13)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external conpFY_sdc, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
