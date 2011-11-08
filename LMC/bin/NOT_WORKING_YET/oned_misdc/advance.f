@@ -497,14 +497,6 @@ c                      lambda      (for temperature)
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
 
-
-         do i=60,70
-            print *,i,beta_new(i,FirstSpec+3)
-         enddo
-         print *,'stop'
-         stop
-
-
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_new(0,FirstSpec),
      &                            spec_flux_lo,spec_flux_hi,dx,time+dt)

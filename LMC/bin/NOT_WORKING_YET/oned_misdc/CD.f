@@ -40,10 +40,6 @@ c     Ensure chem/tran initialized
                rho = rho + scal(i,FirstSpec+n-1)
             enddo
 
-            if (i.ge.60 .and. i.le.70) then
-               print *,i,rho
-            endif
-
             do n=1,Nspec
 C               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
                Y(n) = scal(i,FirstSpec+n-1) / rho

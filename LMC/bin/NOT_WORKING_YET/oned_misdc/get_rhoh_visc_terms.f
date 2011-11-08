@@ -101,34 +101,40 @@ c        compute cell-centered h_m
          do n=1,Nspec
             is = FirstSpec + n - 1
 
-            beta_lo = (beta(i  ,RhoH)+beta(i-1,RhoH))
-     &           /    (beta(i  ,is  )+beta(i-1,is  )) - 1.d0
-            beta_hi = (beta(i+1,RhoH)+beta(i  ,RhoH))
-     &           /    (beta(i+1,is  )+beta(i  ,is  )) - 1.d0
+c            beta_lo = (beta(i  ,RhoH)+beta(i-1,RhoH))
+c     &           /    (beta(i  ,is  )+beta(i-1,is  )) - 1.d0
+c            beta_hi = (beta(i+1,RhoH)+beta(i  ,RhoH))
+c     &           /    (beta(i+1,is  )+beta(i  ,is  )) - 1.d0
 
-            flux_lo(n) = beta_lo*spec_flux_lo(i,n)
-     &           *(hi(n,i-1)+hi(n,i))/2.d0
-            flux_hi(n) = beta_hi*spec_flux_hi(i,n)
-     &           *(hi(n,i+1)+hi(n,i))/2.d0
+c            flux_lo(n) = beta_lo*spec_flux_lo(i,n)
+c     &           *(hi(n,i-1)+hi(n,i))/2.d0
+c            flux_hi(n) = beta_hi*spec_flux_hi(i,n)
+c     &           *(hi(n,i+1)+hi(n,i))/2.d0
 
 c     compute -lambda/cp on faces
-c            beta_lo = (-beta(i  ,RhoH)-beta(i-1,RhoH)) /2.d0
-c            beta_hi = (-beta(i+1,RhoH)-beta(i  ,RhoH)) /2.d0
+            beta_lo = (-beta(i  ,RhoH)-beta(i-1,RhoH)) /2.d0
+            beta_hi = (-beta(i+1,RhoH)-beta(i  ,RhoH)) /2.d0
 
 c     set face fluxes to -lambda/cp * grad Y_m
-c            flux_lo(n) = beta_lo*(Y(n  ,i) - Y(n,i-1))
-c            flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i))
+            flux_lo(n) = beta_lo*(Y(n  ,i) - Y(n,i-1))
+            flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i))
 
 c     set face fluxes to h_m * (rho D_m - lambda/cp) grad Y_m
-c            flux_lo(n) = (flux_lo(n) + spec_flux_lo(i,n))*
-c     $           (hi(n,i-1)+hi(n,i))/2.d0
-c            flux_hi(n) = (flux_hi(n) + spec_flux_hi(i,n))*
-c     $           (hi(n,i+1)+hi(n,i))/2.d0
+            flux_lo(n) = (flux_lo(n) + spec_flux_lo(i,n))*
+     $           (hi(n,i-1)+hi(n,i))/2.d0
+            flux_hi(n) = (flux_hi(n) + spec_flux_hi(i,n))*
+     $           (hi(n,i+1)+hi(n,i))/2.d0
  
+
 c     differential diffusion is divergence of face fluxes
             diffdiff(i) = diffdiff(i) + 
      $           (flux_hi(n) - flux_lo(n))*dxsqinv
+
+            sum = sum + flux_lo(n)
+
          end do
+
       end do
+
       end
 
