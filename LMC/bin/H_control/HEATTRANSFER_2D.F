@@ -277,7 +277,7 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
             do i=lo(1),hi(1)+1
                gradY = (RhoY(i,j,n)*rhoInv(i,j) - RhoY(i-1,j,n)*rhoInv(i-1,j))*dxInv
                Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2)
-     &              - (Fx(i,j,n) + rhoDx(i,j,Nspec+1)*gradY*Ax(i,j))*(H(i,j,n)+H(i-1,j,n))*0.5d0
+     &              + (Fx(i,j,n) + rhoDx(i,j,Nspec+1)*gradY*Ax(i,j))*(H(i,j,n)+H(i-1,j,n))*0.5d0
             enddo
          enddo
       enddo
@@ -287,7 +287,7 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
             do i=lo(1),hi(1)
                gradY = (RhoY(i,j,n)*rhoInv(i,j) - RhoY(i,j-1,n)*rhoInv(i,j-1))*dyInv
                Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2)
-     &              - (Fy(i,j,n) + rhoDy(i,j,Nspec+1)*gradY*Ay(i,j))*(H(i,j,n)+H(i,j-1,n))*0.5d0
+     &              + (Fy(i,j,n) + rhoDy(i,j,Nspec+1)*gradY*Ay(i,j))*(H(i,j,n)+H(i,j-1,n))*0.5d0
             enddo
          enddo
       enddo
@@ -300,7 +300,7 @@ c     xlo
             do j=lo(2),hi(2)
                gradY = 2*(RhoY(i,j,n)*rhoInv(i,j) - RhoY(i-1,j,n)*rhoInv(i-1,j))*dxInv
                Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2)
-     &              - (Fx(i,j,n) + rhoDx(i,j,Nspec+1)*gradY*Ax(i,j))*H(i-1,j,n)
+     &              + (Fx(i,j,n) + rhoDx(i,j,Nspec+1)*gradY*Ax(i,j))*H(i-1,j,n)
             enddo
          enddo
       endif
@@ -312,7 +312,7 @@ c     xhi
             do j=lo(2),hi(2)
                gradY = 2*(RhoY(i,j,n)*rhoInv(i,j) - RhoY(i-1,j,n)*rhoInv(i-1,j))*dxInv
                Fx(i,j,Nspec+2) = Fx(i,j,Nspec+2)
-     &              - (Fx(i,j,n) + rhoDx(i,j,Nspec+1)*gradY*Ax(i,j))*H(i,j,n)
+     &              + (Fx(i,j,n) + rhoDx(i,j,Nspec+1)*gradY*Ax(i,j))*H(i,j,n)
             enddo
          enddo
       endif
@@ -324,7 +324,7 @@ c     ylo
             do i=lo(1),hi(1)
                gradY = 2*(RhoY(i,j,n)*rhoInv(i,j) - RhoY(i,j-1,n)*rhoInv(i,j-1))*dyInv
                Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2)
-     &              - (Fy(i,j,n) + rhoDy(i,j,Nspec+1)*gradY*Ay(i,j))*H(i,j-1,n)
+     &              + (Fy(i,j,n) + rhoDy(i,j,Nspec+1)*gradY*Ay(i,j))*H(i,j-1,n)
             enddo
          enddo
       endif
@@ -336,7 +336,7 @@ c     yhi
             do i=lo(1),hi(1)
                gradY = 2*(RhoY(i,j,n)*rhoInv(i,j) - RhoY(i,j-1,n)*rhoInv(i,j-1))*dyInv
                Fy(i,j,Nspec+2) = Fy(i,j,Nspec+2)
-     &              - (Fy(i,j,n) + rhoDy(i,j,Nspec+1)*gradY*Ay(i,j))*H(i,j,n)
+     &              + (Fy(i,j,n) + rhoDy(i,j,Nspec+1)*gradY*Ay(i,j))*H(i,j,n)
             enddo
          enddo
       endif

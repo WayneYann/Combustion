@@ -2682,30 +2682,31 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
 	if (theta_enthalpy > 0)
 	{
-	  // update species with corrected fluxes
-	  // for species, snew = sold + dt*(theta*Dnp1 + F)
-	  for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
-	    {
-	      const Box& box = mfi.validbox();
-	      const FArrayBox& f = Forcing[mfi];
-	      const FArrayBox& Sold = get_old_data(State_Type)[mfi];
-	      FArrayBox& Snew = get_new_data(State_Type)[mfi];
-	      const FArrayBox& Dnp1 = Dnew[mfi];
-
-	      Snew.copy(Dnp1,box,0,box,first_spec,nspecies);
-	      Snew.mult(theta,first_spec,nspecies);
-	      Snew.plus(f,box,box,0,first_spec,nspecies);
-	      Snew.mult(dt,first_spec,nspecies);
-	      Snew.plus(Sold,box,box,first_spec,first_spec,nspecies);
-	    }
-
-	  // compute enthalpy fluxes with correct species
-	  compute_enthalpy_fluxes(curr_time,betanp1,grow_cells_already_filled);
-	  flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
-
+            // update species with corrected fluxes
+            // for species, snew = sold + dt*(theta*Dnp1 + F)
+            for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
+            {
+                const Box& box = mfi.validbox();
+                const FArrayBox& f = Forcing[mfi];
+                const FArrayBox& Sold = get_old_data(State_Type)[mfi];
+                FArrayBox& Snew = get_new_data(State_Type)[mfi];
+                const FArrayBox& Dnp1 = Dnew[mfi];
+                
+                Snew.copy(Dnp1,box,0,box,first_spec,nspecies);
+                Snew.mult(theta,first_spec,nspecies);
+                Snew.plus(f,box,box,0,first_spec,nspecies);
+                Snew.mult(dt,first_spec,nspecies);
+                Snew.plus(Sold,box,box,first_spec,first_spec,nspecies);
+            }
+            
+            // compute enthalpy fluxes with correct species
+            compute_enthalpy_fluxes(curr_time,betanp1,grow_cells_already_filled);
+            flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
+            
             DDnew.mult(theta_enthalpy,0,1);
             MultiFab::Add(Force,DDnew,0,nspecies,1,0);
             DDnew.mult(1/theta_enthalpy,0,1);
+
             //
             // Now diffuse RhoH
             //
@@ -2714,27 +2715,29 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             const int state_ind = first_spec + sigma;
             bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
             int rho_flag = 2;
-            Real typicalValue = typical_values[state_ind];
+            // HACK
+            Real typicalValue = typical_values[state_ind] * 1.e-10;
             diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
                                       SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
                                       alphaComp,betan,betanp1,betaComp,typicalValue,solve_mode,add_old_time_divFlux);
-
+            
+            
             // Remove theta scaling of fluxes and compute - Div(lambda/cp Grad(H) )
             for (int d=0; d<BL_SPACEDIM; ++d) {
                 (*SpecDiffusionFluxnp1[d]).mult(1/theta,sigma,1);
                 (*SpecDiffusionFluxn[d]).mult(1/(1-theta),sigma,1);
             }
-	    flux_divergence(Dnew,nspecies,SpecDiffusionFluxnp1,nspecies,1,-1);
+            flux_divergence(Dnew,nspecies,SpecDiffusionFluxnp1,nspecies,1,-1);
         }
 	else
 	{
-	  // don't think we actually use this...?
-	  flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
+            // don't think we actually use this...?
+            flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
 	}
 
         diffusion->removeFluxBoxesLevel(betanp1);
     }
-
+    
     if (verbose)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
@@ -2856,67 +2859,66 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
 
     MultiFab& S = get_data(State_Type,time);
 
-        MultiFab& sumSpecFluxDotGradH = (whichTime == AmrOldTime) ? sumSpecFluxDotGradHn : sumSpecFluxDotGradHnp1;
-        //
-        //  Compute species enthalpy on the edges, and increment the heat flux with the 
-        //  flux of enthalpy due to species diffusion.  While here, we also compute the Fi.Grad(Hi) term
-        //  required for the temperature equation.  Both the fluxes and the Fi.Grad(Hi) terms are stored
-        //  in the class data.
-        //
-	const Box& domain = geom.Domain();
-        const BCRec& Tbc = get_desc_lst()[State_Type].getBC(Temp);
-        FArrayBox area[BL_SPACEDIM];
-        for (MFIter mfi(S); mfi.isValid(); ++mfi)
-        {
-            const int i    = mfi.index();
-            const Box& box = mfi.validbox();
+    MultiFab& sumSpecFluxDotGradH = (whichTime == AmrOldTime) ? sumSpecFluxDotGradHn : sumSpecFluxDotGradHnp1;
+    //
+    //  Compute species enthalpy on the edges, and increment the heat flux with the 
+    //  flux of enthalpy due to species diffusion.  While here, we also compute the Fi.Grad(Hi) term
+    //  required for the temperature equation.  Both the fluxes and the Fi.Grad(Hi) terms are stored
+    //  in the class data.
+    //
+    const Box& domain = geom.Domain();
+    const BCRec& Tbc = get_desc_lst()[State_Type].getBC(Temp);
+    FArrayBox area[BL_SPACEDIM];
+    for (MFIter mfi(S); mfi.isValid(); ++mfi)
+    {
+        const int i    = mfi.index();
+        const Box& box = mfi.validbox();
             
-            for (int dir = 0; dir < BL_SPACEDIM; dir++)
-                geom.GetFaceArea(area[dir],grids,i,dir,0);
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+            geom.GetFaceArea(area[dir],grids,i,dir,0);
             
-            FArrayBox& fh = sumSpecFluxDotGradH[mfi];
-            int FComp = 0;
+        FArrayBox& fh = sumSpecFluxDotGradH[mfi];
+        int FComp = 0;
             
-            FArrayBox& T = S[mfi];
-            int TComp = Temp;
+        FArrayBox& T = S[mfi];
+        int TComp = Temp;
             
-            FArrayBox& RhoY = S[mfi];
-            int RhoYComp = first_spec;
+        FArrayBox& RhoY = S[mfi];
+        int RhoYComp = first_spec;
             
-            int dComp = 0;
+        int dComp = 0;
             
-            const FArrayBox& rDx = (*beta[0])[i];
-            FArrayBox& fix = (*flux[0])[i];
+        const FArrayBox& rDx = (*beta[0])[i];
+        FArrayBox& fix = (*flux[0])[i];
             
-            const FArrayBox& rDy = (*beta[1])[i];
-            FArrayBox& fiy = (*flux[1])[i];
+        const FArrayBox& rDy = (*beta[1])[i];
+        FArrayBox& fiy = (*flux[1])[i];
             
 #if BL_SPACEDIM == 3        
-            const FArrayBox& rDz = (*beta[2])[i];
-            FArrayBox& fiz = (*flux[2])[i];
+        const FArrayBox& rDz = (*beta[2])[i];
+        FArrayBox& fiz = (*flux[2])[i];
 #endif
-            const Real* dx = geom.CellSize();
+        const Real* dx = geom.CellSize();
             
-            FORT_ENTH_DIFF_TERMS(box.loVect(), box.hiVect(), domain.loVect(), domain.hiVect(), dx,
-                                 T.dataPtr(TComp), ARLIM(T.loVect()),  ARLIM(T.hiVect()),
-                                 RhoY.dataPtr(RhoYComp), ARLIM(RhoY.loVect()),  ARLIM(RhoY.hiVect()),
+        FORT_ENTH_DIFF_TERMS(box.loVect(), box.hiVect(), domain.loVect(), domain.hiVect(), dx,
+                             T.dataPtr(TComp), ARLIM(T.loVect()),  ARLIM(T.hiVect()),
+                             RhoY.dataPtr(RhoYComp), ARLIM(RhoY.loVect()),  ARLIM(RhoY.hiVect()),
                                  
-                                 rDx.dataPtr(dComp),ARLIM(rDx.loVect()),ARLIM(rDx.hiVect()),
-                                 fix.dataPtr(FComp),ARLIM(fix.loVect()),ARLIM(fix.hiVect()),
-                                 area[0].dataPtr(), ARLIM(area[0].loVect()),ARLIM(area[0].hiVect()),
+                             rDx.dataPtr(dComp),ARLIM(rDx.loVect()),ARLIM(rDx.hiVect()),
+                             fix.dataPtr(FComp),ARLIM(fix.loVect()),ARLIM(fix.hiVect()),
+                             area[0].dataPtr(), ARLIM(area[0].loVect()),ARLIM(area[0].hiVect()),
                                  
-                                 rDy.dataPtr(dComp),ARLIM(rDy.loVect()),ARLIM(rDy.hiVect()),
-                                 fiy.dataPtr(FComp),ARLIM(fiy.loVect()),ARLIM(fiy.hiVect()),
-                                 area[1].dataPtr(), ARLIM(area[1].loVect()),ARLIM(area[1].hiVect()),
+                             rDy.dataPtr(dComp),ARLIM(rDy.loVect()),ARLIM(rDy.hiVect()),
+                             fiy.dataPtr(FComp),ARLIM(fiy.loVect()),ARLIM(fiy.hiVect()),
+                             area[1].dataPtr(), ARLIM(area[1].loVect()),ARLIM(area[1].hiVect()),
 #if BL_SPACEDIM == 3
-                                 rDz.dataPtr(dComp),ARLIM(rDz.loVect()),ARLIM(rDz.hiVect()),
-                                 fiz.dataPtr(FComp),ARLIM(fiz.loVect()),ARLIM(fiz.hiVect()),
-                                 area[2].dataPtr(), ARLIM(area[2].loVect()),ARLIM(area[2].hiVect()),
+                             rDz.dataPtr(dComp),ARLIM(rDz.loVect()),ARLIM(rDz.hiVect()),
+                             fiz.dataPtr(FComp),ARLIM(fiz.loVect()),ARLIM(fiz.hiVect()),
+                             area[2].dataPtr(), ARLIM(area[2].loVect()),ARLIM(area[2].hiVect()),
 #endif
-                                 fh.dataPtr(),     ARLIM(fh.loVect()), ARLIM(fh.hiVect()),
-                                 Tbc.vect() );
-        }
-    
+                             fh.dataPtr(),     ARLIM(fh.loVect()), ARLIM(fh.hiVect()),
+                             Tbc.vect() );
+    }
 }
     
 void
@@ -3122,14 +3124,14 @@ HeatTransfer::diffuse_temp_setup (Real       prev_time,
     //
     MultiFab rdgydgh(grids,1,0);
     compute_rhoDgradYgradH(prev_time, rdgydgh);
-    rdgydgh.mult(1.0-be_cn_theta,0);
+    rdgydgh.mult(1.0-be_cn_theta,0,1);
     
     for (MFIter mfi(*delta_rhs); mfi.isValid(); ++mfi)
     {
         (*delta_rhs)[mfi].plus(rdgydgh[mfi],0,0,1);
     }
     compute_rhoDgradYgradH(prev_time+dt, rdgydgh);
-    rdgydgh.mult(be_cn_theta,0);
+    rdgydgh.mult(be_cn_theta,0,1);
     
     for (MFIter mfi(*delta_rhs); mfi.isValid(); ++mfi)
     {
@@ -4887,7 +4889,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     bool grow_cells_already_filled = true;
 
     adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
-    compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);}
+    compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);
+}
 
 void
 HeatTransfer::scalar_advection_update (Real dt,
@@ -6279,10 +6282,10 @@ HeatTransfer::advance_sdc (Real time,
         f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
         f.plus(dd,gbox,gbox,0,nspecies,1);
     }
-    Forcing.setBndry(0);
+    Forcing.setBndry(0,0,nspecies);
     Forcing.FillBoundary(0,nspecies+1);
-    geom.FillPeriodicBoundary(Forcing,0,nspecies);
-
+    geom.FillPeriodicBoundary(Forcing,0,nspecies+1);
+          
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
     scalar_advection_update(dt, Density, RhoH);
 
@@ -6334,7 +6337,6 @@ HeatTransfer::advance_sdc (Real time,
 
         f.plus(a,box,box,first_spec,0,nspecies+1);
     }
-
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "R (SDC predictor) \n";
     advance_chemistry(S_old,S_new,dt,Forcing,0);
@@ -6358,7 +6360,6 @@ HeatTransfer::advance_sdc (Real time,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  Computing Dnp1 (SDC corrector " << sdc_iter << ")\n";
         compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time);
-
         //
         // Compute A (F = Dn + R)
         //
