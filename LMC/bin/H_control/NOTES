@@ -1,42 +1,123 @@
-SpecDiffusionFluxn/np1(nspecies+2) - stores rho D_m grad Y_m
+Xvel       0
+Yvel       1
+Density    2
+first_spec 3            (nspecies = 9 in CHEMH)
+last_spec  3+nspecies-1 
+RhoH       3+nspecies   (12 in CHEMH)
+Trac       4+nspecies   (13 in CHEMH)
+Temp       5+nspecies   (14 in CHEMH)
 
-sumSpecFluxDotGradHn/np1(1) - stores sum_m D_m grad Y_m
+Forcing has nspecies+1 components.  We re-use it for the advective forcing and the diffusion forcing.
+0:nspecies-1 are for RhoY
+nspecies     is for RhoH
 
-beta(nspecies+2)
-0:nspec-1 - rho*D_m
-nspec     - lambda/cp
-nspec+1   - lambda
+SpecDiffusionFluxn/np1 have nspecies+3 components
+0:nspecies-1 are for rho D_m grad Y
+nspecies     is for lambda/cp grad h
+nspecies+1   is for sum_m h_m (Gamma_m + lambda/cp grad h)
+nspecies+2   is for lambda grad T
 
+Dn/hat/np1 have nspecies+2 components.  Note these do not contain the "diffdiff" RhoH terms, i.e., the terms multiplying h_m.
+0:nspecies-1 are for species,     div Gamma_m
+nspecies     is for enthalpy,     div lambda/cp grad h
+nspecies+1   is for temperature,  div lambda grad T + sum_m Gamma_m dot grad h_m
 
-mcViscTerms(nspecies+2) - temporary Multifab local to calc_divu
-0:nspec-1 - species
-nspec     - RhoH
-nspec+1   - Temperature
+DDn/np1 have 1 component for div for div sum_m h_m (Gamma_m + lambda/cp grad Y_m), a.k.a. the "diffdiff" terms.
 
+***************************
+* advance_sdc() Flow Chart
+***************************
 
-calc_divu()
-  compute_differential_diffusion_terms(mcViscTerms)
-    compute_differential_diffusion_fluxes()
-      getDiffusivity()
-        *interpolate diffusion coefficients from cell-centers to faces
-        *compute fluxes (rho*D_m grad Y_m, (lambda/cp)*grad h, lambda*grad T)
-      adjust_spec_diffusion_fluxes()
-        FORT_REPAIR_FLUX()
-	  *convert \widetilde\Gamma to \Gamma
-	FORT_ENTH_DIFF_TERMS()
-	  *compute sumSpecFluxDotGradH = FiGHi = sum_m (rho D_m grad Y_m dot grad h_m)
- 	  *compute "heat flux", i.e., all the diffusive terms in the rhoh equation
-	  *compute the lambda grad T piece of the temperature diffusion.  For some 
-           reason it's overwriting what was done in above.
-    diffusion_flux_divergence()
-      *takes divergence of diffusive fluxes
-    *add sumSpecFluxDotGradH = FiGHi = sum_m (rho D_m grad Y_m dot grad h_m) to the 
-     temperature diffusion term
+PRE-SDC STUFF
 
+advance_setup()
+  NavierStokes::advance_setup()
+    calcViscosity(prev_time)                     // compute diffusion coefficients for velocity
+    calcDiffusivity(prev_time)                   // compute diffusion coefficients for species, temperature, and enthalpy
+      FORT_SPECTEMPVISC()                        // compute rho D_m and lambda
+        FORT_MIXAVG_RHODIFF_TEMP()
+      <compute RhoH diffusivity>                 // compute lambda/cp
+  <copy old state into new state>
+  make_rho_curr_time()                           // fill rho_ptime for use in linear solves
+predict_velocity()                               // computed unprojected mac velocities
+create_mac_rhs()                                 // compute mac projection rhs
+mac_project()                                    // mac projection
 
-diffusion_flux_divergence() simply takes the divergences of fluxes and stores them 
- in viscTerms.
+SDC PREDCITOR
 
-calcDiffusivity() computes cell-centered diffusion coefficients
+make_rho_prev_time()                             // fill rho_ptime for use in linear solves
+compute_differential_diffusion_terms(prev_time)  // compute Dn and DDn
+  compute_differential_diffusion_fluxes()	 
+    getDiffusivity()		 		 // average diffusion coefficients for rhoY and rhoh to edges
+    getDiffusivity()                             // average diffusion coefficients for T to edges
+    <compute Y and h>                            // divide rhoY and rhoh by rho
+    <compute flux, weight accordingly>           // Gamma_m for species, lambda/cp grad h for enthalpy
+    adjust_spec_diffusion_fluxes()               // conservatively correct Gamma_m
+      REPAIR_FLUX()
+    compute_enthalpy_fluxes()			 // compute lambda grad T, sum_m (Gamma_m + lambda/cp grad Y), and sum_m Gamma_m dot h_m
+      ENTH_DIFF_TERMS() 
+  flux_divergence()                              // put rho D_m grad Y_m (for species) and lambda/cp grad h (for enthalpy) into D
+  flux_divergence()                              // put sum_m Gamma_m + lambda/cp grad Y_m (for enthalpy) into DD
+  flux_divergence()                              // put lambda grad T (for temperature) into D
+  <add sum_m Gamma_m dot h_m to D for T>         // add sum_m Gamma_m dot h_m (for temperature) to D
+<compute advection forcing>                      // Force = Dn + DDn + R
+compute_scalar_advection_fluxes_and_divergence() // Godunov integrator to obtain aofs
+scalar_advection_update()                        // For rho only
+make_rho_curr_time()                             // fill rho_ctime for use in linear solves
+<compute diffusion forcing>                      // F = A + R + 0.5*(Dn + DDn); 0.5*DDnp1 added to F after RhoY solve but before RhoH solve
+differential_diffusion_update()                  // advection-diffusion solve with theta=0.5, theta_enthalpy=0.5
+  getDiffusivity()                               // put rho D_m (for species) and lambda/cp (for enthalpy) on edges
+  getDiffusivity()                               // put lambda (for temperature) on edges; currently we don't use this
+  <diffuse species>                              // do linear solve and also return new Gamma
+  adjust_spec_diffusion_fluxes()                 // conservatively correct new Gamma
+  flux_divergence()	                         // compute new div Gamma
+  <update species with corrected fluxes>         // rhoY_new = rhoY_old + dt*(0.5*Dnp1 + F)
+  <compute DDnp1>                                // compute new-time sum_m Gamma_m + lambda/cp grad Y_m and put into DDnp1
+  <update RhoH diffusion forcing>                // add F = F + 0.5*DDnp1
+  <diffuse enthalpy>	                         // to linear solve and return fluxes
+  flux_divergence()                              // compute new div lambda/cp grad h
+<compute reaction forcing>                       // F = A + 0.5*(Dn + DDn + Dhat + DDnp1)
+advance_chemistry()				 // VODE solve
 
-getDiffusivity() interpolates diffusion coefficients to edges
+SDC CORRECTOR
+
+calcDiffusivity(cur_time)	                 // compute diffusion coefficients for species, temperature, and enthalpy
+  FORT_SPECTEMPVISC()                            // compute rho D_m and lambda
+    FORT_MIXAVG_RHODIFF_TEMP()
+  <compute RhoH diffusivity>                     // compute lambda/cp
+compute_differential_diffusion_terms(cur_time)   // compute Dnp1 and DDnp1
+  compute_differential_diffusion_fluxes()	 
+    getDiffusivity()		 		 // average diffusion coefficients for rhoY and rhoh to edges
+    getDiffusivity()                             // average diffusion coefficients for T to edges
+    <compute Y and h>                            // divide rhoY and rhoh by rho
+    <compute flux, weight accordingly>           // Gamma_m for species, lambda/cp grad h for enthalpy
+    adjust_spec_diffusion_fluxes()               // conservatively correct Gamma_m
+      REPAIR_FLUX()
+    compute_enthalpy_fluxes()			 // compute lambda grad T, sum_m (Gamma_m + lambda/cp grad Y), and sum_m Gamma_m dot h_m
+      ENTH_DIFF_TERMS() 
+  flux_divergence()                              // put rho D_m grad Y_m (for species) and lambda/cp grad h (for enthalpy) into D
+  flux_divergence()                              // put sum_m Gamma_m + lambda/cp grad Y_m (for enthalpy) into DD
+  flux_divergence()                              // put lambda grad T (for temperature) into D
+  <add sum_m Gamma_m dot h_m to D for T>         // add sum_m Gamma_m dot h_m (for temperature) to D
+<compute advection forcing>                      // Force = Dn + DDn + R
+compute_scalar_advection_fluxes_and_divergence() // Godunov integrator to obtain aofs
+scalar_advection_update()                        // For rho only
+make_rho_curr_time()                             // fill rho_ctime for use in linear solves
+<compute diffusion forcing>                      // F = A + R + 0.5*(Dn - Dnp1) + 0.5*(DDn + DDnp1)
+differential_diffusion_update()                  // advection-diffusion solve with theta=0.5, theta_enthalpy=0.5
+  getDiffusivity()                               // put rho D_m (for species) and lambda/cp (for enthalpy) on edges
+  getDiffusivity()                               // put lambda (for temperature) on edges; currently we don't use this
+  <diffuse species and enthalpy>                 // do linear solve and also return new Gamma and lambda/cp grad h
+  adjust_spec_diffusion_fluxes()                 // conservatively correct new Gamma
+  flux_divergence()	                         // compute new div Gamma and div lambda/cp grad h
+<compute reaction forcing>                       // F = A + R + 0.5*(Dn - Dnp1) + 0.5*(DDn + DDnp1) + Dhat
+advance_chemistry()			         // VODE solve
+
+END SDC CORRECTOR LOOP
+
+setThermoPress(cur_time)
+calc_divu(cur_time)
+calc_dsdt()
+calcViscosity(cur_time)
+velocity_update()
+level_projector()
