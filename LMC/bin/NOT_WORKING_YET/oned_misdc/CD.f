@@ -39,7 +39,6 @@ c     Ensure chem/tran initialized
             do n=1,Nspec
                rho = rho + scal(i,FirstSpec+n-1)
             enddo
-
             do n=1,Nspec
 C               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
                Y(n) = scal(i,FirstSpec+n-1) / rho
@@ -85,14 +84,6 @@ c           Returns the mean specific heat at CP
 c           compute shear viscosity
             CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
             mu(i) = fourThirds*mu(i)
-
-c            do n=1,Nspec
-c               beta(i,FirstSpec+n-1) = 0.d0
-c            end do
-c            beta(i,RhoH) = 0.d0
-c            beta(i,Temp) = 0.d0
-c            mu(i) = 0.d0
-
          enddo
 
       else
@@ -498,7 +489,7 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
          do K=1,Nspec
             RHO = RHO + Z(K)
          enddo
-
+         
          do K=1,Nspec
             if (lim_rxns .eq. 0) then
                C(K) = Z(K)*invmwt(K)
@@ -521,7 +512,6 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
             errMax = hmix_TYP*1.e-20
             call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,
      &                          res,Niter)
-
             T_INIT = T
             if (Niter.lt.0) then
                print *,'vodeF_T_RhoY: H to T solve failed'
@@ -547,14 +537,6 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
       else
 
          call CKWC(T,C,IWRK,RWRK,WDOTK)
-
-c            if (Y(1).gt..00297  .and. Y(1) .lt. .00298) then
-c               print *,'found it',WDOTK(1:Nspec),thickFacCH
-c               print *,'c_0',c_0(0:Nspec)
-c               print *,'c_1',c_1(0:Nspec)
-c               stop
-c            endif
-         
          do k= 1, Nspec
             ZP(k) = WDOTK(k)*mwt(k)/thickFacCH
      &           + c_0(k) + c_1(k)*TIME
@@ -672,7 +654,7 @@ C      DVIWRK(8) = 0
 C      DVIWRK(9) = 0
 C      DVIWRK(10) = 0
 
-c      if (do_diag.eq.1) nsubchem = nchemdiag
+      if (do_diag.eq.1) nsubchem = nchemdiag
 
       
       MF = 22
@@ -680,8 +662,8 @@ c      if (do_diag.eq.1) nsubchem = nchemdiag
       TT1 = 0.d0
       TT2 = dt
       if (do_diag.eq.1) then
-         nsub = nchemdiag
-         dtloc = dt/nsub
+         nsub = nsubchem
+         dtloc = dt/nsubchem
       else
          nsub = 1
          dtloc = dt

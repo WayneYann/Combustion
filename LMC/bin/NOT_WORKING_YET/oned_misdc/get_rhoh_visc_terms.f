@@ -42,7 +42,6 @@ C      call divBetaHgradY(scal,beta,tmp,dx,time)
 
          flux_hi = beta_hi*(h_hi - h_mid)
          flux_lo = beta_lo*(h_mid - h_lo)
-
          visc(i) = (flux_hi - flux_lo) * dxsqinv 
 C+ tmp(i)
       enddo
@@ -73,8 +72,6 @@ C+ tmp(i)
       real*8 Y(maxspec,-1:nx)
       real*8 beta_lo, beta_hi, rho
 
-      real*8 sum
-
       call set_bc_grow_s(scal_for_coeff,dx,time)
       call set_bc_grow_s(scal_for_grad,dx,time)
 
@@ -97,10 +94,10 @@ c        compute cell-centered h_m
       end do
 
       do i=0,nx-1
-         sum = 0.d0
          do n=1,Nspec
             is = FirstSpec + n - 1
 
+c     this was a bad idea - caused divu to grow
 c            beta_lo = (beta(i  ,RhoH)+beta(i-1,RhoH))
 c     &           /    (beta(i  ,is  )+beta(i-1,is  )) - 1.d0
 c            beta_hi = (beta(i+1,RhoH)+beta(i  ,RhoH))
@@ -125,15 +122,11 @@ c     set face fluxes to h_m * (rho D_m - lambda/cp) grad Y_m
             flux_hi(n) = (flux_hi(n) + spec_flux_hi(i,n))*
      $           (hi(n,i+1)+hi(n,i))/2.d0
  
-
 c     differential diffusion is divergence of face fluxes
             diffdiff(i) = diffdiff(i) + 
      $           (flux_hi(n) - flux_lo(n))*dxsqinv
 
-            sum = sum + flux_lo(n)
-
          end do
-
       end do
 
       end

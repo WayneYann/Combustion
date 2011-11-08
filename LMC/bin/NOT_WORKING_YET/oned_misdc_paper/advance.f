@@ -276,7 +276,9 @@ ccccccccccccccccccccccccccccccccc
       real*8 Y(maxspec)
       real*8 hi(maxspec,-1:nx)
 
+c     temporaries for setting I_R = omegadot^n at beginning of time step
       real*8 WDOTK(maxspec), C(maxspec), T
+
       real*8 RWRK, cpmix, rhocp
       integer IWRK
 
@@ -619,17 +621,6 @@ c           WITH GHOST CELLS USED IN CN_SOLVE
      $                                       diff_hat(0,FirstSpec),
      $                                       spec_flux_lo,spec_flux_hi,
      $                                       dx,time)
-
-c           update species with conservative diffusion fluxes
-            do i=0,nx-1
-               do n=1,Nspec
-                  is = FirstSpec + n - 1
-                  scal_new(i,is) = scal_old(i,is) + 
-     $                 dt*(aofs(i,is) + I_R_new(i,n)
-     $                 + 0.5d0*diff_old(i,is) - 0.5d0*diff_new(i,is)
-     $                 + diff_hat(i,is))
-               end do
-            end do
 
 c           add differential diffusion to forcing for enthalpy solve
             do i=0,nx-1
