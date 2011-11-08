@@ -199,8 +199,11 @@ public:
 
     void adjust_spec_diffusion_fluxes (Real                   time,
                                        const MultiFab* const* beta,
-                                       bool                   update_enthalpy_fluxes,
                                        bool                   grow_cells_already_filled);
+
+    void compute_enthalpy_fluxes (Real                   time,
+                                  const MultiFab* const* beta,
+                                  bool                   grow_cells_already_filled);
 
     virtual void scalar_diffusion_update (Real dt,
                                           int  first_scalar, 

@@ -2675,14 +2675,34 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         // Modify/update new-time fluxes to ensure sum of species fluxes = 0
         //
         bool grow_cells_already_filled = false;
-        bool update_enthalpy_fluxes = (theta_enthalpy > 0);
 
-        adjust_spec_diffusion_fluxes(curr_time,betanp1,update_enthalpy_fluxes,grow_cells_already_filled);
+        adjust_spec_diffusion_fluxes(curr_time,betanp1,grow_cells_already_filled);
+
         flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
-        flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
 
-        if (theta_enthalpy > 0)
-        {
+	if (theta_enthalpy > 0)
+	{
+	  // update species with corrected fluxes
+	  // for species, snew = sold + dt*(theta*Dnp1 + F)
+	  for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
+	    {
+	      const Box& box = mfi.validbox();
+	      const FArrayBox& f = Forcing[mfi];
+	      const FArrayBox& Sold = get_old_data(State_Type)[mfi];
+	      FArrayBox& Snew = get_new_data(State_Type)[mfi];
+	      const FArrayBox& Dnp1 = Dnew[mfi];
+
+	      Snew.copy(Dnp1,box,0,box,first_spec,nspecies);
+	      Snew.mult(theta,first_spec,nspecies);
+	      Snew.plus(f,box,box,0,first_spec,nspecies);
+	      Snew.mult(dt,first_spec,nspecies);
+	      Snew.plus(Sold,box,box,first_spec,first_spec,nspecies);
+	    }
+
+	  // compute enthalpy fluxes with correct species
+	  compute_enthalpy_fluxes(curr_time,betanp1,grow_cells_already_filled);
+	  flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
+
             DDnew.mult(theta_enthalpy,0,1);
             MultiFab::Add(Force,DDnew,0,nspecies,1,0);
             DDnew.mult(1/theta_enthalpy,0,1);
@@ -2704,9 +2724,15 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
                 (*SpecDiffusionFluxnp1[d]).mult(1/theta,sigma,1);
                 (*SpecDiffusionFluxn[d]).mult(1/(1-theta),sigma,1);
             }
+	    flux_divergence(Dnew,nspecies,SpecDiffusionFluxnp1,nspecies,1,-1);
         }
+	else
+	{
+	  // don't think we actually use this...?
+	  flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
+	}
+
         diffusion->removeFluxBoxesLevel(betanp1);
-        flux_divergence(Dnew,nspecies,SpecDiffusionFluxnp1,nspecies,1,-1);
     }
 
     if (verbose)
@@ -2750,7 +2776,6 @@ HeatTransfer::make_rho_curr_time ()
 void
 HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
 					    const MultiFab* const* beta,
-                                            bool                   update_enthalpy_fluxes,
                                             bool                   grow_cells_already_filled)
 {
     //
@@ -2814,8 +2839,23 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
         }
     }
 
-    if (update_enthalpy_fluxes)
-    {
+}
+
+void
+HeatTransfer::compute_enthalpy_fluxes (Real                   time,
+				       const MultiFab* const* beta,
+                                       bool                   grow_cells_already_filled)
+{
+
+
+    BL_ASSERT(beta && beta[0]->nComp() == nspecies+2);
+
+    const TimeLevel whichTime = which_time(State_Type,time);
+    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
+    MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
+
+    MultiFab& S = get_data(State_Type,time);
+
         MultiFab& sumSpecFluxDotGradH = (whichTime == AmrOldTime) ? sumSpecFluxDotGradHn : sumSpecFluxDotGradHnp1;
         //
         //  Compute species enthalpy on the edges, and increment the heat flux with the 
@@ -2823,6 +2863,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
         //  required for the temperature equation.  Both the fluxes and the Fi.Grad(Hi) terms are stored
         //  in the class data.
         //
+	const Box& domain = geom.Domain();
         const BCRec& Tbc = get_desc_lst()[State_Type].getBC(Temp);
         FArrayBox area[BL_SPACEDIM];
         for (MFIter mfi(S); mfi.isValid(); ++mfi)
@@ -2875,7 +2916,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
                                  fh.dataPtr(),     ARLIM(fh.loVect()), ARLIM(fh.hiVect()),
                                  Tbc.vect() );
         }
-    }
+    
 }
     
 void
@@ -4844,9 +4885,9 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     // Modify update/fluxes to preserve flux sum = 0, build heat flux and temperature source terms
     //
     bool grow_cells_already_filled = true;
-    bool update_enthalpy_fluxes = true;
-    adjust_spec_diffusion_fluxes(time,beta,update_enthalpy_fluxes,grow_cells_already_filled);
-}
+
+    adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
+    compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);}
 
 void
 HeatTransfer::scalar_advection_update (Real dt,
@@ -6317,6 +6358,7 @@ HeatTransfer::advance_sdc (Real time,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  Computing Dnp1 (SDC corrector " << sdc_iter << ")\n";
         compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time);
+
         //
         // Compute A (F = Dn + R)
         //
@@ -8925,8 +8967,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // (Be sure to pass the "normal" looking Rhs to this generic function)
     //
     bool grow_cells_already_filled = false;
-    bool update_enthalpy_fluxes = true;
-    adjust_spec_diffusion_fluxes(cur_time,betanp1,update_enthalpy_fluxes,grow_cells_already_filled);
+    adjust_spec_diffusion_fluxes(cur_time,betanp1,grow_cells_already_filled);
+    compute_enthalpy_fluxes(cur_time,betanp1,grow_cells_already_filled);
     //
     // Recompute update with adjusted diffusion fluxes
     // 
