@@ -173,6 +173,8 @@ Array<Real> HeatTransfer::typical_values;
 Array<std::string> HeatTransfer::speciesStateNames;
 Array<std::string> HeatTransfer::rhoydotNames;
 
+// Turns out to be handy for debugging
+#if 0
 static
 void dump(const FArrayBox& fab, int comp=-1)
 {
@@ -194,6 +196,7 @@ void dump(const MultiFab& mf, int comp=-1)
 {
     dump(mf[0],comp);
 }
+#endif
 
 ///////////////////////////////
 // SDC Stuff
@@ -2715,8 +2718,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             const int state_ind = first_spec + sigma;
             bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
             int rho_flag = 2;
-            // HACK
-            Real typicalValue = typical_values[state_ind] * 1.e-10;
+            Real typicalValue = typical_values[state_ind];
             diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
                                       SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
                                       alphaComp,betan,betanp1,betaComp,typicalValue,solve_mode,add_old_time_divFlux);
