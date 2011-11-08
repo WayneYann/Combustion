@@ -24,9 +24,11 @@ ifeq (${USE_INTEL},TRUE)
 #  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
-  fCOMP := gfortran -g -fbounds-check -O -Wuninitialized -Wall
-  CCOMP := g++ -DBL_FORT_USE_UNDERSCORE
+  #fCOMP := gfortran -g -fbounds-check -O -Wuninitialized -Wall
+  fCOMP := gfortran -g -fbounds-check -O1 -Wuninitialized -Waliasing -Wampersand -Wsurprising -Wintrinsics-std -Wno-tabs -Wintrinsic-shadow -Wline-truncation -ffixed-line-length-none
+  CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
   XTRALIBS :=  -lm -lgfortran
+#  XTRALIBS :=  /usr/local/gfortran/lib/gcc/i686-pc-cygwin/4.6.0/libgfortran.a /usr/local/gfortran/lib/gcc/i686-pc-cygwin/4.6.0/libgcc.a -lm -lg2c
 endif
 
 ifeq ($(REACTION_MECHANISM),GRI30)

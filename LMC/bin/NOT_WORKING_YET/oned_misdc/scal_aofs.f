@@ -25,8 +25,6 @@
 
       logical compute_comp(nscal)
       real*8 ptherm(0 :nx)
-
-      integer is
       
       dth  = 0.5d0 * dt
       dthx = 0.5d0 * dt / dx
@@ -102,7 +100,7 @@
      $              dth * scal_old(i-1,n) * (macvel(i  )-macvel(i-1))/dx
             endif
             sedge(i,n) = sedge(i,n) + dth*tforce(i-1,n)
-
+            
          endif
       enddo
       
@@ -145,5 +143,6 @@ c     Make these negative here so we can add as source terms later.
              aofs(i,n) = -aofs(i,n)
           enddo
        enddo
+       
        end
 

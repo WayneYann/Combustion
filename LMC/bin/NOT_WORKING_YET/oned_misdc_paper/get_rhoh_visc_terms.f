@@ -97,6 +97,17 @@ c        compute cell-centered h_m
          do n=1,Nspec
             is = FirstSpec + n - 1
 
+c     this was a bad idea - caused divu to grow
+c            beta_lo = (beta(i  ,RhoH)+beta(i-1,RhoH))
+c     &           /    (beta(i  ,is  )+beta(i-1,is  )) - 1.d0
+c            beta_hi = (beta(i+1,RhoH)+beta(i  ,RhoH))
+c     &           /    (beta(i+1,is  )+beta(i  ,is  )) - 1.d0
+
+c            flux_lo(n) = beta_lo*spec_flux_lo(i,n)
+c     &           *(hi(n,i-1)+hi(n,i))/2.d0
+c            flux_hi(n) = beta_hi*spec_flux_hi(i,n)
+c     &           *(hi(n,i+1)+hi(n,i))/2.d0
+
 c     compute -lambda/cp on faces
             beta_lo = (-beta(i  ,RhoH)-beta(i-1,RhoH)) /2.d0
             beta_hi = (-beta(i+1,RhoH)-beta(i  ,RhoH)) /2.d0

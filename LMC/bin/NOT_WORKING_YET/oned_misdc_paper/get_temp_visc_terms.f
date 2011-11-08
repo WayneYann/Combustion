@@ -5,7 +5,7 @@
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
       real*8 dx, time
-      
+
 
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
       call rhoDgradHgradY(scal,beta,visc,dx,time)
@@ -159,20 +159,9 @@ c              set flux = flux - (rho*V_c)*(rho*Y_m)/rho
             dv = dv + (rdgydgh_hi + rdgydgh_lo)*0.5d0
          enddo
          
-CCCCCCCCCCCCC
-C         write(11,*)
-C         write(11,*)
-CCCCCCCCCCCCC
-
          visc(i) = dv*dxsqinv
 
         end do
-
-CCCCCCCCCCCCCC
-C         close(11)
-C         write(*,*)'end of step'
-C         stop
-CCCCCCCCCCCCC      
       end
 
 
