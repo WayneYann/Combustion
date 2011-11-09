@@ -2821,7 +2821,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
         BL_ASSERT(S.nGrow()>=nGrow);
         FillPatchIterator Tfpi(*this,S,nGrow,time,State_Type,Temp,1);
         FillPatchIterator Yfpi(*this,S,nGrow,time,State_Type,first_spec,nspecies);
-        for ( ; Yfpi.isValid(); ++Yfpi)
+        for ( ; Yfpi.isValid() && Tfpi.isValid(); ++Yfpi, ++Tfpi)
         {
             const Box& vbox = Yfpi.validbox();
             FArrayBox& fab = S[Yfpi];
