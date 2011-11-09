@@ -6282,7 +6282,7 @@ HeatTransfer::advance_sdc (Real time,
 
     // compute omegadot^n
     MultiFab RhoYdot(grids,nspecies,0);
-    compute_instantaneous_reaction_rates(RhoYdot,S_old,1);
+    compute_instantaneous_reaction_rates(RhoYdot,S_old,0);
 
     // set I_R = omegadot^n
     for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
