@@ -409,9 +409,9 @@ c ::: -----------------------------------------------------------
                eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
                
                do n=1,Nspec
-                  scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta + (1.d0-eta)*Y_bc(n-1,fuelZone)
+                  scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
                enddo
-               scal(i,j,Temp) = T_bc(airZone)*eta + (1.d0-eta)*T_bc(fuelZone)
+               scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
 
 c     Superimpose blob of hot air
                r = SQRT((x-blobx)**2 + (y-bloby)**2)
