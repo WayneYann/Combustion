@@ -1541,7 +1541,8 @@ NavierStokes::advance (Real time,
         MultiFab mac_rhs(grids,1,0);
         create_mac_rhs(mac_rhs,time,dt);
         MultiFab& S_old  = get_old_data(State_Type);
-        mac_project(time,dt,S_old,&mac_rhs,have_divu);
+        Real typical_phi = 1; // FIXME: Should scale with problem
+        mac_project(time,dt,S_old,&mac_rhs,have_divu,typical_phi);
     }
     //
     // Advect velocities.
@@ -1669,14 +1670,15 @@ NavierStokes::mac_project (Real      time,
                            Real      dt,
                            MultiFab& Sold, 
                            MultiFab* divu,
-                           int       have_divu)
+                           int       have_divu,
+                           Real      typical_phi_value)
 {
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mac_projection" << std::endl;
 
     const Real strt_time = ParallelDescriptor::second();
 
-    mac_projector->mac_project(level,u_mac,Sold,dt,time,*divu,have_divu);
+    mac_projector->mac_project(level,u_mac,Sold,dt,time,*divu,have_divu,typical_phi_value);
 
     create_umac_grown();
 

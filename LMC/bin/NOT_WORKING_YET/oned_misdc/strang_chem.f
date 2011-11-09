@@ -137,7 +137,7 @@ c     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
                endif
 
             end if
-            
+
             do n = 1,Nspec
                is = FirstSpec + n - 1
                I_R(i,n) =
@@ -147,11 +147,11 @@ c     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
             enddo
 
          endif
-         
+
       enddo
-      
+
       end
-      
+
       subroutine chem(scal_old,scal_new,const_src,lin_src,I_R,dt)
       implicit none
       include 'spec.h'
@@ -228,7 +228,8 @@ c     Set linear source terms in common for ode integrators access
             c_0(0) = const_src(i,RhoH) 
             c_1(0) = lin_src(i,RhoH)
             rhoh_INIT = scal_old(i,RhoH)
-         end if
+
+         endif
 
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag, ifail, i)
@@ -236,7 +237,7 @@ c     Set linear source terms in common for ode integrators access
             print *,'solve failed, i=',i
             stop
          endif
-         
+
          if(use_strang) then
 
             do n = 1,Nspec

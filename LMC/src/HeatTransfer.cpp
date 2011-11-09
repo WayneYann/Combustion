@@ -1489,7 +1489,7 @@ HeatTransfer::initDataOtherTypes ()
     // If it is not, merely comment out the call below and everything
     // should be ok.
     //
-    FORT_CHECK_TURB(&add_turb,turb_size,box_offset,&turb_scale,dx);
+    //FORT_CHECK_TURB(&add_turb,turb_size,box_offset,&turb_scale,dx);
   
     if (add_turb) 
     {

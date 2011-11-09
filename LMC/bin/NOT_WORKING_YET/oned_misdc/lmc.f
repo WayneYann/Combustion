@@ -75,8 +75,7 @@ c     New arrays for MISDC.
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  thickFacTR, thickFacCH, max_vode_subcycles,
-     $                  min_vode_timestep, dvd_debug, max_order,
-     $                  cheat_on_boundaries
+     $                  min_vode_timestep, dvd_debug
 
 c     Set defaults, change with namelist
       nsteps = 10
@@ -121,8 +120,6 @@ c     Set defaults, change with namelist
       max_vode_subcycles = 15000
       min_vode_timestep = 1.e-19
       dvd_debug = 0
-      max_order = 4
-      cheat_on_boundaries = 0
 
       divu_old = 0.d0
       press_old = 0.d0
@@ -140,9 +137,7 @@ c     Initialize chem/tran database
 
       Pcgs = Patm * P1ATM
       
-
-c      dx = (probhi-problo)/DBLE(nx)
-      dx = 1.d2*(1.d-2*probhi - 1.d-2*problo)/DBLE(nx)
+      dx = (probhi-problo)/DBLE(nx)
       
       call probinit(problo,probhi)
       
@@ -218,7 +213,7 @@ C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT
          call calc_diffusivities(scal_new,beta_new,mu_new)
 
          call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
-
+         
          print *,'initialVelocityProject: '
          dt_dummy = -1.d0
 

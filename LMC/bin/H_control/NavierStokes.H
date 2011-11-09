@@ -296,7 +296,7 @@ protected:
     // Impose divergence constraint on MAC velocities.
     //
     void mac_project (Real time, Real dt, MultiFab& S_old, 
-                      MultiFab* divu, int have_divu);
+                      MultiFab* divu, int have_divu, Real typical_phi_value);
     //
     // Grow by 1 and fillpatch the MAC-projected velocities.
     //

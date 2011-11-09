@@ -271,18 +271,18 @@ ccccccccccccccccccccccccccccccccc
       real*8      dRhs(0:nx-1,0:maxspec)
       integer is, rho_flag
       integer misdc
-      real*8 diffdiff_hat(0:nx-1)
 
       real*8 Y(maxspec)
       real*8 hi(maxspec,-1:nx)
 
+c     temporaries for setting I_R = omegadot^n at beginning of time step
       real*8 WDOTK(maxspec), C(maxspec), T
+
       real*8 RWRK, cpmix, rhocp
       integer IWRK
 
       diffdiff_old = 0.d0
       diffdiff_new = 0.d0
-      diffdiff_hat = 0.d0
 
       rho_flag = 2
 
@@ -436,13 +436,13 @@ c        we take lambda / cp from beta
 c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_new,spec_flux_lo,
-     $                           spec_flux_hi,beta_old,diffdiff_hat,
+     $                           spec_flux_hi,beta_old,diffdiff_new,
      $                           dx,time)
 
 c        add differential diffusion to forcing for enthalpy solve
          do i=0,nx-1
             dRhs(i,0) = dRhs(i,0) 
-     $           + 0.5d0*dt*(diffdiff_old(i) + diffdiff_hat(i))
+     $           + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
          end do
 
       end if
@@ -477,7 +477,7 @@ c     extract D for RhoH
 c        add differential diffusion
          do i=0,nx-1
             const_src(i,RhoH) = const_src(i,RhoH)
-     $           + 0.5d0*(diffdiff_old(i)+diffdiff_hat(i))
+     $           + 0.5d0*(diffdiff_old(i)+diffdiff_new(i))
          end do
 
          call strang_chem(scal_old,scal_new,
@@ -619,17 +619,6 @@ c           WITH GHOST CELLS USED IN CN_SOLVE
      $                                       diff_hat(0,FirstSpec),
      $                                       spec_flux_lo,spec_flux_hi,
      $                                       dx,time)
-
-c           update species with conservative diffusion fluxes
-            do i=0,nx-1
-               do n=1,Nspec
-                  is = FirstSpec + n - 1
-                  scal_new(i,is) = scal_old(i,is) + 
-     $                 dt*(aofs(i,is) + I_R_new(i,n)
-     $                 + 0.5d0*diff_old(i,is) - 0.5d0*diff_new(i,is)
-     $                 + diff_hat(i,is))
-               end do
-            end do
 
 c           add differential diffusion to forcing for enthalpy solve
             do i=0,nx-1

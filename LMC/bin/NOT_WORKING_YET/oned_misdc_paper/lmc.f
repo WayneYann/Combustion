@@ -213,7 +213,7 @@ C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT
          call calc_diffusivities(scal_new,beta_new,mu_new)
 
          call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
-        
+         
          print *,'initialVelocityProject: '
          dt_dummy = -1.d0
 
@@ -248,6 +248,7 @@ C fills vel_new ghost cells, but not for vel_old
 
          if (fixed_dt > 0) then
             dt = fixed_dt
+            dt_init = dt
          else
             call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
      $                  cfl,umax,dx,dt)

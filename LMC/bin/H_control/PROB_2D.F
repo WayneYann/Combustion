@@ -189,8 +189,7 @@ c ::: -----------------------------------------------------------
       end if
       
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_DIFFUSION)) then
+     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)) then
 
          if (RegionID .eq. BL_YLO) then
 
@@ -216,8 +215,30 @@ c ::: -----------------------------------------------------------
             write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
             call bl_pd_abort(' ')
          endif
+
+      elseif (trim(probtype).eq.BL_PROB_DIFFUSION) then
+
+         if (RegionID .eq. BL_YLO) then
+
+            zone = getZone(RegionID,x,y)
+            rho = rho_bc(zone)
+            do n = 0, Nspec-1
+               Yl(n) = Y_bc(n,zone)
+            end do
+            T = T_bc(zone)
+            h = h_bc(zone)
+            
+            if (getuv .eqv. .TRUE.) then
+               u = zero
+               v = V_in
+            endif
+
+         else
+            write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
+            call bl_pd_abort(' ')
+         endif
       else
-         write(6,*) 'No boundary condition for probtype = ', probtype
+         write(6,*) 'No boundary condition for probtype = ', trim(probtype)
          write(6,*) 'Available: '
          write(6,*) '            ',BL_PROB_PREMIXED_FIXED_INFLOW
          write(6,*) '            ',BL_PROB_PREMIXED_CONTROLLED_INFLOW
@@ -388,9 +409,9 @@ c ::: -----------------------------------------------------------
                eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
                
                do n=1,Nspec
-                  scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta + (1.d0-eta)*Y_bc(n-1,fuelZone)
+                  scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
                enddo
-               scal(i,j,Temp) = T_bc(airZone)*eta + (1.d0-eta)*T_bc(fuelZone)
+               scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
 
 c     Superimpose blob of hot air
                r = SQRT((x-blobx)**2 + (y-bloby)**2)
@@ -420,6 +441,22 @@ c     Superimpose blob of hot air
      &     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
      &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state))
+
+c     Update typical values
+      do j = lo(2), hi(2)
+         do i = lo(1), hi(1)
+            do n = 0,Nspec-1
+               typVal_Y(n+1) = MAX(typVal_Y(n+1),scal(i,j,firstSpec+n)) 
+            enddo
+            typVal_Density = MAX(scal(i,j,Density),typVal_Density)
+            typVal_Temp    = MAX(scal(i,j,Temp),   typVal_Temp)
+            typVal_Trac    = MAX(scal(i,j,Trac),   typVal_Trac)
+            typVal_RhoH = MAX(ABS(scal(i,j,RhoH)*scal(i,j,Density)),typVal_RhoH)
+            do n = 1,BL_SPACEDIM
+               typVal_Vel  = MAX(ABS(vel(i,j,n)),typVal_Vel)
+            enddo
+         enddo
+      enddo
 
       do j = lo(2), hi(2)
          do i = lo(1), hi(1)

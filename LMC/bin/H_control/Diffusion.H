@@ -81,6 +81,7 @@ public:
 			 const MultiFab* const* betan = 0, 
 			 const MultiFab* const* betanp1 = 0,
                          int                    betaComp = 0,
+                         Real                   typical_value = 1,
 			 const SolveMode&       solve_mode = ONEPASS,
                          bool                   add_old_time_divFlux = true);
     
@@ -304,7 +305,6 @@ private:
     static int         use_tensor_cg_solve;
     static int         max_order;
     static int         tensor_max_order;
-    static Array<Real> typical_vals;
 };
 
 #endif

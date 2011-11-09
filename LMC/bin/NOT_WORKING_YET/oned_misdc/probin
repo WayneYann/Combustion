@@ -1,22 +1,22 @@
 &fortin
-  nsteps = 100
-  plot_int = 1
-  fixed_dt = 2.e-5
+  nsteps = 80
+  plot_int = 80
   chk_int = 1000
+  fixed_dt = 0.3e-4
   stop_time = 1.e4
-  cfl = 0.1
+  cfl = 0.25
   problo = 0.
   probhi = 1.2
   chkfile = 'null'
   change_max = 1.1
-  init_shrink = 1.0
+  init_shrink = 0.1
   probtype = 1
   flame_offset = 0.
   dpdt_factor = .3
   Patm = 1.0
   predict_temp_for_coeffs = 1
-  num_init_iters = 3
   num_divu_iters = 0
+  num_init_iters = 2
   misdc_iterMAX = 1
   nochem_hack = .false.
   use_strang = .false.
@@ -24,10 +24,7 @@
   sdc_pred_T_into_rhoh = .false.
   sdc_evolve_T_in_VODE = .false.
   lim_rxns = 0
-  V_in = 0.0
+  V_in = 0.
   LeEQ1 = 0
   tranfile = 'tran.asc.chem-H'
-  coef_avg_harm = 0
-  max_order = 2
-  cheat_on_boundaries = 1
 /

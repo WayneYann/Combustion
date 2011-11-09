@@ -20,7 +20,7 @@ c     Set boundary data
       call pmf(xPMF,xPMF,valsPMF,nPMF)
       call CKXTY(valsPMF(4),IWRK,RWRK,Y_bc(1,0))
       T_bc(0) = valsPMF(1)
-      if (V_in .ge. 0.d0) then
+      if (ABS(V_in) .lt. 1.d20) then
          u_bc(0) = V_in
       else
          u_bc(0) = valsPMF(2)
@@ -69,8 +69,6 @@ c----------------------------------------------------------------------
       double precision Z(0:maxspec),ZP(0:maxspec)
       double precision valsPMF(maxspec+3), RWRK, time, sum
       integer i, n, nPMF, IWRK
-      real tmpr
-      integer tmpi
 
       write(*,*)'*** initdata *****'
       write(*,*)'Pcgs = ', Pcgs
@@ -85,16 +83,6 @@ c----------------------------------------------------------------------
             xPMFhi = x - flame_offset + 0.5*dx
             call pmf(xPMFlo,xPMFhi,valsPMF,nPMF)
 
-c            tmpi = INT(valsPMF(1)*  10000)
-c            valsPMF(1) = DBLE(tmpi)/10000
-c            if (i.eq.64) then
-c               print *,'init:',valsPMF(1)
-c            endif
-c            do n=4,nPMF
-c               tmpi = INT(valsPMF(n)*  10000000)
-c               valsPMF(n) = DBLE(tmpi)/10000000
-c            enddo
-
             call CKXTY(valsPMF(4),IWRK,RWRK,Y)
             T = valsPMF(1)
 
@@ -108,11 +96,6 @@ c            enddo
 
             call CKHBMS(T,Y,IWRK,RWRK,h)
             call CKRHOY(Pcgs,T,Y,IWRK,RWRK,rho)
-c            tmpi = INT(rho*1000000)
-c            rho = DBLE(tmpi)/1000000
-c            if (i.eq.64) then
-c               print *,'init:',rho
-c            endif
             do n=1,Nspec
                scal(i,FirstSpec+n-1) = rho * Y(n)
             enddo
@@ -144,13 +127,6 @@ c            endif
                   Z(n) = scal(i,FirstSpec+n-1)
                enddo
                rhoh_INIT = scal(i,RhoH)
-
-               if (i.eq.64)then
-                  dvd_debug=1
-                  print *,Z(0)
-               else
-                  dvd_debug=0
-               endif
                call vodeF_T_RhoY(Nspec+1,time,Z(0),ZP(0),RWRK,IWRK)
                do n=0,Nspec
                   I_R(i,n) = ZP(N)
@@ -246,7 +222,7 @@ c     Set coeffs for polynomial extrap to fill grow cells
 c     Set Dirichlet values into grow cells
       call set_bc_s(scal,dx,time)
 
-      if (cheat_on_boundaries .eq. 0) then
+      if (.false.) then
 
 c     Do extrap
       ib = -1

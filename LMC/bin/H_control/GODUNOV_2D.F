@@ -786,18 +786,6 @@ c
       imax = hi(1)
       jmax = hi(2)
 
-#if 0
-      do j = jmin-1,jmax+1
-         do i = imin,  imax+1
-            uedge(i,j) = 0.d0
-         enddo
-      enddo
-      do j = jmin,jmax+1
-         do i = imin-1,  imax+1
-            vedge(i,j) = .1524d0
-         enddo
-      enddo
-#endif
 c
 c     compute the slopes
 c
@@ -1011,8 +999,7 @@ c
 
                   st = -(uedge(i+1,j)*xlo(i+1,j) - uedge(i,j)*xlo(i,j))/hx
      &                 + s(i,j)*(uedge(i+1,j)-uedge(i,j))/hx
-c     &                 - s(i,j)*divu(i,j)
-     &                 - s(i,j)*(vedge(i,j+1)-vedge(i,j))/hy
+     &                 - s(i,j)*divu(i,j)
 
                else
 
@@ -1047,11 +1034,11 @@ c     &                 - s(i,j)*divu(i,j)
                   styhi(j  )= s(i,j) - (half+dthy*vedge(i,j  ))*sy(i,j)
      &                 + dth*(st + tforces(i,j))
                end if
-                  stylo(j+1)= s(i,j) + (half-dthy*vedge(i,j+1))*sy(i,j)
-     &                 + dth*(st + tforces(i,j))
+               stylo(j+1)= s(i,j) + (half-dthy*vedge(i,j+1))*sy(i,j)
+     &              + dth*(st + tforces(i,j))
 
             end do
- 
+
             if (bc(2,1).eq.EXT_DIR .and. vedge(i,jmin).ge.zero) then
                styhi(jmin) = s(i,jmin-1)
                stylo(jmin) = s(i,jmin-1)
@@ -1083,12 +1070,6 @@ c     &                 - s(i,j)*divu(i,j)
                ystate(i,j) = merge(half*(stylo(j)+styhi(j)),ystate(i,j),
      &              abs(vedge(i,j)).lt.eps)
             end do
-
-c            if (i.eq.65 .and. idbg.eq.1) then
-c               do j = 60,70
-c                  print *,j,s(i,j-1),sy(i,j-1),tforces(i,j-1),ystate(i,j)
-c               enddo
-c            endif
 
             place_to_break = 1
       end do
@@ -1163,14 +1144,6 @@ c
             xflux(i,j) = xflux(i,j)*uedge(i,j)*areax(i,j)
          end do
       end do
-
-c      if (idbg.eq.1) then
-c         print *,'fluxes'
-c         do j = 50,60
-c            i=64
-c            print *,j,yflux(i,j),vedge(i,j),yflux(i,j)*vedge(i,j)*areay(i,j)
-c         end do
-c      endif
 
       do j = jmin,jmax+1
          do i = imin,imax

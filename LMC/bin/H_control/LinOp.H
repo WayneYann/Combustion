@@ -127,6 +127,7 @@ public:
     //
     void smooth (MultiFab&       solnL,
                  const MultiFab& rhsL,
+                 Array<Real>&    max_update,
                  int             level   = 0,
                  LinOp::BC_Mode  bc_mode = LinOp::Inhomogeneous_BC);
 
@@ -218,7 +219,8 @@ protected:
     virtual void Fsmooth (MultiFab&       solnL,
                           const MultiFab& rhsL,
                           int             level,
-                          int             rgbflag) = 0;
+                          int             rgbflag,
+                          Array<Real>&    max_update) = 0;
 
     virtual void Fsmooth_jacobi (MultiFab&       solnL,
                                  const MultiFab& rhsL,

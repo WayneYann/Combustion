@@ -2338,7 +2338,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      INTEGER GROUPA, GROUPB
+      INTEGER GROUPA, GROUPB, VRBLS
       DIMENSION X(*), S(*)
       LOGICAL ERROR
       CHARACTER*16 ICHR, ICKLNK, IMCLNK, ISOLUT, ISENSI

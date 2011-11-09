@@ -100,14 +100,7 @@
      $              dth * scal_old(i-1,n) * (macvel(i  )-macvel(i-1))/dx
             endif
             sedge(i,n) = sedge(i,n) + dth*tforce(i-1,n)
-
-c            if (n.eq.FirstSpec) then
-c               print *,'aofs'
-c               do i=60,70
-c                  print *,i,scal_old(i-1,n),slope(i-1),tforce(i-1,n),sedge(i,n)
-c               enddo
-c            endif
-
+            
          endif
       enddo
       
@@ -128,11 +121,6 @@ c        compute rho.hmix as sum of (H_i.Rho.Y_i)
             sedge(i,RhoH) = Hmix * sedge(i,Density)
          endif
       enddo
-
-c      print *,'Fluxes'
-c      do i=50,60
-c         print *,i,sedge(i,Density)*macvel(i)*dx,(sedge(i,FirstSpec+n-1)*macvel(i)*dx,n=1,Nspec)
-c      enddo
 
       do n = 1,nscal
          if (n.eq.Temp) then
@@ -156,10 +144,5 @@ c     Make these negative here so we can add as source terms later.
           enddo
        enddo
        
-c       print *,'aofs'
-c       do i=50,60
-c          print *,i,aofs(i,Density),(aofs(i,FirstSpec+n-1),n=1,Nspec)
-c       enddo
-
        end
 
