@@ -32,10 +32,10 @@
 #define BL_INTERIOR 6
 
 #define BL_FUELPIPE 1
-#define BL_COFLOW   2
-#define BL_STICK    3
-#define BL_WALL     4
-#define BL_AMBIENT  5
+#define BL_AMBIENT  2
+#define BL_COFLOW   3
+#define BL_STICK    4
+#define BL_WALL     5
 #define BL_VOLUME   6
 #define BL_PIPEEND  7
 

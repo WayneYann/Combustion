@@ -174,15 +174,17 @@ Array<std::string> HeatTransfer::speciesStateNames;
 Array<std::string> HeatTransfer::rhoydotNames;
 
 // Turns out to be handy for debugging
-#if 0
+#if 1
 static
 void dump(const FArrayBox& fab, int comp=-1)
 {
     int sComp = comp < 0 ? 0 : comp;
     int nComp = comp < 0 ? fab.nComp() : 1;
 
-    for (int j=60; j<=70; ++j) {
-        IntVect iv(1,j);
+    //for (int j=60; j<=70; ++j) {
+    //  IntVect iv(1,j);
+    for (int j=45; j<=64; ++j) {
+        IntVect iv(j,30);
         cout << j << " ";
         for (int n=sComp; n<sComp+nComp; ++n) {
             cout << fab(iv,n) << " ";
@@ -1190,6 +1192,20 @@ HeatTransfer::restart (Amr&          papa,
 
     if (do_mcdd)
         MCDDOp.define(grids,Domain(),crse_ratio);
+
+    if (do_sdc)
+    {
+        Forcing.define(grids,nspecies+1,nGrowAdvForcing,Fab_allocate);
+        Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
+        Dhat.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
+        Dnp1.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
+        DDn.define(grids,1,nGrowAdvForcing,Fab_allocate);
+        DDnp1.define(grids,1,nGrowAdvForcing,Fab_allocate);
+    }
+
+    // HACK for debugging
+    if (level==0)
+        stripBox = getStrip(geom);
 
     // Deal with typical values
     set_typical_values(true);
@@ -4809,7 +4825,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     diffusion->allocFluxBoxesLevel(beta,0,nspecies+2); // Species and heat fluxes
     getDiffusivity(beta, time, first_spec, 0, nspecies+1);
     getDiffusivity(beta, time, Temp, nspecies+1, 1);
-
     MultiFab& S = get_data(State_Type,time);
 
     // Fill grow cells in the state for (Rho,RhoY,RhoH,T)
@@ -5731,8 +5746,6 @@ HeatTransfer::advance (Real time,
     //
     Real dummy = 0.0;    
     dt_test = predict_velocity(dt,dummy);
-
-
     
     showMF("mac",u_mac[0],"adv_umac0",level);
     showMF("mac",u_mac[1],"adv_umac1",level);
@@ -6315,7 +6328,6 @@ HeatTransfer::advance_sdc (Real time,
         f.plus(a,box,box,first_spec,0,nspecies+1);
         f.plus(r,box,box,0,0,nspecies); // R[RhoH] == 0
     }
-
     Real theta_enthalpy = theta;
     differential_diffusion_update(Forcing,0,theta,Dhat,0,DDnp1,theta_enthalpy);
     // 
@@ -6368,13 +6380,15 @@ HeatTransfer::advance_sdc (Real time,
         for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
         {
             FArrayBox& f = Forcing[mfi];
-            const FArrayBox& d = Dn[mfi];
+            const FArrayBox& dn = Dn[mfi];
+            const FArrayBox& ddn = DDn[mfi];
             const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
             
             const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
             
-            f.copy(d,gbox,0,gbox,0,nspecies+1);
+            f.copy(dn,gbox,0,gbox,0,nspecies+1);
             f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
+            f.plus(ddn,gbox,gbox,0,nspecies,1);
         }
         Forcing.setBndry(0);
         Forcing.FillBoundary(0,nspecies+1);
@@ -6566,7 +6580,6 @@ void
 HeatTransfer::create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow)
 {
     NavierStokes::create_mac_rhs(rhs,time,dt,nGrow);
-
     showMF("mac",rhs,"mac_rhs0_",level);
 
     if (dt > 0.0) 
@@ -9322,8 +9335,8 @@ HeatTransfer::getDiffusivity (MultiFab*  beta[BL_SPACEDIM],
 
         for (int dir = 0; dir < BL_SPACEDIM; dir++)
         {
-            FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Density).lo(dir));
-            FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Density).hi(dir));
+            FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(state_comp).lo(dir));
+            FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(state_comp).hi(dir));
 
             center_to_edge_fancy((*diff)[diffMfi],(*beta[dir])[i],
                                  BoxLib::grow(grids[i],BoxLib::BASISV(dir)), diff_comp, 
@@ -9429,31 +9442,30 @@ HeatTransfer::calc_divu (Real      time,
         compute_differential_diffusion_terms(mcViscTerms,divu,time); // divu has DD, not needed here
     }
 
-    {
-        MultiFab& S = get_data(State_Type,time);
+    MultiFab& S = get_data(State_Type,time);
 #if 0
-        MultiFab& RhoYdot = get_data(RhoYdot_Type,time);
+    MultiFab& RhoYdot = get_data(RhoYdot_Type,time);
 #else
-        MultiFab RhoYdot(grids,nspecies,0);
-        compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);        
+    MultiFab RhoYdot(grids,nspecies,0);
+    compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);        
 #endif
-        for (MFIter mfi(S); mfi.isValid(); ++mfi)
-        {
-            const Box& box = mfi.validbox();            
-            FArrayBox& du = divu[mfi];
-            const FArrayBox& vtY = mcViscTerms[mfi];
-            const FArrayBox& vtT = mcViscTerms[mfi];
-            const FArrayBox& rhoY = S[mfi];
-            const FArrayBox& rYdot = RhoYdot[mfi];
-            const FArrayBox& T = S[mfi];
-            FORT_CALCDIVU(box.loVect(), box.hiVect(),
-                          du.dataPtr(),             ARLIM(du.loVect()),    ARLIM(du.hiVect()),
-                          rYdot.dataPtr(),          ARLIM(rYdot.loVect()), ARLIM(rYdot.hiVect()),
-                          vtY.dataPtr(vtCompY),     ARLIM(vtY.loVect()),   ARLIM(vtY.hiVect()),
-                          vtT.dataPtr(vtCompT),     ARLIM(vtT.loVect()),   ARLIM(vtT.hiVect()),
-                          rhoY.dataPtr(first_spec), ARLIM(rhoY.loVect()),  ARLIM(rhoY.hiVect()),
-                          T.dataPtr(Temp),          ARLIM(T.loVect()),     ARLIM(T.hiVect()));
-        }
+    
+    for (MFIter mfi(S); mfi.isValid(); ++mfi)
+    {
+        const Box& box = mfi.validbox();            
+        FArrayBox& du = divu[mfi];
+        const FArrayBox& vtY = mcViscTerms[mfi];
+        const FArrayBox& vtT = mcViscTerms[mfi];
+        const FArrayBox& rhoY = S[mfi];
+        const FArrayBox& rYdot = RhoYdot[mfi];
+        const FArrayBox& T = S[mfi];
+        FORT_CALCDIVU(box.loVect(), box.hiVect(),
+                      du.dataPtr(),             ARLIM(du.loVect()),    ARLIM(du.hiVect()),
+                      rYdot.dataPtr(),          ARLIM(rYdot.loVect()), ARLIM(rYdot.hiVect()),
+                      vtY.dataPtr(vtCompY),     ARLIM(vtY.loVect()),   ARLIM(vtY.hiVect()),
+                      vtT.dataPtr(vtCompT),     ARLIM(vtT.loVect()),   ARLIM(vtT.hiVect()),
+                      rhoY.dataPtr(first_spec), ARLIM(rhoY.loVect()),  ARLIM(rhoY.hiVect()),
+                      T.dataPtr(Temp),          ARLIM(T.loVect()),     ARLIM(T.hiVect()));
     }
 }
 

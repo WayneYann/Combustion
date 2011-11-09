@@ -189,8 +189,7 @@ c ::: -----------------------------------------------------------
       end if
       
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_DIFFUSION)) then
+     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)) then
 
          if (RegionID .eq. BL_YLO) then
 
@@ -216,8 +215,30 @@ c ::: -----------------------------------------------------------
             write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
             call bl_pd_abort(' ')
          endif
+
+      elseif (trim(probtype).eq.BL_PROB_DIFFUSION) then
+
+         if (RegionID .eq. BL_YLO) then
+
+            zone = getZone(RegionID,x,y)
+            rho = rho_bc(zone)
+            do n = 0, Nspec-1
+               Yl(n) = Y_bc(n,zone)
+            end do
+            T = T_bc(zone)
+            h = h_bc(zone)
+            
+            if (getuv .eqv. .TRUE.) then
+               u = zero
+               v = V_in
+            endif
+
+         else
+            write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
+            call bl_pd_abort(' ')
+         endif
       else
-         write(6,*) 'No boundary condition for probtype = ', probtype
+         write(6,*) 'No boundary condition for probtype = ', trim(probtype)
          write(6,*) 'Available: '
          write(6,*) '            ',BL_PROB_PREMIXED_FIXED_INFLOW
          write(6,*) '            ',BL_PROB_PREMIXED_CONTROLLED_INFLOW

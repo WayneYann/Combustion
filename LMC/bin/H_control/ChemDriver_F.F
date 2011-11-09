@@ -119,8 +119,10 @@ c
          call get_spec_name(name,n)
          if (name .eq. 'N2' ) iN2 = n
       end do
-      if (iN2.eq.-1)
-     &     write(6,*) '.....warning: no N2 in chemistry species list'
+      if (iN2.eq.-1) then
+         write(6,*) '.....warning: no N2 in chemistry species list'
+         stop
+      endif
       end
 
 

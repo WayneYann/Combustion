@@ -207,7 +207,7 @@ c
       call bl_pd_is_ioproc(isioproc)
 
       if (init.ne.1) then
-         call bl_abort('probinit called with init ne 1')
+c         call bl_abort('probinit called with init ne 1')
       end if
 
       if (namlen .gt. maxlen) then
