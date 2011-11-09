@@ -35,7 +35,7 @@ USE_TDEPFORCING = TRUE
 #fEXE_sources += drm19Soln_seed_0.50.f
 
 CHEMISTRY_MODEL = CHEMH
-fEXE_sources += H-flame_0370.f
+fEXE_sources += chemHSoln_seed_0.00.f
 
 EBASE = amr
 Blocs   := .
