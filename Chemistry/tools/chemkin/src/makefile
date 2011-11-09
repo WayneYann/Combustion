@@ -1,4 +1,6 @@
 BIN=../bin
+FC=gfortran
+#FC=ifort
 PREMIX=${BIN}/premix.exe
 TRANFIT=${BIN}/tranfit.exe
 CKINTERP=${BIN}/ckinterp.exe
@@ -13,18 +15,21 @@ OBJ_TR = $(SRC_TR:%.f=%.o)
 OBJ_CK = $(SRC_CK:%.f=%.o)
 
 %.o: %.f
-	ifort -c $*.f
+	${FC} -c $*.f
 
 all: ${PREMIX} ${TRANFIT} ${CKINTERP}
 
-${PREMIX}: ${OBJ_PR}
-	ifort ${OBJ_PR} -o $@
+bindir:
+	mkdir -p ${BIN}
 
-${TRANFIT}: ${OBJ_TR}
-	ifort ${OBJ_TR} -o $@
+${PREMIX}: ${OBJ_PR} bindir
+	${FC} ${OBJ_PR} -o $@
 
-${CKINTERP}: ${OBJ_CK}
-	ifort ${OBJ_CK} -o $@
+${TRANFIT}: ${OBJ_TR} bindir
+	${FC} ${OBJ_TR} -o $@
+
+${CKINTERP}: ${OBJ_CK} bindir
+	${FC} ${OBJ_CK} -o $@
 
 clean:
 	\rm -rf ${OBJ_PR} ${OBJ_TR} ${OBJ_CK} 

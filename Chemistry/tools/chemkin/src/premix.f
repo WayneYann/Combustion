@@ -1958,7 +1958,7 @@ C
      1                  XSTR, XCEN, XEND, WMIX, WNDFAC, P, DT, DT2,
      2                  TFIXT, TRFAC
       LOGICAL
-     +   kerr, lewis, lfuel, LMOLE, lpath, lrrop, lsolve, ldflx, 
+     +   kerr, lewis, lfuel, LMOLE, lpath, lrrop, lsolve, latom, ldflx, 
      +   LMULTI, LENRGY, LTDIF, LVCOR, lheat, ldiff
 
       common / prlcon / 
@@ -2020,11 +2020,11 @@ c     count the output fields and prepare to write them
 c     always include x, t, v, rho
       fields = fields + 4
 c     heat release
-      if (lheat.eqv..true.) fields = fields + 1
+      if (lheat) fields = fields + 1
 c     fuel consumption
       if (lfuel) fields = fields + 1
 c     molar fractions of atoms and percent change thereof
-      if (latom.eqv..true.) fields = fields + elements + elements
+      if (latom) fields = fields + elements + elements
 c     always include species
       fields = fields + kk
 c     diffusion flux
