@@ -8,6 +8,12 @@
   blobT = 1500.
   T_in = 300
   V_in = .5
+
+  V_in = 10
+  V_co = 10
+  stTh = .001
+  splitx = .004  
+  fuel_N2_vol_percent = 59.4595
  /
  &heattransin
   pamb = 101325.

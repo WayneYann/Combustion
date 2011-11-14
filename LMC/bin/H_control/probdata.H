@@ -31,10 +31,10 @@
 
       REAL_T stTh, Rf, V_in, V_co, T_in, R_hot, R_hotBL, stBL, pipeTh, pipeBL
       REAL_T tV_in_l, tV_in_r, V_in_new, tV_co_l, tV_co_r, V_co_new
-      REAL_T T_stick, rho_stick, h_stick
+      REAL_T T_stick, rho_stick, h_stick, fuel_N2_vol_percent
       common /myprob5/ stTh, Rf, V_in, V_co, T_in, R_hot, R_hotBL, stBL,
      &     pipeTh, pipeBL, tV_in_l, tV_in_r, V_in_new, tV_co_l, tV_co_r,
-     &     V_co_new, T_stick, rho_stick, h_stick
+     &     V_co_new, T_stick, rho_stick, h_stick, fuel_N2_vol_percent
       save /myprob1/, /myprob2/, /myprob3/, /myprob4/, /myprob5/ 
 
       REAL_T pertmag

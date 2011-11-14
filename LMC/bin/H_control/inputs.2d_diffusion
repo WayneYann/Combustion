@@ -58,22 +58,30 @@ ns.do_group_bndry_fills = 1
 mg.cg_solver=1
 #cg.cg_solver=1
 
-
-
+#geometry.prob_lo    = 0. 0.
+#amr.n_cell          = 128 128
+#amr.blocking_factor = 8
+#geometry.prob_hi    = 0.012 0.012
+#max_step            = 100
+#amr.check_file      = chk_0128_
+#amr.plot_file       = plt_0128_
+#amr.check_int       = 1000
+#amr.plot_int        = 1
+#ns.cfl              = 0.25
+#amr.max_grid_size   = 256
 
 geometry.prob_lo    = 0. 0.
-amr.n_cell          = 128 128
+amr.n_cell          = 128 512
+amr.n_cell          = 64 256
 amr.blocking_factor = 8
-geometry.prob_hi    = 0.012 0.012
+geometry.prob_hi    = 0.008 0.032
 max_step            = 100
 amr.check_file      = chk_0128_
 amr.plot_file       = plt_0128_
-amr.check_int       = 1000
+amr.check_int       = 1
 amr.plot_int        = 1
-ns.cfl              = 0.25
-#ns.fixed_dt         = 3.e-5
-
-amr.max_grid_size   = 256
+ns.cfl              = 0.01
+amr.max_grid_size   = 128
 
 amr.v=1
 amr.max_level =  0            # maximum level number allowed
@@ -125,6 +133,7 @@ ns.min_rho_divu_ceiling = .01
 
 ns.tranfile        = tran.asc.chem-H
 ns.fuelName        = H2
+ns.fuelName        = CH4
 ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
@@ -142,8 +151,8 @@ ns.dpdt_option = 0
 #ns.constant_rhoD_val = 0.0714286
 # ----------------  PROBLEM DEPENDENT INPUTS
 
-ns.lo_bc          = 2 1
-ns.hi_bc          = 2 2
+ns.lo_bc          = 3 1
+ns.hi_bc          = 3 2
 geometry.is_periodic = 0 0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
@@ -207,10 +216,10 @@ diffuse.tensor_max_order = 2
 
 #ns.visc_tol        = 1.0e-14  # tolerence for viscous solves
 #ns.visc_abs_tol    = 1.0e-14  # tolerence for viscous solves
-#ns.hack_nochem=1
-#ns.hack_nospecdiff=1
+#ns.hack_nochem=0
+#ns.hack_nospecdiff=0
 #ns.init_iter=0
-#ns.do_init_proj=1
+#ns.do_init_proj=0
 #max_step = 0
 #mac.mac_tol    = 1.0e-14
 #mac.mac_abs_tol = 1.0e-14
