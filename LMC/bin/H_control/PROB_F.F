@@ -342,7 +342,8 @@ c     Set up boundary functions
       do i=1,SDIM-1
          area = area*(domnhi(i)-domnlo(i))
       enddo
-      scale_control = Y_bc(fuelID,BL_FUELPIPE) * rho_bc(BL_FUELPIPE) * area
+      scale_control = Y_bc(fuelID-1,BL_FUELPIPE) * rho_bc(BL_FUELPIPE) * area
+
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
       endif
