@@ -4,26 +4,24 @@
 FREE
 ENRG
 / Multicomponent
-MULT
+/MULT
 / Thermal diffusion
-TDIF
+/TDIF
 /  initial flow-rate estimate
 FLRT  .07   ! gm/cm**2-sec
 /   atmospheric pressure
 PRES  1.0   ! atmospheres
 /   initial grid and profile specification
-NPTS      7
-RSTR
-XEND      5.0 ! cm
-XCEN      0.8 ! cm
+NPTS      45
+NPTS      15
+XEND      1.3 ! cm
+XCEN      0.7 ! cm
 /   temperature to fixed for the flame speed computation
 TFIX  400.
 /   mesh adaptation criteria
-GRAD     0.9
-CURV     0.9
 /   unreacted fuel-oxidizer makeup
 MOLE
-/For hydrogen at phi = 0.37
+/For hydrogen at phi = 0.37   (chem-H.inp+gri1.2: 15.27, MB+gri.12: 18.72)
 REAC H2   0.134498874849
 REAC O2   0.181755236282
 REAC N2   0.683745888869
@@ -50,29 +48,37 @@ RTIM  1.E-5
 /   maximum printing
 PRNT    1
 /   time step control
-TIME   500   5.0E-7  ! sec
-TIM2   500   1.0E-6  ! sec
+TIME   200   5.0E-7  ! sec
+TIM2   300   1.0E-6  ! sec
 /   estimated temperature profile
 TEMP -10.0    298.
-TEMP   1.00   298.
-TEMP   1.50   300.
-TEMP   1.82   404.
-TEMP   1.93   600.
-TEMP   2.00   800.
-TEMP   2.05  1000.
-TEMP   2.23  1182.
-TEMP   2.3   1187.
-TEMP  10.0   1188.
+TEMP   0.0    298.
+TEMP   0.53   335.
+TEMP   0.57   404.
+TEMP   0.66   570.
+TEMP   0.73   787.
+TEMP   0.86  850.
+TEMP   1.01  850.
+TEMP  10.0   900.
+/   a continuation run will follow
 CNTN
 END
+/
 GRAD   0.9
 CURV   0.9
 CNTN
 END
+/
+XSTR   0.0
+XEND   1.5
+CNTN
+END
+/
 GRAD   0.1
 CURV   0.5
 CNTN
 END
+/
 GRAD   0.15
 CURV   0.15
 CNTN
@@ -80,6 +86,6 @@ END
 CDIF
 CNTN
 END
-GRAD   0.01
+GRAD   0.05
 CURV   0.01
 END
