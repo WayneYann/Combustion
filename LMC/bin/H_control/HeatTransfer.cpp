@@ -4907,6 +4907,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
 
     adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
     compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);
+
+    diffusion->removeFluxBoxesLevel(beta);
 }
 
 void
@@ -6280,6 +6282,20 @@ HeatTransfer::advance_sdc (Real time,
         std::cout << "Dn (SDC predictor) \n";
     compute_differential_diffusion_terms(Dn,DDn,prev_time);
 
+    // compute omegadot^n
+    MultiFab RhoYdot(grids,nspecies,0);
+    compute_instantaneous_reaction_rates(RhoYdot,S_old,0);
+
+    // set I_R = omegadot^n
+    for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
+    {
+      const Box& box = mfi.validbox();
+      const FArrayBox& rYdot = RhoYdot[mfi];    
+      FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
+      
+      r.copy(rYdot,box,0,box,0,nspecies);
+    }
+    
     //
     // Compute A (F = Dn + R)
     //

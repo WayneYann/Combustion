@@ -4,7 +4,7 @@
   V_in = -1
   V_in = 0.0
 
-  standoff = 0.
+  standoff = -0.024
 
   pertmag = 0.00016
   pertmag = 0.

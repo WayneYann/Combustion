@@ -7,7 +7,6 @@
   standoff = -0.024
 
   pertmag = 0.00016
-  pertmag = 0.
 
   max_trac_lev = 1
   max_trac_lev = 3
