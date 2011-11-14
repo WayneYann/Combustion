@@ -4907,6 +4907,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
 
     adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
     compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);
+
+    diffusion->removeFluxBoxesLevel(beta);
 }
 
 void
