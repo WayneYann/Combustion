@@ -73,10 +73,16 @@ c     A diffusion flame
          num_zones_defined = 2
 
 c     Fuel
+         do n = 1,Nspec
+            Xt(n) = 0.d0
+         end do 
+         Xt(iN2) = fuel_N2_vol_percent*1.d-2
+         Xt(fuelID) = 1.d0 - Xt(iN2)            
+         CALL CKXTY (Xt, IWRK, RWRK, Yt)
+
          do n=1,Nspec
-            Y_bc(n-1,fuelZone) = 0.d0
+            Y_bc(n-1,fuelZone) = Yt(n)
          end do
-         Y_bc(fuelID-1,fuelZone) = 1.d0         
          T_bc(fuelZone) = T_in
          u_bc(fuelZone) = 0.d0
          v_bc(fuelZone) = V_in
@@ -183,6 +189,7 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 
       integer n, getZone, zone
+      REAL_T eta, xmid, etamax
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
@@ -231,6 +238,23 @@ c ::: -----------------------------------------------------------
             if (getuv .eqv. .TRUE.) then
                u = zero
                v = V_in
+
+               if (stTh.ge.0) then
+                  if (ABS(x - splitx).lt.0.5*stTh) then
+                     v = 0.d0
+                  else
+                     if (x .lt. splitx) then
+                        etamax = splitx - 0.5*stTh
+                        eta = (x - domnlo(1)) / etamax
+                        v = V_in * (1.d0 - eta**2)
+                     else
+                        etamax = domnhi(1) - splitx - 0.5*stTh
+                        eta = (domnhi(1) - x) / etamax
+                        v = V_co * (1.d0 - eta**2)
+                     endif
+                  endif
+               endif
+
             endif
 
          else
@@ -346,10 +370,10 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
 
-      integer i, j, n, airZone, fuelZone, getZone
+      integer i, j, n, airZone, fuelZone, getZone, zone
       REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm
       REAL_T pmf_vals(maxspec+3), y1, y2, dx
-      REAL_T pert,Lx,FORT_P1ATMMKS,eta
+      REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,rho,T,h
            
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
@@ -425,6 +449,13 @@ c     Superimpose blob of hot air
                vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
                vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
                scal(i,j,Trac) = 0.d0
+
+               if (stTh.gt. 0.d0) then
+                  zone = getZone(x,y)
+                  call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.true.)
+                  vel(i,j,1) = u
+                  vel(i,j,2) = v
+               endif
             end do
          end do
       endif
@@ -446,7 +477,7 @@ c     Update typical values
       do j = lo(2), hi(2)
          do i = lo(1), hi(1)
             do n = 0,Nspec-1
-               typVal_Y(n+1) = MAX(typVal_Y(n+1),scal(i,j,firstSpec+n)) 
+               typVal_Y(n+1) = MAX(typVal_Y(n+1),scal(i,j,firstSpec+n))
             enddo
             typVal_Density = MAX(scal(i,j,Density),typVal_Density)
             typVal_Temp    = MAX(scal(i,j,Temp),   typVal_Temp)
@@ -456,6 +487,9 @@ c     Update typical values
                typVal_Vel  = MAX(ABS(vel(i,j,n)),typVal_Vel)
             enddo
          enddo
+      enddo
+      do n = 1,Nspec
+         typVal_Y(n) = MIN(MAX(typVal_Y(n),typVal_YMIN),typVal_YMAX)
       enddo
 
       do j = lo(2), hi(2)

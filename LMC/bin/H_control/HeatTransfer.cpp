@@ -183,8 +183,10 @@ void dump(const FArrayBox& fab, int comp=-1)
 
     //for (int j=60; j<=70; ++j) {
     //  IntVect iv(1,j);
-    for (int j=45; j<=64; ++j) {
-        IntVect iv(j,30);
+    //for (int j=45; j<=64; ++j) {
+    //  IntVect iv(j,30);
+    for (int j=62; j<=62; ++j) {
+        IntVect iv(j,18);
         cout << j << " ";
         for (int n=sComp; n<sComp+nComp; ++n) {
             cout << fab(iv,n) << " ";
@@ -1059,7 +1061,7 @@ HeatTransfer::init_once ()
     //
     // make space for typical values
     //
-    typical_values.resize(NUM_STATE,1); // One is reasonable, not great
+    typical_values.resize(NUM_STATE,-1); // -ve means don't use for anything
     //
     // Get universal gas constant from Fortran.
     //
@@ -1222,7 +1224,7 @@ HeatTransfer::set_typical_values(bool restart)
 
             BL_ASSERT(nComp==NUM_STATE);
             for (int i=0; i<nComp; ++i) {
-                typical_values[i] = 0;
+                typical_values[i] = -1;
             }
             
             if (ParallelDescriptor::IOProcessor())
@@ -1247,16 +1249,17 @@ HeatTransfer::set_typical_values(bool restart)
             ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
         }
 
-        // Check fortan common values, if non-zero override
+        // Check fortan common values, override values set above if fortran values > 0
         Array<Real> tvTmp(nComp,0);
         FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
         ParallelDescriptor::ReduceRealMax(tvTmp.dataPtr(),nComp);
         
         for (int i=0; i<nComp; ++i) {
-            if (tvTmp[i]!=0) {
+            if (tvTmp[i]>0) {
                 typical_values[i] = tvTmp[i];
             }
         }
+        FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
 
         if (ParallelDescriptor::IOProcessor())
         {
@@ -1278,7 +1281,7 @@ HeatTransfer::set_typical_values(bool restart)
         // Verify good values for Density, Temp, RhoH, Y -- currently only needed for mcdd problems
         if (do_mcdd && ParallelDescriptor::IOProcessor()) {
             for (int i=BL_SPACEDIM; i<nComp; ++i) {
-                if (i!=Trac && i!=RhoRT && typical_values[i]==0) {
+                if (i!=Trac && i!=RhoRT && typical_values[i]<=0) {
                     cout << "component: " << i << " of " << nComp << endl;
                     BoxLib::Abort("Must have non-zero typical values");
                 }
@@ -4907,6 +4910,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
 
     adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
     compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);
+
+    diffusion->removeFluxBoxesLevel(beta);
 }
 
 void
@@ -5488,8 +5493,8 @@ HeatTransfer::set_htt_hmixTYP ()
     const int finest_level = parent->finestLevel();
 
     // set typical value for hmix, needed for TfromHY solves if not provided explicitly
-    if (typical_values[RhoH]==0) {
-        htt_hmixTYP = 0;
+    if (typical_values[RhoH] < 0) {
+        htt_hmixTYP = -1;
         for (int k = 0; k <= finest_level; k++)
         {
             AmrLevel& ht = getLevel(k);
@@ -6280,6 +6285,7 @@ HeatTransfer::advance_sdc (Real time,
         std::cout << "Dn (SDC predictor) \n";
     compute_differential_diffusion_terms(Dn,DDn,prev_time);
 
+#if 1
     // compute omegadot^n
     MultiFab RhoYdot(grids,nspecies,0);
     compute_instantaneous_reaction_rates(RhoYdot,S_old,0);
@@ -6293,7 +6299,7 @@ HeatTransfer::advance_sdc (Real time,
       
       r.copy(rYdot,box,0,box,0,nspecies);
     }
-    
+#endif
     //
     // Compute A (F = Dn + R)
     //
@@ -6315,7 +6321,14 @@ HeatTransfer::advance_sdc (Real time,
     Forcing.FillBoundary(0,nspecies+1);
     geom.FillPeriodicBoundary(Forcing,0,nspecies+1);
           
+    cout << "F for A:" << Forcing[0](IntVect(26,6),1) <<endl;
+    cout << "   " << Dn[0](IntVect(26,6),1) << "(Dn) + "
+         << get_old_data(RhoYdot_Type)[0](IntVect(26,6),1) << "(R) )" << endl;
+
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+
+    cout << "     A:" << (*aofs)[0](IntVect(26,6),first_spec+1) <<endl;
+
     scalar_advection_update(dt, Density, RhoH);
 
     make_rho_curr_time();
@@ -6342,8 +6355,15 @@ HeatTransfer::advance_sdc (Real time,
         f.plus(a,box,box,first_spec,0,nspecies+1);
         f.plus(r,box,box,0,0,nspecies); // R[RhoH] == 0
     }
+
     Real theta_enthalpy = theta;
     differential_diffusion_update(Forcing,0,theta,Dhat,0,DDnp1,theta_enthalpy);
+
+    cout << "F for Dhat:" << Forcing[0](IntVect(26,6),1) <<endl;
+    cout << "   " << (*aofs)[0](IntVect(26,6),first_spec+1) << "(A) + "
+         << get_old_data(RhoYdot_Type)[0](IntVect(26,6),1) << "(R) + " 
+         << "0.5*(" << Dn[0](IntVect(26,6),1) << "(Dn) + " << Dhat[0](IntVect(26,6),1) << "(Dhat) )" << endl;
+
     // 
     // Compute R, react with F = A + 0.5*(Dn + Dhat)
     // 
@@ -6365,14 +6385,19 @@ HeatTransfer::advance_sdc (Real time,
 
         f.plus(a,box,box,first_spec,0,nspecies+1);
     }
+
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "R (SDC predictor) \n";
     advance_chemistry(S_old,S_new,dt,Forcing,0);
-
+    
+    cout << "F for R:" << Forcing[0](IntVect(26,6),1) <<endl;
+    cout << "   " << (*aofs)[0](IntVect(26,6),first_spec+1) << "(A) + " 
+         ".5*(" << Dn[0](IntVect(26,6),1) << "(Dn) + "
+         << Dhat[0](IntVect(26,6),1) << "(Dhat) )" << endl;
+    cout << "   R: " << get_new_data(RhoYdot_Type)[0](IntVect(26,6),1) << endl;
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "DONE WITH R (SDC predictor) \n";
-
 
     temperature_stats(S_new);
 
@@ -6411,6 +6436,10 @@ HeatTransfer::advance_sdc (Real time,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  A (SDC corrector " << sdc_iter << ")\n";
 
+        cout << "F for A:" << Forcing[0](IntVect(26,6),1) <<endl;
+        cout << "   " << Dn[0](IntVect(26,6),1) << "(Dn) + "
+             << get_new_data(RhoYdot_Type)[0](IntVect(26,6),1) << "(R) )" << endl;
+
         compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
         scalar_advection_update(dt, Density, RhoH);
 
@@ -6445,6 +6474,13 @@ HeatTransfer::advance_sdc (Real time,
         theta_enthalpy = -1; // Do not recompute enthalpy diffusion terms
         differential_diffusion_update(Forcing,0,sdc_theta,Dhat,0,DDnp1,theta_enthalpy);
 
+        cout << "F for Dhat:" << Forcing[0](IntVect(26,6),1) <<endl;
+        cout << "   " << (*aofs)[0](IntVect(26,6),first_spec+1) << "(A) + "
+             << get_new_data(RhoYdot_Type)[0](IntVect(26,6),1) << "(R) +" 
+             << "0.5*(" << Dn[0](IntVect(26,6),1) << "(Dn) - "
+             << Dnp1[0](IntVect(26,6),1) << "(Dnp1) ) + "
+             << Dhat[0](IntVect(26,6),1) << "(Dhat) )" << endl;
+        
         // 
         // Compute R (F = A + 0.5(Dn - Dnp1 + DDn + DDnp1) + Dhat )
         // 
@@ -6472,10 +6508,19 @@ HeatTransfer::advance_sdc (Real time,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  R (SDC corrector " << sdc_iter << ")\n";
         advance_chemistry(S_old,S_new,dt,Forcing,0);
+
+        cout << "F for R:" << Forcing[0](IntVect(26,6),1) <<endl;
+        cout << "   " << (*aofs)[0](IntVect(26,6),first_spec+1) << "(A) + " 
+            ".5*(" << Dn[0](IntVect(26,6),1) << "(Dn) - "
+             << Dnp1[0](IntVect(26,6),1) << "(Dnp1) ) + "
+             << Dhat[0](IntVect(26,6),1) << "(Dhat)" << endl;
+        cout << "  R = " << get_new_data(RhoYdot_Type)[0](IntVect(26,6),1) << endl;
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << " SDC iterations complete \n";
+
+    BoxLib::Abort();
 
     setThermoPress(cur_time);
     calc_divu(cur_time, dt, get_new_data(Divu_Type));

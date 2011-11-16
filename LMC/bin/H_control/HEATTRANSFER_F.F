@@ -30,6 +30,7 @@ c
       end      
       
       subroutine FORT_GETTYPICALVALS(typ_vals,nVals)
+      implicit none
 #include "cdwrk.H"
 #include "htdata.H"
       integer nVals,n,nVals1
@@ -56,10 +57,39 @@ c     Note: typical values are defaulted to zero, and may be left that way
       end
 
 
+      subroutine FORT_SETTYPICALVALS(typ_vals,nVals)
+      implicit none
+#include "cdwrk.H"
+#include "htdata.H"
+      integer nVals,n,nVals1
+      REAL_T typ_vals(nVals)
+      nVals1 = nVals-BL_SPACEDIM
+c     Note: typical values are defaulted to zero, and may be left that way
+      if (Density.gt.nVals1 
+     &     .or. Temp.gt.nVals1
+     &     .or. RhoH.gt.nVals1
+     &     .or. Trac.gt.nVals1
+     &     .or. LastSpec.gt.nVals) then
+         call bl_pd_abort('cannot write typical values')
+      endif
+      do n=1,BL_SPACEDIM
+         typ_vals(n) = typVal_Vel
+      enddo
+      typVal_Density = typ_vals(Density+BL_SPACEDIM)
+      typVal_Temp    = typ_vals(Temp+BL_SPACEDIM)
+      typVal_RhoH    = typ_vals(RhoH+BL_SPACEDIM)
+      typVal_Trac    = typ_vals(Trac+BL_SPACEDIM)
+      do n=1,Nspec
+         typVal_Y(n) = typ_vals(FirstSpec+n-1+BL_SPACEDIM)
+      enddo
+      end
+
+
       subroutine FORT_SET_HT_VISC_COMMON(muIsVar,     muVal,
      &                                   lambdaIsVar, lambdaVal,
      &                                   rhoDIsVar,   rhoDVal,
      &                                   prandtl, schmidt, unityLe)
+      implicit none
       integer muIsVar, lambdaIsVar, rhoDIsVar
       REAL_T muVal, lambdaVal, rhoDVal, prandtl, schmidt
       integer unityLe
@@ -93,6 +123,7 @@ c     Note: typical values are defaulted to zero, and may be left that way
 c-----------------------------------------------------------------------
 
       subroutine FORT_GETPAMB(pambout, dpdt_factorout)
+      implicit none
 #include "cdwrk.H"
 #include "htdata.H"
       REAL_T dpdt_factorout, pambout
@@ -133,11 +164,14 @@ c     -- rbp
       data typVal_RhoH / 0.d0 /
       data typVal_Trac / 0.d0 /
       data typVal_Y / maxspec*0.d0 /
+      data typVal_YMAX / 1.d0 /
+      data typVal_YMIN / 1.d-6 /
 
       end
 
 
       subroutine FORT_SET_COMMON(time1,iteration1)
+      implicit none
       REAL_T time1
       integer iteration1
 #include "timedata.H"

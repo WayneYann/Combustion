@@ -161,9 +161,10 @@ c ::: -----------------------------------------------------------
      &                  flametracval, probtype,
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
      &                  traceSpecVal,phi_in,T_in,
-     $                  turb_scale, V_in, 
+     $                  turb_scale, V_in, V_co,
      $                  standoff, pertmag, nchemdiag, splitx, xfrontw,
-     &                  splity, yfrontw, blobx, bloby, blobz, blobr, blobT, Tfrontw
+     &                  splity, yfrontw, blobx, bloby, blobz, blobr,
+     &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ tstart_turb, forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -259,6 +260,8 @@ c     Set defaults
       bloby = 0.5d0 * (domnhi(2) + domnlo(2))
       blobT = T_in
       Tfrontw = xfrontw
+      stTh = -1.d0
+      fuel_N2_vol_percent = 0.d0
 
 #if defined(BL_DO_FLCT)
 c     add_turb = .FALSE.
@@ -342,7 +345,8 @@ c     Set up boundary functions
       do i=1,SDIM-1
          area = area*(domnhi(i)-domnlo(i))
       enddo
-      scale_control = Y_bc(fuelID,BL_FUELPIPE) * rho_bc(BL_FUELPIPE) * area
+      scale_control = Y_bc(fuelID-1,BL_FUELPIPE) * rho_bc(BL_FUELPIPE) * area
+
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
       endif

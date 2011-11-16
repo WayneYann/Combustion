@@ -361,7 +361,10 @@ MultiGrid::solve_ (MultiFab&      _sol,
   for (int nit=1; !iterations_finished; ++nit)
   {
       relax(*cor[level], *rhs[level], max_update, level, eps_rel, eps_abs, bc_mode);
-      norm_cor = norm_inf(*cor[level]) / typical_value;
+      norm_cor = norm_inf(*cor[level]);
+      if (typical_value > 0) {
+           norm_cor /= typical_value;
+      }
       error = errorEstimate(level, bc_mode);
       
       if (ParallelDescriptor::IOProcessor() && verbose > 1 )

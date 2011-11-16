@@ -29,6 +29,7 @@
 #    define FORT_RK_STEP_SELECTION         rkstepselection
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #    define FORT_GETTYPICALVALS            gettypvals
+#    define FORT_SETTYPICALVALS            settypvals
 #    define FORT_PART_CNT_ERR              particlecnterr
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
@@ -58,6 +59,7 @@
 #    define FORT_RK_STEP_SELECTION         RKSTEPSELECTION
 #    define FORT_CONSERVATIVE_T_FLOOR      CONSTFLOOR
 #    define FORT_GETTYPICALVALS            GETTYPVALS
+#    define FORT_SETTYPICALVALS            SETTYPVALS
 #    define FORT_PART_CNT_ERR              PARTICLECNTERR
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
@@ -86,6 +88,7 @@
 #    define FORT_RK_STEP_SELECTION         rkstepselection
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #    define FORT_GETTYPICALVALS            gettypvals
+#    define FORT_SETTYPICALVALS            settypvals
 #    define FORT_PART_CNT_ERR              particlecnterr
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
@@ -114,6 +117,7 @@
 #    define FORT_RK_STEP_SELECTION         rkstepselection_
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor_
 #    define FORT_GETTYPICALVALS            gettypvals_
+#    define FORT_SETTYPICALVALS            settypvals_
 #    define FORT_PART_CNT_ERR              particlecnterr_
 #  endif
 
@@ -286,6 +290,8 @@ extern "C" {
 
 
     void FORT_GETTYPICALVALS(Real* vals, const int* nVals);
+
+    void FORT_SETTYPICALVALS(const Real* vals, const int* nVals);
 
     void FORT_RK_MIXTURE_AVERAGED (
 	const int* domain_lo, const int* domain_hi,
