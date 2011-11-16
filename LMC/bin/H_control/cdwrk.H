@@ -63,7 +63,7 @@ c     DVODE workspace requirements
       
 c     DVODE driver (for transient ODE integration) workspace requirements
       integer dvdr, dvdi, dvdl, dvdc
-      parameter (dvdr = 2*(maxspec+1))
+      parameter (dvdr = 1)
       parameter (dvdi = 0)
       parameter (dvdl = 0)
       parameter (dvdc = 0)
