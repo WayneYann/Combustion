@@ -167,21 +167,18 @@ Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
 
 #ifdef PARTICLES
-//
-// Name of subdirectory in chk???? holding checkpointed particles.
-// 
-static const std::string the_ht_particle_file_name("Particles");
-//
-// There's really only one of these.
-//
-static HTParticleContainer* HTPC = 0;
-//
-// In case someone outside of HeatTransfer needs a handle on the particles.
-//
-HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
 
 namespace
 {
+    //
+    // Name of subdirectory in chk???? holding checkpointed particles.
+    // 
+    const std::string the_ht_particle_file_name("Particles");
+    //
+    // There's really only one of these.
+    //
+    HTParticleContainer* HTPC = 0;
+
     std::string      timestamp_dir;
     std::vector<int> timestamp_indices;
     std::string      particle_init_file;
@@ -189,7 +186,20 @@ namespace
     std::string      particle_output_file;
     bool             restart_from_nonparticle_chkfile;
     int              pverbose;
+    //
+    // We want to call this routine on exit to clean up particles.
+    //
+    void RemoveParticles ()
+    {
+        delete HTPC;
+        HTPC = 0;
+    }
 }
+//
+// In case someone outside of HeatTransfer needs a handle on the particles.
+//
+HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
+
 #endif /*PARTICLES*/
 
 void
@@ -1465,7 +1475,13 @@ HeatTransfer::initData ()
     if (level == 0)
     {
         if (HTPC == 0)
+        {
             HTPC = new HTParticleContainer(parent);
+            //
+            // Make sure to call RemoveParticles() on exit.
+            //
+            BoxLib::ExecOnFinalize(RemoveParticles);
+        }
 
         HTPC->SetVerbose(pverbose);
 
@@ -1474,7 +1490,7 @@ HeatTransfer::initData ()
             HTPC->InitFromAsciiFile(particle_init_file,0);
         }
     }
-#endif
+#endif /*PARTICLES*/
 }
 
 void
@@ -1872,6 +1888,10 @@ HeatTransfer::post_restart ()
         BL_ASSERT(HTPC == 0);
 
         HTPC = new HTParticleContainer(parent);
+        //
+        // Make sure to call RemoveParticles() on exit.
+        //
+        BoxLib::ExecOnFinalize(RemoveParticles);
 
         HTPC->SetVerbose(pverbose);
         //
@@ -1893,7 +1913,7 @@ HeatTransfer::post_restart ()
             HTPC->WriteAsciiFile(particle_output_file);
         }
     }
-#endif
+#endif /*PARTICLES*/
 }
 
 void
