@@ -6285,7 +6285,7 @@ HeatTransfer::advance_sdc (Real time,
         std::cout << "Dn (SDC predictor) \n";
     compute_differential_diffusion_terms(Dn,DDn,prev_time);
 
-#if 1
+#if 0
     // compute omegadot^n
     MultiFab RhoYdot(grids,nspecies,0);
     compute_instantaneous_reaction_rates(RhoYdot,S_old,0);

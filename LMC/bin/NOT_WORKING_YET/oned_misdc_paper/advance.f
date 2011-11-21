@@ -316,8 +316,10 @@ c        we take the gradient of Y from the second scal argument
      $                           dx,time)
       end if
 
-c     I_R in predictor is instantaneous value at t^n
-      do i=0,nx-1
+c     If .true., use I_R in predictor is instantaneous value at t^n
+c     If .false., use I_R^lagged = I_R^kmax from previous time step
+      if (.false.) then
+         do i=0,nx-1
          do n=1,Nspec
             C(n) = scal_old(i,FirstSpec+n-1)*invmwt(n)
          end do

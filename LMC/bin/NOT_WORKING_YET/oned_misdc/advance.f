@@ -312,6 +312,19 @@ c        we take the gradient of Y from the second scal argument
      $                           dx,time)
       end if
 
+c     If .true., use I_R in predictor is instantaneous value at t^n
+c     If .false., use I_R^lagged = I_R^kmax from previous time step
+      if (.false.) then
+         do i=0,nx-1
+         do n=1,Nspec
+            C(n) = scal_old(i,FirstSpec+n-1)*invmwt(n)
+         end do
+         call CKWC(scal_old(i,Temp),C,IWRK,RWRK,WDOTK)
+         do n=1,Nspec
+            I_R_new(i,n) = WDOTK(n)*mwt(n)/thickFacCH
+         end do
+      end do
+
 c     compute advective forcing term
       print *,'... computing advective forcing term = D^n + I_R^kmax'
       do i = 0,nx-1
