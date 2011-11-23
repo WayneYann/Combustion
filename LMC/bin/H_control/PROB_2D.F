@@ -422,8 +422,8 @@ c ::: -----------------------------------------------------------
          
       else if ((trim(probtype).eq.BL_PROB_DIFFUSION)) then
 
-         fuelZone = getZone(BL_INTERIOR, domnlo(1), domnlo(2), domnlo(3))
-         airZone = getZone(BL_INTERIOR, domnhi(1), domnhi(2), domnlo(3))
+         fuelZone = getZone(BL_INTERIOR, domnlo(1), domnlo(2))
+         airZone = getZone(BL_INTERIOR, domnhi(1), domnhi(2))
 
          do j = lo(2), hi(2)
             y = (float(j)+.5)*delta(2)+domnlo(2)
@@ -451,7 +451,6 @@ c     Superimpose blob of hot air
                scal(i,j,Trac) = 0.d0
 
                if (stTh.gt. 0.d0) then
-                  zone = getZone(x,y)
                   call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.true.)
                   vel(i,j,1) = u
                   vel(i,j,2) = v
