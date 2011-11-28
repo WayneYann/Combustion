@@ -272,7 +272,7 @@ ccccccccccccccccccccccccccccccccc
       integer is, rho_flag
       integer misdc
 
-      real*8 Y(maxspec)
+      real*8 Y(maxspec), C(maxspec), WDOTK(maxspec)
       real*8 hi(maxspec,-1:nx)
       real*8 RWRK, cpmix, rhocp
       integer IWRK
