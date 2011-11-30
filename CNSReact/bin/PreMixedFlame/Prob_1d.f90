@@ -3,7 +3,6 @@
 
       use probdata_module
       use eos_module, only : gamma_const
-      use network   , only : network_init
       implicit none
 
       integer init, namlen

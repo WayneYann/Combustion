@@ -19,7 +19,7 @@
       external conpJY
 
       double precision   :: TT1, TT2
-      integer            :: i, j, k, n, MF, ISTATE, T_from_eY, Niter
+      integer            :: i, j, k, n, MF, ISTATE,  Niter
       integer            :: hardestCase, mostfs, lout, open_vode_failure_file
       character*(maxspnml) name
 

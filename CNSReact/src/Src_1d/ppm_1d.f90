@@ -215,8 +215,8 @@
                            qxm,qxp,qpd_l1,qpd_h1, &
                            ilo,ihi,domlo,domhi,dx,dt)
 
-      use network, only : nspec, naux
-      use meth_params_module, only : iorder, QVAR, QRHO, QU, QREINT, QPRES, QFA, QFS, QFX, & 
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : iorder, QVAR, QRHO, QU, QREINT, QPRES, QFA, QFS, & 
                                      nadv, small_dens, ppm_type
       use prob_params_module, only : physbc_lo, physbc_hi, Outflow
 
@@ -474,35 +474,6 @@
 
          do ispec = 1, nspec
             ns = QFS + ispec - 1
-
-            ! plus state on face i
-            do i = ilo, ihi+1
-               u = q(i,QU)
-               if (u .gt. 0.d0) then
-                  qxp(i,ns) = q(i,ns)
-               else if (u .lt. 0.d0) then
-                  qxp(i,ns) = q(i,ns) + flatn(i)*(Im(i,2,ns) - q(i,ns))
-               else
-                  qxp(i,ns) = q(i,ns) + 0.5d0*flatn(i)*(Im(i,2,ns) - q(i,ns))
-               endif
-            enddo
-
-            ! minus state on face i+1
-            do i = ilo-1, ihi
-               u = q(i,QU)
-               if (u .gt. 0.d0) then
-                  qxm(i+1,ns) = q(i,ns) + flatn(i)*(Ip(i,2,ns) - q(i,ns))
-               else if (u .lt. 0.d0) then
-                  qxm(i+1,ns) = q(i,ns)
-               else
-                  qxm(i+1,ns) = q(i,ns) + 0.5d0*flatn(i)*(Ip(i,2,ns) - q(i,ns))
-               endif
-            enddo
-
-         enddo
-
-         do iaux = 1, naux
-            ns = QFX + iaux - 1
 
             ! plus state on face i
             do i = ilo, ihi+1

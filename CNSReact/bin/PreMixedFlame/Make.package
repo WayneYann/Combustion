@@ -1,1 +1,2 @@
 f90EXE_sources += Prob_${DIM}d.f90	probdata.f90
+fEXE_sources += H-flame_0370.f

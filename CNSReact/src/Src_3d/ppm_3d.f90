@@ -843,9 +843,9 @@ contains
                          qxm,qxp,qym,qyp,qpd_l1,qpd_l2,qpd_l3,qpd_h1,qpd_h2,qpd_h3, &
                          ilo1,ilo2,ihi1,ihi2,dx,dy,dt,kc,k3d)
 
-    use network, only : nspec, naux
+    use cdwrk_module, only : Nspec
     use meth_params_module, only : iorder, QVAR, QRHO, QU, QV, QW, &
-         QREINT, QPRES, QFA, QFS, QFX, nadv, small_dens, &
+         QREINT, QPRES, QFA, QFS, nadv, small_dens, &
          ppm_type
 
     implicit none
@@ -1090,47 +1090,10 @@ contains
     enddo
     !$OMP END PARALLEL DO
 
-    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,u) IF(nspec.gt.1)
-    do ispec = 1, nspec
+    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,u) IF(Nspec.gt.1)
+    do ispec = 1, Nspec
        ns = QFS + ispec - 1
 
-       do j = ilo2-1, ihi2+1
-
-          ! plus state on face i
-          do i = ilo1, ihi1+1
-             u = q(i,j,k3d,QU)
-             if (u .gt. 0.d0) then
-                qxp(i,j,kc,ns) = q(i,j,k3d,ns)
-             else if (u .lt. 0.d0) then
-                qxp(i,j,kc,ns) = q(i,j,k3d,ns) &
-                     + flatn(i,j,k3d)*(Im(i,j,kc,1,2,ns) - q(i,j,k3d,ns))
-             else
-                qxp(i,j,kc,ns) = q(i,j,k3d,ns) &
-                     + 0.5d0*flatn(i,j,k3d)*(Im(i,j,kc,1,2,ns) - q(i,j,k3d,ns))
-             endif
-          enddo
-
-          ! minus state on face i+1
-          do i = ilo1-1, ihi1
-             u = q(i,j,k3d,QU)
-             if (u .gt. 0.d0) then
-                qxm(i+1,j,kc,ns) = q(i,j,k3d,ns) &
-                     + flatn(i,j,k3d)*(Ip(i,j,kc,1,2,ns) - q(i,j,k3d,ns))
-             else if (u .lt. 0.d0) then
-                qxm(i+1,j,kc,ns) = q(i,j,k3d,ns)
-             else
-                qxm(i+1,j,kc,ns) = q(i,j,k3d,ns) &
-                     + 0.5d0*flatn(i,j,k3d)*(Ip(i,j,kc,1,2,ns) - q(i,j,k3d,ns))
-             endif
-          enddo
-
-       enddo
-    enddo
-    !$OMP END PARALLEL DO
-
-    !$OMP PARALLEL DO PRIVATE(iaux,ns,i,j,u) IF(naux.gt.1)
-    do iaux = 1, naux
-       ns = QFX + iaux - 1
        do j = ilo2-1, ihi2+1
 
           ! plus state on face i
@@ -1357,46 +1320,9 @@ contains
     enddo
     !$OMP END PARALLEL DO
 
-    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,v) IF(nspec.gt.1)
-    do ispec = 1, nspec
+    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,v) IF(Nspec.gt.1)
+    do ispec = 1, Nspec
        ns = QFS + ispec - 1
-       do i = ilo1-1, ihi1+1
-
-          ! plus state on face j
-          do j = ilo2, ihi2+1
-             v = q(i,j,k3d,QV)
-             if (v .gt. 0.d0) then
-                qyp(i,j,kc,ns) = q(i,j,k3d,ns)
-             else if (v .lt. 0.d0) then
-                qyp(i,j,kc,ns) = q(i,j,k3d,ns) &
-                     + flatn(i,j,k3d)*(Im(i,j,kc,2,2,ns) - q(i,j,k3d,ns))
-             else
-                qyp(i,j,kc,ns) = q(i,j,k3d,ns) &
-                     + 0.5d0*flatn(i,j,k3d)*(Im(i,j,kc,2,2,ns) - q(i,j,k3d,ns))
-             endif
-          enddo
-
-          ! minus state on face j+1
-          do j = ilo2-1, ihi2
-             v = q(i,j,k3d,QV)
-             if (v .gt. 0.d0) then
-                qym(i,j+1,kc,ns) = q(i,j,k3d,ns) &
-                     + flatn(i,j,k3d)*(Ip(i,j,kc,2,2,ns) - q(i,j,k3d,ns))
-             else if (v .lt. 0.d0) then
-                qym(i,j+1,kc,ns) = q(i,j,k3d,ns)
-             else
-                qym(i,j+1,kc,ns) = q(i,j,k3d,ns) &
-                     + 0.5d0*flatn(i,j,k3d)*(Ip(i,j,kc,2,2,ns) - q(i,j,k3d,ns))
-             endif
-          enddo
-
-       enddo
-    enddo
-    !$OMP END PARALLEL DO
-
-    !$OMP PARALLEL DO PRIVATE(iaux,ns,i,j,v) IF(naux.gt.1)
-    do iaux = 1, naux
-       ns = QFX + iaux - 1
        do i = ilo1-1, ihi1+1
 
           ! plus state on face j
@@ -1442,9 +1368,9 @@ contains
                         qzm,qzp,qpd_l1,qpd_l2,qpd_l3,qpd_h1,qpd_h2,qpd_h3, &
                         ilo1,ilo2,ihi1,ihi2,dz,dt,km,kc,k3d)
 
-    use network, only : nspec, naux
+    use cdwrk_module, only : Nspec
     use meth_params_module, only : iorder, QVAR, QRHO, QU, QV, QW, &
-         QREINT, QPRES, QFA, QFS, QFX, nadv, small_dens, &
+         QREINT, QPRES, QFA, QFS, nadv, small_dens, &
          ppm_type
 
     implicit none
@@ -1692,44 +1618,9 @@ contains
     enddo
     !$OMP END PARALLEL DO
 
-    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,w) IF(nspec.gt.1)
-    do ispec = 1, nspec
+    !$OMP PARALLEL DO PRIVATE(ispec,ns,i,j,w) IF(Nspec.gt.1)
+    do ispec = 1, Nspec
        ns = QFS + ispec - 1
-       do j = ilo2-1, ihi2+1
-          do i = ilo1-1, ihi1+1
-
-             ! plus state on face kc
-             w = q(i,j,k3d,QW)
-             if (w .gt. 0.d0) then
-                qzp(i,j,kc,ns) = q(i,j,k3d,ns)
-             else if (w .lt. 0.d0) then
-                qzp(i,j,kc,ns) = q(i,j,k3d,ns) &
-                     + flatn(i,j,k3d)*(Im(i,j,kc,3,2,ns) - q(i,j,k3d,ns))
-             else
-                qzp(i,j,kc,ns) = q(i,j,k3d,ns) &
-                     + 0.5d0*flatn(i,j,k3d)*(Im(i,j,kc,3,2,ns) - q(i,j,k3d,ns))
-             endif
-
-             ! minus state on face k
-             w = q(i,j,k3d-1,QW)
-             if (w .gt. 0.d0) then
-                qzm(i,j,kc,ns) = q(i,j,k3d-1,ns) &
-                     + flatn(i,j,k3d-1)*(Ip(i,j,km,3,2,ns) - q(i,j,k3d-1,ns))
-             else if (w .lt. 0.d0) then
-                qzm(i,j,kc,ns) = q(i,j,k3d-1,ns)
-             else
-                qzm(i,j,kc,ns) = q(i,j,k3d-1,ns) &
-                     + 0.5d0*flatn(i,j,k3d-1)*(Ip(i,j,km,3,2,ns) - q(i,j,k3d-1,ns))
-             endif
-
-          enddo
-       enddo
-    enddo
-    !$OMP END PARALLEL DO
-
-    !$OMP PARALLEL DO PRIVATE(iaux,ns,i,j,w) IF(naux.gt.1)
-    do iaux = 1, naux
-       ns = QFX + iaux - 1
        do j = ilo2-1, ihi2+1
           do i = ilo1-1, ihi1+1
 

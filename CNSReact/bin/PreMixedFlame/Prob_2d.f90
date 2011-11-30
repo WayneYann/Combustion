@@ -24,8 +24,6 @@
       parameter (maxlen=256)
       character probin*(maxlen)
 
-      call network_init()
-
       if (namlen .gt. maxlen) then
          write(6,*) 'probin file name too long'
          stop

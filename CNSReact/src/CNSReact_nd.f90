@@ -1,97 +1,3 @@
-! :::
-! ::: ----------------------------------------------------------------
-! :::
-
-      subroutine ca_network_init()
-
-        use network
-
-        call network_init()
-
-      end subroutine ca_network_init
-
-! ::: 
-! ::: ----------------------------------------------------------------
-! ::: 
-
-      subroutine get_num_spec(nspec_out)
-
-        use cdwrk_module, only : nspec
-
-        implicit none 
-
-        integer, intent(out) :: nspec_out
-
-        nspec_out = nspec
-
-      end subroutine get_num_spec
-
-! ::: 
-! ::: ----------------------------------------------------------------
-! ::: 
-
-      subroutine get_num_aux(naux_out)
-
-        use network, only : naux
-
-        implicit none 
-
-        integer, intent(out) :: naux_out
-
-        naux_out = naux
-
-      end subroutine get_num_aux
-
-! :::
-! ::: ----------------------------------------------------------------
-! :::
-
-      subroutine get_spec_names(spec_names,ispec,len)
-
-        use network, only : nspec, short_spec_names
-
-        implicit none 
-
-        integer, intent(in   ) :: ispec
-        integer, intent(inout) :: len
-        integer, intent(inout) :: spec_names(len)
-
-        ! Local variables
-        integer   :: i
-
-        len = len_trim(short_spec_names(ispec+1))
-
-        do i = 1,len
-           spec_names(i) = ichar(short_spec_names(ispec+1)(i:i))
-        end do
-
-      end subroutine get_spec_names
-
-! :::
-! ::: ----------------------------------------------------------------
-! :::
-
-      subroutine get_aux_names(aux_names,iaux,len)
-
-        use network, only : naux, short_aux_names
-
-        implicit none 
-
-        integer, intent(in   ) :: iaux
-        integer, intent(inout) :: len
-        integer, intent(inout) :: aux_names(len)
-
-        ! Local variables
-        integer   :: i
-
-        len = len_trim(short_aux_names(iaux+1))
-
-        do i = 1,len
-           aux_names(i) = ichar(short_aux_names(iaux+1)(i:i))
-        end do
-
-      end subroutine get_aux_names
-
 ! ::: 
 ! ::: ----------------------------------------------------------------
 ! ::: 
@@ -115,26 +21,24 @@
 ! ::: 
 
       subroutine set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
-                                   FirstAdv,FirstSpec,FirstAux,numadv, &
+                                   FirstAdv,FirstSpec,numadv, &
                                    small_dens_in, small_temp_in, small_pres_in, &
                                    allow_negative_energy_in,ppm_type_in, &
-                                   gamma_in,normalize_species_in)
+                                   normalize_species_in)
 
         ! Passing data from C++ into f90
 
         use meth_params_module
         use cdwrk_module, only : nspec
-        use network, only : naux
         use eos_module
 
         implicit none 
  
         integer, intent(in) :: dm
-        integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec, FirstAux
+        integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec
         integer, intent(in) :: numadv
         integer, intent(in) :: allow_negative_energy_in, ppm_type_in
         double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in
-        double precision, intent(in) :: gamma_in
         integer, intent(in) :: normalize_species_in
 
         integer             :: QLAST
@@ -146,7 +50,7 @@
         ! NVAR  : number of total variables in initial system
         ! dm refers to mometum components, '4' refers to rho, rhoE, rhoe and T
         NTHERM = dm + 4
-        NVAR = NTHERM + nspec + naux + numadv
+        NVAR = NTHERM + nspec +  numadv
 
         nadv = numadv
 
@@ -167,18 +71,12 @@
 
         UFS   = FirstSpec + 1
 
-        if (naux .ge. 1) then
-          UFX = FirstAux  + 1
-        else 
-          UFX = 1
-        end if
-
         ! QTHERM: number of primitive variables, which includes pressure (+1), but
         !         not little e (-1)
         ! QVAR  : number of total variables in primitive form
 
         QTHERM = NTHERM
-        QVAR = QTHERM + nspec + naux + numadv
+        QVAR = QTHERM + nspec + numadv
 
         ! We use these to index into the state "Q"
         QRHO  = 1
@@ -207,11 +105,6 @@
           QFA = 1
           QFS = QTHERM + 1
         end if
-        if (naux .ge. 1) then
-          QFX = QFS + nspec
-        else 
-          QFX = 1
-        end if
 
         if (small_pres_in > 0.d0) then
           small_pres = small_pres_in
@@ -234,7 +127,8 @@
 ! ::: ----------------------------------------------------------------
 ! ::: 
 
-      subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in,Outflow_in,Symmetry_in,coord_type_in)
+      subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
+         phys_prob_hi_in, Outflow_in,Symmetry_in,coord_type_in)
 
         ! Passing data from C++ into f90
 
@@ -247,12 +141,18 @@
         integer, intent(in) :: Outflow_in
         integer, intent(in) :: Symmetry_in
         integer, intent(in) :: coord_type_in
+        double precision, intent(in) :: phys_prob_lo_in(dm),phys_prob_hi_in(dm)
 
         allocate(physbc_lo(dm))
         allocate(physbc_hi(dm))
+        allocate(phys_prob_lo(dm))
+        allocate(phys_prob_hi(dm))
 
         physbc_lo(:) = physbc_lo_in(:)
         physbc_hi(:) = physbc_hi_in(:)
+
+        phys_prob_lo(:) = phys_prob_lo_in(:)
+        phys_prob_hi(:) = phys_prob_hi_in(:)
 
         Outflow  = Outflow_in
         Symmetry = Symmetry_in

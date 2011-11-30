@@ -66,6 +66,128 @@ contains
       deallocate(D,TEMP,CP)
 
       end subroutine diffFlux
+
+      subroutine diffup(lo,hi, &
+                          uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+                          uout,uout_l1,uout_l2,uout_l3, uout_h1,uout_h2,uout_h3, &
+                          flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
+                          flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
+                          flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
+                          dx,dy,dz)
+
+      ! Get diffusion flux on faces surrounding Box(lo,hi), requires 
+      ! valid data on region Box(lo,hi).grow(1)
+
+      implicit none
+
+      integer lo(3),hi(3)
+      integer          ::  uin_l1,  uin_l2,  uin_l3,  uin_h1,  uin_h2,  uin_h3
+      integer          :: uout_l1, uout_l2, uout_l3, uout_h1, uout_h2, uout_h3
+      double precision ::  uin( uin_l1: uin_h1, uin_l2: uin_h2, uin_l3: uin_h3,NVAR)
+      double precision :: uout(uout_l1:uout_h1,uout_l2:uout_h2,uout_l3:uout_h3,NVAR)
+
+      integer :: flux1_l1, flux1_l2, flux1_l3, flux1_h1, flux1_h2, flux1_h3
+      integer :: flux2_l1, flux2_l2, flux2_l3, flux2_h1, flux2_h2, flux2_h3
+      integer :: flux3_l1, flux3_l2, flux3_l3, flux3_h1, flux3_h2, flux3_h3
+      double precision :: flux1(flux1_l1:flux1_h1, flux1_l2:flux1_h2, flux1_l3:flux1_h3, NVAR)
+      double precision :: flux2(flux2_l1:flux2_h1, flux2_l2:flux2_h2, flux2_l3:flux2_h3, NVAR)
+      double precision :: flux3(flux3_l1:flux3_h1, flux3_l2:flux3_h2, flux3_l3:flux3_h3, NVAR)
+      double precision :: dx,dy,dz
+
+      double precision :: dvol
+      integer :: i,j,k,n
+
+      dvol = 1.d0/(dx*dy*dz)
+      do n = 1, NVAR
+         if(n.ne.NTHERM+1)then
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+                     uout(i,j,k,n) = uin(i,j,k,n) + dvol*      &
+                          ( flux1(i,j,k,n) - flux1(i+1,j,k,n)  &
+                          + flux2(i,j,k,n) - flux2(i, j+1,k,n) &
+                          + flux3(i,j,k,n) - flux3(i,j,k+1,n) )
+                  enddo
+              enddo
+           enddo
+        else
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+                     uout(i,j,k,n) = uin(i,j,k,n)
+                  enddo
+              enddo
+           enddo
+        endif
+      enddo
+
+
+      end subroutine diffup
+
+      subroutine incFlux(lo,hi, &
+                   flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
+                   flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
+                   flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
+                   flux1inc,flux1inc_l1,flux1inc_l2,flux1inc_l3,flux1inc_h1,flux1inc_h2,flux1inc_h3, &
+                   flux2inc,flux2inc_l1,flux2inc_l2,flux2inc_l3,flux2inc_h1,flux2inc_h2,flux2inc_h3, &
+                   flux3inc,flux3inc_l1,flux3inc_l2,flux3inc_l3,flux3inc_h1,flux3inc_h2,flux3inc_h3, nc )
+
+      ! Get diffusion flux on faces surrounding Box(lo,hi), requires 
+      ! valid data on region Box(lo,hi).grow(1)
+
+      implicit none
+
+      integer lo(3),hi(3), nc
+
+      integer :: flux1_l1, flux1_l2, flux1_l3, flux1_h1, flux1_h2, flux1_h3
+      integer :: flux2_l1, flux2_l2, flux2_l3, flux2_h1, flux2_h2, flux2_h3
+      integer :: flux3_l1, flux3_l2, flux3_l3, flux3_h1, flux3_h2, flux3_h3
+      double precision :: flux1(flux1_l1:flux1_h1, flux1_l2:flux1_h2, flux1_l3:flux1_h3, nc)
+      double precision :: flux2(flux2_l1:flux2_h1, flux2_l2:flux2_h2, flux2_l3:flux2_h3, nc)
+      double precision :: flux3(flux3_l1:flux3_h1, flux3_l2:flux3_h2, flux3_l3:flux3_h3, nc)
+
+      integer :: flux1inc_l1, flux1inc_l2, flux1inc_l3, flux1inc_h1, flux1inc_h2, flux1inc_h3
+      integer :: flux2inc_l1, flux2inc_l2, flux2inc_l3, flux2inc_h1, flux2inc_h2, flux2inc_h3
+      integer :: flux3inc_l1, flux3inc_l2, flux3inc_l3, flux3inc_h1, flux3inc_h2, flux3inc_h3
+      double precision :: flux1inc(flux1inc_l1:flux1inc_h1, flux1inc_l2:flux1inc_h2, &
+           flux1inc_l3:flux1inc_h3, nc)
+      double precision :: flux2inc(flux2inc_l1:flux2inc_h1, flux2inc_l2:flux2inc_h2, &
+           flux2inc_l3:flux2inc_h3, nc)
+      double precision :: flux3inc(flux3inc_l1:flux3inc_h1, flux3inc_l2:flux3inc_h2, &
+           flux3inc_l3:flux3inc_h3, nc)
+
+      integer i,j,k,n
+      do n=1,nc
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)+1
+                  flux1(i,j,k,n) = flux1(i,j,k,n)+flux1inc(i,j,k,n)
+               enddo
+            enddo
+         enddo
+      enddo
+      do n=1,nc
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)+1
+               do i=lo(1),hi(1)
+                  flux2(i,j,k,n) = flux2(i,j,k,n)+flux2inc(i,j,k,n)
+               enddo
+            enddo
+         enddo
+      enddo
+      do n=1,nc
+         do k=lo(3),hi(3)+1
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  flux3(i,j,k,n) = flux3(i,j,k,n)+flux3inc(i,j,k,n)
+               enddo
+            enddo
+         enddo
+      enddo
+
+
+
+      end subroutine incFlux
 ! ::
 ! :: ----------------------------------------------------------
 ! ::
@@ -114,7 +236,8 @@ contains
              q_l1,q_l2,q_l3,q_h1,q_h2,q_h3, &
            doTemp, doVelVisc)
 
-      call FORT_CPMIXfromTY(lo, hi, &
+!     call FORT_CPMIXfromTY(lo, hi, &
+      call dcpmty(lo, hi, &
            CP, &
              q_l1,q_l2,q_l3,q_h1,q_h2,q_h3, &
            TEMP, &

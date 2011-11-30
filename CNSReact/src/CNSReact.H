@@ -5,6 +5,7 @@
 #include <AmrLevel.H>
 #include <ErrorList.H>
 #include <FluxRegister.H>
+#include <ChemDriver.H>
 
 #include <iostream>
 
@@ -12,9 +13,6 @@ using std::istream;
 using std::ostream;
 
 enum StateType { State_Type = 0,
-#ifdef REACTIONS
-                 Reactions_Type,
-#endif
                  NUM_STATE_TYPE };
 
 //
@@ -220,17 +218,14 @@ public:
 
     Real volWgtSum (const std::string& name, Real time);
 
-    Real volWgtSquaredSum (const std::string& name, Real time);
-
-    Real locWgtSum (const std::string& name, Real time, int idir);
-
     void set_special_tagging_flag (Real time);
 
     static int       NUM_STATE;
     static int       Density, Xmom, Ymom, Zmom, Eden, Eint, Temp;
     static int       FirstAdv,  LastAdv,  NumAdv;
     static int       FirstSpec, LastSpec, NumSpec;
-    static int       FirstAux,  LastAux,  NumAux;
+
+    static ChemDriver& getChemSolve () {return *chemSolve;} 
 
 protected:
 
@@ -242,7 +237,7 @@ protected:
     //
     //  Call extern/networks/.../network.f90::network_init()
     //
-    static void network_init ();
+    // static void network_init ();
 
     static void read_params ();
 
@@ -325,7 +320,6 @@ protected:
     static Real      small_dens;
     static Real      small_temp;
     static Real      small_pres;
-    static Real      gamma;
 
     bool             FillPatchedOldState_ok;
 
@@ -343,6 +337,9 @@ protected:
 
     // There can be only one Diffusion object, it covers all levels:
     static class Diffusion *diffusion;
+
+    static ChemDriver* chemSolve;
+
 };    
 
 //
@@ -398,4 +395,5 @@ CNSReact::getFluxReg (int lev)
 {
     return getLevel(lev).getFluxReg();
 }
+
 #endif /*_CNSReact_H_*/

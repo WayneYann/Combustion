@@ -184,9 +184,9 @@
            u,u_l1,u_h1,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use eos_module
-      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
 
       implicit none
@@ -199,7 +199,7 @@
       double precision dx(1), xlo(1), time, dt
       integer bc(1,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc,c, T, Y(nspec+naux)
+      double precision :: e, gamc,c, T, Y(nspec)
       double precision :: rhoInv,dpdr,dpde
       integer          :: i,n
 
@@ -211,9 +211,6 @@
          T  = u(i,UTEMP)
          do n=1,nspec
             Y(n) = u(i,UFS+n-1)*rhoInv
-         enddo
-         do n=1,naux
-            Y(nspec+n) = u(i,UFX+n-1)*rhoInv
          enddo
 
          ! Protect against negative internal energy
@@ -290,9 +287,9 @@
            u,u_l1,u_h1,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use eos_module
-      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
 
       implicit none
@@ -305,7 +302,7 @@
       double precision dx(1), xlo(1), time, dt
       integer bc(1,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, p, T, Y(nspec+naux)
+      double precision :: e, gamc, p, T, Y(nspec)
       double precision :: rhoInv,dpdr,dpde
       integer          :: i,n
 
@@ -319,9 +316,6 @@
          T  = u(i,UTEMP)
          do n=1,nspec
             Y(n) = u(i,UFS+n-1)*rhoInv
-         enddo
-         do n=1,naux
-            Y(nspec+n) = u(i,UFX+n-1)*rhoInv
          enddo
 
          if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
@@ -338,9 +332,9 @@
            u,u_l1,u_h1,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, UFX, &
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
 
       implicit none
@@ -353,7 +347,7 @@
       double precision :: dx(1), xlo(1), time, dt
       integer          :: bc(1,2,ncomp_u), level, grid_no
 
-      double precision :: c, e, gamc, p, T, dpdr, dpde, Y(nspec+naux)
+      double precision :: c, e, gamc, p, T, dpdr, dpde, Y(nspec)
       double precision :: rhoInv,ux
       integer          :: i,n
 
@@ -367,9 +361,6 @@
          T  = u(i,UTEMP)
          do n = 1,nspec
             Y(n)=u(i,UFS+n-1)*rhoInv
-         enddo
-         do n = 1,naux
-            Y(nspec+n)=u(i,UFX+n-1)*rhoInv
          enddo
 
          if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
@@ -389,9 +380,9 @@
            u,u_l1,u_h1,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, UFX, &
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
 
       implicit none
@@ -404,7 +395,7 @@
       double precision dx(1), xlo(1), time, dt
       integer bc(1,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, p, T, Y(nspec+naux)
+      double precision :: e, gamc, p, T, Y(nspec)
       double precision :: rhoInv,ux,dpdr,dpde
       integer          :: i,n
 
@@ -419,9 +410,6 @@
          T  = u(i,UTEMP)
          do n=1,nspec
             Y(n) = u(i,UFS+n-1)*rhoInv
-         enddo
-         do n=1,naux
-            Y(nspec+n) = u(i,UFX+n-1)*rhoInv
          enddo
 
          if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
@@ -440,9 +428,9 @@
            u,u_l1,u_h1,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, UFX, &
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
 
       implicit none
@@ -455,7 +443,7 @@
       double precision dx(1), xlo(1), time, dt
       integer bc(1,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, p, T, Y(nspec+naux)
+      double precision :: e, gamc, p, T, Y(nspec)
       double precision :: rhoInv,ux,dpdr,dpde
       integer          :: i,n
 
@@ -470,9 +458,6 @@
          T  = u(i,UTEMP)
          do n=1,nspec
             Y(n) = u(i,UFS+n-1)*rhoInv
-         enddo
-         do n=1,naux
-            Y(nspec+n) = u(i,UFX+n-1)*rhoInv
          enddo
 
          if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) &
@@ -490,9 +475,9 @@
            u,u_l1,u_h1,ncomp_u,lo,hi,domlo, &
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
-      use network, only : nspec, naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, UFX, &
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : URHO, UMX, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
 
       implicit none
@@ -505,7 +490,7 @@
       double precision dx(1), xlo(1), time, dt
       integer bc(1,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, p, T, Y(nspec+naux)
+      double precision :: e, gamc, p, T, Y(nspec)
       double precision :: rhoInv,dpdr,dpde
       integer          :: i,n
 
@@ -519,9 +504,6 @@
          T  = u(i,UTEMP)
          do n=1,nspec
             Y(n) = u(i,UFS+n-1)*rhoInv
-         enddo
-         do n=1,naux
-            Y(nspec+n) = u(i,UFX+n-1)*rhoInv
          enddo
 
          if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then

@@ -15,7 +15,7 @@ module chemsolv_module
       integer          :: N, IPAR(*)
       
       double precision :: RHOcgs, CPB, SUM, H, WDOT, WT, EINT, TEMP
-      integer          :: K, Niter, T_from_eY
+      integer          :: K, Niter
 
       double precision :: Conc(maxspec),Enthalpy(maxspec),wdots(maxspec)
 

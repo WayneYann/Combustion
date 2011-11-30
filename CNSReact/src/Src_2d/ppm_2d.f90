@@ -416,10 +416,9 @@
            qxm,qxp,qym,qyp,qpd_l1,qpd_l2,qpd_h1,qpd_h2, &
            ilo1,ilo2,ihi1,ihi2,dx,dy,dt)
 
-        use network, only : nspec, naux
+        use cdwrk_module      , only : nspec
         use meth_params_module, only : iorder, QVAR, QRHO, QU, QV, &
-             QREINT, QPRES, QFA, QFS, QFX, &
-             nadv, small_dens, ppm_type
+             QREINT, QPRES, QFA, QFS, nadv, small_dens, ppm_type
 
         implicit none
 
@@ -701,37 +700,6 @@
            enddo
         enddo
 
-        do iaux = 1, naux
-           ns = QFX + iaux - 1
-           do j = ilo2-1, ihi2+1
-
-              ! plus state on face i
-              do i = ilo1, ihi1+1
-                 u = q(i,j,QU)
-                 if (u .gt. 0.d0) then
-                    qxp(i,j,ns) = q(i,j,ns)
-                 else if (u .lt. 0.d0) then
-                    qxp(i,j,ns) = q(i,j,ns) + flatn(i,j)*(Im(i,j,1,2,ns) - q(i,j,ns))
-                 else
-                    qxp(i,j,ns) = q(i,j,ns) + 0.5d0*flatn(i,j)*(Im(i,j,1,2,ns) - q(i,j,ns))
-                 endif
-              enddo
-
-              ! minus state on face i+1
-              do i = ilo1-1, ihi1
-                 u = q(i,j,QU)
-                 if (u .gt. 0.d0) then
-                    qxm(i+1,j,ns) = q(i,j,ns) + flatn(i,j)*(Ip(i,j,1,2,ns) - q(i,j,ns))
-                 else if (u .lt. 0.d0) then
-                    qxm(i+1,j,ns) = q(i,j,ns)
-                 else
-                    qxm(i+1,j,ns) = q(i,j,ns) + 0.5d0*flatn(i,j)*(Ip(i,j,1,2,ns) - q(i,j,ns))
-                 endif
-              enddo
-
-           enddo
-        enddo
-
         ! Trace to bottom and top edges using upwind PPM
         do j = ilo2-1, ihi2+1
            do i = ilo1-1, ihi1+1
@@ -906,37 +874,6 @@
 
         do ispec = 1, nspec
            ns = QFS + ispec - 1
-           do i = ilo1-1, ihi1+1
-
-              ! plus state on face j
-              do j = ilo2, ihi2+1
-                 v = q(i,j,QV)
-                 if (v .gt. 0.d0) then
-                    qyp(i,j,ns) = q(i,j,ns)
-                 else if (v .lt. 0.d0) then
-                    qyp(i,j,ns) = q(i,j,ns) + flatn(i,j)*(Im(i,j,2,2,ns) - q(i,j,ns))
-                 else
-                    qyp(i,j,ns) = q(i,j,ns) + 0.5d0*flatn(i,j)*(Im(i,j,2,2,ns) - q(i,j,ns))
-                 endif
-              enddo
-
-              ! minus state on face j+1
-              do j = ilo2-1, ihi2
-                 v = q(i,j,QV)
-                 if (v .gt. 0.d0) then
-                    qym(i,j+1,ns) = q(i,j,ns) + flatn(i,j)*(Ip(i,j,2,2,ns) - q(i,j,ns))
-                 else if (v .lt. 0.d0) then
-                    qym(i,j+1,ns) = q(i,j,ns)
-                 else
-                    qym(i,j+1,ns) = q(i,j,ns) + 0.5d0*flatn(i,j)*(Ip(i,j,2,2,ns) - q(i,j,ns))
-                 endif
-              enddo
-
-           enddo
-        enddo
-
-        do iaux = 1, naux
-           ns = QFX + iaux - 1
            do i = ilo1-1, ihi1+1
 
               ! plus state on face j
