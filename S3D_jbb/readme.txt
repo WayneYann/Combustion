@@ -9,10 +9,10 @@ at the end it computes that sum of hte squares of the components
 The answer should be:
 
  component, fluxmag           1   232.449442195682     
- component, fluxmag           2   44.0885468666007     
- component, fluxmag           3   111.803541603538     
- component, fluxmag           4   57.2288006145790     
- component, fluxmag           5  2.845348677994165E+021
+ component, fluxmag           2   78.9403947583534     
+ component, fluxmag           3   147.301037115352     
+ component, fluxmag           4   85.1946982609069     
+ component, fluxmag           5  2.845348677916408E+021
  component, fluxmag           6   8614670.63232723     
  component, fluxmag           7   9683368.91970733     
  component, fluxmag           8   9219846.56270665     
