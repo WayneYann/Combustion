@@ -63,7 +63,7 @@ c     DVODE workspace requirements
       
 c     DVODE driver (for transient ODE integration) workspace requirements
       integer dvdr, dvdi, dvdl, dvdc
-      parameter (dvdr = 2*(maxspec+1))
+      parameter (dvdr = 1)
       parameter (dvdi = 0)
       parameter (dvdl = 0)
       parameter (dvdc = 0)
@@ -122,12 +122,13 @@ c     I/O
       save /ckdio1/
 
 c     Integrator
-      REAL_T spec_scalY(maxspec)
-      common /vode1/ spec_scalY
+      REAL_T spec_scalY(maxspec), mwt(maxspec), invmwt(maxspec)
+      common /vode1/ spec_scalY, mwt, invmwt
       save /vode1/
 
       REAL_T thickFacCH
-      common /vode2/ thickFacCH
+      integer idbg
+      common /vode2/ thickFacCH, idbg
       save /vode2/
             
 c     Transport library
@@ -140,6 +141,10 @@ c     Transport library
       save /tran3/
 
 c     SDC additions
-      REAL_T c_0(maxspec+1)
-      common /sdc_interp_coef/ c_0
-      save /sdc_interp_coef/
+      REAL_T c_0(maxspec+1), c_1(maxspec+1), rhoH_INIT, T_cell, rhoY_INIT(maxspec)
+      common /sdc_function/ c_0, c_1, rhoH_INIT, T_cell, rhoY_INIT
+      save /sdc_function/
+
+      integer i_cell, j_cell, k_cell
+      common /sdc_cell_data/ i_cell, j_cell, k_cell
+      save /sdc_cell_data/

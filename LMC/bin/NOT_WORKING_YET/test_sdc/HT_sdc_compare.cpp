@@ -967,7 +967,7 @@ HeatTransfer::initData ()
         std::cout << "initData: reading data from: " << pltfile << std::endl;
 
     DataServices::SetBatchMode();
-    FileType fileType(NEWPLT);
+    Amrvis::FileType fileType(Amrvis::NEWPLT);
     DataServices dataServices(pltfile, fileType);
 
     if (!dataServices.AmrDataOk())
@@ -1067,7 +1067,7 @@ HeatTransfer::initData ()
             std::cout << "initData: reading data from: " << velocity_plotfile << std::endl;
 
         DataServices::SetBatchMode();
-        FileType fileType(NEWPLT);
+        Amrvis::FileType fileType(Amrvis::NEWPLT);
         DataServices dataServices(velocity_plotfile, fileType);
 
         if (!dataServices.AmrDataOk())
@@ -9822,9 +9822,8 @@ HeatTransfer::writePlotFile (const std::string& dir,
     // The name is relative to the directory containing the Header file.
     //
     static const std::string BaseName = "/Cell";
-    char buf[64];
-    sprintf(buf, "Level_%d", level);
-    std::string Level = buf;
+
+    std::string Level = BoxLib::Concatenate("Level_", level, 1);
     //
     // Now for the full pathname of that directory.
     //

@@ -8,7 +8,7 @@
 #include <DDOp.H>
 
 #ifdef PARTICLES
-#include "Particles.H"
+#include <Particles.H>
 //
 // The "BL_SPACEDIM" bytes in m_data[] are to hold temporary positions and velocities in AdvectWithUmac().
 //

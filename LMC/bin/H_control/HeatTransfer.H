@@ -8,7 +8,7 @@
 #include <DDOp.H>
 
 #ifdef PARTICLES
-#include "Particles.H"
+#include <Particles.H>
 //
 // The "BL_SPACEDIM" bytes in m_data[] are to hold temporary positions and velocities in AdvectWithUmac().
 //
@@ -33,7 +33,6 @@ typedef ParticleContainer<2*BL_SPACEDIM> HTParticleContainer;
 //       that we could use the existing diffusion operator and 
 //       multigrid code.
 //
-
 
 class HeatTransfer
     :
@@ -98,14 +97,6 @@ public:
                                 int  iteration,
                                 int  ncycle);
     //
-    // SDC specific setup
-    //
-    virtual void advance_setup_sdc (Real time,
-				    Real dt,
-				    int  iteration,
-				    int  ncycle);
-
-    //
     // Advance grids at this level in time.
     //
     virtual Real advance (Real time,
@@ -122,7 +113,7 @@ public:
     //
     // Worker functions used by level advance function.
     //
-    virtual MultiFab* create_mac_rhs (Real time, Real dt);
+    virtual void create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow = 0);
 
     virtual void getViscTerms (MultiFab& visc_terms,
                                int       src_comp, 
@@ -176,26 +167,44 @@ public:
 			   int  last_scalar,
 			   bool do_adv_reflux);
     
+    virtual void scalar_advection_update (Real dt,
+                                          int  first_scalar,
+                                          int  last_scalar);
     void scalar_update (Real dt,
                         int  first_scalar,
                         int  last_scalar,
                         int  do_viscreflux);
 
-    void differential_spec_diffusion_update (Real dt,
-					     int  corrector);
-    
-    void adjust_spec_diffusion_update (MultiFab&              S_new,
-				       const MultiFab*        S_old,
-				       int                    sCompS,
-				       Real                   dt,
-				       Real                   time,
-				       const Array<int>&      rho_flag,
-				       const MultiFab*        rho_half,
-				       int                    dataComp,
-				       const MultiFab*        delta_rhs, 
-				       const MultiFab*        alpha, 
-				       const MultiFab* const* betanp1);
-    
+    void compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
+                                                         Real      dt);
+
+    void differential_diffusion_update (MultiFab& Force,
+                                        int       FComp,
+                                        Real      theta,
+                                        MultiFab& D,
+                                        int       DComp,
+                                        MultiFab& DD,
+                                        Real      theta_enthalpy);
+
+    void flux_divergence (MultiFab&        fdiv,
+                          int              fdivComp,
+                          const MultiFab* const* extensive_fluxes,
+                          int              fluxComp,
+                          int              nComp,
+                          Real             scale) const;
+
+    void compute_differential_diffusion_fluxes (const Real& time);
+
+    void set_differential_diffusion_fluxes (const Real& time);
+
+    void adjust_spec_diffusion_fluxes (Real                   time,
+                                       const MultiFab* const* beta,
+                                       bool                   grow_cells_already_filled);
+
+    void compute_enthalpy_fluxes (Real                   time,
+                                  const MultiFab* const* beta,
+                                  bool                   grow_cells_already_filled);
+
     virtual void scalar_diffusion_update (Real dt,
                                           int  first_scalar, 
                                           int  last_scalar,
@@ -207,6 +216,15 @@ public:
                                          MultiFab*&  delta_rhs,
                                          MultiFab**& betan, 
                                          MultiFab**& betanp1);
+
+
+    enum HowToFillGrow {HT_ZERO_GROW_CELLS, HT_EXTRAP_GROW_CELLS, HT_NUM_GROW_OPTIONS};
+
+    void compute_instantaneous_reaction_rates(MultiFab&       R,
+                                              const MultiFab& S,
+                                              int             nGrow = 0,
+                                              HowToFillGrow   how = HT_ZERO_GROW_CELLS);
+
     //
     // Make rho at time n.
     //
@@ -376,12 +394,13 @@ protected:
     static void Initialize ();
     static void Finalize ();
 
-    static void RhoH_to_Temp (MultiFab& S, int nGrow = 0);
-
     static void RhoH_to_Temp (MultiFab& S,
-                              MultiFab& temp,
-                              int nGrow = 0,
-                              int dominmax = 1);
+                              int       nGrow = 0,
+                              int       dominmax = false);
+
+    static int RhoH_to_Temp (FArrayBox& S,
+                             const Box& box,
+                             int        dominmax = false);
 
     static void compute_cp_and_hmix (const MultiFab& S,
                                      MultiFab&       cp, 
@@ -396,8 +415,8 @@ protected:
     virtual void compute_edge_states (Real dt,
                                       std::vector<int>* state_comps_to_compute = 0);
     virtual void differential_spec_diffuse_sync (Real dt);
-    virtual void compute_differential_diffusion_terms (MultiFab& visc_terms,
-						       int       sComp,
+    virtual void compute_differential_diffusion_terms (MultiFab& D,
+                                                       MultiFab& DD,
 						       Real      time);
 
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
@@ -407,29 +426,17 @@ protected:
 			      YdotAction Ydot_action,
                               int        ngrow = 0);
 
-    virtual void strang_chem_sdc (MultiFab&  state_old,
-				  MultiFab&  state_new,
-				  Real       dt,
-				  int        ngrow = 0);
+    virtual void advance_chemistry (MultiFab&       mf_old,
+                                    MultiFab&       mf_new,
+                                    Real            dt,
+                                    const MultiFab& Force,
+                                    int             nCompF);
 
-    virtual void calcViscosity (const Real time,
-                                const Real dt,
-                                const int  iteration,
-                                const int  ncycle);
+    virtual void calcViscosity (const Real time);
 
-    virtual void calcDiffusivity (const Real time,
-                                  const Real dt,
-                                  const int  iteration,
-                                  const int  ncycle,
-                                  const int  src_comp = 0,
-                                  const int  num_comp = 1);
+    virtual void calcDiffusivity (const Real time);
 
     void calcDiffusivity (const Real time,
-                          const Real dt,
-                          const int  iteration,
-                          const int  ncycle,
-                          const int  src_comp,
-                          const int  num_comp,
                           bool       doCalcVisc);
 
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
@@ -591,16 +598,13 @@ protected:
 protected:
 
     DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
-    //
-    // Protected data.
-    //
+
     MultiFab**  EdgeState;
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
+    MultiFab    sumSpecFluxDotGradHn;
+    MultiFab    sumSpecFluxDotGradHnp1;
 
-    enum CurrentFluxType {HT_None, HT_Diffusion, HT_SyncDiffusion, HT_ExplicitDiffusion};
-
-    Array<CurrentFluxType> spec_diffusion_flux_computed;
     AuxBoundaryData        aux_boundary_data_old;
     AuxBoundaryData        aux_boundary_data_new;
     bool                   FillPatchedOldState_ok;
@@ -612,9 +616,7 @@ protected:
     static std::map<std::string,Array<std::string> > auxDiag_names;
 
     DDOp MCDDOp;
-    //
-    // Protected static data.
-    //
+
     static int         num_divu_iters;
     static int         init_once_done;
     static int         RhoH;
@@ -622,7 +624,7 @@ protected:
     static int         do_heat_sink;
     static int         unity_Le;
     static int         FuncCount_Type;
-    static int         Ydot_Type;
+    static int         RhoYdot_Type;
     static int         divu_ceiling;
     static Real        min_rho_divu_ceiling;
     static Real        divu_dt_factor;
@@ -648,7 +650,6 @@ protected:
     static int         do_reflux_visc;
     static int         dpdt_option;
     static int         do_set_rho_to_species_sum;
-    static int         siegel_test;
     static int         zeroBndryVisc;
     static int         do_add_nonunityLe_corr_to_rhoh_adv_flux;
     static int         do_check_divudt;
@@ -682,13 +683,18 @@ protected:
     static Real        new_T_threshold;
     static Array<Real> typical_values;
 
+    static Array<std::string> speciesStateNames;
+    static Array<std::string> rhoydotNames;
 
-///////////////////////////////
-// SDC Stuff
-    static int         do_sdc;
-    static int         sdc_iters;
-///////////////////////////////
-
+    static int do_sdc;
+    static int sdc_iterMAX;
+    static int nGrowAdvForcing;
+    MultiFab   Forcing;
+    MultiFab   Dn;
+    MultiFab   Dnp1;
+    MultiFab   Dhat;
+    MultiFab   DDn;
+    MultiFab   DDnp1;
 };
 
 #endif /*_HeatTransfer_H_*/

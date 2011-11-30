@@ -364,6 +364,43 @@ ChemDriver::reactionRateY(FArrayBox&       Ydot,
                 &Patm);
 }
 
+#include <iostream>
+using std::cout;
+using std::endl;
+void
+ChemDriver::reactionRateRhoY(FArrayBox&       RhoYdot,
+                             const FArrayBox& RhoY,
+                             const FArrayBox& RhoH,
+                             const FArrayBox& T,
+                             Real             Patm,
+                             const Box&       box,
+                             int              sCompRhoY,
+                             int              sCompRhoH,
+                             int              sCompT,
+                             int              sCompRhoYdot) const
+{
+    const int Nspec = numSpecies();
+    BL_ASSERT(RhoYdot.nComp() >= sCompRhoYdot + Nspec);
+    BL_ASSERT(RhoY.nComp() >= sCompRhoY + Nspec);
+    BL_ASSERT(RhoH.nComp() > sCompRhoH);
+    BL_ASSERT(T.nComp() > sCompT);
+
+    const Box& mabx = RhoY.box();
+    const Box& mbbx = RhoH.box();
+    const Box& mcbx = T.box();
+    const Box& mobx = RhoYdot.box();
+    
+    Box ovlp = box & mabx & mbbx & mcbx & mobx;
+    if( ! ovlp.ok() ) return;
+    
+    FORT_RRATERHOY(ovlp.loVect(), ovlp.hiVect(),
+                   RhoY.dataPtr(sCompRhoY),       ARLIM(mabx.loVect()), ARLIM(mabx.hiVect()),
+                   RhoH.dataPtr(sCompRhoH),       ARLIM(mbbx.loVect()), ARLIM(mbbx.hiVect()),
+                   T.dataPtr(sCompT),             ARLIM(mcbx.loVect()), ARLIM(mcbx.hiVect()),
+                   RhoYdot.dataPtr(sCompRhoYdot), ARLIM(mobx.loVect()), ARLIM(mobx.hiVect()),
+                   &Patm);
+}
+
 void
 ChemDriver::massFracToMoleFrac(FArrayBox&       X,
 				  const FArrayBox& Y,
@@ -548,39 +585,47 @@ ChemDriver::solveTransient(FArrayBox&        Ynew,
 
 void
 ChemDriver::solveTransient_sdc(FArrayBox&        rhoYnew,
-			       FArrayBox&        rhohnew,
+			       FArrayBox&        rhoHnew,
+			       FArrayBox&        Tnew,
 			       const FArrayBox&  rhoYold,
-			       const FArrayBox&  rhohold,
+			       const FArrayBox&  rhoHold,
+			       const FArrayBox&  Told,
 			       const FArrayBox&  const_src,
 			       FArrayBox&        I_R,
 			       FArrayBox&        FuncCount,
 			       const Box&        box,
 			       int               sComprhoY,
-			       int               sComprhoh,
+			       int               sComprhoH,
+			       int               sCompT,
 			       Real              dt,
 			       Real              Patm,
 			       FArrayBox*        chemDiag) const
 {
     BL_ASSERT(sComprhoY+numSpecies() <= rhoYnew.nComp());
     BL_ASSERT(sComprhoY+numSpecies() <= rhoYold.nComp());
-    BL_ASSERT(sComprhoh < rhohnew.nComp());
-    BL_ASSERT(sComprhoh < rhohold.nComp());
+    BL_ASSERT(sComprhoH < rhoHnew.nComp());
+    BL_ASSERT(sComprhoH < rhoHold.nComp());
+    BL_ASSERT(sCompT    < Tnew.nComp());
+    BL_ASSERT(sCompT    < Told.nComp());
     
     BL_ASSERT(rhoYnew.box().contains(box) && rhoYold.box().contains(box));
-    BL_ASSERT(rhohnew.box().contains(box) && rhohold.box().contains(box));
+    BL_ASSERT(rhoHnew.box().contains(box) && rhoHold.box().contains(box));
+    BL_ASSERT(Tnew.box().contains(box)    && Told.box().contains(box));
 
     const int do_diag  = (chemDiag!=0);
     Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
+
     FORT_CONPSOLV_SDC(box.loVect(), box.hiVect(),
-                      rhoYnew.dataPtr(sComprhoY), ARLIM(rhoYnew.loVect()), ARLIM(rhoYnew.hiVect()),
-                      rhohnew.dataPtr(sComprhoh), ARLIM(rhohnew.loVect()), ARLIM(rhohnew.hiVect()),
-                      rhoYold.dataPtr(sComprhoY), ARLIM(rhoYold.loVect()), ARLIM(rhoYold.hiVect()),
-                      rhohold.dataPtr(sComprhoh), ARLIM(rhohold.loVect()), ARLIM(rhohold.hiVect()),
-                      const_src.dataPtr(0), ARLIM(const_src.loVect()), ARLIM(const_src.hiVect()),
-		      I_R.dataPtr(0), ARLIM(I_R.loVect()), ARLIM(I_R.hiVect()),
-                      FuncCount.dataPtr(),
-		      ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
-		      &Patm, &dt, diagData, &do_diag, set_c_0_simple_sdc);
+                      rhoYnew.dataPtr(sComprhoY), ARLIM(rhoYnew.loVect()),   ARLIM(rhoYnew.hiVect()),
+                      rhoHnew.dataPtr(sComprhoH), ARLIM(rhoHnew.loVect()),   ARLIM(rhoHnew.hiVect()),
+                      Tnew.dataPtr(sCompT),       ARLIM(Tnew.loVect()),      ARLIM(Tnew.hiVect()),
+                      rhoYold.dataPtr(sComprhoY), ARLIM(rhoYold.loVect()),   ARLIM(rhoYold.hiVect()),
+                      rhoHold.dataPtr(sComprhoH), ARLIM(rhoHold.loVect()),   ARLIM(rhoHold.hiVect()),
+                      Told.dataPtr(sCompT),       ARLIM(Told.loVect()),      ARLIM(Told.hiVect()),
+                      const_src.dataPtr(0),       ARLIM(const_src.loVect()), ARLIM(const_src.hiVect()),
+		      I_R.dataPtr(0),             ARLIM(I_R.loVect()),       ARLIM(I_R.hiVect()),
+                      FuncCount.dataPtr(),        ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
+		      &Patm, &dt, diagData, &do_diag);
 }
 
 void

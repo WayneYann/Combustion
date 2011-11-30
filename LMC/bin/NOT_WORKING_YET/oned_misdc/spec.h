@@ -7,7 +7,7 @@ c     Chem species, etc
 
 c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
       integer maxscal, nx
-      parameter (maxscal = maxspec + 4, nx = 256)
+      parameter (maxscal = maxspec + 4, nx = 128)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, specNameLen, Density, Temp, RhoH, 
@@ -54,15 +54,15 @@ c     DVODE driver stuff
       save /dvdi/
 
       double precision c_0(0:maxspec), c_1(0:maxspec), rhoh_INIT,
-     &     hmix_TYP
-      common / dvdr / c_0, c_1, rhoh_INIT, hmix_TYP
+     &     T_INIT, hmix_TYP
+      common / dvdr / c_0, c_1, rhoh_INIT, T_INIT, hmix_TYP
       save /dvdr/
 
 c     LMC alg stuff
       integer probtype, misdc_iterMAX,on_lo,on_hi,max_order,
      &     divu_ceiling_flag, predict_temp_for_coeffs, initial_iter,
      &     unlim, lim_rxns,coef_avg_harm
-      parameter (on_lo = 0, on_hi = 1, max_order = 3)
+      parameter (on_lo = 0, on_hi = 1, max_order = 4)
       common / lmci / probtype, misdc_iterMAX, divu_ceiling_flag,
      &     predict_temp_for_coeffs, initial_iter, unlim, lim_rxns,
      &     coef_avg_harm

@@ -970,7 +970,7 @@ HeatTransfer::initData ()
         std::cout << "initData: reading data from: " << pltfile << std::endl;
 
     DataServices::SetBatchMode();
-    FileType fileType(NEWPLT);
+    Amrvis::FileType fileType(Amrvis::NEWPLT);
     DataServices dataServices(pltfile, fileType);
 
     if (!dataServices.AmrDataOk())
@@ -1069,7 +1069,7 @@ HeatTransfer::initData ()
             std::cout << "initData: reading data from: " << velocity_plotfile << std::endl;
 
         DataServices::SetBatchMode();
-        FileType fileType(NEWPLT);
+        Amrvis::FileType fileType(Amrvis::NEWPLT);
         DataServices dataServices(velocity_plotfile, fileType);
 
         if (!dataServices.AmrDataOk())
@@ -6206,16 +6206,12 @@ HeatTransfer::strang_chem (MultiFab&  mf,
     //debugging FIXME
     if (plot_reactions){
       int n;
-      char suff[10] = "";
       std::ofstream output;
       int nchemdiag = 5;
 
       for (n = 0; n <= nchemdiag; n++){
-	char filename[10] = "rxns_";    
-
-	std::sprintf(suff, "%d",n);
-	strcat(filename,suff);
-	output.open(filename,std::ios::app);
+        std::string filename = BoxLib::Concatenate("rxns_", n, 1);
+	output.open(filename.c_str(),std::ios::app);
 	output<<std::endl<<std::endl;
 	output.close();
       }
@@ -9797,9 +9793,8 @@ HeatTransfer::writePlotFile (const std::string& dir,
     // The name is relative to the directory containing the Header file.
     //
     static const std::string BaseName = "/Cell";
-    char buf[64];
-    sprintf(buf, "Level_%d", level);
-    std::string Level = buf;
+
+    std::string Level = BoxLib::Concatenate("Level_", level, 1);
     //
     // Now for the full pathname of that directory.
     //
@@ -10989,17 +10984,14 @@ HeatTransfer::chem_sdc (MultiFab&  mf,
     //debugging FIXME
       if (plot_reactions){
 	int n;
-	char suff[10] = "";
 	std::ofstream output;
 	int nchemdiag = 5;
 
 	for (n = 0; n <= nchemdiag; n++){
-	  char filename[10] = "rxns_";    
 
-	  std::sprintf(suff, "%d",n);
-	  strcat(filename,suff);
-	  //      std::cout<<"filename = "<<filename<<std::endl;;
-	  output.open(filename,std::ios::app);
+          std::string filename = BoxLib::Concatenate("rxns_", n, 1);
+
+	  output.open(filename.c_str(),std::ios::app);
 	  output<<std::endl<<std::endl;
 	  output.close();
 	}

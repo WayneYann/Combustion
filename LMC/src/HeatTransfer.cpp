@@ -1290,7 +1290,7 @@ HeatTransfer::initData ()
         std::cout << "initData: reading data from: " << pltfile << '\n';
 
     DataServices::SetBatchMode();
-    FileType fileType(NEWPLT);
+    Amrvis::FileType fileType(Amrvis::NEWPLT);
     DataServices dataServices(pltfile, fileType);
 
     if (!dataServices.AmrDataOk())
@@ -1390,7 +1390,7 @@ HeatTransfer::initData ()
             std::cout << "initData: reading data from: " << velocity_plotfile << '\n';
 
         DataServices::SetBatchMode();
-        FileType fileType(NEWPLT);
+        Amrvis::FileType fileType(Amrvis::NEWPLT);
         DataServices dataServices(velocity_plotfile, fileType);
 
         if (!dataServices.AmrDataOk())
@@ -1400,8 +1400,6 @@ HeatTransfer::initData ()
             DataServices::Dispatch(DataServices::ExitRequest, NULL);
 
         AmrData&                  amrData   = dataServices.AmrDataRef();
-        const int                 nspecies  = getChemSolve().numSpecies();
-        const Array<std::string>& names     = getChemSolve().speciesNames();   
         Array<std::string>        plotnames = amrData.PlotVarNames();
 
         if (amrData.FinestLevel() < level)
@@ -1491,7 +1489,7 @@ HeatTransfer::initDataOtherTypes ()
     // If it is not, merely comment out the call below and everything
     // should be ok.
     //
-    FORT_CHECK_TURB(&add_turb,turb_size,box_offset,&turb_scale,dx);
+    //FORT_CHECK_TURB(&add_turb,turb_size,box_offset,&turb_scale,dx);
   
     if (add_turb) 
     {
@@ -9884,9 +9882,8 @@ HeatTransfer::writePlotFile (const std::string& dir,
     // The name is relative to the directory containing the Header file.
     //
     static const std::string BaseName = "/Cell";
-    char buf[64];
-    sprintf(buf, "Level_%d", level);
-    std::string Level = buf;
+
+    std::string Level = BoxLib::Concatenate("Level_", level, 1);
     //
     // Now for the full pathname of that directory.
     //

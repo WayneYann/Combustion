@@ -1016,7 +1016,7 @@ c                               inflow for pipe
 #  if (METH == N2DOM)
                maxs = iN2
 #  elif (METH == FINDDOM)
-               pm = cvmgt(0,-1,sum.gt.zero)
+               pm = merge(0,-1,sum.gt.zero)
                maxs=1
                maxv=state(i+pm,j,maxs)
                do n=2,nc
@@ -1049,7 +1049,7 @@ c                               inflow for pipe
 #  if (METH == N2DOM)
                maxs = iN2
 #  elif (METH == FINDDOM)
-               pm = cvmgt(0,-1,sum.gt.zero)
+               pm = merge(0,-1,sum.gt.zero)
                maxs=1
                maxv=state(i,j+pm,maxs)
                do n=2,nc
@@ -1132,7 +1132,7 @@ c
                      sumy = sumy + y(n)
                   end do
                   alphabar = - sump/sumn
-                  beta=cvmgt(sumn*(one-alphabar)/sumy,zero,sumy.NE.zero)
+                  beta=merge(sumn*(one-alphabar)/sumy,zero,sumy.NE.zero)
                else
                   do n=1,Nspec
                      y(n) = MAX(zero,state(i,j,n))
@@ -1140,7 +1140,7 @@ c
                      sumy = sumy + y(n)
                   end do
                   alphabar = - sumn/sump
-                  beta=cvmgt(sump*(one-alphabar)/sumy,zero,sumy.NE.zero)
+                  beta=merge(sump*(one-alphabar)/sumy,zero,sumy.NE.zero)
                end if
                if (alphabar .GT. one) goto 100
                do n=1,Nspec
@@ -1271,10 +1271,10 @@ c
          do i=lo(1),hi(1)
             uadv = half*(umac(i,j) + umac(i+1,j))
             vadv = half*(vmac(i,j) + vmac(i,j+1))
-            p_x_hi = cvmgp(p(i  ,j),p(i+1,j),umac(i+1,j))
-            p_x_lo = cvmgp(p(i-1,j),p(i  ,j),umac(i  ,j))
-            p_y_hi = cvmgp(p(i,j  ),p(i,j+1),vmac(i,j+1))
-            p_y_lo = cvmgp(p(i,j-1),p(i,j  ),vmac(i,j  ))
+            p_x_hi = merge(p(i  ,j),p(i+1,j),umac(i+1,j)>=zero)
+            p_x_lo = merge(p(i-1,j),p(i  ,j),umac(i  ,j)>=zero)
+            p_y_hi = merge(p(i,j  ),p(i,j+1),vmac(i,j+1)>=zero)
+            p_y_lo = merge(p(i,j-1),p(i,j  ),vmac(i,j  )>=zero)
             ugradp(i,j) = uadv * (p_x_hi - p_x_lo) / dx(1) +
      &                    vadv * (p_y_hi - p_y_lo) / dx(2)      
          end do

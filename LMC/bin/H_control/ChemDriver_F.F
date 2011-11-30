@@ -94,11 +94,10 @@ c
 c     Set pointers in conp common blocks (used in conpF evaluations)
 c
       CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
-      NEQ   = Nspec + 1
-      NP    = dvdbr
-      NWT   = NP  + 1
-      NZ    = NWT + Nspec
-      RTOT  = NZ  + NEQ - 1
+
+      NEQ = Nspec + 1
+      NP = dvdbr
+      RTOT  = NP
 
       if (RTOT .GT. dvder) then
          write(6,*) 'Memory layout bust, dvdr not big enough'
@@ -108,7 +107,10 @@ c
 c
 c     Set molecular weights
 c
-      CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
+      CALL CKWT(IWRK(ckbi), RWRK(ckbr), mwt)
+      do i=1,Nspec
+         invmwt(i) = 1.d0 / mwt(i)
+      enddo
 c
 c     Find N2 in the list.
 c
@@ -117,8 +119,10 @@ c
          call get_spec_name(name,n)
          if (name .eq. 'N2' ) iN2 = n
       end do
-      if (iN2.eq.-1)
-     &     write(6,*) '.....warning: no N2 in chemistry species list'
+      if (iN2.eq.-1) then
+         write(6,*) '.....warning: no N2 in chemistry species list'
+         stop
+      endif
       end
 
 
@@ -685,13 +689,15 @@ c
       end do
       end
 
-      subroutine FORT_GETCKMWT(mwt)
+      subroutine FORT_GETCKMWT(tmwt)
       implicit none
 #include "cdwrk.H"
-      REAL_T mwt(*)
+      REAL_T tmwt(*)
       integer n
 c     Result in kg/kmole
-      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
+      do n=1,Nspec
+         tmwt(n) = mwt(n)
+      enddo
       end
 
       subroutine FORT_GETCKAWT(awt)
@@ -715,17 +721,17 @@ c     Result in kg/kmole
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
-      REAL_T RHO, CPB, SUM, H, WDOT, WT, THFAC
+      REAL_T RHO, CPB, SUM, H, WDOT, WT, THFAC, Pcgs
       integer K
 
       REAL_T CONC(maxspec), WDOTS(maxspec), ENTHALPY(maxspec)
 C
 C     Variables in Z are:  Z(1)   = T
 C                          Z(K+1) = Y(K)
-      
-      CALL CKRHOY(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO)
+      Pcgs = RWRK(NP) 
+      CALL CKRHOY(Pcgs,Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO)
       CALL CKCPBS(Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CPB)
-      CALL CKYTCP(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CONC)
+      CALL CKYTCP(Pcgs,Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CONC)
 c
 c     Get net production rates.  Compute such that production from -ve
 c     reactants gives zero contrib.
@@ -744,6 +750,7 @@ c      end do
       
       CALL CKWC(Z(1), CONC, IPAR(ckbi), RPAR(ckbr), WDOTS)
       CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), ENTHALPY)
+
 C
 C     Form governing equation
 C
@@ -758,135 +765,149 @@ C
       END DO
       ZP(1) = -SUM / (RHO*CPB)
 
-#if 0
-      print*, 'Z:'
-      do k = 1, Nspec+1
-         write(6,996) Z(K)
-      end do
-      print*, 'ZP:'
-      do k = 1, Nspec+1
-         write(6,996) ZP(K)
-      end do
-      print*, 'WDOT:'
-      do k = 1, Nspec
-         write(6,996) WDOTS(K)
-      end do
-
-996   format(e30.22)
-#endif
-
       END
 
-      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
+      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR, errCode)
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
+#include "htdata.H"
 #include "visc.H"
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
-      REAL_T RHO, H, WDOT, WT, THFAC, T
+      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
+      REAL_T rhoYDOT_MKS, Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
       integer K
-
-      REAL_T CONC(maxspec), WDOTS(maxspec), Y(maxspec)
+      integer is_bad(maxspec),num_bad
 
 C     Needed to compute T from h
       REAL_T HtoTerrMAX
-      integer HtoTiterMAX, Niter
-      parameter (HtoTerrMAX = BL_REAL_E(1.0,-8))
+      integer HtoTiterMAX, Niter, errCode
+      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
       parameter (HtoTiterMAX = 20)
       REAL_T res(0:HtoTiterMAX-1)
 
+      REAL_T RHO_CGS, RINV_CGS, rhohmixDOT_MKS
+
+      errCode = 0
+      do K=1,Nspec+1
+         if (isnan(Z(K))) then
+            errCode = -10
+            goto 10
+         endif
+      enddo
 C
-C     Variables in Z are:  Z(1)   = rhoh
-C                          Z(K+1) = rhoY(K)
+C     Variables in Z are:  Z(1:K) = rhoY(K)
+C                          Z(K+1) = RhoH
+      RHO_MKS = 0.d0
+      do K=1,Nspec
+         RHO_MKS = RHO_MKS + Z(K)
+      enddo
+      if (RHO_MKS.le.0.d0) then
+         errCode = -11
+         goto 10
+      endif
+      RINV_MKS = 1.d0 / RHO_MKS
       
-      RHO = 0.d0
-      do k=1,Nspec
-         RHO = RHO + Z(k+1)
-      end do
-
-      do k=1,Nspec
-         Y(k) = Z(k+1) / RHO
-      end do
-
-c     Compute T from h
-      H = Z(1) / RHO
-      call FORT_TfromHYpt(T,H,Y,HtoTerrMax,HtoTiterMAX,res,Niter)
-      if (Niter.lt.0) then
-         print *,'conpFY_sdc: H to T solve failed'
-         print *,'Niter=',Niter
-         stop
+      num_bad = 0
+      do K=1,Nspec
+         if (Z(K).lt.-1.d-6*typVal_Y(K)*typVal_Density) then
+            num_bad = num_bad+1
+            is_bad(num_bad) = k
+         endif
+      enddo
+      if (num_bad.gt.0) then
+c         print *,'-ve Y in cell:',i_cell,j_cell,'species:',is_bad(1:num_bad)
+         errCode = -16
+         goto 10
       endif
 
-      CALL CKYTCP(RPAR(NP),T,Y,IPAR(ckbi),RPAR(ckbr),CONC)
-c
-c     Get net production rates.  Compute such that production from -ve
-c     reactants gives zero contrib.
-c      
-c      do k=1,Nspec
-c         if (CONC(k) .lt. zero) write(6,*) '.....negative C',k
-c      end do
-      
-#define MAKE_C_POS
-#undef MAKE_C_POS
-#ifdef MAKE_C_POS
-      do k=1,Nspec
-         CONC(k) = MAX(CONC(k),zero)
-      end do 
-#endif
+      do K=1,Nspec
+         CONC_CGS(K) = MAX(0.d0, Z(K)*invmwt(K)*1.d-3)
+         Y(K) = Z(K) * RINV_MKS
+      enddo
 
-      CALL CKWC(T, CONC, IPAR(ckbi), RPAR(ckbr), WDOTS)
-C
-C     Form governing equation
-C
+      do K=1,Nspec
+         if (isnan(CONC_CGS(K))) then
+            errCode = -15
+            goto 10
+         endif
+      enddo
 
-c     rhoh
-      ZP(1) = c_0(1)
+c      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
+c     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
 
-c     rhoY
-      THFAC = one / thickFacCH
-      do k=1,Nspec
-         WDOT = WDOTS(k) * THFAC
-         WT   = RPAR(NWT+k-1)
-         ZP(k+1) = WDOT * WT + c_0(k+1)
+      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
+      T = T_cell
+
+c     FIXME: Get proper stopping stopping criteria here
+      call FORT_TfromHYpt(T,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter,errCode)
+      if (errCode.lt.0) then
+         goto 10
+      endif
+      T_cell = T      
+      call CKWC(T,CONC_CGS,IWRK,RWRK,WDOT_CGS)
+
+      do K=1,Nspec
+         if (isnan(WDOT_CGS(K))) then
+            errCode = -13
+            goto 10
+         endif
+      enddo
+
+c      rhohmixDOT_MKS = c_0(Nspec+1) + c_1(Nspec+1)*TIME
+      rhohmixDOT_MKS = c_0(Nspec+1)
+      ZP(Nspec+1) = rhohmixDOT_MKS
+
+      THFAC = 1.d3/thickFacCH
+      do k= 1, Nspec
+c         rhoYDOT_MKS = c_0(k) + c_1(k)*TIME
+         if (isnan(c_0(k))) then
+            errCode = -14
+            goto 10
+         endif
+         rhoYDOT_MKS = c_0(k)
+         ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
       end do
+
+      if (idbg.eq.1) then
+c         print *,'inside',TIME,T,Y(5),ZP(5),WDOT_CGS(5)
+      endif
+
+      do K=1,Nspec+1
+         if (isnan(ZP(K))) then
+            errCode = -12
+            goto 10
+         endif
+      enddo
+      return
+
+ 10   continue
+c      print *,'errCode in F:',errCode,TIME
+c      print *,'Z:',Z(1:Nspec+1)
 
 #if 0
-      print*, 'Z:'
-      do k = 1, Nspec+1
-         write(6,996) Z(K)
-      end do
-      print*, 'ZP:'
-      do k = 1, Nspec+1
-         write(6,996) ZP(K)
-      end do
-      print*, 'WDOT:'
-      do k = 1, Nspec
-         write(6,996) WDOTS(K)
-      end do
-
-996   format(e30.22)
+      print *,'conpFY_sdc: H to T solve failed'
+      print *,'  at cell:',i_cell,j_cell
+      print *,'errCode=',errCode
+      print *,'Niter=',Niter
+      print *,'RINV_MKS',RINV_MKS
+      print *,'RhoH_INIT',rhoh_INIT
+      print *,'H_INIT',rhoh_INIT*RINV_MKS
+      print *,'HMIX_MKS',HMIX_MKS
+      print *,'c_0(Nspec+1)',c_0(Nspec+1)
+      print *,'initial T',T_cell
+      print *,'current T',T
+      print *,'current RHOY',Z(1:Nspec)
+      print *,'initial RHOY',rhoY_INIT(1:Nspec)
+      print *,'ZP',ZP(1:Nspec+1)
+      print *,'WDOT_CGS',WDOT_CGS(1:Nspec)
+      
+      CALL CKHBMS(T_cell,Y,IWRK(ckbi),RWRK(ckbr),HMIX_CGS)
+      print*,'hmix at current state:',HMIX_CGS*1.d-4
 #endif
-
       END
-
-      subroutine set_c_0_simple_sdc(const_src)
-      implicit none
-#include "cdwrk.H"
-
-      REAL_T,  intent(in   ) :: const_src(1:)
-
-      integer n
-
-C     rhoh
-      c_0(1) = const_src(1)
-
-      do n=1,Nspec
-         c_0(n+1) = const_src(n+1)
-      end do
-
-      end subroutine set_c_0_simple_sdc
 
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
@@ -1011,7 +1032,7 @@ c     Error condition....dump state and bail out
 
       end
 
-      subroutine FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res,Niter)
+      subroutine FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res,Niter,errCode)
       implicit none
 #include "cdwrk.H"
       REAL_T T,Y(*),H,Hin
@@ -1022,11 +1043,12 @@ c     Error condition....dump state and bail out
       REAL_T res(0:NiterMAX-1),dT, Htarg
       logical out_of_bounds, converged, soln_bad, stalled, discont
       REAL_T HMIN,cpMIN,HMAX,cpMAX
-      integer ihitlo,ihithi,j
+      integer ihitlo,ihithi,j,errCode
       REAL_T old_T, old_H, Tsec, Hsec
 
       out_of_bounds(temp) = (temp.lt.TMIN-one) .or. (temp.gt.TMAX)
 
+      errCode = 0
       NiterDAMP = NiterMAX
       if ((T.GE.TMIN).and.(T.LE.TMAX)) then
          T0 = T
@@ -1039,6 +1061,13 @@ c     Error condition....dump state and bail out
       Htarg = Hin * 1.d4
       ihitlo = 0
       ihithi = 0
+
+      do j=1,Nspec
+         if (isnan(Y(j))) then
+            errCode = -8
+            goto 100
+         endif
+      enddo
 
       CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),H)
 
@@ -1055,7 +1084,25 @@ c     Error condition....dump state and bail out
      &     (.not.soln_bad))
 
          CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cp)
+#ifndef NDEBUG
+         if (cp.eq.0) then
+            errCode = -5
+            goto 100
+         endif
+         if (isnan(cp)) then
+            errCode = -6
+            goto 100
+         endif
+#endif
+
          dT = (Htarg - H)/cp
+
+#ifndef NDEBUG
+         if (isnan(dT)) then
+            errCode = -7
+            goto 100
+         endif
+#endif
          old_T = T
          if ((Niter.le.NiterDAMP).and.(T+dT.ge.TMAX)) then
             T = TMAX
@@ -1067,8 +1114,9 @@ c     Error condition....dump state and bail out
             T = T + dT
          end if
          soln_bad = out_of_bounds(T)
+
          if (soln_bad) then
-            Niter = -1
+            errCode = -1
             goto 100
          else
             old_H = H
@@ -1082,8 +1130,7 @@ c     Error condition....dump state and bail out
             if(abs(T-1000.d0).le.1.d-3.and. dH.le.1.d-5)then
               converged = .true.
             else  
-              write(6,*)" missing my test",T,dH
-              Niter = -2
+              errCode = -2
               goto 100
             endif
          endif
@@ -1114,7 +1161,7 @@ c     values.
                Tsec = T + dT
                soln_bad = out_of_bounds(Tsec)
                if (soln_bad) then
-                  Niter = -3
+                  errCode = -3
                   goto 100
                endif
                CALL CKHBMS(Tsec,Y,IWRK(ckbi),RWRK(ckbr),Hsec)
@@ -1128,7 +1175,7 @@ c     values.
 c               stalled = (ABS(dT).le.errMAX)
                Niter = Niter + 1
                if (Niter.gt.NiterMAX+Discont_NiterMAX) then
-                  Niter = -2
+                  errCode = -4
                   goto 100
                endif
             enddo
@@ -1143,6 +1190,7 @@ c
  100  continue
 
       write(6,997) 'T from (H,Y): failed'
+      write(6,997) 'errCode = ',errCode
       write(6,997) 'iterations tried = ',Niter
       write(6,998) 'initial T = ',T0
       write(6,998) 'current T = ',T
@@ -1153,10 +1201,12 @@ c
          write(6,998) '  ',Y(n)
       end do
       write(6,998)
-      write(6,998) 'residual:'
-      do n = 0,NiterMAX-1
-         write(6,998) '  ',res(n)
-      end do
+      if (Niter.gt.0) then
+         write(6,998) 'residual:'
+         do n = 0,Niter-1
+            write(6,998) '  ',res(n)
+         end do
+      endif
 
  997  format(a,3(i4,a))
  998  format(a,d21.12)
@@ -1191,7 +1241,7 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       open_vode_failure_file = lout
       end
     
-      block data tranjunk
+      block data vode_stuff
 #include "cdwrk.H"
 #include "conp.H"
       

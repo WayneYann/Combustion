@@ -943,14 +943,14 @@ c ::: -----------------------------------------------------------
                do i = lo(1), hi(1)
 #if 1
 c     Use flame tracker to expand region being tagged
-                  tag(i,j,k) = cvmgt(set,tag(i,j,k),
+                  tag(i,j,k) = merge(set,tag(i,j,k),
      &                 ftrac(i,j,k,1).gt.flametracval)
 #else
 c     Use flame tracker to limit region being tagged if lev lt. max_vort_lev
                   if (level.lt.max_vort_lev) then
                      if (tag(i,j,k).eq.set .and. ftrac(i,j,k,1).le.flametracval) tag(i,j,k) = clear
                   else
-                     tag(i,j,k) = cvmgt(set,tag(i,j,k),ftrac(i,j,k,1).gt.flametracval)
+                     tag(i,j,k) = merge(set,tag(i,j,k),ftrac(i,j,k,1).gt.flametracval)
                   endif
 #endif
 
@@ -970,7 +970,7 @@ c     Use flame tracker to limit region being tagged if lev lt. max_vort_lev
                   in_refine_zone = (r .le. refine_nozzle_x)
                   in_refine_zone = in_refine_zone .and.
      &                  (z - problo(3)) .le. refine_nozzle_z
-                  tag(i,j,k) = cvmgt(set,tag(i,j,k),in_refine_zone)
+                  tag(i,j,k) = merge(set,tag(i,j,k),in_refine_zone)
                end do
             end do
          end do
@@ -986,7 +986,7 @@ c     Use flame tracker to limit region being tagged if lev lt. max_vort_lev
                   in_refine_zone = ABS(x).le.refine_stick_x
                   in_refine_zone = in_refine_zone .and.
      &                  (z - problo(3)) .le. refine_stick_z
-                  tag(i,j,k) = cvmgt(set,tag(i,j,k),in_refine_zone)
+                  tag(i,j,k) = merge(set,tag(i,j,k),in_refine_zone)
                end do
             end do
          end do
@@ -999,7 +999,7 @@ c     Use flame tracker to limit region being tagged if lev lt. max_vort_lev
                   x = (float(i)+.5)*dx(1)+problo(1)
                   r = SQRT(x*x+y*y)
                   in_refine_zone = (r.gt.nogrid_radius)
-                  tag(i,j,k) = cvmgt(clear,tag(i,j,k),in_refine_zone)
+                  tag(i,j,k) = merge(clear,tag(i,j,k),in_refine_zone)
                end do
             end do
          end do
@@ -1119,7 +1119,7 @@ c
                   ay = MAX(ay,abs(temperature(i,j,k,1) - temperature(i,j-1,k,1)))
                   az = MAX(az,abs(temperature(i,j,k,1) - temperature(i,j,k-1,1)))
                   aerr = max(ax,ay,az)
-                  tag(i,j,k) = cvmgt(set,tag(i,j,k),aerr.ge.tempgrad)
+                  tag(i,j,k) = merge(set,tag(i,j,k),aerr.ge.tempgrad)
                enddo
             enddo
          enddo
@@ -1132,7 +1132,7 @@ c
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
-                  tag(i,j,k) = cvmgt(set,tag(i,j,k),temperature(i,j,k,1).le.temperr)
+                  tag(i,j,k) = merge(set,tag(i,j,k),temperature(i,j,k,1).le.temperr)
                enddo
             enddo
          enddo
@@ -1188,7 +1188,7 @@ c    &     .and. (level .lt. max_vort_lev)) then
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
-                  tag(i,j,k) = cvmgt(set,tag(i,j,k),
+                  tag(i,j,k) = merge(set,tag(i,j,k),
      &                         ABS(vort(i,j,k,1)).ge.vorterr)
                enddo
             enddo
@@ -3264,7 +3264,7 @@ c     divu(i,j,k) = min(two,one+time/.05)
          do j=dlo(2),dhi(2)
             do i = dlo(1), dhi(1)
                x = xlo(1) + (i-plo(1)+.5)*dx(1)
-               divu(i,j,k) = cvmgt(one,zero,x.GE.0.5)
+               divu(i,j,k) = merge(one,zero,x.GE.0.5)
             enddo
          enddo
       enddo

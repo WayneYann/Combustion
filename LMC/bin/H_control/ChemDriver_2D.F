@@ -28,6 +28,13 @@
 #endif
 
 #define SDIM 2
+#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+#  define DSVODE SVODE
+#else
+#  define DSVODE DVODE
+#endif
+
+
 
       subroutine FORT_NORMMASS(lo, hi, xsID,
      &                         Y, DIMS(Y), Ynorm, DIMS(YNORM))
@@ -89,9 +96,9 @@
       scale = million
 
 #define DO_JBB_HACK
+#undef DO_JBB_HACK
 #define TRIGGER_NEW_J
 #undef ALWAYS_NEW_J
-#undef SOLN_IS_1D
 
 #ifdef MIKE1
       do n=1,Nrxns
@@ -210,6 +217,62 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
             call conpFY(ndummy,tdummy,Zt,Zdott,RWRK,IWRK)
             do n=1,Nspec
                Ydot(i,j,n) = Zdott(n+1)
+            end do
+         end do
+      end do
+      end
+
+      subroutine FORT_RRATERHOY(lo,hi,RhoY,DIMS(RhoY),RhoH,DIMS(RhoH),T,DIMS(T),
+     &                          RhoYdot,DIMS(RhoYdot),Patm)
+      implicit none
+
+#include "cdwrk.H"
+#include "conp.H"
+
+      integer lo(SDIM)
+      integer hi(SDIM)
+      integer DIMDEC(RhoY)
+      integer DIMDEC(RhoH)
+      integer DIMDEC(T)
+      integer DIMDEC(RhoYdot)
+      REAL_T RhoY(DIMV(RhoY),Nspec)
+      REAL_T RhoH(DIMV(RhoH))
+      REAL_T T(DIMV(T))
+      REAL_T RhoYdot(DIMV(RhoYdot),Nspec)
+      REAL_T Patm
+
+      REAL_T Zt(maxspec+1),Zdott(maxspec+1)
+      integer i,j,n,errCode
+      REAL_T TIME,P1atm,RU,RUC
+
+      NEQ = Nspec+1
+      TIME = 0.
+      CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
+      RWRK(NP) = Patm * P1atm
+
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            c_0(1:Nspec+1) = 0.d0
+            c_1(1:Nspec+1) = 0.d0
+            rhoh_INIT = RhoH(i,j)
+            T_cell = T(i,j)
+            i_cell = i
+            j_cell = j
+
+            Zt(Nspec+1) = RhoH(i,j)
+            do n=1,Nspec
+               Zt(n) = RhoY(i,j,n)
+            end do
+
+            call conpFY_sdc(NEQ,TIME,Zt,Zdott,RWRK,IWRK,errCode)
+#if 0
+            if (errCode.ne.0) then
+               print *,'Failed in RRateRhoY'
+               stop
+            endif
+#endif
+            do n=1,Nspec
+               RhoYdot(i,j,n) = Zdott(n)
             end do
          end do
       end do
@@ -482,7 +545,7 @@ c     Get the matrix of elements versus species
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
    
-      integer ITOL, IOPT, ITASK, open_vode_failure_file
+      integer ITOL, IOPT, ITASK, errCode, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
@@ -497,7 +560,7 @@ c     Get the matrix of elements versus species
       REAL_T dtloc, weight, TT1save
       REAL_T Ct(maxspec),Qt(maxreac), scale
 
-      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
+      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,Z(maxspec+1),ZP(maxspec+1)
       logical newJ_triggered, bad_soln
 
 c     Set IOPT=1 parameter settings for VODE
@@ -510,10 +573,10 @@ c     Set IOPT=1 parameter settings for VODE
 
       if (do_diag.eq.1) nsubchem = nchemdiag
 c
-c     Set molecular weights and pressure in area accessible by conpF
+c     Set pressure in area accessible by conpF
 c
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      RWRK(NP) = Patm * P1atm
+      RWRK(dvdr) = P1atm * Patm
       
       TT2 = dt
 
@@ -548,16 +611,7 @@ c     Set up ATOL
             endif
             ISTATE = 1
 
-#ifdef SOLN_IS_1D
-            if (i.ne.lo(1))then
-               do m=1,Nspec
-                  Ynew(i,j,m) = Ynew(lo(1),j,m)
-               end do
-               Tnew(i,j) = Tnew(lo(1),j)
-            else
-#endif
-
-            RWRK(NZ) = Told(i,j)
+            Z(1) = Told(i,j)
 
 #ifdef DO_JBB_HACK
             sum = zero
@@ -575,7 +629,7 @@ c     Set up ATOL
             end do
 #endif
             do m=1,Nspec
-               RWRK(NZ+m) = Ytemp(m)
+               Z(m+1) = Ytemp(m)
             end do
 
 #ifdef TRIGGER_NEW_J
@@ -584,7 +638,7 @@ c     Set up ATOL
             do m=1,NEQ
                scale = spec_scalT
                if (m.ne.1) scale = spec_scalY(m-1)
-               sum = sum + ABS(RWRK(NZ+m-1)-YJ_SAVE(m))/scale
+               sum = sum + ABS(Z(m)-YJ_SAVE(m))/scale
             end do
             if (sum .gt. NEWJ_TOL) then
                FIRST = .TRUE.
@@ -597,8 +651,8 @@ c     Set up ATOL
 #endif
             if (do_diag.eq.1) then
                FuncCount(i,j) = 0
-               CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
-               CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+               CALL CKYTCP(RWRK(NP),Z(1),Z(2),IWRK(ckbi),RWRK(ckbr),Ct)
+               CALL CKQC(Z(1),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                do m=1,Nreac
                   diag(i,j,m) = diag(i,j,m)+half*dtloc*Qt(m)*million
                enddo
@@ -619,9 +673,9 @@ c     Set up ATOL
 #else
                CALL DVODE
 #endif
-     &              (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
+     &              (CONPF_FILE, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
      &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &              dvi, CONPJ_FILE, MF, RWRK, IWRK)
+     &              dvi, CONPJ_FILE, MF, RWRK, IWRK, errCode)
 c
 c   If the step was bad, and we reused an old Jacobian, try again from scratch.
 c               
@@ -635,9 +689,9 @@ c
                   if (bad_soln .EQV. .TRUE.) then
                      TT1 = TT1SAVE
                      FIRST = .TRUE.
-                     RWRK(NZ) = Told(i,j)
+                     Z(1) = Told(i,j)
                      do m=1,Nspec
-                        RWRK(NZ+m) = Ytemp(m)
+                        Z(1+m) = Ytemp(m)
                      end do
 
                      ISTATE = 1
@@ -646,17 +700,17 @@ c
 #else 
                      CALL DVODE
 #endif
-     &                    (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
+     &                    (CONPF_FILE, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
      &                    ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &                    dvi, CONPJ_FILE, MF, RWRK, IWRK)
+     &                    dvi, CONPJ_FILE, MF, RWRK, IWRK, errCode)
                   endif
                endif
 #endif
                TT1 = TT2
 
                if (do_diag.eq.1) then
-                  CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
-                  CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                  CALL CKYTCP(RWRK(NP),Z(1),Z(2),IWRK(ckbi),RWRK(ckbr),Ct)
+                  CALL CKQC(Z(1),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                   do m=1,Nreac
                      diag(i,j,m) = diag(i,j,m)+weight*dtloc*Qt(m)*million
                   enddo
@@ -685,19 +739,19 @@ c
                end if
                
                if (ISTATE .LE. -1) then
-                  call CONPF_FILE(NEQ, TT1, RWRK(NZ), zp, RWRK, IWRK)
+                  call CONPF_FILE(NEQ, TT1, Z, ZP, RWRK, IWRK)
                   lout = open_vode_failure_file()
                   write(lout,*)
                   write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
      &                 '),   Return code = ',ISTATE
                   write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-                 write(lout,995)'State ID, old, last, dY/dt, dY/dt*(dt)'
+                  write(lout,995)'State ID, Y, Yp, dT/dt, dRT/dt*(dt)'
                   write(lout,996) 'T               ',
-     &                 Told(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
+     &                 Told(i,j),Z(1),ZP(1),ZP(1)*(dt-TT1)
                   do m=1,Nspec
                      call get_spec_name(name,m)
                      write(lout,996) name,Yold(i,j,m),
-     &                    RWRK(NZ+m),zp(1+m),zp(1+m)*(dt-TT1)
+     &                    Z(m+1),ZP(m+1),ZP(m+1)*(dt-TT1)
                   end do
 995               format(a,3(i4,a))
 996               format(a16,1x,4e30.22)
@@ -706,10 +760,10 @@ c
                end if
             enddo
 
-            Tnew(i,j) = RWRK(NZ)
+            Tnew(i,j) = Z(1)
 
             do m= 1,Nspec
-               Yres(m) = RWRK(NZ+m)
+               Yres(m) = Z(m+1)
             end do
 
 #ifdef DO_JBB_HACK
@@ -722,9 +776,6 @@ c
             end do
 #endif
 
-#ifdef SOLN_IS_1D
-         endif
-#endif
       endif
       end do
       end do
@@ -732,49 +783,50 @@ c
 
       subroutine FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
-     &     rhohnew,   DIMS(rhohnew),
+     &     rhoHnew,   DIMS(rhoHnew),
+     &     Tnew,      DIMS(Tnew),
      &     rhoYold,   DIMS(rhoYold), 
-     &     rhohold,   DIMS(rhohold),
+     &     rhoHold,   DIMS(rhoHold),
+     &     Told,      DIMS(Told),
      &     const_src, DIMS(const_src),
      &     I_R,       DIMS(I_R),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
      &     dt,
-     &     diag, do_diag,
-     &     set_c_0_sdc)
+     &     diag, do_diag)
       implicit none
 
 #include "cdwrk.H"
+#include "htdata.H"
 #include "conp.H"
 #include "vode.H"
 
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(rhoYold)
-      integer DIMDEC(rhohold)
+      integer DIMDEC(rhoHold)
+      integer DIMDEC(Told)
       integer DIMDEC(rhoYnew)
-      integer DIMDEC(rhohnew)
+      integer DIMDEC(rhoHnew)
+      integer DIMDEC(Tnew)
       integer DIMDEC(const_src)
       integer DIMDEC(I_R)
       integer DIMDEC(FuncCount)
       integer do_diag
       REAL_T rhoYold(DIMV(rhoYold),*)
-      REAL_T rhohold(DIMV(rhohold))
+      REAL_T rhoHold(DIMV(rhoHold))
+      REAL_T Told(DIMV(Told))
       REAL_T rhoYnew(DIMV(rhoYnew),*)
-      REAL_T rhohnew(DIMV(rhohnew))
-      REAL_T const_src(DIMV(const_src),*)
-      REAL_T I_R(DIMV(I_R),*)
+      REAL_T rhoHnew(DIMV(rhoHnew))
+      REAL_T Tnew(DIMV(rhoHnew))
+      REAL_T const_src(DIMV(const_src),1:Nspec+1)
+      REAL_T I_R(DIMV(I_R),Nspec)
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
 
-      interface
-         subroutine set_c_0_sdc(const_src)
-         REAL_T,  intent(in   ) :: const_src(1:)
-         end subroutine set_c_0_sdc
-      end interface
-   
-      integer ITOL, IOPT, ITASK, open_vode_failure_file
+      integer ITOL, IOPT, ITASK, errCode, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)
+c      parameter (ITOL=2, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
       parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
@@ -784,12 +836,20 @@ c
       integer i, j, m, MF, ISTATE, lout
       character*(maxspnml) name
 
+      REAL_T rho, rhoInv, h_INIT, Y(maxspec), hmix_ck, Z(maxspec), ZP(maxspec), Yold(maxspec)
+
       integer nsubchem, nsub, node
       REAL_T dtloc, weight, TT1save
       REAL_T Ct(maxspec),Qt(maxreac), scale
 
-      REAL_T dY(maxspec), rhoYtemp(maxspec),rhoYres(maxspec),sum,zp(maxspec+1)
-      logical newJ_triggered, bad_soln
+      REAL_T dY(maxspec), rhoYtemp(maxspec),rhoYres(maxspec),sum,HMIX_CGS
+
+C     Needed to compute T from h
+      REAL_T HtoTerrMAX
+      integer HtoTiterMAX, Niter
+      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
+      parameter (HtoTiterMAX = 20)
+      REAL_T res(0:HtoTiterMAX-1)
 
 c     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
@@ -817,20 +877,16 @@ c     finite difference jacobian
 
 c     Set up ATOL
       if (ITOL.eq.2) then
-         ATOL(1) = spec_scalT*ATOLEPS
+         ATOL(Nspec+1) = typVal_RhoH*ATOLEPS
          do m=1,Nspec
-            ATOL(m+1) = ATOLEPS*spec_scalY(m)
+            ATOL(m) = ATOLEPS*typVal_Y(m)*typVal_Density
          end do
       else
          ATOL(1) = ATOLEPS
       end if
-               
+
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
-
-           call set_c_0_simple_sdc(const_src(i,j,1))
-
-           if(j.ge.0)then
 
             TT1 = zero
             if (do_diag.eq.1) then
@@ -842,60 +898,28 @@ c     Set up ATOL
             endif
             ISTATE = 1
 
-#ifdef SOLN_IS_1D
-            if (i.ne.lo(1))then
-               do m=1,Nspec
-                  rhoYnew(i,j,m) = rhoYnew(lo(1),j,m)
-               end do
-               rhohnew(i,j) = rhohnew(lo(1),j)
-            else
-#endif
+            Z(1:Nspec) = rhoYold(i,j,1:Nspec)
+            rhoY_INIT(1:Nspec) = Z(1:Nspec)
 
-            RWRK(NZ) = rhohold(i,j)
+            i_cell = i
+            j_cell = j
+            T_cell = Told(i,j)
 
-#ifdef DO_JBB_HACK
-            sum = zero
-            do m=1,Nspec
-               rhoYtemp(m) = rhoYold(i,j,m)
-               rhoYtemp(m) = MAX(rhoYold(i,j,m),zero)
-               sum = sum+rhoYtemp(m)
-            end do
-            if (iN2 .gt. 0) then
-               rhoYtemp(iN2) = rhoYtemp(iN2)+one-sum
-            endif
-#else
-            do m=1,Nspec
-               rhoYtemp(m) = rhoYold(i,j,m)
-            end do
-#endif
-            do m=1,Nspec
-               RWRK(NZ+m) = rhoYtemp(m)
-            end do
+            rhoH_INIT = rhoHold(i,j)
+            Z(Nspec+1) = rhoH_INIT
+            c_0(1:Nspec+1) = const_src(i,j,1:Nspec+1)
 
-#ifdef TRIGGER_NEW_J
-            newJ_triggered = .FALSE.
-            sum = zero
-            do m=1,NEQ
-               scale = spec_scalT
-               if (m.ne.1) scale = spec_scalY(m-1)
-               sum = sum + ABS(RWRK(NZ+m-1)-YJ_SAVE(m))/scale
-            end do
-            if (sum .gt. NEWJ_TOL) then
-               FIRST = .TRUE.
-               newJ_triggered = .TRUE.
-            endif
-#endif
-            
-#ifdef ALWAYS_NEW_J
+c     Reset FIRST to .TRUE. to force new Jacobian on each cell
             FIRST = .TRUE.
-#endif
-            if (do_diag.eq.1) then
-               FuncCount(i,j) = 0
-               CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
-               CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
-               do m=1,Nreac
-                  diag(i,j,m) = diag(i,j,m)+half*dtloc*Qt(m)*million
-               enddo
+            FuncCount(i,j) = 0
+
+
+            if (i.eq.26 .and. j.eq.6) then
+               idbg = 1
+               print *,'before',Z(1:Nspec+1)
+               print *,'c_0',c_0(1:Nspec+1)
+            else
+               idbg = 0
             endif
 
             do node = 1,nsub
@@ -907,131 +931,105 @@ c     Set up ATOL
 
                TT1save = TT1
                TT2 = TT1 + dtloc
-
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
-               CALL SVODE
-#else
-               CALL DVODE
-#endif
-     &              (conpFY_sdc, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
-     &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &              dvi, CONPJ_FILE, MF, RWRK, IWRK)
-c
-c   If the step was bad, and we reused an old Jacobian, try again from scratch.
-c               
-#if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
-               if (newJ_triggered .EQV. .FALSE.) then
-                  bad_soln = .FALSE.
-                  do m=1,Nspec
-                     if (RWRK(NZ+m) .lt. -1.D-6*spec_scalY(m))
-     &                    bad_soln = .TRUE.             
-                  end do
-                  if (bad_soln .EQV. .TRUE.) then
-                     TT1 = TT1SAVE
-                     FIRST = .TRUE.
-                     RWRK(NZ) = rhohold(i,j)
-                     do m=1,Nspec
-                        RWRK(NZ+m) = rhoYtemp(m)
-                     end do
-
-                     ISTATE = 1
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
-                     CALL SVODE
-#else 
-                     CALL DVODE
-#endif
-     &                    (conpFY_sdc, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
-     &                    ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &                    dvi, CONPJ_FILE, MF, RWRK, IWRK)
-                  endif
-               endif
-#endif
-               TT1 = TT2
-
-               if (do_diag.eq.1) then
-                  CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
-                  CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
-                  do m=1,Nreac
-                     diag(i,j,m) = diag(i,j,m)+weight*dtloc*Qt(m)*million
-                  enddo
-                  FuncCount(i,j) = FuncCount(i,j) + IWRK(dvbi+11)
-               else
-                  FuncCount(i,j) = IWRK(dvbi+11)
-               endif
-
-               if (verbose_vode .eq. 1) then
-                  write(6,*) '......dvode done:'
-                  write(6,*) ' last successful step size = ',RWRK(dvbr+10)
-                  write(6,*) '          next step to try = ',RWRK(dvbr+11)
-                  write(6,*) '   integrated time reached = ',RWRK(dvbr+12)
-                  write(6,*) '      number of time steps = ',IWRK(dvbi+10)
-                  write(6,*) '              number of fs = ',IWRK(dvbi+11)
-                  write(6,*) '              number of Js = ',IWRK(dvbi+12)
-                  write(6,*) '    method order last used = ',IWRK(dvbi+13)
-                  write(6,*) '   method order to be used = ',IWRK(dvbi+14)
-                  write(6,*) '            number of LUDs = ',IWRK(dvbi+18)
-                  write(6,*) ' number of Newton iterations ',IWRK(dvbi+19)
-                  write(6,*) ' number of Newton failures = ',IWRK(dvbi+20)
-                  if (ISTATE.eq.-4 .or. ISTATE.eq.-5) then
-                     call get_spec_name(name,IWRK(dvbi+15))
-                     write(6,*) '   spec with largest error = ', name
-                  end if
-               end if
                
+c     Suggest strongly that VODE do it in one step
+c               RWRK(dvbr+4) = TT2 - TT1
+
+               call DSVODE
+     &              (conpFY_sdc, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
+     &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
+     &              dvi, CONPJ_FILE, MF, RWRK, IWRK, errCode)
+
                if (ISTATE .LE. -1) then
-                  call CONPF_FILE(NEQ, TT1, RWRK(NZ), zp, RWRK, IWRK)
+                  call conpFY_sdc(NEQ, TT1, Z, ZP, RWRK, IWRK, errCode)
                   lout = open_vode_failure_file()
                   write(lout,*)
                   write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
      &                 '),   Return code = ',ISTATE
                   write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-                  write(lout,995)
-     &                 'State ID,old,last,d(rhoh)/dt,d(rhoh)/dt*(dt)'
-                  write(lout,996) 'rhoh            ',
-     &                 rhohold(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
+                  write(lout,995)'State ID, RY,RYp, dRH/dt, dRH/dt*(dt)'
+                  name = 'RhoH'
+                  write(lout,996) name,
+     &                 RhoHold(i,j),Z(Nspec+1),ZP(Nspec+1),ZP(Nspec+1)*(dt-TT1)
                   do m=1,Nspec
                      call get_spec_name(name,m)
-                     write(lout,996) name,rhoYold(i,j,m),
-     &                    RWRK(NZ+m),zp(1+m),zp(1+m)*(dt-TT1)
+                     write(lout,996) name,RhoYold(i,j,m),
+     &                    Z(m),ZP(m),ZP(m)*(dt-TT1)
                   end do
+                  write(lout,996) 'T_cell:',T_cell
+                  sum = 0.d0
+                  do m=1,Nspec
+                     sum = sum + Z(m)
+                  enddo
+                  do m=1,Nspec
+                     Y(m) = Z(m)/sum
+                  enddo
+                  sum = 0.d0
+                  do m=1,Nspec
+                     sum = sum + RhoYold(i,j,m)
+                  enddo
+                  do m=1,Nspec
+                     Yold(m) = RhoYold(i,j,m)/sum
+                  enddo
+
+                  write(lout,996)'Mass fracs: old, curr'
+                  do m=1,Nspec
+                     Y(m) = Z(m)/sum
+                     call get_spec_name(name,m)
+                     write(lout,996) name,Yold(m),Y(m)
+                  enddo
+
 995               format(a,3(i4,a))
-996               format(a16,1x,4e30.22)
+996               format(a,1x,4e30.22)
                   close(lout)
                   call bl_abort('VODE failed, see drop file, exiting...')
                end if
+
+               TT1 = TT2
+               FuncCount(i,j) = FuncCount(i,j) + IWRK(dvbi+11)
+
             enddo
-
-            rhohnew(i,j) = RWRK(NZ)
-
+            
+            rhoHnew(i,j) = Z(Nspec+1)
+            Tnew(i,j) = T_cell
+            rho  = 0.d0
             do m= 1,Nspec
-               rhoYres(m) = RWRK(NZ+m)
+               rhoYnew(i,j,m) = Z(m)
+               rho = rho + rhoYnew(i,j,m)
             end do
-
-#ifdef DO_JBB_HACK
+            rhoInv = 1.d0 / rho
             do m=1,Nspec
-               rhoYnew(i,j,m) = rhoYold(i,j,m)+rhoYres(m)-rhoYtemp(m)
-            end do
-#else
+               Y(m) = rhoYnew(i,j,m) * rhoInv
+            enddo
+            T_cell = Tnew(i,j)
+            call FORT_TfromHYpt(Tnew(i,j),rhoHnew(i,j)*rhoInv,Y,HtoTerrMAX,HtoTiterMAX,res,Niter,errCode)
+
+            if (i.eq.26 .and. j.eq.6) then
+               print *,'after',Z(1:Nspec+1)
+            endif
+
+            if (errCode.lt.0) then
+               print *,'FORT_CONPSOLV_SDC: H to T solve failed'
+               print *,'  at cell:',i_cell,j_cell
+               print *,'errCode=',errCode
+               print *,'Niter=',Niter
+               print *,'rhoInv',rhoInv
+               print *,'rhoHnew',rhoHnew(i,j)
+               print *,'initial T',T_cell
+               print *,'current T',Tnew(i,j)
+               print *,'current Y',Y(1:Nspec)
+               
+               CALL CKHBMS(T_cell,Y,IWRK(ckbi),RWRK(ckbr),HMIX_CGS)
+               print*,'hmix at current state:',HMIX_CGS*1.d-4
+               
+               stop
+            endif
+
             do m=1,Nspec
-               rhoYnew(i,j,m) = rhoYres(m)
-            end do
-#endif
-
-c     compute I_R
-c     I_R for rhoh should be zero
-            I_R(i,j,1) = ( rhohnew(i,j) - rhohold(i,j) ) /dt - c_0(1)
-
-c     I_R for rhoY
-            do m=1,Nspec
-               I_R(i,j,m+1) = (rhoYnew(i,j,m) - rhoYold(i,j,m)) / dt 
-     &              - c_0(m+1)
+               I_R(i,j,m) = (rhoYnew(i,j,m) - rhoYold(i,j,m))/dt - c_0(m)
             end do
 
-#ifdef SOLN_IS_1D
-         endif
-#endif
-      endif
-      end do
+         end do
       end do
       end
 
@@ -1052,7 +1050,7 @@ c     I_R for rhoY
 
       integer i, j, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec), CPMS(maxspec)
-      REAL_T RHO, SCAL, TSCAL, Tt, Wavg, invmwt(maxspec), X(maxspec)
+      REAL_T RHO, SCAL, TSCAL, Tt, Wavg, X(maxspec)
       REAL_T alpha, l1, l2
 
 #ifdef BL_USE_OMP
@@ -1066,11 +1064,6 @@ c     I_R for rhoY
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
-      call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
-
-      do n=1,Nspec
-         invmwt(n) = one / invmwt(n)
-      end do
 
 !$omp parallel private(egrlen,egilen,nthrds)
 
@@ -1115,9 +1108,16 @@ c     I_R for rhoY
 #endif
          do i=lo(1),hi(1)
 
+            RHO = 0.d0
             do n=1,Nspec
-               Yt(n) = Y(i,j,n)
+               RHO = RHO + Y(i,j,n)
             end do
+
+            do n=1,Nspec
+               Yt(n) = Y(i,j,n) / RHO
+            end do
+
+            RHO = RHO*1.d-3
 
             Tt = MAX(T(i,j),TMIN_TRANS) 
             CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
@@ -1125,7 +1125,6 @@ c     I_R for rhoY
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
             CALL EGSPAR(Tt,X,Yt,CPMS,EGSRWK,EGSIWK)
             CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGSRWK,Dt)
-            CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
 
             do n=1,Nspec
                RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
