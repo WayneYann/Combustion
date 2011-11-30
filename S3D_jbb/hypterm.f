@@ -108,15 +108,15 @@ c     outputs: flux
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
 
-      unp1 = cons(i,j+1,k,imx)/cons(i,j+1,k,irho)
-      unp2 = cons(i,j+2,k,imx)/cons(i,j+2,k,irho)
-      unp3 = cons(i,j+3,k,imx)/cons(i,j+3,k,irho)
-      unp4 = cons(i,j+4,k,imx)/cons(i,j+4,k,irho)
+      unp1 = cons(i,j+1,k,imy)/cons(i,j+1,k,irho)
+      unp2 = cons(i,j+2,k,imy)/cons(i,j+2,k,irho)
+      unp3 = cons(i,j+3,k,imy)/cons(i,j+3,k,irho)
+      unp4 = cons(i,j+4,k,imy)/cons(i,j+4,k,irho)
 
-      unm1 = cons(i,j-1,k,imx)/cons(i,j-1,k,irho)
-      unm2 = cons(i,j-2,k,imx)/cons(i,j-2,k,irho)
-      unm3 = cons(i,j-3,k,imx)/cons(i,j-3,k,irho)
-      unm4 = cons(i,j-4,k,imx)/cons(i,j-4,k,irho)
+      unm1 = cons(i,j-1,k,imy)/cons(i,j-1,k,irho)
+      unm2 = cons(i,j-2,k,imy)/cons(i,j-2,k,irho)
+      unm3 = cons(i,j-3,k,imy)/cons(i,j-3,k,irho)
+      unm4 = cons(i,j-4,k,imy)/cons(i,j-4,k,irho)
 
       flux(i,j,k,irho)=flux(i,j,k,irho) -
      1   (alp*(cons(i,j+1,k,imy)-cons(i,j-1,k,imy))
@@ -176,21 +176,21 @@ c     outputs: flux
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
 
-      unp1 = cons(i,j,k+1,imx)/cons(i,j,k+1,irho)
-      unp2 = cons(i,j,k+2,imx)/cons(i,j,k+2,irho)
-      unp3 = cons(i,j,k+3,imx)/cons(i,j,k+3,irho)
-      unp4 = cons(i,j,k+4,imx)/cons(i,j,k+4,irho)
+      unp1 = cons(i,j,k+1,imz)/cons(i,j,k+1,irho)
+      unp2 = cons(i,j,k+2,imz)/cons(i,j,k+2,irho)
+      unp3 = cons(i,j,k+3,imz)/cons(i,j,k+3,irho)
+      unp4 = cons(i,j,k+4,imz)/cons(i,j,k+4,irho)
 
-      unm1 = cons(i,j,k-1,imx)/cons(i,j,k-1,irho)
-      unm2 = cons(i,j,k-2,imx)/cons(i,j,k-2,irho)
-      unm3 = cons(i,j,k-3,imx)/cons(i,j,k-3,irho)
-      unm4 = cons(i,j,k-4,imx)/cons(i,j,k-4,irho)
+      unm1 = cons(i,j,k-1,imz)/cons(i,j,k-1,irho)
+      unm2 = cons(i,j,k-2,imz)/cons(i,j,k-2,irho)
+      unm3 = cons(i,j,k-3,imz)/cons(i,j,k-3,irho)
+      unm4 = cons(i,j,k-4,imz)/cons(i,j,k-4,irho)
 
       flux(i,j,k,irho)=flux(i,j,k,irho) -
-     1   (alp*(cons(i,j,k+1,imy)-cons(i,j,k-1,imy))
-     1  + bet*(cons(i,j,k+2,imy)-cons(i,j,k-2,imy))
-     1  + gam*(cons(i,j,k+3,imy)-cons(i,j,k-3,imy))
-     1  + del*(cons(i,j,k+4,imy)-cons(i,j,k-4,imy)))/dx(3)
+     1   (alp*(cons(i,j,k+1,imz)-cons(i,j,k-1,imz))
+     1  + bet*(cons(i,j,k+2,imz)-cons(i,j,k-2,imz))
+     1  + gam*(cons(i,j,k+3,imz)-cons(i,j,k-3,imz))
+     1  + del*(cons(i,j,k+4,imz)-cons(i,j,k-4,imz)))/dx(3)
 
       flux(i,j,k,imx)=flux(i,j,k,imx) -
      1   (alp*(cons(i,j,k+1,imx)*unp1-cons(i,j,k-1,imx)*unm1)
@@ -243,7 +243,7 @@ c     outputs: flux
       return
       end
 
-      subroutine init(lo,hi,ng,nspec,cons,pres)
+      subroutine init(lo,hi,ng,dx,nspec,cons,pres)
 
       use constants
 
@@ -254,19 +254,59 @@ c     outputs: cons,pres
 
       integer lo(3),hi(3),ng,nspec
 
+      double precision dx(3)
+
       double precision pres(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
      1             -ng+lo(3):hi(3)+ng)
       double precision cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
      1             -ng+lo(3):hi(3)+ng,nspec+5)
 
-      pres = 1.23d0
+      double precision xloc,yloc,zloc,rholoc,ploc
+      double precision uvel,vvel,wvel
+      double precision scale
 
-      cons(:,:,:,irho       ) = 1d0
-      cons(:,:,:,imx        ) = 1d-1
-      cons(:,:,:,imy        ) = 2d-1
-      cons(:,:,:,imz        ) = 3d-1
-      cons(:,:,:,iene       ) = 1d0
-      cons(:,:,:,isp:nspec+5) = 1d0
+      integer i,j,k
+
+      scale = .02d0
+      cons(:,:,:,isp:nspec+5) = 0d0
+
+      do k=lo(3)-ng,hi(3)+ng
+        zloc = dfloat(k)*dx(3)
+        do j=lo(2)-ng,hi(2)+ng
+          yloc = dfloat(j)*dx(2)
+            do i=lo(1)-ng,hi(1)+ng
+              xloc = dfloat(i)*dx(1)
+
+              uvel = sin(xloc/scale)*sin(2.d0*yloc/scale)*
+     1                 sin(3.d0*zloc/scale)
+              vvel = sin(2.d0*xloc/scale)*sin(4.d0*yloc/scale)
+     1                *sin(1.d0*zloc/scale)
+              wvel = sin(3.d0*xloc/scale)*cos(2.d0*yloc/scale)
+     1                *sin(2.d0*zloc/scale)
+              rholoc = 1.d-3+1.d-5* sin(xloc/scale)*
+     1                cos(2.d0*yloc/scale)*cos(3.d0*zloc/scale)
+              ploc = 1.d6+ .001*sin(2.d0*xloc/scale)*
+     1                cos(2.d0*yloc/scale)*sin(2.d0*zloc/scale)
+
+              cons(i,j,k,irho) = rholoc
+              cons(i,j,k,imx) = rholoc*uvel
+              cons(i,j,k,imy) = rholoc*vvel
+              cons(i,j,k,imz) = rholoc*wvel
+              cons(i,j,k,iene) = ploc/0.4d0+
+     1                rholoc*(uvel**2+vvel**2+wvel**2)/2.d0
+              
+
+              pres(i,j,k) = ploc
+
+              cons(i,j,k,isp) = .2 + 0.1d0*uvel
+              cons(i,j,k,isp+1) = .2 + 0.05d0*vvel
+              cons(i,j,k,isp+2) = .2 + 0.03d0*wvel
+              cons(i,j,k,isp+3) = 1.d0-cons(i,j,k,isp)
+     1                -cons(i,j,k,isp+1)-cons(i,j,k,isp+2)
+
+          enddo
+        enddo
+      enddo
 
       end
 
@@ -282,6 +322,9 @@ c     outputs: cons,pres
 
       double precision, parameter :: dx(3) = (/ 1d-3, 1d-3, 1d-3 /)
 
+      double precision, allocatable :: fluxmag(:)
+      integer i,j,k,ns
+
       double precision, allocatable :: pres(:,:,:)
       double precision, allocatable :: cons(:,:,:,:)
       double precision, allocatable :: flux(:,:,:,:)
@@ -294,8 +337,28 @@ c     outputs: cons,pres
 
       allocate(flux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),nspec+5))
 
-      call init(lo,hi,ng,nspec,cons,pres)
+      allocate(fluxmag(nspec+5))
+
+      call init(lo,hi,ng,dx,nspec,cons,pres)
 
       call hypterm(lo,hi,ng,nspec,dx,cons,pres,flux)
+
+      fluxmag = 0.d0
+
+      do k=lo(3),hi(3)
+        do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+            do ns = 1,nspec+5
+              fluxmag(ns) = fluxmag(ns)+flux(i,j,k,ns)**2
+            enddo
+          enddo
+        enddo
+      enddo
+
+      do ns = 1,nspec+5
+
+        write(6,*)"component, fluxmag",ns,fluxmag(ns)
+
+      enddo
  
       end program main
