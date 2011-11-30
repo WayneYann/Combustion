@@ -1,12 +1,13 @@
-This code is a simple stencil based test code for computing the hyperbolic advance component of an S3D advance.
+This code is a simple stencil based test code for computing the hyperbolic advance component
+of an S3D advance.
 
 It contains a driver, an initialization routine and a subroutine hypterm.f
 
 hypterm.f is the relevant piece.
 
-at the end it computes that sum of hte squares of the components
+At the end it computes that sum of the squares of the components.
 
-The answer should be:
+The answer should be (to some reasonable precision) :
 
  component, fluxmag           1   232.449442195682     
  component, fluxmag           2   78.9403947583534     
