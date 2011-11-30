@@ -1,32 +1,41 @@
+      module constants
+
+      double precision, parameter :: alp = .8d0
+      double precision, parameter :: bet = -.2d0
+      double precision, parameter :: gam = 4.d0/105.d0
+      double precision, parameter :: del = -1.d0/280.d0
+
+      integer, parameter :: irho = 1
+      integer, parameter :: imx  = 2
+      integer, parameter :: imy  = 3
+      integer, parameter :: imz  = 4
+      integer, parameter :: iene = 5
+      integer, parameter :: isp  = 6
+
+      end module constants
+
       subroutine hypterm(lo,hi,ng,nspec,dx,cons,pres,flux)
+
+      use constants
 
       implicit none
 
-      real*8 alp,bet,gam,del
-
-      parameter (alp = .8d0, bet=-.2d0, gam=4.d0/105.d0, 
-     1           del=-1.d0/280.d0)
-
-      integer irho,imx,imy,imz,iene,isp
-
-      parameter (irho=1, imx=2, imy=3, imz=4, iene=5, isp=6)
-
-c     inputs  lo,hi,ng,nspec,cons,pres
-c     outputs flux
+c     inputs:  lo,hi,ng,nspec,cons,pres
+c     outputs: flux
 
       integer lo(3),hi(3),ng,nspec
 
-      real*8 dx(3)
+      double precision dx(3)
 
-      real*8 pres(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
+      double precision pres(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
      1             -ng+lo(3):hi(3)+ng)
-      real*8 cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
+      double precision cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
      1             -ng+lo(3):hi(3)+ng,nspec+5)
-      real*8 flux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),nspec+5)
+      double precision flux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),nspec+5)
 
       integer i,j,k,nsp
 
-      real*8 unp1,unp2,unp3,unp4,unm1,unm2,unm3,unm4
+      double precision unp1,unp2,unp3,unp4,unm1,unm2,unm3,unm4
 
       do k=lo(3),hi(3)
       do j=lo(2),hi(2)
@@ -233,3 +242,60 @@ c     outputs flux
 
       return
       end
+
+      subroutine init(lo,hi,ng,nspec,cons,pres)
+
+      use constants
+
+      implicit none
+
+c     inputs:  lo,hi,ng,nspec
+c     outputs: cons,pres
+
+      integer lo(3),hi(3),ng,nspec
+
+      double precision pres(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
+     1             -ng+lo(3):hi(3)+ng)
+      double precision cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
+     1             -ng+lo(3):hi(3)+ng,nspec+5)
+
+      pres = 1.23d0
+
+      cons(:,:,:,irho       ) = 1d0
+      cons(:,:,:,imx        ) = 1d-1
+      cons(:,:,:,imy        ) = 2d-1
+      cons(:,:,:,imz        ) = 3d-1
+      cons(:,:,:,iene       ) = 1d0
+      cons(:,:,:,isp:nspec+5) = 1d0
+
+      end
+
+      program main
+
+      implicit none
+
+      integer, parameter :: ng    = 4
+      integer, parameter :: nspec = 9
+
+      integer, parameter :: lo(3) = (/  1,  1,  1 /)
+      integer, parameter :: hi(3) = (/ 32, 32, 32 /)
+
+      double precision, parameter :: dx(3) = (/ 1d-3, 1d-3, 1d-3 /)
+
+      double precision, allocatable :: pres(:,:,:)
+      double precision, allocatable :: cons(:,:,:,:)
+      double precision, allocatable :: flux(:,:,:,:)
+
+      allocate(pres(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
+     1             -ng+lo(3):hi(3)+ng))
+
+      allocate(cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
+     1             -ng+lo(3):hi(3)+ng,nspec+5))
+
+      allocate(flux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),nspec+5))
+
+      call init(lo,hi,ng,nspec,cons,pres)
+
+      call hypterm(lo,hi,ng,nspec,dx,cons,pres,flux)
+ 
+      end program main
