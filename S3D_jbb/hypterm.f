@@ -323,12 +323,13 @@ c     outputs: cons,pres
 
       double precision, parameter :: dx(3) = (/ 1d-3, 1d-3, 1d-3 /)
 
-      double precision, allocatable :: fluxmag(:)
-      integer i,j,k,ns
-
       double precision, allocatable :: pres(:,:,:)
       double precision, allocatable :: cons(:,:,:,:)
       double precision, allocatable :: flux(:,:,:,:)
+
+      double precision :: fluxmag(nspec+5)
+
+      integer i,j,k,ns
 
       allocate(pres(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,
      1             -ng+lo(3):hi(3)+ng))
@@ -337,8 +338,6 @@ c     outputs: cons,pres
      1             -ng+lo(3):hi(3)+ng,nspec+5))
 
       allocate(flux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),nspec+5))
-
-      allocate(fluxmag(nspec+5))
 
       call init(lo,hi,ng,dx,nspec,cons,pres)
 
