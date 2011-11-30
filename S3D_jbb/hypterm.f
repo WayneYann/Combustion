@@ -268,6 +268,7 @@ c     outputs: cons,pres
       integer i,j,k
 
       scale = .02d0
+
       cons(:,:,:,isp:nspec+5) = 0d0
 
       do k=lo(3)-ng,hi(3)+ng
@@ -298,9 +299,9 @@ c     outputs: cons,pres
 
               pres(i,j,k) = ploc
 
-              cons(i,j,k,isp) = .2 + 0.1d0*uvel
-              cons(i,j,k,isp+1) = .2 + 0.05d0*vvel
-              cons(i,j,k,isp+2) = .2 + 0.03d0*wvel
+              cons(i,j,k,isp) = .2d0 + 0.1d0*uvel
+              cons(i,j,k,isp+1) = .2d0 + 0.05d0*vvel
+              cons(i,j,k,isp+2) = .2d0 + 0.03d0*wvel
               cons(i,j,k,isp+3) = 1.d0-cons(i,j,k,isp)
      1                -cons(i,j,k,isp+1)-cons(i,j,k,isp+2)
 
@@ -345,20 +346,18 @@ c     outputs: cons,pres
 
       fluxmag = 0.d0
 
-      do k=lo(3),hi(3)
-        do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-            do ns = 1,nspec+5
-              fluxmag(ns) = fluxmag(ns)+flux(i,j,k,ns)**2
+      do ns = 1,nspec+5
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  fluxmag(ns) = fluxmag(ns)+flux(i,j,k,ns)**2
+               enddo
             enddo
-          enddo
-        enddo
+         enddo
       enddo
 
       do ns = 1,nspec+5
-
         write(6,*)"component, fluxmag",ns,fluxmag(ns)
-
       enddo
  
       end program main
