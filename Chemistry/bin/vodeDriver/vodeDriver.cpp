@@ -1,21 +1,37 @@
 #include <iostream>
 #include <fstream>
-using std::cout;
-using std::endl;
-using std::string;
 
 #include "Utility.H"
 #include "ParallelDescriptor.H"
 #include "ChemDriver.H"
 #include "ParmParse.H"
 
-bool verbose_DEF=true;
+static Real Patm_DEF    = 1;
+static Real dt_DEF      = 1.e-5;
+static bool verbose_DEF = true;
+
+static
+void 
+print_usage (int,
+             char* argv[])
+{
+   std::cerr << "usage:\n";
+   std::cerr << argv[0] << " pmf_file=<input fab file name> [options] \n";
+   std::cerr << "\tOptions:       Patm = <pressure, in atmospheres>              [DEFAULT = " << Patm_DEF << "]\n";
+   std::cerr << "\t                 dt = <time interval, in seconds>             [DEFAULT = " << dt_DEF << "]\n";
+   std::cerr << "\t        fabfile_out = <output fab file name, null->no output> [DEFAULT = \"\"""]\n";
+   std::cerr << "\t            verbose = <0,1>                                   [DEFAULT = " << verbose_DEF << "]\n";
+   exit(1);
+}
+
 
 int
 main (int   argc,
       char* argv[])
 {
     BoxLib::Initialize(argc,argv);
+
+    if (argc<2) print_usage(argc,argv);
     
     // Parse command line
     ParmParse pp;
@@ -25,10 +41,7 @@ main (int   argc,
     if (verbose)
         cd.set_verbose_vode();
 
-    const Array<std::string>& names = cd.speciesNames();
-    Array<Real> mwt = cd.speciesMolecWt();
-    const int nSpec = cd.numSpecies();
-
+    // Read fab containing pmf solution
     std::string pmf_file=""; pp.get("pmf_file",pmf_file);
     std::ifstream is;
     is.open(pmf_file.c_str());
@@ -36,37 +49,37 @@ main (int   argc,
     ostate.readFrom(is);
     is.close();
 
+    // Simple check to see if number of species is same between compiled mech and fab file
     const Box& box = ostate.box();
+    const int nSpec = cd.numSpecies();
     const int nComp = nSpec + 4;
     if (nComp != ostate.nComp()) {
-      cout << "pmf file is not compatible with the mechanism compiled into this code" << endl;
+      std::cout << "pmf file is not compatible with the mechanism compiled into this code" << '\n';
       BoxLib::Abort();
     }
     FArrayBox nstate(box,nComp);
 
-    const int sCompY = 4;
-    const int sCompT = 1;
+    const int sCompY = 4; // An assumption...
+    const int sCompT = 1; // Another assumption...
     FArrayBox funcCnt(box,1);
 
-    Real Patm = 1.0; pp.query("Patm",Patm);
-    Real dt = 1.0e-5; pp.query("dt",dt);
+    Real Patm = Patm_DEF; pp.query("Patm",Patm);
+    Real dt = dt_DEF; pp.query("dt",dt);
 
     funcCnt.setVal(0);
     cd.solveTransient(nstate,nstate,ostate,ostate,funcCnt,
                       box,sCompY,sCompT,dt,Patm);
 
-    cout << " ... total function evals: " << funcCnt.norm(1) << endl;
-    cout << " ... max evals at a point: " << funcCnt.norm(0) << endl;
+    std::cout << " ... total function evals: " << funcCnt.norm(1) << '\n';
+    std::cout << " ... max evals at a point: " << funcCnt.norm(0) << '\n';
 
-    std::string write=""; pp.query("write",write);
-    if (write != "") {
+    std::string fabfile_out=""; pp.query("fabfile_out",fabfile_out);
+    if (fabfile_out != "") {
       std::ofstream os;
-      os.open(write.c_str());
+      os.open(fabfile_out.c_str());
       nstate.writeOn(os);
       os.close();
     }
     
     BoxLib::Finalize();
 }
-
-    

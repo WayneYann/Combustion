@@ -18,28 +18,18 @@ INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
 
 ifeq (${CHEMISTRY_MODEL}, DRM19)
-  CEXE_sources += drm19.cpp
+  CHEM_MECHFILE = drm19.cpp
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/gri/PMFs
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/gri
 endif
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
-  CEXE_sources += chem-H.cpp
+  CHEM_MECHFILE = chem-H.cpp
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/chem-H/PMFs
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/chem-H
 endif
 
-ifeq ($(USE_BGL),TRUE)
-  MACHINE=BGL
-  CXX=mpicxx.ibm
-  FC=blrts_xlf
-  fC=blrts_xlf
-  CPPFLAGS+= -DMPICH_SKIP_MPICXX
-  LDFLAGS+=-L/bgl/BlueLight/ppcfloor/bglsys/lib
-  LDFLAGS+=-L/opt/ibmcmp/xlf/bg/10.1/blrts_lib
-  BL_MPI_LIBS=-lxlf90 -lxlfmath
-  FORTLINK:=LOWERCASE
-endif
- 
+CEXE_sources += $(CHEM_MECHFILE)
+
 vpath %.c   $(VPATH_LOCATIONS)
 vpath %.cpp $(VPATH_LOCATIONS)
 vpath %.h   $(VPATH_LOCATIONS)
