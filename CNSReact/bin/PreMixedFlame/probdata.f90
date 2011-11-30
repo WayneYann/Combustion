@@ -12,13 +12,12 @@ module probdata_module
       integer         , save :: max_temperr_lev, max_tempgrad_lev
       integer         , save :: max_raderr_lev, max_radgrad_lev
 
-!     Sod variables
-      double precision, save ::  p_l, u_l, rho_l, p_r, u_r, rho_r, rhoe_l, rhoe_r, frac
+      double precision, save :: zstandoff,pertmag
+      double precision, save :: pAmb
 
 !     These help specify which specific problem
       integer        , save ::  probtype,idir
 
-      double precision, save ::  center(3)
 
       
 end module probdata_module

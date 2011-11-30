@@ -9,5 +9,7 @@ module prob_params_module
   integer         , save, allocatable :: physbc_hi(:)
   integer         , save :: Outflow, Symmetry
   integer         , save :: coord_type
+  double precision         , save, allocatable :: phys_prob_lo(:)
+  double precision         , save, allocatable :: phys_prob_hi(:)
 
 end module prob_params_module

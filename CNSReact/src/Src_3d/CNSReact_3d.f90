@@ -101,11 +101,10 @@
       subroutine ca_compute_temp(lo,hi,state,state_l1,state_l2,state_l3, &
                                  state_h1,state_h2,state_h3)
 
-      use cdwrk_module, only : nspec
-      use network, only : naux
+      use cdwrk_module, only : Nspec
       use eos_module
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEINT, UTEMP, &
-                                     UFS, UFX, small_temp, allow_negative_energy
+                                     UFS, small_temp, allow_negative_energy
 
       implicit none
       integer         , intent(in   ) :: lo(3),hi(3)
@@ -115,7 +114,7 @@
                                                state_l3:state_h3,NVAR)
 
       integer          :: i,j,k
-      double precision :: rhoInv,eint,xn(nspec+naux)
+      double precision :: rhoInv,eint,xn(Nspec)
       double precision :: dummy_gam,dummy_pres,dummy_c,dummy_dpdr,dummy_dpde
       integer          :: pt_index(3)
 
@@ -156,16 +155,14 @@
 
          rhoInv = 1.d0 / state(i,j,k,URHO)
 
-         xn(1:nspec)  = state(i,j,k,UFS:UFS+nspec-1) * rhoInv
-         if (naux > 0) &
-           xn(nspec+1:nspec+naux) = state(i,j,k,UFX:UFX+naux -1) * rhoInv
+         xn(1:Nspec)  = state(i,j,k,UFS:UFS+Nspec-1) * rhoInv
 
          eint = state(i,j,k,UEINT) / state(i,j,k,URHO)
 
          pt_index(1) = i
          pt_index(2) = j
          pt_index(3) = k
-         call eos_given_ReX(dummy_gam, dummy_pres , dummy_c, state(i,j,k,UTEMP), &
+         call eos_given_ReY(dummy_gam, dummy_pres , dummy_c, state(i,j,k,UTEMP), &
                             dummy_dpdr, dummy_dpde, state(i,j,k,URHO), eint, xn, pt_index)
 
       enddo
@@ -179,76 +176,6 @@
 ! :: ----------------------------------------------------------
 ! ::
 
-      subroutine ca_compute_avgstate(lo,hi,dx,dr,nc,&
-                                     state,s_l1,s_l2,s_l3,s_h1,s_h2,s_h3,radial_state, &
-                                     vol,v_l1,v_l2,v_l3,v_h1,v_h2,v_h3,radial_vol, &
-                                     problo,numpts_1d)
-
-      use meth_params_module, only : URHO, UMX, UMY, UMZ
-      use probdata_module
-      implicit none
-
-      integer          :: lo(3),hi(3),nc
-      double precision :: dx(3),dr,problo(3)
-
-      integer          :: numpts_1d
-      double precision :: radial_state(nc,0:numpts_1d-1)
-      double precision :: radial_vol(0:numpts_1d-1)
-
-      integer          :: s_l1,s_l2,s_l3,s_h1,s_h2,s_h3
-      double precision :: state(s_l1:s_h1,s_l2:s_h2,s_l3:s_h3,nc)
-
-      integer          :: v_l1,v_l2,v_l3,v_h1,v_h2,v_h3
-      double precision :: vol(v_l1:v_h1,v_l2:v_h2,v_l3:v_h3)
-
-      integer          :: i,j,k,n,index
-      double precision :: x,y,z,r
-      double precision :: x_mom,y_mom,z_mom,radial_mom
-      !
-      ! Do not OMP this.
-      !
-      do k = lo(3), hi(3)
-         z = problo(3) + (dble(k)+0.50d0) * dx(3) - center(3)
-         do j = lo(2), hi(2)
-            y = problo(2) + (dble(j)+0.50d0) * dx(2) - center(2)
-            do i = lo(1), hi(1)
-               x = problo(1) + (dble(i)+0.50d0) * dx(1) - center(1)
-               r = sqrt(x**2 + y**2 + z**2)
-               index = int(r/dr)
-               if (index .gt. numpts_1d-1) then
-                   print *,'COMPUTE_AVGSTATE: INDEX TOO BIG ',index,' > ',numpts_1d-1
-                   print *,'AT (i,j,k) ',i,j,k
-                   print *,'R / DR ',r,dr
-                   call bl_error("Error:: CNSReact_3d.f90 :: ca_compute_avgstate")
-               end if
-               radial_state(URHO,index) = radial_state(URHO,index) &
-                    + vol(i,j,k)*state(i,j,k,URHO)
-               !
-               ! Store the radial component of the momentum in the 
-               ! UMX, UMY and UMZ components for now.
-               !
-               x_mom = state(i,j,k,UMX)
-               y_mom = state(i,j,k,UMY)
-               z_mom = state(i,j,k,UMZ)
-               radial_mom = x_mom * (x/r) + y_mom * (y/r) + z_mom * (z/r)
-               radial_state(UMX,index) = radial_state(UMX,index) + vol(i,j,k)*radial_mom
-               radial_state(UMY,index) = radial_state(UMY,index) + vol(i,j,k)*radial_mom
-               radial_state(UMZ,index) = radial_state(UMZ,index) + vol(i,j,k)*radial_mom
-
-               do n = UMZ+1,nc
-                  radial_state(n,index) = radial_state(n,index) + vol(i,j,k)*state(i,j,k,n)
-               end do
-               radial_vol(index) = radial_vol(index) + vol(i,j,k)
-            enddo
-         enddo
-      enddo
-
-      end subroutine ca_compute_avgstate
-
-! ::
-! :: ----------------------------------------------------------
-! ::
-
       subroutine normalize_species_fluxes(flux1,flux1_l1,flux1_l2,flux1_l3, &
                                           flux1_h1,flux1_h2,flux1_h3, &
                                           flux2,flux2_l1,flux2_l2,flux2_l3, &
@@ -257,7 +184,7 @@
                                           flux3_h1,flux3_h2,flux3_h3, &
                                           lo,hi)
 
-      use network, only : nspec
+      use cdwrk_module, only : Nspec
       use meth_params_module, only : NVAR, URHO, UFS
 
       implicit none
@@ -281,7 +208,7 @@
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)+1
                sum = 0.d0
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   sum = sum + flux1(i,j,k,n)
                end do
                if (sum .ne. 0.d0) then
@@ -289,7 +216,7 @@
                else
                   fac = 1.d0
                end if
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   flux1(i,j,k,n) = flux1(i,j,k,n) * fac
                end do
             end do
@@ -302,7 +229,7 @@
          do j = lo(2),hi(2)+1
             do i = lo(1),hi(1)
                sum = 0.d0
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   sum = sum + flux2(i,j,k,n)
                end do
                if (sum .ne. 0.d0) then
@@ -310,7 +237,7 @@
                else
                   fac = 1.d0
                end if
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   flux2(i,j,k,n) = flux2(i,j,k,n) * fac
                end do
             end do
@@ -323,7 +250,7 @@
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)
                sum = 0.d0
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   sum = sum + flux3(i,j,k,n)
                end do
                if (sum .ne. 0.d0) then
@@ -331,7 +258,7 @@
                else
                   fac = 1.d0
                end if
-               do n = UFS, UFS+nspec-1
+               do n = UFS, UFS+Nspec-1
                   flux3(i,j,k,n) = flux3(i,j,k,n) * fac
                end do
             end do
@@ -352,8 +279,8 @@
                                          uout_h1,uout_h2,uout_h3, &
                                          lo,hi,verbose)
 
-      use network, only : nspec, naux
-      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UFX, &
+      use cdwrk_module      , only : Nspec
+      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, &
                                      UFA, small_dens, nadv
 
       implicit none
@@ -432,10 +359,7 @@
                   uout(i,j,k,UMY  ) = uout(i,j,k,UMY  ) * fac(i,j,k)
                   uout(i,j,k,UMZ  ) = uout(i,j,k,UMZ  ) * fac(i,j,k)
    
-                  do n = UFS, UFS+nspec-1
-                     uout(i,j,k,n) = uout(i,j,k,n) * fac(i,j,k)
-                  end do
-                  do n = UFX, UFX+naux-1
+                  do n = UFS, UFS+Nspec-1
                      uout(i,j,k,n) = uout(i,j,k,n) * fac(i,j,k)
                   end do
                   do n = UFA, UFA+nadv-1
@@ -460,7 +384,7 @@
       subroutine ca_enforce_nonnegative_species(uout,uout_l1,uout_l2,uout_l3, &
                                                 uout_h1,uout_h2,uout_h3,lo,hi)
 
-      use network, only : nspec
+      use cdwrk_module, only : Nspec
       use meth_params_module, only : NVAR, URHO, UFS
 
       implicit none
@@ -486,7 +410,7 @@
          !
          ! First deal with tiny undershoots by just setting them to zero.
          !
-         do n = UFS, UFS+nspec-1
+         do n = UFS, UFS+Nspec-1
            if (uout(i,j,k,n) .lt. 0.d0) then
               x = uout(i,j,k,n)/uout(i,j,k,URHO)
               if (x .gt. eps) then
@@ -506,7 +430,7 @@
             int_dom_spec = UFS
             dom_spec     = uout(i,j,k,int_dom_spec)
 
-            do n = UFS,UFS+nspec-1
+            do n = UFS,UFS+Nspec-1
               if (uout(i,j,k,n) .gt. dom_spec) then
                 dom_spec     = uout(i,j,k,n)
                 int_dom_spec = n
@@ -515,7 +439,7 @@
            !
            ! Now take care of undershoots greater in magnitude than 1e-16.
            !
-           do n = UFS, UFS+nspec-1
+           do n = UFS, UFS+Nspec-1
 
               if (uout(i,j,k,n) .lt. 0.d0) then
 
@@ -567,7 +491,7 @@
 
       subroutine normalize_new_species(u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,lo,hi)
 
-      use network, only : nspec
+      use cdwrk_module, only : Nspec
       use meth_params_module, only : NVAR, URHO, UFS
 
       implicit none
@@ -585,7 +509,7 @@
       do j = lo(2),hi(2)
          do i = lo(1),hi(1)
             sum = 0.d0
-            do n = UFS, UFS+nspec-1
+            do n = UFS, UFS+Nspec-1
                sum = sum + u(i,j,k,n)
             end do
             if (sum .ne. 0.d0) then
@@ -593,7 +517,7 @@
             else
                fac = 1.d0
             end if
-            do n = UFS, UFS+nspec-1
+            do n = UFS, UFS+Nspec-1
                u(i,j,k,n) = u(i,j,k,n) * fac
             end do
          end do
@@ -610,9 +534,8 @@
       subroutine ca_reset_internal_energy(u,u_l1,u_l2,u_l3,u_h1,u_h2,u_h3,lo,hi,verbose)
 
       use eos_module
-      use cdwrk_module, only : nspec
-      use network, only : naux
-      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UFX, &
+      use cdwrk_module, only : Nspec
+      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, &
                                      small_temp, allow_negative_energy
 
       implicit none
@@ -624,7 +547,7 @@
       ! Local variables
       integer          :: i,j,k
       integer          :: pt_index(3)
-      double precision :: Up, Vp, Wp, ke, rho_eint, eint_new, x_in(1:nspec+naux), dummy_pres
+      double precision :: Up, Vp, Wp, ke, rho_eint, eint_new, x_in(1:Nspec), dummy_pres
 
       ! Reset internal energy
       if (allow_negative_energy .eq. 0) then
@@ -654,14 +577,12 @@
               ! If not resetting and little e is negative ...
               else if (u(i,j,k,UEINT) .le. 0.d0) then
 
-                 x_in(1:nspec) = u(i,j,k,UFS:UFS+nspec-1) / u(i,j,k,URHO)
-                 if (naux > 0) &
-                   x_in(nspec+1:nspec+naux)  = u(i,j,k,UFX:UFX+naux -1) / u(i,j,k,URHO)
+                 x_in(1:Nspec) = u(i,j,k,UFS:UFS+Nspec-1) / u(i,j,k,URHO)
 
                  pt_index(1) = i
                  pt_index(2) = j
                  pt_index(3) = k
-                 call eos_given_RTX(eint_new, dummy_pres, u(i,j,k,URHO), small_temp, x_in, pt_index)
+                 call eos_given_RTY(eint_new, dummy_pres, u(i,j,k,URHO), small_temp, x_in, pt_index)
 
                  if (verbose .gt. 0) then
                     print *,'   '

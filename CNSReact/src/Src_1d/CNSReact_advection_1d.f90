@@ -224,10 +224,10 @@
                          src,srcQ,src_l1,src_h1, &
                          courno,dx,dt,ngp,ngf,iflaten)
 
-      use network, only : nspec, naux
       use eos_module
-      use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UEINT, UTEMP, UFA, UFS, UFX, &
-                                     QVAR, QRHO, QU, QREINT, QPRES, QTEMP, QFA, QFS, QFX, &
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UEINT, UTEMP, UFA, UFS, &
+                                     QVAR, QRHO, QU, QREINT, QPRES, QTEMP, QFA, QFS, &
                                      nadv, small_temp, allow_negative_energy
 
       implicit none
@@ -304,13 +304,6 @@
          q(loq(1):hiq(1),nq) = uin(loq(1):hiq(1),n)/q(loq(1):hiq(1),QRHO)
       enddo
 
-!     Load auxiliary variables which are needed in the EOS
-      do iaux = 1, naux
-         n  = UFX + iaux - 1
-         nq = QFX + iaux - 1
-         q(loq(1):hiq(1),nq) = uin(loq(1):hiq(1),n)/q(loq(1):hiq(1),QRHO)
-      enddo
-
 !     Get gamc, p, T, c, csml using q state
       do i = loq(1), hiq(1)
 
@@ -348,10 +341,6 @@
 
          do ispec=1,nspec
             srcQ(i,QFS+ispec-1) = src(i,UFS+ispec-1)/q(i,QRHO)
-         end do
-
-         do iaux=1,naux
-            srcQ(i,QFX+iaux-1) = src(i,UFX+iaux-1)/q(i,QRHO)
          end do
 
          do iadv=1,nadv
@@ -401,8 +390,8 @@
                        qxm,qxp,qpd_l1,qpd_h1, &
                        ilo,ihi,domlo,domhi,dx,dt)
 
-      use network, only : nspec, naux
-      use meth_params_module, only : iorder, QVAR, QRHO, QU, QREINT, QPRES, QFA, QFS, QFX, & 
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : iorder, QVAR, QRHO, QU, QREINT, QPRES, QFA, QFS, & 
                                      nadv, small_dens, ppm_type
       use prob_params_module, only : physbc_lo, physbc_hi, Outflow
       implicit none
@@ -647,34 +636,6 @@
          enddo
       enddo
 
-      do iaux = 1, naux
-         ns = QFX + iaux - 1
-
-         ! Right state
-         do i = ilo,ihi+1
-            u = q(i,QU)
-            if (u .gt. 0.d0) then
-               spzero = -1.d0
-            else
-               spzero = u*dtdx
-            endif
-            ascmprght = 0.5d0*(-1.d0 - spzero )*dq(i,ns)
-            qxp(i,ns) = q(i,ns) + ascmprght
-         enddo
-
-         ! Left state
-         do i = ilo-1,ihi
-            u = q(i,QU)
-            if (u .ge. 0.d0) then
-               spzero = u*dtdx
-            else
-               spzero = 1.d0
-            endif
-            ascmpleft = 0.5d0*(1.d0 - spzero )*dq(i,ns)
-            qxm(i+1,ns) = q(i,ns) + ascmpleft
-         enddo
-      end do
-
      end subroutine trace
 
 ! ::: 
@@ -692,9 +653,9 @@
            vol,vol_l1,vol_h1, &
            div,pdivu,lo,hi,dx,dt)
 
-      use network, only : nspec, naux
       use eos_module
-      use meth_params_module, only : difmag, NVAR, URHO, UMX, UEDEN, UEINT, UTEMP, UFS, UFX, &
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : difmag, NVAR, URHO, UMX, UEDEN, UEINT, UTEMP, UFS, &
                                      normalize_species
 
       implicit none
@@ -860,9 +821,9 @@
                            pgdnv,pg_l1,pg_h1,ugdnv,ug_l1,ug_h1, &
                            ilo,ihi,domlo,domhi)
 
-      use network, only : nspec, naux
-      use meth_params_module, only : QVAR, NVAR, QRHO, QU, QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UEDEN, UEINT, UFA, UFS, UFX, nadv, small_dens, small_pres
+      use cdwrk_module      , only : nspec
+      use meth_params_module, only : QVAR, NVAR, QRHO, QU, QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UEDEN, UEINT, UFA, UFS, nadv, small_dens, small_pres
       use prob_params_module, only : physbc_lo, physbc_hi, Outflow, Symmetry
 
       implicit none
@@ -1009,17 +970,8 @@
             endif
          enddo
 
-         do iaux = 1, naux
-            n  = UFX + iaux - 1
-            nq = QFX + iaux - 1
-            if (ustar .ge. 0.d0) then
-               uflx(k,n) = uflx(k,URHO)*ql(k,nq)
-            else
-               uflx(k,n) = uflx(k,URHO)*qr(k,nq)
-            endif
-         enddo
-
       enddo
+
       end subroutine riemannus
 
 ! ::: 

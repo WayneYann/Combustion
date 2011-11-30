@@ -256,85 +256,6 @@
 
 !-----------------------------------------------------------------------
 
-      subroutine ca_dermaggrav(maggrav,grav_l1,grav_l2,grav_l3,grav_h1,grav_h2,grav_h3,ng, &
-                               dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
-                               domhi,delta,xlo,time,dt,bc,level,grid_no)
-      !
-      ! This routine will derive magnitude of the gravity vector.
-      !
-      implicit none 
-
-      integer          lo(3), hi(3)
-      integer          grav_l1,grav_l2,grav_l3,grav_h1,grav_h2,grav_h3,ng
-      integer          dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc
-      integer          domlo(3), domhi(3)
-      integer          bc(3,2,nc)
-      double precision delta(3), xlo(3), time, dt
-      double precision maggrav(grav_l1:grav_h1,grav_l2:grav_h2,grav_l3:grav_h3,ng)
-      double precision     dat(dat_l1:dat_h1,dat_l2:dat_h2,dat_l3:dat_h3,nc)
-      integer    level, grid_no
-
-      integer i,j,k
-
-      !$OMP PARALLEL DO PRIVATE(i,j,k)
-      do k = lo(3), hi(3)
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-               maggrav(i,j,k,1) = sqrt( dat(i,j,k,1)**2  + &
-                                        dat(i,j,k,2)**2  + &
-                                        dat(i,j,k,3)**2 )
-            end do
-         end do
-      end do
-      !$OMP END PARALLEL DO
-
-      end subroutine ca_dermaggrav
-
-!-----------------------------------------------------------------------
-
-      subroutine ca_derradialvel(radvel,vel_l1,vel_l2,vel_l3,vel_h1,vel_h2,vel_h3,nv, &
-                                 dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
-                                 domhi,delta,xlo,time,dt,bc,level,grid_no)
-      !
-      ! This routine will derive the radial velocity.
-      !
-      use probdata_module, only : center
-
-      implicit none
-
-      integer          lo(3), hi(3)
-      integer          vel_l1,vel_l2,vel_l3,vel_h1,vel_h2,vel_h3,nv
-      integer          dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc
-      integer          domlo(3), domhi(3)
-      integer          bc(3,2,nc)
-      double precision delta(3), xlo(3), time, dt
-      double precision radvel(vel_l1:vel_h1,vel_l2:vel_h2,vel_l3:vel_h3,nv)
-      double precision    dat(dat_l1:dat_h1,dat_l2:dat_h2,dat_l3:dat_h3,nc)
-      integer    level, grid_no
-
-      integer          :: i,j,k
-      double precision :: x,y,z,r
-
-      !$OMP PARALLEL DO PRIVATE(i,j,k,x,y,z,r)
-      do k = lo(3), hi(3)
-         z = xlo(3) + (dble(k-lo(3))+0.5d0) * delta(3) - center(3)
-         do j = lo(2), hi(2)
-            y = xlo(2) + (dble(j-lo(2))+0.5d0) * delta(2) - center(2)
-            do i = lo(1), hi(1)
-               x = xlo(1) + (dble(i-lo(1))+0.5d0) * delta(1) - center(1)
-               r = sqrt(x*x+y*y+z*z)
-               radvel(i,j,k,1) = ( dat(i,j,k,2)*x + &
-                                   dat(i,j,k,3)*y + &
-                                   dat(i,j,k,4)*z ) / ( dat(i,j,k,1)*r )
-            end do
-         end do
-      end do
-      !$OMP END PARALLEL DO
-
-      end subroutine ca_derradialvel
-
-!-----------------------------------------------------------------------
-
       subroutine ca_dermagmom(magmom,mom_l1,mom_l2,mom_l3,mom_h1,mom_h2,mom_h3,nv, &
                               dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
                               domhi,delta,xlo,time,dt,bc,level,grid_no)
@@ -374,9 +295,8 @@
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
 
       implicit none
@@ -389,7 +309,7 @@
       double precision dx(3), xlo(3), time, dt
       integer bc(3,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, c, T, dpdr, dpde, Y(nspec+naux), rhoInv
+      double precision :: e, gamc, c, T, dpdr, dpde, Y(nspec), rhoInv
       integer          :: i,j,k,n
       !
       ! Compute pressure from the EOS
@@ -404,16 +324,13 @@
                do n = 1,nspec
                   Y(n)=u(i,j,k,UFS+n-1)*rhoInv
                enddo
-               do n = 1,naux
-                  Y(nspec+n)=u(i,j,k,UFX+n-1)*rhoInv
-               enddo
                !
                ! Protect against negative internal energy.
                !
                if (allow_negative_energy .eq. 0 .and. e .le. 0.d0) then
-                  call eos_given_RTX(e, p(i,j,k,1), u(i,j,k,URHO), T, Y)
+                  call eos_given_RTY(e, p(i,j,k,1), u(i,j,k,URHO), T, Y)
                else
-                  call eos_given_ReX(gamc, p(i,j,k,1), c, T, dpdr, dpde, &
+                  call eos_given_ReY(gamc, p(i,j,k,1), c, T, dpdr, dpde, &
                                      u(i,j,k,URHO), e, Y)
                end if
 
@@ -504,9 +421,8 @@
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
       implicit none
 
@@ -518,7 +434,7 @@
       double precision dx(3), xlo(3), time, dt
       integer bc(3,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, p, T, dpdr, dpde, Y(nspec+naux), rhoInv
+      double precision :: e, gamc, p, T, dpdr, dpde, Y(nspec), rhoInv
       integer          :: i,j,k,n
 
       c = 0.d0
@@ -535,12 +451,9 @@
                do n = 1,nspec
                   Y(n)=u(i,j,k,UFS+n-1)*rhoInv
                enddo
-               do n = 1,naux
-                  Y(nspec+n)=u(i,j,k,UFX+n-1)*rhoInv
-               enddo
 
                if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
-                  call eos_given_ReX(gamc, p, c(i,j,k,1), T, dpdr, dpde, &
+                  call eos_given_ReY(gamc, p, c(i,j,k,1), T, dpdr, dpde, &
                                      u(i,j,k,URHO), e, Y)
                end if
 
@@ -558,9 +471,8 @@
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
       implicit none
 
@@ -572,7 +484,7 @@
       double precision :: dx(3), xlo(3), time, dt
       integer          :: bc(3,2,ncomp_u), level, grid_no
 
-      double precision :: c, e, gamc, p, T, dpdr, dpde, Y(nspec+naux), rhoInv,ux,uy,uz
+      double precision :: c, e, gamc, p, T, dpdr, dpde, Y(nspec), rhoInv,ux,uy,uz
       integer          :: i,j,k,n
 
       mach = 0.d0
@@ -592,12 +504,9 @@
                do n = 1,nspec
                   Y(n)=u(i,j,k,UFS+n-1)*rhoInv
                enddo
-               do n = 1,naux
-                  Y(nspec+n)=u(i,j,k,UFX+n-1)*rhoInv
-               enddo
 
                if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
-                  call eos_given_ReX(gamc, p, c, T, dpdr, dpde, u(i,j,k,URHO), e, Y)
+                  call eos_given_ReY(gamc, p, c, T, dpdr, dpde, u(i,j,k,URHO), e, Y)
                   mach(i,j,k,1) = sqrt(ux**2 + uy**2 + uz**2) / c
                end if
 
@@ -615,9 +524,8 @@
            domhi,dx,xlo,time,dt,bc,level,grid_no)
 
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
-      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, &
+      use meth_params_module, only : URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, &
                                      allow_negative_energy
       implicit none
 
@@ -629,7 +537,7 @@
       double precision dx(3), xlo(3), time, dt
       integer bc(3,2,ncomp_u), level, grid_no
 
-      double precision :: e, gamc, T, Y(nspec+naux), rhoInv,ux,uy,uz
+      double precision :: e, gamc, T, Y(nspec), rhoInv,ux,uy,uz
       integer i,j,k,n
 
       s = 0.d0
@@ -649,12 +557,9 @@
                do n = 1,nspec
                   Y(n)=u(i,j,k,UFS+n-1)*rhoInv
                enddo
-               do n = 1,naux
-                  Y(nspec+n)=u(i,j,k,UFX+n-1)*rhoInv
-               enddo
 
                if (allow_negative_energy .eq. 1 .or. e .gt. 0.d0) then
-                  call eos_S_given_ReX(s(i,j,k,1), u(i,j,k,URHO), e, T, Y)
+                  call eos_S_given_ReY(s(i,j,k,1), u(i,j,k,URHO), e, T, Y)
                end if
             enddo
          enddo
@@ -694,8 +599,114 @@
          end do
       end do
       !$OMP END PARALLEL DO
- 
+
       end subroutine ca_derspec
+
+!-----------------------------------------------------------------------
+
+      subroutine ca_dermolefrac (spec,spec_l1,spec_l2,spec_l3,spec_h1,spec_h2,spec_h3,nv, &
+                            dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
+                            domhi,delta,xlo,time,dt,bc,level,grid_no)
+
+      use cdwrk_module, only : Nspec, maxspec
+
+      implicit none
+
+      integer          lo(3), hi(3)
+      integer          spec_l1,spec_l2,spec_l3,spec_h1,spec_h2,spec_h3,nv
+      integer          dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc
+      integer          domlo(3), domhi(3)
+      integer          bc(3,2,nc)
+      double precision delta(3), xlo(3), time, dt
+      double precision spec(spec_l1:spec_h1,spec_l2:spec_h2,spec_l3:spec_h3,nv)
+      double precision dat(dat_l1:dat_h1,dat_l2:dat_h2,dat_l3:dat_h3,nc)
+      integer    level, grid_no
+
+      integer i,j,k,n
+      double precision Yt(maxspec),Xt(maxspec)
+      integer fS,rho
+      integer lo_chem(3),hi_chem(3)
+      data lo_chem /1,1,1/
+      data hi_chem /1,1,1/
+
+      rho = 1
+      fS  = 2
+
+!$omp parallel do private(i,j,k,n,Xt,Yt)
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               do n = 1,Nspec
+                  Yt(n) = dat(i,j,k,fS+n-1)/dat(i,j,k,rho)
+               enddo
+               call dmstomol(lo_chem, hi_chem,   &
+                    Yt, lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3), &
+                    Xt, lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3) )
+               do n = 1,Nspec
+                  spec(i,j,k,n) = Xt(n)
+               enddo
+            enddo
+         enddo
+      enddo
+!$omp end parallel do
+
+      end subroutine ca_dermolefrac
+
+!-----------------------------------------------------------------------
+
+      subroutine ca_derconcentration(C,C_l1,C_l2,C_l3,C_h1,C_h2,C_h3,nv, &
+                            dat,dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc,lo,hi,domlo, &
+                            domhi,delta,xlo,time,dt,bc,level,grid_no)
+
+      use cdwrk_module, only : Nspec, maxspec
+
+      implicit none
+
+      integer          lo(3), hi(3)
+      integer          C_l1,C_l2,C_l3,C_h1,C_h2,C_h3,nv
+      integer          dat_l1,dat_l2,dat_l3,dat_h1,dat_h2,dat_h3,nc
+      integer          domlo(3), domhi(3)
+      integer          bc(3,2,nc)
+      double precision delta(3), xlo(3), time, dt
+      double precision C(C_l1:C_h1,C_l2:C_h2,C_l3:C_h3,nv)
+      double precision dat(dat_l1:dat_h1,dat_l2:dat_h2,dat_l3:dat_h3,nc)
+      integer    level, grid_no
+
+
+      integer i,j,k,n
+      double precision Yt(maxspec),Ct(maxspec)
+      integer fS,rho,T
+      integer lo_chem(3),hi_chem(3)
+      data lo_chem /1,1,1/
+      data hi_chem /1,1,1/
+
+      rho = 1
+      T   = 2
+      fS  = 3
+
+!$omp parallel do private(i,j,k,n,Ct,Yt)
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               do n = 1,Nspec
+                  Yt(n) = dat(i,j,k,fS+n-1)/dat(i,j,k,rho)
+               enddo
+               call dmsrtocon(lo_chem,hi_chem,   &
+                 Yt,             lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3), &
+                 dat(i,j,k,T),   lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3), &
+                 dat(i,j,k,rho), lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3), &
+                 Ct,             lo_chem(1),lo_chem(2),lo_chem(3),hi_chem(1),hi_chem(2),hi_chem(3))
+               do n = 1,Nspec
+                  C(i,j,k,n) = Ct(n)
+               enddo
+            enddo
+         enddo
+      enddo
+!$omp end parallel do
+
+      end subroutine ca_derconcentration
+
+
 
 !-----------------------------------------------------------------------
 

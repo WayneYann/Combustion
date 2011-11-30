@@ -272,7 +272,7 @@ ccccccccccccccccccccccccccccccccc
       integer is, rho_flag
       integer misdc
 
-      real*8 Y(maxspec)
+      real*8 Y(maxspec), C(maxspec), WDOTK(maxspec)
       real*8 hi(maxspec,-1:nx)
       real*8 RWRK, cpmix, rhocp
       integer IWRK
@@ -310,6 +310,20 @@ c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
      $                           spec_flux_hi,beta_old,diffdiff_old,
      $                           dx,time)
+      end if
+
+c     If .true., use I_R in predictor is instantaneous value at t^n
+c     If .false., use I_R^lagged = I_R^kmax from previous time step
+      if (.false.) then
+         do i=0,nx-1
+            do n=1,Nspec
+               C(n) = scal_old(i,FirstSpec+n-1)*invmwt(n)
+            end do
+            call CKWC(scal_old(i,Temp),C,IWRK,RWRK,WDOTK)
+            do n=1,Nspec
+               I_R_new(i,n) = WDOTK(n)*mwt(n)/thickFacCH
+            end do
+         end do
       end if
 
 c     compute advective forcing term

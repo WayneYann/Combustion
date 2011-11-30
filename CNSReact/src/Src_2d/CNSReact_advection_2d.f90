@@ -286,8 +286,8 @@
                          pdivu, vol, vol_l1, vol_l2, vol_h1, vol_h2, &
                          dloga, dloga_l1, dloga_l2, dloga_h1, dloga_h2)
 
-      use network, only : nspec, naux
-      use meth_params_module, only : QVAR, NVAR, ppm_type
+      use cdwrk_module      , only: nspec
+      use meth_params_module, only: QVAR, NVAR, ppm_type
 
       implicit none
 
@@ -455,10 +455,10 @@
 !     Also, uflaten call assumes ngp>=ngf+3 (ie, primitve data is used by the
 !     routine that computes flatn).  
 
-      use network, only : nspec, naux
       use eos_module
-      use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UEINT, UTEMP, UFA, UFS, UFX, &
-                                     QVAR, QRHO, QU, QV, QREINT, QPRES, QTEMP, QFA, QFS, QFX, &
+      use cdwrk_module      , only: nspec
+      use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UEINT, UTEMP, UFA, UFS, &
+                                     QVAR, QRHO, QU, QV, QREINT, QPRES, QTEMP, QFA, QFS, &
                                      nadv, allow_negative_energy, small_temp
 
       implicit none
@@ -541,17 +541,6 @@
          enddo
       enddo
       
-!     Load auxiliary variables which are needed in the EOS
-      do iaux = 1, naux
-         n  = UFX + iaux - 1
-         nq = QFX + iaux - 1
-         do j = loq(2),hiq(2)
-            do i = loq(1),hiq(1)
-               q(i,j,nq) = uin(i,j,n)/q(i,j,QRHO)
-            enddo
-         enddo
-      enddo
-
 !     Get gamc, p, T, c, csml using q state 
       do j = loq(2), hiq(2)
         do i = loq(1), hiq(1)
@@ -600,10 +589,6 @@
 
            do ispec = 1,nspec
               srcQ(i,j,QFS+ispec-1) = src(i,j,UFS+ispec-1)/q(i,j,QRHO)
-           enddo
-
-           do iaux = 1,naux
-              srcQ(i,j,QFX+iaux-1) = src(i,j,UFX+iaux-1)/q(i,j,QRHO)
            enddo
 
            do iadv = 1,nadv
@@ -674,9 +659,9 @@
                        grav,gv_l1,gv_l2,gv_h1,gv_h2, &
                        ilo1,ilo2,ihi1,ihi2,dx,dy,dt)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only: nspec
       use meth_params_module, only : iorder, QVAR, QRHO, QU, QV, &
-                                     QREINT, QPRES, QFA, QFS, QFX, &
+                                     QREINT, QPRES, QFA, QFS, &
                                      nadv, small_dens, ppm_type
 
       implicit none
@@ -919,37 +904,6 @@
             enddo
          enddo
 
-         do iaux = 1, naux
-            n = QFX + iaux - 1
-            do j = ilo2-1, ihi2+1
-
-               ! Right state
-               do i = ilo1, ihi1+1
-                  u = q(i,j,QU)
-                  if (u .gt. 0.d0) then
-                     spzero = -1.d0
-                  else
-                     spzero = u*dtdx
-                  endif
-                  ascmprght = 0.5d0*(-1.d0 - spzero )*dq(i,j,n)
-                  qxp(i,j,n) = q(i,j,n) + ascmprght
-               enddo
-
-               ! Left state
-               do i = ilo1-1, ihi1
-                  u = q(i,j,QU)
-                  if (u .ge. 0.d0) then
-                     spzero = u*dtdx
-                  else
-                     spzero = 1.d0
-                  endif
-                  ascmpleft = 0.5d0*(1.d0 - spzero )*dq(i,j,n)
-                  qxm(i+1,j,n) = q(i,j,n) + ascmpleft
-               enddo
-
-            enddo
-         enddo
-
          ! Compute slopes
          if (iorder .ne. 1) then
 
@@ -1116,37 +1070,6 @@
             enddo
          enddo
 
-         do iaux = 1, naux
-            n = QFX + iaux - 1
-            do i = ilo1-1, ihi1+1
-
-               ! Top state
-               do j = ilo2, ihi2+1
-                  v = q(i,j,QV)
-                  if (v .gt. 0.d0) then
-                     spzero = -1.d0
-                  else
-                     spzero = v*dtdy
-                  endif
-                  ascmptop = 0.5d0*(-1.d0 - spzero )*dq(i,j,n)
-                  qyp(i,j,n) = q(i,j,n) + ascmptop
-               enddo
-
-               ! Bottom state
-               do j = ilo2-1, ihi2
-                  v = q(i,j,QV)
-                  if (v .ge. 0.d0) then
-                     spzero = v*dtdy
-                  else
-                     spzero = 1.d0
-                  endif
-                  ascmpbot = 0.5d0*(1.d0 - spzero )*dq(i,j,n)
-                  qym(i,j+1,n) = q(i,j,n) + ascmpbot
-               enddo
-
-            enddo
-         enddo
-
       end subroutine trace
 
 ! ::: 
@@ -1167,8 +1090,8 @@
                         div,pdivu,lo,hi,dx,dy,dt)
 
       use eos_module
-      use network, only : nspec, naux
-      use meth_params_module, only : difmag, NVAR, URHO, UMX, UMY, UEDEN, UEINT, UTEMP, UFS, UFX, &
+      use cdwrk_module      , only: nspec
+      use meth_params_module, only : difmag, NVAR, URHO, UMX, UMY, UEDEN, UEINT, UTEMP, UFS, &
                                      normalize_species
 
       implicit none
@@ -1402,10 +1325,10 @@
                            ugdnv, ugd_l1, ugd_l2, ugd_h1, ugd_h2, &
                            idir, ilo1, ihi1, ilo2, ihi2)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only: nspec
       use prob_params_module, only : physbc_lo,physbc_hi,Symmetry
-      use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UEDEN, UEINT, UFA, UFS, UFX, nadv, &
+      use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UEDEN, UEINT, UFA, UFS, nadv, &
                                      small_dens, small_pres
 
       implicit none
@@ -1616,19 +1539,6 @@
                endif
             enddo
 
-            do iaux = 1, naux
-               n  = UFX + iaux - 1
-               nq = QFX + iaux - 1
-               if (ustar .gt. 0.d0) then
-                  uflx(i,j,n) = uflx(i,j,URHO)*ql(i,j,nq)
-               else if (ustar .lt. 0.d0) then
-                  uflx(i,j,n) = uflx(i,j,URHO)*qr(i,j,nq)
-               else 
-                  qavg = 0.5d0 * (ql(i,j,nq) + qr(i,j,nq))
-                  uflx(i,j,n) = uflx(i,j,URHO)*qavg
-               endif
-            enddo
-
          enddo
       enddo
       end subroutine riemannus
@@ -1649,9 +1559,9 @@
                         vol, vol_l1, vol_l2, vol_h1, vol_h2, &
                         ilo, ihi, jlo, jhi)
 
-      use network, only : nspec, naux
-      use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UEDEN, UEINT, UFA, UFS, UFX, &
+      use cdwrk_module      , only: nspec
+      use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UEDEN, UEINT, UFA, UFS, &
                                      nadv
       implicit none
 
@@ -1754,36 +1664,6 @@
           enddo
       enddo
 
-      do iaux = 1, naux
-          n  = UFX + iaux - 1
-          nq = QFX + iaux - 1
-          do j = jlo, jhi 
-              do i = ilo, ihi 
-
-                  rr = qp(i  ,j,QRHO)
-                  rrnew = rr - hdt*(area1(i+1,j)*fx(i+1,j,URHO) -  &
-                                    area1(i  ,j)*fx(i  ,j,URHO))/vol(i,j) 
-
-                  compo = rr*qp(i,j  ,nq)
-                  compn = compo - hdt*(area1(i+1,j)*fx(i+1,j,n)- &
-                                       area1(i  ,j)*fx(i  ,j,n))/vol(i,j) 
-
-                  qpo(i,j  ,nq) = compn/rrnew + hdt*srcQ(i,j,nq)
-
-                  rr = qm(i,j+1,QRHO)
-                  rrnew = rr - hdt*(area1(i+1,j)*fx(i+1,j,URHO) -  &
-                                    area1(i  ,j)*fx(i  ,j,URHO))/vol(i,j) 
-
-                  compo = rr*qm(i,j+1,nq)
-                  compn = compo - hdt*(area1(i+1,j)*fx(i+1,j,n)- &
-                                       area1(i  ,j)*fx(i  ,j,n))/vol(i,j) 
-
-                  qmo(i,j+1,nq) = compn/rrnew + hdt*srcQ(i,j,nq)
-
-              enddo
-          enddo
-      enddo
-
       do j = jlo, jhi 
          do i = ilo, ihi 
 
@@ -1870,9 +1750,9 @@
                         grav, gv_l1, gv_l2, gv_h1, gv_h2, &
                         hdt, cdtdy, ilo, ihi, jlo, jhi)
 
-      use network, only : nspec, naux
-      use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UEDEN, UEINT, UFA, UFS, UFX, &
+      use cdwrk_module      , only: nspec
+      use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UEDEN, UEINT, UFA, UFS, &
                                      nadv
       implicit none
 
@@ -1940,32 +1820,6 @@
       do ispec = 1, nspec 
           n  = UFS + ispec - 1
           nq = QFS + ispec - 1
-          do j = jlo, jhi 
-              do i = ilo, ihi 
-
-                  rr = qp(i,j,QRHO)
-                  rrnew = rr - cdtdy*(fy(i,j+1,URHO)-fy(i,j,URHO)) 
-
-                  compo = rr*qp(i,j,nq)
-                  compn = compo - cdtdy*(fy(i,j+1,n)-fy(i,j,n)) 
-
-                  qpo(i,j,nq) = compn/rrnew + hdt*srcQ(i,j,nq)
-
-                  rr = qm(i+1,j,QRHO)
-                  rrnew = rr - cdtdy*(fy(i,j+1,URHO)-fy(i,j,URHO)) 
-
-                  compo = rr*qm(i+1,j,nq)
-                  compn = compo - cdtdy*(fy(i,j+1,n)-fy(i,j,n)) 
-
-                  qmo(i+1,j,nq) = compn/rrnew + hdt*srcQ(i,j,nq)
-
-              enddo
-          enddo
-      enddo
-
-      do iaux = 1, naux 
-          n  = UFX + iaux - 1
-          nq = QFX + iaux - 1
           do j = jlo, jhi 
               do i = ilo, ihi 
 

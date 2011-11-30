@@ -784,12 +784,11 @@
       !     routine that computes flatn).  
       !
       use cdwrk_module, only : nspec
-      use network, only : naux
       use eos_module
       use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
-                                     UEDEN, UEINT, UTEMP, UFA, UFS, UFX, &
+                                     UEDEN, UEINT, UTEMP, UFA, UFS, &
                                      QVAR, QRHO, QU, QV, QW, &
-                                     QREINT, QPRES, QTEMP, QFA, QFS, QFX, &
+                                     QREINT, QPRES, QTEMP, QFA, QFS, &
                                      nadv, allow_negative_energy, small_temp
       implicit none
 
@@ -886,21 +885,6 @@
       enddo
       !$OMP END PARALLEL DO
       
-      ! Load auxiliary variables which are needed in the EOS
-      !$OMP PARALLEL DO PRIVATE(iaux,n,nq,i,j,k) IF(naux.gt.1)
-      do iaux = 1, naux
-         n  = UFX + iaux - 1
-         nq = QFX + iaux - 1
-         do k = loq(3),hiq(3)
-            do j = loq(2),hiq(2)
-               do i = loq(1),hiq(1)
-                  q(i,j,k,nq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-               enddo
-            enddo
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
       ! Get gamc, p, T, c, csml using q state
       !$OMP PARALLEL DO PRIVATE(i,j,k,pt_index)
       do k = loq(3), hiq(3)
@@ -914,7 +898,7 @@
                ! If necessary, reset the energy using small_temp
                if ((allow_negative_energy .eq. 0) .and. (q(i,j,k,QREINT) .lt. 0)) then
                   q(i,j,k,QTEMP) = small_temp
-                  call eos_given_RTX(q(i,j,k,QREINT),q(i,j,k,QPRES),q(i,j,k,QRHO), &
+                  call eos_given_RTY(q(i,j,k,QREINT),q(i,j,k,QPRES),q(i,j,k,QRHO), &
                                      q(i,j,k,QTEMP),q(i,j,k,QFS:),pt_index)
                   if (q(i,j,k,QREINT) .lt. 0.d0) then
                      print *,'   '
@@ -926,7 +910,7 @@
                   end if
                end if
 
-               call eos_given_ReX(gamc(i,j,k), q(i,j,k,QPRES), c(i,j,k), q(i,j,k,QTEMP), &
+               call eos_given_ReY(gamc(i,j,k), q(i,j,k,QPRES), c(i,j,k), q(i,j,k,QTEMP), &
                                   dpdrho(i,j,k), dpde(i,j,k), &
                                   q(i,j,k,QRHO), q(i,j,k,QREINT), q(i,j,k,QFS:), pt_index)
                csml(i,j,k) = max(small, small * c(i,j,k))
@@ -957,10 +941,6 @@
 
                do ispec = 1,nspec
                   srcQ(i,j,k,QFS+ispec-1) = src(i,j,k,UFS+ispec-1)/q(i,j,k,QRHO)
-               enddo
-
-               do iaux = 1,naux
-                  srcQ(i,j,k,QFX+iaux-1) = src(i,j,k,UFX+iaux-1)/q(i,j,k,QRHO)
                enddo
 
                do iadv = 1,nadv
@@ -1052,9 +1032,9 @@
                          qxm,qxp,qym,qyp,qpd_l1,qpd_l2,qpd_l3,qpd_h1,qpd_h2,qpd_h3, &
                          ilo1,ilo2,ihi1,ihi2,dx,dy,dt,kc,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : iorder, QVAR, QRHO, QU, QV, QW, &
-                                     QREINT, QPRES, QFA, QFS, QFX, nadv, small_dens, &
+                                     QREINT, QPRES, QFA, QFS, nadv, small_dens, &
                                      ppm_type
       implicit none
 
@@ -1275,40 +1255,6 @@
       enddo
       !$OMP END PARALLEL DO
 
-      !$OMP PARALLEL DO PRIVATE(iaux,n,i,j,u,spzero,ascmprght,ascmpleft) IF(naux.gt.1)
-      do iaux = 1, naux
-         n = QFX + iaux - 1
-
-         do j = ilo2-1, ihi2+1
-
-            ! Right state
-            do i = ilo1, ihi1+1
-               u = q(i,j,k3d,QU)
-               if (u .gt. 0.d0) then
-                  spzero = -1.d0
-               else
-                  spzero = u*dtdx
-               endif
-               ascmprght = 0.5d0*(-1.d0 - spzero )*dqx(i,j,kc,n)
-               qxp(i,j,kc,n) = q(i,j,k3d,n) + ascmprght
-            enddo
-
-            ! Left state
-            do i = ilo1-1, ihi1
-               u = q(i,j,k3d,QU)
-               if (u .ge. 0.d0) then
-                  spzero = u*dtdx
-               else
-                  spzero = 1.d0
-               endif
-               ascmpleft = 0.5d0*(1.d0 - spzero )*dqx(i,j,kc,n)
-               qxm(i+1,j,kc,n) = q(i,j,k3d,n) + ascmpleft
-            enddo
-
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
       !$OMP PARALLEL DO PRIVATE(i,j,cc,csq,rho,u,v,w,p,rhoe,enth,drho,du,dv,dw,dp,drhoe,alpham,alphap,alpha0r) &
       !$OMP PRIVATE(alpha0e,alpha0v,alpha0w,spminus,spplus,spzero,apright,amright,azrright,azeright,azv1rght) &
       !$OMP PRIVATE(azw1rght,apleft,amleft,azrleft,azeleft,azv1left,azw1left) &
@@ -1477,40 +1423,6 @@
       enddo
       !$OMP END PARALLEL DO
 
-      !$OMP PARALLEL DO PRIVATE(iaux,n,i,j,v,spzero,ascmptop,ascmpbot) IF(naux.gt.1)
-      do iaux = 1, naux
-         n = QFX + iaux - 1
-
-         do i = ilo1-1, ihi1+1
-
-            ! Top state
-            do j = ilo2, ihi2+1
-               v = q(i,j,k3d,QV)
-               if (v .gt. 0.d0) then
-                  spzero = -1.d0
-               else
-                  spzero = v*dtdy
-               endif
-               ascmptop = 0.5d0*(-1.d0 - spzero )*dqy(i,j,kc,n)
-               qyp(i,j,kc,n) = q(i,j,k3d,n) + ascmptop
-            enddo
-
-            ! Bottom state
-            do j = ilo2-1, ihi2
-               v = q(i,j,k3d,QV)
-               if (v .ge. 0.d0) then
-                  spzero = v*dtdy
-               else
-                  spzero = 1.d0
-               endif
-               ascmpbot = 0.5d0*(1.d0 - spzero )*dqy(i,j,kc,n)
-               qym(i,j+1,kc,n) = q(i,j,k3d,n) + ascmpbot
-            enddo
-
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
     end subroutine tracexy
 
 ! ::: 
@@ -1522,9 +1434,9 @@
            qzm,qzp,qpd_l1,qpd_l2,qpd_l3,qpd_h1,qpd_h2,qpd_h3, &
            ilo1,ilo2,ihi1,ihi2,dz,dt,km,kc,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : iorder, QVAR, QRHO, QU, QV, QW, &
-                                     QREINT, QPRES, QFA, QFS, QFX, nadv, small_dens, &
+                                     QREINT, QPRES, QFA, QFS, nadv, small_dens, &
                                      ppm_type
 
       implicit none
@@ -1756,37 +1668,6 @@
       enddo
       !$OMP END PARALLEL DO
 
-      !$OMP PARALLEL DO PRIVATE(iaux,n,i,j,w,ascmptop,ascmpbot,spzero) IF(naux.gt.1)
-      do iaux = 1, naux
-         n = QFX + iaux - 1
-
-         do j = ilo2-1, ihi2+1
-            do i = ilo1-1, ihi1+1
-
-               ! Top state
-               w = q(i,j,k3d,QW)
-               if (w .gt. 0.d0) then
-                  spzero = -1.d0
-               else
-                  spzero = w*dtdz
-               endif
-               ascmptop = 0.5d0*(-1.d0 - spzero )*dqz(i,j,kc,n)
-               qzp(i,j,kc,n) = q(i,j,k3d,n) + ascmptop
-
-               ! Bottom state
-               w = q(i,j,k3d-1,QW)
-               if (w .ge. 0.d0) then
-                  spzero = w*dtdz
-               else
-                  spzero = 1.d0
-               endif
-               ascmpbot = 0.5d0*(1.d0 - spzero )*dqz(i,j,km,n)
-               qzm(i,j,kc,n) = q(i,j,k3d-1,n) + ascmpbot
-            enddo
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
     end subroutine tracez
 
 ! ::: 
@@ -1806,10 +1687,10 @@
                       vol,vol_l1,vol_l2,vol_l3,vol_h1,vol_h2,vol_h3, &
                       div,pdivu,lo,hi,dx,dy,dz,dt)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use eos_module
       use meth_params_module, only : difmag, NVAR, URHO, UMX, UMY, UMZ, &
-           UEDEN, UEINT, UTEMP, UFS, UFX, normalize_species
+           UEDEN, UEINT, UTEMP, UFS, normalize_species
 
       implicit none
 
@@ -2067,10 +1948,10 @@
                            ugdnv,pgdnv,pg_l1,pg_l2,pg_l3,pg_h1,pg_h2,pg_h3, &
                            idir,ilo,ihi,jlo,jhi,kc,kflux)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use prob_params_module, only : physbc_lo,physbc_hi,Symmetry
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, QPRES, QREINT, QFA, QFS, &
-                                     QFX, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, UFX, &
+                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv, small_dens, small_pres
 
       implicit none
@@ -2292,19 +2173,6 @@
                endif
             enddo
 
-            do iaux = 1, naux
-               n  = UFX + iaux - 1
-               nq = QFX + iaux - 1
-               if (ustar .gt. 0.d0) then
-                  uflx(i,j,kflux,n) = uflx(i,j,kflux,URHO)*ql(i,j,kc,nq)
-               else if (ustar .lt. 0.d0) then
-                  uflx(i,j,kflux,n) = uflx(i,j,kflux,URHO)*qr(i,j,kc,nq)
-               else
-                  qavg = 0.5d0 * (ql(i,j,kc,nq) + qr(i,j,kc,nq))
-                  uflx(i,j,kflux,n) = uflx(i,j,kflux,URHO)*qavg
-               endif
-            enddo
-         
          enddo
       enddo
       !$OMP END PARALLEL DO
@@ -2321,10 +2189,10 @@
                          gamc,gd_l1,gd_l2,gd_l3,gd_h1,gd_h2,gd_h3, &
                          cdtdx,ilo,ihi,jlo,jhi,kc,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, &
-                                     QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, UFX, &
+                                     QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv
 
       implicit none
@@ -2396,30 +2264,6 @@
       do ispec = 1, nspec
          n  = UFS + ispec - 1
          nq = QFS + ispec - 1
-         do j = jlo, jhi 
-            do i = ilo, ihi 
-
-               compsn = cdtdx*(fx(i+1,j,kc,n) - fx(i,j,kc,n))
-
-               rr = qyp(i,j,kc,QRHO)
-               rrnew = rr - cdtdx*(fx(i+1,j,kc,URHO) - fx(i,j,kc,URHO))
-               comps = rr*qyp(i,j,kc,nq) - compsn
-               qypo(i,j,kc,nq) = comps/rrnew
-
-               rr = qym(i,j+1,kc,QRHO)
-               rrnew = rr - cdtdx*(fx(i+1,j,kc,URHO) - fx(i,j,kc,URHO))
-               comps = rr*qym(i,j+1,kc,nq) - compsn
-               qymo(i,j+1,kc,nq) = comps/rrnew
-
-            enddo
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
-      !$OMP PARALLEL DO PRIVATE(iaux,n,nq,i,j,compsn,rr,rrnew,comps) IF(naux.gt.1)
-      do iaux = 1, naux
-         n  = UFX + iaux - 1
-         nq = QFX + iaux - 1
          do j = jlo, jhi 
             do i = ilo, ihi 
 
@@ -2520,10 +2364,10 @@
                          gamc,gd_l1,gd_l2,gd_l3,gd_h1,gd_h2,gd_h3, &
                          cdtdx,ilo,ihi,jlo,jhi,kc,km,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, &
-                                     QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, UFX, &
+                                     QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv
 
       implicit none
@@ -2595,32 +2439,6 @@
        do ispec = 1, nspec
           n  = UFS + ispec - 1
           nq = QFS + ispec - 1
-          do j = jlo, jhi 
-             do i = ilo, ihi 
-
-                compsn = cdtdx*(fx(i+1,j,kc,n) - fx(i,j,kc,n))
-
-                rr = qzp(i,j,kc,QRHO)
-                rrnew = rr - cdtdx*(fx(i+1,j,kc,URHO) - fx(i,j,kc,URHO))
-                comps = rr*qzp(i,j,kc,nq) - compsn
-                qzpo(i,j,kc,nq) = comps/rrnew
-
-                compsn = cdtdx*(fx(i+1,j,km,n) - fx(i,j,km,n))
-
-                rr = qzm(i,j,kc,QRHO)
-                rrnew = rr - cdtdx*(fx(i+1,j,km,URHO) - fx(i,j,km,URHO))
-                comps = rr*qzm(i,j,kc,nq) - compsn
-                qzmo(i,j,kc,nq) = comps/rrnew
-
-             enddo
-          enddo
-       enddo
-       !$OMP END PARALLEL DO
-
-       !$OMP PARALLEL DO PRIVATE(iaux,n,nq,i,j,compsn,rr,rrnew,comps) IF(naux.gt.1)
-       do iaux = 1, naux
-          n  = UFX + iaux - 1
-          nq = QFX + iaux - 1
           do j = jlo, jhi 
              do i = ilo, ihi 
 
@@ -2733,10 +2551,10 @@
                          gamc,gd_l1,gd_l2,gd_l3,gd_h1,gd_h2,gd_h3, &
                          cdtdy,ilo,ihi,jlo,jhi,kc,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, &
-                                     QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, UFX, &
+                                     QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv
       implicit none
 
@@ -2806,31 +2624,6 @@
       do ispec = 1, nspec 
          n  = UFS + ispec - 1
          nq = QFS + ispec - 1
-
-         do j = jlo, jhi 
-            do i = ilo, ihi 
-
-               compsn = cdtdy*(fy(i,j+1,kc,n) - fy(i,j,kc,n))
-
-               rr = qxp(i,j,kc,QRHO)
-               rrnew = rr - cdtdy*(fy(i,j+1,kc,URHO) - fy(i,j,kc,URHO))
-               comps = rr*qxp(i,j,kc,nq) - compsn
-               qxpo(i,j,kc,nq) = comps/rrnew
-
-               rr = qxm(i+1,j,kc,QRHO)
-               rrnew = rr - cdtdy*(fy(i,j+1,kc,URHO) - fy(i,j,kc,URHO))
-               comps = rr*qxm(i+1,j,kc,nq) - compsn
-               qxmo(i+1,j,kc,nq) = comps/rrnew
-
-            enddo
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
-      !$OMP PARALLEL DO PRIVATE(iaux,n,nq,i,j,compsn,rr,rrnew,comps) IF(naux.gt.1)
-      do iaux = 1, naux 
-         n  = UFX + iaux - 1
-         nq = QFX + iaux - 1
 
          do j = jlo, jhi 
             do i = ilo, ihi 
@@ -2933,10 +2726,10 @@
                          gamc,gd_l1,gd_l2,gd_l3,gd_h1,gd_h2,gd_h3, &
                          cdtdy,ilo,ihi,jlo,jhi,kc,km,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, &
-                                     QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, UFX, &
+                                     QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv
       implicit none
 
@@ -3008,33 +2801,6 @@
       do ispec = 1, nspec 
          n  = UFS + ispec - 1
          nq = QFS + ispec - 1
-
-         do j = jlo, jhi 
-            do i = ilo, ihi 
-
-               compsn = cdtdy*(fy(i,j+1,kc,n) - fy(i,j,kc,n))
-
-               rr = qzp(i,j,kc,QRHO)
-               rrnew = rr - cdtdy*(fy(i,j+1,kc,URHO) - fy(i,j,kc,URHO))
-               comps = rr*qzp(i,j,kc,nq) - compsn
-               qzpo(i,j,kc,nq) = comps/rrnew
-
-               compsn = cdtdy*(fy(i,j+1,km,n) - fy(i,j,km,n))
-
-               rr = qzm(i,j,kc,QRHO)
-               rrnew = rr - cdtdy*(fy(i,j+1,km,URHO) - fy(i,j,km,URHO))
-               comps = rr*qzm(i,j,kc,nq) - compsn
-               qzmo(i,j,kc,nq) = comps/rrnew
-
-            enddo
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
-      !$OMP PARALLEL DO PRIVATE(iaux,n,nq,i,j,compsn,rr,rrnew,comps) IF(naux.gt.1)
-      do iaux = 1, naux 
-         n  = UFX + iaux - 1
-         nq = QFX + iaux - 1
 
          do j = jlo, jhi 
             do i = ilo, ihi 
@@ -3151,10 +2917,10 @@
                         gamc,gd_l1,gd_l2,gd_l3,gd_h1,gd_h2,gd_h3, &
                         cdtdz,ilo,ihi,jlo,jhi,km,kc,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, &
-                                     QPRES, QREINT, QFA, QFS, QFX,&
-                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, UFX, &
+                                     QPRES, QREINT, QFA, QFS,  &
+                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv
       implicit none
 
@@ -3238,41 +3004,6 @@
       do ispec = 1, nspec 
           n = UFS + ispec - 1
           nq = QFS + ispec  - 1
-
-          do j = jlo, jhi 
-              do i = ilo, ihi 
-
-                 compsn = cdtdz*(fz(i,j,kc,n) - fz(i,j,km,n))
-
-                 rr = qxp(i,j,km,QRHO)
-                 rrnew = rr - cdtdz*(fz(i,j,kc,URHO) - fz(i,j,km,URHO))
-                 comps = rr*qxp(i,j,km,nq) - compsn
-                 qxpo(i,j,km,nq) = comps/rrnew
-
-                 rr = qyp(i,j,km,QRHO)
-                 rrnew = rr - cdtdz*(fz(i,j,kc,URHO) - fz(i,j,km,URHO))
-                 comps = rr*qyp(i,j,km,nq) - compsn
-                 qypo(i,j,km,nq) = comps/rrnew
-
-                 rr = qxm(i+1,j,km,QRHO)
-                 rrnew = rr - cdtdz*(fz(i,j,kc,URHO) - fz(i,j,km,URHO))
-                 comps = rr*qxm(i+1,j,km,nq) - compsn
-                 qxmo(i+1,j,km,nq) = comps/rrnew
-
-                 rr = qym(i,j+1,km,QRHO)
-                 rrnew = rr - cdtdz*(fz(i,j,kc,URHO) - fz(i,j,km,URHO))
-                 comps = rr*qym(i,j+1,km,nq) - compsn
-                 qymo(i,j+1,km,nq) = comps/rrnew
-
-              enddo
-          enddo
-      enddo
-      !$OMP END PARALLEL DO
-
-      !$OMP PARALLEL DO PRIVATE(iaux,n,nq,i,j,compsn,rr,rrnew,comps) IF(naux.gt.1)
-      do iaux = 1, naux 
-          n  = UFX + iaux - 1
-          nq = QFX + iaux  - 1
 
           do j = jlo, jhi 
               do i = ilo, ihi 
@@ -3438,10 +3169,10 @@
                          grav,gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3, &
                          hdt,cdtdx,cdtdy,ilo,ihi,jlo,jhi,kc,km,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, &
-                                     QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, UFX, &
+                                     QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv
       implicit none
 
@@ -3522,38 +3253,6 @@
       do ispec = 1, nspec
          n = UFS + ispec - 1
          nq = QFS + ispec - 1
-
-         do j = jlo, jhi 
-            do i = ilo, ihi 
-
-               rrr = qp(i,j,kc,QRHO)
-               rrl = qm(i,j,kc,QRHO)
-
-               compr = rrr*qp(i,j,kc,nq)
-               compl = rrl*qm(i,j,kc,nq)
-
-               rrnewr = rrr - cdtdx*(fxy(i+1,j,kc,URHO) - fxy(i,j,kc,URHO)) &
-                    - cdtdy*(fyx(i,j+1,kc,URHO) - fyx(i,j,kc,URHO))
-               rrnewl = rrl - cdtdx*(fxy(i+1,j,km,URHO) - fxy(i,j,km,URHO)) &
-                    - cdtdy*(fyx(i,j+1,km,URHO) - fyx(i,j,km,URHO))
-
-               compnr = compr - cdtdx*(fxy(i+1,j,kc,n) - fxy(i,j,kc,n)) &
-                              - cdtdy*(fyx(i,j+1,kc,n) - fyx(i,j,kc,n))
-               compnl = compl - cdtdx*(fxy(i+1,j,km,n) - fxy(i,j,km,n)) &
-                              - cdtdy*(fyx(i,j+1,km,n) - fyx(i,j,km,n))
-
-               qpo(i,j,kc,nq) = compnr/rrnewr + hdt*srcQ(i,j,k3d,nq)
-               qmo(i,j,kc,nq) = compnl/rrnewl + hdt*srcQ(i,j,k3d,nq)
-
-            enddo
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
-      !$OMP PARALLEL DO PRIVATE(iaux,n,nq,i,j,rrr,rrl,compr,compl,rrnewr,rrnewl,compnr,compnl) IF(naux.gt.1)
-      do iaux = 1, naux
-         n  = UFX + iaux - 1
-         nq = QFX + iaux - 1
 
          do j = jlo, jhi 
             do i = ilo, ihi 
@@ -3712,10 +3411,10 @@
                          grav,gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3, &
                          hdt,cdtdx,cdtdz,ilo,ihi,jlo,jhi,km,kc,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, &
-                                     QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, UFX, &
+                                     QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv
       implicit none      
 
@@ -3815,38 +3514,6 @@
                               - cdtdz*(fzx(i  ,j,kc,n) - fzx(i,j,km,n))
 
                qpo(i,j,km,nq) = compnr/rrnewr + hdt*srcQ(i,j,k3d,nq)
-               qmo(i,j+1,km,nq) = compnl/rrnewl + hdt*srcQ(i,j,k3d,nq)
-
-            enddo
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
-      !$OMP PARALLEL DO PRIVATE(iaux,n,nq,i,j,rrr,rrl,compr,compl,rrnewr,rrnewl,compnr,compnl) IF(naux.gt.1)
-      do iaux = 1, naux
-         n  = UFX + iaux - 1
-         nq = QFX + iaux - 1
-
-         do j = jlo, jhi 
-            do i = ilo, ihi 
-
-               rrr = qp(i,j,km,QRHO)
-               rrl = qm(i,j+1,km,QRHO)
-
-               compr = rrr*qp(i,j  ,km,nq)
-               compl = rrl*qm(i,j+1,km,nq)
-
-               rrnewr = rrr - cdtdx*(fxz(i+1,j,km,URHO) - fxz(i,j,km,URHO)) &
-                    - cdtdz*(fzx(i,j,kc,URHO) - fzx(i,j,km,URHO))
-               rrnewl = rrl - cdtdx*(fxz(i+1,j,km,URHO) - fxz(i,j,km,URHO)) &
-                    - cdtdz*(fzx(i,j,kc,URHO) - fzx(i,j,km,URHO))
-                 
-               compnr = compr - cdtdx*(fxz(i+1,j,km,n) - fxz(i,j,km,n)) &
-                              - cdtdz*(fzx(i  ,j,kc,n) - fzx(i,j,km,n))
-               compnl = compl - cdtdx*(fxz(i+1,j,km,n) - fxz(i,j,km,n)) &
-                              - cdtdz*(fzx(i  ,j,kc,n) - fzx(i,j,km,n))
-
-               qpo(i,j  ,km,nq) = compnr/rrnewr + hdt*srcQ(i,j,k3d,nq)
                qmo(i,j+1,km,nq) = compnl/rrnewl + hdt*srcQ(i,j,k3d,nq)
 
             enddo
@@ -3961,10 +3628,10 @@
                          grav,gv_l1,gv_l2,gv_l3,gv_h1,gv_h2,gv_h3, &
                          hdt,cdtdy,cdtdz,ilo,ihi,jlo,jhi,km,kc,k3d)
 
-      use network, only : nspec, naux
+      use cdwrk_module      , only : nspec
       use meth_params_module, only : QVAR, NVAR, QRHO, QU, QV, QW, &
-                                     QPRES, QREINT, QFA, QFS, QFX, &
-                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, UFX, &
+                                     QPRES, QREINT, QFA, QFS, &
+                                     URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFA, UFS, &
                                      nadv
       implicit none
 
@@ -4048,38 +3715,6 @@
             do i = ilo, ihi 
 
                rrr = qp(i  ,j,km,QRHO)
-               rrl = qm(i+1,j,km,QRHO)
-
-               compr = rrr*qp(i  ,j,km,nq)
-               compl = rrl*qm(i+1,j,km,nq)
-
-               rrnewr = rrr - cdtdy*(fyz(i,j+1,km,URHO) - fyz(i,j,km,URHO)) &
-                            - cdtdz*(fzy(i,j  ,kc,URHO) - fzy(i,j,km,URHO))
-               rrnewl = rrl - cdtdy*(fyz(i,j+1,km,URHO) - fyz(i,j,km,URHO)) &
-                            - cdtdz*(fzy(i,j  ,kc,URHO) - fzy(i,j,km,URHO))
-
-               compnr = compr - cdtdy*(fyz(i,j+1,km,n) - fyz(i,j,km,n)) &
-                              - cdtdz*(fzy(i,j  ,kc,n) - fzy(i,j,km,n))
-               compnl = compl - cdtdy*(fyz(i,j+1,km,n) - fyz(i,j,km,n)) &
-                              - cdtdz*(fzy(i,j  ,kc,n) - fzy(i,j,km,n))
-
-               qpo(i  ,j,km,nq) = compnr/rrnewr + hdt*srcQ(i,j,k3d,nq)
-               qmo(i+1,j,km,nq) = compnl/rrnewl + hdt*srcQ(i,j,k3d,nq)
-
-            enddo
-         enddo
-      enddo
-      !$OMP END PARALLEL DO
-
-      !$OMP PARALLEL DO PRIVATE(iaux,n,nq,i,j,rrr,rrl,compr,compl,rrnewr,rrnewl,compnr,compnl) IF(naux.gt.1)
-      do iaux = 1, naux
-         n  = UFX + iaux - 1
-         nq = QFX + iaux - 1
-
-         do j = jlo, jhi 
-            do i = ilo, ihi 
-
-               rrr = qp(i,j,km,QRHO)
                rrl = qm(i+1,j,km,QRHO)
 
                compr = rrr*qp(i  ,j,km,nq)

@@ -20,7 +20,7 @@ USE_MPI    = FALSE
 
 USE_CHEM   = TRUE
 
-REACTION_MECHANISM=CHEMH
+CHEMISTRY_MODEL = CHEMH
 
 Bpack   := ./Make.package
 Blocs   := .
