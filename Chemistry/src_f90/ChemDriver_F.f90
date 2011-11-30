@@ -1,55 +1,46 @@
-#include "ChemDriver_F.H"
-#include "CONSTANTS.H"
+      subroutine settmintrans(TminTRANS)
 
-#if defined(BL_USE_FLOAT) || defined(BL_T3E) || defined(BL_CRAY)
-#define three4th    0.75
-#define onepoint27  1.27
-#define point4      0.4
-#define point67     0.67
-#define point14     0.14
-#define onetenthsnd 0.0001
-#define ten2minus18 1.0e-18
-#else
-#define three4th    0.75d0
-#define onepoint27  1.27d0
-#define point4      0.4d0
-#define point67     0.67d0
-#define point14     0.14d0
-#define onetenthsnd 0.0001d0
-#define ten2minus18 1.0d-18
-#endif
-      
-      subroutine FORT_SETTMINTRANS(TminTRANS)
+      use cdwrk_module
       implicit none
-      REAL_T TminTRANS
-#include "cdwrk.H"
+
+      double precision :: TminTRANS
       TMIN_TRANS = TminTRANS
-      end
 
-      subroutine FORT_SETVERBOSEVODE()
+      end subroutine settmintrans
+
+      subroutine setverbosevode()
+
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
+
       verbose_vode = 1
-      end
 
-      subroutine FORT_SETVODESUBCYC(maxcyc)
+      end subroutine setverbosevode
+
+      subroutine setvodesubcyc(maxcyc)
+
+      use cdwrk_module
       implicit none
+
       integer maxcyc
-#include "cdwrk.H"
-      max_vode_subcycles = maxcyc
-      end
 
-      subroutine FORT_SETSPECSCALY(name, nlength)
+      max_vode_subcycles = maxcyc
+
+      end subroutine setvodesubcyc
+
+      subroutine setspecscaly(name, nlength)
+
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
+
       integer nlength, name(nlength), i, j, maxlen
-      REAL_T val
+      double precision ::  val
       parameter (maxlen=256)
       character filet*(maxlen)
       character*(maxspnml) spname, spinname
-c      
-c     Convert encoded names to strings, and open file
-c
+!      
+!     Convert encoded names to strings, and open file
+!
       if (nlength.GT.maxlen) then
          call bl_abort('FORT_SETSPECSCAL: scale file name too long')
       end if
@@ -57,8 +48,8 @@ c
       do i = 1, nlength
          filet(i:i) = char(name(i))
       end do
-      open(unit=51,status='OLD',form='FORMATTED',
-     &     file=filet(1:nlength),err=30)
+      open(unit=51,status='OLD',form='FORMATTED',  &
+           file=filet(1:nlength),err=30)
       
  10   continue 
       read(51,*,end=20) spinname, val
@@ -74,25 +65,26 @@ c
  30   write(6,*) 'Trouble opening file = ',filet(1:nlength)
       call bl_abort(" ")
  40   continue 
-      end
+      end subroutine setspecscaly
 
-      subroutine FORT_INITCHEM()
-      implicit none
-#include "cdwrk.H"
-#include "conp.H"
+      subroutine initchem()
+
+      use cdwrk_module
+      use conp_module
+
       logical error
       integer ioproc, myid, ierr, n, RTOT, lout, namlen, i
-      integer FORT_GETCKSPECNAME
+      integer getckspecname
       parameter (ioproc = 0)
       character*(maxspnml) name
       integer coded(maxspnml)
 
-      call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
-     &     RWRK(egbr), egr, IWRK(egbi), egi)
+      call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,  &
+           RWRK(egbr), egr, IWRK(egbi), egi)
 
-c      
-c     Set pointers in conp common blocks (used in conpF evaluations)
-c
+!      
+!     Set pointers in conp common blocks (used in conpF evaluations)
+!
       CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
       NEQ   = Nspec + 1
       NP    = dvdbr
@@ -105,13 +97,13 @@ c
          write(6,*) RTOT, dvder
          call bl_abort(" ")
       end if
-c
-c     Set molecular weights
-c
+!
+!     Set molecular weights
+!
       CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
-c
-c     Find N2 in the list.
-c
+!
+!     Find N2 in the list.
+!
       iN2 = -1
       do n = 1,Nspec
          call get_spec_name(name,n)
@@ -119,85 +111,84 @@ c
       end do
       if (iN2.eq.-1)
      &     write(6,*) '.....warning: no N2 in chemistry species list'
-      end
+      end subroutine initchem
 
 
-      SUBROUTINE EGINICD (NP, LOUT, IFLAG, ITLS, 
-     &                    WEG, LWEG, IWEG, LIWEG)
-C-----------------------------------------------------------------------
-C
-C     This subroutine initializes the pointers for the work arrays
-C     WEG and IWEG and checks their length.
-C     This subroutine should be called by the user once at the
-C     beginning of the program.
-C
-C     Input
-C     -----
-C        NP        number of nodes
-C        LOUT      output file number
-C        IFLAG     flag for evaluating parameters and space allocation
-C                  (see below)
-C        ITLS      flag for space allocation (see below)
-C        WEG       double precision work array for EGLIB
-C        LWEG      length of WEG declared in main code
-C        IWEG      integer work array for EGLIB
-C        LIWEG     length of IWEG declared in main code
-C
-C        
-C     The value of IFLAG and ITLS depends on the subroutines that
-C     will be used as indicated by the following table
-C
-C
-C     Subroutine     ITLS      IFLAG
-C
-C     EG*D(R)1         1         2
-C     EG*D(R)2         1         2
-C
-C     EG*E1            0         1
-C     EG*E2            1         2
-C     EG*E3            1         3
-C     EG*E4            1         3
-C 
-C     EG*K1            0         4
-C     EG*K2            1         4
-C     EG*K3            1         5
-C     EG*K4            2         4
-C     EG*K5            2         5
-C     EG*K6            2         5
-C  
-C     EG*L1            0         1
-C     EG*L2            1         6
-C     EG*L3            1         7
-C     EG*L4            2         6
-C     EG*L5            2         7
-C  
-C     EG*LC1           1         7
-C     EG*LC2           1         7
-C     EG*LC3           2         7
-C     EG*LC4           2         7
-C  
-C     EG*LTD(R)1       2         7
-C     EG*LTD(R)2       2         7
-C     EG*LTD(R)3       3         7
-C     EG*LTD(R)4       3         7
-C     EG*LTD(R)5       3         7
-C     EG*LTD(R)6       3         7
-C   
-C     EG*TD(R)1        3         7
-C  
-C     EG*V(R)1         0         2
-C
-C
-C     EGINI should be called with the highest possible values for
-C     IFLAG and ITLS as read from the table.
-C
-C-----------------------------------------------------------------------
+      SUBROUTINE eginicd (NP, LOUT, IFLAG, ITLS, WEG, LWEG, IWEG, LIWEG)
+!-----------------------------------------------------------------------
+!
+!     This subroutine initializes the pointers for the work arrays
+!     WEG and IWEG and checks their length.
+!     This subroutine should be called by the user once at the
+!     beginning of the program.
+!
+!     Input
+!     -----
+!        NP        number of nodes
+!        LOUT      output file number
+!        IFLAG     flag for evaluating parameters and space allocation
+!                  (see below)
+!        ITLS      flag for space allocation (see below)
+!        WEG       double precision work array for EGLIB
+!        LWEG      length of WEG declared in main code
+!        IWEG      integer work array for EGLIB
+!        LIWEG     length of IWEG declared in main code
+!
+!        
+!     The value of IFLAG and ITLS depends on the subroutines that
+!     will be used as indicated by the following table
+!
+!
+!     Subroutine     ITLS      IFLAG
+!
+!     EG*D(R)1         1         2
+!     EG*D(R)2         1         2
+!
+!     EG*E1            0         1
+!     EG*E2            1         2
+!     EG*E3            1         3
+!     EG*E4            1         3
+! 
+!     EG*K1            0         4
+!     EG*K2            1         4
+!     EG*K3            1         5
+!     EG*K4            2         4
+!     EG*K5            2         5
+!     EG*K6            2         5
+!  
+!     EG*L1            0         1
+!     EG*L2            1         6
+!     EG*L3            1         7
+!     EG*L4            2         6
+!     EG*L5            2         7
+!  
+!     EG*LC1           1         7
+!     EG*LC2           1         7
+!     EG*LC3           2         7
+!     EG*LC4           2         7
+!  
+!     EG*LTD(R)1       2         7
+!     EG*LTD(R)2       2         7
+!     EG*LTD(R)3       3         7
+!     EG*LTD(R)4       3         7
+!     EG*LTD(R)5       3         7
+!     EG*LTD(R)6       3         7
+!   
+!     EG*TD(R)1        3         7
+!  
+!     EG*V(R)1         0         2
+!
+!
+!     EGINI should be called with the highest possible values for
+!     IFLAG and ITLS as read from the table.
+!
+!-----------------------------------------------------------------------
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
-C-----------------------------------------------------------------------
-C     Check values for IFLAG and ITLS
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     Check values for IFLAG and ITLS
+!-----------------------------------------------------------------------
       IERROR = 0
       IF ( IFLAG .LT. 0 .OR. IFLAG .GT. 7 ) THEN
          WRITE(LOUT,'(1X,''IFLAG should be between 0 and 7'')')
@@ -210,39 +201,39 @@ C-----------------------------------------------------------------------
          IERROR = 1
       ENDIF
       IF ( IERROR .EQ. 1 ) STOP
-C-----------------------------------------------------------------------
-C     Read the Linkeg file
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     Read the Linkeg file
+!-----------------------------------------------------------------------
       LLEG   = 11
-C-----------------------------------------------------------------------
-c      OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
-c        READ (LLEG) NSLK, NO
-c      CLOSE(UNIT=LLEG)
+!-----------------------------------------------------------------------
+!      OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
+!        READ (LLEG) NSLK, NO
+!      CLOSE(UNIT=LLEG)
 
       call egtransetKK(NSLK)
       call egtransetNO(NO)
 
-C-----------------------------------------------------------------------
-C     Store IFLAG and the number of species in common 'eg.cmn'
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     Store IFLAG and the number of species in common 'eg.cmn'
+!-----------------------------------------------------------------------
       JFLAG = IFLAG
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
       NS = NSLK
       IF ( NS .LE. 1 ) THEN
-         WRITE(LOUT,'(1X,''Error: the number of species must '',
-     &                   '' be larger or equal to 2'')')
+         WRITE(LOUT,'(1X,''Error: the number of species must '', &
+                  '' be larger or equal to 2'')')
          STOP
       ENDIF
-C-----------------------------------------------------------------------
-C     Compute the size of the transport linear system.
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     Compute the size of the transport linear system.
+!-----------------------------------------------------------------------
       NSS  = ITLS * NS
-C-----------------------------------------------------------------------
-C     NFIT is the degree for the polynomial fitting Aij -- Cij
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     NFIT is the degree for the polynomial fitting Aij -- Cij
+!-----------------------------------------------------------------------
       NFIT = 7
       NAIJ = MAX0(NS*NS,NP)
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
       IEGRU  = 1
       IEGPA  = IEGRU  + 1
       IFITA  = IEGPA  + 1
@@ -284,13 +275,13 @@ C-----------------------------------------------------------------------
       ICINT  = IBIN   + (NS*(NS+1))/2 * NP
       ICXI   = ICINT  + NS * NP
       IEND   = ICXI   + NS * NP
-C.....
+!.....
       IF ( IFLAG .EQ. 1 ) THEN
          IEND = IBIN
       ELSEIF ( IFLAG .LE. 3 ) THEN
          IEND = ICINT
       ENDIF
-C.....
+!.....
       IDMI   = IEND
       IG     = IDMI   + NS*(ITLS*(ITLS+1))/2 * NP
       IAN    = IG     + (ITLS*NS*(ITLS*NS+1))/2 * NP
@@ -299,10 +290,10 @@ C.....
       ITEMP  = IRN    + NSS * NP
       IBETA  = ITEMP  + NSS * NP
       INEXT  = IBETA  + NSS * NP - 1
-C.....
+!.....
       IEGLIN = 1
       IINXT  = IEGLIN + NS - 1
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
       ILOW = 0
       IF ( INEXT .GT. LWEG ) THEN
          WRITE(LOUT,'(//1X,''Error: the length of WEG should be '',
@@ -310,31 +301,31 @@ C-----------------------------------------------------------------------
          ILOW = 1
       ENDIF
       IF ( IINXT .GT. LIWEG ) THEN
-         WRITE(LOUT,'(//1X,''Error: the length of IWEG should be '',
-     &                   ''at least'',I12//)') IINXT
+         WRITE(LOUT,'(//1X,''Error: the length of IWEG should be '', &  
+                ''at least'',I12//)') IINXT
          ILOW = 1
       ENDIF
       IF ( ILOW .EQ. 1 ) STOP
-c     WRITE(LOUT,'(//1X,''The array WEG requires '',I12,
-c    &                '' storage locations'')') INEXT
-c     WRITE(LOUT,'(1X,''The array IWEG requires '',I12,
-c    &                '' storage locations''//)') IINXT
-C-----------------------------------------------------------------------
-C     Store the universal gas constant and the atmospheric pressure
-C     units: [erg/mol.K] for RU and [dyne/cm^2] for PA
-C-----------------------------------------------------------------------
+!     WRITE(LOUT,'(//1X,''The array WEG requires '',I12,
+!    &                '' storage locations'')') INEXT
+!     WRITE(LOUT,'(1X,''The array IWEG requires '',I12,
+!    &                '' storage locations''//)') IINXT
+!-----------------------------------------------------------------------
+!     Store the universal gas constant and the atmospheric pressure
+!     units: [erg/mol.K] for RU and [dyne/cm^2] for PA
+!-----------------------------------------------------------------------
       WEG(IEGRU)  = 8.314D7
       WEG(IEGPA)  = 1.01325D6
-C-----------------------------------------------------------------------
-C     Read the Linkeg file
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     Read the Linkeg file
+!-----------------------------------------------------------------------
       LLEG   = 11
       NONS   = NO*NS
       NONSNS = NO*NS*NS
-C-----------------------------------------------------------------------
-c
-c     Set required data from funcs rather than Linkeg
-c
+!-----------------------------------------------------------------------
+!
+!     Set required data from funcs rather than Linkeg
+!
       call egtransetWT(WEG(IEGWT))
       call egtransetEPS(WEG(IEGEPS))
       call egtransetSIG(WEG(IEGSIG))
@@ -346,24 +337,24 @@ c
       call egtransetCOFLAM(WEG(IEGCFL))
       call egtransetCOFD(WEG(IEGCFD))
 
-c      OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
-c        READ (LLEG) NSLK, NO, (WEG(IEGWT+K-1), K=1, NS), 
-c     &              (WEG(IEGEPS+K-1), K=1, NS), 
-c     &              (WEG(IEGSIG+K-1), K=1, NS), 
-c     &              (WEG(IEGDIP+K-1), K=1, NS), 
-c     &              (WEG(IEGPOL+K-1), K=1, NS), 
-c     &              (WEG(IEGZRT+K-1), K=1, NS), 
-c     &              (IWEG(IEGLIN+K-1), K=1, NS), 
-c     &              (WEG(IEGCFE+N-1), N=1, NONS), 
-c     &              (WEG(IEGCFL+N-1), N=1, NONS), 
-c     &              (WEG(IEGCFD+N-1), N=1, NONSNS)
-c      CLOSE(UNIT=LLEG)
-C-----------------------------------------------------------------------
+!      OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
+!        READ (LLEG) NSLK, NO, (WEG(IEGWT+K-1), K=1, NS), 
+!     &              (WEG(IEGEPS+K-1), K=1, NS), 
+!     &              (WEG(IEGSIG+K-1), K=1, NS), 
+!     &              (WEG(IEGDIP+K-1), K=1, NS), 
+!     &              (WEG(IEGPOL+K-1), K=1, NS), 
+!     &              (WEG(IEGZRT+K-1), K=1, NS), 
+!     &              (IWEG(IEGLIN+K-1), K=1, NS), 
+!     &              (WEG(IEGCFE+N-1), N=1, NONS), 
+!     &              (WEG(IEGCFL+N-1), N=1, NONS), 
+!     &              (WEG(IEGCFD+N-1), N=1, NONSNS)
+!      CLOSE(UNIT=LLEG)
+!-----------------------------------------------------------------------
       CALL LEVEPS (NS, WEG(IEGEPS), WEG(IEGSIG), WEG(IEGDIP), 
      &             WEG(IEGPOL), WEG(IEPSIJ) )
-C-----------------------------------------------------------------------
-C     Initialize the coefficients for fitting Aij, Bij and Cij
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     Initialize the coefficients for fitting Aij, Bij and Cij
+!-----------------------------------------------------------------------
       WEG(IFITA0    ) =  .1106910525D+01
       WEG(IFITA0 + 1) = -.7065517161D-02
       WEG(IFITA0 + 2) = -.1671975393D-01
@@ -371,7 +362,7 @@ C-----------------------------------------------------------------------
       WEG(IFITA0 + 4) =  .7569367323D-03
       WEG(IFITA0 + 5) = -.1313998345D-02
       WEG(IFITA0 + 6) =  .1720853282D-03
-C.....
+!.....
       WEG(IFITB0    ) =  .1199673577D+01
       WEG(IFITB0 + 1) = -.1140928763D+00
       WEG(IFITB0 + 2) = -.2147636665D-02
@@ -379,7 +370,7 @@ C.....
       WEG(IFITB0 + 4) = -.3030372973D-02
       WEG(IFITB0 + 5) = -.1445009039D-02
       WEG(IFITB0 + 6) =  .2492954809D-03
-C.....
+!.....
       WEG(IFITC0    ) =  .8386993788D+00
       WEG(IFITC0 + 1) =  .4748325276D-01
       WEG(IFITC0 + 2) =  .3250097527D-01
@@ -387,9 +378,9 @@ C.....
       WEG(IFITC0 + 4) = -.2260153363D-02
       WEG(IFITC0 + 5) =  .1844922811D-02
       WEG(IFITC0 + 6) = -.2115417788D-03
-C-----------------------------------------------------------------------
-C     Evaluate Aij, Bij and Cij at the reference temperature of 1000K.
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     Evaluate Aij, Bij and Cij at the reference temperature of 1000K.
+!-----------------------------------------------------------------------
       DDD = DLOG(1.0D3)
       DO J = 1, NS
         DO I = 1, NS
@@ -401,44 +392,44 @@ C-----------------------------------------------------------------------
          T4 = TSLOG * T3
          T5 = TSLOG * T4
          T6 = TSLOG * T5
-         WEG(ICTAIJ+IJ) = WEG(IFITA0  )    + WEG(IFITA0+1)*T1
-     1                    + WEG(IFITA0+2)*T2 + WEG(IFITA0+3)*T3
-     2                    + WEG(IFITA0+4)*T4 + WEG(IFITA0+5)*T5
-     3                    + WEG(IFITA0+6)*T6 
-         WEG(ICTBIJ+IJ) = WEG(IFITB0  )    + WEG(IFITB0+1)*T1
-     1                    + WEG(IFITB0+2)*T2 + WEG(IFITB0+3)*T3
-     2                    + WEG(IFITB0+4)*T4 + WEG(IFITB0+5)*T5
-     3                    + WEG(IFITB0+6)*T6 
-         WEG(ICTCIJ+IJ) = WEG(IFITC0  )    + WEG(IFITC0+1)*T1
-     1                    + WEG(IFITC0+2)*T2 + WEG(IFITC0+3)*T3
-     2                    + WEG(IFITC0+4)*T4 + WEG(IFITC0+5)*T5
-     3                    + WEG(IFITC0+6)*T6 
+         WEG(ICTAIJ+IJ) = WEG(IFITA0  )    + WEG(IFITA0+1)*T1  &
+                          + WEG(IFITA0+2)*T2 + WEG(IFITA0+3)*T3  &
+                          + WEG(IFITA0+4)*T4 + WEG(IFITA0+5)*T5  &
+                          + WEG(IFITA0+6)*T6 
+         WEG(ICTBIJ+IJ) = WEG(IFITB0  )    + WEG(IFITB0+1)*T1  &
+                          + WEG(IFITB0+2)*T2 + WEG(IFITB0+3)*T3  &
+                          + WEG(IFITB0+4)*T4 + WEG(IFITB0+5)*T5  &
+                          + WEG(IFITB0+6)*T6 
+         WEG(ICTCIJ+IJ) = WEG(IFITC0  )    + WEG(IFITC0+1)*T1  &
+                          + WEG(IFITC0+2)*T2 + WEG(IFITC0+3)*T3  &
+                          + WEG(IFITC0+4)*T4 + WEG(IFITC0+5)*T5  &
+                          + WEG(IFITC0+6)*T6 
          ENDDO
       ENDDO
-C-----------------------------------------------------------------------
-C     Evaluate FITA, FITB and FITC 
-C-----------------------------------------------------------------------
-      CALL EGABC ( NS, NFIT, WEG(IFITA), WEG(IFITB), WEG(IFITC),
-     &             WEG(IFITA0), WEG(IFITB0), WEG(IFITC0),
-     &             WEG(IEPSIJ) )
-C-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!     Evaluate FITA, FITB and FITC 
+!-----------------------------------------------------------------------
+      CALL EGABC ( NS, NFIT, WEG(IFITA), WEG(IFITB), WEG(IFITC), & 
+           WEG(IFITA0), WEG(IFITB0), WEG(IFITC0), & 
+           WEG(IEPSIJ) )
+!-----------------------------------------------------------------------
       RETURN
-      END
+      END subroutine eginicd
 
 
-      integer function FORT_GETCKMAXNAMELEN()
+      integer function getckmaxnamelen()
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       FORT_GETCKMAXNAMELEN = maxspnml
-      end
+      end function getchmaxnamelen
 
-      subroutine FORT_GETCKDIMPARAMS(imaxreac, imaxspec, imaxelts,
-     &                               imaxord, imaxthrdb, imaxtp, imaxsp,
-     &                               imaxspnml)
+      subroutine getckdimparams(imaxreac, imaxspec, imaxelts, & 
+                             imaxord, imaxthrdb, imaxtp, imaxsp, & 
+                             imaxspnml)
+      use cdwrk_module
       implicit none
       integer imaxreac, imaxspec, imaxelts, imaxord
       integer imaxthrdb, imaxtp, imaxsp, imaxspnml
-#include "cdwrk.H"
       imaxreac = maxreac
       imaxspec = maxspec
       imaxelts = maxelts
@@ -447,63 +438,63 @@ C-----------------------------------------------------------------------
       imaxtp = maxtp
       imaxsp = maxsp
       imaxspnml = maxspnml
-      end
+      end subroutine getckdimparams
 
-      subroutine FORT_FINDLHS(reactions, Nreacs, id)
+      subroutine findlhs(reactions, Nreacs, id)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer reactions(*), Nreacs, id
       integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
-#ifdef MIKE
-      Ndim = maxsp
-      if ((id.le.0).or.(id.gt.Nspec)) then
-         write(6,*) 'FORT_FINDLHS:  species id out of range: ',id
-         call bl_abort(" ")
-      end if
-      Nreacs = 0
-      do j=1,Nreac
-         CALL CKINU(j, Ndim, IWRK(ckbi), RWRK(ckbr), Nids, KI, NU)
-         do n=1,Nids
-            if ((KI(n).eq.id).and.(NU(n).lt.0)) then
-               Nreacs = Nreacs + 1
-               reactions(Nreacs) = j
-            endif
-         end do
-      end do
-#else
+! #ifdef MIKE
+!     Ndim = maxsp
+!     if ((id.le.0).or.(id.gt.Nspec)) then
+!        write(6,*) 'FORT_FINDLHS:  species id out of range: ',id
+!        call bl_abort(" ")
+!     end if
+!     Nreacs = 0
+!     do j=1,Nreac
+!        CALL CKINU(j, Ndim, IWRK(ckbi), RWRK(ckbr), Nids, KI, NU)
+!        do n=1,Nids
+!           if ((KI(n).eq.id).and.(NU(n).lt.0)) then
+!              Nreacs = Nreacs + 1
+!              reactions(Nreacs) = j
+!           endif
+!        end do
+!     end do
+! #else
       call bl_abort("FORT_FINDLHS not implemented")
-#endif
-      end
+! #endif
+      end subroutine findlhs
 
-      subroutine FORT_FINDRHS(reactions, Nreacs, id)
+      subroutine findrhs(reactions, Nreacs, id)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer reactions(*), Nreacs, id
       integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
-#ifdef MIKE
-      Ndim = maxsp
-      if ((id.le.0).or.(id.gt.Nspec)) then
-         write(6,*) 'FORT_FINDRHS:  species id out of range: ',id
-         call bl_abort(" ")
-      end if
-      Nreacs = 0
-      do j=1,Nreac
-         CALL CKINU(j, Ndim, IWRK(ckbi), RWRK(ckbr), Nids, KI, NU)
-         do n=1,Nids
-            if ((KI(n).eq.id).and.(NU(n).gt.0)) then
-               Nreacs = Nreacs + 1
-               reactions(Nreacs) = j
-            endif
-         end do
-      end do
-#else
+!  #ifdef MIKE
+!        Ndim = maxsp
+!        if ((id.le.0).or.(id.gt.Nspec)) then
+!           write(6,*) 'FORT_FINDRHS:  species id out of range: ',id
+!           call bl_abort(" ")
+!        end if
+!        Nreacs = 0
+!        do j=1,Nreac
+!           CALL CKINU(j, Ndim, IWRK(ckbi), RWRK(ckbr), Nids, KI, NU)
+!           do n=1,Nids
+!              if ((KI(n).eq.id).and.(NU(n).gt.0)) then
+!                 Nreacs = Nreacs + 1
+!                 reactions(Nreacs) = j
+!              endif
+!           end do
+!        end do
+!  #else
       call bl_abort("FORT_FINDRHS not implemented")
-#endif
-      end
+!  #endif
+      end subroutine findrhs
 
-      subroutine FORT_SETNU(nu,lenNU)
+      subroutine setnu(nu,lenNU)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer lenNU
       integer nu(maxreac,maxspec)
       integer i
@@ -513,11 +504,11 @@ C-----------------------------------------------------------------------
          call bl_abort(" ")
       endif
       call CKNU(maxreac, IWRK(ckbi), RWRK(ckbr), nu)
-      end
+      end subroutine setnu
 
-      subroutine FORT_CKINU(Nids,KI,lenKI,NU,lenNU,rxnID,nuAll)
+      subroutine ckinu(Nids,KI,lenKI,NU,lenNU,rxnID,nuAll)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer lenKI,lenNU,NDIM1
       integer rxnID, Nids, KI(lenKI), NU(lenNU), nuAll(maxreac,maxspec)
       integer Ndim, k
@@ -537,56 +528,56 @@ C-----------------------------------------------------------------------
             NU(Nids) = nuAll(rxnID,k)
          endif
       enddo
-      end
+      end subroutine ckinu
 
-      integer function FORT_CKELTXINSPY(eltID, spID)
+      integer function ckeltxinspy(eltID, spID)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer eltID, spID, i, j
       integer NCF(maxelts,maxspec)
       CALL CKNCF(maxelts, IWRK(ckbi), RWRK(ckbr), NCF)
-      FORT_CKELTXINSPY = NCF(eltID+1,spID+1)
-      end
+      ckeltxinspy = NCF(eltID+1,spID+1)
+      end function ckeltxinspy
 
-      integer function FORT_GETCKNUMSPEC()
+      integer function getcknumspec()
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      FORT_GETCKNUMSPEC = Nspec
-      end
+      getcknumspec = Nspec
+      end function getcknumspec
 
-      integer function FORT_GETCKNUMELT()
+      integer function getcknumelt()
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      FORT_GETCKNUMELT = Nelt
-      end
+      getcknumelt = Nelt
+      end fucntion getcknumelt
 
-      integer function FORT_GETCKNUMREAC()
+      integer function getcknumreac()
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      FORT_GETCKNUMREAC = Nreac
-      end
+      getcknumreac = Nreac
+      end function getchknumreac
 
-      double precision function FORT_RUNIV()
+      double precision function runiv()
+      use cdwrk_module
       implicit none
       double precision Ruc, Pa
-#include "cdwrk.H"
       call CKRP(IWRK(ckbi),RWRK(ckbr),FORT_RUNIV,Ruc,Pa)
-c     1 erg/(mole.K) = 1.e-4 J/(kmole.K)
-      FORT_RUNIV = FORT_RUNIV*1.d-4
-      end
+!     1 erg/(mole.K) = 1.e-4 J/(kmole.K)
+      runiv = runiv*1.d-4
+      end runiv
 
-      double precision function FORT_P1ATMMKS()
+      double precision function p1atmmks()
+      use cdwrk_module
       implicit none
       double precision Ru, Ruc, Pa
-#include "cdwrk.H"
       call CKRP(IWRK(ckbi),RWRK(ckbr),Ru,Ruc,Pa)
-c     1 N/(m.m) = 0.1 dyne/(cm.cm)
-      FORT_P1ATMMKS = Pa*1.d-1
-      end
+!     1 N/(m.m) = 0.1 dyne/(cm.cm)
+      p1atmmks = Pa*1.d-1
+      end function p1atmmks
 
-      integer function FORT_GETCKELTNAME(i, coded)
+      integer function getckeltname(i, coded)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer i
       integer coded(*)
       integer names(0:maxelts*2)
@@ -596,15 +587,15 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       coded(1) = names(2*(i-1)  )
       coded(2) = names(2*(i-1)+1)
       if (coded(2).eq.ICHAR(' ')) then
-         FORT_GETCKELTNAME = 1
+         getckeltname = 1
       else
-         FORT_GETCKELTNAME = 2
+         getckeltname = 2
       endif
-      end
+      end function getckeltname
 
-      integer function FORT_GETCKSPECNAME(i, coded)
+      integer function getckspecname(i, coded)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer i
       integer coded(*)
       integer names(maxspec*maxspnml)
@@ -619,46 +610,46 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
             exit
          endif 
       end do
-      FORT_GETCKSPECNAME = str_len - 1
-      end
+      getckspecname = str_len - 1
+      end function getckspecname
 
-      integer function FORT_CKSYMR(fortReacIdx, coded)
+      integer function cksymr(fortReacIdx, coded)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer fortReacIdx
       integer coded(*)
       character*(72) line 
       integer j, str_len, istr, iend, lout
       logical error
       data error /.false./
-#ifdef MIKE
-      lout = 6
-      call CKSYMR(fortReacIdx,lout,IWRK(ckbi),RWRK(ckbr),
-     &     CWRK(ckbc),str_len,line,error)
-      if (error) then
-         write(lout,*) 'Could not get reaction name for ',fortReacIdx
-         call bl_abort(" ")
-      end if
-c      
-c     Encode the name for transfer to C++
-c
-      istr = 1
-      do while (line(istr:istr) .EQ. ' ')
-         istr = istr + 1
-      end do
-      do j = 0, str_len-1
-         coded(j+1) = ICHAR(line(istr+j:istr+j))
-      end do
-      FORT_CKSYMR = str_len
-#else
-      FORT_CKSYMR = 0
+!  #ifdef MIKE
+!     lout = 6
+!     call CKSYMR(fortReacIdx,lout,IWRK(ckbi),RWRK(ckbr),
+!    &     CWRK(ckbc),str_len,line,error)
+!     if (error) then
+!        write(lout,*) 'Could not get reaction name for ',fortReacIdx
+!        call bl_abort(" ")
+!     end if
+!  !      
+!  !     Encode the name for transfer to C++
+!  !
+!     istr = 1
+!     do while (line(istr:istr) .EQ. ' ')
+!        istr = istr + 1
+!     end do
+!     do j = 0, str_len-1
+!        coded(j+1) = ICHAR(line(istr+j:istr+j))
+!     end do
+!     FORT_CKSYMR = str_len
+!  #else
+      cksymr = 0
       call bl_abort("FORT_CKSYMR not implemented")
-#endif
-      end
+!  #endif
+      end function cksymr
 
       subroutine get_spec_name(name, j)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer i, j, FORT_GETCKSPECNAME
       integer coded(maxspnml), len
       character*(maxspnml) name
@@ -669,11 +660,11 @@ c
       do i = 1, len
          name(i:i) = char(coded(i))
       end do
-      end
+      end subrouitne get_spec_name
 
       subroutine get_spec_number(name, j)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer j, n
       character*(*) name
       character*(maxspnml) locName
@@ -683,35 +674,35 @@ c
          call get_spec_name(locName, n)
          if (locName .EQ. name) j = n
       end do
-      end
+      end subroutine get_spec_number
 
-      subroutine FORT_GETCKMWT(mwt)
+      subroutine getckmwt(mwt)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       REAL_T mwt(*)
       integer n
-c     Result in kg/kmole
+!     Result in kg/kmole
       call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
-      end
+      end subroutine getckmwt
 
-      subroutine FORT_GETCKAWT(awt)
+      subroutine getckawt(awt)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       REAL_T awt(*)
-#ifdef MIKE
-      integer n
-c     Result in kg/kmole
-      call CKAWT(IWRK(ckbi),RWRK(ckbr),awt)
-#else
+!  #ifdef MIKE
+!        integer n
+!  !     Result in kg/kmole
+!        call CKAWT(IWRK(ckbi),RWRK(ckbr),awt)
+!  #else
       call bl_abort("FORT_GETCKAWT not implemented")
-#endif
-      end
+!  #endif
+      end subroutine getckawt
 
       subroutine conpFY(N, TIME, Z, ZP, RPAR, IPAR)
+      use cdwrk_module
+      use conp_module
       implicit none
-#include "cdwrk.H"
-#include "conp.H"
-#include "visc.H"
+!   #include "visc.H"
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
@@ -719,35 +710,32 @@ c     Result in kg/kmole
       integer K
 
       REAL_T CONC(maxspec), WDOTS(maxspec), ENTHALPY(maxspec)
-C
-C     Variables in Z are:  Z(1)   = T
-C                          Z(K+1) = Y(K)
+!
+!     Variables in Z are:  Z(1)   = T
+!                          Z(K+1) = Y(K)
       
       CALL CKRHOY(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO)
       CALL CKCPBS(Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CPB)
       CALL CKYTCP(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CONC)
-c
-c     Get net production rates.  Compute such that production from -ve
-c     reactants gives zero contrib.
-c      
-c      do k=1,Nspec
-c         if (CONC(k) .lt. zero) write(6,*) '.....negative C',k
-c      end do
+!
+!     Get net production rates.  Compute such that production from -ve
+!     reactants gives zero contrib.
+!      
+!      do k=1,Nspec
+!         if (CONC(k) .lt. zero) write(6,*) '.....negative C',k
+!      end do
       
-#define MAKE_C_POS
-#undef MAKE_C_POS
-#ifdef MAKE_C_POS
-      do k=1,Nspec
-         CONC(k) = MAX(CONC(k),zero)
-      end do 
-#endif
+!  this was in an ifdef
+!     do k=1,Nspec
+!        CONC(k) = MAX(CONC(k),zero)
+!     end do 
       
       CALL CKWC(Z(1), CONC, IPAR(ckbi), RPAR(ckbr), WDOTS)
       CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), ENTHALPY)
-C
-C     Form governing equation
-C
-      THFAC = one / thickFacCH
+!
+!     Form governing equation
+!
+!     THFAC = one / thickFacCH
       SUM = zero
       DO K = 1, Nspec
          H    = ENTHALPY(K)
@@ -758,27 +746,29 @@ C
       END DO
       ZP(1) = -SUM / (RHO*CPB)
 
-#if 0
-      print*, 'Z:'
-      do k = 1, Nspec+1
-         write(6,996) Z(K)
-      end do
-      print*, 'ZP:'
-      do k = 1, Nspec+1
-         write(6,996) ZP(K)
-      end do
-      print*, 'WDOT:'
-      do k = 1, Nspec
-         write(6,996) WDOTS(K)
-      end do
+!  #if 0
+!     print*, 'Z:'
+!     do k = 1, Nspec+1
+!        write(6,996) Z(K)
+!     end do
+!     print*, 'ZP:'
+!     do k = 1, Nspec+1
+!        write(6,996) ZP(K)
+!     end do
+!     print*, 'WDOT:'
+!     do k = 1, Nspec
+!        write(6,996) WDOTS(K)
+!     end do
 
-996   format(e30.22)
-#endif
+!  996   format(e30.22)
+!  #endif
 
-      END
+      END subroutine conpFY
 
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
+      use cdwrk_module
+      use conp_module
       implicit none
       REAL_T SAVF
       REAL_T PD, RPAR(*), TN, Y
@@ -788,14 +778,12 @@ C
       REAL_T FTEM
       dimension FTEM(*)
       integer NFE
-#include "cdwrk.H"
-#include "conp.H"
       call bl_abort("conpJY: SHOULD NOT BE HERE!")
-      END
+      END subroutine conpJY
 
       integer function TfromeYpt(T,ein,Y,errMax,NiterMAX,res)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       integer NiterMAX,Niter,n,NiterDAMP
       REAL_T T,ein,Y(*),errMAX,res(0:NiterMAX-1)
       REAL_T TMIN,TMAX,e
@@ -874,11 +862,11 @@ C
 
       end do
 
-c     Set max iters taken during this solve, and exit
+!     Set max iters taken during this solve, and exit
       TfromeYpt = Niter
       return
 
-c     Error condition....dump state and bail out
+!     Error condition....dump state and bail out
  100  continue
 
       write(6,997) 'T from (e,Y): failed'
@@ -898,11 +886,11 @@ c     Error condition....dump state and bail out
  997  format(a,3(i4,a))
  998  format(a,d21.12)
 
-      end
+      end function TfromeYpt
 
       subroutine FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res,Niter)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
       REAL_T T,Y(*),H,Hin
       REAL_T TMIN,TMAX,errMAX
       integer NiterMAX,Niter,n,NiterDAMP, Discont_NiterMAX
@@ -939,9 +927,7 @@ c     Error condition....dump state and bail out
       converged = dH.le.errMAX
       stalled = .false.
 
-      do while ((.not.converged) .and. 
-     &     (.not.stalled) .and.
-     &     (.not.soln_bad))
+      do while ((.not.converged) .and.  (.not.stalled) .and.(.not.soln_bad))
 
          CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cp)
          dT = (Htarg - H)/cp
@@ -992,11 +978,11 @@ c     Error condition....dump state and bail out
             converged = .true.
          endif
 
-c     If the iterations are failing, perhaps it is because the fits are discontinuous
-c     The following implements a modified secant method to hone in on a discontinity in h
-c     with T.  Discont_NiterMAX is fairly large because this process can be particularly
-c     slow to converge if the Htarg value happens to lay between the discontinuous function
-c     values.  
+!     If the iterations are failing, perhaps it is because the fits are discontinuous
+!     The following implements a modified secant method to hone in on a discontinity in h
+!     with T.  Discont_NiterMAX is fairly large because this process can be particularly
+!     slow to converge if the Htarg value happens to lay between the discontinuous function
+!     values.  
          if (Niter .ge. NiterMAX) then
             do while (.not. stalled)
                dT = - (H - Htarg) * (old_T - T)/(old_H - H)
@@ -1014,7 +1000,7 @@ c     values.
                H = Hsec
                T = Tsec
                stalled = (2*ABS(old_T-T)/(old_T+T).le.errMAX)
-c               stalled = (ABS(dT).le.errMAX)
+!               stalled = (ABS(dT).le.errMAX)
                Niter = Niter + 1
                if (Niter.gt.NiterMAX+Discont_NiterMAX) then
                   Niter = -2
@@ -1026,9 +1012,9 @@ c               stalled = (ABS(dT).le.errMAX)
       end do
 
       return
-c
-c     Error condition....dump state and bail out
-c
+!
+!     Error condition....dump state and bail out
+!
  100  continue
 
       write(6,997) 'T from (H,Y): failed'
@@ -1049,14 +1035,14 @@ c
 
  997  format(a,3(i4,a))
  998  format(a,d21.12)
-      end
+      end function TfromHYpt
   
       integer function open_vode_failure_file ()
       implicit none
       character*30 name, myproc
       integer lout,i,j,k,idx
 
-c     Hardwire the unit number to 26 for the moment
+!     Hardwire the unit number to 26 for the moment
       lout = 26 
       call bl_pd_myproc(i)
       write(myproc, *) i
@@ -1078,11 +1064,11 @@ c     Hardwire the unit number to 26 for the moment
 c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       open(unit=lout, file=name, form='formatted', status='replace')
       open_vode_failure_file = lout
-      end
+      end function open_vode_failure_file
     
       block data tranjunk
-#include "cdwrk.H"
-#include "conp.H"
+      use cdwrk_module
+      use conp_module
       
       data verbose_vode / 0 /
       data max_vode_subcycles / 15000 /
@@ -1090,4 +1076,4 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       data thickFacCH / 1.d0 /
       data nstiff / 1 /
 
-      end
+      end block data tranjunk

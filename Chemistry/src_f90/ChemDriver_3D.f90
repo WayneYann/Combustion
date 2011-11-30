@@ -1,50 +1,22 @@
-#include "ChemDriver_F.H"
-#include "ArrayLim.H"
-#include "CONSTANTS.H"
+      subroutine normmass(lo, hi, xsID,Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, &
+         Y_h3, Ynorm, YNORM_l1, YNORM_l2, YNORM_l3, YNORM_h1, YNORM_h2, &
+         YNORM_h3)
 
-c     Series of runtime hacks
-#define DO_JBB_HACK
-#undef DO_JBB_HACK_TEMP
-#define DO_JBB_HACK_TEMP
-#define HACK_TEMP_MIN 273.d0
-#define HACK_TEMP_MAX 1900.d0
-#define TRIGGER_NEW_J
-#undef ALWAYS_NEW_J
-#undef SOLN_IS_1D
-
-#define CONPF_FILE conpFY
-#define CONPJ_FILE conpJY
-
-#if defined(BL_USE_FLOAT) || defined(BL_T3E) || defined(BL_CRAY)
-#define twothousand 2000
-#define one100th    0.01
-#define ten2minus19 1.e-19
-#define million     1.e6
-#define one2minus3  1.e-3
-#else
-#define twothousand 2000d0
-#define one100th    0.01d0
-#define ten2minus19 1.d-19
-#define million     1.d6
-#define one2minus3  1.d-3
-#endif
-
-#define SDIM 3
-
-      subroutine FORT_NORMMASS(lo, hi, xsID,
-     &                         Y, DIMS(Y), Ynorm, DIMS(YNORM))
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(Y)
-      integer DIMDEC(Ynorm)
-      integer xsID
-      REAL_T Y(DIMV(Y),*)
-      REAL_T Ynorm(DIMV(Ynorm),*)
+
+      integer, intent(in) :: lo(3)
+      integer, intent(in) :: hi(3)
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      integer, intent(in) :: Ynorm_l1, Ynorm_l2, Ynorm_l3, Ynorm_h1,  &
+            Ynorm_h2, Ynorm_h3
+      integer, intent(in) :: xsID
+      double precision, intent(in) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(out) ::  Ynorm(Ynorm_l1:Ynorm_h1,  &
+           Ynorm_l2:Ynorm_h2, Ynorm_l3:Ynorm_h3,*)
 
       integer i, j, k, n
-      REAL_T sum
+      double precision sum
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -58,34 +30,42 @@ c     Series of runtime hacks
             end do
          end do
       end do
-      end
+      end subroutine normmass
 
-      subroutine FORT_FRrateXTP(lo,hi,X,DIMS(X),T,DIMS(T),
-     &                          FwdK,DIMS(FwdK),RevK,DIMS(RevK),
-     &                          Patm,rxns,Nrxns)
+      subroutine frratextp(lo,hi,,X,X_l1, X_l2, X_l3, X_h1, X_h2, X_h3,  &
+          T,T_l1, T_l2, T_l3, T_h1, T_h2, T_h3,  &
+          FwdK,FwdK_l1, FwdK_l2, FwdK_l3, FwdK_h1, FwdK_h2, FwdK_h3,  &
+          RevK,RevK_l1, RevK_l2, RevK_l3, RevK_h1, RevK_h2, RevK_h3,  &
+          Patm,rxns,Nrxns)
+
+      use cdwrk_module
+      use conp_module
+
       implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(X)
-      integer DIMDEC(T)
-      integer DIMDEC(FwdK)
-      integer DIMDEC(RevK)
-      integer Nrxns
+      integer, intent(in) :: lo(3)
+      integer, intent(in) :: hi(3)
+      integer, intent(in) :: X_l1, X_l2, X_l3, X_h1, X_h2, X_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: FwdK_l1, FwdK_l2, FwdK_l3, FwdK_h1, FwdK_h2, FwdK_h3
+      integer, intent(in) :: RevK_l1, RevK_l2, RevK_l3, RevK_h1, RevK_h2, RevK_h3
+      integer, intent(in) :: Nrxns
       integer rxns(Nrxns)
-      REAL_T X(DIMV(X),*)
-      REAL_T T(DIMV(T))
-      REAL_T FwdK(DIMV(FwdK),*)
-      REAL_T RevK(DIMV(RevK),*)
-      REAL_T Patm, scale
+      double precision, intent(in) ::  X(X_l1:X_h1, X_l2:X_h2,  & 
+           X_l3:X_h3,*)
+      double precision, intent(in) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(out) :: FwdK(FwdK_l1:FwdK_h1,  & 
+           FwdK_l2:FwdK_h2, FwdK_l3:FwdK_h3,*)
+      double precision, intent(out) :: RevK(RevK_l1:RevK_h1,  & 
+           RevK_l2:RevK_h2, RevK_l3:RevK_h3,*)
+      double precision, intent(in) :: Patm
+      double precision, parameter:: scale = 1.d6
 
-      REAL_T Xt(maxspec),FwdKt(maxreac),RevKt(maxreac)
-      REAL_T sum, Yt(maxspec)
+      double precision Xt(maxspec),FwdKt(maxreac),RevKt(maxreac)
+      double precision sum, Yt(maxspec)
       integer i,j,k,n
-      REAL_T P1atm,RU,RUC,Pdyne
+      double precision P1atm,RU,RUC,Pdyne
+      logical, parameter :: JBB_HACK = .true.
 
-      parameter(scale = million)
 
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       Pdyne = Patm * P1atm
@@ -96,23 +76,23 @@ c     Series of runtime hacks
                do n=1,Nspec
                   Xt(n) = X(i,j,k,n)
                end do
-#ifdef DO_JBB_HACK
-               CALL CKXTY(Xt,IWRK(ckbi),RWRK(ckbr),Yt)
-               sum = zero
-               do n=1,Nspec
-                  Yt(n) =MAX( Yt(n),zero)
-                  sum = sum+Yt(n)
-               end do
-               if (iN2 .gt. 0) then
-                  Yt(iN2) = Yt(iN2)+one-sum
-               endif
+               if(JBB_HACK)then
+                 CALL CKXTY(Xt,IWRK(ckbi),RWRK(ckbr),Yt)
+                 sum = zero
+                 do n=1,Nspec
+                    Yt(n) =MAX( Yt(n),zero)
+                    sum = sum+Yt(n)
+                 end do
+                 if (iN2 .gt. 0) then
+                    Yt(iN2) = Yt(iN2)+one-sum
+                 endif
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),Xt)
-#endif
-#ifdef MIKE1
-               CALL CKKFKR(Pdyne,T(i,j,k),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt,RevKt)
-#else
+               endif
+!  #ifdef MIKE1
+!                 CALL CKKFKR(Pdyne,T(i,j,k),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt,RevKt)
+!  #else
                call bl_abort('FORT_FRrateXTP: CKKFKR not available')
-#endif
+!  #endif
                do n=1,Nrxns
                   FwdK(i,j,k,n) = FwdKt(rxns(n)+1)*scale
                   RevK(i,j,k,n) = RevKt(rxns(n)+1)*scale
@@ -120,32 +100,33 @@ c     Series of runtime hacks
             end do
          end do
       end do
-      end
+      end subroutine frratextp
 
-      subroutine FORT_HTRLS(lo,hi,Y,DIMS(Y),T,DIMS(T),
-     &                      Q,DIMS(Q),Patm)
+      subroutine htrls(lo,hi,Y,Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3, & 
+         T,T_l1, T_l2, T_l3, T_h1, T_h2, T_h3,  &
+         Q,Q_l1, Q_l2, Q_l3, Q_h1, Q_h2, Q_h3,Patm)
+      use cdwrk_module
+      use conp_module
       implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(Y)
-      integer DIMDEC(T)
-      integer DIMDEC(Q)
-      REAL_T Y(DIMV(Y),*)
-      REAL_T T(DIMV(T))
-      REAL_T Q(DIMV(Q))
-      REAL_T Patm
+      integer, intent(in) :: lo(3)
+      integer, intent(in) :: hi(3)
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: Q_l1, Q_l2, Q_l3, Q_h1, Q_h2, Q_h3
+      double precision, intent(in)  :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(in)  :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(out) :: Q(Q_l1:Q_h1, Q_l2:Q_h2, Q_l3:Q_h3)
+      double precision, intent(in)  :: Patm
 
-      REAL_T Zt(maxspec+1),Zdott(maxspec+1)
-      integer i,j,k,n
-      integer ndummy
-      REAL_T tdummy,P1atm,RU,RUC
-      REAL_T RHO, CPB, scal
-c
-c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.m^3)
-c
-      parameter(scal = tenth)
+      double precision :: Zt(maxspec+1),Zdott(maxspec+1)
+      integer :: i,j,k,n
+      integer :: ndummy
+      double precision :: tdummy,P1atm,RU,RUC
+      double precision :: RHO, CPB
+      double precision, parameter ::  scal = 0.1d0
+!
+!     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.m^3)
+!
 
       ndummy = Nspec
       tdummy = 0.0D0
@@ -166,27 +147,30 @@ c
             end do
          end do
       end do
-      end
+      end subroutine htrls
 
-      subroutine FORT_RRATEY(lo,hi,Y,DIMS(Y),T,DIMS(T),
-     &                       Ydot,DIMS(Ydot),Patm)
+      subroutine rratey(lo,hi,Y,Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3,  &
+            T,T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, &
+            Ydot,Ydot_l1, Ydot_l2, Ydot_l3, Ydot_h1, Ydot_h2, Ydot_h3, &
+            Patm)
+      use cdwrk_module
+      use conp_module
+
       implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(Y)
-      integer DIMDEC(T)
-      integer DIMDEC(Ydot)
-      REAL_T Y(DIMV(Y),*)
-      REAL_T T(DIMV(T))
-      REAL_T Ydot(DIMV(Ydot),*)
-      REAL_T Patm
+      integer, intent(in) :: lo(3)
+      integer, intent(in) :: hi(3)
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: Ydot_l1, Ydot_l2, Ydot_l3, Ydot_h1, Ydot_h2, Ydot_h3
+      double precision, intent(in)  :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(in)  :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(out) :: Ydot(Ydot_l1:Ydot_h1, Ydot_l2:Ydot_h2, Ydot_l3:Ydot_h3,*)
+      double precision, intent(in)  :: Patm
 
-      REAL_T Zt(maxspec+1),Zdott(maxspec+1)
-      integer i,j,k,n
-      integer ndummy
-      REAL_T tdummy,P1atm,RU,RUC
+      double precision :: Zt(maxspec+1),Zdott(maxspec+1)
+      integer :: i,j,k,n
+      integer :: ndummy
+      double precision :: tdummy,P1atm,RU,RUC
 
       ndummy = Nspec
       tdummy = 0.
@@ -207,20 +191,21 @@ c
             end do
          end do
       end do
-      end
+      end subroutine rratey
 
-      subroutine FORT_MASSTOMOLE(lo, hi, Y, DIMS(Y), X, DIMS(X))
+      subroutine masstomole(lo, hi, Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3, &
+         X, X_l1, X_l2, X_l3, X_h1, X_h2, X_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(Y)
-      integer DIMDEC(X)
-      REAL_T Y(DIMV(Y),*)
-      REAL_T X(DIMV(X),*)
+      integer, intent(in) :: lo(3)
+      integer, intent(in) :: hi(3)
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      integer, intent(in) :: X_l1, X_l2, X_l3, X_h1, X_h2, X_h3
+      double precision, intent(in)  :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(out) :: X(X_l1:X_h1, X_l2:X_h2, X_l3:X_h3,*)
 
-      REAL_T Xt(maxspec), Yt(maxspec)
-      integer i,j,k,n
+      double precision ::  Xt(maxspec), Yt(maxspec)
+      integer :: i,j,k,n
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -235,20 +220,21 @@ c
             end do
          end do
       end do
-      end
+      end subroutine masstomole
       
-      subroutine FORT_MOLETOMASS(lo, hi, X, DIMS(X), Y, DIMS(Y))
+      subroutine moletomass(lo, hi, Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3, &
+         X, X_l1, X_l2, X_l3, X_h1, X_h2, X_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(X)
-      integer DIMDEC(Y)
-      REAL_T X(DIMV(X),*)
-      REAL_T Y(DIMV(Y),*)
-      
-      REAL_T Xt(maxspec), Yt(maxspec)
-      integer i,j,k,n
+      integer, intent(in) :: lo(3)
+      integer, intent(in) :: hi(3)
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      integer, intent(in) :: X_l1, X_l2, X_l3, X_h1, X_h2, X_h3
+      double precision, intent(in)  :: X(X_l1:X_h1, X_l2:X_h2, X_l3:X_h3,*)
+      double precision, intent(out) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+
+      double precision ::  Xt(maxspec), Yt(maxspec)
+      integer :: i,j,k,n
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -263,24 +249,25 @@ c
             end do
          end do
       end do
-      end
+      end subroutine moletomass
 
-      subroutine FORT_MASSTP_TO_CONC(lo, hi, Patm,
-     &                           Y, DIMS(Y), T, DIMS(T), C, DIMS(C))
+      subroutine masstp_to_conc(lo, hi, Patm,Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3, & 
+         T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, C, C_l1, C_l2, C_l3, C_h1, C_h2, C_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(Y)
-      integer DIMDEC(T)
-      integer DIMDEC(C)
-      REAL_T Patm
-      REAL_T Y(DIMV(Y),*)
-      REAL_T T(DIMV(T))
-      REAL_T C(DIMV(C),*)
+      integer, intent(in) :: lo(3)
+      integer, intent(in) :: hi(3)
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: C_l1, C_l2, C_l3, C_h1, C_h2, C_h3
+      double precision, intent(in) :: Patm
+      double precision, intent(in) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(in) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(out) :: C(C_l1:C_h1, C_l2:C_h2, C_l3:C_h3,*)
+
       
-      REAL_T Yt(maxspec), Ct(maxspec), RU, RUC, P1ATM, Ptmp
-      integer i,j,k,n
+      double precision :: Yt(maxspec), Ct(maxspec), RU, RUC, P1ATM, Ptmp
+      integer :: i,j,k,n
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
@@ -293,30 +280,32 @@ c
                end do
                CALL CKYTCP(Ptmp,T(i,j,k),Yt,IWRK(ckbi),RWRK(ckbr),Ct)
                do n = 1,Nspec
-                  C(i,j,k,n) = Ct(n)*million
+                  C(i,j,k,n) = Ct(n)*1.d6
                end do
             end do
          end do
       end do
-      end
+      end subroutine masstp_to_conc
 
-      subroutine FORT_MASSR_TO_CONC(lo, hi, Y, DIMS(Y), 
-     &                              T, DIMS(T), RHO, DIMS(RHO), C, DIMS(C))
+      subroutine massr_to_conc(lo, hi, Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3, &
+         T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3,  &
+         RHO, RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3, &
+         C, C_l1, C_l2, C_l3, C_h1, C_h2, C_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(Y)
-      integer DIMDEC(T)
-      integer DIMDEC(C)
-      integer DIMDEC(RHO)
-      REAL_T Y(DIMV(Y),*)
-      REAL_T T(DIMV(T))
-      REAL_T C(DIMV(C),*)
-      REAL_T RHO(DIMV(RHO))
+      integer, intent(in) :: lo(3)
+      integer, intent(in) :: hi(3)
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: C_l1, C_l2, C_l3, C_h1, C_h2, C_h3
+      integer, intent(in) :: RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3
+      double precision, intent(in) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(in) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(out) :: C(C_l1:C_h1, C_l2:C_h2, C_l3:C_h3,*)
+      double precision, intent(in) :: RHO(RHO_l1:RHO_h1, RHO_l2:RHO_h2, RHO_l3:RHO_h3)
 
-      REAL_T Yt(maxspec), Ct(maxspec), rhoScl
-      integer i,j,k,n
+      double precision :: Yt(maxspec), Ct(maxspec), rhoScl
+      integer :: i,j,k,n
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -324,37 +313,37 @@ c
                do n = 1,Nspec
                   Yt(n) = Y(i,j,k,n)
                end do
-               rhoScl = RHO(i,j,k)*one2minus3
+               rhoScl = RHO(i,j,k)*1.d-3
                CALL CKYTCR(rhoScl,T(i,j,k),Yt,IWRK(ckbi),RWRK(ckbr),Ct)
                do n = 1,Nspec
-                  C(i,j,k,n) = Ct(n)*million
+                  C(i,j,k,n) = Ct(n)*1.d6
                end do
             end do
          end do
       end do
-      end
+      end subroutine massr_to_conc
 
-      subroutine FORT_CONC_TO_MOLE(lo, hi,
-     &                             C, DIMS(C), X, DIMS(X))
+      subroutine conc_to_mole(lo, hi,C, C_l1, C_l2, C_l3, C_h1, C_h2, C_h3, &
+         X, X_l1, X_l2, X_l3, X_h1, X_h2, X_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM)
-      integer hi(SDIM)
-      integer DIMDEC(C)
-      integer DIMDEC(X)
-      REAL_T C(DIMV(C),*)
-      REAL_T X(DIMV(X),*)
+      integer, intent(in) :: lo(3)
+      integer, intent(in) :: hi(3)
+      integer, intent(in) :: C_l1, C_l2, C_l3, C_h1, C_h2, C_h3
+      integer, intent(in) :: X_l1, X_l2, X_l3, X_h1, X_h2, X_h3
+      double precision, intent(in) :: C(C_l1:C_h1, C_l2:C_h2, C_l3:C_h3,*)
+      double precision, intent(out) ::  X(X_l1:X_h1, X_l2:X_h2, X_l3:X_h3,*)
 
-      REAL_T Ct(maxspec), Xt(maxspec), scale
-      integer i,j,k,n
 
-      parameter(scale = one/million)
+      double precision :: Ct(maxspec), Xt(maxspec)
+      integer :: i,j,k,n
+
       
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                do n = 1,Nspec
-                  Ct(n) = C(i,j,k,n)*scale
+                  Ct(n) = C(i,j,k,n)*1.d-6
                end do
                CALL CKCTX(Ct,IWRK(ckbi),RWRK(ckbr),Xt)
                do n = 1,Nspec
@@ -363,60 +352,63 @@ c
             end do
          end do
       end do
-      end
+      end subroutine conc_to_mole
 
-      subroutine FORT_MOLPROD(lo, hi, id, 
-     &                        Q, DIMS(Q), C, DIMS(C), T, DIMS(T) )
+      subroutine molprod(lo, hi, id, Q, Q_l1, Q_l2, Q_l3, Q_h1, Q_h2, Q_h3, &
+           C, C_l1, C_l2, C_l3, C_h1, C_h2, C_h3, T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3 )
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM), id
-      integer DIMDEC(Q)
-      integer DIMDEC(C)
-      integer DIMDEC(T)
-      REAL_T Q(DIMV(Q),*)
-      REAL_T C(DIMV(C),*)
-      REAL_T T(DIMV(T))
+      integer, intent(in) :: lo(3), hi(3), id
+      integer, intent(in) :: Q_l1, Q_l2, Q_l3, Q_h1, Q_h2, Q_h3
+      integer, intent(in) :: C_l1, C_l2, C_l3, C_h1, C_h2, C_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      double precision, intent(out) :: Q(Q_l1:Q_h1, Q_l2:Q_h2, Q_l3:Q_h3,*)
+      double precision, intent(in) :: C(C_l1:C_h1, C_l2:C_h2, C_l3:C_h3,*)
+      double precision, intent(in) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
 
-      REAL_T Ct(maxspec), Qt(maxreac), Qkt(maxreac), millionth
-      integer i,j,k,n
 
-      millionth = one/million
+
+      double preciison :: Ct(maxspec), Qt(maxreac), Qkt(maxreac), millionth
+      integer  :: i,j,k,n
+
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                do n = 1,Nspec
-                  Ct(n) = C(i,j,k,n)*millionth
+                  Ct(n) = C(i,j,k,n)*1.d-6
                end do
                CALL CKQC(T(i,j,k),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
-#ifdef MIKE
-               CALL CKCONT(id,Qt,IWRK(ckbi),RWRK(ckbr),Qkt)
-#else
+!  #ifdef MIKE
+!                 CALL CKCONT(id,Qt,IWRK(ckbi),RWRK(ckbr),Qkt)
+!  #else
                call bl_abort('FORT_MOLPROD: CKCONT not available')
-#endif
+!  #endif
                do n = 1,Nreac
-                  Q(i,j,k,n) = Qkt(n)*million
+                  Q(i,j,k,n) = Qkt(n)*1.d6
                end do
             end do
          end do
       end do
-      end
+      end subroutine molprod
 
-      subroutine FORT_GETELTMOLES(namenc, namlen, lo, hi,
-     &                            Celt, DIMS(Celt), C, DIMS(C))
+      subroutine geteltmoles(namenc, namlen, lo, hi,  &
+         Celt, Celt_l1, Celt_l2, Celt_l3, Celt_h1, Celt_h2, Celt_h3, &
+         C, C_l1, C_l2, C_l3, C_h1,C_h2, C_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM)
-      integer namlen, maxlen
-      integer namenc(namlen)
-      integer DIMDEC(Celt)
-      integer DIMDEC(C)
-      REAL_T Celt(DIMV(Celt))
-      REAL_T C(DIMV(C),*)
-      integer thenames(maxelts*2)
-      logical match
-      integer i, j, k, theidx, n, lout
-      integer NCF(Nelt,Nspec)
-c     Find index of desired element
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: namlen, maxlen
+      integer, intent(in) :: namenc(namlen)
+      integer, intent(in) :: Celt_l1, Celt_l2, Celt_l3, Celt_h1, Celt_h2, Celt_h3
+      integer, intent(in) :: C_l1, C_l2, C_l3, C_h1, C_h2, C_h3
+      double precision, intent(inout) :: Celt(Celt_l1:Celt_h1, Celt_l2:Celt_h2, Celt_l3:Celt_h3)
+      double precision, intent(in) :: C(C_l1:C_h1, C_l2:C_h2, C_l3:C_h3,*)
+
+      integer :: thenames(maxelts*2)
+      logical :: match
+      integer :: i, j, k, theidx, n, lout
+      integer :: NCF(Nelt,Nspec)
+!     Find index of desired element
       CALL CKSYME(thenames,2)
       theidx = -1
       do i=1,Nelt
@@ -429,7 +421,7 @@ c     Find index of desired element
       if (theidx.lt.0) then
          call bl_pd_abort()
       endif
-c     Get the matrix of elements versus species
+!     Get the matrix of elements versus species
       call CKNCF(Nelt,IWRK,RWRK,NCF)
       do k = lo(3),hi(3)
          do j = lo(2),hi(2)
@@ -441,54 +433,57 @@ c     Get the matrix of elements versus species
             end do
          end do
       end do
-      end
+      end subroutine geteltmoles
 
-      subroutine FORT_CONPSOLV(lo, hi,
-     &                         Ynew, DIMS(Ynew), Tnew, DIMS(Tnew),
-     &                         Yold, DIMS(Yold), Told, DIMS(Told),
-     &                         FuncCount, DIMS(FuncCount),
-     &                         Patm,
-     &                         dt,
-     &                         diag,do_diag)
+      subroutine conpsolv(lo, hi, &
+        Ynew, Ynew_l1, Ynew_l2, Ynew_l3, Ynew_h1 , Ynew_h2, Ynew_h3, &
+        Tnew, Tnew_l1, Tnew_l2, Tnew_l3, Tnew_h1, Tnew_h2, Tnew_h3, &
+        Yold, Yold_l1, Yold_l2, Yold_l3, Yold_h1, Yold_h2, Yold_h3, &
+        Told, Told_l1, Told_l2, Told_l3, Told_h1, Told_h2, Told_h3, & 
+        FuncCount, FuncCount_l1, FuncCount_l2, FuncCount_l3, &
+        FuncCount_h1, FuncCount_h2, FuncCount_h3,Patm,dt,diag,do_diag)
+
+      use cdwrk_module
+      use conp_module
       implicit none
 
-#include "cdwrk.H"
-#include "conp.H"
-#include "vode.H"
+      include "vode.H"
 
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(Yold)
-      integer DIMDEC(Told)
-      integer DIMDEC(Ynew)
-      integer DIMDEC(Tnew)
-      integer DIMDEC(FuncCount)
-      integer do_diag
-      REAL_T Yold(DIMV(Yold),*)
-      REAL_T Told(DIMV(Told))
-      REAL_T Ynew(DIMV(Ynew),*)
-      REAL_T Tnew(DIMV(Tnew))
-      REAL_T FuncCount(DIMV(FuncCount))
-      REAL_T Patm, dt
-      REAL_T diag(DIMV(FuncCount),*)
-      
-      integer ITOL, IOPT, ITASK, open_vode_failure_file
-      parameter (ITOL=1, IOPT=1, ITASK=1)
-      REAL_T RTOL, ATOL(maxspec+1),ATOLEPS
-      REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0D-8, ATOLEPS=1.0D-8)
-      parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
-      external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
-      REAL_T TT1, TT2, RU, RUC, P1atm, sum, atoln
-      integer i, j, k, m, MF, ISTATE, LOUTCK, lout
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: Yold_l1, Yold_l2, Yold_l3, Yold_h1, Yold_h2, Yold_h3
+      integer, intent(in) :: Told_l1, Told_l2, Told_l3, Told_h1, Told_h2, Told_h3
+      integer, intent(in) :: Ynew_l1, Ynew_l2, Ynew_l3, Ynew_h1, Ynew_h2, Ynew_h3
+      integer, intent(in) :: Tnew_l1, Tnew_l2, Tnew_l3, Tnew_h1, Tnew_h2, Tnew_h3
+      integer, intent(in) :: FuncCount_l1, FuncCount_l2, FuncCount_l3, FuncCount_h1, &
+           FuncCount_h2, FuncCount_h3
+      integer, intent(in) do_diag
+      double precision, intent(inout) :: Yold(Yold_l1:Yold_h1, Yold_l2:Yold_h2, Yold_l3:Yold_h3,*)
+      double precision, intent(inout) :: Told(Told_l1:Told_h1, Told_l2:Told_h2, Told_l3:Told_h3)
+      double precision, intent(inout) :: Ynew(Ynew_l1:Ynew_h1, Ynew_l2:Ynew_h2, Ynew_l3:Ynew_h3,*)
+      double precision, intent(inout) :: Tnew(Tnew_l1:Tnew_h1, Tnew_l2:Tnew_h2, Tnew_l3:Tnew_h3)
+      double precision, intent(inout) :: FuncCount(FuncCount_l1:FuncCount_h1,  & 
+           FuncCount_l2:FuncCount_h2, FuncCount_l3:FuncCount_h3)
+      double precision, intent(inout) :: Patm, dt
+      double precision, intent(inout) :: diag(FuncCount_l1:FuncCount_h1, &
+           FuncCount_l2:FuncCount_h2, FuncCount_l3:FuncCount_h3,*)
 
-      integer nsubchem, nsub, node, tid, nthrds
-      REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec), nwdot(0:maxspec)
-      REAL_T Ct(maxspec),Qt(maxreac),Ytemp(maxspec),Yres(maxspec)
+      integer, parameter ::  ITOL = 1, IOPT = 1, ITASK = 1
+      integer :: open_vode_failure_file
+      double precision, parameter :: RTOL =1.0D-8, ATOLEPS=1.0D-8
+      double precision ::  ATOL(maxspec+1)
+      double precision, paramter :: spec_scalT=2000.d0, NEWJ_TOL=0.01d0
+      external conpFY, conpJY, open_vode_failure_file
+      double precision :: TT1, TT2, RU, RUC, P1atm, sum, atoln
+      integer :: i, j, k, m, MF, ISTATE, LOUTCK, lout
+
+      integer :: nsubchem, nsub, node, tid, nthrds
+      double precision ::  dtloc, weight, TT1save, scale, tspecies(0:maxspec), nwdot(0:maxspec)
+      double precision ::  Ct(maxspec),Qt(maxreac),Ytemp(maxspec),Yres(maxspec)
 
       character*(maxspnml) name
-      parameter (LOUTCK=6)
+      integer, parameter :: LOUTCK=6
 
-      logical newJ_triggered, bad_soln
+      logical  :: newJ_triggered, bad_soln
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
@@ -497,20 +492,20 @@ c     Get the matrix of elements versus species
       integer,          save :: dvrlen
       integer,          save :: dvilen
 #endif
-c      
-c     Set IOPT=1 parameter settings for VODE (only really need to be set once).
-c
+!      
+!     Set IOPT=1 parameter settings for VODE (only really need to be set once).
+!
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
-      RWRK(dvbr+6) = ten2minus19
+      RWRK(dvbr+6) = 1.d-19
       IWRK(dvbi+4) = 0
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
       
       if (do_diag.eq.1) nsubchem = nchemdiag
-c
-c     Set molecular weights and pressure in area accessible by conpF
-c
+!
+!     Set molecular weights and pressure in area accessible by conpF
+!
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
 
       RWRK(NP) = Patm * P1atm
@@ -520,9 +515,9 @@ c
       else
          MF = 10
       endif
-c      
-c     Set up ATOL
-c
+!      
+!     Set up ATOL
+!
       if (ITOL.eq.2) then
          ATOL(1) = spec_scalT*ATOLEPS
          do m=1,Nspec
@@ -822,27 +817,29 @@ c
 #undef DVRLEN
 #undef DVILEN
 
-      end
+      end subroutine conpsolv
  
-      subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,
-     &     DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
+      subroutine mixavg_rhodiff_temp(lo, hi, & 
+        RD, RD_l1, RD_l2, RD_l3, RD_h1, RD_h2, RD_h3, &
+        T,T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, & 
+        Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3, Patm, do_temp, do_VelVisc)
+
+      use cdwrk_module
       implicit none
 
-#include "cdwrk.H"
+      integer, intent(in) :: lo(3), hi(3), do_temp, do_VelVisc
+      integer, intent(in) :: RD_l1, RD_l2, RD_l3, RD_h1, RD_h2, RD_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(inout) :: RD(RD_l1:RD_h1, RD_l2:RD_h2, RD_l3:RD_h3,*)
+      double precision, intent(inout) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(inout) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(in) :: Patm
 
-      integer lo(SDIM), hi(SDIM), do_temp, do_VelVisc
-      integer DIMDEC(RD)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T RD(DIMV(RD),*)
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
-      REAL_T Patm
-
-      integer i, j, k, n
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec)
-      REAL_T SCAL, TSCAL, Wavg, RHO, Tt, invmwt(maxspec)
-      REAL_T alpha, l1, l2, X(maxspec), CPMS(maxspec)
+      integer :: i, j, k, n
+      double precision :: RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec)
+      double precision :: SCAL, TSCAL, Wavg, RHO, Tt, invmwt(maxspec)
+      double precision :: alpha, l1, l2, X(maxspec), CPMS(maxspec)
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
@@ -853,7 +850,7 @@ c
 #endif
       integer egrlen, egilen, tid, nthrds
 
-      parameter(SCAL = tenth, TSCAL = one / 100000.0D0)
+      double precision, parameter :: SCAL = 0.1d0, TSCAL = 1.0d-5
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
@@ -945,25 +942,29 @@ c
 
 #undef EGSRWK
 #undef EGSIWK
-      end
+      end subroutine maxavg_rhodiff_temp
 
-      subroutine FORT_MIX_SHEAR_VISC(lo, hi, eta, DIMS(eta),
-     &                               T, DIMS(T), Y, DIMS(Y))
+      subroutine mix_shear_visc(lo, hi, &
+          eta, eta_l1, eta_l2, eta_l3, eta_h1, eta_h2, eta_h3, &
+          T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, &
+          Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3)
+      use cwdrk_module
       implicit none
 
-#include "cdwrk.H"
 
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(eta)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T eta(DIMV(eta))
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
-      REAL_T SCAL
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: eta_l1, eta_l2, eta_l3, eta_h1, eta_h2, eta_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(inout) :: eta(eta_l1:eta_h1, eta_l2:eta_h2, eta_l3:eta_h3)
+      double precision, intent(inout) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(inout) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+
+      double precision, parameter ::  SCAL = 0.1d0
+
       
-      integer i, j, k, n
-      REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), Tt
+      integer :: i, j, k, n
+      double precision :: X(maxspec), Yt(maxspec), CPMS(maxspec), Tt
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
@@ -982,8 +983,8 @@ c
 
 !$omp critical
       if (.not.associated(egrwrk)) then
-         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes &
+            + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
          egilen = Nspec
          nthrds = omp_get_num_threads()
 
@@ -1041,29 +1042,31 @@ c
 
 #undef EGSRWK
 #undef EGSIWK
-      end
+      end subroutine mix_shear_visc
 
-      subroutine FORT_RHOfromPTY(lo, hi, RHO, DIMS(RHO), T, DIMS(T),
-     &                           Y, DIMS(Y), Patm)
+      subroutine rhofrompty(lo, hi, &
+         RHO, RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3, &
+         T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, &
+         Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3, Patm)
+      use cdwrk_module
       implicit none
 
-#include "cdwrk.H"
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(out) :: RHO(RHO_l1:RHO_h1, RHO_l2:RHO_h2, RHO_l3:RHO_h3)
+      double precision, intent(in) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(in) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(in) :: Patm
 
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(RHO)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T RHO(DIMV(RHO))
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
-      REAL_T Patm
       
-      integer i, j, k, n
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL
-c
-c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
-c
-      parameter(SCAL = one * 1000.0D0)
+      integer :: i, j, k, n
+      double precision :: RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL
+!
+!     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
+!
+      double precision, parameter :: SCAL = 1000.0D0)
       
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
@@ -1082,28 +1085,34 @@ c
       end do
 !$omp end parallel do
 
-      end
+      end subroutine rhofrompty
       
-      subroutine FORT_RHOfromPvTY(lo, hi, RHO, DIMS(RHO), T, DIMS(T),
-     &                           Y, DIMS(Y), P, DIMS(P))
+      subroutine RHOfromPvTY(lo, hi, & 
+         RHO, RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3,  & 
+         T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, & 
+         Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3, &
+         P, P_l1, P_l2, P_l3, P_h1, P_h2, P_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(RHO)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      integer DIMDEC(P)
-      REAL_T RHO(DIMV(RHO))
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
-      REAL_T P(DIMV(P))
+
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      integer, intent(in) :: P_l1, P_l2, P_l3, P_h1, P_h2, P_h3
+      double precision, intent(out) ::  RHO(RHO_l1:RHO_h1, RHO_l2:RHO_h2, RHO_l3:RHO_h3)
+      double precision, intent(in) ::  T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(in) ::  Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(in) ::  P(P_l1:P_h1, P_l2:P_h2, P_l3:P_h3)
+
+
       
-      integer i, j, k, n
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL
-c
-c     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
-c
-      parameter(SCAL = one * 1000)
+      integer :: i, j, k, n
+      double precision RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL
+!
+!     NOTE: SCAL converts result from assumed cgs to MKS (1 g/cm^3 = 1.e3 kg/m^3)
+!
+      double precision, parameter :: SCAL = 1000.d0
       
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       do k=lo(3),hi(3)
@@ -1118,31 +1127,33 @@ c
             end do
          end do
       end do
-      end
+      end subroutine RHOfromPvTY
       
-      subroutine FORT_PfromRTY(lo, hi, P, DIMS(P), RHO, DIMS(RHO),
-     &                         T, DIMS(T), Y, DIMS(Y))
+      subroutine PfromRTY(lo, hi, &
+          P, P_l1, P_l2, P_l3, P_h1, P_h2, P_h3, & 
+          RHO, RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3, &
+          T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, &
+          Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3)
+      use cdwrk_module
       implicit none
 
-#include "cdwrk.H"
-
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(P)
-      integer DIMDEC(RHO)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T P(DIMV(P))
-      REAL_T RHO(DIMV(RHO))
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: P_l1, P_l2, P_l3, P_h1, P_h2, P_h3
+      integer, intent(in) :: RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(inout) :: P(P_l1:P_h1, P_l2:P_h2, P_l3:P_h3)
+      double precision, intent(inout) :: RHO(RHO_l1:RHO_h1, RHO_l2:RHO_h2, RHO_l3:RHO_h3)
+      double precision, intent(inout) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(inout) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
       
-      integer i, j, k, n
-      REAL_T Yt(maxspec), RHOt, SCAL, SCAL1
-c
-c     NOTE: SCAL converts result from assumed cgs to MKS (1 dyne/cm^2 = .1 Pa)
-c           SCAL1 converts density (1 kg/m^3 = 1.e-3 g/cm^3)
-c
-      parameter(SCAL = tenth, SCAL1 = tenth**3)
+      integer :: i, j, k, n
+      double precision :: Yt(maxspec), RHOt, SCAL, SCAL1
+!
+!     NOTE: SCAL converts result from assumed cgs to MKS (1 dyne/cm^2 = .1 Pa)
+!           SCAL1 converts density (1 kg/m^3 = 1.e-3 g/cm^3)
+!
+      double precision, parameter :: SCAL = 0.1d0, SCAL1 = 1.e-3
 
 !$omp parallel do private(i,j,k,n,Yt,RHOt)
       do k=lo(3),hi(3)
@@ -1159,27 +1170,32 @@ c
       end do
 !$omp end parallel do
 
-      end
+      end subroutine PfromRTY
       
-      subroutine FORT_TfromPRY(lo, hi, T, DIMS(T), RHO, DIMS(RHO),
-     &                         Y, DIMS(Y), Patm)
+      subroutine TfromPRY(lo, hi, &
+           T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3,& 
+           RHO, RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3, &
+           Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3, Patm)
+
+      use cdwrk_module
+
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(RHO)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T RHO(DIMV(RHO))
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
-      REAL_T Patm
+      integer,intent(in) :: lo(3), hi(3)
+      integer,intent(in) :: RHO_l1, RHO_l2, RHO_l3, RHO_h1, RHO_h2, RHO_h3
+      integer,intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer,intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(inout) :: RHO(RHO_l1:RHO_h1, RHO_l2:RHO_h2, RHO_l3:RHO_h3)
+      double precision, intent(inout) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(inout) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+      double precision, intent(inout) :: Patm
+
       
-      integer i, j, k, n
-      REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL, Wavg, RHOt
-c
-c     NOTE: SCAL converts density (1 kg/m^3 = 1.e-3 g/cm^3)
-c
-      parameter(SCAL = tenth**3)
+      integer :: i, j, k, n
+      double precision :: RU, RUC, P1ATM, Ptmp, Yt(maxspec), SCAL, Wavg, RHOt
+!
+!     NOTE: SCAL converts density (1 kg/m^3 = 1.e-3 g/cm^3)
+!
+      double precision, parameter :: SCAL = 1.d-3
       
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
@@ -1196,26 +1212,30 @@ c
             end do
          end do
       end do
-      end
+      end subroutine TfromPRY
       
-      subroutine FORT_CPMIXfromTY(lo, hi, CPMIX, DIMS(CPMIX), T, DIMS(T),
-     &                            Y, DIMS(Y))
+      subroutine CPMIXfromTY(lo, hi, &
+        CPMIX, CPMIX_l1, CPMIX_l2, CPMIX_l3, CPMIX_h1, CPMIX_h2, CPMIX_h3, &
+        T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3 ,&
+        Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(CPMIX)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T CPMIX(DIMV(CPMIX))
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: CPMIX_l1, CPMIX_l2, CPMIX_l3, CPMIX_h1, CPMIX_h2, CPMIX_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(inout) :: CPMIX(CPMIX_l1:CPMIX_h1, &
+                  CPMIX_l2:CPMIX_h2, CPMIX_l3:CPMIX_h3)
+      double precision, intent(in) :: T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(in) :: Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+
       
-      integer i, j, k, n
-      REAL_T Yt(maxspec), SCAL
-c
-c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
-c
-      parameter(SCAL = tenth**4)
+      integer  :: i, j, k, n
+      double precision ::  Yt(maxspec)
+!
+!     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
+!
+      double precision, parameter :: SCAL = 1.d-4
 
 !$omp parallel do private(i,j,k,n,Yt)
       do k=lo(3),hi(3)
@@ -1230,26 +1250,30 @@ c
          end do
       end do
 !$omp end parallel do
-      end
+      end subroutine CPMIXfromTY
       
-      subroutine FORT_CVMIXfromTY(lo, hi, CVMIX, DIMS(CVMIX), T, DIMS(T),
-     &                            Y, DIMS(Y))
+      subroutine CVMIXfromTY(lo, hi, &
+         CVMIX, CVMIX_l1, CVMIX_l2, CVMIX_l3, CVMIX_h1, CVMIX_h2, CVMIX_h3, &
+         T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, &
+         Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(CVMIX)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T CVMIX(DIMV(CVMIX))
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: CVMIX_l1, CVMIX_l2, CVMIX_l3, CVMIX_h1, CVMIX_h2, CVMIX_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(out) :: CVMIX(CVMIX_l1:CVMIX_h1, &
+                            CVMIX_l2:CVMIX_h2, CVMIX_l3:CVMIX_h3)
+      double precision, intent(in) ::  T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(in) ::  Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+
       
-      integer i, j, k, n
-      REAL_T Yt(maxspec), SCAL
-c
-c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
-c
-      parameter(SCAL = tenth**4)
+      integer  :: i, j, k, n
+      double precision Yt(maxspec)
+!
+!     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
+!
+      double precision, parameter :: SCAL = 1.d-4
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -1262,28 +1286,31 @@ c
             end do
          end do
       end do
-      end
+      end subroutine CVMIXfromTY
       
-      subroutine FORT_HMIXfromTY(lo, hi, HMIX, DIMS(HMIX), T, DIMS(T),
-     &                           Y, DIMS(Y))
+      subroutine HMIXfromTY(lo, hi,  & 
+        HMIX, HMIX_l1, HMIX_l2, HMIX_l3, HMIX_h1, HMIX_h2, HMIX_h3,  & 
+        T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, & 
+        Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3)
+      use cdwrk_module
       implicit none
 
-#include "cdwrk.H"
 
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(HMIX)
-      integer DIMDEC(T)
-      integer DIMDEC(Y)
-      REAL_T HMIX(DIMV(HMIX))
-      REAL_T T(DIMV(T))
-      REAL_T Y(DIMV(Y),*)
+      integer, intent(in) ::  lo(3), hi(3)
+      integer, intent(in) ::  HMIX_l1, HMIX_l2, HMIX_l3, HMIX_h1, HMIX_h2, HMIX_h3
+      integer, intent(in) ::  T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) ::  Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(out) ::  HMIX(HMIX_l1:HMIX_h1, &
+                    HMIX_l2:HMIX_h2, HMIX_l3:HMIX_h3)
+      double precision, intent(in) ::  T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(in) ::  Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
       
-      integer i, j, k, n
-      REAL_T Yt(maxspec), SCAL
-c
-c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
-c
-      parameter(SCAL = tenth**4)
+      integer :: i, j, k, n
+      double precision ::  Yt(maxspec)
+!
+!     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
+!
+      double preicison, parameter :: SCAL = 1.d-4
 
 !$omp parallel do private(i,j,k,n,Yt)
       do k=lo(3),hi(3)
@@ -1299,21 +1326,23 @@ c
       end do
 !$omp end parallel do
 
-      end
+      end subroutine HMIXfromTY
       
-      subroutine FORT_MWMIXfromY(lo, hi, MWMIX, DIMS(MWMIX), Y, DIMS(Y))
+      subroutine MWMIXfromY(lo, hi, &
+          MWMIX, MWMIX_l1, MWMIX_l2, MWMIX_l3, MWMIX_h1, MWMIX_h2, MWMIX_h3,  &
+          Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3)
       implicit none
 
-#include "cdwrk.H"
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: MWMIX_l1, MWMIX_l2, MWMIX_l3, MWMIX_h1, MWMIX_h2, MWMIX_h3
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(inout) ::  MWMIX(MWMIX_l1:MWMIX_h1, &
+                             MWMIX_l2:MWMIX_h2, MWMIX_l3:MWMIX_h3)
+      double precision, intent(inout) ::  Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
 
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(MWMIX)
-      integer DIMDEC(Y)
-      REAL_T MWMIX(DIMV(MWMIX))
-      REAL_T Y(DIMV(Y),*)
       
-      integer i, j, k,n
-      REAL_T Yt(maxspec)
+      integer ::  i, j, k,n
+      double precision :: Yt(maxspec)
 !
 !     Returns mean molecular weight in kg/kmole
 !
@@ -1330,23 +1359,26 @@ c
       end do
 !$omp end parallel do
 
-      end
+      end subroutine MWMIXfromY
       
-      subroutine FORT_CPfromT(lo, hi, CP, DIMS(CP), T, DIMS(T))
+      subroutine CPfromT(lo, hi,P, CP_l1, CP_l2, CP_l3, CP_h1, CP_h2, CP_h3, &
+            T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3)
+
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(CP)
-      integer DIMDEC(T)
-      REAL_T CP(DIMV(CP),*)
-      REAL_T T(DIMV(T))
+
+      integer, intent(in) ::  lo(3), hi(3)
+      integer, intent(in) ::  CP_l1, CP_l2, CP_l3, CP_h1, CP_h2, CP_h3
+      integer, intent(in) ::  T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      double precision, intent(out) ::  CP(CP_l1:CP_h1, CP_l2:CP_h2, CP_l3:CP_h3,*)
+      double precision, intent(in)  ::  T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
       
-      integer i, j, k, n
-      REAL_T SCAL, CPt(maxspec)
-c
-c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
-c
-      parameter(SCAL = tenth**4)
+      integer :: i, j, k, n
+      double precision ::  CPt(maxspec)
+!
+!     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g.K = 1.e-4 J/kg.K)
+!
+       double precision, parameter :: SCAL = 1.d-4
       
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -1358,23 +1390,25 @@ c
             end do
          end do
       end do
-      end
+      end subroutine CPfromT
       
-      subroutine FORT_HfromT(lo, hi, H, DIMS(H), T, DIMS(T))
+      subroutine HfromT(lo, hi, H, H_l1, H_l2, H_l3, H_h1, H_h2, H_h3, &
+         T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(H)
-      integer DIMDEC(T)
-      REAL_T H(DIMV(H),*)
-      REAL_T T(DIMV(T))
+      integer,intent(in) ::  lo(3), hi(3)
+      integer,intent(in) ::  H_l1, H_l2, H_l3, H_h1, H_h2, H_h3
+      integer,intent(in) ::  T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      double precision, intent(out) ::  H(H_l1:H_h1, H_l2:H_h2, H_l3:H_h3,*)
+      double precision, intent(in) ::  T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+
       
-      integer i, j, k, n
-      REAL_T SCAL, Ht(maxspec)
-c
-c     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
-c
-      parameter(SCAL = tenth**4)
+      integer :: i, j, k, n
+      double precision :: Ht(maxspec)
+!
+!     NOTE: SCAL converts result from assumed cgs to MKS (1 erg/g = 1.e-4 J/kg)
+!
+      double precision, parameter :: SCAL = 1.d-4
 
 !$omp parallel do private(i,j,k,n,Ht)
       do k=lo(3),hi(3)
@@ -1389,27 +1423,29 @@ c
       end do
 !$omp end parallel do
 
-      end
+      end subroutine HfromT
 
-      integer function FORT_TfromHY(lo, hi, T, DIMS(T),
-     &                              HMIX, DIMS(HMIX), Y, DIMS(Y),
-     &                              errMax, NiterMAX, res)
+      integer function TfromHY(lo, hi,  & 
+         T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3, & 
+         HMIX, HMIX_l1, HMIX_l2, HMIX_l3, HMIX_h1, HMIX_h2, HMIX_h3,  & 
+         Y, Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3,errMax, NiterMAX, res)
+      use cdwrk_module
       implicit none
 
-#include "cdwrk.H"
 
-      integer lo(SDIM), hi(SDIM)
-      integer NiterMAX
-      integer DIMDEC(T)
-      integer DIMDEC(HMIX)
-      integer DIMDEC(Y)
-      REAL_T T(DIMV(T))
-      REAL_T HMIX(DIMV(HMIX))
-      REAL_T Y(DIMV(Y),*)
-      REAL_T errMAX
-      REAL_T res(0:NiterMAX-1)
-      REAL_T Yt(maxspec)
-      integer i,j,k,n,Niter,MAXiters
+      integer, intent(inout) :: NiterMAX
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: HMIX_l1, HMIX_l2, HMIX_l3, HMIX_h1, HMIX_h2, HMIX_h3
+      integer, intent(in) :: Y_l1, Y_l2, Y_l3, Y_h1, Y_h2, Y_h3
+      double precision, intent(out) ::  T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(in) ::  HMIX(HMIX_l1:HMIX_h1, HMIX_l2:HMIX_h2, HMIX_l3:HMIX_h3)
+      double precision, intent(in) ::  Y(Y_l1:Y_h1, Y_l2:Y_h2, Y_l3:Y_h3,*)
+
+      double precision, intent(inout) :: errMAX
+      double precision, intent(inout) :: res(0:NiterMAX-1)
+      double precision, intent(inout) :: Yt(maxspec)
+      integer :: i,j,k,n,Niter,MAXiters
 
       MAXiters = 0
 
@@ -1436,66 +1472,70 @@ c
       end do
 !$omp end parallel do
 
-c     Set max iters taken during this solve, and exit
-      FORT_TfromHY = MAXiters
+!     Set max iters taken during this solve, and exit
+      TfromHY = MAXiters
       return
-      end
-c
-c     Optically thin radiation model, specified at
-c            http://www.ca.sandia.gov/tdf/Workshop/Submodels.html
-c     
-c     Q(T,species) = 4*sigma*SUM{pi*aP,i} *(T4-Tb4) 
-c     
-c     sigma=5.669e-08 W/m2K4 is the Steffan-Boltzmann constant, 
-c     SUM{ } represents a summation over the species in the radiation calculation, 
-c     pi is partial pressure of species i in atm (Xi times local pressure)
-c     aP,i is the Planck mean absorption coefficient of species i, 1/[m.atm]
-c     T is the local flame temperature (K)
-c     Tb is the background temperature (300K or as spec. in expt)
-c
-c     For H2O and CO2,
-c         aP = exp{c0 + c1*ln(T) + c2*{ln(T)}2 + c3*{ln(T)}3 + c4*{ln(T)}4} 
-c     
-c                            H2O                  CO2
-c              c0       0.278713E+03         0.96986E+03
-c              c1      -0.153240E+03        -0.58838E+03
-c              c2       0.321971E+02         0.13289E+03
-c              c3      -0.300870E+01        -0.13182E+02
-c              c4       0.104055E+00         0.48396E+00
-c     For CH4:
-c     
-c     aP,ch4 = 6.6334 - 0.0035686*T + 1.6682e-08*T2 + 2.5611e-10*T3 - 2.6558e-14*T4
-c
-c     For CO:   aP,co = c0+T*(c1 + T*(c2 + T*(c3 + T*c4)))
-c
-c           T <= 750                 else
-c      
-c         c0   4.7869              10.09       
-c         c1  -0.06953             -0.01183    
-c         c2   2.95775e-4          4.7753e-6   
-c         c3  -4.25732e-7          -5.87209e-10
-c         c4   2.02894e-10         -2.5334e-14 
-c      
+      end function TfromHY
+!
+!     Optically thin radiation model, specified at
+!            http://www.ca.sandia.gov/tdf/Workshop/Submodels.html
+!     
+!     Q(T,species) = 4*sigma*SUM{pi*aP,i} *(T4-Tb4) 
+!     
+!     sigma=5.669e-08 W/m2K4 is the Steffan-Boltzmann constant, 
+!     SUM{ } represents a summation over the species in the radiation calculation, 
+!     pi is partial pressure of species i in atm (Xi times local pressure)
+!     aP,i is the Planck mean absorption coefficient of species i, 1/[m.atm]
+!     T is the local flame temperature (K)
+!     Tb is the background temperature (300K or as spec. in expt)
+!
+!     For H2O and CO2,
+!         aP = exp{c0 + c1*ln(T) + c2*{ln(T)}2 + c3*{ln(T)}3 + c4*{ln(T)}4} 
+!     
+!                            H2O                  CO2
+!              c0       0.278713E+03         0.96986E+03
+!              c1      -0.153240E+03        -0.58838E+03
+!              c2       0.321971E+02         0.13289E+03
+!              c3      -0.300870E+01        -0.13182E+02
+!              c4       0.104055E+00         0.48396E+00
+!     For CH4:
+!     
+!     aP,ch4 = 6.6334 - 0.0035686*T + 1.6682e-08*T2 + 2.5611e-10*T3 - 2.6558e-14*T4
+!
+!     For CO:   aP,co = c0+T*(c1 + T*(c2 + T*(c3 + T*c4)))
+!
+!           T <= 750                 else
+!      
+!         c0   4.7869              10.09       
+!         c1  -0.06953             -0.01183    
+!         c2   2.95775e-4          4.7753e-6   
+!         c3  -4.25732e-7          -5.87209e-10
+!         c4   2.02894e-10         -2.5334e-14 
+!      
       
-      subroutine FORT_OTrad_TDF(lo, hi, Qloss, DIMS(Qloss),
-     &                          T, DIMS(T), X, DIMS(X), Patm, T_bg) 
+      subroutine OTrad_TDF(lo, hi,  & 
+         Qloss, Qloss_l1, Qloss_l2, Qloss_l3, Qloss_h1, Qloss_h2, Qloss_h3, & 
+         T, T_l1, T_l2, T_l3, T_h1, T_h2, T_h3   ,&
+         X, X_l1, X_l2, X_l3, X_h1, X_h2, X_h3, Patm, T_bg)
+      use cdwrk_module
       implicit none
-#include "cdwrk.H"
-      integer lo(SDIM), hi(SDIM)
-      integer DIMDEC(Qloss)
-      integer DIMDEC(T)
-      integer DIMDEC(X)
-      REAL_T Qloss(DIMV(Qloss))
-      REAL_T T(DIMV(T))
-      REAL_T X(DIMV(X),*)
-      REAL_T Patm, T_bg
+      integer, intent(in) :: lo(3), hi(3)
+      integer, intent(in) :: Qloss_l1, Qloss_l2, Qloss_l3, Qloss_h1, Qloss_h2, Qloss_h3
+      integer, intent(in) :: T_l1, T_l2, T_l3, T_h1, T_h2, T_h3
+      integer, intent(in) :: X_l1, X_l2, X_l3, X_h1, X_h2, X_h3
+      double precision, intent(inout) ::  Qloss(Qloss_l1:Qloss_h1, &
+                       Qloss_l2:Qloss_h2, Qloss_l3:Qloss_h3)
+      double precision, intent(inout) ::  T(T_l1:T_h1, T_l2:T_h2, T_l3:T_h3)
+      double precision, intent(inout) ::  X(X_l1:X_h1, X_l2:X_h2, X_l3:X_h3,*)
+
+      double precision, intent(in) :: Patm, T_bg
       
       character*(maxspnml) name      
-      integer n, i, j, k, iH2O, iCO2, iCH4, iCO
-      REAL_T aP, c0, c1, c2, c3, c4
-      REAL_T T1,T2,T3,T4,lnT1,lnT2,lnT3,lnT4,Tb4,sigma
+      integer :: n, i, j, k, iH2O, iCO2, iCH4, iCO
+      double precision :: aP, c0, c1, c2, c3, c4
+      double precision :: T1,T2,T3,T4,lnT1,lnT2,lnT3,lnT4,Tb4
 
-      parameter (sigma = 5.669D-08)
+      double precision, parameter :: sigma = 5.669D-08
       
       iH2O = 0
       iCO2 = 0
@@ -1583,4 +1623,4 @@ c
       end do
 !$omp end parallel do
 
-      end
+      end subroutine OTrad_TDF
