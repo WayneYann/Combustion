@@ -145,7 +145,7 @@ program chemh_converge4
         do k=0,rr_23-1
            sum = sum + data3(rr_23*i+k,j)
         end do
-        data3_1(i,j) = sum / dble(rr_23)
+        data3_2(i,j) = sum / dble(rr_23)
      end do
   end do
   
@@ -155,9 +155,9 @@ program chemh_converge4
 
   do i=0,nx_2-1
      do j=1,26
-        L0_23(j) = max(L0_23(j), abs(data2(i,j)-data3_1(i,j)))
-        L1_23(j) = L1_23(j) + abs(data2(i,j)-data3_1(i,j))
-        L2_23(j) = L2_23(j) + (data2(i,j)-data3_1(i,j))**2
+        L0_23(j) = max(L0_23(j), abs(data2(i,j)-data3_2(i,j)))
+        L1_23(j) = L1_23(j) + abs(data2(i,j)-data3_2(i,j))
+        L2_23(j) = L2_23(j) + (data2(i,j)-data3_2(i,j))**2
      end do
   end do
   L1_23 = L1_23 / dble(nx_2)
