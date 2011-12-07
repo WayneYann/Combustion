@@ -20,6 +20,25 @@
 ! ::: ----------------------------------------------------------------
 ! ::: 
 
+      subroutine get_chem_params(nspecies,maxspecies)
+
+        ! Passing data from f90 back to C++
+
+        use cdwrk_module
+
+        implicit none 
+
+        integer, intent(in) :: nspecies,maxspecies
+
+        Nspec = nspecies
+        maxspec = maxspecies
+
+      end subroutine get_chem_params
+
+! ::: 
+! ::: ----------------------------------------------------------------
+! ::: 
+
       subroutine set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
                                    FirstAdv,FirstSpec,numadv, &
                                    small_dens_in, small_temp_in, small_pres_in, &
@@ -29,10 +48,11 @@
         ! Passing data from C++ into f90
 
         use meth_params_module
-        use cdwrk_module, only : nspec
         use eos_module
 
         implicit none 
+
+        include "cdwrk.h"
  
         integer, intent(in) :: dm
         integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec

@@ -12,4 +12,4 @@ f90EXE_sources += meth_params.f90
 f90EXE_sources += prob_params.f90
 
 #f90EXE_sources +=  conp.f90
-#f90EXE_sources += cdwrk.f90
+f90EXE_sources += cdwrk.f90

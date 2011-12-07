@@ -6,10 +6,13 @@ module chemsolv_module
 
       subroutine consteFY(N, TIME, Z, ZP, RPAR, IPAR)
 
-      use  conp_module
-      use cdwrk_module
+!     use  conp_module
+!     use cdwrk_module
 
       implicit none
+
+      include "cdwrk.h"
+      include "conp.H"
 
       double precision :: TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer          :: N, IPAR(*)
@@ -56,9 +59,10 @@ module chemsolv_module
 !     
       integer function T_from_eY(T,Y,ein)
 
-      use cdwrk_module
+!     use cdwrk_module
 
       implicit none
+      include "cdwrk.h"
 
       double precision T,Y(1),e,ein
       double precision TMIN,TMAX,errMAX

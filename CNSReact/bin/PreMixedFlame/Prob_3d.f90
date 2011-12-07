@@ -89,11 +89,13 @@
         state,state_l1,state_l2,state_l3,state_h1,state_h2,state_h3, &
         delta,xlo,xhi)
 
-     use cdwrk_module
+!    use cdwrk_module
      use probdata_module
      use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, UFS
      use prob_params_module
      implicit none
+
+     include "cdwrk.h"
 
      integer level, nscal
      integer lo(3), hi(3)
