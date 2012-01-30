@@ -1,21 +1,21 @@
  &fortin
   probtype = 'diffusion_two-stream'
 
-  Tfrontw = .0002
-  xfrontw = .0002
   bloby = .003
-  blobr = .001
+  bloby = .001
   blobr = .002
+  blobr = -1
   blobT = 1500.
   blobT = 2000.
   T_in = 300
-  V_in = .5
-
   V_in = 1
   V_co = 1
   stTh = .001
-  splitx = .004  
   fuel_N2_vol_percent = 59.4595
+
+  splitx = 0.0025
+  V_co = 1
+  V_in = 0.2
  /
  &heattransin
   pamb = 101325.

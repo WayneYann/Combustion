@@ -142,7 +142,7 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 #include "cdwrk.H"
-#include "htdata.H"
+#include <htdata.H>
 #include "bc.H"
 #if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
@@ -253,9 +253,9 @@ c     Set defaults
       dpdt_factor = 0.3d0
 
       splitx = 0.5d0 * (domnhi(1) + domnlo(1))
-      xfrontw = 0.1d0 * (domnhi(1) - domnlo(1))
+      xfrontw = 0.05d0 * (domnhi(1) - domnlo(1))
       splity = 0.5d0 * (domnhi(2) + domnlo(2))
-      yfrontw = 0.1d0 * (domnhi(2) - domnlo(2))
+      yfrontw = 0.05d0 * (domnhi(2) - domnlo(2))
       blobx = 0.5d0 * (domnhi(1) + domnlo(1))
       bloby = 0.5d0 * (domnhi(2) + domnlo(2))
       blobT = T_in

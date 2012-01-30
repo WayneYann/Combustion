@@ -4075,8 +4075,8 @@ void
 NavierStokes::post_regrid (int lbase,
                                 int new_finest)
 {
-    if (projector && level == lbase)
-        projector->setFinestLevel(new_finest);
+   // if (projector && level == lbase)
+    //    projector->setFinestLevel(new_finest);
 }
 
 //

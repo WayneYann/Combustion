@@ -1487,7 +1487,7 @@ HeatTransfer::initData ()
         std::cout << "initData: reading data from: " << pltfile << '\n';
 
     DataServices::SetBatchMode();
-    Amrvis::FileType fileType(Amrvis::NEWPLT);
+    FileType fileType(NEWPLT);
     DataServices dataServices(pltfile, fileType);
 
     if (!dataServices.AmrDataOk())
@@ -6305,21 +6305,9 @@ HeatTransfer::advance_sdc (Real time,
         std::cout << "Dn (SDC predictor) \n";
     compute_differential_diffusion_terms(Dn,DDn,prev_time);
 
-#if 0
-    // compute omegadot^n
-    MultiFab RhoYdot(grids,nspecies,0);
-    compute_instantaneous_reaction_rates(RhoYdot,S_old,0);
+    // compute R^n
+    //compute_instantaneous_reaction_rates(get_old_data(RhoYdot_Type),S_old,0);
 
-    // set I_R = omegadot^n
-    for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
-    {
-      const Box& box = mfi.validbox();
-      const FArrayBox& rYdot = RhoYdot[mfi];    
-      FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
-      
-      r.copy(rYdot,box,0,box,0,nspecies);
-    }
-#endif
     //
     // Compute A (F = Dn + R)
     //
@@ -6340,15 +6328,14 @@ HeatTransfer::advance_sdc (Real time,
     Forcing.setBndry(0,0,nspecies);
     Forcing.FillBoundary(0,nspecies+1);
     geom.FillPeriodicBoundary(Forcing,0,nspecies+1);
-          
+
+    compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+#if 0          
     cout << "F for A:" << Forcing[0](IntVect(26,6),1) <<endl;
     cout << "   " << Dn[0](IntVect(26,6),1) << "(Dn) + "
          << get_old_data(RhoYdot_Type)[0](IntVect(26,6),1) << "(R) )" << endl;
-
-    compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
-
     cout << "     A:" << (*aofs)[0](IntVect(26,6),first_spec+1) <<endl;
-
+#endif
     scalar_advection_update(dt, Density, RhoH);
 
     make_rho_curr_time();
@@ -6378,12 +6365,12 @@ HeatTransfer::advance_sdc (Real time,
 
     Real theta_enthalpy = theta;
     differential_diffusion_update(Forcing,0,theta,Dhat,0,DDnp1,theta_enthalpy);
-
+#if 0
     cout << "F for Dhat:" << Forcing[0](IntVect(26,6),1) <<endl;
     cout << "   " << (*aofs)[0](IntVect(26,6),first_spec+1) << "(A) + "
          << get_old_data(RhoYdot_Type)[0](IntVect(26,6),1) << "(R) + " 
          << "0.5*(" << Dn[0](IntVect(26,6),1) << "(Dn) + " << Dhat[0](IntVect(26,6),1) << "(Dhat) )" << endl;
-
+#endif
     // 
     // Compute R, react with F = A + 0.5*(Dn + Dhat)
     // 
@@ -6409,13 +6396,13 @@ HeatTransfer::advance_sdc (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "R (SDC predictor) \n";
     advance_chemistry(S_old,S_new,dt,Forcing,0);
-    
+#if 0    
     cout << "F for R:" << Forcing[0](IntVect(26,6),1) <<endl;
     cout << "   " << (*aofs)[0](IntVect(26,6),first_spec+1) << "(A) + " 
          ".5*(" << Dn[0](IntVect(26,6),1) << "(Dn) + "
          << Dhat[0](IntVect(26,6),1) << "(Dhat) )" << endl;
     cout << "   R: " << get_new_data(RhoYdot_Type)[0](IntVect(26,6),1) << endl;
-
+#endif
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "DONE WITH R (SDC predictor) \n";
 
@@ -6455,12 +6442,13 @@ HeatTransfer::advance_sdc (Real time,
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  A (SDC corrector " << sdc_iter << ")\n";
-
+        compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+#if 0
         cout << "F for A:" << Forcing[0](IntVect(26,6),1) <<endl;
         cout << "   " << Dn[0](IntVect(26,6),1) << "(Dn) + "
              << get_new_data(RhoYdot_Type)[0](IntVect(26,6),1) << "(R) )" << endl;
-
-        compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+        cout << "     A:" << (*aofs)[0](IntVect(26,6),first_spec+1) <<endl;
+#endif
         scalar_advection_update(dt, Density, RhoH);
 
         make_rho_curr_time();
@@ -6494,13 +6482,14 @@ HeatTransfer::advance_sdc (Real time,
         theta_enthalpy = -1; // Do not recompute enthalpy diffusion terms
         differential_diffusion_update(Forcing,0,sdc_theta,Dhat,0,DDnp1,theta_enthalpy);
 
+#if 0
         cout << "F for Dhat:" << Forcing[0](IntVect(26,6),1) <<endl;
         cout << "   " << (*aofs)[0](IntVect(26,6),first_spec+1) << "(A) + "
              << get_new_data(RhoYdot_Type)[0](IntVect(26,6),1) << "(R) +" 
              << "0.5*(" << Dn[0](IntVect(26,6),1) << "(Dn) - "
              << Dnp1[0](IntVect(26,6),1) << "(Dnp1) ) + "
              << Dhat[0](IntVect(26,6),1) << "(Dhat) )" << endl;
-        
+#endif        
         // 
         // Compute R (F = A + 0.5(Dn - Dnp1 + DDn + DDnp1) + Dhat )
         // 
@@ -6528,19 +6517,20 @@ HeatTransfer::advance_sdc (Real time,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  R (SDC corrector " << sdc_iter << ")\n";
         advance_chemistry(S_old,S_new,dt,Forcing,0);
-
+#if 0
         cout << "F for R:" << Forcing[0](IntVect(26,6),1) <<endl;
         cout << "   " << (*aofs)[0](IntVect(26,6),first_spec+1) << "(A) + " 
             ".5*(" << Dn[0](IntVect(26,6),1) << "(Dn) - "
              << Dnp1[0](IntVect(26,6),1) << "(Dnp1) ) + "
              << Dhat[0](IntVect(26,6),1) << "(Dhat)" << endl;
         cout << "  R = " << get_new_data(RhoYdot_Type)[0](IntVect(26,6),1) << endl;
+#endif
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << " SDC iterations complete \n";
 
-    BoxLib::Abort();
+    //BoxLib::Abort();
 
     setThermoPress(cur_time);
     calc_divu(cur_time, dt, get_new_data(Divu_Type));

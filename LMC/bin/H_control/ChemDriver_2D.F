@@ -265,12 +265,6 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
             end do
 
             call conpFY_sdc(NEQ,TIME,Zt,Zdott,RWRK,IWRK,errCode)
-#if 0
-            if (errCode.ne.0) then
-               print *,'Failed in RRateRhoY'
-               stop
-            endif
-#endif
             do n=1,Nspec
                RhoYdot(i,j,n) = Zdott(n)
             end do
@@ -825,8 +819,8 @@ c
       REAL_T diag(DIMV(FuncCount),*)
 
       integer ITOL, IOPT, ITASK, errCode, open_vode_failure_file
-      parameter (ITOL=1, IOPT=1, ITASK=1)
-c      parameter (ITOL=2, IOPT=1, ITASK=1)
+c      parameter (ITOL=1, IOPT=1, ITASK=1)
+      parameter (ITOL=2, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
       parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
@@ -914,13 +908,13 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
             FuncCount(i,j) = 0
 
 
-            if (i.eq.26 .and. j.eq.6) then
-               idbg = 1
-               print *,'before',Z(1:Nspec+1)
-               print *,'c_0',c_0(1:Nspec+1)
-            else
+c            if (i.eq.26 .and. j.eq.6) then
+c               idbg = 1
+c               print *,'before',Z(1:Nspec+1)
+c               print *,'c_0',c_0(1:Nspec+1)
+c            else
                idbg = 0
-            endif
+c            endif
 
             do node = 1,nsub
                if (node.lt.nsub) then
@@ -1004,9 +998,9 @@ c               RWRK(dvbr+4) = TT2 - TT1
             T_cell = Tnew(i,j)
             call FORT_TfromHYpt(Tnew(i,j),rhoHnew(i,j)*rhoInv,Y,HtoTerrMAX,HtoTiterMAX,res,Niter,errCode)
 
-            if (i.eq.26 .and. j.eq.6) then
-               print *,'after',Z(1:Nspec+1)
-            endif
+c            if (i.eq.26 .and. j.eq.6) then
+c               print *,'after',Z(1:Nspec+1)
+c            endif
 
             if (errCode.lt.0) then
                print *,'FORT_CONPSOLV_SDC: H to T solve failed'
