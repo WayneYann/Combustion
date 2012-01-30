@@ -96,7 +96,8 @@ c
       CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
       NEQ   = Nspec + 1
       NP    = dvdbr
-      NWT   = NP  + 1
+      NRHO  = NP  + 1
+      NWT   = NRHO  + 1
       NZ    = NWT + Nspec
       RTOT  = NZ  + NEQ - 1
 

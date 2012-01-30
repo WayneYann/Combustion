@@ -1,6 +1,6 @@
 module diff_flux_module
 
-  use cdwrk_module
+! use cdwrk_module
   use meth_params_module
  
   implicit none
@@ -18,6 +18,7 @@ contains
 
       ! Get diffusion flux on faces surrounding Box(lo,hi), requires 
       ! valid data on region Box(lo,hi).grow(1)
+      use cdwrk_module, only : Nspec 
 
       implicit none
 
@@ -202,6 +203,8 @@ contains
 
       implicit none
 
+      include "cdwrk.h"
+
       integer          :: lo(3), hi(3)
       integer          :: q_l1, q_l2, q_l3, q_h1, q_h2, q_h3
       integer          :: D_l1, D_l2, D_l3, D_h1, D_h2, D_h3
@@ -274,6 +277,8 @@ contains
 
 
       implicit none
+
+      include "cdwrk.h"
 
       integer          :: lo(3),hi(3)
       integer          :: q_l1, q_l2, q_l3, q_h1, q_h2, q_h3
@@ -468,6 +473,8 @@ contains
 
 
       implicit none
+
+      include "cdwrk.h"
 
       integer          :: lo(3),hi(3)
       integer          :: do_temp, do_VelVisc

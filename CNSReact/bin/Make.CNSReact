@@ -13,9 +13,10 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 
-Bpack	+= ../../../Chemistry/src_f90/Make.package
+Bpack	+= ../../../Chemistry/src/Make.package
 Blocs	+= ../../../Chemistry/src
-Blocs	+= ../../../Chemistry/src_f90
+# Bpack	+= ../../../Chemistry/src_f90/Make.package
+# Blocs	+= ../../../Chemistry/src_f90
 
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
   MECHDIR = ../../../Chemistry/data

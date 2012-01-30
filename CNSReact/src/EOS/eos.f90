@@ -1,9 +1,10 @@
 module eos_module 
  
-  use cdwrk_module
+! use cdwrk_module
   use chemsolv_module
 
   implicit none
+
 
   double precision, save, private :: smalld
   double precision, save, private :: smallt
@@ -63,6 +64,8 @@ contains
   subroutine eos_given_ReY(G, P, C, T, dpdr, dpde, R, e, Y, pt_index)
  
      implicit none
+
+     include "cdwrk.h"
  
      double precision, parameter :: SCALP = 0.1d0, SCALR = 0.001d0
      double precision, intent(  out) :: G, P, C, T, dpdr, dpde
@@ -103,6 +106,7 @@ contains
   subroutine eos_given_RTY(e, P, R, T, Y, pt_index)
 
      implicit none
+     include "cdwrk.h"
 
      ! in/out variables
      double precision, intent(  out) :: e, P
@@ -124,6 +128,9 @@ contains
   end subroutine eos_given_RTY
 
   subroutine eos_get_cv(cv, R, T, Y)
+
+     implicit none
+     include "cdwrk.h"
 
 ! input/output variables
     double precision, intent(out) :: cv

@@ -3,10 +3,13 @@
       use meth_params_module, only : NTHERM, NVAR, nadv 
 
       use chemsolv_module
-      use    cdwrk_module
-      use     conp_module
+!     use    cdwrk_module
+!     use     conp_module
 
       implicit none
+
+      include "cdwrk.h"
+      include "conp.H"
 
       integer          :: lo(:), hi(:)
       integer          :: u_l1,u_h1,u_l2,u_h2,u_l3,u_h3
@@ -46,8 +49,8 @@
       double precision scale, ekin, u1, u2, u3
 !     integer is_bad
       
-      ! NRHO is declared in conp_module, but set here
-      NRHO = 1
+!     ! NRHO is declared in conp_module, but set here
+!     NRHO = 1
       
 !     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0

@@ -43,8 +43,8 @@
       parameter (eg_nodes = 1)
       parameter (eg_IFLAG = 7)
       parameter (eg_ITLS  = 3)
-      parameter (egr = 23 + 14*maxspec + 32*maxspec**2 + 13*eg_nodes 
-     &         + 30*eg_nodes*maxspec + 5*eg_nodes*maxspec**2)
+      parameter (egr = 23 + 14*maxspec + 32*maxspec**2 + 13*eg_nodes &
+              + 30*eg_nodes*maxspec + 5*eg_nodes*maxspec**2)
       parameter (egi = maxspec)
       parameter (egl = 0)
       parameter (egc = 0)
