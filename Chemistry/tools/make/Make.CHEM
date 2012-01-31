@@ -27,6 +27,21 @@ ifeq (${CHEMISTRY_MODEL}, CHEMH)
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/chem-H/PMFs
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/chem-H
 endif
+ifeq (${CHEMISTRY_MODEL}, LIDRY)
+  CHEM_MECHFILE = LiDryer.cpp
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/LiDryer/PMFs
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/LiDryer
+endif
+ifeq (${CHEMISTRY_MODEL}, GRI30_noArN)
+  CHEM_MECHFILE = grimech30-noArN.cpp
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/gri/PMFs
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/gri
+endif
+ifeq (${CHEMISTRY_MODEL}, GLARSKEL)
+  CHEM_MECHFILE = glarSkel.cpp
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/glar/PMFs
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/glar
+endif
 
 CEXE_sources += $(CHEM_MECHFILE)
 

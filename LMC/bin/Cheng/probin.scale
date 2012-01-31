@@ -1,0 +1,26 @@
+ &fortin
+  probtype = 4
+
+  Vin = 0.08
+  Vin = 0.231606025952
+  Tin = 298.0
+  phiin = .55
+  phiin = .75
+
+  zstandoff = -.005
+  zstandoff = -.025
+  max_trac_lev = 2
+  flametracval = 8.e-5
+  max_temp_lev = 0
+  temperr = 500
+  tempgrad = 300.0
+  max_vort_lev = 0
+  vorterr = 1000.
+
+  pertmag = .0001
+ /
+ &heattransin
+  pamb = 101325.
+  dpdt_factor = .3
+ /
+

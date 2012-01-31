@@ -57,6 +57,7 @@ ifeq (${USE_FLCTS}, TRUE)
 endif
 
 ifeq ($(USE_VELOCITY), TRUE)
+  DEFINES += -DBL_USE_VELOCITY -DBL_NOLINEVALUES
   CEXE_headers += DataServices.H AmrData.H XYPlotDataList.H AmrvisConstants.H
   CEXE_sources += DataServices.cpp AmrData.cpp
   FEXE_sources += FABUTIL_$(DIM)D.F
@@ -66,6 +67,7 @@ ifeq ($(USE_VELOCITY), TRUE)
 endif
 
 ifeq ($(USE_NEWMECH), TRUE)
+  DEFINES += -DBL_USE_NEWMECH -DBL_NOLINEVALUES
   CEXE_headers += DataServices.H AmrData.H XYPlotDataList.H AmrvisConstants.H
   CEXE_sources += DataServices.cpp AmrData.cpp
   FEXE_sources += FABUTIL_$(DIM)D.F
@@ -83,6 +85,11 @@ ifeq (${CHEMISTRY_MODEL}, CHEMH)
   CEXE_sources += chem-H.cpp
   vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/chem-H/PMFs
   vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/chem-H
+endif
+ifeq (${CHEMISTRY_MODEL}, GRI30)
+  CEXE_sources += grimech30.cpp
+  vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri/PMFs
+  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri
 endif
 
 # Enable time-dependent turbulence forcing term

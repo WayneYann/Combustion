@@ -1,3 +1,4 @@
+#include "REAL.H"
 #include "DDOp_F.H"
 
       integer function FORT_DDNCOEFS(model_DD0_MA1)

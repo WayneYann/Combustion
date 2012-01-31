@@ -1,0 +1,29 @@
+ &fortin
+  probtype = 4
+  flct_file = "initTurb_0900.bin"
+  flct_file = ""
+  forceInflow = .TRUE.
+  forceInflow = .FALSE.
+  nCompInflow = 3
+  zstandoff = -0.024
+
+  Vin = 0.5
+  turb_scale=1.
+
+  max_trac_lev = 10
+  flametracval = 1.e-9
+  max_temp_lev = 0
+  temperr = 100
+  tempgrad = 300.0
+  max_vort_lev = 10
+  vorterr = 1000.
+
+  tau_control = 2.e-3
+  sest = .3
+  cfix = 2.0e-8
+  changeMax_control = .05
+ /
+ &heattransin
+  pamb = 101325.
+  dpdt_factor = .3
+ /

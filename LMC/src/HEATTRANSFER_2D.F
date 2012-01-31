@@ -123,7 +123,7 @@ c -------------------- begin here ----------------------------
       implicit none
 #include "cdwrk.H"
 #include "visc.H"
-#include "htdata.H"
+#include <htdata.H>
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(T)
       integer DIMDEC(Y)

@@ -14,7 +14,7 @@
      &     FirstSpecIn, LastSpecIn)
       implicit none
 #include "cdwrk.H"
-#include "htdata.H"
+#include <htdata.H>
       integer DensityIn, TempIn, TracIn, RhoHIn, FirstSpecIn, LastSpecIn
 c
 c ::: Remove SPACEDIM from the counter, since those spots contain the
@@ -31,7 +31,7 @@ c
       
       subroutine FORT_GETTYPICALVALS(typ_vals,nVals)
 #include "cdwrk.H"
-#include "htdata.H"
+#include <htdata.H>
       integer nVals,n,nVals1
       REAL_T typ_vals(nVals)
       nVals1 = nVals-BL_SPACEDIM
@@ -92,7 +92,7 @@ c-----------------------------------------------------------------------
 
       subroutine FORT_GETPAMB(pambout, dpdt_factorout)
 #include "cdwrk.H"
-#include "htdata.H"
+#include <htdata.H>
       REAL_T dpdt_factorout, pambout
 
       dpdt_factorout = dpdt_factor
@@ -114,7 +114,7 @@ c     -- rbp
 
       implicit none
 #include "cdwrk.H"
-#include "htdata.H"
+#include <htdata.H>
 #include "visc.H"
       data use_constant_mu     /.true./
       data use_constant_lambda /.true./

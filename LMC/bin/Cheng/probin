@@ -1,0 +1,19 @@
+ &fortin
+  probtype = 1
+  max_vort_lev = 1
+  vorterr = 1000.
+  flametracval = .000001
+  flct_file = "TurbRep.bin"
+  nCompInflow = 3
+  forceInflow = .TRUE.
+  zstandoff = .02
+  zhot = .02
+  Thot = 1300.
+  refine_nozzle = 1
+  refine_nozzle_x = 0.06
+  refine_nozzle_z = 0.06
+ /
+ &heattransin
+  pamb = 101325.
+  dpdt_factor = 1.0
+ /
