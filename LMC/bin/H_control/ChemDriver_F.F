@@ -819,8 +819,8 @@ C                          Z(K+1) = RhoH
       enddo
       if (num_bad.gt.0) then
 c         print *,'-ve Y in cell:',i_cell,j_cell,'species:',is_bad(1:num_bad)
-         errCode = -16
-         goto 10
+c         errCode = -16
+c         goto 10
       endif
 
       do K=1,Nspec
@@ -884,9 +884,6 @@ c         print *,'inside',TIME,T,Y(5),ZP(5),WDOT_CGS(5)
       return
 
  10   continue
-c      print *,'errCode in F:',errCode,TIME
-c      print *,'Z:',Z(1:Nspec+1)
-
 #if 0
       print *,'conpFY_sdc: H to T solve failed'
       print *,'  at cell:',i_cell,j_cell

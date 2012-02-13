@@ -7,7 +7,7 @@
 #include "conp.H"
 #include "bc.H"
 #include "probdata.H"
-#include "htdata.H"
+#include <htdata.H>
       
       REAL_T Patm, FORT_P1ATMMKS, pmf_vals(maxspec+3), a
       REAL_T Xt(maxspec), Yt(maxspec), loc
@@ -184,7 +184,7 @@ c ::: -----------------------------------------------------------
       logical getuv
 
 #include "cdwrk.H"
-#include "htdata.H"
+#include <htdata.H>
 #include "bc.H"
 #include "probdata.H"
 
@@ -288,7 +288,7 @@ c ::: -----------------------------------------------------------
       REAL_T   press(DIMV(press))
  
 #include "cdwrk.H"
-#include "htdata.H"
+#include <htdata.H>
 #include "bc.H"
 #include "probdata.H"
  
@@ -366,7 +366,7 @@ c ::: -----------------------------------------------------------
       integer tmpi, nPMF
 
 #include "cdwrk.H"
-#include "htdata.H"
+#include <htdata.H>
 #include "bc.H"
 #include "probdata.H"
 
@@ -429,34 +429,59 @@ c ::: -----------------------------------------------------------
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               
-               eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
-               
-               do n=1,Nspec
-                  scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
-               enddo
-               scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
 
+               if (blobr.lt.0) then
+
+                  eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
+                  
+                  do n=1,Nspec
+                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
+                  enddo
+                  scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
+                  
+                  eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
+                  do n=1,Nspec
+                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
+     &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
+                  enddo
+                  scal(i,j,Temp) = blobT*eta + (1.d0-eta)*scal(i,j,Temp)
+                  
+                  vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
+                  vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
+                  scal(i,j,Trac) = 0.d0
+
+               else
+               
+                  eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
+                  
+                  do n=1,Nspec
+                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
+                  enddo
+                  scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
+                  
 c     Superimpose blob of hot air
-               r = SQRT((x-blobx)**2 + (y-bloby)**2)
-               eta = 0.5d0*(1.d0 - TANH(2.d0*(r-blobr)/Tfrontw))
-               do n=1,Nspec
-                  scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
-     &                 + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
-               enddo
-               scal(i,j,Temp) = blobT*eta + (1.d0-eta)*scal(i,j,Temp)
-               
-               vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
-               vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
-               scal(i,j,Trac) = 0.d0
-
-               if (stTh.gt. 0.d0) then
-                  call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.true.)
-                  vel(i,j,1) = u
-                  vel(i,j,2) = v
+                  r = SQRT((x-blobx)**2 + (y-bloby)**2)
+                  eta = 0.5d0*(1.d0 - TANH(2.d0*(r-blobr)/Tfrontw))
+                  do n=1,Nspec
+                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
+     &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
+                  enddo
+                  scal(i,j,Temp) = blobT*eta + (1.d0-eta)*scal(i,j,Temp)
+                  
+                  vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
+                  vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
+                  scal(i,j,Trac) = 0.d0
+                  
+                  if (stTh.gt. 0.d0) then
+                     zone = getZone(x,y)
+                     call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.true.)
+                     vel(i,j,1) = u
+                     vel(i,j,2) = v
+                  endif
                endif
-            end do
-         end do
+
+            enddo
+         enddo
       endif
 
       Patm = pamb / FORT_P1ATMMKS()
@@ -536,7 +561,7 @@ c ::: -----------------------------------------------------------
       
 #include "probdata.H"
 #include "cdwrk.H"
-#include "htdata.H"
+#include <htdata.H>
       integer i, j, n, Tid, RHid, YSid, YEid, ys, ye
       integer getZone
       logical do_T, do_RH, do_Y

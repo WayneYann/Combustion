@@ -1,0 +1,8 @@
+ &files
+   CHEMKIN_input = "glarSkel.mec"
+   THERMO_input = "glarTherm.dat"
+   TRANLIB_input = "tranGlar.dat"
+   CHEMKIN_linking_file = "glarSkel.asc"
+   TRANLIB_cpp_file = "glarSkel-tran.cpp"
+   log_file = "glarSkel.log"
+ /

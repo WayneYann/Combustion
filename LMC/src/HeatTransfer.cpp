@@ -1300,7 +1300,7 @@ HeatTransfer::initData ()
         std::cout << "initData: reading data from: " << pltfile << '\n';
 
     DataServices::SetBatchMode();
-    Amrvis::FileType fileType(Amrvis::NEWPLT);
+    FileType fileType(NEWPLT);
     DataServices dataServices(pltfile, fileType);
 
     if (!dataServices.AmrDataOk())
@@ -1314,16 +1314,17 @@ HeatTransfer::initData ()
     const Array<std::string>& names       = getChemSolve().speciesNames();   
     Array<std::string>        plotnames   = amrData.PlotVarNames();
 
-    int idT = -1, idX = -1;
+    int idT = -1, idX = -1, idSpec;
     for (int i = 0; i < plotnames.size(); ++i)
     {
         if (plotnames[i] == "temp")       idT = i;
         if (plotnames[i] == "x_velocity") idX = i;
+        if (plotnames[i] == "Y("+names[0]+")") idSpec = i;
     }
     //
     // In the plotfile the mass fractions directly follow the velocities.
     //
-    int idSpec = idX + BL_SPACEDIM;
+    BL_ASSERT(idT>=0 && idX>=0 && idSpec>=0);
 
     for (int i = 0; i < BL_SPACEDIM; i++)
     {
