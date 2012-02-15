@@ -53,11 +53,17 @@ ifeq (${USE_FLCTS}, TRUE)
 endif
 
 ifeq ($(USE_VELOCITY), TRUE)
+  AMRVIS_DIR = $(BOXLIB_HOME)/Src/Extern/amrdata
   include ${COMBUSTION_DIR}/LMC/tools/make/AmrData.mk
+  INCLUDE_LOCATIONS += $(AMRVIS_DIR)
+  VPATH_LOCATIONS   += $(AMRVIS_DIR)
 endif
 
 ifeq ($(USE_NEWMECH), TRUE)
+  AMRVIS_DIR = $(BOXLIB_HOME)/Src/Extern/amrdata
   include ${COMBUSTION_DIR}/LMC/tools/make/AmrData.mk
+  INCLUDE_LOCATIONS += $(AMRVIS_DIR)
+  VPATH_LOCATIONS   += $(AMRVIS_DIR)
 endif
 
 ifeq (${CHEMISTRY_MODEL}, DRM19)

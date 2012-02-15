@@ -174,9 +174,9 @@ mac.do_outflow_bcs = 0
 #
 fab.format = NATIVE
 
-ns.hack_nochem=1
-ns.hack_nospecdiff=1
-ns.init_iter=0
-ns.do_init_proj=0
-max_step=0
-ns.num_divu_iters=0
+#ns.hack_nochem=1
+#ns.hack_nospecdiff=1
+#ns.init_iter=0
+#ns.do_init_proj=0
+#max_step=0
+#ns.num_divu_iters=0
