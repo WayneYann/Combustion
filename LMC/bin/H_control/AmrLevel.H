@@ -244,17 +244,12 @@ public:
     //
     // Function to set physical boundary conditions.
     //
-    void setPhysBoundaryValues (int state_indx,
-                                int comp,
-                                int ncomp,
-                                int do_new = 1);
-    //
-    // Another function to set physical boundary conditions.
-    //
-    void setPhysBoundaryValues (int  state_indx,
-                                int  comp,
-                                int  ncomp,
-                                Real time);
+    virtual void setPhysBoundaryValues (FArrayBox& dest,
+                                        int        state_indx,
+                                        Real       time,
+                                        int        dest_comp,
+                                        int        src_comp,
+                                        int        num_comp);
     //
     // Returns a MultiFab containing the derived data for this level.
     // The user is responsible for deleting this pointer when done
@@ -449,7 +444,7 @@ public:
                              const MultiFab& leveldata);
 
     FillPatchIteratorHelper (AmrLevel&     amrlevel,
-                             const MultiFab&     leveldata,
+                             const MultiFab& leveldata,
                              int           boxGrow,
                              Real          time,
                              int           state_indx,
@@ -497,5 +492,89 @@ private:
     bool                         m_init;
     bool                         m_FixUpCorners;
 };
+
+inline
+int
+AmrLevel::Level () const
+{
+    return level;
+}
+
+inline
+const BoxArray&
+AmrLevel::boxArray () const
+{
+    return grids;
+}
+
+inline
+int
+AmrLevel::numGrids () const
+{
+    return grids.size();
+}
+
+inline
+const Box&
+AmrLevel::Domain () const
+{
+    return geom.Domain();
+}
+
+inline
+int
+AmrLevel::nStep () const
+{
+    return parent->levelSteps(level);
+}
+
+inline
+const Geometry&
+AmrLevel::Geom () const
+{
+    return geom;
+}
+
+inline
+StateData&
+AmrLevel::get_state_data (int state_indx)
+{
+    return state[state_indx];
+}
+
+inline
+MultiFab&
+AmrLevel::get_old_data (int state_indx)
+{
+    return state[state_indx].oldData();
+}
+
+inline
+const MultiFab&
+AmrLevel::get_old_data (int state_indx) const
+{
+    return state[state_indx].oldData();
+}
+
+inline
+MultiFab&
+AmrLevel::get_new_data (int state_indx)
+{
+    return state[state_indx].newData();
+}
+
+inline
+const MultiFab&
+AmrLevel::get_new_data (int state_indx) const
+{
+    return state[state_indx].newData();
+}
+
+inline
+const DescriptorList&
+AmrLevel::get_desc_lst ()
+{
+    return desc_lst;
+}
 
 #endif /*_AmrLevel_H_*/
