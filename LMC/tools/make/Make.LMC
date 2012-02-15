@@ -22,13 +22,10 @@ Bdirs   += ${BOXLIB_DIR}/Src/LinearSolvers/C_CellMG
 Bdirs   += ${BOXLIB_DIR}/Src/LinearSolvers/C_NodalMG
 Bdirs   += ${BOXLIB_DIR}/Src/LinearSolvers/C_TensorMG
 
-# Temporary Vince stuff
-Blocs   += ${COMBUSTION_DIR}/tmp_src
-
 Bpack	+= $(foreach dir, $(Bdirs), $(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(dir))
 
-include $(Bpack)
+include $(Bpack) 
 INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
 
@@ -52,28 +49,15 @@ endif
 # Hack in some LMC stuff
 
 ifeq (${USE_FLCTS}, TRUE)
-   FEXE_sources += FLUCTFILE.F INFL_FORCE_$(DIM)D.F INFL_FORCE_F.F
-   CEXE_sources += inflow.cpp
+  include ${COMBUSTION_DIR}/LMC/tools/make/flucts.mk
 endif
 
 ifeq ($(USE_VELOCITY), TRUE)
-  DEFINES += -DBL_USE_VELOCITY -DBL_NOLINEVALUES
-  CEXE_headers += DataServices.H AmrData.H XYPlotDataList.H AmrvisConstants.H
-  CEXE_sources += DataServices.cpp AmrData.cpp
-  FEXE_sources += FABUTIL_$(DIM)D.F
-  vpath %.F   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/tmp_src
-  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/tmp_src
-  vpath %.H $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/tmp_src
+  include ${COMBUSTION_DIR}/LMC/tools/make/AmrData.mk
 endif
 
 ifeq ($(USE_NEWMECH), TRUE)
-  DEFINES += -DBL_USE_NEWMECH -DBL_NOLINEVALUES
-  CEXE_headers += DataServices.H AmrData.H XYPlotDataList.H AmrvisConstants.H
-  CEXE_sources += DataServices.cpp AmrData.cpp
-  FEXE_sources += FABUTIL_$(DIM)D.F
-  vpath %.F   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/tmp_src
-  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/tmp_src
-  vpath %.H $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/tmp_src
+  include ${COMBUSTION_DIR}/LMC/tools/make/AmrData.mk
 endif
 
 ifeq (${CHEMISTRY_MODEL}, DRM19)
@@ -102,8 +86,8 @@ endif
 
 DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
 
-VPATH_LOCATIONS   += . $(Blocs)
-INCLUDE_LOCATIONS += . $(Blocs)
+VPATH_LOCATIONS   += . $(Blocs) $(AMRVIS_DIR)
+INCLUDE_LOCATIONS += . $(Blocs) $(AMRVIS_DIR)
 
 ifeq ($(USE_BGL),TRUE)
   MACHINE=BGL

@@ -2,6 +2,7 @@ TOP = ../../../..
 BOXLIB_DIR = ${TOP}/BoxLib
 IAMR_DIR = ${TOP}/IAMR
 COMBUSTION_DIR = ${TOP}/Combustion
+AMRVIS_DIR = ${TOP}/Amrvis
 
 #
 # Build configuration
