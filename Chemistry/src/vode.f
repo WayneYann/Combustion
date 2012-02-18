@@ -4156,12 +4156,8 @@ C-----------------------------------------------------------------------
       END
 
       DOUBLE PRECISION FUNCTION DUMACH ()
-      DOUBLE PRECISION U, COMP
-      U = 1.0D0
- 10   U = U*0.5D0
-      COMP = 1.0D0 + U
-      IF (COMP .NE. 1.0D0) GO TO 10
-      DUMACH = U*2.0D0
+      DOUBLE PRECISION U
+      DUMACH = EPSILON(U)
       RETURN
       END
 
