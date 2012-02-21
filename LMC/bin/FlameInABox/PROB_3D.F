@@ -3705,34 +3705,6 @@ c     divu(i,j,k) = min(two,one+time/.05)
 
       end
 
-      subroutine FORT_CHECK_TURB(add_turb_var,turb_length,
-     &                           box_offset,turb_scale_var,delta)
-      implicit none
-#include "probdata.H"
-      integer add_turb_var
-      REAL_T turb_length(SDIM)
-      integer box_offset(SDIM)
-      REAL_T delta(SDIM)
-      REAL_T turb_scale_var
-
-      add_turb_var = 0
-
-c     if (add_turb .and. zturb_top .gt. zero) then
-
-c        add_turb_var = 1
-c        turb_scale_var = turb_scale
-
-c        turb_length(1) = domnhi(1)-domnlo(1)
-c        turb_length(2) = domnhi(2)-domnlo(2)
-c        turb_length(3) = zturb_top - zturb_bot
-c        
-c        box_offset(1) = 0
-c        box_offset(2) = 0
-c        box_offset(3) = int(zturb_bot/delta(3))
-c     endif
-
-      end
-
       subroutine FORT_RADLOSS(lo,hi,rad,DIMS(rad),
      &                        T,DIMS(T),Y,DIMS(Y),dx,Patm,time)
       implicit none

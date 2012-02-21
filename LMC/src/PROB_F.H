@@ -19,7 +19,6 @@
 #    define FORT_DERRHORT               drhort
 #    define FORT_HACK                   hack
 #    define FORT_DERMOLEFRAC            dermolefrac
-#    define FORT_CHECK_TURB             checkturb
 #    define FORT_RADLOSS                radloss
 #    define FORT_ZEROVISC               zerovisc
 #    define FORT_DERCONCENTRATION       derconcentration
@@ -45,7 +44,6 @@
 #    define FORT_DERRHORT               DRHORT
 #    define FORT_HACK                   HACK
 #    define FORT_DERMOLEFRAC            DERMOLEFRAC
-#    define FORT_CHECK_TURB             CHECKTURB
 #    define FORT_RADLOSS                RADLOSS
 #    define FORT_ZEROVISC               ZEROVISC
 #    define FORT_DERCONCENTRATION       DERCONCENTRATION
@@ -69,7 +67,6 @@
 #    define FORT_CALCDIVU               calcdivu
 #    define FORT_DERRHORT               drhort
 #    define FORT_DERMOLEFRAC            dermolefrac
-#    define FORT_CHECK_TURB             checkturb
 #    define FORT_RADLOSS                radloss
 #    define FORT_ZEROVISC               zerovisc
 #    define FORT_DERCONCENTRATION       derconcentration
@@ -94,7 +91,6 @@
 #    define FORT_DERRHORT               drhort_
 #    define FORT_HACK                   hack_
 #    define FORT_DERMOLEFRAC            dermolefrac_
-#    define FORT_CHECK_TURB             checkturb_
 #    define FORT_RADLOSS                radloss_
 #    define FORT_ZEROVISC               zerovisc_
 #    define FORT_DERCONCENTRATION       derconcentration_
@@ -236,10 +232,6 @@
 			  const Real* time, const Real* dt, const int* bcrec, 
 			  const int* level, const int* grid_no) ;
      
-     void FORT_CHECK_TURB (const int* add_turb, const Real* turb_size,
-			   const int* box_offset, const Real* turb_scale,
-			   const Real* delta);
-
      void FORT_RADLOSS(const int* lo, const int* hi,
                        Real*       f, ARLIM_P(flo), ARLIM_P(fhi),
                        const Real* T, ARLIM_P(Tlo), ARLIM_P(Thi),

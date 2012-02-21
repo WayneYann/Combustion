@@ -2576,18 +2576,6 @@ c            divu(i,j) = min(two,one+time/.05)
 
       end
 
-      subroutine FORT_CHECK_TURB(add_turb_var,turb_length,
-     &                           box_offset,turb_scale_var,delta)
-      implicit none
-#include "probdata.H"
-      integer add_turb_var
-      REAL_T turb_length(SDIM)
-      integer box_offset(SDIM)
-      REAL_T delta(SDIM)
-      REAL_T turb_scale_var
-      add_turb_var = 0
-      end
-      
       subroutine FORT_RADLOSS(lo,hi,rad,DIMS(rad),
      &                        T,DIMS(T),Y,DIMS(Y),dx,Patm,time)
       implicit none
