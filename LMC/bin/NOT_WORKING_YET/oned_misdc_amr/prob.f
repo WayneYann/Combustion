@@ -106,25 +106,12 @@ c----------------------------------------------------------------------
          c_0(n) = 0.d0
          c_1(n) = 0.d0
       enddo
-      if (nochem_hack .or. use_strang) then
-         do i = 0,nx-1
-            do n=0,Nspec
-               I_R(i,n) = 0.d0
-            enddo            
-         enddo
-      else
-         do i = 0,nx-1
-            Z(0) = scal(i,Temp)
-            do n=1,Nspec
-               Z(n) = scal(i,FirstSpec+n-1)
-            enddo
-            rhoh_INIT = scal(i,RhoH)
-            call vodeF_T_RhoY(Nspec+1,time,Z(0),ZP(0),RWRK,IWRK)
-            do n=0,Nspec
-               I_R(i,n) = ZP(N)
-            enddo
-         enddo
-      endif
+
+      do i = 0,nx-1
+         do n=0,Nspec
+            I_R(i,n) = 0.d0
+         enddo            
+      enddo
 
       end
 

@@ -174,10 +174,11 @@ c     Initialize chem/tran database
          at_nstep = 1
 
 C take vals from PMF and fills vel, spec (rhoY), Temp
-C computes rho, rhoH, I_R
+C computes rho, rhoH
+C sets I_R to zero
 C Does NOT fill ghost cells
          call initdata(vel_new,scal_new,I_R_new,dx)
-c  JBB not sure is setting I_R here is prudent; sn sets to zero
+
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
      &                  dx,dt,99999,time)
 
