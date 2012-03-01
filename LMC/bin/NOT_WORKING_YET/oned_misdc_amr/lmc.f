@@ -49,7 +49,6 @@ c     Local variables
 
       integer do_init, is, i, n, nd, ns
 
-C CEG debgging REMOVE ME
       integer hi, lo, ncomp,j,IWRK
       real*8 ptherm(-1:nx)
       real*8 Y(maxspec)
@@ -66,16 +65,15 @@ c     New arrays for MISDC.
       namelist /fortin/ nsteps,stop_time,cfl,
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int, change_max,
-     $                  init_shrink, probtype,flame_offset,
+     $                  init_shrink, flame_offset,
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  num_divu_iters, num_init_iters,fixed_dt,
      $                  nochem_hack, use_strang, 
-     $                  sdc_pred_T_into_rhoh, sdc_evolve_T_in_VODE,
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  thickFacTR, thickFacCH, max_vode_subcycles,
-     $                  min_vode_timestep, dvd_debug
+     $                  min_vode_timestep
 
 c     Set defaults, change with namelist
       nsteps = 10
@@ -88,7 +86,6 @@ c     Set defaults, change with namelist
       chk_int = 1
       change_max = 1.05d0
       init_shrink = 0.1d0
-      probtype = 1
       flame_offset = 0.d0
       dpdt_factor = 0.d0
       Patm = 0
@@ -103,8 +100,6 @@ c     Set defaults, change with namelist
       fixed_dt = -1.d0
       nochem_hack = .false.
       use_strang = .false.
-      sdc_pred_T_into_rhoh = .false.
-      sdc_evolve_T_in_VODE = .false.
       V_in = 1.d20
       unlim = 0
       lim_rxns = 1
@@ -118,7 +113,6 @@ c     Set defaults, change with namelist
       thickFacCH = 1.d0
       max_vode_subcycles = 15000
       min_vode_timestep = 1.e-19
-      dvd_debug = 0
 
       divu_old = 0.d0
       press_old = 0.d0
@@ -144,7 +138,6 @@ c     Initialize chem/tran database
 
          print *,'CHKFILE ',chkfile
          
-C CEG FIXME this seg faults
          call read_check(chkfile,vel_new,scal_new,press_new,
      $                   I_R_new,divu_new,dsdt,
      $                   time,at_nstep,dt,cfl_used)
@@ -173,9 +166,7 @@ C CEG FIXME this seg faults
          do i = 0,nx
             press_old(i) =  press_new(i)
          enddo
-         
-c     call minmax_vel(nx,vel_new)
-         
+                  
       else
          
          do_init = 1
@@ -183,7 +174,7 @@ c     call minmax_vel(nx,vel_new)
          at_nstep = 1
 
 C take vals from PMF and fills vel, spec (rhoY), Temp
-C                              computes rho, rhoH, I_R
+C computes rho, rhoH, I_R
 C Does NOT fill ghost cells
          call initdata(vel_new,scal_new,I_R_new,dx)
 c  JBB not sure is setting I_R here is prudent; sn sets to zero
@@ -416,29 +407,6 @@ CCCCCCCCCCCCCCCCCCCc
      $        e15.9,' with dt = ',e15.9)
 
       endif
-C-- Done with initialization--------------------
-C debugging FIXME
-C$$$ 1006 FORMAT((I5,1X),11(E22.15,1X))      
-C$$$         hi = 255
-C$$$         lo = 0
-C$$$         ncomp = 11
-C$$$         call compute_pthermo(scal_new,ptherm)
-C$$$         open(UNIT=11, FILE='after.dat', STATUS = 'REPLACE')
-C$$$         write(11,*)'# ', hi-lo, ncomp 
-C$$$         do j=lo,hi
-C$$$            do n = 1,Nspec
-C$$$               Y(n) = scal_new(j,FirstSpec+n-1)*1.d3
-C$$$            enddo
-C$$$            write(11,1006) j, vel_new(j)*1.d-2, 
-C$$$     &                     scal_new(j,Density)*1.d3,
-C$$$     &                     (Y(n),n=1,Nspec),
-C$$$     $                     scal_new(j,RhoH)*1.d-1,
-C$$$     $                     scal_new(j,Temp),
-C$$$     $                     ptherm(j)*1.d-1
-C$$$         enddo
-C$$$         close(11)
-C$$$         stop
-CCCCCCCCCCCCC
 
 C-- Now advance 
       do nsteps_taken = at_nstep, nsteps
@@ -455,7 +423,6 @@ C-- Now advance
                   dt = dt*init_shrink
                   dt = min(dt,dt_init)
                else
-C CEG adding local change seems to have no effect for 2step mech
                   local_change_max = min(change_max,cfl/cfl_used)
                   dt = dt * local_change_max 
                   dt = min(dt,dt_new)

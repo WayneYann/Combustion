@@ -10,7 +10,6 @@
   chkfile = 'null'
   change_max = 1.1
   init_shrink = 0.1
-  probtype = 1
   flame_offset = -2.4
   dpdt_factor = .3
   Patm = 1.0
@@ -20,8 +19,6 @@
   misdc_iterMAX = 1
   nochem_hack = .false.
   use_strang = .false.
-  sdc_pred_T_into_rhoh = .false.
-  sdc_evolve_T_in_VODE = .false.
   lim_rxns = 0
   V_in = 0.
   LeEQ1 = 0

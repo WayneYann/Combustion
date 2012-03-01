@@ -406,14 +406,10 @@ C     For strang
 C     Variables in Z are:  Z(0)   = T
 C                          Z(K) = Y(K)
 C
-C     For SDC and sdc_evolve_T_in_VODE = .false.
+C     For SDC
 C     Variables in Z are:  Z(0)   = rho*h
 C                          Z(K) = rho*Y(K)
-C
-C     For SDC and sdc_evolve_T_in_VODE = .true.
-C     Variables in Z are:  Z(0)   = T
-C                          Z(K) = rho*Y(K)
-C
+
 
       if (nochem_hack) then
          print *,'WARNING: calling VODE with nochem_hack = true'
@@ -499,31 +495,22 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
             Y(K) = Z(K)/RHO
          enddo
 
-         if (sdc_evolve_T_in_VODE) then
-
-            T = Z(0)
-            call CKCPBS(T,Y,IWRK,RWRK,CPB)
-
-         else
-
-            T = T_INIT
-            hmix = (rhoh_INIT + c_0(0)*
-     &           TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
-            errMax = hmix_TYP*1.e-20
-            call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,
-     &                          res,Niter)
-            T_INIT = T
-            if (Niter.lt.0) then
-               print *,'vodeF_T_RhoY: H to T solve failed'
-               print *,'Niter=',Niter
-               stop
-            endif
-
-         end if
+         T = T_INIT
+         hmix = (rhoh_INIT + c_0(0)*
+     &        TIME + c_1(0)*TIME*TIME*0.5d0)/RHO
+         errMax = hmix_TYP*1.e-20
+         call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,
+     &                       res,Niter)
+         T_INIT = T
+         if (Niter.lt.0) then
+            print *,'vodeF_T_RhoY: H to T solve failed'
+            print *,'Niter=',Niter
+            stop
+         endif
 
       endif
 
-      if (use_strang .or. sdc_evolve_T_in_VODE) then
+      if (use_strang) then
 
          call CKHMS(T,IWRK,RWRK,HK)
          call CKWC(T,C,IWRK,RWRK,WDOTK)
@@ -684,8 +671,7 @@ c     Always form Jacobian to start
          FIRST = .FALSE.
       end if
 
-      if (do_diag .eq. 1 .and. 
-     &     (use_strang .or. sdc_evolve_T_in_VODE)) then
+      if (do_diag .eq. 1 .and. use_strang) then
          FuncCount = 0
          do n=1,Nspec
             C(n) = Z(n)*invmwt(n)
@@ -714,8 +700,7 @@ c     Always form Jacobian to start
 
          TT1 = TT2
 
-         if (do_diag .eq. 1 .and. 
-     &        (use_strang .or. sdc_evolve_T_in_VODE)) then
+         if (do_diag .eq. 1 .and. use_strang) then
             do n=1,Nspec
                C(n) = Z(n)*invmwt(n)
             enddo

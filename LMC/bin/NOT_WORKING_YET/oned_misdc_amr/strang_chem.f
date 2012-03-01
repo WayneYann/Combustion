@@ -65,11 +65,7 @@ C           integrating Y_m's not rhoY_m
                rho_old = rho_old + RYold(n)
             enddo
             
-            if (sdc_evolve_T_in_VODE) then
-               Told = scal_old(i,Temp)
-            else
-               Told = scal_old(i,RhoH)
-            end if
+            Told = scal_old(i,RhoH)
 
 c     Set linear source terms in common for ode integrators access
             do n = 1,Nspec
@@ -112,31 +108,18 @@ c     Set linear source terms in common for ode integrators access
                Y(n) = RYnew(n)/scal_new(i,Density)
             enddo
 
-            if (sdc_evolve_T_in_VODE) then
+            scal_new(i,RhoH) = Tnew
+            hmix = scal_new(i,RhoH) / scal_new(i,Density)
+            errMax = hmix_TYP*1.e-20
 
-               scal_new(i,Temp) =  Tnew
-               CALL CKHBMS(Tnew,Y,IWRK,RWRK,scal_new(i,RhoH))
-               scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
+            call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
+     &                          Nspec,errMax,NiterMAX,res,Niter)
 
-c               scal_new(i,RhoH) = scal_old(i,RhoH)+
-c     &              + dt*const_src(i,RhoH)
-c     &              + 0.5d0*dt*(lin_src_old(i,RhoH)+lin_src_new(i,RhoH))
-
-            else
-               scal_new(i,RhoH) = Tnew
-               hmix = scal_new(i,RhoH) / scal_new(i,Density)
-               errMax = hmix_TYP*1.e-20
-
-               call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
-     &              Nspec,errMax,NiterMAX,res,Niter)
-
-               if (Niter.lt.0) then
-                  print *,'strang_chem: H to T solve failed'
-                  print *,'Niter=',Niter
-                  stop
-               endif
-
-            end if
+            if (Niter.lt.0) then
+               print *,'strang_chem: H to T solve failed'
+               print *,'Niter=',Niter
+               stop
+            endif
 
             do n = 1,Nspec
                is = FirstSpec + n - 1

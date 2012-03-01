@@ -49,7 +49,7 @@ c
 c*****************************************************************
 c     Create MAC velocities.
 c*****************************************************************
-c          
+c     
       do i = 0,nx-1
          gp(i) = (press_old(i+1) - press_old(i)) / dx
       enddo
@@ -334,38 +334,6 @@ c     update density
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dx,dt)
 
-      if (sdc_pred_T_into_rhoh) then
-
-c        compute del dot lambda grad T + rho D grad h dot grad Y
-c        the rho D grad Y term is now computed conservatively
-         call get_temp_visc_terms(scal_old,beta_old,
-     &                            diff_old(0,Temp),dx,time)
-
-         do i=-1,nx
-            call CKHMS(scal_old(i,Temp),IWRK,RWRK,hi(1,i))
-         end do
-
-         do i = 0,nx-1
-            do n = 1,Nspec
-               Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
-            enddo
-            call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
-            rhocp = cpmix * 
-     &           (scal_old(i,Density) + scal_new(i,Density)) / 2.d0
-            tforce(i,Temp) = diff_old(i,Temp)/rhocp
-
-            do n=1,Nspec
-               tforce(i,Temp) = tforce(i,Temp) 
-     &              - I_R_new(i,n)*hi(n,i)/rhocp
-            end do
-         enddo
-
-c     recompute advection term for temperature
-c     all other terms computed too - should fix this
-         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
-
-      end if
-
 c     compute part of the RHS for the enthalpy and species
 c     diffusion solves
       do i=0,nx-1
@@ -532,38 +500,6 @@ c           really no need to recompute this since it doesn't change
 
          print *,'... update rho'
          call update_rho(scal_old,scal_new,aofs,dx,dt)
-
-         if (sdc_pred_T_into_rhoh) then
-
-c     compute del dot lambda grad T + rho D grad h dot grad Y
-c     the rho D grad Y term is now computed conservatively
-            call get_temp_visc_terms(scal_old,beta_old,
-     &                               diff_old(0,Temp),dx,time)
-
-            do i=-1,nx
-               call CKHMS(scal_old(i,Temp),IWRK,RWRK,hi(1,i))
-            end do
-
-            do i = 0,nx-1
-               do n = 1,Nspec
-                  Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
-               enddo
-               call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
-               rhocp = cpmix * 
-     &              (scal_old(i,Density) + scal_new(i,Density)) / 2.d0
-               tforce(i,Temp) = diff_old(i,Temp)/rhocp
-
-               do n=1,Nspec
-                  tforce(i,Temp) = tforce(i,Temp) 
-     &                 - I_R_new(i,n)*hi(n,i)/rhocp
-               end do
-            enddo
-
-c     recompute advection term for temperature
-c     all other terms computed too - should fix this
-            call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
-
-         end if
 
          print *,'... update D for species with A + R + MISDC(D)'
          do i=0,nx-1

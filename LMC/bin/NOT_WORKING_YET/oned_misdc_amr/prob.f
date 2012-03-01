@@ -38,20 +38,14 @@ c-----------------------------------------------------------------------
       integer LorR, n
       double precision time, u, rho, Y(*), T, h
 
-      if ( probtype.eq.1 ) then
+      do n = 1,Nspec
+         Y(n) = Y_bc(n,LorR)
+      end do
+      T = T_bc(LorR)
+      rho = rho_bc(LorR)
+      h = h_bc(LorR)
+      u = u_bc(LorR)
 
-         do n = 1,Nspec
-            Y(n) = Y_bc(n,LorR)
-         end do
-         T = T_bc(LorR)
-         rho = rho_bc(LorR)
-         h = h_bc(LorR)
-         u = u_bc(LorR)
-
-      else
-         print *,'bcfunction: invalid probtype'
-         stop
-      end if
       end
 
 c----------------------------------------------------------------------
@@ -73,70 +67,65 @@ c----------------------------------------------------------------------
       write(*,*)'*** initdata *****'
       write(*,*)'Pcgs = ', Pcgs
 
-      if (probtype.eq.1) then
+      time = 0.d0
+      do i = 0,nx-1
+         x = (DBLE(i)+0.5D0)*dx
+         
+         xPMFlo = x - flame_offset - 0.5*dx
+         xPMFhi = x - flame_offset + 0.5*dx
+         call pmf(xPMFlo,xPMFhi,valsPMF,nPMF)
 
-         time = 0.d0
-         do i = 0,nx-1
-            x = (DBLE(i)+0.5D0)*dx
-            
-            xPMFlo = x - flame_offset - 0.5*dx
-            xPMFhi = x - flame_offset + 0.5*dx
-            call pmf(xPMFlo,xPMFhi,valsPMF,nPMF)
+         call CKXTY(valsPMF(4),IWRK,RWRK,Y)
+         T = valsPMF(1)
 
-            call CKXTY(valsPMF(4),IWRK,RWRK,Y)
-            T = valsPMF(1)
-
-            if (iN2.gt.0  .and.  iN2.le.Nspec) then
-               sum = 0.d0
-               do n=1,Nspec
-                  sum = sum + Y(n)
-               enddo
-               Y(iN2) = Y(iN2) - 1.d0 + sum
-            endif
-
-            call CKHBMS(T,Y,IWRK,RWRK,h)
-            call CKRHOY(Pcgs,T,Y,IWRK,RWRK,rho)
+         if (iN2.gt.0  .and.  iN2.le.Nspec) then
+            sum = 0.d0
             do n=1,Nspec
-               scal(i,FirstSpec+n-1) = rho * Y(n)
+               sum = sum + Y(n)
             enddo
-            scal(i,Density) = rho
-            scal(i,Temp) = T
-            scal(i,RhoH) = rho * h
-            vel(i) = valsPMF(2)
-            if (i.eq.0) then
-               hmix_TYP = ABS(h)
-            else
-               hmix_TYP = MAX(hmix_TYP,ABS(h))
-            endif
-         enddo
-
-         do n = 0,Nspec
-            c_0(n) = 0.d0
-            c_1(n) = 0.d0
-         enddo
-         if (nochem_hack .or. use_strang) then
-            do i = 0,nx-1
-               do n=0,Nspec
-                  I_R(i,n) = 0.d0
-               enddo            
-            enddo
-         else
-            do i = 0,nx-1
-               Z(0) = scal(i,Temp)
-               do n=1,Nspec
-                  Z(n) = scal(i,FirstSpec+n-1)
-               enddo
-               rhoh_INIT = scal(i,RhoH)
-               call vodeF_T_RhoY(Nspec+1,time,Z(0),ZP(0),RWRK,IWRK)
-               do n=0,Nspec
-                  I_R(i,n) = ZP(N)
-               enddo
-            enddo
+            Y(iN2) = Y(iN2) - 1.d0 + sum
          endif
+
+         call CKHBMS(T,Y,IWRK,RWRK,h)
+         call CKRHOY(Pcgs,T,Y,IWRK,RWRK,rho)
+         do n=1,Nspec
+            scal(i,FirstSpec+n-1) = rho * Y(n)
+         enddo
+         scal(i,Density) = rho
+         scal(i,Temp) = T
+         scal(i,RhoH) = rho * h
+         vel(i) = valsPMF(2)
+         if (i.eq.0) then
+            hmix_TYP = ABS(h)
+         else
+            hmix_TYP = MAX(hmix_TYP,ABS(h))
+         endif
+      enddo
+
+      do n = 0,Nspec
+         c_0(n) = 0.d0
+         c_1(n) = 0.d0
+      enddo
+      if (nochem_hack .or. use_strang) then
+         do i = 0,nx-1
+            do n=0,Nspec
+               I_R(i,n) = 0.d0
+            enddo            
+         enddo
       else
-         print *,'bcfunction: invalid probtype'
-         stop
+         do i = 0,nx-1
+            Z(0) = scal(i,Temp)
+            do n=1,Nspec
+               Z(n) = scal(i,FirstSpec+n-1)
+            enddo
+            rhoh_INIT = scal(i,RhoH)
+            call vodeF_T_RhoY(Nspec+1,time,Z(0),ZP(0),RWRK,IWRK)
+            do n=0,Nspec
+               I_R(i,n) = ZP(N)
+            enddo
+         enddo
       endif
+
       end
 
 

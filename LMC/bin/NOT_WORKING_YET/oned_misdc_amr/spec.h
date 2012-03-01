@@ -49,8 +49,8 @@ c     EGLib stuff
       save /tranc/
 
 c     DVODE driver stuff
-      integer nchemdiag, dvd_debug
-      common / dvdi / nchemdiag, dvd_debug
+      integer nchemdiag
+      common / dvdi / nchemdiag
       save /dvdi/
 
       double precision c_0(0:maxspec), c_1(0:maxspec), rhoh_INIT,
@@ -59,19 +59,17 @@ c     DVODE driver stuff
       save /dvdr/
 
 c     LMC alg stuff
-      integer probtype, misdc_iterMAX,on_lo,on_hi,max_order,
+      integer misdc_iterMAX,on_lo,on_hi,max_order,
      &     divu_ceiling_flag, predict_temp_for_coeffs, initial_iter,
      &     unlim, lim_rxns,coef_avg_harm
       parameter (on_lo = 0, on_hi = 1, max_order = 3)
-      common / lmci / probtype, misdc_iterMAX, divu_ceiling_flag,
+      common / lmci / misdc_iterMAX, divu_ceiling_flag,
      &     predict_temp_for_coeffs, initial_iter, unlim, lim_rxns,
      &     coef_avg_harm
       save /lmci/
 
-      logical use_strang, sdc_pred_T_into_rhoh
-      logical sdc_evolve_T_in_VODE
-      common / lmcl / use_strang,
-     &     sdc_pred_T_into_rhoh, sdc_evolve_T_in_VODE
+      logical use_strang
+      common / lmcl / use_strang
       save /lmcl/
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),
