@@ -31,7 +31,7 @@ c     Add Div( lambda Grad(T) )
 
 c     this function will sometimes be called independently from 
 c     get_temp_visc_terms, so need this here
-      call set_bc_grow_s(scal,dx,time)
+      call set_bc_s(scal,dx,time)
 
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
@@ -80,7 +80,7 @@ c     Compute rhoD Grad(Yi).Grad(hi) terms
 
       dxsqinv = 1.d0/(dx*dx)
 
-      call set_bc_grow_s(scal,dx,time)
+      call set_bc_s(scal,dx,time)
 
 c     Get Hi, Yi at cell centers
       do i = -1,nx

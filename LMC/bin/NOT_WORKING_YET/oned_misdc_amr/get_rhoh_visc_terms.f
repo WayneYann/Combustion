@@ -22,7 +22,7 @@ c         print *,'get_rhoh_visc_terms does yet support non-unity Le'
 c         stop
 c      endif
 
-      call set_bc_grow_s(scal,dx,time)
+      call set_bc_s(scal,dx,time)
 
 C      call divBetaHgradY(scal,beta,tmp,dx,time)
 
@@ -72,8 +72,8 @@ C+ tmp(i)
       real*8 Y(maxspec,-1:nx)
       real*8 beta_lo, beta_hi, rho
 
-      call set_bc_grow_s(scal_for_coeff,dx,time)
-      call set_bc_grow_s(scal_for_grad,dx,time)
+      call set_bc_s(scal_for_coeff,dx,time)
+      call set_bc_s(scal_for_grad,dx,time)
 
       dxsqinv = 1.d0/(dx*dx)
 

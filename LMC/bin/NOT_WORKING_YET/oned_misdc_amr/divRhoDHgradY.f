@@ -19,7 +19,7 @@ c     Compute Div( rhoD h_m Grad(Yi))
 
       dxsqinv = 1.d0/(dx*dx)
 c     Get Hi, Yi at cell centers
-      call set_bc_grow_s(scal,dx,time)
+      call set_bc_s(scal,dx,time)
       do i = -1,nx
          rho = 0.d0
          do n=1,Nspec
@@ -84,7 +84,7 @@ c     Compute Div( h_m (rhoD - lamba/cp) Grad(Yi))
 
       dxsqinv = 1.d0/(dx*dx)
 c     Get Hi, Yi at cell centers
-      call set_bc_grow_s(scal,dx,time)
+      call set_bc_s(scal,dx,time)
       do i = -1,nx
          rho = 0.d0
          do n=1,Nspec

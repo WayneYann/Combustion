@@ -196,7 +196,7 @@ C  so initialize here to a riduculous number for now
          press_old(nx) =  0.d0
   
 C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT 
-         call set_bc_grow_s(scal_new,dx,time)
+         call set_bc_s(scal_new,dx,time)
 
          call minmax_vel(nx,vel_new)
          
