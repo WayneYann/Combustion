@@ -3,7 +3,7 @@
 
       include 'spec.h'
       double precision domnlo, domnhi
-      integer untin, nPMF, IWRK
+      integer nPMF, IWRK
       double precision xPMF, valsPMF(maxspec+3), RWRK
 
 c     Set ordering of variables in state
@@ -60,7 +60,6 @@ c----------------------------------------------------------------------
 
       double precision  x, rho, Y(maxspec), T, h
       double precision xPMFlo, xPMFhi
-      double precision Z(0:maxspec),ZP(0:maxspec)
       double precision valsPMF(maxspec+3), RWRK, time, sum
       integer i, n, nPMF, IWRK
 

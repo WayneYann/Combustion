@@ -2,18 +2,15 @@
       implicit none
       include 'spec.h'
       real*8 scal(-1:nx,nscal)
-      real*8 rho, Y(maxspec), hmix, hmixTYP
+      real*8 rho, Y(maxspec), hmix
       integer i,n
-      integer cnt,itemp,is
+      integer is
 
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
       double precision res(NiterMAX), errMAX, epsHtoTemp
       parameter (epsHtoTemp = 1.e-12)
 
-      integer IWRK
-      double precision RWRK
-  
 C CEG:: LMC just sets errMAX to 1.d-8
       errMAX = hmix_TYP*1.d-20
 

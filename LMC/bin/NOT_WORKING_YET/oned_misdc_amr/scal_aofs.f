@@ -15,22 +15,17 @@
       real*8 eps
       real*8 slo,shi
       integer iconserv
-      integer lo,hi,lo_lim,hi_lim
       integer ispec
       integer i,n
-      integer use_bds
 
       real*8 Y(maxspec), RWRK, hmix
       integer IWRK
 
       logical compute_comp(nscal)
-      real*8 ptherm(0 :nx)
       
       dth  = 0.5d0 * dt
       dthx = 0.5d0 * dt / dx
       eps = 1.e-6
-      
-      use_bds = 0
       
       call set_bc_s(scal_old,dx,time)
 
@@ -55,11 +50,8 @@
                iconserv = 1
             endif
 
-            if (use_bds .eq. 1) then
-               call bdsslopes(scal_old(-1,n),slope)
-            else
-               call  mkslopes(scal_old(-1,n),slope)
-            endif
+            call mkslopes(scal_old(-1,n),slope)
+
             do i = 1,nx-1
                slo = scal_old(i-1,n)+(0.5d0 - dthx*macvel(i))*slope(i-1)
                shi = scal_old(i  ,n)-(0.5d0 + dthx*macvel(i))*slope(i  )

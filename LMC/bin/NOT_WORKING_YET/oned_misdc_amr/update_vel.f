@@ -15,10 +15,8 @@
       real*8 dx,dt,be_cn_theta,time
       
       real*8  visc(0:nx-1)
-      real*8  dxsqinv,aofs
-      real*8  beta_lo,beta_hi
-      real*8  visc_term, RWRK
-      integer i,n,is, IWRK
+      real*8  aofs,visc_term
+      integer i
 
 
       call get_vel_visc_terms(vel_old,beta,visc,dx,time)

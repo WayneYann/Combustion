@@ -1,4 +1,4 @@
-      subroutine write_plt(vel,scal,press,divu,I_R,dx,dt,nsteps,time)
+      subroutine write_plt(vel,scal,press,divu,I_R,dx,nsteps,time)
       implicit none
       include 'spec.h'
 
@@ -10,14 +10,13 @@
       real*8 I_R( 0:nx-1,0:Nspec)
       real*8 ptherm(-1:nx)
       real*8 dx
-      real*8 dt
       real*8 time
       
       real*8 Y(maxspec)
       character pltfile*(8)
       character char_of_int*(5)
       
-      integer i,n,nvars
+      integer i,n
       pltfile(1:3) = 'rht'
       write(char_of_int,1005) nsteps
       pltfile(4:8) = char_of_int

@@ -3,7 +3,6 @@
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
-      real*8 drdhgy(0 :nx-1)
       real*8 visc(0 :nx-1)
       real*8 dx, time
       
@@ -66,7 +65,6 @@ C CEG:: maybe it would be a better idea to just use Tmid
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
-      real*8 drdhgy(0 :nx-1)
       real*8 visc(0 :nx-1)
       real*8 dx, time
       

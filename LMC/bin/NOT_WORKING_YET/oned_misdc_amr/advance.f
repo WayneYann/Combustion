@@ -38,7 +38,7 @@
       real*8   pthermo(-1:nx  )
 
       real*8   I_R_divu(0:nx-1,0:maxspec)
-      real*8 WDOTK(maxspec), C(maxspec), RWRK, T
+      real*8 WDOTK(maxspec), C(maxspec), RWRK
       integer IWRK
 
       integer rho_flag
@@ -186,7 +186,7 @@ c     diagnostics only
 
       print *,'...nodal projection...'
       if (initial_iter .eq. 0) then
-         call project(vel_old,vel_new,rhohalf,divu_new,
+         call project(vel_new,rhohalf,divu_new,
      $                press_old,press_new,dx,dt)
       endif
 
@@ -259,13 +259,10 @@ ccccccccccccccccccccccccccccccccc
       integer is, rho_flag
       integer misdc
 
-      real*8 Y(maxspec)
-      real*8 hi(maxspec,-1:nx)
-
 c     temporaries for setting I_R = omegadot^n at beginning of time step
-      real*8 WDOTK(maxspec), C(maxspec), T
+      real*8 WDOTK(maxspec), C(maxspec)
 
-      real*8 RWRK, cpmix, rhocp
+      real*8 RWRK
       integer IWRK
 
       diffdiff_old = 0.d0
@@ -333,7 +330,7 @@ c     compute advection term
 
 c     update density
       print *,'... update rho'
-      call update_rho(scal_old,scal_new,aofs,dx,dt)
+      call update_rho(scal_old,scal_new,aofs,dt)
 
 c     compute part of the RHS for the enthalpy and species
 c     diffusion solves
@@ -502,7 +499,7 @@ c           really no need to recompute this since it doesn't change
          call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
 
          print *,'... update rho'
-         call update_rho(scal_old,scal_new,aofs,dx,dt)
+         call update_rho(scal_old,scal_new,aofs,dt)
 
          print *,'... update D for species with A + R + MISDC(D)'
          do i=0,nx-1
@@ -731,7 +728,7 @@ c        we take the gradient of Y from the second scal argument
       call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
 
       print *,'... update rho'
-      call update_rho(scal_old,scal_new,aofs,dx,dt)
+      call update_rho(scal_old,scal_new,aofs,dt)
 
       do i = 0,nx-1
          do n = 1,Nspec

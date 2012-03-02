@@ -49,9 +49,6 @@ c     get_temp_visc_terms, so need this here
 
       enddo
 
- 1001 FORMAT(E22.15,1X)      
-            
-
       end
 
       subroutine rhoDgradHgradY(scal,beta,visc,dx,time,setbc)

@@ -12,12 +12,11 @@
       real*8  tforces(0:nx-1)
 
       real*8 slope(0:nx-1)
-      real*8 visc(0:nx-1)
       real*8 dth
       real*8 dthx
       real*8 eps
       real*8 slo,shi,vel_TYP
-      integer i,n
+      integer i
       
       dth  = 0.5d0 * dt
       dthx = 0.5d0 * dt / dx

@@ -1,13 +1,11 @@
       subroutine mkslopes(s,slope)
       implicit none
       include 'spec.h'
-      integer ncomp
       real*8     s(-1:nx  )
       real*8 slope( 0:nx-1)
 
       real*8 slxscr(-1:nx,4)
       real*8 slo,shi,slim,smid,ds
-      real*8 smax,smin
       integer i
       integer slope_order
 

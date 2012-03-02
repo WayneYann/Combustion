@@ -138,7 +138,7 @@ CCCCCCCCCCCCCC
       implicit none
       include 'spec.h'
       double precision RU, RUC, RWRK
-      integer lout, IWRK, n, len, offset,i
+      integer lout, IWRK, n, len, offset
       integer kname(maxspnml*maxspec)
 
       if (traninit.lt.0) then
@@ -271,17 +271,13 @@ C-----------------------------------------------------------------------
       double precision TIME, Z(0:maxspec+1), ZP(0:maxspec), RPAR(*)
       integer NEQ, IPAR(*)
       
-      double precision RHO, CPB, SUM, Y(maxspec),X(maxspec),sumX
+      double precision RHO, CPB, SUM, Y(maxspec)
       double precision HK(maxspec), WDOTK(maxspec), C(maxspec), RWRK
-      integer K, IWRK, j
+      integer K, IWRK
 
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)
-      double precision res(NiterMAX), errMAX, hmix, T, DEN
-CCCCCCCCCC FIXME??
-      double precision HK2(maxspec), WDOTK2(maxspec), C2(maxspec)
-      double precision ZP2(0:maxspec), CPB2
-CCCCCCCCCCCCCCCCCC
+      double precision res(NiterMAX), errMAX, hmix, T
 
 C     For strang
 C     Variables in Z are:  Z(0)   = T
@@ -302,49 +298,7 @@ C                          Z(K) = rho*Y(K)
          stop
       endif
 
-C$$$      do K = 1, Nspec
-C$$$         if (Z(K) .lt. -1.d-12) then
-C$$$C         if (Z(K) .lt. 0.d0) then
-C$$$            write(*,*)'WARNING!!!****************'
-C$$$            write(*,*)'Z_m < 0,  m = ',K, ',  Z_m = ',Z(K)
-C$$$            stop
-C$$$         endif
-C$$$      enddo
-
       if( use_strang) then
-C
-C CEG:: this was  a bad idea.  rho decreases a lot (compared with LMC rho)
-C       when done this way
-C
-C$$$         do K=1,Nspec
-C$$$            C(K) = MAX(0.d0,Z(K)*invmwt(K))
-C$$$            Y(K) = Z(K)/rho_strang
-C$$$         enddo
-C$$$         write(*,*)rho_strang
-C$$$C CEG:: maybe it's a better idea to do it like LMC, where rho is determined
-C$$$C       by Y_m's and enforcing P=1 atm
-C$$$         call CKRHOY(Pcgs,Z(0),Y,IWRK,RWRK,RHO)
-C$$$         rho_strang = RHO
-C$$$         write(*,*)RHO
-C$$$         T = Z(0)
-C
-C CEG:: this wasn't a good idea either.  rho decreases a lot (compared with 
-C       LMC rho) when done this way
-C
-C$$$         sumX = 0.d0
-C$$$         do K=1,Nspec
-C$$$            C(K) = MAX(0.d0,Z(K)*invmwt(K))
-C$$$            sumX = sumX + C(K)
-C$$$         enddo
-
-C$$$         do K=1,Nspec
-C$$$            X(K) = C(K)/sumX
-C$$$         enddo
-C$$$         call CKRHOX(Pcgs,Z(0),X,IWRK,RWRK,RHO)
-C$$$         do K=1,Nspec
-C$$$            Y(K) = Z(K)/RHO
-C$$$         enddo
-C$$$         T = Z(0)
 C
 C  Doing exactly what LMC does
 C
@@ -413,7 +367,7 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
 
       end if
 
- 100  if(use_strang) then
+      if (use_strang) then
          DO K = 1, Nspec
             ZP(K) = ZP(K)/RHO
          enddo         
@@ -427,9 +381,9 @@ C       write(*,1008)(C(k),k=1,Nspec)
 C       write(*,*)'***********************************'
 C CEG debugging FIXME
 C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
- 1006 FORMAT(7(E22.15,1X))
- 1007 FORMAT(4(E22.15,1X))
- 1008 FORMAT(6(E22.15,1X))      
+C 1006 FORMAT(7(E22.15,1X))
+C 1007 FORMAT(4(E22.15,1X))
+C 1008 FORMAT(6(E22.15,1X))      
 
       END
 
@@ -464,15 +418,11 @@ C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
 C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       parameter (RTOL=1.0E-13, ATOLEPS=1.0E-13)
       external vodeF_T_RhoY, vodeJ, open_vode_failure_file
-      integer n, MF, ISTATE, lout
-      character*(maxspnml) name
+      integer n, MF, ISTATE
 
       integer nsubchem, nsub, node
       double precision dtloc, weight, TT1save
-      double precision C(maxspec),Q(maxreac), scale
-
-      double precision dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum
-      logical bad_soln
+      double precision C(maxspec),Q(maxreac)
 
 c     DVODE workspace requirements      
       integer dvr, dvi
@@ -631,11 +581,11 @@ c     Always form Jacobian to start
       double precision TMIN,TMAX,errMAX
       integer Nspec,NiterMAX,Niter,n,NiterDAMP, Discont_NiterMAX
       parameter (TMIN=250, TMAX=5000, Discont_NiterMAX=100)
-      double precision  T0,cp,cv,dH,temp,RoverWbar,Wbar,RU,RUC,P1ATM
+      double precision  T0,cp,dH,temp
       double precision res(0:NiterMAX-1),dT, Htarg
-      logical out_of_bounds, converged, soln_bad, stalled, discont
+      logical out_of_bounds, converged, soln_bad, stalled
       double precision HMIN,cpMIN,HMAX,cpMAX
-      integer ihitlo,ihithi,j,IWRK
+      integer ihitlo,ihithi,IWRK
       double precision old_T, old_H, Tsec, Hsec, RWRK
 
       out_of_bounds(temp) = (temp.lt.TMIN-1.d0) .or. (temp.gt.TMAX)

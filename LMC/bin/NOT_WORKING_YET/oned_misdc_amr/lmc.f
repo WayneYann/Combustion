@@ -7,7 +7,6 @@
       integer plot_int, chk_int
       integer num_init_iters
       integer num_divu_iters
-      integer sdc_iter     
 
       real*8   vel_new(-1:nx  )
       real*8   vel_old(-1:nx  )
@@ -23,11 +22,8 @@
       real*8  divu_new(0 :nx-1)
       real*8  beta_old(-1 :nx,maxscal)
       real*8  beta_new(-1 :nx,maxscal)
-      real*8    mu_old(-1 :nx)
       real*8    mu_new(-1 :nx)
       real*8      dsdt(0 :nx-1)
-      real*8    tforce(0 :nx-1,maxscal)
-
 
 c     Local variables
       real*8 problo,probhi
@@ -45,14 +41,8 @@ c     Local variables
       real*8 fixed_dt
       real*8 dt_dummy
 
-      real*8 divu_max
 
-      integer do_init, is, i, n, nd, ns
-
-      integer hi, lo, ncomp,j,IWRK
-      real*8 ptherm(-1:nx)
-      real*8 Y(maxspec)
-      real*8 RWRK
+      integer do_init, i, n, nd, ns
 
 c     New arrays for MISDC.
       real*8    const_src(0 :nx-1,maxscal)
@@ -143,7 +133,7 @@ c     Initialize chem/tran database
      $                   time,at_nstep,dt,cfl_used)
 
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
-     $                  dx,dt,at_nstep,time)
+     $                  dx,at_nstep,time)
 
          at_nstep = at_nstep + 1
 
@@ -180,7 +170,7 @@ C Does NOT fill ghost cells
          call initdata(vel_new,scal_new,I_R_new,dx)
 
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
-     &                  dx,dt,99999,time)
+     &                  dx,99999,time)
 
 C FIXME?
 C I don't think scal(RhoRT) ever actually gets used for anything,
@@ -230,11 +220,11 @@ c     Define density for initial projection.
          enddo
 
 C fills vel_new ghost cells, but not for vel_old 
-         call project(vel_old,vel_new,rhohalf,divu_new,
+         call project(vel_new,rhohalf,divu_new,
      $                press_old,press_new,dx,dt_dummy,time)
 
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
-     &                  dx,dt,99998,time)
+     &                  dx,99998,time)
 
 
          if (fixed_dt > 0) then
@@ -303,7 +293,7 @@ C            endif
             
 C vel_old does not get used in proj(), 
 C assumes good data in vel_new
-            call project(vel_old,vel_new,rhohalf,divu_new,
+            call project(vel_new,rhohalf,divu_new,
      $                   press_old,press_new,dx,dt_dummy,time)
 
             dt_init = dt
@@ -393,7 +383,7 @@ C         enddo
 CCCCCCCCCCCCCCCCCCCc
 
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
-     &                  dx,dt,0,time)
+     &                  dx,0,time)
 
          cfl_used = cfl * init_shrink
 
@@ -464,7 +454,7 @@ c     update state, I_R, time
          if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
      &        nsteps_taken.eq.nsteps) then 
             call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
-     $           dx,dt,nsteps_taken,time)
+     $           dx,nsteps_taken,time)
          endif
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 

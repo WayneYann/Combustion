@@ -11,9 +11,9 @@
       real*8 dx,time
       logical setbc
       
-      integer i,n,is,IWRK
+      integer i,n,is
       real*8 beta_lo,beta_hi
-      real*8 dxsqinv,RWRK
+      real*8 dxsqinv
       real*8 Y(-1:nx,maxspec), sum_lo, sum_hi, sumRhoY_lo, sumRhoY_hi
       real*8 RhoYe_lo, RhoYe_hi
 

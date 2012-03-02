@@ -12,15 +12,8 @@
       real*8 dx,dt,be_cn_theta,time
 
       real*8  visc(0:nx-1)
-      real*8  h_hi,h_lo,h_mid
-      real*8  flux_lo,flux_hi
-      real*8  dxsqinv
-      real*8  beta_lo,beta_hi
-      real*8  visc_term, RWRK
-      integer i,n,is, IWRK
-
-      real*8 cp,T,H,rho
-      real*8 Y(Nspec)
+      real*8  visc_term
+      integer i
 
       call get_rhoh_visc_terms(scal_old,beta,visc,dx,time)
       

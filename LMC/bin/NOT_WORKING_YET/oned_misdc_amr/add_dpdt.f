@@ -6,7 +6,6 @@
       real*8 divu(0 :nx-1)
       real*8 umac(0 :nx  )
       real*8 Y(Nspec)
-      real*8 rho
       real*8 dx
       real*8 dt
       
@@ -71,7 +70,6 @@ C         denom = pthermo(i)
       real*8 divu(0 :nx-1)
       real*8 unew(0 :nx-1)
       real*8 Y(Nspec)
-      real*8 rho
       real*8 dx
       real*8 dt
       

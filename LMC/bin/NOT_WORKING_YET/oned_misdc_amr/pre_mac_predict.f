@@ -5,7 +5,6 @@
       real*8  vel_old(-1:nx)
       real*8 scal_old(-1:nx,nscal)
       real*8     gp(0:nx)
-      real*8   visc(0:nx-1)
       real*8 macvel(0:nx)
       real*8 dx, dt, time
       
@@ -14,7 +13,7 @@
       real*8 dthx
       real*8 eps
       real*8 slo,shi
-      integer i,n
+      integer i
       
 
       dth  = 0.5d0 * dt

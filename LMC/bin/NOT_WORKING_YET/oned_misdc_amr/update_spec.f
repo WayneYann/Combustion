@@ -12,13 +12,8 @@
       real*8 dx,dt,be_cn_theta,time
       
       real*8 visc(0 :nx-1,Nspec)
-      real*8  dth,dxsqinv
-      real*8  beta_lo,beta_hi
       real*8  visc_term
       integer i,n,is
-      real*8 flux_lo(maxspec), flux_hi(maxspec)
-      real*8 RhoYe_lo(maxspec), RhoYe_hi(maxspec)
-      real*8 Y_L, Y_C, Y_R, sum_lo, sum_hi, sumRhoYe_lo, sumRhoYe_hi
       
       real*8 spec_flux_lo(0:nx-1,maxspec)
       real*8 spec_flux_hi(0:nx-1,maxspec)

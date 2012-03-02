@@ -1,9 +1,7 @@
-      subroutine project(vel_old,vel_new,rhohalf,divu,
+      subroutine project(vel_new,rhohalf,divu,
      $                   press_old,press_new,dx,dt,time)
       implicit none
       include 'spec.h'
-C CEG:: vel_old never ends up gettting used
-      real*8  vel_old(-1:nx)
       real*8  vel_new(-1:nx)
       real*8  rhohalf(0:nx-1)
       real*8 divu(0 :nx-1)
