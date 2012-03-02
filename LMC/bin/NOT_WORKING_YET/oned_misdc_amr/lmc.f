@@ -19,13 +19,12 @@
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
       real*8 I_R     (0:nx-1,0:maxspec)
-      real*8 I_R_hold(0:nx-1,0:maxspec)
       real*8   rhohalf( 0:nx-1)
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
       real*8  beta_old(-1 :nx,maxscal)
       real*8  beta_new(-1 :nx,maxscal)
-      real*8    mu_new(-1 :nx)
+      real*8  mu_dummy(-1 :nx)
       real*8      dsdt(0 :nx-1)
 
       real*8 problo,probhi
@@ -108,10 +107,12 @@ c     Set defaults, change with namelist
       min_vode_timestep = 1.e-19
 
       divu_old = 0.d0
-      press_old = 0.d0
-
       divu_new = 0.d0
+
+      press_old = 0.d0
       press_new = 0.d0
+
+      dsdt = 0.d0
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
@@ -154,58 +155,51 @@ C take vals from PMF and fills vel, Y, and Temp
 C computes rho and h, fills in rhoH and rhoY
 C sets I_R to zero
 C fills ghost cells
-         call initdata(vel_new,scal_new,I_R,dx)
+         call initdata(vel_old,scal_old,I_R,dx)
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
-     &                  dx,99999,time)
+c     needed for seed to EOS after first strang_chem call
+         scal_new(:,Temp) = scal_old(:,Temp)
 
 C Note: RhoRT is only a diagnostic
-         scal_new(:,RhoRT) = -1.d20
-         press_old = 0.d0
-         dsdt = 0.d0
+         scal_old(:,RhoRT) = -1.d20
 
-         call minmax_vel(nx,vel_new)
-         
-         call calc_diffusivities(scal_new,beta_new,mu_new,dx,time)
+         call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
+     &                  dx,99999,time)
 
-         vel_old = vel_new
-         divu_old = divu_new
-         scal_old = scal_new
-         beta_old = beta_new
+         call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
+
 c     Define density for initial projection.
          rhohalf(0:nx-1) = scal_old(0:nx-1,Density)
          
          if (do_initial_projection .eq. 1) then
 
             print *,'initialVelocityProject: '
+
+            call calc_divu(scal_old,beta_old,I_R,divu_old,dx,time)
+
 c     setting dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             dt_dummy = -1.d0
 
-            call calc_divu(scal_new,beta_new,I_R,divu_new,dx,time)
-
 C     fills vel_new ghost cells
-            call project(vel_new,rhohalf,divu_new,
+            call project(vel_old,rhohalf,divu_old,
      $                   press_old,press_new,dx,dt_dummy,time)
 
          end if
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
+         call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,99998,time)
-
 
          if (fixed_dt > 0) then
             dt = fixed_dt
             dt_init = dt
          else
-            call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
+            call est_dt(nx,vel_old,scal_old,divu_old,dsdt,
      $                  cfl,umax,dx,dt)
             
             dt = dt * init_shrink
             dt_init = dt
          endif
-         
-         vel_old = vel_new
 
          const_src = 0.d0
          lin_src_old = 0.d0
@@ -223,16 +217,17 @@ C     fills vel_new ghost cells
             call strang_chem(scal_old,scal_new,const_src,lin_src_old,
      $                       lin_src_new,I_R,dt*0.5d0,dx,time)
 
-            call calc_divu(scal_old,beta_old,I_R,divu_new,dx,time)
+c     reset temperature just in case strang_chem call is not well poased
+            scal_new(:,Temp) = scal_old(:,Temp)
+
+            call calc_divu(scal_old,beta_old,I_R,divu_old,dx,time)
 
             print *,'divu_iters velocity Project: '
 c     setting dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             dt_dummy = -1.d0
             
-C vel_old does not get used in proj(), 
-C assumes good data in vel_new
-            call project(vel_new,rhohalf,divu_new,
+            call project(vel_old,rhohalf,divu_old,
      $                   press_old,press_new,dx,dt_dummy,time)
 
             dt_init = dt
@@ -242,17 +237,17 @@ C assumes good data in vel_new
             else
 C CEG:: not sure that this should be scal_new and not scal_old
 C   probably doesn't matter that much
-               call est_dt(nx,vel_new,scal_new,divu_new,dsdt,
+               call est_dt(nx,vel_old,scal_old,divu_old,dsdt,
      $                     cfl,umax,dx,dt_new)
                dt_new = dt_new * init_shrink
                dt = min(dt_init,dt_new)
             endif
             print *,' '
 
-            vel_old = vel_new
-            divu_old = divu_new
-
          enddo
+
+         call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
+     &                  dx,99997,time)
 
          print *,' '
          print *,'...doing num_init_iters = ',num_init_iters 
@@ -270,14 +265,12 @@ C   probably doesn't matter that much
             if (fixed_dt > 0) then
                dt = fixed_dt
             else
-               call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
+               call est_dt(nx,vel_old,scal_old,divu_old,dsdt,
      $                     cfl,umax,dx,dt)
                dt = dt * init_shrink
                dt = min(dt,dt_init)
             endif
             write(6,1001) time,dt
-
-            I_R_hold = I_R
 
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
@@ -286,20 +279,20 @@ C   probably doesn't matter that much
 
             call minmax_vel(nx,vel_new)
 
-c     update pressure
+c     update pressure and I_R
             press_old = press_new
-
-c     reset state
-            I_R = I_R_hold
-            divu_new = divu_old
-            vel_new = vel_old
-            scal_new = scal_old
 
             initial_iter = 0          
 
          enddo
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
+c     hack test
+c         vel_new = vel_old
+c         divu_new = divu_old
+c         scal_new = scal_old
+c         beta_new = beta_old
+
+         call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,0,time)
 
          cfl_used = cfl * init_shrink
