@@ -43,7 +43,7 @@
       real*8 fixed_dt
       real*8 dt_dummy
 
-      integer i, n, nd, ns
+      integer n, nd
 
 c     New arrays for MISDC.
       real*8    const_src(0 :nx-1,maxscal)
@@ -141,19 +141,11 @@ c     Initialize chem/tran database
          at_nstep = at_nstep + 1
 
          dt_init = dt
-            
-         do i = -1,nx
-            vel_old(i) =  vel_new(i)
-            do n = 1,nscal
-               scal_old(i,n) = scal_new(i,n)
-            enddo
-         enddo
-         do i = 0,nx-1
-            divu_old(i) = divu_new(i)
-         enddo
-         do i = 0,nx
-            press_old(i) =  press_new(i)
-         enddo
+
+         vel_old = vel_new
+         scal_old = scal_new
+         divu_old = divu_new
+         press_old = press_new
                   
       else
          
@@ -170,31 +162,21 @@ C fills ghost cells
      &                  dx,99999,time)
 
 C Note: RhoRT is only a diagnostic
-         do i = 0,nx-1
-            press_old(i) =  0.d0
-            dsdt(i) =  0.d0
-            dsdt(i) =  0.d0
-            scal_new(i,RhoRT) = -1.d20
-         enddo
-         press_old(nx) =  0.d0
-         scal_new(-1,RhoRT) = -1.d20
-         scal_new(nx,RhoRT) = -1.d20
+         scal_new(:,RhoRT) = -1.d20
+         press_old = 0.d0
+         dsdt = 0.d0
 
          call minmax_vel(nx,vel_new)
          
          call calc_diffusivities(scal_new,beta_new,mu_new,
      $                           dx,time,.true.)
 
-         do i=0,nx-1
-            vel_old(i) = vel_new(i)
-            divu_old(i) = divu_new(i)
-            do n = 1,nscal
-               scal_old(i,n) = scal_new(i,n)
-               beta_old(i,n) = beta_new(i,n) 
-            enddo
+         vel_old = vel_new
+         divu_old = divu_new
+         scal_old = scal_new
+         beta_old = beta_new
 c     Define density for initial projection.
-            rhohalf(i) = scal_old(i,Density)
-         enddo
+         rhohalf(0:nx-1) = scal_old(0:nx-1,Density)
          
          if (do_initial_projection .eq. 1) then
 
@@ -226,17 +208,11 @@ C     fills vel_new ghost cells
             dt_init = dt
          endif
          
-         do i = -1,nx
-            vel_old(i) =  vel_new(i)
-         enddo
-         
-         do i = 0,nx-1
-            do n=1,nscal
-               const_src(i,n) = 0.d0
-               lin_src_old(i,n) = 0.d0
-               lin_src_new(i,n) = 0.d0
-            enddo
-         enddo
+         vel_old = vel_new
+
+         const_src = 0.d0
+         lin_src_old = 0.d0
+         lin_src_new = 0.d0
 
          print *,' '
          print *,' '
@@ -276,10 +252,8 @@ C   probably doesn't matter that much
             endif
             print *,' '
 
-            do i = 0,nx-1
-               vel_old(i) =  vel_new(i)
-               divu_old(i) = divu_new(i)
-            enddo
+            vel_old = vel_new
+            divu_old = divu_new
 
          enddo
 
@@ -315,21 +289,17 @@ C   probably doesn't matter that much
 
             call minmax_vel(nx,vel_new)
 
-c     keep pressure
-            do i = 0,nx
-               press_old(i)  = press_new(i)
-            enddo
+c     update pressure
+            press_old = press_new
 
-c     Reset state
+c     reset state
             I_R = I_R_hold
-            do i = 0,nx-1
-               vel_new(i) = vel_old(i)
-               divu_new(i) = divu_old(i)
-               do ns = 1,nscal
-                  scal_new(i,ns) =  scal_old(i,ns)
-               enddo
-            enddo
+            divu_new = divu_old
+            vel_new = vel_old
+            scal_new = scal_old
+
             initial_iter = 0          
+
          enddo
 
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
@@ -384,16 +354,11 @@ C-- Now advance
 
          call minmax_vel(nx,vel_new)
 c     update state, time
-         do i = 0,nx-1
-            vel_old(i)  =   vel_new(i)
-            do ns = 1,nscal
-               scal_old(i,ns) = scal_new(i,ns)   
-            enddo
-            divu_old(i) = divu_new(i)
-         enddo
-         do i = 0,nx
-            press_old(i)  = press_new(i)
-         enddo
+         vel_old = vel_new
+         scal_old = scal_new
+         divu_old = divu_new
+         press_old = press_new
+
          time = time + dt
 
          cfl_used = umax*dt/dx 
