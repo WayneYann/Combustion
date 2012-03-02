@@ -16,6 +16,7 @@
       real*8   vel_old(-1:nx  )
       real*8  scal_new(-1:nx  ,maxscal)
       real*8  scal_old(-1:nx  ,maxscal)
+      real*8 scal_hold(-1:nx  ,maxscal)
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
       real*8 I_R     (0:nx-1,0:maxspec)
@@ -272,12 +273,20 @@ C   probably doesn't matter that much
             endif
             write(6,1001) time,dt
 
+c     strang split overwrites scal_old so we preserve it
+            if (use_strang) then
+               scal_hold = scal_old
+            end if
+
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
      $                   dx,dt,time)
 
-            call minmax_vel(nx,vel_new)
+c     restore scal_old
+            if (use_strang) then
+               scal_old = scal_hold
+            end if
 
 c     update pressure and I_R
             press_old = press_new
@@ -285,12 +294,6 @@ c     update pressure and I_R
             initial_iter = 0          
 
          enddo
-
-c     hack test
-c         vel_new = vel_old
-c         divu_new = divu_old
-c         scal_new = scal_old
-c         beta_new = beta_old
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,0,time)
