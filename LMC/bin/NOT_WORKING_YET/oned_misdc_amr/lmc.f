@@ -243,9 +243,9 @@ c     return zero pressure
          print *,'...doing num_init_iters = ',num_init_iters 
          print *,' '
          if (num_init_iters .le. 0) then
-            initial_iter = 0
+            is_first_initial_iter = 0
          else
-            initial_iter = 1
+            is_first_initial_iter = 1
          endif
          do n = 1,num_init_iters
 
@@ -280,7 +280,7 @@ c     restore scal_old
 c     update pressure and I_R
             press_old = press_new
 
-            initial_iter = 0          
+            is_first_initial_iter = 0          
 
          enddo
 

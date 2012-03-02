@@ -154,7 +154,7 @@ C     get velocity visc terms to use as a forcing term for advection
      &                macvel,veledge,alpha,mu_old,
      &                vel_Rhs,dx,dt,vel_theta,time)
 
-      if (initial_iter .eq. 1) then
+      if (is_first_initial_iter .eq. 1) then
          call get_vel_visc_terms(vel_old,mu_old,visc,dx,time)
          do i = 0, nx-1
             vel_new(i) = vel_new(i) + visc(i)*dt/rhohalf(i)
@@ -185,10 +185,7 @@ c     diagnostics only
       print *,'DIVU_NEW norm after dpdt = ',divu_max 
 
       print *,'...nodal projection...'
-      if (initial_iter .eq. 0) then
-         call project(vel_new,rhohalf,divu_new,
-     $                press_old,press_new,dx,dt)
-      endif
+      call project(vel_new,rhohalf,divu_new,press_old,press_new,dx,dt)
 
       end
 
