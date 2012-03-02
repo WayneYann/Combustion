@@ -17,18 +17,13 @@ REACTION_MECHANISM=GRI30
 #REACTION_MECHANISM=CHEMH
 
 ifeq (${USE_INTEL},TRUE)
-#  CCOMP := icpc -vec_report0 -DBL_FORT_USE_UNDERSCORE
   CCOMP := icpc -Wno-deprecated -g -Wunused-variable -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
-#  fCOMP := ifort -debug full -vec-report0
   fCOMP := ifort -warn unused -g -u -fpconstant -fbounds-check
-#  fCOMP += -CB
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
-  #fCOMP := gfortran -g -fbounds-check -O -Wuninitialized -Wall
-  fCOMP := gfortran -g -fbounds-check -O1 -Wuninitialized -Waliasing -Wampersand -Wsurprising -Wintrinsics-std -Wno-tabs -Wintrinsic-shadow -Wline-truncation -ffixed-line-length-none
+  fCOMP := gfortran -g -fbounds-check -O1 -Wuninitialized -Waliasing -Wampersand -Wsurprising -Wintrinsics-std -Wno-tabs -Wintrinsic-shadow -Wline-truncation -Wunused -ffixed-line-length-none
   CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
   XTRALIBS :=  -lm -lgfortran
-#  XTRALIBS :=  /usr/local/gfortran/lib/gcc/i686-pc-cygwin/4.6.0/libgfortran.a /usr/local/gfortran/lib/gcc/i686-pc-cygwin/4.6.0/libgcc.a -lm -lg2c
 endif
 
 ifeq ($(REACTION_MECHANISM),GRI30)
