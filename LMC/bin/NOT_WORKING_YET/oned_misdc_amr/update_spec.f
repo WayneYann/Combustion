@@ -31,6 +31,8 @@
          enddo
       enddo
 
+      call set_bc_s(scal_new,dx,time)
+
       end
 
 

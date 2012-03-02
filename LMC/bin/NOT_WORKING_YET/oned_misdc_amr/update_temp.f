@@ -28,6 +28,8 @@ c*************************************************************************
          scal_new(i,Temp) = scal_old(i,Temp) + dt*aofs(i,Temp)
       enddo
 
+      call set_bc_s(scal_new,dx,time)
+
 c*************************************************************************
 c     Initialize RHS = I_R + (1-theta) * [ Div( lambda Grad(T) ) +  
 C                                          rho.D.Grad(Y).Grad(h) ]
@@ -42,7 +44,7 @@ C this fn sets ghost cells
 c*************************************************************************
 c     Add rho.D.Grad(Y).Grad(H)  at time n+1
 c*************************************************************************      
-      call rhoDgradHgradY(scal_new,beta_new,visc,dx,time+dt,.false.)
+      call rhoDgradHgradY(scal_new,beta_new,visc,dx,time+dt)
       do i = 0,nx-1
          Rhs(i) = Rhs(i) + dt*be_cn_theta*visc(i) 
       enddo

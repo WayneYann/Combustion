@@ -25,4 +25,6 @@
          alpha(i) = scal_new(i,Density)
       enddo
       
+      call set_bc_s(scal_new,dx,time)
+
       end

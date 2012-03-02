@@ -168,8 +168,7 @@ C Note: RhoRT is only a diagnostic
 
          call minmax_vel(nx,vel_new)
          
-         call calc_diffusivities(scal_new,beta_new,mu_new,
-     $                           dx,time,.true.)
+         call calc_diffusivities(scal_new,beta_new,mu_new,dx,time)
 
          vel_old = vel_new
          divu_old = divu_new

@@ -1,5 +1,5 @@
       subroutine cn_solve(scal_new,alpha,beta_cc,Rhs,dx,dt,n,
-     $                    be_cn_theta,rho_flag)
+     $                    be_cn_theta,rho_flag,is_vel,time)
       implicit none
       include 'spec.h'
 
@@ -11,6 +11,8 @@
       real*8 dx
       real*8 dt
       real*8 be_cn_theta
+      logical is_vel
+      real*8 time
       
       integer i,n
       real*8 a(nx),b(nx),c(nx)
@@ -34,24 +36,13 @@ c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
 
       fac = be_cn_theta * dt / (dx*dx)
 
-cc     homogeneous neumann inflow
-c      do i = 0,nx-1
-c         u(i+1) = 0.d0
-c         r(i+1) = Rhs(i)
-c         a(i+1) = -fac*beta(i  )
-c         c(i+1) = -fac*beta(i+1)
-c         if (i.eq.0   ) a(i+1) = 0.d0
-c         if (i.eq.nx-1) c(i+1) =  0.d0
-c         b(i+1) = alpha(i) - (a(i+1)+c(i+1))
-c      enddo
-
-c     dirichlet inflow using ghost cell value
       do i = 0,nx-1
          u(i+1) = 0.d0
          r(i+1) = Rhs(i)
          a(i+1) = -fac*beta(i  )
          c(i+1) = -fac*beta(i+1)
          b(i+1) = alpha(i) - (a(i+1)+c(i+1))
+c     dirichlet inflow using ghost cell value
          if (i.eq.0   ) then
             a(i+1) = 0.d0
             if (rho_flag .eq. 2) then
@@ -61,15 +52,10 @@ c     dirichlet inflow using ghost cell value
                r(i+1) = r(i+1) + 
      $              fac*beta(i)*scal_new(-1,n)
             end if
+c     neumann outflow uses phi(nx) = phi(nx-1)
          else if (i.eq.nx-1) then
             c(i+1) = 0.d0
-            if (rho_flag .eq. 2) then
-               r(i+1) = r(i+1) + 
-     $              fac*beta(i+1)*scal_new(nx,n)/scal_new(nx,Density)
-            else
-               r(i+1) = r(i+1) + 
-     $              fac*beta(i+1)*scal_new(nx,n)
-            end if
+            b(i+1) = alpha(i) - (a(i+1)+c(i+1))
          end if
 
 
@@ -86,6 +72,12 @@ c     dirichlet inflow using ghost cell value
             scal_new(i,n) = scal_new(i,n) * scal_new(i,Density)
          enddo
       endif
+
+      if (is_vel) then
+         call set_bc_v(scal_new,dx,time)
+      else
+         call set_bc_s(scal_new,dx,time)
+      end if
       
       end
 

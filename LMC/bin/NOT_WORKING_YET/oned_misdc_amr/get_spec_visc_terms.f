@@ -1,5 +1,5 @@
       subroutine get_spec_visc_terms(scal,beta,visc,spec_flux_lo,
-     &                               spec_flux_hi,dx,time,setbc)
+     &                               spec_flux_hi,dx,time)
 
       implicit none
       include 'spec.h'
@@ -9,7 +9,6 @@
       real*8 spec_flux_lo(0:nx-1,*)
       real*8 spec_flux_hi(0:nx-1,*)
       real*8 dx,time
-      logical setbc
       
       integer i,n,is
       real*8 beta_lo,beta_hi
@@ -17,9 +16,8 @@
       real*8 Y(-1:nx,maxspec), sum_lo, sum_hi, sumRhoY_lo, sumRhoY_hi
       real*8 RhoYe_lo, RhoYe_hi
 
-      if (setbc) then
-         call set_bc_s(scal,dx,time)
-      end if
+      call set_bc_s(scal,dx,time)
+
       do i = -1,nx
          do n=1,Nspec
             Y(i,n) = scal(i,FirstSpec+n-1)/scal(i,Density)

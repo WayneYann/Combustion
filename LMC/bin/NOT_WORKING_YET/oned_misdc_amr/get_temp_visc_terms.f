@@ -51,14 +51,13 @@ c     get_temp_visc_terms, so need this here
 
       end
 
-      subroutine rhoDgradHgradY(scal,beta,visc,dx,time,setbc)
+      subroutine rhoDgradHgradY(scal,beta,visc,dx,time)
       implicit none
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
       real*8 dx,time
-      logical setbc
       
       integer i,n,is,IWRK
       real*8 beta_lo,beta_hi
@@ -78,9 +77,7 @@ c     Compute rhoD Grad(Yi).Grad(hi) terms
 
       dxsqinv = 1.d0/(dx*dx)
 
-      if (setbc) then
-         call set_bc_s(scal,dx,time)
-      end if
+      call set_bc_s(scal,dx,time)
 
 c     Get Hi, Yi at cell centers
       do i = -1,nx

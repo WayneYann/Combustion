@@ -9,14 +9,13 @@ c     Initialize some values
       data iCH4 / -1 /
       end
 
-      subroutine calc_diffusivities(scal, beta, mu, dx, time, setbc)
+      subroutine calc_diffusivities(scal, beta, mu, dx, time)
       implicit none
       include 'spec.h'
       double precision scal(-1:nx,*)
       double precision beta(-1:nx,*)
       double precision mu(-1:nx)
       double precision time, dx
-      logical setbc
 
       double precision Dt(maxspec), CPMS(maxspec), Y(maxspec)
       double precision Tt, Wavg, rho
@@ -30,9 +29,7 @@ c     Initialize some values
 c     Ensure chem/tran initialized
       if (traninit.lt.0) call initchem()
 
-      if (setbc) then
-         call set_bc_s(scal,dx,time)
-      end if
+      call set_bc_s(scal,dx,time)
 
       if (LeEQ1 .eq. 0) then
          
