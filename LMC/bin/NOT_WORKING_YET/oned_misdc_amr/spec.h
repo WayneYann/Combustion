@@ -60,11 +60,11 @@ c     DVODE driver stuff
 
 c     LMC alg stuff
       integer misdc_iterMAX,on_lo,on_hi,max_order,
-     &     divu_ceiling_flag, predict_temp_for_coeffs, initial_iter,
+     &     divu_ceiling_flag, predict_temp_for_coeffs, is_first_initial_iter,
      &     unlim, lim_rxns,coef_avg_harm
       parameter (on_lo = 0, on_hi = 1, max_order = 3)
       common / lmci / misdc_iterMAX, divu_ceiling_flag,
-     &     predict_temp_for_coeffs, initial_iter, unlim, lim_rxns,
+     &     predict_temp_for_coeffs, is_first_initial_iter, unlim, lim_rxns,
      &     coef_avg_harm
       save /lmci/
 
