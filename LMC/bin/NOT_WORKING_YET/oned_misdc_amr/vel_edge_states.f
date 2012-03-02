@@ -21,8 +21,6 @@
       dth  = 0.5d0 * dt
       dthx = 0.5d0 * dt / dx
 
-      call set_bc_v(vel_old,dx,time)
-
       vel_TYP = ABS(vel_old(-1))
       do i=0,nx
          vel_TYP = MAX(vel_TYP,ABS(vel_old(-1)))

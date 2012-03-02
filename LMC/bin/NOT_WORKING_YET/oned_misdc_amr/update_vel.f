@@ -33,5 +33,7 @@ c     rho.DU/Dt + G(pi) = D(tau), here D(tau) = d/dx ( a . du/dx ), a=4.mu/3
          Rhs(i) = vel_new(i)*alpha(i) + visc_term
       enddo
 
+      call set_bc_v(vel_new,dx,time)
+
       end
       

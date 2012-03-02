@@ -13,7 +13,6 @@
       
 c     Compute D(tau) = d/dx ( a . du/dx ), a=4.mu/3  
 
-      call set_bc_v(vel,dx,time)
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1         
          if (coef_avg_harm.eq.1) then

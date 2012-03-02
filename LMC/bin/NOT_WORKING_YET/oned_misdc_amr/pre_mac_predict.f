@@ -37,7 +37,6 @@
          endif
       enddo
       
-      call set_bc_v(vel_old,dx,time)
       macvel(0) = vel_old(-1)
       
       i = nx
