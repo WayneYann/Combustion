@@ -131,21 +131,19 @@ c     Initialize chem/tran database
 
          print *,'CHKFILE ',chkfile
          
-         call read_check(chkfile,vel_new,scal_new,press_new,
-     $                   I_R,divu_new,dsdt,
+         call read_check(chkfile,vel_old,scal_old,press_old,
+     $                   I_R,divu_old,dsdt,
      $                   time,at_nstep,dt,cfl_used)
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
+         call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      $                  dx,at_nstep,time)
 
          at_nstep = at_nstep + 1
 
          dt_init = dt
 
-         vel_old = vel_new
-         scal_old = scal_new
-         divu_old = divu_new
-         press_old = press_new
+c     needed for seed to EOS after first strang_chem call
+         scal_new(:,Temp) = scal_old(:,Temp)
                   
       else
          
