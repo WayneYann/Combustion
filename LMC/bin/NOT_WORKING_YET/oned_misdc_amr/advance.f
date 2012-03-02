@@ -1,5 +1,5 @@
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
-     $                   I_R_new,press_old,press_new,
+     $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
      $                   dx,dt,time)
 
@@ -11,7 +11,7 @@
       real*8  scal_old(-1:nx  ,nscal)
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
-      real*8   I_R_new(0:nx-1,0:maxspec)
+      real*8   I_R(0:nx-1,0:maxspec)
       real*8    macvel(0 :nx  )
       real*8   veledge(0 :nx  )
       real*8  divu_old(0 :nx-1)
@@ -92,14 +92,14 @@ c                   lambda      (for temperature)
 
 c     Strang split advance
          call strang_advance(macvel,scal_old,scal_new,
-     $                   I_R_new,beta_old,beta_new,
+     $                   I_R,beta_old,beta_new,
      $                   dx,dt,time)
 
       else
 
 c     SDC advance
          call sdc_advance(macvel,scal_old,scal_new,
-     $                    I_R_new,beta_old,beta_new,
+     $                    I_R,beta_old,beta_new,
      $                    dx,dt,time)
 
       end if
@@ -108,7 +108,7 @@ c     SDC advance
 
          ! omegadot for divu computation is average omegadot
          ! over both strang calls
-         I_R_divu = I_R_new
+         I_R_divu = I_R
 
       else
 
@@ -193,7 +193,7 @@ c     diagnostics only
       end
 
 
-      subroutine sdc_advance(macvel,scal_old,scal_new,I_R_new,
+      subroutine sdc_advance(macvel,scal_old,scal_new,I_R,
      $                       beta_old,beta_new,dx,dt,time)
 
       implicit none
@@ -203,7 +203,7 @@ c     diagnostics only
 c     in the full LMC code, I_R only needs 0:maxspec components
 c     component 0 is for rhoh
 c     components 1:maxspec are for rhoX
-      real*8   I_R_new(0:nx-1,0:maxspec)
+      real*8   I_R(0:nx-1,0:maxspec)
       real*8    macvel(0 :nx  )
       real*8      aofs(0 :nx-1,nscal)
       real*8  beta_old(-1:nx,nscal)
@@ -310,7 +310,7 @@ c     If .false., use I_R^lagged = I_R^kmax from previous time step
             end do
             call CKWC(scal_old(i,Temp),C,IWRK,RWRK,WDOTK)
             do n=1,Nspec
-               I_R_new(i,n) = WDOTK(n)*mwt(n)/thickFacCH
+               I_R(i,n) = WDOTK(n)*mwt(n)/thickFacCH
             end do
          end do
       end if
@@ -320,7 +320,7 @@ c     compute advective forcing term
       do i = 0,nx-1
          do n = 1,Nspec
             is = FirstSpec + n - 1
-            tforce(i,is) = diff_old(i,is) + I_R_new(i,n)
+            tforce(i,is) = diff_old(i,is) + I_R(i,n)
          enddo
          tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
       enddo
@@ -337,7 +337,7 @@ c     diffusion solves
       do i=0,nx-1
          dRhs(i,0) = 0.0d0
          do n=1,Nspec
-            dRhs(i,n) = dt*I_R_new(i,n)
+            dRhs(i,n) = dt*I_R(i,n)
          enddo
       enddo
 
@@ -360,7 +360,7 @@ c        simply extract D for RhoX
             do n=1,Nspec
                is = FirstSpec + n - 1
                diff_hat(i,is) = 2.d0*((scal_new(i,is)-scal_old(i,is))/dt 
-     $              - aofs(i,is) - I_R_new(i,n) - 0.5d0*diff_old(i,is))
+     $              - aofs(i,is) - I_R(i,n) - 0.5d0*diff_old(i,is))
             enddo
          end do
 
@@ -380,7 +380,7 @@ c        update species with conservative diffusion fluxes
             do n=1,Nspec
                is = FirstSpec + n - 1
                scal_new(i,is) = scal_old(i,is) + 
-     $              dt*(aofs(i,is) + I_R_new(i,n)
+     $              dt*(aofs(i,is) + I_R(i,n)
      $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_hat(i,is))
             end do
          end do
@@ -438,7 +438,7 @@ c        add differential diffusion
 
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R_new,dt)
+     $                    I_R,dt)
 
       endif
 
@@ -489,7 +489,7 @@ c           we take the gradient of Y from the second scal argument
          do i = 0,nx-1
             do n = 1,Nspec
                is = FirstSpec + n - 1
-               tforce(i,is) = diff_old(i,is) + I_R_new(i,n)
+               tforce(i,is) = diff_old(i,is) + I_R(i,n)
             enddo
 c           really no need to recompute this since it doesn't change
             tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
@@ -506,7 +506,7 @@ c           really no need to recompute this since it doesn't change
             do n=1,Nspec
                is = FirstSpec + n - 1
 c              includes deferred correction term for species
-               dRhs(i,n) = dt*(I_R_new(i,n) 
+               dRhs(i,n) = dt*(I_R(i,n) 
      &              + 0.5d0*(diff_old(i,is) - diff_new(i,is)))
             enddo
 c           includes deferred correction term for enthalpy
@@ -590,7 +590,7 @@ c           add differential diffusion
             
             call strang_chem(scal_old,scal_new,
      $                       const_src,lin_src_old,lin_src_new,
-     $                       I_R_new,dt)
+     $                       I_R,dt)
 
          endif
 
@@ -602,14 +602,14 @@ C----------------------------------------------------------------
 
       end
 
-      subroutine strang_advance(macvel,scal_old,scal_new,I_R_new,
+      subroutine strang_advance(macvel,scal_old,scal_new,I_R,
      $                          beta_old,beta_new,dx,dt,time)
 
       implicit none
       include 'spec.h'
       real*8  scal_new(-1:nx  ,nscal)
       real*8  scal_old(-1:nx  ,nscal)
-      real*8   I_R_new(0:nx-1,0:maxspec)
+      real*8   I_R(0:nx-1,0:maxspec)
       real*8    macvel(0 :nx  )
       real*8      aofs(0 :nx-1,nscal)
       real*8  beta_old(-1:nx,nscal)
@@ -654,11 +654,11 @@ C----------------------------------------------------------------
          print *,'WARNING! doing nochem_hack...'
          do n = 1,nscal
             do i = 0,nx-1
-               I_R_new(i,n) = 0.d0
+               I_R(i,n) = 0.d0
             enddo
          enddo
       else
-         print *,'... react for dt/2;  set I_R_new'
+         print *,'... react for dt/2;  set I_R'
          do n = 1,nscal
             do i = 0,nx-1
                const_src(i,n) =   0.d0
@@ -668,7 +668,7 @@ C----------------------------------------------------------------
          enddo
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R_new,dt/2.d0)
+     $                    I_R,dt/2.d0)
          do i=0,nx-1
             do n = FirstSpec,LastSpec
                scal_old(i,n) = scal_new(i,n)
@@ -936,8 +936,8 @@ c        rho and rhoh remain constant
 c        call the EOS to get consistent temperature
          call rhoh_to_temp(scal_new)
 
-         I_R_new = I_R_new + I_R_temp
-         I_R_new = I_R_new / 2.d0
+         I_R = I_R + I_R_temp
+         I_R = I_R / 2.d0
       endif
 
       end

@@ -16,11 +16,10 @@
       real*8   vel_old(-1:nx  )
       real*8  scal_new(-1:nx  ,maxscal)
       real*8  scal_old(-1:nx  ,maxscal)
-      real*8  scal_hold(-1:nx ,maxscal)
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
-      real*8 I_R_new(0:nx-1,0:maxspec)
-      real*8 I_R_old(0:nx-1,0:maxspec)
+      real*8 I_R     (0:nx-1,0:maxspec)
+      real*8 I_R_hold(0:nx-1,0:maxspec)
       real*8   rhohalf( 0:nx-1)
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
@@ -133,10 +132,10 @@ c     Initialize chem/tran database
          print *,'CHKFILE ',chkfile
          
          call read_check(chkfile,vel_new,scal_new,press_new,
-     $                   I_R_new,divu_new,dsdt,
+     $                   I_R,divu_new,dsdt,
      $                   time,at_nstep,dt,cfl_used)
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+         call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
      $                  dx,at_nstep,time)
 
          at_nstep = at_nstep + 1
@@ -150,9 +149,6 @@ c     Initialize chem/tran database
             enddo
          enddo
          do i = 0,nx-1
-            do n = 0,Nspec
-               I_R_old(i,n) =  I_R_new(i,n)
-            enddo
             divu_old(i) = divu_new(i)
          enddo
          do i = 0,nx
@@ -168,9 +164,9 @@ C take vals from PMF and fills vel, Y, and Temp
 C computes rho and h, fills in rhoH and rhoY
 C sets I_R to zero
 C fills ghost cells
-         call initdata(vel_new,scal_new,I_R_new,dx)
+         call initdata(vel_new,scal_new,I_R,dx)
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+         call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
      &                  dx,99999,time)
 
 C Note: RhoRT is only a diagnostic
@@ -207,7 +203,7 @@ c     setting dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             dt_dummy = -1.d0
 
-            call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
+            call calc_divu(scal_new,beta_new,I_R,divu_new,dx,time)
 
 C     fills vel_new ghost cells
             call project(vel_new,rhohalf,divu_new,
@@ -215,7 +211,7 @@ C     fills vel_new ghost cells
 
          end if
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+         call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
      &                  dx,99998,time)
 
 
@@ -229,12 +225,6 @@ C     fills vel_new ghost cells
             dt = dt * init_shrink
             dt_init = dt
          endif
-C  CEG:: needed for strang chemistry
-         do i = 0,nx-1
-            do n = 1,nscal
-               scal_hold(i,n) = scal_old(i,n)
-            enddo
-         enddo
          
          do i = -1,nx
             vel_old(i) =  vel_new(i)
@@ -258,9 +248,9 @@ C  CEG:: needed for strang chemistry
             print *,' ...doing divu_iter number',nd,' dt=',dt
             
             call strang_chem(scal_old,scal_new,const_src,lin_src_old,
-     $                       lin_src_new,I_R_new,dt*0.5d0)
+     $                       lin_src_new,I_R,dt*0.5d0)
 
-            call calc_divu(scal_old,beta_old,I_R_new,divu_new,dx,time)
+            call calc_divu(scal_old,beta_old,I_R,divu_new,dx,time)
 
             print *,'divu_iters velocity Project: '
 c     setting dt=-1 ensures we simply project div(u)=S and
@@ -287,9 +277,6 @@ C   probably doesn't matter that much
             print *,' '
 
             do i = 0,nx-1
-               do n = 0,Nspec
-                  I_R_old(i,n) = I_R_new(i,n)
-               enddo
                vel_old(i) =  vel_new(i)
                divu_old(i) = divu_new(i)
             enddo
@@ -319,32 +306,33 @@ C   probably doesn't matter that much
             endif
             write(6,1001) time,dt
 
+            I_R_hold = I_R
+
             call advance(vel_old,vel_new,scal_old,scal_new,
-     $                   I_R_new,press_old,press_new,
+     $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
      $                   dx,dt,time)
 
             call minmax_vel(nx,vel_new)
 
-c     Reset state, I_R
+c     keep pressure
             do i = 0,nx
                press_old(i)  = press_new(i)
             enddo
+
+c     Reset state
+            I_R = I_R_hold
             do i = 0,nx-1
                vel_new(i) = vel_old(i)
                divu_new(i) = divu_old(i)
                do ns = 1,nscal
-                  scal_new(i,ns) =  scal_hold(i,ns)
-                  scal_old(i,ns) =  scal_hold(i,ns)
-               enddo
-               do ns = 0,Nspec
-                  I_R_new(i,ns) =  I_R_old(i,ns)
+                  scal_new(i,ns) =  scal_old(i,ns)
                enddo
             enddo
             initial_iter = 0          
          enddo
 
-         call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+         call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
      &                  dx,0,time)
 
          cfl_used = cfl * init_shrink
@@ -390,19 +378,16 @@ C-- Now advance
          write(6,*)'STEP = ',nsteps_taken
          
          call advance(vel_old,vel_new,scal_old,scal_new,
-     $                I_R_new,press_old,press_new,
+     $                I_R,press_old,press_new,
      $                divu_old,divu_new,dsdt,beta_old,beta_new,
      $                dx,dt,time)
 
          call minmax_vel(nx,vel_new)
-c     update state, I_R, time
+c     update state, time
          do i = 0,nx-1
             vel_old(i)  =   vel_new(i)
             do ns = 1,nscal
                scal_old(i,ns) = scal_new(i,ns)   
-            enddo
-            do ns = 0,Nspec
-               I_R_old(i,ns) = I_R_new(i,ns) 
             enddo
             divu_old(i) = divu_new(i)
          enddo
@@ -415,13 +400,13 @@ c     update state, I_R, time
 
          if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
      &        nsteps_taken.eq.nsteps) then 
-            call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
+            call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
      $           dx,nsteps_taken,time)
          endif
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 
             call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $           I_R_new,divu_new,dsdt,dx,time,dt,cfl_used)
+     $           I_R,divu_new,dsdt,dx,time,dt,cfl_used)
          endif
       enddo
 
