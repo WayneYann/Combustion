@@ -164,31 +164,25 @@ c     Initialize chem/tran database
          time = 0.d0
          at_nstep = 1
 
-C take vals from PMF and fills vel, spec (rhoY), Temp
-C computes rho, rhoH
+C take vals from PMF and fills vel, Y, and Temp
+C computes rho and h, fills in rhoH and rhoY
 C sets I_R to zero
-C Does NOT fill ghost cells
+C fills ghost cells
          call initdata(vel_new,scal_new,I_R_new,dx)
 
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
      &                  dx,99999,time)
 
-C FIXME?
-C I don't think scal(RhoRT) ever actually gets used for anything,
-C  But scal_aofs still wants to compute an advection term for it,
-C  so initialize here to a riduculous number for now
+C Note: RhoRT is only a diagnostic
          do i = 0,nx-1
             press_old(i) =  0.d0
             dsdt(i) =  0.d0
             dsdt(i) =  0.d0
             scal_new(i,RhoRT) = -1.d20
          enddo
+         press_old(nx) =  0.d0
          scal_new(-1,RhoRT) = -1.d20
          scal_new(nx,RhoRT) = -1.d20
-         press_old(nx) =  0.d0
-  
-C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT 
-         call set_bc_s(scal_new,dx,time)
 
          call minmax_vel(nx,vel_new)
          
@@ -209,11 +203,13 @@ c     Define density for initial projection.
          if (do_initial_projection .eq. 1) then
 
             print *,'initialVelocityProject: '
+c     setting dt=-1 ensures we simply project div(u)=S and
+c     return zero pressure
             dt_dummy = -1.d0
 
             call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
 
-C     fills vel_new ghost cells, but not for vel_old 
+C     fills vel_new ghost cells
             call project(vel_new,rhohalf,divu_new,
      $                   press_old,press_new,dx,dt_dummy,time)
 
@@ -261,30 +257,14 @@ C  CEG:: needed for strang chemistry
 
             print *,' ...doing divu_iter number',nd,' dt=',dt
             
-C            if (use_strang) then
-               call strang_chem(scal_old,scal_new,
-     $              const_src,lin_src_old,lin_src_new,
-     $              I_R_new,dt*0.5d0)
-C            else 
-C Using strang vs SDC seems to have little effect in the long run
-C maybe sdc needs a better estimate of IR here
-C increasing sdc iters did not help
-C               sdc_iter = misdc_iterMAX
-C               misdc_iterMAX = 10
-C               call advance(vel_old,vel_new,scal_old,scal_new,
-C     $                   I_R_new,press_old,press_new,
-C     $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-C     $                   dx,0.5d0*dt,time)
-C               do i = 0,nx-1
-C                  vel_new(i) =  vel_old(i)
-C               enddo
-C               misdc_iterMAX = sdc_iter
-C            endif
-           
-            call calc_divu(scal_old,beta_old,I_R_new,
-     &                     divu_new,dx,time)
+            call strang_chem(scal_old,scal_new,const_src,lin_src_old,
+     $                       lin_src_new,I_R_new,dt*0.5d0)
+
+            call calc_divu(scal_old,beta_old,I_R_new,divu_new,dx,time)
 
             print *,'divu_iters velocity Project: '
+c     setting dt=-1 ensures we simply project div(u)=S and
+c     return zero pressure
             dt_dummy = -1.d0
             
 C vel_old does not get used in proj(), 
@@ -346,13 +326,13 @@ C   probably doesn't matter that much
 
             call minmax_vel(nx,vel_new)
 
+c     Reset state, I_R
             do i = 0,nx
                press_old(i)  = press_new(i)
             enddo
-
-c     Reset state, I_R
             do i = 0,nx-1
-               vel_new(i)  =   vel_old(i)
+               vel_new(i) = vel_old(i)
+               divu_new(i) = divu_old(i)
                do ns = 1,nscal
                   scal_new(i,ns) =  scal_hold(i,ns)
                   scal_old(i,ns) =  scal_hold(i,ns)
@@ -360,23 +340,9 @@ c     Reset state, I_R
                do ns = 0,Nspec
                   I_R_new(i,ns) =  I_R_old(i,ns)
                enddo
-C ceg:: don't think this is needed.  advance overwrites what's in divu_new
-               divu_new(i) = divu_old(i)
             enddo
             initial_iter = 0          
          enddo
-
-
-CCCCCCCCCCCCCCCCCC
-C CEG doesn't seem to make any real difference where i do this
-C         do i = 0,nx-1 
-C            do ns = 0,Nspec
-C john's code set I_R = 0 here so time lagged I_R always gets used
-C  this performs worse with SDC iters
-C               I_R_new(i,ns) =  I_R_old(i,ns)
-C            enddo
-C         enddo
-CCCCCCCCCCCCCCCCCCCc
 
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
      &                  dx,0,time)
@@ -480,8 +446,10 @@ c     update state, I_R, time
          vel_max = max(vel_max,abs(vel(i)))
       enddo
       
-      write(6,1001) vel_max
+      write(6,1001) vel_min
+      write(6,1002) vel_max
  1001 format(' UMAX = ',f21.9)
+ 1002 format(' UMAX = ',f21.9)
       
       end
       

@@ -112,6 +112,9 @@ c----------------------------------------------------------------------
          enddo            
       enddo
 
+      call set_bc_s(scal,dx,0.d0)
+      call set_bc_v(vel,dx,0.d0)
+
       end
 
 
