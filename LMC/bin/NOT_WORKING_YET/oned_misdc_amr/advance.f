@@ -663,10 +663,9 @@ C----------------------------------------------------------------
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
      $                    I_R,dt/2.d0,dx,time)
-         do i=0,nx-1
-            do n = FirstSpec,LastSpec
-               scal_old(i,n) = scal_new(i,n)
-            enddo
+         
+         do n = FirstSpec,LastSpec
+            scal_old(:,n) = scal_new(:,n)
          enddo
       endif
 
