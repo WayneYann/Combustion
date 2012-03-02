@@ -1,5 +1,5 @@
       subroutine vel_edge_states(vel_old,rho_old,gp,
-     $                           macvel,sedge,dx,dt,time,tforces)
+     $                           macvel,sedge,dx,dt,tforces)
       implicit none
       include 'spec.h'
       real*8  vel_old(-1:nx)
@@ -7,8 +7,7 @@
       real*8       gp(0:nx-1)
       real*8   macvel(0:nx)
       real*8    sedge(0:nx)
-      real*8 dx
-      real*8 dt, time
+      real*8 dx, dt
       real*8  tforces(0:nx-1)
 
       real*8 slope(0:nx-1)

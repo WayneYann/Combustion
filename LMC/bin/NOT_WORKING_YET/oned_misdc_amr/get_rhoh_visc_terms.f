@@ -1,11 +1,11 @@
-      subroutine get_rhoh_visc_terms(scal,beta,visc,dx,time)
+      subroutine get_rhoh_visc_terms(scal,beta,visc,dx)
 
       implicit none
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
-      real*8 dx, time
+      real*8 dx
       
       integer i
       real*8 beta_lo,beta_hi
@@ -36,7 +36,7 @@
 
       subroutine get_diffdiff_terms(scal_for_coeff,scal_for_grad,
      $                              spec_flux_lo,spec_flux_hi,
-     $                              beta,diffdiff,dx,time)
+     $                              beta,diffdiff,dx)
 
       implicit none
       include 'spec.h'
@@ -48,7 +48,6 @@
       real*8 beta          (-1:nx  ,*)
       real*8 diffdiff      ( 0:nx-1)
       real*8 dx
-      real*8 time
 
       real*8 dxsqinv,RWRK
       integer i,is,n,IWRK

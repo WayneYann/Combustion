@@ -29,9 +29,8 @@
       real*8 dt
       real*8 time
       real*8 vel_theta
-      real*8 divu_max
       
-      integer i,j
+      integer i,n
       
       real*8     alpha(0:nx-1)
       real*8   vel_Rhs(0:nx-1)
@@ -54,30 +53,13 @@ c
       enddo
 
       print *,'... predict edge velocities'
-c     this fills ghost cells for vel_old
-      call pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt,time)
-      
+      call pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt)
+
       call compute_pthermo(scal_old,scal_old(:,RhoRT))
 
-      do i = 0,nx-1
-         divu_tmp(i) = divu_old(i) + 0.5d0 * dt * dsdt(i)
-      enddo
-
-c     diagnostics only
-      divu_max = ABS(divu_tmp(0))
-      do i = 1,nx-1
-         divu_max = MAX(divu_max,ABS(divu_tmp(i)))
-      enddo
-      print *,'DIVU_TMP norm before dpdt = ',divu_max 
+      divu_tmp(:) = divu_old(:) + 0.5d0*dt*dsdt(:)
 
       call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt)
-
-c     diagnostics only
-      divu_max = ABS(divu_tmp(0))
-      do i = 1,nx-1
-         divu_max = MAX(divu_max,ABS(divu_tmp(i)))
-      enddo
-      print *,'DIVU_TMP norm after dpdt = ',divu_max 
 
       call macproj(nx,macvel,divu_tmp,dx)
 
@@ -91,8 +73,8 @@ c                   lambda      (for temperature)
 
 c     Strang split advance
          call strang_advance(macvel,scal_old,scal_new,
-     $                   I_R,beta_old,beta_new,
-     $                   dx,dt,time)
+     $                       I_R,beta_old,beta_new,
+     $                       dx,dt,time)
 
       else
 
@@ -114,12 +96,12 @@ c     SDC advance
          ! omegadot for divu computation is instantaneous
          ! value at t^{n+1}
          do i=0,nx-1
-            do j=1,Nspec
-               C(j) = scal_new(i,FirstSpec+j-1)*invmwt(j)
+            do n=1,Nspec
+               C(n) = scal_new(i,FirstSpec+n-1)*invmwt(n)
             end do
             call CKWC(scal_new(i,Temp),C,IWRK,RWRK,WDOTK)
-            do j=1,Nspec
-               I_R_divu(i,j) = WDOTK(j)*mwt(j)/thickFacCH
+            do n=1,Nspec
+               I_R_divu(i,n) = WDOTK(n)*mwt(n)/thickFacCH
             end do
          end do
 
@@ -130,7 +112,7 @@ c     this computes rho D_m     (for species)
 c                   lambda / cp (for enthalpy)
 c                   lambda      (for temperature)           
       call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
-      call calc_divu(scal_new,beta_new,I_R_divu,divu_new,dx,time+dt)
+      call calc_divu(scal_new,beta_new,I_R_divu,divu_new,dx)
 
       do i = 0,nx-1
          rhohalf(i) = 0.5d0*(scal_old(i,Density)+scal_new(i,Density))
@@ -142,20 +124,20 @@ c                   lambda      (for temperature)
       vel_theta = 0.5d0
 
 C     get velocity visc terms to use as a forcing term for advection
-      call get_vel_visc_terms(vel_old,mu_old,visc,dx,time)
+      call get_vel_visc_terms(vel_old,mu_old,visc,dx)
       do i = 0, nx-1
          visc(i) = visc(i)/scal_old(i,Density)
       enddo
 
       call vel_edge_states(vel_old,scal_old(-1,Density),gp,
-     $                     macvel,veledge,dx,dt,time,visc)
+     $                     macvel,veledge,dx,dt,visc)
       
       call update_vel(vel_old,vel_new,gp,rhohalf,
      &                macvel,veledge,alpha,mu_old,
      &                vel_Rhs,dx,dt,vel_theta,time)
 
       if (is_first_initial_iter .eq. 1) then
-         call get_vel_visc_terms(vel_old,mu_old,visc,dx,time)
+         call get_vel_visc_terms(vel_old,mu_old,visc,dx)
          do i = 0, nx-1
             vel_new(i) = vel_new(i) + visc(i)*dt/rhohalf(i)
          enddo
@@ -167,22 +149,8 @@ C     get velocity visc terms to use as a forcing term for advection
 
       call compute_pthermo(scal_new,scal_new(:,RhoRT))
 
-c     diagnostics only
-      divu_max = ABS(divu_new(0))
-      do i = 1,nx-1
-         divu_max = MAX(divu_max,ABS(divu_new(i)))
-      enddo
-      print *,'DIVU_NEW norm before dpdt = ',divu_max 
-
       call add_dpdt_nodal(scal_new,scal_new(:,RhoRT),divu_new,
      &                    vel_new,dx,dt)
-
-c     diagnostics only
-      divu_max = ABS(divu_new(0))
-      do i = 1,nx-1
-         divu_max = MAX(divu_max,ABS(divu_new(i)))
-      enddo
-      print *,'DIVU_NEW norm after dpdt = ',divu_max 
 
       print *,'...nodal projection...'
       call project(vel_new,rhohalf,divu_new,press_old,press_new,dx,dt)
@@ -278,12 +246,10 @@ c     compute diffusion term at time n
       print *,'... computing D(U^n)'
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
-      call get_spec_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,FirstSpec),
-     &                         spec_flux_lo,spec_flux_hi,dx,time)
+      call get_spec_visc_terms(scal_old,beta_old,diff_old(0,FirstSpec),
+     &                         spec_flux_lo,spec_flux_hi,dx)
 c     compute del dot lambda/cp grad h (no differential diffusion)
-      call get_rhoh_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,RhoH),dx,time)
+      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(0,RhoH),dx)
 
 c     calculate differential diffusion
       if (LeEQ1 .eq. 0) then
@@ -293,8 +259,7 @@ c        we take lambda / cp from beta
 c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
-     $                           spec_flux_hi,beta_old,diffdiff_old,
-     $                           dx,time)
+     $                           spec_flux_hi,beta_old,diffdiff_old,dx)
       end if
 
 c     If .true., use I_R in predictor is instantaneous value at t^n
@@ -365,9 +330,8 @@ c        simply extract D for RhoX
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_old,
-     $                            diff_hat(0,FirstSpec),
-     $                            spec_flux_lo,spec_flux_hi,
-     $                            dx,time)
+     $                            diff_hat(0,FirstSpec),spec_flux_lo,
+     $                            spec_flux_hi,dx)
 
 c        update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -387,8 +351,7 @@ c        we take lambda / cp from beta
 c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_new,spec_flux_lo,
-     $                           spec_flux_hi,beta_old,diffdiff_new,
-     $                           dx,time)
+     $                           spec_flux_hi,beta_old,diffdiff_new,dx)
 
 c        add differential diffusion to forcing for enthalpy solve
          do i=0,nx-1
@@ -461,10 +424,9 @@ c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_new(0,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,dx,time+dt)
+     &                            spec_flux_lo,spec_flux_hi,dx)
 c        compute del dot lambda/cp grad h (no differential diffusion)
-         call get_rhoh_visc_terms(scal_new,beta_new,
-     &                            diff_new(0,RhoH),dx,time+dt)
+         call get_rhoh_visc_terms(scal_new,beta_new,diff_new(0,RhoH),dx)
 
 c        calculate differential diffusion
          if (LeEQ1 .eq. 0) then
@@ -475,7 +437,7 @@ c           we compute h_m from the first scal argument
 c           we take the gradient of Y from the second scal argument
             call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
      $                              spec_flux_hi,beta_new,
-     $                              diffdiff_new,dx,time)
+     $                              diffdiff_new,dx)
          end if
 
          print *,'... computing advective forcing term = D^n + I_R^k-1'
@@ -534,8 +496,7 @@ c           compute del dot rho D grad Y and make it conservative
 c           save species fluxes for differential diffusion
             call get_spec_visc_terms(scal_new,beta_new,
      $                               diff_hat(0,FirstSpec),
-     $                               spec_flux_lo,spec_flux_hi,
-     $                               dx,time)
+     $                               spec_flux_lo,spec_flux_hi,dx)
 
 c           add differential diffusion to forcing for enthalpy solve
             do i=0,nx-1
@@ -683,15 +644,14 @@ c            lambda^(1)          (for temperature)
 c     compute del dot lambda grad T + rho D grad h dot grad Y
 c     the rho D grad Y term is now computed conservatively
       call get_temp_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,Temp),dx,time)
+     &                         diff_old(0,Temp),dx)
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
       call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),
-     &                         spec_flux_lo,spec_flux_hi,dx,time)
+     &                         spec_flux_lo,spec_flux_hi,dx)
 c     compute del dot lambda/cp grad h (no differential diffusion)
-      call get_rhoh_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,RhoH),dx,time)
+      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(0,RhoH),dx)
 
 c     calculate differential diffusion
       if (LeEQ1 .eq. 0) then
@@ -701,8 +661,7 @@ c        we take lambda / cp from beta
 c        we compute h_m from the first scal argument
 c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
-     $                           spec_flux_hi,beta_old,diffdiff_old,
-     $                           dx,time)
+     $                           spec_flux_hi,beta_old,diffdiff_old,dx)
       end if
             
       print *,'... computing aofs with D(old)'
@@ -786,8 +745,7 @@ c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_tmp(0,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,
-     &                            dx,time)
+     &                            spec_flux_lo,spec_flux_hi,dx)
 
 c     update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -817,7 +775,7 @@ c     we compute h_m from the first scal argument
 c     we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
      $                           spec_flux_hi,beta_new,
-     $                           diffdiff_new,dx,time)
+     $                           diffdiff_new,dx)
          
          do i=0,nx-1
             dRhs(i,0) = dRhs(i,0)
@@ -866,8 +824,7 @@ c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_tmp(0,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,
-     &                            dx,time)
+     &                            spec_flux_lo,spec_flux_hi,dx)
 
 c     update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -888,7 +845,7 @@ c     we compute h_m from the first scal argument
 c     we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
      $                           spec_flux_hi,beta_new,
-     $                           diffdiff_new,dx,time)
+     $                           diffdiff_new,dx)
 
          do i=0,nx-1
             dRhs(i,0) = dRhs(i,0)

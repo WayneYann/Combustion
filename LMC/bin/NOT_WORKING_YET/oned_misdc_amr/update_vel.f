@@ -19,7 +19,7 @@
       integer i
 
 
-      call get_vel_visc_terms(vel_old,beta,visc,dx,time)
+      call get_vel_visc_terms(vel_old,beta,visc,dx)
 
 c     rho.DU/Dt + G(pi) = D(tau), here D(tau) = d/dx ( a . du/dx ), a=4.mu/3
       do i = 0,nx-1

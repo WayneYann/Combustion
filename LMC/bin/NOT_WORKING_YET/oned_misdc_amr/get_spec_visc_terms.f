@@ -1,5 +1,5 @@
       subroutine get_spec_visc_terms(scal,beta,visc,spec_flux_lo,
-     &                               spec_flux_hi,dx,time)
+     &                               spec_flux_hi,dx)
 
       implicit none
       include 'spec.h'
@@ -8,7 +8,7 @@
       real*8 visc(0 :nx-1,*)
       real*8 spec_flux_lo(0:nx-1,*)
       real*8 spec_flux_hi(0:nx-1,*)
-      real*8 dx,time
+      real*8 dx
       
       integer i,n,is
       real*8 beta_lo,beta_hi

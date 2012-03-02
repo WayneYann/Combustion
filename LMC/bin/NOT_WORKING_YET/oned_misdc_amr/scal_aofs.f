@@ -6,7 +6,7 @@
       real*8   tforce(0 :nx-1,nscal)
       real*8     aofs(0 :nx-1,nscal)
       real*8 dx
-      real*8 time, dt
+      real*8 dt
       
       real*8  sedge(0:nx  ,nscal)
       real*8  slope(0:nx-1)

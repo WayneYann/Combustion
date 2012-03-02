@@ -1,27 +1,27 @@
-      subroutine get_temp_visc_terms(scal,beta,visc,dx,time)
+      subroutine get_temp_visc_terms(scal,beta,visc,dx)
       implicit none
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
-      real*8 dx, time
+      real*8 dx
 
 
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-      call rhoDgradHgradY(scal,beta,visc,dx,time,.true.)
+      call rhoDgradHgradY(scal,beta,visc,dx)
 
 c     Add Div( lambda Grad(T) )
-      call addDivLambdaGradT(scal,beta,visc,dx,time)
+      call addDivLambdaGradT(scal,beta,visc,dx)
 
       end
 
-      subroutine addDivLambdaGradT(scal,beta,visc,dx,time)
+      subroutine addDivLambdaGradT(scal,beta,visc,dx)
       implicit none
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
-      real*8 dx, time
+      real*8 dx
       
       integer i
       real*8 beta_lo,beta_hi
@@ -46,13 +46,13 @@ c     Add Div( lambda Grad(T) )
 
       end
 
-      subroutine rhoDgradHgradY(scal,beta,visc,dx,time)
+      subroutine rhoDgradHgradY(scal,beta,visc,dx)
       implicit none
       include 'spec.h'
       real*8 scal(-1:nx  ,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
-      real*8 dx,time
+      real*8 dx
       
       integer i,n,is,IWRK
       real*8 beta_lo,beta_hi

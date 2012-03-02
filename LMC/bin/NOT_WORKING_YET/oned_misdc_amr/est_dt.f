@@ -36,7 +36,7 @@ C should change this to a problem dependent vel_TYP
 
       print *,'DT * CFL ',dt
 
-      call est_divu_dt(divu,dsdt,scal,dx,dt_divu)
+      call est_divu_dt(divu,dsdt,scal,dt_divu)
 
       print *,'ESTDT: UMAX = ',umax
 
@@ -46,13 +46,12 @@ C should change this to a problem dependent vel_TYP
 
       end
 
-      subroutine est_divu_dt(divu,dsdt,scal,dx,dt)
+      subroutine est_divu_dt(divu,dsdt,scal,dt)
       implicit none
       include 'spec.h'
       real*8   divu(0 :nx-1)
       real*8   dsdt(0 :nx-1)
       real*8   scal(-1:nx  ,*)
-      real*8  dx
       real*8  dt
 
       real*8  rho

@@ -1,10 +1,10 @@
-      subroutine get_vel_visc_terms(vel,beta,visc,dx,time)
+      subroutine get_vel_visc_terms(vel,beta,visc,dx)
       implicit none
       include 'spec.h'
       real*8 vel(-1:nx)
       real*8 beta(-1:nx)
       real*8 visc(0 :nx-1)
-      real*8 dx, time
+      real*8 dx
       
       integer i
       real*8 beta_lo,beta_hi

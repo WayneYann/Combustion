@@ -19,7 +19,7 @@
       real*8 spec_flux_hi(0:nx-1,maxspec)
 
       call get_spec_visc_terms(scal_old,beta,visc,
-     $                         spec_flux_lo,spec_flux_hi,dx,time,.true.)
+     $                         spec_flux_lo,spec_flux_hi,dx)
       do i = 0,nx-1
          do n=1,Nspec
             is = FirstSpec + n - 1

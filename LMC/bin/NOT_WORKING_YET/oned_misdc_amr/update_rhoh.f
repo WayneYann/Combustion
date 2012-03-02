@@ -15,7 +15,7 @@
       real*8  visc_term
       integer i
 
-      call get_rhoh_visc_terms(scal_old,beta,visc,dx,time)
+      call get_rhoh_visc_terms(scal_old,beta,visc,dx)
       
       do i = 0,nx-1
          visc_term = dt*(1.d0 - be_cn_theta)*visc(i)

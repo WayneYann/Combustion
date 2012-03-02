@@ -36,7 +36,7 @@ C                                          rho.D.Grad(Y).Grad(h) ]
 C     at old time
 c*************************************************************************      
 C this fn sets ghost cells
-      call get_temp_visc_terms(scal_old,beta_old,visc,dx,time)
+      call get_temp_visc_terms(scal_old,beta_old,visc,dx)
       do i = 0,nx-1
          Rhs(i) = I_R(i)*dt + (1.d0 - be_cn_theta)*dt*visc(i)  
       enddo
@@ -44,7 +44,7 @@ C this fn sets ghost cells
 c*************************************************************************
 c     Add rho.D.Grad(Y).Grad(H)  at time n+1
 c*************************************************************************      
-      call rhoDgradHgradY(scal_new,beta_new,visc,dx,time+dt)
+      call rhoDgradHgradY(scal_new,beta_new,visc,dx)
       do i = 0,nx-1
          Rhs(i) = Rhs(i) + dt*be_cn_theta*visc(i) 
       enddo

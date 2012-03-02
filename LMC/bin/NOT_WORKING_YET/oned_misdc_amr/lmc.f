@@ -168,7 +168,7 @@ c     needed for seed to EOS after first strang_chem call
 
             print *,'initialVelocityProject: '
 
-            call calc_divu(scal_old,beta_old,I_R,divu_old,dx,time)
+            call calc_divu(scal_old,beta_old,I_R,divu_old,dx)
 
 c     setting dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
@@ -212,7 +212,7 @@ c     return zero pressure
 c     reset temperature just in case strang_chem call is not well poased
             scal_new(:,Temp) = scal_old(:,Temp)
 
-            call calc_divu(scal_old,beta_old,I_R,divu_old,dx,time)
+            call calc_divu(scal_old,beta_old,I_R,divu_old,dx)
 
             print *,'divu_iters velocity Project: '
 c     setting dt=-1 ensures we simply project div(u)=S and

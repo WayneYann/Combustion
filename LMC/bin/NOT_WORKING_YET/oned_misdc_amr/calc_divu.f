@@ -1,4 +1,4 @@
-      subroutine calc_divu(scal,beta,I_R,divu,dx,time)
+      subroutine calc_divu(scal,beta,I_R,divu,dx)
       implicit none
       include 'spec.h'
 
@@ -7,7 +7,7 @@ c     Quantities passed in
       real*8 beta(-1:nx,nscal)
       real*8 divu(0:nx-1)
       real*8 I_R(0:nx-1,0:maxspec)
-      real*8 dx, time
+      real*8 dx
       
       real*8 Y(maxspec)
       real*8 HK(maxspec)
@@ -22,9 +22,9 @@ c     Quantities passed in
       real*8 spec_flux_lo(0:nx-1,maxspec)
       real*8 spec_flux_hi(0:nx-1,maxspec)
 
-      call get_temp_visc_terms(scal,beta,diff(0,Temp),dx,time)
+      call get_temp_visc_terms(scal,beta,diff(0,Temp),dx)
       call get_spec_visc_terms(scal,beta,diff(0,FirstSpec),
-     $                         spec_flux_lo,spec_flux_hi,dx,time,.true.)
+     $                         spec_flux_lo,spec_flux_hi,dx)
 
       do i = 0,nx-1
          rho = 0.d0
