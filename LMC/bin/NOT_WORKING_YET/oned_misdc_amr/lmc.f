@@ -201,7 +201,7 @@ C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT
 
          call minmax_vel(nx,vel_new)
          
-         call calc_diffusivities(scal_new,beta_new,mu_new)
+         call calc_diffusivities(scal_new,beta_new,mu_new,dx,time,.true.)
 
          call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
          

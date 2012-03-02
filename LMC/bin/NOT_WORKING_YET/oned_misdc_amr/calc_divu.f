@@ -24,7 +24,7 @@ c     Quantities passed in
 
       call get_temp_visc_terms(scal,beta,diff(0,Temp),dx,time)
       call get_spec_visc_terms(scal,beta,diff(0,FirstSpec),
-     $                         spec_flux_lo,spec_flux_hi,dx,time)
+     $                         spec_flux_lo,spec_flux_hi,dx,time,.true.)
 
       do i = 0,nx-1
          rho = 0.d0

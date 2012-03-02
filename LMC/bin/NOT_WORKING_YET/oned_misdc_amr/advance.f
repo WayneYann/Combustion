@@ -86,7 +86,7 @@ c     compute diffusivities at time n (old time)
 c     this computes rho D_m     (for species)
 c                   lambda / cp (for enthalpy)
 c                   lambda      (for temperature)
-      call calc_diffusivities(scal_old,beta_old,mu_old,dx,time)
+      call calc_diffusivities(scal_old,beta_old,mu_old,dx,time,.true.)
 
       if (use_strang) then
 
@@ -130,7 +130,7 @@ c     SDC advance
 c     this computes rho D_m     (for species)
 c                   lambda / cp (for enthalpy)
 c                   lambda      (for temperature)           
-      call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
+      call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt,.true.)
       call calc_divu(scal_new,beta_new,I_R_divu,divu_new,dx,time+dt)
 
       do i = 0,nx-1
@@ -286,7 +286,8 @@ c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
       call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),
-     &                         spec_flux_lo,spec_flux_hi,dx,time)
+     &                         spec_flux_lo,spec_flux_hi,dx,time,
+     &                         .true.)
 c     compute del dot lambda/cp grad h (no differential diffusion)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
@@ -372,10 +373,10 @@ c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
 c        DON'T FILL GHOST CELLS OR ELSE VISC WILL BE INCONSISTENT
 c        WITH GHOST CELLS USED IN CN_SOLVE
-         call get_spec_visc_terms_nosetbc(scal_new,beta_old,
-     $                                    diff_hat(0,FirstSpec),
-     $                                    spec_flux_lo,spec_flux_hi,
-     $                                    dx,time)
+         call get_spec_visc_terms(scal_new,beta_old,
+     $                            diff_hat(0,FirstSpec),
+     $                            spec_flux_lo,spec_flux_hi,
+     $                            dx,time,.false.)
 
 c        update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -463,12 +464,14 @@ c     that have a backward Euler character
 c        this computes rho D_m     (for species)
 c                      lambda / cp (for enthalpy)
 c                      lambda      (for temperature) 
-         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt,
+     &                           .true.)
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_new,
      &                            diff_new(0,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,dx,time+dt)
+     &                            spec_flux_lo,spec_flux_hi,dx,time+dt,
+     &                            .true.)
 c        compute del dot lambda/cp grad h (no differential diffusion)
          call get_rhoh_visc_terms(scal_new,beta_new,
      &                            diff_new(0,RhoH),dx,time+dt)
@@ -541,10 +544,10 @@ c           compute del dot rho D grad Y and make it conservative
 c           save species fluxes for differential diffusion
 c           DON'T FILL GHOST CELLS OR ELSE VISC WILL BE INCONSISTENT
 c           WITH GHOST CELLS USED IN CN_SOLVE
-            call get_spec_visc_terms_nosetbc(scal_new,beta_new,
-     $                                       diff_hat(0,FirstSpec),
-     $                                       spec_flux_lo,spec_flux_hi,
-     $                                       dx,time)
+            call get_spec_visc_terms(scal_new,beta_new,
+     $                               diff_hat(0,FirstSpec),
+     $                               spec_flux_lo,spec_flux_hi,
+     $                               dx,time,.false.)
 
 c           add differential diffusion to forcing for enthalpy solve
             do i=0,nx-1
@@ -688,7 +691,7 @@ c
 c    compute rho^(1) D_m^(1)     (for species)
 c            lambda^(1) / cp^(1) (for enthalpy)
 c            lambda^(1)          (for temperature) 
-      call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
+      call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time,.true.)
 
 c     compute del dot lambda grad T + rho D grad h dot grad Y
 c     the rho D grad Y term is now computed conservatively
@@ -698,7 +701,7 @@ c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
       call get_spec_visc_terms(scal_old,beta_old,
      &                         diff_old(0,FirstSpec),
-     &                         spec_flux_lo,spec_flux_hi,dx,time)
+     &                         spec_flux_lo,spec_flux_hi,dx,time,.true.)
 c     compute del dot lambda/cp grad h (no differential diffusion)
       call get_rhoh_visc_terms(scal_old,beta_old,
      &                         diff_old(0,RhoH),dx,time)
@@ -761,8 +764,8 @@ c        does not fill ghost cells
 c        compute rho^(2) D_m^(2),* (for species)
 c        lambda/cp (for enthalpy) won't be used
 c        lambda^(1) (for temperature) won't be used
-         call calc_diffusivities_nosetbc(scal_new,beta_new,mu_dummy,dx,
-     $                                   time+dt)
+         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,
+     $                           time+dt,.false.)
       else
          print *,'... set new coeffs to old values for predictor'
          do n=1,nscal
@@ -795,10 +798,10 @@ c        lambda^(1) (for temperature) won't be used
 
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
-         call get_spec_visc_terms_nosetbc(scal_new,beta_new,
-     &                                    diff_tmp(0,FirstSpec),
-     &                                    spec_flux_lo,spec_flux_hi,
-     &                                    dx,time)
+         call get_spec_visc_terms(scal_new,beta_new,
+     &                            diff_tmp(0,FirstSpec),
+     &                            spec_flux_lo,spec_flux_hi,
+     &                            dx,time,.false.)
 
 c     update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -815,7 +818,8 @@ c     update species with conservative diffusion fluxes
 c     this computes rho D_m                 (for species) won't be used
 c                   lambda^(2),* / cp^(2),* (for enthalpy)
 c                   lambda^(2),*            (for temperature) 
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt,
+     &                        .true.)
 
       if (LeEQ1 .eq. 0) then
 
@@ -852,7 +856,8 @@ C   Corrector
 c     this computes rho^(2) D_m^(2)     (for species)
 c                   lambda^(2) / cp^(2) (for enthalpy)
 c                   lambda^(2)          (for temperature) 
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt,
+     &                        .true.)
 
       do i=0,nx-1
          dRhs(i,0) = 0.0d0
@@ -874,10 +879,10 @@ c                   lambda^(2)          (for temperature)
 
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
-         call get_spec_visc_terms_nosetbc(scal_new,beta_new,
-     &                                    diff_tmp(0,FirstSpec),
-     &                                    spec_flux_lo,spec_flux_hi,
-     &                                    dx,time)
+         call get_spec_visc_terms(scal_new,beta_new,
+     &                            diff_tmp(0,FirstSpec),
+     &                            spec_flux_lo,spec_flux_hi,
+     &                            dx,time,.false.)
 
 c     update species with conservative diffusion fluxes
          do i=0,nx-1

@@ -9,13 +9,14 @@ c     Initialize some values
       data iCH4 / -1 /
       end
 
-      subroutine calc_diffusivities(scal, beta, mu, dx, time)
+      subroutine calc_diffusivities(scal, beta, mu, dx, time, setbc)
       implicit none
       include 'spec.h'
       double precision scal(-1:nx,*)
       double precision beta(-1:nx,*)
       double precision mu(-1:nx)
       double precision time, dx
+      logical setbc
 
       double precision Dt(maxspec), CPMS(maxspec), Y(maxspec)
       double precision Tt, Wavg, rho
@@ -29,7 +30,9 @@ c     Initialize some values
 c     Ensure chem/tran initialized
       if (traninit.lt.0) call initchem()
 
-      call set_bc_s(scal,dx,time)
+      if (setbc) then
+         call set_bc_s(scal,dx,time)
+      end if
 
       if (LeEQ1 .eq. 0) then
          
@@ -90,128 +93,6 @@ c           compute shear viscosity
          do i=-1, nx
 c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
             mu(i) = 10.d0 * 1.85d-5*(MAX(scal(i,Temp),1.d0)/298.d0)**.7d0
-c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
-            rho = 0.d0
-            do n=1,Nspec
-               beta(i,FirstSpec+n-1) = mu(i) / Sc
-               rho = rho + scal(i,FirstSpec+n-1)
-            enddo
-            
-            do n=1,Nspec
-               Y(n) = scal(i,FirstSpec+n-1) / rho
-            enddo
-c           Returns the mean specific heat at CP
-            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
-            beta(i,RhoH) = mu(i) / Pr
-            beta(i,Temp) = beta(i,RhoH) * CPMIX
-
-            mu(i) = fourThirds*mu(i)
-         enddo
-      endif
-
-CCCCCCCCCCC FIXME
-C      do n = 0, Nspec-1
-C         do i = -1, nx
-C            beta(i,FirstSpec+n) = 0.d0
-C            beta(i,RhoH) = 0.d0
-C            beta(i,Temp) = 0.d0
-C         enddo
-C      enddo
-CCCCCCCCCCCCCC
-
-      if (thickFacTR.ne.1.d0) then
-         do i=-1, nx
-            do n=1,Nspec
-               beta(i,FirstSpec+n-1) = beta(i,FirstSpec+n-1)*thickFacTR
-            end do
-            beta(i,Temp) = beta(i,Temp) * thickFacTR
-            beta(i,RhoH) = beta(i,RhoH) * thickFacTR
-         enddo
-      endif
-
-      end
-
-      subroutine calc_diffusivities_nosetbc(scal, beta, mu, dx, time)
-      implicit none
-      include 'spec.h'
-      double precision scal(-1:nx,*)
-      double precision beta(-1:nx,*)
-      double precision mu(-1:nx)
-      double precision time, dx
-
-      double precision Dt(maxspec), CPMS(maxspec), Y(maxspec)
-      double precision Tt, Wavg, rho
-      double precision X(maxspec), alpha, l1, l2, cpmix, RWRK
-      integer n, i, IWRK
-
-      double precision fourThirds
-
-      fourThirds = 4.d0 / 3.d0
-
-c     Ensure chem/tran initialized
-      if (traninit.lt.0) call initchem()
-
-c      call set_bc_s(scal,dx,time)
-
-      if (LeEQ1 .eq. 0) then
-         
-         do i=-1, nx         
-            Tt = MAX(scal(i,Temp),TMIN_TRANS) 
-            rho = 0.d0
-            do n=1,Nspec
-               rho = rho + scal(i,FirstSpec+n-1)
-            enddo
-            do n=1,Nspec
-C               Y(n) = scal(i,FirstSpec+n-1) / scal(i,Density)
-               Y(n) = scal(i,FirstSpec+n-1) / rho
-            enddo
-            
-c           given y[species]: maxx fractions
-c           returns mean molecular weight (gm/mole)
-            CALL CKMMWY(Y,IWRK,RWRK,Wavg)
-
-c           returns the specific heats at constant pressure
-c           in mass units
-            CALL CKCPMS(Tt,IWRK,RWRK,CPMS)
-
-c           convert y[species] (mass fracs) to x[species] (mole fracs)
-            CALL CKYTX(Y,IWRK,RWRK,X)
-
-c           initialize the thermomolecular parameters that are needed in order
-c           to evaluate the transport linear systems
-            CALL EGSPAR(Tt,X,Y,CPMS,EGRWRK,EGIWRK)
-
-c           compute flux diffusion coefficients
-            CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
-
-cc           compute rho = P*W(y)/RT
-c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
-
-            do n=1,Nspec
-               beta(i,FirstSpec+n-1)
-     &              = scal(i,Density) * Wavg * invmwt(n) * Dt(n)
-            end do
-
-            alpha = 1.0D0
-c           compute thermal conductivity
-            CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
-            alpha = -1.0D0
-c           compute thermal conductivity with a different averating parameters
-            CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
-            beta(i,Temp) = .5 * (l1 + l2)
-c           Returns the mean specific heat at CP
-            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
-            beta(i,RhoH) = beta(i,Temp) / CPMIX
-
-c           compute shear viscosity
-            CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
-            mu(i) = fourThirds*mu(i)
-         enddo
-
-      else
-         do i=-1, nx
-c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
-            mu(i) = 10.d0 * 1.85e-5*(MAX(scal(i,Temp),1.d0)/298.0)**.7
 c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
             rho = 0.d0
             do n=1,Nspec
