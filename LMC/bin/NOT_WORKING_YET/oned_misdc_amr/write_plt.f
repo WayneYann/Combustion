@@ -8,7 +8,6 @@
       real*8 press( 0:nx)
       real*8 divu( 0:nx-1)
       real*8 I_R( 0:nx-1,0:Nspec)
-      real*8 ptherm(-1:nx)
       real*8 dx
       real*8 time
       
@@ -23,7 +22,7 @@
  1005 format(i5.5)
 C 1006 FORMAT(20(E15.8,1X))      
  1006 FORMAT(200(E23.15E3,1X))      
-      call compute_pthermo(scal,ptherm)
+      call compute_pthermo(scal,scal(:,RhoRT))
       
       open(10,file=pltfile,form='formatted')
       print *,'...writing data to ',pltfile
@@ -42,7 +41,7 @@ C         write(10,1006) (i+.5)*dx,(scal(i,FirstSpec+n),n=0,Nspec-1),
      $                     scal(i,RhoH),
      $                     vel(i),
      $                     press(i),
-     $                     ptherm(i),
+     $                     scal(i,RhoRT),
      $                     divu(i),
      $                     (I_R(i,n),n=1,Nspec)
       enddo

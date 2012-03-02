@@ -35,7 +35,6 @@
       
       real*8     alpha(0:nx-1)
       real*8   vel_Rhs(0:nx-1)
-      real*8   pthermo(-1:nx  )
 
       real*8   I_R_divu(0:nx-1,0:maxspec)
       real*8 WDOTK(maxspec), C(maxspec), RWRK
@@ -58,7 +57,7 @@ c
 c     this fills ghost cells for vel_old
       call pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt,time)
       
-      call compute_pthermo(scal_old,pthermo)
+      call compute_pthermo(scal_old,scal_old(:,RhoRT))
 
       do i = 0,nx-1
          divu_tmp(i) = divu_old(i) + 0.5d0 * dt * dsdt(i)
@@ -71,7 +70,7 @@ c     diagnostics only
       enddo
       print *,'DIVU_TMP norm before dpdt = ',divu_max 
 
-      call add_dpdt(scal_old,pthermo,divu_tmp,macvel,dx,dt)
+      call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt)
 
 c     diagnostics only
       divu_max = ABS(divu_tmp(0))
@@ -166,7 +165,7 @@ C     get velocity visc terms to use as a forcing term for advection
      $                 dx,dt,1,vel_theta,rho_flag,.true.,time)
       endif
 
-      call compute_pthermo(scal_new,pthermo)
+      call compute_pthermo(scal_new,scal_new(:,RhoRT))
 
 c     diagnostics only
       divu_max = ABS(divu_new(0))
@@ -175,7 +174,8 @@ c     diagnostics only
       enddo
       print *,'DIVU_NEW norm before dpdt = ',divu_max 
 
-      call add_dpdt_nodal(scal_new,pthermo,divu_new,vel_new,dx,dt)
+      call add_dpdt_nodal(scal_new,scal_new(:,RhoRT),divu_new,
+     &                    vel_new,dx,dt)
 
 c     diagnostics only
       divu_max = ABS(divu_new(0))

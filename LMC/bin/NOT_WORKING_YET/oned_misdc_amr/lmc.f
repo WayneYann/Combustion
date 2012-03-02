@@ -20,7 +20,6 @@
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
       real*8 I_R     (0:nx-1,0:maxspec)
-      real*8   rhohalf( 0:nx-1)
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
       real*8  beta_old(-1 :nx,maxscal)
@@ -155,22 +154,15 @@ c     needed for seed to EOS after first strang_chem call
 C take vals from PMF and fills vel, Y, and Temp
 C computes rho and h, fills in rhoH and rhoY
 C sets I_R to zero
-C fills ghost cells
          call initdata(vel_old,scal_old,I_R,dx)
 
 c     needed for seed to EOS after first strang_chem call
          scal_new(:,Temp) = scal_old(:,Temp)
 
-C Note: RhoRT is only a diagnostic
-         scal_old(:,RhoRT) = -1.d20
-
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,99999,time)
 
          call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
-
-c     Define density for initial projection.
-         rhohalf(0:nx-1) = scal_old(0:nx-1,Density)
          
          if (do_initial_projection .eq. 1) then
 
@@ -182,8 +174,7 @@ c     setting dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             dt_dummy = -1.d0
 
-C     fills vel_new ghost cells
-            call project(vel_old,rhohalf,divu_old,
+            call project(vel_old,scal_old(:,Density),divu_old,
      $                   press_old,press_new,dx,dt_dummy,time)
 
          end if
@@ -228,7 +219,7 @@ c     setting dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             dt_dummy = -1.d0
             
-            call project(vel_old,rhohalf,divu_old,
+            call project(vel_old,scal_old(:,Density),divu_old,
      $                   press_old,press_new,dx,dt_dummy,time)
 
             dt_init = dt
@@ -236,8 +227,6 @@ c     return zero pressure
             if (fixed_dt > 0) then
                dt = fixed_dt
             else
-C CEG:: not sure that this should be scal_new and not scal_old
-C   probably doesn't matter that much
                call est_dt(nx,vel_old,scal_old,divu_old,dsdt,
      $                     cfl,umax,dx,dt_new)
                dt_new = dt_new * init_shrink
