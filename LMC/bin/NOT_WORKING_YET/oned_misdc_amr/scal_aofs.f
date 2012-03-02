@@ -27,8 +27,6 @@
       dthx = 0.5d0 * dt / dx
       eps = 1.e-6
       
-      call set_bc_s(scal_old,dx,time)
-
       do n = 1, nscal
          compute_comp(n) = .true.
       enddo

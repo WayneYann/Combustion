@@ -1,6 +1,6 @@
       subroutine strang_chem(scal_old,scal_new,
      $                       const_src,lin_src_old,lin_src_new,
-     $                       I_R,dt)
+     $                       I_R,dt,dx,time)
       implicit none
       include 'spec.h'
       real*8     scal_old(-1:nx  ,nscal)
@@ -9,7 +9,7 @@
       real*8  lin_src_old( 0:nx-1,nscal)
       real*8  lin_src_new( 0:nx-1,nscal)
       real*8          I_R( 0:nx-1,0:maxspec)
-      real*8  dt
+      real*8  dt,dx,time
       
       integer i,is,n,ifail
       real*8 RYold(maxspec), RYnew(maxspec), Told, Tnew
@@ -126,6 +126,8 @@ c     Set linear source terms in common for ode integrators access
             enddo
 
          endif
+
+         call set_bc_s(scal_new,dx,time)
 
       enddo
 

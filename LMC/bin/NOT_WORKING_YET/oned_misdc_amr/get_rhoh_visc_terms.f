@@ -7,26 +7,12 @@
       real*8 visc(0 :nx-1)
       real*8 dx, time
       
-C      real*8 tmp(0 :nx-1)
       integer i
       real*8 beta_lo,beta_hi
       real*8 flux_lo,flux_hi
       real*8 dxsqinv, h_lo, h_mid, h_hi
 
-      
-c     Compute Div( lambda/cp Grad(hmix) )
-
-c     FIXME: Add NULN terms
-c      if (LeEQ1 .ne. 1) then
-c         print *,'get_rhoh_visc_terms does yet support non-unity Le'
-c         stop
-c      endif
-
-      call set_bc_s(scal,dx,time)
-
-C      call divBetaHgradY(scal,beta,tmp,dx,time)
-
-      dxsqinv = 1.d0/(dx*dx)
+            dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1         
          if (coef_avg_harm.eq.1) then
             beta_lo = 2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i-1,RhoH))
@@ -43,7 +29,6 @@ C      call divBetaHgradY(scal,beta,tmp,dx,time)
          flux_hi = beta_hi*(h_hi - h_mid)
          flux_lo = beta_lo*(h_mid - h_lo)
          visc(i) = (flux_hi - flux_lo) * dxsqinv 
-C+ tmp(i)
       enddo
 
       end
@@ -71,9 +56,6 @@ C+ tmp(i)
       real*8 flux_lo(maxspec),flux_hi(maxspec)
       real*8 Y(maxspec,-1:nx)
       real*8 beta_lo, beta_hi, rho
-
-      call set_bc_s(scal_for_coeff,dx,time)
-      call set_bc_s(scal_for_grad,dx,time)
 
       dxsqinv = 1.d0/(dx*dx)
 

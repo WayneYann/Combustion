@@ -223,7 +223,7 @@ C     fills vel_new ghost cells
             print *,' ...doing divu_iter number',nd,' dt=',dt
             
             call strang_chem(scal_old,scal_new,const_src,lin_src_old,
-     $                       lin_src_new,I_R,dt*0.5d0)
+     $                       lin_src_new,I_R,dt*0.5d0,dx,time)
 
             call calc_divu(scal_old,beta_old,I_R,divu_new,dx,time)
 

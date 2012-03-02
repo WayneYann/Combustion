@@ -28,11 +28,6 @@ c     Add Div( lambda Grad(T) )
       real*8 flux_lo,flux_hi
       real*8 dxsqinv
 
-
-c     this function will sometimes be called independently from 
-c     get_temp_visc_terms, so need this here
-      call set_bc_s(scal,dx,time)
-
       dxsqinv = 1.d0/(dx*dx)
       do i = 0,nx-1
          if (coef_avg_harm.eq.1) then
@@ -76,8 +71,6 @@ c     get_temp_visc_terms, so need this here
 c     Compute rhoD Grad(Yi).Grad(hi) terms
 
       dxsqinv = 1.d0/(dx*dx)
-
-      call set_bc_s(scal,dx,time)
 
 c     Get Hi, Yi at cell centers
       do i = -1,nx

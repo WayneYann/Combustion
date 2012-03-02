@@ -381,6 +381,7 @@ c        update species with conservative diffusion fluxes
      $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_hat(i,is))
             end do
          end do
+         call set_bc_s(scal_new,dx,time)
          
 c        calculate differential diffusion
 c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
@@ -435,7 +436,7 @@ c        add differential diffusion
 
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R,dt)
+     $                    I_R,dt,dx,time)
 
       endif
 
@@ -583,7 +584,7 @@ c           add differential diffusion
             
             call strang_chem(scal_old,scal_new,
      $                       const_src,lin_src_old,lin_src_new,
-     $                       I_R,dt)
+     $                       I_R,dt,dx,time)
 
          endif
 
@@ -661,7 +662,7 @@ C----------------------------------------------------------------
          enddo
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R,dt/2.d0)
+     $                    I_R,dt/2.d0,dx,time)
          do i=0,nx-1
             do n = FirstSpec,LastSpec
                scal_old(i,n) = scal_new(i,n)
@@ -801,6 +802,7 @@ c     update species with conservative diffusion fluxes
      $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_tmp(i,is))
             end do
          end do
+         call set_bc_s(scal_new,dx,time)
 
       end if
 
@@ -880,6 +882,7 @@ c     update species with conservative diffusion fluxes
      $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_tmp(i,is))
             end do
          end do
+         call set_bc_s(scal_new,dx,time)
 
 c     calculate differential diffusion
 c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
@@ -919,7 +922,7 @@ c     we take the gradient of Y from the second scal argument
 
          call strang_chem(scal_old,scal_new,
      $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R_temp,dt/2.d0)
+     $                    I_R_temp,dt/2.d0,dx,time)
 
 c        we only care about updated species out of strang_chem
 c        rho and rhoh remain constant

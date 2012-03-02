@@ -29,8 +29,6 @@ c     Initialize some values
 c     Ensure chem/tran initialized
       if (traninit.lt.0) call initchem()
 
-      call set_bc_s(scal,dx,time)
-
       if (LeEQ1 .eq. 0) then
          
          do i=-1, nx         
