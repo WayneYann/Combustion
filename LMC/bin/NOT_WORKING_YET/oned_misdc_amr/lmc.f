@@ -1,12 +1,16 @@
       subroutine lmc()
+
       implicit none
+
       include 'spec.h'
+
       integer nsteps
       integer nsteps_taken
       integer at_nstep
       integer plot_int, chk_int
       integer num_init_iters
       integer num_divu_iters
+      integer do_initial_projection
 
       real*8   vel_new(-1:nx  )
       real*8   vel_old(-1:nx  )
@@ -25,7 +29,6 @@
       real*8    mu_new(-1 :nx)
       real*8      dsdt(0 :nx-1)
 
-c     Local variables
       real*8 problo,probhi
       real*8 dx
       real*8 time
@@ -41,8 +44,7 @@ c     Local variables
       real*8 fixed_dt
       real*8 dt_dummy
 
-
-      integer do_init, i, n, nd, ns
+      integer i, n, nd, ns
 
 c     New arrays for MISDC.
       real*8    const_src(0 :nx-1,maxscal)
@@ -58,7 +60,8 @@ c     New arrays for MISDC.
      $                  init_shrink, flame_offset,
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
-     $                  num_divu_iters, num_init_iters,fixed_dt,
+     $                  do_initial_projection, num_divu_iters, 
+     $                  num_init_iters,fixed_dt,
      $                  nochem_hack, use_strang, 
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
@@ -85,6 +88,7 @@ c     Set defaults, change with namelist
       divu_dt_factor    = 0.4d0
       rho_divu_ceiling  = 0.01
       predict_temp_for_coeffs = 1
+      do_initial_projection = 1
       num_divu_iters = 3
       num_init_iters = 2
       fixed_dt = -1.d0
@@ -137,8 +141,6 @@ c     Initialize chem/tran database
 
          at_nstep = at_nstep + 1
 
-         do_init = 0
-
          dt_init = dt
             
          do i = -1,nx
@@ -159,7 +161,6 @@ c     Initialize chem/tran database
                   
       else
          
-         do_init = 1
          time = 0.d0
          at_nstep = 1
 
@@ -191,26 +192,12 @@ C Fills in ghost cells for rho, Y, Temp, rhoH, but not RhoRT
 
          call minmax_vel(nx,vel_new)
          
-         call calc_diffusivities(scal_new,beta_new,mu_new,dx,time,.true.)
-
-         call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
-         
-         print *,'initialVelocityProject: '
-         dt_dummy = -1.d0
-
+         call calc_diffusivities(scal_new,beta_new,mu_new,
+     $                           dx,time,.true.)
 
          do i=0,nx-1
             vel_old(i) = vel_new(i)
-C CEG:: for the event that divu_iters = 0
             divu_old(i) = divu_new(i)
-CCCCCCCCCCCCCCC
-C CEG makes no difference
-C$$$            do n = 1,Nspec
-C$$$               Y(n) = scal_new(i,FirstSpec+n-1)/scal_new(i,Density)
-C$$$            enddo
-C$$$            CALL CKHBMS(scal_new(i,Temp),Y,IWRK,RWRK,scal_new(i,RhoH))
-C$$$            scal_new(i,RhoH) = scal_new(i,RhoH)*scal_new(i,Density)
-CCCCCCCCCCCCCC
             do n = 1,nscal
                scal_old(i,n) = scal_new(i,n)
                beta_old(i,n) = beta_new(i,n) 
@@ -218,10 +205,19 @@ CCCCCCCCCCCCCC
 c     Define density for initial projection.
             rhohalf(i) = scal_old(i,Density)
          enddo
+         
+         if (do_initial_projection .eq. 1) then
 
-C fills vel_new ghost cells, but not for vel_old 
-         call project(vel_new,rhohalf,divu_new,
-     $                press_old,press_new,dx,dt_dummy,time)
+            print *,'initialVelocityProject: '
+            dt_dummy = -1.d0
+
+            call calc_divu(scal_new,beta_new,I_R_new,divu_new,dx,time)
+
+C     fills vel_new ghost cells, but not for vel_old 
+            call project(vel_new,rhohalf,divu_new,
+     $                   press_old,press_new,dx,dt_dummy,time)
+
+         end if
 
          call write_plt(vel_new,scal_new,press_new,divu_new,I_R_new,
      &                  dx,99998,time)
