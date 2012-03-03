@@ -33,19 +33,6 @@ c     Shut off diagnostics
       print *,'... chemistry'
 c     Evolve chem over grid
       do i = 0,nx-1
-
-C CEG:: done to mimick john's SNe code.  firstSpec should be the fuel (i think)
-C I don't think this is appropriate for the more complex reactions network here
-C$$$         if (scal_new(i,FirstSpec) .le. 0.d0) then
-C$$$            do n = 1, nscal
-C$$$               scal_new(i,n) = scal_old(i,n)+
-C$$$     &              + dt*const_src(i,n)
-C$$$     &              + 0.5d0*dt*(lin_src_old(i,n)+lin_src_new(i,n))
-C$$$            enddo
-C$$$            do n = 0,Nspec
-C$$$               I_R(i,n) = 0.d0
-C$$$            enddo
-C$$$         else
          if (use_strang) then
 C           integrating Y_m's not rhoY_m
             do n = 1,Nspec

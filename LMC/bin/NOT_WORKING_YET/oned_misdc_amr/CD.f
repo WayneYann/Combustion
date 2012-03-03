@@ -60,9 +60,6 @@ c           to evaluate the transport linear systems
 c           compute flux diffusion coefficients
             CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
 
-cc           compute rho = P*W(y)/RT
-c            CALL CKRHOY(Pcgs,Tt,Y,IWRK,RWRK,RHO)
-
             do n=1,Nspec
                beta(i,FirstSpec+n-1)
      &              = scal(i,Density) * Wavg * invmwt(n) * Dt(n)
@@ -106,16 +103,6 @@ c           Returns the mean specific heat at CP
             mu(i) = fourThirds*mu(i)
          enddo
       endif
-
-CCCCCCCCCCC FIXME
-C      do n = 0, Nspec-1
-C         do i = -1, nx
-C            beta(i,FirstSpec+n) = 0.d0
-C            beta(i,RhoH) = 0.d0
-C            beta(i,Temp) = 0.d0
-C         enddo
-C      enddo
-CCCCCCCCCCCCCC
 
       if (thickFacTR.ne.1.d0) then
          do i=-1, nx
@@ -366,19 +353,7 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
          DO K = 1, Nspec
             ZP(K) = ZP(K)/RHO
          enddo         
-      endif
-
-
-C       write(*,1007)TIME,RHO,CPB,Pcgs
-C       write(*,1006)(Z(k),k=0,Nspec)
-C       write(*,1006)(ZP(k),k=0,Nspec)
-C       write(*,1008)(C(k),k=1,Nspec)
-C       write(*,*)'***********************************'
-C CEG debugging FIXME
-C      open(UNIT=11, FILE='pt_rxns.dat', STATUS='OLD',ACCESS='APPEND')
-C 1006 FORMAT(7(E22.15,1X))
-C 1007 FORMAT(4(E22.15,1X))
-C 1008 FORMAT(6(E22.15,1X))      
+      endif  
 
       END
 
