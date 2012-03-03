@@ -16,22 +16,21 @@
       real*8 divu_node
       real*8 gp
 
-      if (dt .gt. 0) then
-         
-         ! project v_star = v^n+1 + dt*gp^old/rho
+      ! if dt < 0, we simply project vel_new and leave pressure
+      ! to zero.  This should only be the case in the initial
+      ! projection and the divu_iters.
+
+      if (dt .gt. 0) then         
+
+         ! project v_star = vel_new + dt*gp^old/rho
          do i = 0,nx-1
             gp = (press_old(i+1)-press_old(i))/dx
             vel_star(i) = vel_new(i) + dt * gp / rhohalf(i)
          end do
-      else
-         
-         ! project v^n+1
-         do i = 0,nx-1
-            vel_star(i) = vel_new(i)
-         end do
+
       endif
 
-c     Build v^n+1 directly, since we have bc and div(v)=s
+c     Build vel_new directly, since we have bc and div(v)=s
 c     Get boundary value, vel(-1) at inlet wall, and integrate explicitly.
       call set_bc_v(vel_new,dx,time)
       vel_new(0) = vel_new(-1) + 0.5*divu(0)*dx
@@ -42,8 +41,8 @@ c     Get boundary value, vel(-1) at inlet wall, and integrate explicitly.
       
       if (dt .gt. 0.) then
 
-c     For this projection, v^n+1 = (v_star + dt*gp^old/rho) - dt*gp^new/rho
-c     and gp = -(v_new-v_old)/dt * rhohalf
+c     For this projection, vel_new = vel_star - dt*gp^new/rho
+c     therefore gp = -(vel_new-vel_star)/dt * rhohalf
          phi(nx) = 0.d0
          do i = nx-1,0,-1
             gp = -(vel_new(i) - vel_star(i))/dt * rhohalf(i)
@@ -51,13 +50,6 @@ c     and gp = -(v_new-v_old)/dt * rhohalf
          enddo
          do i = 0,nx
             press_new(i) = phi(i)
-         enddo
-
-      else
-
-c     set pressure to zero since we are not keeping it
-         do i = 0,nx
-            press_new(i) = 0.d0
          enddo
 
       endif
