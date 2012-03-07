@@ -320,14 +320,6 @@ LinOp::bndryData () const
 }
 
 inline
-void
-LinOp::bndryData (const BndryData& bd)
-{
-    BL_ASSERT(gbox[0] == bd.boxes());
-    bgb = bd;
-}
-
-inline
 int
 LinOp::numLevels () const
 {
