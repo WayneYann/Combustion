@@ -22,13 +22,13 @@
 
 !     cell-centered, 1 ghost cell
       real*8      I_R(-1:nx,0:maxspec)
-      real*8 divu_old(-1:nx)
-      real*8 divu_new(-1:nx)
       real*8 beta_old(-1:nx,maxscal)
       real*8 beta_new(-1:nx,maxscal)
       real*8 mu_dummy(-1:nx)
 
 !     cell-centered, no ghost cells
+      real*8    divu_old(0:nx-1)
+      real*8    divu_new(0:nx-1)
       real*8        dsdt(0:nx-1)
       real*8   const_src(0:nx-1,maxscal)
       real*8 lin_src_old(0:nx-1,maxscal)
@@ -51,7 +51,7 @@
       real*8 dt,fixed_dt
       real*8 Patm
 
-      integer divu_iter,init_iter,i
+      integer divu_iter,init_iter
 
       character chkfile*(16)
 

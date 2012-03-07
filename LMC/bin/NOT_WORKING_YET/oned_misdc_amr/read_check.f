@@ -10,7 +10,7 @@
       real*8   I_R(-1:nx  ,0:maxspec)
       real*8  divu( 0:nx-1)
       real*8  dsdt( 0:nx-1)
-      real*8 press(0:nx)
+      real*8 press(-1:nx+1)
       real*8 time
       real*8 dt_old
       real*8 cfl_used
