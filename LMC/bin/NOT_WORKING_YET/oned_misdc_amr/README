@@ -19,17 +19,16 @@ beta(-1:nx,nscal)
 5:5+Nspec-1 = rho*D_m (for RhoY)
 
 diff(0:nx-1,nscal)
-1    = NULL (for Density)
-2    = del dot lambda grad T + sum_m rho D_m grad h_m dot grad Y_m (for Temp)
-3    = del dot (lambda/cp) grad h (for RhoH)
-4    = NULL (for RhoRT)
-5:13 = del dot Gamma_m (for RhoY)
+1           = NULL (for Density)
+2           = del dot lambda grad T + sum_m rho D_m grad h_m dot grad Y_m (for Temp)
+3           = del dot (lambda/cp) grad h (for RhoH)
+4           = NULL (for RhoRT)
+5:5+Nspec-1 = del dot Gamma_m (for RhoY)
 
 diffdiff(0:nx-1)
- -> sum_m h_m * (rho*D_m - lamba/cp) grad Y_m
-  = sum_m h_m Gamma_m - h_m lambda/cp grad Y_m (for RhoH)
+ = sum_m h_m (Gamma_m - lambda/cp) grad Y_m (for RhoH)
 
-I_R(0:nx-1,0:maxspec)
+I_R(0:nx-1,0:Nspec)
 0       = for RhoH
 1:Nspec = rho RhoY
 
