@@ -7,29 +7,39 @@
       integer nsteps
       integer nsteps_taken
       integer at_nstep
-      integer plot_int, chk_int
-      integer num_init_iters
-      integer num_divu_iters
+      integer plot_int
+      integer chk_int
       integer do_initial_projection
+      integer num_divu_iters
+      integer num_init_iters
 
-      real*8   vel_new(-1:nx  )
-      real*8   vel_old(-1:nx  )
-      real*8  scal_new(-1:nx  ,maxscal)
-      real*8  scal_old(-1:nx  ,maxscal)
-      real*8 scal_hold(-1:nx  ,maxscal)
-      real*8 press_new(0 :nx  )
-      real*8 press_old(0 :nx  )
-      real*8 I_R     (0:nx-1,0:maxspec)
-      real*8  divu_old(0 :nx-1)
-      real*8  divu_new(0 :nx-1)
-      real*8  beta_old(-1 :nx,maxscal)
-      real*8  beta_new(-1 :nx,maxscal)
-      real*8  mu_dummy(-1 :nx)
-      real*8      dsdt(0 :nx-1)
+!     cell-centered, 2 ghost cells
+      real*8   vel_new(-2:nx+1)
+      real*8   vel_old(-2:nx+1)
+      real*8  scal_new(-2:nx+1,maxscal)
+      real*8  scal_old(-2:nx+1,maxscal)
+      real*8 scal_hold(-2:nx+1,maxscal)
+
+!     cell-centered, 1 ghost cell
+      real*8      I_R(-1:nx,0:maxspec)
+      real*8 divu_old(-1:nx)
+      real*8 divu_new(-1:nx)
+      real*8 beta_old(-1:nx,maxscal)
+      real*8 beta_new(-1:nx,maxscal)
+      real*8 mu_dummy(-1:nx)
+
+!     cell-centered, no ghost cells
+      real*8        dsdt(0:nx-1)
+      real*8   const_src(0:nx-1,maxscal)
+      real*8 lin_src_old(0:nx-1,maxscal)
+      real*8 lin_src_new(0:nx-1,maxscal)
+
+!     nodal, 1 ghost cell
+      real*8 press_new(-1:nx+1)
+      real*8 press_old(-1:nx+1)
 
       real*8 problo,probhi
-      real*8 dx
-      real*8 time
+      real*8 dx,time
       real*8 dt_init,dt_new
       real*8 init_shrink
       real*8 change_max
@@ -38,19 +48,12 @@
       real*8 cfl
       real*8 cfl_used
       real*8 umax
-      real*8 dt
-      real*8 fixed_dt
-      real*8 dt_dummy
-
-      integer n, nd
-
-c     New arrays for MISDC.
-      real*8    const_src(0 :nx-1,maxscal)
-      real*8  lin_src_old(0 :nx-1,maxscal)
-      real*8  lin_src_new(0 :nx-1,maxscal)
-      
-      character chkfile*(16)
+      real*8 dt,fixed_dt
       real*8 Patm
+
+      integer divu_iter,init_iter
+
+      character chkfile*(16)
 
       namelist /fortin/ nsteps,stop_time,cfl,
      $                  problo,probhi,chkfile,
@@ -79,7 +82,7 @@ c     Set defaults, change with namelist
       init_shrink = 0.1d0
       flame_offset = 0.d0
       dpdt_factor = 0.d0
-      Patm = 0
+      Patm = 1.d0
       coef_avg_harm = 0
       misdc_iterMAX = 3
       divu_ceiling_flag = 1
@@ -170,12 +173,10 @@ c     needed for seed to EOS after first strang_chem call
 
             call calc_divu(scal_old,beta_old,I_R,divu_old,dx)
 
-c     setting dt=-1 ensures we simply project div(u)=S and
+c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            dt_dummy = -1.d0
-
             call project(vel_old,scal_old(:,Density),divu_old,
-     $                   press_old,press_new,dx,dt_dummy,time)
+     $                   press_old,press_new,dx,-1.d0,time)
 
          end if
 
@@ -202,9 +203,9 @@ c     return zero pressure
          print *,'...doing num_divu_iters = ',num_divu_iters 
          print *,' '
          print *,' '
-         do nd = 1,num_divu_iters
+         do divu_iter=1,num_divu_iters
 
-            print *,' ...doing divu_iter number',nd,' dt=',dt
+            print *,' ...doing divu_iter number',divu_iter,' dt=',dt
             
             call strang_chem(scal_old,scal_new,const_src,lin_src_old,
      $                       lin_src_new,I_R,dt*0.5d0,dx,time)
@@ -215,12 +216,11 @@ c     reset temperature just in case strang_chem call is not well poased
             call calc_divu(scal_old,beta_old,I_R,divu_old,dx)
 
             print *,'divu_iters velocity Project: '
-c     setting dt=-1 ensures we simply project div(u)=S and
-c     return zero pressure
-            dt_dummy = -1.d0
             
+c     passing in dt=-1 ensures we simply project div(u)=S and
+c     return zero pressure
             call project(vel_old,scal_old(:,Density),divu_old,
-     $                   press_old,press_new,dx,dt_dummy,time)
+     $                   press_old,press_new,dx,-1.d0,time)
 
             dt_init = dt
              
@@ -247,10 +247,10 @@ c     return zero pressure
          else
             is_first_initial_iter = 1
          endif
-         do n = 1,num_init_iters
+         do init_iter=1,num_init_iters
 
             print *,' '
-            print *,'INITIAL PRESSURE ITERATION ',n
+            print *,'INITIAL PRESSURE ITERATION ',init_iter
 
             if (fixed_dt > 0) then
                dt = fixed_dt
@@ -357,8 +357,6 @@ c     update state, time
          endif
       enddo
 
-
-
       print *,' '      
       print *,'COMPLETED SUCCESSFULLY'
       print *,' '      
@@ -366,10 +364,14 @@ c     update state, time
       end
 
       subroutine minmax_vel(nx,vel)
+
+      implicit none
+
       integer nx
-      real*8  vel(-1:nx  )
+      real*8 vel(-1:nx  )
 
       real*8  vel_min,vel_max
+      integer i
 
       vel_min = abs(vel(0))
       vel_max = abs(vel(0))
@@ -380,7 +382,7 @@ c     update state, time
       
       write(6,1001) vel_min
       write(6,1002) vel_max
- 1001 format(' UMAX = ',f21.9)
+ 1001 format(' UMIN = ',f21.9)
  1002 format(' UMAX = ',f21.9)
       
       end
