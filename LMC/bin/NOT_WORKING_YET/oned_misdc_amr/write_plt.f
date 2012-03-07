@@ -6,8 +6,8 @@
       real*8   vel(-2:nx+1)
       real*8  scal(-2:nx+1,nscal)
       real*8 press( 0:nx)
-      real*8 divu( 0:nx-1)
-      real*8 I_R( 0:nx-1,0:Nspec)
+      real*8  divu( 0:nx-1)
+      real*8   I_R(-1:nx  ,0:Nspec)
       real*8 dx
       real*8 time
       

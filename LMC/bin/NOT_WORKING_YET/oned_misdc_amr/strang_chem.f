@@ -8,7 +8,7 @@
       real*8    const_src( 0:nx-1,nscal)
       real*8  lin_src_old( 0:nx-1,nscal)
       real*8  lin_src_new( 0:nx-1,nscal)
-      real*8          I_R( 0:nx-1,0:maxspec)
+      real*8          I_R(-1:nx  ,0:maxspec)
       real*8  dt,dx,time
       
       integer i,is,n,ifail

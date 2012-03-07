@@ -11,14 +11,14 @@
       real*8  scal_old(-2:nx+1,nscal)
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
-      real*8   I_R(0:nx-1,0:maxspec)
+      real*8       I_R(-1:nx  ,0:maxspec)
       real*8    macvel(0 :nx  )
       real*8   veledge(0 :nx  )
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
       real*8  divu_tmp(0 :nx-1)
-      real*8  beta_old(-1:nx,nscal)
-      real*8  beta_new(-1:nx,nscal)
+      real*8  beta_old(-1:nx  ,nscal)
+      real*8  beta_new(-1:nx  ,nscal)
       real*8    mu_old(-1:nx)
       real*8    mu_new(-1:nx)
       real*8      dsdt(0 :nx-1)
@@ -35,7 +35,7 @@
       real*8     alpha(0:nx-1)
       real*8   vel_Rhs(0:nx-1)
 
-      real*8   I_R_divu(0:nx-1,0:maxspec)
+      real*8   I_R_divu(-1:nx,0:maxspec)
       real*8 WDOTK(maxspec), C(maxspec), RWRK
       integer IWRK
 
@@ -163,18 +163,15 @@ C     get velocity visc terms to use as a forcing term for advection
 
       implicit none
       include 'spec.h'
-      real*8  scal_new(-2:nx+1,nscal)
-      real*8  scal_old(-2:nx+1,nscal)
-c     in the full LMC code, I_R only needs 0:maxspec components
-c     component 0 is for rhoh
-c     components 1:maxspec are for rhoX
-      real*8   I_R(0:nx-1,0:maxspec)
-      real*8    macvel(0 :nx  )
-      real*8      aofs(0 :nx-1,nscal)
-      real*8  beta_old(-1:nx,nscal)
-      real*8  beta_new(-1:nx,nscal)
-      real*8  mu_dummy(-1:nx)
-      real*8    tforce(0 :nx-1,nscal)
+      real*8 scal_new(-2:nx+1,nscal)
+      real*8 scal_old(-2:nx+1,nscal)
+      real*8      I_R(-1:nx  ,0:maxspec)
+      real*8   macvel(0 :nx  )
+      real*8     aofs(0 :nx-1,nscal)
+      real*8 beta_old(-1:nx,nscal)
+      real*8 beta_new(-1:nx,nscal)
+      real*8 mu_dummy(-1:nx)
+      real*8   tforce(0 :nx-1,nscal)
       real*8 dx
       real*8 dt
       real*8 time
@@ -559,15 +556,15 @@ C----------------------------------------------------------------
 
       implicit none
       include 'spec.h'
-      real*8  scal_new(-2:nx+1,nscal)
-      real*8  scal_old(-2:nx+1,nscal)
-      real*8   I_R(0:nx-1,0:maxspec)
-      real*8    macvel(0 :nx  )
-      real*8      aofs(0 :nx-1,nscal)
-      real*8  beta_old(-1:nx,nscal)
-      real*8  beta_new(-1:nx,nscal)
-      real*8  mu_dummy(-1:nx)
-      real*8    tforce(0 :nx-1,nscal)
+      real*8 scal_new(-2:nx+1,nscal)
+      real*8 scal_old(-2:nx+1,nscal)
+      real*8      I_R(-1:nx  ,0:maxspec)
+      real*8   macvel(0 :nx  )
+      real*8     aofs(0 :nx-1,nscal)
+      real*8 beta_old(-1:nx  ,nscal)
+      real*8 beta_new(-1:nx  ,nscal)
+      real*8 mu_dummy(-1:nx)
+      real*8   tforce(0 :nx-1,nscal)
       real*8 dx
       real*8 dt
       real*8 time
@@ -579,7 +576,7 @@ C----------------------------------------------------------------
       real*8 lin_src_old(0:nx-1,nscal)
       real*8 lin_src_new(0:nx-1,nscal)
 
-      real*8   I_R_temp(0:nx-1,0:maxspec)
+      real*8   I_R_temp(-1:nx,0:maxspec)
       
       integer i,n
       
@@ -695,11 +692,8 @@ c     coeffs, or simply start by copying from previous time step
       if (predict_temp_for_coeffs .eq. 1) then
          print *,'... predict temp with old coeffs'
          rho_flag = 1
-         do i=0,nx-1
-            dRhs(i,0) = 0.0d0
-         enddo
          call update_temp(scal_old,scal_new,aofs,
-     $                    alpha,beta_old,beta_old,dRhs(0,0),
+     $                    alpha,beta_old,beta_old,
      $                    Rhs(0,Temp),dx,dt,be_cn_theta,time)
 c        just uses RHS and overwrites snew
 c        does not fill ghost cells

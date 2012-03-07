@@ -56,7 +56,7 @@ c----------------------------------------------------------------------
       double precision    dx
       double precision   vel(-2:nx+1)
       double precision  scal(-2:nx+1,*)
-      double precision   I_R(0:nx-1,0:*)
+      double precision   I_R(-1:nx  ,0:*)
 
       double precision  x, rho, Y(maxspec), T, h
       double precision xPMFlo, xPMFhi

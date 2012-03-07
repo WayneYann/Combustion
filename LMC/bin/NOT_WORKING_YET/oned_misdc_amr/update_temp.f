@@ -1,5 +1,5 @@
       subroutine update_temp(scal_old,scal_new,aofs,
-     &                       alpha,beta_old,beta_new,I_R,Rhs,
+     &                       alpha,beta_old,beta_new,Rhs,
      &                       dx,dt,be_cn_theta,time)
       implicit none
       include 'spec.h'
@@ -10,7 +10,6 @@
       real*8 beta_old(-1:nx  ,nscal)
       real*8 beta_new(-1:nx  ,nscal)
       real*8      Rhs(0 :nx-1)
-      real*8      I_R(0 :nx-1)
       real*8 dx, dt, time
       real*8 be_cn_theta
       
@@ -31,14 +30,14 @@ c*************************************************************************
       call set_bc_s(scal_new,dx,time)
 
 c*************************************************************************
-c     Initialize RHS = I_R + (1-theta) * [ Div( lambda Grad(T) ) +  
-C                                          rho.D.Grad(Y).Grad(h) ]
+c     Initialize RHS = (1-theta) * [ Div( lambda Grad(T) ) +  
+C                                    rho.D.Grad(Y).Grad(h) ]
 C     at old time
 c*************************************************************************      
 C this fn sets ghost cells
       call get_temp_visc_terms(scal_old,beta_old,visc,dx)
       do i = 0,nx-1
-         Rhs(i) = I_R(i)*dt + (1.d0 - be_cn_theta)*dt*visc(i)  
+         Rhs(i) = (1.d0 - be_cn_theta)*dt*visc(i)  
       enddo
 
 c*************************************************************************
