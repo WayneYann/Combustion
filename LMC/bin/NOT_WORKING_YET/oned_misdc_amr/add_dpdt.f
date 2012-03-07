@@ -62,13 +62,13 @@ C         denom = pthermo(i)
       end
 
 
-      subroutine add_dpdt_nodal(scal,pthermo,divu,unew,dx,dt)
+      subroutine add_dpdt_nodal(scal,pthermo,divu,vel,dx,dt)
       implicit none
       include 'spec.h'
       real*8 pthermo(-1:nx)
       real*8 scal(-1:nx, nscal)
       real*8 divu(0 :nx-1)
-      real*8 unew(0 :nx-1)
+      real*8 vel(-1:nx)
       real*8 Y(Nspec)
       real*8 dx
       real*8 dt
@@ -84,7 +84,7 @@ C         denom = pthermo(i)
       
       dpdt_max = 0.d0
       do i = 0,nx-1
-         uadv = unew(i)
+         uadv = vel(i)
 
          if (i .eq. 0) then                  
             p_lo = pthermo(i)
@@ -93,7 +93,7 @@ C         denom = pthermo(i)
             p_lo = pthermo(i-1)
             p_hi = pthermo(i)
          else
-            if (unew(i) .ge. 0) then
+            if (uadv .ge. 0) then
                p_lo = pthermo(i-1)
                p_hi = pthermo(i)
             else                  
