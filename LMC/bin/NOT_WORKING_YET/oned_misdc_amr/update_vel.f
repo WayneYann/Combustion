@@ -3,15 +3,15 @@
      &                      Rhs,dx,dt,be_cn_theta,time)
       implicit none
       include 'spec.h'
-      real*8 vel_old(-1:nx  )
-      real*8 vel_new(-1:nx  )
+      real*8 vel_old(-2:nx+1)
+      real*8 vel_new(-2:nx+1)
       real*8      gp(0 :nx-1)
       real*8   alpha(0 :nx-1)
       real*8    beta(-1:nx  )
       real*8     Rhs(0 :nx-1)
-      real*8  rhohalf(0 :nx-1)
-      real*8   macvel(0 :nx)
-      real*8    sedge(0 :nx)
+      real*8 rhohalf(0 :nx-1)
+      real*8  macvel(0 :nx)
+      real*8   sedge(0 :nx)
       real*8 dx,dt,be_cn_theta,time
       
       real*8  visc(0:nx-1)

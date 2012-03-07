@@ -3,8 +3,8 @@
      $                       I_R,dt,dx,time)
       implicit none
       include 'spec.h'
-      real*8     scal_old(-1:nx  ,nscal)
-      real*8     scal_new(-1:nx  ,nscal)
+      real*8     scal_old(-2:nx+1,nscal)
+      real*8     scal_new(-2:nx+1,nscal)
       real*8    const_src( 0:nx-1,nscal)
       real*8  lin_src_old( 0:nx-1,nscal)
       real*8  lin_src_new( 0:nx-1,nscal)

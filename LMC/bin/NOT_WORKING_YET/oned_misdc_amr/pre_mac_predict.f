@@ -1,8 +1,8 @@
       subroutine pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt)
       implicit none
       include 'spec.h'
-      real*8  vel_old(-1:nx)
-      real*8 scal_old(-1:nx,nscal)
+      real*8  vel_old(-2:nx+1)
+      real*8 scal_old(-2:nx+1,nscal)
       real*8     gp(0:nx)
       real*8 macvel(0:nx)
       real*8 dx, dt

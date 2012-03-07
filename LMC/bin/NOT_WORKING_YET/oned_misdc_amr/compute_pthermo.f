@@ -1,7 +1,7 @@
       subroutine compute_pthermo(scal,pthermo)
       include 'spec.h'
-      real*8  scal(-1:nx,nscal)
-      real*8 pthermo(-1:nx)
+      real*8  scal(-2:nx+1,nscal)
+      real*8 pthermo(-2:nx+1)
       
       real*8 Y(maxspec), RWRK
       integer i,n

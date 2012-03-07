@@ -51,7 +51,7 @@
       real*8 dt,fixed_dt
       real*8 Patm
 
-      integer divu_iter,init_iter
+      integer divu_iter,init_iter,i
 
       character chkfile*(16)
 
@@ -170,12 +170,11 @@ c     needed for seed to EOS after first strang_chem call
          if (do_initial_projection .eq. 1) then
 
             print *,'initialVelocityProject: '
-
             call calc_divu(scal_old,beta_old,I_R,divu_old,dx)
 
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old,scal_old(:,Density),divu_old,
+            call project(vel_old,scal_old(0:,Density),divu_old,
      $                   press_old,press_new,dx,-1.d0,time)
 
          end if
@@ -219,7 +218,7 @@ c     reset temperature just in case strang_chem call is not well poased
             
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old,scal_old(:,Density),divu_old,
+            call project(vel_old,scal_old(0:,Density),divu_old,
      $                   press_old,press_new,dx,-1.d0,time)
 
             dt_init = dt
@@ -368,7 +367,7 @@ c     update state, time
       implicit none
 
       integer nx
-      real*8 vel(-1:nx  )
+      real*8 vel(-2:nx+1)
 
       real*8  vel_min,vel_max
       integer i

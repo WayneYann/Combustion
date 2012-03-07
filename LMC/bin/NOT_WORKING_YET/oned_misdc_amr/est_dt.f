@@ -1,8 +1,8 @@
       subroutine est_dt(nx,vel,scal,divu,dsdt,cfl,umax,dx,dt)
       implicit none
       integer nx
-      real*8    vel(-1:nx)
-      real*8   scal(-1:nx,*)
+      real*8    vel(-2:nx+1)
+      real*8   scal(-2:nx+1,*)
       real*8   divu(0 :nx-1)
       real*8   dsdt(0 :nx-1)
       real*8  cfl
@@ -51,7 +51,7 @@ C should change this to a problem dependent vel_TYP
       include 'spec.h'
       real*8   divu(0 :nx-1)
       real*8   dsdt(0 :nx-1)
-      real*8   scal(-1:nx  ,*)
+      real*8   scal(-2:nx+1  ,*)
       real*8  dt
 
       real*8  rho

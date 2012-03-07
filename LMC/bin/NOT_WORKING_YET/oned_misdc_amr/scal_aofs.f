@@ -1,7 +1,7 @@
       subroutine scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
       implicit none
       include 'spec.h'
-      real*8 scal_old(-1:nx  ,nscal)
+      real*8 scal_old(-2:nx+1,nscal)
       real*8   macvel(0 :nx  )
       real*8   tforce(0 :nx-1,nscal)
       real*8     aofs(0 :nx-1,nscal)
@@ -48,7 +48,7 @@
                iconserv = 1
             endif
 
-            call mkslopes(scal_old(-1,n),slope)
+            call mkslopes(scal_old(:,n),slope)
 
             do i = 1,nx-1
                slo = scal_old(i-1,n)+(0.5d0 - dthx*macvel(i))*slope(i-1)

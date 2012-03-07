@@ -3,10 +3,10 @@
       include 'spec.h'
 
 c     Quantities passed in
-      real*8 scal(-1:nx,nscal)
-      real*8 beta(-1:nx,nscal)
-      real*8 divu(0:nx-1)
-      real*8 I_R(0:nx-1,0:maxspec)
+      real*8 scal(-2:nx+1,nscal)
+      real*8 beta(-1:nx  ,nscal)
+      real*8 divu(0 :nx-1)
+      real*8  I_R(0 :nx-1,0:maxspec)
       real*8 dx
       
       real*8 Y(maxspec)

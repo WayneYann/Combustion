@@ -5,10 +5,10 @@
 
       implicit none
       include 'spec.h'
-      real*8   vel_new(-1:nx  )
-      real*8   vel_old(-1:nx  )
-      real*8  scal_new(-1:nx  ,nscal)
-      real*8  scal_old(-1:nx  ,nscal)
+      real*8   vel_new(-2:nx+1)
+      real*8   vel_old(-2:nx+1)
+      real*8  scal_new(-2:nx+1,nscal)
+      real*8  scal_old(-2:nx+1,nscal)
       real*8 press_new(0 :nx  )
       real*8 press_old(0 :nx  )
       real*8   I_R(0:nx-1,0:maxspec)
@@ -129,7 +129,7 @@ C     get velocity visc terms to use as a forcing term for advection
          visc(i) = visc(i)/scal_old(i,Density)
       enddo
 
-      call vel_edge_states(vel_old,scal_old(-1,Density),gp,
+      call vel_edge_states(vel_old,scal_old(:,Density),gp,
      $                     macvel,veledge,dx,dt,visc)
       
       call update_vel(vel_old,vel_new,gp,rhohalf,
@@ -163,8 +163,8 @@ C     get velocity visc terms to use as a forcing term for advection
 
       implicit none
       include 'spec.h'
-      real*8  scal_new(-1:nx  ,nscal)
-      real*8  scal_old(-1:nx  ,nscal)
+      real*8  scal_new(-2:nx+1,nscal)
+      real*8  scal_old(-2:nx+1,nscal)
 c     in the full LMC code, I_R only needs 0:maxspec components
 c     component 0 is for rhoh
 c     components 1:maxspec are for rhoX
@@ -559,8 +559,8 @@ C----------------------------------------------------------------
 
       implicit none
       include 'spec.h'
-      real*8  scal_new(-1:nx  ,nscal)
-      real*8  scal_old(-1:nx  ,nscal)
+      real*8  scal_new(-2:nx+1,nscal)
+      real*8  scal_old(-2:nx+1,nscal)
       real*8   I_R(0:nx-1,0:maxspec)
       real*8    macvel(0 :nx  )
       real*8      aofs(0 :nx-1,nscal)

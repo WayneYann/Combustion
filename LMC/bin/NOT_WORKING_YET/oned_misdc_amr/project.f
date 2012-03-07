@@ -2,9 +2,9 @@
      $                   press_old,press_new,dx,dt,time)
       implicit none
       include 'spec.h'
-      real*8  vel_new(-1:nx)
-      real*8  rhohalf(0:nx-1)
-      real*8 divu(0 :nx-1)
+      real*8   vel_new(-2:nx+1)
+      real*8   rhohalf(0 :nx-1)
+      real*8      divu(0 :nx-1)
       real*8 press_old(0 :nx)
       real*8 press_new(0 :nx)
       real*8 dx

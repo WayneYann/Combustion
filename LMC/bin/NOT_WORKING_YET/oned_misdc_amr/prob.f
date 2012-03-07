@@ -54,8 +54,8 @@ c----------------------------------------------------------------------
       implicit none
       include 'spec.h'
       double precision    dx
-      double precision   vel(-1:nx)
-      double precision  scal(-1:nx  ,*)
+      double precision   vel(-2:nx+1)
+      double precision  scal(-2:nx+1,*)
       double precision   I_R(0:nx-1,0:*)
 
       double precision  x, rho, Y(maxspec), T, h
@@ -124,7 +124,7 @@ c----------------------------------------------------------------------
       implicit none
       include 'spec.h'
       double precision     dx, time
-      double precision   scal(-1:nx  ,*)
+      double precision   scal(-2:nx+1,*)
       integer n, is, HorL
       double precision u, rho, Y(maxspec), T, hmix
 
@@ -160,7 +160,7 @@ c----------------------------------------------------------------------
       include 'spec.h'
       integer              HorL
       double precision     dx, time
-      double precision    vel(-1:nx)
+      double precision    vel(-2:nx+1)
       double precision u, rho, Y(maxspec), T, hmix
 
 c     Sets the grow cell to hold the boundary value

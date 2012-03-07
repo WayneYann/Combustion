@@ -1,7 +1,7 @@
       subroutine get_temp_visc_terms(scal,beta,visc,dx)
       implicit none
       include 'spec.h'
-      real*8 scal(-1:nx  ,*)
+      real*8 scal(-2:nx+1,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
       real*8 dx
@@ -18,7 +18,7 @@ c     Add Div( lambda Grad(T) )
       subroutine addDivLambdaGradT(scal,beta,visc,dx)
       implicit none
       include 'spec.h'
-      real*8 scal(-1:nx  ,*)
+      real*8 scal(-2:nx+1,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
       real*8 dx
@@ -49,7 +49,7 @@ c     Add Div( lambda Grad(T) )
       subroutine rhoDgradHgradY(scal,beta,visc,dx)
       implicit none
       include 'spec.h'
-      real*8 scal(-1:nx  ,*)
+      real*8 scal(-2:nx+1,*)
       real*8 beta(-1:nx  ,*)
       real*8 visc(0 :nx-1)
       real*8 dx

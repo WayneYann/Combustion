@@ -2,8 +2,8 @@
      &     alpha,beta,dRhs,Rhs,dx,dt,be_cn_theta,time)
       implicit none
       include 'spec.h'
-      real*8 scal_old(-1:nx  ,nscal)
-      real*8 scal_new(-1:nx  ,nscal)
+      real*8 scal_old(-2:nx+1,nscal)
+      real*8 scal_new(-2:nx+1,nscal)
       real*8     aofs(0 :nx-1,nscal)
       real*8    alpha(0 :nx-1)
       real*8     beta(-1:nx  ,nscal)
