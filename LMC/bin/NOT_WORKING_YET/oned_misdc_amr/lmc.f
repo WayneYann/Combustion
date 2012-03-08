@@ -14,29 +14,29 @@
       integer num_init_iters
 
 !     cell-centered, 2 ghost cells
-      real*8   vel_new(-2:nx+1)
-      real*8   vel_old(-2:nx+1)
-      real*8  scal_new(-2:nx+1,maxscal)
-      real*8  scal_old(-2:nx+1,maxscal)
-      real*8 scal_hold(-2:nx+1,maxscal)
+      real*8, allocatable ::   vel_new(:)
+      real*8, allocatable ::   vel_old(:)
+      real*8, allocatable ::  scal_new(:,:)
+      real*8, allocatable ::  scal_old(:,:)
+      real*8, allocatable :: scal_hold(:,:)
 
 !     cell-centered, 1 ghost cell
-      real*8      I_R(-1:nx,0:maxspec)
-      real*8 beta_old(-1:nx,maxscal)
-      real*8 beta_new(-1:nx,maxscal)
-      real*8 mu_dummy(-1:nx)
+      real*8, allocatable ::      I_R(:,:)
+      real*8, allocatable :: beta_old(:,:)
+      real*8, allocatable :: beta_new(:,:)
+      real*8, allocatable :: mu_dummy(:)
 
 !     cell-centered, no ghost cells
-      real*8    divu_old(0:nx-1)
-      real*8    divu_new(0:nx-1)
-      real*8        dsdt(0:nx-1)
-      real*8   const_src(0:nx-1,maxscal)
-      real*8 lin_src_old(0:nx-1,maxscal)
-      real*8 lin_src_new(0:nx-1,maxscal)
+      real*8, allocatable ::    divu_old(:)
+      real*8, allocatable ::    divu_new(:)
+      real*8, allocatable ::        dsdt(:)
+      real*8, allocatable ::   const_src(:,:)
+      real*8, allocatable :: lin_src_old(:,:)
+      real*8, allocatable :: lin_src_new(:,:)
 
 !     nodal, 1 ghost cell
-      real*8 press_new(-1:nx+1)
-      real*8 press_old(-1:nx+1)
+      real*8, allocatable :: press_new(:)
+      real*8, allocatable :: press_old(:)
 
       real*8 problo,probhi
       real*8 dx,time
@@ -109,14 +109,6 @@ c     Set defaults, change with namelist
       max_vode_subcycles = 15000
       min_vode_timestep = 1.e-19
 
-      divu_old = 0.d0
-      divu_new = 0.d0
-
-      press_old = 0.d0
-      press_new = 0.d0
-
-      dsdt = 0.d0
-
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)
@@ -126,6 +118,39 @@ c     Initialize chem/tran database
       call initchem()
 
       Pcgs = Patm * P1ATM
+
+!     cell-centered, 2 ghost cells
+      allocate(   vel_new(-2:nx+1))
+      allocate(   vel_old(-2:nx+1))
+      allocate(  scal_new(-2:nx+1,maxscal))
+      allocate(  scal_old(-2:nx+1,maxscal))
+      allocate( scal_hold(-2:nx+1,maxscal))
+
+!     cell-centered, 1 ghost cell
+      allocate(      I_R(-1:nx,0:maxspec))
+      allocate( beta_old(-1:nx,maxscal))
+      allocate( beta_new(-1:nx,maxscal))
+      allocate( mu_dummy(-1:nx))
+
+!     cell-centered, no ghost cells
+      allocate(    divu_old(0:nx-1))
+      allocate(    divu_new(0:nx-1))
+      allocate(        dsdt(0:nx-1))
+      allocate(   const_src(0:nx-1,maxscal))
+      allocate( lin_src_old(0:nx-1,maxscal))
+      allocate( lin_src_new(0:nx-1,maxscal))
+
+!     nodal, 1 ghost cell
+      allocate( press_new(-1:nx+1))
+      allocate( press_old(-1:nx+1))
+
+      divu_old = 0.d0
+      divu_new = 0.d0
+
+      press_old = 0.d0
+      press_new = 0.d0
+
+      dsdt = 0.d0
       
       dx = (probhi-problo)/DBLE(nx)
 
@@ -189,7 +214,7 @@ c     return zero pressure
             dt = fixed_dt
             dt_init = dt
          else
-            call est_dt(nx,vel_old,scal_old,divu_old,dsdt,
+            call est_dt(vel_old,scal_old,divu_old,dsdt,
      $                  cfl,umax,dx,dt)
             
             dt = dt * init_shrink
@@ -229,7 +254,7 @@ c     return zero pressure
             if (fixed_dt > 0) then
                dt = fixed_dt
             else
-               call est_dt(nx,vel_old,scal_old,divu_old,dsdt,
+               call est_dt(vel_old,scal_old,divu_old,dsdt,
      $                     cfl,umax,dx,dt_new)
                dt_new = dt_new * init_shrink
                dt = min(dt_init,dt_new)
@@ -257,7 +282,7 @@ c     return zero pressure
             if (fixed_dt > 0) then
                dt = fixed_dt
             else
-               call est_dt(nx,vel_old,scal_old,divu_old,dsdt,
+               call est_dt(vel_old,scal_old,divu_old,dsdt,
      $                     cfl,umax,dx,dt)
                dt = dt * init_shrink
                dt = min(dt,dt_init)
@@ -312,7 +337,7 @@ C-- Now advance
             if (fixed_dt > 0) then
                dt = fixed_dt
             else
-               call est_dt(nx,vel_new,scal_old,divu_old,dsdt,
+               call est_dt(vel_new,scal_old,divu_old,dsdt,
      $                     cfl,umax,dx,dt_new)
                if (nsteps_taken .eq. 1) then
                   dt = dt*init_shrink
