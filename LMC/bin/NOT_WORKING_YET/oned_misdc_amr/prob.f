@@ -106,11 +106,7 @@ c----------------------------------------------------------------------
          c_1(n) = 0.d0
       enddo
 
-      do i = 0,nx-1
-         do n=0,Nspec
-            I_R(i,n) = 0.d0
-         enddo            
-      enddo
+      I_R = 0.d0
 
       call set_bc_s(scal,dx,0.d0)
       call set_bc_v(vel,dx,0.d0)
@@ -134,22 +130,22 @@ c     For Dirichlet condition, this value is to be applied at the cell
 c     lo:  Dirichlet values for u, T, Y, compute rho, h
       HorL = on_lo
       call bcfunction(HorL, time, u, rho, Y, T, hmix)
-      scal(-1,Density) = rho
-      scal(-1,Temp) = T
+      scal(-2:-1,Density) = rho
+      scal(-2:-1,Temp) = T
       do n=1,Nspec
          is = FirstSpec + n - 1 
-         scal(-1,is) = Y(n) * rho
+         scal(-2:-1,is) = Y(n) * rho
       enddo
-      scal(-1,RhoH) = hmix * rho
+      scal(-2:-1,RhoH) = hmix * rho
       
 c     hi:  Neumann for all 
-      scal(nx,Density) = scal(nx-1,Density)
-      scal(nx,Temp) = scal(nx-1,Temp)
+      scal(nx:nx+1,Density) = scal(nx-1,Density)
+      scal(nx:nx+1,Temp) = scal(nx-1,Temp)
       do n=1,Nspec
          is = FirstSpec + n - 1 
-         scal(nx,is) = scal(nx-1,is)
+         scal(nx:nx+1,is) = scal(nx-1,is)
       enddo
-      scal(nx,RhoH) = scal(nx-1,RhoH)
+      scal(nx:nx+1,RhoH) = scal(nx-1,RhoH)
       end
 
 
@@ -171,8 +167,8 @@ c     hi:  Neumann
 
       HorL = on_lo
       call bcfunction(HorL, time, u, rho, Y, T, hmix)
-      vel(-1) = u
-      vel(nx) = vel(nx-1)
+      vel(-2:-1) = u
+      vel(nx:nx+1) = vel(nx-1)
       end
 
 c----------------------------------------------------------------------
