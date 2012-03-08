@@ -4,43 +4,43 @@
      $                   dx,dt,time)
 
       implicit none
+
       include 'spec.h'
-      real*8   vel_new(-2:nx+1)
+
       real*8   vel_old(-2:nx+1)
+      real*8   vel_new(-2:nx+1)
       real*8  scal_new(-2:nx+1,nscal)
       real*8  scal_old(-2:nx+1,nscal)
-      real*8 press_new(-1:nx+1)
-      real*8 press_old(-1:nx+1)
       real*8       I_R(-1:nx  ,0:maxspec)
-      real*8    macvel(0 :nx  )
-      real*8   veledge(0 :nx  )
+      real*8 press_old(-1:nx+1)
+      real*8 press_new(-1:nx+1)
       real*8  divu_old(0 :nx-1)
       real*8  divu_new(0 :nx-1)
-      real*8  divu_tmp(0 :nx-1)
+      real*8      dsdt(0 :nx-1)
       real*8  beta_old(-1:nx  ,nscal)
       real*8  beta_new(-1:nx  ,nscal)
+      real*8 dx
+      real*8 time
+
+! local
+      real*8    macvel(0 :nx  )
+      real*8   veledge(0 :nx  )
+      real*8  divu_tmp(0 :nx-1)
       real*8    mu_old(-1:nx)
       real*8    mu_new(-1:nx)
-      real*8      dsdt(0 :nx-1)
-      real*8        gp(0 :nx-1)
+      real*8        gp(-1:nx)
       real*8   rhohalf(0 :nx-1)
       real*8      visc(-1:nx)
-      real*8 dx
+      real*8     alpha(0 :nx-1)
+      real*8   vel_Rhs(0 :nx-1)
+      real*8  I_R_divu(-1:nx  ,0:maxspec)
+
       real*8 dt
-      real*8 time
       real*8 vel_theta
-      
-      integer i,n
-      
-      real*8     alpha(0:nx-1)
-      real*8   vel_Rhs(0:nx-1)
-
-      real*8   I_R_divu(-1:nx,0:maxspec)
       real*8 WDOTK(maxspec), C(maxspec), RWRK
-      integer IWRK
-
-      integer rho_flag
       
+      integer i,n,rho_flag,IWRK
+
       print *,'advance: at start of time step'
 
 c     
@@ -106,7 +106,6 @@ c     SDC advance
          end do
 
       end if
-
 
 c     this computes rho D_m     (for species)
 c                   lambda / cp (for enthalpy)
