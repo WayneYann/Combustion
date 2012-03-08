@@ -1,6 +1,6 @@
-      subroutine est_dt(nx,vel,scal,divu,dsdt,cfl,umax,dx,dt)
+      subroutine est_dt(vel,scal,divu,dsdt,cfl,umax,dx,dt)
       implicit none
-      integer nx
+      include 'spec.h'
       real*8    vel(-2:nx+1)
       real*8   scal(-2:nx+1,*)
       real*8   divu(0 :nx-1)
