@@ -2,7 +2,7 @@
       implicit none
       include 'spec.h'
       real*8  scal(-2:nx+1)
-      real*8 slope( 0:nx-1)
+      real*8 slope(-1:nx  )
 
       real*8 slo,shi,slim,smid
       integer i

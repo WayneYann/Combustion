@@ -8,8 +8,8 @@
       real*8 dx
       real*8 dt
       
-      real*8  sedge(0:nx  ,nscal)
-      real*8  slope(0:nx-1)
+      real*8  sedge(0 :nx,nscal)
+      real*8  slope(-1:nx)
       real*8 dth
       real*8 dthx
       real*8 eps

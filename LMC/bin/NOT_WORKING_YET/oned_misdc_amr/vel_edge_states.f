@@ -10,7 +10,7 @@
       real*8 dx, dt
       real*8  tforces(0:nx-1)
 
-      real*8 slope(0:nx-1)
+      real*8 slope(-1:nx)
       real*8 dth
       real*8 dthx
       real*8 eps
