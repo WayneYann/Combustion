@@ -128,7 +128,10 @@ c     Initialize chem/tran database
       Pcgs = Patm * P1ATM
       
       dx = (probhi-problo)/DBLE(nx)
-      
+
+      lo(0) = 0
+      hi(0) = nx-1
+
       call probinit(problo,probhi)
       
       if ( chkfile .ne. 'null') then

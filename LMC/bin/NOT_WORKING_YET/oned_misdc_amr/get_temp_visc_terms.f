@@ -58,7 +58,7 @@ c     Add Div( lambda Grad(T) )
       real*8 beta_lo,beta_hi
       real*8 rdgydgh_lo,rdgydgh_hi
       real*8 dxsqinv,RWRK,rho,dv
-      real*8 hi(maxspec,-1:nx)
+      real*8 hm(maxspec,-1:nx)
       real*8 Y(maxspec,-1:nx)
 
       real*8 spec_flux_lo(0:nx-1,maxspec)
@@ -78,14 +78,11 @@ c     Get Hi, Yi at cell centers
          do n=1,Nspec
             rho = rho + scal(i,FirstSpec+n-1)
          enddo
-         call CKHMS(scal(i,Temp),IWRK,RWRK,hi(1,i))
+         call CKHMS(scal(i,Temp),IWRK,RWRK,hm(1,i))
          do n=1,Nspec
             Y(n,i) = scal(i,FirstSpec+n-1)/rho
          enddo
       enddo
-C      do n = 1,Nspec
-C         hi(n,-1) = hi(n,0)
-C      enddo
 
 c     Compute differences
       do i = 0,nx-1
@@ -143,8 +140,8 @@ c              set flux = flux - (rho*V_c)*(rho*Y_m)/rho
          end if
 
          do n=1,Nspec
-            rdgydgh_lo = spec_flux_lo(i,n)*(hi(n,i)-hi(n,i-1))
-            rdgydgh_hi = spec_flux_hi(i,n)*(hi(n,i+1)-hi(n,i))
+            rdgydgh_lo = spec_flux_lo(i,n)*(hm(n,i)-hm(n,i-1))
+            rdgydgh_hi = spec_flux_hi(i,n)*(hm(n,i+1)-hm(n,i))
 
             dv = dv + (rdgydgh_hi + rdgydgh_lo)*0.5d0
          enddo
