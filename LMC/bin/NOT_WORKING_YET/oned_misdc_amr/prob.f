@@ -106,7 +106,11 @@ c----------------------------------------------------------------------
          c_1(n) = 0.d0
       enddo
 
-      I_R = 0.d0
+      do i=-1,nx
+         do n=0,Nspec
+            I_R(i,n) = 0.d0
+         enddo
+      end do
 
       call set_bc_s(scal,dx,0.d0)
       call set_bc_v(vel,dx,0.d0)
