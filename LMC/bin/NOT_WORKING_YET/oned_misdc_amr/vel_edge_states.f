@@ -8,7 +8,7 @@
       real*8   macvel(0:nx)
       real*8    sedge(0:nx)
       real*8 dx, dt
-      real*8  tforces(0:nx-1)
+      real*8  tforces(-1:nx)
 
       real*8 slope(-1:nx)
       real*8 dth

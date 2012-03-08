@@ -24,7 +24,7 @@
       real*8      dsdt(0 :nx-1)
       real*8        gp(0 :nx-1)
       real*8   rhohalf(0 :nx-1)
-      real*8      visc(0 :nx-1)
+      real*8      visc(-1:nx)
       real*8 dx
       real*8 dt
       real*8 time
@@ -168,10 +168,10 @@ C     get velocity visc terms to use as a forcing term for advection
       real*8      I_R(-1:nx  ,0:maxspec)
       real*8   macvel(0 :nx  )
       real*8     aofs(0 :nx-1,nscal)
-      real*8 beta_old(-1:nx,nscal)
-      real*8 beta_new(-1:nx,nscal)
+      real*8 beta_old(-1:nx  ,nscal)
+      real*8 beta_new(-1:nx  ,nscal)
       real*8 mu_dummy(-1:nx)
-      real*8   tforce(0 :nx-1,nscal)
+      real*8   tforce(-1:nx  ,nscal)
       real*8 dx
       real*8 dt
       real*8 time
@@ -192,14 +192,14 @@ c     they only contain 0:maxspec components
 c     component 0 is for rhoh
 c     components 1:maxspec are for rhoX
 c     differential diffusion terms for rhoh are stored elsewhere (see below)
-      real*8        diff_old(0:nx-1,nscal)
-      real*8        diff_new(0:nx-1,nscal)
-      real*8        diff_hat(0:nx-1,nscal)
+      real*8        diff_old(-1:nx,nscal)
+      real*8        diff_new(-1:nx,nscal)
+      real*8        diff_hat(-1:nx,nscal)
 
 c     in the full LMC code, these are called
 c     div_fluxNULN_old, div_fluxNULN_new, div_fluxNULN_hat
-      real*8 diffdiff_old(0:nx-1)
-      real*8 diffdiff_new(0:nx-1)
+      real*8 diffdiff_old(-1:nx)
+      real*8 diffdiff_new(-1:nx)
 
 c     in the full LMC code, we only need const_src
 c     it will only contain 0:maxspec components
@@ -243,10 +243,10 @@ c     compute diffusion term at time n
       print *,'... computing D(U^n)'
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
-      call get_spec_visc_terms(scal_old,beta_old,diff_old(0,FirstSpec),
+      call get_spec_visc_terms(scal_old,beta_old,diff_old(:,FirstSpec),
      &                         spec_flux_lo,spec_flux_hi,dx)
 c     compute del dot lambda/cp grad h (no differential diffusion)
-      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(0,RhoH),dx)
+      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(:,RhoH),dx)
 
 c     calculate differential diffusion
       if (LeEQ1 .eq. 0) then
@@ -327,7 +327,7 @@ c        simply extract D for RhoX
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_old,
-     $                            diff_hat(0,FirstSpec),spec_flux_lo,
+     $                            diff_hat(:,FirstSpec),spec_flux_lo,
      $                            spec_flux_hi,dx)
 
 c        update species with conservative diffusion fluxes
@@ -420,10 +420,10 @@ c                      lambda      (for temperature)
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_new(0,FirstSpec),
+     &                            diff_new(:,FirstSpec),
      &                            spec_flux_lo,spec_flux_hi,dx)
 c        compute del dot lambda/cp grad h (no differential diffusion)
-         call get_rhoh_visc_terms(scal_new,beta_new,diff_new(0,RhoH),dx)
+         call get_rhoh_visc_terms(scal_new,beta_new,diff_new(:,RhoH),dx)
 
 c        calculate differential diffusion
          if (LeEQ1 .eq. 0) then
@@ -492,7 +492,7 @@ c           simply extract D for RhoX
 c           compute del dot rho D grad Y and make it conservative
 c           save species fluxes for differential diffusion
             call get_spec_visc_terms(scal_new,beta_new,
-     $                               diff_hat(0,FirstSpec),
+     $                               diff_hat(:,FirstSpec),
      $                               spec_flux_lo,spec_flux_hi,dx)
 
 c           add differential diffusion to forcing for enthalpy solve
@@ -564,14 +564,15 @@ C----------------------------------------------------------------
       real*8 beta_old(-1:nx  ,nscal)
       real*8 beta_new(-1:nx  ,nscal)
       real*8 mu_dummy(-1:nx)
-      real*8   tforce(0 :nx-1,nscal)
+      real*8   tforce(-1:nx  ,nscal)
       real*8 dx
       real*8 dt
       real*8 time
       real*8 be_cn_theta
       
-      real*8    diff_old(0:nx-1,nscal)
-      real*8    diff_tmp(0:nx-1,nscal)
+      real*8    diff_old(-1:nx,nscal)
+      real*8    diff_tmp(-1:nx,nscal)
+
       real*8   const_src(0:nx-1,nscal)
       real*8 lin_src_old(0:nx-1,nscal)
       real*8 lin_src_new(0:nx-1,nscal)
@@ -591,8 +592,8 @@ C----------------------------------------------------------------
       real*8 spec_flux_lo(0:nx-1,maxspec)
       real*8 spec_flux_hi(0:nx-1,maxspec)
 
-      real*8 diffdiff_old(0:nx-1)
-      real*8 diffdiff_new(0:nx-1)
+      real*8 diffdiff_old(-1:nx)
+      real*8 diffdiff_new(-1:nx)
 
       diffdiff_old = 0.d0
       diffdiff_new = 0.d0
@@ -641,14 +642,14 @@ c            lambda^(1)          (for temperature)
 c     compute del dot lambda grad T + rho D grad h dot grad Y
 c     the rho D grad Y term is now computed conservatively
       call get_temp_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,Temp),dx)
+     &                         diff_old(:,Temp),dx)
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
       call get_spec_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,FirstSpec),
+     &                         diff_old(:,FirstSpec),
      &                         spec_flux_lo,spec_flux_hi,dx)
 c     compute del dot lambda/cp grad h (no differential diffusion)
-      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(0,RhoH),dx)
+      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(:,RhoH),dx)
 
 c     calculate differential diffusion
       if (LeEQ1 .eq. 0) then
@@ -738,7 +739,7 @@ c        lambda^(1) (for temperature) won't be used
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_tmp(0,FirstSpec),
+     &                            diff_tmp(:,FirstSpec),
      &                            spec_flux_lo,spec_flux_hi,dx)
 
 c     update species with conservative diffusion fluxes
@@ -817,7 +818,7 @@ c                   lambda^(2)          (for temperature)
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_tmp(0,FirstSpec),
+     &                            diff_tmp(:,FirstSpec),
      &                            spec_flux_lo,spec_flux_hi,dx)
 
 c     update species with conservative diffusion fluxes

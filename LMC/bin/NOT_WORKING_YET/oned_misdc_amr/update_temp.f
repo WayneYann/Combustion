@@ -14,7 +14,7 @@
       real*8 be_cn_theta
       
       real*8  Ymid(Nspec), rho_old, rho_new, cpmix
-      real*8  visc(0:nx-1)
+      real*8  visc(-1:nx)
       real*8  RWRK
       integer i,n,is, IWRK
       real*8  Tmid

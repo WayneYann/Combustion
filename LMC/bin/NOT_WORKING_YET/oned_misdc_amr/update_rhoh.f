@@ -11,7 +11,7 @@
       real*8      Rhs(0 :nx-1)
       real*8 dx,dt,be_cn_theta,time
 
-      real*8  visc(0:nx-1)
+      real*8  visc(-1:nx)
       real*8  visc_term
       integer i
 

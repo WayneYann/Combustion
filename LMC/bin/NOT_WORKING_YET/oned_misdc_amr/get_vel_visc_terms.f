@@ -3,7 +3,7 @@
       include 'spec.h'
       real*8 vel(-2:nx+1)
       real*8 beta(-1:nx)
-      real*8 visc(0 :nx-1)
+      real*8 visc(-1:nx)
       real*8 dx
       
       integer i

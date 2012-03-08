@@ -3,7 +3,7 @@
       include 'spec.h'
       real*8 scal_old(-2:nx+1,nscal)
       real*8   macvel(0 :nx  )
-      real*8   tforce(0 :nx-1,nscal)
+      real*8   tforce(-1:nx  ,nscal)
       real*8     aofs(0 :nx-1,nscal)
       real*8 dx
       real*8 dt

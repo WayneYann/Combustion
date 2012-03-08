@@ -13,7 +13,7 @@ c     Quantities passed in
       real*8 HK(maxspec)
       real*8 cpmix,mwmix
       
-      real*8 diff(0:nx-1,nscal)
+      real*8 diff(-1:nx,nscal)
 
       real*8 RWRK,rho,T
       integer IWRK,i,n
@@ -22,8 +22,8 @@ c     Quantities passed in
       real*8 spec_flux_lo(0:nx-1,maxspec)
       real*8 spec_flux_hi(0:nx-1,maxspec)
 
-      call get_temp_visc_terms(scal,beta,diff(0,Temp),dx)
-      call get_spec_visc_terms(scal,beta,diff(0,FirstSpec),
+      call get_temp_visc_terms(scal,beta,diff(:,Temp),dx)
+      call get_spec_visc_terms(scal,beta,diff(:,FirstSpec),
      $                         spec_flux_lo,spec_flux_hi,dx)
 
       do i = 0,nx-1

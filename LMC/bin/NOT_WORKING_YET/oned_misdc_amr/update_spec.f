@@ -11,7 +11,7 @@
       real*8     dRhs(0:nx-1,1:maxspec)
       real*8 dx,dt,be_cn_theta,time
       
-      real*8 visc(0 :nx-1,Nspec)
+      real*8 visc(-1:nx,Nspec)
       real*8  visc_term
       integer i,n,is
       
