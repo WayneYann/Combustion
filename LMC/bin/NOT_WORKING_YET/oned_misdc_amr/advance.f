@@ -48,7 +48,7 @@ c*****************************************************************
 c     Create MAC velocities.
 c*****************************************************************
 c     
-      do i = 0,nx-1
+      do i=lo(0),hi(0)
          gp(i) = (press_old(i+1) - press_old(i)) / dx
       enddo
 
@@ -59,9 +59,9 @@ c
 
       divu_tmp(:) = divu_old(:) + 0.5d0*dt*dsdt(:)
 
-      call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt)
+      call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt,0)
 
-      call macproj(nx,macvel,divu_tmp,dx)
+      call macproj(macvel,divu_tmp,dx)
 
 c     compute diffusivities at time n (old time)
 c     this computes rho D_m     (for species)
@@ -149,7 +149,7 @@ C     get velocity visc terms to use as a forcing term for advection
       call compute_pthermo(scal_new,scal_new(:,RhoRT))
 
       call add_dpdt_nodal(scal_new,scal_new(:,RhoRT),divu_new,
-     &                    vel_new,dx,dt)
+     &                    vel_new,dx,dt,0)
 
       print *,'...nodal projection...'
       call project(vel_new,rhohalf,divu_new,press_old,press_new,dx,dt)

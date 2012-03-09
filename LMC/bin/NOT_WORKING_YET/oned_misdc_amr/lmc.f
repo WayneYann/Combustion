@@ -361,7 +361,6 @@ C-- Now advance
      $                divu_old,divu_new,dsdt,beta_old,beta_new,
      $                dx,dt,time)
 
-         call minmax_vel(nx,vel_new)
 c     update state, time
          vel_old = vel_new
          scal_old = scal_new
@@ -389,28 +388,3 @@ c     update state, time
       print *,' '      
 
       end
-
-      subroutine minmax_vel(nx,vel)
-
-      implicit none
-
-      integer nx
-      real*8 vel(-2:nx+1)
-
-      real*8  vel_min,vel_max
-      integer i
-
-      vel_min = abs(vel(0))
-      vel_max = abs(vel(0))
-      do i = 1,nx-1
-         vel_min = min(vel_min,abs(vel(i)))
-         vel_max = max(vel_max,abs(vel(i)))
-      enddo
-      
-      write(6,1001) vel_min
-      write(6,1002) vel_max
- 1001 format(' UMIN = ',f21.9)
- 1002 format(' UMAX = ',f21.9)
-      
-      end
-      

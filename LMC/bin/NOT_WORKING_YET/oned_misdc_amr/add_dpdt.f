@@ -1,4 +1,4 @@
-      subroutine add_dpdt(scal,pthermo,divu,umac,dx,dt)
+      subroutine add_dpdt(scal,pthermo,divu,umac,dx,dt,lev)
       implicit none
       include 'spec.h'
       real*8    scal(-2:nx+1,nscal)
@@ -8,6 +8,7 @@
       real*8 Y(Nspec)
       real*8 dx
       real*8 dt
+      integer lev
       
       real*8 uadv,p_lo,p_hi
       real*8 ugradp
@@ -19,7 +20,7 @@
       integer ispec,IWRK
       
       dpdt_max = 0.d0
-      do i = 0,nx-1
+      do i=lo(lev),hi(lev)
          uadv = 0.5d0 * (umac(i) + umac(i+1))
          if (umac(i) .ge. 0.d0) then
             p_lo = pthermo(i-1)
@@ -62,7 +63,7 @@ C         denom = pthermo(i)
       end
 
 
-      subroutine add_dpdt_nodal(scal,pthermo,divu,vel,dx,dt)
+      subroutine add_dpdt_nodal(scal,pthermo,divu,vel,dx,dt,lev)
       implicit none
       include 'spec.h'
       real*8    scal(-2:nx+1,nscal)
@@ -72,6 +73,7 @@ C         denom = pthermo(i)
       real*8 Y(Nspec)
       real*8 dx
       real*8 dt
+      integer lev
       
       real*8 uadv,p_lo,p_hi
       real*8 ugradp
@@ -83,13 +85,15 @@ C         denom = pthermo(i)
       integer ispec,IWRK
       
       dpdt_max = 0.d0
-      do i = 0,nx-1
+      do i=lo(lev),hi(lev)
          uadv = vel(i)
 
-         if (i .eq. 0) then                  
+         if (lev .eq. 0 .and. i .eq. lo(0)) then                  
+!     inflow
             p_lo = pthermo(i)
             p_hi = pthermo(i+1)
-         else if (i .eq. nx-1) then
+         else if (lev .eq. 0 .and. i .eq. hi(0)) then
+!     outflow
             p_lo = pthermo(i-1)
             p_hi = pthermo(i)
          else
