@@ -55,7 +55,7 @@
 
       character chkfile*(16)
 
-      namelist /fortin/ nsteps,stop_time,cfl,
+      namelist /fortin/ nx,nsteps,stop_time,cfl,
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int, change_max,
      $                  init_shrink, flame_offset,
@@ -67,9 +67,11 @@
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  thickFacTR, thickFacCH, max_vode_subcycles,
-     $                  min_vode_timestep
+     $                  min_vode_timestep, divu_ceiling_flag,
+     $                  divu_dt_factor, rho_divu_ceiling, unlim
 
 c     Set defaults, change with namelist
+      nx = 256
       nsteps = 10
       stop_time = 1.e4
       cfl = 0.5
@@ -85,9 +87,6 @@ c     Set defaults, change with namelist
       Patm = 1.d0
       coef_avg_harm = 0
       misdc_iterMAX = 3
-      divu_ceiling_flag = 1
-      divu_dt_factor    = 0.4d0
-      rho_divu_ceiling  = 0.01
       predict_temp_for_coeffs = 1
       do_initial_projection = 1
       num_divu_iters = 3
@@ -96,18 +95,20 @@ c     Set defaults, change with namelist
       nochem_hack = .false.
       use_strang = .false.
       V_in = 1.d20
-      unlim = 0
       lim_rxns = 1
-
+      LeEQ1 = 0
       tranfile = 'tran.asc.grimech30'
       TMIN_TRANS = 0.d0
       Pr = 0.7d0
       Sc = 0.7d0
-      LeEQ1 = 0
       thickFacTR = 1.d0
       thickFacCH = 1.d0
       max_vode_subcycles = 15000
       min_vode_timestep = 1.e-19
+      divu_ceiling_flag = 1
+      divu_dt_factor    = 0.4d0
+      rho_divu_ceiling  = 0.01
+      unlim = 0
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
@@ -156,6 +157,10 @@ c     Initialize chem/tran database
 
       lo(0) = 0
       hi(0) = nx-1
+
+!     0=interior; 1=inflow; 2=outflow
+      bc_lo(0) = 1
+      bc_hi(0) = 2
 
       call probinit(problo,probhi)
       

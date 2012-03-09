@@ -1,4 +1,5 @@
 &fortin
+  nx = 256
   nsteps = 80
   plot_int = 80
   chk_int = 1000
