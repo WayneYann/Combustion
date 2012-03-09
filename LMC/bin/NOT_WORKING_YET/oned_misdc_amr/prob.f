@@ -115,6 +115,11 @@ c----------------------------------------------------------------------
       call set_bc_s(scal,dx,0.d0)
       call set_bc_v(vel,dx,0.d0)
 
+      vel_TYP = ABS(vel(0))
+      do i=1,nx-1
+         vel_TYP = MAX(vel_TYP,ABS(vel(i)))
+      enddo
+
       end
 
 

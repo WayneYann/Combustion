@@ -75,9 +75,9 @@ c     LMC alg stuff
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),
      &     Y_bc(maxspec,0:1), h_bc(0:1), u_bc(0:1), flame_offset, 
      &     Pr, Sc, thickFacTR, thickFacCH, 
-     &     rho_divu_ceiling, divu_dt_factor, V_in
+     &     rho_divu_ceiling, divu_dt_factor, V_in, vel_TYP
       common / lmcr / dpdt_factor, Pcgs, T_bc, rho_bc,
      &     Y_bc, h_bc, u_bc, flame_offset,
      &     Pr, Sc, thickFacTR, thickFacCH,
-     &     rho_divu_ceiling, divu_dt_factor, V_in
+     &     rho_divu_ceiling, divu_dt_factor, V_in, vel_TYP
       save /lmcr/

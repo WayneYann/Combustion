@@ -14,16 +14,11 @@
       real*8 dth
       real*8 dthx
       real*8 eps
-      real*8 slo,shi,vel_TYP
+      real*8 slo,shi
       integer i
       
       dth  = 0.5d0 * dt
       dthx = 0.5d0 * dt / dx
-
-      vel_TYP = ABS(vel_old(-1))
-      do i=0,nx
-         vel_TYP = MAX(vel_TYP,ABS(vel_old(-1)))
-      enddo
       eps = 1.e-6*vel_TYP
 
       call mkslopes(vel_old,slope)
