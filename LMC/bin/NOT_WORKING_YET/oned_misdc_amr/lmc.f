@@ -43,14 +43,8 @@
 
       real*8 problo,probhi
       real*8 dx,time
-      real*8 dt_init,dt_new
       real*8 init_shrink
-      real*8 change_max
-      real*8 local_change_max
       real*8 stop_time
-      real*8 cfl
-      real*8 cfl_used
-      real*8 umax
       real*8 dt,fixed_dt
       real*8 Patm
 
@@ -58,9 +52,9 @@
 
       character chkfile*(16)
 
-      namelist /fortin/ nx,nlevs,rr,nsteps,stop_time,cfl,
+      namelist /fortin/ nx,nlevs,rr,nsteps,stop_time,
      $                  problo,probhi,chkfile,
-     $                  plot_int, chk_int, change_max,
+     $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
@@ -79,13 +73,11 @@ c     Set defaults, change with namelist
       rr = 2
       nsteps = 10
       stop_time = 1.e4
-      cfl = 0.5
       problo = 0.0
       probhi = 3.5
       chkfile = 'null'
       plot_int = 1
       chk_int = 1
-      change_max = 1.05d0
       init_shrink = 0.1d0
       flame_offset = 0.d0
       dpdt_factor = 0.d0
@@ -168,6 +160,13 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       
       dx = (probhi-problo)/DBLE(nx)
 
+      if (fixed_dt > 0) then
+         dt = fixed_dt
+      else
+         print*,'Error: must specify fixed_dt'
+         stop
+      end if
+
       lo(0) = 0
       hi(0) = nx-1
 
@@ -184,14 +183,12 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          
          call read_check(chkfile,vel_old,scal_old,press_old,
      $                   I_R,divu_old,dsdt,
-     $                   time,at_nstep,dt,cfl_used)
+     $                   time,at_nstep,dt)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      $                  dx,at_nstep,time)
 
          at_nstep = at_nstep + 1
-
-         dt_init = dt
 
 c     needed for seed to EOS after first strang_chem call
          scal_new(:,Temp) = scal_old(:,Temp)
@@ -229,17 +226,6 @@ c     return zero pressure
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,99998,time)
 
-         if (fixed_dt > 0) then
-            dt = fixed_dt
-            dt_init = dt
-         else
-            call est_dt(vel_old,scal_old,divu_old,dsdt,
-     $                  cfl,umax,dx,dt)
-            
-            dt = dt * init_shrink
-            dt_init = dt
-         endif
-
          const_src = 0.d0
          lin_src_old = 0.d0
          lin_src_new = 0.d0
@@ -268,18 +254,6 @@ c     return zero pressure
             call project(vel_old,scal_old(0:,Density),divu_old,
      $                   press_old,press_new,dx,-1.d0,time)
 
-            dt_init = dt
-             
-            if (fixed_dt > 0) then
-               dt = fixed_dt
-            else
-               call est_dt(vel_old,scal_old,divu_old,dsdt,
-     $                     cfl,umax,dx,dt_new)
-               dt_new = dt_new * init_shrink
-               dt = min(dt_init,dt_new)
-            endif
-            print *,' '
-
          enddo
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
@@ -297,16 +271,6 @@ c     return zero pressure
 
             print *,' '
             print *,'INITIAL PRESSURE ITERATION ',init_iter
-
-            if (fixed_dt > 0) then
-               dt = fixed_dt
-            else
-               call est_dt(vel_old,scal_old,divu_old,dsdt,
-     $                     cfl,umax,dx,dt)
-               dt = dt * init_shrink
-               dt = min(dt,dt_init)
-            endif
-            write(6,1001) time,dt
 
 c     strang split overwrites scal_old so we preserve it
             if (use_strang) then
@@ -333,8 +297,6 @@ c     update pressure and I_R
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,0,time)
 
-         cfl_used = cfl * init_shrink
-
          print *,' '      
          print *,' '      
          print *,'COMPLETED INITIAL ITERATIONS'
@@ -352,24 +314,7 @@ C-- Now advance
 
          if (time.ge.stop_time) exit
 
-         if (time > 0.d0) then 
-            if (fixed_dt > 0) then
-               dt = fixed_dt
-            else
-               call est_dt(vel_new,scal_old,divu_old,dsdt,
-     $                     cfl,umax,dx,dt_new)
-               if (nsteps_taken .eq. 1) then
-                  dt = dt*init_shrink
-                  dt = min(dt,dt_init)
-               else
-                  local_change_max = min(change_max,cfl/cfl_used)
-                  dt = dt * local_change_max 
-                  dt = min(dt,dt_new)
-               endif            
-            endif
-         endif
-
-          dt = min(dt,stop_time-time)
+         dt = min(dt,stop_time-time)
 
          write(6,*)
          write(6,1001 )time,dt
@@ -388,8 +333,6 @@ c     update state, time
 
          time = time + dt
 
-         cfl_used = umax*dt/dx 
-
          if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
      &        nsteps_taken.eq.nsteps) then 
             call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
@@ -398,7 +341,7 @@ c     update state, time
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 
             call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $           I_R,divu_new,dsdt,dx,time,dt,cfl_used)
+     $           I_R,divu_new,dsdt,dx,time,dt)
          endif
       enddo
 

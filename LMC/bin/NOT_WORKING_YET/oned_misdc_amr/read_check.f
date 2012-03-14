@@ -1,6 +1,6 @@
       subroutine read_check(chkfile,vel,scal,press,
      $                      I_R,divu,dsdt,
-     $                      time,at_nstep,dt_old,cfl_used)
+     $                      time,at_nstep,dt_old)
       implicit none
       include 'spec.h'
       character chkfile*(16)
@@ -13,7 +13,6 @@
       real*8 press(-1:nx+1)
       real*8 time
       real*8 dt_old
-      real*8 cfl_used
       
       real*8 x
       integer i,n
@@ -24,7 +23,6 @@
       read(10) at_nstep
       read(10) time
       read(10) dt_old
-      read(10) cfl_used
       read(10) hmix_TYP
       do i = -1,nx
          read(10) x,(scal(i,FirstSpec+n),n=0,Nspec-1),

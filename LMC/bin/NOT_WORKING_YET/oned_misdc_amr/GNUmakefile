@@ -4,8 +4,8 @@ EXEname := lmc.exe
 #
 # Choose pmf file
 #
-pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
-#pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
+#pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
+pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
 
 #
 # Choose reaction mechanism
@@ -13,8 +13,8 @@ pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
 # Use CHEMH for pmf_source := chemHSoln_seed_0.00.f
 # Use CHEMH for pmf_source := H-flame_0370_MCDD.f
 #
-REACTION_MECHANISM=GRI30
-#REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=GRI30
+REACTION_MECHANISM=CHEMH
 
 ifeq (${USE_INTEL},TRUE)
   CCOMP := icpc -Wno-deprecated -g -Wunused-variable -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
@@ -42,7 +42,7 @@ chem_objects := $(chem_sources:%.f=%.o)
 f_sources += lmc.f ${chem_sources} prob.f \
              calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f \
              get_vel_visc_terms.f \
-             get_rhoh_visc_terms.f est_dt.f project.f strang_chem.f \
+             get_rhoh_visc_terms.f project.f strang_chem.f \
              pre_mac_predict.f compute_pthermo.f add_dpdt.f \
              mac_proj.f scal_aofs.f mkslopes.f \
              update_rho.f update_spec.f update_temp.f update_rhoh.f \

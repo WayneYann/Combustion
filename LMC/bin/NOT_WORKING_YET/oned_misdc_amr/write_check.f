@@ -1,5 +1,5 @@
       subroutine write_check(nsteps,vel,scal,press,
-     $                       I_R,divu,dsdt,dx,time,dt_old,cfl_used)
+     $                       I_R,divu,dsdt,dx,time,dt_old)
       implicit none
       include 'spec.h'
       integer nsteps
@@ -12,7 +12,6 @@
       real*8 dx
       real*8 time
       real*8 dt_old
-      real*8 cfl_used
       
       character chkfile*(8)
       character char_of_int*(5)
@@ -29,7 +28,6 @@
       write(10) nsteps
       write(10) time
       write(10) dt_old
-      write(10) cfl_used
       write(10) hmix_TYP
       do i = -1,nx
          write(10) (i+.5)*dx,(scal(i,FirstSpec+n),n=0,Nspec-1),
