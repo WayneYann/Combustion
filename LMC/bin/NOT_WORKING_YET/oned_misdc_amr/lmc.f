@@ -113,11 +113,13 @@ c     Set defaults, change with namelist
       close(unit=9)
       write(*,fortin)
 
-c     Initialize chem/tran database
+c     Initialize chem/tran database and nspec
       call initchem()
 
       Pcgs = Patm * P1ATM
 
+c     defines Density, Temp, RhoH, RhoRT, FirstSpec, LastSpec, nscal,
+c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       call probinit(problo,probhi)
 
 !     cell-centered, 2 ghost cells
@@ -145,12 +147,11 @@ c     Initialize chem/tran database
       allocate( press_new(-1:nx+1))
       allocate( press_old(-1:nx+1))
 
+!     only need to zero these so plotfile has sensible data
       divu_old = 0.d0
       divu_new = 0.d0
 
-      press_old = 0.d0
-      press_new = 0.d0
-
+!     must zero this or else RHS in mac project could be undefined
       dsdt = 0.d0
       
       dx = (probhi-problo)/DBLE(nx)
@@ -161,6 +162,9 @@ c     Initialize chem/tran database
 !     0=interior; 1=inflow; 2=outflow
       bc_lo(0) = 1
       bc_hi(0) = 2
+
+!     only doing single-level advance for now
+      lev = 0
       
       if ( chkfile .ne. 'null') then
 

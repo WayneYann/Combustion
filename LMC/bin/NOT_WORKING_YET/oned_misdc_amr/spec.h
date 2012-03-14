@@ -81,6 +81,6 @@ c     LMC alg stuff
       save /lmcr/
 
       integer lo(0:maxlev-1),hi(0:maxlev-1),
-     &     bc_lo(0:maxlev-1),bc_hi(0:maxlev-1),nx
-      common / amri / lo,hi,bc_lo,bc_hi,nx
+     &     bc_lo(0:maxlev-1),bc_hi(0:maxlev-1),nx,lev
+      common / amri / lo,hi,bc_lo,bc_hi,nx,lev
       save /amri/
