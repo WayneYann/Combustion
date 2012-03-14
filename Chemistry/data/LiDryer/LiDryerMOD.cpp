@@ -5088,10 +5088,615 @@ char* fesymname_(int sn)
 }
 
 /* End of file  */
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetLENIMC EGTRANSETLENIMC
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetLENIMC egtransetlenimc
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetLENIMC egtransetlenimc_
+#endif
+extern "C" { void egtransetLENIMC(int* LENIMC) {
+  *LENIMC =           38;}}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetLENRMC EGTRANSETLENRMC
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetLENRMC egtransetlenrmc
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetLENRMC egtransetlenrmc_
+#endif
+extern "C" { void egtransetLENRMC(int* LENRMC) {
+  *LENRMC =         1854;}}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetNO EGTRANSETNO
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetNO egtransetno
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetNO egtransetno_
+#endif
+extern "C" { void egtransetNO(int* NO) {
+  *NO =            4;}}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetKK EGTRANSETKK
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetKK egtransetkk
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetKK egtransetkk_
+#endif
+extern "C" { void egtransetKK(int* KK) {
+  *KK =            9;}}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetNLITE EGTRANSETNLITE
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetNLITE egtransetnlite
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetNLITE egtransetnlite_
+#endif
+extern "C" { void egtransetNLITE(int* NLITE) {
+  *NLITE =            2;}}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetPATM EGTRANSETPATM
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetPATM egtransetpatm
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetPATM egtransetpatm_
+#endif
+extern "C" { void egtransetPATM(double* PATM) {
+  *PATM =   0.1013250000000000E+07;}}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetWT EGTRANSETWT
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetWT egtransetwt
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetWT egtransetwt_
+#endif
+extern "C" { void egtransetWT(double* WT) {
+  WT[           0] =   0.2015939950942993E+01;
+  WT[           1] =   0.1007969975471497E+01;
+  WT[           2] =   0.1599940013885498E+02;
+  WT[           3] =   0.3199880027770996E+02;
+  WT[           4] =   0.1700737011432648E+02;
+  WT[           5] =   0.1801534008979797E+02;
+  WT[           6] =   0.3300677025318146E+02;
+  WT[           7] =   0.3401474022865295E+02;
+  WT[           8] =   0.2801339912414551E+02;
+};  }
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetEPS EGTRANSETEPS
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetEPS egtranseteps
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetEPS egtranseteps_
+#endif
+extern "C" { void egtransetEPS(double* EPS) {
+  EPS[           0] =   0.3800000000000000E+02;
+  EPS[           1] =   0.1450000000000000E+03;
+  EPS[           2] =   0.8000000000000000E+02;
+  EPS[           3] =   0.1074000000000000E+03;
+  EPS[           4] =   0.8000000000000000E+02;
+  EPS[           5] =   0.5724000000000000E+03;
+  EPS[           6] =   0.1074000000000000E+03;
+  EPS[           7] =   0.1074000000000000E+03;
+  EPS[           8] =   0.9753000000000000E+02;
+};  }
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetSIG EGTRANSETSIG
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetSIG egtransetsig
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetSIG egtransetsig_
+#endif
+extern "C" { void egtransetSIG(double* SIG) {
+  SIG[           0] =   0.2920000000000000E+01;
+  SIG[           1] =   0.2050000000000000E+01;
+  SIG[           2] =   0.2750000000000000E+01;
+  SIG[           3] =   0.3458000000000000E+01;
+  SIG[           4] =   0.2750000000000000E+01;
+  SIG[           5] =   0.2605000000000000E+01;
+  SIG[           6] =   0.3458000000000000E+01;
+  SIG[           7] =   0.3458000000000000E+01;
+  SIG[           8] =   0.3621000000000000E+01;
+};  }
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetDIP EGTRANSETDIP
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetDIP egtransetdip
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetDIP egtransetdip_
+#endif
+extern "C" { void egtransetDIP(double* DIP) {
+  DIP[           0] =   0.0000000000000000E+00;
+  DIP[           1] =   0.0000000000000000E+00;
+  DIP[           2] =   0.0000000000000000E+00;
+  DIP[           3] =   0.0000000000000000E+00;
+  DIP[           4] =   0.0000000000000000E+00;
+  DIP[           5] =   0.1844000000000000E+01;
+  DIP[           6] =   0.0000000000000000E+00;
+  DIP[           7] =   0.0000000000000000E+00;
+  DIP[           8] =   0.0000000000000000E+00;
+};  }
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetPOL EGTRANSETPOL
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetPOL egtransetpol
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetPOL egtransetpol_
+#endif
+extern "C" { void egtransetPOL(double* POL) {
+  POL[           0] =   0.7900000000000000E+00;
+  POL[           1] =   0.0000000000000000E+00;
+  POL[           2] =   0.0000000000000000E+00;
+  POL[           3] =   0.1600000000000000E+01;
+  POL[           4] =   0.0000000000000000E+00;
+  POL[           5] =   0.0000000000000000E+00;
+  POL[           6] =   0.0000000000000000E+00;
+  POL[           7] =   0.0000000000000000E+00;
+  POL[           8] =   0.1760000000000000E+01;
+};  }
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetZROT EGTRANSETZROT
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetZROT egtransetzrot
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetZROT egtransetzrot_
+#endif
+extern "C" { void egtransetZROT(double* ZROT) {
+  ZROT[           0] =   0.2800000000000000E+03;
+  ZROT[           1] =   0.0000000000000000E+00;
+  ZROT[           2] =   0.0000000000000000E+00;
+  ZROT[           3] =   0.3800000000000000E+01;
+  ZROT[           4] =   0.0000000000000000E+00;
+  ZROT[           5] =   0.4000000000000000E+01;
+  ZROT[           6] =   0.1000000000000000E+01;
+  ZROT[           7] =   0.3800000000000000E+01;
+  ZROT[           8] =   0.4000000000000000E+01;
+};  }
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetNLIN EGTRANSETNLIN
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetNLIN egtransetnlin
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetNLIN egtransetnlin_
+#endif
+extern "C" { void egtransetNLIN(int* NLIN) {
+  NLIN[           0] =            1;
+  NLIN[           1] =            0;
+  NLIN[           2] =            0;
+  NLIN[           3] =            1;
+  NLIN[           4] =            1;
+  NLIN[           5] =            2;
+  NLIN[           6] =            2;
+  NLIN[           7] =            2;
+  NLIN[           8] =            1;
+};  }
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetCOFLAM EGTRANSETCOFLAM
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetCOFLAM egtransetcoflam
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetCOFLAM egtransetcoflam_
+#endif
+extern "C" { void egtransetCOFLAM(double* COFLAM) {
+  COFLAM[           0] =   0.1109466217088744E+02;
+  COFLAM[           1] =  -0.1314982879973400E+01;
+  COFLAM[           2] =   0.2434842345478272E+00;
+  COFLAM[           3] =  -0.8971821506339107E-02;
+  COFLAM[           4] =  -0.3253788579319486E+00;
+  COFLAM[           5] =   0.3416397862210875E+01;
+  COFLAM[           6] =  -0.3631104489846262E+00;
+  COFLAM[           7] =   0.1585986202702918E-01;
+  COFLAM[           8] =   0.1969666526185763E+01;
+  COFLAM[           9] =   0.1801396425547300E+01;
+  COFLAM[          10] =  -0.1549102264837655E+00;
+  COFLAM[          11] =   0.6908759721669425E-02;
+  COFLAM[          12] =  -0.2513896927262683E+01;
+  COFLAM[          13] =   0.3151661994436593E+01;
+  COFLAM[          14] =  -0.3099623183029560E+00;
+  COFLAM[          15] =   0.1344793787858907E-01;
+  COFLAM[          16] =   0.1605449323860262E+02;
+  COFLAM[          17] =  -0.4103244048729492E+01;
+  COFLAM[          18] =   0.6631513498156665E+00;
+  COFLAM[          19] =  -0.2977137989389932E-01;
+  COFLAM[          20] =   0.2212500250653218E+02;
+  COFLAM[          21] =  -0.8451477268785496E+01;
+  COFLAM[          22] =   0.1459333704606090E+01;
+  COFLAM[          23] =  -0.7286069710088973E-01;
+  COFLAM[          24] =   0.5546401577805573E+00;
+  COFLAM[          25] =   0.1591057931808813E+01;
+  COFLAM[          26] =  -0.5282455808284543E-01;
+  COFLAM[          27] =   0.4072391521895438E-03;
+  COFLAM[          28] =   0.1486267947622502E+01;
+  COFLAM[          29] =   0.1062271348472054E+01;
+  COFLAM[          30] =   0.5716895740566978E-01;
+  COFLAM[          31] =  -0.6382577562940780E-02;
+  COFLAM[          32] =   0.1154289596065436E+02;
+  COFLAM[          33] =  -0.2911524559760463E+01;
+  COFLAM[          34] =   0.5546581827235442E+00;
+  COFLAM[          35] =  -0.2750103005663747E-01;
+};  }
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetCOFETA EGTRANSETCOFETA
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetCOFETA egtransetcofeta
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetCOFETA egtransetcofeta_
+#endif
+extern "C" { void egtransetCOFETA(double* COFETA) {
+  COFETA[           0] =  -0.1376710086380533E+02;
+  COFETA[           1] =   0.9708665581008417E+00;
+  COFETA[           2] =  -0.4534923959308444E-01;
+  COFETA[           3] =   0.2096011921433090E-02;
+  COFETA[           4] =  -0.1987529414716897E+02;
+  COFETA[           5] =   0.3416397862210910E+01;
+  COFETA[           6] =  -0.3631104489846305E+00;
+  COFETA[           7] =   0.1585986202702936E-01;
+  COFETA[           8] =  -0.1481563591580279E+02;
+  COFETA[           9] =   0.1801396425547327E+01;
+  COFETA[          10] =  -0.1549102264837694E+00;
+  COFETA[          11] =   0.6908759721669611E-02;
+  COFETA[          12] =  -0.1681080110872507E+02;
+  COFETA[          13] =   0.2522528725237932E+01;
+  COFETA[          14] =  -0.2490712798240462E+00;
+  COFETA[          15] =   0.1100615806447165E-01;
+  COFETA[          16] =  -0.1478508813778873E+02;
+  COFETA[          17] =   0.1801396425547305E+01;
+  COFETA[          18] =  -0.1549102264837663E+00;
+  COFETA[          19] =   0.6908759721669463E-02;
+  COFETA[          20] =  -0.1187800764707307E+02;
+  COFETA[          21] =  -0.7882519505482808E+00;
+  COFETA[          22] =   0.3341408170058896E+00;
+  COFETA[          23] =  -0.1986366361647418E-01;
+  COFETA[          24] =  -0.1679529396430702E+02;
+  COFETA[          25] =   0.2522528725237947E+01;
+  COFETA[          26] =  -0.2490712798240481E+00;
+  COFETA[          27] =   0.1100615806447173E-01;
+  COFETA[          28] =  -0.1678025333071109E+02;
+  COFETA[          29] =   0.2522528725237946E+01;
+  COFETA[          30] =  -0.2490712798240483E+00;
+  COFETA[          31] =   0.1100615806447175E-01;
+  COFETA[          32] =  -0.1626172843728175E+02;
+  COFETA[          33] =   0.2251740453876138E+01;
+  COFETA[          34] =  -0.2138340893699383E+00;
+  COFETA[          35] =   0.9477823154448534E-02;
+};  }
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetCOFD EGTRANSETCOFD
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetCOFD egtransetcofd
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetCOFD egtransetcofd_
+#endif
+extern "C" { void egtransetCOFD(double* COFD) {
+  COFD[           0] =  -0.1023073719095340E+02;
+  COFD[           1] =   0.2153598714195162E+01;
+  COFD[           2] =  -0.6969019063693850E-01;
+  COFD[           3] =   0.3233961733522977E-02;
+  COFD[           4] =  -0.1168685516750758E+02;
+  COFD[           5] =   0.2883726644585007E+01;
+  COFD[           6] =  -0.1637777890869061E+00;
+  COFD[           7] =   0.7265872474830623E-02;
+  COFD[           8] =  -0.1060109579664357E+02;
+  COFD[           9] =   0.2157129122185176E+01;
+  COFD[          10] =  -0.6524729611183182E-01;
+  COFD[          11] =   0.2809597810849289E-02;
+  COFD[          12] =  -0.1228690337278460E+02;
+  COFD[          13] =   0.2739817607547901E+01;
+  COFD[          14] =  -0.1455907617836413E+00;
+  COFD[          15] =   0.6496697467578658E-02;
+  COFD[          16] =  -0.1060412419807472E+02;
+  COFD[          17] =   0.2157123706881953E+01;
+  COFD[          18] =  -0.6524690383610432E-01;
+  COFD[          19] =   0.2809593789707914E-02;
+  COFD[          20] =  -0.1787213075631945E+02;
+  COFD[          21] =   0.4905112324365878E+01;
+  COFD[          22] =  -0.4173872143518051E+00;
+  COFD[          23] =   0.1788845489573668E-01;
+  COFD[          24] =  -0.1229066279603360E+02;
+  COFD[          25] =   0.2741057082889793E+01;
+  COFD[          26] =  -0.1457627022193994E+00;
+  COFD[          27] =   0.6504615244946633E-02;
+  COFD[          28] =  -0.1229422250798061E+02;
+  COFD[          29] =   0.2742232459895579E+01;
+  COFD[          30] =  -0.1459257489141948E+00;
+  COFD[          31] =   0.6512123400236565E-02;
+  COFD[          32] =  -0.1217511489930491E+02;
+  COFD[          33] =   0.2679286720576265E+01;
+  COFD[          34] =  -0.1373997446113497E+00;
+  COFD[          35] =   0.6125379451516252E-02;
+  COFD[          36] =  -0.1168685516750758E+02;
+  COFD[          37] =   0.2883726644585007E+01;
+  COFD[          38] =  -0.1637777890869061E+00;
+  COFD[          39] =   0.7265872474830623E-02;
+  COFD[          40] =  -0.1476537827842222E+02;
+  COFD[          41] =   0.4195448036781197E+01;
+  COFD[          42] =  -0.3279615676730872E+00;
+  COFD[          43] =   0.1412388797372668E-01;
+  COFD[          44] =  -0.1500301598770682E+02;
+  COFD[          45] =   0.4131920691035950E+01;
+  COFD[          46] =  -0.3275337549968449E+00;
+  COFD[          47] =   0.1442760802547180E-01;
+  COFD[          48] =  -0.1719486110604737E+02;
+  COFD[          49] =   0.4862600572193149E+01;
+  COFD[          50] =  -0.4215909171603991E+00;
+  COFD[          51] =   0.1846373197001472E-01;
+  COFD[          52] =  -0.1502025959280452E+02;
+  COFD[          53] =   0.4138327950805945E+01;
+  COFD[          54] =  -0.3284006010219734E+00;
+  COFD[          55] =   0.1446660099762999E-01;
+  COFD[          56] =  -0.1695183404426207E+02;
+  COFD[          57] =   0.4416203740445888E+01;
+  COFD[          58] =  -0.3114890192543383E+00;
+  COFD[          59] =   0.1159663710619628E-01;
+  COFD[          60] =  -0.1720445512239349E+02;
+  COFD[          61] =   0.4866330968714804E+01;
+  COFD[          62] =  -0.4220901924876364E+00;
+  COFD[          63] =   0.1848595807162496E-01;
+  COFD[          64] =  -0.1721362788263434E+02;
+  COFD[          65] =   0.4869900420159440E+01;
+  COFD[          66] =  -0.4225679381202458E+00;
+  COFD[          67] =   0.1850722613298993E-01;
+  COFD[          68] =  -0.1676897875889624E+02;
+  COFD[          69] =   0.4677755283143664E+01;
+  COFD[          70] =  -0.3974479445519867E+00;
+  COFD[          71] =   0.1741111717763365E-01;
+  COFD[          72] =  -0.1060109579664357E+02;
+  COFD[          73] =   0.2157129122185176E+01;
+  COFD[          74] =  -0.6524729611183182E-01;
+  COFD[          75] =   0.2809597810849289E-02;
+  COFD[          76] =  -0.1500301598770682E+02;
+  COFD[          77] =   0.4131920691035950E+01;
+  COFD[          78] =  -0.3275337549968449E+00;
+  COFD[          79] =   0.1442760802547180E-01;
+  COFD[          80] =  -0.1329503778398344E+02;
+  COFD[          81] =   0.2938989816956702E+01;
+  COFD[          82] =  -0.1706012465018490E+00;
+  COFD[          83] =   0.7547358484820122E-02;
+  COFD[          84] =  -0.1474363832488901E+02;
+  COFD[          85] =   0.3350090901251298E+01;
+  COFD[          86] =  -0.2245382243795846E+00;
+  COFD[          87] =   0.9906528312288899E-02;
+  COFD[          88] =  -0.1331106228772027E+02;
+  COFD[          89] =   0.2939408772392007E+01;
+  COFD[          90] =  -0.1706589698617190E+00;
+  COFD[          91] =   0.7549998035548285E-02;
+  COFD[          92] =  -0.1894546586601941E+02;
+  COFD[          93] =   0.4935720676293722E+01;
+  COFD[          94] =  -0.4114057447467022E+00;
+  COFD[          95] =   0.1723315986098057E-01;
+  COFD[          96] =  -0.1476396639560408E+02;
+  COFD[          97] =   0.3356474034011327E+01;
+  COFD[          98] =  -0.2254105976116209E+00;
+  COFD[          99] =   0.9946130954817655E-02;
+  COFD[         100] =  -0.1478376315874751E+02;
+  COFD[         101] =   0.3362741024796286E+01;
+  COFD[         102] =  -0.2262670743508222E+00;
+  COFD[         103] =   0.9985011202484037E-02;
+  COFD[         104] =  -0.1442662508885140E+02;
+  COFD[         105] =   0.3216422191096490E+01;
+  COFD[         106] =  -0.2069561315576079E+00;
+  COFD[         107] =   0.9135288598631700E-02;
+  COFD[         108] =  -0.1228690337278460E+02;
+  COFD[         109] =   0.2739817607547901E+01;
+  COFD[         110] =  -0.1455907617836413E+00;
+  COFD[         111] =   0.6496697467578658E-02;
+  COFD[         112] =  -0.1719486110604737E+02;
+  COFD[         113] =   0.4862600572193149E+01;
+  COFD[         114] =  -0.4215909171603991E+00;
+  COFD[         115] =   0.1846373197001472E-01;
+  COFD[         116] =  -0.1474363832488901E+02;
+  COFD[         117] =   0.3350090901251298E+01;
+  COFD[         118] =  -0.2245382243795846E+00;
+  COFD[         119] =   0.9906528312288899E-02;
+  COFD[         120] =  -0.1579169675646239E+02;
+  COFD[         121] =   0.3572143437285479E+01;
+  COFD[         122] =  -0.2518469828462104E+00;
+  COFD[         123] =   0.1102533331592793E-01;
+  COFD[         124] =  -0.1473449002110577E+02;
+  COFD[         125] =   0.3337793989426398E+01;
+  COFD[         126] =  -0.2228575541864579E+00;
+  COFD[         127] =   0.9830229599517820E-02;
+  COFD[         128] =  -0.2036133619470493E+02;
+  COFD[         129] =   0.5195864695910879E+01;
+  COFD[         130] =  -0.4301216528920454E+00;
+  COFD[         131] =   0.1744936825492251E-01;
+  COFD[         132] =  -0.1579979030842146E+02;
+  COFD[         133] =   0.3572309323030401E+01;
+  COFD[         134] =  -0.2518694694768392E+00;
+  COFD[         135] =   0.1102634618303224E-01;
+  COFD[         136] =  -0.1580828869487550E+02;
+  COFD[         137] =   0.3572786632028933E+01;
+  COFD[         138] =  -0.2519341709914386E+00;
+  COFD[         139] =   0.1102926053643803E-01;
+  COFD[         140] =  -0.1544409203507008E+02;
+  COFD[         141] =   0.3434913447661099E+01;
+  COFD[         142] =  -0.2339977102148624E+00;
+  COFD[         143] =   0.1025033359000777E-01;
+  COFD[         144] =  -0.1060412419807472E+02;
+  COFD[         145] =   0.2157123706881953E+01;
+  COFD[         146] =  -0.6524690383610432E-01;
+  COFD[         147] =   0.2809593789707914E-02;
+  COFD[         148] =  -0.1502025959280452E+02;
+  COFD[         149] =   0.4138327950805945E+01;
+  COFD[         150] =  -0.3284006010219734E+00;
+  COFD[         151] =   0.1446660099762999E-01;
+  COFD[         152] =  -0.1331106228772027E+02;
+  COFD[         153] =   0.2939408772392007E+01;
+  COFD[         154] =  -0.1706589698617190E+00;
+  COFD[         155] =   0.7549998035548285E-02;
+  COFD[         156] =  -0.1473449002110577E+02;
+  COFD[         157] =   0.3337793989426398E+01;
+  COFD[         158] =  -0.2228575541864579E+00;
+  COFD[         159] =   0.9830229599517820E-02;
+  COFD[         160] =  -0.1332558556199739E+02;
+  COFD[         161] =   0.2938989816956671E+01;
+  COFD[         162] =  -0.1706012465018444E+00;
+  COFD[         163] =   0.7547358484819904E-02;
+  COFD[         164] =  -0.1896004007077217E+02;
+  COFD[         165] =   0.4935377774711531E+01;
+  COFD[         166] =  -0.4113926173034602E+00;
+  COFD[         167] =   0.1723402811988101E-01;
+  COFD[         168] =  -0.1475457475365462E+02;
+  COFD[         169] =   0.3343986593397501E+01;
+  COFD[         170] =  -0.2237039347662408E+00;
+  COFD[         171] =   0.9868653787965939E-02;
+  COFD[         172] =  -0.1477418610290300E+02;
+  COFD[         173] =   0.3350090901251285E+01;
+  COFD[         174] =  -0.2245382243795827E+00;
+  COFD[         175] =   0.9906528312288795E-02;
+  COFD[         176] =  -0.1442063092189782E+02;
+  COFD[         177] =   0.3205844724257626E+01;
+  COFD[         178] =  -0.2055144159347264E+00;
+  COFD[         179] =   0.9070008933822527E-02;
+  COFD[         180] =  -0.1787213075631945E+02;
+  COFD[         181] =   0.4905112324365878E+01;
+  COFD[         182] =  -0.4173872143518051E+00;
+  COFD[         183] =   0.1788845489573668E-01;
+  COFD[         184] =  -0.1695183404426207E+02;
+  COFD[         185] =   0.4416203740445888E+01;
+  COFD[         186] =  -0.3114890192543383E+00;
+  COFD[         187] =   0.1159663710619628E-01;
+  COFD[         188] =  -0.1894546586601941E+02;
+  COFD[         189] =   0.4935720676293722E+01;
+  COFD[         190] =  -0.4114057447467022E+00;
+  COFD[         191] =   0.1723315986098057E-01;
+  COFD[         192] =  -0.2036133619470493E+02;
+  COFD[         193] =   0.5195864695910879E+01;
+  COFD[         194] =  -0.4301216528920454E+00;
+  COFD[         195] =   0.1744936825492251E-01;
+  COFD[         196] =  -0.1896004007077217E+02;
+  COFD[         197] =   0.4935377774711531E+01;
+  COFD[         198] =  -0.4113926173034602E+00;
+  COFD[         199] =   0.1723402811988101E-01;
+  COFD[         200] =  -0.1301206458003408E+02;
+  COFD[         201] =   0.1429168452568504E+01;
+  COFD[         202] =   0.1661557715508861E+00;
+  COFD[         203] =  -0.1214321823404827E-01;
+  COFD[         204] =  -0.1973436691750415E+02;
+  COFD[         205] =   0.4993125184848788E+01;
+  COFD[         206] =  -0.4088531920998837E+00;
+  COFD[         207] =   0.1672325900844039E-01;
+  COFD[         208] =  -0.1972379377029397E+02;
+  COFD[         209] =   0.4985700637038792E+01;
+  COFD[         210] =  -0.4077156220815392E+00;
+  COFD[         211] =   0.1666668649763390E-01;
+  COFD[         212] =  -0.2025975101746627E+02;
+  COFD[         213] =   0.5176212790334279E+01;
+  COFD[         214] =  -0.4308686680573706E+00;
+  COFD[         215] =   0.1761066268522406E-01;
+  COFD[         216] =  -0.1229066279603360E+02;
+  COFD[         217] =   0.2741057082889793E+01;
+  COFD[         218] =  -0.1457627022193994E+00;
+  COFD[         219] =   0.6504615244946633E-02;
+  COFD[         220] =  -0.1720445512239349E+02;
+  COFD[         221] =   0.4866330968714804E+01;
+  COFD[         222] =  -0.4220901924876364E+00;
+  COFD[         223] =   0.1848595807162496E-01;
+  COFD[         224] =  -0.1476396639560408E+02;
+  COFD[         225] =   0.3356474034011327E+01;
+  COFD[         226] =  -0.2254105976116209E+00;
+  COFD[         227] =   0.9946130954817655E-02;
+  COFD[         228] =  -0.1579979030842146E+02;
+  COFD[         229] =   0.3572309323030401E+01;
+  COFD[         230] =  -0.2518694694768392E+00;
+  COFD[         231] =   0.1102634618303224E-01;
+  COFD[         232] =  -0.1475457475365462E+02;
+  COFD[         233] =   0.3343986593397501E+01;
+  COFD[         234] =  -0.2237039347662408E+00;
+  COFD[         235] =   0.9868653787965939E-02;
+  COFD[         236] =  -0.1973436691750415E+02;
+  COFD[         237] =   0.4993125184848788E+01;
+  COFD[         238] =  -0.4088531920998837E+00;
+  COFD[         239] =   0.1672325900844039E-01;
+  COFD[         240] =  -0.1580720390088048E+02;
+  COFD[         241] =   0.3572143437285478E+01;
+  COFD[         242] =  -0.2518469828462103E+00;
+  COFD[         243] =   0.1102533331592793E-01;
+  COFD[         244] =  -0.1581504405580379E+02;
+  COFD[         245] =   0.3572299494956542E+01;
+  COFD[         246] =  -0.2518681372333372E+00;
+  COFD[         247] =   0.1102628617469197E-01;
+  COFD[         248] =  -0.1545394137084459E+02;
+  COFD[         249] =   0.3436021618273004E+01;
+  COFD[         250] =  -0.2341477712817018E+00;
+  COFD[         251] =   0.1025708506984392E-01;
+  COFD[         252] =  -0.1229422250798061E+02;
+  COFD[         253] =   0.2742232459895579E+01;
+  COFD[         254] =  -0.1459257489141948E+00;
+  COFD[         255] =   0.6512123400236565E-02;
+  COFD[         256] =  -0.1721362788263434E+02;
+  COFD[         257] =   0.4869900420159440E+01;
+  COFD[         258] =  -0.4225679381202458E+00;
+  COFD[         259] =   0.1850722613298993E-01;
+  COFD[         260] =  -0.1478376315874751E+02;
+  COFD[         261] =   0.3362741024796286E+01;
+  COFD[         262] =  -0.2262670743508222E+00;
+  COFD[         263] =   0.9985011202484037E-02;
+  COFD[         264] =  -0.1580828869487550E+02;
+  COFD[         265] =   0.3572786632028933E+01;
+  COFD[         266] =  -0.2519341709914386E+00;
+  COFD[         267] =   0.1102926053643803E-01;
+  COFD[         268] =  -0.1477418610290300E+02;
+  COFD[         269] =   0.3350090901251285E+01;
+  COFD[         270] =  -0.2245382243795827E+00;
+  COFD[         271] =   0.9906528312288795E-02;
+  COFD[         272] =  -0.1972379377029397E+02;
+  COFD[         273] =   0.4985700637038792E+01;
+  COFD[         274] =  -0.4077156220815392E+00;
+  COFD[         275] =   0.1666668649763390E-01;
+  COFD[         276] =  -0.1581504405580379E+02;
+  COFD[         277] =   0.3572299494956542E+01;
+  COFD[         278] =  -0.2518681372333372E+00;
+  COFD[         279] =   0.1102628617469197E-01;
+  COFD[         280] =  -0.1582224453447645E+02;
+  COFD[         281] =   0.3572143437285498E+01;
+  COFD[         282] =  -0.2518469828462133E+00;
+  COFD[         283] =   0.1102533331592807E-01;
+  COFD[         284] =  -0.1546403419937241E+02;
+  COFD[         285] =   0.3437367417375052E+01;
+  COFD[         286] =  -0.2343299630280416E+00;
+  COFD[         287] =   0.1026528034463288E-01;
+  COFD[         288] =  -0.1217511489930491E+02;
+  COFD[         289] =   0.2679286720576265E+01;
+  COFD[         290] =  -0.1373997446113497E+00;
+  COFD[         291] =   0.6125379451516252E-02;
+  COFD[         292] =  -0.1676897875889624E+02;
+  COFD[         293] =   0.4677755283143664E+01;
+  COFD[         294] =  -0.3974479445519867E+00;
+  COFD[         295] =   0.1741111717763365E-01;
+  COFD[         296] =  -0.1442662508885140E+02;
+  COFD[         297] =   0.3216422191096490E+01;
+  COFD[         298] =  -0.2069561315576079E+00;
+  COFD[         299] =   0.9135288598631700E-02;
+  COFD[         300] =  -0.1544409203507008E+02;
+  COFD[         301] =   0.3434913447661099E+01;
+  COFD[         302] =  -0.2339977102148624E+00;
+  COFD[         303] =   0.1025033359000777E-01;
+  COFD[         304] =  -0.1442063092189782E+02;
+  COFD[         305] =   0.3205844724257626E+01;
+  COFD[         306] =  -0.2055144159347264E+00;
+  COFD[         307] =   0.9070008933822527E-02;
+  COFD[         308] =  -0.2025975101746627E+02;
+  COFD[         309] =   0.5176212790334279E+01;
+  COFD[         310] =  -0.4308686680573706E+00;
+  COFD[         311] =   0.1761066268522406E-01;
+  COFD[         312] =  -0.1545394137084459E+02;
+  COFD[         313] =   0.3436021618273004E+01;
+  COFD[         314] =  -0.2341477712817018E+00;
+  COFD[         315] =   0.1025708506984392E-01;
+  COFD[         316] =  -0.1546403419937241E+02;
+  COFD[         317] =   0.3437367417375052E+01;
+  COFD[         318] =  -0.2343299630280416E+00;
+  COFD[         319] =   0.1026528034463288E-01;
+  COFD[         320] =  -0.1521415383275665E+02;
+  COFD[         321] =   0.3348053449783496E+01;
+  COFD[         322] =  -0.2233657260417595E+00;
+  COFD[         323] =   0.9817787279109837E-02;
+};  }
+
 
 
 
 #if 0
+
 
 
 
@@ -5362,6 +5967,7 @@ H2O2+OH=HO2+H2O           5.800E+14  0.00  9.557E+03
     DUPLICATE
 
 END
+
 \\
 \\
 \\  This is the therm file
@@ -5406,6 +6012,7 @@ N2                121286N   2               G  0300.00   5000.00  1000.00      1
 -0.09227977E+04 0.05980528E+02 0.03298677E+02 0.01408240E-01-0.03963222E-04    3
  0.05641515E-07-0.02444855E-10-0.01020900E+05 0.03950372E+02                   4
 END
+
 \\
 \\
 \\  This is the tran file
@@ -5545,4 +6152,5 @@ CH3CO              2   436.000     3.970     0.000     0.000     2.000
         Rotational relaxation number, Zrot at 298K                              
         Comments                                                                
                                                                                 
+
 #endif

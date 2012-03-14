@@ -1,0 +1,8 @@
+ &files
+   CHEMKIN_input = "LiDryerMOD.mec"
+   THERMO_input = "LiDryer.therm"
+   TRANLIB_input = "LiDryer.trans"
+   CHEMKIN_linking_file = "LiDryerMOD.asc"
+   TRANLIB_cpp_file = "LiDryerMOD-tran.cpp"
+   log_file = "LiDryerMOD.log"
+ /
