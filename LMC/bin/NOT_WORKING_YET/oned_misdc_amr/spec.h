@@ -1,20 +1,18 @@
 
 c     Chem species, etc
-      integer maxreac, maxspec, maxelts, maxthrdb, maxtp, maxsp,
-     &     maxspnml, maxlev
-      parameter (maxreac = 325, maxspec=53, maxelts=6,
-     &     maxthrdb=10, maxtp=3, maxsp=12, maxspnml=16, maxlev=3)
+      integer maxreac, maxspec, maxelts, maxthrdb, maxspnml, maxlev
+      parameter (maxreac = 325, maxspec=53, maxelts=6, maxthrdb=10, maxspnml=16, maxlev=3)
 
 c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
-      integer maxscal, nx, nlevs
-      parameter (maxscal = maxspec + 4, nx = 256, nlevs = 1)
+      integer maxscal
+      parameter (maxscal = maxspec + 4)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
-     &     iN2, specNameLen, Density, Temp, RhoH, 
+     &     iN2, Density, Temp, RhoH, 
      &     RhoRT, FirstSpec, LastSpec, nscal
       logical nochem_hack
       common / speci / Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
-     &     iN2, specNameLen, Density, Temp, RhoH, 
+     &     iN2, Density, Temp, RhoH, 
      &     RhoRT, FirstSpec, LastSpec, nscal, nochem_hack
       save /speci/
 
@@ -61,11 +59,11 @@ c     DVODE driver stuff
 c     LMC alg stuff
       integer misdc_iterMAX,on_lo,on_hi,max_order,
      &     divu_ceiling_flag, predict_temp_for_coeffs, is_first_initial_iter,
-     &     unlim, lim_rxns,coef_avg_harm,lo(0:maxlev-1),hi(0:maxlev-1)
+     &     unlim, lim_rxns, coef_avg_harm
       parameter (on_lo = 0, on_hi = 1, max_order = 3)
       common / lmci / misdc_iterMAX, divu_ceiling_flag,
      &     predict_temp_for_coeffs, is_first_initial_iter, unlim, lim_rxns,
-     &     coef_avg_harm,lo,hi
+     &     coef_avg_harm
       save /lmci/
 
       logical use_strang
@@ -74,10 +72,15 @@ c     LMC alg stuff
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),
      &     Y_bc(maxspec,0:1), h_bc(0:1), u_bc(0:1), flame_offset, 
-     &     Pr, Sc, thickFacTR, thickFacCH, 
+     &     Pr, Sc,
      &     rho_divu_ceiling, divu_dt_factor, V_in, vel_TYP
       common / lmcr / dpdt_factor, Pcgs, T_bc, rho_bc,
      &     Y_bc, h_bc, u_bc, flame_offset,
-     &     Pr, Sc, thickFacTR, thickFacCH,
+     &     Pr, Sc,
      &     rho_divu_ceiling, divu_dt_factor, V_in, vel_TYP
       save /lmcr/
+
+      integer lo(0:maxlev-1),hi(0:maxlev-1),
+     &     bc_lo(0:maxlev-1),bc_hi(0:maxlev-1),nx,nx_f,nlevs,lev,rr
+      common / amri / lo,hi,bc_lo,bc_hi,nx,nx_f,nlevs,lev,rr
+      save /amri/

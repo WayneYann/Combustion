@@ -11,7 +11,7 @@
       real*8   vel_new(-2:nx+1)
       real*8  scal_new(-2:nx+1,nscal)
       real*8  scal_old(-2:nx+1,nscal)
-      real*8       I_R(-1:nx  ,0:maxspec)
+      real*8       I_R(-1:nx  ,0:Nspec)
       real*8 press_old(-1:nx+1)
       real*8 press_new(-1:nx+1)
       real*8  divu_old(0 :nx-1)
@@ -33,11 +33,11 @@
       real*8      visc(-1:nx)
       real*8     alpha(0 :nx-1)
       real*8   vel_Rhs(0 :nx-1)
-      real*8  I_R_divu(-1:nx  ,0:maxspec)
+      real*8  I_R_divu(-1:nx  ,0:Nspec)
 
       real*8 dt
       real*8 vel_theta
-      real*8 WDOTK(maxspec), C(maxspec), RWRK
+      real*8 WDOTK(Nspec), C(Nspec), RWRK
       
       integer i,n,rho_flag,IWRK
 
@@ -59,7 +59,7 @@ c
 
       divu_tmp(:) = divu_old(:) + 0.5d0*dt*dsdt(:)
 
-      call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt,0)
+      call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt)
 
       call macproj(macvel,divu_tmp,dx)
 
@@ -101,7 +101,7 @@ c     SDC advance
             end do
             call CKWC(scal_new(i,Temp),C,IWRK,RWRK,WDOTK)
             do n=1,Nspec
-               I_R_divu(i,n) = WDOTK(n)*mwt(n)/thickFacCH
+               I_R_divu(i,n) = WDOTK(n)*mwt(n)
             end do
          end do
 
@@ -149,7 +149,7 @@ C     get velocity visc terms to use as a forcing term for advection
       call compute_pthermo(scal_new,scal_new(:,RhoRT))
 
       call add_dpdt_nodal(scal_new,scal_new(:,RhoRT),divu_new,
-     &                    vel_new,dx,dt,0)
+     &                    vel_new,dx,dt)
 
       print *,'...nodal projection...'
       call project(vel_new,rhohalf,divu_new,press_old,press_new,dx,dt)
@@ -164,7 +164,7 @@ C     get velocity visc terms to use as a forcing term for advection
       include 'spec.h'
       real*8 scal_new(-2:nx+1,nscal)
       real*8 scal_old(-2:nx+1,nscal)
-      real*8      I_R(-1:nx  ,0:maxspec)
+      real*8      I_R(-1:nx  ,0:Nspec)
       real*8   macvel(0 :nx  )
       real*8     aofs(0 :nx-1,nscal)
       real*8 beta_old(-1:nx  ,nscal)
@@ -178,8 +178,8 @@ C     get velocity visc terms to use as a forcing term for advection
 
 c     storage for conservatively corrected species flux for NULN rhoh diffusion term
 c     in the full LMC code, these are called fluxNULN
-      real*8 spec_flux_lo(0:nx-1,maxspec)
-      real*8 spec_flux_hi(0:nx-1,maxspec)
+      real*8 spec_flux_lo(0:nx-1,Nspec)
+      real*8 spec_flux_hi(0:nx-1,Nspec)
 
 ccccccccccccccccccccccccccccccccc
 c     SDC TEMPORARIES - I_R is also a temporary, but allocated above
@@ -187,9 +187,9 @@ ccccccccccccccccccccccccccccccccc
 
 c     in the full LMC code, these are also called
 c     diff_old, diff_new, and diff_hat.
-c     they only contain 0:maxspec components
+c     they only contain 0:Nspec components
 c     component 0 is for rhoh
-c     components 1:maxspec are for rhoX
+c     components 1:Nspec are for rhoX
 c     differential diffusion terms for rhoh are stored elsewhere (see below)
       real*8        diff_old(-1:nx,nscal)
       real*8        diff_new(-1:nx,nscal)
@@ -201,9 +201,9 @@ c     div_fluxNULN_old, div_fluxNULN_new, div_fluxNULN_hat
       real*8 diffdiff_new(-1:nx)
 
 c     in the full LMC code, we only need const_src
-c     it will only contain 0:maxspec components
+c     it will only contain 0:Nspec components
 c     component 0 is for rhoh
-c     components 1:maxspec are for rhoX
+c     components 1:Nspec are for rhoX
       real*8   const_src(0:nx-1,nscal)
       real*8 lin_src_old(0:nx-1,nscal)
       real*8 lin_src_new(0:nx-1,nscal)
@@ -216,12 +216,12 @@ ccccccccccccccccccccccccccccccccc
       
       real*8     alpha(0:nx-1)
       real*8       Rhs(0:nx-1,nscal)
-      real*8      dRhs(0:nx-1,0:maxspec)
+      real*8      dRhs(0:nx-1,0:Nspec)
       integer is, rho_flag
       integer misdc
 
 c     temporaries for setting I_R = omegadot^n at beginning of time step
-      real*8 WDOTK(maxspec), C(maxspec)
+      real*8 WDOTK(Nspec), C(Nspec)
 
       real*8 RWRK
       integer IWRK
@@ -267,7 +267,7 @@ c     If .false., use I_R^lagged = I_R^kmax from previous time step
             end do
             call CKWC(scal_old(i,Temp),C,IWRK,RWRK,WDOTK)
             do n=1,Nspec
-               I_R(i,n) = WDOTK(n)*mwt(n)/thickFacCH
+               I_R(i,n) = WDOTK(n)*mwt(n)
             end do
          end do
       end if
@@ -557,7 +557,7 @@ C----------------------------------------------------------------
       include 'spec.h'
       real*8 scal_new(-2:nx+1,nscal)
       real*8 scal_old(-2:nx+1,nscal)
-      real*8      I_R(-1:nx  ,0:maxspec)
+      real*8      I_R(-1:nx  ,0:Nspec)
       real*8   macvel(0 :nx  )
       real*8     aofs(0 :nx-1,nscal)
       real*8 beta_old(-1:nx  ,nscal)
@@ -576,20 +576,20 @@ C----------------------------------------------------------------
       real*8 lin_src_old(0:nx-1,nscal)
       real*8 lin_src_new(0:nx-1,nscal)
 
-      real*8   I_R_temp(-1:nx,0:maxspec)
+      real*8   I_R_temp(-1:nx,0:Nspec)
       
       integer i,n
       
       real*8     alpha(0:nx-1)
       real*8       Rhs(0:nx-1,nscal)
-      real*8      dRhs(0:nx-1,0:maxspec)
+      real*8      dRhs(0:nx-1,0:Nspec)
       real*8 rhocp
-      real*8 Y(maxspec)
+      real*8 Y(Nspec)
       real*8 RWRK, cpmix
       integer IWRK, is, rho_flag
 
-      real*8 spec_flux_lo(0:nx-1,maxspec)
-      real*8 spec_flux_hi(0:nx-1,maxspec)
+      real*8 spec_flux_lo(0:nx-1,Nspec)
+      real*8 spec_flux_hi(0:nx-1,Nspec)
 
       real*8 diffdiff_old(-1:nx)
       real*8 diffdiff_new(-1:nx)

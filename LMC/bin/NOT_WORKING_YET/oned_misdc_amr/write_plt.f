@@ -11,7 +11,7 @@
       real*8 dx
       real*8 time
       
-      real*8 Y(maxspec)
+      real*8 Y(Nspec)
       character pltfile*(8)
       character char_of_int*(5)
       

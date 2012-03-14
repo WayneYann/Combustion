@@ -11,23 +11,19 @@
       real*8  dt
 
       real*8  small
-      real*8  dt_start
       real*8  dt_divu
       integer i
-
-C should change this to a problem dependent vel_TYP
-      small   = 1.0d-8
 
       umax = 0.d0
       do i = 0,nx-1
         umax = max(umax,abs(vel(i)))
       end do
 
-      dt_start = 1.0D+20
-      dt = dt_start
-
-      if (umax .gt. small) dt = min(dt,dx/umax)
-      if (dt .eq. dt_start) dt = dx
+      if (umax .gt. vel_TYP) then
+         dt = min(dt,dx/umax)
+      else
+         dt = dx
+      end if
 
       print *,'... est_dt'
       print *,'DT = DX / V = ',dt,' USING V =',umax

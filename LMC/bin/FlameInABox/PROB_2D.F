@@ -23,8 +23,7 @@
          
 c     Take fuel mixture from prob data
 
-         region = BL_INTERIOR
-         zone = getZone(region, domnlo(1), domnlo(2))
+         zone = getZone(domnlo(1), domnlo(2))
          num_zones_defined = 1
          
          if (phi_in.gt.zero) then
@@ -68,8 +67,8 @@ c     Take fuel mixture from pmf file
       else if (trim(probtype).eq.BL_PROB_DIFFUSION) then
 
 c     A diffusion flame
-         fuelZone = getZone(BL_INTERIOR, domnlo(1), domnlo(2))
-         airZone = getZone(BL_INTERIOR, domnhi(1), domnhi(2))
+         fuelZone = getZone(domnlo(1), domnlo(2))
+         airZone = getZone(domnhi(1), domnhi(2))
          num_zones_defined = 2
 
 c     Fuel
@@ -126,12 +125,11 @@ c     Set density and hmix consistent with data
 
 c ::: -----------------------------------------------------------
       
-      integer function getZone(RegionID, x, y)
+      integer function getZone(x, y)
       implicit none
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
-      integer RegionID
       REAL_T x, y
 
 c#define BL_FUELPIPE 1
@@ -142,17 +140,6 @@ c#define BL_AMBIENT  5
 c#define BL_VOLUME   6
 c#define BL_PIPEEND  7
 
-#if 0
-      if ( (RegionID .ne. BL_INTERIOR) 
-     &     .or. (RegionID .ne. BL_YLO) ) then
-         call bl_pd_abort('No zone RegionID ne BL_INTERIOR or BL_YLO')
-      endif
-
-      if ( (x.lt.domnlo(1)).or.(x.gt.domnhi(1))
-     &     .or. (y.lt.domnlo(2)).or.(y.gt.domnhi(2)) ) then
-         call bl_pd_abort('No zone defined outside prob domain')         
-      endif
-#endif
       getZone = BL_VOLUME
 
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
@@ -175,11 +162,10 @@ c#define BL_PIPEEND  7
       
 c ::: -----------------------------------------------------------
       
-      subroutine bcfunction(RegionID,x,y,time,u,v,rho,Yl,T,h,dx,getuv)
+      subroutine bcfunction(x,y,time,u,v,rho,Yl,T,h,dx,getuv)
 
       implicit none
 
-      integer RegionID
       REAL_T x, y, time, u, v, rho, Yl(0:*), T, h, dx(SDIM)
       logical getuv
 
@@ -198,68 +184,54 @@ c ::: -----------------------------------------------------------
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)) then
 
-         if (RegionID .eq. BL_YLO) then
-
-            zone = getZone(RegionID,x,y)
-            rho = rho_bc(zone)
-            do n = 0, Nspec-1
-               Yl(n) = Y_bc(n,zone)
-            end do
-            T = T_bc(zone)
-            h = h_bc(zone)
+         zone = getZone(x,y)
+         rho = rho_bc(zone)
+         do n = 0, Nspec-1
+            Yl(n) = Y_bc(n,zone)
+         end do
+         T = T_bc(zone)
+         h = h_bc(zone)
+         
+         if (getuv .eqv. .TRUE.) then
             
-            if (getuv .eqv. .TRUE.) then
-
-               u = zero
-               if (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) then               
-                  v =  V_in + (time-tbase_control)*dV_control
-               else if (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) then
-                  v = v_bc(zone)
-               endif
+            u = zero
+            if (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) then               
+               v =  V_in + (time-tbase_control)*dV_control
+            else if (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) then
+               v = v_bc(zone)
             endif
-
-         else
-            write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
-            call bl_pd_abort(' ')
          endif
-
+         
       elseif (trim(probtype).eq.BL_PROB_DIFFUSION) then
 
-         if (RegionID .eq. BL_YLO) then
-
-            zone = getZone(RegionID,x,y)
-            rho = rho_bc(zone)
-            do n = 0, Nspec-1
-               Yl(n) = Y_bc(n,zone)
-            end do
-            T = T_bc(zone)
-            h = h_bc(zone)
+         zone = getZone(x,y)
+         rho = rho_bc(zone)
+         do n = 0, Nspec-1
+            Yl(n) = Y_bc(n,zone)
+         end do
+         T = T_bc(zone)
+         h = h_bc(zone)
+         
+         if (getuv .eqv. .TRUE.) then
+            u = zero
+            v = V_in
             
-            if (getuv .eqv. .TRUE.) then
-               u = zero
-               v = V_in
-
-               if (stTh.ge.0) then
-                  if (ABS(x - splitx).lt.0.5*stTh) then
-                     v = 0.d0
+            if (stTh.ge.0) then
+               if (ABS(x - splitx).lt.0.5*stTh) then
+                  v = 0.d0
+               else
+                  if (x .lt. splitx) then
+                     etamax = splitx - 0.5*stTh
+                     eta = (x - domnlo(1)) / etamax
+                     v = V_in * (1.d0 - eta**2)
                   else
-                     if (x .lt. splitx) then
-                        etamax = splitx - 0.5*stTh
-                        eta = (x - domnlo(1)) / etamax
-                        v = V_in * (1.d0 - eta**2)
-                     else
-                        etamax = domnhi(1) - splitx - 0.5*stTh
-                        eta = (domnhi(1) - x) / etamax
-                        v = V_co * (1.d0 - eta**2)
-                     endif
+                     etamax = domnhi(1) - splitx - 0.5*stTh
+                     eta = (domnhi(1) - x) / etamax
+                     v = V_co * (1.d0 - eta**2)
                   endif
                endif
-
             endif
-
-         else
-            write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
-            call bl_pd_abort(' ')
+            
          endif
       else
          write(6,*) 'No boundary condition for probtype = ', trim(probtype)
@@ -422,8 +394,8 @@ c ::: -----------------------------------------------------------
          
       else if ((trim(probtype).eq.BL_PROB_DIFFUSION)) then
 
-         fuelZone = getZone(BL_INTERIOR, domnlo(1), domnlo(2))
-         airZone = getZone(BL_INTERIOR, domnhi(1), domnhi(2))
+         fuelZone = getZone(domnlo(1), domnlo(2))
+         airZone = getZone(domnhi(1), domnhi(2))
 
          do j = lo(2), hi(2)
             y = (float(j)+.5)*delta(2)+domnlo(2)
@@ -473,8 +445,7 @@ c     Superimpose blob of hot air
                   scal(i,j,Trac) = 0.d0
                   
                   if (stTh.gt. 0.d0) then
-                     zone = getZone(x,y)
-                     call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.true.)
+                     call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.true.)
                      vel(i,j,1) = u
                      vel(i,j,2) = v
                   endif
@@ -593,12 +564,12 @@ c
                xr = (float(i)+1.d0)*dx(1)+domnlo(1) 
                xh = 0.5d0*(xl+xr)
                   
-               if ( (getZone(BL_ZLO,xl,y).eq.BL_STICK) .OR.
-     &              (getZone(BL_ZLO,xh,y).eq.BL_STICK) .OR.
-     &              (getZone(BL_ZLO,xr,y).eq.BL_STICK) .OR.
-     &              (getZone(BL_ZLO,xl,y).eq.BL_PIPEEND) .OR.
-     &              (getZone(BL_ZLO,xh,y).eq.BL_PIPEEND) .OR.
-     &              (getZone(BL_ZLO,xr,y).eq.BL_PIPEEND)  ) then
+               if ( (getZone(xl,y).eq.BL_STICK) .OR.
+     &              (getZone(xh,y).eq.BL_STICK) .OR.
+     &              (getZone(xr,y).eq.BL_STICK) .OR.
+     &              (getZone(xl,y).eq.BL_PIPEEND) .OR.
+     &              (getZone(xh,y).eq.BL_PIPEEND) .OR.
+     &              (getZone(xr,y).eq.BL_PIPEEND)  ) then
                   
 c                 if (do_T)  diff(i,j,Tid ) = 0.d0
 c                 if (do_RH) diff(i,j,RHid) = 0.d0
@@ -906,7 +877,7 @@ c ::: -----------------------------------------------------------
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
             enddo
          enddo
@@ -917,7 +888,7 @@ c ::: -----------------------------------------------------------
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
             enddo
          enddo
@@ -928,7 +899,7 @@ c ::: -----------------------------------------------------------
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
             enddo
          enddo
@@ -939,7 +910,7 @@ c ::: -----------------------------------------------------------
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
             enddo
          enddo
@@ -1059,7 +1030,7 @@ c ::: -----------------------------------------------------------
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                temp(i,j) = T
             enddo
          enddo
@@ -1070,7 +1041,7 @@ c ::: -----------------------------------------------------------
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                temp(i,j) = T
             enddo
          enddo
@@ -1081,7 +1052,7 @@ c ::: -----------------------------------------------------------
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                temp(i,j) = T
             enddo
          enddo
@@ -1092,7 +1063,7 @@ c ::: -----------------------------------------------------------
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                temp(i,j) = T
             enddo
          enddo
@@ -1155,7 +1126,7 @@ c ::: -----------------------------------------------------------
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                rhoh(i,j) = rho*h
             enddo
          enddo
@@ -1166,7 +1137,7 @@ c ::: -----------------------------------------------------------
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                rhoh(i,j) = rho*h
             enddo
          enddo
@@ -1177,7 +1148,7 @@ c ::: -----------------------------------------------------------
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                rhoh(i,j) = rho*h
             enddo
          enddo
@@ -1188,7 +1159,7 @@ c ::: -----------------------------------------------------------
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
+               call bcfunction(x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                rhoh(i,j) = rho*h
             enddo
          enddo
@@ -1308,7 +1279,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
             enddo
          enddo
@@ -1319,7 +1290,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XHI, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
             enddo
          enddo
@@ -1330,7 +1301,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
             enddo
          enddo
@@ -1341,7 +1312,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YHI, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
             enddo
          enddo
@@ -1418,7 +1389,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
             enddo
          enddo
@@ -1429,7 +1400,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XHI, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
             enddo
          enddo
@@ -1440,7 +1411,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
             enddo
          enddo
@@ -1451,7 +1422,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YHI, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
             enddo
          enddo
@@ -1528,7 +1499,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XLO, x, y, time, u, v, rho, Yl, T, h, delta,.false.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.false.)
                rhoY(i,j) = rho*Yl(id)
             enddo
          enddo
@@ -1539,7 +1510,7 @@ c     that the bc values may often be set up ahead of time.
             x = (float(i)+.5)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
-               call bcfunction(BL_XHI, x, y, time, u, v, rho, Yl, T, h, delta,.false.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.false.)
                rhoY(i,j) = rho*Yl(id)
             enddo
          enddo
@@ -1550,7 +1521,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.false.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.false.)
                rhoY(i,j) = rho*Yl(id)
             enddo
          enddo
@@ -1561,7 +1532,7 @@ c     that the bc values may often be set up ahead of time.
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
-               call bcfunction(BL_YHI, x, y, time, u, v, rho, Yl, T, h, delta,.false.)
+               call bcfunction(x, y, time, u, v, rho, Yl, T, h, delta,.false.)
                rhoY(i,j) = rho*Yl(id)
             enddo
          enddo

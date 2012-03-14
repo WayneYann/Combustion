@@ -1,4 +1,4 @@
-      subroutine add_dpdt(scal,pthermo,divu,umac,dx,dt,lev)
+      subroutine add_dpdt(scal,pthermo,divu,umac,dx,dt)
       implicit none
       include 'spec.h'
       real*8    scal(-2:nx+1,nscal)
@@ -8,7 +8,6 @@
       real*8 Y(Nspec)
       real*8 dx
       real*8 dt
-      integer lev
       
       real*8 uadv,p_lo,p_hi
       real*8 ugradp
@@ -63,7 +62,7 @@ C         denom = pthermo(i)
       end
 
 
-      subroutine add_dpdt_nodal(scal,pthermo,divu,vel,dx,dt,lev)
+      subroutine add_dpdt_nodal(scal,pthermo,divu,vel,dx,dt)
       implicit none
       include 'spec.h'
       real*8    scal(-2:nx+1,nscal)
@@ -73,7 +72,6 @@ C         denom = pthermo(i)
       real*8 Y(Nspec)
       real*8 dx
       real*8 dt
-      integer lev
       
       real*8 uadv,p_lo,p_hi
       real*8 ugradp

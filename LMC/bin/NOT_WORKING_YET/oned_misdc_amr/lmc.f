@@ -55,7 +55,7 @@
 
       character chkfile*(16)
 
-      namelist /fortin/ nsteps,stop_time,cfl,
+      namelist /fortin/ nx,nlevs,rr,nsteps,stop_time,cfl,
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int, change_max,
      $                  init_shrink, flame_offset,
@@ -66,10 +66,14 @@
      $                  nochem_hack, use_strang, 
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
-     $                  thickFacTR, thickFacCH, max_vode_subcycles,
-     $                  min_vode_timestep
+     $                  max_vode_subcycles,
+     $                  min_vode_timestep, divu_ceiling_flag,
+     $                  divu_dt_factor, rho_divu_ceiling, unlim
 
 c     Set defaults, change with namelist
+      nx = 256
+      nlevs = 1
+      rr = 2
       nsteps = 10
       stop_time = 1.e4
       cfl = 0.5
@@ -85,9 +89,6 @@ c     Set defaults, change with namelist
       Patm = 1.d0
       coef_avg_harm = 0
       misdc_iterMAX = 3
-      divu_ceiling_flag = 1
-      divu_dt_factor    = 0.4d0
-      rho_divu_ceiling  = 0.01
       predict_temp_for_coeffs = 1
       do_initial_projection = 1
       num_divu_iters = 3
@@ -96,60 +97,67 @@ c     Set defaults, change with namelist
       nochem_hack = .false.
       use_strang = .false.
       V_in = 1.d20
-      unlim = 0
       lim_rxns = 1
-
+      LeEQ1 = 0
       tranfile = 'tran.asc.grimech30'
       TMIN_TRANS = 0.d0
       Pr = 0.7d0
       Sc = 0.7d0
-      LeEQ1 = 0
-      thickFacTR = 1.d0
-      thickFacCH = 1.d0
       max_vode_subcycles = 15000
       min_vode_timestep = 1.e-19
+      divu_ceiling_flag = 1
+      divu_dt_factor    = 0.4d0
+      rho_divu_ceiling  = 0.01
+      unlim = 0
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)
       write(*,fortin)
 
-c     Initialize chem/tran database
+c     number of cells at finest level
+c     assumes rr is the same between all levels
+      nx_f = nx * rr**(nlevs-1)
+
+c     Initialize chem/tran database and nspec
       call initchem()
 
       Pcgs = Patm * P1ATM
 
+c     defines Density, Temp, RhoH, RhoRT, FirstSpec, LastSpec, nscal,
+c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
+      call probinit(problo,probhi)
+
 !     cell-centered, 2 ghost cells
       allocate(   vel_new(-2:nx+1))
       allocate(   vel_old(-2:nx+1))
-      allocate(  scal_new(-2:nx+1,maxscal))
-      allocate(  scal_old(-2:nx+1,maxscal))
-      allocate( scal_hold(-2:nx+1,maxscal))
+      allocate(  scal_new(-2:nx+1,nscal))
+      allocate(  scal_old(-2:nx+1,nscal))
+      allocate( scal_hold(-2:nx+1,nscal))
 
 !     cell-centered, 1 ghost cell
-      allocate(      I_R(-1:nx,0:maxspec))
-      allocate( beta_old(-1:nx,maxscal))
-      allocate( beta_new(-1:nx,maxscal))
+      allocate(      I_R(-1:nx,0:Nspec))
+      allocate( beta_old(-1:nx,nscal))
+      allocate( beta_new(-1:nx,nscal))
       allocate( mu_dummy(-1:nx))
 
 !     cell-centered, no ghost cells
       allocate(    divu_old(0:nx-1))
       allocate(    divu_new(0:nx-1))
       allocate(        dsdt(0:nx-1))
-      allocate(   const_src(0:nx-1,maxscal))
-      allocate( lin_src_old(0:nx-1,maxscal))
-      allocate( lin_src_new(0:nx-1,maxscal))
+      allocate(   const_src(0:nx-1,nscal))
+      allocate( lin_src_old(0:nx-1,nscal))
+      allocate( lin_src_new(0:nx-1,nscal))
 
 !     nodal, 1 ghost cell
       allocate( press_new(-1:nx+1))
       allocate( press_old(-1:nx+1))
 
+!     only need to zero these so plotfile has sensible data
       divu_old = 0.d0
       divu_new = 0.d0
 
-      press_old = 0.d0
-      press_new = 0.d0
-
+!     must zero this or else RHS in mac project could be undefined
       dsdt = 0.d0
       
       dx = (probhi-problo)/DBLE(nx)
@@ -157,7 +165,12 @@ c     Initialize chem/tran database
       lo(0) = 0
       hi(0) = nx-1
 
-      call probinit(problo,probhi)
+!     0=interior; 1=inflow; 2=outflow
+      bc_lo(0) = 1
+      bc_hi(0) = 2
+
+!     only doing single-level advance for now
+      lev = 0
       
       if ( chkfile .ne. 'null') then
 

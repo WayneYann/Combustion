@@ -18,7 +18,7 @@
       integer ispec
       integer i,n
 
-      real*8 Y(maxspec), RWRK, hmix
+      real*8 Y(Nspec), RWRK, hmix
       integer IWRK
 
       logical compute_comp(nscal)

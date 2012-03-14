@@ -58,11 +58,11 @@ c     Add Div( lambda Grad(T) )
       real*8 beta_lo,beta_hi
       real*8 rdgydgh_lo,rdgydgh_hi
       real*8 dxsqinv,RWRK,rho,dv
-      real*8 hm(maxspec,-1:nx)
-      real*8 Y(maxspec,-1:nx)
+      real*8 hm(Nspec,-1:nx)
+      real*8 Y(Nspec,-1:nx)
 
-      real*8 spec_flux_lo(0:nx-1,maxspec)
-      real*8 spec_flux_hi(0:nx-1,maxspec)
+      real*8 spec_flux_lo(0:nx-1,Nspec)
+      real*8 spec_flux_hi(0:nx-1,Nspec)
 
       real*8 sum_lo,sum_hi
       real*8 sumRhoY_lo,sumRhoY_hi

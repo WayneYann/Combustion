@@ -58,9 +58,9 @@ c----------------------------------------------------------------------
       double precision  scal(-2:nx+1,*)
       double precision   I_R(-1:nx  ,0:*)
 
-      double precision  x, rho, Y(maxspec), T, h
+      double precision  x, rho, Y(Nspec), T, h
       double precision xPMFlo, xPMFhi
-      double precision valsPMF(maxspec+3), RWRK, time, sum
+      double precision valsPMF(Nspec+3), RWRK, time, sum
       integer i, n, nPMF, IWRK
 
       write(*,*)'*** initdata *****'
@@ -131,7 +131,7 @@ c----------------------------------------------------------------------
       double precision     dx, time
       double precision   scal(-2:nx+1,*)
       integer n, is, HorL
-      double precision u, rho, Y(maxspec), T, hmix
+      double precision u, rho, Y(Nspec), T, hmix
 
 c     Sets the grow cell to hold the boundary value
 c     For Dirichlet condition, this value is to be applied at the cell
@@ -166,7 +166,7 @@ c----------------------------------------------------------------------
       integer              HorL
       double precision     dx, time
       double precision    vel(-2:nx+1)
-      double precision u, rho, Y(maxspec), T, hmix
+      double precision u, rho, Y(Nspec), T, hmix
 
 c     Sets the grow cell to hold the boundary value
 c     For Dirichlet condition, this value is to be applied at the cell
