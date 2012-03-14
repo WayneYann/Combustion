@@ -2,7 +2,7 @@
       implicit none
       include 'spec.h'
       real*8 scal(-2:nx+1,nscal)
-      real*8 rho, Y(maxspec), hmix
+      real*8 rho, Y(Nspec), hmix
       integer i,n
       integer is
 

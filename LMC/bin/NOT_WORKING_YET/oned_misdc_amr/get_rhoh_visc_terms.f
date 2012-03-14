@@ -51,9 +51,9 @@
 
       real*8 dxsqinv,RWRK
       integer i,is,n,IWRK
-      real*8 hm(maxspec,-1:nx)
-      real*8 flux_lo(maxspec),flux_hi(maxspec)
-      real*8 Y(maxspec,-1:nx)
+      real*8 hm(Nspec,-1:nx)
+      real*8 flux_lo(Nspec),flux_hi(Nspec)
+      real*8 Y(Nspec,-1:nx)
       real*8 beta_lo, beta_hi, rho
 
       dxsqinv = 1.d0/(dx*dx)

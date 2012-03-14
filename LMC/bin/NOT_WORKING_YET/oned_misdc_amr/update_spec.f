@@ -8,15 +8,15 @@
       real*8    alpha(0 :nx-1)
       real*8     beta(-1:nx  ,nscal)
       real*8      Rhs(0 :nx-1,*)
-      real*8     dRhs(0:nx-1,1:maxspec)
+      real*8     dRhs(0:nx-1,1:Nspec)
       real*8 dx,dt,be_cn_theta,time
       
       real*8 visc(-1:nx,Nspec)
       real*8  visc_term
       integer i,n,is
       
-      real*8 spec_flux_lo(0:nx-1,maxspec)
-      real*8 spec_flux_hi(0:nx-1,maxspec)
+      real*8 spec_flux_lo(0:nx-1,Nspec)
+      real*8 spec_flux_hi(0:nx-1,Nspec)
 
       call get_spec_visc_terms(scal_old,beta,visc,
      $                         spec_flux_lo,spec_flux_hi,dx)

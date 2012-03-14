@@ -17,9 +17,9 @@ c     Initialize some values
       double precision mu(-1:nx)
       double precision time, dx
 
-      double precision Dt(maxspec), CPMS(maxspec), Y(maxspec)
+      double precision Dt(Nspec), CPMS(Nspec), Y(Nspec)
       double precision Tt, Wavg, rho
-      double precision X(maxspec), alpha, l1, l2, cpmix, RWRK
+      double precision X(Nspec), alpha, l1, l2, cpmix, RWRK
       integer n, i, IWRK
 
       double precision fourThirds
@@ -115,6 +115,7 @@ c           Returns the mean specific heat at CP
 
       if (traninit.lt.0) then
          open(unit=51,status='old',form='formatted',file=tranfile)
+c     this sets Nspec
          call CNVTTR(51)
          lout = 6
          call EGINI(eg_nodes, lout, eg_IFLAG, eg_ITLS,
@@ -122,7 +123,8 @@ c           Returns the mean specific heat at CP
 
 c     Other useful things
          call CKRP(IWRK, RWRK, RU, RUC, P1ATM)
-         call CKWT(IWRK, RWRK, mwt)         
+         call CKWT(IWRK, RWRK, mwt)
+     
          do n=1,Nspec
             invmwt(n) = 1.d0 / mwt(n)
          end do
@@ -175,6 +177,7 @@ c         call bl_abort('Polyfit too large for EGLib!')
 c
 c     Make sure the transport & chemistry files are consistent.
 c
+c     This sets Nspec
       CALL CKINDX(IDUMMY,RDUMMY,Nelt,Nspec,Nreac,Nfit)
       if (Nelt.gt.maxelts) then
          print *,'Too many elements, increase maxelts'
@@ -238,11 +241,11 @@ C-----------------------------------------------------------------------
       subroutine vodeF_T_RhoY(NEQ, TIME, Z, ZP, RPAR, IPAR)
       implicit none
       include 'spec.h'
-      double precision TIME, Z(0:maxspec+1), ZP(0:maxspec), RPAR(*)
+      double precision TIME, Z(0:Nspec+1), ZP(0:Nspec), RPAR(*)
       integer NEQ, IPAR(*)
       
-      double precision RHO, CPB, SUM, Y(maxspec)
-      double precision HK(maxspec), WDOTK(maxspec), C(maxspec), RWRK
+      double precision RHO, CPB, SUM, Y(Nspec)
+      double precision HK(Nspec), WDOTK(Nspec), C(Nspec), RWRK
       integer K, IWRK
 
       integer NiterMAX, Niter
@@ -370,7 +373,7 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
    
       integer NEQ, ITOL, IOPT, ITASK, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)
-      double precision RTOL, ATOL(maxspec+1), ATOLEPS, TT1, TT2
+      double precision RTOL, ATOL(Nspec+1), ATOLEPS, TT1, TT2
 C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       parameter (RTOL=1.0E-13, ATOLEPS=1.0E-13)
       external vodeF_T_RhoY, vodeJ, open_vode_failure_file
@@ -378,23 +381,23 @@ C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
 
       integer nsubchem, nsub, node
       double precision dtloc, weight, TT1save
-      double precision C(maxspec),Q(maxreac)
+      double precision C(Nspec),Q(Nreac)
 
 c     DVODE workspace requirements      
       integer dvr, dvi
 
 c     METH = 2 (backward diffs)
 c     MAXORD = 5
-c     NEQ = maxspec+1 
-c     NYH = NEQ = maxspec+1
+c     NEQ = Nspec+1 
+c     NYH = NEQ = Nspec+1
 c     MITER = 2
 c     JSV = 1
 c     JSV = SIGN(MF)
 c     MF = JSV*(10*METH + MITER) = 22
-c     LWM = 2*(maxspec+1)**2 + 2    (MITER = 2, MF<0)
+c     LWM = 2*(Nspec+1)**2 + 2    (MITER = 2, MF<0)
 c     lenr = 20 + NYH*(MAXORD + 1) + 3*NEQ + LWM
-c          = 20 + (maxspec+1)*(6) + 3*(maxspec+1) + 2*(maxspec+1)**2 + 2
-c          = 22 + (maxspec+1)*9 + 2*(maxspec+1)**2
+c          = 20 + (Nspec+1)*(6) + 3*(Nspec+1) + 2*(Nspec+1)**2 + 2
+c          = 22 + (Nspec+1)*9 + 2*(Nspec+1)**2
 c     
       parameter (dvr = 22 + 9*(maxspec+1) + 2*(maxspec+1)**2)
       parameter (dvi = 30 + maxspec + 1)
@@ -402,7 +405,7 @@ c
       double precision DVRWRK(dvr)
       integer DVIWRK(dvi)
 
-      double precision Z(0:maxspec)
+      double precision Z(0:Nspec)
       double precision RPAR, RWRK
       integer IPAR, IWRK
 
@@ -713,7 +716,7 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       real*8 dx
       
       integer i,n,IWRK
-      real*8 Y(maxspec), rho, RWRK, hmix
+      real*8 Y(Nspec), rho, RWRK, hmix
 
       do i = 0,nx-1
          rho = 0.d0

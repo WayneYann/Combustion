@@ -13,7 +13,7 @@
       integer i,n,is
       real*8 beta_lo,beta_hi
       real*8 dxsqinv
-      real*8 Y(-1:nx,maxspec), sum_lo, sum_hi, sumRhoY_lo, sumRhoY_hi
+      real*8 Y(-1:nx,Nspec), sum_lo, sum_hi, sumRhoY_lo, sumRhoY_hi
       real*8 RhoYe_lo, RhoYe_hi
 
       do i = -1,nx

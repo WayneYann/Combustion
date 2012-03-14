@@ -3,7 +3,7 @@
       real*8  scal(-2:nx+1,nscal)
       real*8 pthermo(-2:nx+1)
       
-      real*8 Y(maxspec), RWRK
+      real*8 Y(Nspec), RWRK
       integer i,n
       integer ispec, IWRK
 

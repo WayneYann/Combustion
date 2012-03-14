@@ -8,15 +8,15 @@
       real*8    const_src( 0:nx-1,nscal)
       real*8  lin_src_old( 0:nx-1,nscal)
       real*8  lin_src_new( 0:nx-1,nscal)
-      real*8          I_R(-1:nx  ,0:maxspec)
+      real*8          I_R(-1:nx  ,0:Nspec)
       real*8  dt,dx,time
       
       integer i,is,n,ifail
-      real*8 RYold(maxspec), RYnew(maxspec), Told, Tnew
+      real*8 RYold(Nspec), RYnew(Nspec), Told, Tnew
       real*8 rho_old
       integer FuncCount, do_diag
-      real*8 diag(maxreac),hmix
-      real*8 Y(maxspec)
+      real*8 diag(Nreac),hmix
+      real*8 Y(Nspec)
       
       integer NiterMAX, Niter
       parameter (NiterMAX = 30)

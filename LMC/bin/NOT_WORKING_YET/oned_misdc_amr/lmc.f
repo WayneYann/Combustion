@@ -118,26 +118,28 @@ c     Initialize chem/tran database
 
       Pcgs = Patm * P1ATM
 
+      call probinit(problo,probhi)
+
 !     cell-centered, 2 ghost cells
       allocate(   vel_new(-2:nx+1))
       allocate(   vel_old(-2:nx+1))
-      allocate(  scal_new(-2:nx+1,maxscal))
-      allocate(  scal_old(-2:nx+1,maxscal))
-      allocate( scal_hold(-2:nx+1,maxscal))
+      allocate(  scal_new(-2:nx+1,nscal))
+      allocate(  scal_old(-2:nx+1,nscal))
+      allocate( scal_hold(-2:nx+1,nscal))
 
 !     cell-centered, 1 ghost cell
-      allocate(      I_R(-1:nx,0:maxspec))
-      allocate( beta_old(-1:nx,maxscal))
-      allocate( beta_new(-1:nx,maxscal))
+      allocate(      I_R(-1:nx,0:Nspec))
+      allocate( beta_old(-1:nx,nscal))
+      allocate( beta_new(-1:nx,nscal))
       allocate( mu_dummy(-1:nx))
 
 !     cell-centered, no ghost cells
       allocate(    divu_old(0:nx-1))
       allocate(    divu_new(0:nx-1))
       allocate(        dsdt(0:nx-1))
-      allocate(   const_src(0:nx-1,maxscal))
-      allocate( lin_src_old(0:nx-1,maxscal))
-      allocate( lin_src_new(0:nx-1,maxscal))
+      allocate(   const_src(0:nx-1,nscal))
+      allocate( lin_src_old(0:nx-1,nscal))
+      allocate( lin_src_new(0:nx-1,nscal))
 
 !     nodal, 1 ghost cell
       allocate( press_new(-1:nx+1))
@@ -159,8 +161,6 @@ c     Initialize chem/tran database
 !     0=interior; 1=inflow; 2=outflow
       bc_lo(0) = 1
       bc_hi(0) = 2
-
-      call probinit(problo,probhi)
       
       if ( chkfile .ne. 'null') then
 
