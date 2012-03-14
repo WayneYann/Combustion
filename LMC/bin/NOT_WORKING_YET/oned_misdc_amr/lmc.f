@@ -38,6 +38,9 @@
       real*8, allocatable :: press_new(:)
       real*8, allocatable :: press_old(:)
 
+      integer, allocatable :: lo(:), hi(:)
+      integer, allocatable :: bc(:,:)
+
       real*8 problo,probhi
       real*8 dx,time
       real*8 dt_init,dt_new
@@ -51,7 +54,7 @@
       real*8 dt,fixed_dt
       real*8 Patm
 
-      integer divu_iter,init_iter
+      integer n,divu_iter,init_iter
 
       character chkfile*(16)
 
@@ -153,6 +156,9 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       allocate( press_new(-1:nx+1))
       allocate( press_old(-1:nx+1))
 
+      allocate(lo(0:nlevs-1),hi(0:nlevs-1))
+      allocate(bc(0:nlevs-1,2))
+
 !     only need to zero these so plotfile has sensible data
       divu_old = 0.d0
       divu_new = 0.d0
@@ -166,11 +172,11 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       hi(0) = nx-1
 
 !     0=interior; 1=inflow; 2=outflow
-      bc_lo(0) = 1
-      bc_hi(0) = 2
-
-!     only doing single-level advance for now
-      lev = 0
+      bc(0,1) = 1
+      bc(0,2) = 2
+      do n=1,nlevs-1
+         bc(n,:) = 0
+      end do
       
       if ( chkfile .ne. 'null') then
 
@@ -310,7 +316,7 @@ c     strang split overwrites scal_old so we preserve it
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,dt,time)
+     $                   dx,dt,time,lo,hi,bc)
 
 c     restore scal_old
             if (use_strang) then
@@ -372,7 +378,7 @@ C-- Now advance
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
      $                divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                dx,dt,time)
+     $                dx,dt,time,lo,hi,bc)
 
 c     update state, time
          vel_old = vel_new

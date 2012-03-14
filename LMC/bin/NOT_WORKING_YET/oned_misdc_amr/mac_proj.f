@@ -1,14 +1,15 @@
-      subroutine macproj(macvel,divu,dx)
+      subroutine macproj(macvel,divu,dx,lo,hi)
       implicit none
       include 'spec.h'
       real*8 macvel(0 :nx)
       real*8   divu(0 :nx-1)
       real*8 dx
-      
+      integer lo,hi
+
       integer i
       print *,'... mac_projection'
       
-      do i=lo(0)+1,hi(0)+1
+      do i=lo+1,hi+1
          macvel(i) = macvel(i-1) + divu(i-1)*dx
       end do
       

@@ -1,7 +1,7 @@
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,dt,time)
+     $                   dx,dt,time,lo,hi,bc)
 
       implicit none
 
@@ -21,6 +21,8 @@
       real*8  beta_new(-1:nx  ,nscal)
       real*8 dx
       real*8 time
+      integer lo(0:nlevs-1), hi(0:nlevs-1)
+      integer bc(0:nlevs-1,2)
 
 ! local
       real*8    macvel(0 :nx  )
@@ -59,9 +61,10 @@ c
 
       divu_tmp(:) = divu_old(:) + 0.5d0*dt*dsdt(:)
 
-      call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt)
+      call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt,
+     $              lo(0),hi(0),bc(0,:))
 
-      call macproj(macvel,divu_tmp,dx)
+      call macproj(macvel,divu_tmp,dx,lo(0),hi(0))
 
 c     compute diffusivities at time n (old time)
 c     this computes rho D_m     (for species)
@@ -149,7 +152,7 @@ C     get velocity visc terms to use as a forcing term for advection
       call compute_pthermo(scal_new,scal_new(:,RhoRT))
 
       call add_dpdt_nodal(scal_new,scal_new(:,RhoRT),divu_new,
-     &                    vel_new,dx,dt)
+     &                    vel_new,dx,dt,lo(0),hi(0),bc(0,:))
 
       print *,'...nodal projection...'
       call project(vel_new,rhohalf,divu_new,press_old,press_new,dx,dt)
