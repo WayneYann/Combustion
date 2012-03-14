@@ -4,8 +4,8 @@ c     Chem species, etc
       parameter (maxreac = 325, maxspec=53, maxelts=6, maxthrdb=10, maxspnml=16, maxlev=3)
 
 c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
-      integer maxscal, nlevs, rr
-      parameter (maxscal = maxspec + 4, nlevs = 1, rr = 2)
+      integer maxscal
+      parameter (maxscal = maxspec + 4)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, Density, Temp, RhoH, 
@@ -81,6 +81,6 @@ c     LMC alg stuff
       save /lmcr/
 
       integer lo(0:maxlev-1),hi(0:maxlev-1),
-     &     bc_lo(0:maxlev-1),bc_hi(0:maxlev-1),nx,lev
-      common / amri / lo,hi,bc_lo,bc_hi,nx,lev
+     &     bc_lo(0:maxlev-1),bc_hi(0:maxlev-1),nx,nx_f,nlevs,lev,rr
+      common / amri / lo,hi,bc_lo,bc_hi,nx,nx_f,nlevs,lev,rr
       save /amri/

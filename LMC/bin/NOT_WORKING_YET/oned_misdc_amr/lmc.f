@@ -55,7 +55,7 @@
 
       character chkfile*(16)
 
-      namelist /fortin/ nx,nsteps,stop_time,cfl,
+      namelist /fortin/ nx,nlevs,rr,nsteps,stop_time,cfl,
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int, change_max,
      $                  init_shrink, flame_offset,
@@ -72,6 +72,8 @@
 
 c     Set defaults, change with namelist
       nx = 256
+      nlevs = 1
+      rr = 2
       nsteps = 10
       stop_time = 1.e4
       cfl = 0.5
@@ -112,6 +114,10 @@ c     Set defaults, change with namelist
       read(9,fortin)
       close(unit=9)
       write(*,fortin)
+
+c     number of cells at finest level
+c     assumes rr is the same between all levels
+      nx_f = nx * rr**(nlevs-1)
 
 c     Initialize chem/tran database and nspec
       call initchem()
