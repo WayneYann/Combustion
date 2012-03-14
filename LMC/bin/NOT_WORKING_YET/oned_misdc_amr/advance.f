@@ -101,7 +101,7 @@ c     SDC advance
             end do
             call CKWC(scal_new(i,Temp),C,IWRK,RWRK,WDOTK)
             do n=1,Nspec
-               I_R_divu(i,n) = WDOTK(n)*mwt(n)/thickFacCH
+               I_R_divu(i,n) = WDOTK(n)*mwt(n)
             end do
          end do
 
@@ -267,7 +267,7 @@ c     If .false., use I_R^lagged = I_R^kmax from previous time step
             end do
             call CKWC(scal_old(i,Temp),C,IWRK,RWRK,WDOTK)
             do n=1,Nspec
-               I_R(i,n) = WDOTK(n)*mwt(n)/thickFacCH
+               I_R(i,n) = WDOTK(n)*mwt(n)
             end do
          end do
       end if

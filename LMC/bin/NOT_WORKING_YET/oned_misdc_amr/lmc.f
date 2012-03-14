@@ -66,7 +66,7 @@
      $                  nochem_hack, use_strang, 
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
-     $                  thickFacTR, thickFacCH, max_vode_subcycles,
+     $                  max_vode_subcycles,
      $                  min_vode_timestep, divu_ceiling_flag,
      $                  divu_dt_factor, rho_divu_ceiling, unlim
 
@@ -101,8 +101,6 @@ c     Set defaults, change with namelist
       TMIN_TRANS = 0.d0
       Pr = 0.7d0
       Sc = 0.7d0
-      thickFacTR = 1.d0
-      thickFacCH = 1.d0
       max_vode_subcycles = 15000
       min_vode_timestep = 1.e-19
       divu_ceiling_flag = 1

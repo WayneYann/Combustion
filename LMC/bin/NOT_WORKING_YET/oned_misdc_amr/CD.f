@@ -104,16 +104,6 @@ c           Returns the mean specific heat at CP
          enddo
       endif
 
-      if (thickFacTR.ne.1.d0) then
-         do i=-1, nx
-            do n=1,Nspec
-               beta(i,FirstSpec+n-1) = beta(i,FirstSpec+n-1)*thickFacTR
-            end do
-            beta(i,Temp) = beta(i,Temp) * thickFacTR
-            beta(i,RhoH) = beta(i,RhoH) * thickFacTR
-         enddo
-      endif
-
       end
 
       subroutine initchem
@@ -138,11 +128,9 @@ c     Other useful things
          end do
 
          call cksyms(kname,maxspnml)
-         specNameLen = 0
          do n=1,Nspec
             offset = (n-1)*maxspnml+1
             call convStr(kname(offset),maxspnml,specNames(n),len)
-            specNamelen = MAX(specNameLen,len)
             if (specNames(n).eq.'H2')  iH2=n
             if (specNames(n).eq.'O2')  iO2=n
             if (specNames(n).eq.'N2')  iN2=n
@@ -333,8 +321,7 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
          call CKWC(T,C,IWRK,RWRK,WDOTK)
          SUM = 0.d0
          DO K = 1, Nspec
-            ZP(K) = WDOTK(K)*mwt(K)/thickFacCH
-     &           + c_0(K) + c_1(K)*TIME
+            ZP(K) = WDOTK(K)*mwt(K) + c_0(K) + c_1(K)*TIME
             SUM = SUM - HK(K)*ZP(K)
          END DO
          ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
@@ -342,8 +329,7 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
 
          call CKWC(T,C,IWRK,RWRK,WDOTK)
          do k= 1, Nspec
-            ZP(k) = WDOTK(k)*mwt(k)/thickFacCH
-     &           + c_0(k) + c_1(k)*TIME
+            ZP(k) = WDOTK(k)*mwt(k) + c_0(k) + c_1(k)*TIME
          end do
          ZP(0) = c_0(0) + c_1(0)*TIME 
 
