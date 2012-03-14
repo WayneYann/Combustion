@@ -344,8 +344,8 @@ DDOp::setGrowCells(MultiFab& T,
 
                 for (IntVect p = Tb.box().smallEnd(); p <= Tb.box().bigEnd(); Tb.box().next(p))
                 {
-                    if (isnan(Tfab(p,sCompT)))
-                        std::cout << "T isnan @ p = " << p << '\n';
+                    //if (std::isnan(Tfab(p,sCompT)))
+                        //std::cout << "T isnan @ p = " << p << '\n';
                 }
             }
 

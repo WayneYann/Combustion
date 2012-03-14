@@ -42,8 +42,8 @@
       save /pert1/
 
       REAL_T convVelInit
-      common /inflow1/ convVelInit
-      save /inflow1/
+      common /inflow4/ convVelInit
+      save /inflow4/
 
       logical forceInflow
       REAL_T probSizeFile(3), dxFile(3)
