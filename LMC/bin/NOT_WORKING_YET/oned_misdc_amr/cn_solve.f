@@ -4,9 +4,9 @@
       include 'spec.h'
 
       integer rho_flag
-      real*8 scal_new(-2:nx+1,*)
+      real*8 scal_new(-2:nx+1,nscal)
       real*8    alpha( 0:nx-1)
-      real*8  beta_cc(-1:nx  ,*)
+      real*8  beta_cc(-1:nx  ,nscal)
       real*8      Rhs( 0:nx-1)
       real*8 dx
       real*8 dt
