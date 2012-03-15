@@ -167,6 +167,7 @@ c ::: -----------------------------------------------------------
      &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
+      integer nCompFile
       namelist /flctin/ tstart_turb, forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file, convVelInit
 #endif

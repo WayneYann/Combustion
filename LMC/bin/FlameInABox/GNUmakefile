@@ -8,9 +8,10 @@ COMBUSTION_DIR = ${TOP}/Combustion
 #
 
 PRECISION       = DOUBLE
-DEBUG           = TRUE
 DEBUG           = FALSE
+DEBUG           = TRUE
 DIM             = 3
+DIM             = 2
 COMP            = g++
 FCOMP           = gfortran
 USE_MPI         = TRUE

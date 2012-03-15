@@ -51,7 +51,12 @@ else
 # Hack in some LMC stuff
 
 ifeq (${USE_FLCTS}, TRUE)
+ DEFINES += -DBL_DO_FLCT
   include ${COMBUSTION_DIR}/LMC/tools/make/flucts.mk
+endif
+
+ifeq ($(USE_F90_SOLVERS), TRUE)
+ DEFINES += -DPARTICLES
 endif
 
 ifeq ($(USE_VELOCITY), TRUE)
