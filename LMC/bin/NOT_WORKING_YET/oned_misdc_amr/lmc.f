@@ -215,7 +215,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
      $                   time,at_nstep,dt,lo,hi)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     $                  dx,at_nstep,time)
+     $                  dx,at_nstep,time,lo,hi)
 
          at_nstep = at_nstep + 1
 
@@ -236,7 +236,7 @@ c     needed for seed to EOS after first strang_chem call
          scal_new(:,:,Temp) = scal_old(:,:,Temp)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99999,time)
+     &                  dx,99999,time,lo,hi)
 
          call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
          
@@ -253,7 +253,7 @@ c     return zero pressure
          end if
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99998,time)
+     &                  dx,99998,time,lo,hi)
 
          const_src = 0.d0
          lin_src_old = 0.d0
@@ -286,7 +286,7 @@ c     return zero pressure
          enddo
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99997,time)
+     &                  dx,99997,time,lo,hi)
 
          print *,' '
          print *,'...doing num_init_iters = ',num_init_iters 
@@ -324,7 +324,7 @@ c     update pressure and I_R
          enddo
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,0,time)
+     &                  dx,0,time,lo,hi)
 
          print *,' '      
          print *,' '      
@@ -365,12 +365,12 @@ c     update state, time
          if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
      &        nsteps_taken.eq.nsteps) then 
             call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
-     $           dx,nsteps_taken,time)
+     $                     dx,nsteps_taken,time,lo,hi)
          endif
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 
             call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $           I_R,divu_new,dsdt,dx,time,dt,lo,hi)
+     $                       I_R,divu_new,dsdt,dx,time,dt,lo,hi)
          endif
       enddo
 
