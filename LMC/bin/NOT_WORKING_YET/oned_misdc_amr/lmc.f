@@ -126,29 +126,29 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       call probinit(problo,probhi)
 
 !     cell-centered, 2 ghost cells
-      allocate(  vel_new(0:nlevs-1,-2:nx+1))
-      allocate(  vel_old(0:nlevs-1,-2:nx+1))
-      allocate( scal_new(0:nlevs-1,-2:nx+1,nscal))
-      allocate( scal_old(0:nlevs-1,-2:nx+1,nscal))
-      allocate(scal_hold(0:nlevs-1,-2:nx+1,nscal))
+      allocate(  vel_new(0:nlevs-1,-2:nfine+1))
+      allocate(  vel_old(0:nlevs-1,-2:nfine+1))
+      allocate( scal_new(0:nlevs-1,-2:nfine+1,nscal))
+      allocate( scal_old(0:nlevs-1,-2:nfine+1,nscal))
+      allocate(scal_hold(0:nlevs-1,-2:nfine+1,nscal))
 
 !     cell-centered, 1 ghost cell
-      allocate(     I_R(0:nlevs-1,-1:nx,0:Nspec))
-      allocate(beta_old(0:nlevs-1,-1:nx,nscal))
-      allocate(beta_new(0:nlevs-1,-1:nx,nscal))
-      allocate(mu_dummy(0:nlevs-1,-1:nx))
+      allocate(     I_R(0:nlevs-1,-1:nfine,0:Nspec))
+      allocate(beta_old(0:nlevs-1,-1:nfine,nscal))
+      allocate(beta_new(0:nlevs-1,-1:nfine,nscal))
+      allocate(mu_dummy(0:nlevs-1,-1:nfine))
 
 !     cell-centered, no ghost cells
-      allocate(   divu_old(0:nlevs-1,0:nx-1))
-      allocate(   divu_new(0:nlevs-1,0:nx-1))
-      allocate(       dsdt(0:nlevs-1,0:nx-1))
-      allocate(  const_src(0:nlevs-1,0:nx-1,nscal))
-      allocate(lin_src_old(0:nlevs-1,0:nx-1,nscal))
-      allocate(lin_src_new(0:nlevs-1,0:nx-1,nscal))
+      allocate(   divu_old(0:nlevs-1,0:nfine-1))
+      allocate(   divu_new(0:nlevs-1,0:nfine-1))
+      allocate(       dsdt(0:nlevs-1,0:nfine-1))
+      allocate(  const_src(0:nlevs-1,0:nfine-1,nscal))
+      allocate(lin_src_old(0:nlevs-1,0:nfine-1,nscal))
+      allocate(lin_src_new(0:nlevs-1,0:nfine-1,nscal))
 
 !     nodal, 1 ghost cell
-      allocate(press_new(0:nlevs-1,-1:nx+1))
-      allocate(press_old(0:nlevs-1,-1:nx+1))
+      allocate(press_new(0:nlevs-1,-1:nfine+1))
+      allocate(press_old(0:nlevs-1,-1:nfine+1))
 
       allocate(lo(0:nlevs-1))
       allocate(hi(0:nlevs-1))

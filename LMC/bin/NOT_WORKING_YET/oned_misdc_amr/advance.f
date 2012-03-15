@@ -7,37 +7,36 @@
 
       include 'spec.h'
 
-      real*8   vel_old(-2:nx+1)
-      real*8   vel_new(-2:nx+1)
-      real*8  scal_new(-2:nx+1,nscal)
-      real*8  scal_old(-2:nx+1,nscal)
-      real*8       I_R(-1:nx  ,0:Nspec)
-      real*8 press_old(-1:nx+1)
-      real*8 press_new(-1:nx+1)
-      real*8  divu_old(0 :nx-1)
-      real*8  divu_new(0 :nx-1)
-      real*8      dsdt(0 :nx-1)
-      real*8  beta_old(-1:nx  ,nscal)
-      real*8  beta_new(-1:nx  ,nscal)
-      real*8 dx
+      real*8   vel_old(0:nlevs-1,-2:nfine+1)
+      real*8   vel_new(0:nlevs-1,-2:nfine+1)
+      real*8  scal_new(0:nlevs-1,-2:nfine+1,nscal)
+      real*8  scal_old(0:nlevs-1,-2:nfine+1,nscal)
+      real*8       I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
+      real*8 press_old(0:nlevs-1,-1:nfine+1)
+      real*8 press_new(0:nlevs-1,-1:nfine+1)
+      real*8  divu_old(0:nlevs-1, 0:nfine-1)
+      real*8  divu_new(0:nlevs-1, 0:nfine-1)
+      real*8      dsdt(0:nlevs-1, 0:nfine-1)
+      real*8  beta_old(0:nlevs-1,-1:nfine  ,nscal)
+      real*8  beta_new(0:nlevs-1,-1:nfine  ,nscal)
+      real*8 dx(0:nlevs-1), dt(0:nlevs-1)
       real*8 time
       integer lo(0:nlevs-1), hi(0:nlevs-1)
       integer bc(0:nlevs-1,2)
 
 ! local
-      real*8    macvel(0 :nx  )
-      real*8   veledge(0 :nx  )
-      real*8  divu_tmp(0 :nx-1)
-      real*8    mu_old(-1:nx)
-      real*8    mu_new(-1:nx)
-      real*8        gp(-1:nx)
-      real*8   rhohalf(0 :nx-1)
-      real*8      visc(-1:nx)
-      real*8     alpha(0 :nx-1)
-      real*8   vel_Rhs(0 :nx-1)
-      real*8  I_R_divu(-1:nx  ,0:Nspec)
+      real*8    macvel(0:nlevs-1, 0:nfine  )
+      real*8   veledge(0:nlevs-1, 0:nfine  )
+      real*8  divu_tmp(0:nlevs-1, 0:nfine-1)
+      real*8    mu_old(0:nlevs-1,-1:nfine)
+      real*8    mu_new(0:nlevs-1,-1:nfine)
+      real*8        gp(0:nlevs-1,-1:nfine)
+      real*8   rhohalf(0:nlevs-1, 0:nfine-1)
+      real*8      visc(0:nlevs-1,-1:nfine)
+      real*8     alpha(0:nlevs-1, 0:nfine-1)
+      real*8   vel_Rhs(0:nlevs-1, 0:nfine-1)
+      real*8  I_R_divu(0:nlevs-1,-1:nfine  ,0:Nspec)
 
-      real*8 dt
       real*8 vel_theta
       real*8 WDOTK(Nspec), C(Nspec), RWRK
       
@@ -47,21 +46,22 @@
 
 c     
 c*****************************************************************
-c     Create MAC velocities.
+c     Level 0 Advance
 c*****************************************************************
 c     
-      do i=lo(0),hi(0)
-         gp(i) = (press_old(i+1) - press_old(i)) / dx
+      do i=lo(0)-1,hi(0)+1
+         gp(0,i) = (press_old(0,i+1) - press_old(0,i)) / dx(0)
       enddo
 
       print *,'... predict edge velocities'
       call pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt)
 
-      call compute_pthermo(scal_old,scal_old(:,RhoRT))
+      call compute_pthermo(scal_old,scal_old(0,:,RhoRT))
 
-      divu_tmp(:) = divu_old(:) + 0.5d0*dt*dsdt(:)
+      divu_tmp(0,:) = divu_old(0,:) + 0.5d0*dt(0)*dsdt(0,:)
 
-      call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt,
+      call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),divu_tmp(0,:),
+     $              macvel(0,:),dx(0),dt(0),
      $              lo(0),hi(0),bc(0,:))
 
       call macproj(macvel,divu_tmp,dx,lo(0),hi(0))
@@ -100,11 +100,11 @@ c     SDC advance
          ! value at t^{n+1}
          do i=0,nx-1
             do n=1,Nspec
-               C(n) = scal_new(i,FirstSpec+n-1)*invmwt(n)
+               C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
             end do
-            call CKWC(scal_new(i,Temp),C,IWRK,RWRK,WDOTK)
+            call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
             do n=1,Nspec
-               I_R_divu(i,n) = WDOTK(n)*mwt(n)
+               I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
             end do
          end do
 
@@ -117,8 +117,9 @@ c                   lambda      (for temperature)
       call calc_divu(scal_new,beta_new,I_R_divu,divu_new,dx)
 
       do i = 0,nx-1
-         rhohalf(i) = 0.5d0*(scal_old(i,Density)+scal_new(i,Density))
-         dsdt(i) = (divu_new(i) - divu_old(i)) / dt
+         rhohalf(0,i) = 
+     $        0.5d0*(scal_old(0,i,Density)+scal_new(0,i,Density))
+         dsdt(0,i) = (divu_new(0,i) - divu_old(0,i)) / dt(0)
       enddo
 
       print *,'... update velocities'
@@ -128,11 +129,11 @@ c                   lambda      (for temperature)
 C     get velocity visc terms to use as a forcing term for advection
       call get_vel_visc_terms(vel_old,mu_old,visc,dx)
       do i = 0, nx-1
-         visc(i) = visc(i)/scal_old(i,Density)
+         visc(0,i) = visc(0,i)/scal_old(0,i,Density)
       enddo
 
-      call vel_edge_states(vel_old,scal_old(:,Density),gp,
-     $                     macvel,veledge,dx,dt,visc)
+      call vel_edge_states(vel_old,scal_old(0,:,Density),gp,
+     $                     macvel,veledge,dx,dt,visc,lo(0),hi(0))
       
       call update_vel(vel_old,vel_new,gp,rhohalf,
      &                macvel,veledge,alpha,mu_old,
@@ -141,7 +142,7 @@ C     get velocity visc terms to use as a forcing term for advection
       if (is_first_initial_iter .eq. 1) then
          call get_vel_visc_terms(vel_old,mu_old,visc,dx)
          do i = 0, nx-1
-            vel_new(i) = vel_new(i) + visc(i)*dt/rhohalf(i)
+            vel_new(0,i) = vel_new(0,i) + visc(0,i)*dt(0)/rhohalf(0,i)
          enddo
       else
          rho_flag = 1
@@ -149,9 +150,9 @@ C     get velocity visc terms to use as a forcing term for advection
      $                 dx,dt,1,vel_theta,rho_flag,.true.,time)
       endif
 
-      call compute_pthermo(scal_new,scal_new(:,RhoRT))
+      call compute_pthermo(scal_new,scal_new(0,:,RhoRT))
 
-      call add_dpdt_nodal(scal_new,scal_new(:,RhoRT),divu_new,
+      call add_dpdt_nodal(scal_new,scal_new(0,:,RhoRT),divu_new,
      &                    vel_new,dx,dt,lo(0),hi(0),bc(0,:))
 
       print *,'...nodal projection...'
@@ -168,8 +169,8 @@ C     get velocity visc terms to use as a forcing term for advection
       real*8 scal_new(-2:nx+1,nscal)
       real*8 scal_old(-2:nx+1,nscal)
       real*8      I_R(-1:nx  ,0:Nspec)
-      real*8   macvel(0 :nx  )
-      real*8     aofs(0 :nx-1,nscal)
+      real*8   macvel( 0:nx  )
+      real*8     aofs( 0:nx-1,nscal)
       real*8 beta_old(-1:nx  ,nscal)
       real*8 beta_new(-1:nx  ,nscal)
       real*8 mu_dummy(-1:nx)
@@ -561,8 +562,8 @@ C----------------------------------------------------------------
       real*8 scal_new(-2:nx+1,nscal)
       real*8 scal_old(-2:nx+1,nscal)
       real*8      I_R(-1:nx  ,0:Nspec)
-      real*8   macvel(0 :nx  )
-      real*8     aofs(0 :nx-1,nscal)
+      real*8   macvel( 0:nx  )
+      real*8     aofs( 0:nx-1,nscal)
       real*8 beta_old(-1:nx  ,nscal)
       real*8 beta_new(-1:nx  ,nscal)
       real*8 mu_dummy(-1:nx)
