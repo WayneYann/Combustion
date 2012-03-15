@@ -5,9 +5,9 @@
 #amr.plotfile_on_restart=1
 #amr.regrid_on_restart=1
 
-particles.particle_init_file = dogmeat.particles2d
-#particles.particle_restart_file = dogmeat.particles
-#particles.restart_from_nonparticle_chkfile = 1
+#particles.particle_init_file = dogmeat.particles2d
+particles.particle_restart_file = dogmeat.particles2d
+particles.restart_from_nonparticle_chkfile = 1
 particles.timestamp_dir = Timestamps
 particles.pverbose = 2
 ht.do_curvature_sample = false
