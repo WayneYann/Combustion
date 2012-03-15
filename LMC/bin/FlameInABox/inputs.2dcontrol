@@ -5,16 +5,17 @@
 #amr.plotfile_on_restart=1
 #amr.regrid_on_restart=1
 
-#particles.particle_init_file = dogmeat.particles
+particles.particle_init_file = dogmeat.particles2d
 #particles.particle_restart_file = dogmeat.particles
 #particles.restart_from_nonparticle_chkfile = 1
-#particles.timestamp_dir = Timestamps
-#particles.timestamp_indices = 0 1 3 4 5 6 7 8 9 10 11 12 14
-#particles.timestamp_names = u v rhoY(H2) rhoY(H) rhoY(O) rhoY(O2) rhoY(OH) rhoY(H2O) rhoY(HO2) rhoY(H2O2) rhoY(N2) rhoH temp
-#particles.pverbose = 2
+particles.timestamp_dir = Timestamps
+particles.pverbose = 2
+ht.do_curvature_sample = false
+particles.timestamp_indices = 0 1 3 4 5 6 7 8 9 10 11 12 14
+#particles.timestamp_indices = 0 1 3 4 5 6 7 8 9 10 11 12 14 16
 
 ns.do_active_control = 0
-ns.do_active_control = 1
+#ns.do_active_control = 1
 mg.smooth_on_cg_unstable=1
 
 max_step  = 10000

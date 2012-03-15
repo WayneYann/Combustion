@@ -661,6 +661,9 @@ protected:
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
     static Array<Real> typical_values;
+
+    static bool        do_curvature_sample;
+
 };
 
 #endif /*_HeatTransfer_H_*/

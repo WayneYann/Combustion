@@ -166,6 +166,9 @@ Array<int>  HeatTransfer::mcdd_nu1;
 Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
 
+bool        HeatTransfer::do_curvature_sample;
+
+
 #ifdef PARTICLES
 
 namespace
@@ -281,6 +284,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
 
     HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
+    HeatTransfer::do_curvature_sample       = false;
 
 #ifdef PARTICLES
     timestamp_dir                    = "Timestamps";
@@ -501,6 +505,10 @@ HeatTransfer::Initialize ()
     // Used in post_restart() to write out the file of particles.
     //
     ppp.query("particle_output_file", particle_output_file);
+
+    ParmParse ppht("ht");
+    ppht.query("do_curvature_sample", do_curvature_sample);
+
 #endif
         
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -5902,13 +5910,70 @@ HeatTransfer::advance (Real time,
 
             if (!timestamp_dir.empty())
             {
-                MultiFab tmf(mf.boxArray(), mf.nComp(), 2);
+                int pComp = (do_curvature_sample ?  mf.nComp()+2 : mf.nComp());
+                int SmTcomp = mf.nComp();
+                int MCcomp = SmTcomp + 1;
+                
+                MultiFab tmf(mf.boxArray(), pComp, 2);
 
                 for (FillPatchIterator fpi(*this,tmf,2,curr_time,State_Type,0,tmf.nComp());
                      fpi.isValid();
                      ++fpi)
                 {
                     tmf[fpi.index()].copy(fpi());
+                    if (do_curvature_sample)
+                    {
+                        tmf[fpi.index()].setVal(0,MCcomp,1); // Curvature in grow cells will be zero
+                    }
+                }
+
+                if (do_curvature_sample)
+                {
+                    int nTcomp = 1;
+                    int num_smooth_pre = 3;
+
+                    MultiFab::Copy(tmf,tmf,Temp,SmTcomp,nTcomp,1); // Fillpatched grow cell T good
+
+                    for (int i=0; i<num_smooth_pre; ++i)
+                    {
+                        // Fix up fine-fine and periodic
+                        tmf.FillBoundary(SmTcomp,nTcomp);
+                        bool do_corners = true; // actually only need corners on last one, but this is simpler
+                        geoms[lev].FillPeriodicBoundary(tmf,SmTcomp,nTcomp,do_corners);
+                        
+                        BL_ASSERT(nTcomp==1); // FORT_SMOOTH only knows about a single component, 
+                        for (MFIter mfi(tmf); mfi.isValid(); ++mfi)
+                        {
+                            const Box& box = mfi.validbox();
+                            FORT_SMOOTH(box.loVect(),box.hiVect(),
+                                        tmf[mfi].dataPtr(SmTcomp),
+                                        ARLIM(tmf[mfi].loVect()),ARLIM(tmf[mfi].hiVect()),
+                                        tmf.dataPtr(MCcomp),
+                                        ARLIM(tmf[mfi].loVect()),ARLIM(tmf[mfi].hiVect()));
+                        }
+                        
+                        // Set result back into slot for smoothed T
+                        MultiFab::Copy(tmf,tmf,MCcomp,SmTcomp,nTcomp,0);
+                    }
+
+                    tmf.FillBoundary(SmTcomp,nTcomp);
+                    geoms[lev].FillPeriodicBoundary(tmf,SmTcomp,nTcomp,do_corners);
+                    const Real* dx = geom.CellSize();
+
+                    FArrayBox nWork;
+                    for (MFIter mfi(tmf); mfi.isValid(); ++mfi)
+                    {
+                        FArrayBox& s = tmf[mfi];
+                        const Box& box = mfi.validbox();
+                        const Box nodebox = BoxLib::surroundingNodes(box);
+                        nWork.resize(nodebox,BL_SPACEDIM);
+                        
+                        FORT_MCURVE(box.loVect(),box.hiVect(),
+                                    s.dataPtr(SmTcomp),ARLIM(s.loVect()),ARLIM(s.hiVect()),
+                                    s.dataPtr(MCcomp),ARLIM(s.loVect()),ARLIM(s.hiVect()),
+                                    nWork.dataPtr(),ARLIM(nWork.loVect()),ARLIM(nWork.hiVect()),
+                                    dx.dataPtr());
+                    }
                 }
 
                 std::string basename = timestamp_dir;

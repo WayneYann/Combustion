@@ -29,6 +29,7 @@
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #    define FORT_GETTYPICALVALS            gettypvals
 #    define FORT_PART_CNT_ERR              particlecnterr
+#    define FORT_MCURVE                    mcurve
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -57,6 +58,7 @@
 #    define FORT_CONSERVATIVE_T_FLOOR      CONSTFLOOR
 #    define FORT_GETTYPICALVALS            GETTYPVALS
 #    define FORT_PART_CNT_ERR              PARTICLECNTERR
+#    define FORT_MCURVE                    MCURVE
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -84,6 +86,7 @@
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor
 #    define FORT_GETTYPICALVALS            gettypvals
 #    define FORT_PART_CNT_ERR              particlecnterr
+#    define FORT_MCURVE                    mcurve
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -111,6 +114,7 @@
 #    define FORT_CONSERVATIVE_T_FLOOR      constfloor_
 #    define FORT_GETTYPICALVALS            gettypvals_
 #    define FORT_PART_CNT_ERR              particlecnterr_
+#    define FORT_MCURVE                    mcurve_
 #  endif
 
 #include <ArrayLim.H>
@@ -348,6 +352,14 @@ extern "C" {
                            const Real* dx, const Real* xlo,
                            const Real* prob_lo, const Real* time,
                            const int* level);
+
+    void FORT_MCURVE(const int* lo, const int* hi,
+                     const Real* T, ARLIM_P(Tlo),  ARLIM_P(Thi),
+                     Real*       K, ARLIM_P(Klo),  ARLIM_P(Khi),
+                     Real*      nW, ARLIM_P(nwlo), ARLIM_P(nwhi),
+                     const Real* delta);
+
+
 }
 #endif
 

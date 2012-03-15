@@ -1674,3 +1674,57 @@ c
       end do
 
       end subroutine
+
+      subroutine FORT_MCURVE(lo, hi, T, DIMS(T), curv, DIMS(curv),
+     &     wrk, DIMS(wrk), delta)
+      implicit none
+      integer lo(SDIM), hi(SDIM)
+      integer DIMDEC(T)
+      integer DIMDEC(curv)
+      integer DIMDEC(wrk)
+      REAL_T    T(DIMV(T))
+      REAL_T curv(DIMV(curv))
+      REAL_T wrk(DIMV(wrk),SDIM)
+      REAL_T delta(SDIM)
+
+      integer i,j,k,n,ii,jj,kk
+      REAL_T mag,gTx,gTy,gTz,dxi(SDIM)
+
+c     Fill normal on nodes (assumes 1 grow cell properly filled)
+
+      REAL_T Tx,Ty,Tz,Txx,Tyy,Tzz,Txy,Tyz,Txz,eps,tdxI(3),dxSqI(3), A,B
+      
+      eps = 1.d-8
+
+      do i=1,3
+         tdxI(i) =  one / (two*delta(i))
+         dxSqI(i) = one / (delta(i)*delta(i))
+      enddo
+
+      do k = lo(3),hi(3)
+         do j = lo(2),hi(2)
+            do i = lo(1),hi(1)
+
+               Tx = tdxI(1)*(T(i+1,j,k) - T(i-1,j,k))
+               Ty = tdxI(2)*(T(i,j+1,k) - T(i,j-1,k))
+               Tz = tdxI(3)*(T(i,j,k+1) - T(i,j,k-1))
+
+               Txx = dxSqI(1)*(T(i+1,j,k) - two*T(i,j,k) + T(i-1,j,k))
+               Tyy = dxSqI(2)*(T(i,j+1,k) - two*T(i,j,k) + T(i,j-1,k))
+               Tzz = dxSqI(3)*(T(i,j,k+1) - two*T(i,j,k) + T(i,j,k-1))
+
+               Txy = tdxI(1)*tdxI(2)*(T(i+1,j+1,k) - T(i-1,j+1,k) - T(i+1,j-1,k) + T(i-1,j-1,k))
+               Txz = tdxI(1)*tdxI(3)*(T(i+1,j,k+1) - T(i-1,j,k+1) - T(i+1,j,k-1) + T(i-1,j,k-1))
+               Tyz = tdxI(2)*tdxI(3)*(T(i,j+1,k+1) - T(i,j-1,k+1) - T(i,j+1,k-1) + T(i,j-1,k-1))
+
+               mag = max(1.0d-12, SQRT(Tx*Tx + Ty*Ty + Tz*Tz))
+
+               curv(i,j,k) = -half*(Txx + Tyy + Tzz
+     &              - ( Tx*(Tx*Txx + Ty*Txy + Tz*Txz)
+     &                + Ty*(Tx*Txy + Ty*Tyy + Tz*Tyz)
+     &                + Tz*(Tx*Txz + Ty*Tyz + Tz*Tzz) )/mag**2 )/mag
+            end do
+         end do
+      end do
+      end
+

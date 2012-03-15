@@ -1226,3 +1226,52 @@ c
       end do
 
       end subroutine
+
+      subroutine FORT_MCURVE(lo, hi, T, DIMS(T), curv, DIMS(curv),
+     &     wrk, DIMS(wrk), delta)
+      implicit none
+      integer lo(SDIM), hi(SDIM)
+      integer DIMDEC(T)
+      integer DIMDEC(curv)
+      integer DIMDEC(wrk)
+      REAL_T    T(DIMV(T))
+      REAL_T curv(DIMV(curv))
+      REAL_T wrk(DIMV(wrk),SDIM)
+      REAL_T delta(SDIM)
+
+      integer i,j,k,n,ii,jj
+      REAL_T mag,gTx,gTy,dxi(SDIM)
+
+c     Fill normal on nodes (assumes 1 grow cell properly filled)
+
+      do j = lo(2),hi(2)+1
+         do i = lo(1),hi(1)+1
+
+            gTx = (T(i,j) + T(i,j-1) - T(i-1,j) - T(i-1,j-1))/(two*delta(1))
+            gTy = (T(i,j) - T(i,j-1) + T(i-1,j) - T(i-1,j-1))/(two*delta(2))
+
+            mag = SQRT(gTx*gTx+gTy*gTy)
+            
+c     Note: This sets the normal to point into the FUEL
+            if (mag.eq.zero) then
+               wrk(i,j,1) = zero
+               wrk(i,j,2) = zero
+            else
+               wrk(i,j,1) = -gTx/mag
+               wrk(i,j,2) = -gTy/mag
+            endif
+         end do
+      end do
+c     Get curvature at centers from nodal normal, get normal at centers
+      do j = lo(2),hi(2)
+         do i = lo(1),hi(1)
+
+            curv(i,j) = half*((wrk(i+1,j+1,1)-wrk(i,j+1,1))/delta(1)
+     &           +            (wrk(i+1,j  ,1)-wrk(i,j  ,1))/delta(1)
+     &           +            (wrk(i+1,j+1,2)-wrk(i+1,j,2))/delta(2)
+     &           +            (wrk(i  ,j+1,2)-wrk(i  ,j,2))/delta(2))
+         end do
+      end do
+      end
+
+
