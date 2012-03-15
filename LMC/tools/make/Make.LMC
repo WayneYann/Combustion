@@ -29,7 +29,7 @@ INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
 
 ifeq ($(USE_F90_SOLVERS), TRUE)
- DEFINES += -DMG_USE_F90_SOLVERS
+  DEFINES += -DMG_USE_F90_SOLVERS
 
   include $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG/Make.package
   INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG
@@ -51,12 +51,8 @@ else
 # Hack in some LMC stuff
 
 ifeq (${USE_FLCTS}, TRUE)
- DEFINES += -DBL_DO_FLCT
+  DEFINES += -DBL_DO_FLCT
   include ${COMBUSTION_DIR}/LMC/tools/make/flucts.mk
-endif
-
-ifeq ($(USE_F90_SOLVERS), TRUE)
- DEFINES += -DMG_USE_F90_SOLVERS
 endif
 
 ifeq ($(USE_VELOCITY), TRUE)
@@ -87,6 +83,11 @@ ifeq (${CHEMISTRY_MODEL}, GRI30)
   CEXE_sources += grimech30.cpp
   vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri/PMFs
   vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri
+endif
+ifeq (${CHEMISTRY_MODEL}, LIDRYERMOD)
+  CEXE_sources += LiDryerMOD.cpp
+  vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/LiDryer/PMFs
+  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/LiDryer
 endif
 
 # Enable time-dependent turbulence forcing term
