@@ -41,18 +41,20 @@
       integer, allocatable :: lo(:), hi(:)
       integer, allocatable :: bc(:,:)
 
+      real*8, allocatable :: dx(:), dt(:)
+
       real*8 problo,probhi
-      real*8 dx,time
+      real*8 time
       real*8 init_shrink
       real*8 stop_time
-      real*8 dt,fixed_dt
+      real*8 fixed_dt
       real*8 Patm
 
       integer n,divu_iter,init_iter
 
       character chkfile*(16)
 
-      namelist /fortin/ nx,nlevs,rr,nsteps,stop_time,
+      namelist /fortin/ nx,nlevs,rr,subcycling,nsteps,stop_time,
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
@@ -71,6 +73,7 @@ c     Set defaults, change with namelist
       nx = 256
       nlevs = 1
       rr = 2
+      subcycling = .false.
       nsteps = 10
       stop_time = 1.e4
       problo = 0.0
@@ -148,8 +151,12 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       allocate( press_new(-1:nx+1))
       allocate( press_old(-1:nx+1))
 
-      allocate(lo(0:nlevs-1),hi(0:nlevs-1))
+      allocate(lo(0:nlevs-1))
+      allocate(hi(0:nlevs-1))
       allocate(bc(0:nlevs-1,2))
+
+      allocate(dx(0:nlevs-1))
+      allocate(dt(0:nlevs-1))
 
 !     only need to zero these so plotfile has sensible data
       divu_old = 0.d0
@@ -158,23 +165,46 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
 !     must zero this or else RHS in mac project could be undefined
       dsdt = 0.d0
       
-      dx = (probhi-problo)/DBLE(nx)
+!     initialize dx
+      dx(0) = (probhi-problo)/DBLE(nx)
+      do n=1,nlevs-1
+         dx(n) = dx(n-1) / dble(rr)
+      end do
 
-      if (fixed_dt > 0) then
-         dt = fixed_dt
-      else
+!     initialize dt
+      if (fixed_dt .le. 0.d0) then
          print*,'Error: must specify fixed_dt'
+         stop
+      else
+         dt(0) = fixed_dt
+         do n=1,nlevs-1
+            if (subcycling) then
+               dt(n) = dt(n-1) / dble(rr)
+            else
+               dt(n) = dt(n-1)
+            end if
+         end do
+      end if
+
+!     initialize lo and hi at each level
+      lo(0) = 0
+      hi(0) = nx-1
+!     for now, the fine grid covers central 50% of domain and does not move
+      if (nlevs .gt. 1) then
+         lo(1) = (nx/4)*rr
+         hi(1) = (3*nx/4)*rr - 1
+      end if
+      if (nlevs .gt. 2) then
+         print*,'Error: grids only specified for nlevs = 2'
          stop
       end if
 
-      lo(0) = 0
-      hi(0) = nx-1
-
+!     initialize boundary conditions
 !     0=interior; 1=inflow; 2=outflow
       bc(0,1) = 1
       bc(0,2) = 2
       do n=1,nlevs-1
-         bc(n,:) = 0
+         bc(n,1:2) = 0
       end do
       
       if ( chkfile .ne. 'null') then
@@ -331,7 +361,7 @@ c     update state, time
          divu_old = divu_new
          press_old = press_new
 
-         time = time + dt
+         time = time + dt(0)
 
          if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
      &        nsteps_taken.eq.nsteps) then 

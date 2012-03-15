@@ -83,3 +83,7 @@ c     LMC alg stuff
       integer nx,nx_f,nlevs,rr
       common / amri / nx,nx_f,nlevs,rr
       save /amri/
+
+      logical subcycling
+      common /amrl / subcycling
+      save /amrl/
