@@ -14,32 +14,31 @@
       integer num_init_iters
 
 !     cell-centered, 2 ghost cells
-      real*8, allocatable ::   vel_new(:)
-      real*8, allocatable ::   vel_old(:)
-      real*8, allocatable ::  scal_new(:,:)
-      real*8, allocatable ::  scal_old(:,:)
-      real*8, allocatable :: scal_hold(:,:)
+      real*8, allocatable ::   vel_new(:,:)
+      real*8, allocatable ::   vel_old(:,:)
+      real*8, allocatable ::  scal_new(:,:,:)
+      real*8, allocatable ::  scal_old(:,:,:)
+      real*8, allocatable :: scal_hold(:,:,:)
 
 !     cell-centered, 1 ghost cell
-      real*8, allocatable ::      I_R(:,:)
-      real*8, allocatable :: beta_old(:,:)
-      real*8, allocatable :: beta_new(:,:)
-      real*8, allocatable :: mu_dummy(:)
+      real*8, allocatable ::      I_R(:,:,:)
+      real*8, allocatable :: beta_old(:,:,:)
+      real*8, allocatable :: beta_new(:,:,:)
+      real*8, allocatable :: mu_dummy(:,:)
 
 !     cell-centered, no ghost cells
-      real*8, allocatable ::    divu_old(:)
-      real*8, allocatable ::    divu_new(:)
-      real*8, allocatable ::        dsdt(:)
-      real*8, allocatable ::   const_src(:,:)
-      real*8, allocatable :: lin_src_old(:,:)
-      real*8, allocatable :: lin_src_new(:,:)
+      real*8, allocatable ::    divu_old(:,:)
+      real*8, allocatable ::    divu_new(:,:)
+      real*8, allocatable ::        dsdt(:,:)
+      real*8, allocatable ::   const_src(:,:,:)
+      real*8, allocatable :: lin_src_old(:,:,:)
+      real*8, allocatable :: lin_src_new(:,:,:)
 
 !     nodal, 1 ghost cell
-      real*8, allocatable :: press_new(:)
-      real*8, allocatable :: press_old(:)
+      real*8, allocatable :: press_new(:,:)
+      real*8, allocatable :: press_old(:,:)
 
-      integer, allocatable :: lo(:), hi(:)
-      integer, allocatable :: bc(:,:)
+      integer, allocatable :: lo(:), hi(:), bc(:,:)
 
       real*8, allocatable :: dx(:), dt(:)
 
@@ -115,7 +114,7 @@ c     Set defaults, change with namelist
 
 c     number of cells at finest level
 c     assumes rr is the same between all levels
-      nx_f = nx * rr**(nlevs-1)
+      nfine = nx * rr**(nlevs-1)
 
 c     Initialize chem/tran database and nspec
       call initchem()
@@ -127,29 +126,29 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       call probinit(problo,probhi)
 
 !     cell-centered, 2 ghost cells
-      allocate(   vel_new(-2:nx+1))
-      allocate(   vel_old(-2:nx+1))
-      allocate(  scal_new(-2:nx+1,nscal))
-      allocate(  scal_old(-2:nx+1,nscal))
-      allocate( scal_hold(-2:nx+1,nscal))
+      allocate(  vel_new(0:nlevs-1,-2:nx+1))
+      allocate(  vel_old(0:nlevs-1,-2:nx+1))
+      allocate( scal_new(0:nlevs-1,-2:nx+1,nscal))
+      allocate( scal_old(0:nlevs-1,-2:nx+1,nscal))
+      allocate(scal_hold(0:nlevs-1,-2:nx+1,nscal))
 
 !     cell-centered, 1 ghost cell
-      allocate(      I_R(-1:nx,0:Nspec))
-      allocate( beta_old(-1:nx,nscal))
-      allocate( beta_new(-1:nx,nscal))
-      allocate( mu_dummy(-1:nx))
+      allocate(     I_R(0:nlevs-1,-1:nx,0:Nspec))
+      allocate(beta_old(0:nlevs-1,-1:nx,nscal))
+      allocate(beta_new(0:nlevs-1,-1:nx,nscal))
+      allocate(mu_dummy(0:nlevs-1,-1:nx))
 
 !     cell-centered, no ghost cells
-      allocate(    divu_old(0:nx-1))
-      allocate(    divu_new(0:nx-1))
-      allocate(        dsdt(0:nx-1))
-      allocate(   const_src(0:nx-1,nscal))
-      allocate( lin_src_old(0:nx-1,nscal))
-      allocate( lin_src_new(0:nx-1,nscal))
+      allocate(   divu_old(0:nlevs-1,0:nx-1))
+      allocate(   divu_new(0:nlevs-1,0:nx-1))
+      allocate(       dsdt(0:nlevs-1,0:nx-1))
+      allocate(  const_src(0:nlevs-1,0:nx-1,nscal))
+      allocate(lin_src_old(0:nlevs-1,0:nx-1,nscal))
+      allocate(lin_src_new(0:nlevs-1,0:nx-1,nscal))
 
 !     nodal, 1 ghost cell
-      allocate( press_new(-1:nx+1))
-      allocate( press_old(-1:nx+1))
+      allocate(press_new(0:nlevs-1,-1:nx+1))
+      allocate(press_old(0:nlevs-1,-1:nx+1))
 
       allocate(lo(0:nlevs-1))
       allocate(hi(0:nlevs-1))
@@ -221,7 +220,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          at_nstep = at_nstep + 1
 
 c     needed for seed to EOS after first strang_chem call
-         scal_new(:,Temp) = scal_old(:,Temp)
+         scal_new(:,:,Temp) = scal_old(:,:,Temp)
                   
       else
          
@@ -234,7 +233,7 @@ C sets I_R to zero
          call initdata(vel_old,scal_old,I_R,dx)
 
 c     needed for seed to EOS after first strang_chem call
-         scal_new(:,Temp) = scal_old(:,Temp)
+         scal_new(:,:,Temp) = scal_old(:,:,Temp)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,99999,time)
@@ -248,7 +247,7 @@ c     needed for seed to EOS after first strang_chem call
 
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old,scal_old(0:,Density),divu_old,
+            call project(vel_old,scal_old(:,0:,Density),divu_old,
      $                   press_old,press_new,dx,-1.d0,time)
 
          end if
@@ -273,7 +272,7 @@ c     return zero pressure
      $                       lin_src_new,I_R,dt*0.5d0,dx,time)
 
 c     reset temperature just in case strang_chem call is not well poased
-            scal_new(:,Temp) = scal_old(:,Temp)
+            scal_new(:,:,Temp) = scal_old(:,:,Temp)
 
             call calc_divu(scal_old,beta_old,I_R,divu_old,dx)
 
@@ -281,7 +280,7 @@ c     reset temperature just in case strang_chem call is not well poased
             
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old,scal_old(0:,Density),divu_old,
+            call project(vel_old,scal_old(:,0:,Density),divu_old,
      $                   press_old,press_new,dx,-1.d0,time)
 
          enddo

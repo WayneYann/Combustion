@@ -12,8 +12,8 @@ c     Initialize some values
       subroutine calc_diffusivities(scal, beta, mu, dx, time)
       implicit none
       include 'spec.h'
-      double precision scal(-2:nx+1,*)
-      double precision beta(-1:nx,*)
+      double precision scal(-2:nx+1,nscal)
+      double precision beta(-1:nx  ,nscal)
       double precision mu(-1:nx)
       double precision time, dx
 
@@ -712,7 +712,7 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       subroutine get_hmix_given_T_RhoY(scal,dx)
       implicit none
       include 'spec.h'
-      real*8 scal(-2:nx+1,*)
+      real*8 scal(-2:nx+1,nscal)
       real*8 dx
       
       integer i,n,IWRK

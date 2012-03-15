@@ -3,11 +3,11 @@
 
       implicit none
       include 'spec.h'
-      real*8 scal(-2:nx+1,*)
-      real*8 beta(-1:nx  ,*)
-      real*8 visc(-1:nx  ,*)
-      real*8 spec_flux_lo(0:nx-1,*)
-      real*8 spec_flux_hi(0:nx-1,*)
+      real*8 scal(-2:nx+1,nscal)
+      real*8 beta(-1:nx  ,nscal)
+      real*8 visc(-1:nx  ,Nspec)
+      real*8 spec_flux_lo(0:nx-1,Nspec)
+      real*8 spec_flux_hi(0:nx-1,Nspec)
       real*8 dx
       
       integer i,n,is
