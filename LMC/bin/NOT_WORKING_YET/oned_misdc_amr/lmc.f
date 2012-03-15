@@ -14,50 +14,48 @@
       integer num_init_iters
 
 !     cell-centered, 2 ghost cells
-      real*8, allocatable ::   vel_new(:)
-      real*8, allocatable ::   vel_old(:)
-      real*8, allocatable ::  scal_new(:,:)
-      real*8, allocatable ::  scal_old(:,:)
-      real*8, allocatable :: scal_hold(:,:)
+      real*8, allocatable ::   vel_new(:,:)
+      real*8, allocatable ::   vel_old(:,:)
+      real*8, allocatable ::  scal_new(:,:,:)
+      real*8, allocatable ::  scal_old(:,:,:)
+      real*8, allocatable :: scal_hold(:,:,:)
 
 !     cell-centered, 1 ghost cell
-      real*8, allocatable ::      I_R(:,:)
-      real*8, allocatable :: beta_old(:,:)
-      real*8, allocatable :: beta_new(:,:)
-      real*8, allocatable :: mu_dummy(:)
+      real*8, allocatable ::      I_R(:,:,:)
+      real*8, allocatable :: beta_old(:,:,:)
+      real*8, allocatable :: beta_new(:,:,:)
+      real*8, allocatable :: mu_dummy(:,:)
 
 !     cell-centered, no ghost cells
-      real*8, allocatable ::    divu_old(:)
-      real*8, allocatable ::    divu_new(:)
-      real*8, allocatable ::        dsdt(:)
-      real*8, allocatable ::   const_src(:,:)
-      real*8, allocatable :: lin_src_old(:,:)
-      real*8, allocatable :: lin_src_new(:,:)
+      real*8, allocatable ::    divu_old(:,:)
+      real*8, allocatable ::    divu_new(:,:)
+      real*8, allocatable ::        dsdt(:,:)
+      real*8, allocatable ::   const_src(:,:,:)
+      real*8, allocatable :: lin_src_old(:,:,:)
+      real*8, allocatable :: lin_src_new(:,:,:)
 
 !     nodal, 1 ghost cell
-      real*8, allocatable :: press_new(:)
-      real*8, allocatable :: press_old(:)
+      real*8, allocatable :: press_new(:,:)
+      real*8, allocatable :: press_old(:,:)
+
+      integer, allocatable :: lo(:), hi(:), bc(:,:)
+
+      real*8, allocatable :: dx(:), dt(:)
 
       real*8 problo,probhi
-      real*8 dx,time
-      real*8 dt_init,dt_new
+      real*8 time
       real*8 init_shrink
-      real*8 change_max
-      real*8 local_change_max
       real*8 stop_time
-      real*8 cfl
-      real*8 cfl_used
-      real*8 umax
-      real*8 dt,fixed_dt
+      real*8 fixed_dt
       real*8 Patm
 
-      integer divu_iter,init_iter
+      integer n,divu_iter,init_iter
 
       character chkfile*(16)
 
-      namelist /fortin/ nx,nlevs,rr,nsteps,stop_time,cfl,
+      namelist /fortin/ nx,nlevs,rr,subcycling,nsteps,stop_time,
      $                  problo,probhi,chkfile,
-     $                  plot_int, chk_int, change_max,
+     $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
      $                  dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
@@ -74,15 +72,14 @@ c     Set defaults, change with namelist
       nx = 256
       nlevs = 1
       rr = 2
+      subcycling = .false.
       nsteps = 10
       stop_time = 1.e4
-      cfl = 0.5
       problo = 0.0
       probhi = 3.5
       chkfile = 'null'
       plot_int = 1
       chk_int = 1
-      change_max = 1.05d0
       init_shrink = 0.1d0
       flame_offset = 0.d0
       dpdt_factor = 0.d0
@@ -117,7 +114,7 @@ c     Set defaults, change with namelist
 
 c     number of cells at finest level
 c     assumes rr is the same between all levels
-      nx_f = nx * rr**(nlevs-1)
+      nfine = nx * rr**(nlevs-1)
 
 c     Initialize chem/tran database and nspec
       call initchem()
@@ -129,29 +126,36 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       call probinit(problo,probhi)
 
 !     cell-centered, 2 ghost cells
-      allocate(   vel_new(-2:nx+1))
-      allocate(   vel_old(-2:nx+1))
-      allocate(  scal_new(-2:nx+1,nscal))
-      allocate(  scal_old(-2:nx+1,nscal))
-      allocate( scal_hold(-2:nx+1,nscal))
+      allocate(  vel_new(0:nlevs-1,-2:nfine+1))
+      allocate(  vel_old(0:nlevs-1,-2:nfine+1))
+      allocate( scal_new(0:nlevs-1,-2:nfine+1,nscal))
+      allocate( scal_old(0:nlevs-1,-2:nfine+1,nscal))
+      allocate(scal_hold(0:nlevs-1,-2:nfine+1,nscal))
 
 !     cell-centered, 1 ghost cell
-      allocate(      I_R(-1:nx,0:Nspec))
-      allocate( beta_old(-1:nx,nscal))
-      allocate( beta_new(-1:nx,nscal))
-      allocate( mu_dummy(-1:nx))
+      allocate(     I_R(0:nlevs-1,-1:nfine,0:Nspec))
+      allocate(beta_old(0:nlevs-1,-1:nfine,nscal))
+      allocate(beta_new(0:nlevs-1,-1:nfine,nscal))
+      allocate(mu_dummy(0:nlevs-1,-1:nfine))
 
 !     cell-centered, no ghost cells
-      allocate(    divu_old(0:nx-1))
-      allocate(    divu_new(0:nx-1))
-      allocate(        dsdt(0:nx-1))
-      allocate(   const_src(0:nx-1,nscal))
-      allocate( lin_src_old(0:nx-1,nscal))
-      allocate( lin_src_new(0:nx-1,nscal))
+      allocate(   divu_old(0:nlevs-1,0:nfine-1))
+      allocate(   divu_new(0:nlevs-1,0:nfine-1))
+      allocate(       dsdt(0:nlevs-1,0:nfine-1))
+      allocate(  const_src(0:nlevs-1,0:nfine-1,nscal))
+      allocate(lin_src_old(0:nlevs-1,0:nfine-1,nscal))
+      allocate(lin_src_new(0:nlevs-1,0:nfine-1,nscal))
 
 !     nodal, 1 ghost cell
-      allocate( press_new(-1:nx+1))
-      allocate( press_old(-1:nx+1))
+      allocate(press_new(0:nlevs-1,-1:nfine+1))
+      allocate(press_old(0:nlevs-1,-1:nfine+1))
+
+      allocate(lo(0:nlevs-1))
+      allocate(hi(0:nlevs-1))
+      allocate(bc(0:nlevs-1,2))
+
+      allocate(dx(0:nlevs-1))
+      allocate(dt(0:nlevs-1))
 
 !     only need to zero these so plotfile has sensible data
       divu_old = 0.d0
@@ -160,17 +164,47 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
 !     must zero this or else RHS in mac project could be undefined
       dsdt = 0.d0
       
-      dx = (probhi-problo)/DBLE(nx)
+!     initialize dx
+      dx(0) = (probhi-problo)/DBLE(nx)
+      do n=1,nlevs-1
+         dx(n) = dx(n-1) / dble(rr)
+      end do
 
+!     initialize dt
+      if (fixed_dt .le. 0.d0) then
+         print*,'Error: must specify fixed_dt'
+         stop
+      else
+         dt(0) = fixed_dt
+         do n=1,nlevs-1
+            if (subcycling) then
+               dt(n) = dt(n-1) / dble(rr)
+            else
+               dt(n) = dt(n-1)
+            end if
+         end do
+      end if
+
+!     initialize lo and hi at each level
       lo(0) = 0
       hi(0) = nx-1
+!     for now, the fine grid covers central 50% of domain and does not move
+      if (nlevs .gt. 1) then
+         lo(1) = (nx/4)*rr
+         hi(1) = (3*nx/4)*rr - 1
+      end if
+      if (nlevs .gt. 2) then
+         print*,'Error: grids only specified for nlevs = 2'
+         stop
+      end if
 
+!     initialize boundary conditions
 !     0=interior; 1=inflow; 2=outflow
-      bc_lo(0) = 1
-      bc_hi(0) = 2
-
-!     only doing single-level advance for now
-      lev = 0
+      bc(0,1) = 1
+      bc(0,2) = 2
+      do n=1,nlevs-1
+         bc(n,1:2) = 0
+      end do
       
       if ( chkfile .ne. 'null') then
 
@@ -178,17 +212,15 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          
          call read_check(chkfile,vel_old,scal_old,press_old,
      $                   I_R,divu_old,dsdt,
-     $                   time,at_nstep,dt,cfl_used)
+     $                   time,at_nstep,dt,lo,hi)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     $                  dx,at_nstep,time)
+     $                  dx,at_nstep,time,lo,hi)
 
          at_nstep = at_nstep + 1
 
-         dt_init = dt
-
 c     needed for seed to EOS after first strang_chem call
-         scal_new(:,Temp) = scal_old(:,Temp)
+         scal_new(:,:,Temp) = scal_old(:,:,Temp)
                   
       else
          
@@ -201,10 +233,10 @@ C sets I_R to zero
          call initdata(vel_old,scal_old,I_R,dx)
 
 c     needed for seed to EOS after first strang_chem call
-         scal_new(:,Temp) = scal_old(:,Temp)
+         scal_new(:,:,Temp) = scal_old(:,:,Temp)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99999,time)
+     &                  dx,99999,time,lo,hi)
 
          call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
          
@@ -215,24 +247,13 @@ c     needed for seed to EOS after first strang_chem call
 
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old,scal_old(0:,Density),divu_old,
+            call project(vel_old,scal_old(:,0:,Density),divu_old,
      $                   press_old,press_new,dx,-1.d0,time)
 
          end if
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99998,time)
-
-         if (fixed_dt > 0) then
-            dt = fixed_dt
-            dt_init = dt
-         else
-            call est_dt(vel_old,scal_old,divu_old,dsdt,
-     $                  cfl,umax,dx,dt)
-            
-            dt = dt * init_shrink
-            dt_init = dt
-         endif
+     &                  dx,99998,time,lo,hi)
 
          const_src = 0.d0
          lin_src_old = 0.d0
@@ -251,7 +272,7 @@ c     return zero pressure
      $                       lin_src_new,I_R,dt*0.5d0,dx,time)
 
 c     reset temperature just in case strang_chem call is not well poased
-            scal_new(:,Temp) = scal_old(:,Temp)
+            scal_new(:,:,Temp) = scal_old(:,:,Temp)
 
             call calc_divu(scal_old,beta_old,I_R,divu_old,dx)
 
@@ -259,25 +280,13 @@ c     reset temperature just in case strang_chem call is not well poased
             
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old,scal_old(0:,Density),divu_old,
+            call project(vel_old,scal_old(:,0:,Density),divu_old,
      $                   press_old,press_new,dx,-1.d0,time)
-
-            dt_init = dt
-             
-            if (fixed_dt > 0) then
-               dt = fixed_dt
-            else
-               call est_dt(vel_old,scal_old,divu_old,dsdt,
-     $                     cfl,umax,dx,dt_new)
-               dt_new = dt_new * init_shrink
-               dt = min(dt_init,dt_new)
-            endif
-            print *,' '
 
          enddo
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99997,time)
+     &                  dx,99997,time,lo,hi)
 
          print *,' '
          print *,'...doing num_init_iters = ',num_init_iters 
@@ -292,16 +301,6 @@ c     return zero pressure
             print *,' '
             print *,'INITIAL PRESSURE ITERATION ',init_iter
 
-            if (fixed_dt > 0) then
-               dt = fixed_dt
-            else
-               call est_dt(vel_old,scal_old,divu_old,dsdt,
-     $                     cfl,umax,dx,dt)
-               dt = dt * init_shrink
-               dt = min(dt,dt_init)
-            endif
-            write(6,1001) time,dt
-
 c     strang split overwrites scal_old so we preserve it
             if (use_strang) then
                scal_hold = scal_old
@@ -310,7 +309,7 @@ c     strang split overwrites scal_old so we preserve it
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,dt,time)
+     $                   dx,dt,time,lo,hi,bc)
 
 c     restore scal_old
             if (use_strang) then
@@ -325,9 +324,7 @@ c     update pressure and I_R
          enddo
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,0,time)
-
-         cfl_used = cfl * init_shrink
+     &                  dx,0,time,lo,hi)
 
          print *,' '      
          print *,' '      
@@ -346,24 +343,7 @@ C-- Now advance
 
          if (time.ge.stop_time) exit
 
-         if (time > 0.d0) then 
-            if (fixed_dt > 0) then
-               dt = fixed_dt
-            else
-               call est_dt(vel_new,scal_old,divu_old,dsdt,
-     $                     cfl,umax,dx,dt_new)
-               if (nsteps_taken .eq. 1) then
-                  dt = dt*init_shrink
-                  dt = min(dt,dt_init)
-               else
-                  local_change_max = min(change_max,cfl/cfl_used)
-                  dt = dt * local_change_max 
-                  dt = min(dt,dt_new)
-               endif            
-            endif
-         endif
-
-          dt = min(dt,stop_time-time)
+         dt = min(dt,stop_time-time)
 
          write(6,*)
          write(6,1001 )time,dt
@@ -372,7 +352,7 @@ C-- Now advance
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
      $                divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                dx,dt,time)
+     $                dx,dt,time,lo,hi,bc)
 
 c     update state, time
          vel_old = vel_new
@@ -380,19 +360,17 @@ c     update state, time
          divu_old = divu_new
          press_old = press_new
 
-         time = time + dt
-
-         cfl_used = umax*dt/dx 
+         time = time + dt(0)
 
          if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
      &        nsteps_taken.eq.nsteps) then 
             call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
-     $           dx,nsteps_taken,time)
+     $                     dx,nsteps_taken,time,lo,hi)
          endif
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 
             call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $           I_R,divu_new,dsdt,dx,time,dt,cfl_used)
+     $                       I_R,divu_new,dsdt,dx,time,dt,lo,hi)
          endif
       enddo
 

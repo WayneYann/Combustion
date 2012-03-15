@@ -1,67 +1,102 @@
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,dt,time)
+     $                   dx,dt,time,lo,hi,bc)
 
       implicit none
 
       include 'spec.h'
 
-      real*8   vel_old(-2:nx+1)
-      real*8   vel_new(-2:nx+1)
-      real*8  scal_new(-2:nx+1,nscal)
-      real*8  scal_old(-2:nx+1,nscal)
-      real*8       I_R(-1:nx  ,0:Nspec)
-      real*8 press_old(-1:nx+1)
-      real*8 press_new(-1:nx+1)
-      real*8  divu_old(0 :nx-1)
-      real*8  divu_new(0 :nx-1)
-      real*8      dsdt(0 :nx-1)
-      real*8  beta_old(-1:nx  ,nscal)
-      real*8  beta_new(-1:nx  ,nscal)
-      real*8 dx
+      real*8   vel_old(0:nlevs-1,-2:nfine+1)
+      real*8   vel_new(0:nlevs-1,-2:nfine+1)
+      real*8  scal_new(0:nlevs-1,-2:nfine+1,nscal)
+      real*8  scal_old(0:nlevs-1,-2:nfine+1,nscal)
+      real*8       I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
+      real*8 press_old(0:nlevs-1,-1:nfine+1)
+      real*8 press_new(0:nlevs-1,-1:nfine+1)
+      real*8  divu_old(0:nlevs-1, 0:nfine-1)
+      real*8  divu_new(0:nlevs-1, 0:nfine-1)
+      real*8      dsdt(0:nlevs-1, 0:nfine-1)
+      real*8  beta_old(0:nlevs-1,-1:nfine  ,nscal)
+      real*8  beta_new(0:nlevs-1,-1:nfine  ,nscal)
+      real*8 dx(0:nlevs-1), dt(0:nlevs-1)
       real*8 time
+      integer lo(0:nlevs-1), hi(0:nlevs-1)
+      integer bc(0:nlevs-1,2)
 
 ! local
-      real*8    macvel(0 :nx  )
-      real*8   veledge(0 :nx  )
-      real*8  divu_tmp(0 :nx-1)
-      real*8    mu_old(-1:nx)
-      real*8    mu_new(-1:nx)
-      real*8        gp(-1:nx)
-      real*8   rhohalf(0 :nx-1)
-      real*8      visc(-1:nx)
-      real*8     alpha(0 :nx-1)
-      real*8   vel_Rhs(0 :nx-1)
-      real*8  I_R_divu(-1:nx  ,0:Nspec)
+      real*8    macvel(0:nlevs-1, 0:nfine  )
+      real*8   veledge(0:nlevs-1, 0:nfine  )
+      real*8  divu_tmp(0:nlevs-1, 0:nfine-1)
+      real*8    mu_old(0:nlevs-1,-1:nfine)
+      real*8    mu_new(0:nlevs-1,-1:nfine)
+      real*8        gp(0:nlevs-1,-1:nfine)
+      real*8   rhohalf(0:nlevs-1, 0:nfine-1)
+      real*8      visc(0:nlevs-1,-1:nfine)
+      real*8     alpha(0:nlevs-1, 0:nfine-1)
+      real*8   vel_Rhs(0:nlevs-1, 0:nfine-1)
+      real*8  I_R_divu(0:nlevs-1,-1:nfine  ,0:Nspec)
 
-      real*8 dt
+      real*8     aofs( 0:nx-1,nscal)
+
+      real*8 mu_dummy(-1:nx)
+
       real*8 vel_theta
       real*8 WDOTK(Nspec), C(Nspec), RWRK
       
-      integer i,n,rho_flag,IWRK
+      integer i,is,misdc,n,rho_flag,IWRK
+
+      real*8 spec_flux_lo(0:nx-1,Nspec)
+      real*8 spec_flux_hi(0:nx-1,Nspec)
+
+      real*8 be_cn_theta
+
+      real*8   I_R_temp(-1:nx,0:Nspec)
+
+      real*8        diff_old(-1:nx,nscal)
+      real*8        diff_new(-1:nx,nscal)
+      real*8        diff_hat(-1:nx,nscal)
+      real*8        diff_tmp(-1:nx,nscal)
+
+      real*8   tforce(-1:nx  ,nscal)
+
+      real*8 diffdiff_old(-1:nx)
+      real*8 diffdiff_new(-1:nx)
+
+      real*8   const_src(0:nx-1,nscal)
+      real*8 lin_src_old(0:nx-1,nscal)
+      real*8 lin_src_new(0:nx-1,nscal)
+
+      real*8       Rhs(0:nx-1,nscal)
+      real*8      dRhs(0:nx-1,0:Nspec)
+
+      real*8 Y(Nspec)
+      real*8 cpmix
+      real*8 rhocp
 
       print *,'advance: at start of time step'
 
 c     
 c*****************************************************************
-c     Create MAC velocities.
+c     Level 0 Advance
 c*****************************************************************
 c     
-      do i=lo(0),hi(0)
-         gp(i) = (press_old(i+1) - press_old(i)) / dx
+      do i=lo(0)-1,hi(0)+1
+         gp(0,i) = (press_old(0,i+1) - press_old(0,i)) / dx(0)
       enddo
 
       print *,'... predict edge velocities'
       call pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt)
 
-      call compute_pthermo(scal_old,scal_old(:,RhoRT))
+      call compute_pthermo(scal_old,scal_old(0,:,RhoRT))
 
-      divu_tmp(:) = divu_old(:) + 0.5d0*dt*dsdt(:)
+      divu_tmp(0,:) = divu_old(0,:) + 0.5d0*dt(0)*dsdt(0,:)
 
-      call add_dpdt(scal_old,scal_old(:,RhoRT),divu_tmp,macvel,dx,dt)
+      call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),divu_tmp(0,:),
+     $              macvel(0,:),dx(0),dt(0),
+     $              lo(0),hi(0),bc(0,:))
 
-      call macproj(macvel,divu_tmp,dx)
+      call macproj(macvel,divu_tmp,dx,lo(0),hi(0))
 
 c     compute diffusivities at time n (old time)
 c     this computes rho D_m     (for species)
@@ -71,160 +106,297 @@ c                   lambda      (for temperature)
 
       if (use_strang) then
 
-c     Strang split advance
-         call strang_advance(macvel,scal_old,scal_new,
-     $                       I_R,beta_old,beta_new,
-     $                       dx,dt,time)
+      diffdiff_old = 0.d0
+      diffdiff_new = 0.d0
 
-      else
+      be_cn_theta = 0.5d0
 
-c     SDC advance
-         call sdc_advance(macvel,scal_old,scal_new,
-     $                    I_R,beta_old,beta_new,
-     $                    dx,dt,time)
-
-      end if
-
-      if (use_strang) then
-
-         ! omegadot for divu computation is average omegadot
-         ! over both strang calls
-         I_R_divu = I_R
-
-      else
-
-         ! omegadot for divu computation is instantaneous
-         ! value at t^{n+1}
-         do i=0,nx-1
-            do n=1,Nspec
-               C(n) = scal_new(i,FirstSpec+n-1)*invmwt(n)
-            end do
-            call CKWC(scal_new(i,Temp),C,IWRK,RWRK,WDOTK)
-            do n=1,Nspec
-               I_R_divu(i,n) = WDOTK(n)*mwt(n)
-            end do
-         end do
-
-      end if
-
-c     this computes rho D_m     (for species)
-c                   lambda / cp (for enthalpy)
-c                   lambda      (for temperature)           
-      call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
-      call calc_divu(scal_new,beta_new,I_R_divu,divu_new,dx)
-
-      do i = 0,nx-1
-         rhohalf(i) = 0.5d0*(scal_old(i,Density)+scal_new(i,Density))
-         dsdt(i) = (divu_new(i) - divu_old(i)) / dt
-      enddo
-
-      print *,'... update velocities'
-
-      vel_theta = 0.5d0
-
-C     get velocity visc terms to use as a forcing term for advection
-      call get_vel_visc_terms(vel_old,mu_old,visc,dx)
-      do i = 0, nx-1
-         visc(i) = visc(i)/scal_old(i,Density)
-      enddo
-
-      call vel_edge_states(vel_old,scal_old(:,Density),gp,
-     $                     macvel,veledge,dx,dt,visc)
-      
-      call update_vel(vel_old,vel_new,gp,rhohalf,
-     &                macvel,veledge,alpha,mu_old,
-     &                vel_Rhs,dx,dt,vel_theta,time)
-
-      if (is_first_initial_iter .eq. 1) then
-         call get_vel_visc_terms(vel_old,mu_old,visc,dx)
-         do i = 0, nx-1
-            vel_new(i) = vel_new(i) + visc(i)*dt/rhohalf(i)
+      if (nochem_hack) then
+         print *,'WARNING! doing nochem_hack...'
+         do n = 1,nscal
+            do i = 0,nx-1
+               I_R(0,i,n) = 0.d0
+            enddo
          enddo
       else
-         rho_flag = 1
-         call cn_solve(vel_new,alpha,mu_new,vel_Rhs,
-     $                 dx,dt,1,vel_theta,rho_flag,.true.,time)
+         print *,'... react for dt/2;  set I_R'
+         do n = 1,nscal
+            do i = 0,nx-1
+               const_src(i,n) =   0.d0
+               lin_src_old(i,n) = 0.d0
+               lin_src_new(i,n) = 0.d0
+            enddo
+         enddo
+         call strang_chem(scal_old,scal_new,
+     $                    const_src,lin_src_old,lin_src_new,
+     $                    I_R,dt/2.d0,dx,time)
+         
+         do n = FirstSpec,LastSpec
+            scal_old(0,:,n) = scal_new(0,:,n)
+         enddo
       endif
 
-      call compute_pthermo(scal_new,scal_new(:,RhoRT))
+c     we only care about updated species out of strang_chem
+c     rho and rhoh remain constant
+c     call the EOS to get consistent temperature
+      call rhoh_to_temp(scal_old)
+c     
+c*****************************************************************
+c     
 
-      call add_dpdt_nodal(scal_new,scal_new(:,RhoRT),divu_new,
-     &                    vel_new,dx,dt)
+      print *,'... creating the diffusive terms with old data'
+c    compute rho^(1) D_m^(1)     (for species)
+c            lambda^(1) / cp^(1) (for enthalpy)
+c            lambda^(1)          (for temperature) 
+      call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
 
-      print *,'...nodal projection...'
-      call project(vel_new,rhohalf,divu_new,press_old,press_new,dx,dt)
+c     compute del dot lambda grad T + rho D grad h dot grad Y
+c     the rho D grad Y term is now computed conservatively
+      call get_temp_visc_terms(scal_old,beta_old,
+     &                         diff_old(:,Temp),dx)
+c     compute del dot rho D grad Y and make it conservative
+c     save species fluxes for differential diffusion
+      call get_spec_visc_terms(scal_old,beta_old,
+     &                         diff_old(:,FirstSpec),
+     &                         spec_flux_lo,spec_flux_hi,dx)
+c     compute del dot lambda/cp grad h (no differential diffusion)
+      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(:,RhoH),dx)
 
-      end
+c     calculate differential diffusion
+      if (LeEQ1 .eq. 0) then
+c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
+c        we pass in conservative rho D grad Y via spec_flux
+c        we take lambda / cp from beta
+c        we compute h_m from the first scal argument
+c        we take the gradient of Y from the second scal argument
+         call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
+     $                           spec_flux_hi,beta_old,diffdiff_old,dx)
+      end if
+            
+      print *,'... computing aofs with D(old)'
 
+      do i = 0,nx-1
+         do n = 1,Nspec
+            is = FirstSpec + n - 1
+            tforce(i,is) = diff_old(i,is)
+         enddo
+         tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
+      enddo
+       
+      call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
 
-      subroutine sdc_advance(macvel,scal_old,scal_new,I_R,
-     $                       beta_old,beta_new,dx,dt,time)
+      print *,'... update rho'
+      call update_rho(scal_old,scal_new,aofs,dx,dt,time)
 
-      implicit none
-      include 'spec.h'
-      real*8 scal_new(-2:nx+1,nscal)
-      real*8 scal_old(-2:nx+1,nscal)
-      real*8      I_R(-1:nx  ,0:Nspec)
-      real*8   macvel(0 :nx  )
-      real*8     aofs(0 :nx-1,nscal)
-      real*8 beta_old(-1:nx  ,nscal)
-      real*8 beta_new(-1:nx  ,nscal)
-      real*8 mu_dummy(-1:nx)
-      real*8   tforce(-1:nx  ,nscal)
-      real*8 dx
-      real*8 dt
-      real*8 time
-      real*8 be_cn_theta
+      do i = 0,nx-1
+         do n = 1,Nspec
+            Y(n) = scal_old(0,i,FirstSpec+n-1) / scal_old(0,i,Density)
+         enddo
+         call CKCPBS(scal_old(0,i,Temp),Y,IWRK,RWRK,cpmix)
+         rhocp = cpmix * 
+     &        (scal_old(0,i,Density) + scal_new(0,i,Density)) / 2.d0
+         tforce(i,Temp) = diff_old(i,Temp)/rhocp
+      end do
 
-c     storage for conservatively corrected species flux for NULN rhoh diffusion term
-c     in the full LMC code, these are called fluxNULN
-      real*8 spec_flux_lo(0:nx-1,Nspec)
-      real*8 spec_flux_hi(0:nx-1,Nspec)
+c*****************************************************************
+c     Either do c-n solve for new T prior to computing new 
+c     coeffs, or simply start by copying from previous time step
+      if (predict_temp_for_coeffs .eq. 1) then
+         print *,'... predict temp with old coeffs'
+         rho_flag = 1
+         call update_temp(scal_old,scal_new,aofs,
+     $                    alpha,beta_old,beta_old,
+     $                    Rhs(0,Temp),dx,dt,be_cn_theta,time)
+c        just uses RHS and overwrites snew
+c        does not fill ghost cells
+         call cn_solve(scal_new,alpha,beta_old,Rhs(0,Temp),
+     $                 dx,dt,Temp,be_cn_theta,rho_flag,.false.,time)
 
-ccccccccccccccccccccccccccccccccc
-c     SDC TEMPORARIES - I_R is also a temporary, but allocated above
-ccccccccccccccccccccccccccccccccc
+         print *,'... compute new coeffs'
+c        compute rho^(2) D_m^(2),* (for species)
+c        lambda/cp (for enthalpy) won't be used
+c        lambda^(1) (for temperature) won't be used
+         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+      else
+         print *,'... set new coeffs to old values for predictor'
+         do n=1,nscal
+            do i=-1,nx
+               scal_new(0,i,Temp) = scal_old(0,i,Temp)
+               beta_new(0,i,n) = beta_old(0,i,n)
+            enddo
+         enddo
+      endif
 
-c     in the full LMC code, these are also called
-c     diff_old, diff_new, and diff_hat.
-c     they only contain 0:Nspec components
-c     component 0 is for rhoh
-c     components 1:Nspec are for rhoX
-c     differential diffusion terms for rhoh are stored elsewhere (see below)
-      real*8        diff_old(-1:nx,nscal)
-      real*8        diff_new(-1:nx,nscal)
-      real*8        diff_hat(-1:nx,nscal)
+      print *,'... do predictor for species'
+      do i=0,nx-1
+         dRhs(i,0) = 0.0d0
+         do n=1,Nspec
+            dRhs(i,n) = 0.d0
+         enddo
+      enddo
+      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
+     &                 dRhs(0,1),Rhs(0,FirstSpec),dx,dt,
+     &                 be_cn_theta,time)
 
-c     in the full LMC code, these are called
-c     div_fluxNULN_old, div_fluxNULN_new, div_fluxNULN_hat
-      real*8 diffdiff_old(-1:nx)
-      real*8 diffdiff_new(-1:nx)
+      rho_flag = 2
+      do n=1,Nspec
+         is = FirstSpec + n - 1
+         call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
+     $                 dx,dt,is,be_cn_theta,rho_flag,.false.,time)
+      enddo
 
-c     in the full LMC code, we only need const_src
-c     it will only contain 0:Nspec components
-c     component 0 is for rhoh
-c     components 1:Nspec are for rhoX
-      real*8   const_src(0:nx-1,nscal)
-      real*8 lin_src_old(0:nx-1,nscal)
-      real*8 lin_src_new(0:nx-1,nscal)
-      
-ccccccccccccccccccccccccccccccccc
-c     END SDC TEMPORARIES
-ccccccccccccccccccccccccccccccccc
+      if (LeEQ1 .eq. 0) then
 
-      integer i,n
-      
-      real*8     alpha(0:nx-1)
-      real*8       Rhs(0:nx-1,nscal)
-      real*8      dRhs(0:nx-1,0:Nspec)
-      integer is, rho_flag
-      integer misdc
+c     compute del dot rho D grad Y and make it conservative
+c     save species fluxes for differential diffusion
+         call get_spec_visc_terms(scal_new,beta_new,
+     &                            diff_tmp(:,FirstSpec),
+     &                            spec_flux_lo,spec_flux_hi,dx)
 
-c     temporaries for setting I_R = omegadot^n at beginning of time step
-      real*8 WDOTK(Nspec), C(Nspec)
+c     update species with conservative diffusion fluxes
+         do i=0,nx-1
+            do n=1,Nspec
+               is = FirstSpec + n - 1
+               scal_new(0,i,is) = scal_old(0,i,is) + 
+     $              dt(0)*(aofs(i,is)
+     $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_tmp(i,is))
+            end do
+         end do
+         call set_bc_s(scal_new,dx,time)
 
-      real*8 RWRK
-      integer IWRK
+      end if
+
+c     this computes rho D_m                 (for species) won't be used
+c                   lambda^(2),* / cp^(2),* (for enthalpy)
+c                   lambda^(2),*            (for temperature) 
+      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+
+      if (LeEQ1 .eq. 0) then
+
+c     calculate differential diffusion
+c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
+c     we pass in conservative rho D grad Y via spec_flux
+c     we take lambda / cp from beta
+c     we compute h_m from the first scal argument
+c     we take the gradient of Y from the second scal argument
+         call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
+     $                           spec_flux_hi,beta_new,
+     $                           diffdiff_new,dx)
+         
+         do i=0,nx-1
+            dRhs(i,0) = dRhs(i,0)
+     $           + 0.5d0*dt(0)*(diffdiff_old(i) + diffdiff_new(i))
+         end do
+         
+      end if
+
+      print *,'... do predictor for rhoh (MISDC terms=0)'
+      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
+     &                 dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
+      rho_flag = 2
+      call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
+     $              dx,dt,RhoH,be_cn_theta,rho_flag,.false.,time)
+
+      call rhoh_to_temp(scal_new)
+
+C----------------------------------------------------------------
+C   Corrector
+
+      print *,'... compute new coeffs'
+c     this computes rho^(2) D_m^(2)     (for species)
+c                   lambda^(2) / cp^(2) (for enthalpy)
+c                   lambda^(2)          (for temperature) 
+      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+
+      do i=0,nx-1
+         dRhs(i,0) = 0.0d0
+         do n=1,Nspec
+            dRhs(i,n) = 0.d0
+         enddo
+      enddo
+      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
+     &                 dRhs(0,1),Rhs(0,FirstSpec),dx,dt,
+     &                 be_cn_theta,time)
+      rho_flag = 2
+      do n=1,Nspec
+         is = FirstSpec + n - 1
+         call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
+     $                 dx,dt,is,be_cn_theta,rho_flag,.false.,time)
+      enddo
+
+      if (LeEQ1 .eq. 0) then
+
+c     compute del dot rho D grad Y and make it conservative
+c     save species fluxes for differential diffusion
+         call get_spec_visc_terms(scal_new,beta_new,
+     &                            diff_tmp(:,FirstSpec),
+     &                            spec_flux_lo,spec_flux_hi,dx)
+
+c     update species with conservative diffusion fluxes
+         do i=0,nx-1
+            do n=1,Nspec
+               is = FirstSpec + n - 1
+               scal_new(0,i,is) = scal_old(0,i,is) + 
+     $              dt(0)*(aofs(i,is)
+     $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_tmp(i,is))
+            end do
+         end do
+         call set_bc_s(scal_new,dx,time)
+
+c     calculate differential diffusion
+c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
+c     we pass in conservative rho D grad Y via spec_flux
+c     we take lambda / cp from beta
+c     we compute h_m from the first scal argument
+c     we take the gradient of Y from the second scal argument
+         call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
+     $                           spec_flux_hi,beta_new,
+     $                           diffdiff_new,dx)
+
+         do i=0,nx-1
+            dRhs(i,0) = dRhs(i,0)
+     $           + 0.5d0*dt(0)*(diffdiff_old(i) + diffdiff_new(i))
+         end do
+         
+      end if
+         
+      print *,'... do predictor for rhoh (MISDC terms=0)'
+      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
+     &                 dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
+      rho_flag = 2
+      call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
+     $              dx,dt,RhoH,be_cn_theta,rho_flag,.false.,time)
+      call rhoh_to_temp(scal_new)
+
+      if (nochem_hack) then
+         print *,'WARNING! doing nochem_hack...'
+      else
+         do i=0,nx-1
+            do n = FirstSpec,LastSpec
+               scal_old(0,i,n) = scal_new(0,i,n)
+            enddo
+            scal_old(0,i,Temp) = scal_new(0,i,Temp)
+            scal_old(0,i,Density) = scal_new(0,i,Density)
+         enddo
+
+         call strang_chem(scal_old,scal_new,
+     $                    const_src,lin_src_old,lin_src_new,
+     $                    I_R_temp,dt/2.d0,dx,time)
+
+c        we only care about updated species out of strang_chem
+c        rho and rhoh remain constant
+c        call the EOS to get consistent temperature
+         call rhoh_to_temp(scal_new)
+
+         I_R(0,:,:) = I_R(0,:,:) + I_R_temp
+         I_R = I_R / 2.d0
+      endif
+
+      else
+
+C----------------------------------------------------------------
+c     SDC advance
+C----------------------------------------------------------------
 
       diffdiff_old = 0.d0
       diffdiff_new = 0.d0
@@ -263,11 +435,11 @@ c     If .false., use I_R^lagged = I_R^kmax from previous time step
       if (.false.) then
          do i=0,nx-1
             do n=1,Nspec
-               C(n) = scal_old(i,FirstSpec+n-1)*invmwt(n)
+               C(n) = scal_old(0,i,FirstSpec+n-1)*invmwt(n)
             end do
-            call CKWC(scal_old(i,Temp),C,IWRK,RWRK,WDOTK)
+            call CKWC(scal_old(0,i,Temp),C,IWRK,RWRK,WDOTK)
             do n=1,Nspec
-               I_R(i,n) = WDOTK(n)*mwt(n)
+               I_R(0,i,n) = WDOTK(n)*mwt(n)
             end do
          end do
       end if
@@ -277,7 +449,7 @@ c     compute advective forcing term
       do i = 0,nx-1
          do n = 1,Nspec
             is = FirstSpec + n - 1
-            tforce(i,is) = diff_old(i,is) + I_R(i,n)
+            tforce(i,is) = diff_old(i,is) + I_R(0,i,n)
          enddo
          tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
       enddo
@@ -294,7 +466,7 @@ c     diffusion solves
       do i=0,nx-1
          dRhs(i,0) = 0.0d0
          do n=1,Nspec
-            dRhs(i,n) = dt*I_R(i,n)
+            dRhs(i,n) = dt(0)*I_R(0,i,n)
          enddo
       enddo
 
@@ -316,8 +488,8 @@ c        simply extract D for RhoX
          do i=0,nx-1
             do n=1,Nspec
                is = FirstSpec + n - 1
-               diff_hat(i,is) = 2.d0*((scal_new(i,is)-scal_old(i,is))/dt 
-     $              - aofs(i,is) - I_R(i,n) - 0.5d0*diff_old(i,is))
+               diff_hat(i,is) = 2.d0*((scal_new(0,i,is)-scal_old(0,i,is))/dt(0)
+     $              - aofs(i,is) - I_R(0,i,n) - 0.5d0*diff_old(i,is))
             enddo
          end do
 
@@ -333,8 +505,8 @@ c        update species with conservative diffusion fluxes
          do i=0,nx-1
             do n=1,Nspec
                is = FirstSpec + n - 1
-               scal_new(i,is) = scal_old(i,is) + 
-     $              dt*(aofs(i,is) + I_R(i,n)
+               scal_new(0,i,is) = scal_old(0,i,is) + 
+     $              dt(0)*(aofs(i,is) + I_R(0,i,n)
      $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_hat(i,is))
             end do
          end do
@@ -352,7 +524,7 @@ c        we take the gradient of Y from the second scal argument
 c        add differential diffusion to forcing for enthalpy solve
          do i=0,nx-1
             dRhs(i,0) = dRhs(i,0) 
-     $           + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
+     $           + 0.5d0*dt(0)*(diffdiff_old(i) + diffdiff_new(i))
          end do
 
       end if
@@ -367,8 +539,8 @@ c     update enthalpy with diffusion solve
 
 c     extract D for RhoH
       do i = 0,nx-1
-         diff_hat(i,RhoH) = 2.d0*((scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-     $        - aofs(i,RhoH) - dRhs(i,0)/dt - 0.5d0*diff_old(i,RhoH) )
+         diff_hat(i,RhoH) = 2.d0*((scal_new(0,i,RhoH)-scal_old(0,i,RhoH))/dt(0) 
+     $        - aofs(i,RhoH) - dRhs(i,0)/dt(0) - 0.5d0*diff_old(i,RhoH) )
       enddo
 
       if (nochem_hack) then
@@ -440,7 +612,7 @@ c           we take the gradient of Y from the second scal argument
          do i = 0,nx-1
             do n = 1,Nspec
                is = FirstSpec + n - 1
-               tforce(i,is) = diff_old(i,is) + I_R(i,n)
+               tforce(i,is) = diff_old(i,is) + I_R(0,i,n)
             enddo
 c           really no need to recompute this since it doesn't change
             tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
@@ -457,12 +629,12 @@ c           really no need to recompute this since it doesn't change
             do n=1,Nspec
                is = FirstSpec + n - 1
 c              includes deferred correction term for species
-               dRhs(i,n) = dt*(I_R(i,n) 
+               dRhs(i,n) = dt(0)*(I_R(0,i,n) 
      &              + 0.5d0*(diff_old(i,is) - diff_new(i,is)))
             enddo
 c           includes deferred correction term for enthalpy
 c           differential diffusion will be added later
-            dRhs(i,0) = dt*(
+            dRhs(i,0) = dt(0)*(
      &           + 0.5d0*(diff_old(i,RhoH) - diff_new(i,RhoH)))
          enddo
          call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
@@ -481,8 +653,8 @@ c           simply extract D for RhoX
             do i=0,nx-1
                do n=1,Nspec
                   is = FirstSpec + n - 1
-                  diff_hat(i,is) = (scal_new(i,is)-scal_old(i,is))/dt 
-     $                 - aofs(i,is) - dRhs(i,n)/dt
+                  diff_hat(i,is) = (scal_new(0,i,is)-scal_old(0,i,is))/dt(0) 
+     $                 - aofs(i,is) - dRhs(i,n)/dt(0)
                enddo
             enddo
 
@@ -497,7 +669,7 @@ c           save species fluxes for differential diffusion
 c           add differential diffusion to forcing for enthalpy solve
             do i=0,nx-1
                dRhs(i,0) = dRhs(i,0) 
-     $              + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
+     $              + 0.5d0*dt(0)*(diffdiff_old(i) + diffdiff_new(i))
             end do
 
          end if
@@ -511,8 +683,8 @@ c           add differential diffusion to forcing for enthalpy solve
 
 c        extract D for RhoH
          do i = 0,nx-1
-            diff_hat(i,RhoH) = (scal_new(i,RhoH)-scal_old(i,RhoH))/dt 
-     $           - aofs(i,RhoH) - dRhs(i,0)/dt
+            diff_hat(i,RhoH) = (scal_new(0,i,RhoH)-scal_old(0,i,RhoH))/dt(0) 
+     $           - aofs(i,RhoH) - dRhs(i,0)/dt(0)
          enddo
          
          if (nochem_hack) then
@@ -548,336 +720,76 @@ C----------------------------------------------------------------
 
       enddo
 
-      end
+      end if
 
-      subroutine strang_advance(macvel,scal_old,scal_new,I_R,
-     $                          beta_old,beta_new,dx,dt,time)
+      if (use_strang) then
 
-      implicit none
-      include 'spec.h'
-      real*8 scal_new(-2:nx+1,nscal)
-      real*8 scal_old(-2:nx+1,nscal)
-      real*8      I_R(-1:nx  ,0:Nspec)
-      real*8   macvel(0 :nx  )
-      real*8     aofs(0 :nx-1,nscal)
-      real*8 beta_old(-1:nx  ,nscal)
-      real*8 beta_new(-1:nx  ,nscal)
-      real*8 mu_dummy(-1:nx)
-      real*8   tforce(-1:nx  ,nscal)
-      real*8 dx
-      real*8 dt
-      real*8 time
-      real*8 be_cn_theta
+         ! omegadot for divu computation is average omegadot
+         ! over both strang calls
+         I_R_divu = I_R
+
+      else
+
+         ! omegadot for divu computation is instantaneous
+         ! value at t^{n+1}
+         do i=0,nx-1
+            do n=1,Nspec
+               C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
+            end do
+            call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
+            do n=1,Nspec
+               I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
+            end do
+         end do
+
+      end if
+
+c     this computes rho D_m     (for species)
+c                   lambda / cp (for enthalpy)
+c                   lambda      (for temperature)           
+      call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
+      call calc_divu(scal_new,beta_new,I_R_divu,divu_new,dx)
+
+      do i = 0,nx-1
+         rhohalf(0,i) = 
+     $        0.5d0*(scal_old(0,i,Density)+scal_new(0,i,Density))
+         dsdt(0,i) = (divu_new(0,i) - divu_old(0,i)) / dt(0)
+      enddo
+
+      print *,'... update velocities'
+
+      vel_theta = 0.5d0
+
+C     get velocity visc terms to use as a forcing term for advection
+      call get_vel_visc_terms(vel_old,mu_old,visc,dx)
+      do i = 0, nx-1
+         visc(0,i) = visc(0,i)/scal_old(0,i,Density)
+      enddo
+
+      call vel_edge_states(vel_old,scal_old(0,:,Density),gp,
+     $                     macvel,veledge,dx,dt,visc,lo(0),hi(0))
       
-      real*8    diff_old(-1:nx,nscal)
-      real*8    diff_tmp(-1:nx,nscal)
+      call update_vel(vel_old,vel_new,gp,rhohalf,
+     &                macvel,veledge,alpha,mu_old,
+     &                vel_Rhs,dx,dt,vel_theta,time)
 
-      real*8   const_src(0:nx-1,nscal)
-      real*8 lin_src_old(0:nx-1,nscal)
-      real*8 lin_src_new(0:nx-1,nscal)
-
-      real*8   I_R_temp(-1:nx,0:Nspec)
-      
-      integer i,n
-      
-      real*8     alpha(0:nx-1)
-      real*8       Rhs(0:nx-1,nscal)
-      real*8      dRhs(0:nx-1,0:Nspec)
-      real*8 rhocp
-      real*8 Y(Nspec)
-      real*8 RWRK, cpmix
-      integer IWRK, is, rho_flag
-
-      real*8 spec_flux_lo(0:nx-1,Nspec)
-      real*8 spec_flux_hi(0:nx-1,Nspec)
-
-      real*8 diffdiff_old(-1:nx)
-      real*8 diffdiff_new(-1:nx)
-
-      diffdiff_old = 0.d0
-      diffdiff_new = 0.d0
-
-      be_cn_theta = 0.5d0
-
-      if (nochem_hack) then
-         print *,'WARNING! doing nochem_hack...'
-         do n = 1,nscal
-            do i = 0,nx-1
-               I_R(i,n) = 0.d0
-            enddo
+      if (is_first_initial_iter .eq. 1) then
+         call get_vel_visc_terms(vel_old,mu_old,visc,dx)
+         do i = 0, nx-1
+            vel_new(0,i) = vel_new(0,i) + visc(0,i)*dt(0)/rhohalf(0,i)
          enddo
       else
-         print *,'... react for dt/2;  set I_R'
-         do n = 1,nscal
-            do i = 0,nx-1
-               const_src(i,n) =   0.d0
-               lin_src_old(i,n) = 0.d0
-               lin_src_new(i,n) = 0.d0
-            enddo
-         enddo
-         call strang_chem(scal_old,scal_new,
-     $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R,dt/2.d0,dx,time)
-         
-         do n = FirstSpec,LastSpec
-            scal_old(:,n) = scal_new(:,n)
-         enddo
-      endif
-
-c     we only care about updated species out of strang_chem
-c     rho and rhoh remain constant
-c     call the EOS to get consistent temperature
-      call rhoh_to_temp(scal_old)
-c     
-c*****************************************************************
-c     
-
-      print *,'... creating the diffusive terms with old data'
-c    compute rho^(1) D_m^(1)     (for species)
-c            lambda^(1) / cp^(1) (for enthalpy)
-c            lambda^(1)          (for temperature) 
-      call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
-
-c     compute del dot lambda grad T + rho D grad h dot grad Y
-c     the rho D grad Y term is now computed conservatively
-      call get_temp_visc_terms(scal_old,beta_old,
-     &                         diff_old(:,Temp),dx)
-c     compute del dot rho D grad Y and make it conservative
-c     save species fluxes for differential diffusion
-      call get_spec_visc_terms(scal_old,beta_old,
-     &                         diff_old(:,FirstSpec),
-     &                         spec_flux_lo,spec_flux_hi,dx)
-c     compute del dot lambda/cp grad h (no differential diffusion)
-      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(:,RhoH),dx)
-
-c     calculate differential diffusion
-      if (LeEQ1 .eq. 0) then
-c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
-c        we pass in conservative rho D grad Y via spec_flux
-c        we take lambda / cp from beta
-c        we compute h_m from the first scal argument
-c        we take the gradient of Y from the second scal argument
-         call get_diffdiff_terms(scal_old,scal_old,spec_flux_lo,
-     $                           spec_flux_hi,beta_old,diffdiff_old,dx)
-      end if
-            
-      print *,'... computing aofs with D(old)'
-
-      do i = 0,nx-1
-         do n = 1,Nspec
-            is = FirstSpec + n - 1
-            tforce(i,is) = diff_old(i,is)
-         enddo
-         tforce(i,RhoH) = diff_old(i,RhoH) + diffdiff_old(i)
-      enddo
-       
-      call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
-
-      print *,'... update rho'
-      call update_rho(scal_old,scal_new,aofs,dx,dt,time)
-
-      do i = 0,nx-1
-         do n = 1,Nspec
-            Y(n) = scal_old(i,FirstSpec+n-1) / scal_old(i,Density)
-         enddo
-         call CKCPBS(scal_old(i,Temp),Y,IWRK,RWRK,cpmix)
-         rhocp = cpmix * 
-     &        (scal_old(i,Density) + scal_new(i,Density)) / 2.d0
-         tforce(i,Temp) = diff_old(i,Temp)/rhocp
-      end do
-
-c*****************************************************************
-c     Either do c-n solve for new T prior to computing new 
-c     coeffs, or simply start by copying from previous time step
-      if (predict_temp_for_coeffs .eq. 1) then
-         print *,'... predict temp with old coeffs'
          rho_flag = 1
-         call update_temp(scal_old,scal_new,aofs,
-     $                    alpha,beta_old,beta_old,
-     $                    Rhs(0,Temp),dx,dt,be_cn_theta,time)
-c        just uses RHS and overwrites snew
-c        does not fill ghost cells
-         call cn_solve(scal_new,alpha,beta_old,Rhs(0,Temp),
-     $                 dx,dt,Temp,be_cn_theta,rho_flag,.false.,time)
-
-         print *,'... compute new coeffs'
-c        compute rho^(2) D_m^(2),* (for species)
-c        lambda/cp (for enthalpy) won't be used
-c        lambda^(1) (for temperature) won't be used
-         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
-      else
-         print *,'... set new coeffs to old values for predictor'
-         do n=1,nscal
-            do i=-1,nx
-               scal_new(i,Temp) = scal_old(i,Temp)
-               beta_new(i,n) = beta_old(i,n)
-            enddo
-         enddo
+         call cn_solve(vel_new,alpha,mu_new,vel_Rhs,
+     $                 dx,dt,1,vel_theta,rho_flag,.true.,time)
       endif
 
-      print *,'... do predictor for species'
-      do i=0,nx-1
-         dRhs(i,0) = 0.0d0
-         do n=1,Nspec
-            dRhs(i,n) = 0.d0
-         enddo
-      enddo
-      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
-     &                 dRhs(0,1),Rhs(0,FirstSpec),dx,dt,
-     &                 be_cn_theta,time)
+      call compute_pthermo(scal_new,scal_new(0,:,RhoRT))
 
-      rho_flag = 2
-      do n=1,Nspec
-         is = FirstSpec + n - 1
-         call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
-     $                 dx,dt,is,be_cn_theta,rho_flag,.false.,time)
-      enddo
+      call add_dpdt_nodal(scal_new,scal_new(0,:,RhoRT),divu_new,
+     &                    vel_new,dx,dt,lo(0),hi(0),bc(0,:))
 
-      if (LeEQ1 .eq. 0) then
-
-c     compute del dot rho D grad Y and make it conservative
-c     save species fluxes for differential diffusion
-         call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_tmp(:,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,dx)
-
-c     update species with conservative diffusion fluxes
-         do i=0,nx-1
-            do n=1,Nspec
-               is = FirstSpec + n - 1
-               scal_new(i,is) = scal_old(i,is) + 
-     $              dt*(aofs(i,is)
-     $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_tmp(i,is))
-            end do
-         end do
-         call set_bc_s(scal_new,dx,time)
-
-      end if
-
-c     this computes rho D_m                 (for species) won't be used
-c                   lambda^(2),* / cp^(2),* (for enthalpy)
-c                   lambda^(2),*            (for temperature) 
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
-
-      if (LeEQ1 .eq. 0) then
-
-c     calculate differential diffusion
-c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
-c     we pass in conservative rho D grad Y via spec_flux
-c     we take lambda / cp from beta
-c     we compute h_m from the first scal argument
-c     we take the gradient of Y from the second scal argument
-         call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
-     $                           spec_flux_hi,beta_new,
-     $                           diffdiff_new,dx)
-         
-         do i=0,nx-1
-            dRhs(i,0) = dRhs(i,0)
-     $           + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
-         end do
-         
-      end if
-
-      print *,'... do predictor for rhoh (MISDC terms=0)'
-      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &                 dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
-      rho_flag = 2
-      call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,be_cn_theta,rho_flag,.false.,time)
-
-      call rhoh_to_temp(scal_new)
-
-C----------------------------------------------------------------
-C   Corrector
-
-      print *,'... compute new coeffs'
-c     this computes rho^(2) D_m^(2)     (for species)
-c                   lambda^(2) / cp^(2) (for enthalpy)
-c                   lambda^(2)          (for temperature) 
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
-
-      do i=0,nx-1
-         dRhs(i,0) = 0.0d0
-         do n=1,Nspec
-            dRhs(i,n) = 0.d0
-         enddo
-      enddo
-      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
-     &                 dRhs(0,1),Rhs(0,FirstSpec),dx,dt,
-     &                 be_cn_theta,time)
-      rho_flag = 2
-      do n=1,Nspec
-         is = FirstSpec + n - 1
-         call cn_solve(scal_new,alpha,beta_new,Rhs(0,is),
-     $                 dx,dt,is,be_cn_theta,rho_flag,.false.,time)
-      enddo
-
-      if (LeEQ1 .eq. 0) then
-
-c     compute del dot rho D grad Y and make it conservative
-c     save species fluxes for differential diffusion
-         call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_tmp(:,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,dx)
-
-c     update species with conservative diffusion fluxes
-         do i=0,nx-1
-            do n=1,Nspec
-               is = FirstSpec + n - 1
-               scal_new(i,is) = scal_old(i,is) + 
-     $              dt*(aofs(i,is)
-     $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_tmp(i,is))
-            end do
-         end do
-         call set_bc_s(scal_new,dx,time)
-
-c     calculate differential diffusion
-c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
-c     we pass in conservative rho D grad Y via spec_flux
-c     we take lambda / cp from beta
-c     we compute h_m from the first scal argument
-c     we take the gradient of Y from the second scal argument
-         call get_diffdiff_terms(scal_new,scal_new,spec_flux_lo,
-     $                           spec_flux_hi,beta_new,
-     $                           diffdiff_new,dx)
-
-         do i=0,nx-1
-            dRhs(i,0) = dRhs(i,0)
-     $           + 0.5d0*dt*(diffdiff_old(i) + diffdiff_new(i))
-         end do
-         
-      end if
-         
-      print *,'... do predictor for rhoh (MISDC terms=0)'
-      call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &                 dRhs(0,0),Rhs(0,RhoH),dx,dt,be_cn_theta,time)
-      rho_flag = 2
-      call cn_solve(scal_new,alpha,beta_new,Rhs(0,RhoH),
-     $              dx,dt,RhoH,be_cn_theta,rho_flag,.false.,time)
-      call rhoh_to_temp(scal_new)
-
-      if (nochem_hack) then
-         print *,'WARNING! doing nochem_hack...'
-      else
-         do i=0,nx-1
-            do n = FirstSpec,LastSpec
-               scal_old(i,n) = scal_new(i,n)
-            enddo
-            scal_old(i,Temp) = scal_new(i,Temp)
-            scal_old(i,Density) = scal_new(i,Density)
-         enddo
-
-         call strang_chem(scal_old,scal_new,
-     $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R_temp,dt/2.d0,dx,time)
-
-c        we only care about updated species out of strang_chem
-c        rho and rhoh remain constant
-c        call the EOS to get consistent temperature
-         call rhoh_to_temp(scal_new)
-
-         I_R = I_R + I_R_temp
-         I_R = I_R / 2.d0
-      endif
+      print *,'...nodal projection...'
+      call project(vel_new,rhohalf,divu_new,press_old,press_new,dx,dt)
 
       end

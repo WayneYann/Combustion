@@ -55,8 +55,8 @@ c----------------------------------------------------------------------
       include 'spec.h'
       double precision    dx
       double precision   vel(-2:nx+1)
-      double precision  scal(-2:nx+1,*)
-      double precision   I_R(-1:nx  ,0:*)
+      double precision  scal(-2:nx+1,nscal)
+      double precision   I_R(-1:nx  ,0:Nspec)
 
       double precision  x, rho, Y(Nspec), T, h
       double precision xPMFlo, xPMFhi
@@ -129,7 +129,7 @@ c----------------------------------------------------------------------
       implicit none
       include 'spec.h'
       double precision     dx, time
-      double precision   scal(-2:nx+1,*)
+      double precision   scal(-2:nx+1,nscal)
       integer n, is, HorL
       double precision u, rho, Y(Nspec), T, hmix
 

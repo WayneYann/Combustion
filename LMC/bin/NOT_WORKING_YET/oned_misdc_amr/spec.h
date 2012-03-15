@@ -80,7 +80,10 @@ c     LMC alg stuff
      &     rho_divu_ceiling, divu_dt_factor, V_in, vel_TYP
       save /lmcr/
 
-      integer lo(0:maxlev-1),hi(0:maxlev-1),
-     &     bc_lo(0:maxlev-1),bc_hi(0:maxlev-1),nx,nx_f,nlevs,lev,rr
-      common / amri / lo,hi,bc_lo,bc_hi,nx,nx_f,nlevs,lev,rr
+      integer nx,nfine,nlevs,rr
+      common / amri / nx,nfine,nlevs,rr
       save /amri/
+
+      logical subcycling
+      common /amrl / subcycling
+      save /amrl/
