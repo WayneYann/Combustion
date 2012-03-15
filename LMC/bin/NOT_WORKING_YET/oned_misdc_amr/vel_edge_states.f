@@ -24,7 +24,7 @@
 
       call mkslopes(vel_old,slope)
 
-      do i = 1,nx-1
+      do i=lo+1,hi
          slo = vel_old(i-1) + (0.5 - dthx*vel_old(i-1))*slope(i-1)
      $        - dth*gp(i-1)/rho_old(i-1) + dth*tforces(i-1)
          shi = vel_old(i  ) - (0.5 + dthx*vel_old(i))*slope(i  )

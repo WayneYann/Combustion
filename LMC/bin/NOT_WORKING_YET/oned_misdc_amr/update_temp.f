@@ -1,6 +1,6 @@
       subroutine update_temp(scal_old,scal_new,aofs,
      &                       alpha,beta_old,beta_new,Rhs,
-     &                       dx,dt,be_cn_theta,time)
+     &                       dx,dt,be_cn_theta)
       implicit none
       include 'spec.h'
       real*8 scal_old(-2:nx+1,nscal)
@@ -10,7 +10,7 @@
       real*8 beta_old(-1:nx  ,nscal)
       real*8 beta_new(-1:nx  ,nscal)
       real*8      Rhs(0 :nx-1)
-      real*8 dx, dt, time
+      real*8 dx, dt
       real*8 be_cn_theta
       
       real*8  Ymid(Nspec), rho_old, rho_new, cpmix
@@ -27,7 +27,7 @@ c*************************************************************************
          scal_new(i,Temp) = scal_old(i,Temp) + dt*aofs(i,Temp)
       enddo
 
-      call set_bc_s(scal_new,dx,time)
+      call set_bc_s(scal_new)
 
 c*************************************************************************
 c     Initialize RHS = (1-theta) * [ Div( lambda Grad(T) ) +  

@@ -230,7 +230,7 @@ c     needed for seed to EOS after first strang_chem call
 C take vals from PMF and fills vel, Y, and Temp
 C computes rho and h, fills in rhoH and rhoY
 C sets I_R to zero
-         call initdata(vel_old,scal_old,I_R,dx)
+         call initdata(vel_old,scal_old,I_R,dx,lo,hi)
 
 c     needed for seed to EOS after first strang_chem call
          scal_new(:,:,Temp) = scal_old(:,:,Temp)
@@ -248,7 +248,7 @@ c     needed for seed to EOS after first strang_chem call
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             call project(vel_old,scal_old(:,0:,Density),divu_old,
-     $                   press_old,press_new,dx,-1.d0,time)
+     $                   press_old,press_new,dx,-1.d0)
 
          end if
 
@@ -269,7 +269,7 @@ c     return zero pressure
             print *,' ...doing divu_iter number',divu_iter,' dt=',dt
             
             call strang_chem(scal_old,scal_new,const_src,lin_src_old,
-     $                       lin_src_new,I_R,dt*0.5d0,dx,time)
+     $                       lin_src_new,I_R,dt*0.5d0)
 
 c     reset temperature just in case strang_chem call is not well poased
             scal_new(:,:,Temp) = scal_old(:,:,Temp)
@@ -281,7 +281,7 @@ c     reset temperature just in case strang_chem call is not well poased
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             call project(vel_old,scal_old(:,0:,Density),divu_old,
-     $                   press_old,press_new,dx,-1.d0,time)
+     $                   press_old,press_new,dx,-1.d0)
 
          enddo
 
