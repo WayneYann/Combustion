@@ -56,7 +56,7 @@ ifeq (${USE_FLCTS}, TRUE)
 endif
 
 ifeq ($(USE_F90_SOLVERS), TRUE)
- DEFINES += -DPARTICLES
+ DEFINES += -DMG_USE_F90_SOLVERS
 endif
 
 ifeq ($(USE_VELOCITY), TRUE)
