@@ -1728,3 +1728,33 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
       end do
       end
 
+      subroutine FORT_SMOOTH(lo, hi, Tin, DIMS(Tin), Tout, DIMS(Tout))
+      implicit none
+      integer lo(SDIM), hi(SDIM)
+      integer DIMDEC(Tin)
+      integer DIMDEC(Tout)
+      REAL_T   Tin(DIMV(Tin))
+      REAL_T  Tout(DIMV(Tout))
+
+      integer i,j,k,ii,jj,kk
+
+      do k = lo(3),hi(3)
+         do j = lo(2),hi(2)
+            do i = lo(1),hi(1)
+               Tout(i,j,k) = zero
+               do kk=0,1
+                  do jj=0,1
+                     do ii=0,1
+                        Tout(i,j,k) = Tout(i,j,k)
+     &                       + Tin(i+ii,j+jj,k+kk-1)   + Tin(i+ii-1,j+jj,k+kk-1)
+     &                       + Tin(i+ii,j+jj-1,k+kk-1) + Tin(i+ii-1,j+jj-1,k+kk-1)
+     &                       + Tin(i+ii,j+jj,k+kk)     + Tin(i+ii-1,j+jj,k+kk  )
+     &                       + Tin(i+ii,j+jj-1,k+kk  ) + Tin(i+ii-1,j+jj-1,k+kk  )
+                     end do
+                  end do
+               end do
+               Tout(i,j,k) = Tout(i,j,k) / 64.d0
+            end do
+         end do
+      end do
+      end

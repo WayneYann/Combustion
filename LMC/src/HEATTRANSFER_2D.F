@@ -1275,3 +1275,27 @@ c     Get curvature at centers from nodal normal, get normal at centers
       end
 
 
+      subroutine FORT_SMOOTH(lo, hi, Tin, DIMS(Tin), Tout, DIMS(Tout))
+      implicit none
+      integer lo(SDIM), hi(SDIM)
+      integer DIMDEC(Tin)
+      integer DIMDEC(Tout)
+      REAL_T   Tin(DIMV(Tin))
+      REAL_T  Tout(DIMV(Tout))
+
+      integer i,j,ii,jj
+
+      do j = lo(2),hi(2)
+         do i = lo(1),hi(1)
+            Tout(i,j) = zero
+            do jj=0,1
+               do ii=0,1
+                  Tout(i,j) = Tout(i,j)
+     &                 + Tin(i+ii,j+jj)   + Tin(i+ii-1,j+jj)
+     &                 + Tin(i+ii,j+jj-1) + Tin(i+ii-1,j+jj-1)
+               end do
+            end do
+            Tout(i,j) = Tout(i,j) / 16.d0
+         end do
+      end do
+      end

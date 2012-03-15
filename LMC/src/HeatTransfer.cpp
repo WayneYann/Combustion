@@ -5923,7 +5923,7 @@ HeatTransfer::advance (Real time,
                     tmf[fpi.index()].copy(fpi());
                     if (do_curvature_sample)
                     {
-                        tmf[fpi.index()].setVal(0,MCcomp,1); // Curvature in grow cells will be zero
+                        tmf[fpi.index()].setVal(0,MCcomp); // Curvature in grow cells will be zero
                     }
                 }
 
@@ -5931,6 +5931,7 @@ HeatTransfer::advance (Real time,
                 {
                     int nTcomp = 1;
                     int num_smooth_pre = 3;
+                    bool do_corners = true;
 
                     MultiFab::Copy(tmf,tmf,Temp,SmTcomp,nTcomp,1); // Fillpatched grow cell T good
 
@@ -5938,8 +5939,7 @@ HeatTransfer::advance (Real time,
                     {
                         // Fix up fine-fine and periodic
                         tmf.FillBoundary(SmTcomp,nTcomp);
-                        bool do_corners = true; // actually only need corners on last one, but this is simpler
-                        geoms[lev].FillPeriodicBoundary(tmf,SmTcomp,nTcomp,do_corners);
+                        geom.FillPeriodicBoundary(tmf,SmTcomp,nTcomp,do_corners);
                         
                         BL_ASSERT(nTcomp==1); // FORT_SMOOTH only knows about a single component, 
                         for (MFIter mfi(tmf); mfi.isValid(); ++mfi)
@@ -5948,7 +5948,7 @@ HeatTransfer::advance (Real time,
                             FORT_SMOOTH(box.loVect(),box.hiVect(),
                                         tmf[mfi].dataPtr(SmTcomp),
                                         ARLIM(tmf[mfi].loVect()),ARLIM(tmf[mfi].hiVect()),
-                                        tmf.dataPtr(MCcomp),
+                                        tmf[mfi].dataPtr(MCcomp),
                                         ARLIM(tmf[mfi].loVect()),ARLIM(tmf[mfi].hiVect()));
                         }
                         
@@ -5957,7 +5957,7 @@ HeatTransfer::advance (Real time,
                     }
 
                     tmf.FillBoundary(SmTcomp,nTcomp);
-                    geoms[lev].FillPeriodicBoundary(tmf,SmTcomp,nTcomp,do_corners);
+                    geom.FillPeriodicBoundary(tmf,SmTcomp,nTcomp,do_corners);
                     const Real* dx = geom.CellSize();
 
                     FArrayBox nWork;
@@ -5972,7 +5972,7 @@ HeatTransfer::advance (Real time,
                                     s.dataPtr(SmTcomp),ARLIM(s.loVect()),ARLIM(s.hiVect()),
                                     s.dataPtr(MCcomp),ARLIM(s.loVect()),ARLIM(s.hiVect()),
                                     nWork.dataPtr(),ARLIM(nWork.loVect()),ARLIM(nWork.hiVect()),
-                                    dx.dataPtr());
+                                    dx);
                     }
                 }
 

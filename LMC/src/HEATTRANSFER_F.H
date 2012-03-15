@@ -30,6 +30,7 @@
 #    define FORT_GETTYPICALVALS            gettypvals
 #    define FORT_PART_CNT_ERR              particlecnterr
 #    define FORT_MCURVE                    mcurve
+#    define FORT_SMOOTH                    smooth
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -59,6 +60,7 @@
 #    define FORT_GETTYPICALVALS            GETTYPVALS
 #    define FORT_PART_CNT_ERR              PARTICLECNTERR
 #    define FORT_MCURVE                    MCURVE
+#    define FORT_SMOOTH                    SMOOTH
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -87,6 +89,7 @@
 #    define FORT_GETTYPICALVALS            gettypvals
 #    define FORT_PART_CNT_ERR              particlecnterr
 #    define FORT_MCURVE                    mcurve
+#    define FORT_SMOOTH                    smooth
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -115,6 +118,7 @@
 #    define FORT_GETTYPICALVALS            gettypvals_
 #    define FORT_PART_CNT_ERR              particlecnterr_
 #    define FORT_MCURVE                    mcurve_
+#    define FORT_SMOOTH                    smooth_
 #  endif
 
 #include <ArrayLim.H>
@@ -359,7 +363,10 @@ extern "C" {
                      Real*      nW, ARLIM_P(nwlo), ARLIM_P(nwhi),
                      const Real* delta);
 
-
+    void FORT_SMOOTH(const int* lo, const int* hi,
+                     Real*       i, ARLIM_P(ilo), ARLIM_P(ihi),
+                     const Real* o, ARLIM_P(olo), ARLIM_P(ohi));
+    
 }
 #endif
 
