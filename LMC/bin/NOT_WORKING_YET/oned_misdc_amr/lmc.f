@@ -212,7 +212,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          
          call read_check(chkfile,vel_old,scal_old,press_old,
      $                   I_R,divu_old,dsdt,
-     $                   time,at_nstep,dt)
+     $                   time,at_nstep,dt,lo,hi)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      $                  dx,at_nstep,time)
@@ -370,7 +370,7 @@ c     update state, time
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 
             call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $           I_R,divu_new,dsdt,dx,time,dt)
+     $           I_R,divu_new,dsdt,dx,time,dt,lo,hi)
          endif
       enddo
 
