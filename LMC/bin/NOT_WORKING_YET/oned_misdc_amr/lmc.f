@@ -49,7 +49,7 @@
       real*8 fixed_dt
       real*8 Patm
 
-      integer n,divu_iter,init_iter
+      integer l,divu_iter,init_iter
 
       character chkfile*(16)
 
@@ -166,8 +166,8 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       
 !     initialize dx
       dx(0) = (probhi-problo)/DBLE(nx)
-      do n=1,nlevs-1
-         dx(n) = dx(n-1) / dble(rr)
+      do l=1,nlevs-1
+         dx(l) = dx(l-1) / dble(rr)
       end do
 
 !     initialize dt
@@ -176,11 +176,11 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          stop
       else
          dt(0) = fixed_dt
-         do n=1,nlevs-1
+         do l=1,nlevs-1
             if (subcycling) then
-               dt(n) = dt(n-1) / dble(rr)
+               dt(l) = dt(l-1) / dble(rr)
             else
-               dt(n) = dt(n-1)
+               dt(l) = dt(l-1)
             end if
          end do
       end if
@@ -202,8 +202,8 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
 !     0=interior; 1=inflow; 2=outflow
       bc(0,1) = 1
       bc(0,2) = 2
-      do n=1,nlevs-1
-         bc(n,1:2) = 0
+      do l=1,nlevs-1
+         bc(l,1:2) = 0
       end do
       
       if ( chkfile .ne. 'null') then
@@ -238,7 +238,10 @@ c     needed for seed to EOS after first strang_chem call
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,99999,time,lo,hi)
 
-         call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
+         do l=0,nlevs-1
+            call calc_diffusivities(scal_old(l,:,:),beta_old(l,:,:),
+     &                              mu_dummy(l,:),lo(l),hi(l))
+         end do
          
          if (do_initial_projection .eq. 1) then
 
@@ -309,7 +312,7 @@ c     strang split overwrites scal_old so we preserve it
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,dt,time,lo,hi,bc)
+     $                   dx,dt,lo,hi,bc)
 
 c     restore scal_old
             if (use_strang) then
@@ -352,7 +355,7 @@ C-- Now advance
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
      $                divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                dx,dt,time,lo,hi,bc)
+     $                dx,dt,lo,hi,bc)
 
 c     update state, time
          vel_old = vel_new

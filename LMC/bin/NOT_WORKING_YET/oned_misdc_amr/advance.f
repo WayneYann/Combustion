@@ -1,7 +1,7 @@
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,dt,time,lo,hi,bc)
+     $                   dx,dt,lo,hi,bc)
 
       implicit none
 
@@ -32,7 +32,6 @@
       integer bc(0:nlevs-1,2)
       real*8  dx(0:nlevs-1)
       real*8  dt(0:nlevs-1)
-      real*8  time
 
 !     local variables
 
@@ -103,7 +102,8 @@ c     compute diffusivities at time n (old time)
 c     this computes rho D_m     (for species)
 c                   lambda / cp (for enthalpy)
 c                   lambda      (for temperature)
-      call calc_diffusivities(scal_old,beta_old,mu_old,dx,time)
+      call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
+     &                        mu_old(0,:),lo(0),hi(0))
 
       diffdiff_old(0,:) = 0.d0
       diffdiff_new(0,:) = 0.d0
@@ -149,7 +149,8 @@ c
 c    compute rho^(1) D_m^(1)     (for species)
 c            lambda^(1) / cp^(1) (for enthalpy)
 c            lambda^(1)          (for temperature) 
-      call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
+      call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
+     &                        mu_dummy(0,:),lo(0),hi(0))
 
 c     compute del dot lambda grad T + rho D grad h dot grad Y
 c     the rho D grad Y term is now computed conservatively
@@ -217,7 +218,8 @@ c        does not fill ghost cells
 c        compute rho^(2) D_m^(2),* (for species)
 c        lambda/cp (for enthalpy) won't be used
 c        lambda^(1) (for temperature) won't be used
-         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+         call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                           mu_dummy(0,:),lo(0),hi(0))
       else
          print *,'... set new coeffs to old values for predictor'
          do n=1,nscal
@@ -270,7 +272,8 @@ c     update species with conservative diffusion fluxes
 c     this computes rho D_m                 (for species) won't be used
 c                   lambda^(2),* / cp^(2),* (for enthalpy)
 c                   lambda^(2),*            (for temperature) 
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+      call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                        mu_dummy(0,:),lo(0),hi(0))
 
       if (LeEQ1 .eq. 0) then
 
@@ -307,7 +310,8 @@ C   Corrector
 c     this computes rho^(2) D_m^(2)     (for species)
 c                   lambda^(2) / cp^(2) (for enthalpy)
 c                   lambda^(2)          (for temperature) 
-      call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+      call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                        mu_dummy(0,:),lo(0),hi(0))
 
       do i=0,nx-1
          dRhs(0,i,0) = 0.0d0
@@ -585,7 +589,8 @@ c     that have a backward Euler character
 c        this computes rho D_m     (for species)
 c                      lambda / cp (for enthalpy)
 c                      lambda      (for temperature) 
-         call calc_diffusivities(scal_new,beta_new,mu_dummy,dx,time+dt)
+         call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                           mu_dummy(0,:),lo(0),hi(0))
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
          call get_spec_visc_terms(scal_new,beta_new,
@@ -745,8 +750,9 @@ C----------------------------------------------------------------
 
 c     this computes rho D_m     (for species)
 c                   lambda / cp (for enthalpy)
-c                   lambda      (for temperature)           
-      call calc_diffusivities(scal_new,beta_new,mu_new,dx,time+dt)
+c                   lambda      (for temperature)         
+      call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                        mu_new(0,:),lo(0),hi(0))  
       call calc_divu(scal_new,beta_new,I_R_divu,divu_new,dx)
 
       do i = 0,nx-1

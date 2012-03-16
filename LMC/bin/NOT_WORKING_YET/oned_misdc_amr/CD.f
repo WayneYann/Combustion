@@ -9,13 +9,13 @@ c     Initialize some values
       data iCH4 / -1 /
       end
 
-      subroutine calc_diffusivities(scal, beta, mu, dx, time)
+      subroutine calc_diffusivities(scal, beta, mu, lo, hi)
       implicit none
       include 'spec.h'
       double precision scal(-2:nx+1,nscal)
       double precision beta(-1:nx  ,nscal)
-      double precision mu(-1:nx)
-      double precision time, dx
+      double precision   mu(-1:nx)
+      integer lo, hi
 
       double precision Dt(Nspec), CPMS(Nspec), Y(Nspec)
       double precision Tt, Wavg, rho
@@ -31,7 +31,7 @@ c     Ensure chem/tran initialized
 
       if (LeEQ1 .eq. 0) then
          
-         do i=-1, nx         
+         do i=lo-1,hi+1
             Tt = MAX(scal(i,Temp),TMIN_TRANS) 
             rho = 0.d0
             do n=1,Nspec
@@ -82,7 +82,7 @@ c           compute shear viscosity
          enddo
 
       else
-         do i=-1, nx
+         do i=lo-1,hi+1
 c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
             mu(i) = 10.d0 * 1.85d-5*(MAX(scal(i,Temp),1.d0)/298.d0)**.7d0
 c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
@@ -708,25 +708,3 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       open_vode_failure_file = lout
       end
 
-
-      subroutine get_hmix_given_T_RhoY(scal,dx)
-      implicit none
-      include 'spec.h'
-      real*8 scal(-2:nx+1,nscal)
-      real*8 dx
-      
-      integer i,n,IWRK
-      real*8 Y(Nspec), rho, RWRK, hmix
-
-      do i = 0,nx-1
-         rho = 0.d0
-         do n=1,Nspec
-            rho = rho + scal(i,FirstSpec+n-1)
-         enddo
-         do n=1,Nspec
-            Y(n) = scal(i,FirstSpec+n-1)/rho
-         enddo
-         call CKHBMS(scal(i,Temp),Y,IWRK,RWRK,hmix)
-         scal(i,RhoH) = hmix * rho
-      enddo
-      end
