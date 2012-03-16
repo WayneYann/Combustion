@@ -1278,7 +1278,6 @@ c
       REAL_T  z, y, x
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
       REAL_T  cs,sg,r,scaler,scalet
-      REAL_T  turbSclX,turbSclY,turbSclZ,turbSclR,turbSclT
 
 #if defined(BL_DO_FLCT)
       integer DIMDEC(uflct)
@@ -1351,7 +1350,6 @@ c
                      vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 1) then
-c                       vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
                         vel(i,j,k,1) = u + uflct(1,j,k)*turb_scale
                      endif
 #endif
@@ -1361,7 +1359,6 @@ c                       vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_sca
                      vel(i,j,k,2) = v
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 1) then
-c                       vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
                         vel(i,j,k,2) = v + vflct(1,j,k)*turb_scale
                      endif
 #endif
@@ -1371,7 +1368,6 @@ c                       vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_sca
                      vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 1) then
-c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
                         vel(i,j,k,3) = w + wflct(1,j,k)*turb_scale
                      endif
 #endif
@@ -1399,7 +1395,7 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                      vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 1) then
-                        vel(i,j,k,1) = u + uflct(1,j,k)*turbSclX(x,y,z)*turb_scale
+                        vel(i,j,k,1) = u + uflct(1,j,k)*turb_scale
                      endif
 #endif
                   endif
@@ -1408,7 +1404,7 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                      vel(i,j,k,2) = v
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 1) then
-                        vel(i,j,k,2) = v + vflct(1,j,k)*turbSclY(x,y,z)*turb_scale
+                        vel(i,j,k,2) = v + vflct(1,j,k)*turb_scale
                      endif
 #endif
                   endif
@@ -1417,7 +1413,7 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                      vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 1) then
-                        vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_scale
+                        vel(i,j,k,3) = w + wflct(1,j,k)*turb_scale
                      endif
 #endif
                   endif
@@ -1444,7 +1440,6 @@ c                       vel(i,j,k,3) = w + wflct(1,j,k)*turbSclZ(x,y,z)*turb_sca
                      vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 2) then
-c                       vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
                         vel(i,j,k,1) = u + uflct(i,1,k)*turb_scale
                      endif
 #endif
@@ -1454,7 +1449,6 @@ c                       vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_sca
                      vel(i,j,k,2) = v
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 2) then
-c                       vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
                         vel(i,j,k,2) = v + vflct(i,1,k)*turb_scale
                      endif
 #endif
@@ -1464,7 +1458,6 @@ c                       vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_sca
                         vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceLo .and. strmwse_dir .eq. 2) then
-c                       vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
                         vel(i,j,k,3) = w + wflct(i,1,k)*turb_scale
                      endif
 
@@ -1493,7 +1486,6 @@ c                       vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_sca
                         vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 2) then
-c                       vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_scale
                         vel(i,j,k,1) = u + uflct(i,1,k)*turb_scale
                      endif
 #endif
@@ -1503,7 +1495,6 @@ c                       vel(i,j,k,1) = u + uflct(i,1,k)*turbSclX(x,y,z)*turb_sca
                      vel(i,j,k,2) = v
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 2) then
-c                       vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_scale
                         vel(i,j,k,2) = v + vflct(i,1,k)*turb_scale
                      endif
 #endif
@@ -1513,7 +1504,6 @@ c                       vel(i,j,k,2) = v + vflct(i,1,k)*turbSclY(x,y,z)*turb_sca
                      vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 2) then
-c                       vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_scale
                         vel(i,j,k,3) = w + wflct(i,1,k)*turb_scale
                      endif
 #endif
@@ -1586,7 +1576,6 @@ c                       vel(i,j,k,3) = w + wflct(i,1,k)*turbSclZ(x,y,z)*turb_sca
                      vel(i,j,k,1) = u
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 3) then
-c                       vel(i,j,k,1) = u + uflct(i,j,1)*turbSclX(x,y,z)*turb_scale
                         vel(i,j,k,1) = u + uflct(i,j,1)*turb_scale
                      endif
 #endif
@@ -1596,7 +1585,6 @@ c                       vel(i,j,k,1) = u + uflct(i,j,1)*turbSclX(x,y,z)*turb_sca
                      vel(i,j,k,2) = v
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 3) then
-c                       vel(i,j,k,2) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_scale
                         vel(i,j,k,2) = v + vflct(i,j,1)*turb_scale
                      endif
 #endif
@@ -1606,7 +1594,6 @@ c                       vel(i,j,k,2) = v + vflct(i,j,1)*turbSclY(x,y,z)*turb_sca
                      vel(i,j,k,3) = w
 #if defined(BL_DO_FLCT)
                      if (forceHi .and. strmwse_dir .eq. 3) then
-c                       vel(i,j,k,3) = w + wflct(i,j,1)*turbSclZ(x,y,z)*turb_scale
                         vel(i,j,k,3) = w + wflct(i,j,1)*turb_scale
                      endif
 #endif

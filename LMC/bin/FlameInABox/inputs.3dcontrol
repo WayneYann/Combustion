@@ -1,3 +1,10 @@
+#particles.particle_restart_file = dogmeat.particles3d
+#particles.restart_from_nonparticle_chkfile = 1
+#particles.timestamp_dir = Timestamps3d
+#particles.pverbose = 2
+#ht.do_curvature_sample = false
+#particles.timestamp_indices = 0 1 2 4 5 6 7 8 9 10 11 12 13 15 16
+#ht.do_curvature_sample=1
 
 #ht.velocity_plotfile=PLT_TURB_1000
 #ht.velocity_plotfile=../Turb/plt0820
@@ -6,7 +13,7 @@
 #amr.regrid_on_restart=1
 
 ns.do_active_control = 0
- 
+
 mg.smooth_on_cg_unstable=1
 
 
@@ -24,6 +31,7 @@ ht.plot_molefrac=1
 #ht.plot_massfrac=1
 ht.plot_ydot=0
 ht.plot_auxDiags = 1
+#amr.derive_plot_vars=rhoRT mag_vort particle_count mean_progress_curvature
 amr.derive_plot_vars=rhoRT mag_vort
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ

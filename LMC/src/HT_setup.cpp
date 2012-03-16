@@ -866,6 +866,9 @@ HeatTransfer::variableSetUp ()
 #endif
     //    derive_lst.addComponent("forcez",desc_lst,State_Type,Xvel,BL_SPACEDIM);
 
+    std::string curv_str = "mean_progress_curvature";
+    derive_lst.add(curv_str,IndexType::TheCellType(),1,&DeriveRec::GrowBoxByOne);
+    
 #ifdef PARTICLES
     //
     // The particle count at this level.
