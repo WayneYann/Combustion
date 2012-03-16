@@ -49,7 +49,7 @@
       real*8 fixed_dt
       real*8 Patm
 
-      integer n,divu_iter,init_iter
+      integer l,divu_iter,init_iter
 
       character chkfile*(16)
 
@@ -166,8 +166,8 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       
 !     initialize dx
       dx(0) = (probhi-problo)/DBLE(nx)
-      do n=1,nlevs-1
-         dx(n) = dx(n-1) / dble(rr)
+      do l=1,nlevs-1
+         dx(l) = dx(l-1) / dble(rr)
       end do
 
 !     initialize dt
@@ -176,11 +176,11 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          stop
       else
          dt(0) = fixed_dt
-         do n=1,nlevs-1
+         do l=1,nlevs-1
             if (subcycling) then
-               dt(n) = dt(n-1) / dble(rr)
+               dt(l) = dt(l-1) / dble(rr)
             else
-               dt(n) = dt(n-1)
+               dt(l) = dt(l-1)
             end if
          end do
       end if
@@ -202,8 +202,8 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
 !     0=interior; 1=inflow; 2=outflow
       bc(0,1) = 1
       bc(0,2) = 2
-      do n=1,nlevs-1
-         bc(n,1:2) = 0
+      do l=1,nlevs-1
+         bc(l,1:2) = 0
       end do
       
       if ( chkfile .ne. 'null') then
@@ -230,7 +230,7 @@ c     needed for seed to EOS after first strang_chem call
 C take vals from PMF and fills vel, Y, and Temp
 C computes rho and h, fills in rhoH and rhoY
 C sets I_R to zero
-         call initdata(vel_old,scal_old,I_R,dx)
+         call initdata(vel_old,scal_old,I_R,dx,lo,hi)
 
 c     needed for seed to EOS after first strang_chem call
          scal_new(:,:,Temp) = scal_old(:,:,Temp)
@@ -238,17 +238,24 @@ c     needed for seed to EOS after first strang_chem call
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,99999,time,lo,hi)
 
-         call calc_diffusivities(scal_old,beta_old,mu_dummy,dx,time)
+         do l=0,nlevs-1
+            call calc_diffusivities(scal_old(l,:,:),beta_old(l,:,:),
+     &                              mu_dummy(l,:),lo(l),hi(l))
+         end do
          
          if (do_initial_projection .eq. 1) then
 
             print *,'initialVelocityProject: '
-            call calc_divu(scal_old,beta_old,I_R,divu_old,dx)
+            do l=0,nlevs-1
+               call calc_divu(scal_old(l,:,:),beta_old(l,:,:),
+     &                        I_R(l,:,:),divu_old(l,:),dx(l),
+     &                        lo(l),hi(l))
+            end do
 
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             call project(vel_old,scal_old(:,0:,Density),divu_old,
-     $                   press_old,press_new,dx,-1.d0,time)
+     $                   press_old,press_new,dx,-1.d0)
 
          end if
 
@@ -269,19 +276,23 @@ c     return zero pressure
             print *,' ...doing divu_iter number',divu_iter,' dt=',dt
             
             call strang_chem(scal_old,scal_new,const_src,lin_src_old,
-     $                       lin_src_new,I_R,dt*0.5d0,dx,time)
+     $                       lin_src_new,I_R,dt*0.5d0)
 
 c     reset temperature just in case strang_chem call is not well poased
             scal_new(:,:,Temp) = scal_old(:,:,Temp)
 
-            call calc_divu(scal_old,beta_old,I_R,divu_old,dx)
+            do l=0,nlevs-1
+               call calc_divu(scal_old(l,:,:),beta_old(l,:,:),
+     &                        I_R(l,:,:),divu_old(l,:),dx(l),
+     &                        lo(l),hi(l))
+            end do
 
             print *,'divu_iters velocity Project: '
             
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             call project(vel_old,scal_old(:,0:,Density),divu_old,
-     $                   press_old,press_new,dx,-1.d0,time)
+     $                   press_old,press_new,dx,-1.d0)
 
          enddo
 
@@ -309,7 +320,7 @@ c     strang split overwrites scal_old so we preserve it
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,dt,time,lo,hi,bc)
+     $                   dx,dt,lo,hi,bc)
 
 c     restore scal_old
             if (use_strang) then
@@ -352,7 +363,7 @@ C-- Now advance
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
      $                divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                dx,dt,time,lo,hi,bc)
+     $                dx,dt,lo,hi,bc)
 
 c     update state, time
          vel_old = vel_new
