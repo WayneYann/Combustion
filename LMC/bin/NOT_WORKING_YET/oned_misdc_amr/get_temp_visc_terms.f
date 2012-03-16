@@ -1,14 +1,14 @@
-      subroutine get_temp_visc_terms(scal,beta,visc,dx)
+      subroutine get_temp_visc_terms(scal,beta,visc,dx,lo,hi)
       implicit none
       include 'spec.h'
-      real*8 scal(-2:nx+1,nscal)
-      real*8 beta(-1:nx  ,nscal)
-      real*8 visc(-1:nx)
+      real*8 scal(-2:nfine+1,nscal)
+      real*8 beta(-1:nfine  ,nscal)
+      real*8 visc(-1:nfine)
       real*8 dx
-
+      integer lo,hi
 
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-      call rhoDgradHgradY(scal,beta,visc,dx)
+      call rhoDgradHgradY(scal,beta,visc,dx,lo,hi)
 
 c     Add Div( lambda Grad(T) )
       call addDivLambdaGradT(scal,beta,visc,dx)
@@ -46,23 +46,24 @@ c     Add Div( lambda Grad(T) )
 
       end
 
-      subroutine rhoDgradHgradY(scal,beta,visc,dx)
+      subroutine rhoDgradHgradY(scal,beta,visc,dx,lo,hi)
       implicit none
       include 'spec.h'
-      real*8 scal(-2:nx+1,nscal)
-      real*8 beta(-1:nx  ,nscal)
-      real*8 visc(-1:nx)
+      real*8 scal(-2:nfine+1,nscal)
+      real*8 beta(-1:nfine  ,nscal)
+      real*8 visc(-1:nfine)
       real*8 dx
+      integer lo,hi
       
       integer i,n,is,IWRK
       real*8 beta_lo,beta_hi
       real*8 rdgydgh_lo,rdgydgh_hi
       real*8 dxsqinv,RWRK,rho,dv
-      real*8 hm(Nspec,-1:nx)
-      real*8 Y(Nspec,-1:nx)
+      real*8 hm(Nspec,-1:nfine)
+      real*8 Y(Nspec,-1:nfine)
 
-      real*8 spec_flux_lo(0:nx-1,Nspec)
-      real*8 spec_flux_hi(0:nx-1,Nspec)
+      real*8 spec_flux_lo(0:nfine-1,Nspec)
+      real*8 spec_flux_hi(0:nfine-1,Nspec)
 
       real*8 sum_lo,sum_hi
       real*8 sumRhoY_lo,sumRhoY_hi
@@ -73,7 +74,7 @@ c     Compute rhoD Grad(Yi).Grad(hi) terms
       dxsqinv = 1.d0/(dx*dx)
 
 c     Get Hi, Yi at cell centers
-      do i = -1,nx
+      do i=lo-1,hi+1
          rho = 0.d0
          do n=1,Nspec
             rho = rho + scal(i,FirstSpec+n-1)
@@ -85,7 +86,7 @@ c     Get Hi, Yi at cell centers
       enddo
 
 c     Compute differences
-      do i = 0,nx-1
+      do i=lo,hi
          dv = 0.d0
          sum_lo = 0.d0
          sum_hi = 0.d0

@@ -1,6 +1,6 @@
       subroutine update_temp(scal_old,scal_new,aofs,
      &                       alpha,beta_old,beta_new,Rhs,
-     &                       dx,dt,be_cn_theta)
+     &                       dx,dt,be_cn_theta,lo,hi)
       implicit none
       include 'spec.h'
       real*8 scal_old(-2:nx+1,nscal)
@@ -12,6 +12,7 @@
       real*8      Rhs(0 :nx-1)
       real*8 dx, dt
       real*8 be_cn_theta
+      integer lo,hi
       
       real*8  Ymid(Nspec), rho_old, rho_new, cpmix
       real*8  visc(-1:nx)
@@ -35,7 +36,7 @@ C                                    rho.D.Grad(Y).Grad(h) ]
 C     at old time
 c*************************************************************************      
 C this fn sets ghost cells
-      call get_temp_visc_terms(scal_old,beta_old,visc,dx)
+      call get_temp_visc_terms(scal_old,beta_old,visc,dx,lo,hi)
       do i = 0,nx-1
          Rhs(i) = (1.d0 - be_cn_theta)*dt*visc(i)  
       enddo
@@ -43,7 +44,7 @@ C this fn sets ghost cells
 c*************************************************************************
 c     Add rho.D.Grad(Y).Grad(H)  at time n+1
 c*************************************************************************      
-      call rhoDgradHgradY(scal_new,beta_new,visc,dx)
+      call rhoDgradHgradY(scal_new,beta_new,visc,dx,lo,hi)
       do i = 0,nx-1
          Rhs(i) = Rhs(i) + dt*be_cn_theta*visc(i) 
       enddo

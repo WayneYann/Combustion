@@ -154,8 +154,8 @@ c            lambda^(1)          (for temperature)
 
 c     compute del dot lambda grad T + rho D grad h dot grad Y
 c     the rho D grad Y term is now computed conservatively
-      call get_temp_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,:,Temp),dx)
+      call get_temp_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
+     &                         diff_old(0,:,Temp),dx(0),lo(0),hi(0))
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
       call get_spec_visc_terms(scal_old,beta_old,
@@ -208,7 +208,7 @@ c     coeffs, or simply start by copying from previous time step
          rho_flag = 1
          call update_temp(scal_old,scal_new,aofs,
      $                    alpha,beta_old,beta_old,
-     $                    Rhs(0,0,Temp),dx,dt,be_cn_theta)
+     $                    Rhs(0,0,Temp),dx,dt,be_cn_theta,lo(0),hi(0))
 c        just uses RHS and overwrites snew
 c        does not fill ghost cells
          call cn_solve(scal_new,alpha,beta_old,Rhs(0,0,Temp),
