@@ -276,8 +276,12 @@ c     return zero pressure
 
             print *,' ...doing divu_iter number',divu_iter,' dt=',dt
             
-            call strang_chem(scal_old,scal_new,const_src,lin_src_old,
-     $                       lin_src_new,I_R,dt*0.5d0)
+            do l=0,nlevs-1
+               call strang_chem(scal_old(l,:,:),scal_new(l,:,:),
+     $                          const_src(l,:,:),lin_src_old(l,:,:),
+     $                          lin_src_new(l,:,:),I_R(l,:,:),
+     $                          0.5d0*dt(l),lo(l),hi(l))
+            end do
 
 c     reset temperature just in case strang_chem call is not well poased
             scal_new(:,:,Temp) = scal_old(:,:,Temp)

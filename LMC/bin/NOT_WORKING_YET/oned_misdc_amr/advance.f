@@ -128,9 +128,10 @@ c                   lambda      (for temperature)
                lin_src_new(0,i,n) = 0.d0
             enddo
          enddo
-         call strang_chem(scal_old,scal_new,
-     $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R,dt/2.d0)
+         call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
+     $                    const_src(0,:,:),lin_src_old(0,:,:),
+     $                    lin_src_new(0,:,:),
+     $                    I_R(0,:,:),dt(0)/2.d0,lo(0),hi(0))
          
          do n = FirstSpec,LastSpec
             scal_old(0,:,n) = scal_new(0,:,n)
@@ -383,10 +384,10 @@ c     we take the gradient of Y from the second scal argument
             scal_old(0,i,Temp) = scal_new(0,i,Temp)
             scal_old(0,i,Density) = scal_new(0,i,Density)
          enddo
-
-         call strang_chem(scal_old,scal_new,
-     $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R_temp,dt/2.d0)
+         call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
+     $                    const_src(0,:,:),lin_src_old(0,:,:),
+     $                    lin_src_new(0,:,:),
+     $                    I_R_temp(0,:,:),dt(0)/2.d0,lo(0),hi(0))
 
 c        we only care about updated species out of strang_chem
 c        rho and rhoh remain constant
@@ -564,9 +565,10 @@ c        add differential diffusion
      $           + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
          end do
 
-         call strang_chem(scal_old,scal_new,
-     $                    const_src,lin_src_old,lin_src_new,
-     $                    I_R,dt)
+         call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
+     $                    const_src(0,:,:),lin_src_old(0,:,:),
+     $                    lin_src_new(0,:,:),
+     $                    I_R(0,:,:),dt(0),lo(0),hi(0))
 
       endif
 
@@ -711,11 +713,11 @@ c           add differential diffusion
                const_src(0,i,RhoH) = const_src(0,i,RhoH)
      $              + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
             end do
+            call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
+     $                       const_src(0,:,:),lin_src_old(0,:,:),
+     $                       lin_src_new(0,:,:),
+     $                       I_R(0,:,:),dt(0),lo(0),hi(0))
             
-            call strang_chem(scal_old,scal_new,
-     $                       const_src,lin_src_old,lin_src_new,
-     $                       I_R,dt)
-
          endif
 
 C----------------------------------------------------------------

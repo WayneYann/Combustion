@@ -1,15 +1,16 @@
       subroutine strang_chem(scal_old,scal_new,
      $                       const_src,lin_src_old,lin_src_new,
-     $                       I_R,dt)
+     $                       I_R,dt,lo,hi)
       implicit none
       include 'spec.h'
-      real*8     scal_old(-2:nx+1,nscal)
-      real*8     scal_new(-2:nx+1,nscal)
-      real*8    const_src( 0:nx-1,nscal)
-      real*8  lin_src_old( 0:nx-1,nscal)
-      real*8  lin_src_new( 0:nx-1,nscal)
-      real*8          I_R(-1:nx  ,0:Nspec)
+      real*8     scal_old(-2:nfine+1,nscal)
+      real*8     scal_new(-2:nfine+1,nscal)
+      real*8    const_src( 0:nfine-1,nscal)
+      real*8  lin_src_old( 0:nfine-1,nscal)
+      real*8  lin_src_new( 0:nfine-1,nscal)
+      real*8          I_R(-1:nfine  ,0:Nspec)
       real*8  dt
+      integer lo,hi
       
       integer i,is,n,ifail
       real*8 RYold(Nspec), RYnew(Nspec), Told, Tnew
@@ -32,7 +33,7 @@ c     Shut off diagnostics
 
       print *,'... chemistry'
 c     Evolve chem over grid
-      do i = 0,nx-1
+      do i=lo,hi
          if (use_strang) then
 C           integrating Y_m's not rhoY_m
             do n = 1,Nspec
