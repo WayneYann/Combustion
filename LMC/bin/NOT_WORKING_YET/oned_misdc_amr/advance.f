@@ -753,7 +753,8 @@ c                   lambda / cp (for enthalpy)
 c                   lambda      (for temperature)         
       call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
      &                        mu_new(0,:),lo(0),hi(0))  
-      call calc_divu(scal_new,beta_new,I_R_divu,divu_new,dx)
+      call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
+     &               divu_new(0,:),dx(0),lo(0),hi(0))
 
       do i = 0,nx-1
          rhohalf(0,i) = 

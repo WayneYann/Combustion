@@ -12,9 +12,9 @@ c     Initialize some values
       subroutine calc_diffusivities(scal, beta, mu, lo, hi)
       implicit none
       include 'spec.h'
-      double precision scal(-2:nx+1,nscal)
-      double precision beta(-1:nx  ,nscal)
-      double precision   mu(-1:nx)
+      double precision scal(-2:nfine+1,nscal)
+      double precision beta(-1:nfine  ,nscal)
+      double precision   mu(-1:nfine)
       integer lo, hi
 
       double precision Dt(Nspec), CPMS(Nspec), Y(Nspec)
