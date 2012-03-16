@@ -11,17 +11,18 @@ c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
       call rhoDgradHgradY(scal,beta,visc,dx,lo,hi)
 
 c     Add Div( lambda Grad(T) )
-      call addDivLambdaGradT(scal,beta,visc,dx)
+      call addDivLambdaGradT(scal,beta,visc,dx,lo,hi)
 
       end
 
-      subroutine addDivLambdaGradT(scal,beta,visc,dx)
+      subroutine addDivLambdaGradT(scal,beta,visc,dx,lo,hi)
       implicit none
       include 'spec.h'
-      real*8 scal(-2:nx+1,nscal)
-      real*8 beta(-1:nx  ,nscal)
-      real*8 visc(-1:nx)
+      real*8 scal(-2:nfine+1,nscal)
+      real*8 beta(-1:nfine  ,nscal)
+      real*8 visc(-1:nfine)
       real*8 dx
+      integer lo,hi
       
       integer i
       real*8 beta_lo,beta_hi
@@ -29,7 +30,7 @@ c     Add Div( lambda Grad(T) )
       real*8 dxsqinv
 
       dxsqinv = 1.d0/(dx*dx)
-      do i = 0,nx-1
+      do i=lo,hi
          if (coef_avg_harm.eq.1) then
             beta_lo = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i-1,Temp))
             beta_hi = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i+1,Temp))

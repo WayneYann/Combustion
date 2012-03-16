@@ -796,6 +796,7 @@ C     get velocity visc terms to use as a forcing term for advection
      &                    vel_new,dx,dt,lo(0),hi(0),bc(0,:))
 
       print *,'...nodal projection...'
-      call project(vel_new,rhohalf,divu_new,press_old,press_new,dx,dt)
+      call project(vel_new(0,:),rhohalf(0,:),divu_new(0,:),
+     &             press_old(0,:),press_new(0,:),dx(0),dt(0),lo(0),hi(0))
 
       end
