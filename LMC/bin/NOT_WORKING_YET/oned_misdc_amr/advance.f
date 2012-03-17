@@ -216,14 +216,16 @@ c     coeffs, or simply start by copying from previous time step
          if (predict_temp_for_coeffs .eq. 1) then
             print *,'... predict temp with old coeffs'
             rho_flag = 1
-            call update_temp(scal_old,scal_new,aofs,
-     $                       alpha,beta_old,beta_old,
-     $                       Rhs(0,0,Temp),dx,dt,be_cn_theta,
+            call update_temp(scal_old(0,:,:),scal_new(0,:,:),
+     $                       aofs(0,:,:),alpha(0,:),
+     $                       beta_old(0,:,:),beta_old(0,:,:),
+     $                       Rhs(0,:,Temp),dx(0),dt(0),be_cn_theta,
      $                       lo(0),hi(0))
 c        just uses RHS and overwrites snew
 c        does not fill ghost cells
-            call cn_solve(scal_new,alpha,beta_old,Rhs(0,0,Temp),
-     $                    dx,dt,Temp,be_cn_theta,rho_flag,.false.)
+            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
+     $                    Rhs(0,:,Temp),dx(0),dt(0),Temp,be_cn_theta,
+     $                    rho_flag,.false.,lo(0),hi(0))
 
             print *,'... compute new coeffs'
 c        compute rho^(2) D_m^(2),* (for species)
@@ -256,8 +258,9 @@ c        lambda^(1) (for temperature) won't be used
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
-            call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,is),
-     $                    dx,dt,is,be_cn_theta,rho_flag,.false.)
+            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+     $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
+     $                    rho_flag,.false.,lo(0),hi(0))
          enddo
       
          if (LeEQ1 .eq. 0) then
@@ -315,8 +318,9 @@ c     we take the gradient of Y from the second scal argument
      &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                    be_cn_theta,lo(0),hi(0))
          rho_flag = 2
-         call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,RhoH),
-     $                 dx,dt,RhoH,be_cn_theta,rho_flag,.false.)
+         call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+     $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
+     $                 rho_flag,.false.,lo(0),hi(0))
 
          call rhoh_to_temp(scal_new(0,:,:),lo(0),hi(0))
 
@@ -344,8 +348,9 @@ c                   lambda^(2)          (for temperature)
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
-            call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,is),
-     $                    dx,dt,is,be_cn_theta,rho_flag,.false.)
+            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+     $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
+     $                    rho_flag,.false.,lo(0),hi(0))
          enddo
 
          if (LeEQ1 .eq. 0) then
@@ -393,8 +398,9 @@ c     we take the gradient of Y from the second scal argument
      &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                    be_cn_theta,lo(0),hi(0))
          rho_flag = 2
-         call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,RhoH),
-     $                 dx,dt,RhoH,be_cn_theta,rho_flag,.false.)
+         call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+     $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
+     $                 rho_flag,.false.,lo(0),hi(0))
          call rhoh_to_temp(scal_new(0,:,:),lo(0),hi(0))
 
          if (nochem_hack) then
@@ -512,8 +518,9 @@ C     update species with diffusion solve
       rho_flag = 2
       do n=1,Nspec
          is = FirstSpec + n - 1
-         call cn_solve(scal_new,alpha,beta_old,Rhs(0,0,is),
-     $                 dx,dt,is,be_cn_theta,rho_flag,.false.)
+         call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
+     $                 Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,rho_flag,
+     $                 .false.,lo(0),hi(0))
       enddo
 
       if (LeEQ1 .eq. 1) then
@@ -575,8 +582,9 @@ c     compute RHS for enthalpy diffusion solve
 
 c     update enthalpy with diffusion solve
       rho_flag = 2
-      call cn_solve(scal_new,alpha,beta_old,Rhs(0,0,RhoH),
-     $              dx,dt,RhoH,be_cn_theta,rho_flag,.false.)
+      call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
+     $              Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,rho_flag,
+     $              .false.,lo(0),hi(0))
 
 c     extract D for RhoH
       do i=lo(0),hi(0)
@@ -694,8 +702,9 @@ c           differential diffusion will be added later
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
-            call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,is),
-     $                    dx,dt,is,be_cn_theta,rho_flag,.false.)
+            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+     $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
+     $                    rho_flag,.false.,lo(0),hi(0))
          enddo
 
          if (LeEQ1 .eq. 1) then
@@ -733,8 +742,9 @@ c           add differential diffusion to forcing for enthalpy solve
      &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                    be_cn_theta,lo(0),hi(0))
          rho_flag = 2
-         call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,RhoH),
-     $                 dx,dt,RhoH,be_cn_theta,rho_flag,.false.)
+         call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+     $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
+     $                 rho_flag,.false.,lo(0),hi(0))
          print *,'... create new temp from new RhoH, spec'
 
 c        extract D for RhoH
@@ -837,8 +847,9 @@ C     get velocity visc terms to use as a forcing term for advection
          enddo
       else
          rho_flag = 1
-         call cn_solve(vel_new,alpha,mu_new,vel_Rhs,
-     $                 dx,dt,1,vel_theta,rho_flag,.true.)
+         call cn_solve(vel_new(0,:),alpha(0,:),mu_new(0,:),
+     $                 vel_Rhs(0,:),dx(0),dt(0),1,vel_theta,rho_flag,
+     $                 .true.,lo(0),hi(0))
       endif
 
       call compute_pthermo(scal_new(0,:,:),lo(0),hi(0))
