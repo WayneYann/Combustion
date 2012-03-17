@@ -1,14 +1,15 @@
-      subroutine update_rho(scal_old,scal_new,aofs,dt)
+      subroutine update_rho(scal_old,scal_new,aofs,dt,lo,hi)
       implicit none
       include 'spec.h'
-      real*8 scal_old(-2:nx+1,nscal)
-      real*8 scal_new(-2:nx+1,nscal)
-      real*8     aofs(0 :nx-1,nscal)
+      real*8 scal_old(-2:nfine+1,nscal)
+      real*8 scal_new(-2:nfine+1,nscal)
+      real*8     aofs(0 :nfine-1,nscal)
       real*8 dt
+      integer lo,hi
 
       integer i
 
-      do i = 0,nx-1
+      do i=lo,hi
          scal_new(i,Density) = scal_old(i,Density) + dt*aofs(i,Density)
       enddo
       

@@ -38,31 +38,32 @@
 
       subroutine get_diffdiff_terms(scal_for_coeff,scal_for_grad,
      $                              spec_flux_lo,spec_flux_hi,
-     $                              beta,diffdiff,dx)
+     $                              beta,diffdiff,dx,lo,hi)
 
       implicit none
       include 'spec.h'
 
-      real*8 scal_for_coeff(-2:nx+1,nscal)
-      real*8 scal_for_grad (-2:nx+1,nscal)
-      real*8 spec_flux_lo  ( 0:nx-1,Nspec)
-      real*8 spec_flux_hi  ( 0:nx-1,Nspec)
-      real*8 beta          (-1:nx  ,nscal)
-      real*8 diffdiff      (-1:nx)
+      real*8 scal_for_coeff(-2:nfine+1,nscal)
+      real*8 scal_for_grad (-2:nfine+1,nscal)
+      real*8 spec_flux_lo  ( 0:nfine-1,Nspec)
+      real*8 spec_flux_hi  ( 0:nfine-1,Nspec)
+      real*8 beta          (-1:nfine  ,nscal)
+      real*8 diffdiff      (-1:nfine)
       real*8 dx
+      integer lo,hi
 
       real*8 dxsqinv,RWRK
       integer i,is,n,IWRK
-      real*8 hm(Nspec,-1:nx)
+      real*8 hm(Nspec,-1:nfine)
       real*8 flux_lo(Nspec),flux_hi(Nspec)
-      real*8 Y(Nspec,-1:nx)
+      real*8 Y(Nspec,-1:nfine)
       real*8 beta_lo, beta_hi, rho
 
       dxsqinv = 1.d0/(dx*dx)
 
       diffdiff = 0.d0
 
-      do i=-1,nx
+      do i=lo-1,hi+1
          rho = 0.d0
 c        compute density
          do n=1,Nspec
@@ -76,7 +77,7 @@ c        compute cell-centered h_m
          call CKHMS(scal_for_coeff(i,Temp),IWRK,RWRK,hm(1,i))
       end do
 
-      do i=0,nx-1
+      do i=lo,hi
          do n=1,Nspec
             is = FirstSpec + n - 1
 
