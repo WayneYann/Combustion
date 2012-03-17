@@ -22,8 +22,10 @@
       write(char_of_int,1005) nsteps
       pltfile(4:8) = char_of_int
  1005 format(i5.5)
- 1006 FORMAT(200(E23.15E3,1X))      
-      call compute_pthermo(scal,scal(:,:,RhoRT))
+ 1006 FORMAT(200(E23.15E3,1X))
+      do l=0,nlevs-1
+         call compute_pthermo(scal(l,:,:),scal(l,:,RhoRT),lo(l),hi(l))
+      end do
 
       open(10,file=pltfile,form='formatted')
       print *,'...writing data to ',pltfile

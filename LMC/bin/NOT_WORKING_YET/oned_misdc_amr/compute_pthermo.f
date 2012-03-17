@@ -1,14 +1,15 @@
-      subroutine compute_pthermo(scal,pthermo)
+      subroutine compute_pthermo(scal,pthermo,lo,hi)
       include 'spec.h'
       real*8  scal(-2:nx+1,nscal)
       real*8 pthermo(-2:nx+1)
+      integer lo,hi
       
       real*8 Y(Nspec), RWRK
       integer i,n
       integer ispec, IWRK
 
 c     Define thermodynamic pressure
-      do i = 0,nx-1
+      do i=lo,hi
          do n = 1,nspec
             ispec = FirstSpec-1+n
             Y(n) = scal(i,ispec) / scal(i,Density)
@@ -22,8 +23,8 @@ c     Define thermodynamic pressure
             pthermo_max = MAX(pthermo_max,pthermo(i))
          endif
       end do
-      pthermo(-1) = pthermo(0)
-      pthermo(nx) = pthermo(nx-1)
+      pthermo(lo-1) = pthermo(lo)
+      pthermo(hi+1) = pthermo(hi)
       
       print *,'PTHERMO MIN/MAX ',pthermo_min,pthermo_max
       

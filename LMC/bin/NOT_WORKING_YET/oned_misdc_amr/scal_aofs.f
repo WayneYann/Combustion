@@ -1,15 +1,16 @@
-      subroutine scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
+      subroutine scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,lo,hi)
       implicit none
       include 'spec.h'
-      real*8 scal_old(-2:nx+1,nscal)
-      real*8   macvel(0 :nx  )
-      real*8   tforce(-1:nx  ,nscal)
-      real*8     aofs(0 :nx-1,nscal)
+      real*8 scal_old(-2:nfine+1,nscal)
+      real*8   macvel(0 :nfine  )
+      real*8   tforce(-1:nfine  ,nscal)
+      real*8     aofs(0 :nfine-1,nscal)
       real*8 dx
       real*8 dt
+      integer lo,hi
       
-      real*8  sedge(0 :nx,nscal)
-      real*8  slope(-1:nx)
+      real*8  sedge(0 :nfine,nscal)
+      real*8  slope(-1:nfine)
       real*8 dth
       real*8 dthx
       real*8 eps
@@ -50,7 +51,7 @@
 
             call mkslopes(scal_old(:,n),slope)
 
-            do i = 1,nx-1
+            do i=lo+1,hi
                slo = scal_old(i-1,n)+(0.5d0 - dthx*macvel(i))*slope(i-1)
                shi = scal_old(i  ,n)-(0.5d0 + dthx*macvel(i))*slope(i  )
                
@@ -89,7 +90,7 @@
          endif
       enddo
       
-      do i = 0,nx
+      do i=lo,hi+1
          sedge(i,Density) = 0.d0
 c        compute Rho on edges as sum of (Rho Y_i) on edges, 
          do n = 1,nspec
@@ -109,7 +110,7 @@ c        compute rho.hmix as sum of (H_i.Rho.Y_i)
 
       do n = 1,nscal
          if (n.eq.Temp) then
-            do i = 0,nx-1
+            do i=lo,hi
                aofs(i,n) = ( macvel(i+1)*sedge(i+1,n) 
      $                      -macvel(i  )*sedge(i  ,n)) / dx
                aofs(i,n) = aofs(i,n) - 
@@ -117,14 +118,14 @@ c        compute rho.hmix as sum of (H_i.Rho.Y_i)
      $              ( sedge(i,n) + sedge(i+1,n)) /dx
              enddo
           else
-             do i = 0,nx-1
+             do i=lo,hi
                 aofs(i,n) = ( macvel(i+1)*sedge(i+1,n) 
      $                       -macvel(i  )*sedge(i  ,n)) / dx
              enddo
           endif
           
 c     Make these negative here so we can add as source terms later.
-          do i = 0,nx-1
+          do i=lo,hi
              aofs(i,n) = -aofs(i,n)
           enddo
        enddo

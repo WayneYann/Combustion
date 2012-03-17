@@ -86,9 +86,11 @@ c
       enddo
 
       print *,'... predict edge velocities'
-      call pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt)
+      call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:),
+     $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0))
 
-      call compute_pthermo(scal_old,scal_old(0,:,RhoRT))
+      call compute_pthermo(scal_old(0,:,:),scal_old(0,:,RhoRT),
+     $                     lo(0),hi(0))
 
       divu_tmp(0,:) = divu_old(0,:) + 0.5d0*dt(0)*dsdt(0,:)
 
@@ -186,7 +188,8 @@ c        we take the gradient of Y from the second scal argument
          tforce(0,i,RhoH) = diff_old(0,i,RhoH) + diffdiff_old(0,i)
       enddo
        
-      call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
+      call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
+     $               tforce(0,:,:),dx(0),dt(0),lo(0),hi(0))
 
       print *,'... update rho'
       call update_rho(scal_old,scal_new,aofs,dt)
@@ -456,7 +459,8 @@ c     compute advective forcing term
       enddo
 
 c     compute advection term
-      call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
+      call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
+     $               tforce(0,:,:),dx(0),dt(0),lo(0),hi(0))
 
 c     update density
       print *,'... update rho'
@@ -624,7 +628,8 @@ c           really no need to recompute this since it doesn't change
          enddo
          
          print *,'... compute A with updated D+R source'
-         call scal_aofs(scal_old,macvel,aofs,tforce,dx,dt)
+         call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
+     $                  tforce(0,:,:),dx(0),dt(0),lo(0),hi(0))
 
          print *,'... update rho'
          call update_rho(scal_old,scal_new,aofs,dt)
@@ -792,13 +797,15 @@ C     get velocity visc terms to use as a forcing term for advection
      $                 dx,dt,1,vel_theta,rho_flag,.true.)
       endif
 
-      call compute_pthermo(scal_new,scal_new(0,:,RhoRT))
+      call compute_pthermo(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     $                     lo(0),hi(0))
 
       call add_dpdt_nodal(scal_new,scal_new(0,:,RhoRT),divu_new,
      &                    vel_new,dx,dt,lo(0),hi(0),bc(0,:))
 
       print *,'...nodal projection...'
       call project(vel_new(0,:),rhohalf(0,:),divu_new(0,:),
-     &             press_old(0,:),press_new(0,:),dx(0),dt(0),lo(0),hi(0))
+     &             press_old(0,:),press_new(0,:),dx(0),dt(0),
+     &             lo(0),hi(0))
 
       end

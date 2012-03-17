@@ -1,13 +1,14 @@
-      subroutine pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt)
+      subroutine pre_mac_predict(vel_old,scal_old,gp,macvel,dx,dt,lo,hi)
       implicit none
       include 'spec.h'
-      real*8  vel_old(-2:nx+1)
-      real*8 scal_old(-2:nx+1,nscal)
-      real*8     gp(-1:nx)
-      real*8 macvel(0:nx)
+      real*8  vel_old(-2:nfine+1)
+      real*8 scal_old(-2:nfine+1,nscal)
+      real*8     gp(-1:nfine)
+      real*8 macvel(0:nfine)
       real*8 dx, dt
+      integer lo, hi
       
-      real*8 slope(-1:nx)
+      real*8 slope(-1:nfine)
       real*8 dth
       real*8 dthx
       real*8 eps
@@ -21,7 +22,7 @@
 
       call mkslopes(vel_old,slope)
       
-      do i = 1,nx-1
+      do i=lo+1,hi
          slo = vel_old(i-1) + (0.5d0 - dthx*vel_old(i-1))*slope(i-1) 
      $        - dth*gp(i-1)/scal_old(i-1,Density)
          shi = vel_old(i  ) - (0.5d0 + dthx*vel_old(i  ))*slope(i  )
@@ -36,9 +37,9 @@
          endif
       enddo
       
-      macvel(0) = vel_old(-1)
+      macvel(lo) = vel_old(lo-1)
       
-      i = nx
+      i = hi+1
       macvel(i) = vel_old(i-1) + 
      $     (0.5d0 - dthx*vel_old(i-1))*slope(i-1) 
      $     - dth      *gp(i-1) / scal_old(i-1,Density)
