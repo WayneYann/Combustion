@@ -2,16 +2,16 @@
      $                           macvel,sedge,dx,dt,tforces,lo,hi)
       implicit none
       include 'spec.h'
-      real*8  vel_old(-2:nx+1)
-      real*8  rho_old(-2:nx+1)
-      real*8       gp(-1:nx)
-      real*8   macvel(0:nx)
-      real*8    sedge(0:nx)
+      real*8  vel_old(-2:nfine+1)
+      real*8  rho_old(-2:nfine+1)
+      real*8       gp(-1:nfine)
+      real*8   macvel(0:nfine)
+      real*8    sedge(0:nfine)
       real*8 dx, dt
-      real*8  tforces(-1:nx)
+      real*8  tforces(-1:nfine)
       integer lo, hi
 
-      real*8 slope(-1:nx)
+      real*8 slope(-1:nfine)
       real*8 dth
       real*8 dthx
       real*8 eps
@@ -22,7 +22,7 @@
       dthx = 0.5d0 * dt / dx
       eps = 1.e-6*vel_TYP
 
-      call mkslopes(vel_old,slope)
+      call mkslopes(vel_old,slope,lo,hi)
 
       do i=lo+1,hi
          slo = vel_old(i-1) + (0.5 - dthx*vel_old(i-1))*slope(i-1)

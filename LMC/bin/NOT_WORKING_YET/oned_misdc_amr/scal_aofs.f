@@ -49,7 +49,7 @@
                iconserv = 1
             endif
 
-            call mkslopes(scal_old(:,n),slope)
+            call mkslopes(scal_old(:,n),slope,lo,hi)
 
             do i=lo+1,hi
                slo = scal_old(i-1,n)+(0.5d0 - dthx*macvel(i))*slope(i-1)

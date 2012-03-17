@@ -1,8 +1,9 @@
-      subroutine mkslopes(scal,slope)
+      subroutine mkslopes(scal,slope,lo,hi)
       implicit none
       include 'spec.h'
-      real*8  scal(-2:nx+1)
-      real*8 slope(-1:nx  )
+      real*8  scal(-2:nfine+1)
+      real*8 slope(-1:nfine  )
+      integer lo,hi
 
       real*8 slo,shi,slim,smid
       integer i
@@ -14,7 +15,7 @@
       parameter( fromm = 4 )
 
       if (unlim .eq. 0) then
-         do i = 0,nx-1
+         do i=lo,hi
             shi = 2.0d0*(scal(i+1) - scal(i  ))
             slo = 2.0d0*(scal(i  ) - scal(i-1))
             smid = 0.5d0*(scal(i+1) - scal(i-1))
@@ -29,7 +30,7 @@
          enddo
          slope(nx-1) = 0.d0
       else
-         do i = 0,nx-1
+         do i=lo,hi
             slope(i) = 0.5d0*(scal(i+1) - scal(i-1))
          enddo
          slope(nx-1) = 0.d0

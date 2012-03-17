@@ -1,10 +1,11 @@
-      subroutine get_vel_visc_terms(vel,beta,visc,dx)
+      subroutine get_vel_visc_terms(vel,beta,visc,dx,lo,hi)
       implicit none
       include 'spec.h'
-      real*8 vel(-2:nx+1)
-      real*8 beta(-1:nx)
-      real*8 visc(-1:nx)
+      real*8 vel(-2:nfine+1)
+      real*8 beta(-1:nfine)
+      real*8 visc(-1:nfine)
       real*8 dx
+      integer lo,hi
       
       integer i
       real*8 beta_lo,beta_hi
@@ -14,7 +15,7 @@
 c     Compute D(tau) = d/dx ( a . du/dx ), a=4.mu/3  
 
       dxsqinv = 1.d0/(dx*dx)
-      do i = 0,nx-1         
+      do i=lo,hi
          if (coef_avg_harm.eq.1) then
             beta_lo = 2.d0 / (1.d0/beta(i)+1.d0/beta(i-1))
             beta_hi = 2.d0 / (1.d0/beta(i)+1.d0/beta(i+1))

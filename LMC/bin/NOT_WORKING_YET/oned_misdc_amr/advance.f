@@ -828,20 +828,24 @@ c                   lambda      (for temperature)
       vel_theta = 0.5d0
 
 C     get velocity visc terms to use as a forcing term for advection
-      call get_vel_visc_terms(vel_old,mu_old,visc,dx)
+      call get_vel_visc_terms(vel_old(0,:),mu_old(0,:),visc(0,:),dx(0),
+     $                        lo(0),hi(0))
+
       do i=lo(0),hi(0)
          visc(0,i) = visc(0,i)/scal_old(0,i,Density)
       enddo
 
-      call vel_edge_states(vel_old,scal_old(0,:,Density),gp,
-     $                     macvel,veledge,dx,dt,visc,lo(0),hi(0))
+      call vel_edge_states(vel_old(0,:),scal_old(0,:,Density),gp(0,:),
+     $                     macvel(0,:),veledge(0,:),dx(0),dt(0),
+     $                     visc(0,:),lo(0),hi(0))
       
-      call update_vel(vel_old,vel_new,gp,rhohalf,
-     &                macvel,veledge,alpha,mu_old,
-     &                vel_Rhs,dx,dt,vel_theta)
+      call update_vel(vel_old(0,:),vel_new(0,:),gp(0,:),rhohalf(0,:),
+     &                macvel(0,:),veledge(0,:),alpha(0,:),mu_old(0,:),
+     &                vel_Rhs(0,:),dx(0),dt(0),vel_theta,lo(0),hi(0))
 
       if (is_first_initial_iter .eq. 1) then
-         call get_vel_visc_terms(vel_old,mu_old,visc,dx)
+         call get_vel_visc_terms(vel_old(0,:),mu_old(0,:),visc(0,:),
+     $                           dx(0),lo(0),hi(0))
          do i=lo(0),hi(0)
             vel_new(0,i) = vel_new(0,i) + visc(0,i)*dt(0)/rhohalf(0,i)
          enddo

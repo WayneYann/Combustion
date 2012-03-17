@@ -20,7 +20,7 @@
       dthx = 0.5d0 * dt / dx
       eps = 1.d-6
 
-      call mkslopes(vel_old,slope)
+      call mkslopes(vel_old,slope,lo,hi)
       
       do i=lo+1,hi
          slo = vel_old(i-1) + (0.5d0 - dthx*vel_old(i-1))*slope(i-1) 
