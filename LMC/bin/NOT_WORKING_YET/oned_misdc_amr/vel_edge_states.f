@@ -38,9 +38,9 @@
          endif
       enddo
       
-      sedge(0) = vel_old(-1)
+      sedge(lo) = vel_old(lo-1)
       
-      i = nx
+      i = hi+1
       sedge(i) = vel_old(i-1) + 
      $     (0.5d0 - dthx*vel_old(i-1))*slope(i-1) 
      $     - dth*gp(i-1)/rho_old(i-1)

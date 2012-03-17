@@ -5,12 +5,12 @@
       include 'spec.h'
       character chkfile*(16)
       integer at_nstep
-      real*8   vel(0:nlevs-1,-2:nx+1)
-      real*8  scal(0:nlevs-1,-2:nx+1,nscal)
-      real*8 press(0:nlevs-1,-1:nx+1)
-      real*8   I_R(0:nlevs-1,-1:nx  ,0:Nspec)
-      real*8  divu(0:nlevs-1, 0:nx-1)
-      real*8  dsdt(0:nlevs-1, 0:nx-1)
+      real*8   vel(0:nlevs-1,-2:nfine+1)
+      real*8  scal(0:nlevs-1,-2:nfine+1,nscal)
+      real*8 press(0:nlevs-1,-1:nfine+1)
+      real*8   I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
+      real*8  divu(0:nlevs-1, 0:nfine-1)
+      real*8  dsdt(0:nlevs-1, 0:nfine-1)
       real*8 time
       real*8 dt_old
       integer lo(0:nlevs-1), hi(0:nlevs-1)

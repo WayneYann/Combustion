@@ -858,8 +858,9 @@ C     get velocity visc terms to use as a forcing term for advection
 
       call compute_pthermo(scal_new(0,:,:),lo(0),hi(0))
 
-      call add_dpdt_nodal(scal_new,scal_new(0,:,RhoRT),divu_new,
-     &                    vel_new,dx,dt,lo(0),hi(0),bc(0,:))
+      call add_dpdt_nodal(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     &                    divu_new(0,:),vel_new(0,:),dx(0),dt(0),
+     &                    lo(0),hi(0),bc(0,:))
 
       print *,'...nodal projection...'
       call project(vel_new(0,:),rhohalf(0,:),divu_new(0,:),

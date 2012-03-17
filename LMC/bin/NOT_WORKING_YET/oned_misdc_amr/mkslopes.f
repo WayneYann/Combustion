@@ -15,7 +15,7 @@
       parameter( fromm = 4 )
 
       if (unlim .eq. 0) then
-         do i=lo,hi
+         do i=lo,hi-1
             shi = 2.0d0*(scal(i+1) - scal(i  ))
             slo = 2.0d0*(scal(i  ) - scal(i-1))
             smid = 0.5d0*(scal(i+1) - scal(i-1))
@@ -28,12 +28,12 @@
                slope(i) = sign(1.d0,smid)*slim
             endif
          enddo
-         slope(nx-1) = 0.d0
+         slope(hi) = 0.d0
       else
-         do i=lo,hi
+         do i=lo,hi-1
             slope(i) = 0.5d0*(scal(i+1) - scal(i-1))
          enddo
-         slope(nx-1) = 0.d0
+         slope(hi) = 0.d0
       endif
 
       end

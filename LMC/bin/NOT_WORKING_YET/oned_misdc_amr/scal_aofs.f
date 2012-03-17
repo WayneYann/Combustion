@@ -75,10 +75,10 @@
                
             enddo
             
-            i = 0
-            sedge(0,n) = scal_old(-1,n)
+            i = lo
+            sedge(0,n) = scal_old(lo-1,n)
             
-            i = nx
+            i = hi+1
             sedge(i,n) = scal_old(i-1,n) + 
      $           (0.5d0 - dthx*macvel(i))*slope(i-1) 
             if (iconserv .eq. 1) then
