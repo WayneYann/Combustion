@@ -24,7 +24,7 @@
  1005 format(i5.5)
  1006 FORMAT(200(E23.15E3,1X))
       do l=0,nlevs-1
-         call compute_pthermo(scal(l,:,:),scal(l,:,RhoRT),lo(l),hi(l))
+         call compute_pthermo(scal(l,:,:),lo(l),hi(l))
       end do
 
       open(10,file=pltfile,form='formatted')

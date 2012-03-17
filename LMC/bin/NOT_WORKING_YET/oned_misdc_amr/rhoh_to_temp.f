@@ -1,7 +1,9 @@
-      subroutine rhoh_to_temp(scal)
+      subroutine rhoh_to_temp(scal,lo,hi)
       implicit none
       include 'spec.h'
       real*8 scal(-2:nx+1,nscal)
+      integer lo,hi
+
       real*8 rho, Y(Nspec), hmix
       integer i,n
       integer is
@@ -14,7 +16,7 @@
 C CEG:: LMC just sets errMAX to 1.d-8
       errMAX = hmix_TYP*1.d-20
 
-      do i = 0,nx-1
+      do i=lo,hi
          rho = 0.d0
          do n=1,Nspec
             is = FirstSpec + n - 1

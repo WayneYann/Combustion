@@ -89,8 +89,7 @@ c
       call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:),
      $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0))
 
-      call compute_pthermo(scal_old(0,:,:),scal_old(0,:,RhoRT),
-     $                     lo(0),hi(0))
+      call compute_pthermo(scal_old(0,:,:),lo(0),hi(0))
 
       divu_tmp(0,:) = divu_old(0,:) + 0.5d0*dt(0)*dsdt(0,:)
 
@@ -98,7 +97,7 @@ c
      $              macvel(0,:),dx(0),dt(0),
      $              lo(0),hi(0),bc(0,:))
 
-      call macproj(macvel,divu_tmp,dx,lo(0),hi(0))
+      call macproj(macvel(0,:),divu_tmp,dx,lo(0),hi(0))
 
 c     compute diffusivities at time n (old time)
 c     this computes rho D_m     (for species)
@@ -112,38 +111,38 @@ c                   lambda      (for temperature)
 
       if (use_strang) then
 
-      be_cn_theta = 0.5d0
+         be_cn_theta = 0.5d0
 
-      if (nochem_hack) then
-         print *,'WARNING! doing nochem_hack...'
-         do n = 1,nscal
-            do i = 0,nx-1
-               I_R(0,i,n) = 0.d0
+         if (nochem_hack) then
+            print *,'WARNING! doing nochem_hack...'
+            do n = 1,nscal
+               do i = 0,nx-1
+                  I_R(0,i,n) = 0.d0
+               enddo
             enddo
-         enddo
-      else
-         print *,'... react for dt/2;  set I_R'
-         do n = 1,nscal
-            do i = 0,nx-1
-               const_src(0,i,n) = 0.d0
-               lin_src_old(0,i,n) = 0.d0
-               lin_src_new(0,i,n) = 0.d0
+         else
+            print *,'... react for dt/2;  set I_R'
+            do n = 1,nscal
+               do i = 0,nx-1
+                  const_src(0,i,n) = 0.d0
+                  lin_src_old(0,i,n) = 0.d0
+                  lin_src_new(0,i,n) = 0.d0
+               enddo
             enddo
-         enddo
-         call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
-     $                    const_src(0,:,:),lin_src_old(0,:,:),
-     $                    lin_src_new(0,:,:),
-     $                    I_R(0,:,:),dt(0)/2.d0,lo(0),hi(0))
+            call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
+     $                       const_src(0,:,:),lin_src_old(0,:,:),
+     $                       lin_src_new(0,:,:),
+     $                       I_R(0,:,:),dt(0)/2.d0,lo(0),hi(0))
          
-         do n = FirstSpec,LastSpec
-            scal_old(0,:,n) = scal_new(0,:,n)
-         enddo
-      endif
+            do n = FirstSpec,LastSpec
+               scal_old(0,:,n) = scal_new(0,:,n)
+            enddo
+         endif
 
 c     we only care about updated species out of strang_chem
 c     rho and rhoh remain constant
 c     call the EOS to get consistent temperature
-      call rhoh_to_temp(scal_old)
+      call rhoh_to_temp(scal_old(0,:,:),lo(0),hi(0))
 c     
 c*****************************************************************
 c     
@@ -305,7 +304,7 @@ c     we take the gradient of Y from the second scal argument
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag,.false.)
 
-      call rhoh_to_temp(scal_new)
+      call rhoh_to_temp(scal_new(0,:,:),lo(0),hi(0))
 
 C----------------------------------------------------------------
 C   Corrector
@@ -375,7 +374,7 @@ c     we take the gradient of Y from the second scal argument
       rho_flag = 2
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag,.false.)
-      call rhoh_to_temp(scal_new)
+      call rhoh_to_temp(scal_new(0,:,:),lo(0),hi(0))
 
       if (nochem_hack) then
          print *,'WARNING! doing nochem_hack...'
@@ -395,7 +394,7 @@ c     we take the gradient of Y from the second scal argument
 c        we only care about updated species out of strang_chem
 c        rho and rhoh remain constant
 c        call the EOS to get consistent temperature
-         call rhoh_to_temp(scal_new)
+         call rhoh_to_temp(scal_new(0,:,:),lo(0),hi(0))
 
          I_R(0,:,:) = I_R(0,:,:) + I_R_temp(0,:,:)
          I_R(0,:,:) = I_R(0,:,:) / 2.d0
@@ -797,8 +796,7 @@ C     get velocity visc terms to use as a forcing term for advection
      $                 dx,dt,1,vel_theta,rho_flag,.true.)
       endif
 
-      call compute_pthermo(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     $                     lo(0),hi(0))
+      call compute_pthermo(scal_new(0,:,:),lo(0),hi(0))
 
       call add_dpdt_nodal(scal_new,scal_new(0,:,RhoRT),divu_new,
      &                    vel_new,dx,dt,lo(0),hi(0),bc(0,:))

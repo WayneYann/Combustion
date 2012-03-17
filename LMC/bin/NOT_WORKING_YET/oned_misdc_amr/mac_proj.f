@@ -1,8 +1,8 @@
       subroutine macproj(macvel,divu,dx,lo,hi)
       implicit none
       include 'spec.h'
-      real*8 macvel(0 :nx)
-      real*8   divu(0 :nx-1)
+      real*8 macvel(0 :nfine)
+      real*8   divu(0 :nfine-1)
       real*8 dx
       integer lo,hi
 
