@@ -97,7 +97,7 @@ c
      $              macvel(0,:),dx(0),dt(0),
      $              lo(0),hi(0),bc(0,:))
 
-      call macproj(macvel(0,:),divu_tmp,dx,lo(0),hi(0))
+      call macproj(macvel(0,:),divu_tmp(0,:),dx,lo(0),hi(0))
 
 c     compute diffusivities at time n (old time)
 c     this computes rho D_m     (for species)
@@ -160,11 +160,13 @@ c     the rho D grad Y term is now computed conservatively
      &                         diff_old(0,:,Temp),dx(0),lo(0),hi(0))
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
-      call get_spec_visc_terms(scal_old,beta_old,
-     &                         diff_old(0,:,FirstSpec),
-     &                         spec_flux_lo,spec_flux_hi,dx)
+      call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
+     &                         diff_old(0,:,FirstSpec:),
+     &                         spec_flux_lo(0,:,:),spec_flux_hi(0,:,:),
+     &                         dx(0),lo(0),hi(0))
 c     compute del dot lambda/cp grad h (no differential diffusion)
-      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(0,:,RhoH),dx)
+      call get_rhoh_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
+     &                         diff_old(0,:,RhoH),dx(0),lo(0),hi(0))
 
 c     calculate differential diffusion
       if (LeEQ1 .eq. 0) then
@@ -240,9 +242,10 @@ c        lambda^(1) (for temperature) won't be used
             dRhs(0,i,n) = 0.d0
          enddo
       enddo
-      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
-     &                 dRhs(0,0,1),Rhs(0,0,FirstSpec),dx,dt,
-     &                 be_cn_theta)
+      call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                 alpha(0,:),beta_old(0,:,:),
+     &                 dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
+     &                 be_cn_theta,lo(0),hi(0))
 
       rho_flag = 2
       do n=1,Nspec
@@ -255,9 +258,11 @@ c        lambda^(1) (for temperature) won't be used
 
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
-         call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_tmp(0,:,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,dx)
+         call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                            diff_tmp(0,:,FirstSpec:),
+     &                            spec_flux_lo(0,:,:),
+     &                            spec_flux_hi(0,:,:),
+     &                            dx(0),lo(0),hi(0))
 
 c     update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -299,7 +304,7 @@ c     we take the gradient of Y from the second scal argument
 
       print *,'... do predictor for rhoh (MISDC terms=0)'
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &                 dRhs(0,0,0),Rhs(0,0,RhoH),dx,dt,be_cn_theta)
+     &                 dRhs(0,0,0),Rhs(0,0,RhoH),dx,dt,be_cn_theta,lo,hi)
       rho_flag = 2
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag,.false.)
@@ -322,9 +327,11 @@ c                   lambda^(2)          (for temperature)
             dRhs(0,i,n) = 0.d0
          enddo
       enddo
-      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
-     &                 dRhs(0,0,1),Rhs(0,0,FirstSpec),dx,dt,
-     &                 be_cn_theta)
+      call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                 alpha(0,:),beta_old(0,:,:),
+     &                 dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
+     &                 be_cn_theta,lo(0),hi(0))
+
       rho_flag = 2
       do n=1,Nspec
          is = FirstSpec + n - 1
@@ -336,9 +343,11 @@ c                   lambda^(2)          (for temperature)
 
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
-         call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_tmp(0,:,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,dx)
+         call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                            diff_tmp(0,:,FirstSpec:),
+     &                            spec_flux_lo(0,:,:),
+     &                            spec_flux_hi(0,:,:),
+     &                            dx(0),lo(0),hi(0))
 
 c     update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -370,7 +379,7 @@ c     we take the gradient of Y from the second scal argument
          
       print *,'... do predictor for rhoh (MISDC terms=0)'
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &                 dRhs(0,0,0),Rhs(0,0,RhoH),dx,dt,be_cn_theta)
+     &                 dRhs(0,0,0),Rhs(0,0,RhoH),dx,dt,be_cn_theta,lo,hi)
       rho_flag = 2
       call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,RhoH),
      $              dx,dt,RhoH,be_cn_theta,rho_flag,.false.)
@@ -417,10 +426,13 @@ c     compute diffusion term at time n
       print *,'... computing D(U^n)'
 c     compute del dot rho D grad Y and make it conservative
 c     save species fluxes for differential diffusion
-      call get_spec_visc_terms(scal_old,beta_old,diff_old(0,:,FirstSpec),
-     &                         spec_flux_lo,spec_flux_hi,dx)
+      call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
+     &                         diff_old(0,:,FirstSpec:),
+     &                         spec_flux_lo(0,:,:),spec_flux_hi(0,:,:),
+     &                         dx(0),lo(0),hi(0))
 c     compute del dot lambda/cp grad h (no differential diffusion)
-      call get_rhoh_visc_terms(scal_old,beta_old,diff_old(0,:,RhoH),dx)
+      call get_rhoh_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
+     &                         diff_old(0,:,RhoH),dx(0),lo(0),hi(0))
 
 c     calculate differential diffusion
       if (LeEQ1 .eq. 0) then
@@ -475,8 +487,10 @@ c     diffusion solves
       enddo
 
 c     compute RHS for species diffusion solve
-      call update_spec(scal_old,scal_new,aofs,alpha,beta_old,dRhs(0,0,1),
-     &                 Rhs(0,0,FirstSpec),dx,dt,be_cn_theta)
+      call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                 alpha(0,:),beta_old(0,:,:),
+     &                 dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
+     &                 be_cn_theta,lo(0),hi(0))
 
 C     update species with diffusion solve
       print *,'... do initial diffusion solve for species'
@@ -502,9 +516,11 @@ c        simply extract D for RhoX
 
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
-         call get_spec_visc_terms(scal_new,beta_old,
-     $                            diff_hat(0,:,FirstSpec),spec_flux_lo,
-     $                            spec_flux_hi,dx)
+         call get_spec_visc_terms(scal_new(0,:,:),beta_old(0,:,:),
+     &                            diff_hat(0,:,FirstSpec:),
+     &                            spec_flux_lo(0,:,:),
+     &                            spec_flux_hi(0,:,:),
+     &                            dx(0),lo(0),hi(0))
 
 c        update species with conservative diffusion fluxes
          do i=0,nx-1
@@ -536,7 +552,7 @@ c        add differential diffusion to forcing for enthalpy solve
 
 c     compute RHS for enthalpy diffusion solve
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,dRhs(0,0,0),
-     &                 Rhs(0,0,RhoH),dx,dt,be_cn_theta)
+     &                 Rhs(0,0,RhoH),dx,dt,be_cn_theta,lo,hi)
 
 c     update enthalpy with diffusion solve
       rho_flag = 2
@@ -598,11 +614,14 @@ c                      lambda      (for temperature)
      &                           mu_dummy(0,:),lo(0),hi(0))
 c        compute del dot rho D grad Y and make it conservative
 c        save species fluxes for differential diffusion
-         call get_spec_visc_terms(scal_new,beta_new,
-     &                            diff_new(0,:,FirstSpec),
-     &                            spec_flux_lo,spec_flux_hi,dx)
+         call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                            diff_new(0,:,FirstSpec:),
+     &                            spec_flux_lo(0,:,:),
+     &                            spec_flux_hi(0,:,:),
+     &                            dx(0),lo(0),hi(0))
 c        compute del dot lambda/cp grad h (no differential diffusion)
-         call get_rhoh_visc_terms(scal_new,beta_new,diff_new(0,:,RhoH),dx)
+         call get_rhoh_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                            diff_new(0,:,RhoH),dx(0),lo(0),hi(0))
 
 c        calculate differential diffusion
          if (LeEQ1 .eq. 0) then
@@ -646,9 +665,10 @@ c           differential diffusion will be added later
             dRhs(0,i,0) = dt(0)*(
      &           + 0.5d0*(diff_old(0,i,RhoH) - diff_new(0,i,RhoH)))
          enddo
-         call update_spec(scal_old,scal_new,aofs,alpha,beta_old,
-     &                    dRhs(0,0,1),Rhs(0,0,FirstSpec),dx,dt,
-     &                    be_cn_theta)
+         call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                    alpha(0,:),beta_old(0,:,:),
+     &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
+     &                    dx(0),dt(0),be_cn_theta,lo(0),hi(0))
 
          rho_flag = 2
          do n=1,Nspec
@@ -672,9 +692,11 @@ c           simply extract D for RhoX
 
 c           compute del dot rho D grad Y and make it conservative
 c           save species fluxes for differential diffusion
-            call get_spec_visc_terms(scal_new,beta_new,
-     $                               diff_hat(0,:,FirstSpec),
-     $                               spec_flux_lo,spec_flux_hi,dx)
+            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                               diff_hat(0,:,FirstSpec:),
+     &                               spec_flux_lo(0,:,:),
+     &                               spec_flux_hi(0,:,:),
+     &                               dx(0),lo(0),hi(0))
 
 c           add differential diffusion to forcing for enthalpy solve
             do i=0,nx-1
@@ -686,7 +708,7 @@ c           add differential diffusion to forcing for enthalpy solve
 
          print *,'... update D for rhoh with A + R + MISDC(D)'
          call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,
-     &                    dRhs(0,0,0),Rhs(0,0,RhoH),dx,dt,be_cn_theta)
+     &                    dRhs(0,0,0),Rhs(0,0,RhoH),dx,dt,be_cn_theta,lo,hi)
          rho_flag = 2
          call cn_solve(scal_new,alpha,beta_new,Rhs(0,0,RhoH),
      $                 dx,dt,RhoH,be_cn_theta,rho_flag,.false.)

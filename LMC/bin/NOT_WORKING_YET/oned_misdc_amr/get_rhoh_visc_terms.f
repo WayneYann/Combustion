@@ -1,19 +1,21 @@
-      subroutine get_rhoh_visc_terms(scal,beta,visc,dx)
+      subroutine get_rhoh_visc_terms(scal,beta,visc,dx,lo,hi)
 
       implicit none
       include 'spec.h'
-      real*8 scal(-2:nx+1,nscal)
-      real*8 beta(-1:nx  ,nscal)
-      real*8 visc(-1:nx)
+      real*8 scal(-2:nfine+1,nscal)
+      real*8 beta(-1:nfine  ,nscal)
+      real*8 visc(-1:nfine)
       real*8 dx
+      integer lo,hi
       
       integer i
       real*8 beta_lo,beta_hi
       real*8 flux_lo,flux_hi
       real*8 dxsqinv, h_lo, h_mid, h_hi
 
-            dxsqinv = 1.d0/(dx*dx)
-      do i = 0,nx-1         
+      dxsqinv = 1.d0/(dx*dx)
+
+      do i=lo,hi
          if (coef_avg_harm.eq.1) then
             beta_lo = 2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i-1,RhoH))
             beta_hi = 2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i+1,RhoH))

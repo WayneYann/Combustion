@@ -1,29 +1,30 @@
       subroutine get_spec_visc_terms(scal,beta,visc,spec_flux_lo,
-     &                               spec_flux_hi,dx)
+     &                               spec_flux_hi,dx,lo,hi)
 
       implicit none
       include 'spec.h'
-      real*8 scal(-2:nx+1,nscal)
-      real*8 beta(-1:nx  ,nscal)
-      real*8 visc(-1:nx  ,Nspec)
-      real*8 spec_flux_lo(0:nx-1,Nspec)
-      real*8 spec_flux_hi(0:nx-1,Nspec)
+      real*8         scal(-2:nfine+1,nscal)
+      real*8         beta(-1:nfine  ,nscal)
+      real*8         visc(-1:nfine  ,Nspec)
+      real*8 spec_flux_lo( 0:nfine-1,Nspec)
+      real*8 spec_flux_hi( 0:nfine-1,Nspec)
       real*8 dx
+      integer lo,hi
       
       integer i,n,is
       real*8 beta_lo,beta_hi
       real*8 dxsqinv
-      real*8 Y(-1:nx,Nspec), sum_lo, sum_hi, sumRhoY_lo, sumRhoY_hi
+      real*8 Y(-1:nfine,Nspec), sum_lo, sum_hi, sumRhoY_lo, sumRhoY_hi
       real*8 RhoYe_lo, RhoYe_hi
 
-      do i = -1,nx
+      do i=lo-1,hi+1
          do n=1,Nspec
             Y(i,n) = scal(i,FirstSpec+n-1)/scal(i,Density)
          enddo
       enddo
 
       dxsqinv = 1.d0/(dx*dx)
-      do i = 0,nx-1
+      do i=lo,hi
          sum_lo = 0.d0
          sum_hi = 0.d0
          sumRhoY_lo = 0
