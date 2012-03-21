@@ -112,7 +112,7 @@ c                   lambda      (for temperature)
       if (use_strang) then
 
 C----------------------------------------------------------------
-c     SDC advance
+c     Strang advance
 C----------------------------------------------------------------
 
          be_cn_theta = 0.5d0
@@ -282,7 +282,7 @@ c     update species with conservative diffusion fluxes
      $                 + 0.5d0*diff_old(0,i,is) + 0.5d0*diff_tmp(0,i,is))
                end do
             end do
-            call set_bc_s(scal_new)
+            call set_bc_s(scal_new(0,:,:))
             
          end if
 
@@ -372,7 +372,7 @@ c     update species with conservative diffusion fluxes
      $                 + 0.5d0*diff_old(0,i,is) + 0.5d0*diff_tmp(0,i,is))
                end do
             end do
-            call set_bc_s(scal_new)
+            call set_bc_s(scal_new(0,:,:))
 
 c     calculate differential diffusion
 c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
@@ -553,7 +553,7 @@ c        update species with conservative diffusion fluxes
      $              + 0.5d0*diff_old(0,i,is) + 0.5d0*diff_hat(0,i,is))
             end do
          end do
-         call set_bc_s(scal_new)
+         call set_bc_s(scal_new(0,:,:))
          
 c        calculate differential diffusion
 c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
