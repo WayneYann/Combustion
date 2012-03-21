@@ -1,8 +1,7 @@
 TOP = ../../../..
-BOXLIB_DIR = ${TOP}/BoxLib
-IAMR_DIR = ${TOP}/IAMR
-COMBUSTION_DIR = ${TOP}/Combustion
-
+BOXLIB_DIR = $(TOP)/BoxLib
+IAMR_DIR = $(TOP)/IAMR
+COMBUSTION_DIR = $(TOP)/Combustion
 #
 # Build configuration
 #
@@ -15,6 +14,7 @@ FCOMP           = Intel
 USE_MPI         = TRUE
 USE_OMP         = FALSE
 USE_F90_SOLVERS = TRUE
+USE_SWIRL_DATA  = TRUE
 VERBOSE         = TRUE
 
 # Enable flctin namelist
@@ -34,9 +34,11 @@ USE_TDEPFORCING = FALSE
 #CHEMISTRY_MODEL = DRM19
 #fEXE_sources += drm19Soln_seed_0.50.f
 
-CHEMISTRY_MODEL = CHEMH
-#fEXE_sources += gri30_070.f
-fEXE_sources += chemHSoln_seed_0.00.f
+#CHEMISTRY_MODEL = CHEMH
+#fEXE_sources += chemHSoln_seed_0.00.f
+
+CHEMISTRY_MODEL = LIDRYERMOD
+fEXE_sources += LiDryer_040_01ATM.f
 
 EBASE = amr
 Blocs   := .
@@ -47,11 +49,6 @@ CEXE_headers +=
 FEXE_headers += probdata.H
 
 include $(COMBUSTION_DIR)/LMC/tools/make/Make.LMC
-
-ifeq ($(USE_FLCTS),TRUE)
-  DEFINES += -DBL_DO_FLCT
-endif
-
 #
 # Available chemistry models:
 #

@@ -1,25 +1,25 @@
 
-BOXLIB_HOME = ${BOXLIB_DIR}
-include ${BOXLIB_DIR}/Tools/C_mk/Make.defs 
+BOXLIB_HOME = $(BOXLIB_DIR)
+include $(BOXLIB_DIR)/Tools/C_mk/Make.defs 
 
-fincludes=${includes}
+fincludes=$(includes)
 
 # LMC
-Bdirs += ${COMBUSTION_DIR}/LMC/src
+Bdirs += $(COMBUSTION_DIR)/LMC/src
 
 # Chemistry
-Bdirs += ${COMBUSTION_DIR}/Chemistry/src
+Bdirs += $(COMBUSTION_DIR)/Chemistry/src
 
 # IAMR
-Bdirs += ${IAMR_DIR}/Source
-Bdirs += ${IAMR_DIR}/Source/InflowForce
+Bdirs += $(IAMR_DIR)/Source
+Bdirs += $(IAMR_DIR)/Source/InflowForce
 
 # BoxLib 
-Bdirs   += ${BOXLIB_DIR}/Src/C_BaseLib
-Bdirs   += ${BOXLIB_DIR}/Src/C_AMRLib
-Bdirs   += ${BOXLIB_DIR}/Src/C_BoundaryLib
-Bdirs   += ${BOXLIB_DIR}/Src/LinearSolvers/C_CellMG
-Bdirs   += ${BOXLIB_DIR}/Src/LinearSolvers/C_TensorMG
+Bdirs   += $(BOXLIB_DIR)/Src/C_BaseLib
+Bdirs   += $(BOXLIB_DIR)/Src/C_AMRLib
+Bdirs   += $(BOXLIB_DIR)/Src/C_BoundaryLib
+Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_CellMG
+Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_TensorMG
 
 Bpack	+= $(foreach dir, $(Bdirs), $(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(dir))
@@ -50,49 +50,56 @@ else
 
 # Hack in some LMC stuff
 
-ifeq (${USE_FLCTS}, TRUE)
+ifeq ($(USE_FLCTS), TRUE)
   DEFINES += -DBL_DO_FLCT
-  include ${COMBUSTION_DIR}/LMC/tools/make/flucts.mk
+  include $(COMBUSTION_DIR)/LMC/tools/make/flucts.mk
+endif
+
+ifeq ($(USE_SWIRL_DATA), TRUE)
+  fEXE_sources += vswirl.f
+  DEFINES += -DSWIRL_DATA
 endif
 
 ifeq ($(USE_VELOCITY), TRUE)
   AMRVIS_DIR = $(BOXLIB_HOME)/Src/Extern/amrdata
-  include ${COMBUSTION_DIR}/LMC/tools/make/AmrData.mk
+  include $(COMBUSTION_DIR)/LMC/tools/make/AmrData.mk
   INCLUDE_LOCATIONS += $(AMRVIS_DIR)
   VPATH_LOCATIONS   += $(AMRVIS_DIR)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_VELOCITY -DBL_PARALLEL_IO
 endif
 
 ifeq ($(USE_NEWMECH), TRUE)
   AMRVIS_DIR = $(BOXLIB_HOME)/Src/Extern/amrdata
-  include ${COMBUSTION_DIR}/LMC/tools/make/AmrData.mk
+  include $(COMBUSTION_DIR)/LMC/tools/make/AmrData.mk
   INCLUDE_LOCATIONS += $(AMRVIS_DIR)
   VPATH_LOCATIONS   += $(AMRVIS_DIR)
+  DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
 endif
 
-ifeq (${CHEMISTRY_MODEL}, DRM19)
+ifeq ($(CHEMISTRY_MODEL), DRM19)
   CEXE_sources += drm19.cpp
-  vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri/PMFs
+  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri
 endif
-ifeq (${CHEMISTRY_MODEL}, CHEMH)
+ifeq ($(CHEMISTRY_MODEL), CHEMH)
   CEXE_sources += chem-H.cpp
-  vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/chem-H/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/chem-H
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/chem-H/PMFs
+  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/chem-H
 endif
-ifeq (${CHEMISTRY_MODEL}, GRI30)
+ifeq ($(CHEMISTRY_MODEL), GRI30)
   CEXE_sources += grimech30.cpp
-  vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/gri
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri/PMFs
+  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri
 endif
-ifeq (${CHEMISTRY_MODEL}, LIDRYERMOD)
+ifeq ($(CHEMISTRY_MODEL), LIDRYERMOD)
   CEXE_sources += LiDryerMOD.cpp
-  vpath %.f   $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/LiDryer/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) ${COMBUSTION_DIR}/Chemistry/data/LiDryer
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer/PMFs
+  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer
 endif
 
 # Enable time-dependent turbulence forcing term
-ifeq (${USE_TDEPFORCING}, TRUE)
-  ifeq (${DIM}, 3)
+ifeq ($(USE_TDEPFORCING), TRUE)
+  ifeq ($(DIM), 3)
     DEFINES += -DGENGETFORCE
     DEFINES += -DDO_LMC_FORCE
   endif

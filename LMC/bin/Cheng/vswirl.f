@@ -122,8 +122,8 @@ c
 c     interpolation x,y data                      
 c                                                 
       data x_data(     1     ) /   0.000000000000D+00/
-      data y_data(     1,   1) /   0.E0/
-      data y_data(     1,   2) /   0.E0/
+      data y_data(     1,   1) /   0.000000000000D+00/
+      data y_data(     1,   2) /   0.000000000000D+00/
       data y_data(     1,   3) /   0.349565764553D+01/
       data x_data(     2     ) /   0.206480000000D-01/
       data y_data(     2,   1) /   0.463122760280D-03/
