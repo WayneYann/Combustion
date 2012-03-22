@@ -8,11 +8,11 @@
 
       integer i
       print *,'... mac_projection'
+
+c     macvel(lo) was set in pre_mac_predict and remains unchanged
       
       do i=lo+1,hi+1
          macvel(i) = macvel(i-1) + divu(i-1)*dx
       end do
-      
-c     macvel(0) was set in predict_vel and remains unchanged
       
       end
