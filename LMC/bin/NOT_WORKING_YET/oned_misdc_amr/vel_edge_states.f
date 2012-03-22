@@ -1,5 +1,5 @@
-      subroutine vel_edge_states(vel_old,rho_old,gp,
-     $                           macvel,sedge,dx,dt,tforces,lo,hi)
+      subroutine vel_edge_states(vel_old,rho_old,gp,macvel,sedge,
+     $                           dx,dt,tforces,lo,hi,bc)
       implicit none
       include 'spec.h'
       real*8  vel_old(-2:nfine+1)
@@ -9,7 +9,7 @@
       real*8    sedge(0:nfine)
       real*8 dx, dt
       real*8  tforces(-1:nfine)
-      integer lo, hi
+      integer lo, hi, bc(2)
 
       real*8 slope(-1:nfine)
       real*8 dth
@@ -22,7 +22,7 @@
       dthx = 0.5d0 * dt / dx
       eps = 1.e-6*vel_TYP
 
-      call mkslopes(vel_old,slope,lo,hi)
+      call mkslopes(vel_old,slope,lo,hi,bc)
 
       do i=lo+1,hi
          slo = vel_old(i-1) + (0.5 - dthx*vel_old(i-1))*slope(i-1)

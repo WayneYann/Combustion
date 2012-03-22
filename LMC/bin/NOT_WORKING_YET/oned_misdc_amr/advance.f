@@ -87,7 +87,7 @@ c
 
       print *,'... predict edge velocities'
       call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:),
-     $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0))
+     $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
       call compute_pthermo(scal_old(0,:,:),lo(0),hi(0))
 
@@ -194,7 +194,7 @@ c        we take the gradient of Y from the second scal argument
          enddo
        
          call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                  tforce(0,:,:),dx(0),dt(0),lo(0),hi(0))
+     $                  tforce(0,:,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
          print *,'... update rho'
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
@@ -491,7 +491,7 @@ c     compute advective forcing term
 
 c     compute advection term
       call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $               tforce(0,:,:),dx(0),dt(0),lo(0),hi(0))
+     $               tforce(0,:,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
 c     update density
       print *,'... update rho'
@@ -675,7 +675,7 @@ c           really no need to recompute this since it doesn't change
          
          print *,'... compute A with updated D+R source'
          call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                  tforce(0,:,:),dx(0),dt(0),lo(0),hi(0))
+     $                  tforce(0,:,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
          print *,'... update rho'
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
@@ -837,7 +837,7 @@ C     get velocity visc terms to use as a forcing term for advection
 
       call vel_edge_states(vel_old(0,:),scal_old(0,:,Density),gp(0,:),
      $                     macvel(0,:),veledge(0,:),dx(0),dt(0),
-     $                     visc(0,:),lo(0),hi(0))
+     $                     visc(0,:),lo(0),hi(0),bc(0,:))
       
       call update_vel(vel_old(0,:),vel_new(0,:),gp(0,:),rhohalf(0,:),
      &                macvel(0,:),veledge(0,:),alpha(0,:),mu_old(0,:),
