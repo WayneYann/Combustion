@@ -24,7 +24,7 @@
 
       call mkslopes(vel_old,slope,lo,hi,bc)
 
-      do i=lo+1,hi
+      do i=lo,hi+1
          slo = vel_old(i-1) + (0.5 - dthx*vel_old(i-1))*slope(i-1)
      $        - dth*gp(i-1)/rho_old(i-1) + dth*tforces(i-1)
          shi = vel_old(i  ) - (0.5 + dthx*vel_old(i))*slope(i  )
@@ -36,14 +36,18 @@
          else if ( abs(macvel(i)) .le. eps) then
             sedge(i) = 0.5d0 * (slo + shi)
          endif
+
+         if (i .eq. lo .and. bc(1) .eq. 1) then
+c     inflow
+            sedge(lo) = vel_old(i-1)
+         end if
+
+         if (i .eq. hi+1 .and. bc(2) .eq. 2) then
+c     outflow
+            sedge(i) = slo
+         end if
+
       enddo
       
-      sedge(lo) = vel_old(lo-1)
-      
-      i = hi+1
-      sedge(i) = vel_old(i-1) + 
-     $     (0.5d0 - dthx*vel_old(i-1))*slope(i-1) 
-     $     - dth*gp(i-1)/rho_old(i-1)
-
       end
       
