@@ -39,7 +39,7 @@
 
          if (i .eq. lo .and. bc(1) .eq. 1) then
 c     inflow
-            sedge(lo) = vel_old(i-1)
+            sedge(i) = vel_old(i-1)
          end if
 
          if (i .eq. hi+1 .and. bc(2) .eq. 2) then
