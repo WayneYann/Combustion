@@ -196,7 +196,8 @@ c        we take the gradient of Y from the second scal argument
          enddo
        
          call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                  tforce(0,:,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
+     $                  divu_tmp(0,:),tforce(0,:,:),dx(0),dt(0),
+     $                  lo(0),hi(0),bc(0,:))
 
          print *,'... update rho'
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
@@ -493,7 +494,8 @@ c     compute advective forcing term
 
 c     compute advection term
       call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $               tforce(0,:,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
+     $               divu_tmp(0,:),tforce(0,:,:),dx(0),dt(0),
+     $               lo(0),hi(0),bc(0,:))
 
 c     update density
       print *,'... update rho'
@@ -677,7 +679,8 @@ c           really no need to recompute this since it doesn't change
          
          print *,'... compute A with updated D+R source'
          call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                  tforce(0,:,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
+     $                  divu_tmp(0,:),tforce(0,:,:),dx(0),dt(0),
+     $                  lo(0),hi(0),bc(0,:))
 
          print *,'... update rho'
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
