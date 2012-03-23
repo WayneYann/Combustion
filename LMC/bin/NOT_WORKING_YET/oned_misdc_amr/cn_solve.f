@@ -1,5 +1,5 @@
       subroutine cn_solve(scal_new,alpha,beta_cc,Rhs,dx,dt,n,
-     $                    be_cn_theta,rho_flag,is_vel,lo,hi)
+     $                    be_cn_theta,rho_flag,is_vel,lo,hi,bc)
       implicit none
       include 'spec.h'
 
@@ -12,7 +12,7 @@
       real*8 dt
       real*8 be_cn_theta
       logical is_vel
-      integer lo,hi
+      integer lo,hi,bc(2)
       
       integer i,n
       real*8 a(nfine),b(nfine),c(nfine)
@@ -77,9 +77,9 @@ c     neumann outflow uses phi(hi) = phi(hi-1)
       endif
 
       if (is_vel) then
-         call set_bc_v(scal_new)
+         call set_bc_v(scal_new,lo,hi,bc)
       else
-         call set_bc_s(scal_new)
+         call set_bc_s(scal_new,lo,hi,bc)
       end if
       
       end

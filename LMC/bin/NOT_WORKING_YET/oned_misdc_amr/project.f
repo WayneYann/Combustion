@@ -1,5 +1,5 @@
       subroutine project(vel_new,rhohalf,divu,
-     $                   press_old,press_new,dx,dt,lo,hi)
+     $                   press_old,press_new,dx,dt,lo,hi,bc)
       implicit none
       include 'spec.h'
       real*8   vel_new(-2:nfine+1)
@@ -9,7 +9,7 @@
       real*8 press_new(-1:nfine+1)
       real*8 dx
       real*8 dt
-      integer lo,hi
+      integer lo,hi,bc(2)
       
       integer i
       real*8 phi(0:nfine)
@@ -33,7 +33,7 @@
 
 c     Build vel_new directly, since we have bc and div(v)=s
 c     Get boundary value, vel(-1) at inlet wall, and integrate explicitly.
-      call set_bc_v(vel_new)
+      call set_bc_v(vel_new,lo,hi,bc)
       vel_new(0) = vel_new(-1) + 0.5*divu(0)*dx
       do i=lo+1,hi
          divu_node = (divu(i) + divu(i-1))*0.5d0
@@ -56,6 +56,6 @@ c     therefore gp = -(vel_new-vel_star)/dt * rhohalf
       endif
 
 c     also need to set outflow boundary
-      call set_bc_v(vel_new)
+      call set_bc_v(vel_new,lo,hi,bc)
 
       end

@@ -138,7 +138,7 @@ C----------------------------------------------------------------
             call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
      $                       const_src(0,:,:),lin_src_old(0,:,:),
      $                       lin_src_new(0,:,:),
-     $                       I_R(0,:,:),dt(0)/2.d0,lo(0),hi(0))
+     $                       I_R(0,:,:),dt(0)/2.d0,lo(0),hi(0),bc(0,:))
          
             do n = FirstSpec,LastSpec
                scal_old(0,:,n) = scal_new(0,:,n)
@@ -201,7 +201,7 @@ c        we take the gradient of Y from the second scal argument
 
          print *,'... update rho'
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                   dt(0),lo(0),hi(0))
+     &                   dt(0),lo(0),hi(0),bc(0,:))
 
          do i=lo(0),hi(0)
             do n = 1,Nspec
@@ -223,12 +223,12 @@ c     coeffs, or simply start by copying from previous time step
      $                       aofs(0,:,:),alpha(0,:),
      $                       beta_old(0,:,:),beta_old(0,:,:),
      $                       Rhs(0,:,Temp),dx(0),dt(0),be_cn_theta,
-     $                       lo(0),hi(0))
+     $                       lo(0),hi(0),bc(0,:))
 c        just uses RHS and overwrites snew
 c        does not fill ghost cells
             call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
      $                    Rhs(0,:,Temp),dx(0),dt(0),Temp,be_cn_theta,
-     $                    rho_flag,.false.,lo(0),hi(0))
+     $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
 
             print *,'... compute new coeffs'
 c        compute rho^(2) D_m^(2),* (for species)
@@ -256,14 +256,14 @@ c        lambda^(1) (for temperature) won't be used
          call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
-     &                    be_cn_theta,lo(0),hi(0))
+     &                    be_cn_theta,lo(0),hi(0),bc(0,:))
 
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
             call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
-     $                    rho_flag,.false.,lo(0),hi(0))
+     $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
          enddo
       
          if (LeEQ1 .eq. 0) then
@@ -285,7 +285,7 @@ c     update species with conservative diffusion fluxes
      $                 + 0.5d0*diff_old(0,i,is) + 0.5d0*diff_tmp(0,i,is))
                end do
             end do
-            call set_bc_s(scal_new(0,:,:))
+            call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
             
          end if
 
@@ -319,11 +319,11 @@ c     we take the gradient of Y from the second scal argument
          call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
-     &                    be_cn_theta,lo(0),hi(0))
+     &                    be_cn_theta,lo(0),hi(0),bc(0,:))
          rho_flag = 2
          call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
-     $                 rho_flag,.false.,lo(0),hi(0))
+     $                 rho_flag,.false.,lo(0),hi(0),bc(0,:))
 
          call rhoh_to_temp(scal_new(0,:,:),lo(0),hi(0))
 
@@ -346,14 +346,14 @@ c                   lambda^(2)          (for temperature)
          call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
-     &                    be_cn_theta,lo(0),hi(0))
+     &                    be_cn_theta,lo(0),hi(0),bc(0,:))
 
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
             call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
-     $                    rho_flag,.false.,lo(0),hi(0))
+     $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
          enddo
 
          if (LeEQ1 .eq. 0) then
@@ -375,7 +375,7 @@ c     update species with conservative diffusion fluxes
      $                 + 0.5d0*diff_old(0,i,is) + 0.5d0*diff_tmp(0,i,is))
                end do
             end do
-            call set_bc_s(scal_new(0,:,:))
+            call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
 
 c     calculate differential diffusion
 c     calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
@@ -399,11 +399,12 @@ c     we take the gradient of Y from the second scal argument
          call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
-     &                    be_cn_theta,lo(0),hi(0))
+     &                    be_cn_theta,lo(0),hi(0),bc(0,:))
          rho_flag = 2
          call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
-     $                 rho_flag,.false.,lo(0),hi(0))
+     $                 rho_flag,.false.,lo(0),hi(0),bc(0,:))
+
          call rhoh_to_temp(scal_new(0,:,:),lo(0),hi(0))
 
          if (nochem_hack) then
@@ -419,7 +420,8 @@ c     we take the gradient of Y from the second scal argument
             call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
      $                       const_src(0,:,:),lin_src_old(0,:,:),
      $                       lin_src_new(0,:,:),
-     $                       I_R_temp(0,:,:),dt(0)/2.d0,lo(0),hi(0))
+     $                       I_R_temp(0,:,:),dt(0)/2.d0,
+     $                       lo(0),hi(0),bc(0,:))
 
 c        we only care about updated species out of strang_chem
 c        rho and rhoh remain constant
@@ -500,7 +502,7 @@ c     compute advection term
 c     update density
       print *,'... update rho'
       call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                dt(0),lo(0),hi(0))
+     &                dt(0),lo(0),hi(0),bc(0,:))
 
 c     compute part of the RHS for the enthalpy and species
 c     diffusion solves
@@ -515,7 +517,7 @@ c     compute RHS for species diffusion solve
       call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                 alpha(0,:),beta_old(0,:,:),
      &                 dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
-     &                 be_cn_theta,lo(0),hi(0))
+     &                 be_cn_theta,lo(0),hi(0),bc(0,:))
 
 C     update species with diffusion solve
       print *,'... do initial diffusion solve for species'
@@ -524,7 +526,7 @@ C     update species with diffusion solve
          is = FirstSpec + n - 1
          call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
      $                 Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,rho_flag,
-     $                 .false.,lo(0),hi(0))
+     $                 .false.,lo(0),hi(0),bc(0,:))
       enddo
 
       if (LeEQ1 .eq. 1) then
@@ -557,7 +559,7 @@ c        update species with conservative diffusion fluxes
      $              + 0.5d0*diff_old(0,i,is) + 0.5d0*diff_hat(0,i,is))
             end do
          end do
-         call set_bc_s(scal_new(0,:,:))
+         call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
          
 c        calculate differential diffusion
 c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
@@ -582,13 +584,13 @@ c     compute RHS for enthalpy diffusion solve
       call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                 alpha(0,:),beta_old(0,:,:),
      &                 dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
-     &                 be_cn_theta,lo(0),hi(0))
+     &                 be_cn_theta,lo(0),hi(0),bc(0,:))
 
 c     update enthalpy with diffusion solve
       rho_flag = 2
       call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
      $              Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,rho_flag,
-     $              .false.,lo(0),hi(0))
+     $              .false.,lo(0),hi(0),bc(0,:))
 
 c     extract D for RhoH
       do i=lo(0),hi(0)
@@ -618,7 +620,7 @@ c        add differential diffusion
          call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
      $                    const_src(0,:,:),lin_src_old(0,:,:),
      $                    lin_src_new(0,:,:),
-     $                    I_R(0,:,:),dt(0),lo(0),hi(0))
+     $                    I_R(0,:,:),dt(0),lo(0),hi(0),bc(0,:))
 
       endif
 
@@ -684,7 +686,7 @@ c           really no need to recompute this since it doesn't change
 
          print *,'... update rho'
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                   dt(0),lo(0),hi(0))
+     &                   dt(0),lo(0),hi(0),bc(0,:))
 
          print *,'... update D for species with A + R + MISDC(D)'
          do i=lo(0),hi(0)
@@ -702,14 +704,14 @@ c           differential diffusion will be added later
          call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
-     &                    dx(0),dt(0),be_cn_theta,lo(0),hi(0))
+     &                    dx(0),dt(0),be_cn_theta,lo(0),hi(0),bc(0,:))
 
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
             call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
-     $                    rho_flag,.false.,lo(0),hi(0))
+     $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
          enddo
 
          if (LeEQ1 .eq. 1) then
@@ -745,12 +747,11 @@ c           add differential diffusion to forcing for enthalpy solve
          call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
-     &                    be_cn_theta,lo(0),hi(0))
+     &                    be_cn_theta,lo(0),hi(0),bc(0,:))
          rho_flag = 2
          call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
-     $                 rho_flag,.false.,lo(0),hi(0))
-         print *,'... create new temp from new RhoH, spec'
+     $                 rho_flag,.false.,lo(0),hi(0),bc(0,:))
 
 c        extract D for RhoH
          do i=lo(0),hi(0)
@@ -780,7 +781,7 @@ c           add differential diffusion
             call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
      $                       const_src(0,:,:),lin_src_old(0,:,:),
      $                       lin_src_new(0,:,:),
-     $                       I_R(0,:,:),dt(0),lo(0),hi(0))
+     $                       I_R(0,:,:),dt(0),lo(0),hi(0),bc(0,:))
             
          endif
 
@@ -846,7 +847,8 @@ C     get velocity visc terms to use as a forcing term for advection
       
       call update_vel(vel_old(0,:),vel_new(0,:),gp(0,:),rhohalf(0,:),
      &                macvel(0,:),veledge(0,:),alpha(0,:),mu_old(0,:),
-     &                vel_Rhs(0,:),dx(0),dt(0),vel_theta,lo(0),hi(0))
+     &                vel_Rhs(0,:),dx(0),dt(0),vel_theta,
+     &                lo(0),hi(0),bc(0,:))
 
       if (is_first_initial_iter .eq. 1) then
          call get_vel_visc_terms(vel_old(0,:),mu_old(0,:),visc(0,:),
@@ -858,7 +860,7 @@ C     get velocity visc terms to use as a forcing term for advection
          rho_flag = 1
          call cn_solve(vel_new(0,:),alpha(0,:),mu_new(0,:),
      $                 vel_Rhs(0,:),dx(0),dt(0),1,vel_theta,rho_flag,
-     $                 .true.,lo(0),hi(0))
+     $                 .true.,lo(0),hi(0),bc(0,:))
       endif
 
       call compute_pthermo(scal_new(0,:,:),lo(0),hi(0))
@@ -870,6 +872,6 @@ C     get velocity visc terms to use as a forcing term for advection
       print *,'...nodal projection...'
       call project(vel_new(0,:),rhohalf(0,:),divu_new(0,:),
      &             press_old(0,:),press_new(0,:),dx(0),dt(0),
-     &             lo(0),hi(0))
+     &             lo(0),hi(0),bc(0,:))
 
       end
