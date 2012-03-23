@@ -53,7 +53,7 @@
 
             call mkslopes(scal_old(:,n),slope,lo,hi,bc)
 
-            do i=lo+1,hi
+            do i=lo,hi+1
                slo = scal_old(i-1,n)+(0.5d0 - dthx*macvel(i))*slope(i-1)
                shi = scal_old(i  ,n)-(0.5d0 + dthx*macvel(i))*slope(i  )
                
@@ -73,19 +73,17 @@
                   sedge(i,n) = 0.5d0 * (slo + shi)
                endif
                
+               if (i .eq. lo .and. bc(1) .eq. 1) then
+c     inflow
+                  sedge(i,n) = scal_old(i-1,n)
+               end if
+
+               if (i .eq. hi+1 .and. bc(2) .eq. 2) then
+c     outflow
+                  sedge(i,n) = slo
+               end if
+
             enddo
-            
-            i = lo
-            sedge(0,n) = scal_old(lo-1,n)
-            
-            i = hi+1
-            sedge(i,n) = scal_old(i-1,n) + 
-     $           (0.5d0 - dthx*macvel(i))*slope(i-1) 
-            if (iconserv .eq. 1) then
-               sedge(i,n) = sedge(i,n) - 
-     $              dth * scal_old(i-1,n) * divu(i-1)
-            endif
-            sedge(i,n) = sedge(i,n) + dth*tforce(i-1,n)
             
          endif
       enddo
