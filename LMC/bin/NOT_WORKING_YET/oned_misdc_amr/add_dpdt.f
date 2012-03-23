@@ -3,7 +3,7 @@
       include 'spec.h'
       real*8    scal(-2:nfine+1,nscal)
       real*8 pthermo(-2:nfine+1)
-      real*8    divu(0 :nfine-1)
+      real*8    divu(-1:nfine)
       real*8    umac(0 :nfine  )
       real*8 Y(Nspec)
       real*8 dx
@@ -56,7 +56,7 @@ c     compute (Y_i/mw_i)^-1 = mean molecular weight
       include 'spec.h'
       real*8    scal(-2:nfine+1,nscal)
       real*8 pthermo(-2:nfine+1)
-      real*8    divu(0 :nfine-1)
+      real*8    divu(-1:nfine)
       real*8     vel(-2:nfine+1)
       real*8 Y(Nspec)
       real*8 dx

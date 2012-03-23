@@ -17,10 +17,10 @@
       real*8        I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
       real*8   beta_old(0:nlevs-1,-1:nfine  ,nscal)
       real*8   beta_new(0:nlevs-1,-1:nfine  ,nscal)
+      real*8   divu_old(0:nlevs-1,-1:nfine)
+      real*8   divu_new(0:nlevs-1,-1:nfine)
 
 !     cell-centered, no ghost cells
-      real*8   divu_old(0:nlevs-1, 0:nfine-1)
-      real*8   divu_new(0:nlevs-1, 0:nfine-1)
       real*8       dsdt(0:nlevs-1, 0:nfine-1)
 
 !     nodal, 1 ghost cell
@@ -50,9 +50,9 @@
       real*8       tforce(0:nlevs-1,-1:nfine,  nscal)
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
+      real*8     divu_tmp(0:nlevs-1,-1:nfine)
 
 !     cell-centered, no ghost cells
-      real*8     divu_tmp(0:nlevs-1, 0:nfine-1)
       real*8      rhohalf(0:nlevs-1, 0:nfine-1)
       real*8        alpha(0:nlevs-1, 0:nfine-1)
       real*8      vel_Rhs(0:nlevs-1, 0:nfine-1)
@@ -91,7 +91,9 @@ c
 
       call compute_pthermo(scal_old(0,:,:),lo(0),hi(0))
 
-      divu_tmp(0,:) = divu_old(0,:) + 0.5d0*dt(0)*dsdt(0,:)
+      do i=lo(0),hi(0)
+         divu_tmp(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dsdt(0,i)
+      end do
 
       call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),divu_tmp(0,:),
      $              macvel(0,:),dx(0),dt(0),

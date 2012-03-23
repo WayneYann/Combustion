@@ -6,7 +6,7 @@ c     Quantities passed in
       real*8 scal(-2:nfine+1,nscal)
       real*8 beta(-1:nfine  ,nscal)
       real*8  I_R(-1:nfine  ,0:Nspec)
-      real*8 divu(0 :nfine-1)
+      real*8 divu(-1:nfine)
       real*8 dx
       integer lo,hi
       

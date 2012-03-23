@@ -9,7 +9,7 @@
       real*8  scal(0:nlevs-1,-2:nfine+1,nscal)
       real*8 press(0:nlevs-1,-1:nfine+1)
       real*8   I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
-      real*8  divu(0:nlevs-1, 0:nfine-1)
+      real*8  divu(0:nlevs-1,-1:nfine)
       real*8  dsdt(0:nlevs-1, 0:nfine-1)
       real*8 time
       real*8 dt_old
@@ -40,12 +40,12 @@
 
 !     cell-centered, 1 ghost cell
          do i=lo(l)-1,hi(l)+1
-            read(10) x,(I_R(l,i,n),n=0,Nspec)
+            read(10) x,(I_R(l,i,n),n=0,Nspec),divu(l,i)
          enddo
 
 !     cell-centered, no ghost cells
          do i=lo(l),hi(l)
-            read(10) x,divu(l,i),dsdt(l,i)
+            read(10) x,dsdt(l,i)
          enddo
 
 !     nodal, 1 ghost cell

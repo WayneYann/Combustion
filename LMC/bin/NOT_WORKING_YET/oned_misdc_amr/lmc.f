@@ -25,10 +25,10 @@
       real*8, allocatable :: beta_old(:,:,:)
       real*8, allocatable :: beta_new(:,:,:)
       real*8, allocatable :: mu_dummy(:,:)
+      real*8, allocatable :: divu_old(:,:)
+      real*8, allocatable :: divu_new(:,:)
 
 !     cell-centered, no ghost cells
-      real*8, allocatable ::    divu_old(:,:)
-      real*8, allocatable ::    divu_new(:,:)
       real*8, allocatable ::        dsdt(:,:)
       real*8, allocatable ::   const_src(:,:,:)
       real*8, allocatable :: lin_src_old(:,:,:)
@@ -137,10 +137,10 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       allocate(beta_old(0:nlevs-1,-1:nfine,nscal))
       allocate(beta_new(0:nlevs-1,-1:nfine,nscal))
       allocate(mu_dummy(0:nlevs-1,-1:nfine))
+      allocate(divu_old(0:nlevs-1,-1:nfine))
+      allocate(divu_new(0:nlevs-1,-1:nfine))
 
 !     cell-centered, no ghost cells
-      allocate(   divu_old(0:nlevs-1,0:nfine-1))
-      allocate(   divu_new(0:nlevs-1,0:nfine-1))
       allocate(       dsdt(0:nlevs-1,0:nfine-1))
       allocate(  const_src(0:nlevs-1,0:nfine-1,nscal))
       allocate(lin_src_old(0:nlevs-1,0:nfine-1,nscal))

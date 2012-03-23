@@ -4,7 +4,7 @@
       include 'spec.h'
       real*8   vel_new(-2:nfine+1)
       real*8   rhohalf(0 :nfine-1)
-      real*8      divu(0 :nfine-1)
+      real*8      divu(-1:nfine)
       real*8 press_old(-1:nfine+1)
       real*8 press_new(-1:nfine+1)
       real*8 dx

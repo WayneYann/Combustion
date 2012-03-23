@@ -2,7 +2,7 @@
       implicit none
       include 'spec.h'
       real*8 macvel(0 :nfine)
-      real*8   divu(0 :nfine-1)
+      real*8   divu(-1:nfine)
       real*8 dx
       integer lo,hi
 
