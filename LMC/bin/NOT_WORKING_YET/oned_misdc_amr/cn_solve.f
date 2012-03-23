@@ -38,13 +38,15 @@ c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
       fac = be_cn_theta * dt / (dx*dx)
 
       do i=lo,hi
+
          u(i+1) = 0.d0
          r(i+1) = Rhs(i)
          a(i+1) = -fac*beta(i  )
          c(i+1) = -fac*beta(i+1)
          b(i+1) = alpha(i) - (a(i+1)+c(i+1))
+
+         if (i .eq. lo .and. bc(1) .eq. 1) then
 c     dirichlet inflow using ghost cell value
-         if (i.eq.lo) then
             a(i+1) = 0.d0
             if (rho_flag .eq. 2) then
                r(i+1) = r(i+1) + 
@@ -53,12 +55,19 @@ c     dirichlet inflow using ghost cell value
                r(i+1) = r(i+1) + 
      $              fac*beta(i)*scal_new(-1,n)
             end if
+         else if (i .eq. lo .and. bc(1) .eq. 0) then
+c     dirichlet at coarse-fine interface
+            print*,'Need to write C-F cn_solve stencil'
+            stop            
+         else if (i .eq. hi .and. bc(2) .eq. 2) then
 c     neumann outflow uses phi(hi) = phi(hi-1)
-         else if (i.eq.hi) then
             c(i+1) = 0.d0
             b(i+1) = alpha(i) - (a(i+1)+c(i+1))
+         else if (i .eq. hi .and. bc(2) .eq. 0) then
+c     dirichlet at coarse-fine interface
+            print*,'Need to write C-F cn_solve stencil'
+            stop            
          end if
-
 
       enddo
 
