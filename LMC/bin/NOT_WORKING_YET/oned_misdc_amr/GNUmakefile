@@ -39,7 +39,7 @@ pmf_object := $(pmf_source:%.f=%.o)
 mech_object := $(mech_source:%.cpp=%.o)
 chem_objects := $(chem_sources:%.f=%.o)
 
-f_sources += lmc.f ${chem_sources} prob.f \
+f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
              calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f \
              get_vel_visc_terms.f \
              get_rhoh_visc_terms.f project.f strang_chem.f \
