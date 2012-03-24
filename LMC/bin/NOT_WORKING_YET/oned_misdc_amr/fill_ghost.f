@@ -57,3 +57,26 @@
       end do
 
       end
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      subroutine cc_restriction(scal,finelev,lo,hi)
+      implicit none
+      include 'spec.h'
+      real*8 scal(0:nlevs-1,-2:nfine+1)
+      integer finelev
+      integer lo(0:nlevs-1), hi(0:nlevs-1)
+
+!     local variables
+      integer i,j
+      real*8 sum
+
+      do i=lo(finelev)/rr,(hi(finelev)+1)/rr-1
+         sum = 0.d0
+         do j=1,rr
+            sum = sum + scal(finelev,rr*i+j-1)
+         end do
+         scal(finelev-1,i) = sum / dble(rr)
+      end do
+
+      end
