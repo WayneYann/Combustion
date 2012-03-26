@@ -1,13 +1,15 @@
-      subroutine scal_aofs(scal_old,macvel,aofs,tforce,dx,dt,lo,hi)
+      subroutine scal_aofs(scal_old,macvel,aofs,divu,tforce,
+     $                     dx,dt,lo,hi,bc)
       implicit none
       include 'spec.h'
       real*8 scal_old(-2:nfine+1,nscal)
       real*8   macvel(0 :nfine  )
       real*8   tforce(-1:nfine  ,nscal)
       real*8     aofs(0 :nfine-1,nscal)
+      real*8     divu(-1:nfine)
       real*8 dx
       real*8 dt
-      integer lo,hi
+      integer lo,hi,bc(2)
       
       real*8  sedge(0 :nfine,nscal)
       real*8  slope(-1:nfine)
@@ -49,17 +51,15 @@
                iconserv = 1
             endif
 
-            call mkslopes(scal_old(:,n),slope,lo,hi)
+            call mkslopes(scal_old(:,n),slope,lo,hi,bc)
 
-            do i=lo+1,hi
+            do i=lo,hi+1
                slo = scal_old(i-1,n)+(0.5d0 - dthx*macvel(i))*slope(i-1)
                shi = scal_old(i  ,n)-(0.5d0 + dthx*macvel(i))*slope(i  )
                
                if (iconserv .eq. 1) then
-                  slo = slo - dth * scal_old(i-1,n) * 
-     $                 (macvel(i  )-macvel(i-1))/dx
-                  shi = shi - dth * scal_old(i  ,n) * 
-     $                 (macvel(i+1)-macvel(i  ))/dx
+                  slo = slo - dth * scal_old(i-1,n) * divu(i-1)
+                  shi = shi - dth * scal_old(i  ,n) * divu(i)
                endif
                
                slo = slo + dth*tforce(i-1,n)
@@ -73,19 +73,17 @@
                   sedge(i,n) = 0.5d0 * (slo + shi)
                endif
                
+               if (i .eq. lo .and. bc(1) .eq. 1) then
+c     inflow
+                  sedge(i,n) = scal_old(i-1,n)
+               end if
+
+               if (i .eq. hi+1 .and. bc(2) .eq. 2) then
+c     outflow
+                  sedge(i,n) = slo
+               end if
+
             enddo
-            
-            i = lo
-            sedge(0,n) = scal_old(lo-1,n)
-            
-            i = hi+1
-            sedge(i,n) = scal_old(i-1,n) + 
-     $           (0.5d0 - dthx*macvel(i))*slope(i-1) 
-            if (iconserv .eq. 1) then
-               sedge(i,n) = sedge(i,n) - 
-     $              dth * scal_old(i-1,n) * (macvel(i  )-macvel(i-1))/dx
-            endif
-            sedge(i,n) = sedge(i,n) + dth*tforce(i-1,n)
             
          endif
       enddo

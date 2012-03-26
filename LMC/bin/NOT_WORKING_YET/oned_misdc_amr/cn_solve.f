@@ -1,5 +1,5 @@
       subroutine cn_solve(scal_new,alpha,beta_cc,Rhs,dx,dt,n,
-     $                    be_cn_theta,rho_flag,is_vel,lo,hi)
+     $                    be_cn_theta,rho_flag,is_vel,lo,hi,bc)
       implicit none
       include 'spec.h'
 
@@ -12,7 +12,7 @@
       real*8 dt
       real*8 be_cn_theta
       logical is_vel
-      integer lo,hi
+      integer lo,hi,bc(2)
       
       integer i,n
       real*8 a(nfine),b(nfine),c(nfine)
@@ -38,13 +38,15 @@ c     mass (rho_flag=2): d(rho.u)/dt=Div(rho.D.Grad(u))
       fac = be_cn_theta * dt / (dx*dx)
 
       do i=lo,hi
+
          u(i+1) = 0.d0
          r(i+1) = Rhs(i)
          a(i+1) = -fac*beta(i  )
          c(i+1) = -fac*beta(i+1)
          b(i+1) = alpha(i) - (a(i+1)+c(i+1))
+
+         if (i .eq. lo .and. bc(1) .eq. 1) then
 c     dirichlet inflow using ghost cell value
-         if (i.eq.lo) then
             a(i+1) = 0.d0
             if (rho_flag .eq. 2) then
                r(i+1) = r(i+1) + 
@@ -53,12 +55,19 @@ c     dirichlet inflow using ghost cell value
                r(i+1) = r(i+1) + 
      $              fac*beta(i)*scal_new(-1,n)
             end if
+         else if (i .eq. lo .and. bc(1) .eq. 0) then
+c     dirichlet at coarse-fine interface
+            print*,'Need to write C-F cn_solve stencil'
+            stop            
+         else if (i .eq. hi .and. bc(2) .eq. 2) then
 c     neumann outflow uses phi(hi) = phi(hi-1)
-         else if (i.eq.hi) then
             c(i+1) = 0.d0
             b(i+1) = alpha(i) - (a(i+1)+c(i+1))
+         else if (i .eq. hi .and. bc(2) .eq. 0) then
+c     dirichlet at coarse-fine interface
+            print*,'Need to write C-F cn_solve stencil'
+            stop            
          end if
-
 
       enddo
 
@@ -77,9 +86,9 @@ c     neumann outflow uses phi(hi) = phi(hi-1)
       endif
 
       if (is_vel) then
-         call set_bc_v(scal_new)
+         call set_bc_v(scal_new,lo,hi,bc)
       else
-         call set_bc_s(scal_new)
+         call set_bc_s(scal_new,lo,hi,bc)
       end if
       
       end

@@ -1,6 +1,6 @@
       subroutine update_vel(vel_old,vel_new,gp,rhohalf,
      &                      macvel,veledge,alpha,beta,
-     &                      Rhs,dx,dt,be_cn_theta,lo,hi)
+     &                      Rhs,dx,dt,be_cn_theta,lo,hi,bc)
       implicit none
       include 'spec.h'
       real*8 vel_old(-2:nfine+1)
@@ -13,7 +13,7 @@
       real*8    beta(-1:nfine  )
       real*8     Rhs(0 :nfine-1)
       real*8 dx,dt,be_cn_theta
-      integer lo,hi
+      integer lo,hi,bc(2)
       
 ! local
       real*8  visc(-1:nfine)
@@ -35,7 +35,7 @@ c     rho.DU/Dt + G(pi) = D(tau), here D(tau) = d/dx ( a . du/dx ), a=4.mu/3
          Rhs(i) = vel_new(i)*alpha(i) + visc_term
       enddo
 
-      call set_bc_v(vel_new)
+      call set_bc_v(vel_new,lo,hi,bc)
 
       end
       

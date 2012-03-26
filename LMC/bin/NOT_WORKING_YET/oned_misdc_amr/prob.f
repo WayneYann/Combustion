@@ -50,7 +50,7 @@ c-----------------------------------------------------------------------
 
 c----------------------------------------------------------------------
 
-      subroutine initdata(vel,scal,I_R,dx,lo,hi)
+      subroutine initdata(vel,scal,I_R,dx,lo,hi,bc)
       implicit none
       include 'spec.h'
       double precision  vel(0:nlevs-1,-2:nfine+1)
@@ -59,6 +59,7 @@ c----------------------------------------------------------------------
       double precision   dx(0:nlevs-1)
       integer            lo(0:nlevs-1)
       integer            hi(0:nlevs-1)
+      integer            bc(0:nlevs-1,2)
 
       double precision  x, rho, Y(Nspec), T, h
       double precision xPMFlo, xPMFhi
@@ -109,8 +110,8 @@ c----------------------------------------------------------------------
       I_R = 0.d0
 
 !     fill coarse level ghost cells
-      call set_bc_s(scal(0,:,:))
-      call set_bc_v(vel(0,:))
+      call set_bc_s(scal(0,:,:),lo(0),hi(0),bc(0,:))
+      call set_bc_v(vel(0,:)   ,lo(0),hi(0),bc(0,:))
 
       vel_TYP = ABS(vel(0,0))
       do l=0,nlevs-1
@@ -123,55 +124,69 @@ c----------------------------------------------------------------------
 
 c----------------------------------------------------------------------
 
-      subroutine set_bc_s(scal)
+      subroutine set_bc_s(scal,lo,hi,bc)
       implicit none
       include 'spec.h'
       double precision scal(-2:nfine+1,nscal)
+      integer lo,hi,bc(2)
 
 !     local variables
       integer n, is, HorL
       double precision u, rho, Y(Nspec), T, hmix
 
+      if (bc(1) .eq. 1) then
 c     lo:  Dirichlet values for rho, Y, T, h
-      HorL = on_lo
-      call bcfunction(HorL, u, rho, Y, T, hmix)
-      scal(-2:-1,Density) = rho
-      scal(-2:-1,Temp) = T
-      do n=1,Nspec
-         is = FirstSpec + n - 1 
-         scal(-2:-1,is) = Y(n) * rho
-      enddo
-      scal(-2:-1,RhoH) = hmix * rho
+         HorL = on_lo
+         call bcfunction(HorL, u, rho, Y, T, hmix)
+
+         scal(lo-2:lo-1,Density) = rho
+         scal(lo-2:lo-1,Temp) = T
+         do n=1,Nspec
+            is = FirstSpec + n - 1 
+            scal(lo-2:lo-1,is) = Y(n) * rho
+         enddo
+         scal(lo-2:lo-1,RhoH) = hmix * rho
+      end if
       
+      if (bc(2) .eq. 2) then
 c     hi:  Neumann for all 
-      scal(nx:nx+1,Density) = scal(nx-1,Density)
-      scal(nx:nx+1,Temp) = scal(nx-1,Temp)
-      do n=1,Nspec
-         is = FirstSpec + n - 1 
-         scal(nx:nx+1,is) = scal(nx-1,is)
-      enddo
-      scal(nx:nx+1,RhoH) = scal(nx-1,RhoH)
+         scal(hi+1:hi+2,Density) = scal(hi,Density)
+         scal(hi+1:hi+2,Temp) = scal(hi,Temp)
+         do n=1,Nspec
+            is = FirstSpec + n - 1 
+            scal(hi+1:hi+2,is) = scal(hi,is)
+         enddo
+         scal(hi+1:hi+2,RhoH) = scal(hi,RhoH)
+      end if
+
       end
+
 
 
 c----------------------------------------------------------------------
 
-      subroutine set_bc_v(vel)
+      subroutine set_bc_v(vel,lo,hi,bc)
       implicit none
       include 'spec.h'
       double precision vel(-2:nfine+1)
+      integer lo,hi,bc(2)
 
 !     local variables
       integer HorL
       double precision u, rho, Y(Nspec), T, hmix
 
+      if (bc(1) .eq. 1) then
 c     lo:  Dirichlet
-      HorL = on_lo
-      call bcfunction(HorL, u, rho, Y, T, hmix)
-      vel(-2:-1) = u
+         HorL = on_lo
+         call bcfunction(HorL, u, rho, Y, T, hmix)
+         vel(lo-2:lo-1) = u
+      end if
 
+      if (bc(2) .eq. 2) then
 c     hi:  Neumann for all
-      vel(nx:nx+1) = vel(nx-1)
+         vel(hi+1:hi+2) = vel(hi)
+      end if
+
       end
 
 c----------------------------------------------------------------------

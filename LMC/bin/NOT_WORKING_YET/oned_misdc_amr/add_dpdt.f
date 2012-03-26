@@ -3,7 +3,7 @@
       include 'spec.h'
       real*8    scal(-2:nfine+1,nscal)
       real*8 pthermo(-2:nfine+1)
-      real*8    divu(0 :nfine-1)
+      real*8    divu(-1:nfine)
       real*8    umac(0 :nfine  )
       real*8 Y(Nspec)
       real*8 dx
@@ -15,11 +15,9 @@
       real*8 denom
       real*8 gamma_inv, cp, Runiv, mwmix, RWRK, dummy
       real*8 dpdt
-      real*8 dpdt_max
       integer i,n
       integer ispec,IWRK
       
-      dpdt_max = 0.d0
       do i=lo,hi
          uadv = 0.5d0 * (umac(i) + umac(i+1))
          if (umac(i) .ge. 0.d0) then
@@ -41,24 +39,14 @@ c     compute gamma here
             ispec = FirstSpec + n - 1
             Y(n) = scal(i,ispec)/scal(i,Density)
          enddo
-C compute (Y_i/mw_i)^-1 = mean molecular weight
+c     compute (Y_i/mw_i)^-1 = mean molecular weight
          call CKMMWY(Y,IWRK,RWRK,mwmix)
          call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
          call CKCPBS(scal(i,Temp),Y,IWRK,RWRK,cp)
          gamma_inv = (cp - Runiv/mwmix)/cp
-
-C         dpdt = dpdt / 1.4d0
-         dpdt = dpdt * gamma_inv
          denom = MIN(pthermo(i),Pcgs)
-C         denom = pthermo(i)
-         dpdt = dpdt/denom
-         dpdt = dpdt_factor * dpdt
-         divu(i) = divu(i) + dpdt
-         dpdt_max = MAX(dpdt_max,ABS(dpdt))
+         divu(i) = divu(i) + dpdt*dpdt_factor*gamma_inv/denom
       end do
-      
-      write(6,1000) dpdt_max
- 1000 format(' DPDT norm     = ',f14.4)
       
       end
 
@@ -68,7 +56,7 @@ C         denom = pthermo(i)
       include 'spec.h'
       real*8    scal(-2:nfine+1,nscal)
       real*8 pthermo(-2:nfine+1)
-      real*8    divu(0 :nfine-1)
+      real*8    divu(-1:nfine)
       real*8     vel(-2:nfine+1)
       real*8 Y(Nspec)
       real*8 dx
@@ -80,11 +68,9 @@ C         denom = pthermo(i)
       real*8 denom
       real*8 gamma_inv, cp, Runiv, mwmix, RWRK, dummy
       real*8 dpdt
-      real*8 dpdt_max
       integer i,n
       integer ispec,IWRK
       
-      dpdt_max = 0.d0
       do i=lo,hi
          uadv = vel(i)
 
@@ -115,23 +101,14 @@ c     compute gamma here
             ispec = FirstSpec + n - 1
             Y(n) = scal(i,ispec)/scal(i,Density)
          enddo
-C compute (Y_i/mw_i)^-1 = mean molecular weight
+C     compute (Y_i/mw_i)^-1 = mean molecular weight
          call CKMMWY(Y,IWRK,RWRK,mwmix)
          call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
          call CKCPBS(scal(i,Temp),Y,IWRK,RWRK,cp)
-         gamma_inv = (cp - Runiv/mwmix)/cp
 
-C         dpdt = dpdt / 1.4d0
-         dpdt = dpdt * gamma_inv
+         gamma_inv = (cp - Runiv/mwmix)/cp
          denom = MIN(pthermo(i),Pcgs)
-C         denom = pthermo(i)
-         dpdt = dpdt/denom
-         dpdt = dpdt_factor * dpdt
-         divu(i) = divu(i) + dpdt
-         dpdt_max = MAX(dpdt_max,ABS(dpdt))
+         divu(i) = divu(i) + dpdt*dpdt_factor*gamma_inv/denom
       end do
-      
-      write(6,1000) dpdt_max
- 1000 format(' DPDT norm     = ',f14.4)
       
       end
