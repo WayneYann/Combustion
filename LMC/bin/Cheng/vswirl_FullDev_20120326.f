@@ -46,7 +46,7 @@ c
       parameter (eps=1.d-9, factor = 15.d0/13.261653269312280d0)
 
 c     x,y come in as MKS.  Convert to mm.  Result already in MKS
-      r = SQRT( x*x + y*y ) * 1000
+      r = SQRT( x*x + y*y ) * 1000 * (30.d0/25.d0)
       call vswirl(r,r,vel,N)
 
       vel = vel * factor
