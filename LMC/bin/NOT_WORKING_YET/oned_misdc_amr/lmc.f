@@ -215,7 +215,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
      $                   time,at_nstep,dt,lo,hi)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     $                  dx,at_nstep,time,lo,hi)
+     $                  dx,at_nstep,time,lo,hi,bc)
 
          at_nstep = at_nstep + 1
 
@@ -236,7 +236,7 @@ c     needed for seed to EOS after first strang_chem call
          scal_new(:,:,Temp) = scal_old(:,:,Temp)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99999,time,lo,hi)
+     &                  dx,99999,time,lo,hi,bc)
 
          do l=0,nlevs-1
             call calc_diffusivities(scal_old(l,:,:),beta_old(l,:,:),
@@ -262,7 +262,7 @@ c     return zero pressure
          end if
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99998,time,lo,hi)
+     &                  dx,99998,time,lo,hi,bc)
 
          const_src = 0.d0
          lin_src_old = 0.d0
@@ -305,7 +305,7 @@ c     return zero pressure
          enddo
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99997,time,lo,hi)
+     &                  dx,99997,time,lo,hi,bc)
 
          print *,' '
          print *,'...doing num_init_iters = ',num_init_iters 
@@ -343,7 +343,7 @@ c     update pressure and I_R
          enddo
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,0,time,lo,hi)
+     &                  dx,0,time,lo,hi,bc)
 
          print *,' '      
          print *,' '      
@@ -384,7 +384,7 @@ c     update state, time
          if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
      &        nsteps_taken.eq.nsteps) then 
             call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
-     $                     dx,nsteps_taken,time,lo,hi)
+     $                     dx,nsteps_taken,time,lo,hi,bc)
          endif
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 

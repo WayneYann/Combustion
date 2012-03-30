@@ -89,7 +89,7 @@ c
       call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:),
      $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
-      call compute_pthermo(scal_old(0,:,:),lo(0),hi(0))
+      call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
 
       do i=lo(0),hi(0)
          divu_tmp(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dsdt(0,i)
@@ -863,7 +863,7 @@ C     get velocity visc terms to use as a forcing term for advection
      $                 .true.,lo(0),hi(0),bc(0,:))
       endif
 
-      call compute_pthermo(scal_new(0,:,:),lo(0),hi(0))
+      call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
 
       call add_dpdt_nodal(scal_new(0,:,:),scal_new(0,:,RhoRT),
      &                    divu_new(0,:),vel_new(0,:),dx(0),dt(0),
