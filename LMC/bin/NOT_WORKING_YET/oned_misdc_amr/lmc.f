@@ -61,7 +61,7 @@
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  do_initial_projection, num_divu_iters, 
      $                  num_init_iters,fixed_dt,
-     $                  nochem_hack, use_strang, 
+     $                  use_strang, 
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  max_vode_subcycles,
@@ -91,7 +91,6 @@ c     Set defaults, change with namelist
       num_divu_iters = 3
       num_init_iters = 2
       fixed_dt = -1.d0
-      nochem_hack = .false.
       use_strang = .false.
       V_in = 1.d20
       lim_rxns = 1

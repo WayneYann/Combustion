@@ -261,11 +261,6 @@ C     Variables in Z are:  Z(0)   = rho*h
 C                          Z(K) = rho*Y(K)
 
 
-      if (nochem_hack) then
-         print *,'WARNING: calling VODE with nochem_hack = true'
-         stop
-      endif
-
       if (Pcgs.lt.0.d0) then
          print *,'vodeF_T_RhoY: Must set Pcgs before calling vode'
          stop

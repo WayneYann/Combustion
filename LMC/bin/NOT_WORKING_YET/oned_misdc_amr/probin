@@ -17,7 +17,6 @@
   num_divu_iters = 3
   num_init_iters = 2
   misdc_iterMAX = 1
-  nochem_hack = .false.
   use_strang = .false.
   lim_rxns = 0
   V_in = 0.
