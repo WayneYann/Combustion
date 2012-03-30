@@ -254,9 +254,10 @@ c     needed for seed to EOS after first strang_chem call
 
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old(0,:),scal_old(:,0:,Density),
-     $                   divu_old(0,:),press_old(0,:),press_new(0,:),
-     $                   dx(0),-1.d0,lo(0),hi(0),bc(0,:))
+            call project_level(vel_old(0,:),scal_old(:,0:,Density),
+     $                         divu_old(0,:),press_old(0,:),
+     $                         press_new(0,:),dx(0),-1.d0,
+     $                         lo(0),hi(0),bc(0,:))
 
          end if
 
@@ -296,9 +297,10 @@ c     reset temperature just in case strang_chem call is not well poased
             
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old(0,:),scal_old(:,0:,Density),
-     $                   divu_old(0,:),press_old(0,:),press_new(0,:),
-     $                   dx(0),-1.d0,lo(0),hi(0),bc(0,:))
+            call project_level(vel_old(0,:),scal_old(:,0:,Density),
+     $                         divu_old(0,:),press_old(0,:),
+     $                         press_new(0,:),dx(0),-1.d0,
+     $                         lo(0),hi(0),bc(0,:))
 
          enddo
 
