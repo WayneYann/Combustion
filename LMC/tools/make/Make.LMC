@@ -12,6 +12,7 @@ Bdirs += $(COMBUSTION_DIR)/Chemistry/src
 
 # IAMR
 Bdirs += $(IAMR_DIR)/Source
+Bdirs += $(IAMR_DIR)/Source/Src_$(DIM)d
 Bdirs += $(IAMR_DIR)/Source/InflowForce
 
 # BoxLib 

@@ -40,6 +40,7 @@
 #include <HEATTRANSFER_F.H>
 #include <SLABSTAT_HT_F.H>
 #include <Utility.H>
+#include <NS_error_F.H>
 
 #define DEF_LIMITS(fab,fabdat,fablo,fabhi)   \
 const int* fablo = (fab).loVect();           \
@@ -891,10 +892,9 @@ HeatTransfer::variableSetUp ()
     // **************  DEFINE ERROR ESTIMATION QUANTITIES  *************
     //
     const int nGrowErr = 1;
-    err_list.add("temp", nGrowErr, ErrorRec::Special, FORT_TEMPERROR);
-    err_list.add("mag_vort", nGrowErr, ErrorRec::Special, FORT_MVERROR);
-    // err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_MVERROR);
-    err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_ADVERROR);
+    err_list.add("temp", nGrowErr, ErrorRec::Special, BL_FORT_PROC_CALL(FORT_TEMPERROR,fort_temperror));
+    err_list.add("mag_vort", nGrowErr, ErrorRec::Special, BL_FORT_PROC_CALL(FORT_MVERROR,fort_mverror));
+    err_list.add("tracer", nGrowErr, ErrorRec::Special, BL_FORT_PROC_CALL(FORT_ADVERROR,fort_adverror));
     //
     // Tag region of interesting chemistry.
     //
