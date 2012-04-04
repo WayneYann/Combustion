@@ -61,7 +61,7 @@
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  do_initial_projection, num_divu_iters, 
      $                  num_init_iters,fixed_dt,
-     $                  nochem_hack, use_strang, 
+     $                  use_strang, 
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  max_vode_subcycles,
@@ -91,7 +91,6 @@ c     Set defaults, change with namelist
       num_divu_iters = 3
       num_init_iters = 2
       fixed_dt = -1.d0
-      nochem_hack = .false.
       use_strang = .false.
       V_in = 1.d20
       lim_rxns = 1
@@ -215,7 +214,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
      $                   time,at_nstep,dt,lo,hi)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     $                  dx,at_nstep,time,lo,hi)
+     $                  dx,at_nstep,time,lo,hi,bc)
 
          at_nstep = at_nstep + 1
 
@@ -236,7 +235,7 @@ c     needed for seed to EOS after first strang_chem call
          scal_new(:,:,Temp) = scal_old(:,:,Temp)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99999,time,lo,hi)
+     &                  dx,99999,time,lo,hi,bc)
 
          do l=0,nlevs-1
             call calc_diffusivities(scal_old(l,:,:),beta_old(l,:,:),
@@ -254,14 +253,15 @@ c     needed for seed to EOS after first strang_chem call
 
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old(0,:),scal_old(:,0:,Density),
-     $                   divu_old(0,:),press_old(0,:),press_new(0,:),
-     $                   dx(0),-1.d0,lo(0),hi(0),bc(0,:))
+            call project_level(vel_old(0,:),scal_old(:,0:,Density),
+     $                         divu_old(0,:),press_old(0,:),
+     $                         press_new(0,:),dx(0),-1.d0,
+     $                         lo(0),hi(0),bc(0,:))
 
          end if
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99998,time,lo,hi)
+     &                  dx,99998,time,lo,hi,bc)
 
          const_src = 0.d0
          lin_src_old = 0.d0
@@ -296,14 +296,15 @@ c     reset temperature just in case strang_chem call is not well poased
             
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
-            call project(vel_old(0,:),scal_old(:,0:,Density),
-     $                   divu_old(0,:),press_old(0,:),press_new(0,:),
-     $                   dx(0),-1.d0,lo(0),hi(0),bc(0,:))
+            call project_level(vel_old(0,:),scal_old(:,0:,Density),
+     $                         divu_old(0,:),press_old(0,:),
+     $                         press_new(0,:),dx(0),-1.d0,
+     $                         lo(0),hi(0),bc(0,:))
 
          enddo
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,99997,time,lo,hi)
+     &                  dx,99997,time,lo,hi,bc)
 
          print *,' '
          print *,'...doing num_init_iters = ',num_init_iters 
@@ -341,7 +342,7 @@ c     update pressure and I_R
          enddo
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-     &                  dx,0,time,lo,hi)
+     &                  dx,0,time,lo,hi,bc)
 
          print *,' '      
          print *,' '      
@@ -382,7 +383,7 @@ c     update state, time
          if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
      &        nsteps_taken.eq.nsteps) then 
             call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
-     $                     dx,nsteps_taken,time,lo,hi)
+     $                     dx,nsteps_taken,time,lo,hi,bc)
          endif
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 

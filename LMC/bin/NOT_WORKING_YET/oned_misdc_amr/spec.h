@@ -10,10 +10,9 @@ c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, Density, Temp, RhoH, 
      &     RhoRT, FirstSpec, LastSpec, nscal
-      logical nochem_hack
       common / speci / Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
      &     iN2, Density, Temp, RhoH, 
-     &     RhoRT, FirstSpec, LastSpec, nscal, nochem_hack
+     &     RhoRT, FirstSpec, LastSpec, nscal
       save /speci/
 
       character*(maxspnml) specNames(maxspec)

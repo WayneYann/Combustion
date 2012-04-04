@@ -1,4 +1,5 @@
-      subroutine write_plt(vel,scal,press,divu,I_R,dx,nsteps,time,lo,hi)
+      subroutine write_plt(vel,scal,press,divu,I_R,dx,nsteps,time,
+     $                     lo,hi,bc)
       implicit none
       include 'spec.h'
 
@@ -12,6 +13,7 @@
       real*8 time
       integer lo(0:nlevs-1)
       integer hi(0:nlevs-1)
+      integer bc(0:nlevs-1,2)
       
       real*8 Y(Nspec)
       character pltfile*(8)
@@ -24,7 +26,7 @@
  1005 format(i5.5)
  1006 FORMAT(200(E23.15E3,1X))
       do l=0,nlevs-1
-         call compute_pthermo(scal(l,:,:),lo(l),hi(l))
+         call compute_pthermo(scal(l,:,:),lo(l),hi(l),bc(l,:))
       end do
 
       open(10,file=pltfile,form='formatted')

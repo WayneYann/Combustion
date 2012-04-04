@@ -26,11 +26,6 @@
 c     Shut off diagnostics
       do_diag = 0
 
-      if (nochem_hack) then
-         write(*,*)'WARNING! nochem_hack--skipping reactions'
-         return
-      endif
-
       print *,'... chemistry'
 c     Evolve chem over grid
       do i=lo,hi
