@@ -497,9 +497,10 @@ c     Get the matrix of elements versus species
       integer,          save :: dvrlen
       integer,          save :: dvilen
 #endif
-c      
-c     Set IOPT=1 parameter settings for VODE (only really need to be set once).
-c
+      !
+      ! Set IOPT=1 parameter settings for VODE
+      ! They only really need to be set once.
+      !
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
       RWRK(dvbr+6) = ten2minus19
@@ -508,9 +509,9 @@ c
       IWRK(dvbi+6) = 0
       
       if (do_diag.eq.1) nsubchem = nchemdiag
-c
-c     Set molecular weights and pressure in area accessible by conpF
-c
+      !
+      ! Set molecular weights and pressure in area accessible by conpF
+      !
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
 
       RWRK(NP) = Patm * P1atm
@@ -520,9 +521,9 @@ c
       else
          MF = 10
       endif
-c      
-c     Set up ATOL
-c
+      !
+      ! Set up ATOL
+      !
       if (ITOL.eq.2) then
          ATOL(1) = spec_scalT*ATOLEPS
          do m=1,Nspec
@@ -539,10 +540,14 @@ c
          nsub  = 1
          dtloc = dt
       endif
-
-!$omp parallel copyin(/VHACK/)
+      !
+      ! Force recalculation of jacobian for each XYZ block.
+      !
+      FIRST = .TRUE.
 
 #ifdef BL_USE_OMP
+
+!$omp parallel
 
 !$omp critical
       if (.not.associated(dvrwrk)) then
@@ -587,6 +592,10 @@ c
 
 #ifdef BL_USE_OMP
          tid = omp_get_thread_num() + 1
+         !
+         ! Force recalculation of jacobian for each XY slab.
+         !
+         FIRST = .TRUE.
 #endif
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -671,32 +680,33 @@ c
      &              (CONPF_FILE, NEQ, tspecies, TT1, TT2, ITOL, RTOL, ATOL,
      &              ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
      &              CONPJ_FILE, MF, RWRK, IWRK)
-c
-c     If the step was bad, and we reused an old Jacobian, try again from scratch
-c               
+               !
+               ! If the step was bad, and we reused an old Jacobian,
+               ! try again from scratch
+               !
 #if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
-            if (newJ_triggered .EQV. .FALSE.) then 
-               bad_soln = .FALSE.
-               do m=1,Nspec
-                  if (tspecies(m) .lt. -1.D-6*spec_scalY(m))
-     &                 bad_soln = .TRUE.
-               end do
-               if (bad_soln .EQV. .TRUE.) then
-                  FIRST = .TRUE. 
-                  tspecies(0) = Told(i,j,k)
+               if (newJ_triggered .EQV. .FALSE.) then 
+                  bad_soln = .FALSE.
                   do m=1,Nspec
-                     tspecies(m) = Ytemp(m)
+                     if (tspecies(m) .lt. -1.D-6*spec_scalY(m))
+     &                    bad_soln = .TRUE.
                   end do
-                  TT1    = zero
-                  ISTATE = 1
+                  if (bad_soln .EQV. .TRUE.) then
+                     FIRST = .TRUE. 
+                     tspecies(0) = Told(i,j,k)
+                     do m=1,Nspec
+                        tspecies(m) = Ytemp(m)
+                     end do
+                     TT1    = zero
+                     ISTATE = 1
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                   CALL SVODE
 #else 
                   CALL DVODE
 #endif
-     &                 (CONPF_FILE, NEQ, tspecies, TT1, TT2, ITOL, RTOL, ATOL,
-     &                 ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
-     &                 CONPJ_FILE, MF, RWRK, IWRK)
+     &           (CONPF_FILE, NEQ, tspecies, TT1, TT2, ITOL, RTOL, ATOL,
+     &              ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
+     &              CONPJ_FILE, MF, RWRK, IWRK)
                end if
             end if
 #endif
@@ -815,7 +825,6 @@ c
 !$omp end do
 
 !$omp end parallel
-
 
 #undef DVSRWK
 #undef DVSIWK
