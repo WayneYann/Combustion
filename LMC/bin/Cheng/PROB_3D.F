@@ -2519,6 +2519,9 @@ c
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
       REAL_T  cs,sg,r,scaler,scalet
       REAL_T  turbSclX,turbSclY,turbSclZ,turbSclR,turbSclT,factor
+      REAL_T frcfct
+
+      REAL_T, parameter :: T0 = .1436577d0
 
 #if defined(BL_DO_FLCT)
       integer DIMDEC(uflct)
@@ -2542,6 +2545,12 @@ c
       ihi = min(hi(1),domhi(1))
       jhi = min(hi(2),domhi(2))
       khi = min(hi(3),domhi(3)) 
+
+      frcfct = 1.0d0
+
+c      if (probtype.eq.5) then
+c         frcfct = 1.0d0 + .2d0 * sin(2*Pi*347*(time-T0))
+c      endif
 
 c     Compute a time-varying factor to apply to the velocity field fluctuations
       factor = 1.d0
@@ -2783,6 +2792,7 @@ c         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
                            if (r.le.Rfu) then
 c                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
                               vel(i,j,k,1) = u + uflct(i,j,1)*(1.0d0 + eta*1.574d0)*factor
+                              vel(i,j,k,1) = vel(i,j,k,1) * frcfct
                            endif
                         else
 #ifdef SWIRL
@@ -2813,6 +2823,7 @@ c                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
                            if (r.le.Rfu) then
 c                             vel(i,j,k,2) = v + vflct(i,j,1)*(2.7 + eta*4.25)
                               vel(i,j,k,2) = v + vflct(i,j,1)*(1.0d0 + eta*1.574d0)*factor
+                              vel(i,j,k,2) = vel(i,j,k,2) * frcfct
                            endif
                         else
 #ifdef SWIRL
@@ -2843,6 +2854,7 @@ c                             vel(i,j,k,2) = v + vflct(i,j,1)*(2.7 + eta*4.25)
                            if (r.le.Rfu) then
 c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
                               vel(i,j,k,3) = w + wflct(i,j,1)*(1.0d0 + eta*1.574d0)*factor
+                              vel(i,j,k,3) = vel(i,j,k,3) * frcfct
                            endif
                         else
 #ifdef SWIRL
