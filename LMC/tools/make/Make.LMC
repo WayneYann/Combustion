@@ -10,6 +10,11 @@ Bdirs += $(COMBUSTION_DIR)/LMC/src
 # Chemistry
 Bdirs += $(COMBUSTION_DIR)/Chemistry/src
 
+#
+# Tells IAMR not to include the following: NS_error.cpp NS_setup.cpp NSBld.cpp
+#
+SKIP_NS_SPECIFIC_CODE = TRUE
+
 # IAMR
 Bdirs += $(IAMR_DIR)/Source
 Bdirs += $(IAMR_DIR)/Source/Src_$(DIM)d
