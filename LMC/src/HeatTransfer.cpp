@@ -6392,7 +6392,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
                 IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
 
-                for (int j = 0; j < BL_SPACEDIM && ba.size() < 3*NProcs; j++)
+                for (int j = BL_SPACEDIM-1; j >=0  && ba.size() < 3*NProcs; j--)
                 {
                     chunk[j] /= 2;
 
