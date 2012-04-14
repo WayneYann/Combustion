@@ -99,7 +99,8 @@ c
      $              macvel(0,:),dx(0),dt(0),
      $              lo(0),hi(0),bc(0,:))
 
-      call macproj(macvel(0,:),divu_tmp(0,:),dx,lo(0),hi(0))
+      call macproj(macvel(0,:),scal_old(0,:,Density),divu_tmp(0,:),dx,
+     &             lo(0),hi(0),bc(0,:))
 
 c     compute diffusivities at time n (old time)
 c     this computes rho D_m     (for species)
