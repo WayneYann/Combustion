@@ -82,6 +82,11 @@ ifeq ($(USE_NEWMECH), TRUE)
   DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
 endif
 
+ifeq ($(CHEMISTRY_MODEL), GLARSKEL)
+  CEXE_sources += glarSkel.cpp
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/glar/PMFs
+  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/glar
+endif
 ifeq ($(CHEMISTRY_MODEL), DRM19)
   CEXE_sources += drm19.cpp
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri/PMFs
