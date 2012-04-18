@@ -752,8 +752,10 @@ c
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
-      REAL_T,  allocatable :: egrwrk(:,:)
-      integer, allocatable :: egiwrk(:,:)
+      REAL_T,  pointer :: egrwrk(:,:)
+      integer, pointer :: egiwrk(:,:)
+      common /egwork/ egrwrk,egiwrk
+      save /egwork/
 #endif
       integer egrlen, egilen, tid, nthrds
 
@@ -870,8 +872,10 @@ c
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
-      REAL_T,  allocatable :: egrwrk(:,:)
-      integer, allocatable :: egiwrk(:,:)
+      REAL_T,  pointer :: egrwrk(:,:)
+      integer, pointer :: egiwrk(:,:)
+      common /egwork/ egrwrk,egiwrk
+      save /egwork/
 #endif
       integer egrlen, egilen, tid, nthrds
 
