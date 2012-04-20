@@ -1658,7 +1658,6 @@ c ::: -----------------------------------------------------------
       REAL_T  z, y, x
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
       REAL_T  cs,sg,r,scaler,scalet
-      REAL_T turbSclX,turbSclR,turbSclT
 #if defined(BL_DO_FLCT)
       integer DIMDEC(uflct)
       integer loFlctArray(SDIM), hiFlctArray(SDIM)
@@ -1887,7 +1886,6 @@ c ::: -----------------------------------------------------------
       REAL_T  z, y, x
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
       REAL_T  cs,sg,r,scaler,scalet
-      REAL_T turbSclY,turbSclR,turbSclT
 
 #if defined(BL_DO_FLCT)
       integer DIMDEC(vflct)
@@ -2117,7 +2115,6 @@ c ::: -----------------------------------------------------------
       integer ilo, ihi, jlo, jhi, klo, khi
       REAL_T  z, y, x
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
-      REAL_T turbSclZ
 #if defined(BL_DO_FLCT)
       integer DIMDEC(wflct)
       integer loFlctArray(SDIM), hiFlctArray(SDIM)
