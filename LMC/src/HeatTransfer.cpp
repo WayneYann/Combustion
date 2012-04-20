@@ -1303,6 +1303,8 @@ HeatTransfer::initData ()
     MultiFab&   P_new    = get_new_data(Press_Type);
     const Real  cur_time = state[State_Type].curTime();
 
+    ParmParse pp("ht");
+
 #ifdef BL_USE_NEWMECH
     //
     // This code has a few drawbacks.  It assumes that the physical
@@ -1311,7 +1313,6 @@ HeatTransfer::initData ()
     // has at least as many levels as does the current problem.  If
     // either of these are false this code is likely to core dump.
     //
-    ParmParse pp("ht");
 
     std::string pltfile;
     pp.query("pltfile", pltfile);
@@ -1321,7 +1322,7 @@ HeatTransfer::initData ()
         std::cout << "initData: reading data from: " << pltfile << '\n';
 
     DataServices::SetBatchMode();
-    FileType fileType(NEWPLT);
+    Amrvis::FileType fileType(Amrvis::NEWPLT);
     DataServices dataServices(pltfile, fileType);
 
     if (!dataServices.AmrDataOk())
@@ -1335,12 +1336,27 @@ HeatTransfer::initData ()
     const Array<std::string>& names       = getChemSolve().speciesNames();   
     Array<std::string>        plotnames   = amrData.PlotVarNames();
 
-    int idT = -1, idX = -1, idSpec;
+    // Determine how species passed in
+    bool has_mass, has_mole;
+    pp.query("has_mass",has_mass);
+    pp.query("has_mole",has_mole);
+    std::string specStr;
+    if (has_mole) {
+        specStr = "X";
+    }
+    else if (has_mass) {
+        specStr = "Y";
+    } else {
+        BoxLib::Abort("must declare whether restart plotfile has mass or mole fractions");
+    }        
+
+    int idT = -1, idX = -1, idSpec = -1;
+    const std::string pltSpecName = specStr + "("+names[0]+")";
     for (int i = 0; i < plotnames.size(); ++i)
     {
         if (plotnames[i] == "temp")       idT = i;
         if (plotnames[i] == "x_velocity") idX = i;
-        if (plotnames[i] == "Y("+names[0]+")") idSpec = i;
+        if (plotnames[i] == pltSpecName)  idSpec = i;
     }
     //
     // In the plotfile the mass fractions directly follow the velocities.
@@ -1360,6 +1376,18 @@ HeatTransfer::initData ()
         amrData.FillVar(S_new, level, plotnames[idSpec+i], first_spec+i);
         amrData.FlushGrids(idSpec+i);
     }
+
+    if (has_mole) {
+
+        // assume ok to do in place
+        ChemDriver& cd = getChemSolve();
+        for (MFIter mfi(S_new); mfi.isValid(); ++mfi) {
+            FArrayBox& fab = S_new[mfi];
+            const Box& box = mfi.validbox();
+            cd.moleFracToMassFrac(fab,fab,box,first_spec,first_spec);
+        }
+    }
+
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "initData: finished init from pltfile" << '\n';
@@ -1411,7 +1439,6 @@ HeatTransfer::initData ()
     // the current problem.  If either of these are false this code is
     // likely to core dump.
     //
-    ParmParse pp("ht");
 
     std::string velocity_plotfile;
     pp.query("velocity_plotfile", velocity_plotfile);

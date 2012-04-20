@@ -28,6 +28,10 @@ USE_PARTICLES   = TRUE
 # Enable ht.velocity_plotfile option
 USE_VELOCITY    = TRUE
 
+# Enable the restart-from-plotfile option (ht.pltfile)
+#  ... default this off because when on, code expects it to be used
+# USE_NEWMECH    = TRUE
+
 # Enable time-dependent forcing term
 USE_TDEPFORCING = TRUE
 
