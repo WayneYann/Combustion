@@ -1,25 +1,25 @@
-c      implicit none
-c      double precision x,y,u,v,w,dx,L
-c      integer N
-c      parameter (N=256)
-c      integer i,j
-c      L = .25
-c      dx = (L/2)/(N/2)
-c      print *,'VARIABLES = X Y Vx Vy Vz'
-c      print *,'ZONE I=',N,' J=',N,' F=POINT'
-c      do j=1,N
-c         y = -L/2 + (j-.5d0)*dx
-c         do i=1,N
-c            x = -L/2 + (i-.5d0)*dx
-c            call vswirlXYZ(x,y,u,v,w)
-c            print *,x,y,u,v,w
-c         enddo
-c      enddo
-c      end
+c$$$      implicit none
+c$$$      double precision x,y,u,v,w,dx,L
+c$$$      integer N
+c$$$      parameter (N=256)
+c$$$      integer i,j
+c$$$      L = .25
+c$$$      dx = (L/2)/(N/2)
+c$$$      print *,'VARIABLES = X Y Vx Vy Vz'
+c$$$      print *,'ZONE I=',N,' J=',N,' F=POINT'
+c$$$      do j=1,N
+c$$$         y = -L/2 + (j-.5d0)*dx
+c$$$         do i=1,N
+c$$$            x = -L/2 + (i-.5d0)*dx
+c$$$            call vswirlXYZ(x,y,u,v,w)
+c$$$            print *,x,y,u,v,w
+c$$$         enddo
+c$$$      enddo
+c$$$      end
 
       implicit none
       double precision dr,L,r1,r2,r,v1(3),v2(3),Pi,A,T,At,v,Rtran,eta
-      double precision Rfu,Rpipe,eta1,eta2
+      double precision Rfu,Rpipe,eta1,eta2, delta, f, w, r0, factor
       integer N,M
       parameter (N=10000)
       integer i,j
@@ -45,14 +45,43 @@ c      end
                v2(j) = (1.d0 - eta2)*v2(j)
             enddo
          endif
-         A = 2*r*Pi*dr
          v = 0.5*(v1(3) + v2(3))
+
+         f = 9
+         w = 5
+         r0 = 21.192
+         if (r.lt.r0) then
+            delta = 2.88 + f*EXP(-((r-r0)/5.5)**2 )
+         else
+            delta = (2.88 + f)*EXP(-((r-r0)/5)**3 )
+         endif
+
+
+
+c     Now, compress it down to Rfu=2.5
+c         r = r*(.25/.275)
+
+c         factor = 1.d0
+c         if (delta.ge.1.e-4) then
+c            factor = delta / v
+c         endif
+
+
+c         v = delta
+c         v = 0.5*(v1(1) + v2(1))*factor
+c         v = 0.5*(v1(2) + v2(2))*factor
+
+         v = 0.5*(v1(2) + v2(2))*factor
+         A = 2*r*Pi*dr
          T = T + v*A
          At = At + A
+
+
+         print *,r,v
       enddo
-      print *,'Area =',At,Pi*L**2
-      print *,'Mean flow =',T/At
-      print *,'Mean bulk flow through pipe =',T/(Pi*Rpipe**2)
+c      print *,'Area =',At,Pi*L**2
+c      print *,'Mean flow =',T/At
+c      print *,'Mean bulk flow through pipe =',T/(Pi*Rpipe**2)
       end
 
       subroutine vswirlXYZ(x,y,u,v,w)
