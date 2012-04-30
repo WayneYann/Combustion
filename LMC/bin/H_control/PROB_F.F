@@ -196,7 +196,7 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, isioproc
+      integer maxlen, nCompFile, isioproc
       parameter (maxlen=256)
       character probin*(maxlen)
 

@@ -888,10 +888,10 @@ HeatTransfer::variableSetUp ()
     // **************  DEFINE ERROR ESTIMATION QUANTITIES  *************
     //
     const int nGrowErr = 1;
-    err_list.add("temp", nGrowErr, ErrorRec::Special, FORT_TEMPERROR);
-    err_list.add("mag_vort", nGrowErr, ErrorRec::Special, FORT_MVERROR);
+    // err_list.add("temp", nGrowErr, ErrorRec::Special, FORT_TEMPERROR);
+    // err_list.add("mag_vort", nGrowErr, ErrorRec::Special, FORT_MVERROR);
     // err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_MVERROR);
-    err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_ADVERROR);
+    // err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_ADVERROR);
     //
     // Tag region of interesting chemistry.
     //
