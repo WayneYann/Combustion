@@ -175,6 +175,58 @@ ABecLaplacian::initCoefficients (const BoxArray& _ba)
 }
 
 void
+ABecLaplacian::aCoefficients (const MultiFab& _a)
+{
+    BL_ASSERT(_a.ok());
+    BL_ASSERT(_a.boxArray() == (acoefs[0])->boxArray());
+    invalidate_a_to_level(0);
+    (*acoefs[0]).copy(_a,0,0,1);
+}
+
+void
+ABecLaplacian::bCoefficients (const MultiFab& _b,
+                              int             dir)
+{
+    BL_ASSERT(_b.ok());
+    BL_ASSERT(_b.boxArray() == (bcoefs[0][dir])->boxArray());
+    invalidate_b_to_level(0);
+    (*bcoefs[0][dir]).copy(_b,0,0,1);
+}
+
+const MultiFab&
+ABecLaplacian::aCoefficients (int level)
+{
+    prepareForLevel(level);
+    return *acoefs[level];
+}
+
+const MultiFab&
+ABecLaplacian::bCoefficients (int dir,int level)
+{
+    prepareForLevel(level);
+    return *bcoefs[level][dir];
+}
+
+void
+ABecLaplacian::setCoefficients (const MultiFab &_a,
+                                const MultiFab &_bX,
+                                const MultiFab &_bY)
+{
+    aCoefficients(_a);
+    bCoefficients(_bX, 0);
+    bCoefficients(_bY, 1);
+}
+
+void
+ABecLaplacian::setCoefficients (const MultiFab& _a,
+                                const MultiFab* _b)
+{
+    aCoefficients(_a);
+    for (int n = 0; n < BL_SPACEDIM; ++n)
+        bCoefficients(_b[n], n);
+}
+
+void
 ABecLaplacian::invalidate_a_to_level (int lev)
 {
     lev = (lev >= 0 ? lev : 0);
@@ -192,10 +244,20 @@ ABecLaplacian::invalidate_b_to_level (int lev)
 
 void
 ABecLaplacian::compFlux (D_DECL(MultiFab &xflux, MultiFab &yflux, MultiFab &zflux),
-                         MultiFab& in, const BC_Mode& bc_mode, bool do_ApplyBC, int src_comp, int dst_comp)
+			 MultiFab& in, const BC_Mode& bc_mode,
+			 int src_comp, int dst_comp)
+{
+    compFlux(D_DECL(xflux, yflux, zflux), in, bc_mode, true, src_comp, dst_comp);
+}
+
+void
+ABecLaplacian::compFlux (D_DECL(MultiFab &xflux, MultiFab &yflux, MultiFab &zflux),
+                         MultiFab& in, const BC_Mode& bc_mode, bool do_ApplyBC, 
+			 int src_comp, int dst_comp)
 {
     int level = 0;
     int num_comp = 1;
+
     BL_ASSERT(in.nComp() > src_comp);
     D_TERM(BL_ASSERT(xflux.nComp()>dst_comp);,
            BL_ASSERT(yflux.nComp()>dst_comp);,
@@ -287,7 +349,7 @@ ABecLaplacian::Fsmooth (MultiFab&       solnL,
         const Mask& m5 = *maskvals[level][gn][oitr()]; oitr++;
 #endif
 
-        Array<Real> max_update_local(nc);
+	Array<Real> max_update_local(nc);
 
 #if (BL_SPACEDIM == 2)
         FORT_GSRB(solnL[solnLmfi].dataPtr(), ARLIM(solnL[solnLmfi].loVect()),ARLIM(solnL[solnLmfi].hiVect()),
@@ -332,8 +394,8 @@ ABecLaplacian::Fsmooth (MultiFab&       solnL,
                   &nc, h[level], &redBlackFlag, max_update_local.dataPtr());
 #endif
 
-        for (int n=0; n<nc; ++n) {
-            max_update[n] = std::max(max_update[n], max_update_local[n]);
+	for (int n=0; n<nc; ++n) {
+	  max_update[n] = std::max(max_update[n], max_update_local[n]);
         }
     }
     ParallelDescriptor::ReduceRealMax(max_update.dataPtr(), nc);
