@@ -1270,6 +1270,7 @@ HeatTransfer::set_typical_values(bool restart)
             }
         }
         FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
+	ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp);
 
         if (ParallelDescriptor::IOProcessor())
         {
