@@ -31,11 +31,11 @@ USE_VELOCITY    = FALSE
 USE_TDEPFORCING = TRUE
 
 # Choose model (from list below), and pmf file
-CHEMISTRY_MODEL = DRM19
-fEXE_sources += drm19Soln_seed_0.50.f
+#CHEMISTRY_MODEL = DRM19
+#fEXE_sources += drm19Soln_seed_0.50.f
 
-#CHEMISTRY_MODEL = CHEMH
-#fEXE_sources += chemHSoln_seed_0.00.f
+CHEMISTRY_MODEL = CHEMH
+fEXE_sources += chemHSoln_seed_0.00.f
 
 EBASE = amr
 Blocs   := .
