@@ -5750,6 +5750,10 @@ HeatTransfer::advance_sdc (Real time,
     //
     Real dt_test = 0.0, dummy = 0.0;    
     dt_test = predict_velocity(dt,dummy);    
+
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::advance(): at start of time step\n";
+
     temperature_stats(S_old);
 
     const Real prev_time = state[State_Type].prevTime();
@@ -5808,7 +5812,7 @@ HeatTransfer::advance_sdc (Real time,
       std::cout << "Dhat (SDC predictor) \n";
     // 
     // Compute Dhat, diffuse with F = A + R + 0.5*(Dn + Dhat)
-    //                                   + 0.5(DDn + DDnp1)
+    //                                      + 0.5*(DDn + DDnp1)
     // NOTE: DDnp1 added with dd_update since we don't have it yet
     //
     Real theta = 0.5;
@@ -5832,6 +5836,7 @@ HeatTransfer::advance_sdc (Real time,
     differential_diffusion_update(Forcing,0,theta,Dhat,0,DDnp1,theta_enthalpy);
     // 
     // Compute R, react with F = A + 0.5*(Dn + Dhat)
+    //                             + 0.5*(DDn + DDnp1)
     // 
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
     {
@@ -5959,10 +5964,16 @@ HeatTransfer::advance_sdc (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << " SDC iterations complete \n";
 
-    //BoxLib::Abort();
-
+    calcDiffusivity(cur_time);
+    calcViscosity(cur_time);
+    //
+    // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
+    // the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
+    // not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
+    //
     setThermoPress(cur_time);
-    calc_divu(cur_time, dt, get_new_data(Divu_Type));
+
+    calc_divu(time+dt, dt, get_new_data(Divu_Type));
 
     if (!NavierStokes::initial_step && level != parent->finestLevel())
     {
@@ -5999,7 +6010,6 @@ HeatTransfer::advance_sdc (Real time,
     //
     // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
     //
-    calcViscosity(cur_time);
     velocity_update(dt);
     //
     // Increment rho average.
@@ -6020,45 +6030,6 @@ HeatTransfer::advance_sdc (Real time,
 
         if (level > 0 && iteration == 1) p_avg->setVal(0);
     }
-
-#ifdef PARTICLES
-    if (HTPC != 0)
-    {
-        if (level == parent->finestLevel())
-        {
-            const MultiFab& mf = get_new_data(State_Type);
-
-            const Real curr_time = state[State_Type].curTime();
-
-            HTPC->AdvectWithUmac(u_mac, level, dt);
-
-            if (!timestamp_dir.empty())
-            {
-                MultiFab tmf(mf.boxArray(), mf.nComp(), 2);
-
-                for (FillPatchIterator fpi(*this,tmf,2,curr_time,State_Type,0,tmf.nComp());
-                     fpi.isValid();
-                     ++fpi)
-                {
-                    tmf[fpi.index()].copy(fpi());
-                }
-
-                std::string basename = timestamp_dir;
-
-                if (basename[basename.length()-1] != '/') basename += '/';
-
-                basename += "Timestamp";
-
-                HTPC->Timestamp(basename, tmf, level, curr_time, timestamp_indices);
-            }
-        }
-
-        if (parent->finestLevel() > 0)
-        {
-            HTPC->RemoveParticlesNotAtFinestLevel();
-        }
-    }
-#endif
 
     advance_cleanup(dt,iteration,ncycle);
     //
