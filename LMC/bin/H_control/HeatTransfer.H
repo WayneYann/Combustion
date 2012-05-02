@@ -375,19 +375,9 @@ protected:
                         int       strtcomp,
                         int       minzero = 0);
 
-    void rhoh_update (Real time,
-                      Real dt,
-                      int  corrector);
-
     void tracer_update (Real dt,
                         int  corrector);
 
-    void temp_update (Real dt,
-                      int  corrector);
-
-    void spec_update (Real time,
-                      Real dt,
-                      int  corrector);
     //
     // Protected static member functions.
     //
@@ -686,7 +676,6 @@ protected:
     static Array<std::string> speciesStateNames;
     static Array<std::string> rhoydotNames;
 
-    static int do_sdc;
     static int sdc_iterMAX;
     static int nGrowAdvForcing;
     MultiFab   Forcing;

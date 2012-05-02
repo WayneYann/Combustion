@@ -163,7 +163,6 @@ ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
 
-ns.do_sdc = 1
 ns.sdc_iterMAX = 1
 
 ns.dpdt_option = 0
