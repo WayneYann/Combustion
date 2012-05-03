@@ -16,8 +16,7 @@ particles.pverbose = 2
 ns.do_active_control = 0
 mg.smooth_on_cg_unstable=1
 
-max_step  = 10000
-stop_time = 4.00
+stop_time = 4.0
 
 ns.do_fillPatchUMAC=1
 ns.zeroBndryVisc=1
@@ -69,7 +68,7 @@ max_step            = 100
 amr.check_file      = chk_0128_
 amr.plot_file       = plt_0128_
 amr.check_int       = 1000
-amr.plot_int        = 1
+amr.plot_int        = 10
 ns.cfl              = 0.25
 ns.fixed_dt         = 3.e-5
 
