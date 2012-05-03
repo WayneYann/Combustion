@@ -40,6 +40,7 @@
 #include <HEATTRANSFER_F.H>
 #include <SLABSTAT_HT_F.H>
 #include <Utility.H>
+#include <NS_error_F.H>
 
 #define DEF_LIMITS(fab,fabdat,fablo,fabhi)   \
 const int* fablo = (fab).loVect();           \
@@ -89,7 +90,7 @@ static
 int
 temp_bc[] =
 {
-    INT_DIR, EXT_DIR, FOEXTRAP, REFLECT_EVEN, REFLECT_EVEN, EXT_DIR
+    INT_DIR, EXT_DIR, FOEXTRAP, REFLECT_EVEN, REFLECT_EVEN, REFLECT_EVEN
 };
 
 static
@@ -573,18 +574,18 @@ HeatTransfer::variableSetUp ()
     // ***************  DEFINE SPECIES **************************
     //
     bcs.resize(nspecies);
-    speciesStateNames.resize(nspecies);
+    name.resize(nspecies);
 
     set_species_bc(bc,phys_bc);
 
     for (i = 0; i < nspecies; i++)
     {
         bcs[i]  = bc;
-        speciesStateNames[i] = "rho.Y(" + names[i] + ")";
+        name[i] = "rho.Y(" + names[i] + ")";
 
         desc_lst.setComponent(State_Type,
                               FirstSpec+i,
-                              speciesStateNames[i].c_str(),
+                              name[i].c_str(),
                               bc,
                               ChemBndryFunc(FORT_CHEMFILL,names[i]),
                               &cell_cons_interp);
@@ -735,7 +736,7 @@ HeatTransfer::variableSetUp ()
     FuncCount_Type = desc_lst.size();
     desc_lst.addDescriptor(FuncCount_Type, IndexType::TheCellType(),StateDescriptor::Point,0, 1, &cell_cons_interp);
     desc_lst.setComponent(FuncCount_Type, 0, "FuncCount", bc, BndryFunc(FORT_DQRADFILL));
-    ydotSetUp();
+    rhoydotSetUp();
     //
     // rho_temp
     //
@@ -796,7 +797,7 @@ HeatTransfer::variableSetUp ()
 	}
     }
     //
-    // Sum Ydot.
+    // Sum RhoYdot.
     //
     derive_lst.add("sumRhoYdot",IndexType::TheCellType(),1,FORT_DERSUMRHOYDOT,the_same_box);
     for (i = 0; i < nspecies; i++)
@@ -866,6 +867,9 @@ HeatTransfer::variableSetUp ()
 #endif
     //    derive_lst.addComponent("forcez",desc_lst,State_Type,Xvel,BL_SPACEDIM);
 
+    std::string curv_str = "mean_progress_curvature";
+    derive_lst.add(curv_str,IndexType::TheCellType(),1,&DeriveRec::GrowBoxByOne);
+    
 #ifdef PARTICLES
     //
     // The particle count at this level.
@@ -888,10 +892,9 @@ HeatTransfer::variableSetUp ()
     // **************  DEFINE ERROR ESTIMATION QUANTITIES  *************
     //
     const int nGrowErr = 1;
-    // err_list.add("temp", nGrowErr, ErrorRec::Special, FORT_TEMPERROR);
-    // err_list.add("mag_vort", nGrowErr, ErrorRec::Special, FORT_MVERROR);
-    // err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_MVERROR);
-    // err_list.add("tracer", nGrowErr, ErrorRec::Special, FORT_ADVERROR);
+    err_list.add("temp", nGrowErr, ErrorRec::Special, BL_FORT_PROC_CALL(FORT_TEMPERROR,fort_temperror));
+    err_list.add("mag_vort", nGrowErr, ErrorRec::Special, BL_FORT_PROC_CALL(FORT_MVERROR,fort_mverror));
+    err_list.add("tracer", nGrowErr, ErrorRec::Special, BL_FORT_PROC_CALL(FORT_ADVERROR,fort_adverror));
     //
     // Tag region of interesting chemistry.
     //
@@ -1032,28 +1035,28 @@ set_rhoydot_bc (BCRec&       bc,
 }
 
 void
-HeatTransfer::ydotSetUp()
+HeatTransfer::rhoydotSetUp()
 {
     RhoYdot_Type = desc_lst.size();
     const int ngrow = 1;
-    const int num_rhoydot = getChemSolve().numSpecies();
+    const int nrhoydot = getChemSolve().numSpecies();
 
     if (ParallelDescriptor::IOProcessor())
-	std::cout << "RhoYdot_Type, num_rhoydot = " << RhoYdot_Type << ' ' << num_rhoydot << '\n';
+	std::cout << "RhoYdot_Type, nrhoydot = " << RhoYdot_Type << ' ' << nrhoydot << '\n';
 
     desc_lst.addDescriptor(RhoYdot_Type,IndexType::TheCellType(),
-			   StateDescriptor::Point,ngrow,num_rhoydot,
+			   StateDescriptor::Point,ngrow,nrhoydot,
 			   &lincc_interp);
 	
-    const Array<std::string>& names = getChemSolve().speciesNames();
+    //const StateDescriptor& d_cell = desc_lst[State_Type];
+    const Array<std::string>& names   = getChemSolve().speciesNames();
 
     BCRec bc;	
     set_rhoydot_bc(bc,phys_bc);
-    rhoydotNames.resize(num_rhoydot);
-    for (int i = 0; i < num_rhoydot; i++)
+    for (int i = 0; i < nrhoydot; i++)
     {
-	rhoydotNames[i] = "d[RhoY("+names[i]+")]/dt";
-	desc_lst.setComponent(RhoYdot_Type, i, rhoydotNames[i].c_str(), bc,
-			      BndryFunc(FORT_RHOYDOTFILL), &lincc_interp, 0, num_rhoydot-1);
+	const std::string name = "d[Y("+names[i]+")]/dt";
+	desc_lst.setComponent(RhoYdot_Type, i, name.c_str(), bc,
+			      BndryFunc(FORT_RHOYDOTFILL), &lincc_interp, 0, nrhoydot-1);
     }
 }

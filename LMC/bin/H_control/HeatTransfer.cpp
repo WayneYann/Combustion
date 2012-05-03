@@ -170,8 +170,6 @@ std::string                                HeatTransfer::mcdd_transport_model;
 Array<int>  HeatTransfer::mcdd_nu1;
 Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
-Array<std::string> HeatTransfer::speciesStateNames;
-Array<std::string> HeatTransfer::rhoydotNames;
 
 // Turns out to be handy for debugging
 #if 1

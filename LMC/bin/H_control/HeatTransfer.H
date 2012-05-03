@@ -286,7 +286,7 @@ public:
     //
     static void variableSetUp ();
 
-    static void ydotSetUp ();
+    static void rhoydotSetUp ();
     //
     // Cleanup data descriptors at end of run.
     //
@@ -672,9 +672,6 @@ protected:
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
     static Array<Real> typical_values;
-
-    static Array<std::string> speciesStateNames;
-    static Array<std::string> rhoydotNames;
 
     static int sdc_iterMAX;
     static int nGrowAdvForcing;
