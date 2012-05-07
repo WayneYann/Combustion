@@ -6056,6 +6056,7 @@ HeatTransfer::create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow)
         dpdt.setVal(0.0);
         calc_dpdt(time,dt,dpdt,u_mac);
         dpdt.FillBoundary();
+        geom.FillPeriodicBoundary(dpdt,0,1);
         MultiFab::Add(rhs,dpdt,0,0,1,nGrow);
     }
 
