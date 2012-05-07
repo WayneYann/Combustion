@@ -320,6 +320,14 @@ LinOp::bndryData () const
 }
 
 inline
+void
+LinOp::bndryData (const BndryData& bd)
+{
+    BL_ASSERT(gbox[0] == bd.boxes());
+    bgb = bd;
+}
+
+inline
 int
 LinOp::numLevels () const
 {
@@ -346,17 +354,6 @@ int
 LinOp::maxOrder () const
 {
     return maxorder;
-}
-
-inline
-int
-LinOp::maxOrder (int maxorder_)
-{
-    BL_ASSERT(maxorder_ >= 2);
-    maxorder_ = (maxorder_ < 2 ? 2 : maxorder_ );
-    int omaxorder = maxorder;
-    maxorder = maxorder_;
-    return omaxorder;
 }
 
 #endif /*_LINOP_H_*/
