@@ -100,7 +100,6 @@ c
       REAL_T c_ls(0:LSDIM)
       REAL_T r_ls(0:LSDIM)
       REAL_T u_ls(0:LSDIM)
-
       REAL_T oldphi
 
       integer do_line
@@ -124,14 +123,12 @@ c
         do_line = 0
       end if
 
-
 c
       dhx = beta/h(1)**2
       dhy = beta/h(2)**2
       max_update = 0.d0
       do n = 1, nc
        if (do_line .eq. 0) then
-
          do j = lo(2), hi(2)
             ioff = MOD(j + redblack,2)
             do i = lo(1) + ioff,hi(1),2
@@ -158,8 +155,8 @@ c
                oldphi = phi(i,j,n)
                phi(i,j,n) = (rhs(i,j,n) + rho - phi(i,j,n)*delta)
      $              /                (gamma - delta)
-
                max_update(n) = MAX(ABS(phi(i,j,n) - oldphi),max_update(n))
+c     
             end do
          end do
        else if (do_line .eq. 2) then

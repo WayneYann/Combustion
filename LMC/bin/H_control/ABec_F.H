@@ -244,7 +244,7 @@ extern "C"
         const Real* den5, ARLIM_P(den5_lo), ARLIM_P(den5_hi),
         const int* m5   , ARLIM_P(m5_lo),   ARLIM_P(m5_hi),
         const int* lo, const int* hi, const int *nc,
-        const Real *h, const  int* redblack, Real* max_update
+        const Real *h, const  int* redblack
         );
 
     void FORT_JACOBI (

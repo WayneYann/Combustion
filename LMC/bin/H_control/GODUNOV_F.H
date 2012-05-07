@@ -184,45 +184,47 @@ extern "C"
 		    Real* dt, const Real* dx, int* fort_ind, int* velpred, 
 		    int* use_forces_in_trans, int* ppm_type);
    
-   void FORT_ESTATE_FPU(const Real* s_dat,    ARLIM_P(s_lo),ARLIM_P(s_hi),
-                        const Real* tfr_dat,  ARLIM_P(t_lo),ARLIM_P(t_hi),
-                        const Real* divu_dat, ARLIM_P(d_lo),ARLIM_P(d_hi),
+   void FORT_ESTATE_FPU(const Real* s_dat, ARLIM_P(s_lo),ARLIM_P(s_hi),
+		    const Real* tfr_dat,   ARLIM_P(t_lo),ARLIM_P(t_hi),
+		    const Real* divu_dat,  ARLIM_P(d_lo),ARLIM_P(d_hi),
+		    const Real* xlo_dat, 
+		    const Real* xhi_dat, const Real* slx_dat, 
+		    Real* slxscr, Real* stxlo, Real* stxhi,
+		    const Real* uedge_dat, ARLIM_P(ue_lo), ARLIM_P(ue_hi),
+                    const Real* stx,       ARLIM_P(stx_lo),ARLIM_P(stx_hi), Real* Imx, Real* Ipx,
+                    Real* sedgex, ARLIM_P(sedgexlo), ARLIM_P(sedgexhi),
 
-                        const Real* xlo_dat, const Real* xhi_dat,
-                        const Real* slx_dat, Real* slxscr, Real* stxlo, Real* stxhi,
-                        const Real* uedge_dat,ARLIM_P(ue_lo), ARLIM_P(ue_hi),
-                        const Real* stx,      ARLIM_P(stx_lo),ARLIM_P(stx_hi), Real* Imx, Real* Ipx,
-                        Real* sedgex, ARLIM_P(sedgexlo), ARLIM_P(sedgexhi),
-
-                        const Real* ylo_dat, const Real* yhi_dat,
-                        const Real* sly_dat, Real* slyscr, Real* stylo, Real* styhi,
-                        const Real* vedge_dat,ARLIM_P(ve_lo), ARLIM_P(ve_hi),
-                        const Real* sty,      ARLIM_P(sty_lo),ARLIM_P(sty_hi), Real* Imy, Real* Ipy,
-                        Real* sedgey, ARLIM_P(sedgeylo), ARLIM_P(sedgeyhi),
+		    const Real* ylo_dat, 
+		    const Real* yhi_dat, const Real* sly_dat, 
+		    Real* slyscr, Real* stylo, Real* styhi,
+		    const Real* vedge_dat, ARLIM_P(ve_lo), ARLIM_P(ve_hi),
+                    const Real* sty,       ARLIM_P(sty_lo),ARLIM_P(sty_hi), Real* Imy, Real* Ipy,
+                    Real* sedgey, ARLIM_P(sedgeylo), ARLIM_P(sedgeyhi),
 
 #if (BL_SPACEDIM == 3)
-                        const Real* zlo_dat, const Real* zhi_dat, 
-                        const Real* slz_dat, Real* slzscr, Real* stzlo, Real* stzhi,
-                        const Real* wedge_dat,ARLIM_P(we_lo), ARLIM_P(we_hi),
-                        const Real* stz,      ARLIM_P(stz_lo),ARLIM_P(stz_hi), Real* Imz, Real* Ipz,
-                        Real* sedgez, ARLIM_P(sedgezlo), ARLIM_P(sedgezhi),
+		    const Real* zlo_dat, 
+		    const Real* zhi_dat, const Real* slz_dat, 
+		    Real* slzscr, Real* stzlo, Real* stzhi,
+		    const Real* wedge_dat, ARLIM_P(we_lo), ARLIM_P(we_hi),
+                    const Real* stz,       ARLIM_P(stz_lo),ARLIM_P(stz_hi), Real* Imz, Real* Ipz,
+                    Real* sedgez, ARLIM_P(sedgezlo), ARLIM_P(sedgezhi),
 
-                        const Real* xedge_dat, const Real* yedge_dat, const Real* zedge_dat,
-                        const Real* xylo_dat,  const Real* xzlo_dat,  const Real* yxlo_dat,
-                        const Real* yzlo_dat,  const Real* zxlo_dat,  const Real* zylo_dat,
-                        const Real* xyhi_dat,  const Real* xzhi_dat,  const Real* yxhi_dat,
-                        const Real* yzhi_dat,  const Real* zxhi_dat,  const Real* zyhi_dat,
-                        
-                        bool* corner_couple,
+		    const Real* xedge_dat, const Real* yedge_dat, const Real* zedge_dat,
+		    const Real* xylo_dat,  const Real* xzlo_dat,  const Real* yxlo_dat,
+		    const Real* yzlo_dat,  const Real* zxlo_dat,  const Real* zylo_dat,
+		    const Real* xyhi_dat,  const Real* xzhi_dat,  const Real* yxhi_dat,
+		    const Real* yzhi_dat,  const Real* zxhi_dat,  const Real* zyhi_dat,
+
+       	            bool* corner_couple,
 #endif
-                        ARLIM_P(ww_lo),ARLIM_P(ww_hi),
-                        ARLIM_P(I_lo),ARLIM_P(I_hi),
-                        Real* dsvl, ARLIM_P(dsvl_lo),ARLIM_P(dsvl_hi),
-                        Real* sm, Real* sp, ARLIM_P(smp_lo),ARLIM_P(smp_hi),
-                        const int* bc, const int* lo, const int* hi, 
-                        Real* dt, const Real* dx, int* fort_ind, 
-                        int* use_forces_in_trans, int* iconserv, int* ppm_type, int* idbg);
-    
+		    ARLIM_P(ww_lo),ARLIM_P(ww_hi),
+		    ARLIM_P(I_lo),ARLIM_P(I_hi),
+                    Real* dsvl, ARLIM_P(dsvl_lo),ARLIM_P(dsvl_hi),
+                    Real* sm, Real* sp, ARLIM_P(smp_lo),ARLIM_P(smp_hi),
+		    const int* bc, const int* lo, const int* hi, 
+		    Real* dt, const Real* dx, int* fort_ind, 
+		    int* use_forces_in_trans, int* iconserv, int* ppm_type);
+
    void FORT_ESTATE_BDS(const Real* s_dat, const Real* tfr_dat, const Real* divu_dat,
 		    ARLIM_P(s_lo),ARLIM_P(s_hi),
 		    const Real* xlo_dat, 
@@ -262,7 +264,7 @@ extern "C"
 			 const Real* areaz_dat, ARLIM_P(az_lo), ARLIM_P(az_hi),
 #endif
 			 const Real* vol_dat, ARLIM_P(v_lo),ARLIM_P(v_hi),
-			 const int* lo, const int* hi, int* iconserv, int* idbg);
+			 const int* lo, const int* hi, int* iconserv);
    
    void FORT_SYNC_ADV_FORCING(const Real* sync_dat,ARLIM_P(s_lo),ARLIM_P(s_hi),
 			      

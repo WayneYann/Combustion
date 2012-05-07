@@ -712,7 +712,6 @@ Godunov::edge_states_fpu( const Box &grd, const Real *dx, Real dt,
     //
     int fort_ind = state_ind+1;  
 
-    int idbg = (state_ind == 6 ? 1 : 0);
     FORT_ESTATE_FPU(s_dat,    ARLIM(s_lo), ARLIM(s_hi),
                     tfr_dat,  ARLIM(t_lo), ARLIM(t_hi),
                     divu_dat, ARLIM(d_lo), ARLIM(d_hi),
@@ -747,7 +746,7 @@ Godunov::edge_states_fpu( const Box &grd, const Real *dx, Real dt,
                     dsvl.dataPtr(), ARLIM(dsvl.loVect()), ARLIM(dsvl.hiVect()),
                     sm, sp, ARLIM(smp.loVect()), ARLIM(smp.hiVect()),
                     bc, lo, hi, &dt, dx, &fort_ind,
-                    &use_forces_in_trans, &iconserv, &ppm_type, &idbg);
+                    &use_forces_in_trans, &iconserv, &ppm_type);
 
 }
 
@@ -972,7 +971,6 @@ Godunov::ComputeAofs (const Box& grd,
     const int *lo         = grd.loVect();
     const int *hi         = grd.hiVect();
 
-    int idbg = acomp==3 ? 1 : 0;
     FORT_ADV_FORCING( aofs.dataPtr(acomp),ARLIM(aofs.loVect()), ARLIM(aofs.hiVect()),
 
                       xflux.dataPtr(fxcomp), ARLIM(xflux.loVect()), ARLIM(xflux.hiVect()),
@@ -988,7 +986,7 @@ Godunov::ComputeAofs (const Box& grd,
                      areaz.dataPtr(azcomp), ARLIM(areaz.loVect()), ARLIM(areaz.hiVect()),
 #endif
                      vol.dataPtr(volcomp), ARLIM(vol.loVect()), ARLIM(vol.hiVect()),
-                      lo, hi, &iconserv, &idbg);
+                      lo, hi, &iconserv);
 }
 
 //
