@@ -34,8 +34,6 @@
 #  define DSVODE DVODE
 #endif
 
-
-
       subroutine FORT_NORMMASS(lo, hi, xsID,
      &                         Y, DIMS(Y), Ynorm, DIMS(YNORM))
       implicit none
@@ -96,9 +94,9 @@
       scale = million
 
 #define DO_JBB_HACK
-#undef DO_JBB_HACK
 #define TRIGGER_NEW_J
 #undef ALWAYS_NEW_J
+#undef SOLN_IS_1D
 
 #ifdef MIKE1
       do n=1,Nrxns
@@ -539,7 +537,7 @@ c     Get the matrix of elements versus species
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
    
-      integer ITOL, IOPT, ITASK, errCode, open_vode_failure_file
+      integer ITOL, IOPT, ITASK, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
@@ -554,7 +552,7 @@ c     Get the matrix of elements versus species
       REAL_T dtloc, weight, TT1save
       REAL_T Ct(maxspec),Qt(maxreac), scale
 
-      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,Z(maxspec+1),ZP(maxspec+1)
+      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
       logical newJ_triggered, bad_soln
 
 c     Set IOPT=1 parameter settings for VODE
@@ -567,10 +565,10 @@ c     Set IOPT=1 parameter settings for VODE
 
       if (do_diag.eq.1) nsubchem = nchemdiag
 c
-c     Set pressure in area accessible by conpF
+c     Set molecular weights and pressure in area accessible by conpF
 c
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      RWRK(dvdr) = P1atm * Patm
+      RWRK(NP) = Patm * P1atm
       
       TT2 = dt
 
@@ -605,7 +603,16 @@ c     Set up ATOL
             endif
             ISTATE = 1
 
-            Z(1) = Told(i,j)
+#ifdef SOLN_IS_1D
+            if (i.ne.lo(1))then
+               do m=1,Nspec
+                  Ynew(i,j,m) = Ynew(lo(1),j,m)
+               end do
+               Tnew(i,j) = Tnew(lo(1),j)
+            else
+#endif
+
+            RWRK(NZ) = Told(i,j)
 
 #ifdef DO_JBB_HACK
             sum = zero
@@ -623,7 +630,7 @@ c     Set up ATOL
             end do
 #endif
             do m=1,Nspec
-               Z(m+1) = Ytemp(m)
+               RWRK(NZ+m) = Ytemp(m)
             end do
 
 #ifdef TRIGGER_NEW_J
@@ -632,7 +639,7 @@ c     Set up ATOL
             do m=1,NEQ
                scale = spec_scalT
                if (m.ne.1) scale = spec_scalY(m-1)
-               sum = sum + ABS(Z(m)-YJ_SAVE(m))/scale
+               sum = sum + ABS(RWRK(NZ+m-1)-YJ_SAVE(m))/scale
             end do
             if (sum .gt. NEWJ_TOL) then
                FIRST = .TRUE.
@@ -645,8 +652,8 @@ c     Set up ATOL
 #endif
             if (do_diag.eq.1) then
                FuncCount(i,j) = 0
-               CALL CKYTCP(RWRK(NP),Z(1),Z(2),IWRK(ckbi),RWRK(ckbr),Ct)
-               CALL CKQC(Z(1),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+               CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
+               CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                do m=1,Nreac
                   diag(i,j,m) = diag(i,j,m)+half*dtloc*Qt(m)*million
                enddo
@@ -667,9 +674,9 @@ c     Set up ATOL
 #else
                CALL DVODE
 #endif
-     &              (CONPF_FILE, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
+     &              (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
      &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &              dvi, CONPJ_FILE, MF, RWRK, IWRK, errCode)
+     &              dvi, CONPJ_FILE, MF, RWRK, IWRK)
 c
 c   If the step was bad, and we reused an old Jacobian, try again from scratch.
 c               
@@ -683,9 +690,9 @@ c
                   if (bad_soln .EQV. .TRUE.) then
                      TT1 = TT1SAVE
                      FIRST = .TRUE.
-                     Z(1) = Told(i,j)
+                     RWRK(NZ) = Told(i,j)
                      do m=1,Nspec
-                        Z(1+m) = Ytemp(m)
+                        RWRK(NZ+m) = Ytemp(m)
                      end do
 
                      ISTATE = 1
@@ -694,17 +701,17 @@ c
 #else 
                      CALL DVODE
 #endif
-     &                    (CONPF_FILE, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
+     &                    (CONPF_FILE, NEQ, RWRK(NZ), TT1, TT2, ITOL, RTOL, ATOL,
      &                    ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &                    dvi, CONPJ_FILE, MF, RWRK, IWRK, errCode)
+     &                    dvi, CONPJ_FILE, MF, RWRK, IWRK)
                   endif
                endif
 #endif
                TT1 = TT2
 
                if (do_diag.eq.1) then
-                  CALL CKYTCP(RWRK(NP),Z(1),Z(2),IWRK(ckbi),RWRK(ckbr),Ct)
-                  CALL CKQC(Z(1),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                  CALL CKYTCP(RWRK(NP),RWRK(NZ),RWRK(NZ+1),IWRK(ckbi),RWRK(ckbr),Ct)
+                  CALL CKQC(RWRK(NZ),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
                   do m=1,Nreac
                      diag(i,j,m) = diag(i,j,m)+weight*dtloc*Qt(m)*million
                   enddo
@@ -733,19 +740,19 @@ c
                end if
                
                if (ISTATE .LE. -1) then
-                  call CONPF_FILE(NEQ, TT1, Z, ZP, RWRK, IWRK)
+                  call CONPF_FILE(NEQ, TT1, RWRK(NZ), zp, RWRK, IWRK)
                   lout = open_vode_failure_file()
                   write(lout,*)
                   write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
      &                 '),   Return code = ',ISTATE
                   write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-                  write(lout,995)'State ID, Y, Yp, dT/dt, dRT/dt*(dt)'
+                 write(lout,995)'State ID, old, last, dY/dt, dY/dt*(dt)'
                   write(lout,996) 'T               ',
-     &                 Told(i,j),Z(1),ZP(1),ZP(1)*(dt-TT1)
+     &                 Told(i,j),RWRK(NZ),zp(1),zp(1)*(dt-TT1)
                   do m=1,Nspec
                      call get_spec_name(name,m)
                      write(lout,996) name,Yold(i,j,m),
-     &                    Z(m+1),ZP(m+1),ZP(m+1)*(dt-TT1)
+     &                    RWRK(NZ+m),zp(1+m),zp(1+m)*(dt-TT1)
                   end do
 995               format(a,3(i4,a))
 996               format(a16,1x,4e30.22)
@@ -754,10 +761,10 @@ c
                end if
             enddo
 
-            Tnew(i,j) = Z(1)
+            Tnew(i,j) = RWRK(NZ)
 
             do m= 1,Nspec
-               Yres(m) = Z(m+1)
+               Yres(m) = RWRK(NZ+m)
             end do
 
 #ifdef DO_JBB_HACK
@@ -770,6 +777,9 @@ c
             end do
 #endif
 
+#ifdef SOLN_IS_1D
+         endif
+#endif
       endif
       end do
       end do
@@ -1027,6 +1037,7 @@ c            endif
       end do
       end
 
+
       subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,
      &     DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
       implicit none
@@ -1049,8 +1060,10 @@ c            endif
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
-      REAL_T,  allocatable :: egrwrk(:,:)
-      integer, allocatable :: egiwrk(:,:)
+      REAL_T,  pointer :: egrwrk(:,:)
+      integer, pointer :: egiwrk(:,:)
+      common /egwork/ egrwrk,egiwrk
+      save /egwork/
 #endif
       integer egrlen, egilen, tid, nthrds
 
@@ -1168,8 +1181,10 @@ c            endif
 
 #ifdef BL_USE_OMP
       include "omp_lib.h"
-      REAL_T,  allocatable :: egrwrk(:,:)
-      integer, allocatable :: egiwrk(:,:)
+      REAL_T,  pointer :: egrwrk(:,:)
+      integer, pointer :: egiwrk(:,:)
+      common /egwork/ egrwrk,egiwrk
+      save /egwork/
 #endif
       integer egrlen, egilen, tid, nthrds
 
