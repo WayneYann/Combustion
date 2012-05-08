@@ -6824,7 +6824,8 @@ HeatTransfer::compute_edge_states (Real              dt,
 #ifdef GENGETFORCE
 				   prev_time,
 #endif		 
-				   Rho);
+				   S,Density);
+
             godunov->Sum_tf_gp_visc(tvelforces,0,visc_terms[Xvel][i],0,Gp[i],0,S,Density);
         }
         //
@@ -7142,6 +7143,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 				   prev_time,
 #endif		 
 				   S,Density);
+
             godunov->Sum_tf_gp_visc(tvelforces,0,VelViscTerms[i],0,Gp[i],0,S,Density);
         }
         //
