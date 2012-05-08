@@ -117,8 +117,8 @@
       save /ckdio1/
 
 !     Integrator
-      double precision  spec_scalY(maxspec), mwt(maxspec), invmwt(maxspec)
-      common /vode1/ spec_scalY, mwt, invmwt
+      double precision  spec_scalY(maxspec)
+      common /vode1/ spec_scalY
       save /vode1/
 
       double precision  thickFacCH

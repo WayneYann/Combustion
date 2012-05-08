@@ -917,15 +917,6 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
             FIRST = .TRUE.
             FuncCount(i,j) = 0
 
-
-c            if (i.eq.26 .and. j.eq.6) then
-c               idbg = 1
-c               print *,'before',Z(1:Nspec+1)
-c               print *,'c_0',c_0(1:Nspec+1)
-c            else
-               idbg = 0
-c            endif
-
             do node = 1,nsub
                if (node.lt.nsub) then
                   weight = one
@@ -1055,7 +1046,7 @@ c            endif
 
       integer i, j, n
       REAL_T RU, RUC, P1ATM, Ptmp, Yt(maxspec), Dt(maxspec), CPMS(maxspec)
-      REAL_T RHO, SCAL, TSCAL, Tt, Wavg, X(maxspec)
+      REAL_T RHO, SCAL, TSCAL, Tt, Wavg, invmwt(maxspec), X(maxspec)
       REAL_T alpha, l1, l2
 
 #ifdef BL_USE_OMP
@@ -1071,6 +1062,11 @@ c            endif
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
       Ptmp = Patm * P1ATM
+      call CKWT(IWRK(ckbi),RWRK(ckbr),invmwt)
+
+      do n=1,Nspec
+         invmwt(n) = one / invmwt(n)
+      end do
 
 !$omp parallel private(egrlen,egilen,nthrds)
 

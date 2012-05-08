@@ -105,13 +105,6 @@ c
          call bl_abort(" ")
       end if
 c
-c     Set molecular weights
-c
-      CALL CKWT(IWRK(ckbi), RWRK(ckbr), mwt)
-      do i=1,Nspec
-         invmwt(i) = 1.d0 / mwt(i)
-      enddo
-c
 c     Find N2 in the list.
 c
       iN2 = -1
@@ -689,15 +682,13 @@ c
       end do
       end
 
-      subroutine FORT_GETCKMWT(tmwt)
+      subroutine FORT_GETCKMWT(mwt)
       implicit none
 #include "cdwrk.H"
-      REAL_T tmwt(*)
+      REAL_T mwt(*)
       integer n
 c     Result in kg/kmole
-      do n=1,Nspec
-         tmwt(n) = mwt(n)
-      enddo
+      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
       end
 
       subroutine FORT_GETCKAWT(awt)
@@ -721,17 +712,17 @@ c     Result in kg/kmole
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
-      REAL_T RHO, CPB, SUM, H, WDOT, WT, THFAC, Pcgs
+      REAL_T RHO, CPB, SUM, H, WDOT, WT, THFAC
       integer K
 
       REAL_T CONC(maxspec), WDOTS(maxspec), ENTHALPY(maxspec)
 C
 C     Variables in Z are:  Z(1)   = T
 C                          Z(K+1) = Y(K)
-      Pcgs = RWRK(NP) 
-      CALL CKRHOY(Pcgs,Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO)
+      
+      CALL CKRHOY(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),RHO)
       CALL CKCPBS(Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CPB)
-      CALL CKYTCP(Pcgs,Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CONC)
+      CALL CKYTCP(RPAR(NP),Z(1),Z(2),IPAR(ckbi),RPAR(ckbr),CONC)
 c
 c     Get net production rates.  Compute such that production from -ve
 c     reactants gives zero contrib.
@@ -750,7 +741,6 @@ c      end do
       
       CALL CKWC(Z(1), CONC, IPAR(ckbi), RPAR(ckbr), WDOTS)
       CALL CKHMS(Z(1), IPAR(ckbi), RPAR(ckbr), ENTHALPY)
-
 C
 C     Form governing equation
 C
@@ -764,6 +754,23 @@ C
          SUM = SUM + H * WDOT * WT
       END DO
       ZP(1) = -SUM / (RHO*CPB)
+
+#if 0
+      print*, 'Z:'
+      do k = 1, Nspec+1
+         write(6,996) Z(K)
+      end do
+      print*, 'ZP:'
+      do k = 1, Nspec+1
+         write(6,996) ZP(K)
+      end do
+      print*, 'WDOT:'
+      do k = 1, Nspec
+         write(6,996) WDOTS(K)
+      end do
+
+996   format(e30.22)
+#endif
 
       END
 
@@ -790,6 +797,8 @@ C     Needed to compute T from h
 
       REAL_T RHO_CGS, RINV_CGS, rhohmixDOT_MKS
 
+      REAL_T mwt(maxspec), invmwt(maxspec)
+
       errCode = 0
       do K=1,Nspec+1
          if (isnan(Z(K))) then
@@ -797,6 +806,12 @@ C     Needed to compute T from h
             goto 10
          endif
       enddo
+
+
+      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
+      do n=1,Nspec
+         invmwt(n) = one / mwt(n)
+      end do
 C
 C     Variables in Z are:  Z(1:K) = rhoY(K)
 C                          Z(K+1) = RhoH
@@ -870,10 +885,6 @@ c         rhoYDOT_MKS = c_0(k) + c_1(k)*TIME
          rhoYDOT_MKS = c_0(k)
          ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
       end do
-
-      if (idbg.eq.1) then
-c         print *,'inside',TIME,T,Y(5),ZP(5),WDOT_CGS(5)
-      endif
 
       do K=1,Nspec+1
          if (isnan(ZP(K))) then

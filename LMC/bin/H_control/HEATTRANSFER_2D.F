@@ -44,7 +44,12 @@
       REAL_T  T(DIMV(T))
       
       integer i, j, n
-      REAL_T Y(maxspec), H(maxspec), cpmix, rhoInv, tmp, mmw
+      REAL_T Y(maxspec), H(maxspec), cpmix, rhoInv, tmp, mmw, invmtw(maxspec)
+
+      call CKWT(IWRK(ckbi),RWRK(ckbr),invmtw)
+      do n=1,Nspec
+         invmtw(n) = one / invmtw(n)
+      end do
 
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
@@ -68,7 +73,7 @@
             tmp = 0.d0
             divu(i,j) = vtT(i,j)
             do n=1,Nspec
-               tmp = tmp + (rYdot(i,j,n)+vtY(i,j,n))*invmwt(n)
+               tmp = tmp + (rYdot(i,j,n)+vtY(i,j,n))*invmtw(n)
                divu(i,j) = divu(i,j) - rYdot(i,j,n)*H(n)
             enddo
             divu(i,j) = ( divu(i,j)/(cpmix*T(i,j)) + tmp*mmw ) * rhoInv
