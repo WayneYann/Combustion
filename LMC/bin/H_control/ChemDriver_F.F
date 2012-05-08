@@ -94,16 +94,22 @@ c
 c     Set pointers in conp common blocks (used in conpF evaluations)
 c
       CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
-
-      NEQ = Nspec + 1
-      NP = dvdbr
-      RTOT  = NP
+      NEQ   = Nspec + 1
+      NP    = dvdbr
+      NRHO  = NP  + 1
+      NWT   = NRHO  + 1
+      NZ    = NWT + Nspec
+      RTOT  = NZ  + NEQ - 1
 
       if (RTOT .GT. dvder) then
          write(6,*) 'Memory layout bust, dvdr not big enough'
          write(6,*) RTOT, dvder
          call bl_abort(" ")
       end if
+c
+c     Set molecular weights
+c
+      CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
 c
 c     Find N2 in the list.
 c
@@ -112,10 +118,8 @@ c
          call get_spec_name(name,n)
          if (name .eq. 'N2' ) iN2 = n
       end do
-      if (iN2.eq.-1) then
-         write(6,*) '.....warning: no N2 in chemistry species list'
-         stop
-      endif
+      if (iN2.eq.-1)
+     &     write(6,*) '.....warning: no N2 in chemistry species list'
       end
 
 
@@ -1040,7 +1044,7 @@ c     Error condition....dump state and bail out
 
       end
 
-      subroutine FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res,Niter,errCode)
+      subroutine FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res,Niter)
       implicit none
 #include "cdwrk.H"
       REAL_T T,Y(*),H,Hin
@@ -1051,12 +1055,11 @@ c     Error condition....dump state and bail out
       REAL_T res(0:NiterMAX-1),dT, Htarg
       logical out_of_bounds, converged, soln_bad, stalled, discont
       REAL_T HMIN,cpMIN,HMAX,cpMAX
-      integer ihitlo,ihithi,j,errCode
+      integer ihitlo,ihithi,j
       REAL_T old_T, old_H, Tsec, Hsec
 
       out_of_bounds(temp) = (temp.lt.TMIN-one) .or. (temp.gt.TMAX)
 
-      errCode = 0
       NiterDAMP = NiterMAX
       if ((T.GE.TMIN).and.(T.LE.TMAX)) then
          T0 = T
@@ -1069,13 +1072,6 @@ c     Error condition....dump state and bail out
       Htarg = Hin * 1.d4
       ihitlo = 0
       ihithi = 0
-
-      do j=1,Nspec
-         if (isnan(Y(j))) then
-            errCode = -8
-            goto 100
-         endif
-      enddo
 
       CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),H)
 
@@ -1092,25 +1088,7 @@ c     Error condition....dump state and bail out
      &     (.not.soln_bad))
 
          CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cp)
-#ifndef NDEBUG
-         if (cp.eq.0) then
-            errCode = -5
-            goto 100
-         endif
-         if (isnan(cp)) then
-            errCode = -6
-            goto 100
-         endif
-#endif
-
          dT = (Htarg - H)/cp
-
-#ifndef NDEBUG
-         if (isnan(dT)) then
-            errCode = -7
-            goto 100
-         endif
-#endif
          old_T = T
          if ((Niter.le.NiterDAMP).and.(T+dT.ge.TMAX)) then
             T = TMAX
@@ -1122,9 +1100,8 @@ c     Error condition....dump state and bail out
             T = T + dT
          end if
          soln_bad = out_of_bounds(T)
-
          if (soln_bad) then
-            errCode = -1
+            Niter = -1
             goto 100
          else
             old_H = H
@@ -1138,7 +1115,8 @@ c     Error condition....dump state and bail out
             if(abs(T-1000.d0).le.1.d-3.and. dH.le.1.d-5)then
               converged = .true.
             else  
-              errCode = -2
+              write(6,*)" missing my test",T,dH
+              Niter = -2
               goto 100
             endif
          endif
@@ -1169,7 +1147,7 @@ c     values.
                Tsec = T + dT
                soln_bad = out_of_bounds(Tsec)
                if (soln_bad) then
-                  errCode = -3
+                  Niter = -3
                   goto 100
                endif
                CALL CKHBMS(Tsec,Y,IWRK(ckbi),RWRK(ckbr),Hsec)
@@ -1183,7 +1161,7 @@ c     values.
 c               stalled = (ABS(dT).le.errMAX)
                Niter = Niter + 1
                if (Niter.gt.NiterMAX+Discont_NiterMAX) then
-                  errCode = -4
+                  Niter = -2
                   goto 100
                endif
             enddo
@@ -1198,7 +1176,6 @@ c
  100  continue
 
       write(6,997) 'T from (H,Y): failed'
-      write(6,997) 'errCode = ',errCode
       write(6,997) 'iterations tried = ',Niter
       write(6,998) 'initial T = ',T0
       write(6,998) 'current T = ',T
@@ -1209,12 +1186,10 @@ c
          write(6,998) '  ',Y(n)
       end do
       write(6,998)
-      if (Niter.gt.0) then
-         write(6,998) 'residual:'
-         do n = 0,Niter-1
-            write(6,998) '  ',res(n)
-         end do
-      endif
+      write(6,998) 'residual:'
+      do n = 0,NiterMAX-1
+         write(6,998) '  ',res(n)
+      end do
 
  997  format(a,3(i4,a))
  998  format(a,d21.12)
@@ -1249,7 +1224,7 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       open_vode_failure_file = lout
       end
     
-      block data vode_stuff
+      block data tranjunk
 #include "cdwrk.H"
 #include "conp.H"
       

@@ -145,8 +145,6 @@ public:
     void invalidate_b_to_level (int lev);
 
     virtual Real norm (int nm = 0, int level = 0, const bool local = false);
-
-  void Write(std::string& outfile) const;
   
 protected:
     //
@@ -191,9 +189,6 @@ private:
     // Scalar "beta" coefficient
     //
     Real beta;
-
-    void WriteSub(std::string& outfile, int level) const;
-
     //
     // Flag, can a coeffs be trusted at a level.
     //

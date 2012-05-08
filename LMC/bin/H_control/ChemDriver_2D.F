@@ -28,11 +28,6 @@
 #endif
 
 #define SDIM 2
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
-#  define DSVODE SVODE
-#else
-#  define DSVODE DVODE
-#endif
 
       subroutine FORT_NORMMASS(lo, hi, xsID,
      &                         Y, DIMS(Y), Ynorm, DIMS(YNORM))
@@ -930,7 +925,11 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
 c     Suggest strongly that VODE do it in one step
 c               RWRK(dvbr+4) = TT2 - TT1
 
-               call DSVODE
+#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+               CALL SVODE
+#else
+               CALL DVODE
+#endif
      &              (conpFY_sdc, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
      &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
      &              dvi, CONPJ_FILE, MF, RWRK, IWRK, errCode)
@@ -1120,14 +1119,13 @@ c            endif
                Yt(n) = Y(i,j,n) / RHO
             end do
 
-            RHO = RHO*1.d-3
-
             Tt = MAX(T(i,j),TMIN_TRANS) 
             CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
             CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
             CALL EGSPAR(Tt,X,Yt,CPMS,EGSRWK,EGSIWK)
             CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGSRWK,Dt)
+            RHO = RHO*1.d-3
 
             do n=1,Nspec
                RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
