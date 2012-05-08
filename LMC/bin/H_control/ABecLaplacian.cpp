@@ -313,8 +313,7 @@ void
 ABecLaplacian::Fsmooth (MultiFab&       solnL,
                         const MultiFab& rhsL,
                         int             level,
-                        int             redBlackFlag,
-                        Array<Real>&    max_update)
+                        int             redBlackFlag)
 {
     OrientationIter oitr;
 
@@ -349,8 +348,6 @@ ABecLaplacian::Fsmooth (MultiFab&       solnL,
         const Mask& m5 = *maskvals[level][gn][oitr()]; oitr++;
 #endif
 
-	Array<Real> max_update_local(nc);
-
 #if (BL_SPACEDIM == 2)
         FORT_GSRB(solnL[solnLmfi].dataPtr(), ARLIM(solnL[solnLmfi].loVect()),ARLIM(solnL[solnLmfi].hiVect()),
                   rhsL[solnLmfi].dataPtr(), ARLIM(rhsL[solnLmfi].loVect()), ARLIM(rhsL[solnLmfi].hiVect()),
@@ -367,7 +364,7 @@ ABecLaplacian::Fsmooth (MultiFab&       solnL,
                   f3[solnLmfi.index()].dataPtr(), ARLIM(f3[solnLmfi.index()].loVect()),   ARLIM(f3[solnLmfi.index()].hiVect()),
                   m3.dataPtr(), ARLIM(m3.loVect()),   ARLIM(m3.hiVect()),
                   solnLmfi.validbox().loVect(), solnLmfi.validbox().hiVect(),
-                  &nc, h[level], &redBlackFlag, max_update_local.dataPtr());
+                  &nc, h[level], &redBlackFlag);
 #endif
 
 #if (BL_SPACEDIM == 3)
@@ -391,14 +388,9 @@ ABecLaplacian::Fsmooth (MultiFab&       solnL,
                   f5[solnLmfi.index()].dataPtr(), ARLIM(f5[solnLmfi.index()].loVect()), ARLIM(f5[solnLmfi.index()].hiVect()),
                   m5.dataPtr(), ARLIM(m5.loVect()), ARLIM(m5.hiVect()),
                   solnLmfi.validbox().loVect(), solnLmfi.validbox().hiVect(),
-                  &nc, h[level], &redBlackFlag, max_update_local.dataPtr());
+                  &nc, h[level], &redBlackFlag);
 #endif
-
-	for (int n=0; n<nc; ++n) {
-	  max_update[n] = std::max(max_update[n], max_update_local[n]);
-        }
     }
-    ParallelDescriptor::ReduceRealMax(max_update.dataPtr(), nc);
 }
 
 void

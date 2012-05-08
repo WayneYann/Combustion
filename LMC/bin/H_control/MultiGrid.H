@@ -97,7 +97,6 @@ public:
                         const MultiFab& _rhs,
                         Real            eps_rel = -1.0,
                         Real            eps_abs = -1.0,
-                        Real            typical_value = 1.,
                         LinOp::BC_Mode  bc_mode=LinOp::Inhomogeneous_BC);
     //
     // return the linear operator
@@ -213,7 +212,6 @@ protected:
     virtual int solve_ (MultiFab&      _sol,
                         Real           _eps_rel,
                         Real           _eps_abs,
-                        Real           _typical_value,
                         LinOp::BC_Mode bc_mode,
                         int            level);
     //
@@ -253,7 +251,6 @@ protected:
     //
     void relax (MultiFab&      solL,
                 MultiFab&      rhsL,
-                Array<Real>&   max_update,
                 int            level,
                 Real           eps_rel,
                 Real           eps_abs,
@@ -263,7 +260,6 @@ protected:
     //
     virtual void coarsestSmooth (MultiFab&      solL,
                                  MultiFab&      rhsL,
-                                 Array<Real>&   max_update,
                                  int            level,
                                  Real           eps_rel,
                                  Real           eps_abs,

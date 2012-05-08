@@ -297,7 +297,6 @@ Diffusion::diffuse_scalar (Real                   dt,
                            const MultiFab* const* betan, 
                            const MultiFab* const* betanp1,
                            int                    betaComp,
-                           Real                   typical_value,
                            const SolveMode&       solve_mode,
                            bool                   add_old_time_divFlux)
 {
@@ -591,7 +590,7 @@ Diffusion::diffuse_scalar (Real                   dt,
     else
     {
         MultiGrid mg(*visc_op);
-        mg.solve(Soln,Rhs,S_tol,S_tol_abs,typical_value);
+        mg.solve(Soln,Rhs,S_tol,S_tol_abs);
     }
     Rhs.clear();
     //

@@ -288,7 +288,6 @@ MultiGrid::solve (MultiFab&       _sol,
                   const MultiFab& _rhs,
                   Real            _eps_rel,
                   Real            _eps_abs,
-                  Real            _typical_value,
                   LinOp::BC_Mode  bc_mode)
 {
     //
@@ -299,7 +298,7 @@ MultiGrid::solve (MultiFab&       _sol,
     const int level = 0;
     prepareForLevel(level);
     residualCorrectionForm(*rhs[level],_rhs,*cor[level],_sol,bc_mode,level);
-    if (!solve_(_sol, _eps_rel, _eps_abs, _typical_value, LinOp::Homogeneous_BC, level))
+    if (!solve_(_sol, _eps_rel, _eps_abs, LinOp::Homogeneous_BC, level))
     {
         BoxLib::Error("MultiGrid:: failed to converge!");
     }
@@ -309,7 +308,6 @@ int
 MultiGrid::solve_ (MultiFab&      _sol,
                    Real           eps_rel,
                    Real           eps_abs,
-                   Real           typical_value,
                    LinOp::BC_Mode bc_mode,
                    int            level)
 {
@@ -345,93 +343,83 @@ MultiGrid::solve_ (MultiFab&      _sol,
   // Note: if eps_rel, eps_abs < 0 then that test is effectively bypassed
   //
   Real       norm_cor    = 0.0;
+  int        nit         = 1;
 
   const Real new_error_0 = norm_rhs;
   const Real norm_Lp     = Lp.norm(0, level);
 
-  Array<Real> max_update(_sol.nComp(),1);
-  Array<Real> stalled_update(_sol.nComp(),typical_value * 1.e-20);
-
-  bool iterations_finished = false;
-  bool error_small = false;
-  bool update_small = false;
-  bool solution_stalled = true;
-  bool iterations_failed = true;
-  
-  for (int nit=1; !iterations_finished; ++nit)
+  if (use_Anorm_for_convergence == 1) 
   {
-      relax(*cor[level], *rhs[level], max_update, level, eps_rel, eps_abs, bc_mode);
-      norm_cor = norm_inf(*cor[level]);
-      if (typical_value > 0) {
-           norm_cor /= typical_value;
-      }
-      error = errorEstimate(level, bc_mode);
-      
-      if (ParallelDescriptor::IOProcessor() && verbose > 1 )
-      {
-          const Real rel_error = (error0 != 0) ? error/new_error_0 : 0;
-          Spacer(std::cout, level);
-          std::cout << "MultiGrid: Iteration   "
-                    << nit
-                    << " error/error0 = "
-                    << rel_error << '\n';
-      }
+     for ( ;
+           error > eps_abs &&
+               error > eps_rel*(norm_Lp*norm_cor+norm_rhs) &&
+               nit <= maxiter;
+           ++nit)
+     {
+         relax(*cor[level], *rhs[level], level, eps_rel, eps_abs, bc_mode);
+         norm_cor = norm_inf(*cor[level]);
+         error = errorEstimate(level, bc_mode);
+	
+         if (ParallelDescriptor::IOProcessor() && verbose > 1 )
+         {
+             const Real rel_error = (error0 != 0) ? error/new_error_0 : 0;
+             Spacer(std::cout, level);
+             std::cout << "MultiGrid: Iteration   "
+                       << nit
+                       << " error/error0 = "
+                       << rel_error << '\n';
+         }
+     }
+  }
+  else
+  {
+     for ( ;
+           error > eps_abs &&
+               error > eps_rel*(norm_rhs) &&
+               nit <= maxiter;
+           ++nit)
+     {
+         relax(*cor[level], *rhs[level], level, eps_rel, eps_abs, bc_mode);
+         norm_cor = norm_inf(*cor[level]);
+         error = errorEstimate(level, bc_mode);
 
-      error_small = error < eps_abs;
-      
-      if (use_Anorm_for_convergence == 1) 
-          error_small |= error< eps_rel*(norm_Lp*norm_cor+norm_rhs);
-      
-      update_small = (max_update[0] < stalled_update[0]);
-      
-      solution_stalled = update_small && !error_small; 
-      
-      if (solution_stalled && !error_small && stalled_is_solved)
-      {
-          if (ParallelDescriptor::IOProcessor() && verbose > 2)
-          {
-              std::cout << "...solution stalled, solver tolerances likely too small" << std::endl;
-          }
-          
-          iterations_failed = false;
-          
-          iterations_finished = true;
-      }
-      else
-      {
-          iterations_failed = solution_stalled || (nit >= maxiter);
-          
-          iterations_finished = error_small || solution_stalled || iterations_failed;
-      }
-      
-      if (ParallelDescriptor::IOProcessor() && verbose > 2 )
-      {
-          std::cout << " error_small: " << error_small << std::endl;
-          std::cout << " update_small: " << update_small << std::endl;
-          std::cout << " solution_stalled: " << solution_stalled << std::endl;
-          std::cout << " iterations_failed: " << iterations_failed << std::endl;
-          std::cout << " iterations_finished: " << iterations_finished << std::endl;
-          std::cout << "        error = " << error << std::endl;
-          std::cout << "        eps_abs = " << eps_abs<< std::endl;
-          std::cout << "        eps_rel = " << eps_rel << std::endl;
-          std::cout << "        norm*eps_rel = " << eps_rel*(norm_Lp*norm_cor+norm_rhs) << std::endl;
-          std::cout << "        max_update = " << max_update[0] << std::endl;
-          std::cout << "        solution_stalled = " << stalled_update[0]<< std::endl;
-          std::cout << "        nit = " << nit<< std::endl;
-          std::cout << "        maxiter = " << maxiter << std::endl;                       
-      }
+         if (ParallelDescriptor::IOProcessor() && verbose > 1 )
+         {
+             const Real rel_error = (error0 != 0) ? error/new_error_0 : 0;
+             Spacer(std::cout, level);
+             std::cout << "MultiGrid: Iteration   "
+                       << nit
+                       << " error/error0 = "
+                       << rel_error << '\n';
+         }
+     }
   }
 
-  if (ParallelDescriptor::IOProcessor() && verbose == 1 )
+  if ( ParallelDescriptor::IOProcessor() && (verbose > 0) )
   {
-      std::cout << "Done: error_small: " << error_small
-                << " update_small: " << update_small
-                << " solution_stalled: " << solution_stalled
-                << " iterations_failed: " << iterations_failed
-                << " iterations_finished: " << iterations_finished << std::endl;
+      const Real rel_error = (error0 != 0) ? error/error0 : 0;
+      Spacer(std::cout, level);
+      std::cout << "MultiGrid: Final Iter. "
+                << nit-1
+                << " error/error0 = "
+                << rel_error << '\n';
   }
-  
-  returnVal = !iterations_failed;
+
+  if ( ParallelDescriptor::IOProcessor() && (verbose > 0) )
+  {
+      if (error < eps_rel*norm_rhs)
+      {
+         std::cout << "   Converged res < eps_rel*bnorm " << std::endl;
+      } 
+      else if ( (use_Anorm_for_convergence == 1) && (error < eps_rel*norm_Lp*norm_cor) )
+      {
+         std::cout << "   Converged res < eps_rel*Anorm*sol " << std::endl;
+      } 
+      else if (error < eps_abs)
+      {
+         std::cout << "   Converged res < eps_abs " << std::endl;
+      }
+  }
 
   //
   // Omit ghost update since maybe not initialized in calling routine.
@@ -442,7 +430,9 @@ MultiGrid::solve_ (MultiFab&      _sol,
 
   if (use_Anorm_for_convergence == 1) 
   {
-      return returnVal;
+     if ( error <= eps_rel*(norm_Lp*norm_cor+norm_rhs) ||
+          error <= eps_abs )
+       returnVal = 1;
   } 
   else 
   {
@@ -450,6 +440,7 @@ MultiGrid::solve_ (MultiFab&      _sol,
           error <= eps_abs )
        returnVal = 1;
   } 
+
   //
   // Otherwise, failed to solve satisfactorily
   //
@@ -493,7 +484,6 @@ MultiGrid::numLevels () const
 void
 MultiGrid::relax (MultiFab&      solL,
                   MultiFab&      rhsL,
-                  Array<Real>&   max_update,
                   int            level,
                   Real           eps_rel,
                   Real           eps_abs,
@@ -514,8 +504,7 @@ MultiGrid::relax (MultiFab&      solL,
         }
         for (int i = preSmooth() ; i > 0 ; i--)
         {
-            max_update[0] = 0;
-            Lp.smooth(solL, rhsL, max_update, level, bc_mode);
+            Lp.smooth(solL, rhsL, level, bc_mode);
         }
         Lp.residual(*res[level], rhsL, solL, level, bc_mode);
 
@@ -529,10 +518,9 @@ MultiGrid::relax (MultiFab&      solL,
         prepareForLevel(level+1);
         average(*rhs[level+1], *res[level]);
         cor[level+1]->setVal(0.0);
-        Array<Real> max_update_clev(solL.nComp(),0);
         for (int i = cntRelax(); i > 0 ; i--)
         {
-            relax(*cor[level+1],*rhs[level+1],max_update_clev,level+1,eps_rel,eps_abs,bc_mode);
+            relax(*cor[level+1],*rhs[level+1],level+1,eps_rel,eps_abs,bc_mode);
         }
         interpolate(solL, *cor[level+1]);
 
@@ -547,8 +535,7 @@ MultiGrid::relax (MultiFab&      solL,
 
         for (int i = postSmooth(); i > 0 ; i--)
         {
-            max_update[0] = 0;
-            Lp.smooth(solL, rhsL, max_update, level, bc_mode);
+            Lp.smooth(solL, rhsL, level, bc_mode);
         }
         if (verbose > 3) {
            Lp.residual(*res[level], rhsL, solL, level, bc_mode);
@@ -567,7 +554,7 @@ MultiGrid::relax (MultiFab&      solL,
               std::cout << "    DN:Norm before bottom " << rnorm << std::endl;
            }
         }
-        coarsestSmooth(solL, rhsL, max_update, level, eps_rel, eps_abs, bc_mode, usecg);
+        coarsestSmooth(solL, rhsL, level, eps_rel, eps_abs, bc_mode, usecg);
 
         if (verbose > 3) {
            Lp.residual(*res[level], rhsL, solL, level, bc_mode);
@@ -581,7 +568,6 @@ MultiGrid::relax (MultiFab&      solL,
 void
 MultiGrid::coarsestSmooth (MultiFab&      solL,
                            MultiFab&      rhsL,
-                           Array<Real>&   max_update,
                            int            level,
                            Real           eps_rel,
                            Real           eps_abs,
@@ -602,7 +588,7 @@ MultiGrid::coarsestSmooth (MultiFab&      solL,
 
         for (int i = finalSmooth(); i > 0; i--)
         {
-            Lp.smooth(solL, rhsL, max_update, level, bc_mode);
+            Lp.smooth(solL, rhsL, level, bc_mode);
 
             if (verbose > 1 || (i == 1 && verbose))
             {
@@ -637,7 +623,7 @@ MultiGrid::coarsestSmooth (MultiFab&      solL,
                 {
                     std::cout << "MultiGrid::coarsestSmooth(): CGSolver returns nonzero. Smoothing...." << std::endl;
                 }
-                coarsestSmooth(solL, rhsL, max_update, level, eps_rel, eps_abs, bc_mode, 0);
+                coarsestSmooth(solL, rhsL, level, eps_rel, eps_abs, bc_mode, 0);
             }
             else
             {
@@ -655,7 +641,7 @@ MultiGrid::coarsestSmooth (MultiFab&      solL,
 	}
         for (int i = 0; i < nu_b; i++)
         {
-            Lp.smooth(solL, rhsL, max_update, level, bc_mode);
+            Lp.smooth(solL, rhsL, level, bc_mode);
         }
     }
 }

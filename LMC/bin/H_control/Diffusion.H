@@ -81,7 +81,6 @@ public:
 			 const MultiFab* const* betan = 0, 
 			 const MultiFab* const* betanp1 = 0,
                          int                    betaComp = 0,
-                         Real                   typical_value = 1,
 			 const SolveMode&       solve_mode = ONEPASS,
                          bool                   add_old_time_divFlux = true);
     

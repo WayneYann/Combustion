@@ -2569,7 +2569,7 @@ HeatTransfer::scalar_diffusion_update (Real dt,
 
             diffusion->diffuse_scalar(dt,sigma,be_cn_theta,Rh,rho_flag,fluxSCn,
                                       fluxSCnp1,fluxComp,delta_rhs,rhsComp,alpha,alphaComp,betan,
-                                      betanp1,betaComp,1.0,solve_mode);
+                                      betanp1,betaComp,solve_mode);
 	    //
 	    // If corrector, increment the viscous flux registers.
             // Assume corrector called only ONCE!.
@@ -2682,10 +2682,9 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             const int state_ind = first_spec + sigma;
             bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
             int rho_flag = 2;
-            Real typicalValue = typical_values[state_ind];
             diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
                                       SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
-                                      alphaComp,betan,betanp1,betaComp,typicalValue,solve_mode,add_old_time_divFlux);
+                                      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
 
         }
         //
@@ -2740,10 +2739,9 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             const int state_ind = first_spec + sigma;
             bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
             int rho_flag = 2;
-            Real typicalValue = typical_values[state_ind];
             diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
                                       SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
-                                      alphaComp,betan,betanp1,betaComp,typicalValue,solve_mode,add_old_time_divFlux);
+                                      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
             
             
             // Remove theta scaling of fluxes and compute - Div(lambda/cp Grad(H) )
@@ -5763,8 +5761,7 @@ HeatTransfer::advance_sdc (Real time,
     {
         int havedivu = 1;
         create_mac_rhs(Forcing,time,dt,nGrowAdvForcing); // Use MF laying around
-        Real typical_phi = typical_values[0] / geom.CellSize()[0];
-        mac_project(time,dt,S_old,&Forcing,havedivu,typical_phi);
+        mac_project(time,dt,S_old,&Forcing,havedivu);
     }
 
     if (do_mom_diff == 0)
