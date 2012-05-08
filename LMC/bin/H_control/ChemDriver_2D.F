@@ -235,7 +235,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       REAL_T Patm
 
       REAL_T Zt(maxspec+1),Zdott(maxspec+1)
-      integer i,j,n,errCode
+      integer i,j,n
       REAL_T TIME,P1atm,RU,RUC
 
       NEQ = Nspec+1
@@ -249,15 +249,13 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
             c_1(1:Nspec+1) = 0.d0
             rhoh_INIT = RhoH(i,j)
             T_cell = T(i,j)
-            i_cell = i
-            j_cell = j
 
             Zt(Nspec+1) = RhoH(i,j)
             do n=1,Nspec
                Zt(n) = RhoY(i,j,n)
             end do
 
-            call conpFY_sdc(NEQ,TIME,Zt,Zdott,RWRK,IWRK,errCode)
+            call conpFY_sdc(NEQ,TIME,Zt,Zdott,RWRK,IWRK)
             do n=1,Nspec
                RhoYdot(i,j,n) = Zdott(n)
             end do
@@ -823,7 +821,7 @@ c
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
 
-      integer ITOL, IOPT, ITASK, errCode, open_vode_failure_file
+      integer ITOL, IOPT, ITASK, open_vode_failure_file
 c      parameter (ITOL=1, IOPT=1, ITASK=1)
       parameter (ITOL=2, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
@@ -900,8 +898,6 @@ c     Set up ATOL
             Z(1:Nspec) = rhoYold(i,j,1:Nspec)
             rhoY_INIT(1:Nspec) = Z(1:Nspec)
 
-            i_cell = i
-            j_cell = j
             T_cell = Told(i,j)
 
             rhoH_INIT = rhoHold(i,j)
@@ -932,10 +928,10 @@ c               RWRK(dvbr+4) = TT2 - TT1
 #endif
      &              (conpFY_sdc, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
      &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
-     &              dvi, CONPJ_FILE, MF, RWRK, IWRK, errCode)
+     &              dvi, CONPJ_FILE, MF, RWRK, IWRK)
 
                if (ISTATE .LE. -1) then
-                  call conpFY_sdc(NEQ, TT1, Z, ZP, RWRK, IWRK, errCode)
+                  call conpFY_sdc(NEQ, TT1, Z, ZP, RWRK, IWRK)
                   lout = open_vode_failure_file()
                   write(lout,*)
                   write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
@@ -996,28 +992,7 @@ c               RWRK(dvbr+4) = TT2 - TT1
                Y(m) = rhoYnew(i,j,m) * rhoInv
             enddo
             T_cell = Tnew(i,j)
-            call FORT_TfromHYpt(Tnew(i,j),rhoHnew(i,j)*rhoInv,Y,HtoTerrMAX,HtoTiterMAX,res,Niter,errCode)
-
-c            if (i.eq.26 .and. j.eq.6) then
-c               print *,'after',Z(1:Nspec+1)
-c            endif
-
-            if (errCode.lt.0) then
-               print *,'FORT_CONPSOLV_SDC: H to T solve failed'
-               print *,'  at cell:',i_cell,j_cell
-               print *,'errCode=',errCode
-               print *,'Niter=',Niter
-               print *,'rhoInv',rhoInv
-               print *,'rhoHnew',rhoHnew(i,j)
-               print *,'initial T',T_cell
-               print *,'current T',Tnew(i,j)
-               print *,'current Y',Y(1:Nspec)
-               
-               CALL CKHBMS(T_cell,Y,IWRK(ckbi),RWRK(ckbr),HMIX_CGS)
-               print*,'hmix at current state:',HMIX_CGS*1.d-4
-               
-               stop
-            endif
+            call FORT_TfromHYpt(Tnew(i,j),rhoHnew(i,j)*rhoInv,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
 
             do m=1,Nspec
                I_R(i,j,m) = (rhoYnew(i,j,m) - rhoYold(i,j,m))/dt - c_0(m)

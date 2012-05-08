@@ -1019,13 +1019,7 @@ C Estimate the second derivative as a difference quotient in f. --------
       T1 = T0 + HG
       DO 60 I = 1, N
  60     Y(I) = Y0(I) + HG*YDOT(I)
-      CALL F (N, T1, Y, TEMP, RPAR, IPAR, NFERR)
-      if (NFERR.ne.0) then
-         HNEW = SQRT(HG*HLB)
-         print *,'failed',HNEW
-         stop
-         GO TO 75
-      endif
+      CALL F (N, T1, Y, TEMP, RPAR, IPAR)
 
       DO 70 I = 1, N
  70     TEMP(I) = (TEMP(I) - YDOT(I))/HG
@@ -1277,12 +1271,7 @@ c        R = MAX(SRUR*ABS(YJ),R0/EWT(J))
 c     Try forward difference
         Y(J) = Y(J) + R
         FAC = ONE/R
-        CALL F (N, TN, Y, FTEM, RPAR, IPAR, NFERR)
-        if (NFERR.ne.0) then
-           print *,'F FAILED on FWD diff, trying backward'
-           stop
-           goto 221
-        endif
+        CALL F (N, TN, Y, FTEM, RPAR, IPAR)
         DO 220 I = 1,N
  220      WM(I+J1) = (FTEM(I) - SAVF(I))*FAC
           
@@ -1291,12 +1280,7 @@ c     Try forward difference
 c     Try backward difference
  221    Y(J) = Y(J) - R
         FAC = ONE/R
-        CALL F (N, TN, Y, FTEM, RPAR, IPAR, NFERR)
-        if (NFERR.ne.0) then
-           print *,'F FAILED on REV diff'
-           print *,'Unable to increment Y in numerical Jac'
-           stop
-        endif
+        CALL F (N, TN, Y, FTEM, RPAR, IPAR)
         DO 222 I = 1,N
  222       WM(I+J1) = (SAVF(I) - FTEM(I))*FAC
 
@@ -1342,11 +1326,7 @@ C If MITER = 3, construct a diagonal approximation to J and P. ---------
       R = RL1*PT1
       DO 310 I = 1,N
  310    Y(I) = Y(I) + R*(H*SAVF(I) - YH(I,2))
-      CALL F (N, TN, Y, WM(3), RPAR, IPAR, NFERR)
-      if (NFERR.ne.0) then
-         print *,'Function failed in construction of diagnonal approx'
-         stop
-      endif
+      CALL F (N, TN, Y, WM(3), RPAR, IPAR)
       NFE = NFE + 1
       DO 320 I = 1,N
         R0 = H*SAVF(I) - YH(I,2)
@@ -1400,12 +1380,7 @@ C If MITER = 5, make N calls to F to approximate the Jacobian. ---------
 
 c     Try forward diff
  530      Y(I) = Y(I) + R
-        CALL F (N, TN, Y, FTEM, RPAR, IPAR, NFERR)
-        if (NFERR.ne.0) then
-           print *,'Function failed during fwd numerical Jac'
-           stop
-           goto 532
-        endif
+        CALL F (N, TN, Y, FTEM, RPAR, IPAR)
 
         DO 550 JJ = J,N,MBAND
           Y(JJ) = YH(JJ,1)
@@ -1422,11 +1397,7 @@ c     Try forward diff
 
 c     Try backward diff
  532      Y(I) = Y(I) - R
-        CALL F (N, TN, Y, FTEM, RPAR, IPAR, NFERR)
-        if (NFERR.ne.0) then
-           print *,'Function failed during numerical Jac'
-           stop
-        endif
+        CALL F (N, TN, Y, FTEM, RPAR, IPAR)
         DO 555 JJ = J,N,MBAND
           Y(JJ) = YH(JJ,1)
           YJJ = Y(JJ)
@@ -1714,11 +1685,8 @@ C-----------------------------------------------------------------------
       DELP = ZERO
 
       CALL DCOPY (N, YH(1,1), 1, Y, 1 )
-      CALL F (N, TN, Y, SAVF, RPAR, IPAR, NFERR)
+      CALL F (N, TN, Y, SAVF, RPAR, IPAR)
 c     If function fails, return error to force cut in step size
-      if (NFERR.ne.0) then
-         goto 430
-      endif
       NFE = NFE + 1
       IF (IPUP .LE. 0) GO TO 250
 C-----------------------------------------------------------------------
@@ -1792,13 +1760,7 @@ c 400  IF (M .NE. 0) CRATE = MAX(CRDOWN*CRATE,DEL/DELP)
       IF (M .EQ. MAXCOR) GO TO 410
       IF (M .GE. 2 .AND. DEL .GT. RDIV*DELP) GO TO 410
       DELP = DEL
-      CALL F (N, TN, Y, SAVF, RPAR, IPAR, NFERR)
-      if (NFERR.ne.0) then
-         print *,'failed here...figure out why'
-         stop
-         NFLAG = -1
-         ICF = 1
-      endif
+      CALL F (N, TN, Y, SAVF, RPAR, IPAR)
       NFE = NFE + 1
       GO TO 270
 C
@@ -1848,11 +1810,11 @@ C
 
       SUBROUTINE DVODE (F, NEQ, Y, T, TOUT, ITOL, RTOL, ATOL, ITASK,
      1            ISTATE, IOPT, RWORK, LRW, IWORK, LIW, JAC, MF,
-     2            RPAR, IPAR, errCode)
+     2            RPAR, IPAR)
       EXTERNAL F, JAC
       DOUBLE PRECISION Y, T, TOUT, RTOL, ATOL, RWORK, RPAR
       INTEGER NEQ, ITOL, ITASK, ISTATE, IOPT, LRW, IWORK, LIW,
-     1        MF, IPAR, errCode
+     1        MF, IPAR
       DIMENSION Y(*), RTOL(*), ATOL(*), RWORK(LRW), IWORK(LIW),
      1          RPAR(*), IPAR(*)
 C-----------------------------------------------------------------------
@@ -3148,12 +3110,7 @@ c 100  UROUND = EPSILON(UROUND)
       NQU = 0
 C     Initial call to F.  (LF0 points to YH(*,2).) -------------------------
       LF0 = LYH + NYH
-      CALL F (N, T, Y, RWORK(LF0), RPAR, IPAR, NFERR)
-      if (NFERR.ne.0) then
-         print *,'this seems bad'
-         stop
-         goto 750
-      endif
+      CALL F (N, T, Y, RWORK(LF0), RPAR, IPAR)
       NFE = 1
 C Load the initial value vector in YH. ---------------------------------
       CALL DCOPY (N, Y, 1, RWORK(LYH), 1)
@@ -4079,15 +4036,7 @@ C-----------------------------------------------------------------------
       H = H*ETA
       HSCAL = H
       TAU(1) = H
-      CALL F (N, TN, Y, SAVF, RPAR, IPAR, NFERR)
-      if (NFERR.ne.0) then
-         print *,'this seems real bad'
-         stop
-         ETA = MAX(ETAMIN,HMIN/ABS(H))
-         H = H*ETA
-         HSCAL = H
-         TAU(1) = H         
-      endif
+      CALL F (N, TN, Y, SAVF, RPAR, IPAR)
       NFE = NFE + 1
       DO 550 I = 1, N
  550    YH(I,2) = H*SAVF(I)

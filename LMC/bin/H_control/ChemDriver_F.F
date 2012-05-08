@@ -778,7 +778,7 @@ C
 
       END
 
-      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR, errCode)
+      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
@@ -794,7 +794,7 @@ C
 
 C     Needed to compute T from h
       REAL_T HtoTerrMAX
-      integer HtoTiterMAX, Niter, errCode
+      integer HtoTiterMAX, Niter
       parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
       parameter (HtoTiterMAX = 20)
       REAL_T res(0:HtoTiterMAX-1)
@@ -802,15 +802,6 @@ C     Needed to compute T from h
       REAL_T RHO_CGS, RINV_CGS, rhohmixDOT_MKS
 
       REAL_T mwt(maxspec), invmwt(maxspec)
-
-      errCode = 0
-      do K=1,Nspec+1
-         if (isnan(Z(K))) then
-            errCode = -10
-            goto 10
-         endif
-      enddo
-
 
       call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
       do n=1,Nspec
@@ -823,10 +814,6 @@ C                          Z(K+1) = RhoH
       do K=1,Nspec
          RHO_MKS = RHO_MKS + Z(K)
       enddo
-      if (RHO_MKS.le.0.d0) then
-         errCode = -11
-         goto 10
-      endif
       RINV_MKS = 1.d0 / RHO_MKS
       
       num_bad = 0
@@ -836,22 +823,10 @@ C                          Z(K+1) = RhoH
             is_bad(num_bad) = k
          endif
       enddo
-      if (num_bad.gt.0) then
-c         print *,'-ve Y in cell:',i_cell,j_cell,'species:',is_bad(1:num_bad)
-c         errCode = -16
-c         goto 10
-      endif
 
       do K=1,Nspec
          CONC_CGS(K) = MAX(0.d0, Z(K)*invmwt(K)*1.d-3)
          Y(K) = Z(K) * RINV_MKS
-      enddo
-
-      do K=1,Nspec
-         if (isnan(CONC_CGS(K))) then
-            errCode = -15
-            goto 10
-         endif
       enddo
 
 c      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
@@ -861,19 +836,9 @@ c     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
       T = T_cell
 
 c     FIXME: Get proper stopping stopping criteria here
-      call FORT_TfromHYpt(T,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter,errCode)
-      if (errCode.lt.0) then
-         goto 10
-      endif
+      call FORT_TfromHYpt(T,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
       T_cell = T      
       call CKWC(T,CONC_CGS,IWRK,RWRK,WDOT_CGS)
-
-      do K=1,Nspec
-         if (isnan(WDOT_CGS(K))) then
-            errCode = -13
-            goto 10
-         endif
-      enddo
 
 c      rhohmixDOT_MKS = c_0(Nspec+1) + c_1(Nspec+1)*TIME
       rhohmixDOT_MKS = c_0(Nspec+1)
@@ -882,43 +847,14 @@ c      rhohmixDOT_MKS = c_0(Nspec+1) + c_1(Nspec+1)*TIME
       THFAC = 1.d3/thickFacCH
       do k= 1, Nspec
 c         rhoYDOT_MKS = c_0(k) + c_1(k)*TIME
-         if (isnan(c_0(k))) then
-            errCode = -14
-            goto 10
-         endif
          rhoYDOT_MKS = c_0(k)
          ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
       end do
 
-      do K=1,Nspec+1
-         if (isnan(ZP(K))) then
-            errCode = -12
-            goto 10
-         endif
-      enddo
       return
 
  10   continue
-#if 0
-      print *,'conpFY_sdc: H to T solve failed'
-      print *,'  at cell:',i_cell,j_cell
-      print *,'errCode=',errCode
-      print *,'Niter=',Niter
-      print *,'RINV_MKS',RINV_MKS
-      print *,'RhoH_INIT',rhoh_INIT
-      print *,'H_INIT',rhoh_INIT*RINV_MKS
-      print *,'HMIX_MKS',HMIX_MKS
-      print *,'c_0(Nspec+1)',c_0(Nspec+1)
-      print *,'initial T',T_cell
-      print *,'current T',T
-      print *,'current RHOY',Z(1:Nspec)
-      print *,'initial RHOY',rhoY_INIT(1:Nspec)
-      print *,'ZP',ZP(1:Nspec+1)
-      print *,'WDOT_CGS',WDOT_CGS(1:Nspec)
-      
-      CALL CKHBMS(T_cell,Y,IWRK(ckbi),RWRK(ckbr),HMIX_CGS)
-      print*,'hmix at current state:',HMIX_CGS*1.d-4
-#endif
+
       END
 
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
