@@ -5690,7 +5690,7 @@ HeatTransfer::advance (Real time,
     //
     const int first_scalar = Density;
     const int last_scalar = first_scalar + NUM_SCALARS - 1;
-    bool do_adv_reflux = true;
+    bool do_adv_reflux = do_reflux;
     //
     //  Load the advective flux registers into aofs.
     //
@@ -5778,7 +5778,7 @@ HeatTransfer::advance (Real time,
         
         set_overdetermined_boundary_cells(time + dt);// RhoH BC's to see new Y's at n+1
         
-        do_adv_reflux = true;
+        do_adv_reflux = do_reflux;
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // Get aofs for RhoH now
         
         rhoh_update(time,dt,corrector);
