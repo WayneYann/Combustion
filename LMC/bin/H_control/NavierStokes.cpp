@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include <vector>
-#include <cstdio>
 #include <cmath>
+#include <cstdio>
 
 #include <Geometry.H>
 #include <BoxDomain.H>
@@ -1672,7 +1672,7 @@ NavierStokes::mac_project (Real      time,
                            int       have_divu)
 {
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... mac_projection" << std::endl;
+        std::cout << "... mac_projection\n";
 
     const Real strt_time = ParallelDescriptor::second();
 
@@ -1866,18 +1866,27 @@ NavierStokes::predict_velocity (Real  dt,
     FArrayBox* null_fab = 0;
 
     for (FillPatchIterator U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel,BL_SPACEDIM)
+#ifdef BOUSSINESQ
+                          ,S_fpi(*this,visc_terms,       1,prev_time,State_Type,Tracer,1);
+	 S_fpi.isValid() && U_fpi.isValid();
+	 ++S_fpi, ++U_fpi
+#else
 #ifdef MOREGENGETFORCE
 	     , S_fpi(*this,visc_terms,1,prev_time,State_Type,Density,NUM_SCALARS);
 	 S_fpi.isValid() && U_fpi.isValid();
 	 ++S_fpi, ++U_fpi
 #else
-             ; U_fpi.isValid();
+         ; U_fpi.isValid();
 	 ++U_fpi
+#endif
 #endif
 	)
     {
         const int i = U_fpi.index();
 
+#ifdef BOUSSINESQ
+        getForce(tforces,i,1,Xvel,BL_SPACEDIM,prev_time,S_fpi());
+#else
 #ifdef GENGETFORCE
         getForce(tforces,i,1,Xvel,BL_SPACEDIM,prev_time,(*rho_ptime)[i]);
 #elif MOREGENGETFORCE
@@ -1887,6 +1896,7 @@ NavierStokes::predict_velocity (Real  dt,
 #else
 	getForce(tforces,i,1,Xvel,BL_SPACEDIM,(*rho_ptime)[i]);
 #endif		 
+#endif
         //
         // Test velocities, rho and cfl.
         //
@@ -1900,12 +1910,9 @@ NavierStokes::predict_velocity (Real  dt,
 
         D_TERM(bndry[0] = getBCArray(State_Type,i,0,1);,
                bndry[1] = getBCArray(State_Type,i,1,1);,
-               bndry[2] = getBCArray(State_Type,i,2,1););
+               bndry[2] = getBCArray(State_Type,i,2,1);)
 
-
-        int velpred = 1;
-
-        godunov->Setup(grids[i], dx, dt, velpred,
+        godunov->Setup(grids[i], dx, dt, 1,
                        D_DECL(*null_fab,*null_fab,*null_fab),
                        D_DECL(bndry[0].dataPtr(),bndry[1].dataPtr(),bndry[2].dataPtr()),
                        D_DECL(U_fpi(),U_fpi(),U_fpi()), D_DECL(0,1,2),
@@ -1993,9 +2000,16 @@ NavierStokes::velocity_advection (Real dt)
     // Compute the advective forcing.
     //
     for (FillPatchIterator P_fpi(*this,get_old_data(Press_Type),1,prev_pres_time,Press_Type,0,1),
+#ifdef BOUSSINESQ
+             U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel   ,BL_SPACEDIM),
+             S_fpi(*this,visc_terms,       1,prev_time,State_Type,Tracer,1),
+             Rho_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Density,1);
+         S_fpi.isValid() && U_fpi.isValid() && P_fpi.isValid() && Rho_fpi.isValid(); 
+         ++S_fpi, ++U_fpi, ++P_fpi, ++Rho_fpi
+#else
 #ifdef MOREGENGETFORCE
-             U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel,BL_SPACEDIM),
-             S_fpi(*this,visc_terms,1,prev_time,State_Type,Density,NUM_SCALARS),
+             U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel   ,BL_SPACEDIM),
+             S_fpi(*this,visc_terms,       1,prev_time,State_Type,Density,NUM_SCALARS),
              Rho_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Density,1);
          S_fpi.isValid() && U_fpi.isValid() && P_fpi.isValid() && Rho_fpi.isValid(); 
          ++S_fpi, ++U_fpi, ++P_fpi, ++Rho_fpi
@@ -2005,10 +2019,14 @@ NavierStokes::velocity_advection (Real dt)
          U_fpi.isValid() && P_fpi.isValid() && Rho_fpi.isValid(); 
          ++U_fpi, ++P_fpi, ++Rho_fpi
 #endif
+#endif
 	)
     {
         const int i = U_fpi.index();
 
+#ifdef BOUSSINESQ
+        getForce(tforces,i,1,Xvel,BL_SPACEDIM,prev_time,S_fpi());
+#else
 #ifdef GENGETFORCE
         getForce(tforces,i,1,Xvel,BL_SPACEDIM,prev_time,(*rho_ptime)[i]);
 #elif MOREGENGETFORCE
@@ -2018,15 +2036,15 @@ NavierStokes::velocity_advection (Real dt)
 #else
         getForce(tforces,i,1,Xvel,BL_SPACEDIM,(*rho_ptime)[i]);
 #endif		 
+#endif		 
 
         godunov->Sum_tf_gp_visc(tforces,0,visc_terms[i],0,Gp[i],0,(*rho_ptime)[i],0);
 
         D_TERM(bndry[0] = getBCArray(State_Type,i,0,1);,
                bndry[1] = getBCArray(State_Type,i,1,1);,
-               bndry[2] = getBCArray(State_Type,i,2,1););
+               bndry[2] = getBCArray(State_Type,i,2,1);)
 
-        int velpred = 0;
-        godunov->Setup (grids[i], dx, dt, velpred,
+        godunov->Setup (grids[i], dx, dt, 0,
                         D_DECL(flux[0],flux[1],flux[2]), 
                         D_DECL(bndry[0].dataPtr(),bndry[1].dataPtr(),bndry[2].dataPtr()),
                         D_DECL(U_fpi(),U_fpi(),U_fpi()), 
@@ -2161,12 +2179,18 @@ NavierStokes::scalar_advection (Real dt,
     //
     for (FillPatchIterator P_fpi(*this,get_old_data(Press_Type),1,prev_pres_time,Press_Type,0,1),
              U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel,BL_SPACEDIM),
+#ifdef BOUSSINESQ
+             Scal_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Tracer,1),
+#endif
              S_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,fscalar,num_scalars);
          U_fpi.isValid() && S_fpi.isValid() && P_fpi.isValid();
          ++U_fpi, ++S_fpi, ++P_fpi)
     {
         const int i = U_fpi.index();
 
+#ifdef BOUSSINESQ
+        getForce(tforces,i,1,fscalar,num_scalars,prev_time,Scal_fpi());
+#else
 #ifdef GENGETFORCE
         getForce(tforces,i,1,fscalar,num_scalars,prev_time,(*rho_ptime)[i]);
 #elif MOREGENGETFORCE
@@ -2176,9 +2200,13 @@ NavierStokes::scalar_advection (Real dt,
 #else
         getForce(tforces,i,1,fscalar,num_scalars,(*rho_ptime)[i]);
 #endif		 
+#endif		 
         
         if (use_forces_in_trans)
         {
+#ifdef BOUSSINESQ
+        getForce(tvelforces,i,1,Xvel,BL_SPACEDIM,prev_time,S_fpi());
+#else
 #ifdef GENGETFORCE
             getForce(tvelforces,i,1,Xvel,BL_SPACEDIM,prev_time,(*rho_ptime)[i]);
 #elif MOREGENGETFORCE
@@ -2188,12 +2216,13 @@ NavierStokes::scalar_advection (Real dt,
 #else
             getForce(tvelforces,i,1,Xvel,BL_SPACEDIM,(*rho_ptime)[i]);
 #endif		 
+#endif		 
             godunov->Sum_tf_gp_visc(tvelforces,0,vel_visc_terms[i],0,Gp[i],0,(*rho_ptime)[i],0);
         }
 
         D_TERM(bndry[0] = getBCArray(State_Type,i,0,1);,
                bndry[1] = getBCArray(State_Type,i,1,1);,
-               bndry[2] = getBCArray(State_Type,i,2,1););
+               bndry[2] = getBCArray(State_Type,i,2,1);)
 
         int velpred = 0;
         godunov->Setup(grids[i], dx, dt, velpred,
@@ -2299,6 +2328,19 @@ NavierStokes::scalar_update (Real dt,
 
     if (do_any_diffuse)
       scalar_diffusion_update(dt, first_scalar, last_scalar);
+
+    MultiFab&  S_new     = get_new_data(State_Type);
+    for (int sigma = first_scalar; sigma <= last_scalar; sigma++)
+    {
+       if (S_new.contains_nan(sigma,1,0))
+       {
+	  if (ParallelDescriptor::IOProcessor())
+          {
+             std::cout << "New scalar " << sigma << " contains Nans" << std::endl;
+          }
+          exit(0);
+       }
+    }
 }
 
 void
@@ -2309,9 +2351,7 @@ NavierStokes::scalar_advection_update (Real dt,
     MultiFab&  S_old     = get_old_data(State_Type);
     MultiFab&  S_new     = get_new_data(State_Type);
     MultiFab&  Aofs      = *aofs;
-#if defined(GENGETFORCE) || defined(MOREGENGETFORCE)
     const Real halftime  = 0.5*(state[State_Type].curTime()+state[State_Type].prevTime());
-#endif
     const Real prev_time = state[State_Type].prevTime();
     Array<int> state_bc;
     FArrayBox  tforces;
@@ -2330,6 +2370,8 @@ NavierStokes::scalar_advection_update (Real dt,
             tforces.setVal(0);
             godunov->Add_aofs_tf(S_old[S_oldmfi],S_new[S_oldmfi],Density,1,
                                  Aofs[S_oldmfi],Density,tforces,0,grids[i],dt);
+
+//          std::cout  << "DEN AOFS " << Aofs[S_oldmfi] << std::endl;
         }
         //
         // Call ScalMinMax to avoid overshoots in density.
@@ -2369,6 +2411,13 @@ NavierStokes::scalar_advection_update (Real dt,
             const int i = Rho_mfi.index();
             for (int sigma = sComp; sigma <= last_scalar; sigma++)
             {
+#ifdef BOUSSINESQ
+		FArrayBox Scal(BoxLib::grow(grids[i],0),1);
+		Scal.copy(S_old[i],Tracer,0,1);
+		Scal.plus(S_new[i],Tracer,0,1);
+		Scal.mult(0.5);
+                getForce(tforces,i,0,sigma,1,halftime,Scal);
+#else
 #ifdef GENGETFORCE
                 getForce(tforces,i,0,sigma,1,halftime,rho_halftime[Rho_mfi]);
 #elif MOREGENGETFORCE
@@ -2415,6 +2464,7 @@ NavierStokes::scalar_advection_update (Real dt,
                 getForce(tforces,i,0,sigma,1,halftime,Vel,Scal,0);
 #else
                 getForce(tforces,i,0,sigma,1,rho_halftime[Rho_mfi]);
+#endif		 
 #endif		 
                 godunov->Add_aofs_tf(S_old[Rho_mfi],S_new[Rho_mfi],sigma,1,
                                      Aofs[Rho_mfi],sigma,tforces,0,grids[i],dt);
@@ -2598,6 +2648,19 @@ NavierStokes::velocity_update (Real dt)
         velocity_diffusion_update(dt);
     else
         initial_velocity_diffusion_update(dt);
+
+    MultiFab&  S_new     = get_new_data(State_Type);
+    for (int sigma = 0; sigma < BL_SPACEDIM; sigma++)
+    {
+       if (S_new.contains_nan(sigma,1,0))
+       {
+	  if (ParallelDescriptor::IOProcessor())
+          {
+             std::cout << "New velocity " << sigma << " contains Nans" << std::endl;
+          }
+          exit(0);
+       }
+    }
 }
 
 void
@@ -2609,9 +2672,7 @@ NavierStokes::velocity_advection_update (Real dt)
     MultiFab&  P_old          = get_old_data(Press_Type);
     MultiFab&  Aofs           = *aofs;
     const Real prev_pres_time = state[Press_Type].prevTime();
-#if defined(GENGETFORCE) || defined(MOREGENGETFORCE)
     const Real half_time      = 0.5*(state[State_Type].prevTime()+state[State_Type].curTime());
-#endif
 
     MultiFab Gp(grids,BL_SPACEDIM,1);
     getGradP(Gp, prev_pres_time);
@@ -2625,6 +2686,14 @@ NavierStokes::velocity_advection_update (Real dt)
     {
         const int i = Rhohalf_mfi.index();
 
+#ifdef BOUSSINESQ
+	// Average the new and old time to get half time approximation
+	FArrayBox Scal(grids[i],1);
+	Scal.copy(U_old[i],Tracer,0,1);
+	Scal.plus(U_new[i],Tracer,0,1);
+	Scal.mult(0.5);
+        getForce(tforces,i,0,Xvel,BL_SPACEDIM,half_time,Scal);
+#else
 #ifdef GENGETFORCE
 	getForce(tforces,i,0,Xvel,BL_SPACEDIM,half_time,halftime[i]);
 #elif MOREGENGETFORCE
@@ -2670,6 +2739,7 @@ NavierStokes::velocity_advection_update (Real dt)
 #else
 	getForce(tforces,i,0,Xvel,BL_SPACEDIM,halftime[i]);
 #endif		 
+#endif		 
         //
         // Do following only at initial iteration--per JBB.
         //
@@ -2711,7 +2781,6 @@ NavierStokes::velocity_diffusion_update (Real dt)
         int rho_flag = (do_mom_diff == 0) ? 1 : 3;
 
         MultiFab* delta_rhs = 0;
-        int rhsComp = 0;
         if (S_in_vel_diffusion && have_divu)
         {
             delta_rhs = new MultiFab(grids,BL_SPACEDIM,0);
@@ -2733,10 +2802,9 @@ NavierStokes::velocity_diffusion_update (Real dt)
         }
 
         diffuse_velocity_setup(dt, delta_rhs, loc_viscn, loc_viscnp1);
-        int betaComp = 0;
 
         diffusion->diffuse_velocity(dt,be_cn_theta,get_rho_half_time(),rho_flag,
-                                    delta_rhs,rhsComp,loc_viscn,loc_viscnp1,betaComp);
+                                    delta_rhs,0,loc_viscn,loc_viscnp1,0);
 
         if (variable_vel_visc)
         {
@@ -2835,12 +2903,25 @@ NavierStokes::initial_velocity_diffusion_update (Real dt)
         //
         MultiFab* Rh = get_rho_half_time();
 
-        for (FillPatchIterator P_fpi(*this,get_old_data(Press_Type),0,prev_pres_time,Press_Type,0,1);
-             P_fpi.isValid();
+        for (FillPatchIterator P_fpi(*this,get_old_data(Press_Type),0,prev_pres_time,Press_Type,0,1)
+#ifdef BOUSSINESQ
+                              ,S_fpi(*this,get_old_data(State_Type),0,prev_time,State_Type,Tracer,1)
+#endif
+             ;P_fpi.isValid() 
+#ifdef BOUSSINESQ
+             ,S_fpi.isValid()
+#endif
+             ;
+#ifdef BOUSSINESQ
+             ++S_fpi,
+#endif
              ++P_fpi)
         {
             const int i = P_fpi.index();
 
+#ifdef BOUSSINESQ
+            getForce(tforces,i,0,Xvel,BL_SPACEDIM,prev_time,S_fpi());
+#else
 #ifdef GENGETFORCE
             getForce(tforces,i,0,Xvel,BL_SPACEDIM,prev_time,(*rho_ptime)[i]);
 #elif MOREGENGETFORCE
@@ -2849,6 +2930,7 @@ NavierStokes::initial_velocity_diffusion_update (Real dt)
             getForce(tforces,i,0,Xvel,BL_SPACEDIM,prev_time,U_old[i],U_old[i],Density);
 #else
             getForce(tforces,i,0,Xvel,BL_SPACEDIM,(*rho_ptime)[i]);
+#endif		 
 #endif		 
             godunov->Sum_tf_gp_visc(tforces,0,visc_terms[i],0,Gp[i],0,(*Rh)[i],0);
 
@@ -3111,7 +3193,9 @@ NavierStokes::sum_integrated_quantities ()
         NavierStokes& ns_level = getLevel(lev);
 //        mass += ns_level.volWgtSum("density",time);
 //        trac += ns_level.volWgtSum("tracer",time);
+#if (BL_SPACEDIM==3)
         udotlapu += ns_level.volWgtSum("udotlapu",time);
+#endif
         energy += ns_level.volWgtSum("energy",time);
         mgvort = std::max(mgvort,ns_level.MaxVal("mag_vort",time));
 #if defined(GENGETFORCE) || defined(MOREGENGETFORCE)
@@ -3249,9 +3333,11 @@ NavierStokes::sum_turbulent_quantities ()
 
         const int steps = parent->levelSteps(0);
         FILE *file;
-        char filename[256];
-        sprintf(filename,"TurbData/TurbData_%04d.dat",steps);
-        file = fopen(filename,"w");
+
+        std::string filename = BoxLib::Concatenate("TurbData/TurbData_", steps, 4);
+        filename += ".dat";
+
+        file = fopen(filename.c_str(),"w");
         for (int k=0; k<ksize; k++)
         {
             fprintf(file,"%e ",dx[2]*(0.5+(double)k));
@@ -3379,7 +3465,7 @@ NavierStokes::sum_jet_quantities ()
 
         const int steps = parent->levelSteps(0);
         FILE *file;
-        char filename[256];
+        std::string filename;
 
 	Array<Real> r(rsize);
 	for (int i=0; i<rsize; i++)
@@ -3389,21 +3475,29 @@ NavierStokes::sum_jet_quantities ()
 	    z[k] = dx[2]*(0.5+(double)k);
 
 #if 0
-	sprintf(filename,"JetData/JetData_%04d_r.dat",steps);
-	file = fopen(filename,"w");
+        filename  = BoxLib::Concatenate("JetData/JetData_", steps, 4);
+        filename += "_r.dat";
+
+	file = fopen(filename.c_str(),"w");
 	for (int i=0; i<rsize; i++)
 	    fprintf(file,"%e ",r[i]);
 	fclose(file);
 
-	sprintf(filename,"JetData/JetData_%04d_z.dat",steps);
-	file = fopen(filename,"w");
+        filename  = BoxLib::Concatenate("JetData/JetData_", steps, 4);
+        filename += "_z.dat";
+
+	file = fopen(filename.c_str(),"w");
 	for (int k=0; k<ksize; k++) 
 	    fprintf(file,"%e ",dx[2]*(0.5+(double)k));
 	fclose(file);
 
 	for (int v=0; v<jetVars; v++) {
-	    sprintf(filename,"JetData/JetData_%04d_v%04d.dat",steps,v);
-	    file = fopen(filename,"w");
+
+            filename  = BoxLib::Concatenate("JetData/JetData_", steps, 4);
+            filename += BoxLib::Concatenate(filename + "_v", v, 4);
+            filename += ".dat";
+
+	    file = fopen(filename.c_str(),"w");
 	    for (int k=0; k<ksize; k++) {
 		for (int i=0; i<rsize; i++) {
 		    fprintf(file,"%e ",jetData[(k*rsize+i)*jetVars+v]);
@@ -3414,12 +3508,16 @@ NavierStokes::sum_jet_quantities ()
 	    std::cout << "   ...done." << std::endl;
 	}
 #else
-	sprintf(filename,"JetData/JD%04d",steps);
-	std::string FullPath = filename;
+	std::string FullPath = BoxLib::Concatenate("JetData/JD", steps, 4);
+
 	if (!BoxLib::UtilCreateDirectory(FullPath, 0755))
 	    BoxLib::CreateDirectoryFailed(FullPath);
-	sprintf(filename,"%s/data.bin",FullPath.c_str());
-	file=fopen(filename,"w");
+
+        filename = FullPath;
+        filename += '/';
+        filename += "data.bin";
+
+	file=fopen(filename.c_str(),"w");
 	fwrite(&time,sizeof(double),1,file);
 	fwrite(&rsize,sizeof(int),1,file);
 	fwrite(&ksize,sizeof(int),1,file);
@@ -3554,9 +3652,8 @@ NavierStokes::writePlotFile (const std::string& dir,
     // The name is relative to the directory containing the Header file.
     //
     static const std::string BaseName = "/Cell";
-    char buf[64];
-    sprintf(buf, "Level_%d", level);
-    std::string Level = buf;
+
+    std::string Level = BoxLib::Concatenate("Level_", level, 1);
     //
     // Now for the full pathname of that directory.
     //
@@ -3688,9 +3785,7 @@ NavierStokes::estTimeStep ()
 
     const int   n_grow        = 0;
     Real        estdt         = 1.0e+20;
-#if defined(GENGETFORCE) || defined(MOREGENGETFORCE)
     const Real  cur_time      = state[State_Type].curTime();
-#endif
     const Real  cur_pres_time = state[Press_Type].curTime();
     MultiFab&   U_new         = get_new_data(State_Type);
 
@@ -3706,6 +3801,13 @@ NavierStokes::estTimeStep ()
         //
         // Get the velocity forcing.  For some reason no viscous forcing.
         //
+#ifdef BOUSSINESQ
+        // HACK HACK HACK 
+        // THIS CALL IS BROKEN 
+        // getForce(tforces,i,n_grow,Xvel,BL_SPACEDIM,cur_time,U_new[i]);
+        tforces.resize(BoxLib::grow(grids[i],n_grow),BL_SPACEDIM);
+        tforces.setVal(0.);
+#else
 #ifdef GENGETFORCE
         getForce(tforces,i,n_grow,Xvel,BL_SPACEDIM,cur_time,(*rho_ctime)[i]);
 #elif MOREGENGETFORCE
@@ -3714,6 +3816,7 @@ NavierStokes::estTimeStep ()
         getForce(tforces,i,n_grow,Xvel,BL_SPACEDIM,cur_time,U_new[i],U_new[i],Density);
 #else
         getForce(tforces,i,n_grow,Xvel,BL_SPACEDIM,(*rho_ctime)[i]);
+#endif		 
 #endif		 
         tforces.minus(Gp[i],0,0,BL_SPACEDIM);
         //
@@ -4071,10 +4174,8 @@ void NavierStokes::post_restart()
 
 void
 NavierStokes::post_regrid (int lbase,
-                                int new_finest)
+                           int new_finest)
 {
-   // if (projector && level == lbase)
-    //    projector->setFinestLevel(new_finest);
 }
 
 //
@@ -5802,8 +5903,7 @@ NavierStokes::getViscTerms (MultiFab& visc_terms,
         {
             diffusion->allocFluxBoxesLevel(viscosity, 0, 1);
             getViscosity(viscosity, time);
-            int viscComp = 0;
-            diffusion->getTensorViscTerms(visc_terms,time,viscosity,viscComp);
+            diffusion->getTensorViscTerms(visc_terms,time,viscosity,0);
         }
         else
         {
@@ -5864,9 +5964,8 @@ NavierStokes::getViscTerms (MultiFab& visc_terms,
                     getDiffusivity(cmp_diffn, time, icomp, 0, 1);
                 }
 
-                int diffComp = 0;
                 diffusion->getViscTerms(visc_terms,src_comp,icomp,
-                                        time,rho_flag,cmp_diffn,diffComp);
+                                        time,rho_flag,cmp_diffn,0);
 
                 if (variable_scal_diff)
                 {
@@ -5882,7 +5981,7 @@ NavierStokes::getViscTerms (MultiFab& visc_terms,
     {
         const int N = visc_terms.IndexMap().size();
 
-#ifdef BL_USE_OMP
+#ifdef _OPENMP
 #pragma omp parallel for
 #endif
         for (int i = 0; i < N; i++)
@@ -6359,7 +6458,7 @@ NavierStokes::create_umac_grown ()
 
             const int Ncrse = crse_src.IndexMap().size();
 
-#ifdef BL_USE_OMP
+#ifdef _OPENMP
 #pragma omp parallel for
 #endif
             for (int i = 0; i < Ncrse; i++)
@@ -6390,7 +6489,7 @@ NavierStokes::create_umac_grown ()
             //
             const int Nfine = fine_src.IndexMap().size();
 
-#ifdef BL_USE_OMP
+#ifdef _OPENMP
 #pragma omp parallel for
 #endif
             for (int i = 0; i < Nfine; i++)

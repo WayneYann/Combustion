@@ -84,6 +84,12 @@ public:
     // Cleanup data descriptors at end of run.
     //
     static void variableCleanUp ();
+
+    //
+    // Define error estimators
+    //
+    static void error_setup ();
+
     //
     // Init grid data at problem start-up.
     //
@@ -318,9 +324,9 @@ protected:
                         int  first_scalar,
                         int  last_scalar);
 
-    virtual void scalar_advection_update (Real dt,
-                                          int  first_scalar,
-                                          int  last_scalar);
+    void scalar_advection_update (Real dt,
+                                  int  first_scalar,
+                                  int  last_scalar);
 
     void scalar_diffusion_update (Real dt,
                                   int  first_scalar,
@@ -543,6 +549,15 @@ protected:
     //
     // Get the forcing term.
     //
+#ifdef BOUSSINESQ
+    void getForce (FArrayBox&       force,
+                   int              gridno,
+                   int              ngrow,
+                   int              strt_comp,
+                   int              num_comp,
+		   const Real       time,
+                   const FArrayBox& Scal);
+#else
 #ifdef MOREGENGETFORCE
     void getForce (FArrayBox&       force,
                    int              gridno,
@@ -565,6 +580,8 @@ protected:
                    const FArrayBox& Rho,
                    int              RComp = 0);
 #endif		 
+#endif		 
+
     //
     // Get state data.
     //
