@@ -8,15 +8,13 @@ COMBUSTION_DIR = ${TOP}/Combustion
 #
 
 PRECISION       = DOUBLE
-DEBUG           = FALSE
 DEBUG           = TRUE
 DIM             = 2
 COMP            = g++
 FCOMP           = gfortran
 USE_MPI         = TRUE
-USE_MPI         = FALSE
 USE_OMP         = FALSE
-USE_F90_SOLVERS = FALSE
+USE_F90_SOLVERS = TRUE
 VERBOSE         = FALSE
 
 # Enable flctin namelist
@@ -44,7 +42,6 @@ CEXE_sources +=
 FEXE_sources += PROB_$(DIM)D.F PROB_F.F
 CEXE_headers += 
 FEXE_headers += probdata.H PROB_F.H
-
 
 include $(COMBUSTION_DIR)/LMC/tools/make/Make.LMC
 
