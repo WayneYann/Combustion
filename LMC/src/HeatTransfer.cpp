@@ -1113,6 +1113,11 @@ HeatTransfer::set_typical_values(bool restart)
         if (ParallelDescriptor::IOProcessor())
         {
             cout << "Typical vals: " << endl;
+            cout << "\tVelocity: ";
+            for (int i=0; i<BL_SPACEDIM; ++i) {
+                cout << typical_values[i] << " ";
+            }
+            cout << endl;
             cout << "\tDensity: " << typical_values[Density] << endl;
             cout << "\tTemp: "    << typical_values[Temp]    << endl;
             cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
