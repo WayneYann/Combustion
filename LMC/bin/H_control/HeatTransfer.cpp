@@ -8846,7 +8846,15 @@ HeatTransfer::calc_divu (Real      time,
 
     MultiFab& S = get_data(State_Type,time);
     MultiFab RhoYdot(grids,nspecies,0);
-    compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);        
+    
+    if (dt > 0)
+      {
+	compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
+      }
+    else
+      {
+	RhoYdot.setVal(0);
+      }
     
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
