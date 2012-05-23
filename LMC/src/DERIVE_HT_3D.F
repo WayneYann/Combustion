@@ -20,26 +20,6 @@
 
 #define SDIM 3
 
-      subroutine FORT_DERNULL (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
-     &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
-     $                         level,grid_no)
-      implicit none
-      !
-      ! This is a null derived routine.
-      !
-      integer    lo(SDIM), hi(SDIM)
-      integer    DIMDEC(e)
-      integer    DIMDEC(dat)
-      integer    domlo(SDIM), domhi(SDIM)
-      integer    nv, ncomp
-      integer    bc(SDIM,2,ncomp)
-      REAL_T     delta(SDIM), xlo(SDIM), time, dt
-      REAL_T     e(DIMV(e),nv)
-      REAL_T     dat(DIMV(dat),ncomp)
-      integer    level, grid_no
-
-      end
-
       subroutine FORT_DERRHOMINUSSUMRHOY (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
      &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
      $                         level,grid_no)
