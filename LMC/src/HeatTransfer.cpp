@@ -1676,6 +1676,57 @@ void
 HeatTransfer::post_timestep (int crse_iteration)
 {
     NavierStokes::post_timestep(crse_iteration);
+    
+    const int finest_level = parent->finestLevel();
+    const int ncycle = parent->nCycle(level);
+    
+#ifdef PARTICLES
+    // dont redistribute/timestamp on the final subiteration except on the coarsest grid
+    if (HTPC != 0 && (crse_iteration < ncycle || level == 0))
+    {
+
+        const Real curr_time = state[State_Type].curTime();
+            
+        HTPC->Redistribute(false, true, level, 2);
+        if (!timestamp_dir.empty())
+        {
+            //get data for timestamping
+
+
+            
+            std::string basename = timestamp_dir;
+
+            if (basename[basename.length()-1] != '/') basename += '/';
+
+            basename += "Timestamp";
+            for (int lev = level; lev <= finest_level; lev++)
+            {
+                MultiFab& mf = parent->getLevel(lev).get_new_data(State_Type);
+                int pComp = (do_curvature_sample ?  mf.nComp()+1 : mf.nComp());
+
+                MultiFab tmf(mf.boxArray(), pComp, 2);
+                
+                if (do_curvature_sample)
+                {
+                    MultiFab MC(mf.boxArray(), 1, 0);
+
+                    derive("mean_progress_curvature", curr_time, MC, 0);
+                    int cComp = pComp - 1;
+                    tmf.setBndry(0,cComp,1);
+                    MultiFab::Copy(tmf,MC,0,cComp,1,0);
+                }
+
+                for (FillPatchIterator fpi(*this,tmf,2,curr_time,State_Type,0,mf.nComp());
+                     fpi.isValid();
+                     ++fpi)
+                {
+                    tmf[fpi.index()].copy(fpi(),0,0,mf.nComp());
+                }
+                HTPC->Timestamp(basename, tmf, lev, curr_time, timestamp_indices);
+            }
+        }
+    }
+#endif
 
     if (plot_reactions && level == 0)
     {
@@ -1714,7 +1765,10 @@ HeatTransfer::post_timestep (int crse_iteration)
 void
 HeatTransfer::post_restart ()
 {
-    NavierStokes::post_restart();
+    // we used to call NavierStokes::post_restart here, but it only did the
+    // make_rho's and particle stuff (which we don't want).
+    make_rho_prev_time();
+    make_rho_curr_time();
 
     Real dummy  = 0;
     int MyProc  = ParallelDescriptor::MyProc();
@@ -1788,8 +1842,6 @@ HeatTransfer::post_regrid (int lbase,
     {
         HTPC->Redistribute();
 
-        if (parent->finestLevel() > 0)
-            HTPC->RemoveParticlesNotAtFinestLevel();
     }
 #endif
 }
@@ -5558,7 +5610,7 @@ HeatTransfer::advance (Real time,
         int havedivu = 1;
         MultiFab* mac_rhs = create_mac_rhs(time,dt);
         showMF("mac",*mac_rhs,"mac_rhs",level);
-        mac_project(time,dt,S_old,mac_rhs,havedivu);
+        mac_project(time,dt,S_old,mac_rhs,havedivu,umac_n_grow);
         delete mac_rhs;
     }
 
@@ -5945,55 +5997,11 @@ HeatTransfer::advance (Real time,
 #ifdef PARTICLES
     if (HTPC != 0)
     {
-        if (level == parent->finestLevel())
-        {
-            const MultiFab& mf = get_new_data(State_Type);
-
-            const Real curr_time = state[State_Type].curTime();
-
-            HTPC->AdvectWithUmac(u_mac, level, dt);
-
-            if (!timestamp_dir.empty())
-            {
-                int pComp = (do_curvature_sample ?  mf.nComp()+1 : mf.nComp());
-
-                MultiFab tmf(mf.boxArray(), pComp, 2);
-                
-                if (do_curvature_sample) 
-                {
-                    MultiFab MC(mf.boxArray(), 1, 0);
-
-                    derive("mean_progress_curvature", curr_time, MC, 0);
-                    int cComp = pComp - 1;
-                    tmf.setBndry(0,cComp,1);
-                    MultiFab::Copy(tmf,MC,0,cComp,1,0);
-                }
-
-                for (FillPatchIterator fpi(*this,tmf,2,curr_time,State_Type,0,mf.nComp());
-                     fpi.isValid();
-                     ++fpi)
-                {
-                    tmf[fpi.index()].copy(fpi(),0,0,mf.nComp());
-                }
-
-                std::string basename = timestamp_dir;
-
-                if (basename[basename.length()-1] != '/') basename += '/';
-
-                basename += "Timestamp";
-
-                HTPC->Timestamp(basename, tmf, level, curr_time, timestamp_indices);
-            }
-        }
-
-        if (parent->finestLevel() > 0)
-        {
-            HTPC->RemoveParticlesNotAtFinestLevel();
-        }
+    HTPC->AdvectWithUmac(u_mac, level, dt);
     }
 #endif
 
-    advance_cleanup(dt,iteration,ncycle);
+    advance_cleanup(iteration,ncycle);
     //
     // Update estimate for allowable time step.
     //
