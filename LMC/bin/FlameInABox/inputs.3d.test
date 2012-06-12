@@ -47,7 +47,7 @@ amr.n_cell    = 128 128 128
 amr.n_cell    = 32 32 32
 
 amr.v=1
-amr.max_level =  2            # maximum level number allowed
+amr.max_level =  0            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 1 1 1 2 # number of buffer cells in error est
@@ -122,7 +122,7 @@ ns.dpdt_option = 0
 #ns.constant_rhoD_val = 0.0714286
 # ----------------  PROBLEM DEPENDENT INPUTS
 
-ns.lo_bc          = 0 0 1
+ns.lo_bc          = 0 0 5
 ns.hi_bc          = 0 0 2
 geometry.is_periodic = 1 1 0
 

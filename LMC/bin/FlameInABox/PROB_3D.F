@@ -35,7 +35,8 @@ c     Take fuel mixture from prob data
             end do
             T_bc(zone) = T_in
             u_bc(zone) = zero
-            v_bc(zone) = V_in
+            v_bc(zone) = zero
+            w_bc(zone) = V_in
 
          else 
 
@@ -57,10 +58,11 @@ c     Take fuel mixture from pmf file
             end do
             T_bc(zone) = pmf_vals(1)
             u_bc(zone) = zero
+            v_bc(zone) = zero
             if (V_in .lt. 0) then
-               v_bc(zone) = pmf_vals(2)*1.d-2
+               w_bc(zone) = pmf_vals(2)*1.d-2
             else
-               v_bc(zone) = V_in
+               w_bc(zone) = V_in
             endif
             
          endif

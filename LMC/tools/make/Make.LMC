@@ -102,8 +102,8 @@ ifeq ($(CHEMISTRY_MODEL), GRI30)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri/PMFs
   vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri
 endif
-ifeq ($(CHEMISTRY_MODEL), LIDRYERMOD)
-  CEXE_sources += LiDryerMOD.cpp
+ifeq ($(CHEMISTRY_MODEL), LIDRYER)
+  CEXE_sources += LiDryer.cpp
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer/PMFs
   vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer
 endif
