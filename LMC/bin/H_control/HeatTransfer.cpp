@@ -1683,7 +1683,12 @@ HeatTransfer::initDataOtherTypes ()
     //
     MultiFab& R = get_new_data(RhoYdot_Type);
     int nGrow = 0;
-    compute_instantaneous_reaction_rates(R,get_new_data(State_Type),nGrow);
+
+    // It is our current belief that at the beginning of a simulation we want omegadot=0
+    // This is how the Strang code does it
+    //    compute_instantaneous_reaction_rates(R,get_new_data(State_Type),nGrow);
+    get_new_data(RhoYdot_Type).setVal(0);
+
     showMFsub("1D",R,stripBox,"1D_dd_idot_R",level);
 
     get_new_data(FuncCount_Type).setVal(1);
