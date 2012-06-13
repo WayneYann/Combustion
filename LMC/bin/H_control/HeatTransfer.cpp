@@ -1678,6 +1678,13 @@ HeatTransfer::initData ()
 void
 HeatTransfer::initDataOtherTypes ()
 {
+    // to be consistent with Strang code, compute enthalpy with the EOS
+    const Real cur_time  = state[State_Type].curTime();
+    {
+        MultiFab rhoh(grids,1,0);
+	compute_rhohmix(cur_time,rhoh);
+        get_new_data(State_Type).copy(rhoh,0,RhoH,1);
+    }
     //
     // Assume that by now, S_new has "good" data
     //
