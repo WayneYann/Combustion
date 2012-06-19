@@ -5323,8 +5323,11 @@ HeatTransfer::set_htt_hmixTYP ()
     const int finest_level = parent->finestLevel();
 
     // set typical value for hmix, needed for TfromHY solves if not provided explicitly
-    if (typical_values[RhoH]==0) {
+    if (typical_values[RhoH]==0)
+    {
         htt_hmixTYP = 0;
+        std::vector< std::pair<int,Box> > isects;
+        isects.reserve(27);
         for (int k = 0; k <= finest_level; k++)
         {
             AmrLevel& ht = getLevel(k);
@@ -5339,7 +5342,7 @@ HeatTransfer::set_htt_hmixTYP ()
                 BoxArray baf = BoxArray(htf.boxArray()).coarsen(parent->refRatio(k));
                 for (MFIter mfi(hmix); mfi.isValid(); ++mfi)
                 {
-                    std::vector< std::pair<int,Box> > isects = baf.intersections(ba[mfi.index()]);
+                    baf.intersections(ba[mfi.index()],isects);
                     for (int i = 0; i < isects.size(); i++)
                     {
                         hmix[mfi].setVal(0,isects[i].second,0,1);
@@ -5351,7 +5354,9 @@ HeatTransfer::set_htt_hmixTYP ()
         ParallelDescriptor::ReduceRealMax(htt_hmixTYP);
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "setting htt_hmixTYP(via domain scan) = " << htt_hmixTYP << '\n';
-    } else {
+    }
+    else
+    {
         htt_hmixTYP = typical_values[RhoH];
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "setting htt_hmixTYP(from user input) = " << htt_hmixTYP << '\n';
@@ -5950,10 +5955,14 @@ HeatTransfer::advance (Real time,
         MultiFab& divu_new = get_new_data(Divu_Type);
         MultiFab& divu_old = get_old_data(Divu_Type);
         MultiFab& dsdt_old = get_old_data(Dsdt_Type);
+
+        std::vector< std::pair<int,Box> > isects;
+
+        isects.reserve(27);
             
         for (MFIter mfi(divu_new); mfi.isValid();++mfi)
         {
-            std::vector< std::pair<int,Box> > isects = crsndgrids.intersections(mfi.validbox());
+            crsndgrids.intersections(mfi.validbox(),isects);
 
             for (int i = 0, N = isects.size(); i < N; i++)
             {
@@ -6165,6 +6174,10 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
 
     MultiFab t(grids,1,0,Fab_noallocate);
 
+    std::vector< std::pair<int,Box> > isects;
+
+    isects.reserve(27);
+
     for (FillPatchIterator T_fpi(*this,t,nGrow,time,State_Type,Temp,1),
              RhoY_fpi(*this,t,nGrow,time,State_Type,Density,nspecies+1);
          T_fpi.isValid() && RhoY_fpi.isValid();
@@ -6178,7 +6191,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
         tmp.copy(RhoY,0,0,1);
         tmp.invert(1);
 
-        std::vector< std::pair<int,Box> > isects = rhoh_BA.intersections(RhoY.box());
+        rhoh_BA.intersections(RhoY.box(),isects);
 
         for (int i = 0, N = isects.size(); i < N; i++)
         {
@@ -8447,9 +8460,13 @@ HeatTransfer::reflux ()
     // This is necessary in order to zero out the contribution to any
     // coarse grid cells which underlie fine grid cells.
     //
+    std::vector< std::pair<int,Box> > isects;
+
+    isects.reserve(27);
+
     for (MFIter mfi(*Vsync); mfi.isValid(); ++mfi)
     {
-        std::vector< std::pair<int,Box> > isects = baf.intersections(grids[mfi.index()]);
+        baf.intersections(grids[mfi.index()],isects);
 
         for (int i = 0, N = isects.size(); i < N; i++)
         {
