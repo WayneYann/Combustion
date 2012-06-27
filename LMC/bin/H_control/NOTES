@@ -6,6 +6,7 @@ last_spec  3+nspecies-1
 RhoH       3+nspecies   (12 in CHEMH)
 Trac       4+nspecies   (13 in CHEMH)
 Temp       5+nspecies   (14 in CHEMH)
+RhoRT      6+nspeces    (15 in CHEMH)
 
 Forcing has nspecies+1 components.  We re-use it for the advective forcing and the diffusion forcing.
 0:nspecies-1 are for RhoY
