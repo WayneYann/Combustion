@@ -4877,7 +4877,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     if (level > 0) 
     {
         HeatTransfer& coarser = *(HeatTransfer*) &(parent->getLevel(level-1));
-        Phi_crse = new MultiFab(coarser.grids, 1, 0);
+	Phi_crse = new MultiFab(coarser.grids, 1, 2);
     }
 
     for (int sigma = 0; sigma < nspecies+1; ++sigma)
@@ -4895,9 +4895,14 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
         {
             MultiFab::Copy(*Phi_crse,*S_crse,state_ind,0,1,0);
             for (MFIter mfi(*S_crse); mfi.isValid(); ++mfi)
-                Phi[mfi].divide((*S_crse)[mfi],(*Phi_crse)[mfi].box(),Density,0,1);
+	      {
+		(*Phi_crse)[mfi].divide((*S_crse)[mfi],(*Phi_crse)[mfi].box(),Density,0,1);
+	      }
+	    Phi_crse->FillBoundary();
+	    getLevel(level-1).geom.FillPeriodicBoundary(*Phi_crse);
         }
-        diffusion->getBndryDataGivenS(visc_bndry,Phi,*Phi_crse,state_ind,0,1);
+
+	diffusion->getBndryDataGivenS(visc_bndry,Phi,*Phi_crse,state_ind,0,1);
 
         bool bndry_already_filled = true;            
         int betaComp = sigma;
