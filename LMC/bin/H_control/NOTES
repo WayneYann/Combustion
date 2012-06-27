@@ -54,7 +54,7 @@ compute_differential_diffusion_terms(prev_time)  // compute Dn and DDn
     <compute flux, weight accordingly>           // Gamma_m for species, lambda/cp grad h for enthalpy
     adjust_spec_diffusion_fluxes()               // conservatively correct Gamma_m
       REPAIR_FLUX()
-    compute_enthalpy_fluxes()			 // compute lambda grad T, sum_m (Gamma_m + lambda/cp grad Y), and sum_m Gamma_m dot h_m
+    compute_enthalpy_fluxes()			 // compute lambda grad T, sum_m (Gamma_m + lambda/cp grad Y), and sum_m Gamma_m dot grad h_m
       ENTH_DIFF_TERMS() 
   flux_divergence()                              // put rho D_m grad Y_m (for species) and lambda/cp grad h (for enthalpy) into D
   flux_divergence()                              // put sum_m Gamma_m + lambda/cp grad Y_m (for enthalpy) into DD

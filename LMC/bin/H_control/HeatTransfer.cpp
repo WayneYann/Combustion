@@ -4920,7 +4920,12 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     //
     bool grow_cells_already_filled = true;
 
+    // conservatively correct Gamma_m
     adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
+
+    // compute lambda grad T (for temperature and divu)
+    // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy)
+    // compute sum_m Gamma_m dot grad h_m (for divu)
     compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);
 
     diffusion->removeFluxBoxesLevel(beta);
@@ -5010,9 +5015,17 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
     //  -Div(lambda.Grad(T)) + heating + sum(Fi.Grad(Hi)) 
     //
     compute_differential_diffusion_fluxes(time);
+
+    // compute div Gamma_m for species AND div lambda/cp grad h for enthalpy
     flux_divergence(D,0,flux,0,nspecies+1,-1);
+
+    // compute div sum_m h_m (Gamma_m + lambda/cp grad Y_m), a.k.a. the "diffdiff" terms
     flux_divergence(DD,0,flux,nspecies+1,1,-1);
+
+    // compute div lambda grad T for temperature
     flux_divergence(D,nspecies+1,flux,nspecies+2,1,-1);
+
+    // add sum_m Gamma_m dot grad h_m to D for temperature
     MultiFab::Add(D,sumSpecFluxDotGradH,0,nspecies+1,1,0);
 }
 
