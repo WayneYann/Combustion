@@ -5800,16 +5800,16 @@ HeatTransfer::advance_sdc (Real time,
     // Build a copy of rho(tn) with grow cells for use in the diffusion solves
     make_rho_prev_time();
 
-    //
-    // Compute Dn (based on state at tn)
-    //  (Note that coeffs at tn and tnp1 were intialized in _setup)
-    //
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "Dn (SDC predictor) \n";
+    //
+    // Compute Dn and DDn (based on state at tn)
+    //  (Note that coeffs at tn and tnp1 were intialized in _setup)
+    //
     compute_differential_diffusion_terms(Dn,DDn,prev_time);
 
     //
-    // Compute A (F = Dn + R)
+    // Compute A (advection terms) with F = Dn + R
     //
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
     {
@@ -5835,10 +5835,11 @@ HeatTransfer::advance_sdc (Real time,
     make_rho_curr_time();
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Dhat (SDC predictor) \n";
+
     // 
-    // Compute Dhat, diffuse with F = A + R + 0.5*(Dn + Dhat)
-    //                                      + 0.5*(DDn + DDnp1)
-    // NOTE: DDnp1 added with dd_update since we don't have it yet
+    // Solve for Dhat, diffuse with F = A + R + 0.5*(Dn + Dhat)
+    //                                        + 0.5*(DDn + DDnp1)
+    // NOTE: 0.5*DDnp1 added to F within dd_update after RhoY solve but before RhoH solve
     //
     Real theta = 0.5;
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
@@ -5857,8 +5858,12 @@ HeatTransfer::advance_sdc (Real time,
         f.plus(r,box,box,0,0,nspecies); // R[RhoH] == 0
     }
 
+    // we add theta_enthalpy*DDnp1 after RhoY solve to forcing for RhoH
     Real theta_enthalpy = theta;
+    
+    // advection-diffusion solve with theta=0.5, theta_enthalpy=0.5
     differential_diffusion_update(Forcing,0,theta,Dhat,0,DDnp1,theta_enthalpy);
+
     // 
     // Compute R, react with F = A + 0.5*(Dn + Dhat)
     //                             + 0.5*(DDn + DDnp1)
@@ -5884,7 +5889,9 @@ HeatTransfer::advance_sdc (Real time,
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "R (SDC predictor) \n";
+
     advance_chemistry(S_old,S_new,dt,Forcing,0);
+
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "DONE WITH R (SDC predictor) \n";
 
@@ -5924,13 +5931,16 @@ HeatTransfer::advance_sdc (Real time,
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  A (SDC corrector " << sdc_iter << ")\n";
+
         compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
         scalar_advection_update(dt, Density, RhoH);
 
         make_rho_curr_time();
         // 
-        // Compute Dhat: F = A + R + 0.5(Dn + Dnp1) - Dnp1 + Dhat + 0.5(Fextn + Fextnp1)
-        //                 = A + R + 0.5(Dn - Dnp1) + Dhat + 0.5(Fextn + Fextnp1)
+        // Compute Dhat, diffuse with F 
+	//                 = A + R + 0.5(Dn + Dnp1) - Dnp1 + Dhat + 0.5(DDn + DDnp1)
+        //                 = A + R + 0.5(Dn - Dnp1) + Dhat + 0.5(DDn + DDnp1)
+	// NOTE: Here we use 0.5*DDnp1 from the previous iteration
         // 
         Real sdc_theta = 1.0; // In order to use c-n solver w/F to get correct sdc form
         for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
@@ -5955,8 +5965,13 @@ HeatTransfer::advance_sdc (Real time,
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  Dhat (SDC corrector " << sdc_iter << ")\n";
-        theta_enthalpy = -1; // Do not recompute enthalpy diffusion terms
+
+	// Do not recompute enthalpy diffusion terms
+        theta_enthalpy = -1;
+
+	// advection-diffusion solve with theta=1, theta_enthalpy=-1
         differential_diffusion_update(Forcing,0,sdc_theta,Dhat,0,DDnp1,theta_enthalpy);
+
         // 
         // Compute R (F = A + 0.5(Dn - Dnp1 + DDn + DDnp1) + Dhat )
         // 
@@ -5983,6 +5998,7 @@ HeatTransfer::advance_sdc (Real time,
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  R (SDC corrector " << sdc_iter << ")\n";
+
         advance_chemistry(S_old,S_new,dt,Forcing,0);
     }
 
