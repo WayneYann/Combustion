@@ -9907,17 +9907,8 @@ MultiFab*
 HeatTransfer::derive (const std::string& name,
                       Real               time,
                       int                ngrow)
-{
-    int ncomp = 1;
-    const DeriveRec* rec = derive_lst.get(name);
-    if (rec)
-    {
-        ncomp = rec->numDerive();
-    }
-        
-    MultiFab* ret = new MultiFab(grids, ncomp, ngrow);
-    derive(name,time,*ret,0);
-    return ret;
+{        
+  return AmrLevel::derive(name, time, ngrow);
 }
 
 void
