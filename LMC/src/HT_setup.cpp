@@ -886,7 +886,7 @@ HeatTransfer::variableSetUp ()
     //
     // Force all particles to be tagged.
     //
-    err_list.add("total_particle_count",1,ErrorRec::Special,FORT_PART_CNT_ERR);
+    //err_list.add("total_particle_count",1,ErrorRec::Special,FORT_PART_CNT_ERR);
 #endif
     //
     // **************  DEFINE ERROR ESTIMATION QUANTITIES  *************
