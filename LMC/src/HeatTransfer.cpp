@@ -1681,47 +1681,54 @@ HeatTransfer::post_timestep (int crse_iteration)
     const int ncycle = parent->nCycle(level);
     
 #ifdef PARTICLES
-    // dont redistribute/timestamp on the final subiteration except on the coarsest grid
+    //
+    // Don't redistribute/timestamp on the final subiteration except on the coarsest grid.
+    //
     if (HTPC != 0 && (crse_iteration < ncycle || level == 0))
     {
-
         const Real curr_time = state[State_Type].curTime();
             
         HTPC->Redistribute(false, true, level, 2);
+
         if (!timestamp_dir.empty())
         {
-            //get data for timestamping
-
-
-            
+            //
+            // Get data for timestamping.
+            //
             std::string basename = timestamp_dir;
 
             if (basename[basename.length()-1] != '/') basename += '/';
 
             basename += "Timestamp";
+
             for (int lev = level; lev <= finest_level; lev++)
             {
-                MultiFab& mf = parent->getLevel(lev).get_new_data(State_Type);
-                int pComp = (do_curvature_sample ?  mf.nComp()+1 : mf.nComp());
+                if (HTPC->NumberOfParticlesAtLevel(lev) <= 0) continue;
+
+                AmrLevel&       amr   = parent->getLevel(lev);
+                const MultiFab& mf    = amr.get_new_data(State_Type);
+                const int       pComp = do_curvature_sample ?  (mf.nComp()+1) : mf.nComp();
 
                 MultiFab tmf(mf.boxArray(), pComp, 2);
+
+                ParallelDescriptor::Barrier(); 
                 
                 if (do_curvature_sample)
                 {
                     MultiFab MC(mf.boxArray(), 1, 0);
-
-                    derive("mean_progress_curvature", curr_time, MC, 0);
-                    int cComp = pComp - 1;
+                    amr.derive("mean_progress_curvature", curr_time, MC, 0);
+                    const int cComp = pComp - 1;
                     tmf.setBndry(0,cComp,1);
                     MultiFab::Copy(tmf,MC,0,cComp,1,0);
                 }
 
-                for (FillPatchIterator fpi(*this,tmf,2,curr_time,State_Type,0,mf.nComp());
+                for (FillPatchIterator fpi(amr,tmf,2,curr_time,State_Type,0,mf.nComp());
                      fpi.isValid();
                      ++fpi)
                 {
                     tmf[fpi.index()].copy(fpi(),0,0,mf.nComp());
                 }
+
                 HTPC->Timestamp(basename, tmf, lev, curr_time, timestamp_indices);
             }
         }
@@ -9910,6 +9917,8 @@ HeatTransfer::derive (const std::string& name,
 {        
   return AmrLevel::derive(name, time, ngrow);
 }
+
+ 
 
 void
 HeatTransfer::derive (const std::string& name,
