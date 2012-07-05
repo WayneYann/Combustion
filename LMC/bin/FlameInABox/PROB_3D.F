@@ -3874,6 +3874,8 @@ c
       integer isioproc
       integer nXvel, nYvel, nZvel, nRho, nTrac
 
+      call bl_pd_is_ioproc(isioproc)
+
       if (isioproc.eq.1 .and. pseudo_gravity.eq.1) then
          write(*,*) "pseudo_gravity::dV_control = ",dV_control
       endif
