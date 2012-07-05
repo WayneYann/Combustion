@@ -3,6 +3,7 @@
   use bl_error_module
   use multifab_module
   use bl_prof_module
+  use sdcquad_module
 
   implicit none
 
@@ -39,22 +40,150 @@ contains
   ! The time step is adjusted based on the CFL number and the computed
   ! Courant number.
   !
-  subroutine advance (U,dt,dx,cfl,eta,alam)
+  subroutine advance (U,dt,dx,cfl,eta,alam,sdc)
 
     type(multifab),   intent(inout) :: U
     double precision, intent(out  ) :: dt
     double precision, intent(in   ) :: dx(U%dim), cfl, eta, alam
+    type(sdcquad),    intent(in   ), optional :: sdc
 
     type(bl_prof_timer), save :: bpt_advance
 
     call build(bpt_advance, "bpt_advance")
 
-    call advance_rk3(U,dt,dx,cfl,eta,alam)
+    if (present(sdc)) then
+       call advance_sdc(U,sdc,dt,dx,cfl,eta,alam)
+    else
+       call advance_rk3(U,dt,dx,cfl,eta,alam)
+    end if
 
     call destroy(bpt_advance)
 
   end subroutine advance
 
+
+
+  !
+  ! Advance one time-step using SDC.
+  !
+  ! The time step is adjusted based on the CFL number and the computed
+  ! Courant number.
+  !
+  subroutine advance_sdc (U,sdc,dt,dx,cfl,eta,alam)
+
+    type(multifab),   intent(inout) :: U
+    double precision, intent(out  ) :: dt
+    double precision, intent(in   ) :: dx(U%dim), cfl, eta, alam
+    type(sdcquad),    intent(in   ) :: sdc
+
+    integer          :: k, m, nc, ng
+    double precision :: courno, courno_proc
+    type(layout)     :: la
+    type(multifab)   :: uSDC(sdc%nnodes), fSDC(sdc%nnodes)
+
+    nc = ncomp(U)
+    ng = nghost(U)
+    la = get_layout(U)
+
+    !
+    ! Set provisional solution, compute Courant number, set dt
+    !
+    do m = 1, sdc%nnodes
+       call build(uSDC(m), la, nc, ng)
+       call build(fSDC(m), la, nc, 0)
+    end do
+
+    courno_proc = 1.0d-50
+
+    call copy(uSDC(1), U)
+    call dUdt(uSDC(1),dx,eta,alam,fSDC(1),courno=courno_proc)
+
+    call parallel_reduce(courno, courno_proc, MPI_MAX)
+
+    dt = cfl / courno
+
+    if ( parallel_IOProcessor() ) then
+       print*, "dt,courno", dt, courno
+    end if
+
+    do m = 2, sdc%nnodes
+       call copy(uSDC(m), uSDC(1))
+       call copy(fSDC(m), fSDC(1))
+    end do
+
+
+    !
+    ! Perform SDC iterations
+    !
+    do k = 1, 2*sdc%nnodes - 1
+       call sdcsweep(uSDC, fSDC, sdc, dx, eta, alam, dt)
+    end do
+
+    call copy(U, uSDC(sdc%nnodes))
+    
+    !
+    ! Done
+    !
+    do m = 1, sdc%nnodes
+       call destroy(uSDC(m))
+       call destroy(fSDC(m))
+    end do
+
+  end subroutine advance_sdc
+
+  !
+  ! Perform one SDC sweep.
+  !
+  subroutine sdcsweep (uSDC,fSDC,sdc,dx,eta,alam,dt)
+    type(sdcquad),    intent(in   ) :: sdc
+    type(multifab),   intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes)
+    double precision, intent(in   ) :: dt, dx(uSDC(1)%dim), eta, alam
+
+    integer        :: m, n, nc
+    type(multifab) :: S(sdc%nnodes-1)
+    type(layout)   :: la
+
+    double precision :: dtsdc(sdc%nnodes-1)
+
+    la = get_layout(uSDC(1))
+    nc = ncomp(uSDC(1))
+
+    !
+    ! Compute integration
+    ! 
+    do m = 1, sdc%nnodes-1
+       call build(S(m), la, nc, 0)
+       call setval(S(m), 0.0d0)
+
+       ! matmul (explicit piece)
+       do n = 1, sdc%nnodes
+          call saxpy(S(m), sdc%smats(m,n,1), fSDC(n))
+       end do
+    end do
+
+    !
+    ! Perform sub-step correction
+    !
+    dtsdc = dt * (sdc%nodes(2:sdc%nnodes) - sdc%nodes(1:sdc%nnodes-1))
+    do m = 1, sdc%nnodes-1
+       ! U(m+1) = U(m) + dt * dUdt(m) + dt * S(m)
+
+       call copy(uSDC(m+1), uSDC(m))
+       call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
+       call saxpy(uSDC(m+1), dt, S(m))
+
+       call dUdt(uSDC(m+1), dx, eta, alam, fSDC(m+1))
+
+    end do
+
+    !
+    ! Done
+    !
+    do m = 1, sdc%nnodes-1
+       call destroy(S(m))
+    end do
+
+  end subroutine sdcsweep
 
 
   !
@@ -64,8 +193,6 @@ contains
   ! Courant number.
   !
   subroutine advance_rk3 (U,dt,dx,cfl,eta,alam)
-
-    use bl_prof_module
 
     type(multifab),   intent(inout) :: U
     double precision, intent(out  ) :: dt

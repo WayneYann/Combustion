@@ -9,6 +9,7 @@ program main
   use write_plotfile_module
   use advance_module
   use bl_prof_module
+  use sdcquad_module
 
   implicit none
   !
@@ -36,6 +37,7 @@ program main
   type(boxarray)     :: ba
   type(layout)       :: la
   type(multifab)     :: U
+  type(sdcquad)      :: sdc
 
   type(bl_prof_timer), save :: bpt, bpt_init_data, bpt_sleep
 
@@ -88,12 +90,19 @@ program main
   if ( parallel_IOProcessor() ) then
      write(6,probin)
   end if
+
+  !
+  ! Create SDC context
+  !
+  call build(sdc, SDC_GAUSS_LOBATTO, 3, 3)
+
   !
   ! Physical problem is a box on (-1,-1) to (1,1), periodic on all sides.
   !
   prob_lo     = -0.1d0
   prob_hi     =  0.1d0
   is_periodic = .true.
+
   !
   ! Create a box from (0,0) to (n_cell-1,n_cell-1).
   !
@@ -132,7 +141,7 @@ program main
         print*,'Advancing time step',istep,'time = ',time
      end if
      
-     call advance(U,dt,dx,cfl,eta,alam)
+     call advance(U,dt,dx,cfl,eta,alam,sdc)
 
      time = time + dt
 
@@ -153,7 +162,7 @@ program main
      print*,"Run time (s) =",end_time-start_time
   end if
 
-
+  call destroy(sdc)
   call destroy(bpt)
   call bl_prof_glean("bl_prof_report")
   call bl_prof_finalize()
