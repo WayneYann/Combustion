@@ -7,6 +7,7 @@
   implicit none
 
   private
+
   !
   ! These index constants are shared with the initial data routine.
   !
@@ -31,298 +32,29 @@
 contains
 
 
+
+  !
+  ! Advance one time-step.
+  !
+  ! The time step is adjusted based on the CFL number and the computed
+  ! Courant number.
+  !
   subroutine advance (U,dt,dx,cfl,eta,alam)
 
     type(multifab),   intent(inout) :: U
     double precision, intent(out  ) :: dt
     double precision, intent(in   ) :: dx(U%dim), cfl, eta, alam
 
-    call advance_rk3(U,dt,dx,cfl,eta,alam)
-
-  end subroutine advance
-
-
-
-  subroutine advance_rk3_orig (U,dt,dx,cfl,eta,alam)
-
-    use bl_prof_module
-
-    type(multifab),   intent(inout) :: U
-    double precision, intent(out  ) :: dt
-    double precision, intent(in   ) :: dx(U%dim), cfl, eta, alam
-
-    integer          :: lo(U%dim), hi(U%dim), i, j, k, m, n, nc, ng
-    double precision :: courno, courno_proc
-    type(layout)     :: la
-    type(multifab)   :: D, F, Unew, Q
-
-    double precision, pointer, dimension(:,:,:,:) :: up, dp, fp, unp, qp
-    !
-    ! Some arithmetic constants.
-    !
-    double precision, parameter :: OneThird      = 1.d0/3.d0
-    double precision, parameter :: TwoThirds     = 2.d0/3.d0
-    double precision, parameter :: OneQuarter    = 1.d0/4.d0
-    double precision, parameter :: ThreeQuarters = 3.d0/4.d0
-
     type(bl_prof_timer), save :: bpt_advance
 
     call build(bpt_advance, "bpt_advance")
 
-    nc = ncomp(U)
-    ng = nghost(U)
-    la = get_layout(U)
-    !
-    ! Sync U prior to calculating D & F.
-    !
-
-    call multifab_fill_boundary(U)
-
-    call multifab_build(D,    la, nc,   0)
-    call multifab_build(F,    la, nc,   0)
-    call multifab_build(Q,    la, nc+1, ng)
-    call multifab_build(Unew, la, nc,   ng)
-    !
-    ! Calculate primitive variables based on U.
-    !
-    ! Also calculate courno so we can set "dt".
-    !
-    courno_proc = 1.0d-50
-
-
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
-
-       up => dataptr(U,n)
-       qp => dataptr(Q,n)
-
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
-
-       call ctoprim(lo,hi,up,qp,dx,ng,courno=courno_proc)
-    end do
-
-    call parallel_reduce(courno, courno_proc, MPI_MAX)
-
-    dt = cfl / courno
-
-    if ( parallel_IOProcessor() ) then
-       print*, "dt,courno", dt, courno
-    end if
-    !
-    ! Calculate D at time N.
-    !
-    do n=1,nboxes(D)
-       if ( remote(D,n) ) cycle
-
-       qp => dataptr(Q,n)
-       dp => dataptr(D,n)
-
-       lo = lwb(get_box(D,n))
-       hi = upb(get_box(D,n))
-
-       call diffterm(lo,hi,ng,dx,qp,dp,ETA,ALAM)
-    end do
-
-    !
-    ! Calculate F at time N.
-    !
-    do n=1,nboxes(F)
-       if ( remote(F,n) ) cycle
-
-       up => dataptr(U,n)
-       qp => dataptr(Q,n)
-       fp => dataptr(F,n)
-
-       lo = lwb(get_box(F,n))
-       hi = upb(get_box(F,n))
-
-       call hypterm(lo,hi,ng,dx,up,qp,fp)
-    end do
-
-    !
-    ! Calculate U at time N+1/3.
-    !
-    do n=1,nboxes(U)
-       if ( remote(U,n) ) cycle
-
-       dp  => dataptr(D,   n)
-       fp  => dataptr(F,   n)
-       up  => dataptr(U,   n)
-       unp => dataptr(Unew,n)
-
-       lo = lwb(get_box(U,n))
-       hi = upb(get_box(U,n))
-
-       do m = 1, nc
-          !$OMP PARALLEL DO PRIVATE(i,j,k)
-          do k = lo(3),hi(3)
-             do j = lo(2),hi(2)
-                do i = lo(1),hi(1)
-                   unp(i,j,k,m) = up(i,j,k,m) + dt * (dp(i,j,k,m) + fp(i,j,k,m))
-                end do
-             end do
-          end do
-          !$OMP END PARALLEL DO
-       end do
-    end do
-    !
-    ! Sync U^1/3 prior to calculating D & F.
-    !
-    call multifab_fill_boundary(Unew)
-    !
-    ! Calculate primitive variables based on U^1/3.
-    !
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
-
-       up => dataptr(Unew,n)
-       qp => dataptr(Q,   n)
-
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
-
-       call ctoprim(lo,hi,up,qp,dx,ng)
-    end do
-    !
-    ! Calculate D at time N+1/3.
-    !
-    do n=1,nboxes(D)
-       if ( remote(D,n) ) cycle
-
-       qp => dataptr(Q,n)
-       dp => dataptr(D,n)
-
-       lo = lwb(get_box(D,n))
-       hi = upb(get_box(D,n))
-
-       call diffterm(lo,hi,ng,dx,qp,dp,ETA,ALAM)
-    end do
-    !
-    ! Calculate F at time N+1/3.
-    !
-    do n=1,nboxes(F)
-       if ( remote(F,n) ) cycle
-
-       up => dataptr(Unew,n)
-       qp => dataptr(Q,   n)
-       fp => dataptr(F,   n)
-
-       lo = lwb(get_box(F,n))
-       hi = upb(get_box(F,n))
-
-       call hypterm(lo,hi,ng,dx,up,qp,fp)
-    end do
-    !
-    ! Calculate U at time N+2/3.
-    !
-    do n=1,nboxes(U)
-       if ( remote(U,n) ) cycle
-
-       dp  => dataptr(D,   n)
-       fp  => dataptr(F,   n)
-       up  => dataptr(U,   n)
-       unp => dataptr(Unew,n)
-
-       lo = lwb(get_box(U,n))
-       hi = upb(get_box(U,n))
-
-       do m = 1, nc
-          !$OMP PARALLEL DO PRIVATE(i,j,k)
-          do k = lo(3),hi(3)
-             do j = lo(2),hi(2)
-                do i = lo(1),hi(1)
-                   unp(i,j,k,m) = ThreeQuarters * up(i,j,k,m) + &
-                        OneQuarter * (unp(i,j,k,m) + dt * (dp(i,j,k,m) + fp(i,j,k,m)))
-                end do
-             end do
-          end do
-          !$OMP END PARALLEL DO
-       end do
-    end do
-    !
-    ! Sync U^2/3 prior to calculating D & F.
-    !
-    call multifab_fill_boundary(Unew)
-    !
-    ! Calculate primitive variables based on U^2/3.
-    !
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
-
-       up => dataptr(Unew,n)
-       qp => dataptr(Q,   n)
-
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
-
-       call ctoprim(lo,hi,up,qp,dx,ng)
-    end do
-    !
-    ! Calculate D at time N+2/3.
-    !
-    do n=1,nboxes(D)
-       if ( remote(D,n) ) cycle
-
-       qp => dataptr(Q,n)
-       dp => dataptr(D,n)
-
-       lo = lwb(get_box(D,n))
-       hi = upb(get_box(D,n))
-
-       call diffterm(lo,hi,ng,dx,qp,dp,ETA,ALAM)
-    end do
-    !
-    ! Calculate F at time N+2/3.
-    !
-    do n=1,nboxes(F)
-       if ( remote(F,n) ) cycle
-
-       up => dataptr(Unew,n)
-       qp => dataptr(Q,   n)
-       fp => dataptr(F,   n)
-
-       lo = lwb(get_box(F,n))
-       hi = upb(get_box(F,n))
-
-       call hypterm(lo,hi,ng,dx,up,qp,fp)
-    end do
-    !
-    ! Calculate U at time N+1.
-    !
-    do n=1,nboxes(U)
-       if ( remote(U,n) ) cycle
-
-       dp  => dataptr(D,   n)
-       fp  => dataptr(F,   n)
-       up  => dataptr(U,   n)
-       unp => dataptr(Unew,n)
-
-       lo = lwb(get_box(U,n))
-       hi = upb(get_box(U,n))
-
-       do m = 1, nc
-          !$OMP PARALLEL DO PRIVATE(i,j,k)
-          do k = lo(3),hi(3)
-             do j = lo(2),hi(2)
-                do i = lo(1),hi(1)
-                   up(i,j,k,m) = OneThird * up(i,j,k,m) + &
-                        TwoThirds * (unp(i,j,k,m) + dt * (dp(i,j,k,m) + fp(i,j,k,m)))
-                end do
-             end do
-          end do
-          !$OMP END PARALLEL DO
-       end do
-    end do
-
-    call destroy(Unew)
-    call destroy(Q)
-    call destroy(F)
-    call destroy(D)
+    call advance_rk3(U,dt,dx,cfl,eta,alam)
 
     call destroy(bpt_advance)
 
-  end subroutine advance_rk3_orig
+  end subroutine advance
+
 
 
   !
@@ -354,9 +86,6 @@ contains
     double precision, parameter :: OneQuarter    = 1.d0/4.d0
     double precision, parameter :: ThreeQuarters = 3.d0/4.d0
 
-    type(bl_prof_timer), save :: bpt_advance
-
-    call build(bpt_advance, "bpt_advance")
 
     nc = ncomp(U)
     ng = nghost(U)
@@ -398,15 +127,58 @@ contains
 
     call destroy(Unew)
     call destroy(Uprime)
-    call destroy(bpt_advance)
 
   end subroutine advance_rk3
 
 
+
   !
-  ! Caluate dU/dt based on U.
+  ! Compute Unew = a U1 + b U2 + c Uprime.
   !
-  ! The Courant number (courno), if passed, is also computed.
+  subroutine update_rk3 (a,U1,b,U2,c,Uprime,Unew)
+
+    type(multifab),   intent(in   ) :: U1, U2, Uprime
+    type(multifab),   intent(inout) :: Unew
+    double precision, intent(in   ) :: a, b, c
+
+    integer :: lo(U1%dim), hi(U1%dim), i, j, k, m, n, nc
+
+    double precision, pointer, dimension(:,:,:,:) :: u1p, u2p, upp, unp
+
+    nc = ncomp(U1)
+
+    do n=1,nboxes(U1)
+       if ( remote(U1,n) ) cycle
+
+       u1p => dataptr(U1,    n)
+       u2p => dataptr(U2,    n)
+       unp => dataptr(Unew,  n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(Unew,n))
+       hi = upb(get_box(Unew,n))
+
+       do m = 1, nc
+          !$OMP PARALLEL DO PRIVATE(i,j,k)
+          do k = lo(3),hi(3)
+             do j = lo(2),hi(2)
+                do i = lo(1),hi(1)
+                   unp(i,j,k,m) = a * u1p(i,j,k,m) + b * u2p(i,j,k,m) + c * upp(i,j,k,m)
+                end do
+             end do
+          end do
+          !$OMP END PARALLEL DO
+       end do
+    end do
+
+  end subroutine update_rk3
+
+
+
+  !
+  ! Compute dU/dt given U.
+  !
+  ! The Courant number (courno) is also computed if passed.
   !
   subroutine dUdt (U,dx,eta,alam,Uprime,courno)
 
@@ -516,49 +288,12 @@ contains
   end subroutine dUdt
 
 
+
   !
-  ! Compute Unew = a U1 + b U2 + c Uprime
+  ! Compute primitive variables based on conservative variables.
   !
-  subroutine update_rk3 (a,U1,b,U2,c,Uprime,Unew)
-
-    type(multifab),   intent(in   ) :: U1, U2, Uprime
-    type(multifab),   intent(inout) :: Unew
-    double precision, intent(in   ) :: a, b, c
-
-    integer :: lo(U1%dim), hi(U1%dim), i, j, k, m, n, nc
-
-    double precision, pointer, dimension(:,:,:,:) :: u1p, u2p, upp, unp
-
-    nc = ncomp(U1)
-
-    do n=1,nboxes(U1)
-       if ( remote(U1,n) ) cycle
-
-       u1p => dataptr(U1,    n)
-       u2p => dataptr(U2,    n)
-       unp => dataptr(Unew,  n)
-       upp => dataptr(Uprime,n)
-
-       lo = lwb(get_box(Unew,n))
-       hi = upb(get_box(Unew,n))
-
-       do m = 1, nc
-          !$OMP PARALLEL DO PRIVATE(i,j,k)
-          do k = lo(3),hi(3)
-             do j = lo(2),hi(2)
-                do i = lo(1),hi(1)
-                   unp(i,j,k,m) = a * u1p(i,j,k,m) + b * u2p(i,j,k,m) + c * upp(i,j,k,m)
-                end do
-             end do
-          end do
-          !$OMP END PARALLEL DO
-       end do
-    end do
-
-  end subroutine update_rk3
-
-
-
+  ! The Courant number (courno) is also computed if passed.
+  !
   subroutine ctoprim (lo,hi,u,q,dx,ng,courno)
 
     use bl_prof_module
@@ -649,6 +384,9 @@ contains
 
 
 
+  !
+  ! Compute hyperbolic part (due to boundary fluxes) of dU/dt.
+  !
   subroutine hypterm (lo,hi,ng,dx,cons,q,flux)
 
     use bl_prof_module
@@ -856,6 +594,9 @@ contains
 
 
 
+  !
+  ! Compute diffusive part of dU/dt.
+  !
   subroutine diffterm (lo,hi,ng,dx,q,difflux,eta,alam)
 
     use bl_prof_module
