@@ -33,6 +33,18 @@ contains
 
   subroutine advance (U,dt,dx,cfl,eta,alam)
 
+    type(multifab),   intent(inout) :: U
+    double precision, intent(out  ) :: dt
+    double precision, intent(in   ) :: dx(U%dim), cfl, eta, alam
+
+    call advance_rk3(U,dt,dx,cfl,eta,alam)
+
+  end subroutine advance
+
+
+
+  subroutine advance_rk3_orig (U,dt,dx,cfl,eta,alam)
+
     use bl_prof_module
 
     type(multifab),   intent(inout) :: U
@@ -310,7 +322,240 @@ contains
 
     call destroy(bpt_advance)
 
-  end subroutine advance
+  end subroutine advance_rk3_orig
+
+
+  !
+  ! Advance one time-step using RK3.
+  !
+  ! The time step is adjusted based on the CFL number and the computed
+  ! Courant number.
+  !
+  subroutine advance_rk3 (U,dt,dx,cfl,eta,alam)
+
+    use bl_prof_module
+
+    type(multifab),   intent(inout) :: U
+    double precision, intent(out  ) :: dt
+    double precision, intent(in   ) :: dx(U%dim), cfl, eta, alam
+
+    integer          :: nc, ng
+    double precision :: courno, courno_proc
+    type(layout)     :: la
+    type(multifab)   :: Uprime, Unew
+
+    !
+    ! Some arithmetic constants.
+    !
+    double precision, parameter :: Zero          = 0.d0
+    double precision, parameter :: One           = 1.d0
+    double precision, parameter :: OneThird      = 1.d0/3.d0
+    double precision, parameter :: TwoThirds     = 2.d0/3.d0
+    double precision, parameter :: OneQuarter    = 1.d0/4.d0
+    double precision, parameter :: ThreeQuarters = 3.d0/4.d0
+
+    type(bl_prof_timer), save :: bpt_advance
+
+    call build(bpt_advance, "bpt_advance")
+
+    nc = ncomp(U)
+    ng = nghost(U)
+    la = get_layout(U)
+
+    call multifab_build(Uprime, la, nc, 0)
+    call multifab_build(Unew,   la, nc, ng)
+
+    !
+    ! Calculate U at time N+1/3
+    !
+    ! Also calculate Courant number and set dt
+    !
+    courno_proc = 1.0d-50
+
+    call dUdt(U,dx,eta,alam,Uprime,courno=courno_proc)
+
+    call parallel_reduce(courno, courno_proc, MPI_MAX)
+
+    dt = cfl / courno
+
+    if ( parallel_IOProcessor() ) then
+       print*, "dt,courno", dt, courno
+    end if
+
+    call update_rk3(One,U,Zero,Unew,dt,Uprime,Unew)
+
+    !
+    ! Calculate U at time N+2/3
+    !
+    call dUdt(Unew,dx,eta,alam,Uprime)
+    call update_rk3(ThreeQuarters,U,OneQuarter,Unew,OneQuarter*dt,Uprime,Unew)
+
+    !
+    ! Calculate U at time N+1
+    !
+    call dUdt(Unew,dx,eta,alam,Uprime)
+    call update_rk3(OneThird,U,TwoThirds,Unew,TwoThirds*dt,Uprime,U)
+
+    call destroy(Unew)
+    call destroy(Uprime)
+    call destroy(bpt_advance)
+
+  end subroutine advance_rk3
+
+
+  !
+  ! Caluate dU/dt based on U.
+  !
+  ! The Courant number (courno), if passed, is also computed.
+  !
+  subroutine dUdt (U,dx,eta,alam,Uprime,courno)
+
+    type(multifab),   intent(inout) :: U, Uprime
+    double precision, intent(in   ) :: dx(U%dim), eta, alam
+    double precision, intent(inout), optional :: courno
+
+    integer          :: lo(U%dim), hi(U%dim), i, j, k, m, n, nc, ng
+    type(layout)     :: la
+    type(multifab)   :: D, F, Q
+
+    double precision, pointer, dimension(:,:,:,:) :: up, dp, fp, qp, upp
+
+    nc = ncomp(U)
+    ng = nghost(U)
+    la = get_layout(U)
+
+    !
+    ! Sync U prior to calculating D & F
+    !
+    call multifab_fill_boundary(U)
+    call multifab_build(D, la, nc,   0)
+    call multifab_build(F, la, nc,   0)
+    call multifab_build(Q, la, nc+1, ng)
+
+    !
+    ! Calculate primitive variables based on U
+    !
+    do n=1,nboxes(Q)
+       if ( remote(Q,n) ) cycle
+
+       up => dataptr(U,n)
+       qp => dataptr(Q,n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       ! if (present(courno)) then
+       !    call ctoprim(lo,hi,up,qp,dx,ng,courno=courno)
+       ! else
+       !    call ctoprim(lo,hi,up,qp,dx,ng)
+       ! end if
+       call ctoprim(lo,hi,up,qp,dx,ng,courno=courno)
+    end do
+
+    !
+    ! Calculate D
+    !
+    do n=1,nboxes(D)
+       if ( remote(D,n) ) cycle
+
+       qp => dataptr(Q,n)
+       dp => dataptr(D,n)
+
+       lo = lwb(get_box(D,n))
+       hi = upb(get_box(D,n))
+
+       call diffterm(lo,hi,ng,dx,qp,dp,eta,alam)
+    end do
+
+    !
+    ! Calculate F
+    !
+    do n=1,nboxes(F)
+       if ( remote(F,n) ) cycle
+
+       up => dataptr(U,n)
+       qp => dataptr(Q,n)
+       fp => dataptr(F,n)
+
+       lo = lwb(get_box(F,n))
+       hi = upb(get_box(F,n))
+
+       call hypterm(lo,hi,ng,dx,up,qp,fp)
+    end do
+
+    !
+    ! Calculate U'
+    !
+    do n=1,nboxes(U)
+       if ( remote(U,n) ) cycle
+
+       dp  => dataptr(D,     n)
+       fp  => dataptr(F,     n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(U,n))
+       hi = upb(get_box(U,n))
+
+       do m = 1, nc
+          !$OMP PARALLEL DO PRIVATE(i,j,k)
+          do k = lo(3),hi(3)
+             do j = lo(2),hi(2)
+                do i = lo(1),hi(1)
+                   upp(i,j,k,m) = dp(i,j,k,m) + fp(i,j,k,m)
+                end do
+             end do
+          end do
+          !$OMP END PARALLEL DO
+       end do
+    end do
+
+    call destroy(D)
+    call destroy(F)
+    call destroy(Q)
+
+  end subroutine dUdt
+
+
+  !
+  ! Compute Unew = a U1 + b U2 + c Uprime
+  !
+  subroutine update_rk3 (a,U1,b,U2,c,Uprime,Unew)
+
+    type(multifab),   intent(in   ) :: U1, U2, Uprime
+    type(multifab),   intent(inout) :: Unew
+    double precision, intent(in   ) :: a, b, c
+
+    integer :: lo(U1%dim), hi(U1%dim), i, j, k, m, n, nc
+
+    double precision, pointer, dimension(:,:,:,:) :: u1p, u2p, upp, unp
+
+    nc = ncomp(U1)
+
+    do n=1,nboxes(U1)
+       if ( remote(U1,n) ) cycle
+
+       u1p => dataptr(U1,    n)
+       u2p => dataptr(U2,    n)
+       unp => dataptr(Unew,  n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(Unew,n))
+       hi = upb(get_box(Unew,n))
+
+       do m = 1, nc
+          !$OMP PARALLEL DO PRIVATE(i,j,k)
+          do k = lo(3),hi(3)
+             do j = lo(2),hi(2)
+                do i = lo(1),hi(1)
+                   unp(i,j,k,m) = a * u1p(i,j,k,m) + b * u2p(i,j,k,m) + c * upp(i,j,k,m)
+                end do
+             end do
+          end do
+          !$OMP END PARALLEL DO
+       end do
+    end do
+
+  end subroutine update_rk3
 
 
 
