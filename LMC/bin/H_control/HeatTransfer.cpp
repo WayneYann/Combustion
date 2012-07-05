@@ -5032,6 +5032,28 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
 
     // add sum_m Gamma_m dot grad h_m to D for temperature
     MultiFab::Add(D,sumSpecFluxDotGradH,0,nspecies+1,1,0);
+
+    if (D.nGrow() > 0 && DD.nGrow() > 0)
+      {
+	BL_ASSERT(D.nGrow() == DD.nGrow());
+
+	const int nc = nspecies+2;
+	const int ncDD = 1;
+	for (MFIter mfi(D); mfi.isValid(); ++mfi)
+	  {
+	    FArrayBox& Dfab = D[mfi];
+	    FArrayBox& DDfab = DD[mfi];
+	    const Box& box = mfi.validbox();
+	    FORT_VISCEXTRAP(Dfab.dataPtr(),ARLIM(Dfab.loVect()),ARLIM(Dfab.hiVect()),
+			    box.loVect(),box.hiVect(),&nc);
+	    FORT_VISCEXTRAP(DDfab.dataPtr(),ARLIM(DDfab.loVect()),ARLIM(DDfab.hiVect()),
+			    box.loVect(),box.hiVect(),&ncDD);
+	  }
+	D.FillBoundary(0,nc);
+	geom.FillPeriodicBoundary(D,0,nc,true);
+	DD.FillBoundary(0,1);
+	geom.FillPeriodicBoundary(DD,0,1,true);
+      }
 }
 
 void
@@ -5811,6 +5833,11 @@ HeatTransfer::advance_sdc (Real time,
     //
     // Compute A (advection terms) with F = Dn + R
     //
+    
+    // FIXME: this call to setBndry can be removed once we have code to fill corners
+    //        on periodic C-F ghost cells
+    Forcing.setBndry(0,0,nspecies);
+
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
     {
         FArrayBox& f = Forcing[mfi];
@@ -5825,11 +5852,11 @@ HeatTransfer::advance_sdc (Real time,
         f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
         f.plus(dd,gbox,gbox,0,nspecies,1);
     }
-    Forcing.setBndry(0,0,nspecies);
     Forcing.FillBoundary(0,nspecies+1);
-    geom.FillPeriodicBoundary(Forcing,0,nspecies+1);
+    geom.FillPeriodicBoundary(Forcing,0,nspecies+1,true);
 
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+
     scalar_advection_update(dt, Density, RhoH);
 
     make_rho_curr_time();
@@ -6096,8 +6123,8 @@ HeatTransfer::create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow)
     {
         // BL_ASSERT(nGrow==0);  // FIXME: This does not seem to do grow cells correctly
         MultiFab  dpdt(grids,1,nGrow);
-        dpdt.setVal(0.0);
-        calc_dpdt(time,dt,dpdt,u_mac);
+        dpdt.setVal(0.0,nGrow);
+	calc_dpdt(time,dt,dpdt,u_mac);
         dpdt.FillBoundary();
         geom.FillPeriodicBoundary(dpdt,0,1);
         MultiFab::Add(rhs,dpdt,0,0,1,nGrow);
@@ -9047,8 +9074,8 @@ HeatTransfer::calc_dpdt (Real      time,
         const int i = mfi.index();
         
         dpdt[i].copy(S_old[i],grids[i],pComp,grids[i],0,1);
-        dpdt[i].plus(-p_amb);
-        dpdt[i].mult(1.0/dt);
+        dpdt[i].plus(-p_amb,grids[i]);
+        dpdt[i].mult(1.0/dt,grids[i]);
 
         ugradp.resize(grids[i],1);
         
@@ -9081,19 +9108,19 @@ HeatTransfer::calc_dpdt (Real      time,
         //  p is the current value, p0 is the value we're trying to get to,
         //  so dp/dt = (p0 - p)/dt.)
         //
-        dpdt[i].minus(ugradp,0,0,1);
+        dpdt[i].minus(ugradp,grids[i],0,0,1);
         //
         // Make sure to divide by gamma *after* subtracting ugradp.
         //
-        dpdt[i].divide(gamma[i]);
+        dpdt[i].divide(gamma[i],grids[i],0,0,1);
 
         if (dpdt_option == 0)
         {
-            dpdt[i].divide(S_old[i],pComp,0,1);
+	  dpdt[i].divide(S_old[i],grids[i],pComp,0,1);
         }
         else if (dpdt_option == 1)
         {
-            dpdt[i].divide(p_amb);
+	  dpdt[i].divide(p_amb,grids[i],0,1);
         }
         else
         {
@@ -9102,11 +9129,25 @@ HeatTransfer::calc_dpdt (Real      time,
             p_denom.copy(S_old[i],grids[i],pComp,grids[i],0,ncomp);
             Real num_norm = dpdt[i].norm(0,0,1);
             FabMinMax(p_denom,grids[i],2*num_norm*Real_MIN,p_amb,0,ncomp);
-            dpdt[i].divide(p_denom);
+            dpdt[i].divide(p_denom,grids[i],0,0,1);
         }
         
-        dpdt[i].mult(dpdt_factor);
+        dpdt[i].mult(dpdt_factor,grids[i]);
     }
+
+    if (dpdt.nGrow() > 0)
+      {
+	const int nc = 1;
+	for (MFIter mfi(dpdt); mfi.isValid(); ++mfi)
+	  {
+	    FArrayBox& dpdtfab = dpdt[mfi];
+	    const Box& box = mfi.validbox();
+	    FORT_VISCEXTRAP(dpdtfab.dataPtr(),ARLIM(dpdtfab.loVect()),ARLIM(dpdtfab.hiVect()),
+			    box.loVect(),box.hiVect(),&nc);
+	  }
+	dpdt.FillBoundary(0,1);
+	geom.FillPeriodicBoundary(dpdt,0,1,true);
+      }
 }
 
 //
