@@ -725,7 +725,7 @@ HeatTransfer::variableSetUp ()
     //
     Dsdt_Type = desc_lst.size();
 	    
-    ngrow = 0;
+    ngrow = 1;
     desc_lst.addDescriptor(Dsdt_Type,IndexType::TheCellType(),StateDescriptor::Point,ngrow,1,
                            &cell_cons_interp);
     set_dsdt_bc(bc,phys_bc);
