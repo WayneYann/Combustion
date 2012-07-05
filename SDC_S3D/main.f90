@@ -38,6 +38,7 @@ program main
   type(layout)       :: la
   type(multifab)     :: U
   type(sdcquad)      :: sdc
+  type(s3d)          :: ctx
 
   type(bl_prof_timer), save :: bpt, bpt_init_data, bpt_sleep
 
@@ -92,9 +93,12 @@ program main
   end if
 
   !
-  ! Create SDC context
+  ! Create S3D and SDC contexts
   !
   call build(sdc, SDC_GAUSS_LOBATTO, 3, 3)
+
+  ctx%eta  = eta
+  ctx%alam = alam
 
   !
   ! Physical problem is a box on (-1,-1) to (1,1), periodic on all sides.
@@ -141,7 +145,7 @@ program main
         print*,'Advancing time step',istep,'time = ',time
      end if
      
-     call advance(U,dt,dx,cfl,eta,alam,sdc)
+     call advance(U,dt,dx,cfl,ctx,sdc)
 
      time = time + dt
 
