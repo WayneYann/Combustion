@@ -5862,6 +5862,17 @@ HeatTransfer::advance_sdc (Real time,
 
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
 
+
+    // AJN HACK
+    if (level == 1)
+      {
+	VisMF::Write(*aofs,"a_aofs");
+	VisMF::Write(Forcing,"a_Forcing");
+	VisMF::Write(Dn,"a_Dn");
+	VisMF::Write(DDn,"a_DDn");
+	VisMF::Write(get_old_data(RhoYdot_Type),"a_R");
+      }
+
     scalar_advection_update(dt, Density, RhoH);
 
     make_rho_curr_time();
@@ -5911,12 +5922,12 @@ HeatTransfer::advance_sdc (Real time,
         const FArrayBox& ddnp1 = DDnp1[mfi];
         
         f.copy(dn,box,0,box,0,nspecies+1);
-        f.plus(dhat,box,box,0,0,nspecies+1);
-        f.plus(ddn,box,box,0,nspecies,1);
-        f.plus(ddnp1,box,box,0,nspecies,1);
+	f.plus(dhat,box,box,0,0,nspecies+1);  // BAD
+	f.plus(ddn,box,box,0,nspecies,1);
+	f.plus(ddnp1,box,box,0,nspecies,1);
         f.mult(0.5);
 
-        f.plus(a,box,box,first_spec,0,nspecies+1);
+	f.plus(a,box,box,first_spec,0,nspecies+1);  // BAD
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -6709,6 +6720,33 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
             // the FuncCount_Type anyway.
             //
 	    get_new_data(FuncCount_Type).copy(tmp);
+
+	    //
+	    // Ensure consistent grow cells
+	    //    
+	    MultiFab& React = get_new_data(RhoYdot_Type);
+	    
+	    if (React.nGrow() > 0)
+	      {
+		const int nc = nspecies;
+		for (MFIter mfi(React); mfi.isValid(); ++mfi)
+		  {
+		    FArrayBox& R = React[mfi];
+		    const Box& box = mfi.validbox();
+		    FORT_VISCEXTRAP(R.dataPtr(),ARLIM(R.loVect()),ARLIM(R.hiVect()),
+				    box.loVect(),box.hiVect(),&nc);
+		  }
+		React.FillBoundary(0,nspecies);
+		//
+		// Note: this is a special periodic fill in that we want to
+		// preserve the extrapolated grow values when periodic --
+		// usually we preserve only valid data.  The scheme relies on
+		// the fact that there is computable data in the "non-periodic"
+		// grow cells (produced via VISCEXTRAP above)
+		//
+		geom.FillPeriodicBoundary(React,0,nspecies,true);
+	      }
+
         }
         else
         {
