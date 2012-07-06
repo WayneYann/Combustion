@@ -39,7 +39,7 @@
 contains
 
 
-
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Advance one time-step.
   !
@@ -69,7 +69,7 @@ contains
   end subroutine advance
 
 
-
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Advance one time-step using SDC.
   !
@@ -85,7 +85,7 @@ contains
     type(s3d),        intent(in   ) :: ctx
 
     integer          :: k, m, nc, ng
-    double precision :: courno, courno_proc
+    double precision :: courno, courno_proc, res
     type(layout)     :: la
     type(multifab)   :: uSDC(sdc%nnodes), fSDC(sdc%nnodes)
 
@@ -119,19 +119,24 @@ contains
        call copy(fSDC(m), fSDC(1))
     end do
 
-
     !
     ! Perform SDC iterations
     !
     do k = 1, 2*sdc%nnodes - 1
        call sdcsweep(uSDC, fSDC, dx, dt, ctx, sdc)
+
+       res = sdcresidual(uSDC, fSDC, dt, sdc)
+
+       print *, 'SDC iteration', k, 'residual = ', res
+
+       if (res < 1.0d-3) then
+          print *, 'SDC RESIDUAL CONDITION MET'
+          exit
+       end if
     end do
 
     call copy(U, uSDC(sdc%nnodes))
     
-    !
-    ! Done
-    !
     do m = 1, sdc%nnodes
        call destroy(uSDC(m))
        call destroy(fSDC(m))
@@ -139,6 +144,8 @@ contains
 
   end subroutine advance_sdc
 
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Perform one SDC sweep.
   !
@@ -152,23 +159,22 @@ contains
     type(multifab) :: S(sdc%nnodes-1)
     type(layout)   :: la
 
-    double precision :: dtsdc(sdc%nnodes-1)
+    double precision :: res, dtsdc(sdc%nnodes-1)
 
     la = get_layout(uSDC(1))
     nc = ncomp(uSDC(1))
 
     !
-    ! Compute integration
+    ! Compute integrals (compact forward Euler)
     ! 
     do m = 1, sdc%nnodes-1
        call build(S(m), la, nc, 0)
        call setval(S(m), 0.0d0)
-
-       ! matmul (explicit piece)
        do n = 1, sdc%nnodes
           call saxpy(S(m), sdc%smats(m,n,1), fSDC(n))
        end do
     end do
+
 
     !
     ! Perform sub-step correction
@@ -176,7 +182,7 @@ contains
     dtsdc = dt * (sdc%nodes(2:sdc%nnodes) - sdc%nodes(1:sdc%nnodes-1))
     do m = 1, sdc%nnodes-1
 
-       ! U(m+1) = U(m) + dt * dUdt(m) + dt * S(m)
+       ! U(m+1) = U(m) + dt dUdt(m) + dt S(m)
 
        call copy(uSDC(m+1), uSDC(m))
        call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
@@ -186,9 +192,7 @@ contains
 
     end do
 
-    !
-    ! Done
-    !
+
     do m = 1, sdc%nnodes-1
        call destroy(S(m))
     end do
@@ -196,6 +200,45 @@ contains
   end subroutine sdcsweep
 
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Compute SDC residual.
+  !
+  function sdcresidual (uSDC,fSDC,dt,sdc) result(res)
+    real(dp_t)                      :: res
+    type(sdcquad),    intent(in   ) :: sdc
+    type(multifab),   intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes)
+    real(dp_t),       intent(in   ) :: dt      
+
+    integer        :: m, n, nc
+    type(multifab) :: R
+    type(layout)   :: la
+
+    la = get_layout(uSDC(1))
+    nc = ncomp(uSDC(1))
+
+    !
+    ! Compute integral
+    ! 
+    call build(R, la, nc, 0)
+    call copy(R, uSDC(1))
+
+    do m = 1, sdc%nnodes-1
+       do n = 1, sdc%nnodes
+          call saxpy(R, dt*sdc%smat(m,n), fSDC(n))
+       end do
+    end do
+
+    call saxpy(R, -1.0d0, uSDC(sdc%nnodes))
+    
+    res = norm_inf(R)
+
+    call destroy(R)
+
+  end function sdcresidual
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Advance one time-step using RK3.
   !
@@ -269,7 +312,7 @@ contains
   end subroutine advance_rk3
 
 
-
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Compute Unew = a U1 + b U2 + c Uprime.
   !
@@ -312,7 +355,7 @@ contains
   end subroutine update_rk3
 
 
-
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Compute dU/dt given U.
   !
@@ -422,7 +465,7 @@ contains
   end subroutine dUdt
 
 
-
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Compute primitive variables based on conservative variables.
   !
@@ -517,7 +560,7 @@ contains
   end subroutine ctoprim
 
 
-
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Compute hyperbolic part (due to boundary fluxes) of dU/dt.
   !
@@ -727,7 +770,7 @@ contains
   end subroutine hypterm
 
 
-
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Compute diffusive part of dU/dt.
   !

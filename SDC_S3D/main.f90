@@ -95,7 +95,7 @@ program main
   !
   ! Create S3D and SDC contexts
   !
-  call build(sdc, SDC_GAUSS_LOBATTO, 3, 3)
+  call build(sdc, SDC_GAUSS_LOBATTO, 5)
 
   ctx%eta  = eta
   ctx%alam = alam

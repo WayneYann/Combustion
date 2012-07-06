@@ -10,12 +10,14 @@ module sdcquad_module
 
   type :: sdcquad
 
-     integer :: qtype  = SDC_GAUSS_LOBATTO   ! SDC quadrature type
-     integer :: nnodes = 3                   ! Number of SDC nodes
+     integer :: qtype  = -1                ! SDC quadrature type
+     integer :: nnodes = -1                ! Number of SDC nodes
 
-     real(dp_t), pointer :: nodes(:)         ! SDC nodes
-     real(dp_t), pointer :: smat(:,:)        ! SDC S matrix (node to node quadrature)
-     real(dp_t), pointer :: smats(:,:,:)     ! User allocatable S matrices
+     real(dp_t) :: residual_tol = -1.0d0   ! Residual tolerance (ignored if negative)
+
+     real(dp_t), pointer :: nodes(:)       ! SDC nodes
+     real(dp_t), pointer :: smat(:,:)      ! SDC S matrix (node to node quadrature)
+     real(dp_t), pointer :: smats(:,:,:)   ! User allocatable S matrices
 
   end type sdcquad
 
@@ -31,9 +33,17 @@ module sdcquad_module
 
 contains
 
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Build SDC object.
+  !
+  ! If nnodes0 is supplied, XXX.
+  !
   subroutine sdcquad_build(sdc, qtype, nnodes, nnodes0)
-    integer,       intent(in ) :: qtype, nnodes, nnodes0
+    integer,       intent(in ) :: qtype, nnodes
     type(sdcquad), intent(out) :: sdc
+    integer,       intent(in ), optional :: nnodes0
 
     integer    :: m, refine
     real(dp_t) :: dsdc(nnodes-1)
@@ -44,7 +54,11 @@ contains
     allocate(sdc%nodes(nnodes))
     allocate(sdc%smat(nnodes-1,nnodes))
 
-    refine = (nnodes0 - 1) / (nnodes - 1)
+    if (present(nnodes0)) then
+       refine = (nnodes0 - 1) / (nnodes - 1)
+    else
+       refine = 1
+    end if
 
     select case (qtype)
     case (SDC_GAUSS_LOBATTO)
@@ -57,7 +71,7 @@ contains
        call sdcquadGR(nnodes0, refine, sdc%smat, sdc%nodes)
 
     case default
-       stop 'invalid SDC quadrature type'
+       stop 'ERROR: sdcquad_build: invalid SDC quadrature type.'
     end select
 
     ! make imex sdc smat matrices (XXX: this should be moved elsewhere)
@@ -74,6 +88,10 @@ contains
   end subroutine sdcquad_build
 
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Destroy SDC object.
+  !
   subroutine sdcquad_destroy(sdc)
     type(sdcquad), intent(inout) :: sdc
 
@@ -87,6 +105,10 @@ contains
   end subroutine sdcquad_destroy
 
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Set Clenshaw-Curtis SDC nodes and S matrix.
+  !
   subroutine sdcquadCC(nnodes, refine, smat, nodes)
     implicit none
     integer, intent(in)  :: nnodes, refine
@@ -1039,6 +1061,11 @@ contains
     end select
   end subroutine sdcquadCC
 
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Set Gauss-Lobatto SDC nodes and S matrix.
+  !
   subroutine sdcquadGL(nnodes, refine, smat, nodes)
     implicit none
     integer, intent(in)  :: nnodes, refine
@@ -1991,6 +2018,11 @@ contains
     end select
   end subroutine sdcquadGL
 
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Set Gauss-Radau SDC nodes and S matrix.
+  !
   subroutine sdcquadGR(nnodes, refine, smat, nodes)
     implicit none
     integer, intent(in)  :: nnodes, refine
