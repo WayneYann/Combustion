@@ -5862,17 +5862,6 @@ HeatTransfer::advance_sdc (Real time,
 
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
 
-
-    // AJN HACK
-    if (level == 1)
-      {
-	VisMF::Write(*aofs,"a_aofs");
-	VisMF::Write(Forcing,"a_Forcing");
-	VisMF::Write(Dn,"a_Dn");
-	VisMF::Write(DDn,"a_DDn");
-	VisMF::Write(get_old_data(RhoYdot_Type),"a_R");
-      }
-
     scalar_advection_update(dt, Density, RhoH);
 
     make_rho_curr_time();
