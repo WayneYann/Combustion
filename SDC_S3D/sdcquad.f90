@@ -45,7 +45,7 @@ contains
     type(sdcquad), intent(out) :: sdc
     integer,       intent(in ), optional :: nnodes0
 
-    integer    :: m, refine
+    integer    :: m, refine, lnnodes0
     real(dp_t) :: dsdc(nnodes-1)
 
     sdc%nnodes = nnodes
@@ -56,19 +56,21 @@ contains
 
     if (present(nnodes0)) then
        refine = (nnodes0 - 1) / (nnodes - 1)
+       lnnodes0 = nnodes0
     else
        refine = 1
+       lnnodes0 = nnodes
     end if
 
     select case (qtype)
     case (SDC_GAUSS_LOBATTO)
-       call sdcquadGL(nnodes0, refine, sdc%smat, sdc%nodes)
+       call sdcquadGL(lnnodes0, refine, sdc%smat, sdc%nodes)
 
     case (SDC_GAUSS_RADAU)
-       call sdcquadCC(nnodes0, refine, sdc%smat, sdc%nodes)
+       call sdcquadCC(lnnodes0, refine, sdc%smat, sdc%nodes)
 
     case (SDC_CLENSHAW_CURTIS)
-       call sdcquadGR(nnodes0, refine, sdc%smat, sdc%nodes)
+       call sdcquadGR(lnnodes0, refine, sdc%smat, sdc%nodes)
 
     case default
        stop 'ERROR: sdcquad_build: invalid SDC quadrature type.'
