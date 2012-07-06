@@ -1689,7 +1689,6 @@ HeatTransfer::initDataOtherTypes ()
     // Assume that by now, S_new has "good" data
     //
     MultiFab& R = get_new_data(RhoYdot_Type);
-    int nGrow = 0;
 
     // It is our current belief that at the beginning of a simulation we want omegadot=0
     // This is how the Strang code does it
@@ -4864,21 +4863,27 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     showMF("dd",S,"dd_rsT_fp",level);
     //
     // Create and fill (Rho,RhoY,RhoH,T) at coarser level
-    //
+    //    
     MultiFab* S_crse = 0;
-    if (level > 0) 
-    {
-        HeatTransfer& coarser = *(HeatTransfer*) &(parent->getLevel(level-1));
-        S_crse = &(coarser.get_data(State_Type,time));
-    }
-
-    MultiFab Phi(grids,1,nGrow); int phiComp = 0;
     MultiFab* Phi_crse = 0; 
     if (level > 0) 
     {
-        HeatTransfer& coarser = *(HeatTransfer*) &(parent->getLevel(level-1));
-	Phi_crse = new MultiFab(coarser.grids, 1, 2);
+      HeatTransfer* coarser = (HeatTransfer*) &(parent->getLevel(level-1));
+
+
+      BoxArray crse_grids(coarser->grids);
+      Phi_crse = new MultiFab(crse_grids, 1, 2);
+      S_crse = new MultiFab(crse_grids,S.nComp(),0,Fab_allocate);
+
+      for (FillPatchIterator S_fpi(*coarser,*S_crse,0,time,State_Type,0,S.nComp());
+	   S_fpi.isValid(); ++S_fpi)
+	{
+	  (*S_crse)[S_fpi.index()].copy(S_fpi(),0,0,S.nComp());
+	}
     }
+
+    MultiFab Phi(grids,1,nGrow);
+    int phiComp = 0;
 
     for (int sigma = 0; sigma < nspecies+1; ++sigma)
     {
