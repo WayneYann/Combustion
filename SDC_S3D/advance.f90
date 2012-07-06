@@ -46,22 +46,23 @@ contains
   ! The time step is adjusted based on the CFL number and the computed
   ! Courant number.
   !
-  subroutine advance (U,dt,dx,cfl,ctx,sdc)
+  subroutine advance (U,dt,dx,cfl,time,tfinal,method,ctx,sdc)
 
     type(multifab),   intent(inout) :: U
-    double precision, intent(out  ) :: dt
-    double precision, intent(in   ) :: dx(U%dim), cfl
+    double precision, intent(inout) :: dt
+    double precision, intent(in   ) :: dx(U%dim), cfl, time, tfinal
     type(s3d),        intent(in   ) :: ctx 
-    type(sdcquad),    intent(in   ), optional :: sdc
+    integer,          intent(in   ) :: method 
+    type(sdcquad),    intent(in   ) :: sdc
 
     type(bl_prof_timer), save :: bpt_advance
 
     call build(bpt_advance, "bpt_advance")
 
-    if (present(sdc)) then
-       call advance_sdc(U,dt,dx,cfl,ctx,sdc)
+    if (method == 2) then
+       call advance_sdc(U,dt,dx,cfl,time,tfinal,ctx,sdc)
     else
-       call advance_rk3(U,dt,dx,cfl,ctx)
+       call advance_rk3(U,dt,dx,cfl,time,tfinal,ctx)
     end if
 
     call destroy(bpt_advance)
@@ -76,11 +77,11 @@ contains
   ! The time step is adjusted based on the CFL number and the computed
   ! Courant number.
   !
-  subroutine advance_sdc (U,dt,dx,cfl,ctx,sdc)
+  subroutine advance_sdc (U,dt,dx,cfl,time,tfinal,ctx,sdc)
 
     type(multifab),   intent(inout) :: U
-    double precision, intent(out  ) :: dt
-    double precision, intent(in   ) :: dx(U%dim), cfl
+    double precision, intent(inout) :: dt
+    double precision, intent(in   ) :: dx(U%dim), cfl, time, tfinal
     type(sdcquad),    intent(in   ) :: sdc
     type(s3d),        intent(in   ) :: ctx
 
@@ -108,7 +109,13 @@ contains
 
     call parallel_reduce(courno, courno_proc, MPI_MAX)
 
-    dt = cfl / courno
+    if (cfl > 0.0d0) then
+       dt = cfl / courno
+    end if
+
+    if (time + dt > tfinal) then
+       dt = tfinal - time
+    end if
 
     if ( parallel_IOProcessor() ) then
        print*, "dt,courno", dt, courno
@@ -159,7 +166,7 @@ contains
     type(multifab) :: S(sdc%nnodes-1)
     type(layout)   :: la
 
-    double precision :: res, dtsdc(sdc%nnodes-1)
+    double precision :: dtsdc(sdc%nnodes-1)
 
     la = get_layout(uSDC(1))
     nc = ncomp(uSDC(1))
@@ -245,11 +252,11 @@ contains
   ! The time step is adjusted based on the CFL number and the computed
   ! Courant number.
   !
-  subroutine advance_rk3 (U,dt,dx,cfl,ctx)
+  subroutine advance_rk3 (U,dt,dx,cfl,time,tfinal,ctx)
 
     type(multifab),   intent(inout) :: U
-    double precision, intent(out  ) :: dt
-    double precision, intent(in   ) :: dx(U%dim), cfl
+    double precision, intent(inout) :: dt
+    double precision, intent(in   ) :: dx(U%dim), cfl, time, tfinal
     type(s3d),        intent(in   ) :: ctx
 
     integer          :: nc, ng
@@ -286,7 +293,13 @@ contains
 
     call parallel_reduce(courno, courno_proc, MPI_MAX)
 
-    dt = cfl / courno
+    if (cfl > 0.0d0) then
+       dt = cfl / courno
+    end if
+
+    if (time + dt > tfinal) then
+       dt = tfinal - time
+    end if
 
     if ( parallel_IOProcessor() ) then
        print*, "dt,courno", dt, courno

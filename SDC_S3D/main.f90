@@ -29,9 +29,9 @@ program main
   integer            :: un, farg, narg
   logical            :: need_inputs_file, found_inputs_file
   character(len=128) :: inputs_file_name
-  integer            :: i, lo(DM), hi(DM), istep
+  integer            :: i, lo(DM), hi(DM), istep, method, nnodes
   double precision   :: prob_lo(DM), prob_hi(DM), cfl, eta, alam
-  double precision   :: dx(DM), dt, time, start_time, end_time
+  double precision   :: dx(DM), dt, time, tfinal, start_time, end_time
   logical            :: is_periodic(DM)
   type(box)          :: bx
   type(boxarray)     :: ba
@@ -45,7 +45,9 @@ program main
   !
   ! What's settable via an inputs file.
   !
-  namelist /probin/ nsteps, plot_int, n_cell, max_grid_size, cfl, eta, alam
+  namelist /probin/ tfinal, nsteps, dt, cfl, plot_int, &
+       n_cell, max_grid_size, eta, alam, &
+       method, nnodes
 
   call boxlib_initialize()
   call bl_prof_initialize(on = .true.)
@@ -62,13 +64,18 @@ program main
   !
   ! Namelist default values -- overwritable via inputs file.
   !
-  nsteps        = 100
-  plot_int      = 10
-  n_cell        = 32
+  tfinal        = 2.5d-7        ! Final time
+  nsteps        = 100           ! Maximum number of time steps
+  dt            = tfinal/nsteps ! Time step size (ignored if CFL > 0)
+  cfl           = 0.5d0         ! Desired CFL number (use fixed size steps if CFL < 0)
+  plot_int      = 10            ! Plot interval (time steps)
+  n_cell        = 32            ! Number of grid cells per dimension
   max_grid_size = 32
-  cfl           = 0.5d0
-  eta           = 1.8d-4 ! Diffusion coefficient.
-  alam          = 1.5d2  ! Diffusion coefficient.
+  eta           = 1.8d-4        ! Diffusion coefficient
+  alam          = 1.5d2         ! Diffusion coefficient
+  method        = 1             ! 1=RK3, 2=SDC
+  nnodes        = 3             ! Number of SDC nodes
+
   !
   ! Read inputs file and overwrite any default values.
   !
@@ -95,7 +102,7 @@ program main
   !
   ! Create S3D and SDC contexts
   !
-  call build(sdc, SDC_GAUSS_LOBATTO, 5)
+  call build(sdc, SDC_GAUSS_LOBATTO, nnodes)
 
   ctx%eta  = eta
   ctx%alam = alam
@@ -132,8 +139,8 @@ program main
   call init_data(U,dx,prob_lo,prob_hi)
   call destroy(bpt_init_data)
 
-  istep = 0
-  time  = 0.d0
+  istep  = 0
+  time   = 0.d0
 
   if (plot_int > 0) then
      call write_plotfile(U,istep,dx,time,prob_lo,prob_hi)
@@ -145,14 +152,20 @@ program main
         print*,'Advancing time step',istep,'time = ',time
      end if
      
-     call advance(U,dt,dx,cfl,ctx,sdc)
+     call advance(U,dt,dx,cfl,time,tfinal,method,ctx,sdc)
 
      time = time + dt
 
      if (plot_int > 0) then
-        if (mod(istep,plot_int) .eq. 0 .or. istep .eq. nsteps) then
+        if ( mod(istep,plot_int) .eq. 0 &
+             .or. istep .eq. nsteps &
+             .or. time >= tfinal ) then
            call write_plotfile(U,istep,dx,time,prob_lo,prob_hi)
         end if
+     end if
+
+     if (time >= tfinal) then
+        exit
      end if
 
   end do
@@ -170,7 +183,6 @@ program main
   call destroy(bpt)
   call bl_prof_glean("bl_prof_report")
   call bl_prof_finalize()
-
 
   call boxlib_finalize()
 
