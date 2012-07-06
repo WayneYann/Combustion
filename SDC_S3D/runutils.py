@@ -3,33 +3,32 @@
 import os
 import subprocess
 
-dirname    = os.path.dirname(os.path.realpath(__file__))
-executable = dirname + '/main.Linux.gfortran.mpi.omp.exe'
+dirname    = os.path.dirname(os.path.realpath(__file__)) + '/'
+executable = dirname + 'main.Linux.gfortran.mpi.omp.exe'
 
 
 ###############################################################################
 
-def autorun(name, **arargs):
+def autorun(name, defaults={}, **arargs):
 
   clargs = parse_arguments()
 
   # make directory and change into it
   try:
-    os.mkdir(name)
+    os.system('mkdir -p ' + name)
   except:
     pass
 
-  os.chdir(name)
-  
   # write probin
   probin = {}
+  probin.update(defaults)
   probin.update(arargs)
   probin.update(clargs)
   
-  namelist(name + '.nml', 'probin', **probin)
+  namelist(name + '/input.nml', 'probin', **probin)
 
   # run!
-  p = subprocess.Popen([ executable, name + '.nml' ])
+  p = subprocess.Popen([ executable, 'input.nml' ], cwd=dirname+name)
   p.wait()
   
 

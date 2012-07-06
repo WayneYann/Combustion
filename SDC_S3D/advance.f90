@@ -136,10 +136,10 @@ contains
 
        print *, 'SDC iteration', k, 'residual = ', res
 
-       if (res < 1.0d-3) then
-          print *, 'SDC RESIDUAL CONDITION MET'
-          exit
-       end if
+       ! if (res < 1.0d-3) then
+       !    print *, 'SDC RESIDUAL CONDITION MET'
+       !    exit
+       ! end if
     end do
 
     call copy(U, uSDC(sdc%nnodes))
