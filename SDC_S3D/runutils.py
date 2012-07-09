@@ -9,9 +9,8 @@ executable = dirname + 'main.Linux.gfortran.mpi.omp.exe'
 
 ###############################################################################
 
-def autorun(name, defaults={}, **arargs):
-
-  clargs = parse_arguments()
+def autorun(name, dprobin={}, nprobin={}, 
+                  dsdc={},    nsdc={}):
 
   # make directory and change into it
   try:
@@ -20,12 +19,16 @@ def autorun(name, defaults={}, **arargs):
     pass
 
   # write probin
-  probin = {}
-  probin.update(defaults)
-  probin.update(arargs)
-  probin.update(clargs)
+  probin = dprobin.copy()
+  probin.update(nprobin)
+
+  sdc = dsdc.copy()
+  sdc.update(nsdc)
   
-  namelist(name + '/input.nml', 'probin', **probin)
+  filename = name + '/input.nml'
+  with open(filename, 'w') as f:
+    namelist(f, 'probin', **probin)
+    namelist(f, 'sdc', **sdc)
 
   # run!
   p = subprocess.Popen([ executable, 'input.nml' ], cwd=dirname+name)
@@ -34,16 +37,15 @@ def autorun(name, defaults={}, **arargs):
 
 ###############################################################################
 
-def namelist(filename, namelist, **kwargs):
+def namelist(f, namelist, **kwargs):
   """Write a Fortran namelist."""
 
-  with open(filename, 'w') as f:
-    f.write('&%s\n' % namelist)
+  f.write('&%s\n' % namelist)
 
-    for kw in kwargs:
-      f.write('  %s = %s\n' % (kw, kwargs[kw]))
-    
-    f.write('/\n')
+  for kw in kwargs:
+    f.write('  %s = %s\n' % (kw, kwargs[kw]))
+
+  f.write('/\n')
 
 
 ###############################################################################

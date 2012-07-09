@@ -29,7 +29,7 @@ program main
   integer            :: un, farg, narg
   logical            :: need_inputs_file, found_inputs_file
   character(len=128) :: inputs_file_name
-  integer            :: i, lo(DM), hi(DM), istep, method, nnodes
+  integer            :: i, lo(DM), hi(DM), istep, method
   double precision   :: prob_lo(DM), prob_hi(DM), cfl, eta, alam
   double precision   :: dx(DM), dt, time, tfinal, start_time, end_time
   logical            :: is_periodic(DM)
@@ -40,26 +40,22 @@ program main
   type(sdcquad)      :: sdc
   type(s3d)          :: ctx
 
-  type(bl_prof_timer), save :: bpt, bpt_init_data, bpt_sleep
+  type(bl_prof_timer), save :: bpt, bpt_init_data
 
   !
   ! What's settable via an inputs file.
   !
   namelist /probin/ tfinal, nsteps, dt, cfl, plot_int, &
        n_cell, max_grid_size, eta, alam, &
-       method, nnodes
+       method
 
   call boxlib_initialize()
   call bl_prof_initialize(on = .true.)
 
   call build(bpt, "bpt_main")
 
-
   start_time = parallel_wtime()
 
-  call build(bpt_sleep, "bpt_sleep")
-  call Sleep(5)
-  call destroy(bpt_sleep)
 
   !
   ! Namelist default values -- overwritable via inputs file.
@@ -74,7 +70,6 @@ program main
   eta           = 1.8d-4        ! Diffusion coefficient
   alam          = 1.5d2         ! Diffusion coefficient
   method        = 1             ! 1=RK3, 2=SDC
-  nnodes        = 3             ! Number of SDC nodes
 
   !
   ! Read inputs file and overwrite any default values.
@@ -100,10 +95,18 @@ program main
   end if
 
   !
-  ! Create S3D and SDC contexts
+  ! Create SDC context
   !
-  call build(sdc, SDC_GAUSS_LOBATTO, nnodes)
+  if (method == 2) then 
+     open(unit=un, file=inputs_file_name, status='old', action='read')
+     call build(sdc, un)
+     close(unit=un)
+     call mk_imex_smats(sdc)
+  end if
 
+  !
+  ! Create physics context
+  !
   ctx%eta  = eta
   ctx%alam = alam
 

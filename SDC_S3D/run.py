@@ -6,40 +6,53 @@ import subprocess
 from collections import defaultdict
 from runutils import autorun
 
+#### config
 
-defaults = {
+run = True
+
+probin = {
   'tfinal':  1.0e-6, 
   'dt':      2.5e-8,
   'cfl':    -1.0,
   'method':  2,
-  'nnodes':  3,
   }
 
-
-# runs
+sdc = {
+  'qtype': '"Gauss-Lobatto"',
+  'tol_residual': 1e-12,
+  }
 
 runs = [ ('1000', 1.0e-7, 'plt00010'), 
          ('0500', 5.0e-8, 'plt00021'), 
          ('0250', 2.5e-8, 'plt00041'), 
-         ('0125', 1.25e-8, 'plt00081') ]
+         ('0125', 1.25e-8, 'plt00081'),
+         ]
 
-# autorun('conv/sdc13_dt0125', dt=1.25e-8,
-#         nnodes=13, method=2, defaults=defaults)
+#### run
 
+if run:
 
-# for name, dt, plt in runs:
+    autorun('conv/sdc13_dt0125', dt=1.25e-8,
+            nnodes=13, method=2, defaults=defaults)
 
-#     autorun('conv/rk3_dt%s' % name, dt=dt, 
-#             method=1, defaults=defaults)
+    for name, dt, plt in runs:
 
-#     autorun('conv/sdc3_dt%s' % name, dt=dt, 
-#             nnodes=3, method=2, defaults=defaults)
+        autorun('conv/rk3_dt%s' % name, dt=dt, 
+                method=1, defaults=defaults)
 
-#     autorun('conv/sdc5_dt%s' % name, dt=dt, 
-#             nnodes=5, method=2, defaults=defaults)
+        autorun('conv/sdc3_dt%s' % name, 
+                probin, { 'dt': dt }, 
+                sdc,    { 'nnodes': 3 })
 
-# compute errors
+        # autorun('conv/sdc5_dt%s' % name, 
+        #         probin, { 'dt': dt }, 
+        #         sdc,    { 'nnodes': 5, 'tol_residual': 1e-4 })
 
+        autorun('conv/sdc5_dt%s' % name, 
+                probin, { 'dt': dt }, 
+                sdc,    { 'nnodes': 5 })
+
+#### compute errors
 
 rho_errors = defaultdict(list)
 energy_errors = defaultdict(list)
@@ -63,26 +76,46 @@ for method in [ 'rk3', 'sdc3', 'sdc5' ]:
         err = m.group(1)
         energy_errors[method].append(float(err))
 
+#### plot!
+
+import matplotlib.pylab as plt
+
 dt = [ x[1] for x in runs ]
 
-print dt
-print rho_errors['rk3']
-print rho_errors['sdc3']
-print rho_errors['sdc5']
+plt.figure()
+plt.loglog(dt, rho_errors['rk3'], '-ok', label='RK3')
+plt.loglog(dt, rho_errors['sdc3'], '-sb', label='SDC3')
+plt.loglog(dt, rho_errors['sdc5'], '-^r', label='SDC5')
+plt.legend(loc='best')
+plt.xlabel('dt')
+plt.ylabel('max abs error')
+plt.title('density')
 
-print energy_errors['rk3']
-print energy_errors['sdc3']
-print energy_errors['sdc5']
-
-# import matplotlib.pylab as plt
-# plt.plot(dt, errors['rk3'], '-ok', label='RK3')
-# plt.plot(dt, errors['sdc3'], '-sb', label='SDC3')
-# plt.plot(dt, errors['sdc5'], '-^r', label='SDC5')
-# plt.legend()
-# plt.xlabel('dt')
-# plt.ylabel('max abs error (density)')
-# plt.show()
-
+plt.figure()
+plt.loglog(dt, energy_errors['rk3'], '-ok', label='RK3')
+plt.loglog(dt, energy_errors['sdc3'], '-sb', label='SDC3')
+plt.loglog(dt, energy_errors['sdc5'], '-^r', label='SDC5')
+plt.xlabel('dt')
+plt.ylabel('max abs error')
+plt.title('energy')
 
 
+e0 = energy_errors['rk3'][0]
+x = [ dt[0], dt[-1] ]
+y = [ e0, e0*(x[1]/x[0])**3 ]
+plt.loglog(x, y, '--k', label='3rd order')
 
+e0 = energy_errors['sdc3'][0]
+x = [ dt[0], dt[-1] ]
+y = [ e0, e0*(x[1]/x[0])**4 ]
+plt.loglog(x, y, '--b', label='4th order')
+
+e0 = energy_errors['sdc5'][0]
+x = [ dt[0], dt[-1] ]
+y = [ e0, e0*(x[1]/x[0])**8 ]
+plt.loglog(x, y, '--r', label='8th order')
+
+
+plt.legend(loc='best')
+
+plt.show()
