@@ -950,7 +950,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   den(i,j,k) = rho
                enddo
             enddo
@@ -964,7 +964,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   den(i,j,k) = rho
                enddo
             enddo
@@ -978,7 +978,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   den(i,j,k) = rho
                enddo
             enddo
@@ -992,7 +992,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   den(i,j,k) = rho
                enddo
             enddo
@@ -1006,7 +1006,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   den(i,j,k) = rho
                enddo
             enddo
@@ -1020,7 +1020,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   den(i,j,k) = rho
                enddo
             enddo
@@ -1157,7 +1157,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   temp(i,j,k) = T
                enddo
             enddo
@@ -1171,7 +1171,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   temp(i,j,k) = T
                enddo
             enddo
@@ -1185,7 +1185,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   temp(i,j,k) = T
                enddo
             enddo
@@ -1199,7 +1199,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   temp(i,j,k) = T
                enddo
             enddo
@@ -1213,7 +1213,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   temp(i,j,k) = T
                enddo
             enddo
@@ -1227,7 +1227,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   temp(i,j,k) = T
                enddo
             enddo
@@ -1303,7 +1303,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoh(i,j,k) = rho*h
                enddo
             enddo
@@ -1317,7 +1317,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoh(i,j,k) = rho*h
                enddo
             enddo
@@ -1331,7 +1331,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoh(i,j,k) = rho*h
                enddo
             enddo
@@ -1345,7 +1345,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoh(i,j,k) = rho*h
                enddo
             enddo
@@ -1359,7 +1359,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoh(i,j,k) = rho*h
                enddo
             enddo
@@ -1373,7 +1373,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoh(i,j,k) = rho*h
                enddo
             enddo
@@ -1523,7 +1523,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 1) then
                      xvel(i,j,k) = u + uflct(1,j,k)*turb_scale
@@ -1545,7 +1545,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 1) then
                      xvel(i,j,k) = u + uflct(1,j,k)*turb_scale
@@ -1567,7 +1567,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 2) then
                      xvel(i,j,k) = u + uflct(i,1,k)*turb_scale
@@ -1589,7 +1589,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 2) then
                      xvel(i,j,k) = u + uflct(i,1,k)*turb_scale
@@ -1611,7 +1611,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
                      xvel(i,j,k) = u + turb_scale
@@ -1633,7 +1633,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 3) then
                      xvel(i,j,k) = u + uflct(i,j,1)*turb_scale
@@ -1753,7 +1753,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 1) then
                      yvel(i,j,k) = v + vflct(1,j,k)*turb_scale
@@ -1775,7 +1775,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 1) then
                      yvel(i,j,k) = v + vflct(1,j,k)*turb_scale
@@ -1797,7 +1797,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 2) then
                      yvel(i,j,k) = v + vflct(i,1,k)*turb_scale
@@ -1819,7 +1819,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 2) then
                      yvel(i,j,k) = v + vflct(i,1,k)*turb_scale
@@ -1841,7 +1841,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
                      yvel(i,j,k) = v + vflct(i,j,1)*turb_scale
@@ -1863,7 +1863,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 3) then
                      yvel(i,j,k) = v + vflct(i,j,1)*turb_scale
@@ -1978,7 +1978,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 1) then
                      zvel(i,j,k) = w + wflct(1,j,k)*turb_scale
@@ -2000,7 +2000,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 1) then
                      zvel(i,j,k) = w + wflct(1,j,k)*turb_scale
@@ -2022,7 +2022,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 2) then
                      zvel(i,j,k) = w + wflct(i,1,k)*turb_scale
@@ -2044,7 +2044,7 @@ c ::: -----------------------------------------------------------
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 2) then
                      zvel(i,j,k) = w + wflct(i,1,k)*turb_scale
@@ -2066,7 +2066,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
                      zvel(i,j,k) = w + wflct(i,j,1)*turb_scale
@@ -2088,7 +2088,7 @@ c ::: -----------------------------------------------------------
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 3) then
                      zvel(i,j,k) = w + wflct(i,j,1)*turb_scale
@@ -2181,7 +2181,7 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
             enddo
@@ -2195,7 +2195,7 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
                   y = (float(j)+.5)*delta(2)+domnlo(2)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
             enddo
@@ -2209,7 +2209,7 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
             enddo
@@ -2223,7 +2223,7 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
                z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
             enddo
@@ -2237,7 +2237,7 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
             enddo
@@ -2251,7 +2251,7 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
-                  call bcfunction(x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
+                  call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
             enddo

@@ -1143,84 +1143,197 @@ c===================================================================
       end
 
 
-      subroutine FORT_REPAIR_FLUX(lo, hi,
+      subroutine FORT_REPAIR_FLUX(lo, hi, dlo, dhi,
      &                            flux, DIMS(flux),
-     &                            state, DIMS(state), nc, dir)
+     &                            RhoY, DIMS(RhoY), dir, Ybc)
       implicit none
 
 #include "cdwrk.H"
 
-      integer lo(SDIM), hi(SDIM), nc, dir
+      integer lo(SDIM), hi(SDIM), dlo(SDIM), dhi(SDIM), dir, Ybc(SDIM,2)
       integer DIMDEC(flux)
-      integer DIMDEC(state)
-      REAL_T flux(DIMV(flux),nc)
-      REAL_T state(DIMV(state),nc)
-
+      integer DIMDEC(RhoY)
+      REAL_T flux(DIMV(flux),Nspec)
+      REAL_T RhoY(DIMV(RhoY),Nspec)
+      
       integer i, j, k, n
-      REAL_T sum, yedge, sumRhoY
-         
-!$omp parallel private(i,j,k,n,sum,yedge,sumRhoY)
+      REAL_T sumFlux, RhoYe, sumRhoYe
 
       if (dir.eq.0) then
-!$omp do
+
+c     First, assume away from physical boundaries, then use boundary-aware version below if applicable
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)+1
-                  sum     = zero
-                  sumRhoY = zero
-                  do n=1,nc
-                     sum     = sum + flux(i,j,k,n)
-                     sumRhoY = sumRhoY + half*(state(i-1,j,k,n)+state(i,j,k,n))
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,k,n)
+                     RhoYe = 0.5d0*(RhoY(i-1,j,k,n) + RhoY(i,j,k,n))
+                     sumRhoYe = sumRhoYe + RhoYe
                   end do               
-                  do n=1,nc
-                     yedge = half*(state(i-1,j,k,n)+state(i,j,k,n))
-                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge/sumRhoY
+                  do n=1,Nspec
+                     RhoYe = 0.5d0*(RhoY(i-1,j,k,n) + RhoY(i,j,k,n))
+                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe/sumRhoYe
                   end do
                end do
             end do
          end do
-!$omp end do
+c     xlo
+         if (Ybc(1,1).eq.EXT_DIR) then
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),dlo(1)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i-1,j,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i-1,j,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+c     xhi
+         if (Ybc(1,2).eq.EXT_DIR) then
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)
+                  do i = dhi(1)+1,hi(1)+1
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+
       else if (dir.eq.1) then
-!$omp do
+
+c     First, assume away from physical boundaries, then replace with boundary-aware version below if applicable
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)+1
                do i = lo(1),hi(1)
-                  sum     = zero
-                  sumRhoY = zero
-                  do n=1,nc
-                     sum     = sum + flux(i,j,k,n)
-                     sumRhoY = sumRhoY + half*(state(i,j-1,k,n)+state(i,j,k,n))
-                  end do
-                  do n=1,nc
-                     yedge = half*(state(i,j-1,k,n)+state(i,j,k,n))
-                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge/sumRhoY
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,k,n)
+                     RhoYe = 0.5d0*(RhoY(i,j-1,k,n) + RhoY(i,j,k,n))
+                     sumRhoYe = sumRhoYe + RhoYe
+                  enddo
+                  do n=1,Nspec
+                     RhoYe = 0.5d0*(RhoY(i,j-1,k,n) + RhoY(i,j,k,n))
+                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe/sumRhoYe
                   end do
                end do
             end do
          end do
-!$omp end do
-      else
-!$omp do
+c     ylo
+         if (Ybc(2,1).eq.EXT_DIR) then
+            do k = lo(3),hi(3)
+               do j = lo(2),dlo(2)
+                  do i = lo(1),hi(1)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j-1,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j-1,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+c     yhi
+         if (Ybc(2,2).eq.EXT_DIR) then
+            do k = lo(3),hi(3)
+               do j = dhi(2)+1,hi(2)+1
+                  do i = lo(1),hi(1)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+
+      else if (dir.eq.2) then
+
+c     First, assume away from physical boundaries, then replace with boundary-aware version below if applicable
          do k = lo(3),hi(3)+1
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)
-                  sum     = zero
-                  sumRhoY = zero
-                  do n=1,nc
-                     sum     = sum + flux(i,j,k,n)
-                     sumRhoY = sumRhoY + half*(state(i,j,k-1,n)+state(i,j,k,n))
-                  end do
-                  do n=1,nc
-                     yedge = half*(state(i,j,k-1,n)+state(i,j,k,n))
-                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge/sumRhoY
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,k,n)
+                     RhoYe = 0.5d0*(RhoY(i,j,k-1,n) + RhoY(i,j,k,n))
+                     sumRhoYe = sumRhoYe + RhoYe
+                  enddo
+                  do n=1,Nspec
+                     RhoYe = 0.5d0*(RhoY(i,j,k-1,n) + RhoY(i,j,k,n))
+                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe/sumRhoYe
                   end do
                end do
             end do
          end do
-!$omp end do
-      end if
-!$omp end parallel
+c     zlo
+         if (Ybc(3,1).eq.EXT_DIR) then
+            do k = lo(3),dlo(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j,k-1,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k-1,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+c     yzi
+         if (Ybc(3,2).eq.EXT_DIR) then
+            do k = dhi(3)+1,hi(3)+1
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+
+      endif
+
       end
+
 
       subroutine  FORT_FLUXDIV(lo, hi,
      &                         update, DIMS(update),
