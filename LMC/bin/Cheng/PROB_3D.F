@@ -192,8 +192,7 @@ c ::: -----------------------------------------------------------
 #include "visc.H"
 #include "conp.H"
 
-      integer lo(SDIM), hi(SDIM), i, j, zone, iCH4, getZone
-      character*(maxspnml) spName
+      integer lo(SDIM), hi(SDIM), i, j, zone, getZone
       INTEGER dimFile(3)
       REAL_T dxFile(3)
       REAL_T rand
@@ -416,17 +415,13 @@ c     Load domain dimensions into common, and set up boundary functions
       domnhi(1) = probhi(1)
       domnhi(2) = probhi(2)
       domnhi(3) = probhi(3)
-      
+ 
       call setupbc()
       bcinit = .true.
-      
-      iCH4 = -1
-      do n = 1,Nspec
-         call get_spec_name(spName,n)
-         if (spName .eq. 'CH4') iCH4 = n-1
-      end do
+
       zone = getZone(half*(domnlo(1)+domnhi(1)),half*(domnlo(2)+domnhi(2)),domnlo(3))
-      scale_control = Y_bc(iCH4,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))*(domnhi(2)-domnlo(2))
+      scale_control = Y_bc(fuelID-1,zone)*rho_bc(zone)*(domnhi(1)-domnlo(1))*(domnhi(2)-domnlo(2))
+
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
       endif
@@ -2519,9 +2514,6 @@ c
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
       REAL_T  cs,sg,r,scaler,scalet
       REAL_T  turbSclX,turbSclY,turbSclZ,turbSclR,turbSclT,factor
-      REAL_T frcfct
-
-      REAL_T, parameter :: T0 = .1436577d0
 
 #if defined(BL_DO_FLCT)
       integer DIMDEC(uflct)
@@ -2545,12 +2537,6 @@ c
       ihi = min(hi(1),domhi(1))
       jhi = min(hi(2),domhi(2))
       khi = min(hi(3),domhi(3)) 
-
-      frcfct = 1.0d0
-
-c      if (probtype.eq.5) then
-c         frcfct = 1.0d0 + .2d0 * sin(2*Pi*347*(time-T0))
-c      endif
 
 c     Compute a time-varying factor to apply to the velocity field fluctuations
       factor = 1.d0
@@ -2584,8 +2570,8 @@ c     correct depth.  This requires that time is not further scaled inside the
 c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
          convVel = one
          dt_flct = time - tbase_control
-        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
-c         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
+c        t_flct = zbase_control + Vin*dt_flct + dV_control*dt_flct**2
+         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
 
          call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
      $                  bc(1,1,1), domnlo, domnhi)
@@ -2606,11 +2592,11 @@ c         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
 
       if (lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
-            x = (float(i)+.5d0)*delta(1)+domnlo(1)
+            x = (float(i)+.5)*delta(1)+domnlo(1)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
-                  y = (float(j)+.5d0)*delta(2)+domnlo(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
 
                   call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
@@ -2647,11 +2633,11 @@ c         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
 
       if (hi(1).gt.domhi(1)) then
          do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5d0)*delta(1)+domnlo(1)
+            x = (float(i)+.5)*delta(1)+domnlo(1)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
-                  y = (float(j)+.5d0)*delta(2)+domnlo(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
 
                   call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
@@ -2688,11 +2674,11 @@ c         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
 
       if (lo(2).lt.domlo(2)) then
          do j = lo(2), domlo(2)-1
-            y = (float(j)+.5d0)*delta(2)+domnlo(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
 
                   call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
@@ -2730,11 +2716,11 @@ c         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
 
       if (hi(2).gt.domhi(2)) then
          do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5d0)*delta(2)+domnlo(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
 
                   call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
@@ -2771,13 +2757,13 @@ c         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
 
       if (lo(3).lt.domlo(3)) then
          do k = lo(3), domlo(3)-1
-            z = (float(k)+.5d0)*delta(3)+domnlo(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
             do j = lo(2),hi(2)
-               y = (float(j)+.5d0)*delta(2)+domnlo(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
                   r = SQRT(x*x + y*y)
-                  eta = EXP(-2*(Rfu-r)/.015d0)
+                  eta = EXP(-2*(Rfu-r)/.015)
 
                   call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
@@ -2792,7 +2778,6 @@ c         t_flct = zbase_control + Vin*dt_flct*factor + dV_control*dt_flct**2
                            if (r.le.Rfu) then
 c                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
                               vel(i,j,k,1) = u + uflct(i,j,1)*(1.0d0 + eta*1.574d0)*factor
-                              vel(i,j,k,1) = vel(i,j,k,1) * frcfct
                            endif
                         else
 #ifdef SWIRL
@@ -2823,7 +2808,6 @@ c                             vel(i,j,k,1) = u + uflct(i,j,1)*(2.7 + eta*4.25)
                            if (r.le.Rfu) then
 c                             vel(i,j,k,2) = v + vflct(i,j,1)*(2.7 + eta*4.25)
                               vel(i,j,k,2) = v + vflct(i,j,1)*(1.0d0 + eta*1.574d0)*factor
-                              vel(i,j,k,2) = vel(i,j,k,2) * frcfct
                            endif
                         else
 #ifdef SWIRL
@@ -2854,7 +2838,6 @@ c                             vel(i,j,k,2) = v + vflct(i,j,1)*(2.7 + eta*4.25)
                            if (r.le.Rfu) then
 c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
                               vel(i,j,k,3) = w + wflct(i,j,1)*(1.0d0 + eta*1.574d0)*factor
-                              vel(i,j,k,3) = vel(i,j,k,3) * frcfct
                            endif
                         else
 #ifdef SWIRL
@@ -2874,11 +2857,11 @@ c                             vel(i,j,k,3) = w + wflct(i,j,1)*(2.7 + eta*4.25)
       
       if (hi(3).gt.domhi(3)) then
          do k = domhi(3)+1, hi(3)
-            z = (float(k)+.5d0)*delta(3)+domnlo(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
             do j = lo(2),hi(2)
-               y = (float(j)+.5d0)*delta(2)+domnlo(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
 
                   call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 
@@ -2997,11 +2980,11 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
-            x = (float(i)+.5d0)*delta(1)+domnlo(1)
+            x = (float(i)+.5)*delta(1)+domnlo(1)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
-                  y = (float(j)+.5d0)*delta(2)+domnlo(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
                   call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   do n = 1,Nspec
                      rhoY(i,j,k,n) = rho*Yl(n)
@@ -3013,11 +2996,11 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
       
       if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
          do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5d0)*delta(1)+domnlo(1)
+            x = (float(i)+.5)*delta(1)+domnlo(1)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
-                  y = (float(j)+.5d0)*delta(2)+domnlo(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
                   call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   do n = 1,Nspec
                      rhoY(i,j,k,n) = rho*Yl(n)
@@ -3029,11 +3012,11 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
          do j = lo(2), domlo(2)-1
-            y = (float(j)+.5d0)*delta(2)+domnlo(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
                   call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   do n = 1,Nspec
                      rhoY(i,j,k,n) = rho*Yl(n)
@@ -3045,11 +3028,11 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
       
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
          do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5d0)*delta(2)+domnlo(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
                   call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   do n = 1,Nspec
                      rhoY(i,j,k,n) = rho*Yl(n)
@@ -3061,11 +3044,11 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
 
       if (bc(3,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
          do k = lo(3), domlo(3)-1
-            z = (float(k)+.5d0)*delta(3)+domnlo(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
             do j = lo(2),hi(2)
-               y = (float(j)+.5d0)*delta(2)+domnlo(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
                   call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   do n = 1,Nspec
                      rhoY(i,j,k,n) = rho*Yl(n)
@@ -3077,11 +3060,11 @@ c      print *, 'FORT_ALLCHEMFILL: ', domlo,domhi,delta,xlo,time
       
       if (bc(3,2).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
          do k = domhi(3)+1, hi(3)
-            z = (float(k)+.5d0)*delta(3)+domnlo(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
             do j = lo(2),hi(2)
-               y = (float(j)+.5d0)*delta(2)+domnlo(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
                   call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   do n = 1,Nspec
                      rhoY(i,j,k,n) = rho*Yl(n)
@@ -3158,11 +3141,11 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
-            x = (float(i)+.5d0)*delta(1)+domnlo(1)
+            x = (float(i)+.5)*delta(1)+domnlo(1)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
-                  y = (float(j)+.5d0)*delta(2)+domnlo(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
                   call bcfunction(XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
@@ -3172,11 +3155,11 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
       
       if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
          do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5d0)*delta(1)+domnlo(1)
+            x = (float(i)+.5)*delta(1)+domnlo(1)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do j = lo(2), hi(2)
-                  y = (float(j)+.5d0)*delta(2)+domnlo(2)
+                  y = (float(j)+.5)*delta(2)+domnlo(2)
                   call bcfunction(XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
@@ -3186,11 +3169,11 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
          do j = lo(2), domlo(2)-1
-            y = (float(j)+.5d0)*delta(2)+domnlo(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
                   call bcfunction(YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
@@ -3200,11 +3183,11 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
       
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
          do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5d0)*delta(2)+domnlo(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)
             do k = lo(3),hi(3)
-               z = (float(k)+.5d0)*delta(3)+domnlo(3)
+               z = (float(k)+.5)*delta(3)+domnlo(3)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
                   call bcfunction(YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
@@ -3214,11 +3197,11 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
 
       if (bc(3,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
          do k = lo(3), domlo(3)-1
-            z = (float(k)+.5d0)*delta(3)+domnlo(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
             do j = lo(2),hi(2)
-               y = (float(j)+.5d0)*delta(2)+domnlo(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
                   call bcfunction(ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
@@ -3228,11 +3211,11 @@ c      print *, 'FORT_CHEMFILL: ', domlo,domhi,delta,xlo,time
       
       if (bc(3,2).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
          do k = domhi(3)+1, hi(3)
-            z = (float(k)+.5d0)*delta(3)+domnlo(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
             do j = lo(2),hi(2)
-               y = (float(j)+.5d0)*delta(2)+domnlo(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
-                  x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
                   call bcfunction(ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.false.)
                   rhoY(i,j,k) = rho*Yl(id)
                enddo
@@ -4292,7 +4275,7 @@ c
       do k=dlo(3),dhi(3)
          do j=dlo(2),dhi(2)
             do i = dlo(1), dhi(1)
-               x = xlo(1) + (i-plo(1)+.5d0)*dx(1)
+               x = xlo(1) + (i-plo(1)+.5)*dx(1)
                if (x.le..005) then
                   divu(i,j,k) = zero
                else
@@ -4317,7 +4300,7 @@ c     divu(i,j,k) = min(two,one+time/.05)
       do k=dlo(3),dhi(3)
          do j=dlo(2),dhi(2)
             do i = dlo(1), dhi(1)
-               x = xlo(1) + (i-plo(1)+.5d0)*dx(1)
+               x = xlo(1) + (i-plo(1)+.5)*dx(1)
                divu(i,j,k) = merge(one,zero,x.GE.0.5d0)
             enddo
          enddo
@@ -4372,7 +4355,7 @@ c
                   dz = MIN(ABS(zz-hotspot_z-hotspot_dz),ABS(hotspot_z-zz))
                   r = SQRT(dr*dr+dz*dz)                  
                end if
-               rad(i,j,k) = half*(one-tanh(two*(r-1.5d0*hotspot_w)/hotspot_w))
+               rad(i,j,k) = half*(one-tanh(two*(r-1.5*hotspot_w)/hotspot_w))
      &                                       *hotspot_htc*(hotspot_T - T(i,j,k))
 
 #else
