@@ -19,7 +19,7 @@
 #       define  ARLIM(x)  x(1),x(2),x(3)
 #   endif
 
-#define SDIM 2
+#define SDIM 3
 
       subroutine FORT_CALCDIVU(lo, hi,
      &                         divu, DIMS(divu), rYdot, DIMS(rYdot),
@@ -86,7 +86,7 @@
       subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dlo, dhi, dx, T, DIMS(T), RhoY, DIMS(RhoY),
      &                                rhoDx, DIMS(rhoDx), Fx, DIMS(Fx), Ax, DIMS(Ax), 
      &                                rhoDy, DIMS(rhoDy), Fy, DIMS(Fy), Ay, DIMS(Ay), 
-     &                                rhoDz, DIMS(rhoDz), Fz, DIMS(Fz), Ay, DIMS(Az), 
+     &                                rhoDz, DIMS(rhoDz), Fz, DIMS(Fz), Az, DIMS(Az), 
      &                                FiGHi, DIMS(FiGHi), Tbc )
 
       implicit none
@@ -124,7 +124,7 @@
       integer DIMDEC(FiGHi)
       REAL_T  FiGHi(DIMV(FiGHi))
 
-      REAL_T, allocatable :: H(:,:,:)
+      REAL_T, allocatable :: H(:,:,:,:)
 
       integer i, j, k, d, n, elo, ehi
       integer lob(SDIM), hib(SDIM)
@@ -251,7 +251,7 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
          do k=lo(3)-1,hi(3)+1
             do j=lo(2)-1,hi(2)+1
                do i=lo(1)-1,hi(1)+1
-                  rhoInv(i,j) = rhoInv(i,j) + RhoY(i,j,n)
+                  rhoInv(i,j,k) = rhoInv(i,j,k) + RhoY(i,j,k,n)
                enddo
             enddo
          enddo
@@ -451,7 +451,7 @@ c     xhi
          i = hi(1)
          do k=lo(3),hi(3)
          do j=lo(2),hi(2)
-            FiGHi(i,j) = 0.d0
+            FiGHi(i,j,k) = 0.d0
          enddo
          enddo
          do n=1,Nspec
@@ -594,20 +594,61 @@ c     zhi
       deallocate(H)
       end
 
-     &                        *(species(i,j+1,k)-species(i,j,k))
-            betadotzlo = betaz(i,j,k  )*(h(i,j,k)-h(i,j,k-1))
-     &                        *(species(i,j,k)-species(i,j,k-1))
-            betadotzhi = betaz(i,j,k+1)*(h(i,j,k+1)-h(i,j,k))
-     &                        *(species(i,j,k+1)-species(i,j,k))
-            rdghdgy(i,j,k) =  half*((betadotxlo + betadotxhi)/dxsqr +
-     &                            (betadotylo + betadotyhi)/dysqr +
-     &                            (betadotzlo + betadotzhi)/dysqr)
-          enddo
-        enddo
-      enddo
-!$omp end parallel do
+      subroutine FORT_COMPUTE_RHODGRADHDOTGRADY(dx,
+     &         lo, hi, DIMS(species), species,
+     &         DIMS(h), h, DIMS(betax), betax,
+     &         DIMS(betay), betay, DIMS(rdghdgy), rdghdgy)
 
+      implicit none
+
+c ... inputs
+
+      integer lo(SDIM), hi(SDIM)
+      REAL_T  dx(SDIM)
+      integer DIMDEC(species)
+      integer DIMDEC(h)
+      REAL_T  species(DIMV(species))
+      REAL_T  h(DIMV(h))
+      integer DIMDEC(betax)
+      integer DIMDEC(betay)
+      REAL_T betax(DIMV(betax))
+      REAL_T betay(DIMV(betay))
+      integer DIMDEC(rdghdgy)
+
+c ... outputs
+
+      REAL_T rdghdgy(DIMV(rdghdgy))
+
+c ... local
+
+      integer i,j,k
+      REAL_T  betaxcen, betaycen, betazcen, dxsqr, dysqr, dzsqr
+      REAL_T  betadotleft, betadotright
+      REAL_T  betadottop,  betadotbot
+      REAL_T  betadotfront,  betadotback
+
+c -------------------- begin here ----------------------------
+
+      dxsqr = dx(1)**2
+      dysqr = dx(2)**2
+      dzsqr = dx(3)**2
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               betadotleft  = betax(i,j,k)*(h(i,j,k)-h(i-1,j,k))*(species(i,j,k)-species(i-1,j,k))
+               betadotright = betax(i+1,j,k)*(h(i+1,j,k)-h(i,j,k))*(species(i+1,j,k)-species(i,j,k))
+               betadotbot   = betay(i,j,k)*(h(i,j,k)-h(i,j-1,k))*(species(i,j,k)-species(i,j-1,k))
+               betadottop   = betay(i,j+1,k)*(h(i,j+1,k)-h(i,j,k))*(species(i,j+1,k)-species(i,j,k))
+               betadotback  = betay(i,j,k)*(h(i,j,k)-h(i,j,k-1))*(species(i,j,k)-species(i,j,k-1))
+               betadotfront = betay(i,j,k+1)*(h(i,j,k+1)-h(i,j,k))*(species(i,j,k+1)-species(i,j,k))
+               rdghdgy(i,j,k) =  half*((betadotleft  + betadotright)/dxsqr +
+     &                                 (betadottop   + betadotbot)/dysqr +
+     &                                 (betadotfront + betadotback)/dzsqr )
+            enddo
+         enddo
+      end do
       end
+
 
       subroutine FORT_VELVISC(lo,hi,
      &                        DIMS(T), T,
@@ -1198,7 +1239,7 @@ c===================================================================
       REAL_T update(DIMV(update),nc)
       REAL_T xflux(DIMV(xflux),nc)
       REAL_T yflux(DIMV(yflux),nc)
-      REAL_T yflux(DIMV(zflux),nc)
+      REAL_T zflux(DIMV(zflux),nc)
       REAL_T vol(DIMV(vol))
       REAL_T scal
 
@@ -1208,7 +1249,7 @@ c===================================================================
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
-                  update(i,j,n)=scal*
+                  update(i,j,k,n)=scal*
      &                 ( (xflux(i+1,j,k,n)-xflux(i,j,k,n))
      &                 + (yflux(i,j+1,k,n)-yflux(i,j,k,n)) 
      &                 + (zflux(i,j,k+1,n)-zflux(i,j,k,n)) )/vol(i,j,k)
@@ -1216,6 +1257,613 @@ c===================================================================
             end do
          end do
       end do
+      end
+
+
+      subroutine fillEdges(dat,DIMS(dat),domlo,domhi,bc )
+c  This routine fills ghost cells with the value from the nearest
+c  interior cell.  
+      integer    DIMDEC(dat)
+      integer    bc(SDIM,2)
+      integer    domlo(SDIM), domhi(SDIM)
+      REAL_T     dat(DIMV(dat))
+
+      integer    lo(SDIM), hi(SDIM)
+      integer    i, j, k
+      integer    ilo, ihi, jlo, jhi, klo, khi
+      logical    do_xlo,do_xhi,do_ylo,do_yhi,do_zlo,do_zhi
+
+      lo(1) = ARG_L1(dat)
+      hi(1) = ARG_H1(dat)
+      lo(2) = ARG_L2(dat)
+      hi(2) = ARG_H2(dat)
+      lo(3) = ARG_L3(dat)
+      hi(3) = ARG_H3(dat)
+
+      ilo = max(lo(1),domlo(1))
+      ihi = min(hi(1),domhi(1))
+      jlo = max(lo(2),domlo(2))
+      jhi = min(hi(2),domhi(2))
+      klo = max(lo(3),domlo(3))
+      khi = min(hi(3),domhi(3))
+
+      do_xlo = lo(1).lt.domlo(1)
+      do_xhi = hi(1).gt.domhi(1)
+      do_ylo = lo(2).lt.domlo(2)
+      do_yhi = hi(2).gt.domhi(2)
+      do_zlo = lo(3).lt.domlo(3)
+      do_zhi = hi(3).gt.domhi(3)
+
+      if (bc(1,1).eq.EXT_DIR.and. do_xlo) then
+         do k = klo,khi
+            do j = jlo, jhi
+               do i = lo(1), domlo(1)-1
+                  dat(i,j,k) = dat(domlo(1),j,k)
+               enddo
+            enddo
+         enddo
+         if (do_ylo) then
+            do k = klo, khi
+               do j = lo(2), domlo(2)-1
+                  do i = lo(1), domlo(1)-1
+                     dat(i,j,k) = dat(domlo(1),domlo(2),k)
+                  enddo
+               enddo
+            enddo
+            if (do_zlo) then
+               do k = lo(3),domlo(3)-1
+                  do j = lo(2), domlo(2)-1
+                     do i = lo(1), domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domlo(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_zhi) then
+               do k = domhi(3)+1, hi(3)
+                  do j = lo(2), domlo(2)-1
+                     do i = lo(1), domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domlo(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_yhi) then
+            do k = klo, khi
+               do j = domhi(2)+1, hi(2)
+                  do i = lo(1), domlo(1)-1
+                     dat(i,j,k) = dat(domlo(1),domhi(2),k)
+                  enddo
+               enddo
+            enddo
+            if (do_zlo) then
+               do k = lo(3),domlo(3)-1
+                  do j = domhi(2)+1,hi(2)
+                     do i = lo(1), domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domhi(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_zhi) then
+               do k = domhi(3)+1, hi(3)
+                  do j = domhi(2)+1,hi(2)
+                     do i = lo(1), domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domhi(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_zlo) then
+            do k = lo(3), domlo(3)-1
+               do j = jlo, jhi
+                  do i = lo(1), domlo(1)-1
+                     dat(i,j,k) = dat(domlo(1),j,domlo(3))
+                  enddo
+               enddo
+            enddo
+         endif
+         if(do_zhi)then
+            do k = domhi(3)+1, hi(3)
+               do j = jlo, jhi
+                  do i = lo(1), domlo(1)-1
+                     dat(i,j,k) = dat(domlo(1),j,domhi(3))
+                  enddo
+               enddo
+            enddo
+         endif
+      endif            
+
+
+      if (bc(1,2).eq.EXT_DIR.and. do_xhi) then
+         do k = klo, khi
+            do j = jlo, jhi
+               do i = domhi(1)+1,hi(1)
+                  dat(i,j,k) = dat(domhi(1),j,k)
+               enddo
+            enddo
+         enddo
+         if (do_ylo) then
+            do k = klo, khi
+               do j = lo(2), domlo(2)-1
+                  do i = domhi(1)+1,hi(1)
+                     dat(i,j,k) = dat(domhi(1),domlo(2),k)
+                  enddo
+               enddo
+            enddo
+            if (do_zlo) then
+               do k = lo(3),domlo(3)-1
+                  do j = lo(2), domlo(2)-1
+                     do i = domhi(1)+1,hi(1)
+                        dat(i,j,k) = dat(domhi(1),domlo(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_zhi) then
+               do k = domhi(3)+1, hi(3)
+                  do j = lo(2), domlo(2)-1
+                     do i = domhi(1)+1,hi(1)
+                        dat(i,j,k) = dat(domhi(1),domlo(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_yhi) then
+            do k = klo, khi
+               do j = domhi(2)+1, hi(2)
+                  do i = domhi(1)+1,hi(1)
+                     dat(i,j,k) = dat(domhi(1),domhi(2),k)
+                  enddo
+               enddo
+            enddo
+            if (do_zlo) then
+               do k = lo(3),domlo(3)-1
+                  do j = domhi(2)+1,hi(2)
+                     do i = domhi(1)+1,hi(1)
+                        dat(i,j,k) = dat(domhi(1),domhi(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_zhi) then
+               do k = domhi(3)+1, hi(3)
+                  do j = domhi(2)+1,hi(2)
+                     do i = domhi(1)+1,hi(1)
+                        dat(i,j,k) = dat(domhi(1),domhi(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_zlo) then
+            do k = lo(3), domlo(3)-1
+               do j = jlo, jhi
+                  do i = domhi(1)+1,hi(1)
+                     dat(i,j,k) = dat(domhi(1),j,domlo(3))
+                  enddo
+               enddo
+            enddo
+         endif
+         if(do_zhi)then
+            do k = domhi(3)+1, hi(3)
+               do j = jlo, jhi
+                  do i = domhi(1)+1,hi(1)
+                     dat(i,j,k) = dat(domhi(1),j,domhi(3))
+                  enddo
+               enddo
+            enddo
+         endif
+      endif            
+
+      if (bc(2,1).eq.EXT_DIR.and.do_ylo) then
+         do k = klo, khi
+            do j = lo(2), domlo(2)-1
+               do i = ilo,ihi
+                  dat(i,j,k) = dat(i,domlo(2),k)
+               enddo
+            enddo
+         enddo
+         if (do_xlo) then
+            do k = klo, khi
+               do j = lo(2), domlo(2)-1
+                  do i = lo(1), domlo(1)-1
+                     dat(i,j,k) = dat(domlo(1),domlo(2),k)
+                  enddo
+               enddo
+            enddo
+            if (do_zlo) then
+               do k = lo(3),domlo(3)-1
+                  do j = lo(2), domlo(2)-1
+                     do i = lo(1), domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domlo(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_zhi) then
+               do k = domhi(3)+1, hi(3)
+                  do j = lo(2), domlo(2)-1
+                     do i = lo(1), domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domlo(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if(do_xhi)then
+            do k = klo, khi
+               do j = lo(2), domlo(2)-1
+                  do i = domhi(1)+1, hi(1)
+                     dat(i,j,k) = dat(domhi(1),domlo(2),k)
+                  enddo
+               enddo
+            enddo
+            if (do_zlo) then
+               do k = lo(3),domlo(3)-1
+                  do j = lo(2),domlo(2)-1
+                     do i = domhi(1)+1,hi(1)
+                        dat(i,j,k) = dat(domhi(1),domlo(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_zhi) then
+               do k = domhi(3)+1, hi(3)
+                  do j = lo(2),domlo(2)-1
+                     do i = domhi(1)+1,hi(1)
+                        dat(i,j,k) = dat(domhi(1),domlo(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_zlo) then
+            do k = lo(3), domlo(3)-1
+               do j = lo(2), domlo(2)-1
+                  do i = ilo, ihi
+                     dat(i,j,k) = dat(i,domlo(2),domlo(3))
+                  enddo
+               enddo
+            enddo
+         endif
+         if(do_zhi)then
+            do k = domhi(3)+1, hi(3)
+               do j = lo(2), domlo(2)-1
+                  do i = ilo, ihi
+                     dat(i,j,k) = dat(i,domlo(2),domhi(3))
+                  enddo
+               enddo
+            enddo
+         endif
+      endif            
+      
+      if (bc(2,2).eq.EXT_DIR.and.do_yhi) then
+         do k = klo, khi
+            do j = domhi(2)+1, hi(2)
+               do i = ilo, ihi
+                  dat(i,j,k) = dat(i,domhi(2),k)
+               enddo
+            enddo
+         enddo
+         if (do_xlo) then
+            do k = klo, khi
+               do j = domhi(2)+1, hi(2)
+                  do i = lo(1), domlo(1)-1
+                     dat(i,j,k) = dat(domlo(1),domhi(2),k)
+                  enddo
+               enddo
+            enddo
+            if (do_zlo) then
+               do k = lo(3),domlo(3)-1
+                  do j = domhi(2)+1, hi(2)
+                     do i = lo(1), domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domhi(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_zhi) then
+               do k = domhi(3)+1, hi(3)
+                  do j = domhi(2)+1, hi(2)
+                     do i = lo(1), domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domhi(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if(do_xhi)then
+            do k = klo, khi
+               do j = domhi(2)+1, hi(2)
+                  do i = domhi(1)+1, hi(1)
+                     dat(i,j,k) = dat(domhi(1),domhi(2),k)
+                  enddo
+               enddo
+            enddo
+            if (do_zlo) then
+               do k = lo(3),domlo(3)-1
+                  do j = domhi(2)+1, hi(2)
+                     do i = domhi(1)+1,hi(1)
+                        dat(i,j,k) = dat(domhi(1),domhi(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_zhi) then
+               do k = domhi(3)+1, hi(3)
+                  do j = domhi(2)+1, hi(2)
+                     do i = domhi(1)+1,hi(1)
+                        dat(i,j,k) = dat(domhi(1),domhi(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_zlo) then
+            do k = lo(3), domlo(3)-1
+               do j = domhi(2)+1, hi(2)
+                  do i = ilo, ihi
+                     dat(i,j,k) = dat(i,domhi(2),domlo(3))
+                  enddo
+               enddo
+            enddo
+         endif
+         if(do_zhi)then
+            do k = domhi(3)+1, hi(3)
+               do j = domhi(2)+1, hi(2)
+                  do i = ilo, ihi
+                     dat(i,j,k) = dat(i,domhi(2),domhi(3))
+                  enddo
+               enddo
+            enddo
+         endif
+      endif            
+
+      if (bc(3,1).eq.EXT_DIR.and. do_zlo) then
+         do k = lo(3), domlo(3)-1
+            do j = jlo, jhi
+               do i = ilo, ihi
+                  dat(i,j,k) = dat(i,j,domlo(3))
+               enddo
+            enddo
+         enddo
+         if (do_ylo) then
+            do k = lo(3), domlo(3)-1
+               do j = lo(2), domlo(2)-1
+                  do i = ilo, ihi
+                     dat(i,j,k) = dat(i,domlo(2),domlo(3))
+                  enddo
+               enddo
+            enddo
+            if (do_xlo) then
+               do k = lo(3), domlo(3)-1
+                  do j = lo(2), domlo(2)-1
+                     do i = lo(1),domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domlo(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_xhi) then
+               do k = lo(3), domlo(3)-1
+                  do j = lo(2), domlo(2)-1
+                     do i = domhi(1)+1, hi(1)
+                        dat(i,j,k) = dat(domhi(1),domlo(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_yhi) then
+            do k = lo(3), domlo(3)-1
+               do j = domhi(2)+1, hi(2)
+                  do i = ilo, ihi
+                     dat(i,j,k) = dat(i,domhi(2),domlo(3))
+                  enddo
+               enddo
+            enddo
+            if (do_xlo) then
+               do k = lo(3), domlo(3)-1
+                  do j = domhi(2)+1,hi(2)
+                     do i = lo(1),domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domhi(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_xhi) then
+               do k = lo(3), domlo(3)-1
+                  do j = domhi(2)+1,hi(2)
+                     do i = domhi(1)+1, hi(1)
+                        dat(i,j,k) = dat(domhi(1),domhi(2),domlo(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_xlo) then
+            do k = lo(3), domlo(3)-1
+               do j = jlo, jhi
+                  do i = lo(1), domlo(1)-1
+                     dat(i,j,k) = dat(domlo(1),j,domlo(3))
+                  enddo
+               enddo
+            enddo
+         endif
+         if(do_xhi)then
+            do k = lo(3), domlo(3)-1
+               do j = jlo, jhi
+                  do i = domhi(1)+1, hi(1)
+                     dat(i,j,k) = dat(domhi(1),j,domlo(3))
+                  enddo
+               enddo
+            enddo
+         endif
+      endif            
+
+      if (bc(3,2).eq.EXT_DIR.and. do_zhi) then
+         do k = domhi(3)+1,hi(3)
+            do j = jlo, jhi
+               do i = ilo,ihi
+                  dat(i,j,k) = dat(i,j,domhi(3))
+               enddo
+            enddo
+         enddo
+         if (do_ylo) then
+            do k = domhi(3)+1,hi(3)
+               do j = lo(2), domlo(2)-1
+                  do i = ilo, ihi
+                     dat(i,j,k) = dat(i,domlo(2),domhi(3))
+                  enddo
+               enddo
+            enddo
+            if (do_xlo) then
+               do k = domhi(3)+1,hi(3)
+                  do j = lo(2), domlo(2)-1
+                     do i = lo(1),domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domlo(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_xhi) then
+               do k = domhi(3)+1,hi(3)
+                  do j = lo(2), domlo(2)-1
+                     do i = domhi(1)+1, hi(1)
+                        dat(i,j,k) = dat(domhi(1),domlo(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_yhi) then
+            do k = domhi(3)+1,hi(3)
+               do j = domhi(2)+1, hi(2)
+                  do i = ilo, ihi
+                     dat(i,j,k) = dat(i,domhi(2),domhi(3))
+                  enddo
+               enddo
+            enddo
+            if (do_xlo) then
+               do k = domhi(3)+1,hi(3)
+                  do j = domhi(2)+1,hi(2)
+                     do i = lo(1),domlo(1)-1
+                        dat(i,j,k) = dat(domlo(1),domhi(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+            if (do_xhi) then
+               do k = domhi(3)+1,hi(3)
+                  do j = domhi(2)+1,hi(2)
+                     do i = domhi(1)+1, hi(1)
+                        dat(i,j,k) = dat(domhi(1),domhi(2),domhi(3))
+                     enddo
+                  enddo
+               enddo
+            endif
+         endif
+         if (do_xlo) then
+            do k = domhi(3)+1,hi(3)
+               do j = jlo, jhi
+                  do i = lo(1), domlo(1)-1
+                     dat(i,j,k) = dat(domlo(1),j,domhi(3))
+                  enddo
+               enddo
+            enddo
+         endif
+         if(do_xhi)then
+            do k = domhi(3)+1,hi(3)
+               do j = jlo, jhi
+                  do i = domhi(1)+1, hi(1)
+                     dat(i,j,k) = dat(domhi(1),j,domhi(3))
+                  enddo
+               enddo
+            enddo
+         endif
+      endif            
+      end
+
+      subroutine fillWithZeros(dat,DIMS(dat),domlo,domhi,bc)
+
+      integer    DIMDEC(dat)
+      integer    bc(SDIM,2)
+      integer    domlo(SDIM), domhi(SDIM)
+      REAL_T     dat(DIMV(dat))
+
+      integer    lo(SDIM), hi(SDIM)
+      integer    i, j, k
+
+      lo(1) = ARG_L1(dat)
+      hi(1) = ARG_H1(dat)
+      lo(2) = ARG_L2(dat)
+      hi(2) = ARG_H2(dat)
+      lo(3) = ARG_L3(dat)
+      hi(3) = ARG_H3(dat)
+
+      if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
+         do k=lo(3),hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), domlo(1)-1
+                  dat(i,j,k) = zero
+               enddo
+            enddo
+         enddo
+      endif            
+      
+      if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
+         do k=lo(3),hi(3)
+            do j = lo(2), hi(2)
+               do i = domhi(1)+1,hi(1)
+                  dat(i,j,k) = zero
+               enddo
+            enddo
+         enddo
+      endif            
+      
+      if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
+         do k=lo(3),hi(3)
+            do j = lo(2), domlo(2)-1
+               do i = lo(1), hi(1)
+                  dat(i,j,k) = zero
+               enddo
+            enddo
+         enddo
+      endif            
+      
+      if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
+         do k=lo(3),hi(3)
+            do j = domhi(2)+1, hi(2)
+               do i = lo(1), hi(1)
+                  dat(i,j,k) = zero
+               enddo
+            enddo
+         enddo
+      endif            
+      
+      if (bc(3,1).eq.EXT_DIR.and.lo(3).lt.domlo(3)) then
+         do k=lo(3),domlo(3)-1
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  dat(i,j,k) = zero
+               enddo
+            enddo
+         enddo
+      endif            
+      
+      if (bc(3,2).eq.EXT_DIR.and.hi(3).gt.domhi(3)) then
+         do k=domhi(3)+1,hi(3)
+            do j = lo(2), hi(2)
+               do i = lo(1), hi(1)
+                  dat(i,j,k) = zero
+               enddo
+            enddo
+         enddo
+      endif            
       end
 
       subroutine  FORT_COMPUTE_UGRADP(p, DIMS(p), ugradp, DIMS(ugp),

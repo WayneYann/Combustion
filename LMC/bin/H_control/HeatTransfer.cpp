@@ -176,13 +176,11 @@ Array<Real> HeatTransfer::typical_values;
 static
 void dump(const FArrayBox& fab, int comp=-1)
 {
+
+#if BL_SPACEDIM == 2
     int sComp = comp < 0 ? 0 : comp;
     int nComp = comp < 0 ? fab.nComp() : 1;
 
-    //for (int j=60; j<=70; ++j) {
-    //  IntVect iv(1,j);
-    //for (int j=45; j<=64; ++j) {
-    //  IntVect iv(j,30);
     for (int j=62; j<=62; ++j) {
         IntVect iv(j,18);
         cout << j << " ";
@@ -191,7 +189,8 @@ void dump(const FArrayBox& fab, int comp=-1)
         }
         cout << endl;
     }
-    //BoxLib::Abort();
+#endif
+
 }
 static
 void dump(const MultiFab& mf, int comp=-1)

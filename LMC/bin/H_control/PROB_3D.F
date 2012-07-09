@@ -14,7 +14,7 @@
       integer zone, n, getZone, fuelZone, airZone, region
       integer b(SDIM)
       integer num_zones_defined
-      data  b / 1, 1 /
+      data  b / 1, 1, 1 /
       
       Patm = pamb / FORT_P1ATMMKS()
       num_zones_defined = 0
@@ -36,6 +36,7 @@ c     Take fuel mixture from prob data
             T_bc(zone) = T_in
             u_bc(zone) = zero
             v_bc(zone) = V_in
+            w_bc(zone) = zero
 
          else 
 
@@ -62,6 +63,7 @@ c     Take fuel mixture from pmf file
             else
                v_bc(zone) = V_in
             endif
+            w_bc(zone) = zero
             
          endif
 
@@ -86,6 +88,7 @@ c     Fuel
          T_bc(fuelZone) = T_in
          u_bc(fuelZone) = 0.d0
          v_bc(fuelZone) = V_in
+         w_bc(fuelZone) = 0.d0
 
 c     Air
          do n=1,Nspec
@@ -102,6 +105,7 @@ c     Air
          T_bc(airZone) = T_in
          u_bc(airZone) = 0.d0
          v_bc(airZone) = V_in
+         w_bc(airZone) = 0.d0
 
       else
          
@@ -144,9 +148,7 @@ c#define BL_PIPEEND  7
       getZone = BL_VOLUME
 
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
+     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          getZone = BL_FUELPIPE
          
@@ -291,14 +293,14 @@ c ::: -----------------------------------------------------------
  
       Patm = pamb / FORT_P1ATMMKS()
       call FORT_RHOfromPTY(lo,hi,
-     &     scal(ARG_L1(state),ARG_L2(state),Density),  DIMS(state),
-     &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
-     &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Density),  DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),FirstSpec),DIMS(state),
      &     Patm)
       call FORT_HMIXfromTY(lo,hi,
-     &     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
-     &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
-     &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state))
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),RhoH),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),FirstSpec),DIMS(state))
  
       do k = lo(3), hi(3)
          do j = lo(2), hi(2)
@@ -361,9 +363,9 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 
       integer i, j, k, n, airZone, fuelZone, getZone, zone
-      REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm
+      REAL_T x, y, z, r, Yl(maxspec), Xl(maxspec), Patm
       REAL_T pmf_vals(maxspec+3), y1, y2, dx
-      REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,rho,T,h
+      REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,w,rho,T,h
            
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
@@ -419,6 +421,7 @@ c ::: -----------------------------------------------------------
          airZone = getZone(BL_INTERIOR, domnhi(1), domnhi(2))
 
          do k = lo(3), hi(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
             do j = lo(2), hi(2)
                y = (float(j)+.5)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
@@ -470,7 +473,7 @@ c     Superimpose blob of hot air
                      
                      if (stTh.gt. 0.d0) then
                         zone = getZone(x,y)
-                        call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.true.)
+                        call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
                         vel(i,j,k,1) = u
                         vel(i,j,k,2) = v
                         vel(i,j,k,3) = w
@@ -485,15 +488,15 @@ c     Superimpose blob of hot air
       Patm = pamb / FORT_P1ATMMKS()
 
       call FORT_RHOfromPTY(lo,hi,
-     &     scal(ARG_L1(state),ARG_L2(state),Density),  DIMS(state),
-     &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
-     &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Density),  DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),FirstSpec),DIMS(state),
      &     Patm)
 
       call FORT_HMIXfromTY(lo,hi,
-     &     scal(ARG_L1(state),ARG_L2(state),RhoH),     DIMS(state),
-     &     scal(ARG_L1(state),ARG_L2(state),Temp),     DIMS(state),
-     &     scal(ARG_L1(state),ARG_L2(state),FirstSpec),DIMS(state))
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),RhoH),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),Temp),     DIMS(state),
+     &     scal(ARG_L1(state),ARG_L2(state),ARG_L3(state),FirstSpec),DIMS(state))
 
 c     Update typical values
       do k = lo(3), hi(3)
@@ -747,9 +750,7 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
       
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
+     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          call FORT_MVERROR(tag,DIMS(tag),set,clear,
      &                     adv,DIMS(adv),lo,hi,nvar,
@@ -1393,13 +1394,13 @@ c
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  vel(DIMV(vel),SDIM)
 
-      call FORT_XVELFILL (vel(ARG_L1(vel),ARG_L2(vel),1),
+      call FORT_XVELFILL (vel(ARG_L1(vel),ARG_L2(vel),ARG_L3(vel),1),
      & DIMS(vel),domlo,domhi,delta,xlo,time,bc(1,1,1))
 
-      call FORT_YVELFILL (vel(ARG_L1(vel),ARG_L2(vel),2),
+      call FORT_YVELFILL (vel(ARG_L1(vel),ARG_L2(vel),ARG_L3(vel),2),
      & DIMS(vel),domlo,domhi,delta,xlo,time,bc(1,1,2))
 
-      call FORT_ZVELFILL (vel(ARG_L1(vel),ARG_L2(vel),3),
+      call FORT_ZVELFILL (vel(ARG_L1(vel),ARG_L2(vel),ARG_L3(vel),3),
      & DIMS(vel),domlo,domhi,delta,xlo,time,bc(1,1,3))
 
       end
@@ -1423,7 +1424,7 @@ c
       integer n
       
       do n=1,Nspec
-         call FORT_CHEMFILL (rhoY(ARG_L1(rhoY),ARG_L2(rhoY),n),
+         call FORT_CHEMFILL (rhoY(ARG_L1(rhoY),ARG_L2(rhoY),ARG_L3(rhoY),n),
      &        DIMS(rhoY),domlo,domhi,delta,xlo,time,bc(1,1,n),n-1)
       enddo
       end

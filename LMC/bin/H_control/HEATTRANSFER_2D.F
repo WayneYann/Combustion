@@ -275,7 +275,7 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
             enddo
          enddo
       enddo
-      rhoInv(:,:) = 1/rhoInv(:,:)
+      rhoInv(:,:) = 1.d0/rhoInv(:,:)
 
       do n=1,Nspec
          do j=lo(2),hi(2)
