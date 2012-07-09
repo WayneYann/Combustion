@@ -104,7 +104,7 @@ contains
 
     courno_proc = 1.0d-50
 
-    call copy(uSDC(1), U)
+    call sdc_copy(uSDC(1), U)
     call dUdt(uSDC(1),dx,fSDC(1),ctx,courno=courno_proc)
 
     call parallel_reduce(courno, courno_proc, MPI_MAX)
@@ -122,24 +122,27 @@ contains
     end if
 
     do m = 2, sdc%nnodes
-       call copy(uSDC(m), uSDC(1))
-       call copy(fSDC(m), fSDC(1))
+       call sdc_copy(uSDC(m), uSDC(1))
+       call sdc_copy(fSDC(m), fSDC(1))
     end do
 
     !
     ! Perform SDC iterations
     !
     do k = 1, 2*sdc%nnodes - 1
-       call sdcsweep(uSDC, fSDC, dx, dt, ctx, sdc)
+       call sdc_sweep(uSDC, fSDC, dx, dt, ctx, sdc)
 
-       res = sdcresidual(uSDC, fSDC, dt, sdc)
+       if (res > 0.d0) then
 
-       print *, 'SDC iteration', k, 'residual = ', res
+          res = sdc_residual(uSDC, fSDC, dt, sdc)
 
-       ! if (res < 1.0d-3) then
-       !    print *, 'SDC RESIDUAL CONDITION MET'
-       !    exit
-       ! end if
+          print *, 'SDC iteration', k, 'residual = ', res
+
+          if (res < sdc%tol_residual) then
+             print *, 'SDC RESIDUAL CONDITION MET'
+             exit
+          end if
+       end if
     end do
 
     call copy(U, uSDC(sdc%nnodes))
@@ -152,11 +155,13 @@ contains
   end subroutine advance_sdc
 
 
+
+
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Perform one SDC sweep.
   !
-  subroutine sdcsweep (uSDC,fSDC,dx,dt,ctx,sdc)
+  subroutine sdc_sweep (uSDC,fSDC,dx,dt,ctx,sdc)
     type(sdcquad),    intent(in   ) :: sdc
     type(multifab),   intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes)
     double precision, intent(in   ) :: dt, dx(uSDC(1)%dim)
@@ -182,7 +187,6 @@ contains
        end do
     end do
 
-
     !
     ! Perform sub-step correction
     !
@@ -191,7 +195,7 @@ contains
 
        ! U(m+1) = U(m) + dt dUdt(m) + dt S(m)
 
-       call copy(uSDC(m+1), uSDC(m))
+       call sdc_copy(uSDC(m+1), uSDC(m))
        call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
        call saxpy(uSDC(m+1), dt, S(m))
 
@@ -204,14 +208,14 @@ contains
        call destroy(S(m))
     end do
 
-  end subroutine sdcsweep
+  end subroutine sdc_sweep
 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Compute SDC residual.
   !
-  function sdcresidual (uSDC,fSDC,dt,sdc) result(res)
+  function sdc_residual (uSDC,fSDC,dt,sdc) result(res)
     real(dp_t)                      :: res
     type(sdcquad),    intent(in   ) :: sdc
     type(multifab),   intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes)
@@ -242,7 +246,47 @@ contains
 
     call destroy(R)
 
-  end function sdcresidual
+  end function sdc_residual
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Copy
+  !
+  subroutine sdc_copy (dst, src)
+
+    type(multifab),   intent(in   ) :: src
+    type(multifab),   intent(inout) :: dst
+
+    integer :: lo(src%dim), hi(src%dim), i, j, k, m, n, nc
+
+    double precision, pointer, dimension(:,:,:,:) :: sp, dp
+
+    nc = ncomp(src)
+
+    do n=1,nboxes(src)
+       if ( remote(src,n) ) cycle
+
+       sp => dataptr(src,n)
+       dp => dataptr(dst,n)
+
+       lo = lwb(get_box(src,n))
+       hi = upb(get_box(src,n))
+
+       do m = 1, nc
+          !$OMP PARALLEL DO PRIVATE(i,j,k)
+          do k = lo(3),hi(3)
+             do j = lo(2),hi(2)
+                do i = lo(1),hi(1)
+                   dp(i,j,k,m) = sp(i,j,k,m)
+                end do
+             end do
+          end do
+          !$OMP END PARALLEL DO
+       end do
+    end do
+
+  end subroutine sdc_copy
 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
