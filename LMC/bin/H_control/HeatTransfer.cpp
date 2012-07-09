@@ -5838,11 +5838,6 @@ HeatTransfer::advance_sdc (Real time,
     //
     // Compute A (advection terms) with F = Dn + R
     //
-    
-    // FIXME: this call to setBndry can be removed once we have code to fill corners
-    //        on periodic C-F ghost cells
-    Forcing.setBndry(0,0,nspecies);
-
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
     {
         FArrayBox& f = Forcing[mfi];
@@ -5957,9 +5952,8 @@ HeatTransfer::advance_sdc (Real time,
             f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
             f.plus(ddn,gbox,gbox,0,nspecies,1);
         }
-        Forcing.setBndry(0);
         Forcing.FillBoundary(0,nspecies+1);
-        geom.FillPeriodicBoundary(Forcing,0,nspecies);
+        geom.FillPeriodicBoundary(Forcing,0,nspecies,true);
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "  A (SDC corrector " << sdc_iter << ")\n";
