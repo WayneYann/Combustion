@@ -1677,13 +1677,12 @@ HeatTransfer::post_timestep (int crse_iteration)
 {
     NavierStokes::post_timestep(crse_iteration);
     
-    const int finest_level = parent->finestLevel();
-    const int ncycle = parent->nCycle(level);
-    
 #ifdef PARTICLES
     //
     // Don't redistribute/timestamp on the final subiteration except on the coarsest grid.
     //
+    const int ncycle = parent->nCycle(level);
+
     if (HTPC != 0 && (crse_iteration < ncycle || level == 0))
     {
         const Real curr_time = state[State_Type].curTime();
@@ -1700,6 +1699,8 @@ HeatTransfer::post_timestep (int crse_iteration)
             if (basename[basename.length()-1] != '/') basename += '/';
 
             basename += "Timestamp";
+
+            const int finest_level = parent->finestLevel();
 
             for (int lev = level; lev <= finest_level; lev++)
             {
