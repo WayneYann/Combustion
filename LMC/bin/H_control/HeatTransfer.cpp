@@ -2901,6 +2901,20 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
     const Box& domain = geom.Domain();
     const BCRec& Tbc = get_desc_lst()[State_Type].getBC(Temp);
     FArrayBox area[BL_SPACEDIM];
+
+    // fill ghost cells for rhoY and Temp
+    if (!grow_cells_already_filled)
+      {
+	FillPatchIterator rYfpi(*this,S,1,time,State_Type,first_spec,nspecies);
+	FillPatchIterator Tfpi(*this,S,1,time,State_Type,Temp,1);
+
+	for( ; rYfpi.isValid() && Tfpi.isValid(); ++rYfpi,++Tfpi)
+	  {
+	    S[rYfpi].copy(rYfpi(),0,first_spec,nspecies);
+	    S[rYfpi].copy(Tfpi(),0,Temp,1);
+	  }
+      }
+
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
         const int i    = mfi.index();
