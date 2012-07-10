@@ -106,10 +106,10 @@ public:
     //
     // Advance grids at this level in time.
     //
-    virtual Real advance_sdc (Real time,
-			      Real dt,
-			      int  iteration,
-			      int  ncycle);
+    Real advance_sdc (Real time,
+		      Real dt,
+		      int  iteration,
+		      int  ncycle);
     //
     // Worker functions used by level advance function.
     //
@@ -159,21 +159,9 @@ public:
                           MultiFab**& betan,
                           MultiFab**& betanp1);
 
-    void momentum_advection (Real dt,
-			     bool do_adv_reflux);
-
-    void scalar_advection (Real dt,
-			   int  first_scalar,
-			   int  last_scalar,
-			   bool do_adv_reflux);
-    
     virtual void scalar_advection_update (Real dt,
                                           int  first_scalar,
                                           int  last_scalar);
-    void scalar_update (Real dt,
-                        int  first_scalar,
-                        int  last_scalar,
-                        int  do_viscreflux);
 
     void compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                                                          Real      dt);
@@ -205,11 +193,6 @@ public:
                                   const MultiFab* const* beta,
                                   bool                   grow_cells_already_filled);
 
-    virtual void scalar_diffusion_update (Real dt,
-                                          int  first_scalar, 
-                                          int  last_scalar,
-                                          int  do_viscreflux);
-
     virtual void velocity_diffusion_update (Real dt);
 
     virtual void diffuse_velocity_setup (Real        dt,
@@ -220,10 +203,10 @@ public:
 
     enum HowToFillGrow {HT_ZERO_GROW_CELLS, HT_EXTRAP_GROW_CELLS, HT_NUM_GROW_OPTIONS};
 
-    void compute_instantaneous_reaction_rates(MultiFab&       R,
-                                              const MultiFab& S,
-                                              int             nGrow = 0,
-                                              HowToFillGrow   how = HT_ZERO_GROW_CELLS);
+    void compute_instantaneous_reaction_rates (MultiFab&       R,
+					       const MultiFab& S,
+					       int             nGrow = 0,
+					       HowToFillGrow   how = HT_ZERO_GROW_CELLS);
 
     //
     // Make rho at time n.
@@ -374,9 +357,6 @@ protected:
     void scale_species (MultiFab& S,
                         int       strtcomp,
                         int       minzero = 0);
-
-    void tracer_update (Real dt,
-                        int  corrector);
 
     //
     // Protected static member functions.
