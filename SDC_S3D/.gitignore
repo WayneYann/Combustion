@@ -1,0 +1,9 @@
+t/
+
+dtconv/
+cflconv/
+ref_*/
+
+*.pdf
+*.exe
+*.pyc
