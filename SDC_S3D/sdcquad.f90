@@ -12,6 +12,7 @@ module sdcquad_module
 
      integer :: qtype  = -1                ! SDC quadrature type
      integer :: nnodes = -1                ! Number of SDC nodes
+     integer :: iters  = -1                ! Number of SDC iterations
 
      real(dp_t) :: tol_residual = -1.0d0   ! Residual tolerance (ignored if negative)
 
@@ -52,6 +53,7 @@ contains
 
     sdc%nnodes = nnodes
     sdc%qtype  = qtype
+    sdc%iters  = 2*nnodes - 1
 
     allocate(sdc%nodes(nnodes))
     allocate(sdc%smat(nnodes-1,nnodes))
@@ -90,19 +92,25 @@ contains
     integer,       intent(in   ) :: unitno
 
     character(len=32) :: qtype
-    integer           :: nnodes
+    integer           :: nnodes, iters
     real(dp_t)        :: tol_residual
 
-    namelist /sdc/ qtype, nnodes, tol_residual
+    namelist /sdc/ qtype, nnodes, iters, tol_residual
 
     qtype  = "Gauss-Lobatto"
     nnodes = 3
     tol_residual = -1.d0
+    iters = 0
 
     read(unit=unitno, nml=sdc)
 
     obj%nnodes = nnodes
     obj%tol_residual = tol_residual
+    if (iters == 0) then
+       obj%iters = 2*obj%nnodes - 1
+    else
+       obj%iters = iters
+    end if
 
     allocate(obj%nodes(nnodes))
     allocate(obj%smat(nnodes-1,nnodes))
