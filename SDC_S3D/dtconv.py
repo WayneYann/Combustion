@@ -8,7 +8,7 @@ from runutils import autorun
 
 #### config
 
-run = True
+run = False
 
 probin = {
   'tfinal':  1.0e-6, 
