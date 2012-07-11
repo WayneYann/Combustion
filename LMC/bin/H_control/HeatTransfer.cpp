@@ -3147,7 +3147,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 		}
 		else
 		{
-                    getTempViscTerms(visc_terms,Temp-load_comp,time);
+		  BoxLib::Abort("Should not call getTempViscTerms anymore, now terms are tied with species diffusion");
 		}
 	    }
 	    else if (icomp == RhoH)
@@ -3157,7 +3157,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                 }
                 else
 		{
-                    getRhoHViscTerms(visc_terms,RhoH-load_comp,time);
+		  BoxLib::Abort("Should not call getTempViscTerms anymore");
 		}
 	    }
 	    else
@@ -4812,107 +4812,6 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
 	DD.FillBoundary(0,1);
 	geom.FillPeriodicBoundary(DD,0,1,true);
       }
-}
-
-void
-HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
-                                int       src_comp, 
-                                Real      time)
-{
-    BoxLib::Abort("Should not be in getTempViscTerms anymore, now terms are tied with species diffusion");
-
-    //
-    // 1/c_p (div lambda grad T + div q_rad - sum( Grad(h_i) . specDiffFlux_i ) 
-    //
-    BL_ASSERT(visc_terms.boxArray()==grids);
-
-    const int nGrow     = 0;
-    const int rho_flag  = 1;
-
-    MultiFab** beta;
-    diffusion->allocFluxBoxesLevel(beta);
-    //
-    // + div lambda grad T + Q
-    //
-    getDiffusivity(beta, time, Temp, 0, 1);
-
-    showMFsub("1D",*beta[1],BoxLib::surroundingNodes(stripBox,1),"1D_viscT_beta",level);
-
-    int betaComp = 0;
-    diffusion->getViscTerms(visc_terms,src_comp,Temp,time,rho_flag,beta,betaComp);
-    diffusion->removeFluxBoxesLevel(beta);
-    add_heat_sources(visc_terms,Temp-src_comp,time,nGrow,1.0);
-    MultiFab delta_visc_terms(grids,1,nGrow);
-    //
-    // + sum_l rho D grad Y_l dot grad h_l
-    //
-    //compute_rhoDgradYgradH(time,delta_visc_terms);
-
-    showMFsub("1D",delta_visc_terms,stripBox,"1D_viscT_F.Gh",level);
-
-    //
-    // Add to visc terms, then divide whole mess by c_p 
-    //
-    FArrayBox cp, spec, tmp;
-
-    MultiFab& S = get_data(State_Type,time);
-
-    for (MFIter dvt_mfi(delta_visc_terms); dvt_mfi.isValid(); ++dvt_mfi)
-    {
-        const Box& box = dvt_mfi.validbox();
-
-        cp.resize(box,1);
-        spec.resize(box,nspecies);
-
-        spec.copy(S[dvt_mfi],box,first_spec,box,0,nspecies);
-
-        tmp.resize(box,1);
-        tmp.copy(S[dvt_mfi],Density,0,1);
-        tmp.invert(1);
-
-        for (int i = 0; i < nspecies; ++i)
-            spec.mult(tmp,0,i,1);
-
-        const int yComp   = 0;
-        const int sCompCp = 0;
-        getChemSolve().getCpmixGivenTY(cp,S[dvt_mfi],spec,box,Temp,yComp,sCompCp);
-        
-        visc_terms[dvt_mfi].plus(delta_visc_terms[dvt_mfi],box,0,Temp-src_comp,1);
-        visc_terms[dvt_mfi].divide(cp,0,Temp-src_comp,1);
-    }
-}
-
-void
-HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
-                                int       src_comp, 
-                                Real      time)
-{
-    //
-    // Compute the enthalpy source term, including radiative and
-    // conductive fluxe divergences.  The remaining term, which
-    // is the divergence of the enthalpy flux carried by species
-    // diffusion (ie, div(h_i gamma_i), is computed as an advective
-    // forcing contribution (because it was more convenient to
-    // do it there at the time).  It is not added here, so if the
-    // algorithm changes to require the full RhoH forcing term
-    // (for example, if RhoH is extrapolated to cell edges), the
-    // one needs to be sure to add that missing term.
-    //
-    // NOTE: This routine does not fill grow cells
-    //
-    BL_ASSERT(visc_terms.boxArray()==grids);
-
-    MultiFab** beta;
-    const int nGrow = 0;
-    diffusion->allocFluxBoxesLevel(beta);
-    
-    const int rhoh_rho_flag = 2;
-    getDiffusivity(beta, time, RhoH, 0, 1);
-
-    int betaComp = 0;
-    diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,beta,betaComp);
-    diffusion->removeFluxBoxesLevel(beta);
-    add_heat_sources(visc_terms,RhoH-src_comp,time,nGrow,1.0);
 }
 
 void
@@ -8162,140 +8061,6 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 }
 
 void
-HeatTransfer::compute_cp_and_hmix (const MultiFab& S,
-                                   MultiFab&       cp, 
-                                   MultiFab&       hmix,
-                                   MultiFab*       temp, 
-                                   int             nGrow,
-                                   int             calchmix,
-                                   int             floor_spec)
-{
-    //
-    // Notes:
-    //  1) S has the same number of components as the state.
-    //     However, he RhoH-th and the first-spec_th through last_spec-th
-    //     components are assumed to have been converted to primitive
-    //     form, i.e., they hold h and Y, not rho*h and rho*Y
-    //  2) We assume that S, cp, and hmix all have the same set of boxes
-    //     and the same number of ghost cells
-    //  3) We only compute on the valid region regardless of the number of 
-    //     ghost cells.
-    //
-    BL_ASSERT(S.nGrow() >= nGrow && cp.nGrow() >= nGrow);
-    BL_ASSERT(S.nGrow() == cp.nGrow());
-
-    const BoxArray& sgrids   = S.boxArray();
-    bool            tmp_temp = temp != 0;
-    int             nCompY   = last_spec - first_spec + 1;
-    bool            tmp_spec = floor_spec && nCompY>0;
-    if (tmp_spec)
-	BoxLib::Error("Spec flooring not currently implemented");
-    
-    bool need_tmp_data = tmp_temp || tmp_spec;
-
-    FArrayBox tmp;
-
-    for (MFIter mfi(S); mfi.isValid(); ++mfi)
-    {
-	const int iGrid = mfi.index();
-        Box       box   = BoxLib::grow(sgrids[iGrid],nGrow);
-
-	int sCompY = -1, sCompT = -1;
-
-	if (need_tmp_data)
-	{
-	    int nComp = 1 + nCompY;
-	    tmp.resize(box,nComp);
-	    sCompT = 0;
-	    sCompY = 1;
-	    if (tmp_temp)
-	    {
-		tmp.copy((*temp)[iGrid],0,sCompT,1);
-	    }
-            else
-            {
-		tmp.copy(S[iGrid],Temp,sCompT,1);
-	    }
-	    tmp.copy(S[iGrid],first_spec,sCompY,nCompY);
-	}
-        else
-        {
-	    sCompT = Temp;
-	    sCompY = first_spec;
-	}
-	
-	const FArrayBox& state = need_tmp_data ? tmp : S[iGrid];
-
-	const int sCompCp = 0;
-	getChemSolve().getCpmixGivenTY(cp[iGrid],state,state,box,sCompT,sCompY,sCompCp);
-
-	if (calchmix)
-	{
-	    const int sCompH = 0;
-	    getChemSolve().getHmixGivenTY(hmix[iGrid],state,state,box,sCompT,sCompY,sCompH);
-	}
-    }
-}
-
-void
-HeatTransfer::compute_cp (Real      time,
-                          MultiFab& cp)
-{
-    const int nGrow   = cp.nGrow();
-    const int sComp   = std::min(std::min((int)Density,(int)Temp),first_spec);
-    const int eComp   = std::max(std::max((int)Density,(int)Temp),first_spec+nspecies-1);
-    const int nComp   = eComp - sComp + 1;
-    const int sCompR  = Density - sComp;
-    const int sCompT  = Temp - sComp;
-    const int sCompY  = first_spec - sComp;
-    const int sCompCp = 0;
-
-    FArrayBox tmp;
-
-    for (FillPatchIterator fpi(*this,cp,nGrow,time,State_Type,sComp,nComp);
-         fpi.isValid();
-         ++fpi)
-    {
-        //
-        // Convert rho*Y to Y for this operation
-        //
-	const int  iGrid    = fpi.index();
-	const Box& validBox = BoxLib::grow(grids[iGrid],nGrow);
-	FArrayBox& state    = fpi();
-
-        tmp.resize(validBox,1);
-        tmp.copy(state,sCompR,0,1);
-        tmp.invert(1);
-
-        for (int k = 0; k < nspecies; k++)
-            state.mult(tmp,0,sCompY+k,1);
-	
-	getChemSolve().getCpmixGivenTY(cp[iGrid],state,state,validBox,sCompT,sCompY,sCompCp);
-    }
-}
-
-void
-HeatTransfer::compute_cp (const FArrayBox& temp, 
-                          const FArrayBox& species,
-                          FArrayBox&       cp)
-{
-    const Box& box    = temp.box();
-    const int nSpec   = last_spec - first_spec + 1;
-    const int nComp   = nSpec + 1;
-    const int sCompT  = 0;
-    const int sCompY  = 1;
-    const int sCompCp = 0;
-
-    cp.resize(box,1);
-
-    FArrayBox state(box,nComp);
-    state.copy(temp,0,sCompT,1);
-    state.copy(species,0,sCompY,nSpec);
-
-    getChemSolve().getCpmixGivenTY(cp,state,state,box,sCompT,sCompY,sCompCp);
-}
-
-void
 HeatTransfer::compute_rhohmix (Real      time,
                                MultiFab& rhohmix)
 {
@@ -8334,31 +8099,6 @@ HeatTransfer::compute_rhohmix (Real      time,
         // Convert hmix to rho*hmix
         //
         rhohmix[iGrid].mult(state,validBox,sCompR,sCompH,1);
-    }
-}
- 
-void
-HeatTransfer::compute_h (Real      time,
-                         MultiFab& h)
-{
-    BL_ASSERT(h.nComp() == nspecies);
-    BL_ASSERT(h.boxArray() == grids);
-
-    const int nGrow = h.nGrow();
-    const int sComp = Temp;
-    const int nComp = 1;
-    const int sCompT = 0;
-    const int sCompH = 0;
-
-    for (FillPatchIterator fpi(*this,h,nGrow,time,State_Type,sComp,nComp);
-         fpi.isValid();
-         ++fpi)
-    {
-	const Box box = BoxLib::grow(grids[fpi.index()],nGrow);
-
-	BL_ASSERT(box == h[fpi.index()].box());
-
-	getChemSolve().getHGivenT(h[fpi.index()],fpi(),box,sCompT,sCompH);
     }
 }
 

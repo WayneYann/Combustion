@@ -120,14 +120,6 @@ public:
                                int       num_comp,
                                Real      time);
 
-    void getTempViscTerms (MultiFab& visc_terms,
-                           int       src_comp, 
-                           Real      time);
-
-    void getRhoHViscTerms (MultiFab& visc_terms,
-                           int       src_comp, 
-                           Real      time);
-
     void diffuse_cleanup (MultiFab*&  delta_rhs, 
                           MultiFab**& betan,
                           MultiFab**& betanp1,
@@ -296,16 +288,6 @@ protected:
     void compute_rhohmix (Real       time,
                           MultiFab& rhohmix);
 
-    void compute_cp (Real      time,
-                     MultiFab& cp);
-
-    void compute_cp (const FArrayBox& temp, 
-                     const FArrayBox& species,
-                     FArrayBox&       cp);
-
-    void compute_h (Real      time,
-                    MultiFab& cp);
-
     void compute_rhoDgradYgradH (Real      time,
                                  MultiFab& rdgydgh);
 
@@ -334,14 +316,6 @@ protected:
     static int RhoH_to_Temp (FArrayBox& S,
                              const Box& box,
                              int        dominmax = false);
-
-    static void compute_cp_and_hmix (const MultiFab& S,
-                                     MultiFab&       cp, 
-                                     MultiFab&       hmix,
-                                     MultiFab*       temp,
-                                     int             nGrow,
-                                     int             calchmix,
-                                     int             floor_spec);
     //
     // advance functions
     //
