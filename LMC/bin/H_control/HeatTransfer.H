@@ -291,9 +291,6 @@ protected:
                         int             pComp,
                         const MultiFab* T = 0);
 
-    void compute_rhoh_new (Real time,
-                           Real dt);
-
     virtual void temperature_stats (MultiFab& S);
 
     void compute_rhohmix (Real       time,
