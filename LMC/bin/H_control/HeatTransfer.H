@@ -128,28 +128,6 @@ public:
                            int       src_comp, 
                            Real      time);
 
-    virtual void diffuse_scalar_setup (Real        dt,
-                                       int         sigma,
-                                       int*        rho_flag, 
-                                       MultiFab*&  delta_rhs,
-                                       MultiFab*&  alpha, 
-                                       MultiFab**& betan,
-                                       MultiFab**& betanp1);
-
-    void diffuse_rhoh_setup (Real       time,
-                             Real       dt,
-                             MultiFab*& delta_rhs);
-
-    void diffuse_spec_setup (int        istate,
-                             Real       time,
-                             Real       dt,
-                             MultiFab*& delta_rhs);
-
-    void diffuse_temp_setup (Real       time,
-                             Real       dt,
-                             MultiFab*& delta_rhs,
-                             MultiFab*& alpha);
-
     void diffuse_cleanup (MultiFab*&  delta_rhs, 
                           MultiFab**& betan,
                           MultiFab**& betanp1,
@@ -208,14 +186,6 @@ public:
 					       int             nGrow = 0,
 					       HowToFillGrow   how = HT_ZERO_GROW_CELLS);
 
-    //
-    // Make rho at time n.
-    //
-    virtual void make_rho_prev_time ();
-    //
-    // Make rho at time n+1.
-    //
-    virtual void make_rho_curr_time ();
     //
     // Compute timesteps.
     //

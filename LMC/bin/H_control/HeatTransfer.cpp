@@ -2709,32 +2709,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 }
 
 void
-HeatTransfer::make_rho_prev_time ()
-{
-    const Real prev_time = state[State_Type].prevTime();
-
-    for (FillPatchIterator fpi(*this,*rho_ptime,1,prev_time,State_Type,Density,1);
-         fpi.isValid();
-         ++fpi)
-    {
-        (*rho_ptime)[fpi.index()].copy(fpi());
-    }
-}
-
-void
-HeatTransfer::make_rho_curr_time ()
-{
-    const Real curr_time = state[State_Type].curTime();
-
-    for (FillPatchIterator fpi(*this,*rho_ctime,1,curr_time,State_Type,Density,1);
-         fpi.isValid();
-         ++fpi)
-    {
-        (*rho_ctime)[fpi.index()].copy(fpi());
-    }
-}
-
-void
 HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
 					    const MultiFab* const* beta,
                                             bool                   grow_cells_already_filled)
@@ -2894,70 +2868,6 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
 }
     
 void
-HeatTransfer::diffuse_scalar_setup (Real        dt,
-                                    int         sigma,
-                                    int*        rho_flag, 
-                                    MultiFab*&  delta_rhs,
-                                    MultiFab*&  alpha, 
-                                    MultiFab**& betan,
-                                    MultiFab**& betanp1)
-{
-    //
-    // Do setup for implicit c-n solve for an arbitrary scalar.
-    //
-    // Note: should be ok for variable c_p.
-    //
-    const Real prev_time = state[State_Type].prevTime();
-
-    NavierStokes::diffuse_scalar_setup(dt, sigma, rho_flag, 
-                                       delta_rhs, alpha, betan, betanp1);
-    alpha     = 0;
-    delta_rhs = 0;
-    betan     = 0;
-    betanp1   = 0;
-   
-    if (sigma == Temp)
-    {
-        (*rho_flag) = 1;
-    }
-    else if (sigma == RhoH || (sigma >= first_spec && sigma <= last_spec))
-    {
-        (*rho_flag) = 2;
-    }
-
-    if (sigma == RhoH)
-    {
-        diffuse_rhoh_setup(prev_time,dt,delta_rhs); 
-    }
-    else if (sigma == Temp)
-    {
-        diffuse_temp_setup(prev_time,dt,delta_rhs,alpha); 
-    }
-    else if (sigma >= first_spec && sigma <= last_spec)
-    {
-        diffuse_spec_setup(sigma,prev_time,dt,delta_rhs); 
-    }
-
-    diffusion->allocFluxBoxesLevel(betan);
-    diffusion->allocFluxBoxesLevel(betanp1);
-    getDiffusivity(betan, prev_time, sigma, 0, 1);
-    getDiffusivity(betanp1, prev_time+dt, sigma, 0, 1);
-}
-
-void
-HeatTransfer::diffuse_spec_setup (int        istate,
-                                  Real       time,
-                                  Real       dt, 
-                                  MultiFab*& delta_rhs)
-{
-    //
-    // Chemistry split, no source terms
-    //
-    delta_rhs = new MultiFab(grids,1,0);
-    delta_rhs->setVal(0);
-}
-
-void
 HeatTransfer::compute_OT_radloss (Real      time,
                                   int       nGrow,
                                   MultiFab& dqrad)
@@ -3020,104 +2930,6 @@ HeatTransfer::compute_OT_radloss (Real      time,
             dqrad_fab.plus(rad,0,0,1);
         }
     }
-}
-
-void
-HeatTransfer::diffuse_rhoh_setup (Real       time,
-                                  Real       dt, 
-                                  MultiFab*& delta_rhs)
-{
-    //
-    // Do set-up for implicit c-n solve for rho*h using Le=1 equation.
-    //
-    BL_ASSERT(delta_rhs==0);
-    delta_rhs = new MultiFab (grids,1,0);
-    delta_rhs->setVal(0);
-    const int nGrow = 0;
-
-    if (do_OT_radiation || do_heat_sink)
-    {
-        MultiFab dqrad(grids,1,nGrow);
-
-        compute_OT_radloss(time,nGrow,dqrad);
-        for (MFIter mfi(dqrad); mfi.isValid(); ++mfi)
-        {
-            dqrad[mfi].mult(1.0-be_cn_theta);
-            (*delta_rhs)[mfi].minus(dqrad[mfi]);
-        }
-
-        compute_OT_radloss(time+dt,nGrow,dqrad);
-        for (MFIter mfi(dqrad); mfi.isValid(); ++mfi)
-        {
-            dqrad[mfi].mult(be_cn_theta);
-            (*delta_rhs)[mfi].minus(dqrad[mfi]);
-        }
-    }
-}
-
-void
-HeatTransfer::diffuse_temp_setup (Real       prev_time,
-                                  Real       dt, 
-                                  MultiFab*& delta_rhs,
-                                  MultiFab*& alpha)
-{
-    //
-    // Do set-up for implicit c-n solve for T.
-    //
-    BL_ASSERT(delta_rhs==0);
-    delta_rhs = new MultiFab (grids,1,0);
-    delta_rhs->setVal(0);
-    const int nGrow = 0;
-
-    if (do_OT_radiation || do_heat_sink)
-    {
-        MultiFab dqrad(grids,1,nGrow);
-
-        compute_OT_radloss(prev_time,nGrow,dqrad);
-        for (MFIter mfi(dqrad); mfi.isValid(); ++mfi)
-        {
-            dqrad[mfi].mult(1.0-be_cn_theta);
-            (*delta_rhs)[mfi].minus(dqrad[mfi]);
-        }
-
-        compute_OT_radloss(prev_time+dt,nGrow,dqrad);
-        for (MFIter mfi(dqrad); mfi.isValid(); ++mfi)
-        {
-            dqrad[mfi].mult(be_cn_theta);
-            (*delta_rhs)[mfi].minus(dqrad[mfi]);
-        }
-    }
-
-#if 0
-    //
-    // Increment rhs by (+ sum_l rho D grad Y_l dot grad h_l)
-    // Note: this way ensures isothermal preservation
-    //
-    MultiFab rdgydgh(grids,1,0);
-    compute_rhoDgradYgradH(prev_time, rdgydgh);
-    rdgydgh.mult(1.0-be_cn_theta,0,1);
-    
-    for (MFIter mfi(*delta_rhs); mfi.isValid(); ++mfi)
-    {
-        (*delta_rhs)[mfi].plus(rdgydgh[mfi],0,0,1);
-    }
-    compute_rhoDgradYgradH(prev_time+dt, rdgydgh);
-    rdgydgh.mult(be_cn_theta,0,1);
-    
-    for (MFIter mfi(*delta_rhs); mfi.isValid(); ++mfi)
-    {
-        (*delta_rhs)[mfi].plus(rdgydgh[mfi],0,0,1);
-    }
-    rdgydgh.clear();
-#endif
-
-    //
-    // alpha = c_p^(n+1/2)
-    // Note: rho accounted for in diffusion box
-    //
-    BL_ASSERT(alpha==0);
-    alpha = new MultiFab (grids,1,0);
-    compute_cp(prev_time+dt/2,*alpha);
 }
 
 void
