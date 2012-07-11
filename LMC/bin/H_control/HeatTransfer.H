@@ -153,8 +153,6 @@ public:
 
     void compute_differential_diffusion_fluxes (const Real& time);
 
-    void set_differential_diffusion_fluxes (const Real& time);
-
     void adjust_spec_diffusion_fluxes (Real                   time,
                                        const MultiFab* const* beta,
                                        bool                   grow_cells_already_filled);
