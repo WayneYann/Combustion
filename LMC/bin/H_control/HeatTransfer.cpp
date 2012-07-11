@@ -2053,7 +2053,6 @@ HeatTransfer::post_init (Real stop_time)
 
     for (int iter = 0; iter < init_divu_iter; ++iter)
     {
-        BoxLib::Abort("Need to use advance_chemistry instead of strang_chem");
         //
         // Update species destruction rates in each level but not state.
         //
@@ -2067,9 +2066,12 @@ HeatTransfer::post_init (Real stop_time)
                 //
                 MultiFab S_tmp(S_new.boxArray(),S_new.nComp(),0);
 
+		MultiFab Forcing_tmp(S_new.boxArray(),nspecies+1,0);
+		Forcing_tmp.setVal(0.);
+
                 S_tmp.copy(S_new);  // Parallel copy
 
-                // getLevel(k).strang_chem(S_tmp,dt_save[k],HT_EstimateYdotNew);
+		getLevel(k).advance_chemistry(S_new,S_tmp,dt_save[k],Forcing_tmp,0);
             }
         }
         //
