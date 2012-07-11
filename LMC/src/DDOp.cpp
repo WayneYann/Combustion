@@ -298,12 +298,10 @@ DDOp::setGrowCells(MultiFab& T,
         const Orientation&      face = oitr();
         const int              iFace = (int)face;
 
-        const Array<Real>&      Tloc = Tbndry.bndryLocs(face);
         const FabSet&            Tfs = Tbndry.bndryValues(face,mg_level);
         FabSet&                  Tst = stencilWeight[face];
         const int                Tnc = 1;
 
-        const Array<Real>&      Yloc = Ybndry.bndryLocs(face);
         const FabSet&            Yfs = Ybndry.bndryValues(face,mg_level);
         FabSet&                  Yst = stencilWeight[face];
         const int                Ync = Nspec;
@@ -323,7 +321,7 @@ DDOp::setGrowCells(MultiFab& T,
             BL_ASSERT(!Tb.contains_nan());
 
             const Mask& Tm  = Tbndry.bndryMasks(face,mg_level)[idx];
-            const Real Tbcl = Tloc[idx];
+            const Real Tbcl = Tbndry.bndryLocs(face,idx);
             const int  Tbct = Tbndry.bndryConds(face,idx)[comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
@@ -356,7 +354,7 @@ DDOp::setGrowCells(MultiFab& T,
             BL_ASSERT(!Yb.contains_nan());
 
             const Mask& Ym  = Ybndry.bndryMasks(face,mg_level)[idx];
-            const Real Ybcl = Yloc[idx];
+            const Real Ybcl = Ybndry.bndryLocs(face,idx);
             const int Ybct  = Ybndry.bndryConds(face,idx)[comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
