@@ -46,6 +46,7 @@ program main
   type(pf_pfasst_t)  :: pf
   type(pf_comm_t)    :: tcomm
   integer            :: nvars(2), nnodes(2)
+  double precision, pointer :: y0(:)
 
   type(bl_prof_timer), save :: bpt, bpt_init_data
 
@@ -161,13 +162,15 @@ program main
   end if
 
   if (method == 3) then
-     if (.not. parallel_nprocs() > 1) then
-        stop "ERROR: Not enough processors for PFASST run."
-     end if
+     ! if (.not. parallel_nprocs() > 1) then
+     !    stop "ERROR: Not enough processors for PFASST run."
+     ! end if
 
      ! XXX: take nvars from volume of initial condition...
-     nvars  = NC * n_cell**DM
+     nvars  = volume(U)
      nnodes = [ 5, 3 ] 
+
+     print *, 'nvars', nvars
 
      call create(tcomm, MPI_COMM_WORLD)
      call create(pf, tcomm, 2, nvars, nnodes)
@@ -232,12 +235,13 @@ program main
 
   else if (method == 3) then
 
-     ! XXX: set PFASST initial condition
+     allocate(y0(NC * n_cell**DM))
+     call copy_from_mfab(y0, U)
+     
+     pf%y0 => y0
+     call run(pf)
 
-     print *, 'PFASST NOT IMPLEMENTED YET'
-
-     ! call run(pf)
-
+     deallocate(y0)
   end if
 
 
