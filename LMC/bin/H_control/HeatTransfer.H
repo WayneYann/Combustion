@@ -321,10 +321,6 @@ protected:
                                  int       nghost_in = 0,
                                  int       minzero = 0);
 
-    void scale_species (MultiFab& S,
-                        int       strtcomp,
-                        int       minzero = 0);
-
     //
     // Protected static member functions.
     //
@@ -357,11 +353,6 @@ protected:
 						       Real      time);
 
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
-
-    virtual void strang_chem (MultiFab&  state,
-			      Real       dt,
-			      YdotAction Ydot_action,
-                              int        ngrow = 0);
 
     virtual void advance_chemistry (MultiFab&       mf_old,
                                     MultiFab&       mf_new,
