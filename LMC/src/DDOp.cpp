@@ -305,6 +305,9 @@ DDOp::setGrowCells(MultiFab& T,
         const BndryData::RealTuple& tbdl = Tbndry.bndryLocs(idx);
         const BndryData::RealTuple& ybdl = Ybndry.bndryLocs(idx);
 
+        const Array< Array<BoundCond> >& tbdc = Tbndry.bndryConds(idx);
+        const Array< Array<BoundCond> >& ybdc = Ybndry.bndryConds(idx);
+
         for (OrientationIter oitr; oitr; ++oitr)
         {
             const Orientation&      face = oitr();
@@ -325,7 +328,7 @@ DDOp::setGrowCells(MultiFab& T,
 
             const Mask& Tm  = Tbndry.bndryMasks(face,mg_level)[idx];
             const Real Tbcl = tbdl[face];
-            const int  Tbct = Tbndry.bndryConds(face,idx)[comp];
+            const int  Tbct = tbdc[face][comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
                          Tfab.dataPtr(sCompT), ARLIM(Tfab.loVect()), ARLIM(Tfab.hiVect()),
@@ -358,7 +361,7 @@ DDOp::setGrowCells(MultiFab& T,
 
             const Mask& Ym  = Ybndry.bndryMasks(face,mg_level)[idx];
             const Real Ybcl = ybdl[face];
-            const int Ybct  = Ybndry.bndryConds(face,idx)[comp];
+            const int Ybct  = ybdc[face][comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
                          Yfab.dataPtr(sCompY), ARLIM(Yfab.loVect()), ARLIM(Yfab.hiVect()),
