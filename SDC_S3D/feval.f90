@@ -3,6 +3,7 @@
 module feval
   use iso_c_binding
   use layout_module
+  use multifab_module
   implicit none
 contains
 
@@ -14,6 +15,43 @@ contains
     real(kind=8), intent(out) :: yex(nvars)
 
   end subroutine exact
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  subroutine copy_to_mfab(mf, y)
+    type(multifab),   intent(inout) :: mf
+    double precision, intent(in   ) :: y(:)
+
+    integer :: i, j, k, m, n
+
+    double precision, pointer :: dp(:,:,:,:)
+    integer :: lo(3), hi(3)
+
+    dp => dataptr(mf,1)
+    lo = lwb(get_box(mf,1))
+    hi = upb(get_box(mf,1))
+
+    dp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = reshape(y, &
+         [ hi(1)-lo(1)+1, hi(2)-lo(2)+1, hi(3)-lo(3)+1, size(dp, 4) ] )
+
+  end subroutine copy_to_mfab
+
+  subroutine copy_from_mfab(y, mf)
+    type(multifab),   intent(inout) :: mf
+    double precision, intent(out  ) :: y(:)
+
+    integer :: i, j, k, m, n
+
+    double precision, pointer :: dp(:,:,:,:)
+    integer :: lo(3), hi(3)
+
+    dp => dataptr(mf,1)
+    lo = lwb(get_box(mf,1))
+    hi = upb(get_box(mf,1))
+
+    y = reshape(dp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:), [ size(y) ])
+  end subroutine copy_from_mfab
+
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -36,11 +74,13 @@ contains
     call build(U, ctx%la, ctx%nc, ctx%ng)
     call build(F, ctx%la, ctx%nc, 0)
 
-    ! XXX: copy y into U
+    if (nboxes(U) > 1) then
+       stop "Error: multibox PFASST not supported yet."
+    end if
 
+    call copy_to_mfab(U, y)
     call dUdt(U, F, ctx)
-
-    ! XXX: extract f1 from F
+    call copy_from_mfab(f1, F)
 
     call destroy(U)
     call destroy(F)

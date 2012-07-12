@@ -1,0 +1,16 @@
+&probin
+
+ nsteps = 10
+ plot_int = 10
+ n_cell = 32
+
+ cfl = 0.5d0
+
+ eta = 1.8d-4
+ alam = 1.5d2
+
+ method = 3
+ dt     = 2.5d-8
+
+/
+

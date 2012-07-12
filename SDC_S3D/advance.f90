@@ -147,7 +147,7 @@ contains
        end if
     end do
 
-    call copy(U, uSDC(sdc%nnodes))
+    call sdc_copy(U, uSDC(sdc%nnodes))
     
     do m = 1, sdc%nnodes
        call destroy(uSDC(m))
@@ -234,7 +234,7 @@ contains
     ! Compute integral
     ! 
     call build(R, la, nc, 0)
-    call copy(R, uSDC(1))
+    call sdc_copy(R, uSDC(1))
 
     do m = 1, sdc%nnodes-1
        do n = 1, sdc%nnodes

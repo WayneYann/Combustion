@@ -293,40 +293,42 @@ DDOp::setGrowCells(MultiFab& T,
         BL_ASSERT(!Y[mfi].contains_nan(mfi.validbox(),sCompY,Nspec));
     }
 
-    for (OrientationIter oitr; oitr; ++oitr)
+    for (MFIter mfi(T); mfi.isValid(); ++mfi)
     {
-        const Orientation&      face = oitr();
-        const int              iFace = (int)face;
+        const int   idx = mfi.index();
+        const Box& vbox = mfi.validbox();
+        FArrayBox& Tfab = T[mfi];
+        const int  comp = 0;
 
-        const Array<Array<BoundCond> >& Tbc = Tbndry.bndryConds(face);
-        const Array<Real>&      Tloc = Tbndry.bndryLocs(face);
-        const FabSet&            Tfs = Tbndry.bndryValues(face,mg_level);
-        FabSet&                  Tst = stencilWeight[face];
-        const int                Tnc = 1;
-        
-        const Array<Array<BoundCond> >&  Ybc = Ybndry.bndryConds(face);
-        const Array<Real>&      Yloc = Ybndry.bndryLocs(face);
-        const FabSet&            Yfs = Ybndry.bndryValues(face,mg_level);
-        FabSet&                  Yst = stencilWeight[face];
-        const int                Ync = Nspec;
+        BL_ASSERT(grids[idx] == vbox);
 
-        const int comp = 0;
+        const BndryData::RealTuple& tbdl = Tbndry.bndryLocs(idx);
+        const BndryData::RealTuple& ybdl = Ybndry.bndryLocs(idx);
 
-        for (MFIter mfi(T); mfi.isValid(); ++mfi)
+        const Array< Array<BoundCond> >& tbdc = Tbndry.bndryConds(idx);
+        const Array< Array<BoundCond> >& ybdc = Ybndry.bndryConds(idx);
+
+        for (OrientationIter oitr; oitr; ++oitr)
         {
-            const int   idx = mfi.index();
-            const Box& vbox = mfi.validbox();
-            BL_ASSERT(grids[idx] == vbox);
+            const Orientation&      face = oitr();
+            const int              iFace = (int)face;
 
-            FArrayBox& Tfab = T[mfi];
+            const FabSet&            Tfs = Tbndry.bndryValues(face,mg_level);
+            FabSet&                  Tst = stencilWeight[face];
+            const int                Tnc = 1;
+
+            const FabSet&            Yfs = Ybndry.bndryValues(face,mg_level);
+            FabSet&                  Yst = stencilWeight[face];
+            const int                Ync = Nspec;
+
             FArrayBox& Tstfab = Tst[mfi];
             const FArrayBox& Tb = Tfs[mfi];
 
             BL_ASSERT(!Tb.contains_nan());
 
             const Mask& Tm  = Tbndry.bndryMasks(face,mg_level)[idx];
-            const Real Tbcl = Tloc[idx];
-            const int Tbct  = Tbc[idx][comp];
+            const Real Tbcl = tbdl[face];
+            const int  Tbct = tbdc[face][comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
                          Tfab.dataPtr(sCompT), ARLIM(Tfab.loVect()), ARLIM(Tfab.hiVect()),
@@ -358,8 +360,8 @@ DDOp::setGrowCells(MultiFab& T,
             BL_ASSERT(!Yb.contains_nan());
 
             const Mask& Ym  = Ybndry.bndryMasks(face,mg_level)[idx];
-            const Real Ybcl = Yloc[idx];
-            const int Ybct  = Ybc[idx][comp];
+            const Real Ybcl = ybdl[face];
+            const int Ybct  = ybdc[face][comp];
 
             FORT_APPLYBC(&flagden, &flagbc, &maxorder,
                          Yfab.dataPtr(sCompY), ARLIM(Yfab.loVect()), ARLIM(Yfab.hiVect()),
