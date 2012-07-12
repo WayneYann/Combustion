@@ -286,9 +286,6 @@ protected:
     void compute_rhohmix (Real       time,
                           MultiFab& rhohmix);
 
-    void compute_rhoDgradYgradH (Real      time,
-                                 MultiFab& rdgydgh);
-
     void set_rho_to_species_sum (MultiFab& S,
                                  int       strtcomp, 
                                  int       nghost_in = 0,
@@ -317,8 +314,6 @@ protected:
     //
     // advance functions
     //
-    virtual void compute_edge_states (Real dt,
-                                      std::vector<int>* state_comps_to_compute = 0);
     virtual void differential_spec_diffuse_sync (Real dt);
     virtual void compute_differential_diffusion_terms (MultiFab& D,
                                                        MultiFab& DD,
@@ -357,11 +352,6 @@ protected:
     void compute_OT_radloss (Real      time,
                              int       nGrow,
                              MultiFab& radloss);
-
-    void reset_rho_in_rho_states (const MultiFab& rho,
-                                  Real            time,
-                                  const int       sComp,
-                                  const int       nComp);
 
     virtual void set_preferred_boundary_values (MultiFab& S,
                                                 int       state_index,
