@@ -23,6 +23,8 @@ using std::endl;
 static
 void dump(const FArrayBox& fab, int comp=-1)
 {
+
+#if (BL_SPACEDIM == 2)
     int sComp = comp < 0 ? 0 : comp;
     int nComp = comp < 0 ? fab.nComp() : 1;
 
@@ -34,7 +36,8 @@ void dump(const FArrayBox& fab, int comp=-1)
         }
         cout << endl;
     }
-    BoxLib::Abort();
+#endif
+
 }
 static
 void dump(const MultiFab& mf, int comp=-1)

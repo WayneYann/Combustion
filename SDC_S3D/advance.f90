@@ -28,13 +28,16 @@
   double precision, parameter :: GAM =  4.d0/105.d0
   double precision, parameter :: DEL = -1.d0/280.d0
 
-  type :: s3d
+  type :: feval_ctx_t
 
-     double precision :: eta, alam
+     type(layout) :: la
+     integer      :: nc, ng
 
-  end type s3d
+     double precision :: dx(3), eta, alam
 
-  public :: advance, s3d
+  end type feval_ctx_t
+
+  public :: advance, dUdt, feval_ctx_t
 
 contains
 
@@ -48,12 +51,12 @@ contains
   !
   subroutine advance (U,dt,dx,cfl,time,tfinal,method,ctx,sdc)
 
-    type(multifab),   intent(inout) :: U
-    double precision, intent(inout) :: dt
-    double precision, intent(in   ) :: dx(U%dim), cfl, time, tfinal
-    type(s3d),        intent(in   ) :: ctx 
-    integer,          intent(in   ) :: method 
-    type(sdcquad),    intent(in   ) :: sdc
+    type(multifab),    intent(inout) :: U
+    double precision,  intent(inout) :: dt
+    double precision,  intent(in   ) :: dx(U%dim), cfl, time, tfinal
+    type(feval_ctx_t), intent(in   ) :: ctx 
+    integer,           intent(in   ) :: method 
+    type(sdcquad),     intent(in   ) :: sdc
 
     type(bl_prof_timer), save :: bpt_advance
 
@@ -79,11 +82,11 @@ contains
   !
   subroutine advance_sdc (U,dt,dx,cfl,time,tfinal,ctx,sdc)
 
-    type(multifab),   intent(inout) :: U
-    double precision, intent(inout) :: dt
-    double precision, intent(in   ) :: dx(U%dim), cfl, time, tfinal
-    type(sdcquad),    intent(in   ) :: sdc
-    type(s3d),        intent(in   ) :: ctx
+    type(multifab),    intent(inout) :: U
+    double precision,  intent(inout) :: dt
+    double precision,  intent(in   ) :: dx(U%dim), cfl, time, tfinal
+    type(sdcquad),     intent(in   ) :: sdc
+    type(feval_ctx_t), intent(in   ) :: ctx
 
     integer          :: k, m, nc, ng
     double precision :: courno, courno_proc, res
@@ -104,8 +107,8 @@ contains
 
     courno_proc = 1.0d-50
 
-    call copy(uSDC(1), U)
-    call dUdt(uSDC(1),dx,fSDC(1),ctx,courno=courno_proc)
+    call sdc_copy(uSDC(1), U)
+    call dUdt(uSDC(1),fSDC(1),ctx,courno=courno_proc)
 
     call parallel_reduce(courno, courno_proc, MPI_MAX)
 
@@ -122,27 +125,29 @@ contains
     end if
 
     do m = 2, sdc%nnodes
-       call copy(uSDC(m), uSDC(1))
-       call copy(fSDC(m), fSDC(1))
+       call sdc_copy(uSDC(m), uSDC(1))
+       call sdc_copy(fSDC(m), fSDC(1))
     end do
 
     !
     ! Perform SDC iterations
     !
-    do k = 1, 2*sdc%nnodes - 1
-       call sdcsweep(uSDC, fSDC, dx, dt, ctx, sdc)
+    do k = 1, sdc%iters
+       call sdc_sweep(uSDC, fSDC, dx, dt, ctx, sdc)
 
-       res = sdcresidual(uSDC, fSDC, dt, sdc)
+       if (res > 0.d0) then
+          res = sdc_residual(uSDC, fSDC, dt, sdc)
 
-       print *, 'SDC iteration', k, 'residual = ', res
+          print *, 'SDC iteration', k, 'residual = ', res
 
-       ! if (res < 1.0d-3) then
-       !    print *, 'SDC RESIDUAL CONDITION MET'
-       !    exit
-       ! end if
+          if (res < sdc%tol_residual) then
+             print *, 'SDC RESIDUAL CONDITION MET'
+             exit
+          end if
+       end if
     end do
 
-    call copy(U, uSDC(sdc%nnodes))
+    call sdc_copy(U, uSDC(sdc%nnodes))
     
     do m = 1, sdc%nnodes
        call destroy(uSDC(m))
@@ -152,15 +157,17 @@ contains
   end subroutine advance_sdc
 
 
+
+
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Perform one SDC sweep.
   !
-  subroutine sdcsweep (uSDC,fSDC,dx,dt,ctx,sdc)
-    type(sdcquad),    intent(in   ) :: sdc
-    type(multifab),   intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes)
-    double precision, intent(in   ) :: dt, dx(uSDC(1)%dim)
-    type(s3d),        intent(in   ) :: ctx
+  subroutine sdc_sweep (uSDC,fSDC,dx,dt,ctx,sdc)
+    type(sdcquad),     intent(in   ) :: sdc
+    type(multifab),    intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes)
+    double precision,  intent(in   ) :: dt, dx(uSDC(1)%dim)
+    type(feval_ctx_t), intent(in   ) :: ctx
 
     integer        :: m, n, nc
     type(multifab) :: S(sdc%nnodes-1)
@@ -182,7 +189,6 @@ contains
        end do
     end do
 
-
     !
     ! Perform sub-step correction
     !
@@ -191,11 +197,11 @@ contains
 
        ! U(m+1) = U(m) + dt dUdt(m) + dt S(m)
 
-       call copy(uSDC(m+1), uSDC(m))
+       call sdc_copy(uSDC(m+1), uSDC(m))
        call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
        call saxpy(uSDC(m+1), dt, S(m))
 
-       call dUdt(uSDC(m+1), dx, fSDC(m+1), ctx)
+       call dUdt(uSDC(m+1), fSDC(m+1), ctx)
 
     end do
 
@@ -204,14 +210,14 @@ contains
        call destroy(S(m))
     end do
 
-  end subroutine sdcsweep
+  end subroutine sdc_sweep
 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Compute SDC residual.
   !
-  function sdcresidual (uSDC,fSDC,dt,sdc) result(res)
+  function sdc_residual (uSDC,fSDC,dt,sdc) result(res)
     real(dp_t)                      :: res
     type(sdcquad),    intent(in   ) :: sdc
     type(multifab),   intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes)
@@ -228,7 +234,7 @@ contains
     ! Compute integral
     ! 
     call build(R, la, nc, 0)
-    call copy(R, uSDC(1))
+    call sdc_copy(R, uSDC(1))
 
     do m = 1, sdc%nnodes-1
        do n = 1, sdc%nnodes
@@ -242,7 +248,47 @@ contains
 
     call destroy(R)
 
-  end function sdcresidual
+  end function sdc_residual
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Copy
+  !
+  subroutine sdc_copy (dst, src)
+
+    type(multifab),   intent(in   ) :: src
+    type(multifab),   intent(inout) :: dst
+
+    integer :: lo(src%dim), hi(src%dim), i, j, k, m, n, nc
+
+    double precision, pointer, dimension(:,:,:,:) :: sp, dp
+
+    nc = ncomp(src)
+
+    do n=1,nboxes(src)
+       if ( remote(src,n) ) cycle
+
+       sp => dataptr(src,n)
+       dp => dataptr(dst,n)
+
+       lo = lwb(get_box(src,n))
+       hi = upb(get_box(src,n))
+
+       do m = 1, nc
+          !$OMP PARALLEL DO PRIVATE(i,j,k)
+          do k = lo(3),hi(3)
+             do j = lo(2),hi(2)
+                do i = lo(1),hi(1)
+                   dp(i,j,k,m) = sp(i,j,k,m)
+                end do
+             end do
+          end do
+          !$OMP END PARALLEL DO
+       end do
+    end do
+
+  end subroutine sdc_copy
 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -254,10 +300,10 @@ contains
   !
   subroutine advance_rk3 (U,dt,dx,cfl,time,tfinal,ctx)
 
-    type(multifab),   intent(inout) :: U
-    double precision, intent(inout) :: dt
-    double precision, intent(in   ) :: dx(U%dim), cfl, time, tfinal
-    type(s3d),        intent(in   ) :: ctx
+    type(multifab),    intent(inout) :: U
+    double precision,  intent(inout) :: dt
+    double precision,  intent(in   ) :: dx(U%dim), cfl, time, tfinal
+    type(feval_ctx_t), intent(in   ) :: ctx
 
     integer          :: nc, ng
     double precision :: courno, courno_proc
@@ -289,7 +335,7 @@ contains
     !
     courno_proc = 1.0d-50
 
-    call dUdt(U,dx,Uprime,ctx,courno=courno_proc)
+    call dUdt(U,Uprime,ctx,courno=courno_proc)
 
     call parallel_reduce(courno, courno_proc, MPI_MAX)
 
@@ -310,13 +356,13 @@ contains
     !
     ! Calculate U at time N+2/3
     !
-    call dUdt(Unew,dx,Uprime,ctx)
+    call dUdt(Unew,Uprime,ctx)
     call update_rk3(ThreeQuarters,U,OneQuarter,Unew,OneQuarter*dt,Uprime,Unew)
 
     !
     ! Calculate U at time N+1
     !
-    call dUdt(Unew,dx,Uprime,ctx)
+    call dUdt(Unew,Uprime,ctx)
     call update_rk3(OneThird,U,TwoThirds,Unew,TwoThirds*dt,Uprime,U)
 
     call destroy(Unew)
@@ -374,12 +420,11 @@ contains
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt (U,dx,Uprime,ctx,courno)
+  subroutine dUdt (U,Uprime,ctx,courno)
 
-    type(multifab),   intent(inout) :: U, Uprime
-    double precision, intent(in   ) :: dx(U%dim)
-    type(s3d),        intent(in   ) :: ctx
-    double precision, intent(inout), optional :: courno
+    type(multifab),    intent(inout) :: U, Uprime
+    type(feval_ctx_t), intent(in   ) :: ctx
+    double precision,  intent(inout), optional :: courno
 
     integer          :: lo(U%dim), hi(U%dim), i, j, k, m, n, nc, ng
     type(layout)     :: la
@@ -411,7 +456,7 @@ contains
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
 
-       call ctoprim(lo,hi,up,qp,dx,ng,courno=courno)
+       call ctoprim(lo,hi,up,qp,ctx%dx,ng,courno=courno)
     end do
 
     !
@@ -426,7 +471,7 @@ contains
        lo = lwb(get_box(D,n))
        hi = upb(get_box(D,n))
 
-       call diffterm(lo,hi,ng,dx,qp,dp,ctx%eta,ctx%alam)
+       call diffterm(lo,hi,ng,ctx%dx,qp,dp,ctx%eta,ctx%alam)
     end do
 
     !
@@ -442,7 +487,7 @@ contains
        lo = lwb(get_box(F,n))
        hi = upb(get_box(F,n))
 
-       call hypterm(lo,hi,ng,dx,up,qp,fp)
+       call hypterm(lo,hi,ng,ctx%dx,up,qp,fp)
     end do
 
     !

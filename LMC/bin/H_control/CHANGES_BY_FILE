@@ -1,0 +1,105 @@
+x  ABecLaplacian.cpp
+x  ABecLaplacian.H
+
+	compFlux generalized to take in src_comp and dst_comp
+	compFlux now requires that incoming BC_Mode is set (had a default value before)
+
+x  cdwrk.H
+
+	SDC additions: c_0, c_1, rhoH_INIT, T_cell, rhoY_INIT
+
+x  ChemDriver_2D.F
+x  ChemDriver_F.H
+
+	new subroutine FORT_RRATERHOY that returns instantaneous rho*omegadot
+	new subroutine FORT_CONPSOLV_SDC that is the chemistry integrator for SDC
+	FORT_MIXAVG_RHODIFF_TEMP knows the incoming Y is actually rhoY
+
+x  ChemDriver.cpp
+x  ChemDriver.H
+
+	new function reactionRateRhoY
+	new function solveTransient_sdc
+
+x  ChemDriver_F.F
+
+	new subroutine conpFY_sdc
+
+x  DERIVE_HT_2D.F
+
+	renname FORT_DERSUMYDOT --> FORT_DERSUMRHOYDOT
+
+?  Diffusion.cpp
+?  Diffusion.H
+
+x  GODUNOV_2D.F
+x  GODUNOV_F.H
+
+	In FORT_ESTATE_FPU, s, tforces, and divu do not need to have the same # of ghost cells
+
+x  Godunov.cpp
+x  Godunov.H
+
+	split function Setup into BuildWorkSpace, AllocEdgeBoxes, and ComputeTransverVelocities
+	interface changes to Setup
+	interface changes to edge_states, edge_states_orig, edge_states_fpu, and edge_states_bds
+	interface changes to ComputeAofs
+	interface changes to Add_tf, Correct_tf, Add_aofs_tf, and Add_aofs_tf_gp
+	interface changes to Sum_tf_gp_visc, Sum_tf_divu_visc, Sum_tf_gp, and Sum_tf_divu
+
+?  HEATTRANSFER_2D.F
+?  HeatTransfer.cpp
+?  HEATTRANSFER_F.F
+?  HEATTRANSFER_F.H
+?  HeatTransfer.H
+
+x  HT_setup.cpp
+
+	replace all instances of "ydot" with "rhoydot"
+
+x  Laplacian.cpp
+x  Laplacian.H
+
+	compFlux generalized to take in src_comp and dst_comp
+	compFlux now requires that incoming BC_Mode is set (had a default value before)
+
+x  LinOp.H
+
+	compFlux generalized to take in src_comp and dst_comp
+	compFlux now requires that incoming BC_Mode is set (had a default value before)
+
+x  MacProj.cpp
+
+	godunov->Sum_tf_gp_visc interface changes
+	godunov->Sum_tf_divu_visc interface changes
+	godunov->Setup interface changes
+	
+x  NavierStokes.cpp
+
+	calcViscosity and calcDiffusivity interface changes
+	create_mac_rhs has replaced create_mac_rhs and create_mac_rhs_grown
+	godunov->Sum_tf_gp_visc interface changes
+	godunov->Setup interface changes
+	godunov->Sum_tf_divu_visc interface changes
+	diffusion->diffuse_scalar interface changes
+	diffusion->diffuse_velocity interface changes
+	diffusion->getTensorViscTerms interface changes
+	diffusion->getViscTerms interface changes
+
+x  NavierStokes.H
+
+	create_mac_rhs has replaced create_mac_rhs and create_mac_rhs_grown
+	getForce generalized to take in RComp
+	calcViscosity and calcDiffusivity interface changes
+
+x  NS_getForce.cpp
+
+	getForce generalized to take in RComp	
+
+x  MyPROB_F.H - only local copy
+x  PROB_2D.F  - only local copy
+x  probdata.H - only local copy
+x  PROB_F.F   - only local copy
+x  PROB_F.H   - only local copy
+
+

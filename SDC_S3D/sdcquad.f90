@@ -12,8 +12,9 @@ module sdcquad_module
 
      integer :: qtype  = -1                ! SDC quadrature type
      integer :: nnodes = -1                ! Number of SDC nodes
+     integer :: iters  = -1                ! Number of SDC iterations
 
-     real(dp_t) :: residual_tol = -1.0d0   ! Residual tolerance (ignored if negative)
+     real(dp_t) :: tol_residual = -1.0d0   ! Residual tolerance (ignored if negative)
 
      real(dp_t), pointer :: nodes(:)       ! SDC nodes
      real(dp_t), pointer :: smat(:,:)      ! SDC S matrix (node to node quadrature)
@@ -23,6 +24,7 @@ module sdcquad_module
 
   interface build
      module procedure sdcquad_build
+     module procedure sdcquad_build_namelist
   end interface
 
   interface destroy
@@ -38,7 +40,8 @@ contains
   !
   ! Build SDC object.
   !
-  ! If nnodes0 is supplied, XXX.
+  ! If nnodes0 is supplied, the nodes are set by refining the number
+  ! of nodes down to 'nnodes' from 'nnodes0'.
   !
   subroutine sdcquad_build(sdc, qtype, nnodes, nnodes0)
     integer,       intent(in ) :: qtype, nnodes
@@ -50,6 +53,7 @@ contains
 
     sdc%nnodes = nnodes
     sdc%qtype  = qtype
+    sdc%iters  = 2*nnodes - 1
 
     allocate(sdc%nodes(nnodes))
     allocate(sdc%smat(nnodes-1,nnodes))
@@ -67,27 +71,92 @@ contains
        call sdcquadGL(lnnodes0, refine, sdc%smat, sdc%nodes)
 
     case (SDC_GAUSS_RADAU)
-       call sdcquadCC(lnnodes0, refine, sdc%smat, sdc%nodes)
+       call sdcquadGR(lnnodes0, refine, sdc%smat, sdc%nodes)
 
     case (SDC_CLENSHAW_CURTIS)
-       call sdcquadGR(lnnodes0, refine, sdc%smat, sdc%nodes)
+       call sdcquadCC(lnnodes0, refine, sdc%smat, sdc%nodes)
 
     case default
        stop 'ERROR: sdcquad_build: invalid SDC quadrature type.'
     end select
 
-    ! make imex sdc smat matrices (XXX: this should be moved elsewhere)
-    allocate(sdc%smats(nnodes-1,nnodes,2))
+  end subroutine sdcquad_build
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Build SDC object, read options from file.
+  !
+  subroutine sdcquad_build_namelist(obj, unitno)
+    type(sdcquad), intent(inout) :: obj
+    integer,       intent(in   ) :: unitno
+
+    character(len=32) :: qtype
+    integer           :: nnodes, iters
+    real(dp_t)        :: tol_residual
+
+    namelist /sdc/ qtype, nnodes, iters, tol_residual
+
+    qtype  = "Gauss-Lobatto"
+    nnodes = 3
+    tol_residual = -1.d0
+    iters = 0
+
+    read(unit=unitno, nml=sdc)
+
+    obj%nnodes = nnodes
+    obj%tol_residual = tol_residual
+    if (iters == 0) then
+       obj%iters = 2*obj%nnodes - 1
+    else
+       obj%iters = iters
+    end if
+
+    allocate(obj%nodes(nnodes))
+    allocate(obj%smat(nnodes-1,nnodes))
+
+    select case (qtype)
+    case ("Gauss-Lobatto")
+       obj%qtype = SDC_GAUSS_LOBATTO
+       call sdcquadGL(nnodes, 1, obj%smat, obj%nodes)
+
+    case ("Gauss-Radau")
+       obj%qtype = SDC_GAUSS_RADAU
+       call sdcquadGR(nnodes, 1, obj%smat, obj%nodes)
+
+    case ("Clenshaw-Curtis")
+       obj%qtype = SDC_CLENSHAW_CURTIS
+       call sdcquadCC(nnodes, 1, obj%smat, obj%nodes)
+
+    case default
+       stop 'ERROR: sdcquad_build_namelist: invalid SDC quadrature type.'
+    end select
+
+  end subroutine sdcquad_build_namelist
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Make compact IMEX SDC integration matrices.
+  !
+  subroutine mk_imex_smats(sdc)
+    type(sdcquad), intent(inout) :: sdc
+
+    integer    :: m
+    real(dp_t) :: dsdc(sdc%nnodes-1)
+
+    allocate(sdc%smats(sdc%nnodes-1,sdc%nnodes,2))
 
     sdc%smats(:,:,1) = sdc%smat(:,:)
     sdc%smats(:,:,2) = sdc%smat(:,:)
 
-    dsdc = sdc%nodes(2:nnodes) - sdc%nodes(1:nnodes-1)
-    do m = 1, nnodes-1
+    dsdc = sdc%nodes(2:sdc%nnodes) - sdc%nodes(1:sdc%nnodes-1)
+    do m = 1, sdc%nnodes-1
        sdc%smats(m,m,1)   = sdc%smats(m,m,1)   - dsdc(m)
        sdc%smats(m,m+1,2) = sdc%smats(m,m+1,2) - dsdc(m)
     end do
-  end subroutine sdcquad_build
+
+  end subroutine mk_imex_smats
 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -97,12 +166,9 @@ contains
   subroutine sdcquad_destroy(sdc)
     type(sdcquad), intent(inout) :: sdc
 
-    deallocate(sdc%nodes)
-    deallocate(sdc%smat)
-
-    if (associated(sdc%smats)) then
-       deallocate(sdc%smats)
-    end if
+    if (associated(sdc%nodes)) deallocate(sdc%nodes)
+    if (associated(sdc%smat))  deallocate(sdc%smat)
+    if (associated(sdc%smats)) deallocate(sdc%smats)
     
   end subroutine sdcquad_destroy
 
