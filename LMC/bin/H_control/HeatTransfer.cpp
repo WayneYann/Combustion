@@ -2688,11 +2688,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             }
             flux_divergence(Dnew,nspecies,SpecDiffusionFluxnp1,nspecies,1,-1);
         }
-	else
-	{
-            // don't think we actually use this...?
-            flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
-	}
 
         diffusion->removeFluxBoxesLevel(betanp1);
     }
@@ -5333,12 +5328,13 @@ HeatTransfer::advance_sdc (Real time,
     // Build a copy of rho(tn) with grow cells for use in the diffusion solves
     make_rho_prev_time();
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "Dn (SDC predictor) \n";
     //
     // Compute Dn and DDn (based on state at tn)
     //  (Note that coeffs at tn and tnp1 were intialized in _setup)
     //
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "Computing Dn and DDn (SDC predictor) \n";
+
     compute_differential_diffusion_terms(Dn,DDn,prev_time);
 
     //
@@ -5350,31 +5346,32 @@ HeatTransfer::advance_sdc (Real time,
         const FArrayBox& d = Dn[mfi];
         const FArrayBox& dd = DDn[mfi];
         const FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
-
-        // Note: assumes that Forcing is never used outside domain
-        const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing) & geom.Domain(); 
+        const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
         
-        f.copy(d,gbox,0,gbox,0,nspecies+1);
-        f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
-        f.plus(dd,gbox,gbox,0,nspecies,1);
+        f.copy(d,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
+        f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
+        f.plus(dd,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
     }
     Forcing.FillBoundary(0,nspecies+1);
     geom.FillPeriodicBoundary(Forcing,0,nspecies+1,true);
 
-    compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+    if (verbose && ParallelDescriptor::IOProcessor())
+      std::cout << "A (SDC predictor)\n";
 
+    compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
     scalar_advection_update(dt, Density, RhoH);
 
     make_rho_curr_time();
-    if (verbose && ParallelDescriptor::IOProcessor())
-      std::cout << "Dhat (SDC predictor) \n";
 
     // 
     // Solve for Dhat, diffuse with F = A + R + 0.5*(Dn + Dhat)
     //                                        + 0.5*(DDn + DDnp1)
     // NOTE: 0.5*DDnp1 added to F within dd_update after RhoY solve but before RhoH solve
     //
-    Real theta = 0.5;
+    if (verbose && ParallelDescriptor::IOProcessor())
+      std::cout << "Dhat (SDC predictor) \n";
+
+    Real theta = 0.5; // c-n solve
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
     {
         const Box& box = mfi.validbox();
@@ -5384,10 +5381,10 @@ HeatTransfer::advance_sdc (Real time,
         const FArrayBox& ddn = DDn[mfi];
         const FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
         
-        f.copy(dn,box,0,box,0,nspecies+1);
-        f.plus(ddn,box,box,0,nspecies,1);
+        f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
+        f.plus(ddn,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
         f.mult(0.5);
-        f.plus(a,box,box,first_spec,0,nspecies+1);
+        f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RHoH
         f.plus(r,box,box,0,0,nspecies); // R[RhoH] == 0
     }
 
@@ -5411,13 +5408,12 @@ HeatTransfer::advance_sdc (Real time,
         const FArrayBox& dhat = Dhat[mfi];
         const FArrayBox& ddnp1 = DDnp1[mfi];
         
-        f.copy(dn,box,0,box,0,nspecies+1);
-	f.plus(dhat,box,box,0,0,nspecies+1);  // BAD
-	f.plus(ddn,box,box,0,nspecies,1);
-	f.plus(ddnp1,box,box,0,nspecies,1);
+        f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
+	f.plus(dhat,box,box,0,0,nspecies+1); // add Dhat into RhoY and RhoH
+	f.plus(ddn,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
+	f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
         f.mult(0.5);
-
-	f.plus(a,box,box,first_spec,0,nspecies+1);  // BAD
+	f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -5432,37 +5428,40 @@ HeatTransfer::advance_sdc (Real time,
 
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
     {
+        // Compute updated coeffs at tnp1
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  Update np1 coeffs (SDC corrector " << sdc_iter << ") \n";
+            std::cout << "Update np1 coeffs (SDC corrector " << sdc_iter << ") \n";
 
         calcDiffusivity(cur_time);
-        //
-        // Compute Dnp1, including diff-diff energy terms using current guess for S_new
-        //
+
+	//
+	// Compute Dn and DDn (based on state at tnpn)
+	//
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  Computing Dnp1 (SDC corrector " << sdc_iter << ")\n";
+            std::cout << "Computing Dnp and DDnp1 (SDC corrector " << sdc_iter << ")\n";
+
         compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time);
+
         //
-        // Compute A (F = Dn + R)
+        // Compute A (advection terms) with F = Dn + R
         //
         for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
         {
-            FArrayBox& f = Forcing[mfi];
+      	    FArrayBox& f = Forcing[mfi];
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& ddn = DDn[mfi];
             const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
+	    const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
             
-            const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
-            
-            f.copy(dn,gbox,0,gbox,0,nspecies+1);
-            f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
-            f.plus(ddn,gbox,gbox,0,nspecies,1);
+            f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
+            f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
+            f.plus(ddn,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
         }
         Forcing.FillBoundary(0,nspecies+1);
         geom.FillPeriodicBoundary(Forcing,0,nspecies,true);
 
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  A (SDC corrector " << sdc_iter << ")\n";
+            std::cout << "A (SDC corrector " << sdc_iter << ")\n";
 
         compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
         scalar_advection_update(dt, Density, RhoH);
@@ -5474,7 +5473,10 @@ HeatTransfer::advance_sdc (Real time,
         //                 = A + R + 0.5(Dn - Dnp1) + Dhat + 0.5(DDn + DDnp1)
 	// NOTE: Here we use 0.5*DDnp1 from the previous iteration
         // 
-        Real sdc_theta = 1.0; // In order to use c-n solver w/F to get correct sdc form
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "Dhat (SDC corrector " << sdc_iter << ")\n";
+
+        Real sdc_theta = 1.0; // backward-Euler type solve
         for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
         {
             const Box& box = mfi.validbox();
@@ -5486,17 +5488,17 @@ HeatTransfer::advance_sdc (Real time,
             const FArrayBox& dnp1 = Dnp1[mfi];
 	    const FArrayBox& ddnp1 = DDnp1[mfi];
             
-            f.copy(dn,box,0,box,0,nspecies+1);
-            f.minus(dnp1,box,box,0,0,nspecies+1);
-            f.plus(ddn  ,box,box,0,nspecies,1);
-	    f.plus(ddnp1,box,box,0,nspecies,1);
+            f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
+            f.minus(dnp1,box,box,0,0,nspecies+1); // subtract Dnp1 from RhoY and RhoH
+            f.plus(ddn  ,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
+	    f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
             f.mult(0.5);
-            f.plus(a,box,box,first_spec,0,nspecies+1);
+            f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
             f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
         }
 
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  Dhat (SDC corrector " << sdc_iter << ")\n";
+            std::cout << "Dhat (SDC corrector " << sdc_iter << ")\n";
 
 	// Do not recompute enthalpy diffusion terms
         theta_enthalpy = -1;
@@ -5518,20 +5520,23 @@ HeatTransfer::advance_sdc (Real time,
             const FArrayBox& ddn = DDn[mfi];
             const FArrayBox& ddnp1 = DDnp1[mfi];
 
-            f.copy(dn,box,0,box,0,nspecies+1);
-            f.minus(dnp1,box,box,0,0,nspecies+1);
-            f.plus(ddn  ,box,box,0,nspecies,1);
-            f.plus(ddnp1,box,box,0,nspecies,1);
+            f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
+            f.minus(dnp1,box,box,0,0,nspecies+1); // subtract Dnp1 from RhoY and RhoH
+            f.plus(ddn  ,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
+            f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
             f.mult(0.5);
-            
-            f.plus(dhat,box,box,0,0,nspecies+1);
-            f.plus(a,box,box,first_spec,0,nspecies+1);
+	    f.plus(dhat,box,box,0,0,nspecies+1); // add Dhat to RhoY and RHoH
+            f.plus(a,box,box,first_spec,0,nspecies+1); // add A to RhoY and RhoH
         }
 
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  R (SDC corrector " << sdc_iter << ")\n";
+            std::cout << "R (SDC corrector " << sdc_iter << ")\n";
 
         advance_chemistry(S_old,S_new,dt,Forcing,0);
+
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "DONE WITH R (SDC corrector " << sdc_iter << ")\n";
+
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
