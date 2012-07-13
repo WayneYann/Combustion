@@ -308,6 +308,9 @@ DDOp::setGrowCells(MultiFab& T,
         const Array< Array<BoundCond> >& tbdc = Tbndry.bndryConds(idx);
         const Array< Array<BoundCond> >& ybdc = Ybndry.bndryConds(idx);
 
+        const BndryData::MaskTuple& tmsk = Tbndry.bndryMasks(idx,mg_level);
+        const BndryData::MaskTuple& ymsk = Ybndry.bndryMasks(idx,mg_level);
+
         for (OrientationIter oitr; oitr; ++oitr)
         {
             const Orientation&      face = oitr();
@@ -326,7 +329,7 @@ DDOp::setGrowCells(MultiFab& T,
 
             BL_ASSERT(!Tb.contains_nan());
 
-            const Mask& Tm  = Tbndry.bndryMasks(face,mg_level)[idx];
+            const Mask& Tm  = *(tmsk[face]);
             const Real Tbcl = tbdl[face];
             const int  Tbct = tbdc[face][comp];
 
@@ -359,7 +362,7 @@ DDOp::setGrowCells(MultiFab& T,
 
             BL_ASSERT(!Yb.contains_nan());
 
-            const Mask& Ym  = Ybndry.bndryMasks(face,mg_level)[idx];
+            const Mask& Ym  = *(ymsk[face]);
             const Real Ybcl = ybdl[face];
             const int Ybct  = ybdc[face][comp];
 

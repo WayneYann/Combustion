@@ -51,7 +51,13 @@ public:
 
     const Geometry& getGeom(int level) const {return geoms[level];}
     const FabSet& bndryValues (const Orientation& face,int level) const;
-    const PArray<Mask>& bndryMasks (const Orientation& face, int level) const;
+    //
+    // A useful typedef.
+    //
+    typedef BndryData::MaskTuple MaskTuple;
+
+    const MaskTuple& bndryMasks (int igrid, int level) const;
+
     void Write(std::string& outfile) const;
 
 protected:

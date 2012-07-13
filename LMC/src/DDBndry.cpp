@@ -178,16 +178,16 @@ DDBndry::bndryValues (const Orientation& face,int level) const
     return bnd_vals[level][face];
 }
 
-const PArray<Mask>&
-DDBndry::bndryMasks (const Orientation& face, int level) const
+const DDBndry::MaskTuple&
+DDBndry::bndryMasks (int igrid, int level) const
 {
     BL_ASSERT(level>=0);
-    if (level==0) 
+    if (level==0)
     {
-        return ViscBndry::bndryMasks(face);
+        return ViscBndry::bndryMasks(igrid);
     }
     BL_ASSERT(level<bnd_vals.size());
-    return bnd_vals[level].bndryMasks(face);
+    return bnd_vals[level].bndryMasks(igrid);
 }
 
 #include "Utility.H"
