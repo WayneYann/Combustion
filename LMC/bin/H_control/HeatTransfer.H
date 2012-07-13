@@ -352,15 +352,6 @@ protected:
     void compute_OT_radloss (Real      time,
                              int       nGrow,
                              MultiFab& radloss);
-
-    virtual void set_preferred_boundary_values (MultiFab& S,
-                                                int       state_index,
-                                                int       src_comp,
-                                                int       dst_comp,
-                                                int       num_comp,
-                                                Real      time) const;
-
-    void set_overdetermined_boundary_cells (Real time);
     //
     // Set the variables that are put in the plotfile....
     //
@@ -486,8 +477,6 @@ protected:
                              bool               dump_old = true);
 
 protected:
-
-    DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
 
     MultiFab**  EdgeState;
     MultiFab**  SpecDiffusionFluxn;

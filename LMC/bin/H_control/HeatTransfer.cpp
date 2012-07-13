@@ -1168,8 +1168,9 @@ HeatTransfer::restart (Amr&          papa,
     aux_boundary_data_new.initialize(grids,LinOp_grow,2,Geom());
 
     FillPatchedOldState_ok = true;
-
-    set_overdetermined_boundary_cells(state[State_Type].curTime());
+    
+    // AJN - do we need this anymore?
+    // set_overdetermined_boundary_cells(state[State_Type].curTime());
 
     BL_ASSERT(EdgeState == 0);
     const int nGrow       = 0;
@@ -5644,176 +5645,6 @@ HeatTransfer::create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow)
 }
 
 void
-HeatTransfer::set_overdetermined_boundary_cells (Real time)
-{
-    BL_ASSERT(first_spec == Density+1);
-
-    const TimeLevel whichTime = which_time(State_Type,time);
-
-    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
-
-    AuxBoundaryData& rhoh_data = (whichTime == AmrOldTime) ? aux_boundary_data_old : aux_boundary_data_new;
-
-    const int nGrow = (whichTime == AmrOldTime) ? HYP_GROW : LinOp_grow;
-    //                                                                                                           
-    // Build a MultiFab parallel to State with appropriate # of ghost
-    // cells built into the FABs themselves to cover rhoh_data.
-    //
-    BoxArray ba = grids;
-
-    ba.grow(nGrow);
-
-    MultiFab tmpS(ba,1,0);
-
-    const BoxArray& rhoh_BA = rhoh_data.equivBoxArray();
-
-    const int sCompT = 0, sCompY = 1, sCompH = 0;
-    //
-    // A non-allocated MultiFab on grids for FPI below.
-    //
-    FArrayBox tmp, rhoh;
-
-    MultiFab t(grids,1,0,Fab_noallocate);
-
-    for (FillPatchIterator T_fpi(*this,t,nGrow,time,State_Type,Temp,1),
-             RhoY_fpi(*this,t,nGrow,time,State_Type,Density,nspecies+1);
-         T_fpi.isValid() && RhoY_fpi.isValid();
-         ++T_fpi, ++RhoY_fpi)
-    {
-        FArrayBox& RhoY = RhoY_fpi();
-
-        BL_ASSERT(RhoY.box() == tmpS[RhoY_fpi.index()].box());
-
-        tmp.resize(RhoY.box(),1);
-        tmp.copy(RhoY,0,0,1);
-        tmp.invert(1);
-
-        std::vector< std::pair<int,Box> > isects = rhoh_BA.intersections(RhoY.box());
-
-        for (int i = 0, N = isects.size(); i < N; i++)
-        {
-            const Box& isect = isects[i].second;
-
-            for (int j = 1; j < nspecies+1; j++)
-                RhoY.mult(tmp,isect,0,j,1);
-
-            rhoh.resize(isect,1);
-            getChemSolve().getHmixGivenTY(rhoh,T_fpi(),RhoY,isect,sCompT,sCompY,sCompH);
-            rhoh.mult(RhoY,0,0,1);
-
-            tmpS[T_fpi.index()].copy(rhoh);
-        }
-    }
-
-    const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 1;
-
-    rhoh_data.copyFrom(tmpS,0,RhoHcomp,1); // Parallel copy.
-}
-
-DistributionMapping
-HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
-{
-    //
-    // Sometimes "mf" is the valid region of the State.
-    // Sometimes it's the region covered by AuxBoundaryData.
-    // When ngrow>0 were doing AuxBoundaryData with nGrow()==ngrow.
-    //
-    DistributionMapping rr;
-    rr.RoundRobinProcessorMap(bxba.size(),ParallelDescriptor::NProcs());
-
-    MultiFab fctmpnew;
-    fctmpnew.define(bxba, 1, 0, rr, Fab_allocate);
-    fctmpnew.setVal(1);
-
-    if (ngrow == 0)
-    {
-        //
-        // Working on valid region of state.
-        //
-        fctmpnew.copy(get_new_data(FuncCount_Type));  // Parallel copy.
-    }
-    else
-    {
-        //
-        // Can't directly use a parallel copy from FuncCount_Type to fctmpnew.
-        //
-        MultiFab& FC = get_new_data(FuncCount_Type);
-
-        BoxArray ba = FC.boxArray();
-        ba.grow(ngrow);
-        MultiFab grownFC(ba, 1, 0);
-        grownFC.setVal(1);
-                
-        for (MFIter mfi(FC); mfi.isValid(); ++mfi)
-            grownFC[mfi].copy(FC[mfi]);
-
-        fctmpnew.copy(grownFC);  // Parallel copy.
-    }
-
-    int count = 0;
-    Array<long> vwrk(bxba.size());
-    for (MFIter mfi(fctmpnew); mfi.isValid(); ++mfi)
-        vwrk[count++] = static_cast<long>(fctmpnew[mfi].sum(0));
-
-    fctmpnew.clear();
-
-#if BL_USE_MPI
-    const int IOProc = ParallelDescriptor::IOProcessorNumber();
-
-    Array<int> nmtags(ParallelDescriptor::NProcs(),0);
-    Array<int> offset(ParallelDescriptor::NProcs(),0);
-
-    for (int i = 0; i < vwrk.size(); i++)
-        nmtags[rr.ProcessorMap()[i]]++;
-
-    BL_ASSERT(nmtags[ParallelDescriptor::MyProc()] == count);
-
-    for (int i = 1; i < offset.size(); i++)
-        offset[i] = offset[i-1] + nmtags[i-1];
-
-    Array<long> vwrktmp = vwrk;
-
-    MPI_Gatherv(vwrk.dataPtr(),
-                count,
-                ParallelDescriptor::Mpi_typemap<long>::type(),
-                vwrktmp.dataPtr(),
-                nmtags.dataPtr(),
-                offset.dataPtr(),
-                ParallelDescriptor::Mpi_typemap<long>::type(),
-                IOProc,
-                ParallelDescriptor::Communicator());
-
-    if (ParallelDescriptor::IOProcessor())
-    {
-        //
-        // We must now assemble vwrk in the proper order.
-        //
-        std::vector< std::vector<int> > table(ParallelDescriptor::NProcs());
-
-        for (int i = 0; i < vwrk.size(); i++)
-            table[rr.ProcessorMap()[i]].push_back(i);
-
-        int idx = 0;
-        for (int i = 0; i < table.size(); i++)
-            for (int j = 0; j < table[i].size(); j++)
-                vwrk[table[i][j]] = vwrktmp[idx++]; 
-    }
-    //
-    // Send the properly-ordered vwrk to all processors.
-    //
-    ParallelDescriptor::Bcast(vwrk.dataPtr(), vwrk.size(), IOProc);
-#endif
-
-    DistributionMapping res;
-    //
-    // This call doesn't invoke the MinimizeCommCosts() stuff.
-    //
-    res.KnapSackProcessorMap(vwrk,ParallelDescriptor::NProcs());
-
-    return res;
-}
-
-void
 HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                                  MultiFab&       mf_new,
                                  Real            dt,
@@ -6948,43 +6779,6 @@ HeatTransfer::reflux ()
 
         if (ParallelDescriptor::IOProcessor())
             std::cout << "HeatTransfer::Reflux(): time: " << run_time << '\n';
-    }
-}
-
-void
-HeatTransfer::set_preferred_boundary_values (MultiFab& S,
-                                             int       state_index,
-                                             int       src_comp,
-                                             int       dst_comp,
-                                             int       num_comp,
-                                             Real      time) const
-{
-    //
-    // Only do copy if request contains affected states,
-    // and fillpatched data known to be no good.
-    //
-    if (state_index == State_Type  && !FillPatchedOldState_ok)
-    {
-        const TimeLevel whichTime = which_time(State_Type,time);
-        //
-        // To get chem-advanced data instead of FP'd data at old time
-        //
-        if (whichTime == AmrOldTime && src_comp > BL_SPACEDIM)
-        {
-            aux_boundary_data_old.copyTo(S,src_comp-BL_SPACEDIM,dst_comp,num_comp);
-        }
-        //
-        // To get RhoH computed with current T, Y data instead of FP'd RhoH
-        // Note: "advance" is to make sure that RhoH is correct as needed.
-        //
-        if (src_comp <= RhoH && src_comp + num_comp > RhoH)
-        {
-            const AuxBoundaryData& data = (whichTime == AmrOldTime) ? aux_boundary_data_old : aux_boundary_data_new;
-
-            const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 1;
-
-            data.copyTo(S,RhoHcomp,RhoH-src_comp+dst_comp,1);
-        }
     }
 }
 
