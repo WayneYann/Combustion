@@ -5261,22 +5261,9 @@ HeatTransfer::predict_velocity (Real  dt,
 
 Real
 HeatTransfer::advance (Real time,
-                       Real dt,
-                       int  iteration,
-                       int  ncycle)
-{
-  Real dt_test = 0.0;
-
-  dt_test = advance_sdc(time,dt,iteration,ncycle);
-  
-  return dt_test;
-}
-
-Real
-HeatTransfer::advance_sdc (Real time,
-			   Real dt,
-			   int  iteration,
-			   int  ncycle)
+		       Real dt,
+		       int  iteration,
+		       int  ncycle)
 {
     if (level == 0)
     {
