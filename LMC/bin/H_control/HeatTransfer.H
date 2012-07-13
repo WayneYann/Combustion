@@ -104,13 +104,6 @@ public:
                           int  iteration,
                           int  ncycle);
     //
-    // Advance grids at this level in time.
-    //
-    Real advance_sdc (Real time,
-		      Real dt,
-		      int  iteration,
-		      int  ncycle);
-    //
     // Worker functions used by level advance function.
     //
     virtual void create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow = 0);
@@ -119,14 +112,6 @@ public:
                                int       src_comp, 
                                int       num_comp,
                                Real      time);
-
-    void getTempViscTerms (MultiFab& visc_terms,
-                           int       src_comp, 
-                           Real      time);
-
-    void getRhoHViscTerms (MultiFab& visc_terms,
-                           int       src_comp, 
-                           Real      time);
 
     void diffuse_cleanup (MultiFab*&  delta_rhs, 
                           MultiFab**& betan,
@@ -160,8 +145,6 @@ public:
                           Real             scale) const;
 
     void compute_differential_diffusion_fluxes (const Real& time);
-
-    void set_differential_diffusion_fluxes (const Real& time);
 
     void adjust_spec_diffusion_fluxes (Real                   time,
                                        const MultiFab* const* beta,
@@ -296,19 +279,6 @@ protected:
     void compute_rhohmix (Real       time,
                           MultiFab& rhohmix);
 
-    void compute_cp (Real      time,
-                     MultiFab& cp);
-
-    void compute_cp (const FArrayBox& temp, 
-                     const FArrayBox& species,
-                     FArrayBox&       cp);
-
-    void compute_h (Real      time,
-                    MultiFab& cp);
-
-    void compute_rhoDgradYgradH (Real      time,
-                                 MultiFab& rdgydgh);
-
     void set_rho_to_species_sum (MultiFab& S,
                                  int       strtcomp, 
                                  int       nghost_in = 0,
@@ -334,19 +304,9 @@ protected:
     static int RhoH_to_Temp (FArrayBox& S,
                              const Box& box,
                              int        dominmax = false);
-
-    static void compute_cp_and_hmix (const MultiFab& S,
-                                     MultiFab&       cp, 
-                                     MultiFab&       hmix,
-                                     MultiFab*       temp,
-                                     int             nGrow,
-                                     int             calchmix,
-                                     int             floor_spec);
     //
     // advance functions
     //
-    virtual void compute_edge_states (Real dt,
-                                      std::vector<int>* state_comps_to_compute = 0);
     virtual void differential_spec_diffuse_sync (Real dt);
     virtual void compute_differential_diffusion_terms (MultiFab& D,
                                                        MultiFab& DD,
@@ -385,20 +345,6 @@ protected:
     void compute_OT_radloss (Real      time,
                              int       nGrow,
                              MultiFab& radloss);
-
-    void reset_rho_in_rho_states (const MultiFab& rho,
-                                  Real            time,
-                                  const int       sComp,
-                                  const int       nComp);
-
-    virtual void set_preferred_boundary_values (MultiFab& S,
-                                                int       state_index,
-                                                int       src_comp,
-                                                int       dst_comp,
-                                                int       num_comp,
-                                                Real      time) const;
-
-    void set_overdetermined_boundary_cells (Real time);
     //
     // Set the variables that are put in the plotfile....
     //
@@ -524,8 +470,6 @@ protected:
                              bool               dump_old = true);
 
 protected:
-
-    DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
 
     MultiFab**  EdgeState;
     MultiFab**  SpecDiffusionFluxn;

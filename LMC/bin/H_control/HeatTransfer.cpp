@@ -1168,8 +1168,9 @@ HeatTransfer::restart (Amr&          papa,
     aux_boundary_data_new.initialize(grids,LinOp_grow,2,Geom());
 
     FillPatchedOldState_ok = true;
-
-    set_overdetermined_boundary_cells(state[State_Type].curTime());
+    
+    // AJN - do we need this anymore?
+    // set_overdetermined_boundary_cells(state[State_Type].curTime());
 
     BL_ASSERT(EdgeState == 0);
     const int nGrow       = 0;
@@ -2639,7 +2640,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         bool grow_cells_already_filled = false;
 
         adjust_spec_diffusion_fluxes(curr_time,betanp1,grow_cells_already_filled);
-
         flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
 
 	if (theta_enthalpy > 0)
@@ -2689,11 +2689,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             }
             flux_divergence(Dnew,nspecies,SpecDiffusionFluxnp1,nspecies,1,-1);
         }
-	else
-	{
-            // don't think we actually use this...?
-            flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
-	}
 
         diffusion->removeFluxBoxesLevel(betanp1);
     }
@@ -3147,7 +3142,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 		}
 		else
 		{
-                    getTempViscTerms(visc_terms,Temp-load_comp,time);
+		  BoxLib::Abort("Should not call getTempViscTerms anymore, now terms are tied with species diffusion");
 		}
 	    }
 	    else if (icomp == RhoH)
@@ -3157,7 +3152,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                 }
                 else
 		{
-                    getRhoHViscTerms(visc_terms,RhoH-load_comp,time);
+		  BoxLib::Abort("Should not call getTempViscTerms anymore");
 		}
 	    }
 	    else
@@ -4815,107 +4810,6 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
 }
 
 void
-HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
-                                int       src_comp, 
-                                Real      time)
-{
-    BoxLib::Abort("Should not be in getTempViscTerms anymore, now terms are tied with species diffusion");
-
-    //
-    // 1/c_p (div lambda grad T + div q_rad - sum( Grad(h_i) . specDiffFlux_i ) 
-    //
-    BL_ASSERT(visc_terms.boxArray()==grids);
-
-    const int nGrow     = 0;
-    const int rho_flag  = 1;
-
-    MultiFab** beta;
-    diffusion->allocFluxBoxesLevel(beta);
-    //
-    // + div lambda grad T + Q
-    //
-    getDiffusivity(beta, time, Temp, 0, 1);
-
-    showMFsub("1D",*beta[1],BoxLib::surroundingNodes(stripBox,1),"1D_viscT_beta",level);
-
-    int betaComp = 0;
-    diffusion->getViscTerms(visc_terms,src_comp,Temp,time,rho_flag,beta,betaComp);
-    diffusion->removeFluxBoxesLevel(beta);
-    add_heat_sources(visc_terms,Temp-src_comp,time,nGrow,1.0);
-    MultiFab delta_visc_terms(grids,1,nGrow);
-    //
-    // + sum_l rho D grad Y_l dot grad h_l
-    //
-    //compute_rhoDgradYgradH(time,delta_visc_terms);
-
-    showMFsub("1D",delta_visc_terms,stripBox,"1D_viscT_F.Gh",level);
-
-    //
-    // Add to visc terms, then divide whole mess by c_p 
-    //
-    FArrayBox cp, spec, tmp;
-
-    MultiFab& S = get_data(State_Type,time);
-
-    for (MFIter dvt_mfi(delta_visc_terms); dvt_mfi.isValid(); ++dvt_mfi)
-    {
-        const Box& box = dvt_mfi.validbox();
-
-        cp.resize(box,1);
-        spec.resize(box,nspecies);
-
-        spec.copy(S[dvt_mfi],box,first_spec,box,0,nspecies);
-
-        tmp.resize(box,1);
-        tmp.copy(S[dvt_mfi],Density,0,1);
-        tmp.invert(1);
-
-        for (int i = 0; i < nspecies; ++i)
-            spec.mult(tmp,0,i,1);
-
-        const int yComp   = 0;
-        const int sCompCp = 0;
-        getChemSolve().getCpmixGivenTY(cp,S[dvt_mfi],spec,box,Temp,yComp,sCompCp);
-        
-        visc_terms[dvt_mfi].plus(delta_visc_terms[dvt_mfi],box,0,Temp-src_comp,1);
-        visc_terms[dvt_mfi].divide(cp,0,Temp-src_comp,1);
-    }
-}
-
-void
-HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
-                                int       src_comp, 
-                                Real      time)
-{
-    //
-    // Compute the enthalpy source term, including radiative and
-    // conductive fluxe divergences.  The remaining term, which
-    // is the divergence of the enthalpy flux carried by species
-    // diffusion (ie, div(h_i gamma_i), is computed as an advective
-    // forcing contribution (because it was more convenient to
-    // do it there at the time).  It is not added here, so if the
-    // algorithm changes to require the full RhoH forcing term
-    // (for example, if RhoH is extrapolated to cell edges), the
-    // one needs to be sure to add that missing term.
-    //
-    // NOTE: This routine does not fill grow cells
-    //
-    BL_ASSERT(visc_terms.boxArray()==grids);
-
-    MultiFab** beta;
-    const int nGrow = 0;
-    diffusion->allocFluxBoxesLevel(beta);
-    
-    const int rhoh_rho_flag = 2;
-    getDiffusivity(beta, time, RhoH, 0, 1);
-
-    int betaComp = 0;
-    diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,beta,betaComp);
-    diffusion->removeFluxBoxesLevel(beta);
-    add_heat_sources(visc_terms,RhoH-src_comp,time,nGrow,1.0);
-}
-
-void
 HeatTransfer::add_heat_sources(MultiFab& sum,
                                int       dComp,
                                Real      time,
@@ -5367,22 +5261,9 @@ HeatTransfer::predict_velocity (Real  dt,
 
 Real
 HeatTransfer::advance (Real time,
-                       Real dt,
-                       int  iteration,
-                       int  ncycle)
-{
-  Real dt_test = 0.0;
-
-  dt_test = advance_sdc(time,dt,iteration,ncycle);
-  
-  return dt_test;
-}
-
-Real
-HeatTransfer::advance_sdc (Real time,
-			   Real dt,
-			   int  iteration,
-			   int  ncycle)
+		       Real dt,
+		       int  iteration,
+		       int  ncycle)
 {
     if (level == 0)
     {
@@ -5435,12 +5316,13 @@ HeatTransfer::advance_sdc (Real time,
     // Build a copy of rho(tn) with grow cells for use in the diffusion solves
     make_rho_prev_time();
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "Dn (SDC predictor) \n";
     //
     // Compute Dn and DDn (based on state at tn)
     //  (Note that coeffs at tn and tnp1 were intialized in _setup)
     //
+    if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "Computing Dn and DDn (SDC predictor) \n";
+
     compute_differential_diffusion_terms(Dn,DDn,prev_time);
 
     //
@@ -5452,31 +5334,32 @@ HeatTransfer::advance_sdc (Real time,
         const FArrayBox& d = Dn[mfi];
         const FArrayBox& dd = DDn[mfi];
         const FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
-
-        // Note: assumes that Forcing is never used outside domain
-        const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing) & geom.Domain(); 
+        const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
         
-        f.copy(d,gbox,0,gbox,0,nspecies+1);
-        f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
-        f.plus(dd,gbox,gbox,0,nspecies,1);
+        f.copy(d,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
+        f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
+        f.plus(dd,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
     }
     Forcing.FillBoundary(0,nspecies+1);
     geom.FillPeriodicBoundary(Forcing,0,nspecies+1,true);
 
-    compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+    if (verbose && ParallelDescriptor::IOProcessor())
+      std::cout << "A (SDC predictor)\n";
 
+    compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
     scalar_advection_update(dt, Density, RhoH);
 
     make_rho_curr_time();
-    if (verbose && ParallelDescriptor::IOProcessor())
-      std::cout << "Dhat (SDC predictor) \n";
 
     // 
     // Solve for Dhat, diffuse with F = A + R + 0.5*(Dn + Dhat)
     //                                        + 0.5*(DDn + DDnp1)
     // NOTE: 0.5*DDnp1 added to F within dd_update after RhoY solve but before RhoH solve
     //
-    Real theta = 0.5;
+    if (verbose && ParallelDescriptor::IOProcessor())
+      std::cout << "Dhat (SDC predictor) \n";
+
+    Real theta = 0.5; // c-n solve
     for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
     {
         const Box& box = mfi.validbox();
@@ -5486,10 +5369,10 @@ HeatTransfer::advance_sdc (Real time,
         const FArrayBox& ddn = DDn[mfi];
         const FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
         
-        f.copy(dn,box,0,box,0,nspecies+1);
-        f.plus(ddn,box,box,0,nspecies,1);
+        f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
+        f.plus(ddn,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
         f.mult(0.5);
-        f.plus(a,box,box,first_spec,0,nspecies+1);
+        f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RHoH
         f.plus(r,box,box,0,0,nspecies); // R[RhoH] == 0
     }
 
@@ -5513,13 +5396,12 @@ HeatTransfer::advance_sdc (Real time,
         const FArrayBox& dhat = Dhat[mfi];
         const FArrayBox& ddnp1 = DDnp1[mfi];
         
-        f.copy(dn,box,0,box,0,nspecies+1);
-	f.plus(dhat,box,box,0,0,nspecies+1);  // BAD
-	f.plus(ddn,box,box,0,nspecies,1);
-	f.plus(ddnp1,box,box,0,nspecies,1);
+        f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
+	f.plus(dhat,box,box,0,0,nspecies+1); // add Dhat into RhoY and RhoH
+	f.plus(ddn,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
+	f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
         f.mult(0.5);
-
-	f.plus(a,box,box,first_spec,0,nspecies+1);  // BAD
+	f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -5534,37 +5416,40 @@ HeatTransfer::advance_sdc (Real time,
 
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
     {
+        // Compute updated coeffs at tnp1
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  Update np1 coeffs (SDC corrector " << sdc_iter << ") \n";
+            std::cout << "Update np1 coeffs (SDC corrector " << sdc_iter << ") \n";
 
         calcDiffusivity(cur_time);
-        //
-        // Compute Dnp1, including diff-diff energy terms using current guess for S_new
-        //
+
+	//
+	// Compute Dn and DDn (based on state at tnpn)
+	//
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  Computing Dnp1 (SDC corrector " << sdc_iter << ")\n";
+            std::cout << "Computing Dnp and DDnp1 (SDC corrector " << sdc_iter << ")\n";
+
         compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time);
+
         //
-        // Compute A (F = Dn + R)
+        // Compute A (advection terms) with F = Dn + R
         //
         for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
         {
-            FArrayBox& f = Forcing[mfi];
+      	    FArrayBox& f = Forcing[mfi];
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& ddn = DDn[mfi];
             const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
+	    const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
             
-            const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
-            
-            f.copy(dn,gbox,0,gbox,0,nspecies+1);
-            f.plus(r,gbox,gbox,0,0,nspecies); // R[RhoH] == 0
-            f.plus(ddn,gbox,gbox,0,nspecies,1);
+            f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
+            f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
+            f.plus(ddn,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
         }
         Forcing.FillBoundary(0,nspecies+1);
         geom.FillPeriodicBoundary(Forcing,0,nspecies,true);
 
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  A (SDC corrector " << sdc_iter << ")\n";
+            std::cout << "A (SDC corrector " << sdc_iter << ")\n";
 
         compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
         scalar_advection_update(dt, Density, RhoH);
@@ -5576,7 +5461,10 @@ HeatTransfer::advance_sdc (Real time,
         //                 = A + R + 0.5(Dn - Dnp1) + Dhat + 0.5(DDn + DDnp1)
 	// NOTE: Here we use 0.5*DDnp1 from the previous iteration
         // 
-        Real sdc_theta = 1.0; // In order to use c-n solver w/F to get correct sdc form
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "Dhat (SDC corrector " << sdc_iter << ")\n";
+
+        Real sdc_theta = 1.0; // backward-Euler type solve
         for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
         {
             const Box& box = mfi.validbox();
@@ -5588,17 +5476,17 @@ HeatTransfer::advance_sdc (Real time,
             const FArrayBox& dnp1 = Dnp1[mfi];
 	    const FArrayBox& ddnp1 = DDnp1[mfi];
             
-            f.copy(dn,box,0,box,0,nspecies+1);
-            f.minus(dnp1,box,box,0,0,nspecies+1);
-            f.plus(ddn  ,box,box,0,nspecies,1);
-	    f.plus(ddnp1,box,box,0,nspecies,1);
+            f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
+            f.minus(dnp1,box,box,0,0,nspecies+1); // subtract Dnp1 from RhoY and RhoH
+            f.plus(ddn  ,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
+	    f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
             f.mult(0.5);
-            f.plus(a,box,box,first_spec,0,nspecies+1);
+            f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
             f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
         }
 
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  Dhat (SDC corrector " << sdc_iter << ")\n";
+            std::cout << "Dhat (SDC corrector " << sdc_iter << ")\n";
 
 	// Do not recompute enthalpy diffusion terms
         theta_enthalpy = -1;
@@ -5620,20 +5508,23 @@ HeatTransfer::advance_sdc (Real time,
             const FArrayBox& ddn = DDn[mfi];
             const FArrayBox& ddnp1 = DDnp1[mfi];
 
-            f.copy(dn,box,0,box,0,nspecies+1);
-            f.minus(dnp1,box,box,0,0,nspecies+1);
-            f.plus(ddn  ,box,box,0,nspecies,1);
-            f.plus(ddnp1,box,box,0,nspecies,1);
+            f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
+            f.minus(dnp1,box,box,0,0,nspecies+1); // subtract Dnp1 from RhoY and RhoH
+            f.plus(ddn  ,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
+            f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
             f.mult(0.5);
-            
-            f.plus(dhat,box,box,0,0,nspecies+1);
-            f.plus(a,box,box,first_spec,0,nspecies+1);
+	    f.plus(dhat,box,box,0,0,nspecies+1); // add Dhat to RhoY and RHoH
+            f.plus(a,box,box,first_spec,0,nspecies+1); // add A to RhoY and RhoH
         }
 
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "  R (SDC corrector " << sdc_iter << ")\n";
+            std::cout << "R (SDC corrector " << sdc_iter << ")\n";
 
         advance_chemistry(S_old,S_new,dt,Forcing,0);
+
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "DONE WITH R (SDC corrector " << sdc_iter << ")\n";
+
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -5741,265 +5632,6 @@ HeatTransfer::create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow)
 }
 
 void
-HeatTransfer::reset_rho_in_rho_states (const MultiFab& rho,
-                                       Real            time,
-                                       const int       sComp,
-                                       const int       nComp)
-{
-    //
-    // Divide the given rho from the states with diffusion terms of the
-    // form Laplacian_SoverRho and multiply by the new Rho.
-    //
-    BL_ASSERT(rho.boxArray() == grids);
-    //
-    // Only do the valid region.
-    //
-    MultiFab& S = get_data(State_Type,time);
-
-    BL_ASSERT(sComp + nComp <= S.nComp());
-
-    FArrayBox tmp;
-
-    for (MFIter Smfi(S); Smfi.isValid(); ++Smfi)
-    {
-        tmp.resize(Smfi.validbox(),1);
-        tmp.copy(rho[Smfi],0,0,1);
-        tmp.invert(1);
-
-        for (int comp = sComp; comp < sComp + nComp; ++comp)
-        {
-            if (is_diffusive[comp] && diffusionType[comp]==Laplacian_SoverRho)
-            {
-                S[Smfi].mult(tmp,     Smfi.validbox(), 0,       comp, 1);
-                S[Smfi].mult(S[Smfi], Smfi.validbox(), Density, comp, 1);
-            }
-        }
-    }
-    //
-    // Now do the same for AuxBoundaryData.
-    // This routine should only be called at new time.
-    //
-    const TimeLevel whichTime = which_time(State_Type,time);
-
-    BL_ASSERT(whichTime == AmrNewTime);
-
-    const int nGrow = LinOp_grow;
-
-    BL_ASSERT(rho.nGrow() >= nGrow);
-    //
-    // Make a multifab of "rho" on the boxes of the boundary data.
-    // Force them to have the same DistributonMapping().
-    //
-    MultiFab tmpRho;
-
-    tmpRho.define(aux_boundary_data_new.equivBoxArray(),
-                  1,
-                  0,
-                  aux_boundary_data_new.DistributionMap(),
-                  Fab_allocate);
-
-    BoxArray bat = rho.boxArray();
-
-    bat.grow(nGrow);
-    //
-    // This MF is guaranteed to cover tmpRho.
-    //
-    MultiFab rhoGrow(bat,1,0);
-
-    for (MFIter rmfi(rhoGrow); rmfi.isValid(); ++rmfi)
-        rhoGrow[rmfi].copy(rho[rmfi],rho[rmfi].box());
-
-    tmpRho.copy(rhoGrow);  // Parallel copy.
-
-    rhoGrow.clear();
-
-    for (MFIter rmfi(tmpRho); rmfi.isValid(); ++rmfi)
-    {
-        BL_ASSERT(rmfi.validbox() == aux_boundary_data_new[rmfi].box());
-
-        tmp.resize(rmfi.validbox(),1);
-        tmp.copy(tmpRho[rmfi],0,0,1);
-        tmp.invert(1);
-
-        BL_ASSERT(is_diffusive[RhoH]);
-        BL_ASSERT(diffusionType[RhoH] == Laplacian_SoverRho);
-
-        aux_boundary_data_new[rmfi].mult(tmp,0,1,1);
-        aux_boundary_data_new[rmfi].mult(aux_boundary_data_new[rmfi],0,1,1);
-    }
-}
-
-void
-HeatTransfer::set_overdetermined_boundary_cells (Real time)
-{
-    BL_ASSERT(first_spec == Density+1);
-
-    const TimeLevel whichTime = which_time(State_Type,time);
-
-    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
-
-    AuxBoundaryData& rhoh_data = (whichTime == AmrOldTime) ? aux_boundary_data_old : aux_boundary_data_new;
-
-    const int nGrow = (whichTime == AmrOldTime) ? HYP_GROW : LinOp_grow;
-    //                                                                                                           
-    // Build a MultiFab parallel to State with appropriate # of ghost
-    // cells built into the FABs themselves to cover rhoh_data.
-    //
-    BoxArray ba = grids;
-
-    ba.grow(nGrow);
-
-    MultiFab tmpS(ba,1,0);
-
-    const BoxArray& rhoh_BA = rhoh_data.equivBoxArray();
-
-    const int sCompT = 0, sCompY = 1, sCompH = 0;
-    //
-    // A non-allocated MultiFab on grids for FPI below.
-    //
-    FArrayBox tmp, rhoh;
-
-    MultiFab t(grids,1,0,Fab_noallocate);
-
-    for (FillPatchIterator T_fpi(*this,t,nGrow,time,State_Type,Temp,1),
-             RhoY_fpi(*this,t,nGrow,time,State_Type,Density,nspecies+1);
-         T_fpi.isValid() && RhoY_fpi.isValid();
-         ++T_fpi, ++RhoY_fpi)
-    {
-        FArrayBox& RhoY = RhoY_fpi();
-
-        BL_ASSERT(RhoY.box() == tmpS[RhoY_fpi.index()].box());
-
-        tmp.resize(RhoY.box(),1);
-        tmp.copy(RhoY,0,0,1);
-        tmp.invert(1);
-
-        std::vector< std::pair<int,Box> > isects = rhoh_BA.intersections(RhoY.box());
-
-        for (int i = 0, N = isects.size(); i < N; i++)
-        {
-            const Box& isect = isects[i].second;
-
-            for (int j = 1; j < nspecies+1; j++)
-                RhoY.mult(tmp,isect,0,j,1);
-
-            rhoh.resize(isect,1);
-            getChemSolve().getHmixGivenTY(rhoh,T_fpi(),RhoY,isect,sCompT,sCompY,sCompH);
-            rhoh.mult(RhoY,0,0,1);
-
-            tmpS[T_fpi.index()].copy(rhoh);
-        }
-    }
-
-    const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 1;
-
-    rhoh_data.copyFrom(tmpS,0,RhoHcomp,1); // Parallel copy.
-}
-
-DistributionMapping
-HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
-{
-    //
-    // Sometimes "mf" is the valid region of the State.
-    // Sometimes it's the region covered by AuxBoundaryData.
-    // When ngrow>0 were doing AuxBoundaryData with nGrow()==ngrow.
-    //
-    DistributionMapping rr;
-    rr.RoundRobinProcessorMap(bxba.size(),ParallelDescriptor::NProcs());
-
-    MultiFab fctmpnew;
-    fctmpnew.define(bxba, 1, 0, rr, Fab_allocate);
-    fctmpnew.setVal(1);
-
-    if (ngrow == 0)
-    {
-        //
-        // Working on valid region of state.
-        //
-        fctmpnew.copy(get_new_data(FuncCount_Type));  // Parallel copy.
-    }
-    else
-    {
-        //
-        // Can't directly use a parallel copy from FuncCount_Type to fctmpnew.
-        //
-        MultiFab& FC = get_new_data(FuncCount_Type);
-
-        BoxArray ba = FC.boxArray();
-        ba.grow(ngrow);
-        MultiFab grownFC(ba, 1, 0);
-        grownFC.setVal(1);
-                
-        for (MFIter mfi(FC); mfi.isValid(); ++mfi)
-            grownFC[mfi].copy(FC[mfi]);
-
-        fctmpnew.copy(grownFC);  // Parallel copy.
-    }
-
-    int count = 0;
-    Array<long> vwrk(bxba.size());
-    for (MFIter mfi(fctmpnew); mfi.isValid(); ++mfi)
-        vwrk[count++] = static_cast<long>(fctmpnew[mfi].sum(0));
-
-    fctmpnew.clear();
-
-#if BL_USE_MPI
-    const int IOProc = ParallelDescriptor::IOProcessorNumber();
-
-    Array<int> nmtags(ParallelDescriptor::NProcs(),0);
-    Array<int> offset(ParallelDescriptor::NProcs(),0);
-
-    for (int i = 0; i < vwrk.size(); i++)
-        nmtags[rr.ProcessorMap()[i]]++;
-
-    BL_ASSERT(nmtags[ParallelDescriptor::MyProc()] == count);
-
-    for (int i = 1; i < offset.size(); i++)
-        offset[i] = offset[i-1] + nmtags[i-1];
-
-    Array<long> vwrktmp = vwrk;
-
-    MPI_Gatherv(vwrk.dataPtr(),
-                count,
-                ParallelDescriptor::Mpi_typemap<long>::type(),
-                vwrktmp.dataPtr(),
-                nmtags.dataPtr(),
-                offset.dataPtr(),
-                ParallelDescriptor::Mpi_typemap<long>::type(),
-                IOProc,
-                ParallelDescriptor::Communicator());
-
-    if (ParallelDescriptor::IOProcessor())
-    {
-        //
-        // We must now assemble vwrk in the proper order.
-        //
-        std::vector< std::vector<int> > table(ParallelDescriptor::NProcs());
-
-        for (int i = 0; i < vwrk.size(); i++)
-            table[rr.ProcessorMap()[i]].push_back(i);
-
-        int idx = 0;
-        for (int i = 0; i < table.size(); i++)
-            for (int j = 0; j < table[i].size(); j++)
-                vwrk[table[i][j]] = vwrktmp[idx++]; 
-    }
-    //
-    // Send the properly-ordered vwrk to all processors.
-    //
-    ParallelDescriptor::Bcast(vwrk.dataPtr(), vwrk.size(), IOProc);
-#endif
-
-    DistributionMapping res;
-    //
-    // This call doesn't invoke the MinimizeCommCosts() stuff.
-    //
-    res.KnapSackProcessorMap(vwrk,ParallelDescriptor::NProcs());
-
-    return res;
-}
-
-void
 HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                                  MultiFab&       mf_new,
                                  Real            dt,
@@ -6100,437 +5732,6 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
         if (ParallelDescriptor::IOProcessor())
             std::cout << "HeatTransfer::advance_chemistry time: " << run_time << '\n';
-    }
-}
-
-void
-HeatTransfer::compute_edge_states (Real              dt,
-                                   std::vector<int>* state_comps_to_compute)
-{
-    //
-    // Compute edge states, store internally.  Do this to
-    // avoid recomputing these, and to allow inter-equation consistency.  Note,
-    // storage order in EdgeState same as in State_Type.
-    // NOTE: Ordering is important here, must do rho.Y and Temp BEFORE RhoH and
-    //       Density, but then it doesn't matter.
-    //
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... computing edge states\n";
-    //
-    // Get simulation parameters.
-    //
-    const Real* dx             = geom.CellSize();
-    const Real  prev_time      = state[State_Type].prevTime();
-    const Real  prev_pres_time = state[Press_Type].prevTime();
-    //
-    // NOTE: Massive memory bloat here...how many MultiFab can we waste??
-    // Get viscous forcing on the ones we need, don't bother allocating others
-    //
-    const int nState = desc_lst[State_Type].nComp();
-    PArray<MultiFab> visc_terms(nState,PArrayManage);
-
-    const int use_forces_in_trans = godunov->useForcesInTrans();
-    //
-    // "do_predict" states are predicted normally, after special states
-    //   - "normally" implies:
-    //    (1) component predicted independently
-    //    (2) visc_terms forcing is computed from t^n data
-    //    (3) a "getForce" call will increment the forcing
-    //    (4) predicted states stored in EdgeState[dir]     
-    //
-    std::vector<int> do_predict(nState,true);
-
-    if (do_mom_diff != 1) 
-    {
-        for (int d=0; d<BL_SPACEDIM; ++d)
-            do_predict[Xvel+d] = false;
-    } 
-    for (int sigma=first_spec; sigma<=last_spec; ++sigma)
-        do_predict[sigma] = false; // Will get these in a special way
-    
-    if (do_set_rho_to_species_sum)
-    {
-        do_predict[Density] = false;
-    }
-
-    if (do_mcdd)
-    {
-        do_predict[Temp] = false; // Will get this in a special way
-    }
-
-    // Note: we predict H for the H-T solve
-
-    //
-    // This logic and the associated array passed in allows the computation
-    // of the edge states to be shut off for specific components.  This is
-    // intended to allow special components, such as RhoK and RhoEps in
-    // TurbHT be treated differently.  This logic tries to insure that
-    // all components with interdependencies are turned on at the same time.
-    //
-    std::vector<int> compute_comp(nState, true);
-
-    if (state_comps_to_compute != 0)
-    {
-        BL_ASSERT(state_comps_to_compute->size() == nState);
-
-        for (int cmp = 0; cmp < nState; cmp++)
-            compute_comp[cmp] = (*state_comps_to_compute)[cmp];
-
-        if (compute_comp[Density] || compute_comp[Temp] ||
-            compute_comp[RhoH]    || compute_comp[first_spec])
-        {
-            BL_ASSERT(compute_comp[Density]);
-            BL_ASSERT(compute_comp[Temp]);
-            BL_ASSERT(compute_comp[RhoH]);
-
-            for (int sigma=first_spec; sigma<=last_spec; ++sigma)
-                BL_ASSERT(compute_comp[sigma]);
-        }
-    }
-    //
-    // If !do_predict, but will need visc terms, get them explicity here
-    //
-    MultiFab DivU(grids,1,nGrowAdvForcing);
-    create_mac_rhs(DivU,prev_time,dt,nGrowAdvForcing);
-
-    MultiFab Gp;
-
-    if (use_forces_in_trans || (do_mom_diff == 1))
-    {
-        visc_terms.set(Xvel, new MultiFab(grids,BL_SPACEDIM,nGrowAdvForcing));
-        getViscTerms(visc_terms[Xvel],Xvel,BL_SPACEDIM,prev_time);
-
-        Gp.define(grids,BL_SPACEDIM,1,Fab_allocate);
-        getGradP(Gp, prev_pres_time);
-    }
-
-    if (compute_comp[first_spec] && do_predict[RhoH])
-    {
-        if (do_mcdd)
-        {
-            visc_terms.set(first_spec, new MultiFab(grids,nspecies+1,nGrowAdvForcing));
-            compute_mcdd_visc_terms(visc_terms[first_spec],prev_time,nGrowAdvForcing,DDOp::DD_Temp);
-        }
-        else
-        {
-            // Creates one additional component for NULN terms, remember to add to RhoH later...
-            visc_terms.set(first_spec, new MultiFab(grids,nspecies+1,nGrowAdvForcing));
-            getViscTerms(visc_terms[first_spec],first_spec,nspecies+1,prev_time);
-        }
-    }
-    //
-    // Get all the normal visc terms for everything but velocity
-    //
-    for (int sigma=BL_SPACEDIM; sigma<nState; ++sigma)
-    {
-        if (do_predict[sigma] && compute_comp[sigma])
-        {
-            BL_ASSERT( sigma < first_spec || sigma > last_spec );
-            visc_terms.set(sigma, new MultiFab(grids,1,nGrowAdvForcing));
-            if (be_cn_theta == 1.0)
-            {
-                visc_terms[sigma].setVal(0.0,0,1,nGrowAdvForcing);
-            }
-            else
-            {
-                getViscTerms(visc_terms[sigma],sigma,1,prev_time);
-            }
-        }
-    }
-
-    //
-    // Here's where we remember to add NULN terms...
-    //
-    if (compute_comp[first_spec] && compute_comp[RhoH] && do_predict[RhoH])
-    {
-        MultiFab::Add(visc_terms[RhoH],visc_terms[first_spec],nspecies,0,1,nGrowAdvForcing);
-    }
-
-    //
-    // Loop on grids, and compute edge fluxes
-    //
-    FArrayBox edge[BL_SPACEDIM],Rho,U,state,tforces,tvelforces,vel,h,spec,T;
-    //
-    // FillPatch'd state data.
-    //
-    for (FillPatchIterator S_fpi(*this,DivU,HYP_GROW,prev_time,State_Type,0,nState);
-         S_fpi.isValid();
-         ++S_fpi)
-    {
-        //
-        // Gonna need this array on a per-grid basis
-        //
-        std::vector<int> this_edge_state_computed(nState,false);
-
-        const int i = S_fpi.index();
-        FArrayBox& S = S_fpi();
-
-        //
-        // Get the spec forces based on CC data (forces on EC data in getViscTerms)
-        //
-        if (use_forces_in_trans || (do_mom_diff == 1))
-        {
-            NavierStokes::getForce(tvelforces,i,nGrowAdvForcing,Xvel,BL_SPACEDIM,
-#ifdef GENGETFORCE
-				   prev_time,
-#endif		 
-				   S,Density);
-
-            godunov->Sum_tf_gp_visc(tvelforces,0,visc_terms[Xvel][i],0,Gp[i],0,S,Density);
-        }
-        //
-        // Set up the workspace for the godunov Box (also resize "edge" for later)
-        //
-        Array<int> u_bc[BL_SPACEDIM];
-        D_TERM(u_bc[0] = getBCArray(State_Type,i,0,1);,
-               u_bc[1] = getBCArray(State_Type,i,1,1);,
-               u_bc[2] = getBCArray(State_Type,i,2,1);)
-
-        godunov->Setup(grids[i], dx, dt, 0,
-                       D_DECL(edge[0],edge[1],edge[2]),
-                       D_DECL(u_bc[0].dataPtr(),u_bc[1].dataPtr(),u_bc[2].dataPtr()),
-                       D_DECL(S,S,S), D_DECL(0,1,2),
-                       tvelforces, 0);
-
-        const int velpred = 0; // Already have edge velocities for transverse derivative
-
-        if (do_mom_diff == 1) 
-        {
-            vel.resize(S_fpi().box(),BL_SPACEDIM);
-
-            vel.copy(S_fpi(),0,0,BL_SPACEDIM);
-            //
-            // Loop over the velocity components.
-            //
-            for (int comp = 0 ; comp < BL_SPACEDIM ; comp++ )
-            {
-                if (predict_mom_together == 1) 
-                {
-                    vel.mult(Rho,S_fpi().box(),S_fpi().box(),0,comp,1);
-                    tvelforces.mult(Rho,tvelforces.box(),tvelforces.box(),0,comp,1);
-                }
-                Array<int> bc = getBCArray(State_Type,i,comp,1);
-
-                godunov->edge_states_orig(grids[i], dx, dt, velpred,
-                                          D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0),
-                                          D_DECL(edge[0],edge[1],edge[2]),             D_DECL(0,0,0),
-                                          D_DECL(U,U,U),                               D_DECL(0,1,2),
-                                          vel,comp,tvelforces,comp,comp,bc.dataPtr());
-                
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,comp,1);
-
-                this_edge_state_computed[comp] = true;
-            }
-        }
-        //
-        // Get spec edge states.
-        //
-        if (compute_comp[first_spec])
-        {
-            NavierStokes::getForce(tforces,i,nGrowAdvForcing,first_spec,nspecies,
-#ifdef GENGETFORCE
-				   prev_time,
-#endif		 
-				   Rho);
-
-            FArrayBox junkDivu(tforces.box(),1);
-            junkDivu.setVal(0.);
-            for (int comp = 0 ; comp < nspecies ; comp++)
-            {
-                int state_ind = first_spec + comp;
-                int use_conserv_diff = 
-                      (advectionType[state_ind] == Conservative) ? true : false;
-                Array<int> bc = getBCArray(State_Type,i,state_ind,1);
-
-                godunov->Sum_tf_divu_visc(S, first_spec+comp, tforces, comp, 1,
-                                          visc_terms[first_spec][i], comp,
-                                          junkDivu, 0, S, Density, use_conserv_diff);
-                    
-                godunov->edge_states_fpu(grids[i], dx, dt,
-                                         D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0),
-                                         D_DECL(edge[0],edge[1],edge[2]),             D_DECL(0,0,0),
-                                         spec,comp,tforces,comp,DivU[i],0,
-                                         state_ind,bc.dataPtr(),
-                                         use_conserv_diff);
-                
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
-                
-                this_edge_state_computed[state_ind] = true;
-            }
-        }
-        //
-        // Get density edge states
-        //
-        if (compute_comp[Density])
-        {
-            if (do_set_rho_to_species_sum)
-            {
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                {
-                    (*EdgeState[d])[i].setVal(0.0,edge[d].box(),Density,1);
-                    for (int sigma=first_spec; sigma<=last_spec; ++sigma)
-                        (*EdgeState[d])[i].plus((*EdgeState[d])[i],
-                                                edge[d].box(), sigma,Density,1);
-                }
-                this_edge_state_computed[Density] = true;
-            }
-            else
-            {
-                BoxLib::Error("No code yet for rho != sum(rho.Y)");
-            }
-
-            if (do_mom_diff == 1 && predict_mom_together == 0)
-               for (int icomp = 0; icomp < BL_SPACEDIM; icomp++)
-                  for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].mult((*EdgeState[d])[i],(*EdgeState[d])[i].box(),
-                                            (*EdgeState[d])[i].box(),Density,icomp,1);
-        }
-
-        if (compute_comp[Temp])
-        {
-            if (do_predict[Temp])
-            {
-                //
-                // Get Temp edge states via extrap.
-                //
-                const int comp = 0;
-                const int state_ind = Temp;
-                int use_conserv_diff = (advectionType[state_ind] == Conservative) ? true : false;
-                FArrayBox& vt = (do_mcdd ? visc_terms[first_spec][i] : visc_terms[state_ind][i] );
-                int vtComp = (do_mcdd ? nspecies : 0 );
-                
-
-                NavierStokes::getForce(tforces,i,nGrowAdvForcing,state_ind,1,
-#ifdef GENGETFORCE
-                                       prev_time,
-#endif		 
-                                       
-                                       Rho);
-                Array<int> bc = getBCArray(State_Type,i,state_ind,1);
-                
-                FArrayBox junkDivu(tforces.box(),1);
-                junkDivu.setVal(0);
-                godunov->Sum_tf_divu_visc(S, state_ind, tforces,  comp, 1,
-                                          vt, vtComp, junkDivu, 0, S, Density, use_conserv_diff);
-                    
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
-                
-                this_edge_state_computed[state_ind] = true;
-
-            } // if do_predict[Temp]
-        }
-
-        if (compute_comp[RhoH])
-        {
-            if (do_predict[RhoH])
-            {
-                //
-                // Get rhoh edge states via extrap.
-                //
-                const int comp = 0;
-                const int state_ind = RhoH;
-                int use_conserv_diff = (advectionType[state_ind] == Conservative) ? true : false;
-                FArrayBox& vt = (do_mcdd ? visc_terms[first_spec][i] : visc_terms[state_ind][i] );
-                int vtComp = (do_mcdd ? nspecies : 0 );
-                
-                NavierStokes::getForce(tforces,i,nGrowAdvForcing,state_ind,1,
-#ifdef GENGETFORCE
-                                       prev_time,
-#endif		 
-                                       
-                                       Rho);
-
-                // I_R for rhoh should be zero, thus you don't have to add it to the forcing
-                
-                Array<int> bc = getBCArray(State_Type,i,state_ind,1);
-                
-                FArrayBox junkDivu(tforces.box(),1);
-                junkDivu.setVal(0);
-                godunov->Sum_tf_divu_visc(state, state_ind, tforces, comp, 1,
-                                          vt, vtComp, junkDivu, 0, S, Density, use_conserv_diff);
-                    
-                godunov->edge_states_fpu(grids[i], dx, dt,
-                                         D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0),
-                                         D_DECL(edge[0],edge[1],edge[2]),             D_DECL(0,0,0),
-                                         S,RhoH,tforces,comp,DivU[i],0,
-                                         state_ind,bc.dataPtr(),
-                                         use_conserv_diff);
-
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
-
-                // Replace Temperature with H->T solve
-                if (compute_comp[Temp]) 
-                {
-                    for (int d=0; d<BL_SPACEDIM; ++d)
-                    {
-                        const Box& ebox = (*EdgeState[d])[i].box();
-                        RhoH_to_Temp((*EdgeState[d])[i],ebox);
-                    }
-                }                
-            }
-            else
-            {
-                //
-                // Set rhoh on edges = sum(rho.Y.H)
-                //
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                {
-                    (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
-                    h.resize(edge[d].box(),nspecies);
-                    getChemSolve().getHGivenT(h,(*EdgeState[d])[i],
-                                              edge[d].box(),Temp,0);
-                    h.mult((*EdgeState[d])[i],edge[d].box(),first_spec,0,
-                           nspecies);
-                    
-                    (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
-                    for (int comp=0; comp<nspecies; ++comp)
-                        (*EdgeState[d])[i].plus(h,edge[d].box(),comp,RhoH,1);
-                }
-            }
-            
-            this_edge_state_computed[RhoH] = true;
-        }
-        //
-        // Now do the rest as normal
-        //
-        state.resize(S_fpi().box(),1);
-
-        for (int state_ind=0; state_ind<nState; ++state_ind)
-        {
-            if (do_predict[state_ind]                &&
-                !this_edge_state_computed[state_ind] &&
-                compute_comp[state_ind])
-            {
-                int use_conserv_diff =
-                    (advectionType[state_ind] == Conservative) ? true : false;
-                const int comp = 0;
-                NavierStokes::getForce(tforces,i,nGrowAdvForcing,state_ind,1,
-#ifdef GENGETFORCE
-				       prev_time,
-#endif		 
-				       Rho);
-
-                godunov->Sum_tf_divu_visc(S, state_ind, tforces, comp, 1,
-                                          visc_terms[state_ind][i], 0, DivU[i], 0, S, Density, use_conserv_diff);
-                    
-                Array<int> bc = getBCArray(State_Type,i,state_ind,1);
-                godunov->edge_states_fpu(grids[i], dx, dt,
-                                         D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0),
-                                         D_DECL(edge[0],edge[1],edge[2]),             D_DECL(0,0,0),
-                                         S,RhoH,tforces,comp,DivU[i],0,
-                                         state_ind,bc.dataPtr(),
-                                         use_conserv_diff);
-                
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
-                
-                this_edge_state_computed[state_ind] = true;
-            }
-        }
     }
 }
 
@@ -7569,43 +6770,6 @@ HeatTransfer::reflux ()
 }
 
 void
-HeatTransfer::set_preferred_boundary_values (MultiFab& S,
-                                             int       state_index,
-                                             int       src_comp,
-                                             int       dst_comp,
-                                             int       num_comp,
-                                             Real      time) const
-{
-    //
-    // Only do copy if request contains affected states,
-    // and fillpatched data known to be no good.
-    //
-    if (state_index == State_Type  && !FillPatchedOldState_ok)
-    {
-        const TimeLevel whichTime = which_time(State_Type,time);
-        //
-        // To get chem-advanced data instead of FP'd data at old time
-        //
-        if (whichTime == AmrOldTime && src_comp > BL_SPACEDIM)
-        {
-            aux_boundary_data_old.copyTo(S,src_comp-BL_SPACEDIM,dst_comp,num_comp);
-        }
-        //
-        // To get RhoH computed with current T, Y data instead of FP'd RhoH
-        // Note: "advance" is to make sure that RhoH is correct as needed.
-        //
-        if (src_comp <= RhoH && src_comp + num_comp > RhoH)
-        {
-            const AuxBoundaryData& data = (whichTime == AmrOldTime) ? aux_boundary_data_old : aux_boundary_data_new;
-
-            const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 1;
-
-            data.copyTo(S,RhoHcomp,RhoH-src_comp+dst_comp,1);
-        }
-    }
-}
-
-void
 HeatTransfer::calcViscosity (const Real time)
 {
     const TimeLevel whichTime = which_time(State_Type, time);
@@ -8162,140 +7326,6 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 }
 
 void
-HeatTransfer::compute_cp_and_hmix (const MultiFab& S,
-                                   MultiFab&       cp, 
-                                   MultiFab&       hmix,
-                                   MultiFab*       temp, 
-                                   int             nGrow,
-                                   int             calchmix,
-                                   int             floor_spec)
-{
-    //
-    // Notes:
-    //  1) S has the same number of components as the state.
-    //     However, he RhoH-th and the first-spec_th through last_spec-th
-    //     components are assumed to have been converted to primitive
-    //     form, i.e., they hold h and Y, not rho*h and rho*Y
-    //  2) We assume that S, cp, and hmix all have the same set of boxes
-    //     and the same number of ghost cells
-    //  3) We only compute on the valid region regardless of the number of 
-    //     ghost cells.
-    //
-    BL_ASSERT(S.nGrow() >= nGrow && cp.nGrow() >= nGrow);
-    BL_ASSERT(S.nGrow() == cp.nGrow());
-
-    const BoxArray& sgrids   = S.boxArray();
-    bool            tmp_temp = temp != 0;
-    int             nCompY   = last_spec - first_spec + 1;
-    bool            tmp_spec = floor_spec && nCompY>0;
-    if (tmp_spec)
-	BoxLib::Error("Spec flooring not currently implemented");
-    
-    bool need_tmp_data = tmp_temp || tmp_spec;
-
-    FArrayBox tmp;
-
-    for (MFIter mfi(S); mfi.isValid(); ++mfi)
-    {
-	const int iGrid = mfi.index();
-        Box       box   = BoxLib::grow(sgrids[iGrid],nGrow);
-
-	int sCompY = -1, sCompT = -1;
-
-	if (need_tmp_data)
-	{
-	    int nComp = 1 + nCompY;
-	    tmp.resize(box,nComp);
-	    sCompT = 0;
-	    sCompY = 1;
-	    if (tmp_temp)
-	    {
-		tmp.copy((*temp)[iGrid],0,sCompT,1);
-	    }
-            else
-            {
-		tmp.copy(S[iGrid],Temp,sCompT,1);
-	    }
-	    tmp.copy(S[iGrid],first_spec,sCompY,nCompY);
-	}
-        else
-        {
-	    sCompT = Temp;
-	    sCompY = first_spec;
-	}
-	
-	const FArrayBox& state = need_tmp_data ? tmp : S[iGrid];
-
-	const int sCompCp = 0;
-	getChemSolve().getCpmixGivenTY(cp[iGrid],state,state,box,sCompT,sCompY,sCompCp);
-
-	if (calchmix)
-	{
-	    const int sCompH = 0;
-	    getChemSolve().getHmixGivenTY(hmix[iGrid],state,state,box,sCompT,sCompY,sCompH);
-	}
-    }
-}
-
-void
-HeatTransfer::compute_cp (Real      time,
-                          MultiFab& cp)
-{
-    const int nGrow   = cp.nGrow();
-    const int sComp   = std::min(std::min((int)Density,(int)Temp),first_spec);
-    const int eComp   = std::max(std::max((int)Density,(int)Temp),first_spec+nspecies-1);
-    const int nComp   = eComp - sComp + 1;
-    const int sCompR  = Density - sComp;
-    const int sCompT  = Temp - sComp;
-    const int sCompY  = first_spec - sComp;
-    const int sCompCp = 0;
-
-    FArrayBox tmp;
-
-    for (FillPatchIterator fpi(*this,cp,nGrow,time,State_Type,sComp,nComp);
-         fpi.isValid();
-         ++fpi)
-    {
-        //
-        // Convert rho*Y to Y for this operation
-        //
-	const int  iGrid    = fpi.index();
-	const Box& validBox = BoxLib::grow(grids[iGrid],nGrow);
-	FArrayBox& state    = fpi();
-
-        tmp.resize(validBox,1);
-        tmp.copy(state,sCompR,0,1);
-        tmp.invert(1);
-
-        for (int k = 0; k < nspecies; k++)
-            state.mult(tmp,0,sCompY+k,1);
-	
-	getChemSolve().getCpmixGivenTY(cp[iGrid],state,state,validBox,sCompT,sCompY,sCompCp);
-    }
-}
-
-void
-HeatTransfer::compute_cp (const FArrayBox& temp, 
-                          const FArrayBox& species,
-                          FArrayBox&       cp)
-{
-    const Box& box    = temp.box();
-    const int nSpec   = last_spec - first_spec + 1;
-    const int nComp   = nSpec + 1;
-    const int sCompT  = 0;
-    const int sCompY  = 1;
-    const int sCompCp = 0;
-
-    cp.resize(box,1);
-
-    FArrayBox state(box,nComp);
-    state.copy(temp,0,sCompT,1);
-    state.copy(species,0,sCompY,nSpec);
-
-    getChemSolve().getCpmixGivenTY(cp,state,state,box,sCompT,sCompY,sCompCp);
-}
-
-void
 HeatTransfer::compute_rhohmix (Real      time,
                                MultiFab& rhohmix)
 {
@@ -8334,31 +7364,6 @@ HeatTransfer::compute_rhohmix (Real      time,
         // Convert hmix to rho*hmix
         //
         rhohmix[iGrid].mult(state,validBox,sCompR,sCompH,1);
-    }
-}
- 
-void
-HeatTransfer::compute_h (Real      time,
-                         MultiFab& h)
-{
-    BL_ASSERT(h.nComp() == nspecies);
-    BL_ASSERT(h.boxArray() == grids);
-
-    const int nGrow = h.nGrow();
-    const int sComp = Temp;
-    const int nComp = 1;
-    const int sCompT = 0;
-    const int sCompH = 0;
-
-    for (FillPatchIterator fpi(*this,h,nGrow,time,State_Type,sComp,nComp);
-         fpi.isValid();
-         ++fpi)
-    {
-	const Box box = BoxLib::grow(grids[fpi.index()],nGrow);
-
-	BL_ASSERT(box == h[fpi.index()].box());
-
-	getChemSolve().getHGivenT(h[fpi.index()],fpi(),box,sCompT,sCompH);
     }
 }
 
