@@ -1677,7 +1677,9 @@ c
 
       subroutine FORT_MCURVE(lo, hi, T, DIMS(T), curv, DIMS(curv),
      &     wrk, DIMS(wrk), delta)
+
       implicit none
+
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(T)
       integer DIMDEC(curv)
@@ -1692,15 +1694,14 @@ c
 
 c     Fill normal on nodes (assumes 1 grow cell properly filled)
 
-      REAL_T Tx,Ty,Tz,Txx,Tyy,Tzz,Txy,Tyz,Txz,eps,tdxI(3),dxSqI(3), A,B
-      
-      eps = 1.d-8
+      REAL_T Tx,Ty,Tz,Txx,Tyy,Tzz,Txy,Tyz,Txz,tdxI(3),dxSqI(3)
 
       do i=1,3
          tdxI(i) =  one / (two*delta(i))
          dxSqI(i) = one / (delta(i)*delta(i))
       enddo
 
+!$omp parallel do private(i,j,k,Tx,Ty,Tz,Txx,Tyy,Tzz,Txy,Txz,Tyz,mag)
       do k = lo(3),hi(3)
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)
@@ -1726,6 +1727,8 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
             end do
          end do
       end do
+!$omp end parallel do
+
       end
 
       subroutine FORT_SMOOTH(lo, hi, Tin, DIMS(Tin), Tout, DIMS(Tout))
@@ -1738,6 +1741,7 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
 
       integer i,j,k,ii,jj,kk
 
+!$omp parallel do private(i,j,k,ii,jj,kk
       do k = lo(3),hi(3)
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)
@@ -1746,9 +1750,9 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
                   do jj=0,1
                      do ii=0,1
                         Tout(i,j,k) = Tout(i,j,k)
-     &                       + Tin(i+ii,j+jj,k+kk-1)   + Tin(i+ii-1,j+jj,k+kk-1)
+     &                       + Tin(i+ii,j+jj,  k+kk-1) + Tin(i+ii-1,j+jj,  k+kk-1)
      &                       + Tin(i+ii,j+jj-1,k+kk-1) + Tin(i+ii-1,j+jj-1,k+kk-1)
-     &                       + Tin(i+ii,j+jj,k+kk)     + Tin(i+ii-1,j+jj,k+kk  )
+     &                       + Tin(i+ii,j+jj,  k+kk)   + Tin(i+ii-1,j+jj,  k+kk  )
      &                       + Tin(i+ii,j+jj-1,k+kk  ) + Tin(i+ii-1,j+jj-1,k+kk  )
                      end do
                   end do
@@ -1757,4 +1761,6 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
             end do
          end do
       end do
+!$omp end parallel do
+
       end
