@@ -41,8 +41,8 @@
 !     2) the original coding of egr (which was for the ITLS=3) was in error
       integer egr, egi, egl, egc, eg_nodes, eg_IFLAG, eg_ITLS
       parameter (eg_nodes = 1)
-      parameter (eg_IFLAG = 7)
-      parameter (eg_ITLS  = 3)
+      parameter (eg_IFLAG = 3)
+      parameter (eg_ITLS  = 1)
       parameter (egr = 23 + 14*maxspec + 32*maxspec**2 + 13*eg_nodes 
      &         + 30*eg_nodes*maxspec + 5*eg_nodes*maxspec**2)
       parameter (egi = maxspec)
