@@ -1741,7 +1741,7 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
 
       integer i,j,k,ii,jj,kk
 
-!$omp parallel do private(i,j,k,ii,jj,kk
+!$omp parallel do private(i,j,k,ii,jj,kk)
       do k = lo(3),hi(3)
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)
