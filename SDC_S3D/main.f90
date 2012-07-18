@@ -152,6 +152,18 @@ program main
 
 
   !
+  ! Create feval context
+  !
+  ctx%la = la
+  ctx%nc = nc
+  ctx%ng = ng
+  ctx%dx = dx
+
+  ctx%eta  = eta
+  ctx%alam = alam
+
+
+  !
   ! Create SDC or PFASST context
   !
   if (method == 2) then 
@@ -160,6 +172,7 @@ program main
      close(unit=un)
      call mk_imex_smats(sdc)
   end if
+
 
   if (method == 3) then
      ! if (.not. parallel_nprocs() > 1) then
@@ -170,38 +183,27 @@ program main
      nvars  = volume(U)
      nnodes = [ 5, 3 ] 
 
-     print *, 'nvars', nvars
-
      call create(tcomm, MPI_COMM_WORLD)
      call create(pf, tcomm, 2, nvars, nnodes)
 
-     pf%niters = 12
+     pf%niters = 4
      pf%qtype  = 1
-     pf%levels(2)%nsweeps = 2
+     pf%levels(2)%nsweeps = 1
 
      pf%dt   = dt
-     pf%tend = pf%dt * tcomm%nproc
+     ! pf%tend = pf%dt * tcomm%nproc
+     pf%tend = pf%dt * 4
+
+     pf%echo_timings = .true.
 
      ! XXX: check dt?
 
-     call setup(tcomm, pf)
-     call setup(pf)
-
      pf%levels(1)%ctx = c_loc(ctx)
      pf%levels(2)%ctx = c_loc(ctx)
+
+     call setup(tcomm, pf)
+     call setup(pf)
   end if
-
-
-  !
-  ! Create feval context
-  !
-  ctx%la = la
-  ctx%nc = nc
-  ctx%ng = ng
-  ctx%dx = dx
-
-  ctx%eta  = eta
-  ctx%alam = alam
 
 
   !

@@ -2,37 +2,32 @@
 
 module transfer
   use iso_c_binding
+  use encap
   implicit none
 contains
 
   !
   ! Interpolate coarse qG to fine qF.
   !
-  subroutine interpolate(qF, qG, nvarF, nvarG, levelF, ctxF, levelG, ctxG)
+  subroutine interpolate(qF, qG, levelF, ctxF, levelG, ctxG)
     use feval
-    integer,      intent(in)    :: nvarF, nvarG, levelF, levelG
-    real(kind=8), intent(inout) :: qF(nvarF)
-    real(kind=8), intent(in)    :: qG(nvarG)
-    type(c_ptr),  intent(in)    :: ctxF, ctxG
+    integer,          intent(in)    :: levelF, levelG
+    type(pf_encap_t), intent(inout) :: qF, qG
+    type(c_ptr),      intent(in)    :: ctxF, ctxG
 
-    !$OMP PARALLEL WORKSHARE
-    qF = qG
-    !$OMP END PARALLEL WORKSHARE
+    call copy(qF, qG)
   end subroutine interpolate
 
 
   !
   ! Restrict fine qF to coarse qG
   !
-  subroutine restrict(qF, qG, nvarF, nvarG, levelF, ctxF, levelG, ctxG)
-    integer,      intent(in)    :: nvarF, nvarG, levelF, levelG
-    real(kind=8), intent(in)    :: qF(nvarF)
-    real(kind=8), intent(inout) :: qG(nvarG)
-    type(c_ptr),  intent(in)    :: ctxF, ctxG
+  subroutine restrict(qF, qG, levelF, ctxF, levelG, ctxG)
+    integer,          intent(in)    :: levelF, levelG
+    type(pf_encap_t), intent(inout) :: qF, qG
+    type(c_ptr),      intent(in)    :: ctxF, ctxG
 
-    !$OMP PARALLEL WORKSHARE
-    qG = qF
-    !$OMP END PARALLEL WORKSHARE
+    call copy(qG, qF)
   end subroutine restrict
 
 end module transfer
