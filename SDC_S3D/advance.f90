@@ -135,7 +135,7 @@ contains
     do k = 1, sdc%iters
        call sdc_sweep(uSDC, fSDC, dx, dt, ctx, sdc)
 
-       if (res > 0.d0) then
+       if (sdc%tol_residual > 0.d0) then
           res = sdc_residual(uSDC, fSDC, dt, sdc)
 
           print *, 'SDC iteration', k, 'residual = ', res
