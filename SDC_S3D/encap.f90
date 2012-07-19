@@ -84,7 +84,34 @@ contains
     type(pf_encap_t), intent(inout) :: dst
     type(pf_encap_t), intent(in)    :: src
 
-    call copy(dst%q, src%q)
+    integer :: lo(src%q%dim), hi(src%q%dim), i, j, k, m, n, nc
+    double precision, pointer, dimension(:,:,:,:) :: sp, dp
+
+    nc = ncomp(src%q)
+
+    do n=1,nboxes(src%q)
+       if ( remote(src%q,n) ) cycle
+
+       sp => dataptr(src%q,n)
+       dp => dataptr(dst%q,n)
+
+       lo = lwb(get_box(src%q,n))
+       hi = upb(get_box(src%q,n))
+
+       do m = 1, nc
+          !$OMP PARALLEL DO PRIVATE(i,j,k)
+          do k = lo(3),hi(3)
+             do j = lo(2),hi(2)
+                do i = lo(1),hi(1)
+                   dp(i,j,k,m) = sp(i,j,k,m)
+                end do
+             end do
+          end do
+          !$OMP END PARALLEL DO
+       end do
+    end do
+
+
   end subroutine encap_copy
 
   ! Pack solution q into a flat array.
@@ -105,10 +132,16 @@ contains
        lo = lwb(get_box(sol%q,n))
        hi = upb(get_box(sol%q,n))
 
-       call reshape_d_4_1(arr,ic,dp)
+       call reshape_d_4_1(arr,ic,dp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:))
 
        ic = ic + volume(get_box(sol%q, n))
     end do
+
+    ! dp => dataptr(sol%q,1)
+    ! lo = lwb(get_box(sol%q,1))
+    ! hi = upb(get_box(sol%q,1))
+
+    ! arr = reshape(dp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:), [ size(arr) ])
 
   end subroutine encap_pack
 
@@ -120,6 +153,14 @@ contains
     integer :: n, ic, lo(sol%q%dim), hi(sol%q%dim), sh(4)
     double precision, pointer, dimension(:,:,:,:) :: dp
 
+
+    ! dp => dataptr(sol%q,1)
+    ! lo = lwb(get_box(sol%q,1))
+    ! hi = upb(get_box(sol%q,1))
+
+    ! dp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = reshape(arr, &
+    !      [ hi(1)-lo(1)+1, hi(2)-lo(2)+1, hi(3)-lo(3)+1, size(dp, 4) ] )
+
     ic = 1
 
     do n=1,nboxes(sol%q)
@@ -130,7 +171,7 @@ contains
        lo = lwb(get_box(sol%q,n))
        hi = upb(get_box(sol%q,n))
 
-       call reshape_d_1_4(dp,arr,ic,sh)
+       call reshape_d_1_4(dp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:),arr,ic,sh)
 
        ic = ic + volume(get_box(sol%q, n))
     end do

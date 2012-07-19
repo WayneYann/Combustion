@@ -68,7 +68,6 @@ contains
     call c_f_pointer(ctxp, ctx)
 
     call dUdt(y%q, f1%q, ctx)
-
   end subroutine eval_f1
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -81,7 +80,7 @@ contains
     type(pf_encap_t), intent(inout) :: f2
     type(c_ptr),      intent(in)    :: ctxp
 
-    call setval(y%q, 0.0d0)
+    call setval(f2%q, 0.0d0)
   end subroutine eval_f2
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
