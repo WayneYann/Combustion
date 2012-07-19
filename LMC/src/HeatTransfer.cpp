@@ -42,6 +42,12 @@ using std::cerr;
 #include <VISCOPERATOR_F.H>
 #include <DERIVE_F.H>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
+#include "buildInfo.H"
+
 #define DEF_LIMITS(fab,fabdat,fablo,fabhi)   \
 const int* fablo = (fab).loVect();           \
 const int* fabhi = (fab).hiVect();           \
@@ -9784,6 +9790,78 @@ HeatTransfer::writePlotFile (const std::string& dir,
         }
         os << (int) Geometry::Coord() << '\n';
         os << "0\n"; // Write bndry data.
+
+
+        // job_info file with details about the run
+	std::ofstream jobInfoFile;
+	std::string FullPathJobInfoFile = dir;
+	std::string PrettyLine = "===============================================================================\n";
+
+	FullPathJobInfoFile += "/job_info";
+	jobInfoFile.open(FullPathJobInfoFile.c_str(), std::ios::out);	
+
+	// job information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Job Information\n";
+	jobInfoFile << PrettyLine;
+	
+	jobInfoFile << "number of MPI processes: " << ParallelDescriptor::NProcs() << "\n";
+#ifdef _OPENMP
+	jobInfoFile << "number of threads:       " << omp_get_max_threads() << "\n";
+#endif
+	jobInfoFile << "\n\n";
+
+        // plotfile information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Plotfile Information\n";
+	jobInfoFile << PrettyLine;
+
+	time_t now = time(0);
+
+	// Convert now to tm struct for local timezone
+	tm* localtm = localtime(&now);
+	jobInfoFile   << "output data / time: " << asctime(localtm);
+
+	char currentDir[FILENAME_MAX];
+	if (getcwd(currentDir, FILENAME_MAX)) {
+	  jobInfoFile << "output dir:         " << currentDir << "\n";
+	}
+
+	jobInfoFile << "\n\n";
+
+
+        // build information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Build Information\n";
+	jobInfoFile << PrettyLine;
+
+	jobInfoFile << "build date:    " << buildInfoGetBuildDate() << "\n";
+	jobInfoFile << "build machine: " << buildInfoGetBuildMachine() << "\n";
+	jobInfoFile << "build dir:     " << buildInfoGetBuildDir() << "\n";
+	jobInfoFile << "BoxLib dir:    " << buildInfoGetBoxlibDir() << "\n";
+
+	jobInfoFile << "\n";
+	
+	jobInfoFile << "COMP:  " << buildInfoGetComp() << "\n";
+	jobInfoFile << "FCOMP: " << buildInfoGetFcomp() << "\n";
+
+	jobInfoFile << "\n";
+
+	jobInfoFile << "Chemistry Model: " << buildInfoGetAux1() << "\n";
+
+	jobInfoFile << "\n\n";
+
+
+	// runtime parameters
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Inputs File Parameters\n";
+	jobInfoFile << PrettyLine;
+	
+	ParmParse::dumpTable(jobInfoFile, true);
+
+	jobInfoFile.close();
+	
+
     }
     // Build the directory to hold the MultiFab at this level.
     // The name is relative to the directory containing the Header file.
