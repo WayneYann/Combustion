@@ -148,6 +148,7 @@ ifeq ($(USE_METIS),TRUE)
 endif
 
 all: $(executable)
+	@echo SUCCESS
 
 $(executable):
 
