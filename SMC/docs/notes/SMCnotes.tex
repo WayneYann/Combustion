@@ -1,0 +1,146 @@
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[margin=0.8in]{geometry}
+
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{fixmath}
+
+\renewcommand{\vec}[1]{\mbox{\boldmath$#1$}}
+\newcommand{\tensor}[1]{\mbox{\boldmath{\ensuremath{#1}}}}
+
+\begin{document}
+
+\title{Formulation for an S3D-like Algorithm}
+
+\section{Basic Formulation}
+
+The full system is 
+\begin{align}
+\frac{\partial \rho}{\partial t} + \nabla \cdot (\rho
+    \vec{u})= { } & 0, \label{eq:rho} \\
+\frac{\partial \rho \vec{u}}{\partial t} + \nabla \cdot (\rho
+    \vec{u}\vec{u}) + \nabla p= { } & \nabla \cdot
+  \tensor{\tau}, \\
+\frac{\partial \rho E}{\partial t} + \nabla \cdot [(\rho E + p)
+  \vec{u}] = { } & \nabla \cdot (\lambda \nabla T) + \nabla \cdot
+  (\tensor{\tau} \cdot \vec{u}) - \nabla \cdot (\sum_k\vec{\mathcal{F}}_kh_k)
+  + \nabla \cdot (p\sum_k \theta_k \vec{d}_k), \label{eq:rhoE} \\
+\frac{\partial \rho Y_k}{\partial t} + \nabla \cdot (\rho Y_k \vec{u})
+= { } & - \nabla \cdot (\vec{\mathcal{F}}_k) + \rho \dot{\omega}_k, \label{eq:rhoY}
+\end{align}
+where $k$ denotes species, $Y_k$ is mass fraction,
+$\vec{\mathcal{F}}_k$ is species diffusion flux, $h_k$ is species
+enthalpy, $\theta_k$ is species thermal diffusion coefficient, and
+$\lambda$ is partial thermal conductivity.  The last term in
+Equation~(\ref{eq:rhoE}) represents the Dufour effect.  We also have
+\begin{align}
+\vec{\mathcal{F}}_k = {} & -\sum_\ell C_{k\ell} \vec{d}_\ell - \rho Y_k \theta_k
+  \nabla (\ln{T}), \\
+\vec{d}_k = {} & \nabla(X_k) + (X_k - Y_k) \nabla
+(\ln{p}), 
+\end{align}
+where $X_k = p_k / p$ is mole fraction, the term $(X_k - Y_k) \nabla
+(\ln{p})$ represents the barodiffusion, and the term $- \rho Y_k
+\theta_k \nabla (\ln{T})$ represents the Soret effect.  Define
+\begin{align}
+  D_{k\ell} = { } &\frac{C_{k\ell}}{\rho Y_k}, \\
+  \vec{V}_k = { } & -[\sum_\ell D_{k\ell} \vec{d}_\ell + \theta_k
+  \nabla (\ln{T})]. 
+\end{align}
+Then we have
+\begin{equation}
+\vec{\mathcal{F}}_k = \rho Y_k \vec{V}_k.
+\end{equation}
+Note that we have the following properties,
+\begin{align}
+\sum_k \vec{\mathcal{F}}_k = { } & 0, \\
+\sum_k Y_k = { } & 1, \\
+\sum_k \rho \dot{\omega}_k = { } & 0.
+\end{align}
+Thus, as expected, the sum of Equation~(\ref{eq:rhoY}) becomes
+Equation~(\ref{eq:rho}).  So we do not need to advance
+Equation~(\ref{eq:rho}). 
+
+In the full model, we have
+\begin{equation}
+-\nabla \cdot \vec{\mathcal{F}}_k = \nabla \cdot (\rho Y_k \sum_\ell D_{k\ell}
+  \nabla X_\ell) + \nabla \cdot [\rho Y_k \sum_\ell D_{k\ell} (X_\ell-Y_\ell)
+  \nabla (\ln{p}) ] + \nabla \cdot [\rho
+  Y_k \theta_k \nabla (\ln{T})].
+\end{equation}
+
+For a simple mixture model, $\theta_k = 0$ and $D_{k\ell}$ is
+diagonal.  Then, we have
+\begin{align}
+\vec{V}_k = {}& -D_{kk} \nabla X_k - D_{kk} (X_k-Y_k)
+  \nabla (\ln{p}), \label{eq:Vksimple} \\
+\vec{\mathcal{F}}_k = {}& \rho Y_k \vec{V}_k.
+\end{align}
+In this mixture model, $\sum_k \vec{\mathcal{F}}_k \neq
+0$. This is fixed with a correction velocity defined as
+\begin{equation}
+  \vec{V}_c = \frac{1}{\rho}\sum_\ell \vec{\mathcal{F}}_\ell =
+  \sum_\ell Y_\ell \vec{V}_\ell, \label{eq:Vc}
+\end{equation}
+and then the corrected species diffusion flux is
+\begin{equation}
+  \vec{\widetilde{\mathcal{F}}}_k = \vec{\mathcal{F}}_k - \rho Y_k \vec{V}_c. \label{eq:corr}
+\end{equation}
+Our final equations with the mixture model are
+\begin{align}
+\frac{\partial \rho}{\partial t} + \nabla \cdot (\rho
+    \vec{u})= { } & 0, \\
+\frac{\partial \rho \vec{u}}{\partial t} + \nabla \cdot (\rho
+    \vec{u}\vec{u}) + \nabla p= { } & \nabla \cdot
+  \tensor{\tau}, \\
+\frac{\partial \rho E}{\partial t} + \nabla \cdot [(\rho E + p)
+  \vec{u}] = { } & \nabla \cdot (\lambda \nabla T) + \nabla \cdot
+  (\tensor{\tau} \cdot \vec{u}) - \nabla \cdot [\sum_k\rho Y_k
+  (\vec{V}_k -\vec{V}_c) h_k ], \label{eq:rhoE2} \\
+\frac{\partial \rho Y_k}{\partial t} + \nabla \cdot (\rho Y_k \vec{u})
+= { } & \rho \dot{\omega}_k  - \nabla \cdot [\sum_k\rho Y_k
+  (\vec{V}_k -\vec{V}_c) ], \label{eq:rhoY2}
+\end{align} 
+where $\vec{V}_k$ and $\vec{V}_c$ are given by
+Equations~(\ref{eq:Vksimple}) and (\ref{eq:Vc}), respectively.
+
+The equation of state is
+\begin{equation}
+  p = \frac{\rho R_u T}{W} = \rho R_u T \sum_k \frac{Y_k}{W_k} =
+  \rho \sum_k Y_k R_k T = \rho R T,
+\end{equation}
+where $R_u$ is the universal gas constant, $W = (\sum_k Y_k/W_k)^{-1}$
+is the mean molecular weight, $W_k$ are the molecular weight for
+species, $R_k = R_u/W_k$, and $R = \sum_k Y_k R_k$.
+
+Note that there is no explicit chemical source term in the energy
+equation (Eq.~\ref{eq:rhoE2}) because chemical energies are included as
+follows,
+\begin{align}
+  e = { } & \sum_k e_k Y_k, \\
+  e_k = { } & e_k^0 + \int_{T^0}^T c_{v,k}(T^\prime) \mathrm{d} T^\prime,
+\end{align}
+where the superscript $0$ denotes a reference state, $e$ is the
+specific internal energy, and $e_k^0$ is the specific energy (sensible
+plus chemical) of formation of species $k$ at temperature $T^0$.
+
+\section{Diffusion Correction Terms}
+
+The term $\nabla \cdot (\rho Y_k \vec{V}_c)$ in
+Equation~(\ref{eq:rhoY2}) has $N$ diffusions for each species
+(Equation~\ref{eq:Vc}).  If we solve these $N$ diffusions for each
+species, there will be $N^2$ diffusions in total.  So we will treat
+these terms in another way.  Numerically, the discretization of
+$-\nabla \cdot \vec{\mathcal{F}}_k$ gives us $\vec{\mathcal{F}}_k$ at
+cell faces.  We sum them up to obtain $\vec{V}_c$ at cell faces using
+Equation~\ref{eq:Vc}.  We also perform high-order interpolations to
+obtain $Y_k$ at cell faces, and normalize $Y_k$ so that $\sum_k Y_k =
+1$.  Then we correct the diffusion flux using Equation~(\ref{eq:corr})
+and we will have the property $\sum_k \vec{\widetilde{\mathcal{F}}}_k
+= 0$ at cell faces.  For the term $\nabla \cdot (\sum_k h_k Y_k
+\vec{V}_c)$ in Equation~(\ref{eq:rhoE2}), we can perform high-order
+interpolations to obtain cell face vales of $h_k$.
+
+\end{document}
