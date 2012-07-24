@@ -3,6 +3,11 @@
 # include the main Makefile stuff
 include $(BOXLIB_HOME)/Tools/F_mk/GMakedefs.mak
 
+
+include ./GPackage.mak
+VPATH_LOCATIONS += .
+
+
 # default target (make just takes the one that appears first)
 ALL: main.$(suf).exe
 
@@ -66,6 +71,47 @@ main.$(suf).exe: $(objects)
 
 
 #-----------------------------------------------------------------------------
+# runtime parameter stuff (probin.f90)
+
+# template used by write_probin.py to build probin.f90
+PROBIN_TEMPLATE := $(SMC_TOP_DIR)/probin.template
+
+# list of the directories to search for _parameters files
+PROBIN_PARAMETER_DIRS = ./ 
+
+PROBIN_PARAMETER_DIRS += $(SMC_TOP_DIR)
+
+# list of all valid _parameters files for probin
+PROBIN_PARAMETERS := $(shell $(BOXLIB_HOME)/Tools/F_scripts/findparams.py $(PROBIN_PARAMETER_DIRS))
+
+probin.f90: $(PROBIN_PARAMETERS) $(PROBIN_TEMPLATE)
+	@echo " "
+	@echo "${bold}WRITING probin.f90${normal}"
+	$(BOXLIB_HOME)/Tools/F_scripts/write_probin.py \
+           -t $(PROBIN_TEMPLATE) -o probin.f90 -n probin \
+           --pa "$(PROBIN_PARAMETERS)"
+	@echo " "
+
+
+#-----------------------------------------------------------------------------
+# build_info stuff
+deppairs: build_info.f90
+
+build_info.f90: 
+	@echo " "
+	@echo "${bold}WRITING build_info.f90${normal}"
+	$(BOXLIB_HOME)/Tools/F_scripts/make_build_info \
+            "$(Fmdirs)" "$(COMP)" "$(FCOMP_VERSION)" \
+            "$(COMPILE.f90)" "$(COMPILE.f)" \
+            "$(COMPILE.c)" "$(LINK.f90)" "$(BOXLIB_HOME)"
+	@echo " "
+
+$(odir)/build_info.o: build_info.f90
+	$(COMPILE.f90) $(OUTPUT_OPTION) build_info.f90
+	rm -f build_info.f90
+
+
+#-----------------------------------------------------------------------------
 # include the BoxLib Fortran Makefile rules
 include $(BOXLIB_HOME)/Tools/F_mk/GMakerules.mak
 
@@ -76,3 +122,11 @@ include $(BOXLIB_HOME)/Tools/F_mk/GMakerules.mak
 # print out the value.
 print-%: ; @echo $* is $($*)
 
+
+#-----------------------------------------------------------------------------
+# cleaning.  Add more actions to 'clean' and 'realclean' to remove 
+# probin.f90 and build_info.f90 -- this is where the '::' in make comes
+# in handy
+clean:: 
+	$(RM) probin.f90 
+	$(RM) build_info.f90

@@ -1,0 +1,284 @@
+! This module stores the runtime parameters.  The probin_init() routine is
+! used to initialize the runtime parameters
+
+module probin_module
+
+  use bl_types
+  use bl_space
+  use bl_constants_module
+  use bc_module
+
+  implicit none
+
+  private
+
+  @@declarationsA@@
+
+
+  ! Keep track of the inputs file that was used to read in runtime
+  ! parameters.  This filename will be written into the job_info file.
+  character (len=128), save, public :: inputs_file_used = ""
+
+
+  ! These will be allocated and defined below
+  logical,    allocatable, save, public :: pmask(:)
+  real(dp_t), allocatable, save, public :: prob_lo(:)
+  real(dp_t), allocatable, save, public :: prob_hi(:)
+
+end module probin_module
+
+
+module runtime_init_module
+
+  use bl_types
+  use probin_module
+
+  implicit none
+
+  @@namelist@@
+
+  private
+
+  public :: probin
+
+  public :: runtime_init, runtime_close
+
+contains
+
+  subroutine runtime_init()
+
+    use f2kcli
+    use parallel
+    use bl_IO_module
+    use bl_prof_module
+    use bl_error_module
+    use bl_constants_module
+    use knapsack_module
+    use multifab_module, only: multifab_set_alltoallv
+    use cluster_module
+    use layout_module
+    use bc_module
+    
+    integer    :: narg, farg
+
+    character(len=128) :: fname
+    character(len=128) :: probin_env
+
+    logical    :: lexist, need_inputs
+    integer    :: natonce, myproc, nprocs, nsets, myset, iset, ibuff(1)
+    integer    :: wakeuppid, waitforpid, tag, un, ierr
+    real(dp_t) :: pistart, piend, pitotal, pistartall, piendall, pitotalall
+    real(dp_t) :: pitotal_max, pitotalall_max
+
+    type(bl_prof_timer), save :: bpt
+
+    call build(bpt, "runtime_init")
+
+    narg = command_argument_count()
+
+    need_inputs = .true.
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! initialize the runtime parameters
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+    !
+    ! Don't have more than 64 processes trying to read from disk at once.
+    !
+    natonce = min(64,parallel_nprocs())
+    myproc  = parallel_myproc()
+    nprocs  = parallel_nprocs()
+    nsets   = ((nprocs + (natonce - 1)) / natonce)
+    myset   = (myproc / natonce)
+    pistart = 0.d0
+    piend   = 0.d0
+
+    pistartall = parallel_wtime()
+
+    ! loop over the processor groups (sets) and read the inputs file.
+    ! We look first for an environment variable "PROBIN", then at the
+    ! first argument to the executable, and finally for a file named
+    ! inputs_SMC
+    do iset = 0, nsets-1
+
+       if (myset .eq. iset) then
+
+          pistart = parallel_wtime()
+          
+          call get_environment_variable('PROBIN', probin_env, status = ierr)
+          if ( need_inputs .AND. ierr == 0 ) then
+             un = unit_new()
+             open(unit=un, file = probin_env, status = 'old', action = 'read')
+             read(unit=un, nml = probin)
+             close(unit=un)
+             inputs_file_used = probin_env
+             need_inputs = .false.
+          end if
+
+          farg = 1
+          if ( need_inputs .AND. narg >= 1 ) then
+             call get_command_argument(farg, value = fname)
+             inquire(file = fname, exist = lexist )
+             if ( lexist ) then
+                farg = farg + 1
+                un = unit_new()
+                open(unit=un, file = fname, status = 'old', action = 'read')
+                read(unit=un, nml = probin)
+                close(unit=un)
+                inputs_file_used = fname
+                need_inputs = .false.
+             end if
+          end if
+
+          inquire(file = 'inputs_SMC', exist = lexist)
+          if ( need_inputs .AND. lexist ) then
+             un = unit_new()
+             open(unit=un, file = 'inputs_SMC', status = 'old', action = 'read')
+             read(unit=un, nml = probin)
+             close(unit=un)
+             inputs_file_used = 'inputs_SMC'
+             need_inputs = .false.
+          end if
+
+          piend = parallel_wtime()
+
+          ibuff(1)  = 0
+          wakeuppid = myproc + natonce
+          tag       = mod(myproc,natonce)
+          
+          if (wakeuppid < nprocs) call parallel_send(ibuff, wakeuppid, tag)
+
+       end if
+
+      if (myset .eq. (iset + 1)) then
+
+         tag        = mod(myproc,natonce)
+         waitforpid = myproc - natonce
+
+         call parallel_recv(ibuff, waitforpid, tag)
+      endif
+
+    end do
+
+    piendall   = parallel_wtime()
+    pitotal    = piend - pistart
+    pitotalall = piendall - pistartall
+
+    call parallel_reduce(pitotal_max,    pitotal,    MPI_MAX, &
+                         proc = parallel_IOProcessorNode())
+    call parallel_reduce(pitotalall_max, pitotalall, MPI_MAX, &
+                         proc = parallel_IOProcessorNode())
+
+    if (parallel_IOProcessor()) then
+      print*, "PROBINIT max time   = ", pitotal_max
+      print*, "PROBINIT total time = ", pitotalall_max
+    endif
+
+    do while ( farg <= narg )
+       call get_command_argument(farg, value = fname)
+       select case (fname)
+
+
+       @@commandline@@
+
+
+       case ('--')
+          farg = farg + 1
+          exit
+
+       case default
+          if ( .not. parallel_q() ) then
+             write(*,*) 'UNKNOWN option = ', fname
+             call bl_error("MAIN")
+          end if
+       end select
+
+       farg = farg + 1
+    end do
+
+
+    !-------------------------------------------------------------------------
+    ! some sanity checks and set some defaults
+    !-------------------------------------------------------------------------
+
+    ! if the string versions of the boundary conditions were set, then	
+    ! these override the integer values
+    if (.not. xlo_boundary_type == "") &
+         bcx_lo = bc_string_to_integer(trim(xlo_boundary_type))
+
+    if (.not. xhi_boundary_type == "") &
+         bcx_hi = bc_string_to_integer(trim(xhi_boundary_type))
+
+    if (.not. ylo_boundary_type == "") &
+         bcy_lo = bc_string_to_integer(trim(ylo_boundary_type))
+
+    if (.not. yhi_boundary_type == "") &
+         bcy_hi = bc_string_to_integer(trim(yhi_boundary_type))
+
+    if (.not. zlo_boundary_type == "") &
+         bcz_lo = bc_string_to_integer(trim(zlo_boundary_type))
+
+    if (.not. zhi_boundary_type == "") &
+         bcz_hi = bc_string_to_integer(trim(zhi_boundary_type))
+    
+    if (bcx_lo == UNDEFINED) call bl_error("xlo_boundary_type invalid")
+    if (bcx_hi == UNDEFINED) call bl_error("xhi_boundary_type invalid")
+    if (bcy_lo == UNDEFINED) call bl_error("ylo_boundary_type invalid")
+    if (bcy_hi == UNDEFINED) call bl_error("yhi_boundary_type invalid")
+    if (bcz_lo == UNDEFINED) call bl_error("zlo_boundary_type invalid")
+    if (bcz_hi == UNDEFINED) call bl_error("zhi_boundary_type invalid")
+
+
+    ! initialize pmask
+    allocate(pmask(dm_in))
+    pmask = .FALSE.
+    if (bcx_lo .eq. -1 .and. bcx_hi .eq. -1) pmask(1) = .true.
+    if (dm_in > 1) then
+       if (bcy_lo .eq. -1 .and. bcy_hi .eq. -1) pmask(2) = .true.
+    end if
+    if (dm_in > 2) then
+       if (bcz_lo .eq. -1 .and. bcz_hi .eq. -1) pmask(3) = .true.
+    end if
+
+    ! initialize prob_lo and prob_hi
+    allocate(prob_lo(dm_in))
+    prob_lo(1) = prob_lo_x
+    if (dm_in > 1) prob_lo(2) = prob_lo_y
+    if (dm_in > 2) prob_lo(3) = prob_lo_z
+    allocate(prob_hi(dm_in))
+    prob_hi(1) = prob_hi_x
+    if (dm_in > 1) prob_hi(2) = prob_hi_y
+    if (dm_in > 2) prob_hi(3) = prob_hi_z
+
+
+    call cluster_set_minwidth(minwidth)
+    call cluster_set_blocking_factor(blocking_factor)
+
+    if (do_alltoallv) call multifab_set_alltoallv(.true.)
+    
+    call knapsack_set_verbose(the_knapsack_verbosity)
+
+    call layout_set_verbosity(the_layout_verbosity)
+    call layout_set_copyassoc_max(the_copy_cache_max)
+    call layout_set_sfc_threshold(the_sfc_threshold)
+
+    call destroy(bpt)
+    
+  end subroutine runtime_init
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  subroutine runtime_close()
+
+    use probin_module
+
+    deallocate(pmask)
+    deallocate(prob_lo)
+    deallocate(prob_hi)
+
+  end subroutine runtime_close
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+end module runtime_init_module

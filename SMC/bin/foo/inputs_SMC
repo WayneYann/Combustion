@@ -1,0 +1,39 @@
+&PROBIN
+
+ verbose = 1
+
+ advance_method = 1  ! 1=RK3, 2=SDC, 3=PFASST
+
+ stop_time = 1.e-6
+ max_step  = 1
+
+ plot_int = 1
+ chk_int  = 1
+
+ cflfac = 0.5d0
+
+ n_cellx = 32
+ n_celly = 32
+ n_cellz = 32
+ max_grid_size = 32
+
+ prob_lo_x = -0.1d0
+ prob_lo_y = -0.1d0
+ prob_lo_z = -0.1d0
+ prob_hi_x =  0.1d0
+ prob_hi_y =  0.1d0
+ prob_hi_z =  0.1d0
+
+ xlo_boundary_type = "periodic"
+ xhi_boundary_type = "periodic"
+
+ ylo_boundary_type = "periodic"
+ yhi_boundary_type = "periodic"
+
+ zlo_boundary_type = "periodic"
+ zhi_boundary_type = "periodic"
+
+ eta = 1.8d-4
+ alam = 1.5d2
+
+/

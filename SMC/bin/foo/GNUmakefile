@@ -11,3 +11,4 @@ SMC_TOP_DIR := ../..
 
 # include the SMC build stuff
 include $(SMC_TOP_DIR)/GSMC.mak
+
