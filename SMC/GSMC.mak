@@ -23,6 +23,10 @@ SMC_CORE := src
 
 
 #-----------------------------------------------------------------------------
+CHEMISTRY_MODEL := LIDRYER
+
+
+#-----------------------------------------------------------------------------
 # Fmpack is the list of all the GPackage.mak files that we need to
 # include into the build system to define the list of source files.
 #
@@ -43,6 +47,13 @@ Fmlocs := $(foreach dir, $(Fmdirs), $(SMC_TOP_DIR)/$(dir))
 # BoxLib
 Fmpack += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir)/GPackage.mak)
 Fmlocs += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir))
+
+# Chemistry
+ifeq ($(CHEMISTRY_MODEL), LIDRYER)
+  csources += LiDryer.c
+  vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer
+  vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer/PMFs
+endif
 
 
 # any include directories

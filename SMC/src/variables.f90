@@ -1,18 +1,17 @@
-!
-! A module to provide integer indices into the various storage arrays
-! for accessing the different variables by name.
-!
 module variables
 
   use bl_types
+  use chemistry_module, only : nspecies
+  use multifab_module
 
   implicit none
 
   integer, save :: irho, imx, imy, imz, iene, iry1
-  integer, save :: qrho, qu, qv, qw, qpres, qtemp, qy1
+  integer, save :: qrho, qu, qv, qw, qpres, qtemp, qy1, qx1
 
   ! the total number of plot components
   integer, save :: n_plot_comps = 0
+  integer, save :: icomp_rho, icomp_vel, icomp_pres, icomp_temp, icomp_Y, icomp_X
 
   integer, save :: ncons, nprim
 
@@ -32,7 +31,7 @@ contains
 
   subroutine init_variables()
 
-    use probin_module, only: dm_in, nspec
+    use probin_module, only: dm_in
 
     irho = 1
     imx = 2
@@ -47,7 +46,7 @@ contains
     end if
     iry1 = iene+1
 
-    ncons = iry1-1 + nspec
+    ncons = iry1-1 + nspecies
 
     qrho = 1
     qu = 2
@@ -61,17 +60,109 @@ contains
        qw = -1
        qpres = 4
        qtemp = 5
-       qy1 = 7
+       qy1 = 6
     end if
+    qx1 = qy1 + nspecies
 
-    nprim = qy1-1 + nspec
+    nprim = qx1-1 + nspecies
     
   end subroutine init_variables
 
+
   subroutine init_plot_variables()
 
-    return
+    use probin_module, only : dm_in, plot_X, plot_Y
+
+    icomp_rho  = get_next_plot_index(1)
+    icomp_vel  = get_next_plot_index(dm_in)
+    icomp_pres = get_next_plot_index(1)
+    icomp_temp = get_next_plot_index(1)
+
+    if (plot_Y) then
+       icomp_Y = get_next_plot_index(nspecies)
+    end if
+
+    if (plot_X) then
+       icomp_X = get_next_plot_index(nspecies)
+    end if
 
   end subroutine init_plot_variables
+
+
+  subroutine ctoprim(U, Q, ng)
+    type(multifab), intent(in   ) :: U
+    type(multifab), intent(inout) :: Q
+    integer, optional, intent(in) :: ng
+
+    integer :: ngu, ng_local
+    integer :: n, lo(U%dim), hi(U%dim)
+    double precision, pointer, dimension(:,:,:,:) :: up, qp
+
+    ngu = nghost(U)
+
+    if (present(ng)) then
+       ng_local = ng
+    else
+       ng_local = ngu
+    end if
+
+    do n=1,nboxes(Q)
+       if ( remote(Q,n) ) cycle
+
+       up => dataptr(U,n)
+       qp => dataptr(Q,n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (U%dim .eq. 2) then
+          call bl_error("2D not supported in variables::ctoprim")
+       else
+          call ctoprim_3d(lo,hi,up,qp,ngu,ng)
+       end if
+    end do
+
+  end subroutine ctoprim
+
+  subroutine ctoprim_3d(lo, hi, u, q, ngu, ng)
+    integer, intent(in) :: lo(3), hi(3), ngu, ng
+    double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,ncons)
+    double precision, intent(out) :: q(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,nprim)
+    
+    integer :: i, j, k, n, iwrk
+    double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), ei, Tt, Pt
+
+    do k = lo(3)-ng,hi(3)+ng
+       do j = lo(2)-ng,hi(2)+ng
+          do i = lo(1)-ng,hi(1)+ng
+             rho = u(i,j,k,irho)
+             rhoinv = 1.d0/rho
+             q(i,j,k,qrho) = u(i,j,k,irho)
+             q(i,j,k,qu) = u(i,j,k,imx) * rhoinv
+             q(i,j,k,qv) = u(i,j,k,imy) * rhoinv
+             q(i,j,k,qw) = u(i,j,k,imz) * rhoinv
+
+             do n=1,nspecies
+                q(i,j,k,qy1+n-1) = u(i,j,k,iry1+n-1) * rhoinv
+                Y(n) = q(i,j,k,qy1+n-1)
+             end do
+
+             call ckytx(Y, iwrk, rwrk, X)
+
+             do n=1,nspecies
+                q(i,j,k,qx1+n-1) = X(n)
+             end do
+
+             ei = rhoinv*u(i,j,k,iene) - 0.5d0*(q(i,j,k,qu)**2+q(i,j,k,qv)**2+q(i,j,k,qw)**2)
+             call feeytt(ei, Y, iwrk, rwrk, Tt)
+             q(i,j,k,qtemp) = Tt
+
+             call CKPY(rho, Tt, Y, iwrk, rwrk, Pt)
+             q(i,j,k,qpres) = Pt
+          enddo
+       enddo
+    enddo
+
+  end subroutine ctoprim_3d
 
 end module variables

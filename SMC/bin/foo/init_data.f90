@@ -40,45 +40,70 @@ contains
 
   subroutine init_data_3d(lo,hi,ng,dx,cons,plo,phi)
 
-    use variables, only : irho, imx,imy,imz,iene
+    use variables, only : irho, imx,imy,imz,iene,iry1,ncons
+    use chemistry_module, only : nspecies
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
     double precision, intent(in   ) :: dx(3),plo(3),phi(3)
-    double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,5)
+    double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
 
-    integer          :: i,j,k
-    double precision :: xloc,yloc,zloc,rholoc,eloc,uvel,vvel,wvel,scale(3)
+    integer          :: i,j,k,n
+    double precision :: x, y, z, x2, y2, z2, r, rmin, rmax
 
-    double precision, parameter :: twopi = 2.0d0 * 3.141592653589793238462643383279502884197d0
+    double precision pmf_vals(nspecies+3)
+    double precision Xt(nspecies), Yt(nspecies)
+    double precision pt,rhot,u1t,u2t,u3t,Wavg,Tt,blend,et,Cvt
+    integer :: iwrk
+    double precision :: rwrk
 
-    do i=1,3
-       scale(i) = (phi(i)-plo(i))/twopi
-    end do
+    double precision, parameter :: patmos = 1.01325d6
 
-    !$OMP PARALLEL DO PRIVATE(i,j,k,zloc,yloc,xloc,uvel,vvel,wvel,rholoc,eloc)
     do k=lo(3),hi(3)
-       zloc = dfloat(k)*dx(3)/scale(3)
+       z = plo(3) + dx(3)*((k-lo(3)) + 0.5d0)
+       z2 = z**2
        do j=lo(2),hi(2)
-          yloc = dfloat(j)*dx(2)/scale(2)
+          y = plo(2) + dx(2)*((j-lo(2)) + 0.5d0)
+          y2 = y**2
           do i=lo(1),hi(1)
-             xloc = dfloat(i)*dx(1)/scale(1)
+             x = plo(1) + dx(1)*((i-lo(1)) + 0.5d0)
+             x2 = x**2
 
-             uvel   = 1.1d4*sin(1*xloc)*sin(2*yloc)*sin(3*zloc)
-             vvel   = 1.0d4*sin(2*xloc)*sin(4*yloc)*sin(1*zloc)
-             wvel   = 1.2d4*sin(3*xloc)*cos(2*yloc)*sin(2*zloc)
-             rholoc = 1.0d-3 + 1.0d-5*sin(1*xloc)*cos(2*yloc)*cos(3*zloc)
-             eloc   = 2.5d9  + 1.0d-3*sin(2*xloc)*cos(2*yloc)*sin(2*zloc)
+             r = sqrt(x2+y2+z2)
 
-             cons(i,j,k,irho) = rholoc
-             cons(i,j,k,imx)  = rholoc*uvel
-             cons(i,j,k,imy)  = rholoc*vvel
-             cons(i,j,k,imz)  = rholoc*wvel
-             cons(i,j,k,iene) = rholoc*(eloc + (uvel**2+vvel**2+wvel**2)/2)
+             rmin = 1.d0/(r + 0.5d0*dx(1))*0.1
+             rmax = 1.d0/(r - 0.5d0*dx(1))*0.1
+
+             call pmf(rmin,rmax,pmf_vals,n)
+
+             if (n.ne.nspecies+3) then
+                write(6,*)"n,nspecies",n,nspecies
+                call bl_error('INITDATA: n .ne. nspecies+3')
+             endif
+
+             Tt = pmf_vals(1)
+             do n = 1,nspecies
+                Xt(n) = pmf_vals(3+n)
+             end do
+             u1t = pmf_vals(2) * x/r
+             u2t = pmf_vals(2) * y/r
+             u3t = pmf_vals(2) * z/r
+             CALL CKXTY (Xt, IWRK, RWRK, Yt)
+             CALL CKRHOY(patmos,Tt,Yt,IWRK,RWRK,rhot)
+             call CKUBMS(Tt,Yt,IWRK,RWRK,et)
+          
+             cons(i,j,k,irho) = rhot
+             cons(i,j,k,imx)  = rhot*u1t
+             cons(i,j,k,imy)  = rhot*u2t
+             cons(i,j,k,imz)  = rhot*u3t
+             cons(i,j,k,iene) = rhot*(et + 0.5d0*(u1t**2 + u2t**2 + u3t**2))
+
+             do n=1,nspecies
+                cons(i,j,k,iry1-1+n) = Yt(n)*rhot
+             end do
 
           enddo
        enddo
     enddo
-    !$OMP END PARALLEL DO
 
   end subroutine init_data_3d
   

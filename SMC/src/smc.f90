@@ -1,9 +1,12 @@
 subroutine smc()
 
   use advance_module
+  use bl_constants_module
+  use chemistry_module
   use cputime_module, only: start_cputime_clock
   use initialize_module
   use layout_module
+  use make_plotfile_module
   use multifab_module
   use omp_module
   use probin_module
@@ -13,16 +16,23 @@ subroutine smc()
 
   implicit none
 
-  integer :: dm, numcell
+  integer :: dm, numcell, i
   integer :: init_step, istep
-  integer :: last_plt_written,last_chk_written
+
   real(dp_t) :: dt
-
-  type(layout) :: la
-
   real(dp_t)  , pointer     :: dx(:)
 
-  type(multifab) :: U
+  integer :: last_plt_written,last_chk_written
+  character(len=5)               :: plot_index, check_index
+  character(len=6)               :: plot_index6, check_index6
+  character(len=256)             :: plot_file_name, check_file_name
+  character(len=20), allocatable :: plot_names(:)
+
+!  logical :: dump_plotfile, dump_checkpoint
+  real(dp_t) :: write_pf_time
+  
+  type(layout) :: la
+  type(multifab) :: U, Q
 
   ! keep track of cputime
   call start_cputime_clock()
@@ -32,11 +42,27 @@ subroutine smc()
 
   call runtime_init()
 
+  call chemistry_init()
+  if (verbose .ge. 1) then
+     if (parallel_IOProcessor()) then
+        print *, ''
+        print *, 'Chemistry has', nelements, 'elements:'
+        do i=1,nelements
+           print *, '      ', elem_names(i)
+        end do
+        print *, 'Chemistry has', nspecies, 'species:'
+        do i=1,nspecies
+           print *, '      ', spec_names(i)
+        end do
+        print *, 'Chemistry has', nreactions, 'reactions.'
+     end if
+  end if
+
   call init_variables()
   call init_plot_variables()
 
-!  allocate(plot_names(n_plot_comps))
-!  call get_plot_names(plot_names)
+  allocate(plot_names(n_plot_comps))
+  call get_plot_names(plot_names)
 
   if (restart >= 0) then
 
@@ -88,10 +114,36 @@ subroutine smc()
      end if
   end if
 
-  ! xxxxx write plotfile
+
+  call multifab_build(Q,la,nprim, nghost(U))
 
 
-  init_step = 1  ! xxxx if restart set it to restart + 1
+  if (restart < 0) then
+
+     istep = 0
+
+     if (plot_int > 0 .or. plot_deltat > ZERO) then
+        write(unit=plot_index,fmt='(i5.5)') istep
+        plot_file_name = trim(plot_base_name) // plot_index
+        
+        call make_plotfile(plot_file_name,la,U,Q,plot_names,time,dx,write_pf_time)
+        
+        ! call write_job_info 
+        last_plt_written = istep
+     end if
+  end if
+
+  if (restart < 0) then
+     init_step = 1 
+  else
+     init_step = restart + 1
+  end if
+
+  if ( parallel_IOProcessor()) then
+     print*,""
+     print*,"BEGIN MAIN EVOLUTION LOOP"
+     print*,""
+  end if
 
   if ( (max_step >= init_step) .and. (time < stop_time .or. stop_time < 0.d0) ) then
 
@@ -128,12 +180,15 @@ subroutine smc()
 
 
   call destroy(U)
+  call destroy(Q)
 
   call destroy(la)
 
+  call chemistry_close()
+
   call runtime_close()
 
-!  deallocate(n_plot_comps)
+  deallocate(plot_names)
   deallocate(dx)
 
 end subroutine smc
