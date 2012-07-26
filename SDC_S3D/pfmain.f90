@@ -1,6 +1,7 @@
 program main
 
   use boxlib
+  use pfasst
   use parallel
   use multifab_module
   use bl_IO_module
@@ -10,7 +11,6 @@ program main
   use advance_module
   use bl_prof_module
   use sdcquad_module
-  use mpi
 
   implicit none
 
@@ -41,6 +41,8 @@ program main
   type(multifab)     :: U
   type(feval_ctx_t), target :: ctx
   type(sdcquad)      :: sdc
+  type(pf_pfasst_t)  :: pf
+  type(pf_comm_t)    :: tcomm
   integer            :: nvars(2), nnodes(2)
   double precision, pointer :: y0(:)
 
@@ -160,7 +162,7 @@ program main
 
 
   !
-  ! Create SDC context
+  ! Create SDC or PFASST context
   !
   if (method == 2) then 
      open(unit=un, file=inputs_file_name, status='old', action='read')
@@ -170,32 +172,77 @@ program main
   end if
 
 
+  if (method == 3) then
+     ! if (.not. parallel_nprocs() > 1) then
+     !    stop "ERROR: Not enough processors for PFASST run."
+     ! end if
+
+     ! XXX: take nvars from volume of initial condition...
+     nvars  = volume(U)
+     nnodes = [ 5, 3 ] 
+
+     call create(tcomm, MPI_COMM_WORLD)
+     call create(pf, tcomm, 2, nvars, nnodes)
+
+     pf%niters = 4
+     pf%qtype  = 1
+     pf%levels(2)%nsweeps = 1
+
+     pf%dt   = dt
+     ! pf%tend = pf%dt * tcomm%nproc
+     pf%tend = pf%dt * 4
+
+     pf%echo_timings = .true.
+
+     ! XXX: check dt?
+
+     pf%levels(1)%ctx = c_loc(ctx)
+     pf%levels(2)%ctx = c_loc(ctx)
+
+     call setup(tcomm, pf)
+     call setup(pf)
+  end if
+
+
   !
   ! Main time loop.
   !
-  do istep=1,nsteps
+  if (method == 1 .or. method == 2) then
+     
+     do istep=1,nsteps
 
-     if (parallel_IOProcessor()) then
-        print*,'Advancing time step',istep,'time = ',time
-     end if
-
-     call advance(U,dt,dx,cfl,time,tfinal,method,ctx,sdc)
-
-     time = time + dt
-
-     if (plot_int > 0) then
-        if ( mod(istep,plot_int) .eq. 0 &
-             .or. istep .eq. nsteps &
-             .or. time >= tfinal ) then
-           call write_plotfile(U,istep,dx,time,prob_lo,prob_hi)
+        if (parallel_IOProcessor()) then
+           print*,'Advancing time step',istep,'time = ',time
         end if
-     end if
 
-     if (time >= tfinal) then
-        exit
-     end if
+        call advance(U,dt,dx,cfl,time,tfinal,method,ctx,sdc)
 
-  end do
+        time = time + dt
+
+        if (plot_int > 0) then
+           if ( mod(istep,plot_int) .eq. 0 &
+                .or. istep .eq. nsteps &
+                .or. time >= tfinal ) then
+              call write_plotfile(U,istep,dx,time,prob_lo,prob_hi)
+           end if
+        end if
+
+        if (time >= tfinal) then
+           exit
+        end if
+
+     end do
+
+  else if (method == 3) then
+
+     allocate(y0(NC * n_cell**DM))
+     call copy_from_mfab(y0, U)
+     
+     pf%y0 => y0
+     call run(pf)
+
+     deallocate(y0)
+  end if
 
 
   !
@@ -212,6 +259,9 @@ program main
 
   if (method == 2) then
      call destroy(sdc)
+  else if (method == 3) then
+     call destroy(pf)
+     call destroy(tcomm)
   end if
 
   call destroy(bpt)
