@@ -161,7 +161,8 @@ INCLUDE_LOCATIONS +=  $(BOXLIB_HOME)/Tools/C_scripts
 buildInfo.cpp: $(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp
 	$(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp "$(BOXLIB_HOME)" \
             "$(COMP)" "$(FCOMP)" \
-            "$(CHEMISTRY_MODEL)"
+            "AUX=$(CHEMISTRY_MODEL)" \
+            "GIT=$(COMBUSTION_DIR)" "GIT=$(BOXLIB_HOME)" "GIT=$(IAMR_DIR)"
 
 
 vpath %.c   $(VPATH_LOCATIONS)

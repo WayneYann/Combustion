@@ -9847,7 +9847,22 @@ HeatTransfer::writePlotFile (const std::string& dir,
 
 	jobInfoFile << "\n";
 
-	jobInfoFile << "Chemistry Model: " << buildInfoGetAux1() << "\n";
+	jobInfoFile << "Chemistry Model: " << buildInfoGetAux(1) << "\n";
+
+	jobInfoFile << "\n";
+
+	const char* githash1 = buildInfoGetGitHash(1);
+	const char* githash2 = buildInfoGetGitHash(2);
+	const char* githash3 = buildInfoGetGitHash(3);
+	if (strlen(githash1) > 0) {
+	  jobInfoFile << "LMC    git hash: " << githash1 << "\n";
+	}
+	if (strlen(githash2) > 0) {
+	  jobInfoFile << "BoxLib git hash: " << githash2 << "\n";
+	}
+	if (strlen(githash3) > 0) {
+	  jobInfoFile << "IAMR   git hash: " << githash3 << "\n";
+	}
 
 	jobInfoFile << "\n\n";
 
