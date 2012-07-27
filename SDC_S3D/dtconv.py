@@ -8,7 +8,7 @@ from runutils import autorun
 
 #### config
 
-run = False
+run = True
 
 probin = {
   'tfinal':  1.0e-6, 
@@ -32,13 +32,15 @@ runs = [ ('1000', 1.0e-7, 'plt00010'),
 
 if run:
 
-    autorun('conv/sdc13_dt0125', dt=1.25e-8,
-            nnodes=13, method=2, defaults=defaults)
+    autorun('conv/sdc13_dt0125', 
+            probin, { 'dt': 1.25e-8 },
+            sdc,    { 'nnodes': 13 })
 
     for name, dt, plt in runs:
 
-        autorun('conv/rk3_dt%s' % name, dt=dt, 
-                method=1, defaults=defaults)
+        autorun('conv/rk3_dt%s' % name, 
+                probin, { 'dt': dt, 'method': 1 }, 
+                sdc,    { 'nnodes': 3 })
 
         autorun('conv/sdc3_dt%s' % name, 
                 probin, { 'dt': dt }, 
