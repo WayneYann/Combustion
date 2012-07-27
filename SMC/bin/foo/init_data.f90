@@ -70,8 +70,8 @@ contains
 
              r = sqrt(x2+y2+z2)
 
-             rmin = 1.d0/(r + 0.5d0*dx(1))*0.1
-             rmax = 1.d0/(r - 0.5d0*dx(1))*0.1
+             rmin = 1.d0/(r + 0.5d0*dx(1))*0.1d0
+             rmax = 1.d0/(r - 0.5d0*dx(1))*0.1d0
 
              call pmf(rmin,rmax,pmf_vals,n)
 
