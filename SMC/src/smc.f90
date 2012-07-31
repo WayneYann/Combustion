@@ -32,7 +32,7 @@ subroutine smc()
   real(dp_t) :: write_pf_time
   
   type(layout) :: la
-  type(multifab) :: U, Q
+  type(multifab) :: U
 
   ! keep track of cputime
   call start_cputime_clock()
@@ -115,9 +115,6 @@ subroutine smc()
   end if
 
 
-  call multifab_build(Q,la,nprim, nghost(U))
-
-
   if (restart < 0) then
 
      istep = 0
@@ -126,7 +123,7 @@ subroutine smc()
         write(unit=plot_index,fmt='(i5.5)') istep
         plot_file_name = trim(plot_base_name) // plot_index
         
-        call make_plotfile(plot_file_name,la,U,Q,plot_names,time,dx,write_pf_time)
+        call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
         
         ! call write_job_info 
         last_plt_written = istep
@@ -180,7 +177,6 @@ subroutine smc()
 
 
   call destroy(U)
-  call destroy(Q)
 
   call destroy(la)
 

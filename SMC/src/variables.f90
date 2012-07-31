@@ -94,16 +94,16 @@ contains
     type(multifab), intent(inout) :: Q
     integer, optional, intent(in) :: ng
 
-    integer :: ngu, ng_local
+    integer :: ngu, ngto
     integer :: n, lo(U%dim), hi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: up, qp
 
     ngu = nghost(U)
 
     if (present(ng)) then
-       ng_local = ng
+       ngto = ng
     else
-       ng_local = ngu
+       ngto = ngu
     end if
 
     do n=1,nboxes(Q)
@@ -118,23 +118,23 @@ contains
        if (U%dim .eq. 2) then
           call bl_error("2D not supported in variables::ctoprim")
        else
-          call ctoprim_3d(lo,hi,up,qp,ngu,ng)
+          call ctoprim_3d(lo,hi,up,qp,ngu,ngto)
        end if
     end do
 
   end subroutine ctoprim
 
-  subroutine ctoprim_3d(lo, hi, u, q, ngu, ng)
-    integer, intent(in) :: lo(3), hi(3), ngu, ng
+  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngto)
+    integer, intent(in) :: lo(3), hi(3), ngu, ngto
     double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,ncons)
     double precision, intent(out) :: q(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,nprim)
     
     integer :: i, j, k, n, iwrk
     double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), ei, Tt, Pt
 
-    do k = lo(3)-ng,hi(3)+ng
-       do j = lo(2)-ng,hi(2)+ng
-          do i = lo(1)-ng,hi(1)+ng
+    do k = lo(3)-ngto,hi(3)+ngto
+       do j = lo(2)-ngto,hi(2)+ngto
+          do i = lo(1)-ngto,hi(1)+ngto
              rho = u(i,j,k,irho)
              rhoinv = 1.d0/rho
              q(i,j,k,qrho) = u(i,j,k,irho)

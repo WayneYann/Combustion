@@ -6,6 +6,7 @@ module advance_module
   use probin_module
   use variables
   use time_module
+  use transport_properties
 
   implicit none
 
@@ -70,7 +71,8 @@ contains
     double precision,  intent(inout), optional :: courno
 
     type(multifab) :: mu, xi ! viscosity
-    type(multifab) :: lam ! thermal conductivity
+    type(multifab) :: lam ! partial thermal conductivity
+    type(multifab) :: Ddiag ! diagonal components of D
 
     integer          :: lo(U%dim), hi(U%dim), i, j, k, m, n, nc, ng
     type(layout)     :: la
@@ -86,92 +88,87 @@ contains
     ! Sync U prior to calculating D & F
     !
     call multifab_fill_boundary(U)
+
     call multifab_build(D, la, nc,   0)
     call multifab_build(F, la, nc,   0)
-    call multifab_build(Q, la, nc+1, ng)
+    call multifab_build(Q, la, nprim, ng)
 
     call multifab_build(mu , la, 1, ng)
     call multifab_build(xi , la, 1, ng)
     call multifab_build(lam, la, 1, ng)
-    
-!    call multifab_setval(mu ,  ctx%eta, all=.true.)
-    call multifab_setval(xi ,     0.d0, all=.true.)
-!    call multifab_setval(lam, ctx%alam, all=.true.)
+    call multifab_build(Ddiag, la, nspecies, ng)
 
     !
     ! Calculate primitive variables based on U
     !
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
+    call ctoprim(U, Q, ng)
 
-       up => dataptr(U,n)
-       qp => dataptr(Q,n)
+    call get_transport_properties(Q, mu, xi, lam, Ddiag)
+    
+!    call multifab_setval(mu ,  ctx%eta, all=.true.)
+!    call multifab_setval(xi ,     0.d0, all=.true.)
+!    call multifab_setval(lam, ctx%alam, all=.true.)
 
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
 
-!       call ctoprim(lo,hi,up,qp,ctx%dx,ng,courno=courno)
-    end do
+!     !
+!     ! Calculate D
+!     !
+!     do n=1,nboxes(D)
+!        if ( remote(D,n) ) cycle
 
-    !
-    ! Calculate D
-    !
-    do n=1,nboxes(D)
-       if ( remote(D,n) ) cycle
+!        qp => dataptr(Q,n)
+!        dp => dataptr(D,n)
 
-       qp => dataptr(Q,n)
-       dp => dataptr(D,n)
+!        lo = lwb(get_box(D,n))
+!        hi = upb(get_box(D,n))
 
-       lo = lwb(get_box(D,n))
-       hi = upb(get_box(D,n))
+!        mup  => dataptr(mu , n)
+!        xip  => dataptr(xi , n)
+!        lamp => dataptr(lam, n)
+!        !          call compact_diffterm(lo,hi,ng,ctx%dx,qp,dp,mup,xip,lamp)
+!     end do
 
-       mup  => dataptr(mu , n)
-       xip  => dataptr(xi , n)
-       lamp => dataptr(lam, n)
-       !          call compact_diffterm(lo,hi,ng,ctx%dx,qp,dp,mup,xip,lamp)
-    end do
+!     !
+!     ! Calculate F
+!     !
+!     do n=1,nboxes(F)
+!        if ( remote(F,n) ) cycle
 
-    !
-    ! Calculate F
-    !
-    do n=1,nboxes(F)
-       if ( remote(F,n) ) cycle
+!        up => dataptr(U,n)
+!        qp => dataptr(Q,n)
+!        fp => dataptr(F,n)
 
-       up => dataptr(U,n)
-       qp => dataptr(Q,n)
-       fp => dataptr(F,n)
+!        lo = lwb(get_box(F,n))
+!        hi = upb(get_box(F,n))
 
-       lo = lwb(get_box(F,n))
-       hi = upb(get_box(F,n))
+! !       call hypterm(lo,hi,ng,ctx%dx,up,qp,fp)
+!     end do
 
-!       call hypterm(lo,hi,ng,ctx%dx,up,qp,fp)
-    end do
+!     !
+!     ! Calculate U'
+!     !
+!     do n=1,nboxes(U)
+!        if ( remote(U,n) ) cycle
 
-    !
-    ! Calculate U'
-    !
-    do n=1,nboxes(U)
-       if ( remote(U,n) ) cycle
+!        dp  => dataptr(D,     n)
+!        fp  => dataptr(F,     n)
+!        upp => dataptr(Uprime,n)
 
-       dp  => dataptr(D,     n)
-       fp  => dataptr(F,     n)
-       upp => dataptr(Uprime,n)
+!        lo = lwb(get_box(U,n))
+!        hi = upb(get_box(U,n))
 
-       lo = lwb(get_box(U,n))
-       hi = upb(get_box(U,n))
-
-       do m = 1, nc
-          !$OMP PARALLEL DO PRIVATE(i,j,k)
-          do k = lo(3),hi(3)
-             do j = lo(2),hi(2)
-                do i = lo(1),hi(1)
-                   upp(i,j,k,m) = dp(i,j,k,m) + fp(i,j,k,m)
-                end do
-             end do
-          end do
-          !$OMP END PARALLEL DO
-       end do
-    end do
+!        do m = 1, nc
+!           !$OMP PARALLEL DO PRIVATE(i,j,k)
+!           do k = lo(3),hi(3)
+!              do j = lo(2),hi(2)
+!                 do i = lo(1),hi(1)
+!                    upp(i,j,k,m) = dp(i,j,k,m) + fp(i,j,k,m)
+!                 end do
+!              end do
+!           end do
+!           !$OMP END PARALLEL DO
+!        end do
+!     end do
 
     call destroy(D)
     call destroy(F)
@@ -180,6 +177,7 @@ contains
     call destroy(mu)
     call destroy(xi)
     call destroy(lam)
+    call destroy(Ddiag)
 
   end subroutine dUdt
 

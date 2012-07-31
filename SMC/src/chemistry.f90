@@ -1,6 +1,7 @@
 module chemistry_module
 
   use bl_types
+  use eglib_module
 
   implicit none
 
@@ -8,7 +9,7 @@ module chemistry_module
   integer, save :: nspecies    ! number of species
   integer, save :: nreactions  ! number of reactions
 
-  logical, save :: network_initialized = .false.
+  logical, save :: chemistry_initialized = .false.
 
   character*2, allocatable, save :: elem_names(:)
   character*4, allocatable, save :: spec_names(:)
@@ -50,7 +51,9 @@ contains
 
     deallocate(names)
 
-    network_initialized = .true.
+    call eglib_init(nspecies)
+
+    chemistry_initialized = .true.
 
   end subroutine chemistry_init
 
@@ -58,6 +61,8 @@ contains
   subroutine chemistry_close()
 
     deallocate(elem_names,spec_names)
+
+    call eglib_close()
 
   end subroutine chemistry_close
 

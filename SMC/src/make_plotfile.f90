@@ -44,17 +44,16 @@ contains
   end subroutine get_plot_names
 
 
-  subroutine make_plotfile(dirname, la, U, Q, plot_names, time, dx, write_pf_time)
+  subroutine make_plotfile(dirname, la, U, plot_names, time, dx, write_pf_time)
     character(len=*) , intent(in   ) :: dirname
     type(layout)     , intent(in   ) :: la
     type(multifab)   , intent(in   ) :: U
-    type(multifab)   , intent(inout) :: Q
     character(len=20), intent(in   ) :: plot_names(:)
     real(dp_t)       , intent(in   ) :: time, dx(U%dim)
     real(dp_t)       , intent(  out) :: write_pf_time
 
     ! dimensioned as an array of size 1 for fabio_ml_multifab_write_d
-    type(multifab) :: plotdata(1)
+    type(multifab) :: plotdata(1), Q
 
     ! dimensioned as an array of size 0 for fabio_ml_multifab_write_d
     integer :: rr(0), prec
@@ -65,6 +64,8 @@ contains
     else
        prec = FABIO_DOUBLE
     endif
+
+    call multifab_build(Q,la,nprim, nghost(U))
 
     call ctoprim(U, Q, ng=0)
 
@@ -103,6 +104,7 @@ contains
     write_pf_time = writetime1
 
     call multifab_destroy(plotdata(1))
+    call multifab_destroy(Q)
 
   end subroutine make_plotfile
 
