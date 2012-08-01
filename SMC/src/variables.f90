@@ -142,7 +142,7 @@ contains
           do i = lo(1)-ngto,hi(1)+ngto
              rho = u(i,j,k,irho)
              rhoinv = 1.d0/rho
-             q(i,j,k,qrho) = u(i,j,k,irho)
+             q(i,j,k,qrho) = rho
              q(i,j,k,qu) = u(i,j,k,imx) * rhoinv
              q(i,j,k,qv) = u(i,j,k,imy) * rhoinv
              q(i,j,k,qw) = u(i,j,k,imz) * rhoinv
@@ -161,6 +161,16 @@ contains
              ei = rhoinv*u(i,j,k,iene) - 0.5d0*(q(i,j,k,qu)**2+q(i,j,k,qv)**2+q(i,j,k,qw)**2)
              call feeytt(ei, Y, iwrk, rwrk, Tt)
              q(i,j,k,qtemp) = Tt
+
+
+
+             if (Tt < 0.d0) then
+                print *, 'xxxxx ', i, j, k, rho, Tt, ei, q(i,j,k,qu), q(i,j,k,qv), q(i,j,k,qw)
+                print *, '      ', X, Y
+                call flush()
+             end if
+
+
 
              call CKPY(rho, Tt, Y, iwrk, rwrk, Pt)
              q(i,j,k,qpres) = Pt

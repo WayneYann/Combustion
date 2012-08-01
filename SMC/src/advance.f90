@@ -20,6 +20,8 @@ module advance_module
   !
   ! Some arithmetic constants.
   !
+  double precision, parameter :: Zero          = 0.d0
+  double precision, parameter :: One           = 1.d0
   double precision, parameter :: OneThird      = 1.d0/3.d0
   double precision, parameter :: TwoThirds     = 2.d0/3.d0
   double precision, parameter :: FourThirds    = 4.d0/3.d0
@@ -67,9 +69,88 @@ contains
 
     call dUdt(U, Uprime, dx, courno=courno_proc)
 
-    call parallel_reduce(courno, courno_proc, MPI_MAX)
+    if (fixed_dt > 0.d0) then
+       dt = fixed_dt
+       if ( parallel_IOProcessor() ) then
+          print*, "Fixed dt = ", dt
+       end if
+    else
+
+       call parallel_reduce(courno, courno_proc, MPI_MAX)
+
+       dt = cflfac / courno
+
+       if (stop_time > 0.d0) then
+          if (time + dt > stop_time) then
+             dt = stop_time - time
+          end if
+       end if
+       
+       if ( parallel_IOProcessor() ) then
+          print*, "dt,courno", dt, courno
+       end if
+    end if
+
+    call update_rk3(Zero,Unew,One,U,dt,Uprime)
+
+    !
+    ! Calculate U at time N+2/3
+    !
+    call dUdt(Unew,Uprime,dx)
+    call update_rk3(OneQuarter,Unew,ThreeQuarters,U,OneQuarter*dt,Uprime)
+
+    !
+    ! Calculate U at time N+1
+    !
+    call dUdt(Unew,Uprime,dx)
+    call update_rk3(OneThird,U,TwoThirds,Unew,TwoThirds*dt,Uprime)
+
+    call destroy(Unew)
+    call destroy(Uprime)
 
   end subroutine advance_rk3
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Compute U1 = a U1 + b U2 + c Uprime.
+  !
+  subroutine update_rk3 (a,U1,b,U2,c,Uprime)
+
+    type(multifab),   intent(in   ) :: U2, Uprime
+    type(multifab),   intent(inout) :: U1
+    double precision, intent(in   ) :: a, b, c
+
+    integer :: lo(U1%dim), hi(U1%dim), i, j, k, m, n, nc
+
+    double precision, pointer, dimension(:,:,:,:) :: u1p, u2p, upp
+
+    nc = ncomp(U1)
+
+    do n=1,nboxes(U1)
+       if ( remote(U1,n) ) cycle
+
+       u1p => dataptr(U1,    n)
+       u2p => dataptr(U2,    n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(U1,n))
+       hi = upb(get_box(U1,n))
+
+       do m = 1, nc
+          !$xxxxxOMP PARALLEL DO PRIVATE(i,j,k)
+          do k = lo(3),hi(3)
+             do j = lo(2),hi(2)
+                do i = lo(1),hi(1)
+                   u1p(i,j,k,m) = a * u1p(i,j,k,m) + b * u2p(i,j,k,m) + c * upp(i,j,k,m)
+                end do
+             end do
+          end do
+          !$xxxxxOMP END PARALLEL DO
+       end do
+    end do
+
+  end subroutine update_rk3
 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -88,12 +169,13 @@ contains
     type(multifab) :: lam ! partial thermal conductivity
     type(multifab) :: Ddiag ! diagonal components of D
 
-    integer          :: lo(U%dim), hi(U%dim), n, ng
+    integer          :: lo(U%dim), hi(U%dim), i,j,k,m,n, ng, dim
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
 
-    double precision, pointer, dimension(:,:,:,:) :: up, fp, qp, mup, xip, lamp, Ddp
+    double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
+    dim = U%dim
     ng = nghost(U)
     la = get_layout(U)
 
@@ -117,8 +199,9 @@ contains
     !
     call ctoprim(U, Q, ng)
 
-    ! xxxxx
-    ! compute courno
+    if (present(courno)) then
+       call compute_courno(Q, dx, courno)
+    end if
 
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
 
@@ -130,12 +213,16 @@ contains
 
        up => dataptr(U,n)
        qp => dataptr(Q,n)
-       fp => dataptr(Fhyp,n)
+       fhp=> dataptr(Fhyp,n)
 
        lo = lwb(get_box(Fhyp,n))
        hi = upb(get_box(Fhyp,n))
 
-       call hypterm(lo,hi,ng,dx,up,qp,fp)
+       if (dim .ne. 3) then
+          call bl_error("Only 3D hypterm is supported")
+       else
+          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp)
+       end if
     end do
 
     
@@ -146,7 +233,7 @@ contains
        if ( remote(Q,n) ) cycle
 
        qp => dataptr(Q,n)
-       fp => dataptr(Fdif,n)
+       fdp=> dataptr(Fdif,n)
 
        mup  => dataptr(mu   , n)
        xip  => dataptr(xi   , n)
@@ -156,35 +243,38 @@ contains
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
 
-       call compact_diffterm(lo,hi,ng,dx,qp,fp,mup,xip,lamp,Ddp)
+       if (dim .ne. 3) then
+          call bl_error("Only 3D compact_diffterm is supported")
+       else
+          call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp)
+       end if
     end do
 
+    !
+    ! Calculate U'
+    !
+    do n=1,nboxes(U)
+       if ( remote(U,n) ) cycle
+       
+       fhp => dataptr(Fhyp,  n)
+       fdp => dataptr(Fdif,  n)
+       upp => dataptr(Uprime,n)
 
-!     !
-!     ! Calculate U'
-!     !
-!     do n=1,nboxes(U)
-!        if ( remote(U,n) ) cycle
+       lo = lwb(get_box(U,n))
+       hi = upb(get_box(U,n))
 
-!        dp  => dataptr(D,     n)
-!        fp  => dataptr(F,     n)
-!        upp => dataptr(Uprime,n)
-
-!        lo = lwb(get_box(U,n))
-!        hi = upb(get_box(U,n))
-
-!        do m = 1, nc
-!           !$OMP PARALLEL DO PRIVATE(i,j,k)
-!           do k = lo(3),hi(3)
-!              do j = lo(2),hi(2)
-!                 do i = lo(1),hi(1)
-!                    upp(i,j,k,m) = dp(i,j,k,m) + fp(i,j,k,m)
-!                 end do
-!              end do
-!           end do
-!           !$OMP END PARALLEL DO
-!        end do
-!     end do
+       do m = 1, ncons
+          !$xxxxxOMP PARALLEL DO PRIVATE(i,j,k)
+          do k = lo(3),hi(3)
+             do j = lo(2),hi(2)
+                do i = lo(1),hi(1)
+                   upp(i,j,k,m) = fhp(i,j,k,m) + fdp(i,j,k,m)
+                end do
+             end do
+          end do
+          !$xxxxxOMP END PARALLEL DO
+       end do
+    end do
 
     call destroy(Q)
 
@@ -199,7 +289,7 @@ contains
   end subroutine dUdt
 
 
-  subroutine hypterm (lo,hi,ng,dx,cons,q,flux)
+  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,flux)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
@@ -407,10 +497,10 @@ contains
        enddo
     enddo
 
-  end subroutine hypterm
+  end subroutine hypterm_3d
 
 
-  subroutine compact_diffterm (lo,hi,ng,dx,q,flx,mu,xi,lam,Dd)
+  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,flx,mu,xi,lam,Dd)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
@@ -1438,6 +1528,72 @@ contains
 
     deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,vsc1,vsc2,Hg,dcx,dcp)
 
-  end subroutine compact_diffterm
+  end subroutine compact_diffterm_3d
+
+
+  subroutine compute_courno(Q, dx, courno)
+    type(multifab), intent(in) :: Q
+    double precision, intent(in) :: dx(Q%dim)
+    double precision, intent(inout) :: courno
+
+    integer :: n, ng, dim, lo(Q%dim), hi(Q%dim)
+    double precision, pointer :: qp(:,:,:,:)
+
+    dim = Q%dim
+    ng = nghost(Q)
+
+    do n=1,nboxes(Q)
+       if (remote(Q,n)) cycle
+
+       qp => dataptr(Q,n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (dim .ne. 3) then
+          call bl_error("Only 3D compute_courno is supported")
+       else
+          call comp_courno_3d(lo,hi,ng,dx,qp,courno)
+       end if
+    end do
+  end subroutine compute_courno
+
+  subroutine comp_courno_3d(lo,hi,ng,dx,Q,courno)
+    integer, intent(in) :: lo(3), hi(3), ng
+    double precision, intent(in) :: dx(3)
+    double precision, intent(in) :: q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(inout) :: courno
+
+    integer :: i,j,k, iwrk
+    double precision :: dxinv(3), c, courx, coury, courz, rwrk, Ru, Ruc, Pa, Cv, Cp
+    double precision :: Tt, X(nspecies), gamma
+
+    do i=1,3
+       dxinv(i) = 1.0d0 / dx(i)
+    end do
+
+    call ckrp(iwrk, rwrk, Ru, Ruc, Pa)
+
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             Tt = q(i,j,k,qtemp)
+             X  = q(i,j,k,qx1:qx1+nspecies-1)
+             call ckcvbl(Tt, X, iwrk, rwrk, Cv)
+             Cp = Cv + Ru
+             gamma = Cp / Cv
+             c = sqrt(gamma*q(i,j,k,qpres)/q(i,j,k,qrho))
+
+             courx = (c+abs(q(i,j,k,qu))) * dxinv(1)
+             coury = (c+abs(q(i,j,k,qv))) * dxinv(2)
+             courz = (c+abs(q(i,j,k,qw))) * dxinv(3)
+
+             courno = max(courx,coury,courz,courno)
+          end do
+       end do
+    end do
+
+  end subroutine comp_courno_3d
 
 end module advance_module
