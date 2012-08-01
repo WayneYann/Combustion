@@ -28,6 +28,7 @@ contains
     end if
     plot_names(icomp_pres) = "pressure"
     plot_names(icomp_temp) = "temperature"
+    plot_names(icomp_eint) = "eint"
 
     if (plot_Y) then
        do i=1,nspecies
@@ -71,9 +72,8 @@ contains
 
     call multifab_build(plotdata(1),la,n_plot_comps,0)
 
-    ! copy density, velocities, pressure, and temperature
-    ! that's 6 variables
-    call multifab_copy_c(plotdata(1),1,Q,1, 6)
+    ! copy up to the one before Y
+    call multifab_copy_c(plotdata(1),1,Q,1, qy1-1)
 
     if (plot_Y) then
        call multifab_copy_c(plotdata(1),icomp_Y, Q,qy1, nspecies)       

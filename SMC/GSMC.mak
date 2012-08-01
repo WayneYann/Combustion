@@ -51,7 +51,7 @@ Fmlocs += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir))
 # Chemistry
 fsources += EGSlib.f
 fsources += EGini.f
-fsources += vode.f
+fsources += EGaux.f
 vpath %.f $(CHEMISTRY_DIR)/src_smc
 
 ifeq ($(CHEMISTRY_MODEL), LIDRYER)

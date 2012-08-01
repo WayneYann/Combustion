@@ -7,11 +7,12 @@ module variables
   implicit none
 
   integer, save :: irho, imx, imy, imz, iene, iry1
-  integer, save :: qrho, qu, qv, qw, qpres, qtemp, qy1, qx1, qh1
+  integer, save :: qrho, qu, qv, qw, qpres, qtemp, qe, qy1, qx1, qh1
 
   ! the total number of plot components
   integer, save :: n_plot_comps = 0
-  integer, save :: icomp_rho, icomp_vel, icomp_pres, icomp_temp, icomp_Y, icomp_X, icomp_h
+  integer, save :: icomp_rho, icomp_vel, icomp_pres, icomp_temp, icomp_eint, &
+       icomp_Y, icomp_X, icomp_h
 
   integer, save :: ncons, nprim
 
@@ -42,7 +43,6 @@ contains
     else
        imz = -1
        iene = 4
-       ncons = 5
     end if
     iry1 = iene+1
 
@@ -55,12 +55,14 @@ contains
        qw = 4
        qpres = 5
        qtemp = 6
-       qy1 = 7
+       qe    = 7
+       qy1   = 8
     else
        qw = -1
        qpres = 4
        qtemp = 5
-       qy1 = 6
+       qe    = 6
+       qy1   = 7
     end if
     qx1 = qy1 + nspecies
     qh1 = qx1 + nspecies
@@ -78,6 +80,7 @@ contains
     icomp_vel  = get_next_plot_index(dm_in)
     icomp_pres = get_next_plot_index(1)
     icomp_temp = get_next_plot_index(1)
+    icomp_eint = get_next_plot_index(1)
 
     if (plot_Y) then
        icomp_Y = get_next_plot_index(nspecies)
@@ -148,8 +151,8 @@ contains
              q(i,j,k,qw) = u(i,j,k,imz) * rhoinv
 
              do n=1,nspecies
-                q(i,j,k,qy1+n-1) = u(i,j,k,iry1+n-1) * rhoinv
-                Y(n) = q(i,j,k,qy1+n-1)
+                Y(n) = u(i,j,k,iry1+n-1) * rhoinv
+                q(i,j,k,qy1+n-1) = Y(n)
              end do
 
              call ckytx(Y, iwrk, rwrk, X)
@@ -159,6 +162,8 @@ contains
              end do
 
              ei = rhoinv*u(i,j,k,iene) - 0.5d0*(q(i,j,k,qu)**2+q(i,j,k,qv)**2+q(i,j,k,qw)**2)
+             q(i,j,k,qe) = ei
+
              call feeytt(ei, Y, iwrk, rwrk, Tt)
              q(i,j,k,qtemp) = Tt
 

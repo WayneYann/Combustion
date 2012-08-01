@@ -35,7 +35,7 @@ contains
   subroutine advance(U, dt, dx)
 
     type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: dt
+    double precision,  intent(  out) :: dt
     double precision,  intent(in   ) :: dx(U%dim) 
 
     if (advance_method == 2) then
@@ -50,7 +50,7 @@ contains
   subroutine advance_rk3 (U,dt,dx)
 
     type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: dt
+    double precision,  intent(  out) :: dt
     double precision,  intent(in   ) :: dx(U%dim)
 
     integer          :: ng
@@ -91,19 +91,15 @@ contains
        end if
     end if
 
-    call update_rk3(Zero,Unew,One,U,dt,Uprime)
+    call update_rk3(Zero,Unew, One,U, dt,Uprime)
 
-    !
-    ! Calculate U at time N+2/3
-    !
+    ! RK Step 2
     call dUdt(Unew,Uprime,dx)
-    call update_rk3(OneQuarter,Unew,ThreeQuarters,U,OneQuarter*dt,Uprime)
+    call update_rk3(OneQuarter,Unew, ThreeQuarters,U, OneQuarter*dt,Uprime)
 
-    !
-    ! Calculate U at time N+1
-    !
+    ! RK Step 3
     call dUdt(Unew,Uprime,dx)
-    call update_rk3(OneThird,U,TwoThirds,Unew,TwoThirds*dt,Uprime)
+    call update_rk3(OneThird,U, TwoThirds,Unew, TwoThirds*dt,Uprime)
 
     call destroy(Unew)
     call destroy(Uprime)
@@ -179,9 +175,6 @@ contains
     ng = nghost(U)
     la = get_layout(U)
 
-    !
-    ! Sync U prior to calculating D & F
-    !
     call multifab_fill_boundary(U)
 
     call multifab_build(Q, la, nprim, ng)
@@ -232,8 +225,8 @@ contains
     do n=1,nboxes(Q)
        if ( remote(Q,n) ) cycle
 
-       qp => dataptr(Q,n)
-       fdp=> dataptr(Fdif,n)
+       qp  => dataptr(Q,n)
+       fdp => dataptr(Fdif,n)
 
        mup  => dataptr(mu   , n)
        xip  => dataptr(xi   , n)
