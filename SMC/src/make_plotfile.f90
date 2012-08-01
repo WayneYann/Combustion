@@ -5,7 +5,7 @@ module make_plotfile_module
   use fabio_module
   use multifab_module
   use chemistry_module, only : nspecies, spec_names
-  use probin_module, only : dm_in, plot_Y, plot_X, nOutFiles, lUsingNFiles, &
+  use probin_module, only : dm_in, plot_Y, plot_X, plot_h, nOutFiles, lUsingNFiles, &
        single_prec_plotfiles, prob_lo, prob_hi
 
   implicit none
@@ -81,6 +81,10 @@ contains
 
     if (plot_X) then
        call multifab_copy_c(plotdata(1),icomp_X, Q,qx1, nspecies)       
+    end if
+
+    if (plot_h) then
+       call multifab_copy_c(plotdata(1),icomp_h, Q,qh1, nspecies)       
     end if
 
     if (parallel_IOProcessor()) then

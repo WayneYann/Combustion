@@ -192,6 +192,9 @@ plot_Y                              logical            .true.
 # plot molar fraction species in plotfile
 plot_X                              logical            .true.              
 
+# plot enthlpy of each species in plotfile
+plot_h                              logical            .true.              
+
 # plot omegadot in plotfile 
 plot_omegadot                       logical            .true.              
 

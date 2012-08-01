@@ -7,11 +7,11 @@ module variables
   implicit none
 
   integer, save :: irho, imx, imy, imz, iene, iry1
-  integer, save :: qrho, qu, qv, qw, qpres, qtemp, qy1, qx1
+  integer, save :: qrho, qu, qv, qw, qpres, qtemp, qy1, qx1, qh1
 
   ! the total number of plot components
   integer, save :: n_plot_comps = 0
-  integer, save :: icomp_rho, icomp_vel, icomp_pres, icomp_temp, icomp_Y, icomp_X
+  integer, save :: icomp_rho, icomp_vel, icomp_pres, icomp_temp, icomp_Y, icomp_X, icomp_h
 
   integer, save :: ncons, nprim
 
@@ -63,15 +63,16 @@ contains
        qy1 = 6
     end if
     qx1 = qy1 + nspecies
+    qh1 = qx1 + nspecies
 
-    nprim = qx1-1 + nspecies
+    nprim = qh1-1 + nspecies
     
   end subroutine init_variables
 
 
   subroutine init_plot_variables()
 
-    use probin_module, only : dm_in, plot_X, plot_Y
+    use probin_module, only : dm_in, plot_X, plot_Y, plot_h
 
     icomp_rho  = get_next_plot_index(1)
     icomp_vel  = get_next_plot_index(dm_in)
@@ -84,6 +85,10 @@ contains
 
     if (plot_X) then
        icomp_X = get_next_plot_index(nspecies)
+    end if
+
+    if (plot_h) then
+       icomp_h = get_next_plot_index(nspecies)
     end if
 
   end subroutine init_plot_variables
@@ -130,7 +135,7 @@ contains
     double precision, intent(out) :: q(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,nprim)
     
     integer :: i, j, k, n, iwrk
-    double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), ei, Tt, Pt
+    double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), h(nspecies), ei, Tt, Pt
 
     do k = lo(3)-ngto,hi(3)+ngto
        do j = lo(2)-ngto,hi(2)+ngto
@@ -159,6 +164,12 @@ contains
 
              call CKPY(rho, Tt, Y, iwrk, rwrk, Pt)
              q(i,j,k,qpres) = Pt
+
+             call ckhms(Tt, iwrk, rwrk, h)
+
+             do n=1,nspecies
+                q(i,j,k,qh1+n-1) = h(n)
+             end do
           enddo
        enddo
     enddo

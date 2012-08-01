@@ -71,6 +71,7 @@ module probin_module
   integer, save, public :: chk_int = 0
   logical, save, public :: plot_Y = .true.
   logical, save, public :: plot_X = .true.
+  logical, save, public :: plot_h = .true.
   logical, save, public :: plot_omegadot = .true.
   character (len=256), save, public :: plot_base_name = "plt"
   character (len=256), save, public :: check_base_name = "chk"
@@ -152,6 +153,7 @@ module runtime_init_module
   namelist /probin/ chk_int
   namelist /probin/ plot_Y
   namelist /probin/ plot_X
+  namelist /probin/ plot_h
   namelist /probin/ plot_omegadot
   namelist /probin/ plot_base_name
   namelist /probin/ check_base_name
@@ -551,6 +553,11 @@ contains
           farg = farg + 1
           call get_command_argument(farg, value = fname)
           read(fname, *) plot_X
+
+       case ('--plot_h')
+          farg = farg + 1
+          call get_command_argument(farg, value = fname)
+          read(fname, *) plot_h
 
        case ('--plot_omegadot')
           farg = farg + 1
