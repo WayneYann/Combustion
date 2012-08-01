@@ -353,19 +353,19 @@ contains
        print*, "dt,courno", dt, courno
     end if
 
-    call update_rk3(One,U,Zero,Unew,dt,Uprime,Unew)
+    call update_rk3(Zero,Unew,One,U,dt,Uprime)
 
     !
     ! Calculate U at time N+2/3
     !
     call dUdt(Unew,Uprime,ctx)
-    call update_rk3(ThreeQuarters,U,OneQuarter,Unew,OneQuarter*dt,Uprime,Unew)
+    call update_rk3(OneQuarter,Unew,ThreeQuarters,U,OneQuarter*dt,Uprime)
 
     !
     ! Calculate U at time N+1
     !
     call dUdt(Unew,Uprime,ctx)
-    call update_rk3(OneThird,U,TwoThirds,Unew,TwoThirds*dt,Uprime,U)
+    call update_rk3(OneThird,U,TwoThirds,Unew,TwoThirds*dt,Uprime)
 
     call destroy(Unew)
     call destroy(Uprime)
@@ -375,17 +375,17 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
-  ! Compute Unew = a U1 + b U2 + c Uprime.
+  ! Compute U1 = a U1 + b U2 + c Uprime.
   !
-  subroutine update_rk3 (a,U1,b,U2,c,Uprime,Unew)
+  subroutine update_rk3 (a,U1,b,U2,c,Uprime)
 
-    type(multifab),   intent(in   ) :: U1, U2, Uprime
-    type(multifab),   intent(inout) :: Unew
+    type(multifab),   intent(in   ) :: U2, Uprime
+    type(multifab),   intent(inout) :: U1
     double precision, intent(in   ) :: a, b, c
 
     integer :: lo(U1%dim), hi(U1%dim), i, j, k, m, n, nc
 
-    double precision, pointer, dimension(:,:,:,:) :: u1p, u2p, upp, unp
+    double precision, pointer, dimension(:,:,:,:) :: u1p, u2p, upp
 
     nc = ncomp(U1)
 
@@ -394,18 +394,17 @@ contains
 
        u1p => dataptr(U1,    n)
        u2p => dataptr(U2,    n)
-       unp => dataptr(Unew,  n)
        upp => dataptr(Uprime,n)
 
-       lo = lwb(get_box(Unew,n))
-       hi = upb(get_box(Unew,n))
+       lo = lwb(get_box(U1,n))
+       hi = upb(get_box(U1,n))
 
        do m = 1, nc
           !$OMP PARALLEL DO PRIVATE(i,j,k)
           do k = lo(3),hi(3)
              do j = lo(2),hi(2)
                 do i = lo(1),hi(1)
-                   unp(i,j,k,m) = a * u1p(i,j,k,m) + b * u2p(i,j,k,m) + c * upp(i,j,k,m)
+                   u1p(i,j,k,m) = a * u1p(i,j,k,m) + b * u2p(i,j,k,m) + c * upp(i,j,k,m)
                 end do
              end do
           end do
