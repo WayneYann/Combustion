@@ -1770,7 +1770,7 @@ contains
                   +      DEL*(vsc2(i,j,k+4)*(ux(i,j,k+4)+vy(i,j,k+4))-vsc2(i,j,k-4)*(ux(i,j,k-4)+vy(i,j,k-4))) &
                   ) * dxinv(3)
 
-             difflux(i,j,k,imy) = (Hx(i+1,j,k) - Hx(i,j,k)) * dxinv(1)**2 &
+             difflux(i,j,k,imz) = (Hx(i+1,j,k) - Hx(i,j,k)) * dxinv(1)**2 &
                   &             + (Hy(i,j+1,k) - Hy(i,j,k)) * dxinv(2)**2 &
                   &             + (Hz(i,j,k+1) - Hz(i,j,k)) * dxinv(3)**2 &
                   + dmuzdx + dmvzdy + dmuxvydz
