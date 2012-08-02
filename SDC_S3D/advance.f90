@@ -1899,8 +1899,8 @@ contains
 
              divu = (ux(i,j,k)+vy(i,j,k)+wz(i,j,k))*vsc2(i,j,k)
              tauxx = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
-             tauyy = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
-             tauzz = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
+             tauyy = 2.d0*mu(i,j,k)*vy(i,j,k) + divu
+             tauzz = 2.d0*mu(i,j,k)*wz(i,j,k) + divu
              
              dei =  tauxx*ux(i,j,k) &
                   + tauyy*vy(i,j,k) &
