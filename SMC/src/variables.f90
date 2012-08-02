@@ -167,16 +167,6 @@ contains
              call feeytt(ei, Y, iwrk, rwrk, Tt)
              q(i,j,k,qtemp) = Tt
 
-
-
-             if (Tt < 0.d0) then
-                print *, 'xxxxx ', i, j, k, rho, Tt, ei, q(i,j,k,qu), q(i,j,k,qv), q(i,j,k,qw)
-                print *, '      ', X, Y
-                call flush()
-             end if
-
-
-
              call CKPY(rho, Tt, Y, iwrk, rwrk, Pt)
              q(i,j,k,qpres) = Pt
 

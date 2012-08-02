@@ -14,6 +14,8 @@ module chemistry_module
   character*2, allocatable, save :: elem_names(:)
   character*4, allocatable, save :: spec_names(:)
 
+  double precision, allocatable, save :: molecular_weight(:)
+
 contains
 
   subroutine chemistry_init()
@@ -26,6 +28,7 @@ contains
 
     allocate(elem_names(nelements))
     allocate(spec_names(nspecies))
+    allocate(molecular_weight(nspecies))
 
     allocate(names(nspecies*4))  ! Each species name has at most 4 characters
 
@@ -51,6 +54,8 @@ contains
 
     deallocate(names)
 
+    call ckwt(iwrk, rwrk, molecular_weight)
+
     call eglib_init(nspecies)
 
     chemistry_initialized = .true.
@@ -60,7 +65,7 @@ contains
 
   subroutine chemistry_close()
 
-    deallocate(elem_names,spec_names)
+    deallocate(elem_names,spec_names,molecular_weight)
 
     call eglib_close()
 

@@ -1,6 +1,7 @@
 module advance_module
 
   use bl_error_module
+  use chemistry_module, only : nspecies, molecular_weight
   use multifab_module
   use probin_module
   use variables
@@ -93,13 +94,19 @@ contains
 
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
 
+    print *, 'xxxxx stage 1 finished'
+
     ! RK Step 2
     call dUdt(Unew,Uprime,dx)
     call update_rk3(OneQuarter,Unew, ThreeQuarters,U, OneQuarter*dt,Uprime)
 
+    print *, 'xxxxx stage 2 finished'
+
     ! RK Step 3
     call dUdt(Unew,Uprime,dx)
     call update_rk3(OneThird,U, TwoThirds,Unew, TwoThirds*dt,Uprime)
+
+    print *, 'xxxxx stage 3 finished'
 
     call destroy(Unew)
     call destroy(Uprime)
@@ -520,6 +527,9 @@ contains
     double precision :: Htot, Htmp(nspecies), Ytmp(nspecies)
     integer          :: i,j,k,n, qxn, qyn
 
+    integer :: iwrk
+    double precision :: Xt(nspecies), wdot(nspecies), rwrk
+
     ! coefficients for 8th-order stencil of second-order derivative
     double precision, parameter :: m47 = 683.d0/10080.d0, m48 = -1.d0/224.d0
     double precision, parameter :: m11 = 5.d0/336.d0 + m48, &
@@ -560,7 +570,7 @@ contains
     allocate(vsc1(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
     allocate(vsc2(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
 
-    allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,ncons))
+    allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons))
 
     allocate(dpy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
     allocate(dxe(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
@@ -571,13 +581,7 @@ contains
        dx2inv(i) = dxinv(i)**2
     end do
 
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             flx(i,j,k,irho) = 0.0d0
-          end do
-       end do
-    end do
+    flx(:,:,:,irho) = 0.d0
 
     do k=lo(3)-ng,hi(3)+ng
        do j=lo(2)-ng,hi(2)+ng
@@ -744,17 +748,22 @@ contains
 
              divu = (ux(i,j,k)+vy(i,j,k)+wz(i,j,k))*vsc2(i,j,k)
              tauxx = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
-             tauyy = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
-             tauzz = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
+             tauyy = 2.d0*mu(i,j,k)*vy(i,j,k) + divu
+             tauzz = 2.d0*mu(i,j,k)*wz(i,j,k) + divu
              
              ! change in internal energy
              flx(i,j,k,iene) = tauxx*ux(i,j,k) + tauyy*vy(i,j,k) + tauzz*wz(i,j,k) &
                   + mu(i,j,k)*((uy(i,j,k)+vx(i,j,k))**2 &
                   &          + (wx(i,j,k)+uz(i,j,k))**2 &
                   &          + (vz(i,j,k)+wy(i,j,k))**2 )
+
+             call ckwxr(q(i,j,k,qrho), q(i,j,k,qtemp), Xt, iwrk, rwrk, wdot)
+             flx(i,j,k,iry1:) = wdot * molecular_weight
+             
           end do
        end do
     end do
+
 
     ! ------- BEGIN x-direction -------
     do k=lo(3),hi(3)
@@ -966,42 +975,42 @@ contains
              end do
 
              Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
-                  + m11*(dpe(i-4,j,k)*q(i-4,j,k,qpres)-dpe(i+3,j,k)**q(i+3,j,k,qpres)) &
-                  + m12*(dpe(i-4,j,k)*q(i-3,j,k,qpres)-dpe(i+3,j,k)**q(i+2,j,k,qpres)) &
-                  + m13*(dpe(i-4,j,k)*q(i-2,j,k,qpres)-dpe(i+3,j,k)**q(i+1,j,k,qpres)) &
-                  + m14*(dpe(i-4,j,k)*q(i-1,j,k,qpres)-dpe(i+3,j,k)**q(i  ,j,k,qpres)) &
-                  + m15*(dpe(i-4,j,k)*q(i  ,j,k,qpres)-dpe(i+3,j,k)**q(i-1,j,k,qpres)) &
-                  + m21*(dpe(i-3,j,k)*q(i-4,j,k,qpres)-dpe(i+2,j,k)**q(i+3,j,k,qpres)) &
-                  + m22*(dpe(i-3,j,k)*q(i-3,j,k,qpres)-dpe(i+2,j,k)**q(i+2,j,k,qpres)) &
-                  + m23*(dpe(i-3,j,k)*q(i-2,j,k,qpres)-dpe(i+2,j,k)**q(i+1,j,k,qpres)) &
-                  + m24*(dpe(i-3,j,k)*q(i-1,j,k,qpres)-dpe(i+2,j,k)**q(i  ,j,k,qpres)) &
-                  + m25*(dpe(i-3,j,k)*q(i  ,j,k,qpres)-dpe(i+2,j,k)**q(i-1,j,k,qpres)) &
-                  + m26*(dpe(i-3,j,k)*q(i+1,j,k,qpres)-dpe(i+2,j,k)**q(i-2,j,k,qpres)) &
-                  + m31*(dpe(i-2,j,k)*q(i-4,j,k,qpres)-dpe(i+1,j,k)**q(i+3,j,k,qpres)) &
-                  + m32*(dpe(i-2,j,k)*q(i-3,j,k,qpres)-dpe(i+1,j,k)**q(i+2,j,k,qpres)) &
-                  + m33*(dpe(i-2,j,k)*q(i-2,j,k,qpres)-dpe(i+1,j,k)**q(i+1,j,k,qpres)) &
-                  + m34*(dpe(i-2,j,k)*q(i-1,j,k,qpres)-dpe(i+1,j,k)**q(i  ,j,k,qpres)) &
-                  + m35*(dpe(i-2,j,k)*q(i  ,j,k,qpres)-dpe(i+1,j,k)**q(i-1,j,k,qpres)) &
-                  + m36*(dpe(i-2,j,k)*q(i+1,j,k,qpres)-dpe(i+1,j,k)**q(i-2,j,k,qpres)) &
-                  + m37*(dpe(i-2,j,k)*q(i+2,j,k,qpres)-dpe(i+1,j,k)**q(i-3,j,k,qpres)) &
-                  + m41*(dpe(i-1,j,k)*q(i-4,j,k,qpres)-dpe(i  ,j,k)**q(i+3,j,k,qpres)) &
-                  + m42*(dpe(i-1,j,k)*q(i-3,j,k,qpres)-dpe(i  ,j,k)**q(i+2,j,k,qpres)) &
-                  + m43*(dpe(i-1,j,k)*q(i-2,j,k,qpres)-dpe(i  ,j,k)**q(i+1,j,k,qpres)) &
-                  + m44*(dpe(i-1,j,k)*q(i-1,j,k,qpres)-dpe(i  ,j,k)**q(i  ,j,k,qpres)) &
-                  + m45*(dpe(i-1,j,k)*q(i  ,j,k,qpres)-dpe(i  ,j,k)**q(i-1,j,k,qpres)) &
-                  + m46*(dpe(i-1,j,k)*q(i+1,j,k,qpres)-dpe(i  ,j,k)**q(i-2,j,k,qpres)) &
-                  + m47*(dpe(i-1,j,k)*q(i+2,j,k,qpres)-dpe(i  ,j,k)**q(i-3,j,k,qpres)) &
-                  + m48*(dpe(i-1,j,k)*q(i+3,j,k,qpres)-dpe(i  ,j,k)**q(i-4,j,k,qpres))
+                  + m11*(dpe(i-4,j,k)*q(i-4,j,k,qpres)-dpe(i+3,j,k)*q(i+3,j,k,qpres)) &
+                  + m12*(dpe(i-4,j,k)*q(i-3,j,k,qpres)-dpe(i+3,j,k)*q(i+2,j,k,qpres)) &
+                  + m13*(dpe(i-4,j,k)*q(i-2,j,k,qpres)-dpe(i+3,j,k)*q(i+1,j,k,qpres)) &
+                  + m14*(dpe(i-4,j,k)*q(i-1,j,k,qpres)-dpe(i+3,j,k)*q(i  ,j,k,qpres)) &
+                  + m15*(dpe(i-4,j,k)*q(i  ,j,k,qpres)-dpe(i+3,j,k)*q(i-1,j,k,qpres)) &
+                  + m21*(dpe(i-3,j,k)*q(i-4,j,k,qpres)-dpe(i+2,j,k)*q(i+3,j,k,qpres)) &
+                  + m22*(dpe(i-3,j,k)*q(i-3,j,k,qpres)-dpe(i+2,j,k)*q(i+2,j,k,qpres)) &
+                  + m23*(dpe(i-3,j,k)*q(i-2,j,k,qpres)-dpe(i+2,j,k)*q(i+1,j,k,qpres)) &
+                  + m24*(dpe(i-3,j,k)*q(i-1,j,k,qpres)-dpe(i+2,j,k)*q(i  ,j,k,qpres)) &
+                  + m25*(dpe(i-3,j,k)*q(i  ,j,k,qpres)-dpe(i+2,j,k)*q(i-1,j,k,qpres)) &
+                  + m26*(dpe(i-3,j,k)*q(i+1,j,k,qpres)-dpe(i+2,j,k)*q(i-2,j,k,qpres)) &
+                  + m31*(dpe(i-2,j,k)*q(i-4,j,k,qpres)-dpe(i+1,j,k)*q(i+3,j,k,qpres)) &
+                  + m32*(dpe(i-2,j,k)*q(i-3,j,k,qpres)-dpe(i+1,j,k)*q(i+2,j,k,qpres)) &
+                  + m33*(dpe(i-2,j,k)*q(i-2,j,k,qpres)-dpe(i+1,j,k)*q(i+1,j,k,qpres)) &
+                  + m34*(dpe(i-2,j,k)*q(i-1,j,k,qpres)-dpe(i+1,j,k)*q(i  ,j,k,qpres)) &
+                  + m35*(dpe(i-2,j,k)*q(i  ,j,k,qpres)-dpe(i+1,j,k)*q(i-1,j,k,qpres)) &
+                  + m36*(dpe(i-2,j,k)*q(i+1,j,k,qpres)-dpe(i+1,j,k)*q(i-2,j,k,qpres)) &
+                  + m37*(dpe(i-2,j,k)*q(i+2,j,k,qpres)-dpe(i+1,j,k)*q(i-3,j,k,qpres)) &
+                  + m41*(dpe(i-1,j,k)*q(i-4,j,k,qpres)-dpe(i  ,j,k)*q(i+3,j,k,qpres)) &
+                  + m42*(dpe(i-1,j,k)*q(i-3,j,k,qpres)-dpe(i  ,j,k)*q(i+2,j,k,qpres)) &
+                  + m43*(dpe(i-1,j,k)*q(i-2,j,k,qpres)-dpe(i  ,j,k)*q(i+1,j,k,qpres)) &
+                  + m44*(dpe(i-1,j,k)*q(i-1,j,k,qpres)-dpe(i  ,j,k)*q(i  ,j,k,qpres)) &
+                  + m45*(dpe(i-1,j,k)*q(i  ,j,k,qpres)-dpe(i  ,j,k)*q(i-1,j,k,qpres)) &
+                  + m46*(dpe(i-1,j,k)*q(i+1,j,k,qpres)-dpe(i  ,j,k)*q(i-2,j,k,qpres)) &
+                  + m47*(dpe(i-1,j,k)*q(i+2,j,k,qpres)-dpe(i  ,j,k)*q(i-3,j,k,qpres)) &
+                  + m48*(dpe(i-1,j,k)*q(i+3,j,k,qpres)-dpe(i  ,j,k)*q(i-4,j,k,qpres))
 
           end do
        end do
     end do
 
     ! add x-direction flux
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             do n=imx,ncons
+    do n=imx,ncons
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
                 flx(i,j,k,n) = flx(i,j,k,n) + (Hg(i+1,j,k,n) - Hg(i,j,k,n)) * dx2inv(1)
              end do
           end do
@@ -1251,10 +1260,10 @@ contains
     end do
 
     ! add y-direction flux
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             do n=imx,ncons
+    do n=imx,ncons
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
                 flx(i,j,k,n) = flx(i,j,k,n) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
              end do
           end do
@@ -1503,10 +1512,10 @@ contains
     end do
 
     ! add z-direction flux
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             do n=imx,ncons
+    do n=imx,ncons
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
                 flx(i,j,k,n) = flx(i,j,k,n) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
              end do
           end do
