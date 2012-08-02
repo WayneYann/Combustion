@@ -41,14 +41,14 @@ contains
        if (dim .ne. 3) then
           call bl_error("Only 3D is supported in get_transport_properties")
        else
-          call get_trans_prop_3d(lo,hi,qp,mup,xip,lamp,dp,ng)
+          call get_trans_prop_3d(lo,hi,ng,qp,mup,xip,lamp,dp)
        end if
 
     end do
 
   end subroutine get_transport_properties
    
-  subroutine get_trans_prop_3d(lo,hi,q,mu,lam,xi,Ddiag, ng)
+  subroutine get_trans_prop_3d(lo,hi,ng,q,mu,lam,xi,Ddiag)
 
     integer, intent(in) :: lo(3), hi(3), ng
     double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nprim)
@@ -78,7 +78,7 @@ contains
 
        CALL EGSE3(Tt, Yt, egwork, mu(i,j,k)) 
        CALL EGSK3(Tt, Yt, egwork, xi(i,j,k)) 
-       CALL EGSLTD3(Pt, Tt, Yt, Wt, egwork, egiwork, &
+       CALL EGSLTDR3(Tt, Yt, Wt, egwork, egiwork, &
             lam(i,j,k), theta, D)
 
        do n=1,nspecies

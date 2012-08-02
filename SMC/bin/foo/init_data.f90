@@ -52,7 +52,7 @@ contains
 
     double precision pmf_vals(nspecies+3)
     double precision Xt(nspecies), Yt(nspecies)
-    double precision pt,rhot,u1t,u2t,u3t,Wavg,Tt,blend,et,Cvt
+    double precision rhot,u1t,u2t,u3t,Tt,et
     integer :: iwrk
     double precision :: rwrk
 
