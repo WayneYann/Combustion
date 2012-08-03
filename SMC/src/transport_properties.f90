@@ -58,8 +58,8 @@ contains
     double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nspecies)
 
     integer :: i, j, k, n, iwrk
-    double precision :: rwrk, Tt, Pt
-    double precision, dimension(nspecies) :: Xt, Yt, Cpt, Wt
+    double precision :: rwrk, Tt, Pt, Wtm
+    double precision, dimension(nspecies) :: Xt, Yt, Cpt
     double precision :: theta(nspecies), D(nspecies,nspecies)
 
     do k=lo(3)-ng,hi(3)+ng
@@ -72,13 +72,13 @@ contains
        Yt = q(i,j,k,qy1:qy1+nspecies-1)
 
        CALL CKCPMS(Tt, iwrk, rwrk, Cpt)
-       CALL CKMMWY(Yt, iwrk, rwrk, Wt)
+       CALL CKMMWY(Yt, iwrk, rwrk, Wtm)
 
        CALL EGSPAR(Tt, Xt, Yt, Cpt, egwork, egiwork)
 
        CALL EGSE3(Tt, Yt, egwork, mu(i,j,k)) 
-       CALL EGSK3(Tt, Yt, egwork, xi(i,j,k)) 
-       CALL EGSLTDR3(Tt, Yt, Wt, egwork, egiwork, &
+       CALL EGSK6(Tt, Yt, egwork, xi(i,j,k)) 
+       CALL EGSLTDR3(Tt, Yt, Wtm, egwork, egiwork, &
             lam(i,j,k), theta, D)
 
        do n=1,nspecies

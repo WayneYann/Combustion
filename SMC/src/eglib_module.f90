@@ -6,8 +6,8 @@ module eglib_module
   integer, parameter :: ITLS  = 3
   integer, parameter :: IFLAG = 7
   integer, save :: legwork, legiwork
-  double precision, allocatable :: egwork(:) 
-  integer, allocatable :: egiwork(:) 
+  double precision, allocatable, save :: egwork(:) 
+  integer, allocatable, save :: egiwork(:) 
 
   private
 
@@ -19,7 +19,7 @@ contains
     integer, intent(in) :: nspecies
 
     legwork = 23 + 14*nspecies + 32*nspecies**2 + 13*NP  & 
-         & + 30*NP*nspecies + 5*NP*nspecies**2
+         + 30*NP*nspecies + 5*NP*nspecies**2
     legiwork = nspecies
 
     allocate(egwork(legwork))

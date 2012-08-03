@@ -95,8 +95,6 @@ contains
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
 
     print *, 'xxxxx stage 1 finished'
-!    call multifab_copy(U, Unew)
-!    return
 
     ! RK Step 2
     call dUdt(Unew,Uprime,dx)
@@ -206,6 +204,9 @@ contains
     end if
 
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
+
+    print *, 'xxxxxxxx set volume viscosity to zero!'
+    call setval(xi, 0.d0, all=.true.)
 
     !
     ! Hyperbolic terms

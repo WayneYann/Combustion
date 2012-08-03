@@ -32,7 +32,7 @@ contains
 
     allocate(names(nspecies*4))  ! Each species name has at most 4 characters
 
-    call cksyme(names, 2)
+    call cksyme(names, 2)  ! Two chars for element names
 
     ic = 1
     do i = 1, nelements
@@ -42,7 +42,7 @@ contains
        end do
     end do
 
-    call cksyms(names, 4)
+    call cksyms(names, 4) ! Four chars for species names
 
     ic = 1
     do i = 1, nspecies

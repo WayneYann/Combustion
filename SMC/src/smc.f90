@@ -46,15 +46,11 @@ subroutine smc()
   if (verbose .ge. 1) then
      if (parallel_IOProcessor()) then
         print *, ''
-        print *, 'Chemistry has', nelements, 'elements:'
-        do i=1,nelements
-           print *, '      ', elem_names(i)
-        end do
-        print *, 'Chemistry has', nspecies, 'species:'
+        write(*,'(A,1X,I0,1X,A)', advance='no') "Chemistry model has", nspecies, "species:"
         do i=1,nspecies
-           print *, '      ', spec_names(i)
+           write(*, '(3X,A)', advance='no') trim(spec_names(i))
         end do
-        print *, 'Chemistry has', nreactions, 'reactions.'
+        print *, ''
      end if
   end if
 
@@ -168,6 +164,8 @@ subroutine smc()
         end if
 
         call advance(U,dt,dx)
+
+        time = time + dt
 
         if (plot_int > 0 .or. plot_deltat > ZERO) then
            if ( (plot_int > 0 .and. mod(istep,plot_int) .eq. 0) .or. &
