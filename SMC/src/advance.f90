@@ -95,6 +95,8 @@ contains
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
 
     print *, 'xxxxx stage 1 finished'
+!    call multifab_copy(U, Unew)
+!    return
 
     ! RK Step 2
     call dUdt(Unew,Uprime,dx)
@@ -512,7 +514,7 @@ contains
     double precision, intent(out) :: flx(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
  
     double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
-    double precision, allocatable, dimension(:,:,:) :: vsc1,vsc2, dpe
+    double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
     double precision, allocatable, dimension(:,:,:,:) :: Hg, dpy, dxe
     ! dxy: diffusion coefficient of X in equation for Y
     ! dpy: diffusion coefficient of p in equation for Y
@@ -557,18 +559,18 @@ contains
          &                         m45 = 583.d0/720.d0 - m47 + 6.d0*m48, &
          &                         m46 = -65.d0/224.d0 - 7.d0*m48
 
-    allocate(ux(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(uy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(uz(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(vx(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(vy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(vz(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(wx(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(wy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(wz(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(ux(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(vx(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(wx(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(uy(-ng+lo(1):hi(1)+ng,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
+    allocate(vy(-ng+lo(1):hi(1)+ng,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
+    allocate(wy(-ng+lo(1):hi(1)+ng,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
+    allocate(uz(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,    lo(3):hi(3)   ))
+    allocate(vz(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,    lo(3):hi(3)   ))
+    allocate(wz(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,    lo(3):hi(3)   ))
 
-    allocate(vsc1(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(vsc2(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(vsp(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(vsm(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
 
     allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons))
 
@@ -586,8 +588,8 @@ contains
     do k=lo(3)-ng,hi(3)+ng
        do j=lo(2)-ng,hi(2)+ng
           do i=lo(1)-ng,hi(1)+ng
-             vsc1(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
-             vsc2(i,j,k) = xi(i,j,k) -  TwoThirds*mu(i,j,k)
+             vsp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
+             vsm(i,j,k) = xi(i,j,k) -  TwoThirds*mu(i,j,k)
           enddo
        enddo
     enddo
@@ -698,10 +700,10 @@ contains
                   +    DEL*(mu(i,j,k+4)*wx(i,j,k+4)-mu(i,j,k-4)*wx(i,j,k-4)))*dxinv(3) 
 
              ! d((xi-2/3*mu)*(vy+wz))/dx
-             dmvywzdx = (ALP*(vsc2(i+1,j,k)*(vy(i+1,j,k)+wz(i+1,j,k))-vsc2(i-1,j,k)*(vy(i-1,j,k)+wz(i-1,j,k))) &
-                  +      BET*(vsc2(i+2,j,k)*(vy(i+2,j,k)+wz(i+2,j,k))-vsc2(i-2,j,k)*(vy(i-2,j,k)+wz(i-2,j,k))) &
-                  +      GAM*(vsc2(i+3,j,k)*(vy(i+3,j,k)+wz(i+3,j,k))-vsc2(i-3,j,k)*(vy(i-3,j,k)+wz(i-3,j,k))) &
-                  +      DEL*(vsc2(i+4,j,k)*(vy(i+4,j,k)+wz(i+4,j,k))-vsc2(i-4,j,k)*(vy(i-4,j,k)+wz(i-4,j,k))) &
+             dmvywzdx = (ALP*(vsm(i+1,j,k)*(vy(i+1,j,k)+wz(i+1,j,k))-vsm(i-1,j,k)*(vy(i-1,j,k)+wz(i-1,j,k))) &
+                  +      BET*(vsm(i+2,j,k)*(vy(i+2,j,k)+wz(i+2,j,k))-vsm(i-2,j,k)*(vy(i-2,j,k)+wz(i-2,j,k))) &
+                  +      GAM*(vsm(i+3,j,k)*(vy(i+3,j,k)+wz(i+3,j,k))-vsm(i-3,j,k)*(vy(i-3,j,k)+wz(i-3,j,k))) &
+                  +      DEL*(vsm(i+4,j,k)*(vy(i+4,j,k)+wz(i+4,j,k))-vsm(i-4,j,k)*(vy(i-4,j,k)+wz(i-4,j,k))) &
                   ) * dxinv(1)
 
              ! d(mu*du/dy)/dx
@@ -717,10 +719,10 @@ contains
                   +    DEL*(mu(i,j,k+4)*wy(i,j,k+4)-mu(i,j,k-4)*wy(i,j,k-4)))*dxinv(3) 
 
              ! d((xi-2/3*mu)*(ux+wz))/dy
-             dmuxwzdy = (ALP*(vsc2(i,j+1,k)*(ux(i,j+1,k)+wz(i,j+1,k))-vsc2(i,j-1,k)*(ux(i,j-1,k)+wz(i,j-1,k))) &
-                  +      BET*(vsc2(i,j+2,k)*(ux(i,j+2,k)+wz(i,j+2,k))-vsc2(i,j-2,k)*(ux(i,j-2,k)+wz(i,j-2,k))) &
-                  +      GAM*(vsc2(i,j+3,k)*(ux(i,j+3,k)+wz(i,j+3,k))-vsc2(i,j-3,k)*(ux(i,j-3,k)+wz(i,j-3,k))) &
-                  +      DEL*(vsc2(i,j+4,k)*(ux(i,j+4,k)+wz(i,j+4,k))-vsc2(i,j-4,k)*(ux(i,j-4,k)+wz(i,j-4,k))) &
+             dmuxwzdy = (ALP*(vsm(i,j+1,k)*(ux(i,j+1,k)+wz(i,j+1,k))-vsm(i,j-1,k)*(ux(i,j-1,k)+wz(i,j-1,k))) &
+                  +      BET*(vsm(i,j+2,k)*(ux(i,j+2,k)+wz(i,j+2,k))-vsm(i,j-2,k)*(ux(i,j-2,k)+wz(i,j-2,k))) &
+                  +      GAM*(vsm(i,j+3,k)*(ux(i,j+3,k)+wz(i,j+3,k))-vsm(i,j-3,k)*(ux(i,j-3,k)+wz(i,j-3,k))) &
+                  +      DEL*(vsm(i,j+4,k)*(ux(i,j+4,k)+wz(i,j+4,k))-vsm(i,j-4,k)*(ux(i,j-4,k)+wz(i,j-4,k))) &
                   ) * dxinv(2)
 
              ! d(mu*du/dz)/dx
@@ -736,17 +738,17 @@ contains
                   +    DEL*(mu(i,j+4,k)*vz(i,j+4,k)-mu(i,j-4,k)*vz(i,j-4,k)))*dxinv(2) 
 
              ! d((xi-2/3*mu)*(ux+vy))/dz
-             dmuxvydz = (ALP*(vsc2(i,j,k+1)*(ux(i,j,k+1)+vy(i,j,k+1))-vsc2(i,j,k-1)*(ux(i,j,k-1)+vy(i,j,k-1))) &
-                  +      BET*(vsc2(i,j,k+2)*(ux(i,j,k+2)+vy(i,j,k+2))-vsc2(i,j,k-2)*(ux(i,j,k-2)+vy(i,j,k-2))) &
-                  +      GAM*(vsc2(i,j,k+3)*(ux(i,j,k+3)+vy(i,j,k+3))-vsc2(i,j,k-3)*(ux(i,j,k-3)+vy(i,j,k-3))) &
-                  +      DEL*(vsc2(i,j,k+4)*(ux(i,j,k+4)+vy(i,j,k+4))-vsc2(i,j,k-4)*(ux(i,j,k-4)+vy(i,j,k-4))) &
+             dmuxvydz = (ALP*(vsm(i,j,k+1)*(ux(i,j,k+1)+vy(i,j,k+1))-vsm(i,j,k-1)*(ux(i,j,k-1)+vy(i,j,k-1))) &
+                  +      BET*(vsm(i,j,k+2)*(ux(i,j,k+2)+vy(i,j,k+2))-vsm(i,j,k-2)*(ux(i,j,k-2)+vy(i,j,k-2))) &
+                  +      GAM*(vsm(i,j,k+3)*(ux(i,j,k+3)+vy(i,j,k+3))-vsm(i,j,k-3)*(ux(i,j,k-3)+vy(i,j,k-3))) &
+                  +      DEL*(vsm(i,j,k+4)*(ux(i,j,k+4)+vy(i,j,k+4))-vsm(i,j,k-4)*(ux(i,j,k-4)+vy(i,j,k-4))) &
                   ) * dxinv(3)
 
              flx(i,j,k,imx) = dmvxdy + dmwxdz + dmvywzdx
              flx(i,j,k,imy) = dmuydx + dmwydz + dmuxwzdy
              flx(i,j,k,imz) = dmuzdx + dmvzdy + dmuxvydz
 
-             divu = (ux(i,j,k)+vy(i,j,k)+wz(i,j,k))*vsc2(i,j,k)
+             divu = (ux(i,j,k)+vy(i,j,k)+wz(i,j,k))*vsm(i,j,k)
              tauxx = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
              tauyy = 2.d0*mu(i,j,k)*vy(i,j,k) + divu
              tauzz = 2.d0*mu(i,j,k)*wz(i,j,k) + divu
@@ -769,32 +771,32 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)+1
-             Hg(i,j,k,imx) = m11*(vsc1(i-4,j,k)*q(i-4,j,k,qu)-vsc1(i+3,j,k)*q(i+3,j,k,qu)) &
-                  +          m12*(vsc1(i-4,j,k)*q(i-3,j,k,qu)-vsc1(i+3,j,k)*q(i+2,j,k,qu)) &
-                  +          m13*(vsc1(i-4,j,k)*q(i-2,j,k,qu)-vsc1(i+3,j,k)*q(i+1,j,k,qu)) &
-                  +          m14*(vsc1(i-4,j,k)*q(i-1,j,k,qu)-vsc1(i+3,j,k)*q(i  ,j,k,qu)) &
-                  +          m15*(vsc1(i-4,j,k)*q(i  ,j,k,qu)-vsc1(i+3,j,k)*q(i-1,j,k,qu)) &
-                  &        + m21*(vsc1(i-3,j,k)*q(i-4,j,k,qu)-vsc1(i+2,j,k)*q(i+3,j,k,qu)) &
-                  +          m22*(vsc1(i-3,j,k)*q(i-3,j,k,qu)-vsc1(i+2,j,k)*q(i+2,j,k,qu)) &
-                  +          m23*(vsc1(i-3,j,k)*q(i-2,j,k,qu)-vsc1(i+2,j,k)*q(i+1,j,k,qu)) &
-                  +          m24*(vsc1(i-3,j,k)*q(i-1,j,k,qu)-vsc1(i+2,j,k)*q(i  ,j,k,qu)) &
-                  +          m25*(vsc1(i-3,j,k)*q(i  ,j,k,qu)-vsc1(i+2,j,k)*q(i-1,j,k,qu)) &
-                  +          m26*(vsc1(i-3,j,k)*q(i+1,j,k,qu)-vsc1(i+2,j,k)*q(i-2,j,k,qu)) &
-                  &        + m31*(vsc1(i-2,j,k)*q(i-4,j,k,qu)-vsc1(i+1,j,k)*q(i+3,j,k,qu)) &
-                  +          m32*(vsc1(i-2,j,k)*q(i-3,j,k,qu)-vsc1(i+1,j,k)*q(i+2,j,k,qu)) &
-                  +          m33*(vsc1(i-2,j,k)*q(i-2,j,k,qu)-vsc1(i+1,j,k)*q(i+1,j,k,qu)) &
-                  +          m34*(vsc1(i-2,j,k)*q(i-1,j,k,qu)-vsc1(i+1,j,k)*q(i  ,j,k,qu)) &
-                  +          m35*(vsc1(i-2,j,k)*q(i  ,j,k,qu)-vsc1(i+1,j,k)*q(i-1,j,k,qu)) &
-                  +          m36*(vsc1(i-2,j,k)*q(i+1,j,k,qu)-vsc1(i+1,j,k)*q(i-2,j,k,qu)) &
-                  +          m37*(vsc1(i-2,j,k)*q(i+2,j,k,qu)-vsc1(i+1,j,k)*q(i-3,j,k,qu)) &
-                  &        + m41*(vsc1(i-1,j,k)*q(i-4,j,k,qu)-vsc1(i  ,j,k)*q(i+3,j,k,qu)) &
-                  +          m42*(vsc1(i-1,j,k)*q(i-3,j,k,qu)-vsc1(i  ,j,k)*q(i+2,j,k,qu)) &
-                  +          m43*(vsc1(i-1,j,k)*q(i-2,j,k,qu)-vsc1(i  ,j,k)*q(i+1,j,k,qu)) &
-                  +          m44*(vsc1(i-1,j,k)*q(i-1,j,k,qu)-vsc1(i  ,j,k)*q(i  ,j,k,qu)) &
-                  +          m45*(vsc1(i-1,j,k)*q(i  ,j,k,qu)-vsc1(i  ,j,k)*q(i-1,j,k,qu)) &
-                  +          m46*(vsc1(i-1,j,k)*q(i+1,j,k,qu)-vsc1(i  ,j,k)*q(i-2,j,k,qu)) &
-                  +          m47*(vsc1(i-1,j,k)*q(i+2,j,k,qu)-vsc1(i  ,j,k)*q(i-3,j,k,qu)) &
-                  +          m48*(vsc1(i-1,j,k)*q(i+3,j,k,qu)-vsc1(i  ,j,k)*q(i-4,j,k,qu))
+             Hg(i,j,k,imx) = m11*(vsp(i-4,j,k)*q(i-4,j,k,qu)-vsp(i+3,j,k)*q(i+3,j,k,qu)) &
+                  +          m12*(vsp(i-4,j,k)*q(i-3,j,k,qu)-vsp(i+3,j,k)*q(i+2,j,k,qu)) &
+                  +          m13*(vsp(i-4,j,k)*q(i-2,j,k,qu)-vsp(i+3,j,k)*q(i+1,j,k,qu)) &
+                  +          m14*(vsp(i-4,j,k)*q(i-1,j,k,qu)-vsp(i+3,j,k)*q(i  ,j,k,qu)) &
+                  +          m15*(vsp(i-4,j,k)*q(i  ,j,k,qu)-vsp(i+3,j,k)*q(i-1,j,k,qu)) &
+                  &        + m21*(vsp(i-3,j,k)*q(i-4,j,k,qu)-vsp(i+2,j,k)*q(i+3,j,k,qu)) &
+                  +          m22*(vsp(i-3,j,k)*q(i-3,j,k,qu)-vsp(i+2,j,k)*q(i+2,j,k,qu)) &
+                  +          m23*(vsp(i-3,j,k)*q(i-2,j,k,qu)-vsp(i+2,j,k)*q(i+1,j,k,qu)) &
+                  +          m24*(vsp(i-3,j,k)*q(i-1,j,k,qu)-vsp(i+2,j,k)*q(i  ,j,k,qu)) &
+                  +          m25*(vsp(i-3,j,k)*q(i  ,j,k,qu)-vsp(i+2,j,k)*q(i-1,j,k,qu)) &
+                  +          m26*(vsp(i-3,j,k)*q(i+1,j,k,qu)-vsp(i+2,j,k)*q(i-2,j,k,qu)) &
+                  &        + m31*(vsp(i-2,j,k)*q(i-4,j,k,qu)-vsp(i+1,j,k)*q(i+3,j,k,qu)) &
+                  +          m32*(vsp(i-2,j,k)*q(i-3,j,k,qu)-vsp(i+1,j,k)*q(i+2,j,k,qu)) &
+                  +          m33*(vsp(i-2,j,k)*q(i-2,j,k,qu)-vsp(i+1,j,k)*q(i+1,j,k,qu)) &
+                  +          m34*(vsp(i-2,j,k)*q(i-1,j,k,qu)-vsp(i+1,j,k)*q(i  ,j,k,qu)) &
+                  +          m35*(vsp(i-2,j,k)*q(i  ,j,k,qu)-vsp(i+1,j,k)*q(i-1,j,k,qu)) &
+                  +          m36*(vsp(i-2,j,k)*q(i+1,j,k,qu)-vsp(i+1,j,k)*q(i-2,j,k,qu)) &
+                  +          m37*(vsp(i-2,j,k)*q(i+2,j,k,qu)-vsp(i+1,j,k)*q(i-3,j,k,qu)) &
+                  &        + m41*(vsp(i-1,j,k)*q(i-4,j,k,qu)-vsp(i  ,j,k)*q(i+3,j,k,qu)) &
+                  +          m42*(vsp(i-1,j,k)*q(i-3,j,k,qu)-vsp(i  ,j,k)*q(i+2,j,k,qu)) &
+                  +          m43*(vsp(i-1,j,k)*q(i-2,j,k,qu)-vsp(i  ,j,k)*q(i+1,j,k,qu)) &
+                  +          m44*(vsp(i-1,j,k)*q(i-1,j,k,qu)-vsp(i  ,j,k)*q(i  ,j,k,qu)) &
+                  +          m45*(vsp(i-1,j,k)*q(i  ,j,k,qu)-vsp(i  ,j,k)*q(i-1,j,k,qu)) &
+                  +          m46*(vsp(i-1,j,k)*q(i+1,j,k,qu)-vsp(i  ,j,k)*q(i-2,j,k,qu)) &
+                  +          m47*(vsp(i-1,j,k)*q(i+2,j,k,qu)-vsp(i  ,j,k)*q(i-3,j,k,qu)) &
+                  +          m48*(vsp(i-1,j,k)*q(i+3,j,k,qu)-vsp(i  ,j,k)*q(i-4,j,k,qu))
              
              Hg(i,j,k,imy) = m11*(mu(i-4,j,k)*q(i-4,j,k,qv)-mu(i+3,j,k)*q(i+3,j,k,qv)) &
                   +          m12*(mu(i-4,j,k)*q(i-3,j,k,qv)-mu(i+3,j,k)*q(i+2,j,k,qv)) &
@@ -944,7 +946,6 @@ contains
 
              do n = 1, nspecies
                 qxn = qx1+n-1
-                qyn = qy1+n-1
                 Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
                   + m11*(dxe(i-4,j,k,n)*q(i-4,j,k,qxn)-dxe(i+3,j,k,n)*q(i+3,j,k,qxn)) &
                   + m12*(dxe(i-4,j,k,n)*q(i-3,j,k,qxn)-dxe(i+3,j,k,n)*q(i+2,j,k,qxn)) &
@@ -1007,7 +1008,7 @@ contains
     end do
 
     ! add x-direction flux
-    do n=imx,ncons
+    do n=2,ncons
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -1049,32 +1050,32 @@ contains
                   +          m47*(mu(i,j-1,k)*q(i,j+2,k,qu)-mu(i,j  ,k)*q(i,j-3,k,qu)) &
                   +          m48*(mu(i,j-1,k)*q(i,j+3,k,qu)-mu(i,j  ,k)*q(i,j-4,k,qu))
 
-             Hg(i,j,k,imy) = m11*(vsc1(i,j-4,k)*q(i,j-4,k,qv)-vsc1(i,j+3,k)*q(i,j+3,k,qv)) &
-                  +          m12*(vsc1(i,j-4,k)*q(i,j-3,k,qv)-vsc1(i,j+3,k)*q(i,j+2,k,qv)) &
-                  +          m13*(vsc1(i,j-4,k)*q(i,j-2,k,qv)-vsc1(i,j+3,k)*q(i,j+1,k,qv)) &
-                  +          m14*(vsc1(i,j-4,k)*q(i,j-1,k,qv)-vsc1(i,j+3,k)*q(i,j  ,k,qv)) &
-                  +          m15*(vsc1(i,j-4,k)*q(i,j  ,k,qv)-vsc1(i,j+3,k)*q(i,j-1,k,qv)) &
-                  &        + m21*(vsc1(i,j-3,k)*q(i,j-4,k,qv)-vsc1(i,j+2,k)*q(i,j+3,k,qv)) &
-                  +          m22*(vsc1(i,j-3,k)*q(i,j-3,k,qv)-vsc1(i,j+2,k)*q(i,j+2,k,qv)) &
-                  +          m23*(vsc1(i,j-3,k)*q(i,j-2,k,qv)-vsc1(i,j+2,k)*q(i,j+1,k,qv)) &
-                  +          m24*(vsc1(i,j-3,k)*q(i,j-1,k,qv)-vsc1(i,j+2,k)*q(i,j  ,k,qv)) &
-                  +          m25*(vsc1(i,j-3,k)*q(i,j  ,k,qv)-vsc1(i,j+2,k)*q(i,j-1,k,qv)) &
-                  +          m26*(vsc1(i,j-3,k)*q(i,j+1,k,qv)-vsc1(i,j+2,k)*q(i,j-2,k,qv)) &
-                  &        + m31*(vsc1(i,j-2,k)*q(i,j-4,k,qv)-vsc1(i,j+1,k)*q(i,j+3,k,qv)) &
-                  +          m32*(vsc1(i,j-2,k)*q(i,j-3,k,qv)-vsc1(i,j+1,k)*q(i,j+2,k,qv)) &
-                  +          m33*(vsc1(i,j-2,k)*q(i,j-2,k,qv)-vsc1(i,j+1,k)*q(i,j+1,k,qv)) &
-                  +          m34*(vsc1(i,j-2,k)*q(i,j-1,k,qv)-vsc1(i,j+1,k)*q(i,j  ,k,qv)) &
-                  +          m35*(vsc1(i,j-2,k)*q(i,j  ,k,qv)-vsc1(i,j+1,k)*q(i,j-1,k,qv)) &
-                  +          m36*(vsc1(i,j-2,k)*q(i,j+1,k,qv)-vsc1(i,j+1,k)*q(i,j-2,k,qv)) &
-                  +          m37*(vsc1(i,j-2,k)*q(i,j+2,k,qv)-vsc1(i,j+1,k)*q(i,j-3,k,qv)) &
-                  &        + m41*(vsc1(i,j-1,k)*q(i,j-4,k,qv)-vsc1(i,j  ,k)*q(i,j+3,k,qv)) &
-                  +          m42*(vsc1(i,j-1,k)*q(i,j-3,k,qv)-vsc1(i,j  ,k)*q(i,j+2,k,qv)) &
-                  +          m43*(vsc1(i,j-1,k)*q(i,j-2,k,qv)-vsc1(i,j  ,k)*q(i,j+1,k,qv)) &
-                  +          m44*(vsc1(i,j-1,k)*q(i,j-1,k,qv)-vsc1(i,j  ,k)*q(i,j  ,k,qv)) &
-                  +          m45*(vsc1(i,j-1,k)*q(i,j  ,k,qv)-vsc1(i,j  ,k)*q(i,j-1,k,qv)) &
-                  +          m46*(vsc1(i,j-1,k)*q(i,j+1,k,qv)-vsc1(i,j  ,k)*q(i,j-2,k,qv)) &
-                  +          m47*(vsc1(i,j-1,k)*q(i,j+2,k,qv)-vsc1(i,j  ,k)*q(i,j-3,k,qv)) &
-                  +          m48*(vsc1(i,j-1,k)*q(i,j+3,k,qv)-vsc1(i,j  ,k)*q(i,j-4,k,qv))
+             Hg(i,j,k,imy) = m11*(vsp(i,j-4,k)*q(i,j-4,k,qv)-vsp(i,j+3,k)*q(i,j+3,k,qv)) &
+                  +          m12*(vsp(i,j-4,k)*q(i,j-3,k,qv)-vsp(i,j+3,k)*q(i,j+2,k,qv)) &
+                  +          m13*(vsp(i,j-4,k)*q(i,j-2,k,qv)-vsp(i,j+3,k)*q(i,j+1,k,qv)) &
+                  +          m14*(vsp(i,j-4,k)*q(i,j-1,k,qv)-vsp(i,j+3,k)*q(i,j  ,k,qv)) &
+                  +          m15*(vsp(i,j-4,k)*q(i,j  ,k,qv)-vsp(i,j+3,k)*q(i,j-1,k,qv)) &
+                  &        + m21*(vsp(i,j-3,k)*q(i,j-4,k,qv)-vsp(i,j+2,k)*q(i,j+3,k,qv)) &
+                  +          m22*(vsp(i,j-3,k)*q(i,j-3,k,qv)-vsp(i,j+2,k)*q(i,j+2,k,qv)) &
+                  +          m23*(vsp(i,j-3,k)*q(i,j-2,k,qv)-vsp(i,j+2,k)*q(i,j+1,k,qv)) &
+                  +          m24*(vsp(i,j-3,k)*q(i,j-1,k,qv)-vsp(i,j+2,k)*q(i,j  ,k,qv)) &
+                  +          m25*(vsp(i,j-3,k)*q(i,j  ,k,qv)-vsp(i,j+2,k)*q(i,j-1,k,qv)) &
+                  +          m26*(vsp(i,j-3,k)*q(i,j+1,k,qv)-vsp(i,j+2,k)*q(i,j-2,k,qv)) &
+                  &        + m31*(vsp(i,j-2,k)*q(i,j-4,k,qv)-vsp(i,j+1,k)*q(i,j+3,k,qv)) &
+                  +          m32*(vsp(i,j-2,k)*q(i,j-3,k,qv)-vsp(i,j+1,k)*q(i,j+2,k,qv)) &
+                  +          m33*(vsp(i,j-2,k)*q(i,j-2,k,qv)-vsp(i,j+1,k)*q(i,j+1,k,qv)) &
+                  +          m34*(vsp(i,j-2,k)*q(i,j-1,k,qv)-vsp(i,j+1,k)*q(i,j  ,k,qv)) &
+                  +          m35*(vsp(i,j-2,k)*q(i,j  ,k,qv)-vsp(i,j+1,k)*q(i,j-1,k,qv)) &
+                  +          m36*(vsp(i,j-2,k)*q(i,j+1,k,qv)-vsp(i,j+1,k)*q(i,j-2,k,qv)) &
+                  +          m37*(vsp(i,j-2,k)*q(i,j+2,k,qv)-vsp(i,j+1,k)*q(i,j-3,k,qv)) &
+                  &        + m41*(vsp(i,j-1,k)*q(i,j-4,k,qv)-vsp(i,j  ,k)*q(i,j+3,k,qv)) &
+                  +          m42*(vsp(i,j-1,k)*q(i,j-3,k,qv)-vsp(i,j  ,k)*q(i,j+2,k,qv)) &
+                  +          m43*(vsp(i,j-1,k)*q(i,j-2,k,qv)-vsp(i,j  ,k)*q(i,j+1,k,qv)) &
+                  +          m44*(vsp(i,j-1,k)*q(i,j-1,k,qv)-vsp(i,j  ,k)*q(i,j  ,k,qv)) &
+                  +          m45*(vsp(i,j-1,k)*q(i,j  ,k,qv)-vsp(i,j  ,k)*q(i,j-1,k,qv)) &
+                  +          m46*(vsp(i,j-1,k)*q(i,j+1,k,qv)-vsp(i,j  ,k)*q(i,j-2,k,qv)) &
+                  +          m47*(vsp(i,j-1,k)*q(i,j+2,k,qv)-vsp(i,j  ,k)*q(i,j-3,k,qv)) &
+                  +          m48*(vsp(i,j-1,k)*q(i,j+3,k,qv)-vsp(i,j  ,k)*q(i,j-4,k,qv))
 
              Hg(i,j,k,imz) = m11*(mu(i,j-4,k)*q(i,j-4,k,qw)-mu(i,j+3,k)*q(i,j+3,k,qw)) &
                   +          m12*(mu(i,j-4,k)*q(i,j-3,k,qw)-mu(i,j+3,k)*q(i,j+2,k,qw)) &
@@ -1197,7 +1198,6 @@ contains
 
              do n = 1, nspecies
                 qxn = qx1+n-1
-                qyn = qy1+n-1
                 Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
                   + m11*(dxe(i,j-4,k,n)*q(i,j-4,k,qxn)-dxe(i,j+3,k,n)*q(i,j+3,k,qxn)) &
                   + m12*(dxe(i,j-4,k,n)*q(i,j-3,k,qxn)-dxe(i,j+3,k,n)*q(i,j+2,k,qxn)) &
@@ -1260,7 +1260,7 @@ contains
     end do
 
     ! add y-direction flux
-    do n=imx,ncons
+    do n=2,ncons
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -1329,32 +1329,32 @@ contains
                   +          m47*(mu(i,j,k-1)*q(i,j,k+2,qv)-mu(i,j,k  )*q(i,j,k-3,qv)) &
                   +          m48*(mu(i,j,k-1)*q(i,j,k+3,qv)-mu(i,j,k  )*q(i,j,k-4,qv))
 
-             Hg(i,j,k,imz) = m11*(vsc1(i,j,k-4)*q(i,j,k-4,qw)-vsc1(i,j,k+3)*q(i,j,k+3,qw)) &
-                  +          m12*(vsc1(i,j,k-4)*q(i,j,k-3,qw)-vsc1(i,j,k+3)*q(i,j,k+2,qw)) &
-                  +          m13*(vsc1(i,j,k-4)*q(i,j,k-2,qw)-vsc1(i,j,k+3)*q(i,j,k+1,qw)) &
-                  +          m14*(vsc1(i,j,k-4)*q(i,j,k-1,qw)-vsc1(i,j,k+3)*q(i,j,k  ,qw)) &
-                  +          m15*(vsc1(i,j,k-4)*q(i,j,k  ,qw)-vsc1(i,j,k+3)*q(i,j,k-1,qw)) &
-                  &        + m21*(vsc1(i,j,k-3)*q(i,j,k-4,qw)-vsc1(i,j,k+2)*q(i,j,k+3,qw)) &
-                  +          m22*(vsc1(i,j,k-3)*q(i,j,k-3,qw)-vsc1(i,j,k+2)*q(i,j,k+2,qw)) &
-                  +          m23*(vsc1(i,j,k-3)*q(i,j,k-2,qw)-vsc1(i,j,k+2)*q(i,j,k+1,qw)) &
-                  +          m24*(vsc1(i,j,k-3)*q(i,j,k-1,qw)-vsc1(i,j,k+2)*q(i,j,k  ,qw)) &
-                  +          m25*(vsc1(i,j,k-3)*q(i,j,k  ,qw)-vsc1(i,j,k+2)*q(i,j,k-1,qw)) &
-                  +          m26*(vsc1(i,j,k-3)*q(i,j,k+1,qw)-vsc1(i,j,k+2)*q(i,j,k-2,qw)) &
-                  &        + m31*(vsc1(i,j,k-2)*q(i,j,k-4,qw)-vsc1(i,j,k+1)*q(i,j,k+3,qw)) &
-                  +          m32*(vsc1(i,j,k-2)*q(i,j,k-3,qw)-vsc1(i,j,k+1)*q(i,j,k+2,qw)) &
-                  +          m33*(vsc1(i,j,k-2)*q(i,j,k-2,qw)-vsc1(i,j,k+1)*q(i,j,k+1,qw)) &
-                  +          m34*(vsc1(i,j,k-2)*q(i,j,k-1,qw)-vsc1(i,j,k+1)*q(i,j,k  ,qw)) &
-                  +          m35*(vsc1(i,j,k-2)*q(i,j,k  ,qw)-vsc1(i,j,k+1)*q(i,j,k-1,qw)) &
-                  +          m36*(vsc1(i,j,k-2)*q(i,j,k+1,qw)-vsc1(i,j,k+1)*q(i,j,k-2,qw)) &
-                  +          m37*(vsc1(i,j,k-2)*q(i,j,k+2,qw)-vsc1(i,j,k+1)*q(i,j,k-3,qw)) &
-                  &        + m41*(vsc1(i,j,k-1)*q(i,j,k-4,qw)-vsc1(i,j,k  )*q(i,j,k+3,qw)) &
-                  +          m42*(vsc1(i,j,k-1)*q(i,j,k-3,qw)-vsc1(i,j,k  )*q(i,j,k+2,qw)) &
-                  +          m43*(vsc1(i,j,k-1)*q(i,j,k-2,qw)-vsc1(i,j,k  )*q(i,j,k+1,qw)) &
-                  +          m44*(vsc1(i,j,k-1)*q(i,j,k-1,qw)-vsc1(i,j,k  )*q(i,j,k  ,qw)) &
-                  +          m45*(vsc1(i,j,k-1)*q(i,j,k  ,qw)-vsc1(i,j,k  )*q(i,j,k-1,qw)) &
-                  +          m46*(vsc1(i,j,k-1)*q(i,j,k+1,qw)-vsc1(i,j,k  )*q(i,j,k-2,qw)) &
-                  +          m47*(vsc1(i,j,k-1)*q(i,j,k+2,qw)-vsc1(i,j,k  )*q(i,j,k-3,qw)) &
-                  +          m48*(vsc1(i,j,k-1)*q(i,j,k+3,qw)-vsc1(i,j,k  )*q(i,j,k-4,qw))
+             Hg(i,j,k,imz) = m11*(vsp(i,j,k-4)*q(i,j,k-4,qw)-vsp(i,j,k+3)*q(i,j,k+3,qw)) &
+                  +          m12*(vsp(i,j,k-4)*q(i,j,k-3,qw)-vsp(i,j,k+3)*q(i,j,k+2,qw)) &
+                  +          m13*(vsp(i,j,k-4)*q(i,j,k-2,qw)-vsp(i,j,k+3)*q(i,j,k+1,qw)) &
+                  +          m14*(vsp(i,j,k-4)*q(i,j,k-1,qw)-vsp(i,j,k+3)*q(i,j,k  ,qw)) &
+                  +          m15*(vsp(i,j,k-4)*q(i,j,k  ,qw)-vsp(i,j,k+3)*q(i,j,k-1,qw)) &
+                  &        + m21*(vsp(i,j,k-3)*q(i,j,k-4,qw)-vsp(i,j,k+2)*q(i,j,k+3,qw)) &
+                  +          m22*(vsp(i,j,k-3)*q(i,j,k-3,qw)-vsp(i,j,k+2)*q(i,j,k+2,qw)) &
+                  +          m23*(vsp(i,j,k-3)*q(i,j,k-2,qw)-vsp(i,j,k+2)*q(i,j,k+1,qw)) &
+                  +          m24*(vsp(i,j,k-3)*q(i,j,k-1,qw)-vsp(i,j,k+2)*q(i,j,k  ,qw)) &
+                  +          m25*(vsp(i,j,k-3)*q(i,j,k  ,qw)-vsp(i,j,k+2)*q(i,j,k-1,qw)) &
+                  +          m26*(vsp(i,j,k-3)*q(i,j,k+1,qw)-vsp(i,j,k+2)*q(i,j,k-2,qw)) &
+                  &        + m31*(vsp(i,j,k-2)*q(i,j,k-4,qw)-vsp(i,j,k+1)*q(i,j,k+3,qw)) &
+                  +          m32*(vsp(i,j,k-2)*q(i,j,k-3,qw)-vsp(i,j,k+1)*q(i,j,k+2,qw)) &
+                  +          m33*(vsp(i,j,k-2)*q(i,j,k-2,qw)-vsp(i,j,k+1)*q(i,j,k+1,qw)) &
+                  +          m34*(vsp(i,j,k-2)*q(i,j,k-1,qw)-vsp(i,j,k+1)*q(i,j,k  ,qw)) &
+                  +          m35*(vsp(i,j,k-2)*q(i,j,k  ,qw)-vsp(i,j,k+1)*q(i,j,k-1,qw)) &
+                  +          m36*(vsp(i,j,k-2)*q(i,j,k+1,qw)-vsp(i,j,k+1)*q(i,j,k-2,qw)) &
+                  +          m37*(vsp(i,j,k-2)*q(i,j,k+2,qw)-vsp(i,j,k+1)*q(i,j,k-3,qw)) &
+                  &        + m41*(vsp(i,j,k-1)*q(i,j,k-4,qw)-vsp(i,j,k  )*q(i,j,k+3,qw)) &
+                  +          m42*(vsp(i,j,k-1)*q(i,j,k-3,qw)-vsp(i,j,k  )*q(i,j,k+2,qw)) &
+                  +          m43*(vsp(i,j,k-1)*q(i,j,k-2,qw)-vsp(i,j,k  )*q(i,j,k+1,qw)) &
+                  +          m44*(vsp(i,j,k-1)*q(i,j,k-1,qw)-vsp(i,j,k  )*q(i,j,k  ,qw)) &
+                  +          m45*(vsp(i,j,k-1)*q(i,j,k  ,qw)-vsp(i,j,k  )*q(i,j,k-1,qw)) &
+                  +          m46*(vsp(i,j,k-1)*q(i,j,k+1,qw)-vsp(i,j,k  )*q(i,j,k-2,qw)) &
+                  +          m47*(vsp(i,j,k-1)*q(i,j,k+2,qw)-vsp(i,j,k  )*q(i,j,k-3,qw)) &
+                  +          m48*(vsp(i,j,k-1)*q(i,j,k+3,qw)-vsp(i,j,k  )*q(i,j,k-4,qw))
 
              Hg(i,j,k,iene) = m11*(lam(i,j,k-4)*q(i,j,k-4,qtemp)-lam(i,j,k+3)*q(i,j,k+3,qtemp)) &
                   +           m12*(lam(i,j,k-4)*q(i,j,k-3,qtemp)-lam(i,j,k+3)*q(i,j,k+2,qtemp)) &
@@ -1450,7 +1450,6 @@ contains
 
              do n = 1, nspecies
                 qxn = qx1+n-1
-                qyn = qy1+n-1
                 Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
                   + m11*(dxe(i,j,k-4,n)*q(i,j,k-4,qxn)-dxe(i,j,k+3,n)*q(i,j,k+3,qxn)) &
                   + m12*(dxe(i,j,k-4,n)*q(i,j,k-3,qxn)-dxe(i,j,k+3,n)*q(i,j,k+2,qxn)) &
@@ -1478,7 +1477,9 @@ contains
                   + m46*(dxe(i,j,k-1,n)*q(i,j,k+1,qxn)-dxe(i,j,k  ,n)*q(i,j,k-2,qxn)) &
                   + m47*(dxe(i,j,k-1,n)*q(i,j,k+2,qxn)-dxe(i,j,k  ,n)*q(i,j,k-3,qxn)) &
                   + m48*(dxe(i,j,k-1,n)*q(i,j,k+3,qxn)-dxe(i,j,k  ,n)*q(i,j,k-4,qxn))
-                Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
+             end do
+
+             Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
                   + m11*(dpe(i,j,k-4)*q(i,j,k-4,qpres)-dpe(i,j,k+3)*q(i,j,k+3,qpres)) &
                   + m12*(dpe(i,j,k-4)*q(i,j,k-3,qpres)-dpe(i,j,k+3)*q(i,j,k+2,qpres)) &
                   + m13*(dpe(i,j,k-4)*q(i,j,k-2,qpres)-dpe(i,j,k+3)*q(i,j,k+1,qpres)) &
@@ -1505,14 +1506,12 @@ contains
                   + m46*(dpe(i,j,k-1)*q(i,j,k+1,qpres)-dpe(i,j,k  )*q(i,j,k-2,qpres)) &
                   + m47*(dpe(i,j,k-1)*q(i,j,k+2,qpres)-dpe(i,j,k  )*q(i,j,k-3,qpres)) &
                   + m48*(dpe(i,j,k-1)*q(i,j,k+3,qpres)-dpe(i,j,k  )*q(i,j,k-4,qpres))
-             end do
-
           end do
        end do
     end do
 
     ! add z-direction flux
-    do n=imx,ncons
+    do n=2,ncons
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -1535,7 +1534,7 @@ contains
        end do
     end do
 
-    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,vsc1,vsc2,Hg,dpy,dxe,dpe)
+    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,vsp,vsm,Hg,dpy,dxe,dpe)
 
   end subroutine compact_diffterm_3d
 

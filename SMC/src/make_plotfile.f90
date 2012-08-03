@@ -42,6 +42,12 @@ contains
        end do
     end if
 
+    if (plot_h) then
+       do i=1,nspecies
+          plot_names(icomp_h+i-1) = "h("//trim(spec_names(i))//")"
+       end do
+    end if
+
   end subroutine get_plot_names
 
 

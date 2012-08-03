@@ -84,9 +84,9 @@ contains
              do n = 1,nspecies
                 Xt(n) = pmf_vals(3+n)
              end do
-             u1t = pmf_vals(2) * x/r
-             u2t = pmf_vals(2) * y/r
-             u3t = pmf_vals(2) * z/r
+             u1t = 0.d0 ! pmf_vals(2) * x/r
+             u2t = 0.d0 ! pmf_vals(2) * y/r
+             u3t = 0.d0 ! pmf_vals(2) * z/r
              CALL CKXTY (Xt, IWRK, RWRK, Yt)
              CALL CKRHOY(patmos,Tt,Yt,IWRK,RWRK,rhot)
              call CKUBMS(Tt,Yt,IWRK,RWRK,et)

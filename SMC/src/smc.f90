@@ -169,10 +169,51 @@ subroutine smc()
 
         call advance(U,dt,dx)
 
-        ! write checkpoint? plotfile?
+        if (plot_int > 0 .or. plot_deltat > ZERO) then
+           if ( (plot_int > 0 .and. mod(istep,plot_int) .eq. 0) .or. &
+                (plot_deltat > ZERO .and. &
+                mod(time - dt,plot_deltat) > mod(time,plot_deltat)) ) then
+
+              if (istep <= 99999) then
+                 write(unit=plot_index,fmt='(i5.5)') istep
+                 plot_file_name = trim(plot_base_name) // plot_index
+              else
+                 write(unit=plot_index6,fmt='(i6.6)') istep
+                 plot_file_name = trim(plot_base_name) // plot_index6
+              endif
+
+              call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
+
+!              call write_job_info(plot_file_name, mla%mba, the_bc_tower, write_pf_time)
+              last_plt_written = istep
+
+           end if
+        end if
+
+        ! have we reached the stop time?
+        if (stop_time >= 0.d0) then
+           if (time >= stop_time) goto 999
+        end if
 
      end do
 
+999  continue
+     if (istep > max_step) istep = max_step
+
+     if ( plot_int > 0 .and. last_plt_written .ne. istep ) then
+
+        if (istep <= 99999) then
+           write(unit=plot_index,fmt='(i5.5)') istep
+           plot_file_name = trim(plot_base_name) // plot_index
+        else
+           write(unit=plot_index6,fmt='(i6.6)') istep
+           plot_file_name = trim(plot_base_name) // plot_index6
+        endif
+
+        call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
+
+!        call write_job_info(plot_file_name, mla%mba, the_bc_tower, write_pf_time)
+     end if
   end if
 
 
