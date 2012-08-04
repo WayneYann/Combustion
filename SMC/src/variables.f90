@@ -9,26 +9,9 @@ module variables
   integer, save :: irho, imx, imy, imz, iene, iry1
   integer, save :: qrho, qu, qv, qw, qpres, qtemp, qe, qy1, qx1, qh1
 
-  ! the total number of plot components
-  integer, save :: n_plot_comps = 0
-  integer, save :: icomp_rho, icomp_vel, icomp_pres, icomp_temp, icomp_eint, &
-       icomp_Y, icomp_X, icomp_h
-
   integer, save :: ncons, nprim
 
 contains
-
-  function get_next_plot_index(num) result (next)
-
-    ! return the next starting index for a plotfile quantity,
-    ! and increment the counter of plotfile quantities by num
-    integer :: num, next
-
-    next = n_plot_comps + 1
-    n_plot_comps = n_plot_comps + num
-
-    return
-  end function get_next_plot_index
 
   subroutine init_variables()
 
@@ -72,46 +55,22 @@ contains
   end subroutine init_variables
 
 
-  subroutine init_plot_variables()
-
-    use probin_module, only : dm_in, plot_X, plot_Y, plot_h
-
-    icomp_rho  = get_next_plot_index(1)
-    icomp_vel  = get_next_plot_index(dm_in)
-    icomp_pres = get_next_plot_index(1)
-    icomp_temp = get_next_plot_index(1)
-    icomp_eint = get_next_plot_index(1)
-
-    if (plot_Y) then
-       icomp_Y = get_next_plot_index(nspecies)
-    end if
-
-    if (plot_X) then
-       icomp_X = get_next_plot_index(nspecies)
-    end if
-
-    if (plot_h) then
-       icomp_h = get_next_plot_index(nspecies)
-    end if
-
-  end subroutine init_plot_variables
-
-
   subroutine ctoprim(U, Q, ng)
     type(multifab), intent(in   ) :: U
     type(multifab), intent(inout) :: Q
     integer, optional, intent(in) :: ng
 
-    integer :: ngu, ngto
+    integer :: ngu, ngq, ngto
     integer :: n, lo(U%dim), hi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: up, qp
 
     ngu = nghost(U)
+    ngq = nghost(Q)
 
     if (present(ng)) then
        ngto = ng
     else
-       ngto = ngu
+       ngto = min(ngu, ngq)
     end if
 
     do n=1,nboxes(Q)
@@ -126,16 +85,16 @@ contains
        if (U%dim .eq. 2) then
           call bl_error("2D not supported in variables::ctoprim")
        else
-          call ctoprim_3d(lo,hi,up,qp,ngu,ngto)
+          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto)
        end if
     end do
 
   end subroutine ctoprim
 
-  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngto)
-    integer, intent(in) :: lo(3), hi(3), ngu, ngto
+  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngq, ngto)
+    integer, intent(in) :: lo(3), hi(3), ngu, ngq, ngto
     double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,ncons)
-    double precision, intent(out) :: q(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,nprim)
+    double precision, intent(out) :: q(lo(1)-ngq:hi(1)+ngq,lo(2)-ngq:hi(2)+ngq,lo(3)-ngq:hi(3)+ngq,nprim)
     
     integer :: i, j, k, n, iwrk
     double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), h(nspecies), ei, Tt, Pt

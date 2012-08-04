@@ -5,7 +5,7 @@
  advance_method = 1  ! 1=RK3, 2=SDC, 3=PFASST
 
  stop_time = 1.e-3
- max_step  = 100
+ max_step  = 10
 
  plot_int = 1
  chk_int  = 1
@@ -32,5 +32,8 @@
 
  zlo_boundary_type = "periodic"
  zhi_boundary_type = "periodic"
+
+ pertmag = 3.d-2
+ pmf_shift = 2.5d0
 
 /

@@ -77,7 +77,7 @@ contains
        CALL EGSPAR(Tt, Xt, Yt, Cpt, egwork, egiwork)
 
        CALL EGSE3(Tt, Yt, egwork, mu(i,j,k)) 
-       CALL EGSK6(Tt, Yt, egwork, xi(i,j,k)) 
+       CALL EGSK5(Tt, Yt, egwork, xi(i,j,k)) 
        CALL EGSLTDR3(Tt, Yt, Wtm, egwork, egiwork, &
             lam(i,j,k), theta, D)
 

@@ -20,8 +20,8 @@ module probin_module
 
   private
 
-  real (kind=dp_t), save, public :: eta = 1.8d-4
-  real (kind=dp_t), save, public :: alam = 1.8d-4
+  real (kind=dp_t), save, public :: pertmag = 3.d-2
+  real (kind=dp_t), save, public :: pmf_shift = 2.5d0
   integer, save, public :: nspec = 2
   integer, save, public :: verbose = 0
   logical, save, public :: do_alltoallv = .false.
@@ -72,6 +72,7 @@ module probin_module
   logical, save, public :: plot_Y = .true.
   logical, save, public :: plot_X = .true.
   logical, save, public :: plot_h = .true.
+  logical, save, public :: plot_divu = .true.
   logical, save, public :: plot_omegadot = .true.
   character (len=256), save, public :: plot_base_name = "plt"
   character (len=256), save, public :: check_base_name = "chk"
@@ -102,8 +103,8 @@ module runtime_init_module
 
   implicit none
 
-  namelist /probin/ eta
-  namelist /probin/ alam
+  namelist /probin/ pertmag
+  namelist /probin/ pmf_shift
   namelist /probin/ nspec
   namelist /probin/ verbose
   namelist /probin/ do_alltoallv
@@ -154,6 +155,7 @@ module runtime_init_module
   namelist /probin/ plot_Y
   namelist /probin/ plot_X
   namelist /probin/ plot_h
+  namelist /probin/ plot_divu
   namelist /probin/ plot_omegadot
   namelist /probin/ plot_base_name
   namelist /probin/ check_base_name
@@ -306,15 +308,15 @@ contains
        select case (fname)
 
 
-       case ('--eta')
+       case ('--pertmag')
           farg = farg + 1
           call get_command_argument(farg, value = fname)
-          read(fname, *) eta
+          read(fname, *) pertmag
 
-       case ('--alam')
+       case ('--pmf_shift')
           farg = farg + 1
           call get_command_argument(farg, value = fname)
-          read(fname, *) alam
+          read(fname, *) pmf_shift
 
        case ('--nspec')
           farg = farg + 1
@@ -558,6 +560,11 @@ contains
           farg = farg + 1
           call get_command_argument(farg, value = fname)
           read(fname, *) plot_h
+
+       case ('--plot_divu')
+          farg = farg + 1
+          call get_command_argument(farg, value = fname)
+          read(fname, *) plot_divu
 
        case ('--plot_omegadot')
           farg = farg + 1

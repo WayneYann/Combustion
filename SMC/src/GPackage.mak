@@ -6,6 +6,7 @@ f90sources += cputime.f90
 f90sources += eglib_module.f90
 f90sources += initialize.f90
 f90sources += make_plotfile.f90
+f90sources += make_plot_variables.f90
 f90sources += probin.f90
 f90sources += smc.f90
 f90sources += time.f90

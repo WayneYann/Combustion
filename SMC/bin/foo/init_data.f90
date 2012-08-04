@@ -42,6 +42,7 @@ contains
 
     use variables, only : irho, imx,imy,imz,iene,iry1,ncons
     use chemistry_module, only : nspecies
+    use probin_module, only : pertmag, pmf_shift
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
     double precision, intent(in   ) :: dx(3),plo(3),phi(3)
@@ -58,7 +59,6 @@ contains
     double precision :: pert, Lx, Ly
 
     double precision, parameter :: patmos = 1.01325d6
-    double precision, parameter :: pertmag = 1.d-2
     double precision, parameter :: PI = 4.d0*atan(1.d0)
 
     do k=lo(3),hi(3)
@@ -76,7 +76,7 @@ contains
                   &        + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)     * sin(2*Pi*6*(y-.018)/Ly) &
                   &         + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
              
-             r = abs(z) + 2.5d0 + pert
+             r = abs(z) + pmf_shift + pert
              rmin = (r - 0.5d0*dx(3))
              rmax = (r + 0.5d0*dx(3))
 

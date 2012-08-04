@@ -1,5 +1,7 @@
 module advance_module
 
+  use fabio_module
+
   use bl_error_module
   use chemistry_module, only : nspecies, molecular_weight
   use multifab_module
@@ -205,6 +207,8 @@ contains
 
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
 
+    print *, 'mu min and max:', multifab_min(mu), multifab_max(mu)
+    print *, 'xi min and max:', multifab_min(xi), multifab_max(xi)
     print *, 'xxxxxxxx set volume viscosity to zero!'
     call setval(xi, 0.d0, all=.true.)
 
@@ -760,6 +764,7 @@ contains
                   &          + (wx(i,j,k)+uz(i,j,k))**2 &
                   &          + (vz(i,j,k)+wy(i,j,k))**2 )
 
+             Xt = q(i,j,k,qx1:qx1+nspecies-1)
              call ckwxr(q(i,j,k,qrho), q(i,j,k,qtemp), Xt, iwrk, rwrk, wdot)
              flx(i,j,k,iry1:) = wdot * molecular_weight
              
