@@ -7,6 +7,7 @@ f90sources += make_plotfile.f90
 f90sources += make_plot_variables.f90
 f90sources += probin.f90
 f90sources += smc.f90
+f90sources += derivative_stencil.f90
 f90sources += time.f90
 f90sources += variables.f90
 f90sources += transport_properties.f90

@@ -42,6 +42,9 @@ contains
   end subroutine make_divu
 
   subroutine make_divu_3d(divu, Q, lo, hi, ngd, ngq, dx)
+
+    use derivative_stencil_module, only : ALP, BET, GAM, DEL
+
     integer, intent(in) :: lo(3), hi(3), ngd, ngq
     double precision, intent(out) :: divu(-ngd+lo(1):hi(1)+ngd,-ngd+lo(2):hi(2)+ngd,-ngd+lo(3):hi(3)+ngd)
     double precision, intent(in ) ::    Q(-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
@@ -50,12 +53,6 @@ contains
     integer :: i,j,k
     double precision :: ux, vy, wz
     double precision :: dxinv(3)
-
-    ! for 8th-order first-order derivatives
-    double precision, parameter :: ALP =  0.8d0
-    double precision, parameter :: BET = -0.2d0
-    double precision, parameter :: GAM =  4.d0/105.d0
-    double precision, parameter :: DEL = -1.d0/280.d0
 
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)
