@@ -49,10 +49,8 @@ Fmpack += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir)/GPackage.mak)
 Fmlocs += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir))
 
 # Chemistry
-fsources += EGSlib.f
-fsources += EGini.f
-fsources += EGaux.f
-vpath %.f $(CHEMISTRY_DIR)/src_smc
+Fmpack += $(CHEMISTRY_DIR)/F_Src/GPackage.mak
+Fmlocs += $(CHEMISTRY_DIR)/F_Src
 
 ifeq ($(CHEMISTRY_MODEL), LIDRYER)
   csources += LiDryer.c

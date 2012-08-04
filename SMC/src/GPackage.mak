@@ -1,9 +1,7 @@
 f90sources += main.f90
 
 f90sources += advance.f90
-f90sources += chemistry.f90
 f90sources += cputime.f90
-f90sources += eglib_module.f90
 f90sources += initialize.f90
 f90sources += make_plotfile.f90
 f90sources += make_plot_variables.f90
