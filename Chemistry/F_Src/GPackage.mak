@@ -4,3 +4,4 @@ f90sources += eglib_module.f90
 fsources += EGaux.f
 fsources += EGini.f
 fsources += EGSlib.f
+fsources += EGext.f
