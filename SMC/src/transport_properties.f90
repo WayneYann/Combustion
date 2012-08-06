@@ -1,5 +1,6 @@
 module transport_properties
 
+  use chemistry_module
   use eglib_module
   use multifab_module
   use variables
@@ -58,16 +59,14 @@ contains
     double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nspecies)
 
     integer :: i, j, k, n, iwrk
-    double precision :: rwrk, Tt, Pt, Wtm
-    double precision, dimension(nspecies) :: Xt, Yt, Cpt
-    double precision :: theta(nspecies), D(nspecies,nspecies)
+    double precision :: rwrk, Tt, Wtm
+    double precision, dimension(nspecies) :: Xt, Yt, Cpt, D
 
     do k=lo(3)-ng,hi(3)+ng
     do j=lo(2)-ng,hi(2)+ng
     do i=lo(1)-ng,hi(1)+ng
 
        Tt = q(i,j,k,qtemp)
-       Pt = q(i,j,k,qpres)
        Xt = q(i,j,k,qx1:qx1+nspecies-1)
        Yt = q(i,j,k,qy1:qy1+nspecies-1)
 
@@ -78,11 +77,11 @@ contains
 
        CALL EGSE3(Tt, Yt, egwork, mu(i,j,k)) 
        CALL EGSK5(Tt, Yt, egwork, xi(i,j,k)) 
-       CALL EGSLTDR3(Tt, Yt, Wtm, egwork, egiwork, &
-            lam(i,j,k), theta, D)
+       CALL EGSVR1(Tt, Yt, egwork, D)
+       CALL EGSPTC2(Tt, egwork, egiwork, lam(i,j,k))
 
        do n=1,nspecies
-          Ddiag(i,j,k,n) = D(n,n)
+          Ddiag(i,j,k,n) = D(n) * Wtm / molecular_weight(n)
        end do
 
     end do
