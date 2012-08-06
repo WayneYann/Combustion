@@ -34,6 +34,6 @@
  zhi_boundary_type = "periodic"
 
  pertmag = 3.d-2
- pmf_shift = 2.5d0
+ rfire = 0.2d0
 
 /

@@ -5,15 +5,18 @@ module make_plotfile_module
   use fabio_module
   use multifab_module
   use chemistry_module, only : nspecies, spec_names
-  use probin_module, only : dm_in, plot_Y, plot_X, plot_h, plot_divu, plot_omegadot, &
+  use probin_module, only : dm_in, plot_eint, plot_h, plot_divu, &
+       plot_Y, plot_X, plot_hspec, plot_omegadot, &
        nOutFiles, lUsingNFiles, single_prec_plotfiles, prob_lo, prob_hi
+
+  use make_plot_variables_module
 
   implicit none
 
   ! the total number of plot components
   integer, save :: n_plot_comps = 0
-  integer, save :: icomp_rho, icomp_vel, icomp_pres, icomp_temp, icomp_eint, icomp_divu, &
-       icomp_Y, icomp_X, icomp_h, icomp_omegadot
+  integer, save :: icomp_rho=0, icomp_vel=0, icomp_pres=0, icomp_temp=0, icomp_eint=0, &
+       icomp_h=0, icomp_divu=0, icomp_Y=0, icomp_X=0, icomp_hspec=0, icomp_omegadot=0
 
   private
   public :: n_plot_comps, get_plot_names, make_plotfile, init_plot_variables
@@ -39,7 +42,14 @@ contains
     icomp_vel  = get_next_plot_index(dm_in)
     icomp_pres = get_next_plot_index(1)
     icomp_temp = get_next_plot_index(1)
-    icomp_eint = get_next_plot_index(1)
+
+    if (plot_eint) then
+       icomp_eint = get_next_plot_index(1)
+    end if
+
+    if (plot_h) then
+       icomp_h = get_next_plot_index(1)
+    end if
 
     if (plot_divu) then
        icomp_divu = get_next_plot_index(1)
@@ -53,13 +63,15 @@ contains
        icomp_X = get_next_plot_index(nspecies)
     end if
 
-    if (plot_h) then
-       icomp_h = get_next_plot_index(nspecies)
+    if (plot_hspec) then
+       icomp_hspec = get_next_plot_index(nspecies)
     end if
 
     if (plot_omegadot) then
        icomp_omegadot = get_next_plot_index(nspecies)
     end if
+
+    call make_plotvar_init(icomp_h, icomp_divu, icomp_omegadot)
 
   end subroutine init_plot_variables
 
@@ -77,7 +89,14 @@ contains
     end if
     plot_names(icomp_pres) = "pressure"
     plot_names(icomp_temp) = "temperature"
-    plot_names(icomp_eint) = "eint"
+
+    if (plot_eint) then
+       plot_names(icomp_eint) = "eint"
+    end if
+
+    if (plot_h) then
+       plot_names(icomp_h) = "h"
+    end if
 
     if (plot_divu) then
        plot_names(icomp_divu) = "divu"
@@ -95,15 +114,15 @@ contains
        end do
     end if
 
-    if (plot_h) then
+    if (plot_hspec) then
        do i=1,nspecies
-          plot_names(icomp_h+i-1) = "h("//trim(spec_names(i))//")"
+          plot_names(icomp_hspec+i-1) = "h("//trim(spec_names(i))//")"
        end do
     end if
 
     if (plot_omegadot) then
        do i=1,nspecies
-          plot_names(icomp_omegadot+i-1) = "omgdot("//trim(spec_names(i))//")"
+          plot_names(icomp_omegadot+i-1) = "rho*omgdot("//trim(spec_names(i))//")"
        end do
     end if
 
@@ -111,7 +130,6 @@ contains
 
 
   subroutine make_plotfile(dirname, la, U, plot_names, time, dx, write_pf_time)
-    use make_plot_variables_module
 
     character(len=*) , intent(in   ) :: dirname
     type(layout)     , intent(in   ) :: la
@@ -148,11 +166,19 @@ contains
 
     call multifab_build(plotdata(1),la,n_plot_comps,0)
 
-    ! copy up to the one before Y
-    call multifab_copy_c(plotdata(1),1,Q,1, qy1-1)
+    ! copy up to temperature
+    call multifab_copy_c(plotdata(1),1,Q,1, qtemp)
+
+    if (plot_eint) then
+       call multifab_copy_c(plotdata(1),icomp_eint, Q,qe, 1)
+    end if    
 
     if (plot_divu) then
-       call make_divu(plotdata(1),icomp_divu, Q, dx)
+       call make_plotvar(plotdata(1),icomp_divu, Q, dx)
+    end if
+
+    if (plot_h) then
+       call make_plotvar(plotdata(1),icomp_h, Q, dx)
     end if
 
     if (plot_Y) then
@@ -163,12 +189,12 @@ contains
        call multifab_copy_c(plotdata(1),icomp_X, Q,qx1, nspecies)       
     end if
 
-    if (plot_h) then
-       call multifab_copy_c(plotdata(1),icomp_h, Q,qh1, nspecies)       
+    if (plot_hspec) then
+       call multifab_copy_c(plotdata(1),icomp_hspec, Q,qh1, nspecies)       
     end if
 
     if (plot_omegadot) then
-       call make_omegadot(plotdata(1),icomp_omegadot, Q)
+       call make_plotvar(plotdata(1),icomp_omegadot, Q, dx)
     end if
 
     if (parallel_IOProcessor()) then

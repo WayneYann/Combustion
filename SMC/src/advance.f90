@@ -526,8 +526,8 @@ contains
     double precision :: dmuydx,dmwydz,dmuxwzdy
     double precision :: dmuzdx,dmvzdy,dmuxvydz
     double precision :: tauxx,tauyy,tauzz 
-    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies)
-    integer          :: i,j,k,n, qxn, qyn
+    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies), hhalf
+    integer          :: i,j,k,n, qxn, qyn, qhn
 
     integer :: iwrk
     double precision :: Xt(nspecies), wdot(nspecies), rwrk
@@ -977,6 +977,12 @@ contains
                   + m47*(dpe(i-1,j,k)*q(i+2,j,k,qpres)-dpe(i  ,j,k)*q(i-3,j,k,qpres)) &
                   + m48*(dpe(i-1,j,k)*q(i+3,j,k,qpres)-dpe(i  ,j,k)*q(i-4,j,k,qpres))
 
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
+                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n) * hhalf * Htot
+             end do
+
           end do
        end do
     end do
@@ -1229,6 +1235,12 @@ contains
                   + m47*(dpe(i,j-1,k)*q(i,j+2,k,qpres)-dpe(i,j  ,k)*q(i,j-3,k,qpres)) &
                   + m48*(dpe(i,j-1,k)*q(i,j+3,k,qpres)-dpe(i,j  ,k)*q(i,j-4,k,qpres))
 
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
+                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n) * hhalf * Htot
+             end do
+
           end do
        end do
     end do
@@ -1480,6 +1492,13 @@ contains
                   + m46*(dpe(i,j,k-1)*q(i,j,k+1,qpres)-dpe(i,j,k  )*q(i,j,k-2,qpres)) &
                   + m47*(dpe(i,j,k-1)*q(i,j,k+2,qpres)-dpe(i,j,k  )*q(i,j,k-3,qpres)) &
                   + m48*(dpe(i,j,k-1)*q(i,j,k+3,qpres)-dpe(i,j,k  )*q(i,j,k-4,qpres))
+
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
+                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n) * hhalf * Htot
+             end do
+
           end do
        end do
     end do

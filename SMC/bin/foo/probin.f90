@@ -21,7 +21,7 @@ module probin_module
   private
 
   real (kind=dp_t), save, public :: pertmag = 3.d-2
-  real (kind=dp_t), save, public :: pmf_shift = 2.5d0
+  real (kind=dp_t), save, public :: rfire = 0.2d0
   integer, save, public :: nspec = 2
   integer, save, public :: verbose = 0
   logical, save, public :: do_alltoallv = .false.
@@ -70,8 +70,10 @@ module probin_module
   real (kind=dp_t), save, public :: plot_deltat = -1.d0
   integer, save, public :: chk_int = 0
   logical, save, public :: plot_Y = .true.
-  logical, save, public :: plot_X = .true.
+  logical, save, public :: plot_X = .false.
+  logical, save, public :: plot_eint = .false.
   logical, save, public :: plot_h = .true.
+  logical, save, public :: plot_hspec = .false.
   logical, save, public :: plot_divu = .true.
   logical, save, public :: plot_omegadot = .true.
   character (len=256), save, public :: plot_base_name = "plt"
@@ -104,7 +106,7 @@ module runtime_init_module
   implicit none
 
   namelist /probin/ pertmag
-  namelist /probin/ pmf_shift
+  namelist /probin/ rfire
   namelist /probin/ nspec
   namelist /probin/ verbose
   namelist /probin/ do_alltoallv
@@ -154,7 +156,9 @@ module runtime_init_module
   namelist /probin/ chk_int
   namelist /probin/ plot_Y
   namelist /probin/ plot_X
+  namelist /probin/ plot_eint
   namelist /probin/ plot_h
+  namelist /probin/ plot_hspec
   namelist /probin/ plot_divu
   namelist /probin/ plot_omegadot
   namelist /probin/ plot_base_name
@@ -313,10 +317,10 @@ contains
           call get_command_argument(farg, value = fname)
           read(fname, *) pertmag
 
-       case ('--pmf_shift')
+       case ('--rfire')
           farg = farg + 1
           call get_command_argument(farg, value = fname)
-          read(fname, *) pmf_shift
+          read(fname, *) rfire
 
        case ('--nspec')
           farg = farg + 1
@@ -556,10 +560,20 @@ contains
           call get_command_argument(farg, value = fname)
           read(fname, *) plot_X
 
+       case ('--plot_eint')
+          farg = farg + 1
+          call get_command_argument(farg, value = fname)
+          read(fname, *) plot_eint
+
        case ('--plot_h')
           farg = farg + 1
           call get_command_argument(farg, value = fname)
           read(fname, *) plot_h
+
+       case ('--plot_hspec')
+          farg = farg + 1
+          call get_command_argument(farg, value = fname)
+          read(fname, *) plot_hspec
 
        case ('--plot_divu')
           farg = farg + 1
