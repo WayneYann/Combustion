@@ -92,14 +92,17 @@ contains
     end if
 
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
+    call reset_density(Unew)
 
     ! RK Step 2
     call dUdt(Unew,Uprime,dx)
     call update_rk3(OneQuarter,Unew, ThreeQuarters,U, OneQuarter*dt,Uprime)
+    call reset_density(Unew)
 
     ! RK Step 3
     call dUdt(Unew,Uprime,dx)
     call update_rk3(OneThird,U, TwoThirds,Unew, TwoThirds*dt,Uprime)
+    call reset_density(U)
 
     call destroy(Unew)
     call destroy(Uprime)
