@@ -144,6 +144,7 @@ subroutine smc()
 
         if ( verbose .ge. 1 ) then
            if ( parallel_IOProcessor() ) then
+              print*, ' '
               print *, 'MEMORY STATS AT START OF TIMESTEP ', istep
               print*, ' '
            end if
