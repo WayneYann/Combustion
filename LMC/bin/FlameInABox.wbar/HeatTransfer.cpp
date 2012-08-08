@@ -2745,36 +2745,41 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     //
     // Increment Rhs with time-n flux divergence terms
     //
-    ViscBndry bndry(grids,1,geom);
-
     if (be_cn_theta < 1)
     {
         getDiffusivity(beta, prev_time, first_spec, 0, nspecies);
 
+        const Real a        = 0;
+        const Real b        = -(1-be_cn_theta)*dt;
+        Real       rhsscale = 0;
+        int        rho_flag = 2;
+        MultiFab*  alpha    = 0;
+        //
+        // This will be delete'd by the following ABecLaplacian.
+        //
+        ViscBndry* bndryp = new ViscBndry(grids,1,geom);
+
+        ABecLaplacian* visc_op_old = new ABecLaplacian(bndryp,dx);
+
+        visc_op_old->maxOrder(diffusion->maxOrder());
+        //
+        // We only need to call this once for this whole loop.
+        //
+        diffusion->setAlpha(visc_op_old,-1,a,b,prev_time,rho_half,rho_flag,&rhsscale,-1,alpha);
+
         for (int comp = 0; comp < nspecies; ++comp)
         {
-            const int state_ind = first_spec + comp;
-
-            diffusion->getBndryDataGivenS(bndry,rho_and_species_old,
-                                          rho_and_species_crse_old,state_ind,comp+1,1);
-
-            const bool bndry_already_filled = true;
-            const Real a          = 0;
-            const Real b          = -(1-be_cn_theta)*dt;
+            const int  state_ind  = first_spec + comp;
             const int  sComp      = comp+1;
             const int  dComp      = comp;
             const bool do_ApplyBC = true;
-            Real       rhsscale   = 0;
-            int        rho_flag   = 2;
-            MultiFab*  alpha      = 0;
+
+            diffusion->setBeta(visc_op_old,dComp,beta);
             //
-            // FIXME: We should be able to make just one of these to work for all.
+            // This'll update the ViscBndry in visc_op_old.
             //
-            ABecLaplacian* visc_op_old = diffusion->getViscOp(state_ind,a,b,prev_time,
-                                                              bndry,rho_half,
-                                                              rho_flag,&rhsscale,comp,beta,
-                                                              alpha,bndry_already_filled);
-            visc_op_old->maxOrder(diffusion->maxOrder());
+            diffusion->getBndryDataGivenS(*bndryp,rho_and_species_old,
+                                          rho_and_species_crse_old,state_ind,comp+1,1);
             //
             // Compute -rho.D.Grad(Y), and leave grow cells in rho_and_species_old filled.
             //
@@ -2783,8 +2788,6 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
                                          *SpecDiffFluxn[2]),
                                   rho_and_species_old,
                                   LinOp::Inhomogeneous_BC,do_ApplyBC,sComp,dComp);
-            delete visc_op_old;
-
             if (dt > 0)
             {
                 D_TERM(SpecDiffFluxn[0]->mult(-b/(dt*dx[0]),comp,1);,
@@ -2806,7 +2809,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
             //
             if (level == 0)
             {
-                bndry.setBndryValues(Wbar_old,0,0,1,bc);
+                bndryp->setBndryValues(Wbar_old,0,0,1,bc);
             }
             else
             {
@@ -2821,15 +2824,15 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
                     getChemSolve().getMwmixGivenY(Wbar_old_crse[mfi],rho_and_species_crse_old[mfi],box,1,0);
                 }	  
                 crse_br.copyFrom(Wbar_old_crse,nGrowCrse,0,0,1);
-                bndry.setBndryValues(crse_br,0,Wbar_old,0,0,1,crse_ratio,bc);
+                bndryp->setBndryValues(crse_br,0,Wbar_old,0,0,1,crse_ratio,bc);
             }
-	  
-            ABecLaplacian op(bndry,dx);
-            op.maxOrder(diffusion->maxOrder());
-            op.setScalars(0,1);
-            op.bCoefficients(1);
-            op.applyBC(Wbar_old,0,1,0,LinOp::Inhomogeneous_BC);
+
+            visc_op_old->setScalars(0,1);
+            visc_op_old->bCoefficients(1);
+            visc_op_old->applyBC(Wbar_old,0,1,0,LinOp::Inhomogeneous_BC);
             showMF("wbar",Wbar_old,"Wbarn");
+
+            delete visc_op_old;
 
             FArrayBox area;
 
@@ -2939,6 +2942,14 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
         showMF("wbar",*beta[0],"rhoD_star_0");
         showMF("wbar",*beta[1],"rhoD_star_1");
         //
+        // This will be delete'd by the following ABecLaplacian.
+        //
+        ViscBndry* bndryp = new ViscBndry(grids,1,geom);
+
+        ABecLaplacian* visc_op_new = new ABecLaplacian(bndryp,dx);
+
+        visc_op_new->maxOrder(diffusion->maxOrder());
+        //
         // Build Wbar terms at time * and add to Rhs.
         //
         if (do_add_Wbar_terms)
@@ -2958,7 +2969,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 
             if (level == 0)
             {
-                bndry.setBndryValues(Wbar_new,0,0,1,bc);
+                bndryp->setBndryValues(Wbar_new,0,0,1,bc);
             }
             else
             {
@@ -2973,15 +2984,16 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
                     getChemSolve().getMwmixGivenY(Wbar_new_crse[mfi],rho_and_species_crse_new[mfi],box,1,0);
                 }
                 crse_br.copyFrom(Wbar_new_crse,nGrowCrse,0,0,1);
-                bndry.setBndryValues(crse_br,0,Wbar_new,0,0,1,crse_ratio,bc);
+                bndryp->setBndryValues(crse_br,0,Wbar_new,0,0,1,crse_ratio,bc);
             }
 	  
-            ABecLaplacian op(bndry,dx);
-            op.maxOrder(diffusion->maxOrder());
-            op.setScalars(0,1);
-            op.bCoefficients(1);
+//            ABecLaplacian op(bndryp,dx);
+//            op.maxOrder(diffusion->maxOrder());
+
+            visc_op_new->setScalars(0,1);
+            visc_op_new->bCoefficients(1);
             showMF("wbar",Wbar_new,"Wbarnp1_into_op");
-            op.applyBC(Wbar_new,0,1,0,LinOp::Inhomogeneous_BC);
+            visc_op_new->applyBC(Wbar_new,0,1,0,LinOp::Inhomogeneous_BC);
             showMF("wbar",Wbar_new,"Wbarnp1");	  
 
             FArrayBox area;
@@ -3059,6 +3071,16 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 
         MultiFab Soln(grids,1,nGrowOp), Rhs1(grids,1,nGrowOp);
 
+        const int  rho_flag = 2;
+        const Real a        = 1.0;
+        const Real b        = be_cn_theta*dt;
+        Real       rhsscale = 1;
+        MultiFab*  alpha    = 0;
+        //
+        // We only need to call this once for this whole loop.
+        //
+        diffusion->setAlpha(visc_op_new,-1,a,b,curr_time,rho_half,rho_flag,&rhsscale,-1,alpha);
+
         for (int ispec=0; ispec<nspecies; ++ispec)
         {
             MultiFab::Copy(Soln,rho_and_species_new,ispec+1,0,1,0);
@@ -3073,28 +3095,17 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
                 Rhs1[mfi].mult(vol);
             }
 
-            const int state_ind = first_spec + ispec;
-
-            diffusion->getBndryDataGivenS(bndry,rho_and_species_new,
-                                          rho_and_species_crse_new,state_ind,ispec+1,1);
-
-            const bool bndry_already_filled = true;
-            const int  rho_flag   = 2;
-            const Real a          = 1.0;
-            const Real b          = be_cn_theta*dt;
+            const int  state_ind  = first_spec + ispec;
             const int  sComp      = 0;
             const int  dComp      = ispec;
             const bool do_ApplyBC = true;
-            Real       rhsscale   = 1;
-            MultiFab*  alpha      = 0;
+
+            diffusion->setBeta(visc_op_new,dComp,beta);
             //
-            // FIXME: We should be able to make just one of these to work for all.
+            // This'll update the ViscBndry in visc_op_new.
             //
-            ABecLaplacian* visc_op_new = diffusion->getViscOp(state_ind,a,b,curr_time,
-                                                              bndry,rho_half,rho_flag,
-                                                              &rhsscale,ispec,beta,alpha,
-                                                              bndry_already_filled);
-            visc_op_new->maxOrder(diffusion->maxOrder());
+            diffusion->getBndryDataGivenS(*bndryp,rho_and_species_new,
+                                          rho_and_species_crse_new,state_ind,ispec+1,1);
             Rhs1.mult(rhsscale,0,1);
 	  
             const Real S_tol     = visc_tol;
@@ -3121,7 +3132,6 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
                                          *beta[1],
                                          *beta[2]),
                                   Soln,LinOp::Inhomogeneous_BC,do_ApplyBC,sComp,dComp);
-            delete visc_op_new;
 
             for (int d = 0; d < BL_SPACEDIM; ++d)
             {
@@ -3146,6 +3156,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
             //
             MultiFab::Copy(rho_and_species_new,Soln,0,ispec+1,1,0);
         }
+
+        delete visc_op_new;
 
         vol.clear();
         Soln.clear();
@@ -3971,6 +3983,9 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     // Now, do the rest.
     // Get Div(visc.Grad(state)) or Div(visc.Grad(state/rho)), as appropriate.
     //
+    MultiFab** beta = 0;
+    diffusion->allocFluxBoxesLevel(beta);
+
     for ( ; icomp <= last_comp; load_comp++, icomp++)
     {
 	const bool is_spec  = icomp >= first_spec && icomp <= last_spec;
@@ -3995,7 +4010,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 	    else
 	    {
 		const int  rho_flag = Diffusion::set_rho_flag(diffusionType[icomp]);
-		MultiFab** beta     = 0;
 
 		if (icomp == Density)
                 {
@@ -4006,17 +4020,16 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                     //
                     // Assume always variable viscosity / diffusivity.
                     //
-                    diffusion->allocFluxBoxesLevel(beta);
                     getDiffusivity(beta, time, icomp, 0, 1);
 
                     diffusion->getViscTerms(visc_terms,icomp-load_comp,
                                             icomp,time,rho_flag,0,beta);
-                    
-                    diffusion->removeFluxBoxesLevel(beta);
                 }
 	    }
 	}
     }
+
+    diffusion->removeFluxBoxesLevel(beta);
     //
     // Add Div(u) term if desired, if this is velocity, and if Div(u) is nonzero
     // If const-visc, term is mu.Div(u)/3, else it's -Div(mu.Div(u).I)*2/3
@@ -6155,7 +6168,6 @@ HeatTransfer::predict_velocity (Real  dt,
 #else
 	getForce(tforces,i,1,Xvel,BL_SPACEDIM,(*rho_ptime)[i]);
 #endif		 
-
         //
         // Test velocities, rho and cfl.
         //
@@ -6246,8 +6258,6 @@ HeatTransfer::advance (Real time,
     Real dt_test = 0.0, dummy = 0.0;    
     dt_test = predict_velocity(dt,dummy);
 
-
-    
     showMF("mac",u_mac[0],"adv_umac0",level);
     showMF("mac",u_mac[1],"adv_umac1",level);
 #if BL_SPACEDIM==3
