@@ -42,7 +42,7 @@ contains
 
     use variables, only : irho, imx,imy,imz,iene,iry1,ncons
     use chemistry_module, only : nspecies
-    use probin_module, only : pertmag, pmf_shift
+    use probin_module, only : pertmag, rfire
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
     double precision, intent(in   ) :: dx(3),plo(3),phi(3)
@@ -56,10 +56,8 @@ contains
     double precision rhot,u1t,u2t,u3t,Tt,et
     integer :: iwrk
     double precision :: rwrk
-    double precision :: pert, Lx, Ly
 
     double precision, parameter :: patmos = 1.01325d6
-    double precision, parameter :: PI = 4.d0*atan(1.d0)
 
     do k=lo(3),hi(3)
        z = plo(3) + dx(3)*(k + 0.5d0)
@@ -68,15 +66,9 @@ contains
           do i=lo(1),hi(1)
              x = plo(1) + dx(1)*(i + 0.5d0)
 
-             Lx = phi(1) - plo(1)
-             Ly = phi(2) - plo(2)
-             pert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)             * sin(2*Pi*5*y/Ly) &
-                  &        + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)   * sin(2*Pi*4*(y-.0053765)/Ly) &
-                  &        + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx) * sin(2*Pi*3*(y-.02137)/Ly) &
-                  &        + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)     * sin(2*Pi*6*(y-.018)/Ly) &
-                  &         + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
-             
-             r = abs(z) + pmf_shift + pert
+             r = sqrt(x**2+y**2+z**2)
+
+             r = rfire/(r+1.d-50) * 3.d0  ! 3.d0 is roughly the sufrace of fire for pmf.
              rmin = (r - 0.5d0*dx(3))
              rmax = (r + 0.5d0*dx(3))
 

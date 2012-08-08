@@ -1,2 +1,2 @@
 pertmag			real		3.d-2
-pmf_shift		real		2.5d0
+rfire			real		0.2d0

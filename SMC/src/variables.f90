@@ -140,4 +140,53 @@ contains
 
   end subroutine ctoprim_3d
 
+  
+  subroutine reset_density(U)
+    type(multifab), intent(inout) :: U
+    
+    integer :: dim, ng
+    integer :: n, lo(U%dim), hi(U%dim)
+    double precision, pointer, dimension(:,:,:,:) :: up
+
+    dim = U%dim
+    ng = nghost(U)
+    
+    do n=1,nboxes(U)
+       if (remote(U, n)) cycle
+       
+       up => dataptr(U, n)
+       
+       lo = lwb(get_box(U,n))
+       hi = upb(get_box(U,n))
+
+       if (dim .eq. 2) then
+          call bl_error("2D not supported in variables::reset_density")
+       else
+          call reset_rho_3d(lo,hi,ng,up)
+       end if
+    end do
+
+  end subroutine reset_density
+
+  subroutine reset_rho_3d(lo, hi, ng, u)
+    integer, intent(in) :: lo(3), hi(3), ng
+    double precision, intent(inout) :: u(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,ncons)
+
+    integer :: i, j, k, n
+    double precision :: rho
+
+    do k = lo(3),hi(3)
+       do j = lo(2),hi(2)
+          do i = lo(1),hi(1)
+             rho = 0.d0
+             do n=1, nspecies
+                rho = rho + U(i,j,k,iry1+n-1)
+             end do
+             U(i,j,k,irho) = rho
+          end do
+       end do
+    end do
+
+  end subroutine reset_rho_3d
+
 end module variables

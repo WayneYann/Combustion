@@ -70,7 +70,8 @@ contains
     if (fixed_dt > 0.d0) then
        dt = fixed_dt
        if ( parallel_IOProcessor() ) then
-          print*, "Fixed dt = ", dt
+          print *, ''
+          print*, "   Fixed dt = ", dt
        end if
     else
 
@@ -85,25 +86,23 @@ contains
        end if
        
        if ( parallel_IOProcessor() ) then
-          print*, "dt,courno", dt, courno
+          print *, ''
+          print*, "   dt,courno", dt, courno
        end if
     end if
 
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
-
-    print *, 'xxxxx stage 1 finished'
+    call reset_density(Unew)
 
     ! RK Step 2
     call dUdt(Unew,Uprime,dx)
     call update_rk3(OneQuarter,Unew, ThreeQuarters,U, OneQuarter*dt,Uprime)
-
-    print *, 'xxxxx stage 2 finished'
+    call reset_density(Unew)
 
     ! RK Step 3
     call dUdt(Unew,Uprime,dx)
     call update_rk3(OneThird,U, TwoThirds,Unew, TwoThirds*dt,Uprime)
-
-    print *, 'xxxxx stage 3 finished'
+    call reset_density(U)
 
     call destroy(Unew)
     call destroy(Uprime)
@@ -173,6 +172,8 @@ contains
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
 
+    double precision :: mumin, mumax, ximin, ximax
+
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
     dim = U%dim
@@ -202,9 +203,16 @@ contains
 
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
 
-    print *, 'mu min and max:', multifab_min(mu), multifab_max(mu)
-    print *, 'xi min and max:', multifab_min(xi), multifab_max(xi)
-    print *, 'xxxxxxxx set volume viscosity to zero!'
+    mumin = multifab_min(mu) 
+    mumax = multifab_max(mu)
+    ximin = multifab_min(xi) 
+    ximax = multifab_max(xi)
+    if (parallel_IOProcessor()) then
+       print *, ''
+       print *, '   mu min and max:', mumin, mumax
+       print *, '   xi min and max:', ximin, ximax
+       print *, '   Set volume viscosity to zero!'
+    end if
     call setval(xi, 0.d0, all=.true.)
 
     !
@@ -526,8 +534,8 @@ contains
     double precision :: dmuydx,dmwydz,dmuxwzdy
     double precision :: dmuzdx,dmvzdy,dmuxvydz
     double precision :: tauxx,tauyy,tauzz 
-    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies)
-    integer          :: i,j,k,n, qxn, qyn
+    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies), hhalf
+    integer          :: i,j,k,n, qxn, qyn, qhn
 
     integer :: iwrk
     double precision :: Xt(nspecies), wdot(nspecies), rwrk
@@ -977,6 +985,12 @@ contains
                   + m47*(dpe(i-1,j,k)*q(i+2,j,k,qpres)-dpe(i  ,j,k)*q(i-3,j,k,qpres)) &
                   + m48*(dpe(i-1,j,k)*q(i+3,j,k,qpres)-dpe(i  ,j,k)*q(i-4,j,k,qpres))
 
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
+                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n) * hhalf * Htot
+             end do
+
           end do
        end do
     end do
@@ -1229,6 +1243,12 @@ contains
                   + m47*(dpe(i,j-1,k)*q(i,j+2,k,qpres)-dpe(i,j  ,k)*q(i,j-3,k,qpres)) &
                   + m48*(dpe(i,j-1,k)*q(i,j+3,k,qpres)-dpe(i,j  ,k)*q(i,j-4,k,qpres))
 
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
+                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n) * hhalf * Htot
+             end do
+
           end do
        end do
     end do
@@ -1480,6 +1500,13 @@ contains
                   + m46*(dpe(i,j,k-1)*q(i,j,k+1,qpres)-dpe(i,j,k  )*q(i,j,k-2,qpres)) &
                   + m47*(dpe(i,j,k-1)*q(i,j,k+2,qpres)-dpe(i,j,k  )*q(i,j,k-3,qpres)) &
                   + m48*(dpe(i,j,k-1)*q(i,j,k+3,qpres)-dpe(i,j,k  )*q(i,j,k-4,qpres))
+
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
+                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n) * hhalf * Htot
+             end do
+
           end do
        end do
     end do

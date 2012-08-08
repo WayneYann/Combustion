@@ -4,7 +4,7 @@
 
  advance_method = 1  ! 1=RK3, 2=SDC, 3=PFASST
 
- stop_time = 1.e-3
+ stop_time = 3.e-3
  max_step  = 10
 
  plot_int = 1
@@ -34,6 +34,6 @@
  zhi_boundary_type = "periodic"
 
  pertmag = 3.d-2
- pmf_shift = 2.5d0
+ rfire = 0.2d0
 
 /
