@@ -21,10 +21,10 @@ contains
     type(multifab), intent(in   ) :: Q
     type(multifab), intent(inout) :: mu, xi, lam, Ddiag
  
-    integer :: ng, n, dim, lo(Q%dim), hi(Q%dim)
+    integer :: ng, n, dm, lo(Q%dim), hi(Q%dim)
     double precision, pointer, dimension(:,:,:,:) :: qp, mup, xip, lamp, dp
 
-    dim = Q%dim
+    dm = Q%dim
     ng = nghost(Q)
 
     do n=1,nboxes(Q)
@@ -39,7 +39,7 @@ contains
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
 
-       if (dim .ne. 3) then
+       if (dm .ne. 3) then
           call bl_error("Only 3D is supported in get_transport_properties")
        else
           call get_trans_prop_3d(lo,hi,ng,qp,mup,xip,lamp,dp)

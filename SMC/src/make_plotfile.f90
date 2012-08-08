@@ -198,6 +198,7 @@ contains
     end if
 
     if (parallel_IOProcessor()) then
+       write(6,*) ''
        write(6,*) 'Writing state to plotfile ',trim(dirname)
     end if
 

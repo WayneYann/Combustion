@@ -69,10 +69,6 @@ contains
 
     if (fixed_dt > 0.d0) then
        dt = fixed_dt
-       if ( parallel_IOProcessor() ) then
-          print *, ''
-          print*, "   Fixed dt = ", dt
-       end if
     else
 
        call parallel_reduce(courno, courno_proc, MPI_MAX)
@@ -85,10 +81,6 @@ contains
           end if
        end if
        
-       if ( parallel_IOProcessor() ) then
-          print *, ''
-          print*, "   dt,courno", dt, courno
-       end if
     end if
 
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
@@ -168,7 +160,7 @@ contains
     type(multifab) :: lam ! partial thermal conductivity
     type(multifab) :: Ddiag ! diagonal components of rho * Y_k * D
 
-    integer          :: lo(U%dim), hi(U%dim), i,j,k,m,n, ng, dim
+    integer          :: lo(U%dim), hi(U%dim), i,j,k,m,n, ng, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
 
@@ -176,7 +168,7 @@ contains
 
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
-    dim = U%dim
+    dm = U%dim
     ng = nghost(U)
     la = get_layout(U)
 
@@ -228,7 +220,7 @@ contains
        lo = lwb(get_box(Fhyp,n))
        hi = upb(get_box(Fhyp,n))
 
-       if (dim .ne. 3) then
+       if (dm .ne. 3) then
           call bl_error("Only 3D hypterm is supported")
        else
           call hypterm_3d(lo,hi,ng,dx,up,qp,fhp)
@@ -253,7 +245,7 @@ contains
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
 
-       if (dim .ne. 3) then
+       if (dm .ne. 3) then
           call bl_error("Only 3D compact_diffterm is supported")
        else
           call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp)
@@ -1545,10 +1537,10 @@ contains
     double precision, intent(in) :: dx(Q%dim)
     double precision, intent(inout) :: courno
 
-    integer :: n, ng, dim, lo(Q%dim), hi(Q%dim)
+    integer :: n, ng, dm, lo(Q%dim), hi(Q%dim)
     double precision, pointer :: qp(:,:,:,:)
 
-    dim = Q%dim
+    dm = Q%dim
     ng = nghost(Q)
 
     do n=1,nboxes(Q)
@@ -1559,7 +1551,7 @@ contains
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
 
-       if (dim .ne. 3) then
+       if (dm .ne. 3) then
           call bl_error("Only 3D compute_courno is supported")
        else
           call comp_courno_3d(lo,hi,ng,dx,qp,courno)

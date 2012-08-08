@@ -143,7 +143,7 @@ dm_in                               integer            3
 max_grid_size                       integer            64                  
 
 # Change the max grid size on restart 
-change_max_grid_size                logical            .false.  
+change_max_grid_size                logical            .true.  
 
 # Number of cells in the x-direction
 n_cellx                             integer            -1                     

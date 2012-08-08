@@ -117,7 +117,7 @@ build_info.f90:
 	$(BOXLIB_HOME)/Tools/F_scripts/make_build_info \
             "$(Fmdirs)" "$(COMP)" "$(FCOMP_VERSION)" \
             "$(COMPILE.f90)" "$(COMPILE.f)" \
-            "$(COMPILE.c)" "$(LINK.f90)" "$(BOXLIB_HOME)"
+            "$(COMPILE.c)" "$(LINK.f90)" "$(BOXLIB_HOME)" "$(SMC_TOP_DIR)"
 	@echo " "
 
 $(odir)/build_info.o: build_info.f90

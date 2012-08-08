@@ -39,14 +39,15 @@ program main
   call print(boxarray_mem_stats(),    "    boxarray")
   call print(layout_mem_stats(),      "      layout")
   call print(boxassoc_mem_stats(),    "    boxassoc")
-  call print(fgassoc_mem_stats(),     "     fgassoc")
-  call print(syncassoc_mem_stats(),   "   syncassoc")
+!  call print(fgassoc_mem_stats(),     "     fgassoc")
+!  call print(syncassoc_mem_stats(),   "   syncassoc")
   call print(copyassoc_mem_stats(),   "   copyassoc")
-  call print(fluxassoc_mem_stats(),   "   fluxassoc")
+!  call print(fluxassoc_mem_stats(),   "   fluxassoc")
 
   if (parallel_IOProcessor()) then
      print*, ' '
      print*, 'Run Time = ', r1
+     call flush()
   end if
 
   call boxlib_finalize()
