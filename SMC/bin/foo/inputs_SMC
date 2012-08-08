@@ -1,6 +1,6 @@
 &PROBIN
 
- verbose = 1
+ verbose = 2
 
  advance_method = 1  ! 1=RK3, 2=SDC, 3=PFASST
 
@@ -10,19 +10,19 @@
  plot_int = 1
  chk_int  = 1
 
- cflfac = 0.5d0
+ cflfac = 0.1d0
 
  n_cellx = 32
  n_celly = 32
  n_cellz = 32
  max_grid_size = 32
 
- prob_lo_x = -0.8d0
- prob_lo_y = -0.8d0
- prob_lo_z = -0.8d0
- prob_hi_x =  0.8d0
- prob_hi_y =  0.8d0
- prob_hi_z =  0.8d0
+ prob_lo_x = -0.5d0
+ prob_lo_y = -0.5d0
+ prob_lo_z = -0.5d0
+ prob_hi_x =  0.5d0
+ prob_hi_y =  0.5d0
+ prob_hi_z =  0.5d0
 
  xlo_boundary_type = "periodic"
  xhi_boundary_type = "periodic"
@@ -34,6 +34,6 @@
  zhi_boundary_type = "periodic"
 
  pertmag = 3.d-2
- rfire = 0.2d0
+ rfire = 0.15d0
 
 /

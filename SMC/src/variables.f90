@@ -144,11 +144,11 @@ contains
   subroutine reset_density(U)
     type(multifab), intent(inout) :: U
     
-    integer :: dim, ng
+    integer :: dm, ng
     integer :: n, lo(U%dim), hi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: up
 
-    dim = U%dim
+    dm = U%dim
     ng = nghost(U)
     
     do n=1,nboxes(U)
@@ -159,7 +159,7 @@ contains
        lo = lwb(get_box(U,n))
        hi = upb(get_box(U,n))
 
-       if (dim .eq. 2) then
+       if (dm .eq. 2) then
           call bl_error("2D not supported in variables::reset_density")
        else
           call reset_rho_3d(lo,hi,ng,up)

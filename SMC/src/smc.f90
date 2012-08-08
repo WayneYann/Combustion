@@ -2,6 +2,7 @@ subroutine smc()
 
   use advance_module
   use bl_constants_module
+  use checkpoint_module
   use chemistry_module
   use cputime_module, only: start_cputime_clock
   use initialize_module
@@ -62,10 +63,27 @@ subroutine smc()
 
   if (restart >= 0) then
 
-     ! call initialize_from_restart
-     ! ...
+     if (restart <= 99999) then
+        write(unit=check_index,fmt='(i5.5)') restart
+        check_file_name = trim(check_base_name) // check_index
+     else
+        write(unit=check_index6,fmt='(i6.6)') restart
+        check_file_name = trim(check_base_name) // check_index6
+     endif
+     
+     if (parallel_IOProcessor() .and. verbose.ge.1) then
+        print*,""
+        print*,"Restarting from", check_file_name
+     end if
+
+     call initialize_from_restart(check_file_name, la,dt,dx,U)
 
   else 
+
+     if (parallel_IOProcessor() .and. verbose.ge.1) then
+        print*,""
+        print*,"Starting from scratch"
+     end if
 
      call initialize_from_scratch(la,dt,dx,U)
 
@@ -115,13 +133,23 @@ subroutine smc()
 
      istep = 0
 
+     if (chk_int > 0) then
+        write(unit=check_index,fmt='(i5.5)') istep
+        check_file_name = trim(check_base_name) // check_index
+
+        call checkpoint_write(check_file_name, la, U, dt)
+        
+        last_chk_written = istep
+     end if
+
      if (plot_int > 0 .or. plot_deltat > ZERO) then
         write(unit=plot_index,fmt='(i5.5)') istep
         plot_file_name = trim(plot_base_name) // plot_index
         
         call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
+
+        call write_job_info(plot_file_name, la, write_pf_time)
         
-        ! call write_job_info 
         last_plt_written = istep
      end if
   end if
@@ -153,10 +181,10 @@ subroutine smc()
            call print(boxarray_mem_stats(),    "    boxarray")
            call print(layout_mem_stats(),      "      layout")
            call print(boxassoc_mem_stats(),    "    boxassoc")
-           call print(fgassoc_mem_stats(),     "     fgassoc")
-           call print(syncassoc_mem_stats(),   "   syncassoc")
+!           call print(fgassoc_mem_stats(),     "     fgassoc")
+!           call print(syncassoc_mem_stats(),   "   syncassoc")
            call print(copyassoc_mem_stats(),   "   copyassoc")
-           call print(fluxassoc_mem_stats(),   "   fluxassoc")
+!           call print(fluxassoc_mem_stats(),   "   fluxassoc")
            if ( parallel_IOProcessor() ) print*, ''
         end if
 
@@ -167,6 +195,31 @@ subroutine smc()
         call advance(U,dt,dx)
 
         time = time + dt
+
+        if ( parallel_IOProcessor() ) then
+           print *, ''
+           print *, "   dt = ", dt
+           print *, ''
+           print *, 'End of step', istep,'time = ', time
+        end if
+
+        if (chk_int > 0) then
+           if ( mod(istep,chk_int) .eq. 0 ) then
+              
+              if (istep <= 99999) then
+                 write(unit=check_index,fmt='(i5.5)') istep
+                 check_file_name = trim(check_base_name) // check_index
+              else
+                 write(unit=check_index6,fmt='(i6.6)') istep
+                 check_file_name = trim(check_base_name) // check_index6
+              endif
+              
+              call checkpoint_write(check_file_name, la, U, dt)
+              
+              last_chk_written = istep
+              
+           end if
+        end if
 
         if (plot_int > 0 .or. plot_deltat > ZERO) then
            if ( (plot_int > 0 .and. mod(istep,plot_int) .eq. 0) .or. &
@@ -183,10 +236,15 @@ subroutine smc()
 
               call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
 
-!              call write_job_info(plot_file_name, mla%mba, the_bc_tower, write_pf_time)
+              call write_job_info(plot_file_name, la, write_pf_time)
+
               last_plt_written = istep
 
            end if
+        end if
+
+        if (parallel_IOProcessor() .and. verbose .ge. 2) then
+           call flush()
         end if
 
         ! have we reached the stop time?
@@ -198,6 +256,20 @@ subroutine smc()
 
 999  continue
      if (istep > max_step) istep = max_step
+
+     if ( chk_int > 0 .and. last_chk_written .ne. istep ) then
+
+        if (istep <= 99999) then
+           write(unit=check_index,fmt='(i5.5)') istep
+           check_file_name = trim(check_base_name) // check_index
+        else
+           write(unit=check_index6,fmt='(i6.6)') istep
+           check_file_name = trim(check_base_name) // check_index6
+        endif
+        
+        call checkpoint_write(check_file_name, la, U, dt)
+              
+     end if
 
      if ( plot_int > 0 .and. last_plt_written .ne. istep ) then
 
@@ -211,7 +283,7 @@ subroutine smc()
 
         call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
 
-!        call write_job_info(plot_file_name, mla%mba, the_bc_tower, write_pf_time)
+        call write_job_info(plot_file_name, la, write_pf_time)
      end if
   end if
 

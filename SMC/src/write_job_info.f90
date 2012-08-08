@@ -14,7 +14,7 @@ subroutine write_job_info(dirname, la, write_pf_time)
   use bc_module
   use layout_module
   use build_info_module, only: build_date, build_dir, build_machine, boxlib_dir, &
-                               NUM_MODULES, modules, FCOMP, FCOMP_version, &
+                               FCOMP, FCOMP_version, &
                                f90_compile_line, f_compile_line, &
                                C_compile_line, link_line, &
                                source_git_hash, boxlib_git_hash
@@ -89,11 +89,6 @@ subroutine write_job_info(dirname, la, write_pf_time)
      write (99,*) " "
      write (99,1001) "Combustion git hash: ", trim(source_git_hash)
      write (99,1001) "BoxLib     git hash: ", trim(boxlib_git_hash)
-     write (99,*) " "
-     write (99,1001) "modules used:  ", " "
-     do i=1, NUM_MODULES
-        write (99,1001) "  ", trim(modules(i))
-     enddo
      write (99,*) " "
      write (99,1001) "FCOMP:            ", trim(FCOMP)
      write (99,1001) "FCOMP version:    ", trim(FCOMP_version)
