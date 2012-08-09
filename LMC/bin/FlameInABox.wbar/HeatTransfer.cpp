@@ -9002,10 +9002,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // Some standard settings
     //
     const MultiFab* alpha = 0;
-    MultiFab** fluxSC;
-    diffusion->allocFluxBoxesLevel(fluxSC,0,1);
-
-    const MultiFab* Rh = get_rho_half_time();
+    const MultiFab* Rh    = get_rho_half_time();
 
     for (int sigma = 0; sigma < nspecies; ++sigma)
     {
@@ -9016,16 +9013,12 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         // diffused result is an acceleration, not a velocity, req'd by the projection.
         //
 	const int ssync_ind = first_spec + sigma - Density;
+
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
-				 Rh,2,fluxSC,sigma,betanp1,alpha);
-	//
-	// Pull fluxes into flux array
-	//
-	for (int d=0; d<BL_SPACEDIM; ++d)
-	    MultiFab::Copy(*SpecDiffFluxnp1[d],*fluxSC[d],0,sigma,1,0);
+				 Rh,2,SpecDiffFluxnp1,sigma,betanp1,alpha,sigma);
+
 	spec_diffusion_flux_computed[sigma] = HT_SyncDiffusion;
     }
-    diffusion->removeFluxBoxesLevel(fluxSC);
     //
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
