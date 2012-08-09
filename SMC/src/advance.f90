@@ -211,9 +211,7 @@ contains
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
 
-    double precision :: mumin, mumax, ximin, ximax
-
-    double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
+     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
     dm = U%dim
     ng = nghost(U)
@@ -241,18 +239,6 @@ contains
     end if
 
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
-
-    mumin = multifab_min(mu) 
-    mumax = multifab_max(mu)
-    ximin = multifab_min(xi) 
-    ximax = multifab_max(xi)
-    if (parallel_IOProcessor()) then
-       print *, '   mu min and max:', mumin, mumax
-       print *, '   xi min and max:', ximin, ximax
-       print *, '   Set volume viscosity to zero!'
-       print *, ''
-    end if
-    call setval(xi, 0.d0, all=.true.)
 
     !
     ! Hyperbolic terms

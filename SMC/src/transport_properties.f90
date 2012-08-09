@@ -49,7 +49,7 @@ contains
 
   end subroutine get_transport_properties
    
-  subroutine get_trans_prop_3d(lo,hi,ng,q,mu,lam,xi,Ddiag)
+  subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag)
     use omp_module
     integer, intent(in) :: lo(3), hi(3), ng
     double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nprim)
