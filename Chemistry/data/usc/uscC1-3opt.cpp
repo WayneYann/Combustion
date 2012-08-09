@@ -17587,17 +17587,17 @@ void CKEQXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, dou
 }
 
 static double T_save = -1;
-#ifdef BL_USE_OMP
+#ifdef _OPENMP
 #pragma omp threadprivate(T_save)
 #endif
 
 static double k_f_save[463];
-#ifdef BL_USE_OMP
+#ifdef _OPENMP
 #pragma omp threadprivate(k_f_save)
 #endif
 
 static double Kc_save[463];
-#ifdef BL_USE_OMP
+#ifdef _OPENMP
 #pragma omp threadprivate(Kc_save)
 #endif
 

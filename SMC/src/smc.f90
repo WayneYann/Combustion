@@ -190,16 +190,14 @@ subroutine smc()
 
         if (parallel_IOProcessor()) then
            print*,'Advancing time step',istep,'time = ',time
+           print*, ""
         end if
 
-        call advance(U,dt,dx)
+        call advance(U,dt,dx,istep)
 
         time = time + dt
 
         if ( parallel_IOProcessor() ) then
-           print *, ''
-           print *, "   dt = ", dt
-           print *, ''
            print *, 'End of step', istep,'time = ', time
         end if
 
@@ -249,7 +247,9 @@ subroutine smc()
 
         ! have we reached the stop time?
         if (stop_time >= 0.d0) then
-           if (time >= stop_time) goto 999
+           if (time >= stop_time) then
+              goto 999
+           end if
         end if
 
      end do

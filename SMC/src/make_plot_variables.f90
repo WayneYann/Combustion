@@ -68,6 +68,7 @@ contains
 
     integer :: i,j,k, n, qyn, qhn
 
+    !$omp parallel do private(i,j,k,n,qyn,qhn)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -80,6 +81,7 @@ contains
           enddo
        enddo
     enddo
+    !$omp end parallel do
 
   end subroutine make_h_3d
 
@@ -101,6 +103,7 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
+    !$omp parallel do private(i,j,k,ux,vy,wz)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -125,6 +128,7 @@ contains
           enddo
        enddo
     enddo
+    !$omp end parallel do
 
   end subroutine make_divu_3d
 
@@ -136,20 +140,20 @@ contains
     double precision, intent(out) :: odot(-ngo+lo(1):hi(1)+ngo,-ngo+lo(2):hi(2)+ngo,-ngo+lo(3):hi(3)+ngo,nspecies)
     double precision, intent(in ) ::    Q(-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
 
-    integer :: i,j,k, iwrk
+    integer :: i,j,k,iwrk
     double precision :: rwrk, wdot(nspecies), Xt(nspecies)
 
+    !$omp parallel do private(i,j,k,iwrk,rwrk,wdot,Xt)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-
-             Xt = q(i,j,k,qx1:qx1+nspecies-1)
+             Xt(:) = q(i,j,k,qx1:qx1+nspecies-1)
              call ckwxr(q(i,j,k,qrho), q(i,j,k,qtemp), Xt, iwrk, rwrk, wdot)
              odot(i,j,k,:) = wdot * molecular_weight
-
           enddo
        enddo
     enddo
+    !$omp end parallel do
 
   end subroutine make_omegadot_3d
 
