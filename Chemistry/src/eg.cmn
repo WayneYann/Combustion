@@ -8,5 +8,7 @@ C-----------------------------------------------------------------------
      &                  IETA,   IETALG, IBIN,   ICINT,  ICXI,   IEPSIJ,
      &                  IXTR,   IYTR,   IDMI,   IG,     IAN,    IZN, 
      &                  IRN,    ITEMP,  IBETA,  JFLAG
+      SAVE / EGEGEG /
 C-----------------------------------------------------------------------
 
+!$omp threadprivate(/ EGEGEG /)

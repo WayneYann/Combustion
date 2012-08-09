@@ -58,16 +58,14 @@ contains
     double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
     double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nspecies)
 
-    integer :: i, j, k, n, iwrk, tid
+    integer :: i, j, k, n, iwrk
     double precision :: rwrk, Tt, Wtm
     double precision, dimension(nspecies) :: Xt, Yt, Cpt, D
 
-    !$omp parallel do private(tid,i,j,k,n,iwrk,rwrk,Tt,Wtm,Xt,Yt,Cpt,D)
+    !$omp parallel do private(i,j,k,n,iwrk,rwrk,Tt,Wtm,Xt,Yt,Cpt,D)
     do k=lo(3)-ng,hi(3)+ng
     do j=lo(2)-ng,hi(2)+ng
     do i=lo(1)-ng,hi(1)+ng
-
-       tid = omp_get_thread_num()
 
        Tt = q(i,j,k,qtemp)
        Xt = q(i,j,k,qx1:qx1+nspecies-1)
@@ -76,12 +74,12 @@ contains
        CALL CKCPMS(Tt, iwrk, rwrk, Cpt)
        CALL CKMMWY(Yt, iwrk, rwrk, Wtm)
 
-       CALL EGSPAR(Tt, Xt, Yt, Cpt, egwork(:,tid), egiwork(:,tid))
+       CALL EGSPAR(Tt, Xt, Yt, Cpt, egwork, egiwork)
 
-       CALL EGSE3(Tt, Yt, egwork(:,tid), mu(i,j,k)) 
-       CALL EGSK3(Tt, Yt, egwork(:,tid), xi(i,j,k)) 
-       CALL EGSVR1(Tt, Yt, egwork(:,tid), D)
-       CALL EGSPTC2(Tt, egwork(:,tid), egiwork(:,tid), lam(i,j,k))
+       CALL EGSE3(Tt, Yt, egwork, mu(i,j,k)) 
+       CALL EGSK3(Tt, Yt, egwork, xi(i,j,k)) 
+       CALL EGSVR1(Tt, Yt, egwork, D)
+       CALL EGSPTC2(Tt, egwork, egiwork, lam(i,j,k))
 
        Ddiag(i,j,k,:) = D(:) * Wtm / molecular_weight(:)
 
