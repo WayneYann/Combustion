@@ -174,11 +174,9 @@ public:
 				       int                    sCompS,
 				       Real                   dt,
 				       Real                   time,
-				       const Array<int>&      rho_flag,
 				       const MultiFab*        rho_half,
 				       int                    dataComp,
 				       const MultiFab*        delta_rhs, 
-				       const MultiFab*        alpha, 
 				       const MultiFab* const* betanp1);
     
     virtual void scalar_diffusion_update (Real dt,

@@ -2266,12 +2266,14 @@ HeatTransfer::post_init_press (Real&        dt_init,
 	// Squirrel away copy of pre-advance State_Type state
 	//
         for (int k = 0; k <= finest_level; k++)
+        {
 	    MultiFab::Copy(saved_state[k],
                            getLevel(k).get_new_data(State_Type),
 			   0,
                            0,
                            nState,
                            nGrow);
+        }
 
         for (int k = 0; k <= finest_level; k++ )
         {
@@ -2311,12 +2313,14 @@ HeatTransfer::post_init_press (Real&        dt_init,
 	// For State_Type state, restore state we saved above
 	//
         for (int k = 0; k <= finest_level; k++)
+        {
 	    MultiFab::Copy(getLevel(k).get_new_data(State_Type),
                            saved_state[k],
 			   0,
                            0,
                            nState,
                            nGrow);
+        }
 
         NavierStokes::initial_iter = false;
     }
@@ -2755,15 +2759,14 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
         int        rho_flag = 2;
         MultiFab*  alpha    = 0;
         //
-        // This will be delete'd by the following ABecLaplacian.
+        // This will be owned & delete'd by the ABecLaplacian.
         //
-        ViscBndry* bndryp = new ViscBndry(grids,1,geom);
-
-        ABecLaplacian* visc_op_old = new ABecLaplacian(bndryp,dx);
+        ViscBndry*     bndry       = new ViscBndry(grids,1,geom);
+        ABecLaplacian* visc_op_old = new ABecLaplacian(bndry,dx);
 
         visc_op_old->maxOrder(diffusion->maxOrder());
         //
-        // We only need to call this once for this whole loop.
+        // Only need call this once since alpha==0 & we're not touching VEL.
         //
         diffusion->setAlpha(visc_op_old,-1,a,b,prev_time,rho_half,rho_flag,&rhsscale,-1,alpha);
 
@@ -2776,9 +2779,9 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 
             diffusion->setBeta(visc_op_old,dComp,beta);
             //
-            // This'll update the ViscBndry in visc_op_old.
+            // This'll update the ViscBndry in visc_op_old directly.
             //
-            diffusion->getBndryDataGivenS(*bndryp,rho_and_species_old,
+            diffusion->getBndryDataGivenS(*bndry,rho_and_species_old,
                                           rho_and_species_crse_old,state_ind,comp+1,1);
             //
             // Compute -rho.D.Grad(Y), and leave grow cells in rho_and_species_old filled.
@@ -2809,7 +2812,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
             //
             if (level == 0)
             {
-                bndryp->setBndryValues(Wbar_old,0,0,1,bc);
+                bndry->setBndryValues(Wbar_old,0,0,1,bc);
             }
             else
             {
@@ -2824,7 +2827,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
                     getChemSolve().getMwmixGivenY(Wbar_old_crse[mfi],rho_and_species_crse_old[mfi],box,1,0);
                 }	  
                 crse_br.copyFrom(Wbar_old_crse,nGrowCrse,0,0,1);
-                bndryp->setBndryValues(crse_br,0,Wbar_old,0,0,1,crse_ratio,bc);
+                bndry->setBndryValues(crse_br,0,Wbar_old,0,0,1,crse_ratio,bc);
             }
 
             visc_op_old->setScalars(0,1);
@@ -2942,11 +2945,10 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
         showMF("wbar",*beta[0],"rhoD_star_0");
         showMF("wbar",*beta[1],"rhoD_star_1");
         //
-        // This will be delete'd by the following ABecLaplacian.
+        // This will be owned & delete'd by the ABecLaplacian.
         //
-        ViscBndry* bndryp = new ViscBndry(grids,1,geom);
-
-        ABecLaplacian* visc_op_new = new ABecLaplacian(bndryp,dx);
+        ViscBndry*     bndry       = new ViscBndry(grids,1,geom);
+        ABecLaplacian* visc_op_new = new ABecLaplacian(bndry,dx);
 
         visc_op_new->maxOrder(diffusion->maxOrder());
         //
@@ -2969,7 +2971,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 
             if (level == 0)
             {
-                bndryp->setBndryValues(Wbar_new,0,0,1,bc);
+                bndry->setBndryValues(Wbar_new,0,0,1,bc);
             }
             else
             {
@@ -2984,11 +2986,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
                     getChemSolve().getMwmixGivenY(Wbar_new_crse[mfi],rho_and_species_crse_new[mfi],box,1,0);
                 }
                 crse_br.copyFrom(Wbar_new_crse,nGrowCrse,0,0,1);
-                bndryp->setBndryValues(crse_br,0,Wbar_new,0,0,1,crse_ratio,bc);
+                bndry->setBndryValues(crse_br,0,Wbar_new,0,0,1,crse_ratio,bc);
             }
-	  
-//            ABecLaplacian op(bndryp,dx);
-//            op.maxOrder(diffusion->maxOrder());
 
             visc_op_new->setScalars(0,1);
             visc_op_new->bCoefficients(1);
@@ -3102,9 +3101,9 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 
             diffusion->setBeta(visc_op_new,dComp,beta);
             //
-            // This'll update the ViscBndry in visc_op_new.
+            // This'll update the ViscBndry in visc_op_new directly.
             //
-            diffusion->getBndryDataGivenS(*bndryp,rho_and_species_new,
+            diffusion->getBndryDataGivenS(*bndry,rho_and_species_new,
                                           rho_and_species_crse_new,state_ind,ispec+1,1);
             Rhs1.mult(rhsscale,0,1);
 	  
@@ -3364,11 +3363,9 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 					    int                    sCompS,
 					    Real                   dt,
 					    Real                   time,
-					    const Array<int>&      rho_flag,
 					    const MultiFab*        rho_half,
 					    int                    dataComp,
 					    const MultiFab*        delta_rhs, 
-					    const MultiFab*        alpha, 
 					    const MultiFab* const* betanp1)
 {
     //
@@ -3377,7 +3374,6 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     // arbitrarily however to preserve that the sum over all species of the
     // diffusive fluxes is zero.  
     //
-    BL_ASSERT(!alpha ^ (alpha&&alpha->nComp()  == nspecies));
     BL_ASSERT(betanp1 && betanp1[0]->nComp()   == nspecies);
     BL_ASSERT(!delta_rhs || delta_rhs->nComp() == nspecies);
 
@@ -3407,8 +3403,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
         tmp.invert(1);
 
         for (int comp = 0; comp < nspecies; ++comp) 
-            if (rho_flag[comp] == 2)
-                rho_and_spec.mult(tmp,0,comp+1,1);
+            rho_and_spec.mult(tmp,0,comp+1,1);
     }
 
     MultiFab rho_and_species_crse;
@@ -3433,46 +3428,48 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
             tmp.invert(1);
 
             for (int comp = 0; comp < nspecies; ++comp) 
-                if (rho_flag[comp] == 2)
-                    fab.mult(tmp,0,comp+1,1);
+                fab.mult(tmp,0,comp+1,1);
         }
     }
 
-    const Real a = 1.0;
-    const Real b = -dt;
+    const Real      a        = 1.0;
+    const Real      b        = -dt;
+    const int       rho_flag = 2;
+    const MultiFab* alpha    = 0;
+    Real            rhsscale;
 
-    ViscBndry visc_bndry;
+    ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
+    ABecLaplacian* visc_op = new ABecLaplacian(bndry,geom.CellSize());
+
+    visc_op->maxOrder(diffusion->maxOrder());
+    //
+    // Only need call this once since alpha==0 & we're not touching VEL.
+    //
+    diffusion->setAlpha(visc_op,-1,a,b,time,rho_half,rho_flag,&rhsscale,-1,alpha);
 
     for (int comp = 0; comp < nspecies; ++comp)
     {
 	const int state_ind = first_spec + comp;
-
-        diffusion->getBndryDataGivenS(visc_bndry,rho_and_species,rho_and_species_crse,
+        //
+        // This'll update the ViscBndry in visc_op_old directly.
+        //
+        diffusion->getBndryDataGivenS(*bndry,rho_and_species,rho_and_species_crse,
                                       state_ind,comp+1,1);
-        bool bndry_already_filled = true;
 
-	Real           rhsscale;
-        ABecLaplacian* visc_op;
-	visc_op = diffusion->getViscOp(state_ind,a,b,time,visc_bndry,
-                                       rho_half,rho_flag[comp],&rhsscale,
-                                       dataComp+comp,betanp1,alpha,bndry_already_filled);
-	visc_op->maxOrder(diffusion->maxOrder());
+        diffusion->setBeta(visc_op,dataComp+comp,betanp1);
 
 	rho_and_species.setBndry(bogus_value,comp+1,1); // Ensure computable corners
 
 	visc_op->applyBC(rho_and_species,comp+1,1);
 
-	delete visc_op;
-
-	if (rho_flag[comp] == 2)
+        for (MFIter Smfi(rho_and_species); Smfi.isValid(); ++Smfi)
         {
-	    for (MFIter Smfi(rho_and_species); Smfi.isValid(); ++Smfi)
-            {
-                FArrayBox& fab = rho_and_species[Smfi];
-     		fab.mult(fab,fab.box(),0,comp+1,1);
-            }
+            FArrayBox& fab = rho_and_species[Smfi];
+            fab.mult(fab,fab.box(),0,comp+1,1);
         }
     }
+
+    delete visc_op;
 
     rho_and_species_crse.clear();    
     //
@@ -3501,7 +3498,6 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     // arrangement of terms:
     //
     //     Phi_new = Phi_old + (dt/A)(RHS-Div(flux))
-    //            A = rhonph.alpha for rho_flag == 1
     //            A = 1            for rho_flag == 2
     //     
     //
@@ -3550,16 +3546,9 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 
 	update.mult(dt,box,0,nspecies);
 
-	if (alpha)
-	    update.divide((*alpha)[iGrid],box,dataComp,0,nspecies);
-
         tmp.resize(box,1);
         tmp.copy((*rho_half)[iGrid],0,0,1);
         tmp.invert(1);
-
-	for (int i = 0; i < nspecies; ++i)
-	    if (rho_flag[i] == 1)
-		update.mult(tmp,0,i,1);
 
 	if (Phi_old)
 	    update.plus((*Phi_old)[iGrid],box,sCompS,0,nspecies);
@@ -5393,16 +5382,9 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     BL_ASSERT(visc_terms.boxArray() == grids);
     BL_ASSERT(visc_terms.nComp() >= sComp+nspecies);
 
-    const int        nGrowOp = 1; // Required by the operator to compute first-cut fluxes
-    const Real*      dx      = geom.CellSize();
+    const int   nGrowOp = 1; // Required by the operator to compute first-cut fluxes
+    const Real* dx      = geom.CellSize();
 
-    const Array<int> rho_flag(nspecies,2); // Hardwired, for now.
-
-    MultiFab s_tmp(grids,1,nGrowOp);
-
-    const TimeLevel whichTime = which_time(State_Type,time);
-
-    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
     BL_ASSERT(first_spec == Density+1);
     //
     // Create and fill a full MultiFab of all species at this level and below.
@@ -5424,8 +5406,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
         tmp.invert(1);
 
         for (int comp = 0; comp < nspecies; ++comp) 
-            if (rho_flag[comp] == 2)
-                fab.mult(tmp,0,comp+1,1);
+            fab.mult(tmp,0,comp+1,1);
     }
 
     MultiFab rho_and_species_crse;
@@ -5451,32 +5432,38 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
             tmp.invert(1);
 
             for (int comp = 0; comp < nspecies; ++comp) 
-                if (rho_flag[comp] == 2)
-                    fab.mult(tmp,0,comp+1,1);
+                fab.mult(tmp,0,comp+1,1);
         }
     }
 
     tmp.clear();
 
-    MultiFab **flux;
     MultiFab **beta;
 
-    diffusion->allocFluxBoxesLevel(flux,0,1);
     diffusion->allocFluxBoxesLevel(beta,0,nspecies);
 
     getDiffusivity(beta, time, first_spec, 0, nspecies);
 
-    ViscBndry visc_bndry;
+    const TimeLevel whichTime = which_time(State_Type,time);
+
+    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
+
+    MultiFab* const* fluxKeep = (whichTime == AmrOldTime) ? SpecDiffFluxn : SpecDiffFluxnp1;
+    //
+    // This will be owned & delete'd by the ABecLaplacian.
+    //
+    ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
+    ABecLaplacian* visc_op = new ABecLaplacian(bndry,dx);
 
     for (int comp = 0; comp < nspecies; ++comp)
     {
         const int state_ind = first_spec + comp;
-
-	diffusion->getBndryDataGivenS(visc_bndry,rho_and_species,rho_and_species_crse,
+        //
+        // This'll update the ViscBndry in visc_op directly.
+        //
+	diffusion->getBndryDataGivenS(*bndry,rho_and_species,rho_and_species_crse,
                                       state_ind,comp+1,1);
-
-	ABecLaplacian visc_op(visc_bndry,dx);
-	visc_op.setScalars(0.0,1.0);
+	visc_op->setScalars(0.0,1.0);
 	
 	for (int d = 0; d < BL_SPACEDIM; d++)
 	{
@@ -5484,22 +5471,20 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
             geom.GetFaceArea(bcoeffs,grids,d,0);
 	    for (MFIter mfi(bcoeffs); mfi.isValid(); ++mfi)
 		bcoeffs[mfi].mult((*beta[d])[mfi.index()],comp,0,1);
-	    visc_op.bCoefficients(bcoeffs,d);
+	    visc_op->bCoefficients(bcoeffs,d);
 	}
 
-	MultiFab::Copy(s_tmp,rho_and_species,comp+1,0,1,0);
-	
-        visc_op.compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),s_tmp);
-        MultiFab* const* fluxKeep = (whichTime == AmrOldTime) ? SpecDiffFluxn : SpecDiffFluxnp1;
-	for (int d = 0; d < BL_SPACEDIM; ++d)
-	    MultiFab::Copy(*fluxKeep[d],*flux[d],0,comp,1,0);
+        visc_op->compFlux(D_DECL(*fluxKeep[0],*fluxKeep[1],*fluxKeep[2]),
+                          rho_and_species,
+                          LinOp::Inhomogeneous_BC,true,comp+1,comp,1);
+
 	spec_diffusion_flux_computed[comp] = HT_ExplicitDiffusion;
     }
 
-    s_tmp.clear();
+    delete visc_op;
+
     rho_and_species.clear();
     rho_and_species_crse.clear();
-    diffusion->removeFluxBoxesLevel(flux);
     //
     // Modify update/fluxes to preserve flux sum = 0, compute -Div(flux)
     // (use dt = 1.0,  since the routine actually updates does "state"-=Div(flux)*dt)
@@ -5507,10 +5492,9 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     const Real      dt        = 1.0;
     const MultiFab* old_state = 0;
     const MultiFab* delta_rhs = 0;
-    const MultiFab* alpha     = 0;
     const int       dataComp  = 0;
-    adjust_spec_diffusion_update(visc_terms,old_state,sComp,dt,time,rho_flag,
-				 get_rho_half_time(),dataComp,delta_rhs,alpha,beta);
+    adjust_spec_diffusion_update(visc_terms,old_state,sComp,dt,time,
+				 get_rho_half_time(),dataComp,delta_rhs,beta);
     diffusion->removeFluxBoxesLevel(beta);
 }
 
@@ -5990,8 +5974,9 @@ void
 HeatTransfer::set_htt_hmixTYP ()
 {
     const int finest_level = parent->finestLevel();
-
-    // set typical value for hmix, needed for TfromHY solves if not provided explicitly
+    //
+    // Set typical value for hmix, needed for TfromHY solves if not provided explicitly.
+    //
     if (typical_values[RhoH]==0)
     {
         htt_hmixTYP = 0;
@@ -5999,10 +5984,10 @@ HeatTransfer::set_htt_hmixTYP ()
         isects.reserve(27);
         for (int k = 0; k <= finest_level; k++)
         {
-            AmrLevel& ht = getLevel(k);
-            const MultiFab& S = ht.get_new_data(State_Type);
+            AmrLevel&       ht = getLevel(k);
+            const MultiFab& S  = ht.get_new_data(State_Type);
             const BoxArray& ba = ht.boxArray();
-            MultiFab hmix(ba,1,0,Fab_allocate);
+            MultiFab hmix(ba,1,0);
             MultiFab::Copy(hmix,S,RhoH,0,1,0);
             MultiFab::Divide(hmix,S,Density,0,1,0);
             if (k!=finest_level) 
@@ -6064,7 +6049,6 @@ HeatTransfer::advance_setup (Real time,
     //
     for (int i = 0; i < spec_diffusion_flux_computed.size(); ++i)
 	spec_diffusion_flux_computed[i] = HT_None;
-
 }
 
 void
@@ -7791,9 +7775,9 @@ HeatTransfer::scalar_advection (Real dt,
     //
     if (do_special_rhoh)
     {
-        MultiFab Soln(grids,1,1);
         const Real prev_time = state[State_Type].prevTime();
         const Real cur_time  = state[State_Type].curTime();
+
         MultiFab& S_new = get_new_data(State_Type);
         MultiFab& S_old = get_old_data(State_Type);
         //
@@ -7801,52 +7785,63 @@ HeatTransfer::scalar_advection (Real dt,
         // (the ViscBndry construction knows how to fill bc's correctly, so
         //    re-construct linop/bndrydata for each species)
         //
-        const Real a = 1.0;     // Passed around, but not used
-        Real rhsscale;          //  -ditto-
-        const int rho_flag = 2; // FIXME: Messy assumption
-        MultiFab *alpha=0;      //  -ditto-
         MultiFab **fluxSC, **fluxi, **rhoh_visc;
         diffusion->allocFluxBoxesLevel(fluxSC,0,1);
         diffusion->allocFluxBoxesLevel(fluxi,0,nspecies);
         diffusion->allocFluxBoxesLevel(fluxNULN,0,1);
         diffusion->allocFluxBoxesLevel(rhoh_visc,0,1);
-
-        const int nGrow    = 1; // Size to grow fil-patched fab for T below
-        const int dataComp = 0; // coeffs loaded into 0-comp for all species
         //
         // Initialize fluxNULN (NULN = non-unity Lewis number)
         //
         for (int d = 0; d < BL_SPACEDIM; ++d)
-            fluxNULN[d]->setVal(0.0);
+            fluxNULN[d]->setVal(0);
         //
         // Get the NULN flux contrib from n data
         //
         getDiffusivity(rhoh_visc, prev_time, RhoH, 0, 1);
 
-        const MultiFab* Rh = get_rho_half_time();
+        const int       nGrow    = 1; // Size to grow fil-patched fab for T below
+        const int       dataComp = 0; // coeffs loaded into 0-comp for all species
+        const int       rho_flag = 2;
+        const Real      a        = 1.0;
+        const Real      b1       = 1.0 - be_cn_theta;
+        const Real      b2       = be_cn_theta;
+        MultiFab*       alpha    = 0;
+        Real            rhsscale;
+        //
+        // This will be owned & delete'd by the ABecLaplacian.
+        //
+        ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
+        ABecLaplacian* visc_op = new ABecLaplacian(bndry,geom.CellSize());
 
-        ViscBndry visc_bndry;
+        visc_op->maxOrder(diffusion->maxOrder());
+        //
+        // Only need call this once since alpha==0 & we're not touching VEL.
+        //
+        diffusion->setAlpha(visc_op,-1,a,b1,prev_time,rho_half,rho_flag,&rhsscale,-1,alpha);
+
+        MultiFab Soln(grids,1,1);
 
         for (int comp = 0; comp < nspecies; ++comp)
         {
-            const Real b     = 1.0 - be_cn_theta;
+            const Real b     = b1;
             const int  sigma = first_spec + comp;
             //
             // Start by getting lambda/cp.Grad(Y) (note: neg of usual diff flux)
             //
-            ABecLaplacian* visc_op;
+            // This'll update the ViscBndry in visc_op directly.
+            //
+            diffusion->getBndryData(*bndry,sigma,1,prev_time,rho_flag);
 
-            visc_op = diffusion->getViscOp(sigma,a,b,prev_time,visc_bndry,
-                                           Rh,rho_flag,&rhsscale,dataComp,
-                                           rhoh_visc,alpha);
+            diffusion->setBeta(visc_op,dataComp,rhoh_visc);
 
-            visc_op->maxOrder(diffusion->maxOrder());
             MultiFab::Copy(Soln,S_old,sigma,0,1,0);
 
             for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 Soln[Smfi].divide(S_old[Smfi],Smfi.validbox(),Density,0,1);
 
             visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
+
             for (int d=0; d < BL_SPACEDIM; ++d)
                 fluxSC[d]->mult(-b/geom.CellSize()[d]);
             //
@@ -7863,8 +7858,9 @@ HeatTransfer::scalar_advection (Real dt,
                     (*fluxi[d])[SDF_mfi].plus((*fluxSC[d])[SDF_mfi],ebox,0,comp,1);
                 }
             }
-            delete visc_op;
         }
+
+        delete visc_op;
 
         FArrayBox eTemp, h;
         //
@@ -7902,27 +7898,38 @@ HeatTransfer::scalar_advection (Real dt,
         // Get the Le!=1 flux contrib from n+1 data.
         //
         getDiffusivity(rhoh_visc, cur_time, RhoH, 0, 1);
+        //
+        // This will be owned & delete'd by the ABecLaplacian.
+        //
+        bndry   = new ViscBndry(grids,1,geom);
+        visc_op = new ABecLaplacian(bndry,geom.CellSize());
+
+        visc_op->maxOrder(diffusion->maxOrder());
+        //
+        // Only need call this once since alpha==0 & we're not touching VEL.
+        //
+        diffusion->setAlpha(visc_op,-1,a,b2,cur_time,rho_half,rho_flag,&rhsscale,-1,alpha);
 
         for (int comp = 0; comp < nspecies; ++comp)
         {
-            const Real b     = be_cn_theta;
+            const Real b     = b2;
             const int  sigma = first_spec + comp;
             //
-            //  start by getting lambda/cp.Grad(Y) (note: neg of usual diff flux)
+            // Start by getting lambda/cp.Grad(Y) (note: neg of usual diff flux).
             //
-            ABecLaplacian* visc_op;
+            // This'll update the ViscBndry in visc_op directly.
+            //
+            diffusion->getBndryData(*bndry,sigma,1,cur_time,rho_flag);
 
-            visc_op = diffusion->getViscOp(sigma,a,b,cur_time,visc_bndry,
-                                           Rh,rho_flag,&rhsscale,dataComp,
-                                           rhoh_visc,alpha);
+            diffusion->setBeta(visc_op,dataComp,rhoh_visc);
 
-            visc_op->maxOrder(diffusion->maxOrder());
             MultiFab::Copy(Soln,S_new,sigma,0,1,0);
 
             for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
 
             visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
+
             for (int d=0; d < BL_SPACEDIM; ++d)
                 fluxSC[d]->mult(-b/geom.CellSize()[d]);
             //
@@ -7940,8 +7947,9 @@ HeatTransfer::scalar_advection (Real dt,
                     (*fluxi[d])[SDF_mfi].plus((*fluxSC[d])[SDF_mfi],ebox,0,comp,1);
                 }
             }
-            delete visc_op;
         }
+
+        delete visc_op;
 
         Soln.clear();
         diffusion->removeFluxBoxesLevel(fluxSC);
@@ -8010,7 +8018,7 @@ HeatTransfer::scalar_advection (Real dt,
             for (int d=0; d<BL_SPACEDIM; ++d)
                 edge[d].copy((*EdgeState[d])[i],edge[d].box(),sigma,edge[d].box(),0,1);
             
-            int use_conserv_diff = (advectionType[sigma] == Conservative) ? true : false;
+            const int use_conserv_diff = (advectionType[sigma] == Conservative) ? true : false;
 
             godunov->ComputeAofs(grids[i],
                                  area[0],u_mac[0][i],edge[0],
@@ -8030,12 +8038,12 @@ HeatTransfer::scalar_advection (Real dt,
                     for (int d=0; d<BL_SPACEDIM; ++d)
                         edge[d].plus((*fluxNULN[d])[i],edge[d].box(),0,0,1);
                 
-                FArrayBox& staten = (*aofs)[i];
+                FArrayBox&       staten = (*aofs)[i];
                 const FArrayBox& stateo = staten;
-                const Box& box = AofS_mfi.validbox();
-                const FArrayBox& vol = volume;
-                const Real mult = 1.0; // no dt scaling of aofs, done in scl_adv_upd
-                const int nComp = 1;
+                const Box&       box    = AofS_mfi.validbox();
+                const FArrayBox& vol    = volume;
+                const Real       mult   = 1.0; // no dt scaling of aofs, done in scl_adv_upd
+                const int        nComp  = 1;
                 
                 FORT_INCRWEXTFLXDIV(box.loVect(), box.hiVect(),
                                     (*fluxNULN[0])[i].dataPtr(),
@@ -8437,40 +8445,46 @@ HeatTransfer::mac_sync ()
 		//
 		differential_spec_diffuse_sync(dt);
 
-                MultiFab Soln(grids,1,1);
-                const Real cur_time  = state[State_Type].curTime();
-                const Real a = 1.0;     // Passed around, but not used
-                Real rhsscale;          //  -ditto-
-                const int rho_flag = 2; // FIXME: Messy assumption
-                MultiFab *alpha=0;      //  -ditto-
                 MultiFab **fluxSC, **fluxNULN, **rhoh_visc;
                 diffusion->allocFluxBoxesLevel(fluxSC,0,1);
                 diffusion->allocFluxBoxesLevel(fluxNULN,0,nspecies);
                 diffusion->allocFluxBoxesLevel(rhoh_visc,0,1);
 
-                const int nGrow    = 1; // Size to grow fil-patched fab for T below
-                const int dataComp = 0; // coeffs loaded into 0-comp for all species
-                  
                 getDiffusivity(rhoh_visc, cur_time, RhoH, 0, 1);
 
-                ViscBndry visc_bndry;
+                const int  nGrow    = 1; // Size to grow fil-patched fab for T below
+                const int  dataComp = 0; // coeffs loaded into 0-comp for all species
+                const Real cur_time = state[State_Type].curTime();
+                const Real a        = 1.0;
+                const Real b        = be_cn_theta;
+                const int  rho_flag = 2;
+                MultiFab*  alpha    = 0;
+                Real       rhsscale;
+                //
+                // This will be owned & delete'd by the ABecLaplacian.
+                //
+                ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
+                ABecLaplacian* visc_op = new ABecLaplacian(bndry,geom.CellSize());
+
+                visc_op->maxOrder(diffusion->maxOrder());
+                //
+                // Only need call this once since alpha==0 & we're not touching VEL.
+                //
+                diffusion->setAlpha(visc_op,-1,a,b,cur_time,Rh,rho_flag,&rhsscale,-1,alpha);
+
+                MultiFab Soln(grids,1,1);
 
                 for (int comp = 0; comp < nspecies; ++comp)
                 {
-                    const Real b     = be_cn_theta;
-                    const int  sigma = first_spec + comp;
+                    const int sigma = first_spec + comp;
                     //
-                    //  start by getting lambda/cp.Grad(Ysync)
-                    //   (note: neg of usual diff flux)
+                    // Start by getting lambda/cp.Grad(Ysync) (note: neg of usual diff flux).
                     //
-                    ABecLaplacian* visc_op;
+                    // This'll update the ViscBndry in visc_op directly.
+                    //
+                    diffusion->getBndryData(*bndry,sigma,1,cur_time,rho_flag);
 
-                    visc_op = diffusion->getViscOp(sigma,a,b,cur_time,
-                                                   visc_bndry,Rh,
-                                                   rho_flag,&rhsscale,dataComp,
-                                                   rhoh_visc,alpha);
-
-                    visc_op->maxOrder(diffusion->maxOrder());
+                    diffusion->setBeta(visc_op,dataComp,rhoh_visc);
 
                     MultiFab::Copy(Soln,*Ssync,sigma-BL_SPACEDIM,0,1,0);
 
@@ -8494,14 +8508,15 @@ HeatTransfer::mac_sync ()
                         {
                             FArrayBox& fluxSC_fab   = (*fluxSC[d])[SDF_mfi];
                             FArrayBox& fluxNULN_fab = (*fluxNULN[d])[SDF_mfi];
-                            FArrayBox& SDF_fab = (*SpecDiffFluxnp1[d])[SDF_mfi];
-                            const Box& ebox    = SDF_mfi.validbox();
+                            FArrayBox& SDF_fab      = (*SpecDiffFluxnp1[d])[SDF_mfi];
+                            const Box& ebox         = SDF_mfi.validbox();
                             fluxNULN_fab.copy(SDF_fab,ebox,comp,ebox,comp,1);
                             fluxNULN_fab.plus(fluxSC_fab,ebox,0,comp,1);
                         }
                     }
-                    delete visc_op;
                 }
+
+                delete visc_op;
 
                 Soln.clear();
 
@@ -8641,16 +8656,14 @@ HeatTransfer::mac_sync ()
         //
         for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
         {
-            const int i = mfi.index();
-
-            int iconserved = -1;
+            const int i          = mfi.index();
+            int       iconserved = -1;
 
             for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
             {
                 if (istate != Density && advectionType[istate] == Conservative)
                 {
                     iconserved++;
-
                     (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
                 }
             }
@@ -8695,14 +8708,14 @@ HeatTransfer::mac_sync ()
         {
             ratio                   *= parent->refRatio(lev-1);
             HeatTransfer& fine_level = getLevel(lev);
-            MultiFab& S_new_lev      = fine_level.get_new_data(State_Type);
+            MultiFab&     S_new_lev  = fine_level.get_new_data(State_Type);
             //
             // New way of interpolating syncs to make sure mass is conserved
             // and to ensure freestream preservation for species & temperature.
             //
             const BoxArray& fine_grids = S_new_lev.boxArray();
-            const int nghost           = S_new_lev.nGrow();
-            MultiFab increment(fine_grids, numscal, nghost);
+            const int       nghost     = S_new_lev.nGrow();
+            MultiFab        increment(fine_grids, numscal, nghost);
             increment.setVal(0,nghost);
             //
             // Note: we use the lincc_interp (which_interp==3) for density,
@@ -8861,10 +8874,10 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
     
     for (MFIter mfi(Rhs); mfi.isValid(); ++mfi)
     {
-        FArrayBox& rhs = Rhs[mfi];
+        FArrayBox&       rhs  = Rhs[mfi];
         const FArrayBox& snew = S_new[mfi];
         const FArrayBox& sync = (*Ssync)[mfi];
-        const Box& box = mfi.validbox();
+        const Box&       box  = mfi.validbox();
 
         rhs.mult(be_cn_theta*dt,box,0,nspecies+1);
 
@@ -8988,7 +9001,6 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     // Some standard settings
     //
-    const Array<int> rho_flag(nspecies,2);
     const MultiFab* alpha = 0;
     MultiFab** fluxSC;
     diffusion->allocFluxBoxesLevel(fluxSC,0,1);
@@ -9005,8 +9017,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         //
 	const int ssync_ind = first_spec + sigma - Density;
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
-				 Rh,rho_flag[sigma],fluxSC,
-                                 sigma,betanp1,alpha);
+				 Rh,2,fluxSC,sigma,betanp1,alpha);
 	//
 	// Pull fluxes into flux array
 	//
@@ -9019,11 +9030,10 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
     //
-    const int sCompS = first_spec - BL_SPACEDIM;
+    const int       sCompS   = first_spec - BL_SPACEDIM;
     const MultiFab* old_sync = 0;
-    const int dataComp = 0; 
-    adjust_spec_diffusion_update(*Ssync,old_sync,sCompS,dt,cur_time,rho_flag,
-                                 Rh,dataComp,&Rhs,alpha,betanp1);
+    const int       dataComp = 0; 
+    adjust_spec_diffusion_update(*Ssync,old_sync,sCompS,dt,cur_time,Rh,dataComp,&Rhs,betanp1);
 
     diffusion->removeFluxBoxesLevel(betanp1);
 
@@ -9965,30 +9975,27 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
     //   just wing it.
     //
     const Real htt_hmixTYP_SAVE = htt_hmixTYP; 
+
     if (htt_hmixTYP <= 0)
     {
         htt_hmixTYP = S.norm0(RhoH);
         if (ParallelDescriptor::IOProcessor())
             std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
-
     }
-
-    const BoxArray& sgrids = S.boxArray();
-
-    const int sCompT    = 0;
-    int       max_iters = 0;
+    const BoxArray& sgrids    = S.boxArray();
+    const int       sCompT    = 0;
+    int             max_iters = 0;
+    const Real      eps       = getChemSolve().getHtoTerrMAX();
+    Real            errMAX    = eps*htt_hmixTYP;
 
     MultiFab::Copy(temp,S,Temp,sCompT,1,nGrow);
 
     FArrayBox tmp;
 
-    const Real eps = getChemSolve().getHtoTerrMAX();
-    Real errMAX = eps*htt_hmixTYP;
-
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
         const int k   = mfi.index();
-        Box       box = BoxLib::grow(sgrids[k],nGrow);
+        const Box box = BoxLib::grow(sgrids[k],nGrow);
         //
         // Convert rho*h to h and rho*Y to Y for this operation.
         //
@@ -10524,11 +10531,11 @@ HeatTransfer::writePlotFile (const std::string& dir,
     //
     for (i = 0; i < plot_var_map.size(); i++)
     {
-	int typ  = plot_var_map[i].first;
-	int comp = plot_var_map[i].second;
-	this_dat = &state[typ].newData();
+	const int typ  = plot_var_map[i].first;
+	const int comp = plot_var_map[i].second;
+	this_dat       = &state[typ].newData();
 	MultiFab::Copy(plotMF,*this_dat,comp,cnt,ncomp,nGrow);
-	cnt+= ncomp;
+	cnt += ncomp;
     }
     //
     // Cull data from derived variables.
