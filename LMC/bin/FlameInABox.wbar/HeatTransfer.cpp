@@ -2266,12 +2266,14 @@ HeatTransfer::post_init_press (Real&        dt_init,
 	// Squirrel away copy of pre-advance State_Type state
 	//
         for (int k = 0; k <= finest_level; k++)
+        {
 	    MultiFab::Copy(saved_state[k],
                            getLevel(k).get_new_data(State_Type),
 			   0,
                            0,
                            nState,
                            nGrow);
+        }
 
         for (int k = 0; k <= finest_level; k++ )
         {
@@ -2311,12 +2313,14 @@ HeatTransfer::post_init_press (Real&        dt_init,
 	// For State_Type state, restore state we saved above
 	//
         for (int k = 0; k <= finest_level; k++)
+        {
 	    MultiFab::Copy(getLevel(k).get_new_data(State_Type),
                            saved_state[k],
 			   0,
                            0,
                            nState,
                            nGrow);
+        }
 
         NavierStokes::initial_iter = false;
     }
@@ -5381,9 +5385,6 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     const int   nGrowOp = 1; // Required by the operator to compute first-cut fluxes
     const Real* dx      = geom.CellSize();
 
-    const TimeLevel whichTime = which_time(State_Type,time);
-
-    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
     BL_ASSERT(first_spec == Density+1);
     //
     // Create and fill a full MultiFab of all species at this level and below.
@@ -5437,15 +5438,17 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 
     tmp.clear();
 
-    MultiFab **flux;
     MultiFab **beta;
 
-    diffusion->allocFluxBoxesLevel(flux,0,1);
     diffusion->allocFluxBoxesLevel(beta,0,nspecies);
 
     getDiffusivity(beta, time, first_spec, 0, nspecies);
 
-    MultiFab s_tmp(grids,1,nGrowOp);
+    const TimeLevel whichTime = which_time(State_Type,time);
+
+    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
+
+    MultiFab* const* fluxKeep = (whichTime == AmrOldTime) ? SpecDiffFluxn : SpecDiffFluxnp1;
     //
     // This will be owned & delete'd by the ABecLaplacian.
     //
@@ -5471,24 +5474,17 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 	    visc_op->bCoefficients(bcoeffs,d);
 	}
 
-	MultiFab::Copy(s_tmp,rho_and_species,comp+1,0,1,0);
-	
-        visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),s_tmp);
-
-        MultiFab* const* fluxKeep = (whichTime == AmrOldTime) ? SpecDiffFluxn : SpecDiffFluxnp1;
-
-	for (int d = 0; d < BL_SPACEDIM; ++d)
-	    MultiFab::Copy(*fluxKeep[d],*flux[d],0,comp,1,0);
+        visc_op->compFlux(D_DECL(*fluxKeep[0],*fluxKeep[1],*fluxKeep[2]),
+                          rho_and_species,
+                          LinOp::Inhomogeneous_BC,true,comp+1,comp,1);
 
 	spec_diffusion_flux_computed[comp] = HT_ExplicitDiffusion;
     }
 
     delete visc_op;
 
-    s_tmp.clear();
     rho_and_species.clear();
     rho_and_species_crse.clear();
-    diffusion->removeFluxBoxesLevel(flux);
     //
     // Modify update/fluxes to preserve flux sum = 0, compute -Div(flux)
     // (use dt = 1.0,  since the routine actually updates does "state"-=Div(flux)*dt)
@@ -5978,8 +5974,9 @@ void
 HeatTransfer::set_htt_hmixTYP ()
 {
     const int finest_level = parent->finestLevel();
-
-    // set typical value for hmix, needed for TfromHY solves if not provided explicitly
+    //
+    // Set typical value for hmix, needed for TfromHY solves if not provided explicitly.
+    //
     if (typical_values[RhoH]==0)
     {
         htt_hmixTYP = 0;
@@ -5987,10 +5984,10 @@ HeatTransfer::set_htt_hmixTYP ()
         isects.reserve(27);
         for (int k = 0; k <= finest_level; k++)
         {
-            AmrLevel& ht = getLevel(k);
-            const MultiFab& S = ht.get_new_data(State_Type);
+            AmrLevel&       ht = getLevel(k);
+            const MultiFab& S  = ht.get_new_data(State_Type);
             const BoxArray& ba = ht.boxArray();
-            MultiFab hmix(ba,1,0,Fab_allocate);
+            MultiFab hmix(ba,1,0);
             MultiFab::Copy(hmix,S,RhoH,0,1,0);
             MultiFab::Divide(hmix,S,Density,0,1,0);
             if (k!=finest_level) 
@@ -6052,7 +6049,6 @@ HeatTransfer::advance_setup (Real time,
     //
     for (int i = 0; i < spec_diffusion_flux_computed.size(); ++i)
 	spec_diffusion_flux_computed[i] = HT_None;
-
 }
 
 void
@@ -8878,10 +8874,10 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
     
     for (MFIter mfi(Rhs); mfi.isValid(); ++mfi)
     {
-        FArrayBox& rhs = Rhs[mfi];
+        FArrayBox&       rhs  = Rhs[mfi];
         const FArrayBox& snew = S_new[mfi];
         const FArrayBox& sync = (*Ssync)[mfi];
-        const Box& box = mfi.validbox();
+        const Box&       box  = mfi.validbox();
 
         rhs.mult(be_cn_theta*dt,box,0,nspecies+1);
 
@@ -9979,30 +9975,27 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
     //   just wing it.
     //
     const Real htt_hmixTYP_SAVE = htt_hmixTYP; 
+
     if (htt_hmixTYP <= 0)
     {
         htt_hmixTYP = S.norm0(RhoH);
         if (ParallelDescriptor::IOProcessor())
             std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
-
     }
-
-    const BoxArray& sgrids = S.boxArray();
-
-    const int sCompT    = 0;
-    int       max_iters = 0;
+    const BoxArray& sgrids    = S.boxArray();
+    const int       sCompT    = 0;
+    int             max_iters = 0;
+    const Real      eps       = getChemSolve().getHtoTerrMAX();
+    Real            errMAX    = eps*htt_hmixTYP;
 
     MultiFab::Copy(temp,S,Temp,sCompT,1,nGrow);
 
     FArrayBox tmp;
 
-    const Real eps = getChemSolve().getHtoTerrMAX();
-    Real errMAX = eps*htt_hmixTYP;
-
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
         const int k   = mfi.index();
-        Box       box = BoxLib::grow(sgrids[k],nGrow);
+        const Box box = BoxLib::grow(sgrids[k],nGrow);
         //
         // Convert rho*h to h and rho*Y to Y for this operation.
         //
@@ -10538,11 +10531,11 @@ HeatTransfer::writePlotFile (const std::string& dir,
     //
     for (i = 0; i < plot_var_map.size(); i++)
     {
-	int typ  = plot_var_map[i].first;
-	int comp = plot_var_map[i].second;
-	this_dat = &state[typ].newData();
+	const int typ  = plot_var_map[i].first;
+	const int comp = plot_var_map[i].second;
+	this_dat       = &state[typ].newData();
 	MultiFab::Copy(plotMF,*this_dat,comp,cnt,ncomp,nGrow);
-	cnt+= ncomp;
+	cnt += ncomp;
     }
     //
     // Cull data from derived variables.
