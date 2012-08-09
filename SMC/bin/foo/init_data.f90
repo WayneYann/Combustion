@@ -43,6 +43,7 @@ contains
     use variables, only : irho, imx,imy,imz,iene,iry1,ncons
     use chemistry_module, only : nspecies
     use probin_module, only : pertmag, rfire
+    use omp_module
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
     double precision, intent(in   ) :: dx(3),plo(3),phi(3)
@@ -59,6 +60,9 @@ contains
 
     double precision, parameter :: patmos = 1.01325d6
 
+    !$omp parallel do &
+    !$omp private(i,j,k,n,x,y,z,r,rmin,rmax,pmf_vals) &
+    !$omp private(Xt,Yt,rhot,u1t,u2t,u3t,Tt,et,iwrk,rwrk)
     do k=lo(3),hi(3)
        z = plo(3) + dx(3)*(k + 0.5d0)
        do j=lo(2),hi(2)
@@ -103,6 +107,7 @@ contains
           enddo
        enddo
     enddo
+    !$omp end parallel do
 
   end subroutine init_data_3d
   

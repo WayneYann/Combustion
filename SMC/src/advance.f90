@@ -6,7 +6,8 @@ module advance_module
   use chemistry_module, only : nspecies, molecular_weight
   use derivative_stencil_module
   use multifab_module
-  use probin_module
+  use probin_module, only : advance_method, cflfac, fixed_dt, init_shrink, max_dt, &
+       max_dt_growth, small_dt, stop_time, verbose
   use variables
   use time_module
   use transport_properties
@@ -30,29 +31,31 @@ module advance_module
 
 contains
 
-  subroutine advance(U, dt, dx)
+  subroutine advance(U, dt, dx, istep)
 
     type(multifab),    intent(inout) :: U
     double precision,  intent(  out) :: dt
     double precision,  intent(in   ) :: dx(U%dim) 
+    integer, intent(in) :: istep
 
     if (advance_method == 2) then
        call bl_error("call advance_sdc")
     else
-       call advance_rk3(U, dt, dx)
+       call advance_rk3(U, dt, dx, istep)
     end if
 
   end subroutine advance
 
 
-  subroutine advance_rk3 (U,dt,dx)
+  subroutine advance_rk3 (U,dt,dx,istep)
 
     type(multifab),    intent(inout) :: U
     double precision,  intent(  out) :: dt
     double precision,  intent(in   ) :: dx(U%dim)
+    integer, intent(in) :: istep
 
     integer          :: ng
-    double precision :: courno, courno_proc
+    double precision :: courno, courno_proc, dtold
     type(layout)     :: la
     type(multifab)   :: Uprime, Unew
 
@@ -69,18 +72,62 @@ contains
 
     if (fixed_dt > 0.d0) then
        dt = fixed_dt
+
+       if (parallel_IOProcessor()) then
+          print*, ""
+          print*, "Setting fixed dt =",dt
+          print*, ""
+       end if
+
     else
 
        call parallel_reduce(courno, courno_proc, MPI_MAX)
 
+       dtold = dt
        dt = cflfac / courno
+
+       if (parallel_IOProcessor()) then
+          print*, "CFL gives dt =", dt
+       end if
+
+       if (istep .eq. 1) then
+          dt = dt * init_shrink
+          if (parallel_IOProcessor()) then
+             print*,'init_shrink factor limits the first dt =',dt
+          end if
+       else
+          if (dt .gt. dtold * max_dt_growth) then
+             dt = dtold * max_dt_growth
+             if (parallel_IOProcessor()) then
+                print*,'dt_growth factor limits the new dt =',dt
+             end if
+          end if
+       end if
+
+       if(dt .gt. max_dt) then
+          if (parallel_IOProcessor()) then
+             print*,'max_dt limits the new dt =',max_dt
+          end if
+          dt = max_dt
+       end if
+
+       if (dt < small_dt) then
+          call bl_error("ERROR: timestep < small_dt")
+       endif
 
        if (stop_time > 0.d0) then
           if (time + dt > stop_time) then
              dt = stop_time - time
+             if (parallel_IOProcessor()) then
+                print*, "Stop time limits dt =",dt
+             end if
           end if
        end if
        
+       if (parallel_IOProcessor()) then
+          print *, ""
+       end if
+
     end if
 
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
@@ -129,7 +176,7 @@ contains
        hi = upb(get_box(U1,n))
 
        do m = 1, nc
-          !$xxxxxOMP PARALLEL DO PRIVATE(i,j,k)
+          !$OMP PARALLEL DO PRIVATE(i,j,k)
           do k = lo(3),hi(3)
              do j = lo(2),hi(2)
                 do i = lo(1),hi(1)
@@ -137,7 +184,7 @@ contains
                 end do
              end do
           end do
-          !$xxxxxOMP END PARALLEL DO
+          !$OMP END PARALLEL DO
        end do
     end do
 
@@ -200,10 +247,10 @@ contains
     ximin = multifab_min(xi) 
     ximax = multifab_max(xi)
     if (parallel_IOProcessor()) then
-       print *, ''
        print *, '   mu min and max:', mumin, mumax
        print *, '   xi min and max:', ximin, ximax
        print *, '   Set volume viscosity to zero!'
+       print *, ''
     end if
     call setval(xi, 0.d0, all=.true.)
 
@@ -266,7 +313,7 @@ contains
        hi = upb(get_box(U,n))
 
        do m = 1, ncons
-          !$xxxxxOMP PARALLEL DO PRIVATE(i,j,k)
+          !$OMP PARALLEL DO PRIVATE(i,j,k)
           do k = lo(3),hi(3)
              do j = lo(2),hi(2)
                 do i = lo(1),hi(1)
@@ -274,7 +321,7 @@ contains
                 end do
              end do
           end do
-          !$xxxxxOMP END PARALLEL DO
+          !$OMP END PARALLEL DO
        end do
     end do
 
@@ -307,6 +354,8 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
+    !$omp parallel private(i,j,k,n,unp1,unp2,unp3,unp4,unm1,unm2,unm3,unm4)
+    !$omp do 
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -370,7 +419,9 @@ contains
           enddo
        enddo
     enddo
+    !$omp end do
 
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -434,7 +485,9 @@ contains
           enddo
        enddo
     enddo
+    !$omp end do
 
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -498,6 +551,8 @@ contains
           enddo
        enddo
     enddo
+    !$omp end do
+    !$omp end parallel
 
   end subroutine hypterm_3d
 
@@ -558,6 +613,11 @@ contains
 
     flx(:,:,:,irho) = 0.d0
 
+    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,iwrk,rwrk,Xt,wdot,Htot,Htmp,Ytmp,hhalf) &
+    !$omp private(tauxx,tauyy,tauzz,dmuzdx,dmvzdy,dmuxvydz,dmuydx,dmwydz,dmuxwzdy) &
+    !$omp private(dmvxdy,dmwxdz,dmvywzdx,divu)
+
+    !$OMP DO
     do k=lo(3)-ng,hi(3)+ng
        do j=lo(2)-ng,hi(2)+ng
           do i=lo(1)-ng,hi(1)+ng
@@ -566,7 +626,9 @@ contains
           enddo
        enddo
     enddo
+    !$OMP END DO NOWAIT
 
+    !$omp do
     do k=lo(3)-ng,hi(3)+ng
        do j=lo(2)-ng,hi(2)+ng
           do i=lo(1),hi(1)
@@ -591,7 +653,9 @@ contains
           enddo
        enddo
     enddo
+    !$OMP END DO NOWAIT
 
+    !$OMP DO
     do k=lo(3)-ng,hi(3)+ng
        do j=lo(2),hi(2)   
           do i=lo(1)-ng,hi(1)+ng
@@ -616,7 +680,9 @@ contains
           enddo
        enddo
     enddo
+    !$OMP END DO NOWAIT
 
+    !$OMP DO
     do k=lo(3),hi(3)
        do j=lo(2)-ng,hi(2)+ng
           do i=lo(1)-ng,hi(1)+ng
@@ -641,9 +707,14 @@ contains
           enddo
        enddo
     enddo
+    !$OMP END DO NOWAIT
 
+    !$omp workshare
     dpe = 0.d0
+    !$omp end workshare
+
     do n=1,nspecies
+       !$OMP DO
        do k=lo(3)-ng,hi(3)+ng
           do j=lo(2)-ng,hi(2)+ng
              do i=lo(1)-ng,hi(1)+ng
@@ -653,9 +724,10 @@ contains
              end do
           end do
        end do
+       !omp end do
     end do
 
-
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -739,9 +811,10 @@ contains
           end do
        end do
     end do
-
+    !$omp end do 
 
     ! ------- BEGIN x-direction -------
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)+1
@@ -986,9 +1059,11 @@ contains
           end do
        end do
     end do
+    !$omp end do
 
     ! add x-direction flux
     do n=2,ncons
+       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -996,10 +1071,12 @@ contains
              end do
           end do
        end do
+       !$omp end do
     end do
     ! ------- END x-direction -------
 
     ! ------- BEGIN y-direction -------
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)+1
           do i=lo(1),hi(1)
@@ -1244,9 +1321,11 @@ contains
           end do
        end do
     end do
+    !$omp end do
 
     ! add y-direction flux
     do n=2,ncons
+       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -1254,10 +1333,12 @@ contains
              end do
           end do
        end do
+       !$omp end do
     end do
     ! ------- END y-direction -------
 
     ! ------- BEGIN z-direction -------
+    !$omp do
     do k=lo(3),hi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1502,9 +1583,11 @@ contains
           end do
        end do
     end do
+    !$omp end do
 
     ! add z-direction flux
     do n=2,ncons
+       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -1512,10 +1595,12 @@ contains
              end do
           end do
        end do
+       !$omp end do
     end do
     ! ------- END z-direction -------
 
     ! add kinetic energy
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1526,6 +1611,9 @@ contains
           end do
        end do
     end do
+    !$omp end do
+    
+    !$omp end parallel
 
     deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,vsp,vsm,Hg,dpy,dxe,dpe)
 
@@ -1566,8 +1654,9 @@ contains
     double precision, intent(inout) :: courno
 
     integer :: i,j,k, iwrk
-    double precision :: dxinv(3), c, courx, coury, courz, rwrk, Ru, Ruc, Pa, Cv, Cp
+    double precision :: dxinv(3), c, rwrk, Ru, Ruc, Pa, Cv, Cp
     double precision :: Tt, X(nspecies), gamma
+    double precision :: courx, coury, courz
 
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)
@@ -1575,6 +1664,9 @@ contains
 
     call ckrp(iwrk, rwrk, Ru, Ruc, Pa)
 
+    !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,X,gamma,Cv,Cp,c) &
+    !$omp private(courx,coury,courz) &
+    !$omp reduction(max:courno)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1589,11 +1681,13 @@ contains
              courx = (c+abs(q(i,j,k,qu))) * dxinv(1)
              coury = (c+abs(q(i,j,k,qv))) * dxinv(2)
              courz = (c+abs(q(i,j,k,qw))) * dxinv(3)
+             
+             courno = max( courx, coury, courz , courno )
 
-             courno = max(courx,coury,courz,courno)
           end do
        end do
     end do
+    !$omp end parallel do
 
   end subroutine comp_courno_3d
 

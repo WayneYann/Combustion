@@ -99,6 +99,8 @@ contains
     integer :: i, j, k, n, iwrk
     double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), h(nspecies), ei, Tt, Pt
 
+    !$omp parallel do private(i, j, k, n, iwrk, rho, rhoinv, rwrk) &
+    !$omp private(X, Y, h, ei, Tt, Pt)
     do k = lo(3)-ngto,hi(3)+ngto
        do j = lo(2)-ngto,hi(2)+ngto
           do i = lo(1)-ngto,hi(1)+ngto
@@ -175,6 +177,7 @@ contains
     integer :: i, j, k, n
     double precision :: rho
 
+    !$omp parallel do private(i,j,k,n,rho)
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
@@ -186,6 +189,7 @@ contains
           end do
        end do
     end do
+    !$omp end parallel do
 
   end subroutine reset_rho_3d
 

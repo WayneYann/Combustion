@@ -4,13 +4,15 @@
 
  advance_method = 1  ! 1=RK3, 2=SDC, 3=PFASST
 
- stop_time = 3.e-3
+ stop_time = 3.d-3
  max_step  = 10
+ restart = -1
 
  plot_int = 1
  chk_int  = 1
 
  cflfac = 0.1d0
+ init_shrink = 0.5d0
 
  n_cellx = 32
  n_celly = 32

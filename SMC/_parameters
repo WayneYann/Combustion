@@ -1,6 +1,3 @@
-# This is here temporarily because we don't have a network yet.
-nspec    integer   2
-
 # This file contains the runtime parameters for all SMC problems.  It 
 # is parsed by write_probin.py and merged with probin.template to produce
 # the probin.f90 at compile time.
