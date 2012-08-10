@@ -22,10 +22,6 @@ the_knapsack_verbosity              logical            .false.
 # job name printed in output
 job_name                            character          ""                  
 
-# Call a parallel\_barrier before each of the simple timers we have coded
-# in advance.f90.  Might cause a very slight overall performance hit.
-barrier_timers                      logical            .false.
-
 
 #-----------------------------------------------------------------------------
 # category: problem initialization
