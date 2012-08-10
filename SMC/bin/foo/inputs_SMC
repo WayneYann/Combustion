@@ -8,15 +8,15 @@
  max_step  = 10
  restart = -1
 
- plot_int = 1
- chk_int  = 1
+ plot_int = -1
+ chk_int  = -1
 
  cflfac = 0.1d0
  init_shrink = 0.5d0
 
- n_cellx = 32
- n_celly = 32
- n_cellz = 32
+ n_cellx = 64
+ n_celly = 64
+ n_cellz = 64
  max_grid_size = 32
 
  prob_lo_x = -0.5d0
