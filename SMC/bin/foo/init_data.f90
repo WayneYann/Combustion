@@ -42,7 +42,7 @@ contains
 
     use variables, only : irho, imx,imy,imz,iene,iry1,ncons
     use chemistry_module, only : nspecies
-    use probin_module, only : pertmag, rfire
+    use probin_module, only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit
     use omp_module
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
@@ -70,11 +70,17 @@ contains
           do i=lo(1),hi(1)
              x = plo(1) + dx(1)*(i + 0.5d0)
 
-             r = sqrt(x**2+y**2+z**2)
-
-             r = rfire/(r+1.d-50) * 3.d0  ! 3.d0 is roughly the sufrace of fire for pmf.
-             rmin = (r - 0.5d0*dx(3))
-             rmax = (r + 0.5d0*dx(3))
+             if (prob_type .eq. 1) then
+                r = sqrt(x**2+y**2+z**2)
+                r = rfire - r + 3.011d0  ! 3.d0 is roughly the sufrace of fire for pmf.
+                rmin = r
+                rmax = r
+             else if (prob_type .eq. 2) then
+                rmin = 0.d0
+                rmax = 0.d0
+             else
+                call bl_error("Unknown prob_type")
+             end if
 
              call pmf(rmin,rmax,pmf_vals,n)
 
@@ -83,13 +89,24 @@ contains
                 call bl_error('INITDATA: n .ne. nspecies+3')
              endif
 
-             Tt = pmf_vals(1)
+             if (prob_type .eq. 1) then
+                Tt = pmf_vals(1)
+                u1t = 0.d0 ! pmf_vals(2) * x/r
+                u2t = 0.d0 ! pmf_vals(2) * y/r
+                u3t = 0.d0 ! pmf_vals(2) * z/r
+             else if (prob_type .eq. 2) then
+                Tt = Tinit
+                u1t = uinit
+                u2t = vinit
+                u3t = winit
+             else
+                call bl_error("Unknown prob_type")                
+             end if
+
              do n = 1,nspecies
                 Xt(n) = pmf_vals(3+n)
              end do
-             u1t = 0.d0 ! pmf_vals(2) * x/r
-             u2t = 0.d0 ! pmf_vals(2) * y/r
-             u3t = 0.d0 ! pmf_vals(2) * z/r
+
              CALL CKXTY (Xt, IWRK, RWRK, Yt)
              CALL CKRHOY(patmos,Tt,Yt,IWRK,RWRK,rhot)
              call CKUBMS(Tt,Yt,IWRK,RWRK,et)
