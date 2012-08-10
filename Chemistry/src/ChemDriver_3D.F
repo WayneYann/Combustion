@@ -540,14 +540,14 @@ c     Get the matrix of elements versus species
          nsub  = 1
          dtloc = dt
       endif
+
+!$omp parallel
       !
       ! Force recalculation of jacobian for each XYZ block.
       !
       FIRST = .TRUE.
 
 #ifdef BL_USE_OMP
-
-!$omp parallel
 
 !$omp critical
       if (.not.associated(dvrwrk)) then
@@ -587,22 +587,14 @@ c     Get the matrix of elements versus species
 !$omp do private(i,j,k,m,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
 !$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tid,tspecies)
 !$omp&private(lout,name) schedule(dynamic,1)
-
       do k=lo(3),hi(3)
-
 #ifdef BL_USE_OMP
          tid = omp_get_thread_num() + 1
-         !
-         ! Force recalculation of jacobian for each XY slab.
-         !
-         FIRST = .TRUE.
 #endif
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
-
                TT1    = zero
                ISTATE = 1
-
 #ifdef SOLN_IS_1D
             if (i.ne.lo(1) .and. j.ne.lo(2)) then
                do m=1,Nspec
@@ -615,7 +607,6 @@ c     Get the matrix of elements versus species
 
 #ifdef DO_JBB_HACK
 #ifdef DO_JBB_HACK_TEMP
-
                tspecies(0) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, tspecies(0)))
 #endif
             sum = zero
@@ -636,22 +627,24 @@ c     Get the matrix of elements versus species
                tspecies(m) = Ytemp(m)
             end do
 
-#ifdef TRIGGER_NEW_J
-            newJ_triggered = .FALSE.
-            sum = zero
-            do m=1,NEQ
-               scale = spec_scalT
-               if (m.ne.1) scale = spec_scalY(m-1)
-               sum = sum + ABS(tspecies(m-1)-YJ_SAVE(m))/scale
-            end do
-            if (sum .gt. NEWJ_TOL) then
-               FIRST = .TRUE.
-               newJ_triggered = .TRUE.
-            end if
-#endif
-
 #ifdef ALWAYS_NEW_J
             FIRST = .TRUE.
+#endif
+
+#ifdef TRIGGER_NEW_J
+            newJ_triggered = FIRST
+            if (.NOT. FIRST) then
+               sum = zero
+               do m=1,NEQ
+                  scale = spec_scalT
+                  if (m.ne.1) scale = spec_scalY(m-1)
+                  sum = sum + ABS(tspecies(m-1)-YJ_SAVE(m))/scale
+               end do
+               if (sum .gt. NEWJ_TOL) then
+                  FIRST = .TRUE.
+                  newJ_triggered = .TRUE.
+               endif
+            endif
 #endif
             if (do_diag.eq.1) then
                FuncCount(i,j,k) = 0
@@ -685,21 +678,22 @@ c     Get the matrix of elements versus species
                ! try again from scratch
                !
 #if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
-               if (newJ_triggered .EQV. .FALSE.) then 
+               if ((ISTATE .LT. 0) .and. (.NOT. newJ_triggered)) then
                   bad_soln = .FALSE.
                   do m=1,Nspec
                      if (tspecies(m) .lt. -1.D-6*spec_scalY(m))
      &                    bad_soln = .TRUE.
                   end do
-                  if (bad_soln .EQV. .TRUE.) then
-                     FIRST = .TRUE. 
+                  if (bad_soln) then
+                     FIRST  = .TRUE. 
+                     TT1    = zero
+                     ISTATE = 1
                      tspecies(0) = Told(i,j,k)
                      do m=1,Nspec
                         tspecies(m) = Ytemp(m)
                      end do
-                     TT1    = zero
-                     ISTATE = 1
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+
+#if !defined(BL_USE_DOUBLE)
                   CALL SVODE
 #else 
                   CALL DVODE
@@ -724,6 +718,7 @@ c     Get the matrix of elements versus species
                endif
 
                if (verbose_vode .eq. 1) then
+!$omp critical
 #ifdef BL_USE_OMP
                   write(6,*) '......dvode done:'
                   write(6,*) ' last successful step size = ',dvrwrk(11,tid)
@@ -759,9 +754,11 @@ c     Get the matrix of elements versus species
                      write(6,*) '   spec with largest error = ',name
                   end if
 #endif
+!$omp end critical
                end if
 
                if (ISTATE .LE. -1) then
+!$omp critical
                   call CONPF_FILE(NEQ, TT1, tspecies, nwdot, RWRK, IWRK)
                   lout = open_vode_failure_file()                  
                   write(lout,*)
@@ -781,6 +778,7 @@ c     Get the matrix of elements versus species
  996              format(a16,1x,4e30.22)
                   close(lout)
                   call bl_abort('VODE failed, see drop file, exiting')
+!$omp end critical
                end if
              enddo
 
