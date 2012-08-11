@@ -31,11 +31,19 @@ job_name                            character          ""
 
 
 #-----------------------------------------------------------------------------
-# category: timestepping 
+# category: algorithm
 #-----------------------------------------------------------------------------
 
 # Time-stepping scheme (1=RK3, 2=SDC, 3=PFASST)
 advance_method                      integer           1
+
+# "compact" is the new stencil, and wide or S3D is the S3D type stencil
+stencil_type                        character         "compact"
+
+
+#-----------------------------------------------------------------------------
+# category: timestepping 
+#-----------------------------------------------------------------------------
 
 # simulation stop time
 stop_time                           real               -1.d0               

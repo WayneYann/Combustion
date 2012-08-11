@@ -1,5 +1,12 @@
 module derivative_stencil_module
 
+  implicit none
+
+  public
+
+  integer, parameter :: compact=1, wide=2, S3D=2
+  integer, save :: stencil, stencil_ng
+
   ! for 8th-order first derivatives
   double precision, parameter :: ALP =  0.8d0
   double precision, parameter :: BET = -0.2d0
@@ -32,5 +39,24 @@ module derivative_stencil_module
        &                         m44 = -445.d0/2016.d0, &
        &                         m45 = 583.d0/720.d0 - m47 + 6.d0*m48, &
        &                         m46 = -65.d0/224.d0 - 7.d0*m48
+
+contains
+  
+  subroutine stencil_init
+
+    use bl_error_module
+    use probin_module, only : stencil_type
+
+    if (trim(stencil_type) == "compact") then
+       stencil = compact
+    else if (trim(stencil_type) == "S3D" .or. trim(stencil_type) == "wide") then
+       stencil = wide
+    else
+       call bl_error("unknow stencil_type")
+    end if
+
+    stencil_ng = 4
+
+  end subroutine stencil_init
 
 end module derivative_stencil_module

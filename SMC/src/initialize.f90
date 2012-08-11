@@ -16,6 +16,7 @@ contains
     use checkpoint_module, only : checkpoint_read
     use probin_module, only: n_cellx, n_celly, n_cellz, prob_lo, prob_hi, dm_in, &
          max_grid_size, change_max_grid_size, pmask
+    use derivative_stencil_module, only : stencil_ng
 
     character(len=*), intent(in) :: dirname
     type(layout),intent(inout) :: la
@@ -30,7 +31,6 @@ contains
     type(box) :: bx
     integer :: dm, ncell(3), idim, lo(3), hi(3)
     real(dp_t) :: prob_lo_chk(3), prob_hi_chk(3)
-    integer, parameter :: NG=4
 
     call checkpoint_read(chkdata, dirname, dt, prob_lo_chk, prob_hi_chk, ncell) 
 
@@ -89,7 +89,7 @@ contains
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
     call destroy(ba)
 
-    call multifab_build(U,la,ncons,NG)
+    call multifab_build(U,la,ncons,stencil_ng)
     call multifab_copy_c(U,1,chkdata(1),1,ncons)
 
     call destroy(lachk)
@@ -105,6 +105,7 @@ contains
 
     use probin_module, only: n_cellx, n_celly, n_cellz, prob_lo, prob_hi, dm_in, &
          max_grid_size, pmask
+    use derivative_stencil_module, only : stencil_ng
 
     type(layout),intent(inout) :: la
     real(dp_t), intent(inout) :: dt
@@ -115,7 +116,6 @@ contains
     integer :: lo(dm_in), hi(dm_in), dm
     type(box)          :: bx
     type(boxarray)     :: ba
-    integer, parameter :: NG=4
 
     time = ZERO
     dt = 1.d20
@@ -145,7 +145,7 @@ contains
     !
     ! Compute initial condition.
     !
-    call multifab_build(U,la,ncons,NG)
+    call multifab_build(U,la,ncons,stencil_ng)
   
     call init_data(U,dx,prob_lo,prob_hi)
 
