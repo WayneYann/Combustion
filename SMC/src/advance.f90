@@ -333,6 +333,25 @@ contains
        end do
     end do
 
+    ! 
+    ! Add chemistry
+    !
+    do n=1,nboxes(Q)
+       if ( remote(Q,n) ) cycle
+
+       qp  => dataptr(Q,n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D chemsitry_term is supported")
+       else
+          call chemterm_3d(lo,hi,ng,qp,upp)
+       end if
+    end do
+
     call destroy(Q)
 
     call destroy(Fhyp)
@@ -592,9 +611,6 @@ contains
     double precision :: Htot, Htmp(nspecies), Ytmp(nspecies), hhalf
     integer          :: i,j,k,n, qxn, qyn, qhn
 
-    integer :: iwrk
-    double precision :: Xt(nspecies), wdot(nspecies), rwrk
-
     allocate(ux(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
     allocate(vx(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
     allocate(wx(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
@@ -621,7 +637,7 @@ contains
 
     flx(:,:,:,irho) = 0.d0
 
-    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,iwrk,rwrk,Xt,wdot,Htot,Htmp,Ytmp,hhalf) &
+    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,Htot,Htmp,Ytmp,hhalf) &
     !$omp private(tauxx,tauyy,tauzz,dmuzdx,dmvzdy,dmuxvydz,dmuydx,dmwydz,dmuxwzdy) &
     !$omp private(dmvxdy,dmwxdz,dmvywzdx,divu)
 
@@ -812,14 +828,22 @@ contains
                   &          + (wx(i,j,k)+uz(i,j,k))**2 &
                   &          + (vz(i,j,k)+wy(i,j,k))**2 )
 
-             Xt = q(i,j,k,qx1:qx1+nspecies-1)
-             call ckwxr(q(i,j,k,qrho), q(i,j,k,qtemp), Xt, iwrk, rwrk, wdot)
-             flx(i,j,k,iry1:) = wdot * molecular_weight
-             
           end do
        end do
     end do
     !$omp end do 
+
+    do n=1,nspecies
+       !$OMP DO
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                flx(i,j,k,iry1+n-1) = 0.d0
+             end do
+          end do
+       end do
+       !omp end do
+    end do
 
     ! ------- BEGIN x-direction -------
     !$omp do
@@ -1619,7 +1643,7 @@ contains
           end do
        end do
     end do
-    !$omp end do
+    !$omp end do 
     
     !$omp end parallel
 
@@ -1627,6 +1651,30 @@ contains
 
   end subroutine compact_diffterm_3d
 
+
+  subroutine chemterm_3d(lo,hi,ng,q,up) ! up is UPrime that has no ghost cells
+    integer,          intent(in ) :: lo(3),hi(3),ng
+    double precision, intent(in )   :: q (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(inout) :: up(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+
+    integer :: iwrk, i,j,k
+    double precision :: Xt(nspecies), wdot(nspecies), rwrk
+
+    !$omp parallel do private(i,j,k,iwrk,rwrk,Xt,wdot)
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             Xt = q(i,j,k,qx1:qx1+nspecies-1)
+             call ckwxr(q(i,j,k,qrho), q(i,j,k,qtemp), Xt, iwrk, rwrk, wdot)
+             up(i,j,k,iry1:) = up(i,j,k,iry1:) + wdot * molecular_weight
+             
+          end do
+       end do
+    end do
+    !$omp end parallel do 
+
+  end subroutine chemterm_3d
 
   subroutine compute_courno(Q, dx, courno)
     type(multifab), intent(in) :: Q
@@ -1857,6 +1905,25 @@ contains
        end do
     end do
 
+    ! 
+    ! Add chemistry
+    !
+    do n=1,nboxes(Q)
+       if ( remote(Q,n) ) cycle
+
+       qp  => dataptr(Q,n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D chemsitry_term is supported")
+       else
+          call chemterm_3d(lo,hi,ng,qp,upp)
+       end if
+    end do
+
     call destroy(Q)
 
     call destroy(Fhyp)
@@ -1893,9 +1960,6 @@ contains
     double precision :: dmuzdx,dmvzdy,dmuxvydz
     double precision :: tauxx,tauyy,tauzz 
     integer :: i,j,k,n, qxn, qdxn
-
-    integer :: iwrk
-    double precision :: Xt(nspecies), wdot(nspecies), rwrk
 
     allocate(vsm(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
 
@@ -2074,14 +2138,12 @@ contains
                   &          + (qx(i,j,k,idw)+qz(i,j,k,idu))**2 &
                   &          + (qz(i,j,k,idv)+qy(i,j,k,idw))**2 )
 
-             Xt = q(i,j,k,qx1:qx1+nspecies-1)
-             call ckwxr(q(i,j,k,qrho), q(i,j,k,qtemp), Xt, iwrk, rwrk, wdot)
-             flx(i,j,k,iry1:) = wdot * molecular_weight
-             
           end do
        end do
     end do
 
+    flx(:,:,:,iry1:) = 0.d0
+             
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
