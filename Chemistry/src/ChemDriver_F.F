@@ -80,26 +80,33 @@ c
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
-      logical error
-      integer ioproc, myid, ierr, n, RTOT, lout, namlen, i
+      integer n, RTOT, lout, i, egrlen, egilen
       integer FORT_GETCKSPECNAME
-      parameter (ioproc = 0)
       character*(maxspnml) name
-      integer coded(maxspnml)
-
-      call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
-     &     RWRK(egbr), egr, IWRK(egbi), egi)
-
 c      
 c     Set pointers in conp common blocks (used in conpF evaluations)
 c
       CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
+
       NEQ   = Nspec + 1
       NP    = dvdbr
       NRHO  = NP  + 1
       NWT   = NRHO  + 1
       NZ    = NWT + Nspec
       RTOT  = NZ  + NEQ - 1
+c
+c Set up EGlib workspace. When OPENMP give each thread its own space.
+c
+      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
+     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+      egilen = Nspec
+
+!$omp parallel
+      allocate(EGRWRK(egrlen))
+      allocate(EGIWRK(egilen))
+      call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
+     &     EGRWRK(1), egrlen, EGIWRK(1), egilen)
+!$omp end parallel
 
       if (RTOT .GT. dvder) then
          write(6,*) 'Memory layout bust, dvdr not big enough'

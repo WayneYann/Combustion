@@ -514,7 +514,7 @@ c     Set molecular weights and pressure in area accessible by conpF
 c
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       RWRK(NP) = Patm * P1atm
-      
+
       TT2 = dt
 
       if (nstiff .eq. 1) then
@@ -533,7 +533,11 @@ c     Set up ATOL
       else
          ATOL(1) = ATOLEPS
       end if
-               
+      !
+      ! Force recalculation of jacobian for each XY block.
+      !
+      FIRST = .TRUE.
+
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
            if(j.ge.0)then
@@ -578,22 +582,24 @@ c     Set up ATOL
                RWRK(NZ+m) = Ytemp(m)
             end do
 
-#ifdef TRIGGER_NEW_J
-            newJ_triggered = .FALSE.
-            sum = zero
-            do m=1,NEQ
-               scale = spec_scalT
-               if (m.ne.1) scale = spec_scalY(m-1)
-               sum = sum + ABS(RWRK(NZ+m-1)-YJ_SAVE(m))/scale
-            end do
-            if (sum .gt. NEWJ_TOL) then
-               FIRST = .TRUE.
-               newJ_triggered = .TRUE.
-            endif
-#endif
-            
 #ifdef ALWAYS_NEW_J
             FIRST = .TRUE.
+#endif
+
+#ifdef TRIGGER_NEW_J
+            newJ_triggered = FIRST
+            if (.NOT. FIRST) then
+               sum = zero
+               do m=1,NEQ
+                  scale = spec_scalT
+                  if (m.ne.1) scale = spec_scalY(m-1)
+                  sum = sum + ABS(RWRK(NZ+m-1)-YJ_SAVE(m))/scale
+               end do
+               if (sum .gt. NEWJ_TOL) then
+                  FIRST = .TRUE.
+                  newJ_triggered = .TRUE.
+               end if
+            endif
 #endif
             if (do_diag.eq.1) then
                FuncCount(i,j) = 0
@@ -614,7 +620,7 @@ c     Set up ATOL
                TT1save = TT1
                TT2 = TT1 + dtloc
 
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+#if !defined(BL_USE_DOUBLE)
                CALL SVODE
 #else
                CALL DVODE
@@ -626,21 +632,21 @@ c
 c   If the step was bad, and we reused an old Jacobian, try again from scratch.
 c               
 #if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
-               if (newJ_triggered .EQV. .FALSE.) then
+               if ((ISTATE .LT. 0) .and. (.NOT. newJ_triggered)) then
                   bad_soln = .FALSE.
                   do m=1,Nspec
                      if (RWRK(NZ+m) .lt. -1.D-6*spec_scalY(m))
      &                    bad_soln = .TRUE.             
                   end do
-                  if (bad_soln .EQV. .TRUE.) then
-                     TT1 = TT1SAVE
-                     FIRST = .TRUE.
+                  if (bad_soln) then
+                     FIRST  = .TRUE.
+                     TT1    = zero
+                     ISTATE = 1
                      RWRK(NZ) = Told(i,j)
                      do m=1,Nspec
                         RWRK(NZ+m) = Ytemp(m)
                      end do
 
-                     ISTATE = 1
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                      CALL SVODE
 #else 
@@ -750,15 +756,6 @@ c
       REAL_T RHO, SCAL, TSCAL, Tt, Wavg, invmwt(maxspec), X(maxspec)
       REAL_T alpha, l1, l2
 
-#ifdef BL_USE_OMP
-      include "omp_lib.h"
-      REAL_T,  pointer :: egrwrk(:,:)
-      integer, pointer :: egiwrk(:,:)
-      common /egwork/ egrwrk,egiwrk
-      save /egwork/
-#endif
-      integer egrlen, egilen, tid, nthrds
-
       parameter(SCAL = tenth, TSCAL = one / 100000.0D0)
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
@@ -769,47 +766,7 @@ c
          invmwt(n) = one / invmwt(n)
       end do
 
-!$omp parallel private(egrlen,egilen,nthrds)
-
-#ifdef BL_USE_OMP
-
-!$omp critical
-      if (.not.associated(egrwrk)) then
-         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
-         egilen = Nspec
-         nthrds = omp_get_num_threads()
-
-         allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
-
-         do i = 1,nthrds
-            do n=1,egrlen
-               egrwrk(n,i) = RWRK(egbr+n-1)
-            enddo
-            do n=1,egilen
-               egiwrk(n,i) = IWRK(egbi+n-1)
-            enddo
-         end do
-      end if
-!$omp end critical
-
-#define EGSRWK egrwrk(1,tid)
-#define EGSIWK egiwrk(1,tid)
-
-#else
-
-#define EGSRWK RWRK(egbr)
-#define EGSIWK IWRK(egbi)
-
-#endif /*BL_USE_OMP*/
-
-!$omp do private(i,j,n,Yt,Tt,alpha,Dt,Wavg)
-!$omp&private(CPMS,X,RHO,l1,l2,tid)
       do j=lo(2),hi(2)
-
-#ifdef BL_USE_OMP
-         tid = omp_get_thread_num() + 1
-#endif
          do i=lo(1),hi(1)
 
             do n=1,Nspec
@@ -820,8 +777,8 @@ c
             CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
             CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL EGSPAR(Tt,X,Yt,CPMS,EGSRWK,EGSIWK)
-            CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGSRWK,Dt)
+            CALL EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
+            CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGRWRK(1),Dt)
             CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
 
             do n=1,Nspec
@@ -830,25 +787,19 @@ c
 
             if (do_temp .ne. 0) then
                alpha = 1.0D0
-               CALL EGSL1(alpha,Tt,X,EGSRWK,l1)
+               CALL EGSL1(alpha,Tt,X,EGRWRK(1),l1)
                alpha = -1.0D0
-               CALL EGSL1(alpha,Tt,X,EGSRWK,l2)
+               CALL EGSL1(alpha,Tt,X,EGRWRK(1),l2)
                RD(i,j,Nspec+1) = half * (l1 + l2) * TSCAL
             endif
 
             if (do_VelVisc .ne. 0) then
-               CALL EGSE3(Tt,Yt,EGSRWK,RD(i,j,Nspec+2))
+               CALL EGSE3(Tt,Yt,EGRWRK(1),RD(i,j,Nspec+2))
                RD(i,j,Nspec+2) = RD(i,j,Nspec+2) * SCAL
             endif
 
          end do
       end do
-!$omp end do
-
-!$omp end parallel
-
-#undef EGSRWK
-#undef EGSIWK
 
       end
 
@@ -870,60 +821,12 @@ c
       integer i, j, n
       REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), Tt
 
-#ifdef BL_USE_OMP
-      include "omp_lib.h"
-      REAL_T,  pointer :: egrwrk(:,:)
-      integer, pointer :: egiwrk(:,:)
-      common /egwork/ egrwrk,egiwrk
-      save /egwork/
-#endif
-      integer egrlen, egilen, tid, nthrds
-
       parameter(SCAL = tenth)
-
-!$omp parallel private(egrlen,egilen,nthrds)
-
-#ifdef BL_USE_OMP
-
-!$omp critical
-      if (.not.associated(egrwrk)) then
-         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
-         egilen = Nspec
-         nthrds = omp_get_num_threads()
-
-         allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
-
-         do i = 1,nthrds
-            do n=1,egrlen
-               egrwrk(n,i) = RWRK(egbr+n-1)
-            enddo
-            do n=1,egilen
-               egiwrk(n,i) = IWRK(egbi+n-1)
-            enddo
-         end do
-      end if
-!$omp end critical
-
-#define EGSRWK egrwrk(1,tid)
-#define EGSIWK egiwrk(1,tid)
-
-#else
-
-#define EGSRWK RWRK(egbr)
-#define EGSIWK IWRK(egbi)
-
-#endif /*BL_USE_OMP*/
 !
 ! The following computes the mixture averaged shear viscosity using EGLib
 ! Note that SCAL converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
 !
-!$omp do private(i,j,n,Yt,Tt,CPMS,X,tid)
       do j=lo(2),hi(2)
-
-#ifdef BL_USE_OMP
-         tid = omp_get_thread_num() + 1
-#endif
          do i=lo(1),hi(1)
             do n=1,Nspec
                Yt(n) = Y(i,j,n)
@@ -931,17 +834,11 @@ c
             Tt = MAX(T(i,j),TMIN_TRANS) 
             CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL EGSPAR(Tt,X,Yt,CPMS,EGSRWK,EGSIWK)
-            CALL EGSE3(Tt,Yt,EGSRWK,eta(i,j))
+            CALL EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
+            CALL EGSE3(Tt,Yt,EGRWRK(1),eta(i,j))
             eta(i,j) = eta(i,j) * SCAL
          end do
       end do
-!$omp end do
-
-!$omp end parallel
-
-#undef EGSRWK
-#undef EGSIWK
 
       end
 

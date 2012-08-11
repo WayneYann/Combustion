@@ -540,14 +540,14 @@ c     Get the matrix of elements versus species
          nsub  = 1
          dtloc = dt
       endif
+
+!$omp parallel
       !
       ! Force recalculation of jacobian for each XYZ block.
       !
       FIRST = .TRUE.
 
 #ifdef BL_USE_OMP
-
-!$omp parallel
 
 !$omp critical
       if (.not.associated(dvrwrk)) then
@@ -587,22 +587,14 @@ c     Get the matrix of elements versus species
 !$omp do private(i,j,k,m,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
 !$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tid,tspecies)
 !$omp&private(lout,name) schedule(dynamic,1)
-
       do k=lo(3),hi(3)
-
 #ifdef BL_USE_OMP
          tid = omp_get_thread_num() + 1
-         !
-         ! Force recalculation of jacobian for each XY slab.
-         !
-         FIRST = .TRUE.
 #endif
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
-
                TT1    = zero
                ISTATE = 1
-
 #ifdef SOLN_IS_1D
             if (i.ne.lo(1) .and. j.ne.lo(2)) then
                do m=1,Nspec
@@ -615,7 +607,6 @@ c     Get the matrix of elements versus species
 
 #ifdef DO_JBB_HACK
 #ifdef DO_JBB_HACK_TEMP
-
                tspecies(0) = MAX(HACK_TEMP_MIN, MIN(HACK_TEMP_MAX, tspecies(0)))
 #endif
             sum = zero
@@ -636,22 +627,24 @@ c     Get the matrix of elements versus species
                tspecies(m) = Ytemp(m)
             end do
 
-#ifdef TRIGGER_NEW_J
-            newJ_triggered = .FALSE.
-            sum = zero
-            do m=1,NEQ
-               scale = spec_scalT
-               if (m.ne.1) scale = spec_scalY(m-1)
-               sum = sum + ABS(tspecies(m-1)-YJ_SAVE(m))/scale
-            end do
-            if (sum .gt. NEWJ_TOL) then
-               FIRST = .TRUE.
-               newJ_triggered = .TRUE.
-            end if
-#endif
-
 #ifdef ALWAYS_NEW_J
             FIRST = .TRUE.
+#endif
+
+#ifdef TRIGGER_NEW_J
+            newJ_triggered = FIRST
+            if (.NOT. FIRST) then
+               sum = zero
+               do m=1,NEQ
+                  scale = spec_scalT
+                  if (m.ne.1) scale = spec_scalY(m-1)
+                  sum = sum + ABS(tspecies(m-1)-YJ_SAVE(m))/scale
+               end do
+               if (sum .gt. NEWJ_TOL) then
+                  FIRST = .TRUE.
+                  newJ_triggered = .TRUE.
+               endif
+            endif
 #endif
             if (do_diag.eq.1) then
                FuncCount(i,j,k) = 0
@@ -685,21 +678,22 @@ c     Get the matrix of elements versus species
                ! try again from scratch
                !
 #if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
-               if (newJ_triggered .EQV. .FALSE.) then 
+               if ((ISTATE .LT. 0) .and. (.NOT. newJ_triggered)) then
                   bad_soln = .FALSE.
                   do m=1,Nspec
                      if (tspecies(m) .lt. -1.D-6*spec_scalY(m))
      &                    bad_soln = .TRUE.
                   end do
-                  if (bad_soln .EQV. .TRUE.) then
-                     FIRST = .TRUE. 
+                  if (bad_soln) then
+                     FIRST  = .TRUE. 
+                     TT1    = zero
+                     ISTATE = 1
                      tspecies(0) = Told(i,j,k)
                      do m=1,Nspec
                         tspecies(m) = Ytemp(m)
                      end do
-                     TT1    = zero
-                     ISTATE = 1
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+
+#if !defined(BL_USE_DOUBLE)
                   CALL SVODE
 #else 
                   CALL DVODE
@@ -724,6 +718,7 @@ c     Get the matrix of elements versus species
                endif
 
                if (verbose_vode .eq. 1) then
+!$omp critical
 #ifdef BL_USE_OMP
                   write(6,*) '......dvode done:'
                   write(6,*) ' last successful step size = ',dvrwrk(11,tid)
@@ -759,9 +754,11 @@ c     Get the matrix of elements versus species
                      write(6,*) '   spec with largest error = ',name
                   end if
 #endif
+!$omp end critical
                end if
 
                if (ISTATE .LE. -1) then
+!$omp critical
                   call CONPF_FILE(NEQ, TT1, tspecies, nwdot, RWRK, IWRK)
                   lout = open_vode_failure_file()                  
                   write(lout,*)
@@ -781,6 +778,7 @@ c     Get the matrix of elements versus species
  996              format(a16,1x,4e30.22)
                   close(lout)
                   call bl_abort('VODE failed, see drop file, exiting')
+!$omp end critical
                end if
              enddo
 
@@ -853,15 +851,6 @@ c     Get the matrix of elements versus species
       REAL_T SCAL, TSCAL, Wavg, RHO, Tt, invmwt(maxspec)
       REAL_T alpha, l1, l2, X(maxspec), CPMS(maxspec)
 
-#ifdef BL_USE_OMP
-      include "omp_lib.h"
-      REAL_T,  pointer :: egrwrk(:,:)
-      integer, pointer :: egiwrk(:,:)
-      common /egwork/ egrwrk,egiwrk
-      save /egwork/
-#endif
-      integer egrlen, egilen, tid, nthrds
-
       parameter(SCAL = tenth, TSCAL = one / 100000.0D0)
 
       CALL CKRP(IWRK(ckbi),RWRK(ckbr),RU,RUC,P1ATM)
@@ -872,50 +861,9 @@ c     Get the matrix of elements versus species
          invmwt(n) = one / invmwt(n)
       end do
 
-!$omp parallel
-
-#ifdef BL_USE_OMP
-
-!$omp critical
-      if (.not.associated(egrwrk)) then
-         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
-         egilen = Nspec
-         nthrds = omp_get_num_threads()
-
-         allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
-
-         do i = 1,nthrds
-            do n=1,egrlen
-               egrwrk(n,i) = RWRK(egbr+n-1)
-            enddo
-         enddo
-         do i = 1,nthrds
-            do n=1,egilen
-               egiwrk(n,i) = IWRK(egbi+n-1)
-            enddo
-         end do
-      endif
-!$omp end critical
-
-#define EGSRWK egrwrk(1,tid)
-#define EGSIWK egiwrk(1,tid)
-
-#else
-
-#define EGSRWK RWRK(egbr)
-#define EGSIWK IWRK(egbi)
-
-#endif /*BL_USE_OMP*/
-
-!$omp do private(i,j,k,n,Yt,Tt,alpha,Dt,Wavg)
-!$omp&private(CPMS,X,RHO,l1,l2,tid)
-
+!$omp parallel do private(i,j,k,n,Yt,Tt,alpha,Dt,Wavg)
+!$omp&private(CPMS,X,RHO,l1,l2)
       do k=lo(3),hi(3)
-
-#ifdef BL_USE_OMP
-         tid = omp_get_thread_num() + 1
-#endif
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                do n=1,Nspec
@@ -925,8 +873,8 @@ c     Get the matrix of elements versus species
                CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
                CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               CALL EGSPAR(Tt,X,Yt,CPMS,EGSRWK,EGSIWK)
-               CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGSRWK,Dt)
+               CALL EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
+               CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGRWRK(1),Dt)
                CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
                do n=1,Nspec
                   RD(i,j,k,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
@@ -934,26 +882,22 @@ c     Get the matrix of elements versus species
 
                if (do_temp .ne. 0) then
                   alpha = 1
-                  CALL EGSL1(alpha,Tt,X,EGSRWK,l1)
+                  CALL EGSL1(alpha,Tt,X,EGRWRK(1),l1)
                   alpha = -1
-                  CALL EGSL1(alpha,Tt,X,EGSRWK,l2)
+                  CALL EGSL1(alpha,Tt,X,EGRWRK(1),l2)
                   RD(i,j,k,Nspec+1) = half * (l1 + l2) * TSCAL
                endif
 
                if (do_VelVisc .ne. 0) then
-                  CALL EGSE3(Tt,Yt,EGSRWK,RD(i,j,k,Nspec+2))
+                  CALL EGSE3(Tt,Yt,EGRWRK(1),RD(i,j,k,Nspec+2))
                   RD(i,j,k,Nspec+2) = RD(i,j,k,Nspec+2) * SCAL
                endif
 
             end do
          end do
       end do
-!$omp end do
+!$omp end parallel do
 
-!$omp end parallel
-
-#undef EGSRWK
-#undef EGSIWK
       end
 
       subroutine FORT_MIX_SHEAR_VISC(lo, hi, eta, DIMS(eta),
@@ -974,62 +918,14 @@ c     Get the matrix of elements versus species
       integer i, j, k, n
       REAL_T X(maxspec), Yt(maxspec), CPMS(maxspec), Tt
 
-#ifdef BL_USE_OMP
-      include "omp_lib.h"
-      REAL_T,  pointer :: egrwrk(:,:)
-      integer, pointer :: egiwrk(:,:)
-      common /egwork/ egrwrk,egiwrk
-      save /egwork/
-#endif
-      integer egrlen, egilen, tid, nthrds
-
       parameter(SCAL = tenth)
-
-!$omp parallel
-
-#ifdef BL_USE_OMP
-
-!$omp critical
-      if (.not.associated(egrwrk)) then
-         egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
-     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
-         egilen = Nspec
-         nthrds = omp_get_num_threads()
-
-         allocate(egrwrk(egrlen,nthrds),egiwrk(egilen,nthrds))
-
-         do i = 1,nthrds
-            do n=1,egrlen
-               egrwrk(n,i) = RWRK(egbr+n-1)
-            enddo
-         enddo
-         do i = 1,nthrds
-            do n=1,egilen
-               egiwrk(n,i) = IWRK(egbi+n-1)
-            enddo
-         end do
-      endif
-!$omp end critical
-
-#define EGSRWK egrwrk(1,tid)
-#define EGSIWK egiwrk(1,tid)
-
-#else
-
-#define EGSRWK RWRK(egbr)
-#define EGSIWK IWRK(egbi)
-
-#endif /*BL_USE_OMP*/
-!
-! The following computes the mixture averaged shear viscosity using EGLib
-! Note that SCAL converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
-!
-!$omp do private(i,j,k,n,Yt,Tt,CPMS,X,tid)
+      !
+      !The following computes the mixture averaged shear viscosity 
+      ! using EGLib. Note that SCAL converts assumed cgs units to
+      ! MKS (1 g/cm.s = .1 kg/m.s)
+      !
+!$omp parallel do private(i,j,k,n,Yt,Tt,CPMS,X)
       do k=lo(3),hi(3)
-
-#ifdef BL_USE_OMP
-         tid = omp_get_thread_num() + 1
-#endif
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                do n=1,Nspec
@@ -1038,18 +934,14 @@ c     Get the matrix of elements versus species
                Tt = MAX(T(i,j,k),TMIN_TRANS) 
                CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               CALL EGSPAR(Tt,X,Yt,CPMS,EGSRWK,EGSIWK)
-               CALL EGSE3(Tt,Yt,EGSRWK,eta(i,j,k))
+               CALL EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
+               CALL EGSE3(Tt,Yt,EGRWRK(1),eta(i,j,k))
                eta(i,j,k) = eta(i,j,k) * SCAL
             end do
          end do
       end do
-!$omp end do
+!$omp end parallel do
 
-!$omp end parallel
-
-#undef EGSRWK
-#undef EGSIWK
       end
 
       subroutine FORT_RHOfromPTY(lo, hi, RHO, DIMS(RHO), T, DIMS(T),

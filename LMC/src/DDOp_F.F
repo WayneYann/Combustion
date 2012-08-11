@@ -44,11 +44,11 @@ c     HACK: Clean up state to something "reasonable"
 
       call CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
       call CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),WW)
-      call EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-      CALL EGSVR1(Tt,Yt,RWRK(egbr),rhoDi)
+      call EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
+      CALL EGSVR1(Tt,Yt,EGRWRK(1),rhoDi)
 
       if (Full0_Mix1.eq.0) then
-         call EGSLTDR5(Tt,Yt,WW,RWRK(egbr),IWRK(egbi),PTC,rhoTD,rhoDij)
+         call EGSLTDR5(Tt,Yt,WW,EGRWRK(1),EGIWRK(1),PTC,rhoTD,rhoDij)
          do n=1,Nspec
             rhoTD(n) = rhoTD(n) * 1.d-1
          end do
@@ -57,7 +57,7 @@ c     HACK: Clean up state to something "reasonable"
          enddo
       else
 c     FIXME: Need to replace with cheaper call...leave here to debug though
-         call EGSLTDR5(Tt,Yt,WW,RWRK(egbr),IWRK(egbi),PTC,rhoTD,rhoDij)
+         call EGSLTDR5(Tt,Yt,WW,EGRWRK(1),EGIWRK(1),PTC,rhoTD,rhoDij)
       endif
       do n=1,Nspec
          rhoDi(n) = WW * rhoDi(n) * MWinv(n) * 1.d-1

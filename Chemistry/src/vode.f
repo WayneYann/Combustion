@@ -4160,10 +4160,3 @@ C-----------------------------------------------------------------------
       DUMACH = EPSILON(U)
       RETURN
       END
-
-
-      block data vhack_save
-      include "vode.H"
-      DATA YJ_SAVE /80*-1.d0/
-      DATA FIRST /.TRUE./
-      end
