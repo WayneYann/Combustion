@@ -12,30 +12,6 @@
       parameter (ckl = 0)
       parameter (ckc = 0)
 
-!     Multicomponent transport properties package workspace requirements
-      integer mcr, mci, mcl, mcc
-      integer MAXFIT, NO, NFDIM, NT, NRANGE, NLITEMAX
-      parameter (MAXFIT=7, NO=4, NFDIM=165, NT=50)
-      parameter (NRANGE = MAXTP-1, NLITEMAX=2)
-      integer mcrTranfit, mcrTranlib, mciTranfit, mciTranlib
-      integer mccTranfit, mccTranlib, mclTranfit, mclTranlib
-      
-      parameter (mcrTranfit = 0)
-      parameter (mcrTranlib = 0)
-      parameter (mcr = mcrTranfit+mcrTranlib)
-
-      parameter (mciTranfit = 0)
-      parameter (mciTranlib = 0)
-      parameter (mci = mciTranfit+mciTranlib)
-      
-      parameter (mccTranfit = 0)
-      parameter (mccTranlib = 0)
-      parameter (mcc = mccTranfit+mccTranlib)
-
-      parameter (mclTranfit = 0)
-      parameter (mclTranlib = 0)
-      parameter (mcl = mclTranfit+mclTranlib)
-
 !     EGLib package for transport properties (using scalar "S" mode):
 !     1) the values IFLAG=7 and ITLS=3 enable all the "S" library routines
 !     2) the original coding of egr (which was for the ITLS=3) was in error
@@ -67,16 +43,13 @@
       parameter (dvdc = 0)
 
 !     Workspace memory layout
-      integer ckbr, mcbr, dvbr, dvdbr, cker, mcer, dver, dvder
-      integer ckbi, mcbi, dvbi, dvdbi, ckei, mcei, dvei, dvdei
-      integer ckbl, mcbl, dvbl, dvdbl, ckel, mcel, dvel, dvdel
-      integer ckbc, mcbc, dvbc, dvdbc, ckec, mcec, dvec, dvdec
+      integer ckbr, dvbr, dvdbr, cker, dver, dvder
+      integer ckbi, dvbi, dvdbi, ckei, dvei, dvdei
+      integer ckbl, dvbl, dvdbl, ckel, dvel, dvdel
+      integer ckbc, dvbc, dvdbc, ckec, dvec, dvdec
       parameter (ckbr=1,ckbi=1,ckbl=1,ckbc=1)
       parameter (cker=ckbr+ckr-1,ckei=ckbi+cki-1)
       parameter (ckel=ckbl+ckl-1,ckec=ckbc+ckc-1)
-      parameter (mcbr=cker+1, mcbi=ckei+1, mcbl=ckel+1, mcbc=ckec+1)
-      parameter (mcer =mcbr+mcr-1,  mcei=mcbi+mci-1)
-      parameter (mcel =mcbl+mcl-1,  mcec=mcbc+mcc-1)
       parameter (dvbr=1, dvbi=1, dvbl=1, dvbc=1)
       parameter (dver =dvbr+dvr-1,  dvei=dvbi+dvi-1)
       parameter ( dvel =dvbl+dvl-1,  dvec=dvbc+dvc-1)
@@ -86,10 +59,10 @@
       
 !     Total workspace requirements -- add 1 to guard against null arrays.
       integer lenr_fixed, leni_fixed, lenl_fixed, lenc_fixed
-      parameter (lenr_fixed = ckr + mcr + dvr + dvdr + 1)
-      parameter (leni_fixed = cki + mci + dvi + dvdi + 1)
-      parameter (lenl_fixed = ckl + mcl + dvl + dvdl + 1)
-      parameter (lenc_fixed = ckc + mcc + dvc + dvdc + 1)
+      parameter (lenr_fixed = ckr + dvr + dvdr + 1)
+      parameter (leni_fixed = cki + dvi + dvdi + 1)
+      parameter (lenl_fixed = ckl + dvl + dvdl + 1)
+      parameter (lenc_fixed = ckc + dvc + dvdc + 1)
       
       double precision     RWRK(lenr_fixed)
       integer              IWRK(leni_fixed)
