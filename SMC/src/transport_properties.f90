@@ -58,11 +58,11 @@ contains
     double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
     double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nspecies)
 
-    integer :: i, j, k, n, iwrk
+    integer :: i, j, k, iwrk
     double precision :: rwrk, Tt, Wtm
     double precision, dimension(nspecies) :: Xt, Yt, Cpt, D
 
-    !$omp parallel do private(i,j,k,n,iwrk,rwrk,Tt,Wtm,Xt,Yt,Cpt,D)
+    !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,Wtm,Xt,Yt,Cpt,D)
     do k=lo(3)-ng,hi(3)+ng
     do j=lo(2)-ng,hi(2)+ng
     do i=lo(1)-ng,hi(1)+ng
