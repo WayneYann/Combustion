@@ -1,10 +1,13 @@
       !
       ! Hardwired sizes.
       !
-      integer maxreac, maxspec, maxelts, maxthrdb, maxtp, maxsp
-      integer maxspnml
-      parameter (maxreac = 472, maxspec=72, maxelts=6)
-      parameter (maxthrdb=20, maxtp=3, maxsp=12, maxspnml = 16)
+      integer, parameter :: maxreac  = 472
+      integer, parameter :: maxspec  = 72
+      integer, parameter :: maxelts  = 6
+      integer, parameter :: maxthrdb = 20
+      integer, parameter :: maxtp    = 3
+      integer, parameter :: maxsp    = 12
+      integer, parameter :: maxspnml = 16
       !
       ! The only ChemKin stuff we need.
       !
@@ -25,40 +28,20 @@
       !
       ! dvbr & dvbi index to start of DVODE real & integer workspace.
       !
-      integer, parameter :: dvbr=1, dvbi=1
-      !
-      ! These are the sizes of the DVODE workspaces. The two double
-      ! precision workspaces are grouped together with the driver
-      ! space coming after the DVODE space proper.
-      !
-      integer dvr, dvi, dvdr
-      !
-      ! dver  indexes to end   of DVODE        workspace.
-      ! dvdbr indexes to start of DVODE driver workspace.
-      ! dvder indexes to end   of DVODE driver workspace.
-      !
-      integer dver, dvdbr, dvder
+      integer, parameter :: dvbr  = 1
+      integer, parameter :: dvbi  = 1
+      integer, parameter :: dvr   = 22 + 9*(maxspec+1) + 2*(maxspec+1)**2
+      integer, parameter :: dvi   = 30 + maxspec + 1
+      integer, parameter :: dvdr  = 2*maxspec+3
+      integer, parameter :: dver  = dvbr+dvr-1
+      integer, parameter :: dvdbr = dver+1
+      integer, parameter :: dvder = dvdbr+dvdr-1
 
-      parameter (dvr = 22 + 9*(maxspec+1) + 2*(maxspec+1)**2)
-      parameter (dvi = 30 + maxspec + 1)
-      parameter (dvdr = 2*maxspec+3)
+      double precision RWRK(dvr + dvdr)
+      integer          IWRK(dvi)
 
-      parameter (dver =dvbr+dvr-1)
-      parameter (dvdbr=dver+1)
-      parameter (dvder=dvdbr+dvdr-1)
-      !
-      ! Total workspace requirements - add 1 to guard against 0 size.
-      !
-      integer lenr_fixed, leni_fixed
-      parameter (lenr_fixed = dvr + dvdr + 1)
-      parameter (leni_fixed = dvi + 1)
-
-      double precision RWRK(lenr_fixed)
-      integer          IWRK(leni_fixed)
-
-      common / ckdrwork / RWRK
-      common / ckdiwork / IWRK
-      save /ckdrwork/, /ckdiwork/
+      common / cdwork / RWRK, IWRK
+      save   / cdwork /
       !
       ! EGlib workspace -- allocated once in FORT_INITCHEM()
       !
@@ -73,17 +56,17 @@
       !
       integer            Nelt, Nspec, Nreac, Nfit
       common / ckdsize / Nelt, Nspec, Nreac, Nfit
-      save /ckdsize/
+      save   / ckdsize /
       !
       ! I/O
       !
       integer          LLINKMC
       common / ckdio / LLINKMC
-      save /ckdio/
+      save   / ckdio /
 
       integer verbose_vode, max_vode_subcycles
-      common /ckdio1/ verbose_vode, max_vode_subcycles
-      save /ckdio1/
+      common / ckdio1 / verbose_vode, max_vode_subcycles
+      save   / ckdio1 /
       !
       ! Integrator
       !
@@ -92,15 +75,15 @@
       save /vode1/
 
       double precision  thickFacCH
-      common /vode2/ thickFacCH
-      save /vode2/
+      common / vode2 / thickFacCH
+      save   / vode2 /
       !            
       ! Transport library
       !
       double precision  TMIN_TRANS
-      common /tran2/ TMIN_TRANS
-      save /tran2/
+      common / tran2 / TMIN_TRANS
+      save   / tran2 /
 
       integer Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset
-      common /tran3/ Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset
-      save /tran3/
+      common / tran3 / Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset
+      save   / tran3 /
