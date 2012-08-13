@@ -8,11 +8,9 @@
       !
       ! ChemKin workspace requirements.
       !
-      integer ckr, cki, ckl, ckc
+      integer ckr, cki
       parameter (ckr = 0)
       parameter (cki = 0)
-      parameter (ckl = 0)
-      parameter (ckc = 0)
       !
       ! EGLib package for transport properties
       !
@@ -20,25 +18,23 @@
       !
       integer, parameter :: eg_nodes=1, eg_IFLAG=3, eg_ITLS=1
       !
-      ! If you're using the DD* routines.
+      ! If you're using the DD* routines:
       !
-      !integer, parameter :: eg_nodes=1, eg_IFLAG=7, eg_ITLS=3
-
-!     DVODE workspace requirements      
-      integer dvr, dvi, dvl, dvc
+      ! integer, parameter :: eg_nodes=1, eg_IFLAG=7, eg_ITLS=3
+      !
+      ! DVODE workspace requirements
+      !
+      integer dvr, dvi
       parameter (dvr = 22 + 9*(maxspec+1) + 2*(maxspec+1)**2)
       parameter (dvi = 30 + maxspec + 1)
-      parameter (dvl = 0)
-      parameter (dvc = 0)
-      
-!     DVODE driver (for transient ODE integration) workspace requirements
-      integer dvdr, dvdi, dvdl, dvdc
+      !
+      ! DVODE driver workspace requirements
+      !
+      integer dvdr
       parameter (dvdr = 2*maxspec+3)
-      parameter (dvdi = 0)
-      parameter (dvdl = 0)
-      parameter (dvdc = 0)
-
-!     Workspace memory layout
+      !
+      ! Workspace memory layout
+      !
       integer ckbr, dvbr, dvdbr, cker, dver, dvder
       integer ckbi, dvbi, dvdbi, ckei, dvei, dvdei
 
@@ -47,12 +43,13 @@
       parameter (dvbr=1, dvbi=1)
       parameter (dver =dvbr+dvr-1,  dvei=dvbi+dvi-1)
       parameter (dvdbr=dver+1,dvdbi=dvei+1)
-      parameter (dvder=dvdbr+dvdr-1,dvdei=dvdbi+dvdi-1)
-      
-!     Total workspace requirements -- add 1 to guard against null arrays.
-      integer lenr_fixed, leni_fixed   !, lenl_fixed, lenc_fixed
+      parameter (dvder=dvdbr+dvdr-1)
+      !
+      ! Total workspace requirements - add 1 to guard against 0 size.
+      !
+      integer lenr_fixed, leni_fixed
       parameter (lenr_fixed = ckr + dvr + dvdr + 1)
-      parameter (leni_fixed = cki + dvi + dvdi + 1)
+      parameter (leni_fixed = cki + dvi + 1)
 
       double precision     RWRK(lenr_fixed)
       integer              IWRK(leni_fixed)
