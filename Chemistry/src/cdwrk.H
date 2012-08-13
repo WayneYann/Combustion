@@ -11,7 +11,8 @@
       !
       ! The only ChemKin stuff we need.
       !
-      integer, parameter :: ckbi=1, ckbr=1
+      integer, parameter :: ckbi = 1
+      integer, parameter :: ckbr = 1
       !
       ! EGLib package for transport properties.
       !
@@ -22,32 +23,28 @@
       ! If you're using the DD* routines:
       !
       ! integer, parameter :: eg_nodes=1, eg_IFLAG=7, eg_ITLS=3
-
       !
       ! DVODE & DVODE driver workspace requirements.
       !
-      ! dvbr & dvbi index to start of DVODE real & integer workspace.
-      !
-      integer, parameter :: dvbr  = 1
-      integer, parameter :: dvbi  = 1
-      integer, parameter :: dvr   = 22 + 9*(maxspec+1) + 2*(maxspec+1)**2
-      integer, parameter :: dvi   = 30 + maxspec + 1
-      integer, parameter :: dvdr  = 2*maxspec+3
-      integer, parameter :: dver  = dvbr+dvr-1
-      integer, parameter :: dvdbr = dver+1
-      integer, parameter :: dvder = dvdbr+dvdr-1
+      integer, parameter :: dvbr = 1
+      integer, parameter :: dvbi = 1
 
-      double precision RWRK(dvr + dvdr)
-      integer          IWRK(dvi)
+      integer dvr, dvi, dvdr, dvdbr, dvder
+      common / wrkidx / dvr, dvi, dvdr, dvdbr, dvder
+      save   / wrkidx /
 
+      integer,          pointer :: IWRK(:)
+      double precision, pointer :: RWRK(:)
       common / cdwork / RWRK, IWRK
       save   / cdwork /
+
+!$omp threadprivate(/CDWORK/)
       !
       ! EGlib workspace -- allocated once in FORT_INITCHEM()
       !
       integer,          pointer :: EGIWRK(:)
       double precision, pointer :: EGRWRK(:)
-      common / EGWORK / EGIWRK, EGRWRK
+      common / EGWORK / EGRWRK, EGIWRK
       save   / EGWORK /
 
 !$omp threadprivate(/EGWORK/)

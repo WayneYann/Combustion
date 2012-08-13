@@ -483,7 +483,7 @@ c     Get the matrix of elements versus species
       REAL_T TT1, TT2, RU, RUC, P1atm, sum, atoln
       integer i, j, k, m, MF, ISTATE, LOUTCK, lout, nfails
 
-      integer nsubchem, nsub, node, tid, nthrds
+      integer nsubchem, nsub, node, nthrds
       REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec), nwdot(0:maxspec)
       REAL_T Ct(maxspec),Qt(maxreac),Ytemp(maxspec),Yres(maxspec)
 
@@ -491,14 +491,7 @@ c     Get the matrix of elements versus species
       parameter (LOUTCK=6)
 
       logical newJ_triggered, bad_soln
-
-#ifdef BL_USE_OMP
-      include "omp_lib.h"
-      REAL_T,  pointer, save :: dvrwrk(:,:)
-      integer, pointer, save :: dviwrk(:,:)
-      integer,          save :: dvrlen
-      integer,          save :: dvilen
-#endif
+#if 0
       !
       ! Set IOPT=1 parameter settings for VODE
       ! They only really need to be set once.
@@ -509,14 +502,13 @@ c     Get the matrix of elements versus species
       IWRK(dvbi+4) = 0
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
+#endif
       
       if (do_diag.eq.1) nsubchem = nchemdiag
       !
       ! Set molecular weights and pressure in area accessible by conpF
       !
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-
-      RWRK(NP) = Patm * P1atm
 
       if (nstiff .eq. 1) then
          MF = 22  ! finite difference jacobian
@@ -551,50 +543,12 @@ c     Get the matrix of elements versus species
       !
       FIRST = .TRUE.
 
-#ifdef BL_USE_OMP
-
-!$omp critical
-      if (.not.associated(dvrwrk)) then
-         dvrlen = 22 + 9*(Nspec+1) + 2*(Nspec+1)**2
-         dvilen = 30 + Nspec + 1
-         nthrds = omp_get_num_threads()
-
-         allocate(dvrwrk(dvrlen,nthrds),dviwrk(dvilen,nthrds))
-
-         do i = 1,nthrds
-            dvrwrk(5,i) = 0
-            dvrwrk(6,i) = 0
-            dvrwrk(7,i) = ten2minus19
-            dviwrk(5,i) = 0
-            dviwrk(6,i) = max_vode_subcycles
-            dviwrk(7,i) = 0
-         end do
-      endif
-!$omp end critical
-
-#define DVRWK   dvrwrk(1,tid)
-#define DVIWK   dviwrk(1,tid)
-#define DVIFCNT dviwrk(12,tid)
-#define DVRLEN  dvrlen
-#define DVILEN  dvilen
-
-#else
-
-#define DVRWK   RWRK(dvbr)
-#define DVIWK   IWRK(dvbi)
-#define DVIFCNT IWRK(dvbi+11)
-#define DVRLEN  dvr
-#define DVILEN  dvi
-
-#endif /*BL_USE_OMP*/
+      RWRK(NP) = Patm * P1atm
 
 !$omp do private(i,j,k,m,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
-!$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tid,tspecies)
+!$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tspecies)
 !$omp&private(lout,name) schedule(dynamic,1)
       do k=lo(3),hi(3)
-#ifdef BL_USE_OMP
-         tid = omp_get_thread_num() + 1
-#endif
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                TT1    = zero
@@ -675,7 +629,7 @@ c     Get the matrix of elements versus species
                CALL DVODE
 #endif
      &              (CONPF_FILE, NEQ, tspecies, TT1, TT2, ITOL, RTOL, ATOL,
-     &              ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
+     &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi), dvi,
      &              CONPJ_FILE, MF, RWRK, IWRK)
                !
                ! If the step was bad, and we reused an old Jacobian,
@@ -706,7 +660,7 @@ c     Get the matrix of elements versus species
                   CALL DVODE
 #endif
      &           (CONPF_FILE, NEQ, tspecies, TT1, TT2, ITOL, RTOL, ATOL,
-     &              ITASK, ISTATE, IOPT, DVRWK, DVRLEN, DVIWK, DVILEN,
+     &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi), dvi,
      &              CONPJ_FILE, MF, RWRK, IWRK)
                end if
             end if
@@ -719,31 +673,13 @@ c     Get the matrix of elements versus species
                   do m=1,Nreac
                      diag(i,j,k,m) = diag(i,j,k,m)+weight*dtloc*Qt(m)*million
                   enddo
-                  FuncCount(i,j,k) = FuncCount(i,j,k) + DVIFCNT
+                  FuncCount(i,j,k) = FuncCount(i,j,k) + IWRK(dvbi+11)
                else
-                  FuncCount(i,j,k) = DVIFCNT
+                  FuncCount(i,j,k) = IWRK(dvbi+11)
                endif
 
                if (verbose_vode .eq. 1) then
 !$omp critical
-#ifdef BL_USE_OMP
-                  write(6,*) '......dvode done:'
-                  write(6,*) ' last successful step size = ',dvrwrk(11,tid)
-                  write(6,*) '          next step to try = ',dvrwrk(12,tid)
-                  write(6,*) '   integrated time reached = ',dvrwrk(13,tid)
-                  write(6,*) '      number of time steps = ',dviwrk(11,tid)
-                  write(6,*) '              number of fs = ',dviwrk(12,tid)
-                  write(6,*) '              number of Js = ',dviwrk(13,tid)
-                  write(6,*) '    method order last used = ',dviwrk(14,tid)
-                  write(6,*) '   method order to be used = ',dviwrk(15,tid)
-                  write(6,*) '            number of LUDs = ',dviwrk(19,tid)
-                  write(6,*) ' number of Newton iterations ',dviwrk(20,tid)
-                  write(6,*) ' number of Newton failures = ',dviwrk(21,tid)
-                  if (ISTATE.eq.-4 .or. ISTATE.eq.-5) then
-                     call get_spec_name(name,dviwrk(16,tid))
-                     write(6,*) '   spec with largest error = ',name
-                  end if
-#else
                   write(6,*) '......dvode done:'
                   write(6,*) ' last successful step size = ',RWRK(dvbr+10)
                   write(6,*) '          next step to try = ',RWRK(dvbr+11)
@@ -760,7 +696,6 @@ c     Get the matrix of elements versus species
                      call get_spec_name(name,IWRK(dvbi+15))
                      write(6,*) '   spec with largest error = ',name
                   end if
-#endif
 !$omp end critical
                end if
 
@@ -834,11 +769,6 @@ c     Get the matrix of elements versus species
       if (nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
-
-#undef DVSRWK
-#undef DVSIWK
-#undef DVRLEN
-#undef DVILEN
 
       end
  
