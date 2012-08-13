@@ -6,6 +6,7 @@
 #    define FORT_SETVODESUBCYC   dmxsubcy
 #    define FORT_SETSPECSCALY    dsetscal
 #    define FORT_INITCHEM        dinitchem
+#    define FORT_FINALIZECHEM    dfinalchem
 #    define FORT_GETCKMAXNAMELEN dckmxnml
 #    define FORT_GETCKNUMSPEC    dcknspec
 #    define FORT_GETCKNUMELT     dcknelt
@@ -58,6 +59,7 @@
 #    define FORT_SETVODESUBCYC   DMXSUBCY
 #    define FORT_SETSPECSCALY    DSETSCAL
 #    define FORT_INITCHEM        DINITCHEM
+#    define FORT_FINALIZECHEM    DFINALCHEM
 #    define FORT_GETCKMAXNAMELEN DCKMXNML
 #    define FORT_GETCKNUMSPEC    DCKNSPEC
 #    define FORT_GETCKNUMELT     DCKNELT
@@ -109,6 +111,7 @@
 #    define FORT_SETVODESUBCYC   dmxsubcy
 #    define FORT_SETSPECSCALY    dsetscal
 #    define FORT_INITCHEM        dinitchem
+#    define FORT_FINALIZECHEM    dfinalchem
 #    define FORT_GETCKMAXNAMELEN dckmxnml
 #    define FORT_GETCKNUMSPEC    dcknspec
 #    define FORT_GETCKNUMELT     dcknelt
@@ -160,6 +163,7 @@
 #    define FORT_SETVODESUBCYC   dmxsubcy_
 #    define FORT_SETSPECSCALY    dsetscal_
 #    define FORT_INITCHEM        dinitchem_
+#    define FORT_FINALIZECHEM    dfinalchem_
 #    define FORT_GETCKMAXNAMELEN dckmxnml_
 #    define FORT_GETCKNUMSPEC    dcknspec_
 #    define FORT_GETCKNUMELT     dcknelt_
@@ -220,6 +224,7 @@ extern "C" {
     void FORT_SETVODESUBCYC(const int* maxcyc);
     void FORT_SETSPECSCALY(const int* name, const int* length);
     void FORT_INITCHEM();
+    void FORT_FINALIZECHEM();
     int FORT_GETCKMAXNAMELEN();
     int FORT_GETCKNUMSPEC();
     int FORT_GETCKNUMELT();

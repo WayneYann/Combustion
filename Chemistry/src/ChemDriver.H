@@ -13,7 +13,7 @@ public:
 
     ChemDriver ();	  
 
-    ~ChemDriver () {}
+    ~ChemDriver ();
 
     void solveTransient (FArrayBox&        Ynew,
                          FArrayBox&        Tnew,
