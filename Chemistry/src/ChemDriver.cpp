@@ -35,6 +35,11 @@ ChemDriver::ChemDriver ()
     mTmpData.resize(mHtoTiterMAX);
 }
 
+ChemDriver::~ChemDriver ()
+{
+    FORT_FINALIZECHEM();
+}
+
 void
 ChemDriver::initOnce ()
 {
