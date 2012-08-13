@@ -9,6 +9,8 @@ c     Series of runtime hacks
 #define HACK_TEMP_MIN 273.d0
 #define HACK_TEMP_MAX 1900.d0
 #define TRIGGER_NEW_J
+#undef TRIGGER_NEW_J
+#define ALWAYS_NEW_J
 #undef ALWAYS_NEW_J
 #undef SOLN_IS_1D
 
@@ -479,7 +481,7 @@ c     Get the matrix of elements versus species
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm, sum, atoln
-      integer i, j, k, m, MF, ISTATE, LOUTCK, lout
+      integer i, j, k, m, MF, ISTATE, LOUTCK, lout, nfails
 
       integer nsubchem, nsub, node, tid, nthrds
       REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec), nwdot(0:maxspec)
@@ -540,6 +542,8 @@ c     Get the matrix of elements versus species
          nsub  = 1
          dtloc = dt
       endif
+
+      nfails = 0
 
 !$omp parallel
       !
@@ -630,9 +634,9 @@ c     Get the matrix of elements versus species
 #ifdef ALWAYS_NEW_J
             FIRST = .TRUE.
 #endif
+            newJ_triggered = FIRST
 
 #ifdef TRIGGER_NEW_J
-            newJ_triggered = FIRST
             if (.NOT. FIRST) then
                sum = zero
                do m=1,NEQ
@@ -692,6 +696,9 @@ c     Get the matrix of elements versus species
                      do m=1,Nspec
                         tspecies(m) = Ytemp(m)
                      end do
+!$omp critical
+                  nfails = nfails + 1
+!$omp end critical
 
 #if !defined(BL_USE_DOUBLE)
                   CALL SVODE
@@ -823,6 +830,10 @@ c     Get the matrix of elements versus species
 !$omp end do
 
 !$omp end parallel
+
+      if (nfails .gt. 0) then
+         print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
+      end if
 
 #undef DVSRWK
 #undef DVSIWK
