@@ -1,7 +1,5 @@
 module advance_module
 
-  use fabio_module
-
   use bl_error_module
   use chemistry_module, only : nspecies, molecular_weight
   use derivative_stencil_module
@@ -27,6 +25,9 @@ module advance_module
   double precision, parameter :: OneQuarter    = 1.d0/4.d0
   double precision, parameter :: ThreeQuarters = 3.d0/4.d0
 
+  ! For S3D style. These indices are for first-derivatives
+  integer, parameter :: idu=1,idv=2,idw=3,idT=4,idp=5,idX1=6 
+
   public advance
 
 contains
@@ -48,6 +49,7 @@ contains
 
 
   subroutine advance_rk3 (U,dt,dx,istep)
+    use derivative_stencil_module, only : stencil, compact, S3D
 
     type(multifab),    intent(inout) :: U
     double precision,  intent(  out) :: dt
@@ -68,7 +70,13 @@ contains
     ! RK Step 1
     courno_proc = 1.0d-50
 
-    call dUdt(U, Uprime, dx, courno=courno_proc)
+    if (stencil .eq. compact) then
+       call dUdt(U, Uprime, dx, courno=courno_proc)
+    else if (stencil .eq. S3D) then
+       call dUdt_S3D(U, Uprime, dx, courno=courno_proc)
+    else
+       call bl_error("advance_rk3: unknown stencil type")
+    end if
 
     if (fixed_dt > 0.d0) then
        dt = fixed_dt
@@ -134,12 +142,26 @@ contains
     call reset_density(Unew)
 
     ! RK Step 2
-    call dUdt(Unew,Uprime,dx)
+    if (stencil .eq. compact) then
+       call dUdt(Unew,Uprime,dx)
+    else if (stencil .eq. S3D) then
+       call dUdt_S3D(Unew,Uprime,dx)
+    else
+       call bl_error("advance_rk3: unknown stencil type")
+    end if
+
     call update_rk3(OneQuarter,Unew, ThreeQuarters,U, OneQuarter*dt,Uprime)
     call reset_density(Unew)
 
     ! RK Step 3
-    call dUdt(Unew,Uprime,dx)
+    if (stencil .eq. compact) then
+       call dUdt(Unew,Uprime,dx)
+    else if (stencil .eq. S3D) then
+       call dUdt_S3D(Unew,Uprime,dx)
+    else
+       call bl_error("advance_rk3: unknown stencil type")
+    end if       
+
     call update_rk3(OneThird,U, TwoThirds,Unew, TwoThirds*dt,Uprime)
     call reset_density(U)
 
@@ -211,7 +233,7 @@ contains
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
 
-     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
+    double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
     dm = U%dim
     ng = nghost(U)
@@ -309,6 +331,25 @@ contains
           end do
           !$OMP END PARALLEL DO
        end do
+    end do
+
+    ! 
+    ! Add chemistry
+    !
+    do n=1,nboxes(Q)
+       if ( remote(Q,n) ) cycle
+
+       qp  => dataptr(Q,n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D chemsitry_term is supported")
+       else
+          call chemterm_3d(lo,hi,ng,qp,upp)
+       end if
     end do
 
     call destroy(Q)
@@ -570,9 +611,6 @@ contains
     double precision :: Htot, Htmp(nspecies), Ytmp(nspecies), hhalf
     integer          :: i,j,k,n, qxn, qyn, qhn
 
-    integer :: iwrk
-    double precision :: Xt(nspecies), wdot(nspecies), rwrk
-
     allocate(ux(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
     allocate(vx(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
     allocate(wx(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
@@ -599,7 +637,7 @@ contains
 
     flx(:,:,:,irho) = 0.d0
 
-    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,iwrk,rwrk,Xt,wdot,Htot,Htmp,Ytmp,hhalf) &
+    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,Htot,Htmp,Ytmp,hhalf) &
     !$omp private(tauxx,tauyy,tauzz,dmuzdx,dmvzdy,dmuxvydz,dmuydx,dmwydz,dmuxwzdy) &
     !$omp private(dmvxdy,dmwxdz,dmvywzdx,divu)
 
@@ -790,14 +828,22 @@ contains
                   &          + (wx(i,j,k)+uz(i,j,k))**2 &
                   &          + (vz(i,j,k)+wy(i,j,k))**2 )
 
-             Xt = q(i,j,k,qx1:qx1+nspecies-1)
-             call ckwxr(q(i,j,k,qrho), q(i,j,k,qtemp), Xt, iwrk, rwrk, wdot)
-             flx(i,j,k,iry1:) = wdot * molecular_weight
-             
           end do
        end do
     end do
     !$omp end do 
+
+    do n=1,nspecies
+       !$OMP DO
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                flx(i,j,k,iry1+n-1) = 0.d0
+             end do
+          end do
+       end do
+       !omp end do
+    end do
 
     ! ------- BEGIN x-direction -------
     !$omp do
@@ -1597,7 +1643,7 @@ contains
           end do
        end do
     end do
-    !$omp end do
+    !$omp end do 
     
     !$omp end parallel
 
@@ -1605,6 +1651,30 @@ contains
 
   end subroutine compact_diffterm_3d
 
+
+  subroutine chemterm_3d(lo,hi,ng,q,up) ! up is UPrime that has no ghost cells
+    integer,          intent(in ) :: lo(3),hi(3),ng
+    double precision, intent(in )   :: q (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(inout) :: up(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+
+    integer :: iwrk, i,j,k
+    double precision :: Xt(nspecies), wdot(nspecies), rwrk
+
+    !$omp parallel do private(i,j,k,iwrk,rwrk,Xt,wdot)
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             Xt = q(i,j,k,qx1:qx1+nspecies-1)
+             call ckwxr(q(i,j,k,qrho), q(i,j,k,qtemp), Xt, iwrk, rwrk, wdot)
+             up(i,j,k,iry1:) = up(i,j,k,iry1:) + wdot * molecular_weight
+             
+          end do
+       end do
+    end do
+    !$omp end parallel do 
+
+  end subroutine chemterm_3d
 
   subroutine compute_courno(Q, dx, courno)
     type(multifab), intent(in) :: Q
@@ -1676,5 +1746,638 @@ contains
     !$omp end parallel do
 
   end subroutine comp_courno_3d
+
+
+  ! S3D style
+  subroutine dUdt_S3D (U, Uprime, dx, courno)
+
+    type(multifab),   intent(inout) :: U, Uprime
+    double precision, intent(in   ) :: dx(U%dim)
+    double precision, intent(inout), optional :: courno
+
+    type(multifab) :: mu, xi ! viscosity
+    type(multifab) :: lam ! partial thermal conductivity
+    type(multifab) :: Ddiag ! diagonal components of rho * Y_k * D
+
+    integer          :: lo(U%dim), hi(U%dim), i,j,k,m,n, ng, dm
+    type(layout)     :: la
+    type(multifab)   :: Q, Fhyp, Fdif
+    type(multifab)   :: qx, qy, qz
+
+    double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, &
+         Ddp, upp, qxp, qyp, qzp
+
+    integer :: ndq
+
+    ndq = idX1+nspecies-1
+
+    dm = U%dim
+    ng = nghost(U)
+    la = get_layout(U)
+
+    call multifab_fill_boundary(U)
+
+    call multifab_build(Q, la, nprim, ng)
+
+    call multifab_build(Fhyp, la, ncons, 0)
+    call multifab_build(Fdif, la, ncons, 0)
+
+    call multifab_build(mu , la, 1, ng)
+    call multifab_build(xi , la, 1, ng)
+    call multifab_build(lam, la, 1, ng)
+    call multifab_build(Ddiag, la, nspecies, ng)
+
+    call multifab_build(qx, la, ndq, ng)
+    call multifab_build(qy, la, ndq, ng)
+    call multifab_build(qz, la, ndq, ng)
+
+    !
+    ! Calculate primitive variables based on U
+    !
+    call ctoprim(U, Q, ng)
+
+    if (present(courno)) then
+       call compute_courno(Q, dx, courno)
+    end if
+
+    call get_transport_properties(Q, mu, xi, lam, Ddiag)
+
+    !
+    ! Hyperbolic terms
+    !
+    do n=1,nboxes(Fhyp)
+       if ( remote(Fhyp,n) ) cycle
+
+       up => dataptr(U,n)
+       qp => dataptr(Q,n)
+       fhp=> dataptr(Fhyp,n)
+
+       lo = lwb(get_box(Fhyp,n))
+       hi = upb(get_box(Fhyp,n))
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D hypterm is supported")
+       else
+          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp)
+       end if
+    end do
+
+    !
+    ! Transport terms
+    !
+    do n=1,nboxes(Q)
+       if ( remote(Q,n) ) cycle
+
+       qp  => dataptr(Q,n)
+       fdp => dataptr(Fdif,n)
+
+       mup  => dataptr(mu   , n)
+       xip  => dataptr(xi   , n)
+
+       qxp => dataptr(qx, n)
+       qyp => dataptr(qy, n)
+       qzp => dataptr(qz, n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D S3D_diffterm is supported")
+       else
+          call S3D_diffterm_1(lo,hi,ng,ndq,dx,qp,fdp,mup,xip,qxp,qyp,qzp)
+       end if
+    end do
+
+    call multifab_fill_boundary(qx)
+    call multifab_fill_boundary(qy)
+    call multifab_fill_boundary(qz)
+
+    ! call S3D_diffterm_2
+
+    do n=1,nboxes(Q)
+       if ( remote(Q,n) ) cycle
+
+       qp  => dataptr(Q,n)
+       fdp => dataptr(Fdif,n)
+
+       mup  => dataptr(mu   , n)
+       xip  => dataptr(xi   , n)
+       lamp => dataptr(lam  , n)
+       Ddp  => dataptr(Ddiag, n)
+
+       qxp => dataptr(qx, n)
+       qyp => dataptr(qy, n)
+       qzp => dataptr(qz, n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D S3D_diffterm is supported")
+       else
+          call S3D_diffterm_2(lo,hi,ng,ndq,dx,qp,fdp,mup,xip,lamp,Ddp,qxp,qyp,qzp)
+       end if
+    end do
+
+    !
+    ! Calculate U'
+    !
+    do n=1,nboxes(U)
+       if ( remote(U,n) ) cycle
+       
+       fhp => dataptr(Fhyp,  n)
+       fdp => dataptr(Fdif,  n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(U,n))
+       hi = upb(get_box(U,n))
+
+       do m = 1, ncons
+          !$OMP PARALLEL DO PRIVATE(i,j,k)
+          do k = lo(3),hi(3)
+             do j = lo(2),hi(2)
+                do i = lo(1),hi(1)
+                   upp(i,j,k,m) = fhp(i,j,k,m) + fdp(i,j,k,m)
+                end do
+             end do
+          end do
+          !$OMP END PARALLEL DO
+       end do
+    end do
+
+    ! 
+    ! Add chemistry
+    !
+    do n=1,nboxes(Q)
+       if ( remote(Q,n) ) cycle
+
+       qp  => dataptr(Q,n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D chemsitry_term is supported")
+       else
+          call chemterm_3d(lo,hi,ng,qp,upp)
+       end if
+    end do
+
+    call destroy(Q)
+
+    call destroy(Fhyp)
+    call destroy(Fdif)
+
+    call destroy(mu)
+    call destroy(xi)
+    call destroy(lam)
+    call destroy(Ddiag)
+
+    call destroy(qx)
+    call destroy(qy)
+    call destroy(qz)
+
+  end subroutine dUdt_S3D
+
+  subroutine S3D_diffterm_1(lo,hi,ng,ndq,dx,q,flx,mu,xi,qx,qy,qz)
+ 
+    integer,          intent(in ) :: lo(3),hi(3),ng,ndq
+    double precision, intent(in ) :: dx(3)
+    double precision, intent(in ) :: q  (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(in ) :: mu (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in ) :: xi (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(out) :: qx (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(out) :: qy (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(out) :: qz (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(out) :: flx(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+
+    double precision, allocatable, dimension(:,:,:) :: vsm
+
+    double precision :: dxinv(3), divu
+    double precision :: dmvxdy,dmwxdz,dmvywzdx
+    double precision :: dmuydx,dmwydz,dmuxwzdy
+    double precision :: dmuzdx,dmvzdy,dmuxvydz
+    double precision :: tauxx,tauyy,tauzz 
+    integer :: i,j,k,n, qxn, qdxn
+
+    allocate(vsm(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+
+    do i = 1,3
+       dxinv(i) = 1.0d0 / dx(i)
+    end do
+
+    flx(:,:,:,irho) = 0.d0
+
+
+  !  !$OMP DO
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2)-ng,hi(2)+ng
+          do i=lo(1)-ng,hi(1)+ng
+             vsm(i,j,k) = xi(i,j,k) -  TwoThirds*mu(i,j,k)
+          enddo
+       enddo
+    enddo
+   ! !$OMP END DO NOWAIT
+
+  !  !$omp do
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2)-ng,hi(2)+ng
+          do i=lo(1),hi(1)
+
+             qx(i,j,k,idu)= &
+                   (ALP*(q(i+1,j,k,qu)-q(i-1,j,k,qu)) &
+                  + BET*(q(i+2,j,k,qu)-q(i-2,j,k,qu)) &
+                  + GAM*(q(i+3,j,k,qu)-q(i-3,j,k,qu)) &
+                  + DEL*(q(i+4,j,k,qu)-q(i-4,j,k,qu)))*dxinv(1)
+
+             qx(i,j,k,idv)= &
+                   (ALP*(q(i+1,j,k,qv)-q(i-1,j,k,qv)) &
+                  + BET*(q(i+2,j,k,qv)-q(i-2,j,k,qv)) &
+                  + GAM*(q(i+3,j,k,qv)-q(i-3,j,k,qv)) &
+                  + DEL*(q(i+4,j,k,qv)-q(i-4,j,k,qv)))*dxinv(1)
+
+             qx(i,j,k,idw)= &
+                   (ALP*(q(i+1,j,k,qw)-q(i-1,j,k,qw)) &
+                  + BET*(q(i+2,j,k,qw)-q(i-2,j,k,qw)) &
+                  + GAM*(q(i+3,j,k,qw)-q(i-3,j,k,qw)) &
+                  + DEL*(q(i+4,j,k,qw)-q(i-4,j,k,qw)))*dxinv(1)
+
+          enddo
+       enddo
+    enddo
+ !   !$OMP END DO NOWAIT
+
+!    !$OMP DO
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2),hi(2)   
+          do i=lo(1)-ng,hi(1)+ng
+
+             qy(i,j,k,idu)= &
+                   (ALP*(q(i,j+1,k,qu)-q(i,j-1,k,qu)) &
+                  + BET*(q(i,j+2,k,qu)-q(i,j-2,k,qu)) &
+                  + GAM*(q(i,j+3,k,qu)-q(i,j-3,k,qu)) &
+                  + DEL*(q(i,j+4,k,qu)-q(i,j-4,k,qu)))*dxinv(2)
+
+             qy(i,j,k,idv)= &
+                   (ALP*(q(i,j+1,k,qv)-q(i,j-1,k,qv)) &
+                  + BET*(q(i,j+2,k,qv)-q(i,j-2,k,qv)) &
+                  + GAM*(q(i,j+3,k,qv)-q(i,j-3,k,qv)) &
+                  + DEL*(q(i,j+4,k,qv)-q(i,j-4,k,qv)))*dxinv(2)
+
+             qy(i,j,k,idw)= &
+                   (ALP*(q(i,j+1,k,qw)-q(i,j-1,k,qw)) &
+                  + BET*(q(i,j+2,k,qw)-q(i,j-2,k,qw)) &
+                  + GAM*(q(i,j+3,k,qw)-q(i,j-3,k,qw)) &
+                  + DEL*(q(i,j+4,k,qw)-q(i,j-4,k,qw)))*dxinv(2)
+          enddo
+       enddo
+    enddo
+  !  !$OMP END DO NOWAIT
+
+ !   !$OMP DO
+    do k=lo(3),hi(3)
+       do j=lo(2)-ng,hi(2)+ng
+          do i=lo(1)-ng,hi(1)+ng
+
+             qz(i,j,k,idu)= &
+                   (ALP*(q(i,j,k+1,qu)-q(i,j,k-1,qu)) &
+                  + BET*(q(i,j,k+2,qu)-q(i,j,k-2,qu)) &
+                  + GAM*(q(i,j,k+3,qu)-q(i,j,k-3,qu)) &
+                  + DEL*(q(i,j,k+4,qu)-q(i,j,k-4,qu)))*dxinv(3)
+
+             qz(i,j,k,idv)= &
+                   (ALP*(q(i,j,k+1,qv)-q(i,j,k-1,qv)) &
+                  + BET*(q(i,j,k+2,qv)-q(i,j,k-2,qv)) &
+                  + GAM*(q(i,j,k+3,qv)-q(i,j,k-3,qv)) &
+                  + DEL*(q(i,j,k+4,qv)-q(i,j,k-4,qv)))*dxinv(3)
+
+             qz(i,j,k,idw)= &
+                   (ALP*(q(i,j,k+1,qw)-q(i,j,k-1,qw)) &
+                  + BET*(q(i,j,k+2,qw)-q(i,j,k-2,qw)) &
+                  + GAM*(q(i,j,k+3,qw)-q(i,j,k-3,qw)) &
+                  + DEL*(q(i,j,k+4,qw)-q(i,j,k-4,qw)))*dxinv(3)
+          enddo
+       enddo
+    enddo
+!    !$OMP END DO NOWAIT
+
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             ! d(mu*dv/dx)/dy
+             dmvxdy = (ALP*(mu(i,j+1,k)*qx(i,j+1,k,idv)-mu(i,j-1,k)*qx(i,j-1,k,idv)) &
+                  +    BET*(mu(i,j+2,k)*qx(i,j+2,k,idv)-mu(i,j-2,k)*qx(i,j-2,k,idv)) &
+                  +    GAM*(mu(i,j+3,k)*qx(i,j+3,k,idv)-mu(i,j-3,k)*qx(i,j-3,k,idv)) &
+                  +    DEL*(mu(i,j+4,k)*qx(i,j+4,k,idv)-mu(i,j-4,k)*qx(i,j-4,k,idv)))*dxinv(2) 
+
+             ! d(mu*dw/dx)/dz
+             dmwxdz = (ALP*(mu(i,j,k+1)*qx(i,j,k+1,idw)-mu(i,j,k-1)*qx(i,j,k-1,idw)) &
+                  +    BET*(mu(i,j,k+2)*qx(i,j,k+2,idw)-mu(i,j,k-2)*qx(i,j,k-2,idw)) &
+                  +    GAM*(mu(i,j,k+3)*qx(i,j,k+3,idw)-mu(i,j,k-3)*qx(i,j,k-3,idw)) &
+                  +    DEL*(mu(i,j,k+4)*qx(i,j,k+4,idw)-mu(i,j,k-4)*qx(i,j,k-4,idw)))*dxinv(3) 
+
+             ! d((xi-2/3*mu)*(vy+wz))/dx
+             dmvywzdx = (ALP*(vsm(i+1,j,k)*(qy(i+1,j,k,idv)+qz(i+1,j,k,idw))-vsm(i-1,j,k)*(qy(i-1,j,k,idv)+qz(i-1,j,k,idw))) &
+                  +      BET*(vsm(i+2,j,k)*(qy(i+2,j,k,idv)+qz(i+2,j,k,idw))-vsm(i-2,j,k)*(qy(i-2,j,k,idv)+qz(i-2,j,k,idw))) &
+                  +      GAM*(vsm(i+3,j,k)*(qy(i+3,j,k,idv)+qz(i+3,j,k,idw))-vsm(i-3,j,k)*(qy(i-3,j,k,idv)+qz(i-3,j,k,idw))) &
+                  +      DEL*(vsm(i+4,j,k)*(qy(i+4,j,k,idv)+qz(i+4,j,k,idw))-vsm(i-4,j,k)*(qy(i-4,j,k,idv)+qz(i-4,j,k,idw))) &
+                  ) * dxinv(1)
+
+             ! d(mu*du/dy)/dx
+             dmuydx = (ALP*(mu(i+1,j,k)*qy(i+1,j,k,idu)-mu(i-1,j,k)*qy(i-1,j,k,idu)) &
+                  +    BET*(mu(i+2,j,k)*qy(i+2,j,k,idu)-mu(i-2,j,k)*qy(i-2,j,k,idu)) &
+                  +    GAM*(mu(i+3,j,k)*qy(i+3,j,k,idu)-mu(i-3,j,k)*qy(i-3,j,k,idu)) &
+                  +    DEL*(mu(i+4,j,k)*qy(i+4,j,k,idu)-mu(i-4,j,k)*qy(i-4,j,k,idu)))*dxinv(1) 
+
+             ! d(mu*dw/dy)/dz
+             dmwydz = (ALP*(mu(i,j,k+1)*qy(i,j,k+1,idw)-mu(i,j,k-1)*qy(i,j,k-1,idw)) &
+                  +    BET*(mu(i,j,k+2)*qy(i,j,k+2,idw)-mu(i,j,k-2)*qy(i,j,k-2,idw)) &
+                  +    GAM*(mu(i,j,k+3)*qy(i,j,k+3,idw)-mu(i,j,k-3)*qy(i,j,k-3,idw)) &
+                  +    DEL*(mu(i,j,k+4)*qy(i,j,k+4,idw)-mu(i,j,k-4)*qy(i,j,k-4,idw)))*dxinv(3) 
+
+             ! d((xi-2/3*mu)*(ux+wz))/dy
+             dmuxwzdy = (ALP*(vsm(i,j+1,k)*(qx(i,j+1,k,idu)+qz(i,j+1,k,idw))-vsm(i,j-1,k)*(qx(i,j-1,k,idu)+qz(i,j-1,k,idw))) &
+                  +      BET*(vsm(i,j+2,k)*(qx(i,j+2,k,idu)+qz(i,j+2,k,idw))-vsm(i,j-2,k)*(qx(i,j-2,k,idu)+qz(i,j-2,k,idw))) &
+                  +      GAM*(vsm(i,j+3,k)*(qx(i,j+3,k,idu)+qz(i,j+3,k,idw))-vsm(i,j-3,k)*(qx(i,j-3,k,idu)+qz(i,j-3,k,idw))) &
+                  +      DEL*(vsm(i,j+4,k)*(qx(i,j+4,k,idu)+qz(i,j+4,k,idw))-vsm(i,j-4,k)*(qx(i,j-4,k,idu)+qz(i,j-4,k,idw))) &
+                  ) * dxinv(2)
+
+             ! d(mu*du/dz)/dx
+             dmuzdx = (ALP*(mu(i+1,j,k)*qz(i+1,j,k,idu)-mu(i-1,j,k)*qz(i-1,j,k,idu)) &
+                  +    BET*(mu(i+2,j,k)*qz(i+2,j,k,idu)-mu(i-2,j,k)*qz(i-2,j,k,idu)) &
+                  +    GAM*(mu(i+3,j,k)*qz(i+3,j,k,idu)-mu(i-3,j,k)*qz(i-3,j,k,idu)) &
+                  +    DEL*(mu(i+4,j,k)*qz(i+4,j,k,idu)-mu(i-4,j,k)*qz(i-4,j,k,idu)))*dxinv(1) 
+
+             ! d(mu*dv/dz)/dy
+             dmvzdy = (ALP*(mu(i,j+1,k)*qz(i,j+1,k,idv)-mu(i,j-1,k)*qz(i,j-1,k,idv)) &
+                  +    BET*(mu(i,j+2,k)*qz(i,j+2,k,idv)-mu(i,j-2,k)*qz(i,j-2,k,idv)) &
+                  +    GAM*(mu(i,j+3,k)*qz(i,j+3,k,idv)-mu(i,j-3,k)*qz(i,j-3,k,idv)) &
+                  +    DEL*(mu(i,j+4,k)*qz(i,j+4,k,idv)-mu(i,j-4,k)*qz(i,j-4,k,idv)))*dxinv(2) 
+
+             ! d((xi-2/3*mu)*(ux+vy))/dz
+             dmuxvydz = (ALP*(vsm(i,j,k+1)*(qx(i,j,k+1,idu)+qy(i,j,k+1,idv))-vsm(i,j,k-1)*(qx(i,j,k-1,idu)+qy(i,j,k-1,idv))) &
+                  +      BET*(vsm(i,j,k+2)*(qx(i,j,k+2,idu)+qy(i,j,k+2,idv))-vsm(i,j,k-2)*(qx(i,j,k-2,idu)+qy(i,j,k-2,idv))) &
+                  +      GAM*(vsm(i,j,k+3)*(qx(i,j,k+3,idu)+qy(i,j,k+3,idv))-vsm(i,j,k-3)*(qx(i,j,k-3,idu)+qy(i,j,k-3,idv))) &
+                  +      DEL*(vsm(i,j,k+4)*(qx(i,j,k+4,idu)+qy(i,j,k+4,idv))-vsm(i,j,k-4)*(qx(i,j,k-4,idu)+qy(i,j,k-4,idv))) &
+                  ) * dxinv(3)
+
+             flx(i,j,k,imx) = dmvxdy + dmwxdz + dmvywzdx
+             flx(i,j,k,imy) = dmuydx + dmwydz + dmuxwzdy
+             flx(i,j,k,imz) = dmuzdx + dmvzdy + dmuxvydz
+
+             divu = (qx(i,j,k,idu)+qy(i,j,k,idv)+qz(i,j,k,idw))*vsm(i,j,k)
+             tauxx = 2.d0*mu(i,j,k)*qx(i,j,k,idu) + divu
+             tauyy = 2.d0*mu(i,j,k)*qy(i,j,k,idv) + divu
+             tauzz = 2.d0*mu(i,j,k)*qz(i,j,k,idw) + divu
+             
+             ! change in internal energy
+             flx(i,j,k,iene) = tauxx*qx(i,j,k,idu) + tauyy*qy(i,j,k,idv) + tauzz*qz(i,j,k,idw) &
+                  + mu(i,j,k)*((qy(i,j,k,idu)+qx(i,j,k,idv))**2 &
+                  &          + (qx(i,j,k,idw)+qz(i,j,k,idu))**2 &
+                  &          + (qz(i,j,k,idv)+qy(i,j,k,idw))**2 )
+
+          end do
+       end do
+    end do
+
+    flx(:,:,:,iry1:) = 0.d0
+             
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             qx(i,j,k,idT) = (ALP*(q(i+1,j,k,qtemp)-q(i-1,j,k,qtemp)) &
+                  +           BET*(q(i+2,j,k,qtemp)-q(i-2,j,k,qtemp)) &
+                  +           GAM*(q(i+3,j,k,qtemp)-q(i-3,j,k,qtemp)) &
+                  +           DEL*(q(i+4,j,k,qtemp)-q(i-4,j,k,qtemp)))*dxinv(1)
+
+             qx(i,j,k,idp) = (ALP*(q(i+1,j,k,qpres)-q(i-1,j,k,qpres)) &
+                  +           BET*(q(i+2,j,k,qpres)-q(i-2,j,k,qpres)) &
+                  +           GAM*(q(i+3,j,k,qpres)-q(i-3,j,k,qpres)) &
+                  +           DEL*(q(i+4,j,k,qpres)-q(i-4,j,k,qpres)))*dxinv(1)
+
+             qy(i,j,k,idT) = (ALP*(q(i,j+1,k,qtemp)-q(i,j-1,k,qtemp)) &
+                  +           BET*(q(i,j+2,k,qtemp)-q(i,j-2,k,qtemp)) &
+                  +           GAM*(q(i,j+3,k,qtemp)-q(i,j-3,k,qtemp)) &
+                  +           DEL*(q(i,j+4,k,qtemp)-q(i,j-4,k,qtemp)))*dxinv(2)
+
+             qy(i,j,k,idp) = (ALP*(q(i,j+1,k,qpres)-q(i,j-1,k,qpres)) &
+                  +           BET*(q(i,j+2,k,qpres)-q(i,j-2,k,qpres)) &
+                  +           GAM*(q(i,j+3,k,qpres)-q(i,j-3,k,qpres)) &
+                  +           DEL*(q(i,j+4,k,qpres)-q(i,j-4,k,qpres)))*dxinv(2)
+
+             qz(i,j,k,idT) = (ALP*(q(i,j,k+1,qtemp)-q(i,j,k-1,qtemp)) &
+                  +           BET*(q(i,j,k+2,qtemp)-q(i,j,k-2,qtemp)) &
+                  +           GAM*(q(i,j,k+3,qtemp)-q(i,j,k-3,qtemp)) &
+                  +           DEL*(q(i,j,k+4,qtemp)-q(i,j,k-4,qtemp)))*dxinv(3)
+
+             qz(i,j,k,idp) = (ALP*(q(i,j,k+1,qpres)-q(i,j,k-1,qpres)) &
+                  +           BET*(q(i,j,k+2,qpres)-q(i,j,k-2,qpres)) &
+                  +           GAM*(q(i,j,k+3,qpres)-q(i,j,k-3,qpres)) &
+                  +           DEL*(q(i,j,k+4,qpres)-q(i,j,k-4,qpres)))*dxinv(3)
+          enddo
+       enddo
+    enddo
+
+    do n =1, nspecies
+       qxn = qx1 + n - 1
+       qdxn = idX1 + n -1
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                qx(i,j,k,qdxn) = (ALP*(q(i+1,j,k,qxn)-q(i-1,j,k,qxn)) &
+                     +            BET*(q(i+2,j,k,qxn)-q(i-2,j,k,qxn)) &
+                     +            GAM*(q(i+3,j,k,qxn)-q(i-3,j,k,qxn)) &
+                     +            DEL*(q(i+4,j,k,qxn)-q(i-4,j,k,qxn)))*dxinv(1)
+
+                qy(i,j,k,qdxn) = (ALP*(q(i,j+1,k,qxn)-q(i,j-1,k,qxn)) &
+                     +            BET*(q(i,j+2,k,qxn)-q(i,j-2,k,qxn)) &
+                     +            GAM*(q(i,j+3,k,qxn)-q(i,j-3,k,qxn)) &
+                     +            DEL*(q(i,j+4,k,qxn)-q(i,j-4,k,qxn)))*dxinv(2)
+
+                qz(i,j,k,qdxn) = (ALP*(q(i,j,k+1,qxn)-q(i,j,k-1,qxn)) &
+                     +            BET*(q(i,j,k+2,qxn)-q(i,j,k-2,qxn)) &
+                     +            GAM*(q(i,j,k+3,qxn)-q(i,j,k-3,qxn)) &
+                     +            DEL*(q(i,j,k+4,qxn)-q(i,j,k-4,qxn)))*dxinv(3)
+             enddo
+          enddo
+       enddo
+    enddo
+
+    deallocate(vsm)
+
+  end subroutine S3D_diffterm_1
+
+
+  subroutine S3D_diffterm_2(lo,hi,ng,ndq,dx,q,flx,mu,xi,lam,dxy,qx,qy,qz)
+
+    integer,          intent(in )  :: lo(3),hi(3),ng,ndq
+    double precision, intent(in )  :: dx(3)
+    double precision, intent(in )  :: q  (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(in )  :: mu (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in )  :: xi (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in )  :: lam(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in )  :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
+    double precision, intent(in)   :: qx (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(in)   :: qy (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(in)   :: qz (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(inout):: flx(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+ 
+    double precision, allocatable, dimension(:,:,:) :: vp, dpe
+    double precision, allocatable, dimension(:,:,:,:) :: dpy, dxe
+    ! dxy: diffusion coefficient of X in equation for Y
+    ! dpy: diffusion coefficient of p in equation for Y
+    ! dxe: diffusion coefficient of X in equation for energy
+    ! dpe: diffusion coefficient of p in equation for energy
+
+    double precision :: dxinv(3)
+!    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies), hhalf
+    integer          :: i,j,k,n, qxn, qyn, qhn
+
+    allocate(vp(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+
+    allocate(dpy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
+    allocate(dxe(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
+    allocate(dpe(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+
+    do i = 1,3
+       dxinv(i) = 1.0d0 / dx(i)
+    end do
+
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2)-ng,hi(2)+ng
+          do i=lo(1)-ng,hi(1)+ng
+             vp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
+          enddo
+       enddo
+    enddo
+
+    !!$omp workshare
+    dpe = 0.d0
+    !!$omp end workshare
+
+    do n=1,nspecies
+       !!$OMP DO
+       do k=lo(3)-ng,hi(3)+ng
+          do j=lo(2)-ng,hi(2)+ng
+             do i=lo(1)-ng,hi(1)+ng
+                dpy(i,j,k,n) = dxy(i,j,k,n)/q(i,j,k,qpres)*(q(i,j,k,qx1+n-1)-q(i,j,k,qy1+n-1))
+                dxe(i,j,k,n) = dxy(i,j,k,n)*q(i,j,k,qh1+n-1)
+                dpe(i,j,k) = dpe(i,j,k) + dpy(i,j,k,n)*q(i,j,k,qh1+n-1)
+             end do
+          end do
+       end do
+       !!omp end do
+    end do
+
+    ! ===== mx =====
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             flx(i,j,k,imx) = flx(i,j,k,imx) &
+                  + (ALP*(vp(i+1,j,k)*qx(i+1,j,k,idu)-vp(i-1,j,k)*qx(i-1,j,k,idu)) &
+                  +  BET*(vp(i+2,j,k)*qx(i+2,j,k,idu)-vp(i-2,j,k)*qx(i-2,j,k,idu)) &
+                  +  GAM*(vp(i+3,j,k)*qx(i+3,j,k,idu)-vp(i-3,j,k)*qx(i-3,j,k,idu)) &
+                  +  DEL*(vp(i+4,j,k)*qx(i+4,j,k,idu)-vp(i-4,j,k)*qx(i-4,j,k,idu)))*dxinv(1)&
+                  + (ALP*(mu(i,j+1,k)*qy(i,j+1,k,idu)-mu(i,j-1,k)*qy(i,j-1,k,idu)) &
+                  +  BET*(mu(i,j+2,k)*qy(i,j+2,k,idu)-mu(i,j-2,k)*qy(i,j-2,k,idu)) &
+                  +  GAM*(mu(i,j+3,k)*qy(i,j+3,k,idu)-mu(i,j-3,k)*qy(i,j-3,k,idu)) &
+                  +  DEL*(mu(i,j+4,k)*qy(i,j+4,k,idu)-mu(i,j-4,k)*qy(i,j-4,k,idu)))*dxinv(2)&
+                  + (ALP*(mu(i,j,k+1)*qz(i,j,k+1,idu)-mu(i,j,k-1)*qy(i,j,k-1,idu)) &
+                  +  BET*(mu(i,j,k+2)*qz(i,j,k+2,idu)-mu(i,j,k-2)*qy(i,j,k-2,idu)) &
+                  +  GAM*(mu(i,j,k+3)*qz(i,j,k+3,idu)-mu(i,j,k-3)*qy(i,j,k-3,idu)) &
+                  +  DEL*(mu(i,j,k+4)*qz(i,j,k+4,idu)-mu(i,j,k-4)*qy(i,j,k-4,idu)))*dxinv(3)
+          end do
+       end do
+    end do
+    
+    ! ===== my =====
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             flx(i,j,k,imy) = flx(i,j,k,imy) &
+                  + (ALP*(mu(i+1,j,k)*qx(i+1,j,k,idv)-mu(i-1,j,k)*qx(i-1,j,k,idv)) &
+                  +  BET*(mu(i+2,j,k)*qx(i+2,j,k,idv)-mu(i-2,j,k)*qx(i-2,j,k,idv)) &
+                  +  GAM*(mu(i+3,j,k)*qx(i+3,j,k,idv)-mu(i-3,j,k)*qx(i-3,j,k,idv)) &
+                  +  DEL*(mu(i+4,j,k)*qx(i+4,j,k,idv)-mu(i-4,j,k)*qx(i-4,j,k,idv)))*dxinv(1)&
+                  + (ALP*(vp(i,j+1,k)*qy(i,j+1,k,idv)-vp(i,j-1,k)*qy(i,j-1,k,idv)) &
+                  +  BET*(vp(i,j+2,k)*qy(i,j+2,k,idv)-vp(i,j-2,k)*qy(i,j-2,k,idv)) &
+                  +  GAM*(vp(i,j+3,k)*qy(i,j+3,k,idv)-vp(i,j-3,k)*qy(i,j-3,k,idv)) &
+                  +  DEL*(vp(i,j+4,k)*qy(i,j+4,k,idv)-vp(i,j-4,k)*qy(i,j-4,k,idv)))*dxinv(2)&
+                  + (ALP*(mu(i,j,k+1)*qz(i,j,k+1,idv)-mu(i,j,k-1)*qy(i,j,k-1,idv)) &
+                  +  BET*(mu(i,j,k+2)*qz(i,j,k+2,idv)-mu(i,j,k-2)*qy(i,j,k-2,idv)) &
+                  +  GAM*(mu(i,j,k+3)*qz(i,j,k+3,idv)-mu(i,j,k-3)*qy(i,j,k-3,idv)) &
+                  +  DEL*(mu(i,j,k+4)*qz(i,j,k+4,idv)-mu(i,j,k-4)*qy(i,j,k-4,idv)))*dxinv(3)
+          end do
+       end do
+    end do
+    
+
+    ! ===== mz =====
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             flx(i,j,k,imz) = flx(i,j,k,imz) &
+                  + (ALP*(mu(i+1,j,k)*qx(i+1,j,k,idw)-mu(i-1,j,k)*qx(i-1,j,k,idw)) &
+                  +  BET*(mu(i+2,j,k)*qx(i+2,j,k,idw)-mu(i-2,j,k)*qx(i-2,j,k,idw)) &
+                  +  GAM*(mu(i+3,j,k)*qx(i+3,j,k,idw)-mu(i-3,j,k)*qx(i-3,j,k,idw)) &
+                  +  DEL*(mu(i+4,j,k)*qx(i+4,j,k,idw)-mu(i-4,j,k)*qx(i-4,j,k,idw)))*dxinv(1)&
+                  + (ALP*(mu(i,j+1,k)*qy(i,j+1,k,idw)-mu(i,j-1,k)*qy(i,j-1,k,idw)) &
+                  +  BET*(mu(i,j+2,k)*qy(i,j+2,k,idw)-mu(i,j-2,k)*qy(i,j-2,k,idw)) &
+                  +  GAM*(mu(i,j+3,k)*qy(i,j+3,k,idw)-mu(i,j-3,k)*qy(i,j-3,k,idw)) &
+                  +  DEL*(mu(i,j+4,k)*qy(i,j+4,k,idw)-mu(i,j-4,k)*qy(i,j-4,k,idw)))*dxinv(2)&
+                  + (ALP*(vp(i,j,k+1)*qz(i,j,k+1,idw)-vp(i,j,k-1)*qy(i,j,k-1,idw)) &
+                  +  BET*(vp(i,j,k+2)*qz(i,j,k+2,idw)-vp(i,j,k-2)*qy(i,j,k-2,idw)) &
+                  +  GAM*(vp(i,j,k+3)*qz(i,j,k+3,idw)-vp(i,j,k-3)*qy(i,j,k-3,idw)) &
+                  +  DEL*(vp(i,j,k+4)*qz(i,j,k+4,idw)-vp(i,j,k-4)*qy(i,j,k-4,idw)))*dxinv(3)
+          end do
+       end do
+    end do
+    
+    ! add kinetic energy
+!    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             flx(i,j,k,iene) = flx(i,j,k,iene) &
+                  + flx(i,j,k,imx)*q(i,j,k,qu) &
+                  + flx(i,j,k,imy)*q(i,j,k,qv) &
+                  + flx(i,j,k,imz)*q(i,j,k,qw)
+          end do
+       end do
+    end do
+!    !$omp end do
+
+    ! thermal conduction
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             flx(i,j,k,iene) = flx(i,j,k,iene) &
+                  + (ALP*(lam(i+1,j,k)*qx(i+1,j,k,idT)-lam(i-1,j,k)*qx(i-1,j,k,idT)) &
+                  +  BET*(lam(i+2,j,k)*qx(i+2,j,k,idT)-lam(i-2,j,k)*qx(i-2,j,k,idT)) &
+                  +  GAM*(lam(i+3,j,k)*qx(i+3,j,k,idT)-lam(i-3,j,k)*qx(i-3,j,k,idT)) &
+                  +  DEL*(lam(i+4,j,k)*qx(i+4,j,k,idT)-lam(i-4,j,k)*qx(i-4,j,k,idT)))*dxinv(1)&
+                  + (ALP*(lam(i,j+1,k)*qy(i,j+1,k,idT)-lam(i,j-1,k)*qy(i,j-1,k,idT)) &
+                  +  BET*(lam(i,j+2,k)*qy(i,j+2,k,idT)-lam(i,j-2,k)*qy(i,j-2,k,idT)) &
+                  +  GAM*(lam(i,j+3,k)*qy(i,j+3,k,idT)-lam(i,j-3,k)*qy(i,j-3,k,idT)) &
+                  +  DEL*(lam(i,j+4,k)*qy(i,j+4,k,idT)-lam(i,j-4,k)*qy(i,j-4,k,idT)))*dxinv(2)&
+                  + (ALP*(lam(i,j,k+1)*qz(i,j,k+1,idT)-lam(i,j,k-1)*qy(i,j,k-1,idT)) &
+                  +  BET*(lam(i,j,k+2)*qz(i,j,k+2,idT)-lam(i,j,k-2)*qy(i,j,k-2,idT)) &
+                  +  GAM*(lam(i,j,k+3)*qz(i,j,k+3,idT)-lam(i,j,k-3)*qy(i,j,k-3,idT)) &
+                  +  DEL*(lam(i,j,k+4)*qz(i,j,k+4,idT)-lam(i,j,k-4)*qy(i,j,k-4,idT)))*dxinv(3)
+          end do
+       end do
+    end do
+
+!    do n=1,nspecies
+       
+
+
+    ! xxxxxxx clean up local variables
+
+    deallocate(vp,dpy,dxe,dpe)
+
+  end subroutine S3D_diffterm_2
 
 end module advance_module

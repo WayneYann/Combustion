@@ -12,6 +12,7 @@ subroutine smc()
   use omp_module
   use probin_module
   use runtime_init_module
+  use derivative_stencil_module
   use time_module
   use variables
 
@@ -42,6 +43,8 @@ subroutine smc()
   last_chk_written = -1
 
   call runtime_init()
+
+  call stencil_init()
 
   call chemistry_init()
   if (verbose .ge. 1) then

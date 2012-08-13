@@ -5,6 +5,7 @@
 //             to kinetics divided by rho
 //
 #include <winstd.H>
+#include <unistd.h>
 
 #include <iostream>
 #include <iomanip>
