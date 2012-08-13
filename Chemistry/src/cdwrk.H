@@ -1,32 +1,28 @@
-
-!     Hardwired sizes
+      !
+      ! Hardwired sizes.
+      !
       integer maxreac, maxspec, maxelts, maxthrdb, maxtp, maxsp
       integer   maxspnml
       parameter (maxreac = 472, maxspec=72, maxelts=6)
       parameter (maxthrdb=20, maxtp=3, maxsp=12, maxspnml = 16)
-
-!     ChemKin workspace requirements
+      !
+      ! ChemKin workspace requirements.
+      !
       integer ckr, cki, ckl, ckc
       parameter (ckr = 0)
       parameter (cki = 0)
       parameter (ckl = 0)
       parameter (ckc = 0)
-
-!     EGLib package for transport properties (using scalar "S" mode):
-!     1) the values IFLAG=7 and ITLS=3 enable all the "S" library routines
-!     2) the original coding of egr (which was for the ITLS=3) was in error
-!      integer egr, egi, egl, egc, eg_nodes, eg_IFLAG, eg_ITLS
-      integer eg_nodes, eg_IFLAG, eg_ITLS
-      parameter (eg_nodes = 1)
-!      parameter (eg_IFLAG = 7) ! Use this if using DD* routines.
-!      parameter (eg_ITLS  = 3) ! Use this if using DD* routines.
-      parameter (eg_IFLAG = 3) ! Use this for normal LMC usage.
-      parameter (eg_ITLS  = 1) ! Use this for normal LMC usage.
-!      parameter (egr = 23 + 14*maxspec + 32*maxspec**2 + 13*eg_nodes 
-!     &         + 30*eg_nodes*maxspec + 5*eg_nodes*maxspec**2)
-!      parameter (egi = maxspec)
-!      parameter (egl = 0)
-!      parameter (egc = 0)
+      !
+      ! EGLib package for transport properties
+      !
+      ! For normal LMC usage:
+      !
+      integer, parameter :: eg_nodes=1, eg_IFLAG=3, eg_ITLS=1
+      !
+      ! If you're using the DD* routines.
+      !
+      !integer, parameter :: eg_nodes=1, eg_IFLAG=7, eg_ITLS=3
 
 !     DVODE workspace requirements      
       integer dvr, dvi, dvl, dvc
@@ -45,35 +41,25 @@
 !     Workspace memory layout
       integer ckbr, dvbr, dvdbr, cker, dver, dvder
       integer ckbi, dvbi, dvdbi, ckei, dvei, dvdei
-      integer ckbl, dvbl, dvdbl, ckel, dvel, dvdel
-      integer ckbc, dvbc, dvdbc, ckec, dvec, dvdec
-      parameter (ckbr=1,ckbi=1,ckbl=1,ckbc=1)
+
+      parameter (ckbr=1,ckbi=1)
       parameter (cker=ckbr+ckr-1,ckei=ckbi+cki-1)
-      parameter (ckel=ckbl+ckl-1,ckec=ckbc+ckc-1)
-      parameter (dvbr=1, dvbi=1, dvbl=1, dvbc=1)
+      parameter (dvbr=1, dvbi=1)
       parameter (dver =dvbr+dvr-1,  dvei=dvbi+dvi-1)
-      parameter ( dvel =dvbl+dvl-1,  dvec=dvbc+dvc-1)
-      parameter (dvdbr=dver+1,dvdbi=dvei+1,dvdbl=dvel+1,dvdbc=dvec+1)
+      parameter (dvdbr=dver+1,dvdbi=dvei+1)
       parameter (dvder=dvdbr+dvdr-1,dvdei=dvdbi+dvdi-1)
-      parameter ( dvdel=dvdbl+dvdl-1,dvdec=dvdbc+dvdc-1)
       
 !     Total workspace requirements -- add 1 to guard against null arrays.
-      integer lenr_fixed, leni_fixed, lenl_fixed, lenc_fixed
+      integer lenr_fixed, leni_fixed   !, lenl_fixed, lenc_fixed
       parameter (lenr_fixed = ckr + dvr + dvdr + 1)
       parameter (leni_fixed = cki + dvi + dvdi + 1)
-      parameter (lenl_fixed = ckl + dvl + dvdl + 1)
-      parameter (lenc_fixed = ckc + dvc + dvdc + 1)
-      
+
       double precision     RWRK(lenr_fixed)
       integer              IWRK(leni_fixed)
-      logical              LWRK(lenl_fixed)
-      character*(maxspnml) CWRK(lenc_fixed)
-      
+
       common / ckdrwork / RWRK
       common / ckdiwork / IWRK
-      common / ckdlwork / LWRK
-      common / ckdcwork / CWRK
-      save /ckdrwork/, /ckdiwork/, /ckdlwork/, /ckdcwork/
+      save /ckdrwork/, /ckdiwork/
       !
       ! EGlib workspace -- allocated once in FORT_INITCHEM()
       !
