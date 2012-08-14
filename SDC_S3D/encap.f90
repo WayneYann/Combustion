@@ -9,9 +9,7 @@ module encap
 
   ! Data encapsulation: multifab
   type :: pf_encap_t
-
      type(multifab) :: q
-
   end type pf_encap_t
 
   interface create
@@ -111,7 +109,6 @@ contains
        end do
     end do
 
-
   end subroutine encap_copy
 
   ! Pack solution q into a flat array.
@@ -123,7 +120,6 @@ contains
     double precision, pointer, dimension(:,:,:,:) :: dp
 
     ic = 1
-
     do n=1,nboxes(sol%q)
        if ( remote(sol%q,n) ) cycle
 
@@ -137,12 +133,6 @@ contains
        ic = ic + volume(get_box(sol%q, n))
     end do
 
-    ! dp => dataptr(sol%q,1)
-    ! lo = lwb(get_box(sol%q,1))
-    ! hi = upb(get_box(sol%q,1))
-
-    ! arr = reshape(dp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:), [ size(arr) ])
-
   end subroutine encap_pack
 
   ! Unpack solution from a flat array.
@@ -153,16 +143,7 @@ contains
     integer :: n, ic, lo(sol%q%dim), hi(sol%q%dim), sh(4)
     double precision, pointer, dimension(:,:,:,:) :: dp
 
-
-    ! dp => dataptr(sol%q,1)
-    ! lo = lwb(get_box(sol%q,1))
-    ! hi = upb(get_box(sol%q,1))
-
-    ! dp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = reshape(arr, &
-    !      [ hi(1)-lo(1)+1, hi(2)-lo(2)+1, hi(3)-lo(3)+1, size(dp, 4) ] )
-
     ic = 1
-
     do n=1,nboxes(sol%q)
        if ( remote(sol%q,n) ) cycle
 
