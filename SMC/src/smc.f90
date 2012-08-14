@@ -11,6 +11,7 @@ subroutine smc()
   use omp_module
   use probin_module
   use runtime_init_module
+  use sdcquad_module
   use time_module
   use variables_module
 
@@ -34,8 +35,9 @@ subroutine smc()
 !  logical :: dump_plotfile, dump_checkpoint
   real(dp_t) :: write_pf_time
   
-  type(layout) :: la
+  type(layout)   :: la
   type(multifab) :: U
+  type(sdcquad)  :: sdc
 
   ! keep track of cputime
   call start_cputime_clock()
@@ -164,6 +166,12 @@ subroutine smc()
      init_step = restart + 1
   end if
 
+  if (advance_method == 2) then
+     call create(sdc, 1, 3)  ! XXX: use probin here...
+     sdc%tol_residual = 1.0d-8
+     call build(sdc)
+  end if
+
   if ( parallel_IOProcessor()) then
      print*,""
      print*,"BEGIN MAIN EVOLUTION LOOP"
@@ -197,7 +205,7 @@ subroutine smc()
            print*, ""
         end if
 
-        call advance(U,dt,dx,istep)
+        call advance(U,dt,dx,sdc,istep)
 
         time = time + dt
 

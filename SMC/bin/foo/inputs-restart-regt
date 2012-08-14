@@ -2,23 +2,23 @@
 
  verbose = 2
 
- advance_method = 1        ! 1=RK3, 2=SDC, 3=PFASST
- stencil_type = "compact"  ! compact or S3D
+ advance_method = 1  ! 1=RK3, 2=SDC, 3=PFASST
+ stencil_type = "compact"   ! compact or S3D
 
  stop_time = 3.d-3
  max_step  = 10
  restart = -1
 
- plot_int = -1
- chk_int  = -1
+ plot_int = 10
+ chk_int  = 5
 
  cflfac = 0.1d0
  init_shrink = 0.5d0
 
- n_cellx = 64
- n_celly = 64
- n_cellz = 64
- max_grid_size = 32
+ n_cellx = 32
+ n_celly = 32
+ n_cellz = 32
+ max_grid_size = 16
 
  prob_lo_x = -0.5d0
  prob_lo_y = -0.5d0

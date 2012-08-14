@@ -15,9 +15,6 @@ contains
 
   subroutine get_transport_properties(Q, mu, xi, lam, Ddiag)
 
-    use multifab_module
-    use variables
-
     type(multifab), intent(in   ) :: Q
     type(multifab), intent(inout) :: mu, xi, lam, Ddiag
  
