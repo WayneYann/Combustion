@@ -6813,7 +6813,9 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
 }
 
 DistributionMapping
-HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
+HeatTransfer::getFuncCountDM (const BoxArray& bxba,
+                              int             ngrow,
+                              double&         efficiency)
 {
     //
     // Sometimes "mf" is the valid region of the State.
@@ -6865,8 +6867,10 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
     Array<int> nmtags(ParallelDescriptor::NProcs(),0);
     Array<int> offset(ParallelDescriptor::NProcs(),0);
 
+    const Array<int>& pmap = rr.ProcessorMap();
+
     for (int i = 0; i < vwrk.size(); i++)
-        nmtags[rr.ProcessorMap()[i]]++;
+        nmtags[pmap[i]]++;
 
     BL_ASSERT(nmtags[ParallelDescriptor::MyProc()] == count);
 
@@ -6893,7 +6897,7 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
         std::vector< std::vector<int> > table(ParallelDescriptor::NProcs());
 
         for (int i = 0; i < vwrk.size(); i++)
-            table[rr.ProcessorMap()[i]].push_back(i);
+            table[pmap[i]].push_back(i);
 
         int idx = 0;
         for (int i = 0; i < table.size(); i++)
@@ -6910,7 +6914,7 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
     //
     // This call doesn't invoke the MinimizeCommCosts() stuff.
     //
-    res.KnapSackProcessorMap(vwrk,ParallelDescriptor::NProcs());
+    res.KnapSackProcessorMap(vwrk,ParallelDescriptor::NProcs(),&efficiency);
 
     return res;
 }
@@ -7029,7 +7033,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
             BoxArray ba = mf.boxArray();
 
-            bool done = false;
+            bool done = ((NProcs==1) ? true : false);
 
             for (int cnt = 1; !done; cnt *= 2)
             {
@@ -7043,17 +7047,17 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
                 IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
 
-                for (int j = BL_SPACEDIM-1; j >=0  && ba.size() < 3*NProcs; j--)
+                for (int j = BL_SPACEDIM-1; j >=0 && ba.size() < NProcs && !done; --j)
                 {
                     chunk[j] /= 2;
-
                     ba.maxSize(chunk);
-
-                    if (ba.size() >= 3*NProcs) done = true;
+                    if (ba.size() >= 2*NProcs) done = true;
                 }
             }
 
-            DistributionMapping dm = getFuncCountDM(ba,ngrow);
+            double efficiency = 0;
+
+            DistributionMapping dm = getFuncCountDM(ba,ngrow,efficiency);
 
             MultiFab tmp, fcnCntTemp;
 
@@ -7070,7 +7074,11 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             }
 
             if (verbose && ParallelDescriptor::IOProcessor())
-                std::cout << "*** strang_chem: FABs in tmp MF: " << tmp.size() << '\n';
+                std::cout << "*** strang_chem: FABs in tmp MF: "
+                          << tmp.size()
+                          << ", eff = "
+                          << efficiency
+                          << '\n';
 
             tmp.copy(mf); // Parallel copy.
 
@@ -7079,6 +7087,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                 FArrayBox& fb = tmp[Smfi];
                 const Box& bx = Smfi.validbox();
                 FArrayBox& fc = fcnCntTemp[Smfi];
+
                 chemDiag = (do_diag ? &(diagTemp[Smfi]) : 0);
 
                 getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chemDiag);
@@ -7086,9 +7095,12 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
             mf.copy(tmp); // Parallel copy.
 
+            tmp.clear();
+
             if (do_diag)
             {
                 auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
+                diagTemp.clear();
             }
 
             if (ngrow == 0)
@@ -7128,7 +7140,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             }
         }
 
-        for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi) {
+        for (MFIter Smfi(mf); Smfi.isValid(); ++Smfi)
+        {
 #ifdef DO_JBB_HACK_POST
             const Box& box = Smfi.validbox();
             getChemSolve().getHmixGivenTY(mf[Smfi],mf[Smfi],mf[Smfi],box,Temp,first_spec,RhoH);
