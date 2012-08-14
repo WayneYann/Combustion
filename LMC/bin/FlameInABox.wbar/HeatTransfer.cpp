@@ -346,7 +346,7 @@ HeatTransfer::Initialize ()
     {
 	schmidt = prandtl;
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::read_params: Le=1, setting Sc = Pr" << '\n';
+            std::cout << "HeatTransfer::read_params: Le=1, setting Sc = Pr\n";
     }
 
     pp.query("constant_mu_val",constant_mu_val);
@@ -530,9 +530,9 @@ HeatTransfer::Initialize ()
         
     if (verbose && ParallelDescriptor::IOProcessor())
     {
-        std::cout << "\nDumping ParmParse table:\n \n";
+        std::cout << "\nDumping ParmParse table:\n\n";
         ParmParse::dumpTable(std::cout);
-        std::cout << "\n... done dumping ParmParse table.\n" << '\n';
+        std::cout << "\n... done dumping ParmParse table.\n\n";
     }
 
     BoxLib::ExecOnFinalize(HeatTransfer::Finalize);
@@ -1038,7 +1038,7 @@ HeatTransfer::init_once ()
         for (int i = 0; i < auxDiag_names["REACTIONS"].size(); ++i)
             auxDiag_names["REACTIONS"][i] = BoxLib::Concatenate("R",i+1);
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "***** Make sure to increase amr.regrid_int !!!!!" << '\n';
+            std::cout << "***** Make sure to increase amr.regrid_int !!!!!\n";
     }
 
     pp.query("plot_consumption",plot_consumption);
@@ -1160,8 +1160,7 @@ HeatTransfer::set_typical_values (bool restart)
 
         if (ParallelDescriptor::IOProcessor())
         {
-            cout << "Typical vals: " << '\n';
-            cout << "\tVelocity: ";
+            cout << "Typical vals: \n\tVelocity: ";
             for (int i=0; i<BL_SPACEDIM; ++i)
             {
                 cout << typical_values[i] << ' ';
@@ -1543,7 +1542,7 @@ HeatTransfer::initData ()
         }
 
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "initData: finished init from velocity_plotfile" << '\n';
+            std::cout << "initData: finished init from velocity_plotfile\n";
     }
 #endif /*BL_USE_VELOCITY*/
 
@@ -2552,7 +2551,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! skipping spec diffusion " << '\n';
+            std::cout << "... HACK!!! skipping spec diffusion\n";
 
         if (!corrector)
             MultiFab::Copy(get_new_data(State_Type),get_old_data(State_Type),first_spec,first_spec,nspecies,0);
@@ -2575,21 +2574,6 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     int use_cg_solve   = 0; ppdiff.query("use_cg_solve",   use_cg_solve);
     int use_mg_precond = 0; ppdiff.query("use_mg_precond", use_mg_precond);
 
-#ifdef MG_USE_HYPRE
-    int use_hypre_solve = 0; ppdiff.query("use_hypre_solve", use_hypre_solve);
-    if ( use_cg_solve && use_hypre_solve )
-    {
-        BoxLib::Error("Diffusion::read_params: cg_solve && .not. hypre_solve");
-    }
-#endif
-  
-#ifdef MG_USE_F90_SOLVERS
-    int use_fboxlib_mg = 0; ppdiff.query("use_fboxlib_mg", use_fboxlib_mg);
-    if ( use_cg_solve && use_fboxlib_mg )
-    {
-        BoxLib::Error("Diffusion::read_params: cg_solve && .not. fboxlib_solve");
-    }
-#endif
     int use_mg_precond_flag = (use_mg_precond ? true : false);
 
     const int  nGrowOp   = 1;
@@ -4194,7 +4178,7 @@ HeatTransfer::compute_mcdd_visc_terms(MultiFab&           vtermsYH,
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! zeroing spec+enth diffusion terms " << '\n';
+            std::cout << "... HACK!!! zeroing spec+enth diffusion terms\n";
         vtermsYH.setVal(0,0,nspecies+1,nGrow);
         return;            
     }
@@ -5069,7 +5053,7 @@ HeatTransfer::mcdd_update(Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mcdd update for "
                   << (whichApp==DDOp::DD_Temp ? "Temp" : "RhoH") 
-                  << " and RhoY" << '\n';
+                  << " and RhoY\n";
 
     showMF(vgrp,*aofs,"aofs_mcdd_update");
 
@@ -5372,7 +5356,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! zeroing spec diffusion terms " << '\n';
+            std::cout << "... HACK!!! zeroing spec diffusion terms\n";
         visc_terms.setVal(0.0,sComp,nspecies);
         return;            
     }
@@ -8839,7 +8823,7 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
     if (hack_nospecdiff || hack_nomcddsync)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! skipping mcdd sync diffusion " << '\n';
+            std::cout << "... HACK!!! skipping mcdd sync diffusion\n";
 
         for (int d=0; d<BL_SPACEDIM; ++d)
             SpecDiffFluxnp1[d]->setVal(0.0,0,nspecies);
@@ -8853,7 +8837,7 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
     // TODO - merge in new CrseInit() calls.
     //
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "...doing mcdd sync diffusion..." << '\n';
+        std::cout << "...doing mcdd sync diffusion...\n";
 
     const Real time = state[State_Type].curTime();
     const int nGrow = 0;
@@ -8957,7 +8941,7 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
             getLevel(level+1).getViscFluxReg().CrseInitFinish();
     }
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "...finished differential sync diffusion..." << '\n';    
+        std::cout << "...finished differential sync diffusion...\n";
 }
 
 void
@@ -8966,7 +8950,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! skipping spec sync diffusion " << '\n';
+            std::cout << "... HACK!!! skipping spec sync diffusion\n";
 
         for (int d=0; d<BL_SPACEDIM; ++d)
             SpecDiffFluxnp1[d]->setVal(0.0,0,nspecies);
@@ -8980,9 +8964,18 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     const Real strt_time = ParallelDescriptor::second();
 
     if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "Doing differential sync diffusion ..." << '\n';
+        std::cout << "Doing differential sync diffusion ...\n";
     //
-    // Do implicit c-n solve for each scalar...but dont reflux.
+    // FIXME: Get parameters from diffuse class.
+    //
+    ParmParse ppdiff("diffuse");
+
+    int use_cg_solve   = 0; ppdiff.query("use_cg_solve",   use_cg_solve);
+    int use_mg_precond = 0; ppdiff.query("use_mg_precond", use_mg_precond);
+
+    int use_mg_precond_flag = (use_mg_precond ? true : false);
+    //
+    // Do implicit c-n solve for each scalar...but don't reflux.
     // Save the fluxes, coeffs and source term, we need 'em for later
     // Actually, since Ssync multiplied by dt in mac_sync before
     // a call to this routine (I hope...), Ssync is in units of s,
@@ -8990,6 +8983,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // we can use a generic flux adjustment function
     //
     const Real cur_time = state[State_Type].curTime();
+
     MultiFab **betanp1;
     diffusion->allocFluxBoxesLevel(betanp1,0,nspecies);
     getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies);
@@ -8997,28 +8991,88 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
-    Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
+    //
+    // Make Rhs in units of ds/dt again.
+    //
+    Rhs.mult(1.0/dt,0,nspecies,0);
     //
     // Some standard settings
     //
-    const MultiFab* alpha = 0;
-    const MultiFab* Rh    = get_rho_half_time();
+    const int       rho_flag  = 2;
+    const MultiFab* alpha     = 0;
+    const MultiFab* Rh        = get_rho_half_time();
+    const Real      a         = 1.0;
+    const Real      b         = be_cn_theta*dt;
+    Real            rhsscale  = 1.0;
+    const Real      S_tol     = visc_tol;
+    const Real      S_tol_abs = -1;
+    MultiFab&       S_new     = get_new_data(State_Type);
+    const Real*     dx        = geom.CellSize();
+    const IntVect   rr        = level > 0 ? parent->refRatio(level-1) : IntVect::TheUnitVector();
+    //
+    // This will be owned & delete'd by the ABecLaplacian.
+    //
+    ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
+    ABecLaplacian* visc_op = new ABecLaplacian(bndry,dx);
+    //
+    // Only need call this once since alpha==0 & we're not touching VEL.
+    //
+    diffusion->setAlpha(visc_op,-1,a,b,cur_time,Rh,rho_flag,&rhsscale,-1,alpha);
+
+    MultiFab tRhs(grids,1,0), Soln(grids,1,1), volume;
+
+    geom.GetVolume(volume,grids,GEOM_GROW);
 
     for (int sigma = 0; sigma < nspecies; ++sigma)
     {
+	const int idx = first_spec + sigma - Density;
         //
-        // Here, we use Ssync as a source in units of s, as expected by diffuse_Ssync
-        // (i.e., ds/dt ~ d(Ssync)/dt, vs. ds/dt ~ Rhs in diffuse_scalar).  This was
-        // apparently done to mimic diffuse_Vsync, which does the same, because the
-        // diffused result is an acceleration, not a velocity, req'd by the projection.
+        // This'll update the ViscBndry in visc_op directly.
         //
-	const int ssync_ind = first_spec + sigma - Density;
+        bndry->setHomogValues(get_desc_lst()[State_Type].getBC(sigma+BL_SPACEDIM), rr);
 
-	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
-				 Rh,2,SpecDiffFluxnp1,sigma,betanp1,alpha,sigma);
+        diffusion->setBeta(visc_op,sigma,betanp1);
+
+        MultiFab::Copy(tRhs,*Ssync,idx,0,1,0);
+
+        for (MFIter mfi(tRhs); mfi.isValid(); ++mfi)
+            tRhs[mfi].mult(volume[mfi]);
+
+        tRhs.mult(rhsscale,0,1);
+
+        Soln.setVal(0);
+
+        if (use_cg_solve)
+        {
+            CGSolver cg(*visc_op,use_mg_precond_flag);
+            cg.solve(Soln,tRhs,S_tol,S_tol_abs);
+        }
+        else
+        {
+            MultiGrid mg(*visc_op);
+            mg.solve(Soln,tRhs,S_tol,S_tol_abs);
+        }
+
+        visc_op->compFlux(D_DECL(*SpecDiffFluxnp1[0],
+                                 *SpecDiffFluxnp1[1],
+                                 *SpecDiffFluxnp1[2]),
+                          Soln,
+                          LinOp::Inhomogeneous_BC, 0, sigma);
+
+        for (int i = 0; i < BL_SPACEDIM; ++i)
+            (*SpecDiffFluxnp1[i]).mult(b/(dt*dx[i]),sigma,1);
+
+        MultiFab::Copy(*Ssync,Soln,0,idx,1,0);
+
+        for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
+            (*Ssync)[mfi].mult(S_new[mfi],mfi.validbox(),Density,idx,1);
 
 	spec_diffusion_flux_computed[sigma] = HT_SyncDiffusion;
     }
+
+    delete visc_op;
+
+    tRhs.clear(); Soln.clear(); volume.clear();
     //
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
@@ -9070,7 +9124,6 @@ HeatTransfer::reflux ()
     const Real strt_time = ParallelDescriptor::second();
 
     BL_ASSERT(do_reflux);
-
     //
     // First do refluxing step.
     //
