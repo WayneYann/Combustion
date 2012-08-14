@@ -1803,21 +1803,14 @@ HeatTransfer::post_timestep (int crse_iteration)
 
         for (int i = parent->finestLevel(); i > 0; --i)
         {
-            MultiFab fvolume;
-            MultiFab cvolume;
-
             HeatTransfer& clev = getLevel(i-1);
             HeatTransfer& flev = getLevel(i);
 
             MultiFab& Ydot_crse = *(clev.auxDiag["REACTIONS"]);
             MultiFab& Ydot_fine = *(flev.auxDiag["REACTIONS"]);
 
-            flev.geom.GetVolume(fvolume,flev.grids,GEOM_GROW);
-            clev.geom.GetVolume(cvolume,clev.grids,GEOM_GROW);
-            
             NavierStokes::avgDown(clev.boxArray(),flev.boxArray(),
                                   Ydot_crse,Ydot_fine,
-                                  cvolume,fvolume,
                                   i-1,i,0,Ndiag,parent->refRatio(i-1));
         }
     }
@@ -2017,9 +2010,6 @@ HeatTransfer::post_init (Real stop_time)
             {
                 for (int k = finest_level-1; k >= 0; k--)
                 {
-                    MultiFab fvolume;
-                    MultiFab cvolume;
-
                     HeatTransfer&   fine_lev = getLevel(k+1);
                     const BoxArray& fgrids   = fine_lev.grids;
                     
@@ -2030,13 +2020,8 @@ HeatTransfer::post_init (Real stop_time)
                     MultiFab& Divu_crse = crse_lev.get_new_data(Divu_Type);
                     MultiFab& Divu_fine = fine_lev.get_new_data(Divu_Type);
 
-                    fine_lev.geom.GetVolume(fvolume,fine_lev.grids,GEOM_GROW);
-                    crse_lev.geom.GetVolume(cvolume,crse_lev.grids,GEOM_GROW);
-                    
-                    crse_lev.NavierStokes::avgDown(cgrids,fgrids,
-                                                   Divu_crse,Divu_fine,
-                                                   cvolume,fvolume,
-                                                   k,k+1,0,1,fratio);
+                    crse_lev.NavierStokes::avgDown(cgrids,fgrids,Divu_crse,
+                                                   Divu_fine,k,k+1,0,1,fratio);
                 }
             }
             //
@@ -2052,23 +2037,14 @@ HeatTransfer::post_init (Real stop_time)
             //
             for (int k = finest_level-1; k >= 0; k--)
             {
-                MultiFab fvolume;
-                MultiFab cvolume;
-
-                getLevel(k+1).geom.GetVolume(fvolume,getLevel(k+1).grids,GEOM_GROW);
-                getLevel(k).geom.GetVolume(cvolume,getLevel(k).grids,GEOM_GROW);
-
                 const BoxArray& fgrids  = getLevel(k+1).grids;
                 const BoxArray& cgrids  = getLevel(k).grids;
                 MultiFab&       S_fine  = getLevel(k+1).get_new_data(State_Type);
                 MultiFab&       S_crse  = getLevel(k).get_new_data(State_Type);
                 IntVect&        fratio  = getLevel(k).fine_ratio;
                 
-                getLevel(k).NavierStokes::avgDown(cgrids,fgrids,
-                                                  S_crse,S_fine,
-                                                  cvolume,fvolume,
-                                                  k,k+1,Xvel,BL_SPACEDIM,
-                                                  fratio);
+                getLevel(k).NavierStokes::avgDown(cgrids,fgrids,S_crse,S_fine,
+                                                  k,k+1,Xvel,BL_SPACEDIM,fratio);
             }
         }
         //
@@ -2290,9 +2266,8 @@ HeatTransfer::post_init_press (Real&        dt_init,
 
         if (projector)
         {
-            int havedivu = 1;
-            projector->initialSyncProject(0,sig,parent->dtLevel(0),cur_time,
-                                          havedivu);
+            const int havedivu = 1;
+            projector->initialSyncProject(0,sig,parent->dtLevel(0),cur_time,havedivu);
         }
         delete [] sig;
 
@@ -2314,11 +2289,7 @@ HeatTransfer::post_init_press (Real&        dt_init,
         for (int k = 0; k <= finest_level; k++)
         {
 	    MultiFab::Copy(getLevel(k).get_new_data(State_Type),
-                           saved_state[k],
-			   0,
-                           0,
-                           nState,
-                           nGrow);
+                           saved_state[k], 0, 0, nState, nGrow);
         }
 
         NavierStokes::initial_iter = false;
@@ -2372,11 +2343,7 @@ HeatTransfer::avgDown ()
     MultiFab&       S_crse   = get_new_data(State_Type);
     MultiFab&       S_fine   = fine_lev.get_new_data(State_Type);
 
-    MultiFab fvolume, volume;
-    geom.GetVolume(volume,grids,GEOM_GROW);
-    fine_lev.geom.GetVolume(fvolume,fine_lev.grids,GEOM_GROW);
-
-    NavierStokes::avgDown(grids,fgrids,S_crse,S_fine,volume,fvolume,
+    NavierStokes::avgDown(grids,fgrids,S_crse,S_fine,
                           level,level+1,0,S_crse.nComp(),fine_ratio);
     //
     // Fill rho_ctime at the current and finer levels with the correct data.
@@ -2402,18 +2369,18 @@ HeatTransfer::avgDown ()
 
     crse_P_fine_BA.coarsen(fine_ratio);
 
+    MultiFab crse_P_fine(crse_P_fine_BA,1,0);
+
+    for (MFIter mfi(P_fine); mfi.isValid(); ++mfi)
     {
-        MultiFab crse_P_fine(crse_P_fine_BA,1,0);
+        const int i = mfi.index();
 
-        for (MFIter mfi(P_fine); mfi.isValid(); ++mfi)
-        {
-            const int i = mfi.index();
-
-            injectDown(crse_P_fine_BA[i],crse_P_fine[i],P_fine[i],fine_ratio);
-        }
-
-        P_crse.copy(crse_P_fine);  // Parallel copy
+        injectDown(crse_P_fine_BA[i],crse_P_fine[i],P_fine[i],fine_ratio);
     }
+
+    P_crse.copy(crse_P_fine);  // Parallel copy
+
+    crse_P_fine.clear();
     //
     // Next average down divu and dSdT at new time.
     //
@@ -2433,9 +2400,7 @@ HeatTransfer::avgDown ()
         MultiFab& Divu_crse = get_new_data(Divu_Type);
         MultiFab& Divu_fine = fine_lev.get_new_data(Divu_Type);
             
-        NavierStokes::avgDown(grids,fgrids,
-                              Divu_crse,Divu_fine,
-                              volume,fvolume,
+        NavierStokes::avgDown(grids,fgrids,Divu_crse,Divu_fine,
                               level,level+1,0,1,fine_ratio);
     }
 
@@ -2464,9 +2429,7 @@ HeatTransfer::avgDown ()
         MultiFab& Dsdt_crse = get_new_data(Dsdt_Type);
         MultiFab& Dsdt_fine = fine_lev.get_new_data(Dsdt_Type);
             
-        NavierStokes::avgDown(grids,fgrids,
-                              Dsdt_crse,Dsdt_fine,
-                              volume,fvolume,
+        NavierStokes::avgDown(grids,fgrids,Dsdt_crse,Dsdt_fine,
                               level,level+1,0,1,fine_ratio);
     }
 }
@@ -8268,15 +8231,14 @@ HeatTransfer::mac_sync ()
 
     const Real strt_time = ParallelDescriptor::second();
 
-    int        sigma;
-    const int  finest_level   = parent->finestLevel();
-    const int  ngrids         = grids.size();
-    const Real prev_time      = state[State_Type].prevTime();
-    const Real cur_time       = state[State_Type].curTime();
-    const Real prev_pres_time = state[Press_Type].prevTime();
-    const Real dt             = parent->dtLevel(level);
-    MultiFab*  DeltaSsync     = 0; // hold (Delta rho)*q for conserved quantities
-    MultiFab*  Rh             = get_rho_half_time();
+    const int   finest_level   = parent->finestLevel();
+    const Real  prev_time      = state[State_Type].prevTime();
+    const Real  cur_time       = state[State_Type].curTime();
+    const Real  prev_pres_time = state[Press_Type].prevTime();
+    const Real  dt             = parent->dtLevel(level);
+    MultiFab*   DeltaSsync     = 0; // hold (Delta rho)*q for conserved quantities
+    MultiFab*   Rh             = get_rho_half_time();
+    const Real* dx             = geom.CellSize();
     //
     // Compute the correction velocity.
     //
@@ -8384,10 +8346,7 @@ HeatTransfer::mac_sync ()
         // Now, increment density.
         //
         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
-        {
-            const int i = mfi.index();
-            S_new[i].plus((*Ssync)[i],grids[i],Density-BL_SPACEDIM,Density,1);
-        }
+            S_new[mfi].plus((*Ssync)[mfi],grids[mfi.index()],Density-BL_SPACEDIM,Density,1);
 
         make_rho_curr_time();
 
@@ -8448,7 +8407,7 @@ HeatTransfer::mac_sync ()
                 // This will be owned & delete'd by the ABecLaplacian.
                 //
                 ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
-                ABecLaplacian* visc_op = new ABecLaplacian(bndry,geom.CellSize());
+                ABecLaplacian* visc_op = new ABecLaplacian(bndry,dx);
 
                 visc_op->maxOrder(diffusion->maxOrder());
                 //
@@ -8477,18 +8436,16 @@ HeatTransfer::mac_sync ()
 
 		    visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
                     for (int d = 0; d < BL_SPACEDIM; ++d)
-                        fluxSC[d]->mult(-b/geom.CellSize()[d]);
+                        fluxSC[d]->mult(-b/dx[d]);
                     //
                     // Here, get fluxNULN = (lambda/cp - rho.D)Grad(Ysync)
-                    //                    = lambda/cp.Grad(Ysync) + SpecSyncDiffFlux
+                    //                    =  lambda/cp.Grad(Ysync) + SpecSyncDiffFlux
                     //
                     BL_ASSERT(spec_diffusion_flux_computed[comp]==HT_SyncDiffusion);
 
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                     {
-                        MFIter SDF_mfi(*SpecDiffFluxnp1[d]);
-
-                        for ( ; SDF_mfi.isValid(); ++SDF_mfi)
+                        for (MFIter SDF_mfi(*SpecDiffFluxnp1[d]); SDF_mfi.isValid(); ++SDF_mfi)
                         {
                             FArrayBox& fluxSC_fab   = (*fluxSC[d])[SDF_mfi];
                             FArrayBox& fluxNULN_fab = (*fluxNULN[d])[SDF_mfi];
@@ -8552,28 +8509,23 @@ HeatTransfer::mac_sync ()
                     //
                     const Real mult      = dt*dt;
                     const int  sigmaRhoH = RhoH - BL_SPACEDIM; // RhoH comp in Ssync
-		    
+
+                    D_TERM(FArrayBox& xflx = (*fluxNULN[0])[i];,
+                           FArrayBox& yflx = (*fluxNULN[1])[i];,
+                           FArrayBox& zflx = (*fluxNULN[2])[i];);
+
                     FORT_INCRWEXTFLXDIV(box.loVect(), box.hiVect(),
-                                        (*fluxNULN[0])[i].dataPtr(),
-                                        ARLIM((*fluxNULN[0])[i].loVect()),
-                                        ARLIM((*fluxNULN[0])[i].hiVect()),
-                                        (*fluxNULN[1])[i].dataPtr(),
-                                        ARLIM((*fluxNULN[1])[i].loVect()),
-                                        ARLIM((*fluxNULN[1])[i].hiVect()),
+                                        xflx.dataPtr(), ARLIM(xflx.loVect()), ARLIM(xflx.hiVect()),
+                                        yflx.dataPtr(), ARLIM(yflx.loVect()), ARLIM(yflx.hiVect()),
 #if BL_SPACEDIM == 3
-                                        (*fluxNULN[2])[i].dataPtr(),
-                                        ARLIM((*fluxNULN[2])[i].loVect()),
-                                        ARLIM((*fluxNULN[2])[i].hiVect()),
+                                        zflx.dataPtr(), ARLIM(zflx.loVect()), ARLIM(zflx.hiVect()),
 #endif
                                         synco.dataPtr(sigmaRhoH),
-                                        ARLIM(synco.loVect()),
-                                        ARLIM(synco.hiVect()),
+                                        ARLIM(synco.loVect()), ARLIM(synco.hiVect()),
                                         syncn.dataPtr(sigmaRhoH),
-                                        ARLIM(syncn.loVect()),
-                                        ARLIM(syncn.hiVect()),
+                                        ARLIM(syncn.loVect()), ARLIM(syncn.hiVect()),
                                         volume.dataPtr(),
-                                        ARLIM(volume.loVect()),
-                                        ARLIM(volume.hiVect()),
+                                        ARLIM(volume.loVect()), ARLIM(volume.hiVect()),
                                         &nspecies, &mult);
                 }
 
@@ -8587,11 +8539,11 @@ HeatTransfer::mac_sync ()
 	    MultiFab **flux;
             diffusion->allocFluxBoxesLevel(flux);
 
-            for (sigma = 0; sigma < numscal; sigma++)
+            for (int sigma = 0; sigma < numscal; sigma++)
             {
-                int rho_flag = 0;
-                int do_viscsyncflux = do_reflux;
-		const int state_ind = BL_SPACEDIM + sigma;
+                int       rho_flag        = 0;
+                int       do_viscsyncflux = do_reflux;
+		const int state_ind       = BL_SPACEDIM + sigma;
 		//
 		// To diffuse, or not?
 		// (1) Density, no
@@ -8603,7 +8555,7 @@ HeatTransfer::mac_sync ()
 		// (5) Temp, no (set instead by RhoH to Temp)
                 //
 		const bool is_spec = state_ind<=last_spec && state_ind>=first_spec;
-                int do_it
+                bool do_it
 		    =  state_ind!=Density 
 		    && state_ind!=Temp
 		    && is_diffusive[state_ind]
@@ -8624,9 +8576,8 @@ HeatTransfer::mac_sync ()
 		    {
 			for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
 			{
-			    const int i=mfi.index();
 			    for (int d=0; d<BL_SPACEDIM; ++d)
-                                getViscFluxReg().FineAdd((*flux[d])[i],d,i,0,state_ind,1,dt);
+                                getViscFluxReg().FineAdd((*flux[d])[mfi],d,mfi.index(),0,state_ind,1,dt);
 			}
 		    }
                 }
@@ -8640,15 +8591,15 @@ HeatTransfer::mac_sync ()
         //
         for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
         {
-            const int i          = mfi.index();
-            int       iconserved = -1;
+            const int i    = mfi.index();
+            int       cons = -1;
 
             for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
             {
                 if (istate != Density && advectionType[istate] == Conservative)
                 {
-                    iconserved++;
-                    (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
+                    cons++;
+                    (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],cons,istate-BL_SPACEDIM,1);
                 }
             }
         }
@@ -8676,10 +8627,10 @@ HeatTransfer::mac_sync ()
         //
         // Get boundary conditions.
         //
-        Real mult = 1.0;
+        const Real mult = 1.0;
         Array<int*>         sync_bc(grids.size());
         Array< Array<int> > sync_bc_array(grids.size());
-        for (int i = 0; i < ngrids; i++)
+        for (int i = 0; i < grids.size(); i++)
         {
             sync_bc_array[i] = getBCArray(State_Type,i,Density,numscal);
             sync_bc[i]       = sync_bc_array[i].dataPtr();
@@ -8688,6 +8639,7 @@ HeatTransfer::mac_sync ()
         // Interpolate the sync correction to the finer levels.
         //
         IntVect ratio = IntVect::TheUnitVector();
+
         for (int lev = level+1; lev <= finest_level; lev++)
         {
             ratio                   *= parent->refRatio(lev-1);
@@ -8699,8 +8651,8 @@ HeatTransfer::mac_sync ()
             //
             const BoxArray& fine_grids = S_new_lev.boxArray();
             const int       nghost     = S_new_lev.nGrow();
-            MultiFab        increment(fine_grids, numscal, nghost);
-            increment.setVal(0,nghost);
+            MultiFab        incr(fine_grids, numscal, nghost);
+            incr.setVal(0,nghost);
             //
             // Note: we use the lincc_interp (which_interp==3) for density,
             // rho*h and rho*Y, cell_cons_interp for everything else. Doing
@@ -8714,53 +8666,50 @@ HeatTransfer::mac_sync ()
             // HACK note: Presently, the species mass syncs are redistributed 
             //            without consequence to the enthalpy sync.  Clearly
             //            the species carry enthalphy, so the enthalph sync should
-            //            be adjusted as well.  Note yet sure how to do this correctly.
+            //            be adjusted as well.  Not yet sure how to do this correctly.
             //            Punt for now...
             //
             const SyncInterpType which_interp = CellConsProt_T;
 
             const int nComp = 2+nspecies;
 
-            SyncInterp(*Ssync, level, increment, lev, ratio, 
+            SyncInterp(*Ssync, level, incr, lev, ratio, 
                        Density-BL_SPACEDIM, Density-BL_SPACEDIM, nComp, 1, mult, 
                        sync_bc.dataPtr(), which_interp, Density);
 
             if (have_trac)
-                SyncInterp(*Ssync, level, increment, lev, ratio, 
+                SyncInterp(*Ssync, level, incr, lev, ratio, 
                            Trac-BL_SPACEDIM, Trac-BL_SPACEDIM, 1, 1, mult, 
                            sync_bc.dataPtr());
 
             if (have_rhort)
-                SyncInterp(*Ssync, level, increment, lev, ratio, 
+                SyncInterp(*Ssync, level, incr, lev, ratio, 
                            RhoRT-BL_SPACEDIM, RhoRT-BL_SPACEDIM, 1, 1, mult, 
                            sync_bc.dataPtr());
 
-            SyncInterp(*Ssync, level, increment, lev, ratio, 
+            SyncInterp(*Ssync, level, incr, lev, ratio, 
                        Temp-BL_SPACEDIM, Temp-BL_SPACEDIM, 1, 1, mult, 
                        sync_bc.dataPtr());
 
             if (do_set_rho_to_species_sum)
             {
-                increment.setVal(0,Density-BL_SPACEDIM,1,0);
+                incr.setVal(0,Density-BL_SPACEDIM,1,0);
 
                 for (int istate = first_spec; istate <= last_spec; istate++)
                 { 
-                    for (MFIter mfi(increment); mfi.isValid(); ++mfi)
+                    for (MFIter mfi(incr); mfi.isValid(); ++mfi)
                     {
-                        int i = mfi.index();
-                        increment[i].plus(increment[i],fine_grids[i],
+                        incr[mfi].plus(incr[mfi],fine_grids[mfi.index()],
 					  istate-BL_SPACEDIM,Density-BL_SPACEDIM,1);
                     }
                 }
             }
 
-            for (MFIter mfi(increment); mfi.isValid(); ++mfi)
-            {
-                int i = mfi.index();
-                S_new_lev[i].plus(increment[i],fine_grids[i],0,Density,numscal);
-            }
+            for (MFIter mfi(incr); mfi.isValid(); ++mfi)
+                S_new_lev[mfi].plus(incr[mfi],fine_grids[mfi.index()],0,Density,numscal);
+
             fine_level.make_rho_curr_time();
-            fine_level.incrRhoAvg(increment,Density-BL_SPACEDIM,1.0);
+            fine_level.incrRhoAvg(incr,Density-BL_SPACEDIM,1.0);
             //
             // Recompute temperature and rho R T after interpolation of the mac_sync correction
             //   of the individual quantities rho, Y, T.
@@ -8784,15 +8733,8 @@ HeatTransfer::mac_sync ()
             MultiFab& S_crse = crse_lev.get_new_data(State_Type);
             MultiFab& S_fine = fine_lev.get_new_data(State_Type);
 
-            MultiFab fvolume, cvolume;
-
-            crse_lev.geom.GetVolume(cvolume,crse_lev.grids,GEOM_GROW);
-            fine_lev.geom.GetVolume(fvolume,fine_lev.grids,GEOM_GROW);
-
             const int pComp = (have_rhort ? RhoRT : Trac);
-            crse_lev.NavierStokes::avgDown(cgrids,fgrids,
-                                           S_crse,S_fine,
-                                           cvolume,fvolume,
+            crse_lev.NavierStokes::avgDown(cgrids,fgrids,S_crse,S_fine,
                                            lev,lev+1,pComp,1,fratio);
         }
     }
