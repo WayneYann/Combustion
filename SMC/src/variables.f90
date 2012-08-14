@@ -139,6 +139,7 @@ contains
           enddo
        enddo
     enddo
+    !$omp end parallel do
 
   end subroutine ctoprim_3d
 

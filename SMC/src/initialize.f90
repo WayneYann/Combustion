@@ -29,7 +29,7 @@ contains
     type(layout) :: lachk
     type(boxarray) :: bachk, ba
     type(box) :: bx
-    integer :: dm, ncell(3), idim, lo(3), hi(3)
+    integer :: dm, ncell(3), idim, lo(3), hi(3), ng
     real(dp_t) :: prob_lo_chk(3), prob_hi_chk(3)
 
     call checkpoint_read(chkdata, dirname, dt, prob_lo_chk, prob_hi_chk, ncell) 
@@ -89,7 +89,9 @@ contains
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
     call destroy(ba)
 
-    call multifab_build(U,la,ncons,stencil_ng)
+    ng = stencil_ng
+
+    call multifab_build(U,la,ncons,ng)
     call multifab_copy_c(U,1,chkdata(1),1,ncons)
 
     call destroy(lachk)
@@ -113,7 +115,7 @@ contains
     type(multifab), intent(inout) :: U
 
     ! local
-    integer :: lo(dm_in), hi(dm_in), dm
+    integer :: lo(dm_in), hi(dm_in), dm, ng
     type(box)          :: bx
     type(boxarray)     :: ba
 
@@ -142,10 +144,9 @@ contains
        dx(3) = (prob_hi(3)-prob_lo(3)) / n_cellz
     end if
 
-    !
-    ! Compute initial condition.
-    !
-    call multifab_build(U,la,ncons,stencil_ng)
+    ng = stencil_ng
+
+    call multifab_build(U,la,ncons,ng)
   
     call init_data(U,dx,prob_lo,prob_hi)
 
