@@ -37,7 +37,6 @@ contains
 
   end subroutine advance
 
-
   !
   ! Advance U using SSP RK3
   !
@@ -158,9 +157,8 @@ contains
 
   end subroutine advance_sdc
 
-
   !
-  ! Perform one SDC sweep.
+  ! Perform one SDC sweep
   !
   subroutine sdc_sweep (uSDC,fSDC,S,dx,dt,sdc)
     type(sdcquad),     intent(in   ) :: sdc
@@ -187,6 +185,7 @@ contains
        call copy(uSDC(m+1), uSDC(m))
        call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
        call saxpy(uSDC(m+1), dt, S(m))
+       call reset_density(uSDC(m+1))
 
        call dUdt(uSDC(m+1), fSDC(m+1), dx)
 
@@ -194,10 +193,8 @@ contains
 
   end subroutine sdc_sweep
 
-
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
-  ! Compute SDC residual.
+  ! Compute SDC residual
   !
   function sdc_residual (uSDC,fSDC,R,dt,sdc) result(res)
     real(dp_t)                      :: res
@@ -221,7 +218,6 @@ contains
     res = norm_inf(R)
 
   end function sdc_residual
-
 
   !
   ! Compute new time-step size
