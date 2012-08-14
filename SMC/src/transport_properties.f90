@@ -3,7 +3,7 @@ module transport_properties
   use chemistry_module
   use eglib_module
   use multifab_module
-  use variables
+  use variables_module
 
   implicit none
 

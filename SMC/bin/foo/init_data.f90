@@ -40,10 +40,9 @@ contains
 
   subroutine init_data_3d(lo,hi,ng,dx,cons,plo,phi)
 
-    use variables, only : irho, imx,imy,imz,iene,iry1,ncons
+    use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons
     use chemistry_module, only : nspecies
-    use probin_module, only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit
-    use omp_module
+    use probin_module,    only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
     double precision, intent(in   ) :: dx(3),plo(3),phi(3)

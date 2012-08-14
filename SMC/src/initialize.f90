@@ -1,13 +1,11 @@
 module initialize_module
 
-  use bl_constants_module
   use multifab_module
-  use variables
+  use variables_module
 
   implicit none
 
   private
-
   public :: initialize_from_restart, initialize_from_scratch
 
 contains
@@ -120,7 +118,7 @@ contains
     type(boxarray)     :: ba
 
     time = ZERO
-    dt = 1.d20
+    dt   = 1.d20
 
     dm = dm_in
     lo = 0
