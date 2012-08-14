@@ -4,13 +4,14 @@ module advance_module
   use derivative_stencil_module
   use kernels_module
   use multifab_module
+  use sdcquad_module
   use time_module
   use transport_properties
   use variables_module
 
   use chemistry_module, only : nspecies
-  use probin_module, only : advance_method, cflfac, fixed_dt, init_shrink, max_dt, &
-       max_dt_growth, small_dt, stop_time, verbose
+  ! use probin_module, only : cflfac, fixed_dt, init_shrink, max_dt, &
+  !      max_dt_growth, small_dt, stop_time, verbose
 
   implicit none
 
@@ -19,32 +20,36 @@ module advance_module
 
 contains
 
-  subroutine advance(U, dt, dx, istep)
+  subroutine advance(U, dt, dx, sdc, istep)
+
+    use probin_module, only : advance_method
 
     type(multifab),    intent(inout) :: U
     double precision,  intent(  out) :: dt
     double precision,  intent(in   ) :: dx(U%dim) 
-    integer, intent(in) :: istep
+    integer,           intent(in   ) :: istep
+    type(sdcquad),     intent(in   ) :: sdc
 
     if (advance_method == 2) then
-       call bl_error("call advance_sdc")
+       call advance_sdc(U,dt,dx,sdc,istep)
     else
-       call advance_rk3(U, dt, dx, istep)
+       call advance_rk3(U,dt,dx,istep)
     end if
 
   end subroutine advance
 
 
+  !
+  ! Advance U using SSP RK3
+  !
   subroutine advance_rk3 (U,dt,dx,istep)
-    use derivative_stencil_module, only : stencil, compact, S3D
-
     type(multifab),    intent(inout) :: U
     double precision,  intent(  out) :: dt
     double precision,  intent(in   ) :: dx(U%dim)
     integer, intent(in) :: istep
 
     integer          :: ng
-    double precision :: courno, courno_proc, dtold
+    double precision :: courno_proc
     type(layout)     :: la
     type(multifab)   :: Uprime, Unew
 
@@ -57,15 +62,183 @@ contains
     ! RK Step 1
     courno_proc = 1.0d-50
 
-    if (stencil .eq. compact) then
-       call dUdt(U, Uprime, dx, courno=courno_proc)
-    else if (stencil .eq. S3D) then
-       call dUdt_S3D(U, Uprime, dx, courno=courno_proc)
-    else
-       call bl_error("advance_rk3: unknown stencil type")
-    end if
+    call dUdt(U, Uprime, dx, courno=courno_proc)
+    call set_dt(dt, courno_proc, istep)
+    call update_rk3(Zero,Unew, One,U, dt,Uprime)
+    call reset_density(Unew)
+
+    ! RK Step 2
+    call dUdt(Unew, Uprime, dx)
+
+    call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
+    call reset_density(Unew)
+
+    ! RK Step 3
+    call dUdt(Unew, Uprime, dx)
+    call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
+    call reset_density(U)
+
+    call destroy(Unew)
+    call destroy(Uprime)
+
+  end subroutine advance_rk3
+
+  !
+  ! Advance U using SDC time-stepping
+  !
+  subroutine advance_sdc(U, dt, dx, sdc, istep)
+
+    type(multifab),    intent(inout) :: U
+    double precision,  intent(inout) :: dt
+    double precision,  intent(in   ) :: dx(U%dim)
+    type(sdcquad),     intent(in   ) :: sdc
+    integer,           intent(in   ) :: istep
+
+    integer          :: k, m, ng
+    double precision :: courno_proc, res_proc, res
+    type(layout)     :: la
+    type(multifab)   :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), S(sdc%nnodes-1)
+
+    ng = nghost(U)
+    la = get_layout(U)
+
+    ! build u and u' multifabs for each node
+    do m = 1, sdc%nnodes
+       call build(uSDC(m), la, ncons, ng)
+       call build(fSDC(m), la, ncons, 0)
+    end do
+
+    ! build S multifab (node to node integrals)
+    do m = 1, sdc%nnodes-1
+       call build(S(m), la, ncons, 0)
+    end do
+
+    ! set provisional solution, compute dt
+    courno_proc = 1.0d-50
+
+    call copy(uSDC(1), U)
+    call dUdt(uSDC(1), fSDC(1), dx, courno_proc)
+
+    do m = 2, sdc%nnodes
+       call copy(uSDC(m), uSDC(1))
+       call copy(fSDC(m), fSDC(1))
+    end do
+
+    call set_dt(dt, courno_proc, istep)
+
+    ! perform sdc iterations
+    res = 0.0d0
+
+    do k = 1, sdc%iters
+       call sdc_sweep(uSDC, fSDC, S, dx, dt, sdc)
+
+       if (sdc%tol_residual > 0.d0) then
+          res_proc = sdc_residual(uSDC, fSDC, S(1), dt, sdc)
+          call parallel_reduce(res, res_proc, MPI_MAX)
+
+          if (parallel_IOProcessor()) then
+             print *, "SDC: iter:", k, "residual:", res
+          end if
+
+          if (res < sdc%tol_residual) exit
+       end if
+    end do
+
+    call copy(U, uSDC(sdc%nnodes))
+
+    ! destroy
+    
+    do m = 1, sdc%nnodes
+       call destroy(uSDC(m))
+       call destroy(fSDC(m))
+    end do
+    
+    do m = 1, sdc%nnodes-1
+       call destroy(S(m))
+    end do
+
+  end subroutine advance_sdc
+
+
+  !
+  ! Perform one SDC sweep.
+  !
+  subroutine sdc_sweep (uSDC,fSDC,S,dx,dt,sdc)
+    type(sdcquad),     intent(in   ) :: sdc
+    type(multifab),    intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), S(sdc%nnodes-1)
+    double precision,  intent(in   ) :: dt, dx(uSDC(1)%dim)
+
+    integer :: m, n
+    double precision :: dtsdc(sdc%nnodes-1)
+
+    ! compute integrals (compact forward euler)
+    do m = 1, sdc%nnodes-1
+       call setval(S(m), 0.0d0)
+       do n = 1, sdc%nnodes
+          call saxpy(S(m), sdc%smats(m,n,1), fSDC(n))
+       end do
+    end do
+
+    ! perform sub-step correction
+    dtsdc = dt * (sdc%nodes(2:sdc%nnodes) - sdc%nodes(1:sdc%nnodes-1))
+    do m = 1, sdc%nnodes-1
+
+       ! U(m+1) = U(m) + dt dUdt(m) + dt S(m)
+
+       call copy(uSDC(m+1), uSDC(m))
+       call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
+       call saxpy(uSDC(m+1), dt, S(m))
+
+       call dUdt(uSDC(m+1), fSDC(m+1), dx)
+
+    end do
+
+  end subroutine sdc_sweep
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! Compute SDC residual.
+  !
+  function sdc_residual (uSDC,fSDC,R,dt,sdc) result(res)
+    real(dp_t)                      :: res
+    type(sdcquad),    intent(in   ) :: sdc
+    type(multifab),   intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), R
+    real(dp_t),       intent(in   ) :: dt      
+
+    integer :: m, n
+
+    ! compute integral
+    call copy(R, uSDC(1))
+
+    do m = 1, sdc%nnodes-1
+       do n = 1, sdc%nnodes
+          call saxpy(R, dt*sdc%smat(m,n), fSDC(n))
+       end do
+    end do
+
+    call saxpy(R, -1.0d0, uSDC(sdc%nnodes))
+    
+    res = norm_inf(R)
+
+  end function sdc_residual
+
+
+  !
+  ! Compute new time-step size
+  !
+  subroutine set_dt(dt, courno_proc, istep)
+
+    use probin_module, only : cflfac, fixed_dt, init_shrink, max_dt, max_dt_growth, small_dt, stop_time
+
+    double precision, intent(inout) :: dt
+    double precision, intent(in   ) :: courno_proc
+    integer,          intent(in   ) :: istep
+
+    double precision :: dtold, courno
 
     if (fixed_dt > 0.d0) then
+
        dt = fixed_dt
 
        if (parallel_IOProcessor()) then
@@ -79,29 +252,29 @@ contains
        call parallel_reduce(courno, courno_proc, MPI_MAX)
 
        dtold = dt
-       dt = cflfac / courno
+       dt    = cflfac / courno
 
        if (parallel_IOProcessor()) then
-          print*, "CFL gives dt =", dt
+          print*, "CFL: dt =", dt
        end if
 
        if (istep .eq. 1) then
           dt = dt * init_shrink
           if (parallel_IOProcessor()) then
-             print*,'init_shrink factor limits the first dt =',dt
+             print*,'Limited by init_shrink: dt =',dt
           end if
        else
           if (dt .gt. dtold * max_dt_growth) then
              dt = dtold * max_dt_growth
              if (parallel_IOProcessor()) then
-                print*,'dt_growth factor limits the new dt =',dt
+                print*,'Limited by dt_growth: dt =',dt
              end if
           end if
        end if
 
        if(dt .gt. max_dt) then
           if (parallel_IOProcessor()) then
-             print*,'max_dt limits the new dt =',max_dt
+             print*,'Limited by max_dt: dt =',max_dt
           end if
           dt = max_dt
        end if
@@ -114,7 +287,7 @@ contains
           if (time + dt > stop_time) then
              dt = stop_time - time
              if (parallel_IOProcessor()) then
-                print*, "Stop time limits dt =",dt
+                print*, "Limited by stop_time: dt =",dt
              end if
           end if
        end if
@@ -125,40 +298,10 @@ contains
 
     end if
 
-    call update_rk3(Zero,Unew, One,U, dt,Uprime)
-    call reset_density(Unew)
-
-    ! RK Step 2
-    if (stencil .eq. compact) then
-       call dUdt(Unew,Uprime,dx)
-    else if (stencil .eq. S3D) then
-       call dUdt_S3D(Unew,Uprime,dx)
-    else
-       call bl_error("advance_rk3: unknown stencil type")
-    end if
-
-    call update_rk3(OneQuarter,Unew, ThreeQuarters,U, OneQuarter*dt,Uprime)
-    call reset_density(Unew)
-
-    ! RK Step 3
-    if (stencil .eq. compact) then
-       call dUdt(Unew,Uprime,dx)
-    else if (stencil .eq. S3D) then
-       call dUdt_S3D(Unew,Uprime,dx)
-    else
-       call bl_error("advance_rk3: unknown stencil type")
-    end if       
-
-    call update_rk3(OneThird,U, TwoThirds,Unew, TwoThirds*dt,Uprime)
-    call reset_density(U)
-
-    call destroy(Unew)
-    call destroy(Uprime)
-
-  end subroutine advance_rk3
+  end subroutine set_dt
 
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   !
   ! Compute U1 = a U1 + b U2 + c Uprime.
   !
@@ -200,13 +343,35 @@ contains
   end subroutine update_rk3
 
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   ! Compute dU/dt given U.
   !
   ! The Courant number (courno) is also computed if passed.
   !
   subroutine dUdt (U, Uprime, dx, courno)
+    use derivative_stencil_module, only : stencil, compact, s3d
+
+    type(multifab),   intent(inout) :: U, Uprime
+    double precision, intent(in   ) :: dx(U%dim)
+    double precision, intent(inout), optional :: courno
+
+    if (stencil .eq. compact) then
+       call dUdt_compact(U, Uprime, dx, courno)
+    else if (stencil .eq. s3d) then
+       call dUdt_S3D(U, Uprime, dx, courno)
+    else
+       call bl_error("advance: unknown stencil type")
+    end if       
+
+  end subroutine dUdt
+
+
+  !
+  ! Compute dU/dt given U using the compact stencil.
+  !
+  ! The Courant number (courno) is also computed if passed.
+  !
+  subroutine dUdt_compact (U, Uprime, dx, courno)
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
@@ -349,9 +514,7 @@ contains
     call destroy(lam)
     call destroy(Ddiag)
 
-  end subroutine dUdt
-
-
+  end subroutine dUdt_compact
 
   subroutine compute_courno(Q, dx, courno)
     type(multifab), intent(in) :: Q
@@ -381,8 +544,11 @@ contains
   end subroutine compute_courno
 
 
-
-  ! S3D style
+  !
+  ! Compute dU/dt given U using the compact stencil.
+  !
+  ! The Courant number (courno) is also computed if passed.
+  !
   subroutine dUdt_S3D (U, Uprime, dx, courno)
 
     type(multifab),   intent(inout) :: U, Uprime
@@ -391,9 +557,9 @@ contains
 
     integer, parameter :: ng = 4
 
-    type(multifab) :: mu, xi ! viscosity
-    type(multifab) :: lam ! partial thermal conductivity
-    type(multifab) :: Ddiag ! diagonal components of rho * Y_k * D
+    type(multifab) :: mu, xi    ! viscosity
+    type(multifab) :: lam       ! partial thermal conductivity
+    type(multifab) :: Ddiag     ! diagonal components of rho * Y_k * D
 
     integer          :: lo(U%dim), hi(U%dim), i,j,k,m,n, dm
     type(layout)     :: la
