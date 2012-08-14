@@ -1,0 +1,51 @@
+&PROBIN
+
+ verbose = 2
+
+ advance_method = 1  ! 1=RK3, 2=SDC, 3=PFASST
+ stencil_type = "compact"   ! compact or S3D
+
+ stop_time = 3.d-3
+ max_step  = 10
+ restart = -1
+
+ plot_int = 10
+ chk_int  = -1
+
+ cflfac = 0.1d0
+ init_shrink = 0.5d0
+
+ n_cellx = 32
+ n_celly = 32
+ n_cellz = 32
+ max_grid_size = 16
+
+ prob_lo_x = -0.5d0
+ prob_lo_y = -0.5d0
+ prob_lo_z = -0.5d0
+ prob_hi_x =  0.5d0
+ prob_hi_y =  0.5d0
+ prob_hi_z =  0.5d0
+
+ xlo_boundary_type = "periodic"
+ xhi_boundary_type = "periodic"
+
+ ylo_boundary_type = "periodic"
+ yhi_boundary_type = "periodic"
+
+ zlo_boundary_type = "periodic"
+ zhi_boundary_type = "periodic"
+
+ prob_type = 1
+
+ ! for prob_type 1
+ pertmag = 3.d-2
+ rfire = 0.15d0
+
+ ! for prob_type 2
+ Tinit = 800.d0
+ uinit =  127.4d0
+ vinit = -203.2d0
+ winit =  138.1d0
+
+/
