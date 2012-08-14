@@ -1,10 +1,9 @@
 subroutine smc()
 
   use advance_module
-  use bl_constants_module
   use checkpoint_module
   use chemistry_module
-  use cputime_module, only: start_cputime_clock
+  use derivative_stencil_module
   use initialize_module
   use layout_module
   use make_plotfile_module
@@ -12,9 +11,11 @@ subroutine smc()
   use omp_module
   use probin_module
   use runtime_init_module
-  use derivative_stencil_module
   use time_module
-  use variables
+  use variables_module
+
+  use cputime_module, only: start_cputime_clock
+
 
   implicit none
 

@@ -1,7 +1,7 @@
 module make_plot_variables_module
 
-  use variables
   use multifab_module
+  use variables_module
 
   integer, save :: icomp_h, icomp_divu, icomp_omegadot
 

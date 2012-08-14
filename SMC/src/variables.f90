@@ -1,4 +1,4 @@
-module variables
+module variables_module
 
   use bl_types
   use chemistry_module, only : nspecies
@@ -6,13 +6,30 @@ module variables
 
   implicit none
 
+  ! Indices
   integer, save :: irho, imx, imy, imz, iene, iry1
   integer, save :: qrho, qu, qv, qw, qpres, qtemp, qe, qy1, qx1, qh1
 
+  ! Number of conserved and primitive variables
   integer, save :: ncons, nprim
+
+  ! Indices for S3D style first-derivatives
+  integer, parameter :: idu=1, idv=2, idw=3, idT=4, idp=5, idX1=6 
+
+  ! Arithmetic constants 
+  double precision, parameter :: Zero          = 0.d0
+  double precision, parameter :: One           = 1.d0
+  double precision, parameter :: OneThird      = 1.d0/3.d0
+  double precision, parameter :: TwoThirds     = 2.d0/3.d0
+  double precision, parameter :: FourThirds    = 4.d0/3.d0
+  double precision, parameter :: OneQuarter    = 1.d0/4.d0
+  double precision, parameter :: ThreeQuarters = 3.d0/4.d0
 
 contains
 
+  ! 
+  ! Initialize various indices
+  !
   subroutine init_variables()
 
     use probin_module, only: dm_in
@@ -54,7 +71,9 @@ contains
     
   end subroutine init_variables
 
-
+  !
+  ! Convert conserved variables U to primitive variables Q
+  !
   subroutine ctoprim(U, Q, ng)
     type(multifab), intent(in   ) :: U
     type(multifab), intent(inout) :: Q
@@ -143,7 +162,9 @@ contains
 
   end subroutine ctoprim_3d
 
-  
+  !
+  ! Compute total density
+  !
   subroutine reset_density(U)
     type(multifab), intent(inout) :: U
     
@@ -194,4 +215,4 @@ contains
 
   end subroutine reset_rho_3d
 
-end module variables
+end module variables_module

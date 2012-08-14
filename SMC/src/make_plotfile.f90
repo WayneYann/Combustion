@@ -1,15 +1,16 @@
 module make_plotfile_module
 
   use bl_types
-  use variables
   use fabio_module
+  use make_plot_variables_module
   use multifab_module
+  use variables_module
+
   use chemistry_module, only : nspecies, spec_names
   use probin_module, only : dm_in, plot_eint, plot_h, plot_divu, &
        plot_Y, plot_X, plot_hspec, plot_omegadot, &
        nOutFiles, lUsingNFiles, single_prec_plotfiles, prob_lo, prob_hi
 
-  use make_plot_variables_module
 
   implicit none
 
