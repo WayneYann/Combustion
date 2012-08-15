@@ -7047,7 +7047,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
 
                 IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
 
-                for (int j = BL_SPACEDIM-1; j >=0 && ba.size() < NProcs && !done; --j)
+                for (int j = BL_SPACEDIM-1; j >=0 && ba.size() < 2*NProcs && !done; --j)
                 {
                     chunk[j] /= 2;
                     ba.maxSize(chunk);
@@ -7076,7 +7076,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             if (verbose && ParallelDescriptor::IOProcessor())
                 std::cout << "*** strang_chem: FABs in tmp MF: "
                           << tmp.size()
-                          << ", eff = "
+                          << ", eff: "
                           << efficiency
                           << '\n';
 
