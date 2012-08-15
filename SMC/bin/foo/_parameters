@@ -1,8 +1,8 @@
 prob_type               integer         1
 
 # parameters for prob_type 1
-pertmag			real		3.d-2
-rfire			real		0.2d0
+pertmag			real		0.0d0
+rfire			real		0.15d0
 
 # parameters for prob_type 2
 Tinit                   real            800.d0
