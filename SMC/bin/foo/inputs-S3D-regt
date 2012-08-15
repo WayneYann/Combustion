@@ -39,7 +39,7 @@
  prob_type = 1
 
  ! for prob_type 1
- pertmag = 3.d-2
+ pertmag = 0.d0
  rfire = 0.15d0
 
  ! for prob_type 2
