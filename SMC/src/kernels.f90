@@ -6,13 +6,13 @@ module kernels_module
 
 contains
 
-  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,flux)
+  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,rhs)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
     double precision, intent(in ) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
-    double precision, intent(in ) ::    q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
-    double precision, intent(out) :: flux(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+    double precision, intent(in ) ::   q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
 
     integer          :: i,j,k,n
     double precision :: unp1,unp2,unp3,unp4,unm1,unm2,unm3,unm4
@@ -38,13 +38,13 @@ contains
              unm3 = q(i-3,j,k,qu)
              unm4 = q(i-4,j,k,qu)
 
-             flux(i,j,k,irho)= - &
+             rhs(i,j,k,irho)= - &
                    (ALP*(cons(i+1,j,k,imx)-cons(i-1,j,k,imx)) &
                   + BET*(cons(i+2,j,k,imx)-cons(i-2,j,k,imx)) &
                   + GAM*(cons(i+3,j,k,imx)-cons(i-3,j,k,imx)) &
                   + DEL*(cons(i+4,j,k,imx)-cons(i-4,j,k,imx)))*dxinv(1)
 
-             flux(i,j,k,imx)= - &
+             rhs(i,j,k,imx)= - &
                    (ALP*(cons(i+1,j,k,imx)*unp1-cons(i-1,j,k,imx)*unm1 &
                   +        (q(i+1,j,k,qpres)   -   q(i-1,j,k,qpres)))  &
                   + BET*(cons(i+2,j,k,imx)*unp2-cons(i-2,j,k,imx)*unm2 &
@@ -54,19 +54,19 @@ contains
                   + DEL*(cons(i+4,j,k,imx)*unp4-cons(i-4,j,k,imx)*unm4 &
                   +        (q(i+4,j,k,qpres)   -   q(i-4,j,k,qpres))))*dxinv(1)
 
-             flux(i,j,k,imy)= - &
+             rhs(i,j,k,imy)= - &
                    (ALP*(cons(i+1,j,k,imy)*unp1-cons(i-1,j,k,imy)*unm1) &
                   + BET*(cons(i+2,j,k,imy)*unp2-cons(i-2,j,k,imy)*unm2) &
                   + GAM*(cons(i+3,j,k,imy)*unp3-cons(i-3,j,k,imy)*unm3) &
                   + DEL*(cons(i+4,j,k,imy)*unp4-cons(i-4,j,k,imy)*unm4))*dxinv(1)
 
-             flux(i,j,k,imz)= - &
+             rhs(i,j,k,imz)= - &
                    (ALP*(cons(i+1,j,k,imz)*unp1-cons(i-1,j,k,imz)*unm1) &
                   + BET*(cons(i+2,j,k,imz)*unp2-cons(i-2,j,k,imz)*unm2) &
                   + GAM*(cons(i+3,j,k,imz)*unp3-cons(i-3,j,k,imz)*unm3) &
                   + DEL*(cons(i+4,j,k,imz)*unp4-cons(i-4,j,k,imz)*unm4))*dxinv(1)
 
-             flux(i,j,k,iene)= - &
+             rhs(i,j,k,iene)= - &
                    (ALP*(cons(i+1,j,k,iene )*unp1-cons(i-1,j,k,iene )*unm1 &
                   +        (q(i+1,j,k,qpres)*unp1-   q(i-1,j,k,qpres)*unm1)) &
                   + BET*(cons(i+2,j,k,iene )*unp2-cons(i-2,j,k,iene )*unm2 &
@@ -77,7 +77,7 @@ contains
                   +        (q(i+4,j,k,qpres)*unp4-   q(i-4,j,k,qpres)*unm4)))*dxinv(1) 
 
              do n = iry1, iry1+nspecies-1
-                flux(i,j,k,n) = - &
+                rhs(i,j,k,n) = - &
                      ( ALP*(cons(i+1,j,k,n)*unp1-cons(i-1,j,k,n)*unm1) &
                      + BET*(cons(i+2,j,k,n)*unp2-cons(i-2,j,k,n)*unm2) &
                      + GAM*(cons(i+3,j,k,n)*unp3-cons(i-3,j,k,n)*unm3) &
@@ -104,19 +104,19 @@ contains
              unm3 = q(i,j-3,k,qv)
              unm4 = q(i,j-4,k,qv)
 
-             flux(i,j,k,irho)=flux(i,j,k,irho) - &
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - &
                    (ALP*(cons(i,j+1,k,imy)-cons(i,j-1,k,imy)) &
                   + BET*(cons(i,j+2,k,imy)-cons(i,j-2,k,imy)) &
                   + GAM*(cons(i,j+3,k,imy)-cons(i,j-3,k,imy)) &
                   + DEL*(cons(i,j+4,k,imy)-cons(i,j-4,k,imy)))*dxinv(2)
 
-             flux(i,j,k,imx)=flux(i,j,k,imx) - &
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - &
                    (ALP*(cons(i,j+1,k,imx)*unp1-cons(i,j-1,k,imx)*unm1) &
                   + BET*(cons(i,j+2,k,imx)*unp2-cons(i,j-2,k,imx)*unm2) &
                   + GAM*(cons(i,j+3,k,imx)*unp3-cons(i,j-3,k,imx)*unm3) &
                   + DEL*(cons(i,j+4,k,imx)*unp4-cons(i,j-4,k,imx)*unm4))*dxinv(2)
 
-             flux(i,j,k,imy)=flux(i,j,k,imy) - &
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - &
                    (ALP*(cons(i,j+1,k,imy)*unp1-cons(i,j-1,k,imy)*unm1 &
                   +        (q(i,j+1,k,qpres)   -   q(i,j-1,k,qpres)))  &
                   + BET*(cons(i,j+2,k,imy)*unp2-cons(i,j-2,k,imy)*unm2 &
@@ -126,13 +126,13 @@ contains
                   + DEL*(cons(i,j+4,k,imy)*unp4-cons(i,j-4,k,imy)*unm4 &
                   +        (q(i,j+4,k,qpres)   -   q(i,j-4,k,qpres))))*dxinv(2)
 
-             flux(i,j,k,imz)=flux(i,j,k,imz) - &
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - &
                    (ALP*(cons(i,j+1,k,imz)*unp1-cons(i,j-1,k,imz)*unm1) &
                   + BET*(cons(i,j+2,k,imz)*unp2-cons(i,j-2,k,imz)*unm2) &
                   + GAM*(cons(i,j+3,k,imz)*unp3-cons(i,j-3,k,imz)*unm3) &
                   + DEL*(cons(i,j+4,k,imz)*unp4-cons(i,j-4,k,imz)*unm4))*dxinv(2)
 
-             flux(i,j,k,iene)=flux(i,j,k,iene) - &
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - &
                    (ALP*(cons(i,j+1,k,iene )*unp1-cons(i,j-1,k,iene )*unm1 &
                   +        (q(i,j+1,k,qpres)*unp1-   q(i,j-1,k,qpres)*unm1)) &
                   + BET*(cons(i,j+2,k,iene )*unp2-cons(i,j-2,k,iene )*unm2 &
@@ -143,7 +143,7 @@ contains
                   +        (q(i,j+4,k,qpres)*unp4-   q(i,j-4,k,qpres)*unm4)))*dxinv(2)
 
              do n = iry1, iry1+nspecies-1
-                flux(i,j,k,n) = flux(i,j,k,n) - &
+                rhs(i,j,k,n) = rhs(i,j,k,n) - &
                      ( ALP*(cons(i,j+1,k,n)*unp1-cons(i,j-1,k,n)*unm1) &
                      + BET*(cons(i,j+2,k,n)*unp2-cons(i,j-2,k,n)*unm2) &
                      + GAM*(cons(i,j+3,k,n)*unp3-cons(i,j-3,k,n)*unm3) &
@@ -170,25 +170,25 @@ contains
              unm3 = q(i,j,k-3,qw)
              unm4 = q(i,j,k-4,qw)
 
-             flux(i,j,k,irho)=flux(i,j,k,irho) - &
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - &
                    (ALP*(cons(i,j,k+1,imz)-cons(i,j,k-1,imz)) &
                   + BET*(cons(i,j,k+2,imz)-cons(i,j,k-2,imz)) &
                   + GAM*(cons(i,j,k+3,imz)-cons(i,j,k-3,imz)) &
                   + DEL*(cons(i,j,k+4,imz)-cons(i,j,k-4,imz)))*dxinv(3)
 
-             flux(i,j,k,imx)=flux(i,j,k,imx) - &
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - &
                    (ALP*(cons(i,j,k+1,imx)*unp1-cons(i,j,k-1,imx)*unm1) &
                   + BET*(cons(i,j,k+2,imx)*unp2-cons(i,j,k-2,imx)*unm2) &
                   + GAM*(cons(i,j,k+3,imx)*unp3-cons(i,j,k-3,imx)*unm3) &
                   + DEL*(cons(i,j,k+4,imx)*unp4-cons(i,j,k-4,imx)*unm4))*dxinv(3)
 
-             flux(i,j,k,imy)=flux(i,j,k,imy) - &
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - &
                    (ALP*(cons(i,j,k+1,imy)*unp1-cons(i,j,k-1,imy)*unm1) &
                   + BET*(cons(i,j,k+2,imy)*unp2-cons(i,j,k-2,imy)*unm2) &
                   + GAM*(cons(i,j,k+3,imy)*unp3-cons(i,j,k-3,imy)*unm3) &
                   + DEL*(cons(i,j,k+4,imy)*unp4-cons(i,j,k-4,imy)*unm4))*dxinv(3)
 
-             flux(i,j,k,imz)=flux(i,j,k,imz) - &
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - &
                    (ALP*(cons(i,j,k+1,imz)*unp1-cons(i,j,k-1,imz)*unm1 &
                   +        (q(i,j,k+1,qpres)   -   q(i,j,k-1,qpres)))  &
                   + BET*(cons(i,j,k+2,imz)*unp2-cons(i,j,k-2,imz)*unm2 &
@@ -198,7 +198,7 @@ contains
                   + DEL*(cons(i,j,k+4,imz)*unp4-cons(i,j,k-4,imz)*unm4 &
                   +        (q(i,j,k+4,qpres)   -   q(i,j,k-4,qpres))))*dxinv(3)
 
-             flux(i,j,k,iene)=flux(i,j,k,iene) - &
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - &
                    (ALP*(cons(i,j,k+1,iene )*unp1-cons(i,j,k-1,iene )*unm1 &
                   +        (q(i,j,k+1,qpres)*unp1-   q(i,j,k-1,qpres)*unm1)) &
                   + BET*(cons(i,j,k+2,iene )*unp2-cons(i,j,k-2,iene )*unm2 &
@@ -209,7 +209,7 @@ contains
                   +        (q(i,j,k+4,qpres)*unp4-   q(i,j,k-4,qpres)*unm4)))*dxinv(3)
 
              do n = iry1, iry1+nspecies-1
-                flux(i,j,k,n) = flux(i,j,k,n) - &
+                rhs(i,j,k,n) = rhs(i,j,k,n) - &
                      ( ALP*(cons(i,j,k+1,n)*unp1-cons(i,j,k-1,n)*unm1) &
                      + BET*(cons(i,j,k+2,n)*unp2-cons(i,j,k-2,n)*unm2) &
                      + GAM*(cons(i,j,k+3,n)*unp3-cons(i,j,k-3,n)*unm3) &
@@ -225,7 +225,7 @@ contains
   end subroutine hypterm_3d
 
 
-  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,flx,mu,xi,lam,dxy)
+  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
@@ -234,7 +234,7 @@ contains
     double precision, intent(in ) :: xi (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
     double precision, intent(in ) :: lam(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
     double precision, intent(in ) :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
-    double precision, intent(out) :: flx(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+    double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
  
     double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
     double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
@@ -276,7 +276,7 @@ contains
        dx2inv(i) = dxinv(i)**2
     end do
 
-    flx(:,:,:,irho) = 0.d0
+    rhs(:,:,:,irho) = 0.d0
 
     !$omp parallel private(i,j,k,n,qxn,qyn,qhn,Htot,Htmp,Ytmp,hhalf) &
     !$omp private(tauxx,tauyy,tauzz,dmuzdx,dmvzdy,dmuxvydz,dmuydx,dmwydz,dmuxwzdy) &
@@ -457,9 +457,9 @@ contains
                   +      DEL*(vsm(i,j,k+4)*(ux(i,j,k+4)+vy(i,j,k+4))-vsm(i,j,k-4)*(ux(i,j,k-4)+vy(i,j,k-4))) &
                   ) * dxinv(3)
 
-             flx(i,j,k,imx) = dmvxdy + dmwxdz + dmvywzdx
-             flx(i,j,k,imy) = dmuydx + dmwydz + dmuxwzdy
-             flx(i,j,k,imz) = dmuzdx + dmvzdy + dmuxvydz
+             rhs(i,j,k,imx) = dmvxdy + dmwxdz + dmvywzdx
+             rhs(i,j,k,imy) = dmuydx + dmwydz + dmuxwzdy
+             rhs(i,j,k,imz) = dmuzdx + dmvzdy + dmuxvydz
 
              divu = (ux(i,j,k)+vy(i,j,k)+wz(i,j,k))*vsm(i,j,k)
              tauxx = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
@@ -467,7 +467,7 @@ contains
              tauzz = 2.d0*mu(i,j,k)*wz(i,j,k) + divu
              
              ! change in internal energy
-             flx(i,j,k,iene) = tauxx*ux(i,j,k) + tauyy*vy(i,j,k) + tauzz*wz(i,j,k) &
+             rhs(i,j,k,iene) = tauxx*ux(i,j,k) + tauyy*vy(i,j,k) + tauzz*wz(i,j,k) &
                   + mu(i,j,k)*((uy(i,j,k)+vx(i,j,k))**2 &
                   &          + (wx(i,j,k)+uz(i,j,k))**2 &
                   &          + (vz(i,j,k)+wy(i,j,k))**2 )
@@ -482,7 +482,7 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                flx(i,j,k,iry1+n-1) = 0.d0
+                rhs(i,j,k,iry1+n-1) = 0.d0
              end do
           end do
        end do
@@ -737,13 +737,13 @@ contains
     end do
     !$omp end do
 
-    ! add x-direction flux
+    ! add x-direction rhs
     do n=2,ncons
        !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                flx(i,j,k,n) = flx(i,j,k,n) + (Hg(i+1,j,k,n) - Hg(i,j,k,n)) * dx2inv(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i+1,j,k,n) - Hg(i,j,k,n)) * dx2inv(1)
              end do
           end do
        end do
@@ -1001,13 +1001,13 @@ contains
     end do
     !$omp end do
 
-    ! add y-direction flux
+    ! add y-direction rhs
     do n=2,ncons
        !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                flx(i,j,k,n) = flx(i,j,k,n) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
              end do
           end do
        end do
@@ -1265,13 +1265,13 @@ contains
     end do
     !$omp end do
 
-    ! add z-direction flux
+    ! add z-direction rhs
     do n=2,ncons
        !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                flx(i,j,k,n) = flx(i,j,k,n) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
              end do
           end do
        end do
@@ -1286,10 +1286,10 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             flx(i,j,k,iene) = flx(i,j,k,iene) &
-                  + flx(i,j,k,imx)*q(i,j,k,qu) &
-                  + flx(i,j,k,imy)*q(i,j,k,qv) &
-                  + flx(i,j,k,imz)*q(i,j,k,qw)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) &
+                  + rhs(i,j,k,imx)*q(i,j,k,qu) &
+                  + rhs(i,j,k,imy)*q(i,j,k,qv) &
+                  + rhs(i,j,k,imz)*q(i,j,k,qw)
           end do
        end do
     end do
@@ -1370,7 +1370,7 @@ contains
 
   end subroutine comp_courno_3d
 
-  subroutine S3D_diffterm_1(lo,hi,ng,ndq,dx,q,flx,mu,xi,qx,qy,qz)
+  subroutine S3D_diffterm_1(lo,hi,ng,ndq,dx,q,rhs,mu,xi,qx,qy,qz)
  
     integer,          intent(in ) :: lo(3),hi(3),ng,ndq
     double precision, intent(in ) :: dx(3)
@@ -1380,7 +1380,7 @@ contains
     double precision, intent(out) :: qx (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
     double precision, intent(out) :: qy (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
     double precision, intent(out) :: qz (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
-    double precision, intent(out) :: flx(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+    double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
 
     double precision, allocatable, dimension(:,:,:) :: vsm
 
@@ -1401,7 +1401,7 @@ contains
     !$omp   private(dmvxdy,dmwxdz,dmvywzdx,dmuydx,dmwydz,dmuxwzdy,dmuzdx,dmvzdy,dmuxvydz)
 
     !$omp workshare
-    flx(:,:,:,irho) = 0.d0
+    rhs(:,:,:,irho) = 0.d0
     !$omp end workshare
 
     !$OMP DO
@@ -1559,9 +1559,9 @@ contains
                   +      DEL*(vsm(i,j,k+4)*(qx(i,j,k+4,idu)+qy(i,j,k+4,idv))-vsm(i,j,k-4)*(qx(i,j,k-4,idu)+qy(i,j,k-4,idv))) &
                   ) * dxinv(3)
 
-             flx(i,j,k,imx) = dmvxdy + dmwxdz + dmvywzdx
-             flx(i,j,k,imy) = dmuydx + dmwydz + dmuxwzdy
-             flx(i,j,k,imz) = dmuzdx + dmvzdy + dmuxvydz
+             rhs(i,j,k,imx) = dmvxdy + dmwxdz + dmvywzdx
+             rhs(i,j,k,imy) = dmuydx + dmwydz + dmuxwzdy
+             rhs(i,j,k,imz) = dmuzdx + dmvzdy + dmuxvydz
 
              divu = (qx(i,j,k,idu)+qy(i,j,k,idv)+qz(i,j,k,idw))*vsm(i,j,k)
              tauxx = 2.d0*mu(i,j,k)*qx(i,j,k,idu) + divu
@@ -1569,7 +1569,7 @@ contains
              tauzz = 2.d0*mu(i,j,k)*qz(i,j,k,idw) + divu
              
              ! change in internal energy
-             flx(i,j,k,iene) = tauxx*qx(i,j,k,idu) + tauyy*qy(i,j,k,idv) + tauzz*qz(i,j,k,idw) &
+             rhs(i,j,k,iene) = tauxx*qx(i,j,k,idu) + tauyy*qy(i,j,k,idv) + tauzz*qz(i,j,k,idw) &
                   + mu(i,j,k)*((qy(i,j,k,idu)+qx(i,j,k,idv))**2 &
                   &          + (qx(i,j,k,idw)+qz(i,j,k,idu))**2 &
                   &          + (qz(i,j,k,idv)+qy(i,j,k,idw))**2 )
@@ -1580,7 +1580,7 @@ contains
     !$omp end do nowait
 
     !$omp workshare
-    flx(:,:,:,iry1:) = 0.d0
+    rhs(:,:,:,iry1:) = 0.d0
     !$omp end workshare
 
     !$omp do
@@ -1655,7 +1655,7 @@ contains
   end subroutine S3D_diffterm_1
 
 
-  subroutine S3D_diffterm_2(lo,hi,ng,ndq,dx,q,flx,mu,xi,lam,dxy,qx,qy,qz)
+  subroutine S3D_diffterm_2(lo,hi,ng,ndq,dx,q,rhs,mu,xi,lam,dxy,qx,qy,qz)
 
     integer,          intent(in )  :: lo(3),hi(3),ng,ndq
     double precision, intent(in )  :: dx(3)
@@ -1667,7 +1667,7 @@ contains
     double precision, intent(in)   :: qx (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
     double precision, intent(in)   :: qy (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
     double precision, intent(in)   :: qz (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
-    double precision, intent(inout):: flx(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+    double precision, intent(inout):: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
  
     double precision, allocatable, dimension(:,:,:) :: vp, dpe, FE
     double precision, allocatable, dimension(:,:,:,:) :: dpy, FY
@@ -1728,7 +1728,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             flx(i,j,k,imx) = flx(i,j,k,imx) &
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) &
                   + (ALP*(vp(i+1,j,k)*qx(i+1,j,k,idu)-vp(i-1,j,k)*qx(i-1,j,k,idu)) &
                   +  BET*(vp(i+2,j,k)*qx(i+2,j,k,idu)-vp(i-2,j,k)*qx(i-2,j,k,idu)) &
                   +  GAM*(vp(i+3,j,k)*qx(i+3,j,k,idu)-vp(i-3,j,k)*qx(i-3,j,k,idu)) &
@@ -1751,7 +1751,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             flx(i,j,k,imy) = flx(i,j,k,imy) &
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) &
                   + (ALP*(mu(i+1,j,k)*qx(i+1,j,k,idv)-mu(i-1,j,k)*qx(i-1,j,k,idv)) &
                   +  BET*(mu(i+2,j,k)*qx(i+2,j,k,idv)-mu(i-2,j,k)*qx(i-2,j,k,idv)) &
                   +  GAM*(mu(i+3,j,k)*qx(i+3,j,k,idv)-mu(i-3,j,k)*qx(i-3,j,k,idv)) &
@@ -1774,7 +1774,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             flx(i,j,k,imz) = flx(i,j,k,imz) &
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) &
                   + (ALP*(mu(i+1,j,k)*qx(i+1,j,k,idw)-mu(i-1,j,k)*qx(i-1,j,k,idw)) &
                   +  BET*(mu(i+2,j,k)*qx(i+2,j,k,idw)-mu(i-2,j,k)*qx(i-2,j,k,idw)) &
                   +  GAM*(mu(i+3,j,k)*qx(i+3,j,k,idw)-mu(i-3,j,k)*qx(i-3,j,k,idw)) &
@@ -1797,10 +1797,10 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             flx(i,j,k,iene) = flx(i,j,k,iene) &
-                  + flx(i,j,k,imx)*q(i,j,k,qu) &
-                  + flx(i,j,k,imy)*q(i,j,k,qv) &
-                  + flx(i,j,k,imz)*q(i,j,k,qw)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) &
+                  + rhs(i,j,k,imx)*q(i,j,k,qu) &
+                  + rhs(i,j,k,imy)*q(i,j,k,qv) &
+                  + rhs(i,j,k,imz)*q(i,j,k,qw)
           end do
        end do
     end do
@@ -1811,7 +1811,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             flx(i,j,k,iene) = flx(i,j,k,iene) &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) &
                   + (ALP*(lam(i+1,j,k)*qx(i+1,j,k,idT)-lam(i-1,j,k)*qx(i-1,j,k,idT)) &
                   +  BET*(lam(i+2,j,k)*qx(i+2,j,k,idT)-lam(i-2,j,k)*qx(i-2,j,k,idT)) &
                   +  GAM*(lam(i+3,j,k)*qx(i+3,j,k,idT)-lam(i-3,j,k)*qx(i-3,j,k,idT)) &
@@ -1863,7 +1863,7 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                flx(i,j,k,iryn) = flx(i,j,k,iryn) + &
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
                      ( ALP*(FY(i+1,j,k,n)-FY(i-1,j,k,n)) &
                      + BET*(FY(i+2,j,k,n)-FY(i-2,j,k,n)) &
                      + GAM*(FY(i+3,j,k,n)-FY(i-3,j,k,n)) &
@@ -1878,7 +1878,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             flx(i,j,k,iene) = flx(i,j,k,iene) + &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
                   ( ALP*(FE(i+1,j,k)-FE(i-1,j,k)) &
                   + BET*(FE(i+2,j,k)-FE(i-2,j,k)) &
                   + GAM*(FE(i+3,j,k)-FE(i-3,j,k)) &
@@ -1922,7 +1922,7 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                flx(i,j,k,iryn) = flx(i,j,k,iryn) + &
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
                      ( ALP*(FY(i,j+1,k,n)-FY(i,j-1,k,n)) &
                      + BET*(FY(i,j+2,k,n)-FY(i,j-2,k,n)) &
                      + GAM*(FY(i,j+3,k,n)-FY(i,j-3,k,n)) &
@@ -1937,7 +1937,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             flx(i,j,k,iene) = flx(i,j,k,iene) + &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
                   ( ALP*(FE(i,j+1,k)-FE(i,j-1,k)) &
                   + BET*(FE(i,j+2,k)-FE(i,j-2,k)) &
                   + GAM*(FE(i,j+3,k)-FE(i,j-3,k)) &
@@ -1981,7 +1981,7 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                flx(i,j,k,iryn) = flx(i,j,k,iryn) + &
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
                      ( ALP*(FY(i,j,k+1,n)-FY(i,j,k-1,n)) &
                      + BET*(FY(i,j,k+2,n)-FY(i,j,k-2,n)) &
                      + GAM*(FY(i,j,k+3,n)-FY(i,j,k-3,n)) &
@@ -1996,7 +1996,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             flx(i,j,k,iene) = flx(i,j,k,iene) + &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
                   ( ALP*(FE(i,j,k+1)-FE(i,j,k-1)) &
                   + BET*(FE(i,j,k+2)-FE(i,j,k-2)) &
                   + GAM*(FE(i,j,k+3)-FE(i,j,k-3)) &
