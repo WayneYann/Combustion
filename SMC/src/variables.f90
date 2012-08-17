@@ -75,12 +75,13 @@ contains
   ! Convert conserved variables U to primitive variables Q
   !
   subroutine ctoprim(U, Q, ng)
+    use smc_bc_module, only : get_data_lo_hi
     type(multifab), intent(in   ) :: U
     type(multifab), intent(inout) :: Q
     integer, optional, intent(in) :: ng
 
     integer :: ngu, ngq, ngto
-    integer :: n, lo(U%dim), hi(U%dim)
+    integer :: n, lo(U%dim), hi(U%dim), dlo(U%dim), dhi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: up, qp
 
     ngu = nghost(U)
@@ -101,28 +102,37 @@ contains
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
 
+       call get_data_lo_hi(n,dlo,dhi)
+
        if (U%dim .eq. 2) then
           call bl_error("2D not supported in variables::ctoprim")
        else
-          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto)
+          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi)
        end if
     end do
 
   end subroutine ctoprim
 
-  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngq, ngto)
-    integer, intent(in) :: lo(3), hi(3), ngu, ngq, ngto
+  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngq, ngto, dlo, dhi)
+    integer, intent(in) :: lo(3), hi(3), ngu, ngq, ngto, dlo(3), dhi(3)
     double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,ncons)
     double precision, intent(out) :: q(lo(1)-ngq:hi(1)+ngq,lo(2)-ngq:hi(2)+ngq,lo(3)-ngq:hi(3)+ngq,nprim)
     
     integer :: i, j, k, n, iwrk
     double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), h(nspecies), ei, Tt, Pt
+    integer :: llo(3), lhi(3)
+
+    ! be safe
+    do i=1,3
+       llo(i) = max(lo(i)-ngto, dlo(i))
+       lhi(i) = min(hi(i)+ngto, dhi(i))
+    end do
 
     !$omp parallel do private(i, j, k, n, iwrk, rho, rhoinv, rwrk) &
     !$omp private(X, Y, h, ei, Tt, Pt)
-    do k = lo(3)-ngto,hi(3)+ngto
-       do j = lo(2)-ngto,hi(2)+ngto
-          do i = lo(1)-ngto,hi(1)+ngto
+    do k = llo(3),lhi(3)
+       do j = llo(2),lhi(2)
+          do i = llo(1),lhi(1)
              rho = u(i,j,k,irho)
              rhoinv = 1.d0/rho
              q(i,j,k,qrho) = rho

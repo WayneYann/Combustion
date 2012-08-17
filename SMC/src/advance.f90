@@ -5,6 +5,7 @@ module advance_module
   use kernels_module
   use multifab_module
   use sdcquad_module
+  use smc_bc_module
   use time_module
   use transport_properties
   use variables_module
@@ -379,7 +380,10 @@ contains
     type(multifab) :: lam ! partial thermal conductivity
     type(multifab) :: Ddiag ! diagonal components of rho * Y_k * D
 
-    integer          :: lo(U%dim), hi(U%dim), i,j,k,m,n, ng, dm
+    integer ::    lo(U%dim),    hi(U%dim)
+    integer ::   dlo(U%dim),   dhi(U%dim)
+    integer :: bbclo(U%dim), bbchi(U%dim)
+    integer :: i,j,k,m,n, ng, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
 
@@ -425,10 +429,13 @@ contains
        lo = lwb(get_box(Fhyp,n))
        hi = upb(get_box(Fhyp,n))
 
+       call get_data_lo_hi(n,dlo,dhi)
+       call get_boxbc(n,bbclo,bbchi)
+
        if (dm .ne. 3) then
           call bl_error("Only 3D hypterm is supported")
        else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp)
+          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,bbclo,bbchi)
        end if
     end do
 
@@ -450,10 +457,13 @@ contains
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
 
+       call get_data_lo_hi(n,dlo,dhi)
+       call get_boxbc(n,bbclo,bbchi)
+
        if (dm .ne. 3) then
           call bl_error("Only 3D compact_diffterm is supported")
        else
-          call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp)
+          call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi,bbclo,bbchi)
        end if
     end do
 
@@ -559,7 +569,10 @@ contains
     type(multifab) :: lam       ! partial thermal conductivity
     type(multifab) :: Ddiag     ! diagonal components of rho * Y_k * D
 
-    integer          :: lo(U%dim), hi(U%dim), i,j,k,m,n, dm
+    integer ::    lo(U%dim),    hi(U%dim)
+    integer ::   dlo(U%dim),   dhi(U%dim)
+    integer :: bbclo(U%dim), bbchi(U%dim)
+    integer :: i,j,k,m,n, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
     type(multifab)   :: qx, qy, qz
@@ -616,10 +629,13 @@ contains
        lo = lwb(get_box(Fhyp,n))
        hi = upb(get_box(Fhyp,n))
 
+       call get_data_lo_hi(n,dlo,dhi)
+       call get_boxbc(n,bbclo,bbchi)
+
        if (dm .ne. 3) then
           call bl_error("Only 3D hypterm is supported")
        else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp)
+          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,bbclo,bbchi)
        end if
     end do
 

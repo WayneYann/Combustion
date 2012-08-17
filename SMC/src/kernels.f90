@@ -1,4 +1,5 @@
 module kernels_module
+  use bc_module
   use chemistry_module, only : nspecies, molecular_weight
   use derivative_stencil_module
   use variables_module
@@ -6,17 +7,24 @@ module kernels_module
 
 contains
 
-  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,rhs)
+  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,rhs,dlo,dhi,bclo,bchi)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
     double precision, intent(in ) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
-    double precision, intent(in ) ::   q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
-    double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+    double precision, intent(in ) ::    q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(out) ::  rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
 
     integer          :: i,j,k,n
     double precision :: unp1,unp2,unp3,unp4,unm1,unm2,unm3,unm4
     double precision :: dxinv(3)
+    integer :: slo(3), shi(3)
+
+    ! Only the region bounded by [dlo,dhi] contains good data.
+    ! [slo,shi] will be safe for 8th-order stencil
+    slo = dlo + stencil_ng
+    shi = dhi - stencil_ng
 
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)
@@ -26,7 +34,7 @@ contains
     !$omp do 
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
+          do i=slo(1),shi(1)
 
              unp1 = q(i+1,j,k,qu)
              unp2 = q(i+2,j,k,qu)
@@ -91,7 +99,7 @@ contains
 
     !$omp do
     do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
+       do j=slo(2),shi(2)
           do i=lo(1),hi(1)
 
              unp1 = q(i,j+1,k,qv)
@@ -156,7 +164,7 @@ contains
     !$omp end do
 
     !$omp do
-    do k=lo(3),hi(3)
+    do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
@@ -222,10 +230,13 @@ contains
     !$omp end do
     !$omp end parallel
 
+    ! xxxxx TODO boundary
+
+
   end subroutine hypterm_3d
 
 
-  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy)
+  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy,dlo,dhi,bclo,bchi)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
@@ -235,7 +246,8 @@ contains
     double precision, intent(in ) :: lam(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
     double precision, intent(in ) :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
     double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
- 
+    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
+
     double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
     double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
     double precision, allocatable, dimension(:,:,:,:) :: Hg, dpy, dxe
@@ -251,41 +263,49 @@ contains
     double precision :: tauxx,tauyy,tauzz 
     double precision :: Htot, Htmp(nspecies), Ytmp(nspecies), hhalf
     integer          :: i,j,k,n, qxn, qyn, qhn
+    integer :: slo(3), shi(3)
 
-    allocate(ux(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(vx(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(wx(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(uy(-ng+lo(1):hi(1)+ng,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
-    allocate(vy(-ng+lo(1):hi(1)+ng,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
-    allocate(wy(-ng+lo(1):hi(1)+ng,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
-    allocate(uz(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,    lo(3):hi(3)   ))
-    allocate(vz(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,    lo(3):hi(3)   ))
-    allocate(wz(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,    lo(3):hi(3)   ))
+    ! Only the region bounded by [dlo,dhi] contains good data.
+    ! [slo,shi] will be safe for 8th-order stencil
+    slo = dlo + stencil_ng
+    shi = dhi - stencil_ng
+    
+    allocate(ux(slo(1):shi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+    allocate(vx(slo(1):shi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+    allocate(wx(slo(1):shi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
 
-    allocate(vsp(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(vsm(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(uy(dlo(1):dhi(1),slo(2):shi(2),dlo(3):dhi(3)))
+    allocate(vy(dlo(1):dhi(1),slo(2):shi(2),dlo(3):dhi(3)))
+    allocate(wy(dlo(1):dhi(1),slo(2):shi(2),dlo(3):dhi(3)))
 
-    allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons))
+    allocate(uz(dlo(1):dhi(1),dlo(2):dhi(2),slo(3):shi(3)))
+    allocate(vz(dlo(1):dhi(1),dlo(2):dhi(2),slo(3):shi(3)))
+    allocate(wz(dlo(1):dhi(1),dlo(2):dhi(2),slo(3):shi(3)))
 
-    allocate(dpy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
-    allocate(dxe(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
-    allocate(dpe(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+    allocate(vsm(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+
+    allocate(dpy(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
+    allocate(dxe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
+    allocate(dpe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+
+    allocate(Hg(slo(1):shi(1)+1,slo(2):shi(2)+1,slo(3):shi(3)+1,2:ncons))
 
     do i = 1,3
        dxinv(i) = 1.0d0 / dx(i)
        dx2inv(i) = dxinv(i)**2
     end do
 
-    rhs(:,:,:,irho) = 0.d0
+    rhs = 0.d0
 
     !$omp parallel private(i,j,k,n,qxn,qyn,qhn,Htot,Htmp,Ytmp,hhalf) &
     !$omp private(tauxx,tauyy,tauzz,dmuzdx,dmvzdy,dmuxvydz,dmuydx,dmwydz,dmuxwzdy) &
     !$omp private(dmvxdy,dmwxdz,dmvywzdx,divu)
 
     !$OMP DO
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1)-ng,hi(1)+ng
+    do k=dlo(3),dhi(3)
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
              vsp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
              vsm(i,j,k) = xi(i,j,k) -  TwoThirds*mu(i,j,k)
           enddo
@@ -294,9 +314,9 @@ contains
     !$OMP END DO NOWAIT
 
     !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1),hi(1)
+    do k=dlo(3),dhi(3)
+       do j=dlo(2),dhi(2)
+          do i=slo(1),shi(1)
 
              ux(i,j,k)= &
                    (ALP*(q(i+1,j,k,qu)-q(i-1,j,k,qu)) &
@@ -321,9 +341,9 @@ contains
     !$OMP END DO NOWAIT
 
     !$OMP DO
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2),hi(2)   
-          do i=lo(1)-ng,hi(1)+ng
+    do k=dlo(3),dhi(3)
+       do j=slo(2),shi(2)   
+          do i=dlo(1),dhi(1)
 
              uy(i,j,k)= &
                    (ALP*(q(i,j+1,k,qu)-q(i,j-1,k,qu)) &
@@ -348,9 +368,9 @@ contains
     !$OMP END DO NOWAIT
 
     !$OMP DO
-    do k=lo(3),hi(3)
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1)-ng,hi(1)+ng
+    do k=slo(3),shi(3)
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
 
              uz(i,j,k)= &
                    (ALP*(q(i,j,k+1,qu)-q(i,j,k-1,qu)) &
@@ -383,9 +403,9 @@ contains
        qyn = qy1+n-1
        qhn = qh1+n-1
        !$OMP DO
-       do k=lo(3)-ng,hi(3)+ng
-          do j=lo(2)-ng,hi(2)+ng
-             do i=lo(1)-ng,hi(1)+ng
+       do k=dlo(3),dhi(3)
+          do j=dlo(2),dhi(2)
+             do i=dlo(1),dhi(1)
                 dpy(i,j,k,n) = dxy(i,j,k,n)/q(i,j,k,qpres)*(q(i,j,k,qxn)-q(i,j,k,qyn))
                 dxe(i,j,k,n) = dxy(i,j,k,n)*q(i,j,k,qhn)
                 dpe(i,j,k) = dpe(i,j,k) + dpy(i,j,k,n)*q(i,j,k,qhn)
@@ -395,10 +415,11 @@ contains
        !$omp end do nowait
     end do
 
+
     !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
+    do k=slo(3),shi(3)
+       do j=slo(2),shi(2)
+          do i=slo(1),shi(1)
 
              ! d(mu*dv/dx)/dy
              dmvxdy = (ALP*(mu(i,j+1,k)*vx(i,j+1,k)-mu(i,j-1,k)*vx(i,j-1,k)) &
@@ -457,9 +478,9 @@ contains
                   +      DEL*(vsm(i,j,k+4)*(ux(i,j,k+4)+vy(i,j,k+4))-vsm(i,j,k-4)*(ux(i,j,k-4)+vy(i,j,k-4))) &
                   ) * dxinv(3)
 
-             rhs(i,j,k,imx) = dmvxdy + dmwxdz + dmvywzdx
-             rhs(i,j,k,imy) = dmuydx + dmwydz + dmuxwzdy
-             rhs(i,j,k,imz) = dmuzdx + dmvzdy + dmuxvydz
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvxdy + dmwxdz + dmvywzdx
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuydx + dmwydz + dmuxwzdy
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuzdx + dmvzdy + dmuxvydz
 
              divu = (ux(i,j,k)+vy(i,j,k)+wz(i,j,k))*vsm(i,j,k)
              tauxx = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
@@ -467,7 +488,8 @@ contains
              tauzz = 2.d0*mu(i,j,k)*wz(i,j,k) + divu
              
              ! change in internal energy
-             rhs(i,j,k,iene) = tauxx*ux(i,j,k) + tauyy*vy(i,j,k) + tauzz*wz(i,j,k) &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  tauxx*ux(i,j,k) + tauyy*vy(i,j,k) + tauzz*wz(i,j,k) &
                   + mu(i,j,k)*((uy(i,j,k)+vx(i,j,k))**2 &
                   &          + (wx(i,j,k)+uz(i,j,k))**2 &
                   &          + (vz(i,j,k)+wy(i,j,k))**2 )
@@ -477,23 +499,11 @@ contains
     end do
     !$omp end do 
 
-    do n=1,nspecies
-       !$OMP DO
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                rhs(i,j,k,iry1+n-1) = 0.d0
-             end do
-          end do
-       end do
-       !$omp end do nowait
-    end do
-
     ! ------- BEGIN x-direction -------
     !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)+1
+    do k=slo(3),shi(3)
+       do j=slo(2),shi(2)
+          do i=slo(1),shi(1)+1
              Hg(i,j,k,imx) = m11*(vsp(i-4,j,k)*q(i-4,j,k,qu)-vsp(i+3,j,k)*q(i+3,j,k,qu)) &
                   +          m12*(vsp(i-4,j,k)*q(i-3,j,k,qu)-vsp(i+3,j,k)*q(i+2,j,k,qu)) &
                   +          m13*(vsp(i-4,j,k)*q(i-2,j,k,qu)-vsp(i+3,j,k)*q(i+1,j,k,qu)) &
@@ -740,9 +750,9 @@ contains
     ! add x-direction rhs
     do n=2,ncons
        !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
+       do k=slo(3),shi(3)
+          do j=slo(2),shi(2)
+             do i=slo(1),shi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i+1,j,k,n) - Hg(i,j,k,n)) * dx2inv(1)
              end do
           end do
@@ -755,9 +765,9 @@ contains
 
     ! ------- BEGIN y-direction -------
     !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)+1
-          do i=lo(1),hi(1)
+    do k=slo(3),shi(3)
+       do j=slo(2),shi(2)+1
+          do i=slo(1),shi(1)
              Hg(i,j,k,imx) = m11*(mu(i,j-4,k)*q(i,j-4,k,qu)-mu(i,j+3,k)*q(i,j+3,k,qu)) &
                   +          m12*(mu(i,j-4,k)*q(i,j-3,k,qu)-mu(i,j+3,k)*q(i,j+2,k,qu)) &
                   +          m13*(mu(i,j-4,k)*q(i,j-2,k,qu)-mu(i,j+3,k)*q(i,j+1,k,qu)) &
@@ -1004,9 +1014,9 @@ contains
     ! add y-direction rhs
     do n=2,ncons
        !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
+       do k=slo(3),shi(3)
+          do j=slo(2),shi(2)
+             do i=slo(1),shi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
              end do
           end do
@@ -1019,9 +1029,9 @@ contains
 
     ! ------- BEGIN z-direction -------
     !$omp do
-    do k=lo(3),hi(3)+1
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
+    do k=slo(3),shi(3)+1
+       do j=slo(2),shi(2)
+          do i=slo(1),shi(1)
              Hg(i,j,k,imx) = m11*(mu(i,j,k-4)*q(i,j,k-4,qu)-mu(i,j,k+3)*q(i,j,k+3,qu)) &
                   +          m12*(mu(i,j,k-4)*q(i,j,k-3,qu)-mu(i,j,k+3)*q(i,j,k+2,qu)) &
                   +          m13*(mu(i,j,k-4)*q(i,j,k-2,qu)-mu(i,j,k+3)*q(i,j,k+1,qu)) &
@@ -1268,9 +1278,9 @@ contains
     ! add z-direction rhs
     do n=2,ncons
        !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
+       do k=slo(3),shi(3)
+          do j=slo(2),shi(2)
+             do i=slo(1),shi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
              end do
           end do
@@ -1283,9 +1293,9 @@ contains
 
     ! add kinetic energy
     !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
+    do k=slo(3),shi(3)
+       do j=slo(2),shi(2)
+          do i=slo(1),shi(1)
              rhs(i,j,k,iene) = rhs(i,j,k,iene) &
                   + rhs(i,j,k,imx)*q(i,j,k,qu) &
                   + rhs(i,j,k,imy)*q(i,j,k,qv) &
@@ -1296,6 +1306,8 @@ contains
     !$omp end do 
     
     !$omp end parallel
+
+    ! xxxxx TODO boundary
 
     deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,vsp,vsm,Hg,dpy,dxe,dpe)
 
