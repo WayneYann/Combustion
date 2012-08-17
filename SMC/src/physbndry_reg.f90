@@ -7,7 +7,7 @@ module physbndry_reg_module
 
   type :: physbndry_reg
      integer :: idim = -1
-     integer :: iface = -1
+     integer :: iface = 0
      integer :: nc = -1
      logical, pointer :: globalstatus(:), localstatus(:)
      type(multifab) :: data
@@ -62,7 +62,7 @@ contains
        if (pmask(idim_in)) then
           hi = lo
           pbr%globalstatus(ibox) = .false.
-       else if (iface_in .eq. 0) then
+       else if (iface_in .eq. -1) then
           if (lo(idim_in) .ne. plo(idim_in)) then ! interior
              hi = lo
              pbr%globalstatus(ibox) = .false.
@@ -104,7 +104,7 @@ contains
   subroutine physbndry_reg_destroy(pbr)
     type(physbndry_reg), intent(inout) :: pbr
     pbr%idim = -1
-    pbr%iface = -1
+    pbr%iface = 0
     pbr%nc = -1
     call destroy(pbr%la)
     call destroy(pbr%data)

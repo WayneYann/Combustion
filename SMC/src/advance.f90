@@ -10,8 +10,6 @@ module advance_module
   use variables_module
 
   use chemistry_module, only : nspecies
-  ! use probin_module, only : cflfac, fixed_dt, init_shrink, max_dt, &
-  !      max_dt_growth, small_dt, stop_time, verbose
 
   implicit none
 

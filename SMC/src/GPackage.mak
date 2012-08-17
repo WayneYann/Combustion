@@ -13,6 +13,7 @@ f90sources += physbndry_reg.f90
 f90sources += probin.f90
 f90sources += sdcquad.f90
 f90sources += smc.f90
+f90sources += smc_bc.f90
 f90sources += time.f90
 f90sources += transport_properties.f90
 f90sources += variables.f90
