@@ -23,7 +23,7 @@ ht.plot_rhoY=0
 ht.plot_molefrac=1
 #ht.plot_massfrac=1
 ht.plot_ydot=1
-amr.derive_plot_vars=rhoRT mag_vort particle_count
+amr.derive_plot_vars=rhoRT mag_vort
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 
