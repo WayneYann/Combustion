@@ -80,20 +80,33 @@ c
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
-      logical error
-      integer ioproc, myid, ierr, n, RTOT, lout, namlen, i
+      integer n, RTOT, lout, i, egrlen, egilen, idummy(1)
       integer FORT_GETCKSPECNAME
-      parameter (ioproc = 0)
+      double precision rdummy(1)
       character*(maxspnml) name
-      integer coded(maxspnml)
-
-      call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
-     &     RWRK(egbr), egr, IWRK(egbi), egi)
-
-c      
-c     Set pointers in conp common blocks (used in conpF evaluations)
-c
-      CALL CKINDX(IWRK(ckbi),RWRK(ckbr),Nelt,Nspec,Nreac,Nfit)
+      !
+      ! Get chemistry mechanism parameters.
+      !
+      CALL CKINDX(idummy(1),rdummy(1),Nelt,Nspec,Nreac,Nfit)
+      !
+      ! Set up EGlib workspace.
+      !
+      ! When OPENMP give each thread its own space.
+      !
+      egrlen = 23 + 14*Nspec + 32*Nspec**2 + 13*eg_nodes
+     &        + 30*eg_nodes*Nspec + 5*eg_nodes*Nspec**2
+      egilen = Nspec
+      !
+      ! Ditto for DVODE workspace.
+      !
+      dvr   = 22 + 9*(Nspec+1) + 2*(Nspec+1)**2
+      dvi   = 30 + Nspec + 1
+      dvdr  = 2*Nspec + 3
+      dvdbr = dvbr+dvr
+      dvder = dvdbr+dvdr-1
+      !      
+      ! Set pointers into conp common blocks.
+      !
       NEQ   = Nspec + 1
       NP    = dvdbr
       NRHO  = NP  + 1
@@ -101,18 +114,38 @@ c
       NZ    = NWT + Nspec
       RTOT  = NZ  + NEQ - 1
 
+!$omp parallel
+      allocate(EGRWRK(egrlen))
+      allocate(EGIWRK(egilen))
+      allocate(RWRK(dvr+dvdr))
+      allocate(IWRK(dvi))
+
+      call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
+     &     EGRWRK(1), egrlen, EGIWRK(1), egilen)
+      !
+      ! Set IOPT=1 parameter settings for VODE
+      ! They only really need to be set once.
+      !
+      RWRK(dvbr+4) = 0
+      RWRK(dvbr+5) = 0
+      RWRK(dvbr+6) = 1.d-19
+      IWRK(dvbi+4) = 0
+      IWRK(dvbi+5) = max_vode_subcycles
+      IWRK(dvbi+6) = 0
+      !
+      ! Set molecular weights where conpF can access'm.
+      !
+      CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
+!$omp end parallel
+
       if (RTOT .GT. dvder) then
          write(6,*) 'Memory layout bust, dvdr not big enough'
          write(6,*) RTOT, dvder
          call bl_abort(" ")
       end if
-c
-c     Set molecular weights
-c
-      CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
-c
-c     Find N2 in the list.
-c
+      !
+      ! Find N2 in the list.
+      !
       iN2 = -1
       do n = 1,Nspec
          call get_spec_name(name,n)
@@ -120,6 +153,19 @@ c
       end do
       if (iN2.eq.-1)
      &     write(6,*) '.....warning: no N2 in chemistry species list'
+      end
+
+      subroutine FORT_FINALIZECHEM()
+      implicit none
+#include "cdwrk.H"
+
+!$omp parallel
+      deallocate(EGRWRK)
+      deallocate(EGIWRK)
+      deallocate(RWRK)
+      deallocate(IWRK)
+!$omp end parallel
+
       end
 
 
