@@ -1875,21 +1875,14 @@ HeatTransfer::post_timestep (int crse_iteration)
 
         for (int i = parent->finestLevel(); i > 0; --i)
         {
-            MultiFab fvolume;
-            MultiFab cvolume;
-
             HeatTransfer& clev = getLevel(i-1);
             HeatTransfer& flev = getLevel(i);
 
             MultiFab& Ydot_crse = *(clev.auxDiag["REACTIONS"]);
             MultiFab& Ydot_fine = *(flev.auxDiag["REACTIONS"]);
 
-            flev.geom.GetVolume(fvolume,flev.grids,GEOM_GROW);
-            clev.geom.GetVolume(cvolume,clev.grids,GEOM_GROW);
-            
             NavierStokes::avgDown(clev.boxArray(),flev.boxArray(),
                                   Ydot_crse,Ydot_fine,
-                                  cvolume,fvolume,
                                   i-1,i,0,Ndiag,parent->refRatio(i-1));
         }
     }
@@ -2090,25 +2083,18 @@ HeatTransfer::post_init (Real stop_time)
             {
                 for (int k = finest_level-1; k >= 0; k--)
                 {
-                    MultiFab fvolume;
-                    MultiFab cvolume;
-
                     HeatTransfer&   fine_lev = getLevel(k+1);
                     const BoxArray& fgrids   = fine_lev.grids;
                     
                     HeatTransfer&   crse_lev = getLevel(k);
                     const BoxArray& cgrids   = crse_lev.grids;
                     const IntVect&  fratio   = crse_lev.fine_ratio;
-                    
+
                     MultiFab& Divu_crse = crse_lev.get_new_data(Divu_Type);
                     MultiFab& Divu_fine = fine_lev.get_new_data(Divu_Type);
 
-                    fine_lev.geom.GetVolume(fvolume,fine_lev.grids,GEOM_GROW);
-                    crse_lev.geom.GetVolume(cvolume,crse_lev.grids,GEOM_GROW);
-                    
                     crse_lev.NavierStokes::avgDown(cgrids,fgrids,
                                                    Divu_crse,Divu_fine,
-                                                   cvolume,fvolume,
                                                    k,k+1,0,1,fratio);
                 }
             }
@@ -2125,12 +2111,6 @@ HeatTransfer::post_init (Real stop_time)
             //
             for (int k = finest_level-1; k >= 0; k--)
             {
-                MultiFab fvolume;
-                MultiFab cvolume;
-
-                getLevel(k+1).geom.GetVolume(fvolume,getLevel(k+1).grids,GEOM_GROW);
-                getLevel(k).geom.GetVolume(cvolume,getLevel(k).grids,GEOM_GROW);
-
                 const BoxArray& fgrids  = getLevel(k+1).grids;
                 const BoxArray& cgrids  = getLevel(k).grids;
                 MultiFab&       S_fine  = getLevel(k+1).get_new_data(State_Type);
@@ -2139,7 +2119,6 @@ HeatTransfer::post_init (Real stop_time)
                 
                 getLevel(k).NavierStokes::avgDown(cgrids,fgrids,
                                                   S_crse,S_fine,
-                                                  cvolume,fvolume,
                                                   k,k+1,Xvel,BL_SPACEDIM,
                                                   fratio);
             }
@@ -2441,11 +2420,7 @@ HeatTransfer::avgDown ()
     MultiFab&       S_crse   = get_new_data(State_Type);
     MultiFab&       S_fine   = fine_lev.get_new_data(State_Type);
 
-    MultiFab fvolume, volume;
-    geom.GetVolume(volume,grids,GEOM_GROW);
-    fine_lev.geom.GetVolume(fvolume,fine_lev.grids,GEOM_GROW);
-
-    NavierStokes::avgDown(grids,fgrids,S_crse,S_fine,volume,fvolume,
+    NavierStokes::avgDown(grids,fgrids,S_crse,S_fine,
                           level,level+1,0,S_crse.nComp(),fine_ratio);
     //
     // Fill rho_ctime at the current and finer levels with the correct data.
@@ -2504,7 +2479,6 @@ HeatTransfer::avgDown ()
             
         NavierStokes::avgDown(grids,fgrids,
                               Divu_crse,Divu_fine,
-                              volume,fvolume,
                               level,level+1,0,1,fine_ratio);
     }
 
@@ -2535,7 +2509,6 @@ HeatTransfer::avgDown ()
             
         NavierStokes::avgDown(grids,fgrids,
                               Dsdt_crse,Dsdt_fine,
-                              volume,fvolume,
                               level,level+1,0,1,fine_ratio);
     }
 }
@@ -6378,15 +6351,9 @@ HeatTransfer::mac_sync ()
             MultiFab& S_crse = crse_lev.get_new_data(State_Type);
             MultiFab& S_fine = fine_lev.get_new_data(State_Type);
 
-            MultiFab fvolume, cvolume;
-
-            crse_lev.geom.GetVolume(cvolume,crse_lev.grids,GEOM_GROW);
-            fine_lev.geom.GetVolume(fvolume,fine_lev.grids,GEOM_GROW);
-
             const int pComp = (have_rhort ? RhoRT : Trac);
             crse_lev.NavierStokes::avgDown(cgrids,fgrids,
                                            S_crse,S_fine,
-                                           cvolume,fvolume,
                                            lev,lev+1,pComp,1,fratio);
         }
     }
