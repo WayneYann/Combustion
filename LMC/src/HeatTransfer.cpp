@@ -2518,6 +2518,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     {
 	const int state_ind = sCompY + sigma;
 
+	// delta_rhsSC is zero coming out of this
 	diffuse_scalar_setup(dt, state_ind, &rho_flag[sigma], delta_rhsSC,
 			     alphaSC, betanSC, betanp1SC);
 	
@@ -2585,6 +2586,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     const Real prev_time = state[State_Type].prevTime();
     const Real cur_time  = state[State_Type].curTime();
 
+    // conservatively correct fluxes at time n, then set new = old + (dt/2)*fluxes^old
+    // the 1/2 was added in differential_spec_diffusion_update in compflux (b)
     adjust_spec_diffusion_update(get_new_data(State_Type),&get_old_data(State_Type),
 				 sCompY,dt,prev_time,rho_flag,Rh,dataComp,
                                  &delta_rhs,alpha,betan);
@@ -2592,6 +2595,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     diffusion->removeFluxBoxesLevel(betan);
     delta_rhs.clear();
 
+    // conservatively correct fluxes at time n+1, then set new = new + (dt/2)*fluxes^new
+    // the 1/2 was added in differential_spec_diffusion_update in compflux (b)
     adjust_spec_diffusion_update(get_new_data(State_Type),&get_new_data(State_Type),
 				 sCompY,dt,cur_time,rho_flag,Rh,dataComp,0,
                                  alpha,betanp1);
@@ -5725,6 +5730,7 @@ HeatTransfer::advance (Real time,
     calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs);
     //
     // Godunov-extrapolate states to cell edges
+    // computes actual states, NOT fluxes, into EdgeStates
     //
     compute_edge_states(dt);
     //
@@ -5740,9 +5746,9 @@ HeatTransfer::advance (Real time,
     //  Load the advective flux registers into aofs.
     //
     if (RhoH > first_scalar)
-	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);
+	scalar_advection(dt,first_scalar,RhoH-1,do_adv_reflux);  // density and species
     if (RhoH < last_scalar)
-	scalar_advection(dt,RhoH+1,last_scalar,do_adv_reflux);
+        scalar_advection(dt,RhoH+1,last_scalar,do_adv_reflux);  // temperature and tracers
     //
     // Copy old-time boundary Density & RhoH into estimate for new-time RhoH.
     //
@@ -5799,18 +5805,30 @@ HeatTransfer::advance (Real time,
         // Set tnp1 coeffs to tn values in first round of predictor
         //
         MultiFab::Copy(*diffnp1_cc,*diffn_cc,0,0,nScalDiffs,diffn_cc->nGrow());
-        temp_update(dt,corrector);         // Here, predict n+1 coeffs using n coeffs
+
+	// Eq (13) in DayBell
+	// Here, predict n+1 coeffs using n coeffs
+	// results in Ttilde^np1*
+        temp_update(dt,corrector);         
         temperature_stats(S_new);
         
+	// compute coefficients before Eq (14a) in DayBell
+	// results in D_m^{n+1,star}
         calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+
+	// Eq (14) and (14a) in DayBell, results in corrected Gamma^{n+1,star}
         spec_update(time,dt,corrector);
         
         set_overdetermined_boundary_cells(time + dt); // RhoH BC's to see new Y's at n+1
         
         do_adv_reflux = false;
+
+	// we appear to be missing the call to calc_diffusivity that appears in
+	// DayBell after equation (14a)
+
         scalar_advection(dt,RhoH,RhoH,do_adv_reflux); // Get aofs for RhoH now
-        
         rhoh_update(time,dt,corrector);
+
         RhoH_to_Temp(S_new);
         temperature_stats(S_new);
         //
@@ -7119,13 +7137,18 @@ HeatTransfer::scalar_advection (Real dt,
         //
         const Real a = 1.0;     // Passed around, but not used
         Real rhsscale;          //  -ditto-
-        const int rho_flag = 2; // FIXME: Messy assumption
+
+	// 1 = assumes d(c)/dt ~ grad c
+	// 2 = assumes d(rho*c)/dt ~ grad c
+	// 3 = assumes rho*d(c)/dt ~ grad c
+        const int rho_flag = 2; 
+
         MultiFab *alpha=0;      //  -ditto-
         MultiFab **fluxSC, **fluxi, **rhoh_visc;
-        diffusion->allocFluxBoxesLevel(fluxSC,0,1);
-        diffusion->allocFluxBoxesLevel(fluxi,0,nspecies);
-        diffusion->allocFluxBoxesLevel(fluxNULN,0,1);
-        diffusion->allocFluxBoxesLevel(rhoh_visc,0,1);
+        diffusion->allocFluxBoxesLevel(fluxSC,0,1); // tmp single-component lambda/cp grad h
+        diffusion->allocFluxBoxesLevel(fluxi,0,nspecies); // all the species fluxes, "D"
+        diffusion->allocFluxBoxesLevel(fluxNULN,0,1); // single-component "DD" or "NULN" fluxes
+        diffusion->allocFluxBoxesLevel(rhoh_visc,0,1); // lambda/cp
 
         const int nGrow    = 1; // Size to grow fil-patched fab for T below
         const int dataComp = 0; // coeffs loaded into 0-comp for all species
@@ -7137,8 +7160,11 @@ HeatTransfer::scalar_advection (Real dt,
         //
         // Get the NULN flux contrib from n data
         //
+
+	// put lambda/cp into rhoh_visc
         getDiffusivity(rhoh_visc, prev_time, RhoH, 0, 1);
 
+	// rho^n+1/2, don't think this is needed
         const MultiFab* Rh = get_rho_half_time();
 
         for (int comp = 0; comp < nspecies; ++comp)
@@ -7161,6 +7187,7 @@ HeatTransfer::scalar_advection (Real dt,
             for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 Soln[Smfi].divide(S_old[Smfi],Smfi.validbox(),Density,0,1);
 
+	    // compute the lamba/cp grad Y term
             visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
             for (int d=0; d < BL_SPACEDIM; ++d)
                 fluxSC[d]->mult(-b/geom.CellSize()[d]);
@@ -7174,7 +7201,9 @@ HeatTransfer::scalar_advection (Real dt,
                 {
                     const Box& ebox    = SDF_mfi.validbox();
                     FArrayBox& SDF_fab = (*SpecDiffusionFluxn[d])[SDF_mfi];
+		    // add the Gamma_m term
                     (*fluxi[d])[SDF_mfi].copy(SDF_fab,ebox,comp,ebox,comp,1);
+		    // add the lambda/cp grad Y term
                     (*fluxi[d])[SDF_mfi].plus((*fluxSC[d])[SDF_mfi],ebox,0,comp,1);
                 }
             }
@@ -7236,6 +7265,7 @@ HeatTransfer::scalar_advection (Real dt,
             for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
 
+	    // compute the lamba/cp grad Y term
             visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
             for (int d=0; d < BL_SPACEDIM; ++d)
                 fluxSC[d]->mult(-b/geom.CellSize()[d]);
@@ -7250,7 +7280,9 @@ HeatTransfer::scalar_advection (Real dt,
                 {
                     FArrayBox& SDF_fab = (*SpecDiffusionFluxnp1[d])[SDF_mfi];
                     const Box& ebox    = SDF_mfi.validbox();
+		    // add the Gamma_m term
                     (*fluxi[d])[SDF_mfi].copy(SDF_fab,ebox,comp,ebox,comp,1);
+		    // add the lambda/cp grad Y term
                     (*fluxi[d])[SDF_mfi].plus((*fluxSC[d])[SDF_mfi],ebox,0,comp,1);
                 }
             }
@@ -7326,6 +7358,9 @@ HeatTransfer::scalar_advection (Real dt,
             
             int use_conserv_diff = (advectionType[sigma] == Conservative) ? true : false;
 
+	    // takes edge states, multiplies them by umac and area
+	    // returns aofs
+	    // note that "edge" gets converted to a "umac*area*edge"
             godunov->ComputeAofs(grids[i],
                                  area[0],u_mac[0][i],edge[0],
                                  area[1],u_mac[1][i],edge[1],
@@ -7372,6 +7407,12 @@ HeatTransfer::scalar_advection (Real dt,
                                     &nComp, &mult);
             }
 
+	    // at this point, rhoh component of edge contains area-weighted
+	    // (U^ADV*rho*h)^{n+1/2} - (1/2)sum(hm(gamma_m lamba/cp grad y)^{n+1,*}
+	    //                       - (1/2)sum(hm(gamma_m lamba/cp grad y)^n
+
+	    // rhoY component of edge contains area-weighted
+	    // (U^ADV*rho*Y_m)^{n+1/2}
             if (do_adv_reflux)
             {
                 if (level < parent->finestLevel())

@@ -5410,9 +5410,10 @@ HeatTransfer::advance (Real time,
 
 	//
 	// Compute Dn and DDn (based on state at tnpn)
+	// iteratively lagged
 	//
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "Computing Dnp and DDnp1 (SDC corrector " << sdc_iter << ")\n";
+            std::cout << "Computing Dnp1 and DDnp1 (SDC corrector " << sdc_iter << ")\n";
 
         compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time);
 
