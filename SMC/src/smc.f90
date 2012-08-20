@@ -12,6 +12,7 @@ subroutine smc()
   use probin_module
   use runtime_init_module
   use sdcquad_module
+  use smc_bc_module
   use time_module
   use variables_module
 
@@ -94,6 +95,10 @@ subroutine smc()
      call initialize_from_scratch(la,dt,dx,U)
 
   end if
+
+
+  call smc_bc_init(la, U)
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! error checking
@@ -299,6 +304,8 @@ subroutine smc()
      end if
   end if
 
+
+  call smc_bc_close()
 
   call destroy(U)
 

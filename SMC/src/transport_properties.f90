@@ -15,10 +15,12 @@ contains
 
   subroutine get_transport_properties(Q, mu, xi, lam, Ddiag)
 
+    use smc_bc_module, only : get_data_lo_hi
+
     type(multifab), intent(in   ) :: Q
     type(multifab), intent(inout) :: mu, xi, lam, Ddiag
  
-    integer :: ng, n, dm, lo(Q%dim), hi(Q%dim)
+    integer :: ng, n, dm, lo(Q%dim), hi(Q%dim), dlo(Q%dim), dhi(Q%dim)
     double precision, pointer, dimension(:,:,:,:) :: qp, mup, xip, lamp, dp
 
     dm = Q%dim
@@ -36,19 +38,21 @@ contains
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
 
+       call get_data_lo_hi(n,dlo,dhi)
+
        if (dm .ne. 3) then
           call bl_error("Only 3D is supported in get_transport_properties")
        else
-          call get_trans_prop_3d(lo,hi,ng,qp,mup,xip,lamp,dp)
+          call get_trans_prop_3d(lo,hi,ng,qp,mup,xip,lamp,dp,dlo,dhi)
        end if
 
     end do
 
   end subroutine get_transport_properties
    
-  subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag)
+  subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,dlo,dhi)
     use omp_module
-    integer, intent(in) :: lo(3), hi(3), ng
+    integer, intent(in) :: lo(3), hi(3), ng, dlo(3), dhi(3)
     double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nprim)
     double precision,intent(out)::   mu(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
     double precision,intent(out)::   xi(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
@@ -60,9 +64,9 @@ contains
     double precision, dimension(nspecies) :: Xt, Yt, Cpt, D
 
     !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,Wtm,Xt,Yt,Cpt,D)
-    do k=lo(3)-ng,hi(3)+ng
-    do j=lo(2)-ng,hi(2)+ng
-    do i=lo(1)-ng,hi(1)+ng
+    do k=dlo(3),dhi(3)
+    do j=dlo(2),dhi(2)
+    do i=dlo(1),dhi(1)
 
        Tt = q(i,j,k,qtemp)
        Xt = q(i,j,k,qx1:qx1+nspecies-1)

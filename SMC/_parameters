@@ -96,22 +96,22 @@ prob_hi_z                           real               1.d0
 
 
 # $-x$ boundary condition
-bcx_lo                              integer            SLIP_WALL           
+bcx_lo                              integer            UNDEFINED
 
 # $+x$ boundary condition (valid values are listed in {\tt  boxlib/bc.f90})
-bcx_hi                              integer            SLIP_WALL           
+bcx_hi                              integer            UNDEFINED
 
 # $-y$ boundary condition
-bcy_lo                              integer            SLIP_WALL           
+bcy_lo                              integer            UNDEFINED
 
 # $+y$ boundary condition
-bcy_hi                              integer            SLIP_WALL           
+bcy_hi                              integer            UNDEFINED
 
 # $-z$ boundary condition
-bcz_lo                              integer            SLIP_WALL           
+bcz_lo                              integer            UNDEFINED
 
 # $+z$ boundary condition
-bcz_hi                              integer            SLIP_WALL           
+bcz_hi                              integer            UNDEFINED
 
 # $-x$ boundary condition name---if this is set, it overrides the integer
 # value set through {\tt bcx\_lo}
