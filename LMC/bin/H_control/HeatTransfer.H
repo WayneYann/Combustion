@@ -556,7 +556,9 @@ protected:
     static Array<Real> typical_values;
 
     static int sdc_iterMAX;
+    
     static int nGrowAdvForcing;
+    bool       updateFluxReg;    
     MultiFab   Forcing;
     MultiFab   Dn;
     MultiFab   Dnp1;

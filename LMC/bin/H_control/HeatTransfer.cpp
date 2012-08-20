@@ -5238,6 +5238,13 @@ HeatTransfer::advance (Real time,
 		       int  iteration,
 		       int  ncycle)
 {
+
+    updateFluxReg = false;
+    if (sdc_iterMAX == 0)
+    {
+      updateFluxReg = true;
+    }
+
     if (level == 0)
     {
         crse_dt = dt;
@@ -5389,6 +5396,12 @@ HeatTransfer::advance (Real time,
 
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
     {
+
+        if (sdc_iter == sdc_iterMAX-1)
+	{
+	  updateFluxReg = true;
+	}
+
         // Compute updated coeffs at tnp1
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "Update np1 coeffs (SDC corrector " << sdc_iter << ") \n";
