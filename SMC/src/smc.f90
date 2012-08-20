@@ -172,8 +172,9 @@ subroutine smc()
   end if
 
   if (advance_method == 2) then
-     call create(sdc, 1, 3)  ! XXX: use probin here...
-     sdc%tol_residual = 1.0d-8
+     call create(sdc, 1, sdc_nnodes)
+     sdc%iters        = sdc_iters
+     sdc%tol_residual = sdc_tol_residual
      call build(sdc)
   end if
 
