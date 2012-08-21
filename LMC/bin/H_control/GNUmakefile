@@ -17,6 +17,10 @@ USE_OMP         = FALSE
 USE_F90_SOLVERS = TRUE
 VERBOSE         = FALSE
 
+# Enable SDC code - add .SDC to executable
+# and compile in the #ifdef LMC_SDC
+USE_LMC_SDC = TRUE
+
 # Enable flctin namelist
 USE_FLCTS       = TRUE
 
