@@ -20,10 +20,6 @@ x  DERIVE_HT_3D.F
 ?  Diffusion.cpp
 ?  Diffusion.H
 
-x  GODUNOV_3D.F
-
-        look at what was done for GODUNOV_2D.F
-
 x  Godunov.cpp
 x  Godunov.H
 
