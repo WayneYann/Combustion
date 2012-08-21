@@ -1,17 +1,3 @@
-x  ChemDriver_2D.F
-x  ChemDriver_3D.F
-x  ChemDriver_F.H
-
-	new subroutine FORT_RRATERHOY that returns instantaneous rho*omegadot
-	new subroutine FORT_CONPSOLV_SDC that is the chemistry integrator for SDC
-	FORT_MIXAVG_RHODIFF_TEMP knows the incoming Y is actually rhoY
-
-x  ChemDriver.cpp
-x  ChemDriver.H
-
-	new function reactionRateRhoY
-	new function solveTransient_sdc
-
 x  DERIVE_HT_2D.F
 x  DERIVE_HT_3D.F
 

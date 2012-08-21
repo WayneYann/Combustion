@@ -27,6 +27,25 @@ public:
                          Real              Patm,
                          FArrayBox*        chemDiag=0) const;
 
+#ifdef LMC_SDC
+    void solveTransient_sdc(FArrayBox&        rhoYnew,
+                            FArrayBox&        rhoHnew,
+                            FArrayBox&        Tnew,
+                            const FArrayBox&  rhoYold,
+                            const FArrayBox&  rhoHold,
+                            const FArrayBox&  Told,
+                            const FArrayBox&  const_src,
+                            FArrayBox&        I_R,
+                            FArrayBox&        FuncCount,
+                            const Box&        box,
+                            int               sComprhoY,
+                            int               sComprhoH,
+                            int               sCompT,
+                            Real              dt,
+                            Real              Patm,
+                            FArrayBox*        chemDiag) const;
+#endif
+
     void set_verbose_vode ();
     void set_max_vode_subcycles (int max_cyc);
     void set_species_Yscales (const std::string& scalesFile);
@@ -184,6 +203,22 @@ public:
                         int              sCompY,
                         int              sCompT,
                         int              sCompYdot) const;
+
+#ifdef LMC_SDC
+    //
+    // Compute dRhoY/dt based on the input temp, press and mass densities.
+    //
+    void reactionRateRhoY(FArrayBox&       RhoYdot,
+                          const FArrayBox& RhoY,
+                          const FArrayBox& RhoH,
+                          const FArrayBox& T,
+                          Real             Patm,
+                          const Box&       box,
+                          int              sCompRhoY,
+                          int              sCompRhoH,
+                          int              sCompT,
+                          int              sCompRhoYdot) const;
+#endif
 
     void fwdRevReacRatesGivenXTP (FArrayBox&        FwdK,
                                   FArrayBox&        RevK,
