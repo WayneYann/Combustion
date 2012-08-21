@@ -53,12 +53,6 @@ x  HT_setup.cpp
 
 	replace all instances of "ydot" with "rhoydot"
 
-x  Laplacian.cpp
-x  Laplacian.H
-
-	compFlux generalized to take in src_comp and dst_comp
-	compFlux now requires that incoming BC_Mode is set (had a default value before)
-
 x  MacProj.cpp
 
 	godunov->Sum_tf_gp_visc interface changes
