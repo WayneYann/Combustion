@@ -1,7 +1,3 @@
-x  cdwrk.H
-
-	SDC additions: c_0, c_1, rhoH_INIT, T_cell, rhoY_INIT
-
 x  ChemDriver_2D.F
 x  ChemDriver_3D.F
 x  ChemDriver_F.H
@@ -15,10 +11,6 @@ x  ChemDriver.H
 
 	new function reactionRateRhoY
 	new function solveTransient_sdc
-
-x  ChemDriver_F.F
-
-	new subroutine conpFY_sdc
 
 x  DERIVE_HT_2D.F
 x  DERIVE_HT_3D.F

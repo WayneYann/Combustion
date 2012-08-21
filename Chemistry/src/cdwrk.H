@@ -84,3 +84,10 @@
       integer Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset
       common / tran3 / Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset
       save   / tran3 /
+
+#ifdef LMC_SDC
+      ! SDC additions
+      REAL_T c_0(maxspec+1), c_1(maxspec+1), rhoH_INIT, T_cell, rhoY_INIT(maxspec)
+      common /sdc_function/ c_0, c_1, rhoH_INIT, T_cell, rhoY_INIT
+      save /sdc_function/
+#endif

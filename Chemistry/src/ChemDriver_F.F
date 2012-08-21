@@ -823,6 +823,87 @@ C
 
       END
 
+#ifdef LMC_SDC
+      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
+      implicit none
+#include "cdwrk.H"
+#include "conp.H"
+#include "htdata.H"
+#include "visc.H"
+      REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
+      integer N, IPAR(*)
+      
+      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
+      REAL_T rhoYDOT_MKS, Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
+      integer K
+      integer is_bad(maxspec),num_bad
+
+C     Needed to compute T from h
+      REAL_T HtoTerrMAX
+      integer HtoTiterMAX, Niter
+      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
+      parameter (HtoTiterMAX = 20)
+      REAL_T res(0:HtoTiterMAX-1)
+
+      REAL_T RHO_CGS, RINV_CGS, rhohmixDOT_MKS
+
+      REAL_T mwt(maxspec), invmwt(maxspec)
+
+      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
+      do n=1,Nspec
+         invmwt(n) = one / mwt(n)
+      end do
+C
+C     Variables in Z are:  Z(1:K) = rhoY(K)
+C                          Z(K+1) = RhoH
+      RHO_MKS = 0.d0
+      do K=1,Nspec
+         RHO_MKS = RHO_MKS + Z(K)
+      enddo
+      RINV_MKS = 1.d0 / RHO_MKS
+      
+      num_bad = 0
+      do K=1,Nspec
+         if (Z(K).lt.-1.d-6*typVal_Y(K)*typVal_Density) then
+            num_bad = num_bad+1
+            is_bad(num_bad) = k
+         endif
+      enddo
+
+      do K=1,Nspec
+         CONC_CGS(K) = MAX(0.d0, Z(K)*invmwt(K)*1.d-3)
+         Y(K) = Z(K) * RINV_MKS
+      enddo
+
+c      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
+c     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
+
+      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
+      T = T_cell
+
+c     FIXME: Get proper stopping stopping criteria here
+      call FORT_TfromHYpt(T,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
+      T_cell = T      
+      call CKWC(T,CONC_CGS,IWRK,RWRK,WDOT_CGS)
+
+c      rhohmixDOT_MKS = c_0(Nspec+1) + c_1(Nspec+1)*TIME
+      rhohmixDOT_MKS = c_0(Nspec+1)
+      ZP(Nspec+1) = rhohmixDOT_MKS
+
+      THFAC = 1.d3/thickFacCH
+      do k= 1, Nspec
+c         rhoYDOT_MKS = c_0(k) + c_1(k)*TIME
+         rhoYDOT_MKS = c_0(k)
+         ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
+      end do
+
+      return
+
+ 10   continue
+
+      END
+#endif
+
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
       implicit none
