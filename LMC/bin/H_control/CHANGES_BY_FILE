@@ -32,11 +32,6 @@ x  DERIVE_HT_2D.F
 ?  Diffusion.cpp
 ?  Diffusion.H
 
-x  GODUNOV_2D.F
-x  GODUNOV_F.H
-
-	In FORT_ESTATE_FPU, s, tforces, and divu do not need to have the same # of ghost cells
-
 x  Godunov.cpp
 x  Godunov.H
 
