@@ -1,9 +1,3 @@
-x  ABecLaplacian.cpp
-x  ABecLaplacian.H
-
-	compFlux generalized to take in src_comp and dst_comp
-	compFlux now requires that incoming BC_Mode is set (had a default value before)
-
 x  cdwrk.H
 
 	SDC additions: c_0, c_1, rhoH_INIT, T_cell, rhoY_INIT
@@ -61,11 +55,6 @@ x  HT_setup.cpp
 
 x  Laplacian.cpp
 x  Laplacian.H
-
-	compFlux generalized to take in src_comp and dst_comp
-	compFlux now requires that incoming BC_Mode is set (had a default value before)
-
-x  LinOp.H
 
 	compFlux generalized to take in src_comp and dst_comp
 	compFlux now requires that incoming BC_Mode is set (had a default value before)
