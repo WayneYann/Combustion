@@ -5793,25 +5793,28 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                                            D_DECL(u_bc[0].dataPtr(),u_bc[1].dataPtr(),u_bc[2].dataPtr()),
                                            D_DECL(S,S,S), D_DECL(0,1,2), tvelforces, 0);
         //
-        // Get edge states for RhoY, RhoH
+        // Get edge states for RhoY, RhoH, Tracer
         //
         (*aofs)[i].setVal(0,box,Density,1);
         for (int d=0; d<BL_SPACEDIM; ++d)
         {
             (*EdgeState[d])[i].setVal(0,(*EdgeState[d])[i].box(),Density,1);
+            (*EdgeState[d])[i].setVal(0,(*EdgeState[d])[i].box(),Trac,1);
         }        
-        for (int comp = 0 ; comp < nspecies+1 ; comp++)
+        for (int comp = 0 ; comp < nspecies+2 ; comp++)
         {
             int state_ind = first_spec + comp;
             Array<int> bc = getBCArray(State_Type,i,state_ind,1);
             int iconserv = 1;
 
-            godunov->edge_states_fpu(box, dx, dt,
-                                     D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0), 
-                                     D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
-                                     D_DECL(state_ind,state_ind,state_ind),
-                                     S,state_ind,Force[S_fpi],comp,divu,0,state_ind,bc.dataPtr(),iconserv);
-
+	    if (state_ind != Trac)
+            {
+	      godunov->edge_states_fpu(box, dx, dt,
+                                       D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0), 
+				       D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+				       D_DECL(state_ind,state_ind,state_ind),
+				       S,state_ind,Force[S_fpi],comp,divu,0,state_ind,bc.dataPtr(),iconserv);
+	    }
 
             int avcomp = 0;
             int ucomp = 0;
@@ -5824,7 +5827,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                                   (*aofs)[i], state_ind, iconserv);
 
             // Accumulate rho flux, and rho flux divergence
-            if (state_ind != RhoH)
+            if (state_ind != RhoH && state_ind != Trac)
             {
                 (*aofs)[i].plus((*aofs)[i],state_ind,Density,1);
                 for (int d=0; d<BL_SPACEDIM; ++d)
@@ -5843,13 +5846,13 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
 	 // NOTE: Changes sense of aofs here so that d/dt ~ aofs...be sure we use our own update
 	 //  function
-        (*aofs)[i].mult(-1,Density,nspecies+2);
+        (*aofs)[i].mult(-1,Density,nspecies+3);
     }
 
     if (do_reflux && updateFluxReg && level < parent->finestLevel())
     {
         for (int d = 0; d < BL_SPACEDIM; d++)
-            getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,Density,Density,nspecies+2,-dt);
+            getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,Density,Density,nspecies+3,-dt);
     }
 }
 
