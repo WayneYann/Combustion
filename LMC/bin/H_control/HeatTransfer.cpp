@@ -5727,9 +5727,6 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                                                               Real      dt)
 {
     //
-    // FIXME: Still need to deal with refluxing stuff
-    //
-    //
     // Compute -Div(advective fluxes)  [ which is -aofs in NS, BTW ... careful...
     //
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -5836,11 +5833,23 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                 }        
             }
 
-        }
+	    if (do_reflux && updateFluxReg && level > 0)
+	    {
+	      for (int d = 0; d < BL_SPACEDIM; d++)
+                        advflux_reg->FineAdd((*EdgeState[d])[i],d,i,0,state_ind,1,dt);
+	     }
 
-        // NOTE: Changes sense of aofs here so that d/dt ~ aofs...be sure we use our own update
-        //  function
+	 }
+
+	 // NOTE: Changes sense of aofs here so that d/dt ~ aofs...be sure we use our own update
+	 //  function
         (*aofs)[i].mult(-1,Density,nspecies+2);
+    }
+
+    if (do_reflux && updateFluxReg && level < parent->finestLevel())
+    {
+        for (int d = 0; d < BL_SPACEDIM; d++)
+            getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,0,Density,nspecies+2,-dt);
     }
 }
 

@@ -376,7 +376,7 @@ MacProj::mac_project (int             level,
         //const int extent_rad = 1;
         const int extent_rad = 2;
         BndryRegister crse_br(crse_boxes,in_rad,out_rad,extent_rad,num_comp);
-        crse_br.copyFrom(CPhi,extent_rad,src_comp,dest_comp,num_comp);
+        crse_br.copyFrom(CPhi,CPhi.nGrow(),src_comp,dest_comp,num_comp);
 
         mac_bndry.setBndryValues(crse_br,src_comp,*mac_phi,src_comp,
                                  dest_comp,num_comp,crse_ratio,*phys_bc);
@@ -807,7 +807,7 @@ MacProj::mac_sync_compute (int                   level,
         //
         godunov->Sum_tf_gp_visc(tforces, 0, vel_visc_terms[S_fpi], 0, Gp[i], 0, Rho, 0);
         godunov->Sum_tf_divu_visc(S, BL_SPACEDIM, tforces, BL_SPACEDIM, numscal,
-                                  scal_visc_terms[S_fpi], 0, divu, 0, Rho, 1, 1);
+                                  scal_visc_terms[S_fpi], 0, divu, 0, Rho, 0, 1);
 
         if (use_forces_in_trans)
         {
