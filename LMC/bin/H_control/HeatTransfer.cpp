@@ -5836,7 +5836,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 	    if (do_reflux && updateFluxReg && level > 0)
 	    {
 	      for (int d = 0; d < BL_SPACEDIM; d++)
-                        advflux_reg->FineAdd((*EdgeState[d])[i],d,i,0,state_ind,1,dt);
+		advflux_reg->FineAdd((*EdgeState[d])[i],d,i,state_ind,state_ind,1,dt);
 	     }
 
 	 }
@@ -5849,7 +5849,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     if (do_reflux && updateFluxReg && level < parent->finestLevel())
     {
         for (int d = 0; d < BL_SPACEDIM; d++)
-            getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,0,Density,nspecies+2,-dt);
+            getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,Density,Density,nspecies+2,-dt);
     }
 }
 
@@ -5875,6 +5875,7 @@ HeatTransfer::mac_sync ()
     const Real dt             = parent->dtLevel(level);
     MultiFab*  DeltaSsync     = 0; // hold (Delta rho)*q for conserved quantities
     MultiFab*  Rh             = get_rho_half_time();
+
     //
     // Compute the correction velocity.
     //
@@ -6243,6 +6244,7 @@ HeatTransfer::mac_sync ()
             }
         }
         sync_cleanup(DeltaSsync);
+
         //
         // Increment the state (for all but rho, since that was done above)
         //
@@ -6728,7 +6730,6 @@ HeatTransfer::reflux ()
 
     fr_adv.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
     fr_adv.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
-
     BoxArray baf = getLevel(level+1).boxArray();
 
     baf.coarsen(fine_ratio);
