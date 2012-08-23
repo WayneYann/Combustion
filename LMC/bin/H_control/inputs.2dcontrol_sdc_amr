@@ -103,8 +103,8 @@ ns.S_in_vel_diffusion = 1
 
 ns.do_temp = 1
 
-ns.do_diffuse_sync = 1
-ns.do_reflux_visc  = 1
+ns.do_diffuse_sync = 0
+ns.do_reflux_visc  = 0
 
 ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
