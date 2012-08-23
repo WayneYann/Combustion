@@ -5838,8 +5838,18 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
 	    if (do_reflux && updateFluxReg && level > 0)
 	    {
+
+	      // update the flux register for state_ind
 	      for (int d = 0; d < BL_SPACEDIM; d++)
 		advflux_reg->FineAdd((*EdgeState[d])[i],d,i,state_ind,state_ind,1,dt);
+
+	      // now that density has been constructed by summing rhoY, update the flux register for density
+	      if (comp == nspecies)
+		{
+		  for (int d = 0; d < BL_SPACEDIM; d++)
+		    advflux_reg->FineAdd((*EdgeState[d])[i],d,i,Density,Density,1,dt);
+		}
+
 	     }
 
 	 }
