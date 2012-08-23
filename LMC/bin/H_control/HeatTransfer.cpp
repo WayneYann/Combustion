@@ -3092,7 +3092,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 	    else 
 	    {
                 //const int sCompY = first_spec - src_comp + load_comp;
-		//compute_differential_diffusion_terms(visc_terms,sCompY,time);
+		//compute_differential_diffusion_terms(visc_terms,sCompY,time,dt);
                 BoxLib::Abort("Fix ME");
                 showMF("velVT",visc_terms,"velVT_visc_terms_2",level);
             }
@@ -4529,7 +4529,8 @@ int HY_to_Temp_DoIt(FArrayBox&       Tfab,
 }
 
 void
-HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
+HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
+                                                     const Real& dt)
 {
     const TimeLevel whichTime = which_time(State_Type,time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
@@ -4654,6 +4655,51 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time)
     // conservatively correct Gamma_m
     adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
 
+    //
+    // Now do reflux with new, improved fluxes
+    //
+    // if we are calling this in the predictor, add (1/2)*Gamma^n to viscous flux register
+    // if we are calling this in the last SDC correction sweep, subtract (1/2)*Gamma^{kmax-1} from
+    //    viscous flux register
+    Real prev_time = state[State_Type].prevTime();
+    Real curr_time = state[State_Type].curTime();
+    if ( (do_reflux && time == prev_time) ||
+         (do_reflux && time == curr_time && updateFluxReg) )
+    {
+      const Real theta = (time == prev_time) ? 0.5 : -0.5;
+      
+      FArrayBox fluxtot;
+
+      for (int d = 0; d < BL_SPACEDIM; d++)
+      {
+	MultiFab fluxes;
+
+	if (level < parent->finestLevel())
+	  fluxes.define(SpecDiffusionFluxn[d]->boxArray(), nspecies, 0, Fab_allocate);
+
+	for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
+	{
+	  const Box& ebox = (*SpecDiffusionFluxn[d])[fmfi].box();
+
+	  fluxtot.resize(ebox,nspecies);
+	  fluxtot.copy((*SpecDiffusionFluxn[d])[fmfi], ebox,0,ebox,0,nspecies);
+	  fluxtot.plus((*SpecDiffusionFluxnp1[d])[fmfi],ebox,0,0,nspecies);
+
+	  if (level < parent->finestLevel())
+	    fluxes[fmfi].copy(fluxtot);
+
+	  if (level > 0)
+	    getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,first_spec,nspecies,theta*dt);
+	}
+
+	if (level < parent->finestLevel())
+        {
+	  getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies,-theta*dt);
+	}
+      }
+      
+    }
+
     // compute lambda grad T (for temperature and divu)
     // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy)
     // compute sum_m Gamma_m dot grad h_m (for divu)
@@ -4717,7 +4763,8 @@ HeatTransfer::flux_divergence (MultiFab&        fdiv,
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
                                                     MultiFab& DD,
-                                                    Real      time)
+                                                    Real      time,
+                                                    Real      dt)
 {
     // 
     // Sets vt for species, RhoH and Temp together
@@ -4745,7 +4792,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
     // Then compute -Div(Fi), -Div((lambda/cp).Grad(h) + Fi.(Lei-1)) + heating,
     //  -Div(lambda.Grad(T)) + heating + sum(Fi.Grad(Hi)) 
     //
-    compute_differential_diffusion_fluxes(time);
+    compute_differential_diffusion_fluxes(time,dt);
 
     // compute div Gamma_m for species AND div lambda/cp grad h for enthalpy
     flux_divergence(D,0,flux,0,nspecies+1,-1);
@@ -5303,7 +5350,7 @@ HeatTransfer::advance (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "Computing Dn and DDn (SDC predictor) \n";
 
-    compute_differential_diffusion_terms(Dn,DDn,prev_time);
+    compute_differential_diffusion_terms(Dn,DDn,prev_time,dt);
 
     //
     // Compute A (advection terms) with F = Dn + R
@@ -5415,7 +5462,7 @@ HeatTransfer::advance (Real time,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "Computing Dnp1 and DDnp1 (SDC corrector " << sdc_iter << ")\n";
 
-        compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time);
+        compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
 
         //
         // Compute A (advection terms) with F = Dn + R
@@ -7018,7 +7065,7 @@ HeatTransfer::calc_divu (Real      time,
         vtCompT = nspecies + 1;
         vtCompY = 0;
         mcViscTerms.define(grids,nspecies+2,nGrow,Fab_allocate); // Can probably use DDnp1 here
-        compute_differential_diffusion_terms(mcViscTerms,divu,time); // divu has DD, not needed here
+        compute_differential_diffusion_terms(mcViscTerms,divu,time,dt); // divu has DD, not needed here
     }
 
     MultiFab& S = get_data(State_Type,time);
