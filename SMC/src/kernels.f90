@@ -502,6 +502,8 @@ contains
     integer          :: i,j,k,n, qxn, qyn, qhn
     integer :: slo(3), shi(3)
 
+    double precision :: muM8(8), M8p(8), M8X(8)
+
     ! Only the region bounded by [dlo,dhi] contains good data.
     ! [slo,shi] will be safe for 8th-order stencil
     slo = dlo + stencil_ng
@@ -741,171 +743,33 @@ contains
     do k=slo(3),shi(3)
        do j=slo(2),shi(2)
           do i=slo(1),shi(1)+1
-             Hg(i,j,k,imx) = DD8(-4,-4)*(vsp(i-4,j,k)*q(i-4,j,k,qu)-vsp(i+3,j,k)*q(i+3,j,k,qu)) &
-                  +          DD8(-4,-3)*(vsp(i-4,j,k)*q(i-3,j,k,qu)-vsp(i+3,j,k)*q(i+2,j,k,qu)) &
-                  +          DD8(-4,-2)*(vsp(i-4,j,k)*q(i-2,j,k,qu)-vsp(i+3,j,k)*q(i+1,j,k,qu)) &
-                  +          DD8(-4,-1)*(vsp(i-4,j,k)*q(i-1,j,k,qu)-vsp(i+3,j,k)*q(i  ,j,k,qu)) &
-                  +          DD8(-4, 0)*(vsp(i-4,j,k)*q(i  ,j,k,qu)-vsp(i+3,j,k)*q(i-1,j,k,qu)) &
-                  &        + DD8(-3,-4)*(vsp(i-3,j,k)*q(i-4,j,k,qu)-vsp(i+2,j,k)*q(i+3,j,k,qu)) &
-                  +          DD8(-3,-3)*(vsp(i-3,j,k)*q(i-3,j,k,qu)-vsp(i+2,j,k)*q(i+2,j,k,qu)) &
-                  +          DD8(-3,-2)*(vsp(i-3,j,k)*q(i-2,j,k,qu)-vsp(i+2,j,k)*q(i+1,j,k,qu)) &
-                  +          DD8(-3,-1)*(vsp(i-3,j,k)*q(i-1,j,k,qu)-vsp(i+2,j,k)*q(i  ,j,k,qu)) &
-                  +          DD8(-3, 0)*(vsp(i-3,j,k)*q(i  ,j,k,qu)-vsp(i+2,j,k)*q(i-1,j,k,qu)) &
-                  +          DD8(-3, 1)*(vsp(i-3,j,k)*q(i+1,j,k,qu)-vsp(i+2,j,k)*q(i-2,j,k,qu)) &
-                  &        + DD8(-2,-4)*(vsp(i-2,j,k)*q(i-4,j,k,qu)-vsp(i+1,j,k)*q(i+3,j,k,qu)) &
-                  +          DD8(-2,-3)*(vsp(i-2,j,k)*q(i-3,j,k,qu)-vsp(i+1,j,k)*q(i+2,j,k,qu)) &
-                  +          DD8(-2,-2)*(vsp(i-2,j,k)*q(i-2,j,k,qu)-vsp(i+1,j,k)*q(i+1,j,k,qu)) &
-                  +          DD8(-2,-1)*(vsp(i-2,j,k)*q(i-1,j,k,qu)-vsp(i+1,j,k)*q(i  ,j,k,qu)) &
-                  +          DD8(-2, 0)*(vsp(i-2,j,k)*q(i  ,j,k,qu)-vsp(i+1,j,k)*q(i-1,j,k,qu)) &
-                  +          DD8(-2, 1)*(vsp(i-2,j,k)*q(i+1,j,k,qu)-vsp(i+1,j,k)*q(i-2,j,k,qu)) &
-                  +          DD8(-2, 2)*(vsp(i-2,j,k)*q(i+2,j,k,qu)-vsp(i+1,j,k)*q(i-3,j,k,qu)) &
-                  &        + DD8(-1,-4)*(vsp(i-1,j,k)*q(i-4,j,k,qu)-vsp(i  ,j,k)*q(i+3,j,k,qu)) &
-                  +          DD8(-1,-3)*(vsp(i-1,j,k)*q(i-3,j,k,qu)-vsp(i  ,j,k)*q(i+2,j,k,qu)) &
-                  +          DD8(-1,-2)*(vsp(i-1,j,k)*q(i-2,j,k,qu)-vsp(i  ,j,k)*q(i+1,j,k,qu)) &
-                  +          DD8(-1,-1)*(vsp(i-1,j,k)*q(i-1,j,k,qu)-vsp(i  ,j,k)*q(i  ,j,k,qu)) &
-                  +          DD8(-1, 0)*(vsp(i-1,j,k)*q(i  ,j,k,qu)-vsp(i  ,j,k)*q(i-1,j,k,qu)) &
-                  +          DD8(-1, 1)*(vsp(i-1,j,k)*q(i+1,j,k,qu)-vsp(i  ,j,k)*q(i-2,j,k,qu)) &
-                  +          DD8(-1, 2)*(vsp(i-1,j,k)*q(i+2,j,k,qu)-vsp(i  ,j,k)*q(i-3,j,k,qu)) &
-                  +          DD8(-1, 3)*(vsp(i-1,j,k)*q(i+3,j,k,qu)-vsp(i  ,j,k)*q(i-4,j,k,qu))
-             
-             Hg(i,j,k,imy) = DD8(-4,-4)*(mu(i-4,j,k)*q(i-4,j,k,qv)-mu(i+3,j,k)*q(i+3,j,k,qv)) &
-                  +          DD8(-4,-3)*(mu(i-4,j,k)*q(i-3,j,k,qv)-mu(i+3,j,k)*q(i+2,j,k,qv)) &
-                  +          DD8(-4,-2)*(mu(i-4,j,k)*q(i-2,j,k,qv)-mu(i+3,j,k)*q(i+1,j,k,qv)) &
-                  +          DD8(-4,-1)*(mu(i-4,j,k)*q(i-1,j,k,qv)-mu(i+3,j,k)*q(i  ,j,k,qv)) &
-                  +          DD8(-4, 0)*(mu(i-4,j,k)*q(i  ,j,k,qv)-mu(i+3,j,k)*q(i-1,j,k,qv)) &
-                  &        + DD8(-3,-4)*(mu(i-3,j,k)*q(i-4,j,k,qv)-mu(i+2,j,k)*q(i+3,j,k,qv)) &
-                  +          DD8(-3,-3)*(mu(i-3,j,k)*q(i-3,j,k,qv)-mu(i+2,j,k)*q(i+2,j,k,qv)) &
-                  +          DD8(-3,-2)*(mu(i-3,j,k)*q(i-2,j,k,qv)-mu(i+2,j,k)*q(i+1,j,k,qv)) &
-                  +          DD8(-3,-1)*(mu(i-3,j,k)*q(i-1,j,k,qv)-mu(i+2,j,k)*q(i  ,j,k,qv)) &
-                  +          DD8(-3, 0)*(mu(i-3,j,k)*q(i  ,j,k,qv)-mu(i+2,j,k)*q(i-1,j,k,qv)) &
-                  +          DD8(-3, 1)*(mu(i-3,j,k)*q(i+1,j,k,qv)-mu(i+2,j,k)*q(i-2,j,k,qv)) &
-                  &        + DD8(-2,-4)*(mu(i-2,j,k)*q(i-4,j,k,qv)-mu(i+1,j,k)*q(i+3,j,k,qv)) &
-                  +          DD8(-2,-3)*(mu(i-2,j,k)*q(i-3,j,k,qv)-mu(i+1,j,k)*q(i+2,j,k,qv)) &
-                  +          DD8(-2,-2)*(mu(i-2,j,k)*q(i-2,j,k,qv)-mu(i+1,j,k)*q(i+1,j,k,qv)) &
-                  +          DD8(-2,-1)*(mu(i-2,j,k)*q(i-1,j,k,qv)-mu(i+1,j,k)*q(i  ,j,k,qv)) &
-                  +          DD8(-2, 0)*(mu(i-2,j,k)*q(i  ,j,k,qv)-mu(i+1,j,k)*q(i-1,j,k,qv)) &
-                  +          DD8(-2, 1)*(mu(i-2,j,k)*q(i+1,j,k,qv)-mu(i+1,j,k)*q(i-2,j,k,qv)) &
-                  +          DD8(-2, 2)*(mu(i-2,j,k)*q(i+2,j,k,qv)-mu(i+1,j,k)*q(i-3,j,k,qv)) &
-                  &        + DD8(-1,-4)*(mu(i-1,j,k)*q(i-4,j,k,qv)-mu(i  ,j,k)*q(i+3,j,k,qv)) &
-                  +          DD8(-1,-3)*(mu(i-1,j,k)*q(i-3,j,k,qv)-mu(i  ,j,k)*q(i+2,j,k,qv)) &
-                  +          DD8(-1,-2)*(mu(i-1,j,k)*q(i-2,j,k,qv)-mu(i  ,j,k)*q(i+1,j,k,qv)) &
-                  +          DD8(-1,-1)*(mu(i-1,j,k)*q(i-1,j,k,qv)-mu(i  ,j,k)*q(i  ,j,k,qv)) &
-                  +          DD8(-1, 0)*(mu(i-1,j,k)*q(i  ,j,k,qv)-mu(i  ,j,k)*q(i-1,j,k,qv)) &
-                  +          DD8(-1, 1)*(mu(i-1,j,k)*q(i+1,j,k,qv)-mu(i  ,j,k)*q(i-2,j,k,qv)) &
-                  +          DD8(-1, 2)*(mu(i-1,j,k)*q(i+2,j,k,qv)-mu(i  ,j,k)*q(i-3,j,k,qv)) &
-                  +          DD8(-1, 3)*(mu(i-1,j,k)*q(i+3,j,k,qv)-mu(i  ,j,k)*q(i-4,j,k,qv))
 
-             Hg(i,j,k,imz) = DD8(-4,-4)*(mu(i-4,j,k)*q(i-4,j,k,qw)-mu(i+3,j,k)*q(i+3,j,k,qw)) &
-                  +          DD8(-4,-3)*(mu(i-4,j,k)*q(i-3,j,k,qw)-mu(i+3,j,k)*q(i+2,j,k,qw)) &
-                  +          DD8(-4,-2)*(mu(i-4,j,k)*q(i-2,j,k,qw)-mu(i+3,j,k)*q(i+1,j,k,qw)) &
-                  +          DD8(-4,-1)*(mu(i-4,j,k)*q(i-1,j,k,qw)-mu(i+3,j,k)*q(i  ,j,k,qw)) &
-                  +          DD8(-4, 0)*(mu(i-4,j,k)*q(i  ,j,k,qw)-mu(i+3,j,k)*q(i-1,j,k,qw)) &
-                  &        + DD8(-3,-4)*(mu(i-3,j,k)*q(i-4,j,k,qw)-mu(i+2,j,k)*q(i+3,j,k,qw)) &
-                  +          DD8(-3,-3)*(mu(i-3,j,k)*q(i-3,j,k,qw)-mu(i+2,j,k)*q(i+2,j,k,qw)) &
-                  +          DD8(-3,-2)*(mu(i-3,j,k)*q(i-2,j,k,qw)-mu(i+2,j,k)*q(i+1,j,k,qw)) &
-                  +          DD8(-3,-1)*(mu(i-3,j,k)*q(i-1,j,k,qw)-mu(i+2,j,k)*q(i  ,j,k,qw)) &
-                  +          DD8(-3, 0)*(mu(i-3,j,k)*q(i  ,j,k,qw)-mu(i+2,j,k)*q(i-1,j,k,qw)) &
-                  +          DD8(-3, 1)*(mu(i-3,j,k)*q(i+1,j,k,qw)-mu(i+2,j,k)*q(i-2,j,k,qw)) &
-                  &        + DD8(-2,-4)*(mu(i-2,j,k)*q(i-4,j,k,qw)-mu(i+1,j,k)*q(i+3,j,k,qw)) &
-                  +          DD8(-2,-3)*(mu(i-2,j,k)*q(i-3,j,k,qw)-mu(i+1,j,k)*q(i+2,j,k,qw)) &
-                  +          DD8(-2,-2)*(mu(i-2,j,k)*q(i-2,j,k,qw)-mu(i+1,j,k)*q(i+1,j,k,qw)) &
-                  +          DD8(-2,-1)*(mu(i-2,j,k)*q(i-1,j,k,qw)-mu(i+1,j,k)*q(i  ,j,k,qw)) &
-                  +          DD8(-2, 0)*(mu(i-2,j,k)*q(i  ,j,k,qw)-mu(i+1,j,k)*q(i-1,j,k,qw)) &
-                  +          DD8(-2, 1)*(mu(i-2,j,k)*q(i+1,j,k,qw)-mu(i+1,j,k)*q(i-2,j,k,qw)) &
-                  +          DD8(-2, 2)*(mu(i-2,j,k)*q(i+2,j,k,qw)-mu(i+1,j,k)*q(i-3,j,k,qw)) &
-                  &        + DD8(-1,-4)*(mu(i-1,j,k)*q(i-4,j,k,qw)-mu(i  ,j,k)*q(i+3,j,k,qw)) &
-                  +          DD8(-1,-3)*(mu(i-1,j,k)*q(i-3,j,k,qw)-mu(i  ,j,k)*q(i+2,j,k,qw)) &
-                  +          DD8(-1,-2)*(mu(i-1,j,k)*q(i-2,j,k,qw)-mu(i  ,j,k)*q(i+1,j,k,qw)) &
-                  +          DD8(-1,-1)*(mu(i-1,j,k)*q(i-1,j,k,qw)-mu(i  ,j,k)*q(i  ,j,k,qw)) &
-                  +          DD8(-1, 0)*(mu(i-1,j,k)*q(i  ,j,k,qw)-mu(i  ,j,k)*q(i-1,j,k,qw)) &
-                  +          DD8(-1, 1)*(mu(i-1,j,k)*q(i+1,j,k,qw)-mu(i  ,j,k)*q(i-2,j,k,qw)) &
-                  +          DD8(-1, 2)*(mu(i-1,j,k)*q(i+2,j,k,qw)-mu(i  ,j,k)*q(i-3,j,k,qw)) &
-                  +          DD8(-1, 3)*(mu(i-1,j,k)*q(i+3,j,k,qw)-mu(i  ,j,k)*q(i-4,j,k,qw))
+             muM8 = matmul(   mu(i-4:i+3,j,k)      , M8)
+             M8p  = matmul(M8, q(i-4:i+3,j,k,qpres))
 
-             Hg(i,j,k,iene) = DD8(-4,-4)*(lam(i-4,j,k)*q(i-4,j,k,qtemp)-lam(i+3,j,k)*q(i+3,j,k,qtemp)) &
-                  +           DD8(-4,-3)*(lam(i-4,j,k)*q(i-3,j,k,qtemp)-lam(i+3,j,k)*q(i+2,j,k,qtemp)) &
-                  +           DD8(-4,-2)*(lam(i-4,j,k)*q(i-2,j,k,qtemp)-lam(i+3,j,k)*q(i+1,j,k,qtemp)) &
-                  +           DD8(-4,-1)*(lam(i-4,j,k)*q(i-1,j,k,qtemp)-lam(i+3,j,k)*q(i  ,j,k,qtemp)) &
-                  +           DD8(-4, 0)*(lam(i-4,j,k)*q(i  ,j,k,qtemp)-lam(i+3,j,k)*q(i-1,j,k,qtemp)) &
-                  &         + DD8(-3,-4)*(lam(i-3,j,k)*q(i-4,j,k,qtemp)-lam(i+2,j,k)*q(i+3,j,k,qtemp)) &
-                  +           DD8(-3,-3)*(lam(i-3,j,k)*q(i-3,j,k,qtemp)-lam(i+2,j,k)*q(i+2,j,k,qtemp)) &
-                  +           DD8(-3,-2)*(lam(i-3,j,k)*q(i-2,j,k,qtemp)-lam(i+2,j,k)*q(i+1,j,k,qtemp)) &
-                  +           DD8(-3,-1)*(lam(i-3,j,k)*q(i-1,j,k,qtemp)-lam(i+2,j,k)*q(i  ,j,k,qtemp)) &
-                  +           DD8(-3, 0)*(lam(i-3,j,k)*q(i  ,j,k,qtemp)-lam(i+2,j,k)*q(i-1,j,k,qtemp)) &
-                  +           DD8(-3, 1)*(lam(i-3,j,k)*q(i+1,j,k,qtemp)-lam(i+2,j,k)*q(i-2,j,k,qtemp)) &
-                  &         + DD8(-2,-4)*(lam(i-2,j,k)*q(i-4,j,k,qtemp)-lam(i+1,j,k)*q(i+3,j,k,qtemp)) &
-                  +           DD8(-2,-3)*(lam(i-2,j,k)*q(i-3,j,k,qtemp)-lam(i+1,j,k)*q(i+2,j,k,qtemp)) &
-                  +           DD8(-2,-2)*(lam(i-2,j,k)*q(i-2,j,k,qtemp)-lam(i+1,j,k)*q(i+1,j,k,qtemp)) &
-                  +           DD8(-2,-1)*(lam(i-2,j,k)*q(i-1,j,k,qtemp)-lam(i+1,j,k)*q(i  ,j,k,qtemp)) &
-                  +           DD8(-2, 0)*(lam(i-2,j,k)*q(i  ,j,k,qtemp)-lam(i+1,j,k)*q(i-1,j,k,qtemp)) &
-                  +           DD8(-2, 1)*(lam(i-2,j,k)*q(i+1,j,k,qtemp)-lam(i+1,j,k)*q(i-2,j,k,qtemp)) &
-                  +           DD8(-2, 2)*(lam(i-2,j,k)*q(i+2,j,k,qtemp)-lam(i+1,j,k)*q(i-3,j,k,qtemp)) &
-                  &         + DD8(-1,-4)*(lam(i-1,j,k)*q(i-4,j,k,qtemp)-lam(i  ,j,k)*q(i+3,j,k,qtemp)) &
-                  +           DD8(-1,-3)*(lam(i-1,j,k)*q(i-3,j,k,qtemp)-lam(i  ,j,k)*q(i+2,j,k,qtemp)) &
-                  +           DD8(-1,-2)*(lam(i-1,j,k)*q(i-2,j,k,qtemp)-lam(i  ,j,k)*q(i+1,j,k,qtemp)) &
-                  +           DD8(-1,-1)*(lam(i-1,j,k)*q(i-1,j,k,qtemp)-lam(i  ,j,k)*q(i  ,j,k,qtemp)) &
-                  +           DD8(-1, 0)*(lam(i-1,j,k)*q(i  ,j,k,qtemp)-lam(i  ,j,k)*q(i-1,j,k,qtemp)) &
-                  +           DD8(-1, 1)*(lam(i-1,j,k)*q(i+1,j,k,qtemp)-lam(i  ,j,k)*q(i-2,j,k,qtemp)) &
-                  +           DD8(-1, 2)*(lam(i-1,j,k)*q(i+2,j,k,qtemp)-lam(i  ,j,k)*q(i-3,j,k,qtemp)) &
-                  +           DD8(-1, 3)*(lam(i-1,j,k)*q(i+3,j,k,qtemp)-lam(i  ,j,k)*q(i-4,j,k,qtemp))
+             Hg(i,j,k,imx) = dot_product(matmul(vsp(i-4:i+3,j,k   ), M8), &
+                  &                               q(i-4:i+3,j,k,qu))
+
+             Hg(i,j,k,imy) = dot_product(muM8, q(i-4:i+3,j,k,qv))
+             Hg(i,j,k,imz) = dot_product(muM8, q(i-4:i+3,j,k,qw))
+
+             Hg(i,j,k,iene) = dot_product(matmul(lam(i-4:i+3,j,k      ), M8), &
+                  &                                q(i-4:i+3,j,k,qtemp))      &
+                  &                + dot_product(dpe(i-4:i+3,j,k), M8p)
 
              Htot = 0.d0
              do n = 1, nspecies
                 qxn = qx1+n-1
                 qyn = qy1+n-1
-                Htmp(n) = DD8(-4,-4)*(dxy(i-4,j,k,n)*q(i-4,j,k,qxn)-dxy(i+3,j,k,n)*q(i+3,j,k,qxn)) &
-                  +       DD8(-4,-3)*(dxy(i-4,j,k,n)*q(i-3,j,k,qxn)-dxy(i+3,j,k,n)*q(i+2,j,k,qxn)) &
-                  +       DD8(-4,-2)*(dxy(i-4,j,k,n)*q(i-2,j,k,qxn)-dxy(i+3,j,k,n)*q(i+1,j,k,qxn)) &
-                  +       DD8(-4,-1)*(dxy(i-4,j,k,n)*q(i-1,j,k,qxn)-dxy(i+3,j,k,n)*q(i  ,j,k,qxn)) &
-                  +       DD8(-4, 0)*(dxy(i-4,j,k,n)*q(i  ,j,k,qxn)-dxy(i+3,j,k,n)*q(i-1,j,k,qxn)) &
-                  &     + DD8(-3,-4)*(dxy(i-3,j,k,n)*q(i-4,j,k,qxn)-dxy(i+2,j,k,n)*q(i+3,j,k,qxn)) &
-                  +       DD8(-3,-3)*(dxy(i-3,j,k,n)*q(i-3,j,k,qxn)-dxy(i+2,j,k,n)*q(i+2,j,k,qxn)) &
-                  +       DD8(-3,-2)*(dxy(i-3,j,k,n)*q(i-2,j,k,qxn)-dxy(i+2,j,k,n)*q(i+1,j,k,qxn)) &
-                  +       DD8(-3,-1)*(dxy(i-3,j,k,n)*q(i-1,j,k,qxn)-dxy(i+2,j,k,n)*q(i  ,j,k,qxn)) &
-                  +       DD8(-3, 0)*(dxy(i-3,j,k,n)*q(i  ,j,k,qxn)-dxy(i+2,j,k,n)*q(i-1,j,k,qxn)) &
-                  +       DD8(-3, 1)*(dxy(i-3,j,k,n)*q(i+1,j,k,qxn)-dxy(i+2,j,k,n)*q(i-2,j,k,qxn)) &
-                  &     + DD8(-2,-4)*(dxy(i-2,j,k,n)*q(i-4,j,k,qxn)-dxy(i+1,j,k,n)*q(i+3,j,k,qxn)) &
-                  +       DD8(-2,-3)*(dxy(i-2,j,k,n)*q(i-3,j,k,qxn)-dxy(i+1,j,k,n)*q(i+2,j,k,qxn)) &
-                  +       DD8(-2,-2)*(dxy(i-2,j,k,n)*q(i-2,j,k,qxn)-dxy(i+1,j,k,n)*q(i+1,j,k,qxn)) &
-                  +       DD8(-2,-1)*(dxy(i-2,j,k,n)*q(i-1,j,k,qxn)-dxy(i+1,j,k,n)*q(i  ,j,k,qxn)) &
-                  +       DD8(-2, 0)*(dxy(i-2,j,k,n)*q(i  ,j,k,qxn)-dxy(i+1,j,k,n)*q(i-1,j,k,qxn)) &
-                  +       DD8(-2, 1)*(dxy(i-2,j,k,n)*q(i+1,j,k,qxn)-dxy(i+1,j,k,n)*q(i-2,j,k,qxn)) &
-                  +       DD8(-2, 2)*(dxy(i-2,j,k,n)*q(i+2,j,k,qxn)-dxy(i+1,j,k,n)*q(i-3,j,k,qxn)) &
-                  &     + DD8(-1,-4)*(dxy(i-1,j,k,n)*q(i-4,j,k,qxn)-dxy(i  ,j,k,n)*q(i+3,j,k,qxn)) &
-                  +       DD8(-1,-3)*(dxy(i-1,j,k,n)*q(i-3,j,k,qxn)-dxy(i  ,j,k,n)*q(i+2,j,k,qxn)) &
-                  +       DD8(-1,-2)*(dxy(i-1,j,k,n)*q(i-2,j,k,qxn)-dxy(i  ,j,k,n)*q(i+1,j,k,qxn)) &
-                  +       DD8(-1,-1)*(dxy(i-1,j,k,n)*q(i-1,j,k,qxn)-dxy(i  ,j,k,n)*q(i  ,j,k,qxn)) &
-                  +       DD8(-1, 0)*(dxy(i-1,j,k,n)*q(i  ,j,k,qxn)-dxy(i  ,j,k,n)*q(i-1,j,k,qxn)) &
-                  +       DD8(-1, 1)*(dxy(i-1,j,k,n)*q(i+1,j,k,qxn)-dxy(i  ,j,k,n)*q(i-2,j,k,qxn)) &
-                  +       DD8(-1, 2)*(dxy(i-1,j,k,n)*q(i+2,j,k,qxn)-dxy(i  ,j,k,n)*q(i-3,j,k,qxn)) &
-                  +       DD8(-1, 3)*(dxy(i-1,j,k,n)*q(i+3,j,k,qxn)-dxy(i  ,j,k,n)*q(i-4,j,k,qxn))
-                Htmp(n) = Htmp(n)  &
-                  +       DD8(-4,-4)*(dpy(i-4,j,k,n)*q(i-4,j,k,qpres)-dpy(i+3,j,k,n)*q(i+3,j,k,qpres)) &
-                  +       DD8(-4,-3)*(dpy(i-4,j,k,n)*q(i-3,j,k,qpres)-dpy(i+3,j,k,n)*q(i+2,j,k,qpres)) &
-                  +       DD8(-4,-2)*(dpy(i-4,j,k,n)*q(i-2,j,k,qpres)-dpy(i+3,j,k,n)*q(i+1,j,k,qpres)) &
-                  +       DD8(-4,-1)*(dpy(i-4,j,k,n)*q(i-1,j,k,qpres)-dpy(i+3,j,k,n)*q(i  ,j,k,qpres)) &
-                  +       DD8(-4, 0)*(dpy(i-4,j,k,n)*q(i  ,j,k,qpres)-dpy(i+3,j,k,n)*q(i-1,j,k,qpres)) &
-                  &     + DD8(-3,-4)*(dpy(i-3,j,k,n)*q(i-4,j,k,qpres)-dpy(i+2,j,k,n)*q(i+3,j,k,qpres)) &
-                  +       DD8(-3,-3)*(dpy(i-3,j,k,n)*q(i-3,j,k,qpres)-dpy(i+2,j,k,n)*q(i+2,j,k,qpres)) &
-                  +       DD8(-3,-2)*(dpy(i-3,j,k,n)*q(i-2,j,k,qpres)-dpy(i+2,j,k,n)*q(i+1,j,k,qpres)) &
-                  +       DD8(-3,-1)*(dpy(i-3,j,k,n)*q(i-1,j,k,qpres)-dpy(i+2,j,k,n)*q(i  ,j,k,qpres)) &
-                  +       DD8(-3, 0)*(dpy(i-3,j,k,n)*q(i  ,j,k,qpres)-dpy(i+2,j,k,n)*q(i-1,j,k,qpres)) &
-                  +       DD8(-3, 1)*(dpy(i-3,j,k,n)*q(i+1,j,k,qpres)-dpy(i+2,j,k,n)*q(i-2,j,k,qpres)) &
-                  &     + DD8(-2,-4)*(dpy(i-2,j,k,n)*q(i-4,j,k,qpres)-dpy(i+1,j,k,n)*q(i+3,j,k,qpres)) &
-                  +       DD8(-2,-3)*(dpy(i-2,j,k,n)*q(i-3,j,k,qpres)-dpy(i+1,j,k,n)*q(i+2,j,k,qpres)) &
-                  +       DD8(-2,-2)*(dpy(i-2,j,k,n)*q(i-2,j,k,qpres)-dpy(i+1,j,k,n)*q(i+1,j,k,qpres)) &
-                  +       DD8(-2,-1)*(dpy(i-2,j,k,n)*q(i-1,j,k,qpres)-dpy(i+1,j,k,n)*q(i  ,j,k,qpres)) &
-                  +       DD8(-2, 0)*(dpy(i-2,j,k,n)*q(i  ,j,k,qpres)-dpy(i+1,j,k,n)*q(i-1,j,k,qpres)) &
-                  +       DD8(-2, 1)*(dpy(i-2,j,k,n)*q(i+1,j,k,qpres)-dpy(i+1,j,k,n)*q(i-2,j,k,qpres)) &
-                  +       DD8(-2, 2)*(dpy(i-2,j,k,n)*q(i+2,j,k,qpres)-dpy(i+1,j,k,n)*q(i-3,j,k,qpres)) &
-                  &     + DD8(-1,-4)*(dpy(i-1,j,k,n)*q(i-4,j,k,qpres)-dpy(i  ,j,k,n)*q(i+3,j,k,qpres)) &
-                  +       DD8(-1,-3)*(dpy(i-1,j,k,n)*q(i-3,j,k,qpres)-dpy(i  ,j,k,n)*q(i+2,j,k,qpres)) &
-                  +       DD8(-1,-2)*(dpy(i-1,j,k,n)*q(i-2,j,k,qpres)-dpy(i  ,j,k,n)*q(i+1,j,k,qpres)) &
-                  +       DD8(-1,-1)*(dpy(i-1,j,k,n)*q(i-1,j,k,qpres)-dpy(i  ,j,k,n)*q(i  ,j,k,qpres)) &
-                  +       DD8(-1, 0)*(dpy(i-1,j,k,n)*q(i  ,j,k,qpres)-dpy(i  ,j,k,n)*q(i-1,j,k,qpres)) &
-                  +       DD8(-1, 1)*(dpy(i-1,j,k,n)*q(i+1,j,k,qpres)-dpy(i  ,j,k,n)*q(i-2,j,k,qpres)) &
-                  +       DD8(-1, 2)*(dpy(i-1,j,k,n)*q(i+2,j,k,qpres)-dpy(i  ,j,k,n)*q(i-3,j,k,qpres)) &
-                  +       DD8(-1, 3)*(dpy(i-1,j,k,n)*q(i+3,j,k,qpres)-dpy(i  ,j,k,n)*q(i-4,j,k,qpres))
+
+                M8X = matmul(M8, q(i-4:i+3,j,k,qxn))
+                
+                Htmp(n) = dot_product(dpy(i-4:i+3,j,k,n), M8p) &
+                     +    dot_product(dxy(i-4:i+3,j,k,n), M8X)
+
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) &
+                     +    dot_product(dxe(i-4:i+3,j,k,n), M8X)
+
                 Htot = Htot + Htmp(n)
                 Ytmp(n) = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
              end do
@@ -913,65 +777,6 @@ contains
              do n = 1, nspecies
                 Hg(i,j,k,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
              end do
-
-             do n = 1, nspecies
-                qxn = qx1+n-1
-                Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
-                  + DD8(-4,-4)*(dxe(i-4,j,k,n)*q(i-4,j,k,qxn)-dxe(i+3,j,k,n)*q(i+3,j,k,qxn)) &
-                  + DD8(-4,-3)*(dxe(i-4,j,k,n)*q(i-3,j,k,qxn)-dxe(i+3,j,k,n)*q(i+2,j,k,qxn)) &
-                  + DD8(-4,-2)*(dxe(i-4,j,k,n)*q(i-2,j,k,qxn)-dxe(i+3,j,k,n)*q(i+1,j,k,qxn)) &
-                  + DD8(-4,-1)*(dxe(i-4,j,k,n)*q(i-1,j,k,qxn)-dxe(i+3,j,k,n)*q(i  ,j,k,qxn)) &
-                  + DD8(-4, 0)*(dxe(i-4,j,k,n)*q(i  ,j,k,qxn)-dxe(i+3,j,k,n)*q(i-1,j,k,qxn)) &
-                  + DD8(-3,-4)*(dxe(i-3,j,k,n)*q(i-4,j,k,qxn)-dxe(i+2,j,k,n)*q(i+3,j,k,qxn)) &
-                  + DD8(-3,-3)*(dxe(i-3,j,k,n)*q(i-3,j,k,qxn)-dxe(i+2,j,k,n)*q(i+2,j,k,qxn)) &
-                  + DD8(-3,-2)*(dxe(i-3,j,k,n)*q(i-2,j,k,qxn)-dxe(i+2,j,k,n)*q(i+1,j,k,qxn)) &
-                  + DD8(-3,-1)*(dxe(i-3,j,k,n)*q(i-1,j,k,qxn)-dxe(i+2,j,k,n)*q(i  ,j,k,qxn)) &
-                  + DD8(-3, 0)*(dxe(i-3,j,k,n)*q(i  ,j,k,qxn)-dxe(i+2,j,k,n)*q(i-1,j,k,qxn)) &
-                  + DD8(-3, 1)*(dxe(i-3,j,k,n)*q(i+1,j,k,qxn)-dxe(i+2,j,k,n)*q(i-2,j,k,qxn)) &
-                  + DD8(-2,-4)*(dxe(i-2,j,k,n)*q(i-4,j,k,qxn)-dxe(i+1,j,k,n)*q(i+3,j,k,qxn)) &
-                  + DD8(-2,-3)*(dxe(i-2,j,k,n)*q(i-3,j,k,qxn)-dxe(i+1,j,k,n)*q(i+2,j,k,qxn)) &
-                  + DD8(-2,-2)*(dxe(i-2,j,k,n)*q(i-2,j,k,qxn)-dxe(i+1,j,k,n)*q(i+1,j,k,qxn)) &
-                  + DD8(-2,-1)*(dxe(i-2,j,k,n)*q(i-1,j,k,qxn)-dxe(i+1,j,k,n)*q(i  ,j,k,qxn)) &
-                  + DD8(-2, 0)*(dxe(i-2,j,k,n)*q(i  ,j,k,qxn)-dxe(i+1,j,k,n)*q(i-1,j,k,qxn)) &
-                  + DD8(-2, 1)*(dxe(i-2,j,k,n)*q(i+1,j,k,qxn)-dxe(i+1,j,k,n)*q(i-2,j,k,qxn)) &
-                  + DD8(-2, 2)*(dxe(i-2,j,k,n)*q(i+2,j,k,qxn)-dxe(i+1,j,k,n)*q(i-3,j,k,qxn)) &
-                  + DD8(-1,-4)*(dxe(i-1,j,k,n)*q(i-4,j,k,qxn)-dxe(i  ,j,k,n)*q(i+3,j,k,qxn)) &
-                  + DD8(-1,-3)*(dxe(i-1,j,k,n)*q(i-3,j,k,qxn)-dxe(i  ,j,k,n)*q(i+2,j,k,qxn)) &
-                  + DD8(-1,-2)*(dxe(i-1,j,k,n)*q(i-2,j,k,qxn)-dxe(i  ,j,k,n)*q(i+1,j,k,qxn)) &
-                  + DD8(-1,-1)*(dxe(i-1,j,k,n)*q(i-1,j,k,qxn)-dxe(i  ,j,k,n)*q(i  ,j,k,qxn)) &
-                  + DD8(-1, 0)*(dxe(i-1,j,k,n)*q(i  ,j,k,qxn)-dxe(i  ,j,k,n)*q(i-1,j,k,qxn)) &
-                  + DD8(-1, 1)*(dxe(i-1,j,k,n)*q(i+1,j,k,qxn)-dxe(i  ,j,k,n)*q(i-2,j,k,qxn)) &
-                  + DD8(-1, 2)*(dxe(i-1,j,k,n)*q(i+2,j,k,qxn)-dxe(i  ,j,k,n)*q(i-3,j,k,qxn)) &
-                  + DD8(-1, 3)*(dxe(i-1,j,k,n)*q(i+3,j,k,qxn)-dxe(i  ,j,k,n)*q(i-4,j,k,qxn))
-             end do
-
-             Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
-                  + DD8(-4,-4)*(dpe(i-4,j,k)*q(i-4,j,k,qpres)-dpe(i+3,j,k)*q(i+3,j,k,qpres)) &
-                  + DD8(-4,-3)*(dpe(i-4,j,k)*q(i-3,j,k,qpres)-dpe(i+3,j,k)*q(i+2,j,k,qpres)) &
-                  + DD8(-4,-2)*(dpe(i-4,j,k)*q(i-2,j,k,qpres)-dpe(i+3,j,k)*q(i+1,j,k,qpres)) &
-                  + DD8(-4,-1)*(dpe(i-4,j,k)*q(i-1,j,k,qpres)-dpe(i+3,j,k)*q(i  ,j,k,qpres)) &
-                  + DD8(-4, 0)*(dpe(i-4,j,k)*q(i  ,j,k,qpres)-dpe(i+3,j,k)*q(i-1,j,k,qpres)) &
-                  + DD8(-3,-4)*(dpe(i-3,j,k)*q(i-4,j,k,qpres)-dpe(i+2,j,k)*q(i+3,j,k,qpres)) &
-                  + DD8(-3,-3)*(dpe(i-3,j,k)*q(i-3,j,k,qpres)-dpe(i+2,j,k)*q(i+2,j,k,qpres)) &
-                  + DD8(-3,-2)*(dpe(i-3,j,k)*q(i-2,j,k,qpres)-dpe(i+2,j,k)*q(i+1,j,k,qpres)) &
-                  + DD8(-3,-1)*(dpe(i-3,j,k)*q(i-1,j,k,qpres)-dpe(i+2,j,k)*q(i  ,j,k,qpres)) &
-                  + DD8(-3, 0)*(dpe(i-3,j,k)*q(i  ,j,k,qpres)-dpe(i+2,j,k)*q(i-1,j,k,qpres)) &
-                  + DD8(-3, 1)*(dpe(i-3,j,k)*q(i+1,j,k,qpres)-dpe(i+2,j,k)*q(i-2,j,k,qpres)) &
-                  + DD8(-2,-4)*(dpe(i-2,j,k)*q(i-4,j,k,qpres)-dpe(i+1,j,k)*q(i+3,j,k,qpres)) &
-                  + DD8(-2,-3)*(dpe(i-2,j,k)*q(i-3,j,k,qpres)-dpe(i+1,j,k)*q(i+2,j,k,qpres)) &
-                  + DD8(-2,-2)*(dpe(i-2,j,k)*q(i-2,j,k,qpres)-dpe(i+1,j,k)*q(i+1,j,k,qpres)) &
-                  + DD8(-2,-1)*(dpe(i-2,j,k)*q(i-1,j,k,qpres)-dpe(i+1,j,k)*q(i  ,j,k,qpres)) &
-                  + DD8(-2, 0)*(dpe(i-2,j,k)*q(i  ,j,k,qpres)-dpe(i+1,j,k)*q(i-1,j,k,qpres)) &
-                  + DD8(-2, 1)*(dpe(i-2,j,k)*q(i+1,j,k,qpres)-dpe(i+1,j,k)*q(i-2,j,k,qpres)) &
-                  + DD8(-2, 2)*(dpe(i-2,j,k)*q(i+2,j,k,qpres)-dpe(i+1,j,k)*q(i-3,j,k,qpres)) &
-                  + DD8(-1,-4)*(dpe(i-1,j,k)*q(i-4,j,k,qpres)-dpe(i  ,j,k)*q(i+3,j,k,qpres)) &
-                  + DD8(-1,-3)*(dpe(i-1,j,k)*q(i-3,j,k,qpres)-dpe(i  ,j,k)*q(i+2,j,k,qpres)) &
-                  + DD8(-1,-2)*(dpe(i-1,j,k)*q(i-2,j,k,qpres)-dpe(i  ,j,k)*q(i+1,j,k,qpres)) &
-                  + DD8(-1,-1)*(dpe(i-1,j,k)*q(i-1,j,k,qpres)-dpe(i  ,j,k)*q(i  ,j,k,qpres)) &
-                  + DD8(-1, 0)*(dpe(i-1,j,k)*q(i  ,j,k,qpres)-dpe(i  ,j,k)*q(i-1,j,k,qpres)) &
-                  + DD8(-1, 1)*(dpe(i-1,j,k)*q(i+1,j,k,qpres)-dpe(i  ,j,k)*q(i-2,j,k,qpres)) &
-                  + DD8(-1, 2)*(dpe(i-1,j,k)*q(i+2,j,k,qpres)-dpe(i  ,j,k)*q(i-3,j,k,qpres)) &
-                  + DD8(-1, 3)*(dpe(i-1,j,k)*q(i+3,j,k,qpres)-dpe(i  ,j,k)*q(i-4,j,k,qpres))
 
              do n = 1, nspecies
                 qhn = qh1+n-1
@@ -1005,171 +810,33 @@ contains
     do k=slo(3),shi(3)
        do j=slo(2),shi(2)+1
           do i=slo(1),shi(1)
-             Hg(i,j,k,imx) = DD8(-4,-4)*(mu(i,j-4,k)*q(i,j-4,k,qu)-mu(i,j+3,k)*q(i,j+3,k,qu)) &
-                  +          DD8(-4,-3)*(mu(i,j-4,k)*q(i,j-3,k,qu)-mu(i,j+3,k)*q(i,j+2,k,qu)) &
-                  +          DD8(-4,-2)*(mu(i,j-4,k)*q(i,j-2,k,qu)-mu(i,j+3,k)*q(i,j+1,k,qu)) &
-                  +          DD8(-4,-1)*(mu(i,j-4,k)*q(i,j-1,k,qu)-mu(i,j+3,k)*q(i,j  ,k,qu)) &
-                  +          DD8(-4, 0)*(mu(i,j-4,k)*q(i,j  ,k,qu)-mu(i,j+3,k)*q(i,j-1,k,qu)) &
-                  &        + DD8(-3,-4)*(mu(i,j-3,k)*q(i,j-4,k,qu)-mu(i,j+2,k)*q(i,j+3,k,qu)) &
-                  +          DD8(-3,-3)*(mu(i,j-3,k)*q(i,j-3,k,qu)-mu(i,j+2,k)*q(i,j+2,k,qu)) &
-                  +          DD8(-3,-2)*(mu(i,j-3,k)*q(i,j-2,k,qu)-mu(i,j+2,k)*q(i,j+1,k,qu)) &
-                  +          DD8(-3,-1)*(mu(i,j-3,k)*q(i,j-1,k,qu)-mu(i,j+2,k)*q(i,j  ,k,qu)) &
-                  +          DD8(-3, 0)*(mu(i,j-3,k)*q(i,j  ,k,qu)-mu(i,j+2,k)*q(i,j-1,k,qu)) &
-                  +          DD8(-3, 1)*(mu(i,j-3,k)*q(i,j+1,k,qu)-mu(i,j+2,k)*q(i,j-2,k,qu)) &
-                  &        + DD8(-2,-4)*(mu(i,j-2,k)*q(i,j-4,k,qu)-mu(i,j+1,k)*q(i,j+3,k,qu)) &
-                  +          DD8(-2,-3)*(mu(i,j-2,k)*q(i,j-3,k,qu)-mu(i,j+1,k)*q(i,j+2,k,qu)) &
-                  +          DD8(-2,-2)*(mu(i,j-2,k)*q(i,j-2,k,qu)-mu(i,j+1,k)*q(i,j+1,k,qu)) &
-                  +          DD8(-2,-1)*(mu(i,j-2,k)*q(i,j-1,k,qu)-mu(i,j+1,k)*q(i,j  ,k,qu)) &
-                  +          DD8(-2, 0)*(mu(i,j-2,k)*q(i,j  ,k,qu)-mu(i,j+1,k)*q(i,j-1,k,qu)) &
-                  +          DD8(-2, 1)*(mu(i,j-2,k)*q(i,j+1,k,qu)-mu(i,j+1,k)*q(i,j-2,k,qu)) &
-                  +          DD8(-2, 2)*(mu(i,j-2,k)*q(i,j+2,k,qu)-mu(i,j+1,k)*q(i,j-3,k,qu)) &
-                  &        + DD8(-1,-4)*(mu(i,j-1,k)*q(i,j-4,k,qu)-mu(i,j  ,k)*q(i,j+3,k,qu)) &
-                  +          DD8(-1,-3)*(mu(i,j-1,k)*q(i,j-3,k,qu)-mu(i,j  ,k)*q(i,j+2,k,qu)) &
-                  +          DD8(-1,-2)*(mu(i,j-1,k)*q(i,j-2,k,qu)-mu(i,j  ,k)*q(i,j+1,k,qu)) &
-                  +          DD8(-1,-1)*(mu(i,j-1,k)*q(i,j-1,k,qu)-mu(i,j  ,k)*q(i,j  ,k,qu)) &
-                  +          DD8(-1, 0)*(mu(i,j-1,k)*q(i,j  ,k,qu)-mu(i,j  ,k)*q(i,j-1,k,qu)) &
-                  +          DD8(-1, 1)*(mu(i,j-1,k)*q(i,j+1,k,qu)-mu(i,j  ,k)*q(i,j-2,k,qu)) &
-                  +          DD8(-1, 2)*(mu(i,j-1,k)*q(i,j+2,k,qu)-mu(i,j  ,k)*q(i,j-3,k,qu)) &
-                  +          DD8(-1, 3)*(mu(i,j-1,k)*q(i,j+3,k,qu)-mu(i,j  ,k)*q(i,j-4,k,qu))
+             
+             muM8 = matmul(   mu(i,j-4:j+3,k)      , M8)
+             M8p  = matmul(M8, q(i,j-4:j+3,k,qpres))
 
-             Hg(i,j,k,imy) = DD8(-4,-4)*(vsp(i,j-4,k)*q(i,j-4,k,qv)-vsp(i,j+3,k)*q(i,j+3,k,qv)) &
-                  +          DD8(-4,-3)*(vsp(i,j-4,k)*q(i,j-3,k,qv)-vsp(i,j+3,k)*q(i,j+2,k,qv)) &
-                  +          DD8(-4,-2)*(vsp(i,j-4,k)*q(i,j-2,k,qv)-vsp(i,j+3,k)*q(i,j+1,k,qv)) &
-                  +          DD8(-4,-1)*(vsp(i,j-4,k)*q(i,j-1,k,qv)-vsp(i,j+3,k)*q(i,j  ,k,qv)) &
-                  +          DD8(-4, 0)*(vsp(i,j-4,k)*q(i,j  ,k,qv)-vsp(i,j+3,k)*q(i,j-1,k,qv)) &
-                  &        + DD8(-3,-4)*(vsp(i,j-3,k)*q(i,j-4,k,qv)-vsp(i,j+2,k)*q(i,j+3,k,qv)) &
-                  +          DD8(-3,-3)*(vsp(i,j-3,k)*q(i,j-3,k,qv)-vsp(i,j+2,k)*q(i,j+2,k,qv)) &
-                  +          DD8(-3,-2)*(vsp(i,j-3,k)*q(i,j-2,k,qv)-vsp(i,j+2,k)*q(i,j+1,k,qv)) &
-                  +          DD8(-3,-1)*(vsp(i,j-3,k)*q(i,j-1,k,qv)-vsp(i,j+2,k)*q(i,j  ,k,qv)) &
-                  +          DD8(-3, 0)*(vsp(i,j-3,k)*q(i,j  ,k,qv)-vsp(i,j+2,k)*q(i,j-1,k,qv)) &
-                  +          DD8(-3, 1)*(vsp(i,j-3,k)*q(i,j+1,k,qv)-vsp(i,j+2,k)*q(i,j-2,k,qv)) &
-                  &        + DD8(-2,-4)*(vsp(i,j-2,k)*q(i,j-4,k,qv)-vsp(i,j+1,k)*q(i,j+3,k,qv)) &
-                  +          DD8(-2,-3)*(vsp(i,j-2,k)*q(i,j-3,k,qv)-vsp(i,j+1,k)*q(i,j+2,k,qv)) &
-                  +          DD8(-2,-2)*(vsp(i,j-2,k)*q(i,j-2,k,qv)-vsp(i,j+1,k)*q(i,j+1,k,qv)) &
-                  +          DD8(-2,-1)*(vsp(i,j-2,k)*q(i,j-1,k,qv)-vsp(i,j+1,k)*q(i,j  ,k,qv)) &
-                  +          DD8(-2, 0)*(vsp(i,j-2,k)*q(i,j  ,k,qv)-vsp(i,j+1,k)*q(i,j-1,k,qv)) &
-                  +          DD8(-2, 1)*(vsp(i,j-2,k)*q(i,j+1,k,qv)-vsp(i,j+1,k)*q(i,j-2,k,qv)) &
-                  +          DD8(-2, 2)*(vsp(i,j-2,k)*q(i,j+2,k,qv)-vsp(i,j+1,k)*q(i,j-3,k,qv)) &
-                  &        + DD8(-1,-4)*(vsp(i,j-1,k)*q(i,j-4,k,qv)-vsp(i,j  ,k)*q(i,j+3,k,qv)) &
-                  +          DD8(-1,-3)*(vsp(i,j-1,k)*q(i,j-3,k,qv)-vsp(i,j  ,k)*q(i,j+2,k,qv)) &
-                  +          DD8(-1,-2)*(vsp(i,j-1,k)*q(i,j-2,k,qv)-vsp(i,j  ,k)*q(i,j+1,k,qv)) &
-                  +          DD8(-1,-1)*(vsp(i,j-1,k)*q(i,j-1,k,qv)-vsp(i,j  ,k)*q(i,j  ,k,qv)) &
-                  +          DD8(-1, 0)*(vsp(i,j-1,k)*q(i,j  ,k,qv)-vsp(i,j  ,k)*q(i,j-1,k,qv)) &
-                  +          DD8(-1, 1)*(vsp(i,j-1,k)*q(i,j+1,k,qv)-vsp(i,j  ,k)*q(i,j-2,k,qv)) &
-                  +          DD8(-1, 2)*(vsp(i,j-1,k)*q(i,j+2,k,qv)-vsp(i,j  ,k)*q(i,j-3,k,qv)) &
-                  +          DD8(-1, 3)*(vsp(i,j-1,k)*q(i,j+3,k,qv)-vsp(i,j  ,k)*q(i,j-4,k,qv))
+             Hg(i,j,k,imx) = dot_product(muM8, q(i,j-4:j+3,k,qu))
+             Hg(i,j,k,imz) = dot_product(muM8, q(i,j-4:j+3,k,qw))
 
-             Hg(i,j,k,imz) = DD8(-4,-4)*(mu(i,j-4,k)*q(i,j-4,k,qw)-mu(i,j+3,k)*q(i,j+3,k,qw)) &
-                  +          DD8(-4,-3)*(mu(i,j-4,k)*q(i,j-3,k,qw)-mu(i,j+3,k)*q(i,j+2,k,qw)) &
-                  +          DD8(-4,-2)*(mu(i,j-4,k)*q(i,j-2,k,qw)-mu(i,j+3,k)*q(i,j+1,k,qw)) &
-                  +          DD8(-4,-1)*(mu(i,j-4,k)*q(i,j-1,k,qw)-mu(i,j+3,k)*q(i,j  ,k,qw)) &
-                  +          DD8(-4, 0)*(mu(i,j-4,k)*q(i,j  ,k,qw)-mu(i,j+3,k)*q(i,j-1,k,qw)) &
-                  &        + DD8(-3,-4)*(mu(i,j-3,k)*q(i,j-4,k,qw)-mu(i,j+2,k)*q(i,j+3,k,qw)) &
-                  +          DD8(-3,-3)*(mu(i,j-3,k)*q(i,j-3,k,qw)-mu(i,j+2,k)*q(i,j+2,k,qw)) &
-                  +          DD8(-3,-2)*(mu(i,j-3,k)*q(i,j-2,k,qw)-mu(i,j+2,k)*q(i,j+1,k,qw)) &
-                  +          DD8(-3,-1)*(mu(i,j-3,k)*q(i,j-1,k,qw)-mu(i,j+2,k)*q(i,j  ,k,qw)) &
-                  +          DD8(-3, 0)*(mu(i,j-3,k)*q(i,j  ,k,qw)-mu(i,j+2,k)*q(i,j-1,k,qw)) &
-                  +          DD8(-3, 1)*(mu(i,j-3,k)*q(i,j+1,k,qw)-mu(i,j+2,k)*q(i,j-2,k,qw)) &
-                  &        + DD8(-2,-4)*(mu(i,j-2,k)*q(i,j-4,k,qw)-mu(i,j+1,k)*q(i,j+3,k,qw)) &
-                  +          DD8(-2,-3)*(mu(i,j-2,k)*q(i,j-3,k,qw)-mu(i,j+1,k)*q(i,j+2,k,qw)) &
-                  +          DD8(-2,-2)*(mu(i,j-2,k)*q(i,j-2,k,qw)-mu(i,j+1,k)*q(i,j+1,k,qw)) &
-                  +          DD8(-2,-1)*(mu(i,j-2,k)*q(i,j-1,k,qw)-mu(i,j+1,k)*q(i,j  ,k,qw)) &
-                  +          DD8(-2, 0)*(mu(i,j-2,k)*q(i,j  ,k,qw)-mu(i,j+1,k)*q(i,j-1,k,qw)) &
-                  +          DD8(-2, 1)*(mu(i,j-2,k)*q(i,j+1,k,qw)-mu(i,j+1,k)*q(i,j-2,k,qw)) &
-                  +          DD8(-2, 2)*(mu(i,j-2,k)*q(i,j+2,k,qw)-mu(i,j+1,k)*q(i,j-3,k,qw)) &
-                  &        + DD8(-1,-4)*(mu(i,j-1,k)*q(i,j-4,k,qw)-mu(i,j  ,k)*q(i,j+3,k,qw)) &
-                  +          DD8(-1,-3)*(mu(i,j-1,k)*q(i,j-3,k,qw)-mu(i,j  ,k)*q(i,j+2,k,qw)) &
-                  +          DD8(-1,-2)*(mu(i,j-1,k)*q(i,j-2,k,qw)-mu(i,j  ,k)*q(i,j+1,k,qw)) &
-                  +          DD8(-1,-1)*(mu(i,j-1,k)*q(i,j-1,k,qw)-mu(i,j  ,k)*q(i,j  ,k,qw)) &
-                  +          DD8(-1, 0)*(mu(i,j-1,k)*q(i,j  ,k,qw)-mu(i,j  ,k)*q(i,j-1,k,qw)) &
-                  +          DD8(-1, 1)*(mu(i,j-1,k)*q(i,j+1,k,qw)-mu(i,j  ,k)*q(i,j-2,k,qw)) &
-                  +          DD8(-1, 2)*(mu(i,j-1,k)*q(i,j+2,k,qw)-mu(i,j  ,k)*q(i,j-3,k,qw)) &
-                  +          DD8(-1, 3)*(mu(i,j-1,k)*q(i,j+3,k,qw)-mu(i,j  ,k)*q(i,j-4,k,qw))
+             Hg(i,j,k,imy) = dot_product(matmul(vsp(i,j-4:j+3,k   ), M8), &
+                  &                               q(i,j-4:j+3,k,qv))
 
-             Hg(i,j,k,iene) = DD8(-4,-4)*(lam(i,j-4,k)*q(i,j-4,k,qtemp)-lam(i,j+3,k)*q(i,j+3,k,qtemp)) &
-                  +           DD8(-4,-3)*(lam(i,j-4,k)*q(i,j-3,k,qtemp)-lam(i,j+3,k)*q(i,j+2,k,qtemp)) &
-                  +           DD8(-4,-2)*(lam(i,j-4,k)*q(i,j-2,k,qtemp)-lam(i,j+3,k)*q(i,j+1,k,qtemp)) &
-                  +           DD8(-4,-1)*(lam(i,j-4,k)*q(i,j-1,k,qtemp)-lam(i,j+3,k)*q(i,j  ,k,qtemp)) &
-                  +           DD8(-4, 0)*(lam(i,j-4,k)*q(i,j  ,k,qtemp)-lam(i,j+3,k)*q(i,j-1,k,qtemp)) &
-                  &         + DD8(-3,-4)*(lam(i,j-3,k)*q(i,j-4,k,qtemp)-lam(i,j+2,k)*q(i,j+3,k,qtemp)) &
-                  +           DD8(-3,-3)*(lam(i,j-3,k)*q(i,j-3,k,qtemp)-lam(i,j+2,k)*q(i,j+2,k,qtemp)) &
-                  +           DD8(-3,-2)*(lam(i,j-3,k)*q(i,j-2,k,qtemp)-lam(i,j+2,k)*q(i,j+1,k,qtemp)) &
-                  +           DD8(-3,-1)*(lam(i,j-3,k)*q(i,j-1,k,qtemp)-lam(i,j+2,k)*q(i,j  ,k,qtemp)) &
-                  +           DD8(-3, 0)*(lam(i,j-3,k)*q(i,j  ,k,qtemp)-lam(i,j+2,k)*q(i,j-1,k,qtemp)) &
-                  +           DD8(-3, 1)*(lam(i,j-3,k)*q(i,j+1,k,qtemp)-lam(i,j+2,k)*q(i,j-2,k,qtemp)) &
-                  &         + DD8(-2,-4)*(lam(i,j-2,k)*q(i,j-4,k,qtemp)-lam(i,j+1,k)*q(i,j+3,k,qtemp)) &
-                  +           DD8(-2,-3)*(lam(i,j-2,k)*q(i,j-3,k,qtemp)-lam(i,j+1,k)*q(i,j+2,k,qtemp)) &
-                  +           DD8(-2,-2)*(lam(i,j-2,k)*q(i,j-2,k,qtemp)-lam(i,j+1,k)*q(i,j+1,k,qtemp)) &
-                  +           DD8(-2,-1)*(lam(i,j-2,k)*q(i,j-1,k,qtemp)-lam(i,j+1,k)*q(i,j  ,k,qtemp)) &
-                  +           DD8(-2, 0)*(lam(i,j-2,k)*q(i,j  ,k,qtemp)-lam(i,j+1,k)*q(i,j-1,k,qtemp)) &
-                  +           DD8(-2, 1)*(lam(i,j-2,k)*q(i,j+1,k,qtemp)-lam(i,j+1,k)*q(i,j-2,k,qtemp)) &
-                  +           DD8(-2, 2)*(lam(i,j-2,k)*q(i,j+2,k,qtemp)-lam(i,j+1,k)*q(i,j-3,k,qtemp)) &
-                  &         + DD8(-1,-4)*(lam(i,j-1,k)*q(i,j-4,k,qtemp)-lam(i,j  ,k)*q(i,j+3,k,qtemp)) &
-                  +           DD8(-1,-3)*(lam(i,j-1,k)*q(i,j-3,k,qtemp)-lam(i,j  ,k)*q(i,j+2,k,qtemp)) &
-                  +           DD8(-1,-2)*(lam(i,j-1,k)*q(i,j-2,k,qtemp)-lam(i,j  ,k)*q(i,j+1,k,qtemp)) &
-                  +           DD8(-1,-1)*(lam(i,j-1,k)*q(i,j-1,k,qtemp)-lam(i,j  ,k)*q(i,j  ,k,qtemp)) &
-                  +           DD8(-1, 0)*(lam(i,j-1,k)*q(i,j  ,k,qtemp)-lam(i,j  ,k)*q(i,j-1,k,qtemp)) &
-                  +           DD8(-1, 1)*(lam(i,j-1,k)*q(i,j+1,k,qtemp)-lam(i,j  ,k)*q(i,j-2,k,qtemp)) &
-                  +           DD8(-1, 2)*(lam(i,j-1,k)*q(i,j+2,k,qtemp)-lam(i,j  ,k)*q(i,j-3,k,qtemp)) &
-                  +           DD8(-1, 3)*(lam(i,j-1,k)*q(i,j+3,k,qtemp)-lam(i,j  ,k)*q(i,j-4,k,qtemp))
+             Hg(i,j,k,iene) = dot_product(matmul(lam(i,j-4:j+3,k      ), M8), &
+                  &                                q(i,j-4:j+3,k,qtemp))      &
+                  +                  dot_product(dpe(i,j-4:j+3,k), M8p)
 
              Htot = 0.d0
              do n = 1, nspecies
                 qxn = qx1+n-1
                 qyn = qy1+n-1
-                Htmp(n) = DD8(-4,-4)*(dxy(i,j-4,k,n)*q(i,j-4,k,qxn)-dxy(i,j+3,k,n)*q(i,j+3,k,qxn)) &
-                  +       DD8(-4,-3)*(dxy(i,j-4,k,n)*q(i,j-3,k,qxn)-dxy(i,j+3,k,n)*q(i,j+2,k,qxn)) &
-                  +       DD8(-4,-2)*(dxy(i,j-4,k,n)*q(i,j-2,k,qxn)-dxy(i,j+3,k,n)*q(i,j+1,k,qxn)) &
-                  +       DD8(-4,-1)*(dxy(i,j-4,k,n)*q(i,j-1,k,qxn)-dxy(i,j+3,k,n)*q(i,j  ,k,qxn)) &
-                  +       DD8(-4, 0)*(dxy(i,j-4,k,n)*q(i,j  ,k,qxn)-dxy(i,j+3,k,n)*q(i,j-1,k,qxn)) &
-                  &     + DD8(-3,-4)*(dxy(i,j-3,k,n)*q(i,j-4,k,qxn)-dxy(i,j+2,k,n)*q(i,j+3,k,qxn)) &
-                  +       DD8(-3,-3)*(dxy(i,j-3,k,n)*q(i,j-3,k,qxn)-dxy(i,j+2,k,n)*q(i,j+2,k,qxn)) &
-                  +       DD8(-3,-2)*(dxy(i,j-3,k,n)*q(i,j-2,k,qxn)-dxy(i,j+2,k,n)*q(i,j+1,k,qxn)) &
-                  +       DD8(-3,-1)*(dxy(i,j-3,k,n)*q(i,j-1,k,qxn)-dxy(i,j+2,k,n)*q(i,j  ,k,qxn)) &
-                  +       DD8(-3, 0)*(dxy(i,j-3,k,n)*q(i,j  ,k,qxn)-dxy(i,j+2,k,n)*q(i,j-1,k,qxn)) &
-                  +       DD8(-3, 1)*(dxy(i,j-3,k,n)*q(i,j+1,k,qxn)-dxy(i,j+2,k,n)*q(i,j-2,k,qxn)) &
-                  &     + DD8(-2,-4)*(dxy(i,j-2,k,n)*q(i,j-4,k,qxn)-dxy(i,j+1,k,n)*q(i,j+3,k,qxn)) &
-                  +       DD8(-2,-3)*(dxy(i,j-2,k,n)*q(i,j-3,k,qxn)-dxy(i,j+1,k,n)*q(i,j+2,k,qxn)) &
-                  +       DD8(-2,-2)*(dxy(i,j-2,k,n)*q(i,j-2,k,qxn)-dxy(i,j+1,k,n)*q(i,j+1,k,qxn)) &
-                  +       DD8(-2,-1)*(dxy(i,j-2,k,n)*q(i,j-1,k,qxn)-dxy(i,j+1,k,n)*q(i,j  ,k,qxn)) &
-                  +       DD8(-2, 0)*(dxy(i,j-2,k,n)*q(i,j  ,k,qxn)-dxy(i,j+1,k,n)*q(i,j-1,k,qxn)) &
-                  +       DD8(-2, 1)*(dxy(i,j-2,k,n)*q(i,j+1,k,qxn)-dxy(i,j+1,k,n)*q(i,j-2,k,qxn)) &
-                  +       DD8(-2, 2)*(dxy(i,j-2,k,n)*q(i,j+2,k,qxn)-dxy(i,j+1,k,n)*q(i,j-3,k,qxn)) &
-                  &     + DD8(-1,-4)*(dxy(i,j-1,k,n)*q(i,j-4,k,qxn)-dxy(i,j  ,k,n)*q(i,j+3,k,qxn)) &
-                  +       DD8(-1,-3)*(dxy(i,j-1,k,n)*q(i,j-3,k,qxn)-dxy(i,j  ,k,n)*q(i,j+2,k,qxn)) &
-                  +       DD8(-1,-2)*(dxy(i,j-1,k,n)*q(i,j-2,k,qxn)-dxy(i,j  ,k,n)*q(i,j+1,k,qxn)) &
-                  +       DD8(-1,-1)*(dxy(i,j-1,k,n)*q(i,j-1,k,qxn)-dxy(i,j  ,k,n)*q(i,j  ,k,qxn)) &
-                  +       DD8(-1, 0)*(dxy(i,j-1,k,n)*q(i,j  ,k,qxn)-dxy(i,j  ,k,n)*q(i,j-1,k,qxn)) &
-                  +       DD8(-1, 1)*(dxy(i,j-1,k,n)*q(i,j+1,k,qxn)-dxy(i,j  ,k,n)*q(i,j-2,k,qxn)) &
-                  +       DD8(-1, 2)*(dxy(i,j-1,k,n)*q(i,j+2,k,qxn)-dxy(i,j  ,k,n)*q(i,j-3,k,qxn)) &
-                  +       DD8(-1, 3)*(dxy(i,j-1,k,n)*q(i,j+3,k,qxn)-dxy(i,j  ,k,n)*q(i,j-4,k,qxn))
-                Htmp(n) = Htmp(n)  &
-                  +       DD8(-4,-4)*(dpy(i,j-4,k,n)*q(i,j-4,k,qpres)-dpy(i,j+3,k,n)*q(i,j+3,k,qpres)) &
-                  +       DD8(-4,-3)*(dpy(i,j-4,k,n)*q(i,j-3,k,qpres)-dpy(i,j+3,k,n)*q(i,j+2,k,qpres)) &
-                  +       DD8(-4,-2)*(dpy(i,j-4,k,n)*q(i,j-2,k,qpres)-dpy(i,j+3,k,n)*q(i,j+1,k,qpres)) &
-                  +       DD8(-4,-1)*(dpy(i,j-4,k,n)*q(i,j-1,k,qpres)-dpy(i,j+3,k,n)*q(i,j  ,k,qpres)) &
-                  +       DD8(-4, 0)*(dpy(i,j-4,k,n)*q(i,j  ,k,qpres)-dpy(i,j+3,k,n)*q(i,j-1,k,qpres)) &
-                  &     + DD8(-3,-4)*(dpy(i,j-3,k,n)*q(i,j-4,k,qpres)-dpy(i,j+2,k,n)*q(i,j+3,k,qpres)) &
-                  +       DD8(-3,-3)*(dpy(i,j-3,k,n)*q(i,j-3,k,qpres)-dpy(i,j+2,k,n)*q(i,j+2,k,qpres)) &
-                  +       DD8(-3,-2)*(dpy(i,j-3,k,n)*q(i,j-2,k,qpres)-dpy(i,j+2,k,n)*q(i,j+1,k,qpres)) &
-                  +       DD8(-3,-1)*(dpy(i,j-3,k,n)*q(i,j-1,k,qpres)-dpy(i,j+2,k,n)*q(i,j  ,k,qpres)) &
-                  +       DD8(-3, 0)*(dpy(i,j-3,k,n)*q(i,j  ,k,qpres)-dpy(i,j+2,k,n)*q(i,j-1,k,qpres)) &
-                  +       DD8(-3, 1)*(dpy(i,j-3,k,n)*q(i,j+1,k,qpres)-dpy(i,j+2,k,n)*q(i,j-2,k,qpres)) &
-                  &     + DD8(-2,-4)*(dpy(i,j-2,k,n)*q(i,j-4,k,qpres)-dpy(i,j+1,k,n)*q(i,j+3,k,qpres)) &
-                  +       DD8(-2,-3)*(dpy(i,j-2,k,n)*q(i,j-3,k,qpres)-dpy(i,j+1,k,n)*q(i,j+2,k,qpres)) &
-                  +       DD8(-2,-2)*(dpy(i,j-2,k,n)*q(i,j-2,k,qpres)-dpy(i,j+1,k,n)*q(i,j+1,k,qpres)) &
-                  +       DD8(-2,-1)*(dpy(i,j-2,k,n)*q(i,j-1,k,qpres)-dpy(i,j+1,k,n)*q(i,j  ,k,qpres)) &
-                  +       DD8(-2, 0)*(dpy(i,j-2,k,n)*q(i,j  ,k,qpres)-dpy(i,j+1,k,n)*q(i,j-1,k,qpres)) &
-                  +       DD8(-2, 1)*(dpy(i,j-2,k,n)*q(i,j+1,k,qpres)-dpy(i,j+1,k,n)*q(i,j-2,k,qpres)) &
-                  +       DD8(-2, 2)*(dpy(i,j-2,k,n)*q(i,j+2,k,qpres)-dpy(i,j+1,k,n)*q(i,j-3,k,qpres)) &
-                  &     + DD8(-1,-4)*(dpy(i,j-1,k,n)*q(i,j-4,k,qpres)-dpy(i,j  ,k,n)*q(i,j+3,k,qpres)) &
-                  +       DD8(-1,-3)*(dpy(i,j-1,k,n)*q(i,j-3,k,qpres)-dpy(i,j  ,k,n)*q(i,j+2,k,qpres)) &
-                  +       DD8(-1,-2)*(dpy(i,j-1,k,n)*q(i,j-2,k,qpres)-dpy(i,j  ,k,n)*q(i,j+1,k,qpres)) &
-                  +       DD8(-1,-1)*(dpy(i,j-1,k,n)*q(i,j-1,k,qpres)-dpy(i,j  ,k,n)*q(i,j  ,k,qpres)) &
-                  +       DD8(-1, 0)*(dpy(i,j-1,k,n)*q(i,j  ,k,qpres)-dpy(i,j  ,k,n)*q(i,j-1,k,qpres)) &
-                  +       DD8(-1, 1)*(dpy(i,j-1,k,n)*q(i,j+1,k,qpres)-dpy(i,j  ,k,n)*q(i,j-2,k,qpres)) &
-                  +       DD8(-1, 2)*(dpy(i,j-1,k,n)*q(i,j+2,k,qpres)-dpy(i,j  ,k,n)*q(i,j-3,k,qpres)) &
-                  +       DD8(-1, 3)*(dpy(i,j-1,k,n)*q(i,j+3,k,qpres)-dpy(i,j  ,k,n)*q(i,j-4,k,qpres))
+
+                M8X = matmul(M8, q(i,j-4:j+3,k,qxn))
+
+                Htmp(n) = dot_product(dpy(i,j-4:j+3,k,n), M8P) &
+                     +    dot_product(dxy(i,j-4:j+3,k,n), M8X)
+
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) &
+                     +    dot_product(dxe(i,j-4:j+3,k,n), M8X)
+
                 Htot = Htot + Htmp(n)
                 Ytmp(n) = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
              end do
@@ -1177,65 +844,6 @@ contains
              do n = 1, nspecies
                 Hg(i,j,k,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
              end do
-
-             do n = 1, nspecies
-                qxn = qx1+n-1
-                Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
-                  + DD8(-4,-4)*(dxe(i,j-4,k,n)*q(i,j-4,k,qxn)-dxe(i,j+3,k,n)*q(i,j+3,k,qxn)) &
-                  + DD8(-4,-3)*(dxe(i,j-4,k,n)*q(i,j-3,k,qxn)-dxe(i,j+3,k,n)*q(i,j+2,k,qxn)) &
-                  + DD8(-4,-2)*(dxe(i,j-4,k,n)*q(i,j-2,k,qxn)-dxe(i,j+3,k,n)*q(i,j+1,k,qxn)) &
-                  + DD8(-4,-1)*(dxe(i,j-4,k,n)*q(i,j-1,k,qxn)-dxe(i,j+3,k,n)*q(i,j  ,k,qxn)) &
-                  + DD8(-4, 0)*(dxe(i,j-4,k,n)*q(i,j  ,k,qxn)-dxe(i,j+3,k,n)*q(i,j-1,k,qxn)) &
-                  + DD8(-3,-4)*(dxe(i,j-3,k,n)*q(i,j-4,k,qxn)-dxe(i,j+2,k,n)*q(i,j+3,k,qxn)) &
-                  + DD8(-3,-3)*(dxe(i,j-3,k,n)*q(i,j-3,k,qxn)-dxe(i,j+2,k,n)*q(i,j+2,k,qxn)) &
-                  + DD8(-3,-2)*(dxe(i,j-3,k,n)*q(i,j-2,k,qxn)-dxe(i,j+2,k,n)*q(i,j+1,k,qxn)) &
-                  + DD8(-3,-1)*(dxe(i,j-3,k,n)*q(i,j-1,k,qxn)-dxe(i,j+2,k,n)*q(i,j  ,k,qxn)) &
-                  + DD8(-3, 0)*(dxe(i,j-3,k,n)*q(i,j  ,k,qxn)-dxe(i,j+2,k,n)*q(i,j-1,k,qxn)) &
-                  + DD8(-3, 1)*(dxe(i,j-3,k,n)*q(i,j+1,k,qxn)-dxe(i,j+2,k,n)*q(i,j-2,k,qxn)) &
-                  + DD8(-2,-4)*(dxe(i,j-2,k,n)*q(i,j-4,k,qxn)-dxe(i,j+1,k,n)*q(i,j+3,k,qxn)) &
-                  + DD8(-2,-3)*(dxe(i,j-2,k,n)*q(i,j-3,k,qxn)-dxe(i,j+1,k,n)*q(i,j+2,k,qxn)) &
-                  + DD8(-2,-2)*(dxe(i,j-2,k,n)*q(i,j-2,k,qxn)-dxe(i,j+1,k,n)*q(i,j+1,k,qxn)) &
-                  + DD8(-2,-1)*(dxe(i,j-2,k,n)*q(i,j-1,k,qxn)-dxe(i,j+1,k,n)*q(i,j  ,k,qxn)) &
-                  + DD8(-2, 0)*(dxe(i,j-2,k,n)*q(i,j  ,k,qxn)-dxe(i,j+1,k,n)*q(i,j-1,k,qxn)) &
-                  + DD8(-2, 1)*(dxe(i,j-2,k,n)*q(i,j+1,k,qxn)-dxe(i,j+1,k,n)*q(i,j-2,k,qxn)) &
-                  + DD8(-2, 2)*(dxe(i,j-2,k,n)*q(i,j+2,k,qxn)-dxe(i,j+1,k,n)*q(i,j-3,k,qxn)) &
-                  + DD8(-1,-4)*(dxe(i,j-1,k,n)*q(i,j-4,k,qxn)-dxe(i,j  ,k,n)*q(i,j+3,k,qxn)) &
-                  + DD8(-1,-3)*(dxe(i,j-1,k,n)*q(i,j-3,k,qxn)-dxe(i,j  ,k,n)*q(i,j+2,k,qxn)) &
-                  + DD8(-1,-2)*(dxe(i,j-1,k,n)*q(i,j-2,k,qxn)-dxe(i,j  ,k,n)*q(i,j+1,k,qxn)) &
-                  + DD8(-1,-1)*(dxe(i,j-1,k,n)*q(i,j-1,k,qxn)-dxe(i,j  ,k,n)*q(i,j  ,k,qxn)) &
-                  + DD8(-1, 0)*(dxe(i,j-1,k,n)*q(i,j  ,k,qxn)-dxe(i,j  ,k,n)*q(i,j-1,k,qxn)) &
-                  + DD8(-1, 1)*(dxe(i,j-1,k,n)*q(i,j+1,k,qxn)-dxe(i,j  ,k,n)*q(i,j-2,k,qxn)) &
-                  + DD8(-1, 2)*(dxe(i,j-1,k,n)*q(i,j+2,k,qxn)-dxe(i,j  ,k,n)*q(i,j-3,k,qxn)) &
-                  + DD8(-1, 3)*(dxe(i,j-1,k,n)*q(i,j+3,k,qxn)-dxe(i,j  ,k,n)*q(i,j-4,k,qxn))
-             end do
-
-             Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
-                  + DD8(-4,-4)*(dpe(i,j-4,k)*q(i,j-4,k,qpres)-dpe(i,j+3,k)*q(i,j+3,k,qpres)) &
-                  + DD8(-4,-3)*(dpe(i,j-4,k)*q(i,j-3,k,qpres)-dpe(i,j+3,k)*q(i,j+2,k,qpres)) &
-                  + DD8(-4,-2)*(dpe(i,j-4,k)*q(i,j-2,k,qpres)-dpe(i,j+3,k)*q(i,j+1,k,qpres)) &
-                  + DD8(-4,-1)*(dpe(i,j-4,k)*q(i,j-1,k,qpres)-dpe(i,j+3,k)*q(i,j  ,k,qpres)) &
-                  + DD8(-4, 0)*(dpe(i,j-4,k)*q(i,j  ,k,qpres)-dpe(i,j+3,k)*q(i,j-1,k,qpres)) &
-                  + DD8(-3,-4)*(dpe(i,j-3,k)*q(i,j-4,k,qpres)-dpe(i,j+2,k)*q(i,j+3,k,qpres)) &
-                  + DD8(-3,-3)*(dpe(i,j-3,k)*q(i,j-3,k,qpres)-dpe(i,j+2,k)*q(i,j+2,k,qpres)) &
-                  + DD8(-3,-2)*(dpe(i,j-3,k)*q(i,j-2,k,qpres)-dpe(i,j+2,k)*q(i,j+1,k,qpres)) &
-                  + DD8(-3,-1)*(dpe(i,j-3,k)*q(i,j-1,k,qpres)-dpe(i,j+2,k)*q(i,j  ,k,qpres)) &
-                  + DD8(-3, 0)*(dpe(i,j-3,k)*q(i,j  ,k,qpres)-dpe(i,j+2,k)*q(i,j-1,k,qpres)) &
-                  + DD8(-3, 1)*(dpe(i,j-3,k)*q(i,j+1,k,qpres)-dpe(i,j+2,k)*q(i,j-2,k,qpres)) &
-                  + DD8(-2,-4)*(dpe(i,j-2,k)*q(i,j-4,k,qpres)-dpe(i,j+1,k)*q(i,j+3,k,qpres)) &
-                  + DD8(-2,-3)*(dpe(i,j-2,k)*q(i,j-3,k,qpres)-dpe(i,j+1,k)*q(i,j+2,k,qpres)) &
-                  + DD8(-2,-2)*(dpe(i,j-2,k)*q(i,j-2,k,qpres)-dpe(i,j+1,k)*q(i,j+1,k,qpres)) &
-                  + DD8(-2,-1)*(dpe(i,j-2,k)*q(i,j-1,k,qpres)-dpe(i,j+1,k)*q(i,j  ,k,qpres)) &
-                  + DD8(-2, 0)*(dpe(i,j-2,k)*q(i,j  ,k,qpres)-dpe(i,j+1,k)*q(i,j-1,k,qpres)) &
-                  + DD8(-2, 1)*(dpe(i,j-2,k)*q(i,j+1,k,qpres)-dpe(i,j+1,k)*q(i,j-2,k,qpres)) &
-                  + DD8(-2, 2)*(dpe(i,j-2,k)*q(i,j+2,k,qpres)-dpe(i,j+1,k)*q(i,j-3,k,qpres)) &
-                  + DD8(-1,-4)*(dpe(i,j-1,k)*q(i,j-4,k,qpres)-dpe(i,j  ,k)*q(i,j+3,k,qpres)) &
-                  + DD8(-1,-3)*(dpe(i,j-1,k)*q(i,j-3,k,qpres)-dpe(i,j  ,k)*q(i,j+2,k,qpres)) &
-                  + DD8(-1,-2)*(dpe(i,j-1,k)*q(i,j-2,k,qpres)-dpe(i,j  ,k)*q(i,j+1,k,qpres)) &
-                  + DD8(-1,-1)*(dpe(i,j-1,k)*q(i,j-1,k,qpres)-dpe(i,j  ,k)*q(i,j  ,k,qpres)) &
-                  + DD8(-1, 0)*(dpe(i,j-1,k)*q(i,j  ,k,qpres)-dpe(i,j  ,k)*q(i,j-1,k,qpres)) &
-                  + DD8(-1, 1)*(dpe(i,j-1,k)*q(i,j+1,k,qpres)-dpe(i,j  ,k)*q(i,j-2,k,qpres)) &
-                  + DD8(-1, 2)*(dpe(i,j-1,k)*q(i,j+2,k,qpres)-dpe(i,j  ,k)*q(i,j-3,k,qpres)) &
-                  + DD8(-1, 3)*(dpe(i,j-1,k)*q(i,j+3,k,qpres)-dpe(i,j  ,k)*q(i,j-4,k,qpres))
 
              do n = 1, nspecies
                 qhn = qh1+n-1
@@ -1269,171 +877,33 @@ contains
     do k=slo(3),shi(3)+1
        do j=slo(2),shi(2)
           do i=slo(1),shi(1)
-             Hg(i,j,k,imx) = DD8(-4,-4)*(mu(i,j,k-4)*q(i,j,k-4,qu)-mu(i,j,k+3)*q(i,j,k+3,qu)) &
-                  +          DD8(-4,-3)*(mu(i,j,k-4)*q(i,j,k-3,qu)-mu(i,j,k+3)*q(i,j,k+2,qu)) &
-                  +          DD8(-4,-2)*(mu(i,j,k-4)*q(i,j,k-2,qu)-mu(i,j,k+3)*q(i,j,k+1,qu)) &
-                  +          DD8(-4,-1)*(mu(i,j,k-4)*q(i,j,k-1,qu)-mu(i,j,k+3)*q(i,j,k  ,qu)) &
-                  +          DD8(-4, 0)*(mu(i,j,k-4)*q(i,j,k  ,qu)-mu(i,j,k+3)*q(i,j,k-1,qu)) &
-                  &        + DD8(-3,-4)*(mu(i,j,k-3)*q(i,j,k-4,qu)-mu(i,j,k+2)*q(i,j,k+3,qu)) &
-                  +          DD8(-3,-3)*(mu(i,j,k-3)*q(i,j,k-3,qu)-mu(i,j,k+2)*q(i,j,k+2,qu)) &
-                  +          DD8(-3,-2)*(mu(i,j,k-3)*q(i,j,k-2,qu)-mu(i,j,k+2)*q(i,j,k+1,qu)) &
-                  +          DD8(-3,-1)*(mu(i,j,k-3)*q(i,j,k-1,qu)-mu(i,j,k+2)*q(i,j,k  ,qu)) &
-                  +          DD8(-3, 0)*(mu(i,j,k-3)*q(i,j,k  ,qu)-mu(i,j,k+2)*q(i,j,k-1,qu)) &
-                  +          DD8(-3, 1)*(mu(i,j,k-3)*q(i,j,k+1,qu)-mu(i,j,k+2)*q(i,j,k-2,qu)) &
-                  &        + DD8(-2,-4)*(mu(i,j,k-2)*q(i,j,k-4,qu)-mu(i,j,k+1)*q(i,j,k+3,qu)) &
-                  +          DD8(-2,-3)*(mu(i,j,k-2)*q(i,j,k-3,qu)-mu(i,j,k+1)*q(i,j,k+2,qu)) &
-                  +          DD8(-2,-2)*(mu(i,j,k-2)*q(i,j,k-2,qu)-mu(i,j,k+1)*q(i,j,k+1,qu)) &
-                  +          DD8(-2,-1)*(mu(i,j,k-2)*q(i,j,k-1,qu)-mu(i,j,k+1)*q(i,j,k  ,qu)) &
-                  +          DD8(-2, 0)*(mu(i,j,k-2)*q(i,j,k  ,qu)-mu(i,j,k+1)*q(i,j,k-1,qu)) &
-                  +          DD8(-2, 1)*(mu(i,j,k-2)*q(i,j,k+1,qu)-mu(i,j,k+1)*q(i,j,k-2,qu)) &
-                  +          DD8(-2, 2)*(mu(i,j,k-2)*q(i,j,k+2,qu)-mu(i,j,k+1)*q(i,j,k-3,qu)) &
-                  &        + DD8(-1,-4)*(mu(i,j,k-1)*q(i,j,k-4,qu)-mu(i,j,k  )*q(i,j,k+3,qu)) &
-                  +          DD8(-1,-3)*(mu(i,j,k-1)*q(i,j,k-3,qu)-mu(i,j,k  )*q(i,j,k+2,qu)) &
-                  +          DD8(-1,-2)*(mu(i,j,k-1)*q(i,j,k-2,qu)-mu(i,j,k  )*q(i,j,k+1,qu)) &
-                  +          DD8(-1,-1)*(mu(i,j,k-1)*q(i,j,k-1,qu)-mu(i,j,k  )*q(i,j,k  ,qu)) &
-                  +          DD8(-1, 0)*(mu(i,j,k-1)*q(i,j,k  ,qu)-mu(i,j,k  )*q(i,j,k-1,qu)) &
-                  +          DD8(-1, 1)*(mu(i,j,k-1)*q(i,j,k+1,qu)-mu(i,j,k  )*q(i,j,k-2,qu)) &
-                  +          DD8(-1, 2)*(mu(i,j,k-1)*q(i,j,k+2,qu)-mu(i,j,k  )*q(i,j,k-3,qu)) &
-                  +          DD8(-1, 3)*(mu(i,j,k-1)*q(i,j,k+3,qu)-mu(i,j,k  )*q(i,j,k-4,qu))
 
-             Hg(i,j,k,imy) = DD8(-4,-4)*(mu(i,j,k-4)*q(i,j,k-4,qv)-mu(i,j,k+3)*q(i,j,k+3,qv)) &
-                  +          DD8(-4,-3)*(mu(i,j,k-4)*q(i,j,k-3,qv)-mu(i,j,k+3)*q(i,j,k+2,qv)) &
-                  +          DD8(-4,-2)*(mu(i,j,k-4)*q(i,j,k-2,qv)-mu(i,j,k+3)*q(i,j,k+1,qv)) &
-                  +          DD8(-4,-1)*(mu(i,j,k-4)*q(i,j,k-1,qv)-mu(i,j,k+3)*q(i,j,k  ,qv)) &
-                  +          DD8(-4, 0)*(mu(i,j,k-4)*q(i,j,k  ,qv)-mu(i,j,k+3)*q(i,j,k-1,qv)) &
-                  &        + DD8(-3,-4)*(mu(i,j,k-3)*q(i,j,k-4,qv)-mu(i,j,k+2)*q(i,j,k+3,qv)) &
-                  +          DD8(-3,-3)*(mu(i,j,k-3)*q(i,j,k-3,qv)-mu(i,j,k+2)*q(i,j,k+2,qv)) &
-                  +          DD8(-3,-2)*(mu(i,j,k-3)*q(i,j,k-2,qv)-mu(i,j,k+2)*q(i,j,k+1,qv)) &
-                  +          DD8(-3,-1)*(mu(i,j,k-3)*q(i,j,k-1,qv)-mu(i,j,k+2)*q(i,j,k  ,qv)) &
-                  +          DD8(-3, 0)*(mu(i,j,k-3)*q(i,j,k  ,qv)-mu(i,j,k+2)*q(i,j,k-1,qv)) &
-                  +          DD8(-3, 1)*(mu(i,j,k-3)*q(i,j,k+1,qv)-mu(i,j,k+2)*q(i,j,k-2,qv)) &
-                  &        + DD8(-2,-4)*(mu(i,j,k-2)*q(i,j,k-4,qv)-mu(i,j,k+1)*q(i,j,k+3,qv)) &
-                  +          DD8(-2,-3)*(mu(i,j,k-2)*q(i,j,k-3,qv)-mu(i,j,k+1)*q(i,j,k+2,qv)) &
-                  +          DD8(-2,-2)*(mu(i,j,k-2)*q(i,j,k-2,qv)-mu(i,j,k+1)*q(i,j,k+1,qv)) &
-                  +          DD8(-2,-1)*(mu(i,j,k-2)*q(i,j,k-1,qv)-mu(i,j,k+1)*q(i,j,k  ,qv)) &
-                  +          DD8(-2, 0)*(mu(i,j,k-2)*q(i,j,k  ,qv)-mu(i,j,k+1)*q(i,j,k-1,qv)) &
-                  +          DD8(-2, 1)*(mu(i,j,k-2)*q(i,j,k+1,qv)-mu(i,j,k+1)*q(i,j,k-2,qv)) &
-                  +          DD8(-2, 2)*(mu(i,j,k-2)*q(i,j,k+2,qv)-mu(i,j,k+1)*q(i,j,k-3,qv)) &
-                  &        + DD8(-1,-4)*(mu(i,j,k-1)*q(i,j,k-4,qv)-mu(i,j,k  )*q(i,j,k+3,qv)) &
-                  +          DD8(-1,-3)*(mu(i,j,k-1)*q(i,j,k-3,qv)-mu(i,j,k  )*q(i,j,k+2,qv)) &
-                  +          DD8(-1,-2)*(mu(i,j,k-1)*q(i,j,k-2,qv)-mu(i,j,k  )*q(i,j,k+1,qv)) &
-                  +          DD8(-1,-1)*(mu(i,j,k-1)*q(i,j,k-1,qv)-mu(i,j,k  )*q(i,j,k  ,qv)) &
-                  +          DD8(-1, 0)*(mu(i,j,k-1)*q(i,j,k  ,qv)-mu(i,j,k  )*q(i,j,k-1,qv)) &
-                  +          DD8(-1, 1)*(mu(i,j,k-1)*q(i,j,k+1,qv)-mu(i,j,k  )*q(i,j,k-2,qv)) &
-                  +          DD8(-1, 2)*(mu(i,j,k-1)*q(i,j,k+2,qv)-mu(i,j,k  )*q(i,j,k-3,qv)) &
-                  +          DD8(-1, 3)*(mu(i,j,k-1)*q(i,j,k+3,qv)-mu(i,j,k  )*q(i,j,k-4,qv))
+             muM8 = matmul(   mu(i,j,k-4:k+3)      , M8)
+             M8p  = matmul(M8, q(i,j,k-4:k+3,qpres))
 
-             Hg(i,j,k,imz) = DD8(-4,-4)*(vsp(i,j,k-4)*q(i,j,k-4,qw)-vsp(i,j,k+3)*q(i,j,k+3,qw)) &
-                  +          DD8(-4,-3)*(vsp(i,j,k-4)*q(i,j,k-3,qw)-vsp(i,j,k+3)*q(i,j,k+2,qw)) &
-                  +          DD8(-4,-2)*(vsp(i,j,k-4)*q(i,j,k-2,qw)-vsp(i,j,k+3)*q(i,j,k+1,qw)) &
-                  +          DD8(-4,-1)*(vsp(i,j,k-4)*q(i,j,k-1,qw)-vsp(i,j,k+3)*q(i,j,k  ,qw)) &
-                  +          DD8(-4, 0)*(vsp(i,j,k-4)*q(i,j,k  ,qw)-vsp(i,j,k+3)*q(i,j,k-1,qw)) &
-                  &        + DD8(-3,-4)*(vsp(i,j,k-3)*q(i,j,k-4,qw)-vsp(i,j,k+2)*q(i,j,k+3,qw)) &
-                  +          DD8(-3,-3)*(vsp(i,j,k-3)*q(i,j,k-3,qw)-vsp(i,j,k+2)*q(i,j,k+2,qw)) &
-                  +          DD8(-3,-2)*(vsp(i,j,k-3)*q(i,j,k-2,qw)-vsp(i,j,k+2)*q(i,j,k+1,qw)) &
-                  +          DD8(-3,-1)*(vsp(i,j,k-3)*q(i,j,k-1,qw)-vsp(i,j,k+2)*q(i,j,k  ,qw)) &
-                  +          DD8(-3, 0)*(vsp(i,j,k-3)*q(i,j,k  ,qw)-vsp(i,j,k+2)*q(i,j,k-1,qw)) &
-                  +          DD8(-3, 1)*(vsp(i,j,k-3)*q(i,j,k+1,qw)-vsp(i,j,k+2)*q(i,j,k-2,qw)) &
-                  &        + DD8(-2,-4)*(vsp(i,j,k-2)*q(i,j,k-4,qw)-vsp(i,j,k+1)*q(i,j,k+3,qw)) &
-                  +          DD8(-2,-3)*(vsp(i,j,k-2)*q(i,j,k-3,qw)-vsp(i,j,k+1)*q(i,j,k+2,qw)) &
-                  +          DD8(-2,-2)*(vsp(i,j,k-2)*q(i,j,k-2,qw)-vsp(i,j,k+1)*q(i,j,k+1,qw)) &
-                  +          DD8(-2,-1)*(vsp(i,j,k-2)*q(i,j,k-1,qw)-vsp(i,j,k+1)*q(i,j,k  ,qw)) &
-                  +          DD8(-2, 0)*(vsp(i,j,k-2)*q(i,j,k  ,qw)-vsp(i,j,k+1)*q(i,j,k-1,qw)) &
-                  +          DD8(-2, 1)*(vsp(i,j,k-2)*q(i,j,k+1,qw)-vsp(i,j,k+1)*q(i,j,k-2,qw)) &
-                  +          DD8(-2, 2)*(vsp(i,j,k-2)*q(i,j,k+2,qw)-vsp(i,j,k+1)*q(i,j,k-3,qw)) &
-                  &        + DD8(-1,-4)*(vsp(i,j,k-1)*q(i,j,k-4,qw)-vsp(i,j,k  )*q(i,j,k+3,qw)) &
-                  +          DD8(-1,-3)*(vsp(i,j,k-1)*q(i,j,k-3,qw)-vsp(i,j,k  )*q(i,j,k+2,qw)) &
-                  +          DD8(-1,-2)*(vsp(i,j,k-1)*q(i,j,k-2,qw)-vsp(i,j,k  )*q(i,j,k+1,qw)) &
-                  +          DD8(-1,-1)*(vsp(i,j,k-1)*q(i,j,k-1,qw)-vsp(i,j,k  )*q(i,j,k  ,qw)) &
-                  +          DD8(-1, 0)*(vsp(i,j,k-1)*q(i,j,k  ,qw)-vsp(i,j,k  )*q(i,j,k-1,qw)) &
-                  +          DD8(-1, 1)*(vsp(i,j,k-1)*q(i,j,k+1,qw)-vsp(i,j,k  )*q(i,j,k-2,qw)) &
-                  +          DD8(-1, 2)*(vsp(i,j,k-1)*q(i,j,k+2,qw)-vsp(i,j,k  )*q(i,j,k-3,qw)) &
-                  +          DD8(-1, 3)*(vsp(i,j,k-1)*q(i,j,k+3,qw)-vsp(i,j,k  )*q(i,j,k-4,qw))
+             Hg(i,j,k,imx) = dot_product(muM8, q(i,j,k-4:k+3,qu))
+             Hg(i,j,k,imy) = dot_product(muM8, q(i,j,k-4:k+3,qv))
 
-             Hg(i,j,k,iene) = DD8(-4,-4)*(lam(i,j,k-4)*q(i,j,k-4,qtemp)-lam(i,j,k+3)*q(i,j,k+3,qtemp)) &
-                  +           DD8(-4,-3)*(lam(i,j,k-4)*q(i,j,k-3,qtemp)-lam(i,j,k+3)*q(i,j,k+2,qtemp)) &
-                  +           DD8(-4,-2)*(lam(i,j,k-4)*q(i,j,k-2,qtemp)-lam(i,j,k+3)*q(i,j,k+1,qtemp)) &
-                  +           DD8(-4,-1)*(lam(i,j,k-4)*q(i,j,k-1,qtemp)-lam(i,j,k+3)*q(i,j,k  ,qtemp)) &
-                  +           DD8(-4, 0)*(lam(i,j,k-4)*q(i,j,k  ,qtemp)-lam(i,j,k+3)*q(i,j,k-1,qtemp)) &
-                  &         + DD8(-3,-4)*(lam(i,j,k-3)*q(i,j,k-4,qtemp)-lam(i,j,k+2)*q(i,j,k+3,qtemp)) &
-                  +           DD8(-3,-3)*(lam(i,j,k-3)*q(i,j,k-3,qtemp)-lam(i,j,k+2)*q(i,j,k+2,qtemp)) &
-                  +           DD8(-3,-2)*(lam(i,j,k-3)*q(i,j,k-2,qtemp)-lam(i,j,k+2)*q(i,j,k+1,qtemp)) &
-                  +           DD8(-3,-1)*(lam(i,j,k-3)*q(i,j,k-1,qtemp)-lam(i,j,k+2)*q(i,j,k  ,qtemp)) &
-                  +           DD8(-3, 0)*(lam(i,j,k-3)*q(i,j,k  ,qtemp)-lam(i,j,k+2)*q(i,j,k-1,qtemp)) &
-                  +           DD8(-3, 1)*(lam(i,j,k-3)*q(i,j,k+1,qtemp)-lam(i,j,k+2)*q(i,j,k-2,qtemp)) &
-                  &         + DD8(-2,-4)*(lam(i,j,k-2)*q(i,j,k-4,qtemp)-lam(i,j,k+1)*q(i,j,k+3,qtemp)) &
-                  +           DD8(-2,-3)*(lam(i,j,k-2)*q(i,j,k-3,qtemp)-lam(i,j,k+1)*q(i,j,k+2,qtemp)) &
-                  +           DD8(-2,-2)*(lam(i,j,k-2)*q(i,j,k-2,qtemp)-lam(i,j,k+1)*q(i,j,k+1,qtemp)) &
-                  +           DD8(-2,-1)*(lam(i,j,k-2)*q(i,j,k-1,qtemp)-lam(i,j,k+1)*q(i,j,k  ,qtemp)) &
-                  +           DD8(-2, 0)*(lam(i,j,k-2)*q(i,j,k  ,qtemp)-lam(i,j,k+1)*q(i,j,k-1,qtemp)) &
-                  +           DD8(-2, 1)*(lam(i,j,k-2)*q(i,j,k+1,qtemp)-lam(i,j,k+1)*q(i,j,k-2,qtemp)) &
-                  +           DD8(-2, 2)*(lam(i,j,k-2)*q(i,j,k+2,qtemp)-lam(i,j,k+1)*q(i,j,k-3,qtemp)) &
-                  &         + DD8(-1,-4)*(lam(i,j,k-1)*q(i,j,k-4,qtemp)-lam(i,j,k  )*q(i,j,k+3,qtemp)) &
-                  +           DD8(-1,-3)*(lam(i,j,k-1)*q(i,j,k-3,qtemp)-lam(i,j,k  )*q(i,j,k+2,qtemp)) &
-                  +           DD8(-1,-2)*(lam(i,j,k-1)*q(i,j,k-2,qtemp)-lam(i,j,k  )*q(i,j,k+1,qtemp)) &
-                  +           DD8(-1,-1)*(lam(i,j,k-1)*q(i,j,k-1,qtemp)-lam(i,j,k  )*q(i,j,k  ,qtemp)) &
-                  +           DD8(-1, 0)*(lam(i,j,k-1)*q(i,j,k  ,qtemp)-lam(i,j,k  )*q(i,j,k-1,qtemp)) &
-                  +           DD8(-1, 1)*(lam(i,j,k-1)*q(i,j,k+1,qtemp)-lam(i,j,k  )*q(i,j,k-2,qtemp)) &
-                  +           DD8(-1, 2)*(lam(i,j,k-1)*q(i,j,k+2,qtemp)-lam(i,j,k  )*q(i,j,k-3,qtemp)) &
-                  +           DD8(-1, 3)*(lam(i,j,k-1)*q(i,j,k+3,qtemp)-lam(i,j,k  )*q(i,j,k-4,qtemp))
+             Hg(i,j,k,imz) = dot_product(matmul(vsp(i,j,k-4:k+3   ), M8), &
+                  &                               q(i,j,k-4:k+3,qw))
+
+             Hg(i,j,k,iene) = dot_product(matmul(lam(i,j,k-4:k+3      ), M8), &
+                  &                                q(i,j,k-4:k+3,qtemp))      &
+                  +                  dot_product(dpe(i,j,k-4:k+3), M8p)
 
              Htot = 0.d0
              do n = 1, nspecies
                 qxn = qx1+n-1
                 qyn = qy1+n-1
-                Htmp(n) = DD8(-4,-4)*(dxy(i,j,k-4,n)*q(i,j,k-4,qxn)-dxy(i,j,k+3,n)*q(i,j,k+3,qxn)) &
-                  +       DD8(-4,-3)*(dxy(i,j,k-4,n)*q(i,j,k-3,qxn)-dxy(i,j,k+3,n)*q(i,j,k+2,qxn)) &
-                  +       DD8(-4,-2)*(dxy(i,j,k-4,n)*q(i,j,k-2,qxn)-dxy(i,j,k+3,n)*q(i,j,k+1,qxn)) &
-                  +       DD8(-4,-1)*(dxy(i,j,k-4,n)*q(i,j,k-1,qxn)-dxy(i,j,k+3,n)*q(i,j,k  ,qxn)) &
-                  +       DD8(-4, 0)*(dxy(i,j,k-4,n)*q(i,j,k  ,qxn)-dxy(i,j,k+3,n)*q(i,j,k-1,qxn)) &
-                  &     + DD8(-3,-4)*(dxy(i,j,k-3,n)*q(i,j,k-4,qxn)-dxy(i,j,k+2,n)*q(i,j,k+3,qxn)) &
-                  +       DD8(-3,-3)*(dxy(i,j,k-3,n)*q(i,j,k-3,qxn)-dxy(i,j,k+2,n)*q(i,j,k+2,qxn)) &
-                  +       DD8(-3,-2)*(dxy(i,j,k-3,n)*q(i,j,k-2,qxn)-dxy(i,j,k+2,n)*q(i,j,k+1,qxn)) &
-                  +       DD8(-3,-1)*(dxy(i,j,k-3,n)*q(i,j,k-1,qxn)-dxy(i,j,k+2,n)*q(i,j,k  ,qxn)) &
-                  +       DD8(-3, 0)*(dxy(i,j,k-3,n)*q(i,j,k  ,qxn)-dxy(i,j,k+2,n)*q(i,j,k-1,qxn)) &
-                  +       DD8(-3, 1)*(dxy(i,j,k-3,n)*q(i,j,k+1,qxn)-dxy(i,j,k+2,n)*q(i,j,k-2,qxn)) &
-                  &     + DD8(-2,-4)*(dxy(i,j,k-2,n)*q(i,j,k-4,qxn)-dxy(i,j,k+1,n)*q(i,j,k+3,qxn)) &
-                  +       DD8(-2,-3)*(dxy(i,j,k-2,n)*q(i,j,k-3,qxn)-dxy(i,j,k+1,n)*q(i,j,k+2,qxn)) &
-                  +       DD8(-2,-2)*(dxy(i,j,k-2,n)*q(i,j,k-2,qxn)-dxy(i,j,k+1,n)*q(i,j,k+1,qxn)) &
-                  +       DD8(-2,-1)*(dxy(i,j,k-2,n)*q(i,j,k-1,qxn)-dxy(i,j,k+1,n)*q(i,j,k  ,qxn)) &
-                  +       DD8(-2, 0)*(dxy(i,j,k-2,n)*q(i,j,k  ,qxn)-dxy(i,j,k+1,n)*q(i,j,k-1,qxn)) &
-                  +       DD8(-2, 1)*(dxy(i,j,k-2,n)*q(i,j,k+1,qxn)-dxy(i,j,k+1,n)*q(i,j,k-2,qxn)) &
-                  +       DD8(-2, 2)*(dxy(i,j,k-2,n)*q(i,j,k+2,qxn)-dxy(i,j,k+1,n)*q(i,j,k-3,qxn)) &
-                  &     + DD8(-1,-4)*(dxy(i,j,k-1,n)*q(i,j,k-4,qxn)-dxy(i,j,k  ,n)*q(i,j,k+3,qxn)) &
-                  +       DD8(-1,-3)*(dxy(i,j,k-1,n)*q(i,j,k-3,qxn)-dxy(i,j,k  ,n)*q(i,j,k+2,qxn)) &
-                  +       DD8(-1,-2)*(dxy(i,j,k-1,n)*q(i,j,k-2,qxn)-dxy(i,j,k  ,n)*q(i,j,k+1,qxn)) &
-                  +       DD8(-1,-1)*(dxy(i,j,k-1,n)*q(i,j,k-1,qxn)-dxy(i,j,k  ,n)*q(i,j,k  ,qxn)) &
-                  +       DD8(-1, 0)*(dxy(i,j,k-1,n)*q(i,j,k  ,qxn)-dxy(i,j,k  ,n)*q(i,j,k-1,qxn)) &
-                  +       DD8(-1, 1)*(dxy(i,j,k-1,n)*q(i,j,k+1,qxn)-dxy(i,j,k  ,n)*q(i,j,k-2,qxn)) &
-                  +       DD8(-1, 2)*(dxy(i,j,k-1,n)*q(i,j,k+2,qxn)-dxy(i,j,k  ,n)*q(i,j,k-3,qxn)) &
-                  +       DD8(-1, 3)*(dxy(i,j,k-1,n)*q(i,j,k+3,qxn)-dxy(i,j,k  ,n)*q(i,j,k-4,qxn))
-                Htmp(n) = Htmp(n)  &                   
-                  +       DD8(-4,-4)*(dpy(i,j,k-4,n)*q(i,j,k-4,qpres)-dpy(i,j,k+3,n)*q(i,j,k+3,qpres)) &
-                  +       DD8(-4,-3)*(dpy(i,j,k-4,n)*q(i,j,k-3,qpres)-dpy(i,j,k+3,n)*q(i,j,k+2,qpres)) &
-                  +       DD8(-4,-2)*(dpy(i,j,k-4,n)*q(i,j,k-2,qpres)-dpy(i,j,k+3,n)*q(i,j,k+1,qpres)) &
-                  +       DD8(-4,-1)*(dpy(i,j,k-4,n)*q(i,j,k-1,qpres)-dpy(i,j,k+3,n)*q(i,j,k  ,qpres)) &
-                  +       DD8(-4, 0)*(dpy(i,j,k-4,n)*q(i,j,k  ,qpres)-dpy(i,j,k+3,n)*q(i,j,k-1,qpres)) &
-                  &     + DD8(-3,-4)*(dpy(i,j,k-3,n)*q(i,j,k-4,qpres)-dpy(i,j,k+2,n)*q(i,j,k+3,qpres)) &
-                  +       DD8(-3,-3)*(dpy(i,j,k-3,n)*q(i,j,k-3,qpres)-dpy(i,j,k+2,n)*q(i,j,k+2,qpres)) &
-                  +       DD8(-3,-2)*(dpy(i,j,k-3,n)*q(i,j,k-2,qpres)-dpy(i,j,k+2,n)*q(i,j,k+1,qpres)) &
-                  +       DD8(-3,-1)*(dpy(i,j,k-3,n)*q(i,j,k-1,qpres)-dpy(i,j,k+2,n)*q(i,j,k  ,qpres)) &
-                  +       DD8(-3, 0)*(dpy(i,j,k-3,n)*q(i,j,k  ,qpres)-dpy(i,j,k+2,n)*q(i,j,k-1,qpres)) &
-                  +       DD8(-3, 1)*(dpy(i,j,k-3,n)*q(i,j,k+1,qpres)-dpy(i,j,k+2,n)*q(i,j,k-2,qpres)) &
-                  &     + DD8(-2,-4)*(dpy(i,j,k-2,n)*q(i,j,k-4,qpres)-dpy(i,j,k+1,n)*q(i,j,k+3,qpres)) &
-                  +       DD8(-2,-3)*(dpy(i,j,k-2,n)*q(i,j,k-3,qpres)-dpy(i,j,k+1,n)*q(i,j,k+2,qpres)) &
-                  +       DD8(-2,-2)*(dpy(i,j,k-2,n)*q(i,j,k-2,qpres)-dpy(i,j,k+1,n)*q(i,j,k+1,qpres)) &
-                  +       DD8(-2,-1)*(dpy(i,j,k-2,n)*q(i,j,k-1,qpres)-dpy(i,j,k+1,n)*q(i,j,k  ,qpres)) &
-                  +       DD8(-2, 0)*(dpy(i,j,k-2,n)*q(i,j,k  ,qpres)-dpy(i,j,k+1,n)*q(i,j,k-1,qpres)) &
-                  +       DD8(-2, 1)*(dpy(i,j,k-2,n)*q(i,j,k+1,qpres)-dpy(i,j,k+1,n)*q(i,j,k-2,qpres)) &
-                  +       DD8(-2, 2)*(dpy(i,j,k-2,n)*q(i,j,k+2,qpres)-dpy(i,j,k+1,n)*q(i,j,k-3,qpres)) &
-                  &     + DD8(-1,-4)*(dpy(i,j,k-1,n)*q(i,j,k-4,qpres)-dpy(i,j,k  ,n)*q(i,j,k+3,qpres)) &
-                  +       DD8(-1,-3)*(dpy(i,j,k-1,n)*q(i,j,k-3,qpres)-dpy(i,j,k  ,n)*q(i,j,k+2,qpres)) &
-                  +       DD8(-1,-2)*(dpy(i,j,k-1,n)*q(i,j,k-2,qpres)-dpy(i,j,k  ,n)*q(i,j,k+1,qpres)) &
-                  +       DD8(-1,-1)*(dpy(i,j,k-1,n)*q(i,j,k-1,qpres)-dpy(i,j,k  ,n)*q(i,j,k  ,qpres)) &
-                  +       DD8(-1, 0)*(dpy(i,j,k-1,n)*q(i,j,k  ,qpres)-dpy(i,j,k  ,n)*q(i,j,k-1,qpres)) &
-                  +       DD8(-1, 1)*(dpy(i,j,k-1,n)*q(i,j,k+1,qpres)-dpy(i,j,k  ,n)*q(i,j,k-2,qpres)) &
-                  +       DD8(-1, 2)*(dpy(i,j,k-1,n)*q(i,j,k+2,qpres)-dpy(i,j,k  ,n)*q(i,j,k-3,qpres)) &
-                  +       DD8(-1, 3)*(dpy(i,j,k-1,n)*q(i,j,k+3,qpres)-dpy(i,j,k  ,n)*q(i,j,k-4,qpres))
+
+                M8X = matmul(M8, q(i,j,k-4:k+3,qxn))
+
+                Htmp(n) = dot_product(dpy(i,j,k-4:k+3,n), M8P) &
+                     +    dot_product(dxy(i,j,k-4:k+3,n), M8X)
+
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) &
+                     +    dot_product(dxe(i,j,k-4:k+3,n), M8X)
+
                 Htot = Htot + Htmp(n)
                 Ytmp(n) = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0
              end do
@@ -1441,65 +911,6 @@ contains
              do n = 1, nspecies
                 Hg(i,j,k,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
              end do
-
-             do n = 1, nspecies
-                qxn = qx1+n-1
-                Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
-                  + DD8(-4,-4)*(dxe(i,j,k-4,n)*q(i,j,k-4,qxn)-dxe(i,j,k+3,n)*q(i,j,k+3,qxn)) &
-                  + DD8(-4,-3)*(dxe(i,j,k-4,n)*q(i,j,k-3,qxn)-dxe(i,j,k+3,n)*q(i,j,k+2,qxn)) &
-                  + DD8(-4,-2)*(dxe(i,j,k-4,n)*q(i,j,k-2,qxn)-dxe(i,j,k+3,n)*q(i,j,k+1,qxn)) &
-                  + DD8(-4,-1)*(dxe(i,j,k-4,n)*q(i,j,k-1,qxn)-dxe(i,j,k+3,n)*q(i,j,k  ,qxn)) &
-                  + DD8(-4, 0)*(dxe(i,j,k-4,n)*q(i,j,k  ,qxn)-dxe(i,j,k+3,n)*q(i,j,k-1,qxn)) &
-                  + DD8(-3,-4)*(dxe(i,j,k-3,n)*q(i,j,k-4,qxn)-dxe(i,j,k+2,n)*q(i,j,k+3,qxn)) &
-                  + DD8(-3,-3)*(dxe(i,j,k-3,n)*q(i,j,k-3,qxn)-dxe(i,j,k+2,n)*q(i,j,k+2,qxn)) &
-                  + DD8(-3,-2)*(dxe(i,j,k-3,n)*q(i,j,k-2,qxn)-dxe(i,j,k+2,n)*q(i,j,k+1,qxn)) &
-                  + DD8(-3,-1)*(dxe(i,j,k-3,n)*q(i,j,k-1,qxn)-dxe(i,j,k+2,n)*q(i,j,k  ,qxn)) &
-                  + DD8(-3, 0)*(dxe(i,j,k-3,n)*q(i,j,k  ,qxn)-dxe(i,j,k+2,n)*q(i,j,k-1,qxn)) &
-                  + DD8(-3, 1)*(dxe(i,j,k-3,n)*q(i,j,k+1,qxn)-dxe(i,j,k+2,n)*q(i,j,k-2,qxn)) &
-                  + DD8(-2,-4)*(dxe(i,j,k-2,n)*q(i,j,k-4,qxn)-dxe(i,j,k+1,n)*q(i,j,k+3,qxn)) &
-                  + DD8(-2,-3)*(dxe(i,j,k-2,n)*q(i,j,k-3,qxn)-dxe(i,j,k+1,n)*q(i,j,k+2,qxn)) &
-                  + DD8(-2,-2)*(dxe(i,j,k-2,n)*q(i,j,k-2,qxn)-dxe(i,j,k+1,n)*q(i,j,k+1,qxn)) &
-                  + DD8(-2,-1)*(dxe(i,j,k-2,n)*q(i,j,k-1,qxn)-dxe(i,j,k+1,n)*q(i,j,k  ,qxn)) &
-                  + DD8(-2, 0)*(dxe(i,j,k-2,n)*q(i,j,k  ,qxn)-dxe(i,j,k+1,n)*q(i,j,k-1,qxn)) &
-                  + DD8(-2, 1)*(dxe(i,j,k-2,n)*q(i,j,k+1,qxn)-dxe(i,j,k+1,n)*q(i,j,k-2,qxn)) &
-                  + DD8(-2, 2)*(dxe(i,j,k-2,n)*q(i,j,k+2,qxn)-dxe(i,j,k+1,n)*q(i,j,k-3,qxn)) &
-                  + DD8(-1,-4)*(dxe(i,j,k-1,n)*q(i,j,k-4,qxn)-dxe(i,j,k  ,n)*q(i,j,k+3,qxn)) &
-                  + DD8(-1,-3)*(dxe(i,j,k-1,n)*q(i,j,k-3,qxn)-dxe(i,j,k  ,n)*q(i,j,k+2,qxn)) &
-                  + DD8(-1,-2)*(dxe(i,j,k-1,n)*q(i,j,k-2,qxn)-dxe(i,j,k  ,n)*q(i,j,k+1,qxn)) &
-                  + DD8(-1,-1)*(dxe(i,j,k-1,n)*q(i,j,k-1,qxn)-dxe(i,j,k  ,n)*q(i,j,k  ,qxn)) &
-                  + DD8(-1, 0)*(dxe(i,j,k-1,n)*q(i,j,k  ,qxn)-dxe(i,j,k  ,n)*q(i,j,k-1,qxn)) &
-                  + DD8(-1, 1)*(dxe(i,j,k-1,n)*q(i,j,k+1,qxn)-dxe(i,j,k  ,n)*q(i,j,k-2,qxn)) &
-                  + DD8(-1, 2)*(dxe(i,j,k-1,n)*q(i,j,k+2,qxn)-dxe(i,j,k  ,n)*q(i,j,k-3,qxn)) &
-                  + DD8(-1, 3)*(dxe(i,j,k-1,n)*q(i,j,k+3,qxn)-dxe(i,j,k  ,n)*q(i,j,k-4,qxn))
-             end do
-
-             Hg(i,j,k,iene) =  Hg(i,j,k,iene) &
-                  + DD8(-4,-4)*(dpe(i,j,k-4)*q(i,j,k-4,qpres)-dpe(i,j,k+3)*q(i,j,k+3,qpres)) &
-                  + DD8(-4,-3)*(dpe(i,j,k-4)*q(i,j,k-3,qpres)-dpe(i,j,k+3)*q(i,j,k+2,qpres)) &
-                  + DD8(-4,-2)*(dpe(i,j,k-4)*q(i,j,k-2,qpres)-dpe(i,j,k+3)*q(i,j,k+1,qpres)) &
-                  + DD8(-4,-1)*(dpe(i,j,k-4)*q(i,j,k-1,qpres)-dpe(i,j,k+3)*q(i,j,k  ,qpres)) &
-                  + DD8(-4, 0)*(dpe(i,j,k-4)*q(i,j,k  ,qpres)-dpe(i,j,k+3)*q(i,j,k-1,qpres)) &
-                  + DD8(-3,-4)*(dpe(i,j,k-3)*q(i,j,k-4,qpres)-dpe(i,j,k+2)*q(i,j,k+3,qpres)) &
-                  + DD8(-3,-3)*(dpe(i,j,k-3)*q(i,j,k-3,qpres)-dpe(i,j,k+2)*q(i,j,k+2,qpres)) &
-                  + DD8(-3,-2)*(dpe(i,j,k-3)*q(i,j,k-2,qpres)-dpe(i,j,k+2)*q(i,j,k+1,qpres)) &
-                  + DD8(-3,-1)*(dpe(i,j,k-3)*q(i,j,k-1,qpres)-dpe(i,j,k+2)*q(i,j,k  ,qpres)) &
-                  + DD8(-3, 0)*(dpe(i,j,k-3)*q(i,j,k  ,qpres)-dpe(i,j,k+2)*q(i,j,k-1,qpres)) &
-                  + DD8(-3, 1)*(dpe(i,j,k-3)*q(i,j,k+1,qpres)-dpe(i,j,k+2)*q(i,j,k-2,qpres)) &
-                  + DD8(-2,-4)*(dpe(i,j,k-2)*q(i,j,k-4,qpres)-dpe(i,j,k+1)*q(i,j,k+3,qpres)) &
-                  + DD8(-2,-3)*(dpe(i,j,k-2)*q(i,j,k-3,qpres)-dpe(i,j,k+1)*q(i,j,k+2,qpres)) &
-                  + DD8(-2,-2)*(dpe(i,j,k-2)*q(i,j,k-2,qpres)-dpe(i,j,k+1)*q(i,j,k+1,qpres)) &
-                  + DD8(-2,-1)*(dpe(i,j,k-2)*q(i,j,k-1,qpres)-dpe(i,j,k+1)*q(i,j,k  ,qpres)) &
-                  + DD8(-2, 0)*(dpe(i,j,k-2)*q(i,j,k  ,qpres)-dpe(i,j,k+1)*q(i,j,k-1,qpres)) &
-                  + DD8(-2, 1)*(dpe(i,j,k-2)*q(i,j,k+1,qpres)-dpe(i,j,k+1)*q(i,j,k-2,qpres)) &
-                  + DD8(-2, 2)*(dpe(i,j,k-2)*q(i,j,k+2,qpres)-dpe(i,j,k+1)*q(i,j,k-3,qpres)) &
-                  + DD8(-1,-4)*(dpe(i,j,k-1)*q(i,j,k-4,qpres)-dpe(i,j,k  )*q(i,j,k+3,qpres)) &
-                  + DD8(-1,-3)*(dpe(i,j,k-1)*q(i,j,k-3,qpres)-dpe(i,j,k  )*q(i,j,k+2,qpres)) &
-                  + DD8(-1,-2)*(dpe(i,j,k-1)*q(i,j,k-2,qpres)-dpe(i,j,k  )*q(i,j,k+1,qpres)) &
-                  + DD8(-1,-1)*(dpe(i,j,k-1)*q(i,j,k-1,qpres)-dpe(i,j,k  )*q(i,j,k  ,qpres)) &
-                  + DD8(-1, 0)*(dpe(i,j,k-1)*q(i,j,k  ,qpres)-dpe(i,j,k  )*q(i,j,k-1,qpres)) &
-                  + DD8(-1, 1)*(dpe(i,j,k-1)*q(i,j,k+1,qpres)-dpe(i,j,k  )*q(i,j,k-2,qpres)) &
-                  + DD8(-1, 2)*(dpe(i,j,k-1)*q(i,j,k+2,qpres)-dpe(i,j,k  )*q(i,j,k-3,qpres)) &
-                  + DD8(-1, 3)*(dpe(i,j,k-1)*q(i,j,k+3,qpres)-dpe(i,j,k  )*q(i,j,k-4,qpres))
 
              do n = 1, nspecies
                 qhn = qh1+n-1
