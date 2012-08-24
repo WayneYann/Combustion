@@ -144,7 +144,8 @@ public:
                           int              nComp,
                           Real             scale) const;
 
-    void compute_differential_diffusion_fluxes (const Real& time);
+    void compute_differential_diffusion_fluxes (const Real& time,
+					        const Real& dt);
 
     void adjust_spec_diffusion_fluxes (Real                   time,
                                        const MultiFab* const* beta,
@@ -310,7 +311,8 @@ protected:
     virtual void differential_spec_diffuse_sync (Real dt);
     virtual void compute_differential_diffusion_terms (MultiFab& D,
                                                        MultiFab& DD,
-						       Real      time);
+						       Real      time,
+						       Real      dt);
 
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
 
