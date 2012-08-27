@@ -539,7 +539,7 @@ contains
 
     !$omp parallel private(i,j,k,n,qxn,qyn,qhn,Htot,Htmp,Ytmp,hhalf) &
     !$omp private(tauxx,tauyy,tauzz,dmuzdx,dmvzdy,dmuxvydz,dmuydx,dmwydz,dmuxwzdy) &
-    !$omp private(dmvxdy,dmwxdz,dmvywzdx,divu)
+    !$omp private(dmvxdy,dmwxdz,dmvywzdx,divu,muM8,M8p,M8X)
 
     !$OMP DO
     do k=dlo(3),dhi(3)
