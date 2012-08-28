@@ -1,7 +1,7 @@
 module kernels_module
   use bc_module
   use chemistry_module, only : nspecies, molecular_weight
-  use derivative_stencil_module, only : stencil_ng, first_deriv_8, M8, second_deriv_8
+  use derivative_stencil_module, only : stencil_ng, first_deriv_8, M8
   use variables_module
   implicit none
 
