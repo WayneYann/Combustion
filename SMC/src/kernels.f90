@@ -1,27 +1,32 @@
 module kernels_module
   use bc_module
   use chemistry_module, only : nspecies, molecular_weight
-  use derivative_stencil_module, only : stencil_ng, first_deriv_8, M8
+  use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
+       first_deriv_4, first_deriv_l3, first_deriv_r3, first_deriv_rb, first_deriv_lb, &
+       M8
   use variables_module
   implicit none
 
+  private
+
+  public :: hypterm_3d, compact_diffterm_3d, chemterm_3d, comp_courno_3d, &
+       S3D_diffterm_1, S3D_diffterm_2
+
 contains
 
-  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,rhs,dlo,dhi,bclo,bchi)
+  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,rhs,dlo,dhi)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
     double precision, intent(in ) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
     double precision, intent(in ) ::    q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
     double precision, intent(out) ::  rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
-    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
+    integer          , intent(in) :: dlo(3),dhi(3)
 
     integer          :: i,j,k,n
     double precision :: un(-4:4)
     double precision :: dxinv(3)
-    integer :: slo(3), shi(3), iface, nbase, n00, np1, np2, np3, nm1, nm2, nm3
-    integer :: is
-    double precision :: ds
+    integer :: slo(3), shi(3) 
 
     ! Only the region bounded by [dlo,dhi] contains good data.
     ! [slo,shi] will be safe for 8th-order stencil
@@ -42,19 +47,19 @@ contains
 
              un = q(i-4:i+4,j,k,qu)
 
-             rhs(i,j,k,irho)= rhs(i,j,k,irho) - dxinv(1) * &
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
                   first_deriv_8( cons(i-4:i+4,j,k,imx) ) 
 
-             rhs(i,j,k,imx)= rhs(i,j,k,imx) - dxinv(1) * &
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
                   first_deriv_8( cons(i-4:i+4,j,k,imx)*un+q(i-4:i+4,j,k,qpres) )
 
-             rhs(i,j,k,imy)= rhs(i,j,k,imy) - dxinv(1) * &
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
                   first_deriv_8( cons(i-4:i+4,j,k,imy)*un ) 
 
-             rhs(i,j,k,imz)= rhs(i,j,k,imz) - dxinv(1) * &
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
                   first_deriv_8( cons(i-4:i+4,j,k,imz)*un ) 
 
-             rhs(i,j,k,iene)= rhs(i,j,k,iene) - dxinv(1) * &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
                   first_deriv_8( (cons(i-4:i+4,j,k,iene)+q(i-4:i+4,j,k,qpres))*un )
 
              do n = iry1, iry1+nspecies-1
@@ -133,245 +138,731 @@ contains
 
     !$omp end parallel
 
-
-    return
-    ! because boundary is not working yet!
-    ! xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
     ! ----------------- boundary -----------------------
 
-!     do iface=-1,1,2
-!        if (iface.eq.-1) then
-!           if (slo(1) .eq. lo(1)) cycle
-!           nbase = lo(1)
-!           is = 1  ! right-biased
-!           ds = 1.d0
-!        else
-!           if (shi(1) .eq. hi(1)) cycle
-!           nbase = hi(1)
-!           is = -1 ! left-biased
-!           ds = -1.d0
-!        end if
+    ! ----- lo-x boundary -----
+    if (dlo(1) .eq. lo(1)) then 
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
 
-!        do k=lo(3),hi(3)
-!           do j=lo(2),hi(2)
+             i = lo(1)
+             ! use completely right-biased stencil
 
-!              ! use completely biased stencil
-!              n00 = nbase
-!              np1 = n00 + is
-!              np2 = np1 + is
-!              np3 = np2 + is
+             un(0:3) = q(i:i+3,j,k,qu)
 
-!              un00 = q(n00,j,k,qu)
-!              unp1 = q(np1,j,k,qu)
-!              unp2 = q(np2,j,k,qu)
-!              unp3 = q(np3,j,k,qu)
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_rb( cons(i:i+3,j,k,imx) ) 
 
-!              rhs(n00,j,k,irho)= rhs(n00,j,k,irho) - &
-!                   ( DB(0)*cons(n00,j,k,imx) &
-!                   + DB(1)*cons(np1,j,k,imx) &
-!                   + DB(2)*cons(np2,j,k,imx) &
-!                   + DB(3)*cons(np3,j,k,imx) ) * dxinv(1) * ds
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_rb( cons(i:i+3,j,k,imx)*un(0:3)+q(i:i+3,j,k,qpres) )
 
-!              rhs(n00,j,k,imx)= rhs(n00,j,k,imx) - &
-!                   ( DB(0)*(cons(n00,j,k,imx)*un00 + q(n00,j,k,qpres)) &
-!                   + DB(1)*(cons(np1,j,k,imx)*unp1 + q(np1,j,k,qpres)) &
-!                   + DB(2)*(cons(np2,j,k,imx)*unp2 + q(np2,j,k,qpres)) &
-!                   + DB(3)*(cons(np3,j,k,imx)*unp3 + q(np3,j,k,qpres)) ) * dxinv(1) * ds
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_rb( cons(i:i+3,j,k,imy)*un(0:3) ) 
 
-!              rhs(n00,j,k,imy)= rhs(n00,j,k,imy) - &
-!                   ( DB(0)*cons(n00,j,k,imy)*un00  &
-!                   + DB(1)*cons(np1,j,k,imy)*unp1  &
-!                   + DB(2)*cons(np2,j,k,imy)*unp2  &
-!                   + DB(3)*cons(np3,j,k,imy)*unp3  ) * dxinv(1) * ds
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_rb( cons(i:i+3,j,k,imz)*un(0:3) ) 
 
-!              rhs(n00,j,k,imz)= rhs(n00,j,k,imz) - &
-!                   ( DB(0)*cons(n00,j,k,imz)*un00  &
-!                   + DB(1)*cons(np1,j,k,imz)*unp1  &
-!                   + DB(2)*cons(np2,j,k,imz)*unp2  &
-!                   + DB(3)*cons(np3,j,k,imz)*unp3  ) * dxinv(1) * ds
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_rb( (cons(i:i+3,j,k,iene)+q(i:i+3,j,k,qpres))*un(0:3) )
 
-!              rhs(n00,j,k,iene) = rhs(n00,j,k,iene) - &
-!                   ( DB(0)*(cons(n00,j,k,iene)+q(n00,j,k,qpres))*un00 &
-!                   + DB(1)*(cons(np1,j,k,iene)+q(np1,j,k,qpres))*unp1 &
-!                   + DB(2)*(cons(np2,j,k,iene)+q(np2,j,k,qpres))*unp2 &
-!                   + DB(3)*(cons(np3,j,k,iene)+q(np3,j,k,qpres))*unp3 ) * dxinv(1) * ds
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_rb( cons(i:i+3,j,k,n)*un(0:3) )
+             end do
 
-!              do n = iry1, iry1+nspecies-1
-!                 rhs(n00,j,k,n) = rhs(n00,j,k,n) - &
-!                      ( DB(0)*cons(n00,j,k,n)*un00  &
-!                      + DB(1)*cons(np1,j,k,n)*unp1  &
-!                      + DB(2)*cons(np2,j,k,n)*unp2  &
-!                      + DB(3)*cons(np3,j,k,n)*unp3  ) * dxinv(1) * ds
-!              end do
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
 
-! !             xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+             un(-1:2) = q(i-1:i+2,j,k,qu)
 
-!              ! use slighly biased stencil
-!              i = lo(1)+1
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_r3( cons(i-1:i+2,j,k,imx) ) 
 
-!              unm1 = q(i-1,j,k,qu)
-!              un00 = q(i  ,j,k,qu)
-!              unp1 = q(i+1,j,k,qu)
-!              unp2 = q(i+2,j,k,qu)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_r3( cons(i-1:i+2,j,k,imx)*un(-1:2)+q(i-1:i+2,j,k,qpres) )
 
-!              rhs(i,j,k,irho)= rhs(i,j,k,irho) - &
-!                   ( D3(-1)*cons(i-1,j,k,imx) &
-!                   + D3( 0)*cons(i  ,j,k,imx) &
-!                   + D3( 1)*cons(i+1,j,k,imx) &
-!                   + D3( 2)*cons(i+2,j,k,imx) ) * dxinv(1) * ds
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_r3( cons(i-1:i+2,j,k,imy)*un(-1:2) ) 
 
-!              rhs(i,j,k,imx)= rhs(i,j,k,imx) - &
-!                   ( D3(-1)*(cons(i-1,j,k,imx)*unm1 + q(i-1,j,k,qpres)) &
-!                   + D3( 0)*(cons(i  ,j,k,imx)*un00 + q(i  ,j,k,qpres)) &
-!                   + D3( 1)*(cons(i+1,j,k,imx)*unp1 + q(i+1,j,k,qpres)) &
-!                   + D3( 2)*(cons(i+2,j,k,imx)*unp2 + q(i+2,j,k,qpres)) ) * dxinv(1) * ds
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_r3( cons(i-1:i+2,j,k,imz)*un(-1:2) ) 
 
-!              rhs(i,j,k,imy)= rhs(i,j,k,imy) - &
-!                   ( D3(-1)*cons(i-1,j,k,imy)*unm1  &
-!                   + D3( 0)*cons(i  ,j,k,imy)*un00  &
-!                   + D3( 1)*cons(i+1,j,k,imy)*unp1  &
-!                   + D3( 2)*cons(i+2,j,k,imy)*unp2  ) * dxinv(1) * ds
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_r3( (cons(i-1:i+2,j,k,iene)+q(i-1:i+2,j,k,qpres))*un(-1:2) )
 
-!              rhs(i,j,k,imz)= rhs(i,j,k,imz) - &
-!                   ( D3(-1)*cons(i-1,j,k,imz)*unm1  &
-!                   + D3( 0)*cons(i  ,j,k,imz)*un00  &
-!                   + D3( 1)*cons(i+1,j,k,imz)*unp1  &
-!                   + D3( 2)*cons(i+2,j,k,imz)*unp2  ) * dxinv(1) * ds
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_r3( cons(i-1:i+2,j,k,n)*un(-1:2) )
+             end do
 
-!              rhs(i,j,k,iene) = rhs(i,j,k,iene) - &
-!                   ( D3(-1)*(cons(i-1,j,k,iene)+q(i-1,j,k,qpres))*unm1 &
-!                   + D3( 0)*(cons(i  ,j,k,iene)+q(i  ,j,k,qpres))*un00 &
-!                   + D3( 1)*(cons(i+1,j,k,iene)+q(i+1,j,k,qpres))*unp1 &
-!                   + D3( 2)*(cons(i+2,j,k,iene)+q(i+2,j,k,qpres))*unp2 ) * dxinv(1) * ds
+             i = lo(1)+2
+             ! use 4th-order stencil
 
-!              do n = iry1, iry1+nspecies-1
-!                 rhs(i,j,k,n) = rhs(i,j,k,n) - &
-!                      ( D3(-1)*cons(i-1,j,k,n)*unm1  &
-!                      + D3( 0)*cons(i  ,j,k,n)*un00  &
-!                      + D3( 1)*cons(i+1,j,k,n)*unp1  &
-!                      + D3( 2)*cons(i+2,j,k,n)*unp2  ) * dxinv(1) * ds
-!              end do
+             un(-2:2) = q(i-2:i+2,j,k,qu)
 
-!              ! use 4th-order stencil
-!              i = lo(1)+2
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imx) ) 
 
-!              unp1 = q(i+1,j,k,qu)
-!              unp2 = q(i+2,j,k,qu)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imx)*un(-2:2)+q(i-2:i+2,j,k,qpres) )
 
-!              unm1 = q(i-1,j,k,qu)
-!              unm2 = q(i-2,j,k,qu)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imy)*un(-2:2) ) 
 
-!              rhs(i,j,k,irho)= rhs(i,j,k,irho) - &
-!                    (D4(1)*(cons(i+1,j,k,imx)-cons(i-1,j,k,imx)) &
-!                   + D4(2)*(cons(i+2,j,k,imx)-cons(i-2,j,k,imx)))*dxinv(1) * ds
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imz)*un(-2:2) ) 
 
-!              rhs(i,j,k,imx)= rhs(i,j,k,imx) - &
-!                    (D4(1)*(cons(i+1,j,k,imx)*unp1-cons(i-1,j,k,imx)*unm1 &
-!                   +          (q(i+1,j,k,qpres)   -   q(i-1,j,k,qpres)))  &
-!                   + D4(2)*(cons(i+2,j,k,imx)*unp2-cons(i-2,j,k,imx)*unm2 &
-!                   +          (q(i+2,j,k,qpres)   -   q(i-2,j,k,qpres))))*dxinv(1) * ds
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_4( (cons(i-2:i+2,j,k,iene)+q(i-2:i+2,j,k,qpres))*un(-2:2) )
 
-!              rhs(i,j,k,imy)= rhs(i,j,k,imy) - &
-!                    (D4(1)*(cons(i+1,j,k,imy)*unp1-cons(i-1,j,k,imy)*unm1) &
-!                   + D4(2)*(cons(i+2,j,k,imy)*unp2-cons(i-2,j,k,imy)*unm2))*dxinv(1) * ds
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_4( cons(i-2:i+2,j,k,n)*un(-2:2) )
+             end do
 
-!              rhs(i,j,k,imz)= rhs(i,j,k,imz) - &
-!                    (D4(1)*(cons(i+1,j,k,imz)*unp1-cons(i-1,j,k,imz)*unm1) &
-!                   + D4(2)*(cons(i+2,j,k,imz)*unp2-cons(i-2,j,k,imz)*unm2))*dxinv(1) * ds
+             i = lo(1)+3
+             ! use 6th-order stencil
 
-!              rhs(i,j,k,iene)= rhs(i,j,k,iene) - &
-!                    (D4(1)*(cons(i+1,j,k,iene )*unp1-cons(i-1,j,k,iene )*unm1 &
-!                   +          (q(i+1,j,k,qpres)*unp1-   q(i-1,j,k,qpres)*unm1)) &
-!                   + D4(2)*(cons(i+2,j,k,iene )*unp2-cons(i-2,j,k,iene )*unm2 &
-!                   +          (q(i+2,j,k,qpres)*unp2-   q(i-2,j,k,qpres)*unm2)))*dxinv(1) * ds
+             un(-3:3) = q(i-3:i+3,j,k,qu)
 
-!              do n = iry1, iry1+nspecies-1
-!                 rhs(i,j,k,n) = rhs(i,j,k,n) - &
-!                      ( D4(1)*(cons(i+1,j,k,n)*unp1-cons(i-1,j,k,n)*unm1) &
-!                      + D4(2)*(cons(i+2,j,k,n)*unp2-cons(i-2,j,k,n)*unm2))*dxinv(1) * ds
-!              end do
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imx) ) 
 
-!              ! use 6th-order stencil
-!              i = lo(1)+3
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imx)*un(-3:3)+q(i-3:i+3,j,k,qpres) )
 
-!              unp1 = q(i+1,j,k,qu)
-!              unp2 = q(i+2,j,k,qu)
-!              unp3 = q(i+3,j,k,qu)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imy)*un(-3:3) ) 
 
-!              unm1 = q(i-1,j,k,qu)
-!              unm2 = q(i-2,j,k,qu)
-!              unm3 = q(i-3,j,k,qu)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imz)*un(-3:3) ) 
 
-!              rhs(i,j,k,irho)= rhs(i,j,k,irho) - &
-!                    (D6(1)*(cons(i+1,j,k,imx)-cons(i-1,j,k,imx)) &
-!                   + D6(2)*(cons(i+2,j,k,imx)-cons(i-2,j,k,imx)) &
-!                   + D6(3)*(cons(i+3,j,k,imx)-cons(i-3,j,k,imx)))*dxinv(1) * ds
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_6( (cons(i-3:i+3,j,k,iene)+q(i-3:i+3,j,k,qpres))*un(-3:3) )
 
-!              rhs(i,j,k,imx)= rhs(i,j,k,imx) - &
-!                    (D6(1)*(cons(i+1,j,k,imx)*unp1-cons(i-1,j,k,imx)*unm1 &
-!                   +          (q(i+1,j,k,qpres)   -   q(i-1,j,k,qpres)))  &
-!                   + D6(2)*(cons(i+2,j,k,imx)*unp2-cons(i-2,j,k,imx)*unm2 &
-!                   +          (q(i+2,j,k,qpres)   -   q(i-2,j,k,qpres)))  &
-!                   + D6(3)*(cons(i+3,j,k,imx)*unp3-cons(i-3,j,k,imx)*unm3 &
-!                   +          (q(i+3,j,k,qpres)   -   q(i-3,j,k,qpres))))*dxinv(1) * ds
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_6( cons(i-3:i+3,j,k,n)*un(-3:3) )
+             end do
 
-!              rhs(i,j,k,imy)= rhs(i,j,k,imy) - &
-!                    (D6(1)*(cons(i+1,j,k,imy)*unp1-cons(i-1,j,k,imy)*unm1) &
-!                   + D6(2)*(cons(i+2,j,k,imy)*unp2-cons(i-2,j,k,imy)*unm2) &
-!                   + D6(3)*(cons(i+3,j,k,imy)*unp3-cons(i-3,j,k,imy)*unm3))*dxinv(1) * ds
+          enddo
+       enddo
+    end if
 
-!              rhs(i,j,k,imz)= rhs(i,j,k,imz) - &
-!                    (D6(1)*(cons(i+1,j,k,imz)*unp1-cons(i-1,j,k,imz)*unm1) &
-!                   + D6(2)*(cons(i+2,j,k,imz)*unp2-cons(i-2,j,k,imz)*unm2) &
-!                   + D6(3)*(cons(i+3,j,k,imz)*unp3-cons(i-3,j,k,imz)*unm3))*dxinv(1) * ds
+    ! ----- hi-x boundary -----
+    if (dhi(1) .eq. hi(1)) then 
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
 
-!              rhs(i,j,k,iene)= rhs(i,j,k,iene) - &
-!                    (D6(1)*(cons(i+1,j,k,iene )*unp1-cons(i-1,j,k,iene )*unm1 &
-!                   +          (q(i+1,j,k,qpres)*unp1-   q(i-1,j,k,qpres)*unm1)) &
-!                   + D6(2)*(cons(i+2,j,k,iene )*unp2-cons(i-2,j,k,iene )*unm2 &
-!                   +          (q(i+2,j,k,qpres)*unp2-   q(i-2,j,k,qpres)*unm2)) &
-!                   + D6(3)*(cons(i+3,j,k,iene )*unp3-cons(i-3,j,k,iene )*unm3 &
-!                   +          (q(i+3,j,k,qpres)*unp3-   q(i-3,j,k,qpres)*unm3)))*dxinv(1) * ds
+             i = hi(1)-3
+             ! use 6th-order stencil
 
-!              do n = iry1, iry1+nspecies-1
-!                 rhs(i,j,k,n) = rhs(i,j,k,n) - &
-!                      ( D6(1)*(cons(i+1,j,k,n)*unp1-cons(i-1,j,k,n)*unm1) &
-!                      + D6(2)*(cons(i+2,j,k,n)*unp2-cons(i-2,j,k,n)*unm2) &
-!                      + D6(3)*(cons(i+3,j,k,n)*unp3-cons(i-3,j,k,n)*unm3))*dxinv(1) * ds
-!              end do
+             un(-3:3) = q(i-3:i+3,j,k,qu)
 
-!           end do
-!        end do
-!     end do
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imx)*un(-3:3)+q(i-3:i+3,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imy)*un(-3:3) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imz)*un(-3:3) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_6( (cons(i-3:i+3,j,k,iene)+q(i-3:i+3,j,k,qpres))*un(-3:3) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_6( cons(i-3:i+3,j,k,n)*un(-3:3) )
+             end do
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+
+             un(-2:2) = q(i-2:i+2,j,k,qu)
+
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imx)*un(-2:2)+q(i-2:i+2,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imy)*un(-2:2) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imz)*un(-2:2) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_4( (cons(i-2:i+2,j,k,iene)+q(i-2:i+2,j,k,qpres))*un(-2:2) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_4( cons(i-2:i+2,j,k,n)*un(-2:2) )
+             end do
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+
+             un(-2:1) = q(i-2:i+1,j,k,qu)
+
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_l3( cons(i-2:i+1,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_l3( cons(i-2:i+1,j,k,imx)*un(-2:1)+q(i-2:i+1,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_l3( cons(i-2:i+1,j,k,imy)*un(-2:1) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_l3( cons(i-2:i+1,j,k,imz)*un(-2:1) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_l3( (cons(i-2:i+1,j,k,iene)+q(i-2:i+1,j,k,qpres))*un(-2:1) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_l3( cons(i-2:i+1,j,k,n)*un(-2:1) )
+             end do
+
+             i = hi(1)
+             ! use completely left-biased stencil
+
+             un(-3:0) = q(i-3:i,j,k,qu)
+
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_lb( cons(i-3:i,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_lb( cons(i-3:i,j,k,imx)*un(-3:0)+q(i-3:i,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_lb( cons(i-3:i,j,k,imy)*un(-3:0) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_lb( cons(i-3:i,j,k,imz)*un(-3:0) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_lb( (cons(i-3:i,j,k,iene)+q(i-3:i,j,k,qpres))*un(-3:0) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_lb( cons(i-3:i,j,k,n)*un(-3:0) )
+             end do
+
+          enddo
+       enddo
+    end if
+
+    ! ----- lo-y boundary -----
+    if (dlo(2) .eq. lo(2)) then 
+       do k=lo(3),hi(3)
+
+          j = lo(2)
+          ! use completely right-biased stencil
+
+          do i=lo(1),hi(1)
+
+             un(0:3) = q(i,j:j+3,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_rb( cons(i,j:j+3,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_rb( cons(i,j:j+3,k,imx)*un(0:3) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_rb( cons(i,j:j+3,k,imy)*un(0:3)+q(i,j:j+3,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_rb( cons(i,j:j+3,k,imz)*un(0:3) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_rb( (cons(i,j:j+3,k,iene)+q(i,j:j+3,k,qpres))*un(0:3) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_rb( cons(i,j:j+3,k,n)*un(0:3) )
+             end do
+
+          enddo
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+
+          do i=lo(1),hi(1)
+
+             un(-1:2) = q(i,j-1:j+2,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_r3( cons(i,j-1:j+2,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_r3( cons(i,j-1:j+2,k,imx)*un(-1:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_r3( cons(i,j-1:j+2,k,imy)*un(-1:2)+q(i,j-1:j+2,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_r3( cons(i,j-1:j+2,k,imz)*un(-1:2) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_r3( (cons(i,j-1:j+2,k,iene)+q(i,j-1:j+2,k,qpres))*un(-1:2) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_r3( cons(i,j-1:j+2,k,n)*un(-1:2) )
+             end do
+
+          enddo
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+
+          do i=lo(1),hi(1)
+
+             un(-2:2) = q(i,j-2:j+2,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imx)*un(-2:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imy)*un(-2:2)+q(i,j-2:j+2,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imz)*un(-2:2) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_4( (cons(i,j-2:j+2,k,iene)+q(i,j-2:j+2,k,qpres))*un(-2:2) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_4( cons(i,j-2:j+2,k,n)*un(-2:2) )
+             end do
+
+          enddo
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+
+          do i=lo(1),hi(1)
+
+             un(-3:3) = q(i,j-3:j+3,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imx)*un(-3:3) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imy)*un(-3:3)+q(i,j-3:j+3,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imz)*un(-3:3) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_6( (cons(i,j-3:j+3,k,iene)+q(i,j-3:j+3,k,qpres))*un(-3:3) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_6( cons(i,j-3:j+3,k,n)*un(-3:3) )
+             end do
+
+          enddo
+
+       enddo
+    end if
+
+    ! ----- hi-y boundary -----
+    if (dhi(2) .eq. hi(2)) then 
+       do k=lo(3),hi(3)
+
+          j = hi(2)-3
+          ! use 6th-order stencil
+
+          do i=lo(1),hi(1)
+
+             un(-3:3) = q(i,j-3:j+3,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imx)*un(-3:3) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imy)*un(-3:3)+q(i,j-3:j+3,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imz)*un(-3:3) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_6( (cons(i,j-3:j+3,k,iene)+q(i,j-3:j+3,k,qpres))*un(-3:3) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_6( cons(i,j-3:j+3,k,n)*un(-3:3) )
+             end do
+
+          enddo
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+
+          do i=lo(1),hi(1)
+
+             un(-2:2) = q(i,j-2:j+2,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imx)*un(-2:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imy)*un(-2:2)+q(i,j-2:j+2,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imz)*un(-2:2) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_4( (cons(i,j-2:j+2,k,iene)+q(i,j-2:j+2,k,qpres))*un(-2:2) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_4( cons(i,j-2:j+2,k,n)*un(-2:2) )
+             end do
+
+          enddo
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+
+          do i=lo(1),hi(1)
+
+             un(-2:1) = q(i,j-2:j+1,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_l3( cons(i,j-2:j+1,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_l3( cons(i,j-2:j+1,k,imx)*un(-2:1) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_l3( cons(i,j-2:j+1,k,imy)*un(-2:1)+q(i,j-2:j+1,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_l3( cons(i,j-2:j+1,k,imz)*un(-2:1) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_l3( (cons(i,j-2:j+1,k,iene)+q(i,j-2:j+1,k,qpres))*un(-2:1) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_l3( cons(i,j-2:j+1,k,n)*un(-2:1) )
+             end do
+
+          enddo
+
+          j = hi(2)
+          ! use completely left-biased stencil
+
+          do i=lo(1),hi(1)
+
+             un(-3:0) = q(i,j-3:j,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_lb( cons(i,j-3:j,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_lb( cons(i,j-3:j,k,imx)*un(-3:0) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_lb( cons(i,j-3:j,k,imy)*un(-3:0)+q(i,j-3:j,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_lb( cons(i,j-3:j,k,imz)*un(-3:0) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_lb( (cons(i,j-3:j,k,iene)+q(i,j-3:j,k,qpres))*un(-3:0) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_lb( cons(i,j-3:j,k,n)*un(-3:0) )
+             end do
+
+          enddo
+
+       enddo
+    end if
 
 
-!     if (shi(1) .eq. hi(1)-4) then
-!        do k=lo(3),hi(3)
-!           do j=lo(2),hi(2)
+    ! ----- lo-z boundary -----
+    if (dlo(3) .eq. lo(3)) then
 
-!              ! use left-biased stencil
-!              i = hi(1)
+       k = lo(3)
+       ! use completely right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
 
-!              ! use slightly left-biased stencil
-!              i = hi(1)-1
+             un(0:3) = q(i,j,k:k+3,qw)
 
-!              ! use 4th-order stencil
-!              i = hi(1)-2
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_rb( cons(i,j,k:k+3,imz) )
 
-!              ! use 6th-order stencil
-!              i = hi(1)-3
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_rb( cons(i,j,k:k+3,imx)*un(0:3) )
 
-!           end do
-!        end do
-!     end if
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_rb( cons(i,j,k:k+3,imy)*un(0:3) )
 
-    ! xxxxxxxx TODO boundary xxxx do we need bclo, bchi?
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_rb( cons(i,j,k:k+3,imz)*un(0:3)+q(i,j,k:k+3,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_rb( (cons(i,j,k:k+3,iene)+q(i,j,k:k+3,qpres))*un(0:3) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_rb(cons(i,j,k:k+3,n)*un(0:3))
+             end do
+
+          enddo
+       enddo
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-1:2) = q(i,j,k-1:k+2,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_r3( cons(i,j,k-1:k+2,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_r3( cons(i,j,k-1:k+2,imx)*un(-1:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_r3( cons(i,j,k-1:k+2,imy)*un(-1:2) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_r3( cons(i,j,k-1:k+2,imz)*un(-1:2)+q(i,j,k-1:k+2,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_r3( (cons(i,j,k-1:k+2,iene)+q(i,j,k-1:k+2,qpres))*un(-1:2) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_r3( cons(i,j,k-1:k+2,n)*un(-1:2) )
+             end do
+
+          enddo
+       enddo
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-2:2) = q(i,j,k-2:k+2,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imx)*un(-2:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imy)*un(-2:2) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imz)*un(-2:2)+q(i,j,k-2:k+2,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_4( (cons(i,j,k-2:k+2,iene)+q(i,j,k-2:k+2,qpres))*un(-2:2) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_4( cons(i,j,k-2:k+2,n)*un(-2:2) )
+             end do
+
+          enddo
+       enddo
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-3:3) = q(i,j,k-3:k+3,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imx)*un(-3:3) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imy)*un(-3:3) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imz)*un(-3:3)+q(i,j,k-3:k+3,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_6( (cons(i,j,k-3:k+3,iene)+q(i,j,k-3:k+3,qpres))*un(-3:3) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_6( cons(i,j,k-3:k+3,n)*un(-3:3) )
+             end do
+
+          enddo
+       enddo
+
+    end if
+
+    ! ----- hi-z boundary -----
+    if (dhi(3) .eq. hi(3)) then
+
+       k = hi(3)-3
+       ! use 6th-order stencil
+       
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-3:3) = q(i,j,k-3:k+3,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imx)*un(-3:3) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imy)*un(-3:3) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imz)*un(-3:3)+q(i,j,k-3:k+3,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_6( (cons(i,j,k-3:k+3,iene)+q(i,j,k-3:k+3,qpres))*un(-3:3) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_6(cons(i,j,k-3:k+3,n)*un(-3:3))
+             end do
+
+          enddo
+       enddo
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-2:2) = q(i,j,k-2:k+2,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imx)*un(-2:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imy)*un(-2:2) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imz)*un(-2:2)+q(i,j,k-2:k+2,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_4( (cons(i,j,k-2:k+2,iene)+q(i,j,k-2:k+2,qpres))*un(-2:2) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_4(cons(i,j,k-2:k+2,n)*un(-2:2))
+             end do
+
+          enddo
+       enddo
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-2:1) = q(i,j,k-2:k+1,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_l3( cons(i,j,k-2:k+1,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_l3( cons(i,j,k-2:k+1,imx)*un(-2:1) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_l3( cons(i,j,k-2:k+1,imy)*un(-2:1) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_l3( cons(i,j,k-2:k+1,imz)*un(-2:1)+q(i,j,k-2:k+1,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_l3( (cons(i,j,k-2:k+1,iene)+q(i,j,k-2:k+1,qpres))*un(-2:1) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_l3(cons(i,j,k-2:k+1,n)*un(-2:1))
+             end do
+
+          enddo
+       enddo
+
+       k = hi(3)
+       ! use completely left-biased stencil
+       
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-3:0) = q(i,j,k-3:k,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_lb( cons(i,j,k-3:k,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_lb( cons(i,j,k-3:k,imx)*un(-3:0) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_lb( cons(i,j,k-3:k,imy)*un(-3:0) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_lb( cons(i,j,k-3:k,imz)*un(-3:0)+q(i,j,k-3:k,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_lb( (cons(i,j,k-3:k,iene)+q(i,j,k-3:k,qpres))*un(-3:0) )
+
+             do n = iry1, iry1+nspecies-1
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_lb(cons(i,j,k-3:k,n)*un(-3:0))
+             end do
+
+          enddo
+       enddo
+
+    end if
 
   end subroutine hypterm_3d
 
 
-  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy,dlo,dhi,bclo,bchi)
+  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy,dlo,dhi)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
@@ -381,7 +872,7 @@ contains
     double precision, intent(in ) :: lam(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
     double precision, intent(in ) :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
     double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
-    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
+    integer          , intent(in) :: dlo(3),dhi(3)
 
     double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
     double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
@@ -454,9 +945,9 @@ contains
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
           do i=slo(1),shi(1)
-             ux(i,j,k)= dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qu))
-             vx(i,j,k)= dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qv))
-             wx(i,j,k)= dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qw))
+             ux(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qw))
           enddo
        enddo
     enddo
@@ -466,9 +957,9 @@ contains
     do k=dlo(3),dhi(3)
        do j=slo(2),shi(2)   
           do i=dlo(1),dhi(1)
-             uy(i,j,k)= dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qu))
-             vy(i,j,k)= dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
-             wy(i,j,k)= dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qw))
+             uy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qu))
+             vy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
+             wy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qw))
           enddo
        enddo
     enddo
@@ -478,9 +969,9 @@ contains
     do k=slo(3),shi(3)
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
-             uz(i,j,k)= dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qu))
-             vz(i,j,k)= dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qv))
-             wz(i,j,k)= dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qw))
+             uz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qw))
           enddo
        enddo
     enddo
@@ -781,8 +1272,6 @@ contains
     
     !$omp end parallel
 
-    ! xxxxx TODO boundary xxxxx do we need bclo, bchi?
-
     deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,vsp,vsm,Hg,dpy,dxe,dpe)
 
   end subroutine compact_diffterm_3d
@@ -904,9 +1393,9 @@ contains
     do k=lo(3)-ng,hi(3)+ng
        do j=lo(2)-ng,hi(2)+ng
           do i=lo(1),hi(1)
-             qx(i,j,k,idu)= dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qu) )
-             qx(i,j,k,idv)= dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qv) )
-             qx(i,j,k,idw)= dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qw) )
+             qx(i,j,k,idu) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qu) )
+             qx(i,j,k,idv) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qv) )
+             qx(i,j,k,idw) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qw) )
           enddo
        enddo
     enddo
@@ -916,9 +1405,9 @@ contains
     do k=lo(3)-ng,hi(3)+ng
        do j=lo(2),hi(2)   
           do i=lo(1)-ng,hi(1)+ng
-             qy(i,j,k,idu)= dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qu) )
-             qy(i,j,k,idv)= dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qv) )
-             qy(i,j,k,idw)= dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qw) )
+             qy(i,j,k,idu) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qu) )
+             qy(i,j,k,idv) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qv) )
+             qy(i,j,k,idw) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qw) )
           enddo
        enddo
     enddo
@@ -928,9 +1417,9 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2)-ng,hi(2)+ng
           do i=lo(1)-ng,hi(1)+ng
-             qz(i,j,k,idu)= dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qu) )
-             qz(i,j,k,idv)= dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qv) )
-             qz(i,j,k,idw)= dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qw) )
+             qz(i,j,k,idu) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qu) )
+             qz(i,j,k,idv) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qv) )
+             qz(i,j,k,idw) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qw) )
           enddo
        enddo
     enddo

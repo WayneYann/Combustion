@@ -18,11 +18,15 @@ module derivative_stencil_module
 
   ! 3rd-order first derivative
   ! The stencil is slighly right-based with one cell on the left and two on the right
-  double precision,dimension(-1:2),parameter :: D3 = (/ -1.d0/3.d0, -0.5d0, 1.d0, -1.d0/6.d0 /)
+  double precision,dimension(-1:2),parameter :: DR3 = (/ -1.d0/3.d0, -0.5d0, 1.d0, -1.d0/6.d0 /)
+  ! The stencil is slighly left-based with two cells on the left and on on the right
+  double precision,dimension(-2:1),parameter :: DL3 = (/ 1.d0/6.d0, -1.d0, 0.5d0, 1.d0/3.d0 /)
   
   ! 3rd-order first derivative
   ! The stencil is right-based with no cell on the left and three on the right
-  double precision,dimension(0:3),parameter :: DB = (/ -11.d0/6.d0, 3.d0, -1.5d0, 1.d0/3.d0 /)
+  double precision,dimension(0:3),parameter :: DRB = (/ -11.d0/6.d0, 3.d0, -1.5d0, 1.d0/3.d0 /)
+  ! The stencil is left-based with no cell on the right and three on the left
+  double precision,dimension(-3:0),parameter :: DLB = (/ -1.d0/3.d0, 1.5d0, -3.d0, 11.d0/6.d0 /)
 
   ! coefficients for 8th-order stencil of second derivatives
   ! d(a*du/dx)/dx = H_{i+1/2} - H_{i-1/2},
@@ -238,5 +242,44 @@ contains
          + D8(3)*(u(3)-u(-3)) &
          + D8(4)*(u(4)-u(-4))
   end function first_deriv_8
+
+  function first_deriv_6(u) result(du)
+    double precision :: du
+    double precision, intent(in) :: u(-3:3)
+    du =   D6(1)*(u(1)-u(-1)) &
+         + D6(2)*(u(2)-u(-2)) &
+         + D6(3)*(u(3)-u(-3))
+  end function first_deriv_6
+
+  function first_deriv_4(u) result(du)
+    double precision :: du
+    double precision, intent(in) :: u(-2:2)
+    du =   D4(1)*(u(1)-u(-1)) &
+         + D4(2)*(u(2)-u(-2)) 
+  end function first_deriv_4
+
+  function first_deriv_r3(u) result(du)
+    double precision :: du
+    double precision, intent(in) :: u(-1:2)
+    du = sum(u*DR3)
+  end function first_deriv_r3
+
+  function first_deriv_l3(u) result(du)
+    double precision :: du
+    double precision, intent(in) :: u(-2:1)
+    du = sum(u*DL3)
+  end function first_deriv_l3
+
+  function first_deriv_rb(u) result(du)
+    double precision :: du
+    double precision, intent(in) :: u(0:3)
+    du = sum(u*DRB)
+  end function first_deriv_rb
+
+  function first_deriv_lb(u) result(du)
+    double precision :: du
+    double precision, intent(in) :: u(-3:0)
+    du = sum(u*DLB)
+  end function first_deriv_lb
 
 end module derivative_stencil_module

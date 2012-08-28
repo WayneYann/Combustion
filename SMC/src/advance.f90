@@ -378,7 +378,6 @@ contains
 
     integer ::    lo(U%dim),    hi(U%dim)
     integer ::   dlo(U%dim),   dhi(U%dim)
-    integer :: bbclo(U%dim), bbchi(U%dim)
     integer :: i,j,k,m,n, ng, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
@@ -426,12 +425,11 @@ contains
        hi = upb(get_box(Fhyp,n))
 
        call get_data_lo_hi(n,dlo,dhi)
-       call get_boxbc(n,bbclo,bbchi)
 
        if (dm .ne. 3) then
           call bl_error("Only 3D hypterm is supported")
        else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,bbclo,bbchi)
+          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi)
        end if
     end do
 
@@ -454,12 +452,11 @@ contains
        hi = upb(get_box(Q,n))
 
        call get_data_lo_hi(n,dlo,dhi)
-       call get_boxbc(n,bbclo,bbchi)
 
        if (dm .ne. 3) then
           call bl_error("Only 3D compact_diffterm is supported")
        else
-          call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi,bbclo,bbchi)
+          call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi)
        end if
     end do
 
@@ -567,7 +564,6 @@ contains
 
     integer ::    lo(U%dim),    hi(U%dim)
     integer ::   dlo(U%dim),   dhi(U%dim)
-    integer :: bbclo(U%dim), bbchi(U%dim)
     integer :: i,j,k,m,n, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
@@ -626,12 +622,11 @@ contains
        hi = upb(get_box(Fhyp,n))
 
        call get_data_lo_hi(n,dlo,dhi)
-       call get_boxbc(n,bbclo,bbchi)
 
        if (dm .ne. 3) then
           call bl_error("Only 3D hypterm is supported")
        else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,bbclo,bbchi)
+          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi)
        end if
     end do
 
