@@ -230,4 +230,13 @@ contains
 
   end subroutine stencil_init
 
+  function first_deriv_8(u) result(du)
+    double precision :: du
+    double precision, intent(in) :: u(-4:4)
+    du =   D8(1)*(u(1)-u(-1)) &
+         + D8(2)*(u(2)-u(-2)) &
+         + D8(3)*(u(3)-u(-3)) &
+         + D8(4)*(u(4)-u(-4))
+  end function first_deriv_8
+
 end module derivative_stencil_module

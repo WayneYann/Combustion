@@ -88,7 +88,7 @@ contains
 
   subroutine make_divu_3d(divu, Q, lo, hi, ngd, ngq, dx)
 
-    use derivative_stencil_module, only : D8
+    use derivative_stencil_module, only : first_deriv_8
 
     integer, intent(in) :: lo(3), hi(3), ngd, ngq
     double precision, intent(out) :: divu(-ngd+lo(1):hi(1)+ngd,-ngd+lo(2):hi(2)+ngd,-ngd+lo(3):hi(3)+ngd)
@@ -108,20 +108,9 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
-             ux =  (D8(1)*(q(i+1,j,k,qu)-q(i-1,j,k,qu)) &
-                  + D8(2)*(q(i+2,j,k,qu)-q(i-2,j,k,qu)) &
-                  + D8(3)*(q(i+3,j,k,qu)-q(i-3,j,k,qu)) &
-                  + D8(4)*(q(i+4,j,k,qu)-q(i-4,j,k,qu)))*dxinv(1)
-
-             vy =  (D8(1)*(q(i,j+1,k,qv)-q(i,j-1,k,qv)) &
-                  + D8(2)*(q(i,j+2,k,qv)-q(i,j-2,k,qv)) &
-                  + D8(3)*(q(i,j+3,k,qv)-q(i,j-3,k,qv)) &
-                  + D8(4)*(q(i,j+4,k,qv)-q(i,j-4,k,qv)))*dxinv(2)
-
-             wz =  (D8(1)*(q(i,j,k+1,qw)-q(i,j,k-1,qw)) &
-                  + D8(2)*(q(i,j,k+2,qw)-q(i,j,k-2,qw)) &
-                  + D8(3)*(q(i,j,k+3,qw)-q(i,j,k-3,qw)) &
-                  + D8(4)*(q(i,j,k+4,qw)-q(i,j,k-4,qw)))*dxinv(3)
+             ux = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qu))
+             vy = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
+             wz = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qw))
 
              divu(i,j,k) = ux + vy + wz
 
