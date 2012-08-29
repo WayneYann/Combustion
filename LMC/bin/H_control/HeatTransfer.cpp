@@ -2652,11 +2652,23 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	    // If updateFluxReg=T, we update ADVECTIVE flux registers:
 	    //   ADD (1/2)*h_m^n*(Gamma_{m,AD}^(0)-lambda^n/cp^n grad Y_{m,AD}^(0)).
 	    if (do_reflux && updateFluxReg)
+            {
+	      for (int d = 0; d < BL_SPACEDIM; d++)
 	      {
+		for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
+		{
+		  if (level > 0)
+		  {
+		    advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
+		  }
+		}
 
-
-
+		if (level < parent->finestLevel())
+		{
+		  getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d]),d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
+		}
 	      }
+	    }
 
             flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
             
