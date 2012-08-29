@@ -48,7 +48,7 @@ module derivative_stencil_module
   ! Given u and a on cell 1, 2, 3, 4, 
   !      the second derivate at cell 1 is give by a.B.u
   double precision, private, parameter :: BB2_33 = 2.d0
-  double precision, save, dimension(4,4) :: BB2
+  double precision, save, dimension(4,4) :: BLB, BRB
 
 contains
   
@@ -56,6 +56,8 @@ contains
 
     use bl_error_module
     use probin_module, only : stencil_type
+
+    integer :: i, j
 
     if (trim(stencil_type) == "compact") then
        stencil = compact
@@ -211,26 +213,32 @@ contains
     M2(1,2) = 0.5d0
     M2(2,2) = 0.5d0
 
-    ! biased 2nd-order
-    BB2(1,1) = BB2_33
-    BB2(2,1) = 3.5d0 - 2.*BB2_33
-    BB2(3,1) = -1.5d0 + BB2_33
-    BB2(4,1) = 0.d0
+    ! right biased 2nd-order
+    BRB(1,1) = BB2_33
+    BRB(2,1) = 3.5d0 - 2.*BB2_33
+    BRB(3,1) = -1.5d0 + BB2_33
+    BRB(4,1) = 0.d0
 
-    BB2(1,2) = 1.5d0 - 2.d0*BB2_33
-    BB2(2,2) = -9.d0 + 4.d0*BB2_33
-    BB2(3,2) = 2.5d0 - 2.d0*BB2_33
-    BB2(4,2) = 0.d0
+    BRB(1,2) = 1.5d0 - 2.d0*BB2_33
+    BRB(2,2) = -9.d0 + 4.d0*BB2_33
+    BRB(3,2) = 2.5d0 - 2.d0*BB2_33
+    BRB(4,2) = 0.d0
 
-    BB2(1,3) = -1.5d0 + BB2_33
-    BB2(2,3) = 5.5d0 - 2.d0*BB2_33
-    BB2(3,3) = BB2_33
-    BB2(4,3) = 0.d0
+    BRB(1,3) = -1.5d0 + BB2_33
+    BRB(2,3) = 5.5d0 - 2.d0*BB2_33
+    BRB(3,3) = BB2_33
+    BRB(4,3) = 0.d0
 
-    BB2(1,4) = 0.d0
-    BB2(2,4) = 0.d0
-    BB2(3,4) = -1.d0
-    BB2(4,4) = 0.d0
+    BRB(1,4) = 0.d0
+    BRB(2,4) = 0.d0
+    BRB(3,4) = -1.d0
+    BRB(4,4) = 0.d0
+
+    do j=1,4
+       do i=1,4
+          BLB(i,j) = BRB(5-i,5-j)
+       end do
+    end do
 
   end subroutine stencil_init
 
