@@ -107,7 +107,6 @@ int  HeatTransfer::do_OT_radiation;
 int  HeatTransfer::do_heat_sink;
 int  HeatTransfer::RhoH;
 int  HeatTransfer::do_diffuse_sync;
-int  HeatTransfer::do_reflux_visc;
 int  HeatTransfer::dpdt_option;
 int  HeatTransfer::RhoYdot_Type;
 int  HeatTransfer::FuncCount_Type;
@@ -282,7 +281,6 @@ HeatTransfer::Initialize ()
     HeatTransfer::do_heat_sink              = 0;
     HeatTransfer::RhoH                      = -1;
     HeatTransfer::do_diffuse_sync           = 1;
-    HeatTransfer::do_reflux_visc            = 1;
     HeatTransfer::dpdt_option               = 2;
     HeatTransfer::RhoYdot_Type                 = -1;
     HeatTransfer::FuncCount_Type            = -1;
@@ -352,8 +350,6 @@ HeatTransfer::Initialize ()
 
     pp.query("do_diffuse_sync",do_diffuse_sync);
     BL_ASSERT(do_diffuse_sync == 0 || do_diffuse_sync == 1);
-    pp.query("do_reflux_visc",do_reflux_visc);
-    BL_ASSERT(do_reflux_visc == 0 || do_reflux_visc == 1);
     pp.query("dpdt_option",dpdt_option);
     BL_ASSERT(dpdt_option >= 0 && dpdt_option <= 2);
     pp.query("do_active_control",do_active_control);
@@ -2613,6 +2609,12 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         bool grow_cells_already_filled = false;
 
         adjust_spec_diffusion_fluxes(curr_time,betanp1,grow_cells_already_filled);
+
+	// AJN FIXME
+	// if updateFluxReg=T and we are in the predictor, add (1/2)*Dnp1 to flux register
+	// if we are in an SDC corrector, add Dnp1 to flux register
+
+
         flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
 
 	if (theta_enthalpy > 0)
@@ -2636,6 +2638,15 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             
             // compute enthalpy fluxes with correct species
             compute_enthalpy_fluxes(curr_time,betanp1,grow_cells_already_filled);
+
+	    // AJN FIXME
+	    // if updateFluxReg=T, that means there are no SDC correction sweeps
+	    // Now do reflux with DDnp1 terms and add them to ADVECTIVE flux register, where
+	    // DD = -h_m * (Gamma_m + lambda/cp grad Y_m)
+
+
+
+
             flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
             
             DDnew.mult(theta_enthalpy,0,1);
@@ -4656,7 +4667,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
 
     //
-    // Now do reflux with new, improved fluxes
+    // AJN FIXME
+    // Now do reflux with conservatively corrected Gamma
     //
     // if we are calling this in the predictor, add (1/2)*Gamma^n to viscous flux register
     // if we are calling this in the last SDC correction sweep, subtract (1/2)*Gamma^{kmax-1} from
@@ -4704,6 +4716,15 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy)
     // compute sum_m Gamma_m dot grad h_m (for divu)
     compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);
+
+    //
+    // AJN FIXME
+    // Now do reflux with DD terms and add them to ADVECTIVE flux register, where
+    // DD = -h_m * (Gamma_m + lambda/cp grad Y_m)
+    //
+    // if we are calling this in the predictor, add (1/2)*DD^n to advective flux register
+    // if we are calling this in the last correction sweep, add (1/2)*DD^{n+1,(k-1)} to
+    //    advective flux register
 
     diffusion->removeFluxBoxesLevel(beta);
 }
@@ -6747,11 +6768,7 @@ HeatTransfer::reflux ()
     geom.GetVolume(volume,grids,GEOM_GROW);
 
     fr_visc.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
-    //
-    // Set do_reflux_visc to 0 for debugging reasons only.
-    //
-    if (do_reflux_visc)
-        fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
+    fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
     const MultiFab* Rh = get_rho_half_time();
 

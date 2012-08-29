@@ -521,7 +521,6 @@ protected:
     static Real        constant_rhoD_val;
     static Real        constant_lambda_val;
     static int         do_diffuse_sync;
-    static int         do_reflux_visc;
     static int         dpdt_option;
     static int         do_set_rho_to_species_sum;
     static int         zeroBndryVisc;
