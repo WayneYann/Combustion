@@ -2609,9 +2609,10 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
         adjust_spec_diffusion_fluxes(curr_time,betanp1,grow_cells_already_filled);
 
-	// AJN FIXME
-	// if updateFluxReg=T, we add either (1/2)*Dnp1 (if we're in the predictor) 
-	// or Dnp1 (if we are in a correction sweep) to viscous flux register
+        // If updateFluxReg=T, we update viscous flux registers:
+	//   if we are in the predictor, add (1/2)*Gamma_{m,AD}^(0).
+	//   if we are in the corrector, add Gamma_{m,AD}^(k+1),
+	//                               add lambda^(k)/cp^(k) grad h_AD^(k+1).
 	if ( do_reflux && updateFluxReg )
 	  {
 
@@ -2642,11 +2643,11 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             // compute enthalpy fluxes with correct species
             compute_enthalpy_fluxes(curr_time,betanp1,grow_cells_already_filled);
 
-	    // AJN FIXME
-	    // we only get here if we're in the predictor since theta_enthalpy = 0.5.
-	    // if updateFluxReg=T, that means there are no SDC correction sweeps
-	    // Add (1/2)*DDnp1 to ADVECTIVE flux register, where
-	    // DD = -h_m * (Gamma_m + lambda/cp grad Y_m)
+	    // AJN FLUXREG
+	    // We have just computed the "DDnp1" terms for the forcing in the
+	    //   predictor h implicit solve.
+	    // If updateFluxReg=T, we update viscous flux registers:
+	    //   add (1/2)*h_m^n*(Gamma_{m,AD}^(0)-lambda^n/cp^n grad Y_{m,AD}^(0)).
 	    if (do_reflux && updateFluxReg)
 	      {
 
@@ -2678,6 +2679,17 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
                 (*SpecDiffusionFluxnp1[d]).mult(1/theta,sigma,1);
                 (*SpecDiffusionFluxn[d]).mult(1/(1-theta),sigma,1);
             }
+
+	    // AJN FLUXREG
+	    // We have just finished the implicit solve for h in the predictor.
+	    // If updateFluxReg=T, we update viscous flux registers:
+	    //  add (1/2)*lambda^n/cp^ngrad h_AD^(0)
+	    if ( do_reflux && updateFluxReg )
+	      {
+		
+		
+	      }
+
             flux_divergence(Dnew,nspecies,SpecDiffusionFluxnp1,nspecies,1,-1);
         }
 
@@ -4674,12 +4686,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
 
     //
-    // AJN FIXME
-    // Now do reflux with conservatively corrected Gamma
-    //
-    // if we are calling this in the predictor, add (1/2)*Gamma^n to viscous flux register
-    // if we are calling this in the last SDC correction sweep, subtract 
-    //    (1/2)*Gamma^{kmax-1} from viscous flux register
+    // AJN FLUXREG
+    // We have just explicitly computed D given an input state.
+    // Update flux registers as follows.
+    // If we are calling this in the predictor:
+    //   add (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n.
+    // If we are calling this in the corrector AND updateFluxReg=T:
+    //   subtract (1/2)*Gamma_m^(k) and (1/2)lambda^(k)/cp^(k) grad h^(l)
     if ( (do_reflux && is_predictor) ||
          (do_reflux && !is_predictor && updateFluxReg) )
     {
@@ -4723,13 +4736,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);
 
     //
-    // AJN FIXME
-    // Now do reflux with DD terms and add them to ADVECTIVE flux register, where
-    // DD = -h_m * (Gamma_m + lambda/cp grad Y_m)
-    //
-    // if we are calling this in the predictor, add (1/2)*DD^n to advective flux register
-    // if we are calling this in the last correction sweep, add (1/2)*DD^{n+1,(k-1)} to
-    //    advective flux register
+    // AJN FLUXREG
+    // We have just explicitly computed DD given an input state.
+    // Update flux registers as follows.
+    // If we are calling this in the predictor:
+    //   add (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
+    // If we are calling this in the corrector AND updateFluxReg=T:
+    //   add (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
     if ( (do_reflux && is_predictor) ||
          (do_reflux && !is_predictor && updateFluxReg) )
     {
@@ -5917,7 +5930,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                 }        
             }
 
-	    // AJN FIXME
+	    // AJN FLUXREG
 	    // if updateFluxReg=T, add advective fluxes to flux register
 	    if (do_reflux && updateFluxReg && level > 0)
 	    {
