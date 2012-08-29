@@ -2647,7 +2647,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             compute_enthalpy_fluxes(curr_time,betanp1,grow_cells_already_filled);
 
 	    // AJN FLUXREG
-	    // We have just computed the "DDnp1" terms for the forcing in the
+	    // We have just computed the time-advanced "DD" terms for the forcing in the
 	    //   predictor h implicit solve.
 	    // If updateFluxReg=T, we update ADVECTIVE flux registers:
 	    //   ADD (1/2)*h_m^n*(Gamma_{m,AD}^(0)-lambda^n/cp^n grad Y_{m,AD}^(0)).
@@ -4690,12 +4690,12 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     //
     // AJN FLUXREG
-    // We have just explicitly computed D given an input state.
+    // We have just explicitly computed "D" for Y_m and h given an input state.
     // Update VISCOUS flux registers as follows.
     // If we are calling this in the predictor:
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If we are calling this in the corrector AND updateFluxReg=T:
-    //   SUBSTRACT (1/2)*Gamma_m^(k) and (1/2)lambda^(k)/cp^(k) grad h^(k)
+    //   SUBSTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
     if ( (do_reflux && is_predictor) ||
          (do_reflux && !is_predictor && updateFluxReg) )
     {
@@ -4717,23 +4717,23 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	  fluxtot.resize(ebox,nspecies+1);
 
 	  if (is_predictor)
-	    fluxtot.copy((*SpecDiffusionFluxn[d])[fmfi], ebox,0,ebox,0,nspecies+1);
+	    fluxtot.copy((*SpecDiffusionFluxn[d])[fmfi],  ebox,0,ebox,0,nspecies+1);
 	  else
-	    fluxtot.copy((*SpecDiffusionFluxnp1[d])[fmfi], ebox,0,ebox,0,nspecies+1);
+	    fluxtot.copy((*SpecDiffusionFluxnp1[d])[fmfi],ebox,0,ebox,0,nspecies+1);
+
+	  if (level > 0)
+	    getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,first_spec,nspecies+1,theta*dt);
 
 	  if (level < parent->finestLevel())
 	    fluxes[fmfi].copy(fluxtot);
-
-	  if (level > 0)
-	    getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,first_spec,nspecies,theta*dt);
-	}
+  	}
 
 	if (level < parent->finestLevel())
         {
 	  if (is_predictor)
-	    getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies,-theta*dt);
+	    getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies+1,-theta*dt,FluxRegister::COPY);
 	  else
-	    getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies,-theta*dt,FluxRegister::ADD);
+	    getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies+1,-theta*dt,FluxRegister::ADD);
 	}
       }
     }
@@ -4745,7 +4745,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     //
     // AJN FLUXREG
-    // We have just explicitly computed DD given an input state.
+    // We have just explicitly computed "DD" given an input state.
     // Update ADVECTIVE flux registers as follows.
     // If we are calling this in the predictor:
     //   COPY (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
