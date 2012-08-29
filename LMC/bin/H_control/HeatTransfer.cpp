@@ -4695,12 +4695,11 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // If we are calling this in the predictor:
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If we are calling this in the corrector AND updateFluxReg=T:
-    //   SUBSTRACT (1/2)*Gamma_m^(k) and (1/2)lambda^(k)/cp^(k) grad h^(l)
+    //   SUBSTRACT (1/2)*Gamma_m^(k) and (1/2)lambda^(k)/cp^(k) grad h^(k)
     if ( (do_reflux && is_predictor) ||
          (do_reflux && !is_predictor && updateFluxReg) )
     {
       const Real theta = (is_predictor) ? 0.5 : -0.5;
-      
       FArrayBox fluxtot;
 
       for (int d = 0; d < BL_SPACEDIM; d++)
@@ -4708,15 +4707,19 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	MultiFab fluxes;
 
 	if (level < parent->finestLevel())
-	  fluxes.define(SpecDiffusionFluxn[d]->boxArray(), nspecies, 0, Fab_allocate);
+       	  fluxes.define(SpecDiffusionFluxn[d]->boxArray(), nspecies+1, 0, Fab_allocate);
 
 	for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
 	{
 	  const Box& ebox = (*SpecDiffusionFluxn[d])[fmfi].box();
 
-	  fluxtot.resize(ebox,nspecies);
-	  fluxtot.copy((*SpecDiffusionFluxn[d])[fmfi], ebox,0,ebox,0,nspecies);
-	  fluxtot.plus((*SpecDiffusionFluxnp1[d])[fmfi],ebox,0,0,nspecies);
+	  // make enough space for Y_m and h
+	  fluxtot.resize(ebox,nspecies+1);
+
+	  if (is_predictor)
+	    fluxtot.copy((*SpecDiffusionFluxn[d])[fmfi], ebox,0,ebox,0,nspecies+1);
+	  else
+	    fluxtot.copy((*SpecDiffusionFluxnp1[d])[fmfi], ebox,0,ebox,0,nspecies+1);
 
 	  if (level < parent->finestLevel())
 	    fluxes[fmfi].copy(fluxtot);
@@ -4727,10 +4730,12 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
 	if (level < parent->finestLevel())
         {
-	  getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies,-theta*dt);
+	  if (is_predictor)
+	    getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies,-theta*dt);
+	  else
+	    getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies,-theta*dt,FluxRegister::ADD);
 	}
       }
-      
     }
 
     // compute lambda grad T (for temperature and divu)
@@ -5946,20 +5951,19 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 	      // now that density has been constructed by summing rhoY, 
 	      // update the flux register for density
 	      if (comp == nspecies)
-		{
-		  for (int d = 0; d < BL_SPACEDIM; d++)
-		    advflux_reg->FineAdd((*EdgeState[d])[i],d,i,Density,Density,1,dt);
-		}
-
-	     }
-
-	 }
+	      {
+		for (int d = 0; d < BL_SPACEDIM; d++)
+		  advflux_reg->FineAdd((*EdgeState[d])[i],d,i,Density,Density,1,dt);
+	      }
+	    }
+	}
 
 	 // NOTE: Changes sense of aofs here so that d/dt ~ aofs...be sure we use our own update
 	 //  function
         (*aofs)[i].mult(-1,Density,nspecies+3);
     }
 
+    // update flux register for rho, rhoY, rhoh, and tracer
     if (do_reflux && updateFluxReg && level < parent->finestLevel())
     {
         for (int d = 0; d < BL_SPACEDIM; d++)
