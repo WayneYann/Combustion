@@ -2617,10 +2617,29 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	//   if we are in the corrector, ADD Gamma_{m,AD}^(k+1),
 	//                               ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
 	if ( do_reflux && updateFluxReg )
+	{
+	  for (int d = 0; d < BL_SPACEDIM; d++)
 	  {
+	    for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
+	    {
+	      if (level > 0)
+	      {
+		if (is_predictor)
+		  getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies  ,0.5*dt);
+		else
+		  getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,0.5*dt);
+	      }
+	    }
 
-
+	    if (level < parent->finestLevel())
+	    {
+	      if (is_predictor)
+		getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies  ,-0.5*dt,FluxRegister::ADD);
+	      else
+		getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-0.5*dt,FluxRegister::ADD);
+	    }
 	  }
+	}
 
         flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
 
@@ -2700,10 +2719,21 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	    // If updateFluxReg=T, we update VISCOUS flux registers:
 	    //  ADD (1/2)*lambda^n/cp^ngrad h_AD^(0)
 	    if ( do_reflux && updateFluxReg )
-	      {
-		
-		
-	      }
+	    {
+	      for (int d = 0; d < BL_SPACEDIM; d++)
+		{
+		  for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
+		  {
+		    if (level > 0)
+		      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,RhoH,1,0.5*dt);
+		  }
+
+		  if (level < parent->finestLevel())
+		  {
+		    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,RhoH,1,-0.5*dt,FluxRegister::ADD);
+		  }
+		}
+	    }
 
             flux_divergence(Dnew,nspecies,SpecDiffusionFluxnp1,nspecies,1,-1);
         }
