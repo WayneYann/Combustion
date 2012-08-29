@@ -2609,10 +2609,13 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
         adjust_spec_diffusion_fluxes(curr_time,betanp1,grow_cells_already_filled);
 
-        // If updateFluxReg=T, we update viscous flux registers:
-	//   if we are in the predictor, add (1/2)*Gamma_{m,AD}^(0).
-	//   if we are in the corrector, add Gamma_{m,AD}^(k+1),
-	//                               add lambda^(k)/cp^(k) grad h_AD^(k+1).
+	// AJN FLUXREG
+	// We have just performed the diffusion solve for Y_m.
+	// If we are in the corrector, we have also performed the diffusion solve for h.
+        // If updateFluxReg=T, we update VISCOUS flux registers:
+	//   if we are in the predictor, ADD (1/2)*Gamma_{m,AD}^(0).
+	//   if we are in the corrector, ADD Gamma_{m,AD}^(k+1),
+	//                               ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
 	if ( do_reflux && updateFluxReg )
 	  {
 
@@ -2646,8 +2649,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	    // AJN FLUXREG
 	    // We have just computed the "DDnp1" terms for the forcing in the
 	    //   predictor h implicit solve.
-	    // If updateFluxReg=T, we update viscous flux registers:
-	    //   add (1/2)*h_m^n*(Gamma_{m,AD}^(0)-lambda^n/cp^n grad Y_{m,AD}^(0)).
+	    // If updateFluxReg=T, we update ADVECTIVE flux registers:
+	    //   ADD (1/2)*h_m^n*(Gamma_{m,AD}^(0)-lambda^n/cp^n grad Y_{m,AD}^(0)).
 	    if (do_reflux && updateFluxReg)
 	      {
 
@@ -2682,8 +2685,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
 	    // AJN FLUXREG
 	    // We have just finished the implicit solve for h in the predictor.
-	    // If updateFluxReg=T, we update viscous flux registers:
-	    //  add (1/2)*lambda^n/cp^ngrad h_AD^(0)
+	    // If updateFluxReg=T, we update VISCOUS flux registers:
+	    //  ADD (1/2)*lambda^n/cp^ngrad h_AD^(0)
 	    if ( do_reflux && updateFluxReg )
 	      {
 		
@@ -4688,11 +4691,11 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //
     // AJN FLUXREG
     // We have just explicitly computed D given an input state.
-    // Update flux registers as follows.
+    // Update VISCOUS flux registers as follows.
     // If we are calling this in the predictor:
-    //   add (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n.
+    //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If we are calling this in the corrector AND updateFluxReg=T:
-    //   subtract (1/2)*Gamma_m^(k) and (1/2)lambda^(k)/cp^(k) grad h^(l)
+    //   SUBSTRACT (1/2)*Gamma_m^(k) and (1/2)lambda^(k)/cp^(k) grad h^(l)
     if ( (do_reflux && is_predictor) ||
          (do_reflux && !is_predictor && updateFluxReg) )
     {
@@ -4738,11 +4741,11 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //
     // AJN FLUXREG
     // We have just explicitly computed DD given an input state.
-    // Update flux registers as follows.
+    // Update ADVECTIVE flux registers as follows.
     // If we are calling this in the predictor:
-    //   add (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
+    //   COPY (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If we are calling this in the corrector AND updateFluxReg=T:
-    //   add (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
+    //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
     if ( (do_reflux && is_predictor) ||
          (do_reflux && !is_predictor && updateFluxReg) )
     {
@@ -5931,7 +5934,8 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
             }
 
 	    // AJN FLUXREG
-	    // if updateFluxReg=T, add advective fluxes to flux register
+	    // We have just computed the advective fluxes.  If updateFluxReg=T,
+	    // ADD advective fluxes to ADVECTIVE flux register
 	    if (do_reflux && updateFluxReg && level > 0)
 	    {
 
@@ -5959,7 +5963,8 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     if (do_reflux && updateFluxReg && level < parent->finestLevel())
     {
         for (int d = 0; d < BL_SPACEDIM; d++)
-            getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,Density,Density,nspecies+3,-dt);
+	  getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,Density,Density,nspecies+3,-dt,
+                                           FluxRegister::ADD);
     }
 }
 
