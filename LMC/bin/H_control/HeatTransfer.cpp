@@ -4700,40 +4700,26 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
          (do_reflux && !is_predictor && updateFluxReg) )
     {
       const Real theta = (is_predictor) ? 0.5 : -0.5;
-      FArrayBox fluxtot;
 
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
-	MultiFab fluxes;
-
-	if (level < parent->finestLevel())
-       	  fluxes.define(SpecDiffusionFluxn[d]->boxArray(), nspecies+1, 0, Fab_allocate);
-
 	for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
 	{
-	  const Box& ebox = (*SpecDiffusionFluxn[d])[fmfi].box();
-
-	  // make enough space for Y_m and h
-	  fluxtot.resize(ebox,nspecies+1);
-
-	  if (is_predictor)
-	    fluxtot.copy((*SpecDiffusionFluxn[d])[fmfi],  ebox,0,ebox,0,nspecies+1);
-	  else
-	    fluxtot.copy((*SpecDiffusionFluxnp1[d])[fmfi],ebox,0,ebox,0,nspecies+1);
-
 	  if (level > 0)
-	    getViscFluxReg().FineAdd(fluxtot,d,fmfi.index(),0,first_spec,nspecies+1,theta*dt);
-
-	  if (level < parent->finestLevel())
-	    fluxes[fmfi].copy(fluxtot);
-  	}
+          {
+	    if (is_predictor)
+	      getViscFluxReg().FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,theta*dt);
+	    else
+	      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,theta*dt);
+	  }
+	}
 
 	if (level < parent->finestLevel())
         {
 	  if (is_predictor)
-	    getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies+1,-theta*dt,FluxRegister::COPY);
+	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,first_spec,nspecies+1,-theta*dt,FluxRegister::COPY);
 	  else
-	    getLevel(level+1).getViscFluxReg().CrseInit(fluxes,d,0,first_spec,nspecies+1,-theta*dt,FluxRegister::ADD);
+	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-theta*dt,FluxRegister::ADD);
 	}
       }
     }
