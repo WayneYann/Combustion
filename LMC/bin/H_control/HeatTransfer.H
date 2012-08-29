@@ -559,7 +559,8 @@ protected:
     static int sdc_iterMAX;
     
     static int nGrowAdvForcing;
-    bool       updateFluxReg;    
+    bool       updateFluxReg;
+    bool       is_predictor;
     MultiFab   Forcing;
     MultiFab   Dn;
     MultiFab   Dnp1;

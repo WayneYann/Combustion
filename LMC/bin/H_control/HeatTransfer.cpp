@@ -1165,7 +1165,6 @@ HeatTransfer::restart (Amr&          papa,
 
     FillPatchedOldState_ok = true;
     
-    // AJN - do we need this anymore?
     // set_overdetermined_boundary_cells(state[State_Type].curTime());
 
     BL_ASSERT(EdgeState == 0);
@@ -2611,9 +2610,13 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         adjust_spec_diffusion_fluxes(curr_time,betanp1,grow_cells_already_filled);
 
 	// AJN FIXME
-	// if updateFluxReg=T and we are in the predictor, add (1/2)*Dnp1 to flux register
-	// if we are in an SDC corrector, add Dnp1 to flux register
+	// if updateFluxReg=T, we add either (1/2)*Dnp1 (if we're in the predictor) 
+	// or Dnp1 (if we are in a correction sweep) to viscous flux register
+	if ( do_reflux && updateFluxReg )
+	  {
 
+
+	  }
 
         flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
 
@@ -2640,12 +2643,16 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
             compute_enthalpy_fluxes(curr_time,betanp1,grow_cells_already_filled);
 
 	    // AJN FIXME
+	    // we only get here if we're in the predictor since theta_enthalpy = 0.5.
 	    // if updateFluxReg=T, that means there are no SDC correction sweeps
-	    // Now do reflux with DDnp1 terms and add them to ADVECTIVE flux register, where
+	    // Add (1/2)*DDnp1 to ADVECTIVE flux register, where
 	    // DD = -h_m * (Gamma_m + lambda/cp grad Y_m)
+	    if (do_reflux && updateFluxReg)
+	      {
 
 
 
+	      }
 
             flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
             
@@ -4671,14 +4678,12 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // Now do reflux with conservatively corrected Gamma
     //
     // if we are calling this in the predictor, add (1/2)*Gamma^n to viscous flux register
-    // if we are calling this in the last SDC correction sweep, subtract (1/2)*Gamma^{kmax-1} from
-    //    viscous flux register
-    Real prev_time = state[State_Type].prevTime();
-    Real curr_time = state[State_Type].curTime();
-    if ( (do_reflux && time == prev_time) ||
-         (do_reflux && time == curr_time && updateFluxReg) )
+    // if we are calling this in the last SDC correction sweep, subtract 
+    //    (1/2)*Gamma^{kmax-1} from viscous flux register
+    if ( (do_reflux && is_predictor) ||
+         (do_reflux && !is_predictor && updateFluxReg) )
     {
-      const Real theta = (time == prev_time) ? 0.5 : -0.5;
+      const Real theta = (is_predictor) ? 0.5 : -0.5;
       
       FArrayBox fluxtot;
 
@@ -4725,6 +4730,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // if we are calling this in the predictor, add (1/2)*DD^n to advective flux register
     // if we are calling this in the last correction sweep, add (1/2)*DD^{n+1,(k-1)} to
     //    advective flux register
+    if ( (do_reflux && is_predictor) ||
+         (do_reflux && !is_predictor && updateFluxReg) )
+    {
+
+
+
+    }
 
     diffusion->removeFluxBoxesLevel(beta);
 }
@@ -5307,6 +5319,7 @@ HeatTransfer::advance (Real time,
 		       int  ncycle)
 {
 
+    is_predictor = true;
     updateFluxReg = false;
     if (sdc_iterMAX == 0)
     {
@@ -5464,7 +5477,7 @@ HeatTransfer::advance (Real time,
 
     for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
     {
-
+        is_predictor = false;
         if (sdc_iter == sdc_iterMAX-1)
 	{
 	  updateFluxReg = true;
@@ -5904,6 +5917,8 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                 }        
             }
 
+	    // AJN FIXME
+	    // if updateFluxReg=T, add advective fluxes to flux register
 	    if (do_reflux && updateFluxReg && level > 0)
 	    {
 
@@ -5911,7 +5926,8 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 	      for (int d = 0; d < BL_SPACEDIM; d++)
 		advflux_reg->FineAdd((*EdgeState[d])[i],d,i,state_ind,state_ind,1,dt);
 
-	      // now that density has been constructed by summing rhoY, update the flux register for density
+	      // now that density has been constructed by summing rhoY, 
+	      // update the flux register for density
 	      if (comp == nspecies)
 		{
 		  for (int d = 0; d < BL_SPACEDIM; d++)
