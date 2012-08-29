@@ -4754,9 +4754,27 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     if ( (do_reflux && is_predictor) ||
          (do_reflux && !is_predictor && updateFluxReg) )
     {
+      for (int d = 0; d < BL_SPACEDIM; d++)
+      {
+	for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
+	{
+	  if (level > 0)
+          {
+	    if (is_predictor)
+	      advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],  d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
+	    else
+	      advflux_reg->FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
+	  }
+	}
 
-
-
+	if (level < parent->finestLevel())
+        {
+	  if (is_predictor)
+	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d])  ,d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::COPY);
+	  else
+	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxnp1[d]),d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
+	}
+      }
     }
 
     diffusion->removeFluxBoxesLevel(beta);
