@@ -6040,7 +6040,6 @@ HeatTransfer::mac_sync ()
     const Real dt             = parent->dtLevel(level);
     MultiFab*  DeltaSsync     = 0; // hold (Delta rho)*q for conserved quantities
     MultiFab*  Rh             = get_rho_half_time();
-
     //
     // Compute the correction velocity.
     //
@@ -6232,14 +6231,15 @@ HeatTransfer::mac_sync ()
                     for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                         Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
 
-                    bool do_applyBC = true;
-		    visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln,LinOp::InhomogeneousBC,do_applyBC,0,0);
+		    visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                         fluxSC[d]->mult(-b/geom.CellSize()[d]);
                     //
                     // Here, get fluxNULN = (lambda/cp - rho.D)Grad(Ysync)
                     //                    = lambda/cp.Grad(Ysync) + SpecSyncDiffFlux
                     //
+                    BL_ASSERT(spec_diffusion_flux_computed[comp]==HT_SyncDiffusion);
+
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                     {
                         MFIter SDF_mfi(*SpecDiffusionFluxnp1[d]);
@@ -6328,7 +6328,6 @@ HeatTransfer::mac_sync ()
                 }
 
                 diffusion->removeFluxBoxesLevel(fluxNULN);
-
 #endif
             }
             else if (nspecies>0 && do_mcdd)
@@ -6370,10 +6369,8 @@ HeatTransfer::mac_sync ()
                     MultiFab* alpha = 0;
                     getDiffusivity(beta, cur_time, state_ind, 0, 1);
                     
-                    int fluxComp = 0;
-                    int betaComp = 0;
 		    diffusion->diffuse_Ssync(Ssync,sigma,dt,be_cn_theta,Rh,
-					     rho_flag,flux,fluxComp,beta,betaComp,alpha);
+					     rho_flag,flux,0,beta,0,alpha);
 		    if (do_viscsyncflux && level > 0)
 		    {
 			for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
@@ -6409,7 +6406,6 @@ HeatTransfer::mac_sync ()
             }
         }
         sync_cleanup(DeltaSsync);
-
         //
         // Increment the state (for all but rho, since that was done above)
         //
@@ -6542,8 +6538,7 @@ HeatTransfer::mac_sync ()
             MultiFab& S_fine = fine_lev.get_new_data(State_Type);
 
             const int pComp = (have_rhort ? RhoRT : Trac);
-            crse_lev.NavierStokes::avgDown(cgrids,fgrids,
-                                           S_crse,S_fine,
+            crse_lev.NavierStokes::avgDown(cgrids,fgrids,S_crse,S_fine,
                                            lev,lev+1,pComp,1,fratio);
         }
     }
@@ -6891,6 +6886,7 @@ HeatTransfer::reflux ()
 
     fr_adv.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
     fr_adv.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
+
     BoxArray baf = getLevel(level+1).boxArray();
 
     baf.coarsen(fine_ratio);
@@ -6898,9 +6894,13 @@ HeatTransfer::reflux ()
     // This is necessary in order to zero out the contribution to any
     // coarse grid cells which underlie fine grid cells.
     //
+    std::vector< std::pair<int,Box> > isects;
+
+    isects.reserve(27);
+
     for (MFIter mfi(*Vsync); mfi.isValid(); ++mfi)
     {
-        std::vector< std::pair<int,Box> > isects = baf.intersections(grids[mfi.index()]);
+        baf.intersections(grids[mfi.index()],isects);
 
         for (int i = 0, N = isects.size(); i < N; i++)
         {
