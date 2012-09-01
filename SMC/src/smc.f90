@@ -8,6 +8,7 @@ subroutine smc()
   use layout_module
   use make_plotfile_module
   use multifab_module
+  use nscbc_module
   use omp_module
   use probin_module
   use runtime_init_module
@@ -98,6 +99,7 @@ subroutine smc()
 
 
   call smc_bc_init(la, U)
+  call nscbc_init(la)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -306,6 +308,7 @@ subroutine smc()
   end if
 
 
+  call nscbc_close()
   call smc_bc_close()
 
   call destroy(U)

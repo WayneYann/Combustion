@@ -4,6 +4,7 @@ module advance_module
   use derivative_stencil_module
   use kernels_module
   use multifab_module
+  use nscbc_module
   use sdcquad_module
   use smc_bc_module
   use time_module
@@ -378,6 +379,7 @@ contains
 
     integer ::    lo(U%dim),    hi(U%dim)
     integer ::   dlo(U%dim),   dhi(U%dim)
+    integer ::   blo(U%dim),   bhi(U%dim)
     integer :: i,j,k,m,n, ng, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
@@ -425,11 +427,12 @@ contains
        hi = upb(get_box(Fhyp,n))
 
        call get_data_lo_hi(n,dlo,dhi)
+       call get_boxbc(n,blo,bhi)
 
        if (dm .ne. 3) then
           call bl_error("Only 3D hypterm is supported")
        else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi)
+          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
        end if
     end do
 
@@ -505,6 +508,11 @@ contains
        end if
     end do
 
+    !
+    ! NSCBC boundary
+    !
+    call nscbc(Q, U, Fdif, Uprime, dx)
+
     call destroy(Q)
 
     call destroy(Fhyp)
@@ -564,6 +572,7 @@ contains
 
     integer ::    lo(U%dim),    hi(U%dim)
     integer ::   dlo(U%dim),   dhi(U%dim)
+    integer ::   blo(U%dim),   bhi(U%dim)
     integer :: i,j,k,m,n, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
@@ -622,11 +631,12 @@ contains
        hi = upb(get_box(Fhyp,n))
 
        call get_data_lo_hi(n,dlo,dhi)
+       call get_boxbc(n,blo,bhi)
 
        if (dm .ne. 3) then
           call bl_error("Only 3D hypterm is supported")
        else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi)
+          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
        end if
     end do
 

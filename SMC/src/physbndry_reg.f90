@@ -9,6 +9,7 @@ module physbndry_reg_module
      integer :: idim = -1
      integer :: iface = 0
      integer :: nc = -1
+     logical :: stencil_flag
      logical, pointer :: globalstatus(:), localstatus(:)
      type(multifab) :: data
      type(layout) :: la
@@ -24,11 +25,12 @@ module physbndry_reg_module
 
 contains
 
-  subroutine physbndry_reg_build(pbr, la0, nc_in, idim_in, iface_in)
+  subroutine physbndry_reg_build(pbr, la0, nc_in, idim_in, iface_in, stencil_flag_in)
     use bl_error_module
     type(layout), intent(in) :: la0
     type(physbndry_reg), intent(out) :: pbr
     integer, intent(in) :: nc_in, idim_in, iface_in
+    logical, intent(in) :: stencil_flag_in
 
     type(box) :: rbox, pd
     type(box), allocatable :: bxs(:)
@@ -41,6 +43,7 @@ contains
     pbr%nc = nc_in
     pbr%idim = idim_in
     pbr%iface = iface_in
+    pbr%stencil_flag = stencil_flag_in
 
     nb = nboxes(la0)
     pd = get_pd(la0)
@@ -93,7 +96,7 @@ contains
 
     call build(baa, bxs, sort=.false.)
     call build(pbr%la, baa, boxarray_bbox(baa), explicit_mapping=get_proc(la0))
-    call build(pbr%data, pbr%la, nc=nc_in, ng=0)
+    call build(pbr%data, pbr%la, nc=nc_in, ng=0, stencil=stencil_flag_in)
     call destroy(baa)
 
     deallocate(bxs)
@@ -115,7 +118,11 @@ contains
     integer, intent(in) :: ibox
     type(physbndry_reg), intent(in) :: pbr
     logical :: r
-    r = pbr%localstatus(ibox)
+    if (pbr%nc <= 0) then
+       r = .false.
+    else
+       r = pbr%localstatus(ibox)
+    end if
   end function get_localstatus
 
 end module physbndry_reg_module

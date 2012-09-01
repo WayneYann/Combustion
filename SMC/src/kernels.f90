@@ -14,14 +14,14 @@ module kernels_module
 
 contains
 
-  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,rhs,dlo,dhi)
+  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,rhs,dlo,dhi,bclo,bchi)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
     double precision, intent(in ) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
     double precision, intent(in ) ::    q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
     double precision, intent(out) ::  rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
-    integer          , intent(in) :: dlo(3),dhi(3)
+    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
 
     integer          :: i,j,k,n
     double precision :: un(-4:4)
@@ -144,30 +144,32 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
 
-             i = lo(1)
-             ! use completely right-biased stencil
-
-             un(0:3) = q(i:i+3,j,k,qu)
-
-             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
-                  first_deriv_rb( cons(i:i+3,j,k,imx) ) 
-
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
-                  first_deriv_rb( cons(i:i+3,j,k,imx)*un(0:3)+q(i:i+3,j,k,qpres) )
-
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
-                  first_deriv_rb( cons(i:i+3,j,k,imy)*un(0:3) ) 
-
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
-                  first_deriv_rb( cons(i:i+3,j,k,imz)*un(0:3) ) 
-
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
-                  first_deriv_rb( (cons(i:i+3,j,k,iene)+q(i:i+3,j,k,qpres))*un(0:3) )
-
-             do n = iry1, iry1+nspecies-1
-                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
-                     first_deriv_rb( cons(i:i+3,j,k,n)*un(0:3) )
-             end do
+             if (bclo(1) .ne. OUTLET) then
+                i = lo(1)
+                ! use completely right-biased stencil
+                
+                un(0:3) = q(i:i+3,j,k,qu)
+                
+                rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                     first_deriv_rb( cons(i:i+3,j,k,imx) ) 
+                
+                rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                     first_deriv_rb( cons(i:i+3,j,k,imx)*un(0:3)+q(i:i+3,j,k,qpres) )
+                
+                rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                     first_deriv_rb( cons(i:i+3,j,k,imy)*un(0:3) ) 
+                
+                rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                     first_deriv_rb( cons(i:i+3,j,k,imz)*un(0:3) ) 
+                
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                     first_deriv_rb( (cons(i:i+3,j,k,iene)+q(i:i+3,j,k,qpres))*un(0:3) )
+                
+                do n = iry1, iry1+nspecies-1
+                   rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                        first_deriv_rb( cons(i:i+3,j,k,n)*un(0:3) )
+                end do
+             end if
 
              i = lo(1)+1
              ! use 3rd-order slightly right-biased stencil
@@ -330,30 +332,32 @@ contains
                      first_deriv_l3( cons(i-2:i+1,j,k,n)*un(-2:1) )
              end do
 
-             i = hi(1)
-             ! use completely left-biased stencil
-
-             un(-3:0) = q(i-3:i,j,k,qu)
-
-             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
-                  first_deriv_lb( cons(i-3:i,j,k,imx) ) 
-
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
-                  first_deriv_lb( cons(i-3:i,j,k,imx)*un(-3:0)+q(i-3:i,j,k,qpres) )
-
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
-                  first_deriv_lb( cons(i-3:i,j,k,imy)*un(-3:0) ) 
-
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
-                  first_deriv_lb( cons(i-3:i,j,k,imz)*un(-3:0) ) 
-
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
-                  first_deriv_lb( (cons(i-3:i,j,k,iene)+q(i-3:i,j,k,qpres))*un(-3:0) )
-
-             do n = iry1, iry1+nspecies-1
-                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
-                     first_deriv_lb( cons(i-3:i,j,k,n)*un(-3:0) )
-             end do
+             if (bchi(1) .ne. OUTLET) then
+                i = hi(1)
+                ! use completely left-biased stencil
+                
+                un(-3:0) = q(i-3:i,j,k,qu)
+                
+                rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                     first_deriv_lb( cons(i-3:i,j,k,imx) ) 
+                
+                rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                     first_deriv_lb( cons(i-3:i,j,k,imx)*un(-3:0)+q(i-3:i,j,k,qpres) )
+                
+                rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                     first_deriv_lb( cons(i-3:i,j,k,imy)*un(-3:0) ) 
+                
+                rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                     first_deriv_lb( cons(i-3:i,j,k,imz)*un(-3:0) ) 
+                
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                     first_deriv_lb( (cons(i-3:i,j,k,iene)+q(i-3:i,j,k,qpres))*un(-3:0) )
+                
+                do n = iry1, iry1+nspecies-1
+                   rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                        first_deriv_lb( cons(i-3:i,j,k,n)*un(-3:0) )
+                end do
+             end if
 
           enddo
        enddo
@@ -365,34 +369,36 @@ contains
        !$omp do
        do k=lo(3),hi(3)
 
-          j = lo(2)
-          ! use completely right-biased stencil
+          if (bclo(2) .ne. OUTLET) then
+             j = lo(2)
+             ! use completely right-biased stencil
 
-          do i=lo(1),hi(1)
+             do i=lo(1),hi(1)
+                
+                un(0:3) = q(i,j:j+3,k,qv)
+                
+                rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                     first_deriv_rb( cons(i,j:j+3,k,imy) )
+                
+                rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                     first_deriv_rb( cons(i,j:j+3,k,imx)*un(0:3) )
+                
+                rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                     first_deriv_rb( cons(i,j:j+3,k,imy)*un(0:3)+q(i,j:j+3,k,qpres) )
+                
+                rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                     first_deriv_rb( cons(i,j:j+3,k,imz)*un(0:3) )
+                
+                rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                     first_deriv_rb( (cons(i,j:j+3,k,iene)+q(i,j:j+3,k,qpres))*un(0:3) )
+                
+                do n = iry1, iry1+nspecies-1
+                   rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                        first_deriv_rb( cons(i,j:j+3,k,n)*un(0:3) )
+                end do
 
-             un(0:3) = q(i,j:j+3,k,qv)
-
-             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
-                  first_deriv_rb( cons(i,j:j+3,k,imy) )
-
-             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
-                  first_deriv_rb( cons(i,j:j+3,k,imx)*un(0:3) )
-
-             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
-                  first_deriv_rb( cons(i,j:j+3,k,imy)*un(0:3)+q(i,j:j+3,k,qpres) )
-
-             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
-                  first_deriv_rb( cons(i,j:j+3,k,imz)*un(0:3) )
-
-             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
-                  first_deriv_rb( (cons(i,j:j+3,k,iene)+q(i,j:j+3,k,qpres))*un(0:3) )
-
-             do n = iry1, iry1+nspecies-1
-                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
-                     first_deriv_rb( cons(i,j:j+3,k,n)*un(0:3) )
-             end do
-
-          enddo
+             enddo
+          end if
 
           j = lo(2)+1
           ! use 3rd-order slightly right-biased stencil
@@ -577,34 +583,36 @@ contains
 
           enddo
 
-          j = hi(2)
-          ! use completely left-biased stencil
+          if (bchi(2) .ne. OUTLET) then
+             j = hi(2)
+             ! use completely left-biased stencil
+             
+             do i=lo(1),hi(1)
+                
+                un(-3:0) = q(i,j-3:j,k,qv)
+                
+                rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                     first_deriv_lb( cons(i,j-3:j,k,imy) )
+                
+                rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                     first_deriv_lb( cons(i,j-3:j,k,imx)*un(-3:0) )
+                
+                rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                     first_deriv_lb( cons(i,j-3:j,k,imy)*un(-3:0)+q(i,j-3:j,k,qpres) )
+                
+                rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                     first_deriv_lb( cons(i,j-3:j,k,imz)*un(-3:0) )
+                
+                rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                     first_deriv_lb( (cons(i,j-3:j,k,iene)+q(i,j-3:j,k,qpres))*un(-3:0) )
+                
+                do n = iry1, iry1+nspecies-1
+                   rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                        first_deriv_lb( cons(i,j-3:j,k,n)*un(-3:0) )
+                end do
 
-          do i=lo(1),hi(1)
-
-             un(-3:0) = q(i,j-3:j,k,qv)
-
-             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
-                  first_deriv_lb( cons(i,j-3:j,k,imy) )
-
-             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
-                  first_deriv_lb( cons(i,j-3:j,k,imx)*un(-3:0) )
-
-             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
-                  first_deriv_lb( cons(i,j-3:j,k,imy)*un(-3:0)+q(i,j-3:j,k,qpres) )
-
-             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
-                  first_deriv_lb( cons(i,j-3:j,k,imz)*un(-3:0) )
-
-             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
-                  first_deriv_lb( (cons(i,j-3:j,k,iene)+q(i,j-3:j,k,qpres))*un(-3:0) )
-
-             do n = iry1, iry1+nspecies-1
-                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
-                     first_deriv_lb( cons(i,j-3:j,k,n)*un(-3:0) )
-             end do
-
-          enddo
+             enddo
+          end if
 
        enddo
        !$omp end do
@@ -614,37 +622,39 @@ contains
     ! ----- lo-z boundary -----
     if (dlo(3) .eq. lo(3)) then
 
-       k = lo(3)
-       ! use completely right-biased stencil
-       !$omp do
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-
-             un(0:3) = q(i,j,k:k+3,qw)
-
-             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
-                  first_deriv_rb( cons(i,j,k:k+3,imz) )
-
-             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
-                  first_deriv_rb( cons(i,j,k:k+3,imx)*un(0:3) )
-
-             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
-                  first_deriv_rb( cons(i,j,k:k+3,imy)*un(0:3) )
-
-             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
-                  first_deriv_rb( cons(i,j,k:k+3,imz)*un(0:3)+q(i,j,k:k+3,qpres) )
-
-             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
-                  first_deriv_rb( (cons(i,j,k:k+3,iene)+q(i,j,k:k+3,qpres))*un(0:3) )
-
-             do n = iry1, iry1+nspecies-1
-                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
-                     first_deriv_rb(cons(i,j,k:k+3,n)*un(0:3))
-             end do
-
+       if (bclo(3) .ne. OUTLET) then
+          k = lo(3)
+          ! use completely right-biased stencil
+          !$omp do
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                
+                un(0:3) = q(i,j,k:k+3,qw)
+                
+                rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                     first_deriv_rb( cons(i,j,k:k+3,imz) )
+                
+                rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                     first_deriv_rb( cons(i,j,k:k+3,imx)*un(0:3) )
+                
+                rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                     first_deriv_rb( cons(i,j,k:k+3,imy)*un(0:3) )
+                
+                rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                     first_deriv_rb( cons(i,j,k:k+3,imz)*un(0:3)+q(i,j,k:k+3,qpres) )
+                
+                rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                     first_deriv_rb( (cons(i,j,k:k+3,iene)+q(i,j,k:k+3,qpres))*un(0:3) )
+                
+                do n = iry1, iry1+nspecies-1
+                   rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                        first_deriv_rb(cons(i,j,k:k+3,n)*un(0:3))
+                end do
+                
+             enddo
           enddo
-       enddo
-       !$omp end do nowait
+          !$omp end do nowait
+       end if
 
        k = lo(3)+1
        ! use 3rd-order slightly right-biased stencil
@@ -846,38 +856,40 @@ contains
        enddo
        !$omp end do nowait
 
-       k = hi(3)
-       ! use completely left-biased stencil
-       
-       !$omp do
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-
-             un(-3:0) = q(i,j,k-3:k,qw)
-
-             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
-                  first_deriv_lb( cons(i,j,k-3:k,imz) )
-
-             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
-                  first_deriv_lb( cons(i,j,k-3:k,imx)*un(-3:0) )
-
-             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
-                  first_deriv_lb( cons(i,j,k-3:k,imy)*un(-3:0) )
-
-             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
-                  first_deriv_lb( cons(i,j,k-3:k,imz)*un(-3:0)+q(i,j,k-3:k,qpres) )
-
-             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
-                  first_deriv_lb( (cons(i,j,k-3:k,iene)+q(i,j,k-3:k,qpres))*un(-3:0) )
-
-             do n = iry1, iry1+nspecies-1
-                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
-                     first_deriv_lb(cons(i,j,k-3:k,n)*un(-3:0))
-             end do
-
+       if (bchi(3) .ne. OUTLET) then
+          k = hi(3)
+          ! use completely left-biased stencil
+          
+          !$omp do
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                
+                un(-3:0) = q(i,j,k-3:k,qw)
+                
+                rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                     first_deriv_lb( cons(i,j,k-3:k,imz) )
+                
+                rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                     first_deriv_lb( cons(i,j,k-3:k,imx)*un(-3:0) )
+                
+                rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                     first_deriv_lb( cons(i,j,k-3:k,imy)*un(-3:0) )
+                
+                rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                     first_deriv_lb( cons(i,j,k-3:k,imz)*un(-3:0)+q(i,j,k-3:k,qpres) )
+                
+                rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                     first_deriv_lb( (cons(i,j,k-3:k,iene)+q(i,j,k-3:k,qpres))*un(-3:0) )
+                
+                do n = iry1, iry1+nspecies-1
+                   rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                        first_deriv_lb(cons(i,j,k-3:k,n)*un(-3:0))
+                end do
+                
+             enddo
           enddo
-       enddo
-       !$omp end do
+          !$omp end do
+       end if
 
     end if
 
@@ -3282,15 +3294,15 @@ contains
     double precision, intent(inout) :: courno
 
     integer :: i,j,k, iwrk
-    double precision :: dxinv(3), c, rwrk, Ru, Ruc, Pa, Cv, Cp
+    double precision :: dxinv(3), c, rwrk, Cv, Cp
     double precision :: Tt, X(nspecies), gamma
     double precision :: courx, coury, courz
+
+    double precision, parameter :: Ru = 8.31451d7
 
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)
     end do
-
-    call ckrp(iwrk, rwrk, Ru, Ruc, Pa)
 
     !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,X,gamma,Cv,Cp,c) &
     !$omp private(courx,coury,courz) &
