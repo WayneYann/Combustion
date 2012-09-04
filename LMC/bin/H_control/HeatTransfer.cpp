@@ -2616,7 +2616,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	//   if we are in the predictor, ADD (1/2)*Gamma_{m,AD}^(0).
 	//   if we are in the corrector, ADD Gamma_{m,AD}^(k+1),
 	//                               ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
-	if ( do_reflux && updateFluxReg )
+
+	if ( do_reflux && updateFluxReg && false)
 	{
 	  for (int d = 0; d < BL_SPACEDIM; d++)
 	  {
@@ -2670,7 +2671,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	    //   predictor h implicit solve.
 	    // If updateFluxReg=T, we update ADVECTIVE flux registers:
 	    //   ADD (1/2)*h_m^n*(Gamma_{m,AD}^(0)-lambda^n/cp^n grad Y_{m,AD}^(0)).
-	    if (do_reflux && updateFluxReg)
+	    if (do_reflux && updateFluxReg && false)
             {
 	      for (int d = 0; d < BL_SPACEDIM; d++)
 	      {
@@ -2718,7 +2719,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	    // We have just finished the implicit solve for h in the predictor.
 	    // If updateFluxReg=T, we update VISCOUS flux registers:
 	    //  ADD (1/2)*lambda^n/cp^ngrad h_AD^(0)
-	    if ( do_reflux && updateFluxReg )
+	    if ( do_reflux && updateFluxReg && false )
 	    {
 	      for (int d = 0; d < BL_SPACEDIM; d++)
 		{
@@ -4738,8 +4739,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If we are calling this in the corrector AND updateFluxReg=T:
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
-    if ( (do_reflux && is_predictor) ||
-         (do_reflux && !is_predictor && updateFluxReg) )
+    if ( ((do_reflux && is_predictor) ||
+          (do_reflux && !is_predictor && updateFluxReg)) && false)
     {
       const Real theta = (is_predictor) ? 0.5 : -0.5;
 
@@ -4779,8 +4780,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   ADD (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If we are calling this in the corrector AND updateFluxReg=T:
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
-    if ( (do_reflux && is_predictor) ||
-         (do_reflux && !is_predictor && updateFluxReg) )
+    if ( ((do_reflux && is_predictor) ||
+          (do_reflux && !is_predictor && updateFluxReg)) && false)
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -5941,67 +5942,67 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
                                            D_DECL(u_bc[0].dataPtr(),u_bc[1].dataPtr(),u_bc[2].dataPtr()),
                                            D_DECL(S,S,S), D_DECL(0,1,2), tvelforces, 0);
         //
-        // Get edge states for RhoY, RhoH, Tracer
+        // Get edge states for Rho, RhoY, RhoH, Tracer
         //
-        (*aofs)[i].setVal(0,box,Density,1);
+        (*aofs)[i].setVal(0,box,Density,nspecies+3);
         for (int d=0; d<BL_SPACEDIM; ++d)
         {
-            (*EdgeState[d])[i].setVal(0,(*EdgeState[d])[i].box(),Density,1);
-            (*EdgeState[d])[i].setVal(0,(*EdgeState[d])[i].box(),Trac,1);
+            (*EdgeState[d])[i].setVal(0,(*EdgeState[d])[i].box(),Density,nspecies+3);
         }        
+	// loop over RhoY, RhoH, and Tracer
+	// we construct density by summing RhoY
         for (int comp = 0 ; comp < nspecies+2 ; comp++)
         {
-            int state_ind = first_spec + comp;
-            Array<int> bc = getBCArray(State_Type,i,state_ind,1);
-            int iconserv = 1;
+	  int state_ind = first_spec + comp;
+	  Array<int> bc = getBCArray(State_Type,i,state_ind,1);
+	  int iconserv = 1;
 
-	    if (state_ind != Trac)
-            {
-	      godunov->edge_states_fpu(box, dx, dt,
-                                       D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0), 
-				       D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
-				       D_DECL(state_ind,state_ind,state_ind),
-				       S,state_ind,Force[S_fpi],comp,divu,0,state_ind,bc.dataPtr(),iconserv);
-	    }
+	  if (state_ind != Trac )
+          {
+	    godunov->edge_states_fpu(box, dx, dt,
+				     D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]), D_DECL(0,0,0), 
+				     D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+				     D_DECL(state_ind,state_ind,state_ind),
+				     S,state_ind,Force[S_fpi],comp,divu,0,state_ind,bc.dataPtr(),iconserv);
+	  }
 
-            int avcomp = 0;
-            int ucomp = 0;
-            // Compute Div(flux.Area), return Area-scaled fluxes
-            godunov->ComputeAofs (grids[i],
-                                  D_DECL(area[0],area[1],area[2]),D_DECL(avcomp,avcomp,avcomp),
-                                  D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]),D_DECL(ucomp,ucomp,ucomp),
-                                  D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
-                                  D_DECL(state_ind,state_ind,state_ind), volume, avcomp,
-                                  (*aofs)[i], state_ind, iconserv);
+	  int avcomp = 0;
+	  int ucomp = 0;
+	  // Compute Div(flux.Area), return Area-scaled fluxes
+	  godunov->ComputeAofs(grids[i],
+                               D_DECL(area[0],area[1],area[2]),D_DECL(avcomp,avcomp,avcomp),
+			       D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]),D_DECL(ucomp,ucomp,ucomp),
+			       D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+			       D_DECL(state_ind,state_ind,state_ind), volume, avcomp,
+			       (*aofs)[i], state_ind, iconserv);
+	  
+	  // Accumulate rho flux, and rho flux divergence
+	  if (state_ind >= first_spec && state_ind < first_spec+nspecies)
+          {
+	    (*aofs)[i].plus((*aofs)[i],state_ind,Density,1);
+	    for (int d=0; d<BL_SPACEDIM; ++d)
+	      (*EdgeState[d])[i].plus((*EdgeState[d])[i],state_ind,Density,1);
+	  }
 
-            // Accumulate rho flux, and rho flux divergence
-            if (state_ind != RhoH && state_ind != Trac)
-            {
-                (*aofs)[i].plus((*aofs)[i],state_ind,Density,1);
-                for (int d=0; d<BL_SPACEDIM; ++d)
-                {
-                    (*EdgeState[d])[i].plus((*EdgeState[d])[i],state_ind,Density,1);
-                }        
-            }
+	  // AJN FLUXREG
+	  // We have just computed the advective fluxes.  If updateFluxReg=T,
+	  // ADD advective fluxes to ADVECTIVE flux register
+	  if (do_reflux && updateFluxReg && level > 0)
+	  {
 
-	    // AJN FLUXREG
-	    // We have just computed the advective fluxes.  If updateFluxReg=T,
-	    // ADD advective fluxes to ADVECTIVE flux register
-	    if (do_reflux && updateFluxReg && level > 0)
+	    // update the flux register for state_ind
+	    for (int d = 0; d < BL_SPACEDIM; d++)
+	      advflux_reg->FineAdd((*EdgeState[d])[i],d,i,state_ind,state_ind,1,dt);
+
+	    // now that density has been constructed by summing rhoY, 
+	    // update the flux register for density
+	    if (state_ind == first_spec+nspecies-1)
 	    {
-
-	      // update the flux register for state_ind
 	      for (int d = 0; d < BL_SPACEDIM; d++)
-		advflux_reg->FineAdd((*EdgeState[d])[i],d,i,state_ind,state_ind,1,dt);
-
-	      // now that density has been constructed by summing rhoY, 
-	      // update the flux register for density
-	      if (comp == nspecies)
-	      {
-		for (int d = 0; d < BL_SPACEDIM; d++)
-		  advflux_reg->FineAdd((*EdgeState[d])[i],d,i,Density,Density,1,dt);
-	      }
+		advflux_reg->FineAdd((*EdgeState[d])[i],d,i,Density,Density,1,dt);
 	    }
+
+	  }
 	}
 
 	 // NOTE: Changes sense of aofs here so that d/dt ~ aofs...be sure we use our own update
@@ -6013,7 +6014,9 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     if (do_reflux && updateFluxReg && level < parent->finestLevel())
     {
         for (int d = 0; d < BL_SPACEDIM; d++)
+	{
 	  getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,Density,Density,nspecies+3,-dt,FluxRegister::ADD);
+	}
     }
 }
 
