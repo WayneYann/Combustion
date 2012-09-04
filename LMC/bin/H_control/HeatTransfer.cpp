@@ -930,6 +930,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     const int nGrow       = 0;
     const int nEdgeStates = desc_lst[State_Type].nComp();
     diffusion->allocFluxBoxesLevel(EdgeState,nGrow,nEdgeStates);
+    diffusion->allocFluxBoxesLevel(EdgeFlux,nGrow,nEdgeStates);
     if (nspecies>0 && !unity_Le)
     {
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,  nGrow,nspecies+3);
@@ -964,6 +965,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 HeatTransfer::~HeatTransfer ()
 {
     diffusion->removeFluxBoxesLevel(EdgeState);
+    diffusion->removeFluxBoxesLevel(EdgeFlux);
     if (nspecies>0 && !unity_Le)    
     {
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxn);    
@@ -1168,9 +1170,11 @@ HeatTransfer::restart (Amr&          papa,
     // set_overdetermined_boundary_cells(state[State_Type].curTime());
 
     BL_ASSERT(EdgeState == 0);
+    BL_ASSERT(EdgeFlux == 0);
     const int nGrow       = 0;
     const int nEdgeStates = desc_lst[State_Type].nComp();
     diffusion->allocFluxBoxesLevel(EdgeState,nGrow,nEdgeStates);
+    diffusion->allocFluxBoxesLevel(EdgeFlux,nGrow,nEdgeStates);
     
     if (nspecies>0 && !unity_Le)
     {
@@ -5948,6 +5952,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
         for (int d=0; d<BL_SPACEDIM; ++d)
         {
             (*EdgeState[d])[i].setVal(0,(*EdgeState[d])[i].box(),Density,nspecies+3);
+            (*EdgeFlux[d])[i].setVal(0,(*EdgeFlux[d])[i].box(),Density,nspecies+3);
         }        
 	// loop over RhoY, RhoH, and Tracer
 	// we construct density by summing RhoY
@@ -5966,13 +5971,16 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 				     S,state_ind,Force[S_fpi],comp,divu,0,state_ind,bc.dataPtr(),iconserv);
 	  }
 
+	  for (int d=0; d<BL_SPACEDIM; ++d)
+	    (*EdgeFlux[d])[i].copy((*EdgeState[d])[i],state_ind,state_ind,1);
+
 	  int avcomp = 0;
 	  int ucomp = 0;
 	  // Compute Div(flux.Area), return Area-scaled fluxes
 	  godunov->ComputeAofs(grids[i],
                                D_DECL(area[0],area[1],area[2]),D_DECL(avcomp,avcomp,avcomp),
 			       D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]),D_DECL(ucomp,ucomp,ucomp),
-			       D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+			       D_DECL((*EdgeFlux[0])[i],(*EdgeFlux[1])[i],(*EdgeFlux[2])[i]),
 			       D_DECL(state_ind,state_ind,state_ind), volume, avcomp,
 			       (*aofs)[i], state_ind, iconserv);
 	  
@@ -5981,7 +5989,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
           {
 	    (*aofs)[i].plus((*aofs)[i],state_ind,Density,1);
 	    for (int d=0; d<BL_SPACEDIM; ++d)
-	      (*EdgeState[d])[i].plus((*EdgeState[d])[i],state_ind,Density,1);
+	      (*EdgeFlux[d])[i].plus((*EdgeFlux[d])[i],state_ind,Density,1);
 	  }
 
 	  // AJN FLUXREG
@@ -5992,14 +6000,14 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
 	    // update the flux register for state_ind
 	    for (int d = 0; d < BL_SPACEDIM; d++)
-	      advflux_reg->FineAdd((*EdgeState[d])[i],d,i,state_ind,state_ind,1,dt);
+	      advflux_reg->FineAdd((*EdgeFlux[d])[i],d,i,state_ind,state_ind,1,dt);
 
 	    // now that density has been constructed by summing rhoY, 
 	    // update the flux register for density
 	    if (state_ind == first_spec+nspecies-1)
 	    {
 	      for (int d = 0; d < BL_SPACEDIM; d++)
-		advflux_reg->FineAdd((*EdgeState[d])[i],d,i,Density,Density,1,dt);
+		advflux_reg->FineAdd((*EdgeFlux[d])[i],d,i,Density,Density,1,dt);
 	    }
 
 	  }
@@ -6015,7 +6023,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     {
         for (int d = 0; d < BL_SPACEDIM; d++)
 	{
-	  getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,Density,Density,nspecies+3,-dt,FluxRegister::ADD);
+	  getAdvFluxReg(level+1).CrseInit((*EdgeFlux[d]),d,Density,Density,nspecies+3,-dt,FluxRegister::ADD);
 	}
     }
 }
