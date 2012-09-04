@@ -1,0 +1,11 @@
+prob_type               integer         1
+
+# parameters for prob_type 1
+pertmag			real		0.0d0
+rfire			real		0.15d0
+
+# parameters for prob_type 2
+Tinit                   real            800.d0
+uinit                   real            127.4d0
+vinit                   real            -203.2d0
+winit                   real            138.1d0
