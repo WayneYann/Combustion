@@ -6199,13 +6199,13 @@ HeatTransfer::mac_sync ()
 		&& do_add_nonunityLe_corr_to_rhoh_adv_flux 
 		&& !do_mcdd)
 	    {
-#if 1
+#if 0
                 BoxLib::Abort("Sync still not fixed for diffdiff");
 #else
 		//
 		// Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
 		//
-		differential_spec_diffuse_sync(dt);
+		//		differential_spec_diffuse_sync(dt);
 
                 MultiFab Soln(grids,1,1);
                 const Real cur_time  = state[State_Type].curTime();
@@ -6221,8 +6221,10 @@ HeatTransfer::mac_sync ()
                 const int nGrow    = 1; // Size to grow fil-patched fab for T below
                 const int dataComp = 0; // coeffs loaded into 0-comp for all species
                   
+		// get lambda/cp
                 getDiffusivity(rhoh_visc, cur_time, RhoH, 0, 1);
 
+		// compute lambda/cp grad (delta Y_m^sync)
                 for (int comp = 0; comp < nspecies; ++comp)
                 {
                     const Real b     = be_cn_theta;
@@ -6236,8 +6238,8 @@ HeatTransfer::mac_sync ()
 
                     visc_op = diffusion->getViscOp(sigma,a,b,cur_time,
                                                    visc_bndry,Rh,
-                                                   rho_flag,&rhsscale,dataComp,
-                                                   rhoh_visc,alpha);
+                                                   rho_flag,&rhsscale,rhoh_visc,dataComp,
+                                                   alpha,dataComp);
 
                     visc_op->maxOrder(diffusion->maxOrder());
 
@@ -6253,7 +6255,6 @@ HeatTransfer::mac_sync ()
                     // Here, get fluxNULN = (lambda/cp - rho.D)Grad(Ysync)
                     //                    = lambda/cp.Grad(Ysync) + SpecSyncDiffFlux
                     //
-                    BL_ASSERT(spec_diffusion_flux_computed[comp]==HT_SyncDiffusion);
 
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                     {

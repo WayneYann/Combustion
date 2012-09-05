@@ -18,6 +18,7 @@
 #    define FORT_SPECTEMPVISC              spectempvisc
 #    define FORT_FABMINMAX                 fabminmax
 #    define FORT_REPAIR_FLUX               rparflux
+#    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_FLUXDIV                   flxdiv
 #    define FORT_CALCDIVU                  calcdivu
 #    define FORT_ENTH_DIFF_TERMS           enthdiff
@@ -48,6 +49,7 @@
 #    define FORT_SPECTEMPVISC              SPECTEMPVISC
 #    define FORT_FABMINMAX                 FABMINMAX
 #    define FORT_REPAIR_FLUX               RPARFLUX
+#    define FORT_INCRWEXTFLXDIV            INCRWEXTFLXDIV
 #    define FORT_FLUXDIV                   FLXDIV
 #    define FORT_ENTH_DIFF_TERMS           ENTHDIFF
 #    define FORT_CALCDIVU                  CALCDIVU
@@ -77,6 +79,7 @@
 #    define FORT_SPECTEMPVISC              spectempvisc
 #    define FORT_FABMINMAX                 fabminmax
 #    define FORT_REPAIR_FLUX               rparflux
+#    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_FLUXDIV                   flxdiv
 #    define FORT_CALCDIVU                  calcdivu
 #    define FORT_ENTH_DIFF_TERMS           enthdiff
@@ -107,6 +110,7 @@
 #    define FORT_FABMINMAX                 fabminmax_
 #    define FORT_REPAIR_FLUX               rparflux_
 #    define FORT_FLUXDIV                   flxdiv_
+#    define FORT_INCRWEXTFLXDIV            incrwextflxdiv_
 #    define FORT_CALCDIVU                  calcdivu_
 #    define FORT_ENTH_DIFF_TERMS           enthdiff_
 #    define FORT_SET_COMMON                setcommon_
@@ -248,6 +252,17 @@ extern "C" {
 #endif
                               Real* fh,      ARLIM_P(fhlo), ARLIM_P(fhhi),
                               const int* Tbc);
+    
+    void FORT_INCRWEXTFLXDIV(const int* lo, const int* hi,
+                             const Real* xflux, ARLIM_P(fxlo),  ARLIM_P(fxhi),
+                             const Real* yflux, ARLIM_P(fylo),  ARLIM_P(fyhi),
+#if BL_SPACEDIM == 3
+                             const Real* zflux, ARLIM_P(fzlo),  ARLIM_P(fzhi),
+#endif
+                             const Real* sto,     ARLIM_P(stolo),    ARLIM_P(stohi),
+                             Real*       stn,     ARLIM_P(stnlo),    ARLIM_P(stnhi),
+                             const Real* vol,     ARLIM_P(vollo),    ARLIM_P(volhi),
+                             const int* nc, const Real* dt);
 
     void FORT_FLUXDIV(const int* lo, const int* hi,
                       const Real* updat, ARLIM_P(uplo), ARLIM_P(uphi),
