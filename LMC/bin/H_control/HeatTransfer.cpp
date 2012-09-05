@@ -2621,7 +2621,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	//   if we are in the corrector, ADD Gamma_{m,AD}^(k+1),
 	//                               ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
 
-	if ( do_reflux && updateFluxReg && false)
+	if (do_reflux && updateFluxReg)
 	{
 	  for (int d = 0; d < BL_SPACEDIM; d++)
 	  {
@@ -2675,7 +2675,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	    //   predictor h implicit solve.
 	    // If updateFluxReg=T, we update ADVECTIVE flux registers:
 	    //   ADD (1/2)*h_m^n*(Gamma_{m,AD}^(0)-lambda^n/cp^n grad Y_{m,AD}^(0)).
-	    if (do_reflux && updateFluxReg && false)
+	    if (do_reflux && updateFluxReg)
             {
 	      for (int d = 0; d < BL_SPACEDIM; d++)
 	      {
@@ -2723,7 +2723,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	    // We have just finished the implicit solve for h in the predictor.
 	    // If updateFluxReg=T, we update VISCOUS flux registers:
 	    //  ADD (1/2)*lambda^n/cp^ngrad h_AD^(0)
-	    if ( do_reflux && updateFluxReg && false )
+	    if (do_reflux && updateFluxReg)
 	    {
 	      for (int d = 0; d < BL_SPACEDIM; d++)
 		{
@@ -4743,8 +4743,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If we are calling this in the corrector AND updateFluxReg=T:
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
-    if ( ((do_reflux && is_predictor) ||
-          (do_reflux && !is_predictor && updateFluxReg)) && false)
+    if ( (do_reflux && is_predictor) ||
+         (do_reflux && !is_predictor && updateFluxReg) )
     {
       const Real theta = (is_predictor) ? 0.5 : -0.5;
 
@@ -4784,8 +4784,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   ADD (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If we are calling this in the corrector AND updateFluxReg=T:
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
-    if ( ((do_reflux && is_predictor) ||
-          (do_reflux && !is_predictor && updateFluxReg)) && false)
+    if ( (do_reflux && is_predictor) ||
+         (do_reflux && !is_predictor && updateFluxReg) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -5984,12 +5984,15 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 			       D_DECL(state_ind,state_ind,state_ind), volume, avcomp,
 			       (*aofs)[i], state_ind, iconserv);
 	  
-	  // Accumulate rho flux, and rho flux divergence
+	  // Accumulate rho flux divergence, rho on edges, and rho flux on edges
 	  if (state_ind >= first_spec && state_ind < first_spec+nspecies)
           {
 	    (*aofs)[i].plus((*aofs)[i],state_ind,Density,1);
 	    for (int d=0; d<BL_SPACEDIM; ++d)
-	      (*EdgeFlux[d])[i].plus((*EdgeFlux[d])[i],state_ind,Density,1);
+	      {
+		(*EdgeState[d])[i].plus((*EdgeState[d])[i],state_ind,Density,1);
+		(*EdgeFlux[d])[i].plus((*EdgeFlux[d])[i],state_ind,Density,1);
+	      }
 	  }
 
 	  // AJN FLUXREG
