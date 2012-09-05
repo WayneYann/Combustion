@@ -6075,6 +6075,7 @@ HeatTransfer::mac_sync ()
             if (sync_scheme[i] == ReAdvect)
                 incr_sync[i] = 1;
 
+	// velocities
         if (do_mom_diff == 0) 
         {
             mac_projector->mac_sync_compute(level,u_mac,Vsync,Ssync,Rh,
@@ -6100,6 +6101,7 @@ HeatTransfer::mac_sync ()
             }
         }
 
+	// scalars
         for (int comp=BL_SPACEDIM; comp<NUM_STATE; ++comp)
         {
             if (sync_scheme[comp]==UseEdgeState)
@@ -6140,14 +6142,16 @@ HeatTransfer::mac_sync ()
                 if (istate != Density && advectionType[istate] == Conservative)
                 {
                     iconserved++;
-                        
+             
+		    // convert Ssync_q to Ssync_q - qnew * Ssync_rho
+		    // set DeltaSsync = qnew * Ssync_rho
                     delta_ssync.resize(grd,1);
-                    delta_ssync.copy(S_new[i],grd,istate,grd,0,1);
-                    delta_ssync.divide(S_new[i],grd,Density,0,1);
-                    FArrayBox& s_sync = (*Ssync)[i];
-                    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1);
-                    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1);
-                    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1);
+                    delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)new
+                    delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = qnew
+                    FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS_q
+                    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = qnew*RHS_rho
+                    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = qnew*RHS_rho
+                    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync_q = Ssync_q - qnew*RHS_rho
                 }
             }
         }
@@ -6832,6 +6836,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 void
 HeatTransfer::reflux ()
 {
+    // no need to reflux if this is the finest level
     if (level == parent->finestLevel()) return;
 
     const Real strt_time = ParallelDescriptor::second();
@@ -6856,6 +6861,7 @@ HeatTransfer::reflux ()
 
     geom.GetVolume(volume,grids,GEOM_GROW);
 
+    // convert edge-based diffusive flux registers to cell-centered sync terms
     fr_visc.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
     fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
@@ -6875,6 +6881,8 @@ HeatTransfer::reflux ()
 
     FArrayBox tmp;
 
+    // for any variables that used non-conservative advective differencing,
+    // divide the sync by rhohalf
     for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
     {
         const int i = mfi.index();
@@ -6894,6 +6902,7 @@ HeatTransfer::reflux ()
         }
     }
 
+    // convert edge-based advective flux registers to cell-centered sync terms
     fr_adv.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
     fr_adv.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
