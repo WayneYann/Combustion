@@ -2476,8 +2476,7 @@ HeatTransfer::avgDown ()
         MultiFab& Divu_crse = get_new_data(Divu_Type);
         MultiFab& Divu_fine = fine_lev.get_new_data(Divu_Type);
             
-        NavierStokes::avgDown(grids,fgrids,
-                              Divu_crse,Divu_fine,
+        NavierStokes::avgDown(grids,fgrids,Divu_crse,Divu_fine,
                               level,level+1,0,1,fine_ratio);
     }
 
@@ -2506,8 +2505,7 @@ HeatTransfer::avgDown ()
         MultiFab& Dsdt_crse = get_new_data(Dsdt_Type);
         MultiFab& Dsdt_fine = fine_lev.get_new_data(Dsdt_Type);
             
-        NavierStokes::avgDown(grids,fgrids,
-                              Dsdt_crse,Dsdt_fine,
+        NavierStokes::avgDown(grids,fgrids,Dsdt_crse,Dsdt_fine,
                               level,level+1,0,1,fine_ratio);
     }
 }
@@ -6738,6 +6736,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
+
+    // Ssync contains RHS_q - qnew*RHS_rho
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
     Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
     //
@@ -6765,6 +6765,9 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     bool grow_cells_already_filled = false;
     adjust_spec_diffusion_fluxes(cur_time,betanp1,grow_cells_already_filled);
+
+    // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy) and put it in
+    // "nspecies+1" component of SpecDiffusionFluxnp1
     compute_enthalpy_fluxes(cur_time,betanp1,grow_cells_already_filled);
     //
     // Recompute update with adjusted diffusion fluxes
@@ -6864,9 +6867,10 @@ HeatTransfer::reflux ()
 
     geom.GetVolume(volume,grids,GEOM_GROW);
 
-    // convert edge-based diffusive flux registers to cell-centered sync terms
+    // take divergence of diffusive flux registers into cell-centered RHS
     fr_visc.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
-    fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
+    if (true)
+        fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
     const MultiFab* Rh = get_rho_half_time();
 
@@ -6905,7 +6909,7 @@ HeatTransfer::reflux ()
         }
     }
 
-    // convert edge-based advective flux registers to cell-centered sync terms
+    // take divergence of advective flux registers into cell-centered RHS
     fr_adv.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
     fr_adv.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
