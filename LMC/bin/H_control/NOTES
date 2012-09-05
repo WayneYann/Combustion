@@ -1,8 +1,8 @@
 Xvel       0
 Yvel       1
 Density    2
-first_spec 3            (nspecies = 9 in CHEMH)
-last_spec  3+nspecies-1 
+first_spec 3
+last_spec  3+nspecies-1 (11 in CHEMH; nspecies=9)
 RhoH       3+nspecies   (12 in CHEMH)
 Trac       4+nspecies   (13 in CHEMH)
 Temp       5+nspecies   (14 in CHEMH)

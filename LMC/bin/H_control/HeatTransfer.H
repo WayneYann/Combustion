@@ -474,6 +474,7 @@ protected:
 protected:
 
     MultiFab**  EdgeState;
+    MultiFab**  EdgeFlux;
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
     MultiFab    sumSpecFluxDotGradHn;

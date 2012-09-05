@@ -930,6 +930,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     const int nGrow       = 0;
     const int nEdgeStates = desc_lst[State_Type].nComp();
     diffusion->allocFluxBoxesLevel(EdgeState,nGrow,nEdgeStates);
+    diffusion->allocFluxBoxesLevel(EdgeFlux,nGrow,nEdgeStates);
     if (nspecies>0 && !unity_Le)
     {
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,  nGrow,nspecies+3);
@@ -964,6 +965,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 HeatTransfer::~HeatTransfer ()
 {
     diffusion->removeFluxBoxesLevel(EdgeState);
+    diffusion->removeFluxBoxesLevel(EdgeFlux);
     if (nspecies>0 && !unity_Le)    
     {
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxn);    
@@ -1168,9 +1170,11 @@ HeatTransfer::restart (Amr&          papa,
     // set_overdetermined_boundary_cells(state[State_Type].curTime());
 
     BL_ASSERT(EdgeState == 0);
+    BL_ASSERT(EdgeFlux == 0);
     const int nGrow       = 0;
     const int nEdgeStates = desc_lst[State_Type].nComp();
     diffusion->allocFluxBoxesLevel(EdgeState,nGrow,nEdgeStates);
+    diffusion->allocFluxBoxesLevel(EdgeFlux,nGrow,nEdgeStates);
     
     if (nspecies>0 && !unity_Le)
     {
@@ -2472,8 +2476,7 @@ HeatTransfer::avgDown ()
         MultiFab& Divu_crse = get_new_data(Divu_Type);
         MultiFab& Divu_fine = fine_lev.get_new_data(Divu_Type);
             
-        NavierStokes::avgDown(grids,fgrids,
-                              Divu_crse,Divu_fine,
+        NavierStokes::avgDown(grids,fgrids,Divu_crse,Divu_fine,
                               level,level+1,0,1,fine_ratio);
     }
 
@@ -2502,8 +2505,7 @@ HeatTransfer::avgDown ()
         MultiFab& Dsdt_crse = get_new_data(Dsdt_Type);
         MultiFab& Dsdt_fine = fine_lev.get_new_data(Dsdt_Type);
             
-        NavierStokes::avgDown(grids,fgrids,
-                              Dsdt_crse,Dsdt_fine,
+        NavierStokes::avgDown(grids,fgrids,Dsdt_crse,Dsdt_fine,
                               level,level+1,0,1,fine_ratio);
     }
 }
@@ -2617,7 +2619,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	//   if we are in the corrector, ADD Gamma_{m,AD}^(k+1),
 	//                               ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
 
-	if ( do_reflux && updateFluxReg && false)
+	if (do_reflux && updateFluxReg)
 	{
 	  for (int d = 0; d < BL_SPACEDIM; d++)
 	  {
@@ -2671,7 +2673,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	    //   predictor h implicit solve.
 	    // If updateFluxReg=T, we update ADVECTIVE flux registers:
 	    //   ADD (1/2)*h_m^n*(Gamma_{m,AD}^(0)-lambda^n/cp^n grad Y_{m,AD}^(0)).
-	    if (do_reflux && updateFluxReg && false)
+	    if (do_reflux && updateFluxReg)
             {
 	      for (int d = 0; d < BL_SPACEDIM; d++)
 	      {
@@ -2719,7 +2721,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	    // We have just finished the implicit solve for h in the predictor.
 	    // If updateFluxReg=T, we update VISCOUS flux registers:
 	    //  ADD (1/2)*lambda^n/cp^ngrad h_AD^(0)
-	    if ( do_reflux && updateFluxReg && false )
+	    if (do_reflux && updateFluxReg)
 	    {
 	      for (int d = 0; d < BL_SPACEDIM; d++)
 		{
@@ -4739,8 +4741,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If we are calling this in the corrector AND updateFluxReg=T:
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
-    if ( ((do_reflux && is_predictor) ||
-          (do_reflux && !is_predictor && updateFluxReg)) && false)
+    if ( (do_reflux && is_predictor) ||
+         (do_reflux && !is_predictor && updateFluxReg) )
     {
       const Real theta = (is_predictor) ? 0.5 : -0.5;
 
@@ -4780,8 +4782,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   ADD (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If we are calling this in the corrector AND updateFluxReg=T:
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
-    if ( ((do_reflux && is_predictor) ||
-          (do_reflux && !is_predictor && updateFluxReg)) && false)
+    if ( (do_reflux && is_predictor) ||
+         (do_reflux && !is_predictor && updateFluxReg) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -5948,6 +5950,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
         for (int d=0; d<BL_SPACEDIM; ++d)
         {
             (*EdgeState[d])[i].setVal(0,(*EdgeState[d])[i].box(),Density,nspecies+3);
+            (*EdgeFlux[d])[i].setVal(0,(*EdgeFlux[d])[i].box(),Density,nspecies+3);
         }        
 	// loop over RhoY, RhoH, and Tracer
 	// we construct density by summing RhoY
@@ -5966,22 +5969,28 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 				     S,state_ind,Force[S_fpi],comp,divu,0,state_ind,bc.dataPtr(),iconserv);
 	  }
 
+	  for (int d=0; d<BL_SPACEDIM; ++d)
+	    (*EdgeFlux[d])[i].copy((*EdgeState[d])[i],state_ind,state_ind,1);
+
 	  int avcomp = 0;
 	  int ucomp = 0;
 	  // Compute Div(flux.Area), return Area-scaled fluxes
 	  godunov->ComputeAofs(grids[i],
                                D_DECL(area[0],area[1],area[2]),D_DECL(avcomp,avcomp,avcomp),
 			       D_DECL(u_mac[0][i],u_mac[1][i],u_mac[2][i]),D_DECL(ucomp,ucomp,ucomp),
-			       D_DECL((*EdgeState[0])[i],(*EdgeState[1])[i],(*EdgeState[2])[i]),
+			       D_DECL((*EdgeFlux[0])[i],(*EdgeFlux[1])[i],(*EdgeFlux[2])[i]),
 			       D_DECL(state_ind,state_ind,state_ind), volume, avcomp,
 			       (*aofs)[i], state_ind, iconserv);
 	  
-	  // Accumulate rho flux, and rho flux divergence
+	  // Accumulate rho flux divergence, rho on edges, and rho flux on edges
 	  if (state_ind >= first_spec && state_ind < first_spec+nspecies)
           {
 	    (*aofs)[i].plus((*aofs)[i],state_ind,Density,1);
 	    for (int d=0; d<BL_SPACEDIM; ++d)
-	      (*EdgeState[d])[i].plus((*EdgeState[d])[i],state_ind,Density,1);
+	      {
+		(*EdgeState[d])[i].plus((*EdgeState[d])[i],state_ind,Density,1);
+		(*EdgeFlux[d])[i].plus((*EdgeFlux[d])[i],state_ind,Density,1);
+	      }
 	  }
 
 	  // AJN FLUXREG
@@ -5992,14 +6001,14 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
 	    // update the flux register for state_ind
 	    for (int d = 0; d < BL_SPACEDIM; d++)
-	      advflux_reg->FineAdd((*EdgeState[d])[i],d,i,state_ind,state_ind,1,dt);
+	      advflux_reg->FineAdd((*EdgeFlux[d])[i],d,i,state_ind,state_ind,1,dt);
 
 	    // now that density has been constructed by summing rhoY, 
 	    // update the flux register for density
 	    if (state_ind == first_spec+nspecies-1)
 	    {
 	      for (int d = 0; d < BL_SPACEDIM; d++)
-		advflux_reg->FineAdd((*EdgeState[d])[i],d,i,Density,Density,1,dt);
+		advflux_reg->FineAdd((*EdgeFlux[d])[i],d,i,Density,Density,1,dt);
 	    }
 
 	  }
@@ -6015,7 +6024,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     {
         for (int d = 0; d < BL_SPACEDIM; d++)
 	{
-	  getAdvFluxReg(level+1).CrseInit((*EdgeState[d]),d,Density,Density,nspecies+3,-dt,FluxRegister::ADD);
+	  getAdvFluxReg(level+1).CrseInit((*EdgeFlux[d]),d,Density,Density,nspecies+3,-dt,FluxRegister::ADD);
 	}
     }
 }
@@ -6067,6 +6076,7 @@ HeatTransfer::mac_sync ()
             if (sync_scheme[i] == ReAdvect)
                 incr_sync[i] = 1;
 
+	// velocities
         if (do_mom_diff == 0) 
         {
             mac_projector->mac_sync_compute(level,u_mac,Vsync,Ssync,Rh,
@@ -6092,6 +6102,7 @@ HeatTransfer::mac_sync ()
             }
         }
 
+	// scalars
         for (int comp=BL_SPACEDIM; comp<NUM_STATE; ++comp)
         {
             if (sync_scheme[comp]==UseEdgeState)
@@ -6132,14 +6143,16 @@ HeatTransfer::mac_sync ()
                 if (istate != Density && advectionType[istate] == Conservative)
                 {
                     iconserved++;
-                        
+             
+		    // convert Ssync_q to Ssync_q - qnew * Ssync_rho
+		    // set DeltaSsync = qnew * Ssync_rho
                     delta_ssync.resize(grd,1);
-                    delta_ssync.copy(S_new[i],grd,istate,grd,0,1);
-                    delta_ssync.divide(S_new[i],grd,Density,0,1);
-                    FArrayBox& s_sync = (*Ssync)[i];
-                    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1);
-                    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1);
-                    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1);
+                    delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)new
+                    delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = qnew
+                    FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS_q
+                    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = qnew*RHS_rho
+                    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = qnew*RHS_rho
+                    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync_q = Ssync_q - qnew*RHS_rho
                 }
             }
         }
@@ -6186,13 +6199,13 @@ HeatTransfer::mac_sync ()
 		&& do_add_nonunityLe_corr_to_rhoh_adv_flux 
 		&& !do_mcdd)
 	    {
-#if 1
+#if 0
                 BoxLib::Abort("Sync still not fixed for diffdiff");
 #else
 		//
 		// Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
 		//
-		differential_spec_diffuse_sync(dt);
+		//		differential_spec_diffuse_sync(dt);
 
                 MultiFab Soln(grids,1,1);
                 const Real cur_time  = state[State_Type].curTime();
@@ -6208,8 +6221,10 @@ HeatTransfer::mac_sync ()
                 const int nGrow    = 1; // Size to grow fil-patched fab for T below
                 const int dataComp = 0; // coeffs loaded into 0-comp for all species
                   
+		// get lambda/cp
                 getDiffusivity(rhoh_visc, cur_time, RhoH, 0, 1);
 
+		// compute lambda/cp grad (delta Y_m^sync)
                 for (int comp = 0; comp < nspecies; ++comp)
                 {
                     const Real b     = be_cn_theta;
@@ -6223,8 +6238,8 @@ HeatTransfer::mac_sync ()
 
                     visc_op = diffusion->getViscOp(sigma,a,b,cur_time,
                                                    visc_bndry,Rh,
-                                                   rho_flag,&rhsscale,dataComp,
-                                                   rhoh_visc,alpha);
+                                                   rho_flag,&rhsscale,rhoh_visc,dataComp,
+                                                   alpha,dataComp);
 
                     visc_op->maxOrder(diffusion->maxOrder());
 
@@ -6240,7 +6255,6 @@ HeatTransfer::mac_sync ()
                     // Here, get fluxNULN = (lambda/cp - rho.D)Grad(Ysync)
                     //                    = lambda/cp.Grad(Ysync) + SpecSyncDiffFlux
                     //
-                    BL_ASSERT(spec_diffusion_flux_computed[comp]==HT_SyncDiffusion);
 
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                     {
@@ -6723,6 +6737,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
+
+    // Ssync contains RHS_q - qnew*RHS_rho
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
     Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
     //
@@ -6750,6 +6766,9 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     bool grow_cells_already_filled = false;
     adjust_spec_diffusion_fluxes(cur_time,betanp1,grow_cells_already_filled);
+
+    // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy) and put it in
+    // "nspecies+1" component of SpecDiffusionFluxnp1
     compute_enthalpy_fluxes(cur_time,betanp1,grow_cells_already_filled);
     //
     // Recompute update with adjusted diffusion fluxes
@@ -6824,6 +6843,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 void
 HeatTransfer::reflux ()
 {
+    // no need to reflux if this is the finest level
     if (level == parent->finestLevel()) return;
 
     const Real strt_time = ParallelDescriptor::second();
@@ -6848,8 +6868,10 @@ HeatTransfer::reflux ()
 
     geom.GetVolume(volume,grids,GEOM_GROW);
 
+    // take divergence of diffusive flux registers into cell-centered RHS
     fr_visc.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
-    fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
+    if (true)
+        fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
     const MultiFab* Rh = get_rho_half_time();
 
@@ -6867,6 +6889,8 @@ HeatTransfer::reflux ()
 
     FArrayBox tmp;
 
+    // for any variables that used non-conservative advective differencing,
+    // divide the sync by rhohalf
     for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
     {
         const int i = mfi.index();
@@ -6886,6 +6910,7 @@ HeatTransfer::reflux ()
         }
     }
 
+    // take divergence of advective flux registers into cell-centered RHS
     fr_adv.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
     fr_adv.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
