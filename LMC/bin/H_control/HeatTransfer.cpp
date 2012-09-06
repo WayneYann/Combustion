@@ -6208,7 +6208,7 @@ HeatTransfer::mac_sync ()
 		//
 		// Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
 		//
-#if 0
+#if 1
 		// broken
 		differential_spec_diffuse_sync(dt);
 #endif
@@ -6738,13 +6738,13 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     const Real cur_time = state[State_Type].curTime();
     MultiFab **betanp1;
-    diffusion->allocFluxBoxesLevel(betanp1,0,nspecies+2);
-    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies+1);
-    getDiffusivity(betanp1, cur_time, Temp, nspecies+1, 1);
+    diffusion->allocFluxBoxesLevel(betanp1,0,nspecies+1);
+    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies+1); // rhoD AND lambda/cp
 
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
 
+    // form RHS of DayBell:2000 Eq (18)
     // Ssync contains RHS_q - qnew*RHS_rho
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
     Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
@@ -6752,6 +6752,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // Some standard settings
     //
     const Array<int> rho_flag(nspecies,2);
+    const MultiFab* alpha = 0;
+    MultiFab** fluxSC;
     const MultiFab* Rh = get_rho_half_time();
 
     for (int sigma = 0; sigma < nspecies; ++sigma)
@@ -6764,9 +6766,16 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         //
 	const int ssync_ind = first_spec + sigma - Density;
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
-				 Rh,rho_flag[sigma],SpecDiffusionFluxnp1,sigma,
-                                 betanp1,sigma);
+				 Rh,rho_flag[sigma],fluxSC,sigma,
+                                 betanp1,sigma,alpha);
+	//
+	// Pull fluxes into flux array
+	// this is the rho D delta Ytilde_m^sync terms in DayBell:2000 Eq (18)
+	//
+	for (int d=0; d<BL_SPACEDIM; ++d)
+	    MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);
     }
+    diffusion->removeFluxBoxesLevel(fluxSC);
     //
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
