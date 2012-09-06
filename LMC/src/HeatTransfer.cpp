@@ -8390,7 +8390,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
             }
             if (level < parent->finestLevel())
             {
-                getLevel(level+1).getViscFluxReg().CrseInit(*SpecDiffusionFluxnp1[d],d,0,first_spec,nspecies,-dt);
+	      // turns out this isn't necessary since in the next time step we do CrseInit to overwrite
+	      // getLevel(level+1).getViscFluxReg().CrseInit(*SpecDiffusionFluxnp1[d],d,0,first_spec,nspecies,-dt);
             }
 	}
     }
