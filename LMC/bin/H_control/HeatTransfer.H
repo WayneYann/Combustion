@@ -148,7 +148,6 @@ public:
 					        const Real& dt);
 
     void adjust_spec_diffusion_fluxes (Real                   time,
-                                       const MultiFab* const* beta,
                                        bool                   grow_cells_already_filled);
 
     void compute_enthalpy_fluxes (Real                   time,

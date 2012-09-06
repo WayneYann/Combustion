@@ -2610,7 +2610,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         //
         bool grow_cells_already_filled = false;
 
-        adjust_spec_diffusion_fluxes(curr_time,betanp1,grow_cells_already_filled);
+        adjust_spec_diffusion_fluxes(curr_time,grow_cells_already_filled);
 
 	// AJN FLUXREG
 	// We have just performed the diffusion solve for Y_m.
@@ -2759,17 +2759,13 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
 void
 HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
-					    const MultiFab* const* beta,
                                             bool                   grow_cells_already_filled)
 {
     //
     // In this function we explicitly adjust the species diffusion fluxes so that their sum
-    // is zero.  beta coming in are the transport coefficients (rhoD, lambda/cp, lambda), and the
-    // the fluxes are class member data, either SpecDiffusionFluxn or 
+    // is zero.  The fluxes are class member data, either SpecDiffusionFluxn or 
     // SpecDiffusionFluxnp1, depending on time
     //
-    BL_ASSERT(beta && beta[0]->nComp() == nspecies+2);
-
     const TimeLevel whichTime = which_time(State_Type,time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
@@ -4738,7 +4734,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     bool grow_cells_already_filled = true;
 
     // conservatively correct Gamma_m
-    adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
+    adjust_spec_diffusion_fluxes(time,grow_cells_already_filled);
 
     //
     // AJN FLUXREG
@@ -6212,7 +6208,10 @@ HeatTransfer::mac_sync ()
 		//
 		// Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
 		//
-		//		differential_spec_diffuse_sync(dt);
+#if 0
+		// broken
+		differential_spec_diffuse_sync(dt);
+#endif
 
                 MultiFab Soln(grids,1,1);
                 const Real cur_time  = state[State_Type].curTime();
@@ -6739,8 +6738,9 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     const Real cur_time = state[State_Type].curTime();
     MultiFab **betanp1;
-    diffusion->allocFluxBoxesLevel(betanp1,0,nspecies);
-    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies);
+    diffusion->allocFluxBoxesLevel(betanp1,0,nspecies+2);
+    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies+1);
+    getDiffusivity(betanp1, cur_time, Temp, nspecies+1, 1);
 
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
@@ -6772,7 +6772,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // (Be sure to pass the "normal" looking Rhs to this generic function)
     //
     bool grow_cells_already_filled = false;
-    adjust_spec_diffusion_fluxes(cur_time,betanp1,grow_cells_already_filled);
+    adjust_spec_diffusion_fluxes(cur_time,grow_cells_already_filled);
 
     // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy) and put it in
     // "nspecies+1" component of SpecDiffusionFluxnp1
