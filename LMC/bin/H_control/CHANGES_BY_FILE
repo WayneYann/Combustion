@@ -23,10 +23,6 @@ x  Godunov.H
 ?  HEATTRANSFER_F.H
 ?  HeatTransfer.H
 
-x  HT_setup.cpp
-
-	replace all instances of "ydot" with "rhoydot"
-
 x  MacProj.cpp
 
 	godunov->Sum_tf_gp_visc interface changes

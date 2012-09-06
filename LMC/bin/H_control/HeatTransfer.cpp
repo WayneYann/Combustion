@@ -893,6 +893,7 @@ HeatTransfer::HeatTransfer ()
         BoxLib::Abort("have_dsdt MUST be true");
 
     EdgeState              = 0;
+    EdgeFlux               = 0;
     SpecDiffusionFluxn     = 0;
     SpecDiffusionFluxnp1   = 0;
     FillPatchedOldState_ok = true;
@@ -4720,6 +4721,12 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
         visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Phi,LinOp::Inhomogeneous_BC,do_applyBC,phiComp,sigma);
         delete visc_op;
     }
+
+    if (Phi_crse)
+      delete Phi_crse;
+
+    if (S_crse)
+      delete S_crse;
 
     // Remove scaling left in fluxes from solve
     for (int d=0; d < BL_SPACEDIM; ++d) {
