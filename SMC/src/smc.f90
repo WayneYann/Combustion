@@ -98,8 +98,8 @@ subroutine smc()
   end if
 
 
-  call smc_bc_init(la, U)
-  call nscbc_init(la)
+  call smc_bc_init(la)
+  call nscbc_init(la, U)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

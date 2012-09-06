@@ -898,7 +898,7 @@ contains
   end subroutine hypterm_3d
 
 
-  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy,dlo,dhi)
+  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy,dlo,dhi,bclo,bchi)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
@@ -908,7 +908,7 @@ contains
     double precision, intent(in ) :: lam(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
     double precision, intent(in ) :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
     double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
-    integer          , intent(in) :: dlo(3),dhi(3)
+    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
 
     double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
     double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
@@ -935,6 +935,29 @@ contains
     double precision :: rhstmp(nspecies), rhstot, rhsene
     double precision :: Hcell(0:1,2:ncons)
     integer :: iface
+
+    ! used to turn off some terms
+    double precision :: finlo(3), finhi(3)
+    double precision :: foulo(3), fouhi(3)
+
+    finlo = 1.d0 
+    finhi = 1.d0
+    foulo = 1.d0 
+    fouhi = 1.d0
+
+    do i=1,3
+       if (bclo(i) .eq. INLET) then
+          finlo(i) = 0.d0
+       else if (bclo(i) .eq. OUTLET) then
+          foulo(i) = 0.d0
+       end if
+
+       if (bchi(i) .eq. INLET) then
+          finhi(i) = 0.d0
+       else if (bchi(i) .eq. OUTLET) then
+          fouhi(i) = 0.d0
+       end if
+    end do
 
     ! Only the region bounded by [dlo,dhi] contains good data.
     ! [slo,shi] will be safe for 8th-order stencil
@@ -1296,9 +1319,9 @@ contains
              dmuydx = dxinv(1) * first_deriv_rb( mu(i:i+3,j,k)*uy(i:i+3,j,k) )
              ! d(mu*du/dz)/dx
              dmuzdx = dxinv(1) * first_deriv_rb( mu(i:i+3,j,k)*uz(i:i+3,j,k) )
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvywzdx
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuydx
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuzdx
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvywzdx*finlo(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuydx  *foulo(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuzdx  *foulo(1)
 
              i = lo(1)+1
              ! use 3rd-order slightly right-biased stencil
@@ -1397,9 +1420,9 @@ contains
              dmuydx = dxinv(1) * first_deriv_lb( mu(i-3:i,j,k)*uy(i-3:i,j,k) )
              ! d(mu*du/dz)/dx
              dmuzdx = dxinv(1) * first_deriv_lb( mu(i-3:i,j,k)*uz(i-3:i,j,k) )
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvywzdx
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuydx
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuzdx
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvywzdx*finhi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuydx  *fouhi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuzdx  *fouhi(1)
           end if
 
        end do
@@ -1437,9 +1460,9 @@ contains
                   first_deriv_rb( vsm(i,j:j+3,k)*(ux(i,j:j+3,k)+wz(i,j:j+3,k)) )
              ! d(mu*dv/dz)/dy
              dmvzdy = dxinv(2) * first_deriv_rb( mu(i,j:j+3,k)*vz(i,j:j+3,k) )
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvxdy
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuxwzdy
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmvzdy
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvxdy  *foulo(2)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuxwzdy*finlo(2)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmvzdy  *foulo(2)
           end do
 
           j = lo(2)+1
@@ -1545,9 +1568,9 @@ contains
                   first_deriv_lb( vsm(i,j-3:j,k)*(ux(i,j-3:j,k)+wz(i,j-3:j,k)) )
              ! d(mu*dv/dz)/dy
              dmvzdy = dxinv(2) * first_deriv_lb( mu(i,j-3:j,k)*vz(i,j-3:j,k) )
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvxdy
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuxwzdy
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmvzdy
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvxdy  *fouhi(2)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuxwzdy*finhi(2)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmvzdy  *fouhi(2)
           end do
        end if
     end do
@@ -1587,9 +1610,9 @@ contains
              ! d((xi-2/3*mu)*(ux+vy))/dz
              dmuxvydz = dxinv(3) * &
                   first_deriv_rb( vsm(i,j,k:k+3)*(ux(i,j,k:k+3)+vy(i,j,k:k+3)) )
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmwxdz
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmwydz
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuxvydz
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmwxdz  *foulo(3)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmwydz  *foulo(3)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuxvydz*finlo(3)
           end do
        end do
        !$omp end do nowait
@@ -1723,9 +1746,9 @@ contains
              ! d((xi-2/3*mu)*(ux+vy))/dz
              dmuxvydz = dxinv(3) * &
                   first_deriv_lb( vsm(i,j,k-3:k)*(ux(i,j,k-3:k)+vy(i,j,k-3:k)) )
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmwxdz
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmwydz
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuxvydz
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmwxdz  *fouhi(3)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmwydz  *fouhi(3)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuxvydz*finhi(3)
           end do
        end do
        !$omp end do nowait
@@ -1824,14 +1847,14 @@ contains
              muBB = matmul(    mu(i:i+3,j,k) , BRB)
              BBp  = matmul(BRB, q(i:i+3,j,k,qpres))
 
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dx2inv(1) * &
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + finlo(1) * dx2inv(1) * &
                   dot_product(matmul(vsp(i:i+3,j,k), BRB), &
                   &                    q(i:i+3,j,k,qu) )
 
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dx2inv(1)*dot_product(muBB,q(i:i+3,j,k,qv))
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dx2inv(1)*dot_product(muBB,q(i:i+3,j,k,qw))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + foulo(1)*dx2inv(1)*dot_product(muBB,q(i:i+3,j,k,qv))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + foulo(1)*dx2inv(1)*dot_product(muBB,q(i:i+3,j,k,qw))
 
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(1) * &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(1)*dx2inv(1) * &
                   ( dot_product(matmul(lam(i:i+3,j,k), BRB), &
                   &                      q(i:i+3,j,k,qtemp)) &
                   + dot_product(       dpe(i:i+3,j,k), BBp) )
@@ -1856,14 +1879,14 @@ contains
              
              do n = 1, nspecies
                 rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
-                     dx2inv(1) * (rhstmp(n) - Ytmp(n)*rhstot)
+                     foulo(1)*dx2inv(1) * (rhstmp(n) - Ytmp(n)*rhstot)
              end do
 
              do n = 1, nspecies
                 qhn = qh1+n-1
                 rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
              end do
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(1) * rhsene
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(1)*dx2inv(1) * rhsene
 
 
              !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2175,14 +2198,14 @@ contains
              muBB = matmul(    mu(i-3:i,j,k) , BLB)
              BBp  = matmul(BLB, q(i-3:i,j,k,qpres))
 
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dx2inv(1) * &
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + finhi(1) * dx2inv(1) * &
                   dot_product(matmul(vsp(i-3:i,j,k), BLB), &
                   &                    q(i-3:i,j,k,qu) )
 
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dx2inv(1)*dot_product(muBB,q(i-3:i,j,k,qv))
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dx2inv(1)*dot_product(muBB,q(i-3:i,j,k,qw))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + fouhi(1)*dx2inv(1)*dot_product(muBB,q(i-3:i,j,k,qv))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + fouhi(1)*dx2inv(1)*dot_product(muBB,q(i-3:i,j,k,qw))
 
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(1) * &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(1)*dx2inv(1) * &
                   ( dot_product(matmul(lam(i-3:i,j,k), BLB), &
                   &                      q(i-3:i,j,k,qtemp)) &
                   + dot_product(       dpe(i-3:i,j,k), BBp) )
@@ -2207,14 +2230,14 @@ contains
              
              do n = 1, nspecies
                 rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
-                     dx2inv(1) * (rhstmp(n) - Ytmp(n)*rhstot)
+                     fouhi(1)*dx2inv(1) * (rhstmp(n) - Ytmp(n)*rhstot)
              end do
 
              do n = 1, nspecies
                 qhn = qh1+n-1
                 rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
              end do
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(1) * rhsene
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(1)*dx2inv(1) * rhsene
           end if
 
        end do
@@ -2296,14 +2319,14 @@ contains
              muBB = matmul(    mu(i,j:j+3,k) , BRB)
              BBp  = matmul(BRB, q(i,j:j+3,k,qpres))
 
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dx2inv(2)*dot_product(muBB,q(i,j:j+3,k,qu))
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dx2inv(2)*dot_product(muBB,q(i,j:j+3,k,qw))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + foulo(2)*dx2inv(2)*dot_product(muBB,q(i,j:j+3,k,qu))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + foulo(2)*dx2inv(2)*dot_product(muBB,q(i,j:j+3,k,qw))
 
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dx2inv(2) * &
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + finlo(2) * dx2inv(2) * &
                   dot_product(matmul(vsp(i,j:j+3,k), BRB), &
                   &                    q(i,j:j+3,k,qv) )
 
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(2) * &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(2)*dx2inv(2) * &
                   ( dot_product(matmul(lam(i,j:j+3,k), BRB), &
                   &                      q(i,j:j+3,k,qtemp)) &
                   + dot_product(       dpe(i,j:j+3,k), BBp) )
@@ -2328,14 +2351,14 @@ contains
              
              do n = 1, nspecies
                 rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
-                     dx2inv(2) * (rhstmp(n) - Ytmp(n)*rhstot)
+                     foulo(2)*dx2inv(2) * (rhstmp(n) - Ytmp(n)*rhstot)
              end do
 
              do n = 1, nspecies
                 qhn = qh1+n-1
                 rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
              end do
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(2) * rhsene
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(2)*dx2inv(2) * rhsene
           end do
 
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2661,14 +2684,14 @@ contains
              muBB = matmul(    mu(i,j-3:j,k) , BLB)
              BBp  = matmul(BLB, q(i,j-3:j,k,qpres))
 
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dx2inv(2)*dot_product(muBB,q(i,j-3:j,k,qu))
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dx2inv(2)*dot_product(muBB,q(i,j-3:j,k,qw))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + fouhi(2)*dx2inv(2)*dot_product(muBB,q(i,j-3:j,k,qu))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + fouhi(2)*dx2inv(2)*dot_product(muBB,q(i,j-3:j,k,qw))
 
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dx2inv(2) * &
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + finhi(2) * dx2inv(2) * &
                   dot_product(matmul(vsp(i,j-3:j,k), BLB), &
                   &                    q(i,j-3:j,k,qv) )
 
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(2) * &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(2)*dx2inv(2) * &
                   ( dot_product(matmul(lam(i,j-3:j,k), BLB), &
                   &                      q(i,j-3:j,k,qtemp)) &
                   + dot_product(       dpe(i,j-3:j,k), BBp) )
@@ -2693,14 +2716,14 @@ contains
              
              do n = 1, nspecies
                 rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
-                     dx2inv(2) * (rhstmp(n) - Ytmp(n)*rhstot)
+                     fouhi(2)*dx2inv(2) * (rhstmp(n) - Ytmp(n)*rhstot)
              end do
 
              do n = 1, nspecies
                 qhn = qh1+n-1
                 rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
              end do
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(2) * rhsene
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(2)*dx2inv(2) * rhsene
           end do
 
        end if
@@ -2786,14 +2809,14 @@ contains
              muBB = matmul(    mu(i,j,k:k+3) , BRB)
              BBp  = matmul(BRB, q(i,j,k:k+3,qpres))
 
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dx2inv(3)*dot_product(muBB,q(i,j,k:k+3,qu))
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dx2inv(3)*dot_product(muBB,q(i,j,k:k+3,qv))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + foulo(3)*dx2inv(3)*dot_product(muBB,q(i,j,k:k+3,qu))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + foulo(3)*dx2inv(3)*dot_product(muBB,q(i,j,k:k+3,qv))
 
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dx2inv(3) * &
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + finlo(3) * dx2inv(3) * &
                   dot_product(matmul(vsp(i,j,k:k+3), BRB), &
                   &                    q(i,j,k:k+3,qw) )
 
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(3) * &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(3)*dx2inv(3) * &
                   ( dot_product(matmul(lam(i,j,k:k+3), BRB), &
                   &                      q(i,j,k:k+3,qtemp)) &
                   + dot_product(       dpe(i,j,k:k+3), BBp) )
@@ -2818,14 +2841,14 @@ contains
              
              do n = 1, nspecies
                 rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
-                     dx2inv(3) * (rhstmp(n) - Ytmp(n)*rhstot)
+                     foulo(3)*dx2inv(3) * (rhstmp(n) - Ytmp(n)*rhstot)
              end do
 
              do n = 1, nspecies
                 qhn = qh1+n-1
                 rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
              end do
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(3) * rhsene
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(3)*dx2inv(3) * rhsene
              
           end do
        end do
@@ -3180,14 +3203,14 @@ contains
              muBB = matmul(    mu(i,j,k-3:k) , BLB)
              BBp  = matmul(BLB, q(i,j,k-3:k,qpres))
 
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dx2inv(3)*dot_product(muBB,q(i,j,k-3:k,qu))
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dx2inv(3)*dot_product(muBB,q(i,j,k-3:k,qv))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + fouhi(3)*dx2inv(3)*dot_product(muBB,q(i,j,k-3:k,qu))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + fouhi(3)*dx2inv(3)*dot_product(muBB,q(i,j,k-3:k,qv))
 
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dx2inv(3) * &
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + finhi(3) * dx2inv(3) * &
                   dot_product(matmul(vsp(i,j,k-3:k), BLB), &
                   &                    q(i,j,k-3:k,qw) )
 
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(3) * &
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(3)*dx2inv(3) * &
                   ( dot_product(matmul(lam(i,j,k-3:k), BLB), &
                   &                      q(i,j,k-3:k,qtemp)) &
                   + dot_product(       dpe(i,j,k-3:k), BBp) )
@@ -3212,14 +3235,14 @@ contains
              
              do n = 1, nspecies
                 rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
-                     dx2inv(3) * (rhstmp(n) - Ytmp(n)*rhstot)
+                     fouhi(3)*dx2inv(3) * (rhstmp(n) - Ytmp(n)*rhstot)
              end do
 
              do n = 1, nspecies
                 qhn = qh1+n-1
                 rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
              end do
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dx2inv(3) * rhsene
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(3)*dx2inv(3) * rhsene
              
           end do
        end do
