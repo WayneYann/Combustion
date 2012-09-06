@@ -16,13 +16,12 @@ module smc_bc_module
 
 contains
 
-  subroutine smc_bc_init(la, U)
+  subroutine smc_bc_init(la)
     use layout_module
     use multifab_module
     use probin_module, only : bcx_lo,bcx_hi,bcy_lo,bcy_hi,bcz_lo,bcz_hi
     use derivative_stencil_module, only : stencil_ng
     type(layout), intent(in) :: la
-    type(multifab), intent(in) :: U ! xxxxx we will need to save data for inflow
 
     integer :: ndm, nbx, i, j, bclo(3), bchi(3)
     integer ::  lo(la%lap%dim),  hi(la%lap%dim)
@@ -46,10 +45,12 @@ contains
 
     do i=1,ndm
        if ( bclo(i) .ne. PERIODIC .and. &
+            bclo(i) .ne. INLET    .and. &
             bclo(i) .ne. OUTLET ) then
           call bl_error("Unknown boundary")
        end if
        if ( bchi(i) .ne. PERIODIC .and. &
+            bchi(i) .ne. INLET    .and. &
             bchi(i) .ne. OUTLET ) then
           call bl_error("Unknown boundary")
        end if

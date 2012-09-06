@@ -60,6 +60,7 @@ endif
 
 
 # any include directories
+Fmincludes += $(SMC_CORE)
 Fmincs := $(foreach dir, $(Fmincludes), $(SMC_TOP_DIR)/$(dir))
 
 

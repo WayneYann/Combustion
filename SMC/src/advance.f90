@@ -65,17 +65,20 @@ contains
     call set_dt(dt, courno_proc, istep)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
+    call impose_hard_bc(Unew)
 
     ! RK Step 2
     call dUdt(Unew, Uprime, dx)
 
     call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
+    call impose_hard_bc(Unew)
 
     ! RK Step 3
     call dUdt(Unew, Uprime, dx)
     call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
+    call impose_hard_bc(U)
 
     call destroy(Unew)
     call destroy(Uprime)
@@ -187,6 +190,7 @@ contains
        call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
        call saxpy(uSDC(m+1), dt, S(m))
        call reset_density(uSDC(m+1))
+       call impose_hard_bc(uSDC(m+1))
 
        call dUdt(uSDC(m+1), fSDC(m+1), dx)
 
@@ -455,11 +459,12 @@ contains
        hi = upb(get_box(Q,n))
 
        call get_data_lo_hi(n,dlo,dhi)
+       call get_boxbc(n,blo,bhi)
 
        if (dm .ne. 3) then
           call bl_error("Only 3D compact_diffterm is supported")
        else
-          call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi)
+          call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
        end if
     end do
 
