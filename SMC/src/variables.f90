@@ -1,6 +1,5 @@
 module variables_module
 
-  use bl_types
   use chemistry_module, only : nspecies
   use multifab_module
 

@@ -182,30 +182,72 @@ contains
     do n=1,nb
        if ( remote(Q,n) ) cycle
 
-       if (isValid(aux_xlo,n)) then
-          lo = lwb(get_box(Q,n))
-          hi = upb(get_box(Q,n))
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
 
+       qp => dataptr(Q, n)
+
+       if (isValid(aux_xlo,n)) then
           alo = lwb(get_box(aux_xlo%data,n))
           ahi = upb(get_box(aux_xlo%data,n))
 
-          qp => dataptr(Q, n)
           auxp => dataptr(aux_xlo%data,n)
 
           call compute_aux(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xlo)
        end if
 
        if (isValid(aux_xhi,n)) then
-          lo = lwb(get_box(Q,n))
-          hi = upb(get_box(Q,n))
-
           alo = lwb(get_box(aux_xhi%data,n))
           ahi = upb(get_box(aux_xhi%data,n))
 
-          qp => dataptr(Q, n)
           auxp => dataptr(aux_xhi%data,n)
 
           call compute_aux(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xhi)
+       end if
+
+       if (isValid(aux_ylo,n)) then
+          alo = lwb(get_box(aux_ylo%data,n))
+          ahi = upb(get_box(aux_ylo%data,n))
+
+          auxp => dataptr(aux_ylo%data,n)
+
+          call compute_aux(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_ylo)
+       end if
+
+       if (isValid(aux_yhi,n)) then
+          alo = lwb(get_box(aux_yhi%data,n))
+          ahi = upb(get_box(aux_yhi%data,n))
+
+          auxp => dataptr(aux_yhi%data,n)
+
+          call compute_aux(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_yhi)
+       end if
+
+       if (isValid(aux_xhi,n)) then
+          alo = lwb(get_box(aux_xhi%data,n))
+          ahi = upb(get_box(aux_xhi%data,n))
+
+          auxp => dataptr(aux_xhi%data,n)
+
+          call compute_aux(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xhi)
+       end if
+
+       if (isValid(aux_zlo,n)) then
+          alo = lwb(get_box(aux_zlo%data,n))
+          ahi = upb(get_box(aux_zlo%data,n))
+
+          auxp => dataptr(aux_zlo%data,n)
+
+          call compute_aux(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_zlo)
+       end if
+
+       if (isValid(aux_zhi,n)) then
+          alo = lwb(get_box(aux_zhi%data,n))
+          ahi = upb(get_box(aux_zhi%data,n))
+
+          auxp => dataptr(aux_zhi%data,n)
+
+          call compute_aux(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_zhi)
        end if
 
     end do
@@ -324,6 +366,8 @@ contains
     double precision :: Tt, rwrk, cv, cp, gamma, Wbar, vel2, cs2
     double precision :: Yt(nspecies), wdot(nspecies)
 
+    !$omp parallel do if (ahi(3) > alo(3)) &
+    !$omp private(i,j,k,iwrk,Tt,rwrk,cv,cp,gamma,Wbar,vel2,cs2,Yt,wdot)
     do k=alo(3),ahi(3)
        do j=alo(2),ahi(2)
           do i=alo(1),ahi(1)
@@ -352,6 +396,7 @@ contains
           end do
        end do
     end do
+    !$omp end parallel do
 
   end subroutine compute_aux
 

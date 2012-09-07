@@ -247,7 +247,7 @@ contains
           enddo
        end do
     end do
-    !$omp end do
+    !$omp end do nowait
 
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then

@@ -34,6 +34,8 @@
     integer :: i, j, k, iwrk
     double precision :: rhoinv, ei, rwrk
 
+    !$omp parallel do if (qhi(3) > qlo(3)) &
+    !$omp private(i,j,k,iwrk,rhoinv, ei, rwrk)
     do k=qlo(3),qhi(3)
     do j=qlo(2),qhi(2)
     do i=qlo(1),qhi(1)
@@ -49,6 +51,7 @@
     end do
     end do
     end do
+    !$omp end parallel do
   end subroutine ctoprim_inflow
 
   subroutine impose_hard_bc(U)
@@ -124,6 +127,8 @@
     integer :: i, j, k, iwrk
     double precision :: ei, rwrk
 
+    !$omp parallel do if (qhi(3) > qlo(3)) &
+    !$omp private(i,j,k,iwrk, ei, rwrk)
     do k=qlo(3),qhi(3)
     do j=qlo(2),qhi(2)
     do i=qlo(1),qhi(1)
@@ -141,9 +146,11 @@
        cons(i,j,k,iry1:iry1+nspecies-1) = cons(i,j,k,irho) * qin(iYin1:,i,j,k)
 
        call CKUBMS(qin(iTin,i,j,k),qin(iYin1:,i,j,k),iwrk,rwrk,ei)
+
        cons(i,j,k,iene) = cons(i,j,k,irho)*ei + (cons(i,j,k,imx)**2 &
             + cons(i,j,k,imy)**2 + cons(i,j,k,imz)**2) / (2.d0*cons(i,j,k,irho))
     end do
     end do
     end do
+    !$omp end parallel do
   end subroutine impose_inflow
