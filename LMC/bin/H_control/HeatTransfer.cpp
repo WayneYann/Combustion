@@ -2610,7 +2610,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         //
         bool grow_cells_already_filled = false;
 
-        adjust_spec_diffusion_fluxes(curr_time,betanp1,grow_cells_already_filled);
+        adjust_spec_diffusion_fluxes(curr_time,grow_cells_already_filled);
 
 	// AJN FLUXREG
 	// We have just performed the diffusion solve for Y_m.
@@ -2759,17 +2759,13 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
 void
 HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
-					    const MultiFab* const* beta,
                                             bool                   grow_cells_already_filled)
 {
     //
     // In this function we explicitly adjust the species diffusion fluxes so that their sum
-    // is zero.  beta coming in are the transport coefficients (rhoD, lambda/cp, lambda), and the
-    // the fluxes are class member data, either SpecDiffusionFluxn or 
+    // is zero.  The fluxes are class member data, either SpecDiffusionFluxn or 
     // SpecDiffusionFluxnp1, depending on time
     //
-    BL_ASSERT(beta && beta[0]->nComp() == nspecies+2);
-
     const TimeLevel whichTime = which_time(State_Type,time);
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
@@ -4738,7 +4734,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     bool grow_cells_already_filled = true;
 
     // conservatively correct Gamma_m
-    adjust_spec_diffusion_fluxes(time,beta,grow_cells_already_filled);
+    adjust_spec_diffusion_fluxes(time,grow_cells_already_filled);
 
     //
     // AJN FLUXREG
@@ -6212,7 +6208,10 @@ HeatTransfer::mac_sync ()
 		//
 		// Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
 		//
-		//		differential_spec_diffuse_sync(dt);
+#if 1
+		// broken
+		differential_spec_diffuse_sync(dt);
+#endif
 
                 MultiFab Soln(grids,1,1);
                 const Real cur_time  = state[State_Type].curTime();
@@ -6739,12 +6738,13 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     const Real cur_time = state[State_Type].curTime();
     MultiFab **betanp1;
-    diffusion->allocFluxBoxesLevel(betanp1,0,nspecies);
-    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies);
+    diffusion->allocFluxBoxesLevel(betanp1,0,nspecies+1);
+    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies+1); // rhoD AND lambda/cp
 
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
 
+    // form RHS of DayBell:2000 Eq (18)
     // Ssync contains RHS_q - qnew*RHS_rho
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
     Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
@@ -6752,6 +6752,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // Some standard settings
     //
     const Array<int> rho_flag(nspecies,2);
+    const MultiFab* alpha = 0;
+    MultiFab** fluxSC;
     const MultiFab* Rh = get_rho_half_time();
 
     for (int sigma = 0; sigma < nspecies; ++sigma)
@@ -6764,15 +6766,22 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         //
 	const int ssync_ind = first_spec + sigma - Density;
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
-				 Rh,rho_flag[sigma],SpecDiffusionFluxnp1,sigma,
-                                 betanp1,sigma);
+				 Rh,rho_flag[sigma],fluxSC,sigma,
+                                 betanp1,sigma,alpha);
+	//
+	// Pull fluxes into flux array
+	// this is the rho D delta Ytilde_m^sync terms in DayBell:2000 Eq (18)
+	//
+	for (int d=0; d<BL_SPACEDIM; ++d)
+	    MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);
     }
+    diffusion->removeFluxBoxesLevel(fluxSC);
     //
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
     //
     bool grow_cells_already_filled = false;
-    adjust_spec_diffusion_fluxes(cur_time,betanp1,grow_cells_already_filled);
+    adjust_spec_diffusion_fluxes(cur_time,grow_cells_already_filled);
 
     // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy) and put it in
     // "nspecies+1" component of SpecDiffusionFluxnp1

@@ -8326,6 +8326,9 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
+
+    // form RHS of DayBell:2000 Eq (18)
+    // Rhs and Ssync contain RHS_q - qnew*RHS_rho
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
     Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
     //
@@ -8352,6 +8355,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
                                  sigma,betanp1,alpha);
 	//
 	// Pull fluxes into flux array
+	// this is the rho D delta Ytilde_m^sync terms in DayBell:2000 Eq (18)
 	//
 	for (int d=0; d<BL_SPACEDIM; ++d)
 	    MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);
@@ -8365,6 +8369,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     const int sCompS = first_spec - BL_SPACEDIM;
     const MultiFab* old_sync = 0;
     const int dataComp = 0; 
+    // ??????????
     adjust_spec_diffusion_update(*Ssync,old_sync,sCompS,dt,cur_time,rho_flag,
                                  Rh,dataComp,&Rhs,alpha,betanp1);
 
@@ -8385,7 +8390,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
             }
             if (level < parent->finestLevel())
             {
-                getLevel(level+1).getViscFluxReg().CrseInit(*SpecDiffusionFluxnp1[d],d,0,first_spec,nspecies,-dt);
+	      // turns out this isn't necessary since in the next time step we do CrseInit to overwrite
+	      // getLevel(level+1).getViscFluxReg().CrseInit(*SpecDiffusionFluxnp1[d],d,0,first_spec,nspecies,-dt);
             }
 	}
     }
