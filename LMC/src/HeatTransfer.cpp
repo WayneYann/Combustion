@@ -7789,7 +7789,8 @@ HeatTransfer::mac_sync ()
 	    {
 		//
 		// Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
-		//
+	        // After exiting, SpecDiffusionFluxnp1 should contain rhoD grad (delta Y)^sync
+		// Also, Ssync for species should contain rho^{n+1} * (delta Y)^sync
 		differential_spec_diffuse_sync(dt);
 
                 MultiFab Soln(grids,1,1);
@@ -7806,14 +7807,16 @@ HeatTransfer::mac_sync ()
                 const int nGrow    = 1; // Size to grow fil-patched fab for T below
                 const int dataComp = 0; // coeffs loaded into 0-comp for all species
                   
+		// get lambda/cp
                 getDiffusivity(rhoh_visc, cur_time, RhoH, 0, 1);
 
+		// compute lambda/cp grad (delta Y_m^sync)
                 for (int comp = 0; comp < nspecies; ++comp)
                 {
                     const Real b     = be_cn_theta;
                     const int  sigma = first_spec + comp;
                     //
-                    //  start by getting lambda/cp.Grad(Ysync)
+                    //  start by getting lambda/cp.Grad(delta Y^sync)
                     //   (note: neg of usual diff flux)
                     //
                     ViscBndry      visc_bndry;
@@ -7826,17 +7829,22 @@ HeatTransfer::mac_sync ()
 
                     visc_op->maxOrder(diffusion->maxOrder());
 
+		    // copy rho^{n+1} * (delta Y)^sync into Soln
                     MultiFab::Copy(Soln,*Ssync,sigma-BL_SPACEDIM,0,1,0);
 
+		    // divide Soln by rho
                     for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
-                        Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
+		    {
+		      Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
+		    }
 
+		    // compute lambda/cp.Grad(delta Y^sync) and weight
 		    visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                         fluxSC[d]->mult(-b/geom.CellSize()[d]);
                     //
-                    // Here, get fluxNULN = (lambda/cp - rho.D)Grad(Ysync)
-                    //                    = lambda/cp.Grad(Ysync) + SpecSyncDiffFlux
+                    // Here, get fluxNULN = (lambda/cp - rho.D)Grad(delta Ysync)
+                    //                    = lambda/cp.Grad(delta Ysync) + SpecSyncDiffFlux
                     //
                     BL_ASSERT(spec_diffusion_flux_computed[comp]==HT_SyncDiffusion);
 
@@ -7850,7 +7858,9 @@ HeatTransfer::mac_sync ()
                             FArrayBox& fluxNULN_fab = (*fluxNULN[d])[SDF_mfi];
                             FArrayBox& SDF_fab = (*SpecDiffusionFluxnp1[d])[SDF_mfi];
                             const Box& ebox    = SDF_mfi.validbox();
+			    // copy in (delta Gamma)^sync
                             fluxNULN_fab.copy(SDF_fab,ebox,comp,ebox,comp,1);
+			    // add in (lambda/cp) grad (delta Y^sync)
                             fluxNULN_fab.plus(fluxSC_fab,ebox,0,comp,1);
                         }
                     }
@@ -7884,10 +7894,14 @@ HeatTransfer::mac_sync ()
                         
                         h.resize(ebox,nspecies);
                         getChemSolve().getHGivenT(h,eTemp,ebox,0,0);
+
+			// multiply fluxNULN by h_m
                         (*fluxNULN[d])[i].mult(h,ebox,0,0,nspecies);
                     }
                 }
 
+		// add the NULN fluxes to the RHS of the (delta h)^sync diffusion solve
+		// afterwards, the entire RHS should be ready
                 for (MFIter Ssync_mfi(*Ssync); Ssync_mfi.isValid(); ++Ssync_mfi)
                 {
                     const int i      = Ssync_mfi.index();
@@ -7968,6 +7982,9 @@ HeatTransfer::mac_sync ()
                     MultiFab* alpha = 0;
                     getDiffusivity(beta, cur_time, state_ind, 0, 1);
                     
+		    // on entry, Ssync = RHS for (delta h)^sync diffusive solve
+		    // on exit, Ssync = rho^{n+1} * (delta h)^sync
+		    // on exit, flux = coeff * grad phi
 		    diffusion->diffuse_Ssync(Ssync,sigma,dt,be_cn_theta,Rh,
 					     rho_flag,flux,0,beta,alpha);
 		    if (do_viscsyncflux && level > 0)
@@ -7987,6 +8004,8 @@ HeatTransfer::mac_sync ()
         //
         // For all conservative variables Q (other than density)
         // increment sync by (sync_for_rho)*q_presync.
+	// Before this loop, Ssync holds rho^{n+1} (delta phi)^sync
+	// DeltaSsync holds (delta rho)^sync phi^p
         //
         for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
         {
@@ -8350,15 +8369,22 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         // diffused result is an acceleration, not a velocity, req'd by the projection.
         //
 	const int ssync_ind = first_spec + sigma - Density;
+                    
+	// on entry, Ssync = RHS for (delta Ytilde)^sync diffusive solve
+	// on exit, Ssync = rho^{n+1} * (delta Ytilde)^sync
+	// on exit, fluxSC = rhoD grad (delta Ytilde)^sync
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
 				 Rh,rho_flag[sigma],fluxSC,
                                  sigma,betanp1,alpha);
 	//
 	// Pull fluxes into flux array
-	// this is the rho D delta Ytilde_m^sync terms in DayBell:2000 Eq (18)
+	// this is the rhoD grad (delta Ytilde)^sync terms in DayBell:2000 Eq (18)
 	//
 	for (int d=0; d<BL_SPACEDIM; ++d)
-	    MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);
+	{
+	  MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);
+	}
+
 	spec_diffusion_flux_computed[sigma] = HT_SyncDiffusion;
     }
     diffusion->removeFluxBoxesLevel(fluxSC);
@@ -8369,7 +8395,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     const int sCompS = first_spec - BL_SPACEDIM;
     const MultiFab* old_sync = 0;
     const int dataComp = 0; 
-    // ??????????
+    // this should correct Ssync to contain rho^{n+1} * (delta Y)^sync
+    // this should correct SpecDiffusionFluxnp1 to contain rhoD grad (delta Y)^sync
     adjust_spec_diffusion_update(*Ssync,old_sync,sCompS,dt,cur_time,rho_flag,
                                  Rh,dataComp,&Rhs,alpha,betanp1);
 
@@ -8379,21 +8406,16 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     // Do refluxing AFTER flux adjustment
     //
-    if (do_reflux)
+    if (do_reflux && level > 0)
     {
-	for (int d=0; d<BL_SPACEDIM; ++d)
+      for (int d=0; d<BL_SPACEDIM; ++d)
+      {
+	for (MFIter fmfi(*SpecDiffusionFluxnp1[d]); fmfi.isValid(); ++fmfi)
 	{
-            if (level > 0)
-            {
-                for (MFIter fmfi(*SpecDiffusionFluxnp1[d]); fmfi.isValid(); ++fmfi)
-		    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies,dt);
-            }
-            if (level < parent->finestLevel())
-            {
-	      // turns out this isn't necessary since in the next time step we do CrseInit to overwrite
-	      // getLevel(level+1).getViscFluxReg().CrseInit(*SpecDiffusionFluxnp1[d],d,0,first_spec,nspecies,-dt);
-            }
+	  const int i=fmfi.index();
+	  getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[i],d,i,0,first_spec,nspecies,dt);
 	}
+      }
     }
 
     if (verbose)
@@ -8404,7 +8426,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::differential_spec_diffuse_sync(): time: " << run_time << '\n';
+            std::cout << "HeatTransfer::differential_spec_diffuse_sync(): time: " 
+                      << run_time << '\n';
     }
 }
 
