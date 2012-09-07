@@ -24,7 +24,7 @@ module nscbc_module
   integer, save :: nqin
 
   type(physbndry_reg), save :: aux_xlo, aux_xhi, aux_ylo, aux_yhi, aux_zlo, aux_zhi
-  integer, parameter :: igamma=1, iWbar=2, icv=3, ics=4, iwdot1=5
+  integer, parameter :: igamma=1, iWbar=2, icp=3, icv=4, ics=5, iwdot1=6
   integer, save :: naux
 
   double precision, save :: Lxdomain, Lydomain, Lzdomain
@@ -387,6 +387,7 @@ contains
 
              A(igamma,i,j,k) = gamma
              A(iWbar ,i,j,k) = Wbar
+             A(icp   ,i,j,k) = cp
              A(icv   ,i,j,k) = cv
              A(ics   ,i,j,k) = sqrt(cs2)
 
@@ -408,16 +409,20 @@ contains
     double precision, intent(in) :: rho, u, v, w, T, Y(nspecies), h(nspecies), rhoE
     double precision, intent(out) :: lhs(ncons)
 
-    double precision :: du, dv, dw, drho, dp, dY(nspecies), rhode, cvWT
+    double precision :: du, dv, dw, drho, dp, dY(nspecies), rhode, cpWT
 
     if (idim .eq. 1) then ! x-direction
        du = (L(5)-L(1))/(rho*aux(ics))
        dv = L(3)
        dw = L(4)
     else if (idim .eq. 2) then ! y-direction
-       call bl_error('TODO: idim=2 in LtoLHS()')
+       dv = (L(5)-L(1))/(rho*aux(ics))
+       du = L(3)
+       dw = L(4)
     else if (idim .eq. 3) then ! z-direction
-       call bl_error('TODO: idim=3 in LtoLHS()')
+       dw = (L(5)-L(1))/(rho*aux(ics))
+       du = L(3)
+       dv = L(4)       
     else
        call bl_error('Unknow idim in LtoLHS()')
     end if
@@ -426,9 +431,9 @@ contains
     dp = L(5) + L(1)
     dY = L(6:)
 
-    cvWT = aux(icv)*aux(iWbar)*T
+    cpWT = aux(icp)*aux(iWbar)*T
     rhode = dp/(aux(igamma)-1.d0) - aux(icv)*T*drho + &
-         rho*sum((h-cvWT/molecular_weight)*dY)
+         rho*sum((h-cpWT/molecular_weight)*dY)
 
     lhs(irho) = drho
     lhs(imx) = drho*u + rho*du

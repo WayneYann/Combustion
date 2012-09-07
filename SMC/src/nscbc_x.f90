@@ -14,7 +14,7 @@
     double precision :: dpdn, dudn(3), drhodn, dYdn(nspecies)
     double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
     double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
-    double precision :: scratch
+    double precision :: hcal, cpWT, gam1
 
     double precision, dimension(lo(2):hi(2),lo(3):hi(3)) :: &
          dpdy, dpdz, dudy, dudz, dvdy, dwdz
@@ -67,19 +67,20 @@
           d_u = fd(i,j,k,imx) / rho
           d_v = fd(i,j,k,imy) / rho
           d_w = fd(i,j,k,imz) / rho
-          
-          S_Y = 0.d0  
+           
           S_p = 0.d0
-          d_p = 0.d0
+          d_p = fd(i,j,k,iene) - (d_u*con(i,j,k,imx)+d_v*con(i,j,k,imy)+d_w*con(i,j,k,imz))
+          cpWT = aux(icp,j,k)*aux(iWbar,j,k)*T
+          gam1 = aux(igamma,j,k) - 1.d0
           do n=1,nspecies
-             scratch = h(n)*(1.d0-aux(igamma,j,k)) + &
-                  aux(igamma,j,k)*pres*aux(iWbar,j,k)/(rho*molecular_weight(n))
-             S_p = S_p + scratch*aux(iwdot1+n-1,j,k)
-             d_p = d_p + scratch*fd(i,j,k,iry1+n-1)
+             hcal = h(n) - cpWT/molecular_weight(n)
+             S_p    = S_p - hcal*aux(iwdot1+n-1,j,k)
+             S_Y(n) = aux(iwdot1+n-1,j,k) / rho
+             d_p    = d_p - hcal*fd(i,j,k,iry1+n-1)
              d_Y(n) = fd(i,j,k,iry1+n-1) / rho
           end do
-          d_p = d_p + (aux(igamma,j,k)-1.d0)*(fd(i,j,k,iene) &
-               - d_u*con(i,j,k,imx) - d_v*con(i,j,k,imy) - d_w*con(i,j,k,imz))
+          S_p = gam1 * S_p
+          d_p = gam1 * d_p 
           
           L(5) = L(5) + 0.5d0*(S_p + d_p + rho*aux(ics,j,k)*d_u)
           
@@ -120,7 +121,7 @@
     double precision :: dpdn, dudn(3), drhodn, dYdn(nspecies)
     double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
     double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
-    double precision :: scratch, cs2
+    double precision :: hcal, cpWT, gam1, cs2
 
     double precision, dimension(lo(2):hi(2),lo(3):hi(3)) :: &
          drhody, drhodz, dudy, dudz, dvdy, dvdz, dwdy, dwdz, dpdy, dpdz
@@ -186,18 +187,19 @@
           d_v = fd(i,j,k,imy) / rho
           d_w = fd(i,j,k,imz) / rho
           
-          S_Y = 0.d0  
           S_p = 0.d0
-          d_p = 0.d0
+          d_p = fd(i,j,k,iene) - (d_u*con(i,j,k,imx)+d_v*con(i,j,k,imy)+d_w*con(i,j,k,imz))
+          cpWT = aux(icp,j,k)*aux(iWbar,j,k)*T
+          gam1 = aux(igamma,j,k) - 1.d0
           do n=1,nspecies
-             scratch = h(n)*(1.d0-aux(igamma,j,k)) + &
-                  aux(igamma,j,k)*pres*aux(iWbar,j,k)/(rho*molecular_weight(n))
-             S_p = S_p + scratch*aux(iwdot1+n-1,j,k)
-             d_p = d_p + scratch*fd(i,j,k,iry1+n-1)
+             hcal = h(n) - cpWT/molecular_weight(n)
+             S_p    = S_p - hcal*aux(iwdot1+n-1,j,k)
+             S_Y(n) = aux(iwdot1+n-1,j,k) / rho
+             d_p    = d_p - hcal*fd(i,j,k,iry1+n-1)
              d_Y(n) = fd(i,j,k,iry1+n-1) / rho
           end do
-          d_p = d_p + (aux(igamma,j,k)-1.d0)*(fd(i,j,k,iene) &
-               - d_u*con(i,j,k,imx) - d_v*con(i,j,k,imy) - d_w*con(i,j,k,imz))
+          S_p = gam1 * S_p
+          d_p = gam1 * d_p 
           
           L(2) = L(2) - (d_p + S_p) / cs2
           L(3) = L(3) + d_v
@@ -229,7 +231,7 @@
     double precision :: dpdn, dudn(3), drhodn, dYdn(nspecies)
     double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
     double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
-    double precision :: scratch
+    double precision :: hcal, cpWT, gam1
 
     double precision, dimension(lo(2):hi(2),lo(3):hi(3)) :: &
          dpdy, dpdz, dudy, dudz, dvdy, dwdz
@@ -282,19 +284,20 @@
           d_u = fd(i,j,k,imx) / rho
           d_v = fd(i,j,k,imy) / rho
           d_w = fd(i,j,k,imz) / rho
-          
-          S_Y = 0.d0  
+
           S_p = 0.d0
-          d_p = 0.d0
+          d_p = fd(i,j,k,iene) - (d_u*con(i,j,k,imx)+d_v*con(i,j,k,imy)+d_w*con(i,j,k,imz))
+          cpWT = aux(icp,j,k)*aux(iWbar,j,k)*T
+          gam1 = aux(igamma,j,k) - 1.d0
           do n=1,nspecies
-             scratch = h(n)*(1.d0-aux(igamma,j,k)) + &
-                  aux(igamma,j,k)*pres*aux(iWbar,j,k)/(rho*molecular_weight(n))
-             S_p = S_p + scratch*aux(iwdot1+n-1,j,k)
-             d_p = d_p + scratch*fd(i,j,k,iry1+n-1)
+             hcal = h(n) - cpWT/molecular_weight(n)
+             S_p    = S_p - hcal*aux(iwdot1+n-1,j,k)
+             S_Y(n) = aux(iwdot1+n-1,j,k) / rho
+             d_p    = d_p - hcal*fd(i,j,k,iry1+n-1)
              d_Y(n) = fd(i,j,k,iry1+n-1) / rho
           end do
-          d_p = d_p + (aux(igamma,j,k)-1.d0)*(fd(i,j,k,iene) &
-               - d_u*con(i,j,k,imx) - d_v*con(i,j,k,imy) - d_w*con(i,j,k,imz))
+          S_p = gam1 * S_p
+          d_p = gam1 * d_p 
           
           L(1) = L(1) + 0.5d0*(S_p + d_p - rho*aux(ics,j,k)*d_u)
           
@@ -335,7 +338,7 @@
     double precision :: dpdn, dudn(3), drhodn, dYdn(nspecies)
     double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
     double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
-    double precision :: scratch, cs2
+    double precision :: hcal, cpWT, gam1, cs2
 
     double precision, dimension(lo(2):hi(2),lo(3):hi(3)) :: &
          drhody, drhodz, dudy, dudz, dvdy, dvdz, dwdy, dwdz, dpdy, dpdz
