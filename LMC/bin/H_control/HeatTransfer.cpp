@@ -6747,8 +6747,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     const Real cur_time = state[State_Type].curTime();
     MultiFab **betanp1;
-    diffusion->allocFluxBoxesLevel(betanp1,0,nspecies+1);
-    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies+1); // rhoD AND lambda/cp
+    diffusion->allocFluxBoxesLevel(betanp1,0,nspecies);
+    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies); // rhoD
 
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
@@ -6804,7 +6804,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     adjust_spec_diffusion_fluxes(cur_time,grow_cells_already_filled);
 
     // need to correct Ssync to contain rho^{n+1} * (delta Y)^sync
-    // I think we want Ssyn = "RHS from diffusion solve" + (dt/2)*div(delta Gamma)
+    // I think we do this using Ssync = "RHS from diffusion solve" + (dt/2)*div(delta Gamma)
     //
     // Recompute update with adjusted diffusion fluxes
     // 
@@ -6815,7 +6815,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	int        iGrid = mfi.index();
 	const Box& box   = mfi.validbox();
 
-	// copy delta gamma into efab
+	// copy corrected (delta gamma) on edges into efab
         for (int d=0; d<BL_SPACEDIM; ++d)
         {
             const Box ebox = BoxLib::surroundingNodes(box,d);
@@ -6831,8 +6831,9 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 
         Real scale = 1.0;
 
-	// broken
+	// take divergence of (delta gamma) and put it in update
 	/*
+	  // broken
 	FORT_FLUXDIV(box.loVect(), box.hiVect(),
                      update.dataPtr(),  
 		     ARLIM(update.loVect()),  ARLIM(update.hiVect()),
