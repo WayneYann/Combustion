@@ -25,8 +25,11 @@
        dxinv(n) = 1.0d0 / dx(n)
     end do
 
-    call comp_trans_deriv_x(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dudy,dvdy,dpdz,dudz,dwdz)
+    call comp_trans_deriv_x(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dpdz,dudy,dudz,dvdy,dwdz)
 
+    !$omp parallel do private(j,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
+    !$omp private(dpdn, dudn, drhodn, dYdn, L, Ltr, lhs) &
+    !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p, d_Y, hcal, cpWT, gam1)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           
@@ -101,6 +104,7 @@
           
        end do
     end do
+    !$omp end parallel do
 
   end subroutine outlet_xlo
 
@@ -133,9 +137,12 @@
        dxinv(n) = 1.0d0 / dx(n)
     end do
 
-    call comp_trans_deriv_x (i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dudy,dvdy,dpdz,dudz,dwdz)
-    call comp_trans_deriv_x2(i,lo,hi,ngq,Q,dxinv,dlo,dhi,drhody,dwdy,drhodz,dvdz,dYdy,dYdz)
+    call comp_trans_deriv_x (i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dpdz,dudy,dudz,dvdy,dwdz)
+    call comp_trans_deriv_x2(i,lo,hi,ngq,Q,dxinv,dlo,dhi,drhody,drhodz,dvdz,dwdy,dYdy,dYdz)
 
+    !$omp parallel do private(j,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
+    !$omp private(dpdn, dudn, drhodn, dYdn, L, Ltr, lhs) &
+    !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p, d_Y, hcal, cpWT, gam1, cs2)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           
@@ -212,6 +219,7 @@
           
        end do
     end do
+    !$omp end parallel do
 
   end subroutine inlet_xlo
 
@@ -242,8 +250,11 @@
        dxinv(n) = 1.0d0 / dx(n)
     end do
 
-    call comp_trans_deriv_x(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dudy,dvdy,dpdz,dudz,dwdz)
+    call comp_trans_deriv_x(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dpdz,dudy,dudz,dvdy,dwdz)
 
+    !$omp parallel do private(j,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
+    !$omp private(dpdn, dudn, drhodn, dYdn, L, Ltr, lhs) &
+    !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p, d_Y, hcal, cpWT, gam1)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           
@@ -318,6 +329,7 @@
           
        end do
     end do
+    !$omp end parallel do
     
   end subroutine outlet_xhi
 
@@ -349,15 +361,15 @@
   end subroutine inlet_xhi
 
 
-  subroutine comp_trans_deriv_x(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dudy,dvdy,dpdz,dudz,dwdz)
+  subroutine comp_trans_deriv_x(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dpdz,dudy,dudz,dvdy,dwdz)
     integer, intent(in) :: i, lo(3), hi(3), ngq,dlo(3),dhi(3)
     double precision, intent(in) :: dxinv(3)
     double precision, intent(in) :: Q(-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
     double precision, intent(out):: dpdy(lo(2):hi(2),lo(3):hi(3))
-    double precision, intent(out):: dudy(lo(2):hi(2),lo(3):hi(3))
-    double precision, intent(out):: dvdy(lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out):: dpdz(lo(2):hi(2),lo(3):hi(3))
+    double precision, intent(out):: dudy(lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out):: dudz(lo(2):hi(2),lo(3):hi(3))
+    double precision, intent(out):: dvdy(lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out):: dwdz(lo(2):hi(2),lo(3):hi(3))
 
     integer :: j, k, slo(3), shi(3)
@@ -365,7 +377,10 @@
     slo = dlo + stencil_ng
     shi = dhi - stencil_ng
 
+    !$omp parallel private(j,k)
+
     ! d()/dy
+    !$omp do
     do k=lo(3),hi(3)
        
        do j=slo(2),shi(2)
@@ -429,8 +444,10 @@
        end if
 
     end do
+    !$omp end do nowait
 
     ! d()/dz
+    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           dudz(j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qu))
@@ -438,6 +455,9 @@
           dpdz(j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qpres))
        end do
     end do
+    !$omp end do nowait
+
+    !$omp master
 
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
@@ -509,17 +529,21 @@
        end do
     end if
 
+    !$omp end master
+
+    !$omp end parallel
+
   end subroutine comp_trans_deriv_x
 
 
-  subroutine comp_trans_deriv_x2(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dddy,dwdy,dddz,dvdz,dYdy,dYdz)
+  subroutine comp_trans_deriv_x2(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dddy,dddz,dvdz,dwdy,dYdy,dYdz)
     integer, intent(in) :: i, lo(3), hi(3), ngq,dlo(3),dhi(3)
     double precision, intent(in) :: dxinv(3)
     double precision, intent(in) :: Q(-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
     double precision, intent(out):: dddy(         lo(2):hi(2),lo(3):hi(3))
-    double precision, intent(out):: dwdy(         lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out):: dddz(         lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out):: dvdz(         lo(2):hi(2),lo(3):hi(3))
+    double precision, intent(out):: dwdy(         lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out):: dYdy(nspecies,lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out):: dYdz(nspecies,lo(2):hi(2),lo(3):hi(3))
 
@@ -528,7 +552,10 @@
     slo = dlo + stencil_ng
     shi = dhi - stencil_ng
 
+    !$omp parallel private(j,k,n)
+
     ! d()/dy
+    !$omp do
     do k=lo(3),hi(3)
        
        do j=slo(2),shi(2)
@@ -610,8 +637,10 @@
        end if
 
     end do
+    !$omp end do nowait
 
     ! d()/dz
+    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           dddz     (j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qrho))
@@ -621,6 +650,9 @@
           end do
        end do
     end do
+    !$omp end do nowait
+
+    !$omp master
 
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
@@ -707,5 +739,9 @@
           end do
        end do
     end if
+
+    !$omp end master
+
+    !$omp end parallel
 
   end subroutine comp_trans_deriv_x2
