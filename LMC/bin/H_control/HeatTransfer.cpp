@@ -6755,14 +6755,16 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 
     // form RHS of DayBell:2000 Eq (18)
     // Ssync contains RHS_q - qnew*RHS_rho
+    // Copy this into Rhs; we will need this later since we overwrite SSync in the solves
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
-    Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
     //
     // Some standard settings
     //
     const Array<int> rho_flag(nspecies,2);
     const MultiFab* alpha = 0;
     MultiFab** fluxSC;
+    diffusion->allocFluxBoxesLevel(fluxSC,0,1);
+
     const MultiFab* Rh = get_rho_half_time();
 
     for (int sigma = 0; sigma < nspecies; ++sigma)
@@ -6774,84 +6776,101 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         // diffused result is an acceleration, not a velocity, req'd by the projection.
         //
 	const int ssync_ind = first_spec + sigma - Density;
+                    
+	// on entry, Ssync = RHS for (delta Ytilde)^sync diffusive solve
+	// on exit, Ssync = rho^{n+1} * (delta Ytilde)^sync
+	// on exit, fluxSC = rhoD grad (delta Ytilde)^sync
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
-				 Rh,rho_flag[sigma],fluxSC,sigma,
+				 Rh,rho_flag[sigma],fluxSC,0,
                                  betanp1,sigma,alpha);
 	//
 	// Pull fluxes into flux array
 	// this is the rho D delta Ytilde_m^sync terms in DayBell:2000 Eq (18)
 	//
+
 	for (int d=0; d<BL_SPACEDIM; ++d)
-	    MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);
+	{
+	  MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);
+	}
     }
     diffusion->removeFluxBoxesLevel(fluxSC);
     //
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
     //
+
+    // need to correct SpecDiffusionFluxnp1 to contain rhoD grad (delta Y)^sync
     bool grow_cells_already_filled = false;
     adjust_spec_diffusion_fluxes(cur_time,grow_cells_already_filled);
 
-    // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy) and put it in
-    // "nspecies+1" component of SpecDiffusionFluxnp1
-    compute_enthalpy_fluxes(cur_time,betanp1,grow_cells_already_filled);
+    // need to correct Ssync to contain rho^{n+1} * (delta Y)^sync
+    // I think we want Ssyn = "RHS from diffusion solve" + (dt/2)*div(delta Gamma)
     //
     // Recompute update with adjusted diffusion fluxes
     // 
-    FArrayBox volume, update, efab[BL_SPACEDIM];
+    FArrayBox update, volume, efab[BL_SPACEDIM];
 
     for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
     {
 	int        iGrid = mfi.index();
 	const Box& box   = mfi.validbox();
-        int nComp = nspecies+1;
 
+	// copy delta gamma into efab
         for (int d=0; d<BL_SPACEDIM; ++d)
         {
             const Box ebox = BoxLib::surroundingNodes(box,d);
-            efab[d].resize(ebox,nComp);
+            efab[d].resize(ebox,nspecies);
             
-            efab[d].copy((*SpecDiffusionFluxnp1[d])[mfi],ebox,0,ebox,0,nComp);
+            efab[d].copy((*SpecDiffusionFluxnp1[d])[mfi],ebox,0,ebox,0,nspecies);
             efab[d].mult(be_cn_theta);
         }
 
+        update.resize(box,nspecies);
+	update.setVal(0.);
         geom.GetVolume(volume,grids,iGrid,GEOM_GROW);
 
-        update.resize(box,nComp);
+        Real scale = 1.0;
 
-        Real scale = -1;
-        FArrayBox& update = (*Ssync)[mfi];
+	// broken
+	/*
 	FORT_FLUXDIV(box.loVect(), box.hiVect(),
-                     update.dataPtr(first_spec-BL_SPACEDIM),  ARLIM(update.loVect()),  ARLIM(update.hiVect()),
+                     update.dataPtr(),  
+		     ARLIM(update.loVect()),  ARLIM(update.hiVect()),
                      efab[0].dataPtr(), ARLIM(efab[0].loVect()), ARLIM(efab[0].hiVect()),
                      efab[1].dataPtr(), ARLIM(efab[1].loVect()), ARLIM(efab[1].hiVect()),
 #if BL_SPACEDIM == 3
                      efab[2].dataPtr(), ARLIM(efab[2].loVect()), ARLIM(efab[2].hiVect()),
 #endif
                      volume.dataPtr(),  ARLIM(volume.loVect()),  ARLIM(volume.hiVect()),
-                     &nComp,&scale);
-	
-        //
-        // Now do reflux with new, improved fluxes
-        //
-        for (int d = 0; d < BL_SPACEDIM; d++)
-        {
-            const Box& ebox = efab[d].box();
-            
-            if (level > 0)
-            {
-                getViscFluxReg().FineAdd(efab[d],d,mfi.index(),0,first_spec-BL_SPACEDIM,nspecies,dt);
-                getViscFluxReg().FineAdd(efab[d],d,mfi.index(),0,RhoH-BL_SPACEDIM,1,dt);
-            }
-            
-            if (level < parent->finestLevel())
-            {
-                getLevel(level+1).getViscFluxReg().CrseInit(efab[d],ebox,d,0,first_spec-BL_SPACEDIM,nspecies,-dt);
-                getLevel(level+1).getViscFluxReg().CrseInit(efab[d],ebox,d,0,RhoH-BL_SPACEDIM,1,-dt);
-            }
-        }        
-    }
+                     &nspecies,&scale);
+	*/
 
+	// we already multiplied update by 1/2.  Do we need to multiply by dt as well?
+
+	// add RHS from diffusion solv
+	update.plus(Rhs[iGrid],box,0,0,nspecies);
+
+
+	(*Ssync)[mfi].copy(update,box,0,box,first_spec-BL_SPACEDIM,nspecies);
+
+    }
+    diffusion->removeFluxBoxesLevel(betanp1);
+
+    Rhs.clear();
+    //
+    // Do refluxing AFTER flux adjustment
+    //
+    if (do_reflux && level > 0)
+    {
+      for (int d=0; d<BL_SPACEDIM; ++d)
+      {
+	for (MFIter fmfi(*SpecDiffusionFluxnp1[d]); fmfi.isValid(); ++fmfi)
+	{
+	  const int i=fmfi.index();
+	  getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[i],d,i,0,first_spec,nspecies,dt);
+	}
+      }
+    }
 
     if (verbose)
     {
