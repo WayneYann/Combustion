@@ -95,7 +95,7 @@
              L(6:) = S_Y      
              
              L(5) = 0.5d0*S_p + Ltr(5) &
-                  + outlet_eta*aux(igamma,j,k)*pres*(1.d0-Ma2_xlo)/(2.d0*Lxdomain)*u
+                  - outlet_eta*aux(igamma,j,k)*pres*(1.d0-Ma2_xlo)/(2.d0*Lxdomain)*u
           end if
           
           call LtoLHS(1, L, lhs, aux(:,j,k), rho, u, v, w, T, Y, h, rhoE)
@@ -208,11 +208,12 @@
           S_p = gam1 * S_p
           d_p = gam1 * d_p 
           
-          L(2) = L(2) - (d_p + S_p) / cs2
-          L(3) = L(3) + d_v
-          L(4) = L(4) + d_w
-          L(5) = L(5) + 0.5d0*(S_p + d_p + rho*aux(ics,j,k)*d_u)
-                    
+          L(2)  = L(2)  - (d_p + S_p) / cs2
+          L(3)  = L(3)  + d_v
+          L(4)  = L(4)  + d_w
+          L(5)  = L(5)  + 0.5d0*(S_p + d_p + rho*aux(ics,j,k)*d_u)
+          L(6:) = L(6:) + S_Y
+
           call LtoLHS(1, L, lhs, aux(:,j,k), rho, u, v, w, T, Y, h, rhoE)
           
           rhs(i,j,k,:) = rhs(i,j,k,:) - lhs
@@ -286,7 +287,7 @@
           L(6:) = u*dYdn
           
           ! multi-D effects
-          Ltr(1) = - 0.5d0*(v*dpdy(j,k)+w*dpdz(j,k) &
+          Ltr(1) = -0.5d0*(v*dpdy(j,k)+w*dpdz(j,k) &
                + aux(igamma,j,k)*pres*(dvdy(j,k)+dwdz(j,k)) &
                - rho*aux(ics,j,k)*(v*dudy(j,k)+w*dudz(j,k)))
           L(1) = L(1) + min(0.99d0, (1.0d0-abs(u)/aux(ics,j,k))) * Ltr(1)
