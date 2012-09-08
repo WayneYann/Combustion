@@ -43,13 +43,13 @@
           h    = q  (i,j,k,qh1:qh1+nspecies-1)
           rhoE = con(i,j,k,iene)
           
-          drhodn  = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qrho))
-          dudn(2) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qv))
-          dudn(3) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qw))
-          dudn(1) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
-          dpdn    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qpres))
+          drhodn     = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qrho))
+          dudn(1)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
+          dudn(2)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qv))
+          dudn(3)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qw))
+          dpdn       = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qpres))
           do n=1,nspecies
-             dYdn(n) = dxinv(1)*first_deriv_lb(q(i:i+3,j,k,qy1+n-1))
+             dYdn(n) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qy1+n-1))
           end do
           
           ! Simple 1D LODI 
@@ -156,13 +156,13 @@
           h    = q  (i,j,k,qh1:qh1+nspecies-1)
           rhoE = con(i,j,k,iene)
           
-          drhodn  = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qrho))
-          dudn(2) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qv))
-          dudn(3) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qw))
-          dudn(1) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
-          dpdn    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qpres))
+          drhodn     = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qrho))
+          dudn(1)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
+          dudn(2)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qv))
+          dudn(3)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qw))
+          dpdn       = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qpres))
           do n=1,nspecies
-             dYdn(n) = dxinv(1)*first_deriv_lb(q(i:i+3,j,k,qy1+n-1))
+             dYdn(n) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qy1+n-1))
           end do
           
           cs2 = aux(ics,j,k)**2
@@ -268,11 +268,11 @@
           h    = q  (i,j,k,qh1:qh1+nspecies-1)
           rhoE = con(i,j,k,iene)
           
-          drhodn  = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qrho))
-          dudn(2) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qv))
-          dudn(3) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qw))
-          dudn(1) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qu))
-          dpdn    = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qpres))
+          drhodn     = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qrho))
+          dudn(1)    = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qu))
+          dudn(2)    = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qv))
+          dudn(3)    = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qw))
+          dpdn       = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qpres))
           do n=1,nspecies
              dYdn(n) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qy1+n-1))
           end do
