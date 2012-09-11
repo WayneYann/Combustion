@@ -1,0 +1,19 @@
+NDEBUG :=
+MPI    := t
+OMP    :=
+
+COMP := gfortran
+
+MKVERBOSE := t
+
+# define the location of the SMC top directory
+SMC_TOP_DIR := ../..
+
+# define the location of Chemistry directory
+CHEMISTRY_DIR := ../../../Chemistry
+CHEMISTRY_MODEL := LIDRYER
+
+
+# include the SMC build stuff
+include $(SMC_TOP_DIR)/GSMC.mak
+
