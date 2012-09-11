@@ -167,7 +167,7 @@ contains
 
     double precision, pointer, dimension(:,:,:,:) :: qp, cp, fdp, rhp, auxp, qinp
 
-    nb = nboxes(Q)
+    nb = nfabs(Q)
     dm = Q%dim
     ngq = nghost(Q)
     ngc = nghost(con)
@@ -180,7 +180,6 @@ contains
     proc_Ma2_zhi=0.d0
 
     do n=1,nb
-       if ( remote(Q,n) ) cycle
 
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
@@ -277,8 +276,6 @@ contains
     end if
 
     do n=1,nb
-       if ( remote(Q,n) ) cycle
-
        qp  => dataptr(Q,n)
        cp  => dataptr(con,n)
        rhp => dataptr(rhs,n)

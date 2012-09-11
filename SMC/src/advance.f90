@@ -317,9 +317,7 @@ contains
 
     nc = ncomp(U1)
 
-    do n=1,nboxes(U1)
-       if ( remote(U1,n) ) cycle
-
+    do n=1,nfabs(U1)
        u1p => dataptr(U1,    n)
        u2p => dataptr(U2,    n)
        upp => dataptr(Uprime,n)
@@ -420,9 +418,7 @@ contains
     !
     ! Hyperbolic terms
     !
-    do n=1,nboxes(Fhyp)
-       if ( remote(Fhyp,n) ) cycle
-
+    do n=1,nfabs(Fhyp)
        up => dataptr(U,n)
        qp => dataptr(Q,n)
        fhp=> dataptr(Fhyp,n)
@@ -444,9 +440,7 @@ contains
     !
     ! Transport terms
     !
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
-
+    do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        fdp => dataptr(Fdif,n)
 
@@ -471,9 +465,7 @@ contains
     !
     ! Calculate U'
     !
-    do n=1,nboxes(U)
-       if ( remote(U,n) ) cycle
-       
+    do n=1,nfabs(U)
        fhp => dataptr(Fhyp,  n)
        fdp => dataptr(Fdif,  n)
        upp => dataptr(Uprime,n)
@@ -497,9 +489,7 @@ contains
     ! 
     ! Add chemistry
     !
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
-
+    do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        upp => dataptr(Uprime,n)
 
@@ -541,9 +531,7 @@ contains
     dm = Q%dim
     ng = nghost(Q)
 
-    do n=1,nboxes(Q)
-       if (remote(Q,n)) cycle
-
+    do n=1,nfabs(Q)
        qp => dataptr(Q,n)
 
        lo = lwb(get_box(Q,n))
@@ -625,9 +613,7 @@ contains
     !
     ! Hyperbolic terms
     !
-    do n=1,nboxes(Fhyp)
-       if ( remote(Fhyp,n) ) cycle
-
+    do n=1,nfabs(Fhyp)
        up => dataptr(U,n)
        qp => dataptr(Q,n)
        fhp=> dataptr(Fhyp,n)
@@ -650,9 +636,7 @@ contains
     ! S3D_diffterm1: first derivative terms
     ! S3D_diffterm2: d(a du/dx)/dx terms
     !
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
-
+    do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        fdp => dataptr(Fdif,n)
 
@@ -677,9 +661,7 @@ contains
     call multifab_fill_boundary(qy)
     call multifab_fill_boundary(qz)
 
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
-
+    do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        fdp => dataptr(Fdif,n)
 
@@ -705,9 +687,7 @@ contains
     !
     ! Calculate U'
     !
-    do n=1,nboxes(U)
-       if ( remote(U,n) ) cycle
-       
+    do n=1,nfabs(U)
        fhp => dataptr(Fhyp,  n)
        fdp => dataptr(Fdif,  n)
        upp => dataptr(Uprime,n)
@@ -731,9 +711,7 @@ contains
     ! 
     ! Add chemistry
     !
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
-
+    do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        upp => dataptr(Uprime,n)
 

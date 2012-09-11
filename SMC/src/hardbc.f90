@@ -9,7 +9,7 @@
     
     ng = nghost(U)
 
-    do n=1,nboxes(U)
+    do n=1,nfabs(U)
        if (isValid(qin,n)) then
           lo = lwb(get_box(U,n))
           hi = upb(get_box(U,n))
@@ -64,8 +64,7 @@
 
     ng = nghost(U)
 
-    do n=1,nboxes(U)
-       if ( remote(U,n) ) cycle
+    do n=1,nfabs(U)
 
        lo = lwb(get_box(U,n))
        hi = upb(get_box(U,n))

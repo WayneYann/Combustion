@@ -16,20 +16,20 @@ module smc_bc_module
 
 contains
 
-  subroutine smc_bc_init(la)
+  subroutine smc_bc_init(la, U)
     use layout_module
     use multifab_module
     use probin_module, only : bcx_lo,bcx_hi,bcy_lo,bcy_hi,bcz_lo,bcz_hi
     use derivative_stencil_module, only : stencil_ng
     type(layout), intent(in) :: la
+    type(multifab), intent(in) :: U
 
-    integer :: ndm, nbx, i, j, bclo(3), bchi(3)
+    integer :: ndm, nlbx, i, j, bclo(3), bchi(3)
     integer ::  lo(la%lap%dim),  hi(la%lap%dim)
     integer :: plo(la%lap%dim), phi(la%lap%dim)
     type(box) :: pd, bx
 
     ndm = get_dim(la)
-    nbx = nboxes(la)
     pd = get_pd(la)
 
     plo = lwb(pd)
@@ -56,13 +56,15 @@ contains
        end if
     end do
 
-    allocate(boxbclo(ndm,nbx))
-    allocate(boxbchi(ndm,nbx))
-    allocate(datalo(ndm,nbx))
-    allocate(datahi(ndm,nbx))
+    nlbx = nfabs(U)
 
-    do j=1,nbx
-       bx = get_box(la,j)
+    allocate(boxbclo(ndm,nlbx))
+    allocate(boxbchi(ndm,nlbx))
+    allocate(datalo(ndm,nlbx))
+    allocate(datahi(ndm,nlbx))
+
+    do j=1,nlbx
+       bx = get_box(U,j)
        lo = lwb(bx)
        hi = upb(bx)
 

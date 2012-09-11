@@ -37,9 +37,7 @@ contains
     ngq = nghost(Q)
     ngpd = nghost(plotdata)
 
-    do i = 1, nboxes(Q)
-       if (multifab_remote(Q, i)) cycle
-
+    do i = 1, nfabs(Q)
        qp => dataptr(Q, i)
        pdp => dataptr(plotdata, i)
        

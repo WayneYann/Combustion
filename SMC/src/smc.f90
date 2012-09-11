@@ -98,7 +98,7 @@ subroutine smc()
   end if
 
 
-  call smc_bc_init(la)
+  call smc_bc_init(la, U)
   call nscbc_init(la, U)
 
 
@@ -125,7 +125,7 @@ subroutine smc()
      print *, 'number of threads       = ', omp_get_max_threads()
      print *, ' '
      print *, 'number of dimensions    = ', dm
-     print *, 'number of boxes         = ', nboxes(U)
+     print *, 'number of boxes         = ', nboxes(la)
      print *, ' '
   end if
   

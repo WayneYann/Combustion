@@ -92,9 +92,7 @@ contains
        ngto = min(ngu, ngq)
     end if
 
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
-
+    do n=1,nfabs(Q)
        up => dataptr(U,n)
        qp => dataptr(Q,n)
 
@@ -184,9 +182,7 @@ contains
     dm = U%dim
     ng = nghost(U)
     
-    do n=1,nboxes(U)
-       if (remote(U, n)) cycle
-       
+    do n=1,nfabs(U)
        up => dataptr(U, n)
        
        lo = lwb(get_box(U,n))

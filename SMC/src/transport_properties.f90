@@ -26,8 +26,7 @@ contains
     dm = Q%dim
     ng = nghost(Q)
 
-    do n=1,nboxes(Q)
-       if ( remote(Q,n) ) cycle
+    do n=1,nfabs(Q)
        
        qp => dataptr(Q,n)
        mup => dataptr(mu,n)
