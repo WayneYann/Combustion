@@ -92,8 +92,8 @@ contains
     call multifab_build(U,la,ncons,ng)
     call multifab_copy_c(U,1,chkdata(1),1,ncons)
 
-    call destroy(lachk)
     call destroy(chkdata(1))
+    call destroy(lachk)
 
   end subroutine initialize_from_restart
 
