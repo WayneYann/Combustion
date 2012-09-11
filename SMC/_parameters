@@ -178,10 +178,10 @@ the_layout_verbosity                integer            0
 the_copy_cache_max                  integer            25          
 
 # The minimum size on a side for a grid created using make\_new\_grids.
-minwidth                            integer            8                     
+minwidth                            integer            4
 
 # grids must be an integer multiple of this number, if possible
-blocking_factor                     integer            8                    
+blocking_factor                     integer            16
 
 
 #-----------------------------------------------------------------------------

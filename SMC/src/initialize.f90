@@ -117,18 +117,6 @@ contains
     type(box)          :: bx
     type(boxarray)     :: ba
 
-    if (n_cellx .le. 8) then
-       call bl_error("n_cellx must be greater than 8")
-    end if
-
-    if (n_celly .le. 8) then
-       call bl_error("n_celly must be greater than 8")
-    end if
-
-    if (n_cellz .le. 8) then
-       call bl_error("n_cellz must be greater than 8")
-    end if
-
     time = ZERO
     dt   = 1.d20
 

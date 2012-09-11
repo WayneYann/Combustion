@@ -93,8 +93,19 @@ contains
              datahi(i,j) = hi(i)
            end if
 
+           if (datahi(i,j)-datalo(i,j) .lt. 2*stencil_ng) then
+              print *, "dim:",i,",  datalo, datahi =", datalo(i,j), datahi(i,j)
+              call bl_error("Grown box is too small")
+           end if
+
+           if (hi(i)-lo(i)+1 .lt. stencil_ng ) then
+              print *, "dim:",i,",  lo, hi =", lo(i), hi(i)
+              call bl_error("Valid box is too small")
+           end if
        end do
     end do    
+
+    
 
   end subroutine smc_bc_init
 
