@@ -65,8 +65,6 @@ contains
 
 
   subroutine make_h_3d(h, Q, lo, hi, ngh, ngq)
-    use chemistry_module, only : molecular_weight
-
     integer, intent(in) :: lo(3), hi(3), ngh, ngq
     double precision, intent(out) :: h(-ngh+lo(1):hi(1)+ngh,-ngh+lo(2):hi(2)+ngh,-ngh+lo(3):hi(3)+ngh)
     double precision, intent(in ) :: Q(-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
