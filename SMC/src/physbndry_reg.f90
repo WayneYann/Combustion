@@ -112,8 +112,8 @@ contains
     pbr%idim = -1
     pbr%iface = 0
     pbr%nc = -1
-    call destroy(pbr%la)
     call destroy(pbr%data)
+    call destroy(pbr%la)
     deallocate(pbr%localstatus)
   end subroutine physbndry_reg_destroy
 
