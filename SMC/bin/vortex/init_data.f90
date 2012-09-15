@@ -54,14 +54,14 @@ contains
     double precision Xt(nspecies), Yt(nspecies)
     double precision rhot,u1t,u2t,u3t,Tt,et,Pt
     integer :: iwrk
-    double precision :: rwrk, Lx, exptmp, Wbar
+    double precision :: rwrk, Lx, exptmp, Wbar, Rc, Cc, cs, Cv, Cp, gamma, uinfty
 
     double precision, parameter :: patmos = 1.01325d6, Ru = 8.31451d7
 
     !$omp parallel do &
     !$omp private(i,j,k,n,x,y,z,pmf_vals) &
     !$omp private(Xt,Yt,rhot,u1t,u2t,u3t,Tt,et,iwrk,rwrk) &
-    !$omp private(pert,Ly,Lz,x1,x2)
+    !$omp private(Lx,exptmp, Wbar, Rc, Cc, cs, Cv, Cp, gamma, uinfty)
     do k=lo(3),hi(3)
        z = phlo(3) + dx(3)*(k + 0.5d0)
        do j=lo(2),hi(2)
@@ -87,11 +87,20 @@ contains
              CALL CKRHOY(patmos,Tt,Yt,IWRK,RWRK,rhot)
              ! we now have rho
 
-             exptmp = exp(-(x**2+y**2)/(2.d0*Rvortex**2))
-             Pt = patmos - rhot*(Cvortex/Rvortex)**2*exptmp
+             call CKCVBL(Tt, Xt, iwrk, rwrk, Cv)
+             Cp = Cv + Ru
+             gamma = Cp / Cv
+             cs = sqrt(gamma*patmos/rhot)
 
-             u1t = 0.d0
-             u2t = 0.d0
+             uinfty = Minfty*cs
+             Rc = Rvortex*Lx
+             Cc = Cvortex*cs*Lx
+
+             exptmp = exp(-(x**2+y**2)/(2.d0*Rc**2))
+             Pt = patmos - rhot*(Cc/Rc)**2*exptmp
+
+             u1t = uinfty - Cc*exptmp*y/Rc**2
+             u2t = Cc*exptmp*x/Rc**2
              u3t = 0.d0
 
              call CKMMWX(Xt, iwrk, rwrk, Wbar)
