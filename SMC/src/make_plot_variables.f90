@@ -205,7 +205,7 @@ contains
           enddo
        end if
 
-       ! hi-y bondary
+       ! hi-y boundary
        if (dhi(2) .eq. hi(2)) then
           j = hi(2)-3
           ! use 6th-order stencil

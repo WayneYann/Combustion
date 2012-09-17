@@ -11,7 +11,7 @@
     integer :: i,j,k,n
     double precision :: dxinv(3)
     double precision :: rho, u, v, w, T, pres, Y(nspecies), h(nspecies), rhoE
-    double precision :: dpdn, dudn(3), drhodn, dYdn(nspecies)
+    double precision :: dpdn, dudn, dvdn, dwdn, drhodn, dYdn(nspecies)
     double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
     double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
     double precision :: hcal, cpWT, gam1
@@ -28,7 +28,7 @@
     call comp_trans_deriv_x(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dpdz,dudy,dudz,dvdy,dwdz)
 
     !$omp parallel do private(j,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
-    !$omp private(dpdn, dudn, drhodn, dYdn, L, Ltr, lhs) &
+    !$omp private(dpdn, dudn,dvdn,dwdn, drhodn, dYdn, L, Ltr, lhs) &
     !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p, d_Y, hcal, cpWT, gam1)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
@@ -44,19 +44,19 @@
           rhoE = con(i,j,k,iene)
           
           drhodn     = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qrho))
-          dudn(1)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
-          dudn(2)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qv))
-          dudn(3)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qw))
+          dudn       = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
+          dvdn       = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qv))
+          dwdn       = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qw))
           dpdn       = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qpres))
           do n=1,nspecies
              dYdn(n) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qy1+n-1))
           end do
           
           ! Simple 1D LODI 
-          L(1) = (u-aux(ics,j,k))*0.5d0*(dpdn-rho*aux(ics,j,k)*dudn(1))
+          L(1) = (u-aux(ics,j,k))*0.5d0*(dpdn-rho*aux(ics,j,k)*dudn)
           L(2) = u*(drhodn-dpdn/aux(ics,j,k)**2)
-          L(3) = u*dudn(2)
-          L(4) = u*dudn(3)
+          L(3) = u*dvdn
+          L(4) = u*dwdn
           L(5) = sigma*aux(ics,j,k)*(1.d0-Ma2_xlo)/(2.d0*Lxdomain)*(pres-Pinfty)
           L(6:) = u*dYdn
           
@@ -85,6 +85,10 @@
           S_p = gam1 * S_p
           d_p = gam1 * d_p 
           
+          ! S_Y seems to cause instabilities
+          ! So set it to zero for now
+          S_Y = 0.d0
+
           L(5) = L(5) + 0.5d0*(S_p + d_p + rho*aux(ics,j,k)*d_u)
           
           if (u > 0.d0) then
@@ -121,8 +125,8 @@
 
     integer :: i,j,k,n
     double precision :: dxinv(3)
-    double precision :: rho, u, v, w, T, pres, Y(nspecies), h(nspecies), rhoE
-    double precision :: dpdn, dudn(3), drhodn, dYdn(nspecies)
+    double precision :: rho, u, v, w, T, Y(nspecies), h(nspecies), rhoE
+    double precision :: dpdn, dudn
     double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
     double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
     double precision :: hcal, cpWT, gam1, cs2
@@ -140,8 +144,8 @@
     call comp_trans_deriv_x (i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dpdz,dudy,dudz,dvdy,dwdz)
     call comp_trans_deriv_x2(i,lo,hi,ngq,Q,dxinv,dlo,dhi,drhody,drhodz,dvdz,dwdy,dYdy,dYdz)
 
-    !$omp parallel do private(j,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
-    !$omp private(dpdn, dudn, drhodn, dYdn, L, Ltr, lhs) &
+    !$omp parallel do private(j,k,n,rho,u,v,w,T,Y,h,rhoE) &
+    !$omp private(dpdn, dudn, L, Ltr, lhs) &
     !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p, d_Y, hcal, cpWT, gam1, cs2)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
@@ -150,25 +154,18 @@
           u    = q  (i,j,k,qu)
           v    = q  (i,j,k,qv)
           w    = q  (i,j,k,qw)
-          pres = q  (i,j,k,qpres)
           T    = q  (i,j,k,qtemp)
           Y    = q  (i,j,k,qy1:qy1+nspecies-1)
           h    = q  (i,j,k,qh1:qh1+nspecies-1)
           rhoE = con(i,j,k,iene)
           
-          drhodn     = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qrho))
-          dudn(1)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
-          dudn(2)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qv))
-          dudn(3)    = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qw))
-          dpdn       = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qpres))
-          do n=1,nspecies
-             dYdn(n) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qy1+n-1))
-          end do
+          dudn = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
+          dpdn = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qpres))
           
           cs2 = aux(ics,j,k)**2
 
           ! Simple 1D LODI 
-          L(1) = (u-aux(ics,j,k))*0.5d0*(dpdn-rho*aux(ics,j,k)*dudn(1))
+          L(1) = (u-aux(ics,j,k))*0.5d0*(dpdn-rho*aux(ics,j,k)*dudn)
           L(2) = -inlet_eta*Ru*rho*(T-qin(iTin,j,k)) & 
                / (Lxdomain*aux(ics,j,k)*aux(iWbar,j,k))
           L(3) = inlet_eta*aux(ics,j,k)/Lxdomain*(v-qin(ivin,j,k))
@@ -207,6 +204,10 @@
           end do
           S_p = gam1 * S_p
           d_p = gam1 * d_p 
+
+          ! S_Y seems to cause instabilities
+          ! So set it to zero for now
+          S_Y = 0.d0
           
           L(2)  = L(2)  - (d_p + S_p) / cs2
           L(3)  = L(3)  + d_v
@@ -237,7 +238,7 @@
     integer :: i,j,k,n
     double precision :: dxinv(3)
     double precision :: rho, u, v, w, T, pres, Y(nspecies), h(nspecies), rhoE
-    double precision :: dpdn, dudn(3), drhodn, dYdn(nspecies)
+    double precision :: dpdn, dudn, dvdn, dwdn, drhodn, dYdn(nspecies)
     double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
     double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
     double precision :: hcal, cpWT, gam1
@@ -254,7 +255,7 @@
     call comp_trans_deriv_x(i,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdy,dpdz,dudy,dudz,dvdy,dwdz)
 
     !$omp parallel do private(j,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
-    !$omp private(dpdn, dudn, drhodn, dYdn, L, Ltr, lhs) &
+    !$omp private(dpdn, dudn, dvdn, dwdn, drhodn, dYdn, L, Ltr, lhs) &
     !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p, d_Y, hcal, cpWT, gam1)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
@@ -270,9 +271,9 @@
           rhoE = con(i,j,k,iene)
           
           drhodn     = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qrho))
-          dudn(1)    = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qu))
-          dudn(2)    = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qv))
-          dudn(3)    = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qw))
+          dudn       = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qu))
+          dvdn       = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qv))
+          dwdn       = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qw))
           dpdn       = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qpres))
           do n=1,nspecies
              dYdn(n) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qy1+n-1))
@@ -281,9 +282,9 @@
           ! Simple 1D LODI 
           L(1) = sigma*aux(ics,j,k)*(1.d0-Ma2_xhi)/(2.d0*Lxdomain)*(pres-Pinfty)
           L(2) = u*(drhodn-dpdn/aux(ics,j,k)**2)
-          L(3) = u*dudn(2)
-          L(4) = u*dudn(3)
-          L(5) = (u+aux(ics,j,k))*0.5d0*(dpdn+rho*aux(ics,j,k)*dudn(1))
+          L(3) = u*dvdn
+          L(4) = u*dwdn
+          L(5) = (u+aux(ics,j,k))*0.5d0*(dpdn+rho*aux(ics,j,k)*dudn)
           L(6:) = u*dYdn
           
           ! multi-D effects
@@ -310,6 +311,10 @@
           end do
           S_p = gam1 * S_p
           d_p = gam1 * d_p 
+
+          ! S_Y seems to cause instabilities
+          ! So set it to zero for now
+          S_Y = 0.d0
           
           L(1) = L(1) + 0.5d0*(S_p + d_p - rho*aux(ics,j,k)*d_u)
           
@@ -345,17 +350,17 @@
     double precision,intent(in   )::aux(naux,lo(2):hi(2),lo(3):hi(3))
     double precision,intent(in   )::qin(nqin,lo(2):hi(2),lo(3):hi(3))
 
-    integer :: i,j,k,n
-    double precision :: dxinv(3)
-    double precision :: rho, u, v, w, T, pres, Y(nspecies), h(nspecies), rhoE
-    double precision :: dpdn, dudn(3), drhodn, dYdn(nspecies)
-    double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
-    double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
-    double precision :: hcal, cpWT, gam1, cs2
+    ! integer :: i,j,k,n
+    ! double precision :: dxinv(3)
+    ! double precision :: rho, u, v, w, T, pres, Y(nspecies), h(nspecies), rhoE
+    ! double precision :: dpdn, dudn(3), drhodn, dYdn(nspecies)
+    ! double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
+    ! double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
+    ! double precision :: hcal, cpWT, gam1, cs2
 
-    double precision, dimension(lo(2):hi(2),lo(3):hi(3)) :: &
-         drhody, drhodz, dudy, dudz, dvdy, dvdz, dwdy, dwdz, dpdy, dpdz
-    double precision, dimension(nspecies,lo(2):hi(2),lo(3):hi(3)) :: dYdy, dYdz
+    ! double precision, dimension(lo(2):hi(2),lo(3):hi(3)) :: &
+    !      drhody, drhodz, dudy, dudz, dvdy, dvdz, dwdy, dwdz, dpdy, dpdz
+    ! double precision, dimension(nspecies,lo(2):hi(2),lo(3):hi(3)) :: dYdy, dYdz
 
     call bl_error("inlet_xhi not implemented")
 
@@ -417,7 +422,7 @@
           dpdy(j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qpres))          
        end if
 
-       ! hi-y bondary
+       ! hi-y boundary
        if (dhi(2) .eq. hi(2)) then
           j = hi(2)-3
           ! use 6th-order stencil
@@ -496,7 +501,7 @@
     end if
     
     ! hi-z boundary
-    if (dlo(3) .eq. lo(3)) then
+    if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
        do j=lo(2),hi(2)
@@ -602,7 +607,7 @@
           end do
        end if
 
-       ! hi-y bondary
+       ! hi-y boundary
        if (dhi(2) .eq. hi(2)) then
           j = hi(2)-3
           ! use 6th-order stencil
@@ -699,7 +704,7 @@
     end if
     
     ! hi-z boundary
-    if (dlo(3) .eq. lo(3)) then
+    if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
        do j=lo(2),hi(2)

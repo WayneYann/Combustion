@@ -1114,7 +1114,7 @@ contains
           enddo
        end if
 
-       ! hi-y bondary
+       ! hi-y boundary
        if (dhi(2) .eq. hi(2)) then
           j = hi(2)-3
           ! use 6th-order stencil
@@ -1511,7 +1511,7 @@ contains
           end do
        end if
        
-       ! hi-y bondary
+       ! hi-y boundary
        if (dhi(2) .eq. hi(2)) then
           j = hi(2)-3
           ! use 6th-order stencil
@@ -1676,7 +1676,7 @@ contains
     end if
 
     ! hi-z boundary
-    if (dlo(3) .eq. lo(3)) then
+    if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
        !$omp do
