@@ -6,13 +6,13 @@
  stencil_type = "compact"  ! compact or S3D
 
  stop_time = 6.d-5
- max_step  = 10000000
+ max_step  = 50000000
  restart = -1
 
  plot_int = 100
  chk_int  = 100
 
- cflfac = 0.4d0
+ cflfac = 0.1d0
  init_shrink = 0.5d0
 
  n_cellx = 256
