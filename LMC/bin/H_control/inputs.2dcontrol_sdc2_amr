@@ -51,7 +51,7 @@ mg.cg_solver=1
 
 geometry.prob_lo    = 0.0 0.0
 geometry.prob_hi    = 0.012 0.012
-amr.n_cell          = 256 256
+amr.n_cell          = 128 128
 amr.blocking_factor = 64
 max_step            = 100
 amr.check_file      = chk_0128_

@@ -51,7 +51,7 @@ mg.cg_solver=1
 
 geometry.prob_lo    = 0.0 0.0
 geometry.prob_hi    = 0.012 0.012
-amr.n_cell          = 256 256
+amr.n_cell          = 128 128
 amr.blocking_factor = 64
 max_step            = 100
 amr.check_file      = chk_0128_
@@ -103,7 +103,6 @@ ns.S_in_vel_diffusion = 1
 ns.do_temp = 1
 
 ns.do_diffuse_sync = 1
-ns.do_reflux_visc  = 1
 
 ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
