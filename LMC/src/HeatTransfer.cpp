@@ -2712,7 +2712,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     const int nGrowOp = 1;
     MultiFab rho_and_species(grids,nspecies+1,nGrowOp);
     //
-    // Create and fill a full MultiFab of all species at this level and below.
+    // Create and fill a full MultiFab of rho and species at this level and below.
     //
     FArrayBox tmp;
 
@@ -2722,12 +2722,15 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     {
         FArrayBox& rho_and_spec = rho_and_species[fpi];
 
+	// copy rho and rho*Y into rho_and_species
         rho_and_spec.copy(fpi(),0,0,nspecies+1);
 
+	// set tmp = 1/rho
         tmp.resize(rho_and_spec.box(),1);
         tmp.copy(rho_and_spec,0,0,1);
         tmp.invert(1);
 
+	// convert rho*Y to Y in rrho_and_species
         for (int comp = 0; comp < nspecies; ++comp) 
             if (rho_flag[comp] == 2)
                 rho_and_spec.mult(tmp,0,comp+1,1);
@@ -2735,6 +2738,9 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 
     MultiFab rho_and_species_crse;
 
+    //
+    // Now do the coarser level
+    //
     if (level > 0) 
     {
         const int     nGrow   = 1;
@@ -2746,17 +2752,20 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
              fpi.isValid();
              ++fpi)
         {
-            FArrayBox& fab = rho_and_species_crse[fpi];
+            FArrayBox& rho_and_spec = rho_and_species_crse[fpi];
 
-            fab.copy(fpi(),0,0,nspecies+1);
+	    // copy rho and rho*Y into rho_and_species
+            rho_and_spec.copy(fpi(),0,0,nspecies+1);
 
-            tmp.resize(fab.box(),1);
-            tmp.copy(fab,0,0,1);
+	    // set tmp = 1/rho
+            tmp.resize(rho_and_spec.box(),1);
+            tmp.copy(rho_and_spec,0,0,1);
             tmp.invert(1);
 
+	    // convert rho*Y to Y in rrho_and_species
             for (int comp = 0; comp < nspecies; ++comp) 
                 if (rho_flag[comp] == 2)
-                    fab.mult(tmp,0,comp+1,1);
+                    rho_and_spec.mult(tmp,0,comp+1,1);
         }
     }
 
@@ -2847,6 +2856,8 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 	//
         update.resize(box,nspecies);
         geom.GetVolume(volume,grids,iGrid,GEOM_GROW);
+
+	// update = -div(flux)/vol
 	FORT_RECOMP_UPDATE(box.loVect(), box.hiVect(),
 			   update.dataPtr(),
 			   ARLIM(update.loVect()),       ARLIM(update.hiVect()),
@@ -8413,8 +8424,11 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     const int dataComp = 0; 
     Rhs.mult(1.0/dt,0,nspecies,0); // adjust_spec_diffusion_update needs Rhs in units of dsdt
 
-    // this should correct Ssync to contain rho^{n+1} * (delta Y)^sync
-    // this should correct SpecDiffusionFluxnp1 to contain rhoD grad (delta Y)^sync
+    // on entry, Ssync = rho^{n+1} * (delta Ytilde)^sync
+    // on exit,  Ssync = rho^{n+1} * (delta Y)^sync
+    // on entry, SpecDiffusionFluxnp1 = rhoD grad (delta Ytilde)^sync
+    // on exit,  SpecDiffusionFluxnp1 = rhoD grad (delta Y)^sync
+    // on entry, Rhs = (1/dt) * "RHS of diffusion solve"
     adjust_spec_diffusion_update(*Ssync,old_sync,sCompS,dt,cur_time,rho_flag,
                                  RhoHalftime,dataComp,&Rhs,alpha,betanp1);
 
