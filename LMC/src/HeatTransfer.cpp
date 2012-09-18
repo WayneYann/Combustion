@@ -7637,15 +7637,18 @@ HeatTransfer::mac_sync ()
     const Real cur_time       = state[State_Type].curTime();
     const Real prev_pres_time = state[Press_Type].prevTime();
     const Real dt             = parent->dtLevel(level);
-    MultiFab*  DeltaSsync     = 0; // hold (Delta rho)*q for conserved quantities
     MultiFab*  Rh             = get_rho_half_time();
+    // will hold q^{n+1,p} * (delta rho)^sync for conserved quantities
+    // as defined before Eq (18) in DayBell:2000.  Note that in the paper, 
+    // Eq (18) is missing Y_m^{n+1,p} * (delta rho)^sync in the RHS
+    // and Eq (19) is missing the h^{n+1,p} * (delta rho)^sync in the RHS
+    MultiFab*  DeltaSsync     = 0;
+
     //
-    // Compute the correction velocity.
+    // Compute the corrective pressure used to compute U^{ADV,corr} in mac_sync_compute
     //
     mac_projector->mac_sync_solve(level,dt,Rh,fine_ratio);
-    //
-    // Update coarse grid state by adding correction from mac_sync solve.
-    //
+
     if (do_reflux)
     {
         MultiFab& S_new = get_new_data(State_Type);
@@ -7663,6 +7666,15 @@ HeatTransfer::mac_sync ()
         for (int i=0; i<sync_scheme.size(); ++i)
             if (sync_scheme[i] == ReAdvect)
                 incr_sync[i] = 1;
+
+	//
+	// After solving for mac_sync_phi in mac_sync_solve(), we
+	// can now do the sync advect step in mac_sync_compute().
+	// This consists of two steps
+	//
+	// 1. compute U^{ADV,corr} as the gradient of mac_sync_phi
+	// 2. add -D^MAC ( U^{ADV,corr} * rho * q)^{n+1/2} ) to flux registers
+	//
 
 	// velocities
         if (do_mom_diff == 0) 
@@ -7713,12 +7725,12 @@ HeatTransfer::mac_sync ()
         Ssync->mult(dt,Ssync->nGrow());
 
         sync_setup(DeltaSsync);
+
         //
         // For all conservative variables Q (other than density)
-        // express Q as rho*q and increment sync by -(sync_for_rho)*q 
+	// set DeltaSsync = q^{n+1,p} * (delta rho)^sync
+	// subtract q^{n+1,p} * (delta rho)^sync from Ssync
         //
-        FArrayBox delta_ssync;
-
         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
         {
             const int  i   = mfi.index();
@@ -7732,15 +7744,14 @@ HeatTransfer::mac_sync ()
                 {
                     iconserved++;
              
-		    // convert Ssync_q to Ssync_q - qnew * Ssync_rho
-		    // set DeltaSsync = qnew * Ssync_rho
+		    FArrayBox delta_ssync;
                     delta_ssync.resize(grd,1);
-                    delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)new
-                    delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = qnew
-                    FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS_q
-                    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = qnew*RHS_rho
-                    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = qnew*RHS_rho
-                    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync_q = Ssync_q - qnew*RHS_rho
+                    delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)^{n+1,p}
+                    delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = q^{n+1,p}
+                    FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS of Eq (18), (19) without the q^{n+1,p} * (delta rho)^sync terms
+                    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = q^{n+1,p} * (delta rho)^sync
+                    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = q^{n+1,p} * (delta rho)^sync
+                    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync = Ssync - q^{n+1,p} * (delta rho)^sync
                 }
             }
         }
@@ -8346,8 +8357,9 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
 
-    // form RHS of DayBell:2000 Eq (18)
-    // Rhs and Ssync contain RHS_q - qnew*RHS_rho
+    // Rhs and Ssync contain the RHS of DayBell:2000 Eq (18)
+    // with the additional -Y_m^{n+1,p} * (delta rho)^sync term
+    // Copy this into Rhs; we will need this later since we overwrite SSync in the solves
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
     Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
     //
