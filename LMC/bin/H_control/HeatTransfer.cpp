@@ -6820,10 +6820,14 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     adjust_spec_diffusion_fluxes(cur_time,grow_cells_already_filled);
 
     // need to correct Ssync to contain rho^{n+1} * (delta Y)^sync
-    // I think we do this using Ssync = "RHS from diffusion solve" + (dt/2)*div(delta Gamma)
+    // Do this by setting
+    // Ssync = "RHS from diffusion solve" + (dt/2)*div(delta Gamma)
     //
     // Recompute update with adjusted diffusion fluxes
     // 
+
+    Rhs.mult(dt,0,nspecies,0); // Make Rhs in units of s again...
+
     FArrayBox update, volume, efab[BL_SPACEDIM];
 
     for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
@@ -6845,12 +6849,10 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	update.setVal(0.);
         geom.GetVolume(volume,grids,iGrid,GEOM_GROW);
 
-        Real scale = 1.0;
+	// is this right?
+        Real scale = dt/2.0;
 
-	// take divergence of (delta gamma) and put it in update
-	
-	// broken
-	/*
+	// take divergence of (delta gamma) and put it in update	
 	FORT_FLUXDIV(box.loVect(), box.hiVect(),
                      update.dataPtr(),  
 		     ARLIM(update.loVect()),  ARLIM(update.hiVect()),
@@ -6861,12 +6863,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 #endif
                      volume.dataPtr(),  ARLIM(volume.loVect()),  ARLIM(volume.hiVect()),
                      &nspecies,&scale);
-	*/
-	
 
-	// we already multiplied update by 1/2.  Do we need to multiply by dt as well?
-
-	// add RHS from diffusion solv
+	// add RHS from diffusion solve
 	update.plus(Rhs[iGrid],box,0,0,nspecies);
 
 	(*Ssync)[mfi].copy(update,box,0,box,first_spec-BL_SPACEDIM,nspecies);
