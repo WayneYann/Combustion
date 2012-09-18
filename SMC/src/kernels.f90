@@ -2852,11 +2852,11 @@ contains
              
           end do
        end do
-       !omp end do
+       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 2nd-order stencil for cell i,j,lo(3)+1
-       !omp do
+       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -2908,11 +2908,11 @@ contains
              end do
           end do
        end do
-       !omp end do
+       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 4th-order stencil for cell i,j,lo(3)+2
-       !omp do
+       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -2964,11 +2964,11 @@ contains
              end do
           end do
        end do
-       !omp end do
+       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 6th-order stencil for cell i,j,lo(3)+3
-       !omp do
+       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3020,7 +3020,7 @@ contains
              end do
           end do
        end do
-       !omp end do
+       !$omp end do
        
     end if
 
@@ -3028,7 +3028,7 @@ contains
     if (dhi(3) .eq. hi(3)) then
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 6th-order stencil for cell i,j,hi(3)-3
-       !omp do
+       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3080,11 +3080,11 @@ contains
              end do
           end do
        end do
-       !omp end do
+       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 4th-order stencil for cell i,j,hi(3)-2
-       !omp do
+       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3136,11 +3136,11 @@ contains
              end do
           end do
        end do
-       !omp end do
+       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 2nd-order stencil for cell i,j,hi(3)-1
-       !omp do
+       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3192,7 +3192,7 @@ contains
              end do
           end do
        end do
-       !omp end do
+       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        k = hi(3)
@@ -3246,7 +3246,7 @@ contains
              
           end do
        end do
-       !omp end do
+       !$omp end do
     end if
 
     ! add z-direction rhs
