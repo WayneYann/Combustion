@@ -6847,10 +6847,12 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	update.setVal(0.);
         geom.GetVolume(volume,grids,iGrid,GEOM_GROW);
 
-	// is this right?
-        Real scale = dt/2.0;
+	// is this right? - I'm not sure what the scaling on SpecDiffusionFluxnp1 is
+        Real scale = -dt;
 
-	// take divergence of (delta gamma) and put it in update	
+	// take divergence of (delta gamma) and put it in update
+	// update = scale * div(flux) / vol
+	// we want update to contain (dt/2) div (delta gamma)
 	FORT_FLUXDIV(box.loVect(), box.hiVect(),
                      update.dataPtr(),  
 		     ARLIM(update.loVect()),  ARLIM(update.hiVect()),
@@ -6865,6 +6867,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	// add RHS from diffusion solve
 	update.plus(Rhs[iGrid],box,0,0,nspecies);
 
+	// Ssync = "RHS from diffusion solve" - dt/2) div (delta gamma)
 	(*Ssync)[mfi].copy(update,box,0,box,first_spec-BL_SPACEDIM,nspecies);
 
     }
