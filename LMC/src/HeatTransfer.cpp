@@ -2409,7 +2409,7 @@ HeatTransfer::scalar_diffusion_update (Real dt,
     //
     // Do implicit c-n solve for each scalar.
     //
-    const MultiFab* Rh = get_rho_half_time();
+    const MultiFab* RhoHalftime = get_rho_half_time();
 
     for (int sigma = first_scalar; sigma <= last_scalar; sigma++)
     {
@@ -2425,7 +2425,7 @@ HeatTransfer::scalar_diffusion_update (Real dt,
             //
 	    const int dataComp = 0; // Component of dR, alpha, betas to use.
 
-            diffusion->diffuse_scalar(dt,sigma,be_cn_theta,Rh,rho_flag,fluxSCn,
+            diffusion->diffuse_scalar(dt,sigma,be_cn_theta,RhoHalftime,rho_flag,fluxSCn,
                                       fluxSCnp1,dataComp,delta_rhs,alpha,betan,
                                       betanp1,solve_mode);
 	    //
@@ -2512,7 +2512,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     
     MultiFab *alphaSC, *delta_rhsSC, **betanSC, **betanp1SC;
 
-    const MultiFab* Rh = get_rho_half_time();
+    const MultiFab* RhoHalftime = get_rho_half_time();
 
     for (int sigma = 0; sigma < nCompY; ++sigma)
     {
@@ -2561,7 +2561,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 	//
 	diffuse_cleanup(delta_rhsSC, betanSC, betanp1SC, alphaSC);
 
-	diffusion->diffuse_scalar(dt,state_ind,be_cn_theta,Rh,rho_flag[sigma],
+	diffusion->diffuse_scalar(dt,state_ind,be_cn_theta,RhoHalftime,rho_flag[sigma],
                                   fluxSCn,fluxSCnp1,sigma,&delta_rhs,alpha,
                                   betan,betanp1,solve_mode);
 	//
@@ -2589,7 +2589,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     // conservatively correct fluxes at time n, then set new = old + (dt/2)*fluxes^old
     // the 1/2 was added in differential_spec_diffusion_update in compflux (b)
     adjust_spec_diffusion_update(get_new_data(State_Type),&get_old_data(State_Type),
-				 sCompY,dt,prev_time,rho_flag,Rh,dataComp,
+				 sCompY,dt,prev_time,rho_flag,RhoHalftime,dataComp,
                                  &delta_rhs,alpha,betan);
 
     diffusion->removeFluxBoxesLevel(betan);
@@ -2598,7 +2598,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     // conservatively correct fluxes at time n+1, then set new = new + (dt/2)*fluxes^new
     // the 1/2 was added in differential_spec_diffusion_update in compflux (b)
     adjust_spec_diffusion_update(get_new_data(State_Type),&get_new_data(State_Type),
-				 sCompY,dt,cur_time,rho_flag,Rh,dataComp,0,
+				 sCompY,dt,cur_time,rho_flag,RhoHalftime,dataComp,0,
                                  alpha,betanp1);
 
     diffusion->removeFluxBoxesLevel(betanp1);
@@ -7165,7 +7165,7 @@ HeatTransfer::scalar_advection (Real dt,
         getDiffusivity(rhoh_visc, prev_time, RhoH, 0, 1);
 
 	// rho^n+1/2, don't think this is needed
-        const MultiFab* Rh = get_rho_half_time();
+        const MultiFab* RhoHalftime = get_rho_half_time();
 
         for (int comp = 0; comp < nspecies; ++comp)
         {
@@ -7178,7 +7178,7 @@ HeatTransfer::scalar_advection (Real dt,
             ABecLaplacian* visc_op;
 
             visc_op = diffusion->getViscOp(sigma,a,b,prev_time,visc_bndry,
-                                           Rh,rho_flag,&rhsscale,dataComp,
+                                           RhoHalftime,rho_flag,&rhsscale,dataComp,
                                            rhoh_visc,alpha);
 
             visc_op->maxOrder(diffusion->maxOrder());
@@ -7256,7 +7256,7 @@ HeatTransfer::scalar_advection (Real dt,
             ABecLaplacian* visc_op;
 
             visc_op = diffusion->getViscOp(sigma,a,b,cur_time,visc_bndry,
-                                           Rh,rho_flag,&rhsscale,dataComp,
+                                           RhoHalftime,rho_flag,&rhsscale,dataComp,
                                            rhoh_visc,alpha);
 
             visc_op->maxOrder(diffusion->maxOrder());
@@ -8374,7 +8374,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     MultiFab** fluxSC;
     diffusion->allocFluxBoxesLevel(fluxSC,0,1);
 
-    const MultiFab* Rh = get_rho_half_time();
+    const MultiFab* RhoHalftime = get_rho_half_time();
 
     for (int sigma = 0; sigma < nspecies; ++sigma)
     {
@@ -8390,7 +8390,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	// on exit, Ssync = rho^{n+1} * (delta Ytilde)^sync
 	// on exit, fluxSC = rhoD grad (delta Ytilde)^sync
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
-				 Rh,rho_flag[sigma],fluxSC,
+				 RhoHalftime,rho_flag[sigma],fluxSC,
                                  sigma,betanp1,alpha);
 	//
 	// Pull fluxes into flux array
@@ -8416,7 +8416,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // this should correct Ssync to contain rho^{n+1} * (delta Y)^sync
     // this should correct SpecDiffusionFluxnp1 to contain rhoD grad (delta Y)^sync
     adjust_spec_diffusion_update(*Ssync,old_sync,sCompS,dt,cur_time,rho_flag,
-                                 Rh,dataComp,&Rhs,alpha,betanp1);
+                                 RhoHalftime,dataComp,&Rhs,alpha,betanp1);
 
     diffusion->removeFluxBoxesLevel(betanp1);
 
@@ -8482,7 +8482,7 @@ HeatTransfer::reflux ()
     if (do_reflux_visc)
         fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
-    const MultiFab* Rh = get_rho_half_time();
+    const MultiFab* RhoHalftime = get_rho_half_time();
 
     if (do_mom_diff == 0) 
     {
@@ -8490,9 +8490,9 @@ HeatTransfer::reflux ()
         {
             const int i = mfi.index();
 
-            D_TERM((*Vsync)[i].divide((*Rh)[i],grids[i],0,Xvel,1);,
-                   (*Vsync)[i].divide((*Rh)[i],grids[i],0,Yvel,1);,
-                   (*Vsync)[i].divide((*Rh)[i],grids[i],0,Zvel,1););
+            D_TERM((*Vsync)[i].divide((*RhoHalftime)[i],grids[i],0,Xvel,1);,
+                   (*Vsync)[i].divide((*RhoHalftime)[i],grids[i],0,Yvel,1);,
+                   (*Vsync)[i].divide((*RhoHalftime)[i],grids[i],0,Zvel,1););
         }
     }
 
@@ -8505,7 +8505,7 @@ HeatTransfer::reflux ()
         const int i = mfi.index();
 
         tmp.resize(grids[i],1);
-        tmp.copy((*Rh)[i],0,0,1);
+        tmp.copy((*RhoHalftime)[i],0,0,1);
         tmp.invert(1);
 
         for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)

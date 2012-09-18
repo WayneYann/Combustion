@@ -6782,7 +6782,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     MultiFab** fluxSC;
     diffusion->allocFluxBoxesLevel(fluxSC,0,1);
 
-    const MultiFab* Rh = get_rho_half_time();
+    const MultiFab* RhoHalftime = get_rho_half_time();
 
     for (int sigma = 0; sigma < nspecies; ++sigma)
     {
@@ -6798,7 +6798,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	// on exit, Ssync = rho^{n+1} * (delta Ytilde)^sync
 	// on exit, fluxSC = rhoD grad (delta Ytilde)^sync
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
-				 Rh,rho_flag[sigma],fluxSC,0,
+				 RhoHalftime,rho_flag[sigma],fluxSC,0,
                                  betanp1,sigma,alpha);
 	//
 	// Pull fluxes into flux array
@@ -6931,7 +6931,7 @@ HeatTransfer::reflux ()
     if (true)
         fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
-    const MultiFab* Rh = get_rho_half_time();
+    const MultiFab* RhoHalftime = get_rho_half_time();
 
     if (do_mom_diff == 0) 
     {
@@ -6939,9 +6939,9 @@ HeatTransfer::reflux ()
         {
             const int i = mfi.index();
 
-            D_TERM((*Vsync)[i].divide((*Rh)[i],grids[i],0,Xvel,1);,
-                   (*Vsync)[i].divide((*Rh)[i],grids[i],0,Yvel,1);,
-                   (*Vsync)[i].divide((*Rh)[i],grids[i],0,Zvel,1););
+            D_TERM((*Vsync)[i].divide((*RhoHalftime)[i],grids[i],0,Xvel,1);,
+                   (*Vsync)[i].divide((*RhoHalftime)[i],grids[i],0,Yvel,1);,
+                   (*Vsync)[i].divide((*RhoHalftime)[i],grids[i],0,Zvel,1););
         }
     }
 
@@ -6954,7 +6954,7 @@ HeatTransfer::reflux ()
         const int i = mfi.index();
 
         tmp.resize(grids[i],1);
-        tmp.copy((*Rh)[i],0,0,1);
+        tmp.copy((*RhoHalftime)[i],0,0,1);
         tmp.invert(1);
 
         for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
