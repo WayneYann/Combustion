@@ -303,7 +303,8 @@ contains
              call outlet_xhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,hi(1),:,:),dlo,dhi)
           else
              qinp => dataptr(qin_xhi%data,n)
-             call inlet_xhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,hi(1),:,:),qinp(:,hi(1),:,:),dlo,dhi)
+             call bl_error("inlet_xhi not implemented")
+!             call inlet_xhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,hi(1),:,:),qinp(:,hi(1),:,:),dlo,dhi)
           end if
        end if
 
@@ -313,7 +314,8 @@ contains
              call outlet_ylo(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),:),dlo,dhi)
           else
              qinp => dataptr(qin_ylo%data,n)
-             call inlet_ylo(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),:),qinp(:,:,lo(2),:),dlo,dhi)
+             call bl_error("inlet_ylo not implemented")
+!             call inlet_ylo(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),:),qinp(:,:,lo(2),:),dlo,dhi)
           end if
        end if
 
@@ -323,7 +325,8 @@ contains
              call outlet_yhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,hi(2),:),dlo,dhi)
           else
              qinp => dataptr(qin_yhi%data,n)
-             call inlet_yhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,hi(2),:),qinp(:,:,hi(2),:),dlo,dhi)
+             call bl_error("inlet_yhi not implemented")
+!            call inlet_yhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,hi(2),:),qinp(:,:,hi(2),:),dlo,dhi)
           end if
        end if
 
@@ -333,7 +336,8 @@ contains
              call outlet_zlo(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,:,lo(3)),dlo,dhi)
           else
              qinp => dataptr(qin_zlo%data,n)
-             call inlet_zlo(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,:,lo(3)),qinp(:,:,:,lo(3)),dlo,dhi)
+             call bl_error("inlet_zlo not implemented")
+!            call inlet_zlo(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,:,lo(3)),qinp(:,:,:,lo(3)),dlo,dhi)
           end if
        end if
 
@@ -343,7 +347,8 @@ contains
              call outlet_zhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,:,hi(3)),dlo,dhi)
           else
              qinp => dataptr(qin_zhi%data,n)
-             call inlet_zhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,:,hi(3)),qinp(:,:,:,hi(3)),dlo,dhi)
+             call bl_error("inlet_zhi not implemented")
+!             call inlet_zhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,:,hi(3)),qinp(:,:,:,hi(3)),dlo,dhi)
           end if
        end if
 

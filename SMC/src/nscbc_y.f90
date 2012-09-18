@@ -13,7 +13,7 @@
     double precision :: rho, u, v, w, T, pres, Y(nspecies), h(nspecies), rhoE
     double precision :: dpdn, dudn, dvdn, dwdn, drhodn, dYdn(nspecies)
     double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
-    double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
+    double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p
     double precision :: hcal, cpWT, gam1
 
     double precision, dimension(lo(1):hi(1),lo(3):hi(3)) :: &
@@ -29,7 +29,7 @@
 
     !$omp parallel do private(i,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
     !$omp private(dpdn, dudn,dvdn,dwdn, drhodn, dYdn, L, Ltr, lhs) &
-    !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p, d_Y, hcal, cpWT, gam1)
+    !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p, hcal, cpWT, gam1)
     do k=lo(3),hi(3)
        do i=lo(1),hi(1)
 
@@ -80,7 +80,6 @@
              S_p    = S_p - hcal*aux(iwdot1+n-1,i,k)
              S_Y(n) = aux(iwdot1+n-1,i,k) / rho
              d_p    = d_p - hcal*fd(i,j,k,iry1+n-1)
-             d_Y(n) = fd(i,j,k,iry1+n-1) / rho
           end do
           S_p = gam1 * S_p
           d_p = gam1 * d_p 
@@ -98,8 +97,8 @@
              L(5) = 0.5d0*S_p
              L(6:) = S_Y      
              
-             L(5) = 0.5d0*S_p + Ltr(5) &
-                  - outlet_eta*aux(igamma,i,k)*pres*(1.d0-Ma2_ylo)/(2.d0*Lydomain)*v
+             L(5) = 0.5d0*(S_p + d_p + rho*aux(ics,i,k)*d_v) + Ltr(5) &
+                  + outlet_eta*aux(igamma,i,k)*pres*(1.d0-Ma2_ylo)/(2.d0*Lydomain)*v
           end if
           
           call LtoLHS(2, L, lhs, aux(:,i,k), rho, u, v, w, T, Y, h, rhoE)
@@ -113,19 +112,19 @@
   end subroutine outlet_ylo
 
 
-  subroutine inlet_ylo(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,qin,dlo,dhi)
-    integer, intent(in) :: lo(3), hi(3), ngq, ngc, dlo(3), dhi(3)
-    double precision,intent(in   )::dx(3)
-    double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
-    double precision,intent(in   )::con(-ngc+lo(1):hi(1)+ngc,-ngc+lo(2):hi(2)+ngc,-ngc+lo(3):hi(3)+ngc,ncons)
-    double precision,intent(in   )::fd (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons)
-    double precision,intent(inout)::rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons)
-    double precision,intent(in   )::aux(naux,lo(1):hi(1),lo(3):hi(3))
-    double precision,intent(in   )::qin(nqin,lo(1):hi(1),lo(3):hi(3))
+!   subroutine inlet_ylo(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,qin,dlo,dhi)
+!     integer, intent(in) :: lo(3), hi(3), ngq, ngc, dlo(3), dhi(3)
+!     double precision,intent(in   )::dx(3)
+!     double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
+!     double precision,intent(in   )::con(-ngc+lo(1):hi(1)+ngc,-ngc+lo(2):hi(2)+ngc,-ngc+lo(3):hi(3)+ngc,ncons)
+!     double precision,intent(in   )::fd (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons)
+!     double precision,intent(inout)::rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons)
+!     double precision,intent(in   )::aux(naux,lo(1):hi(1),lo(3):hi(3))
+!     double precision,intent(in   )::qin(nqin,lo(1):hi(1),lo(3):hi(3))
 
-    call bl_error("inlet_ylo not implemented")
+!     call bl_error("inlet_ylo not implemented")
 
-  end subroutine inlet_ylo
+!   end subroutine inlet_ylo
 
 
   subroutine outlet_yhi(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,dlo,dhi)
@@ -142,7 +141,7 @@
     double precision :: rho, u, v, w, T, pres, Y(nspecies), h(nspecies), rhoE
     double precision :: dpdn, dudn, dvdn, dwdn, drhodn, dYdn(nspecies)
     double precision :: L(5+nspecies), Ltr(5+nspecies), lhs(ncons)
-    double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p, d_Y(nspecies)
+    double precision :: S_p, S_Y(nspecies), d_u, d_v, d_w, d_p
     double precision :: hcal, cpWT, gam1
 
     double precision, dimension(lo(1):hi(1),lo(3):hi(3)) :: &
@@ -158,7 +157,7 @@
 
     !$omp parallel do private(i,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
     !$omp private(dpdn, dudn, dvdn, dwdn, drhodn, dYdn, L, Ltr, lhs) &
-    !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p, d_Y, hcal, cpWT, gam1)
+    !$omp private(S_p, S_Y, d_u, d_v, d_w, d_p,  hcal, cpWT, gam1)
     do k=lo(3),hi(3)
        do i=lo(1),hi(1)
 
@@ -209,7 +208,6 @@
              S_p    = S_p - hcal*aux(iwdot1+n-1,i,k)
              S_Y(n) = aux(iwdot1+n-1,i,k) / rho
              d_p    = d_p - hcal*fd(i,j,k,iry1+n-1)
-             d_Y(n) = fd(i,j,k,iry1+n-1) / rho
           end do
           S_p = gam1 * S_p
           d_p = gam1 * d_p 
@@ -227,7 +225,7 @@
              L(4) = 0.d0
              L(6:) = S_Y      
              
-             L(1) = 0.5d0*S_p + Ltr(1) &
+             L(1) = 0.5d0*(S_p + d_p - rho*aux(ics,i,k)*d_v) + Ltr(1) &
                   - outlet_eta*aux(igamma,i,k)*pres*(1.d0-Ma2_yhi)/(2.d0*Lydomain)*v
           end if
           
@@ -242,19 +240,19 @@
   end subroutine outlet_yhi
 
 
-  subroutine inlet_yhi(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,qin,dlo,dhi)
-    integer, intent(in) :: lo(3), hi(3), ngq, ngc, dlo(3), dhi(3)
-    double precision,intent(in   )::dx(3)
-    double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
-    double precision,intent(in   )::con(-ngc+lo(1):hi(1)+ngc,-ngc+lo(2):hi(2)+ngc,-ngc+lo(3):hi(3)+ngc,ncons)
-    double precision,intent(in   )::fd (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons)
-    double precision,intent(inout)::rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons)
-    double precision,intent(in   )::aux(naux,lo(1):hi(1),lo(3):hi(3))
-    double precision,intent(in   )::qin(nqin,lo(1):hi(1),lo(3):hi(3))
+!   subroutine inlet_yhi(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,qin,dlo,dhi)
+!     integer, intent(in) :: lo(3), hi(3), ngq, ngc, dlo(3), dhi(3)
+!     double precision,intent(in   )::dx(3)
+!     double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
+!     double precision,intent(in   )::con(-ngc+lo(1):hi(1)+ngc,-ngc+lo(2):hi(2)+ngc,-ngc+lo(3):hi(3)+ngc,ncons)
+!     double precision,intent(in   )::fd (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons)
+!     double precision,intent(inout)::rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons)
+!     double precision,intent(in   )::aux(naux,lo(1):hi(1),lo(3):hi(3))
+!     double precision,intent(in   )::qin(nqin,lo(1):hi(1),lo(3):hi(3))
 
-    call bl_error("inlet_yhi not implemented")
+!     call bl_error("inlet_yhi not implemented")
 
-  end subroutine inlet_yhi
+!   end subroutine inlet_yhi
 
 
   subroutine comp_trans_deriv_y(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dpdz,dudx,dvdx,dvdz,dwdz)
