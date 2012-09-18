@@ -8366,7 +8366,6 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // with the additional -Y_m^{n+1,p} * (delta rho)^sync term
     // Copy this into Rhs; we will need this later since we overwrite SSync in the solves
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
-    Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
     //
     // Some standard settings
     //
@@ -8412,6 +8411,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     const int sCompS = first_spec - BL_SPACEDIM;
     const MultiFab* old_sync = 0;
     const int dataComp = 0; 
+    Rhs.mult(1.0/dt,0,nspecies,0); // adjust_spec_diffusion_update needs Rhs in units of dsdt
+
     // this should correct Ssync to contain rho^{n+1} * (delta Y)^sync
     // this should correct SpecDiffusionFluxnp1 to contain rhoD grad (delta Y)^sync
     adjust_spec_diffusion_update(*Ssync,old_sync,sCompS,dt,cur_time,rho_flag,

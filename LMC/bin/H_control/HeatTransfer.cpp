@@ -6773,7 +6773,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // with the additional -Y_m^{n+1,p} * (delta rho)^sync term
     // Copy this into Rhs; we will need this later since we overwrite SSync in the solves
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
-    Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
+
     //
     // Some standard settings
     //
@@ -6825,8 +6825,6 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     // Recompute update with adjusted diffusion fluxes
     // 
-
-    Rhs.mult(dt,0,nspecies,0); // Make Rhs in units of s again...
 
     FArrayBox update, volume, efab[BL_SPACEDIM];
 
