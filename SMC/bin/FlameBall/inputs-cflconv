@@ -2,19 +2,19 @@
 
  verbose = 2
 
- advance_method = 2
+ advance_method = {advance_method}
  stencil_type   = "compact"
 
  restart   = -1
  plot_int  = 10
  chk_int   = -1
 
- stop_time = 3.d-3
+ stop_time = 4.0d-6
  max_step  = 10000
 
  sdc_nnodes = {sdc_nnodes}
  sdc_iters  = {sdc_iters}
- sdc_tol_residual = 1.0d-3
+ sdc_tol_residual = -1.0d0
 
  cflfac        = {cflfac}
  init_shrink   = 0.5d0
