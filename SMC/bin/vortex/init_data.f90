@@ -39,9 +39,10 @@ contains
 
   subroutine init_data_3d(lo,hi,ng,dx,cons,phlo,phhi)
 
+    use bc_module
     use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons
     use chemistry_module, only : nspecies
-    use probin_module,    only : Minfty, Rvortex, Cvortex
+    use probin_module,    only : Minfty, Rvortex, Cvortex, bcy_lo, bcz_lo
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
     double precision, intent(in   ) :: dx(3),phlo(3),phhi(3)
@@ -58,10 +59,6 @@ contains
 
     double precision, parameter :: patmos = 1.01325d6, Ru = 8.31451d7
 
-    !$omp parallel do &
-    !$omp private(i,j,k,n,x,y,z,pmf_vals) &
-    !$omp private(Xt,Yt,rhot,u1t,u2t,u3t,Tt,et,iwrk,rwrk) &
-    !$omp private(Lx,exptmp, Wbar, Rc, Cc, cs, Cv, Cp, gamma, uinfty)
     do k=lo(3),hi(3)
        z = phlo(3) + dx(3)*(k + 0.5d0)
        do j=lo(2),hi(2)
@@ -96,12 +93,27 @@ contains
              Rc = Rvortex*Lx
              Cc = Cvortex*cs*Lx
 
-             exptmp = exp(-(x**2+y**2)/(2.d0*Rc**2))
-             Pt = patmos - rhot*(Cc/Rc)**2*exptmp
+             if (bcy_lo .eq. PERIODIC) then
 
-             u1t = uinfty - Cc*exptmp*y/Rc**2
-             u2t = Cc*exptmp*x/Rc**2
-             u3t = 0.d0
+                exptmp = exp(-(x**2+z**2)/(2.d0*Rc**2))
+
+                u1t = uinfty - Cc*exptmp*z/Rc**2
+                u3t = Cc*exptmp*x/Rc**2
+                u2t = 0.d0
+
+             else if (bcz_lo .eq. PERIODIC) then
+
+                exptmp = exp(-(x**2+y**2)/(2.d0*Rc**2))
+
+                u1t = uinfty - Cc*exptmp*y/Rc**2
+                u2t = Cc*exptmp*x/Rc**2
+                u3t = 0.d0
+
+             else
+                call bl_error("In vortex problem, either y- or z-direction must be periodic")
+             end if
+
+             Pt = patmos - rhot*(Cc/Rc)**2*exptmp
 
              call CKMMWX(Xt, iwrk, rwrk, Wbar)
              Tt = Pt*Wbar / (rhot*Ru)
@@ -121,7 +133,6 @@ contains
           enddo
        enddo
     enddo
-    !$omp end parallel do
 
   end subroutine init_data_3d
   

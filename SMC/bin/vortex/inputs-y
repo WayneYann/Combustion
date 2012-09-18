@@ -16,25 +16,25 @@
  init_shrink = 0.5d0
 
  n_cellx = 256
- n_celly = 256
- n_cellz = 4
+ n_celly = 4
+ n_cellz = 256
  max_grid_size = 128
 
  prob_lo_x = -0.1d0
- prob_lo_y = -0.1d0
- prob_lo_z = -0.0015625
+ prob_lo_y = -0.0015625
+ prob_lo_z = -0.1d0
  prob_hi_x =  0.1d0
- prob_hi_y =  0.1d0
- prob_hi_z =  0.0015625
+ prob_hi_y =  0.0015625
+ prob_hi_z =  0.1d0
 
  xlo_boundary_type = "inlet"
  xhi_boundary_type = "outlet"
 
- ylo_boundary_type = "outlet"
- yhi_boundary_type = "outlet"
+ ylo_boundary_type = "periodic"
+ yhi_boundary_type = "periodic"
 
- zlo_boundary_type = "periodic"
- zhi_boundary_type = "periodic"
+ zlo_boundary_type = "outlet"
+ zhi_boundary_type = "outlet"
 
  outlet_Pinfty = 1.01325d6 
  outlet_sigma  = 0.25d0
