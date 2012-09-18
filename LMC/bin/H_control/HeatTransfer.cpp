@@ -6733,13 +6733,18 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
 void
 HeatTransfer::differential_spec_diffuse_sync (Real dt)
 {
+  
+  // Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
+  // After exiting, SpecDiffusionFluxnp1 should contain rhoD grad (delta Y)^sync
+  // Also, Ssync for species should contain rho^{n+1} * (delta Y)^sync
+
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "... HACK!!! skipping spec sync diffusion " << '\n';
 
         for (int d=0; d<BL_SPACEDIM; ++d)
-            SpecDiffusionFluxnp1[d]->setVal(0);
+            SpecDiffusionFluxnp1[d]->setVal(0.0,0,nspecies);
 
         return;            
     }
@@ -6768,6 +6773,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // with the additional -Y_m^{n+1,p} * (delta rho)^sync term
     // Copy this into Rhs; we will need this later since we overwrite SSync in the solves
     MultiFab::Copy(Rhs,*Ssync,spec_Ssync_sComp,0,nspecies,0);
+    Rhs.mult(1.0/dt,0,nspecies,0); // Make Rhs in units of ds/dt again...
     //
     // Some standard settings
     //
@@ -6796,9 +6802,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
                                  betanp1,sigma,alpha);
 	//
 	// Pull fluxes into flux array
-	// this is the rho D delta Ytilde_m^sync terms in DayBell:2000 Eq (18)
+	// this is the rhoD grad (delta Ytilde)^sync terms in DayBell:2000 Eq (18)
 	//
-
 	for (int d=0; d<BL_SPACEDIM; ++d)
 	{
 	  MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);

@@ -8323,6 +8323,11 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
 void
 HeatTransfer::differential_spec_diffuse_sync (Real dt)
 {
+  
+  // Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
+  // After exiting, SpecDiffusionFluxnp1 should contain rhoD grad (delta Y)^sync
+  // Also, Ssync for species should contain rho^{n+1} * (delta Y)^sync
+
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
@@ -8352,7 +8357,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     const Real cur_time = state[State_Type].curTime();
     MultiFab **betanp1;
     diffusion->allocFluxBoxesLevel(betanp1,0,nspecies);
-    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies);
+    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies); // rhoD
 
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
