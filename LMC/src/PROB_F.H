@@ -10,12 +10,18 @@
 #    define FORT_FLAMETRACERROR         fterror
 #    define FORT_DERNULL                dernull
 #    define FORT_DERRHOMINUSSUMRHOY     drhomry
+#ifdef LMC_SDC
+#    define FORT_DERSUMRHOYDOT          dsrhoydot
+#else
 #    define FORT_DERSUMYDOT             dsydot
+#endif
 #    define FORT_RHOHFILL               rhohfill
 #    define FORT_VELFILL                velfill
 #    define FORT_CHEMFILL               chemfill
 #    define FORT_ALLCHEMFILL            allchemfill
+#ifndef LMC_SDC
 #    define FORT_CALCDIVU               calcdivu
+#endif
 #    define FORT_DERRHORT               drhort
 #    define FORT_HACK                   hack
 #    define FORT_DERMOLEFRAC            dermolefrac
@@ -35,12 +41,18 @@
 #    define FORT_FLAMETRACERROR         FTERROR
 #    define FORT_DERNULL                DERNULL
 #    define FORT_DERRHOMINUSSUMRHOY     DRHOMRY
+#ifdef LMC_SDC
+#    define FORT_DERSUMRHOYDOT          DSRHOYDOT
+#else
 #    define FORT_DERSUMYDOT             DSYDOT
+#endif
 #    define FORT_RHOHFILL               RHOHFILL
 #    define FORT_VELFILL                VELFILL
 #    define FORT_CHEMFILL               CHEMFILL
 #    define FORT_ALLCHEMFILL            ALLCHEMFILL
+#ifndef LMC_SDC
 #    define FORT_CALCDIVU               CALCDIVU
+#endif
 #    define FORT_DERRHORT               DRHORT
 #    define FORT_HACK                   HACK
 #    define FORT_DERMOLEFRAC            DERMOLEFRAC
@@ -59,12 +71,18 @@
 #    define FORT_FLAMETRACERROR         fterror
 #    define FORT_DERNULL                dernull
 #    define FORT_DERRHOMINUSSUMRHOY     drhomry
+#ifdef LMC_SDC
+#    define FORT_DERSUMRHOYDOT          dsrhoydot
+#else
 #    define FORT_DERSUMYDOT             dsydot
+#endif
 #    define FORT_RHOHFILL               rhohfill
 #    define FORT_VELFILL                velfill
 #    define FORT_CHEMFILL               chemfill
 #    define FORT_ALLCHEMFILL            allchemfill
+#ifndef LMC_SDC
 #    define FORT_CALCDIVU               calcdivu
+#endif
 #    define FORT_DERRHORT               drhort
 #    define FORT_DERMOLEFRAC            dermolefrac
 #    define FORT_RADLOSS                radloss
@@ -82,12 +100,18 @@
 #    define FORT_FLAMETRACERROR         fterror_
 #    define FORT_DERNULL                dernull_
 #    define FORT_DERRHOMINUSSUMRHOY     drhomry_
+#ifdef LMC_SDC
+#    define FORT_DERSUMRHOYDOT          dsrhoydot_
+#else
 #    define FORT_DERSUMYDOT             dsydot_
+#endif
 #    define FORT_RHOHFILL               rhohfill_
 #    define FORT_VELFILL                velfill_
 #    define FORT_CHEMFILL               chemfill_
 #    define FORT_ALLCHEMFILL            allchemfill_
+#ifndef LMC_SDC
 #    define FORT_CALCDIVU               calcdivu_
+#endif
 #    define FORT_DERRHORT               drhort_
 #    define FORT_HACK                   hack_
 #    define FORT_DERMOLEFRAC            dermolefrac_
@@ -168,7 +192,11 @@
 			   const Real* time,  const Real* dt, const int* bcrec, 
                            const int* level, const int* grid_no) ;
 
+#ifdef LMC_SDC
+     void FORT_DERSUMRHOYDOT
+#else
      void FORT_DERSUMYDOT
+#endif
                           (Real* data, ARLIM_P(dat_lo), ARLIM_P(dat_hi),
                            const int* nvar, const Real* compdat,
 			   ARLIM_P(clo), ARLIM_P(chi), const int* ncomp,
@@ -219,9 +247,11 @@
                             const Real* dx, const Real* grd_lo,
                             const Real* time, const int* bc);
 
+#ifndef LMC_SDC
      void FORT_CALCDIVU (Real* divu, ARLIM_P(dlo), ARLIM_P(dhi),
                          const int* plo, const int* phi, const Real* xlo,
                          const Real* dx, const Real* time);
+#endif
 
      void FORT_DERRHORT  (Real* data, ARLIM_P(dat_lo), ARLIM_P(dat_hi),
 			  const int* nvar, const Real* compdat,

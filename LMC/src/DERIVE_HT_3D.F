@@ -82,12 +82,17 @@ c
 
 c=========================================================
 
-      subroutine FORT_DERSUMYDOT (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
+#ifdef LMC_SDC
+      subroutine FORT_DERSUMRHOYDOT
+#else
+      subroutine FORT_DERSUMYDOT
+#endif
+     &                        (e,DIMS(e),nv,dat,DIMS(dat),ncomp,
      &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
-     $                         level,grid_no)
+     &                         level,grid_no)
       implicit none
 c
-c ::: This routine will computes sum (Ydot)
+c ::: This routine will computes sum (rhoYdot or Ydot)
 c
 
 #include "cdwrk.H"

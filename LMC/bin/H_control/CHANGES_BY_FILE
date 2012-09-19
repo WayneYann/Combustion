@@ -1,8 +1,3 @@
-x  DERIVE_HT_2D.F
-x  DERIVE_HT_3D.F
-
-	renname FORT_DERSUMYDOT --> FORT_DERSUMRHOYDOT
-
 ?  Diffusion.cpp
 ?  Diffusion.H
 
@@ -52,6 +47,5 @@ x  PROB_2D.F  - only local copy
 x  PROB_3D.F  - only local copy
 x  probdata.H - only local copy
 x  PROB_F.F   - only local copy
-x  PROB_F.H   - only local copy
 
 
