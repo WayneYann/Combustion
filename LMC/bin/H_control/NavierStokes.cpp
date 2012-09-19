@@ -3,6 +3,8 @@
 // "Dsdt_Type" means pd S/pd t, where S is as above
 //
 #include <winstd.H>
+#include <time.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <vector>
@@ -33,6 +35,12 @@
 #include <AmrData.H>
 #endif
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
+#include "buildInfo.H"
+
 #define GEOM_GROW   1
 #define PRESS_GROW  1
 #define DIVU_GROW   1
@@ -52,6 +60,44 @@ namespace
 {
     bool initialized = false;
 }
+
+#ifdef PARTICLES
+
+namespace
+{
+    //
+    // Name of subdirectory in chk???? holding checkpointed particles.
+    //
+    const std::string the_ns_particle_file_name("Particles");
+    //
+    // There's really only one of these.
+    //
+    NSParticleContainer* NSPC = 0;
+
+    std::string      timestamp_dir;
+    std::vector<int> timestamp_indices;
+    std::string      particle_init_file;
+    std::string      particle_restart_file;
+    std::string      particle_output_file;
+    bool             restart_from_nonparticle_chkfile;
+    int              pverbose;
+    //
+    // We want to call this routine on exit to clean up particles.
+    //
+    void RemoveParticles ()
+    {
+        delete NSPC;
+        NSPC = 0;
+    }
+}
+//
+// In case someone outside of NavierStokes needs a handle on the particles.
+//
+NSParticleContainer* NavierStokes::theNSPC () { return NSPC; }
+
+#endif /*PARTICLES*/
+
+
 //
 // Set defaults for all variables in Initialize()!!!
 //
@@ -140,6 +186,10 @@ Real NavierStokes::volWgtSum_sub_Rcyl;
 Real NavierStokes::volWgtSum_sub_dx;
 Real NavierStokes::volWgtSum_sub_dy;
 Real NavierStokes::volWgtSum_sub_dz;
+//
+// Controls for particle subcycling (can be moved elsewhere)
+//
+int  NavierStokes::umac_n_grow;
 
 Array<Real>          NavierStokes::visc_coef;
 Array<int>           NavierStokes::is_diffusive;
@@ -173,6 +223,10 @@ NavierStokes::variableCleanUp ()
     diffusionType.clear();
     scalarUpdateOrder.clear();
 
+#ifdef PARTICLES
+    delete NSPC;
+    NSPC = 0;
+#endif
 }
 
 void
@@ -283,6 +337,12 @@ NavierStokes::Initialize ()
     NavierStokes::volWgtSum_sub_dx                   = -1;
     NavierStokes::volWgtSum_sub_dy                   = -1;
     NavierStokes::volWgtSum_sub_dz                   = -1;
+
+#ifdef PARTICLES
+    timestamp_dir                    = "Timestamps";
+    restart_from_nonparticle_chkfile = false;
+    pverbose                         = 2;
+#endif /*PARTICLES*/
 
     ParmParse pp("ns");
 
@@ -532,6 +592,56 @@ NavierStokes::Initialize ()
             hyp_grow = 4;
 	}
     }
+
+#ifdef PARTICLES
+    //
+    // Some particle stuff.
+    //
+    ParmParse ppp("particles");
+    //
+    // The directory in which to store timestamp files.
+    //
+    ppp.query("timestamp_dir", timestamp_dir);
+    //
+    // Only the I/O processor makes the directory if it doesn't already exist.
+    //
+    if (ParallelDescriptor::IOProcessor())
+        if (!BoxLib::UtilCreateDirectory(timestamp_dir, 0755))
+            BoxLib::CreateDirectoryFailed(timestamp_dir);
+    //
+    // Force other processors to wait till directory is built.
+    //
+    ParallelDescriptor::Barrier();
+
+    if (int nc = ppp.countval("timestamp_indices"))
+    {
+        timestamp_indices.resize(nc);
+
+        ppp.getarr("timestamp_indices", timestamp_indices, 0, nc);
+    }
+
+    ppp.query("pverbose",pverbose);
+    //
+    // Used in initData() on startup to read in a file of particles.
+    //
+    ppp.query("particle_init_file", particle_init_file);
+    //
+    // Used in post_restart() to read in a file of particles.
+    //
+    ppp.query("particle_restart_file", particle_restart_file);
+    //
+    // This must be true the first time you try to restart from a checkpoint
+    // that was written with USE_PARTICLES=FALSE; i.e. one that doesn't have
+    // the particle checkpoint stuff (even if there are no active particles).
+    // Otherwise the code will fail when trying to read the checkpointed particles.
+    //
+    ppp.query("restart_from_nonparticle_chkfile", restart_from_nonparticle_chkfile);
+    //
+    // Used in post_restart() to write out the file of particles.
+    //
+    ppp.query("particle_output_file", particle_output_file);
+
+#endif
 
     BoxLib::ExecOnFinalize(NavierStokes::Finalize);
 
@@ -929,6 +1039,19 @@ NavierStokes::restart (Amr&          papa,
 }
 
 void
+NavierStokes::checkPoint (const std::string& dir,
+                          std::ostream&      os,
+                          VisMF::How         how,
+                          bool               dump_old)
+{
+    AmrLevel::checkPoint(dir, os, how, dump_old);
+#ifdef PARTICLES
+        if (NSPC != 0)
+            NSPC->Checkpoint(dir,the_ns_particle_file_name);
+#endif
+}
+
+void
 NavierStokes::buildMetrics ()
 {
     //
@@ -1050,24 +1173,29 @@ NavierStokes::initData ()
 
     for (MFIter snewmfi(S_new); snewmfi.isValid(); ++snewmfi)
     {
-        BL_ASSERT(grids[snewmfi.index()] == snewmfi.validbox());
+        const Box& vbx = snewmfi.validbox();
 
-        P_new[snewmfi].setVal(0);
+        BL_ASSERT(grids[snewmfi.index()] == vbx);
+
+        FArrayBox& Sfab = S_new[snewmfi];
+        FArrayBox& Pfab = P_new[snewmfi];
+
+        Pfab.setVal(0);
 
         const int  i       = snewmfi.index();
         RealBox    gridloc = RealBox(grids[i],geom.CellSize(),geom.ProbLo());
-        const int* lo      = snewmfi.validbox().loVect();
-        const int* hi      = snewmfi.validbox().hiVect();
-        const int* s_lo    = S_new[snewmfi].loVect();
-        const int* s_hi    = S_new[snewmfi].hiVect();
-        const int* p_lo    = P_new[snewmfi].loVect();
-        const int* p_hi    = P_new[snewmfi].hiVect();
+        const int* lo      = vbx.loVect();
+        const int* hi      = vbx.hiVect();
+        const int* s_lo    = Sfab.loVect();
+        const int* s_hi    = Sfab.hiVect();
+        const int* p_lo    = Pfab.loVect();
+        const int* p_hi    = Pfab.hiVect();
 
         FORT_INITDATA (&level,&cur_time,lo,hi,&ns,
-                       S_new[snewmfi].dataPtr(Xvel),
-                       S_new[snewmfi].dataPtr(BL_SPACEDIM),
+                       Sfab.dataPtr(Xvel),
+                       Sfab.dataPtr(BL_SPACEDIM),
                        ARLIM(s_lo), ARLIM(s_hi),
-                       P_new[snewmfi].dataPtr(),
+                       Pfab.dataPtr(),
                        ARLIM(p_lo), ARLIM(p_hi),
                        dx,gridloc.lo(),gridloc.hi() );
     }
@@ -1110,8 +1238,8 @@ NavierStokes::initData ()
             //
             DataServices::Dispatch(DataServices::ExitRequest, NULL);
     
-        AmrData&                  amrData   = dataServices.AmrDataRef();
-        Array<std::string>        plotnames = amrData.PlotVarNames();
+        AmrData&           amrData   = dataServices.AmrDataRef();
+        Array<std::string> plotnames = amrData.PlotVarNames();
 
         int idX = -1;
         for (int i = 0; i < plotnames.size(); ++i)
@@ -1126,9 +1254,11 @@ NavierStokes::initData ()
         for (int i = 0; i < BL_SPACEDIM; i++)
         {
             amrData.FillVar(tmp, level, plotnames[idX+i], 0);
-            for (MFIter mfi(tmp); mfi.isValid(); ++mfi) {
-  	        tmp[mfi].mult(velocity_plotfile_scale, 0, 1);
-                S_new[mfi].plus(tmp[mfi], tmp[mfi].box(), 0, Xvel+i, 1);
+            for (MFIter mfi(tmp); mfi.isValid(); ++mfi)
+            {
+                FArrayBox& tfab = tmp[mfi];
+  	        tfab.mult(velocity_plotfile_scale, 0, 1);
+                S_new[mfi].plus(tfab, tfab.box(), 0, Xvel+i, 1);
 	    }
             amrData.FlushGrids(idX+i);
         }
@@ -1169,6 +1299,28 @@ NavierStokes::initData ()
 
     is_first_step_after_regrid = false;
     old_intersect_new          = grids;
+
+#ifdef PARTICLES
+    if (level == 0)
+    {
+        if (NSPC == 0)
+        {
+            NSPC = new NSParticleContainer(parent);
+            //
+            // Make sure to call RemoveParticles() on exit.
+            //
+            BoxLib::ExecOnFinalize(RemoveParticles);
+        }
+
+        NSPC->SetVerbose(pverbose);
+
+        if (!particle_init_file.empty())
+        {
+            NSPC->InitFromAsciiFile(particle_init_file,0);
+        }
+    }
+#endif /*PARTICLES*/
+
 }
 
 //
@@ -1356,7 +1508,12 @@ NavierStokes::advance_setup (Real time,
                              int  ncycle)
 {
     const int finest_level = parent->finestLevel();
-
+    
+    umac_n_grow = 1;
+    
+    if (ncycle >= 1)
+        umac_n_grow = ncycle + 1;
+        
     mac_projector->setup(level);
     //
     // Why are they defined here versus the constructor?
@@ -1389,7 +1546,7 @@ NavierStokes::advance_setup (Real time,
         {
             BoxArray edge_grids(grids);
             edge_grids.surroundingNodes(dir);
-            u_mac[dir].define(edge_grids,1,1,Fab_allocate);
+            u_mac[dir].define(edge_grids,1,umac_n_grow,Fab_allocate);
             u_mac[dir].setVal(1.e40);
         }
     }
@@ -1528,6 +1685,7 @@ NavierStokes::advance (Real time,
                   << " with dt = "               << dt << '\n';
     }
     advance_setup(time,dt,iteration,ncycle);
+    
     //
     // Compute traced states for normal comp of velocity at half time level.
     //
@@ -3762,6 +3920,117 @@ NavierStokes::writePlotFile (const std::string& dir,
     TheFullPath += BaseName;
     VisMF::Write(plotMF,TheFullPath,how,true);
 }
+
+MultiFab*
+NavierStokes::derive (const std::string& name,
+                      Real               time,
+                      int                ngrow)
+{
+#ifdef PARTICLES
+  if (name == "particle_count" || name == "total_particle_count") {
+    int ncomp = 1;
+    const DeriveRec* rec = derive_lst.get(name);
+    if (rec)
+    {
+      ncomp = rec->numDerive();
+    }
+    
+    MultiFab* ret = new MultiFab(grids, ncomp, ngrow);
+    ParticleDerive(name,time,*ret,0);
+    return ret;
+  }
+  else {
+    return AmrLevel::derive(name, time, ngrow);
+  }
+#else
+  return AmrLevel::derive(name, time, ngrow);
+#endif 
+}
+
+void
+NavierStokes::derive (const std::string& name,
+                      Real               time,
+                      MultiFab&          mf,
+                      int                dcomp)
+{
+#ifdef PARTICLES
+        ParticleDerive(name,time,mf,dcomp);
+#else
+        AmrLevel::derive(name,time,mf,dcomp);
+#endif
+}
+
+#ifdef PARTICLES
+void
+NavierStokes::ParticleDerive(const std::string& name,
+                             Real               time,
+                             MultiFab&          mf,
+                             int                dcomp)
+{
+    if (NSPC && name == "particle_count")
+    {
+        MultiFab temp_dat(grids,1,0);
+        temp_dat.setVal(0);
+        NSPC->Increment(temp_dat,level);
+        MultiFab::Copy(mf,temp_dat,0,dcomp,1,0);
+    }
+    else if (NSPC && name == "total_particle_count")
+    {
+        //
+        // We want the total particle count at this level or higher.
+        //
+        ParticleDerive("particle_count",time,mf,dcomp);
+
+        IntVect trr(D_DECL(1,1,1));
+
+        for (int lev = level+1; lev <= parent->finestLevel(); lev++)
+        {
+            BoxArray ba = parent->boxArray(lev);
+
+            MultiFab temp_dat(ba,1,0);
+
+            trr *= parent->refRatio(lev-1);
+
+            ba.coarsen(trr);
+
+            MultiFab ctemp_dat(ba,1,0);
+
+            temp_dat.setVal(0);
+            ctemp_dat.setVal(0);
+
+            NSPC->Increment(temp_dat,lev);
+
+            for (MFIter mfi(temp_dat); mfi.isValid(); ++mfi)
+            {
+                const FArrayBox& ffab =  temp_dat[mfi];
+                FArrayBox&       cfab = ctemp_dat[mfi];
+                const Box&       fbx  = ffab.box();
+
+                BL_ASSERT(cfab.box() == BoxLib::coarsen(fbx,trr));
+
+                for (IntVect p = fbx.smallEnd(); p <= fbx.bigEnd(); fbx.next(p))
+                {
+                    const Real val = ffab(p);
+                    if (val > 0)
+                        cfab(BoxLib::coarsen(p,trr)) += val;
+                }
+            }
+
+            temp_dat.clear();
+
+            MultiFab dat(grids,1,0);
+            dat.setVal(0);
+            dat.copy(ctemp_dat);
+
+            MultiFab::Add(mf,dat,0,dcomp,1,0);
+        }
+    }
+    else
+    {
+        AmrLevel::derive(name,time,mf,dcomp);
+    }
+}
+#endif
 
 Real
 NavierStokes::estTimeStep ()
