@@ -5672,7 +5672,7 @@ HeatTransfer::advance (Real time,
         std::cout << " SDC iterations complete \n";
 
     calcDiffusivity(cur_time);
-    calcViscosity(cur_time);
+    calcViscosity(cur_time,dt,iteration,ncycle);
     //
     // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
     // the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
@@ -7010,7 +7010,10 @@ HeatTransfer::reflux ()
 }
 
 void
-HeatTransfer::calcViscosity (const Real time)
+HeatTransfer::calcViscosity (const Real time,
+			     const Real dt,
+			     const int  iteration,
+			     const int  ncycle)
 {
     const TimeLevel whichTime = which_time(State_Type, time);
 
