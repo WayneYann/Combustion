@@ -645,7 +645,10 @@ protected:
     //
     // Calculate nonuniform viscosity and diffusivity
     //
-    virtual void calcViscosity (const Real time);
+    virtual void calcViscosity (const Real time,
+                                const Real dt,
+                                const int  iteration,
+                                const int  ncycle);
 
     virtual void calcDiffusivity (const Real time);
 

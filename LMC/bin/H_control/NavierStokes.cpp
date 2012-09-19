@@ -1627,7 +1627,7 @@ NavierStokes::advance_setup (Real time,
 
     if (variable_vel_visc)
     {
-        calcViscosity(prev_time);
+        calcViscosity(prev_time,dt,iteration,ncycle);
 
         for (MFIter np1Mfi(*viscnp1_cc); np1Mfi.isValid(); ++np1Mfi)
         {
@@ -6262,7 +6262,10 @@ NavierStokes::getViscTerms (MultiFab& visc_terms,
 // wants variable coefficients.
 //
 void 
-NavierStokes::calcViscosity (const Real time)
+NavierStokes::calcViscosity (const Real time, 
+                             const Real dt,
+                             const int  iteration,
+                             const int  ncycle)
 {
     //
     // Select time level to work with (N or N+1)
