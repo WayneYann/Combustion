@@ -189,8 +189,8 @@ c
       REAL_T   scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -257,8 +257,8 @@ c ::: -----------------------------------------------------------
       REAL_T rand
 
 #include "probdata.H"
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "visc.H"
 #include "conp.H"
@@ -767,8 +767,8 @@ c ::: -----------------------------------------------------------
       implicit none
       integer orient
       REAL_T x, y, time, u, v, rho, Yl(0:*), T, h, dx(SDIM)
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -872,8 +872,8 @@ c ::: -----------------------------------------------------------
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -1015,6 +1015,7 @@ c ::: -----------------------------------------------------------
       REAL_T  problo(SDIM)
       
 #include "probdata.H"
+#include "cdwrk.H"
 #include "htdata.H"
       integer i, j, n, Tid, RHid, YSid, YEid, ys, ye
       integer getZone
