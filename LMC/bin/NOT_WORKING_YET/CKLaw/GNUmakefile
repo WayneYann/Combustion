@@ -13,7 +13,7 @@ COMP              = g++
 FCOMP             = gfortran
 USE_MPI           = TRUE
 USE_OMP           = FALSE
-USE_F90_SOLVERS   = TRUE
+USE_F90_SOLVERS   = FALSE
 VERBOSE           = FALSE
 
 # Enable flctin namelist
