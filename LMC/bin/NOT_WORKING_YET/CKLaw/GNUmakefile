@@ -8,12 +8,13 @@ COMBUSTION_DIR = ${TOP}/Combustion
 #
 PRECISION         = DOUBLE
 DEBUG	          = FALSE
-PROFILE           = FALSE
 DIM    	          = 2
-FCOMP             = gfortran
 COMP              = g++
-BUILD_IN_PLACE    = TRUE
+FCOMP             = gfortran
 USE_MPI           = TRUE
+USE_OMP           = FALSE
+USE_F90_SOLVERS   = TRUE
+VERBOSE           = FALSE
 
 # Enable flctin namelist
 USE_FLCTS         = TRUE
