@@ -42,6 +42,7 @@ x  NavierStokes.H
 	getForce generalized to take in RComp  ***fixed in IAMR***
 	calcViscosity and calcDiffusivity interface changes
 
+x  bc.H       - only local copy
 x  MyPROB_F.H - only local copy
 x  PROB_2D.F  - only local copy
 x  PROB_3D.F  - only local copy
