@@ -25,9 +25,6 @@ ns.do_active_control = false
 amr.n_cell = 256 256 256
 amr.n_cell = 128 128 128
 amr.n_cell = 64 64 64
-amr.n_cell = 320 320 
-amr.n_cell = 640 640
-amr.n_cell = 1280 1280
 
 proj.proj_2 = 1
 ns.do_init_vort_proj = 0
@@ -162,9 +159,4 @@ mac.do_outflow_bcs = 1
 #
 fab.format = NATIVE
 
-#ns.hack_nochem=1
-#ns.hack_nospecdiff=1
-#ns.init_iter=0
-#ns.do_init_proj=0
-#max_step=0
-#ns.num_divu_iters = 0
+ns.do_not_use_funccount = 1
