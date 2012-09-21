@@ -5626,9 +5626,6 @@ HeatTransfer::advance (Real time,
             f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
         }
 
-        if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "Dhat (SDC corrector " << sdc_iter << ")\n";
-
 	// Do not recompute enthalpy diffusion terms
         theta_enthalpy = -1;
 
