@@ -831,7 +831,8 @@ c
       REAL_T diag(DIMV(FuncCount),*)
 
       integer ITOL, IOPT, ITASK, open_vode_failure_file
-      parameter (ITOL=1, IOPT=1, ITASK=1)
+c      parameter (ITOL=1, IOPT=1, ITASK=1)
+      parameter (ITOL=2, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
       parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
