@@ -34,8 +34,8 @@ contains
        lo = lwb(get_box(Q,n))
        hi = upb(get_box(Q,n))
 
-       dlo = lo
-       dhi = hi
+       dlo = lo - ng
+       dhi = hi + ng
 
        if (dm .ne. 3) then
           call bl_error("Only 3D is supported in get_transport_properties")
