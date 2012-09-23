@@ -1,0 +1,3 @@
+# parameters for this problem
+pertmag			real		1.5d0
+rfire			real		0.1d0
