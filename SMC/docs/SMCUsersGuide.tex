@@ -21,7 +21,7 @@
 {\tt SMC} {\footnote{People often ask what SMC means.  The name was
     chosen by someone who was trained as an astrophysicist.  The
     center for Computational Sciences and Engineering (CCSE) has a low
-    Mach number combustion code called LMC, which also stands for
+    Mach number combustion code called LMC, which can also stand for
     Large Magellanic Cloud, a satellite galaxy of the Milky Way.  The
     LMC galaxy has a little brother called the Small Magellanic Cloud
     (SMC). The SMC code is also like a little brother of the LMC
@@ -65,7 +65,7 @@ production rate of species $k$.  The viscous stress tensor is given by
   \xi \delta_{ij} \nabla \cdot \vec{u},
 \end{equation}
 where $\eta$ is the shear viscosity and $\xi$ is the bulk viscosity.
-A mixture model in employed in {\tt SMC}.  The species diffusion
+A mixture model is employed in {\tt SMC}.  The species diffusion
 velocity in the mixture model is given by
 \begin{equation}
   \vec{V}_k = -D_{k} \nabla X_k - D_{k} (X_k-Y_k)
@@ -116,12 +116,13 @@ executable.  Note GNU {\tt make} is required for building.  The {\tt
 \item {\tt SMC\_MIN := t}\\
   Due to the complexity of SDC and NSCBC, the full version of {\tt
     SMC} is hard for code analysis.  Thus, we have created a
-  minimalist version of {\tt SMC}.  This option determines whether we
-  use the minimalist version or not.  Leaving this option empty will
-  use the full version.
+  minimalist version of {\tt SMC} that uses the Runge-Kutta method and
+  assumes periodic boundaries in all directions .  This option
+  determines whether we use the minimalist version or not.  Leaving
+  this option empty will use the full version.
 \item {\tt NDEBUG :=}\\
   This option determines whether we compile with support for debugging
-  (usually also en- abling some runtime checks). Setting NDEBUG := t
+  (usually also enabling some runtime checks). Setting NDEBUG := t
   turns off debugging.
 \item {\tt MPI := t}\\
   This determines whether we are doing a parallel build, using the
@@ -157,7 +158,7 @@ operating system, and some other options specified in the {\tt
 
 \verb|./main.Linux.gfortran.debug.mpi.exe inputs_SMC|\vspace{5pt}\\
 in the {\tt kernaltest/} directory, where the {\tt inputs\_SMC} file
-specify runtime parameters. 
+specifies runtime parameters. 
 
 \section{Runtime parameters}
 
@@ -191,7 +192,7 @@ Below are a list of selected runtime parameters and their default values.
 \item {\tt cflfac = 0.5d0}\\
   CFL factor to use in the computation of the advection timestep
   constraint. 
-\item {\tt init\_shrink = 0.5d0}\\
+\item {\tt init\_shrink = 1.d0}\\
   The multiplicative factor ($\le 1$) to reduce the initial timestep as 
   computed by the CFL constraint.
 \item {\tt n\_cellx = -1}\\
@@ -209,11 +210,11 @@ Below are a list of selected runtime parameters and their default values.
   Physical coordinates of lo-$y$ corner of problem domain
 \item {\tt prob\_lo\_z = 0.d0}\\
   Physical coordinates of lo-$z$ corner of problem domain
-\item {\tt prob\_hi\_x = 0.d0}\\
+\item {\tt prob\_hi\_x = 1.d0}\\
   Physical coordinates of hi-$x$ corner of problem domain
-\item {\tt prob\_hi\_y = 0.d0}\\
+\item {\tt prob\_hi\_y = 1.d0}\\
   Physical coordinates of hi-$y$ corner of problem domain
-\item {\tt prob\_hi\_z = 0.d0}\\
+\item {\tt prob\_hi\_z = 1.d0}\\
   Physical coordinates of hi-$z$ corner of problem domain
 \end{itemize}
 
