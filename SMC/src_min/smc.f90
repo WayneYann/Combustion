@@ -146,7 +146,7 @@ subroutine smc()
         write(unit=check_index,fmt='(i5.5)') istep
         check_file_name = trim(check_base_name) // check_index
 
-        call checkpoint_write(check_file_name, la, U, dt)
+        call checkpoint_write(check_file_name, U, dt)
         
         last_chk_written = istep
      end if
@@ -221,7 +221,7 @@ subroutine smc()
                  check_file_name = trim(check_base_name) // check_index6
               endif
               
-              call checkpoint_write(check_file_name, la, U, dt)
+              call checkpoint_write(check_file_name, U, dt)
               
               last_chk_written = istep
               
@@ -276,7 +276,7 @@ subroutine smc()
            check_file_name = trim(check_base_name) // check_index6
         endif
         
-        call checkpoint_write(check_file_name, la, U, dt)
+        call checkpoint_write(check_file_name, U, dt)
               
      end if
 
