@@ -3,8 +3,8 @@ module eglib_module
   implicit none
 
   integer, parameter :: NP    = 1
-  integer, parameter :: ITLS  = 3
-  integer, parameter :: IFLAG = 7
+  integer, parameter :: ITLS  = 1
+  integer, parameter :: IFLAG = 5
   integer, save :: legwork, legiwork
   double precision, allocatable, save :: egwork(:) 
   integer, allocatable, save :: egiwork(:) 
@@ -21,8 +21,18 @@ contains
     use omp_module
     integer, intent(in) :: nspecies
 
-    legwork = 23 + 14*nspecies + 32*nspecies**2 + 13*NP  & 
-         + 30*NP*nspecies + 5*NP*nspecies**2
+    ! for ITLS=1
+    if (ITLS .eq. 1) then
+       legwork = 23 + 14*nspecies + 32*nspecies**2 + 13*NP &
+            + 14*NP*nspecies + NP*nspecies**2
+    else if (ITLS .eq. 2) then
+       legwork = 23 + 14*nspecies + 32*nspecies**2 + 13*NP &
+            + 21*NP*nspecies + NP*(2*nspecies**2+(nspecies*(nspecies+1))/2)
+    else
+       legwork = 23 + 14*nspecies + 32*nspecies**2 + 13*NP  & 
+            + 30*NP*nspecies + 5*NP*nspecies**2
+    end if
+
     legiwork = nspecies
     
     !$omp parallel 

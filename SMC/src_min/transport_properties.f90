@@ -59,8 +59,10 @@ contains
     integer :: i, j, k, iwrk
     double precision :: rwrk, Tt, Wtm
     double precision, dimension(nspecies) :: Xt, Yt, Cpt, D
+    double precision :: alpha, l1, l2
 
-    !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,Wtm,Xt,Yt,Cpt,D)
+    !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,Wtm,Xt,Yt,Cpt,D) &
+    !$omp private(alpha,l1,l2)
     do k=dlo(3),dhi(3)
     do j=dlo(2),dhi(2)
     do i=dlo(1),dhi(1)
@@ -76,10 +78,15 @@ contains
 
        CALL EGSE3(Tt, Yt, egwork, mu(i,j,k)) 
        CALL EGSK3(Tt, Yt, egwork, xi(i,j,k)) 
-       CALL EGSVR1(Tt, Yt, egwork, D)
-       CALL EGSPTC2(Tt, egwork, egiwork, lam(i,j,k))
 
+       CALL EGSVR1(Tt, Yt, egwork, D)
        Ddiag(i,j,k,:) = D(:) * Wtm / molecular_weight(:)
+
+       alpha = 1.0D0
+       CALL EGSL1(alpha,Tt,Xt,egwork,l1)
+       alpha = -1.0D0
+       CALL EGSL1(alpha,Tt,Xt,egwork,l2)
+       lam(i,j,k) = 0.5d0*(l1+l2)
 
     end do
     end do
