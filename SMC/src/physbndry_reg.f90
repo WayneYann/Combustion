@@ -21,7 +21,8 @@ module physbndry_reg_module
 
   private
 
-  public physbndry_reg_build, physbndry_reg_destroy, physbndry_reg, isValid
+  public physbndry_reg_build, physbndry_reg_destroy, physbndry_reg, isValid, &
+       physbndry_reg_copy !, physbndry_reg_setval
 
 contains
 
@@ -127,5 +128,63 @@ contains
        r = pbr%localstatus(ibox)
     end if
   end function get_localstatus
+
+
+  subroutine physbndry_reg_copy(pbrin,pbrou)
+    type(physbndry_reg), intent(in) :: pbrin
+    type(physbndry_reg), intent(inout) :: pbrou
+    
+    integer :: i,j,k,n
+    integer :: lo(3), hi(3)
+    double precision, pointer, dimension(:,:,:,:) :: ip, op
+
+    do n=1,nfabs(pbrin%data)
+       if (isValid(pbrin,n)) then
+          lo = lwb(get_box(pbrin%data,n))
+          hi = upb(get_box(pbrin%data,n))
+
+          ip => dataptr(pbrin%data, n)
+          op => dataptr(pbrou%data,n)
+
+          if (pbrou%stencil_flag .neqv. pbrin%stencil_flag) then
+             if (pbrou%stencil_flag) then
+                do k=lo(3),hi(3)
+                   do j=lo(2),hi(2)
+                      do i=lo(1),hi(1)
+                         op(:,i,j,k) = ip(i,j,k,:)
+                      end do
+                   end do
+                end do
+             else 
+                do k=lo(3),hi(3)
+                   do j=lo(2),hi(2)
+                      do i=lo(1),hi(1)
+                         op(i,j,k,:) = ip(:,i,j,k)
+                      end do
+                   end do
+                end do
+             end if
+          else
+             op = ip
+          end if
+       end if
+    end do
+
+  end subroutine physbndry_reg_copy
+
+
+  ! subroutine physbndry_reg_setval(pbr, v)
+  !   type(physbndry_reg), intent(inout) :: pbr
+  !   double precision, intent(in) :: v
+
+  !   integer :: n
+  !   double precision, pointer, dimension(:,:,:,:) :: pp
+
+  !   do n=1,nfabs(pbr%data)
+  !      pp => dataptr(pbr%data,n)
+  !      pp(:,:,:,:) = v
+  !   end do
+
+  ! end subroutine physbndry_reg_setval
 
 end module physbndry_reg_module
