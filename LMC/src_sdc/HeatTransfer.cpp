@@ -897,6 +897,9 @@ HeatTransfer::HeatTransfer ()
     SpecDiffusionFluxn     = 0;
     SpecDiffusionFluxnp1   = 0;
     FillPatchedOldState_ok = true;
+
+    is_predictor = true;
+    updateFluxReg = false;
 }
 
 HeatTransfer::HeatTransfer (Amr&            papa,
@@ -3166,10 +3169,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
             }
 	    else 
 	    {
-                //const int sCompY = first_spec - src_comp + load_comp;
-		//compute_differential_diffusion_terms(visc_terms,sCompY,time,dt);
                 BoxLib::Abort("Fix ME");
-                showMF("velVT",visc_terms,"velVT_visc_terms_2",level);
             }
         }
     }
@@ -7242,6 +7242,8 @@ HeatTransfer::calc_divu (Real      time,
     MultiFab mcViscTerms;
     int vtCompY;
     int vtCompT;
+    bool do_reflux_hold;
+
     if (do_mcdd)
     {
         vtCompT = nspecies;
@@ -7254,7 +7256,17 @@ HeatTransfer::calc_divu (Real      time,
         vtCompT = nspecies + 1;
         vtCompY = 0;
         mcViscTerms.define(grids,nspecies+2,nGrow,Fab_allocate); // Can probably use DDnp1 here
-        compute_differential_diffusion_terms(mcViscTerms,divu,time,dt); // divu has DD, not needed here
+
+	// we don't want to update flux registers due to fluxes in divu computation
+	do_reflux_hold = do_reflux;
+	do_reflux = false;
+
+	// DD is computed and stored in divu, but we don't need it and overwrite
+	// divu in CALCDIVU.
+        compute_differential_diffusion_terms(mcViscTerms,divu,time,dt);
+
+	do_reflux = do_reflux_hold;
+
     }
 
     MultiFab& S = get_data(State_Type,time);
