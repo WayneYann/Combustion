@@ -11,7 +11,7 @@ module checkpoint_module
 
 contains
 
-  subroutine checkpoint_write(dirname, la, U, dt)
+  subroutine checkpoint_write(dirname, U, dt)
 
     use parallel, only: parallel_IOProcessor, parallel_barrier
     use bl_IO_module, only: unit_new
@@ -24,7 +24,6 @@ contains
     use cputime_module, only: get_cputime
 
     character(len=*), intent(in) :: dirname
-    type(layout)    , intent(in) :: la
     type(multifab)  , intent(in) :: U
     real(kind=dp_t) , intent(in) :: dt
 
@@ -37,8 +36,7 @@ contains
     
     call build(bpt, "checkpoint_write")
 
-    call multifab_build(chkdata(1),la,ncomp(U),0)
-    call multifab_copy_c(chkdata(1),1,U,1, ncomp(U),0)
+    chkdata(1) = U
 
     if ( parallel_IOProcessor() ) then
        call fabio_mkdir(dirname)
@@ -50,8 +48,6 @@ contains
 
     write(unit=sd_name, fmt='(a,"/State")') trim(dirname)
     call fabio_ml_multifab_write_d(chkdata, rrs, sd_name, nOutFiles = nOutFiles, lUsingNFiles = lUsingNFiles)
-
-    call destroy(chkdata(1))
 
     if (parallel_IOProcessor() .and. verbose .ge. 1) then
        write(6,*) ''

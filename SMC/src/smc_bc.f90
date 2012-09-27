@@ -103,9 +103,7 @@ contains
               call bl_error("Valid box is too small")
            end if
        end do
-    end do    
-
-    
+    end do        
 
   end subroutine smc_bc_init
 
