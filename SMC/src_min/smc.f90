@@ -37,6 +37,8 @@ subroutine smc()
   type(layout)   :: la
   type(multifab) :: U
 
+  type(bl_prof_timer), save :: bpt_advance
+
   ! keep track of cputime
   call start_cputime_clock()
 
@@ -202,7 +204,9 @@ subroutine smc()
            print*, ""
         end if
 
+        call build(bpt_advance, "advance")     !! vvvvvvvvvvvvvvvvvvvvvvv timer
         call advance(U,dt,dx,istep)
+        call destroy(bpt_advance)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
         time = time + dt
 
