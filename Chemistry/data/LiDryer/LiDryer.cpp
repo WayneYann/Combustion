@@ -1,21 +1,8 @@
-/*  -*- C -*-  */
-/*
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- *
- *                                -*- author -*-
- *                             -*- organization -*-
- *                    (C) -*- years -*-  All Rights Reserved
- *
- * <LicenseText>
- *
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- */
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
 
 #if defined(BL_FORT_USE_UPPERCASE)
 #define CKINDX CKINDX
@@ -340,8 +327,8 @@ void fecvrhs_(double * time, double * phi, double * phidot, double * rckwrk, int
 int fecvdim_();
 void fezndrhs_(double * time, double * z, double * zdot, double * rckwrk, int * ickwrk);
 int feznddim_();
-char* femechfile_();
-char* fesymname_(int sn);
+const  char* femechfile_();
+const char* fesymname_(int sn);
 int fesymnum_(const char* s1);
 }
 
@@ -5048,7 +5035,7 @@ int feznddim_()
 
 
 /*returns the name of the source mechanism file  */
-char* femechfile_()
+const char* femechfile_()
 {
     return "";
 }
@@ -5072,7 +5059,7 @@ int fesymnum_(const char* s1)
 
 
 /*returns the species name */
-char* fesymname_(int sn)
+const char* fesymname_(int sn)
 {
     if (sn==0) return "H2"; 
     if (sn==1) return "O2"; 
@@ -5732,8 +5719,8 @@ extern "C" { void egtransetCOFD(double* COFD) {
 ! 
 ! HOW TO REFERENCE THIS MECHANISM:
 !
-! Li, J., Zhao, Z., Kazakov, A., and Dryer, F.L. "An Updated Comprehensive Kinetic Model
-! of Hydrogen Combustion", Int. J. Chem. Kinet. 2004 (in press).
+! Li, J., Zhao, Z., Kazakov, A., and Dryer, F.L. An Updated Comprehensive Kinetic Model
+! of Hydrogen Combustion, Int. J. Chem. Kinet. 2004 (in press).
 !
 !
 ! HOW TO CONTACT THE AUTHORS:
@@ -5751,7 +5738,7 @@ extern "C" { void egtransetCOFD(double* COFD) {
 !**********************************************************************************************
 ! Development notes:
 !
-!The following H2/O2 mechanism is based on Mueller et al's (Int.J.Chem.Kinet.1999,31:113)
+!The following H2/O2 mechanism is based on Mueller et als (Int.J.Chem.Kinet.1999,31:113)
 !Changes:
 !
 !1.update the standard heat of formation of OH at 0K to 8.85kcal/mol (Ruscic et al, 
@@ -5764,7 +5751,7 @@ extern "C" { void egtransetCOFD(double* COFD) {
 !  O2, N2, AR, HE, H2O as proposed by Michael et al (J. Phys. Chem. A, 2002,106:5297).
 !  The third-body efficiency of H2, O2, and H2O are taken as the average value over 
 !  the temperature range of 300-3000K. 
-!  The Fc in Troe's form with N2 and AR/HE as bath gas are different, so the fall-off 
+!  The Fc in Troes form with N2 and AR/HE as bath gas are different, so the fall-off 
 !  kinetics is expressed in two sets, for N2 and AR/HE, respectively.
 ! 
 !4.for all other recombination reactions, assume the third-body efficiency of HE is
