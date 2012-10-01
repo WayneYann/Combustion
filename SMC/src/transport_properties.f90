@@ -61,40 +61,30 @@ contains
     integer :: i, j, k, n, iwrk
     double precision :: rwrk
     integer :: np, ii
-    double precision :: Cpck(nspecies), Yck(nspecies)
+    double precision :: Cpck(nspecies)
     double precision, allocatable :: Tt(:), Xt(:,:), Yt(:,:), Cpt(:,:), Wtm(:), D(:,:)
-    double precision, allocatable :: E1(:), E2(:), L1(:), L2(:)
+    double precision, allocatable :: ME(:), MK(:), L1(:), L2(:)
 
-    
+    ! eglib parameters
+    integer, parameter :: ITLS=1, IFLAG=5
+
     np = dhi(1) - dlo(1) + 1
+    call eglib_init(nspecies, np, ITLS, IFLAG)
 
-       allocate(Tt(np))
-! M
-       allocate(Xt(nspecies,np))
-       allocate(Yt(nspecies,np))
-       allocate(Cpt(nspecies,np))
-       allocate(D(nspecies,np))
-! F
-!       allocate(Xt(np,nspecies))
-!       allocate(Yt(np,nspecies))
-!       allocate(Cpt(np,nspecies))
-!       allocate(D(np,nspecies))
-!
-       allocate(Wtm(np))
-       allocate(E1(np))
-       allocate(E2(np))
-       allocate(L1(np))
-       allocate(L2(np))
+    allocate(Tt(np))
+    allocate(Xt(nspecies,np))
+    allocate(Yt(nspecies,np))
+    allocate(Cpt(nspecies,np))
+    allocate(D(nspecies,np))
 
-       ! cold have an if statement if this np == eglib_np then 
+    allocate(Wtm(np))
+    allocate(ME(np))
+    allocate(MK(np))
+    allocate(L1(np))
+    allocate(L2(np))
 
-    call eglib_init(nspecies, np)
-
-    ! M: nspecies, np
-    ! F: np, nspecies
-
-    !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,Wtm,Xt,Yt,Cpt,D) &
-    !$omp private(alpha,l1,l2)
+    !$omp parallel do private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
+    !$omp private(Tt,Wtm,Xt,Yt,Cpt,D,ME,MK,L1,L2)
     do k=dlo(3),dhi(3)
     do j=dlo(2),dhi(2)
 
@@ -103,17 +93,18 @@ contains
           Tt(  ii) = q(i,j,k,qtemp)
           Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
           Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-          CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
+          CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpck)
+          Cpt(:,ii) = Cpck
           CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
        end do
        
        CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
        
-       CALL EGME3(np, Tt, Yt, egwork, E1) 
-       mu(dlo(1):dhi(1),j,k) = E1
+       CALL EGME3(np, Tt, Yt, egwork, ME) 
+       mu(dlo(1):dhi(1),j,k) = ME
 
-       CALL EGMK3(np, Tt, Yt, egwork, E2) 
-       xi(dlo(1):dhi(1),j,k) = E2
+       CALL EGMK3(np, Tt, Yt, egwork, MK) 
+       xi(dlo(1):dhi(1),j,k) = MK
        
        CALL EGMVR1(np, Tt, Yt, egwork, D)
        do n=1,nspecies
@@ -131,7 +122,7 @@ contains
     end do
     !$omp end parallel do
 
-    deallocate(Tt, Xt, Yt, Cpt, Wtm, D, E1, E2, L1, L2)
+    deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
 
     call eglib_close()
 

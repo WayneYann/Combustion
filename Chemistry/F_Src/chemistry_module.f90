@@ -1,7 +1,6 @@
 module chemistry_module
 
   use bl_types
-  use eglib_module
 
   implicit none
 
@@ -18,9 +17,7 @@ module chemistry_module
 
 contains
 
-  subroutine chemistry_init(eglib_np)
-    integer, intent(in) :: eglib_np
-
+  subroutine chemistry_init()
     integer :: iwrk, nfit, i, ic, ii
     double precision :: rwrk
     integer, allocatable :: names(:)
@@ -57,19 +54,13 @@ contains
 
     call ckwt(iwrk, rwrk, molecular_weight)
 
-!    call eglib_init(nspecies, eglib_np)
-
     chemistry_initialized = .true.
 
   end subroutine chemistry_init
 
 
   subroutine chemistry_close()
-
     deallocate(elem_names,spec_names,molecular_weight)
-
-!    call eglib_close()
-
   end subroutine chemistry_close
 
 end module chemistry_module

@@ -46,7 +46,7 @@ contains
     end do
 
   end subroutine get_transport_properties
-   
+
   subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,dlo,dhi)
     use omp_module
     integer, intent(in) :: lo(3), hi(3), ng, dlo(3), dhi(3)
@@ -56,42 +56,73 @@ contains
     double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
     double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nspecies)
 
-    integer :: i, j, k, iwrk
-    double precision :: rwrk, Tt, Wtm
-    double precision, dimension(nspecies) :: Xt, Yt, Cpt, D
-    double precision :: alpha, l1, l2
+    integer :: i, j, k, n, iwrk
+    double precision :: rwrk
+    integer :: np, ii
+    double precision :: Cpck(nspecies)
+    double precision, allocatable :: Tt(:), Xt(:,:), Yt(:,:), Cpt(:,:), Wtm(:), D(:,:)
+    double precision, allocatable :: ME(:), MK(:), L1(:), L2(:)
 
-    !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,Wtm,Xt,Yt,Cpt,D) &
-    !$omp private(alpha,l1,l2)
+    ! eglib parameters
+    integer, parameter :: ITLS=1, IFLAG=5
+
+    np = dhi(1) - dlo(1) + 1
+    call eglib_init(nspecies, np, ITLS, IFLAG)
+
+    allocate(Tt(np))
+    allocate(Xt(nspecies,np))
+    allocate(Yt(nspecies,np))
+    allocate(Cpt(nspecies,np))
+    allocate(D(nspecies,np))
+
+    allocate(Wtm(np))
+    allocate(ME(np))
+    allocate(MK(np))
+    allocate(L1(np))
+    allocate(L2(np))
+
+    !$omp parallel do private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
+    !$omp private(Tt,Wtm,Xt,Yt,Cpt,D,ME,MK,L1,L2)
     do k=dlo(3),dhi(3)
     do j=dlo(2),dhi(2)
-    do i=dlo(1),dhi(1)
 
-       Tt = q(i,j,k,qtemp)
-       Xt = q(i,j,k,qx1:qx1+nspecies-1)
-       Yt = q(i,j,k,qy1:qy1+nspecies-1)
+       do i=dlo(1), dhi(1)
+          ii = i-dlo(1)+1
+          Tt(  ii) = q(i,j,k,qtemp)
+          Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
+          Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
+          CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpck)
+          Cpt(:,ii) = Cpck
+          CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
+       end do
+       
+       CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
+       
+       CALL EGME3(np, Tt, Yt, egwork, ME) 
+       mu(dlo(1):dhi(1),j,k) = ME
 
-       CALL CKCPMS(Tt, iwrk, rwrk, Cpt)
-       CALL CKMMWY(Yt, iwrk, rwrk, Wtm)
+       CALL EGMK3(np, Tt, Yt, egwork, MK) 
+       xi(dlo(1):dhi(1),j,k) = MK
+       
+       CALL EGMVR1(np, Tt, Yt, egwork, D)
+       do n=1,nspecies
+          do i=dlo(1), dhi(1)
+             ii = i-dlo(1)+1
+             Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) / molecular_weight(n)
+          end do
+       end do
+       
+       CALL EGML1(np,  1.d0, Tt, Xt, egwork, L1)
+       CALL EGML1(np, -1.d0, Tt, Xt, egwork, L2)
+       lam(dlo(1):dhi(1),j,k) = 0.5d0*(L1+L2)
 
-       CALL EGSPAR(Tt, Xt, Yt, Cpt, egwork, egiwork)
-
-       CALL EGSE3(Tt, Yt, egwork, mu(i,j,k)) 
-       CALL EGSK3(Tt, Yt, egwork, xi(i,j,k)) 
-
-       CALL EGSVR1(Tt, Yt, egwork, D)
-       Ddiag(i,j,k,:) = D(:) * Wtm / molecular_weight(:)
-
-       alpha = 1.0D0
-       CALL EGSL1(alpha,Tt,Xt,egwork,l1)
-       alpha = -1.0D0
-       CALL EGSL1(alpha,Tt,Xt,egwork,l2)
-       lam(i,j,k) = 0.5d0*(l1+l2)
-
-    end do
     end do
     end do
     !$omp end parallel do
+
+    deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+
+    call eglib_close()
 
   end subroutine get_trans_prop_3d
 

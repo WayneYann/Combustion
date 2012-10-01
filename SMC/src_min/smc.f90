@@ -4,6 +4,7 @@ subroutine smc()
   use checkpoint_module
   use chemistry_module
   use derivative_stencil_module
+  use eglib_module
   use initialize_module
   use layout_module
   use make_plotfile_module
@@ -49,7 +50,7 @@ subroutine smc()
 
   call stencil_init()
 
-  call chemistry_init(1)
+  call chemistry_init()
   if (verbose .ge. 1) then
      if (parallel_IOProcessor()) then
         print *, ''
@@ -305,6 +306,7 @@ subroutine smc()
   call destroy(la)
 
   call chemistry_close()
+  call eglib_close()
 
   call runtime_close()
 
