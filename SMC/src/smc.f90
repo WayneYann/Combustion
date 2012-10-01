@@ -53,7 +53,7 @@ subroutine smc()
 
   call stencil_init()
 
-  call chemistry_init()
+  call chemistry_init(max_grid_size+8)
   if (verbose .ge. 1) then
      if (parallel_IOProcessor()) then
         print *, ''

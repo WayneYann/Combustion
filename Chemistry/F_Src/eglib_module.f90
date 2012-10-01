@@ -2,7 +2,7 @@ module eglib_module
 
   implicit none
 
-  integer, parameter :: NP    = 1
+  integer, save :: NP
   integer, parameter :: ITLS  = 1
   integer, parameter :: IFLAG = 5
   integer, save :: legwork, legiwork
@@ -13,13 +13,15 @@ module eglib_module
 
   private
 
-  public egwork, egiwork, legwork, legiwork, eglib_init, eglib_close
+  public egwork, egiwork, legwork, legiwork, eglib_init, eglib_close 
 
 contains
 
-  subroutine eglib_init(nspecies)
+  subroutine eglib_init(nspecies, np_in)
     use omp_module
-    integer, intent(in) :: nspecies
+    integer, intent(in) :: nspecies, np_in
+
+    NP = np_in
 
     ! for ITLS=1
     if (ITLS .eq. 1) then
