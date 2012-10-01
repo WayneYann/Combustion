@@ -1711,6 +1711,14 @@ HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
                                                    int             nGrow,
                                                    HowToFillGrow   how)
 {
+
+    if (hack_nochem) 
+      {
+	R.setVal(0.);
+        R.setBndry(0,0,nspecies);
+	return;
+      }
+
     Real p_amb, dpdt_factor;
     FORT_GETPAMB(&p_amb, &dpdt_factor);
     const Real Patm = p_amb / P1atm_MKS;
@@ -5780,7 +5788,30 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
     if (hack_nochem)
     {
-      BoxLib::Error("HeatTransfer.cpp: hack_nochem = T not supported yet for SDC");
+
+      // set new = old + dt * force
+      FArrayBox tmp;
+
+      for (MFIter mfi(mf_old); mfi.isValid(); ++mfi)
+	{
+	  const Box& box = mfi.validbox();
+	  tmp.resize(box,nspecies+1);
+	  FArrayBox& f = Forcing[mfi];
+	  tmp.copy(f,box,0,box,0,nspecies+1);
+	  tmp.mult(dt);
+	  FArrayBox& Sold = mf_old[mfi];
+	  FArrayBox& Snew = mf_new[mfi];
+	  Snew.copy(Sold,box,first_spec,box,first_spec,nspecies+1);
+	  Snew.plus(tmp,box,box,0,first_spec,nspecies+1);
+
+
+	  Snew.copy(Sold,box,Temp,box,Temp,1);
+
+	}
+
+      // set I_R = 0
+      get_new_data(RhoYdot_Type).setVal(0.);
+
     }
     else
     {
@@ -7054,8 +7085,10 @@ HeatTransfer::calcDiffusivity (const Real time,
         tmp.copy(RYfab,0,0,1);
         tmp.invert(1);
 
-	//	for (int n = 1; n < nspecies+1; n++)
-	//	  RYfab.mult(tmp,0,n,1);
+	for (int n = 1; n < nspecies+1; n++)
+	  {
+	    RYfab.mult(tmp,0,n,1);
+	  }
 
         const int  vflag   = do_VelVisc;
         const int nc_bcen = nspecies+2; // rhoD + lambda + mu
