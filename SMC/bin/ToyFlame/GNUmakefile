@@ -2,6 +2,7 @@
 SMC_MIN := t
 
 NDEBUG :=
+PROF   :=
 MPI    := t
 OMP    :=
 
