@@ -117,6 +117,7 @@ contains
     ng = stencil_ng
 
     call multifab_build(U,la,ncons,ng)
+    call setval(U, 0.d0, .true.)
     call multifab_copy_c(U,1,chkdata(1),1,ncons)
 
     lachk = get_layout(chkdata(1))
@@ -238,7 +239,8 @@ contains
     ng = stencil_ng
 
     call multifab_build(U,la,ncons,ng)
-  
+    call setval(U, 0.d0, .true.)
+
     call init_data(U,dx,prob_lo,prob_hi)
 
     call smc_bc_init(la, U)
