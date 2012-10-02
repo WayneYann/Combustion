@@ -53,8 +53,8 @@ contains
   subroutine eglib_close()
     if (EGLIB_NP > 0) then
        !$omp parallel 
-       if (allocated(egwork)) deallocate(egwork)
-       if (allocated(egiwork)) deallocate(egiwork)
+       deallocate(egwork)
+       deallocate(egiwork)
        !$omp end parallel
        EGLIB_NP = -1
     end if
