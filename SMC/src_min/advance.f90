@@ -68,6 +68,10 @@ contains
     call destroy(Unew)
     call destroy(Uprime)
 
+    if (contains_nan(U)) then
+       call bl_error("U contains nan")
+    end if
+
   end subroutine advance
 
 
