@@ -8,7 +8,7 @@ ns.do_fillPatchUMAC=1
 ns.zeroBndryVisc=1
 
 proj.proj_2 = 1
-ns.num_divu_iters = 0
+ns.num_divu_iters = 2
 
 ht.plot_consumption=0
 ht.plot_heat_release=0
@@ -40,25 +40,30 @@ proj.v = 0
 ns.do_group_bndry_fills = 1
 
 mg.cg_solver=1
-#cg.cg_solver=1
 
 geometry.prob_lo    = 0.0 0.0
 geometry.prob_hi    = 0.02 0.02
 amr.n_cell          = 128 128
+amr.max_grid_size   = 64
 amr.blocking_factor = 32
 max_step            = 100
-amr.check_file      = chk_0128_
-amr.plot_file       = plt_0128_
-amr.check_int       = 1000
+
+amr.plot_files_output = 1
+amr.plot_file       = plt
 amr.plot_int        = 10
+
+amr.checkpoint_files_output = 0
+amr.check_file      = chk
+amr.check_int       = 100
+
 ns.cfl              = 0.25
 
-amr.max_grid_size   = 128
+### 2-Level Option
+#amr.regrid_file = "gr0"
+#amr.max_level =  1            # maximum level number allowed
 
-amr.regrid_file = "gr0"
-amr.max_level =  1            # maximum level number allowed
-
-#amr.max_level =  0            # maximum level number allowed
+### Single-Level Option
+amr.max_level =  0            # maximum level number allowed
 
 amr.v=1
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
@@ -123,9 +128,9 @@ ns.dpdt_option = 0
 #ns.constant_rhoD_val = 0.0714286
 # ----------------  PROBLEM DEPENDENT INPUTS
 
-ns.lo_bc          = 0 1
-ns.hi_bc          = 0 2
-geometry.is_periodic = 1 0
+ns.lo_bc          = 2 1
+ns.hi_bc          = 2 2
+geometry.is_periodic = 0 0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
