@@ -8,7 +8,7 @@
   blobr = -1.
 
   splitx = 0.01
-  xfrontw = 1.e-4
+  xfrontw = 1.e-3
 
   bloby = 1000.
   Tfrontw = 1.
