@@ -51,10 +51,13 @@ contains
 
 
   subroutine eglib_close()
-    !$omp parallel 
-    if (allocated(egwork)) deallocate(egwork)
-    if (allocated(egiwork)) deallocate(egiwork)
-    !$omp end parallel
+    if (EGLIB_NP > 0) then
+       !$omp parallel 
+       if (allocated(egwork)) deallocate(egwork)
+       if (allocated(egiwork)) deallocate(egiwork)
+       !$omp end parallel
+       EGLIB_NP = -1
+    end if
   end subroutine eglib_close
 
 end module eglib_module

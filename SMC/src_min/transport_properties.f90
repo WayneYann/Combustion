@@ -70,16 +70,16 @@ contains
     call eglib_init(nspecies, np, ITLS, IFLAG)
 
     allocate(Tt(np))
-    allocate(Xt(nspecies,np))
-    allocate(Yt(nspecies,np))
-    allocate(Cpt(nspecies,np))
-    allocate(D(nspecies,np))
-
     allocate(Wtm(np))
     allocate(ME(np))
     allocate(MK(np))
     allocate(L1(np))
     allocate(L2(np))
+
+    allocate(Xt(nspecies,np))
+    allocate(Yt(nspecies,np))
+    allocate(Cpt(nspecies,np))
+    allocate(D(nspecies,np))
 
     !$omp parallel do private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
     !$omp private(Tt,Wtm,Xt,Yt,Cpt,D,ME,MK,L1,L2)
@@ -95,7 +95,7 @@ contains
           Cpt(:,ii) = Cpck
           CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
        end do
-       
+
        CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
        
        CALL EGME3(np, Tt, Yt, egwork, ME) 
