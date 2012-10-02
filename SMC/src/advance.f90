@@ -36,6 +36,10 @@ contains
        call advance_rk3(U,dt,dx,istep)
     end if
 
+    if (contains_nan(U)) then
+       call bl_error("U contains nan")
+    end if
+
   end subroutine advance
 
   !
@@ -610,7 +614,7 @@ contains
          Ddp, upp, qxp, qyp, qzp
 
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
-    type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm, bpt_nscbc
+    type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
 
     integer :: ndq
 

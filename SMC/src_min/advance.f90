@@ -68,6 +68,10 @@ contains
     call destroy(Unew)
     call destroy(Uprime)
 
+    if (contains_nan(U)) then
+       call bl_error("U contains nan")
+    end if
+
   end subroutine advance
 
 
@@ -234,7 +238,7 @@ contains
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
-    type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm, bpt_nscbc
+    type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
 
 
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -427,7 +431,7 @@ contains
          Ddp, upp, qxp, qyp, qzp
 
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
-    type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm, bpt_nscbc
+    type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
 
     integer :: ndq
 

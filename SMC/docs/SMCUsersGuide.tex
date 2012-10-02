@@ -107,8 +107,8 @@ parallelization, and compilation system.  It uses the {\tt
 
 \verb|git clone https://ccse.lbl.gov/pub/Downloads/BoxLib.git|\\
 
-We will use the {\tt Combustion/SMC/bin/kerneltest} problem as an
-example of running {\tt SMC}.  The {\tt kerneltest} directory contains
+We will use the {\tt Combustion/SMC/bin/ToyFlame} problem as an
+example of running {\tt SMC}.  The {\tt ToyFlame} directory contains
 a file called {\tt GNUmakefile} that specify how to build the
 executable.  Note GNU {\tt make} is required for building.  The {\tt
   GNUmakefile} has the following options:
@@ -124,6 +124,9 @@ executable.  Note GNU {\tt make} is required for building.  The {\tt
   This option determines whether we compile with support for debugging
   (usually also enabling some runtime checks). Setting NDEBUG := t
   turns off debugging.
+\item {\tt PROF :=}\\
+  This option determines whether we compile with timrers. Leaving this
+  option empty disables timers.
 \item {\tt MPI := t}\\
   This determines whether we are doing a parallel build, using the
   Message Passing Interface (MPI) library. Leaving this
