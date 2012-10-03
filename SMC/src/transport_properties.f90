@@ -127,8 +127,6 @@ contains
     deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
     !$omp end parallel
 
-    call eglib_close()
-
   end subroutine get_trans_prop_3d
 
 end module transport_properties
