@@ -64,6 +64,7 @@ contains
 
     call multifab_build(Uprime, la, ncons, 0)
     call multifab_build(Unew,   la, ncons, ng)
+    call multifab_setval(Unew, 0.d0, .true.)
 
     ! RK Step 1
     call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
