@@ -71,6 +71,9 @@ contains
     np = dhi(1) - dlo(1) + 1
     call eglib_init(nspecies, np, ITLS, IFLAG)
 
+    !$omp parallel private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
+    !$omp private(Tt,Wtm,Xt,Yt,Cpt,D,ME,MK,L1,L2)
+
     allocate(Tt(np))
     allocate(Wtm(np))
     allocate(ME(np))
@@ -83,8 +86,7 @@ contains
     allocate(Cpt(nspecies,np))
     allocate(D(nspecies,np))
 
-    !$omp parallel do private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
-    !$omp private(Tt,Wtm,Xt,Yt,Cpt,D,ME,MK,L1,L2)
+    !$omp do
     do k=dlo(3),dhi(3)
     do j=dlo(2),dhi(2)
 
@@ -120,9 +122,10 @@ contains
 
     end do
     end do
-    !$omp end parallel do
+    !$omp end do
 
     deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+    !$omp end parallel
 
     call eglib_close()
 
