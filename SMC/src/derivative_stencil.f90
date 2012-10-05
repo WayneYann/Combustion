@@ -269,25 +269,25 @@ contains
   function first_deriv_r3(u) result(du)
     double precision :: du
     double precision, intent(in) :: u(-1:2)
-    du = sum(u*DR3)
+    du = dot_product(u,DR3)
   end function first_deriv_r3
 
   function first_deriv_l3(u) result(du)
     double precision :: du
     double precision, intent(in) :: u(-2:1)
-    du = sum(u*DL3)
+    du = dot_product(u,DL3)
   end function first_deriv_l3
 
   function first_deriv_rb(u) result(du)
     double precision :: du
     double precision, intent(in) :: u(0:3)
-    du = sum(u*DRB)
+    du = dot_product(u,DRB)
   end function first_deriv_rb
 
   function first_deriv_lb(u) result(du)
     double precision :: du
     double precision, intent(in) :: u(-3:0)
-    du = sum(u*DLB)
+    du = dot_product(u,DLB)
   end function first_deriv_lb
 
 end module derivative_stencil_module
