@@ -1,6 +1,9 @@
 # use minimalist version
 SMC_MIN := t
 
+# use expand.py to expand a.M.u in kernels.f90
+EXPAND := t
+
 NDEBUG :=
 PROF   :=
 MPI    := t

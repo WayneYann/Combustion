@@ -158,7 +158,7 @@ contains
     integer          :: i,j,k,n, qxn, qyn, qhn
     integer :: dlo(3), dhi(3)
 
-    double precision :: muM8(8), M8p(8), M8X(8)
+    double precision :: muM8(8), M8p(8), M8X(8), tmp(8)
 
     do i = 1,3
        dxinv(i) = 1.0d0 / dx(i)
@@ -333,7 +333,7 @@ contains
     allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons))
 
     !$omp parallel &
-    !$omp private(i,j,k,n,qxn,qyn,qhn,Htot,Htmp,Ytmp,hhalf,muM8,M8p,M8X) 
+    !$omp private(i,j,k,n,qxn,qyn,qhn,Htot,Htmp,Ytmp,hhalf,muM8,M8p,M8X,tmp) 
 
     !$omp workshare
     dpe = 0.d0
@@ -367,15 +367,15 @@ contains
              muM8 = matmul(   mu(i-4:i+3,j,k)      , M8)
              M8p  = matmul(M8, q(i-4:i+3,j,k,qpres))
 
-             Hg(i,j,k,imx) = dot_product(matmul(vsp(i-4:i+3,j,k   ), M8), &
-                  &                               q(i-4:i+3,j,k,qu))
+             tmp = matmul(M8, q(i-4:i+3,j,k,qu))
+             Hg(i,j,k,imx) = dot_product(vsp(i-4:i+3,j,k), tmp)
 
              Hg(i,j,k,imy) = dot_product(muM8, q(i-4:i+3,j,k,qv))
              Hg(i,j,k,imz) = dot_product(muM8, q(i-4:i+3,j,k,qw))
 
-             Hg(i,j,k,iene) = dot_product(matmul(lam(i-4:i+3,j,k      ), M8), &
-                  &                                q(i-4:i+3,j,k,qtemp))      &
-                  &                + dot_product(dpe(i-4:i+3,j,k), M8p)
+             tmp = matmul(M8, q(i-4:i+3,j,k,qtemp))
+             Hg(i,j,k,iene) = dot_product(lam(i-4:i+3,j,k), tmp) &
+                  &         + dot_product(dpe(i-4:i+3,j,k), M8p)
 
              Htot = 0.d0
              do n = 1, nspecies
@@ -437,12 +437,12 @@ contains
              Hg(i,j,k,imx) = dot_product(muM8, q(i,j-4:j+3,k,qu))
              Hg(i,j,k,imz) = dot_product(muM8, q(i,j-4:j+3,k,qw))
 
-             Hg(i,j,k,imy) = dot_product(matmul(vsp(i,j-4:j+3,k   ), M8), &
-                  &                               q(i,j-4:j+3,k,qv))
+             tmp = matmul(M8, q(i,j-4:j+3,k,qv))
+             Hg(i,j,k,imy) = dot_product(vsp(i,j-4:j+3,k), tmp)
 
-             Hg(i,j,k,iene) = dot_product(matmul(lam(i,j-4:j+3,k      ), M8), &
-                  &                                q(i,j-4:j+3,k,qtemp))      &
-                  +                  dot_product(dpe(i,j-4:j+3,k), M8p)
+             tmp = matmul(M8, q(i,j-4:j+3,k,qtemp))
+             Hg(i,j,k,iene) = dot_product(lam(i,j-4:j+3,k), tmp)      &
+                  +           dot_product(dpe(i,j-4:j+3,k), M8p)
 
              Htot = 0.d0
              do n = 1, nspecies
@@ -504,12 +504,12 @@ contains
              Hg(i,j,k,imx) = dot_product(muM8, q(i,j,k-4:k+3,qu))
              Hg(i,j,k,imy) = dot_product(muM8, q(i,j,k-4:k+3,qv))
 
-             Hg(i,j,k,imz) = dot_product(matmul(vsp(i,j,k-4:k+3   ), M8), &
-                  &                               q(i,j,k-4:k+3,qw))
+             tmp = matmul(M8, q(i,j,k-4:k+3,qw))
+             Hg(i,j,k,imz) = dot_product(vsp(i,j,k-4:k+3), tmp)
 
-             Hg(i,j,k,iene) = dot_product(matmul(lam(i,j,k-4:k+3      ), M8), &
-                  &                                q(i,j,k-4:k+3,qtemp))      &
-                  +                  dot_product(dpe(i,j,k-4:k+3), M8p)
+             tmp = matmul(M8, q(i,j,k-4:k+3,qtemp))
+             Hg(i,j,k,iene) = dot_product(lam(i,j,k-4:k+3), tmp)      &
+                  +           dot_product(dpe(i,j,k-4:k+3), M8p)
 
              Htot = 0.d0
              do n = 1, nspecies
