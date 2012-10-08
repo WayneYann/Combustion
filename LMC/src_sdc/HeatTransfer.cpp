@@ -7078,17 +7078,6 @@ HeatTransfer::calcDiffusivity (const Real time,
         FArrayBox& Tfab = Temp_fpi();
         FArrayBox& RYfab = Rho_and_spec_fpi();
          const Box& gbox = RYfab.box();
-        //
-        // Convert from RhoY_l to Y_l
-        //
-        tmp.resize(gbox,1);
-        tmp.copy(RYfab,0,0,1);
-        tmp.invert(1);
-
-	for (int n = 1; n < nspecies+1; n++)
-	  {
-	    RYfab.mult(tmp,0,n,1);
-	  }
 
         const int  vflag   = do_VelVisc;
         const int nc_bcen = nspecies+2; // rhoD + lambda + mu
@@ -7111,9 +7100,16 @@ HeatTransfer::calcDiffusivity (const Real time,
             visc[Rho_and_spec_fpi].copy(bcen,nspecies+1,0,1);
         }
 
-
+        //
+        // Convert from tmp=RhoY_l to Y_l
+        //
+        tmp.resize(gbox,1);
+        tmp.copy(RYfab,0,0,1);
+        tmp.invert(1);
 	for (int n = 1; n < nspecies+1; n++)
+	{
 	  RYfab.mult(tmp,0,n,1);
+	}
 
         for (int icomp = RhoH; icomp <= NUM_STATE; icomp++)
         {
