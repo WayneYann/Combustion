@@ -1800,15 +1800,223 @@ contains
 
           do i=slo(1),shi(1)+1
 
-             mmtmp8 = matmul(vsp(i-4:i+3,j,k), M8)
+!EXPAND             mmtmp8 = matmul(vsp(i-4:i+3,j,k), M8)
+             mmtmp8(1) = vsp(i-4,j,k) * M8(1,1) &
+                       + vsp(i-3,j,k) * M8(2,1) &
+                       + vsp(i-2,j,k) * M8(3,1) &
+                       + vsp(i-1,j,k) * M8(4,1) &
+                       + vsp(i  ,j,k) * M8(5,1)
+             mmtmp8(2) = vsp(i-4,j,k) * M8(1,2) &
+                       + vsp(i-3,j,k) * M8(2,2) &
+                       + vsp(i-2,j,k) * M8(3,2) &
+                       + vsp(i-1,j,k) * M8(4,2) &
+                       + vsp(i  ,j,k) * M8(5,2) &
+                       + vsp(i+1,j,k) * M8(6,2)
+             mmtmp8(3) = vsp(i-4,j,k) * M8(1,3) &
+                       + vsp(i-3,j,k) * M8(2,3) &
+                       + vsp(i-2,j,k) * M8(3,3) &
+                       + vsp(i-1,j,k) * M8(4,3) &
+                       + vsp(i  ,j,k) * M8(5,3) &
+                       + vsp(i+1,j,k) * M8(6,3) &
+                       + vsp(i+2,j,k) * M8(7,3)
+             mmtmp8(4) = vsp(i-4,j,k) * M8(1,4) &
+                       + vsp(i-3,j,k) * M8(2,4) &
+                       + vsp(i-2,j,k) * M8(3,4) &
+                       + vsp(i-1,j,k) * M8(4,4) &
+                       + vsp(i  ,j,k) * M8(5,4) &
+                       + vsp(i+1,j,k) * M8(6,4) &
+                       + vsp(i+2,j,k) * M8(7,4) &
+                       + vsp(i+3,j,k) * M8(8,4)
+             mmtmp8(5) =-vsp(i-4,j,k) * M8(8,4) &
+                       - vsp(i-3,j,k) * M8(7,4) &
+                       - vsp(i-2,j,k) * M8(6,4) &
+                       - vsp(i-1,j,k) * M8(5,4) &
+                       - vsp(i  ,j,k) * M8(4,4) &
+                       - vsp(i+1,j,k) * M8(3,4) &
+                       - vsp(i+2,j,k) * M8(2,4) &
+                       - vsp(i+3,j,k) * M8(1,4)
+             mmtmp8(6) =-vsp(i-3,j,k) * M8(7,3) &
+                       - vsp(i-2,j,k) * M8(6,3) &
+                       - vsp(i-1,j,k) * M8(5,3) &
+                       - vsp(i  ,j,k) * M8(4,3) &
+                       - vsp(i+1,j,k) * M8(3,3) &
+                       - vsp(i+2,j,k) * M8(2,3) &
+                       - vsp(i+3,j,k) * M8(1,3)
+             mmtmp8(7) =-vsp(i-2,j,k) * M8(6,2) &
+                       - vsp(i-1,j,k) * M8(5,2) &
+                       - vsp(i  ,j,k) * M8(4,2) &
+                       - vsp(i+1,j,k) * M8(3,2) &
+                       - vsp(i+2,j,k) * M8(2,2) &
+                       - vsp(i+3,j,k) * M8(1,2)
+             mmtmp8(8) =-vsp(i-1,j,k) * M8(5,1) &
+                       - vsp(i  ,j,k) * M8(4,1) &
+                       - vsp(i+1,j,k) * M8(3,1) &
+                       - vsp(i+2,j,k) * M8(2,1) &
+                       - vsp(i+3,j,k) * M8(1,1)
              Hg(i,j,k,imx) = dot_product(mmtmp8, q(i-4:i+3,j,k,qu))
 
-             mmtmp8 = matmul(mu(i-4:i+3,j,k), M8)
+!EXPAND             mmtmp8 = matmul(mu(i-4:i+3,j,k), M8)
+             mmtmp8(1) = mu(i-4,j,k) * M8(1,1) &
+                       + mu(i-3,j,k) * M8(2,1) &
+                       + mu(i-2,j,k) * M8(3,1) &
+                       + mu(i-1,j,k) * M8(4,1) &
+                       + mu(i  ,j,k) * M8(5,1)
+             mmtmp8(2) = mu(i-4,j,k) * M8(1,2) &
+                       + mu(i-3,j,k) * M8(2,2) &
+                       + mu(i-2,j,k) * M8(3,2) &
+                       + mu(i-1,j,k) * M8(4,2) &
+                       + mu(i  ,j,k) * M8(5,2) &
+                       + mu(i+1,j,k) * M8(6,2)
+             mmtmp8(3) = mu(i-4,j,k) * M8(1,3) &
+                       + mu(i-3,j,k) * M8(2,3) &
+                       + mu(i-2,j,k) * M8(3,3) &
+                       + mu(i-1,j,k) * M8(4,3) &
+                       + mu(i  ,j,k) * M8(5,3) &
+                       + mu(i+1,j,k) * M8(6,3) &
+                       + mu(i+2,j,k) * M8(7,3)
+             mmtmp8(4) = mu(i-4,j,k) * M8(1,4) &
+                       + mu(i-3,j,k) * M8(2,4) &
+                       + mu(i-2,j,k) * M8(3,4) &
+                       + mu(i-1,j,k) * M8(4,4) &
+                       + mu(i  ,j,k) * M8(5,4) &
+                       + mu(i+1,j,k) * M8(6,4) &
+                       + mu(i+2,j,k) * M8(7,4) &
+                       + mu(i+3,j,k) * M8(8,4)
+             mmtmp8(5) =-mu(i-4,j,k) * M8(8,4) &
+                       - mu(i-3,j,k) * M8(7,4) &
+                       - mu(i-2,j,k) * M8(6,4) &
+                       - mu(i-1,j,k) * M8(5,4) &
+                       - mu(i  ,j,k) * M8(4,4) &
+                       - mu(i+1,j,k) * M8(3,4) &
+                       - mu(i+2,j,k) * M8(2,4) &
+                       - mu(i+3,j,k) * M8(1,4)
+             mmtmp8(6) =-mu(i-3,j,k) * M8(7,3) &
+                       - mu(i-2,j,k) * M8(6,3) &
+                       - mu(i-1,j,k) * M8(5,3) &
+                       - mu(i  ,j,k) * M8(4,3) &
+                       - mu(i+1,j,k) * M8(3,3) &
+                       - mu(i+2,j,k) * M8(2,3) &
+                       - mu(i+3,j,k) * M8(1,3)
+             mmtmp8(7) =-mu(i-2,j,k) * M8(6,2) &
+                       - mu(i-1,j,k) * M8(5,2) &
+                       - mu(i  ,j,k) * M8(4,2) &
+                       - mu(i+1,j,k) * M8(3,2) &
+                       - mu(i+2,j,k) * M8(2,2) &
+                       - mu(i+3,j,k) * M8(1,2)
+             mmtmp8(8) =-mu(i-1,j,k) * M8(5,1) &
+                       - mu(i  ,j,k) * M8(4,1) &
+                       - mu(i+1,j,k) * M8(3,1) &
+                       - mu(i+2,j,k) * M8(2,1) &
+                       - mu(i+3,j,k) * M8(1,1)
              Hg(i,j,k,imy) = dot_product(mmtmp8, q(i-4:i+3,j,k,qv))
              Hg(i,j,k,imz) = dot_product(mmtmp8, q(i-4:i+3,j,k,qw))
 
-             mmtmp8 = matmul(lam(i-4:i+3,j,k), M8)
-             M8p = matmul(M8,  q(i-4:i+3,j,k,qpres))
+!EXPAND             mmtmp8 = matmul(lam(i-4:i+3,j,k), M8)
+             mmtmp8(1) = lam(i-4,j,k) * M8(1,1) &
+                       + lam(i-3,j,k) * M8(2,1) &
+                       + lam(i-2,j,k) * M8(3,1) &
+                       + lam(i-1,j,k) * M8(4,1) &
+                       + lam(i  ,j,k) * M8(5,1)
+             mmtmp8(2) = lam(i-4,j,k) * M8(1,2) &
+                       + lam(i-3,j,k) * M8(2,2) &
+                       + lam(i-2,j,k) * M8(3,2) &
+                       + lam(i-1,j,k) * M8(4,2) &
+                       + lam(i  ,j,k) * M8(5,2) &
+                       + lam(i+1,j,k) * M8(6,2)
+             mmtmp8(3) = lam(i-4,j,k) * M8(1,3) &
+                       + lam(i-3,j,k) * M8(2,3) &
+                       + lam(i-2,j,k) * M8(3,3) &
+                       + lam(i-1,j,k) * M8(4,3) &
+                       + lam(i  ,j,k) * M8(5,3) &
+                       + lam(i+1,j,k) * M8(6,3) &
+                       + lam(i+2,j,k) * M8(7,3)
+             mmtmp8(4) = lam(i-4,j,k) * M8(1,4) &
+                       + lam(i-3,j,k) * M8(2,4) &
+                       + lam(i-2,j,k) * M8(3,4) &
+                       + lam(i-1,j,k) * M8(4,4) &
+                       + lam(i  ,j,k) * M8(5,4) &
+                       + lam(i+1,j,k) * M8(6,4) &
+                       + lam(i+2,j,k) * M8(7,4) &
+                       + lam(i+3,j,k) * M8(8,4)
+             mmtmp8(5) =-lam(i-4,j,k) * M8(8,4) &
+                       - lam(i-3,j,k) * M8(7,4) &
+                       - lam(i-2,j,k) * M8(6,4) &
+                       - lam(i-1,j,k) * M8(5,4) &
+                       - lam(i  ,j,k) * M8(4,4) &
+                       - lam(i+1,j,k) * M8(3,4) &
+                       - lam(i+2,j,k) * M8(2,4) &
+                       - lam(i+3,j,k) * M8(1,4)
+             mmtmp8(6) =-lam(i-3,j,k) * M8(7,3) &
+                       - lam(i-2,j,k) * M8(6,3) &
+                       - lam(i-1,j,k) * M8(5,3) &
+                       - lam(i  ,j,k) * M8(4,3) &
+                       - lam(i+1,j,k) * M8(3,3) &
+                       - lam(i+2,j,k) * M8(2,3) &
+                       - lam(i+3,j,k) * M8(1,3)
+             mmtmp8(7) =-lam(i-2,j,k) * M8(6,2) &
+                       - lam(i-1,j,k) * M8(5,2) &
+                       - lam(i  ,j,k) * M8(4,2) &
+                       - lam(i+1,j,k) * M8(3,2) &
+                       - lam(i+2,j,k) * M8(2,2) &
+                       - lam(i+3,j,k) * M8(1,2)
+             mmtmp8(8) =-lam(i-1,j,k) * M8(5,1) &
+                       - lam(i  ,j,k) * M8(4,1) &
+                       - lam(i+1,j,k) * M8(3,1) &
+                       - lam(i+2,j,k) * M8(2,1) &
+                       - lam(i+3,j,k) * M8(1,1)
+!EXPAND             M8p = matmul(M8,  q(i-4:i+3,j,k,qpres))
+             M8p(1) = M8(1,1) * q(i-4,j,k,qpres) &
+                    + M8(1,2) * q(i-3,j,k,qpres) &
+                    + M8(1,3) * q(i-2,j,k,qpres) &
+                    + M8(1,4) * q(i-1,j,k,qpres) &
+                    - M8(8,4) * q(i  ,j,k,qpres)
+             M8p(2) = M8(2,1) * q(i-4,j,k,qpres) &
+                    + M8(2,2) * q(i-3,j,k,qpres) &
+                    + M8(2,3) * q(i-2,j,k,qpres) &
+                    + M8(2,4) * q(i-1,j,k,qpres) &
+                    - M8(7,4) * q(i  ,j,k,qpres) &
+                    - M8(7,3) * q(i+1,j,k,qpres)
+             M8p(3) = M8(3,1) * q(i-4,j,k,qpres) &
+                    + M8(3,2) * q(i-3,j,k,qpres) &
+                    + M8(3,3) * q(i-2,j,k,qpres) &
+                    + M8(3,4) * q(i-1,j,k,qpres) &
+                    - M8(6,4) * q(i  ,j,k,qpres) &
+                    - M8(6,3) * q(i+1,j,k,qpres) &
+                    - M8(6,2) * q(i+2,j,k,qpres)
+             M8p(4) = M8(4,1) * q(i-4,j,k,qpres) &
+                    + M8(4,2) * q(i-3,j,k,qpres) &
+                    + M8(4,3) * q(i-2,j,k,qpres) &
+                    + M8(4,4) * q(i-1,j,k,qpres) &
+                    - M8(5,4) * q(i  ,j,k,qpres) &
+                    - M8(5,3) * q(i+1,j,k,qpres) &
+                    - M8(5,2) * q(i+2,j,k,qpres) &
+                    - M8(5,1) * q(i+3,j,k,qpres)
+             M8p(5) = M8(5,1) * q(i-4,j,k,qpres) &
+                    + M8(5,2) * q(i-3,j,k,qpres) &
+                    + M8(5,3) * q(i-2,j,k,qpres) &
+                    + M8(5,4) * q(i-1,j,k,qpres) &
+                    - M8(4,4) * q(i  ,j,k,qpres) &
+                    - M8(4,3) * q(i+1,j,k,qpres) &
+                    - M8(4,2) * q(i+2,j,k,qpres) &
+                    - M8(4,1) * q(i+3,j,k,qpres)
+             M8p(6) = M8(6,2) * q(i-3,j,k,qpres) &
+                    + M8(6,3) * q(i-2,j,k,qpres) &
+                    + M8(6,4) * q(i-1,j,k,qpres) &
+                    - M8(3,4) * q(i  ,j,k,qpres) &
+                    - M8(3,3) * q(i+1,j,k,qpres) &
+                    - M8(3,2) * q(i+2,j,k,qpres) &
+                    - M8(3,1) * q(i+3,j,k,qpres)
+             M8p(7) = M8(7,3) * q(i-2,j,k,qpres) &
+                    + M8(7,4) * q(i-1,j,k,qpres) &
+                    - M8(2,4) * q(i  ,j,k,qpres) &
+                    - M8(2,3) * q(i+1,j,k,qpres) &
+                    - M8(2,2) * q(i+2,j,k,qpres) &
+                    - M8(2,1) * q(i+3,j,k,qpres)
+             M8p(8) = M8(8,4) * q(i-1,j,k,qpres) &
+                    - M8(1,4) * q(i  ,j,k,qpres) &
+                    - M8(1,3) * q(i+1,j,k,qpres) &
+                    - M8(1,2) * q(i+2,j,k,qpres) &
+                    - M8(1,1) * q(i+3,j,k,qpres)
              Hg(i,j,k,iene) = dot_product(mmtmp8, q(i-4:i+3,j,k,qtemp)) &
                   &         + dot_product(      dpe(i-4:i+3,j,k), M8p)
 
@@ -1817,7 +2025,59 @@ contains
                 qxn = qx1+n-1
                 qyn = qy1+n-1
 
-                M8X = matmul(M8, q(i-4:i+3,j,k,qxn))
+!EXPAND                M8X = matmul(M8, q(i-4:i+3,j,k,qxn))
+                M8X(1) = M8(1,1) * q(i-4,j,k,qxn) &
+                       + M8(1,2) * q(i-3,j,k,qxn) &
+                       + M8(1,3) * q(i-2,j,k,qxn) &
+                       + M8(1,4) * q(i-1,j,k,qxn) &
+                       - M8(8,4) * q(i  ,j,k,qxn)
+                M8X(2) = M8(2,1) * q(i-4,j,k,qxn) &
+                       + M8(2,2) * q(i-3,j,k,qxn) &
+                       + M8(2,3) * q(i-2,j,k,qxn) &
+                       + M8(2,4) * q(i-1,j,k,qxn) &
+                       - M8(7,4) * q(i  ,j,k,qxn) &
+                       - M8(7,3) * q(i+1,j,k,qxn)
+                M8X(3) = M8(3,1) * q(i-4,j,k,qxn) &
+                       + M8(3,2) * q(i-3,j,k,qxn) &
+                       + M8(3,3) * q(i-2,j,k,qxn) &
+                       + M8(3,4) * q(i-1,j,k,qxn) &
+                       - M8(6,4) * q(i  ,j,k,qxn) &
+                       - M8(6,3) * q(i+1,j,k,qxn) &
+                       - M8(6,2) * q(i+2,j,k,qxn)
+                M8X(4) = M8(4,1) * q(i-4,j,k,qxn) &
+                       + M8(4,2) * q(i-3,j,k,qxn) &
+                       + M8(4,3) * q(i-2,j,k,qxn) &
+                       + M8(4,4) * q(i-1,j,k,qxn) &
+                       - M8(5,4) * q(i  ,j,k,qxn) &
+                       - M8(5,3) * q(i+1,j,k,qxn) &
+                       - M8(5,2) * q(i+2,j,k,qxn) &
+                       - M8(5,1) * q(i+3,j,k,qxn)
+                M8X(5) = M8(5,1) * q(i-4,j,k,qxn) &
+                       + M8(5,2) * q(i-3,j,k,qxn) &
+                       + M8(5,3) * q(i-2,j,k,qxn) &
+                       + M8(5,4) * q(i-1,j,k,qxn) &
+                       - M8(4,4) * q(i  ,j,k,qxn) &
+                       - M8(4,3) * q(i+1,j,k,qxn) &
+                       - M8(4,2) * q(i+2,j,k,qxn) &
+                       - M8(4,1) * q(i+3,j,k,qxn)
+                M8X(6) = M8(6,2) * q(i-3,j,k,qxn) &
+                       + M8(6,3) * q(i-2,j,k,qxn) &
+                       + M8(6,4) * q(i-1,j,k,qxn) &
+                       - M8(3,4) * q(i  ,j,k,qxn) &
+                       - M8(3,3) * q(i+1,j,k,qxn) &
+                       - M8(3,2) * q(i+2,j,k,qxn) &
+                       - M8(3,1) * q(i+3,j,k,qxn)
+                M8X(7) = M8(7,3) * q(i-2,j,k,qxn) &
+                       + M8(7,4) * q(i-1,j,k,qxn) &
+                       - M8(2,4) * q(i  ,j,k,qxn) &
+                       - M8(2,3) * q(i+1,j,k,qxn) &
+                       - M8(2,2) * q(i+2,j,k,qxn) &
+                       - M8(2,1) * q(i+3,j,k,qxn)
+                M8X(8) = M8(8,4) * q(i-1,j,k,qxn) &
+                       - M8(1,4) * q(i  ,j,k,qxn) &
+                       - M8(1,3) * q(i+1,j,k,qxn) &
+                       - M8(1,2) * q(i+2,j,k,qxn) &
+                       - M8(1,1) * q(i+3,j,k,qxn)
                 
                 Htmp(n) = dot_product(dpy(i-4:i+3,j,k,n), M8p) &
                      +    dot_product(dxy(i-4:i+3,j,k,n), M8X)
@@ -1943,15 +2203,71 @@ contains
              do iface=0,1 
                 i = lo(1)+2 + iface
 
-                mmtmp4 = matmul(vsp(i-2:i+1,j,k), M4)
+!EXPAND                mmtmp4 = matmul(vsp(i-2:i+1,j,k), M4)
+                mmtmp4(1) = vsp(i-2,j,k) * M4(1,1) &
+                          + vsp(i-1,j,k) * M4(2,1) &
+                          + vsp(i  ,j,k) * M4(3,1)
+                mmtmp4(2) = vsp(i-2,j,k) * M4(1,2) &
+                          + vsp(i-1,j,k) * M4(2,2) &
+                          + vsp(i  ,j,k) * M4(3,2) &
+                          + vsp(i+1,j,k) * M4(4,2)
+                mmtmp4(3) =-vsp(i-2,j,k) * M4(4,2) &
+                          - vsp(i-1,j,k) * M4(3,2) &
+                          - vsp(i  ,j,k) * M4(2,2) &
+                          - vsp(i+1,j,k) * M4(1,2)
+                mmtmp4(4) =-vsp(i-1,j,k) * M4(3,1) &
+                          - vsp(i  ,j,k) * M4(2,1) &
+                          - vsp(i+1,j,k) * M4(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp4, q(i-2:i+1,j,k,qu))
 
-                mmtmp4 = matmul(mu(i-2:i+1,j,k), M4)
+!EXPAND                mmtmp4 = matmul(mu(i-2:i+1,j,k), M4)
+                mmtmp4(1) = mu(i-2,j,k) * M4(1,1) &
+                          + mu(i-1,j,k) * M4(2,1) &
+                          + mu(i  ,j,k) * M4(3,1)
+                mmtmp4(2) = mu(i-2,j,k) * M4(1,2) &
+                          + mu(i-1,j,k) * M4(2,2) &
+                          + mu(i  ,j,k) * M4(3,2) &
+                          + mu(i+1,j,k) * M4(4,2)
+                mmtmp4(3) =-mu(i-2,j,k) * M4(4,2) &
+                          - mu(i-1,j,k) * M4(3,2) &
+                          - mu(i  ,j,k) * M4(2,2) &
+                          - mu(i+1,j,k) * M4(1,2)
+                mmtmp4(4) =-mu(i-1,j,k) * M4(3,1) &
+                          - mu(i  ,j,k) * M4(2,1) &
+                          - mu(i+1,j,k) * M4(1,1)
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i-2:i+1,j,k,qv))
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i-2:i+1,j,k,qw))
 
-                mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
-                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
+!EXPAND                mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
+                mmtmp4(1) = lam(i-2,j,k) * M4(1,1) &
+                          + lam(i-1,j,k) * M4(2,1) &
+                          + lam(i  ,j,k) * M4(3,1)
+                mmtmp4(2) = lam(i-2,j,k) * M4(1,2) &
+                          + lam(i-1,j,k) * M4(2,2) &
+                          + lam(i  ,j,k) * M4(3,2) &
+                          + lam(i+1,j,k) * M4(4,2)
+                mmtmp4(3) =-lam(i-2,j,k) * M4(4,2) &
+                          - lam(i-1,j,k) * M4(3,2) &
+                          - lam(i  ,j,k) * M4(2,2) &
+                          - lam(i+1,j,k) * M4(1,2)
+                mmtmp4(4) =-lam(i-1,j,k) * M4(3,1) &
+                          - lam(i  ,j,k) * M4(2,1) &
+                          - lam(i+1,j,k) * M4(1,1)
+!EXPAND                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
+                M4p(1) = M4(1,1) * q(i-2,j,k,qpres) &
+                       + M4(1,2) * q(i-1,j,k,qpres) &
+                       - M4(4,2) * q(i  ,j,k,qpres)
+                M4p(2) = M4(2,1) * q(i-2,j,k,qpres) &
+                       + M4(2,2) * q(i-1,j,k,qpres) &
+                       - M4(3,2) * q(i  ,j,k,qpres) &
+                       - M4(3,1) * q(i+1,j,k,qpres)
+                M4p(3) = M4(3,1) * q(i-2,j,k,qpres) &
+                       + M4(3,2) * q(i-1,j,k,qpres) &
+                       - M4(2,2) * q(i  ,j,k,qpres) &
+                       - M4(2,1) * q(i+1,j,k,qpres)
+                M4p(4) = M4(4,2) * q(i-1,j,k,qpres) &
+                       - M4(1,2) * q(i  ,j,k,qpres) &
+                       - M4(1,1) * q(i+1,j,k,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i-2:i+1,j,k,qtemp))      &
                      &            + dot_product(      dpe(i-2:i+1,j,k), M4p)
 
@@ -1960,7 +2276,21 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
+!EXPAND                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
+                   M4X(1) = M4(1,1) * q(i-2,j,k,qxn) &
+                          + M4(1,2) * q(i-1,j,k,qxn) &
+                          - M4(4,2) * q(i  ,j,k,qxn)
+                   M4X(2) = M4(2,1) * q(i-2,j,k,qxn) &
+                          + M4(2,2) * q(i-1,j,k,qxn) &
+                          - M4(3,2) * q(i  ,j,k,qxn) &
+                          - M4(3,1) * q(i+1,j,k,qxn)
+                   M4X(3) = M4(3,1) * q(i-2,j,k,qxn) &
+                          + M4(3,2) * q(i-1,j,k,qxn) &
+                          - M4(2,2) * q(i  ,j,k,qxn) &
+                          - M4(2,1) * q(i+1,j,k,qxn)
+                   M4X(4) = M4(4,2) * q(i-1,j,k,qxn) &
+                          - M4(1,2) * q(i  ,j,k,qxn) &
+                          - M4(1,1) * q(i+1,j,k,qxn)
                 
                    Htmp(n) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
                         +    dot_product(dxy(i-2:i+1,j,k,n), M4X)
@@ -1993,15 +2323,135 @@ contains
              do iface=0,1 
                 i = lo(1)+3 + iface
 
-                mmtmp6 = matmul(vsp(i-3:i+2,j,k), M6)
+!EXPAND                mmtmp6 = matmul(vsp(i-3:i+2,j,k), M6)
+                mmtmp6(1) = vsp(i-3,j,k) * M6(1,1) &
+                          + vsp(i-2,j,k) * M6(2,1) &
+                          + vsp(i-1,j,k) * M6(3,1) &
+                          + vsp(i  ,j,k) * M6(4,1)
+                mmtmp6(2) = vsp(i-3,j,k) * M6(1,2) &
+                          + vsp(i-2,j,k) * M6(2,2) &
+                          + vsp(i-1,j,k) * M6(3,2) &
+                          + vsp(i  ,j,k) * M6(4,2) &
+                          + vsp(i+1,j,k) * M6(5,2)
+                mmtmp6(3) = vsp(i-3,j,k) * M6(1,3) &
+                          + vsp(i-2,j,k) * M6(2,3) &
+                          + vsp(i-1,j,k) * M6(3,3) &
+                          + vsp(i  ,j,k) * M6(4,3) &
+                          + vsp(i+1,j,k) * M6(5,3) &
+                          + vsp(i+2,j,k) * M6(6,3)
+                mmtmp6(4) =-vsp(i-3,j,k) * M6(6,3) &
+                          - vsp(i-2,j,k) * M6(5,3) &
+                          - vsp(i-1,j,k) * M6(4,3) &
+                          - vsp(i  ,j,k) * M6(3,3) &
+                          - vsp(i+1,j,k) * M6(2,3) &
+                          - vsp(i+2,j,k) * M6(1,3)
+                mmtmp6(5) =-vsp(i-2,j,k) * M6(5,2) &
+                          - vsp(i-1,j,k) * M6(4,2) &
+                          - vsp(i  ,j,k) * M6(3,2) &
+                          - vsp(i+1,j,k) * M6(2,2) &
+                          - vsp(i+2,j,k) * M6(1,2)
+                mmtmp6(6) =-vsp(i-1,j,k) * M6(4,1) &
+                          - vsp(i  ,j,k) * M6(3,1) &
+                          - vsp(i+1,j,k) * M6(2,1) &
+                          - vsp(i+2,j,k) * M6(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp6, q(i-3:i+2,j,k,qu))
 
-                mmtmp6 = matmul(mu(i-3:i+2,j,k), M6)
+!EXPAND                mmtmp6 = matmul(mu(i-3:i+2,j,k), M6)
+                mmtmp6(1) = mu(i-3,j,k) * M6(1,1) &
+                          + mu(i-2,j,k) * M6(2,1) &
+                          + mu(i-1,j,k) * M6(3,1) &
+                          + mu(i  ,j,k) * M6(4,1)
+                mmtmp6(2) = mu(i-3,j,k) * M6(1,2) &
+                          + mu(i-2,j,k) * M6(2,2) &
+                          + mu(i-1,j,k) * M6(3,2) &
+                          + mu(i  ,j,k) * M6(4,2) &
+                          + mu(i+1,j,k) * M6(5,2)
+                mmtmp6(3) = mu(i-3,j,k) * M6(1,3) &
+                          + mu(i-2,j,k) * M6(2,3) &
+                          + mu(i-1,j,k) * M6(3,3) &
+                          + mu(i  ,j,k) * M6(4,3) &
+                          + mu(i+1,j,k) * M6(5,3) &
+                          + mu(i+2,j,k) * M6(6,3)
+                mmtmp6(4) =-mu(i-3,j,k) * M6(6,3) &
+                          - mu(i-2,j,k) * M6(5,3) &
+                          - mu(i-1,j,k) * M6(4,3) &
+                          - mu(i  ,j,k) * M6(3,3) &
+                          - mu(i+1,j,k) * M6(2,3) &
+                          - mu(i+2,j,k) * M6(1,3)
+                mmtmp6(5) =-mu(i-2,j,k) * M6(5,2) &
+                          - mu(i-1,j,k) * M6(4,2) &
+                          - mu(i  ,j,k) * M6(3,2) &
+                          - mu(i+1,j,k) * M6(2,2) &
+                          - mu(i+2,j,k) * M6(1,2)
+                mmtmp6(6) =-mu(i-1,j,k) * M6(4,1) &
+                          - mu(i  ,j,k) * M6(3,1) &
+                          - mu(i+1,j,k) * M6(2,1) &
+                          - mu(i+2,j,k) * M6(1,1)
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i-3:i+2,j,k,qv))
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i-3:i+2,j,k,qw))
 
-                mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
-                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
+!EXPAND                mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
+                mmtmp6(1) = lam(i-3,j,k) * M6(1,1) &
+                          + lam(i-2,j,k) * M6(2,1) &
+                          + lam(i-1,j,k) * M6(3,1) &
+                          + lam(i  ,j,k) * M6(4,1)
+                mmtmp6(2) = lam(i-3,j,k) * M6(1,2) &
+                          + lam(i-2,j,k) * M6(2,2) &
+                          + lam(i-1,j,k) * M6(3,2) &
+                          + lam(i  ,j,k) * M6(4,2) &
+                          + lam(i+1,j,k) * M6(5,2)
+                mmtmp6(3) = lam(i-3,j,k) * M6(1,3) &
+                          + lam(i-2,j,k) * M6(2,3) &
+                          + lam(i-1,j,k) * M6(3,3) &
+                          + lam(i  ,j,k) * M6(4,3) &
+                          + lam(i+1,j,k) * M6(5,3) &
+                          + lam(i+2,j,k) * M6(6,3)
+                mmtmp6(4) =-lam(i-3,j,k) * M6(6,3) &
+                          - lam(i-2,j,k) * M6(5,3) &
+                          - lam(i-1,j,k) * M6(4,3) &
+                          - lam(i  ,j,k) * M6(3,3) &
+                          - lam(i+1,j,k) * M6(2,3) &
+                          - lam(i+2,j,k) * M6(1,3)
+                mmtmp6(5) =-lam(i-2,j,k) * M6(5,2) &
+                          - lam(i-1,j,k) * M6(4,2) &
+                          - lam(i  ,j,k) * M6(3,2) &
+                          - lam(i+1,j,k) * M6(2,2) &
+                          - lam(i+2,j,k) * M6(1,2)
+                mmtmp6(6) =-lam(i-1,j,k) * M6(4,1) &
+                          - lam(i  ,j,k) * M6(3,1) &
+                          - lam(i+1,j,k) * M6(2,1) &
+                          - lam(i+2,j,k) * M6(1,1)
+!EXPAND                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
+                M6p(1) = M6(1,1) * q(i-3,j,k,qpres) &
+                       + M6(1,2) * q(i-2,j,k,qpres) &
+                       + M6(1,3) * q(i-1,j,k,qpres) &
+                       - M6(6,3) * q(i  ,j,k,qpres)
+                M6p(2) = M6(2,1) * q(i-3,j,k,qpres) &
+                       + M6(2,2) * q(i-2,j,k,qpres) &
+                       + M6(2,3) * q(i-1,j,k,qpres) &
+                       - M6(5,3) * q(i  ,j,k,qpres) &
+                       - M6(5,2) * q(i+1,j,k,qpres)
+                M6p(3) = M6(3,1) * q(i-3,j,k,qpres) &
+                       + M6(3,2) * q(i-2,j,k,qpres) &
+                       + M6(3,3) * q(i-1,j,k,qpres) &
+                       - M6(4,3) * q(i  ,j,k,qpres) &
+                       - M6(4,2) * q(i+1,j,k,qpres) &
+                       - M6(4,1) * q(i+2,j,k,qpres)
+                M6p(4) = M6(4,1) * q(i-3,j,k,qpres) &
+                       + M6(4,2) * q(i-2,j,k,qpres) &
+                       + M6(4,3) * q(i-1,j,k,qpres) &
+                       - M6(3,3) * q(i  ,j,k,qpres) &
+                       - M6(3,2) * q(i+1,j,k,qpres) &
+                       - M6(3,1) * q(i+2,j,k,qpres)
+                M6p(5) = M6(5,2) * q(i-2,j,k,qpres) &
+                       + M6(5,3) * q(i-1,j,k,qpres) &
+                       - M6(2,3) * q(i  ,j,k,qpres) &
+                       - M6(2,2) * q(i+1,j,k,qpres) &
+                       - M6(2,1) * q(i+2,j,k,qpres)
+                M6p(6) = M6(6,3) * q(i-1,j,k,qpres) &
+                       - M6(1,3) * q(i  ,j,k,qpres) &
+                       - M6(1,2) * q(i+1,j,k,qpres) &
+                       - M6(1,1) * q(i+2,j,k,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i-3:i+2,j,k,qtemp)) &
                      &            + dot_product(      dpe(i-3:i+2,j,k), M6p)
 
@@ -2010,7 +2460,37 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
+!EXPAND                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
+                   M6X(1) = M6(1,1) * q(i-3,j,k,qxn) &
+                          + M6(1,2) * q(i-2,j,k,qxn) &
+                          + M6(1,3) * q(i-1,j,k,qxn) &
+                          - M6(6,3) * q(i  ,j,k,qxn)
+                   M6X(2) = M6(2,1) * q(i-3,j,k,qxn) &
+                          + M6(2,2) * q(i-2,j,k,qxn) &
+                          + M6(2,3) * q(i-1,j,k,qxn) &
+                          - M6(5,3) * q(i  ,j,k,qxn) &
+                          - M6(5,2) * q(i+1,j,k,qxn)
+                   M6X(3) = M6(3,1) * q(i-3,j,k,qxn) &
+                          + M6(3,2) * q(i-2,j,k,qxn) &
+                          + M6(3,3) * q(i-1,j,k,qxn) &
+                          - M6(4,3) * q(i  ,j,k,qxn) &
+                          - M6(4,2) * q(i+1,j,k,qxn) &
+                          - M6(4,1) * q(i+2,j,k,qxn)
+                   M6X(4) = M6(4,1) * q(i-3,j,k,qxn) &
+                          + M6(4,2) * q(i-2,j,k,qxn) &
+                          + M6(4,3) * q(i-1,j,k,qxn) &
+                          - M6(3,3) * q(i  ,j,k,qxn) &
+                          - M6(3,2) * q(i+1,j,k,qxn) &
+                          - M6(3,1) * q(i+2,j,k,qxn)
+                   M6X(5) = M6(5,2) * q(i-2,j,k,qxn) &
+                          + M6(5,3) * q(i-1,j,k,qxn) &
+                          - M6(2,3) * q(i  ,j,k,qxn) &
+                          - M6(2,2) * q(i+1,j,k,qxn) &
+                          - M6(2,1) * q(i+2,j,k,qxn)
+                   M6X(6) = M6(6,3) * q(i-1,j,k,qxn) &
+                          - M6(1,3) * q(i  ,j,k,qxn) &
+                          - M6(1,2) * q(i+1,j,k,qxn) &
+                          - M6(1,1) * q(i+2,j,k,qxn)
                 
                    Htmp(n) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
                         +    dot_product(dxy(i-3:i+2,j,k,n), M6X)
@@ -2046,15 +2526,135 @@ contains
              do iface=0,1  ! two faces of 
                 i = hi(1)-3 + iface
 
-                mmtmp6 = matmul(vsp(i-3:i+2,j,k), M6)
+!EXPAND                mmtmp6 = matmul(vsp(i-3:i+2,j,k), M6)
+                mmtmp6(1) = vsp(i-3,j,k) * M6(1,1) &
+                          + vsp(i-2,j,k) * M6(2,1) &
+                          + vsp(i-1,j,k) * M6(3,1) &
+                          + vsp(i  ,j,k) * M6(4,1)
+                mmtmp6(2) = vsp(i-3,j,k) * M6(1,2) &
+                          + vsp(i-2,j,k) * M6(2,2) &
+                          + vsp(i-1,j,k) * M6(3,2) &
+                          + vsp(i  ,j,k) * M6(4,2) &
+                          + vsp(i+1,j,k) * M6(5,2)
+                mmtmp6(3) = vsp(i-3,j,k) * M6(1,3) &
+                          + vsp(i-2,j,k) * M6(2,3) &
+                          + vsp(i-1,j,k) * M6(3,3) &
+                          + vsp(i  ,j,k) * M6(4,3) &
+                          + vsp(i+1,j,k) * M6(5,3) &
+                          + vsp(i+2,j,k) * M6(6,3)
+                mmtmp6(4) =-vsp(i-3,j,k) * M6(6,3) &
+                          - vsp(i-2,j,k) * M6(5,3) &
+                          - vsp(i-1,j,k) * M6(4,3) &
+                          - vsp(i  ,j,k) * M6(3,3) &
+                          - vsp(i+1,j,k) * M6(2,3) &
+                          - vsp(i+2,j,k) * M6(1,3)
+                mmtmp6(5) =-vsp(i-2,j,k) * M6(5,2) &
+                          - vsp(i-1,j,k) * M6(4,2) &
+                          - vsp(i  ,j,k) * M6(3,2) &
+                          - vsp(i+1,j,k) * M6(2,2) &
+                          - vsp(i+2,j,k) * M6(1,2)
+                mmtmp6(6) =-vsp(i-1,j,k) * M6(4,1) &
+                          - vsp(i  ,j,k) * M6(3,1) &
+                          - vsp(i+1,j,k) * M6(2,1) &
+                          - vsp(i+2,j,k) * M6(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp6, q(i-3:i+2,j,k,qu))
 
-                mmtmp6 = matmul(mu(i-3:i+2,j,k), M6)
+!EXPAND                mmtmp6 = matmul(mu(i-3:i+2,j,k), M6)
+                mmtmp6(1) = mu(i-3,j,k) * M6(1,1) &
+                          + mu(i-2,j,k) * M6(2,1) &
+                          + mu(i-1,j,k) * M6(3,1) &
+                          + mu(i  ,j,k) * M6(4,1)
+                mmtmp6(2) = mu(i-3,j,k) * M6(1,2) &
+                          + mu(i-2,j,k) * M6(2,2) &
+                          + mu(i-1,j,k) * M6(3,2) &
+                          + mu(i  ,j,k) * M6(4,2) &
+                          + mu(i+1,j,k) * M6(5,2)
+                mmtmp6(3) = mu(i-3,j,k) * M6(1,3) &
+                          + mu(i-2,j,k) * M6(2,3) &
+                          + mu(i-1,j,k) * M6(3,3) &
+                          + mu(i  ,j,k) * M6(4,3) &
+                          + mu(i+1,j,k) * M6(5,3) &
+                          + mu(i+2,j,k) * M6(6,3)
+                mmtmp6(4) =-mu(i-3,j,k) * M6(6,3) &
+                          - mu(i-2,j,k) * M6(5,3) &
+                          - mu(i-1,j,k) * M6(4,3) &
+                          - mu(i  ,j,k) * M6(3,3) &
+                          - mu(i+1,j,k) * M6(2,3) &
+                          - mu(i+2,j,k) * M6(1,3)
+                mmtmp6(5) =-mu(i-2,j,k) * M6(5,2) &
+                          - mu(i-1,j,k) * M6(4,2) &
+                          - mu(i  ,j,k) * M6(3,2) &
+                          - mu(i+1,j,k) * M6(2,2) &
+                          - mu(i+2,j,k) * M6(1,2)
+                mmtmp6(6) =-mu(i-1,j,k) * M6(4,1) &
+                          - mu(i  ,j,k) * M6(3,1) &
+                          - mu(i+1,j,k) * M6(2,1) &
+                          - mu(i+2,j,k) * M6(1,1)
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i-3:i+2,j,k,qv))
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i-3:i+2,j,k,qw))
 
-                mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
-                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
+!EXPAND                mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
+                mmtmp6(1) = lam(i-3,j,k) * M6(1,1) &
+                          + lam(i-2,j,k) * M6(2,1) &
+                          + lam(i-1,j,k) * M6(3,1) &
+                          + lam(i  ,j,k) * M6(4,1)
+                mmtmp6(2) = lam(i-3,j,k) * M6(1,2) &
+                          + lam(i-2,j,k) * M6(2,2) &
+                          + lam(i-1,j,k) * M6(3,2) &
+                          + lam(i  ,j,k) * M6(4,2) &
+                          + lam(i+1,j,k) * M6(5,2)
+                mmtmp6(3) = lam(i-3,j,k) * M6(1,3) &
+                          + lam(i-2,j,k) * M6(2,3) &
+                          + lam(i-1,j,k) * M6(3,3) &
+                          + lam(i  ,j,k) * M6(4,3) &
+                          + lam(i+1,j,k) * M6(5,3) &
+                          + lam(i+2,j,k) * M6(6,3)
+                mmtmp6(4) =-lam(i-3,j,k) * M6(6,3) &
+                          - lam(i-2,j,k) * M6(5,3) &
+                          - lam(i-1,j,k) * M6(4,3) &
+                          - lam(i  ,j,k) * M6(3,3) &
+                          - lam(i+1,j,k) * M6(2,3) &
+                          - lam(i+2,j,k) * M6(1,3)
+                mmtmp6(5) =-lam(i-2,j,k) * M6(5,2) &
+                          - lam(i-1,j,k) * M6(4,2) &
+                          - lam(i  ,j,k) * M6(3,2) &
+                          - lam(i+1,j,k) * M6(2,2) &
+                          - lam(i+2,j,k) * M6(1,2)
+                mmtmp6(6) =-lam(i-1,j,k) * M6(4,1) &
+                          - lam(i  ,j,k) * M6(3,1) &
+                          - lam(i+1,j,k) * M6(2,1) &
+                          - lam(i+2,j,k) * M6(1,1)
+!EXPAND                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
+                M6p(1) = M6(1,1) * q(i-3,j,k,qpres) &
+                       + M6(1,2) * q(i-2,j,k,qpres) &
+                       + M6(1,3) * q(i-1,j,k,qpres) &
+                       - M6(6,3) * q(i  ,j,k,qpres)
+                M6p(2) = M6(2,1) * q(i-3,j,k,qpres) &
+                       + M6(2,2) * q(i-2,j,k,qpres) &
+                       + M6(2,3) * q(i-1,j,k,qpres) &
+                       - M6(5,3) * q(i  ,j,k,qpres) &
+                       - M6(5,2) * q(i+1,j,k,qpres)
+                M6p(3) = M6(3,1) * q(i-3,j,k,qpres) &
+                       + M6(3,2) * q(i-2,j,k,qpres) &
+                       + M6(3,3) * q(i-1,j,k,qpres) &
+                       - M6(4,3) * q(i  ,j,k,qpres) &
+                       - M6(4,2) * q(i+1,j,k,qpres) &
+                       - M6(4,1) * q(i+2,j,k,qpres)
+                M6p(4) = M6(4,1) * q(i-3,j,k,qpres) &
+                       + M6(4,2) * q(i-2,j,k,qpres) &
+                       + M6(4,3) * q(i-1,j,k,qpres) &
+                       - M6(3,3) * q(i  ,j,k,qpres) &
+                       - M6(3,2) * q(i+1,j,k,qpres) &
+                       - M6(3,1) * q(i+2,j,k,qpres)
+                M6p(5) = M6(5,2) * q(i-2,j,k,qpres) &
+                       + M6(5,3) * q(i-1,j,k,qpres) &
+                       - M6(2,3) * q(i  ,j,k,qpres) &
+                       - M6(2,2) * q(i+1,j,k,qpres) &
+                       - M6(2,1) * q(i+2,j,k,qpres)
+                M6p(6) = M6(6,3) * q(i-1,j,k,qpres) &
+                       - M6(1,3) * q(i  ,j,k,qpres) &
+                       - M6(1,2) * q(i+1,j,k,qpres) &
+                       - M6(1,1) * q(i+2,j,k,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i-3:i+2,j,k,qtemp)) &
                      &            + dot_product(      dpe(i-3:i+2,j,k), M6p)
 
@@ -2063,7 +2663,37 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
+!EXPAND                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
+                   M6X(1) = M6(1,1) * q(i-3,j,k,qxn) &
+                          + M6(1,2) * q(i-2,j,k,qxn) &
+                          + M6(1,3) * q(i-1,j,k,qxn) &
+                          - M6(6,3) * q(i  ,j,k,qxn)
+                   M6X(2) = M6(2,1) * q(i-3,j,k,qxn) &
+                          + M6(2,2) * q(i-2,j,k,qxn) &
+                          + M6(2,3) * q(i-1,j,k,qxn) &
+                          - M6(5,3) * q(i  ,j,k,qxn) &
+                          - M6(5,2) * q(i+1,j,k,qxn)
+                   M6X(3) = M6(3,1) * q(i-3,j,k,qxn) &
+                          + M6(3,2) * q(i-2,j,k,qxn) &
+                          + M6(3,3) * q(i-1,j,k,qxn) &
+                          - M6(4,3) * q(i  ,j,k,qxn) &
+                          - M6(4,2) * q(i+1,j,k,qxn) &
+                          - M6(4,1) * q(i+2,j,k,qxn)
+                   M6X(4) = M6(4,1) * q(i-3,j,k,qxn) &
+                          + M6(4,2) * q(i-2,j,k,qxn) &
+                          + M6(4,3) * q(i-1,j,k,qxn) &
+                          - M6(3,3) * q(i  ,j,k,qxn) &
+                          - M6(3,2) * q(i+1,j,k,qxn) &
+                          - M6(3,1) * q(i+2,j,k,qxn)
+                   M6X(5) = M6(5,2) * q(i-2,j,k,qxn) &
+                          + M6(5,3) * q(i-1,j,k,qxn) &
+                          - M6(2,3) * q(i  ,j,k,qxn) &
+                          - M6(2,2) * q(i+1,j,k,qxn) &
+                          - M6(2,1) * q(i+2,j,k,qxn)
+                   M6X(6) = M6(6,3) * q(i-1,j,k,qxn) &
+                          - M6(1,3) * q(i  ,j,k,qxn) &
+                          - M6(1,2) * q(i+1,j,k,qxn) &
+                          - M6(1,1) * q(i+2,j,k,qxn)
                 
                    Htmp(n) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
                         +    dot_product(dxy(i-3:i+2,j,k,n), M6X)
@@ -2096,15 +2726,71 @@ contains
              do iface=0,1 
                 i = hi(1)-2 + iface
 
-                mmtmp4 = matmul(vsp(i-2:i+1,j,k), M4)
+!EXPAND                mmtmp4 = matmul(vsp(i-2:i+1,j,k), M4)
+                mmtmp4(1) = vsp(i-2,j,k) * M4(1,1) &
+                          + vsp(i-1,j,k) * M4(2,1) &
+                          + vsp(i  ,j,k) * M4(3,1)
+                mmtmp4(2) = vsp(i-2,j,k) * M4(1,2) &
+                          + vsp(i-1,j,k) * M4(2,2) &
+                          + vsp(i  ,j,k) * M4(3,2) &
+                          + vsp(i+1,j,k) * M4(4,2)
+                mmtmp4(3) =-vsp(i-2,j,k) * M4(4,2) &
+                          - vsp(i-1,j,k) * M4(3,2) &
+                          - vsp(i  ,j,k) * M4(2,2) &
+                          - vsp(i+1,j,k) * M4(1,2)
+                mmtmp4(4) =-vsp(i-1,j,k) * M4(3,1) &
+                          - vsp(i  ,j,k) * M4(2,1) &
+                          - vsp(i+1,j,k) * M4(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp4, q(i-2:i+1,j,k,qu))
 
-                mmtmp4 = matmul(mu(i-2:i+1,j,k), M4)
+!EXPAND                mmtmp4 = matmul(mu(i-2:i+1,j,k), M4)
+                mmtmp4(1) = mu(i-2,j,k) * M4(1,1) &
+                          + mu(i-1,j,k) * M4(2,1) &
+                          + mu(i  ,j,k) * M4(3,1)
+                mmtmp4(2) = mu(i-2,j,k) * M4(1,2) &
+                          + mu(i-1,j,k) * M4(2,2) &
+                          + mu(i  ,j,k) * M4(3,2) &
+                          + mu(i+1,j,k) * M4(4,2)
+                mmtmp4(3) =-mu(i-2,j,k) * M4(4,2) &
+                          - mu(i-1,j,k) * M4(3,2) &
+                          - mu(i  ,j,k) * M4(2,2) &
+                          - mu(i+1,j,k) * M4(1,2)
+                mmtmp4(4) =-mu(i-1,j,k) * M4(3,1) &
+                          - mu(i  ,j,k) * M4(2,1) &
+                          - mu(i+1,j,k) * M4(1,1)
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i-2:i+1,j,k,qv))
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i-2:i+1,j,k,qw))
 
-                mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
-                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
+!EXPAND                mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
+                mmtmp4(1) = lam(i-2,j,k) * M4(1,1) &
+                          + lam(i-1,j,k) * M4(2,1) &
+                          + lam(i  ,j,k) * M4(3,1)
+                mmtmp4(2) = lam(i-2,j,k) * M4(1,2) &
+                          + lam(i-1,j,k) * M4(2,2) &
+                          + lam(i  ,j,k) * M4(3,2) &
+                          + lam(i+1,j,k) * M4(4,2)
+                mmtmp4(3) =-lam(i-2,j,k) * M4(4,2) &
+                          - lam(i-1,j,k) * M4(3,2) &
+                          - lam(i  ,j,k) * M4(2,2) &
+                          - lam(i+1,j,k) * M4(1,2)
+                mmtmp4(4) =-lam(i-1,j,k) * M4(3,1) &
+                          - lam(i  ,j,k) * M4(2,1) &
+                          - lam(i+1,j,k) * M4(1,1)
+!EXPAND                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
+                M4p(1) = M4(1,1) * q(i-2,j,k,qpres) &
+                       + M4(1,2) * q(i-1,j,k,qpres) &
+                       - M4(4,2) * q(i  ,j,k,qpres)
+                M4p(2) = M4(2,1) * q(i-2,j,k,qpres) &
+                       + M4(2,2) * q(i-1,j,k,qpres) &
+                       - M4(3,2) * q(i  ,j,k,qpres) &
+                       - M4(3,1) * q(i+1,j,k,qpres)
+                M4p(3) = M4(3,1) * q(i-2,j,k,qpres) &
+                       + M4(3,2) * q(i-1,j,k,qpres) &
+                       - M4(2,2) * q(i  ,j,k,qpres) &
+                       - M4(2,1) * q(i+1,j,k,qpres)
+                M4p(4) = M4(4,2) * q(i-1,j,k,qpres) &
+                       - M4(1,2) * q(i  ,j,k,qpres) &
+                       - M4(1,1) * q(i+1,j,k,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i-2:i+1,j,k,qtemp)) &
                      &            + dot_product(      dpe(i-2:i+1,j,k), M4p)
 
@@ -2113,7 +2799,21 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
+!EXPAND                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
+                   M4X(1) = M4(1,1) * q(i-2,j,k,qxn) &
+                          + M4(1,2) * q(i-1,j,k,qxn) &
+                          - M4(4,2) * q(i  ,j,k,qxn)
+                   M4X(2) = M4(2,1) * q(i-2,j,k,qxn) &
+                          + M4(2,2) * q(i-1,j,k,qxn) &
+                          - M4(3,2) * q(i  ,j,k,qxn) &
+                          - M4(3,1) * q(i+1,j,k,qxn)
+                   M4X(3) = M4(3,1) * q(i-2,j,k,qxn) &
+                          + M4(3,2) * q(i-1,j,k,qxn) &
+                          - M4(2,2) * q(i  ,j,k,qxn) &
+                          - M4(2,1) * q(i+1,j,k,qxn)
+                   M4X(4) = M4(4,2) * q(i-1,j,k,qxn) &
+                          - M4(1,2) * q(i  ,j,k,qxn) &
+                          - M4(1,1) * q(i+1,j,k,qxn)
                 
                    Htmp(n) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
                         +    dot_product(dxy(i-2:i+1,j,k,n), M4X)
@@ -2264,15 +2964,223 @@ contains
        do j=slo(2),shi(2)+1
           do i=lo(1),hi(1)
              
-             mmtmp8 = matmul(mu(i,j-4:j+3,k), M8)
+!EXPAND             mmtmp8 = matmul(mu(i,j-4:j+3,k), M8)
+             mmtmp8(1) = mu(i,j-4,k) * M8(1,1) &
+                       + mu(i,j-3,k) * M8(2,1) &
+                       + mu(i,j-2,k) * M8(3,1) &
+                       + mu(i,j-1,k) * M8(4,1) &
+                       + mu(i,j  ,k) * M8(5,1)
+             mmtmp8(2) = mu(i,j-4,k) * M8(1,2) &
+                       + mu(i,j-3,k) * M8(2,2) &
+                       + mu(i,j-2,k) * M8(3,2) &
+                       + mu(i,j-1,k) * M8(4,2) &
+                       + mu(i,j  ,k) * M8(5,2) &
+                       + mu(i,j+1,k) * M8(6,2)
+             mmtmp8(3) = mu(i,j-4,k) * M8(1,3) &
+                       + mu(i,j-3,k) * M8(2,3) &
+                       + mu(i,j-2,k) * M8(3,3) &
+                       + mu(i,j-1,k) * M8(4,3) &
+                       + mu(i,j  ,k) * M8(5,3) &
+                       + mu(i,j+1,k) * M8(6,3) &
+                       + mu(i,j+2,k) * M8(7,3)
+             mmtmp8(4) = mu(i,j-4,k) * M8(1,4) &
+                       + mu(i,j-3,k) * M8(2,4) &
+                       + mu(i,j-2,k) * M8(3,4) &
+                       + mu(i,j-1,k) * M8(4,4) &
+                       + mu(i,j  ,k) * M8(5,4) &
+                       + mu(i,j+1,k) * M8(6,4) &
+                       + mu(i,j+2,k) * M8(7,4) &
+                       + mu(i,j+3,k) * M8(8,4)
+             mmtmp8(5) =-mu(i,j-4,k) * M8(8,4) &
+                       - mu(i,j-3,k) * M8(7,4) &
+                       - mu(i,j-2,k) * M8(6,4) &
+                       - mu(i,j-1,k) * M8(5,4) &
+                       - mu(i,j  ,k) * M8(4,4) &
+                       - mu(i,j+1,k) * M8(3,4) &
+                       - mu(i,j+2,k) * M8(2,4) &
+                       - mu(i,j+3,k) * M8(1,4)
+             mmtmp8(6) =-mu(i,j-3,k) * M8(7,3) &
+                       - mu(i,j-2,k) * M8(6,3) &
+                       - mu(i,j-1,k) * M8(5,3) &
+                       - mu(i,j  ,k) * M8(4,3) &
+                       - mu(i,j+1,k) * M8(3,3) &
+                       - mu(i,j+2,k) * M8(2,3) &
+                       - mu(i,j+3,k) * M8(1,3)
+             mmtmp8(7) =-mu(i,j-2,k) * M8(6,2) &
+                       - mu(i,j-1,k) * M8(5,2) &
+                       - mu(i,j  ,k) * M8(4,2) &
+                       - mu(i,j+1,k) * M8(3,2) &
+                       - mu(i,j+2,k) * M8(2,2) &
+                       - mu(i,j+3,k) * M8(1,2)
+             mmtmp8(8) =-mu(i,j-1,k) * M8(5,1) &
+                       - mu(i,j  ,k) * M8(4,1) &
+                       - mu(i,j+1,k) * M8(3,1) &
+                       - mu(i,j+2,k) * M8(2,1) &
+                       - mu(i,j+3,k) * M8(1,1)
              Hg(i,j,k,imx) = dot_product(mmtmp8, q(i,j-4:j+3,k,qu))
              Hg(i,j,k,imz) = dot_product(mmtmp8, q(i,j-4:j+3,k,qw))
 
-             mmtmp8 = matmul(vsp(i,j-4:j+3,k), M8)
+!EXPAND             mmtmp8 = matmul(vsp(i,j-4:j+3,k), M8)
+             mmtmp8(1) = vsp(i,j-4,k) * M8(1,1) &
+                       + vsp(i,j-3,k) * M8(2,1) &
+                       + vsp(i,j-2,k) * M8(3,1) &
+                       + vsp(i,j-1,k) * M8(4,1) &
+                       + vsp(i,j  ,k) * M8(5,1)
+             mmtmp8(2) = vsp(i,j-4,k) * M8(1,2) &
+                       + vsp(i,j-3,k) * M8(2,2) &
+                       + vsp(i,j-2,k) * M8(3,2) &
+                       + vsp(i,j-1,k) * M8(4,2) &
+                       + vsp(i,j  ,k) * M8(5,2) &
+                       + vsp(i,j+1,k) * M8(6,2)
+             mmtmp8(3) = vsp(i,j-4,k) * M8(1,3) &
+                       + vsp(i,j-3,k) * M8(2,3) &
+                       + vsp(i,j-2,k) * M8(3,3) &
+                       + vsp(i,j-1,k) * M8(4,3) &
+                       + vsp(i,j  ,k) * M8(5,3) &
+                       + vsp(i,j+1,k) * M8(6,3) &
+                       + vsp(i,j+2,k) * M8(7,3)
+             mmtmp8(4) = vsp(i,j-4,k) * M8(1,4) &
+                       + vsp(i,j-3,k) * M8(2,4) &
+                       + vsp(i,j-2,k) * M8(3,4) &
+                       + vsp(i,j-1,k) * M8(4,4) &
+                       + vsp(i,j  ,k) * M8(5,4) &
+                       + vsp(i,j+1,k) * M8(6,4) &
+                       + vsp(i,j+2,k) * M8(7,4) &
+                       + vsp(i,j+3,k) * M8(8,4)
+             mmtmp8(5) =-vsp(i,j-4,k) * M8(8,4) &
+                       - vsp(i,j-3,k) * M8(7,4) &
+                       - vsp(i,j-2,k) * M8(6,4) &
+                       - vsp(i,j-1,k) * M8(5,4) &
+                       - vsp(i,j  ,k) * M8(4,4) &
+                       - vsp(i,j+1,k) * M8(3,4) &
+                       - vsp(i,j+2,k) * M8(2,4) &
+                       - vsp(i,j+3,k) * M8(1,4)
+             mmtmp8(6) =-vsp(i,j-3,k) * M8(7,3) &
+                       - vsp(i,j-2,k) * M8(6,3) &
+                       - vsp(i,j-1,k) * M8(5,3) &
+                       - vsp(i,j  ,k) * M8(4,3) &
+                       - vsp(i,j+1,k) * M8(3,3) &
+                       - vsp(i,j+2,k) * M8(2,3) &
+                       - vsp(i,j+3,k) * M8(1,3)
+             mmtmp8(7) =-vsp(i,j-2,k) * M8(6,2) &
+                       - vsp(i,j-1,k) * M8(5,2) &
+                       - vsp(i,j  ,k) * M8(4,2) &
+                       - vsp(i,j+1,k) * M8(3,2) &
+                       - vsp(i,j+2,k) * M8(2,2) &
+                       - vsp(i,j+3,k) * M8(1,2)
+             mmtmp8(8) =-vsp(i,j-1,k) * M8(5,1) &
+                       - vsp(i,j  ,k) * M8(4,1) &
+                       - vsp(i,j+1,k) * M8(3,1) &
+                       - vsp(i,j+2,k) * M8(2,1) &
+                       - vsp(i,j+3,k) * M8(1,1)
              Hg(i,j,k,imy) = dot_product(mmtmp8, q(i,j-4:j+3,k,qv))
 
-             mmtmp8 = matmul(lam(i,j-4:j+3,k), M8)
-             M8p = matmul(M8,  q(i,j-4:j+3,k,qpres))
+!EXPAND             mmtmp8 = matmul(lam(i,j-4:j+3,k), M8)
+             mmtmp8(1) = lam(i,j-4,k) * M8(1,1) &
+                       + lam(i,j-3,k) * M8(2,1) &
+                       + lam(i,j-2,k) * M8(3,1) &
+                       + lam(i,j-1,k) * M8(4,1) &
+                       + lam(i,j  ,k) * M8(5,1)
+             mmtmp8(2) = lam(i,j-4,k) * M8(1,2) &
+                       + lam(i,j-3,k) * M8(2,2) &
+                       + lam(i,j-2,k) * M8(3,2) &
+                       + lam(i,j-1,k) * M8(4,2) &
+                       + lam(i,j  ,k) * M8(5,2) &
+                       + lam(i,j+1,k) * M8(6,2)
+             mmtmp8(3) = lam(i,j-4,k) * M8(1,3) &
+                       + lam(i,j-3,k) * M8(2,3) &
+                       + lam(i,j-2,k) * M8(3,3) &
+                       + lam(i,j-1,k) * M8(4,3) &
+                       + lam(i,j  ,k) * M8(5,3) &
+                       + lam(i,j+1,k) * M8(6,3) &
+                       + lam(i,j+2,k) * M8(7,3)
+             mmtmp8(4) = lam(i,j-4,k) * M8(1,4) &
+                       + lam(i,j-3,k) * M8(2,4) &
+                       + lam(i,j-2,k) * M8(3,4) &
+                       + lam(i,j-1,k) * M8(4,4) &
+                       + lam(i,j  ,k) * M8(5,4) &
+                       + lam(i,j+1,k) * M8(6,4) &
+                       + lam(i,j+2,k) * M8(7,4) &
+                       + lam(i,j+3,k) * M8(8,4)
+             mmtmp8(5) =-lam(i,j-4,k) * M8(8,4) &
+                       - lam(i,j-3,k) * M8(7,4) &
+                       - lam(i,j-2,k) * M8(6,4) &
+                       - lam(i,j-1,k) * M8(5,4) &
+                       - lam(i,j  ,k) * M8(4,4) &
+                       - lam(i,j+1,k) * M8(3,4) &
+                       - lam(i,j+2,k) * M8(2,4) &
+                       - lam(i,j+3,k) * M8(1,4)
+             mmtmp8(6) =-lam(i,j-3,k) * M8(7,3) &
+                       - lam(i,j-2,k) * M8(6,3) &
+                       - lam(i,j-1,k) * M8(5,3) &
+                       - lam(i,j  ,k) * M8(4,3) &
+                       - lam(i,j+1,k) * M8(3,3) &
+                       - lam(i,j+2,k) * M8(2,3) &
+                       - lam(i,j+3,k) * M8(1,3)
+             mmtmp8(7) =-lam(i,j-2,k) * M8(6,2) &
+                       - lam(i,j-1,k) * M8(5,2) &
+                       - lam(i,j  ,k) * M8(4,2) &
+                       - lam(i,j+1,k) * M8(3,2) &
+                       - lam(i,j+2,k) * M8(2,2) &
+                       - lam(i,j+3,k) * M8(1,2)
+             mmtmp8(8) =-lam(i,j-1,k) * M8(5,1) &
+                       - lam(i,j  ,k) * M8(4,1) &
+                       - lam(i,j+1,k) * M8(3,1) &
+                       - lam(i,j+2,k) * M8(2,1) &
+                       - lam(i,j+3,k) * M8(1,1)
+!EXPAND             M8p = matmul(M8,  q(i,j-4:j+3,k,qpres))
+             M8p(1) = M8(1,1) * q(i,j-4,k,qpres) &
+                    + M8(1,2) * q(i,j-3,k,qpres) &
+                    + M8(1,3) * q(i,j-2,k,qpres) &
+                    + M8(1,4) * q(i,j-1,k,qpres) &
+                    - M8(8,4) * q(i,j  ,k,qpres)
+             M8p(2) = M8(2,1) * q(i,j-4,k,qpres) &
+                    + M8(2,2) * q(i,j-3,k,qpres) &
+                    + M8(2,3) * q(i,j-2,k,qpres) &
+                    + M8(2,4) * q(i,j-1,k,qpres) &
+                    - M8(7,4) * q(i,j  ,k,qpres) &
+                    - M8(7,3) * q(i,j+1,k,qpres)
+             M8p(3) = M8(3,1) * q(i,j-4,k,qpres) &
+                    + M8(3,2) * q(i,j-3,k,qpres) &
+                    + M8(3,3) * q(i,j-2,k,qpres) &
+                    + M8(3,4) * q(i,j-1,k,qpres) &
+                    - M8(6,4) * q(i,j  ,k,qpres) &
+                    - M8(6,3) * q(i,j+1,k,qpres) &
+                    - M8(6,2) * q(i,j+2,k,qpres)
+             M8p(4) = M8(4,1) * q(i,j-4,k,qpres) &
+                    + M8(4,2) * q(i,j-3,k,qpres) &
+                    + M8(4,3) * q(i,j-2,k,qpres) &
+                    + M8(4,4) * q(i,j-1,k,qpres) &
+                    - M8(5,4) * q(i,j  ,k,qpres) &
+                    - M8(5,3) * q(i,j+1,k,qpres) &
+                    - M8(5,2) * q(i,j+2,k,qpres) &
+                    - M8(5,1) * q(i,j+3,k,qpres)
+             M8p(5) = M8(5,1) * q(i,j-4,k,qpres) &
+                    + M8(5,2) * q(i,j-3,k,qpres) &
+                    + M8(5,3) * q(i,j-2,k,qpres) &
+                    + M8(5,4) * q(i,j-1,k,qpres) &
+                    - M8(4,4) * q(i,j  ,k,qpres) &
+                    - M8(4,3) * q(i,j+1,k,qpres) &
+                    - M8(4,2) * q(i,j+2,k,qpres) &
+                    - M8(4,1) * q(i,j+3,k,qpres)
+             M8p(6) = M8(6,2) * q(i,j-3,k,qpres) &
+                    + M8(6,3) * q(i,j-2,k,qpres) &
+                    + M8(6,4) * q(i,j-1,k,qpres) &
+                    - M8(3,4) * q(i,j  ,k,qpres) &
+                    - M8(3,3) * q(i,j+1,k,qpres) &
+                    - M8(3,2) * q(i,j+2,k,qpres) &
+                    - M8(3,1) * q(i,j+3,k,qpres)
+             M8p(7) = M8(7,3) * q(i,j-2,k,qpres) &
+                    + M8(7,4) * q(i,j-1,k,qpres) &
+                    - M8(2,4) * q(i,j  ,k,qpres) &
+                    - M8(2,3) * q(i,j+1,k,qpres) &
+                    - M8(2,2) * q(i,j+2,k,qpres) &
+                    - M8(2,1) * q(i,j+3,k,qpres)
+             M8p(8) = M8(8,4) * q(i,j-1,k,qpres) &
+                    - M8(1,4) * q(i,j  ,k,qpres) &
+                    - M8(1,3) * q(i,j+1,k,qpres) &
+                    - M8(1,2) * q(i,j+2,k,qpres) &
+                    - M8(1,1) * q(i,j+3,k,qpres)
              Hg(i,j,k,iene) = dot_product(mmtmp8, q(i,j-4:j+3,k,qtemp)) &
                   +           dot_product(dpe(i,j-4:j+3,k), M8p)
 
@@ -2281,7 +3189,59 @@ contains
                 qxn = qx1+n-1
                 qyn = qy1+n-1
 
-                M8X = matmul(M8, q(i,j-4:j+3,k,qxn))
+!EXPAND                M8X = matmul(M8, q(i,j-4:j+3,k,qxn))
+                M8X(1) = M8(1,1) * q(i,j-4,k,qxn) &
+                       + M8(1,2) * q(i,j-3,k,qxn) &
+                       + M8(1,3) * q(i,j-2,k,qxn) &
+                       + M8(1,4) * q(i,j-1,k,qxn) &
+                       - M8(8,4) * q(i,j  ,k,qxn)
+                M8X(2) = M8(2,1) * q(i,j-4,k,qxn) &
+                       + M8(2,2) * q(i,j-3,k,qxn) &
+                       + M8(2,3) * q(i,j-2,k,qxn) &
+                       + M8(2,4) * q(i,j-1,k,qxn) &
+                       - M8(7,4) * q(i,j  ,k,qxn) &
+                       - M8(7,3) * q(i,j+1,k,qxn)
+                M8X(3) = M8(3,1) * q(i,j-4,k,qxn) &
+                       + M8(3,2) * q(i,j-3,k,qxn) &
+                       + M8(3,3) * q(i,j-2,k,qxn) &
+                       + M8(3,4) * q(i,j-1,k,qxn) &
+                       - M8(6,4) * q(i,j  ,k,qxn) &
+                       - M8(6,3) * q(i,j+1,k,qxn) &
+                       - M8(6,2) * q(i,j+2,k,qxn)
+                M8X(4) = M8(4,1) * q(i,j-4,k,qxn) &
+                       + M8(4,2) * q(i,j-3,k,qxn) &
+                       + M8(4,3) * q(i,j-2,k,qxn) &
+                       + M8(4,4) * q(i,j-1,k,qxn) &
+                       - M8(5,4) * q(i,j  ,k,qxn) &
+                       - M8(5,3) * q(i,j+1,k,qxn) &
+                       - M8(5,2) * q(i,j+2,k,qxn) &
+                       - M8(5,1) * q(i,j+3,k,qxn)
+                M8X(5) = M8(5,1) * q(i,j-4,k,qxn) &
+                       + M8(5,2) * q(i,j-3,k,qxn) &
+                       + M8(5,3) * q(i,j-2,k,qxn) &
+                       + M8(5,4) * q(i,j-1,k,qxn) &
+                       - M8(4,4) * q(i,j  ,k,qxn) &
+                       - M8(4,3) * q(i,j+1,k,qxn) &
+                       - M8(4,2) * q(i,j+2,k,qxn) &
+                       - M8(4,1) * q(i,j+3,k,qxn)
+                M8X(6) = M8(6,2) * q(i,j-3,k,qxn) &
+                       + M8(6,3) * q(i,j-2,k,qxn) &
+                       + M8(6,4) * q(i,j-1,k,qxn) &
+                       - M8(3,4) * q(i,j  ,k,qxn) &
+                       - M8(3,3) * q(i,j+1,k,qxn) &
+                       - M8(3,2) * q(i,j+2,k,qxn) &
+                       - M8(3,1) * q(i,j+3,k,qxn)
+                M8X(7) = M8(7,3) * q(i,j-2,k,qxn) &
+                       + M8(7,4) * q(i,j-1,k,qxn) &
+                       - M8(2,4) * q(i,j  ,k,qxn) &
+                       - M8(2,3) * q(i,j+1,k,qxn) &
+                       - M8(2,2) * q(i,j+2,k,qxn) &
+                       - M8(2,1) * q(i,j+3,k,qxn)
+                M8X(8) = M8(8,4) * q(i,j-1,k,qxn) &
+                       - M8(1,4) * q(i,j  ,k,qxn) &
+                       - M8(1,3) * q(i,j+1,k,qxn) &
+                       - M8(1,2) * q(i,j+2,k,qxn) &
+                       - M8(1,1) * q(i,j+3,k,qxn)
 
                 Htmp(n) = dot_product(dpy(i,j-4:j+3,k,n), M8P) &
                      +    dot_product(dxy(i,j-4:j+3,k,n), M8X)
@@ -2414,15 +3374,71 @@ contains
              do iface=0,1 
                 j = lo(2)+2 + iface
 
-                mmtmp4 = matmul(mu(i,j-2:j+1,k), M4)
+!EXPAND                mmtmp4 = matmul(mu(i,j-2:j+1,k), M4)
+                mmtmp4(1) = mu(i,j-2,k) * M4(1,1) &
+                          + mu(i,j-1,k) * M4(2,1) &
+                          + mu(i,j  ,k) * M4(3,1)
+                mmtmp4(2) = mu(i,j-2,k) * M4(1,2) &
+                          + mu(i,j-1,k) * M4(2,2) &
+                          + mu(i,j  ,k) * M4(3,2) &
+                          + mu(i,j+1,k) * M4(4,2)
+                mmtmp4(3) =-mu(i,j-2,k) * M4(4,2) &
+                          - mu(i,j-1,k) * M4(3,2) &
+                          - mu(i,j  ,k) * M4(2,2) &
+                          - mu(i,j+1,k) * M4(1,2)
+                mmtmp4(4) =-mu(i,j-1,k) * M4(3,1) &
+                          - mu(i,j  ,k) * M4(2,1) &
+                          - mu(i,j+1,k) * M4(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp4, q(i,j-2:j+1,k,qu))
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i,j-2:j+1,k,qw))
 
-                mmtmp4 = matmul(vsp(i,j-2:j+1,k), M4)
+!EXPAND                mmtmp4 = matmul(vsp(i,j-2:j+1,k), M4)
+                mmtmp4(1) = vsp(i,j-2,k) * M4(1,1) &
+                          + vsp(i,j-1,k) * M4(2,1) &
+                          + vsp(i,j  ,k) * M4(3,1)
+                mmtmp4(2) = vsp(i,j-2,k) * M4(1,2) &
+                          + vsp(i,j-1,k) * M4(2,2) &
+                          + vsp(i,j  ,k) * M4(3,2) &
+                          + vsp(i,j+1,k) * M4(4,2)
+                mmtmp4(3) =-vsp(i,j-2,k) * M4(4,2) &
+                          - vsp(i,j-1,k) * M4(3,2) &
+                          - vsp(i,j  ,k) * M4(2,2) &
+                          - vsp(i,j+1,k) * M4(1,2)
+                mmtmp4(4) =-vsp(i,j-1,k) * M4(3,1) &
+                          - vsp(i,j  ,k) * M4(2,1) &
+                          - vsp(i,j+1,k) * M4(1,1)
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i,j-2:j+1,k,qv))
 
-                mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
-                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
+!EXPAND                mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
+                mmtmp4(1) = lam(i,j-2,k) * M4(1,1) &
+                          + lam(i,j-1,k) * M4(2,1) &
+                          + lam(i,j  ,k) * M4(3,1)
+                mmtmp4(2) = lam(i,j-2,k) * M4(1,2) &
+                          + lam(i,j-1,k) * M4(2,2) &
+                          + lam(i,j  ,k) * M4(3,2) &
+                          + lam(i,j+1,k) * M4(4,2)
+                mmtmp4(3) =-lam(i,j-2,k) * M4(4,2) &
+                          - lam(i,j-1,k) * M4(3,2) &
+                          - lam(i,j  ,k) * M4(2,2) &
+                          - lam(i,j+1,k) * M4(1,2)
+                mmtmp4(4) =-lam(i,j-1,k) * M4(3,1) &
+                          - lam(i,j  ,k) * M4(2,1) &
+                          - lam(i,j+1,k) * M4(1,1)
+!EXPAND                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
+                M4p(1) = M4(1,1) * q(i,j-2,k,qpres) &
+                       + M4(1,2) * q(i,j-1,k,qpres) &
+                       - M4(4,2) * q(i,j  ,k,qpres)
+                M4p(2) = M4(2,1) * q(i,j-2,k,qpres) &
+                       + M4(2,2) * q(i,j-1,k,qpres) &
+                       - M4(3,2) * q(i,j  ,k,qpres) &
+                       - M4(3,1) * q(i,j+1,k,qpres)
+                M4p(3) = M4(3,1) * q(i,j-2,k,qpres) &
+                       + M4(3,2) * q(i,j-1,k,qpres) &
+                       - M4(2,2) * q(i,j  ,k,qpres) &
+                       - M4(2,1) * q(i,j+1,k,qpres)
+                M4p(4) = M4(4,2) * q(i,j-1,k,qpres) &
+                       - M4(1,2) * q(i,j  ,k,qpres) &
+                       - M4(1,1) * q(i,j+1,k,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j-2:j+1,k,qtemp)) &
                      &            + dot_product(      dpe(i,j-2:j+1,k), M4p)
 
@@ -2431,7 +3447,21 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
+!EXPAND                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
+                   M4X(1) = M4(1,1) * q(i,j-2,k,qxn) &
+                          + M4(1,2) * q(i,j-1,k,qxn) &
+                          - M4(4,2) * q(i,j  ,k,qxn)
+                   M4X(2) = M4(2,1) * q(i,j-2,k,qxn) &
+                          + M4(2,2) * q(i,j-1,k,qxn) &
+                          - M4(3,2) * q(i,j  ,k,qxn) &
+                          - M4(3,1) * q(i,j+1,k,qxn)
+                   M4X(3) = M4(3,1) * q(i,j-2,k,qxn) &
+                          + M4(3,2) * q(i,j-1,k,qxn) &
+                          - M4(2,2) * q(i,j  ,k,qxn) &
+                          - M4(2,1) * q(i,j+1,k,qxn)
+                   M4X(4) = M4(4,2) * q(i,j-1,k,qxn) &
+                          - M4(1,2) * q(i,j  ,k,qxn) &
+                          - M4(1,1) * q(i,j+1,k,qxn)
                 
                    Htmp(n) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
                         +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
@@ -2466,15 +3496,135 @@ contains
              do iface=0,1 
                 j = lo(2)+3 + iface
 
-                mmtmp6 = matmul(mu(i,j-3:j+2,k), M6)
+!EXPAND                mmtmp6 = matmul(mu(i,j-3:j+2,k), M6)
+                mmtmp6(1) = mu(i,j-3,k) * M6(1,1) &
+                          + mu(i,j-2,k) * M6(2,1) &
+                          + mu(i,j-1,k) * M6(3,1) &
+                          + mu(i,j  ,k) * M6(4,1)
+                mmtmp6(2) = mu(i,j-3,k) * M6(1,2) &
+                          + mu(i,j-2,k) * M6(2,2) &
+                          + mu(i,j-1,k) * M6(3,2) &
+                          + mu(i,j  ,k) * M6(4,2) &
+                          + mu(i,j+1,k) * M6(5,2)
+                mmtmp6(3) = mu(i,j-3,k) * M6(1,3) &
+                          + mu(i,j-2,k) * M6(2,3) &
+                          + mu(i,j-1,k) * M6(3,3) &
+                          + mu(i,j  ,k) * M6(4,3) &
+                          + mu(i,j+1,k) * M6(5,3) &
+                          + mu(i,j+2,k) * M6(6,3)
+                mmtmp6(4) =-mu(i,j-3,k) * M6(6,3) &
+                          - mu(i,j-2,k) * M6(5,3) &
+                          - mu(i,j-1,k) * M6(4,3) &
+                          - mu(i,j  ,k) * M6(3,3) &
+                          - mu(i,j+1,k) * M6(2,3) &
+                          - mu(i,j+2,k) * M6(1,3)
+                mmtmp6(5) =-mu(i,j-2,k) * M6(5,2) &
+                          - mu(i,j-1,k) * M6(4,2) &
+                          - mu(i,j  ,k) * M6(3,2) &
+                          - mu(i,j+1,k) * M6(2,2) &
+                          - mu(i,j+2,k) * M6(1,2)
+                mmtmp6(6) =-mu(i,j-1,k) * M6(4,1) &
+                          - mu(i,j  ,k) * M6(3,1) &
+                          - mu(i,j+1,k) * M6(2,1) &
+                          - mu(i,j+2,k) * M6(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp6, q(i,j-3:j+2,k,qu))
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i,j-3:j+2,k,qw))
 
-                mmtmp6 = matmul(vsp(i,j-3:j+2,k), M6)
+!EXPAND                mmtmp6 = matmul(vsp(i,j-3:j+2,k), M6)
+                mmtmp6(1) = vsp(i,j-3,k) * M6(1,1) &
+                          + vsp(i,j-2,k) * M6(2,1) &
+                          + vsp(i,j-1,k) * M6(3,1) &
+                          + vsp(i,j  ,k) * M6(4,1)
+                mmtmp6(2) = vsp(i,j-3,k) * M6(1,2) &
+                          + vsp(i,j-2,k) * M6(2,2) &
+                          + vsp(i,j-1,k) * M6(3,2) &
+                          + vsp(i,j  ,k) * M6(4,2) &
+                          + vsp(i,j+1,k) * M6(5,2)
+                mmtmp6(3) = vsp(i,j-3,k) * M6(1,3) &
+                          + vsp(i,j-2,k) * M6(2,3) &
+                          + vsp(i,j-1,k) * M6(3,3) &
+                          + vsp(i,j  ,k) * M6(4,3) &
+                          + vsp(i,j+1,k) * M6(5,3) &
+                          + vsp(i,j+2,k) * M6(6,3)
+                mmtmp6(4) =-vsp(i,j-3,k) * M6(6,3) &
+                          - vsp(i,j-2,k) * M6(5,3) &
+                          - vsp(i,j-1,k) * M6(4,3) &
+                          - vsp(i,j  ,k) * M6(3,3) &
+                          - vsp(i,j+1,k) * M6(2,3) &
+                          - vsp(i,j+2,k) * M6(1,3)
+                mmtmp6(5) =-vsp(i,j-2,k) * M6(5,2) &
+                          - vsp(i,j-1,k) * M6(4,2) &
+                          - vsp(i,j  ,k) * M6(3,2) &
+                          - vsp(i,j+1,k) * M6(2,2) &
+                          - vsp(i,j+2,k) * M6(1,2)
+                mmtmp6(6) =-vsp(i,j-1,k) * M6(4,1) &
+                          - vsp(i,j  ,k) * M6(3,1) &
+                          - vsp(i,j+1,k) * M6(2,1) &
+                          - vsp(i,j+2,k) * M6(1,1)
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i,j-3:j+2,k,qv))
 
-                mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
-                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
+!EXPAND                mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
+                mmtmp6(1) = lam(i,j-3,k) * M6(1,1) &
+                          + lam(i,j-2,k) * M6(2,1) &
+                          + lam(i,j-1,k) * M6(3,1) &
+                          + lam(i,j  ,k) * M6(4,1)
+                mmtmp6(2) = lam(i,j-3,k) * M6(1,2) &
+                          + lam(i,j-2,k) * M6(2,2) &
+                          + lam(i,j-1,k) * M6(3,2) &
+                          + lam(i,j  ,k) * M6(4,2) &
+                          + lam(i,j+1,k) * M6(5,2)
+                mmtmp6(3) = lam(i,j-3,k) * M6(1,3) &
+                          + lam(i,j-2,k) * M6(2,3) &
+                          + lam(i,j-1,k) * M6(3,3) &
+                          + lam(i,j  ,k) * M6(4,3) &
+                          + lam(i,j+1,k) * M6(5,3) &
+                          + lam(i,j+2,k) * M6(6,3)
+                mmtmp6(4) =-lam(i,j-3,k) * M6(6,3) &
+                          - lam(i,j-2,k) * M6(5,3) &
+                          - lam(i,j-1,k) * M6(4,3) &
+                          - lam(i,j  ,k) * M6(3,3) &
+                          - lam(i,j+1,k) * M6(2,3) &
+                          - lam(i,j+2,k) * M6(1,3)
+                mmtmp6(5) =-lam(i,j-2,k) * M6(5,2) &
+                          - lam(i,j-1,k) * M6(4,2) &
+                          - lam(i,j  ,k) * M6(3,2) &
+                          - lam(i,j+1,k) * M6(2,2) &
+                          - lam(i,j+2,k) * M6(1,2)
+                mmtmp6(6) =-lam(i,j-1,k) * M6(4,1) &
+                          - lam(i,j  ,k) * M6(3,1) &
+                          - lam(i,j+1,k) * M6(2,1) &
+                          - lam(i,j+2,k) * M6(1,1)
+!EXPAND                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
+                M6p(1) = M6(1,1) * q(i,j-3,k,qpres) &
+                       + M6(1,2) * q(i,j-2,k,qpres) &
+                       + M6(1,3) * q(i,j-1,k,qpres) &
+                       - M6(6,3) * q(i,j  ,k,qpres)
+                M6p(2) = M6(2,1) * q(i,j-3,k,qpres) &
+                       + M6(2,2) * q(i,j-2,k,qpres) &
+                       + M6(2,3) * q(i,j-1,k,qpres) &
+                       - M6(5,3) * q(i,j  ,k,qpres) &
+                       - M6(5,2) * q(i,j+1,k,qpres)
+                M6p(3) = M6(3,1) * q(i,j-3,k,qpres) &
+                       + M6(3,2) * q(i,j-2,k,qpres) &
+                       + M6(3,3) * q(i,j-1,k,qpres) &
+                       - M6(4,3) * q(i,j  ,k,qpres) &
+                       - M6(4,2) * q(i,j+1,k,qpres) &
+                       - M6(4,1) * q(i,j+2,k,qpres)
+                M6p(4) = M6(4,1) * q(i,j-3,k,qpres) &
+                       + M6(4,2) * q(i,j-2,k,qpres) &
+                       + M6(4,3) * q(i,j-1,k,qpres) &
+                       - M6(3,3) * q(i,j  ,k,qpres) &
+                       - M6(3,2) * q(i,j+1,k,qpres) &
+                       - M6(3,1) * q(i,j+2,k,qpres)
+                M6p(5) = M6(5,2) * q(i,j-2,k,qpres) &
+                       + M6(5,3) * q(i,j-1,k,qpres) &
+                       - M6(2,3) * q(i,j  ,k,qpres) &
+                       - M6(2,2) * q(i,j+1,k,qpres) &
+                       - M6(2,1) * q(i,j+2,k,qpres)
+                M6p(6) = M6(6,3) * q(i,j-1,k,qpres) &
+                       - M6(1,3) * q(i,j  ,k,qpres) &
+                       - M6(1,2) * q(i,j+1,k,qpres) &
+                       - M6(1,1) * q(i,j+2,k,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j-3:j+2,k,qtemp))      &
                      &            + dot_product(      dpe(i,j-3:j+2,k), M6p)
 
@@ -2483,7 +3633,37 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
+!EXPAND                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
+                   M6X(1) = M6(1,1) * q(i,j-3,k,qxn) &
+                          + M6(1,2) * q(i,j-2,k,qxn) &
+                          + M6(1,3) * q(i,j-1,k,qxn) &
+                          - M6(6,3) * q(i,j  ,k,qxn)
+                   M6X(2) = M6(2,1) * q(i,j-3,k,qxn) &
+                          + M6(2,2) * q(i,j-2,k,qxn) &
+                          + M6(2,3) * q(i,j-1,k,qxn) &
+                          - M6(5,3) * q(i,j  ,k,qxn) &
+                          - M6(5,2) * q(i,j+1,k,qxn)
+                   M6X(3) = M6(3,1) * q(i,j-3,k,qxn) &
+                          + M6(3,2) * q(i,j-2,k,qxn) &
+                          + M6(3,3) * q(i,j-1,k,qxn) &
+                          - M6(4,3) * q(i,j  ,k,qxn) &
+                          - M6(4,2) * q(i,j+1,k,qxn) &
+                          - M6(4,1) * q(i,j+2,k,qxn)
+                   M6X(4) = M6(4,1) * q(i,j-3,k,qxn) &
+                          + M6(4,2) * q(i,j-2,k,qxn) &
+                          + M6(4,3) * q(i,j-1,k,qxn) &
+                          - M6(3,3) * q(i,j  ,k,qxn) &
+                          - M6(3,2) * q(i,j+1,k,qxn) &
+                          - M6(3,1) * q(i,j+2,k,qxn)
+                   M6X(5) = M6(5,2) * q(i,j-2,k,qxn) &
+                          + M6(5,3) * q(i,j-1,k,qxn) &
+                          - M6(2,3) * q(i,j  ,k,qxn) &
+                          - M6(2,2) * q(i,j+1,k,qxn) &
+                          - M6(2,1) * q(i,j+2,k,qxn)
+                   M6X(6) = M6(6,3) * q(i,j-1,k,qxn) &
+                          - M6(1,3) * q(i,j  ,k,qxn) &
+                          - M6(1,2) * q(i,j+1,k,qxn) &
+                          - M6(1,1) * q(i,j+2,k,qxn)
                 
                    Htmp(n) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
                         +    dot_product(dxy(i,j-3:j+2,k,n), M6X)
@@ -2522,15 +3702,135 @@ contains
              do iface=0,1 
                 j = hi(2)-3 + iface
 
-                mmtmp6 = matmul(mu(i,j-3:j+2,k), M6)
+!EXPAND                mmtmp6 = matmul(mu(i,j-3:j+2,k), M6)
+                mmtmp6(1) = mu(i,j-3,k) * M6(1,1) &
+                          + mu(i,j-2,k) * M6(2,1) &
+                          + mu(i,j-1,k) * M6(3,1) &
+                          + mu(i,j  ,k) * M6(4,1)
+                mmtmp6(2) = mu(i,j-3,k) * M6(1,2) &
+                          + mu(i,j-2,k) * M6(2,2) &
+                          + mu(i,j-1,k) * M6(3,2) &
+                          + mu(i,j  ,k) * M6(4,2) &
+                          + mu(i,j+1,k) * M6(5,2)
+                mmtmp6(3) = mu(i,j-3,k) * M6(1,3) &
+                          + mu(i,j-2,k) * M6(2,3) &
+                          + mu(i,j-1,k) * M6(3,3) &
+                          + mu(i,j  ,k) * M6(4,3) &
+                          + mu(i,j+1,k) * M6(5,3) &
+                          + mu(i,j+2,k) * M6(6,3)
+                mmtmp6(4) =-mu(i,j-3,k) * M6(6,3) &
+                          - mu(i,j-2,k) * M6(5,3) &
+                          - mu(i,j-1,k) * M6(4,3) &
+                          - mu(i,j  ,k) * M6(3,3) &
+                          - mu(i,j+1,k) * M6(2,3) &
+                          - mu(i,j+2,k) * M6(1,3)
+                mmtmp6(5) =-mu(i,j-2,k) * M6(5,2) &
+                          - mu(i,j-1,k) * M6(4,2) &
+                          - mu(i,j  ,k) * M6(3,2) &
+                          - mu(i,j+1,k) * M6(2,2) &
+                          - mu(i,j+2,k) * M6(1,2)
+                mmtmp6(6) =-mu(i,j-1,k) * M6(4,1) &
+                          - mu(i,j  ,k) * M6(3,1) &
+                          - mu(i,j+1,k) * M6(2,1) &
+                          - mu(i,j+2,k) * M6(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp6, q(i,j-3:j+2,k,qu))
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i,j-3:j+2,k,qw))
 
-                mmtmp6 = matmul(vsp(i,j-3:j+2,k), M6)
+!EXPAND                mmtmp6 = matmul(vsp(i,j-3:j+2,k), M6)
+                mmtmp6(1) = vsp(i,j-3,k) * M6(1,1) &
+                          + vsp(i,j-2,k) * M6(2,1) &
+                          + vsp(i,j-1,k) * M6(3,1) &
+                          + vsp(i,j  ,k) * M6(4,1)
+                mmtmp6(2) = vsp(i,j-3,k) * M6(1,2) &
+                          + vsp(i,j-2,k) * M6(2,2) &
+                          + vsp(i,j-1,k) * M6(3,2) &
+                          + vsp(i,j  ,k) * M6(4,2) &
+                          + vsp(i,j+1,k) * M6(5,2)
+                mmtmp6(3) = vsp(i,j-3,k) * M6(1,3) &
+                          + vsp(i,j-2,k) * M6(2,3) &
+                          + vsp(i,j-1,k) * M6(3,3) &
+                          + vsp(i,j  ,k) * M6(4,3) &
+                          + vsp(i,j+1,k) * M6(5,3) &
+                          + vsp(i,j+2,k) * M6(6,3)
+                mmtmp6(4) =-vsp(i,j-3,k) * M6(6,3) &
+                          - vsp(i,j-2,k) * M6(5,3) &
+                          - vsp(i,j-1,k) * M6(4,3) &
+                          - vsp(i,j  ,k) * M6(3,3) &
+                          - vsp(i,j+1,k) * M6(2,3) &
+                          - vsp(i,j+2,k) * M6(1,3)
+                mmtmp6(5) =-vsp(i,j-2,k) * M6(5,2) &
+                          - vsp(i,j-1,k) * M6(4,2) &
+                          - vsp(i,j  ,k) * M6(3,2) &
+                          - vsp(i,j+1,k) * M6(2,2) &
+                          - vsp(i,j+2,k) * M6(1,2)
+                mmtmp6(6) =-vsp(i,j-1,k) * M6(4,1) &
+                          - vsp(i,j  ,k) * M6(3,1) &
+                          - vsp(i,j+1,k) * M6(2,1) &
+                          - vsp(i,j+2,k) * M6(1,1)
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i,j-3:j+2,k,qv))
 
-                mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
-                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
+!EXPAND                mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
+                mmtmp6(1) = lam(i,j-3,k) * M6(1,1) &
+                          + lam(i,j-2,k) * M6(2,1) &
+                          + lam(i,j-1,k) * M6(3,1) &
+                          + lam(i,j  ,k) * M6(4,1)
+                mmtmp6(2) = lam(i,j-3,k) * M6(1,2) &
+                          + lam(i,j-2,k) * M6(2,2) &
+                          + lam(i,j-1,k) * M6(3,2) &
+                          + lam(i,j  ,k) * M6(4,2) &
+                          + lam(i,j+1,k) * M6(5,2)
+                mmtmp6(3) = lam(i,j-3,k) * M6(1,3) &
+                          + lam(i,j-2,k) * M6(2,3) &
+                          + lam(i,j-1,k) * M6(3,3) &
+                          + lam(i,j  ,k) * M6(4,3) &
+                          + lam(i,j+1,k) * M6(5,3) &
+                          + lam(i,j+2,k) * M6(6,3)
+                mmtmp6(4) =-lam(i,j-3,k) * M6(6,3) &
+                          - lam(i,j-2,k) * M6(5,3) &
+                          - lam(i,j-1,k) * M6(4,3) &
+                          - lam(i,j  ,k) * M6(3,3) &
+                          - lam(i,j+1,k) * M6(2,3) &
+                          - lam(i,j+2,k) * M6(1,3)
+                mmtmp6(5) =-lam(i,j-2,k) * M6(5,2) &
+                          - lam(i,j-1,k) * M6(4,2) &
+                          - lam(i,j  ,k) * M6(3,2) &
+                          - lam(i,j+1,k) * M6(2,2) &
+                          - lam(i,j+2,k) * M6(1,2)
+                mmtmp6(6) =-lam(i,j-1,k) * M6(4,1) &
+                          - lam(i,j  ,k) * M6(3,1) &
+                          - lam(i,j+1,k) * M6(2,1) &
+                          - lam(i,j+2,k) * M6(1,1)
+!EXPAND                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
+                M6p(1) = M6(1,1) * q(i,j-3,k,qpres) &
+                       + M6(1,2) * q(i,j-2,k,qpres) &
+                       + M6(1,3) * q(i,j-1,k,qpres) &
+                       - M6(6,3) * q(i,j  ,k,qpres)
+                M6p(2) = M6(2,1) * q(i,j-3,k,qpres) &
+                       + M6(2,2) * q(i,j-2,k,qpres) &
+                       + M6(2,3) * q(i,j-1,k,qpres) &
+                       - M6(5,3) * q(i,j  ,k,qpres) &
+                       - M6(5,2) * q(i,j+1,k,qpres)
+                M6p(3) = M6(3,1) * q(i,j-3,k,qpres) &
+                       + M6(3,2) * q(i,j-2,k,qpres) &
+                       + M6(3,3) * q(i,j-1,k,qpres) &
+                       - M6(4,3) * q(i,j  ,k,qpres) &
+                       - M6(4,2) * q(i,j+1,k,qpres) &
+                       - M6(4,1) * q(i,j+2,k,qpres)
+                M6p(4) = M6(4,1) * q(i,j-3,k,qpres) &
+                       + M6(4,2) * q(i,j-2,k,qpres) &
+                       + M6(4,3) * q(i,j-1,k,qpres) &
+                       - M6(3,3) * q(i,j  ,k,qpres) &
+                       - M6(3,2) * q(i,j+1,k,qpres) &
+                       - M6(3,1) * q(i,j+2,k,qpres)
+                M6p(5) = M6(5,2) * q(i,j-2,k,qpres) &
+                       + M6(5,3) * q(i,j-1,k,qpres) &
+                       - M6(2,3) * q(i,j  ,k,qpres) &
+                       - M6(2,2) * q(i,j+1,k,qpres) &
+                       - M6(2,1) * q(i,j+2,k,qpres)
+                M6p(6) = M6(6,3) * q(i,j-1,k,qpres) &
+                       - M6(1,3) * q(i,j  ,k,qpres) &
+                       - M6(1,2) * q(i,j+1,k,qpres) &
+                       - M6(1,1) * q(i,j+2,k,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j-3:j+2,k,qtemp))      &
                      &            + dot_product(      dpe(i,j-3:j+2,k), M6p)
 
@@ -2539,7 +3839,37 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
+!EXPAND                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
+                   M6X(1) = M6(1,1) * q(i,j-3,k,qxn) &
+                          + M6(1,2) * q(i,j-2,k,qxn) &
+                          + M6(1,3) * q(i,j-1,k,qxn) &
+                          - M6(6,3) * q(i,j  ,k,qxn)
+                   M6X(2) = M6(2,1) * q(i,j-3,k,qxn) &
+                          + M6(2,2) * q(i,j-2,k,qxn) &
+                          + M6(2,3) * q(i,j-1,k,qxn) &
+                          - M6(5,3) * q(i,j  ,k,qxn) &
+                          - M6(5,2) * q(i,j+1,k,qxn)
+                   M6X(3) = M6(3,1) * q(i,j-3,k,qxn) &
+                          + M6(3,2) * q(i,j-2,k,qxn) &
+                          + M6(3,3) * q(i,j-1,k,qxn) &
+                          - M6(4,3) * q(i,j  ,k,qxn) &
+                          - M6(4,2) * q(i,j+1,k,qxn) &
+                          - M6(4,1) * q(i,j+2,k,qxn)
+                   M6X(4) = M6(4,1) * q(i,j-3,k,qxn) &
+                          + M6(4,2) * q(i,j-2,k,qxn) &
+                          + M6(4,3) * q(i,j-1,k,qxn) &
+                          - M6(3,3) * q(i,j  ,k,qxn) &
+                          - M6(3,2) * q(i,j+1,k,qxn) &
+                          - M6(3,1) * q(i,j+2,k,qxn)
+                   M6X(5) = M6(5,2) * q(i,j-2,k,qxn) &
+                          + M6(5,3) * q(i,j-1,k,qxn) &
+                          - M6(2,3) * q(i,j  ,k,qxn) &
+                          - M6(2,2) * q(i,j+1,k,qxn) &
+                          - M6(2,1) * q(i,j+2,k,qxn)
+                   M6X(6) = M6(6,3) * q(i,j-1,k,qxn) &
+                          - M6(1,3) * q(i,j  ,k,qxn) &
+                          - M6(1,2) * q(i,j+1,k,qxn) &
+                          - M6(1,1) * q(i,j+2,k,qxn)
                 
                    Htmp(n) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
                         +    dot_product(dxy(i,j-3:j+2,k,n), M6X)
@@ -2574,15 +3904,71 @@ contains
              do iface=0,1 
                 j = hi(2)-2 + iface
 
-                mmtmp4 = matmul(mu(i,j-2:j+1,k), M4)
+!EXPAND                mmtmp4 = matmul(mu(i,j-2:j+1,k), M4)
+                mmtmp4(1) = mu(i,j-2,k) * M4(1,1) &
+                          + mu(i,j-1,k) * M4(2,1) &
+                          + mu(i,j  ,k) * M4(3,1)
+                mmtmp4(2) = mu(i,j-2,k) * M4(1,2) &
+                          + mu(i,j-1,k) * M4(2,2) &
+                          + mu(i,j  ,k) * M4(3,2) &
+                          + mu(i,j+1,k) * M4(4,2)
+                mmtmp4(3) =-mu(i,j-2,k) * M4(4,2) &
+                          - mu(i,j-1,k) * M4(3,2) &
+                          - mu(i,j  ,k) * M4(2,2) &
+                          - mu(i,j+1,k) * M4(1,2)
+                mmtmp4(4) =-mu(i,j-1,k) * M4(3,1) &
+                          - mu(i,j  ,k) * M4(2,1) &
+                          - mu(i,j+1,k) * M4(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp4, q(i,j-2:j+1,k,qu))
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i,j-2:j+1,k,qw))
 
-                mmtmp4 = matmul(vsp(i,j-2:j+1,k), M4)
+!EXPAND                mmtmp4 = matmul(vsp(i,j-2:j+1,k), M4)
+                mmtmp4(1) = vsp(i,j-2,k) * M4(1,1) &
+                          + vsp(i,j-1,k) * M4(2,1) &
+                          + vsp(i,j  ,k) * M4(3,1)
+                mmtmp4(2) = vsp(i,j-2,k) * M4(1,2) &
+                          + vsp(i,j-1,k) * M4(2,2) &
+                          + vsp(i,j  ,k) * M4(3,2) &
+                          + vsp(i,j+1,k) * M4(4,2)
+                mmtmp4(3) =-vsp(i,j-2,k) * M4(4,2) &
+                          - vsp(i,j-1,k) * M4(3,2) &
+                          - vsp(i,j  ,k) * M4(2,2) &
+                          - vsp(i,j+1,k) * M4(1,2)
+                mmtmp4(4) =-vsp(i,j-1,k) * M4(3,1) &
+                          - vsp(i,j  ,k) * M4(2,1) &
+                          - vsp(i,j+1,k) * M4(1,1)
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i,j-2:j+1,k,qv))
 
-                mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
-                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
+!EXPAND                mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
+                mmtmp4(1) = lam(i,j-2,k) * M4(1,1) &
+                          + lam(i,j-1,k) * M4(2,1) &
+                          + lam(i,j  ,k) * M4(3,1)
+                mmtmp4(2) = lam(i,j-2,k) * M4(1,2) &
+                          + lam(i,j-1,k) * M4(2,2) &
+                          + lam(i,j  ,k) * M4(3,2) &
+                          + lam(i,j+1,k) * M4(4,2)
+                mmtmp4(3) =-lam(i,j-2,k) * M4(4,2) &
+                          - lam(i,j-1,k) * M4(3,2) &
+                          - lam(i,j  ,k) * M4(2,2) &
+                          - lam(i,j+1,k) * M4(1,2)
+                mmtmp4(4) =-lam(i,j-1,k) * M4(3,1) &
+                          - lam(i,j  ,k) * M4(2,1) &
+                          - lam(i,j+1,k) * M4(1,1)
+!EXPAND                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
+                M4p(1) = M4(1,1) * q(i,j-2,k,qpres) &
+                       + M4(1,2) * q(i,j-1,k,qpres) &
+                       - M4(4,2) * q(i,j  ,k,qpres)
+                M4p(2) = M4(2,1) * q(i,j-2,k,qpres) &
+                       + M4(2,2) * q(i,j-1,k,qpres) &
+                       - M4(3,2) * q(i,j  ,k,qpres) &
+                       - M4(3,1) * q(i,j+1,k,qpres)
+                M4p(3) = M4(3,1) * q(i,j-2,k,qpres) &
+                       + M4(3,2) * q(i,j-1,k,qpres) &
+                       - M4(2,2) * q(i,j  ,k,qpres) &
+                       - M4(2,1) * q(i,j+1,k,qpres)
+                M4p(4) = M4(4,2) * q(i,j-1,k,qpres) &
+                       - M4(1,2) * q(i,j  ,k,qpres) &
+                       - M4(1,1) * q(i,j+1,k,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j-2:j+1,k,qtemp)) &
                      &            + dot_product(      dpe(i,j-2:j+1,k), M4p)
 
@@ -2591,7 +3977,21 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
+!EXPAND                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
+                   M4X(1) = M4(1,1) * q(i,j-2,k,qxn) &
+                          + M4(1,2) * q(i,j-1,k,qxn) &
+                          - M4(4,2) * q(i,j  ,k,qxn)
+                   M4X(2) = M4(2,1) * q(i,j-2,k,qxn) &
+                          + M4(2,2) * q(i,j-1,k,qxn) &
+                          - M4(3,2) * q(i,j  ,k,qxn) &
+                          - M4(3,1) * q(i,j+1,k,qxn)
+                   M4X(3) = M4(3,1) * q(i,j-2,k,qxn) &
+                          + M4(3,2) * q(i,j-1,k,qxn) &
+                          - M4(2,2) * q(i,j  ,k,qxn) &
+                          - M4(2,1) * q(i,j+1,k,qxn)
+                   M4X(4) = M4(4,2) * q(i,j-1,k,qxn) &
+                          - M4(1,2) * q(i,j  ,k,qxn) &
+                          - M4(1,1) * q(i,j+1,k,qxn)
                 
                    Htmp(n) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
                         +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
@@ -2747,15 +4147,223 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
-             mmtmp8 = matmul(mu(i,j,k-4:k+3), M8)
+!EXPAND             mmtmp8 = matmul(mu(i,j,k-4:k+3), M8)
+             mmtmp8(1) = mu(i,j,k-4) * M8(1,1) &
+                       + mu(i,j,k-3) * M8(2,1) &
+                       + mu(i,j,k-2) * M8(3,1) &
+                       + mu(i,j,k-1) * M8(4,1) &
+                       + mu(i,j,k  ) * M8(5,1)
+             mmtmp8(2) = mu(i,j,k-4) * M8(1,2) &
+                       + mu(i,j,k-3) * M8(2,2) &
+                       + mu(i,j,k-2) * M8(3,2) &
+                       + mu(i,j,k-1) * M8(4,2) &
+                       + mu(i,j,k  ) * M8(5,2) &
+                       + mu(i,j,k+1) * M8(6,2)
+             mmtmp8(3) = mu(i,j,k-4) * M8(1,3) &
+                       + mu(i,j,k-3) * M8(2,3) &
+                       + mu(i,j,k-2) * M8(3,3) &
+                       + mu(i,j,k-1) * M8(4,3) &
+                       + mu(i,j,k  ) * M8(5,3) &
+                       + mu(i,j,k+1) * M8(6,3) &
+                       + mu(i,j,k+2) * M8(7,3)
+             mmtmp8(4) = mu(i,j,k-4) * M8(1,4) &
+                       + mu(i,j,k-3) * M8(2,4) &
+                       + mu(i,j,k-2) * M8(3,4) &
+                       + mu(i,j,k-1) * M8(4,4) &
+                       + mu(i,j,k  ) * M8(5,4) &
+                       + mu(i,j,k+1) * M8(6,4) &
+                       + mu(i,j,k+2) * M8(7,4) &
+                       + mu(i,j,k+3) * M8(8,4)
+             mmtmp8(5) =-mu(i,j,k-4) * M8(8,4) &
+                       - mu(i,j,k-3) * M8(7,4) &
+                       - mu(i,j,k-2) * M8(6,4) &
+                       - mu(i,j,k-1) * M8(5,4) &
+                       - mu(i,j,k  ) * M8(4,4) &
+                       - mu(i,j,k+1) * M8(3,4) &
+                       - mu(i,j,k+2) * M8(2,4) &
+                       - mu(i,j,k+3) * M8(1,4)
+             mmtmp8(6) =-mu(i,j,k-3) * M8(7,3) &
+                       - mu(i,j,k-2) * M8(6,3) &
+                       - mu(i,j,k-1) * M8(5,3) &
+                       - mu(i,j,k  ) * M8(4,3) &
+                       - mu(i,j,k+1) * M8(3,3) &
+                       - mu(i,j,k+2) * M8(2,3) &
+                       - mu(i,j,k+3) * M8(1,3)
+             mmtmp8(7) =-mu(i,j,k-2) * M8(6,2) &
+                       - mu(i,j,k-1) * M8(5,2) &
+                       - mu(i,j,k  ) * M8(4,2) &
+                       - mu(i,j,k+1) * M8(3,2) &
+                       - mu(i,j,k+2) * M8(2,2) &
+                       - mu(i,j,k+3) * M8(1,2)
+             mmtmp8(8) =-mu(i,j,k-1) * M8(5,1) &
+                       - mu(i,j,k  ) * M8(4,1) &
+                       - mu(i,j,k+1) * M8(3,1) &
+                       - mu(i,j,k+2) * M8(2,1) &
+                       - mu(i,j,k+3) * M8(1,1)
              Hg(i,j,k,imx) = dot_product(mmtmp8, q(i,j,k-4:k+3,qu))
              Hg(i,j,k,imy) = dot_product(mmtmp8, q(i,j,k-4:k+3,qv))
 
-             mmtmp8 = matmul(vsp(i,j,k-4:k+3), M8)
+!EXPAND             mmtmp8 = matmul(vsp(i,j,k-4:k+3), M8)
+             mmtmp8(1) = vsp(i,j,k-4) * M8(1,1) &
+                       + vsp(i,j,k-3) * M8(2,1) &
+                       + vsp(i,j,k-2) * M8(3,1) &
+                       + vsp(i,j,k-1) * M8(4,1) &
+                       + vsp(i,j,k  ) * M8(5,1)
+             mmtmp8(2) = vsp(i,j,k-4) * M8(1,2) &
+                       + vsp(i,j,k-3) * M8(2,2) &
+                       + vsp(i,j,k-2) * M8(3,2) &
+                       + vsp(i,j,k-1) * M8(4,2) &
+                       + vsp(i,j,k  ) * M8(5,2) &
+                       + vsp(i,j,k+1) * M8(6,2)
+             mmtmp8(3) = vsp(i,j,k-4) * M8(1,3) &
+                       + vsp(i,j,k-3) * M8(2,3) &
+                       + vsp(i,j,k-2) * M8(3,3) &
+                       + vsp(i,j,k-1) * M8(4,3) &
+                       + vsp(i,j,k  ) * M8(5,3) &
+                       + vsp(i,j,k+1) * M8(6,3) &
+                       + vsp(i,j,k+2) * M8(7,3)
+             mmtmp8(4) = vsp(i,j,k-4) * M8(1,4) &
+                       + vsp(i,j,k-3) * M8(2,4) &
+                       + vsp(i,j,k-2) * M8(3,4) &
+                       + vsp(i,j,k-1) * M8(4,4) &
+                       + vsp(i,j,k  ) * M8(5,4) &
+                       + vsp(i,j,k+1) * M8(6,4) &
+                       + vsp(i,j,k+2) * M8(7,4) &
+                       + vsp(i,j,k+3) * M8(8,4)
+             mmtmp8(5) =-vsp(i,j,k-4) * M8(8,4) &
+                       - vsp(i,j,k-3) * M8(7,4) &
+                       - vsp(i,j,k-2) * M8(6,4) &
+                       - vsp(i,j,k-1) * M8(5,4) &
+                       - vsp(i,j,k  ) * M8(4,4) &
+                       - vsp(i,j,k+1) * M8(3,4) &
+                       - vsp(i,j,k+2) * M8(2,4) &
+                       - vsp(i,j,k+3) * M8(1,4)
+             mmtmp8(6) =-vsp(i,j,k-3) * M8(7,3) &
+                       - vsp(i,j,k-2) * M8(6,3) &
+                       - vsp(i,j,k-1) * M8(5,3) &
+                       - vsp(i,j,k  ) * M8(4,3) &
+                       - vsp(i,j,k+1) * M8(3,3) &
+                       - vsp(i,j,k+2) * M8(2,3) &
+                       - vsp(i,j,k+3) * M8(1,3)
+             mmtmp8(7) =-vsp(i,j,k-2) * M8(6,2) &
+                       - vsp(i,j,k-1) * M8(5,2) &
+                       - vsp(i,j,k  ) * M8(4,2) &
+                       - vsp(i,j,k+1) * M8(3,2) &
+                       - vsp(i,j,k+2) * M8(2,2) &
+                       - vsp(i,j,k+3) * M8(1,2)
+             mmtmp8(8) =-vsp(i,j,k-1) * M8(5,1) &
+                       - vsp(i,j,k  ) * M8(4,1) &
+                       - vsp(i,j,k+1) * M8(3,1) &
+                       - vsp(i,j,k+2) * M8(2,1) &
+                       - vsp(i,j,k+3) * M8(1,1)
              Hg(i,j,k,imz) = dot_product(mmtmp8, q(i,j,k-4:k+3,qw))
 
-             mmtmp8 = matmul(lam(i,j,k-4:k+3), M8)
-             M8p = matmul(M8,  q(i,j,k-4:k+3,qpres))
+!EXPAND             mmtmp8 = matmul(lam(i,j,k-4:k+3), M8)
+             mmtmp8(1) = lam(i,j,k-4) * M8(1,1) &
+                       + lam(i,j,k-3) * M8(2,1) &
+                       + lam(i,j,k-2) * M8(3,1) &
+                       + lam(i,j,k-1) * M8(4,1) &
+                       + lam(i,j,k  ) * M8(5,1)
+             mmtmp8(2) = lam(i,j,k-4) * M8(1,2) &
+                       + lam(i,j,k-3) * M8(2,2) &
+                       + lam(i,j,k-2) * M8(3,2) &
+                       + lam(i,j,k-1) * M8(4,2) &
+                       + lam(i,j,k  ) * M8(5,2) &
+                       + lam(i,j,k+1) * M8(6,2)
+             mmtmp8(3) = lam(i,j,k-4) * M8(1,3) &
+                       + lam(i,j,k-3) * M8(2,3) &
+                       + lam(i,j,k-2) * M8(3,3) &
+                       + lam(i,j,k-1) * M8(4,3) &
+                       + lam(i,j,k  ) * M8(5,3) &
+                       + lam(i,j,k+1) * M8(6,3) &
+                       + lam(i,j,k+2) * M8(7,3)
+             mmtmp8(4) = lam(i,j,k-4) * M8(1,4) &
+                       + lam(i,j,k-3) * M8(2,4) &
+                       + lam(i,j,k-2) * M8(3,4) &
+                       + lam(i,j,k-1) * M8(4,4) &
+                       + lam(i,j,k  ) * M8(5,4) &
+                       + lam(i,j,k+1) * M8(6,4) &
+                       + lam(i,j,k+2) * M8(7,4) &
+                       + lam(i,j,k+3) * M8(8,4)
+             mmtmp8(5) =-lam(i,j,k-4) * M8(8,4) &
+                       - lam(i,j,k-3) * M8(7,4) &
+                       - lam(i,j,k-2) * M8(6,4) &
+                       - lam(i,j,k-1) * M8(5,4) &
+                       - lam(i,j,k  ) * M8(4,4) &
+                       - lam(i,j,k+1) * M8(3,4) &
+                       - lam(i,j,k+2) * M8(2,4) &
+                       - lam(i,j,k+3) * M8(1,4)
+             mmtmp8(6) =-lam(i,j,k-3) * M8(7,3) &
+                       - lam(i,j,k-2) * M8(6,3) &
+                       - lam(i,j,k-1) * M8(5,3) &
+                       - lam(i,j,k  ) * M8(4,3) &
+                       - lam(i,j,k+1) * M8(3,3) &
+                       - lam(i,j,k+2) * M8(2,3) &
+                       - lam(i,j,k+3) * M8(1,3)
+             mmtmp8(7) =-lam(i,j,k-2) * M8(6,2) &
+                       - lam(i,j,k-1) * M8(5,2) &
+                       - lam(i,j,k  ) * M8(4,2) &
+                       - lam(i,j,k+1) * M8(3,2) &
+                       - lam(i,j,k+2) * M8(2,2) &
+                       - lam(i,j,k+3) * M8(1,2)
+             mmtmp8(8) =-lam(i,j,k-1) * M8(5,1) &
+                       - lam(i,j,k  ) * M8(4,1) &
+                       - lam(i,j,k+1) * M8(3,1) &
+                       - lam(i,j,k+2) * M8(2,1) &
+                       - lam(i,j,k+3) * M8(1,1)
+!EXPAND             M8p = matmul(M8,  q(i,j,k-4:k+3,qpres))
+             M8p(1) = M8(1,1) * q(i,j,k-4,qpres) &
+                    + M8(1,2) * q(i,j,k-3,qpres) &
+                    + M8(1,3) * q(i,j,k-2,qpres) &
+                    + M8(1,4) * q(i,j,k-1,qpres) &
+                    - M8(8,4) * q(i,j,k  ,qpres)
+             M8p(2) = M8(2,1) * q(i,j,k-4,qpres) &
+                    + M8(2,2) * q(i,j,k-3,qpres) &
+                    + M8(2,3) * q(i,j,k-2,qpres) &
+                    + M8(2,4) * q(i,j,k-1,qpres) &
+                    - M8(7,4) * q(i,j,k  ,qpres) &
+                    - M8(7,3) * q(i,j,k+1,qpres)
+             M8p(3) = M8(3,1) * q(i,j,k-4,qpres) &
+                    + M8(3,2) * q(i,j,k-3,qpres) &
+                    + M8(3,3) * q(i,j,k-2,qpres) &
+                    + M8(3,4) * q(i,j,k-1,qpres) &
+                    - M8(6,4) * q(i,j,k  ,qpres) &
+                    - M8(6,3) * q(i,j,k+1,qpres) &
+                    - M8(6,2) * q(i,j,k+2,qpres)
+             M8p(4) = M8(4,1) * q(i,j,k-4,qpres) &
+                    + M8(4,2) * q(i,j,k-3,qpres) &
+                    + M8(4,3) * q(i,j,k-2,qpres) &
+                    + M8(4,4) * q(i,j,k-1,qpres) &
+                    - M8(5,4) * q(i,j,k  ,qpres) &
+                    - M8(5,3) * q(i,j,k+1,qpres) &
+                    - M8(5,2) * q(i,j,k+2,qpres) &
+                    - M8(5,1) * q(i,j,k+3,qpres)
+             M8p(5) = M8(5,1) * q(i,j,k-4,qpres) &
+                    + M8(5,2) * q(i,j,k-3,qpres) &
+                    + M8(5,3) * q(i,j,k-2,qpres) &
+                    + M8(5,4) * q(i,j,k-1,qpres) &
+                    - M8(4,4) * q(i,j,k  ,qpres) &
+                    - M8(4,3) * q(i,j,k+1,qpres) &
+                    - M8(4,2) * q(i,j,k+2,qpres) &
+                    - M8(4,1) * q(i,j,k+3,qpres)
+             M8p(6) = M8(6,2) * q(i,j,k-3,qpres) &
+                    + M8(6,3) * q(i,j,k-2,qpres) &
+                    + M8(6,4) * q(i,j,k-1,qpres) &
+                    - M8(3,4) * q(i,j,k  ,qpres) &
+                    - M8(3,3) * q(i,j,k+1,qpres) &
+                    - M8(3,2) * q(i,j,k+2,qpres) &
+                    - M8(3,1) * q(i,j,k+3,qpres)
+             M8p(7) = M8(7,3) * q(i,j,k-2,qpres) &
+                    + M8(7,4) * q(i,j,k-1,qpres) &
+                    - M8(2,4) * q(i,j,k  ,qpres) &
+                    - M8(2,3) * q(i,j,k+1,qpres) &
+                    - M8(2,2) * q(i,j,k+2,qpres) &
+                    - M8(2,1) * q(i,j,k+3,qpres)
+             M8p(8) = M8(8,4) * q(i,j,k-1,qpres) &
+                    - M8(1,4) * q(i,j,k  ,qpres) &
+                    - M8(1,3) * q(i,j,k+1,qpres) &
+                    - M8(1,2) * q(i,j,k+2,qpres) &
+                    - M8(1,1) * q(i,j,k+3,qpres)
              Hg(i,j,k,iene) = dot_product(mmtmp8, q(i,j,k-4:k+3,qtemp)) &
                   +           dot_product(dpe(i,j,k-4:k+3), M8p)
 
@@ -2764,7 +4372,59 @@ contains
                 qxn = qx1+n-1
                 qyn = qy1+n-1
 
-                M8X = matmul(M8, q(i,j,k-4:k+3,qxn))
+!EXPAND                M8X = matmul(M8, q(i,j,k-4:k+3,qxn))
+                M8X(1) = M8(1,1) * q(i,j,k-4,qxn) &
+                       + M8(1,2) * q(i,j,k-3,qxn) &
+                       + M8(1,3) * q(i,j,k-2,qxn) &
+                       + M8(1,4) * q(i,j,k-1,qxn) &
+                       - M8(8,4) * q(i,j,k  ,qxn)
+                M8X(2) = M8(2,1) * q(i,j,k-4,qxn) &
+                       + M8(2,2) * q(i,j,k-3,qxn) &
+                       + M8(2,3) * q(i,j,k-2,qxn) &
+                       + M8(2,4) * q(i,j,k-1,qxn) &
+                       - M8(7,4) * q(i,j,k  ,qxn) &
+                       - M8(7,3) * q(i,j,k+1,qxn)
+                M8X(3) = M8(3,1) * q(i,j,k-4,qxn) &
+                       + M8(3,2) * q(i,j,k-3,qxn) &
+                       + M8(3,3) * q(i,j,k-2,qxn) &
+                       + M8(3,4) * q(i,j,k-1,qxn) &
+                       - M8(6,4) * q(i,j,k  ,qxn) &
+                       - M8(6,3) * q(i,j,k+1,qxn) &
+                       - M8(6,2) * q(i,j,k+2,qxn)
+                M8X(4) = M8(4,1) * q(i,j,k-4,qxn) &
+                       + M8(4,2) * q(i,j,k-3,qxn) &
+                       + M8(4,3) * q(i,j,k-2,qxn) &
+                       + M8(4,4) * q(i,j,k-1,qxn) &
+                       - M8(5,4) * q(i,j,k  ,qxn) &
+                       - M8(5,3) * q(i,j,k+1,qxn) &
+                       - M8(5,2) * q(i,j,k+2,qxn) &
+                       - M8(5,1) * q(i,j,k+3,qxn)
+                M8X(5) = M8(5,1) * q(i,j,k-4,qxn) &
+                       + M8(5,2) * q(i,j,k-3,qxn) &
+                       + M8(5,3) * q(i,j,k-2,qxn) &
+                       + M8(5,4) * q(i,j,k-1,qxn) &
+                       - M8(4,4) * q(i,j,k  ,qxn) &
+                       - M8(4,3) * q(i,j,k+1,qxn) &
+                       - M8(4,2) * q(i,j,k+2,qxn) &
+                       - M8(4,1) * q(i,j,k+3,qxn)
+                M8X(6) = M8(6,2) * q(i,j,k-3,qxn) &
+                       + M8(6,3) * q(i,j,k-2,qxn) &
+                       + M8(6,4) * q(i,j,k-1,qxn) &
+                       - M8(3,4) * q(i,j,k  ,qxn) &
+                       - M8(3,3) * q(i,j,k+1,qxn) &
+                       - M8(3,2) * q(i,j,k+2,qxn) &
+                       - M8(3,1) * q(i,j,k+3,qxn)
+                M8X(7) = M8(7,3) * q(i,j,k-2,qxn) &
+                       + M8(7,4) * q(i,j,k-1,qxn) &
+                       - M8(2,4) * q(i,j,k  ,qxn) &
+                       - M8(2,3) * q(i,j,k+1,qxn) &
+                       - M8(2,2) * q(i,j,k+2,qxn) &
+                       - M8(2,1) * q(i,j,k+3,qxn)
+                M8X(8) = M8(8,4) * q(i,j,k-1,qxn) &
+                       - M8(1,4) * q(i,j,k  ,qxn) &
+                       - M8(1,3) * q(i,j,k+1,qxn) &
+                       - M8(1,2) * q(i,j,k+2,qxn) &
+                       - M8(1,1) * q(i,j,k+3,qxn)
 
                 Htmp(n) = dot_product(dpy(i,j,k-4:k+3,n), M8P) &
                      +    dot_product(dxy(i,j,k-4:k+3,n), M8X)
@@ -2910,15 +4570,71 @@ contains
              do iface=0,1 
                 k = lo(3)+2 + iface
 
-                mmtmp4 = matmul(mu(i,j,k-2:k+1), M4)
+!EXPAND                mmtmp4 = matmul(mu(i,j,k-2:k+1), M4)
+                mmtmp4(1) = mu(i,j,k-2) * M4(1,1) &
+                          + mu(i,j,k-1) * M4(2,1) &
+                          + mu(i,j,k  ) * M4(3,1)
+                mmtmp4(2) = mu(i,j,k-2) * M4(1,2) &
+                          + mu(i,j,k-1) * M4(2,2) &
+                          + mu(i,j,k  ) * M4(3,2) &
+                          + mu(i,j,k+1) * M4(4,2)
+                mmtmp4(3) =-mu(i,j,k-2) * M4(4,2) &
+                          - mu(i,j,k-1) * M4(3,2) &
+                          - mu(i,j,k  ) * M4(2,2) &
+                          - mu(i,j,k+1) * M4(1,2)
+                mmtmp4(4) =-mu(i,j,k-1) * M4(3,1) &
+                          - mu(i,j,k  ) * M4(2,1) &
+                          - mu(i,j,k+1) * M4(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp4, q(i,j,k-2:k+1,qu))
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i,j,k-2:k+1,qv))
 
-                mmtmp4 = matmul(vsp(i,j,k-2:k+1), M4)
+!EXPAND                mmtmp4 = matmul(vsp(i,j,k-2:k+1), M4)
+                mmtmp4(1) = vsp(i,j,k-2) * M4(1,1) &
+                          + vsp(i,j,k-1) * M4(2,1) &
+                          + vsp(i,j,k  ) * M4(3,1)
+                mmtmp4(2) = vsp(i,j,k-2) * M4(1,2) &
+                          + vsp(i,j,k-1) * M4(2,2) &
+                          + vsp(i,j,k  ) * M4(3,2) &
+                          + vsp(i,j,k+1) * M4(4,2)
+                mmtmp4(3) =-vsp(i,j,k-2) * M4(4,2) &
+                          - vsp(i,j,k-1) * M4(3,2) &
+                          - vsp(i,j,k  ) * M4(2,2) &
+                          - vsp(i,j,k+1) * M4(1,2)
+                mmtmp4(4) =-vsp(i,j,k-1) * M4(3,1) &
+                          - vsp(i,j,k  ) * M4(2,1) &
+                          - vsp(i,j,k+1) * M4(1,1)
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i,j,k-2:k+1,qw))
 
-                mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
-                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
+!EXPAND                mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
+                mmtmp4(1) = lam(i,j,k-2) * M4(1,1) &
+                          + lam(i,j,k-1) * M4(2,1) &
+                          + lam(i,j,k  ) * M4(3,1)
+                mmtmp4(2) = lam(i,j,k-2) * M4(1,2) &
+                          + lam(i,j,k-1) * M4(2,2) &
+                          + lam(i,j,k  ) * M4(3,2) &
+                          + lam(i,j,k+1) * M4(4,2)
+                mmtmp4(3) =-lam(i,j,k-2) * M4(4,2) &
+                          - lam(i,j,k-1) * M4(3,2) &
+                          - lam(i,j,k  ) * M4(2,2) &
+                          - lam(i,j,k+1) * M4(1,2)
+                mmtmp4(4) =-lam(i,j,k-1) * M4(3,1) &
+                          - lam(i,j,k  ) * M4(2,1) &
+                          - lam(i,j,k+1) * M4(1,1)
+!EXPAND                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
+                M4p(1) = M4(1,1) * q(i,j,k-2,qpres) &
+                       + M4(1,2) * q(i,j,k-1,qpres) &
+                       - M4(4,2) * q(i,j,k  ,qpres)
+                M4p(2) = M4(2,1) * q(i,j,k-2,qpres) &
+                       + M4(2,2) * q(i,j,k-1,qpres) &
+                       - M4(3,2) * q(i,j,k  ,qpres) &
+                       - M4(3,1) * q(i,j,k+1,qpres)
+                M4p(3) = M4(3,1) * q(i,j,k-2,qpres) &
+                       + M4(3,2) * q(i,j,k-1,qpres) &
+                       - M4(2,2) * q(i,j,k  ,qpres) &
+                       - M4(2,1) * q(i,j,k+1,qpres)
+                M4p(4) = M4(4,2) * q(i,j,k-1,qpres) &
+                       - M4(1,2) * q(i,j,k  ,qpres) &
+                       - M4(1,1) * q(i,j,k+1,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j,k-2:k+1,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-2:k+1), M4p)
 
@@ -2927,7 +4643,21 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
+!EXPAND                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
+                   M4X(1) = M4(1,1) * q(i,j,k-2,qxn) &
+                          + M4(1,2) * q(i,j,k-1,qxn) &
+                          - M4(4,2) * q(i,j,k  ,qxn)
+                   M4X(2) = M4(2,1) * q(i,j,k-2,qxn) &
+                          + M4(2,2) * q(i,j,k-1,qxn) &
+                          - M4(3,2) * q(i,j,k  ,qxn) &
+                          - M4(3,1) * q(i,j,k+1,qxn)
+                   M4X(3) = M4(3,1) * q(i,j,k-2,qxn) &
+                          + M4(3,2) * q(i,j,k-1,qxn) &
+                          - M4(2,2) * q(i,j,k  ,qxn) &
+                          - M4(2,1) * q(i,j,k+1,qxn)
+                   M4X(4) = M4(4,2) * q(i,j,k-1,qxn) &
+                          - M4(1,2) * q(i,j,k  ,qxn) &
+                          - M4(1,1) * q(i,j,k+1,qxn)
                 
                    Htmp(n) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
                         +    dot_product(dxy(i,j,k-2:k+1,n), M4X)
@@ -2966,15 +4696,135 @@ contains
              do iface=0,1 
                 k = lo(3)+3 + iface
 
-                mmtmp6 = matmul(mu(i,j,k-3:k+2), M6)
+!EXPAND                mmtmp6 = matmul(mu(i,j,k-3:k+2), M6)
+                mmtmp6(1) = mu(i,j,k-3) * M6(1,1) &
+                          + mu(i,j,k-2) * M6(2,1) &
+                          + mu(i,j,k-1) * M6(3,1) &
+                          + mu(i,j,k  ) * M6(4,1)
+                mmtmp6(2) = mu(i,j,k-3) * M6(1,2) &
+                          + mu(i,j,k-2) * M6(2,2) &
+                          + mu(i,j,k-1) * M6(3,2) &
+                          + mu(i,j,k  ) * M6(4,2) &
+                          + mu(i,j,k+1) * M6(5,2)
+                mmtmp6(3) = mu(i,j,k-3) * M6(1,3) &
+                          + mu(i,j,k-2) * M6(2,3) &
+                          + mu(i,j,k-1) * M6(3,3) &
+                          + mu(i,j,k  ) * M6(4,3) &
+                          + mu(i,j,k+1) * M6(5,3) &
+                          + mu(i,j,k+2) * M6(6,3)
+                mmtmp6(4) =-mu(i,j,k-3) * M6(6,3) &
+                          - mu(i,j,k-2) * M6(5,3) &
+                          - mu(i,j,k-1) * M6(4,3) &
+                          - mu(i,j,k  ) * M6(3,3) &
+                          - mu(i,j,k+1) * M6(2,3) &
+                          - mu(i,j,k+2) * M6(1,3)
+                mmtmp6(5) =-mu(i,j,k-2) * M6(5,2) &
+                          - mu(i,j,k-1) * M6(4,2) &
+                          - mu(i,j,k  ) * M6(3,2) &
+                          - mu(i,j,k+1) * M6(2,2) &
+                          - mu(i,j,k+2) * M6(1,2)
+                mmtmp6(6) =-mu(i,j,k-1) * M6(4,1) &
+                          - mu(i,j,k  ) * M6(3,1) &
+                          - mu(i,j,k+1) * M6(2,1) &
+                          - mu(i,j,k+2) * M6(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp6, q(i,j,k-3:k+2,qu))
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i,j,k-3:k+2,qv))
 
-                mmtmp6 = matmul(vsp(i,j,k-3:k+2), M6)
+!EXPAND                mmtmp6 = matmul(vsp(i,j,k-3:k+2), M6)
+                mmtmp6(1) = vsp(i,j,k-3) * M6(1,1) &
+                          + vsp(i,j,k-2) * M6(2,1) &
+                          + vsp(i,j,k-1) * M6(3,1) &
+                          + vsp(i,j,k  ) * M6(4,1)
+                mmtmp6(2) = vsp(i,j,k-3) * M6(1,2) &
+                          + vsp(i,j,k-2) * M6(2,2) &
+                          + vsp(i,j,k-1) * M6(3,2) &
+                          + vsp(i,j,k  ) * M6(4,2) &
+                          + vsp(i,j,k+1) * M6(5,2)
+                mmtmp6(3) = vsp(i,j,k-3) * M6(1,3) &
+                          + vsp(i,j,k-2) * M6(2,3) &
+                          + vsp(i,j,k-1) * M6(3,3) &
+                          + vsp(i,j,k  ) * M6(4,3) &
+                          + vsp(i,j,k+1) * M6(5,3) &
+                          + vsp(i,j,k+2) * M6(6,3)
+                mmtmp6(4) =-vsp(i,j,k-3) * M6(6,3) &
+                          - vsp(i,j,k-2) * M6(5,3) &
+                          - vsp(i,j,k-1) * M6(4,3) &
+                          - vsp(i,j,k  ) * M6(3,3) &
+                          - vsp(i,j,k+1) * M6(2,3) &
+                          - vsp(i,j,k+2) * M6(1,3)
+                mmtmp6(5) =-vsp(i,j,k-2) * M6(5,2) &
+                          - vsp(i,j,k-1) * M6(4,2) &
+                          - vsp(i,j,k  ) * M6(3,2) &
+                          - vsp(i,j,k+1) * M6(2,2) &
+                          - vsp(i,j,k+2) * M6(1,2)
+                mmtmp6(6) =-vsp(i,j,k-1) * M6(4,1) &
+                          - vsp(i,j,k  ) * M6(3,1) &
+                          - vsp(i,j,k+1) * M6(2,1) &
+                          - vsp(i,j,k+2) * M6(1,1)
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i,j,k-3:k+2,qw))
 
-                mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
-                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
+!EXPAND                mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
+                mmtmp6(1) = lam(i,j,k-3) * M6(1,1) &
+                          + lam(i,j,k-2) * M6(2,1) &
+                          + lam(i,j,k-1) * M6(3,1) &
+                          + lam(i,j,k  ) * M6(4,1)
+                mmtmp6(2) = lam(i,j,k-3) * M6(1,2) &
+                          + lam(i,j,k-2) * M6(2,2) &
+                          + lam(i,j,k-1) * M6(3,2) &
+                          + lam(i,j,k  ) * M6(4,2) &
+                          + lam(i,j,k+1) * M6(5,2)
+                mmtmp6(3) = lam(i,j,k-3) * M6(1,3) &
+                          + lam(i,j,k-2) * M6(2,3) &
+                          + lam(i,j,k-1) * M6(3,3) &
+                          + lam(i,j,k  ) * M6(4,3) &
+                          + lam(i,j,k+1) * M6(5,3) &
+                          + lam(i,j,k+2) * M6(6,3)
+                mmtmp6(4) =-lam(i,j,k-3) * M6(6,3) &
+                          - lam(i,j,k-2) * M6(5,3) &
+                          - lam(i,j,k-1) * M6(4,3) &
+                          - lam(i,j,k  ) * M6(3,3) &
+                          - lam(i,j,k+1) * M6(2,3) &
+                          - lam(i,j,k+2) * M6(1,3)
+                mmtmp6(5) =-lam(i,j,k-2) * M6(5,2) &
+                          - lam(i,j,k-1) * M6(4,2) &
+                          - lam(i,j,k  ) * M6(3,2) &
+                          - lam(i,j,k+1) * M6(2,2) &
+                          - lam(i,j,k+2) * M6(1,2)
+                mmtmp6(6) =-lam(i,j,k-1) * M6(4,1) &
+                          - lam(i,j,k  ) * M6(3,1) &
+                          - lam(i,j,k+1) * M6(2,1) &
+                          - lam(i,j,k+2) * M6(1,1)
+!EXPAND                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
+                M6p(1) = M6(1,1) * q(i,j,k-3,qpres) &
+                       + M6(1,2) * q(i,j,k-2,qpres) &
+                       + M6(1,3) * q(i,j,k-1,qpres) &
+                       - M6(6,3) * q(i,j,k  ,qpres)
+                M6p(2) = M6(2,1) * q(i,j,k-3,qpres) &
+                       + M6(2,2) * q(i,j,k-2,qpres) &
+                       + M6(2,3) * q(i,j,k-1,qpres) &
+                       - M6(5,3) * q(i,j,k  ,qpres) &
+                       - M6(5,2) * q(i,j,k+1,qpres)
+                M6p(3) = M6(3,1) * q(i,j,k-3,qpres) &
+                       + M6(3,2) * q(i,j,k-2,qpres) &
+                       + M6(3,3) * q(i,j,k-1,qpres) &
+                       - M6(4,3) * q(i,j,k  ,qpres) &
+                       - M6(4,2) * q(i,j,k+1,qpres) &
+                       - M6(4,1) * q(i,j,k+2,qpres)
+                M6p(4) = M6(4,1) * q(i,j,k-3,qpres) &
+                       + M6(4,2) * q(i,j,k-2,qpres) &
+                       + M6(4,3) * q(i,j,k-1,qpres) &
+                       - M6(3,3) * q(i,j,k  ,qpres) &
+                       - M6(3,2) * q(i,j,k+1,qpres) &
+                       - M6(3,1) * q(i,j,k+2,qpres)
+                M6p(5) = M6(5,2) * q(i,j,k-2,qpres) &
+                       + M6(5,3) * q(i,j,k-1,qpres) &
+                       - M6(2,3) * q(i,j,k  ,qpres) &
+                       - M6(2,2) * q(i,j,k+1,qpres) &
+                       - M6(2,1) * q(i,j,k+2,qpres)
+                M6p(6) = M6(6,3) * q(i,j,k-1,qpres) &
+                       - M6(1,3) * q(i,j,k  ,qpres) &
+                       - M6(1,2) * q(i,j,k+1,qpres) &
+                       - M6(1,1) * q(i,j,k+2,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j,k-3:k+2,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-3:k+2), M6p)
 
@@ -2983,7 +4833,37 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
+!EXPAND                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
+                   M6X(1) = M6(1,1) * q(i,j,k-3,qxn) &
+                          + M6(1,2) * q(i,j,k-2,qxn) &
+                          + M6(1,3) * q(i,j,k-1,qxn) &
+                          - M6(6,3) * q(i,j,k  ,qxn)
+                   M6X(2) = M6(2,1) * q(i,j,k-3,qxn) &
+                          + M6(2,2) * q(i,j,k-2,qxn) &
+                          + M6(2,3) * q(i,j,k-1,qxn) &
+                          - M6(5,3) * q(i,j,k  ,qxn) &
+                          - M6(5,2) * q(i,j,k+1,qxn)
+                   M6X(3) = M6(3,1) * q(i,j,k-3,qxn) &
+                          + M6(3,2) * q(i,j,k-2,qxn) &
+                          + M6(3,3) * q(i,j,k-1,qxn) &
+                          - M6(4,3) * q(i,j,k  ,qxn) &
+                          - M6(4,2) * q(i,j,k+1,qxn) &
+                          - M6(4,1) * q(i,j,k+2,qxn)
+                   M6X(4) = M6(4,1) * q(i,j,k-3,qxn) &
+                          + M6(4,2) * q(i,j,k-2,qxn) &
+                          + M6(4,3) * q(i,j,k-1,qxn) &
+                          - M6(3,3) * q(i,j,k  ,qxn) &
+                          - M6(3,2) * q(i,j,k+1,qxn) &
+                          - M6(3,1) * q(i,j,k+2,qxn)
+                   M6X(5) = M6(5,2) * q(i,j,k-2,qxn) &
+                          + M6(5,3) * q(i,j,k-1,qxn) &
+                          - M6(2,3) * q(i,j,k  ,qxn) &
+                          - M6(2,2) * q(i,j,k+1,qxn) &
+                          - M6(2,1) * q(i,j,k+2,qxn)
+                   M6X(6) = M6(6,3) * q(i,j,k-1,qxn) &
+                          - M6(1,3) * q(i,j,k  ,qxn) &
+                          - M6(1,2) * q(i,j,k+1,qxn) &
+                          - M6(1,1) * q(i,j,k+2,qxn)
                 
                    Htmp(n) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
                         +    dot_product(dxy(i,j,k-3:k+2,n), M6X)
@@ -3026,15 +4906,135 @@ contains
              do iface=0,1 
                 k = hi(3)-3 + iface
 
-                mmtmp6 = matmul(mu(i,j,k-3:k+2), M6)
+!EXPAND                mmtmp6 = matmul(mu(i,j,k-3:k+2), M6)
+                mmtmp6(1) = mu(i,j,k-3) * M6(1,1) &
+                          + mu(i,j,k-2) * M6(2,1) &
+                          + mu(i,j,k-1) * M6(3,1) &
+                          + mu(i,j,k  ) * M6(4,1)
+                mmtmp6(2) = mu(i,j,k-3) * M6(1,2) &
+                          + mu(i,j,k-2) * M6(2,2) &
+                          + mu(i,j,k-1) * M6(3,2) &
+                          + mu(i,j,k  ) * M6(4,2) &
+                          + mu(i,j,k+1) * M6(5,2)
+                mmtmp6(3) = mu(i,j,k-3) * M6(1,3) &
+                          + mu(i,j,k-2) * M6(2,3) &
+                          + mu(i,j,k-1) * M6(3,3) &
+                          + mu(i,j,k  ) * M6(4,3) &
+                          + mu(i,j,k+1) * M6(5,3) &
+                          + mu(i,j,k+2) * M6(6,3)
+                mmtmp6(4) =-mu(i,j,k-3) * M6(6,3) &
+                          - mu(i,j,k-2) * M6(5,3) &
+                          - mu(i,j,k-1) * M6(4,3) &
+                          - mu(i,j,k  ) * M6(3,3) &
+                          - mu(i,j,k+1) * M6(2,3) &
+                          - mu(i,j,k+2) * M6(1,3)
+                mmtmp6(5) =-mu(i,j,k-2) * M6(5,2) &
+                          - mu(i,j,k-1) * M6(4,2) &
+                          - mu(i,j,k  ) * M6(3,2) &
+                          - mu(i,j,k+1) * M6(2,2) &
+                          - mu(i,j,k+2) * M6(1,2)
+                mmtmp6(6) =-mu(i,j,k-1) * M6(4,1) &
+                          - mu(i,j,k  ) * M6(3,1) &
+                          - mu(i,j,k+1) * M6(2,1) &
+                          - mu(i,j,k+2) * M6(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp6, q(i,j,k-3:k+2,qu))
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i,j,k-3:k+2,qv))
 
-                mmtmp6 = matmul(vsp(i,j,k-3:k+2), M6)
+!EXPAND                mmtmp6 = matmul(vsp(i,j,k-3:k+2), M6)
+                mmtmp6(1) = vsp(i,j,k-3) * M6(1,1) &
+                          + vsp(i,j,k-2) * M6(2,1) &
+                          + vsp(i,j,k-1) * M6(3,1) &
+                          + vsp(i,j,k  ) * M6(4,1)
+                mmtmp6(2) = vsp(i,j,k-3) * M6(1,2) &
+                          + vsp(i,j,k-2) * M6(2,2) &
+                          + vsp(i,j,k-1) * M6(3,2) &
+                          + vsp(i,j,k  ) * M6(4,2) &
+                          + vsp(i,j,k+1) * M6(5,2)
+                mmtmp6(3) = vsp(i,j,k-3) * M6(1,3) &
+                          + vsp(i,j,k-2) * M6(2,3) &
+                          + vsp(i,j,k-1) * M6(3,3) &
+                          + vsp(i,j,k  ) * M6(4,3) &
+                          + vsp(i,j,k+1) * M6(5,3) &
+                          + vsp(i,j,k+2) * M6(6,3)
+                mmtmp6(4) =-vsp(i,j,k-3) * M6(6,3) &
+                          - vsp(i,j,k-2) * M6(5,3) &
+                          - vsp(i,j,k-1) * M6(4,3) &
+                          - vsp(i,j,k  ) * M6(3,3) &
+                          - vsp(i,j,k+1) * M6(2,3) &
+                          - vsp(i,j,k+2) * M6(1,3)
+                mmtmp6(5) =-vsp(i,j,k-2) * M6(5,2) &
+                          - vsp(i,j,k-1) * M6(4,2) &
+                          - vsp(i,j,k  ) * M6(3,2) &
+                          - vsp(i,j,k+1) * M6(2,2) &
+                          - vsp(i,j,k+2) * M6(1,2)
+                mmtmp6(6) =-vsp(i,j,k-1) * M6(4,1) &
+                          - vsp(i,j,k  ) * M6(3,1) &
+                          - vsp(i,j,k+1) * M6(2,1) &
+                          - vsp(i,j,k+2) * M6(1,1)
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i,j,k-3:k+2,qw))
 
-                mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
-                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
+!EXPAND                mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
+                mmtmp6(1) = lam(i,j,k-3) * M6(1,1) &
+                          + lam(i,j,k-2) * M6(2,1) &
+                          + lam(i,j,k-1) * M6(3,1) &
+                          + lam(i,j,k  ) * M6(4,1)
+                mmtmp6(2) = lam(i,j,k-3) * M6(1,2) &
+                          + lam(i,j,k-2) * M6(2,2) &
+                          + lam(i,j,k-1) * M6(3,2) &
+                          + lam(i,j,k  ) * M6(4,2) &
+                          + lam(i,j,k+1) * M6(5,2)
+                mmtmp6(3) = lam(i,j,k-3) * M6(1,3) &
+                          + lam(i,j,k-2) * M6(2,3) &
+                          + lam(i,j,k-1) * M6(3,3) &
+                          + lam(i,j,k  ) * M6(4,3) &
+                          + lam(i,j,k+1) * M6(5,3) &
+                          + lam(i,j,k+2) * M6(6,3)
+                mmtmp6(4) =-lam(i,j,k-3) * M6(6,3) &
+                          - lam(i,j,k-2) * M6(5,3) &
+                          - lam(i,j,k-1) * M6(4,3) &
+                          - lam(i,j,k  ) * M6(3,3) &
+                          - lam(i,j,k+1) * M6(2,3) &
+                          - lam(i,j,k+2) * M6(1,3)
+                mmtmp6(5) =-lam(i,j,k-2) * M6(5,2) &
+                          - lam(i,j,k-1) * M6(4,2) &
+                          - lam(i,j,k  ) * M6(3,2) &
+                          - lam(i,j,k+1) * M6(2,2) &
+                          - lam(i,j,k+2) * M6(1,2)
+                mmtmp6(6) =-lam(i,j,k-1) * M6(4,1) &
+                          - lam(i,j,k  ) * M6(3,1) &
+                          - lam(i,j,k+1) * M6(2,1) &
+                          - lam(i,j,k+2) * M6(1,1)
+!EXPAND                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
+                M6p(1) = M6(1,1) * q(i,j,k-3,qpres) &
+                       + M6(1,2) * q(i,j,k-2,qpres) &
+                       + M6(1,3) * q(i,j,k-1,qpres) &
+                       - M6(6,3) * q(i,j,k  ,qpres)
+                M6p(2) = M6(2,1) * q(i,j,k-3,qpres) &
+                       + M6(2,2) * q(i,j,k-2,qpres) &
+                       + M6(2,3) * q(i,j,k-1,qpres) &
+                       - M6(5,3) * q(i,j,k  ,qpres) &
+                       - M6(5,2) * q(i,j,k+1,qpres)
+                M6p(3) = M6(3,1) * q(i,j,k-3,qpres) &
+                       + M6(3,2) * q(i,j,k-2,qpres) &
+                       + M6(3,3) * q(i,j,k-1,qpres) &
+                       - M6(4,3) * q(i,j,k  ,qpres) &
+                       - M6(4,2) * q(i,j,k+1,qpres) &
+                       - M6(4,1) * q(i,j,k+2,qpres)
+                M6p(4) = M6(4,1) * q(i,j,k-3,qpres) &
+                       + M6(4,2) * q(i,j,k-2,qpres) &
+                       + M6(4,3) * q(i,j,k-1,qpres) &
+                       - M6(3,3) * q(i,j,k  ,qpres) &
+                       - M6(3,2) * q(i,j,k+1,qpres) &
+                       - M6(3,1) * q(i,j,k+2,qpres)
+                M6p(5) = M6(5,2) * q(i,j,k-2,qpres) &
+                       + M6(5,3) * q(i,j,k-1,qpres) &
+                       - M6(2,3) * q(i,j,k  ,qpres) &
+                       - M6(2,2) * q(i,j,k+1,qpres) &
+                       - M6(2,1) * q(i,j,k+2,qpres)
+                M6p(6) = M6(6,3) * q(i,j,k-1,qpres) &
+                       - M6(1,3) * q(i,j,k  ,qpres) &
+                       - M6(1,2) * q(i,j,k+1,qpres) &
+                       - M6(1,1) * q(i,j,k+2,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j,k-3:k+2,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-3:k+2), M6p)
 
@@ -3043,7 +5043,37 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
+!EXPAND                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
+                   M6X(1) = M6(1,1) * q(i,j,k-3,qxn) &
+                          + M6(1,2) * q(i,j,k-2,qxn) &
+                          + M6(1,3) * q(i,j,k-1,qxn) &
+                          - M6(6,3) * q(i,j,k  ,qxn)
+                   M6X(2) = M6(2,1) * q(i,j,k-3,qxn) &
+                          + M6(2,2) * q(i,j,k-2,qxn) &
+                          + M6(2,3) * q(i,j,k-1,qxn) &
+                          - M6(5,3) * q(i,j,k  ,qxn) &
+                          - M6(5,2) * q(i,j,k+1,qxn)
+                   M6X(3) = M6(3,1) * q(i,j,k-3,qxn) &
+                          + M6(3,2) * q(i,j,k-2,qxn) &
+                          + M6(3,3) * q(i,j,k-1,qxn) &
+                          - M6(4,3) * q(i,j,k  ,qxn) &
+                          - M6(4,2) * q(i,j,k+1,qxn) &
+                          - M6(4,1) * q(i,j,k+2,qxn)
+                   M6X(4) = M6(4,1) * q(i,j,k-3,qxn) &
+                          + M6(4,2) * q(i,j,k-2,qxn) &
+                          + M6(4,3) * q(i,j,k-1,qxn) &
+                          - M6(3,3) * q(i,j,k  ,qxn) &
+                          - M6(3,2) * q(i,j,k+1,qxn) &
+                          - M6(3,1) * q(i,j,k+2,qxn)
+                   M6X(5) = M6(5,2) * q(i,j,k-2,qxn) &
+                          + M6(5,3) * q(i,j,k-1,qxn) &
+                          - M6(2,3) * q(i,j,k  ,qxn) &
+                          - M6(2,2) * q(i,j,k+1,qxn) &
+                          - M6(2,1) * q(i,j,k+2,qxn)
+                   M6X(6) = M6(6,3) * q(i,j,k-1,qxn) &
+                          - M6(1,3) * q(i,j,k  ,qxn) &
+                          - M6(1,2) * q(i,j,k+1,qxn) &
+                          - M6(1,1) * q(i,j,k+2,qxn)
                 
                    Htmp(n) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
                         +    dot_product(dxy(i,j,k-3:k+2,n), M6X)
@@ -3082,15 +5112,71 @@ contains
              do iface=0,1 
                 k = hi(3)-2 + iface
 
-                mmtmp4 = matmul(mu(i,j,k-2:k+1), M4)
+!EXPAND                mmtmp4 = matmul(mu(i,j,k-2:k+1), M4)
+                mmtmp4(1) = mu(i,j,k-2) * M4(1,1) &
+                          + mu(i,j,k-1) * M4(2,1) &
+                          + mu(i,j,k  ) * M4(3,1)
+                mmtmp4(2) = mu(i,j,k-2) * M4(1,2) &
+                          + mu(i,j,k-1) * M4(2,2) &
+                          + mu(i,j,k  ) * M4(3,2) &
+                          + mu(i,j,k+1) * M4(4,2)
+                mmtmp4(3) =-mu(i,j,k-2) * M4(4,2) &
+                          - mu(i,j,k-1) * M4(3,2) &
+                          - mu(i,j,k  ) * M4(2,2) &
+                          - mu(i,j,k+1) * M4(1,2)
+                mmtmp4(4) =-mu(i,j,k-1) * M4(3,1) &
+                          - mu(i,j,k  ) * M4(2,1) &
+                          - mu(i,j,k+1) * M4(1,1)
                 Hcell(iface,imx) = dot_product(mmtmp4, q(i,j,k-2:k+1,qu))
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i,j,k-2:k+1,qv))
 
-                mmtmp4 = matmul(vsp(i,j,k-2:k+1), M4)
+!EXPAND                mmtmp4 = matmul(vsp(i,j,k-2:k+1), M4)
+                mmtmp4(1) = vsp(i,j,k-2) * M4(1,1) &
+                          + vsp(i,j,k-1) * M4(2,1) &
+                          + vsp(i,j,k  ) * M4(3,1)
+                mmtmp4(2) = vsp(i,j,k-2) * M4(1,2) &
+                          + vsp(i,j,k-1) * M4(2,2) &
+                          + vsp(i,j,k  ) * M4(3,2) &
+                          + vsp(i,j,k+1) * M4(4,2)
+                mmtmp4(3) =-vsp(i,j,k-2) * M4(4,2) &
+                          - vsp(i,j,k-1) * M4(3,2) &
+                          - vsp(i,j,k  ) * M4(2,2) &
+                          - vsp(i,j,k+1) * M4(1,2)
+                mmtmp4(4) =-vsp(i,j,k-1) * M4(3,1) &
+                          - vsp(i,j,k  ) * M4(2,1) &
+                          - vsp(i,j,k+1) * M4(1,1)
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i,j,k-2:k+1,qw))
 
-                mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
-                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
+!EXPAND                mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
+                mmtmp4(1) = lam(i,j,k-2) * M4(1,1) &
+                          + lam(i,j,k-1) * M4(2,1) &
+                          + lam(i,j,k  ) * M4(3,1)
+                mmtmp4(2) = lam(i,j,k-2) * M4(1,2) &
+                          + lam(i,j,k-1) * M4(2,2) &
+                          + lam(i,j,k  ) * M4(3,2) &
+                          + lam(i,j,k+1) * M4(4,2)
+                mmtmp4(3) =-lam(i,j,k-2) * M4(4,2) &
+                          - lam(i,j,k-1) * M4(3,2) &
+                          - lam(i,j,k  ) * M4(2,2) &
+                          - lam(i,j,k+1) * M4(1,2)
+                mmtmp4(4) =-lam(i,j,k-1) * M4(3,1) &
+                          - lam(i,j,k  ) * M4(2,1) &
+                          - lam(i,j,k+1) * M4(1,1)
+!EXPAND                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
+                M4p(1) = M4(1,1) * q(i,j,k-2,qpres) &
+                       + M4(1,2) * q(i,j,k-1,qpres) &
+                       - M4(4,2) * q(i,j,k  ,qpres)
+                M4p(2) = M4(2,1) * q(i,j,k-2,qpres) &
+                       + M4(2,2) * q(i,j,k-1,qpres) &
+                       - M4(3,2) * q(i,j,k  ,qpres) &
+                       - M4(3,1) * q(i,j,k+1,qpres)
+                M4p(3) = M4(3,1) * q(i,j,k-2,qpres) &
+                       + M4(3,2) * q(i,j,k-1,qpres) &
+                       - M4(2,2) * q(i,j,k  ,qpres) &
+                       - M4(2,1) * q(i,j,k+1,qpres)
+                M4p(4) = M4(4,2) * q(i,j,k-1,qpres) &
+                       - M4(1,2) * q(i,j,k  ,qpres) &
+                       - M4(1,1) * q(i,j,k+1,qpres)
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j,k-2:k+1,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-2:k+1), M4p)
 
@@ -3099,7 +5185,21 @@ contains
                    qxn = qx1+n-1
                    qyn = qy1+n-1
 
-                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
+!EXPAND                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
+                   M4X(1) = M4(1,1) * q(i,j,k-2,qxn) &
+                          + M4(1,2) * q(i,j,k-1,qxn) &
+                          - M4(4,2) * q(i,j,k  ,qxn)
+                   M4X(2) = M4(2,1) * q(i,j,k-2,qxn) &
+                          + M4(2,2) * q(i,j,k-1,qxn) &
+                          - M4(3,2) * q(i,j,k  ,qxn) &
+                          - M4(3,1) * q(i,j,k+1,qxn)
+                   M4X(3) = M4(3,1) * q(i,j,k-2,qxn) &
+                          + M4(3,2) * q(i,j,k-1,qxn) &
+                          - M4(2,2) * q(i,j,k  ,qxn) &
+                          - M4(2,1) * q(i,j,k+1,qxn)
+                   M4X(4) = M4(4,2) * q(i,j,k-1,qxn) &
+                          - M4(1,2) * q(i,j,k  ,qxn) &
+                          - M4(1,1) * q(i,j,k+1,qxn)
                 
                    Htmp(n) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
                         +    dot_product(dxy(i,j,k-2:k+1,n), M4X)

@@ -69,13 +69,17 @@ def expand_line(line):
         return ''
 
 def expand_matmul(line):
-    m8RE = re.compile(r"matmul\s*\(.*M8.*\)")
-    if m8RE.search(line):
+    if re.compile(r"matmul\s*\(.*M8.*\)").search(line):
         return expand_matmul_8(line)
+    elif re.compile(r"matmul\s*\(.*M6.*\)").search(line):
+        return expand_matmul_6(line)
+    elif re.compile(r"matmul\s*\(.*M4.*\)").search(line):
+        return expand_matmul_4(line)
     else:
         return ''
 
 def expand_aMu(line):
+    return ''  # Don't expand this
     m8RE = re.compile(r"matmul\s*\(.*M8.*\)")
     if m8RE.search(line):
         return expand_aMu_8(line)
@@ -210,6 +214,142 @@ def expand_matmul_8(line):
                moreindent + ' - ' +a[7]+' * M8(1,1)\n' 
 
 
+def expand_matmul_6(line):
+    # expand (1) lhs = matmul(M6, u( .... )) OR
+    #        (2) lhs = matmul(a( .... ), M6)
+    lhs, rhs = line.split('=')
+
+    lhs = lhs.strip(' \t')
+    i = string.find(line, lhs)
+    indent = line[0:i]
+    moreindent = indent+'   '
+    for i in range(len(lhs)):
+        moreindent = moreindent+' '
+
+    rhs = rhs.strip(' \t\n\r')
+    args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
+    if args[0:2] == 'M6':  
+        # M6,u(,,,)
+        x = args[3:]
+        u = expand_fortran_slice(x)
+        return indent+lhs+'(1) = '+'M6(1,1) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M6(1,2) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6(1,3) * '+u[2]+' &\n' + \
+               moreindent + ' - ' +'M6(6,3) * '+u[3]+'\n'   + \
+               indent+lhs+'(2) = '+'M6(2,1) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M6(2,2) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6(2,3) * '+u[2]+' &\n' + \
+               moreindent + ' - ' +'M6(5,3) * '+u[3]+' &\n' + \
+               moreindent + ' - ' +'M6(5,2) * '+u[4]+'\n' + \
+               indent+lhs+'(3) = '+'M6(3,1) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M6(3,2) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6(3,3) * '+u[2]+' &\n' + \
+               moreindent + ' - ' +'M6(4,3) * '+u[3]+' &\n' + \
+               moreindent + ' - ' +'M6(4,2) * '+u[4]+' &\n' + \
+               moreindent + ' - ' +'M6(4,1) * '+u[5]+'\n' + \
+               indent+lhs+'(4) = '+'M6(4,1) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M6(4,2) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6(4,3) * '+u[2]+' &\n' + \
+               moreindent + ' - ' +'M6(3,3) * '+u[3]+' &\n' + \
+               moreindent + ' - ' +'M6(3,2) * '+u[4]+' &\n' + \
+               moreindent + ' - ' +'M6(3,1) * '+u[5]+'\n' + \
+               indent+lhs+'(5) = '+'M6(5,2) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6(5,3) * '+u[2]+' &\n' + \
+               moreindent + ' - ' +'M6(2,3) * '+u[3]+' &\n' + \
+               moreindent + ' - ' +'M6(2,2) * '+u[4]+' &\n' + \
+               moreindent + ' - ' +'M6(2,1) * '+u[5]+'\n' + \
+               indent+lhs+'(6) = '+'M6(6,3) * '+u[2]+' &\n' + \
+               moreindent + ' - ' +'M6(1,3) * '+u[3]+' &\n' + \
+               moreindent + ' - ' +'M6(1,2) * '+u[4]+' &\n' + \
+               moreindent + ' - ' +'M6(1,1) * '+u[5]+'\n'
+    else: 
+        # a(,,,), M6
+        x = args[0:-3]
+        a = expand_fortran_slice(x)
+        return indent+lhs+'(1) = '+a[0]+' * M6(1,1) &\n' + \
+               moreindent + ' + ' +a[1]+' * M6(2,1) &\n' + \
+               moreindent + ' + ' +a[2]+' * M6(3,1) &\n' + \
+               moreindent + ' + ' +a[3]+' * M6(4,1)\n' + \
+               indent+lhs+'(2) = '+a[0]+' * M6(1,2) &\n' + \
+               moreindent + ' + ' +a[1]+' * M6(2,2) &\n' + \
+               moreindent + ' + ' +a[2]+' * M6(3,2) &\n' + \
+               moreindent + ' + ' +a[3]+' * M6(4,2) &\n' + \
+               moreindent + ' + ' +a[4]+' * M6(5,2)\n' + \
+               indent+lhs+'(3) = '+a[0]+' * M6(1,3) &\n' + \
+               moreindent + ' + ' +a[1]+' * M6(2,3) &\n' + \
+               moreindent + ' + ' +a[2]+' * M6(3,3) &\n' + \
+               moreindent + ' + ' +a[3]+' * M6(4,3) &\n' + \
+               moreindent + ' + ' +a[4]+' * M6(5,3) &\n' + \
+               moreindent + ' + ' +a[5]+' * M6(6,3)\n' + \
+               indent+lhs+'(4) =-'+a[0]+' * M6(6,3) &\n' + \
+               moreindent + ' - ' +a[1]+' * M6(5,3) &\n' + \
+               moreindent + ' - ' +a[2]+' * M6(4,3) &\n' + \
+               moreindent + ' - ' +a[3]+' * M6(3,3) &\n' + \
+               moreindent + ' - ' +a[4]+' * M6(2,3) &\n' + \
+               moreindent + ' - ' +a[5]+' * M6(1,3)\n' + \
+               indent+lhs+'(5) =-'+a[1]+' * M6(5,2) &\n' + \
+               moreindent + ' - ' +a[2]+' * M6(4,2) &\n' + \
+               moreindent + ' - ' +a[3]+' * M6(3,2) &\n' + \
+               moreindent + ' - ' +a[4]+' * M6(2,2) &\n' + \
+               moreindent + ' - ' +a[5]+' * M6(1,2)\n' + \
+               indent+lhs+'(6) =-'+a[2]+' * M6(4,1) &\n' + \
+               moreindent + ' - ' +a[3]+' * M6(3,1) &\n' + \
+               moreindent + ' - ' +a[4]+' * M6(2,1) &\n' + \
+               moreindent + ' - ' +a[5]+' * M6(1,1)\n'
+
+
+def expand_matmul_4(line):
+    # expand (1) lhs = matmul(M4, u( .... )) OR
+    #        (2) lhs = matmul(a( .... ), M4)
+    lhs, rhs = line.split('=')
+
+    lhs = lhs.strip(' \t')
+    i = string.find(line, lhs)
+    indent = line[0:i]
+    moreindent = indent+'   '
+    for i in range(len(lhs)):
+        moreindent = moreindent+' '
+
+    rhs = rhs.strip(' \t\n\r')
+    args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
+    if args[0:2] == 'M4':  
+        # M4,u(,,,)
+        x = args[3:]
+        u = expand_fortran_slice(x)
+        return indent+lhs+'(1) = '+'M4(1,1) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M4(1,2) * '+u[1]+' &\n' + \
+               moreindent + ' - ' +'M4(4,2) * '+u[2]+'\n'   + \
+               indent+lhs+'(2) = '+'M4(2,1) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M4(2,2) * '+u[1]+' &\n' + \
+               moreindent + ' - ' +'M4(3,2) * '+u[2]+' &\n' + \
+               moreindent + ' - ' +'M4(3,1) * '+u[3]+'\n' + \
+               indent+lhs+'(3) = '+'M4(3,1) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M4(3,2) * '+u[1]+' &\n' + \
+               moreindent + ' - ' +'M4(2,2) * '+u[2]+' &\n' + \
+               moreindent + ' - ' +'M4(2,1) * '+u[3]+'\n' + \
+               indent+lhs+'(4) = '+'M4(4,2) * '+u[1]+' &\n' + \
+               moreindent + ' - ' +'M4(1,2) * '+u[2]+' &\n' + \
+               moreindent + ' - ' +'M4(1,1) * '+u[3]+'\n'
+    else: 
+        # a(,,,), M4
+        x = args[0:-3]
+        a = expand_fortran_slice(x)
+        return indent+lhs+'(1) = '+a[0]+' * M4(1,1) &\n' + \
+               moreindent + ' + ' +a[1]+' * M4(2,1) &\n' + \
+               moreindent + ' + ' +a[2]+' * M4(3,1)\n' + \
+               indent+lhs+'(2) = '+a[0]+' * M4(1,2) &\n' + \
+               moreindent + ' + ' +a[1]+' * M4(2,2) &\n' + \
+               moreindent + ' + ' +a[2]+' * M4(3,2) &\n' + \
+               moreindent + ' + ' +a[3]+' * M4(4,2)\n' + \
+               indent+lhs+'(3) =-'+a[0]+' * M4(4,2) &\n' + \
+               moreindent + ' - ' +a[1]+' * M4(3,2) &\n' + \
+               moreindent + ' - ' +a[2]+' * M4(2,2) &\n' + \
+               moreindent + ' - ' +a[3]+' * M4(1,2)\n' + \
+               indent+lhs+'(4) =-'+a[1]+' * M4(3,1) &\n' + \
+               moreindent + ' - ' +a[2]+' * M4(2,1) &\n' + \
+               moreindent + ' - ' +a[3]+' * M4(1,1)\n'
+
+
 def expand_aMu_8(line):
     # expand lhs = dot_product(matmul(a,M8),u) [+ dot_product()]
     lhs, rhs = line.split('=')
@@ -300,7 +440,7 @@ def merge_lines(multiline):
     return ' '.join(lns)+'\n'
 
 def comment_out(line):
-    return '!'+line
+    return '!EXPAND'+line
 
 def fortran_comment(line):
     commRE = re.compile(r"\s*!")
