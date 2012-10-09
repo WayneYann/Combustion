@@ -2076,7 +2076,7 @@ HeatTransfer::post_init (Real stop_time)
 
                 S_tmp.copy(S_new);  // Parallel copy
 
-		getLevel(k).advance_chemistry(S_new,S_tmp,dt_save[k],Forcing_tmp,0);
+		getLevel(k).advance_chemistry(S_new,S_tmp,dt_save[k]/2.0,Forcing_tmp,0);
             }
         }
         //
@@ -2088,7 +2088,7 @@ HeatTransfer::post_init (Real stop_time)
             for (int k = 0; k <= finest_level; k++)
             {
                 MultiFab&  Divu_new = getLevel(k).get_new_data(Divu_Type);
-                getLevel(k).calc_divu(cur_time,dt_save[k],Divu_new);
+                getLevel(k).calc_divu(cur_time,dt_save[k],Divu_new,true);
             }
             if (!hack_noavgdivu)
             {
@@ -7265,7 +7265,8 @@ HeatTransfer::compute_vel_visc (Real      time,
 void
 HeatTransfer::calc_divu (Real      time,
                          Real      dt,
-                         MultiFab& divu)
+                         MultiFab& divu,
+			 bool      is_divu_iter)
 {
     const int nGrow = 0;
     MultiFab mcViscTerms;
@@ -7300,14 +7301,25 @@ HeatTransfer::calc_divu (Real      time,
 
     MultiFab& S = get_data(State_Type,time);
 
+    // complicated logic.
+    // If initial projection (dt<0) we want rho*omegadot=0
+    // If divu_iter (dt>0 && is_divu_iter) we want rho*omegadot = get_new_data(RhoYdot_Type)
+    // Otherwise we want rho*omegadot from compute_instantaneous_reaction_rates
     MultiFab RhoYdotTmp;
-    MultiFab& RhoYdot = (dt <= 0) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
-
-    if (dt > 0)
+    MultiFab& RhoYdot = (is_divu_iter) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
+    if (!is_divu_iter)
+    {
+      if (dt > 0)
       {
 	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
 	compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
       }
+      else
+      {
+	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
+	RhoYdot.setVal(0.);
+      }
+    }
     
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
