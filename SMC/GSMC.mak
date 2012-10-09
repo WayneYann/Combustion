@@ -27,10 +27,6 @@ endif
 
 
 #-----------------------------------------------------------------------------
-CHEMISTRY_MODEL := LIDRYER
-
-
-#-----------------------------------------------------------------------------
 # Fmpack is the list of all the GPackage.mak files that we need to
 # include into the build system to define the list of source files.
 #
@@ -60,6 +56,14 @@ ifeq ($(CHEMISTRY_MODEL), LIDRYER)
   csources += LiDryer.c
   vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer
   vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer/PMFs
+else ifeq ($(CHEMISTRY_MODEL),DRM19)
+  csources += drm19.c
+  vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
+  vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
+else ifeq ($(CHEMISTRY_MODEL),GRI30)
+  csources += grimech30.c
+  vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
+  vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
 endif
 
 

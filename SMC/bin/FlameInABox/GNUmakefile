@@ -20,7 +20,11 @@ SMC_TOP_DIR := ../..
 
 # define the location of Chemistry directory
 CHEMISTRY_DIR := ../../../Chemistry
+
+# Chenistry models
 CHEMISTRY_MODEL := LIDRYER
+#CHEMISTRY_MODEL := DRM19
+#CHEMISTRY_MODEL := GRI30
 
 
 # include the SMC build stuff
