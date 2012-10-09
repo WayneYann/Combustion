@@ -123,10 +123,12 @@ deppairs: build_info.f90
 build_info.f90: 
 	@echo " "
 	@echo "${bold}WRITING build_info.f90${normal}"
-	$(BOXLIB_HOME)/Tools/F_scripts/make_build_info \
+	$(BOXLIB_HOME)/Tools/F_scripts/make_build_info2 \
             "$(Fmdirs)" "$(COMP)" "$(FCOMP_VERSION)" \
             "$(COMPILE.f90)" "$(COMPILE.f)" \
-            "$(COMPILE.c)" "$(LINK.f90)" "$(BOXLIB_HOME)" "$(SMC_TOP_DIR)"
+            "$(COMPILE.c)" "$(LINK.f90)" \
+            "AUX=$(CHEMISTRY_MODEL)" \
+            "GIT=$(BOXLIB_HOME)" "GIT=$(SMC_TOP_DIR)"
 	@echo " "
 
 $(odir)/build_info.o: build_info.f90
