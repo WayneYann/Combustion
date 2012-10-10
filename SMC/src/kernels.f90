@@ -3,7 +3,7 @@ module kernels_module
   use chemistry_module, only : nspecies, molecular_weight
   use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
        first_deriv_4, first_deriv_l3, first_deriv_r3, first_deriv_rb, first_deriv_lb, &
-       M8, M6, M4, M2, BRB, BLB
+       M8, M6, M4, M2, BRB, BLB, D8, D6, D4
   use variables_module
   implicit none
 
@@ -3601,8 +3601,10 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) &
-                  + dxinv(1) * first_deriv_8( vp(i-4:i+4,j,k)*qx(i-4:i+4,j,k,idu)) &
-                  + dxinv(2) * first_deriv_8( mu(i,j-4:j+4,k)*qy(i,j-4:j+4,k,idu)) &
+                  + dxinv(1) * first_deriv_8( vp(i-4:i+4,j,k)*qx(i-4:i+4,j,k,idu)) 
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) &
+                  + dxinv(2) * first_deriv_8( mu(i,j-4:j+4,k)*qy(i,j-4:j+4,k,idu)) 
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) &
                   + dxinv(3) * first_deriv_8( mu(i,j,k-4:k+4)*qz(i,j,k-4:k+4,idu))
           end do
        end do
@@ -3615,8 +3617,10 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) &
-                  + dxinv(1) * first_deriv_8( mu(i-4:i+4,j,k)*qx(i-4:i+4,j,k,idv) ) &
-                  + dxinv(2) * first_deriv_8( vp(i,j-4:j+4,k)*qy(i,j-4:j+4,k,idv) ) &
+                  + dxinv(1) * first_deriv_8( mu(i-4:i+4,j,k)*qx(i-4:i+4,j,k,idv) ) 
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) &
+                  + dxinv(2) * first_deriv_8( vp(i,j-4:j+4,k)*qy(i,j-4:j+4,k,idv) ) 
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) &
                   + dxinv(3) * first_deriv_8( mu(i,j,k-4:k+4)*qz(i,j,k-4:k+4,idv) ) 
           end do
        end do
@@ -3629,8 +3633,10 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) &
-                  + dxinv(1) * first_deriv_8( mu(i-4:i+4,j,k)*qx(i-4:i+4,j,k,idw) ) &
-                  + dxinv(2) * first_deriv_8( mu(i,j-4:j+4,k)*qy(i,j-4:j+4,k,idw) ) &
+                  + dxinv(1) * first_deriv_8( mu(i-4:i+4,j,k)*qx(i-4:i+4,j,k,idw) ) 
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) &
+                  + dxinv(2) * first_deriv_8( mu(i,j-4:j+4,k)*qy(i,j-4:j+4,k,idw) ) 
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) &
                   + dxinv(3) * first_deriv_8( vp(i,j,k-4:k+4)*qz(i,j,k-4:k+4,idw) )
           end do
        end do
@@ -3657,8 +3663,10 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,iene) = rhs(i,j,k,iene) &
-                  + dxinv(1) * first_deriv_8( lam(i-4:i+4,j,k)*qx(i-4:i+4,j,k,idT) ) &
-                  + dxinv(2) * first_deriv_8( lam(i,j-4:j+4,k)*qy(i,j-4:j+4,k,idT) ) &
+                  + dxinv(1) * first_deriv_8( lam(i-4:i+4,j,k)*qx(i-4:i+4,j,k,idT) ) 
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) &
+                  + dxinv(2) * first_deriv_8( lam(i,j-4:j+4,k)*qy(i,j-4:j+4,k,idT) ) 
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) &
                   + dxinv(3) * first_deriv_8( lam(i,j,k-4:k+4)*qz(i,j,k-4:k+4,idT) )
           end do
        end do
