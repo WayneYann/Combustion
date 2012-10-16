@@ -36,6 +36,10 @@ contains
        call advance_rk3(U,dt,dx,istep)
     end if
 
+    if (contains_nan(U)) then
+       call bl_error("U contains nan")
+    end if
+
   end subroutine advance
 
   !
@@ -52,33 +56,47 @@ contains
     type(layout)     :: la
     type(multifab)   :: Uprime, Unew
 
+    type(bl_prof_timer), save :: bpt_rkstep1, bpt_rkstep2, bpt_rkstep3
+    type(bl_prof_timer), save :: bpt_rkstep1dUdt
+
     ng = nghost(U)
     la = get_layout(U)
 
     call multifab_build(Uprime, la, ncons, 0)
     call multifab_build(Unew,   la, ncons, ng)
+    call multifab_setval(Unew, 0.d0, .true.)
 
     ! RK Step 1
+    call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+
     courno_proc = 1.0d-50
 
+    call build(bpt_rkstep1dUdt, "rkstep1dUdt")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call dUdt(U, Uprime, dx, courno=courno_proc)
+    call destroy(bpt_rkstep1dUdt)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
     call set_dt(dt, courno_proc, istep)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew)
 
+    call destroy(bpt_rkstep1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
     ! RK Step 2
+    call build(bpt_rkstep2, "rkstep2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call dUdt(Unew, Uprime, dx)
 
     call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew)
+    call destroy(bpt_rkstep2)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     ! RK Step 3
+    call build(bpt_rkstep3, "rkstep3")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call dUdt(Unew, Uprime, dx)
     call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
     call impose_hard_bc(U)
+    call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     call destroy(Unew)
     call destroy(Uprime)
@@ -388,6 +406,11 @@ contains
 
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
+    type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
+    type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm, bpt_nscbc
+
+
+    call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
     ng = nghost(U)
     la = get_layout(U)
@@ -403,21 +426,29 @@ contains
     call multifab_build(xi , la, 1, ng)
     call multifab_build(lam, la, 1, ng)
     call multifab_build(Ddiag, la, nspecies, ng)
+    call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Calculate primitive variables based on U
     !
+    call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call ctoprim(U, Q, ng)
+    call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+    call build(bpt_courno, "courno")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     if (present(courno)) then
        call compute_courno(Q, dx, courno)
     end if
+    call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+    call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
+    call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Hyperbolic terms
     !
+    call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Fhyp)
        up => dataptr(U,n)
        qp => dataptr(Q,n)
@@ -435,11 +466,13 @@ contains
           call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
        end if
     end do
+    call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     
     !
     ! Transport terms
     !
+    call build(bpt_diffterm, "diffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        fdp => dataptr(Fdif,n)
@@ -461,10 +494,12 @@ contains
           call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
        end if
     end do
+    call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Calculate U'
     !
+    call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(U)
        fhp => dataptr(Fhyp,  n)
        fdp => dataptr(Fdif,  n)
@@ -485,10 +520,12 @@ contains
           !$OMP END PARALLEL DO
        end do
     end do
+    call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     ! 
     ! Add chemistry
     !
+    call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        upp => dataptr(Uprime,n)
@@ -502,11 +539,14 @@ contains
           call chemterm_3d(lo,hi,ng,qp,upp)
        end if
     end do
+    call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! NSCBC boundary
     !
+    call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call nscbc(Q, U, Fdif, Uprime, dx)
+    call destroy(bpt_nscbc)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     call destroy(Q)
 
@@ -574,10 +614,14 @@ contains
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, &
          Ddp, upp, qxp, qyp, qzp
 
+    type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
+    type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
+
     integer :: ndq
 
     ndq = idX1+nspecies-1
 
+    call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
     la = get_layout(U)
 
@@ -595,24 +639,32 @@ contains
     call multifab_build(qx, la, ndq, ng)
     call multifab_build(qy, la, ndq, ng)
     call multifab_build(qz, la, ndq, ng)
+    call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Calculate primitive variables based on U
     !
+    call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call ctoprim(U, Q, 0)
+    call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     call multifab_fill_boundary(Q)
     call multifab_fill_boundary(U)
 
+    call build(bpt_courno, "courno")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     if (present(courno)) then
        call compute_courno(Q, dx, courno)
     end if
+    call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+    call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
+    call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Hyperbolic terms
     !
+    call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Fhyp)
        up => dataptr(U,n)
        qp => dataptr(Q,n)
@@ -630,12 +682,15 @@ contains
           call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
        end if
     end do
+    call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
 
     !
     ! Transport terms
     ! S3D_diffterm1: first derivative terms
     ! S3D_diffterm2: d(a du/dx)/dx terms
     !
+    call build(bpt_diffterm, "diffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        fdp => dataptr(Fdif,n)
@@ -683,10 +738,12 @@ contains
           call S3D_diffterm_2(lo,hi,ng,ndq,dx,qp,fdp,mup,xip,lamp,Ddp,qxp,qyp,qzp)
        end if
     end do
+    call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Calculate U'
     !
+    call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(U)
        fhp => dataptr(Fhyp,  n)
        fdp => dataptr(Fdif,  n)
@@ -707,10 +764,12 @@ contains
           !$OMP END PARALLEL DO
        end do
     end do
+    call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     ! 
     ! Add chemistry
     !
+    call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        upp => dataptr(Uprime,n)
@@ -724,6 +783,7 @@ contains
           call chemterm_3d(lo,hi,ng,qp,upp)
        end if
     end do
+    call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     call destroy(Q)
 

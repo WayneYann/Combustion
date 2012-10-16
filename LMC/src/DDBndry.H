@@ -4,6 +4,7 @@
 
 #include <ViscBndry.H>
 #include <BC_TYPES.H>
+#include <PArray.H>
 
 class DDBndry
     :

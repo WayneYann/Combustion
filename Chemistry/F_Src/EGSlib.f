@@ -39,11 +39,21 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
 C     Add a small constant to the mole and mass fractions
 C-----------------------------------------------------------------------
-      SSS = 1.0D-16
-      AAA = 1.0D0 / DFLOAT(NS)
+      SUM = 0.D0
       DO I = 1, NS
-         WEG ( IXTR + I - 1 ) = X(I) + SSS * ( AAA - X(I) )
-         WEG ( IYTR + I - 1 ) = Y(I) + SSS * ( AAA - Y(I) )
+         SUM = SUM + X(I)
+      ENDDO
+      WEG(ISUMTR) = SUM
+      AAA  = SUM / DFLOAT(NS)
+      SSS  = 1.0D-16
+      WWTR = 0.0d0
+      DO I = 1, NS
+         WEG (IXTR+I-1) = X(I) + SSS * ( AAA - X(I) )
+         WWTR = WWTR + WEG(IXTR+I-1) * WEG(IEGWT+I-1)
+      ENDDO
+      WEG(IWWTR) = WWTR
+      DO I = 1, NS
+         WEG(IYTR+I-1) = WEG(IXTR+I-1) * WEG(IEGWT+I-1) / WWTR
       ENDDO
 C-----------------------------------------------------------------------
 C     AUX(i) = \sum_{j .ne. i} YTR(j)
@@ -337,13 +347,13 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSD1  ( NS, PRES, WEG(IXTR), WEG(IYTR), Y, WEG(IEGWT), 
-     &               WW, WEG(IEGPA), D, WEG(IBIN), WEG(IG), 
-     &               WEG(IDMI), WEG(ITEMP), WEG(IAUX) )
+      CALL LEGSD1  ( NS, PRES, WEG(IXTR), WEG(IYTR), WEG(ISUMTR), 
+     &               WEG(IEGPA), D, WEG(IBIN), WEG(IG), WEG(IDMI), 
+     &               WEG(ITEMP), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSD1 ( NS, PRES, XTR, YTR, Y, WT, WW, PATMOS, D,
+      SUBROUTINE LEGSD1 ( NS, PRES, XTR, YTR, SUMTR, PATMOS, D,
      &                    BIN, G, DMI, TEMP, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
@@ -352,8 +362,7 @@ C-----------------------------------------------------------------------
 C        Call the iterative procedures
 C-----------------------------------------------------------------------
       ITERMX = 2
-      CALL EGSSI1 ( NS, G, DMI, TEMP, XTR, YTR, WT, WW, Y, 
-     &             D, ITERMX, AUX )
+      CALL EGSSI1 ( NS, G, DMI, TEMP, YTR, SUMTR, D, ITERMX, AUX )
 C-----------------------------------------------------------------------
 C        Correct for the pressure dependence of D
 C-----------------------------------------------------------------------
@@ -396,17 +405,15 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSD2  ( NS, PRES, WEG(IXTR), WEG(IYTR), Y, WEG(IEGWT), 
-     &               WW, WEG(IEGPA), D, WEG(IBIN), WEG(IG), 
-     &               WEG(IAN), WEG(ITEMP), WEG(IAUX) )
+      CALL LEGSD2  ( NS, PRES, WEG(IXTR), WEG(IYTR), WEG(ISUMTR), 
+     &               WEG(IEGPA), D, WEG(IBIN), WEG(IG), 
+     &               WEG(IAN), WEG(ITEMP) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSD2 ( NS, PRES, XTR, YTR, Y, WT, WW, PATMOS, D,
-     &                    BIN, G, AN, TEMP, AUX )
+      SUBROUTINE LEGSD2 ( NS, PRES, XTR, YTR, SUMTR, PATMOS, D,
+     &                    BIN, G, AN, TEMP )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-C-----------------------------------------------------------------------
-      DIMENSION G(*), YTR(NS)
 C-----------------------------------------------------------------------
 C     Form the linear system
 C-----------------------------------------------------------------------
@@ -414,11 +421,11 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
 C     Form the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSEVD ( NS, NS, AN, YTR, G, XTR, WT, WW, D )
+      CALL EGSEVD ( NS, NS, AN, YTR, G, SUMTR, D )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
 C     Correct for the pressure dependence of D
 C-----------------------------------------------------------------------
@@ -463,14 +470,14 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSDR1 ( NS, T, WEG(IXTR), WEG(IYTR), Y, WEG(IEGWT), 
-     &               WW, WEG(IEGRU), WEG(IEGPA), D, WEG(IBIN), 
+      CALL LEGSDR1 ( NS, T, WEG(IXTR), WEG(IYTR), WEG(IWWTR),
+     &               WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), D, WEG(IBIN), 
      &               WEG(IG), WEG(IDMI), WEG(ITEMP), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSDR1 ( NS, TEMPER, XTR, YTR, Y, WT, WW, RU, PATMOS, 
-     &                     D, BIN, G, DMI, TEMP, AUX )
+      SUBROUTINE LEGSDR1 ( NS, TEMPER, XTR, YTR, WWTR, SUMTR, 
+     &                     RU, PATMOS, D, BIN, G, DMI, TEMP, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       CALL EGSEML00 ( NS, XTR, BIN, G )
@@ -478,10 +485,9 @@ C-----------------------------------------------------------------------
 C        Call the iterative procedures
 C-----------------------------------------------------------------------
       ITERMX = 2
-      CALL EGSSI1 ( NS, G, DMI, TEMP, XTR, YTR, WT, WW, Y, 
-     &             D, ITERMX, AUX )
+      CALL EGSSI1 ( NS, G, DMI, TEMP, YTR, SUMTR, D, ITERMX, AUX )
 C-----------------------------------------------------------------------
-      AA = PATMOS * WW / ( RU * TEMPER )
+      AA = PATMOS * WWTR / ( RU * TEMPER )
       CALL DSCAL ( NS*NS, AA, D, 1 )
 C-----------------------------------------------------------------------
       RETURN
@@ -522,14 +528,14 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSDR2 ( NS, T, WEG(IXTR), WEG(IYTR), Y, WEG(IEGWT), 
-     &               WW, WEG(IEGRU), WEG(IEGPA), D, WEG(IBIN), 
-     &               WEG(IG), WEG(IAN), WEG(ITEMP), WEG(IAUX) )
+      CALL LEGSDR2 ( NS, T, WEG(IXTR), WEG(IYTR), WEG(ISUMTR), 
+     &               WEG(IWWTR), WEG(IEGRU), WEG(IEGPA), D, WEG(IBIN), 
+     &               WEG(IG), WEG(IAN), WEG(ITEMP) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSDR2 ( NS, TEMPER, XTR, YTR, Y, WT, WW, RU, PATMOS, 
-     &                     D, BIN, G, AN, TEMP, AUX )
+      SUBROUTINE LEGSDR2 ( NS, TEMPER, XTR, YTR, SUMTR, WWTR, 
+     &                     RU, PATMOS, D, BIN, G, AN, TEMP )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       DIMENSION G(*), YTR(NS)
@@ -540,13 +546,13 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
 C     Form the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSEVD ( NS, NS, AN, YTR, G, XTR, WT, WW, D )
+      CALL EGSEVD ( NS, NS, AN, YTR, G, SUMTR, D )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
-      AA = PATMOS * WW / ( RU * TEMPER )
+      AA = PATMOS * WWTR / ( RU * TEMPER )
       CALL DSCAL ( NS*NS, AA, D, 1 )
 C-----------------------------------------------------------------------
       RETURN
@@ -1742,21 +1748,19 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTD1 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), Y,
-     &        WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
+      CALL LEGSLTD1 ( NS, PRES, T, WEG(IXTR), WEG(IYTR),
+     &        WEG(IEGWT), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), 
      &        PTC, THETA, D,
      &        WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
-     &        WEG(ICINT), WEG(IETA), WEG(ICXI), 
-     &        IWEG(IEGLIN),
+     &        WEG(ICINT), WEG(IETA), WEG(ICXI), IWEG(IEGLIN),
      &        WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
      &        WEG(IRN), WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTD1 ( NS, PRES, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTD1 ( NS, PRES, TEMPER, XTR, YTR, WT, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
      &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
@@ -1773,13 +1777,12 @@ C.....
       CALL EGSCG2 ( NS, NG, G, DMI, AN, ZN, RN, TEMP, ITERMX )
 C.....
       ITERMX = 2
-      CALL EGSSI2 ( NS, NG, G, DMI, TEMP, XTR, YTR, WT, WW, Y, 
-     &             D, ITERMX, AUX )
+      CALL EGSSI2 ( NS, NG, G, DMI, TEMP, YTR, SUMTR, D, ITERMX, AUX )
 C-----------------------------------------------------------------------
 C        Evaluate the transport coefficients
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
 C        Correct for the pressure dependence of theta and D
 C-----------------------------------------------------------------------
@@ -1826,22 +1829,20 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTD2 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), Y,
-     &        WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
+      CALL LEGSLTD2 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), 
+     &        WEG(IEGWT), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), 
      &        PTC, THETA, D,
      &        WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
-     &        WEG(ICINT), WEG(IETA), WEG(ICXI), 
-     &        IWEG(IEGLIN),
+     &        WEG(ICINT), WEG(IETA), WEG(ICXI), IWEG(IEGLIN),
      &        WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
-     &        WEG(IRN), WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
+     &        WEG(IRN), WEG(ITEMP), WEG(IBETA) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTD2 ( NS, PRES, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTD2 ( NS, PRES, TEMPER, XTR, YTR, WT, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
-     &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
+     &           G, DMI, AN, ZN, RN, TEMP, BETA )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       DIMENSION G(*), YTR(NS)
@@ -1867,13 +1868,13 @@ C-----------------------------------------------------------------------
       CALL EGSSOL ( NG, G, AN )
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
-      CALL EGSEVD ( NS, NG, AN, YTR, G, XTR, WT, WW, D )
+      CALL EGSEVD ( NS, NG, AN, YTR, G, SUMTR, D )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
 C        Correct for the pressure dependence of theta and D
 C-----------------------------------------------------------------------
@@ -1923,22 +1924,18 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTD3 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), Y,
-     &             WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &             PTC, THETA, D,
+      CALL LEGSLTD3 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &             WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), PTC, THETA, D,
      &             WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
-     &             WEG(ICINT), WEG(IETA), WEG(ICXI), 
-     &             IWEG(IEGLIN),
+     &             WEG(ICINT), WEG(IETA), WEG(ICXI), IWEG(IEGLIN),
      &             WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
      &             WEG(IRN), WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTD3 ( NS, PRES, TEMPER, XTR, YTR, Y, WT, WW,
-     &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
-     &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
+      SUBROUTINE LEGSLTD3 ( NS, PRES, TEMPER, XTR, YTR, WT, SUMTR, 
+     &           RU, PATMOS, PTC, THETA, D, BIN, AIJ, BIJ, CIJ, CINT, 
+     &           ETA, CXI, LIN, G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       CALL EGSEML ( NS, TEMPER, XTR, WT, RU, PATMOS,
@@ -1956,13 +1953,12 @@ C-----------------------------------------------------------------------
 C        Evaluate the transport coefficients
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
       CALL EGSEML00 ( NS, XTR, BIN, G )
 C.....
       ITERMX = 2
-      CALL EGSSI1 ( NS, G, DMI, TEMP, XTR, YTR, WT, WW, Y, 
-     &             D, ITERMX, AUX )
+      CALL EGSSI1 ( NS, G, DMI, TEMP, YTR, SUMTR, D, ITERMX, AUX )
 C-----------------------------------------------------------------------
 C        Correct for the pressure dependence of theta and D
 C-----------------------------------------------------------------------
@@ -2009,22 +2005,20 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTD4 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), Y,
-     &                WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &                PTC, THETA, D,
-     &                WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
-     &                WEG(ICIJ), WEG(ICINT), WEG(IETA), 
-     &                WEG(ICXI), IWEG(IEGLIN), WEG(IG), 
-     &                WEG(IDMI), WEG(IAN), WEG(IZN), WEG(IRN), 
-     &                WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
+      CALL LEGSLTD4 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &             WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), PTC, THETA, D,
+     &             WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
+     &             WEG(ICIJ), WEG(ICINT), WEG(IETA), 
+     &             WEG(ICXI), IWEG(IEGLIN), WEG(IG), 
+     &             WEG(IDMI), WEG(IAN), WEG(IZN), WEG(IRN), 
+     &             WEG(ITEMP), WEG(IBETA) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTD4 ( NS, PRES, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTD4 ( NS, PRES, TEMPER, XTR, YTR, WT, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
-     &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
+     &           G, DMI, AN, ZN, RN, TEMP, BETA )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       DIMENSION G(*), YTR(NS)
@@ -2050,7 +2044,7 @@ C-----------------------------------------------------------------------
       CALL EGSSOL ( NG, G, AN )
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
       CALL EGSEML00 ( NS, XTR, BIN, G )
 C-----------------------------------------------------------------------
@@ -2068,11 +2062,11 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
       CALL EGSDEC ( NG, G, TEMP, IER )
 C-----------------------------------------------------------------------
-      CALL EGSEVD ( NS, NG, AN, YTR, G, XTR, WT, WW, D )
+      CALL EGSEVD ( NS, NG, AN, YTR, G, SUMTR, D )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
 C        Correct for the pressure dependence of theta and D
 C-----------------------------------------------------------------------
@@ -2122,21 +2116,18 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTD5 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), Y,
-     &             WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &             PTC, THETA, D,
+      CALL LEGSLTD5 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &             WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), PTC, THETA, D,
      &             WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
      &             WEG(ICINT), WEG(IETA), WEG(ICXI), 
-     &             IWEG(IEGLIN),
-     &             WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
+     &             IWEG(IEGLIN), WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
      &             WEG(IRN), WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTD5 ( NS, PRES, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTD5 ( NS, PRES, TEMPER, XTR, YTR, WT, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
      &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
@@ -2153,13 +2144,12 @@ C.....
       CALL EGSCG3 ( NS, NG, G, DMI, AN, ZN, RN, TEMP, ITERMX )
 C.....
       ITERMX = 2
-      CALL EGSSI3 ( NS, NG, G, DMI, TEMP, XTR, YTR, WT, WW, Y, 
-     &             D, ITERMX, AUX )
+      CALL EGSSI3 ( NS, NG, G, DMI, TEMP, YTR, SUMTR, D, ITERMX, AUX )
 C-----------------------------------------------------------------------
 C        Evaluate the transport coefficients
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
 C        Correct for the pressure dependence of theta and D
 C-----------------------------------------------------------------------
@@ -2206,22 +2196,20 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTD6 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), Y,
-     &                WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &                PTC, THETA, D,
-     &                WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
-     &                WEG(ICIJ), WEG(ICINT), WEG(IETA), 
-     &                WEG(ICXI), IWEG(IEGLIN), WEG(IG), 
-     &                WEG(IDMI), WEG(IAN), WEG(IZN), WEG(IRN), 
-     &                WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
+      CALL LEGSLTD6 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &              WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), PTC, THETA, D,
+     &              WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
+     &              WEG(ICIJ), WEG(ICINT), WEG(IETA), 
+     &              WEG(ICXI), IWEG(IEGLIN), WEG(IG), 
+     &              WEG(IDMI), WEG(IAN), WEG(IZN), WEG(IRN), 
+     &              WEG(ITEMP), WEG(IBETA) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTD6 ( NS, PRES, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTD6 ( NS, PRES, TEMPER, XTR, YTR, WT, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
-     &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
+     &           G, DMI, AN, ZN, RN, TEMP, BETA )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       DIMENSION G(*), YTR(NS)
@@ -2247,13 +2235,13 @@ C-----------------------------------------------------------------------
       CALL EGSSOL ( NG, G, AN )
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
-      CALL EGSEVD ( NS, NG, AN, YTR, G, XTR, WT, WW, D )
+      CALL EGSEVD ( NS, NG, AN, YTR, G, SUMTR, D )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
 C        Correct for the pressure dependence of theta and D
 C-----------------------------------------------------------------------
@@ -2303,21 +2291,18 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTDR1 ( NS, T, WEG(IXTR), WEG(IYTR), Y,
-     &        WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &        PTC, THETA, D,
-     &        WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
-     &        WEG(ICINT), WEG(IETA), WEG(ICXI), 
-     &        IWEG(IEGLIN),
+      CALL LEGSLTDR1 ( NS, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &        WEG(IWWTR), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), 
+     &        PTC, THETA, D, WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
+     &        WEG(ICINT), WEG(IETA), WEG(ICXI), IWEG(IEGLIN),
      &        WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
      &        WEG(IRN), WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTDR1 ( NS, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTDR1 ( NS, TEMPER, XTR, YTR, WT, WWTR, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
      &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
@@ -2334,15 +2319,14 @@ C.....
       CALL EGSCG2 ( NS, NG, G, DMI, AN, ZN, RN, TEMP, ITERMX )
 C.....
       ITERMX = 2
-      CALL EGSSI2 ( NS, NG, G, DMI, TEMP, XTR, YTR, WT, WW, Y, 
-     &             D, ITERMX, AUX )
+      CALL EGSSI2 ( NS, NG, G, DMI, TEMP, YTR, SUMTR, D, ITERMX, AUX )
 C-----------------------------------------------------------------------
 C        Evaluate the transport coefficients
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
-      AA = PATMOS * WW / ( RU * TEMPER )
+      AA = PATMOS * WWTR / ( RU * TEMPER )
       CALL DSCAL ( NS, AA, THETA, 1 )
       CALL DSCAL ( NS*NS, AA, D, 1 )
 C-----------------------------------------------------------------------
@@ -2385,22 +2369,19 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTDR2 ( NS, T, WEG(IXTR), WEG(IYTR), Y,
-     &        WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &        PTC, THETA, D,
-     &        WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
-     &        WEG(ICINT), WEG(IETA), WEG(ICXI), 
-     &        IWEG(IEGLIN),
+      CALL LEGSLTDR2 ( NS, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &        WEG(IWWTR), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), 
+     &        PTC, THETA, D, WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
+     &        WEG(ICINT), WEG(IETA), WEG(ICXI), IWEG(IEGLIN),
      &        WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
-     &        WEG(IRN), WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
+     &        WEG(IRN), WEG(ITEMP), WEG(IBETA) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTDR2 ( NS, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTDR2 ( NS, TEMPER, XTR, YTR, WT, WWTR, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
-     &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
+     &           G, DMI, AN, ZN, RN, TEMP, BETA )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       DIMENSION G(*), YTR(NS)
@@ -2426,15 +2407,15 @@ C-----------------------------------------------------------------------
       CALL EGSSOL ( NG, G, AN )
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
-      CALL EGSEVD ( NS, NG, AN, YTR, G, XTR, WT, WW, D )
+      CALL EGSEVD ( NS, NG, AN, YTR, G, SUMTR, D )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
-      AA = PATMOS * WW / ( RU * TEMPER )
+      AA = PATMOS * WWTR / ( RU * TEMPER )
       CALL DSCAL ( NS, AA, THETA, 1 )
       CALL DSCAL ( NS*NS, AA, D, 1 )
 C-----------------------------------------------------------------------
@@ -2480,21 +2461,18 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTDR3 ( NS, T, WEG(IXTR), WEG(IYTR), Y,
-     &             WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &             PTC, THETA, D,
-     &             WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
-     &             WEG(ICINT), WEG(IETA), WEG(ICXI), 
-     &             IWEG(IEGLIN),
-     &             WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
+      CALL LEGSLTDR3 ( NS, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &             WEG(IWWTR), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), 
+     &             PTC, THETA, D, WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
+     &             WEG(ICIJ), WEG(ICINT), WEG(IETA), WEG(ICXI), 
+     &             IWEG(IEGLIN), WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
      &             WEG(IRN), WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTDR3 ( NS, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTDR3 ( NS, TEMPER, XTR, YTR, WT, WWTR, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
      &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
@@ -2513,15 +2491,14 @@ C-----------------------------------------------------------------------
 C        Evaluate the transport coefficients
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
       CALL EGSEML00 ( NS, XTR, BIN, G )
 C.....
       ITERMX = 2
-      CALL EGSSI1 ( NS, G, DMI, TEMP, XTR, YTR, WT, WW, Y, 
-     &             D, ITERMX, AUX )
+      CALL EGSSI1 ( NS, G, DMI, TEMP, YTR, SUMTR, D, ITERMX, AUX )
 C-----------------------------------------------------------------------
-      AA = PATMOS * WW / ( RU * TEMPER )
+      AA = PATMOS * WWTR / ( RU * TEMPER )
       CALL DSCAL ( NS, AA, THETA, 1 )
       CALL DSCAL ( NS*NS, AA, D, 1 )
 C-----------------------------------------------------------------------
@@ -2564,22 +2541,20 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTDR4 ( NS, T, WEG(IXTR), WEG(IYTR), Y,
-     &                WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &                PTC, THETA, D,
-     &                WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
-     &                WEG(ICIJ), WEG(ICINT), WEG(IETA), 
-     &                WEG(ICXI), IWEG(IEGLIN), WEG(IG), 
-     &                WEG(IDMI), WEG(IAN), WEG(IZN), WEG(IRN), 
-     &                WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
+      CALL LEGSLTDR4 ( NS, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT),
+     &               WEG(IWWTR), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA),
+     &               PTC, THETA, D, WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
+     &               WEG(ICIJ), WEG(ICINT), WEG(IETA), 
+     &               WEG(ICXI), IWEG(IEGLIN), WEG(IG), 
+     &               WEG(IDMI), WEG(IAN), WEG(IZN), WEG(IRN), 
+     &               WEG(ITEMP), WEG(IBETA) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTDR4 ( NS, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTDR4 ( NS, TEMPER, XTR, YTR, WT, WWTR, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
-     &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
+     &           G, DMI, AN, ZN, RN, TEMP, BETA )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       DIMENSION G(*), YTR(NS)
@@ -2605,7 +2580,7 @@ C-----------------------------------------------------------------------
       CALL EGSSOL ( NG, G, AN )
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
       CALL EGSEML00 ( NS, XTR, BIN, G )
 C-----------------------------------------------------------------------
@@ -2623,13 +2598,13 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
       CALL EGSDEC ( NG, G, TEMP, IER )
 C-----------------------------------------------------------------------
-      CALL EGSEVD ( NS, NG, AN, YTR, G, XTR, WT, WW, D )
+      CALL EGSEVD ( NS, NG, AN, YTR, G, SUMTR, D )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
-      AA = PATMOS * WW / ( RU * TEMPER )
+      AA = PATMOS * WWTR / ( RU * TEMPER )
       CALL DSCAL ( NS, AA, THETA, 1 )
       CALL DSCAL ( NS*NS, AA, D, 1 )
 C-----------------------------------------------------------------------
@@ -2675,21 +2650,18 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTDR5 ( NS, T, WEG(IXTR), WEG(IYTR), Y,
-     &             WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &             PTC, THETA, D,
-     &             WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
-     &             WEG(ICINT), WEG(IETA), WEG(ICXI), 
-     &             IWEG(IEGLIN),
-     &             WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
+      CALL LEGSLTDR5 ( NS, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &             WEG(IWWTR), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), 
+     &             PTC, THETA, D, WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
+     &             WEG(ICIJ), WEG(ICINT), WEG(IETA), WEG(ICXI), 
+     &             IWEG(IEGLIN), WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
      &             WEG(IRN), WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTDR5 ( NS, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTDR5 ( NS, TEMPER, XTR, YTR, WT, WWTR, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
      &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
@@ -2706,15 +2678,14 @@ C.....
       CALL EGSCG3 ( NS, NG, G, DMI, AN, ZN, RN, TEMP, ITERMX )
 C.....
       ITERMX = 2
-      CALL EGSSI3 ( NS, NG, G, DMI, TEMP, XTR, YTR, WT, WW, Y, 
-     &             D, ITERMX, AUX )
+      CALL EGSSI3 ( NS, NG, G, DMI, TEMP, YTR, SUMTR, D, ITERMX, AUX )
 C-----------------------------------------------------------------------
 C        Evaluate the transport coefficients
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
-      AA = PATMOS * WW / ( RU * TEMPER )
+      AA = PATMOS * WWTR / ( RU * TEMPER )
       CALL DSCAL ( NS, AA, THETA, 1 )
       CALL DSCAL ( NS*NS, AA, D, 1 )
 C-----------------------------------------------------------------------
@@ -2757,22 +2728,20 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSLTDR6 ( NS, T, WEG(IXTR), WEG(IYTR), Y,
-     &                WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &                PTC, THETA, D,
-     &                WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
+      CALL LEGSLTDR6 ( NS, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &                WEG(IWWTR), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), 
+     &                PTC, THETA, D, WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
      &                WEG(ICIJ), WEG(ICINT), WEG(IETA), 
      &                WEG(ICXI), IWEG(IEGLIN), WEG(IG), 
      &                WEG(IDMI), WEG(IAN), WEG(IZN), WEG(IRN), 
-     &                WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
+     &                WEG(ITEMP), WEG(IBETA) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSLTDR6 ( NS, TEMPER, XTR, YTR, Y, WT, WW,
+      SUBROUTINE LEGSLTDR6 ( NS, TEMPER, XTR, YTR, WT, WWTR, SUMTR,
      &           RU, PATMOS, PTC, THETA, D,
-     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI,
-     &           LIN,
-     &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
+     &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
+     &           G, DMI, AN, ZN, RN, TEMP, BETA )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       DIMENSION G(*), YTR(NS)
@@ -2798,15 +2767,15 @@ C-----------------------------------------------------------------------
       CALL EGSSOL ( NG, G, AN )
 C-----------------------------------------------------------------------
       CALL EGSEVL ( NG, PTC, AN, BETA, PATMOS, TEMPER )
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
-      CALL EGSEVD ( NS, NG, AN, YTR, G, XTR, WT, WW, D )
+      CALL EGSEVD ( NS, NG, AN, YTR, G, SUMTR, D )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
-      AA = PATMOS * WW / ( RU * TEMPER )
+      AA = PATMOS * WWTR / ( RU * TEMPER )
       CALL DSCAL ( NS, AA, THETA, 1 )
       CALL DSCAL ( NS*NS, AA, D, 1 )
 C-----------------------------------------------------------------------
@@ -2851,18 +2820,17 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSTD1 ( NS, PRES, T, Y,  WEG(IXTR), WEG(IYTR), 
-     &               WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &               THETA, D,
-     &               WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
-     &               WEG(ICINT), WEG(IETA), WEG(ICXI), 
+      CALL LEGSTD1 ( NS, PRES, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT),  
+     &               WEG(IWWTR), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), 
+     &               THETA, D, WEG(IBIN), WEG(IAIJ), WEG(IBIJ), 
+     &               WEG(ICIJ), WEG(ICINT), WEG(IETA), WEG(ICXI), 
      &               IWEG(IEGLIN), WEG(IG), 
      &               WEG(IDMI), WEG(IAN), WEG(IZN), WEG(IRN), 
      &               WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSTD1 ( NS, PRES, TEMPER, Y, XTR, YTR, WT, WW, 
+      SUBROUTINE LEGSTD1 ( NS, PRES, TEMPER, XTR, YTR, WT, WWTR, SUMTR, 
      &           RU, PATMOS, THETA, D,
      &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
      &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
@@ -2879,15 +2847,15 @@ C-----------------------------------------------------------------------
       CALL DCOPY  ( NG, BETA, 1, RN, 1 )
       CALL EGSCG3 ( NS, NG, G, DMI, AN, ZN, RN, TEMP, ITERMX )
 C-----------------------------------------------------------------------
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
 C     Evaluate the diffusion matrix
 C-----------------------------------------------------------------------
-      CALL EGSEVDI1 ( NS, D, WT, WW, TEMP, XTR, YTR, BIN, AUX )
+      CALL EGSEVDI1 ( NS, D, WT, WWTR, TEMP, XTR, YTR, BIN, AUX )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
 C        Correct for the pressure dependence of theta and D
 C-----------------------------------------------------------------------
@@ -2938,18 +2906,16 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*), IWEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSTDR1 ( NS, T, Y,  WEG(IXTR), WEG(IYTR), 
-     &       WEG(IEGWT), WW, WEG(IEGRU), WEG(IEGPA), 
-     &       THETA, D,
+      CALL LEGSTDR1 ( NS, T, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
+     &       WEG(IWWTR), WEG(ISUMTR), WEG(IEGRU), WEG(IEGPA), THETA, D,
      &       WEG(IBIN), WEG(IAIJ), WEG(IBIJ), WEG(ICIJ), 
-     &       WEG(ICINT), WEG(IETA), WEG(ICXI), 
-     &       IWEG(IEGLIN),
+     &       WEG(ICINT), WEG(IETA), WEG(ICXI), IWEG(IEGLIN),
      &       WEG(IG), WEG(IDMI), WEG(IAN), WEG(IZN), 
      &       WEG(IRN), WEG(ITEMP), WEG(IBETA), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSTDR1 ( NS, TEMPER, Y, XTR, YTR, WT, WW, 
+      SUBROUTINE LEGSTDR1 ( NS, TEMPER, XTR, YTR, WT, WWTR, SUMTR, 
      &           RU, PATMOS, THETA, D,
      &           BIN, AIJ, BIJ, CIJ, CINT, ETA, CXI, LIN,
      &           G, DMI, AN, ZN, RN, TEMP, BETA, AUX )
@@ -2966,19 +2932,19 @@ C-----------------------------------------------------------------------
       CALL DCOPY  ( NG, BETA, 1, RN, 1 )
       CALL EGSCG3 ( NS, NG, G, DMI, AN, ZN, RN, TEMP, ITERMX )
 C-----------------------------------------------------------------------
-      CALL EGSEVT ( NS, THETA, AN, Y )
+      CALL EGSEVT ( NS, THETA, AN, YTR, SUMTR )
 C-----------------------------------------------------------------------
 C     Evaluate the diffusion matrix
 C-----------------------------------------------------------------------
-      CALL EGSEVDI1 ( NS, D, WT, WW, TEMP, XTR, YTR, BIN, AUX )
+      CALL EGSEVDI1 ( NS, D, WT, WWTR, TEMP, XTR, YTR, BIN, AUX )
 C-----------------------------------------------------------------------
 C     Project the matrix D
 C-----------------------------------------------------------------------
-      CALL EGSPRD ( NS, D, TEMP, Y )
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
 C-----------------------------------------------------------------------
 C        Correct for the pressure dependence of theta and D
 C-----------------------------------------------------------------------
-      AA = PATMOS * WW / ( RU * TEMPER )
+      AA = PATMOS * WWTR / ( RU * TEMPER )
       CALL DSCAL ( NS, AA, THETA, 1 )
       CALL DSCAL ( NS*NS, AA, D, 1 )
 C-----------------------------------------------------------------------
@@ -3016,11 +2982,11 @@ C-----------------------------------------------------------------------
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
       CALL LEGSV1 ( NS, PRES, WEG(IXTR), WEG(IYTR), WEG(IEGWT), 
-     &              WW, WEG(IEGPA), D, WEG(IBIN), WEG(IAUX) )
+     &              WEG(IWWTR), WEG(IEGPA), D, WEG(IBIN), WEG(IAUX) )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSV1 ( NS, PRES, XTR, YTR, WT, WW, PATMOS, 
+      SUBROUTINE LEGSV1 ( NS, PRES, XTR, YTR, WT, WWTR, PATMOS, 
      &                    D, BIN, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
       DIMENSION XTR(NS), YTR(NS), WT(NS), D(NS), BIN(*), AUX(NS)
@@ -3037,7 +3003,7 @@ C-----------------------------------------------------------------------
          ENDDO
       ENDDO
 C-----------------------------------------------------------------------
-      RWW = 1.0D0 / WW
+      RWW = 1.0D0 / WWTR
       DO I = 1, NS
          D(I) = WT(I) * RWW * AUX(I) / D(I)
       ENDDO
@@ -3117,7 +3083,7 @@ C-----------------------------------------------------------------------
       END
 C=======================================================================
 C=======================================================================
-      SUBROUTINE EGSYV (PRES, Y, WW, WEG, F)
+      SUBROUTINE EGSYV (PRES, Y, WW, WEG, F, IDDEC)
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
 C
@@ -3133,6 +3099,9 @@ C        Y(NS)     species mass fractions
 C        WW        mean molecular weight
 C        WEG       double precision work array for EGLIB
 C        F(NS)     species diffusion driving forces
+C        IDDEC     flag indicating whether the diffusion matrix
+C                  needs first to be assembled and decomposed
+C                  0: no, .ne.0: yes
 C
 C     Output
 C     ------
@@ -3143,29 +3112,31 @@ C-----------------------------------------------------------------------
       DIMENSION WEG(*)
       INCLUDE 'eg.cmn'
 C-----------------------------------------------------------------------
-      CALL LEGSYV ( NS, PRES, WEG(IXTR), WEG(IYTR), WEG(IEGWT), WW, 
-     &              WEG(IEGPA), WEG(IG), WEG(ITEMP), WEG(IBIN), F )
+      CALL LEGSYV ( NS, PRES, WEG(IXTR), WEG(IYTR), WEG(IEGPA), 
+     &              WEG(IG), WEG(ITEMP), WEG(IBIN), F, IDDEC )
       RETURN
       END
 C-----------------------------------------------------------------------
-      SUBROUTINE LEGSYV ( NS, PRES, XTR, YTR, WT, WW, PATMOS, G, 
-     &                    TEMP, BIN, F )
+      SUBROUTINE LEGSYV ( NS, PRES, XTR, YTR, PATMOS, G, 
+     &                    TEMP, BIN, F, IDDEC )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
-      DIMENSION F(NS), WT(NS), XTR(NS)
+      DIMENSION F(NS), YTR(NS)
 C-----------------------------------------------------------------------
-      CALL EGSDDEC ( NS, XTR, YTR, G, BIN, TEMP )
+      IF ( IDDEC .NE. 0 ) THEN
+         CALL EGSDDEC  ( NS, XTR, YTR, G, BIN, TEMP )
+      ENDIF
       CALL EGSSOL  ( NS, G, F )
-      AA = - PATMOS / PRES / WW
+      AA = - PATMOS / PRES 
       DO I = 1, NS
-         F(I) = F(I) * WT(I) * XTR(I) * AA
+         F(I) = F(I) * YTR(I) * AA
       ENDDO
 C-----------------------------------------------------------------------
       RETURN
       END
 C=======================================================================
 C=======================================================================
-      SUBROUTINE EGSRYV (T, Y, WEG, F)
+      SUBROUTINE EGSRYV (T, Y, WEG, F, IDDEC)
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
 C
@@ -3180,6 +3151,9 @@ C        T         temperature
 C        Y(NS)     species mass fractions
 C        WEG       double precision work array for EGLIB
 C        F(NS)     species diffusion driving forces
+C        IDDEC     flag indicating whether the diffusion matrix
+C                  needs first to be assembled and decomposed
+C                  0: no, .ne.0: yes
 C
 C     Output
 C     ------
@@ -3192,17 +3166,19 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
       CALL LEGSRYV ( NS, WEG(IXTR), WEG(IYTR), WEG(IEGWT),
      &               WEG(IEGPA), WEG(IEGRU), T, WEG(IG), WEG(ITEMP), 
-     &               WEG(IBIN), F )
+     &               WEG(IBIN), F, IDDEC )
       RETURN
       END
 C-----------------------------------------------------------------------
       SUBROUTINE LEGSRYV ( NS, XTR, YTR, WT, PATMOS, RU, TEMPER, 
-     &                     G, TEMP, BIN, F )
+     &                     G, TEMP, BIN, F, IDDEC )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       DIMENSION F(NS), WT(NS), XTR(NS)
 C-----------------------------------------------------------------------
-      CALL EGSDDEC ( NS, XTR, YTR, G, BIN, TEMP )
+      IF ( IDDEC .NE. 0 ) THEN
+         CALL EGSDDEC  ( NS, XTR, YTR, G, BIN, TEMP )
+      ENDIF
       CALL EGSSOL  ( NS, G, F )
       AA = - PATMOS / RU / TEMPER
       DO I = 1, NS
@@ -3248,21 +3224,20 @@ C-----------------------------------------------------------------------
       END
 C=======================================================================
 C=======================================================================
-      SUBROUTINE EGSEVD ( NS, NG, AN, YTR, G, XTR, WT, WW, D )
+      SUBROUTINE EGSEVD ( NS, NG, AN, YTR, G, SUMTR, D )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
-      DIMENSION AN(NG), YTR(NS), G(*), XTR(NS), WT(NS), D(NS,NS)
+      DIMENSION AN(NG), YTR(NS), G(*), D(NS,NS)
 C-----------------------------------------------------------------------
-      RWW = 1.0D0 / WW
+      RSUM = 1.D0 / SUMTR
       DO I = 1, NS
          CALL EGZERO ( NG, AN )
          CALL DCOPY ( NS, YTR, 1, AN, 1 )
-         CALL DSCAL ( NS, -1.0D0, AN, 1 )
+         CALL DSCAL ( NS, -RSUM, AN, 1 )
          AN(I) = AN(I) + 1.0D0
          CALL EGSSOL ( NG, G, AN )
-         AAA = XTR(I) * WT(I) * RWW 
          DO J = 1, NS
-            D(I,J) = AAA * AN(J)
+            D(I,J) = YTR(I) * AN(J)
          ENDDO
       ENDDO
 C-----------------------------------------------------------------------
@@ -3270,7 +3245,7 @@ C-----------------------------------------------------------------------
       END
 C=======================================================================
 C=======================================================================
-      SUBROUTINE EGSEVDI1 ( NS, D, WT, WW, TEMP, XTR, YTR, BIN, AUX )
+      SUBROUTINE EGSEVDI1 ( NS, D, WT, WWTR, TEMP, XTR, YTR, BIN, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
       DIMENSION WT(NS), TEMP(NS), XTR(NS), YTR(NS), BIN(*), AUX(NS)
@@ -3290,10 +3265,10 @@ C-----------------------------------------------------------------------
       DO I = 1, NS
          DO J = I+1, NS
             IJ = NS*(I-1) - (I*(I-1))/2 + J
-            D(I,J) = WT(I) / WW * TEMP(I) * TEMP(J) * XTR(I) * BIN(IJ)
-            D(J,I) = WT(J) / WW * TEMP(I) * TEMP(J) * XTR(J) * BIN(IJ)
+            D(I,J) = WT(I) / WWTR * TEMP(I) * TEMP(J) * XTR(I) * BIN(IJ)
+            D(J,I) = WT(J) / WWTR * TEMP(I) * TEMP(J) * XTR(J) * BIN(IJ)
          ENDDO
-         D(I,I) = WT(I) / WW * TEMP(I) * ( 1.0D0 + YTR(I) )
+         D(I,I) = WT(I) / WWTR * TEMP(I) * ( 1.0D0 + YTR(I) )
       ENDDO
 C-----------------------------------------------------------------------
       RETURN
@@ -3345,64 +3320,18 @@ C-----------------------------------------------------------------------
       END
 C=======================================================================
 C=======================================================================
-      SUBROUTINE EGSEVT ( NS, THETA, AN, Y )
+      SUBROUTINE EGSEVT ( NS, THETA, AN, YTR, SUMTR )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 C-----------------------------------------------------------------------
-      DIMENSION THETA(NS), AN(NS), Y(NS)
+      DIMENSION THETA(NS), AN(NS), YTR(NS)
 C-----------------------------------------------------------------------
       SUM = 0.0D0
-      SOM = 0.0D0
       DO I = 1, NS
-         SUM = SUM + Y(I) * AN(I)
-         SOM = SOM + Y(I) 
+         SUM = SUM + YTR(I) * AN(I)
       ENDDO
-      SUM = SUM / SOM
+      SUM = SUM / SUMTR
       DO I = 1, NS
          THETA(I) =  SUM - AN(I)
-      ENDDO
-C-----------------------------------------------------------------------
-      RETURN
-      END
-C=======================================================================
-C=======================================================================
-      SUBROUTINE EGSPRD ( NS, D, TEMP, Y )
-      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-C-----------------------------------------------------------------------
-C     Input D and Y
-C
-C     Output D <-- P D P where P = I - Y*U / sum Y
-C-----------------------------------------------------------------------
-      DIMENSION D(NS,NS), TEMP(NS), Y(NS)
-C-----------------------------------------------------------------------
-      SOM = 0.0D0
-      DO I = 1, NS
-         SOM = SOM + Y(I)
-      ENDDO
-      RSOM = 1.0D0 / SOM
-      CALL EGZERO ( NS, TEMP )
-      DO J = 1, NS
-         AAA = Y(J)
-         DO I = 1, NS
-            TEMP(I) = TEMP(I) + D(I,J) * AAA
-         ENDDO
-      ENDDO
-      DO I = 1, NS
-         AAA = TEMP(I) * RSOM
-         DO J = 1, NS
-            D(I,J) = D(I,J) - AAA
-         ENDDO
-      ENDDO
-      CALL EGZERO ( NS, TEMP )
-      DO J = 1, NS
-         DO I = 1, NS
-            TEMP(I) = TEMP(I) + D(J,I) 
-         ENDDO
-      ENDDO
-      DO I = 1, NS
-         AAA = Y(I) * RSOM
-         DO J = 1, NS
-            D(I,J) = D(I,J) - AAA * TEMP(J)
-         ENDDO
       ENDDO
 C-----------------------------------------------------------------------
       RETURN
@@ -3461,7 +3390,7 @@ C-----------------------------------------------------------------------
          ZN(I) = DMI(I)*RN(I) + BETAN*ZN(I)
       ENDDO
       CALL EGSAXS(NG, G, ZN, TEMP)
-      BBB = VDDOT (NG, ZN, 1, TEMP, 1)
+      BBB = DDOT (NG, ZN, 1, TEMP, 1)
       DO I = 1, NG
          AN(I) = AN(I) + AAA/BBB*ZN(I)
          RN(I) = RN(I) - AAA/BBB*TEMP(I)
@@ -3525,7 +3454,7 @@ C-----------------------------------------------------------------------
      &              DMI(3,I)*RN(I+NS) + BETAN*ZN(I+NS)
       ENDDO
       CALL EGSAXS(NG, G, ZN, TEMP)
-      BBB = VDDOT (NG, ZN, 1, TEMP, 1)
+      BBB = DDOT (NG, ZN, 1, TEMP, 1)
       DO I = 1, NG
          AN(I) = AN(I) + AAA/BBB*ZN(I)
          RN(I) = RN(I) - AAA/BBB*TEMP(I)
@@ -3605,7 +3534,7 @@ C-----------------------------------------------------------------------
      &               DMI(6,I)*RN(I+NS2) + BETAN*ZN(I+NS2)
       ENDDO
       CALL EGSAXS(NG, G, ZN, TEMP)
-      BBB = VDDOT (NG, ZN, 1, TEMP, 1)
+      BBB = DDOT (NG, ZN, 1, TEMP, 1)
       DO I = 1, NG
          AN(I) = AN(I) + AAA/BBB*ZN(I)
          RN(I) = RN(I) - AAA/BBB*TEMP(I)
@@ -3628,11 +3557,9 @@ C-----------------------------------------------------------------------
       END
 C=======================================================================
 C=======================================================================
-      SUBROUTINE EGSSI1 ( NS, G, DMI, TEMP, XTR, YTR, WT, WW,
-     &                   Y, D, ITERMX, AUX )
+      SUBROUTINE EGSSI1 ( NS, G, DMI, TEMP, YTR, SUMTR, D, ITERMX, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DIMENSION G(*), DMI(NS), TEMP(NS), YTR(NS), Y(NS), D(NS,NS),
-     &          XTR(NS), WT(NS), AUX(NS)
+      DIMENSION G(*), DMI(NS), TEMP(NS), YTR(NS), D(NS,NS), AUX(NS)
 C-----------------------------------------------------------------------
 C     At most two iterations are performed.
 C-----------------------------------------------------------------------
@@ -3654,56 +3581,26 @@ C-----------------------------------------------------------------------
          ENDDO
       ENDIF
 C-----------------------------------------------------------------------
-C     Project the resulting iterate
+C     Matrix tilde D
 C-----------------------------------------------------------------------
-      RWW = 1.0D0 / WW
       DO I = 1, NS
-         FAC = XTR(I) * WT(I) * RWW
          DO J = 1, NS
-            D(I,J) = FAC * D(I,J)
-         ENDDO
-      ENDDO
-C.....
-      SUMY = 0.0D0
-      DO I = 1, NS
-         SUMY = SUMY + Y(I)
-      ENDDO
-      RSUMY = 1.0D0 / SUMY
-      CALL EGZERO ( NS, TEMP )
-      DO J = 1, NS
-         AAA = Y(J)
-         DO I = 1, NS
-            TEMP(I) = TEMP(I) + D(I,J) * AAA
-         ENDDO
-      ENDDO
-      DO I = 1, NS
-         AAA = TEMP(I) * RSUMY
-         DO J = 1, NS
-            D(I,J) = D(I,J) - AAA
-         ENDDO
-      ENDDO
-      CALL EGZERO ( NS, TEMP )
-      DO J = 1, NS
-         DO I = 1, NS
-            TEMP(I) = TEMP(I) + D(J,I) 
-         ENDDO
-      ENDDO
-      DO I = 1, NS
-         AAA = Y(I) * RSUMY
-         DO J = 1, NS
-            D(I,J) = D(I,J) - AAA * TEMP(J)
+            D(I,J) = YTR(I) * D(I,J)
          ENDDO
       ENDDO
 C-----------------------------------------------------------------------
-      RETURN                                                           
-      END                                                              
+C     Project tilde D
+C-----------------------------------------------------------------------
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
+C-----------------------------------------------------------------------
+      RETURN                                                                    
+      END                                                                       
 C=======================================================================
 C=======================================================================
-      SUBROUTINE EGSSI2 ( NS, NG, G, DMI, TEMP, XTR, YTR, WT, WW,
-     &                   Y, D, ITERMX, AUX )
+      SUBROUTINE EGSSI2 ( NS, NG, G, DMI, TEMP, YTR, SUMTR, D, 
+     &                    ITERMX, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DIMENSION G(*), DMI(3,NS), TEMP(NG), YTR(NS), Y(NS), D(NS,NS),
-     &          XTR(NS), WT(NS), AUX(NS)
+      DIMENSION G(*), DMI(3,NS), TEMP(NG), YTR(NS), D(NS,NS), AUX(NS)
 C-----------------------------------------------------------------------
 C     At most two iterations are performed
 C-----------------------------------------------------------------------
@@ -3743,56 +3640,26 @@ C..............
          ENDDO
       ENDIF
 C-----------------------------------------------------------------------
-C     Project the resulting iterate
+C     Matrix tilde D
 C-----------------------------------------------------------------------
-      RWW = 1.0D0 / WW
       DO I = 1, NS
-         FAC = XTR(I) * WT(I) * RWW
          DO J = 1, NS
-            D(I,J) = FAC * D(I,J)
-         ENDDO
-      ENDDO
-C.....
-      SUMY = 0.0D0
-      DO I = 1, NS
-         SUMY = SUMY + Y(I)
-      ENDDO
-      RSUMY = 1.0D0 / SUMY
-      CALL EGZERO ( NS, TEMP )
-      DO J = 1, NS
-         AAA = Y(J)
-         DO I = 1, NS
-            TEMP(I) = TEMP(I) + D(I,J) * AAA
-         ENDDO
-      ENDDO
-      DO I = 1, NS
-         AAA = TEMP(I) * RSUMY
-         DO J = 1, NS
-            D(I,J) = D(I,J) - AAA
-         ENDDO
-      ENDDO
-      CALL EGZERO ( NS, TEMP )
-      DO J = 1, NS
-         DO I = 1, NS
-            TEMP(I) = TEMP(I) + D(J,I) 
-         ENDDO
-      ENDDO
-      DO I = 1, NS
-         AAA = Y(I) * RSUMY
-         DO J = 1, NS
-            D(I,J) = D(I,J) - AAA * TEMP(J)
+            D(I,J) = YTR(I) * D(I,J)
          ENDDO
       ENDDO
 C-----------------------------------------------------------------------
-      RETURN                                                           
-      END                                                              
+C     Project tilde D
+C-----------------------------------------------------------------------
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
+C-----------------------------------------------------------------------
+      RETURN                                                                    
+      END                                                                       
 C=======================================================================
 C=======================================================================
-      SUBROUTINE EGSSI3 ( NS, NG, G, DMI, TEMP, XTR, YTR, WT, WW,
-     &                   Y, D, ITERMX, AUX )
+      SUBROUTINE EGSSI3 ( NS, NG, G, DMI, TEMP, YTR, SUMTR, D, 
+     &                    ITERMX, AUX )
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DIMENSION G(*), DMI(6,NS), TEMP(NG), YTR(NS), Y(NS), D(NS,NS),
-     &          XTR(NS), WT(NS), AUX(NS)
+      DIMENSION G(*), DMI(6,NS), TEMP(NG), YTR(NS), D(NS,NS), AUX(NS)
 C-----------------------------------------------------------------------
 C     At most two iterations are performed
 C-----------------------------------------------------------------------
@@ -3846,34 +3713,44 @@ C..............
          ENDDO
       ENDIF
 C-----------------------------------------------------------------------
-C     Project the resulting iterate
+C     Matrix tilde D
 C-----------------------------------------------------------------------
-      RWW = 1.0D0 / WW
       DO I = 1, NS
-         FAC = XTR(I) * WT(I) * RWW
          DO J = 1, NS
-            D(I,J) = FAC * D(I,J)
+            D(I,J) = YTR(I) * D(I,J)
+         ENDDO
+      ENDDO
+C-----------------------------------------------------------------------
+C     Project tilde D
+C-----------------------------------------------------------------------
+      CALL EGSPDP ( NS, YTR, TEMP, SUMTR, D )
+C-----------------------------------------------------------------------
+      RETURN                                                                    
+      END                                                                       
+C=======================================================================
+C=======================================================================
+      SUBROUTINE EGSPDP ( NS, YTR, TEMP, SUMTR, D )
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      DIMENSION YTR(NS), TEMP(NS), D(NS,NS)
+C-----------------------------------------------------------------------
+C     Input : matrix D
+C     Output (overwritten on D) : PDP with P_ij = Id - YTR*U / sumtr
+C-----------------------------------------------------------------------
+      CALL EGZERO ( NS, TEMP )
+      DO J = 1, NS
+         DO I = 1, NS
+            TEMP(I) = TEMP(I) + D(I,J) * YTR(J)
          ENDDO
       ENDDO
 C.....
-      SUMY = 0.0D0
-      DO I = 1, NS
-         SUMY = SUMY + Y(I)
-      ENDDO
-      RSUMY = 1.0D0 / SUMY
-      CALL EGZERO ( NS, TEMP )
-      DO J = 1, NS
-         AAA = Y(J)
-         DO I = 1, NS
-            TEMP(I) = TEMP(I) + D(I,J) * AAA
-         ENDDO
-      ENDDO
+      RSUMY = 1.0D0 / SUMTR
       DO I = 1, NS
          AAA = TEMP(I) * RSUMY
          DO J = 1, NS
             D(I,J) = D(I,J) - AAA
          ENDDO
       ENDDO
+C.....
       CALL EGZERO ( NS, TEMP )
       DO J = 1, NS
          DO I = 1, NS
@@ -3881,14 +3758,13 @@ C.....
          ENDDO
       ENDDO
       DO I = 1, NS
-         AAA = Y(I) * RSUMY
          DO J = 1, NS
-            D(I,J) = D(I,J) - AAA * TEMP(J)
+            D(I,J) = D(I,J) - YTR(I) * RSUMY * TEMP(J)
          ENDDO
       ENDDO
 C-----------------------------------------------------------------------
-      RETURN                                                           
-      END                                                              
+      RETURN                                                                    
+      END                                                                       
 C=======================================================================
 C=======================================================================
       SUBROUTINE EGSDDEC ( NS, XTR, YTR, G, BIN, TEMP )
@@ -4649,4 +4525,3 @@ C-----------------------------------------------------------------------
       RETURN
       END
 C-----------------------------------------------------------------------
-

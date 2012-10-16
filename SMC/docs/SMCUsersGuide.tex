@@ -1,0 +1,229 @@
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[margin=0.8in]{geometry}
+
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{fixmath}
+\usepackage{hyperref}
+
+\renewcommand{\vec}[1]{\mbox{\boldmath$#1$}}
+\newcommand{\tensor}[1]{\mbox{\boldmath{\ensuremath{#1}}}}
+
+\begin{document}
+
+\title{SMC: A Compressible Navier-Stokes Code for Combustion}
+\maketitle
+
+\section{Introduction}
+
+{\tt SMC} {\footnote{People often ask what SMC means.  The name was
+    chosen by someone who was trained as an astrophysicist.  The
+    center for Computational Sciences and Engineering (CCSE) has a low
+    Mach number combustion code called LMC, which can also stand for
+    Large Magellanic Cloud, a satellite galaxy of the Milky Way.  The
+    LMC galaxy has a little brother called the Small Magellanic Cloud
+    (SMC). The SMC code is also like a little brother of the LMC
+    code.}}, developed at the Center for Computational Sciences and
+Engineering (CCSE) at Lawrence Berkeley National Laboratory, is a
+combustion code.  {\tt SMC} uses the {\tt BoxLib} library
+(\url{https://ccse.lbl.gov/BoxLib/}), also developed at CCSE.  {\tt
+  SMC} solves compressible Navier-Stokes equations for viscous
+multi-component reacting flows.
+
+\section{Basic Formulation and Algorithm}
+
+The Navier-Stokes equations solved by {\tt SMC} are
+\begin{align}
+\frac{\partial \rho}{\partial t} + \nabla \cdot (\rho
+    \vec{u})= { } & 0, \\
+\frac{\partial \rho \vec{u}}{\partial t} + \nabla \cdot (\rho
+    \vec{u}\vec{u}) + \nabla p= { } & \nabla \cdot
+  \tensor{\tau}, \\
+\frac{\partial \rho E}{\partial t} + \nabla \cdot [(\rho E + p)
+  \vec{u}] = { } & \nabla \cdot (\lambda \nabla T) + \nabla \cdot
+  (\tensor{\tau} \cdot \vec{u}) - \nabla \cdot [\sum_k\rho Y_k
+  (\vec{V}_k -\vec{V}_c) h_k ], \\
+\frac{\partial \rho Y_k}{\partial t} + \nabla \cdot (\rho Y_k \vec{u})
+= { } & \rho \dot{\omega}_k  - \nabla \cdot [\rho Y_k
+  (\vec{V}_k -\vec{V}_c) ], 
+\end{align} 
+where $\rho$ is the density, $\vec{u}$ is the velocity, $p$ is the
+pressure, $E$ is the specific energy density (kinetic energy plus
+internal energy), $k$ denotes species, $Y_k$ is the mass fraction of
+species $k$, $\tensor{\tau}$ is the viscous stress tensor, $\lambda$
+is the thermal conductivity, $T$ is the temperature, $h_k$ is
+the enthalpy for species $k$, $\vec{V}_k$ is the species mass
+diffusion velocity, $\vec{V}_c$ is the correction velocity for species
+diffusion arisen in the mixture model, and $\dot{\omega}_k$ is the
+production rate of species $k$.  The viscous stress tensor is given by
+\begin{equation}
+  \tau_{ij} = \eta \left(\frac{\partial u_i}{\partial x_j} +
+    \frac{\partial u_j}{\partial x_i} - \frac{2}{3}
+    \delta_{ij} \nabla \cdot \vec{u} \right) +
+  \xi \delta_{ij} \nabla \cdot \vec{u},
+\end{equation}
+where $\eta$ is the shear viscosity and $\xi$ is the bulk viscosity.
+A mixture model is employed in {\tt SMC}.  The species diffusion
+velocity in the mixture model is given by
+\begin{equation}
+  \vec{V}_k = -D_{k} \nabla X_k - D_{k} (X_k-Y_k)
+  \nabla (\ln{p}),
+\end{equation}
+where $D_k$ is the diffusion coefficient of species $k$ and $X_k$ is
+the molar fraction of species $k$.  The correction velocity is given by
+\begin{equation}
+  \vec{V}_c = \sum_\ell Y_\ell \vec{V}_\ell.
+\end{equation}
+
+The {\tt SMC} algorithm is based on finite-difference methods.  For
+first derivatives with respect to spatial coordinates, the standard
+8th-order stencil is employed.  Using a new compact 8th-order stencil,
+second derivatives are given by
+\begin{equation}
+\frac{\partial}{\partial x} \left(a(x) \frac{\partial u}{\partial x}
+\right)\bigg{|}_{i} \approx \frac{H_{i+1/2} - H_{i-1/2}}{\Delta x^2}.
+\end{equation}
+Here
+\begin{equation}
+  H_{i+1/2} = \sum_{m=-3}^{4} \sum_{n=-3}^{4} a_{i+m} M_{mn} u_{i+n},
+\end{equation}
+where $M$ is a $8 \times 8$ matrix.  {\tt SMC} also has a {\tt S3D}
+style algorithm for second derivatives, in which the first derivative
+operator is applied twice to obtain a second derivative.
+
+The system is evolved with either a 3rd-order Runge-Kutta method or a
+spectral deferred correction (SDC) method.  {\tt SMC} uses
+Navier-Stokes characteristic boundary conditions (NSCBC).  The cgs
+units are used in {\tt SMC}.
+
+\section{Getting Started}
+
+{\tt SMC} requires the {\tt BoxLib} library to manage the grids,
+parallelization, and compilation system.  It uses the {\tt
+  BOXLIB\_HOME} environment variable to find the path to {\tt BoxLib}.
+{\tt BoxLib} can be downloaded via {\tt git} as: \vspace{5pt}
+
+\verb|git clone https://ccse.lbl.gov/pub/Downloads/BoxLib.git|\\
+
+We will use the {\tt Combustion/SMC/bin/ToyFlame} problem as an
+example of running {\tt SMC}.  The {\tt ToyFlame} directory contains
+a file called {\tt GNUmakefile} that specify how to build the
+executable.  Note GNU {\tt make} is required for building.  The {\tt
+  GNUmakefile} has the following options:
+\begin{itemize}
+\item {\tt SMC\_MIN := t}\\
+  Due to the complexity of SDC and NSCBC, the full version of {\tt
+    SMC} is hard for code analysis.  Thus, we have created a
+  minimalist version of {\tt SMC} that uses the Runge-Kutta method and
+  assumes periodic boundaries in all directions .  This option
+  determines whether we use the minimalist version or not.  Leaving
+  this option empty will use the full version.
+\item {\tt EXPAND := t}\\
+  There are two versions of {\tt kernels.f90}.  One was writtent by
+  hand, the other ({\tt kernels\_exp.f90}) was generated by {\tt
+    Combustion/SMC/tools/expand.py}.  The latter is faster.  This option
+  determines which version we use.
+\item {\tt NDEBUG :=}\\
+  This option determines whether we compile with support for debugging
+  (usually also enabling some runtime checks). Setting NDEBUG := t
+  turns off debugging.
+\item {\tt PROF :=}\\
+  This option determines whether we compile with timrers. Leaving this
+  option empty disables timers.
+\item {\tt MPI := t}\\
+  This determines whether we are doing a parallel build, using the
+  Message Passing Interface (MPI) library. Leaving this
+  option empty will disable MPI. 
+\item {\tt OMP :=}\\
+  This determines whether we are using OpenMP to do parallelism within
+  a shared memory node. OpenMP is used together with MPI, with MPI
+  distributing the grids across the processors and within a
+  shared-memory node, OpenMP allows many cores to operate on the same
+  grid.  Leaving this option empty disables OpenMP.
+\item {\tt COMP := gfortran}\\
+  Set this to your Fortran compiler of choice.
+\item {\tt MKVERBOSE := t}\\
+  This determines the verbosity of the building process.
+\end{itemize} 
+
+The {\tt BoxLib} building system used by {\tt SMC} is located at {\tt
+  \$\{BOXLIB\_HOME\}/Tools/F\_mk}.  The compiler flags are specified in {\tt
+  \$\{BOXLIB\_HOME\}/Tools/F\_mk/comps/}.  If building with MPI, {\tt
+  SMC} needs to know the location of MPI library.  You need to provide
+the MPI locations in the {\tt F\_mk/GMakeMPI.mak} file.  Note that
+some shells (e.g., {\tt tcsh}) use the {\tt \$HOST} environment
+variable to store host name, whereas other shells (e.g., {\tt bash})
+use {\tt \$HOSTNAME}.
+
+To build the executable, type {\tt make} in the {\tt ToyFlame/}
+directory.  The executable will have a name like {\tt
+  main.Linux.gfortran.debug.mpi.exe} depending on the compiler,
+operating system, and some other options specified in the {\tt
+  GNUmakefile}.  To run {\tt SMC} on a single processor, type
+\vspace{5pt}
+
+\verb|./main.Linux.gfortran.debug.mpi.exe inputs_SMC|\vspace{5pt}\\
+in the {\tt ToyFlame/} directory, where the {\tt inputs\_SMC} file
+specifies runtime parameters. 
+
+\section{Runtime parameters}
+
+{\tt SMC} obtains runtime parameters from an inputs file.  We can also
+override the value of any parameter by specifying it on the
+command line as:\vspace{5pt}
+
+\verb|./main.Linux.gfortran.debug.mpi.exe inputs_SMC --parameter value|\\
+
+Below are a list of selected runtime parameters and their default values.
+\begin{itemize}
+\item {\tt verbose = 0}\\
+  This determines verbosity.
+\item {\tt stencil\_type = "compact"}\\
+  This determines the stencil type for second derivatives. The options
+  are {\tt "compact"} or {\tt "S3D"}.
+\item {\tt stop\_time = -1.d0}\\
+  Simulation stop time.
+\item {\tt max\_step = 1}\\
+  Maximum number of timesteps in the simulation.
+\item {\tt restart = -1}\\
+  This determines whether this is a restart run.  The value of -1
+  means the simulation starts from scratch.  A non-negative value
+  specifies which file to restart from.
+\item {\tt plot\_int = 0}\\
+  Number of timesteps between writing a plot file, if the value is
+  positive. 
+\item {\tt chk\_int = 0}\\
+  Number of timesteps between writing a checkpoint file, if the value is
+  positive.
+\item {\tt cflfac = 0.5d0}\\
+  CFL factor to use in the computation of the advection timestep
+  constraint. 
+\item {\tt init\_shrink = 1.d0}\\
+  The multiplicative factor ($\le 1$) to reduce the initial timestep as 
+  computed by the CFL constraint.
+\item {\tt n\_cellx = -1}\\
+  Number of cells in the $x$-direction.  It must be $\ge 4$.
+\item {\tt n\_celly = -1}\\
+  Number of cells in the $y$-direction.  It must be $\ge 4$.
+\item {\tt n\_cellz = -1}\\
+  Number of cells in the $z$-direction.  It must be $\ge 4$.
+\item {\tt max\_grid\_size = 64}\\
+  This determines the largest grid size of a box.  Note that each
+  processor may contain multiple boxes.
+\item {\tt prob\_lo\_x = 0.d0}\\
+  Physical coordinates of lo-$x$ corner of problem domain
+\item {\tt prob\_lo\_y = 0.d0}\\
+  Physical coordinates of lo-$y$ corner of problem domain
+\item {\tt prob\_lo\_z = 0.d0}\\
+  Physical coordinates of lo-$z$ corner of problem domain
+\item {\tt prob\_hi\_x = 1.d0}\\
+  Physical coordinates of hi-$x$ corner of problem domain
+\item {\tt prob\_hi\_y = 1.d0}\\
+  Physical coordinates of hi-$y$ corner of problem domain
+\item {\tt prob\_hi\_z = 1.d0}\\
+  Physical coordinates of hi-$z$ corner of problem domain
+\end{itemize}
+
+\end{document}

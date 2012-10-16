@@ -20,7 +20,7 @@ contains
     use layout_module
     use multifab_module
     use probin_module, only : bcx_lo,bcx_hi,bcy_lo,bcy_hi,bcz_lo,bcz_hi
-    use derivative_stencil_module, only : stencil_ng
+    use derivative_stencil_module, only : stencil_ng, stencil, S3D
     type(layout), intent(in) :: la
     type(multifab), intent(in) :: U
 
@@ -53,6 +53,9 @@ contains
             bchi(i) .ne. INLET    .and. &
             bchi(i) .ne. OUTLET ) then
           call bl_error("Unknown boundary")
+       end if
+       if (stencil .eq. S3D .and. bclo(i).ne.PERIODIC) then
+          call bl_error("S3D style supports periodic boundaries only")
        end if
     end do
 
@@ -103,9 +106,7 @@ contains
               call bl_error("Valid box is too small")
            end if
        end do
-    end do    
-
-    
+    end do        
 
   end subroutine smc_bc_init
 

@@ -1,0 +1,34 @@
+&PROBIN
+
+ verbose = 2
+
+ stencil_type = "compact"  ! compact or S3D
+
+ stop_time = 3.d-3
+ max_step  = 10
+ restart = -1
+
+ plot_int = -1
+ chk_int  = -1
+
+ cflfac = 0.1d0
+ init_shrink = 0.5d0
+
+ n_cellx = 64
+ n_celly = 64
+ n_cellz = 64
+ max_grid_size = 32
+
+ prob_lo_x = -0.5d0
+ prob_lo_y = -0.5d0
+ prob_lo_z = -0.5d0
+ prob_hi_x =  0.5d0
+ prob_hi_y =  0.5d0
+ prob_hi_z =  0.5d0
+
+
+ ! for seeting up initial model
+ pertmag = 1.5d0
+ rfire = 0.1d0
+
+/

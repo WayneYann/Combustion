@@ -126,27 +126,27 @@ bcz_hi                              integer            UNDEFINED
 
 # $-x$ boundary condition name---if this is set, it overrides the integer
 # value set through {\tt bcx\_lo}
-xlo_boundary_type                   character          ""
+xlo_boundary_type                   character          "periodic"
 
 # $+x$ boundary condition name---if this is set, it overrides the integer
 # value set through {\tt bcx\_hi}
-xhi_boundary_type                   character          ""
+xhi_boundary_type                   character          "periodic"
 
 # $-y$ boundary condition name---if this is set, it overrides the integer
 # value set through {\tt bcy\_lo}
-ylo_boundary_type                   character          ""
+ylo_boundary_type                   character          "periodic"
 
 # $+y$ boundary condition name---if this is set, it overrides the integer
 # value set through {\tt bcy\_hi}
-yhi_boundary_type                   character          ""
+yhi_boundary_type                   character          "periodic"
 
 # $-z$ boundary condition name---if this is set, it overrides the integer
 # value set through {\tt bcz\_lo}
-zlo_boundary_type                   character          ""
+zlo_boundary_type                   character          "periodic"
 
 # $+z$ boundary condition name---if this is set, it overrides the integer
 # value set through {\tt bcz\_hi}
-zhi_boundary_type                   character          ""
+zhi_boundary_type                   character          "periodic"
 
 # dimensionality (valid values are 2 or 3)
 dm_in                               integer            3

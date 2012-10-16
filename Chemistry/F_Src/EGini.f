@@ -1,3 +1,62 @@
+C-----------------------------------------------------------------------
+C
+C     EGlib library version 3.4, 12/07/04
+C     (C) Alexandre Ern and Vincent Giovangigli
+C
+C  By acceptance and use of this program, the user agrees to 
+C  the following
+C  
+C  *  As experimental, research software, this program is provided 
+C  free of charge on an "as is" basis without warranty of any 
+C  kind, either expressed or implied. In particular, the authors
+C  make no express or implied warranty including, but not limited
+C  to, the warranties of design, merchantability or fitness for
+C  a particular purpose. In no event will the authors be liable
+C  for any lost revenues or profits or other special, direct or
+C  consequential damages, even if the authors have been warned of 
+C  such possibilities.
+C  
+C  *  This program is provided for the user's personal, non-commercial,
+C  experimental use and the user is granted permission to copy this
+C  program to the extent reasonably required for such use. In any 
+C  case, the user should not deliver this program without a special 
+C  permission from the authors.
+C  
+C  *  The user understands and agrees that this program and any 
+C  derivative works are to be used solely for experimental uses 
+C  and are not to be sold, distributed to a commercial organization, 
+C  or be commercially exploited in any manner.
+C  
+C  *  All title, ownership and rights to this program and any copies 
+C  remain with the authors, irrespective of the ownership of the 
+C  media on which the program resides.
+C  
+C  *  The user is permitted to create derivative works to this program.
+C  However, all copies of the program and its derivative works must
+C  contain this user agreement.
+C  
+C  *  The authors request that the user supply them a copy of any 
+C  changes, enhancements, or derivative works which the user may  
+C  create. The user grants the authors an irrevocable, nonexclusive,
+C  worldwide and royalty-free license to use, execute, reproduce,
+C  display, perform, prepare derivative works based upon, and 
+C  distribute, (internally and externally) copies of any and all
+C  such materials and derivative works thereof.
+C  
+C  *  If the user publishes scientific results that were partly
+C  obtained using this program, the user is requested to 
+C  cite at least one of the following references, as the user 
+C  would cite other papers that were used: 
+C  
+C  [1] A. Ern and V. Giovangigli, Multicomponent 
+C  Transport Algorithms, lecture notes in physics, 
+C  m 24, new series monographs, Springer-Verlag, Heidelberg, 1994.
+C  	 
+C  [2] A. Ern and V. Giovangigli, Fast and Accurate
+C  Multicomponent Transport Property Evaluation,
+C  J. Comput. Phys., 120, 105--116, (1995).
+C  
+C-----------------------------------------------------------------------
       SUBROUTINE EGINI (NP, LOUT, IFLAG, ITLS, 
      &                  WEG, LWEG, IWEG, LIWEG )
 C-----------------------------------------------------------------------
@@ -24,45 +83,50 @@ C     The value of IFLAG and ITLS depends on the subroutines that
 C     will be used as indicated by the following table
 C
 C
+C-------------------------------------
 C     Subroutine     ITLS      IFLAG
-C
+C-------------------------------------
+C     EG*BIN           0         2
+C-------------------------------------
 C     EG*D(R)1         1         2
 C     EG*D(R)2         1         2
-C
+C-------------------------------------
 C     EG*E1            0         1
 C     EG*E2            1         2
 C     EG*E3            1         3
 C     EG*E4            1         3
-C 
+C-------------------------------------
 C     EG*K1            0         4
 C     EG*K2            1         4
 C     EG*K3            1         5
 C     EG*K4            2         4
 C     EG*K5            2         5
-C     EG*K6            2         5
-C  
+C     EG*K6            2         5 
+C-------------------------------------
 C     EG*L1            0         1
 C     EG*L2            1         6
 C     EG*L3            1         7
 C     EG*L4            2         6
-C     EG*L5            2         7
-C  
-C     EG*LC1           1         7
-C     EG*LC2           1         7
-C     EG*LC3           2         7
-C     EG*LC4           2         7
-C  
+C     EG*L5            2         7  
+C-------------------------------------
+C     EG*LCT1          1         7
+C     EG*LCT2          1         7
+C     EG*LCT3          2         7
+C     EG*LCT4          2         7  
+C-------------------------------------
 C     EG*LTD(R)1       2         7
 C     EG*LTD(R)2       2         7
 C     EG*LTD(R)3       3         7
 C     EG*LTD(R)4       3         7
 C     EG*LTD(R)5       3         7
-C     EG*LTD(R)6       3         7
-C   
-C     EG*TD(R)1        3         7
-C  
+C     EG*LTD(R)6       3         7  
+C-------------------------------------
+C     EG*TD(R)1        3         7  
+C-------------------------------------
 C     EG*V(R)1         0         2
-C
+C-------------------------------------
+C     EG*(R)YV         1         2
+C-------------------------------------
 C
 C     EGINI should be called with the highest possible values for
 C     IFLAG and ITLS as read from the table.
@@ -91,9 +155,9 @@ C     Read the Linkeg file
 C-----------------------------------------------------------------------
       LLEG   = 11
 C-----------------------------------------------------------------------
-c      OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
-c        READ (LLEG) NSLK, NO
-c      CLOSE(UNIT=LLEG)
+c w.z.     OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
+c w.z.       READ (LLEG) NSLK, NO
+c w.z.     CLOSE(UNIT=LLEG)
 
       call egtransetKK(NSLK)
       call egtransetNO(NO)
@@ -121,7 +185,9 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
       IEGRU  = 1
       IEGPA  = IEGRU  + 1
-      IFITA  = IEGPA  + 1
+      IWWTR  = IEGPA  + 1
+      ISUMTR = IWWTR  + NP
+      IFITA  = ISUMTR + NP
       IFITB  = IFITA  + NFIT * NS*NS
       IFITC  = IFITB  + NFIT * NS*NS
       IFITA0 = IFITC  + NFIT * NS*NS
@@ -142,9 +208,9 @@ C-----------------------------------------------------------------------
       IEGDIP = IEGSIG + NS
       IEPSIJ = IEGDIP + NS
       IEGCFD = IEPSIJ + NS*NS
-      IEGCFE = IEGCFD + 4 * NS*NS
-      IEGCFL = IEGCFE + 4 * NS
-      IEGZRT = IEGCFL + 4 * NS
+      IEGCFE = IEGCFD + NO * NS*NS
+      IEGCFL = IEGCFE + NO * NS
+      IEGZRT = IEGCFL + NO * NS
       IEGWT  = IEGZRT + NS 
       IAAA   = IEGWT  + NS
       IBBB   = IAAA   + NP
@@ -208,9 +274,7 @@ C-----------------------------------------------------------------------
       NONS   = NO*NS
       NONSNS = NO*NS*NS
 C-----------------------------------------------------------------------
-c
-c     Set required data from funcs rather than Linkeg
-c
+
       call egtransetWT(WEG(IEGWT))
       call egtransetEPS(WEG(IEGEPS))
       call egtransetSIG(WEG(IEGSIG))
@@ -222,18 +286,19 @@ c
       call egtransetCOFLAM(WEG(IEGCFL))
       call egtransetCOFD(WEG(IEGCFD))
 
-c      OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
-c        READ (LLEG) NSLK, NO, (WEG(IEGWT+K-1), K=1, NS), 
-c     &              (WEG(IEGEPS+K-1), K=1, NS), 
-c     &              (WEG(IEGSIG+K-1), K=1, NS), 
-c     &              (WEG(IEGDIP+K-1), K=1, NS), 
-c     &              (WEG(IEGPOL+K-1), K=1, NS), 
-c     &              (WEG(IEGZRT+K-1), K=1, NS), 
-c     &              (IWEG(IEGLIN+K-1), K=1, NS), 
-c     &              (WEG(IEGCFE+N-1), N=1, NONS), 
-c     &              (WEG(IEGCFL+N-1), N=1, NONS), 
-c     &              (WEG(IEGCFD+N-1), N=1, NONSNS)
-c      CLOSE(UNIT=LLEG)
+c w.z.      OPEN (UNIT=LLEG,STATUS='OLD',FORM='UNFORMATTED',FILE='Linkeg')
+c w.z.        READ (LLEG) NSLK, NO, (WEG(IEGWT+K-1), K=1, NS), 
+c w.z.     &              (WEG(IEGEPS+K-1), K=1, NS), 
+c w.z.     &              (WEG(IEGSIG+K-1), K=1, NS), 
+c w.z.     &              (WEG(IEGDIP+K-1), K=1, NS), 
+c w.z.     &              (WEG(IEGPOL+K-1), K=1, NS), 
+c w.z.     &              (WEG(IEGZRT+K-1), K=1, NS), 
+c w.z.     &              (IWEG(IEGLIN+K-1), K=1, NS), 
+c w.z.     &              (WEG(IEGCFE+N-1), N=1, NONS), 
+c w.z.     &              (WEG(IEGCFL+N-1), N=1, NONS), 
+c w.z.     &              (WEG(IEGCFD+N-1), N=1, NONSNS)
+c w.z.      CLOSE(UNIT=LLEG)
+
 C-----------------------------------------------------------------------
       CALL LEVEPS (NS, WEG(IEGEPS), WEG(IEGSIG), WEG(IEGDIP), 
      &             WEG(IEGPOL), WEG(IEPSIJ) )
@@ -409,4 +474,3 @@ C=======================================================================
       END                                                              
 C=======================================================================
 C=======================================================================
-

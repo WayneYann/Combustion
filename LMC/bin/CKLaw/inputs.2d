@@ -18,13 +18,12 @@ ns.consumptionName = H2
 ns.plot_consumption = 1
 ns.plot_heat_release = 1
 
-godunov.ppm_type = 2
+godunov.ppm_type = 0
 
 ns.do_active_control = false
 
 amr.n_cell = 256 256 256
 amr.n_cell = 128 128 128
-amr.n_cell = 64 64 64
 
 proj.proj_2 = 1
 ns.do_init_vort_proj = 0

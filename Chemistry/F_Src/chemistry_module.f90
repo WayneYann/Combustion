@@ -1,7 +1,6 @@
 module chemistry_module
 
   use bl_types
-  use eglib_module
 
   implicit none
 
@@ -11,15 +10,17 @@ module chemistry_module
 
   logical, save :: chemistry_initialized = .false.
 
-  character*2, allocatable, save :: elem_names(:)
-  character*4, allocatable, save :: spec_names(:)
+  integer, private, parameter :: L_elem_name = 3 ! Each element name has at most 3 characters
+  character*(L_elem_name), allocatable, save :: elem_names(:)
+
+  integer, private, parameter :: L_spec_name = 8 ! Each species name has at most 8 characters
+  character*(L_spec_name), allocatable, save :: spec_names(:)
 
   double precision, allocatable, save :: molecular_weight(:)
 
 contains
 
   subroutine chemistry_init()
-
     integer :: iwrk, nfit, i, ic, ii
     double precision :: rwrk
     integer, allocatable :: names(:)
@@ -30,23 +31,23 @@ contains
     allocate(spec_names(nspecies))
     allocate(molecular_weight(nspecies))
 
-    allocate(names(nspecies*4))  ! Each species name has at most 4 characters
+    allocate(names(nspecies*L_spec_name))  
 
-    call cksyme(names, 2)  ! Two chars for element names
+    call cksyme(names, L_elem_name) 
 
     ic = 1
     do i = 1, nelements
-       do ii=1, 2
+       do ii=1, L_elem_name
           elem_names(i)(ii:ii) = char(names(ic))
           ic = ic + 1
        end do
     end do
 
-    call cksyms(names, 4) ! Four chars for species names
+    call cksyms(names, L_spec_name) 
 
     ic = 1
     do i = 1, nspecies
-       do ii=1, 4
+       do ii=1, L_spec_name
           spec_names(i)(ii:ii) = char(names(ic))
           ic = ic+1
        end do
@@ -56,19 +57,13 @@ contains
 
     call ckwt(iwrk, rwrk, molecular_weight)
 
-    call eglib_init(nspecies)
-
     chemistry_initialized = .true.
 
   end subroutine chemistry_init
 
 
   subroutine chemistry_close()
-
     deallocate(elem_names,spec_names,molecular_weight)
-
-    call eglib_close()
-
   end subroutine chemistry_close
 
 end module chemistry_module

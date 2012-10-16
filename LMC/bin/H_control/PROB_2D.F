@@ -14,6 +14,8 @@
       integer zone, n, getZone, fuelZone, airZone, region
       integer b(SDIM)
       integer num_zones_defined
+      integer iO2,iH2
+      character*(maxspnml) name
       data  b / 1, 1 /
       
       Patm = pamb / FORT_P1ATMMKS()
@@ -73,13 +75,36 @@ c     A diffusion flame
          num_zones_defined = 2
 
 c     Fuel
+c     find O2 and H2
+         iO2 = -1
+         do n=1,Nspec
+            call get_spec_name(name,n)
+            if (name .eq. 'O2') iO2 = n
+         end do
+         if (iO2.eq.-1)
+     &        write(6,*) '.....warning: no O2 in chemistry species list'
+
+         iH2 = -1
+         do n=1,Nspec
+            call get_spec_name(name,n)
+            if (name .eq. 'H2') iH2 = n
+         end do
+         if (iH2.eq.-1)
+     &        write(6,*) '.....warning: no H2 in chemistry species list'
+
+c      set everything to zero
          do n = 1,Nspec
             Xt(n) = 0.d0
          end do 
-         Xt(iN2) = fuel_N2_vol_percent*1.d-2
-         Xt(fuelID) = 1.d0 - Xt(iN2)            
+
+c     fuel shall be half O2, half H2 by volume
+         Xt(iO2) = 0.5d0
+         Xt(iH2) = 0.5d0
+
+c     convert mole frac to mass frac
          CALL CKXTY (Xt, IWRK, RWRK, Yt)
 
+c     set bc's
          do n=1,Nspec
             Y_bc(n-1,fuelZone) = Yt(n)
          end do
@@ -87,12 +112,11 @@ c     Fuel
          u_bc(fuelZone) = 0.d0
          v_bc(fuelZone) = V_in
 
-c     Air
+c     Air - pure N2
          do n=1,Nspec
             Xt(n) = zero
          enddo
-         Xt(oxidID) = 0.21d0
-         Xt(iN2)    = 1.d0 - Xt(oxidID)
+         Xt(iN2) = 1.d0
 
          CALL CKXTY (Xt, IWRK, RWRK, Yt)         
          do n=1,Nspec

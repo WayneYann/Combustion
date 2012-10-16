@@ -17,12 +17,6 @@ x  Godunov.H
 ?  HEATTRANSFER_F.F
 ?  HEATTRANSFER_F.H
 ?  HeatTransfer.H
-
-x  MacProj.cpp
-
-	godunov->Sum_tf_gp_visc interface changes
-	godunov->Sum_tf_divu_visc interface changes
-	godunov->Setup interface changes
 	
 x  NavierStokes.cpp
 

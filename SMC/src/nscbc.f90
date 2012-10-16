@@ -32,29 +32,29 @@ module nscbc_module
 
   private
 
-  public :: nscbc, nscbc_init, nscbc_close, impose_hard_bc
+  public :: nscbc, nscbc_init, nscbc_build_registers, nscbc_init_inlet_reg_from_scratch, &
+       nscbc_close, impose_hard_bc, qin_xlo, qin_xhi, qin_ylo, qin_yhi, qin_zlo, qin_zhi
 
 contains
 
-  subroutine nscbc_init(la, U)
-    use layout_module
-    type(layout), intent(in) :: la
-    type(multifab), intent(in) :: U 
-
+  subroutine nscbc_init()
     Lxdomain = prob_hi_x - prob_lo_x
     Lydomain = prob_hi_y - prob_lo_y
     Lzdomain = prob_hi_z - prob_lo_z
-
     naux = iwdot1 + nspecies - 1
-
     nqin = iYin1 + nspecies - 1
+  end subroutine nscbc_init
+
+  subroutine nscbc_build_registers(la)
+    use layout_module
+    type(layout), intent(in) :: la
 
     if (bcx_lo .eq. OUTLET) then  
        call physbndry_reg_build(aux_xlo, la, naux, 1, -1, .true.)
     else if (bcx_lo .eq. INLET) then
        call physbndry_reg_build(aux_xlo, la, naux, 1, -1, .true.)       
        call physbndry_reg_build(qin_xlo, la, nqin, 1, -1, .true.)  
-       call store_inflow(qin_xlo, U)
+!       call physbndry_reg_setval(qin_xlo, 0.d0)
     end if
 
     if (bcy_lo .eq. OUTLET) then 
@@ -62,7 +62,7 @@ contains
     else if (bcy_lo .eq. INLET) then
        call physbndry_reg_build(aux_ylo, la, naux, 2, -1, .true.)
        call physbndry_reg_build(qin_ylo, la, nqin, 2, -1, .true.)
-       call store_inflow(qin_ylo, U)
+!       call physbndry_reg_setval(qin_ylo, 0.d0)
     end if
 
     if (bcz_lo .eq. OUTLET) then
@@ -70,7 +70,7 @@ contains
     else if (bcz_lo .eq. INLET) then
        call physbndry_reg_build(aux_zlo, la, naux, 3, -1, .true.)
        call physbndry_reg_build(qin_zlo, la, nqin, 3, -1, .true.)
-       call store_inflow(qin_zlo, U)
+!       call physbndry_reg_setval(qin_zlo, 0.d0)
     end if
 
     if (bcx_hi .eq. OUTLET) then 
@@ -78,7 +78,7 @@ contains
     else if (bcx_hi .eq. INLET) then
        call physbndry_reg_build(aux_xhi, la, naux, 1, +1, .true.)
        call physbndry_reg_build(qin_xhi, la, nqin, 1, +1, .true.)
-       call store_inflow(qin_xhi, U)
+!       call physbndry_reg_setval(qin_xhi, 0.d0)
     end if
 
     if (bcy_hi .eq. OUTLET) then 
@@ -86,7 +86,7 @@ contains
     else if (bcy_hi .eq. INLET) then
        call physbndry_reg_build(aux_yhi, la, naux, 2, +1, .true.)
        call physbndry_reg_build(qin_yhi, la, nqin, 2, +1, .true.)
-       call store_inflow(qin_yhi, U)
+!       call physbndry_reg_setval(qin_yhi, 0.d0)
     end if
 
     if (bcz_hi .eq. OUTLET) then
@@ -94,10 +94,41 @@ contains
     else if (bcz_hi .eq. INLET) then
        call physbndry_reg_build(aux_zhi, la, naux, 3, +1, .true.)
        call physbndry_reg_build(qin_zhi, la, nqin, 3, +1, .true.)
+!       call physbndry_reg_setval(qin_zhi, 0.d0)
+    end if
+
+  end subroutine nscbc_build_registers
+
+
+  subroutine nscbc_init_inlet_reg_from_scratch(U)
+    type(multifab), intent(in) :: U
+
+    if (bcx_lo .eq. INLET) then
+       call store_inflow(qin_xlo, U)
+    end if
+
+    if (bcy_lo .eq. INLET) then
+       call store_inflow(qin_ylo, U)
+    end if
+
+    if (bcz_lo .eq. INLET) then
+       call store_inflow(qin_zlo, U)
+    end if
+
+    if (bcx_hi .eq. INLET) then
+       call store_inflow(qin_xhi, U)
+    end if
+
+    if (bcy_hi .eq. INLET) then
+       call store_inflow(qin_yhi, U)
+    end if
+
+    if (bcz_hi .eq. INLET) then
        call store_inflow(qin_zhi, U)
     end if
 
-  end subroutine nscbc_init
+  end subroutine nscbc_init_inlet_reg_from_scratch
+
 
   subroutine nscbc_close()
     if (aux_xlo%nc .gt. 0) then

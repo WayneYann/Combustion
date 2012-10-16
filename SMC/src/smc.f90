@@ -4,6 +4,7 @@ subroutine smc()
   use checkpoint_module
   use chemistry_module
   use derivative_stencil_module
+  use eglib_module
   use initialize_module
   use layout_module
   use make_plotfile_module
@@ -40,6 +41,8 @@ subroutine smc()
   type(layout)   :: la
   type(multifab) :: U
   type(sdcquad)  :: sdc
+
+  type(bl_prof_timer), save :: bpt_advance
 
   ! keep track of cputime
   call start_cputime_clock()
@@ -97,11 +100,6 @@ subroutine smc()
 
   end if
 
-
-  call smc_bc_init(la, U)
-  call nscbc_init(la, U)
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! error checking
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -150,7 +148,7 @@ subroutine smc()
         write(unit=check_index,fmt='(i5.5)') istep
         check_file_name = trim(check_base_name) // check_index
 
-        call checkpoint_write(check_file_name, la, U, dt)
+        call checkpoint_write(check_file_name, U, dt)
         
         last_chk_written = istep
      end if
@@ -213,7 +211,9 @@ subroutine smc()
            print*, ""
         end if
 
+	call build(bpt_advance, "advance")     !! vvvvvvvvvvvvvvvvvvvvvvv timer
         call advance(U,dt,dx,sdc,istep)
+	call destroy(bpt_advance)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
         time = time + dt
 
@@ -232,7 +232,7 @@ subroutine smc()
                  check_file_name = trim(check_base_name) // check_index6
               endif
               
-              call checkpoint_write(check_file_name, la, U, dt)
+              call checkpoint_write(check_file_name, U, dt)
               
               last_chk_written = istep
               
@@ -287,7 +287,7 @@ subroutine smc()
            check_file_name = trim(check_base_name) // check_index6
         endif
         
-        call checkpoint_write(check_file_name, la, U, dt)
+        call checkpoint_write(check_file_name, U, dt)
               
      end if
 
@@ -316,6 +316,7 @@ subroutine smc()
   call destroy(la)
 
   call chemistry_close()
+  call eglib_close()
 
   call runtime_close()
 

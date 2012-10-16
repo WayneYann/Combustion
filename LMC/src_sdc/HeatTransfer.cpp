@@ -897,6 +897,9 @@ HeatTransfer::HeatTransfer ()
     SpecDiffusionFluxn     = 0;
     SpecDiffusionFluxnp1   = 0;
     FillPatchedOldState_ok = true;
+
+    is_predictor = true;
+    updateFluxReg = false;
 }
 
 HeatTransfer::HeatTransfer (Amr&            papa,
@@ -1708,6 +1711,14 @@ HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
                                                    int             nGrow,
                                                    HowToFillGrow   how)
 {
+
+    if (hack_nochem) 
+      {
+	R.setVal(0.);
+        R.setBndry(0,0,nspecies);
+	return;
+      }
+
     Real p_amb, dpdt_factor;
     FORT_GETPAMB(&p_amb, &dpdt_factor);
     const Real Patm = p_amb / P1atm_MKS;
@@ -2065,7 +2076,7 @@ HeatTransfer::post_init (Real stop_time)
 
                 S_tmp.copy(S_new);  // Parallel copy
 
-		getLevel(k).advance_chemistry(S_new,S_tmp,dt_save[k],Forcing_tmp,0);
+		getLevel(k).advance_chemistry(S_new,S_tmp,dt_save[k]/2.0,Forcing_tmp,0);
             }
         }
         //
@@ -2077,7 +2088,7 @@ HeatTransfer::post_init (Real stop_time)
             for (int k = 0; k <= finest_level; k++)
             {
                 MultiFab&  Divu_new = getLevel(k).get_new_data(Divu_Type);
-                getLevel(k).calc_divu(cur_time,dt_save[k],Divu_new);
+                getLevel(k).calc_divu(cur_time,dt_save[k],Divu_new,true);
             }
             if (!hack_noavgdivu)
             {
@@ -3166,10 +3177,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
             }
 	    else 
 	    {
-                //const int sCompY = first_spec - src_comp + load_comp;
-		//compute_differential_diffusion_terms(visc_terms,sCompY,time,dt);
                 BoxLib::Abort("Fix ME");
-                showMF("velVT",visc_terms,"velVT_visc_terms_2",level);
             }
         }
     }
@@ -5626,9 +5634,6 @@ HeatTransfer::advance (Real time,
             f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
         }
 
-        if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "Dhat (SDC corrector " << sdc_iter << ")\n";
-
 	// Do not recompute enthalpy diffusion terms
         theta_enthalpy = -1;
 
@@ -5783,7 +5788,30 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
     if (hack_nochem)
     {
-      BoxLib::Error("HeatTransfer.cpp: hack_nochem = T not supported yet for SDC");
+
+      // set new = old + dt * force
+      FArrayBox tmp;
+
+      for (MFIter mfi(mf_old); mfi.isValid(); ++mfi)
+	{
+	  const Box& box = mfi.validbox();
+	  tmp.resize(box,nspecies+1);
+	  FArrayBox& f = Forcing[mfi];
+	  tmp.copy(f,box,0,box,0,nspecies+1);
+	  tmp.mult(dt);
+	  FArrayBox& Sold = mf_old[mfi];
+	  FArrayBox& Snew = mf_new[mfi];
+	  Snew.copy(Sold,box,first_spec,box,first_spec,nspecies+1);
+	  Snew.plus(tmp,box,box,0,first_spec,nspecies+1);
+
+
+	  Snew.copy(Sold,box,Temp,box,Temp,1);
+
+	}
+
+      // set I_R = 0
+      get_new_data(RhoYdot_Type).setVal(0.);
+
     }
     else
     {
@@ -7050,15 +7078,6 @@ HeatTransfer::calcDiffusivity (const Real time,
         FArrayBox& Tfab = Temp_fpi();
         FArrayBox& RYfab = Rho_and_spec_fpi();
          const Box& gbox = RYfab.box();
-        //
-        // Convert from RhoY_l to Y_l
-        //
-        tmp.resize(gbox,1);
-        tmp.copy(RYfab,0,0,1);
-        tmp.invert(1);
-
-	//	for (int n = 1; n < nspecies+1; n++)
-	//	  RYfab.mult(tmp,0,n,1);
 
         const int  vflag   = do_VelVisc;
         const int nc_bcen = nspecies+2; // rhoD + lambda + mu
@@ -7081,9 +7100,16 @@ HeatTransfer::calcDiffusivity (const Real time,
             visc[Rho_and_spec_fpi].copy(bcen,nspecies+1,0,1);
         }
 
-
+        //
+        // Convert from tmp=RhoY_l to Y_l
+        //
+        tmp.resize(gbox,1);
+        tmp.copy(RYfab,0,0,1);
+        tmp.invert(1);
 	for (int n = 1; n < nspecies+1; n++)
+	{
 	  RYfab.mult(tmp,0,n,1);
+	}
 
         for (int icomp = RhoH; icomp <= NUM_STATE; icomp++)
         {
@@ -7239,12 +7265,15 @@ HeatTransfer::compute_vel_visc (Real      time,
 void
 HeatTransfer::calc_divu (Real      time,
                          Real      dt,
-                         MultiFab& divu)
+                         MultiFab& divu,
+			 bool      is_divu_iter)
 {
     const int nGrow = 0;
     MultiFab mcViscTerms;
     int vtCompY;
     int vtCompT;
+    bool do_reflux_hold;
+
     if (do_mcdd)
     {
         vtCompT = nspecies;
@@ -7257,20 +7286,40 @@ HeatTransfer::calc_divu (Real      time,
         vtCompT = nspecies + 1;
         vtCompY = 0;
         mcViscTerms.define(grids,nspecies+2,nGrow,Fab_allocate); // Can probably use DDnp1 here
-        compute_differential_diffusion_terms(mcViscTerms,divu,time,dt); // divu has DD, not needed here
+
+	// we don't want to update flux registers due to fluxes in divu computation
+	do_reflux_hold = do_reflux;
+	do_reflux = false;
+
+	// DD is computed and stored in divu, but we don't need it and overwrite
+	// divu in CALCDIVU.
+        compute_differential_diffusion_terms(mcViscTerms,divu,time,dt);
+
+	do_reflux = do_reflux_hold;
+
     }
 
     MultiFab& S = get_data(State_Type,time);
-    MultiFab RhoYdot(grids,nspecies,0);
-    
-    if (dt > 0)
+
+    // complicated logic.
+    // If initial projection (dt<0) we want rho*omegadot=0
+    // If divu_iter (dt>0 && is_divu_iter) we want rho*omegadot = get_new_data(RhoYdot_Type)
+    // Otherwise we want rho*omegadot from compute_instantaneous_reaction_rates
+    MultiFab RhoYdotTmp;
+    MultiFab& RhoYdot = (is_divu_iter) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
+    if (!is_divu_iter)
+    {
+      if (dt > 0)
       {
+	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
 	compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
       }
-    else
+      else
       {
-	RhoYdot.setVal(0);
+	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
+	RhoYdot.setVal(0.);
       }
+    }
     
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
