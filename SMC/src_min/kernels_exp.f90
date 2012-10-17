@@ -601,7 +601,12 @@ contains
                       - vsp(i+1,j,k) * M8(3,1) &
                       - vsp(i+2,j,k) * M8(2,1) &
                       - vsp(i+3,j,k) * M8(1,1)
-             Hg(i,j,k,imx) = dot_product(mmtmp, q(i-4:i+3,j,k,qu))
+!EXPAND             Hg(i,j,k,imx) = dot_product(mmtmp, q(i-4:i+3,j,k,qu))
+             Hg(i,j,k,imx) =  &
+                ( q(i-4,j,k,qu)*mmtmp(1) + q(i-3,j,k,qu)*mmtmp(2) &
+                + q(i-2,j,k,qu)*mmtmp(3) + q(i-1,j,k,qu)*mmtmp(4) &
+                + q(i  ,j,k,qu)*mmtmp(5) + q(i+1,j,k,qu)*mmtmp(6) &
+                + q(i+2,j,k,qu)*mmtmp(7) + q(i+3,j,k,qu)*mmtmp(8) )
 
 !EXPAND             mmtmp = matmul(mu(i-4:i+3,j,k), M8)
              mmtmp(1) = mu(i-4,j,k) * M8(1,1) &
@@ -656,8 +661,18 @@ contains
                       - mu(i+1,j,k) * M8(3,1) &
                       - mu(i+2,j,k) * M8(2,1) &
                       - mu(i+3,j,k) * M8(1,1)
-             Hg(i,j,k,imy) = dot_product(mmtmp, q(i-4:i+3,j,k,qv))
-             Hg(i,j,k,imz) = dot_product(mmtmp, q(i-4:i+3,j,k,qw))
+!EXPAND             Hg(i,j,k,imy) = dot_product(mmtmp, q(i-4:i+3,j,k,qv))
+             Hg(i,j,k,imy) =  &
+                ( q(i-4,j,k,qv)*mmtmp(1) + q(i-3,j,k,qv)*mmtmp(2) &
+                + q(i-2,j,k,qv)*mmtmp(3) + q(i-1,j,k,qv)*mmtmp(4) &
+                + q(i  ,j,k,qv)*mmtmp(5) + q(i+1,j,k,qv)*mmtmp(6) &
+                + q(i+2,j,k,qv)*mmtmp(7) + q(i+3,j,k,qv)*mmtmp(8) )
+!EXPAND             Hg(i,j,k,imz) = dot_product(mmtmp, q(i-4:i+3,j,k,qw))
+             Hg(i,j,k,imz) =  &
+                ( q(i-4,j,k,qw)*mmtmp(1) + q(i-3,j,k,qw)*mmtmp(2) &
+                + q(i-2,j,k,qw)*mmtmp(3) + q(i-1,j,k,qw)*mmtmp(4) &
+                + q(i  ,j,k,qw)*mmtmp(5) + q(i+1,j,k,qw)*mmtmp(6) &
+                + q(i+2,j,k,qw)*mmtmp(7) + q(i+3,j,k,qw)*mmtmp(8) )
 
 !EXPAND             mmtmp = matmul(lam(i-4:i+3,j,k), M8)
              mmtmp(1) = lam(i-4,j,k) * M8(1,1) &
@@ -765,8 +780,17 @@ contains
                     - M8(1,3) * q(i+1,j,k,qpres) &
                     - M8(1,2) * q(i+2,j,k,qpres) &
                     - M8(1,1) * q(i+3,j,k,qpres)
-             Hg(i,j,k,iene) = dot_product(mmtmp, q(i-4:i+3,j,k,qtemp)) &
-                  &         + dot_product(     dpe(i-4:i+3,j,k), M8p)
+!EXPAND             Hg(i,j,k,iene) = dot_product(mmtmp, q(i-4:i+3,j,k,qtemp)) &
+!EXPAND                  &         + dot_product(     dpe(i-4:i+3,j,k), M8p)
+             Hg(i,j,k,iene) =  &
+                ( ( q(i-4,j,k,qtemp)*mmtmp(1) + q(i-3,j,k,qtemp)*mmtmp(2) &
+                  + q(i-2,j,k,qtemp)*mmtmp(3) + q(i-1,j,k,qtemp)*mmtmp(4) &
+                  + q(i  ,j,k,qtemp)*mmtmp(5) + q(i+1,j,k,qtemp)*mmtmp(6) &
+                  + q(i+2,j,k,qtemp)*mmtmp(7) + q(i+3,j,k,qtemp)*mmtmp(8) ) &
+                + ( dpe(i-4,j,k)*M8p(1) + dpe(i-3,j,k)*M8p(2) &
+                  + dpe(i-2,j,k)*M8p(3) + dpe(i-1,j,k)*M8p(4) &
+                  + dpe(i  ,j,k)*M8p(5) + dpe(i+1,j,k)*M8p(6) &
+                  + dpe(i+2,j,k)*M8p(7) + dpe(i+3,j,k)*M8p(8) ) )
 
              Htot = 0.d0
              do n = 1, nspecies
@@ -827,11 +851,25 @@ contains
                        - M8(1,2) * q(i+2,j,k,qxn) &
                        - M8(1,1) * q(i+3,j,k,qxn)
                 
-                Htmp(n) = dot_product(dpy(i-4:i+3,j,k,n), M8p) &
-                     +    dot_product(dxy(i-4:i+3,j,k,n), M8X)
+!EXPAND                Htmp(n) = dot_product(dpy(i-4:i+3,j,k,n), M8p) &
+!EXPAND                     +    dot_product(dxy(i-4:i+3,j,k,n), M8X)
+                Htmp(n) =  &
+                   ( ( dpy(i-4,j,k,n)*M8p(1) + dpy(i-3,j,k,n)*M8p(2) &
+                     + dpy(i-2,j,k,n)*M8p(3) + dpy(i-1,j,k,n)*M8p(4) &
+                     + dpy(i  ,j,k,n)*M8p(5) + dpy(i+1,j,k,n)*M8p(6) &
+                     + dpy(i+2,j,k,n)*M8p(7) + dpy(i+3,j,k,n)*M8p(8) ) &
+                   + ( dxy(i-4,j,k,n)*M8X(1) + dxy(i-3,j,k,n)*M8X(2) &
+                     + dxy(i-2,j,k,n)*M8X(3) + dxy(i-1,j,k,n)*M8X(4) &
+                     + dxy(i  ,j,k,n)*M8X(5) + dxy(i+1,j,k,n)*M8X(6) &
+                     + dxy(i+2,j,k,n)*M8X(7) + dxy(i+3,j,k,n)*M8X(8) ) )
 
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) &
-                     +    dot_product(dxe(i-4:i+3,j,k,n), M8X)
+!EXPAND                Hg(i,j,k,iene) = Hg(i,j,k,iene) &
+!EXPAND                     +    dot_product(dxe(i-4:i+3,j,k,n), M8X)
+                Hg(i,j,k,iene) = Hg(i,j,k,iene)+ &
+                   ( dxe(i-4,j,k,n)*M8X(1) + dxe(i-3,j,k,n)*M8X(2) &
+                   + dxe(i-2,j,k,n)*M8X(3) + dxe(i-1,j,k,n)*M8X(4) &
+                   + dxe(i  ,j,k,n)*M8X(5) + dxe(i+1,j,k,n)*M8X(6) &
+                   + dxe(i+2,j,k,n)*M8X(7) + dxe(i+3,j,k,n)*M8X(8) )
 
                 Htot = Htot + Htmp(n)
                 Ytmp(n) = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
@@ -927,8 +965,18 @@ contains
                       - mu(i,j+1,k) * M8(3,1) &
                       - mu(i,j+2,k) * M8(2,1) &
                       - mu(i,j+3,k) * M8(1,1)
-             Hg(i,j,k,imx) = dot_product(mmtmp, q(i,j-4:j+3,k,qu))
-             Hg(i,j,k,imz) = dot_product(mmtmp, q(i,j-4:j+3,k,qw))
+!EXPAND             Hg(i,j,k,imx) = dot_product(mmtmp, q(i,j-4:j+3,k,qu))
+             Hg(i,j,k,imx) =  &
+                ( q(i,j-4,k,qu)*mmtmp(1) + q(i,j-3,k,qu)*mmtmp(2) &
+                + q(i,j-2,k,qu)*mmtmp(3) + q(i,j-1,k,qu)*mmtmp(4) &
+                + q(i,j  ,k,qu)*mmtmp(5) + q(i,j+1,k,qu)*mmtmp(6) &
+                + q(i,j+2,k,qu)*mmtmp(7) + q(i,j+3,k,qu)*mmtmp(8) )
+!EXPAND             Hg(i,j,k,imz) = dot_product(mmtmp, q(i,j-4:j+3,k,qw))
+             Hg(i,j,k,imz) =  &
+                ( q(i,j-4,k,qw)*mmtmp(1) + q(i,j-3,k,qw)*mmtmp(2) &
+                + q(i,j-2,k,qw)*mmtmp(3) + q(i,j-1,k,qw)*mmtmp(4) &
+                + q(i,j  ,k,qw)*mmtmp(5) + q(i,j+1,k,qw)*mmtmp(6) &
+                + q(i,j+2,k,qw)*mmtmp(7) + q(i,j+3,k,qw)*mmtmp(8) )
 
 !EXPAND             mmtmp = matmul(vsp(i,j-4:j+3,k), M8)
              mmtmp(1) = vsp(i,j-4,k) * M8(1,1) &
@@ -983,7 +1031,12 @@ contains
                       - vsp(i,j+1,k) * M8(3,1) &
                       - vsp(i,j+2,k) * M8(2,1) &
                       - vsp(i,j+3,k) * M8(1,1)
-             Hg(i,j,k,imy) = dot_product(mmtmp, q(i,j-4:j+3,k,qv))
+!EXPAND             Hg(i,j,k,imy) = dot_product(mmtmp, q(i,j-4:j+3,k,qv))
+             Hg(i,j,k,imy) =  &
+                ( q(i,j-4,k,qv)*mmtmp(1) + q(i,j-3,k,qv)*mmtmp(2) &
+                + q(i,j-2,k,qv)*mmtmp(3) + q(i,j-1,k,qv)*mmtmp(4) &
+                + q(i,j  ,k,qv)*mmtmp(5) + q(i,j+1,k,qv)*mmtmp(6) &
+                + q(i,j+2,k,qv)*mmtmp(7) + q(i,j+3,k,qv)*mmtmp(8) )
 
 !EXPAND             mmtmp = matmul(lam(i,j-4:j+3,k), M8)
              mmtmp(1) = lam(i,j-4,k) * M8(1,1) &
@@ -1091,8 +1144,17 @@ contains
                     - M8(1,3) * q(i,j+1,k,qpres) &
                     - M8(1,2) * q(i,j+2,k,qpres) &
                     - M8(1,1) * q(i,j+3,k,qpres)
-             Hg(i,j,k,iene) = dot_product(mmtmp, q(i,j-4:j+3,k,qtemp)) &
-                  +           dot_product(     dpe(i,j-4:j+3,k), M8p)
+!EXPAND             Hg(i,j,k,iene) = dot_product(mmtmp, q(i,j-4:j+3,k,qtemp)) &
+!EXPAND                  +           dot_product(     dpe(i,j-4:j+3,k), M8p)
+             Hg(i,j,k,iene) =  &
+                ( ( q(i,j-4,k,qtemp)*mmtmp(1) + q(i,j-3,k,qtemp)*mmtmp(2) &
+                  + q(i,j-2,k,qtemp)*mmtmp(3) + q(i,j-1,k,qtemp)*mmtmp(4) &
+                  + q(i,j  ,k,qtemp)*mmtmp(5) + q(i,j+1,k,qtemp)*mmtmp(6) &
+                  + q(i,j+2,k,qtemp)*mmtmp(7) + q(i,j+3,k,qtemp)*mmtmp(8) ) &
+                + ( dpe(i,j-4,k)*M8p(1) + dpe(i,j-3,k)*M8p(2) &
+                  + dpe(i,j-2,k)*M8p(3) + dpe(i,j-1,k)*M8p(4) &
+                  + dpe(i,j  ,k)*M8p(5) + dpe(i,j+1,k)*M8p(6) &
+                  + dpe(i,j+2,k)*M8p(7) + dpe(i,j+3,k)*M8p(8) ) )
 
              Htot = 0.d0
              do n = 1, nspecies
@@ -1153,11 +1215,25 @@ contains
                        - M8(1,2) * q(i,j+2,k,qxn) &
                        - M8(1,1) * q(i,j+3,k,qxn)
 
-                Htmp(n) = dot_product(dpy(i,j-4:j+3,k,n), M8P) &
-                     +    dot_product(dxy(i,j-4:j+3,k,n), M8X)
+!EXPAND                Htmp(n) = dot_product(dpy(i,j-4:j+3,k,n), M8P) &
+!EXPAND                     +    dot_product(dxy(i,j-4:j+3,k,n), M8X)
+                Htmp(n) =  &
+                   ( ( dpy(i,j-4,k,n)*M8P(1) + dpy(i,j-3,k,n)*M8P(2) &
+                     + dpy(i,j-2,k,n)*M8P(3) + dpy(i,j-1,k,n)*M8P(4) &
+                     + dpy(i,j  ,k,n)*M8P(5) + dpy(i,j+1,k,n)*M8P(6) &
+                     + dpy(i,j+2,k,n)*M8P(7) + dpy(i,j+3,k,n)*M8P(8) ) &
+                   + ( dxy(i,j-4,k,n)*M8X(1) + dxy(i,j-3,k,n)*M8X(2) &
+                     + dxy(i,j-2,k,n)*M8X(3) + dxy(i,j-1,k,n)*M8X(4) &
+                     + dxy(i,j  ,k,n)*M8X(5) + dxy(i,j+1,k,n)*M8X(6) &
+                     + dxy(i,j+2,k,n)*M8X(7) + dxy(i,j+3,k,n)*M8X(8) ) )
 
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) &
-                     +    dot_product(dxe(i,j-4:j+3,k,n), M8X)
+!EXPAND                Hg(i,j,k,iene) = Hg(i,j,k,iene) &
+!EXPAND                     +    dot_product(dxe(i,j-4:j+3,k,n), M8X)
+                Hg(i,j,k,iene) = Hg(i,j,k,iene)+ &
+                   ( dxe(i,j-4,k,n)*M8X(1) + dxe(i,j-3,k,n)*M8X(2) &
+                   + dxe(i,j-2,k,n)*M8X(3) + dxe(i,j-1,k,n)*M8X(4) &
+                   + dxe(i,j  ,k,n)*M8X(5) + dxe(i,j+1,k,n)*M8X(6) &
+                   + dxe(i,j+2,k,n)*M8X(7) + dxe(i,j+3,k,n)*M8X(8) )
 
                 Htot = Htot + Htmp(n)
                 Ytmp(n) = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
@@ -1253,8 +1329,18 @@ contains
                       - mu(i,j,k+1) * M8(3,1) &
                       - mu(i,j,k+2) * M8(2,1) &
                       - mu(i,j,k+3) * M8(1,1)
-             Hg(i,j,k,imx) = dot_product(mmtmp, q(i,j,k-4:k+3,qu))
-             Hg(i,j,k,imy) = dot_product(mmtmp, q(i,j,k-4:k+3,qv))
+!EXPAND             Hg(i,j,k,imx) = dot_product(mmtmp, q(i,j,k-4:k+3,qu))
+             Hg(i,j,k,imx) =  &
+                ( q(i,j,k-4,qu)*mmtmp(1) + q(i,j,k-3,qu)*mmtmp(2) &
+                + q(i,j,k-2,qu)*mmtmp(3) + q(i,j,k-1,qu)*mmtmp(4) &
+                + q(i,j,k  ,qu)*mmtmp(5) + q(i,j,k+1,qu)*mmtmp(6) &
+                + q(i,j,k+2,qu)*mmtmp(7) + q(i,j,k+3,qu)*mmtmp(8) )
+!EXPAND             Hg(i,j,k,imy) = dot_product(mmtmp, q(i,j,k-4:k+3,qv))
+             Hg(i,j,k,imy) =  &
+                ( q(i,j,k-4,qv)*mmtmp(1) + q(i,j,k-3,qv)*mmtmp(2) &
+                + q(i,j,k-2,qv)*mmtmp(3) + q(i,j,k-1,qv)*mmtmp(4) &
+                + q(i,j,k  ,qv)*mmtmp(5) + q(i,j,k+1,qv)*mmtmp(6) &
+                + q(i,j,k+2,qv)*mmtmp(7) + q(i,j,k+3,qv)*mmtmp(8) )
 
 !EXPAND             mmtmp = matmul(vsp(i,j,k-4:k+3), M8)
              mmtmp(1) = vsp(i,j,k-4) * M8(1,1) &
@@ -1309,7 +1395,12 @@ contains
                       - vsp(i,j,k+1) * M8(3,1) &
                       - vsp(i,j,k+2) * M8(2,1) &
                       - vsp(i,j,k+3) * M8(1,1)
-             Hg(i,j,k,imz) = dot_product(mmtmp, q(i,j,k-4:k+3,qw))
+!EXPAND             Hg(i,j,k,imz) = dot_product(mmtmp, q(i,j,k-4:k+3,qw))
+             Hg(i,j,k,imz) =  &
+                ( q(i,j,k-4,qw)*mmtmp(1) + q(i,j,k-3,qw)*mmtmp(2) &
+                + q(i,j,k-2,qw)*mmtmp(3) + q(i,j,k-1,qw)*mmtmp(4) &
+                + q(i,j,k  ,qw)*mmtmp(5) + q(i,j,k+1,qw)*mmtmp(6) &
+                + q(i,j,k+2,qw)*mmtmp(7) + q(i,j,k+3,qw)*mmtmp(8) )
 
 !EXPAND             mmtmp = matmul(lam(i,j,k-4:k+3), M8)
              mmtmp(1) = lam(i,j,k-4) * M8(1,1) &
@@ -1417,8 +1508,17 @@ contains
                     - M8(1,3) * q(i,j,k+1,qpres) &
                     - M8(1,2) * q(i,j,k+2,qpres) &
                     - M8(1,1) * q(i,j,k+3,qpres)
-             Hg(i,j,k,iene) = dot_product(mmtmp, q(i,j,k-4:k+3,qtemp)) &
-                  +           dot_product(     dpe(i,j,k-4:k+3), M8p)
+!EXPAND             Hg(i,j,k,iene) = dot_product(mmtmp, q(i,j,k-4:k+3,qtemp)) &
+!EXPAND                  +           dot_product(     dpe(i,j,k-4:k+3), M8p)
+             Hg(i,j,k,iene) =  &
+                ( ( q(i,j,k-4,qtemp)*mmtmp(1) + q(i,j,k-3,qtemp)*mmtmp(2) &
+                  + q(i,j,k-2,qtemp)*mmtmp(3) + q(i,j,k-1,qtemp)*mmtmp(4) &
+                  + q(i,j,k  ,qtemp)*mmtmp(5) + q(i,j,k+1,qtemp)*mmtmp(6) &
+                  + q(i,j,k+2,qtemp)*mmtmp(7) + q(i,j,k+3,qtemp)*mmtmp(8) ) &
+                + ( dpe(i,j,k-4)*M8p(1) + dpe(i,j,k-3)*M8p(2) &
+                  + dpe(i,j,k-2)*M8p(3) + dpe(i,j,k-1)*M8p(4) &
+                  + dpe(i,j,k  )*M8p(5) + dpe(i,j,k+1)*M8p(6) &
+                  + dpe(i,j,k+2)*M8p(7) + dpe(i,j,k+3)*M8p(8) ) )
 
              Htot = 0.d0
              do n = 1, nspecies
@@ -1479,11 +1579,25 @@ contains
                        - M8(1,2) * q(i,j,k+2,qxn) &
                        - M8(1,1) * q(i,j,k+3,qxn)
 
-                Htmp(n) = dot_product(dpy(i,j,k-4:k+3,n), M8P) &
-                     +    dot_product(dxy(i,j,k-4:k+3,n), M8X)
+!EXPAND                Htmp(n) = dot_product(dpy(i,j,k-4:k+3,n), M8P) &
+!EXPAND                     +    dot_product(dxy(i,j,k-4:k+3,n), M8X)
+                Htmp(n) =  &
+                   ( ( dpy(i,j,k-4,n)*M8P(1) + dpy(i,j,k-3,n)*M8P(2) &
+                     + dpy(i,j,k-2,n)*M8P(3) + dpy(i,j,k-1,n)*M8P(4) &
+                     + dpy(i,j,k  ,n)*M8P(5) + dpy(i,j,k+1,n)*M8P(6) &
+                     + dpy(i,j,k+2,n)*M8P(7) + dpy(i,j,k+3,n)*M8P(8) ) &
+                   + ( dxy(i,j,k-4,n)*M8X(1) + dxy(i,j,k-3,n)*M8X(2) &
+                     + dxy(i,j,k-2,n)*M8X(3) + dxy(i,j,k-1,n)*M8X(4) &
+                     + dxy(i,j,k  ,n)*M8X(5) + dxy(i,j,k+1,n)*M8X(6) &
+                     + dxy(i,j,k+2,n)*M8X(7) + dxy(i,j,k+3,n)*M8X(8) ) )
 
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) &
-                     +    dot_product(dxe(i,j,k-4:k+3,n), M8X)
+!EXPAND                Hg(i,j,k,iene) = Hg(i,j,k,iene) &
+!EXPAND                     +    dot_product(dxe(i,j,k-4:k+3,n), M8X)
+                Hg(i,j,k,iene) = Hg(i,j,k,iene)+ &
+                   ( dxe(i,j,k-4,n)*M8X(1) + dxe(i,j,k-3,n)*M8X(2) &
+                   + dxe(i,j,k-2,n)*M8X(3) + dxe(i,j,k-1,n)*M8X(4) &
+                   + dxe(i,j,k  ,n)*M8X(5) + dxe(i,j,k+1,n)*M8X(6) &
+                   + dxe(i,j,k+2,n)*M8X(7) + dxe(i,j,k+3,n)*M8X(8) )
 
                 Htot = Htot + Htmp(n)
                 Ytmp(n) = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0

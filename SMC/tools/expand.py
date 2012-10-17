@@ -63,14 +63,18 @@ def expand(forg):
 
 def expand_line(line):
     mmRE = re.compile(r"matmul\s*\(.*\)")
-    dpRE = re.compile(r"dot_product\s*\(.*matmul\s*\(.*\).*\)")
+    dmRE = re.compile(r"dot_product\s*\(.*matmul\s*\(.*\).*\)")
+    dpRE = re.compile(r"dot_product\s*\(.*\)")
     fdRE = re.compile(r"first_deriv_[468]\s*\(.*\)")
     search_mm = mmRE.search(line)
+    search_dm = dmRE.search(line)
     search_dp = dpRE.search(line)
     search_fd = fdRE.search(line)
-    if search_mm and not search_dp:
+    if search_mm and not search_dm:
         return expand_matmul(line)
-    elif search_dp:
+    elif search_dp and not search_dm:
+        return expand_dot_product(line)
+    elif search_dm:
         return expand_aMu(line)
     elif search_fd:
         return expand_first_deriv(line)
@@ -369,6 +373,114 @@ def expand_matmul_4(line):
                moreindent + ' - ' +a[3]+' * M4(1,1)\n'
 
 
+def expand_dot_product(line):
+    lhs, rhs = line.split('=')
+
+    lhs = lhs.strip(' \t')
+    i = string.find(line, lhs)
+    indent = line[0:i]
+    moreindent = indent+'   '
+
+    rhs = rhs.strip(' \t\n\r').replace(' ','')
+
+    def dp_args(dpargs):
+        if dpargs.count(',') == 1:
+            return [''], ''
+        icomma = string.find(dpargs,',')
+        ilp = string.find(dpargs,'(')
+        if ilp < icomma:
+            irp = string.find(dpargs,')')
+            am = dpargs[0:irp+1]
+            a1 = dpargs[irp+2:]
+        else:
+            a1 = dpargs[0:icomma]
+            am = dpargs[icomma+1:]
+        u = expand_fortran_slice(am)
+        return u, a1
+    
+    ndp = rhs.count('dot_product')
+    if ndp == 1:
+        # [c+]dot_product(a,b)
+        i = string.find(rhs,'dot_product')
+        line0 = indent+lhs+' = '+rhs[0:i]+' &\n'
+        args = rhs[i+len('dot_product('):-1]
+        u, a = dp_args(args)
+        lu = len(u)
+        if lu == 8:
+            return line0 + \
+                moreindent + '( '+u[0]+'*'+a+'(1) + '+u[1]+'*'+a+'(2) &\n'+\
+                moreindent + '+ '+u[2]+'*'+a+'(3) + '+u[3]+'*'+a+'(4) &\n'+\
+                moreindent + '+ '+u[4]+'*'+a+'(5) + '+u[5]+'*'+a+'(6) &\n'+\
+                moreindent + '+ '+u[6]+'*'+a+'(7) + '+u[7]+'*'+a+'(8) )\n'
+        elif lu == 6:
+            return line0 + \
+                moreindent + '( '+u[0]+'*'+a+'(1) + '+u[1]+'*'+a+'(2) &\n'+\
+                moreindent + '+ '+u[2]+'*'+a+'(3) + '+u[3]+'*'+a+'(4) &\n'+\
+                moreindent + '+ '+u[4]+'*'+a+'(5) + '+u[5]+'*'+a+'(6) )\n'
+        elif lu == 4:
+            return line0 + \
+                moreindent + '( '+u[0]+'*'+a+'(1) + '+u[1]+'*'+a+'(2) &\n'+\
+                moreindent + '+ '+u[2]+'*'+a+'(3) + '+u[3]+'*'+a+'(4) )\n'
+        elif lu == 2:
+            return line0 + \
+                moreindent + '( '+u[0]+'*'+a+'(1) + '+u[1]+'*'+a+'(2) )\n'
+        else:
+            print "expand_dot_product: Strange!"
+            print line
+            return ''
+    else:
+        # dot_product()+dot_product()
+        # c + d*dxinv(?)*(dot_product()+dot_product())
+        idot = string.find(rhs,'dot_product')
+        line0 = indent+lhs+' = '+rhs[0:idot]
+        if line0[-1] == '(':
+            line0 = line0[0:-1]
+            twodots = rhs[idot:-1]
+        else:
+            twodots = rhs[idot:]
+        line0 = line0+' &\n'
+        words = twodots.split('dot_product')
+        args1 = words[1][1:-2]
+        op = words[1][-1]
+        args2 = words[2][1:-1]
+        u1, a1 = dp_args(args1)
+        u2, a2 = dp_args(args2)
+        lu1 = len(u1)
+        lu2 = len(u2)
+        if lu1 == 8 and lu2 == 8:
+            return line0 + \
+                moreindent+'( ( '+u1[0]+'*'+a1+'(1) + '+u1[1]+'*'+a1+'(2) &\n'+\
+                moreindent+'  + '+u1[2]+'*'+a1+'(3) + '+u1[3]+'*'+a1+'(4) &\n'+\
+                moreindent+'  + '+u1[4]+'*'+a1+'(5) + '+u1[5]+'*'+a1+'(6) &\n'+\
+                moreindent+'  + '+u1[6]+'*'+a1+'(7) + '+u1[7]+'*'+a1+'(8) ) &\n'+\
+                moreindent+'+ ( '+u2[0]+'*'+a2+'(1) + '+u2[1]+'*'+a2+'(2) &\n'+\
+                moreindent+'  + '+u2[2]+'*'+a2+'(3) + '+u2[3]+'*'+a2+'(4) &\n'+\
+                moreindent+'  + '+u2[4]+'*'+a2+'(5) + '+u2[5]+'*'+a2+'(6) &\n'+\
+                moreindent+'  + '+u2[6]+'*'+a2+'(7) + '+u2[7]+'*'+a2+'(8) ) )\n'
+        elif lu1 == 6 and lu2 == 6:
+            return line0 + \
+                moreindent+'( ( '+u1[0]+'*'+a1+'(1) + '+u1[1]+'*'+a1+'(2) &\n'+\
+                moreindent+'  + '+u1[2]+'*'+a1+'(3) + '+u1[3]+'*'+a1+'(4) &\n'+\
+                moreindent+'  + '+u1[4]+'*'+a1+'(5) + '+u1[5]+'*'+a1+'(6) ) &\n'+\
+                moreindent+'+ ( '+u2[0]+'*'+a2+'(1) + '+u2[1]+'*'+a2+'(2) &\n'+\
+                moreindent+'  + '+u2[2]+'*'+a2+'(3) + '+u2[3]+'*'+a2+'(4) &\n'+\
+                moreindent+'  + '+u2[4]+'*'+a2+'(5) + '+u2[5]+'*'+a2+'(6) ) )\n'
+        elif lu1 == 4 and lu2 == 4:
+            return line0 + \
+                moreindent+'( ( '+u1[0]+'*'+a1+'(1) + '+u1[1]+'*'+a1+'(2) &\n'+\
+                moreindent+'  + '+u1[2]+'*'+a1+'(3) + '+u1[3]+'*'+a1+'(4) ) &\n'+\
+                moreindent+'+ ( '+u2[0]+'*'+a2+'(1) + '+u2[1]+'*'+a2+'(2) &\n'+\
+                moreindent+'  + '+u2[2]+'*'+a2+'(3) + '+u2[3]+'*'+a2+'(4) ) )\n'
+        elif lu1 == 2 and lu2 == 2:
+            return line0 + \
+                moreindent+'( ( '+u1[0]+'*'+a1+'(1) + '+u1[1]+'*'+a1+'(2) ) &\n'+\
+                moreindent+'+ ( '+u2[0]+'*'+a2+'(1) + '+u2[1]+'*'+a2+'(2) ) )\n'
+        else:
+            print "expand_dot_product: Strange!"
+            print line
+            return ''
+    return ''
+
 def expand_aMu_8(line):
     # expand lhs = dot_product(matmul(a,M8),u) [+ dot_product()]
     lhs, rhs = line.split('=')
@@ -525,17 +637,28 @@ def expand_fortran_slice(x):
     i_index = indices[0]
     j_index = indices[1]
     k_index = indices[2]
+    def ii(an_index):
+        index0, index1 = an_index.split(':')
+        try:
+            iistart = int(index0[1:])
+        except:
+            iistart = 0
+        try:
+            iiend = int(index1[1:])
+        except:
+            iiend = 0
+        return iistart, iiend
     if string.find(i_index,':') >= 0:
-        istart = int(i_index.split(':')[0][1:])
-        for i in range(istart,-istart):
+        istart, iend = ii(i_index)
+        for i in range(istart,iend+1):
             xs.append(v+'(i+'+str(i)+',j,k,NCOMP)')
     elif string.find(j_index,':') >= 0:
-        jstart = int(j_index.split(':')[0][1:])
-        for j in range(jstart,-jstart):
+        jstart, jend = ii(j_index)
+        for j in range(jstart,jend+1):
             xs.append(v+'(i,j+'+str(j)+',k,NCOMP)')
     else:
-        kstart = int(k_index.split(':')[0][1:])
-        for k in range(kstart,-kstart):
+        kstart, kend = ii(k_index)
+        for k in range(kstart,kend+1):
             xs.append(v+'(i,j,k+'+str(k)+',NCOMP)')
     if len(indices) == 4:
         return [t.replace('NCOMP',indices[3]).replace('+-','-').replace('+0','  ') for t in xs]
