@@ -33,4 +33,5 @@ endif
 #fEXE_sources += drm19Soln_seed_1.00.f
 #fEXE_sources += glarSkel_0300.f
 #fEXE_sources += H-flame_0400.f
-fEXE_sources += LiDryer_060_05ATM.f
+#fEXE_sources += LiDryer_060_05ATM.f
+fEXE_sources += pmf_LiDryer_060_01ATM.f
