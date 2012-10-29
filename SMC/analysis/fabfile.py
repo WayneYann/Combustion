@@ -3,11 +3,19 @@
 from fabric.api import *
 from pyboxlib.fabutils import *
 from pyboxlib.utils import *
+from fabsubmit import *
 from itertools import product
 
+
 env.rsync_dirs = [ '~/projects/BoxLib/Src/Python', '~/projects/Combustion/SMC' ]
-#env.rsync_dirs = [ '~/projects/Combustion/SMC' ]
-env.mpirun     = '/home/memmett/opt/bin/mpirun'
+env.bin = '~/projects/Combustion/SMC/bin/FlameBall'
+
+
+def setenv():
+  if env.host == 'hopper':
+    env.host_string = 'hopper.nersc.gov'
+    env.exe = 'main.Linux.Cray.mpi.omp.exe'
+
 
 @task
 def flameball():
@@ -15,12 +23,11 @@ def flameball():
 
     This task should be run in the bin/FlameBall directory.
     """
-
-    env.bin = '~/projects/Combustion/SMC/bin/FlameBall'
-    env.exe = 'main.Linux.gfortran.mpi.omp.exe'
+    setenv()
 
     env.nthreads = 4
-    env.nprocs   = 4
+    env.nprocs   = 6
+    env.pernode  = 3
 
     #rsync()
     #make()
@@ -40,8 +47,8 @@ def flameball():
                           advance_method=1)
             probin.write(spath + 'probin.nml')
 
-            runs.append(('rk3, cflfac %f' % (cflfac,), rundir))
-            
+            runs.append(('rk3%f' % (cflfac,), rundir))
+
 
         for nnodes, cflfac in product([ 3, 5, 9 ], [ 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 ]):
             rundir = 'cflconv/nnodes%d_cflfac%f' % (nnodes, cflfac)
@@ -53,7 +60,7 @@ def flameball():
                           advance_method=2)
             probin.write(spath + 'probin.nml')
 
-            runs.append(('nnodes %d, cflfac %f' % (nnodes, cflfac), rundir))
+            runs.append(('sdc%d%f' % (nnodes, cflfac), rundir))
 
     for name, rundir in runs:
-        runexe(name, rundir, 'probin.nml')
+        submit(name, rundir, 'probin.nml')
