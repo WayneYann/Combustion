@@ -1,6 +1,4 @@
-"""PFASST Fabric utilities."""
-
-# Copyright (c) 2011, Matthew Emmett.  All rights reserved.
+"""Fabric (fabfile.org) utilities for submitting jobs."""
 
 import os
 
@@ -21,11 +19,12 @@ def submit(*args, **kwargs):
   sub(*args, **kwargs)
 
 
-def submit_hopper(name, rundir, probin, queue=None, walltime='00:10:00', **kwargs):
+def submit_hopper(name, rundir, probin, queue=None, walltime='00:30:00', **kwargs):
 
   if not queue:
     queue = 'regular'
 
+  puts(green('qsub script: ' + name))
   run(dedent("""\
              cat > {name}.pbs << EOF
              #!/bin/bash -l
@@ -59,18 +58,3 @@ def submit_hopper(name, rundir, probin, queue=None, walltime='00:10:00', **kwarg
 
   puts(green('submitting: ' + name))
   run('qsub {name}.pbs'.format(name=name))
-
-
-# def submit_localhost(name, nproc, args, **kwargs):
-
-#   directory = env.work + '/' + os.path.basename(os.getcwd())
-
-#   if 'VIRTUAL_ENV' in os.environ:
-#     python = os.environ['VIRTUAL_ENV'] + '/bin/python'
-#   else:
-#     python = 'python'
-
-#   local('mpirun -n {nproc} {python} {pfpack}/bin/pfautorun {args}'.format(
-#     nproc=nproc, python=python, pfpack=env.pfpack, args=args))
-
-
