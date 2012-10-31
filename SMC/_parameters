@@ -1,4 +1,4 @@
-# This file contains the runtime parameters for all SMC problems.  It 
+# This file contains the runtime parameters for all SMC problems.  It
 # is parsed by write_probin.py and merged with probin.template to produce
 # the probin.f90 at compile time.
 #
@@ -11,13 +11,13 @@
 #-----------------------------------------------------------------------------
 
 # General verbosity
-verbose                             integer            0                   
+verbose                             integer            0
 
 # Verbosity of the knapscak processor-to-grid algorithm.
-the_knapsack_verbosity              logical            .false.             
+the_knapsack_verbosity              logical            .false.
 
 # job name printed in output
-job_name                            character          ""                  
+job_name                            character          ""
 
 
 #-----------------------------------------------------------------------------
@@ -31,7 +31,7 @@ job_name                            character          ""
 # category: algorithm
 #-----------------------------------------------------------------------------
 
-# Time-stepping scheme (1=RK3, 2=SDC, 3=PFASST)
+# Time-stepping scheme (1=RK3, 2=SDC, 3=MRSDC, 4=PFASST)
 advance_method                      integer           1
 
 # "compact" is the new stencil, and wide or S3D is the S3D type stencil
@@ -39,26 +39,26 @@ stencil_type                        character         "compact"
 
 
 #-----------------------------------------------------------------------------
-# category: timestepping 
+# category: timestepping
 #-----------------------------------------------------------------------------
 
 # simulation stop time
-stop_time                           real               -1.d0               
+stop_time                           real               -1.d0
 
 # Maximum number of steps in the simulation.
-max_step                            integer            1                   
+max_step                            integer            1
 
 # CFL factor to use in the computation of the advection timestep constraint
-cflfac                              real               0.5d0                 
+cflfac                              real               0.5d0
 
-# the multiplicative factor ($\le 1$) to reduce the initial timestep as 
+# the multiplicative factor ($\le 1$) to reduce the initial timestep as
 # computed by the various timestep estimators
-init_shrink                         real               1.d0                 
+init_shrink                         real               1.d0
 
 # the minimum allowed timestep -- we abort if dt drops below this value
 small_dt                            real               1.d-30
 
-# The maximum scale factor that the time step is allowed to grow by per 
+# The maximum scale factor that the time step is allowed to grow by per
 # time step.
 max_dt_growth                       real               1.1d0
 
@@ -66,7 +66,7 @@ max_dt_growth                       real               1.1d0
 max_dt                              real               1.0d33
 
 # Fix the time step.  If -1.0, then use the standard time step.
-fixed_dt                            real               -1.0d0              
+fixed_dt                            real               -1.0d0
 
 
 #-----------------------------------------------------------------------------
@@ -74,7 +74,7 @@ fixed_dt                            real               -1.0d0
 #-----------------------------------------------------------------------------
 
 # number of sdc nodes
-sdc_nnodes                          integer            5  
+sdc_nnodes                          integer            5
 
 # number of sdc iterations per time step
 sdc_iters                           integer            9
@@ -88,22 +88,22 @@ sdc_tol_residual                    real               1.d-5
 #-----------------------------------------------------------------------------
 
 # physical coordinates of lo-x corner of problem domain
-prob_lo_x                           real               ZERO                
+prob_lo_x                           real               ZERO
 
 # physical coordinates of lo-y corner of problem domain
-prob_lo_y                           real               ZERO                
+prob_lo_y                           real               ZERO
 
 # physical coordinates of lo-z corner of problem domain
-prob_lo_z                           real               ZERO                
+prob_lo_z                           real               ZERO
 
 # physical coordinates of hi-x corner of problem domain
-prob_hi_x                           real               1.d0                    
+prob_hi_x                           real               1.d0
 
 # physical coordinates of hi-y corner of problem domain
-prob_hi_y                           real               1.d0                    
+prob_hi_y                           real               1.d0
 
 # physical coordinates of hi-z corner of problem domain
-prob_hi_z                           real               1.d0                    
+prob_hi_z                           real               1.d0
 
 
 # $-x$ boundary condition
@@ -152,30 +152,30 @@ zhi_boundary_type                   character          "periodic"
 dm_in                               integer            3
 
 # The largest grid size that will be created using make\_new\_grids.
-max_grid_size                       integer            64                  
+max_grid_size                       integer            64
 
-# Change the max grid size on restart 
-change_max_grid_size                logical            .true.  
+# Change the max grid size on restart
+change_max_grid_size                logical            .true.
 
 # Number of cells in the x-direction
-n_cellx                             integer            -1                     
+n_cellx                             integer            -1
 
 # Number of cells in the y-direction
-n_celly                             integer            -1                     
+n_celly                             integer            -1
 
 # Number of cells in the z-direction
-n_cellz                             integer            -1                    
+n_cellz                             integer            -1
 
-# When assigning processors for grids, this determines whether we use 
-# the sfc algorithm or knapsack algorithm.  If the total number of grids 
+# When assigning processors for grids, this determines whether we use
+# the sfc algorithm or knapsack algorithm.  If the total number of grids
 # divided by the number of processors is greater than this number, use sfc.
-the_sfc_threshold                   integer            5                   
+the_sfc_threshold                   integer            5
 
-the_layout_verbosity                integer            0                   
+the_layout_verbosity                integer            0
 
-#  Number of boxassoc layouts we keep in memory to avoid having to 
+#  Number of boxassoc layouts we keep in memory to avoid having to
 # recompute the boxassoc, which is computationally expensive.
-the_copy_cache_max                  integer            25          
+the_copy_cache_max                  integer            25
 
 # The minimum size on a side for a grid created using make\_new\_grids.
 minwidth                            integer            4
@@ -189,54 +189,54 @@ blocking_factor                     integer            16
 #-----------------------------------------------------------------------------
 
 # plot interval
-plot_int                            integer            0                   
+plot_int                            integer            0
 
-# rather than use a plot interval, plot a file after the solution has 
+# rather than use a plot interval, plot a file after the solution has
 # advanced past plot\_deltat in time
-plot_deltat                         real               -1.d0                 
+plot_deltat                         real               -1.d0
 
 # Number of timesteps between writing a checkpoint file
-chk_int                             integer            0                   
+chk_int                             integer            0
 
 # plot mass fraction species in plotfile
-plot_Y                              logical            .true. 
+plot_Y                              logical            .true.
 
 # plot molar fraction species in plotfile
-plot_X                              logical            .false.             
+plot_X                              logical            .false.
 
 # plot mean specific internal energy in plotfile
 plot_eint                           logical            .false.
 
 # plot mean specific enthlpy in plotfile
-plot_h                              logical            .true. 
+plot_h                              logical            .true.
 
 # plot enthlpy of each species in plotfile
 plot_hspec                          logical            .false.
 
-# plot divu in plotfile 
-plot_divu                           logical            .true.              
+# plot divu in plotfile
+plot_divu                           logical            .true.
 
-# plot omegadot in plotfile 
-plot_omegadot                       logical            .true.              
+# plot omegadot in plotfile
+plot_omegadot                       logical            .true.
 
 # prefix to use in plotfile file names
-plot_base_name                      character          "plt"               
+plot_base_name                      character          "plt"
 
 # prefix to use in checkpoint file names
-check_base_name                     character          "chk"               
+check_base_name                     character          "chk"
 
-# If lUsingNFiles = .true., use this many processors to write checkpoint 
-# and plotfiles.  Fortran has the unfortunate feature of each processor 
+# If lUsingNFiles = .true., use this many processors to write checkpoint
+# and plotfiles.  Fortran has the unfortunate feature of each processor
 # only being able to write out 1-2GB each without crashing.
-nOutFiles                           integer            64                  
+nOutFiles                           integer            64
 
-# If .true., use nOutFiles processors to write checkpoint and plotfiles.  
-# Fortran has the unfortunate feature of each processor only being able 
+# If .true., use nOutFiles processors to write checkpoint and plotfiles.
+# Fortran has the unfortunate feature of each processor only being able
 # to write out 1-2GB each without crashing.
-lUsingNFiles                        logical            .true.              
+lUsingNFiles                        logical            .true.
 
 # store the state data in single precision
-single_prec_plotfiles               logical            .false.             
+single_prec_plotfiles               logical            .false.
 
 # create a field in the plotfile storing the processor number for each zone
 plot_processors                     logical            .false.
@@ -247,7 +247,7 @@ plot_processors                     logical            .false.
 #-----------------------------------------------------------------------------
 
 # which file to restart from.  -1 means do not restart
-restart                             integer            -1                  
+restart                             integer            -1
 
 #-----------------------------------------------------------------------------
 # category: NSCBC

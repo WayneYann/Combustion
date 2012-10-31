@@ -26,15 +26,20 @@ contains
 
     type(multifab),    intent(inout) :: U
     double precision,  intent(  out) :: dt
-    double precision,  intent(in   ) :: dx(U%dim) 
+    double precision,  intent(in   ) :: dx(U%dim)
     integer,           intent(in   ) :: istep
     type(sdcquad),     intent(in   ) :: sdc
 
-    if (advance_method == 2) then
-       call advance_sdc(U,dt,dx,sdc,istep)
-    else
+    select case(advance_method)
+    case(1)
        call advance_rk3(U,dt,dx,istep)
-    end if
+    case (2)
+       call advance_sdc(U,dt,dx,sdc,istep)
+    case(3)
+       call advance_multi_sdc(U,dt,dx,sdc,istep)
+    case default
+       stop "ERROR: Invalid advance_method."
+    end select
 
     if (contains_nan(U)) then
        call bl_error("U contains nan")
@@ -167,12 +172,11 @@ contains
     call copy(U, uSDC(sdc%nnodes))
 
     ! destroy
-    
     do m = 1, sdc%nnodes
        call destroy(uSDC(m))
        call destroy(fSDC(m))
     end do
-    
+
     do m = 1, sdc%nnodes-1
        call destroy(S(m))
     end do
@@ -223,7 +227,7 @@ contains
     real(dp_t)                      :: res
     type(sdcquad),    intent(in   ) :: sdc
     type(multifab),   intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), R
-    real(dp_t),       intent(in   ) :: dt      
+    real(dp_t),       intent(in   ) :: dt
 
     integer :: m, n
 
@@ -237,10 +241,89 @@ contains
     end do
 
     call saxpy(R, -1.0d0, uSDC(sdc%nnodes))
-    
+
     res = norm_inf(R)
 
   end function sdc_residual
+
+  !
+  ! Advance U using multi-rate SDC time-stepping
+  !
+  subroutine advance_multi_sdc(U, dt, dx, sdc, istep)
+
+    type(multifab),    intent(inout) :: U
+    double precision,  intent(inout) :: dt
+    double precision,  intent(in   ) :: dx(U%dim)
+    type(sdcquad),     intent(in   ) :: sdc
+    integer,           intent(in   ) :: istep
+
+    integer          :: k, m, ng
+    double precision :: courno_proc, res_proc, res
+    type(layout)     :: la
+    type(multifab)   :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), S(sdc%nnodes-1)
+
+    ng = nghost(U)
+    la = get_layout(U)
+
+    ! XXX: this is a work in progress
+    print *, '*** MULTIRATE SDC IS A WORK IN PROGRESS ***'
+
+    ! build u and u' multifabs for each node
+    do m = 1, sdc%nnodes
+       call build(uSDC(m), la, ncons, ng)
+       call build(fSDC(m), la, ncons, 0)
+    end do
+
+    ! build S multifab (node to node integrals)
+    do m = 1, sdc%nnodes-1
+       call build(S(m), la, ncons, 0)
+    end do
+
+    ! set provisional solution, compute dt
+    courno_proc = 1.0d-50
+
+    call copy(uSDC(1), U)
+    call dUdt(uSDC(1), fSDC(1), dx, courno_proc)
+
+    do m = 2, sdc%nnodes
+       call copy(uSDC(m), uSDC(1))
+       call copy(fSDC(m), fSDC(1))
+    end do
+
+    call set_dt(dt, courno_proc, istep)
+
+    ! perform sdc iterations
+    res = 0.0d0
+
+    do k = 1, sdc%iters
+       call sdc_sweep(uSDC, fSDC, S, dx, dt, sdc)
+
+       if (sdc%tol_residual > 0.d0) then
+          res_proc = sdc_residual(uSDC, fSDC, S(1), dt, sdc)
+          call parallel_reduce(res, res_proc, MPI_MAX)
+
+          if (parallel_IOProcessor()) then
+             print *, "SDC: iter:", k, "residual:", res
+          end if
+
+          if (res < sdc%tol_residual) exit
+       end if
+    end do
+
+    call copy(U, uSDC(sdc%nnodes))
+
+    ! destroy
+    do m = 1, sdc%nnodes
+       call destroy(uSDC(m))
+       call destroy(fSDC(m))
+    end do
+
+    do m = 1, sdc%nnodes-1
+       call destroy(S(m))
+    end do
+
+  end subroutine advance_multi_sdc
+
 
   !
   ! Compute new time-step size
@@ -309,7 +392,7 @@ contains
              end if
           end if
        end if
-       
+
        if (parallel_IOProcessor()) then
           print *, ""
        end if
@@ -377,7 +460,7 @@ contains
        call dUdt_S3D(U, Uprime, dx, courno)
     else
        call bl_error("advance: unknown stencil type")
-    end if       
+    end if
 
   end subroutine dUdt
 
@@ -468,7 +551,7 @@ contains
     end do
     call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    
+
     !
     ! Transport terms
     !
@@ -522,7 +605,7 @@ contains
     end do
     call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    ! 
+    !
     ! Add chemistry
     !
     call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -766,7 +849,7 @@ contains
     end do
     call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    ! 
+    !
     ! Add chemistry
     !
     call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
