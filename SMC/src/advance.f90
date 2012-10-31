@@ -38,7 +38,7 @@ contains
     case(3)
        call advance_multi_sdc(U,dt,dx,sdc,istep)
     case default
-       stop "ERROR: Invalid advance_method."
+       call bl_error("Invalid advance_method.")
     end select
 
     if (contains_nan(U)) then
@@ -268,6 +268,8 @@ contains
     ! XXX: this is a work in progress
     print *, '*** MULTIRATE SDC IS A WORK IN PROGRESS ***'
 
+    ! XXX: this just does normal SDC for now, need dUdt_AD and dUdt_R
+
     ! build u and u' multifabs for each node
     do m = 1, sdc%nnodes
        call build(uSDC(m), la, ncons, ng)
@@ -402,7 +404,6 @@ contains
   end subroutine set_dt
 
 
-
   !
   ! Compute U1 = a U1 + b U2 + c Uprime.
   !
@@ -461,8 +462,35 @@ contains
     else
        call bl_error("advance: unknown stencil type")
     end if
-
   end subroutine dUdt
+
+
+  !
+  ! Compute advection/diffusion part of dU/dt given U.
+  !
+  subroutine dUdt_AD (U, Uprime, dx)
+    type(multifab),   intent(inout) :: U, Uprime
+    double precision, intent(in   ) :: dx(U%dim)
+
+    ! XXX: always use compact stencils?
+
+    call bl_error("dUdt_AD not implemented yet.")
+  end subroutine dUdt_AD
+
+
+  !
+  ! Compute reaction part of dU/dt given U.
+  !
+  subroutine dUdt_R (U, Uprime, dx)
+    use derivative_stencil_module, only : stencil, compact, s3d
+
+    type(multifab),   intent(inout) :: U, Uprime
+    double precision, intent(in   ) :: dx(U%dim)
+
+    ! XXX: always use compact stencils?
+
+    call bl_error("dUdt_R not implemented yet.")
+  end subroutine dUdt_R
 
 
   !
