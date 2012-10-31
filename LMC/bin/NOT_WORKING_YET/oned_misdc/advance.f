@@ -272,8 +272,12 @@ ccccccccccccccccccccccccccccccccc
       integer is, rho_flag
       integer misdc
 
-      real*8 Y(maxspec), C(maxspec), WDOTK(maxspec)
+      real*8 Y(maxspec)
       real*8 hi(maxspec,-1:nx)
+
+c     temporaries for setting I_R = omegadot^n at beginning of time step
+      real*8 WDOTK(maxspec), C(maxspec), T
+
       real*8 RWRK, cpmix, rhocp
       integer IWRK
 
@@ -427,6 +431,7 @@ c        update species with conservative diffusion fluxes
      $              + 0.5d0*diff_old(i,is) + 0.5d0*diff_hat(i,is))
             end do
          end do
+         
 c        calculate differential diffusion
 c        calculate sum_m del dot h_m (rho D_m - lambda/cp) grad Y_m
 c        we pass in conservative rho D grad Y via spec_flux
@@ -436,7 +441,7 @@ c        we take the gradient of Y from the second scal argument
          call get_diffdiff_terms(scal_old,scal_new,spec_flux_lo,
      $                           spec_flux_hi,beta_old,diffdiff_new,
      $                           dx,time)
-         
+
 c        add differential diffusion to forcing for enthalpy solve
          do i=0,nx-1
             dRhs(i,0) = dRhs(i,0) 
@@ -444,7 +449,7 @@ c        add differential diffusion to forcing for enthalpy solve
          end do
 
       end if
-      
+
 c     compute RHS for enthalpy diffusion solve
       call update_rhoh(scal_old,scal_new,aofs,alpha,beta_old,dRhs(0,0),
      &                 Rhs(0,RhoH),dx,dt,be_cn_theta,time)
