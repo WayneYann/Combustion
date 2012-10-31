@@ -25,9 +25,9 @@ def rsync():
   exclude = map(lambda x: "'" + x + "'", exclude)
   exclude = ' --exclude '.join(exclude)
 
-  for d in env.rsync_dirs:
+  for src, dst in env.rsync:
       command = "rsync -aPz --exclude {exclude} {src}/ {host}:{dst}".format(
-          exclude=exclude, host=env.host, src=d, dst=d)
+          exclude=exclude, host=env.host, src=src, dst=dst)
       local(command)
 
 

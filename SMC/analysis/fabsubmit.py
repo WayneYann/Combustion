@@ -19,22 +19,36 @@ def submit(*args, **kwargs):
   sub(*args, **kwargs)
 
 
-def submit_hopper(name, rundir, probin, queue=None, walltime='00:30:00', **kwargs):
+def submit_hopper(name=None, rundir=None, probin=None, queue=None,
+                  nprocs=None, nthreads=None, pernode=None,
+                  walltime='00:30:00', **kwargs):
 
-  if not queue:
+  if nprocs is None:
+    nprocs = env.nprocs
+
+  if nthreads is None:
+    nthreads = env.nthreads
+
+  if pernode is None:
+    pernode = env.pernode
+
+  if queue is None:
     queue = 'regular'
 
-  puts(green('qsub script: ' + name))
+  pbs = '{bin}/{rundir}/{name}.pbs'.format(bin=env.bin, rundir=rundir, name=name)
+
+  puts(green('generating: ' + name))
   run(dedent("""\
-             cat > {name}.pbs << EOF
+             cat > {pbs} << EOF
              #!/bin/bash -l
-             #PBS -N {rundir}
+             #PBS -N {name}
              #PBS -q {queue}
-             #PBS -l mppwidth={nproc}
+             #PBS -l mppwidth={nprocs}
              #PBS -l mppnppn={pernode}
              #PBS -l mppdepth={nthreads}
              #PBS -l walltime={walltime}
-             #PBS -k oe
+             #PBS -o {bin}/{rundir}/out
+             #PBS -e {bin}/{rundir}/err
              #PBS -V
 
              cd {bin}/{rundir}
@@ -44,17 +58,18 @@ def submit_hopper(name, rundir, probin, queue=None, walltime='00:30:00', **kwarg
              aprun -B {bin}/{exe} {probin}
              EOF
              """.format(
+               name      = name,
                host      = env.host,
                bin       = env.bin,
                exe       = env.exe,
                rundir    = rundir,
-               nproc     = env.nprocs,
-               nthreads  = env.nthreads,
-               pernode   = env.pernode,
-               name      = name,
+               nprocs    = nprocs,
+               nthreads  = nthreads,
+               pernode   = pernode,
                queue     = queue,
                walltime  = walltime,
-               probin    = probin)))
+               probin    = probin,
+               pbs       = pbs)))
 
   puts(green('submitting: ' + name))
-  run('qsub {name}.pbs'.format(name=name))
+  run('qsub ' + pbs)
