@@ -257,10 +257,11 @@ contains
     type(sdcquad),     intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
-    integer          :: k, m, ng
+    integer          :: k, m, mm, ng
     double precision :: courno_proc, res_proc, res
     type(layout)     :: la
-    type(multifab)   :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), S(sdc%nnodes-1)
+    type(multifab)   :: uAD(sdc%nnodes), fAD(sdc%nnodes), SAD(sdc%nnodes-1)
+    type(multifab)   :: uR(sdc%nnodes), fR(sdc%nnodes), SR(sdc%nnodes-1)
 
     ng = nghost(U)
     la = get_layout(U)
@@ -268,28 +269,31 @@ contains
     ! XXX: this is a work in progress
     print *, '*** MULTIRATE SDC IS A WORK IN PROGRESS ***'
 
-    ! XXX: this just does normal SDC for now, need dUdt_AD and dUdt_R
+    ! XXX: this just does normal SDC for now
 
     ! build u and u' multifabs for each node
     do m = 1, sdc%nnodes
-       call build(uSDC(m), la, ncons, ng)
-       call build(fSDC(m), la, ncons, 0)
+       call build(uAD(m), la, ncons, ng)
+       call build(fAD(m), la, ncons, 0)
+       call build(uR(m), la, ncons, ng)
+       call build(fR(m), la, ncons, 0)
     end do
 
     ! build S multifab (node to node integrals)
     do m = 1, sdc%nnodes-1
-       call build(S(m), la, ncons, 0)
+       call build(SAD(m), la, ncons, 0)
+       call build(SR(m), la, ncons, 0)
     end do
 
     ! set provisional solution, compute dt
     courno_proc = 1.0d-50
 
-    call copy(uSDC(1), U)
-    call dUdt(uSDC(1), fSDC(1), dx, courno_proc)
+    call copy(uAD(1), U)
+    call dUdt(uAD(1), fAD(1), dx, courno_proc)
 
     do m = 2, sdc%nnodes
-       call copy(uSDC(m), uSDC(1))
-       call copy(fSDC(m), fSDC(1))
+       call copy(uAD(m), uAD(1))
+       call copy(fAD(m), fAD(1))
     end do
 
     call set_dt(dt, courno_proc, istep)
@@ -298,30 +302,23 @@ contains
     res = 0.0d0
 
     do k = 1, sdc%iters
-       call sdc_sweep(uSDC, fSDC, S, dx, dt, sdc)
-
-       if (sdc%tol_residual > 0.d0) then
-          res_proc = sdc_residual(uSDC, fSDC, S(1), dt, sdc)
-          call parallel_reduce(res, res_proc, MPI_MAX)
-
-          if (parallel_IOProcessor()) then
-             print *, "SDC: iter:", k, "residual:", res
-          end if
-
-          if (res < sdc%tol_residual) exit
-       end if
+       ! XXX: multirate...
+       call sdc_sweep(uAD, fAD, SAD, dx, dt, sdc)
     end do
 
-    call copy(U, uSDC(sdc%nnodes))
+    call copy(U, uAD(sdc%nnodes))
 
     ! destroy
     do m = 1, sdc%nnodes
-       call destroy(uSDC(m))
-       call destroy(fSDC(m))
+       call destroy(uAD(m))
+       call destroy(fAD(m))
+       call destroy(uR(m))
+       call destroy(fR(m))
     end do
 
     do m = 1, sdc%nnodes-1
-       call destroy(S(m))
+       call destroy(SAD(m))
+       call destroy(SR(m))
     end do
 
   end subroutine advance_multi_sdc
@@ -554,15 +551,15 @@ contains
     end if
     call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call get_transport_properties(Q, mu, xi, lam, Ddiag)
-    call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
 
     !
     ! AD
     !
     if (inc_ad) then
+
+       call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       call get_transport_properties(Q, mu, xi, lam, Ddiag)
+       call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
        !
        ! Hyperbolic terms
@@ -679,9 +676,13 @@ contains
     !
     ! NSCBC boundary
     !
-    call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call nscbc(Q, U, Fdif, Uprime, dx)
-    call destroy(bpt_nscbc)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    if (inc_ad) then
+       ! XXX: MWE: not sure if this is reasonable...
+
+       call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       call nscbc(Q, U, Fdif, Uprime, dx)
+       call destroy(bpt_nscbc)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    end if
 
 
     !

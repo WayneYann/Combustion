@@ -37,7 +37,7 @@ subroutine smc()
 
 !  logical :: dump_plotfile, dump_checkpoint
   real(dp_t) :: write_pf_time
-  
+
   type(layout)   :: la
   type(multifab) :: U
   type(sdcquad)  :: sdc
@@ -81,7 +81,7 @@ subroutine smc()
         write(unit=check_index6,fmt='(i6.6)') restart
         check_file_name = trim(check_base_name) // check_index6
      endif
-     
+
      if (parallel_IOProcessor() .and. verbose.ge.1) then
         print*,""
         print*,"Restarting from", check_file_name
@@ -89,7 +89,7 @@ subroutine smc()
 
      call initialize_from_restart(check_file_name, la,dt,dx,U)
 
-  else 
+  else
 
      if (parallel_IOProcessor() .and. verbose.ge.1) then
         print*,""
@@ -104,12 +104,12 @@ subroutine smc()
 ! error checking
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   dm = dm_in
-  if (dm .ne. 3) then 
+  if (dm .ne. 3) then
      call bl_error('SMC can only do 3D')
   end if
 
   ! check to make sure dimensionality is consistent in the inputs file
-  if (dm .ne. get_dim(la)) then 
+  if (dm .ne. get_dim(la)) then
      call bl_error('dm_in not properly set in inputs file')
   end if
 
@@ -118,7 +118,7 @@ subroutine smc()
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   if (parallel_IOProcessor()) then
-     print *, ' '     
+     print *, ' '
      print *, 'number of MPI processes = ', parallel_nprocs()
      print *, 'number of threads       = ', omp_get_max_threads()
      print *, ' '
@@ -126,7 +126,7 @@ subroutine smc()
      print *, 'number of boxes         = ', nboxes(la)
      print *, ' '
   end if
-  
+
   if (verbose .ge. 1) then
      numcell = multifab_volume(U,.false.)
      if (parallel_IOProcessor()) then
@@ -149,29 +149,29 @@ subroutine smc()
         check_file_name = trim(check_base_name) // check_index
 
         call checkpoint_write(check_file_name, U, dt)
-        
+
         last_chk_written = istep
      end if
 
      if (plot_int > 0 .or. plot_deltat > ZERO) then
         write(unit=plot_index,fmt='(i5.5)') istep
         plot_file_name = trim(plot_base_name) // plot_index
-        
+
         call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
 
         call write_job_info(plot_file_name, la, write_pf_time)
-        
+
         last_plt_written = istep
      end if
   end if
 
   if (restart < 0) then
-     init_step = 1 
+     init_step = 1
   else
      init_step = restart + 1
   end if
 
-  if (advance_method == 2) then
+  if (advance_method == 2 .or. advance_method == 3) then
      call create(sdc, 1, sdc_nnodes)
      sdc%iters        = sdc_iters
      sdc%tol_residual = sdc_tol_residual
@@ -223,7 +223,7 @@ subroutine smc()
 
         if (chk_int > 0) then
            if ( mod(istep,chk_int) .eq. 0 ) then
-              
+
               if (istep <= 99999) then
                  write(unit=check_index,fmt='(i5.5)') istep
                  check_file_name = trim(check_base_name) // check_index
@@ -231,11 +231,11 @@ subroutine smc()
                  write(unit=check_index6,fmt='(i6.6)') istep
                  check_file_name = trim(check_base_name) // check_index6
               endif
-              
+
               call checkpoint_write(check_file_name, U, dt)
-              
+
               last_chk_written = istep
-              
+
            end if
         end if
 
@@ -286,9 +286,9 @@ subroutine smc()
            write(unit=check_index6,fmt='(i6.6)') istep
            check_file_name = trim(check_base_name) // check_index6
         endif
-        
+
         call checkpoint_write(check_file_name, U, dt)
-              
+
      end if
 
      if ( plot_int > 0 .and. last_plt_written .ne. istep ) then
