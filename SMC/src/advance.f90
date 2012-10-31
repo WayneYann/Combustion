@@ -472,9 +472,7 @@ contains
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
 
-    ! XXX: always use compact stencils?
-
-    call bl_error("dUdt_AD not implemented yet.")
+    call dUdt_compact(U, Uprime, dx, include_r=.false.)
   end subroutine dUdt_AD
 
 
@@ -482,14 +480,10 @@ contains
   ! Compute reaction part of dU/dt given U.
   !
   subroutine dUdt_R (U, Uprime, dx)
-    use derivative_stencil_module, only : stencil, compact, s3d
-
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
 
-    ! XXX: always use compact stencils?
-
-    call bl_error("dUdt_R not implemented yet.")
+    call dUdt_compact(U, Uprime, dx, include_ad=.false.)
   end subroutine dUdt_R
 
 
@@ -498,11 +492,12 @@ contains
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt_compact (U, Uprime, dx, courno)
+  subroutine dUdt_compact (U, Uprime, dx, courno, include_ad, include_r)
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
     double precision, intent(inout), optional :: courno
+    logical,          intent(in   ), optional :: include_ad, include_r
 
     type(multifab) :: mu, xi ! viscosity
     type(multifab) :: lam ! partial thermal conductivity
@@ -511,14 +506,19 @@ contains
     integer ::    lo(U%dim),    hi(U%dim)
     integer ::   dlo(U%dim),   dhi(U%dim)
     integer ::   blo(U%dim),   bhi(U%dim)
-    integer :: i,j,k,m,n, ng, dm
+    integer :: i, j, k, m, n, ng, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
+
+    logical :: inc_ad, inc_r
 
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm, bpt_nscbc
+
+    inc_ad = .true.; if (present(include_ad)) inc_ad = include_ad
+    inc_r  = .true.; if (present(include_r))  inc_r  = include_r
 
 
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -530,13 +530,15 @@ contains
 
     call multifab_build(Q, la, nprim, ng)
 
-    call multifab_build(Fhyp, la, ncons, 0)
-    call multifab_build(Fdif, la, ncons, 0)
+    if (inc_ad) then
+       call multifab_build(Fhyp, la, ncons, 0)
+       call multifab_build(Fdif, la, ncons, 0)
 
-    call multifab_build(mu , la, 1, ng)
-    call multifab_build(xi , la, 1, ng)
-    call multifab_build(lam, la, 1, ng)
-    call multifab_build(Ddiag, la, nspecies, ng)
+       call multifab_build(mu , la, 1, ng)
+       call multifab_build(xi , la, 1, ng)
+       call multifab_build(lam, la, 1, ng)
+       call multifab_build(Ddiag, la, nspecies, ng)
+    end if
     call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
@@ -556,101 +558,123 @@ contains
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
     call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    !
-    ! Hyperbolic terms
-    !
-    call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Fhyp)
-       up => dataptr(U,n)
-       qp => dataptr(Q,n)
-       fhp=> dataptr(Fhyp,n)
-
-       lo = lwb(get_box(Fhyp,n))
-       hi = upb(get_box(Fhyp,n))
-
-       call get_data_lo_hi(n,dlo,dhi)
-       call get_boxbc(n,blo,bhi)
-
-       if (dm .ne. 3) then
-          call bl_error("Only 3D hypterm is supported")
-       else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
-       end if
-    end do
-    call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
 
     !
-    ! Transport terms
+    ! AD
     !
-    call build(bpt_diffterm, "diffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Q)
-       qp  => dataptr(Q,n)
-       fdp => dataptr(Fdif,n)
+    if (inc_ad) then
 
-       mup  => dataptr(mu   , n)
-       xip  => dataptr(xi   , n)
-       lamp => dataptr(lam  , n)
-       Ddp  => dataptr(Ddiag, n)
+       !
+       ! Hyperbolic terms
+       !
+       call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       do n=1,nfabs(Fhyp)
+          up => dataptr(U,n)
+          qp => dataptr(Q,n)
+          fhp=> dataptr(Fhyp,n)
 
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
+          lo = lwb(get_box(Fhyp,n))
+          hi = upb(get_box(Fhyp,n))
 
-       call get_data_lo_hi(n,dlo,dhi)
-       call get_boxbc(n,blo,bhi)
+          call get_data_lo_hi(n,dlo,dhi)
+          call get_boxbc(n,blo,bhi)
 
-       if (dm .ne. 3) then
-          call bl_error("Only 3D compact_diffterm is supported")
-       else
-          call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
-       end if
-    end do
-    call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+          if (dm .ne. 3) then
+             call bl_error("Only 3D hypterm is supported")
+          else
+             call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
+          end if
+       end do
+       call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    !
-    ! Calculate U'
-    !
-    call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(U)
-       fhp => dataptr(Fhyp,  n)
-       fdp => dataptr(Fdif,  n)
-       upp => dataptr(Uprime,n)
 
-       lo = lwb(get_box(U,n))
-       hi = upb(get_box(U,n))
+       !
+       ! Transport terms
+       !
+       call build(bpt_diffterm, "diffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       do n=1,nfabs(Q)
+          qp  => dataptr(Q,n)
+          fdp => dataptr(Fdif,n)
 
-       do m = 1, ncons
-          !$OMP PARALLEL DO PRIVATE(i,j,k)
-          do k = lo(3),hi(3)
-             do j = lo(2),hi(2)
-                do i = lo(1),hi(1)
-                   upp(i,j,k,m) = fhp(i,j,k,m) + fdp(i,j,k,m)
+          mup  => dataptr(mu   , n)
+          xip  => dataptr(xi   , n)
+          lamp => dataptr(lam  , n)
+          Ddp  => dataptr(Ddiag, n)
+
+          lo = lwb(get_box(Q,n))
+          hi = upb(get_box(Q,n))
+
+          call get_data_lo_hi(n,dlo,dhi)
+          call get_boxbc(n,blo,bhi)
+
+          if (dm .ne. 3) then
+             call bl_error("Only 3D compact_diffterm is supported")
+          else
+             call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+          end if
+       end do
+       call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+       !
+       ! Calculate U'
+       !
+       call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       do n=1,nfabs(U)
+          fhp => dataptr(Fhyp,  n)
+          fdp => dataptr(Fdif,  n)
+          upp => dataptr(Uprime,n)
+
+          lo = lwb(get_box(U,n))
+          hi = upb(get_box(U,n))
+
+          do m = 1, ncons
+             !$OMP PARALLEL DO PRIVATE(i,j,k)
+             do k = lo(3),hi(3)
+                do j = lo(2),hi(2)
+                   do i = lo(1),hi(1)
+                      upp(i,j,k,m) = fhp(i,j,k,m) + fdp(i,j,k,m)
+                   end do
                 end do
              end do
+             !$OMP END PARALLEL DO
           end do
-          !$OMP END PARALLEL DO
        end do
-    end do
-    call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    else
+
+       call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       call setval(Uprime, 0.0d0)
+       call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    end if
+
 
     !
-    ! Add chemistry
+    ! R
     !
-    call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Q)
-       qp  => dataptr(Q,n)
-       upp => dataptr(Uprime,n)
+    if (inc_r) then
 
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
+       !
+       ! Add chemistry
+       !
+       call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       do n=1,nfabs(Q)
+          qp  => dataptr(Q,n)
+          upp => dataptr(Uprime,n)
 
-       if (dm .ne. 3) then
-          call bl_error("Only 3D chemsitry_term is supported")
-       else
-          call chemterm_3d(lo,hi,ng,qp,upp)
-       end if
-    end do
-    call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+          lo = lwb(get_box(Q,n))
+          hi = upb(get_box(Q,n))
+
+          if (dm .ne. 3) then
+             call bl_error("Only 3D chemsitry_term is supported")
+          else
+             call chemterm_3d(lo,hi,ng,qp,upp)
+          end if
+       end do
+       call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    end if
 
     !
     ! NSCBC boundary
@@ -659,15 +683,21 @@ contains
     call nscbc(Q, U, Fdif, Uprime, dx)
     call destroy(bpt_nscbc)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+
+    !
+    ! Destroy
+    !
     call destroy(Q)
 
-    call destroy(Fhyp)
-    call destroy(Fdif)
+    if (inc_ad) then
+       call destroy(Fhyp)
+       call destroy(Fdif)
 
-    call destroy(mu)
-    call destroy(xi)
-    call destroy(lam)
-    call destroy(Ddiag)
+       call destroy(mu)
+       call destroy(xi)
+       call destroy(lam)
+       call destroy(Ddiag)
+    end if
 
   end subroutine dUdt_compact
 
