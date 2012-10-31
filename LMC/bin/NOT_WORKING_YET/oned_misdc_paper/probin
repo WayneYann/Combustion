@@ -2,7 +2,7 @@
   nsteps = 80
   plot_int = 80
   chk_int = 1000
-  fixed_dt = 0.125e-4
+  fixed_dt = 0.25e-4
   stop_time = 1.e4
   cfl = 0.25
   problo = 0.
@@ -26,5 +26,5 @@
   lim_rxns = 0
   V_in = 0.
   LeEQ1 = 0
-  tranfile = 'tran.asc.grimech30'
+  tranfile = 'tran.asc.chem-H'
 /
