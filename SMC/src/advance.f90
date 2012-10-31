@@ -119,10 +119,12 @@ contains
     type(sdcquad),     intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
-    integer          :: k, m, ng
+    integer          :: k, m, n, ng
     double precision :: courno_proc, res_proc, res
     type(layout)     :: la
     type(multifab)   :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), S(sdc%nnodes-1)
+
+    double precision :: dtsdc(sdc%nnodes-1)
 
     ng = nghost(U)
     la = get_layout(U)
@@ -153,10 +155,34 @@ contains
 
     ! perform sdc iterations
     res = 0.0d0
+    dtsdc = dt * (sdc%nodes(2:sdc%nnodes) - sdc%nodes(1:sdc%nnodes-1))
 
     do k = 1, sdc%iters
-       call sdc_sweep(uSDC, fSDC, S, dx, dt, sdc)
 
+       ! compute integrals (compact forward euler)
+       do m = 1, sdc%nnodes-1
+          call setval(S(m), 0.0d0)
+          do n = 1, sdc%nnodes
+             call saxpy(S(m), sdc%smats(m,n,1), fSDC(n))
+          end do
+       end do
+
+       ! perform sub-step correction
+       do m = 1, sdc%nnodes-1
+
+          ! U(m+1) = U(m) + dt dUdt(m) + dt S(m)
+
+          call copy(uSDC(m+1), uSDC(m))
+          call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
+          call saxpy(uSDC(m+1), dt, S(m))
+          call reset_density(uSDC(m+1))
+          call impose_hard_bc(uSDC(m+1))
+
+          call dUdt(uSDC(m+1), fSDC(m+1), dx)
+
+       end do
+
+       ! check residual
        if (sdc%tol_residual > 0.d0) then
           res_proc = sdc_residual(uSDC, fSDC, S(1), dt, sdc)
           call parallel_reduce(res, res_proc, MPI_MAX)
@@ -183,42 +209,6 @@ contains
 
   end subroutine advance_sdc
 
-  !
-  ! Perform one SDC sweep
-  !
-  subroutine sdc_sweep (uSDC,fSDC,S,dx,dt,sdc)
-    type(sdcquad),     intent(in   ) :: sdc
-    type(multifab),    intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), S(sdc%nnodes-1)
-    double precision,  intent(in   ) :: dt, dx(uSDC(1)%dim)
-
-    integer :: m, n
-    double precision :: dtsdc(sdc%nnodes-1)
-
-    ! compute integrals (compact forward euler)
-    do m = 1, sdc%nnodes-1
-       call setval(S(m), 0.0d0)
-       do n = 1, sdc%nnodes
-          call saxpy(S(m), sdc%smats(m,n,1), fSDC(n))
-       end do
-    end do
-
-    ! perform sub-step correction
-    dtsdc = dt * (sdc%nodes(2:sdc%nnodes) - sdc%nodes(1:sdc%nnodes-1))
-    do m = 1, sdc%nnodes-1
-
-       ! U(m+1) = U(m) + dt dUdt(m) + dt S(m)
-
-       call copy(uSDC(m+1), uSDC(m))
-       call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
-       call saxpy(uSDC(m+1), dt, S(m))
-       call reset_density(uSDC(m+1))
-       call impose_hard_bc(uSDC(m+1))
-
-       call dUdt(uSDC(m+1), fSDC(m+1), dx)
-
-    end do
-
-  end subroutine sdc_sweep
 
   !
   ! Compute SDC residual
@@ -302,8 +292,7 @@ contains
     res = 0.0d0
 
     do k = 1, sdc%iters
-       ! XXX: multirate...
-       call sdc_sweep(uAD, fAD, SAD, dx, dt, sdc)
+       ! call sdc_sweep(uAD, fAD, SAD, dx, dt, sdc)
     end do
 
     call copy(U, uAD(sdc%nnodes))
