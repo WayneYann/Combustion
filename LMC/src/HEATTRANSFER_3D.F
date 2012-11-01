@@ -1764,3 +1764,110 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
 !$omp end parallel do
 
       end
+
+      subroutine FORT_GRADWBAR(lo, hi, Wbar, DIMS(Wbar),
+     &     Y, DIMS(Y), rDe, DIMS(rDe), flux, DIMS(flux),
+     &     area, DIMS(area), dx, dir, mult, ispec)
+      implicit none
+#include "cdwrk.H"
+      integer lo(SDIM), hi(SDIM)
+      integer dir, ispec
+      integer DIMDEC(Wbar)
+      integer DIMDEC(Y)
+      integer DIMDEC(rDe)
+      integer DIMDEC(flux)
+      integer DIMDEC(area)
+      REAL_T  Wbar(DIMV(Wbar))
+      REAL_T  Y(DIMV(Y))
+      REAL_T  rDe(DIMV(rDe))
+      REAL_T  flux(DIMV(flux))
+      REAL_T  area(DIMV(area))
+      REAL_T  dx, mult
+
+      REAL_T Wav, Yav, Wgr, fac
+      integer i,j,k
+
+      fac = mult / dx
+      if (dir.eq.0) then
+!$omp parallel do private(i,j,k,Yav,Wav,Wgr)
+         do k = lo(3),hi(3)
+            do j = lo(2),hi(2)
+               do i = lo(1),hi(1)+1
+                  Yav = 0.5d0*(Y(i,j,k)    + Y(i-1,j,k))
+                  Wav = 0.5d0*(Wbar(i,j,k) + Wbar(i-1,j,k))
+                  Wgr =   fac*(Wbar(i,j,k) - Wbar(i-1,j,k))
+                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Yav * Wgr * area(i,j,k) / Wav
+               enddo
+            enddo
+         enddo
+!$omp end parallel do
+      else if (dir.eq.1) then
+!$omp parallel do private(i,j,k,Yav,Wav,Wgr)
+         do k = lo(3),hi(3)
+            do j = lo(2),hi(2)+1
+               do i = lo(1),hi(1)
+                  Yav = 0.5d0*(Y(i,j,k)    + Y(i,j-1,k))
+                  Wav = 0.5d0*(Wbar(i,j,k) + Wbar(i,j-1,k))
+                  Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j-1,k))
+                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Yav * Wgr * area(i,j,k) / Wav
+               enddo
+            enddo
+         enddo
+!$omp end parallel do
+      else if (dir.eq.2) then
+!$omp parallel do private(i,j,k,Yav,Wav,Wgr)
+         do k = lo(3),hi(3)+1
+            do j = lo(2),hi(2)
+               do i = lo(1),hi(1)
+                  Yav = 0.5d0*(Y(i,j,k)    + Y(i,j,k-1))
+                  Wav = 0.5d0*(Wbar(i,j,k) + Wbar(i,j,k-1))
+                  Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j,k-1))
+                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Yav * Wgr * area(i,j,k) / Wav
+               enddo
+            enddo
+         enddo
+!$omp end parallel do
+      else
+         call bl_pd_abort('Bad dir in FORT_GRADWBAR')
+      endif
+      end
+
+      subroutine  FORT_PLUS_ADIV(lo, hi,
+     &                           xflux,  DIMS(xflux),
+     &                           yflux,  DIMS(yflux),
+     &                           zflux,  DIMS(zflux),
+     &                           state,  DIMS(state),
+     &                           vol,    DIMS(vol),
+     &                           nc, a)
+      implicit none
+      integer lo(SDIM), hi(SDIM), nc
+      integer DIMDEC(xflux)
+      integer DIMDEC(yflux)
+      integer DIMDEC(zflux)
+      integer DIMDEC(state)
+      integer DIMDEC(vol)
+      REAL_T xflux(DIMV(xflux),nc)
+      REAL_T yflux(DIMV(yflux),nc)
+      REAL_T zflux(DIMV(zflux),nc)
+      REAL_T state(DIMV(state),nc)
+      REAL_T vol(DIMV(vol))
+      REAL_T a
+
+      integer i, j, k, n
+
+      do n=1,nc
+!$omp parallel do private(i,j,k)
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  state(i,j,k,n) = state(i,j,k,n) + (a/vol(i,j,k)) *
+     &                 ( ( xflux(i+1,j,k,n) - xflux(i,j,k,n) )
+     &                 + ( yflux(i,j+1,k,n) - yflux(i,j,k,n) )
+     &                 + ( zflux(i,j,k+1,n) - zflux(i,j,k,n) ) )
+               enddo
+            enddo
+         enddo
+!$omp end parallel do
+      enddo
+
+      end

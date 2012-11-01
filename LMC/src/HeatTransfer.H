@@ -174,11 +174,9 @@ public:
 				       int                    sCompS,
 				       Real                   dt,
 				       Real                   time,
-				       const Array<int>&      rho_flag,
 				       const MultiFab*        rho_half,
 				       int                    dataComp,
 				       const MultiFab*        delta_rhs, 
-				       const MultiFab*        alpha, 
 				       const MultiFab* const* betanp1);
     
     virtual void scalar_diffusion_update (Real dt,
@@ -567,13 +565,15 @@ protected:
 
 protected:
 
-    DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
+    DistributionMapping getFuncCountDM (const BoxArray& bxba,
+                                        int             ngrow,
+                                        double&         efficiency);
     //
     // Protected data.
     //
     MultiFab**  EdgeState;
-    MultiFab**  SpecDiffusionFluxn;
-    MultiFab**  SpecDiffusionFluxnp1;
+    MultiFab**  SpecDiffFluxn;
+    MultiFab**  SpecDiffFluxnp1;
 
     enum CurrentFluxType {HT_None, HT_Diffusion, HT_SyncDiffusion, HT_ExplicitDiffusion};
 
@@ -660,6 +660,7 @@ protected:
     static Array<Real> typical_values;
 
     static bool        do_curvature_sample;
+    static bool        do_add_Wbar_terms;
 
 };
 
