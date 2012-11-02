@@ -526,9 +526,14 @@ contains
        end if
     end do
 
-    call multifab_fill_boundary(qx)
-    call multifab_fill_boundary(qy)
-    call multifab_fill_boundary(qz)
+    call fill_boundary(qx,1,3,cross=.true.)
+    call fill_boundary(qx,4,ndq-3,cross=.true.,dim=1)
+
+    call fill_boundary(qy,1,3,cross=.true.)
+    call fill_boundary(qy,4,ndq-3,cross=.true.,dim=2)
+
+    call fill_boundary(qz,1,3,cross=.true.)
+    call fill_boundary(qz,4,ndq-3,cross=.true.,dim=3)
 
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
