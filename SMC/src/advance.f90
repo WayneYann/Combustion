@@ -772,7 +772,6 @@ contains
     call multifab_build(qz, la, ndq, ng)
     call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-!    call multifab_fill_boundary(Q)
     call multifab_fill_boundary(U)
 
     !
@@ -843,9 +842,9 @@ contains
        end if
     end do
 
-    call multifab_fill_boundary(qx)
-    call multifab_fill_boundary(qy)
-    call multifab_fill_boundary(qz)
+    call fill_boundary(qx,idim=1)
+    call fill_boundary(qy,idim=2)
+    call fill_boundary(qz,idim=3)
 
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
