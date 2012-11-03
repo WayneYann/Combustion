@@ -458,7 +458,6 @@ contains
     call multifab_build(qz, la, ndq, ng)
     call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-!    call multifab_fill_boundary(Q)
     call multifab_fill_boundary(U)
 
     !
@@ -498,7 +497,6 @@ contains
     end do
     call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-
     !
     ! Transport terms
     ! S3D_diffterm1: first derivative terms
@@ -526,14 +524,9 @@ contains
        end if
     end do
 
-    call fill_boundary(qx,1,3,cross=.true.)
-    call fill_boundary(qx,4,ndq-3,cross=.true.,idim=1)
-
-    call fill_boundary(qy,1,3,cross=.true.)
-    call fill_boundary(qy,4,ndq-3,cross=.true.,idim=2)
-
-    call fill_boundary(qz,1,3,cross=.true.)
-    call fill_boundary(qz,4,ndq-3,cross=.true.,idim=3)
+    call fill_boundary(qx,idim=1)
+    call fill_boundary(qy,idim=2)
+    call fill_boundary(qz,idim=3)
 
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
