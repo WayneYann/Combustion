@@ -527,13 +527,13 @@ contains
     end do
 
     call fill_boundary(qx,1,3,cross=.true.)
-    call fill_boundary(qx,4,ndq-3,cross=.true.,dim=1)
+    call fill_boundary(qx,4,ndq-3,cross=.true.,idim=1)
 
     call fill_boundary(qy,1,3,cross=.true.)
-    call fill_boundary(qy,4,ndq-3,cross=.true.,dim=2)
+    call fill_boundary(qy,4,ndq-3,cross=.true.,idim=2)
 
     call fill_boundary(qz,1,3,cross=.true.)
-    call fill_boundary(qz,4,ndq-3,cross=.true.,dim=3)
+    call fill_boundary(qz,4,ndq-3,cross=.true.,idim=3)
 
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
