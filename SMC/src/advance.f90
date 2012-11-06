@@ -791,6 +791,10 @@ contains
     end if
     call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+
+    call setval(Uprime, ZERO)
+
+
     !
     ! Add chemistry
     !
