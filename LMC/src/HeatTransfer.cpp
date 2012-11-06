@@ -13,6 +13,7 @@
 #include <cfloat>
 #include <fstream>
 #include <vector>
+#include <unistd.h>
 
 using std::cout;
 using std::endl;
