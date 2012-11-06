@@ -592,7 +592,7 @@ contains
 
              Yt = q(i,j,k,qy1:qy1+nspecies-1)
              call ckwyr(q(i,j,k,qrho), q(i,j,k,qtemp), Yt, iwrk, rwrk, wdot)
-             up(i,j,k,iry1:) = up(i,j,k,iry1:) + wdot * molecular_weight
+             up(i,j,k,iry1:) = wdot * molecular_weight
              
           end do
        end do

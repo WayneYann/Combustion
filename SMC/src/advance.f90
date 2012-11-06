@@ -506,13 +506,12 @@ contains
     inc_ad = .true.; if (present(include_ad)) inc_ad = include_ad
     inc_r  = .true.; if (present(include_r))  inc_r  = include_r
 
+    call multifab_fill_boundary(U)
 
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
     ng = nghost(U)
     la = get_layout(U)
-
-    call multifab_fill_boundary(U)
 
     call multifab_build(Q, la, nprim, ng)
 
@@ -541,11 +540,49 @@ contains
     call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
 
+    call setval(Uprime, ZERO)
+
+
+    !
+    ! R
+    !
+    if (inc_r) then
+
+       !
+       ! Add chemistry
+       !
+       call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       do n=1,nfabs(Q)
+          qp  => dataptr(Q,n)
+          upp => dataptr(Uprime,n)
+
+          lo = lwb(get_box(Q,n))
+          hi = upb(get_box(Q,n))
+
+          if (dm .ne. 3) then
+             call bl_error("Only 3D chemsitry_term is supported")
+          else
+             call chemterm_3d(lo,hi,ng,qp,upp)
+          end if
+       end do
+       call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    end if
+
+
+    ! MPI wait
+
+    ! ctoprim in ghost cells
+
+
     !
     ! AD
     !
     if (inc_ad) then
 
+       !
+       ! transport coefficients
+       !
        call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
        call get_transport_properties(Q, mu, xi, lam, Ddiag)
        call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
@@ -618,7 +655,7 @@ contains
              do k = lo(3),hi(3)
                 do j = lo(2),hi(2)
                    do i = lo(1),hi(1)
-                      upp(i,j,k,m) = fhp(i,j,k,m) + fdp(i,j,k,m)
+                      upp(i,j,k,m) = upp(i,j,k,m) + fhp(i,j,k,m) + fdp(i,j,k,m)
                    end do
                 end do
              end do
@@ -626,39 +663,6 @@ contains
           end do
        end do
        call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    else
-
-       call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call setval(Uprime, 0.0d0)
-       call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    end if
-
-
-    !
-    ! R
-    !
-    if (inc_r) then
-
-       !
-       ! Add chemistry
-       !
-       call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       do n=1,nfabs(Q)
-          qp  => dataptr(Q,n)
-          upp => dataptr(Uprime,n)
-
-          lo = lwb(get_box(Q,n))
-          hi = upb(get_box(Q,n))
-
-          if (dm .ne. 3) then
-             call bl_error("Only 3D chemsitry_term is supported")
-          else
-             call chemterm_3d(lo,hi,ng,qp,upp)
-          end if
-       end do
-       call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     end if
 
@@ -750,6 +754,8 @@ contains
 
     integer :: ndq
 
+    call multifab_fill_boundary(U)
+
     ndq = idX1+nspecies-1
 
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -772,8 +778,6 @@ contains
     call multifab_build(qz, la, ndq, ng)
     call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    call multifab_fill_boundary(U)
-
     !
     ! Calculate primitive variables based on U
     !
@@ -787,6 +791,28 @@ contains
     end if
     call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+    !
+    ! Add chemistry
+    !
+    call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    do n=1,nfabs(Q)
+       qp  => dataptr(Q,n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D chemsitry_term is supported")
+       else
+          call chemterm_3d(lo,hi,ng,qp,upp)
+       end if
+    end do
+    call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    !
+    ! transport coefficients
+    !
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
     call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
@@ -887,7 +913,7 @@ contains
           do k = lo(3),hi(3)
              do j = lo(2),hi(2)
                 do i = lo(1),hi(1)
-                   upp(i,j,k,m) = fhp(i,j,k,m) + fdp(i,j,k,m)
+                   upp(i,j,k,m) = upp(i,j,k,m) + fhp(i,j,k,m) + fdp(i,j,k,m)
                 end do
              end do
           end do
@@ -895,25 +921,6 @@ contains
        end do
     end do
     call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    !
-    ! Add chemistry
-    !
-    call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Q)
-       qp  => dataptr(Q,n)
-       upp => dataptr(Uprime,n)
-
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
-
-       if (dm .ne. 3) then
-          call bl_error("Only 3D chemsitry_term is supported")
-       else
-          call chemterm_3d(lo,hi,ng,qp,upp)
-       end if
-    end do
-    call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     call destroy(Q)
 
