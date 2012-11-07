@@ -509,6 +509,8 @@ contains
 
     call multifab_fill_boundary_nowait(U, U_fb_data)
 
+    call setval(Uprime, ZERO)
+
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
     ng = nghost(U)
@@ -539,10 +541,6 @@ contains
        call compute_courno(Q, dx, courno)
     end if
     call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-
-    call setval(Uprime, ZERO)
-
 
     !
     ! R
@@ -746,6 +744,7 @@ contains
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
     type(multifab)   :: qx, qy, qz
+    type(mf_fb_data) :: U_fb_data, qx_fb_data, qy_fb_data, qz_fb_data
 
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, &
          Ddp, upp, qxp, qyp, qzp
@@ -755,7 +754,9 @@ contains
 
     integer :: ndq
 
-    call multifab_fill_boundary(U)
+    call multifab_fill_boundary_nowait(U, U_fb_data)
+
+    call setval(Uprime, ZERO)
 
     ndq = idX1+nspecies-1
 
@@ -783,7 +784,7 @@ contains
     ! Calculate primitive variables based on U
     !
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, ng)
+    call ctoprim(U, Q, 0)
     call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     call build(bpt_courno, "courno")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -791,10 +792,6 @@ contains
        call compute_courno(Q, dx, courno)
     end if
     call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-
-    call setval(Uprime, ZERO)
-
 
     !
     ! Add chemistry
@@ -815,36 +812,18 @@ contains
     end do
     call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+    call multifab_fill_boundary_barrier(U, U_fb_data)
+
+    call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    call ctoprim(U, Q, fill_ghost_only=.true.)
+    call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
     !
     ! transport coefficients
     !
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
     call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    !
-    ! Hyperbolic terms
-    !
-    call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Fhyp)
-       up => dataptr(U,n)
-       qp => dataptr(Q,n)
-       fhp=> dataptr(Fhyp,n)
-
-       lo = lwb(get_box(Fhyp,n))
-       hi = upb(get_box(Fhyp,n))
-
-       call get_data_lo_hi(n,dlo,dhi)
-       call get_boxbc(n,blo,bhi)
-
-       if (dm .ne. 3) then
-          call bl_error("Only 3D hypterm is supported")
-       else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
-       end if
-    end do
-    call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
 
     !
     ! Transport terms
@@ -872,11 +851,40 @@ contains
           call S3D_diffterm_1(lo,hi,ng,ndq,dx,qp,fdp,mup,xip,qxp,qyp,qzp)
        end if
     end do
+    call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    call fill_boundary(qx,idim=1)
-    call fill_boundary(qy,idim=2)
-    call fill_boundary(qz,idim=3)
+    call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
+    call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
+    call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
 
+    !
+    ! Hyperbolic terms
+    !
+    call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    do n=1,nfabs(Fhyp)
+       up => dataptr(U,n)
+       qp => dataptr(Q,n)
+       fhp=> dataptr(Fhyp,n)
+
+       lo = lwb(get_box(Fhyp,n))
+       hi = upb(get_box(Fhyp,n))
+
+       call get_data_lo_hi(n,dlo,dhi)
+       call get_boxbc(n,blo,bhi)
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D hypterm is supported")
+       else
+          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
+       end if
+    end do
+    call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    call multifab_fill_boundary_barrier(qx, qx_fb_data, idim=1)
+    call multifab_fill_boundary_barrier(qy, qy_fb_data, idim=2)
+    call multifab_fill_boundary_barrier(qz, qz_fb_data, idim=3)
+
+    call build(bpt_diffterm, "diffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        fdp => dataptr(Fdif,n)
