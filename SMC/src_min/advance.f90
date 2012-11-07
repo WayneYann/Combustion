@@ -241,8 +241,7 @@ contains
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
 
-
-    call multifab_fill_boundary(U)
+    call multifab_fill_boundary_nowait(U)
 
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
@@ -259,6 +258,8 @@ contains
     call multifab_build(lam, la, 1, ng)
     call multifab_build(Ddiag, la, nspecies, ng)
     call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    call multifab_fill_boundary_barrier(U)
 
     !
     ! Calculate primitive variables based on U
