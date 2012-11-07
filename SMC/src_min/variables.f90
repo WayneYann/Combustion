@@ -73,11 +73,13 @@ contains
   !
   ! Convert conserved variables U to primitive variables Q
   !
-  subroutine ctoprim(U, Q, ng)
+  subroutine ctoprim(U, Q, ng, fill_ghost_only)
     type(multifab), intent(in   ) :: U
     type(multifab), intent(inout) :: Q
     integer, optional, intent(in) :: ng
+    logical, optional, intent(in) :: fill_ghost_only
 
+    logical :: lfgo
     integer :: ngu, ngq, ngto
     integer :: n, lo(U%dim), hi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: up, qp
@@ -91,6 +93,11 @@ contains
        ngto = min(ngu, ngq)
     end if
 
+    lfgo = .false.
+    if (present(fill_ghost_only)) then
+       lfgo = .true.
+    end if
+
     do n=1,nfabs(Q)
        up => dataptr(U,n)
        qp => dataptr(Q,n)
@@ -101,13 +108,14 @@ contains
        if (U%dim .eq. 2) then
           call bl_error("2D not supported in variables::ctoprim")
        else
-          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto)
+          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto,lfgo)
        end if
     end do
 
   end subroutine ctoprim
 
-  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngq, ngto)
+  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngq, ngto,fgo)
+    logical, intent(in) :: fgo  ! fill ghost cells only?
     integer, intent(in) :: lo(3), hi(3), ngu, ngq, ngto
     double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,ncons)
     double precision, intent(out) :: q(lo(1)-ngq:hi(1)+ngq,lo(2)-ngq:hi(2)+ngq,lo(3)-ngq:hi(3)+ngq,nprim)
@@ -126,6 +134,15 @@ contains
     do k = llo(3),lhi(3)
        do j = llo(2),lhi(2)
           do i = llo(1),lhi(1)
+             
+             if (fgo) then
+                if ( (i.ge.lo(1) .and. i.le.hi(1)) .and. &
+                     (j.ge.lo(2) .and. j.le.hi(2)) .and. &
+                     (k.ge.lo(3) .and. k.le.hi(3)) ) then
+                   cycle
+                end if
+             end if
+
              rho = u(i,j,k,irho)
              rhoinv = 1.d0/rho
              q(i,j,k,qrho) = rho

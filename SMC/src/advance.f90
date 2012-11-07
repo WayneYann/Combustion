@@ -506,7 +506,7 @@ contains
     inc_ad = .true.; if (present(include_ad)) inc_ad = include_ad
     inc_r  = .true.; if (present(include_r))  inc_r  = include_r
 
-    call multifab_fill_boundary(U)
+    call multifab_fill_boundary_nowait(U)
 
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
@@ -530,7 +530,7 @@ contains
     ! Calculate primitive variables based on U
     !
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, ng)
+    call ctoprim(U, Q, 0)
     call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     call build(bpt_courno, "courno")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -569,11 +569,11 @@ contains
 
     end if
 
+    call multifab_fill_boundary_barrier(U)
 
-    ! MPI wait
-
-    ! ctoprim in ghost cells
-
+    call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    call ctoprim(U, Q, fill_ghost_only=.true.)
+    call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! AD
