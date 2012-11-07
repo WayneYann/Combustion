@@ -111,7 +111,7 @@ contains
        if (U%dim .eq. 2) then
           call bl_error("2D not supported in variables::ctoprim")
        else
-          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi,fgo)
+          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi,lfgo)
        end if
     end do
 
