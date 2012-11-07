@@ -495,6 +495,7 @@ contains
     integer :: i, j, k, m, n, ng, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
+    type(mf_fb_data) :: U_fb_data
 
     logical :: inc_ad, inc_r
 
@@ -506,7 +507,7 @@ contains
     inc_ad = .true.; if (present(include_ad)) inc_ad = include_ad
     inc_r  = .true.; if (present(include_r))  inc_r  = include_r
 
-    call multifab_fill_boundary_nowait(U)
+    call multifab_fill_boundary_nowait(U, U_fb_data)
 
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
@@ -569,7 +570,7 @@ contains
 
     end if
 
-    call multifab_fill_boundary_barrier(U)
+    call multifab_fill_boundary_barrier(U, U_fb_data)
 
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call ctoprim(U, Q, fill_ghost_only=.true.)

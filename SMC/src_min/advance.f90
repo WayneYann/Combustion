@@ -235,13 +235,14 @@ contains
     integer :: i,j,k,m,n, ng, dm
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
+    type(mf_fb_data) :: U_fb_data
 
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
 
-    call multifab_fill_boundary_nowait(U)
+    call multifab_fill_boundary_nowait(U, U_fb_data)
 
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
@@ -295,7 +296,7 @@ contains
     end do
     call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    call multifab_fill_boundary_barrier(U)
+    call multifab_fill_boundary_barrier(U, U_fb_data)
 
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call ctoprim(U, Q, fill_ghost_only=.true.)
