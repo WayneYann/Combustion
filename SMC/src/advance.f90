@@ -587,30 +587,6 @@ contains
        call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
        !
-       ! Hyperbolic terms
-       !
-       call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       do n=1,nfabs(Fhyp)
-          up => dataptr(U,n)
-          qp => dataptr(Q,n)
-          fhp=> dataptr(Fhyp,n)
-
-          lo = lwb(get_box(Fhyp,n))
-          hi = upb(get_box(Fhyp,n))
-
-          call get_data_lo_hi(n,dlo,dhi)
-          call get_boxbc(n,blo,bhi)
-
-          if (dm .ne. 3) then
-             call bl_error("Only 3D hypterm is supported")
-          else
-             call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
-          end if
-       end do
-       call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-
-       !
        ! Transport terms
        !
        call build(bpt_diffterm, "diffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -636,6 +612,29 @@ contains
           end if
        end do
        call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+       !
+       ! Hyperbolic terms
+       !
+       call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       do n=1,nfabs(Fhyp)
+          up => dataptr(U,n)
+          qp => dataptr(Q,n)
+          fhp=> dataptr(Fhyp,n)
+
+          lo = lwb(get_box(Fhyp,n))
+          hi = upb(get_box(Fhyp,n))
+
+          call get_data_lo_hi(n,dlo,dhi)
+          call get_boxbc(n,blo,bhi)
+
+          if (dm .ne. 3) then
+             call bl_error("Only 3D hypterm is supported")
+          else
+             call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
+          end if
+       end do
+       call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
        !
        ! Calculate U'
