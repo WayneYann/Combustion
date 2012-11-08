@@ -294,17 +294,24 @@ contains
     end do
     call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+    !
+    ! transport coefficients for interior cells
+    !
+    call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    call get_transport_properties(Q, mu, xi, lam, Ddiag, ng=0)
+    call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
     call multifab_fill_boundary_barrier(U, U_fb_data)
 
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, fill_ghost_only=.true.)
+    call ctoprim(U, Q, ghostcells_only=.true.)
     call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
-    ! transport coefficients
+    ! transport coefficients for ghost cells
     !
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call get_transport_properties(Q, mu, xi, lam, Ddiag)
+    call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
     call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
@@ -505,17 +512,24 @@ contains
     end do
     call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+    !
+    ! transport coefficients for interior cells
+    !
+    call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    call get_transport_properties(Q, mu, xi, lam, Ddiag, ng=0)
+    call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
     call multifab_fill_boundary_barrier(U, U_fb_data)
 
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, fill_ghost_only=.true.)
+    call ctoprim(U, Q, ghostcells_only=.true.)
     call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
-    ! transport coefficients
+    ! transport coefficients for ghost cells
     !
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call get_transport_properties(Q, mu, xi, lam, Ddiag)
+    call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
     call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !

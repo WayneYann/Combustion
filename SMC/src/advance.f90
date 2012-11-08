@@ -571,7 +571,7 @@ contains
     call multifab_fill_boundary_barrier(U, U_fb_data)
 
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, fill_ghost_only=.true.)
+    call ctoprim(U, Q, ghostcells_only=.true.)
     call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
@@ -814,7 +814,7 @@ contains
     call multifab_fill_boundary_barrier(U, U_fb_data)
 
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, fill_ghost_only=.true.)
+    call ctoprim(U, Q, ghostcells_only=.true.)
     call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
