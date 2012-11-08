@@ -507,7 +507,9 @@ contains
     inc_ad = .true.; if (present(include_ad)) inc_ad = include_ad
     inc_r  = .true.; if (present(include_r))  inc_r  = include_r
 
-    call multifab_fill_boundary_nowait(U, U_fb_data)
+    if (inc_ad) then
+       call multifab_fill_boundary_nowait(U, U_fb_data)
+    end if
 
     call setval(Uprime, ZERO)
 
@@ -568,16 +570,16 @@ contains
 
     end if
 
-    call multifab_fill_boundary_barrier(U, U_fb_data)
-
-    call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, ghostcells_only=.true.)
-    call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
     !
     ! AD
     !
     if (inc_ad) then
+
+       call multifab_fill_boundary_barrier(U, U_fb_data)
+       
+       call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       call ctoprim(U, Q, ghostcells_only=.true.)
+       call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
        !
        ! transport coefficients
