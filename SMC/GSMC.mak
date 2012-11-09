@@ -27,10 +27,6 @@ endif
 
 
 #-----------------------------------------------------------------------------
-CHEMISTRY_MODEL := LIDRYER
-
-
-#-----------------------------------------------------------------------------
 # Fmpack is the list of all the GPackage.mak files that we need to
 # include into the build system to define the list of source files.
 #
@@ -60,6 +56,14 @@ ifeq ($(CHEMISTRY_MODEL), LIDRYER)
   csources += LiDryer.c
   vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer
   vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer/PMFs
+else ifeq ($(CHEMISTRY_MODEL),DRM19)
+  csources += drm19.c
+  vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
+  vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
+else ifeq ($(CHEMISTRY_MODEL),GRI30)
+  csources += grimech30.c
+  vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
+  vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
 endif
 
 
@@ -119,10 +123,12 @@ deppairs: build_info.f90
 build_info.f90: 
 	@echo " "
 	@echo "${bold}WRITING build_info.f90${normal}"
-	$(BOXLIB_HOME)/Tools/F_scripts/make_build_info \
+	$(BOXLIB_HOME)/Tools/F_scripts/make_build_info2 \
             "$(Fmdirs)" "$(COMP)" "$(FCOMP_VERSION)" \
             "$(COMPILE.f90)" "$(COMPILE.f)" \
-            "$(COMPILE.c)" "$(LINK.f90)" "$(BOXLIB_HOME)" "$(SMC_TOP_DIR)"
+            "$(COMPILE.c)" "$(LINK.f90)" \
+            "AUX=$(CHEMISTRY_MODEL)" \
+            "GIT=$(BOXLIB_HOME)" "GIT=$(SMC_TOP_DIR)"
 	@echo " "
 
 $(odir)/build_info.o: build_info.f90

@@ -2076,7 +2076,7 @@ HeatTransfer::post_init (Real stop_time)
 
                 S_tmp.copy(S_new);  // Parallel copy
 
-		getLevel(k).advance_chemistry(S_new,S_tmp,dt_save[k],Forcing_tmp,0);
+		getLevel(k).advance_chemistry(S_new,S_tmp,dt_save[k]/2.0,Forcing_tmp,0);
             }
         }
         //
@@ -2088,7 +2088,7 @@ HeatTransfer::post_init (Real stop_time)
             for (int k = 0; k <= finest_level; k++)
             {
                 MultiFab&  Divu_new = getLevel(k).get_new_data(Divu_Type);
-                getLevel(k).calc_divu(cur_time,dt_save[k],Divu_new);
+                getLevel(k).calc_divu(cur_time,dt_save[k],Divu_new,true);
             }
             if (!hack_noavgdivu)
             {
@@ -7078,17 +7078,6 @@ HeatTransfer::calcDiffusivity (const Real time,
         FArrayBox& Tfab = Temp_fpi();
         FArrayBox& RYfab = Rho_and_spec_fpi();
          const Box& gbox = RYfab.box();
-        //
-        // Convert from RhoY_l to Y_l
-        //
-        tmp.resize(gbox,1);
-        tmp.copy(RYfab,0,0,1);
-        tmp.invert(1);
-
-	for (int n = 1; n < nspecies+1; n++)
-	  {
-	    RYfab.mult(tmp,0,n,1);
-	  }
 
         const int  vflag   = do_VelVisc;
         const int nc_bcen = nspecies+2; // rhoD + lambda + mu
@@ -7111,9 +7100,16 @@ HeatTransfer::calcDiffusivity (const Real time,
             visc[Rho_and_spec_fpi].copy(bcen,nspecies+1,0,1);
         }
 
-
+        //
+        // Convert from tmp=RhoY_l to Y_l
+        //
+        tmp.resize(gbox,1);
+        tmp.copy(RYfab,0,0,1);
+        tmp.invert(1);
 	for (int n = 1; n < nspecies+1; n++)
+	{
 	  RYfab.mult(tmp,0,n,1);
+	}
 
         for (int icomp = RhoH; icomp <= NUM_STATE; icomp++)
         {
@@ -7269,7 +7265,8 @@ HeatTransfer::compute_vel_visc (Real      time,
 void
 HeatTransfer::calc_divu (Real      time,
                          Real      dt,
-                         MultiFab& divu)
+                         MultiFab& divu,
+			 bool      is_divu_iter)
 {
     const int nGrow = 0;
     MultiFab mcViscTerms;
@@ -7303,16 +7300,26 @@ HeatTransfer::calc_divu (Real      time,
     }
 
     MultiFab& S = get_data(State_Type,time);
-    MultiFab RhoYdot(grids,nspecies,0);
-    
-    if (dt > 0)
+
+    // complicated logic.
+    // If initial projection (dt<0) we want rho*omegadot=0
+    // If divu_iter (dt>0 && is_divu_iter) we want rho*omegadot = get_new_data(RhoYdot_Type)
+    // Otherwise we want rho*omegadot from compute_instantaneous_reaction_rates
+    MultiFab RhoYdotTmp;
+    MultiFab& RhoYdot = (is_divu_iter) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
+    if (!is_divu_iter)
+    {
+      if (dt > 0)
       {
+	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
 	compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
       }
-    else
+      else
       {
-	RhoYdot.setVal(0);
+	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
+	RhoYdot.setVal(0.);
       }
+    }
     
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {

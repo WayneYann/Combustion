@@ -253,7 +253,8 @@ protected:
     //
     virtual void calc_divu (Real      time,
                             Real      dt,
-                            MultiFab& divu);
+                            MultiFab& divu,
+			    bool      is_divu_iter = false);
 
     virtual void calc_dsdt (Real      time,
                             Real      dt,
