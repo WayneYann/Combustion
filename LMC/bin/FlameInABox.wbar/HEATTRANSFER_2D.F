@@ -849,10 +849,12 @@ c                               inflow for pipe
                   sum = sum + flux(i,j,n)
                   sumRhoY = sumRhoY + half*(state(i-1,j,n)+state(i,j,n))
                end do               
+
                do n=1,nc
                   yedge = half*(state(i-1,j,n)+state(i,j,n))
                   flux(i,j,n) = flux(i,j,n) - sum*yedge/sumRhoY
                end do
+
             end do
          end do
       else
@@ -1298,4 +1300,84 @@ c     Get curvature at centers from nodal normal, get normal at centers
             Tout(i,j) = Tout(i,j) / 16.d0
          end do
       end do
+      end
+
+
+      subroutine FORT_GRADWBAR(lo, hi, Wbar, DIMS(Wbar),
+     &     Y, DIMS(Y), rDe, DIMS(rDe), flux, DIMS(flux),
+     &     area, DIMS(area), dx, dir, mult, ispec)
+      implicit none
+#include "cdwrk.H"
+      integer lo(SDIM), hi(SDIM)
+      integer dir, ispec
+      integer DIMDEC(Wbar)
+      integer DIMDEC(Y)
+      integer DIMDEC(rDe)
+      integer DIMDEC(flux)
+      integer DIMDEC(area)
+      REAL_T  Wbar(DIMV(Wbar))
+      REAL_T  Y(DIMV(Y))
+      REAL_T  rDe(DIMV(rDe))
+      REAL_T  flux(DIMV(flux))
+      REAL_T  area(DIMV(area))
+      REAL_T  dx, mult
+
+      REAL_T Wav, Yav, Wgr, fac
+      integer i,j
+
+      fac = mult / dx
+      if (dir.eq.0) then
+         do j = lo(2),hi(2)
+            do i = lo(1),hi(1)+1
+               Yav = 0.5d0*(Y(i,j)    + Y(i-1,j))
+               Wav = 0.5d0*(Wbar(i,j) + Wbar(i-1,j))
+               Wgr =   fac*(Wbar(i,j) - Wbar(i-1,j))
+               flux(i,j) = flux(i,j) + rDe(i,j) * Yav * Wgr * area(i,j) / Wav
+            enddo
+         enddo
+      else if (dir.eq.1) then
+         do j = lo(2),hi(2)+1
+            do i = lo(1),hi(1)
+               Yav = 0.5d0*(Y(i,j)    + Y(i,j-1))
+               Wav = 0.5d0*(Wbar(i,j) + Wbar(i,j-1))
+               Wgr =   fac*(Wbar(i,j) - Wbar(i,j-1))
+               flux(i,j) = flux(i,j) + rDe(i,j) * Yav * Wgr * area(i,j) / Wav
+            enddo
+         enddo
+      else
+         call bl_pd_abort('Bad dir in FORT_GRADWBAR')
+      endif
+      end
+
+      subroutine  FORT_PLUS_ADIV(lo, hi,
+     &                            xflux,  DIMS(xflux),
+     &                            yflux,  DIMS(yflux),
+     &                            state, DIMS(state),
+     &                            vol,    DIMS(vol),
+     &                            nc, a)
+      implicit none
+      integer lo(SDIM), hi(SDIM), nc
+      integer DIMDEC(xflux)
+      integer DIMDEC(yflux)
+      integer DIMDEC(state)
+      integer DIMDEC(vol)
+      REAL_T xflux(DIMV(xflux),nc)
+      REAL_T yflux(DIMV(yflux),nc)
+      REAL_T state(DIMV(state),nc)
+      REAL_T vol(DIMV(vol))
+      REAL_T a
+
+      integer i, j, n
+c
+c     NOTE: Similar to INCWITHFLXDIV above, but here multicomp on
+c     state and flux
+      do n=1,nc
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               state(i,j,n) = state(i,j,n) + (a/vol(i,j)) *
+     &              ( ( xflux(i+1,j,n) - xflux(i,j,n) )
+     &              + ( yflux(i,j+1,n) - yflux(i,j,n) ) )
+            enddo
+         enddo
+      enddo
       end
