@@ -1074,7 +1074,7 @@ HeatTransfer::restart (Amr&          papa,
 }
 
 void
-HeatTransfer::set_typical_values(bool restart)
+HeatTransfer::set_typical_values (bool restart)
 {
     if (level==0) {
 
@@ -1108,17 +1108,20 @@ HeatTransfer::set_typical_values(bool restart)
 
             ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
         }
+	else {  // not restart
 
-        // Check fortan common values, if non-zero override
-        Array<Real> tvTmp(nComp,0);
-        FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
-        ParallelDescriptor::ReduceRealMax(tvTmp.dataPtr(),nComp);
-        
-        for (int i=0; i<nComp; ++i) {
+	  // Check fortan common values, if non-zero override
+	  Array<Real> tvTmp(nComp,0);
+	  FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
+	  ParallelDescriptor::ReduceRealMax(tvTmp.dataPtr(),nComp);
+
+	  for (int i=0; i<nComp; ++i) {
             if (tvTmp[i]!=0) {
-                typical_values[i] = tvTmp[i];
+	      typical_values[i] = tvTmp[i];
             }
-        }
+	  }
+
+	}
 
         if (ParallelDescriptor::IOProcessor())
         {
@@ -1919,15 +1922,15 @@ HeatTransfer::post_init (Real stop_time)
     Array<Real> dt_save2(finest_level+1);
     Array<int>  nc_save2(finest_level+1);
     //
+    // Load typical values for each state component
+    //
+    set_typical_values(false);
+    //
     // Ensure state is consistent, i.e. velocity field satisfies initial
     // estimate of constraint, coarse levels are fine level averages, pressure
     // is zero.
     //
     post_init_state();
-    //
-    // Load typical values for each state component
-    //
-    set_typical_values(false);
     //
     // Estimate the initial timestepping.
     //
