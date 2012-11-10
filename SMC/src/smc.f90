@@ -4,7 +4,6 @@ subroutine smc()
   use checkpoint_module
   use chemistry_module
   use derivative_stencil_module
-  use eglib_module
   use initialize_module
   use layout_module
   use make_plotfile_module
@@ -316,7 +315,6 @@ subroutine smc()
   call destroy(la)
 
   call chemistry_close()
-  call eglib_close()
 
   call runtime_close()
 

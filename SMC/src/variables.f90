@@ -2,6 +2,7 @@ module variables_module
 
   use chemistry_module, only : nspecies
   use multifab_module
+  use omp_module
 
   implicit none
 
@@ -126,6 +127,7 @@ contains
     integer :: i, j, k, n, iwrk
     double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), h(nspecies), ei, Tt, Pt
     integer :: llo(3), lhi(3)
+    integer :: nthreads
 
     ! be safe
     do i=1,3
@@ -133,7 +135,14 @@ contains
        lhi(i) = min(hi(i)+ngto, dhi(i))
     end do
 
-    !$omp parallel do private(i, j, k, n, iwrk, rho, rhoinv, rwrk) &
+    if (omp_in_parallel()) then
+       nthreads = omp_get_max_threads()-1
+    else
+       nthreads = omp_get_max_threads()
+    end if
+
+    !$omp parallel if (nthreads>1) num_threads(nthreads)
+    !$omp do private(i, j, k, n, iwrk, rho, rhoinv, rwrk) &
     !$omp private(X, Y, h, ei, Tt, Pt)
     do k = llo(3),lhi(3)
        do j = llo(2),lhi(2)
@@ -182,7 +191,8 @@ contains
           enddo
        enddo
     enddo
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
 
   end subroutine ctoprim_3d
 
