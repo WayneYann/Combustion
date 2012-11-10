@@ -87,6 +87,8 @@ const int LinOp_grow = 1;
 
 static const std::string typical_values_filename("typical_values.fab");
 
+static const Real typical_RhoH_value_default = -1.e10;
+
 #define SHOWVALARR(val)                        \
 {                                              \
     std::cout << #val << " = ";                \
@@ -937,6 +939,8 @@ HeatTransfer::init_once ()
     // make space for typical values
     //
     typical_values.resize(NUM_STATE,1); // One is reasonable, not great
+    typical_values[RhoH] = typical_RhoH_value_default;
+
     //
     // Get universal gas constant from Fortran.
     //
@@ -5348,7 +5352,7 @@ HeatTransfer::set_htt_hmixTYP ()
     const int finest_level = parent->finestLevel();
 
     // set typical value for hmix, needed for TfromHY solves if not provided explicitly
-    if (typical_values[RhoH]==0)
+    if (typical_values[RhoH]==typical_RhoH_value_default)
     {
         htt_hmixTYP = 0;
         std::vector< std::pair<int,Box> > isects;
@@ -5616,8 +5620,6 @@ HeatTransfer::advance (Real time,
     //
     Real dt_test = 0.0, dummy = 0.0;    
     dt_test = predict_velocity(dt,dummy);
-
-
     
     showMF("mac",u_mac[0],"adv_umac0",level);
     showMF("mac",u_mac[1],"adv_umac1",level);
@@ -9413,10 +9415,16 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
     const Real htt_hmixTYP_SAVE = htt_hmixTYP; 
     if (htt_hmixTYP <= 0)
     {
-        htt_hmixTYP = S.norm0(RhoH);
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
-
+      if (typical_values[RhoH]==typical_RhoH_value_default)
+	{
+	  htt_hmixTYP = S.norm0(RhoH);
+	}
+      else
+	{
+	  htt_hmixTYP = typical_values[RhoH];
+	}        
+      if (ParallelDescriptor::IOProcessor())
+	std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
     }
 
     const BoxArray& sgrids = S.boxArray();
