@@ -2,6 +2,7 @@ module advance_module
 
   use bl_error_module
   use derivative_stencil_module
+  use eglib_module
   use kernels_module
   use multifab_module
   use omp_module
@@ -359,6 +360,9 @@ contains
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
     call destroy(bpt_gettrans)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    if (overcc) then
+       call eglib_close()  ! have to do this because of nested parallel regions
+    end if
     
     !
     ! Transport terms
@@ -618,7 +622,11 @@ contains
     !
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
+    print *, 'after get_transport_properties'
     call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    if (overcc) then
+       call eglib_close()  ! have to do this because of nested parallel regions
+    end if
     
     !
     ! Transport terms
