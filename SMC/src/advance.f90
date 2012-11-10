@@ -2,6 +2,7 @@ module advance_module
 
   use bl_error_module
   use derivative_stencil_module
+  use eglib_module
   use kernels_module
   use multifab_module
   use omp_module
