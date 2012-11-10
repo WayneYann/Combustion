@@ -505,7 +505,7 @@ contains
 
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm, bpt_nscbc
-    type(bl_prof_timer), save :: bpt_overcc, bpt_ctoprim_g, bpt_gettrans_g
+    type(bl_prof_timer), save :: bpt_overcc, bpt_ctoprim_g
 
     integer :: tid, ngocc
     logical :: overcc
@@ -594,22 +594,6 @@ contains
              call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
           end if
        end if
-
-       !
-       ! AD
-       !
-       if (inc_ad) then
-          !
-          ! transport coefficients
-          !
-          if (.not.overcc) then
-             call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-          end if
-          call get_transport_properties(Q, mu, xi, lam, Ddiag, ngocc)
-          if (.not.overcc) then
-             call destroy(bpt_gettrans)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-          end if
-       end if
     end if
 
     !$omp end parallel
@@ -625,13 +609,6 @@ contains
        call build(bpt_ctoprim_g, "ctoprim_g")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
        call ctoprim(U, Q, ghostcells_only=.true.)
        call destroy(bpt_ctoprim_g)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-       
-       !
-       ! transport coefficients for ghost cells
-       !
-       call build(bpt_gettrans_g, "gettrans_g")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
-       call destroy(bpt_gettrans_g)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer       
     end if
 
     call build(bpt_courno, "courno")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -643,7 +620,14 @@ contains
     !
     ! AD
     !
-    if (inc_ad) then
+    if (inc_ad) then       
+       !
+       ! transport coefficients for ghost cells
+       !
+       call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       call get_transport_properties(Q, mu, xi, lam, Ddiag)
+       call destroy(bpt_gettrans)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer       
+
        !
        ! Transport terms
        !
@@ -809,7 +793,7 @@ contains
 
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
-    type(bl_prof_timer), save :: bpt_overcc, bpt_overcc2, bpt_ctoprim_g, bpt_gettrans_g
+    type(bl_prof_timer), save :: bpt_overcc, bpt_overcc2, bpt_ctoprim_g
 
     integer :: ndq
     integer :: tid, ngocc
@@ -901,17 +885,6 @@ contains
        if (.not.overcc) then
           call destroy(bpt_chemterm)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
        end if
-
-       !
-       ! transport coefficients
-       !
-       if (.not.overcc) then
-          call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       end if
-       call get_transport_properties(Q, mu, xi, lam, Ddiag, ngocc)
-       if (.not.overcc) then
-          call destroy(bpt_gettrans)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-       end if
     end if
 
     !$omp end parallel
@@ -927,13 +900,6 @@ contains
        call build(bpt_ctoprim_g, "ctoprim_g")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
        call ctoprim(U, Q, ghostcells_only=.true.)
        call destroy(bpt_ctoprim_g)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-       
-       !
-       ! transport coefficients for ghost cells
-       !
-       call build(bpt_gettrans_g, "gettrans_g")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
-       call destroy(bpt_gettrans_g)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
     end if
 
     call build(bpt_courno, "courno")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -941,6 +907,13 @@ contains
        call compute_courno(Q, dx, courno)
     end if
     call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       
+    !
+    ! transport coefficients 
+    !
+    call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    call get_transport_properties(Q, mu, xi, lam, Ddiag)
+    call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Transport terms
