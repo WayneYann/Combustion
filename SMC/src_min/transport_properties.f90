@@ -71,7 +71,7 @@ contains
     double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
     double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nspecies)
 
-    integer :: i, j, k, n, iwrk, nglo, nghi
+    integer :: i, j, k, n, iwrk, nglo, nghi, nthreads
     double precision :: rwrk
     integer :: np, ii
     double precision :: Cpck(nspecies)
@@ -81,11 +81,20 @@ contains
     ! eglib parameters
     integer, parameter :: ITLS=1, IFLAG=5
 
+    if (omp_in_parallel()) then
+       nthreads = omp_get_max_threads()-1
+    else
+       nthreads = omp_get_max_threads()
+    end if
+
     np = whi(1) - wlo(1) + 1
+
+    !$omp parallel if (nthreads>1) &
+    !$omp private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
+    !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2) &
+    !$omp num_threads(nthreads)
+
     call eglib_init(nspecies, np, ITLS, IFLAG)
-    
-    !$omp parallel private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
-    !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2)
     
     allocate(Tt(np))
     allocate(Wtm(np))
@@ -145,6 +154,9 @@ contains
     !$omp end do
     
     deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+
+    call eglib_close()
+
     !$omp end parallel
 
     if (gco) then
@@ -155,11 +167,13 @@ contains
 
        if (np .le. 0) return
 
+       !$omp parallel if (nthreads>1) &
+       !$omp private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
+       !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2) &
+       !$omp num_threads(nthreads)
+
        call eglib_init(nspecies, np, ITLS, IFLAG)
     
-       !$omp parallel private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
-       !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2)
-       
        allocate(Tt(np))
        allocate(Wtm(np))
        allocate(ME(np))
@@ -228,6 +242,9 @@ contains
        !$omp end do
        
        deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+
+       call eglib_close()
+
        !$omp end parallel
     
     end if
