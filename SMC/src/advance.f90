@@ -2,8 +2,10 @@ module advance_module
 
   use bl_error_module
   use derivative_stencil_module
+  use eglib_module
   use kernels_module
   use multifab_module
+  use omp_module
   use nscbc_module
   use sdcquad_module
   use smc_bc_module
@@ -480,6 +482,8 @@ contains
   !
   subroutine dUdt_compact (U, Uprime, dx, courno, include_ad, include_r)
 
+    use probin_module, only : overlap_comm_comp
+
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
     double precision, intent(inout), optional :: courno
@@ -502,17 +506,20 @@ contains
 
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm, bpt_nscbc
+    type(bl_prof_timer), save :: bpt_overcc, bpt_ctoprim_g
+
+    integer :: tid, ngocc
+    logical :: overcc
 
     inc_ad = .true.; if (present(include_ad)) inc_ad = include_ad
     inc_r  = .true.; if (present(include_r))  inc_r  = include_r
 
+    call setval(Uprime, ZERO)
 
     call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
     ng = nghost(U)
     la = get_layout(U)
-
-    call multifab_fill_boundary(U)
 
     call multifab_build(Q, la, nprim, ng)
 
@@ -527,12 +534,83 @@ contains
     end if
     call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    !
-    ! Calculate primitive variables based on U
-    !
-    call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, ng)
-    call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    if (inc_ad .and. & ! no comunication when inc_ad is false
+         overlap_comm_comp .and. &
+         omp_get_max_threads() .ge. 2 .and. &
+         omp_get_nested()) then
+       overcc = .true.  ! overlap communication and computation
+       ngocc = 0
+    else
+       overcc = .false.
+       ngocc = ng
+    end if
+
+    if (overcc) then
+       call build(bpt_overcc, "fillbnd_comp")
+    end if
+
+    !$omp parallel if (overcc) private(tid,n,qp,upp,lo,hi) num_threads(2)
+    tid = omp_get_thread_num()
+
+    if (inc_ad .and. tid .eq.0) then
+       call multifab_fill_boundary(U)
+    end if
+
+    if (tid .eq. 1 .or. .not.overcc) then
+       !
+       ! Calculate primitive variables based on U
+       !
+       if (.not.overcc) then
+          call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       end if
+       call ctoprim(U, Q, ngocc)
+       if (.not.overcc) then
+          call destroy(bpt_ctoprim)            !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       end if
+
+       !
+       ! R
+       !
+       if (inc_r) then
+          !
+          ! chemistry
+          !
+          if (.not.overcc) then
+             call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+          end if
+          do n=1,nfabs(Q)
+             qp  => dataptr(Q,n)
+             upp => dataptr(Uprime,n)
+
+             lo = lwb(get_box(Q,n))
+             hi = upb(get_box(Q,n))
+
+             if (dm .ne. 3) then
+                call bl_error("Only 3D chemsitry_term is supported")
+             else
+                call chemterm_3d(lo,hi,ng,qp,upp)
+             end if
+          end do
+          if (.not.overcc) then
+             call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+          end if
+       end if
+    end if
+
+    !$omp end parallel
+
+    if (overcc) then
+       call destroy(bpt_overcc)
+    end if
+
+    if (overcc) then  ! inc_ad is also true when overcc is true
+       !
+       ! ctoprim for ghost cells
+       !
+       call build(bpt_ctoprim_g, "ctoprim_g")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       call ctoprim(U, Q, ghostcells_only=.true.)
+       call destroy(bpt_ctoprim_g)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    end if
 
     call build(bpt_courno, "courno")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     if (present(courno)) then
@@ -540,39 +618,19 @@ contains
     end if
     call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-
     !
     ! AD
     !
-    if (inc_ad) then
-
+    if (inc_ad) then       
+       !
+       ! transport coefficients for ghost cells
+       !
        call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
        call get_transport_properties(Q, mu, xi, lam, Ddiag)
-       call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-       !
-       ! Hyperbolic terms
-       !
-       call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       do n=1,nfabs(Fhyp)
-          up => dataptr(U,n)
-          qp => dataptr(Q,n)
-          fhp=> dataptr(Fhyp,n)
-
-          lo = lwb(get_box(Fhyp,n))
-          hi = upb(get_box(Fhyp,n))
-
-          call get_data_lo_hi(n,dlo,dhi)
-          call get_boxbc(n,blo,bhi)
-
-          if (dm .ne. 3) then
-             call bl_error("Only 3D hypterm is supported")
-          else
-             call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
-          end if
-       end do
-       call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
+       call destroy(bpt_gettrans)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer       
+       if (overcc) then
+          call eglib_close()  ! have to do this because of nested parallel regions
+       end if
 
        !
        ! Transport terms
@@ -602,6 +660,29 @@ contains
        call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
        !
+       ! Hyperbolic terms
+       !
+       call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       do n=1,nfabs(Fhyp)
+          up => dataptr(U,n)
+          qp => dataptr(Q,n)
+          fhp=> dataptr(Fhyp,n)
+
+          lo = lwb(get_box(Fhyp,n))
+          hi = upb(get_box(Fhyp,n))
+
+          call get_data_lo_hi(n,dlo,dhi)
+          call get_boxbc(n,blo,bhi)
+
+          if (dm .ne. 3) then
+             call bl_error("Only 3D hypterm is supported")
+          else
+             call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
+          end if
+       end do
+       call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+       !
        ! Calculate U'
        !
        call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -618,7 +699,7 @@ contains
              do k = lo(3),hi(3)
                 do j = lo(2),hi(2)
                    do i = lo(1),hi(1)
-                      upp(i,j,k,m) = fhp(i,j,k,m) + fdp(i,j,k,m)
+                      upp(i,j,k,m) = upp(i,j,k,m) + fhp(i,j,k,m) + fdp(i,j,k,m)
                    end do
                 end do
              end do
@@ -626,39 +707,6 @@ contains
           end do
        end do
        call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    else
-
-       call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call setval(Uprime, 0.0d0)
-       call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    end if
-
-
-    !
-    ! R
-    !
-    if (inc_r) then
-
-       !
-       ! Add chemistry
-       !
-       call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       do n=1,nfabs(Q)
-          qp  => dataptr(Q,n)
-          upp => dataptr(Uprime,n)
-
-          lo = lwb(get_box(Q,n))
-          hi = upb(get_box(Q,n))
-
-          if (dm .ne. 3) then
-             call bl_error("Only 3D chemsitry_term is supported")
-          else
-             call chemterm_3d(lo,hi,ng,qp,upp)
-          end if
-       end do
-       call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     end if
 
@@ -724,6 +772,8 @@ contains
   !
   subroutine dUdt_S3D (U, Uprime, dx, courno)
 
+    use probin_module, only : overlap_comm_comp
+
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
     double precision, intent(inout), optional :: courno
@@ -747,8 +797,24 @@ contains
 
     type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
+    type(bl_prof_timer), save :: bpt_overcc, bpt_overcc2, bpt_ctoprim_g
 
     integer :: ndq
+    integer :: tid, ngocc
+    logical, save :: overcc, first_call=.true.
+
+    if (first_call) then
+       if (overlap_comm_comp .and. &
+            omp_get_max_threads() .ge. 2 .and. &
+            omp_get_nested()) then
+          overcc = .true.  ! overlap communication and computation
+       else
+          overcc = .false.
+       end if
+       first_call = .false.
+    end if
+
+    call setval(Uprime, ZERO)
 
     ndq = idX1+nspecies-1
 
@@ -772,49 +838,89 @@ contains
     call multifab_build(qz, la, ndq, ng)
     call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    !
-    ! Calculate primitive variables based on U
-    !
-    call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, 0)
-    call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    if (overcc) then
+       ngocc = 0
+    else
+       ngocc = ng
+    end if
 
-    call multifab_fill_boundary(Q)
-    call multifab_fill_boundary(U)
+    if (overcc) then
+       call build(bpt_overcc, "fillbnd_comp")
+    end if
+
+    !$omp parallel if (overcc) private(tid,n,qp,upp,lo,hi) num_threads(2)
+    tid = omp_get_thread_num()
+
+    if (tid .eq. 0) then
+       call multifab_fill_boundary(U)
+    end if
+
+    if (tid .eq. 1 .or. .not.overcc) then
+       !
+       ! Calculate primitive variables based on U
+       !
+       if (.not.overcc) then
+          call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       end if
+       call ctoprim(U, Q, ngocc)
+       if (.not.overcc) then
+          call destroy(bpt_ctoprim)            !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       end if
+
+       !
+       ! chemistry
+       !
+       if (.not.overcc) then
+          call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       end if
+       do n=1,nfabs(Q)
+          qp  => dataptr(Q,n)
+          upp => dataptr(Uprime,n)
+
+          lo = lwb(get_box(Q,n))
+          hi = upb(get_box(Q,n))
+
+          if (dm .ne. 3) then
+             call bl_error("Only 3D chemsitry_term is supported")
+          else
+             call chemterm_3d(lo,hi,ng,qp,upp)
+          end if
+       end do
+       if (.not.overcc) then
+          call destroy(bpt_chemterm)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       end if
+    end if
+
+    !$omp end parallel
+
+    if (overcc) then
+       call destroy(bpt_overcc)
+    end if
+
+    if (overcc) then
+       !
+       ! ctoprim for ghost cells
+       !
+       call build(bpt_ctoprim_g, "ctoprim_g")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       call ctoprim(U, Q, ghostcells_only=.true.)
+       call destroy(bpt_ctoprim_g)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    end if
 
     call build(bpt_courno, "courno")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     if (present(courno)) then
        call compute_courno(Q, dx, courno)
     end if
     call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
+       
+    !
+    ! transport coefficients 
+    !
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call get_transport_properties(Q, mu, xi, lam, Ddiag)
     call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    !
-    ! Hyperbolic terms
-    !
-    call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Fhyp)
-       up => dataptr(U,n)
-       qp => dataptr(Q,n)
-       fhp=> dataptr(Fhyp,n)
-
-       lo = lwb(get_box(Fhyp,n))
-       hi = upb(get_box(Fhyp,n))
-
-       call get_data_lo_hi(n,dlo,dhi)
-       call get_boxbc(n,blo,bhi)
-
-       if (dm .ne. 3) then
-          call bl_error("Only 3D hypterm is supported")
-       else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
-       end if
-    end do
-    call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
+    if (overcc) then
+       call eglib_close()  ! have to do this because of nested parallel regions
+    end if
 
     !
     ! Transport terms
@@ -842,11 +948,57 @@ contains
           call S3D_diffterm_1(lo,hi,ng,ndq,dx,qp,fdp,mup,xip,qxp,qyp,qzp)
        end if
     end do
+    call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    call multifab_fill_boundary(qx)
-    call multifab_fill_boundary(qy)
-    call multifab_fill_boundary(qz)
+    if (overcc) then
+       call build(bpt_overcc2, "fillbnd_hypterm")
+    end if
 
+    !$omp parallel if (overcc) private(tid,n,up,qp,fhp,lo,hi) num_threads(2)
+    tid = omp_get_thread_num()
+
+    if (tid .eq. 0) then
+       call multifab_fill_boundary(qx, idim=1)
+       call multifab_fill_boundary(qy, idim=2)
+       call multifab_fill_boundary(qz, idim=3)
+    end if
+
+    if (tid .eq. 1 .or. .not.overcc) then
+       !
+       ! Hyperbolic terms
+       !
+       if (.not.overcc) then
+          call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       end if
+       do n=1,nfabs(Fhyp)
+          up => dataptr(U,n)
+          qp => dataptr(Q,n)
+          fhp=> dataptr(Fhyp,n)
+
+          lo = lwb(get_box(Fhyp,n))
+          hi = upb(get_box(Fhyp,n))
+          
+          call get_data_lo_hi(n,dlo,dhi)
+          call get_boxbc(n,blo,bhi)
+
+          if (dm .ne. 3) then
+             call bl_error("Only 3D hypterm is supported")
+          else
+             call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
+          end if
+       end do
+       if (.not.overcc) then
+          call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       end if
+    end if
+
+    !$omp end parallel
+
+    if (overcc) then
+       call destroy(bpt_overcc2)
+    end if
+    
+    call build(bpt_diffterm, "diffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
        fdp => dataptr(Fdif,n)
@@ -869,7 +1021,7 @@ contains
           call S3D_diffterm_2(lo,hi,ng,ndq,dx,qp,fdp,mup,xip,lamp,Ddp,qxp,qyp,qzp)
        end if
     end do
-    call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    call destroy(bpt_diffterm)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Calculate U'
@@ -888,7 +1040,7 @@ contains
           do k = lo(3),hi(3)
              do j = lo(2),hi(2)
                 do i = lo(1),hi(1)
-                   upp(i,j,k,m) = fhp(i,j,k,m) + fdp(i,j,k,m)
+                   upp(i,j,k,m) = upp(i,j,k,m) + fhp(i,j,k,m) + fdp(i,j,k,m)
                 end do
              end do
           end do
@@ -896,25 +1048,6 @@ contains
        end do
     end do
     call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    !
-    ! Add chemistry
-    !
-    call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Q)
-       qp  => dataptr(Q,n)
-       upp => dataptr(Uprime,n)
-
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
-
-       if (dm .ne. 3) then
-          call bl_error("Only 3D chemsitry_term is supported")
-       else
-          call chemterm_3d(lo,hi,ng,qp,upp)
-       end if
-    end do
-    call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     call destroy(Q)
 
