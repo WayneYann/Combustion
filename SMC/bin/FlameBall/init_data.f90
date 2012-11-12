@@ -84,11 +84,11 @@ contains
     !$omp private(Xt,Yt,rhot,u1t,u2t,u3t,Tt,et,iwrk,rwrk) &
     !$omp private(rfront,phi,theta,xtemp,xloc,yloc,zloc,l,m,ctr)
     do k=lo(3),hi(3)
-       z = phlo(3) + dx(3)*(k + 0.5d0)
+       z = phlo(3) + dx(3)*k
        do j=lo(2),hi(2)
-          y = phlo(2) + dx(2)*(j + 0.5d0)
+          y = phlo(2) + dx(2)*j
           do i=lo(1),hi(1)
-             x = phlo(1) + dx(1)*(i + 0.5d0)
+             x = phlo(1) + dx(1)*i
 
              if (prob_type .eq. 1) then
                 r = sqrt(x**2+y**2+z**2)
@@ -99,7 +99,7 @@ contains
                    do l = lmodemin,lmodemax
                       do m = 0,l
                          ctr = ctr + 1
-                         
+
                          ! set local coordinates
                          if (r.LE.dx(1)) then
                             theta = 0.d0
@@ -107,16 +107,16 @@ contains
                          else
                             xtemp = cos(2.d0*Pi*alphalm(l,m))*x + sin(2.d0*Pi*alphalm(l,m))*y
                             yloc = -sin(2.d0*Pi*alphalm(l,m))*x + cos(2.d0*Pi*alphalm(l,m))*y
-                            
+
                             xloc = cos(2.d0*Pi*gammalm(l,m))*xtemp + sin(2.d0*Pi*gammalm(l,m))*z
                             zloc = -sin(2.d0*Pi*gammalm(l,m))*xtemp + cos(2.d0*Pi*gammalm(l,m))*z
-                            
+
                             theta = ATAN2(SQRT(xloc**2+yloc**2)/r,zloc/r)-Pi
                             phi = ATAN2(yloc/r,xloc/r)
                          endif
-                         
+
                          rfront = rfront + betalm(l,m) * Ylm(l,m,phi,COS(theta))
-                         
+
                       end do
                    end do
 
@@ -125,8 +125,8 @@ contains
                 else
                    rfront = 0.d0
                 end if
-                
-                rfront = rfire - pertmag*rfront*rfire - r + 3.011d0  
+
+                rfront = rfire - pertmag*rfront*rfire - r + 3.011d0
                 ! 3.011d0 is roughly the sufrace of fire for pmf.
 
              else if (prob_type .eq. 2) then
@@ -153,7 +153,7 @@ contains
                 u2t = vinit
                 u3t = winit
              else
-                call bl_error("Unknown prob_type")                
+                call bl_error("Unknown prob_type")
              end if
 
              do n = 1,nspecies
@@ -163,7 +163,7 @@ contains
              CALL CKXTY (Xt, IWRK, RWRK, Yt)
              CALL CKRHOY(patmos,Tt,Yt,IWRK,RWRK,rhot)
              call CKUBMS(Tt,Yt,IWRK,RWRK,et)
-          
+
              cons(i,j,k,irho) = rhot
              cons(i,j,k,imx)  = rhot*u1t
              cons(i,j,k,imy)  = rhot*u2t
@@ -197,7 +197,7 @@ contains
     end do
     Ylm = SQRT((2*l+1)*facN/(4*Pi*facD))*plgndr(l,m,costheta)*COS(m*phi)
   end function Ylm
- 
+
   double precision FUNCTION plgndr(l,m,x)
     INTEGER l,m
     double precision x
@@ -231,5 +231,5 @@ contains
        endif
     endif
   end FUNCTION plgndr
-  
+
 end module init_data_module
