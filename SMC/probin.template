@@ -49,7 +49,6 @@ contains
 
     use f2kcli
     use parallel
-    use omp_module
     use bl_IO_module
     use bl_prof_module
     use bl_error_module
@@ -260,8 +259,6 @@ contains
     call layout_set_verbosity(the_layout_verbosity)
     call layout_set_copyassoc_max(the_copy_cache_max)
     call layout_set_sfc_threshold(the_sfc_threshold)
-
-    if (overlap_comm_comp) call omp_set_nested(.true.)
 
     call destroy(bpt)
     
