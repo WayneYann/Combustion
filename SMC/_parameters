@@ -19,6 +19,11 @@ the_knapsack_verbosity              logical            .false.
 # job name printed in output
 job_name                            character          ""
 
+#-----------------------------------------------------------------------------
+# category: communication
+#-----------------------------------------------------------------------------
+overlap_comm_comp                   logical            .false.
+
 
 #-----------------------------------------------------------------------------
 # category: problem initialization

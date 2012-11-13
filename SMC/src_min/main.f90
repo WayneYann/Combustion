@@ -10,7 +10,7 @@ program main
 
   real(dp_t) :: r1, r2
 
-  call boxlib_initialize()
+  call boxlib_initialize(thread_support_level=MPI_THREAD_FUNNELED)
 
   r1 = parallel_wtime()
 

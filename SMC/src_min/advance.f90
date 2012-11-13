@@ -223,6 +223,8 @@ contains
   !
   subroutine dUdt_compact (U, Uprime, dx, courno)
 
+    use probin_module, only : overlap_comm_comp
+
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
     double precision, intent(inout), optional :: courno
@@ -233,6 +235,7 @@ contains
 
     integer ::    lo(U%dim),    hi(U%dim)
     integer :: i,j,k,m,n, ng, dm
+    integer :: ng_ctoprim, ng_gettrans
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
     type(mf_fb_data) :: U_fb_data
@@ -260,17 +263,31 @@ contains
     call multifab_build(lam, la, 1, ng)
     call multifab_build(Ddiag, la, nspecies, ng)
 
-    call multifab_fill_boundary_finish(U, U_fb_data)
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    else
+       call multifab_fill_boundary_finish(U, U_fb_data)
+    end if
+
+    if (U_fb_data%rcvd) then
+       ng_ctoprim = ng
+    else
+       ng_ctoprim = 0
+    end if
 
     !
     ! Calculate primitive variables based on U
     !
     call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q)
+    call ctoprim(U, Q, ng_ctoprim)
     call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     if (present(courno)) then
        call compute_courno(Q, dx, courno)
+    end if
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
     end if
 
     ! 
@@ -292,12 +309,38 @@ contains
     end do
     call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
+
+    if (U_fb_data%rcvd) then
+       ng_gettrans = ng
+    else
+       ng_gettrans = 0
+    end if
+
     !
     ! transport coefficients
     !
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call get_transport_properties(Q, mu, xi, lam, Ddiag)
+    call get_transport_properties(Q, mu, xi, lam, Ddiag, ng_gettrans)
     call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_finish(U, U_fb_data)
+
+       if (ng_ctoprim .eq. 0) then
+          call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
+          call ctoprim(U, Q, ghostcells_only=.true.)
+          call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       end if
+
+       if (ng_gettrans .eq. 0) then
+          call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+          call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
+          call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       end if
+    end if
 
     !
     ! Transport terms
