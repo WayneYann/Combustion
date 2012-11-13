@@ -61,7 +61,7 @@ contains
        if (dm .ne. 3) then
           call bl_error("Only 3D is supported in get_transport_properties")
        else
-          call get_trans_prop_3d(lo,hi,ng,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+          call get_trans_prop_3d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
        end if
 
     end do

@@ -572,7 +572,7 @@ contains
     !
     if (inc_ad) then       
        !
-       ! transport coefficients for ghost cells
+       ! transport coefficients
        !
        call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
        call get_transport_properties(Q, mu, xi, lam, Ddiag)

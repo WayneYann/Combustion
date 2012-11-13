@@ -2,6 +2,7 @@
 EXPAND := t
 
 NDEBUG :=
+PROF   :=
 MPI    := t
 OMP    :=
 
