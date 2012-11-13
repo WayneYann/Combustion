@@ -233,7 +233,6 @@ contains
 
     integer ::    lo(U%dim),    hi(U%dim)
     integer :: i,j,k,m,n, ng, dm
-    integer :: ng_ctoprim, ng_gettrans
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
     type(mf_fb_data) :: U_fb_data
@@ -245,53 +244,34 @@ contains
 
     call multifab_fill_boundary_nowait(U, U_fb_data)
 
-    call multifab_fill_boundary_test(U, U_fb_data)
-
     call setval(Uprime, ZERO)
-
-    call multifab_fill_boundary_test(U, U_fb_data)
 
     dm = U%dim
     ng = nghost(U)
     la = get_layout(U)
 
-    call multifab_fill_boundary_test(U, U_fb_data)
-
     call multifab_build(Q, la, nprim, ng)
-
-    call multifab_fill_boundary_test(U, U_fb_data)
 
     call multifab_build(Fhyp, la, ncons, 0)
     call multifab_build(Fdif, la, ncons, 0)
-
-    call multifab_fill_boundary_test(U, U_fb_data)
 
     call multifab_build(mu , la, 1, ng)
     call multifab_build(xi , la, 1, ng)
     call multifab_build(lam, la, 1, ng)
     call multifab_build(Ddiag, la, nspecies, ng)
 
-    call multifab_fill_boundary_test(U, U_fb_data)
-    if (U_fb_data%rcvd) then
-       ng_ctoprim = ng
-    else
-       ng_ctoprim = 0
-    end if
+    call multifab_fill_boundary_finish(U, U_fb_data)
 
     !
     ! Calculate primitive variables based on U
     !
     call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, ng_ctoprim)
+    call ctoprim(U, Q)
     call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    call multifab_fill_boundary_test(U, U_fb_data)
 
     if (present(courno)) then
        call compute_courno(Q, dx, courno)
     end if
-
-    call multifab_fill_boundary_test(U, U_fb_data)
 
     ! 
     ! chemistry
@@ -312,36 +292,12 @@ contains
     end do
     call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    call multifab_fill_boundary_test(U, U_fb_data)
-    if (U_fb_data%rcvd) then
-       ng_gettrans = ng
-    else
-       ng_gettrans = 0
-    end if
-
     !
     ! transport coefficients
     !
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call get_transport_properties(Q, mu, xi, lam, Ddiag, ng_gettrans)
+    call get_transport_properties(Q, mu, xi, lam, Ddiag)
     call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    call multifab_fill_boundary_finish(U, U_fb_data)
-
-    if (ng_ctoprim .eq. 0) then
-       call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call ctoprim(U, Q, ghostcells_only=.true.)
-       call destroy(bpt_ctoprim)            !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-    end if
-
-    if (ng_gettrans .eq. 0) then
-       !
-       ! transport coefficients for ghost cells
-       !
-       call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
-       call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-    end if
 
     !
     ! Transport terms
@@ -478,7 +434,7 @@ contains
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, &
          Ddp, upp, qxp, qyp, qzp
 
-    type(bl_prof_timer), save :: bpt_mfbuild, bpt_ctoprim, bpt_courno, bpt_gettrans, bpt_hypterm
+    type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypterm
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
 
     integer :: ndq
@@ -489,7 +445,6 @@ contains
 
     ndq = idX1+nspecies-1
 
-    call build(bpt_mfbuild, "mfbuild")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     dm = U%dim
     la = get_layout(U)
 
@@ -507,20 +462,19 @@ contains
     call multifab_build(qx, la, ndq, ng)
     call multifab_build(qy, la, ndq, ng)
     call multifab_build(qz, la, ndq, ng)
-    call destroy(bpt_mfbuild)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    call multifab_fill_boundary_finish(U,U_fb_data)
 
     !
     ! Calculate primitive variables based on U
     !
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, 0)
+    call ctoprim(U, Q)
     call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    call build(bpt_courno, "courno")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     if (present(courno)) then
        call compute_courno(Q, dx, courno)
     end if
-    call destroy(bpt_courno)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     ! 
     ! chemistry
@@ -542,24 +496,11 @@ contains
     call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
-    ! transport coefficients for interior cells
+    ! transport coefficients
     !
     call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call get_transport_properties(Q, mu, xi, lam, Ddiag, ng=0)
-    call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    call multifab_fill_boundary_finish(U, U_fb_data)
-
-    call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, ghostcells_only=.true.)
-    call destroy(bpt_ctoprim)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    !
-    ! transport coefficients for ghost cells
-    !
-    call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
-    call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    call get_transport_properties(Q, mu, xi, lam, Ddiag)
+    call destroy(bpt_gettrans)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Transport terms
@@ -640,7 +581,7 @@ contains
           call S3D_diffterm_2(lo,hi,ng,ndq,dx,qp,fdp,mup,xip,lamp,Ddp,qxp,qyp,qzp)
        end if
     end do
-    call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    call destroy(bpt_diffterm)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     !
     ! Calculate U'

@@ -1,5 +1,4 @@
 module kernels_module
-  use omp_module
   use bc_module
   use chemistry_module, only : nspecies, molecular_weight
   use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
@@ -28,13 +27,6 @@ contains
     double precision :: un(-4:4)
     double precision :: dxinv(3)
     integer :: slo(3), shi(3) 
-    integer :: nthreads
-
-    if (omp_in_parallel()) then
-       nthreads = omp_get_max_threads()-1
-    else
-       nthreads = omp_get_max_threads()
-    end if
 
     ! Only the region bounded by [dlo,dhi] contains good data.
     ! [slo,shi] will be safe for 8th-order stencil
@@ -47,7 +39,7 @@ contains
 
     rhs = 0.d0
     
-    !$omp parallel if (nthreads>1) private(i,j,k,n,un) num_threads(nthreads)
+    !$omp parallel private(i,j,k,n,un)
     !$omp do 
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
@@ -3292,16 +3284,8 @@ contains
 
     integer :: iwrk, i,j,k
     double precision :: Yt(nspecies), wdot(nspecies), rwrk
-    integer :: nthreads
 
-    if (omp_in_parallel()) then
-       nthreads = omp_get_max_threads()-1
-    else
-       nthreads = omp_get_max_threads()
-    end if
-
-    !$omp parallel if (nthreads>1) num_threads(nthreads)
-    !$omp do private(i,j,k,iwrk,rwrk,Yt,wdot)
+    !$omp parallel do private(i,j,k,iwrk,rwrk,Yt,wdot)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -3313,8 +3297,7 @@ contains
           end do
        end do
     end do
-    !$omp end do
-    !$omp end parallel
+    !$omp end parallel do 
 
   end subroutine chemterm_3d
 

@@ -62,7 +62,6 @@ contains
   end subroutine get_transport_properties
 
   subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
-    use omp_module
     logical, intent(in) :: gco  ! ghost cells only
     integer, intent(in) :: lo(3), hi(3), ng, wlo(3), whi(3)
     double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nprim)

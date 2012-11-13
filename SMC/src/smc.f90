@@ -20,7 +20,6 @@ subroutine smc()
 
   use cputime_module, only: start_cputime_clock
 
-
   implicit none
 
   integer :: dm, numcell, i
