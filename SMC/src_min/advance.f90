@@ -319,6 +319,14 @@ contains
        ng_gettrans = 0
     end if
 
+    ! Fill ghost cells here for get_transport_properties
+    if (ng_gettrans .eq. ng .and. ng_ctoprim .eq. 0) then
+       call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       call ctoprim(U, Q, ghostcells_only=.true.)
+       call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       ng_ctoprim = ng 
+    end if
+
     !
     ! transport coefficients
     !
