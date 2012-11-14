@@ -6,7 +6,7 @@ EXPAND := t
 NDEBUG := t
 MPI    := t
 OMP    := t
-PROF   := t
+PROF   := 
 
 COMP := gfortran
 

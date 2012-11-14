@@ -83,8 +83,6 @@ def flameball_stconv():
   """Convergence tests for the FlameBall example."""
   setenv()
 
-  feval = 0.01             # seconds per function eval on 32**3 domain
-
   env.nthreads = 6
   env.nprocs   = 6
   env.pernode  = 4
@@ -120,7 +118,7 @@ def flameball_stconv():
           advance_method=2)
       probin.write(spath + 'probin.nml')
 
-      wtime = walltime(max(feval * (nx/32)**3 * nnodes * (2*nnodes-2) * nsteps, 600))
+      wtime = walltime(3*60*60)
 
       runs.append(dict(
           name=name, rundir=rundir, nprocs=nprocs,
