@@ -7,13 +7,13 @@ COMBUSTION_DIR = ${TOP}/Combustion
 # User-settable variables.
 #
 PRECISION         = DOUBLE
-DEBUG	          = FALSE
+DEBUG	          = TRUE
 DIM    	          = 2
 COMP              = g++
 FCOMP             = gfortran
 USE_MPI           = TRUE
 USE_OMP           = FALSE
-USE_F90_SOLVERS   = FALSE
+USE_F90_SOLVERS   = TRUE
 VERBOSE           = FALSE
 
 # Enable flctin namelist
