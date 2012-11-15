@@ -253,15 +253,6 @@ contains
           call compute_aux(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_yhi)
        end if
 
-       if (isValid(aux_xhi,n)) then
-          alo = lwb(get_box(aux_xhi%data,n))
-          ahi = upb(get_box(aux_xhi%data,n))
-
-          auxp => dataptr(aux_xhi%data,n)
-
-          call compute_aux(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xhi)
-       end if
-
        if (isValid(aux_zlo,n)) then
           alo = lwb(get_box(aux_zlo%data,n))
           ahi = upb(get_box(aux_zlo%data,n))
