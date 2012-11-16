@@ -53,6 +53,7 @@ const Real* fabdat = (fab).dataPtr();
 
 static Box the_same_box (const Box& b)    { return b;                 }
 static Box grow_box_by_one (const Box& b) { return BoxLib::grow(b,1); }
+static Box the_nodes (const Box& b) { return BoxLib::surroundingNodes(b); }
 
 static bool do_group_bndry_fills = false;
 
@@ -827,24 +828,24 @@ HeatTransfer::variableSetUp ()
     // average pressure
     //
     derive_lst.add("avg_pressure",IndexType::TheCellType(),1,FORT_DERAVGPRES,
-                   the_same_box);
+                   the_nodes);
     derive_lst.addComponent("avg_pressure",desc_lst,Press_Type,Pressure,1);
     //
     // Pressure gradient in X direction.
     //
-    derive_lst.add("gradpx",IndexType::TheCellType(),1,FORT_DERGRDPX,the_same_box);
+    derive_lst.add("gradpx",IndexType::TheCellType(),1,FORT_DERGRDPX,the_nodes);
     derive_lst.addComponent("gradpx",desc_lst,Press_Type,Pressure,1);
     //
     // Pressure gradient in Y direction.
     //
-    derive_lst.add("gradpy",IndexType::TheCellType(),1,FORT_DERGRDPY,the_same_box);
+    derive_lst.add("gradpy",IndexType::TheCellType(),1,FORT_DERGRDPY,the_nodes);
     derive_lst.addComponent("gradpy",desc_lst,Press_Type,Pressure,1);
 
 #if (BL_SPACEDIM == 3)
     //
     // Pressure gradient in Z direction.
     //
-    derive_lst.add("gradpz",IndexType::TheCellType(),1,FORT_DERGRDPZ,the_same_box);
+    derive_lst.add("gradpz",IndexType::TheCellType(),1,FORT_DERGRDPZ,the_nodes);
     derive_lst.addComponent("gradpz",desc_lst,Press_Type,Pressure,1);
 #endif
     //

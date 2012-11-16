@@ -581,6 +581,7 @@ protected:
     AuxBoundaryData        aux_boundary_data_old;
     AuxBoundaryData        aux_boundary_data_new;
     bool                   FillPatchedOldState_ok;
+    bool                   FillPatchedNewState_ok;
 
     static bool                     plot_reactions;
     static bool                     plot_consumption;

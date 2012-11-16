@@ -791,6 +791,7 @@ HeatTransfer::HeatTransfer ()
     SpecDiffusionFluxn     = 0;
     SpecDiffusionFluxnp1   = 0;
     FillPatchedOldState_ok = true;
+    FillPatchedNewState_ok = true;
 }
 
 HeatTransfer::HeatTransfer (Amr&            papa,
@@ -808,7 +809,8 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
     //
     aux_boundary_data_new(bl,LinOp_grow,2,level_geom),
-    FillPatchedOldState_ok(true)
+    FillPatchedOldState_ok(true),
+    FillPatchedNewState_ok(true)
 {
     if (!init_once_done)
         init_once();
@@ -1046,8 +1048,7 @@ HeatTransfer::restart (Amr&          papa,
     aux_boundary_data_new.initialize(grids,LinOp_grow,2,Geom());
 
     FillPatchedOldState_ok = true;
-
-    set_overdetermined_boundary_cells(state[State_Type].curTime());
+    FillPatchedNewState_ok = true;
 
     BL_ASSERT(EdgeState == 0);
     const int nGrow       = 0;
@@ -5608,9 +5609,10 @@ HeatTransfer::advance (Real time,
     MultiFab& S_new = get_new_data(State_Type);
     MultiFab& S_old = get_old_data(State_Type);
     //
-    // Reset flag that fill patched state data is good
+    // Reset flags that fill patched state data is good
     //
     FillPatchedOldState_ok = true;
+    FillPatchedNewState_ok = true;
     //
     // Compute traced states for normal comp of velocity at half time level.
     //
@@ -5756,7 +5758,7 @@ HeatTransfer::advance (Real time,
 
     temperature_stats(S_old);
     //
-    // Activate hook in FillPatch hack to get better data now.
+    // Activate hook in FillPatch hack to get "better" OLD data now.
     //
     FillPatchedOldState_ok = false;
     //
@@ -5857,6 +5859,10 @@ HeatTransfer::advance (Real time,
         spec_update(time,dt,corrector);
         
         set_overdetermined_boundary_cells(time + dt); // RhoH BC's to see new Y's at n+1
+        //
+        // Activate hook in FillPatch hack to get "better" NEW data now.
+        //
+        FillPatchedNewState_ok = false;
         
         do_adv_reflux = false;
 
@@ -5957,8 +5963,7 @@ HeatTransfer::advance (Real time,
         }
     }
     //
-    //  HACK!!  What are we really supposed to do here?
-    //  Deactivate hook in FillPatch hack so that old data really is old data again
+    // Deactivate hook in FillPatch so that old data really is old data again.
     //
     FillPatchedOldState_ok = true;
 
@@ -6044,9 +6049,13 @@ HeatTransfer::advance (Real time,
 #ifdef PARTICLES
     if (HTPC != 0)
     {
-    HTPC->AdvectWithUmac(u_mac, level, dt);
+        HTPC->AdvectWithUmac(u_mac, level, dt);
     }
 #endif
+    //
+    // Deactivate hook in FillPatch so that new data really is new data again.
+    //
+//    FillPatchedNewState_ok = true;
 
     advance_cleanup(iteration,ncycle);
     //
@@ -6127,6 +6136,11 @@ HeatTransfer::reset_rho_in_rho_states (const MultiFab& rho,
         }
     }
     //
+    // I'm commenting the update of Rho in aux_boundary_data_new out.
+    // It's not used anywhere in the code.
+    //
+#if 0
+    //
     // Now do the same for AuxBoundaryData.
     // This routine should only be called at new time.
     //
@@ -6178,6 +6192,7 @@ HeatTransfer::reset_rho_in_rho_states (const MultiFab& rho,
         aux_boundary_data_new[rmfi].mult(tmp,0,1,1);
         aux_boundary_data_new[rmfi].mult(aux_boundary_data_new[rmfi],0,1,1);
     }
+#endif
 }
 
 void
@@ -8619,24 +8634,29 @@ HeatTransfer::set_preferred_boundary_values (MultiFab& S,
     if (state_index == State_Type)
     {
         const TimeLevel whichTime = which_time(State_Type,time);
-        //
-        // To get chem-advanced data instead of FP'd data at old time
-        //
-        if (!FillPatchedOldState_ok && whichTime == AmrOldTime && src_comp > BL_SPACEDIM)
+
+        if (!FillPatchedOldState_ok && whichTime == AmrOldTime)
         {
-            aux_boundary_data_old.copyTo(S,src_comp-BL_SPACEDIM,dst_comp,num_comp);
+            //
+            // To get chem-advanced data instead of FP'd data at old time.
+            //
+            if (src_comp > BL_SPACEDIM)
+            {
+                aux_boundary_data_old.copyTo(S,src_comp-BL_SPACEDIM,dst_comp,num_comp);
+            }
         }
-        //
-        // To get RhoH computed with current T, Y data instead of FP'd RhoH
-        // Note: "advance" is to make sure that RhoH is correct as needed.
-        //
-        if (src_comp <= RhoH && src_comp + num_comp > RhoH)
+
+        if (!FillPatchedNewState_ok && whichTime == AmrNewTime)
         {
-            const AuxBoundaryData& data = (whichTime == AmrOldTime) ? aux_boundary_data_old : aux_boundary_data_new;
+            //
+            // To get RhoH computed with current T instead of FP'd RhoH.
+            //
+            if (src_comp <= RhoH && src_comp + num_comp > RhoH)
+            {
+                const int RhoHcomp = 1;
 
-            const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 1;
-
-            data.copyTo(S,RhoHcomp,RhoH-src_comp+dst_comp,1);
+                aux_boundary_data_new.copyTo(S,RhoHcomp,RhoH-src_comp+dst_comp,1);
+            }
         }
     }
 }
@@ -10133,9 +10153,29 @@ HeatTransfer::derive (const std::string& name,
                       Real               time,
                       int                ngrow)
 {        
-  return AmrLevel::derive(name, time, ngrow);
-}
+  BL_ASSERT(ngrow >= 0);
+  
+  MultiFab* mf = 0;
+  const DeriveRec* rec = derive_lst.get(name);
+  if (rec)
+  {
+    BoxArray dstBA(grids);
+    mf = new MultiFab(dstBA, rec->numDerive(), ngrow);
+    int dcomp = 0;
+    derive(name,time,*mf,dcomp);
+  }
+  else
+  {
+    mf = AmrLevel::derive(name,time,ngrow);
+  }
 
+  if (mf==0) {
+    std::string msg("HeatTransfer::derive(): unknown variable: ");
+    msg += name;
+    BoxLib::Error(msg.c_str());
+  }
+  return mf;
+}
  
 
 void
