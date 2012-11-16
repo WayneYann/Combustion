@@ -5465,10 +5465,6 @@ HeatTransfer::predict_velocity (Real  dt,
     //
     MultiFab visc_terms(grids,nComp,1);
 
-#ifndef NDEBUG
-    calc_divu(prev_time,dt,get_old_data(Divu_Type));
-    showMF("mac",get_old_data(Divu_Type),"pv_divu",level);
-#endif
     if (be_cn_theta != 1.0)
     {
 	getViscTerms(visc_terms,Xvel,nComp,prev_time);
