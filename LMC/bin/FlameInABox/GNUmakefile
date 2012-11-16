@@ -42,6 +42,9 @@ VERBOSE         = FALSE
 CHEMISTRY_MODEL = LIDRYER
 fEXE_sources += LiDryer_040_01ATM.f
 
+#CHEMISTRY_MODEL = LUDME
+#fEXE_sources += LuDME_0700.f
+
 EBASE = amr
 Blocs   := .
 
@@ -51,7 +54,6 @@ CEXE_headers +=
 FEXE_headers += probdata.H PROB_F.H
 
 include $(COMBUSTION_DIR)/LMC/tools/make/Make.LMC
-
 # Available chemistry models:
 # CanuH2 chem-CH4-2step chem-H dme glar gri Hai H-CW header inert Konnov
 # LiDryer Marinov prf_ethanol Roehl sandiego smooke usc
