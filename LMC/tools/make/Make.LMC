@@ -110,6 +110,11 @@ ifeq ($(CHEMISTRY_MODEL), LIDRYER)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer/PMFs
   vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer
 endif
+ifeq ($(CHEMISTRY_MODEL), LUDME)
+  CEXE_sources += LuDME.cpp
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu/PMFs
+  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu
+endif
 
 # Enable time-dependent turbulence forcing term
 ifeq ($(USE_TDEPFORCING), TRUE)

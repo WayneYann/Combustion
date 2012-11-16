@@ -10137,9 +10137,29 @@ HeatTransfer::derive (const std::string& name,
                       Real               time,
                       int                ngrow)
 {        
-  return AmrLevel::derive(name, time, ngrow);
-}
+  BL_ASSERT(ngrow >= 0);
+  
+  MultiFab* mf = 0;
+  const DeriveRec* rec = derive_lst.get(name);
+  if (rec)
+  {
+    BoxArray dstBA(grids);
+    mf = new MultiFab(dstBA, rec->numDerive(), ngrow);
+    int dcomp = 0;
+    derive(name,time,*mf,dcomp);
+  }
+  else
+  {
+    mf = AmrLevel::derive(name,time,ngrow);
+  }
 
+  if (mf==0) {
+    std::string msg("HeatTransfer::derive(): unknown variable: ");
+    msg += name;
+    BoxLib::Error(msg.c_str());
+  }
+  return mf;
+}
  
 
 void

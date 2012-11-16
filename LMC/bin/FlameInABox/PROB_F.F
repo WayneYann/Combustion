@@ -720,6 +720,8 @@ c     hc + a.O2 -> b.CO2 + c.H2O
          a = .5d0
       else if (name .eq. 'C3H8') then
          a = 5.0d0
+      else if (name .eq. 'CH3OCH3') then
+         a = 3.0d0
       else
          call bl_abort('setupbc: Unknown fuel type')
       end if
