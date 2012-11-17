@@ -6933,6 +6933,32 @@ contains
     enddo
     !$omp end do
 
+    !----- mx -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-4,hi(1)+4
+             tmp(i,j,k) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * &
+                ( D8(1)*(tmp(i+1,j,k)-tmp(i-1,j,k)) &
+                + D8(2)*(tmp(i+2,j,k)-tmp(i-2,j,k)) &
+                + D8(3)*(tmp(i+3,j,k)-tmp(i-3,j,k)) &
+                + D8(4)*(tmp(i+4,j,k)-tmp(i-4,j,k)) )
+          end do
+       end do
+    end do
+    !$omp end do
+
     !$omp do
     do k=lo(3),hi(3)
        do j=lo(2)-4,hi(2)+4
@@ -6981,29 +7007,7 @@ contains
     end do
     !$omp end do
 
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * &
-                ( D8(1)*(tmp(i+1,j,k)-tmp(i-1,j,k)) &
-                + D8(2)*(tmp(i+2,j,k)-tmp(i-2,j,k)) &
-                + D8(3)*(tmp(i+3,j,k)-tmp(i-3,j,k)) &
-                + D8(4)*(tmp(i+4,j,k)-tmp(i-4,j,k)) )
-          end do
-       end do
-    end do
-    !$omp end do
+    !----- my -----
 
     !$omp do
     do k=lo(3),hi(3)
@@ -7024,6 +7028,30 @@ contains
                 + D8(2)*(tmp(i+2,j,k)-tmp(i-2,j,k)) &
                 + D8(3)*(tmp(i+3,j,k)-tmp(i-3,j,k)) &
                 + D8(4)*(tmp(i+4,j,k)-tmp(i-4,j,k)) )
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * &
+                ( D8(1)*(tmp(i,j+1,k)-tmp(i,j-1,k)) &
+                + D8(2)*(tmp(i,j+2,k)-tmp(i,j-2,k)) &
+                + D8(3)*(tmp(i,j+3,k)-tmp(i,j-3,k)) &
+                + D8(4)*(tmp(i,j+4,k)-tmp(i,j-4,k)) )
           end do
        end do
     end do
@@ -7053,29 +7081,7 @@ contains
     end do
     !$omp end do
 
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * &
-                ( D8(1)*(tmp(i,j+1,k)-tmp(i,j-1,k)) &
-                + D8(2)*(tmp(i,j+2,k)-tmp(i,j-2,k)) &
-                + D8(3)*(tmp(i,j+3,k)-tmp(i,j-3,k)) &
-                + D8(4)*(tmp(i,j+4,k)-tmp(i,j-4,k)) )
-          end do
-       end do
-    end do
-    !$omp end do
+    !----- mz -----
 
     !$omp do
     do k=lo(3),hi(3)
@@ -7149,6 +7155,8 @@ contains
     end do
     !$omp end do nowait
 
+    !----- energy -----
+
     !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
@@ -7158,6 +7166,7 @@ contains
              tauyy = 2.d0*mu(i,j,k)*qy(i,j,k,idv) + divu
              tauzz = 2.d0*mu(i,j,k)*qz(i,j,k,idw) + divu
 
+             ! change in internal energy
              rhs(i,j,k,iene) = tauxx*qx(i,j,k,idu) + tauyy*qy(i,j,k,idv) + tauzz*qz(i,j,k,idw) &
                   + mu(i,j,k)*((qy(i,j,k,idu)+qx(i,j,k,idv))**2 &
                   &          + (qx(i,j,k,idw)+qz(i,j,k,idu))**2 &
