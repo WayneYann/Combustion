@@ -387,7 +387,7 @@ contains
     double precision, intent(in ) :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
     double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
 
-    double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
+    double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz,tmp
     double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
     double precision, allocatable, dimension(:,:,:,:) :: Hg, dpy, dxe
     ! dxy: diffusion coefficient of X in equation for Y
@@ -396,9 +396,6 @@ contains
     ! dpe: diffusion coefficient of p in equation for energy
 
     double precision :: dxinv(3), dx2inv(3), divu
-    double precision :: dmvxdy,dmwxdz,dmvywzdx
-    double precision :: dmuydx,dmwydz,dmuxwzdy
-    double precision :: dmuzdx,dmvzdy,dmuxvydz
     double precision :: tauxx,tauyy,tauzz 
     integer          :: i,j,k,n, qxn, qyn, qhn
     integer :: dlo(3), dhi(3)
@@ -430,9 +427,10 @@ contains
     allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
     allocate(vsm(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
 
+    allocate(tmp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+
     !$omp parallel &
-    !$omp private(i,j,k,tauxx,tauyy,tauzz,divu) &
-    !$omp private(dmvxdy,dmwxdz,dmvywzdx,dmuydx,dmwydz,dmuxwzdy,dmuzdx,dmvzdy,dmuxvydz)
+    !$omp private(i,j,k,tauxx,tauyy,tauzz,divu)
 
     !$omp workshare
     rhs = 0.d0
@@ -454,7 +452,25 @@ contains
        do j=dlo(2),dhi(2)
           do i=lo(1),hi(1)
              ux(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qu))
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=dlo(2),dhi(2)
+          do i=lo(1),hi(1)
              vx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qv))
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=dlo(2),dhi(2)
+          do i=lo(1),hi(1)
              wx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qw))
           enddo
        enddo
@@ -466,7 +482,25 @@ contains
        do j=lo(2),hi(2)   
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qu))
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=lo(2),hi(2)   
+          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=lo(2),hi(2)   
+          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qw))
           enddo
        enddo
@@ -483,9 +517,186 @@ contains
           enddo
        enddo
     enddo
+    !$omp end do
+
+    !----- mx -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-4,hi(1)+4
+             tmp(i,j,k) = vsm(i,j,k)*(vy(i,j,k)+wz(i,j,k))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k)) 
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmp(i,j,k) = mu(i,j,k)*vx(i,j,k)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k)) 
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmp(i,j,k) = mu(i,j,k)*wx(i,j,k)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4)) 
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !----- my -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-4,hi(1)+4
+             tmp(i,j,k) = mu(i,j,k)*uy(i,j,k)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k)) 
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmp(i,j,k) = vsm(i,j,k)*(ux(i,j,k)+wz(i,j,k))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k)) 
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmp(i,j,k) = mu(i,j,k)*wy(i,j,k)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4)) 
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !----- mz -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-4,hi(1)+4
+             tmp(i,j,k) = mu(i,j,k)*uz(i,j,k)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmp(i,j,k) = mu(i,j,k)*vz(i,j,k)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
+          end do
+       end do
+    end do
+    !$omp end do 
+
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmp(i,j,k) = vsm(i,j,k)*(ux(i,j,k)+vy(i,j,k))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4))
+          end do
+       end do
+    end do
     !$omp end do nowait
 
-    !$omp barrier
+    !----- energy -----
 
     !$omp do
     do k=lo(3),hi(3)
@@ -509,69 +720,9 @@ contains
     end do
     !$omp end do nowait
 
-    ! d()/dx
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             ! d((xi-2/3*mu)*(vy+wz))/dx
-             dmvywzdx = dxinv(1) * &
-                  first_deriv_8( vsm(i-4:i+4,j,k)*(vy(i-4:i+4,j,k)+wz(i-4:i+4,j,k)) )
-             ! d(mu*du/dy)/dx
-             dmuydx = dxinv(1) * first_deriv_8( mu(i-4:i+4,j,k)*uy(i-4:i+4,j,k) )
-             ! d(mu*du/dz)/dx
-             dmuzdx = dxinv(1) * first_deriv_8( mu(i-4:i+4,j,k)*uz(i-4:i+4,j,k) )
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvywzdx
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuydx
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuzdx
-          end do
-       end do
-    end do
-    !$omp end do
-
-    ! d()/dy
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             ! d(mu*dv/dx)/dy
-             dmvxdy = dxinv(2) * first_deriv_8( mu(i,j-4:j+4,k)*vx(i,j-4:j+4,k) )
-             ! d((xi-2/3*mu)*(ux+wz))/dy
-             dmuxwzdy = dxinv(2) * &
-                  first_deriv_8( vsm(i,j-4:j+4,k)*(ux(i,j-4:j+4,k)+wz(i,j-4:j+4,k)) )
-             ! d(mu*dv/dz)/dy
-             dmvzdy = dxinv(2) * first_deriv_8( mu(i,j-4:j+4,k)*vz(i,j-4:j+4,k) )
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmvxdy
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmuxwzdy
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmvzdy
-          end do
-       end do
-    end do
-    !$omp end do 
-    
-    ! d()/dz
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             ! d(mu*dw/dx)/dz
-             dmwxdz = dxinv(3) * first_deriv_8( mu(i,j,k-4:k+4)*wx(i,j,k-4:k+4) )
-             ! d(mu*dw/dy)/dz
-             dmwydz = dxinv(3) * first_deriv_8( mu(i,j,k-4:k+4)*wy(i,j,k-4:k+4) )
-             ! d((xi-2/3*mu)*(ux+vy))/dz
-             dmuxvydz = dxinv(3) * &
-                  first_deriv_8( vsm(i,j,k-4:k+4)*(ux(i,j,k-4:k+4)+vy(i,j,k-4:k+4)) )
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dmwxdz
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dmwydz
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dmuxvydz
-          end do
-       end do
-    end do
-    !$omp end do nowait
-
     !$omp end parallel
 
-    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz)
+    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,tmp)
 
     allocate(dpy(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
     allocate(dxe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
@@ -709,10 +860,10 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)+1
-                Yhalf = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
-                hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- Yhalf*Hry(i,j,k)
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - Yhalf*hhalf*Hry(i,j,k)
+                Yhalf = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
              end do
           end do
        end do
@@ -837,10 +988,10 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)+1
              do i=lo(1),hi(1)
-                Yhalf = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
-                hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- Yhalf*Hry(i,j,k)
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - Yhalf*hhalf*Hry(i,j,k)
+                Yhalf = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
              end do
           end do
        end do
@@ -965,10 +1116,10 @@ contains
        do k=lo(3),hi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                Yhalf = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0
-                hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- Yhalf*Hry(i,j,k)
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - Yhalf*hhalf*Hry(i,j,k)
+                Yhalf = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
              end do
           end do
        end do
@@ -1096,9 +1247,6 @@ contains
     double precision, allocatable, dimension(:,:,:) :: vsm, tmp
 
     double precision :: dxinv(3), divu
-    double precision :: dmvxdy,dmwxdz,dmvywzdx
-    double precision :: dmuydx,dmwydz,dmuxwzdy
-    double precision :: dmuzdx,dmvzdy,dmuxvydz
     double precision :: tauxx,tauyy,tauzz 
     integer :: i,j,k,n, qxn, qdxn
 
@@ -1109,8 +1257,7 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz) &
-    !$omp   private(dmvxdy,dmwxdz,dmvywzdx,dmuydx,dmwydz,dmuxwzdy,dmuzdx,dmvzdy,dmuxvydz)
+    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz)
 
     !$omp workshare
     rhs = 0.d0
@@ -1198,6 +1345,27 @@ contains
     enddo
     !$omp end do
 
+    !----- mx -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-4,hi(1)+4
+             tmp(i,j,k) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+          end do
+       end do
+    end do
+    !$omp end do
+
     !$omp do
     do k=lo(3),hi(3)
        do j=lo(2)-4,hi(2)+4
@@ -1236,24 +1404,7 @@ contains
     end do
     !$omp end do
 
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
-          end do
-       end do
-    end do
-    !$omp end do
+    !----- my -----
 
     !$omp do
     do k=lo(3),hi(3)
@@ -1269,6 +1420,25 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
           end do
        end do
     end do
@@ -1293,24 +1463,7 @@ contains
     end do
     !$omp end do
 
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
-          end do
-       end do
-    end do
-    !$omp end do
+    !----- mz -----
 
     !$omp do
     do k=lo(3),hi(3)
@@ -1369,6 +1522,8 @@ contains
     end do
     !$omp end do nowait
 
+    !----- energy -----
+
     !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
@@ -1378,6 +1533,7 @@ contains
              tauyy = 2.d0*mu(i,j,k)*qy(i,j,k,idv) + divu
              tauzz = 2.d0*mu(i,j,k)*qz(i,j,k,idw) + divu
 
+             ! change in internal energy
              rhs(i,j,k,iene) = tauxx*qx(i,j,k,idu) + tauyy*qy(i,j,k,idv) + tauzz*qz(i,j,k,idw) &
                   + mu(i,j,k)*((qy(i,j,k,idu)+qx(i,j,k,idv))**2 &
                   &          + (qx(i,j,k,idw)+qz(i,j,k,idu))**2 &
@@ -1507,7 +1663,7 @@ contains
     ! NOT USING ! dxe: diffusion coefficient of X in equation for energy
     ! dpe: diffusion coefficient of p in equation for energy
 
-    double precision :: dxinv(3), rhoVc
+    double precision :: dxinv(3)
     integer          :: i,j,k,n, qxn, qyn, qhn, idXn, iryn
     double precision, allocatable, dimension(:,:,:) :: tmp
     double precision, allocatable, dimension(:,:,:) :: rvc
