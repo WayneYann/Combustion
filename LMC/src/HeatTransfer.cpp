@@ -806,9 +806,9 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     //
     aux_boundary_data_old(bl,HYP_GROW,desc_lst[State_Type].nComp()-BL_SPACEDIM,level_geom),
     //
-    // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
+    // Only save RhoH in aux_boundary_data_new in component 0.
     //
-    aux_boundary_data_new(bl,LinOp_grow,2,level_geom),
+    aux_boundary_data_new(bl,LinOp_grow,1,level_geom),
     FillPatchedOldState_ok(true),
     FillPatchedNewState_ok(true)
 {
@@ -1043,9 +1043,9 @@ HeatTransfer::restart (Amr&          papa,
     //
     aux_boundary_data_old.initialize(grids,HYP_GROW,desc_lst[State_Type].nComp()-BL_SPACEDIM,Geom());
     //
-    // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
+    // Only save Density & RhoH in aux_boundary_data_new in component 0.
     //
-    aux_boundary_data_new.initialize(grids,LinOp_grow,2,Geom());
+    aux_boundary_data_new.initialize(grids,LinOp_grow,1,Geom());
 
     FillPatchedOldState_ok = true;
     FillPatchedNewState_ok = true;
@@ -5426,7 +5426,6 @@ HeatTransfer::advance_setup (Real time,
     //
     for (int i = 0; i < spec_diffusion_flux_computed.size(); ++i)
 	spec_diffusion_flux_computed[i] = HT_None;
-
 }
 
 void
@@ -5789,10 +5788,9 @@ HeatTransfer::advance (Real time,
     if (RhoH < last_scalar)
         scalar_advection(dt,RhoH+1,last_scalar,do_adv_reflux);  // temperature and tracers
     //
-    // Copy old-time boundary Density & RhoH into estimate for new-time RhoH.
+    // Copy old-time boundary RhoH into estimate for new-time RhoH.
     //
-    aux_boundary_data_new.copy(aux_boundary_data_old,Density-BL_SPACEDIM,0,1);
-    aux_boundary_data_new.copy(aux_boundary_data_old,RhoH-BL_SPACEDIM,   1,1);
+    aux_boundary_data_new.copy(aux_boundary_data_old,RhoH-BL_SPACEDIM,0,1);
     //
     // Save rho used in rho-states, needed for replacing with new one
     //  NOTE: WE LOAD/USE GROW CELLS HERE SO WE CAN FIX BOUNDARY DATA AS WELL
@@ -6135,64 +6133,6 @@ HeatTransfer::reset_rho_in_rho_states (const MultiFab& rho,
             }
         }
     }
-    //
-    // I'm commenting the update of Rho in aux_boundary_data_new out.
-    // It's not used anywhere in the code.
-    //
-#if 0
-    //
-    // Now do the same for AuxBoundaryData.
-    // This routine should only be called at new time.
-    //
-    const TimeLevel whichTime = which_time(State_Type,time);
-
-    BL_ASSERT(whichTime == AmrNewTime);
-
-    const int nGrow = LinOp_grow;
-
-    BL_ASSERT(rho.nGrow() >= nGrow);
-    //
-    // Make a multifab of "rho" on the boxes of the boundary data.
-    // Force them to have the same DistributonMapping().
-    //
-    MultiFab tmpRho;
-
-    tmpRho.define(aux_boundary_data_new.equivBoxArray(),
-                  1,
-                  0,
-                  aux_boundary_data_new.DistributionMap(),
-                  Fab_allocate);
-
-    BoxArray bat = rho.boxArray();
-
-    bat.grow(nGrow);
-    //
-    // This MF is guaranteed to cover tmpRho.
-    //
-    MultiFab rhoGrow(bat,1,0);
-
-    for (MFIter rmfi(rhoGrow); rmfi.isValid(); ++rmfi)
-        rhoGrow[rmfi].copy(rho[rmfi],rho[rmfi].box());
-
-    tmpRho.copy(rhoGrow);  // Parallel copy.
-
-    rhoGrow.clear();
-
-    for (MFIter rmfi(tmpRho); rmfi.isValid(); ++rmfi)
-    {
-        BL_ASSERT(rmfi.validbox() == aux_boundary_data_new[rmfi].box());
-
-        tmp.resize(rmfi.validbox(),1);
-        tmp.copy(tmpRho[rmfi],0,0,1);
-        tmp.invert(1);
-
-        BL_ASSERT(is_diffusive[RhoH]);
-        BL_ASSERT(diffusionType[RhoH] == Laplacian_SoverRho);
-
-        aux_boundary_data_new[rmfi].mult(tmp,0,1,1);
-        aux_boundary_data_new[rmfi].mult(aux_boundary_data_new[rmfi],0,1,1);
-    }
-#endif
 }
 
 void
@@ -6207,7 +6147,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     AuxBoundaryData& rhoh_data = (whichTime == AmrOldTime) ? aux_boundary_data_old : aux_boundary_data_new;
 
     const int nGrow = (whichTime == AmrOldTime) ? HYP_GROW : LinOp_grow;
-    //                                                                                                           
+    //
     // Build a MultiFab parallel to State with appropriate # of ghost
     // cells built into the FABs themselves to cover rhoh_data.
     //
@@ -6261,7 +6201,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
         }
     }
 
-    const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 1;
+    const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 0;
 
     rhoh_data.copyFrom(tmpS,0,RhoHcomp,1); // Parallel copy.
 }
@@ -8653,9 +8593,7 @@ HeatTransfer::set_preferred_boundary_values (MultiFab& S,
             //
             if (src_comp <= RhoH && src_comp + num_comp > RhoH)
             {
-                const int RhoHcomp = 1;
-
-                aux_boundary_data_new.copyTo(S,RhoHcomp,RhoH-src_comp+dst_comp,1);
+                aux_boundary_data_new.copyTo(S,0,RhoH-src_comp+dst_comp,1);
             }
         }
     }
