@@ -1043,7 +1043,7 @@ HeatTransfer::restart (Amr&          papa,
     //
     aux_boundary_data_old.initialize(grids,HYP_GROW,desc_lst[State_Type].nComp()-BL_SPACEDIM,Geom());
     //
-    // Only save Density & RhoH in aux_boundary_data_new in component 0.
+    // Only save RhoH in aux_boundary_data_new in component 0.
     //
     aux_boundary_data_new.initialize(grids,LinOp_grow,1,Geom());
 
@@ -6053,7 +6053,7 @@ HeatTransfer::advance (Real time,
     //
     // Deactivate hook in FillPatch so that new data really is new data again.
     //
-//    FillPatchedNewState_ok = true;
+    FillPatchedNewState_ok = true;
 
     advance_cleanup(iteration,ncycle);
     //
