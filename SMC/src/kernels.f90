@@ -1826,7 +1826,7 @@ contains
                      +    dot_product(dxe(i-4:i+3,j,k,n), M8X)
 
                 Htot = Htot + Htmp(n)
-                Ytmp(n) = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
              end do
 
              do n = 1, nspecies
@@ -1835,8 +1835,8 @@ contains
 
              do n = 1, nspecies
                 qhn = qh1+n-1
-                hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n) * hhalf * Htot
+                hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n)*Htot*hhalf
              end do
           end do
 
@@ -1919,7 +1919,7 @@ contains
                         +    dot_product(dxe(i-1:i,j,k,n), M2X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -1928,8 +1928,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf 
                 end do
              end do
 
@@ -1969,7 +1969,7 @@ contains
                         +    dot_product(dxe(i-2:i+1,j,k,n), M4X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -1978,8 +1978,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2019,7 +2019,7 @@ contains
                         +    dot_product(dxe(i-3:i+2,j,k,n), M6X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2028,8 +2028,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf 
                 end do
              end do
 
@@ -2072,7 +2072,7 @@ contains
                         +    dot_product(dxe(i-3:i+2,j,k,n), M6X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2081,8 +2081,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2122,7 +2122,7 @@ contains
                         +    dot_product(dxe(i-2:i+1,j,k,n), M4X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2131,8 +2131,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2172,7 +2172,7 @@ contains
                         +    dot_product(dxe(i-1:i,j,k,n), M2X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i-1,j,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2181,8 +2181,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i-1,j,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2290,7 +2290,7 @@ contains
                      +    dot_product(dxe(i,j-4:j+3,k,n), M8X)
 
                 Htot = Htot + Htmp(n)
-                Ytmp(n) = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
              end do
 
              do n = 1, nspecies
@@ -2299,8 +2299,8 @@ contains
 
              do n = 1, nspecies
                 qhn = qh1+n-1
-                hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n) * hhalf * Htot
+                hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n)*Htot*hhalf
              end do
 
           end do
@@ -2388,7 +2388,7 @@ contains
                         +    dot_product(dxe(i,j-1:j,k,n), M2X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2397,8 +2397,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2440,7 +2440,7 @@ contains
                         +    dot_product(dxe(i,j-2:j+1,k,n), M4X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2449,8 +2449,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2492,7 +2492,7 @@ contains
                         +    dot_product(dxe(i,j-3:j+2,k,n), M6X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2501,8 +2501,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2548,7 +2548,7 @@ contains
                         +    dot_product(dxe(i,j-3:j+2,k,n), M6X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2557,8 +2557,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2600,7 +2600,7 @@ contains
                         +    dot_product(dxe(i,j-2:j+1,k,n), M4X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2609,8 +2609,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2652,7 +2652,7 @@ contains
                         +    dot_product(dxe(i,j-1:j,k,n), M2X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j-1,k,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2661,8 +2661,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j-1,k,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2773,7 +2773,7 @@ contains
                      +    dot_product(dxe(i,j,k-4:k+3,n), M8X)
 
                 Htot = Htot + Htmp(n)
-                Ytmp(n) = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0
+                Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
              end do
 
              do n = 1, nspecies
@@ -2782,8 +2782,8 @@ contains
 
              do n = 1, nspecies
                 qhn = qh1+n-1
-                hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
-                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n) * hhalf * Htot
+                hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iene) =  Hg(i,j,k,iene) - Ytmp(n)*Htot*hhalf
              end do
 
           end do
@@ -2880,7 +2880,7 @@ contains
                         +    dot_product(dxe(i,j,k-1:k,n), M2X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2889,8 +2889,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2936,7 +2936,7 @@ contains
                         +    dot_product(dxe(i,j,k-2:k+1,n), M4X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -2945,8 +2945,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -2992,7 +2992,7 @@ contains
                         +    dot_product(dxe(i,j,k-3:k+2,n), M6X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -3001,8 +3001,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -3052,7 +3052,7 @@ contains
                         +    dot_product(dxe(i,j,k-3:k+2,n), M6X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -3061,8 +3061,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -3108,7 +3108,7 @@ contains
                         +    dot_product(dxe(i,j,k-2:k+1,n), M4X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -3117,8 +3117,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -3164,7 +3164,7 @@ contains
                         +    dot_product(dxe(i,j,k-1:k,n), M2X)
 
                    Htot = Htot + Htmp(n)
-                   Ytmp(n) = (q(i,j,k-1,qyn) + q(i,j,k,qyn)) / 2.d0
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
                 end do
 
                 do n = 1, nspecies
@@ -3173,8 +3173,8 @@ contains
 
                 do n = 1, nspecies
                    qhn = qh1+n-1
-                   hhalf = (q(i,j,k-1,qhn) + q(i,j,k,qhn)) / 2.d0
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n) * hhalf * Htot
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
                 end do
              end do
 
@@ -3360,9 +3360,6 @@ contains
     double precision, allocatable, dimension(:,:,:) :: vsm, tmp
 
     double precision :: dxinv(3), divu
-    double precision :: dmvxdy,dmwxdz,dmvywzdx
-    double precision :: dmuydx,dmwydz,dmuxwzdy
-    double precision :: dmuzdx,dmvzdy,dmuxvydz
     double precision :: tauxx,tauyy,tauzz 
     integer :: i,j,k,n, qxn, qdxn
 
@@ -3373,8 +3370,7 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz) &
-    !$omp   private(dmvxdy,dmwxdz,dmvywzdx,dmuydx,dmwydz,dmuxwzdy,dmuzdx,dmvzdy,dmuxvydz)
+    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz)
 
     !$omp workshare
     rhs = 0.d0
@@ -3462,6 +3458,27 @@ contains
     enddo
     !$omp end do
 
+    !----- mx -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-4,hi(1)+4
+             tmp(i,j,k) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+          end do
+       end do
+    end do
+    !$omp end do
+
     !$omp do
     do k=lo(3),hi(3)
        do j=lo(2)-4,hi(2)+4
@@ -3500,24 +3517,7 @@ contains
     end do
     !$omp end do
 
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
-          end do
-       end do
-    end do
-    !$omp end do
+    !----- my -----
 
     !$omp do
     do k=lo(3),hi(3)
@@ -3533,6 +3533,25 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
           end do
        end do
     end do
@@ -3557,24 +3576,7 @@ contains
     end do
     !$omp end do
 
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
-          end do
-       end do
-    end do
-    !$omp end do
+    !----- mz -----
 
     !$omp do
     do k=lo(3),hi(3)
@@ -3633,6 +3635,8 @@ contains
     end do
     !$omp end do nowait
 
+    !----- energy -----
+
     !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
@@ -3642,6 +3646,7 @@ contains
              tauyy = 2.d0*mu(i,j,k)*qy(i,j,k,idv) + divu
              tauzz = 2.d0*mu(i,j,k)*qz(i,j,k,idw) + divu
 
+             ! change in internal energy
              rhs(i,j,k,iene) = tauxx*qx(i,j,k,idu) + tauyy*qy(i,j,k,idv) + tauzz*qz(i,j,k,idw) &
                   + mu(i,j,k)*((qy(i,j,k,idu)+qx(i,j,k,idv))**2 &
                   &          + (qx(i,j,k,idw)+qz(i,j,k,idu))**2 &
@@ -3771,7 +3776,7 @@ contains
     ! NOT USING ! dxe: diffusion coefficient of X in equation for energy
     ! dpe: diffusion coefficient of p in equation for energy
 
-    double precision :: dxinv(3), rhoVc
+    double precision :: dxinv(3)
     integer          :: i,j,k,n, qxn, qyn, qhn, idXn, iryn
     double precision, allocatable, dimension(:,:,:) :: tmp
     double precision, allocatable, dimension(:,:,:) :: rvc
