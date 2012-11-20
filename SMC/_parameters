@@ -23,6 +23,8 @@ job_name                            character          ""
 # category: communication
 #-----------------------------------------------------------------------------
 overlap_comm_comp                   logical            .false.
+# try different layout for ? seconds
+t_trylayout                         real               -1.d0
 
 
 #-----------------------------------------------------------------------------
@@ -174,7 +176,7 @@ n_cellz                             integer            -1
 # When assigning processors for grids, this determines whether we use
 # the sfc algorithm or knapsack algorithm.  If the total number of grids
 # divided by the number of processors is greater than this number, use sfc.
-the_sfc_threshold                   integer            5
+the_sfc_threshold                   integer            0
 
 the_layout_verbosity                integer            0
 

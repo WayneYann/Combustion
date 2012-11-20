@@ -13,7 +13,7 @@ contains
   subroutine initialize_from_restart(dirname,la,dt,dx,U)
     use checkpoint_module, only : checkpoint_read
     use probin_module, only: n_cellx, n_celly, n_cellz, prob_lo, prob_hi, dm_in, &
-         max_grid_size, change_max_grid_size, pmask
+         max_grid_size, change_max_grid_size, pmask, t_trylayout
     use derivative_stencil_module, only : stencil_ng
 
     character(len=*), intent(in) :: dirname
@@ -66,6 +66,8 @@ contains
        dx(3) = (prob_hi(3)-prob_lo(3)) / n_cellz
     end if
 
+    ng = stencil_ng
+
     lachk = get_layout(chkdata(1))
 
     bachk = get_boxarray(chkdata(1))
@@ -85,9 +87,12 @@ contains
     end if
 
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
-    call destroy(ba)
 
-    ng = stencil_ng
+    if (parallel_nprocs() > 1 .and. t_trylayout > 0.d0) then
+       call build_better_layout(la,ba,boxarray_bbox(ba),pmask,ncons,ng,t_trylayout)
+    end if
+
+    call destroy(ba)
 
     call multifab_build(U,la,ncons,ng)
     call multifab_copy_c(U,1,chkdata(1),1,ncons)
@@ -104,7 +109,7 @@ contains
     use time_module, only : time
 
     use probin_module, only: n_cellx, n_celly, n_cellz, prob_lo, prob_hi, dm_in, &
-         max_grid_size, pmask
+         max_grid_size, pmask, t_trylayout
     use derivative_stencil_module, only : stencil_ng
 
     type(layout),intent(inout) :: la
@@ -128,13 +133,6 @@ contains
        hi(3) = n_cellz - 1
     end if
 
-    bx = make_box(lo,hi)
-    
-    call boxarray_build_bx(ba,bx)
-    call boxarray_maxsize(ba,max_grid_size)
-    call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
-    call destroy(ba)
-
     allocate(dx(dm))
     dx(1) = (prob_hi(1)-prob_lo(1)) / n_cellx
     dx(2) = (prob_hi(2)-prob_lo(2)) / n_celly
@@ -144,10 +142,134 @@ contains
 
     ng = stencil_ng
 
+    bx = make_box(lo,hi)
+    
+    call boxarray_build_bx(ba,bx)
+    call boxarray_maxsize(ba,max_grid_size)
+    call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
+
+    if (parallel_nprocs() > 1 .and. t_trylayout > 0.d0) then
+       call build_better_layout(la,ba,boxarray_bbox(ba),pmask,ncons,ng,t_trylayout)
+    end if
+
+    call destroy(ba)
+
     call multifab_build(U,la,ncons,ng)
   
     call init_data(U,dx,prob_lo,prob_hi)
 
   end subroutine initialize_from_scratch
+
+  
+  subroutine build_better_layout(la, ba, pd, pmask, nc, ng, ttry)
+    use probin_module, only : verbose
+    type(layout),intent(inout) :: la
+    type(boxarray), intent(inout) :: ba
+    type(box), intent(in) :: pd
+    logical, intent(in) :: pmask(:)
+    integer, intent(in) :: nc, ng 
+    real(dp_t), intent(in) :: ttry
+
+    integer :: i, nb, ntry
+    integer, dimension(:), allocatable :: dmap0, dmapt, dmapbest
+    real(dp_t) :: t1, t2, tthis, timespent, tbest, tdefault
+    type(layout) :: lat
+    type(multifab) :: mf
+
+    integer :: seed_size
+    integer, allocatable :: seed(:)
+    real(dp_t), allocatable :: r(:)
+
+    nb = nboxes(la)
+
+    allocate(dmap0(nb))
+    allocate(dmapt(nb))
+    allocate(dmapbest(nb))
+    allocate(r(nb))
+
+    dmap0 = la%lap%prc(:)
+    call destroy(la)
+
+    call random_seed(size=seed_size)
+    allocate(seed(seed_size))
+    do i=1,seed_size
+       seed(i) = 134527 + 59*i
+    end do
+    call random_seed(put=seed)
+
+    ntry = 0
+    timespent = 0.0_dp_t
+    tbest = 1.0d50
+    do while (timespent < ttry)
+
+       ntry = ntry + 1
+
+       if (ntry .eq. 1) then
+          dmapt = dmap0
+       else
+          call random_number(r)
+          call Fisher_Yates_shuffle(dmap0, dmapt, r, nb)
+       end if
+
+       call layout_build_ba(lat, ba, pd, pmask=pmask, &
+            mapping = LA_EXPLICIT, explicit_mapping = dmapt)
+       
+       call multifab_build(mf, lat, nc, ng)
+       call setval(mf, 0.0_dp_t)
+
+       call parallel_barrier()
+       t1 = parallel_wtime()
+       call multifab_fill_boundary(mf)
+       call parallel_barrier()
+       t2 = parallel_wtime()
+
+       tthis = t2-t1
+       timespent = timespent + tthis
+       call parallel_bcast(timespent)
+
+       if (tthis < tbest) then
+          tbest = tthis
+          dmapbest = dmapt
+       end if
+
+       if (ntry .eq. 1) then
+          tdefault = tthis
+       end if
+
+       call destroy(mf)
+       call destroy(lat)
+    end do
+
+    call parallel_bcast(dmapbest)
+
+    call layout_build_ba(la, ba, pd, pmask=pmask, &
+         mapping = LA_EXPLICIT, explicit_mapping = dmapbest)
+
+    deallocate(dmap0,dmapt,dmapbest,seed,r)
+
+    if (verbose > 0 .and. parallel_IOProcessor()) then
+       print *, 'Tried', ntry, 'layouts for filling multifab boundaries.'
+       print *, '   The average time in second is', timespent/ntry
+       print *, '   Using the default layout, it is', tdefault
+       print *, '   The best time is', tbest
+    end if
+
+    contains
+
+      subroutine Fisher_Yates_shuffle(s, a, r, n)
+        integer, intent(in) :: n
+        integer, intent(in) :: s(n)
+        integer, intent(out) :: a(n)
+        real(dp_t), intent(in) :: r(n)
+        integer :: i, j
+        a(1) = s(1)
+        do i = 2, n
+           j = int(r(i)*i)+1
+           a(i) = a(j)
+           a(j) = s(i)
+        end do
+      end subroutine Fisher_Yates_shuffle
+
+  end subroutine build_better_layout
 
 end module initialize_module
