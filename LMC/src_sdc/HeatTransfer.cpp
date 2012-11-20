@@ -896,7 +896,6 @@ HeatTransfer::HeatTransfer ()
     EdgeFlux               = 0;
     SpecDiffusionFluxn     = 0;
     SpecDiffusionFluxnp1   = 0;
-    FillPatchedOldState_ok = true;
 
     is_predictor = true;
     updateFluxReg = false;
@@ -908,16 +907,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
                             const BoxArray& bl,
                             Real            time)
     :
-    NavierStokes(papa,lev,level_geom,bl,time),
-    //
-    // Make room for all components except velocities in aux_boundary_data_old.
-    //
-    aux_boundary_data_old(bl,HYP_GROW,desc_lst[State_Type].nComp()-BL_SPACEDIM,level_geom),
-    //
-    // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
-    //
-    aux_boundary_data_new(bl,LinOp_grow,2,level_geom),
-    FillPatchedOldState_ok(true)
+    NavierStokes(papa,lev,level_geom,bl,time)
 {
     if (!init_once_done)
         init_once();
@@ -1160,18 +1150,6 @@ HeatTransfer::restart (Amr&          papa,
 {
 
     NavierStokes::restart(papa,is,bReadSpecial);
-    //
-    // Make room for all components except velocities in aux_boundary_data_old.
-    //
-    aux_boundary_data_old.initialize(grids,HYP_GROW,desc_lst[State_Type].nComp()-BL_SPACEDIM,Geom());
-    //
-    // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
-    //
-    aux_boundary_data_new.initialize(grids,LinOp_grow,2,Geom());
-
-    FillPatchedOldState_ok = true;
-    
-    // set_overdetermined_boundary_cells(state[State_Type].curTime());
 
     BL_ASSERT(EdgeState == 0);
     BL_ASSERT(EdgeFlux == 0);
@@ -5239,11 +5217,6 @@ HeatTransfer::advance_setup (Real time,
         set_htt_hmixTYP();
 
     make_rho_curr_time();
-
-#ifndef NDEBUG
-    aux_boundary_data_old.setVal(BL_BOGUS);
-    aux_boundary_data_new.setVal(BL_BOGUS);
-#endif
 }
 
 void

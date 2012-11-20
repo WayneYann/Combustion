@@ -483,10 +483,6 @@ protected:
     MultiFab    sumSpecFluxDotGradHn;
     MultiFab    sumSpecFluxDotGradHnp1;
 
-    AuxBoundaryData        aux_boundary_data_old;
-    AuxBoundaryData        aux_boundary_data_new;
-    bool                   FillPatchedOldState_ok;
-
     static bool                     plot_reactions;
     static bool                     plot_consumption;
     static bool                     plot_heat_release;
