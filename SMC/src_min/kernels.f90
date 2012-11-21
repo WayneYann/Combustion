@@ -1127,25 +1127,7 @@ contains
        do j=lo(2)-ng,hi(2)+ng
           do i=lo(1),hi(1)
              qx(i,j,k,idu) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qu) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1),hi(1)
              qx(i,j,k,idv) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qv) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1),hi(1)
              qx(i,j,k,idw) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qw) )
           enddo
        enddo
@@ -1202,12 +1184,6 @@ contains
           do i=lo(1)-4,hi(1)+4
              tmp(i,j,k) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
           end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
           end do
@@ -1222,10 +1198,6 @@ contains
              tmp(i,j,k) = mu(i,j,k)*qx(i,j,k,idv)
           end do
        end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
@@ -1242,8 +1214,6 @@ contains
           end do
        end do
     end do
-    !$omp end do
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1261,12 +1231,6 @@ contains
           do i=lo(1)-4,hi(1)+4
              tmp(i,j,k) = mu(i,j,k)*qy(i,j,k,idu)
           end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
           end do
@@ -1281,10 +1245,6 @@ contains
              tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
           end do
        end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
@@ -1301,8 +1261,6 @@ contains
           end do
        end do
     end do
-    !$omp end do
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1320,12 +1278,6 @@ contains
           do i=lo(1)-4,hi(1)+4
              tmp(i,j,k) = mu(i,j,k)*qz(i,j,k,idu)
           end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
           end do
@@ -1340,10 +1292,10 @@ contains
              tmp(i,j,k) = mu(i,j,k)*qz(i,j,k,idv)
           end do
        end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
+    ! end do
+    ! !$omp end do
+    ! !$omp do
+    ! do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))

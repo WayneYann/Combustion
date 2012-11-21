@@ -2216,30 +2216,12 @@ contains
                 + D8(2)*(q(i+2,j,k,qu)-q(i-2,j,k,qu)) &
                 + D8(3)*(q(i+3,j,k,qu)-q(i-3,j,k,qu)) &
                 + D8(4)*(q(i+4,j,k,qu)-q(i-4,j,k,qu)) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1),hi(1)
 !EXPAND             qx(i,j,k,idv) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qv) )
              qx(i,j,k,idv) = dxinv(1) * &
                 ( D8(1)*(q(i+1,j,k,qv)-q(i-1,j,k,qv)) &
                 + D8(2)*(q(i+2,j,k,qv)-q(i-2,j,k,qv)) &
                 + D8(3)*(q(i+3,j,k,qv)-q(i-3,j,k,qv)) &
                 + D8(4)*(q(i+4,j,k,qv)-q(i-4,j,k,qv)) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1),hi(1)
 !EXPAND             qx(i,j,k,idw) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qw) )
              qx(i,j,k,idw) = dxinv(1) * &
                 ( D8(1)*(q(i+1,j,k,qw)-q(i-1,j,k,qw)) &
@@ -2331,12 +2313,6 @@ contains
           do i=lo(1)-4,hi(1)+4
              tmp(i,j,k) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
           end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * &
@@ -2356,10 +2332,6 @@ contains
              tmp(i,j,k) = mu(i,j,k)*qx(i,j,k,idv)
           end do
        end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
@@ -2381,8 +2353,6 @@ contains
           end do
        end do
     end do
-    !$omp end do
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -2405,12 +2375,6 @@ contains
           do i=lo(1)-4,hi(1)+4
              tmp(i,j,k) = mu(i,j,k)*qy(i,j,k,idu)
           end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * &
@@ -2430,10 +2394,6 @@ contains
              tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
           end do
        end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
@@ -2455,8 +2415,6 @@ contains
           end do
        end do
     end do
-    !$omp end do
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -2479,12 +2437,6 @@ contains
           do i=lo(1)-4,hi(1)+4
              tmp(i,j,k) = mu(i,j,k)*qz(i,j,k,idu)
           end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * &
@@ -2504,10 +2456,10 @@ contains
              tmp(i,j,k) = mu(i,j,k)*qz(i,j,k,idv)
           end do
        end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
+    ! end do
+    ! !$omp end do
+    ! !$omp do
+    ! do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))

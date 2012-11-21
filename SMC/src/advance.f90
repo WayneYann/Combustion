@@ -924,9 +924,7 @@ contains
     end if
 
     !
-    ! Transport terms
     ! S3D_diffterm1: first derivative terms
-    ! S3D_diffterm2: d(a du/dx)/dx terms
     !
     call build(bpt_diffterm_1, "diffterm_1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
@@ -984,7 +982,10 @@ contains
     call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
     call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
     call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
-    
+ 
+    !
+    ! S3D_diffterm2: d(a du/dx)/dx terms
+    !
     call build(bpt_diffterm_2, "diffterm_2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
