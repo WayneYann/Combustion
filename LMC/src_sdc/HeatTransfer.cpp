@@ -82,6 +82,8 @@ const int LinOp_grow = 1;
 
 static const std::string typical_values_filename("typical_values.fab");
 
+static const Real typical_RhoH_value_default = -1.e10;
+
 namespace
 {
     bool initialized = false;
@@ -1055,6 +1057,7 @@ HeatTransfer::init_once ()
     // make space for typical values
     //
     typical_values.resize(NUM_STATE,-1); // -ve means don't use for anything
+    typical_values[RhoH] = typical_RhoH_value_default;
     //
     // Get universal gas constant from Fortran.
     //
@@ -4563,35 +4566,6 @@ HeatTransfer::mcdd_update(Real time,
     }
 }
 
-static
-int HY_to_Temp_DoIt(FArrayBox&       Tfab,
-                    const FArrayBox& Hfab,
-                    const FArrayBox& Yfab,
-                    const Box&       box,
-                    int              sCompH,
-                    int              sCompY,
-                    int              dCompT,
-                    Real             htt_hmixTYP,
-                    ChemDriver&      cd)
-{
-    if (htt_hmixTYP <= 0)
-    {
-        htt_hmixTYP = Hfab.norm(0,sCompH,1);
-        if (ParallelDescriptor::IOProcessor())
-            std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';        
-    }
-
-    const Real eps = cd.getHtoTerrMAX();
-    Real errMAX = eps*htt_hmixTYP;
-
-    int iters = cd.getTGivenHY(Tfab,Yfab,Hfab,box,sCompH,sCompY,dCompT,errMAX);
-
-    if (iters < 0)
-        BoxLib::Error("HeatTransfer::RhoH_to_Temp(fab): error in H->T");
-
-    return iters;
-}
-
 void
 HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
                                                      const Real& dt)
@@ -5160,8 +5134,11 @@ HeatTransfer::set_htt_hmixTYP ()
     const int finest_level = parent->finestLevel();
 
     // set typical value for hmix, needed for TfromHY solves if not provided explicitly
-    if (typical_values[RhoH] < 0) {
-        htt_hmixTYP = -1;
+    if (typical_values[RhoH]==typical_RhoH_value_default)
+    {
+        htt_hmixTYP = 0;
+        std::vector< std::pair<int,Box> > isects;
+        isects.reserve(27);
         for (int k = 0; k <= finest_level; k++)
         {
             AmrLevel& ht = getLevel(k);
@@ -5176,7 +5153,7 @@ HeatTransfer::set_htt_hmixTYP ()
                 BoxArray baf = BoxArray(htf.boxArray()).coarsen(parent->refRatio(k));
                 for (MFIter mfi(hmix); mfi.isValid(); ++mfi)
                 {
-                    std::vector< std::pair<int,Box> > isects = baf.intersections(ba[mfi.index()]);
+                    baf.intersections(ba[mfi.index()],isects);
                     for (int i = 0; i < isects.size(); i++)
                     {
                         hmix[mfi].setVal(0,isects[i].second,0,1);
@@ -5188,7 +5165,9 @@ HeatTransfer::set_htt_hmixTYP ()
         ParallelDescriptor::ReduceRealMax(htt_hmixTYP);
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "setting htt_hmixTYP(via domain scan) = " << htt_hmixTYP << '\n';
-    } else {
+    }
+    else
+    {
         htt_hmixTYP = typical_values[RhoH];
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "setting htt_hmixTYP(from user input) = " << htt_hmixTYP << '\n';
@@ -7541,40 +7520,34 @@ HeatTransfer::calc_dsdt (Real      time,
     }
 }
 
-int
-HeatTransfer::RhoH_to_Temp (FArrayBox& S,
-                            const Box& box,
-                            int        dominmax)
-{
-    BL_ASSERT(S.box().contains(box));
-    //
-    // Convert rho to 1/rho, rho*h to h and rho*Y to Y for this operation.
-    //
-    S.invert(1,box,Density,1);    
-    S.mult(S,Density,RhoH,1);
-    for (int spec = first_spec; spec <= last_spec; spec++)
-        S.mult(S,Density,spec,1);
-
-    int iters = HY_to_Temp_DoIt(S,S,S,box,RhoH,first_spec,Temp,htt_hmixTYP,getChemSolve());
-
-    if (dominmax)
-        FabMinMax(S, box, htt_tempmin, htt_tempmax, Temp, 1);
-    //
-    // Convert back to rho, rho*h and rho*Y
-    //
-    S.invert(1,box,Density,1);    
-    S.mult(S,box,Density,RhoH,1);
-    for (int spec = first_spec; spec <= last_spec; spec++)
-        S.mult(S,box,Density,spec,1);
-
-    return iters;
-}
 
 void
 HeatTransfer::RhoH_to_Temp (MultiFab& S,
                             int       nGrow,
                             int       dominmax)
 {
+
+
+    //
+    //  If this hasn't been set yet, we cannnot do it correct here (scan multilevel),
+    //   just wing it.
+    //
+    const Real htt_hmixTYP_SAVE = htt_hmixTYP; 
+    if (htt_hmixTYP <= 0)
+    {
+      if (typical_values[RhoH]==typical_RhoH_value_default)
+	{
+	  htt_hmixTYP = S.norm0(RhoH);
+	}
+      else
+	{
+	  htt_hmixTYP = typical_values[RhoH];
+	}        
+      if (ParallelDescriptor::IOProcessor())
+	std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
+    }
+
+
     int max_iters = 0;
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
@@ -7591,6 +7564,62 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "HeatTransfer::RhoH_to_Temp: max_iters = " << max_iters << '\n';
     }
+
+    // Reset it back
+    htt_hmixTYP = htt_hmixTYP_SAVE;
+}
+
+
+static
+int RhoH_to_Temp_DoIt(FArrayBox&       Tfab,
+                    const FArrayBox& Hfab,
+                    const FArrayBox& Yfab,
+                    const Box&       box,
+                    int              sCompH,
+                    int              sCompY,
+                    int              dCompT,
+    	            const Real&      htt_hmixTYP,
+                    ChemDriver&      cd)
+{
+    const Real eps = cd.getHtoTerrMAX();
+    Real errMAX = eps*htt_hmixTYP;
+
+    int iters = cd.getTGivenHY(Tfab,Yfab,Hfab,box,sCompH,sCompY,dCompT,errMAX);
+
+    if (iters < 0)
+        BoxLib::Error("HeatTransfer::RhoH_to_Temp(fab): error in H->T");
+
+    return iters;
+}
+
+int
+HeatTransfer::RhoH_to_Temp (FArrayBox& S,
+                            const Box& box,
+                            int        dominmax)
+{
+    BL_ASSERT(S.box().contains(box));
+
+    //
+    // Convert rho to 1/rho, rho*h to h and rho*Y to Y for this operation.
+    //
+    S.invert(1,box,Density,1);    
+    S.mult(S,Density,RhoH,1);
+    for (int spec = first_spec; spec <= last_spec; spec++)
+        S.mult(S,Density,spec,1);
+
+    int iters = RhoH_to_Temp_DoIt(S,S,S,box,RhoH,first_spec,Temp,htt_hmixTYP,getChemSolve());
+
+    if (dominmax)
+        FabMinMax(S, box, htt_tempmin, htt_tempmax, Temp, 1);
+    //
+    // Convert back to rho, rho*h and rho*Y
+    //
+    S.invert(1,box,Density,1);    
+    S.mult(S,box,Density,RhoH,1);
+    for (int spec = first_spec; spec <= last_spec; spec++)
+        S.mult(S,box,Density,spec,1);
+
+    return iters;
 }
 
 void
