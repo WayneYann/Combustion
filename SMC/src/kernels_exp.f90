@@ -6963,6 +6963,8 @@ contains
           end do
        end do
     end do
+    !$omp end do
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -7025,6 +7027,8 @@ contains
           end do
        end do
     end do
+    !$omp end do
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)

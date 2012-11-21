@@ -2353,6 +2353,8 @@ contains
           end do
        end do
     end do
+    !$omp end do
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -2415,6 +2417,8 @@ contains
           end do
        end do
     end do
+    !$omp end do
+    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -2456,10 +2460,6 @@ contains
              tmp(i,j,k) = mu(i,j,k)*qz(i,j,k,idv)
           end do
        end do
-    ! end do
-    ! !$omp end do
-    ! !$omp do
-    ! do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
