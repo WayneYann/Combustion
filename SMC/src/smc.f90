@@ -22,7 +22,7 @@ subroutine smc()
 
   implicit none
 
-  integer :: dm, i !, numcell
+  integer :: dm, numcell, i
   integer :: init_step, istep
 
   real(dp_t) :: dt
