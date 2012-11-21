@@ -479,7 +479,7 @@ contains
   !
   subroutine dUdt_compact (U, Uprime, dx, courno, include_ad, include_r)
 
-    use probin_module, only : overlap_comm_comp
+    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
@@ -591,7 +591,11 @@ contains
     if (inc_ad) then       
 
        if (overlap_comm_comp) then
-          call multifab_fill_boundary_test(U, U_fb_data)
+          if (overlap_comm_gettrans) then
+             call multifab_fill_boundary_test(U, U_fb_data)
+          else
+             call multifab_fill_boundary_waitrecv(U, U_fb_data)
+          end if
        end if
 
        if (U_fb_data%rcvd) then
@@ -616,7 +620,7 @@ contains
        call destroy(bpt_gettrans)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer       
 
        if (overlap_comm_comp) then
-          call multifab_fill_boundary_finish(U, U_fb_data)
+          call multifab_fill_boundary_waitrecv(U, U_fb_data)
           
           if (ng_ctoprim .eq. 0) then
              call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -629,6 +633,8 @@ contains
              call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
              call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
           end if
+
+          call multifab_fill_boundary_finish(U, U_fb_data)
        end if
        
        !
@@ -771,7 +777,7 @@ contains
   !
   subroutine dUdt_S3D (U, Uprime, dx, courno)
 
-    use probin_module, only : overlap_comm_comp
+    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
@@ -871,7 +877,11 @@ contains
     call destroy(bpt_chemterm)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
+       if (overlap_comm_gettrans) then
+          call multifab_fill_boundary_test(U, U_fb_data)
+       else
+          call multifab_fill_boundary_waitrecv(U, U_fb_data)
+       end if
     end if
 
     if (U_fb_data%rcvd) then
@@ -896,7 +906,7 @@ contains
     call destroy(bpt_gettrans)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     if (overlap_comm_comp) then
-       call multifab_fill_boundary_finish(U, U_fb_data)
+       call multifab_fill_boundary_waitrecv(U, U_fb_data)
 
        if (ng_ctoprim .eq. 0) then
           call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -909,6 +919,8 @@ contains
           call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
           call destroy(bpt_gettrans)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
        end if
+
+       call multifab_fill_boundary_finish(U, U_fb_data)
     end if
 
     !

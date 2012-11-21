@@ -23,6 +23,8 @@ job_name                            character          ""
 # category: communication
 #-----------------------------------------------------------------------------
 overlap_comm_comp                   logical            .false.
+overlap_comm_gettrans               logical            .false.
+
 # try different layout for ? seconds
 t_trylayout                         real               -1.d0
 

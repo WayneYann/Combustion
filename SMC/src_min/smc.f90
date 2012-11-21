@@ -19,7 +19,7 @@ subroutine smc()
 
   implicit none
 
-  integer :: dm, numcell, i
+  integer :: dm, i !, numcell
   integer :: init_step, istep
 
   real(dp_t) :: dt
