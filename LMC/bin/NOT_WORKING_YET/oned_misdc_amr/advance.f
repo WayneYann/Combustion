@@ -1,7 +1,7 @@
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,dt,lo,hi,bc)
+     $                   dx,dt,lo,hi,bc,delta_chi)
 
       implicit none
 
@@ -22,6 +22,7 @@
 
 !     cell-centered, no ghost cells
       real*8       dsdt(0:nlevs-1, 0:nfine-1)
+      real*8  delta_chi(0:nlevs-1, 0:nfine-1)
 
 !     nodal, 1 ghost cell
       real*8  press_old(0:nlevs-1,-1:nfine+1)
@@ -51,6 +52,7 @@
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
       real*8     divu_tmp(0:nlevs-1,-1:nfine)
+      real*8    divu_hold(0:nlevs-1,-1:nfine)
 
 !     cell-centered, no ghost cells
       real*8      rhohalf(0:nlevs-1, 0:nfine-1)
@@ -68,6 +70,9 @@
 !     nodal, no ghost cells
       real*8       macvel(0:nlevs-1, 0:nfine  )
       real*8      veledge(0:nlevs-1, 0:nfine  )
+
+!     stuff for iterative dpdt fix
+      real*8 cp, dummy, gamma_inv, mwmix, Runiv
 
       real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
       real*8 cpmix,rhocp,vel_theta,be_cn_theta
@@ -93,11 +98,38 @@ c
 
       do i=lo(0),hi(0)
          divu_tmp(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dsdt(0,i)
+         divu_hold(0,i) = divu_tmp(0,i)
       end do
 
-      call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),divu_tmp(0,:),
-     $              macvel(0,:),dx(0),dt(0),
-     $              lo(0),hi(0),bc(0,:))
+c     AJN HACK
+      if (fancy_dpdt_fix .eq. 1) then
+
+         do i=lo(0),hi(0)
+            do n = 1,Nspec
+               is = FirstSpec + n - 1
+               Y(n) = scal_old(0,i,is)/scal_old(0,i,Density)
+            enddo
+c     compute 1/gamma
+            call CKMMWY(Y,IWRK,RWRK,mwmix)
+            call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
+            call CKCPBS(scal_old(0,i,Temp),Y,IWRK,RWRK,cp)
+
+            gamma_inv = (cp - Runiv/mwmix)/cp
+
+c     delta_chi = delta_chi + (1/gamma)*(ptherm-p0)/(dt*ptherm)
+            delta_chi(0,i) = delta_chi(0,i) 
+     $           + gamma_inv*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+
+            divu_tmp(0,i) = divu_tmp(0,i) + delta_chi(0,i)
+         end do
+
+      else
+
+         call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),divu_tmp(0,:),
+     $                 macvel(0,:),dx(0),dt(0),
+     $                 lo(0),hi(0),bc(0,:))
+
+      end if
 
       call macproj(macvel(0,:),scal_old(0,:,Density),divu_tmp(0,:),dx,
      &             lo(0),hi(0),bc(0,:))
@@ -622,6 +654,35 @@ c     that have a backward Euler character
       do misdc = 1, misdc_iterMAX
          print *,'... doing SDC iter ',misdc
 
+         if (fancy_dpdt_fix .eq. 1) then
+
+            call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+
+            do i=lo(0),hi(0)
+               do n = 1,Nspec
+                  is = FirstSpec + n - 1
+                  Y(n) = scal_new(0,i,is)/scal_new(0,i,Density)
+               enddo
+c     compute 1/gamma
+               call CKMMWY(Y,IWRK,RWRK,mwmix)
+               call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
+               call CKCPBS(scal_new(0,i,Temp),Y,IWRK,RWRK,cp)
+
+               gamma_inv = (cp - Runiv/mwmix)/cp
+
+c     delta_chi = delta_chi + (1/gamma)*(ptherm-p0)/(dt*ptherm)
+               delta_chi(0,i) = delta_chi(0,i) 
+     $              + gamma_inv*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+
+               divu_tmp(0,i) = divu_hold(0,i) + delta_chi(0,i)
+            end do
+
+            call macproj(macvel(0,:),scal_old(0,:,Density),divu_tmp(0,:),dx,
+     &                   lo(0),hi(0),bc(0,:))
+
+         end if
+
+
          print *,'... compute diff_new = D(U^{n+1,k-1})'
 c        this computes rho D_m     (for species)
 c                      lambda / cp (for enthalpy)
@@ -843,9 +904,11 @@ C     get velocity visc terms to use as a forcing term for advection
 
       call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
 
-      call add_dpdt_nodal(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     &                    divu_new(0,:),vel_new(0,:),dx(0),dt(0),
-     &                    lo(0),hi(0),bc(0,:))
+      if (fancy_dpdt_fix .eq. 0) then
+         call add_dpdt_nodal(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     &                       divu_new(0,:),vel_new(0,:),dx(0),dt(0),
+     &                       lo(0),hi(0),bc(0,:))
+      end if
 
       print *,'...nodal projection...'
       call project_level(vel_new(0,:),rhohalf(0,:),divu_new(0,:),
