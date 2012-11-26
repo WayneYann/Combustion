@@ -62,7 +62,7 @@ contains
     type(layout)     :: la
     type(multifab)   :: Uprime, Unew
 
-    type(bl_prof_timer), save :: bpt_rkstep1, bpt_rkstep2, bpt_rkstep3
+    type(bl_prof_timer), save :: bpt_rkstep1, bpt_rkstep2, bpt_rkstep3, bpt_setdt
 
     ng = nghost(U)
     la = get_layout(U)
@@ -76,7 +76,9 @@ contains
 
     courno_proc = 1.0d-50
     call dUdt(U, Uprime, dx, courno=courno_proc)
+    call build(bpt_setdt, "setdt")
     call set_dt(dt, courno_proc, istep)
+    call destroy(bpt_setdt)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew)
@@ -477,7 +479,7 @@ contains
   !
   subroutine dUdt_compact (U, Uprime, dx, courno, include_ad, include_r)
 
-    use probin_module, only : overlap_comm_comp
+    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
@@ -589,7 +591,11 @@ contains
     if (inc_ad) then       
 
        if (overlap_comm_comp) then
-          call multifab_fill_boundary_test(U, U_fb_data)
+          if (overlap_comm_gettrans) then
+             call multifab_fill_boundary_test(U, U_fb_data)
+          else
+             call multifab_fill_boundary_waitrecv(U, U_fb_data)
+          end if
        end if
 
        if (U_fb_data%rcvd) then
@@ -614,7 +620,7 @@ contains
        call destroy(bpt_gettrans)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer       
 
        if (overlap_comm_comp) then
-          call multifab_fill_boundary_finish(U, U_fb_data)
+          call multifab_fill_boundary_waitrecv(U, U_fb_data)
           
           if (ng_ctoprim .eq. 0) then
              call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -627,6 +633,8 @@ contains
              call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
              call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
           end if
+
+          call multifab_fill_boundary_finish(U, U_fb_data)
        end if
        
        !
@@ -769,7 +777,7 @@ contains
   !
   subroutine dUdt_S3D (U, Uprime, dx, courno)
 
-    use probin_module, only : overlap_comm_comp
+    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
@@ -869,7 +877,11 @@ contains
     call destroy(bpt_chemterm)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
+       if (overlap_comm_gettrans) then
+          call multifab_fill_boundary_test(U, U_fb_data)
+       else
+          call multifab_fill_boundary_waitrecv(U, U_fb_data)
+       end if
     end if
 
     if (U_fb_data%rcvd) then
@@ -894,7 +906,7 @@ contains
     call destroy(bpt_gettrans)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     if (overlap_comm_comp) then
-       call multifab_fill_boundary_finish(U, U_fb_data)
+       call multifab_fill_boundary_waitrecv(U, U_fb_data)
 
        if (ng_ctoprim .eq. 0) then
           call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -907,12 +919,12 @@ contains
           call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
           call destroy(bpt_gettrans)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
        end if
+
+       call multifab_fill_boundary_finish(U, U_fb_data)
     end if
 
     !
-    ! Transport terms
     ! S3D_diffterm1: first derivative terms
-    ! S3D_diffterm2: d(a du/dx)/dx terms
     !
     call build(bpt_diffterm_1, "diffterm_1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
@@ -970,7 +982,10 @@ contains
     call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
     call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
     call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
-    
+ 
+    !
+    ! S3D_diffterm2: d(a du/dx)/dx terms
+    !
     call build(bpt_diffterm_2, "diffterm_2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     do n=1,nfabs(Q)
        qp  => dataptr(Q,n)
