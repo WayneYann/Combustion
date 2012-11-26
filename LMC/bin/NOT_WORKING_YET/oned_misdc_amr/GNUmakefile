@@ -4,8 +4,8 @@ EXEname := lmc.exe
 #
 # Choose pmf file
 #
-pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
-#pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
+#pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
+pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
 
 #
 # Choose reaction mechanism
@@ -13,8 +13,8 @@ pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
 # Use CHEMH for pmf_source := chemHSoln_seed_0.00.f
 # Use CHEMH for pmf_source := H-flame_0370_MCDD.f
 #
-REACTION_MECHANISM=GRI30
-#REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=GRI30
+REACTION_MECHANISM=CHEMH
 
 ifeq (${USE_INTEL},TRUE)
   CCOMP := icpc -Wno-deprecated -g -Wunused-variable -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE

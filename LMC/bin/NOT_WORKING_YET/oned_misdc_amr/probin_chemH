@@ -11,6 +11,7 @@
   init_shrink = 0.1
   flame_offset = -2.4
   dpdt_factor = .3
+  fancy_dpdt_fix = 0
   Patm = 1.0
   predict_temp_for_coeffs = 1
   do_initial_projection = 1

@@ -30,6 +30,7 @@
 
 !     cell-centered, no ghost cells
       real*8, allocatable ::        dsdt(:,:)
+      real*8, allocatable ::   delta_chi(:,:)
       real*8, allocatable ::   const_src(:,:,:)
       real*8, allocatable :: lin_src_old(:,:,:)
       real*8, allocatable :: lin_src_new(:,:,:)
@@ -57,7 +58,7 @@
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
-     $                  dpdt_factor, Patm, coef_avg_harm,
+     $                  fancy_dpdt_fix, dpdt_factor, Patm, coef_avg_harm,
      $                  misdc_iterMAX, predict_temp_for_coeffs,
      $                  do_initial_projection, num_divu_iters, 
      $                  num_init_iters,fixed_dt,
@@ -82,6 +83,7 @@ c     Set defaults, change with namelist
       chk_int = 1
       init_shrink = 0.1d0
       flame_offset = 0.d0
+      fancy_dpdt_fix = 0
       dpdt_factor = 0.d0
       Patm = 1.d0
       coef_avg_harm = 0
@@ -141,6 +143,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
 
 !     cell-centered, no ghost cells
       allocate(       dsdt(0:nlevs-1,0:nfine-1))
+      allocate(  delta_chi(0:nlevs-1,0:nfine-1))
       allocate(  const_src(0:nlevs-1,0:nfine-1,nscal))
       allocate(lin_src_old(0:nlevs-1,0:nfine-1,nscal))
       allocate(lin_src_new(0:nlevs-1,0:nfine-1,nscal))
@@ -162,6 +165,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
 
 !     must zero this or else RHS in mac project could be undefined
       dsdt = 0.d0
+      delta_chi = 0.d0
       
 !     initialize dx
       dx(0) = (probhi-problo)/DBLE(nx)
@@ -327,7 +331,7 @@ c     strang split overwrites scal_old so we preserve it
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                   dx,dt,lo,hi,bc)
+     $                   dx,dt,lo,hi,bc,delta_chi)
 
 c     restore scal_old
             if (use_strang) then
@@ -370,7 +374,7 @@ C-- Now advance
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
      $                divu_old,divu_new,dsdt,beta_old,beta_new,
-     $                dx,dt,lo,hi,bc)
+     $                dx,dt,lo,hi,bc,delta_chi)
 
 c     update state, time
          vel_old = vel_new
