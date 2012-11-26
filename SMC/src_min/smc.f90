@@ -25,6 +25,8 @@ subroutine smc()
   real(dp_t) :: dt
   real(dp_t)  , pointer     :: dx(:)
 
+  real(dp_t) :: wt0, wt1, wt2, wt_init, wt_advance
+
   integer :: last_plt_written,last_chk_written
   character(len=5)               :: plot_index, check_index
   character(len=6)               :: plot_index6, check_index6
@@ -38,6 +40,8 @@ subroutine smc()
   type(multifab) :: U
 
   type(bl_prof_timer), save :: bpt_advance
+
+  wt0 = parallel_wtime()
 
   ! keep track of cputime
   call start_cputime_clock()
@@ -139,6 +143,7 @@ subroutine smc()
 !      end if
 !   end if
 
+  wt1 = parallel_wtime()
 
   if (restart < 0) then
 
@@ -300,6 +305,8 @@ subroutine smc()
      end if
   end if
 
+  wt2 = parallel_wtime()
+
   call destroy(U)
 
   call destroy(la)
@@ -311,5 +318,16 @@ subroutine smc()
 
   deallocate(plot_names)
   deallocate(dx)
+
+  call parallel_reduce(wt_init, wt1-wt0, MPI_MAX, proc = parallel_IOProcessorNode())
+  call parallel_reduce(wt_advance, wt2-wt1, MPI_MAX, proc = parallel_IOProcessorNode())
+
+  if (parallel_IOProcessor()) then
+     print*, ' '
+     print*, 'SMC Initialization Time = ', wt_init
+     print*, ' '
+     print*, 'SMC Advance + I/O Time = ', wt_advance
+     print*, ' '
+  end if
 
 end subroutine smc
