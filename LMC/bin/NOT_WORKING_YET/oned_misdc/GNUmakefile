@@ -5,7 +5,7 @@ EXEname := lmc.exe
 # Choose pmf file
 #
 #pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
-pmf_source := ../../../../Chemistry/data/chem-H/PMFs/H-flame_0370.f
+pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
 
 #
 # Choose reaction mechanism
