@@ -3345,6 +3345,7 @@ contains
 
   end subroutine comp_courno_3d
 
+
   subroutine S3D_diffterm_1(lo,hi,ng,ndq,dx,q,rhs,mu,xi,qx,qy,qz)
  
     integer,          intent(in ) :: lo(3),hi(3),ng,ndq
@@ -3357,14 +3358,17 @@ contains
     double precision, intent(out) :: qz (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
     double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
 
-    double precision, allocatable, dimension(:,:,:) :: vsm, tmp
+    double precision, allocatable, dimension(:,:,:) :: vsm
+    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
 
     double precision :: dxinv(3), divu
     double precision :: tauxx,tauyy,tauzz 
     integer :: i,j,k,n, qxn, qdxn
 
-    allocate(vsm(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(tmp(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(vsm (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(tmpx(-ng+lo(1):hi(1)+ng))
+    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
+    allocate(tmpz(    lo(1):hi(1)   ,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
 
     do i = 1,3
        dxinv(i) = 1.0d0 / dx(i)
@@ -3446,10 +3450,10 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
+             tmpx(i) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
           end do
           do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
           end do
        end do
     end do
@@ -3459,12 +3463,12 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2)-4,hi(2)+4
           do i=lo(1),hi(1)
-             tmp(i,j,k) = mu(i,j,k)*qx(i,j,k,idv)
+             tmpy(i,j) = mu(i,j,k)*qx(i,j,k,idv)
           end do
        end do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
           end do
        end do
     end do
@@ -3474,7 +3478,7 @@ contains
     do k=lo(3)-4,hi(3)+4
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             tmp(i,j,k) = mu(i,j,k)*qx(i,j,k,idw)
+             tmpz(i,j,k) = mu(i,j,k)*qx(i,j,k,idw)
           end do
        end do
     end do
@@ -3483,7 +3487,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
           end do
        end do
     end do
@@ -3495,10 +3499,10 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = mu(i,j,k)*qy(i,j,k,idu)
+             tmpx(i) = mu(i,j,k)*qy(i,j,k,idu)
           end do
           do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
           end do
        end do
     end do
@@ -3508,12 +3512,12 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2)-4,hi(2)+4
           do i=lo(1),hi(1)
-             tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
+             tmpy(i,j) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
           end do
        end do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
           end do
        end do
     end do
@@ -3523,7 +3527,7 @@ contains
     do k=lo(3)-4,hi(3)+4
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             tmp(i,j,k) = mu(i,j,k)*qy(i,j,k,idw)
+             tmpz(i,j,k) = mu(i,j,k)*qy(i,j,k,idw)
           end do
        end do
     end do
@@ -3532,7 +3536,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
           end do
        end do
     end do
@@ -3544,10 +3548,10 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = mu(i,j,k)*qz(i,j,k,idu)
+             tmpx(i) = mu(i,j,k)*qz(i,j,k,idu)
           end do
           do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
           end do
        end do
     end do
@@ -3557,12 +3561,12 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2)-4,hi(2)+4
           do i=lo(1),hi(1)
-             tmp(i,j,k) = mu(i,j,k)*qz(i,j,k,idv)
+             tmpy(i,j) = mu(i,j,k)*qz(i,j,k,idv)
           end do
        end do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
           end do
        end do
     end do
@@ -3572,7 +3576,7 @@ contains
     do k=lo(3)-4,hi(3)+4
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             tmp(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qy(i,j,k,idv))
+             tmpz(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qy(i,j,k,idv))
           end do
        end do
     end do
@@ -3581,7 +3585,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
           end do
        end do
     end do
@@ -3702,7 +3706,7 @@ contains
 
     !$omp end parallel
 
-    deallocate(vsm,tmp)
+    deallocate(vsm,tmpx,tmpy,tmpz)
 
   end subroutine S3D_diffterm_1
 
@@ -3730,8 +3734,8 @@ contains
 
     double precision :: dxinv(3)
     integer          :: i,j,k,n, qxn, qyn, qhn, idXn, iryn
-    double precision, allocatable, dimension(:,:,:) :: tmp
     double precision, allocatable, dimension(:,:,:) :: rvc
+    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
 
     allocate(vp(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
 
@@ -3741,8 +3745,10 @@ contains
     allocate(FY(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
     allocate(FE(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
 
-    allocate(tmp(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng))
-    allocate(rvc(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng))
+    allocate(rvc (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(tmpx(-ng+lo(1):hi(1)+ng))
+    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
+    allocate(tmpz(    lo(1):hi(1)   ,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
 
     do i = 1,3
        dxinv(i) = 1.0d0 / dx(i)
@@ -3787,31 +3793,31 @@ contains
        do j=lo(2),hi(2)
 
           do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = vp(i,j,k)*qx(i,j,k,idu) 
+             tmpx(i) = vp(i,j,k)*qx(i,j,k,idu) 
           end do
           do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
           end do
 
           do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = mu(i,j,k)*qx(i,j,k,idv)
+             tmpx(i) = mu(i,j,k)*qx(i,j,k,idv)
           end do
           do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
           end do
 
           do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = mu(i,j,k)*qx(i,j,k,idw)
+             tmpx(i) = mu(i,j,k)*qx(i,j,k,idw)
           end do
           do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
           end do
 
           do i=lo(1)-4,hi(1)+4
-             tmp(i,j,k) = lam(i,j,k)*qx(i,j,k,idT)
+             tmpx(i) = lam(i,j,k)*qx(i,j,k,idT)
           end do
           do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_8(tmp(i-4:i+4,j,k))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
           end do
 
        end do
@@ -3825,45 +3831,45 @@ contains
 
        do j=lo(2)-4,hi(2)+4
           do i=lo(1),hi(1)
-             tmp(i,j,k) = mu(i,j,k)*qy(i,j,k,idu)
+             tmpy(i,j) = mu(i,j,k)*qy(i,j,k,idu)
           end do
        end do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
           end do
        end do
 
        do j=lo(2)-4,hi(2)+4
           do i=lo(1),hi(1)
-             tmp(i,j,k) = vp(i,j,k)*qy(i,j,k,idv)
+             tmpy(i,j) = vp(i,j,k)*qy(i,j,k,idv)
           end do
        end do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
           end do
        end do
 
        do j=lo(2)-4,hi(2)+4
           do i=lo(1),hi(1)
-             tmp(i,j,k) = mu(i,j,k)*qy(i,j,k,idw)
+             tmpy(i,j) = mu(i,j,k)*qy(i,j,k,idw)
           end do
        end do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
           end do
        end do
 
        do j=lo(2)-4,hi(2)+4
           do i=lo(1),hi(1)
-             tmp(i,j,k) = lam(i,j,k)*qy(i,j,k,idT)
+             tmpy(i,j) = lam(i,j,k)*qy(i,j,k,idT)
           end do
        end do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_8(tmp(i,j-4:j+4,k))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
           end do
        end do
 
@@ -3874,7 +3880,7 @@ contains
     do k=lo(3)-4,hi(3)+4
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             tmp(i,j,k) = mu(i,j,k)*qz(i,j,k,idu)
+             tmpz(i,j,k) = mu(i,j,k)*qz(i,j,k,idu)
           end do
        end do
     end do
@@ -3883,7 +3889,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
           end do
        end do
     end do
@@ -3893,7 +3899,7 @@ contains
     do k=lo(3)-4,hi(3)+4
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             tmp(i,j,k) = mu(i,j,k)*qz(i,j,k,idv)
+             tmpz(i,j,k) = mu(i,j,k)*qz(i,j,k,idv)
           end do
        end do
     end do
@@ -3902,7 +3908,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
           end do
        end do
     end do
@@ -3912,7 +3918,7 @@ contains
     do k=lo(3)-4,hi(3)+4
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             tmp(i,j,k) = vp(i,j,k)*qz(i,j,k,idw)
+             tmpz(i,j,k) = vp(i,j,k)*qz(i,j,k,idw)
           end do
        end do
     end do
@@ -3921,7 +3927,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
           end do
        end do
     end do
@@ -3931,7 +3937,7 @@ contains
     do k=lo(3)-4,hi(3)+4
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             tmp(i,j,k) = lam(i,j,k)*qz(i,j,k,idT)
+             tmpz(i,j,k) = lam(i,j,k)*qz(i,j,k,idT)
           end do
        end do
     end do
@@ -3940,7 +3946,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_8(tmp(i,j,k-4:k+4))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
           end do
        end do
     end do
@@ -4175,7 +4181,7 @@ contains
 
     !$omp end parallel
 
-    deallocate(vp,dpy,dpe,FY,FE, tmp)
+    deallocate(vp,dpy,dpe,FY,FE,rvc,tmpx,tmpy,tmpz)
 
   end subroutine S3D_diffterm_2
 

@@ -386,17 +386,29 @@ def expand_dot_product(line):
     def dp_args(dpargs):
         if dpargs.count(',') == 1:
             return [''], ''
-        icomma = string.find(dpargs,',')
-        ilp = string.find(dpargs,'(')
-        if ilp < icomma:
-            irp = string.find(dpargs,')')
-            am = dpargs[0:irp+1]
-            a1 = dpargs[irp+2:]
+        elif dpargs.count('(') == 1:
+            icomma = string.find(dpargs,',')
+            ilp = string.find(dpargs,'(')
+            if ilp < icomma:
+                irp = string.find(dpargs,')')
+                am = dpargs[0:irp+1]
+                a1 = dpargs[irp+2:]
+            else:
+                a1 = dpargs[0:icomma]
+                am = dpargs[icomma+1:]
+            u = expand_fortran_slice(am)
+            a = []
+            for i in range(len(u)):
+                a.append(a1+'('+str(i+1)+')')
+            return u, a
         else:
-            a1 = dpargs[0:icomma]
-            am = dpargs[icomma+1:]
-        u = expand_fortran_slice(am)
-        return u, a1
+            isep = string.find(dpargs,'),')
+            a1 = dpargs[0:isep+1]
+            a2 = dpargs[isep+2:]
+            ea1 = expand_fortran_slice(a1)
+            ea2 = expand_fortran_slice(a2)
+            lea = min(len(ea1), len(ea2))
+            return ea1[0:lea], ea2[0:lea]
     
     ndp = rhs.count('dot_product')
     if ndp == 1:
@@ -408,22 +420,22 @@ def expand_dot_product(line):
         lu = len(u)
         if lu == 8:
             return line0 + \
-                moreindent + '( '+u[0]+'*'+a+'(1) + '+u[1]+'*'+a+'(2) &\n'+\
-                moreindent + '+ '+u[2]+'*'+a+'(3) + '+u[3]+'*'+a+'(4) &\n'+\
-                moreindent + '+ '+u[4]+'*'+a+'(5) + '+u[5]+'*'+a+'(6) &\n'+\
-                moreindent + '+ '+u[6]+'*'+a+'(7) + '+u[7]+'*'+a+'(8) )\n'
+                moreindent + '( '+u[0]+'*'+a[0]+' + '+u[1]+'*'+a[1]+' &\n'+\
+                moreindent + '+ '+u[2]+'*'+a[2]+' + '+u[3]+'*'+a[3]+' &\n'+\
+                moreindent + '+ '+u[4]+'*'+a[4]+' + '+u[5]+'*'+a[5]+' &\n'+\
+                moreindent + '+ '+u[6]+'*'+a[6]+' + '+u[7]+'*'+a[7]+' )\n'
         elif lu == 6:
             return line0 + \
-                moreindent + '( '+u[0]+'*'+a+'(1) + '+u[1]+'*'+a+'(2) &\n'+\
-                moreindent + '+ '+u[2]+'*'+a+'(3) + '+u[3]+'*'+a+'(4) &\n'+\
-                moreindent + '+ '+u[4]+'*'+a+'(5) + '+u[5]+'*'+a+'(6) )\n'
+                moreindent + '( '+u[0]+'*'+a[0]+' + '+u[1]+'*'+a[1]+' &\n'+\
+                moreindent + '+ '+u[2]+'*'+a[2]+' + '+u[3]+'*'+a[3]+' &\n'+\
+                moreindent + '+ '+u[4]+'*'+a[4]+' + '+u[5]+'*'+a[5]+' )\n'
         elif lu == 4:
             return line0 + \
-                moreindent + '( '+u[0]+'*'+a+'(1) + '+u[1]+'*'+a+'(2) &\n'+\
-                moreindent + '+ '+u[2]+'*'+a+'(3) + '+u[3]+'*'+a+'(4) )\n'
+                moreindent + '( '+u[0]+'*'+a[0]+' + '+u[1]+'*'+a[1]+' &\n'+\
+                moreindent + '+ '+u[2]+'*'+a[2]+' + '+u[3]+'*'+a[3]+' )\n'
         elif lu == 2:
             return line0 + \
-                moreindent + '( '+u[0]+'*'+a+'(1) + '+u[1]+'*'+a+'(2) )\n'
+                moreindent + '( '+u[0]+'*'+a[0]+' + '+u[1]+'*'+a[1]+' )\n'
         else:
             print "expand_dot_product: Strange!"
             print line
@@ -449,32 +461,32 @@ def expand_dot_product(line):
         lu2 = len(u2)
         if lu1 == 8 and lu2 == 8:
             return line0 + \
-                moreindent+'( ( '+u1[0]+'*'+a1+'(1) + '+u1[1]+'*'+a1+'(2) &\n'+\
-                moreindent+'  + '+u1[2]+'*'+a1+'(3) + '+u1[3]+'*'+a1+'(4) &\n'+\
-                moreindent+'  + '+u1[4]+'*'+a1+'(5) + '+u1[5]+'*'+a1+'(6) &\n'+\
-                moreindent+'  + '+u1[6]+'*'+a1+'(7) + '+u1[7]+'*'+a1+'(8) ) &\n'+\
-                moreindent+'+ ( '+u2[0]+'*'+a2+'(1) + '+u2[1]+'*'+a2+'(2) &\n'+\
-                moreindent+'  + '+u2[2]+'*'+a2+'(3) + '+u2[3]+'*'+a2+'(4) &\n'+\
-                moreindent+'  + '+u2[4]+'*'+a2+'(5) + '+u2[5]+'*'+a2+'(6) &\n'+\
-                moreindent+'  + '+u2[6]+'*'+a2+'(7) + '+u2[7]+'*'+a2+'(8) ) )\n'
+                moreindent+'( ( '+u1[0]+'*'+a1[0]+' + '+u1[1]+'*'+a1[1]+' &\n'+\
+                moreindent+'  + '+u1[2]+'*'+a1[2]+' + '+u1[3]+'*'+a1[3]+' &\n'+\
+                moreindent+'  + '+u1[4]+'*'+a1[4]+' + '+u1[5]+'*'+a1[5]+' &\n'+\
+                moreindent+'  + '+u1[6]+'*'+a1[6]+' + '+u1[7]+'*'+a1[7]+' ) &\n'+\
+                moreindent+'+ ( '+u2[0]+'*'+a2[0]+' + '+u2[1]+'*'+a2[1]+' &\n'+\
+                moreindent+'  + '+u2[2]+'*'+a2[2]+' + '+u2[3]+'*'+a2[3]+' &\n'+\
+                moreindent+'  + '+u2[4]+'*'+a2[4]+' + '+u2[5]+'*'+a2[5]+' &\n'+\
+                moreindent+'  + '+u2[6]+'*'+a2[6]+' + '+u2[7]+'*'+a2[7]+' ) )\n'
         elif lu1 == 6 and lu2 == 6:
             return line0 + \
-                moreindent+'( ( '+u1[0]+'*'+a1+'(1) + '+u1[1]+'*'+a1+'(2) &\n'+\
-                moreindent+'  + '+u1[2]+'*'+a1+'(3) + '+u1[3]+'*'+a1+'(4) &\n'+\
-                moreindent+'  + '+u1[4]+'*'+a1+'(5) + '+u1[5]+'*'+a1+'(6) ) &\n'+\
-                moreindent+'+ ( '+u2[0]+'*'+a2+'(1) + '+u2[1]+'*'+a2+'(2) &\n'+\
-                moreindent+'  + '+u2[2]+'*'+a2+'(3) + '+u2[3]+'*'+a2+'(4) &\n'+\
-                moreindent+'  + '+u2[4]+'*'+a2+'(5) + '+u2[5]+'*'+a2+'(6) ) )\n'
+                moreindent+'( ( '+u1[0]+'*'+a1[0]+' + '+u1[1]+'*'+a1[1]+' &\n'+\
+                moreindent+'  + '+u1[2]+'*'+a1[2]+' + '+u1[3]+'*'+a1[3]+' &\n'+\
+                moreindent+'  + '+u1[4]+'*'+a1[4]+' + '+u1[5]+'*'+a1[5]+' ) &\n'+\
+                moreindent+'+ ( '+u2[0]+'*'+a2[0]+' + '+u2[1]+'*'+a2[1]+' &\n'+\
+                moreindent+'  + '+u2[2]+'*'+a2[2]+' + '+u2[3]+'*'+a2[3]+' &\n'+\
+                moreindent+'  + '+u2[4]+'*'+a2[4]+' + '+u2[5]+'*'+a2[5]+' ) )\n'
         elif lu1 == 4 and lu2 == 4:
             return line0 + \
-                moreindent+'( ( '+u1[0]+'*'+a1+'(1) + '+u1[1]+'*'+a1+'(2) &\n'+\
-                moreindent+'  + '+u1[2]+'*'+a1+'(3) + '+u1[3]+'*'+a1+'(4) ) &\n'+\
-                moreindent+'+ ( '+u2[0]+'*'+a2+'(1) + '+u2[1]+'*'+a2+'(2) &\n'+\
-                moreindent+'  + '+u2[2]+'*'+a2+'(3) + '+u2[3]+'*'+a2+'(4) ) )\n'
+                moreindent+'( ( '+u1[0]+'*'+a1[0]+' + '+u1[1]+'*'+a1[1]+' &\n'+\
+                moreindent+'  + '+u1[2]+'*'+a1[2]+' + '+u1[3]+'*'+a1[3]+' ) &\n'+\
+                moreindent+'+ ( '+u2[0]+'*'+a2[0]+' + '+u2[1]+'*'+a2[1]+' &\n'+\
+                moreindent+'  + '+u2[2]+'*'+a2[2]+' + '+u2[3]+'*'+a2[3]+' ) )\n'
         elif lu1 == 2 and lu2 == 2:
             return line0 + \
-                moreindent+'( ( '+u1[0]+'*'+a1+'(1) + '+u1[1]+'*'+a1+'(2) ) &\n'+\
-                moreindent+'+ ( '+u2[0]+'*'+a2+'(1) + '+u2[1]+'*'+a2+'(2) ) )\n'
+                moreindent+'( ( '+u1[0]+'*'+a1[0]+' + '+u1[1]+'*'+a1[1]+' ) &\n'+\
+                moreindent+'+ ( '+u2[0]+'*'+a2[0]+' + '+u2[1]+'*'+a2[1]+' ) )\n'
         else:
             print "expand_dot_product: Strange!"
             print line
@@ -629,14 +641,6 @@ def expand_first_deriv_4(line):
 
 
 def expand_fortran_slice(x):
-    xs = []
-    lb = string.find(x, '(')
-    rb = string.find(x, ')')
-    v = x[0:lb]
-    indices = x[lb+1:rb].split(',')
-    i_index = indices[0]
-    j_index = indices[1]
-    k_index = indices[2]
     def ii(an_index):
         index0, index1 = an_index.split(':')
         try:
@@ -648,22 +652,36 @@ def expand_fortran_slice(x):
         except:
             iiend = 0
         return iistart, iiend
-    if string.find(i_index,':') >= 0:
-        istart, iend = ii(i_index)
-        for i in range(istart,iend+1):
-            xs.append(v+'(i+'+str(i)+',j,k,NCOMP)')
-    elif string.find(j_index,':') >= 0:
-        jstart, jend = ii(j_index)
-        for j in range(jstart,jend+1):
-            xs.append(v+'(i,j+'+str(j)+',k,NCOMP)')
+    xs = []
+    lb = string.find(x, '(')
+    rb = string.find(x, ')')
+    v = x[0:lb]
+    indices = x[lb+1:rb].split(',')
+    if indices[0] == ':':
+        i_index = indices[1]
+        j_index = indices[2]
+        k_index = indices[3]
+        return [v+'('+str(n+1)+','+i_index+','+j_index+','+k_index+')' for n in range(8)]
     else:
-        kstart, kend = ii(k_index)
-        for k in range(kstart,kend+1):
-            xs.append(v+'(i,j,k+'+str(k)+',NCOMP)')
-    if len(indices) == 4:
-        return [t.replace('NCOMP',indices[3]).replace('+-','-').replace('+0','  ') for t in xs]
-    else:
-        return [t.replace(',NCOMP','').replace('+-','-').replace('+0','  ') for t in xs]
+        i_index = indices[0]
+        j_index = indices[1]
+        k_index = indices[2]
+        if string.find(i_index,':') >= 0:
+            istart, iend = ii(i_index)
+            for i in range(istart,iend+1):
+                xs.append(v+'(i+'+str(i)+',j,k,NCOMP)')
+        elif string.find(j_index,':') >= 0:
+            jstart, jend = ii(j_index)
+            for j in range(jstart,jend+1):
+                xs.append(v+'(i,j+'+str(j)+',k,NCOMP)')
+        else:
+            kstart, kend = ii(k_index)
+            for k in range(kstart,kend+1):
+                xs.append(v+'(i,j,k+'+str(k)+',NCOMP)')
+        if len(indices) == 4:
+            return [t.replace('NCOMP',indices[3]).replace('+-','-').replace('+0','  ') for t in xs]
+        else:
+            return [t.replace(',NCOMP','').replace('+-','-').replace('+0','  ') for t in xs]
 
 
 def expand_fortran_slice2(x,idir):
@@ -692,6 +710,12 @@ def expand_fortran_slice2(x,idir):
     # mu(i-4:i+4,j,k)*uy(i-4:i+4,j,k)
     match6 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
                         "\*(?P<v2>[a-zA-Z]\w*)\((?P<i2>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e2>(,[a-zA-Z]\w*))*\)$").match(x)
+
+    # tmpx(i-4:i+4,comp)
+    match7 = re.compile(r"(?P<v>[a-zA-Z]\w*)\((?P<i>i[i\+\-:0-9]*)(?P<e>(,[a-zA-Z]\w*))*\)$").match(x)
+
+    # tmpy(i,j-4:j+4,k,iu)
+    match8 = re.compile(r"(?P<v>[a-zA-Z]\w*)\((?P<i>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e>(,[a-zA-Z]\w*))*\)$").match(x)
 
     if match1:
         v =  match1.group('v')
@@ -865,6 +889,41 @@ def expand_fortran_slice2(x,idir):
                 xs.append(v1+'(i,j,k+'+str(k)+',NCOMP1)*'+
                           v2+'(i,j,k+'+str(k)+',NCOMP2)')
         return [t.replace(',NCOMP1',n1).replace(',NCOMP2',n2).replace('+-','-').replace('+0','  ') for t in xs]
+
+    elif match7:
+        v =  match7.group('v')
+        ijk = match7.group('i')
+        ncomp = match7.group('e')
+        if ncomp is None:
+            ncomp = ''
+        if idir == 1:
+            xs = []
+            istart = int(ijk[1:3])
+            for i in range(istart,-istart+1):
+                xs.append(v+'(i+'+str(i)+',NCOMP)')
+        else:
+            return ''
+        return [t.replace(',NCOMP',ncomp).replace('+-','-').replace('+0','  ') for t in xs]
+            
+    elif match8:
+        v =  match8.group('v')
+        ijk = match8.group('i')
+        ncomp = match8.group('e')
+        if ncomp is None:
+            ncomp = ''
+        if idir == 1:
+            xs = []
+            istart = int(ijk[1:3])
+            for i in range(istart,-istart+1):
+                xs.append(v+'(i+'+str(i)+',j,NCOMP)')
+        elif idir == 2:
+            xs = []
+            jstart = int(ijk[3:5])
+            for j in range(jstart,-jstart+1):
+                xs.append(v+'(i,j+'+str(j)+',NCOMP)')
+        else:
+            return ''
+        return [t.replace(',NCOMP',ncomp).replace('+-','-').replace('+0','  ') for t in xs]
             
     else:
         return ''
