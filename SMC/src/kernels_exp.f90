@@ -6804,7 +6804,7 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz)
+    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz,tmpx,tmpy)
 
     !$omp workshare
     rhs = 0.d0
@@ -7319,7 +7319,7 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,idXn,iryn)
+    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,idXn,iryn,tmpx,tmpy)
 
     !$omp do
     do k=lo(3)-ng,hi(3)+ng

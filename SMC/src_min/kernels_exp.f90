@@ -38,7 +38,7 @@ contains
     allocate(tmpy(lo(1)  :hi(1)  ,lo(2)-4:hi(2)+4))
     allocate(tmpz(lo(1)  :hi(1)  ,lo(2)  :hi(2)  ,lo(3)-4:hi(3)+4))
 
-    !$omp parallel private(i,j,k,n)
+    !$omp parallel private(i,j,k,n,tmpx,tmpy)
     
     !$omp workshare
     rhs = 0.d0
@@ -460,7 +460,7 @@ contains
     allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
 
     !$omp parallel &
-    !$omp private(i,j,k,tauxx,tauyy,tauzz,divu)
+    !$omp private(i,j,k,tauxx,tauyy,tauzz,divu,tmpx,tmpy)
 
     !$omp workshare
     rhs = 0.d0
@@ -834,7 +834,7 @@ contains
              end do
           end do
        end do
-       !$omp end do nowait
+       !$omp end do
     end do
 
     !$omp barrier
@@ -2196,7 +2196,7 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz)
+    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz,tmpx,tmpy)
 
     !$omp workshare
     rhs = 0.d0
@@ -2711,7 +2711,7 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,idXn,iryn)
+    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,idXn,iryn,tmpx,tmpy)
 
     !$omp do
     do k=lo(3)-ng,hi(3)+ng
