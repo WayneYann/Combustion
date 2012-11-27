@@ -52,7 +52,7 @@ c     cell-centered, 1 ghost cell
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
       real*8  divu_extrap(0:nlevs-1,-1:nfine)
-      real*8     divu_eff(0:nlevs-1,-1:nfine)
+      real*8  divu_effect(0:nlevs-1,-1:nfine)
 
 c     cell-centered, no ghost cells
       real*8      rhohalf(0:nlevs-1, 0:nfine-1)
@@ -98,7 +98,6 @@ c
 
       do i=lo(0),hi(0)
          divu_extrap(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dsdt(0,i)
-         divu_eff(0,i) = divu_extrap(0,i)
       end do
 
       if (fancy_dpdt_fix .eq. 1) then
@@ -119,19 +118,19 @@ c     delta_chi = delta_chi + (1/gamma)*(ptherm-p0)/(dt*ptherm)
             delta_chi(0,i) = delta_chi(0,i) 
      $           + gamma_inv*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
 
-            divu_eff(0,i) = divu_eff(0,i) + delta_chi(0,i)
+            divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
          end do
 
       else
 
-         call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),divu_eff(0,:),
-     $                 macvel(0,:),dx(0),dt(0),
+         call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
+     $                 divu_effect(0,:),macvel(0,:),dx(0),dt(0),
      $                 lo(0),hi(0),bc(0,:))
 
       end if
 
-      call macproj(macvel(0,:),scal_old(0,:,Density),divu_eff(0,:),dx,
-     &             lo(0),hi(0),bc(0,:))
+      call macproj(macvel(0,:),scal_old(0,:,Density),
+     &             divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
 
 c     compute diffusivities at time n (old time)
 c     this computes rho D_m     (for species)
@@ -219,7 +218,7 @@ c     we take the gradient of Y from the second scal argument
          enddo
        
          call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                  divu_eff(0,:),tforce(0,:,:),dx(0),dt(0),
+     $                  divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                  lo(0),hi(0),bc(0,:))
 
          print *,'... update rho'
@@ -515,7 +514,7 @@ c     compute advective forcing term
 
 c     compute advection term
          call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                  divu_eff(0,:),tforce(0,:,:),dx(0),dt(0),
+     $                  divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                  lo(0),hi(0),bc(0,:))
 
 c     update density
@@ -673,11 +672,11 @@ c     delta_chi = delta_chi + (1/gamma)*(ptherm-p0)/(dt*ptherm)
                   delta_chi(0,i) = delta_chi(0,i) 
      $                 + gamma_inv*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
                   
-                  divu_eff(0,i) = divu_extrap(0,i) + delta_chi(0,i)
+                  divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
                end do
                
-               call macproj(macvel(0,:),scal_old(0,:,Density),divu_eff(0,:),dx,
-     &                      lo(0),hi(0),bc(0,:))
+               call macproj(macvel(0,:),scal_old(0,:,Density),
+     &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
                
             end if
             
@@ -723,7 +722,7 @@ c     really no need to recompute this since it doesn't change
             
             print *,'... compute A with updated D+R source'
             call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                     divu_eff(0,:),tforce(0,:,:),dx(0),dt(0),
+     $                     divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                     lo(0),hi(0),bc(0,:))
 
             print *,'... update rho'
