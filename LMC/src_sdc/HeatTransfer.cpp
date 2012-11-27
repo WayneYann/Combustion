@@ -109,6 +109,7 @@ int  HeatTransfer::do_OT_radiation;
 int  HeatTransfer::do_heat_sink;
 int  HeatTransfer::RhoH;
 int  HeatTransfer::do_diffuse_sync;
+int  HeatTransfer::do_reflux_visc;
 int  HeatTransfer::dpdt_option;
 int  HeatTransfer::RhoYdot_Type;
 int  HeatTransfer::FuncCount_Type;
@@ -283,6 +284,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::do_heat_sink              = 0;
     HeatTransfer::RhoH                      = -1;
     HeatTransfer::do_diffuse_sync           = 1;
+    HeatTransfer::do_reflux_visc            = 1;
     HeatTransfer::dpdt_option               = 2;
     HeatTransfer::RhoYdot_Type                 = -1;
     HeatTransfer::FuncCount_Type            = -1;
@@ -352,6 +354,8 @@ HeatTransfer::Initialize ()
 
     pp.query("do_diffuse_sync",do_diffuse_sync);
     BL_ASSERT(do_diffuse_sync == 0 || do_diffuse_sync == 1);
+    pp.query("do_reflux_visc",do_reflux_visc);
+    BL_ASSERT(do_reflux_visc == 0 || do_reflux_visc == 1);
     pp.query("dpdt_option",dpdt_option);
     BL_ASSERT(dpdt_option >= 0 && dpdt_option <= 2);
     pp.query("do_active_control",do_active_control);
@@ -6914,7 +6918,7 @@ HeatTransfer::reflux ()
 
     // take divergence of diffusive flux registers into cell-centered RHS
     fr_visc.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
-    if (true)
+    if (do_reflux_visc)
         fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
     const MultiFab* RhoHalftime = get_rho_half_time();
