@@ -123,6 +123,10 @@ c     delta_chi = delta_chi + (1/gamma)*(ptherm-p0)/(dt*ptherm)
 
       else
 
+         do i=lo(0),hi(0)
+            divu_effect(0,i) = divu_extrap(0,i)
+         end do
+
          call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
      $                 divu_effect(0,:),macvel(0,:),dx(0),dt(0),
      $                 lo(0),hi(0),bc(0,:))
