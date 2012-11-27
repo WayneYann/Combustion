@@ -246,16 +246,41 @@ contains
 
     call multifab_fill_boundary_nowait(U, U_fb_data)
 
+    ! On hopper MPI_Test encourages the overlap of communication and compution.
+    ! That's why we have so many calls to multifab_fill_boundary_test.
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    else
+       call multifab_fill_boundary_finish(U, U_fb_data)
+    end if
+
     call setval(Uprime, ZERO)
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
 
     dm = U%dim
     ng = nghost(U)
     la = get_layout(U)
 
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
+
     call multifab_build(Q, la, nprim, ng)
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
 
     call multifab_build(Fhyp, la, ncons, 0)
     call multifab_build(Fdif, la, ncons, 0)
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
 
     call multifab_build(mu , la, 1, ng)
     call multifab_build(xi , la, 1, ng)
@@ -264,8 +289,6 @@ contains
 
     if (overlap_comm_comp) then
        call multifab_fill_boundary_test(U, U_fb_data)
-    else
-       call multifab_fill_boundary_finish(U, U_fb_data)
     end if
 
     if (U_fb_data%rcvd) then
@@ -280,6 +303,10 @@ contains
     call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call ctoprim(U, Q, ng_ctoprim)
     call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
 
     if (present(courno)) then
        call compute_courno(Q, dx, courno)
@@ -328,6 +355,10 @@ contains
        call ctoprim(U, Q, ghostcells_only=.true.)
        call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
        ng_ctoprim = ng 
+    end if
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
     end if
 
     !
@@ -499,22 +530,48 @@ contains
 
     call multifab_fill_boundary_nowait(U, U_fb_data)
 
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    else
+       call multifab_fill_boundary_finish(U, U_fb_data)
+    end if
+
     call setval(Uprime, ZERO)
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
 
     ndq = idX1+nspecies-1
 
     dm = U%dim
     la = get_layout(U)
 
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
+
     call multifab_build(Q, la, nprim, ng)
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
 
     call multifab_build(Fhyp, la, ncons, 0)
     call multifab_build(Fdif, la, ncons, 0)
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
 
     call multifab_build(mu , la, 1, ng)
     call multifab_build(xi , la, 1, ng)
     call multifab_build(lam, la, 1, ng)
     call multifab_build(Ddiag, la, nspecies, ng)
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
 
     ! these multifabs are used to store first-derivatives
     call multifab_build(qx, la, ndq, ng)
@@ -523,8 +580,6 @@ contains
 
     if (overlap_comm_comp) then
        call multifab_fill_boundary_test(U, U_fb_data)
-    else
-       call multifab_fill_boundary_finish(U, U_fb_data)
     end if
 
     if (U_fb_data%rcvd) then
@@ -539,6 +594,10 @@ contains
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
     call ctoprim(U, Q, ng_ctoprim)
     call destroy(bpt_ctoprim)            !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
+    end if
 
     if (present(courno)) then
        call compute_courno(Q, dx, courno)
@@ -587,6 +646,10 @@ contains
        call ctoprim(U, Q, ghostcells_only=.true.)
        call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
        ng_ctoprim = ng 
+    end if
+
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(U, U_fb_data)
     end if
 
     !
@@ -647,6 +710,16 @@ contains
     qz_fb_data%tag = 1003
     call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
 
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_test(qx, qx_fb_data, idim=1)
+       call multifab_fill_boundary_test(qy, qy_fb_data, idim=2)
+       call multifab_fill_boundary_test(qz, qz_fb_data, idim=3)
+    else
+       call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
+       call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
+       call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
+    end if
+
     !
     ! Hyperbolic terms
     !
@@ -667,9 +740,11 @@ contains
     end do
     call destroy(bpt_hypterm)            !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
-    call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
-    call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
+    if (overlap_comm_comp) then
+       call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
+       call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
+       call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
+    end if
 
     !
     ! Transport terms: d(a du/dx)/dx terms

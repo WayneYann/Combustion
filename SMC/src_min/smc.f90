@@ -325,8 +325,7 @@ subroutine smc()
   if (parallel_IOProcessor()) then
      print*, ' '
      print*, 'SMC Initialization Time = ', wt_init
-     print*, ' '
-     print*, 'SMC Advance + I/O Time = ', wt_advance
+     print*, 'SMC Advance + I/O  Time = ', wt_advance
      print*, ' '
   end if
 
