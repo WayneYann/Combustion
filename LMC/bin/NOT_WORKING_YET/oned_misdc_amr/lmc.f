@@ -29,7 +29,7 @@
       real*8, allocatable :: divu_new(:,:)
 
 !     cell-centered, no ghost cells
-      real*8, allocatable ::        dsdt(:,:)
+      real*8, allocatable ::        dSdt(:,:)
       real*8, allocatable ::   delta_chi(:,:)
       real*8, allocatable ::   const_src(:,:,:)
       real*8, allocatable :: lin_src_old(:,:,:)
@@ -142,7 +142,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       allocate(divu_new(0:nlevs-1,-1:nfine))
 
 !     cell-centered, no ghost cells
-      allocate(       dsdt(0:nlevs-1,0:nfine-1))
+      allocate(       dSdt(0:nlevs-1,0:nfine-1))
       allocate(  delta_chi(0:nlevs-1,0:nfine-1))
       allocate(  const_src(0:nlevs-1,0:nfine-1,nscal))
       allocate(lin_src_old(0:nlevs-1,0:nfine-1,nscal))
@@ -164,7 +164,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       divu_new = 0.d0
 
 !     must zero this or else RHS in mac project could be undefined
-      dsdt = 0.d0
+      dSdt = 0.d0
       delta_chi = 0.d0
       
 !     initialize dx
@@ -214,7 +214,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          print *,'CHKFILE ',chkfile
          
          call read_check(chkfile,vel_old,scal_old,press_old,
-     $                   I_R,divu_old,dsdt,
+     $                   I_R,divu_old,dSdt,
      $                   time,at_nstep,dt,lo,hi)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
@@ -330,7 +330,7 @@ c     strang split overwrites scal_old so we preserve it
 
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
-     $                   divu_old,divu_new,dsdt,beta_old,beta_new,
+     $                   divu_old,divu_new,dSdt,beta_old,beta_new,
      $                   dx,dt,lo,hi,bc,delta_chi)
 
 c     restore scal_old
@@ -373,7 +373,7 @@ C-- Now advance
          
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
-     $                divu_old,divu_new,dsdt,beta_old,beta_new,
+     $                divu_old,divu_new,dSdt,beta_old,beta_new,
      $                dx,dt,lo,hi,bc,delta_chi)
 
 c     update state, time
@@ -392,7 +392,7 @@ c     update state, time
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 
             call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $                       I_R,divu_new,dsdt,dx,time,dt,lo,hi)
+     $                       I_R,divu_new,dSdt,dx,time,dt,lo,hi)
          endif
       enddo
 

@@ -1,5 +1,5 @@
       subroutine write_check(nsteps,vel,scal,press,
-     $                       I_R,divu,dsdt,dx,time,dt_old,lo,hi)
+     $                       I_R,divu,dSdt,dx,time,dt_old,lo,hi)
       implicit none
       include 'spec.h'
       integer nsteps
@@ -8,7 +8,7 @@
       real*8 press(0:nlevs-1,-1:nfine+1)
       real*8   I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
       real*8  divu(0:nlevs-1,-1:nfine)
-      real*8  dsdt(0:nlevs-1, 0:nfine-1)
+      real*8  dSdt(0:nlevs-1, 0:nfine-1)
       real*8 dx
       real*8 time
       real*8 dt_old
@@ -50,7 +50,7 @@
 
 !     cell-centered, no ghost cells
          do i=lo(l),hi(l)
-            write(10) (i+.5)*dx,dsdt(l,i)
+            write(10) (i+.5)*dx,dSdt(l,i)
          enddo
 
 !     nodal, 1 ghost cell

@@ -1,5 +1,5 @@
       subroutine read_check(chkfile,vel,scal,press,
-     $                      I_R,divu,dsdt,
+     $                      I_R,divu,dSdt,
      $                      time,at_nstep,dt_old,lo,hi)
       implicit none
       include 'spec.h'
@@ -10,7 +10,7 @@
       real*8 press(0:nlevs-1,-1:nfine+1)
       real*8   I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
       real*8  divu(0:nlevs-1,-1:nfine)
-      real*8  dsdt(0:nlevs-1, 0:nfine-1)
+      real*8  dSdt(0:nlevs-1, 0:nfine-1)
       real*8 time
       real*8 dt_old
       integer lo(0:nlevs-1), hi(0:nlevs-1)
@@ -45,7 +45,7 @@
 
 !     cell-centered, no ghost cells
          do i=lo(l),hi(l)
-            read(10) x,dsdt(l,i)
+            read(10) x,dSdt(l,i)
          enddo
 
 !     nodal, 1 ghost cell

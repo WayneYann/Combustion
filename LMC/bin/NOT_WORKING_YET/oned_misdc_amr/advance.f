@@ -1,11 +1,30 @@
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+cc     NOTE: The comments and equation references correspond to the final
+c           published version available online at
+c
+c     http://www.tandfonline.com/doi/full/10.1080/13647830.2012.701019
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
-     $                   divu_old,divu_new,dsdt,beta_old,beta_new,
+     $                   divu_old,divu_new,dSdt,beta_old,beta_new,
      $                   dx,dt,lo,hi,bc,delta_chi)
 
       implicit none
 
       include 'spec.h'
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c     state variables held in scal_old and scal_new contain:
+c
+c     1           = Density
+c     2           = Temp
+c     3           = RhoH
+c     4           = RhoRT (i.e., "ptherm")
+c     5:5+Nspec-1 = FirstSpec:LastSpec (rho*Y_k)
+c
+c     For the CHEMH mechanisms this problem defaults to, Nspec=9 and nscal=13
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 c     cell-centered, 2 ghost cells
       real*8    vel_old(0:nlevs-1,-2:nfine+1)
@@ -21,7 +40,7 @@ c     cell-centered, 1 ghost cell
       real*8   divu_new(0:nlevs-1,-1:nfine)
 
 c     cell-centered, no ghost cells
-      real*8       dsdt(0:nlevs-1, 0:nfine-1)
+      real*8       dSdt(0:nlevs-1, 0:nfine-1)
       real*8  delta_chi(0:nlevs-1, 0:nfine-1)
 
 c     nodal, 1 ghost cell
@@ -97,7 +116,7 @@ c
       call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
 
       do i=lo(0),hi(0)
-         divu_extrap(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dsdt(0,i)
+         divu_extrap(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dSdt(0,i)
       end do
 
       if (fancy_dpdt_fix .eq. 1) then
@@ -866,7 +885,7 @@ c                   lambda      (for temperature)
       do i=lo(0),hi(0)
          rhohalf(0,i) = 
      $        0.5d0*(scal_old(0,i,Density)+scal_new(0,i,Density))
-         dsdt(0,i) = (divu_new(0,i) - divu_old(0,i)) / dt(0)
+         dSdt(0,i) = (divu_new(0,i) - divu_old(0,i)) / dt(0)
       enddo
 
       print *,'... update velocities'
