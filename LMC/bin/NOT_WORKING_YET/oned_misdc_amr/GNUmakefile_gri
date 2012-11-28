@@ -21,7 +21,7 @@ ifeq (${USE_INTEL},TRUE)
   fCOMP := ifort -warn unused -g -u -fpconstant -fbounds-check
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
-  fCOMP := gfortran -g -fbounds-check -O1 -Wuninitialized -Waliasing -Wampersand -Wsurprising -Wintrinsics-std -Wno-tabs -Wintrinsic-shadow -Wline-truncation -Wunused -ffixed-line-length-none
+  fCOMP := gfortran -g -fbounds-check -O1 -Wall -ffixed-line-length-none
   CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
   XTRALIBS :=  -lm -lgfortran
 endif
