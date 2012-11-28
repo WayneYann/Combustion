@@ -13,7 +13,6 @@
   dpdt_factor = .3
   fancy_dpdt_fix = 0
   Patm = 1.0
-  predict_temp_for_coeffs = 1
   do_initial_projection = 1
   num_divu_iters = 3
   num_init_iters = 2

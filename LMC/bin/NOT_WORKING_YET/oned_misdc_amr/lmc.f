@@ -59,7 +59,7 @@
      $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
      $                  fancy_dpdt_fix, dpdt_factor, Patm, coef_avg_harm,
-     $                  misdc_iterMAX, predict_temp_for_coeffs,
+     $                  misdc_iterMAX,
      $                  do_initial_projection, num_divu_iters, 
      $                  num_init_iters,fixed_dt,
      $                  use_strang, 
@@ -88,7 +88,6 @@ c     Set defaults, change with namelist
       Patm = 1.d0
       coef_avg_harm = 0
       misdc_iterMAX = 3
-      predict_temp_for_coeffs = 1
       do_initial_projection = 1
       num_divu_iters = 3
       num_init_iters = 2
