@@ -232,10 +232,13 @@ c     needed for seed to EOS after first strang_chem call
 C take vals from PMF and fills vel, Y, and Temp
 C computes rho and h, fills in rhoH and rhoY
 C sets I_R to zero
+
          call initdata(vel_old,scal_old,I_R,dx,lo,hi,bc)
 
 c     needed for seed to EOS after first strang_chem call
          scal_new(:,:,Temp) = scal_old(:,:,Temp)
+
+         press_old = 0.d0
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,99999,time,lo,hi,bc)
