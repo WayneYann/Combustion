@@ -52,6 +52,8 @@ c     therefore gp = -(vel_new-vel_star)/dt * rhohalf
          do i=lo,hi+1
             press_new(i) = phi(i)
          enddo
+         press_new(lo-1) = press_new(lo)
+         press_new(hi+2) = press_new(hi+1)
 
       endif
 
