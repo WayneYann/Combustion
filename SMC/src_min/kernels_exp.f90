@@ -38,7 +38,7 @@ contains
     allocate(tmpy(lo(1)  :hi(1)  ,lo(2)-4:hi(2)+4))
     allocate(tmpz(lo(1)  :hi(1)  ,lo(2)  :hi(2)  ,lo(3)-4:hi(3)+4))
 
-    !$omp parallel private(i,j,k,n,tmpx,tmpy)
+    !$omp parallel private(i,j,k,n,jj,tmpx,tmpy)
     
     !$omp workshare
     rhs = 0.d0
@@ -140,7 +140,6 @@ contains
 
     !$omp do
     do k=lo(3),hi(3)
-
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
@@ -222,7 +221,6 @@ contains
     do n = iry1, iry1+nspecies-1
        !$omp do
        do k=lo(3),hi(3)
-
           do j=lo(2)-4,hi(2)+4
              do i=lo(1),hi(1)
                 tmpy(i,j) = cons(i,j,k,n)*q(i,j,k,qv)
@@ -239,7 +237,6 @@ contains
                    + D8(4)*(tmpy(i,j+4)-tmpy(i,j-4)) )
              end do
           enddo
-
        enddo
        !$omp end do
     enddo
