@@ -115,8 +115,9 @@ c     compute cell-centered grad pi from nodal pi
          gp(0,i) = (press_old(0,i+1) - press_old(0,i)) / dx(0)
       enddo
 
-c     compute U^{ADV,*}
       print *,'... predict edge velocities'
+
+c     compute U^{ADV,*}
       call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:),
      $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
@@ -195,8 +196,9 @@ ccccccccccccccccccccccccccccccccccccccccccc
 c     Strang Step 2A: First reaction step
 ccccccccccccccccccccccccccccccccccccccccccc
 
+         print *,'... react for dt/2'
+
 c     react for dt/2
-         print *,'... react for dt/2;  save I_R'
          do n = 1,nscal
             do i=lo(0),hi(0)
                const_src(0,i,n) = 0.d0
@@ -268,15 +270,19 @@ c     we compute grad Y_m using Y_m from the second argument
             enddo
             tforce(0,i,RhoH) = diff_old(0,i,RhoH) + diffdiff_old(0,i)
          enddo
-       
+
+c     compute advective flux divergence
          call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
      $                  divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                  lo(0),hi(0),bc(0,:))
 
          print *,'... update rho'
+
+c     update density via equation (55)
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                   dt(0),lo(0),hi(0),bc(0,:))
 
+c     create forcing term for temperature edge state prediction
          do i=lo(0),hi(0)
             do n = 1,Nspec
                Y(n) = scal_old(0,i,FirstSpec+n-1) / scal_old(0,i,Density)
@@ -287,30 +293,33 @@ c     we compute grad Y_m using Y_m from the second argument
             tforce(0,i,Temp) = diff_old(0,i,Temp)/rhocp
          end do
 
-c*****************************************************************
-c     Either do c-n solve for new T prior to computing new 
-c     coeffs, or simply start by copying from previous time step
-         print *,'... predicting new temperature with lagged coeffs'
+         print *,'... updating new temperature with lagged coeffs'
+
+c     update T with advection term and set up RHS for equation (56) C-N solve
          call update_temp(scal_old(0,:,:),scal_new(0,:,:),
      $                    aofs(0,:,:),alpha(0,:),
      $                    beta_old(0,:,:),beta_old(0,:,:),
      $                    Rhs(0,:,Temp),dx(0),dt(0),be_cn_theta,
      $                    lo(0),hi(0),bc(0,:))
-c     puts updated temperature in snew
+
+c     Solve C-N system in equation (56) for \tilde{T}_{pred}^{<2>}
          rho_flag = 1
          call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
      $                 Rhs(0,:,Temp),dx(0),dt(0),Temp,be_cn_theta,
      $                 rho_flag,.false.,lo(0),hi(0),bc(0,:))
 
+         print *,'... compute new coeffs after temperature update'
+
 c     compute transport coefficients
 c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
-         print *,'... compute new coeffs after temperature update'
          call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
      &                           mu_dummy(0,:),lo(0),hi(0))
 
          print *,'... do predictor for species'
+
+c     update rhoY_m with advection terms and set up RHS for equation (57) C-N solve
          do i=lo(0),hi(0)
             dRhs(0,i,0) = 0.0d0
             do n=1,Nspec
@@ -322,6 +331,7 @@ c        lambda      (for temperature)
      &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
      &                    be_cn_theta,lo(0),hi(0),bc(0,:))
 
+c     Solve C-N system in equation (57) for \tilde{Y}_{m,pred}^{<2>}
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
@@ -340,7 +350,7 @@ c     also save gamma_m for computing diffdiff terms later
      &                               spec_flux_hi(0,:,:),
      &                               dx(0),lo(0),hi(0))
 
-c     update species with conservative diffusion fluxes
+c     update species with conservative diffusion fluxes using equation (58)
             do i=lo(0),hi(0)
                do n=1,Nspec
                   is = FirstSpec + n - 1
@@ -381,10 +391,14 @@ c     we compute grad Y_m using Y_m from the second argument
          end if
 
          print *,'... do predictor for rhoh'
+
+c     update rhoh with advection terms and set up RHS for equation (59) C-N solve
          call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                    be_cn_theta,lo(0),hi(0),bc(0,:))
+
+c     Solve C-N system in equation (59) for h_{pred}^{<2>}
          rho_flag = 2
          call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
@@ -396,15 +410,18 @@ c     call the EOS to get consistent temperature
 C----------------------------------------------------------------
 C     Corrector
 
+         print *,'... compute new coeffs after predictor'
+
 c     compute transport coefficients
 c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
-         print *,'... compute new coeffs after predictor'
          call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
      &                           mu_dummy(0,:),lo(0),hi(0))
 
          print *,'... do corrector for species'
+
+c     update rhoY_m with advection terms and set up RHS for equation (60) C-N solve
          do i=lo(0),hi(0)
             dRhs(0,i,0) = 0.0d0
             do n=1,Nspec
@@ -416,6 +433,7 @@ c        lambda      (for temperature)
      &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
      &                    be_cn_theta,lo(0),hi(0),bc(0,:))
 
+c     Solve C-N system in equation (60) for \tilde{Y}_m^{<2>}
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
@@ -434,7 +452,7 @@ c     also save gamma_m for computing diffdiff terms later
      &                               spec_flux_hi(0,:,:),
      &                               dx(0),lo(0),hi(0))
 
-c     update species with conservative diffusion fluxes
+c     update species with conservative diffusion fluxes using equation (61)
             do i=lo(0),hi(0)
                do n=1,Nspec
                   is = FirstSpec + n - 1
@@ -464,10 +482,14 @@ c     we compute grad Y_m using Y_m from the second argument
          end if
          
          print *,'... do corrector for rhoh'
+
+c     update rhoh with advection terms and set up RHS for equation (62) C-N solve
          call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                    be_cn_theta,lo(0),hi(0),bc(0,:))
+
+c     Solve C-N system in equation (62) for h_^{<2>}
          rho_flag = 2
          call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
@@ -476,7 +498,8 @@ c     we compute grad Y_m using Y_m from the second argument
 c     call the EOS to get consistent temperature
          call rhoh_to_temp(scal_new(0,:,:),lo(0),hi(0))
 
-         print *,'... react for dt/2;  save I_R'
+         print *,'... react for dt/2'
+
          do i=lo(0),hi(0)
             do n = FirstSpec,LastSpec
                scal_old(0,i,n) = scal_new(0,i,n)
@@ -552,8 +575,9 @@ c     If .false., use I_R^lagged = I_R^kmax from previous time step
             end do
          end if
 
+         print *,'... computing A forcing = D^n + I_R^{n-1,kmax}'
+
 c     compute advective forcing term
-            print *,'... computing A forcing = D^n + I_R^{n-1,kmax}'
          do i=lo(0),hi(0)
             do n = 1,Nspec
                is = FirstSpec + n - 1
@@ -562,33 +586,32 @@ c     compute advective forcing term
             tforce(0,i,RhoH) = diff_old(0,i,RhoH) + diffdiff_old(0,i)
          enddo
 
-c     compute advection term
+c     compute advective flux divergence
          call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
      $                  divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                  lo(0),hi(0),bc(0,:))
 
-c     update density
          print *,'... update rho'
+
+c     update density via equation (40)
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                   dt(0),lo(0),hi(0),bc(0,:))
 
-c     compute part of the RHS for the enthalpy and species
-c     diffusion solves
+c     update rhoY_m with advection terms and set up RHS for equation (41) C-N solve
          do i=lo(0),hi(0)
             dRhs(0,i,0) = 0.0d0
             do n=1,Nspec
                dRhs(0,i,n) = dt(0)*I_R(0,i,n)
             enddo
          enddo
-
-c     compute RHS for species diffusion solve
          call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
      &                    be_cn_theta,lo(0),hi(0),bc(0,:))
 
-C     update species with diffusion solve
          print *,'... do initial diffusion solve for species'
+
+c     Solve C-N system in equation (41) for \tilde{Y}_{m,AD}^{(0)}
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
@@ -599,7 +622,7 @@ C     update species with diffusion solve
 
          if (LeEQ1 .eq. 1) then
             
-c     simply extract D for RhoX
+c     extract div gamma^n
             do i=lo(0),hi(0)
                do n=1,Nspec
                   is = FirstSpec + n - 1
@@ -610,15 +633,15 @@ c     simply extract D for RhoX
 
          else
             
-c     compute a conservative div gamma_m
-c     save gamma_m for differential diffusion computation
+c     compute conservatively corrected div gamma_m 
+c     also save gamma_m for computing diffdiff terms later
             call get_spec_visc_terms(scal_new(0,:,:),beta_old(0,:,:),
      &                               diff_hat(0,:,FirstSpec:),
      &                               spec_flux_lo(0,:,:),
      &                               spec_flux_hi(0,:,:),
      &                               dx(0),lo(0),hi(0))
 
-c     update species with conservative diffusion fluxes
+c     update species with conservative diffusion fluxes using equation (42)
             do i=lo(0),hi(0)
                do n=1,Nspec
                   is = FirstSpec + n - 1
@@ -648,14 +671,15 @@ c     add differential diffusion to forcing for enthalpy solve
             
          end if
 
-c     compute RHS for enthalpy diffusion solve
+c     update rhoh with advection terms and set up RHS for equation (43) C-N solve
          call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                    alpha(0,:),beta_old(0,:,:),
      &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                    be_cn_theta,lo(0),hi(0),bc(0,:))
 
-c     update enthalpy with diffusion solve
          print *,'... do initial diffusion solve for rhoh'
+
+c     Solve C-N system in equation (43) for h_{AD}^{(0)}
          rho_flag = 2
          call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
      $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,rho_flag,
@@ -668,6 +692,8 @@ c     extract D for RhoH
          enddo
 
          print *,'... react with constant sources'
+
+c     compute A+D source terms for reaction integration
          do n = 1,nscal
             do i=lo(0),hi(0)
                const_src(0,i,n) = aofs(0,i,n) 
@@ -676,13 +702,13 @@ c     extract D for RhoH
                lin_src_new(0,i,n) = 0.d0
             enddo
          enddo
-      
 c     add differential diffusion
          do i=lo(0),hi(0)
             const_src(0,i,RhoH) = const_src(0,i,RhoH)
      $           + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
          end do
          
+c     solve equations (44), (45) and (46)
          call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
      $                    const_src(0,:,:),lin_src_old(0,:,:),
      $                    lin_src_new(0,:,:),
@@ -734,7 +760,9 @@ c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
                   divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
 
                end do
-               
+
+c     mac projection
+c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
                call macproj(macvel(0,:),scal_old(0,:,Density),
      &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
                
@@ -773,23 +801,23 @@ c     we compute grad Y_m using Y_m from the second argument
             end if
 
             print *,'... computing A forcing term = D^n + I_R^{k-1}'
+
+c     note: no need to recompute advective forcing for RhoH since it
+c     doesn't change from the predictor
             do i=lo(0),hi(0)
                do n = 1,Nspec
                   is = FirstSpec + n - 1
                   tforce(0,i,is) = diff_old(0,i,is) + I_R(0,i,n)
                enddo
-c     really no need to recompute this since it doesn't change
-               tforce(0,i,RhoH) = diff_old(0,i,RhoH) + diffdiff_old(0,i)
             enddo
             
+c     compute advective flux divergence
             call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
      $                     divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                     lo(0),hi(0),bc(0,:))
 
-            print *,'... update rho'
-            call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                      dt(0),lo(0),hi(0),bc(0,:))
 
+c     update rhoY_m with advection terms and set up RHS for equation (47) C-N solve
             print *,'... do correction diffusion solve for species'
             do i=lo(0),hi(0)
                do n=1,Nspec
@@ -808,6 +836,7 @@ c     differential diffusion will be added later
      &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
      &                       dx(0),dt(0),be_cn_theta,lo(0),hi(0),bc(0,:))
 
+c     Solve C-N system in equation (47) for \tilde{Y}_{m,AD}^{(k+1)}
             rho_flag = 2
             do n=1,Nspec
                is = FirstSpec + n - 1
@@ -818,7 +847,7 @@ c     differential diffusion will be added later
             
             if (LeEQ1 .eq. 1) then
 
-c     simply extract D for RhoX
+c     extract div gamma^n
                do i=lo(0),hi(0)
                   do n=1,Nspec
                      is = FirstSpec + n - 1
@@ -829,15 +858,15 @@ c     simply extract D for RhoX
 
             else
 
-c     compute a conservative div gamma_m
-c     save gamma_m for differential diffusion computation
+c     compute conservatively corrected div gamma_m 
+c     also save gamma_m for computing diffdiff terms later
                call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
      &                                  diff_hat(0,:,FirstSpec:),
      &                                  spec_flux_lo(0,:,:),
      &                                  spec_flux_hi(0,:,:),
      &                                  dx(0),lo(0),hi(0))
 
-c     add differential diffusion to forcing for enthalpy solve
+c     add differential diffusion to forcing for enthalpy solve in equation (49)
                do i=lo(0),hi(0)
                   dRhs(0,i,0) = dRhs(0,i,0) 
      $                 + 0.5d0*dt(0)*(diffdiff_old(0,i) + diffdiff_new(0,i))
@@ -846,10 +875,14 @@ c     add differential diffusion to forcing for enthalpy solve
             end if
             
             print *,'... do correction diffusion solve for rhoh'
+
+c     update rhoh with advection terms and set up RHS for equation (49) C-N solve
             call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                       alpha(0,:),beta_old(0,:,:),
      &                       dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                       be_cn_theta,lo(0),hi(0),bc(0,:))
+
+c     Solve C-N system in equation (49) for h_{AD}^{(k+1)}
             rho_flag = 2
             call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                    Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
@@ -862,6 +895,8 @@ c     extract D for RhoH
             enddo
             
             print *,'... react with const sources'
+
+c     compute A+D source terms for reaction integration
             do n = 1,nscal
                do i=lo(0),hi(0)
                   const_src(0,i,n) = aofs(0,i,n)
@@ -871,12 +906,13 @@ c     extract D for RhoH
                   lin_src_new(0,i,n) = 0.d0
                enddo
             enddo
-         
 c     add differential diffusion
             do i=lo(0),hi(0)
                const_src(0,i,RhoH) = const_src(0,i,RhoH)
      $              + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
             end do
+
+c     solve equations (50), (51) and (52)
             call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
      $                       const_src(0,:,:),lin_src_old(0,:,:),
      $                       lin_src_new(0,:,:),
@@ -927,10 +963,8 @@ c     calculate S
       call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
      &               divu_new(0,:),dx(0),lo(0),hi(0))
 
-c     calculate rhohalf
+c     calculate dSdt
       do i=lo(0),hi(0)
-         rhohalf(0,i) = 
-     $        0.5d0*(scal_old(0,i,Density)+scal_new(0,i,Density))
          dSdt(0,i) = (divu_new(0,i) - divu_old(0,i)) / dt(0)
       enddo
 
@@ -946,26 +980,40 @@ c     get velocity visc terms to use as a forcing term for advection
          visc(0,i) = visc(0,i)/scal_old(0,i,Density)
       enddo
 
+c     compute velocity edge states
       call vel_edge_states(vel_old(0,:),scal_old(0,:,Density),gp(0,:),
      $                     macvel(0,:),veledge(0,:),dx(0),dt(0),
      $                     visc(0,:),lo(0),hi(0),bc(0,:))
-      
+
+c     calculate rhohalf
+      do i=lo(0),hi(0)
+         rhohalf(0,i) = 0.5d0*(scal_old(0,i,Density)+scal_new(0,i,Density))
+      enddo      
+
+c     update velocity and set up RHS for C-N diffusion solve
       call update_vel(vel_old(0,:),vel_new(0,:),gp(0,:),rhohalf(0,:),
      &                macvel(0,:),veledge(0,:),alpha(0,:),mu_old(0,:),
      &                vel_Rhs(0,:),dx(0),dt(0),vel_theta,
      &                lo(0),hi(0),bc(0,:))
 
       if (is_first_initial_iter .eq. 1) then
+
+c     during the first pressure initialization step, use an
+c     explicit update for diffusion
          call get_vel_visc_terms(vel_old(0,:),mu_old(0,:),visc(0,:),
      $                           dx(0),lo(0),hi(0))
          do i=lo(0),hi(0)
             vel_new(0,i) = vel_new(0,i) + visc(0,i)*dt(0)/rhohalf(0,i)
          enddo
+
       else
+
+c     crank-nicolson viscous solve
          rho_flag = 1
          call cn_solve(vel_new(0,:),alpha(0,:),mu_new(0,:),
      $                 vel_Rhs(0,:),dx(0),dt(0),1,vel_theta,rho_flag,
      $                 .true.,lo(0),hi(0),bc(0,:))
+
       endif
 
 c     compute ptherm = p(rho,T,Y)
@@ -978,6 +1026,7 @@ c                           + dpdt_factor*(u dot grad p)/(gamma*p0)
      &                    divu_new(0,:),vel_new(0,:),dx(0),dt(0),
      &                    lo(0),hi(0),bc(0,:))
 
+c     project cell-centered velocities
       print *,'...nodal projection...'
       call project_level(vel_new(0,:),rhohalf(0,:),divu_new(0,:),
      &                   press_old(0,:),press_new(0,:),dx(0),dt(0),
