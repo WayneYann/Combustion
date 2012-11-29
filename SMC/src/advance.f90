@@ -21,23 +21,23 @@ module advance_module
 
 contains
 
-  subroutine advance(U, dt, dx, sdc, istep)
+  subroutine advance(U, dt, courno, dx, sdc, istep)
 
     use probin_module, only : advance_method
 
     type(multifab),    intent(inout) :: U
-    double precision,  intent(  out) :: dt
+    double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     integer,           intent(in   ) :: istep
     type(sdcquad),     intent(in   ) :: sdc
 
     select case(advance_method)
     case(1)
-       call advance_rk3(U,dt,dx,istep)
+       call advance_rk3(U,dt,courno,dx,istep)
     case (2)
-       call advance_sdc(U,dt,dx,sdc,istep)
+       call advance_sdc(U,dt,courno,dx,sdc,istep)
     case(3)
-       call advance_multi_sdc(U,dt,dx,sdc,istep)
+       call advance_multi_sdc(U,dt,courno,dx,sdc,istep)
     case default
        call bl_error("Invalid advance_method.")
     end select
@@ -51,14 +51,13 @@ contains
   !
   ! Advance U using SSP RK3
   !
-  subroutine advance_rk3 (U,dt,dx,istep)
+  subroutine advance_rk3 (U,dt,courno,dx,istep)
     type(multifab),    intent(inout) :: U
-    double precision,  intent(  out) :: dt
+    double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     integer, intent(in) :: istep
 
     integer          :: ng
-    double precision :: courno_proc
     type(layout)     :: la
     type(multifab)   :: Uprime, Unew
 
@@ -74,10 +73,9 @@ contains
     ! RK Step 1
     call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
 
-    courno_proc = 1.0d-50
-    call dUdt(U, Uprime, dx, courno=courno_proc)
+    call dUdt(U, Uprime, dx, courno=courno, istep=istep)
     call build(bpt_setdt, "setdt")
-    call set_dt(dt, courno_proc, istep)
+    call set_dt(dt, courno, istep)
     call destroy(bpt_setdt)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
@@ -110,16 +108,16 @@ contains
   !
   ! Advance U using SDC time-stepping
   !
-  subroutine advance_sdc(U, dt, dx, sdc, istep)
+  subroutine advance_sdc(U, dt, courno, dx, sdc, istep)
 
     type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: dt
+    double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     type(sdcquad),     intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
     integer          :: k, m, n, ng
-    double precision :: courno_proc, res_proc, res
+    double precision :: res_proc, res
     type(layout)     :: la
     type(multifab)   :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), S(sdc%nnodes-1)
 
@@ -140,17 +138,16 @@ contains
     end do
 
     ! set provisional solution, compute dt
-    courno_proc = 1.0d-50
 
     call copy(uSDC(1), U)
-    call dUdt(uSDC(1), fSDC(1), dx, courno_proc)
+    call dUdt(uSDC(1), fSDC(1), dx, courno, istep)
 
     do m = 2, sdc%nnodes
        call copy(uSDC(m), uSDC(1))
        call copy(fSDC(m), fSDC(1))
     end do
 
-    call set_dt(dt, courno_proc, istep)
+    call set_dt(dt, courno, istep)
 
     ! perform sdc iterations
     res = 0.0d0
@@ -238,16 +235,16 @@ contains
   !
   ! Advance U using multi-rate SDC time-stepping
   !
-  subroutine advance_multi_sdc(U, dt, dx, sdc, istep)
+  subroutine advance_multi_sdc(U, dt, courno, dx, sdc, istep)
 
     type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: dt
+    double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     type(sdcquad),     intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
     integer          :: k, m, mm, ng
-    double precision :: courno_proc, res_proc, res
+    double precision :: res_proc, res
     type(layout)     :: la
     type(multifab)   :: uAD(sdc%nnodes), fAD(sdc%nnodes), SAD(sdc%nnodes-1)
     type(multifab)   :: uR(sdc%nnodes), fR(sdc%nnodes), SR(sdc%nnodes-1)
@@ -275,17 +272,16 @@ contains
     end do
 
     ! set provisional solution, compute dt
-    courno_proc = 1.0d-50
 
     call copy(uAD(1), U)
-    call dUdt(uAD(1), fAD(1), dx, courno_proc)
+    call dUdt(uAD(1), fAD(1), dx)
 
     do m = 2, sdc%nnodes
        call copy(uAD(m), uAD(1))
        call copy(fAD(m), fAD(1))
     end do
 
-    call set_dt(dt, courno_proc, istep)
+    call set_dt(dt, courno, istep)
 
     ! perform sdc iterations
     res = 0.0d0
@@ -315,15 +311,15 @@ contains
   !
   ! Compute new time-step size
   !
-  subroutine set_dt(dt, courno_proc, istep)
+  subroutine set_dt(dt, courno, istep)
 
     use probin_module, only : cflfac, fixed_dt, init_shrink, max_dt, max_dt_growth, small_dt, stop_time
 
     double precision, intent(inout) :: dt
-    double precision, intent(in   ) :: courno_proc
+    double precision, intent(in   ) :: courno
     integer,          intent(in   ) :: istep
 
-    double precision :: dtold, courno
+    double precision :: dtold
 
     if (fixed_dt > 0.d0) then
 
@@ -336,8 +332,6 @@ contains
        end if
 
     else
-
-       call parallel_reduce(courno, courno_proc, MPI_MAX)
 
        dtold = dt
        dt    = cflfac / courno
@@ -431,19 +425,20 @@ contains
   !
   ! Compute dU/dt given U.
   !
-  ! The Courant number (courno) is also computed if passed.
+  ! The Courant number (courno) might also be computed if passed.
   !
-  subroutine dUdt (U, Uprime, dx, courno)
+  subroutine dUdt (U, Uprime, dx, courno, istep)
     use derivative_stencil_module, only : stencil, compact, s3d
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
     double precision, intent(inout), optional :: courno
+    integer,          intent(in   ), optional :: istep
 
     if (stencil .eq. compact) then
-       call dUdt_compact(U, Uprime, dx, courno)
+       call dUdt_compact(U, Uprime, dx, courno, istep)
     else if (stencil .eq. s3d) then
-       call dUdt_S3D(U, Uprime, dx, courno)
+       call dUdt_S3D(U, Uprime, dx, courno, istep)
     else
        call bl_error("advance: unknown stencil type")
     end if
@@ -477,13 +472,14 @@ contains
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt_compact (U, Uprime, dx, courno, include_ad, include_r)
+  subroutine dUdt_compact (U, Uprime, dx, courno, istep, include_ad, include_r)
 
-    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans
+    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
     double precision, intent(inout), optional :: courno
+    integer,          intent(in   ), optional :: istep
     logical,          intent(in   ), optional :: include_ad, include_r
 
     type(multifab) :: mu, xi ! viscosity
@@ -496,6 +492,9 @@ contains
     integer :: i, j, k, m, n, ng, dm
     integer :: ng_ctoprim, ng_gettrans
 
+    logical :: update_courno
+    double precision :: courno_proc
+
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
     type(mf_fb_data) :: U_fb_data
@@ -504,11 +503,18 @@ contains
 
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
-    type(bl_prof_timer), save :: bpt_ctoprim,  bpt_gettrans, bpt_hypterm
+    type(bl_prof_timer), save :: bpt_ctoprim,  bpt_gettrans, bpt_hypterm, bpt_courno
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm, bpt_nscbc
 
     inc_ad = .true.; if (present(include_ad)) inc_ad = include_ad
     inc_r  = .true.; if (present(include_r))  inc_r  = include_r
+
+    update_courno = .false.
+    if (present(courno) .and. present(istep)) then
+       if (mod(istep,cfl_int).eq.1 .or. cfl_int.le.1) then
+          update_courno = .true.
+       end if
+    end if
 
     ! On hopper MPI_Test encourages the overlap of communication and compution.
     ! That's why we have so many calls to multifab_fill_boundary_test.
@@ -577,8 +583,11 @@ contains
        call multifab_fill_boundary_test(U, U_fb_data)
     end if
 
-    if (present(courno)) then
-       call compute_courno(Q, dx, courno)
+    if (update_courno) then
+       call build(bpt_courno, "courno")
+       courno_proc = -1.d50
+       call compute_courno(Q, dx, courno_proc)
+       call destroy(bpt_courno)
     end if
 
     if (inc_ad .and. overlap_comm_comp) then
@@ -770,6 +779,12 @@ contains
        call destroy(Ddiag)
     end if
 
+    if (update_courno) then
+       call build(bpt_courno, "courno")
+       call parallel_reduce(courno, courno_proc, MPI_MAX)
+       call destroy(bpt_courno)
+    end if
+
   end subroutine dUdt_compact
 
   subroutine compute_courno(Q, dx, courno)
@@ -801,15 +816,16 @@ contains
   !
   ! Compute dU/dt given U using the compact stencil.
   !
-  ! The Courant number (courno) is also computed if passed.
+  ! The Courant number (courno) might also be computed if passed.
   !
-  subroutine dUdt_S3D (U, Uprime, dx, courno)
+  subroutine dUdt_S3D (U, Uprime, dx, courno, istep)
 
-    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans
+    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
     double precision, intent(inout), optional :: courno
+    integer,          intent(in   ), optional :: istep
 
     integer, parameter :: ng = 4
 
@@ -823,6 +839,9 @@ contains
     integer :: i,j,k,m,n, dm
     integer :: ndq, ng_ctoprim, ng_gettrans
 
+    logical :: update_courno
+    double precision :: courno_proc
+
     type(layout)     :: la
     type(multifab)   :: Q, Fhyp, Fdif
     type(multifab)   :: qx, qy, qz
@@ -831,8 +850,15 @@ contains
     double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, &
          Ddp, upp, qxp, qyp, qzp
 
-    type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypterm
+    type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypterm, bpt_courno
     type(bl_prof_timer), save :: bpt_diffterm_1, bpt_diffterm_2, bpt_calcU, bpt_chemterm
+
+    update_courno = .false.
+    if (present(courno) .and. present(istep)) then
+       if (mod(istep,cfl_int).eq.1 .or. cfl_int.le.1) then
+          update_courno = .true.
+       end if
+    end if
 
     call multifab_fill_boundary_nowait(U, U_fb_data)
 
@@ -905,8 +931,11 @@ contains
        call multifab_fill_boundary_test(U, U_fb_data)
     end if
 
-    if (present(courno)) then
-       call compute_courno(Q, dx, courno)
+    if (update_courno) then
+       call build(bpt_courno, "courno")
+       courno_proc = -1.d50
+       call compute_courno(Q, dx, courno_proc)
+       call destroy(bpt_courno)
     end if
 
     if (overlap_comm_comp) then
@@ -1120,6 +1149,12 @@ contains
     call destroy(qx)
     call destroy(qy)
     call destroy(qz)
+
+    if (update_courno) then
+       call build(bpt_courno, "courno")
+       call parallel_reduce(courno, courno_proc, MPI_MAX)
+       call destroy(bpt_courno)
+    end if
 
   end subroutine dUdt_S3D
 

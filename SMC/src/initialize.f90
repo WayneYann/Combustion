@@ -15,7 +15,7 @@ module initialize_module
 
 contains
 
-  subroutine initialize_from_restart(dirname,la,dt,dx,U)
+  subroutine initialize_from_restart(dirname,la,dt,courno,dx,U)
     use checkpoint_module, only : checkpoint_read
     use probin_module, only: n_cellx, n_celly, n_cellz, prob_lo, prob_hi, &
          bcx_lo, bcy_lo, bcz_lo, bcx_hi, bcy_hi, bcz_hi, &
@@ -24,7 +24,7 @@ contains
 
     character(len=*), intent(in) :: dirname
     type(layout),intent(inout) :: la
-    real(dp_t), intent(out) :: dt
+    real(dp_t), intent(out) :: dt,courno
     real(dp_t), pointer :: dx(:)
     type(multifab), intent(inout) :: U
 
@@ -40,7 +40,7 @@ contains
     integer :: bc_lo_chk(3), bc_hi_chk(3)
 
     call checkpoint_read(chkdata, chkxlo, chkxhi, chkylo, chkyhi, chkzlo, chkzhi, &
-         dirname, dt, prob_lo_chk, prob_hi_chk, bc_lo_chk, bc_hi_chk, ncell) 
+         dirname, dt, courno, prob_lo_chk, prob_hi_chk, bc_lo_chk, bc_hi_chk, ncell) 
 
     dm = chkdata(1)%dim
     if (dm .ne. dm_in) then
@@ -197,7 +197,7 @@ contains
   end subroutine initialize_from_restart
 
 
-  subroutine initialize_from_scratch(la,dt,dx,U)
+  subroutine initialize_from_scratch(la,dt,courno,dx,U)
 
     use init_data_module, only : init_data
     use time_module, only : time
@@ -207,7 +207,7 @@ contains
     use derivative_stencil_module, only : stencil_ng
 
     type(layout),intent(inout) :: la
-    real(dp_t), intent(inout) :: dt
+    real(dp_t), intent(inout) :: dt,courno
     real(dp_t), pointer :: dx(:)
     type(multifab), intent(inout) :: U
 
@@ -218,6 +218,7 @@ contains
 
     time = ZERO
     dt   = 1.d20
+    courno = -1.d20
 
     dm = dm_in
     lo = 0

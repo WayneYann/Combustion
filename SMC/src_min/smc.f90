@@ -22,7 +22,7 @@ subroutine smc()
   integer :: dm, i !, numcell
   integer :: init_step, istep
 
-  real(dp_t) :: dt
+  real(dp_t) :: dt, courno
   real(dp_t)  , pointer     :: dx(:)
 
   real(dp_t) :: wt0, wt1, wt2, wt_init, wt_advance
@@ -86,7 +86,7 @@ subroutine smc()
         print*,"Restarting from", check_file_name
      end if
 
-     call initialize_from_restart(check_file_name, la,dt,dx,U)
+     call initialize_from_restart(check_file_name, la,dt,courno,dx,U)
 
   else 
 
@@ -95,7 +95,7 @@ subroutine smc()
         print*,"Starting from scratch"
      end if
 
-     call initialize_from_scratch(la,dt,dx,U)
+     call initialize_from_scratch(la,dt,courno,dx,U)
 
   end if
 
@@ -153,7 +153,7 @@ subroutine smc()
         write(unit=check_index,fmt='(i5.5)') istep
         check_file_name = trim(check_base_name) // check_index
 
-        call checkpoint_write(check_file_name, U, dt)
+        call checkpoint_write(check_file_name, U, dt, courno)
         
         last_chk_written = istep
      end if
@@ -210,7 +210,7 @@ subroutine smc()
         end if
 
         call build(bpt_advance, "advance")     !! vvvvvvvvvvvvvvvvvvvvvvv timer
-        call advance(U,dt,dx,istep)
+        call advance(U,dt,courno,dx,istep)
         call destroy(bpt_advance)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
         time = time + dt
@@ -230,7 +230,7 @@ subroutine smc()
                  check_file_name = trim(check_base_name) // check_index6
               endif
               
-              call checkpoint_write(check_file_name, U, dt)
+              call checkpoint_write(check_file_name, U, dt, courno)
               
               last_chk_written = istep
               
@@ -285,7 +285,7 @@ subroutine smc()
            check_file_name = trim(check_base_name) // check_index6
         endif
         
-        call checkpoint_write(check_file_name, U, dt)
+        call checkpoint_write(check_file_name, U, dt, courno)
               
      end if
 
