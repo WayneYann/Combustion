@@ -75,15 +75,15 @@ contains
   !
   ! Compute new time-step size
   !
-  subroutine set_dt(dt, courno_proc, istep)
+  subroutine set_dt(dt, courno, istep)
 
     use probin_module, only : cflfac, fixed_dt, init_shrink, max_dt, max_dt_growth, small_dt, stop_time
 
     double precision, intent(inout) :: dt
-    double precision, intent(in   ) :: courno_proc
+    double precision, intent(in   ) :: courno
     integer,          intent(in   ) :: istep
 
-    double precision :: dtold, courno
+    double precision :: dtold
 
     if (fixed_dt > 0.d0) then
 
