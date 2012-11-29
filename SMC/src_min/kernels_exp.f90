@@ -34,11 +34,12 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    allocate(tmpx(lo(1)-4:hi(1)+4))
-    allocate(tmpy(lo(1)  :hi(1)  ,lo(2)-4:hi(2)+4))
     allocate(tmpz(lo(1)  :hi(1)  ,lo(2)  :hi(2)  ,lo(3)-4:hi(3)+4))
 
     !$omp parallel private(i,j,k,n,jj,tmpx,tmpy)
+
+    allocate(tmpx(lo(1)-4:hi(1)+4))
+    allocate(tmpy(lo(1)  :hi(1)  ,lo(2)-4:hi(2)+4))
     
     !$omp workshare
     rhs = 0.d0
@@ -226,7 +227,6 @@ contains
                 tmpy(i,j) = cons(i,j,k,n)*q(i,j,k,qv)
              end do
           end do
-
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
 !EXPAND                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
@@ -390,9 +390,11 @@ contains
        end do ! jj
     enddo
 
+    deallocate(tmpx,tmpy)
+
     !$omp end parallel
 
-    deallocate(tmpx,tmpy,tmpz)
+    deallocate(tmpz)
 
   end subroutine hypterm_3d
 
@@ -452,12 +454,13 @@ contains
     allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
     allocate(vsm(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
 
-    allocate(tmpx(dlo(1):dhi(1)))
-    allocate(tmpy( lo(1): hi(1),dlo(2):dhi(2)))
     allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
 
     !$omp parallel &
     !$omp private(i,j,k,tauxx,tauyy,tauzz,divu,tmpx,tmpy)
+
+    allocate(tmpx(dlo(1):dhi(1)))
+    allocate(tmpy( lo(1): hi(1),dlo(2):dhi(2)))
 
     !$omp workshare
     rhs = 0.d0
@@ -565,6 +568,7 @@ contains
 
     !----- mx -----
 
+    !----- mx : d()/dx -----
     !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
@@ -586,6 +590,7 @@ contains
     end do
     !$omp end do
 
+    !----- mx : d()/dy -----
     !$omp do
     do k=lo(3),hi(3)
 
@@ -609,6 +614,7 @@ contains
     end do
     !$omp end do
 
+    !----- mx : d()/dz -----
     !$omp do
     do k=lo(3)-4,hi(3)+4
        do j=lo(2),hi(2)
@@ -795,11 +801,13 @@ contains
           end do
        end do
     end do
-    !$omp end do nowait
+    !$omp end do
+
+    deallocate(tmpx,tmpy)
 
     !$omp end parallel
 
-    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,tmpx,tmpy,tmpz)
+    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,tmpz)
 
     allocate(dpy(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
     allocate(dxe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
@@ -833,8 +841,6 @@ contains
        end do
        !$omp end do
     end do
-
-    !$omp barrier
 
     ! ------- BEGIN x-direction -------
 
@@ -1095,7 +1101,6 @@ contains
 
     do n = 1, nspecies
        qxn = qx1+n-1
-
        !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
@@ -2185,8 +2190,6 @@ contains
     integer :: i,j,k,n, qxn, qdxn
 
     allocate(vsm (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(tmpx(-ng+lo(1):hi(1)+ng))
-    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
     allocate(tmpz(    lo(1):hi(1)   ,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
 
     do i = 1,3
@@ -2194,6 +2197,9 @@ contains
     end do
 
     !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz,tmpx,tmpy)
+
+    allocate(tmpx(-ng+lo(1):hi(1)+ng))
+    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
 
     !$omp workshare
     rhs = 0.d0
@@ -2658,9 +2664,11 @@ contains
        !$omp end do nowait
     enddo
 
+    deallocate(tmpx,tmpy)
+
     !$omp end parallel
 
-    deallocate(vsm,tmpx,tmpy,tmpz)
+    deallocate(vsm,tmpz)
 
   end subroutine S3D_diffterm_1
 
@@ -2700,8 +2708,6 @@ contains
     allocate(FE(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
 
     allocate(rvc (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(tmpx(-ng+lo(1):hi(1)+ng))
-    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
     allocate(tmpz(    lo(1):hi(1)   ,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
 
     do i = 1,3
@@ -2709,6 +2715,9 @@ contains
     end do
 
     !$omp parallel private(i,j,k,n,qxn,qyn,qhn,idXn,iryn,tmpx,tmpy)
+
+    allocate(tmpx(-ng+lo(1):hi(1)+ng))
+    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
 
     !$omp do
     do k=lo(3)-ng,hi(3)+ng
@@ -3223,9 +3232,11 @@ contains
     end do
     !$omp end do
 
+    deallocate(tmpx,tmpy)
+
     !$omp end parallel
 
-    deallocate(vp,dpy,dpe,FY,FE,rvc,tmpx,tmpy,tmpz)
+    deallocate(vp,dpy,dpe,FY,FE,rvc,tmpz)
 
   end subroutine S3D_diffterm_2
 
