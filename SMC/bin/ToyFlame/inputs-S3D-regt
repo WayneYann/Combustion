@@ -13,6 +13,7 @@
  chk_int  = -1
 
  cflfac = 0.1d0
+ cfl_int = 4
  init_shrink = 0.5d0
 
  n_cellx = 32
