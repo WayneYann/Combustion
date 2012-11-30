@@ -61,7 +61,7 @@ max_step                            integer            1
 cflfac                              real               0.5d0
 
 # How often do we update Courant number
-cfl_int                             integer            1
+cfl_int                             integer            10
 
 # the multiplicative factor ($\le 1$) to reduce the initial timestep as
 # computed by the various timestep estimators

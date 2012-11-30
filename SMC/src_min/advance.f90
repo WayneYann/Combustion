@@ -218,7 +218,7 @@ contains
   !
   subroutine dUdt_compact (U, Uprime, dx, courno, istep)
 
-    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int
+    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
@@ -246,7 +246,7 @@ contains
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
 
     update_courno = .false.
-    if (present(courno) .and. present(istep)) then
+    if (present(courno) .and. present(istep) .and. fixed_dt.le.0.d0) then
        if (mod(istep,cfl_int).eq.1 .or. cfl_int.le.1) then
           update_courno = .true.
        end if
