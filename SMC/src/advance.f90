@@ -778,7 +778,7 @@ contains
     end if
 
     if (update_courno) then
-       call start(bpt_courno, "courno")
+       call start(bpt_courno)
        call parallel_reduce(courno, courno_proc, MPI_MAX)
        call destroy(bpt_courno)
     end if
