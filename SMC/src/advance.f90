@@ -585,7 +585,7 @@ contains
        call build(bpt_courno, "courno")
        courno_proc = -1.d50
        call compute_courno(Q, dx, courno_proc)
-       call destroy(bpt_courno)
+       call stop(bpt_courno)
     end if
 
     if (inc_ad .and. overlap_comm_comp) then
@@ -778,7 +778,7 @@ contains
     end if
 
     if (update_courno) then
-       call build(bpt_courno, "courno")
+       call start(bpt_courno, "courno")
        call parallel_reduce(courno, courno_proc, MPI_MAX)
        call destroy(bpt_courno)
     end if

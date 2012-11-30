@@ -266,6 +266,7 @@ contains
 
   subroutine build_better_layout(la, ba, pd, pmask, nc, ng, ttry)
     use probin_module, only : verbose
+    use bl_prof_module
     type(layout),intent(inout) :: la
     type(boxarray), intent(inout) :: ba
     type(box), intent(in) :: pd
@@ -282,6 +283,11 @@ contains
     integer :: seed_size
     integer, allocatable :: seed(:)
     real(dp_t), allocatable :: r(:)
+
+    logical :: bp_state
+
+    bp_state = bl_prof_get_state()
+    call bl_prof_set_state(.false.) ! turn profiler off temporarily
 
     nb = nboxes(la)
 
@@ -356,6 +362,8 @@ contains
        print *, '   Using the default layout, it is', tdefault
        print *, '   The best time is', tbest
     end if
+
+    call bl_prof_set_state(bp_state)
 
     contains
 
