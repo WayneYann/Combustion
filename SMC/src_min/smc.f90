@@ -33,7 +33,7 @@ subroutine smc()
   character(len=256)             :: plot_file_name, check_file_name
   character(len=20), allocatable :: plot_names(:)
 
-!  logical :: dump_plotfile, dump_checkpoint
+  logical :: dump_plotfile, dump_checkpoint, abort_smc
   real(dp_t) :: write_pf_time
   
   type(layout)   :: la
@@ -219,8 +219,12 @@ subroutine smc()
            print *, 'End of step', istep,'time = ', time
         end if
 
-        if (chk_int > 0) then
-           if ( mod(istep,chk_int) .eq. 0 ) then
+        ! if the file .dump_checkpoint exists in our output directory, then
+        ! automatically dump a plotfile
+        inquire(file="dump_checkpoint", exist=dump_checkpoint)
+
+        if (chk_int > 0 .or. dump_checkpoint) then
+           if (mod(istep,chk_int) .eq. 0 .or. dump_checkpoint) then
               
               if (istep <= 99999) then
                  write(unit=check_index,fmt='(i5.5)') istep
@@ -235,12 +239,22 @@ subroutine smc()
               last_chk_written = istep
               
            end if
+
+           if (dump_checkpoint .and. parallel_IOProcessor()) then
+              open(2,file='dump_checkpoint',status='old')
+              close(2,status='delete')
+           end if
         end if
 
-        if (plot_int > 0 .or. plot_deltat > ZERO) then
+        ! if the file dump_plotfile exists in our output directory, then
+        ! automatically dump a plotfile
+        inquire(file="dump_plotfile", exist=dump_plotfile)
+
+        if (plot_int > 0 .or. plot_deltat > ZERO .or. dump_plotfile) then
            if ( (plot_int > 0 .and. mod(istep,plot_int) .eq. 0) .or. &
                 (plot_deltat > ZERO .and. &
-                mod(time - dt,plot_deltat) > mod(time,plot_deltat)) ) then
+                mod(time - dt,plot_deltat) > mod(time,plot_deltat)) .or. &
+                dump_plotfile) then
 
               if (istep <= 99999) then
                  write(unit=plot_index,fmt='(i5.5)') istep
@@ -257,11 +271,22 @@ subroutine smc()
               last_plt_written = istep
 
            end if
+
+           if (dump_plotfile .and. parallel_IOProcessor()) then
+              open(2,file='dump_plotfile',status='old')
+              close(2,status='delete')
+           end if
         end if
 
         if (parallel_IOProcessor() .and. verbose .ge. 2) then
            call flush(6)
         end if
+
+        ! if the file abort_smc exists in our output directory, then
+        ! automatically end the run.  This has the effect of also dumping
+        ! a final checkpoint file.
+        inquire(file="abort_smc", exist=abort_smc)
+        if (abort_smc) exit
 
         ! have we reached the stop time?
         if (stop_time >= 0.d0) then
@@ -302,6 +327,11 @@ subroutine smc()
         call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
 
         call write_job_info(plot_file_name, la, write_pf_time)
+     end if
+
+     if (abort_smc .and. parallel_IOProcessor()) then
+        open(2,file='abort_smc',status='old')
+        close(2,status='delete')
      end if
   end if
 
