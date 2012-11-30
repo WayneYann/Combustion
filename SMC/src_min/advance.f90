@@ -27,7 +27,7 @@ contains
     type(layout)     :: la
     type(multifab)   :: Uprime, Unew
 
-    type(bl_prof_timer), save :: bpt_rkstep1, bpt_rkstep2, bpt_rkstep3, bpt_setdt
+    type(bl_prof_timer), save :: bpt_rkstep1, bpt_rkstep2, bpt_rkstep3
 
     ng = nghost(U)
     la = get_layout(U)
@@ -40,9 +40,7 @@ contains
     call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
 
     call dUdt(U, Uprime, dx, courno, istep)
-    call build(bpt_setdt, "setdt")
     call set_dt(dt, courno, istep)
-    call destroy(bpt_setdt)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
 
