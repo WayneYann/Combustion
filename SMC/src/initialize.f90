@@ -116,6 +116,7 @@ contains
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
 
     call multifab_build(U,la,ncons,ng)
+    call setval(U, ZERO, all=.true.)
     call multifab_copy_c(U,1,chkdata(1),1,ncons)
 
     lachk = get_layout(chkdata(1))
@@ -247,6 +248,7 @@ contains
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
 
     call multifab_build(U,la,ncons,ng)
+    call setval(U, ZERO, all=.true.)
 
     call init_data(U,dx,prob_lo,prob_hi)
 
@@ -337,7 +339,7 @@ contains
        call multifab_build(Ut, lat, nc, ng)
        call multifab_copy_c(Ut,1,U,1,nc)
 
-       call smc_bc_init(la, U)
+       call smc_bc_init(lat, Ut)
 
        call parallel_barrier()
        tcom1 = parallel_wtime()
@@ -376,6 +378,7 @@ contains
     call layout_build_ba(lat, ba, pd, pmask=pmask, &
          mapping = LA_EXPLICIT, explicit_mapping = dmapbest)
     call multifab_build(Ut, lat, nc, ng)
+    call setval(Ut,ZERO,all=.true.)
     call multifab_copy_c(Ut,1,U,1,nc)
 
     call destroy(U)
