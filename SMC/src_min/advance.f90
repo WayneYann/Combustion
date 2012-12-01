@@ -877,10 +877,12 @@ contains
 
     call multifab_fill_boundary_test(U, U_fb_data)
 
-    call multifab_build(mu , la, 1, ng)
-    call multifab_build(xi , la, 1, ng)
-    call multifab_build(lam, la, 1, ng)
-    call multifab_build(Ddiag, la, nspecies, ng)
+    if (overlap_comm_gettrans) then
+       call multifab_build(mu , la, 1, ng)
+       call multifab_build(xi , la, 1, ng)
+       call multifab_build(lam, la, 1, ng)
+       call multifab_build(Ddiag, la, nspecies, ng)
+    end if
 
     call multifab_fill_boundary_test(U, U_fb_data)
     
@@ -912,10 +914,12 @@ contains
 
     call destroy(Q)
     call destroy(Uprime)
-    call destroy(mu)
-    call destroy(xi)
-    call destroy(lam)
-    call destroy(Ddiag)
+    if (overlap_comm_gettrans) then
+       call destroy(mu)
+       call destroy(xi)
+       call destroy(lam)
+       call destroy(Ddiag)
+    end if
 
   end subroutine overlapped_part
 
