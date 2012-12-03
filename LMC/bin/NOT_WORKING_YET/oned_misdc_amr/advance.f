@@ -150,7 +150,7 @@ c     compute 1/gamma
 
 c     delta_chi = delta_chi + (ptherm-p0)/(gamma*dt*p0)
             delta_chi(0,i) = delta_chi(0,i) 
-     $           + gamma_inv*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+     $           + dpdt_factor*gamma_inv*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
             divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
@@ -753,9 +753,8 @@ c     compute 1/gamma
                   
 c     delta_chi = delta_chi + (ptherm-p0)/(gamma*dt*p0)
                   delta_chi(0,i) = delta_chi(0,i) 
-     $                 + gamma_inv*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+     $                 + dpdt_factor*gamma_inv*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
                   
-
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
                   divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
 
