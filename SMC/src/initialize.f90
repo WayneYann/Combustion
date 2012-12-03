@@ -15,16 +15,16 @@ module initialize_module
 
 contains
 
-  subroutine initialize_from_restart(dirname,la,dt,dx,U)
+  subroutine initialize_from_restart(dirname,la,dt,courno,dx,U)
     use checkpoint_module, only : checkpoint_read
     use probin_module, only: n_cellx, n_celly, n_cellz, prob_lo, prob_hi, &
          bcx_lo, bcy_lo, bcz_lo, bcx_hi, bcy_hi, bcz_hi, &
-         dm_in, max_grid_size, change_max_grid_size, pmask, t_trylayout
+         dm_in, max_grid_size, change_max_grid_size, pmask, t_trylayout, verbose
     use derivative_stencil_module, only : stencil_ng
 
     character(len=*), intent(in) :: dirname
     type(layout),intent(inout) :: la
-    real(dp_t), intent(out) :: dt
+    real(dp_t), intent(out) :: dt,courno
     real(dp_t), pointer :: dx(:)
     type(multifab), intent(inout) :: U
 
@@ -40,7 +40,7 @@ contains
     integer :: bc_lo_chk(3), bc_hi_chk(3)
 
     call checkpoint_read(chkdata, chkxlo, chkxhi, chkylo, chkyhi, chkzlo, chkzhi, &
-         dirname, dt, prob_lo_chk, prob_hi_chk, bc_lo_chk, bc_hi_chk, ncell) 
+         dirname, dt, courno, prob_lo_chk, prob_hi_chk, bc_lo_chk, bc_hi_chk, ncell) 
 
     dm = chkdata(1)%dim
     if (dm .ne. dm_in) then
@@ -115,19 +115,19 @@ contains
 
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
 
-    if (parallel_nprocs() > 1 .and. t_trylayout > 0.d0) then
-       call build_better_layout(la,ba,boxarray_bbox(ba),pmask,ncons,ng,t_trylayout)
-    end if
-
-    call destroy(ba)
-
     call multifab_build(U,la,ncons,ng)
-    call setval(U, 0.d0, .true.)
+    call setval(U, ZERO, all=.true.)
     call multifab_copy_c(U,1,chkdata(1),1,ncons)
 
     lachk = get_layout(chkdata(1))
     call destroy(chkdata(1))
     call destroy(lachk)
+
+    if (parallel_nprocs() > 1 .and. t_trylayout > 0.d0) then
+       call build_better_layout(U,la,ba,boxarray_bbox(ba),pmask,ncons,ng,t_trylayout)
+    end if
+
+    call destroy(ba)
 
     call smc_bc_init(la, U)
 
@@ -194,20 +194,24 @@ contains
        call destroy(lachk)
     end if
 
+    if (verbose > 1) then
+       call overlap_vs_nooverlap(U)
+    end if
+
   end subroutine initialize_from_restart
 
 
-  subroutine initialize_from_scratch(la,dt,dx,U)
+  subroutine initialize_from_scratch(la,dt,courno,dx,U)
 
     use init_data_module, only : init_data
     use time_module, only : time
 
     use probin_module, only: n_cellx, n_celly, n_cellz, prob_lo, prob_hi, dm_in, &
-         max_grid_size, pmask, t_trylayout
+         max_grid_size, pmask, t_trylayout, verbose
     use derivative_stencil_module, only : stencil_ng
 
     type(layout),intent(inout) :: la
-    real(dp_t), intent(inout) :: dt
+    real(dp_t), intent(inout) :: dt,courno
     real(dp_t), pointer :: dx(:)
     type(multifab), intent(inout) :: U
 
@@ -218,6 +222,7 @@ contains
 
     time = ZERO
     dt   = 1.d20
+    courno = -1.d20
 
     dm = dm_in
     lo = 0
@@ -225,6 +230,13 @@ contains
     hi(2) = n_celly-1
     if (dm > 2) then
        hi(3) = n_cellz - 1
+    end if
+
+    allocate(dx(dm))
+    dx(1) = (prob_hi(1)-prob_lo(1)) / n_cellx
+    dx(2) = (prob_hi(2)-prob_lo(2)) / n_celly
+    if (dm > 2) then
+       dx(3) = (prob_hi(3)-prob_lo(3)) / n_cellz
     end if
 
     ng = stencil_ng
@@ -235,23 +247,16 @@ contains
     call boxarray_maxsize(ba,max_grid_size)
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
 
+    call multifab_build(U,la,ncons,ng)
+    call setval(U, ZERO, all=.true.)
+
+    call init_data(U,dx,prob_lo,prob_hi)
+
     if (parallel_nprocs() > 1 .and. t_trylayout > 0.d0) then
-       call build_better_layout(la,ba,boxarray_bbox(ba),pmask,ncons,ng,t_trylayout)
+       call build_better_layout(U,la,ba,boxarray_bbox(ba),pmask,ncons,ng,t_trylayout)
     end if
 
     call destroy(ba)
-
-    allocate(dx(dm))
-    dx(1) = (prob_hi(1)-prob_lo(1)) / n_cellx
-    dx(2) = (prob_hi(2)-prob_lo(2)) / n_celly
-    if (dm > 2) then
-       dx(3) = (prob_hi(3)-prob_lo(3)) / n_cellz
-    end if
-
-    call multifab_build(U,la,ncons,ng)
-    call setval(U, 0.d0, .true.)
-
-    call init_data(U,dx,prob_lo,prob_hi)
 
     call smc_bc_init(la, U)
 
@@ -260,11 +265,18 @@ contains
 
     call nscbc_init_inlet_reg_from_scratch(U)
 
+    if (verbose > 1) then
+       call overlap_vs_nooverlap(U)
+    end if
+
   end subroutine initialize_from_scratch
 
 
-  subroutine build_better_layout(la, ba, pd, pmask, nc, ng, ttry)
-    use probin_module, only : verbose
+  subroutine build_better_layout(U, la, ba, pd, pmask, nc, ng, ttry)
+    use probin_module, only : verbose, overlap_comm_comp
+    use advance_module, only : overlapped_part
+    use bl_prof_module
+    type(multifab),intent(inout) :: U
     type(layout),intent(inout) :: la
     type(boxarray), intent(inout) :: ba
     type(box), intent(in) :: pd
@@ -274,13 +286,19 @@ contains
 
     integer :: i, nb, ntry
     integer, dimension(:), allocatable :: dmap0, dmapt, dmapbest
-    real(dp_t) :: t1, t2, tthis, timespent, tbest, tdefault
+    real(dp_t) :: t1, t2, timespent, tcom1, tcom2, tbest, tdefault
     type(layout) :: lat
-    type(multifab) :: mf
+    type(multifab) :: Ut
+    type(mf_fb_data) :: Ut_fb_data
 
     integer :: seed_size
     integer, allocatable :: seed(:)
     real(dp_t), allocatable :: r(:)
+
+    logical :: bp_state
+
+    bp_state = bl_prof_get_state()
+    call bl_prof_set_state(.false.) ! turn profiler off temporarily
 
     nb = nboxes(la)
 
@@ -290,7 +308,6 @@ contains
     allocate(r(nb))
 
     dmap0 = la%lap%prc(:)
-    call destroy(la)
 
     call random_seed(size=seed_size)
     allocate(seed(seed_size))
@@ -304,6 +321,9 @@ contains
     tbest = 1.0d50
     do while (timespent < ttry)
 
+       call parallel_barrier()
+       t1 = parallel_wtime()
+
        ntry = ntry + 1
 
        if (ntry .eq. 1) then
@@ -316,45 +336,70 @@ contains
        call layout_build_ba(lat, ba, pd, pmask=pmask, &
             mapping = LA_EXPLICIT, explicit_mapping = dmapt)
        
-       call multifab_build(mf, lat, nc, ng)
-       call setval(mf, 0.0_dp_t)
+       call multifab_build(Ut, lat, nc, ng)
+       call multifab_copy_c(Ut,1,U,1,nc)
+
+       call smc_bc_init(lat, Ut)
 
        call parallel_barrier()
-       t1 = parallel_wtime()
-       call multifab_fill_boundary(mf)
+       tcom1 = parallel_wtime()
+       if (overlap_comm_comp) then
+          call multifab_fill_boundary_nowait(Ut, Ut_fb_data)
+          call overlapped_part(Ut, Ut_fb_data)
+          call multifab_fill_boundary_finish(Ut, Ut_fb_data)
+       else
+          call multifab_fill_boundary(Ut)
+       end if
        call parallel_barrier()
-       t2 = parallel_wtime()
+       tcom2 = parallel_wtime() - tcom1
 
-       tthis = t2-t1
-       timespent = timespent + tthis
-       call parallel_bcast(timespent)
-
-       if (tthis < tbest) then
-          tbest = tthis
+       if (tcom2 < tbest) then
+          tbest = tcom2
           dmapbest = dmapt
        end if
 
        if (ntry .eq. 1) then
-          tdefault = tthis
+          tdefault = tcom2
        end if
 
-       call destroy(mf)
+       call smc_bc_close()
+
+       call destroy(Ut)
        call destroy(lat)
+
+       call parallel_barrier()
+       t2 = parallel_wtime() - t1
+       timespent = timespent + t2
+       call parallel_bcast(timespent)
     end do
 
     call parallel_bcast(dmapbest)
 
-    call layout_build_ba(la, ba, pd, pmask=pmask, &
+    call layout_build_ba(lat, ba, pd, pmask=pmask, &
          mapping = LA_EXPLICIT, explicit_mapping = dmapbest)
+    call multifab_build(Ut, lat, nc, ng)
+    call setval(Ut,ZERO,all=.true.)
+    call multifab_copy_c(Ut,1,U,1,nc)
+
+    call destroy(U)
+    call destroy(la)
+
+    la = lat
+    U = Ut
 
     deallocate(dmap0,dmapt,dmapbest,seed,r)
 
     if (verbose > 0 .and. parallel_IOProcessor()) then
        print *, 'Tried', ntry, 'layouts for filling multifab boundaries.'
+       if (overlap_comm_comp) then
+          print *, 'with overlapped computation'
+       end if
        print *, '   The average time in second is', timespent/ntry
        print *, '   Using the default layout, it is', tdefault
        print *, '   The best time is', tbest
     end if
+
+    call bl_prof_set_state(bp_state)
 
     contains
 
@@ -373,5 +418,47 @@ contains
       end subroutine Fisher_Yates_shuffle
 
   end subroutine build_better_layout
+
+
+  subroutine overlap_vs_nooverlap(U)
+    use advance_module, only : overlapped_part
+    use bl_prof_module
+    type(multifab), intent(inout) :: U
+
+    type(mf_fb_data) :: mfd1, mfd2
+    double precision :: t1, t2, t3
+    logical :: bp_state
+
+    bp_state = bl_prof_get_state()
+    call bl_prof_set_state(.false.) ! turn profiler off temporarily
+
+    call parallel_barrier()
+    t1 = parallel_wtime()
+
+    call multifab_fill_boundary_nowait(U, mfd1)
+    call overlapped_part(U, mfd1)
+    call multifab_fill_boundary_finish(U, mfd1)
+
+    call parallel_barrier()
+    t2 = parallel_wtime()
+
+    call multifab_fill_boundary_nowait(U, mfd2)
+    call multifab_fill_boundary_finish(U, mfd2)
+    call overlapped_part(U, mfd2)
+
+    call parallel_barrier()
+    t3 = parallel_wtime()
+
+    if (parallel_IOProcessor()) then
+       print *, ''
+       print *, 'Testing communication and computation overlapping:'
+       print *, '   Overlap   :', t2-t1
+       print *, '   No overlap:', t3-t2
+       print *, ''
+    end if
+
+    call bl_prof_set_state(bp_state)
+
+  end subroutine overlap_vs_nooverlap
 
 end module initialize_module

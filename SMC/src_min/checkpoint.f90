@@ -11,7 +11,7 @@ module checkpoint_module
 
 contains
 
-  subroutine checkpoint_write(dirname, U, dt)
+  subroutine checkpoint_write(dirname, U, dt, courno)
 
     use parallel, only: parallel_IOProcessor, parallel_barrier
     use bl_IO_module, only: unit_new
@@ -25,7 +25,7 @@ contains
 
     character(len=*), intent(in) :: dirname
     type(multifab)  , intent(in) :: U
-    real(kind=dp_t) , intent(in) :: dt
+    real(kind=dp_t) , intent(in) :: dt, courno
 
     type(multifab) :: chkdata(1)
     character(len=256) :: sd_name
@@ -60,7 +60,7 @@ contains
             file = trim(dirname) // "/Header", &
             form = "formatted", access = "sequential", &
             status = "replace", action = "write")
-       write(unit=un,fmt=1000) dt
+       write(unit=un,fmt=1000) dt, courno
        write(unit=un,fmt=1000) time
        write(unit=un,fmt=1000) prob_lo_x, prob_lo_y, prob_lo_z
        write(unit=un,fmt=1000) prob_hi_x, prob_hi_y, prob_hi_z
@@ -90,7 +90,7 @@ contains
   end subroutine checkpoint_write
 
 
-  subroutine checkpoint_read(chkdata, dirname, dt, prob_lo_chk, prob_hi_chk, ncell)
+  subroutine checkpoint_read(chkdata, dirname, dt, courno, prob_lo_chk, prob_hi_chk, ncell)
 
     use bl_IO_module, only: unit_new
     use fabio_module, only: fabio_ml_multifab_read_d
@@ -99,7 +99,7 @@ contains
 
     type(multifab  ), pointer :: chkdata(:)
     character(len=*), intent(in   ) :: dirname
-    real(kind=dp_t) , intent(  out) :: dt
+    real(kind=dp_t) , intent(  out) :: dt, courno
     real(kind=dp_t), intent(out) :: prob_lo_chk(3), prob_hi_chk(3)
     integer, intent(out) :: ncell(3)
 
@@ -118,7 +118,7 @@ contains
          file = trim(dirname) // "/" // trim(header), &
          status = "old", &
          action = "read")
-    read(unit=un,fmt=*) dt
+    read(unit=un,fmt=*) dt, courno
     read(unit=un,fmt=*) time
     read(unit=un,fmt=*) prob_lo_chk(1), prob_lo_chk(2), prob_lo_chk(3)
     read(unit=un,fmt=*) prob_hi_chk(1), prob_hi_chk(2), prob_hi_chk(3)

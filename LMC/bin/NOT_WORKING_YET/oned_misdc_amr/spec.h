@@ -22,8 +22,8 @@ c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
 c     EGLib stuff
       integer eg_nodes, eg_IFLAG, eg_ITLS, egr, egi, LLINKMC
       parameter (eg_nodes = 1)
-      parameter (eg_IFLAG = 7)
-      parameter (eg_ITLS  = 3)
+      parameter (eg_IFLAG = 3)
+      parameter (eg_ITLS  = 1)
       parameter ( egr = 23 + 14*maxspec + 32*maxspec**2 + 13*eg_nodes
      &     + 30*eg_nodes*maxspec + 5*eg_nodes*maxspec**2)
       parameter (egi = maxspec)
@@ -57,11 +57,11 @@ c     DVODE driver stuff
 
 c     LMC alg stuff
       integer misdc_iterMAX,on_lo,on_hi,max_order,
-     &     divu_ceiling_flag, predict_temp_for_coeffs, is_first_initial_iter,
+     &     divu_ceiling_flag, is_first_initial_iter,
      &     unlim, lim_rxns, coef_avg_harm, fancy_dpdt_fix
       parameter (on_lo = 0, on_hi = 1, max_order = 3)
       common / lmci / misdc_iterMAX, divu_ceiling_flag,
-     &     predict_temp_for_coeffs, is_first_initial_iter, unlim, lim_rxns,
+     &     is_first_initial_iter, unlim, lim_rxns,
      &     coef_avg_harm, fancy_dpdt_fix
       save /lmci/
 

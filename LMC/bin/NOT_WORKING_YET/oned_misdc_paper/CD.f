@@ -628,6 +628,9 @@ c
       double precision DVRWRK(dvr)
       integer DVIWRK(dvi)
 
+      common / VODE_SPACE / dvrwrk, dviwrk
+      save / VODE_SPACE /
+
       double precision Z(0:maxspec)
       double precision RPAR, RWRK
       integer IPAR, IWRK
