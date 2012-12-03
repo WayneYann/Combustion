@@ -10,10 +10,12 @@ COMBUSTION_DIR = ${TOP}/Combustion
 PRECISION       = DOUBLE
 DEBUG           = TRUE
 DEBUG           = FALSE
-DIM             = 2
 DIM             = 3
+DIM             = 2
 COMP            = g++
 FCOMP           = gfortran
+COMP            = Intel
+FCOMP           = Intel
 USE_MPI         = FALSE
 USE_MPI         = TRUE
 USE_OMP         = FALSE
@@ -22,6 +24,8 @@ VERBOSE         = FALSE
 
 # Enable flctin namelist
 #USE_FLCTS       = TRUE
+
+USE_LMC_SDC = FALSE
 
 #USE_PARTICLES   = TRUE
 
@@ -39,11 +43,11 @@ VERBOSE         = FALSE
 #CHEMISTRY_MODEL = DRM19
 #fEXE_sources += drm19Soln_seed_0.50.f
 
-CHEMISTRY_MODEL = LIDRYER
-fEXE_sources += LiDryer_040_01ATM.f
+#CHEMISTRY_MODEL = LIDRYER
+#fEXE_sources += LiDryer_040_01ATM.f
 
-#CHEMISTRY_MODEL = LUDME
-#fEXE_sources += LuDME_0700.f
+CHEMISTRY_MODEL = LUDME
+fEXE_sources += LuDME_0700.f
 
 EBASE = amr
 Blocs   := .

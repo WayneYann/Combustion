@@ -22,6 +22,7 @@
 #define BL_PROB_PREMIXED_FIXED_INFLOW_FORCED 'premixed_fixed_inlet_forced'
 #define BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED 'premixed_controlled_inlet_forced'
 #define BL_PROB_DIFFUSION 'diffusion_two-stream'
+#define BL_PROB_IGNITION 'dme_ignition'
 #define BL_PROB_UNDEFINED 'undefined_problem'
 
 

@@ -102,6 +102,9 @@ c     Air
          u_bc(airZone) = 0.d0
          v_bc(airZone) = V_in
 
+      else if (trim(probtype).eq.BL_PROB_IGNITION) then
+
+         num_zones_defined=0
       else
          
          call bl_pd_abort()
@@ -346,6 +349,13 @@ c ::: -----------------------------------------------------------
       REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm
       REAL_T pmf_vals(maxspec+3), y1, y2, dx
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,rho,T,h
+      REAL_T sigma
+
+      integer iO2,iN2,iCO2,iH2O,iCH3OCH3
+      character*(maxspnml) name
+
+      write(6,*)" made it to initdata"
+
            
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
@@ -391,6 +401,54 @@ c ::: -----------------------------------------------------------
 
             end do
          end do
+
+      else if ((trim(probtype).eq.BL_PROB_IGNITION)) then
+
+                write(6,*)" found probtype"
+               do n=1,Nspec
+
+                  call get_spec_name(name,n)
+                  if (name .eq. 'N2' ) iN2 = n
+                  if (name .eq. 'O2' ) iO2 = n
+                  if (name .eq. 'CO2' ) iCO2 = n
+                  if (name .eq. 'H2O' ) iH2O = n
+                  if (name .eq. 'CH3OCH3' ) iCH3OCH3 = n
+
+               enddo
+
+               write(6,*)" species are",iN2,iO2,iCO2,iH2O,iCH3OCH3
+
+               sigma = .000451d0
+               
+               do n = 1,Nspec
+                  Xl(n) = 0.d0
+               end do 
+               Xl(iN2) = .7192d0
+               Xl(iO2) = 0.1128d0
+               Xl(iCO2) = 0.0522d0
+               Xl(iH2O) = 0.0784d0
+               Xl(iCH3OCH3) = 0.0374d0
+               
+               CALL CKXTY (Xl, IWRK, RWRK, Yl)
+               
+
+         do j = lo(2), hi(2)
+            y = (float(j)+.5)*delta(2)+domnlo(2)
+            do i = lo(1), hi(1)
+               x = (float(i)+.5)*delta(1)+domnlo(1)
+
+               scal(i,j,Trac) = 0.d0
+
+               vel(i,j,1) = 0.d0
+               vel(i,j,2) = 0.d0
+               
+               scal(i,j,Temp) = 500.d0 + 1000.d0*exp(-(y-0.005d0)**2/(2.d0*sigma**2))
+               do n = 1,Nspec
+                  scal(i,j,FirstSpec+n-1) = Yl(n)
+               end do
+
+            enddo
+         enddo
          
       else if ((trim(probtype).eq.BL_PROB_DIFFUSION)) then
 
@@ -456,6 +514,7 @@ c     Superimpose blob of hot air
       endif
 
       Patm = pamb / FORT_P1ATMMKS()
+      write(6,*)"Patm",Patm
 
       call FORT_RHOfromPTY(lo,hi,
      &     scal(ARG_L1(state),ARG_L2(state),Density),  DIMS(state),
