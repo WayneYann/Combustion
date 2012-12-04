@@ -343,13 +343,13 @@ contains
 
        call parallel_barrier()
        tcom1 = parallel_wtime()
+
+       call multifab_fill_boundary_nowait(Ut, Ut_fb_data)
        if (overlap_comm_comp .and. overlap_in_trial) then
-          call multifab_fill_boundary_nowait(Ut, Ut_fb_data)
           call overlapped_part(Ut, Ut_fb_data)
-          call multifab_fill_boundary_finish(Ut, Ut_fb_data)
-       else
-          call multifab_fill_boundary(Ut)
        end if
+       call multifab_fill_boundary_finish(Ut, Ut_fb_data)
+
        call parallel_barrier()
        tcom2 = parallel_wtime() - tcom1
 
