@@ -526,10 +526,10 @@ c     Get the matrix of elements versus species
       REAL_T diag(DIMV(FuncCount),*)
       
       integer ITOL, IOPT, ITASK, open_vode_failure_file
-      parameter (ITOL=1, IOPT=1, ITASK=1)
+c      parameter (ITOL=1, IOPT=1, ITASK=1)
+      parameter (ITOL=2, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1),ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0D-8, ATOLEPS=1.0D-8)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm, sum, atoln
@@ -543,18 +543,9 @@ c     Get the matrix of elements versus species
       parameter (LOUTCK=6)
 
       logical newJ_triggered, bad_soln
-#if 0
-      !
-      ! Set IOPT=1 parameter settings for VODE
-      ! They only really need to be set once.
-      !
-      RWRK(dvbr+4) = 0
-      RWRK(dvbr+5) = 0
-      RWRK(dvbr+6) = ten2minus19
-      IWRK(dvbi+4) = 0
-      IWRK(dvbi+5) = max_vode_subcycles
-      IWRK(dvbi+6) = 0
-#endif
+
+      RTOL    = vode_rtol
+      ATOLEPS = vode_atol
       
       if (do_diag.eq.1) nsubchem = nchemdiag
       !
@@ -570,10 +561,22 @@ c     Get the matrix of elements versus species
       !
       ! Set up ATOL
       !
+      ATOL = 0.0d0
       if (ITOL.eq.2) then
          ATOL(1) = spec_scalT*ATOLEPS
          do m=1,Nspec
-            ATOL(m+1) = ATOLEPS*spec_scalY(m)
+            do k=lo(3),hi(3)
+               do j=lo(2),hi(2)
+                  do i=lo(1),hi(1)
+                     ATOL(m+1) = max(ATOL(m+1),abs(Ynew(i,j,k,m)))
+                  end do
+               end do
+            end do
+            if (ATOL(m+1) > 0.0d0) then
+               ATOL(m+1) = ATOLEPS*ATOL(m+1)
+            else
+               ATOL(m+1) = ATOLEPS
+            endif
          end do
       else
          ATOL(1) = ATOLEPS
@@ -873,7 +876,6 @@ c      parameter (ITOL=1, IOPT=1, ITASK=1)
       parameter (ITOL=2, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external conpFY_sdc, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
@@ -894,6 +896,9 @@ C     Needed to compute T from h
       parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
       parameter (HtoTiterMAX = 20)
       REAL_T res(0:HtoTiterMAX-1)
+
+      RTOL    = vode_rtol
+      ATOLEPS = vode_atol
 
 c     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
