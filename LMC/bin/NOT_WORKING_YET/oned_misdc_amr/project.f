@@ -67,7 +67,7 @@ c     also need to set outflow boundary
       implicit none
       include 'spec.h'
       real*8   vel(0:nlevs-1,-2:nfine+1)
-      real*8  divu(0:nlevs-1, 0:nfine)
+      real*8  divu(0:nlevs-1,-1:nfine)
       real*8    dx(0:nlevs-1)
       real*8    dt(0:nlevs-1)
       integer   lo(0:nlevs-1),hi(0:nlevs-1)
