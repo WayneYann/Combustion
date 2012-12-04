@@ -53,6 +53,30 @@ c     Note: typical values are defaulted to zero, and may be left that way
       enddo
       end
 
+      subroutine FORT_SETTYPICALVALS(typ_vals,nVals)
+#include "cdwrk.H"
+#include <htdata.H>
+      integer nVals,n,nVals1
+      REAL_T typ_vals(nVals)
+      nVals1 = nVals-BL_SPACEDIM
+c     Note: typical values are defaulted to zero, and may be left that way
+      if (Density.gt.nVals1 
+     &     .or. Temp.gt.nVals1
+     &     .or. Temp.gt.nVals1
+     &     .or. RhoH.gt.nVals1
+     &     .or. Trac.gt.nVals1
+     &     .or. LastSpec.gt.nVals) then
+         call bl_pd_abort('cannot write typical values')
+      endif
+      typVal_Density = typ_vals(Density+BL_SPACEDIM)
+      typVal_Temp    = typ_vals(Temp+BL_SPACEDIM)
+      typVal_RhoH    = typ_vals(RhoH+BL_SPACEDIM)
+      typVal_Trac    = typ_vals(Trac+BL_SPACEDIM)
+      do n=1,Nspec
+         typVal_Y(n) = typ_vals(FirstSpec+n-1+BL_SPACEDIM)
+      enddo
+      end
+
 
       subroutine FORT_SET_HT_VISC_COMMON(muIsVar,     muVal,
      &                                   lambdaIsVar, lambdaVal,
