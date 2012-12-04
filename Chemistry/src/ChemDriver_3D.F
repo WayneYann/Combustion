@@ -526,7 +526,8 @@ c     Get the matrix of elements versus species
       REAL_T diag(DIMV(FuncCount),*)
       
       integer ITOL, IOPT, ITASK, open_vode_failure_file
-      parameter (ITOL=1, IOPT=1, ITASK=1)
+c      parameter (ITOL=1, IOPT=1, ITASK=1)
+      parameter (ITOL=2, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1),ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
@@ -560,10 +561,22 @@ c     Get the matrix of elements versus species
       !
       ! Set up ATOL
       !
+      ATOL = 0.0d0
       if (ITOL.eq.2) then
          ATOL(1) = spec_scalT*ATOLEPS
          do m=1,Nspec
-            ATOL(m+1) = ATOLEPS*spec_scalY(m)
+            do k=lo(3),hi(3)
+               do j=lo(2),hi(2)
+                  do i=lo(1),hi(1)
+                     ATOL(m+1) = max(ATOL(m+1),abs(Ynew(i,j,k,m)))
+                  end do
+               end do
+            end do
+            if (ATOL(m+1) > 0.0d0) then
+               ATOL(m+1) = ATOLEPS*ATOL(m+1)
+            else
+               ATOL(m+1) = ATOLEPS
+            endif
          end do
       else
          ATOL(1) = ATOLEPS

@@ -51,7 +51,7 @@ ChemDriver::initOnce ()
                         &mMaxthrdb, &mMaxtp,  &mMaxsp,    &mMaxspnml);
     getStoichCoeffs();
 
-    Real v_rtol = 1.e-12, v_atol = 1.e-12;
+    Real v_rtol = 1.e-10, v_atol = 1.e-10;
 
     ParmParse pp("ht");
 
