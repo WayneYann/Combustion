@@ -130,7 +130,7 @@ c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
       call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
 
-      if (fancy_dpdt_fix .eq. 1) then
+      if (fancy_dpdt_fix .eq. 1 .and. fancy_predictor .eq. 1) then
 
 ccccccccccccccccccccccccccccccccccc
 c     new fancy delta chi algorithm
@@ -150,7 +150,7 @@ c     compute 1/gamma
 
 c     delta_chi = delta_chi + (ptherm-p0)/(gamma*dt*p0)
             delta_chi(0,i) = delta_chi(0,i) 
-     $           + gamma_inv*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+     $           + dpdt_factor*gamma_inv*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
             divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
@@ -586,71 +586,73 @@ c     compute advective forcing term
             tforce(0,i,RhoH) = diff_old(0,i,RhoH) + diffdiff_old(0,i)
          enddo
 
-c     compute advective flux divergence
-         call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                  divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
-     $                  lo(0),hi(0),bc(0,:))
+         if (fancy_predictor .eq. 1) then
 
-         print *,'... update rho'
+c     compute advective flux divergence
+            call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
+     $                     divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
+     $                     lo(0),hi(0),bc(0,:))
+
+            print *,'... update rho'
 
 c     update density via equation (40)
-         call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                   dt(0),lo(0),hi(0),bc(0,:))
+            call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                      dt(0),lo(0),hi(0),bc(0,:))
 
 c     update rhoY_m with advection terms and set up RHS for equation (41) C-N solve
-         do i=lo(0),hi(0)
-            dRhs(0,i,0) = 0.0d0
-            do n=1,Nspec
-               dRhs(0,i,n) = dt(0)*I_R(0,i,n)
+            do i=lo(0),hi(0)
+               dRhs(0,i,0) = 0.0d0
+               do n=1,Nspec
+                  dRhs(0,i,n) = dt(0)*I_R(0,i,n)
+               enddo
             enddo
-         enddo
-         call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                    alpha(0,:),beta_old(0,:,:),
-     &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
-     &                    be_cn_theta,lo(0),hi(0),bc(0,:))
+            call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                       alpha(0,:),beta_old(0,:,:),
+     &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),dx(0),dt(0),
+     &                       be_cn_theta,lo(0),hi(0),bc(0,:))
 
-         print *,'... do initial diffusion solve for species'
+            print *,'... do initial diffusion solve for species'
 
 c     Solve C-N system in equation (41) for \tilde{Y}_{m,AD}^{(0)}
-         rho_flag = 2
-         do n=1,Nspec
-            is = FirstSpec + n - 1
-            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
-     $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,rho_flag,
-     $                    .false.,lo(0),hi(0),bc(0,:))
-         enddo
+            rho_flag = 2
+            do n=1,Nspec
+               is = FirstSpec + n - 1
+               call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
+     $                       Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,rho_flag,
+     $                       .false.,lo(0),hi(0),bc(0,:))
+            enddo
 
-         if (LeEQ1 .eq. 1) then
+            if (LeEQ1 .eq. 1) then
             
 c     extract div gamma^n
-            do i=lo(0),hi(0)
-               do n=1,Nspec
-                  is = FirstSpec + n - 1
-                  diff_hat(0,i,is) = 2.d0*((scal_new(0,i,is)-scal_old(0,i,is))/dt(0)
-     $                 - aofs(0,i,is) - I_R(0,i,n) - 0.5d0*diff_old(0,i,is))
-               enddo
-            end do
-
-         else
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     is = FirstSpec + n - 1
+                     diff_hat(0,i,is) = 2.d0*((scal_new(0,i,is)-scal_old(0,i,is))/dt(0)
+     $                    - aofs(0,i,is) - I_R(0,i,n) - 0.5d0*diff_old(0,i,is))
+                  enddo
+               end do
+               
+            else
             
 c     compute conservatively corrected div gamma_m 
 c     also save gamma_m for computing diffdiff terms later
-            call get_spec_visc_terms(scal_new(0,:,:),beta_old(0,:,:),
-     &                               diff_hat(0,:,FirstSpec:),
-     &                               spec_flux_lo(0,:,:),
-     &                               spec_flux_hi(0,:,:),
-     &                               dx(0),lo(0),hi(0))
+               call get_spec_visc_terms(scal_new(0,:,:),beta_old(0,:,:),
+     &                                  diff_hat(0,:,FirstSpec:),
+     &                                  spec_flux_lo(0,:,:),
+     &                                  spec_flux_hi(0,:,:),
+     &                                  dx(0),lo(0),hi(0))
 
 c     update species with conservative diffusion fluxes using equation (42)
-            do i=lo(0),hi(0)
-               do n=1,Nspec
-                  is = FirstSpec + n - 1
-                  scal_new(0,i,is) = scal_old(0,i,is) + 
-     $                 dt(0)*(aofs(0,i,is) + I_R(0,i,n)
-     $                 + 0.5d0*diff_old(0,i,is) + 0.5d0*diff_hat(0,i,is))
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     is = FirstSpec + n - 1
+                     scal_new(0,i,is) = scal_old(0,i,is) + 
+     $                    dt(0)*(aofs(0,i,is) + I_R(0,i,n)
+     $                    + 0.5d0*diff_old(0,i,is) + 0.5d0*diff_hat(0,i,is))
+                  end do
                end do
-            end do
-            call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+               call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
          
 c     calculate differential diffusion "diffdiff" terms, i.e.,
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
@@ -658,61 +660,69 @@ c     we pass in conservative gamma_m via spec_flux
 c     we take lambda / cp from beta
 c     we compute h_m using T from the first argument
 c     we compute grad Y_m using Y_m from the second argument
-            call get_diffdiff_terms(scal_old(0,:,:),scal_new(0,:,:),
-     $                              spec_flux_lo(0,:,:),
-     $                              spec_flux_hi(0,:,:),beta_old(0,:,:),
-     $                              diffdiff_new(0,:),dx(0),lo(0),hi(0))
+               call get_diffdiff_terms(scal_old(0,:,:),scal_new(0,:,:),
+     $                                 spec_flux_lo(0,:,:),
+     $                                 spec_flux_hi(0,:,:),beta_old(0,:,:),
+     $                                 diffdiff_new(0,:),dx(0),lo(0),hi(0))
 
 c     add differential diffusion to forcing for enthalpy solve
-            do i=lo(0),hi(0)
-               dRhs(0,i,0) = dRhs(0,i,0) 
-     $              + 0.5d0*dt(0)*(diffdiff_old(0,i) + diffdiff_new(0,i))
-            end do
+               do i=lo(0),hi(0)
+                  dRhs(0,i,0) = dRhs(0,i,0) 
+     $                 + 0.5d0*dt(0)*(diffdiff_old(0,i) + diffdiff_new(0,i))
+               end do
             
-         end if
+            end if
 
 c     update rhoh with advection terms and set up RHS for equation (43) C-N solve
-         call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                    alpha(0,:),beta_old(0,:,:),
-     &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
-     &                    be_cn_theta,lo(0),hi(0),bc(0,:))
+            call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                       alpha(0,:),beta_old(0,:,:),
+     &                       dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
+     &                       be_cn_theta,lo(0),hi(0),bc(0,:))
 
-         print *,'... do initial diffusion solve for rhoh'
+            print *,'... do initial diffusion solve for rhoh'
 
 c     Solve C-N system in equation (43) for h_{AD}^{(0)}
-         rho_flag = 2
-         call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
-     $                 Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,rho_flag,
-     $                 .false.,lo(0),hi(0),bc(0,:))
+            rho_flag = 2
+            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_old(0,:,:),
+     $                    Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,rho_flag,
+     $                    .false.,lo(0),hi(0),bc(0,:))
 
 c     extract D for RhoH
-         do i=lo(0),hi(0)
-            diff_hat(0,i,RhoH) = 2.d0*((scal_new(0,i,RhoH)-scal_old(0,i,RhoH))/dt(0) 
-     $           - aofs(0,i,RhoH) - dRhs(0,i,0)/dt(0) - 0.5d0*diff_old(0,i,RhoH) )
-         enddo
+            do i=lo(0),hi(0)
+               diff_hat(0,i,RhoH) = 2.d0*((scal_new(0,i,RhoH)-scal_old(0,i,RhoH))/dt(0) 
+     $              - aofs(0,i,RhoH) - dRhs(0,i,0)/dt(0) - 0.5d0*diff_old(0,i,RhoH) )
+            enddo
 
-         print *,'... react with constant sources'
+            print *,'... react with constant sources'
 
 c     compute A+D source terms for reaction integration
-         do n = 1,nscal
-            do i=lo(0),hi(0)
-               const_src(0,i,n) = aofs(0,i,n) 
-     $              + 0.5d0*diff_hat(0,i,n) + 0.5d0*diff_old(0,i,n)
-               lin_src_old(0,i,n) = 0.d0
-               lin_src_new(0,i,n) = 0.d0
+            do n = 1,nscal
+               do i=lo(0),hi(0)
+                  const_src(0,i,n) = aofs(0,i,n) 
+     $                 + 0.5d0*diff_hat(0,i,n) + 0.5d0*diff_old(0,i,n)
+                  lin_src_old(0,i,n) = 0.d0
+                  lin_src_new(0,i,n) = 0.d0
+               enddo
             enddo
-         enddo
 c     add differential diffusion
-         do i=lo(0),hi(0)
-            const_src(0,i,RhoH) = const_src(0,i,RhoH)
-     $           + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
-         end do
-         
+            do i=lo(0),hi(0)
+               const_src(0,i,RhoH) = const_src(0,i,RhoH)
+     $              + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
+            end do
+            
 c     solve equations (44), (45) and (46)
-         call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
-     $                    const_src(0,:,:),lin_src_old(0,:,:),
-     $                    lin_src_new(0,:,:),
-     $                    I_R(0,:,:),dt(0),lo(0),hi(0),bc(0,:))
+            call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
+     $                       const_src(0,:,:),lin_src_old(0,:,:),
+     $                       lin_src_new(0,:,:),
+     $                       I_R(0,:,:),dt(0),lo(0),hi(0),bc(0,:))
+            
+         else
+
+c     non-fancy predictor that simply sets scal_new = scal_old
+
+            scal_new(0,:,:) = scal_old(0,:,:)
+
+         end if
 
 C----------------------------------------------------------------
 c     End initial predictor
@@ -753,9 +763,8 @@ c     compute 1/gamma
                   
 c     delta_chi = delta_chi + (ptherm-p0)/(gamma*dt*p0)
                   delta_chi(0,i) = delta_chi(0,i) 
-     $                 + gamma_inv*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+     $                 + dpdt_factor*gamma_inv*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
                   
-
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
                   divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
 
