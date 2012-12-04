@@ -67,8 +67,8 @@
       !
       ! Integrator
       !
-      double precision  spec_scalY(maxspec)
-      common /vode1/ spec_scalY
+      double precision  spec_scalY(maxspec), vode_rtol, vode_atol
+      common /vode1/ spec_scalY, vode_rtol, vode_atol
       save /vode1/
 
       double precision  thickFacCH

@@ -536,7 +536,6 @@ c     Get the matrix of elements versus species
       parameter (ITOL=1, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
@@ -557,6 +556,9 @@ c     Set IOPT=1 parameter settings for VODE
       IWRK(dvbi+4) = 0
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
+
+      RTOL    = vode_rtol
+      ATOLEPS = vode_atol
 
       if (do_diag.eq.1) nsubchem = nchemdiag
 c
@@ -835,7 +837,6 @@ c      parameter (ITOL=1, IOPT=1, ITASK=1)
       parameter (ITOL=2, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external conpFY_sdc, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
@@ -864,6 +865,9 @@ c     Set IOPT=1 parameter settings for VODE
       IWRK(dvbi+4) = 0
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
+
+      RTOL    = vode_rtol
+      ATOLEPS = vode_atol
 
       if (do_diag.eq.1) nsubchem = nchemdiag
 c

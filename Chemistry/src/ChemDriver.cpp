@@ -4,6 +4,7 @@
 #include "ChemDriver.H"
 #include "ChemDriver_F.H"
 #include <ParallelDescriptor.H>
+#include <ParmParse.H>
 
 namespace
 {
@@ -49,6 +50,18 @@ ChemDriver::initOnce ()
     FORT_GETCKDIMPARAMS(&mMaxreac, &mMaxspec, &mMaxelts,  &mMaxord,
                         &mMaxthrdb, &mMaxtp,  &mMaxsp,    &mMaxspnml);
     getStoichCoeffs();
+
+    Real v_rtol = 1.e-12, v_atol = 1.e-12;
+
+    ParmParse pp("ht");
+
+    pp.query("vode_rtol",v_rtol);
+    pp.query("vode_atol",v_atol);
+
+    BL_ASSERT(v_rtol > 0);
+    BL_ASSERT(v_atol > 0);
+
+    FORT_SETVODETOLS(&v_rtol,&v_atol);
 }
 
 void
