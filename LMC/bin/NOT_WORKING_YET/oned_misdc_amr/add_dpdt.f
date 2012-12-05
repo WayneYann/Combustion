@@ -3,7 +3,7 @@
       include 'spec.h'
       real*8    scal(-2:nfine+1,nscal)
       real*8 pthermo(-2:nfine+1)
-      real*8    divu(-1:nfine)
+      real*8    divu( 0:nfine-1) ! divu normally has a ghost cell; be careful when passing in
       real*8    umac(0 :nfine  )
       real*8 dx
       real*8 dt

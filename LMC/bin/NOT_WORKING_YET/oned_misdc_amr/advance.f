@@ -134,11 +134,13 @@ ccccccccccccccccccccccccccccccccccc
 c     new fancy delta chi algorithm
 ccccccccccccccccccccccccccccccccccc
 
-         do i=lo(0),hi(0)
 
-c     delta_chi = delta_chi + (ptherm-p0)/(dt*p0)
-            delta_chi(0,i) = delta_chi(0,i) 
-     $           + dpdt_factor*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
+         call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
+     $                 delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $                 lo(0),hi(0),bc(0,:))
+
+         do i=lo(0),hi(0)
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
             divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
@@ -156,8 +158,9 @@ c                               + dpdt_factor*(u dot grad p)/(gamma*p0)
          do i=lo(0),hi(0)
             divu_effect(0,i) = divu_extrap(0,i)
          end do
+
          call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
-     $                 divu_effect(0,:),macvel(0,:),dx(0),dt(0),
+     $                 divu_effect(0,lo(0):hi(0)),macvel(0,:),dx(0),dt(0),
      $                 lo(0),hi(0),bc(0,:))
 
       end if
@@ -737,11 +740,12 @@ c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
                call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
                
-               do i=lo(0),hi(0)
+c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
+               call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     $                       delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $                       lo(0),hi(0),bc(0,:))
 
-c     delta_chi = delta_chi + (ptherm-p0)/(dt*p0)
-                  delta_chi(0,i) = delta_chi(0,i) 
-     $                 + dpdt_factor*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+               do i=lo(0),hi(0)
                   
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
                   divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
