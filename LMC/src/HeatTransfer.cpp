@@ -1110,12 +1110,8 @@ HeatTransfer::set_typical_values (bool restart)
                     }
                 }
             }
-
-            ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
-
-            FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
         }
-	else {  // not restart
+	else { // not restart
 
 	  // Check fortan common values, if non-zero override
 	  Array<Real> tvTmp(nComp,0);
@@ -1127,8 +1123,10 @@ HeatTransfer::set_typical_values (bool restart)
 	      typical_values[i] = tvTmp[i];
             }
 	  }
-
 	}
+
+	ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
+	FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
 
         if (ParallelDescriptor::IOProcessor())
         {
