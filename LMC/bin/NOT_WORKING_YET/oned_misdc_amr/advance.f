@@ -91,9 +91,6 @@ c     nodal, no ghost cells
       real*8       macvel(0:nlevs-1, 0:nfine  )
       real*8      veledge(0:nlevs-1, 0:nfine  )
 
-c     stuff for iterative dpdt fix
-      real*8 cp, dummy, gamma_inv, mwmix, Runiv
-
       real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
       real*8 cpmix,rhocp,vel_theta,be_cn_theta
       
@@ -139,19 +136,9 @@ ccccccccccccccccccccccccccccccccccc
 
          do i=lo(0),hi(0)
 
-c     compute 1/gamma
-            do n = 1,Nspec
-               is = FirstSpec + n - 1
-               Y(n) = scal_old(0,i,is)/scal_old(0,i,Density)
-            enddo
-            call CKMMWY(Y,IWRK,RWRK,mwmix)
-            call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
-            call CKCPBS(scal_old(0,i,Temp),Y,IWRK,RWRK,cp)
-            gamma_inv = (cp - Runiv/mwmix)/cp
-
-c     delta_chi = delta_chi + (ptherm-p0)/(gamma*dt*p0)
+c     delta_chi = delta_chi + (ptherm-p0)/(dt*p0)
             delta_chi(0,i) = delta_chi(0,i) 
-     $           + dpdt_factor*gamma_inv*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+     $           + dpdt_factor*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
             divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
@@ -752,19 +739,9 @@ c     this is needed for any dpdt-based correction scheme
                
                do i=lo(0),hi(0)
 
-c     compute 1/gamma
-                  do n = 1,Nspec
-                     is = FirstSpec + n - 1
-                     Y(n) = scal_new(0,i,is)/scal_new(0,i,Density)
-                  enddo
-                  call CKMMWY(Y,IWRK,RWRK,mwmix)
-                  call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
-                  call CKCPBS(scal_new(0,i,Temp),Y,IWRK,RWRK,cp)
-                  gamma_inv = (cp - Runiv/mwmix)/cp
-                  
-c     delta_chi = delta_chi + (ptherm-p0)/(gamma*dt*p0)
+c     delta_chi = delta_chi + (ptherm-p0)/(dt*p0)
                   delta_chi(0,i) = delta_chi(0,i) 
-     $                 + dpdt_factor*gamma_inv*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+     $                 + dpdt_factor*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
                   
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
                   divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
