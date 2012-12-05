@@ -1110,6 +1110,8 @@ HeatTransfer::set_typical_values (bool restart)
                     }
                 }
             }
+
+	    ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
         }
 	else { // not restart
 
@@ -1125,7 +1127,6 @@ HeatTransfer::set_typical_values (bool restart)
 	  }
 	}
 
-	ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
 	FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
 
         if (ParallelDescriptor::IOProcessor())
