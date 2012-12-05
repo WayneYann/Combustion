@@ -5,18 +5,14 @@
       real*8 pthermo(-2:nfine+1)
       real*8    divu(-1:nfine)
       real*8    umac(0 :nfine  )
-      real*8 Y(Nspec)
       real*8 dx
       real*8 dt
       integer lo,hi,bc(2)
       
       real*8 uadv,p_lo,p_hi
       real*8 ugradp
-      real*8 denom
-      real*8 gamma_inv, cp, Runiv, mwmix, RWRK, dummy
       real*8 dpdt
-      integer i,n
-      integer ispec,IWRK
+      integer i
       
       do i=lo,hi
          uadv = 0.5d0 * (umac(i) + umac(i+1))
@@ -34,18 +30,7 @@
          dpdt = (pthermo(i) - Pcgs) / dt
          dpdt = dpdt - ugradp        
 
-c     compute gamma here
-         do n = 1,Nspec
-            ispec = FirstSpec + n - 1
-            Y(n) = scal(i,ispec)/scal(i,Density)
-         enddo
-c     compute (Y_i/mw_i)^-1 = mean molecular weight
-         call CKMMWY(Y,IWRK,RWRK,mwmix)
-         call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
-         call CKCPBS(scal(i,Temp),Y,IWRK,RWRK,cp)
-         gamma_inv = (cp - Runiv/mwmix)/cp
-         denom = MIN(pthermo(i),Pcgs)
-         divu(i) = divu(i) + dpdt*dpdt_factor*gamma_inv/denom
+         divu(i) = divu(i) + dpdt*dpdt_factor/pthermo(i)
       end do
       
       end
@@ -58,18 +43,14 @@ c     compute (Y_i/mw_i)^-1 = mean molecular weight
       real*8 pthermo(-2:nfine+1)
       real*8    divu(-1:nfine)
       real*8     vel(-2:nfine+1)
-      real*8 Y(Nspec)
       real*8 dx
       real*8 dt
       integer lo,hi,bc(2)
       
       real*8 uadv,p_lo,p_hi
       real*8 ugradp
-      real*8 denom
-      real*8 gamma_inv, cp, Runiv, mwmix, RWRK, dummy
       real*8 dpdt
-      integer i,n
-      integer ispec,IWRK
+      integer i
       
       do i=lo,hi
          uadv = vel(i)
@@ -94,21 +75,9 @@ c     compute (Y_i/mw_i)^-1 = mean molecular weight
 
          ugradp = uadv * (p_hi - p_lo) / dx 
          dpdt = (pthermo(i) - Pcgs) / dt
-         dpdt = dpdt - ugradp        
+         dpdt = dpdt - ugradp
 
-c     compute gamma here
-         do n = 1,Nspec
-            ispec = FirstSpec + n - 1
-            Y(n) = scal(i,ispec)/scal(i,Density)
-         enddo
-C     compute (Y_i/mw_i)^-1 = mean molecular weight
-         call CKMMWY(Y,IWRK,RWRK,mwmix)
-         call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
-         call CKCPBS(scal(i,Temp),Y,IWRK,RWRK,cp)
-
-         gamma_inv = (cp - Runiv/mwmix)/cp
-         denom = MIN(pthermo(i),Pcgs)
-         divu(i) = divu(i) + dpdt*dpdt_factor*gamma_inv/denom
+         divu(i) = divu(i) + dpdt*dpdt_factor/pthermo(i)
       end do
       
       end
