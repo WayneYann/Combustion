@@ -335,7 +335,7 @@ c     strang split overwrites scal_old so we preserve it
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dSdt,beta_old,beta_new,
-     $                   dx,dt,lo,hi,bc,delta_chi)
+     $                   dx,dt,lo,hi,bc,delta_chi,-init_iter)
 
 c     restore scal_old
             if (use_strang) then
@@ -378,7 +378,7 @@ C-- Now advance
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
      $                divu_old,divu_new,dSdt,beta_old,beta_new,
-     $                dx,dt,lo,hi,bc,delta_chi)
+     $                dx,dt,lo,hi,bc,delta_chi,nsteps_taken)
 
 c     update state, time
          vel_old = vel_new
