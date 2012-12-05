@@ -61,8 +61,8 @@
       common / ckdio / LLINKMC
       save   / ckdio /
 
-      integer verbose_vode, max_vode_subcycles
-      common / ckdio1 / verbose_vode, max_vode_subcycles
+      integer verbose_vode, max_vode_subcycles, vode_itol
+      common / ckdio1 / verbose_vode, max_vode_subcycles, vode_itol
       save   / ckdio1 /
       !
       ! Integrator

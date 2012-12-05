@@ -249,7 +249,7 @@ extern "C" {
 
     void FORT_SETTMINTRANS(const Real* Tmin);
     void FORT_SETVERBOSEVODE();
-    void FORT_SETVODETOLS(const Real* rtol, const Real* atol);
+    void FORT_SETVODETOLS(const Real* rtol, const Real* atol, const int* itol);
     void FORT_SETVODESUBCYC(const int* maxcyc);
     void FORT_SETSPECSCALY(const int* name, const int* length);
     void FORT_INITCHEM();
