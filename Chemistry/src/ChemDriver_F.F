@@ -32,6 +32,16 @@
       verbose_vode = 1
       end
 
+      subroutine FORT_SETVODETOLS(rtol,atol,itol)
+      implicit none
+      integer itol
+      REAL_T rtol,atol
+#include "cdwrk.H"
+      vode_itol = itol
+      vode_rtol = rtol
+      vode_atol = atol
+      end
+
       subroutine FORT_SETVODESUBCYC(maxcyc)
       implicit none
       integer maxcyc

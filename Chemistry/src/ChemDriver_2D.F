@@ -516,6 +516,7 @@ c     Get the matrix of elements versus species
 #include "cdwrk.H"
 #include "conp.H"
 #include "vode.H"
+#include "htdata.H"
 
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(Yold)
@@ -533,10 +534,9 @@ c     Get the matrix of elements versus species
       REAL_T diag(DIMV(FuncCount),*)
    
       integer ITOL, IOPT, ITASK, open_vode_failure_file
-      parameter (ITOL=1, IOPT=1, ITASK=1)
+      parameter (IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
@@ -558,6 +558,10 @@ c     Set IOPT=1 parameter settings for VODE
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
 
+      ITOL    = vode_itol
+      RTOL    = vode_rtol
+      ATOLEPS = vode_atol
+
       if (do_diag.eq.1) nsubchem = nchemdiag
 c
 c     Set molecular weights and pressure in area accessible by conpF
@@ -576,13 +580,15 @@ c     finite difference jacobian
 
 c     Set up ATOL
       if (ITOL.eq.2) then
-         ATOL(1) = spec_scalT*ATOLEPS
+         ATOL(1) = ATOLEPS*typVal_Temp
+         if (ATOL(1) <= 0.0d0) call bl_abort('typVal_Temp <= 0')
          do m=1,Nspec
-            ATOL(m+1) = ATOLEPS*spec_scalY(m)
+            ATOL(m+1) = ATOLEPS*typVal_Y(m)
+            if (ATOL(m+1) <= 0.0d0) call bl_abort('typVal_Y <= 0')
          end do
       else
          ATOL(1) = ATOLEPS
-      end if
+      endif
       !
       ! Force recalculation of jacobian for each XY block.
       !
@@ -835,7 +841,6 @@ c      parameter (ITOL=1, IOPT=1, ITASK=1)
       parameter (ITOL=2, IOPT=1, ITASK=1)
       REAL_T RTOL, ATOL(maxspec+1), ATOLEPS
       REAL_T spec_scalT, NEWJ_TOL
-      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external conpFY_sdc, CONPJ_FILE, open_vode_failure_file
       REAL_T TT1, TT2, RU, RUC, P1atm
@@ -864,6 +869,9 @@ c     Set IOPT=1 parameter settings for VODE
       IWRK(dvbi+4) = 0
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
+
+      RTOL    = vode_rtol
+      ATOLEPS = vode_atol
 
       if (do_diag.eq.1) nsubchem = nchemdiag
 c

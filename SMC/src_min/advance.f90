@@ -13,7 +13,7 @@ module advance_module
   implicit none
 
   private
-  public advance
+  public advance, overlapped_part
 
 contains
 
@@ -315,10 +315,8 @@ contains
     end if
 
     if (update_courno) then
-       call build(bpt_courno, "courno")
        courno_proc = -1.d50
        call compute_courno(Q, dx, courno_proc)
-       call stop(bpt_courno)
     end if
 
     if (overlap_comm_comp) then
@@ -476,7 +474,7 @@ contains
     call destroy(Ddiag)
 
     if (update_courno) then
-       call start(bpt_courno)
+       call build(bpt_courno, "courno")
        call parallel_reduce(courno, courno_proc, MPI_MAX)
        call destroy(bpt_courno)
     end if
@@ -626,10 +624,8 @@ contains
     end if
 
     if (update_courno) then
-       call build(bpt_courno, "courno")
        courno_proc = -1.d50
        call compute_courno(Q, dx, courno_proc)
-       call destroy(bpt_courno)
     end if
 
     if (overlap_comm_comp) then
@@ -850,5 +846,77 @@ contains
     end if
 
   end subroutine dUdt_S3D
+
+  ! only for testing communication and computation overlapping
+  subroutine overlapped_part(U, U_fb_data)
+
+    use probin_module, only : overlap_comm_gettrans
+
+    type(multifab),   intent(inout) :: U
+    type(mf_fb_data), intent(inout) :: U_fb_data
+
+    integer :: dm, ng, ng_ctoprim, ng_gettrans, n, lo(U%dim), hi(U%dim)
+    type(layout)     :: la
+    type(multifab)   :: Q, Uprime, mu, xi, lam, Ddiag
+    double precision, pointer, dimension(:,:,:,:) :: qp, upp
+
+    call multifab_fill_boundary_test(U, U_fb_data)
+
+    dm = U%dim
+    ng = nghost(U)
+    la = get_layout(U)
+
+    call multifab_build(Q, la, nprim, ng)
+
+    call multifab_build(Uprime, la, ncons, 0)
+    call multifab_setval(Uprime, 0.d0)
+
+    call multifab_fill_boundary_test(U, U_fb_data)
+
+    if (overlap_comm_gettrans) then
+       call multifab_build(mu , la, 1, ng)
+       call multifab_build(xi , la, 1, ng)
+       call multifab_build(lam, la, 1, ng)
+       call multifab_build(Ddiag, la, nspecies, ng)
+    end if
+
+    call multifab_fill_boundary_test(U, U_fb_data)
+    
+    ng_ctoprim = 0
+    call ctoprim(U, Q, ng_ctoprim)
+
+    call multifab_fill_boundary_test(U, U_fb_data)
+
+    do n=1,nfabs(Q)
+       qp  => dataptr(Q,n)
+       upp => dataptr(Uprime,n)
+
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
+
+       if (dm .ne. 3) then
+          call bl_error("Only 3D chemsitry_term is supported")
+       else
+          call chemterm_3d(lo,hi,ng,qp,upp)
+       end if
+    end do
+    
+    call multifab_fill_boundary_test(U, U_fb_data)
+
+    if (overlap_comm_gettrans) then
+       ng_gettrans = 0
+       call get_transport_properties(Q, mu, xi, lam, Ddiag, ng_gettrans)
+    end if
+
+    call destroy(Q)
+    call destroy(Uprime)
+    if (overlap_comm_gettrans) then
+       call destroy(mu)
+       call destroy(xi)
+       call destroy(lam)
+       call destroy(Ddiag)
+    end if
+
+  end subroutine overlapped_part
 
 end module advance_module
