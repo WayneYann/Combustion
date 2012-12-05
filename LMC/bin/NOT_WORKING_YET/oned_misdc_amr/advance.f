@@ -8,7 +8,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dSdt,beta_old,beta_new,
-     $                   dx,dt,lo,hi,bc,delta_chi)
+     $                   dx,dt,lo,hi,bc,delta_chi,istep)
 
       implicit none
 
@@ -52,6 +52,7 @@ c     nodal, 1 ghost cell
       integer bc(0:nlevs-1,2)
       real*8  dx(0:nlevs-1)
       real*8  dt(0:nlevs-1)
+      integer istep
 
 c     local variables
 
