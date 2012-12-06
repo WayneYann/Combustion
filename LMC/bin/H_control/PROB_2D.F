@@ -26,7 +26,7 @@
 c     Take fuel mixture from prob data
 
          region = BL_INTERIOR
-         zone = getZone(region, domnlo(1), domnlo(2))
+         zone = getZone(domnlo(1), domnlo(2))
          num_zones_defined = 1
          
          if (phi_in.gt.zero) then
@@ -70,8 +70,8 @@ c     Take fuel mixture from pmf file
       else if (trim(probtype).eq.BL_PROB_DIFFUSION) then
 
 c     A diffusion flame
-         fuelZone = getZone(BL_INTERIOR, domnlo(1), domnlo(2))
-         airZone = getZone(BL_INTERIOR, domnhi(1), domnhi(2))
+         fuelZone = getZone(domnlo(1), domnlo(2))
+         airZone  = getZone(domnhi(1), domnhi(2))
          num_zones_defined = 2
 
 c     Fuel
@@ -150,33 +150,13 @@ c     Set density and hmix consistent with data
 
 c ::: -----------------------------------------------------------
       
-      integer function getZone(RegionID, x, y)
+      integer function getZone(x, y)
       implicit none
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
-      integer RegionID
       REAL_T x, y
 
-c#define BL_FUELPIPE 1
-c#define BL_COFLOW   2
-c#define BL_STICK    3
-c#define BL_WALL     4
-c#define BL_AMBIENT  5
-c#define BL_VOLUME   6
-c#define BL_PIPEEND  7
-
-#if 0
-      if ( (RegionID .ne. BL_INTERIOR) 
-     &     .or. (RegionID .ne. BL_YLO) ) then
-         call bl_pd_abort('No zone RegionID ne BL_INTERIOR or BL_YLO')
-      endif
-
-      if ( (x.lt.domnlo(1)).or.(x.gt.domnhi(1))
-     &     .or. (y.lt.domnlo(2)).or.(y.gt.domnhi(2)) ) then
-         call bl_pd_abort('No zone defined outside prob domain')         
-      endif
-#endif
       getZone = BL_VOLUME
 
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
@@ -224,7 +204,7 @@ c ::: -----------------------------------------------------------
 
          if (RegionID .eq. BL_YLO) then
 
-            zone = getZone(RegionID,x,y)
+            zone = getZone(x,y)
             rho = rho_bc(zone)
             do n = 0, Nspec-1
                Yl(n) = Y_bc(n,zone)
@@ -251,7 +231,7 @@ c ::: -----------------------------------------------------------
 
          if (RegionID .eq. BL_YLO) then
 
-            zone = getZone(RegionID,x,y)
+            zone = getZone(x,y)
             rho = rho_bc(zone)
             do n = 0, Nspec-1
                Yl(n) = Y_bc(n,zone)
@@ -446,8 +426,8 @@ c ::: -----------------------------------------------------------
          
       else if ((trim(probtype).eq.BL_PROB_DIFFUSION)) then
 
-         fuelZone = getZone(BL_INTERIOR, domnlo(1), domnlo(2))
-         airZone = getZone(BL_INTERIOR, domnhi(1), domnhi(2))
+         fuelZone = getZone(domnlo(1), domnlo(2))
+         airZone  = getZone(domnhi(1), domnhi(2))
 
          do j = lo(2), hi(2)
             y = (float(j)+.5)*delta(2)+domnlo(2)
@@ -617,12 +597,12 @@ c
                xr = (float(i)+1.d0)*dx(1)+domnlo(1) 
                xh = 0.5d0*(xl+xr)
                   
-               if ( (getZone(BL_ZLO,xl,y).eq.BL_STICK) .OR.
-     &              (getZone(BL_ZLO,xh,y).eq.BL_STICK) .OR.
-     &              (getZone(BL_ZLO,xr,y).eq.BL_STICK) .OR.
-     &              (getZone(BL_ZLO,xl,y).eq.BL_PIPEEND) .OR.
-     &              (getZone(BL_ZLO,xh,y).eq.BL_PIPEEND) .OR.
-     &              (getZone(BL_ZLO,xr,y).eq.BL_PIPEEND)  ) then
+               if ( (getZone(xl,y).eq.BL_STICK) .OR.
+     &              (getZone(xh,y).eq.BL_STICK) .OR.
+     &              (getZone(xr,y).eq.BL_STICK) .OR.
+     &              (getZone(xl,y).eq.BL_PIPEEND) .OR.
+     &              (getZone(xh,y).eq.BL_PIPEEND) .OR.
+     &              (getZone(xr,y).eq.BL_PIPEEND)  ) then
                   
 c                 if (do_T)  diff(i,j,Tid ) = 0.d0
 c                 if (do_RH) diff(i,j,RHid) = 0.d0
