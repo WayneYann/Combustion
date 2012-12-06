@@ -131,7 +131,7 @@ c
       allocate(IWRK(dvi))
 
       call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
-     &     EGRWRK(1), egrlen, EGIWRK(1), egilen)
+     &     EGRWRK, egrlen, EGIWRK, egilen)
       !
       ! Set IOPT=1 parameter settings for VODE
       ! They only really need to be set once.
