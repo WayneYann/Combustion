@@ -41,14 +41,10 @@
       common /pert1/ pertmag
       save /pert1/
 
-      REAL_T convVelInit
-      common /inflow1/ convVelInit
-      save /inflow1/
-
-      logical forceInflow
-      REAL_T probSizeFile(3), dxFile(3)
       integer dimFile
-      common /inflow1/forceInflow
-      common /inflow2/probSizeFile, dxFile
-      common /inflow3/dimFile
+      logical forceInflow
+      REAL_T convVelInit, probSizeFile(3), dxFile(3)
+      common /inflow1/ convVelInit, forceInflow
+      common /inflow2/ probSizeFile, dxFile
+      common /inflow3/ dimFile
       save /inflow1/, /inflow2/, /inflow3/
