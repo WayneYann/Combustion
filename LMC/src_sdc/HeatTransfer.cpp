@@ -2627,18 +2627,26 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	      if (level > 0)
 	      {
 		if (is_predictor)
+		{
 		  getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies  ,0.5*dt);
+		}
 		else
+		{
 		  getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,    dt);
+		}
 	      }
 	    }
 
 	    if (level < parent->finestLevel())
 	    {
 	      if (is_predictor)
+	      {
 		getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies  ,-0.5*dt,FluxRegister::ADD);
+	      }
 	      else
+	      {
 		getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,    -dt,FluxRegister::ADD);
+	      }
 	    }
 	  }
 	}
@@ -2727,7 +2735,9 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 		  for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
 		  {
 		    if (level > 0)
+		    {
 		      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),nspecies,RhoH,1,0.5*dt);
+		    }
 		  }
 
 		  if (level < parent->finestLevel())
@@ -4722,18 +4732,26 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	  if (level > 0)
           {
 	    if (is_predictor)
+	    {
 	      getViscFluxReg().FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,theta*dt);
+	    }
 	    else
-	      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,theta*dt);
+            {
+	      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,-theta*dt);
+	    }
 	  }
 	}
 
 	if (level < parent->finestLevel())
         {
 	  if (is_predictor)
+	  {
 	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,first_spec,nspecies+1,-theta*dt,FluxRegister::COPY);
+	  }
 	  else
-	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-theta*dt,FluxRegister::ADD);
+	  {
+	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,theta*dt,FluxRegister::ADD);
+	  }
 	}
       }
     }
@@ -6399,11 +6417,11 @@ HeatTransfer::mac_sync ()
 					     rho_flag,flux,0,beta,0,alpha);
 		    if (do_viscsyncflux && level > 0)
 		    {
-			for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
+		      for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
 			{
 			    const int i=mfi.index();
 			    for (int d=0; d<BL_SPACEDIM; ++d)
-                                getViscFluxReg().FineAdd((*flux[d])[i],d,i,0,state_ind,1,dt);
+			      getViscFluxReg().FineAdd((*flux[d])[i],d,i,0,state_ind,1,dt);
 			}
 		    }
                 }
