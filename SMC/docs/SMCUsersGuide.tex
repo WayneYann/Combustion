@@ -47,8 +47,8 @@ The Navier-Stokes equations solved by {\tt SMC} are
   (\vec{V}_k -\vec{V}_c) h_k ], \\
 \frac{\partial \rho Y_k}{\partial t} + \nabla \cdot (\rho Y_k \vec{u})
 = { } & \rho \dot{\omega}_k  - \nabla \cdot [\rho Y_k
-  (\vec{V}_k -\vec{V}_c) ], 
-\end{align} 
+  (\vec{V}_k -\vec{V}_c) ],
+\end{align}
 where $\rho$ is the density, $\vec{u}$ is the velocity, $p$ is the
 pressure, $E$ is the specific energy density (kinetic energy plus
 internal energy), $k$ denotes species, $Y_k$ is the mass fraction of
@@ -135,7 +135,7 @@ executable.  Note GNU {\tt make} is required for building.  The {\tt
 \item {\tt MPI := t}\\
   This determines whether we are doing a parallel build, using the
   Message Passing Interface (MPI) library. Leaving this
-  option empty will disable MPI. 
+  option empty will disable MPI.
 \item {\tt OMP :=}\\
   This determines whether we are using OpenMP to do parallelism within
   a shared memory node. OpenMP is used together with MPI, with MPI
@@ -147,7 +147,7 @@ executable.  Note GNU {\tt make} is required for building.  The {\tt
   Intel, or Cray).
 \item {\tt MKVERBOSE := t}\\
   This determines the verbosity of the building process.
-\end{itemize} 
+\end{itemize}
 
 The {\tt BoxLib} building system used by {\tt SMC} is located at {\tt
   \$\{BOXLIB\_HOME\}/Tools/F\_mk}.  The compiler flags are specified
@@ -169,7 +169,7 @@ operating system, and some other options specified in the {\tt
 
 \verb|./main.Linux.gfortran.debug.mpi.exe inputs_SMC|\vspace{5pt}\\
 in the {\tt ToyFlame/} directory, where the {\tt inputs\_SMC} file
-specifies runtime parameters. 
+specifies runtime parameters.
 
 \section{Runtime Parameters}
 
@@ -225,17 +225,17 @@ set them appropriately.
   Maximum number of timesteps in the simulation.
 \item {\tt cflfac = 0.5d0}\\
   CFL factor to use in the computation of the advection timestep
-  constraint. 
+  constraint.
 \item {\tt cfl\_int = 10}\\
   Number of steps between computing the Courant number.  Since the
   system changes very slowly over steps for an explicit combustion
-  code, it is unnecessary to compute the Courant number very often. 
+  code, it is unnecessary to compute the Courant number very often.
 \item {\tt init\_shrink = 1.d0}\\
   The multiplicative factor ($\le 1$) to reduce the initial timestep
   as computed by the CFL constraint.
 \item {\tt small\_dt = 1.d-30}\\
   The minimum allowed timestep.  We abort if dt drops below this
-  value. 
+  value.
 \item {\tt max\_dt = 1.d33}\\
   This is the maximum dt that is allowed
 \item {\tt fixed\_dt = -1.0d0}\\
@@ -296,7 +296,7 @@ set them appropriately.
 \item {\tt overlap\_comm\_gettrans = .false.} \\
   This determines whether the computation of transport coefficients is
   included in the computation that might be overlapped with
-  communication. 
+  communication.
 \item {\tt overlap\_testing = .true.} \\
   When this is set to true, a test is performed at the beginning of
   the run to determine whether it is worth overlapping communication
@@ -334,19 +334,37 @@ set them appropriately.
 
 \begin{itemize}
 \item {\tt sdc\_nnodes = 5}\\
-  Number of SDC nodes.
+  Number of SDC nodes.  Valid choices are 2, 3, 4, 5, 7, 9, 13, and 17.
 \item {\tt sdc\_iters = 9}\\
-  Number of sdc iterations per time step.
+  Number of SDC iterations per time step.  Valid choices are any
+  positive integer.
 \item {\tt sdc\_tol\_residual = 1.d-5}\\
   If the SDC residual drops below this, SDC iterations are cut short.
+  If this tolerance is negative, then SDC iterations are never cut
+  short.
 \end{itemize}
+
+If SDC time-stepping is used, the number of SDC nodes used and the
+number of SDC iterations (sweeps) taken, per time-step, can be
+adjusted.  The type of SDC nodes that {\tt SMC} uses is (currently)
+Gauss-Lobatto.  Therefore, the formal order of accuracy of the
+resulting time-stepping scheme is the minimum of $2{\tt sdc\_nnodes} -
+2$ and ${\tt sdc\_iters} - 1$.  For example, with 5 Gauss-Lobatto
+nodes the formal order of accuracy is 8 as long as 9 iterations are
+taken.  If only 7 iterations are taken, then the formal order of
+accuracy is reduced to 6.
+
+Note that a time-stepping scheme of arbitrary order can be built by
+simply adjusting {\tt sdc\_nnodes} and {\tt sdc\_iters}.  Keep in
+mind, however, that these parameters also effect the stability of the
+resulting scheme.
 
 \subsection{Boundary Conditions}
 
 \begin{itemize}
 \item {\tt xlo\_boundary\_type = "periodic"}\\
   $-x$ boundary condition.  Other valid choices are {\tt "inlet"} and
-  {\tt "outlet"}. 
+  {\tt "outlet"}.
 \item {\tt xhi\_boundary\_type = "periodic"}\\
   $+x$ boundary condition.  The other valid choice is {\tt "outlet"}.
 \item {\tt ylo\_boundary\_type = "periodic"}\\
@@ -408,7 +426,7 @@ Weak scaling studies show that the scaling behavior of SMC is
 excellent on Hopper.  It is worth noting again that you would like to
 have one box for each MPI task to minimize the communication cost.
 You might also want to set {\tt t\_trylayout = 600.d0} to find a good
-layout of boxes. 
+layout of boxes.
 
 More on communication overlapping and some environment variables ...
 
