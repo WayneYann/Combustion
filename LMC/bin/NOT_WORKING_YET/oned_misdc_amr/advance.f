@@ -8,7 +8,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dSdt,beta_old,beta_new,
-     $                   dx,dt,lo,hi,bc,delta_chi)
+     $                   dx,dt,lo,hi,bc,delta_chi,istep)
 
       implicit none
 
@@ -52,6 +52,7 @@ c     nodal, 1 ghost cell
       integer bc(0:nlevs-1,2)
       real*8  dx(0:nlevs-1)
       real*8  dt(0:nlevs-1)
+      integer istep
 
 c     local variables
 
@@ -89,9 +90,6 @@ c     cell-centered, no ghost cells
 c     nodal, no ghost cells
       real*8       macvel(0:nlevs-1, 0:nfine  )
       real*8      veledge(0:nlevs-1, 0:nfine  )
-
-c     stuff for iterative dpdt fix
-      real*8 cp, dummy, gamma_inv, mwmix, Runiv
 
       real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
       real*8 cpmix,rhocp,vel_theta,be_cn_theta
@@ -136,21 +134,13 @@ ccccccccccccccccccccccccccccccccccc
 c     new fancy delta chi algorithm
 ccccccccccccccccccccccccccccccccccc
 
+
+c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
+         call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
+     $                 delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $                 lo(0),hi(0),bc(0,:))
+
          do i=lo(0),hi(0)
-
-c     compute 1/gamma
-            do n = 1,Nspec
-               is = FirstSpec + n - 1
-               Y(n) = scal_old(0,i,is)/scal_old(0,i,Density)
-            enddo
-            call CKMMWY(Y,IWRK,RWRK,mwmix)
-            call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
-            call CKCPBS(scal_old(0,i,Temp),Y,IWRK,RWRK,cp)
-            gamma_inv = (cp - Runiv/mwmix)/cp
-
-c     delta_chi = delta_chi + (ptherm-p0)/(gamma*dt*p0)
-            delta_chi(0,i) = delta_chi(0,i) 
-     $           + dpdt_factor*gamma_inv*(scal_old(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
             divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
@@ -168,8 +158,9 @@ c                               + dpdt_factor*(u dot grad p)/(gamma*p0)
          do i=lo(0),hi(0)
             divu_effect(0,i) = divu_extrap(0,i)
          end do
+
          call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
-     $                 divu_effect(0,:),macvel(0,:),dx(0),dt(0),
+     $                 divu_effect(0,lo(0):hi(0)),macvel(0,:),dx(0),dt(0),
      $                 lo(0),hi(0),bc(0,:))
 
       end if
@@ -749,21 +740,12 @@ c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
                call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
                
-               do i=lo(0),hi(0)
+c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
+               call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     $                       delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $                       lo(0),hi(0),bc(0,:))
 
-c     compute 1/gamma
-                  do n = 1,Nspec
-                     is = FirstSpec + n - 1
-                     Y(n) = scal_new(0,i,is)/scal_new(0,i,Density)
-                  enddo
-                  call CKMMWY(Y,IWRK,RWRK,mwmix)
-                  call CKRP(IWRK,RWRK,Runiv,dummy,dummy) 
-                  call CKCPBS(scal_new(0,i,Temp),Y,IWRK,RWRK,cp)
-                  gamma_inv = (cp - Runiv/mwmix)/cp
-                  
-c     delta_chi = delta_chi + (ptherm-p0)/(gamma*dt*p0)
-                  delta_chi(0,i) = delta_chi(0,i) 
-     $                 + dpdt_factor*gamma_inv*(scal_new(0,i,RhoRT)-pcgs)/(dt(0)*pcgs)
+               do i=lo(0),hi(0)
                   
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
                   divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)

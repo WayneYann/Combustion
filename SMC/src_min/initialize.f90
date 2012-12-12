@@ -13,7 +13,7 @@ contains
   subroutine initialize_from_restart(dirname,la,dt,courno,dx,U)
     use checkpoint_module, only : checkpoint_read
     use probin_module, only: n_cellx, n_celly, n_cellz, prob_lo, prob_hi, dm_in, &
-         max_grid_size, change_max_grid_size, pmask, t_trylayout, verbose
+         max_grid_size, change_max_grid_size, pmask, t_trylayout, overlap_testing
     use derivative_stencil_module, only : stencil_ng
 
     character(len=*), intent(in) :: dirname
@@ -100,7 +100,7 @@ contains
 
     call destroy(ba)
 
-    if (verbose > 1) then
+    if (overlap_testing) then
        call overlap_vs_nooverlap(U)
     end if
 
@@ -113,7 +113,7 @@ contains
     use time_module, only : time
 
     use probin_module, only: n_cellx, n_celly, n_cellz, prob_lo, prob_hi, dm_in, &
-         max_grid_size, pmask, t_trylayout, verbose
+         max_grid_size, pmask, t_trylayout, overlap_testing
     use derivative_stencil_module, only : stencil_ng
 
     type(layout),intent(inout) :: la
@@ -163,7 +163,7 @@ contains
 
     call destroy(ba)
 
-    if (verbose > 1) then
+    if (overlap_testing) then
        call overlap_vs_nooverlap(U)
     end if
 
@@ -171,7 +171,7 @@ contains
 
   
   subroutine build_better_layout(U, la, ba, pd, pmask, nc, ng, ttry)
-    use probin_module, only : verbose, overlap_comm_comp
+    use probin_module, only : verbose, overlap_comm_comp, overlap_in_trial
     use advance_module, only : overlapped_part
     use bl_prof_module
     type(multifab),intent(inout) :: U
@@ -239,13 +239,13 @@ contains
 
        call parallel_barrier()
        tcom1 = parallel_wtime()
-       if (overlap_comm_comp) then
-          call multifab_fill_boundary_nowait(Ut, Ut_fb_data)
+
+       call multifab_fill_boundary_nowait(Ut, Ut_fb_data)
+       if (overlap_comm_comp .and. overlap_in_trial) then
           call overlapped_part(Ut, Ut_fb_data)
-          call multifab_fill_boundary_finish(Ut, Ut_fb_data)
-       else
-          call multifab_fill_boundary(Ut)
        end if
+       call multifab_fill_boundary_finish(Ut, Ut_fb_data)
+
        call parallel_barrier()
        tcom2 = parallel_wtime() - tcom1
 
@@ -284,7 +284,7 @@ contains
 
     if (verbose > 0 .and. parallel_IOProcessor()) then
        print *, 'Tried', ntry, 'layouts for filling multifab boundaries.'
-       if (overlap_comm_comp) then
+       if (overlap_comm_comp .and. overlap_in_trial) then
           print *, 'with overlapped computation'
        end if
        print *, '   The average time in second is', timespent/ntry
@@ -314,12 +314,13 @@ contains
 
 
   subroutine overlap_vs_nooverlap(U)
+    use probin_module, only : overlap_comm_comp
     use advance_module, only : overlapped_part
     use bl_prof_module
     type(multifab), intent(inout) :: U
 
     type(mf_fb_data) :: mfd1, mfd2
-    double precision :: t1, t2, t3
+    double precision :: t1, t2, t3, t4
     logical :: bp_state
 
     bp_state = bl_prof_get_state()
@@ -342,13 +343,25 @@ contains
     call parallel_barrier()
     t3 = parallel_wtime()
 
+    call overlapped_part(U, mfd2)
+
+    call parallel_barrier()
+    t4 = parallel_wtime()
+
     if (parallel_IOProcessor()) then
        print *, ''
        print *, 'Testing communication and computation overlapping:'
-       print *, '   Overlap   :', t2-t1
-       print *, '   No overlap:', t3-t2
+       print *, '   Computation time:', t4-t3
+       print *, '   Communication time with overlapping:', t2-t1 - (t4-t3)
+       print *, '   Communication time w/o  overlapping:', t3-t2 - (t4-t3)
+       if (overlap_comm_comp .and. (t2-t1) > (t3-t2)) then
+          print *, 'Turn off overlapping because the test shows it does not work.'
+          overlap_comm_comp = .false.
+       end if
        print *, ''
     end if
+
+    call parallel_bcast(overlap_comm_comp)
 
     call bl_prof_set_state(bp_state)
 

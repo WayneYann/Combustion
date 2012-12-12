@@ -20,7 +20,7 @@
 
 {\tt SMC} {\footnote{People often ask what SMC means.  The name was
     chosen by someone who was trained as an astrophysicist.  The
-    center for Computational Sciences and Engineering (CCSE) has a low
+    Center for Computational Sciences and Engineering (CCSE) has a low
     Mach number combustion code called LMC, which can also stand for
     Large Magellanic Cloud, a satellite galaxy of the Milky Way.  The
     LMC galaxy has a little brother called the Small Magellanic Cloud
@@ -143,19 +143,22 @@ executable.  Note GNU {\tt make} is required for building.  The {\tt
   shared-memory node, OpenMP allows many cores to operate on the same
   grid.  Leaving this option empty disables OpenMP.
 \item {\tt COMP := gfortran}\\
-  Set this to your Fortran compiler of choice.
+  Set this to your Fortran compiler of choice (e.g., gfortran, PGI,
+  Intel, or Cray).
 \item {\tt MKVERBOSE := t}\\
   This determines the verbosity of the building process.
 \end{itemize} 
 
 The {\tt BoxLib} building system used by {\tt SMC} is located at {\tt
-  \$\{BOXLIB\_HOME\}/Tools/F\_mk}.  The compiler flags are specified in {\tt
-  \$\{BOXLIB\_HOME\}/Tools/F\_mk/comps/}.  If building with MPI, {\tt
-  SMC} needs to know the location of MPI library.  You need to provide
-the MPI locations in the {\tt F\_mk/GMakeMPI.mak} file.  Note that
-some shells (e.g., {\tt tcsh}) use the {\tt \$HOST} environment
-variable to store host name, whereas other shells (e.g., {\tt bash})
-use {\tt \$HOSTNAME}.
+  \$\{BOXLIB\_HOME\}/Tools/F\_mk}.  The compiler flags are specified
+in {\tt \$\{BOXLIB\_HOME\}/Tools/F\_mk/comps/}.  If building with MPI,
+{\tt SMC} needs to know the location of MPI library.  You can set {\tt
+  BOXLIB\_USE\_MPI\_WRAPPERS=1} in the environment to make {\tt
+  BoxLib} use {\tt mpif90}.  Otherwise, you need to provide the MPI
+locations in the {\tt F\_mk/GMakeMPI.mak} file.  Note that some shells
+(e.g., {\tt tcsh}) use the {\tt \$HOST} environment variable to store
+host name, whereas other shells (e.g., {\tt bash}) use {\tt
+  \$HOSTNAME}.
 
 To build an executable, type {\tt make} in the {\tt ToyFlame/}
 directory.  The executable will have a name like {\tt
@@ -168,7 +171,7 @@ operating system, and some other options specified in the {\tt
 in the {\tt ToyFlame/} directory, where the {\tt inputs\_SMC} file
 specifies runtime parameters. 
 
-\section{Runtime parameters}
+\section{Runtime Parameters}
 
 {\tt SMC} obtains runtime parameters from an inputs file.  We can also
 override the value of any parameter by specifying it on the
@@ -176,33 +179,14 @@ command line as:\vspace{5pt}
 
 \verb|./main.Linux.gfortran.debug.mpi.exe inputs_SMC --parameter value|\\
 
-Below are a list of selected runtime parameters and their default values.
+Some selected runtime parameters and their default values are listed
+below.  Note that some of the default values (e.g., {\tt n\_cellx =
+  -1}) are intentionally set to improper values so that the user must
+set them appropriately.
+
+\subsection{Grid}
+
 \begin{itemize}
-\item {\tt verbose = 0}\\
-  This determines verbosity.
-\item {\tt stencil\_type = "compact"}\\
-  This determines the stencil type for second derivatives. The options
-  are {\tt "compact"} or {\tt "S3D"}.
-\item {\tt stop\_time = -1.d0}\\
-  Simulation stop time.
-\item {\tt max\_step = 1}\\
-  Maximum number of timesteps in the simulation.
-\item {\tt restart = -1}\\
-  This determines whether this is a restart run.  The value of -1
-  means the simulation starts from scratch.  A non-negative value
-  specifies which file to restart from.
-\item {\tt plot\_int = 0}\\
-  Number of timesteps between writing a plot file, if the value is
-  positive. 
-\item {\tt chk\_int = 0}\\
-  Number of timesteps between writing a checkpoint file, if the value is
-  positive.
-\item {\tt cflfac = 0.5d0}\\
-  CFL factor to use in the computation of the advection timestep
-  constraint. 
-\item {\tt init\_shrink = 1.d0}\\
-  The multiplicative factor ($\le 1$) to reduce the initial timestep as 
-  computed by the CFL constraint.
 \item {\tt n\_cellx = -1}\\
   Number of cells in the $x$-direction.  It must be $\ge 4$.
 \item {\tt n\_celly = -1}\\
@@ -210,8 +194,14 @@ Below are a list of selected runtime parameters and their default values.
 \item {\tt n\_cellz = -1}\\
   Number of cells in the $z$-direction.  It must be $\ge 4$.
 \item {\tt max\_grid\_size = 64}\\
-  This determines the largest grid size of a box.  Note that each
-  processor may contain multiple boxes.
+  This determines the largest grid size of a box.  If {\tt
+    max\_grid\_size} is too big, there might be fewer boxes than MPI
+  tasks, and then some processors will be idle.  However, if it is too
+  small, each MPI task may have too many small boxes, and the
+  performance will be affected.  Thus, {\tt max\_grid\_size} must be
+  chosen according to the number of cells and the number of MPI tasks.
+  Ideally, you would like to have one box for each MPI task to
+  minimize the communication cost.
 \item {\tt prob\_lo\_x = 0.d0}\\
   Physical coordinates of lo-$x$ corner of problem domain
 \item {\tt prob\_lo\_y = 0.d0}\\
@@ -225,5 +215,201 @@ Below are a list of selected runtime parameters and their default values.
 \item {\tt prob\_hi\_z = 1.d0}\\
   Physical coordinates of hi-$z$ corner of problem domain
 \end{itemize}
+
+\subsection{Timestepping}
+
+\begin{itemize}
+\item {\tt stop\_time = -1.d0}\\
+  Simulation stop time.
+\item {\tt max\_step = 1}\\
+  Maximum number of timesteps in the simulation.
+\item {\tt cflfac = 0.5d0}\\
+  CFL factor to use in the computation of the advection timestep
+  constraint. 
+\item {\tt cfl\_int = 10}\\
+  Number of steps between computing the Courant number.  Since the
+  system changes very slowly over steps for an explicit combustion
+  code, it is unnecessary to compute the Courant number very often. 
+\item {\tt init\_shrink = 1.d0}\\
+  The multiplicative factor ($\le 1$) to reduce the initial timestep
+  as computed by the CFL constraint.
+\item {\tt small\_dt = 1.d-30}\\
+  The minimum allowed timestep.  We abort if dt drops below this
+  value. 
+\item {\tt max\_dt = 1.d33}\\
+  This is the maximum dt that is allowed
+\item {\tt fixed\_dt = -1.0d0}\\
+  Fix the time step if it is greater than zero.  If it is less than or
+  equal to zero, use the standard time step determined by the CFL
+  condition.
+\end{itemize}
+
+\subsection{Input/Output}
+
+\begin{itemize}
+\item {\tt restart = -1}\\
+  This determines whether this is a restart run.  The value of -1
+  means the simulation starts from scratch.  A non-negative value
+  specifies which file to restart from.
+\item {\tt plot\_int = 0}\\
+  Number of timesteps between writing a plot file, if the value is
+  positive.
+\item {\tt plot\_deltat = -1.d0} \\
+  If this is greater than zero, dump a plotfile after the solution has
+  advanced past {\tt plot\_deltat} in time.
+\item {\tt chk\_int = 0}\\
+  Number of timesteps between writing a checkpoint file, if the value is
+  positive.
+\item {\tt job\_name = ""}\\
+  Job name printed in output.
+\item {\tt plot\_Y = .true.}\\
+  Plot mass fraction in plotfile.
+\item {\tt plot\_X = .false.}\\
+  Plot molar fraction in plotfile.
+\item {\tt plot\_eint = .false.}\\
+  Plot mean specific internal energy in plotfile.
+\item {\tt plot\_h = .true.}\\
+  Plot mean specific enthlpy in plotfile.
+\item {\tt plot\_hspec = .false.}\\
+  Plot enthlpy of each species in plotfile.
+\item {\tt plot\_divu = .true.}\\
+  Plot divergence of velocity in plotfile.
+\item {\tt plot\_omegadot = .true.}\\
+  Plot mass production rate for each species in plotfile.
+\item {\tt plot\_base\_name = "plt"}\\
+  Prefix to use in plotfile names
+\item {\tt check\_base\_name = "chk"}\\
+  Prefix to use in checkpoint file names
+\item {\tt single\_prec\_plotfiles = .false.}\\
+  Store the state data in single precision if true.
+\end{itemize}
+
+\subsection{Communication}
+
+\begin{itemize}
+\item {\tt overlap\_comm\_comp = .true.}\\
+  This determines whether it will try to overlap communication and
+  computation.  For the overlap to work, the MPI non-blocking send and
+  receive need to be asynchronous.  However, many MPI implementations
+  do not actually perform any communication until {\tt MPI\_Wait} is
+  called.  In that case, communication hiding would not work.
+\item {\tt overlap\_comm\_gettrans = .false.} \\
+  This determines whether the computation of transport coefficients is
+  included in the computation that might be overlapped with
+  communication. 
+\item {\tt overlap\_testing = .true.} \\
+  When this is set to true, a test is performed at the beginning of
+  the run to determine whether it is worth overlapping communication
+  and computation.  If the test shows no benefit due to the overlap,
+  the {\tt overlap\_comm\_comp} parameter will be set to false and the
+  overlap of communication and computation will be turned off.
+\end{itemize}
+
+\subsection{Box Layout}
+\begin{itemize}
+\item {\tt t\_trylayout = -1.d0} \\
+  When this is greater than zero, a number of random permutations of
+  the layout of the boxes will be performed and communication tests
+  will be carried out to find the best layout for communication.  This
+  parameter also determines the maximal time in second used in the
+  testing.
+\item {\tt overlap\_in\_trial = .false.}\\
+  Is communication and computation overlapping used when trying
+  layouts?  The default is set to false so that more layouts can be
+  tried within a certain amount of time.
+\end{itemize}
+
+\subsection{Algorithm}
+
+\begin{itemize}
+\item {\tt advance\_method = 1}\\
+  The choices are 1 (3rd-order Runge-Kutta), 2 (SDC), and 3
+  (Multi-Rate SDC).
+\item {\tt stencil\_type = "compact"}\\
+  This determines the stencil type for second derivatives. The options
+  are {\tt "compact"} or {\tt "S3D"}.
+\end{itemize}
+
+\subsection{SDC}
+
+\begin{itemize}
+\item {\tt sdc\_nnodes = 5}\\
+  Number of SDC nodes.
+\item {\tt sdc\_iters = 9}\\
+  Number of sdc iterations per time step.
+\item {\tt sdc\_tol\_residual = 1.d-5}\\
+  If the SDC residual drops below this, SDC iterations are cut short.
+\end{itemize}
+
+\subsection{Boundary Conditions}
+
+\begin{itemize}
+\item {\tt xlo\_boundary\_type = "periodic"}\\
+  $-x$ boundary condition.  Other valid choices are {\tt "inlet"} and
+  {\tt "outlet"}. 
+\item {\tt xhi\_boundary\_type = "periodic"}\\
+  $+x$ boundary condition.  The other valid choice is {\tt "outlet"}.
+\item {\tt ylo\_boundary\_type = "periodic"}\\
+  $-y$ boundary condition.  The other valid choice is {\tt "outlet"}.
+\item {\tt yhi\_boundary\_type = "periodic"}\\
+  $+y$ boundary condition.  The other valid choice is {\tt "outlet"}.
+\item {\tt zlo\_boundary\_type = "periodic"}\\
+  $-z$ boundary condition.  The other valid choice is {\tt "outlet"}.
+\item {\tt zhi\_boundary\_type = "periodic"}\\
+  $+z$ boundary condition.  The other valid choice is {\tt "outlet"}.
+\item {\tt outlet\_sigma = 0.25d0}\\
+  The $\sigma$ parameter in NSCBC for outflows.
+\item {\tt outlet\_eta = 50.d0}\\
+  The $\eta$ parameter in NSCBC for outflows.
+\item {\tt outlet\_Pinfty = 1.01325d6}\\
+  $P_\infty$ in NSCBC.
+\item {\tt inlet\_eta = 30.d0}\\
+  The $\eta$ parameter in NSCBC for inflows.
+\end{itemize}
+
+\subsection{Miscellaneous}
+
+\begin{itemize}
+\item {\tt verbose = 0}\\
+  This determines verbosity.
+\end{itemize}
+
+\section{Tips}
+
+\subsection{Tag File}
+
+You can generate a tag file for {\tt vi} by typing ``{\tt make
+  tags}'', and for {\tt emacs} by typing ``{\tt make TAGS}''.  Tags
+can help you navigate the source code more quickly.
+
+\subsection{Runtime Interaction}
+
+You can interact with the program during the runtime by typing certain
+messages.  You can ask the program to dump a checkpoint by creating a
+file called {\tt dump\_checkpoint} (e.g., typing ``{\tt touch
+  dump\_checkpoint}'') in the output directory, or a plotfile by
+typing ``{\tt touch dump\_plotfile}''.  You can force the program to
+abort by typing ``{\tt touch abort\_smc}''.  This has the effect of
+also dumping a final checkpoint file.
+
+\section{Machine Specific Notes}
+
+\subsection{Hopper}
+
+On Hopper, Cray compilers generate the fastest executable for {\tt
+  SMC}.  The default setting for Cray Compilers in {\tt BoxLib} is
+very conservative even when {\tt NDEBUG} is true.  You can change it
+from {\tt -O 1} to {\tt -O3 -hfp3} in the {\tt Linux\_cray.mak} file
+under the {\tt BoxLib/Tools/F\_mk/comps/} directory.
+
+You can run {\tt SMC} on Hopper using either pure MPI or hybrid
+MPI/OpenMP.  The difference in performance does not seems to be big.
+Weak scaling studies show that the scaling behavior of SMC is
+excellent on Hopper.  It is worth noting again that you would like to
+have one box for each MPI task to minimize the communication cost.
+You might also want to set {\tt t\_trylayout = 600.d0} to find a good
+layout of boxes. 
+
+More on communication overlapping and some environment variables ...
 
 \end{document}

@@ -3,6 +3,7 @@
 
 #ifdef BL_LANG_FORT
 #    define FORT_SETVERBOSEVODE  dverbose
+#    define FORT_SETVODETOLS     dvodetols
 #    define FORT_SETVODESUBCYC   dmxsubcy
 #    define FORT_SETSPECSCALY    dsetscal
 #    define FORT_INITCHEM        dinitchem
@@ -62,6 +63,7 @@
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SETVERBOSEVODE  DVERBOSE
+#    define FORT_SETVVODETOLS    DVODETOLS
 #    define FORT_SETVODESUBCYC   DMXSUBCY
 #    define FORT_SETSPECSCALY    DSETSCAL
 #    define FORT_INITCHEM        DINITCHEM
@@ -120,6 +122,7 @@
 #    define FORT_SETNU           DSETNU
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SETVERBOSEVODE  dverbose
+#    define FORT_SETVODETOLS     dvodetols
 #    define FORT_SETVODESUBCYC   dmxsubcy
 #    define FORT_SETSPECSCALY    dsetscal
 #    define FORT_INITCHEM        dinitchem
@@ -178,6 +181,7 @@
 #    define FORT_SETNU           dsetnu
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SETVERBOSEVODE  dverbose_
+#    define FORT_SETVODETOLS     dvodetols_
 #    define FORT_SETVODESUBCYC   dmxsubcy_
 #    define FORT_SETSPECSCALY    dsetscal_
 #    define FORT_INITCHEM        dinitchem_
@@ -245,6 +249,7 @@ extern "C" {
 
     void FORT_SETTMINTRANS(const Real* Tmin);
     void FORT_SETVERBOSEVODE();
+    void FORT_SETVODETOLS(const Real* rtol, const Real* atol, const int* itol);
     void FORT_SETVODESUBCYC(const int* maxcyc);
     void FORT_SETSPECSCALY(const int* name, const int* length);
     void FORT_INITCHEM();

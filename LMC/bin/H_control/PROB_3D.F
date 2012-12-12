@@ -24,7 +24,7 @@
 c     Take fuel mixture from prob data
 
          region = BL_INTERIOR
-         zone = getZone(region, domnlo(1), domnlo(2))
+         zone = getZone(domnlo(1), domnlo(2), domnlo(3))
          num_zones_defined = 1
          
          if (phi_in.gt.zero) then
@@ -70,8 +70,8 @@ c     Take fuel mixture from pmf file
       else if (trim(probtype).eq.BL_PROB_DIFFUSION) then
 
 c     A diffusion flame
-         fuelZone = getZone(BL_INTERIOR, domnlo(1), domnlo(2))
-         airZone = getZone(BL_INTERIOR, domnhi(1), domnhi(2))
+         fuelZone = getZone(domnlo(1), domnlo(2), domnlo(3))
+         airZone  = getZone(domnhi(1), domnhi(2), domnhi(3))
          num_zones_defined = 2
 
 c     Fuel
@@ -186,7 +186,7 @@ c ::: -----------------------------------------------------------
 
          if (RegionID .eq. BL_YLO) then
 
-            zone = getZone(RegionID,x,y)
+            zone = getZone(x,y,z)
             rho = rho_bc(zone)
             do n = 0, Nspec-1
                Yl(n) = Y_bc(n,zone)
@@ -214,7 +214,7 @@ c ::: -----------------------------------------------------------
 
          if (RegionID .eq. BL_YLO) then
 
-            zone = getZone(RegionID,x,y)
+            zone = getZone(x,y,z)
             rho = rho_bc(zone)
             do n = 0, Nspec-1
                Yl(n) = Y_bc(n,zone)
@@ -417,8 +417,8 @@ c ::: -----------------------------------------------------------
          
       else if ((trim(probtype).eq.BL_PROB_DIFFUSION)) then
 
-         fuelZone = getZone(BL_INTERIOR, domnlo(1), domnlo(2))
-         airZone = getZone(BL_INTERIOR, domnhi(1), domnhi(2))
+         fuelZone = getZone(domnlo(1), domnlo(2), domnlo(3))
+         airZone  = getZone(domnhi(1), domnhi(2), domnhi(3))
 
          do k = lo(3), hi(3)
             z = (float(k)+.5)*delta(3)+domnlo(3)
@@ -472,7 +472,7 @@ c     Superimpose blob of hot air
                      scal(i,j,k,Trac) = 0.d0
                      
                      if (stTh.gt. 0.d0) then
-                        zone = getZone(x,y)
+                        zone = getZone(x,y,z)
                         call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
                         vel(i,j,k,1) = u
                         vel(i,j,k,2) = v

@@ -22,11 +22,13 @@ job_name                            character          ""
 #-----------------------------------------------------------------------------
 # category: communication
 #-----------------------------------------------------------------------------
-overlap_comm_comp                   logical            .false.
+overlap_comm_comp                   logical            .true.
 overlap_comm_gettrans               logical            .false.
+overlap_testing                     logical            .true.
 
 # try different layout for ? seconds
 t_trylayout                         real               -1.d0
+overlap_in_trial                    logical            .false.
 
 
 #-----------------------------------------------------------------------------
@@ -160,7 +162,7 @@ zlo_boundary_type                   character          "periodic"
 # value set through {\tt bcz\_hi}
 zhi_boundary_type                   character          "periodic"
 
-# dimensionality (valid values are 2 or 3)
+# dimensionality (valid value is 3)
 dm_in                               integer            3
 
 # The largest grid size that will be created using make\_new\_grids.
@@ -189,16 +191,13 @@ the_layout_verbosity                integer            0
 # recompute the boxassoc, which is computationally expensive.
 the_copy_cache_max                  integer            25
 
-# The minimum size on a side for a grid created using make\_new\_grids.
-minwidth                            integer            4
-
-# grids must be an integer multiple of this number, if possible
-blocking_factor                     integer            16
-
 
 #-----------------------------------------------------------------------------
-# category: output
+# category: Input/Output
 #-----------------------------------------------------------------------------
+
+# which file to restart from.  -1 means do not restart
+restart                             integer            -1
 
 # plot interval
 plot_int                            integer            0
@@ -253,13 +252,6 @@ single_prec_plotfiles               logical            .false.
 # create a field in the plotfile storing the processor number for each zone
 plot_processors                     logical            .false.
 
-
-#-----------------------------------------------------------------------------
-# category: algorithm initialization
-#-----------------------------------------------------------------------------
-
-# which file to restart from.  -1 means do not restart
-restart                             integer            -1
 
 #-----------------------------------------------------------------------------
 # category: NSCBC

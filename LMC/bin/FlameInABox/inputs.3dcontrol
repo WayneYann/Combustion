@@ -21,6 +21,9 @@ ht.plot_molefrac=1
 ht.plot_ydot=0
 ht.plot_auxDiags = 1
 
+ht.vode_rtol = 1.e-9
+ht.vode_atol = 1.e-9
+
 # multigrid class
 mg.usecg = 1
 cg.v = 0

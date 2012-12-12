@@ -61,14 +61,14 @@
       common / ckdio / LLINKMC
       save   / ckdio /
 
-      integer verbose_vode, max_vode_subcycles
-      common / ckdio1 / verbose_vode, max_vode_subcycles
+      integer verbose_vode, max_vode_subcycles, vode_itol
+      common / ckdio1 / verbose_vode, max_vode_subcycles, vode_itol
       save   / ckdio1 /
       !
       ! Integrator
       !
-      double precision  spec_scalY(maxspec)
-      common /vode1/ spec_scalY
+      double precision  spec_scalY(maxspec), vode_rtol, vode_atol
+      common /vode1/ spec_scalY, vode_rtol, vode_atol
       save /vode1/
 
       double precision  thickFacCH
