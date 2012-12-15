@@ -8,36 +8,36 @@ COMBUSTION_DIR = ${TOP}/Combustion
 #
 
 PRECISION       = DOUBLE
-DEBUG           = TRUE
-DIM             = 2
+DEBUG           = FALSE
+DIM             = 3
 COMP            = g++
 FCOMP           = gfortran
-USE_MPI         = TRUE
+USE_MPI         = FALSE
 USE_OMP         = FALSE
 USE_F90_SOLVERS = TRUE
 VERBOSE         = FALSE
 
 # Enable SDC code - add .SDC to executable
 # and compile in the #ifdef LMC_SDC
-USE_LMC_SDC = TRUE
+USE_LMC_SDC = FALSE
 
 # Enable flctin namelist
-USE_FLCTS       = TRUE
+USE_FLCTS       = FALSE
 
-USE_PARTICLES   = TRUE
+USE_PARTICLES   = FALSE
 
 # Enable ht.velocity_plotfile option
 USE_VELOCITY    = FALSE
 
 # Enable time-dependent forcing term
-USE_TDEPFORCING = TRUE
+USE_TDEPFORCING = FALSE
 
 # Choose model (from list below), and pmf file
-#CHEMISTRY_MODEL = DRM19
-#fEXE_sources += drm19Soln_seed_0.50.f
+CHEMISTRY_MODEL = DRM19
+fEXE_sources += drm19Soln_seed_0.125.f
 
-CHEMISTRY_MODEL = CHEMH
-fEXE_sources += chemHSoln_seed_0.00.f
+#CHEMISTRY_MODEL = CHEMH
+#fEXE_sources += chemHSoln_seed_0.00.f
 
 EBASE = amr
 Blocs   := .

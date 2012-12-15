@@ -444,7 +444,7 @@ c ::: -----------------------------------------------------------
                     Xlin(iN2) = delt / factor
 
 c                 blend here if needed
-                  if( scal(i,j,k,Temp) .lt. T_in)then
+                  if( scal(i,j,k,Temp) .lt. T_switch)then
                  
                     scal(i,j,k,TEMP) = T_in
                     do n = 1,Nspec

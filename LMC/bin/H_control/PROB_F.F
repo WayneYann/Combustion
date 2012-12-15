@@ -161,7 +161,7 @@ c ::: -----------------------------------------------------------
      &                  flametracval, probtype,
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
      &                  traceSpecVal,phi_in,T_in,
-     $                  turb_scale, V_in, V_co, H2_frac,
+     $                  turb_scale, V_in, V_co, H2_frac,T_switch,
      $                  standoff, pertmag, nchemdiag, splitx, xfrontw,
      &                  splity, yfrontw, blobx, bloby, blobz, blobr,
      &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent

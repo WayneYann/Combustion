@@ -15,7 +15,8 @@
   vorterr = 1000.
   phi_in = 0.4
   H2_frac = .9
-  T_in = 320.
+  T_switch = 320.
+  T_in = 295
 
  /
  &heattransin
