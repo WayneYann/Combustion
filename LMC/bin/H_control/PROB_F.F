@@ -161,7 +161,7 @@ c ::: -----------------------------------------------------------
      &                  flametracval, probtype,
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
      &                  traceSpecVal,phi_in,T_in,
-     $                  turb_scale, V_in, V_co,
+     $                  turb_scale, V_in, V_co, H2_frac,
      $                  standoff, pertmag, nchemdiag, splitx, xfrontw,
      &                  splity, yfrontw, blobx, bloby, blobz, blobr,
      &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent
@@ -300,7 +300,9 @@ c     Initialize control variables
       pseudo_gravity = 0
       nchemdiag = 1
 
+      write(6,*)"reading fortin"
       read(untin,fortin)
+      write(6,*)"done reading fortin"
       
 c     Initialize control variables that depend on fortin variables
       V_in_old = V_in
@@ -313,8 +315,10 @@ c     Initialize control variables that depend on fortin variables
       read(untin,flctin)
 #endif
  
+      write(6,*)"reading control"
       read(untin,control)
       close(unit=untin)
+      write(6,*)"done reading control"
 
 #if defined(BL_DO_FLCT)
       if (forceInflow .eqv. .FALSE.) then
@@ -339,13 +343,17 @@ c     Initialize control variables that depend on fortin variables
       endif
 #endif
 c     Set up boundary functions
+      write(6,*)" setup bc"
       call setupbc()
+      write(6,*)" done setup bc"
       
       area = 1.d0
       do i=1,SDIM-1
          area = area*(domnhi(i)-domnlo(i))
       enddo
       scale_control = Y_bc(fuelID-1,BL_FUELPIPE) * rho_bc(BL_FUELPIPE) * area
+      write(6,*)" control setup", area, Y_bc(fuelID-1,BL_FUELPIPE), rho_bc(BL_FUELPIPE)
+      write(6,*)" fuelpipe",BL_FUELPIPE
 
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
@@ -700,9 +708,41 @@ c     Set amplitudes
 #include "cdwrk.H"
 #include "conp.H"
       REAL_T a, phi
+      REAL_T alpha,beta,gamma,delt,factor
       REAL_T Xt(maxspec), Yt(maxspec)
+      integer iO2,iH2,iCH4
       integer n
       character*(maxspnml) name
+
+      if(trim(probtype).eq.BL_PROB_PREMIXED_FREE)then
+
+
+        do n=1,Nspec
+
+            call get_spec_name(name,n)
+            if (name .eq. 'N2' ) iN2 = n
+            if (name .eq. 'O2' ) iO2 = n
+            if (name .eq. 'H2' ) iH2 = n
+            if (name .eq. 'CH4' ) iCH4 = n
+
+        enddo
+
+        do n = 1,Nspec
+           Xt(n) = 0.d0
+        end do
+        alpha = H2_frac
+        beta = 1.d0 - H2_frac
+        gamma = (0.5d0*alpha + 2.d0*beta) / phi_in
+        delt = gamma*.79d0/.21d0
+        factor = alpha+beta +gamma+delt
+        Xt(iH2) = alpha / factor
+        Xt(iCH4) = beta / factor
+        Xt(iO2) = gamma / factor
+        Xt(iN2) = delt / factor
+
+
+      else
+
       do n=1,Nspec
          Xt(n) = zero
       enddo
@@ -726,6 +766,8 @@ c     hc + a.O2 -> b.CO2 + c.H2O
       Xt(oxidID) = 1.d0/(1.d0 + phi/a  + 0.79d0/0.21d0)
       Xt(fuelID) = phi * Xt(oxidID) / a
       Xt(iN2)    = 1.d0 - Xt(fuelID) - Xt(oxidID)
+
+      endif
       
       CALL CKXTY (Xt, IWRK, RWRK, Yt)
       end

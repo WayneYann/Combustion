@@ -18,8 +18,10 @@
       
       Patm = pamb / FORT_P1ATMMKS()
       num_zones_defined = 0
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+c     if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+c    &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
+c    &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FREE) ) then
+      if  (trim(probtype).eq.BL_PROB_PREMIXED_FREE)  then
          
 c     Take fuel mixture from prob data
 
@@ -35,8 +37,8 @@ c     Take fuel mixture from prob data
             end do
             T_bc(zone) = T_in
             u_bc(zone) = zero
-            v_bc(zone) = V_in
-            w_bc(zone) = zero
+            v_bc(zone) = zero
+            w_bc(zone) = V_in
 
          else 
 
@@ -58,12 +60,12 @@ c     Take fuel mixture from pmf file
             end do
             T_bc(zone) = pmf_vals(1)
             u_bc(zone) = zero
+            v_bc(zone) = zero
             if (V_in .lt. 0) then
-               v_bc(zone) = pmf_vals(2)*1.d-2
+               w_bc(zone) = pmf_vals(2)*1.d-2
             else
-               v_bc(zone) = V_in
+               w_bc(zone) = V_in
             endif
-            w_bc(zone) = zero
             
          endif
 
@@ -137,7 +139,7 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
       REAL_T x, y, z
 
-c#define BL_FUELPIPE 1
+#define BL_FUELPIPE 1
 c#define BL_COFLOW   2
 c#define BL_STICK    3
 c#define BL_WALL     4
@@ -147,8 +149,9 @@ c#define BL_PIPEEND  7
 
       getZone = BL_VOLUME
 
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+c     if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+c    &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if  (trim(probtype).eq.BL_PROB_PREMIXED_FREE) then 
 
          getZone = BL_FUELPIPE
          
@@ -182,9 +185,10 @@ c ::: -----------------------------------------------------------
       end if
       
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FREE) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)) then
 
-         if (RegionID .eq. BL_YLO) then
+         if (RegionID .eq. BL_ZLO) then
 
             zone = getZone(x,y,z)
             rho = rho_bc(zone)
@@ -197,11 +201,12 @@ c ::: -----------------------------------------------------------
             if (getuv .eqv. .TRUE.) then
 
                u = zero
-               w = zero
-               if (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) then               
-                  v =  V_in + (time-tbase_control)*dV_control
+               v = zero
+               if  ((trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
+     &          .or. (trim(probtype).eq.BL_PROB_PREMIXED_FREE) ) then               
+                  w =  V_in + (time-tbase_control)*dV_control
                else if (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) then
-                  v = v_bc(zone)
+                  w = v_bc(zone)
                endif
             endif
 
@@ -224,8 +229,8 @@ c ::: -----------------------------------------------------------
             
             if (getuv .eqv. .TRUE.) then
                u = zero
-               w = zero
-               v = V_in
+               v = zero
+               w = V_in
 
                if (stTh.ge.0) then
                   if (ABS(x - splitx).lt.0.5*stTh) then
@@ -363,14 +368,35 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 
       integer i, j, k, n, airZone, fuelZone, getZone, zone
+      integer iO2,iN2,iH2,iCH4
+      character*(maxspnml) name
       REAL_T x, y, z, r, Yl(maxspec), Xl(maxspec), Patm
-      REAL_T pmf_vals(maxspec+3), y1, y2, dx
+      REAL_T Xlin(maxspec),alpha,beta,gamma,delt,factor
+      REAL_T pmf_vals(maxspec+3), z1, z2, dx, Ly
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,w,rho,T,h
            
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FREE) 
+     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
+     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) ) then
+
+         if(trim(probtype).eq.BL_PROB_PREMIXED_FREE)then
+
+
+              do n=1,Nspec
+
+                  call get_spec_name(name,n)
+                  if (name .eq. 'N2' ) iN2 = n
+                  if (name .eq. 'O2' ) iO2 = n
+                  if (name .eq. 'H2' ) iH2 = n
+                  if (name .eq. 'CH4' ) iCH4 = n
+
+              enddo
+
+         endif
+
 
          do k = lo(3), hi(3)
+            z = (float(k)+.5d0)*delta(3)+domnlo(3)
             do j = lo(2), hi(2)
                y = (float(j)+.5d0)*delta(2)+domnlo(2)
                do i = lo(1), hi(1)
@@ -379,17 +405,19 @@ c ::: -----------------------------------------------------------
                   pert = 0.d0
                   if (pertmag .gt. 0.d0) then
                      Lx = domnhi(1) - domnlo(1)
-                     pert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)
-     &                    + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)
-     &                    + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx)
-     &                    + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)
-     &                    + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
+                     Ly = domnhi(2) - domnlo(2)
+                     pert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)             * sin(2*Pi*5*y/Ly)
+     &                              + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)   * sin(2*Pi*4*(y-.0053765)/Ly)
+     &                              + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx) * sin(2*Pi*3*(y-.02137)/Ly) 
+     &                              + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)     * sin(2*Pi*6*(y-.018)/Ly) 
+     &                                          + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
+
                   endif
                   
-                  y1 = (y - standoff - 0.5d0*delta(2) + pert)*100.d0
-                  y2 = (y - standoff + 0.5d0*delta(2) + pert)*100.d0
+                  z1 = (z - standoff - 0.5d0*delta(2) + pert)*100.d0
+                  z2 = (z - standoff + 0.5d0*delta(2) + pert)*100.d0
                   
-                  call pmf(y1,y2,pmf_vals,nPMF)               
+                  call pmf(z1,z2,pmf_vals,nPMF)               
                   if (nPMF.ne.Nspec+3) then
                      call bl_abort('INITDATA: n .ne. Nspec+3')
                   endif
@@ -398,7 +426,33 @@ c ::: -----------------------------------------------------------
                   do n = 1,Nspec
                      Xl(n) = pmf_vals(3+n)
                   end do 
-                  
+
+                  if(trim(probtype).eq.BL_PROB_PREMIXED_FREE)then
+
+
+                    do n = 1,Nspec
+                       Xlin(n) = 0.d0
+                    end do
+                    alpha = H2_frac
+                    beta = 1.d0 - H2_frac
+                    gamma = (0.5d0*alpha + 2.d0*beta) / phi_in
+                    delt = gamma*.79d0/.21d0
+                    factor = alpha+beta +gamma+delt
+                    Xlin(iH2) = alpha / factor
+                    Xlin(iCH4) = beta / factor
+                    Xlin(iO2) = gamma / factor
+                    Xlin(iN2) = delt / factor
+
+c                 blend here if needed
+                  if( scal(i,j,k,Temp) .lt. T_in)then
+                 
+                    scal(i,j,k,TEMP) = T_in
+                    do n = 1,Nspec
+                       Xl(n) = Xlin(n)
+                    end do
+                  endif
+                  endif
+
                   CALL CKXTY (Xl, IWRK, RWRK, Yl)
                   
                   do n = 1,Nspec
@@ -408,13 +462,13 @@ c ::: -----------------------------------------------------------
                   scal(i,j,k,Trac) = 0.d0
 
                   vel(i,j,k,1) = 0.d0
-                  vel(i,j,k,2) = pmf_vals(2)*1.d-2
-                  vel(i,j,k,3) = 0.d0
+                  vel(i,j,k,2) = 0.d0
+                  vel(i,j,k,3) = pmf_vals(2)*1.d-2
 
                end do
             end do
          end do
-         
+
       else if ((trim(probtype).eq.BL_PROB_DIFFUSION)) then
 
          fuelZone = getZone(domnlo(1), domnlo(2), domnlo(3))

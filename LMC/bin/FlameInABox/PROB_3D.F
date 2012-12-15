@@ -30,6 +30,7 @@ c     Take fuel mixture from prob data
          if (phi_in.gt.zero) then
 
             call set_Y_from_Phi(phi_in,Yt)
+            write(6,*)" in setup bc",zone
             do n=1,Nspec
                Y_bc(n-1,zone) = Yt(n)
             end do
