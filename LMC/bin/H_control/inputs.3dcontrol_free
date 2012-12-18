@@ -65,7 +65,8 @@ mg.cg_solver=1
 
 #-------------------------AMR INPUTS----------------------------
 amr.n_cell    = 64 64 64
-amr.n_cell    = 32 32 64
+amr.n_cell    = 32 32 96
+amr.n_cell    = 128 128 384
 
 amr.v=1
 amr.max_level =  0            # maximum level number allowed
@@ -149,7 +150,7 @@ geometry.is_periodic = 1 1 0
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 
 geometry.prob_lo   =  0. 0. 0.
-geometry.prob_hi   = .01 .01 .02
+geometry.prob_hi   = .03 .03 .09
 
 
 # ------------------  INPUTS TO GODUNOV CLASS ----------------------

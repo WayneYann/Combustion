@@ -3,10 +3,11 @@
 
   V_in = .2
   standoff = -.022
+  standoff = -.02
   pertmag = 0.0004
 
   max_trac_lev = 3
-  flametracval = 1.e-6
+  flametracval = 1.e-5
   max_temp_lev = 0
   temperr = 500
   tempgrad = 300.0
@@ -14,14 +15,14 @@
   vorterr = 600.
   vorterr = 1000.
   phi_in = 0.4
-  H2_frac = .9
+  H2_frac = 1.
   T_switch = 320.
-  T_in = 295
+  T_in = 298.
 
  /
  &heattransin
-  pamb = 101325.
   pamb = 202650.
+  pamb = 101325.
   dpdt_factor = .3
  /
   &flctin
@@ -31,9 +32,9 @@
   nCompInflow = 3
  /
   &control
-  tau_control = 3.e-4
+  tau_control = 2.e-3
   sest = .2
-  h_control = .008
+  h_control = .02
   changeMax_control = .2
   pseudo_gravity = 1
  /
