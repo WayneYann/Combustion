@@ -191,15 +191,15 @@ contains
   ! The Courant number (courno) might also be computed if passed.
   !
   subroutine dUdt (U, Uprime, dx, courno, istep)
-    use derivative_stencil_module, only : stencil, compact, s3d
+    use derivative_stencil_module, only : stencil, narrow, s3d
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
     double precision, intent(inout), optional :: courno
     integer,          intent(in   ), optional :: istep
 
-    if (stencil .eq. compact) then
-       call dUdt_compact(U, Uprime, dx, courno, istep)
+    if (stencil .eq. narrow) then
+       call dUdt_narrow(U, Uprime, dx, courno, istep)
     else if (stencil .eq. s3d) then
        call dUdt_S3D(U, Uprime, dx, courno, istep)
     else
@@ -210,11 +210,11 @@ contains
 
 
   !
-  ! Compute dU/dt given U using the compact stencil.
+  ! Compute dU/dt given U using the narrow stencil.
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt_compact (U, Uprime, dx, courno, istep)
+  subroutine dUdt_narrow (U, Uprime, dx, courno, istep)
 
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt
 
@@ -410,9 +410,9 @@ contains
        hi = upb(get_box(Q,n))
 
        if (dm .ne. 3) then
-          call bl_error("Only 3D compact_diffterm is supported")
+          call bl_error("Only 3D narrow_diffterm is supported")
        else
-          call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp)
+          call narrow_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp)
        end if
     end do
     call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
@@ -479,7 +479,7 @@ contains
        call destroy(bpt_courno)
     end if
 
-  end subroutine dUdt_compact
+  end subroutine dUdt_narrow
 
   subroutine compute_courno(Q, dx, courno)
     type(multifab), intent(in) :: Q
@@ -508,7 +508,7 @@ contains
 
 
   !
-  ! Compute dU/dt given U using the compact stencil.
+  ! Compute dU/dt given U using the wide stencil.
   !
   ! The Courant number (courno) might also be computed if passed.
   !

@@ -79,7 +79,7 @@ the molar fraction of species $k$.  The correction velocity is given by
 
 The {\tt SMC} algorithm is based on finite-difference methods.  For
 first derivatives with respect to spatial coordinates, the standard
-8th-order stencil is employed.  Using a new compact 8th-order stencil,
+8th-order stencil is employed.  Using a new narrow 8th-order stencil,
 second derivatives are given by
 \begin{equation}
 \frac{\partial}{\partial x} \left(a(x) \frac{\partial u}{\partial x}
@@ -179,6 +179,8 @@ command line as:\vspace{5pt}
 
 \verb|./main.Linux.gfortran.debug.mpi.exe inputs_SMC --parameter value|\\
 
+Here {\tt parameter} is the name of the runtime parameter (e.g., {\tt
+  stop\_time}) and {\tt value} is its value (e.g., {\tt 1.0d-2}).
 Some selected runtime parameters and their default values are listed
 below.  Note that some of the default values (e.g., {\tt n\_cellx =
   -1}) are intentionally set to improper values so that the user must
@@ -325,9 +327,9 @@ set them appropriately.
 \item {\tt advance\_method = 1}\\
   The choices are 1 (3rd-order Runge-Kutta), 2 (SDC), and 3
   (Multi-Rate SDC).
-\item {\tt stencil\_type = "compact"}\\
+\item {\tt stencil\_type = "narrow"}\\
   This determines the stencil type for second derivatives. The options
-  are {\tt "compact"} or {\tt "S3D"}.
+  are {\tt "narrow"} or {\tt "S3D"}.
 \end{itemize}
 
 \subsection{SDC}

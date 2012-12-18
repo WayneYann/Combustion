@@ -4,7 +4,7 @@ module derivative_stencil_module
 
   public
 
-  integer, parameter :: compact=1, wide=2, S3D=2
+  integer, parameter :: narrow=1, wide=2, S3D=2
   integer, save :: stencil, stencil_ng
 
   ! for 8th-order first derivatives
@@ -59,8 +59,8 @@ contains
 
     integer :: i, j
 
-    if (trim(stencil_type) == "compact") then
-       stencil = compact
+    if (trim(stencil_type) == "narrow") then
+       stencil = narrow
     else if (trim(stencil_type) == "S3D" .or. trim(stencil_type) == "wide") then
        stencil = wide
     else

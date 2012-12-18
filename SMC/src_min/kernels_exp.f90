@@ -10,7 +10,7 @@ module kernels_module
 
   private
 
-  public :: hypterm_3d, compact_diffterm_3d, chemterm_3d, comp_courno_3d, &
+  public :: hypterm_3d, narrow_diffterm_3d, chemterm_3d, comp_courno_3d, &
        S3D_diffterm_1, S3D_diffterm_2
 
 contains
@@ -399,7 +399,7 @@ contains
   end subroutine hypterm_3d
 
 
-  subroutine compact_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy)
+  subroutine narrow_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy)
 
     integer,          intent(in ) :: lo(3),hi(3),ng
     double precision, intent(in ) :: dx(3)
@@ -2098,7 +2098,7 @@ contains
 
     deallocate(Hg,dpy,dxe,dpe,vsp,vsm,M8p,Hry)
 
-  end subroutine compact_diffterm_3d
+  end subroutine narrow_diffterm_3d
 
 
   subroutine chemterm_3d(lo,hi,ng,q,up) ! up is UPrime that has no ghost cells
