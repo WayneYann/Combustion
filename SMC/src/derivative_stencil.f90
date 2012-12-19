@@ -31,12 +31,23 @@ module derivative_stencil_module
   ! coefficients for 8th-order stencil of second derivatives
   ! d(a*du/dx)/dx = H_{i+1/2} - H_{i-1/2},
   ! where H = a.M.u
-  double precision, private, parameter :: M8_47 = 683.d0/10080.d0, M8_48 = -1.d0/224.d0
+  !
   double precision, save, dimension(8,8) :: M8
+  !
+  ! optimized for more zeros
+  !  double precision, private, parameter :: M8_47 = 683.d0/10080.d0, M8_48 = -1.d0/224.d0
+  !
+  ! optimized for leading order truncation error assuming equal weight for the error terms
+  double precision, private, parameter :: M8_47 = 3557.d0/44100.d0, M8_48 = -2083.d0/117600.d0
 
   ! coefficients for 6th-order stencil of second derivatives
-  double precision, private, parameter :: M6_36 = 1.d0/90.d0
   double precision, save, dimension(6,6) :: M6
+  !
+  ! optimized for more zeros
+  ! double precision, private, parameter :: M6_36 = 1.d0/90.d0
+  !
+  ! optimized for leading order truncation error assuming equal weight for the error terms
+  double precision, private, parameter :: M6_36 = 281.d0/3600.d0
 
   ! coefficients for 4th-order stencil of second derivatives
   double precision, save, dimension(4,4) :: M4
