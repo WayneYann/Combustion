@@ -289,7 +289,7 @@ set them appropriately.
 \subsection{Communication}
 
 \begin{itemize}
-\item {\tt overlap\_comm\_comp = .true.}\\
+\item {\tt overlap\_comm\_comp = .false.}\\
   This determines whether it will try to overlap communication and
   computation.  For the overlap to work, the MPI non-blocking send and
   receive need to be asynchronous.  However, many MPI implementations
@@ -299,7 +299,7 @@ set them appropriately.
   This determines whether the computation of transport coefficients is
   included in the computation that might be overlapped with
   communication.
-\item {\tt overlap\_testing = .true.} \\
+\item {\tt overlap\_testing = .false.} \\
   When this is set to true, a test is performed at the beginning of
   the run to determine whether it is worth overlapping communication
   and computation.  If the test shows no benefit due to the overlap,
