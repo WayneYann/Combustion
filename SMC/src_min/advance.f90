@@ -254,6 +254,7 @@ contains
        call multifab_fill_boundary_nowait(U, U_fb_data)
     else
        call multifab_fill_boundary(U)
+       U_fb_data%rcvd = .true.
     end if
 
     ! On hopper MPI_Test encourages the overlap of communication and compution.
@@ -558,6 +559,7 @@ contains
        call multifab_fill_boundary_nowait(U, U_fb_data)
     else
        call multifab_fill_boundary(U)
+       U_fb_data%rcvd = .true.
     end if
 
     if (overlap_comm_comp) then
