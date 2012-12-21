@@ -518,11 +518,12 @@ contains
     ! That's why we have so many calls to multifab_fill_boundary_test.
 
     if (inc_ad) then
-       call multifab_fill_boundary_nowait(U, U_fb_data)
        if (overlap_comm_comp) then
+          call multifab_fill_boundary_nowait(U, U_fb_data)
           call multifab_fill_boundary_test(U, U_fb_data)
        else
-          call multifab_fill_boundary_finish(U, U_fb_data)
+          call multifab_fill_boundary(U)
+          U_fb_data%rcvd = .true.
        end if
     end if
 
@@ -856,12 +857,12 @@ contains
        end if
     end if
 
-    call multifab_fill_boundary_nowait(U, U_fb_data)
-
     if (overlap_comm_comp) then
+       call multifab_fill_boundary_nowait(U, U_fb_data)
        call multifab_fill_boundary_test(U, U_fb_data)
     else
-       call multifab_fill_boundary_finish(U, U_fb_data)
+       call multifab_fill_boundary(U)
+       U_fb_data%rcvd = .true.
     end if
 
     call setval(Uprime, ZERO)
@@ -1032,21 +1033,21 @@ contains
     end do
     call destroy(bpt_diffterm_1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    qx_fb_data%tag = 1001
-    call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
-    qy_fb_data%tag = 1002
-    call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
-    qz_fb_data%tag = 1003
-    call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
-
     if (overlap_comm_comp) then
+       qx_fb_data%tag = 1001
+       call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
+       qy_fb_data%tag = 1002
+       call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
+       qz_fb_data%tag = 1003
+       call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
+
        call multifab_fill_boundary_test(qx, qx_fb_data, idim=1)
        call multifab_fill_boundary_test(qy, qy_fb_data, idim=2)
        call multifab_fill_boundary_test(qz, qz_fb_data, idim=3)
     else
-       call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
-       call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
-       call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
+       call multifab_fill_boundary(qx, idim=1)
+       call multifab_fill_boundary(qy, idim=2)
+       call multifab_fill_boundary(qz, idim=3)
     end if
 
     !
