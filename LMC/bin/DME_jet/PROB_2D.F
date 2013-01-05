@@ -14,68 +14,22 @@
       integer zone, n, getZone, fuelZone, airZone, region
       integer b(SDIM)
       integer num_zones_defined
-      integer iO2,iH2
+      integer iO2,iCH3OCH3
       character*(maxspnml) name
       data  b / 1, 1 /
       
       Patm = pamb / FORT_P1ATMMKS()
       num_zones_defined = 0
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
-         
-c     Take fuel mixture from prob data
 
-         region = BL_INTERIOR
-         zone = getZone(domnlo(1), domnlo(2))
-         num_zones_defined = 1
-         
-         if (phi_in.gt.zero) then
-
-            call set_Y_from_Phi(phi_in,Yt)
-            do n=1,Nspec
-               Y_bc(n-1,zone) = Yt(n)
-            end do
-            T_bc(zone) = T_in
-            u_bc(zone) = zero
-            v_bc(zone) = V_in
-
-         else 
-
-c     Take fuel mixture from pmf file
-            loc = (domnlo(2)-standoff)*100.d0
-            call pmf(loc,loc,pmf_vals,n)
-            if (n.ne.Nspec+3) then
-               call bl_pd_abort('INITDATA: n(pmf) .ne. Nspec+3')
-            endif
-            
-            do n = 1,Nspec
-               Xt(n) = pmf_vals(3+n)
-            end do 
-            
-            CALL CKXTY (Xt, IWRK, RWRK, Yt)
-
-            do n=1,Nspec
-               Y_bc(n-1,zone) = Yt(n)
-            end do
-            T_bc(zone) = pmf_vals(1)
-            u_bc(zone) = zero
-            if (V_in .lt. 0) then
-               v_bc(zone) = pmf_vals(2)*1.d-2
-            else
-               v_bc(zone) = V_in
-            endif
-            
-         endif
-
-      else if (trim(probtype).eq.BL_PROB_DIFFUSION) then
+      if (trim(probtype).eq.BL_PROB_JET_DIFFUSION) then
 
 c     A diffusion flame
-         fuelZone = getZone(domnlo(1), domnlo(2))
-         airZone  = getZone(domnhi(1), domnhi(2))
+         fuelZone = getZone(0.d0, domnlo(2))
+         airZone  = getZone(domnlo(1), domnlo(2))
          num_zones_defined = 2
 
 c     Fuel
-c     find O2 and H2
+c     find O2 and DME
          iO2 = -1
          do n=1,Nspec
             call get_spec_name(name,n)
@@ -84,13 +38,21 @@ c     find O2 and H2
          if (iO2.eq.-1)
      &        write(6,*) '.....warning: no O2 in chemistry species list'
 
-         iH2 = -1
+         iN2 = -1
          do n=1,Nspec
             call get_spec_name(name,n)
-            if (name .eq. 'H2') iH2 = n
+            if (name .eq. 'N2') iN2 = n
          end do
-         if (iH2.eq.-1)
-     &        write(6,*) '.....warning: no H2 in chemistry species list'
+         if (iN2.eq.-1)
+     &        write(6,*) '.....warning: no N2 in chemistry species list'
+
+         iCH3OCH3 = -1
+         do n=1,Nspec
+            call get_spec_name(name,n)
+            if (name .eq. 'CH3OCH3') iCH3OCH3 = n
+         end do
+         if (iCH3OCH3.eq.-1)
+     &        write(6,*) '.....warning: no CH3OCH3 in chemistry species list'
 
 c      set everything to zero
          do n = 1,Nspec
@@ -98,8 +60,8 @@ c      set everything to zero
          end do 
 
 c     fuel shall be half O2, half H2 by volume
-         Xt(iO2) = 0.5d0
-         Xt(iH2) = 0.5d0
+         Xt(iCH3OCH3) = phi_in
+         Xt(iN2) = 1.d0-Xt(iCH3OCH3)
 
 c     convert mole frac to mass frac
          CALL CKXTY (Xt, IWRK, RWRK, Yt)
@@ -112,20 +74,21 @@ c     set bc's
          u_bc(fuelZone) = 0.d0
          v_bc(fuelZone) = V_in
 
-c     Air - pure N2
+c     Air 
          do n=1,Nspec
             Xt(n) = zero
          enddo
-         Xt(iN2) = 1.d0
+         Xt(iN2) = 0.79d0
+         Xt(iO2) = 0.21
 
          CALL CKXTY (Xt, IWRK, RWRK, Yt)         
          do n=1,Nspec
             Y_bc(n-1,airZone) = Yt(n)
          end do
          
-         T_bc(airZone) = T_in
+         T_bc(airZone) = T_co
          u_bc(airZone) = 0.d0
-         v_bc(airZone) = V_in
+         v_bc(airZone) = V_co
 
       else
          
@@ -159,14 +122,10 @@ c ::: -----------------------------------------------------------
 
       getZone = BL_VOLUME
 
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
-
-         getZone = BL_FUELPIPE
          
-      else if (trim(probtype).eq.BL_PROB_DIFFUSION) then
+      if (trim(probtype).eq.BL_PROB_JET_DIFFUSION) then
          
-         if (x .ge. splitx) then
+         if (x .ge. -splitx) then
             getZone = BL_AMBIENT
          else
             getZone = BL_FUELPIPE
@@ -192,72 +151,36 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
 
-      integer n, getZone, zone
-      REAL_T eta, xmid, etamax
+      integer n, getZone, zone, airZone,fuelZone
+      REAL_T eta, xmid, etamax,sigma
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
       end if
       
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)) then
+
+      if (trim(probtype).eq.BL_PROB_JET_DIFFUSION) then
 
          if (RegionID .eq. BL_YLO) then
+            fuelZone = getZone(0.d0, domnlo(2))
+            airZone  = getZone(domnlo(1), domnlo(2))
 
-            zone = getZone(x,y)
-            rho = rho_bc(zone)
-            do n = 0, Nspec-1
-               Yl(n) = Y_bc(n,zone)
-            end do
-            T = T_bc(zone)
-            h = h_bc(zone)
-            
+            sigma = 2.5d0*xfrontw*splitx
+            eta = 0.5 * (    tanh((x + splitx)/sigma) 
+     &                 - tanh((x - splitx)/sigma))
+                  
+            do n=1,Nspec
+              Yl(n-1) = Y_bc(n-1,airZone)*(1.d0-eta)
+     &               + eta*Y_bc(n-1,fuelZone)
+            enddo
+            rho = rho_bc(airZone)*(1.d0-eta) + eta*rho_bc(fuelZone)
+            T = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
+            h = h_bc(airZone)*(1.d0-eta) + eta*h_bc(fuelZone)
+
             if (getuv .eqv. .TRUE.) then
 
-               u = zero
-               if (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) then               
-                  v =  V_in + (time-tbase_control)*dV_control
-               else if (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) then
-                  v = v_bc(zone)
-               endif
-            endif
-
-         else
-            write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
-            call bl_pd_abort(' ')
-         endif
-
-      elseif (trim(probtype).eq.BL_PROB_DIFFUSION) then
-
-         if (RegionID .eq. BL_YLO) then
-
-            zone = getZone(x,y)
-            rho = rho_bc(zone)
-            do n = 0, Nspec-1
-               Yl(n) = Y_bc(n,zone)
-            end do
-            T = T_bc(zone)
-            h = h_bc(zone)
-            
-            if (getuv .eqv. .TRUE.) then
-               u = zero
-               v = V_in
-
-               if (stTh.ge.0) then
-                  if (ABS(x - splitx).lt.0.5*stTh) then
-                     v = 0.d0
-                  else
-                     if (x .lt. splitx) then
-                        etamax = splitx - 0.5*stTh
-                        eta = (x - domnlo(1)) / etamax
-                        v = V_in * (1.d0 - eta**2)
-                     else
-                        etamax = domnhi(1) - splitx - 0.5*stTh
-                        eta = (domnhi(1) - x) / etamax
-                        v = V_co * (1.d0 - eta**2)
-                     endif
-                  endif
-               endif
+              u = u_bc(airZone)*(1.d0-eta) + eta*u_bc(fuelZone)
+              v = v_bc(airZone)*(1.d0-eta) + eta*v_bc(fuelZone)
 
             endif
 
@@ -268,9 +191,7 @@ c ::: -----------------------------------------------------------
       else
          write(6,*) 'No boundary condition for probtype = ', trim(probtype)
          write(6,*) 'Available: '
-         write(6,*) '            ',BL_PROB_PREMIXED_FIXED_INFLOW
-         write(6,*) '            ',BL_PROB_PREMIXED_CONTROLLED_INFLOW
-         write(6,*) '            ',BL_PROB_DIFFUSION
+         write(6,*) '            ',BL_PROB_JET_DIFFUSION
          call bl_pd_abort(' ')
       endif
       end
@@ -375,84 +296,43 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 
       integer i, j, n, airZone, fuelZone, getZone, zone
-      REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm
+      REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm, sigma
       REAL_T pmf_vals(maxspec+3), y1, y2, dx
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,rho,T,h
            
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ((trim(probtype).eq.BL_PROB_JET_DIFFUSION)) then
 
-         do j = lo(2), hi(2)
-            y = (float(j)+.5d0)*delta(2)+domnlo(2)
-            do i = lo(1), hi(1)
-               x = (float(i)+.5d0)*delta(1)+domnlo(1)
-               
-               pert = 0.d0
-               if (pertmag .gt. 0.d0) then
-                  Lx = domnhi(1) - domnlo(1)
-                  pert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)
-     &                 + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)
-     &                    + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx)
-     &                        + 1.017 * sin(2*Pi*5*(x-.0033)/Lx)
-     &                             + .982 * sin(2*Pi*5*(x-.014234)/Lx) )
-               endif
-                  
-               y1 = (y - standoff - 0.5d0*delta(2) + pert)*100.d0
-               y2 = (y - standoff + 0.5d0*delta(2) + pert)*100.d0
-               
-               call pmf(y1,y2,pmf_vals,nPMF)               
-               if (nPMF.ne.Nspec+3) then
-                  call bl_abort('INITDATA: n .ne. Nspec+3')
-               endif
-               
-               scal(i,j,Temp) = pmf_vals(1)
-               do n = 1,Nspec
-                  Xl(n) = pmf_vals(3+n)
-               end do 
-               
-               CALL CKXTY (Xl, IWRK, RWRK, Yl)
-               
-               do n = 1,Nspec
-                  scal(i,j,FirstSpec+n-1) = Yl(n)
-               end do
+         fuelZone = getZone(0.d0, domnlo(2))
+         airZone  = getZone(domnlo(1), domnlo(2))
 
-               scal(i,j,Trac) = 0.d0
-
-               vel(i,j,1) = 0.d0
-               vel(i,j,2) = pmf_vals(2)*1.d-2
-
-            end do
-         end do
-         
-      else if ((trim(probtype).eq.BL_PROB_DIFFUSION)) then
-
-         fuelZone = getZone(domnlo(1), domnlo(2))
-         airZone  = getZone(domnhi(1), domnhi(2))
+         sigma = 2.5d0*xfrontw*splitx
 
          do j = lo(2), hi(2)
             y = (float(j)+.5)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
                x = (float(i)+.5)*delta(1)+domnlo(1)
 
+
+
+
                if (blobr.lt.0) then
 
-                  eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
+                  eta = 0.5 * (    tanh((x + splitx)/sigma) 
+     &                 - tanh((x - splitx)/sigma))
                   
                   do n=1,Nspec
-                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
+                   scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta)
+     &                  + eta*Y_bc(n-1,fuelZone)
                   enddo
                   scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
-                  
-                  eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
-                  do n=1,Nspec
-                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
-     &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
-                  enddo
-                  scal(i,j,Temp) = blobT*eta + (1.d0-eta)*scal(i,j,Temp)
-                  
-                  vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
-                  vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
-                  scal(i,j,Trac) = 0.d0
+                  vel(i,j,1) = u_bc(airZone)*(1.d0-eta) + eta*u_bc(fuelZone)
+                  vel(i,j,2) = v_bc(airZone)*(1.d0-eta) + eta*v_bc(fuelZone)
+c                 
+c                 eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
+c                 do n=1,Nspec
+c                    scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
+c    &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
+c                 enddo
 
                else
                
@@ -476,12 +356,6 @@ c     Superimpose blob of hot air
                   vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
                   scal(i,j,Trac) = 0.d0
                   
-                  if (stTh.gt. 0.d0) then
-                     zone = getZone(x,y)
-                     call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.true.)
-                     vel(i,j,1) = u
-                     vel(i,j,2) = v
-                  endif
                endif
 
             enddo
@@ -571,8 +445,7 @@ c ::: -----------------------------------------------------------
       logical do_T, do_RH, do_Y
       REAL_T xl, xr, xh, yb, yt, yh, y
 
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (trim(probtype).eq.BL_PROB_JET_DIFFUSION) ) then
          Tid  = Temp      - id + SDIM
          RHid = RhoH      - id + SDIM
          YSid = FirstSpec - id + SDIM
@@ -597,12 +470,6 @@ c
                xr = (float(i)+1.d0)*dx(1)+domnlo(1) 
                xh = 0.5d0*(xl+xr)
                   
-               if ( (getZone(xl,y).eq.BL_STICK) .OR.
-     &              (getZone(xh,y).eq.BL_STICK) .OR.
-     &              (getZone(xr,y).eq.BL_STICK) .OR.
-     &              (getZone(xl,y).eq.BL_PIPEEND) .OR.
-     &              (getZone(xh,y).eq.BL_PIPEEND) .OR.
-     &              (getZone(xr,y).eq.BL_PIPEEND)  ) then
                   
 c                 if (do_T)  diff(i,j,Tid ) = 0.d0
 c                 if (do_RH) diff(i,j,RHid) = 0.d0
@@ -612,7 +479,6 @@ c                 if (do_RH) diff(i,j,RHid) = 0.d0
                      enddo
                   endif
                      
-               endif
             end do
          endif
       end if
@@ -727,8 +593,7 @@ c ::: -----------------------------------------------------------
 
 #include "probdata.H"
 
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (trim(probtype).eq.BL_PROB_JET_DIFFUSION) )then
          call FORT_MVERROR(tag,DIMS(tag),set,clear,
      &                     adv,DIMS(adv),lo,hi,nvar,
      &                     domlo,domhi,delta,xlo,

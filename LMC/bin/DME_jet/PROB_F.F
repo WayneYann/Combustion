@@ -160,7 +160,7 @@ c ::: -----------------------------------------------------------
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, 
      &                  flametracval, probtype,
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
-     &                  traceSpecVal,phi_in,T_in,
+     &                  traceSpecVal,phi_in,T_in, T_co,
      $                  turb_scale, V_in, V_co, H2_frac,T_switch,
      $                  standoff, pertmag, nchemdiag, splitx, xfrontw,
      &                  splity, yfrontw, blobx, bloby, blobz, blobr,
@@ -337,10 +337,6 @@ c     Initialize control variables that depend on fortin variables
             close(FF_UNIT)
          endif
       endif
-      convVel = V_in
-      if (probtype.ge.BL_PROB_PREMIXED_CONTROLLED_INFLOW) then
-         convVel = one
-      endif
 #endif
 c     Set up boundary functions
       write(6,*)" setup bc"
@@ -360,8 +356,7 @@ c     Set up boundary functions
       endif
 
 #ifdef DO_LMC_FORCE
-      if ( (probtype.eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (probtype.eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (probtype.eq.BL_PROB_JET_DIFFUSION) ) then
 
          if (isioproc .eq. 1) then
             write (*,*) "Initialising random number generator..."
@@ -714,7 +709,7 @@ c     Set amplitudes
       integer n
       character*(maxspnml) name
 
-      if(trim(probtype).eq.BL_PROB_PREMIXED_FREE)then
+      if(trim(probtype).eq.BL_PROB_JET_DIFFUSION)then
 
 
         do n=1,Nspec

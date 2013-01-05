@@ -9,7 +9,7 @@ COMBUSTION_DIR = ${TOP}/Combustion
 
 PRECISION       = DOUBLE
 DEBUG           = FALSE
-DIM             = 3
+DIM             = 2
 COMP            = g++
 FCOMP           = gfortran
 USE_MPI         = FALSE
@@ -33,11 +33,8 @@ USE_VELOCITY    = FALSE
 USE_TDEPFORCING = FALSE
 
 # Choose model (from list below), and pmf file
-CHEMISTRY_MODEL = DRM19
-fEXE_sources += drm19Soln_seed_0.125.f
-
-#CHEMISTRY_MODEL = CHEMH
-#fEXE_sources += chemHSoln_seed_0.00.f
+CHEMISTRY_MODEL = LUDME
+fEXE_sources += LuDME_0700.f
 
 EBASE = amr
 Blocs   := .

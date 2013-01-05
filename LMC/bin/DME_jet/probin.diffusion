@@ -1,14 +1,19 @@
  &fortin
   probtype = 'diffusion_two-stream'
 
-  V_in = 0.5
+  V_in = 51.2
 
-  T_in = 298
+  T_in = 1500.
+
+  T_co = 400.
+
+  V_co = 5.12
+  phi_in = 0.5
 
   blobr = -1.
 
-  splitx = 0.01
-  xfrontw = 1.e-3
+  splitx = 0.0000569
+  xfrontw = .2
 
   bloby = 1000.
   Tfrontw = 1.
@@ -20,6 +25,7 @@
  /
  &heattransin
   pamb = 101325.
+  pamb = 4053000.
   dpdt_factor = .3
  /
   &flctin

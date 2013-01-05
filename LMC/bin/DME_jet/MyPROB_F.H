@@ -17,10 +17,7 @@
 #include "infl_frc.H"
 #endif
 
-#define BL_PROB_PREMIXED_FIXED_INFLOW 'premixed_fixed_inlet'
-#define BL_PROB_PREMIXED_CONTROLLED_INFLOW 'premixed_controlled_inlet'
-#define BL_PROB_PREMIXED_FREE 'premixed_free'
-#define BL_PROB_DIFFUSION 'diffusion_two-stream'
+#define BL_PROB_JET_DIFFUSION 'diffusion_two-stream'
 #define BL_PROB_UNDEFINED 'undefined_problem'
 
 
