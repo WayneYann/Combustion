@@ -8,7 +8,7 @@
   T_co = 400.
 
   V_co = 5.12
-  phi_in = 0.5
+  phi_in = 0.2
 
   blobr = -1.
 
