@@ -1,9 +1,11 @@
 &PROBIN
 
+ overlap_comm_comp = .true.
+
  verbose = 2
 
- advance_method = 1  ! 1=RK3, 2=SDC, 3=PFASST
- stencil_type = "compact"   ! compact or S3D
+ advance_method = 1        ! 1=RK3, 2=SDC, 3=PFASST
+ stencil_type = "narrow"   ! narrow or S3D
 
  stop_time = 3.d-3
  max_step  = 10
@@ -13,7 +15,6 @@
  chk_int  = -1
 
  cflfac = 0.1d0
- cfl_int = 1
  init_shrink = 0.5d0
 
  n_cellx = 32
@@ -37,7 +38,6 @@
  zlo_boundary_type = "periodic"
  zhi_boundary_type = "periodic"
 
- ! for prob_type 1
  pertmag = 0.d0
  rfire = 0.15d0
 

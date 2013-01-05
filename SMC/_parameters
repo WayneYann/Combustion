@@ -22,9 +22,9 @@ job_name                            character          ""
 #-----------------------------------------------------------------------------
 # category: communication
 #-----------------------------------------------------------------------------
-overlap_comm_comp                   logical            .true.
+overlap_comm_comp                   logical            .false.
 overlap_comm_gettrans               logical            .false.
-overlap_testing                     logical            .true.
+overlap_testing                     logical            .false.
 
 # try different layout for ? seconds
 t_trylayout                         real               -1.d0
@@ -45,8 +45,8 @@ overlap_in_trial                    logical            .false.
 # Time-stepping scheme (1=RK3, 2=SDC, 3=MRSDC, 4=PFASST)
 advance_method                      integer           1
 
-# "compact" is the new stencil, and wide or S3D is the S3D type stencil
-stencil_type                        character         "compact"
+# "narrow" is the new stencil, and wide or S3D is the S3D type stencil
+stencil_type                        character         "narrow"
 
 
 #-----------------------------------------------------------------------------

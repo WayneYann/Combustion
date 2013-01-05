@@ -426,15 +426,15 @@ contains
   ! The Courant number (courno) might also be computed if passed.
   !
   subroutine dUdt (U, Uprime, dx, courno, istep)
-    use derivative_stencil_module, only : stencil, compact, s3d
+    use derivative_stencil_module, only : stencil, narrow, s3d
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
     double precision, intent(inout), optional :: courno
     integer,          intent(in   ), optional :: istep
 
-    if (stencil .eq. compact) then
-       call dUdt_compact(U, Uprime, dx, courno, istep)
+    if (stencil .eq. narrow) then
+       call dUdt_narrow(U, Uprime, dx, courno, istep)
     else if (stencil .eq. s3d) then
        call dUdt_S3D(U, Uprime, dx, courno, istep)
     else
@@ -450,7 +450,7 @@ contains
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
 
-    call dUdt_compact(U, Uprime, dx, include_r=.false.)
+    call dUdt_narrow(U, Uprime, dx, include_r=.false.)
   end subroutine dUdt_AD
 
 
@@ -461,16 +461,16 @@ contains
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
 
-    call dUdt_compact(U, Uprime, dx, include_ad=.false.)
+    call dUdt_narrow(U, Uprime, dx, include_ad=.false.)
   end subroutine dUdt_R
 
 
   !
-  ! Compute dU/dt given U using the compact stencil.
+  ! Compute dU/dt given U using the narrow stencil.
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt_compact (U, Uprime, dx, courno, istep, include_ad, include_r)
+  subroutine dUdt_narrow (U, Uprime, dx, courno, istep, include_ad, include_r)
 
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt
 
@@ -518,11 +518,12 @@ contains
     ! That's why we have so many calls to multifab_fill_boundary_test.
 
     if (inc_ad) then
-       call multifab_fill_boundary_nowait(U, U_fb_data)
        if (overlap_comm_comp) then
+          call multifab_fill_boundary_nowait(U, U_fb_data)
           call multifab_fill_boundary_test(U, U_fb_data)
        else
-          call multifab_fill_boundary_finish(U, U_fb_data)
+          call multifab_fill_boundary(U)
+          U_fb_data%rcvd = .true.
        end if
     end if
 
@@ -690,9 +691,9 @@ contains
           call get_boxbc(n,blo,bhi)
 
           if (dm .ne. 3) then
-             call bl_error("Only 3D compact_diffterm is supported")
+             call bl_error("Only 3D narrow_diffterm is supported")
           else
-             call compact_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+             call narrow_diffterm_3d(lo,hi,ng,dx,qp,fdp,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
           end if
        end do
        call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
@@ -781,7 +782,7 @@ contains
        call destroy(bpt_courno)
     end if
 
-  end subroutine dUdt_compact
+  end subroutine dUdt_narrow
 
   subroutine compute_courno(Q, dx, courno)
     type(multifab), intent(in) :: Q
@@ -810,7 +811,7 @@ contains
 
 
   !
-  ! Compute dU/dt given U using the compact stencil.
+  ! Compute dU/dt given U using the wide stencil.
   !
   ! The Courant number (courno) might also be computed if passed.
   !
@@ -856,12 +857,12 @@ contains
        end if
     end if
 
-    call multifab_fill_boundary_nowait(U, U_fb_data)
-
     if (overlap_comm_comp) then
+       call multifab_fill_boundary_nowait(U, U_fb_data)
        call multifab_fill_boundary_test(U, U_fb_data)
     else
-       call multifab_fill_boundary_finish(U, U_fb_data)
+       call multifab_fill_boundary(U)
+       U_fb_data%rcvd = .true.
     end if
 
     call setval(Uprime, ZERO)
@@ -1032,21 +1033,21 @@ contains
     end do
     call destroy(bpt_diffterm_1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    qx_fb_data%tag = 1001
-    call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
-    qy_fb_data%tag = 1002
-    call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
-    qz_fb_data%tag = 1003
-    call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
-
     if (overlap_comm_comp) then
+       qx_fb_data%tag = 1001
+       call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
+       qy_fb_data%tag = 1002
+       call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
+       qz_fb_data%tag = 1003
+       call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
+
        call multifab_fill_boundary_test(qx, qx_fb_data, idim=1)
        call multifab_fill_boundary_test(qy, qy_fb_data, idim=2)
        call multifab_fill_boundary_test(qz, qz_fb_data, idim=3)
     else
-       call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
-       call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
-       call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
+       call multifab_fill_boundary(qx, idim=1)
+       call multifab_fill_boundary(qy, idim=2)
+       call multifab_fill_boundary(qz, idim=3)
     end if
 
     !

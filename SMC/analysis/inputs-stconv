@@ -3,7 +3,7 @@
  verbose = 2
 
  advance_method = {advance_method}
- stencil_type   = "compact"
+ stencil_type   = "narrow"
 
  restart   = -1
  plot_int  = 10
