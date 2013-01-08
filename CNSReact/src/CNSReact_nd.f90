@@ -52,7 +52,7 @@
 
         implicit none 
 
-        include "cdwrk.h"
+        include "cdwrk.H"
  
         integer, intent(in) :: dm
         integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec

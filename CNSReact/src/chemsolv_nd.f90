@@ -11,7 +11,7 @@ module chemsolv_module
 
       implicit none
 
-      include "cdwrk.h"
+      include "cdwrk.H"
       include "conp.H"
 
       double precision :: TIME, Z(NEQ), ZP(NEQ), RPAR(*)
@@ -62,7 +62,7 @@ module chemsolv_module
 !     use cdwrk_module
 
       implicit none
-      include "cdwrk.h"
+      include "cdwrk.H"
 
       double precision T,Y(1),e,ein
       double precision TMIN,TMAX,errMAX

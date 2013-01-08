@@ -65,7 +65,7 @@ contains
  
      implicit none
 
-     include "cdwrk.h"
+     include "cdwrk.H"
  
      double precision, parameter :: SCALP = 0.1d0, SCALR = 0.001d0
      double precision, intent(  out) :: G, P, C, T, dpdr, dpde
@@ -106,7 +106,7 @@ contains
   subroutine eos_given_RTY(e, P, R, T, Y, pt_index)
 
      implicit none
-     include "cdwrk.h"
+     include "cdwrk.H"
 
      ! in/out variables
      double precision, intent(  out) :: e, P
@@ -130,7 +130,7 @@ contains
   subroutine eos_get_cv(cv, R, T, Y)
 
      implicit none
-     include "cdwrk.h"
+     include "cdwrk.H"
 
 ! input/output variables
     double precision, intent(out) :: cv

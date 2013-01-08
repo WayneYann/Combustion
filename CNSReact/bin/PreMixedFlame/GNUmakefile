@@ -1,4 +1,4 @@
-BOXLIB_HOME = /scratch1/jbb/BoxLib
+BOXLIB_HOME ?= /path/to/BoxLib
 
 TOP = ../..
 
@@ -13,10 +13,12 @@ DIM        = 3
 COMP	   = gcc
 FCOMP	   = gfortran
 
-COMP	   = Intel
-FCOMP	   = Intel
+#COMP	   = Intel
+#FCOMP	   = Intel
 
 USE_MPI    = FALSE
+
+USE_OMP    = FALSE
 
 USE_CHEM   = TRUE
 

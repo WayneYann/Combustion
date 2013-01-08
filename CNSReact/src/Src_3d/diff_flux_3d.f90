@@ -203,7 +203,7 @@ contains
 
       implicit none
 
-      include "cdwrk.h"
+      include "cdwrk.H"
 
       integer          :: lo(3), hi(3)
       integer          :: q_l1, q_l2, q_l3, q_h1, q_h2, q_h3
@@ -278,7 +278,7 @@ contains
 
       implicit none
 
-      include "cdwrk.h"
+      include "cdwrk.H"
 
       integer          :: lo(3),hi(3)
       integer          :: q_l1, q_l2, q_l3, q_h1, q_h2, q_h3
@@ -474,7 +474,7 @@ contains
 
       implicit none
 
-      include "cdwrk.h"
+      include "cdwrk.H"
 
       integer          :: lo(3),hi(3)
       integer          :: do_temp, do_VelVisc
@@ -512,8 +512,10 @@ contains
                CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
                CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-               CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
-               CALL EGSV1(Pt,Tt,Yt,Wavg,RWRK(egbr),Dt)
+!wqz               CALL EGSPAR(Tt,X,Yt,CPMS,RWRK(egbr),IWRK(egbi))
+               CALL EGSPAR(Tt,X,Yt,CPMS,RWRK,IWRK)
+!wqz               CALL EGSV1(Pt,Tt,Yt,Wavg,RWRK(egbr),Dt)
+               CALL EGSV1(Pt,Tt,Yt,Wavg,RWRK,Dt)
                CALL CKRHOY(Pt,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
                do n=1,Nspec
                   rd(i,j,k,n) = RHO * Wavg * invmwt(n) * Dt(n) * scal
@@ -521,14 +523,17 @@ contains
 
                if (do_temp .ne. 0) then
                   alpha = 1
-                  CALL EGSL1(alpha,Tt,X,RWRK(egbr),l1)
+!wqz                  CALL EGSL1(alpha,Tt,X,RWRK(egbr),l1)
+                  CALL EGSL1(alpha,Tt,X,RWRK,l1)
                   alpha = -1
-                  CALL EGSL1(alpha,Tt,X,RWRK(egbr),l2)
+!wqz                  CALL EGSL1(alpha,Tt,X,RWRK(egbr),l2)
+                  CALL EGSL1(alpha,Tt,X,RWRK,l2)
                   rd(i,j,k,Nspec+1) = 0.5d0 * (l1 + l2) * tscal
                endif
 
                if (do_VelVisc .ne. 0) then
-                  CALL EGSE3(Tt,Yt,RWRK(egbr),rd(i,j,k,Nspec+2))
+!                  CALL EGSE3(Tt,Yt,RWRK(egbr),rd(i,j,k,Nspec+2))
+                  CALL EGSE3(Tt,Yt,RWRK,rd(i,j,k,Nspec+2))
                   rd(i,j,k,Nspec+2) = rd(i,j,k,Nspec+2) * scal
                endif
 

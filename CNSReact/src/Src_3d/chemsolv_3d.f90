@@ -8,7 +8,7 @@
 
       implicit none
 
-      include "cdwrk.h"
+      include "cdwrk.H"
       include "conp.H"
 
       integer          :: lo(:), hi(:)
@@ -119,7 +119,7 @@
                   end do
 
                   RWRK(NZ) = u(i,j,k,NTHERM+1)
-                  Niter = T_from_eY(RWRK(NZ),RWRK(NZ+1),RWRK(NP))
+!wqz                  Niter = T_from_eY(RWRK(NZ),RWRK(NZ+1),RWRK(NP))
                   if (Niter.lt.0) then
                      write(6,*) 'FORT_CHEMSOLV: T_from_eY failed!!!!'
                      write(6,*) u(i,j,k,NTHERM+1),RWRK(NP)
@@ -148,7 +148,7 @@
                   hardestCase = MAX(hardestCase,IWRK(dvbi+10))
                   mostfs = MAX(mostfs,IWRK(dvbi+11))
 
-                  Niter = T_from_eY(RWRK(NZ),RWRK(NZ+1),RWRK(NP))
+!wqz                  Niter = T_from_eY(RWRK(NZ),RWRK(NZ+1),RWRK(NP))
                   if (Niter.lt.0) then
                      write(6,*) 'FORT_CHEMSOLV: T_from_eY failed after DVODE call!!!!'
                      stop
@@ -175,7 +175,7 @@
                   
                   if (ISTATE .LE. -1) then
                      
-                     call consteFY(Nspec, TT1, RWRK(NZ), deriv, RWRK, IWRK)
+!wqz                     call consteFY(Nspec, TT1, RWRK(NZ), deriv, RWRK, IWRK)
                      lout = open_vode_failure_file()
                      
                      write(lout,*)

@@ -95,7 +95,7 @@
      use prob_params_module
      implicit none
 
-     include "cdwrk.h"
+     include "cdwrk.H"
 
      integer level, nscal
      integer lo(3), hi(3)
