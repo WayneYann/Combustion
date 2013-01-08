@@ -1143,6 +1143,16 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
 
+#if defined(BL_DO_FLCT)
+#include "INFL_FORCE_F.H"
+      REAL_T  t_flct, dt_flct
+      integer DIMDEC(uflct)
+      integer loFlctArray(SDIM), hiFlctArray(SDIM)
+      REAL_T uflct(:,:)
+      allocatable uflct
+#endif
+
+
       integer i, j
       integer ilo, ihi, jlo, jhi
       REAL_T  y, x, hx, xhi(SDIM)
@@ -1160,6 +1170,25 @@ c ::: -----------------------------------------------------------
       ihi = min(hi(1),domhi(1))
       jlo = max(lo(2),domlo(2))
       jhi = min(hi(2),domhi(2))
+
+#if defined(BL_DO_FLCT)
+      if (forceInflow) then
+         do i = 1, SDIM
+            loFlctArray(i) = lo(i)
+            hiFlctArray(i) = hi(i)
+         enddo
+         loFlctArray(strmwse_dir) = 1
+         hiFlctArray(strmwse_dir) = 1
+         call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
+         allocate(uflct(DIMV(uflct)))
+         dt_flct = time - tbase_control
+         t_flct = zbase_control + V_in*dt_flct + dV_control*dt_flct**2
+c         write(*,*) 'time,dt_flct,t_flct,tbase_control:',time,dt_flct,t_flct,tbase_control
+         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
+     $                  bc, domnlo, domnhi)
+      endif
+#endif
+
       
       call filcc (xvel,DIMS(xvel),domlo,domhi,delta,xlo,bc)
       
@@ -1201,6 +1230,12 @@ c     that the bc values may often be set up ahead of time.
                x = (float(i)+.5)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
+#if defined(BL_DO_FLCT)
+               if (forceLo .and. strmwse_dir .eq. 2) then
+                  xvel(i,j) = xvel(i,j) + uflct(i,1)*turb_scale
+               endif
+#endif
+
             enddo
          enddo
       endif    
@@ -1252,7 +1287,16 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
-      
+
+#if defined(BL_DO_FLCT)
+#include "INFL_FORCE_F.H"
+      REAL_T turbSclY, t_flct, dt_flct
+      integer DIMDEC(vflct)
+      integer loFlctArray(SDIM), hiFlctArray(SDIM)
+      REAL_T vflct(:,:)
+      allocatable vflct
+#endif
+
       integer i, j
       integer ilo, ihi, jlo, jhi
       REAL_T  y, x, hx, xhi(SDIM)
@@ -1270,6 +1314,24 @@ c ::: -----------------------------------------------------------
       ihi = min(hi(1),domhi(1))
       jlo = max(lo(2),domlo(2))
       jhi = min(hi(2),domhi(2))
+
+#if defined(BL_DO_FLCT)
+      if (forceInflow) then
+         do i = 1, SDIM
+            loFlctArray(i) = lo(i)
+            hiFlctArray(i) = hi(i)
+         enddo
+         loFlctArray(strmwse_dir) = 1
+         hiFlctArray(strmwse_dir) = 1
+         call SET_ARGS(DIMS(vflct), loFlctArray, hiFlctArray)
+         allocate(vflct(DIMV(vflct)))
+         dt_flct = time - tbase_control
+         t_flct = zbase_control + V_in*dt_flct + dV_control*dt_flct**2
+         call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, t_flct,
+     $                  bc, domnlo, domnhi)
+      endif
+#endif
+
       
       call filcc (yvel,DIMS(yvel),domlo,domhi,delta,xlo,bc)
 
@@ -1311,6 +1373,12 @@ c     that the bc values may often be set up ahead of time.
                x = (float(i)+.5)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
+#if defined(BL_DO_FLCT)
+               if (forceLo .and. strmwse_dir .eq. 2) then
+                  yvel(i,j) = yvel(i,j) + vflct(i,1)*turb_scale
+               endif
+#endif
+
             enddo
          enddo
       endif    

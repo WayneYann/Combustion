@@ -14,13 +14,13 @@
 
   splitx = 0.0000569
   xfrontw = .2
+  vorterr = 5.e4
+  max_vort_lev = 4
+  flametracval = 1.e-8
+  max_trac_lev = 4
 
   bloby = 1000.
   Tfrontw = 1.
-
-  max_trac_lev = 0
-  max_temp_lev = 0
-  max_vort_lev = 0
 
  /
  &heattransin
@@ -29,6 +29,8 @@
   dpdt_factor = .3
  /
   &flctin
+  flct_file = "Turb.Hemanth"
+  forceInflow = .TRUE.
  /
   &control
  /

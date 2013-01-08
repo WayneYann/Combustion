@@ -267,15 +267,15 @@ c     Set defaults
 c     add_turb = .FALSE.
       forceInflow = .FALSE.
       numInflPlanesStore = -1
-      numInflPlanesStore = 30
 c
 c     Don't need to default 'nCompInflow' as it is block data'd to /3/
 c
       forceLo = .TRUE.
       forceHi = .FALSE.
-      strmwse_dir = FLCT_ZVEL
+      strmwse_dir = FLCT_YVEL
       flct_file = ''
-      turb_scale = 1
+      turb_scale = 1.d0
+      nCompInFlow = 2
 #endif
 
       zbase_control = 0.d0
@@ -313,6 +313,7 @@ c     Initialize control variables that depend on fortin variables
  
 #if defined(BL_DO_FLCT)
       read(untin,flctin)
+      convVel = one
 #endif
  
       write(6,*)"reading control"

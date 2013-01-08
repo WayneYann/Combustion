@@ -22,7 +22,7 @@ VERBOSE         = FALSE
 USE_LMC_SDC = FALSE
 
 # Enable flctin namelist
-USE_FLCTS       = FALSE
+USE_FLCTS       = TRUE
 
 USE_PARTICLES   = FALSE
 
