@@ -19,8 +19,12 @@
   flametracval = 1.e-8
   max_trac_lev = 4
 
-  bloby = 1000.
-  Tfrontw = 1.
+  blobr = .00014
+  bloby = .00030
+  blobx = 0.d0
+  
+  Tfrontw = .00005
+  blobT = 2000.
 
  /
  &heattransin

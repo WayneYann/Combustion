@@ -315,7 +315,7 @@ c ::: -----------------------------------------------------------
 
 
 
-               if (blobr.lt.0) then
+c              if (blobr.lt.0) then
 
                   eta = 0.5 * (    tanh((x + splitx)/sigma) 
      &                 - tanh((x - splitx)/sigma))
@@ -327,6 +327,7 @@ c ::: -----------------------------------------------------------
                   scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
                   vel(i,j,1) = u_bc(airZone)*(1.d0-eta) + eta*u_bc(fuelZone)
                   vel(i,j,2) = v_bc(airZone)*(1.d0-eta) + eta*v_bc(fuelZone)
+                  scal(i,j,Trac) = 0.d0
 c                 
 c                 eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
 c                 do n=1,Nspec
@@ -334,14 +335,16 @@ c                    scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
 c    &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
 c                 enddo
 
-               else
-               
-                  eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
-                  
+c              else
+               if(i.eq.63.and.j.eq.0)then
+               if (blobr.gt.0) then
+
+                  eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
                   do n=1,Nspec
-                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
+                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
+     &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
                   enddo
-                  scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
+               
                   
 c     Superimpose blob of hot air
                   r = SQRT((x-blobx)**2 + (y-bloby)**2)
@@ -352,9 +355,9 @@ c     Superimpose blob of hot air
                   enddo
                   scal(i,j,Temp) = blobT*eta + (1.d0-eta)*scal(i,j,Temp)
                   
-                  vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
-                  vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
-                  scal(i,j,Trac) = 0.d0
+c                 vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
+c                 vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
+c                 scal(i,j,Trac) = 0.d0
                   
                endif
 
