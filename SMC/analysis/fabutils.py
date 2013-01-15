@@ -14,6 +14,12 @@ env.nprocs   = 1
 env.nthreads = 1
 
 
+def setenv():
+  if env.host == 'hopper':
+    env.host_string = 'hopper.nersc.gov'
+    env.exe = 'main.Linux.Cray.mpi.omp.exe'
+
+
 @task
 def rsync():
   """Push (rsync) directories in env.rsync to env.host."""
@@ -34,6 +40,8 @@ def rsync():
 @task
 def make(target=''):
   """Run *make* in the env.bin directory."""
+
+  setenv()
 
   with cd(env.bin):
     run('make %s' % target)

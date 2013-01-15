@@ -16,11 +16,6 @@ env.rsync = [ (projects + 'Combustion/SMC', work + 'Combustion/SMC') ]
 env.bin   = work + 'Combustion/SMC/bin/FlameBall'
 
 
-def setenv():
-  if env.host == 'hopper':
-    env.host_string = 'hopper.nersc.gov'
-    env.exe = 'main.Linux.Cray.mpi.omp.exe'
-
 def walltime(seconds):
   import math
 
@@ -59,9 +54,9 @@ def flameball_cflconv():
               advance_method=1)
       probin.write(spath + 'probin.nml')
 
-      runs.append(('rk3%f' % (cflfac,), rundir))
+      runs.append(('rk3%f' % (cflfac,), rundir, walltime(60*60*2)))
 
-    for nnodes, cflfac in product([ 3, 5, 9 ], [ 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 ]):
+    for nnodes, cflfac in product([ 3, 5 ], [ 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 ]):
       rundir = 'cflconv/nnodes%d_cflfac%f' % (nnodes, cflfac)
       spath  = s.mkdir(rundir)
 
@@ -71,7 +66,7 @@ def flameball_cflconv():
               advance_method=2)
       probin.write(spath + 'probin.nml')
 
-      runs.append(('sdcgl%d_%.2f' % (nnodes, cflfac), rundir, walltime(nnodes, cflfac)))
+      runs.append(('sdcgl%d_%.2f' % (nnodes, cflfac), rundir, walltime(60*60*3)))
 
 
   for name, rundir, wall in runs:
@@ -93,13 +88,13 @@ def flameball_stconv():
   with stage() as s:
 
     nx0 = 32
-    dt0 = 1.0e-7
+    dt0 = 4 * 1.0e-7
 
     for nx, cfl, nnodes in product( [ 32, 64, 128 ],
                                     [ 0.25, 0.5, 0.75, 1.0 ],
                                     [ 3, 5 ] ):
 
-      stop_time = 1.0e-5
+      stop_time = 4e-6
       dt        = dt0 * float(nx0) / nx * cfl
       nsteps    = int(ceil(stop_time / dt))
 
@@ -113,7 +108,7 @@ def flameball_stconv():
       probin.update(
           nx=nx, dt=dt, stop_time=stop_time,
           sdc_nnodes=nnodes,
-          sdc_iters=2*nnodes-2,
+          sdc_iters=2*nnodes-1,
           max_grid_size=max_grid_size,
           advance_method=2)
       probin.write(spath + 'probin.nml')
