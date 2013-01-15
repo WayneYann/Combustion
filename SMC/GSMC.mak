@@ -48,6 +48,11 @@ Fmlocs := $(foreach dir, $(Fmdirs), $(SMC_TOP_DIR)/$(dir))
 Fmpack += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir)/GPackage.mak)
 Fmlocs += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir))
 
+# SDCLib
+Fmpack += $(SDCLIB_HOME)/GPackage.mak
+Fmlocs += $(SDCLIB_HOME)/src/core $(SDCLIB_HOME)/src/fortran $(SDCLIB_HOME)/src/encap
+INCLUDE_LOCATIONS += $(SDCLIB_HOME)/include
+
 # Chemistry
 Fmpack += $(CHEMISTRY_DIR)/F_Src/GPackage.mak
 Fmlocs += $(CHEMISTRY_DIR)/F_Src

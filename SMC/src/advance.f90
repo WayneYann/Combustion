@@ -6,11 +6,12 @@ module advance_module
   use multifab_module
   use omp_module
   use nscbc_module
-  use sdcquad_module
+  use sdcquad_module, only: sdcquad
   use smc_bc_module
   use time_module
   use transport_properties
   use variables_module
+  use sdclib
 
   use chemistry_module, only : nspecies
 
@@ -107,6 +108,7 @@ contains
   ! Advance U using SDC time-stepping
   !
   subroutine advance_sdc(U, dt, courno, dx, sdc, istep)
+
 
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
@@ -235,6 +237,8 @@ contains
   !
   subroutine advance_multi_sdc(U, dt, courno, dx, sdc, istep)
 
+    use sdclib_multifab
+
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
@@ -247,8 +251,28 @@ contains
     type(multifab)   :: uAD(sdc%nnodes), fAD(sdc%nnodes), SAD(sdc%nnodes-1)
     type(multifab)   :: uR(sdc%nnodes), fR(sdc%nnodes), SR(sdc%nnodes-1)
 
+    type(mf_encap_t), target :: mfencap
+    type(c_ptr)    :: nset1, nset2, mrset, encap
+    integer(c_int) :: err
+
+    nset1 = sdc_nset_create(sdc%nnodes, SDC_GAUSS_LOBATTO,  "AD" // c_null_char)
+    nset2 = sdc_nset_create(5,          SDC_GAUSS_LEGENDRE, "R"  // c_null_char)
+    mrset = sdc_mrset_create("ADR" // c_null_char)
+
+    err = sdc_mrset_add_nset(mrset, nset1, 0)
+    err = sdc_mrset_add_nset(mrset, nset2, 0)
+    err = sdc_mrset_setup(mrset)
+
+    ! call sdc_mrset_print(mrset, 0)
+    
     ng = nghost(U)
     la = get_layout(U)
+
+    mfencap%nc = ncons
+    mfencap%ng = ng
+    mfencap%la = la
+
+    encap = sdc_encap_multifab(c_loc(mfencap))
 
     ! XXX: this is a work in progress
     print *, '*** MULTIRATE SDC IS A WORK IN PROGRESS ***'
@@ -302,6 +326,11 @@ contains
        call destroy(SAD(m))
        call destroy(SR(m))
     end do
+
+    call sdc_mrset_destroy(mrset)
+    call sdc_nset_destroy(nset1)
+    call sdc_nset_destroy(nset2)
+    call sdc_encap_multifab_destroy(encap)
 
   end subroutine advance_multi_sdc
 
