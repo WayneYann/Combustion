@@ -144,7 +144,9 @@ c ::: -----------------------------------------------------------
 
       integer RegionID
       REAL_T x, y, time, u, v, rho, Yl(0:*), T, h, dx(SDIM)
+      REAL_T  Patm, FORT_P1ATMMKS
       logical getuv
+      integer dimloc(SDIM)
 
 #include "cdwrk.H"
 #include <htdata.H>
@@ -153,6 +155,7 @@ c ::: -----------------------------------------------------------
 
       integer n, getZone, zone, airZone,fuelZone
       REAL_T eta, xmid, etamax,sigma
+      data dimloc / 1,  1 /
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
@@ -173,9 +176,21 @@ c ::: -----------------------------------------------------------
               Yl(n-1) = Y_bc(n-1,airZone)*(1.d0-eta)
      &               + eta*Y_bc(n-1,fuelZone)
             enddo
-            rho = rho_bc(airZone)*(1.d0-eta) + eta*rho_bc(fuelZone)
             T = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
-            h = h_bc(airZone)*(1.d0-eta) + eta*h_bc(fuelZone)
+c  need to define rho and h from rest of state
+c           rho = rho_bc(airZone)*(1.d0-eta) + eta*rho_bc(fuelZone)
+c           h = h_bc(airZone)*(1.d0-eta) + eta*h_bc(fuelZone)
+      Patm = pamb / FORT_P1ATMMKS()
+ 
+         call FORT_RHOfromPTY(dimloc, dimloc,
+     &                        rho, DIMARG(dimloc), DIMARG(dimloc),
+     &                        T,   DIMARG(dimloc), DIMARG(dimloc),
+     &                        Yl, DIMARG(dimloc), DIMARG(dimloc), Patm)
+         call FORT_HMIXfromTY(dimloc, dimloc,
+     &                        h,   DIMARG(dimloc), DIMARG(dimloc),
+     &                        T,   DIMARG(dimloc), DIMARG(dimloc),
+     &                        Yl, DIMARG(dimloc), DIMARG(dimloc))
+
 
             if (getuv .eqv. .TRUE.) then
 
@@ -315,7 +330,7 @@ c ::: -----------------------------------------------------------
 
 
 
-               if (blobr.lt.0) then
+c              if (blobr.lt.0) then
 
                   eta = 0.5 * (    tanh((x + splitx)/sigma) 
      &                 - tanh((x - splitx)/sigma))
@@ -327,6 +342,7 @@ c ::: -----------------------------------------------------------
                   scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
                   vel(i,j,1) = u_bc(airZone)*(1.d0-eta) + eta*u_bc(fuelZone)
                   vel(i,j,2) = v_bc(airZone)*(1.d0-eta) + eta*v_bc(fuelZone)
+                  scal(i,j,Trac) = 0.d0
 c                 
 c                 eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
 c                 do n=1,Nspec
@@ -334,14 +350,15 @@ c                    scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
 c    &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
 c                 enddo
 
-               else
-               
-                  eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
-                  
+c              else
+               if (blobr.gt.0) then
+
+                  eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
                   do n=1,Nspec
-                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
+                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
+     &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
                   enddo
-                  scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
+               
                   
 c     Superimpose blob of hot air
                   r = SQRT((x-blobx)**2 + (y-bloby)**2)
@@ -351,10 +368,12 @@ c     Superimpose blob of hot air
      &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
                   enddo
                   scal(i,j,Temp) = blobT*eta + (1.d0-eta)*scal(i,j,Temp)
+c                 vel(i,j,1) = 0.d0
+c                 vel(i,j,2) = v_bc(airZone)
                   
                   vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
                   vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
-                  scal(i,j,Trac) = 0.d0
+c                 scal(i,j,Trac) = 0.d0
                   
                endif
 
@@ -637,7 +656,7 @@ c ::: -----------------------------------------------------------
       integer   tag(DIMV(tag))
       REAL_T    temperature(DIMV(temp),nvar)
 
-c      REAL_T    ax, ay, aerr
+      REAL_T    ax, ay, aerr
       integer   i, j, ng
 
 #include "probdata.H"
@@ -655,15 +674,13 @@ c
       if (level .lt. max_temp_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-c              ax = abs(temperature(i+1,j,1) - temperature(i,j,1))
-c              ay = abs(temperature(i,j+1,1) - temperature(i,j,1))
-c              az = abs(temperature(i,j+1,1) - temperature(i,j,1))
-c              ax = MAX(ax,abs(temperature(i,j,1) - temperature(i-1,j,1)))
-c              ay = MAX(ay,abs(temperature(i,j,1) - temperature(i,j-1,1)))
-c              az = MAX(az,abs(temperature(i,j,1) - temperature(i,j-1,1)))
-c              aerr = max(ax,ay,az)
-c              tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
-               tag(i,j) = cvmgt(set,tag(i,j),temperature(i,j,1).lt.temperr)
+               ax = abs(temperature(i+1,j,1) - temperature(i,j,1))
+               ay = abs(temperature(i,j+1,1) - temperature(i,j,1))
+               ax = MAX(ax,abs(temperature(i,j,1) - temperature(i-1,j,1)))
+               ay = MAX(ay,abs(temperature(i,j,1) - temperature(i,j-1,1)))
+               aerr = max(ax,ay)
+               tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
+c              tag(i,j) = cvmgt(set,tag(i,j),temperature(i,j,1).lt.temperr)
             enddo
          enddo
       endif
@@ -1143,6 +1160,16 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
 
+#if defined(BL_DO_FLCT)
+#include "INFL_FORCE_F.H"
+      REAL_T  t_flct, dt_flct
+      integer DIMDEC(uflct)
+      integer loFlctArray(SDIM), hiFlctArray(SDIM)
+      REAL_T uflct(:,:)
+      allocatable uflct
+#endif
+
+
       integer i, j
       integer ilo, ihi, jlo, jhi
       REAL_T  y, x, hx, xhi(SDIM)
@@ -1160,6 +1187,25 @@ c ::: -----------------------------------------------------------
       ihi = min(hi(1),domhi(1))
       jlo = max(lo(2),domlo(2))
       jhi = min(hi(2),domhi(2))
+
+#if defined(BL_DO_FLCT)
+      if (forceInflow) then
+         do i = 1, SDIM
+            loFlctArray(i) = lo(i)
+            hiFlctArray(i) = hi(i)
+         enddo
+         loFlctArray(strmwse_dir) = 1
+         hiFlctArray(strmwse_dir) = 1
+         call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
+         allocate(uflct(DIMV(uflct)))
+         dt_flct = time - tbase_control
+         t_flct = zbase_control + V_in*dt_flct + dV_control*dt_flct**2
+c         write(*,*) 'time,dt_flct,t_flct,tbase_control:',time,dt_flct,t_flct,tbase_control
+         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, t_flct,
+     $                  bc, domnlo, domnhi)
+      endif
+#endif
+
       
       call filcc (xvel,DIMS(xvel),domlo,domhi,delta,xlo,bc)
       
@@ -1201,6 +1247,12 @@ c     that the bc values may often be set up ahead of time.
                x = (float(i)+.5)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
+#if defined(BL_DO_FLCT)
+               if (forceLo .and. strmwse_dir .eq. 2) then
+                  xvel(i,j) = xvel(i,j) + uflct(i,1)*turb_scale
+               endif
+#endif
+
             enddo
          enddo
       endif    
@@ -1252,7 +1304,16 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include "bc.H"
 #include "probdata.H"
-      
+
+#if defined(BL_DO_FLCT)
+#include "INFL_FORCE_F.H"
+      REAL_T turbSclY, t_flct, dt_flct
+      integer DIMDEC(vflct)
+      integer loFlctArray(SDIM), hiFlctArray(SDIM)
+      REAL_T vflct(:,:)
+      allocatable vflct
+#endif
+
       integer i, j
       integer ilo, ihi, jlo, jhi
       REAL_T  y, x, hx, xhi(SDIM)
@@ -1270,6 +1331,24 @@ c ::: -----------------------------------------------------------
       ihi = min(hi(1),domhi(1))
       jlo = max(lo(2),domlo(2))
       jhi = min(hi(2),domhi(2))
+
+#if defined(BL_DO_FLCT)
+      if (forceInflow) then
+         do i = 1, SDIM
+            loFlctArray(i) = lo(i)
+            hiFlctArray(i) = hi(i)
+         enddo
+         loFlctArray(strmwse_dir) = 1
+         hiFlctArray(strmwse_dir) = 1
+         call SET_ARGS(DIMS(vflct), loFlctArray, hiFlctArray)
+         allocate(vflct(DIMV(vflct)))
+         dt_flct = time - tbase_control
+         t_flct = zbase_control + V_in*dt_flct + dV_control*dt_flct**2
+         call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, t_flct,
+     $                  bc, domnlo, domnhi)
+      endif
+#endif
+
       
       call filcc (yvel,DIMS(yvel),domlo,domhi,delta,xlo,bc)
 
@@ -1311,6 +1390,12 @@ c     that the bc values may often be set up ahead of time.
                x = (float(i)+.5)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
+#if defined(BL_DO_FLCT)
+               if (forceLo .and. strmwse_dir .eq. 2) then
+                  yvel(i,j) = yvel(i,j) + vflct(i,1)*turb_scale
+               endif
+#endif
+
             enddo
          enddo
       endif    
