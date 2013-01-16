@@ -1,0 +1,60 @@
+#ifndef _ChemDriver_H_
+#define _ChemDriver_H_
+
+#include <string>
+
+#include <Array.H>
+
+class ChemDriver
+{
+public:
+
+  ChemDriver ();	  
+
+  ~ChemDriver ();
+
+  //
+  // Species info.
+  //
+  int numSpecies () const;
+  int numElements () const;
+  const Array<std::string>& speciesNames () const;
+  const Array<std::string>& elementNames () const;
+
+private:
+
+  Array<std::string> mSpeciesNames;
+  Array<std::string> mElementNames;
+
+  std::string decodeStringFromFortran(const int* coded, int length);
+};
+
+inline
+int
+ChemDriver::numSpecies () const
+{
+  return mSpeciesNames.size();
+}
+
+inline
+int
+ChemDriver::numElements () const
+{
+    return mElementNames.size();
+}
+
+inline
+const Array<std::string>&
+ChemDriver::speciesNames () const
+{
+    return mSpeciesNames;
+}
+
+inline
+const Array<std::string>&
+ChemDriver::elementNames () const
+{
+    return mElementNames;
+}
+
+#endif
