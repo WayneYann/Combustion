@@ -14,7 +14,7 @@ module chemistry_module
   integer, parameter :: L_spec_name = 8 ! Each species name has at most 8 characters
   character*(L_spec_name), allocatable, save :: spec_names(:)
 
-  double precision, allocatable, save :: molecular_weight(:)
+  double precision, allocatable, save :: molecular_weight(:), inv_mwt(:)
 
   double precision, save :: Ru, Ruc, Patm
 
@@ -30,6 +30,7 @@ contains
     allocate(elem_names(nelements))
     allocate(spec_names(nspecies))
     allocate(molecular_weight(nspecies))
+    allocate(inv_mwt(nspecies))
 
     allocate(names(nspecies*L_spec_name))  
 
@@ -56,6 +57,7 @@ contains
     deallocate(names)
 
     call ckwt(iwrk, rwrk, molecular_weight)
+    inv_mwt = 1.d0 / molecular_weight
 
     call ckrp(iwrk, rwrk, Ru, Ruc, Patm)
 

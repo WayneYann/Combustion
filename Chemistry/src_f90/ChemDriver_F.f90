@@ -11,13 +11,11 @@ end subroutine cd_initchem
 
 
 subroutine cd_closechem()
-
   use chemistry_module
-
+  use eglib_module
   implicit none
-
   call chemistry_close()
-
+  call eglib_close()
 end subroutine cd_closechem
 
 

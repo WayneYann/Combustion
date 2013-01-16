@@ -3,6 +3,9 @@
       COMMON /VHACK/ YJ_SAVE, FIRST
       SAVE   /VHACK/
 
+C
+C Type declarations for labeled COMMON block DVOD01 --------------------
+C
       DOUBLE PRECISION ACNRM, CCMXJ, CONP, CRATE, DRC, EL(13),
      1     ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
      2     RC, RL1, TAU(13), TQ(5), TN, UROUND
@@ -11,6 +14,13 @@
      2        LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
      3        N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
      4        NSLP, NYH
+C
+C Type declarations for labeled COMMON block DVOD02 --------------------
+C
+      DOUBLE PRECISION HU
+      INTEGER NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
+
+C
       COMMON /DVOD01/ ACNRM, CCMXJ, CONP, CRATE, DRC, EL,
      1                ETA, ETAMAX, H, HMIN, HMXI, HNEW, HSCAL, PRL1,
      2                RC, RL1, TAU, TQ, TN, UROUND,
@@ -19,10 +29,9 @@
      5                LOCJS, MAXORD, METH, MITER, MSBJ, MXHNIL, MXSTEP,
      6                N, NEWH, NEWQ, NHNIL, NQ, NQNYH, NQWAIT, NSLJ,
      7                NSLP, NYH
-
-      DOUBLE PRECISION HU
-      INTEGER NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
       COMMON /DVOD02/ HU, NCFN, NETF, NFE, NJE, NLU, NNI, NQU, NST
+C
       SAVE /DVOD01/, /DVOD02/
 
 !$omp threadprivate(/VHACK/,/DVOD01/,/DVOD02/)
+
