@@ -205,37 +205,37 @@ subroutine cns_hypfill(adv,adv_l1,adv_l2,adv_l3, &
      
      !        XLO
      if ( bc(1,1,n).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-        print *,'SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
+        print *,'hypfill: SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
         stop
      end if
      
      !        XHI
      if ( bc(1,2,n).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-        print *,'SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
+        print *,'hypfill: SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
         stop
      end if
      
      !        YLO
      if ( bc(2,1,n).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-        print *,'SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) '
+        print *,'hypfill: SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) '
         stop
      end if
      
      !        YHI
      if ( bc(2,2,n).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-        print *,'SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) '
+        print *,'hypfill: SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) '
         stop
      end if
      
      !        YLO
      if ( bc(3,1,n).eq.EXT_DIR .and. adv_l3.lt.domlo(3)) then
-        print *,'SHOULD NEVER GET HERE bc(3,1,n) .eq. EXT_DIR) '
+        print *,'hypfill: SHOULD NEVER GET HERE bc(3,1,n) .eq. EXT_DIR) '
         stop
      end if
      
      !        YHI
      if ( bc(3,2,n).eq.EXT_DIR .and. adv_l3.lt.domlo(3)) then
-        print *,'SHOULD NEVER GET HERE bc(3,2,n) .eq. EXT_DIR) '
+        print *,'hypfill: SHOULD NEVER GET HERE bc(3,2,n) .eq. EXT_DIR) '
         stop
      end if
      
@@ -267,37 +267,37 @@ subroutine cns_denfill(adv,adv_l1,adv_l2,adv_l3, &
   
   !     XLO
   if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-     print *,'SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+     print *,'denfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
      stop
   end if
   
   !     XHI
   if ( bc(1,2,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-     print *,'SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
+     print *,'denfill: SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
      stop
   end if
   
   !     YLO
   if ( bc(2,1,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-     print *,'SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
+     print *,'denfill: SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
      stop
   end if
   
   !     YHI
   if ( bc(2,2,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-     print *,'SHOULD NEVER GET HERE bc(2,2,1) .eq. EXT_DIR) '
+     print *,'denfill: SHOULD NEVER GET HERE bc(2,2,1) .eq. EXT_DIR) '
      stop
   end if
   
   !     ZLO
   if ( bc(3,1,1).eq.EXT_DIR .and. adv_l3.lt.domlo(3)) then
-     print *,'SHOULD NEVER GET HERE bc(3,1,1) .eq. EXT_DIR) '
+     print *,'denfill: SHOULD NEVER GET HERE bc(3,1,1) .eq. EXT_DIR) '
      stop
   end if
   
   !     ZHI
   if ( bc(3,2,1).eq.EXT_DIR .and. adv_l3.lt.domlo(3)) then
-     print *,'SHOULD NEVER GET HERE bc(3,2,1) .eq. EXT_DIR) '
+     print *,'denfill: SHOULD NEVER GET HERE bc(3,2,1) .eq. EXT_DIR) '
      stop
   end if
   

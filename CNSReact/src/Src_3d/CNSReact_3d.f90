@@ -81,8 +81,8 @@ subroutine cns_umdrv(lo,hi,&
   lo_hyp(1:3)= lo(1:3)-NDIF   ! hyperbolic solve on this domain
   hi_hyp(1:3)= hi(1:3)+NDIF  
 
-  allocate(  div(lo_hyp(1):hi(1)+1,lo_hyp(2):hi_hyp(2)+1,lo_hyp(3):hi_hyp(3)+1))
-  allocate(pdivu(lo_hyp(1):hi(1)  ,lo_hyp(2):hi_hyp(2)  ,lo_hyp(3):hi_hyp(3)  ))
+  allocate(  div(lo_hyp(1):hi_hyp(1)+1,lo_hyp(2):hi_hyp(2)+1,lo_hyp(3):hi_hyp(3)+1))
+  allocate(pdivu(lo_hyp(1):hi_hyp(1)  ,lo_hyp(2):hi_hyp(2)  ,lo_hyp(3):hi_hyp(3)  ))
 
   lo_diff(1:3)= lo(1:3)-NDIF-1 ! domain for the first diffusion solve
   hi_diff(1:3)= hi(1:3)+NDIF+1 
@@ -224,7 +224,7 @@ subroutine cns_umdrv(lo,hi,&
 
   ! Add diffusion fluxes to hyperbolic fluxes to pass back to AMR
   flux1 = flux1 + dfluxx(flux1_l1:flux1_h1,flux1_l2:flux1_h2,flux1_l3:flux1_h3,:)
-  flux1 = flux2 + dfluxy(flux2_l1:flux2_h1,flux2_l2:flux2_h2,flux2_l3:flux2_h3,:)
+  flux2 = flux2 + dfluxy(flux2_l1:flux2_h1,flux2_l2:flux2_h2,flux2_l3:flux2_h3,:)
   flux3 = flux3 + dfluxz(flux3_l1:flux3_h1,flux3_l2:flux3_h2,flux3_l3:flux3_h3,:)
   
   ! Enforce the density >= small_dens.
