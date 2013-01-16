@@ -10,7 +10,7 @@
 ! :: ----------------------------------------------------------
 ! ::
 
-      subroutine ca_summass(rho,r_l1,r_l2,r_l3,r_h1,r_h2,r_h3,lo,hi,dx,mass)
+      subroutine cns_summass(rho,r_l1,r_l2,r_l3,r_h1,r_h2,r_h3,lo,hi,dx,mass)
         implicit none
         integer          :: r_l1,r_l2,r_l3,r_h1,r_h2,r_h3
         integer          :: lo(3), hi(3)
@@ -35,4 +35,4 @@
 
         mass = mass * vol
 
-      end subroutine ca_summass
+      end subroutine cns_summass

@@ -12,28 +12,9 @@
 
         integer, intent(out) :: ngrowHyp
 
-        nGrowHyp = NHYP
+        nGrowHyp = NHYP + NDIF
 
       end subroutine get_method_params
-
-! ::: 
-! ::: ----------------------------------------------------------------
-! ::: 
-
-      subroutine get_chem_params(nspecies,maxspecies)
-
-        ! Passing data from f90 back to C++
-
-        use cdwrk_module
-
-        implicit none 
-
-        integer, intent(in) :: nspecies,maxspecies
-
-        Nspec = nspecies
-        maxspec = maxspecies
-
-      end subroutine get_chem_params
 
 ! ::: 
 ! ::: ----------------------------------------------------------------
@@ -42,22 +23,18 @@
       subroutine set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
                                    FirstAdv,FirstSpec,numadv, &
                                    small_dens_in, small_temp_in, small_pres_in, &
-                                   allow_negative_energy_in,ppm_type_in, &
-                                   normalize_species_in)
-
-        ! Passing data from C++ into f90
+                                   ppm_type_in, normalize_species_in)
 
         use meth_params_module
         use eos_module
+        use chemistry_module, only : nspecies
 
         implicit none 
 
-        include "cdwrk.H"
- 
         integer, intent(in) :: dm
         integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec
         integer, intent(in) :: numadv
-        integer, intent(in) :: allow_negative_energy_in, ppm_type_in
+        integer, intent(in) :: ppm_type_in
         double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in
         integer, intent(in) :: normalize_species_in
 
@@ -70,7 +47,7 @@
         ! NVAR  : number of total variables in initial system
         ! dm refers to mometum components, '4' refers to rho, rhoE, rhoe and T
         NTHERM = dm + 4
-        NVAR = NTHERM + nspec +  numadv
+        NVAR = NTHERM + nspecies +  numadv
 
         nadv = numadv
 
@@ -92,11 +69,11 @@
         UFS   = FirstSpec + 1
 
         ! QTHERM: number of primitive variables, which includes pressure (+1), but
-        !         not little e (-1)
+        !         not big e (-1)
         ! QVAR  : number of total variables in primitive form
 
         QTHERM = NTHERM
-        QVAR = QTHERM + nspec + numadv
+        QVAR = QTHERM + nspecies + numadv
 
         ! We use these to index into the state "Q"
         QRHO  = 1
@@ -129,7 +106,7 @@
         if (small_pres_in > 0.d0) then
           small_pres = small_pres_in
         else
-          small_pres = 1.d-8
+          small_pres = 1.d-50
         end if
 
         call eos_init(small_dens=small_dens_in, small_temp=small_temp_in)
@@ -137,8 +114,7 @@
         call eos_get_small_dens(small_dens)
         call eos_get_small_temp(small_temp)
 
-        allow_negative_energy = allow_negative_energy_in
-        ppm_type               = ppm_type_in
+        ppm_type              = ppm_type_in
         normalize_species     = normalize_species_in
 
       end subroutine set_method_params
@@ -148,9 +124,8 @@
 ! ::: 
 
       subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
-         phys_prob_hi_in, Outflow_in,Symmetry_in,coord_type_in)
-
-        ! Passing data from C++ into f90
+         phys_prob_hi_in, Outflow_in,Symmetry_in,coord_type_in, &
+         gravx_in, gravy_in, gravz_in)
 
         use prob_params_module
 
@@ -162,6 +137,7 @@
         integer, intent(in) :: Symmetry_in
         integer, intent(in) :: coord_type_in
         double precision, intent(in) :: phys_prob_lo_in(dm),phys_prob_hi_in(dm)
+        double precision, intent(in) :: gravx_in, gravy_in, gravz_in
 
         allocate(physbc_lo(dm))
         allocate(physbc_hi(dm))
@@ -178,6 +154,10 @@
         Symmetry = Symmetry_in
 
         coord_type = coord_type_in
+
+        gravx = gravx_in
+        gravy = gravy_in
+        gravz = gravz_in
 
       end subroutine set_problem_params
 

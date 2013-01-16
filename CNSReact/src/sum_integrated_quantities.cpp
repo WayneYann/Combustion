@@ -29,22 +29,22 @@ CNSReact::sum_integrated_quantities ()
 
     for (int lev = 0; lev <= finest_level; lev++)
     {
-        CNSReact& ca_lev = getLevel(lev);
+        CNSReact& cns_lev = getLevel(lev);
 
-        mass     += ca_lev.volWgtSum("density", time);
-        xmom     += ca_lev.volWgtSum("xmom", time);
+        mass     += cns_lev.volWgtSum("density", time);
+        xmom     += cns_lev.volWgtSum("xmom", time);
 #if (BL_SPACEDIM == 2)
        if (Geometry::IsRZ()) 
           xmom = 0.;
 #endif
 
 #if (BL_SPACEDIM>=2)
-       ymom     += ca_lev.volWgtSum("ymom", time);
+       ymom     += cns_lev.volWgtSum("ymom", time);
 #endif
 #if (BL_SPACEDIM==3)
-       zmom     += ca_lev.volWgtSum("zmom", time);
+       zmom     += cns_lev.volWgtSum("zmom", time);
 #endif
-        rho_E    += ca_lev.volWgtSum("rho_E", time);
+        rho_E    += cns_lev.volWgtSum("rho_E", time);
     }
 
     if (verbose > 0 && ParallelDescriptor::IOProcessor())
@@ -109,13 +109,13 @@ CNSReact::volWgtSum (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 #if(BL_SPACEDIM == 1) 
-	BL_FORT_PROC_CALL(CA_SUMMASS,ca_summass)
+	BL_FORT_PROC_CALL(CNS_SUMMASS,cns_summass)
             (BL_TO_FORTRAN(fab),lo,hi,dx,&s,rad,irlo,irhi);
 #elif(BL_SPACEDIM == 2)
-	BL_FORT_PROC_CALL(CA_SUMMASS,ca_summass)
+	BL_FORT_PROC_CALL(CNS_SUMMASS,cns_summass)
             (BL_TO_FORTRAN(fab),lo,hi,dx,&s,rad,irlo,irhi);
 #elif(BL_SPACEDIM == 3)
-	BL_FORT_PROC_CALL(CA_SUMMASS,ca_summass)
+	BL_FORT_PROC_CALL(CNS_SUMMASS,cns_summass)
             (BL_TO_FORTRAN(fab),lo,hi,dx,&s);
 #endif
         sum += s;

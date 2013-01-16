@@ -1,2 +1,11 @@
-f90EXE_sources += Prob_${DIM}d.f90	probdata.f90
-fEXE_sources += H-flame_0370.f
+f90EXE_sources += Prob_${DIM}d.f90  probdata.f90
+
+ifeq ($(CHEMISTRY_MODEL),CHEMH)
+  fEXE_sources += H-flame_0370.f
+else ifeq ($(CHEMISTRY_MODEL),LIDRYER)
+  fEXE_sources += LiDryer_040_01ATM.f
+else ifeq ($(CHEMISTRY_MODEL),DRM19)
+  fEXE_sources += drm19Soln_seed_0.50.f
+else ifeq ($(CHEMISTRY_MODEL),GRI30)
+  fEXE_sources += gri30_070.f
+endif

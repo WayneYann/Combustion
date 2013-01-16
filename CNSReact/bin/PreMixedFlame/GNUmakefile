@@ -22,7 +22,7 @@ USE_OMP    = FALSE
 
 USE_CHEM   = TRUE
 
-CHEMISTRY_MODEL = CHEMH
+CHEMISTRY_MODEL = LIDRYER
 
 Bpack   := ./Make.package
 Blocs   := .

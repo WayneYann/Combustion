@@ -9,8 +9,8 @@ module meth_params_module
   double precision, save :: difmag        ! used only in consup to weight the divu contributin
   integer         , save :: iorder        ! used only in uslope and uflaten
 
-  integer, parameter     :: NHYP    = 4
-  integer, parameter     :: MAXADV  = 2
+  integer, parameter     :: NHYP = 4
+  integer, parameter     :: NDIF = 1
 
   ! NTHERM: number of thermodynamic variables
   integer         , save :: NTHERM, NVAR
@@ -25,7 +25,6 @@ module meth_params_module
 
   double precision, save :: small_dens, small_temp, small_pres  
 
-  integer         , save :: allow_negative_energy
   integer         , save :: ppm_type
   integer         , save :: normalize_species
 
