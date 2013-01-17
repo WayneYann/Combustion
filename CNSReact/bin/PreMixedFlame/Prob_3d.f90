@@ -46,7 +46,8 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   velgrad = 1.d20
   max_velgrad_lev = -1
   
-  pAmb = 101325.0
+  pertmag = 0.d0
+  pAmb = 1.01325d6
   
   !     Read namelists
   untin = 9

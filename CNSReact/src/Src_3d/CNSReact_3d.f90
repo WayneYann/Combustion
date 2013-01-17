@@ -19,7 +19,7 @@ subroutine cns_umdrv(lo,hi,&
        QPRES,QU,QV,QW,normalize_species
   use advection_module, only : umeth3d, ctoprim, ptoderiv, srctosrcQ, uflaten, divu, consup, &
        enforce_minimum_density, normalize_new_species
-  use diff_flux_module, only : fluxtosrc, diffup
+  use diff_flux_module, only : diffFlux, fluxtosrc, diffup
 
   implicit none
 
@@ -134,10 +134,12 @@ subroutine cns_umdrv(lo,hi,&
   lo_work = lo_diff
   hi_work = hi_diff
   dflux_timer = 1
-  !  call diffFlux
-  dfluxx = 0.d0
-  dfluxy = 0.d0
-  dfluxz = 0.d0
+  call diffFlux(lo_work,hi_work, &
+       q,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+       dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3),&
+       dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3),&
+       dfluxz,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3)+1,&
+       dx,dy,dz,dflux_timer)
 
   ! Compute source terms due to diffusion for hyperbolic advection step 
   lo_work = lo_diff
@@ -192,10 +194,12 @@ subroutine cns_umdrv(lo,hi,&
   lo_work = lo
   hi_work = hi
   dflux_timer = 2
-  !  call diffFlux using the "guess" state q
-  dfluxx = 0.d0
-  dfluxy = 0.d0
-  dfluxz = 0.d0
+  call diffFlux(lo_work,hi_work, &
+       q,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
+       dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3),&
+       dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3),&
+       dfluxz,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3)+1,&
+       dx,dy,dz,dflux_timer)
 
   ! Add diffusion flux with half dt because the flux stores the sum of old and new fluxes,
   ! and subtract src (i.e., the old diffusion flux)

@@ -357,8 +357,6 @@ subroutine cns_derspec(spec,spec_l1,spec_l2,spec_l3,spec_h1,spec_h2,spec_h3,ns, 
      &                  dat, dat_l1, dat_l2, dat_l3, dat_h1, dat_h2, dat_h3,nd, &
      lo,hi,domlo,domhi,delta,xlo,time,dt,bc,level,grid_no)
 
-  use chemistry_module, only : nspecies
-
   implicit none
   
   integer,intent(in):: lo(3), hi(3)
@@ -371,21 +369,17 @@ subroutine cns_derspec(spec,spec_l1,spec_l2,spec_l3,spec_h1,spec_h2,spec_h3,ns, 
   double precision,intent(in )::  dat( dat_l1: dat_h1, dat_l2: dat_h2, dat_l3: dat_h3,nd)
   integer,intent(in):: level, grid_no
  
-  integer i,j,k, n
+  integer i,j,k
   
-  !$OMP PARALLEL PRIVATE(i,j,k,n)
-  do n=1, nspecies
-     !$OMP DO 
-     do k = lo(3), hi(3)
-        do j = lo(2), hi(2)
-           do i = lo(1), hi(1)
-              spec(i,j,k,n) = dat(i,j,k,n+1) / dat(i,j,k,1)
-           end do
+  !$OMP PARALLEL DO PRIVATE(i,j,k)
+  do k = lo(3), hi(3)
+     do j = lo(2), hi(2)
+        do i = lo(1), hi(1)
+           spec(i,j,k,1) = dat(i,j,k,2) / dat(i,j,k,1)
         end do
      end do
-     !$OMP END DO
   end do
-  !$OMP END PARALLEL
+  !$OMP END PARALLEL DO
 
 end subroutine cns_derspec
 

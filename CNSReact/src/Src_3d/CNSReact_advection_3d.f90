@@ -44,7 +44,7 @@ contains
       use trace_ppm_module, only : tracexy_ppm, tracez_ppm
       use trace_module, only : tracexy, tracez
       use ppm_module, only : ppm
-      use slope_module, only : uslope
+      use slope_module, only : uslope, pslope
 
       implicit none
 
@@ -239,6 +239,12 @@ contains
             call uslope(q,flatn,qd_l1,qd_l2,qd_l3,qd_h1,qd_h2,qd_h3, &
                         dqx,dqy,dqz,ilo1-1,ilo2-1,1,ihi1+2,ihi2+2,2, &
                         ilo1,ilo2,ihi1,ihi2,kc,k3d,QVAR)
+
+            call pslope(q(:,:,:,QPRES),q(:,:,:,QRHO), &
+                 flatn,qd_l1,qd_l2,qd_l3,qd_h1,qd_h2,qd_h3, &
+                 dqx(:,:,:,QPRES),dqy(:,:,:,QPRES),dqz(:,:,:,QPRES), &
+                 ilo1-1,ilo2-1,1,ihi1+2,ihi2+2,2, &
+                 ilo1,ilo2,ihi1,ihi2,kc,k3d,dx,dy,dz)
             
             ! Compute U_x and U_y at kc (k3d)
             call tracexy(q,c,qd_l1,qd_l2,qd_l3,qd_h1,qd_h2,qd_h3, &
