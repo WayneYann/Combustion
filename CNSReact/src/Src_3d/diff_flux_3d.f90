@@ -32,7 +32,7 @@ contains
     double precision,intent(inout)::flux3(flux3_l1:flux3_h1,flux3_l2:flux3_h2,flux3_l3:flux3_h3,NVAR)
 
     integer :: loD(3), hiD(3)
-    double precision, allocatable :: rhoYD(:,:,:,:), lamcp(:,:,:), mu(:,:,:)
+    double precision, allocatable :: rhoD(:,:,:,:), lam(:,:,:), mu(:,:,:)
 
     if (df_timer .eq. 1) then
        flux1(:,:,:,:) = 0.d0
@@ -42,28 +42,28 @@ contains
 
     loD = lof - 1
     hiD = hif + 1
-    allocate(rhoYD(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3),nspec))
-    allocate(lamcp(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3)))
-    allocate(mu   (loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3)))
+    allocate(rhoD(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3),nspec))
+    allocate(lam (loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3)))
+    allocate(mu  (loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3)))
 
     call get_transCoef(q,q_l1,q_l2,q_l3,q_h1,q_h2,q_h3, &
-         rhoYD, lamcp, mu, loD, hiD)
+         rhoD, lam, mu, loD, hiD)
 
     call comp_dflux(lof,hif, &
          q,q_l1,q_l2,q_l3,q_h1,q_h2,q_h3, &
-         rhoYD, lamcp, mu, loD, hiD, &
+         rhoD, lam, mu, loD, hiD, &
          flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
          flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
          flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
          dx,dy,dz)
 
-    deallocate(rhoYD, lamcp, mu)
+    deallocate(rhoD, lam, mu)
 
   end subroutine diffFlux
 
 
   subroutine get_transCoef(q,q_l1,q_l2,q_l3,q_h1,q_h2,q_h3, &
-         rhoYD, lamcp, mu, loD, hiD)
+         rhoD, lam, mu, loD, hiD)
 
     use meth_params_module, only : QVAR, QRHO, QU, QV, QW, QREINT, QPRES, QTEMP, QFS
     use chemistry_module, only : nspec=>nspecies, inv_mwt
@@ -74,16 +74,16 @@ contains
     integer, intent(in) :: q_l1,q_l2,q_l3,q_h1,q_h2,q_h3
     integer, intent(in) :: loD(3), hiD(3)
     double precision,intent(in )::q(q_l1:q_h1,q_l2:q_h2,q_l3:q_h3,QVAR)
-    double precision,intent(out)::rhoYD(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3),nspec)
-    double precision,intent(out)::lamcp(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3))
-    double precision,intent(out)::   mu(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3))
+    double precision,intent(out)::rhoD(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3),nspec)
+    double precision,intent(out)::lam (loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3))
+    double precision,intent(out)::  mu(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3))
 
-    integer :: i, j, k, n, iwrk
-    double precision :: rwrk, rhoD(nspec), Cpt(nspec), Xt(nspec), Yt(nspec), Tt, Wtm, &
-         lam1, lam2, cpmix
+    integer :: i, j, k, iwrk
+    double precision :: rwrk, rhoDt(nspec), Cpt(nspec), Xt(nspec), Yt(nspec), Tt, Wtm, &
+         lam1, lam2
 
     integer, parameter :: NP=1, ITLS=1, IFLAG=3
-    double precision, parameter :: TMIN_TRANS=300.d0
+    double precision, parameter :: TMIN_TRANS=250.d0
 
     call eglib_init(nspec, NP, ITLS, IFLAG)
 
@@ -95,20 +95,18 @@ contains
              Yt = q(i,j,k,QFS:QFS+nspec-1)
              call ckytx(Yt,iwrk,rwrk,Xt)
              call ckcpms(Tt, iwrk, rwrk, Cpt)
+             call ckmmwy(Yt, iwrk, rwrk, Wtm)
 
              call EGSPAR(Tt, Xt, Yt, Cpt, egwork, egiwork)
 
              call EGSE3(Tt, Yt, egwork, mu(i,j,k))
 
-             call EGSVR1(Tt, Yt, egwork, rhoD)
-             call ckmmwy(Yt, iwrk, rwrk, Wtm)
-             rhoYD(i,j,k,:) = Yt * rhoD * Wtm * inv_mwt
+             call EGSVR1(Tt, Yt, egwork, rhoDt)
+             rhoD(i,j,k,:) = rhoDt * Wtm * inv_mwt
 
              call EGSL1( 1.d0, Tt, Xt, egwork, lam1) 
              call EGSL1(-1.d0, Tt, Xt, egwork, lam2) 
-             call ckcpbs(Tt, Yt, iwrk, rwrk, cpmix)
-
-             lamcp(i,j,k) = 0.5d0*(lam1+lam2) / cpmix
+             lam(i,j,k) = 0.5d0*(lam1+lam2)
           end do
        end do
     end do
@@ -118,13 +116,13 @@ contains
 
   subroutine comp_dflux( lof, hif, &
        q,q_l1,q_l2,q_l3,q_h1,q_h2,q_h3, &
-       rhoYD, lamcp, mu, loD, hiD, &
+       rhoD, lam, mu, loD, hiD, &
        flux1,flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3, &
        flux2,flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3, &
        flux3,flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3, &
        dx,dy,dz)
 
-    use meth_params_module, only : QVAR, QRHO, QU, QV, QW, QREINT, QPRES, QFS, &
+    use meth_params_module, only : QVAR, QRHO, QU, QV, QW, QREINT, QPRES, QTEMP, QFS, &
          NVAR, UMX, UMY, UMZ, UEDEN, UEINT, UFS
     use chemistry_module, only : nspec=>nspecies
 
@@ -136,23 +134,23 @@ contains
     integer,intent(in)::flux1_l1,flux1_l2,flux1_l3,flux1_h1,flux1_h2,flux1_h3
     integer,intent(in)::flux2_l1,flux2_l2,flux2_l3,flux2_h1,flux2_h2,flux2_h3
     integer,intent(in)::flux3_l1,flux3_l2,flux3_l3,flux3_h1,flux3_h2,flux3_h3
-    double precision,intent(in   )::rhoYD(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3),nspec)
-    double precision,intent(in   )::lamcp(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3))
-    double precision,intent(in   )::   mu(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3))
+    double precision,intent(in   )::rhoD(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3),nspec)
+    double precision,intent(in   ):: lam(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3))
+    double precision,intent(in   )::  mu(loD(1):hiD(1),loD(2):hiD(2),loD(3):hiD(3))
     double precision,intent(in   )::    q(    q_l1:    q_h1,    q_l2:    q_h2,    q_l3:    q_h3,QVAR)
     double precision,intent(inout)::flux1(flux1_l1:flux1_h1,flux1_l2:flux1_h2,flux1_l3:flux1_h3,NVAR)
     double precision,intent(inout)::flux2(flux2_l1:flux2_h1,flux2_l2:flux2_h2,flux2_l3:flux2_h3,NVAR)
     double precision,intent(inout)::flux3(flux3_l1:flux3_h1,flux3_l2:flux3_h2,flux3_l3:flux3_h3,NVAR)
 
-    integer :: i, j, k, n
+    integer :: i, j, k, n, iwrk, QYn, UYn
+    double precision :: rwrk, Xt(nspec), Yt(nspec), ht(nspec), Tt
     double precision :: divu, dxinv, dyinv, dzinv
     double precision :: dudx, dvdy, dwdz, dudy, dudz, dvdx, dvdz, dwdx, dwdy
     double precision :: tauxx, tauxy, tauxz
     double precision :: tauyy, tauyx, tauyz
     double precision :: tauzz, tauzx, tauzy
-    double precision :: dhdx, dhdy, dhdz
-    double precision :: mum, rhoeflux
-    double precision, allocatable :: h(:,:,:)
+    double precision :: mum, rhoeflux, rhoYVd(nspec), rhoYVc, rhoYflux, sumYt
+    double precision, allocatable :: h(:,:,:,:), X(:,:,:,:)
 
     double precision, parameter :: two3rd = 2.d0/3.d0
 
@@ -160,12 +158,19 @@ contains
     dyinv = 1.d0/dy
     dzinv = 1.d0/dz
 
-    allocate(h(lof(1)-1:hif(1)+1, lof(2)-1:hif(2)+1, lof(3)-1:hif(3)+1))
+    allocate(h(lof(1)-1:hif(1)+1, lof(2)-1:hif(2)+1, lof(3)-1:hif(3)+1, nspec))
+    allocate(X(lof(1)-1:hif(1)+1, lof(2)-1:hif(2)+1, lof(3)-1:hif(3)+1, nspec))
 
     do k = lof(3)-1, hif(3)+1
     do j = lof(2)-1, hif(2)+1
     do i = lof(1)-1, hif(1)+1
-       h(i,j,k) = (q(i,j,k,QREINT) + q(i,j,k,QPRES)) / q(i,j,k,QRHO)
+       Yt = q(i,j,k,QFS:QFS+nspec-1)
+       call ckytx(Yt, iwrk, rwrk, Xt)
+       X(i,j,k,:) = Xt
+
+       Tt = q(i,j,k,QTEMP)
+       call ckhms(Tt, iwrk, rwrk, ht)
+       h(i,j,k,:) = ht
     end do
     end do
     end do
@@ -205,26 +210,43 @@ contains
             + tauxy * 0.5d0*(q(i-1,j,k,QV)+q(i,j,k,QV)) &
             + tauxz * 0.5d0*(q(i-1,j,k,QW)+q(i,j,k,QW)) )
 
-       dhdx = (h(i,j,k)-h(i-1,j,k))*dxinv
-       rhoeflux = 0.5d0*(lamcp(i-1,j,k)+lamcp(i,j,k))*dhdx
+       rhoeflux = -0.5d0*(lam(i-1,j,k)+lam(i,j,k)) * &
+            & (q(i,j,k,QTEMP)-q(i-1,j,k,QTEMP))*dxinv
        flux1(i,j,k,UEDEN) = flux1(i,j,k,UEDEN) + rhoeflux
        flux1(i,j,k,UEINT) = flux1(i,j,k,UEINT) + rhoeflux
+
+       sumYt = 0.d0
+       do n = 1, nspec
+          QYn = QFS+n-1
+
+          Yt(n) = 0.5d0 * (q(i-1,j,k,QYn) + q(i,j,k,QYn))
+          sumYt = sumYt + Yt(n)
+
+          rhoYVd(n) = -0.5d0 * dxinv * Yt(n) * (rhoD(i-1,j,k,n)+rhoD(i,j,k,n)) &
+               * ((X(i,j,k,n    ) - X(i-1,j,k,n    ))  &
+               +  (q(i,j,k,QPRES) - q(i-1,j,k,QPRES)) * &
+               &  ((X(i-1,j,k,n)-q(i-1,j,k,QYn)) + (X(i,j,k,n)-q(i,j,k,QYn))) / &
+               &  (              q(i-1,j,k,QPRES)+             q(i,j,k,QPRES)) )
+       end do
+
+       Yt = Yt / sumYt
+       rhoYVc = sum(rhoYVd)
+
+       do n = 1, nspec
+          UYn = UFS+n-1
+
+          rhoYflux = rhoYVd(n) - Yt(n) * rhoYVc
+
+          rhoeflux = rhoYflux * 0.5d0*(h(i-1,j,k,n)+h(i,j,k,n))
+
+          flux1(i,j,k,UEDEN) = flux1(i,j,k,UEDEN) + rhoeflux
+          flux1(i,j,k,UEINT) = flux1(i,j,k,UEINT) + rhoeflux
+          flux1(i,j,k,UYn  ) = flux1(i,j,k,UYn  ) + rhoYflux
+       end do
     end do
     end do
     end do
 
-    ! x-direction
-    do n = 1, nspec
-       do k = lof(3), hif(3)
-       do j = lof(2), hif(2)
-       do i = lof(1), hif(1)+1
-          flux1(i,j,k,UFS+n-1) = flux1(i,j,k,UFS+n-1) &
-               - 0.5d0*(rhoYD(i-1,j,k,n) + rhoYD(i,j,k,n)) &
-               * (q(i,j,k,QFS+n-1) - q(i-1,j,k,QFS+n-1)) * dxinv
-       end do
-       end do
-       end do
-    end do
 
     ! y-direction
     do k = lof(3), hif(3)
@@ -261,26 +283,38 @@ contains
             + tauyy * 0.5d0*(q(i,j-1,k,QV)+q(i,j,k,QV)) &
             + tauyz * 0.5d0*(q(i,j-1,k,QW)+q(i,j,k,QW)) )
 
-       dhdy = (h(i,j,k)-h(i,j-1,k))*dyinv
-       rhoeflux = 0.5d0*(lamcp(i,j-1,k)+lamcp(i,j,k))*dhdy
-       flux2(i,j,k,UEDEN) = flux2(i,j,k,UEDEN) + rhoeflux
-       flux2(i,j,k,UEINT) = flux2(i,j,k,UEINT) + rhoeflux
+       sumYt = 0.d0
+       do n = 1, nspec
+          QYn = QFS+n-1
+
+          Yt(n) = 0.5d0 * (q(i,j-1,k,QYn) + q(i,j,k,QYn))
+          sumYt = sumYt + Yt(n)
+
+          rhoYVd(n) = -0.5d0 * dyinv * Yt(n) * (rhoD(i,j-1,k,n)+rhoD(i,j,k,n)) &
+               * ((X(i,j,k,n    ) - X(i,j-1,k,n    ))  &
+               +  (q(i,j,k,QPRES) - q(i,j-1,k,QPRES)) * &
+               &  ((X(i,j-1,k,n)-q(i,j-1,k,QYn)) + (X(i,j,k,n)-q(i,j,k,QYn))) / &
+               &  (              q(i,j-1,k,QPRES)+             q(i,j,k,QPRES)) )
+       end do
+
+       Yt = Yt / sumYt
+       rhoYVc = sum(rhoYVd)
+
+       do n = 1, nspec
+          UYn = UFS+n-1
+
+          rhoYflux = rhoYVd(n) - Yt(n) * rhoYVc
+
+          rhoeflux = rhoYflux * 0.5d0*(h(i,j-1,k,n)+h(i,j,k,n))
+
+          flux2(i,j,k,UEDEN) = flux2(i,j,k,UEDEN) + rhoeflux
+          flux2(i,j,k,UEINT) = flux2(i,j,k,UEINT) + rhoeflux
+          flux2(i,j,k,UYn  ) = flux2(i,j,k,UYn  ) + rhoYflux
+       end do
     end do
     end do
     end do
 
-    ! y-direction
-    do n = 1, nspec
-       do k = lof(3), hif(3)
-       do j = lof(2), hif(2)+1
-       do i = lof(1), hif(1)
-          flux2(i,j,k,UFS+n-1) = flux2(i,j,k,UFS+n-1) &
-               - 0.5d0*(rhoYD(i,j-1,k,n) + rhoYD(i,j,k,n)) &
-               * (q(i,j,k,QFS+n-1) - q(i,j-1,k,QFS+n-1)) * dyinv
-       end do
-       end do
-       end do
-    end do
 
     ! z-direction
     do k = lof(3), hif(3)+1
@@ -317,28 +351,40 @@ contains
             + tauzy * 0.5d0*(q(i,j,k-1,QV)+q(i,j,k,QV)) &
             + tauzz * 0.5d0*(q(i,j,k-1,QW)+q(i,j,k,QW)) )
 
-       dhdz = (h(i,j,k)-h(i,j,k-1))*dzinv
-       rhoeflux = 0.5d0*(lamcp(i,j,k-1)+lamcp(i,j,k))*dhdz
-       flux3(i,j,k,UEDEN) = flux3(i,j,k,UEDEN) + rhoeflux
-       flux3(i,j,k,UEINT) = flux3(i,j,k,UEINT) + rhoeflux
+       sumYt = 0.d0
+       do n = 1, nspec
+          QYn = QFS+n-1
+
+          Yt(n) = 0.5d0 * (q(i,j,k-1,QYn) + q(i,j,k,QYn))
+          sumYt = sumYt + Yt(n)
+
+          rhoYVd(n) = -0.5d0 * dzinv * Yt(n) * (rhoD(i,j,k-1,n)+rhoD(i,j,k,n)) &
+               * ((X(i,j,k,n    ) - X(i,j,k-1,n    ))  &
+               +  (q(i,j,k,QPRES) - q(i,j,k-1,QPRES)) * &
+               &  ((X(i,j,k-1,n)-q(i,j,k-1,QYn)) + (X(i,j,k,n)-q(i,j,k,QYn))) / &
+               &  (              q(i,j,k-1,QPRES)+             q(i,j,k,QPRES)) )
+       end do
+
+       Yt = Yt / sumYt
+       rhoYVc = sum(rhoYVd)
+
+       do n = 1, nspec
+          UYn = UFS+n-1
+
+          rhoYflux = rhoYVd(n) - Yt(n) * rhoYVc
+
+          rhoeflux = rhoYflux * 0.5d0*(h(i,j,k-1,n)+h(i,j,k,n))
+
+          flux3(i,j,k,UEDEN) = flux3(i,j,k,UEDEN) + rhoeflux
+          flux3(i,j,k,UEINT) = flux3(i,j,k,UEINT) + rhoeflux
+          flux3(i,j,k,UYn  ) = flux3(i,j,k,UYn  ) + rhoYflux
+       end do
     end do
     end do
     end do
 
-    ! z-direction
-    do n = 1, nspec
-       do k = lof(3), hif(3)+1
-       do j = lof(2), hif(2)
-       do i = lof(1), hif(1)
-          flux3(i,j,k,UFS+n-1) = flux3(i,j,k,UFS+n-1) &
-               - 0.5d0*(rhoYD(i,j,k-1,n) + rhoYD(i,j,k,n)) &
-               * (q(i,j,k,QFS+n-1) - q(i,j,k-1,QFS+n-1)) * dzinv
-       end do
-       end do
-       end do
-    end do
 
-    deallocate(h)
+    deallocate(h,X)
 
   end subroutine comp_dflux
 

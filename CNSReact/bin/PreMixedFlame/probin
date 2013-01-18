@@ -2,7 +2,7 @@
 
   probtype = 1
 
-  pertmag = 0.d0
+  pertmag = 0.03d0
   pAmb = 1.01325d6
 
   zstandoff = 0.0
