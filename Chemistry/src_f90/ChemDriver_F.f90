@@ -1,5 +1,6 @@
 subroutine cd_initchem(len_en, len_sn, ne, ns)
   use chemistry_module
+  use vode_module
   implicit none
   integer, intent(out) :: len_en, len_sn, ne, ns
   call chemistry_init()
@@ -13,6 +14,7 @@ end subroutine cd_initchem
 subroutine cd_closechem()
   use chemistry_module
   use eglib_module
+  use vode_module
   implicit none
   call chemistry_close()
   call eglib_close()
@@ -51,3 +53,21 @@ subroutine cd_getspecname(ispec, lname, name)
      name(i) = ichar(spec_names(ispec)(i:i))
   end do
 end subroutine cd_getspecname
+
+
+subroutine cd_initvode(neq_in, itol_in, rtol_in, atol_in)
+  use vode_module, only : neq, itol, rtol, atol, vode_init
+  implicit none
+  integer, intent(in) :: neq_in, itol_in
+  double precision, intent(in) :: rtol_in, atol_in
+  itol = itol_in
+  rtol = rtol_in
+  atol = atol_in
+  call vode_init(neq_in)
+end subroutine cd_initvode
+
+
+subroutine cd_closevode()
+  use vode_module, only : vode_close
+  call vode_close()
+end subroutine cd_closevode

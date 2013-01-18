@@ -1,10 +1,26 @@
 #include "ChemDriver.H"
 #include "ChemDriver_F.H"
 
-#include <iostream>
-using namespace std;
+#include <ParmParse.H>
+
+namespace
+{
+    bool initialized = false;
+
+    void ChemDriver_Finalize() { initialized = false; }
+}
 
 ChemDriver::ChemDriver ()
+{
+  if (!initialized) {
+    initOnce();
+    BoxLib::ExecOnFinalize(ChemDriver_Finalize);
+    initialized = true;
+  }
+}
+
+void 
+ChemDriver::initOnce ()
 {
   int max_len_elem_name, max_len_spec_name, nelem, nspec;
 
@@ -38,12 +54,31 @@ ChemDriver::ChemDriver ()
 
   delete [] elem_name_f;
   delete [] spec_name_f;
+
+  // vode
+  int  itol = 1;
+  Real rtol = 1.e-10;
+  Real atol = 1.e-10;
+
+  ParmParse pp("vode");
+  pp.query("itol", itol);
+  pp.query("rtol", rtol);
+  pp.query("atol", atol);
+
+  BL_ASSERT(rtol > 0);
+  BL_ASSERT(atol > 0);
+  BL_ASSERT(itol == 1 || itol == 2);
+
+  int neq = nspec; 
+  BL_FORT_PROC_CALL(CD_INITVODE, cd_initvode)
+    (neq, itol, rtol, atol);  
 }
 
 
 ChemDriver::~ChemDriver ()
 {
-  BL_FORT_PROC_CALL(CD_closeCHEM, cd_closechem)();
+  BL_FORT_PROC_CALL(CD_CLOSECHEM, cd_closechem)();
+  BL_FORT_PROC_CALL(CD_CLOSEVODE, cd_closevode)();
 }
 
 

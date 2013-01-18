@@ -2711,12 +2711,15 @@ C-----------------------------------------------------------------------
       IF (JSTART .EQ. 0) NSLP = 0
       IF (NFLAG .EQ. 0) ICF = 0
       IF (NFLAG .EQ. -2) IPUP = MITER
-C wqz      IF ( (JSTART .EQ. 0) .OR. (JSTART .EQ. -1) ) IPUP = MITER
-      IF (JSTART .EQ. -1) IPUP = MITER
-      IF (FIRST) THEN
-         FIRST = .FALSE.
-         IF (JSTART .EQ. 0) IPUP  = MITER
-      ENDIF
+C
+C ORIG
+      IF ( (JSTART .EQ. 0) .OR. (JSTART .EQ. -1) ) IPUP = MITER
+C VHACK      IF (JSTART .EQ. -1) IPUP = MITER
+C VHACK      IF (FIRST) THEN
+C VHACK         FIRST = .FALSE.
+C VHACK         IF (JSTART .EQ. 0) IPUP  = MITER
+C VHACK      ENDIF
+C
 C If this is functional iteration, set CRATE .eq. 1 and drop to 220
       IF (MITER .EQ. 0) THEN
         CRATE = ONE
@@ -2729,10 +2732,14 @@ C to force DVJAC to be called, if a Jacobian is involved.
 C In any case, DVJAC is called at least every MSBP steps.
 C-----------------------------------------------------------------------
       DRC = ABS(RC-ONE)
-C wqz      IF (DRC .GT. CCMAX .OR. NST .GE. NSLP+MSBP) IPUP = MITER
-      IF (JSTART .NE. 0) THEN
-         IF (DRC .GT. CCMAX .OR. NST .GE. NSLP+MSBP) IPUP = MITER
-      ENDIF
+C
+C ORIG      
+      IF (DRC .GT. CCMAX .OR. NST .GE. NSLP+MSBP) IPUP = MITER
+C
+C VHACK      IF (JSTART .NE. 0) THEN
+C VHACK         IF (DRC .GT. CCMAX .OR. NST .GE. NSLP+MSBP) IPUP = MITER
+C VHACK      ENDIF
+C
 C-----------------------------------------------------------------------
 C Up to MAXCOR corrector iterations are taken.  A convergence test is
 C made on the r.m.s. norm of each correction, weighted by the error
@@ -2750,9 +2757,10 @@ C If indicated, the matrix P = I - h*rl1*J is reevaluated and
 C preprocessed before starting the corrector iteration.  IPUP is set
 C to 0 as an indicator that this has been done.
 C-----------------------------------------------------------------------
-      do I=1,N
-         YJ_SAVE(I) = Y(I)
-      end do
+C
+C VHACK      do I=1,N
+C VHACK         YJ_SAVE(I) = Y(I)
+C VHACK      end do
       CALL DVJAC (Y, YH, LDYH, EWT, ACOR, SAVF, WM, IWM, F, JAC, IERPJ,
      1           RPAR, IPAR)
       IPUP = 0

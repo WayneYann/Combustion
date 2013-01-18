@@ -20,6 +20,7 @@ subroutine cns_umdrv(lo,hi,&
   use advection_module, only : umeth3d, ctoprim, ptoderiv, srctosrcQ, uflaten, divu, consup, &
        enforce_minimum_density, normalize_new_species
   use diff_flux_module, only : diffFlux, fluxtosrc, diffup
+  use chemsolv_module, only : chemsolv
 
   implicit none
 
@@ -99,13 +100,10 @@ subroutine cns_umdrv(lo,hi,&
   dz = delta(3)
 
   ! Chemically react input state for half time step
-  ! OUT domain for uin: lo-NHYP-NDIF:hi+NHYP+NDIF
-  !
-  !  lo_chem(1:3) = lo(1:3)-NHYP-NDIF
-  !  hi_chem(1:3) = hi(1:3)+NHYP+NDIF
-  !  call chemsolv(lo_chem, hi_chem, &
-  !       uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
-  !       hdt, idbg)
+  lo_work = lo-NHYP-NDIF
+  hi_work = hi+NHYP+NDIF
+  call chemsolv(lo_work, hi_work, &
+       uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, 0.5d0*dt)
 
   lo_work = lo_hyp - NHYP
   hi_work = hi_hyp + NHYP
@@ -131,10 +129,8 @@ subroutine cns_umdrv(lo,hi,&
      flatn = 1.d0
   end if
 
-  lo_work = lo_diff
-  hi_work = hi_diff
   dflux_timer = 1
-  call diffFlux(lo_work,hi_work, &
+  call diffFlux(lo_diff,hi_diff, &
        q,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
        dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3),&
        dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3),&
@@ -142,9 +138,7 @@ subroutine cns_umdrv(lo,hi,&
        dx,dy,dz,dflux_timer)
 
   ! Compute source terms due to diffusion for hyperbolic advection step 
-  lo_work = lo_diff
-  hi_work = hi_diff
-  call fluxtosrc(lo_work, hi_diff, &
+  call fluxtosrc(lo_diff, hi_diff, &
        src,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3),&
        dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3),&
        dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3),&
@@ -185,16 +179,12 @@ subroutine cns_umdrv(lo,hi,&
        div,pdivu,lo_hyp,hi_hyp,dx,dy,dz,dt)
 
   ! Get primitives of the "guess" state
-  lo_work = lo_hyp
-  hi_work = hi_hyp
-  call ctoprim(lo_work, hi_work, &
+  call ctoprim(lo_hyp, hi_hyp, &
        uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
        q  ,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3)
 
-  lo_work = lo
-  hi_work = hi
   dflux_timer = 2
-  call diffFlux(lo_work,hi_work, &
+  call diffFlux(lo, hi, &
        q,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
        dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3),&
        dfluxy,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2)+1,hi_diff(3),&
@@ -205,7 +195,7 @@ subroutine cns_umdrv(lo,hi,&
   ! and subtract src (i.e., the old diffusion flux)
   dt_flux = 0.5d0*dt
   dt_src = -1.0d0*dt
-  call diffup(lo,hi, &
+  call diffup(lo, hi, &
        uout,uout_l1,uout_l2,uout_l3, uout_h1,uout_h2,uout_h3, &
        src,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1),hi_diff(2),hi_diff(3),&
        dfluxx,lo_diff(1),lo_diff(2),lo_diff(3),hi_diff(1)+1,hi_diff(2),hi_diff(3),&
@@ -218,13 +208,8 @@ subroutine cns_umdrv(lo,hi,&
        dx,dy,dz,dt_flux, dt_src)
 
   ! Chemically react input state for half time step
-  ! OUT domain for uin: lo-NHYP-NDIF:hi+NHYP+NDIF
-  !
-  !  lo_chem(1:3) = lo(1:3)
-  !  hi_chem(1:3) = hi(1:3)
-  !  call chemsolv(lo_chem, hi_chem, &
-  !       uin,uin_l1,uin_l2,uin_l3,uin_h1,uin_h2,uin_h3, &
-  !       hdt, idbg)
+  call chemsolv(lo, hi, &
+       uout,uout_l1,uout_l2,uout_l3,uout_h1,uout_h2,uout_h3, 0.5d0*dt)
 
   ! Add diffusion fluxes to hyperbolic fluxes to pass back to AMR
   flux1 = flux1 + dfluxx(flux1_l1:flux1_h1,flux1_l2:flux1_h2,flux1_l3:flux1_h3,:)

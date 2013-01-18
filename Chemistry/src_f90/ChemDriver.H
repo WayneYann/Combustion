@@ -23,6 +23,8 @@ public:
 
 private:
 
+  void initOnce ();
+
   Array<std::string> mSpeciesNames;
   Array<std::string> mElementNames;
 

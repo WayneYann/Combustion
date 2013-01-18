@@ -7,6 +7,7 @@ FEXE_headers += vode.H
 f90EXE_sources += ChemDriver_F.f90 
 f90EXE_sources += chemistry_module.f90
 f90EXE_sources += eglib_module.f90
+f90EXE_sources += vode_module.f90
 
 fEXE_sources += EGSlib.f EGini.f vode.f LinAlg.f
 
