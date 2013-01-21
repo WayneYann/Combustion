@@ -264,7 +264,7 @@ contains
     logical, intent(in), optional :: all
 
     logical :: lall
-    integer :: ib, i, j, k, tid, wlo(3), whi(3)
+    integer :: ib, tid, wlo(3), whi(3)
     double precision, pointer :: p(:,:,:,:)
 
     if (present(all)) then
@@ -274,7 +274,7 @@ contains
     end if
 
     if (lall) then
-       !$omp parallel private(tid, ib, i, j, k, wlo, whi, p)
+       !$omp parallel private(tid, ib, wlo, whi, p)
        tid = omp_get_thread_num()
        do ib = 1, nfabs(mf)
           p => dataptr(mf, ib)
@@ -284,7 +284,7 @@ contains
        end do
        !$omp end parallel
     else
-       !$omp parallel private(tid, ib, i, j, k, wlo, whi)
+       !$omp parallel private(tid, ib, wlo, whi, p)
        tid = omp_get_thread_num()
        do ib = 1, nlocal(mf%la)
           p => dataptr(mf, ib)

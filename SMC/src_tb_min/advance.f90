@@ -509,10 +509,10 @@ contains
     double precision, intent(inout) :: courno
 
     integer :: n, lo(Q%dim), hi(Q%dim), qlo(4), qhi(4), tid
-    double precision :: courno_local
+    double precision :: courno_thread
     double precision, pointer :: qp(:,:,:,:)
 
-    !$omp parallel private(tid, n, lo, hi, qlo, qhi, qp, courno_local) &
+    !$omp parallel private(tid, n, lo, hi, qlo, qhi, qp, courno_thread) &
     !$omp reduction(max:courno)
     tid = omp_get_thread_num()
     do n=1,nfabs(Q)
@@ -523,11 +523,11 @@ contains
        lo = tb_get_valid_lo(tid, n)
        hi = tb_get_valid_hi(tid, n)
        
-       courno_local = 0.d0
+       courno_thread = 0.d0
 
-       call comp_courno_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),courno_local)
+       call comp_courno_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),courno_thread)
 
-       courno = max(courno, courno_local)
+       courno = max(courno, courno_thread)
     end do
     !$omp end parallel
   end subroutine compute_courno
