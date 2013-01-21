@@ -19,7 +19,9 @@ BOXLIB_CORE := Src/F_BaseLib
 
 #-----------------------------------------------------------------------------
 # core SMC directories
-ifdef SMC_MIN
+ifdef SMC_TB_MIN
+  SMC_CORE := src_tb_min
+else ifdef SMC_MIN
   SMC_CORE := src_min
 else
   SMC_CORE := src
