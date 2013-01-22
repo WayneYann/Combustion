@@ -37,8 +37,6 @@ contains
     allocate(tmpx(lo(1)-4:hi(1)+4))
     allocate(tmpy(lo(1)  :hi(1)  ,lo(2)-4:hi(2)+4))
     
-    rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = 0.d0
-
     ! ------- BEGIN x-direction -------
 
     do k=lo(3),hi(3)
@@ -422,8 +420,6 @@ contains
     allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
     allocate(tmpx(dlo(1):dhi(1)))
     allocate(tmpy( lo(1): hi(1),dlo(2):dhi(2)))
-
-    rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = 0.d0
 
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)

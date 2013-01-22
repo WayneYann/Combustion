@@ -28,7 +28,7 @@ contains
     type(layout)     :: la
     type(multifab)   :: Uprime, Unew
 
-    type(multifab) :: Q, Fhyp, Fdif
+    type(multifab) :: Q
     type(multifab) :: mu, xi ! viscosity
     type(multifab) :: lam ! partial thermal conductivity
     type(multifab) :: Ddiag ! diagonal components of rho * Y_k * D
@@ -43,9 +43,6 @@ contains
     call tb_multifab_setval(Unew, 0.d0, .true.)
 
     call multifab_build(Q, la, nprim, ng)
-
-    call multifab_build(Fhyp, la, ncons, 0)
-    call multifab_build(Fdif, la, ncons, 0)
     
     call multifab_build(mu , la, 1, ng)
     call multifab_build(xi , la, 1, ng)
@@ -55,7 +52,7 @@ contains
     ! RK Step 1
     call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
 
-    call dUdt(U, Uprime, Q, Fhyp, Fdif, mu, xi, lam, Ddiag, dx, courno, istep)
+    call dUdt(U, Uprime, Q, mu, xi, lam, Ddiag, dx, courno, istep)
     call set_dt(dt, courno, istep)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
@@ -64,14 +61,14 @@ contains
 
     ! RK Step 2
     call build(bpt_rkstep2, "rkstep2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call dUdt(Unew, Uprime, Q, Fhyp, Fdif, mu, xi, lam, Ddiag, dx)
+    call dUdt(Unew, Uprime, Q, mu, xi, lam, Ddiag, dx)
     call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
     call destroy(bpt_rkstep2)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     ! RK Step 3
     call build(bpt_rkstep3, "rkstep3")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call dUdt(Unew, Uprime, Q, Fhyp, Fdif, mu, xi, lam, Ddiag, dx)
+    call dUdt(Unew, Uprime, Q, mu, xi, lam, Ddiag, dx)
     call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
     call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
@@ -80,9 +77,6 @@ contains
     call destroy(Uprime)
 
     call destroy(Q)
-
-    call destroy(Fhyp)
-    call destroy(Fdif)
 
     call destroy(mu)
     call destroy(xi)
@@ -216,13 +210,12 @@ contains
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt (U, Uprime, Q, Fhyp, Fdif, mu, xi, lam, Ddiag, &
+  subroutine dUdt (U, Uprime, Q, mu, xi, lam, Ddiag, &
        dx, courno, istep)
 
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt
 
-    type(multifab),   intent(inout) :: U, Uprime, &
-         Q, Fhyp, Fdif, mu, xi, lam, Ddiag
+    type(multifab),   intent(inout) :: U, Uprime, Q, mu, xi, lam, Ddiag
     double precision, intent(in   ) :: dx(U%dim)
     integer,          intent(in   ), optional :: istep
     double precision, intent(inout), optional :: courno
@@ -236,12 +229,11 @@ contains
 
     type(mf_fb_data) :: U_fb_data
 
-    integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4), &
-         fhlo(4), fhhi(4), fdlo(4), fdhi(4)
-    double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
+    integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4)
+    double precision, pointer, dimension(:,:,:,:) :: up, qp, mup, xip, lamp, Ddp, upp
 
-    type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypterm, bpt_courno
-    type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
+    type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypdiffterm
+    type(bl_prof_timer), save :: bpt_chemterm, bpt_courno
 
     ng = nghost(U)
 
@@ -367,89 +359,43 @@ contains
        call multifab_fill_boundary_finish(U, U_fb_data)
     end if
 
+
     !
-    ! Transport terms
+    ! Hyperbolic and Transport terms
     !
-    call build(bpt_diffterm, "diffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    !$omp parallel private(tid,n,qp,fdp,mup,xip,lamp,Ddp,qlo,qhi,fdlo,fdhi,lo,hi)
+    call build(bpt_hypdiffterm, "hypdiffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    !$omp parallel private(tid,n,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
+    !$omp private(mup,xip,lamp,Ddp)
     tid = omp_get_thread_num()
     do n=1,nfabs(Q)
-       qp  => dataptr(Q,n)
-       fdp => dataptr(Fdif,n)
-
+       up => dataptr(U,n)
+       upp=> dataptr(Uprime,n)
+       qp => dataptr(Q,n)
        mup  => dataptr(mu   , n)
        xip  => dataptr(xi   , n)
        lamp => dataptr(lam  , n)
        Ddp  => dataptr(Ddiag, n)
 
-       qlo = lbound(qp)
-       qhi = ubound(qp)
-
-       fdlo = lbound(fdp)
-       fdhi = ubound(fdp)
-
-       lo = tb_get_valid_lo(tid,n)
-       hi = tb_get_valid_hi(tid,n)
-
-       call narrow_diffterm_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),fdp,fdlo(1:3),fdhi(1:3), &
-            mup,xip,lamp,Ddp)
-    end do
-    !$omp end parallel
-    call destroy(bpt_diffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    !
-    ! Hyperbolic terms
-    !
-    call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    !$omp parallel private(tid,n,up,qp,fhp,ulo,uhi,qlo,qhi,fhlo,fhhi,lo,hi)
-    tid = omp_get_thread_num()
-    do n=1,nfabs(Fhyp)
-       up => dataptr(U,n)
-       qp => dataptr(Q,n)
-       fhp=> dataptr(Fhyp,n)
-
        ulo = lbound(up)
        uhi = ubound(up)
        qlo = lbound(qp)
        qhi = ubound(qp)
-       fhlo = lbound(fhp)
-       fhhi = ubound(fhp)
+       uplo = lbound(upp)
+       uphi = ubound(upp)
 
        lo = tb_get_valid_lo(tid,n)
        hi = tb_get_valid_hi(tid,n)
+
+       call narrow_diffterm_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
+            mup,xip,lamp,Ddp)
 
        call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
-            fhp,fhlo(1:3),fhhi(1:3))
+            upp,uplo(1:3),uphi(1:3))
+
     end do
     !$omp end parallel
-    call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    call destroy(bpt_hypdiffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    !
-    ! Calculate U'
-    !
-    call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    !$omp parallel private(tid,n,fhp,fdp,upp,lo,hi,i,j,k,m)
-    tid = omp_get_thread_num()
-    do n=1,nfabs(U)
-       fhp => dataptr(Fhyp,  n)
-       fdp => dataptr(Fdif,  n)
-       upp => dataptr(Uprime,n)
-
-       lo = tb_get_valid_lo(tid,n)
-       hi = tb_get_valid_hi(tid,n)
-
-       do m = 1, ncons
-          do k = lo(3),hi(3)
-             do j = lo(2),hi(2)
-                do i = lo(1),hi(1)
-                   upp(i,j,k,m) =  upp(i,j,k,m) + fhp(i,j,k,m) + fdp(i,j,k,m)
-                end do
-             end do
-          end do
-       end do
-    end do
-    !$omp end parallel
-    call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     if (update_courno) then
        call build(bpt_courno, "courno")
