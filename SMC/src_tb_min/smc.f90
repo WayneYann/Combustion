@@ -12,6 +12,7 @@ subroutine smc()
   use omp_module
   use probin_module
   use runtime_init_module
+  use smcdata_module
   use time_module
   use variables_module
 
@@ -99,6 +100,7 @@ subroutine smc()
 
   end if
 
+  call build_smcdata(la)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! error checking
@@ -336,6 +338,8 @@ subroutine smc()
   end if
 
   wt2 = parallel_wtime()
+
+  call destroy_smcdata()
 
   call destroy(U)
 

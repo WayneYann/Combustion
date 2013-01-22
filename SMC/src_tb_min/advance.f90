@@ -9,8 +9,6 @@ module advance_module
   use transport_properties
   use variables_module
 
-  use chemistry_module, only : nspecies
-
   implicit none
 
   private
@@ -19,35 +17,18 @@ module advance_module
 contains
 
   subroutine advance(U, dt, courno, dx, istep)
+
+    use smcdata_module
+    implicit none
+
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     integer, intent(in) :: istep
 
-    integer          :: ng
-    type(layout)     :: la
-    type(multifab)   :: Uprime, Unew
-
-    type(multifab) :: Q
-    type(multifab) :: mu, xi ! viscosity
-    type(multifab) :: lam ! partial thermal conductivity
-    type(multifab) :: Ddiag ! diagonal components of rho * Y_k * D
-
     type(bl_prof_timer), save :: bpt_rkstep1, bpt_rkstep2, bpt_rkstep3
 
-    ng = nghost(U)
-    la = get_layout(U)
-
-    call multifab_build(Uprime, la, ncons, 0)
-    call multifab_build(Unew,   la, ncons, ng)
     call tb_multifab_setval(Unew, 0.d0, .true.)
-
-    call multifab_build(Q, la, nprim, ng)
-    
-    call multifab_build(mu , la, 1, ng)
-    call multifab_build(xi , la, 1, ng)
-    call multifab_build(lam, la, 1, ng)
-    call multifab_build(Ddiag, la, nspecies, ng)
 
     ! RK Step 1
     call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
@@ -72,16 +53,6 @@ contains
     call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
     call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    call destroy(Unew)
-    call destroy(Uprime)
-
-    call destroy(Q)
-
-    call destroy(mu)
-    call destroy(xi)
-    call destroy(lam)
-    call destroy(Ddiag)
 
     if (contains_nan(U)) then
        call bl_error("U contains nan")
@@ -221,7 +192,7 @@ contains
     double precision, intent(inout), optional :: courno
 
     integer :: lo(U%dim), hi(U%dim)
-    integer :: i,j,k,m,n, ng, tid
+    integer :: n, ng, tid
     integer :: ng_ctoprim, ng_gettrans
 
     logical :: update_courno
@@ -438,6 +409,7 @@ contains
   ! only for testing communication and computation overlapping
   subroutine overlapped_part(U, U_fb_data)
 
+    use chemistry_module, only : nspecies
     use probin_module, only : overlap_comm_gettrans
 
     type(multifab),   intent(inout) :: U
