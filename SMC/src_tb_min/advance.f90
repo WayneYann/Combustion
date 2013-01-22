@@ -215,13 +215,13 @@ contains
        end if
     end if
 
+    call multifab_fill_boundary_nowait(U, U_fb_data)
+
     if (overlap_comm_comp) then
        call bl_error("overlap_comm_comp not supported yet!")
-       call multifab_fill_boundary_nowait(U, U_fb_data)
        call multifab_fill_boundary_test(U, U_fb_data)
     else
-       call multifab_fill_boundary(U)
-       U_fb_data%rcvd = .true.
+       call multifab_fill_boundary_finish(U, U_fb_data)
     end if
 
     call tb_multifab_setval(Uprime, ZERO)
