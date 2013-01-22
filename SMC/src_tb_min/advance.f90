@@ -1,7 +1,6 @@
 module advance_module
 
   use bl_error_module
-  use derivative_stencil_module
   use kernels_module
   use multifab_module
   use omp_module
@@ -29,6 +28,11 @@ contains
     type(layout)     :: la
     type(multifab)   :: Uprime, Unew
 
+    type(multifab) :: Q, Fhyp, Fdif
+    type(multifab) :: mu, xi ! viscosity
+    type(multifab) :: lam ! partial thermal conductivity
+    type(multifab) :: Ddiag ! diagonal components of rho * Y_k * D
+
     type(bl_prof_timer), save :: bpt_rkstep1, bpt_rkstep2, bpt_rkstep3
 
     ng = nghost(U)
@@ -38,10 +42,20 @@ contains
     call multifab_build(Unew,   la, ncons, ng)
     call tb_multifab_setval(Unew, 0.d0, .true.)
 
+    call multifab_build(Q, la, nprim, ng)
+
+    call multifab_build(Fhyp, la, ncons, 0)
+    call multifab_build(Fdif, la, ncons, 0)
+    
+    call multifab_build(mu , la, 1, ng)
+    call multifab_build(xi , la, 1, ng)
+    call multifab_build(lam, la, 1, ng)
+    call multifab_build(Ddiag, la, nspecies, ng)
+
     ! RK Step 1
     call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
 
-    call dUdt(U, Uprime, dx, courno, istep)
+    call dUdt(U, Uprime, Q, Fhyp, Fdif, mu, xi, lam, Ddiag, dx, courno, istep)
     call set_dt(dt, courno, istep)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
@@ -50,20 +64,30 @@ contains
 
     ! RK Step 2
     call build(bpt_rkstep2, "rkstep2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call dUdt(Unew, Uprime, dx)
+    call dUdt(Unew, Uprime, Q, Fhyp, Fdif, mu, xi, lam, Ddiag, dx)
     call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
     call destroy(bpt_rkstep2)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     ! RK Step 3
     call build(bpt_rkstep3, "rkstep3")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call dUdt(Unew, Uprime, dx)
+    call dUdt(Unew, Uprime, Q, Fhyp, Fdif, mu, xi, lam, Ddiag, dx)
     call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
     call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     call destroy(Unew)
     call destroy(Uprime)
+
+    call destroy(Q)
+
+    call destroy(Fhyp)
+    call destroy(Fdif)
+
+    call destroy(mu)
+    call destroy(xi)
+    call destroy(lam)
+    call destroy(Ddiag)
 
     if (contains_nan(U)) then
        call bl_error("U contains nan")
@@ -188,46 +212,20 @@ contains
 
 
   !
-  ! Compute dU/dt given U.
-  !
-  ! The Courant number (courno) might also be computed if passed.
-  !
-  subroutine dUdt (U, Uprime, dx, courno, istep)
-    use derivative_stencil_module, only : stencil, narrow, s3d
-
-    type(multifab),   intent(inout) :: U, Uprime
-    double precision, intent(in   ) :: dx(U%dim)
-    double precision, intent(inout), optional :: courno
-    integer,          intent(in   ), optional :: istep
-
-    if (stencil .eq. narrow) then
-       call dUdt_narrow(U, Uprime, dx, courno, istep)
-    else if (stencil .eq. s3d) then
-       call bl_error("advance: S3D not supported")
-    else
-       call bl_error("advance: unknown stencil type")
-    end if       
-
-  end subroutine dUdt
-
-
-  !
   ! Compute dU/dt given U using the narrow stencil.
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt_narrow (U, Uprime, dx, courno, istep)
+  subroutine dUdt (U, Uprime, Q, Fhyp, Fdif, mu, xi, lam, Ddiag, &
+       dx, courno, istep)
 
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt
 
-    type(multifab),   intent(inout) :: U, Uprime
+    type(multifab),   intent(inout) :: U, Uprime, &
+         Q, Fhyp, Fdif, mu, xi, lam, Ddiag
     double precision, intent(in   ) :: dx(U%dim)
     integer,          intent(in   ), optional :: istep
     double precision, intent(inout), optional :: courno
-
-    type(multifab) :: mu, xi ! viscosity
-    type(multifab) :: lam ! partial thermal conductivity
-    type(multifab) :: Ddiag ! diagonal components of rho * Y_k * D
 
     integer :: lo(U%dim), hi(U%dim)
     integer :: i,j,k,m,n, ng, tid
@@ -236,8 +234,6 @@ contains
     logical :: update_courno
     double precision :: courno_proc
 
-    type(layout)     :: la
-    type(multifab)   :: Q, Fhyp, Fdif
     type(mf_fb_data) :: U_fb_data
 
     integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4), &
@@ -246,6 +242,8 @@ contains
 
     type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypterm, bpt_courno
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm
+
+    ng = nghost(U)
 
     update_courno = .false.
     if (present(courno) .and. present(istep) .and. fixed_dt.le.0.d0) then
@@ -264,38 +262,6 @@ contains
     end if
 
     call tb_multifab_setval(Uprime, ZERO)
-
-    ! On hopper MPI_Test encourages the overlap of communication and compution.
-    ! That's why we have so many calls to multifab_fill_boundary_test.
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    ng = nghost(U)
-    la = get_layout(U)
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    call multifab_build(Q, la, nprim, ng)
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    call multifab_build(Fhyp, la, ncons, 0)
-    call multifab_build(Fdif, la, ncons, 0)
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    call multifab_build(mu , la, 1, ng)
-    call multifab_build(xi , la, 1, ng)
-    call multifab_build(lam, la, 1, ng)
-    call multifab_build(Ddiag, la, nspecies, ng)
 
     if (overlap_comm_comp) then
        call multifab_fill_boundary_test(U, U_fb_data)
@@ -485,23 +451,13 @@ contains
     !$omp end parallel
     call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    call destroy(Q)
-
-    call destroy(Fhyp)
-    call destroy(Fdif)
-
-    call destroy(mu)
-    call destroy(xi)
-    call destroy(lam)
-    call destroy(Ddiag)
-
     if (update_courno) then
        call build(bpt_courno, "courno")
        call parallel_reduce(courno, courno_proc, MPI_MAX)
        call destroy(bpt_courno)
     end if
 
-  end subroutine dUdt_narrow
+  end subroutine dUdt
 
   subroutine compute_courno(Q, dx, courno)
     type(multifab), intent(in) :: Q

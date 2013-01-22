@@ -73,7 +73,8 @@ contains
     if (trim(stencil_type) == "narrow") then
        stencil = narrow
     else if (trim(stencil_type) == "S3D" .or. trim(stencil_type) == "wide") then
-       stencil = wide
+       ! stencil = wide
+       call bl_error("S3D stencil type not supported")
     else
        call bl_error("unknow stencil_type")
     end if

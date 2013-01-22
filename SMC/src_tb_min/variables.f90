@@ -2,8 +2,6 @@ module variables_module
 
   use chemistry_module, only : nspecies
   use multifab_module
-  use omp_module
-  use threadbox_module
 
   implicit none
 
@@ -83,7 +81,7 @@ contains
 
     logical :: lgco
     integer :: ngu, ngq, ngto
-    integer :: n, lo(U%dim), hi(U%dim), tid, ulo(4), uhi(4), qlo(4), qhi(4)
+    integer :: n, lo(U%dim), hi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: up, qp
 
     ngu = nghost(U)
@@ -100,47 +98,44 @@ contains
        lgco = .true.
     end if
 
-    !$omp parallel private(tid,n,up,qp,lo,hi,qlo,qhi,ulo,uhi)
-    tid = omp_get_thread_num()
     do n=1,nfabs(Q)
        up => dataptr(U,n)
        qp => dataptr(Q,n)
 
-       ulo = lbound(up)
-       uhi = ubound(up)
+       lo = lwb(get_box(Q,n))
+       hi = upb(get_box(Q,n))
 
-       qlo = lbound(qp)
-       qhi = ubound(qp)
-
-       if (ngto .eq. 0) then
-          lo = tb_get_valid_lo(tid,n)
-          hi = tb_get_valid_hi(tid,n)
+       if (U%dim .eq. 2) then
+          call bl_error("2D not supported in variables::ctoprim")
        else
-          lo = tb_get_grown_lo(tid,n)
-          hi = tb_get_grown_hi(tid,n)
+          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto,lgco)
        end if
-
-       call ctoprim_3d(lo,hi,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),lgco)
     end do
-    !$omp end parallel
 
   end subroutine ctoprim
 
-  subroutine ctoprim_3d(lo, hi, u, ulo, uhi, q, qlo, qhi, gco)
+  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngq, ngto,gco)
     logical, intent(in) :: gco  ! ghost cells only?
-    integer, intent(in) :: lo(3), hi(3), ulo(3), uhi(3), qlo(3), qhi(3)
-    double precision,intent(in) :: u(ulo(1):uhi(1),ulo(2):uhi(2),ulo(3):uhi(3),ncons)
-    double precision            :: q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    integer, intent(in) :: lo(3), hi(3), ngu, ngq, ngto
+    double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,ncons)
+    double precision, intent(out) :: q(lo(1)-ngq:hi(1)+ngq,lo(2)-ngq:hi(2)+ngq,lo(3)-ngq:hi(3)+ngq,nprim)
     
     integer :: i, j, k, n, iwrk
     double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), h(nspecies), ei, Tt, Pt
+    integer :: llo(3), lhi(3)
 
-    do k = lo(3),hi(3)
-       do j = lo(2),hi(2)
-          do i = lo(1),hi(1)
+    do i=1,3
+       llo(i) = lo(i)-ngto
+       lhi(i) = hi(i)+ngto
+    end do
+
+    !$omp parallel do private(i, j, k, n, iwrk, rho, rhoinv, rwrk) &
+    !$omp private(X, Y, h, ei, Tt, Pt)
+    do k = llo(3),lhi(3)
+       do j = llo(2),lhi(2)
+          do i = llo(1),lhi(1)
              
              if (gco) then
-                call bl_error("ctoprim_3d: gco needs to be fixed.")
                 if ( (i.ge.lo(1) .and. i.le.hi(1)) .and. &
                      (j.ge.lo(2) .and. j.le.hi(2)) .and. &
                      (k.ge.lo(3) .and. k.le.hi(3)) ) then
@@ -183,6 +178,7 @@ contains
           enddo
        enddo
     enddo
+    !$omp end parallel do
 
   end subroutine ctoprim_3d
 
@@ -192,33 +188,36 @@ contains
   subroutine reset_density(U)
     type(multifab), intent(inout) :: U
     
-    integer :: n, lo(U%dim), hi(U%dim), ulo(4), uhi(4), tid
+    integer :: dm, ng
+    integer :: n, lo(U%dim), hi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: up
+
+    dm = U%dim
+    ng = nghost(U)
     
-    !$omp parallel private(tid,n,up,lo,hi,ulo,uhi)
-    tid = omp_get_thread_num()
     do n=1,nfabs(U)
        up => dataptr(U, n)
-
-       ulo = lbound(up)
-       uhi = ubound(up)
        
-       lo = tb_get_valid_lo(tid,n)
-       hi = tb_get_valid_hi(tid,n)
+       lo = lwb(get_box(U,n))
+       hi = upb(get_box(U,n))
 
-       call reset_rho_3d(lo,hi,up,ulo(1:3),uhi(1:3))
+       if (dm .eq. 2) then
+          call bl_error("2D not supported in variables::reset_density")
+       else
+          call reset_rho_3d(lo,hi,ng,up)
+       end if
     end do
-    !$omp end parallel
 
   end subroutine reset_density
 
-  subroutine reset_rho_3d(lo, hi, u, ulo, uhi)
-    integer, intent(in) :: lo(3), hi(3), ulo(3), uhi(3)
-    double precision, intent(inout) :: u(ulo(1):uhi(1),ulo(2):uhi(2),ulo(3):uhi(3),ncons)
+  subroutine reset_rho_3d(lo, hi, ng, u)
+    integer, intent(in) :: lo(3), hi(3), ng
+    double precision, intent(inout) :: u(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,ncons)
 
     integer :: i, j, k, n
     double precision :: rho
 
+    !$omp parallel do private(i,j,k,n,rho)
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
@@ -230,6 +229,7 @@ contains
           end do
        end do
     end do
+    !$omp end parallel do
 
   end subroutine reset_rho_3d
 
