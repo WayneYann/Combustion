@@ -7,7 +7,7 @@ module threadbox_module
 
   implicit none
 
-  integer, save :: numthreads, nthreads_d(3)
+  integer, save :: numthreads, nthreads_d(3), ng
   integer, allocatable, save :: tb_lo(:,:,:), tb_hi(:,:,:) 
   integer, allocatable, save :: tb_glo(:,:,:), tb_ghi(:,:,:) 
 
@@ -23,16 +23,18 @@ contains
     deallocate(tb_lo, tb_hi, tb_glo, tb_ghi)
   end subroutine destroy_threadbox
 
-  subroutine build_threadbox(la, ng)
+  subroutine build_threadbox(la, ng_in)
     implicit none
     type(layout), intent(in) :: la
-    integer, intent(in) :: ng
+    integer, intent(in) :: ng_in
 
     type(box) :: bx
     integer :: ilocal, iglobal, idim, ndim, my_box_size(la%lap%dim), my_box_lo(la%lap%dim)
     integer, allocatable :: xsize(:), ysize(:), zsize(:)
     integer, allocatable :: xstart(:), ystart(:), zstart(:)
     integer :: i,j,k, ithread
+
+    ng = ng_in
 
     ! a limitation of current threadbox
     ! make sure all boxes have the same size
@@ -264,7 +266,7 @@ contains
     logical, intent(in), optional :: all
 
     logical :: lall
-    integer :: ib, tid, wlo(3), whi(3)
+    integer :: ib, tid, wlo(3), whi(3), ngmf
     double precision, pointer :: p(:,:,:,:)
 
     if (present(all)) then
@@ -273,7 +275,15 @@ contains
        lall = .false.
     end if
 
+    ngmf = nghost(mf)
+
     if (lall) then
+       if (ngmf .ne. ng .and. ngmf .ne. 0) then
+          call bl_error("threadbox: do not know how to do setval in this case.")
+       end if
+    end if
+
+    if (lall .and. ngmf.eq.ng) then
        !$omp parallel private(tid, ib, wlo, whi, p)
        tid = omp_get_thread_num()
        do ib = 1, nfabs(mf)
