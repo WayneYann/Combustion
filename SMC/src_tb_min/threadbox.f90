@@ -30,12 +30,15 @@ contains
     integer, intent(in) :: ng_in
 
     type(box) :: bx
-    integer :: ilocal, iglobal, idim, ndim, my_box_size(la%lap%dim), my_box_lo(la%lap%dim)
+    integer :: ilocal, iglobal, idim, ndim, nb
+    integer :: my_box_size(la%lap%dim), my_box_lo(la%lap%dim)
     integer, allocatable :: xsize(:), ysize(:), zsize(:)
     integer, allocatable :: xstart(:), ystart(:), zstart(:)
-    integer :: i,j,k, ithread
+    integer, allocatable :: zero_lo(:,:), zero_hi(:,:)
+    integer :: i,j,k, ithread, it2, itstride, itstart
 
     ng = ng_in
+    nb = nlocal(la) ! number of local boxes
 
     ! a limitation of current threadbox
     ! make sure all boxes have the same size
@@ -53,7 +56,7 @@ contains
        end if
     end do
 
-    do ilocal = 2, nlocal(la)
+    do ilocal = 2, nb
        iglobal = global_index(la, ilocal)
        bx = get_box(la, iglobal)
        do idim = 1, ndim
@@ -83,10 +86,13 @@ contains
     end do
 
 
-    allocate(tb_lo (3,0:numthreads-1,nlocal(la)))
-    allocate(tb_hi (3,0:numthreads-1,nlocal(la)))
-    allocate(tb_glo(3,0:numthreads-1,nlocal(la)))
-    allocate(tb_ghi(3,0:numthreads-1,nlocal(la)))
+    allocate(tb_lo (3,0:numthreads-1,nb))
+    allocate(tb_hi (3,0:numthreads-1,nb))
+    allocate(tb_glo(3,0:numthreads-1,nb))
+    allocate(tb_ghi(3,0:numthreads-1,nb))
+
+    allocate(zero_lo(3,0:numthreads-1))
+    allocate(zero_hi(3,0:numthreads-1))
 
     allocate(xsize (nthreads_d(1)))
     allocate(ysize (nthreads_d(2)))
@@ -105,25 +111,29 @@ contains
     do k = 1, nthreads_d(3)
        do j = 1, nthreads_d(2)
           do i = 1, nthreads_d(1)
-             tb_lo(1,ithread,:) = xstart(i)
-             tb_lo(2,ithread,:) = ystart(j)
-             tb_lo(3,ithread,:) = zstart(k)
-             tb_hi(1,ithread,:) = xstart(i) + xsize(i) - 1
-             tb_hi(2,ithread,:) = ystart(j) + ysize(j) - 1
-             tb_hi(3,ithread,:) = zstart(k) + zsize(k) - 1
+             zero_lo(1,ithread) = xstart(i)
+             zero_lo(2,ithread) = ystart(j)
+             zero_lo(3,ithread) = zstart(k)
+             zero_hi(1,ithread) = xstart(i) + xsize(i) - 1
+             zero_hi(2,ithread) = ystart(j) + ysize(j) - 1
+             zero_hi(3,ithread) = zstart(k) + zsize(k) - 1
              ithread = ithread + 1
           end do
        end do
     end do
 
-    do ilocal = 1, nlocal(la)
+    itstride = numthreads / nb
+
+    do ilocal = 1, nb
        iglobal = global_index(la, ilocal)
        bx = get_box(la, iglobal)
        my_box_lo = box_lwb(bx)
 
+       itstart = (ilocal-1)*itstride
        do ithread = 0, numthreads-1
-          tb_lo(:,ithread,ilocal) = tb_lo(:,ithread,ilocal) + my_box_lo
-          tb_hi(:,ithread,ilocal) = tb_hi(:,ithread,ilocal) + my_box_lo
+          it2 = mod(ithread+itstart, numthreads)
+          tb_lo(:,ithread,ilocal) = zero_lo(:,it2) + my_box_lo
+          tb_hi(:,ithread,ilocal) = zero_hi(:,it2) + my_box_lo
        end do
     end do
 
@@ -137,29 +147,31 @@ contains
     do k = 1, nthreads_d(3)
        do j = 1, nthreads_d(2)
           do i = 1, nthreads_d(1)
-             tb_glo(1,ithread,:) = xstart(i)
-             tb_glo(2,ithread,:) = ystart(j)
-             tb_glo(3,ithread,:) = zstart(k)
-             tb_ghi(1,ithread,:) = xstart(i) + xsize(i) - 1
-             tb_ghi(2,ithread,:) = ystart(j) + ysize(j) - 1
-             tb_ghi(3,ithread,:) = zstart(k) + zsize(k) - 1
+             zero_lo(1,ithread) = xstart(i)
+             zero_lo(2,ithread) = ystart(j)
+             zero_lo(3,ithread) = zstart(k)
+             zero_hi(1,ithread) = xstart(i) + xsize(i) - 1
+             zero_hi(2,ithread) = ystart(j) + ysize(j) - 1
+             zero_hi(3,ithread) = zstart(k) + zsize(k) - 1
              ithread = ithread + 1
           end do
        end do
     end do
 
-    do ilocal = 1, nlocal(la)
+    do ilocal = 1, nb
        iglobal = global_index(la, ilocal)
        bx = get_box(la, iglobal)
        my_box_lo = box_lwb(bx) - ng
 
+       itstart = (ilocal-1)*itstride
        do ithread = 0, numthreads-1
-          tb_glo(:,ithread,ilocal) = tb_glo(:,ithread,ilocal) + my_box_lo
-          tb_ghi(:,ithread,ilocal) = tb_ghi(:,ithread,ilocal) + my_box_lo
+          it2 = mod(ithread+itstart, numthreads)
+          tb_glo(:,ithread,ilocal) = zero_lo(:,it2) + my_box_lo
+          tb_ghi(:,ithread,ilocal) = zero_hi(:,it2) + my_box_lo
        end do
     end do
 
-    deallocate(xsize, ysize, zsize, xstart, ystart, zstart)
+    deallocate(xsize, ysize, zsize, xstart, ystart, zstart,zero_lo,zero_hi)
 
   end subroutine build_threadbox
 
