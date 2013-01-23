@@ -24,6 +24,7 @@ contains
   end subroutine destroy_threadbox
 
   subroutine build_threadbox(la, ng_in)
+    use probin_module, only : tb_split_dim
     implicit none
     type(layout), intent(in) :: la
     integer, intent(in) :: ng_in
@@ -68,7 +69,7 @@ contains
        call bl_error('2D not supported')
     end if
 
-    call init_thread_topology(numthreads, nthreads_d)
+    call init_thread_topology(numthreads, nthreads_d, tb_split_dim)
 
     if (numthreads .ne. nthreads_d(1)*nthreads_d(2)*nthreads_d(3)) then
        call bl_error("threadbox_module: How did this happen?")
@@ -163,13 +164,20 @@ contains
   end subroutine build_threadbox
 
 
-  subroutine init_thread_topology(n, nd)
+  subroutine init_thread_topology(n, n3d, d)
     implicit none
-    integer, intent(in) :: n
-    integer, intent(out) :: nd(3)
+    integer, intent(in) :: n, d
+    integer, intent(out) :: n3d(3)
 
     integer, allocatable :: facs(:)
     integer :: lfacs, f, nfac, rem, i, j, nmin, nmax
+    integer :: n2d(2)
+
+    if (d.eq.1) then
+       n3d(1:2) = 1
+       n3d(3) = n
+       return
+    end if
 
     lfacs = int(log(dble(n))/log(2.d0))
     allocate(facs(lfacs))
@@ -187,18 +195,35 @@ contains
        end if
     end do
 
-    nd = 1
-    do i = nfac, 1, -1
-       j = minloc(nd,1)
-       nd(j) = nd(j) * facs(i)
-    end do
+    if (d .eq. 3) then
+       n3d = 1
+       do i = nfac, 1, -1
+          j = minloc(n3d,1)
+          n3d(j) = n3d(j) * facs(i)
+       end do
+       
+       nmin = minval(n3d)
+       nmax = maxval(n3d)
+       
+       n3d(1) = nmin
+       n3d(2) = n / (nmin*nmax)
+       n3d(3) = nmax
+    else
+       n2d = 1
+       do i = nfac, 1, -1
+          j = minloc(n2d,1)
+          n2d(j) = n2d(j) * facs(i)
+       end do
+       
+       nmin = minval(n2d)
+       nmax = maxval(n2d)
+       
+       n2d(1) = nmin
+       n2d(2) = nmax
 
-    nmin = minval(nd)
-    nmax = maxval(nd)
-
-    nd(1) = nmin
-    nd(2) = n / (nmin*nmax)
-    nd(3) = nmax
+       n3d(1) = 1
+       n3d(2:3) = n2d
+    end if
 
     deallocate(facs)
 

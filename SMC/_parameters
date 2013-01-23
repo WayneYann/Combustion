@@ -19,6 +19,14 @@ the_knapsack_verbosity              logical            .false.
 # job name printed in output
 job_name                            character          ""
 
+
+#-----------------------------------------------------------------------------
+# category: thread parallelization
+#-----------------------------------------------------------------------------
+# threadbox domain decomposition in ?D
+tb_split_dim                        integer            2
+
+
 #-----------------------------------------------------------------------------
 # category: communication
 #-----------------------------------------------------------------------------
