@@ -227,12 +227,6 @@ contains
           n2d(j) = n2d(j) * facs(i)
        end do
        
-       nmin = minval(n2d)
-       nmax = maxval(n2d)
-       
-       n2d(1) = nmin
-       n2d(2) = nmax
-
        n3d(1) = 1
        n3d(2:3) = n2d
     end if
