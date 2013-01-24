@@ -19,13 +19,7 @@ BOXLIB_CORE := Src/F_BaseLib
 
 #-----------------------------------------------------------------------------
 # core SMC directories
-ifdef SMC_TB_MIN
-  SMC_CORE := src_tb_min
-else ifdef SMC_MIN
-  SMC_CORE := src_min
-else
-  SMC_CORE := src
-endif
+SMC_SRC ?= src
 
 
 #-----------------------------------------------------------------------------
@@ -41,7 +35,7 @@ endif
 # we need to tell the compiler about.
 
 # SMC modules
-Fmdirs += $(SMC_CORE)
+Fmdirs += $(SMC_SRC)
 
 Fmpack := $(foreach dir, $(Fmdirs), $(SMC_TOP_DIR)/$(dir)/GPackage.mak)
 Fmlocs := $(foreach dir, $(Fmdirs), $(SMC_TOP_DIR)/$(dir))
@@ -70,7 +64,7 @@ endif
 
 
 # any include directories
-Fmincludes += $(SMC_CORE)
+Fmincludes += $(SMC_SRC)
 Fmincs := $(foreach dir, $(Fmincludes), $(SMC_TOP_DIR)/$(dir))
 
 
