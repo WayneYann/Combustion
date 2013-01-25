@@ -1,0 +1,4794 @@
+module kernels_module
+  use bc_module
+  use chemistry_module, only : nspecies, molecular_weight
+  use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
+       first_deriv_4, first_deriv_l3, first_deriv_r3, first_deriv_rb, first_deriv_lb, &
+       M8, M6, M4, M2, BRB, BLB, D8, D6, D4
+  use variables_module
+  implicit none
+
+  private
+
+  public :: hypterm_3d, narrow_diffterm_3d, chemterm_3d, comp_courno_3d, &
+       S3D_diffterm_1, S3D_diffterm_2
+
+contains
+
+  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,rhs,dlo,dhi,bclo,bchi)
+
+    integer,          intent(in ) :: lo(3),hi(3),ng
+    double precision, intent(in ) :: dx(3)
+    double precision, intent(in ) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
+    double precision, intent(in ) ::    q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(out) ::  rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
+
+    integer          :: i,j,k,n
+    double precision :: dxinv(3)
+    double precision :: un(-4:4)
+    integer :: slo(3), shi(3) 
+    
+    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
+    integer :: jj
+    integer, parameter :: jblocksize=8
+
+    ! Only the region bounded by [dlo,dhi] contains good data.
+    ! [slo,shi] will be safe for 8th-order stencil
+    slo = dlo + stencil_ng
+    shi = dhi - stencil_ng
+
+    do i=1,3
+       dxinv(i) = 1.0d0 / dx(i)
+    end do
+
+    allocate(tmpz(lo(1) : hi(1), lo(2): hi(2),dlo(3):dhi(3)))
+
+    !$omp parallel private(i,j,k,n,un,jj,tmpx,tmpy)
+
+    allocate(tmpx(dlo(1):dhi(1)))
+    allocate(tmpy(lo(1) : hi(1),dlo(2):dhi(2)))
+
+    !$omp workshare
+    rhs = 0.d0
+    !$omp end workshare
+
+    ! ------- BEGIN x-direction -------
+
+    !$omp do 
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+
+          do i=slo(1),shi(1)
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_8( cons(i-4:i+4,j,k,imx) ) 
+          end do
+
+          do i=dlo(1),dhi(1)
+             tmpx(i) = cons(i,j,k,imx)*q(i,j,k,qu)+q(i,j,k,qpres)
+          end do
+          do i=slo(1),shi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+
+          do i=dlo(1),dhi(1)
+             tmpx(i) = cons(i,j,k,imy)*q(i,j,k,qu)
+          end do
+          do i=slo(1),shi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+
+          do i=dlo(1),dhi(1)
+             tmpx(i) = cons(i,j,k,imz)*q(i,j,k,qu)
+          end do
+          do i=slo(1),shi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+
+          do i=dlo(1),dhi(1)
+             tmpx(i) = (cons(i,j,k,iene)+q(i,j,k,qpres))*q(i,j,k,qu)
+          end do
+          do i=slo(1),shi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+
+       enddo
+    enddo
+    !$omp end do
+
+    do n = iry1, iry1+nspecies-1
+       !$omp do 
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+    
+             do i=dlo(1),dhi(1)
+                tmpx(i) = cons(i,j,k,n)*q(i,j,k,qu)
+             end do
+             do i=slo(1),shi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+             end do
+
+          enddo
+       enddo
+       !$omp end do
+    enddo
+
+    ! ------- END x-direction -------
+
+    ! ------- BEGIN y-direction -------
+
+    !$omp do
+    do k=lo(3),hi(3)
+
+       do j=slo(2),shi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_8( cons(i,j-4:j+4,k,imy) )
+          end do
+       end do
+
+       do j=dlo(2),dhi(2)
+          do i=lo(1),hi(1)
+             tmpy(i,j) = cons(i,j,k,imx)*q(i,j,k,qv)
+          end do
+       end do
+       do j=slo(2),shi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          enddo
+       enddo
+
+       do j=dlo(2),dhi(2)
+          do i=lo(1),hi(1)
+             tmpy(i,j) = cons(i,j,k,imy)*q(i,j,k,qv)+q(i,j,k,qpres)
+          end do
+       end do
+       do j=slo(2),shi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          enddo
+       enddo
+
+       do j=dlo(2),dhi(2)
+          do i=lo(1),hi(1)
+             tmpy(i,j) = cons(i,j,k,imz)*q(i,j,k,qv)
+          end do
+       end do
+       do j=slo(2),shi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          enddo
+       enddo
+
+       do j=dlo(2),dhi(2)
+          do i=lo(1),hi(1)
+             tmpy(i,j) = (cons(i,j,k,iene)+q(i,j,k,qpres))*q(i,j,k,qv)
+          end do
+       end do
+       do j=slo(2),shi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          enddo
+       enddo
+    enddo
+    !$omp end do
+
+    do n = iry1, iry1+nspecies-1
+       !$omp do
+       do k=lo(3),hi(3)
+
+          do j=dlo(2),dhi(2)
+             do i=lo(1),hi(1)
+                tmpy(i,j) = cons(i,j,k,n)*q(i,j,k,qv)
+             end do
+          end do
+          do j=slo(2),shi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+             end do
+          enddo
+
+       enddo
+       !$omp end do
+    enddo
+
+    ! ------- END y-direction -------
+
+    ! ------- BEGIN z-direction -------
+
+    !$omp do
+    do k=slo(3),shi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_8( cons(i,j,k-4:k+4,imz) )
+          end do
+       end do
+    end do
+    !$omp end do nowait
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = cons(i,j,k,imx) * q(i,j,k,qw)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=slo(3),shi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = cons(i,j,k,imy) * q(i,j,k,qw)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=slo(3),shi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = cons(i,j,k,imz)*q(i,j,k,qw) + q(i,j,k,qpres)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=slo(3),shi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = (cons(i,j,k,iene)+q(i,j,k,qpres))*q(i,j,k,qw)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=slo(3),shi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    do n = iry1, iry1+nspecies-1
+       do jj=lo(2),hi(2),jblocksize
+       !$omp do
+       do k=dlo(3),dhi(3)
+!          do j=lo(2),hi(2)
+          do j=jj,min(jj+jblocksize-1,hi(2))
+             do i=lo(1),hi(1)
+                tmpz(i,j,k) = cons(i,j,k,n)*q(i,j,k,qw)
+             end do
+          end do
+       end do
+       !$omp end do
+       end do ! jj
+
+       do jj=lo(2),hi(2),jblocksize
+       !$omp do 
+       do k=slo(3),shi(3)
+!          do j=lo(2),hi(2)
+          do j=jj,min(jj+jblocksize-1,hi(2))
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+             end do
+          enddo
+       enddo
+       !$omp end do
+       end do ! jj
+    enddo
+
+    ! ----------------- boundary -----------------------
+
+    ! ----- lo-x boundary -----
+    if (dlo(1) .eq. lo(1)) then 
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+
+             ! if (bclo(1) .eq. WALL???) then
+             !    i = lo(1)
+             !    ! use completely right-biased stencil
+             ! end if
+
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+
+             un(-1:2) = q(i-1:i+2,j,k,qu)
+
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_r3( cons(i-1:i+2,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_r3( cons(i-1:i+2,j,k,imx)*un(-1:2)+q(i-1:i+2,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_r3( cons(i-1:i+2,j,k,imy)*un(-1:2) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_r3( cons(i-1:i+2,j,k,imz)*un(-1:2) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_r3( (cons(i-1:i+2,j,k,iene)+q(i-1:i+2,j,k,qpres))*un(-1:2) )
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+
+             un(-2:2) = q(i-2:i+2,j,k,qu)
+
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imx)*un(-2:2)+q(i-2:i+2,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imy)*un(-2:2) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imz)*un(-2:2) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_4( (cons(i-2:i+2,j,k,iene)+q(i-2:i+2,j,k,qpres))*un(-2:2) )
+
+
+             i = lo(1)+3
+             ! use 6th-order stencil
+
+             un(-3:3) = q(i-3:i+3,j,k,qu)
+
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imx)*un(-3:3)+q(i-3:i+3,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imy)*un(-3:3) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imz)*un(-3:3) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_6( (cons(i-3:i+3,j,k,iene)+q(i-3:i+3,j,k,qpres))*un(-3:3) )
+
+
+          enddo
+       enddo
+       !$omp end do nowait
+
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+
+                ! if (bclo(1) .eq. WALL???) then
+                !    i = lo(1)
+                !    ! use completely right-biased stencil
+                ! end if
+                
+                i = lo(1)+1
+                ! use 3rd-order slightly right-biased stencil
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_r3( cons(i-1:i+2,j,k,n)*q(i-1:i+2,j,k,qu) )
+
+                i = lo(1)+2
+                ! use 4th-order stencil
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_4( cons(i-2:i+2,j,k,n)*q(i-2:i+2,j,k,qu) )
+
+                i = lo(1)+3
+                ! use 6th-order stencil
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_6( cons(i-3:i+3,j,k,n)*q(i-3:i+3,j,k,qu) )
+             end do
+          end do
+          !$omp end do nowait
+       end do
+       !$omp barrier
+    end if
+
+    ! ----- hi-x boundary -----
+    if (dhi(1) .eq. hi(1)) then 
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             
+             i = hi(1)-3
+             ! use 6th-order stencil
+
+             un(-3:3) = q(i-3:i+3,j,k,qu)
+
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imx)*un(-3:3)+q(i-3:i+3,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imy)*un(-3:3) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_6( cons(i-3:i+3,j,k,imz)*un(-3:3) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_6( (cons(i-3:i+3,j,k,iene)+q(i-3:i+3,j,k,qpres))*un(-3:3) )
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+
+             un(-2:2) = q(i-2:i+2,j,k,qu)
+
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imx)*un(-2:2)+q(i-2:i+2,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imy)*un(-2:2) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_4( cons(i-2:i+2,j,k,imz)*un(-2:2) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_4( (cons(i-2:i+2,j,k,iene)+q(i-2:i+2,j,k,qpres))*un(-2:2) )
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+
+             un(-2:1) = q(i-2:i+1,j,k,qu)
+
+             rhs(i,j,k,irho) = rhs(i,j,k,irho) - dxinv(1) * &
+                  first_deriv_l3( cons(i-2:i+1,j,k,imx) ) 
+
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) - dxinv(1) * &
+                  first_deriv_l3( cons(i-2:i+1,j,k,imx)*un(-2:1)+q(i-2:i+1,j,k,qpres) )
+
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) - dxinv(1) * &
+                  first_deriv_l3( cons(i-2:i+1,j,k,imy)*un(-2:1) ) 
+
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) - dxinv(1) * &
+                  first_deriv_l3( cons(i-2:i+1,j,k,imz)*un(-2:1) ) 
+
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
+                  first_deriv_l3( (cons(i-2:i+1,j,k,iene)+q(i-2:i+1,j,k,qpres))*un(-2:1) )
+
+
+             ! if (bchi(1) .eq. WALL???) then
+             !    i = hi(1)
+             !    ! use completely left-biased stencil
+             ! end if
+
+          enddo
+       enddo
+       !$omp end do nowait
+       
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                
+                i = hi(1)-3
+                ! use 6th-order stencil
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_6( cons(i-3:i+3,j,k,n)*q(i-3:i+3,j,k,qu) )
+                
+                i = hi(1)-2
+                ! use 4th-order stencil
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_4( cons(i-2:i+2,j,k,n)*q(i-2:i+2,j,k,qu) )
+                
+                i = hi(1)-1
+                ! use 3rd-order slightly left-biased stencil
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(1) * &
+                     first_deriv_l3( cons(i-2:i+1,j,k,n)*q(i-2:i+1,j,k,qu) )
+                
+                ! if (bchi(1) .eq. WALL???) then
+                !    i = hi(1)
+                !    ! use completely left-biased stencil
+                ! end if
+                
+             enddo
+          enddo
+          !$omp end do nowait
+       end do
+       !$omp barrier
+    end if
+
+    ! ----- lo-y boundary -----
+    if (dlo(2) .eq. lo(2)) then 
+       !$omp do
+       do k=lo(3),hi(3)
+
+          ! if (bclo(2) .eq. WALL???) then
+          !    j = lo(2)
+          !    ! use completely right-biased stencil
+          !    enddo
+          ! end if
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+
+          do i=lo(1),hi(1)
+
+             un(-1:2) = q(i,j-1:j+2,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_r3( cons(i,j-1:j+2,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_r3( cons(i,j-1:j+2,k,imx)*un(-1:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_r3( cons(i,j-1:j+2,k,imy)*un(-1:2)+q(i,j-1:j+2,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_r3( cons(i,j-1:j+2,k,imz)*un(-1:2) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_r3( (cons(i,j-1:j+2,k,iene)+q(i,j-1:j+2,k,qpres))*un(-1:2) )
+
+          enddo
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+
+          do i=lo(1),hi(1)
+
+             un(-2:2) = q(i,j-2:j+2,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imx)*un(-2:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imy)*un(-2:2)+q(i,j-2:j+2,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imz)*un(-2:2) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_4( (cons(i,j-2:j+2,k,iene)+q(i,j-2:j+2,k,qpres))*un(-2:2) )
+
+          enddo
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+
+          do i=lo(1),hi(1)
+
+             un(-3:3) = q(i,j-3:j+3,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imx)*un(-3:3) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imy)*un(-3:3)+q(i,j-3:j+3,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imz)*un(-3:3) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_6( (cons(i,j-3:j+3,k,iene)+q(i,j-3:j+3,k,qpres))*un(-3:3) )
+
+          enddo
+
+       enddo
+       !$omp end do nowait
+
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do k=lo(3),hi(3)
+
+             ! if (bclo(2) .eq. WALL???) then
+             !    j = lo(2)
+             !    ! use completely right-biased stencil
+             !    enddo
+             ! end if
+             
+             j = lo(2)+1
+             ! use 3rd-order slightly right-biased stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_r3( cons(i,j-1:j+2,k,n)*q(i,j-1:j+2,k,qv) )
+             end do
+
+             j = lo(2)+2
+             ! use 4th-order stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_4( cons(i,j-2:j+2,k,n)*q(i,j-2:j+2,k,qv) )
+             end do
+
+             j = lo(2)+3
+             ! use 6th-order stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_6( cons(i,j-3:j+3,k,n)*q(i,j-3:j+3,k,qv) )
+             end do
+
+          end do
+          !$omp end do nowait
+       end do
+       !$omp barrier
+    end if
+
+    ! ----- hi-y boundary -----
+    if (dhi(2) .eq. hi(2)) then 
+       !$omp do
+       do k=lo(3),hi(3)
+
+          j = hi(2)-3
+          ! use 6th-order stencil
+
+          do i=lo(1),hi(1)
+
+             un(-3:3) = q(i,j-3:j+3,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imx)*un(-3:3) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imy)*un(-3:3)+q(i,j-3:j+3,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_6( cons(i,j-3:j+3,k,imz)*un(-3:3) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_6( (cons(i,j-3:j+3,k,iene)+q(i,j-3:j+3,k,qpres))*un(-3:3) )
+
+          enddo
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+
+          do i=lo(1),hi(1)
+
+             un(-2:2) = q(i,j-2:j+2,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imx)*un(-2:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imy)*un(-2:2)+q(i,j-2:j+2,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_4( cons(i,j-2:j+2,k,imz)*un(-2:2) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_4( (cons(i,j-2:j+2,k,iene)+q(i,j-2:j+2,k,qpres))*un(-2:2) )
+
+          enddo
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+
+          do i=lo(1),hi(1)
+
+             un(-2:1) = q(i,j-2:j+1,k,qv)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
+                  first_deriv_l3( cons(i,j-2:j+1,k,imy) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(2) * &
+                  first_deriv_l3( cons(i,j-2:j+1,k,imx)*un(-2:1) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(2) * &
+                  first_deriv_l3( cons(i,j-2:j+1,k,imy)*un(-2:1)+q(i,j-2:j+1,k,qpres) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(2) * &
+                  first_deriv_l3( cons(i,j-2:j+1,k,imz)*un(-2:1) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(2) * &
+                  first_deriv_l3( (cons(i,j-2:j+1,k,iene)+q(i,j-2:j+1,k,qpres))*un(-2:1) )
+
+          enddo
+
+          ! if (bchi(2) .eq. WALL???) then
+          !    j = hi(2)
+          !    ! use completely left-biased stencil
+          ! end if
+
+       enddo
+       !$omp end do nowait
+
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do k=lo(3),hi(3)
+
+             j = hi(2)-3
+             ! use 6th-order stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_6( cons(i,j-3:j+3,k,n)*q(i,j-3:j+3,k,qv) )
+             end do
+
+             j = hi(2)-2
+             ! use 4th-order stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_4( cons(i,j-2:j+2,k,n)*q(i,j-2:j+2,k,qv) )
+             end do
+
+             j = hi(2)-1
+             ! use 3rd-order slightly left-biased stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * &
+                     first_deriv_l3( cons(i,j-2:j+1,k,n)*q(i,j-2:j+1,k,qv) )
+             end do
+
+             ! if (bchi(2) .eq. WALL???) then
+             !    j = hi(2)
+             !    ! use completely left-biased stencil
+             ! end if
+
+          end do
+          !$omp end do nowait
+       end do
+       !$omp barrier
+    end if
+
+
+    ! ----- lo-z boundary -----
+    if (dlo(3) .eq. lo(3)) then
+
+       ! if (bclo(3) .eq. WALL???) then
+       !    k = lo(3)
+       !    ! use completely right-biased stencil
+       ! end if
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-1:2) = q(i,j,k-1:k+2,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_r3( cons(i,j,k-1:k+2,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_r3( cons(i,j,k-1:k+2,imx)*un(-1:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_r3( cons(i,j,k-1:k+2,imy)*un(-1:2) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_r3( cons(i,j,k-1:k+2,imz)*un(-1:2)+q(i,j,k-1:k+2,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_r3( (cons(i,j,k-1:k+2,iene)+q(i,j,k-1:k+2,qpres))*un(-1:2) )
+
+          enddo
+       enddo
+       !$omp end do nowait
+
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_r3( cons(i,j,k-1:k+2,n)*q(i,j,k-1:k+2,qw) )
+             end do
+          end do
+          !$omp end do nowait
+       end do
+       !$omp barrier
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-2:2) = q(i,j,k-2:k+2,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imx)*un(-2:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imy)*un(-2:2) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imz)*un(-2:2)+q(i,j,k-2:k+2,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_4( (cons(i,j,k-2:k+2,iene)+q(i,j,k-2:k+2,qpres))*un(-2:2) )
+
+          enddo
+       enddo
+       !$omp end do nowait
+
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_4( cons(i,j,k-2:k+2,n)*q(i,j,k-2:k+2,qw) )
+             end do
+          end do
+          !$omp end do nowait
+       end do
+       !$omp barrier
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-3:3) = q(i,j,k-3:k+3,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imx)*un(-3:3) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imy)*un(-3:3) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imz)*un(-3:3)+q(i,j,k-3:k+3,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_6( (cons(i,j,k-3:k+3,iene)+q(i,j,k-3:k+3,qpres))*un(-3:3) )
+
+          enddo
+       enddo
+       !$omp end do nowait
+
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_6( cons(i,j,k-3:k+3,n)*q(i,j,k-3:k+3,qw) )
+             end do
+          end do
+          !$omp end do nowait
+       end do
+       !$omp barrier
+    end if
+
+    ! ----- hi-z boundary -----
+    if (dhi(3) .eq. hi(3)) then
+
+       k = hi(3)-3
+       ! use 6th-order stencil
+       
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-3:3) = q(i,j,k-3:k+3,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imx)*un(-3:3) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imy)*un(-3:3) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_6( cons(i,j,k-3:k+3,imz)*un(-3:3)+q(i,j,k-3:k+3,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_6( (cons(i,j,k-3:k+3,iene)+q(i,j,k-3:k+3,qpres))*un(-3:3) )
+
+          enddo
+       enddo
+       !$omp end do nowait
+
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_6(cons(i,j,k-3:k+3,n)*q(i,j,k-3:k+3,qw))
+             end do
+          enddo
+          !$omp end do nowait
+       end do
+       !$omp barrier
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-2:2) = q(i,j,k-2:k+2,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imx)*un(-2:2) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imy)*un(-2:2) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_4( cons(i,j,k-2:k+2,imz)*un(-2:2)+q(i,j,k-2:k+2,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_4( (cons(i,j,k-2:k+2,iene)+q(i,j,k-2:k+2,qpres))*un(-2:2) )
+
+          enddo
+       enddo
+       !$omp end do nowait
+
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_4(cons(i,j,k-2:k+2,n)*q(i,j,k-2:k+2,qw))
+             end do
+          enddo
+          !$omp end do nowait
+       enddo
+       !$omp barrier
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             un(-2:1) = q(i,j,k-2:k+1,qw)
+
+             rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(3) * &
+                  first_deriv_l3( cons(i,j,k-2:k+1,imz) )
+
+             rhs(i,j,k,imx)=rhs(i,j,k,imx) - dxinv(3) * &
+                  first_deriv_l3( cons(i,j,k-2:k+1,imx)*un(-2:1) )
+
+             rhs(i,j,k,imy)=rhs(i,j,k,imy) - dxinv(3) * &
+                  first_deriv_l3( cons(i,j,k-2:k+1,imy)*un(-2:1) )
+
+             rhs(i,j,k,imz)=rhs(i,j,k,imz) - dxinv(3) * &
+                  first_deriv_l3( cons(i,j,k-2:k+1,imz)*un(-2:1)+q(i,j,k-2:k+1,qpres) )
+
+             rhs(i,j,k,iene)=rhs(i,j,k,iene) - dxinv(3) * &
+                  first_deriv_l3( (cons(i,j,k-2:k+1,iene)+q(i,j,k-2:k+1,qpres))*un(-2:1) )
+
+          enddo
+       enddo
+       !$omp end do nowait
+
+       do n = iry1, iry1+nspecies-1
+          !$omp do
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
+                     first_deriv_l3(cons(i,j,k-2:k+1,n)*q(i,j,k-2:k+1,qw))
+             end do
+          enddo
+          !$omp end do nowait
+       enddo
+       !$omp barrier
+
+       ! if (bchi(3) .eq. WALL???) then
+       !    k = hi(3)
+       !    ! use completely left-biased stencil
+       ! end if
+
+    end if
+
+    deallocate(tmpx,tmpy)
+
+    !$omp end parallel
+
+    deallocate(tmpz)
+
+  end subroutine hypterm_3d
+
+
+  subroutine narrow_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy,dlo,dhi,bclo,bchi)
+
+    integer,          intent(in ) :: lo(3),hi(3),ng
+    double precision, intent(in ) :: dx(3)
+    double precision, intent(in ) :: q  (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(in ) :: mu (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in ) :: xi (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in ) :: lam(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in ) :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
+    double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
+
+    double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
+    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
+    double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
+    double precision, allocatable, dimension(:,:,:,:) :: Hg, dpy, dxe
+    ! dxy: diffusion coefficient of X in equation for Y
+    ! dpy: diffusion coefficient of p in equation for Y
+    ! dxe: diffusion coefficient of X in equation for energy
+    ! dpe: diffusion coefficient of p in equation for energy
+
+    double precision :: dxinv(3), dx2inv(3), divu
+    double precision :: tauxx,tauyy,tauzz 
+    integer          :: i,j,k,n, qxn, qyn, qhn
+    integer :: slo(3), shi(3)
+
+    double precision :: Yhalf, hhalf
+    double precision :: mmtmp8(8)
+    double precision, allocatable, dimension(:,:,:,:) :: M8p
+    double precision, allocatable, dimension(:,:,:) :: Hry
+
+    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies)
+    double precision :: M6p(6), M6X(6), mmtmp6(6)
+    double precision :: M4p(4), M4X(4), mmtmp4(4)
+    double precision :: M2p(2), M2X(2), mmtmp2(2)
+    double precision :: BBp(4), BBX(4), mmtmpB(4)
+    double precision :: rhstmp(nspecies), rhstot, rhsene
+    double precision :: Hcell(0:1,2:ncons)
+    integer :: iface
+
+    ! used to turn off some terms
+    double precision :: finlo(3), finhi(3)
+    double precision :: foulo(3), fouhi(3)
+
+    integer :: jj 
+    integer, parameter :: jblocksize=8
+
+    finlo = 1.d0 
+    finhi = 1.d0
+    foulo = 1.d0 
+    fouhi = 1.d0
+
+    do i=1,3
+       if (bclo(i) .eq. INLET) then
+          finlo(i) = 0.d0
+       else if (bclo(i) .eq. OUTLET) then
+          foulo(i) = 0.d0
+       end if
+
+       if (bchi(i) .eq. INLET) then
+          finhi(i) = 0.d0
+       else if (bchi(i) .eq. OUTLET) then
+          fouhi(i) = 0.d0
+       end if
+    end do
+
+    ! Only the region bounded by [dlo,dhi] contains good data.
+    ! [slo,shi] will be safe for 8th-order stencil
+    slo = dlo + stencil_ng
+    shi = dhi - stencil_ng
+    
+    do i = 1,3
+       dxinv(i) = 1.0d0 / dx(i)
+       dx2inv(i) = dxinv(i)**2
+    end do
+
+    allocate(ux( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+    allocate(vx( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+    allocate(wx( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+
+    allocate(uy(dlo(1):dhi(1), lo(2): hi(2),dlo(3):dhi(3)))
+    allocate(vy(dlo(1):dhi(1), lo(2): hi(2),dlo(3):dhi(3)))
+    allocate(wy(dlo(1):dhi(1), lo(2): hi(2),dlo(3):dhi(3)))
+
+    allocate(uz(dlo(1):dhi(1),dlo(2):dhi(2), lo(3): hi(3)))
+    allocate(vz(dlo(1):dhi(1),dlo(2):dhi(2), lo(3): hi(3)))
+    allocate(wz(dlo(1):dhi(1),dlo(2):dhi(2), lo(3): hi(3)))
+
+    allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+    allocate(vsm(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+
+    allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
+
+    !$omp parallel &
+    !$omp private(i,j,k,tauxx,tauyy,tauzz,divu,tmpx,tmpy)
+
+    allocate(tmpx(dlo(1):dhi(1)))
+    allocate(tmpy( lo(1): hi(1),dlo(2):dhi(2)))
+
+    !$omp workshare
+    rhs = 0.d0
+    !$omp end workshare
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             vsp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
+             vsm(i,j,k) = xi(i,j,k) -  TwoThirds*mu(i,j,k)
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=dlo(2),dhi(2)
+          ! lo-x boundary
+          if (dlo(1) .eq. lo(1)) then
+             i = lo(1)
+             ! use completely right-biased stencil
+             ux(i,j,k) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qw))
+
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+             ux(i,j,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qw))
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+             ux(i,j,k) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,k,qw))
+
+             i = lo(1)+3
+             ! use 6th-order stencil
+             ux(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qw))
+          end if
+
+          ! interior
+          do i=slo(1),shi(1)
+             ux(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qw))
+          enddo
+
+          ! hi-x boundary
+          if (dhi(1) .eq. hi(1)) then
+             i = hi(1)-3
+             ! use 6th-order stencil
+             ux(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qw))
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+             ux(i,j,k) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,k,qw))
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+             ux(i,j,k) = dxinv(1)*first_deriv_l3(q(i-2:i+1,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_l3(q(i-2:i+1,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_l3(q(i-2:i+1,j,k,qw))
+
+             i = hi(1)
+             ! use completely left-biased stencil
+             ux(i,j,k) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qw))
+          end if
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       ! lo-y boundary
+       if (dlo(2) .eq. lo(2)) then
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_rb(q(i,j:j+3,k,qu))
+          end do
+          do i=dlo(1),dhi(1)
+             vy(i,j,k) = dxinv(2)*first_deriv_rb(q(i,j:j+3,k,qv))
+          end do
+          do i=dlo(1),dhi(1)
+             wy(i,j,k) = dxinv(2)*first_deriv_rb(q(i,j:j+3,k,qw))
+          enddo
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_r3(q(i,j-1:j+2,k,qu))
+          end do
+          do i=dlo(1),dhi(1)
+             vy(i,j,k) = dxinv(2)*first_deriv_r3(q(i,j-1:j+2,k,qv))
+          end do
+          do i=dlo(1),dhi(1)
+             wy(i,j,k) = dxinv(2)*first_deriv_r3(q(i,j-1:j+2,k,qw))
+          enddo
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qu))
+          end do
+          do i=dlo(1),dhi(1)
+             vy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qv))
+          end do
+          do i=dlo(1),dhi(1)
+             wy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qw))
+          enddo
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qu))
+          end do
+          do i=dlo(1),dhi(1)
+             vy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qv))
+          end do
+          do i=dlo(1),dhi(1)
+             wy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qw))
+          enddo
+       end if
+
+       ! interior
+       do j=slo(2),shi(2)   
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qu))
+          end do
+          do i=dlo(1),dhi(1)
+             vy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
+          end do
+          do i=dlo(1),dhi(1)
+             wy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qw))
+          enddo
+       enddo
+
+       ! hi-y boundary
+       if (dhi(2) .eq. hi(2)) then
+          j = hi(2)-3
+          ! use 6th-order stencil
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qu))
+          end do
+          do i=dlo(1),dhi(1)
+             vy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qv))
+          end do
+          do i=dlo(1),dhi(1)
+             wy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qw))
+          enddo
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qu))
+          end do
+          do i=dlo(1),dhi(1)
+             vy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qv))
+          end do
+          do i=dlo(1),dhi(1)
+             wy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qw))
+          enddo
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_l3(q(i,j-2:j+1,k,qu))
+          end do
+          do i=dlo(1),dhi(1)
+             vy(i,j,k) = dxinv(2)*first_deriv_l3(q(i,j-2:j+1,k,qv))
+          end do
+          do i=dlo(1),dhi(1)
+             wy(i,j,k) = dxinv(2)*first_deriv_l3(q(i,j-2:j+1,k,qw))
+          enddo
+
+          j = hi(2)
+          ! use completely left-biased stencil
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_lb(q(i,j-3:j,k,qu))
+          end do
+          do i=dlo(1),dhi(1)
+             vy(i,j,k) = dxinv(2)*first_deriv_lb(q(i,j-3:j,k,qv))
+          end do
+          do i=dlo(1),dhi(1)
+             wy(i,j,k) = dxinv(2)*first_deriv_lb(q(i,j-3:j,k,qw))
+          enddo
+       end if
+    enddo
+    !$omp end do nowait
+
+    ! lo-z boundary
+    if (dlo(3) .eq. lo(3)) then
+       k = lo(3)
+       ! use completely right-biased stencil
+       !$omp do
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qw))
+          enddo
+       enddo
+       !$omp end do nowait
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       !$omp do
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qw))
+          enddo
+       enddo
+       !$omp end do nowait
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       !$omp do
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qw))
+          enddo
+       enddo
+       !$omp end do nowait
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       !$omp do
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qw))
+          enddo
+       enddo
+       !$omp end do nowait
+    end if
+
+    ! interior
+    !$omp do
+    do k=slo(3),shi(3)
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qw))
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    ! hi-z boundary
+    if (dhi(3) .eq. hi(3)) then
+       k = hi(3)-3
+       ! use 6th-order stencil
+       !$omp do
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qw))
+          enddo
+       enddo
+       !$omp end do nowait
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       !$omp do
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qw))
+          enddo
+       enddo
+       !$omp end do nowait
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       !$omp do
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qw))
+          enddo
+       enddo
+       !$omp end do nowait
+
+       k = hi(3)
+       ! use completely left-biased stencil
+       !$omp do
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qw))
+          enddo
+       enddo
+       !$omp end do nowait
+    end if
+
+    !$omp barrier
+
+    !----- mx -----
+
+    !----- mx : d()/dx -----
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+
+          do i=dlo(1),dhi(1)
+             tmpx(i) = vsm(i,j,k)*(vy(i,j,k)+wz(i,j,k))
+          end do
+
+          ! lo-x boundary
+          if (dlo(1) .eq. lo(1)) then
+             i = lo(1)
+             ! use completely right-biased stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + finlo(1)*dxinv(1)*first_deriv_rb(tmpx(i:i+3))
+             
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1)*first_deriv_r3(tmpx(i-1:i+2))
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1)*first_deriv_4(tmpx(i-2:i+2))
+
+             i = lo(1)+3
+             ! use 6th-order stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
+          end if
+
+          do i=slo(1),shi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1)*first_deriv_8(tmpx(i-4:i+4)) 
+          end do
+
+          ! hi-x boundary
+          if (dhi(1) .eq. hi(1)) then
+             i = hi(1)-3
+             ! use 6th-order stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1)*first_deriv_4(tmpx(i-2:i+2))
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1)*first_deriv_l3(tmpx(i-2:i+1))
+
+             i = hi(1)
+             ! use completely left-biased stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + finhi(1)*dxinv(1)*first_deriv_lb(tmpx(i-3:i))
+          end if
+       end do
+    end do
+    !$omp end do
+
+    !----- mx : d()/dy -----
+    !$omp do
+    do k=lo(3),hi(3)
+
+       do j=dlo(2),dhi(2)
+          do i=lo(1),hi(1)
+             tmpy(i,j) = mu(i,j,k)*vx(i,j,k)
+          end do
+       end do
+
+       ! lo-y boundary
+       if (dlo(2) .eq. lo(2)) then
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + foulo(2)*dxinv(2)*first_deriv_rb(tmpy(i,j:j+3))
+          end do
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2)*first_deriv_r3(tmpy(i,j-1:j+2))
+          end do
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2)*first_deriv_4(tmpy(i,j-2:j+2))
+          end do
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2)*first_deriv_6(tmpy(i,j-3:j+3))
+          end do
+       end if
+
+       ! interior
+       do j=slo(2),shi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2)*first_deriv_8(tmpy(i,j-4:j+4)) 
+          end do
+       end do
+
+       ! hi-y boundary
+       if (dhi(2) .eq. hi(2)) then
+          j = hi(2)-3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2)*first_deriv_6(tmpy(i,j-3:j+3))
+          end do
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2)*first_deriv_4(tmpy(i,j-2:j+2))
+          end do
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2)*first_deriv_l3(tmpy(i,j-2:j+1))
+          end do
+
+          j = hi(2)
+          ! use completely left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + fouhi(2)*dxinv(2)*first_deriv_lb(tmpy(i,j-3:j))
+          end do
+       end if
+    end do
+    !$omp end do
+
+    ! ----- mx : d()/dz -----
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = mu(i,j,k)*wx(i,j,k)
+          end do
+       end do
+    end do
+    !$omp end do
+
+    ! lo-z boundary
+    if (dlo(3) .eq. lo(3)) then
+       k = lo(3)
+       ! use completely right-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + foulo(3)*dxinv(3)*first_deriv_rb(tmpz(i,j,k:k+3))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_r3(tmpz(i,j,k-1:k+2))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
+          end do
+       end do
+       !$omp end do nowait
+    end if
+
+    ! interior
+    !$omp do
+    do k=slo(3),shi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_8(tmpz(i,j,k-4:k+4)) 
+          end do
+       end do
+    end do
+    !$omp end do nowait
+
+    ! hi-z boundary
+    if (dhi(3) .eq. hi(3)) then
+       k = hi(3)-3
+       ! use 6th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_l3(tmpz(i,j,k-2:k+1))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = hi(3)
+       ! use completely left-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + fouhi(3)*dxinv(3)*first_deriv_lb(tmpz(i,j,k-3:k))
+          end do
+       end do
+       !$omp end do nowait
+    end if
+
+    !$omp barrier
+
+    !----- my -----
+
+    !----- my : d()/dx -----
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+
+          do i=dlo(1),dhi(1)
+             tmpx(i) = mu(i,j,k)*uy(i,j,k)
+          end do
+
+          ! lo-x boundary
+          if (dlo(1) .eq. lo(1)) then
+             i = lo(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + foulo(1)*dxinv(1)*first_deriv_rb(tmpx(i:i+3))
+
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_r3(tmpx(i-1:i+2))
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_4(tmpx(i-2:i+2))
+
+             i = lo(1)+3
+             ! use 6th-order stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
+          end if
+
+          ! interior
+          do i=slo(1),shi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_8(tmpx(i-4:i+4)) 
+          end do
+
+          ! hi-x boundary
+          if (dhi(1) .eq. hi(1)) then
+             i = hi(1)-3
+             ! use 6th-order stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_4(tmpx(i-2:i+2))
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_l3(tmpx(i-2:i+1))
+
+             i = hi(1)
+             ! use completely left-biased stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + fouhi(1)*dxinv(1)*first_deriv_lb(tmpx(i-3:i))
+          end if
+       end do
+    end do
+    !$omp end do
+
+    !----- my : d()/dy -----
+    !$omp do
+    do k=lo(3),hi(3)
+
+       do j=dlo(2),dhi(2)
+          do i=lo(1),hi(1)
+             tmpy(i,j) = vsm(i,j,k)*(ux(i,j,k)+wz(i,j,k))
+          end do
+       end do
+
+       ! lo-y boundary
+       if (dlo(2) .eq. lo(2)) then
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + finlo(2)*dxinv(2)*first_deriv_rb(tmpy(i,j:j+3))
+          end do
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2)*first_deriv_r3(tmpy(i,j-1:j+2))
+          end do
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2)*first_deriv_4(tmpy(i,j-2:j+2))
+          end do
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2)*first_deriv_6(tmpy(i,j-3:j+3))
+          end do
+       end if
+
+       ! interior
+       do j=slo(2),shi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2)*first_deriv_8(tmpy(i,j-4:j+4)) 
+          end do
+       end do
+
+       ! hi-y boundary
+       if (dhi(2) .eq. hi(2)) then
+          j = hi(2)-3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2)*first_deriv_6(tmpy(i,j-3:j+3))
+          end do
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2)*first_deriv_4(tmpy(i,j-2:j+2))
+          end do
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2)*first_deriv_l3(tmpy(i,j-2:j+1))
+          end do
+
+          j = hi(2)
+          ! use completely left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + finhi(2)*dxinv(2)*first_deriv_lb(tmpy(i,j-3:j))
+          end do
+       end if
+    end do
+    !$omp end do
+
+    !----- my : d()/dz -----
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = mu(i,j,k)*wy(i,j,k)
+          end do
+       end do
+    end do
+    !$omp end do
+
+    ! lo-z boundary
+    if (dlo(3) .eq. lo(3)) then
+       k = lo(3)
+       ! use completely right-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + foulo(3)*dxinv(3)*first_deriv_rb(tmpz(i,j,k:k+3))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_r3(tmpz(i,j,k-1:k+2))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
+          end do
+       end do
+       !$omp end do nowait
+    end if
+
+    !$omp do
+    do k=slo(3),shi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_8(tmpz(i,j,k-4:k+4)) 
+          end do
+       end do
+    end do
+    !$omp end do nowait
+
+    ! hi-z boundary
+    if (dhi(3) .eq. hi(3)) then
+       k = hi(3)-3
+       ! use 6th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_l3(tmpz(i,j,k-2:k+1))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = hi(3)
+       ! use completely left-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + fouhi(3)*dxinv(3)*first_deriv_lb(tmpz(i,j,k-3:k))
+          end do
+       end do
+       !$omp end do nowait
+    end if
+
+    !$omp barrier
+
+    !----- mz -----
+
+    !----- mz : d()/dx -------
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+
+          do i=dlo(1),dhi(1)
+             tmpx(i) = mu(i,j,k)*uz(i,j,k)
+          end do
+
+          ! lo-x boundary
+          if (dlo(1) .eq. lo(1)) then
+             i = lo(1)
+             ! use completely right-biased stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + foulo(1)*dxinv(1)*first_deriv_rb(tmpx(i:i+3))
+
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1)*first_deriv_r3(tmpx(i-1:i+2))
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1)*first_deriv_4(tmpx(i-2:i+2))
+
+             i = lo(1)+3
+             ! use 6th-order stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
+          end if
+
+          ! interior
+          do i=slo(1),shi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+
+          ! hi-x boundary
+          if (dhi(1) .eq. hi(1)) then
+             i = hi(1)-3
+             ! use 6th-order stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1)*first_deriv_4(tmpx(i-2:i+2))
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1)*first_deriv_l3(tmpx(i-2:i+1))
+
+             i = hi(1)
+             ! use completely left-biased stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + fouhi(1)*dxinv(1)*first_deriv_lb(tmpx(i-3:i))
+          end if
+       end do
+    end do
+    !$omp end do
+
+    !----- mz : d()/dy -----
+    !$omp do
+    do k=lo(3),hi(3)
+
+       do j=dlo(2),dhi(2)
+          do i=lo(1),hi(1)
+             tmpy(i,j) = mu(i,j,k)*vz(i,j,k)
+          end do
+       end do
+
+       ! lo-y boundary
+       if (dlo(2) .eq. lo(2)) then
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + foulo(2)*dxinv(2)*first_deriv_rb(tmpy(i,j:j+3))
+          end do
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2)*first_deriv_r3(tmpy(i,j-1:j+2))
+          end do
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2)*first_deriv_4(tmpy(i,j-2:j+2))
+          end do
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2)*first_deriv_6(tmpy(i,j-3:j+3))
+          end do
+       end if
+
+       ! interior
+       do j=slo(2),shi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2)*first_deriv_8(tmpy(i,j-4:j+4))
+          end do
+       end do
+
+       ! hi-y boundary
+       if (dhi(2) .eq. hi(2)) then
+          j = hi(2)-3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2)*first_deriv_6(tmpy(i,j-3:j+3))
+          end do
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2)*first_deriv_4(tmpy(i,j-2:j+2))
+          end do
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2)*first_deriv_l3(tmpy(i,j-2:j+1))
+          end do
+
+          j = hi(2)
+          ! use completely left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + fouhi(2)*dxinv(2)*first_deriv_lb(tmpy(i,j-3:j))
+          end do
+       end if
+    end do
+    !$omp end do 
+
+    !----- mz : d()/dy -----
+
+    !$omp do
+    do k=dlo(3),dhi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = vsm(i,j,k)*(ux(i,j,k)+vy(i,j,k))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    ! lo-z boundary
+    if (dlo(3) .eq. lo(3)) then
+       k = lo(3)
+       ! use completely right-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + finlo(3)*dxinv(3)*first_deriv_rb(tmpz(i,j,k:k+3))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_r3(tmpz(i,j,k-1:k+2))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
+          end do
+       end do
+       !$omp end do nowait
+    end if
+    
+    !$omp do
+    do k=slo(3),shi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do nowait
+
+    ! hi-z boundary
+    if (dhi(3) .eq. hi(3)) then
+       k = hi(3)-3
+       ! use 6th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_l3(tmpz(i,j,k-2:k+1))
+          end do
+       end do
+       !$omp end do nowait
+
+       k = hi(3)
+       ! use completely left-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + finhi(3)*dxinv(3)*first_deriv_lb(tmpz(i,j,k-3:k))
+          end do
+       end do
+       !$omp end do nowait
+    end if
+
+    !$omp barrier
+
+    !----- energy -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             divu = (ux(i,j,k)+vy(i,j,k)+wz(i,j,k))*vsm(i,j,k)
+             tauxx = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
+             tauyy = 2.d0*mu(i,j,k)*vy(i,j,k) + divu
+             tauzz = 2.d0*mu(i,j,k)*wz(i,j,k) + divu
+             
+             ! change in internal energy
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  tauxx*ux(i,j,k) + tauyy*vy(i,j,k) + tauzz*wz(i,j,k) &
+                  + mu(i,j,k)*((uy(i,j,k)+vx(i,j,k))**2 &
+                  &          + (wx(i,j,k)+uz(i,j,k))**2 &
+                  &          + (vz(i,j,k)+wy(i,j,k))**2 )
+
+          end do
+       end do
+    end do
+    !$omp end do
+
+    deallocate(tmpx,tmpy)
+
+    !$omp end parallel
+
+    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,tmpz)
+
+    allocate(dpy(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
+    allocate(dxe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
+    allocate(dpe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+
+    allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons))
+
+    allocate(M8p(8,lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
+    allocate(Hry(  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
+
+    !$omp parallel &
+    !$omp private(i,j,k,n,qxn,qyn,qhn,Yhalf,hhalf,jj,mmtmp8) &
+    !$omp private(Htot,Htmp,Ytmp,M6p,M6X,M4p,M4X,M2p,M2X,BBp,BBX) &
+    !$omp private(mmtmp6, mmtmp4, mmtmp2, mmtmpB) &
+    !$omp private(rhstmp,rhstot,rhsene,Hcell,iface)
+
+    !$omp workshare
+    dpe = 0.d0
+    !$omp end workshare
+
+    do n=1,nspecies
+       qxn = qx1+n-1
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       !$omp do
+       do k=dlo(3),dhi(3)
+          do j=dlo(2),dhi(2)
+             do i=dlo(1),dhi(1)
+                dpy(i,j,k,n) = dxy(i,j,k,n)/q(i,j,k,qpres)*(q(i,j,k,qxn)-q(i,j,k,qyn))
+                dxe(i,j,k,n) = dxy(i,j,k,n)*q(i,j,k,qhn)
+                dpe(i,j,k) = dpe(i,j,k) + dpy(i,j,k,n)*q(i,j,k,qhn)
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    ! ------- BEGIN x-direction -------
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=slo(1),shi(1)+1
+             mmtmp8 = matmul(vsp(i-4:i+3,j,k), M8)
+             Hg(i,j,k,imx) = dot_product(mmtmp8, q(i-4:i+3,j,k,qu))
+
+             mmtmp8 = matmul(mu(i-4:i+3,j,k), M8)
+             Hg(i,j,k,imy) = dot_product(mmtmp8, q(i-4:i+3,j,k,qv))
+             Hg(i,j,k,imz) = dot_product(mmtmp8, q(i-4:i+3,j,k,qw))
+
+             mmtmp8 = matmul(lam(i-4:i+3,j,k), M8)
+             Hg(i,j,k,iene) = dot_product(mmtmp8, q(i-4:i+3,j,k,qtemp))
+
+             mmtmp8 = matmul(M8,  q(i-4:i+3,j,k,qpres))
+             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i-4:i+3,j,k), mmtmp8)
+             M8p(:,i,j,k) = mmtmp8
+          end do
+       end do
+    end do
+    !$omp end do
+
+    do n = 1, nspecies
+       qxn = qx1+n-1
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+   
+             do i=slo(1),shi(1)+1
+                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
+             end do
+    
+             do i=slo(1),shi(1)+1
+                mmtmp8 = matmul(M8, q(i-4:i+3,j,k,qxn))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i-4:i+3,j,k,n), mmtmp8)
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                     + dot_product(dxy(i-4:i+3,j,k,n), mmtmp8)
+             end do
+
+          end do
+       end do
+       !$omp end do
+    end do
+
+    ! correction
+    
+    !$omp workshare
+    Hry = 0.d0
+    !$omp end workshare
+
+    do n = 1, nspecies
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=slo(1),shi(1)+1
+                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+    
+    do n = 1, nspecies
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=slo(1),shi(1)+1
+                Yhalf = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    ! add x-direction rhs
+    do n=2,ncons
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=slo(1),shi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i+1,j,k,n) - Hg(i,j,k,n)) * dx2inv(1)
+             end do
+          end do
+       end do
+       !$omp end do nowait
+    end do
+
+    !$omp barrier
+
+    ! lo-x direction
+    if (dlo(1) .eq. lo(1)) then
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             i = lo(1)
+             ! use completely right-biased stencil
+             mmtmpB = matmul(vsp(i:i+3,j,k), BRB)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx)+finlo(1)*dx2inv(1)*dot_product(mmtmpB,q(i:i+3,j,k,qu))
+
+             mmtmpB = matmul(mu(i:i+3,j,k), BRB)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy)+foulo(1)*dx2inv(1)*dot_product(mmtmpB,q(i:i+3,j,k,qv))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz)+foulo(1)*dx2inv(1)*dot_product(mmtmpB,q(i:i+3,j,k,qw))
+
+             mmtmpB = matmul(lam(i:i+3,j,k), BRB)
+             BBp = matmul(BRB, q(i:i+3,j,k,qpres))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(1)*dx2inv(1) * &
+                  ( dot_product(mmtmpB, q(i:i+3,j,k,qtemp)) &
+                  + dot_product(      dpe(i:i+3,j,k), BBp) )
+             
+             rhstot = 0.d0
+             rhsene = 0.d0
+             do n = 1, nspecies
+                qxn = qx1+n-1
+                qyn = qy1+n-1
+                
+                BBX = matmul(BRB, q(i:i+3,j,k,qxn))
+                
+                rhstmp(n) = dot_product(dpy(i:i+3,j,k,n), BBp) &
+                     +      dot_product(dxy(i:i+3,j,k,n), BBX)
+                
+                rhsene = rhsene &
+                     +      dot_product(dxe(i:i+3,j,k,n), BBX)
+                
+                rhstot = rhstot + rhstmp(n)
+                Ytmp(n) = q(i,j,k,qyn)
+             end do
+             
+             do n = 1, nspecies
+                rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
+                     foulo(1)*dx2inv(1) * (rhstmp(n) - Ytmp(n)*rhstot)
+             end do
+             
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
+             end do
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(1)*dx2inv(1) * rhsene
+
+
+             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             ! use 2nd-order stencil for cell lo(1)+1,j,k
+             do iface=0,1 
+                i = lo(1)+1 + iface
+
+                mmtmp2 = matmul(vsp(i-1:i,j,k), M2)
+                Hcell(iface,imx) = dot_product(mmtmp2, q(i-1:i,j,k,qu))
+
+                mmtmp2 = matmul(mu(i-1:i,j,k), M2)
+                Hcell(iface,imy) = dot_product(mmtmp2, q(i-1:i,j,k,qv))
+                Hcell(iface,imz) = dot_product(mmtmp2, q(i-1:i,j,k,qw))
+
+                mmtmp2 = matmul(lam(i-1:i,j,k), M2)
+                M2p = matmul(M2,  q(i-1:i,j,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp2, q(i-1:i,j,k,qtemp)) &
+                     &            + dot_product(      dpe(i-1:i,j,k), M2p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M2X = matmul(M2, q(i-1:i,j,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i-1:i,j,k,n), M2p) &
+                        +    dot_product(dxy(i-1:i,j,k,n), M2X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i-1:i,j,k,n), M2X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf 
+                end do
+             end do
+
+             i = lo(1)+1
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+
+             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             ! use 4th-order stencil for cell lo(1)+2,j,k
+             do iface=0,1 
+                i = lo(1)+2 + iface
+
+                mmtmp4 = matmul(vsp(i-2:i+1,j,k), M4)
+                Hcell(iface,imx) = dot_product(mmtmp4, q(i-2:i+1,j,k,qu))
+
+                mmtmp4 = matmul(mu(i-2:i+1,j,k), M4)
+                Hcell(iface,imy) = dot_product(mmtmp4, q(i-2:i+1,j,k,qv))
+                Hcell(iface,imz) = dot_product(mmtmp4, q(i-2:i+1,j,k,qw))
+
+                mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
+                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp4, q(i-2:i+1,j,k,qtemp))      &
+                     &            + dot_product(      dpe(i-2:i+1,j,k), M4p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
+                        +    dot_product(dxy(i-2:i+1,j,k,n), M4X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i-2:i+1,j,k,n), M4X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             i = lo(1)+2
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+
+             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             ! use 6th-order stencil for cell lo(1)+3,j,k
+             do iface=0,1 
+                i = lo(1)+3 + iface
+
+                mmtmp6 = matmul(vsp(i-3:i+2,j,k), M6)
+                Hcell(iface,imx) = dot_product(mmtmp6, q(i-3:i+2,j,k,qu))
+
+                mmtmp6 = matmul(mu(i-3:i+2,j,k), M6)
+                Hcell(iface,imy) = dot_product(mmtmp6, q(i-3:i+2,j,k,qv))
+                Hcell(iface,imz) = dot_product(mmtmp6, q(i-3:i+2,j,k,qw))
+
+                mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
+                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp6, q(i-3:i+2,j,k,qtemp)) &
+                     &            + dot_product(      dpe(i-3:i+2,j,k), M6p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
+                        +    dot_product(dxy(i-3:i+2,j,k,n), M6X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i-3:i+2,j,k,n), M6X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf 
+                end do
+             end do
+
+             i = lo(1)+3
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+          end do
+       end do
+       !omp end do
+    end if
+
+    ! hi-x boundary
+    if (dhi(1) .eq. hi(1)) then
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             ! use 6th-order stencil for cell hi(1)-3,j,k
+             do iface=0,1  ! two faces of 
+                i = hi(1)-3 + iface
+
+                mmtmp6 = matmul(vsp(i-3:i+2,j,k), M6)
+                Hcell(iface,imx) = dot_product(mmtmp6, q(i-3:i+2,j,k,qu))
+
+                mmtmp6 = matmul(mu(i-3:i+2,j,k), M6)
+                Hcell(iface,imy) = dot_product(mmtmp6, q(i-3:i+2,j,k,qv))
+                Hcell(iface,imz) = dot_product(mmtmp6, q(i-3:i+2,j,k,qw))
+
+                mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
+                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp6, q(i-3:i+2,j,k,qtemp)) &
+                     &            + dot_product(      dpe(i-3:i+2,j,k), M6p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
+                        +    dot_product(dxy(i-3:i+2,j,k,n), M6X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i-3:i+2,j,k,n), M6X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             i = hi(1)-3
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+
+             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             ! use 4th-order stencil for cell hi(1)-2,j,k
+             do iface=0,1 
+                i = hi(1)-2 + iface
+
+                mmtmp4 = matmul(vsp(i-2:i+1,j,k), M4)
+                Hcell(iface,imx) = dot_product(mmtmp4, q(i-2:i+1,j,k,qu))
+
+                mmtmp4 = matmul(mu(i-2:i+1,j,k), M4)
+                Hcell(iface,imy) = dot_product(mmtmp4, q(i-2:i+1,j,k,qv))
+                Hcell(iface,imz) = dot_product(mmtmp4, q(i-2:i+1,j,k,qw))
+
+                mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
+                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp4, q(i-2:i+1,j,k,qtemp)) &
+                     &            + dot_product(      dpe(i-2:i+1,j,k), M4p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
+                        +    dot_product(dxy(i-2:i+1,j,k,n), M4X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i-2:i+1,j,k,n), M4X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             i = hi(1)-2
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+
+             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             ! use 2nd-order stencil for cell hi(1)-1,j,k
+             do iface=0,1 
+                i = hi(1)-1 + iface
+
+                mmtmp2 = matmul(vsp(i-1:i,j,k), M2)
+                Hcell(iface,imx) = dot_product(mmtmp2, q(i-1:i,j,k,qu))
+
+                mmtmp2 = matmul(mu(i-1:i,j,k), M2)
+                Hcell(iface,imy) = dot_product(mmtmp2, q(i-1:i,j,k,qv))
+                Hcell(iface,imz) = dot_product(mmtmp2, q(i-1:i,j,k,qw))
+
+                mmtmp2 = matmul(lam(i-1:i,j,k), M2)
+                M2p = matmul(M2,  q(i-1:i,j,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp2, q(i-1:i,j,k,qtemp)) &
+                     &            + dot_product(      dpe(i-1:i,j,k), M2p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M2X = matmul(M2, q(i-1:i,j,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i-1:i,j,k,n), M2p) &
+                        +    dot_product(dxy(i-1:i,j,k,n), M2X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i-1:i,j,k,n), M2X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             i = hi(1)-1
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+
+             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             i = hi(1)
+             ! use completely left-biased stencil
+             mmtmpB = matmul(vsp(i-3:i,j,k), BLB)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx)+finhi(1)*dx2inv(1)*dot_product(mmtmpB,q(i-3:i,j,k,qu))
+
+             mmtmpB= matmul(mu(i-3:i,j,k), BLB)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy)+fouhi(1)*dx2inv(1)*dot_product(mmtmpB,q(i-3:i,j,k,qv))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz)+fouhi(1)*dx2inv(1)*dot_product(mmtmpB,q(i-3:i,j,k,qw))
+
+             mmtmpB = matmul(lam(i-3:i,j,k), BLB)
+             BBp = matmul(BLB, q(i-3:i,j,k,qpres))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(1)*dx2inv(1) * &
+                  ( dot_product(mmtmpB, q(i-3:i,j,k,qtemp)) &
+                  + dot_product(      dpe(i-3:i,j,k), BBp) )
+             
+             rhstot = 0.d0
+             rhsene = 0.d0
+             do n = 1, nspecies
+                qxn = qx1+n-1
+                qyn = qy1+n-1
+
+                BBX = matmul(BLB, q(i-3:i,j,k,qxn))
+                
+                rhstmp(n) = dot_product(dpy(i-3:i,j,k,n), BBp) &
+                     +      dot_product(dxy(i-3:i,j,k,n), BBX)
+                
+                rhsene = rhsene &
+                     +      dot_product(dxe(i-3:i,j,k,n), BBX)
+
+                rhstot = rhstot + rhstmp(n)
+                Ytmp(n) = q(i,j,k,qyn)
+             end do
+             
+             do n = 1, nspecies
+                rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
+                     fouhi(1)*dx2inv(1) * (rhstmp(n) - Ytmp(n)*rhstot)
+             end do
+
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
+             end do
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(1)*dx2inv(1) * rhsene
+          end do
+       end do
+       !$omp end do
+    end if
+
+    ! ------- END x-direction -------
+
+    ! ------- BEGIN y-direction -------
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=slo(2),shi(2)+1
+
+          do i=lo(1),hi(1)             
+             mmtmp8 = matmul(mu(i,j-4:j+3,k), M8)
+             Hg(i,j,k,imx) = dot_product(mmtmp8, q(i,j-4:j+3,k,qu))
+             Hg(i,j,k,imz) = dot_product(mmtmp8, q(i,j-4:j+3,k,qw))
+          end do
+
+          do i=lo(1),hi(1)
+             mmtmp8 = matmul(vsp(i,j-4:j+3,k), M8)
+             Hg(i,j,k,imy) = dot_product(mmtmp8, q(i,j-4:j+3,k,qv))
+          end do
+
+          do i=lo(1),hi(1)
+             mmtmp8 = matmul(lam(i,j-4:j+3,k), M8)
+             Hg(i,j,k,iene) = dot_product(mmtmp8, q(i,j-4:j+3,k,qtemp))
+          end do
+
+          do i=lo(1),hi(1)
+             mmtmp8 = matmul(M8, q(i,j-4:j+3,k,qpres))
+             M8p(:,i,j,k) = mmtmp8
+             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j-4:j+3,k), mmtmp8)
+          end do
+
+       end do
+    end do
+    !$omp end do
+
+    do n = 1, nspecies
+       qxn = qx1+n-1
+
+      !$omp do
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)+1
+
+             do i=lo(1),hi(1)
+                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
+             end do
+
+             do i=lo(1),hi(1)
+                mmtmp8 = matmul(M8, q(i,j-4:j+3,k,qxn))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp8)
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                     + dot_product(dxy(i,j-4:j+3,k,n), mmtmp8)
+             end do
+
+          end do
+       end do
+
+    end do
+       
+    ! correction
+
+    !$omp workshare
+    Hry = 0.d0
+    !$omp end workshare
+
+    do n = 1, nspecies
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)+1
+             do i=lo(1),hi(1)
+                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    do n = 1, nspecies
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)+1
+             do i=lo(1),hi(1)
+                Yhalf = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    ! add y-direction rhs
+    do n=2,ncons
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
+             end do
+          end do
+       end do
+       !$omp end do nowait
+    end do
+
+    !$omp barrier
+
+    ! lo-y boundary
+    if (dlo(2) .eq. lo(2)) then
+       !$omp do
+       do k=lo(3),hi(3)
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+
+             mmtmpB = matmul(mu(i,j:j+3,k), BRB)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx)+foulo(2)*dx2inv(2)*dot_product(mmtmpB,q(i,j:j+3,k,qu))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz)+foulo(2)*dx2inv(2)*dot_product(mmtmpB,q(i,j:j+3,k,qw))
+
+             mmtmpB = matmul(vsp(i,j:j+3,k), BRB)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy)+finlo(2)*dx2inv(2)*dot_product(mmtmpB,q(i,j:j+3,k,qv))
+
+             mmtmpB = matmul(lam(i,j:j+3,k), BRB)
+             BBp = matmul(BRB, q(i,j:j+3,k,qpres))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(2)*dx2inv(2) * &
+                  ( dot_product(mmtmpB, q(i,j:j+3,k,qtemp)) &
+                  + dot_product(      dpe(i,j:j+3,k), BBp) )
+             
+             rhstot = 0.d0
+             rhsene = 0.d0
+             do n = 1, nspecies
+                qxn = qx1+n-1
+                qyn = qy1+n-1
+
+                BBX = matmul(BRB, q(i,j:j+3,k,qxn))
+                
+                rhstmp(n) = dot_product(dpy(i,j:j+3,k,n), BBp) &
+                     +      dot_product(dxy(i,j:j+3,k,n), BBX)
+                
+                rhsene = rhsene &
+                     +      dot_product(dxe(i,j:j+3,k,n), BBX)
+
+                rhstot = rhstot + rhstmp(n)
+                Ytmp(n) = q(i,j,k,qyn)
+             end do
+             
+             do n = 1, nspecies
+                rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
+                     foulo(2)*dx2inv(2) * (rhstmp(n) - Ytmp(n)*rhstot)
+             end do
+
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
+             end do
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(2)*dx2inv(2) * rhsene
+          end do
+
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          ! use 2nd-order stencil for cell i,lo(2)+1,k
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                j = lo(2)+1 + iface
+
+                mmtmp2 = matmul(mu(i,j-1:j,k), M2)
+                Hcell(iface,imx) = dot_product(mmtmp2, q(i,j-1:j,k,qu))
+                Hcell(iface,imz) = dot_product(mmtmp2, q(i,j-1:j,k,qw))
+
+                mmtmp2 = matmul(vsp(i,j-1:j,k), M2)
+                Hcell(iface,imy) = dot_product(mmtmp2, q(i,j-1:j,k,qv))
+
+                mmtmp2 = matmul(lam(i,j-1:j,k), M2)
+                M2p = matmul(M2,  q(i,j-1:j,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp2, q(i,j-1:j,k,qtemp)) &
+                     &            + dot_product(      dpe(i,j-1:j,k), M2p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M2X = matmul(M2, q(i,j-1:j,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j-1:j,k,n), M2p) &
+                        +    dot_product(dxy(i,j-1:j,k,n), M2X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j-1:j,k,n), M2X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             j = lo(2)+1
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+          end do
+
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          ! use 4th-order stencil for cell i,lo(2)+2,k
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                j = lo(2)+2 + iface
+
+                mmtmp4 = matmul(mu(i,j-2:j+1,k), M4)
+                Hcell(iface,imx) = dot_product(mmtmp4, q(i,j-2:j+1,k,qu))
+                Hcell(iface,imz) = dot_product(mmtmp4, q(i,j-2:j+1,k,qw))
+
+                mmtmp4 = matmul(vsp(i,j-2:j+1,k), M4)
+                Hcell(iface,imy) = dot_product(mmtmp4, q(i,j-2:j+1,k,qv))
+
+                mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
+                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp4, q(i,j-2:j+1,k,qtemp)) &
+                     &            + dot_product(      dpe(i,j-2:j+1,k), M4p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
+                        +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j-2:j+1,k,n), M4X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             j = lo(2)+2
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+          end do
+
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          ! use 6th-order stencil for cell i,lo(2)+3,k
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                j = lo(2)+3 + iface
+
+                mmtmp6 = matmul(mu(i,j-3:j+2,k), M6)
+                Hcell(iface,imx) = dot_product(mmtmp6, q(i,j-3:j+2,k,qu))
+                Hcell(iface,imz) = dot_product(mmtmp6, q(i,j-3:j+2,k,qw))
+
+                mmtmp6 = matmul(vsp(i,j-3:j+2,k), M6)
+                Hcell(iface,imy) = dot_product(mmtmp6, q(i,j-3:j+2,k,qv))
+
+                mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
+                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp6, q(i,j-3:j+2,k,qtemp))      &
+                     &            + dot_product(      dpe(i,j-3:j+2,k), M6p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
+                        +    dot_product(dxy(i,j-3:j+2,k,n), M6X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j-3:j+2,k,n), M6X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             j = lo(2)+3
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+          end do
+       end do
+       !$omp end do
+    end if
+
+    ! hi-y boundary
+    if (dhi(2) .eq. hi(2)) then
+       !$omp do
+       do k=lo(3),hi(3)
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          ! use 6th-order stencil for cell i,hi(2)-3,k
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                j = hi(2)-3 + iface
+
+                mmtmp6 = matmul(mu(i,j-3:j+2,k), M6)
+                Hcell(iface,imx) = dot_product(mmtmp6, q(i,j-3:j+2,k,qu))
+                Hcell(iface,imz) = dot_product(mmtmp6, q(i,j-3:j+2,k,qw))
+
+                mmtmp6 = matmul(vsp(i,j-3:j+2,k), M6)
+                Hcell(iface,imy) = dot_product(mmtmp6, q(i,j-3:j+2,k,qv))
+
+                mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
+                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp6, q(i,j-3:j+2,k,qtemp))      &
+                     &            + dot_product(      dpe(i,j-3:j+2,k), M6p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
+                        +    dot_product(dxy(i,j-3:j+2,k,n), M6X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j-3:j+2,k,n), M6X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             j = hi(2)-3
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+          end do
+
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          ! use 4th-order stencil for cell i,hi(2)-2,k
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                j = hi(2)-2 + iface
+
+                mmtmp4 = matmul(mu(i,j-2:j+1,k), M4)
+                Hcell(iface,imx) = dot_product(mmtmp4, q(i,j-2:j+1,k,qu))
+                Hcell(iface,imz) = dot_product(mmtmp4, q(i,j-2:j+1,k,qw))
+
+                mmtmp4 = matmul(vsp(i,j-2:j+1,k), M4)
+                Hcell(iface,imy) = dot_product(mmtmp4, q(i,j-2:j+1,k,qv))
+
+                mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
+                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp4, q(i,j-2:j+1,k,qtemp)) &
+                     &            + dot_product(      dpe(i,j-2:j+1,k), M4p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
+                        +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j-2:j+1,k,n), M4X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             j = hi(2)-2
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+          end do
+
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          ! use 2nd-order stencil for cell i,hi(2)-1,k
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                j = hi(2)-1 + iface
+
+                mmtmp2 = matmul(mu(i,j-1:j,k), M2)
+                Hcell(iface,imx) = dot_product(mmtmp2, q(i,j-1:j,k,qu))
+                Hcell(iface,imz) = dot_product(mmtmp2, q(i,j-1:j,k,qw))
+
+                mmtmp2 = matmul(vsp(i,j-1:j,k), M2)
+                Hcell(iface,imy) = dot_product(mmtmp2, q(i,j-1:j,k,qv))
+
+                mmtmp2 = matmul(lam(i,j-1:j,k), M2)
+                M2p = matmul(M2,  q(i,j-1:j,k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp2, q(i,j-1:j,k,qtemp))      &
+                     &            + dot_product(      dpe(i,j-1:j,k), M2p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M2X = matmul(M2, q(i,j-1:j,k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j-1:j,k,n), M2p) &
+                        +    dot_product(dxy(i,j-1:j,k,n), M2X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j-1:j,k,n), M2X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             j = hi(2)-1
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+          end do
+
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          j = hi(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+
+             mmtmpB = matmul(mu(i,j-3:j,k), BLB)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx)+fouhi(2)*dx2inv(2)*dot_product(mmtmpB,q(i,j-3:j,k,qu))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz)+fouhi(2)*dx2inv(2)*dot_product(mmtmpB,q(i,j-3:j,k,qw))
+
+             mmtmpB = matmul(vsp(i,j-3:j,k), BLB)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy)+finhi(2)*dx2inv(2)*dot_product(mmtmpB,q(i,j-3:j,k,qv))
+
+             mmtmpB = matmul(lam(i,j-3:j,k), BLB)
+             BBp = matmul(BLB, q(i,j-3:j,k,qpres))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(2)*dx2inv(2) * &
+                  ( dot_product(mmtmpB, q(i,j-3:j,k,qtemp)) &
+                  + dot_product(      dpe(i,j-3:j,k), BBp) )
+             
+             rhstot = 0.d0
+             rhsene = 0.d0
+             do n = 1, nspecies
+                qxn = qx1+n-1
+                qyn = qy1+n-1
+
+                BBX = matmul(BLB, q(i,j-3:j,k,qxn))
+                
+                rhstmp(n) = dot_product(dpy(i,j-3:j,k,n), BBp) &
+                     +      dot_product(dxy(i,j-3:j,k,n), BBX)
+                
+                rhsene = rhsene &
+                     +      dot_product(dxe(i,j-3:j,k,n), BBX)
+
+                rhstot = rhstot + rhstmp(n)
+                Ytmp(n) = q(i,j,k,qyn)
+             end do
+             
+             do n = 1, nspecies
+                rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
+                     fouhi(2)*dx2inv(2) * (rhstmp(n) - Ytmp(n)*rhstot)
+             end do
+
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
+             end do
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(2)*dx2inv(2) * rhsene
+          end do
+       end do
+       !$omp end do       
+    end if
+
+    ! ------- END y-direction -------
+
+    ! ------- BEGIN z-direction -------
+
+    !$omp do
+    do k=slo(3),shi(3)+1
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             mmtmp8 = matmul(mu(i,j,k-4:k+3), M8)
+             Hg(i,j,k,imx) = dot_product(mmtmp8, q(i,j,k-4:k+3,qu))
+             Hg(i,j,k,imy) = dot_product(mmtmp8, q(i,j,k-4:k+3,qv))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=slo(3),shi(3)+1
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             mmtmp8 = matmul(vsp(i,j,k-4:k+3), M8)
+             Hg(i,j,k,imz) = dot_product(mmtmp8, q(i,j,k-4:k+3,qw))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=slo(3),shi(3)+1
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             mmtmp8 = matmul(lam(i,j,k-4:k+3), M8)
+             Hg(i,j,k,iene) = dot_product(mmtmp8, q(i,j,k-4:k+3,qtemp))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=slo(3),shi(3)+1
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             mmtmp8 = matmul(M8, q(i,j,k-4:k+3,qpres))
+             M8p(:,i,j,k) = mmtmp8
+             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j,k-4:k+3), mmtmp8)
+          end do
+       end do
+    end do
+    !$omp end do
+
+    do n = 1, nspecies
+       qxn = qx1+n-1
+
+       do jj=lo(2),hi(2),jblocksize
+       !$omp do
+       do k=slo(3),shi(3)+1
+!          do j=lo(2),hi(2)
+          do j=jj,min(jj+jblocksize-1,hi(2))
+             do i=lo(1),hi(1)
+                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
+             end do
+          end do
+       end do
+       !$omp end do
+       enddo
+
+       do jj=lo(2),hi(2),jblocksize
+       !$omp do
+       do k=slo(3),shi(3)+1
+!          do j=lo(2),hi(2)
+          do j=jj,min(jj+jblocksize-1,hi(2))
+             do i=lo(1),hi(1)
+                mmtmp8 = matmul(M8, q(i,j,k-4:k+3,qxn))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp8)
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                     + dot_product(dxy(i,j,k-4:k+3,n), mmtmp8)
+             end do
+          end do
+       end do
+       !$omp end do
+       enddo
+    end do
+
+    ! correction
+
+    !$omp workshare
+    Hry = 0.d0
+    !$omp end workshare
+
+    do n = 1, nspecies
+       !$omp do
+       do k=slo(3),shi(3)+1
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    do n = 1, nspecies
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       !$omp do
+       do k=slo(3),shi(3)+1
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                Yhalf = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+    
+    ! add z-direction rhs
+    do n=2,ncons
+       !$omp do
+       do k=slo(3),shi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+       !$omp end do nowait
+    end do
+    
+    !$omp barrier
+
+    ! lo-z boundary
+    if (dlo(3) .eq. lo(3)) then
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       k = lo(3)
+       ! use completely right-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             mmtmpB = matmul(mu(i,j,k:k+3), BRB)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx)+foulo(3)*dx2inv(3)*dot_product(mmtmpB,q(i,j,k:k+3,qu))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy)+foulo(3)*dx2inv(3)*dot_product(mmtmpB,q(i,j,k:k+3,qv))
+
+             mmtmpB = matmul(vsp(i,j,k:k+3), BRB)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz)+finlo(3)*dx2inv(3)*dot_product(mmtmpB,q(i,j,k:k+3,qw) )
+
+             mmtmpB = matmul(lam(i,j,k:k+3), BRB)
+             BBp = matmul(BRB, q(i,j,k:k+3,qpres))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(3)*dx2inv(3) * &
+                  ( dot_product(mmtmpB, q(i,j,k:k+3,qtemp)) &
+                  + dot_product(      dpe(i,j,k:k+3), BBp) )
+             
+             rhstot = 0.d0
+             rhsene = 0.d0
+             do n = 1, nspecies
+                qxn = qx1+n-1
+                qyn = qy1+n-1
+
+                BBX = matmul(BRB, q(i,j,k:k+3,qxn))
+                
+                rhstmp(n) = dot_product(dpy(i,j,k:k+3,n), BBp) &
+                     +      dot_product(dxy(i,j,k:k+3,n), BBX)
+                
+                rhsene = rhsene &
+                     +      dot_product(dxe(i,j,k:k+3,n), BBX)
+
+                rhstot = rhstot + rhstmp(n)
+                Ytmp(n) = q(i,j,k,qyn)
+             end do
+             
+             do n = 1, nspecies
+                rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
+                     foulo(3)*dx2inv(3) * (rhstmp(n) - Ytmp(n)*rhstot)
+             end do
+
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
+             end do
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + foulo(3)*dx2inv(3) * rhsene
+             
+          end do
+       end do
+       !$omp end do
+
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       ! use 2nd-order stencil for cell i,j,lo(3)+1
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                k = lo(3)+1 + iface
+
+                mmtmp2 = matmul(mu(i,j,k-1:k), M2)
+                Hcell(iface,imx) = dot_product(mmtmp2, q(i,j,k-1:k,qu))
+                Hcell(iface,imy) = dot_product(mmtmp2, q(i,j,k-1:k,qv))
+
+                mmtmp2 = matmul(vsp(i,j,k-1:k), M2)
+                Hcell(iface,imz) = dot_product(mmtmp2, q(i,j,k-1:k,qw))
+
+                mmtmp2 = matmul(lam(i,j,k-1:k), M2)
+                M2p = matmul(M2,  q(i,j,k-1:k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp2, q(i,j,k-1:k,qtemp)) &
+                     &            + dot_product(       dpe(i,j,k-1:k), M2p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M2X = matmul(M2, q(i,j,k-1:k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j,k-1:k,n), M2p) &
+                        +    dot_product(dxy(i,j,k-1:k,n), M2X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j,k-1:k,n), M2X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             k = lo(3)+1
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+       !$omp end do
+
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       ! use 4th-order stencil for cell i,j,lo(3)+2
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                k = lo(3)+2 + iface
+
+                mmtmp4 = matmul(mu(i,j,k-2:k+1), M4)
+                Hcell(iface,imx) = dot_product(mmtmp4, q(i,j,k-2:k+1,qu))
+                Hcell(iface,imy) = dot_product(mmtmp4, q(i,j,k-2:k+1,qv))
+
+                mmtmp4 = matmul(vsp(i,j,k-2:k+1), M4)
+                Hcell(iface,imz) = dot_product(mmtmp4, q(i,j,k-2:k+1,qw))
+
+                mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
+                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp4, q(i,j,k-2:k+1,qtemp)) &
+                     &            + dot_product(      dpe(i,j,k-2:k+1), M4p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
+                        +    dot_product(dxy(i,j,k-2:k+1,n), M4X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j,k-2:k+1,n), M4X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             k = lo(3)+2
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+       !$omp end do
+
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       ! use 6th-order stencil for cell i,j,lo(3)+3
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                k = lo(3)+3 + iface
+
+                mmtmp6 = matmul(mu(i,j,k-3:k+2), M6)
+                Hcell(iface,imx) = dot_product(mmtmp6, q(i,j,k-3:k+2,qu))
+                Hcell(iface,imy) = dot_product(mmtmp6, q(i,j,k-3:k+2,qv))
+
+                mmtmp6 = matmul(vsp(i,j,k-3:k+2), M6)
+                Hcell(iface,imz) = dot_product(mmtmp6, q(i,j,k-3:k+2,qw))
+
+                mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
+                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp6, q(i,j,k-3:k+2,qtemp)) &
+                     &            + dot_product(      dpe(i,j,k-3:k+2), M6p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
+                        +    dot_product(dxy(i,j,k-3:k+2,n), M6X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j,k-3:k+2,n), M6X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             k = lo(3)+3
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+       !$omp end do       
+    end if
+
+    ! hi-z boundary
+    if (dhi(3) .eq. hi(3)) then
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       ! use 6th-order stencil for cell i,j,hi(3)-3
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                k = hi(3)-3 + iface
+
+                mmtmp6 = matmul(mu(i,j,k-3:k+2), M6)
+                Hcell(iface,imx) = dot_product(mmtmp6, q(i,j,k-3:k+2,qu))
+                Hcell(iface,imy) = dot_product(mmtmp6, q(i,j,k-3:k+2,qv))
+
+                mmtmp6 = matmul(vsp(i,j,k-3:k+2), M6)
+                Hcell(iface,imz) = dot_product(mmtmp6, q(i,j,k-3:k+2,qw))
+
+                mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
+                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp6, q(i,j,k-3:k+2,qtemp)) &
+                     &            + dot_product(      dpe(i,j,k-3:k+2), M6p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
+                        +    dot_product(dxy(i,j,k-3:k+2,n), M6X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j,k-3:k+2,n), M6X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             k = hi(3)-3
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+       !$omp end do
+
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       ! use 4th-order stencil for cell i,j,hi(3)-2
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                k = hi(3)-2 + iface
+
+                mmtmp4 = matmul(mu(i,j,k-2:k+1), M4)
+                Hcell(iface,imx) = dot_product(mmtmp4, q(i,j,k-2:k+1,qu))
+                Hcell(iface,imy) = dot_product(mmtmp4, q(i,j,k-2:k+1,qv))
+
+                mmtmp4 = matmul(vsp(i,j,k-2:k+1), M4)
+                Hcell(iface,imz) = dot_product(mmtmp4, q(i,j,k-2:k+1,qw))
+
+                mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
+                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp4, q(i,j,k-2:k+1,qtemp)) &
+                     &            + dot_product(      dpe(i,j,k-2:k+1), M4p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
+                        +    dot_product(dxy(i,j,k-2:k+1,n), M4X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j,k-2:k+1,n), M4X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             k = hi(3)-2
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+       !$omp end do
+
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       ! use 2nd-order stencil for cell i,j,hi(3)-1
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             do iface=0,1 
+                k = hi(3)-1 + iface
+
+                mmtmp2 = matmul(mu(i,j,k-1:k), M2)
+                Hcell(iface,imx) = dot_product(mmtmp2, q(i,j,k-1:k,qu))
+                Hcell(iface,imy) = dot_product(mmtmp2, q(i,j,k-1:k,qv))
+
+                mmtmp2 = matmul(vsp(i,j,k-1:k), M2)
+                Hcell(iface,imz) = dot_product(mmtmp2, q(i,j,k-1:k,qw))
+
+                mmtmp2 = matmul(lam(i,j,k-1:k), M2)
+                M2p = matmul(M2,  q(i,j,k-1:k,qpres))
+                Hcell(iface,iene) = dot_product(mmtmp2, q(i,j,k-1:k,qtemp)) &
+                     &            + dot_product(      dpe(i,j,k-1:k), M2p)
+
+                Htot = 0.d0
+                do n = 1, nspecies
+                   qxn = qx1+n-1
+                   qyn = qy1+n-1
+
+                   M2X = matmul(M2, q(i,j,k-1:k,qxn))
+                
+                   Htmp(n) = dot_product(dpy(i,j,k-1:k,n), M2p) &
+                        +    dot_product(dxy(i,j,k-1:k,n), M2X)
+
+                   Hcell(iface,iene) = Hcell(iface,iene) &
+                        +    dot_product(dxe(i,j,k-1:k,n), M2X)
+
+                   Htot = Htot + Htmp(n)
+                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                end do
+
+                do n = 1, nspecies
+                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                end do
+
+                do n = 1, nspecies
+                   qhn = qh1+n-1
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
+                end do
+             end do
+
+             k = hi(3)-1
+             do n=2,ncons
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+       !$omp end do
+
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       k = hi(3)
+       ! use completely right-biased stencil
+       !$omp do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             mmtmpB = matmul(mu(i,j,k-3:k), BLB)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx)+fouhi(3)*dx2inv(3)*dot_product(mmtmpB,q(i,j,k-3:k,qu))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy)+fouhi(3)*dx2inv(3)*dot_product(mmtmpB,q(i,j,k-3:k,qv))
+
+             mmtmpB = matmul(vsp(i,j,k-3:k), BLB)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz)+finhi(3)*dx2inv(3)*dot_product(mmtmpB,q(i,j,k-3:k,qw))
+
+             mmtmpB = matmul(lam(i,j,k-3:k), BLB)
+             BBp = matmul(BLB, q(i,j,k-3:k,qpres))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(3)*dx2inv(3) * &
+                  ( dot_product(mmtmpB, q(i,j,k-3:k,qtemp)) &
+                  + dot_product(      dpe(i,j,k-3:k), BBp) )
+             
+             rhstot = 0.d0
+             rhsene = 0.d0
+             do n = 1, nspecies
+                qxn = qx1+n-1
+                qyn = qy1+n-1
+
+                BBX = matmul(BLB, q(i,j,k-3:k,qxn))
+                
+                rhstmp(n) = dot_product(dpy(i,j,k-3:k,n), BBp) &
+                     +      dot_product(dxy(i,j,k-3:k,n), BBX)
+                
+                rhsene = rhsene &
+                     +      dot_product(dxe(i,j,k-3:k,n), BBX)
+
+                rhstot = rhstot + rhstmp(n)
+                Ytmp(n) = q(i,j,k,qyn)
+             end do
+             
+             do n = 1, nspecies
+                rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
+                     fouhi(3)*dx2inv(3) * (rhstmp(n) - Ytmp(n)*rhstot)
+             end do
+
+             do n = 1, nspecies
+                qhn = qh1+n-1
+                rhsene = rhsene - Ytmp(n) * q(i,j,k,qhn) * rhstot
+             end do
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(3)*dx2inv(3) * rhsene
+             
+          end do
+       end do
+       !$omp end do
+    end if
+
+    ! ------- END z-direction -------
+
+    ! add kinetic energy
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) &
+                  + rhs(i,j,k,imx)*q(i,j,k,qu) &
+                  + rhs(i,j,k,imy)*q(i,j,k,qv) &
+                  + rhs(i,j,k,imz)*q(i,j,k,qw)
+          end do
+       end do
+    end do
+    !$omp end do 
+    
+    !$omp end parallel
+
+    deallocate(Hg,dpy,dxe,dpe,vsp,vsm,M8p,Hry)
+
+  end subroutine narrow_diffterm_3d
+
+
+  subroutine chemterm_3d(lo,hi,ng,q,up) ! up is UPrime that has no ghost cells
+    integer,          intent(in ) :: lo(3),hi(3),ng
+    double precision, intent(in )   :: q (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(inout) :: up(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+
+    integer :: iwrk, i,j,k
+    double precision :: Yt(nspecies), wdot(nspecies), rwrk
+
+    !$omp parallel do private(i,j,k,iwrk,rwrk,Yt,wdot)
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             Yt = q(i,j,k,qy1:qy1+nspecies-1)
+             call ckwyr(q(i,j,k,qrho), q(i,j,k,qtemp), Yt, iwrk, rwrk, wdot)
+             up(i,j,k,iry1:) = wdot * molecular_weight
+             
+          end do
+       end do
+    end do
+    !$omp end parallel do 
+
+  end subroutine chemterm_3d
+
+  subroutine comp_courno_3d(lo,hi,ng,dx,Q,courno)
+    integer, intent(in) :: lo(3), hi(3), ng
+    double precision, intent(in) :: dx(3)
+    double precision, intent(in) :: q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(inout) :: courno
+
+    integer :: i,j,k, iwrk
+    double precision :: dxinv(3), c, rwrk, Cv, Cp
+    double precision :: Tt, X(nspecies), gamma
+    double precision :: courx, coury, courz
+
+    double precision, parameter :: Ru = 8.31451d7
+
+    do i=1,3
+       dxinv(i) = 1.0d0 / dx(i)
+    end do
+
+    !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,X,gamma,Cv,Cp,c) &
+    !$omp private(courx,coury,courz) &
+    !$omp reduction(max:courno)
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+
+             Tt = q(i,j,k,qtemp)
+             X  = q(i,j,k,qx1:qx1+nspecies-1)
+             call ckcvbl(Tt, X, iwrk, rwrk, Cv)
+             Cp = Cv + Ru
+             gamma = Cp / Cv
+             c = sqrt(gamma*q(i,j,k,qpres)/q(i,j,k,qrho))
+
+             courx = (c+abs(q(i,j,k,qu))) * dxinv(1)
+             coury = (c+abs(q(i,j,k,qv))) * dxinv(2)
+             courz = (c+abs(q(i,j,k,qw))) * dxinv(3)
+             
+             courno = max( courx, coury, courz , courno )
+
+          end do
+       end do
+    end do
+    !$omp end parallel do
+
+  end subroutine comp_courno_3d
+
+
+  subroutine S3D_diffterm_1(lo,hi,ng,ndq,dx,q,rhs,mu,xi,qx,qy,qz)
+ 
+    integer,          intent(in ) :: lo(3),hi(3),ng,ndq
+    double precision, intent(in ) :: dx(3)
+    double precision, intent(in ) :: q  (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(in ) :: mu (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in ) :: xi (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(out) :: qx (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(out) :: qy (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(out) :: qz (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+
+    double precision, allocatable, dimension(:,:,:) :: vsm
+    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
+
+    double precision :: dxinv(3), divu
+    double precision :: tauxx,tauyy,tauzz 
+    integer :: i,j,k,n, qxn, qdxn
+
+    allocate(vsm (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(tmpz(    lo(1):hi(1)   ,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
+
+    do i = 1,3
+       dxinv(i) = 1.0d0 / dx(i)
+    end do
+
+    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz,tmpx,tmpy)
+
+    allocate(tmpx(-ng+lo(1):hi(1)+ng))
+    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
+
+    !$omp workshare
+    rhs = 0.d0
+    !$omp end workshare
+
+    !$omp do
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2)-ng,hi(2)+ng
+          do i=lo(1)-ng,hi(1)+ng
+             vsm(i,j,k) = xi(i,j,k) -  TwoThirds*mu(i,j,k)
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2)-ng,hi(2)+ng
+          do i=lo(1),hi(1)
+             qx(i,j,k,idu) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qu) )
+             qx(i,j,k,idv) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qv) )
+             qx(i,j,k,idw) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qw) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2),hi(2)   
+          do i=lo(1)-ng,hi(1)+ng
+             qy(i,j,k,idu) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qu) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2),hi(2)   
+          do i=lo(1)-ng,hi(1)+ng
+             qy(i,j,k,idv) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qv) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2),hi(2)   
+          do i=lo(1)-ng,hi(1)+ng
+             qy(i,j,k,idw) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qw) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-ng,hi(2)+ng
+          do i=lo(1)-ng,hi(1)+ng
+             qz(i,j,k,idu) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qu) )
+             qz(i,j,k,idv) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qv) )
+             qz(i,j,k,idw) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qw) )
+          enddo
+       enddo
+    enddo
+    !$omp end do
+
+    !----- mx -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-4,hi(1)+4
+             tmpx(i) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
+          end do
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmpy(i,j) = mu(i,j,k)*qx(i,j,k,idv)
+          end do
+       end do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = mu(i,j,k)*qx(i,j,k,idw)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !----- my -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-4,hi(1)+4
+             tmpx(i) = mu(i,j,k)*qy(i,j,k,idu)
+          end do
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmpy(i,j) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
+          end do
+       end do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = mu(i,j,k)*qy(i,j,k,idw)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !----- mz -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-4,hi(1)+4
+             tmpx(i) = mu(i,j,k)*qz(i,j,k,idu)
+          end do
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmpy(i,j) = mu(i,j,k)*qz(i,j,k,idv)
+          end do
+       end do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qy(i,j,k,idv))
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do nowait
+
+    !----- energy -----
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             divu = (qx(i,j,k,idu)+qy(i,j,k,idv)+qz(i,j,k,idw))*vsm(i,j,k)
+             tauxx = 2.d0*mu(i,j,k)*qx(i,j,k,idu) + divu
+             tauyy = 2.d0*mu(i,j,k)*qy(i,j,k,idv) + divu
+             tauzz = 2.d0*mu(i,j,k)*qz(i,j,k,idw) + divu
+
+             ! change in internal energy
+             rhs(i,j,k,iene) = tauxx*qx(i,j,k,idu) + tauyy*qy(i,j,k,idv) + tauzz*qz(i,j,k,idw) &
+                  + mu(i,j,k)*((qy(i,j,k,idu)+qx(i,j,k,idv))**2 &
+                  &          + (qx(i,j,k,idw)+qz(i,j,k,idu))**2 &
+                  &          + (qz(i,j,k,idv)+qy(i,j,k,idw))**2 )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             qx(i,j,k,idT) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qtemp) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             qy(i,j,k,idT) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qtemp) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             qz(i,j,k,idT) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qtemp) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             qx(i,j,k,idp) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qpres) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             qy(i,j,k,idp) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qpres) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             qz(i,j,k,idp) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qpres) )
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    do n=1,nspecies
+       qxn = qx1 + n - 1
+       qdxn = idX1 + n -1
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                qx(i,j,k,qdxn) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qxn) )
+             enddo
+          enddo
+       enddo
+       !$omp end do nowait
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                qy(i,j,k,qdxn) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qxn) )
+             enddo
+          enddo
+       enddo
+       !$omp end do nowait
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                qz(i,j,k,qdxn) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qxn) )
+             enddo
+          enddo
+       enddo
+       !$omp end do nowait
+    enddo
+
+    deallocate(tmpx,tmpy)
+
+    !$omp end parallel
+
+    deallocate(vsm,tmpz)
+
+  end subroutine S3D_diffterm_1
+
+
+  subroutine S3D_diffterm_2(lo,hi,ng,ndq,dx,q,rhs,mu,xi,lam,dxy,qx,qy,qz)
+
+    integer,          intent(in )  :: lo(3),hi(3),ng,ndq
+    double precision, intent(in )  :: dx(3)
+    double precision, intent(in )  :: q  (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(in )  :: mu (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in )  :: xi (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in )  :: lam(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
+    double precision, intent(in )  :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
+    double precision, intent(in)   :: qx (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(in)   :: qy (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(in)   :: qz (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
+    double precision, intent(inout):: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+ 
+    double precision, allocatable, dimension(:,:,:) :: vp, dpe, FE
+    double precision, allocatable, dimension(:,:,:,:) :: dpy, FY
+    ! dxy: diffusion coefficient of X in equation for Y
+    ! dpy: diffusion coefficient of p in equation for Y
+    ! NOT USING ! dxe: diffusion coefficient of X in equation for energy
+    ! dpe: diffusion coefficient of p in equation for energy
+
+    double precision :: dxinv(3)
+    integer          :: i,j,k,n, qxn, qyn, qhn, idXn, iryn
+    double precision, allocatable, dimension(:,:,:) :: rvc
+    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
+
+    allocate(vp(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+
+    allocate(dpy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
+    allocate(dpe(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+
+    allocate(FY(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
+    allocate(FE(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+
+    allocate(rvc (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
+    allocate(tmpz(    lo(1):hi(1)   ,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
+
+    do i = 1,3
+       dxinv(i) = 1.0d0 / dx(i)
+    end do
+
+    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,idXn,iryn,tmpx,tmpy)
+
+    allocate(tmpx(-ng+lo(1):hi(1)+ng))
+    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
+
+    !$omp do
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2)-ng,hi(2)+ng
+          do i=lo(1)-ng,hi(1)+ng
+             vp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
+          enddo
+       enddo
+    enddo
+    !$omp end do nowait
+
+    !$omp workshare
+    dpe = 0.d0
+    !$omp end workshare
+
+    do n=1,nspecies
+       qxn = qx1+n-1
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       !$omp do
+       do k=lo(3)-ng,hi(3)+ng
+          do j=lo(2)-ng,hi(2)+ng
+             do i=lo(1)-ng,hi(1)+ng
+                dpy(i,j,k,n) = dxy(i,j,k,n)/q(i,j,k,qpres)*(q(i,j,k,qxn)-q(i,j,k,qyn))
+                dpe(i,j,k) = dpe(i,j,k) + dpy(i,j,k,n)*q(i,j,k,qhn)
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    ! x-direction
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+
+          do i=lo(1)-4,hi(1)+4
+             tmpx(i) = vp(i,j,k)*qx(i,j,k,idu) 
+          end do
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+
+          do i=lo(1)-4,hi(1)+4
+             tmpx(i) = mu(i,j,k)*qx(i,j,k,idv)
+          end do
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+
+          do i=lo(1)-4,hi(1)+4
+             tmpx(i) = mu(i,j,k)*qx(i,j,k,idw)
+          end do
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+
+          do i=lo(1)-4,hi(1)+4
+             tmpx(i) = lam(i,j,k)*qx(i,j,k,idT)
+          end do
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
+          end do
+
+       end do
+    end do
+    !$omp end do
+
+    ! y-direction
+
+    !$omp do
+    do k=lo(3),hi(3)
+
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmpy(i,j) = mu(i,j,k)*qy(i,j,k,idu)
+          end do
+       end do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          end do
+       end do
+
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmpy(i,j) = vp(i,j,k)*qy(i,j,k,idv)
+          end do
+       end do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          end do
+       end do
+
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmpy(i,j) = mu(i,j,k)*qy(i,j,k,idw)
+          end do
+       end do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          end do
+       end do
+
+       do j=lo(2)-4,hi(2)+4
+          do i=lo(1),hi(1)
+             tmpy(i,j) = lam(i,j,k)*qy(i,j,k,idT)
+          end do
+       end do
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
+          end do
+       end do
+
+    end do
+    !$omp end do
+
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = mu(i,j,k)*qz(i,j,k,idu)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+    
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = mu(i,j,k)*qz(i,j,k,idv)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+    
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = vp(i,j,k)*qz(i,j,k,idw)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+    
+    !$omp do
+    do k=lo(3)-4,hi(3)+4
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             tmpz(i,j,k) = lam(i,j,k)*qz(i,j,k,idT)
+          end do
+       end do
+    end do
+    !$omp end do
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
+          end do
+       end do
+    end do
+    !$omp end do
+
+    ! add kinetic energy
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) &
+                  + rhs(i,j,k,imx)*q(i,j,k,qu) &
+                  + rhs(i,j,k,imy)*q(i,j,k,qv) &
+                  + rhs(i,j,k,imz)*q(i,j,k,qw)
+          end do
+       end do
+    end do
+    !$omp end do
+
+    ! x-direction
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1)-ng,hi(1)+ng
+             FE(i,j,k) = dpe(i,j,k) * qx(i,j,k,idp)
+          end do
+       end do
+    end do
+    !$omp end do nowait
+
+    !$omp workshare
+    rvc = 0.d0
+    !$omp end workshare
+
+    do n=1,nspecies
+       idXn = idX1+n-1
+       qhn = qh1+n-1
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1)-ng,hi(1)+ng
+                FE(i,j,k) = FE(i,j,k) + dxy(i,j,k,n)*qx(i,j,k,idXn)*q(i,j,k,qhn)
+                FY(i,j,k,n) = dxy(i,j,k,n)*qx(i,j,k,idXn) + dpy(i,j,k,n)*qx(i,j,k,idp)
+                rvc(i,j,k) = rvc(i,j,k) + FY(i,j,k,n)
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    do n=1,nspecies
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1)-ng,hi(1)+ng
+                FY(i,j,k,n) = FY(i,j,k,n) - rvc(i,j,k)*q(i,j,k,qyn)
+                FE(i,j,k) = FE(i,j,k) - rvc(i,j,k)*q(i,j,k,qyn)*q(i,j,k,qhn)
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    do n=1,nspecies    
+       iryn = iry1+n-1
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(1) * first_deriv_8( FY(i-4:i+4,j,k,n) )
+             end do
+          end do
+       end do
+       !$omp end do nowait
+    end do
+    
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(1) * first_deriv_8( FE(i-4:i+4,j,k) )
+          end do
+       end do
+    end do
+    !$omp end do
+
+    ! y-direction
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2)-ng,hi(2)+ng
+          do i=lo(1),hi(1)
+             FE(i,j,k) = dpe(i,j,k) * qy(i,j,k,idp)
+          end do
+       end do
+    end do
+    !$omp end do nowait
+
+    !$omp workshare
+    rvc = 0.d0
+    !$omp end workshare
+
+    do n=1,nspecies
+       idXn = idX1+n-1
+       qhn = qh1+n-1
+       !$omp do    
+       do k=lo(3),hi(3)
+          do j=lo(2)-ng,hi(2)+ng
+             do i=lo(1),hi(1)
+                FE(i,j,k) = FE(i,j,k) + dxy(i,j,k,n)*qy(i,j,k,idXn)*q(i,j,k,qhn)
+                FY(i,j,k,n) = dxy(i,j,k,n)*qy(i,j,k,idXn) + dpy(i,j,k,n)*qy(i,j,k,idp)
+                rvc(i,j,k) = rvc(i,j,k) + FY(i,j,k,n)                
+             end do
+          end do
+       end do
+       !$omp end do    
+    end do
+
+    do n=1,nspecies
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       !$omp do    
+       do k=lo(3),hi(3)
+          do j=lo(2)-ng,hi(2)+ng
+             do i=lo(1),hi(1)
+                FY(i,j,k,n) = FY(i,j,k,n) - rvc(i,j,k)*q(i,j,k,qyn)
+                FE(i,j,k) = FE(i,j,k) - rvc(i,j,k)*q(i,j,k,qyn)*q(i,j,k,qhn)                
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+    
+    do n=1,nspecies    
+       iryn = iry1+n-1
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(2) * first_deriv_8( FY(i,j-4:j+4,k,n) )
+             end do
+          end do
+       end do
+       !$omp end do nowait
+    end do
+    
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(2) * first_deriv_8( FE(i,j-4:j+4,k) )
+          end do
+       end do
+    end do
+    !$omp end do
+
+    ! z-direction
+    !$omp do
+    do k=lo(3)-ng,hi(3)+ng
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             FE(i,j,k) = dpe(i,j,k) * qz(i,j,k,idp)
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp workshare
+    rvc = 0.d0
+    !$omp end workshare
+
+    do n=1,nspecies
+       idXn = idX1+n-1
+       qhn = qh1+n-1
+       !$omp do
+       do k=lo(3)-ng,hi(3)+ng
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                FE(i,j,k) = FE(i,j,k) + dxy(i,j,k,n)*qz(i,j,k,idXn)*q(i,j,k,qhn)
+                FY(i,j,k,n) = dxy(i,j,k,n)*qz(i,j,k,idXn) + dpy(i,j,k,n)*qz(i,j,k,idp)
+                rvc(i,j,k) = rvc(i,j,k) + FY(i,j,k,n)                
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    do n=1,nspecies
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       !$omp do
+       do k=lo(3)-ng,hi(3)+ng
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                FY(i,j,k,n) = FY(i,j,k,n) - rvc(i,j,k)*q(i,j,k,qyn)
+                FE(i,j,k) = FE(i,j,k) - rvc(i,j,k)*q(i,j,k,qyn)*q(i,j,k,qhn)
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    do n=1,nspecies    
+       iryn = iry1+n-1
+       !$omp do
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(3) * first_deriv_8( FY(i,j,k-4:k+4,n) )
+             end do
+          end do
+       end do
+       !$omp end do
+    end do
+
+    !$omp do
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(3) * first_deriv_8( FE(i,j,k-4:k+4) )
+          end do
+       end do
+    end do
+    !$omp end do
+
+    deallocate(tmpx,tmpy)
+
+    !$omp end parallel
+
+    deallocate(vp,dpy,dpe,FY,FE,rvc,tmpz)
+
+  end subroutine S3D_diffterm_2
+
+end module kernels_module
