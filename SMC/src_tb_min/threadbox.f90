@@ -20,7 +20,10 @@ module threadbox_module
 contains
 
   subroutine destroy_threadbox()
-    deallocate(tb_lo, tb_hi, tb_glo, tb_ghi)
+    if (allocated(tb_lo)) deallocate(tb_lo)
+    if (allocated(tb_hi)) deallocate(tb_hi)
+    if (allocated(tb_glo)) deallocate(tb_glo)
+    if (allocated(tb_ghi)) deallocate(tb_ghi)
   end subroutine destroy_threadbox
 
   subroutine build_threadbox(la, ng_in)
@@ -36,6 +39,8 @@ contains
     integer, allocatable :: xstart(:), ystart(:), zstart(:)
     integer, allocatable :: zero_lo(:,:), zero_hi(:,:)
     integer :: i,j,k, ithread, it2, itstride, itstart
+
+    call destroy_threadbox()
 
     ng = ng_in
     nb = nlocal(la) ! number of local boxes

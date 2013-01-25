@@ -89,6 +89,8 @@ contains
 
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
 
+    call build_threadbox(la,ng)
+
     call multifab_build(U,la,ncons,ng)
     call multifab_copy_c(U,1,chkdata(1),1,ncons)
 
@@ -162,7 +164,6 @@ contains
     call init_data(U,dx,prob_lo,prob_hi)
 
     if (parallel_nprocs() > 1 .and. t_trylayout > 0.d0) then
-       call bl_error('TODO: build_better_layout')
        call build_better_layout(U,la,ba,boxarray_bbox(ba),pmask,ncons,ng,t_trylayout)
     end if
 
@@ -238,6 +239,8 @@ contains
 
        call layout_build_ba(lat, ba, pd, pmask=pmask, &
             mapping = LA_EXPLICIT, explicit_mapping = dmapt)
+
+       call build_threadbox(lat,ng)
        
        call multifab_build(Ut, lat, nc, ng)
        call multifab_copy_c(Ut,1,U,1,nc)
@@ -276,6 +279,9 @@ contains
 
     call layout_build_ba(lat, ba, pd, pmask=pmask, &
          mapping = LA_EXPLICIT, explicit_mapping = dmapbest)
+
+    call build_threadbox(lat,ng)
+
     call multifab_build(Ut, lat, nc, ng)
     call multifab_copy_c(Ut,1,U,1,nc)
 

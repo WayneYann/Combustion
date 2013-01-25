@@ -218,7 +218,6 @@ contains
     call multifab_fill_boundary_nowait(U, U_fb_data)
 
     if (overlap_comm_comp) then
-       call bl_error("overlap_comm_comp not supported yet!")
        call multifab_fill_boundary_test(U, U_fb_data)
     else
        call multifab_fill_boundary_finish(U, U_fb_data)
@@ -429,7 +428,7 @@ contains
     call multifab_build(Q, la, nprim, ng)
 
     call multifab_build(Uprime, la, ncons, 0)
-    call multifab_setval(Uprime, 0.d0)
+    call tb_multifab_setval(Uprime, 0.d0)
 
     call multifab_fill_boundary_test(U, U_fb_data)
 
