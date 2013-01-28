@@ -464,18 +464,12 @@ contains
                 + D8(2)*(q(i,j+2,k,qu)-q(i,j-2,k,qu)) &
                 + D8(3)*(q(i,j+3,k,qu)-q(i,j-3,k,qu)) &
                 + D8(4)*(q(i,j+4,k,qu)-q(i,j-4,k,qu)) )
-          enddo
-
-          do i=dlo(1),dhi(1)
 !EXPAND             vy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
              vy(i,j,k) = dxinv(2) * &
                 ( D8(1)*(q(i,j+1,k,qv)-q(i,j-1,k,qv)) &
                 + D8(2)*(q(i,j+2,k,qv)-q(i,j-2,k,qv)) &
                 + D8(3)*(q(i,j+3,k,qv)-q(i,j-3,k,qv)) &
                 + D8(4)*(q(i,j+4,k,qv)-q(i,j-4,k,qv)) )
-          enddo
-
-          do i=dlo(1),dhi(1)
 !EXPAND             wy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qw))
              wy(i,j,k) = dxinv(2) * &
                 ( D8(1)*(q(i,j+1,k,qw)-q(i,j-1,k,qw)) &

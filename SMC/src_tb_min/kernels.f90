@@ -351,13 +351,7 @@ contains
 
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qu))
-          enddo
-
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
-          enddo
-
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qw))
           enddo
 
