@@ -327,16 +327,13 @@ contains
     end do
 
     do n = iry1, iry1+nspecies-1
-       do jj=lo(2),hi(2),jblocksize
        do k=lo(3)-4,hi(3)+4
-!          do j=lo(2),hi(2)
-          do j=jj,min(jj+jblocksize-1,hi(2))
+          do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 tmpz(i,j,k) = cons(i,j,k,n)*q(i,j,k,qw)
              end do
           end do
        end do
-       end do ! jj
 
        do jj=lo(2),hi(2),jblocksize
        do k=lo(3),hi(3)
