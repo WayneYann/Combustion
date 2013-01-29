@@ -29,9 +29,9 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    allocate(tmpz(lo(1)  :hi(1)  ,lo(2)  :hi(2)  ,lo(3)-4:hi(3)+4))
     allocate(tmpx(lo(1)-4:hi(1)+4))
     allocate(tmpy(lo(1)  :hi(1)  ,lo(2)-4:hi(2)+4))
+    allocate(tmpz(lo(1)  :hi(1)  ,lo(2)  :hi(2)  ,lo(3)-4:hi(3)+4))
     
     ! ------- BEGIN x-direction -------
 
@@ -259,8 +259,7 @@ contains
        end do ! jj
     enddo
 
-    deallocate(tmpx,tmpy)
-    deallocate(tmpz)
+    deallocate(tmpx,tmpy,tmpz)
 
   end subroutine hypterm_3d
 
@@ -320,9 +319,9 @@ contains
     allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
     allocate(vsm(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
 
-    allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
     allocate(tmpx(dlo(1):dhi(1)))
     allocate(tmpy( lo(1): hi(1),dlo(2):dhi(2)))
+    allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
 
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
@@ -531,9 +530,9 @@ contains
        end do
     end do
 
-    deallocate(tmpx,tmpy)
+    deallocate(tmpx,tmpy,tmpz)
 
-    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,tmpz)
+    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz)
 
     allocate(dpy(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
     allocate(dxe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
