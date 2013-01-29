@@ -24,7 +24,11 @@ job_name                            character          ""
 # category: thread parallelization
 #-----------------------------------------------------------------------------
 # threadbox domain decomposition in ?D
+# split in 2D is typically better
 tb_split_dim                        integer            2
+
+# In case of 2D splitting, one of the three dimensions (usually x) is unsplit
+tb_unsplit_idim                     integer            1
 
 
 #-----------------------------------------------------------------------------

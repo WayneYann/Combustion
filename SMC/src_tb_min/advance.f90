@@ -154,6 +154,9 @@ contains
     !$omp parallel private(tid,i,j,k,m,n,lo,hi,u1p,u2p,upp)
     tid = omp_get_thread_num()
     do n=1,nfabs(U1)
+
+       if (.not.tb_worktodo(tid,n)) cycle
+
        u1p => dataptr(U1,    n)
        u2p => dataptr(U2,    n)
        upp => dataptr(Uprime,n)
@@ -262,6 +265,9 @@ contains
     !$omp parallel private(tid,n,qp,upp,qlo,qhi,uplo,uphi,lo,hi)
     tid = omp_get_thread_num()
     do n=1,nfabs(Q)
+
+       if (.not.tb_worktodo(tid,n)) cycle
+
        qp  => dataptr(Q,n)
        upp => dataptr(Uprime,n)
 
@@ -338,6 +344,9 @@ contains
     !$omp private(mup,xip,lamp,Ddp)
     tid = omp_get_thread_num()
     do n=1,nfabs(Q)
+
+       if (.not.tb_worktodo(tid,n)) cycle
+
        up => dataptr(U,n)
        upp=> dataptr(Uprime,n)
        qp => dataptr(Q,n)
@@ -388,6 +397,9 @@ contains
     !$omp reduction(max:courno)
     tid = omp_get_thread_num()
     do n=1,nfabs(Q)
+
+       if (.not.tb_worktodo(tid,n)) cycle
+
        qp => dataptr(Q,n)
        qlo = lbound(qp)
        qhi = ubound(qp)
@@ -449,6 +461,9 @@ contains
     !$omp parallel private(tid,n,qp,upp,qlo,qhi,uplo,uphi,lo,hi)
     tid = omp_get_thread_num()
     do n=1,nfabs(Q)
+
+       if (.not.tb_worktodo(tid,n)) cycle
+
        qp  => dataptr(Q,n)
        upp => dataptr(Uprime,n)
 
