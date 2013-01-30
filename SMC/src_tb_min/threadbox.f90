@@ -180,7 +180,7 @@ contains
        end do
 
        nmin = minval(n2d)
-       nmax = minval(n2d)
+       nmax = maxval(n2d)
     end if
 
     n3d = n / (nmin*nmax)
@@ -395,7 +395,7 @@ contains
     else
        !$omp parallel private(tid, ib, wlo, whi, p)
        tid = omp_get_thread_num()
-       do ib = 1, nlocal(mf%la)
+       do ib = 1, nfabs(mf)
           if (.not.tb_worktodo(tid,ib)) cycle
           p => dataptr(mf, ib)
           wlo = tb_get_valid_lo(tid, ib)
