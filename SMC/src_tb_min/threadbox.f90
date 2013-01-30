@@ -169,19 +169,18 @@ contains
           j = minloc(n3d,1)
           n3d(j) = n3d(j) * facs(i)
        end do
-       
-       nmin = minval(n3d)
-       nmax = maxval(n3d)
     else
        n2d = 1
        do i = nfac, 1, -1
           j = minloc(n2d,1)
           n2d(j) = n2d(j) * facs(i)
        end do
-
-       nmin = minval(n2d)
-       nmax = maxval(n2d)
+       n3d(1) = 1
+       n3d(2:3) = n2d
     end if
+
+    nmin = minval(n3d)
+    nmax = maxval(n3d)
 
     n3d = n / (nmin*nmax)
     n3d(iless) = nmin
