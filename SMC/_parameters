@@ -28,7 +28,7 @@ job_name                            character          ""
 tb_split_dim                        integer            2
 
 # If true, the boxes are "collapsed" before splitting for threads
-tb_collapse_boxes                   logical            .true.
+tb_collapse_boxes                   logical            .false.
 
 # which dimension is split more; which less.
 tb_idim_more                        integer            2
