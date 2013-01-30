@@ -32,7 +32,7 @@ contains
   end subroutine destroy_threadbox
 
   subroutine build_threadbox(la, ng_in)
-    use probin_module, only : tb_split_dim, tb_unsplit_idim
+    use probin_module, only : tb_split_dim, tb_collapse_boxes, tb_idim_more, tb_idim_less
     implicit none
     type(layout), intent(in) :: la
     integer, intent(in) :: ng_in
@@ -57,11 +57,21 @@ contains
 
     allocate(worktodo(0:numthreads-1,nb))
 
-    call setup_boxgroups()
+    call setup_boxgroups(tb_collapse_boxes)
 
     call init_worktodo()
 
-    call init_thread_topology(nthreadsperbox, nthreads_d, tb_split_dim, tb_unsplit_idim)
+    if (tb_idim_more .eq. tb_idim_less) then
+       call bl_error("threadbox_module: tb_idim_more .eq. tb_idim_less")
+    end if
+    if (tb_idim_more < 1 .or. tb_idim_more > 3) then
+       call bl_error("threadbox_module: invalid tb_idim_more")
+    end if
+    if (tb_idim_less < 1 .or. tb_idim_less > 3) then
+       call bl_error("threadbox_module: invalid tb_idim_less")
+    end if
+    call init_thread_topology(nthreadsperbox, nthreads_d, tb_split_dim, &
+         tb_idim_more, tb_idim_less)
 
     call check_boxsize(la)
 
@@ -78,9 +88,14 @@ contains
 
   ! Boxes are divided into groups.
   ! Then boxes in a group are divided by the number of threads.
-  subroutine setup_boxgroups()
+  subroutine setup_boxgroups(collapse)
     implicit none
-    boxgroupsize = greatest_common_factor(nb, numthreads)
+    logical, intent(in) :: collapse
+    if (collapse) then
+       boxgroupsize = greatest_common_factor(nb, numthreads)
+    else
+       boxgroupsize = 1
+    end if
     numboxgroups = nb / boxgroupsize
     nthreadsperbox = numthreads / boxgroupsize
   contains
@@ -117,9 +132,9 @@ contains
   end subroutine init_worktodo
 
 
-  subroutine init_thread_topology(n, n3d, d, idignore)
+  subroutine init_thread_topology(n, n3d, d, imore, iless)
     implicit none
-    integer, intent(in) :: n, d, idignore
+    integer, intent(in) :: n, d, imore, iless
     integer, intent(out) :: n3d(3)
 
     integer, allocatable :: facs(:)
@@ -127,8 +142,8 @@ contains
     integer :: n2d(2)
 
     if (d.eq.1) then
-       n3d(1:2) = 1
-       n3d(3) = n
+       n3d = 1
+       n3d(imore) = n
        return
     end if
 
@@ -157,32 +172,20 @@ contains
        
        nmin = minval(n3d)
        nmax = maxval(n3d)
-       
-       n3d(1) = nmin
-       n3d(2) = n / (nmin*nmax)
-       n3d(3) = nmax
     else
        n2d = 1
        do i = nfac, 1, -1
           j = minloc(n2d,1)
           n2d(j) = n2d(j) * facs(i)
        end do
-       
-       if (idignore .eq. 1) then
-          n3d(1) = 1
-          n3d(2:3) = n2d
-       else if (idignore .eq. 2) then
-          n3d(1) = n2d(1)
-          n3d(2) = 1
-          n3d(3) = n2d(2)
-       else if (idignore .eq. 3) then
-          n3d(1:2) = n2d
-          n3d(3) = 1
-       else
-          print *, 'tb_unsplit_idim = ', idignore
-          call bl_error("threadbox_module: Invalid tb_unsplit_idim")
-       end if
+
+       nmin = minval(n2d)
+       nmax = minval(n2d)
     end if
+
+    n3d = n / (nmin*nmax)
+    n3d(iless) = nmin
+    n3d(imore) = nmax
 
     deallocate(facs)
 
@@ -224,12 +227,14 @@ contains
        bx = get_box(la, iglobal)
        box_size_i = box_extent(bx)
 
-       if (box_size_i(idim) < nthreads_d(idim)) then
-          print *, 'Box #', iglobal, 'idim =', idim, ' box size = ', box_size_i(idim), &
-               '  threads in this direction', nthreads_d(idim)
-          call bl_error("threadbox_module: Too many threads for such small box") 
-       end if
-       
+       do idim = 1, ndim
+          if (box_size_i(idim) < nthreads_d(idim)) then
+             print *, 'Box #', iglobal, 'idim =', idim, ' box size = ', box_size_i(idim), &
+                  '  threads in this direction', nthreads_d(idim)
+             call bl_error("threadbox_module: Too many threads for such small box") 
+          end if
+       end do
+
     end do
 
   end subroutine check_boxsize

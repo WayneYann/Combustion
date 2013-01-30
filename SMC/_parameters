@@ -27,8 +27,12 @@ job_name                            character          ""
 # split in 2D is typically better
 tb_split_dim                        integer            2
 
-# In case of 2D splitting, one of the three dimensions (usually x) is unsplit
-tb_unsplit_idim                     integer            1
+# If true, the boxes are "collapsed" before splitting for threads
+tb_collapse_boxes                   logical            .true.
+
+# which dimension is split more; which less.
+tb_idim_more                        integer            2
+tb_idim_less                        integer            1
 
 
 #-----------------------------------------------------------------------------

@@ -25,9 +25,6 @@ contains
     double precision :: dxinv(3)
     double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
 
-    integer :: jj
-    integer, parameter :: jblocksize=8
-
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)
     end do
@@ -335,10 +332,8 @@ contains
           end do
        end do
 
-       do jj=lo(2),hi(2),jblocksize
        do k=lo(3),hi(3)
-!          do j=lo(2),hi(2)
-          do j=jj,min(jj+jblocksize-1,hi(2))
+          do j=lo(2),hi(2)
              do i=lo(1),hi(1)
 !EXPAND                rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
                 rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
@@ -349,7 +344,6 @@ contains
              end do
           enddo
        enddo
-       end do ! jj
     enddo
 
     deallocate(tmpx,tmpy,tmpz)
@@ -385,9 +379,6 @@ contains
     double precision :: mmtmp(8,qlo(1):qhi(1)), Yhalf, hhalf
     double precision, allocatable, dimension(:,:,:,:) :: M8p
     double precision, allocatable, dimension(:,:,:) :: Hry
-
-    integer :: jj 
-    integer, parameter :: jblocksize=8
 
     do i = 1,3
        dxinv(i) = 1.0d0 / dx(i)
@@ -1836,10 +1827,8 @@ contains
     do n = 1, nspecies
        qxn = qx1+n-1
 
-       do jj=lo(2),hi(2),jblocksize
        do k=lo(3),hi(3)+1
-!          do j=lo(2),hi(2)
-          do j=jj,min(jj+jblocksize-1,hi(2))
+          do j=lo(2),hi(2)
              do i=lo(1),hi(1)
 !EXPAND                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
                 Hg(i,j,k,iry1+n-1) =  &
@@ -1850,12 +1839,9 @@ contains
              end do
           end do
        end do
-       enddo
 
-       do jj=lo(2),hi(2),jblocksize
        do k=lo(3),hi(3)+1
-!          do j=lo(2),hi(2)
-          do j=jj,min(jj+jblocksize-1,hi(2))
+          do j=lo(2),hi(2)
              do i=lo(1),hi(1)
 !EXPAND                mmtmp(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qxn))
                 mmtmp(1,i) = M8(1,1) * q(i,j,k-4,qxn) &
@@ -1926,7 +1912,6 @@ contains
              end do
           end do
        end do
-       enddo
     end do
 
     ! correction
