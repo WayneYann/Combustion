@@ -85,8 +85,14 @@ FINCLUDE_LOCATIONS += $(Fmincs)
 #-----------------------------------------------------------------------------
 # define the build instructions for the executable
 main.$(suf).exe: $(objects)
+ifdef MKVERBOSE
 	$(HPCLINK) $(LINK.f90) -o main.$(suf).exe $(objects) $(libraries)
 	@echo SUCCESS
+else
+	@echo "Linking $@ ..."
+	@$(HPCLINK) $(LINK.f90) -o main.$(suf).exe $(objects) $(libraries)
+	@echo SUCCESS
+endif
 
 
 #-----------------------------------------------------------------------------
