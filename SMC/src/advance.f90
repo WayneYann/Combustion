@@ -329,12 +329,12 @@ contains
           print*, ""
        end if
 
-       if (istep .eq. 1) then
-          dt = dt * init_shrink
-          if (parallel_IOProcessor()) then
-             print*,'Limited by init_shrink: dt =',dt
-          end if
-       end if
+       ! if (istep .eq. 1) then
+       !    dt = dt * init_shrink
+       !    if (parallel_IOProcessor()) then
+       !       print*,'Limited by init_shrink: dt =',dt
+       !    end if
+       ! end if
 
     else
 

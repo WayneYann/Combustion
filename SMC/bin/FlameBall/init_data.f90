@@ -47,7 +47,7 @@ contains
     double precision, intent(in   ) :: dx(3),phlo(3),phhi(3)
     double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
 
-    integer          :: i,j,k,n
+    integer          :: i,j,k,n, ii, jj, kk, nimages
     double precision :: x, y, z, r
 
     double precision pmf_vals(nspecies+3)
@@ -79,10 +79,17 @@ contains
     end do
     deallocate(seed)
 
+    nimages = 0
+    if (prob_type == 3) &
+         nimages = 3
+
+    cons = 0.0d0
+
     !$omp parallel do &
     !$omp private(i,j,k,n,x,y,z,r,pmf_vals) &
     !$omp private(Xt,Yt,rhot,u1t,u2t,u3t,Tt,et,iwrk,rwrk) &
-    !$omp private(rfront,phi,theta,xtemp,xloc,yloc,zloc,l,m,ctr)
+    !$omp private(rfront,phi,theta,xtemp,xloc,yloc,zloc,l,m,ctr) &
+    !$omp private(ii,jj,kk)
     do k=lo(3),hi(3)
        z = phlo(3) + dx(3)*k
        do j=lo(2),hi(2)
@@ -90,8 +97,9 @@ contains
           do i=lo(1),hi(1)
              x = phlo(1) + dx(1)*i
 
+             r = sqrt(x**2+y**2+z**2)
+
              if (prob_type .eq. 1) then
-                r = sqrt(x**2+y**2+z**2)
 
                 if (pertmag .gt. 0.d0) then
                    rfront = 0.d0
@@ -131,34 +139,67 @@ contains
 
              else if (prob_type .eq. 2) then
                 rfront = 0.d0
+             else if (prob_type .eq. 3) then
+
              else
                 call bl_error("Unknown prob_type")
              end if
 
-             call pmf(rfront,rfront,pmf_vals,n)
+             if (prob_type .ne. 3) then
+                call pmf(rfront,rfront,pmf_vals,n)
 
-             if (n.ne.nspecies+3) then
-                write(6,*)"n,nspecies",n,nspecies
-                call bl_error('INITDATA: n .ne. nspecies+3')
-             endif
+                if (n .ne. nspecies+3) then
+                   write(6,*)"n,nspecies",n,nspecies
+                   call bl_error('INITDATA: n .ne. nspecies+3')
+                end if
+
+                do n = 1,nspecies
+                   Xt(n) = pmf_vals(3+n)
+                end do
+             end if
 
              if (prob_type .eq. 1) then
                 Tt = pmf_vals(1)
                 u1t = 0.d0 ! pmf_vals(2) * x/r
                 u2t = 0.d0 ! pmf_vals(2) * y/r
                 u3t = 0.d0 ! pmf_vals(2) * z/r
+
              else if (prob_type .eq. 2) then
                 Tt = Tinit
                 u1t = uinit
                 u2t = vinit
                 u3t = winit
+             else if (prob_type .eq. 3) then
+
+                Tt = 300.0d0
+
+                do kk = -nimages, nimages
+                   do jj = -nimages, nimages
+                      do ii = -nimages, nimages
+
+                         z = phlo(3) + dx(3)*k + kk * (phhi(3) - phlo(3))
+                         y = phlo(2) + dx(2)*j + jj * (phhi(2) - phlo(2))
+                         x = phlo(1) + dx(1)*i + ii * (phhi(1) - phlo(1))
+                         r = sqrt(x**2+y**2+z**2)
+                         
+                         ! Tt = (1400.0d0-300.0d0)/2.0d0*tanh((rfire-r)*20.0d0) + (1400.0d0+300.0d0)/2.0d0
+                         Tt = Tt + 1100.0d0 * exp(-(r / rfire)**2)
+
+                      end do
+                   end do
+                end do
+
+                u1t = uinit
+                u2t = vinit
+                u3t = winit
+
+                Xt = 0.0d0
+                Xt(1) = 0.116d0
+                Xt(2) = 0.23d0
+                Xt(9) = 1.0d0 - Xt(1) - Xt(2)
              else
                 call bl_error("Unknown prob_type")
              end if
-
-             do n = 1,nspecies
-                Xt(n) = pmf_vals(3+n)
-             end do
 
              CALL CKXTY (Xt, IWRK, RWRK, Yt)
              CALL CKRHOY(patmos,Tt,Yt,IWRK,RWRK,rhot)
@@ -174,10 +215,11 @@ contains
                 cons(i,j,k,iry1-1+n) = Yt(n)*rhot
              end do
 
-          enddo
-       enddo
-    enddo
+          end do
+       end do
+    end do
     !$omp end parallel do
+
 
   end subroutine init_data_3d
 
