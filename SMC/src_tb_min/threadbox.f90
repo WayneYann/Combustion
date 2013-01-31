@@ -37,9 +37,6 @@ contains
     type(layout), intent(in) :: la
     integer, intent(in) :: ng_in
 
-    integer :: ibox
-    type(box) :: bx, bxg
-
     call destroy_threadbox()
 
     ndim = la%lap%dim
@@ -75,13 +72,7 @@ contains
 
     call check_boxsize(la)
 
-    do ibox=1, nb
-       bx = get_box(la, global_index(la, ibox))
-       call init_threadbox(ibox, bx, tb_lo(:,:,ibox), tb_hi(:,:,ibox))
-
-       bxg = grow(bx, ng)
-       call init_threadbox(ibox, bxg, tb_glo(:,:,ibox), tb_ghi(:,:,ibox))
-    end do
+    call init_threadbox(la)
 
   end subroutine build_threadbox
 
@@ -90,7 +81,7 @@ contains
   ! Then boxes in a group are divided by the number of threads.
   subroutine setup_boxgroups(collapse)
     implicit none
-    logical, intent(in) :: collapse
+    logical, intent(in) :: collapse 
     if (collapse) then
        boxgroupsize = greatest_common_factor(nb, numthreads)
     else
@@ -239,17 +230,18 @@ contains
   end subroutine check_boxsize
 
 
-  subroutine init_threadbox(ibox, bx, tbx_lo, tbx_hi)
+  subroutine init_threadbox(la)
     implicit none
-    integer, intent(in) :: ibox
-    type(box), intent(in) :: bx
-    integer :: tbx_lo(3,0:numthreads-1), tbx_hi(3,0:numthreads-1)
+    type(layout), intent(in) :: la
     
     integer, allocatable :: xsize(:), ysize(:), zsize(:)
     integer, allocatable :: xstart(:), ystart(:), zstart(:)
     integer, allocatable :: zero_lo(:,:), zero_hi(:,:)
     integer :: my_box_size(3), my_box_lo(3)
     integer :: i,j,k, itbox, ithread
+    integer :: igroup, ibg, ibox, istart
+    double precision :: stride
+    type(box) :: bx
 
     allocate(zero_lo(3,0:nthreadsperbox-1))
     allocate(zero_hi(3,0:nthreadsperbox-1))
@@ -261,39 +253,87 @@ contains
     allocate(ystart(nthreads_d(2)))
     allocate(zstart(nthreads_d(3)))
 
-    my_box_size = box_extent(bx)
-    my_box_lo = box_lwb(bx)
+    stride = dble(nthreadsperbox) / dble(numboxgroups)
 
-    ! valid box
+    ibox=0
+    do igroup=1,numboxgroups
 
-    call split_domain(my_box_size(1), nthreads_d(1), xsize, xstart)
-    call split_domain(my_box_size(2), nthreads_d(2), ysize, ystart)
-    call split_domain(my_box_size(3), nthreads_d(3), zsize, zstart)
+       istart = nint((igroup-1)*stride)
 
-    itbox = 0
-    do k = 1, nthreads_d(3)
-       do j = 1, nthreads_d(2)
-          do i = 1, nthreads_d(1)
-             zero_lo(1,itbox) = xstart(i)
-             zero_lo(2,itbox) = ystart(j)
-             zero_lo(3,itbox) = zstart(k)
-             zero_hi(1,itbox) = xstart(i) + xsize(i) - 1
-             zero_hi(2,itbox) = ystart(j) + ysize(j) - 1
-             zero_hi(3,itbox) = zstart(k) + zsize(k) - 1
-             itbox = itbox + 1
+       do ibg=1,boxgroupsize
+
+          ibox = ibox+1
+          bx = get_box(la, global_index(la, ibox))
+          my_box_size = box_extent(bx)
+          my_box_lo = box_lwb(bx)
+
+          !
+          ! valid box
+          !
+          call split_domain(my_box_size(1), nthreads_d(1), xsize, xstart)
+          call split_domain(my_box_size(2), nthreads_d(2), ysize, ystart)
+          call split_domain(my_box_size(3), nthreads_d(3), zsize, zstart)
+
+          itbox = 0
+          do k = 1, nthreads_d(3)
+             do j = 1, nthreads_d(2)
+                do i = 1, nthreads_d(1)
+                   zero_lo(1,itbox) = xstart(i)
+                   zero_lo(2,itbox) = ystart(j)
+                   zero_lo(3,itbox) = zstart(k)
+                   zero_hi(1,itbox) = xstart(i) + xsize(i) - 1
+                   zero_hi(2,itbox) = ystart(j) + ysize(j) - 1
+                   zero_hi(3,itbox) = zstart(k) + zsize(k) - 1
+                   itbox = itbox + 1
+                end do
+             end do
           end do
-       end do
-    end do
 
-    do ithread = 0, numthreads-1
-       if (tb_worktodo(ithread, ibox)) then
-          itbox = mod(ithread, nthreadsperbox)
-          tbx_lo(:,ithread) = zero_lo(:,itbox) + my_box_lo
-          tbx_hi(:,ithread) = zero_hi(:,itbox) + my_box_lo
-       else
-          tbx_lo(:,ithread) = HUGE(0)
-          tbx_hi(:,ithread) = -(HUGE(0)-1)
-       end if
+          do ithread = 0, numthreads-1
+             if (tb_worktodo(ithread, ibox)) then
+                itbox = mod(ithread+istart, nthreadsperbox)
+                tb_lo(:,ithread,ibox) = zero_lo(:,itbox) + my_box_lo
+                tb_hi(:,ithread,ibox) = zero_hi(:,itbox) + my_box_lo
+             else
+                tb_lo(:,ithread,ibox) = HUGE(0)
+                tb_hi(:,ithread,ibox) = -(HUGE(0)-1)
+             end if
+          end do
+          
+          !
+          ! grown box
+          !
+          call split_domain(my_box_size(1)+2*ng, nthreads_d(1), xsize, xstart)
+          call split_domain(my_box_size(2)+2*ng, nthreads_d(2), ysize, ystart)
+          call split_domain(my_box_size(3)+2*ng, nthreads_d(3), zsize, zstart)
+
+          itbox = 0
+          do k = 1, nthreads_d(3)
+             do j = 1, nthreads_d(2)
+                do i = 1, nthreads_d(1)
+                   zero_lo(1,itbox) = xstart(i)
+                   zero_lo(2,itbox) = ystart(j)
+                   zero_lo(3,itbox) = zstart(k)
+                   zero_hi(1,itbox) = xstart(i) + xsize(i) - 1
+                   zero_hi(2,itbox) = ystart(j) + ysize(j) - 1
+                   zero_hi(3,itbox) = zstart(k) + zsize(k) - 1
+                   itbox = itbox + 1
+                end do
+             end do
+          end do
+
+          do ithread = 0, numthreads-1
+             if (tb_worktodo(ithread, ibox)) then
+                itbox = mod(ithread+istart, nthreadsperbox)
+                tb_glo(:,ithread,ibox) = zero_lo(:,itbox) + my_box_lo - ng
+                tb_ghi(:,ithread,ibox) = zero_hi(:,itbox) + my_box_lo - ng
+             else
+                tb_glo(:,ithread,ibox) = HUGE(0)
+                tb_ghi(:,ithread,ibox) = -(HUGE(0)-1)
+             end if
+          end do
+          
+       end do
     end do
 
     deallocate(xsize, ysize, zsize, xstart, ystart, zstart,zero_lo,zero_hi)
