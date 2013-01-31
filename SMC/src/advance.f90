@@ -6,18 +6,21 @@ module advance_module
   use multifab_module
   use omp_module
   use nscbc_module
-  use sdcquad_module
+  use sdcquad_module, only: sdcquad
   use smc_bc_module
   use time_module
   use transport_properties
   use variables_module
+  use sdclib
+  use sdclib_multifab
+  use sdcquad_module
 
   use chemistry_module, only : nspecies
 
   implicit none
 
   private
-  public advance, overlapped_part
+  public advance, overlapped_part, f1eval, f1post
 
 contains
 
@@ -103,205 +106,175 @@ contains
 
   end subroutine advance_rk3
 
+
   !
   ! Advance U using SDC time-stepping
   !
   subroutine advance_sdc(U, dt, courno, dx, sdc, istep)
-
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     type(sdcquad),     intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
-    integer          :: k, m, n, ng
-    double precision :: res_proc, res
+    type(multifab)   :: Q
+    integer          :: ng
     type(layout)     :: la
-    type(multifab)   :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), S(sdc%nnodes-1)
 
-    double precision :: dtsdc(sdc%nnodes-1)
+    double precision :: courno_proc
 
     ng = nghost(U)
     la = get_layout(U)
 
-    ! build u and u' multifabs for each node
-    do m = 1, sdc%nnodes
-       call build(uSDC(m), la, ncons, ng)
-       call build(fSDC(m), la, ncons, 0)
-    end do
+    !
+    ! set dt
+    !
 
-    ! build S multifab (node to node integrals)
-    do m = 1, sdc%nnodes-1
-       call build(S(m), la, ncons, 0)
-    end do
+    ! this really belongs in the first feval of an sdc sweep
+    courno_proc = -1.d50
 
-    ! set provisional solution, compute dt
-
-    call copy(uSDC(1), U)
-    call dUdt(uSDC(1), fSDC(1), dx, courno, istep)
-
-    do m = 2, sdc%nnodes
-       call copy(uSDC(m), uSDC(1))
-       call copy(fSDC(m), fSDC(1))
-    end do
+    call build(Q, la, nprim, ng)
+    call ctoprim(U, Q, 0)
+    call compute_courno(Q, dx, courno_proc)
+    call parallel_reduce(courno, courno_proc, MPI_MAX)
+    call destroy(Q)
 
     call set_dt(dt, courno, istep)
 
-    ! perform sdc iterations
-    res = 0.0d0
-    dtsdc = dt * (sdc%nodes(2:sdc%nnodes) - sdc%nodes(1:sdc%nnodes-1))
-
-    do k = 1, sdc%iters
-
-       ! compute integrals (compact forward euler)
-       do m = 1, sdc%nnodes-1
-          call setval(S(m), 0.0d0)
-          do n = 1, sdc%nnodes
-             call saxpy(S(m), sdc%smats(m,n,1), fSDC(n))
-          end do
-       end do
-
-       ! perform sub-step correction
-       do m = 1, sdc%nnodes-1
-
-          ! U(m+1) = U(m) + dt dUdt(m) + dt S(m)
-
-          call copy(uSDC(m+1), uSDC(m))
-          call saxpy(uSDC(m+1), dtsdc(m), fSDC(m))
-          call saxpy(uSDC(m+1), dt, S(m))
-          call reset_density(uSDC(m+1))
-          call impose_hard_bc(uSDC(m+1))
-
-          call dUdt(uSDC(m+1), fSDC(m+1), dx)
-
-       end do
-
-       ! check residual
-       if (sdc%tol_residual > 0.d0) then
-          res_proc = sdc_residual(uSDC, fSDC, S(1), dt, sdc)
-          call parallel_reduce(res, res_proc, MPI_MAX)
-
-          if (parallel_IOProcessor()) then
-             print *, "SDC: iter:", k, "residual:", res
-          end if
-
-          if (res < sdc%tol_residual) exit
-       end if
-    end do
-
-    call copy(U, uSDC(sdc%nnodes))
-
-    ! destroy
-    do m = 1, sdc%nnodes
-       call destroy(uSDC(m))
-       call destroy(fSDC(m))
-    end do
-
-    do m = 1, sdc%nnodes-1
-       call destroy(S(m))
-    end do
-
+    !
+    ! advance (pass control to sdclib)
+    !
+    call sdc_srset_set_q0(sdc%srset, mfptr(U))
+    call sdc_srset_advance(sdc%srset, sdc%iters, 0.0d0, dt)
+    call sdc_srset_get_qend(sdc%srset, mfptr(U))
+    
   end subroutine advance_sdc
 
 
   !
-  ! Compute SDC residual
+  ! SDCLib callbacks
   !
-  function sdc_residual (uSDC,fSDC,R,dt,sdc) result(res)
-    real(dp_t)                      :: res
-    type(sdcquad),    intent(in   ) :: sdc
-    type(multifab),   intent(inout) :: uSDC(sdc%nnodes), fSDC(sdc%nnodes), R
-    real(dp_t),       intent(in   ) :: dt
+  subroutine f1eval(Fptr, Uptr, t, ctxptr) bind(c)
+    type(c_ptr), intent(in), value      :: Fptr, Uptr, ctxptr
+    double precision, intent(in), value :: t
 
-    integer :: m, n
+    type(multifab), pointer :: U, Uprime
+    type(ctx_t), pointer    :: ctx
 
-    ! compute integral
-    call copy(R, uSDC(1))
+    call c_f_pointer(Uptr, U)
+    call c_f_pointer(Fptr, Uprime)
+    call c_f_pointer(ctxptr, ctx)
 
-    do m = 1, sdc%nnodes-1
-       do n = 1, sdc%nnodes
-          call saxpy(R, dt*sdc%smat(m,n), fSDC(n))
-       end do
-    end do
+    call dUdt(U, Uprime, ctx%dx)
+  end subroutine f1eval
 
-    call saxpy(R, -1.0d0, uSDC(sdc%nnodes))
+  subroutine f1post(Uptr, Fptr, stateptr, ctxptr) bind(c)
+    type(c_ptr), intent(in), value      :: Uptr, Fptr, stateptr, ctxptr
 
-    res = norm_inf(R)
+    type(multifab), pointer :: U
+    call c_f_pointer(Uptr, U)
 
-  end function sdc_residual
+    call reset_density(U)
+    call impose_hard_bc(U)
+  end subroutine f1post
+
 
   !
   ! Advance U using multi-rate SDC time-stepping
   !
   subroutine advance_multi_sdc(U, dt, courno, dx, sdc, istep)
-
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     type(sdcquad),     intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
-    integer          :: k, m, mm, ng
-    double precision :: res_proc, res
-    type(layout)     :: la
-    type(multifab)   :: uAD(sdc%nnodes), fAD(sdc%nnodes), SAD(sdc%nnodes-1)
-    type(multifab)   :: uR(sdc%nnodes), fR(sdc%nnodes), SR(sdc%nnodes-1)
+    ! integer          :: k, m, mm, ng
+    ! double precision :: res_proc, res
+    ! type(layout)     :: la
+    ! type(multifab)   :: uAD(sdc%nnodes), fAD(sdc%nnodes), SAD(sdc%nnodes-1)
+    ! type(multifab)   :: uR(sdc%nnodes), fR(sdc%nnodes), SR(sdc%nnodes-1)
 
-    ng = nghost(U)
-    la = get_layout(U)
+    ! type(mf_encap_t), target :: mfencap
+    ! type(c_ptr)    :: nset1, nset2, mrset, encap
+    ! integer(c_int) :: err
 
-    ! XXX: this is a work in progress
-    print *, '*** MULTIRATE SDC IS A WORK IN PROGRESS ***'
+    ! nset1 = sdc_nset_create(sdc%nnodes, SDC_GAUSS_LOBATTO,  "AD" // c_null_char)
+    ! nset2 = sdc_nset_create(5,          SDC_GAUSS_LEGENDRE, "R"  // c_null_char)
+    ! mrset = sdc_mrset_create("ADR" // c_null_char)
 
-    ! XXX: this just does normal SDC for now
+    ! err = sdc_mrset_add_nset(mrset, nset1, 0)
+    ! err = sdc_mrset_add_nset(mrset, nset2, 0)
+    ! err = sdc_mrset_setup(mrset)
 
-    ! build u and u' multifabs for each node
-    do m = 1, sdc%nnodes
-       call build(uAD(m), la, ncons, ng)
-       call build(fAD(m), la, ncons, 0)
-       call build(uR(m), la, ncons, ng)
-       call build(fR(m), la, ncons, 0)
-    end do
+    ! ! call sdc_mrset_print(mrset, 0)
+    
+    ! ng = nghost(U)
+    ! la = get_layout(U)
 
-    ! build S multifab (node to node integrals)
-    do m = 1, sdc%nnodes-1
-       call build(SAD(m), la, ncons, 0)
-       call build(SR(m), la, ncons, 0)
-    end do
+    ! mfencap%nc = ncons
+    ! mfencap%ng = ng
+    ! mfencap%la = la
 
-    ! set provisional solution, compute dt
+    ! encap = sdc_encap_multifab(c_loc(mfencap))
 
-    call copy(uAD(1), U)
-    call dUdt(uAD(1), fAD(1), dx)
+    ! ! XXX: this is a work in progress
+    ! print *, '*** MULTIRATE SDC IS A WORK IN PROGRESS ***'
 
-    do m = 2, sdc%nnodes
-       call copy(uAD(m), uAD(1))
-       call copy(fAD(m), fAD(1))
-    end do
+    ! ! XXX: this just does normal SDC for now
 
-    call set_dt(dt, courno, istep)
+    ! ! build u and u' multifabs for each node
+    ! do m = 1, sdc%nnodes
+    !    call build(uAD(m), la, ncons, ng)
+    !    call build(fAD(m), la, ncons, 0)
+    !    call build(uR(m), la, ncons, ng)
+    !    call build(fR(m), la, ncons, 0)
+    ! end do
 
-    ! perform sdc iterations
-    res = 0.0d0
+    ! ! build S multifab (node to node integrals)
+    ! do m = 1, sdc%nnodes-1
+    !    call build(SAD(m), la, ncons, 0)
+    !    call build(SR(m), la, ncons, 0)
+    ! end do
 
-    do k = 1, sdc%iters
-       ! call sdc_sweep(uAD, fAD, SAD, dx, dt, sdc)
-    end do
+    ! ! set provisional solution, compute dt
 
-    call copy(U, uAD(sdc%nnodes))
+    ! call copy(uAD(1), U)
+    ! call dUdt(uAD(1), fAD(1), dx)
 
-    ! destroy
-    do m = 1, sdc%nnodes
-       call destroy(uAD(m))
-       call destroy(fAD(m))
-       call destroy(uR(m))
-       call destroy(fR(m))
-    end do
+    ! do m = 2, sdc%nnodes
+    !    call copy(uAD(m), uAD(1))
+    !    call copy(fAD(m), fAD(1))
+    ! end do
 
-    do m = 1, sdc%nnodes-1
-       call destroy(SAD(m))
-       call destroy(SR(m))
-    end do
+    ! call set_dt(dt, courno, istep)
+
+    ! ! perform sdc iterations
+    ! res = 0.0d0
+
+    ! do k = 1, sdc%iters
+    !    ! call sdc_sweep(uAD, fAD, SAD, dx, dt, sdc)
+    ! end do
+
+    ! call copy(U, uAD(sdc%nnodes))
+
+    ! ! destroy
+    ! do m = 1, sdc%nnodes
+    !    call destroy(uAD(m))
+    !    call destroy(fAD(m))
+    !    call destroy(uR(m))
+    !    call destroy(fR(m))
+    ! end do
+
+    ! do m = 1, sdc%nnodes-1
+    !    call destroy(SAD(m))
+    !    call destroy(SR(m))
+    ! end do
+
+    ! call sdc_mrset_destroy(mrset)
+    ! call sdc_nset_destroy(nset1)
+    ! call sdc_nset_destroy(nset2)
+    ! call sdc_encap_multifab_destroy(encap)
 
   end subroutine advance_multi_sdc
 
@@ -311,7 +284,8 @@ contains
   !
   subroutine set_dt(dt, courno, istep)
 
-    use probin_module, only : cflfac, fixed_dt, init_shrink, max_dt, max_dt_growth, small_dt, stop_time
+    use probin_module, only : fixed_dt, cflfac, init_shrink, max_dt_growth, &
+         max_dt, small_dt, stop_time
 
     double precision, intent(inout) :: dt
     double precision, intent(in   ) :: courno
@@ -430,7 +404,7 @@ contains
   !
   ! Compute dU/dt given U.
   !
-  ! The Courant number (courno) might also be computed if passed.
+  ! The Courant number (courno) is also computed if passed.
   !
   subroutine dUdt (U, Uprime, dx, courno, istep)
     use derivative_stencil_module, only : stencil, narrow, s3d
@@ -506,7 +480,8 @@ contains
 
     logical :: inc_ad, inc_r
 
-    double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
+    double precision, pointer, dimension(:,:,:,:) :: &
+         up, fhp, fdp, qp, mup, xip, lamp, Ddp, upp
 
     type(bl_prof_timer), save :: bpt_ctoprim,  bpt_gettrans, bpt_hypterm, bpt_courno
     type(bl_prof_timer), save :: bpt_diffterm, bpt_calcU, bpt_chemterm, bpt_nscbc
