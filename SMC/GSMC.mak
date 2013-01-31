@@ -21,6 +21,13 @@ BOXLIB_CORE := Src/F_BaseLib
 # core SMC directories
 SMC_SRC ?= src
 
+ifeq ($(strip $(SDCLIB_HOME)),)
+  ifeq ($(strip $(SMC_SRC)),src)
+    $(error "Must define SDCLIB_HOME when SMC_SRC=$(SMC_SRC)")
+  else ifeq ($(strip $(SMC_SRC)),src_tb)
+    $(error "Must define SDCLIB_HOME when SMC_SRC=$(SMC_SRC)")
+  endif
+endif
 
 #-----------------------------------------------------------------------------
 # Fmpack is the list of all the GPackage.mak files that we need to
@@ -45,15 +52,17 @@ Fmpack += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir)/GPackage.mak)
 Fmlocs += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir))
 
 # SDCLib
-Fmpack += $(SDCLIB_HOME)/GPackage.mak
-Fmlocs += $(SDCLIB_HOME)/src/core $(SDCLIB_HOME)/src/fortran $(SDCLIB_HOME)/src/encap $(SDCLIB_HOME)/src/utils
-INCLUDE_LOCATIONS += $(SDCLIB_HOME)/include
+ifdef SDCLIB_HOME
+  Fmpack += $(SDCLIB_HOME)/GPackage.mak
+  Fmlocs += $(SDCLIB_HOME)/src/core $(SDCLIB_HOME)/src/fortran $(SDCLIB_HOME)/src/encap $(SDCLIB_HOME)/src/utils
+  INCLUDE_LOCATIONS += $(SDCLIB_HOME)/include
+endif
 
 # Chemistry
 Fmpack += $(CHEMISTRY_DIR)/F_Src/GPackage.mak
 Fmlocs += $(CHEMISTRY_DIR)/F_Src
 
-ifeq ($(CHEMISTRY_MODEL), LIDRYER)
+ifeq ($(CHEMISTRY_MODEL),LIDRYER)
   csources += LiDryer.c
   vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer
   vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer/PMFs
@@ -135,7 +144,7 @@ build_info.f90:
             "$(COMPILE.f90)" "$(COMPILE.f)" \
             "$(COMPILE.c)" "$(LINK.f90)" \
             "AUX=$(CHEMISTRY_MODEL)" \
-            "GIT=$(BOXLIB_HOME)" "GIT=$(SMC_TOP_DIR)"
+            "GIT=$(BOXLIB_HOME)" "GIT=$(SMC_TOP_DIR)" "GIT=$(SDCLIB_HOME)"
 	@echo " "
 
 $(odir)/build_info.o: build_info.f90
