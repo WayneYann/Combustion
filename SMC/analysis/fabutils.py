@@ -17,7 +17,14 @@ env.nthreads = 1
 def setenv():
   if env.host == 'hopper':
     env.host_string = 'hopper.nersc.gov'
+    env.host_rsync  = 'hopper-s'
     env.exe = 'main.Linux.Cray.mpi.omp.exe'
+  elif env.host == 'gigan':
+    env.exe = 'main.Linux.gfortran.mpi.omp.exe'
+
+@task
+def put():
+  local('/home/memmett/bin/put')
 
 
 @task
@@ -27,14 +34,11 @@ def rsync():
   if env.host == 'localhost':
     return
 
-  exclude = [ '*~', 't', '.git', '*.exe', 'plt*', '*.pyc', '*.so', 'staging' ]
-  exclude = map(lambda x: "'" + x + "'", exclude)
-  exclude = ' --exclude '.join(exclude)
-
   for src, dst in env.rsync:
-      command = "rsync -aPz --exclude {exclude} {src}/ {host}:{dst}".format(
-          exclude=exclude, host=env.host, src=src, dst=dst)
+      command = "rsync -avz -F {src}/ {host}:{dst}".format(
+          host=env.host_rsync, src=src, dst=dst)
       local(command)
+
 
 
 @task
@@ -62,7 +66,7 @@ class stage(object):
     def __exit__(self, type, value, tb):
         import shutil
         puts(green('syncing stage'))
-        local('rsync -auz {src}/* {host}:{dst}'.format(src=self.stage, host=env.host, dst=env.bin))
+        local('rsync -auz {src}/* {host}:{dst}'.format(src=self.stage, host=env.host_rsync, dst=env.bin))
         shutil.rmtree(self.stage)
 
     def mkdir(self, *dirnames):
