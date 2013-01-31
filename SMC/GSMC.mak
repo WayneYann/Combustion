@@ -21,6 +21,12 @@ BOXLIB_CORE := Src/F_BaseLib
 # core SMC directories
 SMC_SRC ?= src
 
+#-----------------------------------------------------------------------------
+
+ifeq ($(strip $(BOXLIB_HOME)),)
+  $(error "Must define BOXLIB_HOME")
+endif
+
 ifeq ($(strip $(SDCLIB_HOME)),)
   ifeq ($(strip $(SMC_SRC)),src)
     $(error "Must define SDCLIB_HOME when SMC_SRC=$(SMC_SRC)")
