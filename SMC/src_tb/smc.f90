@@ -15,6 +15,7 @@ subroutine smc()
   use runtime_init_module
   use sdcquad_module
   use smc_bc_module
+  use smcdata_module
   use time_module
   use variables_module
 
@@ -102,6 +103,8 @@ subroutine smc()
      call initialize_from_scratch(la,dt,courno,dx,U)
 
   end if
+
+  call build_smcdata(la)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! error checking
@@ -345,6 +348,8 @@ subroutine smc()
 
   call nscbc_close()
   call smc_bc_close()
+
+  call destroy_smcdata()
 
   call destroy(U)
 

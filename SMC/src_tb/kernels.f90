@@ -9,8 +9,7 @@ module kernels_module
 
   private
 
-  public :: hypterm_3d, narrow_diffterm_3d, chemterm_3d, comp_courno_3d, &
-       S3D_diffterm_1, S3D_diffterm_2
+  public :: hypterm_3d, narrow_diffterm_3d, chemterm_3d, comp_courno_3d
 
 contains
 
@@ -41,20 +40,14 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    allocate(tmpz(lo(1) : hi(1), lo(2): hi(2),dlo(3):dhi(3)))
-
-    !$omp parallel private(i,j,k,n,un,jj,tmpx,tmpy)
-
     allocate(tmpx(dlo(1):dhi(1)))
     allocate(tmpy(lo(1) : hi(1),dlo(2):dhi(2)))
+    allocate(tmpz(lo(1) : hi(1), lo(2): hi(2),dlo(3):dhi(3)))
 
-    !$omp workshare
     rhs = 0.d0
-    !$omp end workshare
 
     ! ------- BEGIN x-direction -------
 
-    !$omp do 
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
 
@@ -93,10 +86,8 @@ contains
 
        enddo
     enddo
-    !$omp end do
 
     do n = iry1, iry1+nspecies-1
-       !$omp do 
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
     
@@ -109,14 +100,12 @@ contains
 
           enddo
        enddo
-       !$omp end do
     enddo
 
     ! ------- END x-direction -------
 
     ! ------- BEGIN y-direction -------
 
-    !$omp do
     do k=lo(3),hi(3)
 
        do j=slo(2),shi(2)
@@ -170,10 +159,8 @@ contains
           enddo
        enddo
     enddo
-    !$omp end do
 
     do n = iry1, iry1+nspecies-1
-       !$omp do
        do k=lo(3),hi(3)
 
           do j=dlo(2),dhi(2)
@@ -188,14 +175,12 @@ contains
           enddo
 
        enddo
-       !$omp end do
     enddo
 
     ! ------- END y-direction -------
 
     ! ------- BEGIN z-direction -------
 
-    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -204,9 +189,7 @@ contains
           end do
        end do
     end do
-    !$omp end do nowait
 
-    !$omp do
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -214,8 +197,6 @@ contains
           end do
        end do
     end do
-    !$omp end do
-    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -223,9 +204,7 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
-    !$omp do
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -233,8 +212,6 @@ contains
           end do
        end do
     end do
-    !$omp end do
-    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -242,9 +219,7 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
-    !$omp do
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -252,8 +227,6 @@ contains
           end do
        end do
     end do
-    !$omp end do
-    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -261,9 +234,7 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
-    !$omp do
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -271,8 +242,6 @@ contains
           end do
        end do
     end do
-    !$omp end do
-    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -280,11 +249,9 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
     do n = iry1, iry1+nspecies-1
        do jj=lo(2),hi(2),jblocksize
-       !$omp do
        do k=dlo(3),dhi(3)
 !          do j=lo(2),hi(2)
           do j=jj,min(jj+jblocksize-1,hi(2))
@@ -293,11 +260,9 @@ contains
              end do
           end do
        end do
-       !$omp end do
        end do ! jj
 
        do jj=lo(2),hi(2),jblocksize
-       !$omp do 
        do k=slo(3),shi(3)
 !          do j=lo(2),hi(2)
           do j=jj,min(jj+jblocksize-1,hi(2))
@@ -306,7 +271,6 @@ contains
              end do
           enddo
        enddo
-       !$omp end do
        end do ! jj
     enddo
 
@@ -314,7 +278,6 @@ contains
 
     ! ----- lo-x boundary -----
     if (dlo(1) .eq. lo(1)) then 
-       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
 
@@ -387,10 +350,8 @@ contains
 
           enddo
        enddo
-       !$omp end do nowait
 
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do k=lo(3),hi(3)
              do j=lo(2),hi(2)
 
@@ -415,14 +376,11 @@ contains
                      first_deriv_6( cons(i-3:i+3,j,k,n)*q(i-3:i+3,j,k,qu) )
              end do
           end do
-          !$omp end do nowait
        end do
-       !$omp barrier
     end if
 
     ! ----- hi-x boundary -----
     if (dhi(1) .eq. hi(1)) then 
-       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              
@@ -494,10 +452,8 @@ contains
 
           enddo
        enddo
-       !$omp end do nowait
        
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do k=lo(3),hi(3)
              do j=lo(2),hi(2)
                 
@@ -523,14 +479,11 @@ contains
                 
              enddo
           enddo
-          !$omp end do nowait
        end do
-       !$omp barrier
     end if
 
     ! ----- lo-y boundary -----
     if (dlo(2) .eq. lo(2)) then 
-       !$omp do
        do k=lo(3),hi(3)
 
           ! if (bclo(2) .eq. WALL???) then
@@ -612,10 +565,8 @@ contains
           enddo
 
        enddo
-       !$omp end do nowait
 
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do k=lo(3),hi(3)
 
              ! if (bclo(2) .eq. WALL???) then
@@ -646,14 +597,11 @@ contains
              end do
 
           end do
-          !$omp end do nowait
        end do
-       !$omp barrier
     end if
 
     ! ----- hi-y boundary -----
     if (dhi(2) .eq. hi(2)) then 
-       !$omp do
        do k=lo(3),hi(3)
 
           j = hi(2)-3
@@ -734,10 +682,8 @@ contains
           ! end if
 
        enddo
-       !$omp end do nowait
 
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do k=lo(3),hi(3)
 
              j = hi(2)-3
@@ -767,9 +713,7 @@ contains
              ! end if
 
           end do
-          !$omp end do nowait
        end do
-       !$omp barrier
     end if
 
 
@@ -783,7 +727,6 @@ contains
 
        k = lo(3)+1
        ! use 3rd-order slightly right-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
@@ -806,23 +749,18 @@ contains
 
           enddo
        enddo
-       !$omp end do nowait
 
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
                      first_deriv_r3( cons(i,j,k-1:k+2,n)*q(i,j,k-1:k+2,qw) )
              end do
           end do
-          !$omp end do nowait
        end do
-       !$omp barrier
 
        k = lo(3)+2
        ! use 4th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
@@ -845,23 +783,18 @@ contains
 
           enddo
        enddo
-       !$omp end do nowait
 
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
                      first_deriv_4( cons(i,j,k-2:k+2,n)*q(i,j,k-2:k+2,qw) )
              end do
           end do
-          !$omp end do nowait
        end do
-       !$omp barrier
 
        k = lo(3)+3
        ! use 6th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
@@ -884,19 +817,15 @@ contains
 
           enddo
        enddo
-       !$omp end do nowait
 
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
                      first_deriv_6( cons(i,j,k-3:k+3,n)*q(i,j,k-3:k+3,qw) )
              end do
           end do
-          !$omp end do nowait
        end do
-       !$omp barrier
     end if
 
     ! ----- hi-z boundary -----
@@ -905,7 +834,6 @@ contains
        k = hi(3)-3
        ! use 6th-order stencil
        
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
@@ -928,24 +856,19 @@ contains
 
           enddo
        enddo
-       !$omp end do nowait
 
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
                      first_deriv_6(cons(i,j,k-3:k+3,n)*q(i,j,k-3:k+3,qw))
              end do
           enddo
-          !$omp end do nowait
        end do
-       !$omp barrier
 
        k = hi(3)-2
        ! use 4th-order stencil
        
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
@@ -968,24 +891,19 @@ contains
 
           enddo
        enddo
-       !$omp end do nowait
 
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
                      first_deriv_4(cons(i,j,k-2:k+2,n)*q(i,j,k-2:k+2,qw))
              end do
           enddo
-          !$omp end do nowait
        enddo
-       !$omp barrier
 
        k = hi(3)-1
        ! use 3rd-order slightly left-biased stencil
        
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
@@ -1008,19 +926,15 @@ contains
 
           enddo
        enddo
-       !$omp end do nowait
 
        do n = iry1, iry1+nspecies-1
-          !$omp do
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * &
                      first_deriv_l3(cons(i,j,k-2:k+1,n)*q(i,j,k-2:k+1,qw))
              end do
           enddo
-          !$omp end do nowait
        enddo
-       !$omp barrier
 
        ! if (bchi(3) .eq. WALL???) then
        !    k = hi(3)
@@ -1029,11 +943,7 @@ contains
 
     end if
 
-    deallocate(tmpx,tmpy)
-
-    !$omp end parallel
-
-    deallocate(tmpz)
+    deallocate(tmpx,tmpy,tmpz)
 
   end subroutine hypterm_3d
 
@@ -1129,19 +1039,12 @@ contains
     allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
     allocate(vsm(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
 
-    allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
-
-    !$omp parallel &
-    !$omp private(i,j,k,tauxx,tauyy,tauzz,divu,tmpx,tmpy)
-
     allocate(tmpx(dlo(1):dhi(1)))
     allocate(tmpy( lo(1): hi(1),dlo(2):dhi(2)))
+    allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
 
-    !$omp workshare
     rhs = 0.d0
-    !$omp end workshare
 
-    !$omp do
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
@@ -1150,9 +1053,7 @@ contains
           enddo
        enddo
     enddo
-    !$omp end do nowait
 
-    !$omp do
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
           ! lo-x boundary
@@ -1217,9 +1118,7 @@ contains
           end if
        enddo
     enddo
-    !$omp end do nowait
 
-    !$omp do
     do k=dlo(3),dhi(3)
        ! lo-y boundary
        if (dlo(2) .eq. lo(2)) then
@@ -1336,13 +1235,11 @@ contains
           enddo
        end if
     enddo
-    !$omp end do nowait
 
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
-       !$omp do
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
              uz(i,j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qu))
@@ -1350,11 +1247,9 @@ contains
              wz(i,j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qw))
           enddo
        enddo
-       !$omp end do nowait
 
        k = lo(3)+1
        ! use 3rd-order slightly right-biased stencil
-       !$omp do
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
              uz(i,j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qu))
@@ -1362,11 +1257,9 @@ contains
              wz(i,j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qw))
           enddo
        enddo
-       !$omp end do nowait
 
        k = lo(3)+2
        ! use 4th-order stencil
-       !$omp do
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
              uz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qu))
@@ -1374,11 +1267,9 @@ contains
              wz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qw))
           enddo
        enddo
-       !$omp end do nowait
 
        k = lo(3)+3
        ! use 6th-order stencil
-       !$omp do
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
              uz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qu))
@@ -1386,11 +1277,9 @@ contains
              wz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qw))
           enddo
        enddo
-       !$omp end do nowait
     end if
 
     ! interior
-    !$omp do
     do k=slo(3),shi(3)
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
@@ -1400,13 +1289,11 @@ contains
           enddo
        enddo
     enddo
-    !$omp end do nowait
 
     ! hi-z boundary
     if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
-       !$omp do
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
              uz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qu))
@@ -1414,11 +1301,9 @@ contains
              wz(i,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qw))
           enddo
        enddo
-       !$omp end do nowait
 
        k = hi(3)-2
        ! use 4th-order stencil
-       !$omp do
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
              uz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qu))
@@ -1426,11 +1311,9 @@ contains
              wz(i,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qw))
           enddo
        enddo
-       !$omp end do nowait
 
        k = hi(3)-1
        ! use 3rd-order slightly left-biased stencil
-       !$omp do
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
              uz(i,j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qu))
@@ -1438,11 +1321,9 @@ contains
              wz(i,j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qw))
           enddo
        enddo
-       !$omp end do nowait
 
        k = hi(3)
        ! use completely left-biased stencil
-       !$omp do
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
              uz(i,j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qu))
@@ -1450,15 +1331,11 @@ contains
              wz(i,j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qw))
           enddo
        enddo
-       !$omp end do nowait
     end if
-
-    !$omp barrier
 
     !----- mx -----
 
     !----- mx : d()/dx -----
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
 
@@ -1509,10 +1386,8 @@ contains
           end if
        end do
     end do
-    !$omp end do
 
     !----- mx : d()/dy -----
-    !$omp do
     do k=lo(3),hi(3)
 
        do j=dlo(2),dhi(2)
@@ -1582,11 +1457,9 @@ contains
           end do
        end if
     end do
-    !$omp end do
 
     ! ----- mx : d()/dz -----
 
-    !$omp do
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1594,53 +1467,43 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + foulo(3)*dxinv(3)*first_deriv_rb(tmpz(i,j,k:k+3))
           end do
        end do
-       !$omp end do nowait
 
        k = lo(3)+1
        ! use 3rd-order slightly right-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_r3(tmpz(i,j,k-1:k+2))
           end do
        end do
-       !$omp end do nowait
 
        k = lo(3)+2
        ! use 4th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
           end do
        end do
-       !$omp end do nowait
 
        k = lo(3)+3
        ! use 6th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
           end do
        end do
-       !$omp end do nowait
     end if
 
     ! interior
-    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1648,57 +1511,45 @@ contains
           end do
        end do
     end do
-    !$omp end do nowait
 
     ! hi-z boundary
     if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
           end do
        end do
-       !$omp end do nowait
 
        k = hi(3)-2
        ! use 4th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
           end do
        end do
-       !$omp end do nowait
 
        k = hi(3)-1
        ! use 3rd-order slightly left-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3)*first_deriv_l3(tmpz(i,j,k-2:k+1))
           end do
        end do
-       !$omp end do nowait
 
        k = hi(3)
        ! use completely left-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + fouhi(3)*dxinv(3)*first_deriv_lb(tmpz(i,j,k-3:k))
           end do
        end do
-       !$omp end do nowait
     end if
-
-    !$omp barrier
 
     !----- my -----
 
     !----- my : d()/dx -----
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
 
@@ -1749,10 +1600,8 @@ contains
           end if
        end do
     end do
-    !$omp end do
 
     !----- my : d()/dy -----
-    !$omp do
     do k=lo(3),hi(3)
 
        do j=dlo(2),dhi(2)
@@ -1822,11 +1671,9 @@ contains
           end do
        end if
     end do
-    !$omp end do
 
     !----- my : d()/dz -----
 
-    !$omp do
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1834,52 +1681,42 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + foulo(3)*dxinv(3)*first_deriv_rb(tmpz(i,j,k:k+3))
           end do
        end do
-       !$omp end do nowait
 
        k = lo(3)+1
        ! use 3rd-order slightly right-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_r3(tmpz(i,j,k-1:k+2))
           end do
        end do
-       !$omp end do nowait
 
        k = lo(3)+2
        ! use 4th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
           end do
        end do
-       !$omp end do nowait
 
        k = lo(3)+3
        ! use 6th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
           end do
        end do
-       !$omp end do nowait
     end if
 
-    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1887,57 +1724,45 @@ contains
           end do
        end do
     end do
-    !$omp end do nowait
 
     ! hi-z boundary
     if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
           end do
        end do
-       !$omp end do nowait
 
        k = hi(3)-2
        ! use 4th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
           end do
        end do
-       !$omp end do nowait
 
        k = hi(3)-1
        ! use 3rd-order slightly left-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3)*first_deriv_l3(tmpz(i,j,k-2:k+1))
           end do
        end do
-       !$omp end do nowait
 
        k = hi(3)
        ! use completely left-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + fouhi(3)*dxinv(3)*first_deriv_lb(tmpz(i,j,k-3:k))
           end do
        end do
-       !$omp end do nowait
     end if
-
-    !$omp barrier
 
     !----- mz -----
 
     !----- mz : d()/dx -------
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
 
@@ -1989,10 +1814,8 @@ contains
           end if
        end do
     end do
-    !$omp end do
 
     !----- mz : d()/dy -----
-    !$omp do
     do k=lo(3),hi(3)
 
        do j=dlo(2),dhi(2)
@@ -2062,11 +1885,9 @@ contains
           end do
        end if
     end do
-    !$omp end do 
 
     !----- mz : d()/dy -----
 
-    !$omp do
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -2074,52 +1895,42 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + finlo(3)*dxinv(3)*first_deriv_rb(tmpz(i,j,k:k+3))
           end do
        end do
-       !$omp end do nowait
 
        k = lo(3)+1
        ! use 3rd-order slightly right-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_r3(tmpz(i,j,k-1:k+2))
           end do
        end do
-       !$omp end do nowait
 
        k = lo(3)+2
        ! use 4th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
           end do
        end do
-       !$omp end do nowait
 
        k = lo(3)+3
        ! use 6th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
           end do
        end do
-       !$omp end do nowait
     end if
     
-    !$omp do
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -2127,56 +1938,44 @@ contains
           end do
        end do
     end do
-    !$omp end do nowait
 
     ! hi-z boundary
     if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_6(tmpz(i,j,k-3:k+3))
           end do
        end do
-       !$omp end do nowait
 
        k = hi(3)-2
        ! use 4th-order stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_4(tmpz(i,j,k-2:k+2))
           end do
        end do
-       !$omp end do nowait
 
        k = hi(3)-1
        ! use 3rd-order slightly left-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3)*first_deriv_l3(tmpz(i,j,k-2:k+1))
           end do
        end do
-       !$omp end do nowait
 
        k = hi(3)
        ! use completely left-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + finhi(3)*dxinv(3)*first_deriv_lb(tmpz(i,j,k-3:k))
           end do
        end do
-       !$omp end do nowait
     end if
-
-    !$omp barrier
 
     !----- energy -----
 
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -2196,13 +1995,10 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
-    deallocate(tmpx,tmpy)
+    deallocate(tmpx,tmpy,tmpz)
 
-    !$omp end parallel
-
-    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz,tmpz)
+    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz)
 
     allocate(dpy(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
     allocate(dxe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
@@ -2213,21 +2009,12 @@ contains
     allocate(M8p(8,lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
     allocate(Hry(  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
 
-    !$omp parallel &
-    !$omp private(i,j,k,n,qxn,qyn,qhn,Yhalf,hhalf,jj,mmtmp8) &
-    !$omp private(Htot,Htmp,Ytmp,M6p,M6X,M4p,M4X,M2p,M2X,BBp,BBX) &
-    !$omp private(mmtmp6, mmtmp4, mmtmp2, mmtmpB) &
-    !$omp private(rhstmp,rhstot,rhsene,Hcell,iface)
-
-    !$omp workshare
     dpe = 0.d0
-    !$omp end workshare
 
     do n=1,nspecies
        qxn = qx1+n-1
        qyn = qy1+n-1
        qhn = qh1+n-1
-       !$omp do
        do k=dlo(3),dhi(3)
           do j=dlo(2),dhi(2)
              do i=dlo(1),dhi(1)
@@ -2237,12 +2024,10 @@ contains
              end do
           end do
        end do
-       !$omp end do
     end do
 
     ! ------- BEGIN x-direction -------
 
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=slo(1),shi(1)+1
@@ -2262,11 +2047,9 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
     do n = 1, nspecies
        qxn = qx1+n-1
-       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
    
@@ -2283,17 +2066,13 @@ contains
 
           end do
        end do
-       !$omp end do
     end do
 
     ! correction
     
-    !$omp workshare
     Hry = 0.d0
-    !$omp end workshare
 
     do n = 1, nspecies
-       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=slo(1),shi(1)+1
@@ -2301,13 +2080,11 @@ contains
              end do
           end do
        end do
-       !$omp end do
     end do
     
     do n = 1, nspecies
        qyn = qy1+n-1
        qhn = qh1+n-1
-       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=slo(1),shi(1)+1
@@ -2318,12 +2095,10 @@ contains
              end do
           end do
        end do
-       !$omp end do
     end do
 
     ! add x-direction rhs
     do n=2,ncons
-       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=slo(1),shi(1)
@@ -2331,14 +2106,10 @@ contains
              end do
           end do
        end do
-       !$omp end do nowait
     end do
-
-    !$omp barrier
 
     ! lo-x direction
     if (dlo(1) .eq. lo(1)) then
-       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              i = lo(1)
@@ -2537,12 +2308,10 @@ contains
              end do
           end do
        end do
-       !omp end do
     end if
 
     ! hi-x boundary
     if (dhi(1) .eq. hi(1)) then
-       !$omp do
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2741,14 +2510,12 @@ contains
              rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(1)*dx2inv(1) * rhsene
           end do
        end do
-       !$omp end do
     end if
 
     ! ------- END x-direction -------
 
     ! ------- BEGIN y-direction -------
 
-    !$omp do
     do k=lo(3),hi(3)
        do j=slo(2),shi(2)+1
 
@@ -2776,12 +2543,10 @@ contains
 
        end do
     end do
-    !$omp end do
 
     do n = 1, nspecies
        qxn = qx1+n-1
 
-      !$omp do
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)+1
 
@@ -2803,12 +2568,9 @@ contains
        
     ! correction
 
-    !$omp workshare
     Hry = 0.d0
-    !$omp end workshare
 
     do n = 1, nspecies
-       !$omp do
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)+1
              do i=lo(1),hi(1)
@@ -2816,13 +2578,11 @@ contains
              end do
           end do
        end do
-       !$omp end do
     end do
 
     do n = 1, nspecies
        qyn = qy1+n-1
        qhn = qh1+n-1
-       !$omp do
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)+1
              do i=lo(1),hi(1)
@@ -2833,12 +2593,10 @@ contains
              end do
           end do
        end do
-       !$omp end do
     end do
 
     ! add y-direction rhs
     do n=2,ncons
-       !$omp do
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)
              do i=lo(1),hi(1)
@@ -2846,14 +2604,10 @@ contains
              end do
           end do
        end do
-       !$omp end do nowait
     end do
-
-    !$omp barrier
 
     ! lo-y boundary
     if (dlo(2) .eq. lo(2)) then
-       !$omp do
        do k=lo(3),hi(3)
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           j = lo(2)
@@ -3059,12 +2813,10 @@ contains
              end do
           end do
        end do
-       !$omp end do
     end if
 
     ! hi-y boundary
     if (dhi(2) .eq. hi(2)) then
-       !$omp do
        do k=lo(3),hi(3)
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           ! use 6th-order stencil for cell i,hi(2)-3,k
@@ -3270,14 +3022,12 @@ contains
              rhs(i,j,k,iene) = rhs(i,j,k,iene) + fouhi(2)*dx2inv(2) * rhsene
           end do
        end do
-       !$omp end do       
     end if
 
     ! ------- END y-direction -------
 
     ! ------- BEGIN z-direction -------
 
-    !$omp do
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -3287,9 +3037,7 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
-    !$omp do
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -3298,9 +3046,7 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
-    !$omp do
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -3309,9 +3055,7 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
-    !$omp do
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -3321,13 +3065,11 @@ contains
           end do
        end do
     end do
-    !$omp end do
 
     do n = 1, nspecies
        qxn = qx1+n-1
 
        do jj=lo(2),hi(2),jblocksize
-       !$omp do
        do k=slo(3),shi(3)+1
 !          do j=lo(2),hi(2)
           do j=jj,min(jj+jblocksize-1,hi(2))
@@ -3336,11 +3078,9 @@ contains
              end do
           end do
        end do
-       !$omp end do
        enddo
 
        do jj=lo(2),hi(2),jblocksize
-       !$omp do
        do k=slo(3),shi(3)+1
 !          do j=lo(2),hi(2)
           do j=jj,min(jj+jblocksize-1,hi(2))
@@ -3352,18 +3092,14 @@ contains
              end do
           end do
        end do
-       !$omp end do
        enddo
     end do
 
     ! correction
 
-    !$omp workshare
     Hry = 0.d0
-    !$omp end workshare
 
     do n = 1, nspecies
-       !$omp do
        do k=slo(3),shi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -3371,13 +3107,11 @@ contains
              end do
           end do
        end do
-       !$omp end do
     end do
 
     do n = 1, nspecies
        qyn = qy1+n-1
        qhn = qh1+n-1
-       !$omp do
        do k=slo(3),shi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -3388,12 +3122,10 @@ contains
              end do
           end do
        end do
-       !$omp end do
     end do
     
     ! add z-direction rhs
     do n=2,ncons
-       !$omp do
        do k=slo(3),shi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -3401,17 +3133,13 @@ contains
              end do
           end do
        end do
-       !$omp end do nowait
     end do
     
-    !$omp barrier
-
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        k = lo(3)
        ! use completely right-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
@@ -3459,11 +3187,9 @@ contains
              
           end do
        end do
-       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 2nd-order stencil for cell i,j,lo(3)+1
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3515,11 +3241,9 @@ contains
              end do
           end do
        end do
-       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 4th-order stencil for cell i,j,lo(3)+2
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3571,11 +3295,9 @@ contains
              end do
           end do
        end do
-       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 6th-order stencil for cell i,j,lo(3)+3
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3627,14 +3349,12 @@ contains
              end do
           end do
        end do
-       !$omp end do       
     end if
 
     ! hi-z boundary
     if (dhi(3) .eq. hi(3)) then
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 6th-order stencil for cell i,j,hi(3)-3
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3686,11 +3406,9 @@ contains
              end do
           end do
        end do
-       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 4th-order stencil for cell i,j,hi(3)-2
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3742,11 +3460,9 @@ contains
              end do
           end do
        end do
-       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 2nd-order stencil for cell i,j,hi(3)-1
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
              do iface=0,1 
@@ -3798,12 +3514,10 @@ contains
              end do
           end do
        end do
-       !$omp end do
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        k = hi(3)
        ! use completely right-biased stencil
-       !$omp do
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
@@ -3851,13 +3565,11 @@ contains
              
           end do
        end do
-       !$omp end do
     end if
 
     ! ------- END z-direction -------
 
     ! add kinetic energy
-    !$omp do
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -3868,9 +3580,6 @@ contains
           end do
        end do
     end do
-    !$omp end do 
-    
-    !$omp end parallel
 
     deallocate(Hg,dpy,dxe,dpe,vsp,vsm,M8p,Hry)
 
@@ -3885,7 +3594,6 @@ contains
     integer :: iwrk, i,j,k
     double precision :: Yt(nspecies), wdot(nspecies), rwrk
 
-    !$omp parallel do private(i,j,k,iwrk,rwrk,Yt,wdot)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -3897,7 +3605,6 @@ contains
           end do
        end do
     end do
-    !$omp end parallel do 
 
   end subroutine chemterm_3d
 
@@ -3918,9 +3625,6 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    !$omp parallel do private(i,j,k,iwrk,rwrk,Tt,X,gamma,Cv,Cp,c) &
-    !$omp private(courx,coury,courz) &
-    !$omp reduction(max:courno)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -3941,854 +3645,7 @@ contains
           end do
        end do
     end do
-    !$omp end parallel do
 
   end subroutine comp_courno_3d
-
-
-  subroutine S3D_diffterm_1(lo,hi,ng,ndq,dx,q,rhs,mu,xi,qx,qy,qz)
- 
-    integer,          intent(in ) :: lo(3),hi(3),ng,ndq
-    double precision, intent(in ) :: dx(3)
-    double precision, intent(in ) :: q  (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
-    double precision, intent(in ) :: mu (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
-    double precision, intent(in ) :: xi (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
-    double precision, intent(out) :: qx (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
-    double precision, intent(out) :: qy (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
-    double precision, intent(out) :: qz (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
-    double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
-
-    double precision, allocatable, dimension(:,:,:) :: vsm
-    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
-
-    double precision :: dxinv(3), divu
-    double precision :: tauxx,tauyy,tauzz 
-    integer :: i,j,k,n, qxn, qdxn
-
-    allocate(vsm (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(tmpz(    lo(1):hi(1)   ,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
-
-    do i = 1,3
-       dxinv(i) = 1.0d0 / dx(i)
-    end do
-
-    !$omp parallel private(i,j,k,n,qxn,qdxn,divu,tauxx,tauyy,tauzz,tmpx,tmpy)
-
-    allocate(tmpx(-ng+lo(1):hi(1)+ng))
-    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
-
-    !$omp workshare
-    rhs = 0.d0
-    !$omp end workshare
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1)-ng,hi(1)+ng
-             vsm(i,j,k) = xi(i,j,k) -  TwoThirds*mu(i,j,k)
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1),hi(1)
-             qx(i,j,k,idu) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qu) )
-             qx(i,j,k,idv) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qv) )
-             qx(i,j,k,idw) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qw) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2),hi(2)   
-          do i=lo(1)-ng,hi(1)+ng
-             qy(i,j,k,idu) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qu) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2),hi(2)   
-          do i=lo(1)-ng,hi(1)+ng
-             qy(i,j,k,idv) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qv) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2),hi(2)   
-          do i=lo(1)-ng,hi(1)+ng
-             qy(i,j,k,idw) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qw) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1)-ng,hi(1)+ng
-             qz(i,j,k,idu) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qu) )
-             qz(i,j,k,idv) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qv) )
-             qz(i,j,k,idw) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qw) )
-          enddo
-       enddo
-    enddo
-    !$omp end do
-
-    !----- mx -----
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1)-4,hi(1)+4
-             tmpx(i) = vsm(i,j,k)*(qy(i,j,k,idv)+qz(i,j,k,idw))
-          end do
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
-          end do
-       end do
-    end do
-    !$omp end do
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmpy(i,j) = mu(i,j,k)*qx(i,j,k,idv)
-          end do
-       end do
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
-          end do
-       end do
-    end do
-    !$omp end do
-
-    !$omp do
-    do k=lo(3)-4,hi(3)+4
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             tmpz(i,j,k) = mu(i,j,k)*qx(i,j,k,idw)
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
-          end do
-       end do
-    end do
-    !$omp end do
-
-    !----- my -----
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1)-4,hi(1)+4
-             tmpx(i) = mu(i,j,k)*qy(i,j,k,idu)
-          end do
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
-          end do
-       end do
-    end do
-    !$omp end do
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmpy(i,j) = vsm(i,j,k)*(qx(i,j,k,idu)+qz(i,j,k,idw))
-          end do
-       end do
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
-          end do
-       end do
-    end do
-    !$omp end do
-
-    !$omp do
-    do k=lo(3)-4,hi(3)+4
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             tmpz(i,j,k) = mu(i,j,k)*qy(i,j,k,idw)
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
-          end do
-       end do
-    end do
-    !$omp end do
-
-    !----- mz -----
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1)-4,hi(1)+4
-             tmpx(i) = mu(i,j,k)*qz(i,j,k,idu)
-          end do
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
-          end do
-       end do
-    end do
-    !$omp end do
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmpy(i,j) = mu(i,j,k)*qz(i,j,k,idv)
-          end do
-       end do
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
-          end do
-       end do
-    end do
-    !$omp end do
-
-    !$omp do
-    do k=lo(3)-4,hi(3)+4
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             tmpz(i,j,k) = vsm(i,j,k)*(qx(i,j,k,idu)+qy(i,j,k,idv))
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
-          end do
-       end do
-    end do
-    !$omp end do nowait
-
-    !----- energy -----
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             divu = (qx(i,j,k,idu)+qy(i,j,k,idv)+qz(i,j,k,idw))*vsm(i,j,k)
-             tauxx = 2.d0*mu(i,j,k)*qx(i,j,k,idu) + divu
-             tauyy = 2.d0*mu(i,j,k)*qy(i,j,k,idv) + divu
-             tauzz = 2.d0*mu(i,j,k)*qz(i,j,k,idw) + divu
-
-             ! change in internal energy
-             rhs(i,j,k,iene) = tauxx*qx(i,j,k,idu) + tauyy*qy(i,j,k,idv) + tauzz*qz(i,j,k,idw) &
-                  + mu(i,j,k)*((qy(i,j,k,idu)+qx(i,j,k,idv))**2 &
-                  &          + (qx(i,j,k,idw)+qz(i,j,k,idu))**2 &
-                  &          + (qz(i,j,k,idv)+qy(i,j,k,idw))**2 )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             qx(i,j,k,idT) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qtemp) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             qy(i,j,k,idT) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qtemp) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             qz(i,j,k,idT) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qtemp) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             qx(i,j,k,idp) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qpres) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             qy(i,j,k,idp) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qpres) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             qz(i,j,k,idp) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qpres) )
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    do n=1,nspecies
-       qxn = qx1 + n - 1
-       qdxn = idX1 + n -1
-       !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                qx(i,j,k,qdxn) = dxinv(1) * first_deriv_8( q(i-4:i+4,j,k,qxn) )
-             enddo
-          enddo
-       enddo
-       !$omp end do nowait
-       !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                qy(i,j,k,qdxn) = dxinv(2) * first_deriv_8( q(i,j-4:j+4,k,qxn) )
-             enddo
-          enddo
-       enddo
-       !$omp end do nowait
-       !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                qz(i,j,k,qdxn) = dxinv(3) * first_deriv_8( q(i,j,k-4:k+4,qxn) )
-             enddo
-          enddo
-       enddo
-       !$omp end do nowait
-    enddo
-
-    deallocate(tmpx,tmpy)
-
-    !$omp end parallel
-
-    deallocate(vsm,tmpz)
-
-  end subroutine S3D_diffterm_1
-
-
-  subroutine S3D_diffterm_2(lo,hi,ng,ndq,dx,q,rhs,mu,xi,lam,dxy,qx,qy,qz)
-
-    integer,          intent(in )  :: lo(3),hi(3),ng,ndq
-    double precision, intent(in )  :: dx(3)
-    double precision, intent(in )  :: q  (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
-    double precision, intent(in )  :: mu (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
-    double precision, intent(in )  :: xi (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
-    double precision, intent(in )  :: lam(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
-    double precision, intent(in )  :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
-    double precision, intent(in)   :: qx (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
-    double precision, intent(in)   :: qy (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
-    double precision, intent(in)   :: qz (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ndq)
-    double precision, intent(inout):: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
- 
-    double precision, allocatable, dimension(:,:,:) :: vp, dpe, FE
-    double precision, allocatable, dimension(:,:,:,:) :: dpy, FY
-    ! dxy: diffusion coefficient of X in equation for Y
-    ! dpy: diffusion coefficient of p in equation for Y
-    ! NOT USING ! dxe: diffusion coefficient of X in equation for energy
-    ! dpe: diffusion coefficient of p in equation for energy
-
-    double precision :: dxinv(3)
-    integer          :: i,j,k,n, qxn, qyn, qhn, idXn, iryn
-    double precision, allocatable, dimension(:,:,:) :: rvc
-    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
-
-    allocate(vp(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-
-    allocate(dpy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
-    allocate(dpe(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-
-    allocate(FY(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies))
-    allocate(FE(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-
-    allocate(rvc (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng))
-    allocate(tmpz(    lo(1):hi(1)   ,    lo(2):hi(2)   ,-ng+lo(3):hi(3)+ng))
-
-    do i = 1,3
-       dxinv(i) = 1.0d0 / dx(i)
-    end do
-
-    !$omp parallel private(i,j,k,n,qxn,qyn,qhn,idXn,iryn,tmpx,tmpy)
-
-    allocate(tmpx(-ng+lo(1):hi(1)+ng))
-    allocate(tmpy(    lo(1):hi(1)   ,-ng+lo(2):hi(2)+ng))
-
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1)-ng,hi(1)+ng
-             vp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
-          enddo
-       enddo
-    enddo
-    !$omp end do nowait
-
-    !$omp workshare
-    dpe = 0.d0
-    !$omp end workshare
-
-    do n=1,nspecies
-       qxn = qx1+n-1
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       !$omp do
-       do k=lo(3)-ng,hi(3)+ng
-          do j=lo(2)-ng,hi(2)+ng
-             do i=lo(1)-ng,hi(1)+ng
-                dpy(i,j,k,n) = dxy(i,j,k,n)/q(i,j,k,qpres)*(q(i,j,k,qxn)-q(i,j,k,qyn))
-                dpe(i,j,k) = dpe(i,j,k) + dpy(i,j,k,n)*q(i,j,k,qhn)
-             end do
-          end do
-       end do
-       !$omp end do
-    end do
-
-    ! x-direction
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-
-          do i=lo(1)-4,hi(1)+4
-             tmpx(i) = vp(i,j,k)*qx(i,j,k,idu) 
-          end do
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
-          end do
-
-          do i=lo(1)-4,hi(1)+4
-             tmpx(i) = mu(i,j,k)*qx(i,j,k,idv)
-          end do
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
-          end do
-
-          do i=lo(1)-4,hi(1)+4
-             tmpx(i) = mu(i,j,k)*qx(i,j,k,idw)
-          end do
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
-          end do
-
-          do i=lo(1)-4,hi(1)+4
-             tmpx(i) = lam(i,j,k)*qx(i,j,k,idT)
-          end do
-          do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
-          end do
-
-       end do
-    end do
-    !$omp end do
-
-    ! y-direction
-
-    !$omp do
-    do k=lo(3),hi(3)
-
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmpy(i,j) = mu(i,j,k)*qy(i,j,k,idu)
-          end do
-       end do
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
-          end do
-       end do
-
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmpy(i,j) = vp(i,j,k)*qy(i,j,k,idv)
-          end do
-       end do
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
-          end do
-       end do
-
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmpy(i,j) = mu(i,j,k)*qy(i,j,k,idw)
-          end do
-       end do
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
-          end do
-       end do
-
-       do j=lo(2)-4,hi(2)+4
-          do i=lo(1),hi(1)
-             tmpy(i,j) = lam(i,j,k)*qy(i,j,k,idT)
-          end do
-       end do
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
-          end do
-       end do
-
-    end do
-    !$omp end do
-
-    !$omp do
-    do k=lo(3)-4,hi(3)+4
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             tmpz(i,j,k) = mu(i,j,k)*qz(i,j,k,idu)
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
-          end do
-       end do
-    end do
-    !$omp end do
-    
-    !$omp do
-    do k=lo(3)-4,hi(3)+4
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             tmpz(i,j,k) = mu(i,j,k)*qz(i,j,k,idv)
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
-          end do
-       end do
-    end do
-    !$omp end do
-    
-    !$omp do
-    do k=lo(3)-4,hi(3)+4
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             tmpz(i,j,k) = vp(i,j,k)*qz(i,j,k,idw)
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
-          end do
-       end do
-    end do
-    !$omp end do
-    
-    !$omp do
-    do k=lo(3)-4,hi(3)+4
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             tmpz(i,j,k) = lam(i,j,k)*qz(i,j,k,idT)
-          end do
-       end do
-    end do
-    !$omp end do
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
-          end do
-       end do
-    end do
-    !$omp end do
-
-    ! add kinetic energy
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) &
-                  + rhs(i,j,k,imx)*q(i,j,k,qu) &
-                  + rhs(i,j,k,imy)*q(i,j,k,qv) &
-                  + rhs(i,j,k,imz)*q(i,j,k,qw)
-          end do
-       end do
-    end do
-    !$omp end do
-
-    ! x-direction
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1)-ng,hi(1)+ng
-             FE(i,j,k) = dpe(i,j,k) * qx(i,j,k,idp)
-          end do
-       end do
-    end do
-    !$omp end do nowait
-
-    !$omp workshare
-    rvc = 0.d0
-    !$omp end workshare
-
-    do n=1,nspecies
-       idXn = idX1+n-1
-       qhn = qh1+n-1
-       !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1)-ng,hi(1)+ng
-                FE(i,j,k) = FE(i,j,k) + dxy(i,j,k,n)*qx(i,j,k,idXn)*q(i,j,k,qhn)
-                FY(i,j,k,n) = dxy(i,j,k,n)*qx(i,j,k,idXn) + dpy(i,j,k,n)*qx(i,j,k,idp)
-                rvc(i,j,k) = rvc(i,j,k) + FY(i,j,k,n)
-             end do
-          end do
-       end do
-       !$omp end do
-    end do
-
-    do n=1,nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1)-ng,hi(1)+ng
-                FY(i,j,k,n) = FY(i,j,k,n) - rvc(i,j,k)*q(i,j,k,qyn)
-                FE(i,j,k) = FE(i,j,k) - rvc(i,j,k)*q(i,j,k,qyn)*q(i,j,k,qhn)
-             end do
-          end do
-       end do
-       !$omp end do
-    end do
-
-    do n=1,nspecies    
-       iryn = iry1+n-1
-       !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
-                     dxinv(1) * first_deriv_8( FY(i-4:i+4,j,k,n) )
-             end do
-          end do
-       end do
-       !$omp end do nowait
-    end do
-    
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
-                  dxinv(1) * first_deriv_8( FE(i-4:i+4,j,k) )
-          end do
-       end do
-    end do
-    !$omp end do
-
-    ! y-direction
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2)-ng,hi(2)+ng
-          do i=lo(1),hi(1)
-             FE(i,j,k) = dpe(i,j,k) * qy(i,j,k,idp)
-          end do
-       end do
-    end do
-    !$omp end do nowait
-
-    !$omp workshare
-    rvc = 0.d0
-    !$omp end workshare
-
-    do n=1,nspecies
-       idXn = idX1+n-1
-       qhn = qh1+n-1
-       !$omp do    
-       do k=lo(3),hi(3)
-          do j=lo(2)-ng,hi(2)+ng
-             do i=lo(1),hi(1)
-                FE(i,j,k) = FE(i,j,k) + dxy(i,j,k,n)*qy(i,j,k,idXn)*q(i,j,k,qhn)
-                FY(i,j,k,n) = dxy(i,j,k,n)*qy(i,j,k,idXn) + dpy(i,j,k,n)*qy(i,j,k,idp)
-                rvc(i,j,k) = rvc(i,j,k) + FY(i,j,k,n)                
-             end do
-          end do
-       end do
-       !$omp end do    
-    end do
-
-    do n=1,nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       !$omp do    
-       do k=lo(3),hi(3)
-          do j=lo(2)-ng,hi(2)+ng
-             do i=lo(1),hi(1)
-                FY(i,j,k,n) = FY(i,j,k,n) - rvc(i,j,k)*q(i,j,k,qyn)
-                FE(i,j,k) = FE(i,j,k) - rvc(i,j,k)*q(i,j,k,qyn)*q(i,j,k,qhn)                
-             end do
-          end do
-       end do
-       !$omp end do
-    end do
-    
-    do n=1,nspecies    
-       iryn = iry1+n-1
-       !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
-                     dxinv(2) * first_deriv_8( FY(i,j-4:j+4,k,n) )
-             end do
-          end do
-       end do
-       !$omp end do nowait
-    end do
-    
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
-                  dxinv(2) * first_deriv_8( FE(i,j-4:j+4,k) )
-          end do
-       end do
-    end do
-    !$omp end do
-
-    ! z-direction
-    !$omp do
-    do k=lo(3)-ng,hi(3)+ng
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             FE(i,j,k) = dpe(i,j,k) * qz(i,j,k,idp)
-          end do
-       end do
-    end do
-    !$omp end do
-
-    !$omp workshare
-    rvc = 0.d0
-    !$omp end workshare
-
-    do n=1,nspecies
-       idXn = idX1+n-1
-       qhn = qh1+n-1
-       !$omp do
-       do k=lo(3)-ng,hi(3)+ng
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                FE(i,j,k) = FE(i,j,k) + dxy(i,j,k,n)*qz(i,j,k,idXn)*q(i,j,k,qhn)
-                FY(i,j,k,n) = dxy(i,j,k,n)*qz(i,j,k,idXn) + dpy(i,j,k,n)*qz(i,j,k,idp)
-                rvc(i,j,k) = rvc(i,j,k) + FY(i,j,k,n)                
-             end do
-          end do
-       end do
-       !$omp end do
-    end do
-
-    do n=1,nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       !$omp do
-       do k=lo(3)-ng,hi(3)+ng
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                FY(i,j,k,n) = FY(i,j,k,n) - rvc(i,j,k)*q(i,j,k,qyn)
-                FE(i,j,k) = FE(i,j,k) - rvc(i,j,k)*q(i,j,k,qyn)*q(i,j,k,qhn)
-             end do
-          end do
-       end do
-       !$omp end do
-    end do
-
-    do n=1,nspecies    
-       iryn = iry1+n-1
-       !$omp do
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
-                     dxinv(3) * first_deriv_8( FY(i,j,k-4:k+4,n) )
-             end do
-          end do
-       end do
-       !$omp end do
-    end do
-
-    !$omp do
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
-                  dxinv(3) * first_deriv_8( FE(i,j,k-4:k+4) )
-          end do
-       end do
-    end do
-    !$omp end do
-
-    deallocate(tmpx,tmpy)
-
-    !$omp end parallel
-
-    deallocate(vp,dpy,dpe,FY,FE,rvc,tmpz)
-
-  end subroutine S3D_diffterm_2
 
 end module kernels_module

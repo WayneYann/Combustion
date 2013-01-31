@@ -241,67 +241,67 @@ contains
     type(sdcquad),     intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
-    integer          :: k, m, mm, ng
-    double precision :: res_proc, res
-    type(layout)     :: la
-    type(multifab)   :: uAD(sdc%nnodes), fAD(sdc%nnodes), SAD(sdc%nnodes-1)
-    type(multifab)   :: uR(sdc%nnodes), fR(sdc%nnodes), SR(sdc%nnodes-1)
+    ! integer          :: k, m, mm, ng
+    ! double precision :: res_proc, res
+    ! type(layout)     :: la
+    ! type(multifab)   :: uAD(sdc%nnodes), fAD(sdc%nnodes), SAD(sdc%nnodes-1)
+    ! type(multifab)   :: uR(sdc%nnodes), fR(sdc%nnodes), SR(sdc%nnodes-1)
 
-    ng = nghost(U)
-    la = get_layout(U)
+    ! ng = nghost(U)
+    ! la = get_layout(U)
 
-    ! XXX: this is a work in progress
-    print *, '*** MULTIRATE SDC IS A WORK IN PROGRESS ***'
+    ! ! XXX: this is a work in progress
+    ! print *, '*** MULTIRATE SDC IS A WORK IN PROGRESS ***'
 
-    ! XXX: this just does normal SDC for now
+    ! ! XXX: this just does normal SDC for now
 
-    ! build u and u' multifabs for each node
-    do m = 1, sdc%nnodes
-       call build(uAD(m), la, ncons, ng)
-       call build(fAD(m), la, ncons, 0)
-       call build(uR(m), la, ncons, ng)
-       call build(fR(m), la, ncons, 0)
-    end do
+    ! ! build u and u' multifabs for each node
+    ! do m = 1, sdc%nnodes
+    !    call build(uAD(m), la, ncons, ng)
+    !    call build(fAD(m), la, ncons, 0)
+    !    call build(uR(m), la, ncons, ng)
+    !    call build(fR(m), la, ncons, 0)
+    ! end do
 
-    ! build S multifab (node to node integrals)
-    do m = 1, sdc%nnodes-1
-       call build(SAD(m), la, ncons, 0)
-       call build(SR(m), la, ncons, 0)
-    end do
+    ! ! build S multifab (node to node integrals)
+    ! do m = 1, sdc%nnodes-1
+    !    call build(SAD(m), la, ncons, 0)
+    !    call build(SR(m), la, ncons, 0)
+    ! end do
 
-    ! set provisional solution, compute dt
+    ! ! set provisional solution, compute dt
 
-    call copy(uAD(1), U)
-    call dUdt(uAD(1), fAD(1), dx)
+    ! call copy(uAD(1), U)
+    ! call dUdt(uAD(1), fAD(1), dx)
 
-    do m = 2, sdc%nnodes
-       call copy(uAD(m), uAD(1))
-       call copy(fAD(m), fAD(1))
-    end do
+    ! do m = 2, sdc%nnodes
+    !    call copy(uAD(m), uAD(1))
+    !    call copy(fAD(m), fAD(1))
+    ! end do
 
-    call set_dt(dt, courno, istep)
+    ! call set_dt(dt, courno, istep)
 
-    ! perform sdc iterations
-    res = 0.0d0
+    ! ! perform sdc iterations
+    ! res = 0.0d0
 
-    do k = 1, sdc%iters
-       ! call sdc_sweep(uAD, fAD, SAD, dx, dt, sdc)
-    end do
+    ! do k = 1, sdc%iters
+    !    ! call sdc_sweep(uAD, fAD, SAD, dx, dt, sdc)
+    ! end do
 
-    call copy(U, uAD(sdc%nnodes))
+    ! call copy(U, uAD(sdc%nnodes))
 
-    ! destroy
-    do m = 1, sdc%nnodes
-       call destroy(uAD(m))
-       call destroy(fAD(m))
-       call destroy(uR(m))
-       call destroy(fR(m))
-    end do
+    ! ! destroy
+    ! do m = 1, sdc%nnodes
+    !    call destroy(uAD(m))
+    !    call destroy(fAD(m))
+    !    call destroy(uR(m))
+    !    call destroy(fR(m))
+    ! end do
 
-    do m = 1, sdc%nnodes-1
-       call destroy(SAD(m))
-       call destroy(SR(m))
-    end do
+    ! do m = 1, sdc%nnodes-1
+    !    call destroy(SAD(m))
+    !    call destroy(SR(m))
+    ! end do
 
   end subroutine advance_multi_sdc
 
@@ -428,36 +428,13 @@ contains
 
 
   !
-  ! Compute dU/dt given U.
-  !
-  ! The Courant number (courno) might also be computed if passed.
-  !
-  subroutine dUdt (U, Uprime, dx, courno, istep)
-    use derivative_stencil_module, only : stencil, narrow, s3d
-
-    type(multifab),   intent(inout) :: U, Uprime
-    double precision, intent(in   ) :: dx(U%dim)
-    double precision, intent(inout), optional :: courno
-    integer,          intent(in   ), optional :: istep
-
-    if (stencil .eq. narrow) then
-       call dUdt_narrow(U, Uprime, dx, courno, istep)
-    else if (stencil .eq. s3d) then
-       call dUdt_S3D(U, Uprime, dx, courno, istep)
-    else
-       call bl_error("advance: unknown stencil type")
-    end if
-  end subroutine dUdt
-
-
-  !
   ! Compute advection/diffusion part of dU/dt given U.
   !
   subroutine dUdt_AD (U, Uprime, dx)
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
 
-    call dUdt_narrow(U, Uprime, dx, include_r=.false.)
+    call dUdt (U, Uprime, dx, include_r=.false.)
   end subroutine dUdt_AD
 
 
@@ -468,7 +445,7 @@ contains
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: dx(U%dim)
 
-    call dUdt_narrow(U, Uprime, dx, include_ad=.false.)
+    call dUdt (U, Uprime, dx, include_ad=.false.)
   end subroutine dUdt_R
 
 
@@ -477,7 +454,7 @@ contains
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt_narrow (U, Uprime, dx, courno, istep, include_ad, include_r)
+  subroutine dUdt (U, Uprime, dx, courno, istep, include_ad, include_r)
 
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt
 
@@ -789,7 +766,7 @@ contains
        call destroy(bpt_courno)
     end if
 
-  end subroutine dUdt_narrow
+  end subroutine dUdt
 
   subroutine compute_courno(Q, dx, courno)
     type(multifab), intent(in) :: Q
@@ -815,350 +792,6 @@ contains
        end if
     end do
   end subroutine compute_courno
-
-
-  !
-  ! Compute dU/dt given U using the wide stencil.
-  !
-  ! The Courant number (courno) might also be computed if passed.
-  !
-  subroutine dUdt_S3D (U, Uprime, dx, courno, istep)
-
-    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int
-
-    type(multifab),   intent(inout) :: U, Uprime
-    double precision, intent(in   ) :: dx(U%dim)
-    double precision, intent(inout), optional :: courno
-    integer,          intent(in   ), optional :: istep
-
-    integer, parameter :: ng = 4
-
-    type(multifab) :: mu, xi    ! viscosity
-    type(multifab) :: lam       ! partial thermal conductivity
-    type(multifab) :: Ddiag     ! diagonal components of rho * Y_k * D
-
-    integer ::    lo(U%dim),    hi(U%dim)
-    integer ::   dlo(U%dim),   dhi(U%dim)
-    integer ::   blo(U%dim),   bhi(U%dim)
-    integer :: i,j,k,m,n, dm
-    integer :: ndq, ng_ctoprim, ng_gettrans
-
-    logical :: update_courno
-    double precision :: courno_proc
-
-    type(layout)     :: la
-    type(multifab)   :: Q, Fhyp, Fdif
-    type(multifab)   :: qx, qy, qz
-    type(mf_fb_data) :: U_fb_data, qx_fb_data, qy_fb_data, qz_fb_data
-
-    double precision, pointer, dimension(:,:,:,:) :: up, fhp, fdp, qp, mup, xip, lamp, &
-         Ddp, upp, qxp, qyp, qzp
-
-    type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypterm, bpt_courno
-    type(bl_prof_timer), save :: bpt_diffterm_1, bpt_diffterm_2, bpt_calcU, bpt_chemterm
-
-    update_courno = .false.
-    if (present(courno) .and. present(istep)) then
-       if (mod(istep,cfl_int).eq.1 .or. cfl_int.le.1) then
-          update_courno = .true.
-       end if
-    end if
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_nowait(U, U_fb_data)
-       call multifab_fill_boundary_test(U, U_fb_data)
-    else
-       call multifab_fill_boundary(U)
-       U_fb_data%rcvd = .true.
-    end if
-
-    call setval(Uprime, ZERO)
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    ndq = idX1+nspecies-1
-
-    dm = U%dim
-    la = get_layout(U)
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    call multifab_build(Q, la, nprim, ng)
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    call multifab_build(Fhyp, la, ncons, 0)
-    call multifab_build(Fdif, la, ncons, 0)
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    call multifab_build(mu , la, 1, ng)
-    call multifab_build(xi , la, 1, ng)
-    call multifab_build(lam, la, 1, ng)
-    call multifab_build(Ddiag, la, nspecies, ng)
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    ! these multifabs are used to store first-derivatives
-    call multifab_build(qx, la, ndq, ng)
-    call multifab_build(qy, la, ndq, ng)
-    call multifab_build(qz, la, ndq, ng)
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    if (U_fb_data%rcvd) then
-       ng_ctoprim = ng
-    else
-       ng_ctoprim = 0
-    end if
-
-    !
-    ! Calculate primitive variables based on U
-    !
-    call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, ng_ctoprim)
-    call destroy(bpt_ctoprim)            !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    if (update_courno) then
-       courno_proc = -1.d50
-       call compute_courno(Q, dx, courno_proc)
-    end if
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-    
-    !
-    ! chemistry
-    !
-    call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Q)
-       qp  => dataptr(Q,n)
-       upp => dataptr(Uprime,n)
-       
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
-       
-       if (dm .ne. 3) then
-          call bl_error("Only 3D chemsitry_term is supported")
-       else
-          call chemterm_3d(lo,hi,ng,qp,upp)
-       end if
-    end do
-    call destroy(bpt_chemterm)              !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    if (overlap_comm_comp) then
-       if (overlap_comm_gettrans) then
-          call multifab_fill_boundary_test(U, U_fb_data)
-       else
-          call multifab_fill_boundary_waitrecv(U, U_fb_data)
-       end if
-    end if
-
-    if (U_fb_data%rcvd) then
-       ng_gettrans = ng
-    else
-       ng_gettrans = 0
-    end if
-
-    ! Fill ghost cells here for get_transport_properties
-    if (ng_gettrans .eq. ng .and. ng_ctoprim .eq. 0) then
-       call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call ctoprim(U, Q, ghostcells_only=.true.)
-       call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-       ng_ctoprim = ng 
-    end if
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_test(U, U_fb_data)
-    end if
-
-    !
-    ! transport coefficients 
-    !
-    call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call get_transport_properties(Q, mu, xi, lam, Ddiag, ng_gettrans)
-    call destroy(bpt_gettrans)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    if (overlap_comm_comp) then
-       call multifab_fill_boundary_waitrecv(U, U_fb_data)
-
-       if (ng_ctoprim .eq. 0) then
-          call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
-          call ctoprim(U, Q, ghostcells_only=.true.)
-          call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-       end if
-
-       if (ng_gettrans .eq. 0) then
-          call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-          call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
-          call destroy(bpt_gettrans)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-       end if
-
-       call multifab_fill_boundary_finish(U, U_fb_data)
-    end if
-
-    !
-    ! S3D_diffterm1: first derivative terms
-    !
-    call build(bpt_diffterm_1, "diffterm_1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Q)
-       qp  => dataptr(Q,n)
-       fdp => dataptr(Fdif,n)
-
-       mup  => dataptr(mu, n)
-       xip  => dataptr(xi, n)
-
-       qxp => dataptr(qx, n)
-       qyp => dataptr(qy, n)
-       qzp => dataptr(qz, n)
-
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
-
-       if (dm .ne. 3) then
-          call bl_error("Only 3D S3D_diffterm is supported")
-       else
-          call S3D_diffterm_1(lo,hi,ng,ndq,dx,qp,fdp,mup,xip,qxp,qyp,qzp)
-       end if
-    end do
-    call destroy(bpt_diffterm_1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    if (overlap_comm_comp) then
-       qx_fb_data%tag = 1001
-       call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
-       qy_fb_data%tag = 1002
-       call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
-       qz_fb_data%tag = 1003
-       call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
-
-       call multifab_fill_boundary_test(qx, qx_fb_data, idim=1)
-       call multifab_fill_boundary_test(qy, qy_fb_data, idim=2)
-       call multifab_fill_boundary_test(qz, qz_fb_data, idim=3)
-    else
-       call multifab_fill_boundary(qx, idim=1)
-       call multifab_fill_boundary(qy, idim=2)
-       call multifab_fill_boundary(qz, idim=3)
-    end if
-
-    !
-    ! Hyperbolic terms
-    !
-    call build(bpt_hypterm, "hypterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Fhyp)
-       up => dataptr(U,n)
-       qp => dataptr(Q,n)
-       fhp=> dataptr(Fhyp,n)
-       
-       lo = lwb(get_box(Fhyp,n))
-       hi = upb(get_box(Fhyp,n))
-       
-       call get_data_lo_hi(n,dlo,dhi)
-       call get_boxbc(n,blo,bhi)
-       
-       if (dm .ne. 3) then
-          call bl_error("Only 3D hypterm is supported")
-       else
-          call hypterm_3d(lo,hi,ng,dx,up,qp,fhp,dlo,dhi,blo,bhi)
-       end if
-    end do
-    call destroy(bpt_hypterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
-    call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
-    call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
- 
-    !
-    ! S3D_diffterm2: d(a du/dx)/dx terms
-    !
-    call build(bpt_diffterm_2, "diffterm_2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(Q)
-       qp  => dataptr(Q,n)
-       fdp => dataptr(Fdif,n)
-
-       mup  => dataptr(mu   , n)
-       xip  => dataptr(xi   , n)
-       lamp => dataptr(lam  , n)
-       Ddp  => dataptr(Ddiag, n)
-
-       qxp => dataptr(qx, n)
-       qyp => dataptr(qy, n)
-       qzp => dataptr(qz, n)
-
-       lo = lwb(get_box(Q,n))
-       hi = upb(get_box(Q,n))
-
-       if (dm .ne. 3) then
-          call bl_error("Only 3D S3D_diffterm is supported")
-       else
-          call S3D_diffterm_2(lo,hi,ng,ndq,dx,qp,fdp,mup,xip,lamp,Ddp,qxp,qyp,qzp)
-       end if
-    end do
-    call destroy(bpt_diffterm_2)            !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    !
-    ! Calculate U'
-    !
-    call build(bpt_calcU, "calcU")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    do n=1,nfabs(U)
-       fhp => dataptr(Fhyp,  n)
-       fdp => dataptr(Fdif,  n)
-       upp => dataptr(Uprime,n)
-
-       lo = lwb(get_box(U,n))
-       hi = upb(get_box(U,n))
-
-       do m = 1, ncons
-          !$OMP PARALLEL DO PRIVATE(i,j,k)
-          do k = lo(3),hi(3)
-             do j = lo(2),hi(2)
-                do i = lo(1),hi(1)
-                   upp(i,j,k,m) = upp(i,j,k,m) + fhp(i,j,k,m) + fdp(i,j,k,m)
-                end do
-             end do
-          end do
-          !$OMP END PARALLEL DO
-       end do
-    end do
-    call destroy(bpt_calcU)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    call destroy(Q)
-
-    call destroy(Fhyp)
-    call destroy(Fdif)
-
-    call destroy(mu)
-    call destroy(xi)
-    call destroy(lam)
-    call destroy(Ddiag)
-
-    call destroy(qx)
-    call destroy(qy)
-    call destroy(qz)
-
-    if (update_courno) then
-       call build(bpt_courno, "courno")
-       call parallel_reduce(courno, courno_proc, MPI_MAX)
-       call destroy(bpt_courno)
-    end if
-
-  end subroutine dUdt_S3D
 
 
   ! only for testing communication and computation overlapping
