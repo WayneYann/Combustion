@@ -30,7 +30,7 @@ subroutine smc()
 
   real(dp_t) :: wt0, wt1, wt2, wt_init, wt_advance
 
-  integer :: last_plt_written,last_chk_written,err
+  integer :: last_plt_written,last_chk_written
   character(len=5)               :: plot_index, check_index
   character(len=6)               :: plot_index6, check_index6
   character(len=256)             :: plot_file_name, check_file_name
@@ -41,7 +41,7 @@ subroutine smc()
 
   type(layout)   :: la
   type(multifab) :: U
-  type(sdcquad)  :: sdc
+  type(sdc_t)    :: sdc
 
   type(bl_prof_timer), save :: bpt_advance
 
@@ -126,19 +126,22 @@ subroutine smc()
   ! preallocate sdc
   !
 
-  if (advance_method == 2 .or. advance_method == 3) then
-     ! tidy this up...
+  if (advance_method == 2) then
+     call sdc_build_single_rate(sdc, SDC_GAUSS_LOBATTO, sdc_nnodes)
+     call sdc_set_layout(sdc, la, ncons, stencil_ng)
+     call sdc_set_context(sdc, ctx)
 
-     call create(sdc, SDC_GAUSS_LOBATTO, sdc_nnodes, la, stencil_ng, ncons, ctx)
-
-     call sdc_exp_set_feval(sdc%exp1,     c_funloc(f1eval))
+     call sdc_exp_set_feval(sdc%exp1, c_funloc(f1eval))
      call sdc_exp_set_post_step(sdc%exp1, c_funloc(f1post))
-     call build(sdc)
-     ! call sdc_srset_print(sdc%srset, 0)
+     call sdc_setup(sdc)
 
      ctx%dx = dx
      sdc%iters        = sdc_iters
      sdc%tol_residual = sdc_tol_residual
+  end if
+
+  if (advance_method == 3) then
+     ! XXX
   end if
 
 
@@ -381,7 +384,7 @@ subroutine smc()
   call smc_bc_close()
 
   if (advance_method == 2 .or. advance_method == 3) then
-     call destroy(sdc)
+     call sdc_destroy(sdc)
   end if
 
   call destroy(U)

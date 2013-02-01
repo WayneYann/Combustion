@@ -6,7 +6,7 @@ module advance_module
   use multifab_module
   use omp_module
   use nscbc_module
-  use sdcquad_module, only: sdcquad
+  use sdcquad_module
   use smc_bc_module
   use time_module
   use transport_properties
@@ -32,7 +32,7 @@ contains
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     integer,           intent(in   ) :: istep
-    type(sdcquad),     intent(in   ) :: sdc
+    type(sdc_t),       intent(in   ) :: sdc
 
     select case(advance_method)
     case(1)
@@ -108,20 +108,22 @@ contains
 
 
   !
-  ! Advance U using SDC time-stepping
+  ! Advance U using single-rate SDC time-stepping
   !
   subroutine advance_sdc(U, dt, courno, dx, sdc, istep)
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
-    type(sdcquad),     intent(in   ) :: sdc
+    type(sdc_t),       intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
-    type(multifab)   :: Q
+    type(multifab), target :: Q, R
     integer          :: ng
     type(layout)     :: la
-
     double precision :: courno_proc
+
+    integer :: k
+    double precision :: res_proc, res
 
     ng = nghost(U)
     la = get_layout(U)
@@ -145,7 +147,31 @@ contains
     ! advance (pass control to sdclib)
     !
     call sdc_srset_set_q0(sdc%srset, mfptr(U))
-    call sdc_srset_advance(sdc%srset, sdc%iters, 0.0d0, dt)
+    call sdc_srset_spread(sdc%srset, 0.0d0)
+
+    do k = 1, sdc%iters
+       call sdc_srset_sweep(sdc%srset, 0.0d0, dt)
+
+       ! check residual
+       if (sdc%tol_residual > 0.d0) then
+
+          ! building residual workspace R should be done elsewhere
+          call build(R, la, ncons, 0)
+
+          call sdc_srset_residual(sdc%srset, dt, c_loc(R))
+
+          res_proc = norm_inf(R)
+          call parallel_reduce(res, res_proc, MPI_MAX)
+
+          if (parallel_IOProcessor()) then
+             print *, "SDC: iter:", k, "residual:", res
+          end if
+
+          call destroy(R)
+
+          if (res < sdc%tol_residual) exit
+       end if
+    end do
     call sdc_srset_get_qend(sdc%srset, mfptr(U))
     
   end subroutine advance_sdc
@@ -186,7 +212,7 @@ contains
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
-    type(sdcquad),     intent(in   ) :: sdc
+    type(sdc_t),       intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
     ! integer          :: k, m, mm, ng
