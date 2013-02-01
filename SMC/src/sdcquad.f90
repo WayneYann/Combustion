@@ -106,6 +106,7 @@ contains
     type(sdc_t), intent(inout) :: sdc
 
     integer :: err
+    err = 0
 
     if (c_associated(sdc%srset)) then
        call sdc_exp_attach(sdc%exp1, sdc_srset_stepper(sdc%srset), sdc%encap, c_loc(sdc%ctx))
