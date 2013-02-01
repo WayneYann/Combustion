@@ -34,7 +34,7 @@
     integer :: i, j, k, iwrk
     double precision :: rhoinv, ei, rwrk
 
-    !$omp parallel do if (qhi(3) > qlo(3)) &
+    !$omp parallel do collapse(2)
     !$omp private(i,j,k,iwrk,rhoinv, ei, rwrk)
     do k=qlo(3),qhi(3)
     do j=qlo(2),qhi(2)
@@ -126,7 +126,7 @@
     integer :: i, j, k, iwrk
     double precision :: ei, rwrk
 
-    !$omp parallel do if (qhi(3) > qlo(3)) &
+    !$omp parallel do collapse(2)
     !$omp private(i,j,k,iwrk, ei, rwrk)
     do k=qlo(3),qhi(3)
     do j=qlo(2),qhi(2)

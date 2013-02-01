@@ -46,19 +46,23 @@ subroutine smc()
 
   type(bl_prof_timer), save :: bpt_advance
 
-  wt0 = parallel_wtime()
+  type(ctx_t) :: ctx
 
-  ! keep track of cputime
+
+  !
+  ! initialize
+  !
+
+  wt0 = parallel_wtime()
   call start_cputime_clock()
 
   last_plt_written = -1
   last_chk_written = -1
 
   call runtime_init()
-
   call stencil_init()
-
   call chemistry_init()
+
   if (verbose .ge. 1) then
      if (parallel_IOProcessor()) then
         print *, ''
@@ -72,6 +76,11 @@ subroutine smc()
 
   call init_variables()
   call init_plot_variables()
+
+
+  !
+  ! load/set initial condition
+  !
 
   allocate(plot_names(n_plot_comps))
   call get_plot_names(plot_names)
@@ -104,32 +113,50 @@ subroutine smc()
 
   end if
 
-  call build_smcdata(la)
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! error checking
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   dm = dm_in
   if (dm .ne. 3) then
      call bl_error('SMC can only do 3D')
   end if
 
-  ! check to make sure dimensionality is consistent in the inputs file
   if (dm .ne. get_dim(la)) then
      call bl_error('dm_in not properly set in inputs file')
   end if
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! print processor and grid info
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  call build_smcdata(la)
+
+
+  !
+  ! preallocate sdc
+  !
+
+  if (advance_method == 2 .or. advance_method == 3) then
+     ! tidy this up...
+
+     call create(sdc, SDC_GAUSS_LOBATTO, sdc_nnodes, la, stencil_ng, ncons, ctx)
+
+     call sdc_exp_set_feval(sdc%exp1,     c_funloc(f1eval))
+     call sdc_exp_set_post_step(sdc%exp1, c_funloc(f1post))
+     call build(sdc)
+     ! call sdc_srset_print(sdc%srset, 0)
+
+     ctx%dx = dx
+     sdc%iters        = sdc_iters
+     sdc%tol_residual = sdc_tol_residual
+  end if
+
+
+  !
+  ! print processor and grid info
+  !
 
   if (parallel_IOProcessor()) then
      print *, ' '
-     print *, 'number of MPI processes = ', parallel_nprocs()
-     print *, 'number of threads       = ', omp_get_max_threads()
+     print *, 'Number of MPI processes = ', parallel_nprocs()
+     print *, 'Number of threads       = ', omp_get_max_threads()
      print *, ' '
-     print *, 'number of dimensions    = ', dm
-     print *, 'number of boxes         = ', nboxes(la)
+     print *, 'Number of dimensions    = ', dm
+     print *, 'Number of boxes         = ', nboxes(la)
      print *, ' '
   end if
 
@@ -146,6 +173,11 @@ subroutine smc()
   end if
 
   wt1 = parallel_wtime()
+
+
+  !
+  ! save initial condition
+  !
 
   if (restart < 0) then
 
@@ -178,14 +210,12 @@ subroutine smc()
      init_step = restart + 1
   end if
 
-  if (advance_method == 2 .or. advance_method == 3) then
-     call create(sdc, 1, sdc_nnodes)
-     sdc%iters        = sdc_iters
-     sdc%tol_residual = sdc_tol_residual
-     call build(sdc)
-  end if
 
-  if ( parallel_IOProcessor()) then
+  !
+  ! evolve
+  !
+
+  if (parallel_IOProcessor()) then
      print*,""
      print*,"BEGIN MAIN EVOLUTION LOOP"
      print*,""
@@ -346,13 +376,21 @@ subroutine smc()
 
   wt2 = parallel_wtime()
 
+
+  !
+  ! shutdown
+  !
+
   call nscbc_close()
   call smc_bc_close()
 
   call destroy_smcdata()
 
-  call destroy(U)
+  if (advance_method == 2 .or. advance_method == 3) then
+     call destroy(sdc)
+  end if
 
+  call destroy(U)
   call destroy(la)
 
   call chemistry_close()

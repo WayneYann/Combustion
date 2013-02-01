@@ -13,28 +13,31 @@ module kernels_module
 
 contains
 
-  subroutine hypterm_3d (lo,hi,ng,dx,cons,q,rhs,dlo,dhi,bclo,bchi)
+  subroutine hypterm_3d (lo,hi,dx,cons,clo,chi,q,qlo,qhi,rhs_g,rlo,rhi,dlo_g,dhi_g,bclo,bchi)
 
-    integer,          intent(in ) :: lo(3),hi(3),ng
-    double precision, intent(in ) :: dx(3)
-    double precision, intent(in ) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
-    double precision, intent(in ) ::    q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
-    double precision, intent(out) ::  rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
-    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
+    integer,         intent(in):: dlo_g(3),dhi_g(3),bclo(3),bchi(3)
+    integer,         intent(in):: lo(3),hi(3),clo(3),chi(3),qlo(3),qhi(3),rlo(3),rhi(3)
+    double precision,intent(in):: dx(3)
+    double precision,intent(in):: cons(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3),ncons)
+    double precision,intent(in)::    q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision           ::rhs_g(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
     integer          :: i,j,k,n
     double precision :: dxinv(3)
     double precision :: un(-4:4)
-    integer :: slo(3), shi(3) 
+    integer :: slo(3), shi(3), dlo(3), dhi(3)
     
     double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
-    integer :: jj
-    integer, parameter :: jblocksize=8
+    double precision, allocatable :: rhs(:,:,:,:)
 
-    ! Only the region bounded by [dlo,dhi] contains good data.
+    ! Only the region bounded by [dlo_g,dhi_g] contains good data.
     ! [slo,shi] will be safe for 8th-order stencil
-    slo = dlo + stencil_ng
-    shi = dhi - stencil_ng
+    do i=1,3
+       dlo(i) = max(lo(i)-stencil_ng, dlo_g(i))
+       dhi(i) = min(hi(i)+stencil_ng, dhi_g(i))
+       slo(i) = dlo(i) + stencil_ng
+       shi(i) = dhi(i) - stencil_ng
+    end do
 
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)
@@ -44,6 +47,7 @@ contains
     allocate(tmpy(lo(1) : hi(1),dlo(2):dhi(2)))
     allocate(tmpz(lo(1) : hi(1), lo(2): hi(2),dlo(3):dhi(3)))
 
+    allocate(rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons))
     rhs = 0.d0
 
     ! ------- BEGIN x-direction -------
@@ -107,7 +111,6 @@ contains
     ! ------- BEGIN y-direction -------
 
     do k=lo(3),hi(3)
-
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,irho)=rhs(i,j,k,irho) - dxinv(2) * &
@@ -162,7 +165,6 @@ contains
 
     do n = iry1, iry1+nspecies-1
        do k=lo(3),hi(3)
-
           do j=dlo(2),dhi(2)
              do i=lo(1),hi(1)
                 tmpy(i,j) = cons(i,j,k,n)*q(i,j,k,qv)
@@ -173,7 +175,6 @@ contains
                 rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
              end do
           enddo
-
        enddo
     enddo
 
@@ -251,27 +252,20 @@ contains
     end do
 
     do n = iry1, iry1+nspecies-1
-       do jj=lo(2),hi(2),jblocksize
        do k=dlo(3),dhi(3)
-!          do j=lo(2),hi(2)
-          do j=jj,min(jj+jblocksize-1,hi(2))
+          do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 tmpz(i,j,k) = cons(i,j,k,n)*q(i,j,k,qw)
              end do
           end do
        end do
-       end do ! jj
-
-       do jj=lo(2),hi(2),jblocksize
        do k=slo(3),shi(3)
-!          do j=lo(2),hi(2)
-          do j=jj,min(jj+jblocksize-1,hi(2))
+          do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 rhs(i,j,k,n) = rhs(i,j,k,n) - dxinv(3) * first_deriv_8(tmpz(i,j,k-4:k+4))
              end do
-          enddo
-       enddo
-       end do ! jj
+          end do
+       end do
     enddo
 
     ! ----------------- boundary -----------------------
@@ -346,7 +340,6 @@ contains
 
              rhs(i,j,k,iene) = rhs(i,j,k,iene) - dxinv(1) * &
                   first_deriv_6( (cons(i-3:i+3,j,k,iene)+q(i-3:i+3,j,k,qpres))*un(-3:3) )
-
 
           enddo
        enddo
@@ -945,21 +938,28 @@ contains
 
     deallocate(tmpx,tmpy,tmpz)
 
+    rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
+         rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
+         + rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
+    deallocate(rhs)
+
   end subroutine hypterm_3d
 
 
-  subroutine narrow_diffterm_3d (lo,hi,ng,dx,q,rhs,mu,xi,lam,dxy,dlo,dhi,bclo,bchi)
+  subroutine narrow_diffterm_3d (lo,hi,dx,q,qlo,qhi,rhs_g,rlo,rhi,mu,xi,lam,dxy, &
+       dlo_g,dhi_g,bclo,bchi)
 
-    integer,          intent(in ) :: lo(3),hi(3),ng
-    double precision, intent(in ) :: dx(3)
-    double precision, intent(in ) :: q  (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
-    double precision, intent(in ) :: mu (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
-    double precision, intent(in ) :: xi (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
-    double precision, intent(in ) :: lam(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng)
-    double precision, intent(in ) :: dxy(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nspecies)
-    double precision, intent(out) :: rhs(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
-    integer          , intent(in) :: dlo(3),dhi(3),bclo(3),bchi(3)
+    integer,         intent(in):: dlo_g(3),dhi_g(3),bclo(3),bchi(3)
+    integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),rlo(3),rhi(3)
+    double precision,intent(in):: dx(3)
+    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in):: lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in):: dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
+    double precision         :: rhs_g(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
+    double precision, allocatable :: rhs(:,:,:,:)
     double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
     double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
     double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
@@ -969,13 +969,13 @@ contains
     ! dxe: diffusion coefficient of X in equation for energy
     ! dpe: diffusion coefficient of p in equation for energy
 
-    double precision :: dxinv(3), dx2inv(3), divu
-    double precision :: tauxx,tauyy,tauzz 
+    double precision :: dxinv(3), dx2inv(3)
+    double precision :: tauxx(lo(1):hi(1)),tauyy(lo(1):hi(1)),tauzz(lo(1):hi(1)),divu(lo(1):hi(1))
     integer          :: i,j,k,n, qxn, qyn, qhn
-    integer :: slo(3), shi(3)
+    integer :: slo(3), shi(3), dlo(3), dhi(3)
 
     double precision :: Yhalf, hhalf
-    double precision :: mmtmp8(8)
+    double precision :: mmtmp8(8,qlo(1):qhi(1))
     double precision, allocatable, dimension(:,:,:,:) :: M8p
     double precision, allocatable, dimension(:,:,:) :: Hry
 
@@ -992,8 +992,14 @@ contains
     double precision :: finlo(3), finhi(3)
     double precision :: foulo(3), fouhi(3)
 
-    integer :: jj 
-    integer, parameter :: jblocksize=8
+    ! Only the region bounded by [dlo_g,dhi_g] contains good data.
+    ! [slo,shi] will be safe for 8th-order stencil
+    do i=1,3
+       dlo(i) = max(lo(i)-stencil_ng, dlo_g(i))
+       dhi(i) = min(hi(i)+stencil_ng, dhi_g(i))
+       slo(i) = dlo(i) + stencil_ng
+       shi(i) = dhi(i) - stencil_ng
+    end do
 
     finlo = 1.d0 
     finhi = 1.d0
@@ -1001,24 +1007,23 @@ contains
     fouhi = 1.d0
 
     do i=1,3
-       if (bclo(i) .eq. INLET) then
-          finlo(i) = 0.d0
-       else if (bclo(i) .eq. OUTLET) then
-          foulo(i) = 0.d0
+       if (dlo(i) .eq. lo(i)) then ! threadbox touches physical boundary
+          if (bclo(i) .eq. INLET) then
+             finlo(i) = 0.d0
+          else if (bclo(i) .eq. OUTLET) then
+             foulo(i) = 0.d0
+          end if
        end if
 
-       if (bchi(i) .eq. INLET) then
-          finhi(i) = 0.d0
-       else if (bchi(i) .eq. OUTLET) then
-          fouhi(i) = 0.d0
+       if (dhi(i) .eq. hi(i)) then ! threadbox touches physical boundary
+          if (bchi(i) .eq. INLET) then
+             finhi(i) = 0.d0
+          else if (bchi(i) .eq. OUTLET) then
+             fouhi(i) = 0.d0
+          end if
        end if
     end do
 
-    ! Only the region bounded by [dlo,dhi] contains good data.
-    ! [slo,shi] will be safe for 8th-order stencil
-    slo = dlo + stencil_ng
-    shi = dhi - stencil_ng
-    
     do i = 1,3
        dxinv(i) = 1.0d0 / dx(i)
        dx2inv(i) = dxinv(i)**2
@@ -1043,6 +1048,7 @@ contains
     allocate(tmpy( lo(1): hi(1),dlo(2):dhi(2)))
     allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
 
+    allocate(rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons))
     rhs = 0.d0
 
     do k=dlo(3),dhi(3)
@@ -1126,11 +1132,7 @@ contains
           ! use completely right-biased stencil
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_rb(q(i,j:j+3,k,qu))
-          end do
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_rb(q(i,j:j+3,k,qv))
-          end do
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_rb(q(i,j:j+3,k,qw))
           enddo
 
@@ -1138,11 +1140,7 @@ contains
           ! use 3rd-order slightly right-biased stencil
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_r3(q(i,j-1:j+2,k,qu))
-          end do
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_r3(q(i,j-1:j+2,k,qv))
-          end do
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_r3(q(i,j-1:j+2,k,qw))
           enddo
 
@@ -1150,11 +1148,7 @@ contains
           ! use 4th-order stencil
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qu))
-          end do
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qv))
-          end do
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qw))
           enddo
 
@@ -1162,11 +1156,7 @@ contains
           ! use 6th-order stencil
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qu))
-          end do
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qv))
-          end do
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qw))
           enddo
        end if
@@ -1175,11 +1165,7 @@ contains
        do j=slo(2),shi(2)   
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qu))
-          end do
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
-          end do
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qw))
           enddo
        enddo
@@ -1190,11 +1176,7 @@ contains
           ! use 6th-order stencil
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qu))
-          end do
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qv))
-          end do
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qw))
           enddo
 
@@ -1202,11 +1184,7 @@ contains
           ! use 4th-order stencil
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qu))
-          end do
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qv))
-          end do
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qw))
           enddo
 
@@ -1214,11 +1192,7 @@ contains
           ! use 3rd-order slightly left-biased stencil
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_l3(q(i,j-2:j+1,k,qu))
-          end do
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_l3(q(i,j-2:j+1,k,qv))
-          end do
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_l3(q(i,j-2:j+1,k,qw))
           enddo
 
@@ -1226,11 +1200,7 @@ contains
           ! use completely left-biased stencil
           do i=dlo(1),dhi(1)
              uy(i,j,k) = dxinv(2)*first_deriv_lb(q(i,j-3:j,k,qu))
-          end do
-          do i=dlo(1),dhi(1)
              vy(i,j,k) = dxinv(2)*first_deriv_lb(q(i,j-3:j,k,qv))
-          end do
-          do i=dlo(1),dhi(1)
              wy(i,j,k) = dxinv(2)*first_deriv_lb(q(i,j-3:j,k,qw))
           enddo
        end if
@@ -1980,14 +1950,14 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
-             divu = (ux(i,j,k)+vy(i,j,k)+wz(i,j,k))*vsm(i,j,k)
-             tauxx = 2.d0*mu(i,j,k)*ux(i,j,k) + divu
-             tauyy = 2.d0*mu(i,j,k)*vy(i,j,k) + divu
-             tauzz = 2.d0*mu(i,j,k)*wz(i,j,k) + divu
+             divu(i) = (ux(i,j,k)+vy(i,j,k)+wz(i,j,k))*vsm(i,j,k)
+             tauxx(i) = 2.d0*mu(i,j,k)*ux(i,j,k) + divu(i)
+             tauyy(i) = 2.d0*mu(i,j,k)*vy(i,j,k) + divu(i)
+             tauzz(i) = 2.d0*mu(i,j,k)*wz(i,j,k) + divu(i)
              
              ! change in internal energy
              rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
-                  tauxx*ux(i,j,k) + tauyy*vy(i,j,k) + tauzz*wz(i,j,k) &
+                  tauxx(i)*ux(i,j,k) + tauyy(i)*vy(i,j,k) + tauzz(i)*wz(i,j,k) &
                   + mu(i,j,k)*((uy(i,j,k)+vx(i,j,k))**2 &
                   &          + (wx(i,j,k)+uz(i,j,k))**2 &
                   &          + (vz(i,j,k)+wy(i,j,k))**2 )
@@ -2031,37 +2001,61 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=slo(1),shi(1)+1
-             mmtmp8 = matmul(vsp(i-4:i+3,j,k), M8)
-             Hg(i,j,k,imx) = dot_product(mmtmp8, q(i-4:i+3,j,k,qu))
+             mmtmp8(1:8,i) = matmul(vsp(i-4:i+3,j,k), M8)
+             Hg(i,j,k,imx) = dot_product(mmtmp8(1:8,i), q(i-4:i+3,j,k,qu))
+          end do
+       end do
+    end do
 
-             mmtmp8 = matmul(mu(i-4:i+3,j,k), M8)
-             Hg(i,j,k,imy) = dot_product(mmtmp8, q(i-4:i+3,j,k,qv))
-             Hg(i,j,k,imz) = dot_product(mmtmp8, q(i-4:i+3,j,k,qw))
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=slo(1),shi(1)+1
+             mmtmp8(1:8,i) = matmul(mu(i-4:i+3,j,k), M8)
+             Hg(i,j,k,imy) = dot_product(mmtmp8(1:8,i), q(i-4:i+3,j,k,qv))
+             Hg(i,j,k,imz) = dot_product(mmtmp8(1:8,i), q(i-4:i+3,j,k,qw))
+          end do
+       end do
+    end do
 
-             mmtmp8 = matmul(lam(i-4:i+3,j,k), M8)
-             Hg(i,j,k,iene) = dot_product(mmtmp8, q(i-4:i+3,j,k,qtemp))
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=slo(1),shi(1)+1
+             mmtmp8(1:8,i) = matmul(lam(i-4:i+3,j,k), M8)
+             Hg(i,j,k,iene) = dot_product(mmtmp8(1:8,i), q(i-4:i+3,j,k,qtemp))
+          end do
+       end do
+    end do
 
-             mmtmp8 = matmul(M8,  q(i-4:i+3,j,k,qpres))
-             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i-4:i+3,j,k), mmtmp8)
-             M8p(:,i,j,k) = mmtmp8
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=slo(1),shi(1)+1
+             mmtmp8(1:8,i) = matmul(M8,  q(i-4:i+3,j,k,qpres))
+             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i-4:i+3,j,k), mmtmp8(1:8,i))
+          end do
+          do i=slo(1),shi(1)+1
+             M8p(:,i,j,k) = mmtmp8(1:8,i)
           end do
        end do
     end do
 
     do n = 1, nspecies
        qxn = qx1+n-1
+
        do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-   
+          do j=lo(2),hi(2)   
              do i=slo(1),shi(1)+1
                 Hg(i,j,k,iry1+n-1) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
              end do
-    
+          end do
+       end do
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)   
              do i=slo(1),shi(1)+1
-                mmtmp8 = matmul(M8, q(i-4:i+3,j,k,qxn))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i-4:i+3,j,k,n), mmtmp8)
+                mmtmp8(1:8,i) = matmul(M8, q(i-4:i+3,j,k,qxn))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i-4:i+3,j,k,n), mmtmp8(1:8,i))
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
-                     + dot_product(dxy(i-4:i+3,j,k,n), mmtmp8)
+                     + dot_product(dxy(i-4:i+3,j,k,n), mmtmp8(1:8,i))
              end do
 
           end do
@@ -2518,29 +2512,41 @@ contains
 
     do k=lo(3),hi(3)
        do j=slo(2),shi(2)+1
-
           do i=lo(1),hi(1)             
-             mmtmp8 = matmul(mu(i,j-4:j+3,k), M8)
-             Hg(i,j,k,imx) = dot_product(mmtmp8, q(i,j-4:j+3,k,qu))
-             Hg(i,j,k,imz) = dot_product(mmtmp8, q(i,j-4:j+3,k,qw))
+             mmtmp8(1:8,i) = matmul(mu(i,j-4:j+3,k), M8)
+             Hg(i,j,k,imx) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qu))
+             Hg(i,j,k,imz) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qw))
           end do
+       end do
+    end do
 
+    do k=lo(3),hi(3)
+       do j=slo(2),shi(2)+1
+          do i=lo(1),hi(1)             
+             mmtmp8(1:8,i) = matmul(vsp(i,j-4:j+3,k), M8)
+             Hg(i,j,k,imy) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qv))
+          end do
+       end do
+    end do
+
+    do k=lo(3),hi(3)
+       do j=slo(2),shi(2)+1
           do i=lo(1),hi(1)
-             mmtmp8 = matmul(vsp(i,j-4:j+3,k), M8)
-             Hg(i,j,k,imy) = dot_product(mmtmp8, q(i,j-4:j+3,k,qv))
+             mmtmp8(1:8,i) = matmul(lam(i,j-4:j+3,k), M8)
+             Hg(i,j,k,iene) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qtemp))
           end do
+       end do
+    end do
 
+    do k=lo(3),hi(3)
+       do j=slo(2),shi(2)+1
           do i=lo(1),hi(1)
-             mmtmp8 = matmul(lam(i,j-4:j+3,k), M8)
-             Hg(i,j,k,iene) = dot_product(mmtmp8, q(i,j-4:j+3,k,qtemp))
+             mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qpres))
+             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j-4:j+3,k), mmtmp8(1:8,i))
           end do
-
           do i=lo(1),hi(1)
-             mmtmp8 = matmul(M8, q(i,j-4:j+3,k,qpres))
-             M8p(:,i,j,k) = mmtmp8
-             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j-4:j+3,k), mmtmp8)
+             M8p(:,i,j,k) = mmtmp8(1:8,i)
           end do
-
        end do
     end do
 
@@ -2549,18 +2555,20 @@ contains
 
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)+1
-
              do i=lo(1),hi(1)
                 Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
              end do
+          end do
+       end do
 
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)+1
              do i=lo(1),hi(1)
-                mmtmp8 = matmul(M8, q(i,j-4:j+3,k,qxn))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp8)
+                mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qxn))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp8(1:8,i))
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
-                     + dot_product(dxy(i,j-4:j+3,k,n), mmtmp8)
+                     + dot_product(dxy(i,j-4:j+3,k,n), mmtmp8(1:8,i))
              end do
-
           end do
        end do
 
@@ -3031,9 +3039,9 @@ contains
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             mmtmp8 = matmul(mu(i,j,k-4:k+3), M8)
-             Hg(i,j,k,imx) = dot_product(mmtmp8, q(i,j,k-4:k+3,qu))
-             Hg(i,j,k,imy) = dot_product(mmtmp8, q(i,j,k-4:k+3,qv))
+             mmtmp8(1:8,i) = matmul(mu(i,j,k-4:k+3), M8)
+             Hg(i,j,k,imx) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qu))
+             Hg(i,j,k,imy) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qv))
           end do
        end do
     end do
@@ -3041,8 +3049,8 @@ contains
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             mmtmp8 = matmul(vsp(i,j,k-4:k+3), M8)
-             Hg(i,j,k,imz) = dot_product(mmtmp8, q(i,j,k-4:k+3,qw))
+             mmtmp8(1:8,i) = matmul(vsp(i,j,k-4:k+3), M8)
+             Hg(i,j,k,imz) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qw))
           end do
        end do
     end do
@@ -3050,8 +3058,8 @@ contains
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             mmtmp8 = matmul(lam(i,j,k-4:k+3), M8)
-             Hg(i,j,k,iene) = dot_product(mmtmp8, q(i,j,k-4:k+3,qtemp))
+             mmtmp8(1:8,i) = matmul(lam(i,j,k-4:k+3), M8)
+             Hg(i,j,k,iene) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qtemp))
           end do
        end do
     end do
@@ -3059,9 +3067,11 @@ contains
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             mmtmp8 = matmul(M8, q(i,j,k-4:k+3,qpres))
-             M8p(:,i,j,k) = mmtmp8
-             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j,k-4:k+3), mmtmp8)
+             mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qpres))
+             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j,k-4:k+3), mmtmp8(1:8,i))
+          end do
+          do i=lo(1),hi(1)
+             M8p(:,i,j,k) = mmtmp8(1:8,i)
           end do
        end do
     end do
@@ -3069,30 +3079,24 @@ contains
     do n = 1, nspecies
        qxn = qx1+n-1
 
-       do jj=lo(2),hi(2),jblocksize
        do k=slo(3),shi(3)+1
-!          do j=lo(2),hi(2)
-          do j=jj,min(jj+jblocksize-1,hi(2))
+          do j=lo(2),hi(2)
              do i=lo(1),hi(1)
                 Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
              end do
           end do
        end do
-       enddo
 
-       do jj=lo(2),hi(2),jblocksize
        do k=slo(3),shi(3)+1
-!          do j=lo(2),hi(2)
-          do j=jj,min(jj+jblocksize-1,hi(2))
+          do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                mmtmp8 = matmul(M8, q(i,j,k-4:k+3,qxn))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp8)
+                mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qxn))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp8(1:8,i))
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
-                     + dot_product(dxy(i,j,k-4:k+3,n), mmtmp8)
+                     + dot_product(dxy(i,j,k-4:k+3,n), mmtmp8(1:8,i))
              end do
           end do
        end do
-       enddo
     end do
 
     ! correction
@@ -3583,13 +3587,18 @@ contains
 
     deallocate(Hg,dpy,dxe,dpe,vsp,vsm,M8p,Hry)
 
+    rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
+         rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
+         + rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
+    deallocate(rhs)
+
   end subroutine narrow_diffterm_3d
 
 
-  subroutine chemterm_3d(lo,hi,ng,q,up) ! up is UPrime that has no ghost cells
-    integer,          intent(in ) :: lo(3),hi(3),ng
-    double precision, intent(in )   :: q (-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
-    double precision, intent(inout) :: up(    lo(1):hi(1)   ,    lo(2):hi(2)   ,    lo(3):hi(3)   ,ncons)
+  subroutine chemterm_3d(lo,hi,q,qlo,qhi,up,uplo,uphi)
+    integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),uplo(3),uphi(3)
+    double precision,intent(in):: q ( qlo(1): qhi(1), qlo(2): qhi(2), qlo(3): qhi(3),nprim)
+    double precision           :: up(uplo(1):uphi(1),uplo(2):uphi(2),uplo(3):uphi(3),ncons)
 
     integer :: iwrk, i,j,k
     double precision :: Yt(nspecies), wdot(nspecies), rwrk
@@ -3608,10 +3617,11 @@ contains
 
   end subroutine chemterm_3d
 
-  subroutine comp_courno_3d(lo,hi,ng,dx,Q,courno)
-    integer, intent(in) :: lo(3), hi(3), ng
+
+  subroutine comp_courno_3d(lo,hi,dx,Q,qlo,qhi,courno)
+    integer, intent(in) :: lo(3), hi(3), qlo(3), qhi(3)
     double precision, intent(in) :: dx(3)
-    double precision, intent(in) :: q(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,nprim)
+    double precision, intent(in) :: q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
     double precision, intent(inout) :: courno
 
     integer :: i,j,k, iwrk
