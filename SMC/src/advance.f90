@@ -20,7 +20,7 @@ module advance_module
   implicit none
 
   private
-  public advance, overlapped_part, f1eval, f1post
+  public advance, overlapped_part, srf1eval, srf1post, mrf1eval, mrf2eval
 
 contains
 
@@ -120,19 +120,20 @@ contains
     type(multifab), target :: Q, R
     integer          :: ng
     type(layout)     :: la
-    double precision :: courno_proc
+    double precision :: courno_proc, res
 
     integer :: k
-    double precision :: res_proc, res
 
     ng = nghost(U)
     la = get_layout(U)
+
+    ! ideally we would have a preallocated workspace for the residual,
+    ! and the computation of dt would be done in the first feval...
 
     !
     ! set dt
     !
 
-    ! this really belongs in the first feval of an sdc sweep
     courno_proc = -1.d50
 
     call build(Q, la, nprim, ng)
@@ -144,7 +145,7 @@ contains
     call set_dt(dt, courno, istep)
 
     !
-    ! advance (pass control to sdclib)
+    ! advance
     !
     call sdc_srset_set_q0(sdc%srset, mfptr(U))
     call sdc_srset_spread(sdc%srset, 0.0d0)
@@ -154,35 +155,30 @@ contains
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
-
-          ! building residual workspace R should be done elsewhere
           call build(R, la, ncons, 0)
-
-          call sdc_srset_residual(sdc%srset, dt, c_loc(R))
-
-          res_proc = norm_inf(R)
-          call parallel_reduce(res, res_proc, MPI_MAX)
+          call sdc_srset_residual(sdc%srset, dt, mfptr(R))
+          call parallel_reduce(res, norm_inf(R), MPI_MAX)
+          call destroy(R)
 
           if (parallel_IOProcessor()) then
              print *, "SDC: iter:", k, "residual:", res
           end if
 
-          call destroy(R)
-
-          if (res < sdc%tol_residual) exit
+          if (res < sdc%tol_residual) &
+               exit
        end if
     end do
+
     call sdc_srset_get_qend(sdc%srset, mfptr(U))
-    
   end subroutine advance_sdc
 
 
   !
   ! SDCLib callbacks
   !
-  subroutine f1eval(Fptr, Uptr, t, ctxptr) bind(c)
-    type(c_ptr), intent(in), value      :: Fptr, Uptr, ctxptr
-    double precision, intent(in), value :: t
+  subroutine srf1eval(Fptr, Uptr, t, ctxptr) bind(c)
+    type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
+    real(c_double), intent(in), value :: t
 
     type(multifab), pointer :: U, Uprime
     type(ctx_t), pointer    :: ctx
@@ -192,18 +188,45 @@ contains
     call c_f_pointer(ctxptr, ctx)
 
     call dUdt(U, Uprime, ctx%dx)
-  end subroutine f1eval
+  end subroutine srf1eval
 
-  subroutine f1post(Uptr, Fptr, stateptr, ctxptr) bind(c)
-    type(c_ptr), intent(in), value      :: Uptr, Fptr, stateptr, ctxptr
+  subroutine srf1post(Uptr, Fptr, stateptr, ctxptr) bind(c)
+    type(c_ptr), intent(in), value :: Uptr, Fptr, stateptr, ctxptr
 
     type(multifab), pointer :: U
     call c_f_pointer(Uptr, U)
 
     call reset_density(U)
     call impose_hard_bc(U)
-  end subroutine f1post
+  end subroutine srf1post
 
+  subroutine mrf1eval(Fptr, Uptr, t, ctxptr) bind(c)
+    type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
+    real(c_double), intent(in), value :: t
+
+    type(multifab), pointer :: U, Uprime
+    type(ctx_t), pointer    :: ctx
+
+    call c_f_pointer(Uptr, U)
+    call c_f_pointer(Fptr, Uprime)
+    call c_f_pointer(ctxptr, ctx)
+
+    call dUdt_AD(U, Uprime, ctx%dx)
+  end subroutine mrf1eval
+
+  subroutine mrf2eval(Fptr, Uptr, t, ctxptr) bind(c)
+    type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
+    real(c_double), intent(in), value :: t
+
+    type(multifab), pointer :: U, Uprime
+    type(ctx_t), pointer    :: ctx
+
+    call c_f_pointer(Uptr, U)
+    call c_f_pointer(Fptr, Uprime)
+    call c_f_pointer(ctxptr, ctx)
+
+    call dUdt_R(U, Uprime, ctx%dx)
+  end subroutine mrf2eval
 
   !
   ! Advance U using multi-rate SDC time-stepping
@@ -215,92 +238,61 @@ contains
     type(sdc_t),       intent(in   ) :: sdc
     integer,           intent(in   ) :: istep
 
-    ! integer          :: k, m, mm, ng
-    ! double precision :: res_proc, res
-    ! type(layout)     :: la
-    ! type(multifab)   :: uAD(sdc%nnodes), fAD(sdc%nnodes), SAD(sdc%nnodes-1)
-    ! type(multifab)   :: uR(sdc%nnodes), fR(sdc%nnodes), SR(sdc%nnodes-1)
+    type(multifab), target :: Q, R
+    integer          :: ng
+    type(layout)     :: la
+    double precision :: courno_proc, res
 
-    ! type(mf_encap_t), target :: mfencap
-    ! type(c_ptr)    :: nset1, nset2, mrset, encap
-    ! integer(c_int) :: err
+    integer :: k
 
-    ! nset1 = sdc_nset_create(sdc%nnodes, SDC_GAUSS_LOBATTO,  "AD" // c_null_char)
-    ! nset2 = sdc_nset_create(5,          SDC_GAUSS_LEGENDRE, "R"  // c_null_char)
-    ! mrset = sdc_mrset_create("ADR" // c_null_char)
+    ng = nghost(U)
+    la = get_layout(U)
 
-    ! err = sdc_mrset_add_nset(mrset, nset1, 0)
-    ! err = sdc_mrset_add_nset(mrset, nset2, 0)
-    ! err = sdc_mrset_setup(mrset)
+    ! ideally we would have a preallocated workspace for the residual,
+    ! and the computation of dt would be done in the first feval...
 
-    ! ! call sdc_mrset_print(mrset, 0)
-    
-    ! ng = nghost(U)
-    ! la = get_layout(U)
+    !
+    ! set dt
+    !
 
-    ! mfencap%nc = ncons
-    ! mfencap%ng = ng
-    ! mfencap%la = la
+    courno_proc = -1.d50
 
-    ! encap = sdc_encap_multifab(c_loc(mfencap))
+    call build(Q, la, nprim, ng)
+    call ctoprim(U, Q, 0)
+    call compute_courno(Q, dx, courno_proc)
+    call parallel_reduce(courno, courno_proc, MPI_MAX)
+    call destroy(Q)
 
-    ! ! XXX: this is a work in progress
-    ! print *, '*** MULTIRATE SDC IS A WORK IN PROGRESS ***'
+    call set_dt(dt, courno, istep)
 
-    ! ! XXX: this just does normal SDC for now
+    !
+    ! advance
+    !
+    call sdc_mrset_set_q0(sdc%srset, mfptr(U))
+    call sdc_mrset_spread(sdc%srset, 0.0d0)
 
-    ! ! build u and u' multifabs for each node
-    ! do m = 1, sdc%nnodes
-    !    call build(uAD(m), la, ncons, ng)
-    !    call build(fAD(m), la, ncons, 0)
-    !    call build(uR(m), la, ncons, ng)
-    !    call build(fR(m), la, ncons, 0)
-    ! end do
+    do k = 1, sdc%iters
+       ! XXX
 
-    ! ! build S multifab (node to node integrals)
-    ! do m = 1, sdc%nnodes-1
-    !    call build(SAD(m), la, ncons, 0)
-    !    call build(SR(m), la, ncons, 0)
-    ! end do
+       ! call sdc_srset_sweep(sdc%srset, 0.0d0, dt)
 
-    ! ! set provisional solution, compute dt
+       ! ! check residual
+       ! if (sdc%tol_residual > 0.d0) then
+       !    call build(R, la, ncons, 0)
+       !    call sdc_srset_residual(sdc%srset, dt, mfptr(R))
+       !    call parallel_reduce(res, norm_inf(R), MPI_MAX)
+       !    call destroy(R)
 
-    ! call copy(uAD(1), U)
-    ! call dUdt(uAD(1), fAD(1), dx)
+       !    if (parallel_IOProcessor()) then
+       !       print *, "SDC: iter:", k, "residual:", res
+       !    end if
 
-    ! do m = 2, sdc%nnodes
-    !    call copy(uAD(m), uAD(1))
-    !    call copy(fAD(m), fAD(1))
-    ! end do
+       !    if (res < sdc%tol_residual) &
+       !         exit
+       ! end if
+    end do
 
-    ! call set_dt(dt, courno, istep)
-
-    ! ! perform sdc iterations
-    ! res = 0.0d0
-
-    ! do k = 1, sdc%iters
-    !    ! call sdc_sweep(uAD, fAD, SAD, dx, dt, sdc)
-    ! end do
-
-    ! call copy(U, uAD(sdc%nnodes))
-
-    ! ! destroy
-    ! do m = 1, sdc%nnodes
-    !    call destroy(uAD(m))
-    !    call destroy(fAD(m))
-    !    call destroy(uR(m))
-    !    call destroy(fR(m))
-    ! end do
-
-    ! do m = 1, sdc%nnodes-1
-    !    call destroy(SAD(m))
-    !    call destroy(SR(m))
-    ! end do
-
-    ! call sdc_mrset_destroy(mrset)
-    ! call sdc_nset_destroy(nset1)
-    ! call sdc_nset_destroy(nset2)
-    ! call sdc_encap_multifab_destroy(encap)
+    call sdc_mrset_get_qend(sdc%srset, mfptr(U))
 
   end subroutine advance_multi_sdc
 
