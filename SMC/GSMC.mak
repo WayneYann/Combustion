@@ -132,9 +132,15 @@ PROBIN_PARAMETERS := $(shell $(BOXLIB_HOME)/Tools/F_scripts/findparams.py $(PROB
 probin.f90: $(PROBIN_PARAMETERS) $(PROBIN_TEMPLATE)
 	@echo " "
 	@echo "${bold}WRITING probin.f90${normal}"
+ifdef MKVERBOSE
 	$(BOXLIB_HOME)/Tools/F_scripts/write_probin.py \
            -t $(PROBIN_TEMPLATE) -o probin.f90 -n probin \
            --pa "$(PROBIN_PARAMETERS)"
+else
+	@$(BOXLIB_HOME)/Tools/F_scripts/write_probin.py \
+           -t $(PROBIN_TEMPLATE) -o probin.f90 -n probin \
+           --pa "$(PROBIN_PARAMETERS)"
+endif
 	@echo " "
 
 
@@ -145,17 +151,32 @@ deppairs: build_info.f90
 build_info.f90: 
 	@echo " "
 	@echo "${bold}WRITING build_info.f90${normal}"
+ifdef MKVERBOSE
 	$(BOXLIB_HOME)/Tools/F_scripts/make_build_info2 \
             "$(Fmdirs)" "$(COMP)" "$(FCOMP_VERSION)" \
             "$(COMPILE.f90)" "$(COMPILE.f)" \
             "$(COMPILE.c)" "$(LINK.f90)" \
             "AUX=$(CHEMISTRY_MODEL)" \
             "GIT=$(BOXLIB_HOME)" "GIT=$(SMC_TOP_DIR)" "GIT=$(SDCLIB_HOME)"
+else
+	@$(BOXLIB_HOME)/Tools/F_scripts/make_build_info2 \
+            "$(Fmdirs)" "$(COMP)" "$(FCOMP_VERSION)" \
+            "$(COMPILE.f90)" "$(COMPILE.f)" \
+            "$(COMPILE.c)" "$(LINK.f90)" \
+            "AUX=$(CHEMISTRY_MODEL)" \
+            "GIT=$(BOXLIB_HOME)" "GIT=$(SMC_TOP_DIR)" "GIT=$(SDCLIB_HOME)"
+endif
 	@echo " "
 
 $(odir)/build_info.o: build_info.f90
+ifdef MKVERBOSE
 	$(COMPILE.f90) $(OUTPUT_OPTION) build_info.f90
 	rm -f build_info.f90
+else
+	@echo "Building build_info.f90 ..."
+	@$(COMPILE.f90) $(OUTPUT_OPTION) build_info.f90
+	@rm -f build_info.f90
+endif
 
 
 #-----------------------------------------------------------------------------
