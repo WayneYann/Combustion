@@ -60,7 +60,7 @@ Fmlocs += $(foreach dir, $(BOXLIB_CORE), $(BOXLIB_HOME)/$(dir))
 # SDCLib
 ifdef SDCLIB_HOME
   Fmpack += $(SDCLIB_HOME)/GPackage.mak
-  Fmlocs += $(SDCLIB_HOME)/src/core $(SDCLIB_HOME)/src/fortran $(SDCLIB_HOME)/src/encap $(SDCLIB_HOME)/src/utils
+  Fmlocs += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/src/encap
   INCLUDE_LOCATIONS += $(SDCLIB_HOME)/include
 endif
 
