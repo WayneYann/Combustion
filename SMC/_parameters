@@ -111,7 +111,7 @@ sdc_iters                           integer            9
 
 # sdc residual tolerance: if the sdc residual drops below this, sdc
 # iterations are cut short
-sdc_tol_residual                    real               1.d-5
+sdc_tol_residual                    real               -1.d100
 
 #-----------------------------------------------------------------------------
 # category: grid
