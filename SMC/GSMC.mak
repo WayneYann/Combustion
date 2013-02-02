@@ -30,8 +30,6 @@ endif
 ifeq ($(strip $(SDCLIB_HOME)),)
   ifeq ($(strip $(SMC_SRC)),src)
     $(error "Must define SDCLIB_HOME when SMC_SRC=$(SMC_SRC)")
-  else ifeq ($(strip $(SMC_SRC)),src_tb)
-    $(error "Must define SDCLIB_HOME when SMC_SRC=$(SMC_SRC)")
   endif
 endif
 

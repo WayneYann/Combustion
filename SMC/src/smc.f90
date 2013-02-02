@@ -15,6 +15,7 @@ subroutine smc()
   use runtime_init_module
   use sdcquad_module
   use smc_bc_module
+  use smcdata_module
   use time_module
   use variables_module
 
@@ -120,6 +121,9 @@ subroutine smc()
   if (dm .ne. get_dim(la)) then
      call bl_error('dm_in not properly set in inputs file')
   end if
+
+
+  call build_smcdata(la)
 
 
   !
@@ -393,6 +397,8 @@ subroutine smc()
 
   call nscbc_close()
   call smc_bc_close()
+
+  call destroy_smcdata()
 
   if (advance_method == 2 .or. advance_method == 3) then
      call sdc_destroy(sdc)
