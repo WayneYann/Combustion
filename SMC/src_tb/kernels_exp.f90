@@ -1291,8 +1291,8 @@ contains
   end subroutine hypterm_3d
 
 
-  subroutine narrow_diffterm_3d (lo,hi,dx,q,qlo,qhi,rhs_g,glo,ghi,rhs,rlo,rhi,
-    mu,xi,lam,dxy,dlo_g,dhi_g,bclo,bchi)
+  subroutine narrow_diffterm_3d (lo,hi,dx,q,qlo,qhi,rhs_g,glo,ghi,rhs,rlo,rhi, &
+       mu,xi,lam,dxy,dlo_g,dhi_g,bclo,bchi)
 
     integer,         intent(in):: dlo_g(3),dhi_g(3),bclo(3),bchi(3)
     integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),rlo(3),rhi(3),glo(3),ghi(3)
@@ -7024,7 +7024,6 @@ contains
     rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
          rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
          + rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
-    deallocate(rhs)
 
   end subroutine narrow_diffterm_3d
 
