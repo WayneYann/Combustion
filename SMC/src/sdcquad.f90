@@ -14,17 +14,17 @@ module sdcquad_module
 
      integer :: &
           iters   = 4                       ! Number of SDC iterations
-          
+
      real(dp_t) :: &
           tol_residual = -1.0d0             ! Residual tolerance (ignored if negative)
-     
+
      type(c_ptr) :: nset1, nset2, exp1, exp2
      type(c_ptr) :: srset, mrset
 
      type(ctx_t), pointer      :: ctx
      type(mf_encap_t), pointer :: mfencap
      type(c_ptr)               :: encap
-     
+
   end type sdc_t
 
 contains
@@ -72,7 +72,7 @@ contains
 
   end subroutine sdc_build_multi_rate
 
-  
+
   !
   ! Set multifab layout, feval context etc
   !
@@ -83,7 +83,7 @@ contains
 
     ! create encapsulation
     allocate(sdc%mfencap)
-    
+
     sdc%mfencap%nc = nc
     sdc%mfencap%ng = ng
     sdc%mfencap%la = la
@@ -130,10 +130,16 @@ contains
   subroutine sdc_destroy(sdc)
     type(sdc_t), intent(inout) :: sdc
 
-    call sdc_srset_destroy(sdc%srset)
-    call sdc_mrset_destroy(sdc%mrset)
-    call sdc_nset_destroy(sdc%nset1)
-    call sdc_nset_destroy(sdc%nset2)
+    if (c_associated(sdc%srset)) then
+       call sdc_srset_destroy(sdc%srset)
+       call sdc_nset_destroy(sdc%nset1)
+    end if
+
+    if (c_associated(sdc%mrset)) then
+       call sdc_mrset_destroy(sdc%mrset)
+       call sdc_nset_destroy(sdc%nset1)
+       call sdc_nset_destroy(sdc%nset2)
+    end if
   end subroutine sdc_destroy
 
 end module sdcquad_module
