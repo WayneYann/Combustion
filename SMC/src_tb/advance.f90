@@ -637,7 +637,7 @@ contains
        !
        call build(bpt_hypdiffterm, "hypdiffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
        !$omp parallel private(tid,n,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
-       !$omp private(mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+       !$omp private(fp,flo,fhi,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
        tid = omp_get_thread_num()
        do n=1,nfabs(Q)
           
