@@ -5,7 +5,7 @@ module smcdata_module
   implicit none
 
   type(multifab),save :: Uprime, Unew
-  type(multifab),save :: Q
+  type(multifab),save :: Q, Fdif
   type(multifab),save :: mu, xi ! viscosity
   type(multifab),save :: lam ! partial thermal conductivity
   type(multifab),save :: Ddiag ! diagonal components of rho * Y_k * D
