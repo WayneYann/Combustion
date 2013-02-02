@@ -15,8 +15,8 @@ contains
 
   subroutine hypterm_3d (lo,hi,dx,cons,clo,chi,q,qlo,qhi,rhs,rlo,rhi)
 
-    integer,         intent(in ) :: lo(3),hi(3),clo(3),chi(3),qlo(3),qhi(3),rlo(3),rhi(3)
-    double precision,intent(in ) :: dx(3)
+    integer,         intent(in):: lo(3),hi(3),clo(3),chi(3),qlo(3),qhi(3),rlo(3),rhi(3)
+    double precision,intent(in):: dx(3)
     double precision,intent(in):: cons(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3),ncons)
     double precision,intent(in)::    q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
     double precision           ::  rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
@@ -246,7 +246,6 @@ contains
           end do
        end do
     end do
-
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -267,7 +266,6 @@ contains
           end do
        end do
     end do
-
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -288,7 +286,6 @@ contains
           end do
        end do
     end do
-
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -309,7 +306,6 @@ contains
           end do
        end do
     end do
-
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -331,7 +327,6 @@ contains
              end do
           end do
        end do
-
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)

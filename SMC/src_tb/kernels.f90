@@ -946,20 +946,20 @@ contains
   end subroutine hypterm_3d
 
 
-  subroutine narrow_diffterm_3d (lo,hi,dx,q,qlo,qhi,rhs_g,rlo,rhi,mu,xi,lam,dxy, &
-       dlo_g,dhi_g,bclo,bchi)
+  subroutine narrow_diffterm_3d (lo,hi,dx,q,qlo,qhi,rhs_g,glo,ghi,rhs,rlo,rhi,
+    mu,xi,lam,dxy,dlo_g,dhi_g,bclo,bchi)
 
     integer,         intent(in):: dlo_g(3),dhi_g(3),bclo(3),bchi(3)
-    integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),rlo(3),rhi(3)
+    integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),rlo(3),rhi(3),glo(3),ghi(3)
     double precision,intent(in):: dx(3)
     double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
     double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
     double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
     double precision,intent(in):: lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
     double precision,intent(in):: dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
-    double precision         :: rhs_g(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    double precision         ::  rhs_g(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),ncons)
+    double precision         ::  rhs  (rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
-    double precision, allocatable :: rhs(:,:,:,:)
     double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
     double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
     double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
@@ -1047,9 +1047,6 @@ contains
     allocate(tmpx(dlo(1):dhi(1)))
     allocate(tmpy( lo(1): hi(1),dlo(2):dhi(2)))
     allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
-
-    allocate(rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons))
-    rhs = 0.d0
 
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
@@ -1302,6 +1299,8 @@ contains
           enddo
        enddo
     end if
+
+    rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = 0.d0
 
     !----- mx -----
 

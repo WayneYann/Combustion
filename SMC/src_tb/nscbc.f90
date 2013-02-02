@@ -390,10 +390,9 @@ contains
     double precision :: Tt, rwrk, cv, cp, gamma, Wbar, vel2, cs2
     double precision :: Yt(nspecies), wdot(nspecies)
 
-    !$omp parallel if (ahi(3) > alo(3)) 
-    !$omp do &
-    !$omp private(i,j,k,iwrk,Tt,rwrk,cv,cp,gamma,Wbar,vel2,cs2,Yt,wdot) &
+    !$omp parallel private(i,j,k,iwrk,Tt,rwrk,cv,cp,gamma,Wbar,vel2,cs2,Yt,wdot) &
     !$omp reduction(max:mach2)
+    !$omp do collapse(2)
     do k=alo(3),ahi(3)
        do j=alo(2),ahi(2)
           do i=alo(1),ahi(1)

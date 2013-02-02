@@ -6,7 +6,6 @@ module advance_module
   use multifab_module
   use omp_module
   use nscbc_module
-  use sdcquad_module
   use smc_bc_module
   use time_module
   use transport_properties

@@ -34,8 +34,8 @@
     integer :: i, j, k, iwrk
     double precision :: rhoinv, ei, rwrk
 
-    !$omp parallel do collapse(2)
-    !$omp private(i,j,k,iwrk,rhoinv, ei, rwrk)
+    !$omp parallel private(i,j,k,iwrk,rhoinv, ei, rwrk)
+    !$omp do collapse(2)
     do k=qlo(3),qhi(3)
     do j=qlo(2),qhi(2)
     do i=qlo(1),qhi(1)
@@ -51,7 +51,8 @@
     end do
     end do
     end do
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
   end subroutine ctoprim_inflow
 
   subroutine impose_hard_bc(U)
@@ -126,8 +127,8 @@
     integer :: i, j, k, iwrk
     double precision :: ei, rwrk
 
-    !$omp parallel do collapse(2)
-    !$omp private(i,j,k,iwrk, ei, rwrk)
+    !$omp parallel private(i,j,k,iwrk, ei, rwrk)
+    !$omp do collapse(2)
     do k=qlo(3),qhi(3)
     do j=qlo(2),qhi(2)
     do i=qlo(1),qhi(1)
@@ -151,5 +152,6 @@
     end do
     end do
     end do
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
   end subroutine impose_inflow
