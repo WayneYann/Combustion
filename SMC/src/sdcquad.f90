@@ -120,6 +120,8 @@ contains
        call sdc_exp_attach(sdc%exp2, &
             sdc_mrset_stepper(sdc%mrset, 1), sdc%encap, c_loc(sdc%ctx))
        err = sdc_mrset_setup(sdc%mrset)
+
+       call sdc_mrset_print(sdc%mrset, 0)
     end if
 
     if (err .ne. 0) then
@@ -134,10 +136,16 @@ contains
   subroutine sdc_destroy(sdc)
     type(sdc_t), intent(inout) :: sdc
 
-    call sdc_srset_destroy(sdc%srset)
-    call sdc_mrset_destroy(sdc%mrset)
-    call sdc_nset_destroy(sdc%nset1)
-    call sdc_nset_destroy(sdc%nset2)
+    if (c_associated(sdc%srset)) then
+       call sdc_srset_destroy(sdc%srset)
+       call sdc_nset_destroy(sdc%nset1)
+    end if
+    
+    if (c_associated(sdc%mrset)) then
+       call sdc_mrset_destroy(sdc%mrset)
+       call sdc_nset_destroy(sdc%nset1)
+       call sdc_nset_destroy(sdc%nset2)
+    end if
   end subroutine sdc_destroy
 
 end module sdcquad_module
