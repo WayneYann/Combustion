@@ -248,10 +248,8 @@ contains
     logical :: update_courno
     double precision :: courno_proc
 
-    integer :: k
-    double precision :: res
-    type(layout) :: la
-    type(multifab), target :: R
+    ! ideally we would have a preallocated workspace for the residual,
+    ! and the computation of dt would be done in the first feval...
 
     !
     ! set dt
@@ -278,31 +276,9 @@ contains
     !
     ! advance
     !
-    call sdc_mrset_set_q0(sdc%srset, mfptr(U))
-    call sdc_mrset_spread(sdc%srset, 0.0d0)
-
-    do k = 1, sdc%iters
-       ! XXX
-
-       ! call sdc_srset_sweep(sdc%srset, 0.0d0, dt)
-
-       ! ! check residual
-       ! if (sdc%tol_residual > 0.d0) then
-       !    call build(R, la, ncons, 0)
-       !    call sdc_srset_residual(sdc%srset, dt, mfptr(R))
-       !    call parallel_reduce(res, norm_inf(R), MPI_MAX)
-       !    call destroy(R)
-
-       !    if (parallel_IOProcessor()) then
-       !       print *, "SDC: iter:", k, "residual:", res
-       !    end if
-
-       !    if (res < sdc%tol_residual) &
-       !         exit
-       ! end if
-    end do
-
-    call sdc_mrset_get_qend(sdc%srset, mfptr(U))
+    call sdc_mrset_set_q0(sdc%mrset, mfptr(U))
+    call sdc_mrset_advance(sdc%mrset, 5, 0.0d0, dt)
+    call sdc_mrset_get_qend(sdc%mrset, mfptr(U))
 
   end subroutine advance_multi_sdc
 

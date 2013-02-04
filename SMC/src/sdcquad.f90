@@ -63,7 +63,7 @@ contains
     sdc%exp1  = sdc_exp_create("AD" // c_null_char)
 
     sdc%nset2 = sdc_nset_create(nnodes(2), qtype, "R" // c_null_char)
-    sdc%exp1  = sdc_exp_create("R" // c_null_char)
+    sdc%exp2  = sdc_exp_create("R" // c_null_char)
 
     err = sdc_mrset_add_nset(sdc%mrset, sdc%nset1, 0)
     err = sdc_mrset_add_nset(sdc%mrset, sdc%nset2, 0)
@@ -106,16 +106,22 @@ contains
     type(sdc_t), intent(inout) :: sdc
 
     integer :: err
+    err = 0
 
     if (c_associated(sdc%srset)) then
-       call sdc_exp_attach(sdc%exp1, sdc_srset_stepper(sdc%srset), sdc%encap, c_loc(sdc%ctx))
+       call sdc_exp_attach(sdc%exp1, &
+            sdc_srset_stepper(sdc%srset), sdc%encap, c_loc(sdc%ctx))
        err = sdc_srset_setup(sdc%srset)
     end if
 
     if (c_associated(sdc%mrset)) then
-       call sdc_exp_attach(sdc%exp1, sdc_mrset_stepper(sdc%mrset, 0), sdc%encap, c_loc(sdc%ctx))
-       call sdc_exp_attach(sdc%exp2, sdc_mrset_stepper(sdc%mrset, 1), sdc%encap, c_loc(sdc%ctx))
-       err = sdc_mrset_setup(sdc%srset)
+       call sdc_exp_attach(sdc%exp1, &
+            sdc_mrset_stepper(sdc%mrset, 0), sdc%encap, c_loc(sdc%ctx))
+       call sdc_exp_attach(sdc%exp2, &
+            sdc_mrset_stepper(sdc%mrset, 1), sdc%encap, c_loc(sdc%ctx))
+       err = sdc_mrset_setup(sdc%mrset)
+
+       call sdc_mrset_print(sdc%mrset, 0)
     end if
 
     if (err .ne. 0) then
