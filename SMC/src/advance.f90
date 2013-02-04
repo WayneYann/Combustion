@@ -266,9 +266,9 @@ contains
     !
     ! advance
     !
-    call sdc_mrset_set_q0(sdc%srset, mfptr(U))
+    call sdc_mrset_set_q0(sdc%mrset, mfptr(U))
     call sdc_mrset_advance(sdc%mrset, 5, 0.0d0, dt)
-    call sdc_mrset_get_qend(sdc%srset, mfptr(U))
+    call sdc_mrset_get_qend(sdc%mrset, mfptr(U))
 
   end subroutine advance_multi_sdc
 
