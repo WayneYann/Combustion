@@ -104,14 +104,16 @@ fixed_dt                            real               -1.0d0
 #-----------------------------------------------------------------------------
 
 # number of sdc nodes
-sdc_nnodes                          integer            5
+sdc_nnodes                          integer            3
+sdc_nnodes_chemistry                integer            3
 
 # number of sdc iterations per time step
-sdc_iters                           integer            9
+sdc_iters                           integer            5
 
 # sdc residual tolerance: if the sdc residual drops below this, sdc
 # iterations are cut short
 sdc_tol_residual                    real               -1.d100
+
 
 #-----------------------------------------------------------------------------
 # category: grid
