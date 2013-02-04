@@ -19,6 +19,22 @@ the_knapsack_verbosity              logical            .false.
 # job name printed in output
 job_name                            character          ""
 
+
+#-----------------------------------------------------------------------------
+# category: thread parallelization
+#-----------------------------------------------------------------------------
+# threadbox domain decomposition in ?D
+# split in 2D is typically better
+tb_split_dim                        integer            2
+
+# If true, the boxes are "collapsed" before splitting for threads
+tb_collapse_boxes                   logical            .false.
+
+# which dimension is split more; which less.
+tb_idim_more                        integer            2
+tb_idim_less                        integer            1
+
+
 #-----------------------------------------------------------------------------
 # category: communication
 #-----------------------------------------------------------------------------
@@ -95,7 +111,7 @@ sdc_iters                           integer            9
 
 # sdc residual tolerance: if the sdc residual drops below this, sdc
 # iterations are cut short
-sdc_tol_residual                    real               1.d-5
+sdc_tol_residual                    real               -1.d100
 
 #-----------------------------------------------------------------------------
 # category: grid

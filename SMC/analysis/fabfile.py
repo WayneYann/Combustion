@@ -1,25 +1,24 @@
 """Fabric (fabfile.org) tasks for SMC."""
 
-from math import ceil
+import sys
+sys.path.append('/home/memmett/projects/BoxLib/Src/Python')
+sys.path.append('/home/memmett/projects/Combustion/SMC/analysis')
 
-from fabric.api import *
+import numpy as np
+
 from pyboxlib.utils import *
-from itertools import product
-
+from fabric.api import *
 from fabsubmit import *
 from fabutils import *
 
 projects = '/home/memmett/projects/'
 work     = '/scratch/scratchdirs/memmett/'
+#work     = '/scratch/memmett/'
 
 env.rsync = [ (projects + 'Combustion/SMC', work + 'Combustion/SMC') ]
+#env.rsync.append((projects + 'BoxLib/Src/Python', '~/projects/BoxLib/Src/Python'))
 env.bin   = work + 'Combustion/SMC/bin/FlameBall'
 
-
-def setenv():
-  if env.host == 'hopper':
-    env.host_string = 'hopper.nersc.gov'
-    env.exe = 'main.Linux.Cray.mpi.omp.exe'
 
 def walltime(seconds):
   import math
@@ -38,7 +37,10 @@ def flameball_cflconv():
 
   This task should be run in the bin/FlameBall directory.
   """
+
   setenv()
+  rsync()
+  make()
 
   env.nthreads = 6
   env.nprocs   = 4
@@ -59,9 +61,9 @@ def flameball_cflconv():
               advance_method=1)
       probin.write(spath + 'probin.nml')
 
-      runs.append(('rk3%f' % (cflfac,), rundir))
+      runs.append(('rk3%f' % (cflfac,), rundir, walltime(60*60*2)))
 
-    for nnodes, cflfac in product([ 3, 5, 9 ], [ 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 ]):
+    for nnodes, cflfac in product([ 3, 5 ], [ 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 ]):
       rundir = 'cflconv/nnodes%d_cflfac%f' % (nnodes, cflfac)
       spath  = s.mkdir(rundir)
 
@@ -71,7 +73,7 @@ def flameball_cflconv():
               advance_method=2)
       probin.write(spath + 'probin.nml')
 
-      runs.append(('sdcgl%d_%.2f' % (nnodes, cflfac), rundir, walltime(nnodes, cflfac)))
+      runs.append(('sdcgl%d_%.2f' % (nnodes, cflfac), rundir, walltime(60*60*3)))
 
 
   for name, rundir, wall in runs:
@@ -81,7 +83,12 @@ def flameball_cflconv():
 @task
 def flameball_stconv():
   """Convergence tests for the FlameBall example."""
+
+  import stconv
+
   setenv()
+  # rsync()
+  # make()
 
   env.nthreads = 6
   env.nprocs   = 6
@@ -92,33 +99,25 @@ def flameball_stconv():
 
   with stage() as s:
 
-    nx0 = 32
-    dt0 = 1.0e-7
+    # convergence runs
+    for nx, dt, nnodes in stconv.runs:
 
-    for nx, cfl, nnodes in product( [ 32, 64, 128 ],
-                                    [ 0.25, 0.5, 0.75, 1.0 ],
-                                    [ 3, 5 ] ):
-
-      stop_time = 1.0e-5
-      dt        = dt0 * float(nx0) / nx * cfl
-      nsteps    = int(ceil(stop_time / dt))
-
-      max_grid_size = 32
+      max_grid_size = min(nx, 32)
       nprocs        = nx**3 / max_grid_size**3
 
-      name   = 'nx%03d_gl%d_cfl%.2f' % (nx, nnodes, cfl)
+      name   = 'nx%03d_gl%d_dt%g' % (nx, nnodes, dt)
       rundir = 'stconv/' + name
       spath  = s.mkdir(rundir)
 
       probin.update(
-          nx=nx, dt=dt, stop_time=stop_time,
+          nx=nx, fixed_dt=dt, stop_time=stconv.stop_time, cflfac=None,
           sdc_nnodes=nnodes,
-          sdc_iters=2*nnodes-2,
+          sdc_iters=2*nnodes-1,
           max_grid_size=max_grid_size,
           advance_method=2)
       probin.write(spath + 'probin.nml')
 
-      wtime = walltime(3*60*60)
+      wtime = walltime(2*60*60)
 
       runs.append(dict(
           name=name, rundir=rundir, nprocs=nprocs,
@@ -126,3 +125,21 @@ def flameball_stconv():
 
   for run in runs:
     submit(**run)
+
+
+@task
+def flameball_stconv_comp():
+  setenv()
+  rsync()
+  
+  with prefix('module load numpy'):
+    with cd(work + '/Combustion/SMC/analysis'):
+      run('python stconv-comp.py')
+
+
+@task
+def flameball_stconv_plot():
+  setenv()
+  
+  get(work + 'Combustion/SMC/analysis/stconv.pkl', 'stconv.pkl')
+  local('python stconv-plot.py')

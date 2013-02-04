@@ -1,8 +1,13 @@
+CEXE_headers += ChemDriver.H
+CEXE_sources += ChemDriver.cpp
 
-CEXE_sources += ../src/ChemDriver.cpp
-CEXE_headers += ../src/ChemDriver.H
-FEXE_headers += ../src/vode.H
-fEXE_sources += ../src/EGSlib.f ../src/EGini.f ../src/vode.f
+FEXE_headers += ChemDriver_F.H
+FEXE_headers += vode.H
 
-f90EXE_sources += ChemDriver_F.f90 ChemDriver_{$DIM}D.f90
-f90EXE_sources += cdwrk.f90 conp.f90
+f90EXE_sources += ChemDriver_F.f90 
+f90EXE_sources += chemistry_module.f90
+f90EXE_sources += eglib_module.f90
+f90EXE_sources += vode_module.f90
+
+fEXE_sources += EGSlib.f EGini.f vode.f LinAlg.f
+

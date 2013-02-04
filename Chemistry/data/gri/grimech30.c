@@ -33856,7 +33856,7 @@ int feeytt_(double * e, double * y, int * iwrk, double * rwrk, double * t)
     const int maxiter = 50;
     const double tol  = 0.001;
     double ein  = *e;
-    double tmin = 300; // max lower bound for thermo def
+    double tmin = 250; // max lower bound for thermo def
     double tmax = 3000; // min upper bound for thermo def
     double e1,emin,emax,cv,t1,dt;
     int i; // loop counter

@@ -13,16 +13,26 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 
-Bpack	+= ../../../Chemistry/src/Make.package
-Blocs	+= ../../../Chemistry/src
-# Bpack	+= ../../../Chemistry/src_f90/Make.package
-# Blocs	+= ../../../Chemistry/src_f90
+Bpack	+= ../../../Chemistry/src_f90/Make.package
+Blocs	+= ../../../Chemistry/src_f90
 
+MECHDIR = ../../../Chemistry/data
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
-  MECHDIR = ../../../Chemistry/data
-  CEXE_sources += chem-H.cpp
-  vpath %.f   $(VPATH_LOCATIONS) ${MECHDIR}/chem-H/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) ${MECHDIR}/chem-H
+  cEXE_sources += chem-H.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/chem-H/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/chem-H
+else ifeq (${CHEMISTRY_MODEL}, LIDRYER)
+  cEXE_sources += LiDryer.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer
+else ifeq ($(CHEMISTRY_MODEL),DRM19)
+  cEXE_sources += drm19.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
+else ifeq ($(CHEMISTRY_MODEL),GRI30)
+  cEXE_sources += grimech30.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
 endif
 
 
@@ -30,10 +40,6 @@ include $(Bpack)
 
 INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
-
-#include $(BOXLIB_HOME)/Src/F_BaseLib/FParallelMG.mak
-#INCLUDE_LOCATIONS += $(BOXLIB_HOME)/Src/F_BaseLib
-#VPATH_LOCATIONS   += $(BOXLIB_HOME)/Src/F_BaseLib
 
 vpath %.c   . $(VPATH_LOCATIONS)
 vpath %.cpp . $(VPATH_LOCATIONS)
@@ -44,6 +50,9 @@ vpath %.f90 . $(VPATH_LOCATIONS)
 vpath %.f   . $(VPATH_LOCATIONS)
 vpath %.fi  . $(VPATH_LOCATIONS)
 
+
 all: $(executable) 
+	@echo SUCCESS
+
 
 include $(BOXLIB_HOME)/Tools/C_mk/Make.rules

@@ -15,10 +15,6 @@ using std::ostream;
 enum StateType { State_Type = 0,
                  NUM_STATE_TYPE };
 
-//
-// AmrLevel-derived class for hyperbolic conservation equations for stellar media
-//
-
 class CNSReact
     :
     public AmrLevel
@@ -32,10 +28,10 @@ public:
     //The basic constructor.
     //
     CNSReact (Amr&            papa,
-            int             lev,
-            const Geometry& level_geom,
-            const BoxArray& bl,
-            Real            time);
+	      int             lev,
+	      const Geometry& level_geom,
+	      const BoxArray& bl,
+	      Real            time);
     //
     //The destructor.
     //
@@ -47,7 +43,7 @@ public:
                           istream& is,
 			  bool bReadSpecial = false);
     //
-    //Call AmrLevel::checkPoint and then add radiation info
+    //Call AmrLevel::checkPoint
     //
     virtual void checkPoint(const std::string& dir,
                             std::ostream&      os,
@@ -213,9 +209,6 @@ public:
 
     void computeTemp (MultiFab& State);
 
-    void getOldSource (Real old_time,                Real dt, MultiFab& Rhs);
-    void getNewSource (Real old_time, Real new_time, Real dt, MultiFab& Rhs);
-
     Real volWgtSum (const std::string& name, Real time);
 
     void set_special_tagging_flag (Real time);
@@ -225,19 +218,7 @@ public:
     static int       FirstAdv,  LastAdv,  NumAdv;
     static int       FirstSpec, LastSpec, NumSpec;
 
-    static ChemDriver& getChemSolve () {return *chemSolve;} 
-
 protected:
-
-    //
-    // Need to pass ugdnv out of cmpflx to do level sets
-    //
-    MultiFab* u_gdnv;
-
-    //
-    //  Call extern/networks/.../network.f90::network_init()
-    //
-    // static void network_init ();
 
     static void read_params ();
 
@@ -313,7 +294,6 @@ protected:
 
     static int       allow_untagging;
     static int       normalize_species;
-    static int       allow_negative_energy;
     static int       do_special_tagging;
     static int       ppm_type;
 
@@ -321,24 +301,13 @@ protected:
     static Real      small_temp;
     static Real      small_pres;
 
+    static Real      gravx;
+    static Real      gravy;
+    static Real      gravz;
+
     bool             FillPatchedOldState_ok;
 
-    // permits hydro to be turned on and off for running pure rad problems:
-    static int do_hydro;
-
-    // permits reactions to be turned on and off -- mostly for efficiency's sake
-    static int do_react;
-
-    std::map<std::string,MultiFab*> auxDiag;
-    static std::map<std::string,Array<std::string> > auxDiag_names;
-
-    // if true, define an additional source term 
-    static int add_ext_src;
-
-    // There can be only one Diffusion object, it covers all levels:
-    static class Diffusion *diffusion;
-
-    static ChemDriver* chemSolve;
+    static class ChemDriver* chemSolve;
 
 };    
 

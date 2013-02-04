@@ -31,15 +31,41 @@
       integer          :: varl1,varh1
       integer          :: lo(1), hi(1), domlo(1), domhi(1)
       integer          :: tag(tagl1:tagh1)
-      double precision :: var(varl1:varh1,nd)
+      double precision :: var(varl1:varh1)
       double precision :: delta(1), xlo(1), problo(1), time
       integer          :: i
 
-      ! This value is  taken from FLASH
-      double precision, parameter :: ctore=0.8
+      double precision :: error, num, denom
+      double precision ::  delu(varl1:varh1)
+      double precision :: delua(varl1:varh1)
+      double precision :: delu2, delu3, delu4
 
+      double precision, parameter :: ctore=0.8
+      double precision, parameter :: eps=0.02
+
+      ! adapted from ref_marking.f90 in FLASH2.5
+
+      ! d/dx
+      do i=lo(1)-1,hi(1)+1
+         delu(i)  =     var(i+1)  -     var(i-1) 
+         delua(i) = abs(var(i+1)) + abs(var(i-1))
+      end do
+
+      ! d/dxdx
       do i = lo(1),hi(1)
-         if (var(i,1) .gt. ctore) tag(i)=set
+
+         delu2 =     delu(i+1)  -     delu(i-1)
+         delu3 = abs(delu(i+1)) + abs(delu(i-1))
+         delu4 =    delua(i+1)  +    delua(i-1)
+
+         ! compute the error
+         num   = abs(delu2)
+         denom = abs(delu3 + (eps*delu4+1.d-99))
+
+         error = num/denom
+
+         if (error .gt. ctore) tag(i)=set
+
       end do
       
       end subroutine ca_laplac_error
