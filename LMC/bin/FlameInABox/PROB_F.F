@@ -301,6 +301,7 @@ c     Initialize control variables
       pseudo_gravity = 0
       nchemdiag = 1
 
+
       read(untin,fortin)
       
 c     Initialize control variables that depend on fortin variables

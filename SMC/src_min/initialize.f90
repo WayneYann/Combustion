@@ -284,7 +284,7 @@ contains
 
     if (verbose > 0 .and. parallel_IOProcessor()) then
        print *, 'Tried', ntry, 'layouts for filling multifab boundaries.'
-       if (overlap_comm_comp) then
+       if (overlap_comm_comp .and. overlap_in_trial) then
           print *, 'with overlapped computation'
        end if
        print *, '   The average time in second is', timespent/ntry

@@ -44,10 +44,10 @@ CNSReactBld::operator() ()
 
 AmrLevel*
 CNSReactBld::operator() (Amr&            papa,
-                       int             lev,
-                       const Geometry& level_geom,
-                       const BoxArray& ba,
-                       Real            time)
+			 int             lev,
+			 const Geometry& level_geom,
+			 const BoxArray& ba,
+			 Real            time)
 {
-    return new CNSReact(papa, lev, level_geom, ba, time);
+  return new CNSReact(papa, lev, level_geom, ba, time);
 }

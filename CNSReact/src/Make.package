@@ -4,12 +4,9 @@ CEXE_sources += main.cpp sum_integrated_quantities.cpp
 
 CEXE_headers += CNSReact.H
 
-FEXE_headers += CNSReact_F.H	Derive_F.H
+FEXE_headers += CNSReact_F.H  Derive_F.H
 
 f90EXE_sources += CNSReact_nd.f90
-f90EXE_sources += chemsolv_nd.f90
 f90EXE_sources += meth_params.f90
 f90EXE_sources += prob_params.f90
 
-#f90EXE_sources +=  conp.f90
-f90EXE_sources += cdwrk.f90

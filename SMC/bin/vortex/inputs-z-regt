@@ -3,7 +3,7 @@
  verbose = 2
 
  advance_method = 1        ! 1=RK3, 2=SDC, 3=PFASST
- stencil_type = "compact"  ! compact or S3D
+ stencil_type = "narrow"   ! narrow or S3D
 
  stop_time = 6.d-5
  max_step  = 100

@@ -11,5 +11,6 @@ module prob_params_module
   integer         , save :: coord_type
   double precision         , save, allocatable :: phys_prob_lo(:)
   double precision         , save, allocatable :: phys_prob_hi(:)
+  double precision, save :: gravx, gravy, gravz
 
 end module prob_params_module

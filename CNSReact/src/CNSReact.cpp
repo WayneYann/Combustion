@@ -1,10 +1,18 @@
 #include <winstd.H>
 
+#ifndef WIN32
+#include <unistd.h>
+#endif
+
+#include <iomanip>
+
 #include <algorithm>
 #include <cstdio>
 #include <vector>
 #include <iostream>
 #include <string>
+#include <ctime>
+
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -13,7 +21,6 @@ using std::ostream;
 using std::pair;
 using std::string;
 
-#include <ParmParse.H>
 #include <Utility.H>
 #include <CONSTANTS.H>
 #include <CNSReact.H>
@@ -21,6 +28,8 @@ using std::string;
 #include <Derive_F.H>
 #include <VisMF.H>
 #include <TagBox.H>
+#include <ParmParse.H>
+#include <ChemDriver.H>
 
 static int  sum_interval = -1;
 static Real fixed_dt     = -1.0;
@@ -48,7 +57,7 @@ int          CNSReact::Xmom          = -1;
 int          CNSReact::Ymom          = -1;
 int          CNSReact::Zmom          = -1;
 
-ChemDriver*    CNSReact::chemSolve = 0;
+ChemDriver*  CNSReact::chemSolve     = 0;
 int          CNSReact::NumSpec       = 0;
 int          CNSReact::FirstSpec     = -1;
 int          CNSReact::LastSpec      = -1;
@@ -57,20 +66,20 @@ int          CNSReact::NumAdv        = 0;
 int          CNSReact::FirstAdv      = -1;
 int          CNSReact::LastAdv       = -1;
 
-Real         CNSReact::small_dens    = -1.e20;
-Real         CNSReact::small_temp    = -1.e20;
-Real         CNSReact::small_pres    = -1.e20;
-
-int          CNSReact::do_hydro = -1;
-int          CNSReact::do_react = -1;
-int          CNSReact::add_ext_src = 0;
+Real         CNSReact::small_dens    = -1.e200;
+Real         CNSReact::small_temp    = -1.e200;
+Real         CNSReact::small_pres    = -1.e200;
 
 int          CNSReact::allow_untagging = 0;
 int          CNSReact::normalize_species = 0;
-int          CNSReact::allow_negative_energy = 1;
 int          CNSReact::do_special_tagging = 0;
-int          CNSReact::ppm_type = 2;
+int          CNSReact::ppm_type = 1;
 
+
+Real CNSReact::gravx = 0.0;
+Real CNSReact::gravy = 0.0;
+Real CNSReact::gravz = 0.0;
+//Real CNSReact::gravz = -980.665;
 
 // Note: CNSReact::variableSetUp is in CNSReact_setup.cpp
 
@@ -94,7 +103,7 @@ CNSReact::read_params ()
     ParmParse pp("cnsreact");   
 
     pp.query("v",verbose);
-    verbose = (verbose ? 1 : 0);
+    //    verbose = (verbose ? 1 : 0);
     pp.get("init_shrink",init_shrink);
     pp.get("cfl",cfl);
     pp.query("change_max",change_max);
@@ -111,10 +120,11 @@ CNSReact::read_params ()
     pp.query("small_temp",small_temp);
     pp.query("small_pres",small_pres);
 
-    // std::string tranfile=""; pp.query("tranfile",tranfile);
-    chemSolve = new ChemDriver();
+    pp.query("gravx",gravx);
+    pp.query("gravy",gravy);
+    pp.query("gravz",gravz);
 
-    // Get boundary conditions
+     // Get boundary conditions
     Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
     pp.getarr("lo_bc",lo_bc,0,BL_SPACEDIM);
     pp.getarr("hi_bc",hi_bc,0,BL_SPACEDIM);
@@ -208,13 +218,8 @@ CNSReact::read_params ()
         }
 #endif
 
-    pp.get("do_hydro",do_hydro);
-    pp.get("do_react",do_react);
-    pp.query("add_ext_src",add_ext_src);
-
     pp.query("allow_untagging",allow_untagging);
     pp.query("normalize_species",normalize_species);
-    pp.query("allow_negative_energy",allow_negative_energy);
     pp.query("do_special_tagging",do_special_tagging);
     pp.query("ppm_type", ppm_type);
 }
@@ -225,10 +230,10 @@ CNSReact::CNSReact ()
 }
 
 CNSReact::CNSReact (Amr&            papa,
-                int             lev,
-                const Geometry& level_geom,
-                const BoxArray& bl,
-                Real            time)
+		    int             lev,
+		    const Geometry& level_geom,
+		    const BoxArray& bl,
+		    Real            time)
     :
     AmrLevel(papa,lev,level_geom,bl,time) 
 {
@@ -263,9 +268,9 @@ CNSReact::restart (Amr&     papa,
 
 void
 CNSReact::checkPoint(const std::string& dir,
-                   std::ostream&  os,
-                   VisMF::How     how,
-                   bool dump_old_default)
+		     std::ostream&  os,
+		     VisMF::How     how,
+		     bool dump_old_default)
 {
   AmrLevel::checkPoint(dir, os, how, dump_old);
 }
@@ -286,7 +291,7 @@ CNSReact::setPlotVariables ()
 {
   AmrLevel::setPlotVariables();
 
-  const Array<std::string>& names = getChemSolve().speciesNames();
+  const Array<std::string>& names = chemSolve->speciesNames();
 
   ParmParse pp("cnsreact");
 
@@ -639,6 +644,21 @@ CNSReact::initData ()
     MultiFab& S_new = get_new_data(State_Type);
     Real cur_time   = state[State_Type].curTime();
 
+    // make sure dx = dy = dz -- that's all we guarantee to support
+    const Real SMALL = 1.e-13;
+#if (BL_SPACEDIM == 2)
+    if (fabs(dx[0] - dx[1]) > SMALL*dx[0])
+      {
+	BoxLib::Abort("We don't support dx != dy");
+      }
+#elif (BL_SPACEDIM == 3)
+    if ( (fabs(dx[0] - dx[1]) > SMALL*dx[0]) || (fabs(dx[0] - dx[2]) > SMALL*dx[0]) )
+      {
+	BoxLib::Abort("We don't support dx != dy != dz");
+      }
+#endif
+
+
     if (verbose && ParallelDescriptor::IOProcessor())
        std::cout << "Initializing the data at level " << level << std::endl;
 
@@ -650,11 +670,7 @@ CNSReact::initData ()
         const int* lo      = box.loVect();
         const int* hi      = box.hiVect();
 
-        // Temp unused for GammaLaw,
-        //   set it here so that pltfiles have defined numbers
-        S_new[mfi].setVal(0.,Temp);
-
-        BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
+        BL_FORT_PROC_CALL(CNS_INITDATA,cns_initdata)
 	  (level, cur_time, lo, hi, ns,
 	   BL_TO_FORTRAN(S_new[mfi]), dx,
 	   gridloc.lo(), gridloc.hi());
@@ -731,24 +747,21 @@ CNSReact::estTimeStep (Real dt_old)
     // This is just a dummy value to start with 
     Real estdt  = 1.0e+20;
 
-    if (do_hydro) 
-    {
-       const Real* dx    = geom.CellSize();
-       const MultiFab& stateMF = get_new_data(State_Type);
-
-       for (MFIter mfi(stateMF); mfi.isValid(); ++mfi)
-       {
-           const Box& box = mfi.validbox();
-           Real dt = estdt;
-   	   BL_FORT_PROC_CALL(CA_ESTDT,ca_estdt)
-               (BL_TO_FORTRAN(stateMF[mfi]),
-                box.loVect(),box.hiVect(),dx,&dt);
-   
-           estdt = std::min(estdt,dt);
-       }
-       ParallelDescriptor::ReduceRealMin(estdt);
-       estdt *= cfl;
-    }
+    const Real* dx    = geom.CellSize();
+    const MultiFab& stateMF = get_new_data(State_Type);
+    
+    for (MFIter mfi(stateMF); mfi.isValid(); ++mfi)
+      {
+	const Box& box = mfi.validbox();
+	Real dt = estdt;
+	BL_FORT_PROC_CALL(CNS_ESTDT,cns_estdt)
+	  (BL_TO_FORTRAN(stateMF[mfi]),
+	   box.loVect(),box.hiVect(),dx,&dt);
+	
+	estdt = std::min(estdt,dt);
+      }
+    ParallelDescriptor::ReduceRealMin(estdt);
+    estdt *= cfl;
 
     if (verbose && ParallelDescriptor::IOProcessor())
         cout << "CNSReact::estTimeStep at level " << level << ":  estdt = " << estdt << '\n';
@@ -757,13 +770,13 @@ CNSReact::estTimeStep (Real dt_old)
 }
 void
 CNSReact::computeNewDt (int                   finest_level,
-                      int                   sub_cycle,
-                      Array<int>&           n_cycle,
-                      const Array<IntVect>& ref_ratio,
-                      Array<Real>&          dt_min,
-                      Array<Real>&          dt_level,
-                      Real                  stop_time,
-                      int                   post_regrid_flag)
+			int                   sub_cycle,
+			Array<int>&           n_cycle,
+			const Array<IntVect>& ref_ratio,
+			Array<Real>&          dt_min,
+			Array<Real>&          dt_level,
+			Real                  stop_time,
+			int                   post_regrid_flag)
 {
     //
     // We are at the end of a coarse grid timecycle.
@@ -773,10 +786,6 @@ CNSReact::computeNewDt (int                   finest_level,
         return;
 
     int i;
-    n_cycle[0] = 1;
-    for (i = 1; i <= finest_level; i++) {
-        n_cycle[i] = sub_cycle ? parent->MaxRefRatio(i-1) : 1;
-    }
 
     Real dt_0 = 1.0e+100;
     int n_factor = 1;
@@ -847,11 +856,11 @@ CNSReact::computeNewDt (int                   finest_level,
 
 void
 CNSReact::computeInitialDt (int                   finest_level,
-                          int                   sub_cycle,
-                          Array<int>&           n_cycle,
-                          const Array<IntVect>& ref_ratio,
-                          Array<Real>&          dt_level,
-                          Real                  stop_time)
+			    int                   sub_cycle,
+			    Array<int>&           n_cycle,
+			    const Array<IntVect>& ref_ratio,
+			    Array<Real>&          dt_level,
+			    Real                  stop_time)
 {
     //
     // Grids have been constructed, compute dt for all levels.
@@ -860,11 +869,6 @@ CNSReact::computeInitialDt (int                   finest_level,
         return;
 
     int i;
-    n_cycle[0] = 1;
-    for (i = 1; i <= finest_level; i++)
-    {
-        n_cycle[i] = sub_cycle ? parent->MaxRefRatio(i-1) : 1;
-    }
 
     Real dt_0 = 1.0e+100;
     int n_factor = 1;
@@ -935,6 +939,7 @@ CNSReact::post_timestep (int iteration)
     MultiFab& S_new = getLevel(level).get_new_data(State_Type);
     computeTemp(S_new);
 }
+
 void
 CNSReact::post_restart ()
 {
@@ -980,60 +985,9 @@ CNSReact::okToContinue ()
 {
     if (level > 0)
         return 1;
-    return  parent->dtLevel(0) > dt_cutoff;
-}
 
-void
-CNSReact::getOldSource (Real old_time, Real dt, MultiFab&  ext_src)
-{
-   const Real* dx = geom.CellSize();
-
-   MultiFab& S_old = get_old_data(State_Type);
-   const int ncomp = S_old.nComp();
-
-   ext_src.setVal(0.0,ext_src.nGrow());
-
-   MultiFab levelArea[BL_SPACEDIM];
-   for (int i = 0; i < BL_SPACEDIM ; i++)
-       geom.GetFaceArea(levelArea[i],grids,i,NUM_GROW);
-
-   for (FillPatchIterator Old_fpi(*this,S_old,4,old_time,State_Type,Density,ncomp);
-                          Old_fpi.isValid();++Old_fpi)
-   {
-        const Box& bx = grids[Old_fpi.index()];
-        BL_FORT_PROC_CALL(CA_EXT_SRC,ca_ext_src)
-            (bx.loVect(), bx.hiVect(),
-             BL_TO_FORTRAN(  Old_fpi()),
-             BL_TO_FORTRAN(  Old_fpi()),
-             BL_TO_FORTRAN(ext_src[Old_fpi]),
-             dx,&old_time,&dt);
-   }
-   geom.FillPeriodicBoundary(ext_src,0,NUM_STATE);
-}
-
-void
-CNSReact::getNewSource (Real old_time, Real new_time, Real dt, MultiFab& ext_src)
-{
-   const Real* dx = geom.CellSize();
-
-   MultiFab& S_old = get_old_data(State_Type);
-   const int ncomp = S_old.nComp();
-
-   ext_src.setVal(0.0,ext_src.nGrow());
-
-   for (FillPatchIterator Old_fpi(*this,S_old,4,old_time,State_Type,Density,ncomp),
-                          New_fpi(*this,S_old,4,new_time,State_Type,Density,ncomp);
-                          Old_fpi.isValid() && New_fpi.isValid();++Old_fpi,++New_fpi)
-   {
-        const Box& bx = grids[Old_fpi.index()];
-        BL_FORT_PROC_CALL(CA_EXT_SRC,ca_ext_src)
-            (bx.loVect(), bx.hiVect(),
-             BL_TO_FORTRAN(  Old_fpi()),
-             BL_TO_FORTRAN(  New_fpi()),
-             BL_TO_FORTRAN(ext_src[Old_fpi]),
-             dx,&old_time,&dt);
-   }
-   geom.FillPeriodicBoundary(ext_src,0,NUM_STATE);
+    int test = (parent->dtLevel(0) < dt_cutoff) ? 0 : 1;
+    return test;
 }
 
 void
@@ -1072,8 +1026,8 @@ CNSReact::enforce_nonnegative_species (MultiFab& S_new)
     for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
        const Box bx = mfi.validbox();
-       BL_FORT_PROC_CALL(CA_ENFORCE_NONNEGATIVE_SPECIES,ca_enforce_nonnegative_species)
-           (BL_TO_FORTRAN(S_new[mfi]),bx.loVect(),bx.hiVect());
+       BL_FORT_PROC_CALL(CNS_ENFORCE_NONNEGATIVE_SPECIES,cns_enforce_nonnegative_species)
+	 (BL_TO_FORTRAN(S_new[mfi]),bx.loVect(),bx.hiVect());
     }
 }
 
@@ -1085,7 +1039,7 @@ CNSReact::enforce_consistent_e (MultiFab& S)
         const Box& box     = mfi.validbox();
         const int* lo      = box.loVect();
         const int* hi      = box.hiVect();
-        BL_FORT_PROC_CALL(CA_ENFORCE_CONSISTENT_E,ca_enforce_consistent_e)
+        BL_FORT_PROC_CALL(CNS_ENFORCE_CONSISTENT_E,cns_enforce_consistent_e)
           (lo, hi, BL_TO_FORTRAN(S[mfi]));
     }
 }
@@ -1127,7 +1081,7 @@ CNSReact::avgDown (int state_indx)
         const FArrayBox& fine_fab = S_fine[i];
         const FArrayBox& fine_vol = fvolume[i];
 
-	BL_FORT_PROC_CALL(CA_AVGDOWN,ca_avgdown)
+	BL_FORT_PROC_CALL(CNS_AVGDOWN,cns_avgdown)
             (BL_TO_FORTRAN(crse_fab), ncomp,
              BL_TO_FORTRAN(crse_vol),
              BL_TO_FORTRAN(fine_fab),
@@ -1225,7 +1179,7 @@ CNSReact::derive (const std::string& name,
 
 Real
 CNSReact::sumDerive (const std::string& name,
-                   Real           time)
+		     Real           time)
 {
     Real sum     = 0.0;
     MultiFab* mf = derive(name, time, 0);
@@ -1462,24 +1416,18 @@ CNSReact::SyncInterp (MultiFab&      CrseSync,
     delete [] bc_new;
 }
 
-//  void
-//  CNSReact::network_init ()
-//  {
-//     BL_FORT_PROC_CALL(CA_NETWORK_INIT,ca_network_init) ();
-//  }
-
 void
 CNSReact::reset_internal_energy(MultiFab& S_new)
 {
-         // Synchronize (rho e) and (rho E) so they are consistent with each other
-         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
-         {
-             const Box bx = mfi.validbox();
-
-             BL_FORT_PROC_CALL(CA_RESET_INTERNAL_ENERGY,ca_reset_internal_energy)
-                 (BL_TO_FORTRAN(S_new[mfi]),
-                  bx.loVect(), bx.hiVect(),verbose);
-         }
+  // Synchronize (rho e) and (rho E) so they are consistent with each other
+  for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+  {
+      const Box bx = mfi.validbox();
+      
+      BL_FORT_PROC_CALL(CNS_RESET_INTERNAL_ENERGY,cns_reset_internal_energy)
+	(BL_TO_FORTRAN(S_new[mfi]),
+	 bx.loVect(), bx.hiVect(),verbose);
+  }
 }
 
 void
@@ -1489,7 +1437,7 @@ CNSReact::computeTemp(MultiFab& State)
     for (MFIter mfi(State); mfi.isValid(); ++mfi)
     {
         const Box bx = mfi.validbox();
-	BL_FORT_PROC_CALL(CA_COMPUTE_TEMP,ca_compute_temp)
+	BL_FORT_PROC_CALL(CNS_COMPUTE_TEMP,cns_compute_temp)
 	  (bx.loVect(),bx.hiVect(),BL_TO_FORTRAN(State[mfi]));
     }
 }
@@ -1498,19 +1446,5 @@ void
 CNSReact::set_special_tagging_flag(Real time)
 {
    if (!do_special_tagging) return;
-
-   MultiFab& S_new = get_new_data(State_Type);
-   Real max_den = S_new.norm0(Density);
-
-   int flag_was_changed = 0;
-   BL_FORT_PROC_CALL(CA_SET_SPECIAL_TAGGING_FLAG,
-                     ca_set_special_tagging_flag)(max_den,&flag_was_changed);
-   if (ParallelDescriptor::IOProcessor()) {
-      if (flag_was_changed == 1) {
-        std::ofstream os("Bounce_time",std::ios::out);
-        os << "T_Bounce " << time << std::endl;
-        os.close();
-      } 
-   } 
 }
 

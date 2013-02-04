@@ -30,16 +30,71 @@
       integer          :: varl1,varl2,varh1,varh2
       integer          :: lo(2), hi(2), domlo(2), domhi(2)
       integer          :: tag(tagl1:tagh1,tagl2:tagh2)
-      double precision :: var(varl1:varh1,varl2:varh2,nd)
+      double precision :: var(varl1:varh1,varl2:varh2)
       double precision :: delta(2), xlo(2), problo(2), time
       integer          :: i,j
 
+      double precision ::  delu(2,varl1:varh1,varl2:varh2)
+      double precision :: delua(2,varl1:varh1,varl2:varh2)
+      double precision :: delu2(4), delu3(4), delu4(4)
+      double precision :: num, denom, error
+
       ! This value is  taken from FLASH
       double precision, parameter :: ctore=0.8
+      double precision, parameter :: epsil=0.02
+
+      ! adapted from ref_marking.f90 in FLASH2.5
+
+      ! d/dx
+      do j=lo(2)-1,hi(2)+1
+      do i=lo(1)-1,hi(1)+1
+          delu(1,i,j) =     var(i+1,j) -      var(i-1,j)
+         delua(1,i,j) = abs(var(i+1,j)) + abs(var(i-1,j))
+      end do
+      end do
+
+      ! d/dy
+      do j=lo(2)-1,hi(2)+1
+      do i=lo(1)-1,hi(1)+1
+          delu(2,i,j) =     var(i,j+1) -      var(i,j-1)
+         delua(2,i,j) = abs(var(i,j+1)) + abs(var(i,j-1))
+      end do
+      end do
 
       do j = lo(2),hi(2)
       do i = lo(1),hi(1)
-         if (var(i,j,1) .gt. ctore) tag(i,j)=set
+
+         ! d/dxdx
+         delu2(1) =     delu(1,i+1,j)  -     delu(1,i-1,j)
+         delu3(1) = abs(delu(1,i+1,j)) + abs(delu(1,i-1,j))
+         delu4(1) =    delua(1,i+1,j)  +    delua(1,i-1,j)
+
+         ! d/dydx
+         delu2(2) =     delu(1,i,j+1)  -     delu(1,i,j-1)
+         delu3(2) = abs(delu(1,i,j+1)) + abs(delu(1,i,j-1))
+         delu4(2) =    delua(1,i,j+1)  +    delua(1,i,j-1)
+
+         ! d/dxdy
+         delu2(3) =     delu(2,i+1,j)  -     delu(2,i-1,j)
+         delu3(3) = abs(delu(2,i+1,j)) + abs(delu(2,i-1,j))
+         delu4(3) =    delua(2,i+1,j)  +    delua(2,i-1,j)
+
+         ! d/dydy
+         delu2(4) =     delu(2,i,j+1)  -     delu(2,i,j-1)
+         delu3(4) = abs(delu(2,i,j+1)) + abs(delu(2,i,j-1))
+         delu4(4) =    delua(2,i,j+1)  +    delua(2,i,j-1)
+
+         ! compute the error
+         num   =  delu2(1)**2 + delu2(2)**2 + delu2(3)**2 + delu2(4)**2
+         denom = (delu3(1) + (epsil*delu4(1)+1.d-99))**2 + &
+                 (delu3(2) + (epsil*delu4(2)+1.d-99))**2 + &
+                 (delu3(3) + (epsil*delu4(3)+1.d-99))**2 + &
+                 (delu3(4) + (epsil*delu4(4)+1.d-99))**2
+
+         error = sqrt(num/denom)
+
+         if (error .gt. ctore) tag(i,j)=set
+
       end do
       end do
 

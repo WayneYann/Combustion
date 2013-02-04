@@ -7,6 +7,7 @@ module initialize_module
   use nscbc_module
   use physbndry_reg_module
   use variables_module
+  use threadbox_module
 
   implicit none
 
@@ -115,8 +116,10 @@ contains
 
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
 
+    call build_threadbox(la,ng)
+
     call multifab_build(U,la,ncons,ng)
-    call setval(U, ZERO, all=.true.)
+    call tb_multifab_setval(U, ZERO, all=.true.)
     call multifab_copy_c(U,1,chkdata(1),1,ncons)
 
     lachk = get_layout(chkdata(1))
@@ -247,8 +250,10 @@ contains
     call boxarray_maxsize(ba,max_grid_size)
     call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
 
+    call build_threadbox(la,ng)
+
     call multifab_build(U,la,ncons,ng)
-    call setval(U, ZERO, all=.true.)
+    call tb_multifab_setval(U, 0.d0, ALL=.true.)
 
     call init_data(U,dx,prob_lo,prob_hi)
 
@@ -335,6 +340,8 @@ contains
 
        call layout_build_ba(lat, ba, pd, pmask=pmask, &
             mapping = LA_EXPLICIT, explicit_mapping = dmapt)
+
+       call build_threadbox(lat,ng)
        
        call multifab_build(Ut, lat, nc, ng)
        call multifab_copy_c(Ut,1,U,1,nc)
@@ -377,8 +384,11 @@ contains
 
     call layout_build_ba(lat, ba, pd, pmask=pmask, &
          mapping = LA_EXPLICIT, explicit_mapping = dmapbest)
+
+    call build_threadbox(lat,ng)
+
     call multifab_build(Ut, lat, nc, ng)
-    call setval(Ut,ZERO,all=.true.)
+    call tb_multifab_setval(Ut,ZERO,all=.true.)
     call multifab_copy_c(Ut,1,U,1,nc)
 
     call destroy(U)
@@ -391,7 +401,7 @@ contains
 
     if (verbose > 0 .and. parallel_IOProcessor()) then
        print *, 'Tried', ntry, 'layouts for filling multifab boundaries.'
-       if (overlap_comm_comp) then
+       if (overlap_comm_comp .and. overlap_in_trial) then
           print *, 'with overlapped computation'
        end if
        print *, '   The average time in second is', timespent/ntry

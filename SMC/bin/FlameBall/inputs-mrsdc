@@ -1,21 +1,24 @@
 &PROBIN
 
- overlap_comm_comp = .true.
-
  verbose = 2
 
- advance_method = 1  ! 1=RK3, 2=SDC, 3=PFASST
- stencil_type = "compact"   ! compact or S3D
+ advance_method = 3        ! 1=RK3, 2=SDC, 3=MRSDC
+ stencil_type = "narrow"   ! narrow or S3D
 
  stop_time = 3.d-3
  max_step  = 10
  restart = -1
 
+ sdc_nnodes = 5
+ sdc_iters  = 12
+ sdc_tol_residual = 1.0d-3
+
  plot_int = 10
  chk_int  = -1
 
- cflfac = 0.1d0
+ cflfac = 1.0d0
  init_shrink = 0.5d0
+ max_dt_growth   = 1.25d0
 
  n_cellx = 32
  n_celly = 32
@@ -38,7 +41,16 @@
  zlo_boundary_type = "periodic"
  zhi_boundary_type = "periodic"
 
+ prob_type = 1
+
+ ! for prob_type 1
  pertmag = 0.d0
  rfire = 0.15d0
+
+ ! for prob_type 2
+ Tinit = 800.d0
+ uinit =  127.4d0
+ vinit = -203.2d0
+ winit =  138.1d0
 
 /

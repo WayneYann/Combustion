@@ -3,13 +3,13 @@
  verbose = 2
 
  advance_method = {advance_method}
- stencil_type   = "compact"
+ stencil_type   = "narrow"
 
  restart   = -1
  plot_int  = 10
  chk_int   = -1
 
- stop_time = 1.0d-5
+ stop_time = 4.0d-6
  max_step  = 10000
 
  sdc_nnodes = {sdc_nnodes}
@@ -18,6 +18,7 @@
 
  cflfac        = {cflfac}
  init_shrink   = 0.5d0
+ max_dt_growth = 1.25d0
 
  n_cellx = 32
  n_celly = 32
