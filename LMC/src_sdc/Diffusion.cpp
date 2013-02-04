@@ -599,7 +599,7 @@ Diffusion::diffuse_scalar (Real                   dt,
     // Get extensivefluxes from new-time op
     //
     bool do_applyBC = true;
-    visc_op->compFlux(D_DECL(*fluxnp1[0],*fluxnp1[1],*fluxnp1[2]),Soln,LinOp::Inhomogeneous_BC,do_applyBC,0,fluxComp);
+    visc_op->compFlux(D_DECL(*fluxnp1[0],*fluxnp1[1],*fluxnp1[2]),Soln,do_applyBC,LinOp::Inhomogeneous_BC,0,fluxComp);
     for (int i = 0; i < BL_SPACEDIM; ++i)
         (*fluxnp1[i]).mult(b/(dt*caller->Geom().CellSize()[i]),fluxComp,1,0);
     delete visc_op;
