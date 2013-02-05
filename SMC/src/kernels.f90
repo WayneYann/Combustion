@@ -30,6 +30,8 @@ contains
     double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
     double precision, allocatable :: rhs(:,:,:,:)
 
+    logical :: physbclo(3), physbchi(3)
+
     ! Only the region bounded by [dlo_g,dhi_g] contains good data.
     ! [slo,shi] will be safe for 8th-order stencil
     do i=1,3
@@ -37,6 +39,18 @@ contains
        dhi(i) = min(hi(i)+stencil_ng, dhi_g(i))
        slo(i) = dlo(i) + stencil_ng
        shi(i) = dhi(i) - stencil_ng
+
+       if (dlo(i) .eq. lo(i)) then
+          physbclo(i) = .true.
+       else
+          physbclo(i) = .false.
+       end if
+
+       if (dhi(i) .eq. hi(i)) then
+          physbchi(i) = .true.
+       else
+          physbchi(i) = .false.
+       end if
     end do
 
     do i=1,3
@@ -270,8 +284,10 @@ contains
 
     ! ----------------- boundary -----------------------
 
+    !
     ! ----- lo-x boundary -----
-    if (dlo(1) .eq. lo(1)) then 
+    !
+    if (physbclo(1)) then 
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
 
@@ -372,8 +388,10 @@ contains
        end do
     end if
 
+    !
     ! ----- hi-x boundary -----
-    if (dhi(1) .eq. hi(1)) then 
+    !
+    if (physbchi(1)) then 
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              
@@ -475,8 +493,10 @@ contains
        end do
     end if
 
+    !
     ! ----- lo-y boundary -----
-    if (dlo(2) .eq. lo(2)) then 
+    !
+    if (physbclo(2)) then 
        do k=lo(3),hi(3)
 
           ! if (bclo(2) .eq. WALL???) then
@@ -593,8 +613,10 @@ contains
        end do
     end if
 
+    !
     ! ----- hi-y boundary -----
-    if (dhi(2) .eq. hi(2)) then 
+    !
+    if (physbchi(2)) then 
        do k=lo(3),hi(3)
 
           j = hi(2)-3
@@ -709,9 +731,10 @@ contains
        end do
     end if
 
-
+    !
     ! ----- lo-z boundary -----
-    if (dlo(3) .eq. lo(3)) then
+    !
+    if (physbclo(3)) then
 
        ! if (bclo(3) .eq. WALL???) then
        !    k = lo(3)
@@ -821,8 +844,10 @@ contains
        end do
     end if
 
+    !
     ! ----- hi-z boundary -----
-    if (dhi(3) .eq. hi(3)) then
+    !
+    if (physbchi(3)) then
 
        k = hi(3)-3
        ! use 6th-order stencil
@@ -960,37 +985,15 @@ contains
     double precision         ::  rhs_g(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),ncons)
     double precision         ::  rhs  (rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
-    double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
-    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
-    double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
-    double precision, allocatable, dimension(:,:,:,:) :: Hg, dpy, dxe
-    ! dxy: diffusion coefficient of X in equation for Y
-    ! dpy: diffusion coefficient of p in equation for Y
-    ! dxe: diffusion coefficient of X in equation for energy
-    ! dpe: diffusion coefficient of p in equation for energy
-
-    double precision :: dxinv(3), dx2inv(3)
-    double precision :: tauxx(lo(1):hi(1)),tauyy(lo(1):hi(1)),tauzz(lo(1):hi(1)),divu(lo(1):hi(1))
-    integer          :: i,j,k,n, qxn, qyn, qhn
+    integer :: i
     integer :: slo(3), shi(3), dlo(3), dhi(3)
-
-    double precision :: Yhalf, hhalf
-    double precision :: mmtmp8(8,qlo(1):qhi(1))
-    double precision, allocatable, dimension(:,:,:,:) :: M8p
-    double precision, allocatable, dimension(:,:,:) :: Hry
-
-    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies)
-    double precision :: M6p(6), M6X(6), mmtmp6(6)
-    double precision :: M4p(4), M4X(4), mmtmp4(4)
-    double precision :: M2p(2), M2X(2), mmtmp2(2)
-    double precision :: BBp(4), BBX(4), mmtmpB(4)
-    double precision :: rhstmp(nspecies), rhstot, rhsene
-    double precision :: Hcell(0:1,2:ncons)
-    integer :: iface
+    double precision :: dxinv(3), dx2inv(3)
 
     ! used to turn off some terms
     double precision :: finlo(3), finhi(3)
     double precision :: foulo(3), fouhi(3)
+
+    logical :: physbclo(3), physbchi(3)
 
     ! Only the region bounded by [dlo_g,dhi_g] contains good data.
     ! [slo,shi] will be safe for 8th-order stencil
@@ -999,6 +1002,18 @@ contains
        dhi(i) = min(hi(i)+stencil_ng, dhi_g(i))
        slo(i) = dlo(i) + stencil_ng
        shi(i) = dhi(i) - stencil_ng
+
+       if (dlo(i) .eq. lo(i)) then
+          physbclo(i) = .true.
+       else
+          physbclo(i) = .false.
+       end if
+
+       if (dhi(i) .eq. hi(i)) then
+          physbchi(i) = .true.
+       else
+          physbchi(i) = .false.
+       end if
     end do
 
     finlo = 1.d0 
@@ -1007,7 +1022,7 @@ contains
     fouhi = 1.d0
 
     do i=1,3
-       if (dlo(i) .eq. lo(i)) then ! threadbox touches physical boundary
+       if (physbclo(i)) then 
           if (bclo(i) .eq. INLET) then
              finlo(i) = 0.d0
           else if (bclo(i) .eq. OUTLET) then
@@ -1015,7 +1030,7 @@ contains
           end if
        end if
 
-       if (dhi(i) .eq. hi(i)) then ! threadbox touches physical boundary
+       if (physbchi(i)) then 
           if (bchi(i) .eq. INLET) then
              finhi(i) = 0.d0
           else if (bchi(i) .eq. OUTLET) then
@@ -1029,6 +1044,33 @@ contains
        dx2inv(i) = dxinv(i)**2
     end do
 
+    call diffterm_1(q,qlo,qhi,rhs,rlo,rhi,mu,xi, &
+         lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dxinv)
+
+    call diffterm_2(q,qlo,qhi,rhs_g,glo,ghi,rhs,rlo,rhi, mu,xi,lam,dxy, &
+         lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dx2inv)
+
+  end subroutine narrow_diffterm_3d
+
+  
+  subroutine diffterm_1(q,qlo,qhi,rhs,rlo,rhi,mu,xi, &
+       lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dxinv)
+    integer,         intent(in):: lo(3),hi(3),slo(3),shi(3),dlo(3),dhi(3)
+    integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3)
+    logical,         intent(in):: physbclo(3),physbchi(3)
+    double precision,intent(in):: finlo(3),finhi(3),foulo(3),fouhi(3)
+    double precision,intent(in):: dxinv(3)
+    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision         ::  rhs (rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+
+    double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
+    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
+    double precision, allocatable, dimension(:,:,:) :: vsm
+    double precision, dimension(lo(1):hi(1)) :: tauxx,tauyy,tauzz,divu
+    integer          :: i,j,k
+
     allocate(ux( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
     allocate(vx( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
     allocate(wx( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
@@ -1041,7 +1083,6 @@ contains
     allocate(vz(dlo(1):dhi(1),dlo(2):dhi(2), lo(3): hi(3)))
     allocate(wz(dlo(1):dhi(1),dlo(2):dhi(2), lo(3): hi(3)))
 
-    allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
     allocate(vsm(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
 
     allocate(tmpx(dlo(1):dhi(1)))
@@ -1051,7 +1092,6 @@ contains
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
-             vsp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
              vsm(i,j,k) = xi(i,j,k) -  TwoThirds*mu(i,j,k)
           enddo
        enddo
@@ -1059,8 +1099,40 @@ contains
 
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
-          ! lo-x boundary
-          if (dlo(1) .eq. lo(1)) then
+          do i=slo(1),shi(1)
+             ux(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qu))
+             vx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qv))
+             wx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qw))
+          enddo
+       enddo
+    enddo
+
+    do k=dlo(3),dhi(3)
+       do j=slo(2),shi(2)   
+          do i=dlo(1),dhi(1)
+             uy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qu))
+             vy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
+             wy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qw))
+          enddo
+       enddo
+    enddo
+
+    do k=slo(3),shi(3)
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             uz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qu))
+             vz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qv))
+             wz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qw))
+          enddo
+       enddo
+    enddo
+
+    !
+    ! lo-x boundary
+    !
+    if (physbclo(1)) then
+       do k=dlo(3),dhi(3)
+          do j=dlo(2),dhi(2)
              i = lo(1)
              ! use completely right-biased stencil
              ux(i,j,k) = dxinv(1)*first_deriv_rb(q(i:i+3,j,k,qu))
@@ -1084,17 +1156,16 @@ contains
              ux(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qu))
              vx(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qv))
              wx(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qw))
-          end if
+          end do
+       end do
+    end if
 
-          ! interior
-          do i=slo(1),shi(1)
-             ux(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qu))
-             vx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qv))
-             wx(i,j,k) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qw))
-          enddo
-
-          ! hi-x boundary
-          if (dhi(1) .eq. hi(1)) then
+    !
+    ! hi-x boundary
+    !
+    if (physbchi(1)) then
+       do k=dlo(3),dhi(3)
+          do j=dlo(2),dhi(2)
              i = hi(1)-3
              ! use 6th-order stencil
              ux(i,j,k) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qu))
@@ -1118,13 +1189,15 @@ contains
              ux(i,j,k) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qu))
              vx(i,j,k) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qv))
              wx(i,j,k) = dxinv(1)*first_deriv_lb(q(i-3:i,j,k,qw))
-          end if
-       enddo
-    enddo
+          end do
+       end do
+    end if
 
-    do k=dlo(3),dhi(3)
-       ! lo-y boundary
-       if (dlo(2) .eq. lo(2)) then
+    !
+    ! lo-y boundary
+    !
+    if (physbclo(2)) then
+       do k=dlo(3),dhi(3)
           j = lo(2)
           ! use completely right-biased stencil
           do i=dlo(1),dhi(1)
@@ -1156,19 +1229,14 @@ contains
              vy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qv))
              wy(i,j,k) = dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qw))
           enddo
-       end if
+       end do
+    end if
 
-       ! interior
-       do j=slo(2),shi(2)   
-          do i=dlo(1),dhi(1)
-             uy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qu))
-             vy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qv))
-             wy(i,j,k) = dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qw))
-          enddo
-       enddo
-
-       ! hi-y boundary
-       if (dhi(2) .eq. hi(2)) then
+    !
+    ! hi-y boundary
+    !
+    if (physbchi(2)) then
+       do k=dlo(3),dhi(3)
           j = hi(2)-3
           ! use 6th-order stencil
           do i=dlo(1),dhi(1)
@@ -1200,11 +1268,13 @@ contains
              vy(i,j,k) = dxinv(2)*first_deriv_lb(q(i,j-3:j,k,qv))
              wy(i,j,k) = dxinv(2)*first_deriv_lb(q(i,j-3:j,k,qw))
           enddo
-       end if
-    enddo
+       end do
+    end if
 
+    !
     ! lo-z boundary
-    if (dlo(3) .eq. lo(3)) then
+    !
+    if (physbclo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
        do j=dlo(2),dhi(2)
@@ -1246,19 +1316,10 @@ contains
        enddo
     end if
 
-    ! interior
-    do k=slo(3),shi(3)
-       do j=dlo(2),dhi(2)
-          do i=dlo(1),dhi(1)
-             uz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qu))
-             vz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qv))
-             wz(i,j,k) = dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qw))
-          enddo
-       enddo
-    enddo
-
+    !
     ! hi-z boundary
-    if (dhi(3) .eq. hi(3)) then
+    !
+    if (physbchi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
        do j=dlo(2),dhi(2)
@@ -1300,7 +1361,9 @@ contains
        enddo
     end if
 
+
     rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = 0.d0
+
 
     !----- mx -----
 
@@ -1312,8 +1375,10 @@ contains
              tmpx(i) = vsm(i,j,k)*(vy(i,j,k)+wz(i,j,k))
           end do
 
+          !
           ! lo-x boundary
-          if (dlo(1) .eq. lo(1)) then
+          !
+          if (physbclo(1)) then
              i = lo(1)
              ! use completely right-biased stencil
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + finlo(1)*dxinv(1)*first_deriv_rb(tmpx(i:i+3))
@@ -1335,8 +1400,10 @@ contains
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1)*first_deriv_8(tmpx(i-4:i+4)) 
           end do
 
+          !
           ! hi-x boundary
-          if (dhi(1) .eq. hi(1)) then
+          !
+          if (physbchi(1)) then
              i = hi(1)-3
              ! use 6th-order stencil
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
@@ -1365,8 +1432,10 @@ contains
           end do
        end do
 
+       !
        ! lo-y boundary
-       if (dlo(2) .eq. lo(2)) then
+       !
+       if (physbclo(2)) then
           j = lo(2)
           ! use completely right-biased stencil
           do i=lo(1),hi(1)
@@ -1392,15 +1461,19 @@ contains
           end do
        end if
 
+       !
        ! interior
+       !
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2)*first_deriv_8(tmpy(i,j-4:j+4)) 
           end do
        end do
 
+       !
        ! hi-y boundary
-       if (dhi(2) .eq. hi(2)) then
+       !
+       if (physbchi(2)) then
           j = hi(2)-3
           ! use 6th-order stencil
           do i=lo(1),hi(1)
@@ -1438,7 +1511,7 @@ contains
     end do
 
     ! lo-z boundary
-    if (dlo(3) .eq. lo(3)) then
+    if (physbclo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
        do j=lo(2),hi(2)
@@ -1472,7 +1545,9 @@ contains
        end do
     end if
 
+    !
     ! interior
+    !
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1481,8 +1556,10 @@ contains
        end do
     end do
 
+    !
     ! hi-z boundary
-    if (dhi(3) .eq. hi(3)) then
+    !
+    if (physbchi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
        do j=lo(2),hi(2)
@@ -1526,8 +1603,10 @@ contains
              tmpx(i) = mu(i,j,k)*uy(i,j,k)
           end do
 
+          !
           ! lo-x boundary
-          if (dlo(1) .eq. lo(1)) then
+          !
+          if (physbclo(1)) then
              i = lo(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + foulo(1)*dxinv(1)*first_deriv_rb(tmpx(i:i+3))
 
@@ -1544,13 +1623,17 @@ contains
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
           end if
 
+          !
           ! interior
+          !
           do i=slo(1),shi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_8(tmpx(i-4:i+4)) 
           end do
 
+          !
           ! hi-x boundary
-          if (dhi(1) .eq. hi(1)) then
+          !
+          if (physbchi(1)) then
              i = hi(1)-3
              ! use 6th-order stencil
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
@@ -1579,8 +1662,10 @@ contains
           end do
        end do
 
+       !
        ! lo-y boundary
-       if (dlo(2) .eq. lo(2)) then
+       !
+       if (physbclo(2)) then
           j = lo(2)
           ! use completely right-biased stencil
           do i=lo(1),hi(1)
@@ -1606,15 +1691,19 @@ contains
           end do
        end if
 
+       !
        ! interior
+       !
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2)*first_deriv_8(tmpy(i,j-4:j+4)) 
           end do
        end do
 
+       !
        ! hi-y boundary
-       if (dhi(2) .eq. hi(2)) then
+       !
+       if (physbchi(2)) then
           j = hi(2)-3
           ! use 6th-order stencil
           do i=lo(1),hi(1)
@@ -1651,8 +1740,10 @@ contains
        end do
     end do
 
+    !
     ! lo-z boundary
-    if (dlo(3) .eq. lo(3)) then
+    !
+    if (physbclo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
        do j=lo(2),hi(2)
@@ -1686,6 +1777,9 @@ contains
        end do
     end if
 
+    !
+    ! interior
+    !
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1694,8 +1788,10 @@ contains
        end do
     end do
 
+    !
     ! hi-z boundary
-    if (dhi(3) .eq. hi(3)) then
+    !
+    if (physbchi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
        do j=lo(2),hi(2)
@@ -1739,8 +1835,10 @@ contains
              tmpx(i) = mu(i,j,k)*uz(i,j,k)
           end do
 
+          !
           ! lo-x boundary
-          if (dlo(1) .eq. lo(1)) then
+          !
+          if (physbclo(1)) then
              i = lo(1)
              ! use completely right-biased stencil
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + foulo(1)*dxinv(1)*first_deriv_rb(tmpx(i:i+3))
@@ -1758,13 +1856,17 @@ contains
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
           end if
 
+          !
           ! interior
+          !
           do i=slo(1),shi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
           end do
 
+          !
           ! hi-x boundary
-          if (dhi(1) .eq. hi(1)) then
+          !
+          if (physbchi(1)) then
              i = hi(1)-3
              ! use 6th-order stencil
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1)*first_deriv_6(tmpx(i-3:i+3))
@@ -1793,8 +1895,10 @@ contains
           end do
        end do
 
+       !
        ! lo-y boundary
-       if (dlo(2) .eq. lo(2)) then
+       !
+       if (physbclo(2)) then
           j = lo(2)
           ! use completely right-biased stencil
           do i=lo(1),hi(1)
@@ -1820,15 +1924,19 @@ contains
           end do
        end if
 
+       !
        ! interior
+       !
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2)*first_deriv_8(tmpy(i,j-4:j+4))
           end do
        end do
 
+       !
        ! hi-y boundary
-       if (dhi(2) .eq. hi(2)) then
+       !
+       if (physbchi(2)) then
           j = hi(2)-3
           ! use 6th-order stencil
           do i=lo(1),hi(1)
@@ -1865,8 +1973,10 @@ contains
        end do
     end do
 
+    !
     ! lo-z boundary
-    if (dlo(3) .eq. lo(3)) then
+    !
+    if (physbclo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
        do j=lo(2),hi(2)
@@ -1900,6 +2010,9 @@ contains
        end do
     end if
     
+    !
+    ! interior
+    !
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -1908,8 +2021,10 @@ contains
        end do
     end do
 
+    !
     ! hi-z boundary
-    if (dhi(3) .eq. hi(3)) then
+    !
+    if (physbchi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
        do j=lo(2),hi(2)
@@ -1966,8 +2081,51 @@ contains
     end do
 
     deallocate(tmpx,tmpy,tmpz)
-
+    deallocate(vsm)
     deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz)
+
+  end subroutine diffterm_1
+
+  
+  subroutine diffterm_2(q,qlo,qhi,rhs_g,glo,ghi,rhs,rlo,rhi,mu,xi,lam,dxy, &
+       lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dx2inv)
+    integer,         intent(in):: lo(3),hi(3),slo(3),shi(3),dlo(3),dhi(3)
+    integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3),glo(3),ghi(3)
+    logical,         intent(in):: physbclo(3),physbchi(3)
+    double precision,intent(in):: finlo(3),finhi(3),foulo(3),fouhi(3)
+    double precision,intent(in):: dx2inv(3)
+    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in):: lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in):: dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
+    double precision         ::  rhs_g(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),ncons)
+    double precision         ::  rhs  (rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+
+    double precision, allocatable, dimension(:,:,:) :: vsp, dpe
+    double precision, allocatable, dimension(:,:,:,:) :: Hg, dpy, dxe
+    ! dxy: diffusion coefficient of X in equation for Y
+    ! dpy: diffusion coefficient of p in equation for Y
+    ! dxe: diffusion coefficient of X in equation for energy
+    ! dpe: diffusion coefficient of p in equation for energy
+
+    integer          :: i,j,k,n, qxn, qyn, qhn
+
+    double precision :: Yhalf, hhalf
+    double precision :: mmtmp8(8,qlo(1):qhi(1))
+    double precision, allocatable, dimension(:,:,:,:) :: M8p
+    double precision, allocatable, dimension(:,:,:) :: Hry
+
+    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies)
+    double precision :: M6p(6), M6X(6), mmtmp6(6)
+    double precision :: M4p(4), M4X(4), mmtmp4(4)
+    double precision :: M2p(2), M2X(2), mmtmp2(2)
+    double precision :: BBp(4), BBX(4), mmtmpB(4)
+    double precision :: rhstmp(nspecies), rhstot, rhsene
+    double precision :: Hcell(0:1,2:ncons)
+    integer :: iface
+
+    allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
 
     allocate(dpy(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
     allocate(dxe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
@@ -1977,6 +2135,14 @@ contains
 
     allocate(M8p(8,lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
     allocate(Hry(  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
+
+    do k=dlo(3),dhi(3)
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             vsp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
+          enddo
+       enddo
+    enddo
 
     dpe = 0.d0
 
@@ -2101,8 +2267,227 @@ contains
        end do
     end do
 
-    ! lo-x direction
-    if (dlo(1) .eq. lo(1)) then
+    ! ------- END x-direction -------
+
+    ! ------- BEGIN y-direction -------
+
+    do k=lo(3),hi(3)
+       do j=slo(2),shi(2)+1
+          do i=lo(1),hi(1)             
+             mmtmp8(1:8,i) = matmul(mu(i,j-4:j+3,k), M8)
+             Hg(i,j,k,imx) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qu))
+             Hg(i,j,k,imz) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qw))
+          end do
+       end do
+    end do
+
+    do k=lo(3),hi(3)
+       do j=slo(2),shi(2)+1
+          do i=lo(1),hi(1)             
+             mmtmp8(1:8,i) = matmul(vsp(i,j-4:j+3,k), M8)
+             Hg(i,j,k,imy) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qv))
+          end do
+       end do
+    end do
+
+    do k=lo(3),hi(3)
+       do j=slo(2),shi(2)+1
+          do i=lo(1),hi(1)
+             mmtmp8(1:8,i) = matmul(lam(i,j-4:j+3,k), M8)
+             Hg(i,j,k,iene) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qtemp))
+          end do
+       end do
+    end do
+
+    do k=lo(3),hi(3)
+       do j=slo(2),shi(2)+1
+          do i=lo(1),hi(1)
+             mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qpres))
+             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j-4:j+3,k), mmtmp8(1:8,i))
+          end do
+          do i=lo(1),hi(1)
+             M8p(:,i,j,k) = mmtmp8(1:8,i)
+          end do
+       end do
+    end do
+
+    do n = 1, nspecies
+       qxn = qx1+n-1
+
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)+1
+             do i=lo(1),hi(1)
+                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
+             end do
+          end do
+       end do
+
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)+1
+             do i=lo(1),hi(1)
+                mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qxn))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp8(1:8,i))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                     + dot_product(dxy(i,j-4:j+3,k,n), mmtmp8(1:8,i))
+             end do
+          end do
+       end do
+
+    end do
+       
+    ! correction
+
+    Hry = 0.d0
+
+    do n = 1, nspecies
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)+1
+             do i=lo(1),hi(1)
+                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+             end do
+          end do
+       end do
+    end do
+
+    do n = 1, nspecies
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)+1
+             do i=lo(1),hi(1)
+                Yhalf = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+             end do
+          end do
+       end do
+    end do
+
+    ! add y-direction rhs
+    do n=2,ncons
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
+             end do
+          end do
+       end do
+    end do
+
+    ! ------- END y-direction -------
+
+    ! ------- BEGIN z-direction -------
+
+    do k=slo(3),shi(3)+1
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             mmtmp8(1:8,i) = matmul(mu(i,j,k-4:k+3), M8)
+             Hg(i,j,k,imx) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qu))
+             Hg(i,j,k,imy) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qv))
+          end do
+       end do
+    end do
+
+    do k=slo(3),shi(3)+1
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             mmtmp8(1:8,i) = matmul(vsp(i,j,k-4:k+3), M8)
+             Hg(i,j,k,imz) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qw))
+          end do
+       end do
+    end do
+
+    do k=slo(3),shi(3)+1
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             mmtmp8(1:8,i) = matmul(lam(i,j,k-4:k+3), M8)
+             Hg(i,j,k,iene) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qtemp))
+          end do
+       end do
+    end do
+
+    do k=slo(3),shi(3)+1
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qpres))
+             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j,k-4:k+3), mmtmp8(1:8,i))
+          end do
+          do i=lo(1),hi(1)
+             M8p(:,i,j,k) = mmtmp8(1:8,i)
+          end do
+       end do
+    end do
+
+    do n = 1, nspecies
+       qxn = qx1+n-1
+
+       do k=slo(3),shi(3)+1
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
+             end do
+          end do
+       end do
+
+       do k=slo(3),shi(3)+1
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qxn))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp8(1:8,i))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                     + dot_product(dxy(i,j,k-4:k+3,n), mmtmp8(1:8,i))
+             end do
+          end do
+       end do
+    end do
+
+    ! correction
+
+    Hry = 0.d0
+
+    do n = 1, nspecies
+       do k=slo(3),shi(3)+1
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+             end do
+          end do
+       end do
+    end do
+
+    do n = 1, nspecies
+       qyn = qy1+n-1
+       qhn = qh1+n-1
+       do k=slo(3),shi(3)+1
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                Yhalf = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+             end do
+          end do
+       end do
+    end do
+    
+    ! add z-direction rhs
+    do n=2,ncons
+       do k=slo(3),shi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+    end do
+    
+    ! ------- END z-direction -------
+
+    !
+    ! lo-x boundary
+    !
+    if (physbclo(1)) then
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              i = lo(1)
@@ -2303,8 +2688,10 @@ contains
        end do
     end if
 
+    !
     ! hi-x boundary
-    if (dhi(1) .eq. hi(1)) then
+    !
+    if (physbchi(1)) then
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2505,116 +2892,10 @@ contains
        end do
     end if
 
-    ! ------- END x-direction -------
-
-    ! ------- BEGIN y-direction -------
-
-    do k=lo(3),hi(3)
-       do j=slo(2),shi(2)+1
-          do i=lo(1),hi(1)             
-             mmtmp8(1:8,i) = matmul(mu(i,j-4:j+3,k), M8)
-             Hg(i,j,k,imx) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qu))
-             Hg(i,j,k,imz) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qw))
-          end do
-       end do
-    end do
-
-    do k=lo(3),hi(3)
-       do j=slo(2),shi(2)+1
-          do i=lo(1),hi(1)             
-             mmtmp8(1:8,i) = matmul(vsp(i,j-4:j+3,k), M8)
-             Hg(i,j,k,imy) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qv))
-          end do
-       end do
-    end do
-
-    do k=lo(3),hi(3)
-       do j=slo(2),shi(2)+1
-          do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(lam(i,j-4:j+3,k), M8)
-             Hg(i,j,k,iene) = dot_product(mmtmp8(1:8,i), q(i,j-4:j+3,k,qtemp))
-          end do
-       end do
-    end do
-
-    do k=lo(3),hi(3)
-       do j=slo(2),shi(2)+1
-          do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qpres))
-             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j-4:j+3,k), mmtmp8(1:8,i))
-          end do
-          do i=lo(1),hi(1)
-             M8p(:,i,j,k) = mmtmp8(1:8,i)
-          end do
-       end do
-    end do
-
-    do n = 1, nspecies
-       qxn = qx1+n-1
-
-       do k=lo(3),hi(3)
-          do j=slo(2),shi(2)+1
-             do i=lo(1),hi(1)
-                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
-             end do
-          end do
-       end do
-
-       do k=lo(3),hi(3)
-          do j=slo(2),shi(2)+1
-             do i=lo(1),hi(1)
-                mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qxn))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp8(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
-                     + dot_product(dxy(i,j-4:j+3,k,n), mmtmp8(1:8,i))
-             end do
-          end do
-       end do
-
-    end do
-       
-    ! correction
-
-    Hry = 0.d0
-
-    do n = 1, nspecies
-       do k=lo(3),hi(3)
-          do j=slo(2),shi(2)+1
-             do i=lo(1),hi(1)
-                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
-             end do
-          end do
-       end do
-    end do
-
-    do n = 1, nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       do k=lo(3),hi(3)
-          do j=slo(2),shi(2)+1
-             do i=lo(1),hi(1)
-                Yhalf = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
-                hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
-             end do
-          end do
-       end do
-    end do
-
-    ! add y-direction rhs
-    do n=2,ncons
-       do k=lo(3),hi(3)
-          do j=slo(2),shi(2)
-             do i=lo(1),hi(1)
-                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
-             end do
-          end do
-       end do
-    end do
-
+    !
     ! lo-y boundary
-    if (dlo(2) .eq. lo(2)) then
+    !
+    if (physbclo(2)) then
        do k=lo(3),hi(3)
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           j = lo(2)
@@ -2822,8 +3103,10 @@ contains
        end do
     end if
 
+    !
     ! hi-y boundary
-    if (dhi(2) .eq. hi(2)) then
+    !
+    if (physbchi(2)) then
        do k=lo(3),hi(3)
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           ! use 6th-order stencil for cell i,hi(2)-3,k
@@ -3031,115 +3314,10 @@ contains
        end do
     end if
 
-    ! ------- END y-direction -------
-
-    ! ------- BEGIN z-direction -------
-
-    do k=slo(3),shi(3)+1
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(mu(i,j,k-4:k+3), M8)
-             Hg(i,j,k,imx) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qu))
-             Hg(i,j,k,imy) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qv))
-          end do
-       end do
-    end do
-
-    do k=slo(3),shi(3)+1
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(vsp(i,j,k-4:k+3), M8)
-             Hg(i,j,k,imz) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qw))
-          end do
-       end do
-    end do
-
-    do k=slo(3),shi(3)+1
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(lam(i,j,k-4:k+3), M8)
-             Hg(i,j,k,iene) = dot_product(mmtmp8(1:8,i), q(i,j,k-4:k+3,qtemp))
-          end do
-       end do
-    end do
-
-    do k=slo(3),shi(3)+1
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qpres))
-             Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j,k-4:k+3), mmtmp8(1:8,i))
-          end do
-          do i=lo(1),hi(1)
-             M8p(:,i,j,k) = mmtmp8(1:8,i)
-          end do
-       end do
-    end do
-
-    do n = 1, nspecies
-       qxn = qx1+n-1
-
-       do k=slo(3),shi(3)+1
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
-             end do
-          end do
-       end do
-
-       do k=slo(3),shi(3)+1
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qxn))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp8(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
-                     + dot_product(dxy(i,j,k-4:k+3,n), mmtmp8(1:8,i))
-             end do
-          end do
-       end do
-    end do
-
-    ! correction
-
-    Hry = 0.d0
-
-    do n = 1, nspecies
-       do k=slo(3),shi(3)+1
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
-             end do
-          end do
-       end do
-    end do
-
-    do n = 1, nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       do k=slo(3),shi(3)+1
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                Yhalf = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
-                hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
-             end do
-          end do
-       end do
-    end do
-    
-    ! add z-direction rhs
-    do n=2,ncons
-       do k=slo(3),shi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
-             end do
-          end do
-       end do
-    end do
-    
+    !
     ! lo-z boundary
-    if (dlo(3) .eq. lo(3)) then
+    !
+    if (physbclo(3)) then
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        k = lo(3)
        ! use completely right-biased stencil
@@ -3354,8 +3532,10 @@ contains
        end do
     end if
 
+    !
     ! hi-z boundary
-    if (dhi(3) .eq. hi(3)) then
+    !
+    if (physbchi(3)) then
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! use 6th-order stencil for cell i,j,hi(3)-3
        do j=lo(2),hi(2)
@@ -3570,9 +3750,9 @@ contains
        end do
     end if
 
-    ! ------- END z-direction -------
-
+    !
     ! add kinetic energy
+    !
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -3584,13 +3764,13 @@ contains
        end do
     end do
 
-    deallocate(Hg,dpy,dxe,dpe,vsp,vsm,M8p,Hry)
+    deallocate(Hg,dpy,dxe,dpe,vsp,M8p,Hry)
 
     rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
          rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
          + rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
 
-  end subroutine narrow_diffterm_3d
+  end subroutine diffterm_2
 
 
   subroutine chemterm_3d(lo,hi,q,qlo,qhi,up,uplo,uphi)
