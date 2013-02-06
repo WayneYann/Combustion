@@ -459,79 +459,91 @@
     end do
     !$omp end do nowait
 
-    !$omp master
-
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
+       !$omp do
        do j=lo(2),hi(2)
           dudz(j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qu))
           dwdz(j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qw))
           dpdz(j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qpres))
        end do
+       !$omp end do nowait
 
        k = lo(3)+1
        ! use 3rd-order slightly right-biased stencil
+       !$omp do
        do j=lo(2),hi(2)
           dudz(j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qu))
           dwdz(j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qw))
           dpdz(j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qpres))
        end do
+       !$omp end do nowait
 
        k = lo(3)+2
        ! use 4th-order stencil
+       !$omp do
        do j=lo(2),hi(2)
           dudz(j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qu))
           dwdz(j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qw))
           dpdz(j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qpres))
        end do
+       !$omp end do nowait
 
        k = lo(3)+3
        ! use 6th-order stencil
+       !$omp do
        do j=lo(2),hi(2)
           dudz(j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qu))
           dwdz(j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qw))
           dpdz(j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qpres))
        end do
+       !$omp end do nowait
     end if
     
     ! hi-z boundary
     if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
+       !$omp do
        do j=lo(2),hi(2)
           dudz(j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qu))
           dwdz(j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qw))
           dpdz(j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qpres))
        end do
+       !$omp end do nowait
 
        k = hi(3)-2
        ! use 4th-order stencil
+       !$omp do
        do j=lo(2),hi(2)
           dudz(j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qu))
           dwdz(j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qw))
           dpdz(j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qpres))
        end do
+       !$omp end do nowait
 
        k = hi(3)-1
        ! use 3rd-order slightly left-biased stencil
+       !$omp do
        do j=lo(2),hi(2)
           dudz(j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qu))
           dwdz(j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qw))
           dpdz(j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qpres))
        end do
+       !$omp end do nowait
 
        k = hi(3)
        ! use completely left-biased stencil
+       !$omp do
        do j=lo(2),hi(2)
           dudz(j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qu))
           dwdz(j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qw))
           dpdz(j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qpres))
        end do
+       !$omp end do nowait
     end if
-
-    !$omp end master
 
     !$omp end parallel
 
@@ -654,12 +666,11 @@
     end do
     !$omp end do nowait
 
-    !$omp master
-
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
+       !$omp do
        do j=lo(2),hi(2)
           dddz     (j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qrho))
           dvdz     (j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qv))
@@ -667,9 +678,11 @@
              dYdz(n,j,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qy1+n-1))
           end do
        end do
+       !$omp end do nowait
 
        k = lo(3)+1
        ! use 3rd-order slightly right-biased stencil
+       !$omp do
        do j=lo(2),hi(2)
           dddz     (j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qrho))
           dvdz     (j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qv))
@@ -677,9 +690,11 @@
              dYdz(n,j,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qy1+n-1))
           end do
        end do
+       !$omp end do nowait
 
        k = lo(3)+2
        ! use 4th-order stencil
+       !$omp do
        do j=lo(2),hi(2)
           dddz     (j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qrho))
           dvdz     (j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qv))
@@ -687,9 +702,11 @@
              dYdz(n,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qy1+n-1))
           end do
        end do
+       !$omp end do nowait
 
        k = lo(3)+3
        ! use 6th-order stencil
+       !$omp do
        do j=lo(2),hi(2)
           dddz     (j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qrho))
           dvdz     (j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qv))
@@ -697,12 +714,14 @@
              dYdz(n,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qy1+n-1))
           end do
        end do
+       !$omp end do nowait
     end if
     
     ! hi-z boundary
     if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
+       !$omp do
        do j=lo(2),hi(2)
           dddz     (j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qrho))
           dvdz     (j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qv))
@@ -710,9 +729,11 @@
              dYdz(n,j,k) = dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qy1+n-1))
           end do
        end do
+       !$omp end do nowait
 
        k = hi(3)-2
        ! use 4th-order stencil
+       !$omp do
        do j=lo(2),hi(2)
           dddz     (j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qrho))
           dvdz     (j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qv))
@@ -720,9 +741,11 @@
              dYdz(n,j,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qy1+n-1))
           end do
        end do
+       !$omp end do nowait
 
        k = hi(3)-1
        ! use 3rd-order slightly left-biased stencil
+       !$omp do
        do j=lo(2),hi(2)
           dddz     (j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qrho))
           dvdz     (j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qv))
@@ -730,9 +753,11 @@
              dYdz(n,j,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qy1+n-1))
           end do
        end do
+       !$omp end do nowait
 
        k = hi(3)
        ! use completely left-biased stencil
+       !$omp do
        do j=lo(2),hi(2)
           dddz     (j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qrho))
           dvdz     (j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qv))
@@ -740,9 +765,8 @@
              dYdz(n,j,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qy1+n-1))
           end do
        end do
+       !$omp end do nowait
     end if
-
-    !$omp end master
 
     !$omp end parallel
 
