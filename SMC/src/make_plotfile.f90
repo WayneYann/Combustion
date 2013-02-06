@@ -132,8 +132,6 @@ contains
 
   subroutine make_plotfile(dirname, la, U, plot_names, time, dx, write_pf_time)
 
-    use smcdata_module, only : build_smcdata, destroy_smcdata
-
     character(len=*) , intent(in   ) :: dirname
     type(layout)     , intent(in   ) :: la
     type(multifab)   , intent(inout) :: U
@@ -147,8 +145,6 @@ contains
     ! dimensioned as an array of size 0 for fabio_ml_multifab_write_d
     integer :: rr(0), prec, ngu, ngq
     real(dp_t) :: writetime1, writetime2
-
-    call destroy_smcdata() ! to save memory
 
     if (single_prec_plotfiles) then
        prec = FABIO_SINGLE
@@ -225,8 +221,6 @@ contains
 
     call multifab_destroy(plotdata(1))
     call multifab_destroy(Q)
-
-    call build_smcdata(la)
 
   end subroutine make_plotfile
 

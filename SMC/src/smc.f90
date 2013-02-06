@@ -124,9 +124,6 @@ subroutine smc()
   end if
 
 
-  call build_smcdata(la)
-
-
   !
   ! preallocate sdc
   !
@@ -162,6 +159,7 @@ subroutine smc()
      sdc%tol_residual = sdc_tol_residual
   end if
 
+  call build_smcdata(la,sdc)
 
   !
   ! print processor and grid info
@@ -213,7 +211,9 @@ subroutine smc()
         write(unit=plot_index,fmt='(i5.5)') istep
         plot_file_name = trim(plot_base_name) // plot_index
 
+        call destroy_smcdata(sdc) ! to save memory
         call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
+        call build_smcdata(la,sdc)
 
         call write_job_info(plot_file_name, la, write_pf_time)
 
@@ -320,7 +320,9 @@ subroutine smc()
                  plot_file_name = trim(plot_base_name) // plot_index6
               endif
 
+              call destroy_smcdata(sdc) ! to save memory
               call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
+              call build_smcdata(la,sdc)
 
               call write_job_info(plot_file_name, la, write_pf_time)
 
@@ -380,7 +382,9 @@ subroutine smc()
            plot_file_name = trim(plot_base_name) // plot_index6
         endif
 
+        call destroy_smcdata(sdc)
         call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
+        call build_smcdata(la,sdc)
 
         call write_job_info(plot_file_name, la, write_pf_time)
      end if
@@ -401,7 +405,7 @@ subroutine smc()
   call nscbc_close()
   call smc_bc_close()
 
-  call destroy_smcdata()
+  call destroy_smcdata(sdc)
   call destroy_threadbox()
 
   if (advance_method == 2 .or. advance_method == 3) then
