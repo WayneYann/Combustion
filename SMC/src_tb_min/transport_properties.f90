@@ -127,7 +127,7 @@ contains
              do n=1,nspecies
                 do i=wlo(1), whi(1)
                    ii = i-wlo(1)+1
-                   Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) / molecular_weight(n)
+                   Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
                 end do
              end do
              
@@ -206,7 +206,7 @@ contains
                 do n=1,nspecies
                    do i=wlo(1), whi(1)
                       ii = i-wlo(1)+1
-                      Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) / molecular_weight(n)
+                      Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
                    end do
                 end do
                 
@@ -284,7 +284,7 @@ contains
                 do n=1,nspecies
                    do i=wlo(1), whi(1)
                       ii = i-wlo(1)+1
-                      Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) / molecular_weight(n)
+                      Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
                    end do
                 end do
                 
@@ -367,7 +367,7 @@ contains
                 do n=1,nspecies
                    do ii=1,iisize
                       i = iindex(ii)
-                      Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) / molecular_weight(n)
+                      Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
                    end do
                 end do
                                 

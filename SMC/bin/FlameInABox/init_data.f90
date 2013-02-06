@@ -40,7 +40,7 @@ contains
   subroutine init_data_3d(lo,hi,ng,dx,cons,phlo,phhi)
 
     use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons
-    use chemistry_module, only : nspecies
+    use chemistry_module, only : nspecies, patm
     use probin_module,    only : pertmag, xfire
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
@@ -56,8 +56,6 @@ contains
     integer :: iwrk
     double precision :: rwrk
     double precision :: pert, Ly, Lz, x1, x2
-
-    double precision, parameter :: patmos = 1.01325d6
 
     !$omp parallel do &
     !$omp private(i,j,k,n,x,y,z,pmf_vals) &
@@ -102,7 +100,7 @@ contains
              end do
 
              CALL CKXTY (Xt, IWRK, RWRK, Yt)
-             CALL CKRHOY(patmos,Tt,Yt,IWRK,RWRK,rhot)
+             CALL CKRHOY(patm,Tt,Yt,IWRK,RWRK,rhot)
              call CKUBMS(Tt,Yt,IWRK,RWRK,et)
           
              cons(i,j,k,irho) = rhot

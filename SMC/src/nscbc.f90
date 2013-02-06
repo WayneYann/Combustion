@@ -17,8 +17,6 @@ module nscbc_module
 
   implicit none
 
-  double precision, parameter :: Ru = 8.31451d7
-
   type(physbndry_reg), save :: qin_xlo, qin_xhi, qin_ylo, qin_yhi, qin_zlo, qin_zhi
   integer, parameter :: iuin=1, ivin=2, iwin=3, iTin=4, iYin1=5
   integer, save :: nqin
@@ -459,7 +457,7 @@ contains
 
     cpWT = aux(icp)*aux(iWbar)*T
     rhode = dp/(aux(igamma)-1.d0) - aux(icv)*T*drho + &
-         rho*sum((h-cpWT/molecular_weight)*dY)
+         rho*sum((h-cpWT*inv_mwt)*dY)
 
     lhs(irho) = drho
     lhs(imx) = drho*u + rho*du

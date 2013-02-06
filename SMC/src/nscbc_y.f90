@@ -76,7 +76,7 @@
           cpWT = aux(icp,i,k)*aux(iWbar,i,k)*T
           gam1 = aux(igamma,i,k) - 1.d0
           do n=1,nspecies
-             hcal = h(n) - cpWT/molecular_weight(n)
+             hcal = h(n) - cpWT*inv_mwt(n)
              S_p    = S_p - hcal*aux(iwdot1+n-1,i,k)
              S_Y(n) = aux(iwdot1+n-1,i,k) / rho
              d_p    = d_p - hcal*fd(i,j,k,iry1+n-1)
@@ -204,7 +204,7 @@
           cpWT = aux(icp,i,k)*aux(iWbar,i,k)*T
           gam1 = aux(igamma,i,k) - 1.d0
           do n=1,nspecies
-             hcal = h(n) - cpWT/molecular_weight(n)
+             hcal = h(n) - cpWT*inv_mwt(n)
              S_p    = S_p - hcal*aux(iwdot1+n-1,i,k)
              S_Y(n) = aux(iwdot1+n-1,i,k) / rho
              d_p    = d_p - hcal*fd(i,j,k,iry1+n-1)

@@ -3,7 +3,7 @@
 !
 module kernels_module
   use bc_module
-  use chemistry_module, only : nspecies, molecular_weight
+  use chemistry_module, only : nspecies, molecular_weight, Ru
   use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
        first_deriv_4, first_deriv_l3, first_deriv_r3, first_deriv_rb, first_deriv_lb, &
        M8, M6, M4, M2, BRB, BLB, D8, D6, D4
@@ -7241,8 +7241,6 @@ contains
     double precision :: dxinv(3), c, rwrk, Cv, Cp
     double precision :: Tt, X(nspecies), gamma
     double precision :: courx, coury, courz
-
-    double precision, parameter :: Ru = 8.31451d7
 
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)

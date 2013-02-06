@@ -67,7 +67,7 @@ contains
 
 
   subroutine chemistry_close()
-    deallocate(elem_names,spec_names,molecular_weight)
+    deallocate(elem_names,spec_names,molecular_weight,inv_mwt)
   end subroutine chemistry_close
 
 end module chemistry_module
