@@ -13,7 +13,7 @@ def coarse_index(idx, refratio, pbxrange):
   return -1, False
 
 
-def fdcompare_boxes(plt1, comp1, plt2, comp2, level, box, norm):
+def fdcompare_boxes(plt1, comp1, plt2, comp2, level, box, norm, save_diff):
 
   plt1.bind(level, box, comp1)
   plt2.bind(level, box, comp2)
@@ -22,7 +22,10 @@ def fdcompare_boxes(plt1, comp1, plt2, comp2, level, box, norm):
   fab2 = plt2.fab(level, box)
 
   diff  = fab1.array - fab2.array
-  error = np.sum(abs(diff)**norm)
+  if norm:
+    error = np.sum(abs(diff)**norm)
+  else:
+    error = np.amax(abs(diff))
 
   plt2.unbind(level, box)
   plt1.unbind(level, box)
@@ -30,7 +33,7 @@ def fdcompare_boxes(plt1, comp1, plt2, comp2, level, box, norm):
   return error
 
 
-def fdcompare_boxes_refined(plt1, comp1, plt2, comp2, level, box1, refratio, norm):
+def fdcompare_boxes_refined(plt1, comp1, plt2, comp2, level, box1, refratio, norm, save_diff):
 
   plt1.bind(level, box1, comp1)
   fab1 = plt1.fab(level, box1)
@@ -64,15 +67,22 @@ def fdcompare_boxes_refined(plt1, comp1, plt2, comp2, level, box1, refratio, nor
     raise ValueError('BAD FILL.')
 
   diff  = fab1.array - fab2coarse
-  error = np.sum(abs(diff)**norm)
+  if norm:
+    error = np.sum(abs(diff)**norm)
+  else:
+    error = np.amax(abs(diff))
 
   plt1.unbind(level, box1)
+
+  if save_diff:
+    fname = save_diff + str(box1) + '.npy'
+    np.save(fname, diff)
 
   return error
 
 
 
-def fdcompare(dname1, dname2, norm=2, refratio=1, variables=None):
+def fdcompare(dname1, dname2, norm=2, refratio=1, variables=None, diff=None):
   """Compare two 3D finite differenced plotfiles."""
 
   plt1 = plotfile()
@@ -110,14 +120,22 @@ def fdcompare(dname1, dname2, norm=2, refratio=1, variables=None):
       for box in range(1, plt1.nboxes(level)+1):
 
         if refratio == 1:
-          aerror += fdcompare_boxes(
-              plt1, comp1, plt2, comp2, level, box, norm)
+          err = fdcompare_boxes(
+              plt1, comp1, plt2, comp2, level, box, norm, diff)
         else:
-          aerror += fdcompare_boxes_refined(
-              plt1, comp1, plt2, comp2, level, box, refratio, norm)
+          err = fdcompare_boxes_refined(
+              plt1, comp1, plt2, comp2, level, box, refratio, norm, diff)
+
+        if norm:
+          aerror += err
+        else:
+          aerror = max(aerror, err)
 
         # rerror += aerror / abs(f1.array).max()
 
-    errors[variable] = (aerror**(1.0/norm), rerror)
+    if norm:
+      errors[variable] = (aerror**(1.0/norm), rerror)
+    else:
+      errors[variable] = (aerror, rerror)
 
   return errors, (dname1, dname2)
