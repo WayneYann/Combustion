@@ -14,10 +14,7 @@ DIM             = 3
 DIM             = 2
 COMP            = g++
 FCOMP           = gfortran
-COMP            = Intel
-FCOMP           = Intel
 USE_MPI         = FALSE
-USE_MPI         = TRUE
 USE_OMP         = FALSE
 USE_F90_SOLVERS = TRUE
 VERBOSE         = FALSE
@@ -48,6 +45,9 @@ USE_LMC_SDC = FALSE
 
 CHEMISTRY_MODEL = LUDME
 fEXE_sources += LuDME_0700.f
+
+#CHEMISTRY_MODEL = GRI30
+#fEXE_sources += gri30_070.f
 
 EBASE = amr
 Blocs   := .
