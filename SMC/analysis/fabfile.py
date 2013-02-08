@@ -15,8 +15,9 @@ projects = '/home/memmett/projects/'
 work     = '/scratch/scratchdirs/memmett/'
 #work     = '/scratch/memmett/'
 
-env.rsync = [ (projects + 'Combustion/SMC', work + 'Combustion/SMC') ]
-#env.rsync.append((projects + 'BoxLib/Src/Python', '~/projects/BoxLib/Src/Python'))
+env.rsync = [ (projects + 'Combustion', work + 'Combustion'),
+              (projects + 'SDCLib', work + 'SDCLib') ]
+
 env.bin   = work + 'Combustion/SMC/bin/FlameBall'
 
 
@@ -87,8 +88,8 @@ def flameball_stconv():
   import stconv
 
   setenv()
-  # rsync()
-  # make()
+  rsync()
+  make()
 
   env.nthreads = 6
   env.nprocs   = 6
@@ -102,11 +103,13 @@ def flameball_stconv():
     # convergence runs
     for nx, dt, nnodes in stconv.runs:
 
-      max_grid_size = min(nx, 32)
-      nprocs        = nx**3 / max_grid_size**3
+      # max_grid_size = min(nx, 32)
+      # nprocs        = nx**3 / max_grid_size**3
+      max_grid_size = nx
+      nprocs        = 1
 
       name   = 'nx%03d_gl%d_dt%g' % (nx, nnodes, dt)
-      rundir = 'stconv/' + name
+      rundir = 'stconv2/' + name
       spath  = s.mkdir(rundir)
 
       probin.update(
@@ -117,8 +120,101 @@ def flameball_stconv():
           advance_method=2)
       probin.write(spath + 'probin.nml')
 
-      wtime = walltime(2*60*60)
+      # wtime = walltime(2*60*60)
+      wtime = walltime(60*60)
 
+      runs.append(dict(
+          name=name, rundir=rundir, nprocs=nprocs,
+          probin='probin.nml', walltime=wtime))
+
+  for run in runs:
+    submit(**run)
+
+
+@task
+def flameball_test():
+  """Convergence tests for the FlameBall example."""
+
+  import stconv
+
+  setenv()
+  rsync()
+  make()
+
+  env.nthreads = 6
+  env.pernode  = 4
+
+  probin = Probin('inputs-stconv')
+  runs   = []
+
+  with stage() as s:
+
+    # convergence runs
+    for nx, dt, nnodes in stconv.test_runs:
+
+      max_grid_size = nx
+      nprocs        = 1
+
+      name   = 'nx%03d_gl%d_dt%g' % (nx, nnodes, dt)
+      rundir = 'stconv_test/' + name
+      spath  = s.mkdir(rundir)
+
+      probin.update(
+          nx=nx, fixed_dt=dt, stop_time=stconv.stop_time, cflfac=None,
+          sdc_nnodes=nnodes,
+          sdc_iters=2*nnodes-1,
+          max_grid_size=max_grid_size,
+          advance_method=2)
+      probin.write(spath + 'probin.nml')
+
+      wtime = walltime(60*60)
+      runs.append(dict(
+          name=name, rundir=rundir, nprocs=nprocs,
+          probin='probin.nml', walltime=wtime))
+
+  for run in runs:
+    submit(**run)
+
+@task
+def flameball_test_rk():
+  """Convergence tests for the FlameBall example."""
+
+  import itertools
+  import stconv
+
+  from stconv import dt0
+
+  setenv()
+  rsync()
+  make()
+
+  env.nthreads = 6
+  env.pernode  = 4
+
+  probin = Probin('inputs-stconv')
+  runs   = []
+
+  with stage() as s:
+
+    # convergence runs
+    for nx, dt in itertools.product([ 32, 64 ], [ dt0/8, dt0/4, dt0/2, dt0 ]):
+
+      max_grid_size = nx
+      nprocs        = 1
+
+      name   = 'nx%03d_rk_dt%g' % (nx, dt)
+      rundir = 'stconv_test/' + name
+      spath  = s.mkdir(rundir)
+
+      probin.update(
+          nx=nx, fixed_dt=dt, stop_time=stconv.stop_time, cflfac=None,
+          sdc_nnodes=-1,
+          sdc_iters=-1,
+          max_grid_size=max_grid_size,
+          advance_method=1)
+      probin.write(spath + 'probin.nml')
+
+      wtime = walltime(60*60)
       runs.append(dict(
           name=name, rundir=rundir, nprocs=nprocs,
           probin='probin.nml', walltime=wtime))

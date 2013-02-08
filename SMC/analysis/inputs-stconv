@@ -50,8 +50,8 @@
  !vinit = -20.2d0
  !winit =  13.1d0
 
- uinit =  10.0d0
- vinit =   0.0d0
+ uinit =  1000.0d0
+ vinit =  100.0d0
  winit =   0.0d0
 
 /
