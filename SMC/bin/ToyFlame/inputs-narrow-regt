@@ -21,6 +21,9 @@
  n_cellz = 32
  max_grid_size = 16
 
+ tb_blocksize_y = 8
+ tb_blocksize_z = 8
+
  prob_lo_x = -0.5d0
  prob_lo_y = -0.5d0
  prob_lo_z = -0.5d0
