@@ -2112,7 +2112,7 @@ contains
     integer          :: i,j,k,n, qxn, qyn, qhn
 
     double precision :: Yhalf, hhalf
-    double precision :: mmtmp8(8,qlo(1):qhi(1))
+    double precision :: mmtmp8(8,lo(1):hi(1)+1)
     double precision, allocatable, dimension(:,:,:,:) :: M8p
     double precision, allocatable, dimension(:,:,:) :: Hry
 
