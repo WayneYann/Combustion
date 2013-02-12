@@ -417,7 +417,7 @@ contains
              if (bksize(idim) <= 0) then
                 nbk(idim) = 1
              else
-                nbk(idim) = int(tbsize(idim)/bksize(idim))
+                nbk(idim) = max(int(tbsize(idim)/bksize(idim)),1)
              end if
           end do
 
