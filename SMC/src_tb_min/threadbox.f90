@@ -7,32 +7,58 @@ module threadbox_module
 
   implicit none
 
-  integer, save :: numthreads, nthreads_d(3), ng, nb, ndim
-  integer, save :: numboxgroups, boxgroupsize
-  integer, save :: nthreadsperbox
+  integer, save :: numthreads, ng, nb, ndim
+  integer, save :: numboxgroups, boxgroupsize, nthreadsperbox
+  integer, save :: nthreads_d(3)
 
-  logical, allocatable, save :: worktodo(:,:)
-  integer, allocatable, save :: tb_lo(:,:,:), tb_hi(:,:,:) 
-  integer, allocatable, save :: tb_glo(:,:,:), tb_ghi(:,:,:) 
+  logical, allocatable, save :: worktodo(:)
+  integer, allocatable, save :: tb_lo(:,:), tb_hi(:,:) 
+  integer, allocatable, save :: tb_glo(:,:), tb_ghi(:,:) 
+
+  type blocks  ! in_a_threadbox
+     integer :: nblocks
+     integer, pointer :: lo(:,:) => Null()
+     integer, pointer :: hi(:,:) => Null()
+  end type blocks
+
+  type(blocks), allocatable, save :: allblocks(:)
+
+  !$omp threadprivate(worktodo,tb_lo,tb_hi,tb_glo,tb_ghi,allblocks)
 
   private
 
   public ::build_threadbox, destroy_threadbox,  &
        tb_get_valid_lo, tb_get_valid_hi, tb_get_grown_lo, tb_get_grown_hi, &
+       tb_get_block_lo, tb_get_block_hi, tb_get_nblocks, &
        tb_multifab_setval, tb_worktodo
 
 contains
 
   subroutine destroy_threadbox()
+    integer :: ibox
+    !$omp parallel private(ibox)
+    if (allocated(allblocks)) then
+       do ibox=1,nb
+          if (associated(allblocks(ibox)%lo)) then
+             deallocate(allblocks(ibox)%lo)
+          end if
+          if (associated(allblocks(ibox)%hi)) then
+             deallocate(allblocks(ibox)%hi)
+          end if
+       end do
+       deallocate(allblocks)
+    end if
     if (allocated(tb_lo)) deallocate(tb_lo)
     if (allocated(tb_hi)) deallocate(tb_hi)
     if (allocated(tb_glo)) deallocate(tb_glo)
     if (allocated(tb_ghi)) deallocate(tb_ghi)
     if (allocated(worktodo)) deallocate(worktodo)
+    !$omp end parallel
   end subroutine destroy_threadbox
 
   subroutine build_threadbox(la, ng_in)
-    use probin_module, only : tb_split_dim, tb_collapse_boxes, tb_idim_more, tb_idim_less
+    use probin_module, only : tb_split_dim, tb_collapse_boxes, tb_idim_more, tb_idim_less, &
+         tb_blocksize_x, tb_blocksize_y, tb_blocksize_z
     implicit none
     type(layout), intent(in) :: la
     integer, intent(in) :: ng_in
@@ -47,17 +73,6 @@ contains
     nb = nlocal(la) ! number of local boxes
     numthreads = omp_get_max_threads()
 
-    allocate(tb_lo (3,0:numthreads-1,nb))
-    allocate(tb_hi (3,0:numthreads-1,nb))
-    allocate(tb_glo(3,0:numthreads-1,nb))
-    allocate(tb_ghi(3,0:numthreads-1,nb))
-
-    allocate(worktodo(0:numthreads-1,nb))
-
-    call setup_boxgroups(tb_collapse_boxes)
-
-    call init_worktodo()
-
     if (tb_idim_more .eq. tb_idim_less) then
        call bl_error("threadbox_module: tb_idim_more .eq. tb_idim_less")
     end if
@@ -67,12 +82,36 @@ contains
     if (tb_idim_less < 1 .or. tb_idim_less > 3) then
        call bl_error("threadbox_module: invalid tb_idim_less")
     end if
+
+    !$omp parallel
+
+    allocate(tb_lo (3,nb))
+    allocate(tb_hi (3,nb))
+    allocate(tb_glo(3,nb))
+    allocate(tb_ghi(3,nb))
+    allocate(worktodo(nb))
+    allocate(allblocks(nb))
+
+    !$omp single
+    call setup_boxgroups(tb_collapse_boxes) 
+
     call init_thread_topology(nthreadsperbox, nthreads_d, tb_split_dim, &
          tb_idim_more, tb_idim_less)
+    !$omp end single
 
+    ! use the masteter thread because it uses bl_error, which in turn uses MPI
+    !$omp master
     call check_boxsize(la)
+    !$omp end master
+    !$omp barrier
+
+    call init_worktodo() 
 
     call init_threadbox(la)
+
+    call init_allblocks(tb_blocksize_x,tb_blocksize_y,tb_blocksize_z)
+
+    !$omp end parallel
 
   end subroutine build_threadbox
 
@@ -103,24 +142,6 @@ contains
       end if
     end function greatest_common_factor
   end subroutine setup_boxgroups
-
-
-  ! All threads will work on a group, but not necessarily on a box.
-  subroutine init_worktodo()
-    implicit none
-    integer :: ithread, ibox, ib2, ib3
-    do ibox=1,nb
-       ib2 = mod(ibox-1,boxgroupsize) + 1 ! box index in a group
-       do ithread=0,numthreads-1
-          ib3 = (ithread/nthreadsperbox) + 1 ! box index for this thread
-          if (ib2 .eq. ib3) then
-             worktodo(ithread, ibox) = .true.
-          else
-             worktodo(ithread, ibox) = .false.
-          end if
-       end do
-    end do
-  end subroutine init_worktodo
 
 
   subroutine init_thread_topology(n, n3d, d, imore, iless)
@@ -230,21 +251,37 @@ contains
   end subroutine check_boxsize
 
 
+  ! All threads will work on a group, but not necessarily on a box.
+  subroutine init_worktodo()
+    implicit none
+    integer :: tid, ibox, ib2, ib3
+    tid = omp_get_thread_num()
+    ib3 = (tid/nthreadsperbox) + 1 ! box index in boxgroup for this thread
+    do ibox=1,nb
+       ib2 = mod(ibox-1,boxgroupsize) + 1 ! box index in a group
+       if (ib2 .eq. ib3) then
+          worktodo(ibox) = .true.
+       else
+          worktodo(ibox) = .false.
+       end if
+    end do
+  end subroutine init_worktodo
+
+
   subroutine init_threadbox(la)
     implicit none
     type(layout), intent(in) :: la
     
+    integer :: tid
     integer, allocatable :: xsize(:), ysize(:), zsize(:)
     integer, allocatable :: xstart(:), ystart(:), zstart(:)
-    integer, allocatable :: zero_lo(:,:), zero_hi(:,:)
-    integer :: my_box_size(3), my_box_lo(3)
-    integer :: i,j,k, itbox, ithread
+    integer :: my_box_size(3), my_box_lo(3), zero_lo(3), zero_hi(3)
+    integer :: i,j,k, itbox
     integer :: igroup, ibg, ibox, istart
     double precision :: stride
     type(box) :: bx
 
-    allocate(zero_lo(3,0:nthreadsperbox-1))
-    allocate(zero_hi(3,0:nthreadsperbox-1))
+    tid = omp_get_thread_num()
 
     allocate(xsize (nthreads_d(1)))
     allocate(ysize (nthreads_d(2)))
@@ -260,141 +297,224 @@ contains
 
        istart = nint((igroup-1)*stride)
 
+       ! For the group of threads working on the same box, 
+       ! this is its new ID in the group, ranging from 0 to nthreadsperbox-1.
+       itbox = mod(tid+istart, nthreadsperbox)
+
+       ! convert the 1D index into 3D indices
+       ! Here the 1D index itbox starts from 0; the 3D indices start from 1
+       i = mod(itbox,nthreads_d(1)) + 1
+       j = mod(int(itbox/nthreads_d(1)), nthreads_d(2)) + 1
+       k = int(itbox / (nthreads_d(1)*nthreads_d(2))) + 1
+
        do ibg=1,boxgroupsize
 
           ibox = ibox+1
-          bx = get_box(la, global_index(la, ibox))
-          my_box_size = box_extent(bx)
-          my_box_lo = box_lwb(bx)
 
-          !
-          ! valid box
-          !
-          call split_domain(my_box_size(1), nthreads_d(1), xsize, xstart)
-          call split_domain(my_box_size(2), nthreads_d(2), ysize, ystart)
-          call split_domain(my_box_size(3), nthreads_d(3), zsize, zstart)
+          if (.not. worktodo(ibox)) then
+             tb_lo(:,ibox) = HUGE(0)
+             tb_hi(:,ibox) = -(HUGE(0)-1)
+             tb_glo(:,ibox) = HUGE(0)
+             tb_ghi(:,ibox) = -(HUGE(0)-1)
+          else
 
-          itbox = 0
-          do k = 1, nthreads_d(3)
-             do j = 1, nthreads_d(2)
-                do i = 1, nthreads_d(1)
-                   zero_lo(1,itbox) = xstart(i)
-                   zero_lo(2,itbox) = ystart(j)
-                   zero_lo(3,itbox) = zstart(k)
-                   zero_hi(1,itbox) = xstart(i) + xsize(i) - 1
-                   zero_hi(2,itbox) = ystart(j) + ysize(j) - 1
-                   zero_hi(3,itbox) = zstart(k) + zsize(k) - 1
-                   itbox = itbox + 1
-                end do
-             end do
-          end do
+             bx = get_box(la, global_index(la, ibox))
+             my_box_size = box_extent(bx)
+             my_box_lo = box_lwb(bx)
 
-          do ithread = 0, numthreads-1
-             if (tb_worktodo(ithread, ibox)) then
-                itbox = mod(ithread+istart, nthreadsperbox)
-                tb_lo(:,ithread,ibox) = zero_lo(:,itbox) + my_box_lo
-                tb_hi(:,ithread,ibox) = zero_hi(:,itbox) + my_box_lo
-             else
-                tb_lo(:,ithread,ibox) = HUGE(0)
-                tb_hi(:,ithread,ibox) = -(HUGE(0)-1)
-             end if
-          end do
-          
-          !
-          ! grown box
-          !
-          call split_domain(my_box_size(1)+2*ng, nthreads_d(1), xsize, xstart)
-          call split_domain(my_box_size(2)+2*ng, nthreads_d(2), ysize, ystart)
-          call split_domain(my_box_size(3)+2*ng, nthreads_d(3), zsize, zstart)
+             !
+             ! valid box
+             !
+             call split_domain(my_box_size(1), nthreads_d(1), xsize, xstart)
+             call split_domain(my_box_size(2), nthreads_d(2), ysize, ystart)
+             call split_domain(my_box_size(3), nthreads_d(3), zsize, zstart)
+             
+             zero_lo(1) = xstart(i)
+             zero_lo(2) = ystart(j)
+             zero_lo(3) = zstart(k)
+             zero_hi(1) = xstart(i) + xsize(i) - 1
+             zero_hi(2) = ystart(j) + ysize(j) - 1
+             zero_hi(3) = zstart(k) + zsize(k) - 1
+             
+             tb_lo(:,ibox) = zero_lo + my_box_lo
+             tb_hi(:,ibox) = zero_hi + my_box_lo
 
-          itbox = 0
-          do k = 1, nthreads_d(3)
-             do j = 1, nthreads_d(2)
-                do i = 1, nthreads_d(1)
-                   zero_lo(1,itbox) = xstart(i)
-                   zero_lo(2,itbox) = ystart(j)
-                   zero_lo(3,itbox) = zstart(k)
-                   zero_hi(1,itbox) = xstart(i) + xsize(i) - 1
-                   zero_hi(2,itbox) = ystart(j) + ysize(j) - 1
-                   zero_hi(3,itbox) = zstart(k) + zsize(k) - 1
-                   itbox = itbox + 1
-                end do
-             end do
-          end do
+             !
+             ! grown box
+             !
+             call split_domain(my_box_size(1)+2*ng, nthreads_d(1), xsize, xstart)
+             call split_domain(my_box_size(2)+2*ng, nthreads_d(2), ysize, ystart)
+             call split_domain(my_box_size(3)+2*ng, nthreads_d(3), zsize, zstart)
 
-          do ithread = 0, numthreads-1
-             if (tb_worktodo(ithread, ibox)) then
-                itbox = mod(ithread+istart, nthreadsperbox)
-                tb_glo(:,ithread,ibox) = zero_lo(:,itbox) + my_box_lo - ng
-                tb_ghi(:,ithread,ibox) = zero_hi(:,itbox) + my_box_lo - ng
-             else
-                tb_glo(:,ithread,ibox) = HUGE(0)
-                tb_ghi(:,ithread,ibox) = -(HUGE(0)-1)
-             end if
-          end do
+             zero_lo(1) = xstart(i)
+             zero_lo(2) = ystart(j)
+             zero_lo(3) = zstart(k)
+             zero_hi(1) = xstart(i) + xsize(i) - 1
+             zero_hi(2) = ystart(j) + ysize(j) - 1
+             zero_hi(3) = zstart(k) + zsize(k) - 1
+             
+             tb_glo(:,ibox) = zero_lo + my_box_lo - ng
+             tb_ghi(:,ibox) = zero_hi + my_box_lo - ng
+
+          end if
           
        end do
     end do
 
-    deallocate(xsize, ysize, zsize, xstart, ystart, zstart,zero_lo,zero_hi)
-
-  contains
-
-    subroutine split_domain(totalsize, n, isize, start)
-      implicit none
-      integer, intent(in) :: totalsize, n
-      integer, intent(out) :: isize(n), start(n)
-      
-      integer :: i, iavg, ileft
-      
-      iavg = int(totalsize/n)
-      ileft = totalsize - iavg*n
-      
-      start(1) = 0
-      isize(1) = iavg
-      do i=2, n
-         start(i) = start(i-1) + isize(i-1)
-         if (ileft > 0) then
-            isize(i) = iavg + 1
-            ileft = ileft - 1
-         else
-            isize(i) = iavg
-         end if
-      end do
-      
-    end subroutine split_domain
+    deallocate(xsize, ysize, zsize, xstart, ystart, zstart)
 
   end subroutine init_threadbox
 
-
-  function tb_get_valid_lo(ithread, ilocal) result (lo)
+  subroutine split_domain(totalsize, n, isize, start)
     implicit none
-    integer, intent(in) :: ithread, ilocal
+    integer, intent(in) :: totalsize, n
+    integer, intent(out) :: isize(n), start(n)
+    
+    integer :: i, iavg, ileft
+    
+    iavg = int(totalsize/n)
+    ileft = totalsize - iavg*n
+    
+    start(1) = 0
+    isize(1) = iavg
+    do i=2, n
+       start(i) = start(i-1) + isize(i-1)
+       if (ileft > 0) then
+          isize(i) = iavg + 1
+          ileft = ileft - 1
+       else
+          isize(i) = iavg
+       end if
+    end do
+    
+  end subroutine split_domain
+
+
+  subroutine init_allblocks(blksizex,blksizey,blksizez)
+    implicit none
+    integer,intent(in) :: blksizex,blksizey,blksizez
+    integer :: idim, ibox, nbk(3), tbsize(3)
+    integer :: i,j,k,ibk,nblk
+    integer :: bksize(3), zero_lo(3), zero_hi(3)
+    integer, allocatable :: xsize(:), ysize(:), zsize(:)
+    integer, allocatable :: xstart(:), ystart(:), zstart(:)
+
+    bksize(1) = blksizex
+    bksize(2) = blksizey
+    bksize(3) = blksizez
+
+    do ibox=1,nb
+
+       if (.not. worktodo(ibox)) then
+
+          allblocks(ibox)%nblocks = 0
+
+       else
+
+          tbsize = tb_hi(:,ibox) - tb_lo(:,ibox) + 1
+
+          do idim=1,3
+             if (bksize(idim) <= 0) then
+                nbk(idim) = 1
+             else
+                nbk(idim) = int(tbsize(idim)/bksize(idim))
+             end if
+          end do
+
+          nblk = nbk(1)*nbk(2)*nbk(3)
+          allblocks(ibox)%nblocks = nblk
+          allocate(allblocks(ibox)%lo(3,nblk))
+          allocate(allblocks(ibox)%hi(3,nblk))
+
+          allocate(xsize (nbk(1)))
+          allocate(ysize (nbk(2)))
+          allocate(zsize (nbk(3)))
+          allocate(xstart(nbk(1)))
+          allocate(ystart(nbk(2)))
+          allocate(zstart(nbk(3)))
+
+          call split_domain(tbsize(1), nbk(1), xsize, xstart)
+          call split_domain(tbsize(2), nbk(2), ysize, ystart)
+          call split_domain(tbsize(3), nbk(3), zsize, zstart)
+
+          ibk = 1
+          do k = 1, nbk(3)
+             do j = 1, nbk(2)
+                do i = 1, nbk(1)
+
+                   zero_lo(1) = xstart(i)
+                   zero_lo(2) = ystart(j)
+                   zero_lo(3) = zstart(k)
+                   zero_hi(1) = xstart(i) + xsize(i) - 1
+                   zero_hi(2) = ystart(j) + ysize(j) - 1
+                   zero_hi(3) = zstart(k) + zsize(k) - 1
+
+                   allblocks(ibox)%lo(:,ibk) = zero_lo + tb_lo(:,ibox)
+                   allblocks(ibox)%hi(:,ibk) = zero_hi + tb_lo(:,ibox)
+
+                   ibk = ibk + 1
+                end do
+             end do
+          end do
+
+          deallocate(xsize,ysize,zsize,xstart,ystart,zstart)
+
+       end if
+    end do
+
+  end subroutine init_allblocks
+
+
+  function tb_get_valid_lo(ilocal) result (lo)
+    implicit none
+    integer, intent(in) :: ilocal
     integer, dimension(3) :: lo
-    lo = tb_lo(:,ithread,ilocal)
+    lo = tb_lo(:,ilocal)
   end function tb_get_valid_lo
 
-  function tb_get_valid_hi(ithread, ilocal) result (hi)
+  function tb_get_valid_hi(ilocal) result (hi)
     implicit none
-    integer, intent(in) :: ithread, ilocal
+    integer, intent(in) :: ilocal
     integer, dimension(3) :: hi
-    hi = tb_hi(:,ithread,ilocal)
+    hi = tb_hi(:,ilocal)
   end function tb_get_valid_hi
 
 
-  function tb_get_grown_lo(ithread, ilocal) result (lo)
+  function tb_get_grown_lo(ilocal) result (lo)
     implicit none
-    integer, intent(in) :: ithread, ilocal
+    integer, intent(in) :: ilocal
     integer, dimension(3) :: lo
-    lo = tb_glo(:,ithread,ilocal)
+    lo = tb_glo(:,ilocal)
   end function tb_get_grown_lo
 
-  function tb_get_grown_hi(ithread, ilocal) result (hi)
+  function tb_get_grown_hi(ilocal) result (hi)
     implicit none
-    integer, intent(in) :: ithread, ilocal
+    integer, intent(in) :: ilocal
     integer, dimension(3) :: hi
-    hi = tb_ghi(:,ithread,ilocal)
+    hi = tb_ghi(:,ilocal)
   end function tb_get_grown_hi
+
+
+  function tb_get_nblocks(ilocal) result (nblk)
+    implicit none
+    integer, intent(in) :: ilocal
+    integer :: nblk
+    nblk = allblocks(ilocal)%nblocks
+  end function tb_get_nblocks
+
+  function tb_get_block_lo(iblock, ilocal) result(lo)
+    implicit none
+    integer, intent(in) :: iblock, ilocal
+    integer, dimension(3) :: lo
+    lo = allblocks(ilocal)%lo(:,iblock)
+  end function tb_get_block_lo
+
+  function tb_get_block_hi(iblock, ilocal) result(hi)
+    implicit none
+    integer, intent(in) :: iblock, ilocal
+    integer, dimension(3) :: hi
+    hi = allblocks(ilocal)%hi(:,iblock)
+  end function tb_get_block_hi
 
 
   subroutine tb_multifab_setval(mf, val, all)
@@ -403,7 +523,7 @@ contains
     logical, intent(in), optional :: all
 
     logical :: lall
-    integer :: ib, tid, wlo(3), whi(3), ngmf
+    integer :: ib, wlo(3), whi(3), ngmf
     double precision, pointer :: p(:,:,:,:)
 
     if (present(all)) then
@@ -421,24 +541,22 @@ contains
     end if
 
     if (lall .and. ngmf.eq.ng) then
-       !$omp parallel private(tid, ib, wlo, whi, p)
-       tid = omp_get_thread_num()
+       !$omp parallel private(ib, wlo, whi, p)
        do ib = 1, nfabs(mf)
-          if (.not.tb_worktodo(tid,ib)) cycle
+          if (.not.tb_worktodo(ib)) cycle
           p => dataptr(mf, ib)
-          wlo = tb_get_grown_lo(tid, ib)
-          whi = tb_get_grown_hi(tid, ib)
+          wlo = tb_get_grown_lo(ib)
+          whi = tb_get_grown_hi(ib)
           p(wlo(1):whi(1),wlo(2):whi(2),wlo(3):whi(3),:) = val
        end do
        !$omp end parallel
     else
-       !$omp parallel private(tid, ib, wlo, whi, p)
-       tid = omp_get_thread_num()
+       !$omp parallel private(ib, wlo, whi, p)
        do ib = 1, nfabs(mf)
-          if (.not.tb_worktodo(tid,ib)) cycle
+          if (.not.tb_worktodo(ib)) cycle
           p => dataptr(mf, ib)
-          wlo = tb_get_valid_lo(tid, ib)
-          whi = tb_get_valid_hi(tid, ib)
+          wlo = tb_get_valid_lo(ib)
+          whi = tb_get_valid_hi(ib)
           p(wlo(1):whi(1),wlo(2):whi(2),wlo(3):whi(3),:) = val
        end do
        !$omp end parallel
@@ -447,11 +565,11 @@ contains
   end subroutine tb_multifab_setval
 
 
-  function tb_worktodo(ithread, ibox) result(r)
+  function tb_worktodo(ilocal) result(r)
     implicit none
     logical :: r
-    integer,intent(in) :: ithread, ibox
-    r = worktodo(ithread,ibox)
+    integer,intent(in) :: ilocal
+    r = worktodo(ilocal)
   end function tb_worktodo
 
 
