@@ -7,6 +7,9 @@ module transport_properties
 
   implicit none
 
+  ! eglib parameters
+  integer, save :: ITLS=-1, IFLAG=-1
+
   private
 
   public get_transport_properties
@@ -15,6 +18,7 @@ contains
 
   subroutine get_transport_properties(Q, mu, xi, lam, Ddiag, ng, ghostcells_only)
 
+    use probin_module, only : use_bulk_viscosity
     use smc_bc_module, only : get_data_lo_hi
 
     type(multifab), intent(in   ) :: Q
@@ -26,6 +30,19 @@ contains
     logical :: lgco
     integer :: ngq, n, dm, lo(Q%dim), hi(Q%dim), wlo(Q%dim), whi(Q%dim)
     double precision, pointer, dimension(:,:,:,:) :: qp, mup, xip, lamp, dp
+
+    logical, save :: first_call = .true.
+
+    if (first_call) then
+       first_call = .false.
+       if (use_bulk_viscosity) then
+          ITLS  = 1 
+          IFLAG = 5
+       else
+          ITLS  = 1
+          IFLAG = 3
+       end if
+    end if
 
     dm = Q%dim
     ngq = nghost(Q)
@@ -69,6 +86,9 @@ contains
   end subroutine get_transport_properties
 
   subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
+
+    use probin_module, only : use_bulk_viscosity
+
     logical, intent(in) :: gco  ! ghost cells only
     integer, intent(in) :: lo(3), hi(3), ng, wlo(3), whi(3)
     double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nprim)
@@ -85,9 +105,6 @@ contains
     double precision :: rwrk
     double precision, allocatable :: Tt(:), Xt(:,:), Yt(:,:), Cpt(:,:), Wtm(:), D(:,:)
     double precision, allocatable :: ME(:), MK(:), L1(:), L2(:)
-
-    ! eglib parameters
-    integer, parameter :: ITLS=1, IFLAG=5
 
     if (.not. gco) then
 
@@ -127,8 +144,12 @@ contains
              CALL EGME3(np, Tt, Yt, egwork, ME) 
              mu(wlo(1):whi(1),j,k) = ME
           
-             CALL EGMK3(np, Tt, Yt, egwork, MK) 
-             xi(wlo(1):whi(1),j,k) = MK
+             if (use_bulk_viscosity) then
+                CALL EGMK3(np, Tt, Yt, egwork, MK) 
+                xi(wlo(1):whi(1),j,k) = MK
+             else
+                xi(wlo(1):whi(1),j,k) = 0.d0
+             end if
              
              CALL EGMVR1(np, Tt, Yt, egwork, D)
              do n=1,nspecies
@@ -206,8 +227,12 @@ contains
                 CALL EGME3(np, Tt, Yt, egwork, ME) 
                 mu(wlo(1):whi(1),j,k) = ME
                 
-                CALL EGMK3(np, Tt, Yt, egwork, MK) 
-                xi(wlo(1):whi(1),j,k) = MK
+                if (use_bulk_viscosity) then
+                   CALL EGMK3(np, Tt, Yt, egwork, MK) 
+                   xi(wlo(1):whi(1),j,k) = MK
+                else
+                   xi(wlo(1):whi(1),j,k) = 0.d0
+                end if
                 
                 CALL EGMVR1(np, Tt, Yt, egwork, D)
                 do n=1,nspecies
@@ -284,8 +309,12 @@ contains
                 CALL EGME3(np, Tt, Yt, egwork, ME) 
                 mu(wlo(1):whi(1),j,k) = ME
                 
-                CALL EGMK3(np, Tt, Yt, egwork, MK) 
-                xi(wlo(1):whi(1),j,k) = MK
+                if (use_bulk_viscosity) then
+                   CALL EGMK3(np, Tt, Yt, egwork, MK) 
+                   xi(wlo(1):whi(1),j,k) = MK
+                else
+                   xi(wlo(1):whi(1),j,k) = 0.d0
+                end if
                 
                 CALL EGMVR1(np, Tt, Yt, egwork, D)
                 do n=1,nspecies
@@ -358,7 +387,12 @@ contains
                 CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
                 
                 CALL EGME3(np, Tt, Yt, egwork, ME) 
-                CALL EGMK3(np, Tt, Yt, egwork, MK) 
+
+                if (use_bulk_viscosity) then
+                   CALL EGMK3(np, Tt, Yt, egwork, MK) 
+                else
+                   MK = 0.d0
+                end if
                 
                 CALL EGML1(np,  1.d0, Tt, Xt, egwork, L1)
                 CALL EGML1(np, -1.d0, Tt, Xt, egwork, L2)

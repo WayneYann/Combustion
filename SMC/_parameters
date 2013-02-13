@@ -283,3 +283,17 @@ outlet_sigma                        real               0.25d0
 outlet_eta                          real               50.d0
 outlet_Pinfty                       real               1.01325d6
 inlet_eta                           real               30.d0
+
+
+#-----------------------------------------------------------------------------
+# category: physics/chemistry
+#-----------------------------------------------------------------------------
+
+# If true, reset rho*Y(N2), rather than normalize diffusion flux
+reset_N2                            logical            .false.
+
+# Typically this should be N2.
+N2_name                             character          "N2"
+
+# use bulk viscosity?
+use_bulk_viscosity                  logical            .true.
