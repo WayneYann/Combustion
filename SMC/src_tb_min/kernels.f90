@@ -12,11 +12,11 @@ contains
 
   subroutine hypterm_3d (lo,hi,dx,cons,clo,chi,q,qlo,qhi,rhs,rlo,rhi)
 
-    integer,         intent(in):: lo(3),hi(3),clo(3),chi(3),qlo(3),qhi(3),rlo(3),rhi(3)
-    double precision,intent(in):: dx(3)
-    double precision,intent(in):: cons(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3),ncons)
-    double precision,intent(in)::    q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-    double precision           ::  rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    integer,         intent(in)   :: lo(3),hi(3),clo(3),chi(3),qlo(3),qhi(3),rlo(3),rhi(3)
+    double precision,intent(in)   :: dx(3)
+    double precision,intent(in)   ::cons(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3),ncons)
+    double precision,intent(in)   ::   q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(inout):: rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
     integer          :: i,j,k,n
     double precision :: dxinv(3)
@@ -249,16 +249,16 @@ contains
   end subroutine hypterm_3d
 
 
-  subroutine narrow_diffterm_3d (lo,hi,dx,q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy)
+  subroutine narrow_diffterm_3d (lo,hi,dx,q,qlo,qhi,rhs_g,glo,ghi,mu,xi,lam,dxy)
 
-    integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),rlo(3),rhi(3)
+    integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),glo(3),ghi(3)
     double precision,intent(in):: dx(3)
-    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
-    double precision          ::rhs_g(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    double precision,intent(in)   ::  q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in)   ::  mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::  xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::  lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::  dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
+    double precision,intent(inout)::rhs_g(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),ncons)
 
     integer :: i, dlo(3), dhi(3)
     double precision :: dxinv(3), dx2inv(3)
@@ -274,9 +274,9 @@ contains
 
     rhs = 0.d0
 
-    call diffterm_1(q,qlo,qhi,rhs,rlo,rhi,mu,xi, lo,hi,dlo,dhi,dxinv)
+    call diffterm_1(q,qlo,qhi,rhs,lo,hi,mu,xi, lo,hi,dlo,dhi,dxinv)
 
-    call diffterm_2(q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy, lo,hi,dlo,dhi,dx2inv)
+    call diffterm_2(q,qlo,qhi,rhs,lo,hi,mu,xi,lam,dxy, lo,hi,dlo,dhi,dx2inv)
 
     rhs_g(     lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
          rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
@@ -288,10 +288,10 @@ contains
     integer,         intent(in):: lo(3),hi(3),dlo(3),dhi(3)
     integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3)
     double precision,intent(in):: dxinv(3)
-    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision         ::  rhs (rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    double precision,intent(in)   :: q (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in)   :: mu(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   :: xi(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(inout)::rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
     !
     ! local variables
@@ -518,12 +518,12 @@ contains
     integer,         intent(in):: lo(3),hi(3),dlo(3),dhi(3)
     integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3)
     double precision,intent(in):: dx2inv(3)
-    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
-    double precision           :: rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    double precision,intent(in)   ::  q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in)   :: mu(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   :: xi(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
+    double precision,intent(inout)::rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
     !
     ! local variables

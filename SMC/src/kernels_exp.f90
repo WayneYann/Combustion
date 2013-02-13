@@ -1322,13 +1322,13 @@ contains
     integer,         intent(in):: dlo_g(3),dhi_g(3),bclo(3),bchi(3)
     integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),rlo(3),rhi(3),glo(3),ghi(3)
     double precision,intent(in):: dx(3)
-    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
-    double precision         ::  rhs_g(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),ncons)
-    double precision         ::  rhs  (rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    double precision,intent(in)   ::  q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in)   ::  mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::  xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::  lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::  dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
+    double precision,intent(inout)::rhs_g(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),ncons)
+    double precision,intent(inout)::rhs  (rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
     integer :: i
     integer :: slo(3), shi(3), dlo(3), dhi(3)
@@ -1389,11 +1389,17 @@ contains
        dx2inv(i) = dxinv(i)**2
     end do
 
+    rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = 0.d0
+
     call diffterm_1(q,qlo,qhi,rhs,rlo,rhi,mu,xi, &
          lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dxinv)
 
-    call diffterm_2(q,qlo,qhi,rhs_g,glo,ghi,rhs,rlo,rhi, mu,xi,lam,dxy, &
+    call diffterm_2(q,qlo,qhi,rhs,rlo,rhi, mu,xi,lam,dxy, &
          lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dx2inv)
+
+    rhs_g     (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
+         rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
+         + rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
 
   end subroutine narrow_diffterm_3d
 
@@ -1405,10 +1411,10 @@ contains
     logical,         intent(in):: physbclo(3),physbchi(3)
     double precision,intent(in):: finlo(3),finhi(3),foulo(3),fouhi(3)
     double precision,intent(in):: dxinv(3)
-    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision         ::  rhs (rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    double precision,intent(in)   ::  q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in)   :: mu(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   :: xi(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(inout)::rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
     double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
     double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
@@ -1876,9 +1882,6 @@ contains
           enddo
        enddo
     end if
-
-
-    rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = 0.d0
 
 
     !----- mx -----
@@ -2774,20 +2777,19 @@ contains
   end subroutine diffterm_1
 
   
-  subroutine diffterm_2(q,qlo,qhi,rhs_g,glo,ghi,rhs,rlo,rhi,mu,xi,lam,dxy, &
+  subroutine diffterm_2(q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy, &
        lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dx2inv)
     integer,         intent(in):: lo(3),hi(3),slo(3),shi(3),dlo(3),dhi(3)
-    integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3),glo(3),ghi(3)
+    integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3)
     logical,         intent(in):: physbclo(3),physbchi(3)
     double precision,intent(in):: finlo(3),finhi(3),foulo(3),fouhi(3)
     double precision,intent(in):: dx2inv(3)
-    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
-    double precision         ::  rhs_g(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),ncons)
-    double precision         ::  rhs  (rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    double precision,intent(in)   :: q (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in)   :: mu(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   :: xi(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
+    double precision,intent(inout)::rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
     double precision, allocatable, dimension(:,:,:) :: vsp, dpe
     double precision, allocatable, dimension(:,:,:,:) :: Hg, dpy, dxe
@@ -7200,10 +7202,6 @@ contains
     end do
 
     deallocate(Hg,dpy,dxe,dpe,vsp,M8p,Hry)
-
-    rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
-         rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
-         + rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
 
   end subroutine diffterm_2
 
