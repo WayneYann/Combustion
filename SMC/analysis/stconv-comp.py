@@ -27,13 +27,13 @@ def find_plotfile(rundir, time):
       header = f.read().split('\n')
     ncomp = int(header[1])
     plttime = float(header[ncomp+3])
-    if abs(plttime - time) < 1e-13:
+    if abs(plttime - time) < 1e-8:
       return plt
 
   return None
 
 
-def error(rundir1, rundir2, time, variable='pressure', refratio=1):
+def error(rundir1, rundir2, time, variable='pressure', refratio=1, diff=None):
   """Compute the error of *variable* between runs at time *time*."""
 
   print 'computing errors:', rundir1, rundir2, time, variable, refratio
@@ -45,7 +45,7 @@ def error(rundir1, rundir2, time, variable='pressure', refratio=1):
     print '  plotfiles not found!'
     return None
 
-  errs, dnames = compare(p1, p2, refratio=refratio, variables=[variable])
+  errs, dnames = compare(p1, p2, refratio=refratio, variables=[variable], diff=diff, norm=0)
 
   print '  p1:', p1
   print '  p2:', p2
@@ -56,26 +56,31 @@ def error(rundir1, rundir2, time, variable='pressure', refratio=1):
 
 def flameball_stconv_comp():
 
-  env.base = '/scratch/scratchdirs/memmett/Combustion/SMC/bin/FlameBall/stconv'
+  import stconv
 
-  dt0 = 1e-7
-  stop_time = dt0 * 10
-
-  NX     = [ 32, 64, 128 ]
-  DT     = [ dt0/8, dt0/4, dt0/2, dt0 ]
-  NNODES = [ 3, 5 ]
+  env.base = '/scratch/scratchdirs/memmett/Combustion/SMC/bin/FlameBall/stconv2'
 
   errors = { 'stconv': {}, 'cflconv': {} }
-  for nx, dt, nnodes in product(NX, DT, NNODES):
+  for nx, dt, nnodes in stconv.runs:
 
     # compare to same grid run
-    refdir   = 'nx%03d_gl%d_dt%g' % (nx, max(NNODES), min(DT))
+    refdir   = 'nx%03d_gl%d_dt%g' % (nx, 5, stconv.min_dt[nx])
     rundir   = 'nx%03d_gl%d_dt%g' % (nx, nnodes, dt)
 
     if refdir != rundir:
-      err = error(rundir, refdir, stop_time, refratio=1, variable='density')
+      err = error(rundir, refdir, stconv.stop_time, refratio=1, variable='pressure')
       if err:
         errors['cflconv'][nx, dt, nnodes] = err
+
+    # compare to fine grid run
+    refdir   = 'nx%03d_gl%d_dt%g' % (128, 5, stconv.min_dt[128])
+    rundir   = 'nx%03d_gl%d_dt%g' % (nx, nnodes, dt)
+
+    if refdir != rundir:
+      err = error(rundir, refdir, stconv.stop_time, refratio=128/nx, variable='pressure', 
+                  diff='diff_nx%03d_gl%d_dt%g_box' % (nx, nnodes, dt))
+      if err:
+        errors['stconv'][nx, dt, nnodes] = err
 
   print errors
   with open('stconv.pkl', 'w') as f:

@@ -1,6 +1,7 @@
 module smcdata_module
 
   use multifab_module
+  use sdcquad_module
 
   implicit none
 
@@ -17,8 +18,7 @@ module smcdata_module
 
 contains
 
-  subroutine build_smcdata(la)
-
+  subroutine build_smcdata(la,sdc)
     use variables_module, only : ncons, nprim
     use chemistry_module, only : nspecies
     use derivative_stencil_module, only : stencil_ng
@@ -27,10 +27,18 @@ contains
     implicit none
 
     type(layout), intent(in) :: la
+    type(sdc_t),  intent(in) :: sdc
 
     if (advance_method .eq. 1) then ! RK
        call multifab_build(Uprime, la, ncons, 0)
        call multifab_build(Unew,   la, ncons, stencil_ng)
+    else
+       if (c_associated(sdc%srset)) then
+          call sdc_srset_allocate(sdc%srset)
+       end if
+       if (c_associated(sdc%mrset)) then
+          print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'
+       end if
     end if
 
     call multifab_build(Q, la, nprim, stencil_ng)
@@ -45,12 +53,22 @@ contains
   end subroutine build_smcdata
 
 
-  subroutine destroy_smcdata()
+  subroutine destroy_smcdata(sdc)
     use probin_module, only : advance_method
+    type(sdc_t), intent(in) :: sdc
+
     if (advance_method .eq. 1) then ! RK
        call destroy(Unew)
        call destroy(Uprime)
+    else 
+       if (c_associated(sdc%srset)) then
+          call sdc_srset_deallocate(sdc%srset)
+       end if
+       if (c_associated(sdc%mrset)) then
+          print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'
+       end if
     end if
+
     call destroy(Q)
     call destroy(Fdif)
     call destroy(mu)

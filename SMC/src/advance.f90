@@ -120,6 +120,8 @@ contains
     type(layout) :: la
     type(multifab), target :: R
 
+    type(bl_prof_timer), save :: bpt_sdc_prep, bpt_sdc_iter
+
     !
     ! set dt
     !
@@ -145,13 +147,16 @@ contains
     !
     ! advance (pass control to sdclib)
     !
+    call build(bpt_sdc_prep, "sdc_prep")
     call sdc_srset_set_q0(sdc%srset, mfptr(U))
     call sdc_srset_spread(sdc%srset, 0.0d0)
+    call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
        la = get_layout(U)
     end if
 
+    call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
        call sdc_srset_sweep(sdc%srset, 0.0d0, dt)
 
@@ -170,8 +175,10 @@ contains
                exit
        end if
     end do
+    call destroy(bpt_sdc_iter)
 
     call sdc_srset_get_qend(sdc%srset, mfptr(U))    
+
   end subroutine advance_sdc
 
 

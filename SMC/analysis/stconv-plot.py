@@ -6,7 +6,7 @@ from operator import attrgetter
 from pprint import pprint
 from pylab import *
 
-key = namedtuple('key', [ 'nx', 'cfl', 'nodes' ])
+key = namedtuple('key', [ 'nx', 'dt', 'nodes' ])
 
 pens = defaultdict(
   lambda: { 'color': 'k', 'marker': 'o' },
@@ -33,55 +33,60 @@ def rekey(d):
   return dk
 
 
-def flameball_stconv_plot(stconv, cflconv):
+def flameball_stconv_plot(stconv, dtconv):
 
-  # print 'stconv'
-  # print '------'
-
-  # figure()
-
-  # nodes = sorted(set([ run.nodes for run in stconv]))
-  # cfls  = sorted(set([ run.cfl for run in stconv ]))
-
-  # for j, node in enumerate(nodes):
-  #   for cfl in cfls:
-  #     runs = [ run for run in stconv 
-  #              if run.cfl == cfl and run.nodes == node ]
-  #     runs = sorted(runs, key=attrgetter('nx'))
-
-  #     x = np.asarray([ run.nx for run in runs ])
-  #     y = np.asarray([ stconv[run] for run in runs ])
-
-  #     print 'nodes: %d, cfl: %f' % (node, cfl)
-  #     print '  x:', x
-  #     print '  y:', y
-  #     print ''
-      
-  #     subplot(1, 2, j+1)
-  #     title('%d nodes' % node)
-  #     loglog(x, y, label='cfl %.2f' % cfl, **pens[cfl])
-  #     xlabel('nx')
-  #     ylabel('l2 error')
-
-  # legend(loc='best')
-
-  print 'cflconv'
-  print '-------'
+  print 'stconv'
+  print '------'
 
   figure()
 
-  nxs   = sorted(set([ run.nx for run in cflconv]))
-  nodes = sorted(set([ run.nodes for run in cflconv]))
-  cfls  = sorted(set([ run.cfl for run in cflconv ]))
+  nodes = sorted(set([ run.nodes for run in stconv]))
+  # nxs   = sorted(set([ run.nx for run in stconv ]))
+
+  dt0s  = [ 1e-7 / 2 ]
+
+  print 1e-7/2 / (128/32)
+
+  for j, node in enumerate(nodes):
+    for dt in dt0s:
+      runs = [ run for run in stconv 
+               if run.dt*(run.nx/32) == dt and run.nodes == node ]
+      runs = sorted(runs, key=attrgetter('nx'))
+
+      x = np.asarray([ run.nx for run in runs ])
+      # y = np.asarray([ stconv[run]/(float(run.nx)/128)**3 for run in runs ])
+      y = np.asarray([ stconv[run] for run in runs ])
+
+      print 'nodes: %d, dt: %e' % (node, dt)
+      print '  x:', x
+      print '  y:', y
+      print ''
+      
+      subplot(1, 2, j+1)
+      title('%d nodes' % node)
+      loglog(x, y, label='dt %.2f' % dt, **pens[dt])
+      xlabel('nx')
+      ylabel('l2 error')
+
+  legend(loc='best')
+
+  print 'dtconv'
+  print '------'
+
+  figure()
+
+  nxs   = sorted(set([ run.nx for run in dtconv]))
+  nodes = sorted(set([ run.nodes for run in dtconv]))
+  dts   = sorted(set([ run.dt for run in dtconv ]))
 
   for nx in nxs:
     for j, node in enumerate(nodes):
-      runs = [ run for run in cflconv 
+      runs = [ run for run in dtconv 
                if run.nodes == node and run.nx == nx ]
-      runs = sorted(runs, key=attrgetter('cfl'))
+      runs = sorted(runs, key=attrgetter('dt'))
 
-      x = np.asarray([ run.cfl for run in runs ])
-      y = np.asarray([ cflconv[run] for run in runs ])
+      x = np.asarray([ run.dt for run in runs ])
+      y = np.asarray([ dtconv[run] for run in runs ])
 
       print 'nodes: %d, nx: %f' % (node, nx)
       print '  x:', x

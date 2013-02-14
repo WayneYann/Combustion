@@ -40,7 +40,7 @@ contains
   subroutine init_data_3d(lo,hi,ng,dx,cons,phlo,phhi)
 
     use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons
-    use chemistry_module, only : nspecies
+    use chemistry_module, only : nspecies, patm
     use probin_module,    only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
@@ -55,8 +55,6 @@ contains
     double precision rhot,u1t,u2t,u3t,Tt,et
     integer :: iwrk
     double precision :: rwrk
-
-    double precision, parameter :: patmos = 1.01325d6
 
     integer, parameter :: lmodemin=14, lmodemax=20
     double precision :: alphalm(lmodemin:lmodemax,0:lmodemax)
@@ -202,7 +200,7 @@ contains
              end if
 
              CALL CKXTY (Xt, IWRK, RWRK, Yt)
-             CALL CKRHOY(patmos,Tt,Yt,IWRK,RWRK,rhot)
+             CALL CKRHOY(patm,Tt,Yt,IWRK,RWRK,rhot)
              call CKUBMS(Tt,Yt,IWRK,RWRK,et)
 
              cons(i,j,k,irho) = rhot

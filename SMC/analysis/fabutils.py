@@ -18,7 +18,8 @@ def setenv():
   if env.host == 'hopper':
     env.host_string = 'hopper.nersc.gov'
     env.host_rsync  = 'hopper-s'
-    env.exe = 'main.Linux.Cray.mpi.omp.exe'
+    # env.exe = 'main.Linux.Cray.mpi.omp.exe'
+    env.exe = 'main.Linux.gfortran.mpi.omp.exe'
   elif env.host == 'gigan':
     env.exe = 'main.Linux.gfortran.mpi.omp.exe'
 

@@ -1,5 +1,5 @@
 module kernels_module
-  use chemistry_module, only : nspecies, molecular_weight
+  use chemistry_module, only : nspecies, molecular_weight, Ru
   use derivative_stencil_module, only : stencil_ng, first_deriv_8, M8, D8 
   use variables_module
   implicit none
@@ -1051,8 +1051,6 @@ contains
     double precision :: dxinv(3), c, rwrk, Cv, Cp
     double precision :: Tt, X(nspecies), gamma
     double precision :: courx, coury, courz
-
-    double precision, parameter :: Ru = 8.31451d7
 
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)
