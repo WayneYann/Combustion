@@ -36,8 +36,8 @@ tb_idim_less                        integer            1
 
 # block size inside threadbox
 tb_blocksize_x                      integer           -1
-tb_blocksize_y                      integer           -1
-tb_blocksize_z                      integer           -1
+tb_blocksize_y                      integer           16
+tb_blocksize_z                      integer           16
 
 
 #-----------------------------------------------------------------------------
