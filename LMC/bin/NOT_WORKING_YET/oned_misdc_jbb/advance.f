@@ -134,7 +134,6 @@ ccccccccccccccccccccccccccccccccccc
 c     new fancy delta chi algorithm
 ccccccccccccccccccccccccccccccccccc
 
-
 c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
          call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
      $                 delta_chi(0,:),macvel(0,:),dx(0),dt(0),
@@ -807,7 +806,7 @@ c     compute advective flux divergence
      $                     divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                     lo(0),hi(0),bc(0,:))
 
-            if (fancy_dpdt_fix .eq. 1) then
+            if (fancy_dpdt_fix .eq. 1 .or. fancy_predictor .eq. 0) then
 
                print *,'... update rho'
 
