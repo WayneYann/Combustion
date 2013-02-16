@@ -103,7 +103,7 @@ contains
     integer :: jindex(whi(2)-wlo(2)-hi(2)+lo(2))
     integer :: kindex(whi(3)-wlo(3)-hi(3)+lo(3))
     double precision :: rwrk
-    double precision, allocatable :: Tt(:), Xt(:,:), Yt(:,:), Cpt(:,:), Wtm(:), D(:,:)
+    double precision, allocatable :: Tt(:), Xt(:,:), Yt(:,:), Cpt(:,:), D(:,:)
     double precision, allocatable :: ME(:), MK(:), L1(:), L2(:)
 
     if (.not. gco) then
@@ -112,10 +112,9 @@ contains
        call eglib_init(nspecies, np, ITLS, IFLAG)
        
        !$omp parallel private(i,j,k,n,iwrk,rwrk,ii) &
-       !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2)
+       !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
        
        allocate(Tt(np))
-       allocate(Wtm(np))
        allocate(ME(np))
        allocate(MK(np))
        allocate(L1(np))
@@ -135,7 +134,6 @@ contains
                 Tt(  ii) = q(i,j,k,qtemp)
                 CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
                 Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-                CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
                 Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
              end do
           
@@ -155,7 +153,7 @@ contains
              do n=1,nspecies
                 do i=wlo(1), whi(1)
                    ii = i-wlo(1)+1
-                   Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
+                   Ddiag(i,j,k,n) = D(n,ii)
                 end do
              end do
              
@@ -167,7 +165,7 @@ contains
        end do
        !$omp end do
        
-       deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+       deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
        !$omp end parallel
 
     else ! ghost cells only 
@@ -193,10 +191,9 @@ contains
           call eglib_init(nspecies, np, ITLS, IFLAG)
     
           !$omp parallel private(i,j,k,kk,n,iwrk,rwrk,ii) &
-          !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2)
+          !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
        
           allocate(Tt(np))
-          allocate(Wtm(np))
           allocate(ME(np))
           allocate(MK(np))
           allocate(L1(np))
@@ -218,7 +215,6 @@ contains
                    Tt(  ii) = q(i,j,k,qtemp)
                    CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
                    Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-                   CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
                    Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
                 end do
                 
@@ -238,7 +234,7 @@ contains
                 do n=1,nspecies
                    do i=wlo(1), whi(1)
                       ii = i-wlo(1)+1
-                      Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
+                      Ddiag(i,j,k,n) = D(n,ii)
                    end do
                 end do
                 
@@ -250,7 +246,7 @@ contains
           end do
           !$omp end do
           
-          deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+          deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
           !$omp end parallel
        end if
 
@@ -275,10 +271,9 @@ contains
           call eglib_init(nspecies, np, ITLS, IFLAG)
     
           !$omp parallel private(i,j,k,jj,n,iwrk,rwrk,ii) &
-          !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2)
+          !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
        
           allocate(Tt(np))
-          allocate(Wtm(np))
           allocate(ME(np))
           allocate(MK(np))
           allocate(L1(np))
@@ -300,7 +295,6 @@ contains
                    Tt(  ii) = q(i,j,k,qtemp)
                    CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
                    Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-                   CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
                    Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
                 end do
                 
@@ -320,7 +314,7 @@ contains
                 do n=1,nspecies
                    do i=wlo(1), whi(1)
                       ii = i-wlo(1)+1
-                      Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
+                      Ddiag(i,j,k,n) = D(n,ii)
                    end do
                 end do
                 
@@ -332,7 +326,7 @@ contains
           end do
           !$omp end do
           
-          deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+          deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
           !$omp end parallel
        end if
        
@@ -357,10 +351,9 @@ contains
           call eglib_init(nspecies, np, ITLS, IFLAG)
     
           !$omp parallel private(i,j,k,n,iwrk,rwrk,ii) &
-          !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2)
+          !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
        
           allocate(Tt(np))
-          allocate(Wtm(np))
           allocate(ME(np))
           allocate(MK(np))
           allocate(L1(np))
@@ -380,7 +373,6 @@ contains
                    Tt(  ii) = q(i,j,k,qtemp)
                    CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
                    Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-                   CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
                    Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
                 end do
                 
@@ -408,7 +400,7 @@ contains
                 do n=1,nspecies
                    do ii=1,iisize
                       i = iindex(ii)
-                      Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
+                      Ddiag(i,j,k,n) = D(n,ii)
                    end do
                 end do
                                 
@@ -416,7 +408,7 @@ contains
           end do
           !$omp end do
           
-          deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+          deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
           !$omp end parallel
        end if
 
