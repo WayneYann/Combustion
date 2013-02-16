@@ -41,7 +41,7 @@ contains
 
     use bc_module
     use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons
-    use chemistry_module, only : nspecies
+    use chemistry_module, only : nspecies, patm, Ru
     use probin_module,    only : Minfty, Rvortex, Cvortex, bcy_lo, bcz_lo
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
@@ -56,8 +56,6 @@ contains
     double precision rhot,u1t,u2t,u3t,Tt,et,Pt
     integer :: iwrk
     double precision :: rwrk, Lx, exptmp, Wbar, Rc, Cc, cs, Cv, Cp, gamma, uinfty
-
-    double precision, parameter :: patmos = 1.01325d6, Ru = 8.31451d7
 
     do k=lo(3),hi(3)
        z = phlo(3) + dx(3)*(k + 0.5d0)
@@ -81,13 +79,13 @@ contains
                 Xt(n) = pmf_vals(3+n)
              end do
              CALL CKXTY (Xt, IWRK, RWRK, Yt)
-             CALL CKRHOY(patmos,Tt,Yt,IWRK,RWRK,rhot)
+             CALL CKRHOY(patm,Tt,Yt,IWRK,RWRK,rhot)
              ! we now have rho
 
              call CKCVBL(Tt, Xt, iwrk, rwrk, Cv)
              Cp = Cv + Ru
              gamma = Cp / Cv
-             cs = sqrt(gamma*patmos/rhot)
+             cs = sqrt(gamma*patm/rhot)
 
              uinfty = Minfty*cs
              Rc = Rvortex*Lx
@@ -113,7 +111,7 @@ contains
                 call bl_error("In vortex problem, either y- or z-direction must be periodic")
              end if
 
-             Pt = patmos - rhot*(Cc/Rc)**2*exptmp
+             Pt = patm - rhot*(Cc/Rc)**2*exptmp
 
              call CKMMWX(Xt, iwrk, rwrk, Wbar)
              Tt = Pt*Wbar / (rhot*Ru)

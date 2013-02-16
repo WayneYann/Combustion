@@ -187,7 +187,7 @@ contains
   end subroutine ctoprim_3d
 
   !
-  ! Compute total density
+  ! Enforce nonnegative species and compute total density
   !
   subroutine reset_density(U)
     type(multifab), intent(inout) :: U
@@ -218,18 +218,61 @@ contains
     integer, intent(in) :: lo(3), hi(3), ng
     double precision, intent(inout) :: u(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,ncons)
 
-    integer :: i, j, k, n
+    integer :: i, j, k, n, iryn
     double precision :: rho
+    double precision, parameter :: eps = -1.0d-16
+    integer          :: idom
+    double precision :: rhoy_dom, rhoy_under
 
-    !$omp parallel do private(i,j,k,n,rho)
+    !$omp parallel do private(i,j,k,n,iryn,rho) &
+    !$omp private(idom, rhoy_dom, rhoy_under)
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
+
              rho = 0.d0
              do n=1, nspecies
                 rho = rho + U(i,j,k,iry1+n-1)
              end do
              U(i,j,k,irho) = rho
+
+             !
+             ! Enforce nonnegative species
+             !
+             rhoy_under = 0.d0
+             do n = 1, nspecies
+                iryn = iry1+n-1
+                if (U(i,j,k,iryn) .lt. 0.d0) then
+                   rhoy_under = rhoy_under + U(i,j,k,iryn)
+                   U(i,j,k,iryn) = 0.d0
+                end if
+             end do
+
+             if (rhoy_under .lt. rho*eps) then
+                !
+                ! Find the dominant species.
+                !
+                idom = 1
+                rhoy_dom = U(i,j,k,iry1)
+                do n = 2, nspecies
+                   iryn = iry1+n-1
+                   if (U(i,j,k,iryn) .gt. rhoy_dom) then
+                      idom = n
+                      rhoy_dom = U(i,j,k,iryn)
+                   end if
+                end do
+                !
+                ! Take enough from the dominant species to fill the negative one.
+                !
+                iryn = iry1+idom-1
+                U(i,j,k,iryn) = U(i,j,k,iryn) + rhoy_under
+                if (U(i,j,k,iryn) .lt. 0.d0) then
+                   print *,'Just made dominant species',idom, &
+                        'negative', U(i,j,k,iryn)/rho, 'at ',i,j,k 
+                   call bl_error("Error:: variables :: reset_rho_3d")
+                end if
+             end if
+
           end do
        end do
     end do

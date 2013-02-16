@@ -76,7 +76,7 @@
           cpWT = aux(icp,i,k)*aux(iWbar,i,k)*T
           gam1 = aux(igamma,i,k) - 1.d0
           do n=1,nspecies
-             hcal = h(n) - cpWT/molecular_weight(n)
+             hcal = h(n) - cpWT*inv_mwt(n)
              S_p    = S_p - hcal*aux(iwdot1+n-1,i,k)
              S_Y(n) = aux(iwdot1+n-1,i,k) / rho
              d_p    = d_p - hcal*fd(i,j,k,iry1+n-1)
@@ -204,7 +204,7 @@
           cpWT = aux(icp,i,k)*aux(iWbar,i,k)*T
           gam1 = aux(igamma,i,k) - 1.d0
           do n=1,nspecies
-             hcal = h(n) - cpWT/molecular_weight(n)
+             hcal = h(n) - cpWT*inv_mwt(n)
              S_p    = S_p - hcal*aux(iwdot1+n-1,i,k)
              S_Y(n) = aux(iwdot1+n-1,i,k) / rho
              d_p    = d_p - hcal*fd(i,j,k,iry1+n-1)
@@ -351,79 +351,91 @@
     end do
     !$omp end do nowait
 
-    !$omp master
-
     ! lo-z boundary
     if (dlo(3) .eq. lo(3)) then
        k = lo(3)
        ! use completely right-biased stencil
+       !$omp do
        do i=lo(1),hi(1)
           dvdz(i,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qv))
           dwdz(i,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qw))
           dpdz(i,k) = dxinv(3)*first_deriv_rb(q(i,j,k:k+3,qpres))
        end do
+       !$omp end do nowait
 
        k = lo(3)+1
        ! use 3rd-order slightly right-biased stencil
+       !$omp do
        do i=lo(1),hi(1)
           dvdz(i,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qv))
           dwdz(i,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qw))
           dpdz(i,k) = dxinv(3)*first_deriv_r3(q(i,j,k-1:k+2,qpres))
        end do
+       !$omp end do nowait
 
        k = lo(3)+2
        ! use 4th-order stencil
+       !$omp do
        do i=lo(1),hi(1)
           dvdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qv))
           dwdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qw))
           dpdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qpres))
        end do
+       !$omp end do nowait
 
        k = lo(3)+3
        ! use 6th-order stencil
+       !$omp do
        do i=lo(1),hi(1)
           dvdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-3:k+3,qv))
           dwdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-3:k+3,qw))
           dpdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-3:k+3,qpres))
        end do
+       !$omp end do nowait
     end if
 
     ! hi-z boundary
     if (dhi(3) .eq. hi(3)) then
        k = hi(3)-3
        ! use 6th-order stencil
+       !$omp do
        do i=lo(1),hi(1)
           dvdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-3:k+3,qv))
           dwdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-3:k+3,qw))
           dpdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-3:k+3,qpres))
        end do
+       !$omp end do nowait
 
        k = hi(3)-2
        ! use 4th-order stencil
+       !$omp do
        do i=lo(1),hi(1)
           dvdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qv))
           dwdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qw))
           dpdz(i,k) = dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qpres))
        end do
+       !$omp end do nowait
 
        k = hi(3)-1
        ! use 3rd-order slightly left-biased stencil
+       !$omp do
        do i=lo(1),hi(1)
           dvdz(i,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qv))
           dwdz(i,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qw))
           dpdz(i,k) = dxinv(3)*first_deriv_l3(q(i,j,k-2:k+1,qpres))
        end do
+       !$omp end do nowait
 
        k = hi(3)
        ! use completely left-biased stencil
+       !$omp do
        do i=lo(1),hi(1)
           dvdz(i,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qv))
           dwdz(i,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qw))
           dpdz(i,k) = dxinv(3)*first_deriv_lb(q(i,j,k-3:k,qpres))
        end do
+       !$omp end do nowait
     end if
-
-    !$omp end master
 
     !$omp end parallel
   end subroutine comp_trans_deriv_y

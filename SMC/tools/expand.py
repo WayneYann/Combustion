@@ -82,7 +82,9 @@ def expand_line(line):
         return ''
 
 def expand_matmul(line):
-    if re.compile(r"matmul\s*\(.*M8.*\)").search(line):
+    if re.compile(r"matmul\s*\(.*M8T.*\)").search(line):
+        return expand_matmul_8T(line)
+    elif re.compile(r"matmul\s*\(.*M8.*\)").search(line):
         return expand_matmul_8(line)
     elif re.compile(r"matmul\s*\(.*M6.*\)").search(line):
         return expand_matmul_6(line)
@@ -110,8 +112,7 @@ def expand_first_deriv(line):
         return ''
 
 def expand_matmul_8(line):
-    # expand (1) lhs = matmul(M8, u( .... )) OR
-    #        (2) lhs = matmul(a( .... ), M8)
+    # expand lhs = matmul(a( .... ), M8)
     lhs, rhs = line.split('=')
 
     lhs = lhs.strip(' \t')
@@ -140,70 +141,17 @@ def expand_matmul_8(line):
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
     if args[0:2] == 'M8':  
-        # M8,u(,,,)
-        x = args[3:]
-        u = expand_fortran_slice(x)
-        return indent+lhs+'(1'+ld2+' = '+'M8(1,1) * '+u[0]+' &\n' + \
-                     moreindent + ' + ' +'M8(1,2) * '+u[1]+' &\n' + \
-                     moreindent + ' + ' +'M8(1,3) * '+u[2]+' &\n' + \
-                     moreindent + ' + ' +'M8(1,4) * '+u[3]+' &\n' + \
-                     moreindent + ' - ' +'M8(8,4) * '+u[4]+'\n'   + \
-               indent+lhs+'(2'+ld2+' = '+'M8(2,1) * '+u[0]+' &\n' + \
-                     moreindent + ' + ' +'M8(2,2) * '+u[1]+' &\n' + \
-                     moreindent + ' + ' +'M8(2,3) * '+u[2]+' &\n' + \
-                     moreindent + ' + ' +'M8(2,4) * '+u[3]+' &\n' + \
-                     moreindent + ' - ' +'M8(7,4) * '+u[4]+' &\n' + \
-                     moreindent + ' - ' +'M8(7,3) * '+u[5]+'\n'   + \
-               indent+lhs+'(3'+ld2+' = '+'M8(3,1) * '+u[0]+' &\n' + \
-                     moreindent + ' + ' +'M8(3,2) * '+u[1]+' &\n' + \
-                     moreindent + ' + ' +'M8(3,3) * '+u[2]+' &\n' + \
-                     moreindent + ' + ' +'M8(3,4) * '+u[3]+' &\n' + \
-                     moreindent + ' - ' +'M8(6,4) * '+u[4]+' &\n' + \
-                     moreindent + ' - ' +'M8(6,3) * '+u[5]+' &\n' + \
-                     moreindent + ' - ' +'M8(6,2) * '+u[6]+'\n'   + \
-               indent+lhs+'(4'+ld2+' = '+'M8(4,1) * '+u[0]+' &\n' + \
-                     moreindent + ' + ' +'M8(4,2) * '+u[1]+' &\n' + \
-                     moreindent + ' + ' +'M8(4,3) * '+u[2]+' &\n' + \
-                     moreindent + ' + ' +'M8(4,4) * '+u[3]+' &\n' + \
-                     moreindent + ' - ' +'M8(5,4) * '+u[4]+' &\n' + \
-                     moreindent + ' - ' +'M8(5,3) * '+u[5]+' &\n' + \
-                     moreindent + ' - ' +'M8(5,2) * '+u[6]+' &\n' + \
-                     moreindent + ' - ' +'M8(5,1) * '+u[7]+'\n'   + \
-               indent+lhs+'(5'+ld2+' = '+'M8(5,1) * '+u[0]+' &\n' + \
-                     moreindent + ' + ' +'M8(5,2) * '+u[1]+' &\n' + \
-                     moreindent + ' + ' +'M8(5,3) * '+u[2]+' &\n' + \
-                     moreindent + ' + ' +'M8(5,4) * '+u[3]+' &\n' + \
-                     moreindent + ' - ' +'M8(4,4) * '+u[4]+' &\n' + \
-                     moreindent + ' - ' +'M8(4,3) * '+u[5]+' &\n' + \
-                     moreindent + ' - ' +'M8(4,2) * '+u[6]+' &\n' + \
-                     moreindent + ' - ' +'M8(4,1) * '+u[7]+'\n'   + \
-               indent+lhs+'(6'+ld2+' = '+'M8(6,2) * '+u[1]+' &\n' + \
-                     moreindent + ' + ' +'M8(6,3) * '+u[2]+' &\n' + \
-                     moreindent + ' + ' +'M8(6,4) * '+u[3]+' &\n' + \
-                     moreindent + ' - ' +'M8(3,4) * '+u[4]+' &\n' + \
-                     moreindent + ' - ' +'M8(3,3) * '+u[5]+' &\n' + \
-                     moreindent + ' - ' +'M8(3,2) * '+u[6]+' &\n' + \
-                     moreindent + ' - ' +'M8(3,1) * '+u[7]+'\n'   + \
-               indent+lhs+'(7'+ld2+' = '+'M8(7,3) * '+u[2]+' &\n' + \
-                     moreindent + ' + ' +'M8(7,4) * '+u[3]+' &\n' + \
-                     moreindent + ' - ' +'M8(2,4) * '+u[4]+' &\n' + \
-                     moreindent + ' - ' +'M8(2,3) * '+u[5]+' &\n' + \
-                     moreindent + ' - ' +'M8(2,2) * '+u[6]+' &\n' + \
-                     moreindent + ' - ' +'M8(2,1) * '+u[7]+'\n'   + \
-               indent+lhs+'(8'+ld2+' = '+'M8(8,4) * '+u[3]+' &\n' + \
-                    moreindent + ' - ' +'M8(1,4) * '+u[4]+' &\n' + \
-                    moreindent + ' - ' +'M8(1,3) * '+u[5]+' &\n' + \
-                    moreindent + ' - ' +'M8(1,2) * '+u[6]+' &\n' + \
-                    moreindent + ' - ' +'M8(1,1) * '+u[7]+'\n' 
+        print 'expand_matmul_8: how did we get here?'
+        sys.exit(1)
     else: 
         # a(,,,), M8
         x = args[0:-3]
         a = expand_fortran_slice(x)
         return indent+lhs+'(1'+ld2+' = '+a[0]+' * M8(1,1) &\n' + \
-                    moreindent + ' + ' +a[1]+' * M8(2,1) &\n' + \
-                    moreindent + ' + ' +a[2]+' * M8(3,1) &\n' + \
-                    moreindent + ' + ' +a[3]+' * M8(4,1) &\n' + \
-                    moreindent + ' + ' +a[4]+' * M8(5,1)\n'   + \
+                     moreindent + ' + ' +a[1]+' * M8(2,1) &\n' + \
+                     moreindent + ' + ' +a[2]+' * M8(3,1) &\n' + \
+                     moreindent + ' + ' +a[3]+' * M8(4,1) &\n' + \
+                     moreindent + ' + ' +a[4]+' * M8(5,1)\n'   + \
                indent+lhs+'(2'+ld2+' = '+a[0]+' * M8(1,2) &\n' + \
                      moreindent + ' + ' +a[1]+' * M8(2,2) &\n' + \
                      moreindent + ' + ' +a[2]+' * M8(3,2) &\n' + \
@@ -225,32 +173,122 @@ def expand_matmul_8(line):
                      moreindent + ' + ' +a[5]+' * M8(6,4) &\n' + \
                      moreindent + ' + ' +a[6]+' * M8(7,4) &\n' + \
                      moreindent + ' + ' +a[7]+' * M8(8,4)\n'   + \
-               indent+lhs+'(5'+ld2+' =-'+a[0]+' * M8(8,4) &\n' + \
-                     moreindent + ' - ' +a[1]+' * M8(7,4) &\n' + \
-                     moreindent + ' - ' +a[2]+' * M8(6,4) &\n' + \
-                     moreindent + ' - ' +a[3]+' * M8(5,4) &\n' + \
-                     moreindent + ' - ' +a[4]+' * M8(4,4) &\n' + \
-                     moreindent + ' - ' +a[5]+' * M8(3,4) &\n' + \
-                     moreindent + ' - ' +a[6]+' * M8(2,4) &\n' + \
-                     moreindent + ' - ' +a[7]+' * M8(1,4)\n'   + \
-               indent+lhs+'(6'+ld2+' =-'+a[1]+' * M8(7,3) &\n' + \
-                     moreindent + ' - ' +a[2]+' * M8(6,3) &\n' + \
-                     moreindent + ' - ' +a[3]+' * M8(5,3) &\n' + \
-                     moreindent + ' - ' +a[4]+' * M8(4,3) &\n' + \
-                     moreindent + ' - ' +a[5]+' * M8(3,3) &\n' + \
-                     moreindent + ' - ' +a[6]+' * M8(2,3) &\n' + \
-                     moreindent + ' - ' +a[7]+' * M8(1,3)\n' + \
-               indent+lhs+'(7'+ld2+' =-'+a[2]+' * M8(6,2) &\n' + \
-                     moreindent + ' - ' +a[3]+' * M8(5,2) &\n' + \
-                     moreindent + ' - ' +a[4]+' * M8(4,2) &\n' + \
-                     moreindent + ' - ' +a[5]+' * M8(3,2) &\n' + \
-                     moreindent + ' - ' +a[6]+' * M8(2,2) &\n' + \
-                     moreindent + ' - ' +a[7]+' * M8(1,2)\n' + \
-               indent+lhs+'(8'+ld2+' =-'+a[3]+' * M8(5,1) &\n' + \
-                     moreindent + ' - ' +a[4]+' * M8(4,1) &\n' + \
-                     moreindent + ' - ' +a[5]+' * M8(3,1) &\n' + \
-                     moreindent + ' - ' +a[6]+' * M8(2,1) &\n' + \
-                     moreindent + ' - ' +a[7]+' * M8(1,1)\n' 
+               indent+lhs+'(5'+ld2+' = '+a[0]+' * M8(1,5) &\n' + \
+                     moreindent + ' + ' +a[1]+' * M8(2,5) &\n' + \
+                     moreindent + ' + ' +a[2]+' * M8(3,5) &\n' + \
+                     moreindent + ' + ' +a[3]+' * M8(4,5) &\n' + \
+                     moreindent + ' + ' +a[4]+' * M8(5,5) &\n' + \
+                     moreindent + ' + ' +a[5]+' * M8(6,5) &\n' + \
+                     moreindent + ' + ' +a[6]+' * M8(7,5) &\n' + \
+                     moreindent + ' + ' +a[7]+' * M8(8,5)\n'   + \
+               indent+lhs+'(6'+ld2+' = '+a[1]+' * M8(2,6) &\n' + \
+                     moreindent + ' + ' +a[2]+' * M8(3,6) &\n' + \
+                     moreindent + ' + ' +a[3]+' * M8(4,6) &\n' + \
+                     moreindent + ' + ' +a[4]+' * M8(5,6) &\n' + \
+                     moreindent + ' + ' +a[5]+' * M8(6,6) &\n' + \
+                     moreindent + ' + ' +a[6]+' * M8(7,6) &\n' + \
+                     moreindent + ' + ' +a[7]+' * M8(8,6)\n' + \
+               indent+lhs+'(7'+ld2+' = '+a[2]+' * M8(3,7) &\n' + \
+                     moreindent + ' + ' +a[3]+' * M8(4,7) &\n' + \
+                     moreindent + ' + ' +a[4]+' * M8(5,7) &\n' + \
+                     moreindent + ' + ' +a[5]+' * M8(6,7) &\n' + \
+                     moreindent + ' + ' +a[6]+' * M8(7,7) &\n' + \
+                     moreindent + ' + ' +a[7]+' * M8(8,7)\n' + \
+               indent+lhs+'(8'+ld2+' = '+a[3]+' * M8(4,8) &\n' + \
+                     moreindent + ' + ' +a[4]+' * M8(5,8) &\n' + \
+                     moreindent + ' + ' +a[5]+' * M8(6,8) &\n' + \
+                     moreindent + ' + ' +a[6]+' * M8(7,8) &\n' + \
+                     moreindent + ' + ' +a[7]+' * M8(8,8)\n' 
+
+
+def expand_matmul_8T(line):
+    # expand lhs = matmul(M8T, u( .... ))
+    lhs, rhs = line.split('=')
+
+    lhs = lhs.strip(' \t')
+    i = string.find(line, lhs)
+    indent = line[0:i]
+    if lhs.count(',') == 0:
+        lhsdim = 1
+    elif lhs.count(',') == 1:
+        lhsdim = 2
+    else:
+        print 'expand_matmul_8', lhs
+        sys.exit(2)
+    if lhsdim == 1:
+        moreindent = indent+'   '
+        ld2 = ')'
+    else:
+        moreindent = indent+'     '
+        lb = string.find(lhs,'(')
+        rb = string.find(lhs,')')
+        ld = lhs[lb:rb+1].split(',')
+        ld2 = ','+ld[1]
+        lhs = lhs[0:lb]
+    for i in range(len(lhs)):
+        moreindent = moreindent+' '
+
+    rhs = rhs.strip(' \t\n\r')
+    args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
+    if args[0:3] == 'M8T':  
+        # M8,u(,,,)
+        x = args[4:]
+        u = expand_fortran_slice(x)
+        return indent+lhs+'(1'+ld2+' = '+'M8T(1,1) * '+u[0]+' &\n' + \
+                     moreindent + ' + ' +'M8T(2,1) * '+u[1]+' &\n' + \
+                     moreindent + ' + ' +'M8T(3,1) * '+u[2]+' &\n' + \
+                     moreindent + ' + ' +'M8T(4,1) * '+u[3]+' &\n' + \
+                     moreindent + ' + ' +'M8T(5,1) * '+u[4]+'\n'   + \
+               indent+lhs+'(2'+ld2+' = '+'M8T(1,2) * '+u[0]+' &\n' + \
+                     moreindent + ' + ' +'M8T(2,2) * '+u[1]+' &\n' + \
+                     moreindent + ' + ' +'M8T(3,2) * '+u[2]+' &\n' + \
+                     moreindent + ' + ' +'M8T(4,2) * '+u[3]+' &\n' + \
+                     moreindent + ' + ' +'M8T(5,2) * '+u[4]+' &\n' + \
+                     moreindent + ' + ' +'M8T(6,2) * '+u[5]+'\n'   + \
+               indent+lhs+'(3'+ld2+' = '+'M8T(1,3) * '+u[0]+' &\n' + \
+                     moreindent + ' + ' +'M8T(2,3) * '+u[1]+' &\n' + \
+                     moreindent + ' + ' +'M8T(3,3) * '+u[2]+' &\n' + \
+                     moreindent + ' + ' +'M8T(4,3) * '+u[3]+' &\n' + \
+                     moreindent + ' + ' +'M8T(5,3) * '+u[4]+' &\n' + \
+                     moreindent + ' + ' +'M8T(6,3) * '+u[5]+' &\n' + \
+                     moreindent + ' + ' +'M8T(7,3) * '+u[6]+'\n'   + \
+               indent+lhs+'(4'+ld2+' = '+'M8T(1,4) * '+u[0]+' &\n' + \
+                     moreindent + ' + ' +'M8T(2,4) * '+u[1]+' &\n' + \
+                     moreindent + ' + ' +'M8T(3,4) * '+u[2]+' &\n' + \
+                     moreindent + ' + ' +'M8T(4,4) * '+u[3]+' &\n' + \
+                     moreindent + ' + ' +'M8T(5,4) * '+u[4]+' &\n' + \
+                     moreindent + ' + ' +'M8T(6,4) * '+u[5]+' &\n' + \
+                     moreindent + ' + ' +'M8T(7,4) * '+u[6]+' &\n' + \
+                     moreindent + ' + ' +'M8T(8,4) * '+u[7]+'\n'   + \
+               indent+lhs+'(5'+ld2+' = '+'M8T(1,5) * '+u[0]+' &\n' + \
+                     moreindent + ' + ' +'M8T(2,5) * '+u[1]+' &\n' + \
+                     moreindent + ' + ' +'M8T(3,5) * '+u[2]+' &\n' + \
+                     moreindent + ' + ' +'M8T(4,5) * '+u[3]+' &\n' + \
+                     moreindent + ' + ' +'M8T(5,5) * '+u[4]+' &\n' + \
+                     moreindent + ' + ' +'M8T(6,5) * '+u[5]+' &\n' + \
+                     moreindent + ' + ' +'M8T(7,5) * '+u[6]+' &\n' + \
+                     moreindent + ' + ' +'M8T(8,5) * '+u[7]+'\n'   + \
+               indent+lhs+'(6'+ld2+' = '+'M8T(2,6) * '+u[1]+' &\n' + \
+                     moreindent + ' + ' +'M8T(3,6) * '+u[2]+' &\n' + \
+                     moreindent + ' + ' +'M8T(4,6) * '+u[3]+' &\n' + \
+                     moreindent + ' + ' +'M8T(5,6) * '+u[4]+' &\n' + \
+                     moreindent + ' + ' +'M8T(6,6) * '+u[5]+' &\n' + \
+                     moreindent + ' + ' +'M8T(7,6) * '+u[6]+' &\n' + \
+                     moreindent + ' + ' +'M8T(8,6) * '+u[7]+'\n'   + \
+               indent+lhs+'(7'+ld2+' = '+'M8T(3,7) * '+u[2]+' &\n' + \
+                     moreindent + ' + ' +'M8T(4,7) * '+u[3]+' &\n' + \
+                     moreindent + ' + ' +'M8T(5,7) * '+u[4]+' &\n' + \
+                     moreindent + ' + ' +'M8T(6,7) * '+u[5]+' &\n' + \
+                     moreindent + ' + ' +'M8T(7,7) * '+u[6]+' &\n' + \
+                     moreindent + ' + ' +'M8T(8,7) * '+u[7]+'\n'   + \
+               indent+lhs+'(8'+ld2+' = '+'M8T(4,8) * '+u[3]+' &\n' + \
+                     moreindent + ' + ' +'M8T(5,8) * '+u[4]+' &\n' + \
+                     moreindent + ' + ' +'M8T(6,8) * '+u[5]+' &\n' + \
+                     moreindent + ' + ' +'M8T(7,8) * '+u[6]+' &\n' + \
+                     moreindent + ' + ' +'M8T(8,8) * '+u[7]+'\n' 
+    else:
+        print 'expand_matmul_8T: how did we get here?'
+        sys.exit(1)
 
 
 def expand_matmul_6(line):

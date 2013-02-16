@@ -1,6 +1,6 @@
 module kernels_module
-  use chemistry_module, only : nspecies, molecular_weight
-  use derivative_stencil_module, only : stencil_ng, first_deriv_8, M8, D8 
+  use chemistry_module, only : nspecies, molecular_weight, Ru
+  use derivative_stencil_module, only : stencil_ng, first_deriv_8, M8, M8T, D8 
   use variables_module
   implicit none
 
@@ -12,24 +12,22 @@ contains
 
   subroutine hypterm_3d (lo,hi,dx,cons,clo,chi,q,qlo,qhi,rhs,rlo,rhi)
 
-    integer,         intent(in):: lo(3),hi(3),clo(3),chi(3),qlo(3),qhi(3),rlo(3),rhi(3)
-    double precision,intent(in):: dx(3)
-    double precision,intent(in):: cons(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3),ncons)
-    double precision,intent(in)::    q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-    double precision           ::  rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    integer,         intent(in)   :: lo(3),hi(3),clo(3),chi(3),qlo(3),qhi(3),rlo(3),rhi(3)
+    double precision,intent(in)   :: dx(3)
+    double precision,intent(in)   ::cons(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3),ncons)
+    double precision,intent(in)   ::   q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(inout):: rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
     integer          :: i,j,k,n
     double precision :: dxinv(3)
-    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
+    double precision :: tmpx(lo(1)-4:hi(1)+4)
+    double precision :: tmpy(lo(1)  :hi(1)  ,lo(2)-4:hi(2)+4)
+    double precision :: tmpz(lo(1)  :hi(1)  ,lo(2)  :hi(2)  ,lo(3)-4:hi(3)+4)
 
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
-    allocate(tmpx(lo(1)-4:hi(1)+4))
-    allocate(tmpy(lo(1)  :hi(1)  ,lo(2)-4:hi(2)+4))
-    allocate(tmpz(lo(1)  :hi(1)  ,lo(2)  :hi(2)  ,lo(3)-4:hi(3)+4))
-    
     ! ------- BEGIN x-direction -------
 
     do k=lo(3),hi(3)
@@ -248,39 +246,23 @@ contains
        enddo
     enddo
 
-    deallocate(tmpx,tmpy,tmpz)
-
   end subroutine hypterm_3d
 
 
-  subroutine narrow_diffterm_3d (lo,hi,dx,q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy)
+  subroutine narrow_diffterm_3d (lo,hi,dx,q,qlo,qhi,rhs_g,glo,ghi,mu,xi,lam,dxy)
 
-    integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),rlo(3),rhi(3)
+    integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),glo(3),ghi(3)
     double precision,intent(in):: dx(3)
-    double precision,intent(in):: q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-    double precision,intent(in):: mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
-    double precision,intent(in):: dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
-    double precision           :: rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+    double precision,intent(in)   ::  q  (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in)   ::  mu (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::  xi (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::  lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::  dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
+    double precision,intent(inout)::rhs_g(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),ncons)
 
-    double precision, allocatable, dimension(:,:,:) :: ux,uy,uz,vx,vy,vz,wx,wy,wz
-    double precision, allocatable :: tmpx(:), tmpy(:,:),tmpz(:,:,:)
-    double precision, allocatable, dimension(:,:,:) :: vsp,vsm, dpe
-    double precision, allocatable, dimension(:,:,:,:) :: Hg, dpy, dxe
-    ! dxy: diffusion coefficient of X in equation for Y
-    ! dpy: diffusion coefficient of p in equation for Y
-    ! dxe: diffusion coefficient of X in equation for energy
-    ! dpe: diffusion coefficient of p in equation for energy
-
+    integer :: i, dlo(3), dhi(3)
     double precision :: dxinv(3), dx2inv(3)
-    double precision :: tauxx(lo(1):hi(1)),tauyy(lo(1):hi(1)),tauzz(lo(1):hi(1)),divu(lo(1):hi(1))
-    integer          :: i,j,k,n, qxn, qyn, qhn
-    integer :: dlo(3), dhi(3)
-
-    double precision :: mmtmp(8,qlo(1):qhi(1)), Yhalf, hhalf
-    double precision, allocatable, dimension(:,:,:,:) :: M8p
-    double precision, allocatable, dimension(:,:,:) :: Hry
+    double precision :: rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),ncons)
 
     do i = 1,3
        dxinv(i) = 1.0d0 / dx(i)
@@ -290,29 +272,43 @@ contains
     dlo = lo - stencil_ng
     dhi = hi + stencil_ng
 
-    allocate(ux( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
-    allocate(vx( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
-    allocate(wx( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+    rhs = 0.d0
 
-    allocate(uy(dlo(1):dhi(1), lo(2): hi(2),dlo(3):dhi(3)))
-    allocate(vy(dlo(1):dhi(1), lo(2): hi(2),dlo(3):dhi(3)))
-    allocate(wy(dlo(1):dhi(1), lo(2): hi(2),dlo(3):dhi(3)))
+    call diffterm_1(q,qlo,qhi,rhs,lo,hi,mu,xi, lo,hi,dlo,dhi,dxinv)
 
-    allocate(uz(dlo(1):dhi(1),dlo(2):dhi(2), lo(3): hi(3)))
-    allocate(vz(dlo(1):dhi(1),dlo(2):dhi(2), lo(3): hi(3)))
-    allocate(wz(dlo(1):dhi(1),dlo(2):dhi(2), lo(3): hi(3)))
+    call diffterm_2(q,qlo,qhi,rhs,lo,hi,mu,xi,lam,dxy, lo,hi,dlo,dhi,dx2inv)
 
-    allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
-    allocate(vsm(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+    rhs_g(     lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
+         rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
+         + rhs(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
 
-    allocate(tmpx(dlo(1):dhi(1)))
-    allocate(tmpy( lo(1): hi(1),dlo(2):dhi(2)))
-    allocate(tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3)))
+  end subroutine narrow_diffterm_3d
+
+  subroutine diffterm_1(q,qlo,qhi,rhs,rlo,rhi,mu,xi, lo,hi,dlo,dhi,dxinv)
+    integer,         intent(in):: lo(3),hi(3),dlo(3),dhi(3)
+    integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3)
+    double precision,intent(in):: dxinv(3)
+    double precision,intent(in)   :: q (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in)   :: mu(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   :: xi(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(inout)::rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
+
+    !
+    ! local variables
+    !
+    double precision, dimension( lo(1): hi(1),dlo(2):dhi(2),dlo(3):dhi(3)) :: ux,vx,wx
+    double precision, dimension(dlo(1):dhi(1), lo(2): hi(2),dlo(3):dhi(3)) :: uy,vy,wy
+    double precision, dimension(dlo(1):dhi(1),dlo(2):dhi(2), lo(3): hi(3)) :: uz,vz,wz
+    double precision :: tmpx(dlo(1):dhi(1))
+    double precision :: tmpy( lo(1): hi(1),dlo(2):dhi(2))
+    double precision :: tmpz( lo(1): hi(1), lo(2): hi(2),dlo(3):dhi(3))
+    double precision ::  vsm(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3))
+    double precision, dimension(lo(1):hi(1)) :: tauxx,tauyy,tauzz,divu
+    integer          :: i,j,k
 
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
           do i=dlo(1),dhi(1)
-             vsp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
              vsm(i,j,k) = xi(i,j,k) -  TwoThirds*mu(i,j,k)
           enddo
        enddo
@@ -516,18 +512,43 @@ contains
        end do
     end do
 
-    deallocate(tmpx,tmpy,tmpz)
+  end subroutine diffterm_1
 
-    deallocate(ux,uy,uz,vx,vy,vz,wx,wy,wz)
+  subroutine diffterm_2(q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy,lo,hi,dlo,dhi,dx2inv)
+    integer,         intent(in):: lo(3),hi(3),dlo(3),dhi(3)
+    integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3)
+    double precision,intent(in):: dx2inv(3)
+    double precision,intent(in)   ::  q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+    double precision,intent(in)   :: mu(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   :: xi(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::lam(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
+    double precision,intent(in)   ::dxy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nspecies)
+    double precision,intent(inout)::rhs(rlo(1):rhi(1),rlo(2):rhi(2),rlo(3):rhi(3),ncons)
 
-    allocate(dpy(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
-    allocate(dxe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies))
-    allocate(dpe(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
+    !
+    ! local variables
+    !
+    double precision, dimension(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)) :: vsp,dpe
+    double precision, dimension(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies) :: dpy,dxe
+    ! dxy: diffusion coefficient of X in equation for Y
+    ! dpy: diffusion coefficient of p in equation for Y
+    ! dxe: diffusion coefficient of X in equation for energy
+    ! dpe: diffusion coefficient of p in equation for energy
 
-    allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons))
+    integer          :: i,j,k,n, qxn, qyn, qhn
 
-    allocate(M8p(8,lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
-    allocate(Hry(  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
+    double precision :: mmtmp(8,lo(1):hi(1)+1), Yhalf, hhalf
+    double precision :: M8p(8,lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1)
+    double precision :: Hry(  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1)
+    double precision :: Hg (  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons)
+
+    do k=dlo(3),dhi(3)
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             vsp(i,j,k) = xi(i,j,k) + FourThirds*mu(i,j,k)
+          enddo
+       enddo
+    enddo
 
     dpe = 0.d0
 
@@ -579,7 +600,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)+1
-             mmtmp(1:8,i) = matmul(M8, q(i-4:i+3,j,k,qpres))
+             mmtmp(1:8,i) = matmul(M8T, q(i-4:i+3,j,k,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i-4:i+3,j,k), mmtmp(1:8,i))
           end do
           do i=lo(1),hi(1)+1
@@ -602,7 +623,7 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)    
              do i=lo(1),hi(1)+1
-                mmtmp(1:8,i) = matmul(M8, q(i-4:i+3,j,k,qxn))
+                mmtmp(1:8,i) = matmul(M8T, q(i-4:i+3,j,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i-4:i+3,j,k,n), mmtmp(1:8,i))
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
                      + dot_product(dxy(i-4:i+3,j,k,n), mmtmp(1:8,i))
@@ -686,7 +707,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)+1
           do i=lo(1),hi(1)
-             mmtmp(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qpres))
+             mmtmp(1:8,i) = matmul(M8T, q(i,j-4:j+3,k,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j-4:j+3,k), mmtmp(1:8,i))
           end do
           do i=lo(1),hi(1)
@@ -709,7 +730,7 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)+1
              do i=lo(1),hi(1)
-                mmtmp(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qxn))
+                mmtmp(1:8,i) = matmul(M8T, q(i,j-4:j+3,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp(1:8,i))
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
                      + dot_product(dxy(i,j-4:j+3,k,n), mmtmp(1:8,i))
@@ -794,7 +815,7 @@ contains
     do k=lo(3),hi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             mmtmp(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qpres))
+             mmtmp(1:8,i) = matmul(M8T, q(i,j,k-4:k+3,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j,k-4:k+3), mmtmp(1:8,i))
           end do
           do i=lo(1),hi(1)          
@@ -817,7 +838,7 @@ contains
        do k=lo(3),hi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                mmtmp(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qxn))
+                mmtmp(1:8,i) = matmul(M8T, q(i,j,k-4:k+3,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp(1:8,i))
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
                      + dot_product(dxy(i,j,k-4:k+3,n), mmtmp(1:8,i))
@@ -880,9 +901,7 @@ contains
        end do
     end do
 
-    deallocate(Hg,dpy,dxe,dpe,vsp,vsm,M8p,Hry)
-
-  end subroutine narrow_diffterm_3d
+  end subroutine diffterm_2
 
 
   subroutine chemterm_3d(lo,hi,q,qlo,qhi,up,uplo,uphi)
@@ -917,8 +936,6 @@ contains
     double precision :: dxinv(3), c, rwrk, Cv, Cp
     double precision :: Tt, X(nspecies), gamma
     double precision :: courx, coury, courz
-
-    double precision, parameter :: Ru = 8.31451d7
 
     do i=1,3
        dxinv(i) = 1.0d0 / dx(i)

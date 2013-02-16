@@ -110,15 +110,15 @@ contains
 
     if (c_associated(sdc%srset)) then
        call sdc_exp_attach(sdc%exp1, &
-            sdc_srset_stepper(sdc%srset), sdc%encap, c_loc(sdc%ctx))
+            sdc_srset_sweeper(sdc%srset), sdc%encap, c_loc(sdc%ctx))
        err = sdc_srset_setup(sdc%srset)
     end if
 
     if (c_associated(sdc%mrset)) then
        call sdc_exp_attach(sdc%exp1, &
-            sdc_mrset_stepper(sdc%mrset, 0), sdc%encap, c_loc(sdc%ctx))
+            sdc_mrset_sweeper(sdc%mrset, 0), sdc%encap, c_loc(sdc%ctx))
        call sdc_exp_attach(sdc%exp2, &
-            sdc_mrset_stepper(sdc%mrset, 1), sdc%encap, c_loc(sdc%ctx))
+            sdc_mrset_sweeper(sdc%mrset, 1), sdc%encap, c_loc(sdc%ctx))
        err = sdc_mrset_setup(sdc%mrset)
 
        call sdc_mrset_print(sdc%mrset, 0)
@@ -139,13 +139,19 @@ contains
     if (c_associated(sdc%srset)) then
        call sdc_srset_destroy(sdc%srset)
        call sdc_nset_destroy(sdc%nset1)
+       call sdc_exp_destroy(sdc%exp1)
     end if
 
     if (c_associated(sdc%mrset)) then
        call sdc_mrset_destroy(sdc%mrset)
        call sdc_nset_destroy(sdc%nset1)
        call sdc_nset_destroy(sdc%nset2)
+       call sdc_exp_destroy(sdc%exp1)
+       call sdc_exp_destroy(sdc%exp2)
     end if
+
+    call sdc_encap_multifab_destroy(sdc%encap)
+    deallocate(sdc%mfencap)
   end subroutine sdc_destroy
 
 end module sdcquad_module
