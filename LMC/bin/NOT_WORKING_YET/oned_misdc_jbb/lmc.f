@@ -59,7 +59,8 @@
      $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
      $                  fancy_predictor, fancy_dpdt_fix, dpdt_factor, 
-     $                  Patm, coef_avg_harm,
+     $                  Patm, coef_avg_harm, initial_S_type, 
+     $                  recompute_S,
      $                  misdc_iterMAX,
      $                  do_initial_projection, num_divu_iters, 
      $                  num_init_iters,fixed_dt,
@@ -86,6 +87,8 @@ c     Set defaults, change with namelist
       flame_offset = 0.d0
       fancy_predictor = 1
       fancy_dpdt_fix = 0
+      initial_S_type = 1
+      recompute_S = 0
       dpdt_factor = 0.d0
       Patm = 1.d0
       coef_avg_harm = 0
