@@ -811,7 +811,7 @@ c     dpdt correction
 
 c     time-centered divu
                do i=lo(0),hi(0)
-                  divu_effect(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
+                  divu_effect(0,i) = 0.5d0*(divu_old(0,i) + delta_chi(0,i) + divu_new(0,i))
                end do
 
 c     mac projection
