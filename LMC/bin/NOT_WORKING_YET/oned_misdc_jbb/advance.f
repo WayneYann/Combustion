@@ -538,7 +538,7 @@ c     we compute grad Y_m using Y_m from the second argument
 
 c     If .true., use I_R in predictor is instantaneous value at t^n
 c     If .false., use I_R^lagged = I_R^kmax from previous time step
-         if (.false.) then
+         if (.true.) then
             do i=lo(0),hi(0)
                do n=1,Nspec
                   C(n) = scal_old(0,i,FirstSpec+n-1)*invmwt(n)
