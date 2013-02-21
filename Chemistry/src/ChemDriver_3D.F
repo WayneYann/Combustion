@@ -1163,6 +1163,12 @@ c     No-energy version
 c     FIXME: Need to pull over from 2D code
 #endif
 
+c     terminate the DO_TEMPERATURE ifdef
+#endif
+
+c     terminate the LMC_SDC ifdef
+#endif
+
       subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,
      &     DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
       implicit none
