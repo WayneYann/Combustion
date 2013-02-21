@@ -58,7 +58,7 @@
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
-     $                  fancy_predictor, fancy_dpdt_fix, dpdt_factor, 
+     $                  fancy_predictor, dpdt_factor, 
      $                  Patm, coef_avg_harm, initial_S_type, 
      $                  recompute_S,
      $                  misdc_iterMAX,
@@ -86,7 +86,6 @@ c     Set defaults, change with namelist
       init_shrink = 0.1d0
       flame_offset = 0.d0
       fancy_predictor = 1
-      fancy_dpdt_fix = 0
       initial_S_type = 1
       recompute_S = 0
       dpdt_factor = 0.d0

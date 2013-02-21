@@ -135,8 +135,8 @@ c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
       call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
 
-c     reset delta_chi if we aren't going the fancy iterative update
-      if (fancy_dpdt_fix .eq. 0) then
+c     reset delta_chi for the strang algorithm
+      if (use_strang) then
          delta_chi = 0.d0
       end if
 
@@ -746,11 +746,43 @@ c     we compute grad Y_m using Y_m from the second argument
      $                                 diffdiff_new(0,:),dx(0),lo(0),hi(0))
             end if
 
+            if (fancy_predictor .eq. 1 .or. misdc .gt. 1) then
+
+               if (recompute_S .eq. 1) then
+
 cccccccccccccccccccccccccccccccccccc
-c     new fancy delta chi algorithm
+c     re-compute S^{n+1/2} by averaging old and new
 cccccccccccccccccccccccccccccccccccc
-            if (fancy_dpdt_fix .eq. 1) then
-               
+
+                  print *,'... recompute S^{n+1/2} by averaging'
+                  print *,'    old and new'
+
+c     instantaneous omegadot for divu calc
+                  do i=lo(0),hi(0)
+                     do n=1,Nspec
+                        C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
+                     end do
+                     call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
+                     do n=1,Nspec
+                        I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
+                     end do
+                  end do
+
+c     divu
+                  call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
+     &                           divu_new(0,:),dx(0),lo(0),hi(0))
+
+c     time-centered divu
+                  do i=lo(0),hi(0)
+                     divu_extrap(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
+                  end do
+
+               end if
+
+cccccccccccccccccccccccccccccccccccc
+c     update delta_chi and project
+cccccccccccccccccccccccccccccccccccc
+
                print *,'... updating S^{n+1/2} and macvel'
                print *,'    using fancy delta_chi'
 
@@ -763,58 +795,12 @@ c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
      $                       delta_chi(0,:),macvel(0,:),dx(0),dt(0),
      $                       lo(0),hi(0),bc(0,:))
 
-               do i=lo(0),hi(0)
-                  
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
+               do i=lo(0),hi(0)
                   divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
-
                end do
 
-c     mac projection
 c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
-               call macproj(macvel(0,:),scal_old(0,:,Density),
-     &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
-               
-            end if
-
-cccccccccccccccccccccccccccccccccccc
-c     re-compute S^{n+1/2} by averaging old and new
-cccccccccccccccccccccccccccccccccccc
-            if (recompute_S .eq. 1 .and. 
-     &           (fancy_predictor .eq. 1 .or. misdc .gt. 1) ) then
-               
-               print *,'... recompute S^{n+1/2} by averaging'
-               print *,'    old and new'
-
-c     instantaneous omegadot for divu calc
-               do i=lo(0),hi(0)
-                  do n=1,Nspec
-                     C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
-                  end do
-                  call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
-                  do n=1,Nspec
-                     I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
-                  end do
-               end do
-
-c     divu
-               call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
-     &                        divu_new(0,:),dx(0),lo(0),hi(0))
-
-c     ptherm for dpdt correction
-               call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
-
-c     dpdt correction
-               call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     $                       divu_new(0,lo(0):hi(0)),macvel(0,:),dx(0),dt(0),
-     $                       lo(0),hi(0),bc(0,:))
-
-c     time-centered divu
-               do i=lo(0),hi(0)
-                  divu_effect(0,i) = 0.5d0*(divu_old(0,i) + delta_chi(0,i) + divu_new(0,i))
-               end do
-
-c     mac projection
                call macproj(macvel(0,:),scal_old(0,:,Density),
      &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
 
@@ -836,9 +822,8 @@ c     compute advective flux divergence
      $                     divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                     lo(0),hi(0),bc(0,:))
 
-c     if fancy_dpdt_fix=1, the mac velocities have changed so we re-update rho
-c     if fancy_predictor=0, we never computed the update to rho, so do it now
-            if (fancy_dpdt_fix .eq. 1 .or. fancy_predictor .eq. 0) then
+c     the mac velocities have changed, need to re-update rho
+            if (fancy_predictor .eq. 1 .or. misdc .gt. 1) then
 
                print *,'... update rho'
 
