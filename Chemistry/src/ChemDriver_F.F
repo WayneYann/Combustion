@@ -109,15 +109,19 @@ c
       !
       ! Ditto for DVODE workspace.
       !
-      dvr   = 22 + 9*(Nspec+1) + 2*(Nspec+1)**2
-      dvi   = 30 + Nspec + 1
-      dvdr  = 2*Nspec + 3
+#ifdef DO_NOENERGY
+      NEQ   = Nspec
+#else
+      NEQ   = Nspec + 1
+#endif
+      dvr   = 22 + 9*NEQ + 2*NEQ**2
+      dvi   = 30 + NEQ
+      dvdr  = Nspec + NEQ + 2
       dvdbr = dvbr+dvr
       dvder = dvdbr+dvdr-1
       !      
       ! Set pointers into conp common blocks.
       !
-      NEQ   = Nspec + 1
       NP    = dvdbr
       NRHO  = NP  + 1
       NWT   = NRHO  + 1
@@ -767,7 +771,9 @@ c     Result in kg/kmole
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
+#include "htdata.H"
 #include "visc.H"
+
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
@@ -834,7 +840,12 @@ C
       END
 
 #ifdef LMC_SDC
+#ifndef DO_TEMPERATURE
+
+#ifdef DO_NOENERGY
       subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
+C
+C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
@@ -845,8 +856,66 @@ C
       
       REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
       REAL_T rhoYDOT_MKS, Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
-      integer K
-      integer is_bad(maxspec),num_bad
+      integer K,m
+
+C     Needed to compute T from h
+      REAL_T HtoTerrMAX
+      integer HtoTiterMAX, Niter
+      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
+      parameter (HtoTiterMAX = 20)
+      REAL_T res(0:HtoTiterMAX-1)
+
+      REAL_T RHO_CGS, RINV_CGS, rhohmixDOT_MKS
+
+      REAL_T mwt(maxspec), invmwt(maxspec)
+
+      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
+      do K=1,Nspec
+         invmwt(K) = one / mwt(K)
+      end do
+
+      RHO_MKS = 0.d0
+      do K=1,Nspec
+         RHO_MKS = RHO_MKS + Z(K)
+      enddo
+      RINV_MKS = 1.d0 / RHO_MKS
+      
+      do K=1,Nspec
+c         CONC_CGS(K) = MAX(0.d0, Z(K)*invmwt(K)*1.d-3)
+         CONC_CGS(K) = Z(K)*invmwt(K)*1.d-3
+         Y(K) = Z(K) * RINV_MKS
+      enddo
+
+c      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
+c     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
+
+      HMIX_MKS = (rhoH_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
+
+      call FORT_TfromHYpt(T_cell,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
+      call CKWC(T_cell,CONC_CGS,IWRK,RWRK,WDOT_CGS)
+
+      THFAC = 1.d3/thickFacCH
+      do k= 1, Nspec
+         rhoYDOT_MKS = c_0(k)
+         ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
+      end do
+      END
+#else
+      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
+C
+C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
+C                          Z(K+1) = RhoH    [MKS]
+      implicit none
+#include "cdwrk.H"
+#include "conp.H"
+#include "htdata.H"
+#include "visc.H"
+      REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
+      integer N, IPAR(*)
+      
+      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
+      REAL_T rhoYDOT_MKS, Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
+      integer K,m
 
 C     Needed to compute T from h
       REAL_T HtoTerrMAX
@@ -872,16 +941,9 @@ C                          Z(K+1) = RhoH
       enddo
       RINV_MKS = 1.d0 / RHO_MKS
       
-      num_bad = 0
       do K=1,Nspec
-         if (Z(K).lt.-1.d-6*typVal_Y(K)*typVal_Density) then
-            num_bad = num_bad+1
-            is_bad(num_bad) = k
-         endif
-      enddo
-
-      do K=1,Nspec
-         CONC_CGS(K) = MAX(0.d0, Z(K)*invmwt(K)*1.d-3)
+c         CONC_CGS(K) = MAX(0.d0, Z(K)*invmwt(K)*1.d-3)
+         CONC_CGS(K) = Z(K)*invmwt(K)*1.d-3
          Y(K) = Z(K) * RINV_MKS
       enddo
 
@@ -889,12 +951,8 @@ c      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
 c     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
 
       HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
-      T = T_cell
-
-c     FIXME: Get proper stopping stopping criteria here
-      call FORT_TfromHYpt(T,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
-      T_cell = T      
-      call CKWC(T,CONC_CGS,IWRK,RWRK,WDOT_CGS)
+      call FORT_TfromHYpt(T_cell,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
+      call CKWC(T_cell,CONC_CGS,IWRK,RWRK,WDOT_CGS)
 
 c      rhohmixDOT_MKS = c_0(Nspec+1) + c_1(Nspec+1)*TIME
       rhohmixDOT_MKS = c_0(Nspec+1)
@@ -906,12 +964,63 @@ c         rhoYDOT_MKS = c_0(k) + c_1(k)*TIME
          rhoYDOT_MKS = c_0(k)
          ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
       end do
-
-      return
-
- 10   continue
-
       END
+#endif
+#else
+      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
+C
+C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
+C                          Z(K+1) = Temp    [K]
+      implicit none
+#include "cdwrk.H"
+#include "conp.H"
+      REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
+      integer N, IPAR(*)
+      
+      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), RINV_MKS
+      REAL_T Y(maxspec), CONC_CGS(maxspec)
+      REAL_T CPB_CGS, ENTHALPY_CGS(maxspec)
+      REAL_T mwt(maxspec), invmwt(maxspec), SUM
+      integer K,m
+
+C     Needed to compute T from h
+      REAL_T HtoTerrMAX
+      integer HtoTiterMAX, Niter
+      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
+      parameter (HtoTiterMAX = 20)
+      REAL_T res(0:HtoTiterMAX-1)
+      REAL_T HMIX_MKS
+
+
+      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
+      do n=1,Nspec
+         invmwt(n) = one / mwt(n)
+      end do
+
+      RHO_MKS = 0.d0
+      do K=1,Nspec
+         RHO_MKS = RHO_MKS + Z(K)
+      enddo
+      RINV_MKS = 1.d0 / RHO_MKS
+      
+      do K=1,Nspec
+         CONC_CGS(K) = Z(K)*invmwt(K)*1.d-3
+         Y(K) = Z(K) * RINV_MKS
+      enddo
+
+      call CKWC(Z(Nspec+1),CONC_CGS,IWRK,RWRK,WDOT_CGS)
+      call CKHMS(Z(Nspec+1),IPAR(ckbi), RPAR(ckbr), ENTHALPY_CGS)
+
+      ZP(Nspec+1) = c_0(Nspec+1)
+      do k= 1, Nspec
+         ZP(k) = WDOT_CGS(k) * 1.d3 * mwt(k) / thickFacCH  +  c_0(k)
+         ZP(Nspec+1) = ZP(Nspec+1) -  ZP(k) * ENTHALPY_CGS(k) * 1.d-4
+      end do
+
+      call CKCPBS(Z(Nspec+1),Y,IPAR(ckbi),RPAR(ckbr),CPB_CGS)
+      ZP(Nspec+1) = ZP(Nspec+1) / (RHO_MKS * CPB_CGS * 1.d-4)
+      END
+#endif
 #endif
 
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
@@ -1225,6 +1334,5 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       data max_vode_subcycles / 15000 /
       data spec_scalY / maxspec*one /
       data thickFacCH / 1.d0 /
-      data nstiff / 1 /
 
       end

@@ -320,7 +320,8 @@ protected:
                                     MultiFab&       mf_new,
                                     Real            dt,
                                     const MultiFab& Force,
-                                    int             nCompF);
+                                    int             nCompF,
+                                    bool            use_stiff_solver = true);
 
     virtual void calcViscosity (const Real time,
                                 const Real dt,

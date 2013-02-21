@@ -8,11 +8,13 @@ COMBUSTION_DIR = ${TOP}/Combustion
 #
 
 PRECISION       = DOUBLE
+DEBUG           = TRUE
 DEBUG           = FALSE
 DIM             = 2
 COMP            = g++
 FCOMP           = gfortran
 USE_MPI         = FALSE
+USE_MPI         = TRUE
 USE_OMP         = FALSE
 USE_F90_SOLVERS = TRUE
 VERBOSE         = FALSE
@@ -20,6 +22,7 @@ VERBOSE         = FALSE
 # Enable SDC code - add .SDC to executable
 # and compile in the #ifdef LMC_SDC
 USE_LMC_SDC = FALSE
+USE_LMC_SDC = TRUE
 
 # Enable flctin namelist
 USE_FLCTS       = TRUE
@@ -49,3 +52,16 @@ include $(COMBUSTION_DIR)/LMC/tools/make/Make.LMC
 # Available chemistry models:
 # CanuH2 chem-CH4-2step chem-H dme glar gri Hai H-CW header inert Konnov
 # LiDryer Marinov prf_ethanol Roehl sandiego smooke usc
+
+#DEFINES += -DDO_JBB_HACK
+DEFINES += -DTRIGGER_NEW_J
+DEFINES += -DALWAYS_NEW_J
+#DEFINES += -DSOLN_IS_1D
+#DEFINES += -DDO_NOENERGY
+DEFINES += -DDO_TEMPERATURE
+
+DEFINES += -DDO_JBB_HACK_TEMP
+DEFINES += -DHACK_TEMP_MIN=273.d0
+DEFINES += -DHACK_TEMP_MAX=1900.d0
+
+

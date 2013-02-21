@@ -1129,7 +1129,7 @@ HeatTransfer::init_once ()
 
     pp.query("plot_consumption",plot_consumption);
     pp.query("plot_auxDiags",plot_consumption); // This is for backward comptibility - FIXME
-    if (plot_consumption)
+    if (plot_consumption && consumptionName.size()>0)
     {
         auxDiag_names["CONSUMPTION"].resize(consumptionName.size());
         for (int j=0; j<consumptionName.size(); ++j)
@@ -1690,6 +1690,31 @@ HeatTransfer::initDataOtherTypes ()
     get_new_data(FuncCount_Type).setVal(1);
 
     setThermoPress(state[State_Type].curTime());
+
+#if 0
+    // Evolve chemistry for a short interval to find reasonable values for typVal
+    MultiFab F(grids,nspecies+1,0);
+    F.setVal(0);
+    state[State_Type].allocOldData();
+    Real dt_explicit_chem_evolveDT = 1.e-10;
+    bool use_stiff_solver = false;
+    MultiFab::Copy(get_old_data(State_Type),get_new_data(State_Type),0,0,NUM_STATE,0);
+    if (ParallelDescriptor::IOProcessor()) {
+      std::cout << "Doing explicit advance" << std::endl;
+    }
+    advance_chemistry(get_new_data(State_Type),get_old_data(State_Type),dt_explicit_chem_evolveDT,Forcing,0,use_stiff_solver); // Put results into S_old
+    VisMF::Write(get_old_data(State_Type),"S_chem");
+    if (ParallelDescriptor::IOProcessor()) {
+      std::cout << "Done with explicit advance" << std::endl;
+    }
+    Real normRho = get_new_data(State_Type).norm0(Density);
+    for (int i=0; i<nspecies; ++i) {
+      Real norm = get_old_data(State_Type).norm0(first_spec+i);
+      if (ParallelDescriptor::IOProcessor()) {
+        std::cout << "Comp, norm: " << i << ", " << norm/normRho << std::endl;
+      }
+    }
+#endif
 }
 
 void
@@ -2542,6 +2567,9 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
         }
         sumSpecFluxDotGradHn.setVal(0);
         sumSpecFluxDotGradHnp1.setVal(0);
+
+        Dnew.setVal(0,DComp,nspecies+1);
+        DDnew.setVal(0,0,1);
 
         return;
     }
@@ -4872,6 +4900,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "... HACK!!! zeroing diffusion terms " << '\n';
         D.setVal(0.0,0,nComp);
+        DD.setVal(0.0,0,1);
         return;            
     }
 
@@ -5204,10 +5233,7 @@ HeatTransfer::advance_setup (Real time,
                              int  ncycle)
 {
     NavierStokes::advance_setup(time, dt, iteration, ncycle);
-    //
-    // Make sure the new state has values so that c-n works
-    // in the predictor (of the predictor)--rbp.
-    //
+
     for (int k = 0; k < num_state_type; k++)
     {
         MultiFab& nstate = get_new_data(k);
@@ -5648,11 +5674,38 @@ HeatTransfer::advance (Real time,
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "DONE WITH R (SDC corrector " << sdc_iter << ")\n";
-
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << " SDC iterations complete \n";
+
+    if (plot_consumption) {
+      for (int j=0; j<consumptionName.size(); ++j) {
+        int consumptionComp = getChemSolve().index(consumptionName[j]);
+        MultiFab::Copy((*auxDiag["CONSUMPTION"]),get_new_data(RhoYdot_Type),consumptionComp,j,1,0);
+        auxDiag["CONSUMPTION"]->mult(-1); // Convert production to consumption
+      }
+    }
+
+    if (plot_heat_release) {
+      FArrayBox enthi, T;
+      const MultiFab& R = get_new_data(RhoYdot_Type);
+      for (MFIter mfi(R); mfi.isValid(); ++mfi) {
+        const Box& box = mfi.validbox();
+        T.resize(mfi.validbox(),1);
+        T.setVal(298.15);
+        
+        enthi.resize(mfi.validbox(),R.nComp());
+        getChemSolve().getHGivenT(enthi,T,box,0,0);
+        enthi.mult(R[mfi],0,0,R.nComp());
+        
+        // Form heat release
+        (*auxDiag["HEATRELEASE"])[mfi].setVal(0.);
+        for (int j=0; j<R.nComp(); ++j) {
+          (*auxDiag["HEATRELEASE"])[mfi].plus(enthi,j,0,1);
+        }
+      }
+    }
 
     calcDiffusivity(cur_time);
     calcViscosity(cur_time,dt,iteration,ncycle);
@@ -5760,7 +5813,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                                  MultiFab&       mf_new,
                                  Real            dt,
                                  const MultiFab& Force,
-                                 int             nCompF)
+                                 int             nCompF,
+                                 bool            use_stiff_solver)
 {
     const Real strt_time = ParallelDescriptor::second();
 
@@ -5827,7 +5881,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                 }
 
                 getChemSolve().solveTransient_sdc(rYn,rHn,Tn,  rYo,rHo,To,  frc, rYdot, fc, box, 
-                                                  first_spec, RhoH, Temp, dt, Patm, chemDiag);
+                                                  first_spec, RhoH, Temp, dt, Patm, chemDiag, use_stiff_solver);
                 
             }
             //

@@ -339,7 +339,8 @@ extern "C" {
 		       const Real* Yold, ARLIM_P(Yolo), ARLIM_P(Yohi),
 		       const Real* Told, ARLIM_P(Tolo), ARLIM_P(Tohi),
 		       Real* FuncCount, ARLIM_P(FuncCountlo), ARLIM_P(FuncCounthi),
-		       const Real* p, const Real* dt, Real* diag, const int* do_diag);
+		       const Real* p, const Real* dt, Real* diag, 
+                       const int* do_diag, const int* do_stiff);
 
 #if LMC_SDC
     void FORT_CONPSOLV_SDC(const int* lo, const int* hi,
@@ -352,7 +353,8 @@ extern "C" {
 			   const Real* const_src, ARLIM_P(cslo), ARLIM_P(cshi),
 			   Real* I_R, ARLIM_P(I_Rlo), ARLIM_P(I_Rhi),
 			   Real* FuncCount, ARLIM_P(FuncCountlo), ARLIM_P(FuncCounthi),
-			   const Real* p, const Real* dt, Real* diag, const int* do_diag);
+			   const Real* p, const Real* dt, Real* diag, 
+                           const int* do_diag, const int* do_stiff);
 #endif
 
     void FORT_MIXAVG_RHODIFF_TEMP(const int* lo, const int* hi,

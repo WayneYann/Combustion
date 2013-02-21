@@ -66,6 +66,13 @@ ChemDriver::initOnce ()
     BL_ASSERT(v_itol == 1 || v_itol == 2);
 
     FORT_SETVODETOLS(&v_rtol,&v_atol,&v_itol);
+
+    int  v_maxcyc = -1;
+
+    pp.query("vode_max_subcycles",v_maxcyc);
+    if (v_maxcyc > 0) {
+      set_max_vode_subcycles(v_maxcyc);
+    }
 }
 
 void
@@ -583,7 +590,8 @@ ChemDriver::solveTransient(FArrayBox&        Ynew,
                            int               sCompT,
                            Real              dt,
                            Real              Patm,
-                           FArrayBox*        chemDiag) const
+                           FArrayBox*        chemDiag,
+                           bool              use_stiff_solver) const
 {
     BL_ASSERT(sCompY+numSpecies() <= Ynew.nComp());
     BL_ASSERT(sCompY+numSpecies() <= Yold.nComp());
@@ -595,6 +603,7 @@ ChemDriver::solveTransient(FArrayBox&        Ynew,
 
     const int do_diag  = (chemDiag!=0);
     Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
+    const int do_stiff = (use_stiff_solver);
     FORT_CONPSOLV(box.loVect(), box.hiVect(),
                   Ynew.dataPtr(sCompY), ARLIM(Ynew.loVect()), ARLIM(Ynew.hiVect()),
                   Tnew.dataPtr(sCompT), ARLIM(Tnew.loVect()), ARLIM(Tnew.hiVect()),
@@ -602,7 +611,7 @@ ChemDriver::solveTransient(FArrayBox&        Ynew,
                   Told.dataPtr(sCompT), ARLIM(Told.loVect()), ARLIM(Told.hiVect()),
                   FuncCount.dataPtr(),
                   ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
-                  &Patm, &dt, diagData, &do_diag);
+                  &Patm, &dt, diagData, &do_diag, &do_stiff);
 }
 
 #ifdef LMC_SDC
@@ -622,7 +631,8 @@ ChemDriver::solveTransient_sdc(FArrayBox&        rhoYnew,
 			       int               sCompT,
 			       Real              dt,
 			       Real              Patm,
-			       FArrayBox*        chemDiag) const
+			       FArrayBox*        chemDiag,
+                               bool              use_stiff_solver) const
 {
     BL_ASSERT(sComprhoY+numSpecies() <= rhoYnew.nComp());
     BL_ASSERT(sComprhoY+numSpecies() <= rhoYold.nComp());
@@ -637,6 +647,7 @@ ChemDriver::solveTransient_sdc(FArrayBox&        rhoYnew,
 
     const int do_diag  = (chemDiag!=0);
     Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
+    const int do_stiff = (use_stiff_solver);
 
     FORT_CONPSOLV_SDC(box.loVect(), box.hiVect(),
                       rhoYnew.dataPtr(sComprhoY), ARLIM(rhoYnew.loVect()),   ARLIM(rhoYnew.hiVect()),
@@ -648,7 +659,7 @@ ChemDriver::solveTransient_sdc(FArrayBox&        rhoYnew,
                       const_src.dataPtr(0),       ARLIM(const_src.loVect()), ARLIM(const_src.hiVect()),
 		      I_R.dataPtr(0),             ARLIM(I_R.loVect()),       ARLIM(I_R.hiVect()),
                       FuncCount.dataPtr(),        ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
-		      &Patm, &dt, diagData, &do_diag);
+		      &Patm, &dt, diagData, &do_diag, &do_stiff);
 }
 #endif
 

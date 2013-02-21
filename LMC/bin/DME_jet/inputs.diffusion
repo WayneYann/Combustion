@@ -1,3 +1,9 @@
+ht.vode_itol = 2
+ht.vode_rtol = 1.e-3
+ht.vode_atol = 1.e-3
+ht.vode_max_subcycles = 500000
+ht.vode_max_subcycles = 15000
+ht.vode_max_subcycles = 5000
 
 ns.do_active_control = 0
 mg.smooth_on_cg_unstable=1
@@ -44,6 +50,7 @@ mg.cg_solver=1
 geometry.prob_lo    = -0.00114 0.0
 geometry.prob_hi    =  0.00114 0.00228
 amr.n_cell          = 128 128
+amr.n_cell          = 160 160
 amr.max_grid_size   = 64
 amr.blocking_factor = 32
 max_step            = 1000
@@ -51,10 +58,12 @@ max_step            = 1000
 amr.plot_files_output = 1
 amr.plot_file       = plt
 amr.plot_int        = 5
+amr.plot_int        = 1
 
 amr.checkpoint_files_output = 1
 amr.check_file      = chk
 amr.check_int       = 5
+amr.check_int       = 1
 
 ns.cfl              = 0.25
 ns.cfl              = 0.7
@@ -110,7 +119,7 @@ ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
 
-ns.sdc_iterMAX = 1
+ns.sdc_iterMAX = 3
 
 ns.dpdt_option = 0
 #macop.max_order = 3
@@ -189,3 +198,15 @@ diffuse.max_order = 2
 diffuse.tensor_max_order = 2
 ns.visc_tol        = 1.0e-14  # tolerence for viscous solves
 ns.visc_abs_tol    = 1.0e-14  # tolerence for viscous solves
+
+#ns.hack_nochem=1
+#ns.hack_nospecdiff=1
+#ns.init_iter=0
+#ns.do_init_proj=1
+#max_step=0
+#ns.num_divu_iters=0
+
+#ShowMF_Sets = sdc
+#ShowMF_Verbose = t
+#ShowMF_Dir = JUNK
+#ShowMF_Check_Nans = f

@@ -25,7 +25,8 @@ public:
                          int               sCompT,
                          Real              dt,
                          Real              Patm,
-                         FArrayBox*        chemDiag=0) const;
+                         FArrayBox*        chemDiag=0,
+                         bool              use_stiff_solver = true) const;
 
 #ifdef LMC_SDC
     void solveTransient_sdc(FArrayBox&        rhoYnew,
@@ -43,7 +44,8 @@ public:
                             int               sCompT,
                             Real              dt,
                             Real              Patm,
-                            FArrayBox*        chemDiag) const;
+                            FArrayBox*        chemDiag,
+                            bool              use_stiff_solver = true) const;
 #endif
 
     void set_verbose_vode ();

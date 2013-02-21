@@ -4980,7 +4980,8 @@ NavierStokes::avgDown (const BoxArray& cgrids,
 {
     BL_ASSERT(cgrids == S_crse.boxArray());
     BL_ASSERT(fgrids == S_fine.boxArray());
-    BL_ASSERT(S_crse.nComp() == S_fine.nComp());
+    BL_ASSERT(S_crse.nComp() >= scomp + ncomp);
+    BL_ASSERT(S_fine.nComp() >= scomp + ncomp);
 
     NavierStokes& flev = getLevel(f_level);
     NavierStokes& clev = getLevel(c_level);
