@@ -74,7 +74,7 @@ contains
     double precision :: rwrk
     integer :: np, ii
     double precision :: Cpck(nspecies)
-    double precision, allocatable :: Tt(:), Xt(:,:), Yt(:,:), Cpt(:,:), Wtm(:), D(:,:)
+    double precision, allocatable :: Tt(:), Xt(:,:), Yt(:,:), Cpt(:,:), D(:,:)
     double precision, allocatable :: ME(:), MK(:), L1(:), L2(:)
 
     ! eglib parameters
@@ -84,10 +84,9 @@ contains
     call eglib_init(nspecies, np, ITLS, IFLAG)
     
     !$omp parallel private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
-    !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2)
+    !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
     
     allocate(Tt(np))
-    allocate(Wtm(np))
     allocate(ME(np))
     allocate(MK(np))
     allocate(L1(np))
@@ -116,7 +115,6 @@ contains
              Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
              CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpck)
              Cpt(:,ii) = Cpck
-             CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
           end do
           
           CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
@@ -131,7 +129,7 @@ contains
           do n=1,nspecies
              do i=wlo(1), whi(1)
                 ii = i-wlo(1)+1
-                Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
+                Ddiag(i,j,k,n) = D(n,ii)
              end do
           end do
           
@@ -143,7 +141,7 @@ contains
     end do
     !$omp end do
     
-    deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+    deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
     !$omp end parallel
 
     if (gco) then
@@ -157,10 +155,9 @@ contains
        call eglib_init(nspecies, np, ITLS, IFLAG)
     
        !$omp parallel private(i,j,k,n,iwrk,rwrk,ii,Cpck) &
-       !$omp private(Tt,Xt,Yt,Cpt,Wtm,D,ME,MK,L1,L2)
+       !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
        
        allocate(Tt(np))
-       allocate(Wtm(np))
        allocate(ME(np))
        allocate(MK(np))
        allocate(L1(np))
@@ -182,7 +179,6 @@ contains
                 Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
                 CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpck)
                 Cpt(:,ii) = Cpck
-                CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
              end do
 
              do i=hi(1)+1, hi(1)+nghi
@@ -192,7 +188,6 @@ contains
                 Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
                 CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpck)
                 Cpt(:,ii) = Cpck
-                CALL CKMMWY(Yt(:,ii), iwrk, rwrk, Wtm(ii))
              end do
           
              CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
@@ -209,11 +204,11 @@ contains
              do n=1,nspecies
                 do i=lo(1)-nglo, lo(1)-1
                    ii = i-lo(1)+nglo+1
-                   Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
+                   Ddiag(i,j,k,n) = D(n,ii)
                 end do
                 do i=hi(1)+1, hi(1)+nghi
                    ii = i-hi(1)+nglo
-                   Ddiag(i,j,k,n) = D(n,ii) * Wtm(ii) * inv_mwt(n)
+                   Ddiag(i,j,k,n) = D(n,ii)
                 end do
              end do
              
@@ -226,7 +221,7 @@ contains
        end do
        !$omp end do
        
-       deallocate(Tt, Xt, Yt, Cpt, Wtm, D, ME, MK, L1, L2)
+       deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
        !$omp end parallel
     
     end if

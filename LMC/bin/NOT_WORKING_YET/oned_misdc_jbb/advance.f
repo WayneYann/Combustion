@@ -119,56 +119,41 @@ c     compute U^{ADV,*}
       call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:),
      $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
+      if (initial_S_type .eq. 1) then
 c     extrapolate S^{n-1} and S^n to get S^{n+1/2}
-      do i=lo(0),hi(0)
-         divu_extrap(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dSdt(0,i)
-      end do
+         do i=lo(0),hi(0)
+            divu_extrap(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dSdt(0,i)
+         end do
+      else
+c     set S^{n+1/2} to S^n
+         do i=lo(0),hi(0)
+            divu_extrap(0,i) = divu_old(0,i)
+         end do
+      end if
 
 c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
       call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
 
-      if (fancy_dpdt_fix .eq. 1 .and. fancy_predictor .eq. 1) then
-
-ccccccccccccccccccccccccccccccccccc
-c     new fancy delta chi algorithm
-ccccccccccccccccccccccccccccccccccc
+c     reset delta_chi if we aren't going the fancy iterative update
+      if (fancy_dpdt_fix .eq. 0) then
+         delta_chi = 0.d0
+      end if
 
 c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
-         call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
-     $                 delta_chi(0,:),macvel(0,:),dx(0),dt(0),
-     $                 lo(0),hi(0),bc(0,:))
-
-         do i=lo(0),hi(0)
+      call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
+     $              delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $              lo(0),hi(0),bc(0,:))
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
-            divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
-
-         end do
-
-      else
-
-ccccccccccccccccccccccccccccccccccc
-c     original dpdt_factor algorithm
-ccccccccccccccccccccccccccccccccccc
-
-c     S_hat^{n+1/2} = S^{n+1/2} + dpdt_factor*(ptherm-p0)/(gamma*dt*p0)
-c                               + dpdt_factor*(u dot grad p)/(gamma*p0)
-         do i=lo(0),hi(0)
-            divu_effect(0,i) = divu_extrap(0,i)
-         end do
-
-         call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
-     $                 divu_effect(0,lo(0):hi(0)),macvel(0,:),dx(0),dt(0),
-     $                 lo(0),hi(0),bc(0,:))
-
-      end if
+      do i=lo(0),hi(0)
+         divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
+      end do
 
 c     mac projection
 c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
       call macproj(macvel(0,:),scal_old(0,:,Density),
      &             divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
-
 
 ccccccccccccccccccccccccccccccccccccccccccc
 c     Step 2: Advance thermodynamic variables
@@ -522,8 +507,8 @@ c     compute transport coefficients
 c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
-      call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
-     &                        mu_old(0,:),lo(0),hi(0))
+         call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
+     &                           mu_old(0,:),lo(0),hi(0))
 
 c     compute diffusion terms at time n
          print *,'... creating the diffusive terms with old data'
@@ -553,7 +538,7 @@ c     we compute grad Y_m using Y_m from the second argument
 
 c     If .true., use I_R in predictor is instantaneous value at t^n
 c     If .false., use I_R^lagged = I_R^kmax from previous time step
-         if (.false.) then
+         if (.true.) then
             do i=lo(0),hi(0)
                do n=1,Nspec
                   C(n) = scal_old(0,i,FirstSpec+n-1)*invmwt(n)
@@ -729,35 +714,6 @@ c     that have a backward Euler character
          do misdc = 1, misdc_iterMAX
             print *,'... doing SDC iter ',misdc
             
-            if (fancy_dpdt_fix .eq. 1) then
-
-cccccccccccccccccccccccccccccccccccc
-c     new fancy delta chi algorithm
-cccccccccccccccccccccccccccccccccccc
-               
-c     compute ptherm = p(rho,T,Y)
-c     this is needed for any dpdt-based correction scheme
-               call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
-               
-c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
-               call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     $                       delta_chi(0,:),macvel(0,:),dx(0),dt(0),
-     $                       lo(0),hi(0),bc(0,:))
-
-               do i=lo(0),hi(0)
-                  
-c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
-                  divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
-
-               end do
-
-c     mac projection
-c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
-               call macproj(macvel(0,:),scal_old(0,:,Density),
-     &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
-               
-            end if
-            
             print *,'... compute lagged diff_new, D(U^{n+1,k-1})'
 
 c     compute transport coefficients
@@ -790,6 +746,80 @@ c     we compute grad Y_m using Y_m from the second argument
      $                                 diffdiff_new(0,:),dx(0),lo(0),hi(0))
             end if
 
+cccccccccccccccccccccccccccccccccccc
+c     new fancy delta chi algorithm
+cccccccccccccccccccccccccccccccccccc
+            if (fancy_dpdt_fix .eq. 1) then
+               
+               print *,'... updating S^{n+1/2} and macvel'
+               print *,'    using fancy delta_chi'
+
+c     compute ptherm = p(rho,T,Y)
+c     this is needed for any dpdt-based correction scheme
+               call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+               
+c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
+               call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     $                       delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $                       lo(0),hi(0),bc(0,:))
+
+               do i=lo(0),hi(0)
+                  
+c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
+                  divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
+
+               end do
+
+c     mac projection
+c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
+               call macproj(macvel(0,:),scal_old(0,:,Density),
+     &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
+               
+            end if
+
+cccccccccccccccccccccccccccccccccccc
+c     re-compute S^{n+1/2} by averaging old and new
+cccccccccccccccccccccccccccccccccccc
+            if (recompute_S .eq. 1 .and. 
+     &           (fancy_predictor .eq. 1 .or. misdc .gt. 1) ) then
+               
+               print *,'... recompute S^{n+1/2} by averaging'
+               print *,'    old and new'
+
+c     instantaneous omegadot for divu calc
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
+                  end do
+                  call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
+                  do n=1,Nspec
+                     I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
+                  end do
+               end do
+
+c     divu
+               call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
+     &                        divu_new(0,:),dx(0),lo(0),hi(0))
+
+c     ptherm for dpdt correction
+               call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+
+c     dpdt correction
+               call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     $                       divu_new(0,lo(0):hi(0)),macvel(0,:),dx(0),dt(0),
+     $                       lo(0),hi(0),bc(0,:))
+
+c     time-centered divu
+               do i=lo(0),hi(0)
+                  divu_effect(0,i) = 0.5d0*(divu_old(0,i) + delta_chi(0,i) + divu_new(0,i))
+               end do
+
+c     mac projection
+               call macproj(macvel(0,:),scal_old(0,:,Density),
+     &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
+
+            end if
+
             print *,'... computing A forcing term = D^n + I_R^{k-1}'
 
 c     note: no need to recompute advective forcing for RhoH since it
@@ -806,10 +836,12 @@ c     compute advective flux divergence
      $                     divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                     lo(0),hi(0),bc(0,:))
 
+c     if fancy_dpdt_fix=1, the mac velocities have changed so we re-update rho
+c     if fancy_predictor=0, we never computed the update to rho, so do it now
             if (fancy_dpdt_fix .eq. 1 .or. fancy_predictor .eq. 0) then
 
                print *,'... update rho'
-               
+
 c     update density
                call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                         dt(0),lo(0),hi(0),bc(0,:))

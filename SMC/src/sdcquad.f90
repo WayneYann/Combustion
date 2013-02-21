@@ -12,16 +12,17 @@ module sdcquad_module
 
   type :: sdc_t
 
+     logical :: single_rate, multi_rate
+
      integer :: &
           iters   = 4                       ! Number of SDC iterations
 
      real(dp_t) :: &
           tol_residual = -1.0d0             ! Residual tolerance (ignored if negative)
 
-     type(c_ptr) :: nset1, nset2, exp1, exp2
-     type(c_ptr) :: srset, mrset
+     type(c_ptr) :: nset_adr, exp_adr, srset
+     type(c_ptr) :: nset_ad, nset_r, exp_ad, exp_r, mrset
 
-     type(ctx_t), pointer      :: ctx
      type(mf_encap_t), pointer :: mfencap
      type(c_ptr)               :: encap
 
@@ -33,17 +34,22 @@ contains
   !
   ! Build/create single-rate SDC object.
   !
-  subroutine sdc_build_single_rate(sdc, qtype, nnodes)
-    type(sdc_t),   intent(out) :: sdc
-    integer,       intent(in)  :: qtype, nnodes
+  subroutine sdc_build_single_rate(sdc, qtype, nnodes, ctx, feval)
+    type(sdc_t),    intent(out) :: sdc
+    integer,        intent(in)  :: qtype, nnodes
+    type(ctx_t),    intent(in), target :: ctx
+    type(c_funptr), intent(in), value :: feval
 
-    sdc%nset1 = sdc_nset_create(nnodes, qtype, "ADR" // c_null_char)
-    sdc%srset = sdc_srset_create(sdc%nset1, "ADR" // c_null_char)
-    sdc%exp1  = sdc_exp_create("ADR" // c_null_char)
+    sdc%single_rate = .true.
+    sdc%multi_rate  = .false.
 
-    sdc%mrset = c_null_ptr
-    sdc%nset2 = c_null_ptr
-    sdc%exp2  = c_null_ptr
+    allocate(sdc%mfencap)
+    sdc%encap = sdc_encap_multifab(c_loc(sdc%mfencap))
+
+    sdc%nset_adr = sdc_nset_create(nnodes, qtype, "ADR" // c_null_char)
+    sdc%exp_adr  = sdc_exp_create(feval, "ADR" // c_null_char)
+    sdc%srset    = sdc_srset_create(sdc%nset_adr, sdc%exp_adr, sdc%encap, &
+         c_loc(ctx), "ADR" // c_null_char)
 
   end subroutine sdc_build_single_rate
 
@@ -51,24 +57,28 @@ contains
   !
   ! Build/create multi-rate SDC object.
   !
-  subroutine sdc_build_multi_rate(sdc, qtype, nnodes)
-    type(sdc_t),   intent(out) :: sdc
-    integer,       intent(in)  :: qtype, nnodes(2)
+  subroutine sdc_build_multi_rate(sdc, qtype, nnodes, ctx, f1eval, f2eval)
+    type(sdc_t),    intent(out) :: sdc
+    integer,        intent(in)  :: qtype, nnodes(2)
+    type(ctx_t),    intent(in), target :: ctx
+    type(c_funptr), intent(in), value :: f1eval, f2eval
 
     integer :: err
 
+    sdc%single_rate = .false.
+    sdc%multi_rate  = .true.
+
+    allocate(sdc%mfencap)
+    sdc%encap = sdc_encap_multifab(c_loc(sdc%mfencap))
+
+    sdc%nset_ad = sdc_nset_create(nnodes(1), qtype, "AD" // c_null_char)
+    sdc%nset_r  = sdc_nset_create(nnodes(2), qtype, "R" // c_null_char)
+    sdc%exp_ad  = sdc_exp_create(f1eval, "AD" // c_null_char)
+    sdc%exp_r   = sdc_exp_create(f2eval, "R" // c_null_char)
+
     sdc%mrset = sdc_mrset_create("ADR" // c_null_char)
-
-    sdc%nset1 = sdc_nset_create(nnodes(1), qtype, "AD" // c_null_char)
-    sdc%exp1  = sdc_exp_create("AD" // c_null_char)
-
-    sdc%nset2 = sdc_nset_create(nnodes(2), qtype, "R" // c_null_char)
-    sdc%exp2  = sdc_exp_create("R" // c_null_char)
-
-    err = sdc_mrset_add_nset(sdc%mrset, sdc%nset1, 0)
-    err = sdc_mrset_add_nset(sdc%mrset, sdc%nset2, 0)
-
-    sdc%srset = c_null_ptr
+    err = sdc_mrset_add_nset(sdc%mrset, sdc%nset_ad, sdc%exp_ad, sdc%encap, c_loc(ctx), 0)
+    err = sdc_mrset_add_nset(sdc%mrset, sdc%nset_r,  sdc%exp_r,  sdc%encap, c_loc(ctx), 0)
 
   end subroutine sdc_build_multi_rate
 
@@ -81,22 +91,10 @@ contains
     type(layout), intent(in)    :: la
     integer,      intent(in)    :: nc, ng
 
-    ! create encapsulation
-    allocate(sdc%mfencap)
-
     sdc%mfencap%nc = nc
     sdc%mfencap%ng = ng
     sdc%mfencap%la = la
-
-    sdc%encap = sdc_encap_multifab(c_loc(sdc%mfencap))
   end subroutine sdc_set_layout
-
-  subroutine sdc_set_context(sdc, ctx)
-    type(sdc_t), intent(inout) :: sdc
-    type(ctx_t), intent(in), target :: ctx
-
-    sdc%ctx => ctx
-  end subroutine sdc_set_context
 
 
   !
@@ -108,20 +106,11 @@ contains
     integer :: err
     err = 0
 
-    if (c_associated(sdc%srset)) then
-       call sdc_exp_attach(sdc%exp1, &
-            sdc_srset_sweeper(sdc%srset), sdc%encap, c_loc(sdc%ctx))
+    if (sdc%single_rate) then
        err = sdc_srset_setup(sdc%srset)
-    end if
-
-    if (c_associated(sdc%mrset)) then
-       call sdc_exp_attach(sdc%exp1, &
-            sdc_mrset_sweeper(sdc%mrset, 0), sdc%encap, c_loc(sdc%ctx))
-       call sdc_exp_attach(sdc%exp2, &
-            sdc_mrset_sweeper(sdc%mrset, 1), sdc%encap, c_loc(sdc%ctx))
+    else 
        err = sdc_mrset_setup(sdc%mrset)
-
-       call sdc_mrset_print(sdc%mrset, 0)
+       ! call sdc_mrset_print(sdc%mrset, 0)
     end if
 
     if (err .ne. 0) then
@@ -136,18 +125,18 @@ contains
   subroutine sdc_destroy(sdc)
     type(sdc_t), intent(inout) :: sdc
 
-    if (c_associated(sdc%srset)) then
+    if (sdc%single_rate) then
        call sdc_srset_destroy(sdc%srset)
-       call sdc_nset_destroy(sdc%nset1)
-       call sdc_exp_destroy(sdc%exp1)
+       call sdc_nset_destroy(sdc%nset_adr)
+       call sdc_exp_destroy(sdc%exp_adr)
     end if
 
-    if (c_associated(sdc%mrset)) then
+    if (sdc%multi_rate) then
        call sdc_mrset_destroy(sdc%mrset)
-       call sdc_nset_destroy(sdc%nset1)
-       call sdc_nset_destroy(sdc%nset2)
-       call sdc_exp_destroy(sdc%exp1)
-       call sdc_exp_destroy(sdc%exp2)
+       call sdc_nset_destroy(sdc%nset_ad)
+       call sdc_nset_destroy(sdc%nset_r)
+       call sdc_exp_destroy(sdc%exp_ad)
+       call sdc_exp_destroy(sdc%exp_r)
     end if
 
     call sdc_encap_multifab_destroy(sdc%encap)
