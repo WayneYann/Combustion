@@ -822,7 +822,8 @@ c     compute advective flux divergence
      $                     divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                     lo(0),hi(0),bc(0,:))
 
-c     the mac velocities have changed, need to re-update rho
+c     either the mac velocities have changed, or this was not called earlier
+c     because we are not using the fancy predictor
             print *,'... update rho'
 
 c     update density
