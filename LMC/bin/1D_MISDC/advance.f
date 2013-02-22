@@ -825,10 +825,8 @@ c     compute advective flux divergence
 c     either the mac velocities have changed, or this was not called earlier
 c     because we are not using the fancy predictor
             print *,'... update rho'
-
-c     update density
             call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-  &                         dt(0),lo(0),hi(0),bc(0,:))
+     &                      dt(0),lo(0),hi(0),bc(0,:))
 
 c     update rhoY_m with advection terms and set up RHS for equation (47) C-N solve
             print *,'... do correction diffusion solve for species'
