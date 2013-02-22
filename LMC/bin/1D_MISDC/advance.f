@@ -823,15 +823,11 @@ c     compute advective flux divergence
      $                     lo(0),hi(0),bc(0,:))
 
 c     the mac velocities have changed, need to re-update rho
-            if (fancy_predictor .eq. 1 .or. misdc .gt. 1) then
-
-               print *,'... update rho'
+            print *,'... update rho'
 
 c     update density
-               call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                         dt(0),lo(0),hi(0),bc(0,:))
-
-            end if
+            call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+  &                         dt(0),lo(0),hi(0),bc(0,:))
 
 c     update rhoY_m with advection terms and set up RHS for equation (47) C-N solve
             print *,'... do correction diffusion solve for species'
