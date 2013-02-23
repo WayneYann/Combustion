@@ -42,8 +42,8 @@ fi
 let "MY_NUM_NODES = PBS_NP / 16"  # 16 cores per node
 let "MY_PES_PER_NODE = MY_PES / MY_NUM_NODES"
 let "MY_PES_PER_NUMA_NODE = MY_PES_PER_NODE / 2"  # 2 numa nodes per node
-if [ "$MY_PES_PER_NUMA_NODE" -lt "1" ]; then
-    MY_PES_PER_NUMA_NODE=1
+if [ "$MY_PES_PER_NUMA_NODE" -gt "0" ]; then
+    S_MY_PES_PER_NUMA_NODE="-S $MY_PES_PER_NUMA_NODE"
 fi
 
 if [[ "$MY_EXE" == *.Intel.* ]] 
@@ -66,8 +66,9 @@ fi
 
 cd $PBS_O_WORKDIR
 
-MY_APRUN="-n $MY_PES -N $MY_PES_PER_NODE -S $MY_PES_PER_NUMA_NODE -d $OMP_NUM_THREADS -cc $MY_CC_KEYWORD $MY_NUMA_MEMORY $MY_EXE $MY_INPUTSFILE"
+MY_APRUN="-n $MY_PES -N $MY_PES_PER_NODE $S_MY_PES_PER_NUMA_NODE -d $OMP_NUM_THREADS -cc $MY_CC_KEYWORD $MY_NUMA_MEMORY $MY_EXE $MY_INPUTSFILE"
 echo "aprun $MY_APRUN"
 echo ""
 
 aprun $MY_APRUN
+
