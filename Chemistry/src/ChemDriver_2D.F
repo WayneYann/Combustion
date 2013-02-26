@@ -1165,7 +1165,6 @@ c               rhoYnew(i,j,m) = rhoYold(i,j,m) + Z(m) - rhoYtemp(m)*rhooldInv*r
 #include "htdata.H"
 #include "conp.H"
 #include "vode.H"
-#include "junk.H"
 
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(rhoYold)
