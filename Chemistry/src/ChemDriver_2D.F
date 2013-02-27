@@ -1116,7 +1116,7 @@ c               RWRK(dvbr+4) = TT2 - TT1
             rhooldInv = 1.d0 / rho
             rho  = 0.d0
             do m= 1,Nspec
-               rho = rho + rhoYnew(i,j,m)
+               rho = rho + Z(m)
             end do
             rhoInv = 1.d0 / rho
 
@@ -1381,7 +1381,7 @@ c               RWRK(dvbr+4) = TT2 - TT1
             rhooldInv = 1.d0 / rho
             rho  = 0.d0
             do m= 1,Nspec
-               rho = rho + rhoYnew(i,j,m)
+               rho = rho + Z(m)
             end do
             rhoInv = 1.d0 / rho
 
@@ -1627,7 +1627,7 @@ c               RWRK(dvbr+4) = TT2 - TT1
             rhooldInv = 1.d0 / rho
             rho  = 0.d0
             do m= 1,Nspec
-               rho = rho + rhoYnew(i,j,m)
+               rho = rho + Z(m)
             end do
             rhoInv = 1.d0 / rho
 
@@ -1644,6 +1644,7 @@ c               RWRK(dvbr+4) = TT2 - TT1
             do m=1,Nspec
                Y(m) = rhoYnew(i,j,m) * rhoInv
             enddo
+
             call FORT_TfromHYpt(Tnew(i,j),rhoHnew(i,j)*rhoInv,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
             
             do m=1,Nspec

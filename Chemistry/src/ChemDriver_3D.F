@@ -1132,7 +1132,7 @@ c                  RWRK(dvbr+4) = TT2 - TT1
                rhooldInv = 1.d0 / rho
                rho  = 0.d0
                do m= 1,Nspec
-                  rho = rho + rhoYnew(i,j,k,m)
+                  rho = rho + Z(m)
                end do
                rhoInv = 1.d0 / rho
                
