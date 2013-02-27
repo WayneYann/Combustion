@@ -384,6 +384,9 @@ protected:
                           int       nGrow,
                           Real      scale);
 
+  DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow);
+
+
     //
     // Functions related to full-transport model
     //
@@ -557,6 +560,8 @@ protected:
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
     static Array<Real> typical_values;
+    static bool        avg_down_chem;
+
 
     static int sdc_iterMAX;
     

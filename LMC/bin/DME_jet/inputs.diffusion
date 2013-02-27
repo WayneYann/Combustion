@@ -1,9 +1,8 @@
 ht.vode_itol = 2
-ht.vode_rtol = 1.e-3
-ht.vode_atol = 1.e-3
-ht.vode_max_subcycles = 500000
-ht.vode_max_subcycles = 15000
+ht.vode_rtol = 1.e-6
+ht.vode_atol = 1.e-6
 ht.vode_max_subcycles = 5000
+ns.avg_down_chem = 1
 
 ns.do_active_control = 0
 mg.smooth_on_cg_unstable=1
@@ -51,7 +50,11 @@ geometry.prob_lo    = -0.00114 0.0
 geometry.prob_hi    =  0.00114 0.00228
 amr.n_cell          = 128 128
 amr.n_cell          = 160 160
+amr.n_cell          = 96 96
 amr.max_grid_size   = 64
+amr.max_grid_size   = 256
+#amr.max_grid_size   = 256 64 64
+#amr.refine_grid_layout = 0
 amr.blocking_factor = 32
 max_step            = 1000
 
@@ -69,7 +72,7 @@ ns.cfl              = 0.25
 ns.cfl              = 0.7
 
 amr.v=1
-amr.max_level        = 0
+amr.max_level        = 2
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 4 4 4 4 # number of buffer cells in error est
@@ -119,7 +122,7 @@ ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
 
-ns.sdc_iterMAX = 3
+ns.sdc_iterMAX = 1
 
 ns.dpdt_option = 0
 #macop.max_order = 3
@@ -193,7 +196,6 @@ fab.format = NATIVE
 #ShowMF_Check_Nans = true
 #ShowMF_Check_Nans = false
 
-ns.do_not_use_funccount = 1
 diffuse.max_order = 2
 diffuse.tensor_max_order = 2
 ns.visc_tol        = 1.0e-14  # tolerence for viscous solves
@@ -203,10 +205,12 @@ ns.visc_abs_tol    = 1.0e-14  # tolerence for viscous solves
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=1
-#max_step=0
 #ns.num_divu_iters=0
 
 #ShowMF_Sets = sdc
 #ShowMF_Verbose = t
 #ShowMF_Dir = JUNK
 #ShowMF_Check_Nans = f
+
+#amr.subcycling_mode = Manual
+#amr.subcycling_iterations = 1 2 2
