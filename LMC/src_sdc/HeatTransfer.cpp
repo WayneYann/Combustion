@@ -2082,17 +2082,14 @@ HeatTransfer::post_init (Real stop_time)
             {
                 MultiFab& S_new = getLevel(k).get_new_data(State_Type);
                 //
-                // Don't update S_new in this advance_chemistry() call ...
+                // Don't update S_new in this strang_chem() call ...
                 //
                 MultiFab S_tmp(S_new.boxArray(),S_new.nComp(),0);
-                MultiFab S_tmp1(S_new.boxArray(),S_new.nComp(),0);
 
 		MultiFab Forcing_tmp(S_new.boxArray(),nspecies+1,0);
 		Forcing_tmp.setVal(0.);
 
-                S_tmp.copy(S_new);  // Parallel copy
-                MultiFab::Copy(S_tmp1,S_tmp,0,0,NUM_STATE,0);
-		getLevel(k).advance_chemistry(S_tmp1,S_tmp,dt_save[k]/2.0,Forcing_tmp,0);
+		getLevel(k).advance_chemistry(S_new,S_tmp,dt_save[k]/2.0,Forcing_tmp,0);
             }
         }
         //
@@ -6190,13 +6187,14 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     {
       int state_ind = Density + comp;
       bool advect_this_comp = ( (state_ind >= first_spec) && (state_ind <= last_spec) )
-        || state_ind == RhoH || state_ind == Density;
+        || state_ind == RhoH;
 
       if (advect_this_comp) {
 
         if (state_ind != Density) {
           Array<int> bc = getBCArray(State_Type,i,state_ind,1);
-          int iconserv = advectionType[state_ind];
+	  int iconserv = advectionType[state_ind] == Conservative ? 1 : 0;
+
           int fComp = Density + comp - first_spec;
           BL_ASSERT(fComp>=0 && fComp<=force.nComp());
           godunov->edge_states_fpu(box, dx, dt,
