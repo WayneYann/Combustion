@@ -73,7 +73,7 @@ c     Note: typical values are defaulted to zero, and may be left that way
          call bl_pd_abort('cannot write typical values')
       endif
       do n=1,BL_SPACEDIM
-         typ_vals(n) = typVal_Vel
+         typVal_Vel = typ_vals(n)
       enddo
       typVal_Density = typ_vals(Density+BL_SPACEDIM)
       typVal_Temp    = typ_vals(Temp+BL_SPACEDIM)
