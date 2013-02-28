@@ -40,7 +40,6 @@
   &flctin
   flct_file = "Turb.Hemanth"
   forceInflow = .TRUE.
-  forceInflow = .FALSE.
  /
   &control
  /
