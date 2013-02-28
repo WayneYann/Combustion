@@ -472,6 +472,7 @@ protected:
     void set_htt_hmixTYP ();
 
     void set_typical_values(bool restart);
+    void reset_typical_values(const MultiFab& S);
     
     virtual void checkPoint (const std::string& dir,
                              std::ostream&      os,
@@ -561,9 +562,9 @@ protected:
     static Real        new_T_threshold;
     static Array<Real> typical_values;
     static bool        avg_down_chem;
-
-
-    static int sdc_iterMAX;
+    static int         reset_typical_vals_int;
+    static std::string typical_values_PPfile;
+    static int         sdc_iterMAX;
     
     static int nGrowAdvForcing;
     bool       updateFluxReg;

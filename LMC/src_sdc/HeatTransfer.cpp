@@ -164,6 +164,8 @@ Real HeatTransfer::mcdd_advance_temp;
 Real HeatTransfer::new_T_threshold;
 int  HeatTransfer::nGrowAdvForcing=1;
 bool HeatTransfer::avg_down_chem;
+int  HeatTransfer::reset_typical_vals_int=-1;
+std::string HeatTransfer::typical_values_PPfile;
 
 std::string                                HeatTransfer::turbFile;
 ChemDriver*                                HeatTransfer::chemSolve;
@@ -341,6 +343,8 @@ HeatTransfer::Initialize ()
     HeatTransfer::mcdd_advance_temp         = 1;
     HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
     HeatTransfer::avg_down_chem             = false;
+    HeatTransfer::reset_typical_vals_int    = -1;
+    HeatTransfer::typical_values_PPfile.clear();
 
     HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
 
@@ -425,6 +429,18 @@ HeatTransfer::Initialize ()
     pp.query("hack_noavgdivu",hack_noavgdivu);
     pp.query("do_check_divudt",do_check_divudt);
     pp.query("avg_down_chem",avg_down_chem);
+    pp.query("reset_typical_vals_int",reset_typical_vals_int);
+    if (pp.countval("typical_values_PPfile")>0) {
+      pp.query("typical_values_PPfile",typical_values_PPfile);
+      if (ParallelDescriptor::IOProcessor()) {
+        if (reset_typical_vals_int>0) {
+          std::cout << "HeatTransfer::Initialize() Warning: typical_values_PPfile set ("
+                    << typical_values_PPfile << ") and reset_typical_vals_int ("
+                    << reset_typical_vals_int << ") > 0, will use file values" << std::endl;
+        }
+      }
+      BoxLib::Abort("typical_values_PPfile option not yet implemented");
+    }
 
     pp.query("do_OT_radiation",do_OT_radiation);
     do_OT_radiation = (do_OT_radiation ? 1 : 0);
@@ -1252,6 +1268,10 @@ HeatTransfer::set_typical_values(bool restart)
 	  }
 	}
 
+        // If ParmParse-style input file specified, this takes precedence componentwise
+        if (!typical_values_PPfile.empty()) {
+        }
+
         FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
 
         if (ParallelDescriptor::IOProcessor())
@@ -1270,7 +1290,7 @@ HeatTransfer::set_typical_values(bool restart)
                 cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
             }
         }
-            
+
         // Verify good values for Density, Temp, RhoH, Y -- currently only needed for mcdd problems
         if (do_mcdd && ParallelDescriptor::IOProcessor()) {
             for (int i=BL_SPACEDIM; i<nComp; ++i) {
@@ -1281,6 +1301,45 @@ HeatTransfer::set_typical_values(bool restart)
             }
         }
     }
+}
+
+void
+HeatTransfer::reset_typical_values(const MultiFab& S)
+{
+  // NOTE: Assumes that this level has valid data everywhere
+  int nComp = typical_values.size();
+  BL_ASSERT(nComp = S.nComp());
+  for (int i=0; i<nComp; ++i) {
+    Real thisMax = S.max(i);
+    Real thisMin = S.min(i);
+    Real newVal = std::abs(thisMax - thisMin);
+    if (newVal > 0) {
+      if ( (i>=first_spec && i<=last_spec) || i==RhoH) {
+        typical_values[i] = newVal / typical_values[Density];
+      }
+      else {
+        typical_values[i] = newVal;
+      }
+    }
+  }
+
+  FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
+
+  if (ParallelDescriptor::IOProcessor()) {
+    cout << "New typical vals: " << endl;
+    cout << "\tVelocity: ";
+    for (int i=0; i<BL_SPACEDIM; ++i) {
+      cout << typical_values[i] << " ";
+    }
+    cout << endl;
+    cout << "\tDensity: " << typical_values[Density] << endl;
+    cout << "\tTemp: "    << typical_values[Temp]    << endl;
+    cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
+    const Array<std::string>& names = getChemSolve().speciesNames();
+    for (int i=0; i<nspecies; ++i) {
+      cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
+    }
+  }
 }
 
 Real
@@ -5373,6 +5432,10 @@ HeatTransfer::advance (Real time,
     }
 
     advance_setup(time,dt,iteration,ncycle);
+
+    if (level==0 && reset_typical_vals_int>0 && parent->levelSteps(0)%reset_typical_vals_int==0) {
+      reset_typical_values(get_old_data(State_Type));
+    }
 
     if (do_check_divudt)
         checkTimeStep(dt);
