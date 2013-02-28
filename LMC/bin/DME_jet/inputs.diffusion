@@ -1,9 +1,10 @@
+FILE = typVals_DME.pp
+ns.reset_typical_vals_int = 5
 ht.vode_itol = 2
 ht.vode_rtol = 1.e-6
 ht.vode_atol = 1.e-6
 ht.vode_max_subcycles = 5000
 ns.avg_down_chem = 1
-ns.reset_typical_vals_int = 5
 
 ns.do_active_control = 0
 mg.smooth_on_cg_unstable=1

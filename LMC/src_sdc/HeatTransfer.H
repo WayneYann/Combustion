@@ -563,7 +563,7 @@ protected:
     static Array<Real> typical_values;
     static bool        avg_down_chem;
     static int         reset_typical_vals_int;
-    static std::string typical_values_PPfile;
+    static std::map<std::string,Real> typical_values_FileVals;
     static int         sdc_iterMAX;
     
     static int nGrowAdvForcing;

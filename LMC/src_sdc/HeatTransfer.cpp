@@ -165,7 +165,7 @@ Real HeatTransfer::new_T_threshold;
 int  HeatTransfer::nGrowAdvForcing=1;
 bool HeatTransfer::avg_down_chem;
 int  HeatTransfer::reset_typical_vals_int=-1;
-std::string HeatTransfer::typical_values_PPfile;
+std::map<std::string,Real> HeatTransfer::typical_values_FileVals;
 
 std::string                                HeatTransfer::turbFile;
 ChemDriver*                                HeatTransfer::chemSolve;
@@ -344,7 +344,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
     HeatTransfer::avg_down_chem             = false;
     HeatTransfer::reset_typical_vals_int    = -1;
-    HeatTransfer::typical_values_PPfile.clear();
+    HeatTransfer::typical_values_FileVals.clear();
 
     HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
 
@@ -430,17 +430,6 @@ HeatTransfer::Initialize ()
     pp.query("do_check_divudt",do_check_divudt);
     pp.query("avg_down_chem",avg_down_chem);
     pp.query("reset_typical_vals_int",reset_typical_vals_int);
-    if (pp.countval("typical_values_PPfile")>0) {
-      pp.query("typical_values_PPfile",typical_values_PPfile);
-      if (ParallelDescriptor::IOProcessor()) {
-        if (reset_typical_vals_int>0) {
-          std::cout << "HeatTransfer::Initialize() Warning: typical_values_PPfile set ("
-                    << typical_values_PPfile << ") and reset_typical_vals_int ("
-                    << reset_typical_vals_int << ") > 0, will use file values" << std::endl;
-        }
-      }
-      BoxLib::Abort("typical_values_PPfile option not yet implemented");
-    }
 
     pp.query("do_OT_radiation",do_OT_radiation);
     do_OT_radiation = (do_OT_radiation ? 1 : 0);
@@ -1081,6 +1070,23 @@ HeatTransfer::init_once ()
     //
     typical_values.resize(NUM_STATE,-1); // -ve means don't use for anything
     typical_values[RhoH] = typical_RhoH_value_default;
+
+    const Array<std::string>& speciesNames = getChemSolve().speciesNames();
+    ParmParse pp("ht");
+    for (int i=0; i<nspecies; ++i) {
+      const std::string ppStr = std::string("typValY_") + speciesNames[i];
+      if (pp.countval(ppStr.c_str())>0) {
+        pp.get(ppStr.c_str(),typical_values_FileVals[speciesNames[i]]);
+      }
+    }
+    std::string otherKeys[4] = {"Temp", "RhoH", "Vel", "Trac"};
+    for (int i=0; i<4; ++i) {
+      const std::string ppStr(std::string("typVal_")+otherKeys[i]);
+      if (pp.countval(ppStr.c_str())>0) {
+        pp.get(ppStr.c_str(),typical_values_FileVals[otherKeys[i]]);
+      }
+    }
+
     //
     // Get universal gas constant from Fortran.
     //
@@ -1133,8 +1139,6 @@ HeatTransfer::init_once ()
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "HeatTransfer::init_once(): num_state_type = " << num_state_type << '\n';
-
-    ParmParse pp("ht");
 
     pp.query("plot_reactions",plot_reactions);
     if (plot_reactions)
@@ -1268,8 +1272,28 @@ HeatTransfer::set_typical_values(bool restart)
 	  }
 	}
 
-        // If ParmParse-style input file specified, this takes precedence componentwise
-        if (!typical_values_PPfile.empty()) {
+        // If typVals specified in inputs, these take precedence componentwise
+        for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
+               End=typical_values_FileVals.end(); it!=End; ++it) {
+          int idx = getChemSolve().index(it->first);
+          if (idx>=0) {
+            typical_values[first_spec+idx] = it->second;
+          } else {
+            if (it->first == "Temp") {
+              typical_values[Temp] = it->second;
+            }
+            else if (it->first == "RhoH") {
+              typical_values[RhoH] = it->second;
+            }
+            else if (it->first == "Trac") {
+              typical_values[Trac] = it->second;
+            }
+            else if (it->first == "Vel") {
+              for (int d=0; d<BL_SPACEDIM; ++d) {
+                typical_values[d] = it->second;
+              }
+            }
+          }
         }
 
         FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
@@ -1319,6 +1343,30 @@ HeatTransfer::reset_typical_values(const MultiFab& S)
       }
       else {
         typical_values[i] = newVal;
+      }
+    }
+  }
+
+  // If typVals specified in inputs, these take precedence componentwise
+  for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
+         End=typical_values_FileVals.end(); it!=End; ++it) {
+    int idx = getChemSolve().index(it->first);
+    if (idx>=0) {
+      typical_values[first_spec+idx] = it->second;
+    } else {
+      if (it->first == "Temp") {
+        typical_values[Temp] = it->second;
+      }
+      else if (it->first == "RhoH") {
+        typical_values[RhoH] = it->second;
+      }
+      else if (it->first == "Trac") {
+        typical_values[Trac] = it->second;
+      }
+      else if (it->first == "Vel") {
+        for (int d=0; d<BL_SPACEDIM; ++d) {
+          typical_values[d] = it->second;
+        }
       }
     }
   }
@@ -5433,8 +5481,11 @@ HeatTransfer::advance (Real time,
 
     advance_setup(time,dt,iteration,ncycle);
 
-    if (level==0 && reset_typical_vals_int>0 && parent->levelSteps(0)%reset_typical_vals_int==0) {
-      reset_typical_values(get_old_data(State_Type));
+    if (level==0 && reset_typical_vals_int>0) {
+      int L0_steps = parent->levelSteps(0);
+      if (L0_steps>0 && L0_steps%reset_typical_vals_int==0) {
+        reset_typical_values(get_old_data(State_Type));
+      }
     }
 
     if (do_check_divudt)
