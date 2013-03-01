@@ -158,6 +158,7 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
+       call sdc_srset_integrate(sdc%srset, dt)
        call sdc_srset_sweep(sdc%srset, 0.0d0, dt)
 
        ! check residual
