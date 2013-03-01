@@ -259,6 +259,9 @@ plot_base_name                      character          "plt"
 # prefix to use in checkpoint file names
 check_base_name                     character          "chk"
 
+# profiling information file name (if profiling enabled)
+bl_prof_name                        character          "bl_prof_res"
+
 # If lUsingNFiles = .true., use this many processors to write checkpoint
 # and plotfiles.  Fortran has the unfortunate feature of each processor
 # only being able to write out 1-2GB each without crashing.
