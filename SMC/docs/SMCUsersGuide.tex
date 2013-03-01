@@ -339,14 +339,21 @@ set them appropriately.
 
 \begin{itemize}
 \item {\tt sdc\_nnodes = 5}\\
-  Number of SDC nodes.  Valid choices are 2, 3, 4, 5, 7, 9, 13, and 17.
+  Number of SDC nodes.  Valid choices are any positive integer greater
+  than 2.
 \item {\tt sdc\_iters = 9}\\
   Number of SDC iterations per time step.  Valid choices are any
   positive integer.
-\item {\tt sdc\_tol\_residual = 1.d-5}\\
-  If the SDC residual drops below this, SDC iterations are cut short.
-  If this tolerance is negative, then SDC iterations are never cut
-  short.
+\item {\tt sdc\_tol\_residual = -1.0d100}\\
+  If the successive ratios of SDC residuals, relative to unity, drop
+  below this tolerance then SDC iterations are cut short.  If this
+  tolerance is negative, then SDC iterations are never cut short.
+  More formally, if
+  \begin{equation*}
+    \left| \frac{||R_{k-1}||_2}{||R_k||_2} - 1 \right| < \text{tolerance}
+  \end{equation*}
+  where $R_k$ is the SDC residual of the $k^{\rm th}$ iteration, then
+  the iterations stop.
 \end{itemize}
 
 If SDC time-stepping is used, the number of SDC nodes used and the
@@ -354,9 +361,9 @@ number of SDC iterations (sweeps) taken, per time-step, can be
 adjusted.  The type of SDC nodes that {\tt SMC} uses is (currently)
 Gauss-Lobatto.  Therefore, the formal order of accuracy of the
 resulting time-stepping scheme is the minimum of $2{\tt sdc\_nnodes} -
-2$ and ${\tt sdc\_iters} - 1$.  For example, with 5 Gauss-Lobatto
-nodes the formal order of accuracy is 8 as long as 9 iterations are
-taken.  If only 7 iterations are taken, then the formal order of
+2$ and ${\tt sdc\_iters}$.  For example, with 5 Gauss-Lobatto
+nodes the formal order of accuracy is 8 as long as 8 iterations are
+taken.  If only 6 iterations are taken, then the formal order of
 accuracy is reduced to 6.
 
 Note that a time-stepping scheme of arbitrary order can be built by
