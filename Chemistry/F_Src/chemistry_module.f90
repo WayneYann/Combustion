@@ -73,7 +73,7 @@ contains
   end subroutine chemistry_close
 
 
-  integer function get_species_index(name) result (iname)
+  function get_species_index(name) result (iname)
     character(len=*), intent(in) :: name
     integer :: iname
     integer :: i
