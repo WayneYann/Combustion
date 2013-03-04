@@ -78,7 +78,7 @@ contains
     deallocate(seed)
 
     nimages = 0
-    if (prob_type == 3) &
+    if (prob_type == 3 .or. prob_type == 4) &
          nimages = 3
 
     cons = 0.0d0
@@ -139,11 +139,13 @@ contains
                 rfront = 0.d0
              else if (prob_type .eq. 3) then
 
+             else if (prob_type .eq. 4) then
+
              else
                 call bl_error("Unknown prob_type")
              end if
 
-             if (prob_type .ne. 3) then
+             if (prob_type .ne. 3 .and. prob_type .ne. 4) then
                 call pmf(rfront,rfront,pmf_vals,n)
 
                 if (n .ne. nspecies+3) then
@@ -195,6 +197,34 @@ contains
                 Xt(1) = 0.116d0
                 Xt(2) = 0.23d0
                 Xt(9) = 1.0d0 - Xt(1) - Xt(2)
+
+             else if (prob_type .eq. 4 ) then
+
+                Tt = 300.0d0
+
+                do jj = -nimages, nimages
+                   do ii = -nimages, nimages
+
+                      z = 0.d0
+                      y = phlo(2) + dx(2)*j + jj * (phhi(2) - phlo(2))
+                      x = phlo(1) + dx(1)*i + ii * (phhi(1) - phlo(1))
+                      r = sqrt(x**2+y**2+z**2)
+                         
+                      ! Tt = (1400.0d0-300.0d0)/2.0d0*tanh((rfire-r)*20.0d0) + (1400.0d0+300.0d0)/2.0d0
+                      Tt = Tt + 1100.0d0 * exp(-(r / rfire)**2)
+
+                   end do
+                end do
+
+                u1t = uinit
+                u2t = vinit
+                u3t = winit
+
+                Xt = 0.0d0
+                Xt(1) = 0.116d0
+                Xt(2) = 0.23d0
+                Xt(9) = 1.0d0 - Xt(1) - Xt(2)
+
              else
                 call bl_error("Unknown prob_type")
              end if

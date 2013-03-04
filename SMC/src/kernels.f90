@@ -2092,6 +2092,7 @@ contains
   
   subroutine diffterm_2(q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy, &
        lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dx2inv)
+    use probin_module, only : reset_N2
     integer,         intent(in):: lo(3),hi(3),slo(3),shi(3),dlo(3),dhi(3)
     integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3)
     logical,         intent(in):: physbclo(3),physbchi(3)
@@ -2136,7 +2137,9 @@ contains
     allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons))
 
     allocate(M8p(8,lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
-    allocate(Hry(  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
+    if (.not.reset_N2) then
+       allocate(Hry(  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
+    end if
 
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
@@ -2229,34 +2232,35 @@ contains
        end do
     end do
 
-    ! correction
-    
-    Hry = 0.d0
+    if (.not.reset_N2) then
+       ! correction
+       Hry = 0.d0
 
-    do n = 1, nspecies
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=slo(1),shi(1)+1
-                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+       do n = 1, nspecies
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=slo(1),shi(1)+1
+                   Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+                end do
              end do
           end do
        end do
-    end do
     
-    do n = 1, nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=slo(1),shi(1)+1
-                Yhalf = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
-                hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+       do n = 1, nspecies
+          qyn = qy1+n-1
+          qhn = qh1+n-1
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=slo(1),shi(1)+1
+                   Yhalf = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
+                   Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                   Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+                end do
              end do
           end do
        end do
-    end do
+    end if
 
     ! add x-direction rhs
     do n=2,ncons
@@ -2337,34 +2341,35 @@ contains
 
     end do
        
-    ! correction
+    if (.not.reset_N2) then
+       ! correction
+       Hry = 0.d0
 
-    Hry = 0.d0
-
-    do n = 1, nspecies
-       do k=lo(3),hi(3)
-          do j=slo(2),shi(2)+1
-             do i=lo(1),hi(1)
-                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+       do n = 1, nspecies
+          do k=lo(3),hi(3)
+             do j=slo(2),shi(2)+1
+                do i=lo(1),hi(1)
+                   Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+                end do
              end do
           end do
        end do
-    end do
 
-    do n = 1, nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       do k=lo(3),hi(3)
-          do j=slo(2),shi(2)+1
-             do i=lo(1),hi(1)
-                Yhalf = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
-                hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+       do n = 1, nspecies
+          qyn = qy1+n-1
+          qhn = qh1+n-1
+          do k=lo(3),hi(3)
+             do j=slo(2),shi(2)+1
+                do i=lo(1),hi(1)
+                   Yhalf = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
+                   Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                   Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+                end do
              end do
           end do
        end do
-    end do
+    end if
 
     ! add y-direction rhs
     do n=2,ncons
@@ -2444,34 +2449,35 @@ contains
        end do
     end do
 
-    ! correction
+    if (.not.reset_N2) then
+       ! correction
+       Hry = 0.d0
 
-    Hry = 0.d0
-
-    do n = 1, nspecies
-       do k=slo(3),shi(3)+1
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+       do n = 1, nspecies
+          do k=slo(3),shi(3)+1
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+                   Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
+                end do
              end do
           end do
        end do
-    end do
 
-    do n = 1, nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       do k=slo(3),shi(3)+1
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                Yhalf = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
-                hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+       do n = 1, nspecies
+          qyn = qy1+n-1
+          qhn = qh1+n-1
+          do k=slo(3),shi(3)+1
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+                   Yhalf = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
+                   Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
+                   Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
+                end do
              end do
           end do
        end do
-    end do
+    end if
     
     ! add z-direction rhs
     do n=2,ncons
@@ -3766,7 +3772,8 @@ contains
        end do
     end do
 
-    deallocate(Hg,dpy,dxe,dpe,vsp,M8p,Hry)
+    deallocate(Hg,dpy,dxe,dpe,vsp,M8p)
+    if (.not.reset_N2) deallocate(Hry)
 
   end subroutine diffterm_2
 

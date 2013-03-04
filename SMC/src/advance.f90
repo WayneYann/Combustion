@@ -116,7 +116,7 @@ contains
     double precision :: courno_proc
 
     integer :: k
-    double precision :: res
+    double precision :: res0, res1
     type(layout) :: la
     type(multifab), target :: R
 
@@ -154,30 +154,44 @@ contains
 
     if (sdc%tol_residual > 0.d0) then
        la = get_layout(U)
+       call build(R, la, ncons, 0)
     end if
+
+    res0 = -1.0d0
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
+       call sdc_srset_integrate(sdc%srset, dt)
        call sdc_srset_sweep(sdc%srset, 0.0d0, dt)
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
-          call build(R, la, ncons, 0)
           call sdc_srset_residual(sdc%srset, dt, mfptr(R))
-          call parallel_reduce(res, norm_inf(R), MPI_MAX)
-          call destroy(R)
+          call parallel_reduce(res1, norm_l2(R), MPI_MAX)
 
           if (parallel_IOProcessor()) then
-             print *, "SDC: iter:", k, "residual:", res
+             if (res0 > 0.0d0) then
+                print *, "SDC: iter:", k, "residual:", res1, res0/res1
+             else
+                print *, "SDC: iter:", k, "residual:", res1
+             end if
           end if
 
-          if (res < sdc%tol_residual) &
+          if (res0 > 0.0d0) then
+             if (abs(res0 / res1 - 1.0d0) < sdc%tol_residual) &
                exit
+          end if
+
+          res0 = res1
        end if
     end do
     call destroy(bpt_sdc_iter)
 
     call sdc_srset_get_qend(sdc%srset, mfptr(U))    
+
+    if (sdc%tol_residual > 0.d0) then
+       call destroy(R)
+    end if
 
   end subroutine advance_sdc
 
@@ -256,7 +270,7 @@ contains
     double precision :: courno_proc
 
     integer :: k
-    double precision :: res
+    double precision :: res0, res1
     type(layout) :: la
     type(multifab), target :: R
 
@@ -297,7 +311,10 @@ contains
 
     if (sdc%tol_residual > 0.d0) then
        la = get_layout(U)
+       call build(R, la, ncons, 0)
     end if
+
+    res0 = -1.0d0
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
@@ -307,22 +324,31 @@ contains
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
-          call build(R, la, ncons, 0)
           call sdc_mrset_residual(sdc%mrset, dt, mfptr(R))
-          call parallel_reduce(res, norm_inf(R), MPI_MAX)
-          call destroy(R)
+          call parallel_reduce(res1, norm_l2(R), MPI_MAX)
 
           if (parallel_IOProcessor()) then
-             print *, "SDC: iter:", k, "residual:", res
+             if (res0 > 0.0d0) then
+                print *, "SDC: iter:", k, "residual:", res1, res0/res1
+             else
+                print *, "SDC: iter:", k, "residual:", res1
+             end if
           end if
 
-          if (res < sdc%tol_residual) &
+          if (res0 > 0.0d0) then
+             if (abs(res0 / res1 - 1.0d0) < sdc%tol_residual) &
                exit
+          end if
+
+          res0 = res1
        end if
     end do
 
     call sdc_mrset_get_qend(sdc%mrset, mfptr(U))
 
+    if (sdc%tol_residual > 0.d0) then
+       call destroy(R)
+    end if
   end subroutine advance_multi_sdc
 
 
