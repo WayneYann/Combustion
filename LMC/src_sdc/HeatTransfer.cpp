@@ -5507,18 +5507,43 @@ HeatTransfer::advance (Real time,
 
     const Real prev_time = state[State_Type].prevTime();
     const Real cur_time  = state[State_Type].curTime();
+
+    MultiFab dpdt(grids,1,nGrowAdvForcing); dpdt.setVal(0);
+    MultiFab delta_dpdt(grids,1,nGrowAdvForcing);
+
+    showMF("sdc",S_old,"sdc_Sold",level,parent->levelSteps(level));
+
     //
     // Do MAC projection and update edge velocities.
     //
+    bool increment_vel_register;
+#if 0
     if (do_mac_proj) 
     {
         int havedivu = 1;
-        create_mac_rhs(Forcing,time,dt,nGrowAdvForcing); // Use MF laying around
-        mac_project(time,dt,S_old,&Forcing,havedivu);
+        create_mac_rhs(Forcing,time,dt,nGrowAdvForcing);
+        increment_vel_register = true;
+        mac_project(time,dt,S_old,&Forcing,havedivu,increment_vel_register);
     }
+#else
+    setThermoPress(prev_time);
+    calc_divu(time, dt, get_old_data(Divu_Type));
+    int havedivu = 1;
+    create_mac_rhs(Forcing,time,dt,nGrowAdvForcing);
 
+    delta_dpdt.setVal(0.0,nGrowAdvForcing);
+    calc_dpdt(time,dt,delta_dpdt,u_mac);
+    MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
+    MultiFab::Add(Forcing,dpdt,0,0,1,nGrowAdvForcing);
+
+    increment_vel_register = sdc_iterMAX==0;
+    mac_project(time,dt,S_old,&Forcing,havedivu,increment_vel_register);
+#endif
+
+#if 0
     if (do_mom_diff == 0)
         velocity_advection(dt);
+#endif
     //
     // Build a copy of rho(tn) with grow cells for use in the diffusion solves
     make_rho_prev_time();
@@ -5531,7 +5556,6 @@ HeatTransfer::advance (Real time,
         std::cout << "Computing Dn and DDn (SDC predictor) \n";
 
     compute_differential_diffusion_terms(Dn,DDn,prev_time,dt);
-    showMF("sdc",S_old,"sdc_Sold",level,parent->levelSteps(level));
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
 
@@ -5559,9 +5583,10 @@ HeatTransfer::advance (Real time,
     showMF("sdc",Forcing,"sdc_F_for_A",level,parent->levelSteps(level));
     compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
     showMF("sdc",*aofs,"sdc_A",level,parent->levelSteps(level));
-    scalar_advection_update(dt, Density, RhoH);
-
+    scalar_advection_update(dt, Density, Density);
     make_rho_curr_time();
+
+    showMF("sdc",S_new,"sdc_Snew_after_Apred",level,parent->levelSteps(level));
 
     // 
     // Solve for Dhat, diffuse with F = A + R + 0.5*(Dn + Dhat)
@@ -5596,6 +5621,7 @@ HeatTransfer::advance (Real time,
     differential_diffusion_update(Forcing,0,theta,Dhat,0,DDnp1,theta_enthalpy);
     showMF("sdc",Dhat,"sdc_Dhat",level,parent->levelSteps(level));
     showMF("sdc",DDnp1,"sdc_DDnp1",level,parent->levelSteps(level));
+    showMF("sdc",S_new,"sdc_Snew_after_Dpred",level,parent->levelSteps(level));
 
     // 
     // Compute R, react with F = A + 0.5*(Dn + Dhat)
@@ -5625,6 +5651,7 @@ HeatTransfer::advance (Real time,
     showMF("sdc",Forcing,"sdc_F_for_R",level,parent->levelSteps(level));
     advance_chemistry(S_old,S_new,dt,Forcing,0);
     showMF("sdc",get_new_data(RhoYdot_Type),"sdc_R",level,parent->levelSteps(level));
+    showMF("sdc",S_new,"sdc_Snew_after_Rpred",level,parent->levelSteps(level));
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "DONE WITH R (SDC predictor) \n";
@@ -5645,6 +5672,22 @@ HeatTransfer::advance (Real time,
 
         calcDiffusivity(cur_time);
 
+#if 1
+        setThermoPress(cur_time);
+        calc_divu(time+dt, dt, get_new_data(Divu_Type));
+        int havedivu = 1;
+        create_mac_rhs(Forcing,time+0.5*dt,dt,nGrowAdvForcing); // Use MF laying around
+
+        delta_dpdt.setVal(0.0,nGrowAdvForcing);
+	calc_dpdt(time+dt,dt,delta_dpdt,u_mac);
+        MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
+        MultiFab::Add(Forcing,dpdt,0,0,1,nGrowAdvForcing);
+
+        increment_vel_register = updateFluxReg;
+        mac_project(time,dt,S_old,&Forcing,havedivu,increment_vel_register);
+#endif
+
+
 	//
 	// Compute Dn and DDn (based on state at tnpn)
 	// iteratively lagged
@@ -5654,10 +5697,11 @@ HeatTransfer::advance (Real time,
 
         compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
 
+#if 0
         //
         // Compute A (advection terms) with F = Dn + R
         //
-        for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
+        for (MFIter mfi(Forcing); mfi.isValid(); ++mfi)
         {
       	    FArrayBox& f = Forcing[mfi];
             const FArrayBox& dn = Dn[mfi];
@@ -5679,6 +5723,38 @@ HeatTransfer::advance (Real time,
         scalar_advection_update(dt, Density, RhoH);
 
         make_rho_curr_time();
+#else
+        //
+        // Compute A (advection terms) with F = 0.5*(Dn + Dnp1) + R
+        //
+        for (MFIter mfi(Forcing); mfi.isValid(); ++mfi)
+        {
+          FArrayBox& f = Forcing[mfi];
+          const FArrayBox& dn = Dn[mfi];
+          const FArrayBox& dnp1 = Dnp1[mfi];
+          const FArrayBox& ddn = DDn[mfi];
+          const FArrayBox& ddnp1 = DDnp1[mfi];
+          const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
+          const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
+
+          f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
+          f.plus(dnp1,gbox,gbox,0,0,nspecies+1);
+          f.plus(ddn,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
+          f.plus(ddnp1,gbox,gbox,0,nspecies,1);
+          f.mult(0.5);
+          f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
+        }
+        Forcing.FillBoundary(0,nspecies+1);
+        geom.FillPeriodicBoundary(Forcing,0,nspecies,true);
+
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "A (SDC corrector " << sdc_iter << ")\n";
+
+        compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+        scalar_advection_update(dt, Density, RhoH);
+
+        make_rho_curr_time();
+#endif
         // 
         // Compute Dhat, diffuse with F 
 	//                 = A + R + 0.5(Dn + Dnp1) - Dnp1 + Dhat + 0.5(DDn + DDnp1)
@@ -5827,6 +5903,9 @@ HeatTransfer::advance (Real time,
     //
     // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
     //
+    if (do_mom_diff == 0) {
+      velocity_advection(dt);
+    }
     velocity_update(dt);
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_preProj",level,parent->levelSteps(level));
     //
@@ -5867,6 +5946,7 @@ HeatTransfer::advance (Real time,
 void
 HeatTransfer::create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow)
 {
+#if 0
     NavierStokes::create_mac_rhs(rhs,time,dt,nGrow);
     showMF("mac",rhs,"mac_rhs0_",level);
 
@@ -5882,6 +5962,18 @@ HeatTransfer::create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow)
     }
 
     showMF("mac",rhs,"mac_rhs1_",level);
+#else
+    BL_ASSERT(rhs.nGrow()>=nGrow);
+    BL_ASSERT(rhs.boxArray()==grids);
+
+    int sCompDivU = 0;
+    int nCompDivU = 1;
+    for (FillPatchIterator Divu_fpi(*this,rhs,nGrow,time,Divu_Type,sCompDivU,nCompDivU);
+         Divu_fpi.isValid();
+         ++Divu_fpi) {
+      rhs[Divu_fpi].copy(Divu_fpi(),0,sCompDivU,nCompDivU);
+    }
+#endif
 }
 
 DistributionMapping
@@ -6451,9 +6543,9 @@ HeatTransfer::mac_sync ()
             }
         }
 
-        showMF("sdc",*Ssync,"sdc_Ssync_no_Ucorr",level,parent->levelSteps(level));
-        showMF("sdc",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
-        showMF("sdc",*EdgeState[1],"sdc_ESTATE_y_no_Ucorr",level,parent->levelSteps(level));
+        showMF("sdcSync",*Ssync,"sdc_Ssync_no_Ucorr",level,parent->levelSteps(level));
+        showMF("sdcSync",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
+        showMF("sdcSync",*EdgeState[1],"sdc_ESTATE_y_no_Ucorr",level,parent->levelSteps(level));
 
 	// scalars
         for (int comp=BL_SPACEDIM; comp<NUM_STATE; ++comp)
@@ -6475,9 +6567,9 @@ HeatTransfer::mac_sync ()
             }
         }
         
-        showMF("sdc",*Ssync,"sdc_Ssync_after_Ucorr",level,parent->levelSteps(level));
-        showMF("sdc",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
-        showMF("sdc",*EdgeState[1],"sdc_ESTATE_y_no_Ucorr",level,parent->levelSteps(level));
+        showMF("sdcSync",*Ssync,"sdc_Ssync_after_Ucorr",level,parent->levelSteps(level));
+        showMF("sdcSync",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
+        showMF("sdcSync",*EdgeState[1],"sdc_ESTATE_y_no_Ucorr",level,parent->levelSteps(level));
         Ssync->mult(dt,Ssync->nGrow());
 
         sync_setup(DeltaSsync);
@@ -6716,7 +6808,7 @@ HeatTransfer::mac_sync ()
 	    MultiFab **flux;
             diffusion->allocFluxBoxesLevel(flux);
 
-            showMF("sdc",*Ssync,"sdc_Sync_preDiff",level,parent->levelSteps(level));
+            showMF("sdcSync",*Ssync,"sdc_Sync_preDiff",level,parent->levelSteps(level));
 
             for (sigma = 0; sigma < numscal; sigma++)
             {
@@ -6768,7 +6860,7 @@ HeatTransfer::mac_sync ()
             diffusion->removeFluxBoxesLevel(flux);
 	    diffusion->removeFluxBoxesLevel(beta);
         }
-        showMF("sdc",*Ssync,"sdc_Sync_postDiff",level,parent->levelSteps(level));
+        showMF("sdcSync",*Ssync,"sdc_Sync_postDiff",level,parent->levelSteps(level));
         //
         // For all conservative variables Q (other than density)
         // increment sync by (sync_for_rho)*q_presync.
@@ -6792,7 +6884,7 @@ HeatTransfer::mac_sync ()
             }
         }
         sync_cleanup(DeltaSsync);
-        showMF("sdc",*Ssync,"sdc_Sync_post_add_QdRho",level,parent->levelSteps(level));
+        showMF("sdcSync",*Ssync,"sdc_Sync_post_add_QdRho",level,parent->levelSteps(level));
         //
         // Increment the state (for all but rho, since that was done above)
         //
@@ -6813,7 +6905,7 @@ HeatTransfer::mac_sync ()
         //
         RhoH_to_Temp(S_new);
         setThermoPress(cur_time);
-        showMF("sdc",S_new,"sdc_Snew_postSync",level,parent->levelSteps(level));
+        showMF("sdcSync",S_new,"sdc_Snew_postSync",level,parent->levelSteps(level));
         //
         // Get boundary conditions.
         //
@@ -6929,7 +7021,7 @@ HeatTransfer::mac_sync ()
             crse_lev.NavierStokes::avgDown(cgrids,fgrids,S_crse,S_fine,
                                            lev,lev+1,pComp,1,fratio);
         }
-        showMF("sdc",S_new,"sdc_Snew_postInterpAvgSync",level,parent->levelSteps(level));
+        showMF("sdcSync",S_new,"sdc_Snew_postInterpAvgSync",level,parent->levelSteps(level));
     }
 
     if (verbose)
@@ -7282,7 +7374,7 @@ HeatTransfer::reflux ()
         fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
 
-    showMF("sdc",*Ssync,"sdc_Ssync_after_viscReflux",level);
+    showMF("sdcSync",*Ssync,"sdc_Ssync_after_viscReflux",level);
 
 
     const MultiFab* RhoHalftime = get_rho_half_time();
@@ -7325,7 +7417,7 @@ HeatTransfer::reflux ()
     // take divergence of advective flux registers into cell-centered RHS
     fr_adv.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
     fr_adv.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
-    showMF("sdc",*Ssync,"sdc_Ssync_after_advReflux",level);
+    showMF("sdcSync",*Ssync,"sdc_Ssync_after_advReflux",level);
 
     BoxArray baf = getLevel(level+1).boxArray();
 
@@ -7349,7 +7441,7 @@ HeatTransfer::reflux ()
         }
     }
 
-    showMF("sdc",*Ssync,"sdc_Ssync_after_zero",level);
+    showMF("sdcSync",*Ssync,"sdc_Ssync_after_zero",level);
 
     if (verbose)
     {
@@ -7669,6 +7761,7 @@ HeatTransfer::calc_divu (Real      time,
 //
 // Compute the Eulerian Dp/Dt for use in pressure relaxation.
 //
+#if 0
 void
 HeatTransfer::calc_dpdt (Real      time,
                          Real      dt_,
@@ -7867,7 +7960,77 @@ HeatTransfer::calc_dpdt (Real      time,
 	geom.FillPeriodicBoundary(dpdt,0,1,true);
       }
 }
+#else
+void
+HeatTransfer::calc_dpdt (Real      time,
+                         Real      dt,
+                         MultiFab& dpdt,
+                         MultiFab* u_mac)
+{
+  Real p_amb, dpdt_factor;
 
+  FORT_GETPAMB(&p_amb, &dpdt_factor);
+
+  if (dt <= 0.0 || dpdt_factor <= 0)
+  {
+    dpdt.setVal(0);
+    return;
+  }
+
+  const int pComp = (have_rhort ? RhoRT : Trac);
+  int nGrow = dpdt.nGrow();
+  MultiFab Peos(grids,1,nGrow);
+  for (FillPatchIterator S_fpi(*this,Peos,nGrow,time,State_Type,pComp,1);
+       S_fpi.isValid();
+       ++S_fpi) {
+    Peos[S_fpi].copy(S_fpi());
+  }
+
+  const Real* dx = geom.CellSize();
+  FArrayBox ugradp, p_denom;
+  for (MFIter mfi(dpdt); mfi.isValid(); ++mfi)
+  {
+    const int i = mfi.index();
+    const Box& vbox = mfi.validbox();
+    const Box gbox = BoxLib::grow(vbox,nGrow);
+
+    dpdt[i].copy(Peos[mfi],vbox,0,vbox,0,1);
+    dpdt[i].plus(-p_amb,vbox);
+    dpdt[i].mult(1.0/dt,vbox);
+
+    ugradp.resize(vbox,1);
+    const int* lo = vbox.loVect();
+    const int* hi = vbox.hiVect();
+    const FArrayBox& peos = Peos[mfi];
+    const FArrayBox D_DECL(&u=u_mac[0][i], &v=u_mac[1][i], &w=u_mac[2][i]);
+
+    FORT_COMPUTE_UGRADP(peos.dataPtr(),   ARLIM(peos.loVect()),   ARLIM(peos.hiVect()),
+                        ugradp.dataPtr(), ARLIM(ugradp.loVect()), ARLIM(ugradp.hiVect()),
+                        u.dataPtr(),      ARLIM(u.loVect()),      ARLIM(u.hiVect()),
+                        v.dataPtr(),      ARLIM(v.loVect()),      ARLIM(v.hiVect()),
+#if (BL_SPACEDIM == 3)
+                        w.dataPtr(),      ARLIM(w.loVect()),      ARLIM(w.hiVect()),
+#endif
+                        lo,hi,dx);
+
+    dpdt[i].plus(ugradp,vbox,0,0,1);
+    dpdt[i].divide(Peos[mfi],vbox,0,0,1);
+    dpdt[i].mult(dpdt_factor,vbox);
+  }
+
+  if (nGrow > 0) {
+    const int nc = 1;
+    for (MFIter mfi(dpdt); mfi.isValid(); ++mfi) {
+      FArrayBox& dpdtfab = dpdt[mfi];
+      const Box& vbox = mfi.validbox();
+      FORT_VISCEXTRAP(dpdtfab.dataPtr(),ARLIM(dpdtfab.loVect()),ARLIM(dpdtfab.hiVect()),
+                      vbox.loVect(),vbox.hiVect(),&nc);
+    }
+    dpdt.FillBoundary(0,1);
+    geom.FillPeriodicBoundary(dpdt,0,1,true);
+  }
+}
+#endif
 //
 // Function to use if Divu_Type and Dsdt_Type are in the state.
 //

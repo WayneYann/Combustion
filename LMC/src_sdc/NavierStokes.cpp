@@ -1827,14 +1827,15 @@ NavierStokes::mac_project (Real      time,
                            Real      dt,
                            MultiFab& Sold, 
                            MultiFab* divu,
-                           int       have_divu)
+                           int       have_divu,
+                           bool increment_vel_register)
 {
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mac_projection\n";
 
     const Real strt_time = ParallelDescriptor::second();
 
-    mac_projector->mac_project(level,u_mac,Sold,dt,time,*divu,have_divu);
+    mac_projector->mac_project(level,u_mac,Sold,dt,time,*divu,have_divu,increment_vel_register);
 
     create_umac_grown();
 
