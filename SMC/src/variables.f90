@@ -182,6 +182,7 @@ contains
              ei = rhoinv*u(i,j,k,iene) - 0.5d0*(q(i,j,k,qu)**2+q(i,j,k,qv)**2+q(i,j,k,qw)**2)
              q(i,j,k,qe) = ei
 
+             Tt = q(i,j,k,qtemp)
              call feeytt(ei, Y, iwrk, rwrk, Tt)
              q(i,j,k,qtemp) = Tt
 

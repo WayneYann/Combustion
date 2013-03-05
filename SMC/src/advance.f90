@@ -796,7 +796,8 @@ contains
     la = get_layout(U)
 
     call multifab_build(Q, la, nprim, ng)
-
+    call tb_multifab_setval(Q, 0.d0, .true.)
+    
     call multifab_build(Uprime, la, ncons, 0)
     call tb_multifab_setval(Uprime, 0.d0)
 
