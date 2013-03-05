@@ -26,9 +26,9 @@ f90sources += threadbox.f90
 f90sources += time.f90
 
 ifdef CONVERGENCE
-  f90sources += transport_properties.f90
-else
   f90sources += trans_prop_conv.f90
+else
+  f90sources += transport_properties.f90
 endif
 
 f90sources += variables.f90
