@@ -24,7 +24,7 @@ module variables_module
   double precision, parameter :: OneQuarter    = 1.d0/4.d0
   double precision, parameter :: ThreeQuarters = 3.d0/4.d0
 
-  integer, save, private :: iry_N2, iN2
+  integer, save, public :: iry_N2, iN2, iry_O2, iO2, iry_H2, iH2
 
 contains
 
@@ -33,7 +33,7 @@ contains
   !
   subroutine init_variables()
 
-    use probin_module, only: dm_in, reset_N2, N2_name
+    use probin_module, only: dm_in, reset_N2, N2_name, O2_name, H2_name
 
     irho = 1
     imx = 2
@@ -70,16 +70,25 @@ contains
 
     nprim = qh1-1 + nspecies
     
-    if (reset_N2) then
-       iN2 = get_species_index(N2_name)
-       if (iN2 .le. 0) then
-          call bl_error("Unknow species: "//N2_NAME)
-       else
-          iry_N2 = iry1 + iN2 - 1
-       end if
+    iN2 = get_species_index(N2_name)
+    if (iN2 .le. 0) then
+       call bl_error("Unknow species: "//N2_NAME)
     else
-       iN2 = -1000
-       iry_N2 = -1000
+       iry_N2 = iry1 + iN2 - 1
+    end if
+
+    iH2 = get_species_index(H2_name)
+    if (iH2 .le. 0) then
+       call bl_error("Unknow species: "//H2_NAME)
+    else
+       iry_H2 = iry1 + iN2 - 1
+    end if
+
+    iO2 = get_species_index(O2_name)
+    if (iO2 .le. 0) then
+       call bl_error("Unknow species: "//O2_NAME)
+    else
+       iry_O2 = iry1 + iO2 - 1
     end if
 
   end subroutine init_variables

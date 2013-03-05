@@ -297,6 +297,8 @@ reset_N2                            logical            .false.
 
 # Typically this should be N2.
 N2_name                             character          "N2"
+O2_name                             character          "O2"
+H2_name                             character          "H2"
 
 # use bulk viscosity?
 use_bulk_viscosity                  logical            .true.

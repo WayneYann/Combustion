@@ -39,7 +39,7 @@ contains
 
   subroutine init_data_3d(lo,hi,ng,dx,cons,phlo,phhi)
 
-    use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons
+    use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons, iH2, iO2, iN2
     use chemistry_module, only : nspecies, patm
     use probin_module, only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit, prob_dim
 
@@ -197,9 +197,9 @@ contains
                 u3t = winit
 
                 Xt = 0.0d0
-                Xt(1) = 0.116d0
-                Xt(2) = 0.23d0
-                Xt(9) = 1.0d0 - Xt(1) - Xt(2)
+                Xt(iH2) = 0.116d0
+                Xt(iO2) = 0.23d0
+                Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
 
              else if (prob_type .eq. 4 ) then
 
@@ -207,8 +207,8 @@ contains
                 Tt = 300.0d0
 
                 Xt = 0.0d0
-                Xt(1) = 0.10d0
-                Xt(2) = 0.25d0
+                Xt(iH2) = 0.10d0
+                Xt(iO2) = 0.25d0
 
                 do kk = -nimages, nimages
                    do jj = -nimages, nimages
@@ -225,8 +225,8 @@ contains
                          
                          Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
                          Tt = Tt      + 1100.0d0 * exp(-(r / rfire)**2)
-                         Xt(1) = Xt(1) + 0.025d0 * exp(-(r / rfire)**2)
-                         Xt(2) = Xt(2) - 0.050d0 * exp(-(r / rfire)**2)
+                         Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
+                         Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
 
                       end do
                    end do
@@ -251,7 +251,7 @@ contains
                 u2t = -cos(kx*x)*sin(ky*y)*cos(kz*z) * 300.d0
                 u3t = 0.d0
               
-                Xt(9) = 1.0d0 - Xt(1) - Xt(2)
+                Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
 
              else
                 call bl_error("Unknown prob_type")
