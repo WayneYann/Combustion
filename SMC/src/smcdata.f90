@@ -23,6 +23,7 @@ contains
     use chemistry_module, only : nspecies
     use derivative_stencil_module, only : stencil_ng
     use probin_module, only : advance_method
+    use threadbox_module, only : tb_multifab_setval
 
     implicit none
 
@@ -42,6 +43,7 @@ contains
     end if
 
     call multifab_build(Q, la, nprim, stencil_ng)
+    call tb_multifab_setval(Q, 0.d0, .true.)
 
     call multifab_build(Fdif, la, ncons, 0)
 

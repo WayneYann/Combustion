@@ -1,0 +1,54 @@
+&PROBIN
+
+ verbose = 2
+
+ advance_method = 2
+ stencil_type   = "narrow"
+
+ reset_N2 = .true. 
+
+ restart   = -1
+ plot_int  =  400
+ chk_int   =  400
+
+ stop_time = 1d-06
+ max_step  = 400
+
+ sdc_nnodes = 5
+ sdc_iters  = 8
+ sdc_tol_residual = 1.0d-20
+
+ ! cflfac        = 0.1
+ ! init_shrink   = 0.5d0
+ ! max_dt_growth = 1.25d0
+
+ fixed_dt = 1.25d-9
+
+ n_cellx = 64
+ n_celly = 64
+ n_cellz = 4
+ max_grid_size = 32
+
+ prob_lo_x = -0.05d0
+ prob_lo_y = -0.05d0
+ prob_hi_x =  0.05d0
+ prob_hi_y =  0.05d0
+
+ prob_lo_z = -0.00625d0
+ prob_hi_z =  0.00625d0
+
+ xlo_boundary_type = "periodic"
+ xhi_boundary_type = "periodic"
+
+ ylo_boundary_type = "periodic"
+ yhi_boundary_type = "periodic"
+
+ zlo_boundary_type = "periodic"
+ zhi_boundary_type = "periodic"
+
+ prob_type = 4
+
+ rfire =  0.01d0
+ prob_dim = 2
+
+/

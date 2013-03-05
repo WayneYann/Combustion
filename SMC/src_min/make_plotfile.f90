@@ -162,6 +162,7 @@ contains
     end if
 
     call multifab_build(Q,la,nprim, ngq)
+    call multifab_setval(Q, 0.d0, all=.true.)
 
     call ctoprim(U, Q, ngq)
 

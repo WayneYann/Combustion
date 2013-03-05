@@ -1,6 +1,6 @@
 module variables_module
 
-  use chemistry_module, only : nspecies
+  use chemistry_module, only : nspecies, get_species_index
   use multifab_module
 
   implicit none
@@ -24,6 +24,8 @@ module variables_module
   double precision, parameter :: OneQuarter    = 1.d0/4.d0
   double precision, parameter :: ThreeQuarters = 3.d0/4.d0
 
+  integer, save, private :: iry_N2, iN2
+
 contains
 
   ! 
@@ -31,7 +33,7 @@ contains
   !
   subroutine init_variables()
 
-    use probin_module, only: dm_in
+    use probin_module, only: dm_in, reset_N2, N2_name
 
     irho = 1
     imx = 2
@@ -68,6 +70,18 @@ contains
 
     nprim = qh1-1 + nspecies
     
+    if (reset_N2) then
+       iN2 = get_species_index(N2_name)
+       if (iN2 .le. 0) then
+          call bl_error("Unknow species: "//N2_NAME)
+       else
+          iry_N2 = iry1 + iN2 - 1
+       end if
+    else
+       iN2 = -1000
+       iry_N2 = -1000
+    end if
+
   end subroutine init_variables
 
   !
@@ -168,6 +182,7 @@ contains
              ei = rhoinv*u(i,j,k,iene) - 0.5d0*(q(i,j,k,qu)**2+q(i,j,k,qv)**2+q(i,j,k,qw)**2)
              q(i,j,k,qe) = ei
 
+             Tt = q(i,j,k,qtemp)
              call feeytt(ei, Y, iwrk, rwrk, Tt)
              q(i,j,k,qtemp) = Tt
 
@@ -215,6 +230,7 @@ contains
   end subroutine reset_density
 
   subroutine reset_rho_3d(lo, hi, ng, u)
+    use probin_module, only : reset_N2
     integer, intent(in) :: lo(3), hi(3), ng
     double precision, intent(inout) :: u(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,ncons)
 
@@ -234,7 +250,12 @@ contains
              do n=1, nspecies
                 rho = rho + U(i,j,k,iry1+n-1)
              end do
-             U(i,j,k,irho) = rho
+
+             if (reset_N2) then
+                U(i,j,k,iry_N2) = U(i,j,k,iry_N2) + (U(i,j,k,irho) - rho)
+             else
+                U(i,j,k,irho) = rho
+             end if
 
              !
              ! Enforce nonnegative species
