@@ -16,7 +16,7 @@
 
  sdc_nnodes = 5
  sdc_iters  = 8
- sdc_tol_residual = 1.0d-20
+ sdc_tol_residual = 1.0d-2
 
  ! cflfac        = 0.1
  ! init_shrink   = 0.5d0
@@ -33,9 +33,8 @@
  prob_lo_y = -0.05d0
  prob_hi_x =  0.05d0
  prob_hi_y =  0.05d0
-
- prob_lo_z = -0.00625d0
- prob_hi_z =  0.00625d0
+ prob_lo_z = -0.05d0
+ prob_hi_z =  0.05d0
 
  xlo_boundary_type = "periodic"
  xhi_boundary_type = "periodic"
