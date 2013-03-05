@@ -4860,8 +4860,13 @@ void molecularWeight(double * wt)
 /*get temperature given internal energy in mass units and mass fracs */
 int feeytt_(double * e, double * y, int * iwrk, double * rwrk, double * t)
 {
+#ifdef CONVERGENCE
+    const int maxiter = 5000;
+    const double tol  = 1.e-12;
+#else
     const int maxiter = 50;
     const double tol  = 0.001;
+#endif
     double ein  = *e;
     double tmin = 250; // max lower bound for thermo def
     double tmax = 3500; // min upper bound for thermo def
@@ -4889,6 +4894,7 @@ int feeytt_(double * e, double * y, int * iwrk, double * rwrk, double * t)
         if (dt > 100) { dt = 100; }
         else if (dt < -100) { dt = -100; }
         else if (fabs(dt) < tol) break;
+        else if (t1+dt == t1) break;
         t1 += dt;
     }
     *t = t1;

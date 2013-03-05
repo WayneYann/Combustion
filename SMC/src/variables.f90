@@ -269,22 +269,18 @@ contains
              end do
 
              if (rhoy_under .lt. rho*eps) then
-                if (reset_N2) then
-                   idom = iN2
-                else
-                   !
-                   ! Find the dominant species.
-                   !
-                   idom = 1
-                   rhoy_dom = U(i,j,k,iry1)
-                   do n = 2, nspecies
-                      iryn = iry1+n-1
-                      if (U(i,j,k,iryn) .gt. rhoy_dom) then
-                         idom = n
-                         rhoy_dom = U(i,j,k,iryn)
-                      end if
-                   end do
-                end if
+                !
+                ! Find the dominant species.
+                !
+                idom = 1
+                rhoy_dom = U(i,j,k,iry1)
+                do n = 2, nspecies
+                   iryn = iry1+n-1
+                   if (U(i,j,k,iryn) .gt. rhoy_dom) then
+                      idom = n
+                      rhoy_dom = U(i,j,k,iryn)
+                   end if
+                end do
                 !
                 ! Take enough from the dominant species to fill the negative one.
                 !
