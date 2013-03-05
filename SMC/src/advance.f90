@@ -22,6 +22,8 @@ module advance_module
   private
   public advance, overlapped_part, srf1eval, srf1post, mrf1eval, mrf2eval
 
+  integer, public :: count_ad = 0, count_r = 0
+
 contains
 
   subroutine advance(U, dt, courno, dx, sdc, istep)
@@ -569,6 +571,9 @@ contains
     else
        ng_ctoprim = 0
     end if
+
+    if (inc_ad) count_ad = count_ad + 1
+    if (inc_r)  count_r  = count_r  + 1
 
     !
     ! Calculate primitive variables based on U

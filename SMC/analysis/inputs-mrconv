@@ -6,7 +6,7 @@
  stencil_type   = "narrow"
 
  restart   = -1
- plot_int  = 10
+ plot_int  =  10
  chk_int   = -1
 
  stop_time = {stop_time}
@@ -17,17 +17,14 @@
  sdc_iters  = {sdc_iters}
  sdc_tol_residual = 1.0d-20
 
- cflfac        = {cflfac}
- init_shrink   = 0.5d0
- max_dt_growth = 1.25d0
-
  fixed_dt = {fixed_dt}
 
  n_cellx = {nx}
  n_celly = {nx}
- n_cellz = {nx}
+ n_cellz = 4
  max_grid_size = {max_grid_size}
 
+ ! one millimeter 
  prob_lo_x = -0.5d0
  prob_lo_y = -0.5d0
  prob_lo_z = -0.5d0
@@ -44,15 +41,13 @@
  zlo_boundary_type = "periodic"
  zhi_boundary_type = "periodic"
 
- prob_type = 3
+ prob_type = 4
 
  rfire =  0.25d0
- !uinit =  12.4d0
- !vinit = -20.2d0
- !winit =  13.1d0
-
- uinit =  1000.0d0
+ uinit =  800.0d0
  vinit =  100.0d0
- winit =   0.0d0
+ winit =  0.0d0
+
+ tb_split_dim  = 1
 
 /

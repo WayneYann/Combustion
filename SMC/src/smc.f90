@@ -425,6 +425,8 @@ subroutine smc()
      print*, 'SMC Initialization Time = ', wt_init
      print*, 'SMC Advance + I/O  Time = ', wt_advance
      print*, ' '
+     print*, 'AD fevals = ', count_ad
+     print*, 'R  fevals = ', count_r
   end if
 
 end subroutine smc
