@@ -167,9 +167,9 @@ contains
     end if
 
     call multifab_build(Q,la,nprim, ngq)
+    call tb_multifab_setval(Q, 0.d0, all=.true.)
 
     call ctoprim(U, Q, ngq)
-    call tb_multifab_setval(Q, 0.d0, all=.true.)
 
     call multifab_build(plotdata(1),la,n_plot_comps,0)
 
