@@ -34,7 +34,7 @@ contains
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     integer,           intent(in   ) :: istep
-    type(sdc_t),       intent(in   ) :: sdc
+    type(sdc_t),       intent(inout) :: sdc
 
     select case(advance_method)
     case(1)
@@ -111,7 +111,7 @@ contains
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
-    type(sdc_t),       intent(in   ) :: sdc
+    type(sdc_t),       intent(inout) :: sdc
     integer,           intent(in   ) :: istep
 
     logical :: update_courno
@@ -236,7 +236,7 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    call dUdt_AD(U, Uprime, ctx%dx)
+    call dUdt(U, Uprime, ctx%dx, include_r=.false.)
   end subroutine mrf1eval
 
   subroutine mrf2eval(Fptr, Uptr, t, ctxptr) bind(c)
@@ -250,7 +250,7 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    call dUdt_R(U, Uprime, ctx%dx)
+    call dUdt(U, Uprime, ctx%dx, include_ad=.false.)
   end subroutine mrf2eval
 
 
@@ -265,7 +265,7 @@ contains
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
-    type(sdc_t),       intent(in   ) :: sdc
+    type(sdc_t),       intent(inout) :: sdc
     integer,           intent(in   ) :: istep
 
     logical :: update_courno
@@ -477,28 +477,6 @@ contains
     !$omp end parallel
 
   end subroutine update_rk3
-
-
-  !
-  ! Compute advection/diffusion part of dU/dt given U.
-  !
-  subroutine dUdt_AD (U, Uprime, dx)
-    type(multifab),   intent(inout) :: U, Uprime
-    double precision, intent(in   ) :: dx(U%dim)
-
-    call dUdt(U, Uprime, dx, include_r=.false.)
-  end subroutine dUdt_AD
-
-
-  !
-  ! Compute reaction part of dU/dt given U.
-  !
-  subroutine dUdt_R (U, Uprime, dx)
-    type(multifab),   intent(inout) :: U, Uprime
-    double precision, intent(in   ) :: dx(U%dim)
-
-    call dUdt(U, Uprime, dx, include_ad=.false.)
-  end subroutine dUdt_R
 
 
   !

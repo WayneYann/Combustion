@@ -28,16 +28,16 @@ contains
     implicit none
 
     type(layout), intent(in) :: la
-    type(sdc_t),  intent(in) :: sdc
+    type(sdc_t),  intent(inout) :: sdc
 
     if (advance_method .eq. 1) then ! RK
        call multifab_build(Uprime, la, ncons, 0)
        call multifab_build(Unew,   la, ncons, stencil_ng)
     else
-       if (c_associated(sdc%srset)) then
+       if (sdc%single_rate) then
           call sdc_srset_allocate(sdc%srset)
        end if
-       if (c_associated(sdc%mrset)) then
+       if (sdc%multi_rate) then
           print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'
        end if
     end if
@@ -57,16 +57,16 @@ contains
 
   subroutine destroy_smcdata(sdc)
     use probin_module, only : advance_method
-    type(sdc_t), intent(in) :: sdc
+    type(sdc_t), intent(inout) :: sdc
 
     if (advance_method .eq. 1) then ! RK
        call destroy(Unew)
        call destroy(Uprime)
     else 
-       if (c_associated(sdc%srset)) then
+       if (sdc%single_rate) then
           call sdc_srset_deallocate(sdc%srset)
        end if
-       if (c_associated(sdc%mrset)) then
+       if (sdc%multi_rate) then
           print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'
        end if
     end if
@@ -80,4 +80,3 @@ contains
   end subroutine destroy_smcdata
 
 end module smcdata_module
-

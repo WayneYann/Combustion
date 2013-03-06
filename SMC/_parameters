@@ -63,7 +63,7 @@ overlap_in_trial                    logical            .false.
 # category: algorithm
 #-----------------------------------------------------------------------------
 
-# Time-stepping scheme (1=RK3, 2=SDC, 3=MRSDC, 4=PFASST)
+# Time-stepping scheme (1=RK3, 2=SDC, 3=MRSDC)
 advance_method                      integer           1
 
 # "narrow" is the new stencil, and wide or S3D is the S3D type stencil
@@ -118,6 +118,9 @@ sdc_iters                           integer            5
 # sdc residual tolerance: if the sdc residual drops below this, sdc
 # iterations are cut short
 sdc_tol_residual                    real               -1.d100
+
+# multi-rate type (1 = repeated, 2 = local)
+sdc_multirate_type                  character          "local"
 
 
 #-----------------------------------------------------------------------------
@@ -299,6 +302,7 @@ reset_N2                            logical            .false.
 N2_name                             character          "N2"
 O2_name                             character          "O2"
 H2_name                             character          "H2"
+CH4_name                            character          "CH4"
 
 # use bulk viscosity?
 use_bulk_viscosity                  logical            .true.
