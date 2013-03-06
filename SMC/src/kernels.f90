@@ -3,7 +3,7 @@ module kernels_module
   use chemistry_module, only : nspecies, molecular_weight, Ru
   use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
        first_deriv_4, first_deriv_l3, first_deriv_r3, first_deriv_rb, first_deriv_lb, &
-       M8, M6, M4, M2, BRB, BLB, D8, D6, D4
+       M8, M8T, M6, M4, M2, BRB, BLB, D8, D6, D4
   use variables_module
   implicit none
 
@@ -2199,7 +2199,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=slo(1),shi(1)+1
-             mmtmp8(1:8,i) = matmul(M8,  q(i-4:i+3,j,k,qpres))
+             mmtmp8(1:8,i) = matmul(M8T,  q(i-4:i+3,j,k,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i-4:i+3,j,k), mmtmp8(1:8,i))
           end do
           do i=slo(1),shi(1)+1
@@ -2222,7 +2222,7 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)   
              do i=slo(1),shi(1)+1
-                mmtmp8(1:8,i) = matmul(M8, q(i-4:i+3,j,k,qxn))
+                mmtmp8(1:8,i) = matmul(M8T, q(i-4:i+3,j,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i-4:i+3,j,k,n), mmtmp8(1:8,i))
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
                      + dot_product(dxy(i-4:i+3,j,k,n), mmtmp8(1:8,i))
@@ -2308,7 +2308,7 @@ contains
     do k=lo(3),hi(3)
        do j=slo(2),shi(2)+1
           do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qpres))
+             mmtmp8(1:8,i) = matmul(M8T, q(i,j-4:j+3,k,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j-4:j+3,k), mmtmp8(1:8,i))
           end do
           do i=lo(1),hi(1)
@@ -2331,7 +2331,7 @@ contains
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)+1
              do i=lo(1),hi(1)
-                mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qxn))
+                mmtmp8(1:8,i) = matmul(M8T, q(i,j-4:j+3,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp8(1:8,i))
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
                      + dot_product(dxy(i,j-4:j+3,k,n), mmtmp8(1:8,i))
@@ -2417,7 +2417,7 @@ contains
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qpres))
+             mmtmp8(1:8,i) = matmul(M8T, q(i,j,k-4:k+3,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j,k-4:k+3), mmtmp8(1:8,i))
           end do
           do i=lo(1),hi(1)
@@ -2440,7 +2440,7 @@ contains
        do k=slo(3),shi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qxn))
+                mmtmp8(1:8,i) = matmul(M8T, q(i,j,k-4:k+3,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp8(1:8,i))
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
                      + dot_product(dxy(i,j,k-4:k+3,n), mmtmp8(1:8,i))
