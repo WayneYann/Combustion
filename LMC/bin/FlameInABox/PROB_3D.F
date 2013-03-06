@@ -955,13 +955,11 @@ c ::: -----------------------------------------------------------
          do k = lo(3), domlo(3)-1
             do j = lo(2),hi(2)
                do i = lo(1), hi(1)
-                  adv(i,j,k) = time
+                  adv(i,j,k) = 0.0d0
                enddo
             enddo
          enddo
       endif    
-      
-c      call fillWithZeros(adv,DIMS(adv),domlo,domhi,bc)
 
       end
 
