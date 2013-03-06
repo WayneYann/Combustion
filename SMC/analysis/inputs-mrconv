@@ -2,20 +2,23 @@
 
  verbose = 2
 
- advance_method = {advance_method}
- stencil_type   = "narrow"
+ stencil_type = "narrow"
+ reset_n2     = .true.
 
  restart   = -1
  plot_int  =  10
  chk_int   = -1
 
+
+ advance_method = {advance_method}
+
  stop_time = {stop_time}
  max_step  = 10000
 
  sdc_nnodes = {sdc_nnodes}
- sdc_nnodes_chemistry = {sdc_nnodes_chemistry}
  sdc_iters  = {sdc_iters}
- sdc_tol_residual = 1.0d-20
+ sdc_nnodes_chemistry = {sdc_nnodes_chemistry}
+ sdc_tol_residual     = 1.0d-20
 
  fixed_dt = {fixed_dt}
 
@@ -24,13 +27,15 @@
  n_cellz = 4
  max_grid_size = {max_grid_size}
 
- ! one millimeter 
  prob_lo_x = -0.5d0
  prob_lo_y = -0.5d0
- prob_lo_z = -0.5d0
+
  prob_hi_x =  0.5d0
  prob_hi_y =  0.5d0
- prob_hi_z =  0.5d0
+
+ prob_lo_z = -0.0625d0
+ prob_hi_z =  0.0625d0
+
 
  xlo_boundary_type = "periodic"
  xhi_boundary_type = "periodic"
@@ -42,11 +47,8 @@
  zhi_boundary_type = "periodic"
 
  prob_type = 4
-
- rfire =  0.25d0
- uinit =  800.0d0
- vinit =  100.0d0
- winit =  0.0d0
+ prob_dim  = 2
+ rfire     = 0.02d0
 
  tb_split_dim  = 1
 

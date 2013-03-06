@@ -15,7 +15,7 @@ def flameball_mrconv():
   #make()
 
   jobs = JobQueue(rwd=env.rwd, queue='regular')
-  dt0  = 5e-9
+  dt0  = 1e-9
 
   nx = 32
 
