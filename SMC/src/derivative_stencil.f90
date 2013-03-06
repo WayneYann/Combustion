@@ -32,7 +32,7 @@ module derivative_stencil_module
   ! d(a*du/dx)/dx = H_{i+1/2} - H_{i-1/2},
   ! where H = a.M.u
   !
-  double precision, save, dimension(8,8) :: M8
+  double precision, save, dimension(8,8) :: M8, M8T
   !
   ! optimized for more zeros
   !  double precision, private, parameter :: M8_47 = 683.d0/10080.d0, M8_48 = -1.d0/224.d0
@@ -73,7 +73,7 @@ contains
     if (trim(stencil_type) == "narrow") then
        stencil = narrow
     else if (trim(stencil_type) == "S3D" .or. trim(stencil_type) == "wide") then
-!       stencil = wide
+       ! stencil = wide
        call bl_error("S3D stencil type not supported")
     else
        call bl_error("unknow stencil_type")
@@ -153,6 +153,9 @@ contains
     M8(6,8) = -M8(3,1)
     M8(7,8) = -M8(2,1)
     M8(8,8) = -M8(1,1)
+
+    M8T = transpose(M8)
+    
 
     ! 6th-order
     M6(1,1) = -11.d0/180.d0 + M6_36
