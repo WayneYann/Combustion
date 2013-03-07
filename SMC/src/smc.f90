@@ -129,29 +129,20 @@ subroutine smc()
   !
 
   if (advance_method == 2) then
-     call sdc_build_single_rate(sdc, SDC_GAUSS_LOBATTO, sdc_nnodes, ctx, c_funloc(srf1eval))
-     call sdc_set_layout(sdc, la, ncons, stencil_ng)
-     call sdc_exp_set_post_step(sdc%exp_adr, c_funloc(srf1post))
-     call sdc_setup(sdc)
-
-     ctx%dx = dx
-     sdc%iters        = sdc_iters
-     sdc%tol_residual = sdc_tol_residual
+     call sdc_build_single_rate(sdc, SDC_GAUSS_LOBATTO, sdc_nnodes, ctx, &
+          c_funloc(srf1eval), c_funloc(srf1post))
   end if
 
   if (advance_method == 3) then
      call sdc_build_multi_rate(sdc, SDC_GAUSS_LOBATTO, [ sdc_nnodes, sdc_nnodes_chemistry ], ctx, &
-          c_funloc(mrf1eval), c_funloc(mrf2eval))
-     call sdc_set_layout(sdc, la, ncons, stencil_ng)
-
-     ! XXX
-     ! call sdc_exp_set_post_step(sdc%exp1, c_funloc(srf1post))
-     call sdc_setup(sdc)
-
-     ctx%dx = dx
-     sdc%iters        = sdc_iters
-     sdc%tol_residual = sdc_tol_residual
+          c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
   end if
+
+  call sdc_setup(sdc, la, ncons, stencil_ng)
+
+  ctx%dx = dx
+  sdc%iters        = sdc_iters
+  sdc%tol_residual = sdc_tol_residual
 
   call build_smcdata(la,sdc)
 

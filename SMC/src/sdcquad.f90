@@ -30,11 +30,11 @@ contains
   !
   ! Build/create single-rate SDC object.
   !
-  subroutine sdc_build_single_rate(sdc, qtype, nnodes, ctx, feval)
+  subroutine sdc_build_single_rate(sdc, qtype, nnodes, ctx, feval, post)
     type(sdc_t),    intent(out) :: sdc
     integer,        intent(in)  :: qtype, nnodes
     type(ctx_t),    intent(in), target :: ctx
-    type(c_funptr), intent(in), value :: feval
+    type(c_funptr), intent(in), value :: feval, post
 
     sdc%single_rate = .true.
     sdc%multi_rate  = .false.
@@ -44,6 +44,7 @@ contains
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap))
     call sdc_nset_build(sdc%nset_adr, nnodes, qtype, "ADR")
     call sdc_exp_build(sdc%exp_adr, feval, "ADR")
+    call sdc_exp_set_post_step(sdc%exp_adr, post)
     call sdc_srset_build(sdc%srset, sdc%nset_adr, c_loc(sdc%exp_adr), sdc%encap, c_loc(ctx), "ADR")
 
   end subroutine sdc_build_single_rate
@@ -52,13 +53,13 @@ contains
   !
   ! Build/create multi-rate SDC object.
   !
-  subroutine sdc_build_multi_rate(sdc, qtype, nnodes, ctx, f1eval, f2eval)
+  subroutine sdc_build_multi_rate(sdc, qtype, nnodes, ctx, f1eval, f2eval, post)
     use probin_module, only: sdc_multirate_type
 
     type(sdc_t),    intent(out) :: sdc
     integer,        intent(in)  :: qtype, nnodes(2)
     type(ctx_t),    intent(in), target :: ctx
-    type(c_funptr), intent(in), value :: f1eval, f2eval
+    type(c_funptr), intent(in), value :: f1eval, f2eval, post
 
     integer :: err
 
@@ -72,6 +73,7 @@ contains
     call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, "R")
     call sdc_exp_build(sdc%exp_ad, f1eval, "AD")
     call sdc_exp_build(sdc%exp_r, f2eval, "R")
+    call sdc_exp_set_post_step(sdc%exp_ad, post)
 
     call sdc_mrset_build(sdc%mrset, 2, "ADR")
     call sdc_mrset_add_nset(sdc%mrset, sdc%nset_ad, c_loc(sdc%exp_ad), sdc%encap, c_loc(ctx), 0, err)
@@ -106,18 +108,21 @@ contains
   !
   ! Setup and allocate SDC object.
   !
-  subroutine sdc_setup(sdc)
+  subroutine sdc_setup(sdc, la, nc, ng)
     type(sdc_t), intent(inout) :: sdc
+    type(layout), intent(in)   :: la
+    integer,      intent(in)   :: nc, ng
 
     integer :: err
-    err = 0
+
+    call sdc_set_layout(sdc, la, nc, ng)
 
     if (sdc%single_rate) then
        call sdc_srset_setup(sdc%srset, err)
     else 
        call sdc_mrset_setup(sdc%mrset, err)
     end if
-
+    
     if (err .ne. 0) then
        stop "FAILED TO SETUP SDC SETS"
     end if
