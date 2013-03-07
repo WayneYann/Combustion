@@ -138,11 +138,12 @@ subroutine smc()
           c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
   end if
 
-  call sdc_setup(sdc, la, ncons, stencil_ng)
-
-  ctx%dx = dx
-  sdc%iters        = sdc_iters
-  sdc%tol_residual = sdc_tol_residual
+  if (advance_method > 1) then
+     call sdc_setup(sdc, la, ncons, stencil_ng)
+     ctx%dx = dx
+     sdc%iters        = sdc_iters
+     sdc%tol_residual = sdc_tol_residual
+  end if
 
   call build_smcdata(la,sdc)
 
