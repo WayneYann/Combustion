@@ -15,8 +15,8 @@ module sdcquad_module
      integer    :: iters = 4
      real(dp_t) :: tol_residual = -1.0d0
 
-     type(mf_encap_t), pointer :: mfencap
-     type(sdc_encap_t)         :: encap
+     type(mf_encap_t), pointer  :: mfencap
+     type(sdc_encap_t), pointer :: encap
 
      type(sdc_nset_t), pointer  :: nset_adr, nset_ad, nset_r
      type(sdc_exp_t), pointer   :: exp_adr, exp_ad, exp_r
@@ -39,10 +39,9 @@ contains
     sdc%single_rate = .true.
     sdc%multi_rate  = .false.
 
-    allocate(sdc%mfencap, sdc%nset_adr, sdc%exp_adr, sdc%srset)
+    allocate(sdc%mfencap, sdc%encap, sdc%nset_adr, sdc%exp_adr, sdc%srset)
 
-    sdc%encap = sdc_encap_multifab(c_loc(sdc%mfencap))
-
+    call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap))
     call sdc_nset_build(sdc%nset_adr, nnodes, qtype, "ADR")
     call sdc_exp_build(sdc%exp_adr, feval, "ADR")
     call sdc_srset_build(sdc%srset, sdc%nset_adr, c_loc(sdc%exp_adr), sdc%encap, c_loc(ctx), "ADR")
@@ -66,10 +65,9 @@ contains
     sdc%single_rate = .false.
     sdc%multi_rate  = .true.
 
-    allocate(sdc%mfencap, sdc%nset_ad, sdc%nset_r, sdc%exp_ad, sdc%exp_r, sdc%mrset)
+    allocate(sdc%mfencap, sdc%encap, sdc%nset_ad, sdc%nset_r, sdc%exp_ad, sdc%exp_r, sdc%mrset)
 
-    sdc%encap = sdc_encap_multifab(c_loc(sdc%mfencap))
-
+    call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap))
     call sdc_nset_build(sdc%nset_ad, nnodes(1), qtype, "AD")
     call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, "R")
     call sdc_exp_build(sdc%exp_ad, f1eval, "AD")
@@ -77,6 +75,7 @@ contains
 
     call sdc_mrset_build(sdc%mrset, 2, "ADR")
     call sdc_mrset_add_nset(sdc%mrset, sdc%nset_ad, c_loc(sdc%exp_ad), sdc%encap, c_loc(ctx), 0, err)
+
     select case(sdc_multirate_type)
     case ("local")
        call sdc_mrset_add_nset(sdc%mrset, sdc%nset_r, c_loc(sdc%exp_r), sdc%encap, c_loc(ctx), SDC_MR_LOCAL, err)
@@ -144,10 +143,10 @@ contains
        call sdc_nset_destroy(sdc%nset_r)
        call sdc_exp_destroy(sdc%exp_ad)
        call sdc_exp_destroy(sdc%exp_r)
-       deallocate(sdc%exp_ad, sdc%exp_r, sdc%nset_ad, sdc%nset_r, sdc%srset)
+       deallocate(sdc%exp_ad, sdc%exp_r, sdc%nset_ad, sdc%nset_r, sdc%mrset)
     end if
 
-    call sdc_encap_multifab_destroy(sdc%encap)
+    call sdc_multifab_destroy(sdc%encap)
     deallocate(sdc%mfencap)
   end subroutine sdc_destroy
 
