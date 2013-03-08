@@ -24,7 +24,7 @@ module variables_module
   double precision, parameter :: OneQuarter    = 1.d0/4.d0
   double precision, parameter :: ThreeQuarters = 3.d0/4.d0
 
-  integer, save, public :: iry_N2, iN2, iry_O2, iO2, iry_H2, iH2, iry_CH4, iCH4
+  integer, save, public :: iN2, iO2, iH2, iCH4, iias, iry_ias
 
 contains
 
@@ -33,7 +33,7 @@ contains
   !
   subroutine init_variables()
 
-    use probin_module, only: dm_in, reset_N2, N2_name, O2_name, H2_name, CH4_name
+    use probin_module, only: dm_in, reset_inactive_species, inactive_species_name
 
     irho = 1
     imx = 2
@@ -70,24 +70,20 @@ contains
 
     nprim = qh1-1 + nspecies
     
-    iN2 = get_species_index(N2_name)
-    if (iN2 > 0) then
-       iry_N2 = iry1 + iN2 - 1
-    end if
+    iN2 = get_species_index("N2")
+    iH2 = get_species_index("H2")
+    iO2 = get_species_index("O2")
+    iCH4 = get_species_index("CH4")
 
-    iH2 = get_species_index(H2_name)
-    if (iH2 > 0) then
-       iry_H2 = iry1 + iN2 - 1
-    end if
-
-    iO2 = get_species_index(O2_name)
-    if (iO2 > 0) then
-       iry_O2 = iry1 + iO2 - 1
-    end if
-
-    iCH4 = get_species_index(CH4_name)
-    if (iCH4 > 0) then
-       iry_CH4 = iry1 + iCH4 - 1
+    if (reset_inactive_species) then
+       iias = get_species_index(inactive_species_name)
+       if (iias .le. 0) then
+          call bl_error("ERROR: invalid inactive_species_name "//inactive_species_name)
+       end if
+       iry_ias = iry1 + iias - 1
+    else
+       iias = -1
+       iry_ias = -1
     end if
 
   end subroutine init_variables
@@ -238,7 +234,6 @@ contains
   end subroutine reset_density
 
   subroutine reset_rho_3d(lo, hi, ng, u)
-    use probin_module, only : reset_N2
     integer, intent(in) :: lo(3), hi(3), ng
     double precision, intent(inout) :: u(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,ncons)
 
@@ -258,12 +253,7 @@ contains
              do n=1, nspecies
                 rho = rho + U(i,j,k,iry1+n-1)
              end do
-
-             if (reset_N2) then
-                U(i,j,k,iry_N2) = U(i,j,k,iry_N2) + (U(i,j,k,irho) - rho)
-             else
-                U(i,j,k,irho) = rho
-             end if
+             U(i,j,k,irho) = rho
 
              !
              ! Enforce nonnegative species

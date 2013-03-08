@@ -5,7 +5,7 @@
  advance_method = 2
  stencil_type   = "narrow"
 
- reset_N2 = .true. 
+ reset_inactive_species = .true. 
 
  restart   = -1
  plot_int  =  400
