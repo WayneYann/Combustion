@@ -86,8 +86,12 @@ def expand_matmul(line):
         return expand_matmul_8T(line)
     elif re.compile(r"matmul\s*\(.*M8.*\)").search(line):
         return expand_matmul_8(line)
+    elif re.compile(r"matmul\s*\(.*M6T.*\)").search(line):
+        return expand_matmul_6T(line)
     elif re.compile(r"matmul\s*\(.*M6.*\)").search(line):
         return expand_matmul_6(line)
+    elif re.compile(r"matmul\s*\(.*M4T.*\)").search(line):
+        return expand_matmul_4T(line)
     elif re.compile(r"matmul\s*\(.*M4.*\)").search(line):
         return expand_matmul_4(line)
     else:
@@ -231,7 +235,7 @@ def expand_matmul_8T(line):
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
     if args[0:3] == 'M8T':  
-        # M8,u(,,,)
+        # M8T,u(,,,)
         x = args[4:]
         u = expand_fortran_slice(x)
         return indent+lhs+'(1'+ld2+' = '+'M8T(1,1) * '+u[0]+' &\n' + \
@@ -292,8 +296,7 @@ def expand_matmul_8T(line):
 
 
 def expand_matmul_6(line):
-    # expand (1) lhs = matmul(M6, u( .... )) OR
-    #        (2) lhs = matmul(a( .... ), M6)
+    # expand lhs = matmul(a( .... ), M6)
     lhs, rhs = line.split('=')
 
     lhs = lhs.strip(' \t')
@@ -306,39 +309,8 @@ def expand_matmul_6(line):
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
     if args[0:2] == 'M6':  
-        # M6,u(,,,)
-        x = args[3:]
-        u = expand_fortran_slice(x)
-        return indent+lhs+'(1) = '+'M6(1,1) * '+u[0]+' &\n' + \
-               moreindent + ' + ' +'M6(1,2) * '+u[1]+' &\n' + \
-               moreindent + ' + ' +'M6(1,3) * '+u[2]+' &\n' + \
-               moreindent + ' - ' +'M6(6,3) * '+u[3]+'\n'   + \
-               indent+lhs+'(2) = '+'M6(2,1) * '+u[0]+' &\n' + \
-               moreindent + ' + ' +'M6(2,2) * '+u[1]+' &\n' + \
-               moreindent + ' + ' +'M6(2,3) * '+u[2]+' &\n' + \
-               moreindent + ' - ' +'M6(5,3) * '+u[3]+' &\n' + \
-               moreindent + ' - ' +'M6(5,2) * '+u[4]+'\n' + \
-               indent+lhs+'(3) = '+'M6(3,1) * '+u[0]+' &\n' + \
-               moreindent + ' + ' +'M6(3,2) * '+u[1]+' &\n' + \
-               moreindent + ' + ' +'M6(3,3) * '+u[2]+' &\n' + \
-               moreindent + ' - ' +'M6(4,3) * '+u[3]+' &\n' + \
-               moreindent + ' - ' +'M6(4,2) * '+u[4]+' &\n' + \
-               moreindent + ' - ' +'M6(4,1) * '+u[5]+'\n' + \
-               indent+lhs+'(4) = '+'M6(4,1) * '+u[0]+' &\n' + \
-               moreindent + ' + ' +'M6(4,2) * '+u[1]+' &\n' + \
-               moreindent + ' + ' +'M6(4,3) * '+u[2]+' &\n' + \
-               moreindent + ' - ' +'M6(3,3) * '+u[3]+' &\n' + \
-               moreindent + ' - ' +'M6(3,2) * '+u[4]+' &\n' + \
-               moreindent + ' - ' +'M6(3,1) * '+u[5]+'\n' + \
-               indent+lhs+'(5) = '+'M6(5,2) * '+u[1]+' &\n' + \
-               moreindent + ' + ' +'M6(5,3) * '+u[2]+' &\n' + \
-               moreindent + ' - ' +'M6(2,3) * '+u[3]+' &\n' + \
-               moreindent + ' - ' +'M6(2,2) * '+u[4]+' &\n' + \
-               moreindent + ' - ' +'M6(2,1) * '+u[5]+'\n' + \
-               indent+lhs+'(6) = '+'M6(6,3) * '+u[2]+' &\n' + \
-               moreindent + ' - ' +'M6(1,3) * '+u[3]+' &\n' + \
-               moreindent + ' - ' +'M6(1,2) * '+u[4]+' &\n' + \
-               moreindent + ' - ' +'M6(1,1) * '+u[5]+'\n'
+        print 'expand_matmul_6: how did we get here?'
+        sys.exit(1)
     else: 
         # a(,,,), M6
         x = args[0:-3]
@@ -358,26 +330,77 @@ def expand_matmul_6(line):
                moreindent + ' + ' +a[3]+' * M6(4,3) &\n' + \
                moreindent + ' + ' +a[4]+' * M6(5,3) &\n' + \
                moreindent + ' + ' +a[5]+' * M6(6,3)\n' + \
-               indent+lhs+'(4) =-'+a[0]+' * M6(6,3) &\n' + \
-               moreindent + ' - ' +a[1]+' * M6(5,3) &\n' + \
-               moreindent + ' - ' +a[2]+' * M6(4,3) &\n' + \
-               moreindent + ' - ' +a[3]+' * M6(3,3) &\n' + \
-               moreindent + ' - ' +a[4]+' * M6(2,3) &\n' + \
-               moreindent + ' - ' +a[5]+' * M6(1,3)\n' + \
-               indent+lhs+'(5) =-'+a[1]+' * M6(5,2) &\n' + \
-               moreindent + ' - ' +a[2]+' * M6(4,2) &\n' + \
-               moreindent + ' - ' +a[3]+' * M6(3,2) &\n' + \
-               moreindent + ' - ' +a[4]+' * M6(2,2) &\n' + \
-               moreindent + ' - ' +a[5]+' * M6(1,2)\n' + \
-               indent+lhs+'(6) =-'+a[2]+' * M6(4,1) &\n' + \
-               moreindent + ' - ' +a[3]+' * M6(3,1) &\n' + \
-               moreindent + ' - ' +a[4]+' * M6(2,1) &\n' + \
-               moreindent + ' - ' +a[5]+' * M6(1,1)\n'
+               indent+lhs+'(4) = '+a[0]+' * M6(1,4) &\n' + \
+               moreindent + ' + ' +a[1]+' * M6(2,4) &\n' + \
+               moreindent + ' + ' +a[2]+' * M6(3,4) &\n' + \
+               moreindent + ' + ' +a[3]+' * M6(4,4) &\n' + \
+               moreindent + ' + ' +a[4]+' * M6(5,4) &\n' + \
+               moreindent + ' + ' +a[5]+' * M6(6,4)\n' + \
+               indent+lhs+'(5) = '+a[1]+' * M6(2,5) &\n' + \
+               moreindent + ' + ' +a[2]+' * M6(3,5) &\n' + \
+               moreindent + ' + ' +a[3]+' * M6(4,5) &\n' + \
+               moreindent + ' + ' +a[4]+' * M6(5,5) &\n' + \
+               moreindent + ' + ' +a[5]+' * M6(6,5)\n' + \
+               indent+lhs+'(6) = '+a[2]+' * M6(3,6) &\n' + \
+               moreindent + ' + ' +a[3]+' * M6(4,6) &\n' + \
+               moreindent + ' + ' +a[4]+' * M6(5,6) &\n' + \
+               moreindent + ' + ' +a[5]+' * M6(6,6)\n'
+
+
+def expand_matmul_6T(line):
+    # expand lhs = matmul(M6T, u( .... ))
+    lhs, rhs = line.split('=')
+
+    lhs = lhs.strip(' \t')
+    i = string.find(line, lhs)
+    indent = line[0:i]
+    moreindent = indent+'   '
+    for i in range(len(lhs)):
+        moreindent = moreindent+' '
+
+    rhs = rhs.strip(' \t\n\r')
+    args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
+    if args[0:3] == 'M6T':  
+        # M6T,u(,,,)
+        x = args[4:]
+        u = expand_fortran_slice(x)
+        return indent+lhs+'(1) = '+'M6T(1,1) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M6T(2,1) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6T(3,1) * '+u[2]+' &\n' + \
+               moreindent + ' + ' +'M6T(4,1) * '+u[3]+'\n'   + \
+               indent+lhs+'(2) = '+'M6T(1,2) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M6T(2,2) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6T(3,2) * '+u[2]+' &\n' + \
+               moreindent + ' + ' +'M6T(4,2) * '+u[3]+' &\n' + \
+               moreindent + ' + ' +'M6T(5,2) * '+u[4]+'\n' + \
+               indent+lhs+'(3) = '+'M6T(1,3) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M6T(2,3) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6T(3,3) * '+u[2]+' &\n' + \
+               moreindent + ' + ' +'M6T(4,3) * '+u[3]+' &\n' + \
+               moreindent + ' + ' +'M6T(5,3) * '+u[4]+' &\n' + \
+               moreindent + ' + ' +'M6T(6,3) * '+u[5]+'\n' + \
+               indent+lhs+'(4) = '+'M6T(1,4) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M6T(2,4) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6T(3,4) * '+u[2]+' &\n' + \
+               moreindent + ' + ' +'M6T(4,4) * '+u[3]+' &\n' + \
+               moreindent + ' + ' +'M6T(5,4) * '+u[4]+' &\n' + \
+               moreindent + ' + ' +'M6T(6,4) * '+u[5]+'\n' + \
+               indent+lhs+'(5) = '+'M6T(2,5) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M6T(3,5) * '+u[2]+' &\n' + \
+               moreindent + ' + ' +'M6T(4,5) * '+u[3]+' &\n' + \
+               moreindent + ' + ' +'M6T(5,5) * '+u[4]+' &\n' + \
+               moreindent + ' + ' +'M6T(6,5) * '+u[5]+'\n' + \
+               indent+lhs+'(6) = '+'M6T(3,6) * '+u[2]+' &\n' + \
+               moreindent + ' + ' +'M6T(4,6) * '+u[3]+' &\n' + \
+               moreindent + ' + ' +'M6T(5,6) * '+u[4]+' &\n' + \
+               moreindent + ' + ' +'M6T(6,6) * '+u[5]+'\n'
+    else: 
+        print 'expand_matmul_6T: how did we get here?'
+        sys.exit(1)
 
 
 def expand_matmul_4(line):
-    # expand (1) lhs = matmul(M4, u( .... )) OR
-    #        (2) lhs = matmul(a( .... ), M4)
+    # expand lhs = matmul(a( .... ), M4)
     lhs, rhs = line.split('=')
 
     lhs = lhs.strip(' \t')
@@ -390,23 +413,8 @@ def expand_matmul_4(line):
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
     if args[0:2] == 'M4':  
-        # M4,u(,,,)
-        x = args[3:]
-        u = expand_fortran_slice(x)
-        return indent+lhs+'(1) = '+'M4(1,1) * '+u[0]+' &\n' + \
-               moreindent + ' + ' +'M4(1,2) * '+u[1]+' &\n' + \
-               moreindent + ' - ' +'M4(4,2) * '+u[2]+'\n'   + \
-               indent+lhs+'(2) = '+'M4(2,1) * '+u[0]+' &\n' + \
-               moreindent + ' + ' +'M4(2,2) * '+u[1]+' &\n' + \
-               moreindent + ' - ' +'M4(3,2) * '+u[2]+' &\n' + \
-               moreindent + ' - ' +'M4(3,1) * '+u[3]+'\n' + \
-               indent+lhs+'(3) = '+'M4(3,1) * '+u[0]+' &\n' + \
-               moreindent + ' + ' +'M4(3,2) * '+u[1]+' &\n' + \
-               moreindent + ' - ' +'M4(2,2) * '+u[2]+' &\n' + \
-               moreindent + ' - ' +'M4(2,1) * '+u[3]+'\n' + \
-               indent+lhs+'(4) = '+'M4(4,2) * '+u[1]+' &\n' + \
-               moreindent + ' - ' +'M4(1,2) * '+u[2]+' &\n' + \
-               moreindent + ' - ' +'M4(1,1) * '+u[3]+'\n'
+        print 'expand_matmul_4: how did we get here?'
+        sys.exit(1)
     else: 
         # a(,,,), M4
         x = args[0:-3]
@@ -418,13 +426,49 @@ def expand_matmul_4(line):
                moreindent + ' + ' +a[1]+' * M4(2,2) &\n' + \
                moreindent + ' + ' +a[2]+' * M4(3,2) &\n' + \
                moreindent + ' + ' +a[3]+' * M4(4,2)\n' + \
-               indent+lhs+'(3) =-'+a[0]+' * M4(4,2) &\n' + \
-               moreindent + ' - ' +a[1]+' * M4(3,2) &\n' + \
-               moreindent + ' - ' +a[2]+' * M4(2,2) &\n' + \
-               moreindent + ' - ' +a[3]+' * M4(1,2)\n' + \
-               indent+lhs+'(4) =-'+a[1]+' * M4(3,1) &\n' + \
-               moreindent + ' - ' +a[2]+' * M4(2,1) &\n' + \
-               moreindent + ' - ' +a[3]+' * M4(1,1)\n'
+               indent+lhs+'(3) = '+a[0]+' * M4(1,3) &\n' + \
+               moreindent + ' + ' +a[1]+' * M4(2,3) &\n' + \
+               moreindent + ' + ' +a[2]+' * M4(3,3) &\n' + \
+               moreindent + ' + ' +a[3]+' * M4(4,3)\n' + \
+               indent+lhs+'(4) = '+a[1]+' * M4(2,4) &\n' + \
+               moreindent + ' + ' +a[2]+' * M4(3,4) &\n' + \
+               moreindent + ' + ' +a[3]+' * M4(4,4)\n'
+
+
+def expand_matmul_4T(line):
+    # expand lhs = matmul(M4T, u( .... ))
+    lhs, rhs = line.split('=')
+
+    lhs = lhs.strip(' \t')
+    i = string.find(line, lhs)
+    indent = line[0:i]
+    moreindent = indent+'   '
+    for i in range(len(lhs)):
+        moreindent = moreindent+' '
+
+    rhs = rhs.strip(' \t\n\r')
+    args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
+    if args[0:3] == 'M4T':  
+        # M4T,u(,,,)
+        x = args[4:]
+        u = expand_fortran_slice(x)
+        return indent+lhs+'(1) = '+'M4T(1,1) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M4T(2,2) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M4T(3,2) * '+u[2]+'\n'   + \
+               indent+lhs+'(2) = '+'M4T(1,2) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M4T(2,2) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M4T(3,2) * '+u[2]+' &\n' + \
+               moreindent + ' + ' +'M4T(4,2) * '+u[3]+'\n' + \
+               indent+lhs+'(3) = '+'M4T(1,3) * '+u[0]+' &\n' + \
+               moreindent + ' + ' +'M4T(2,3) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M4T(3,3) * '+u[2]+' &\n' + \
+               moreindent + ' + ' +'M4T(4,3) * '+u[3]+'\n' + \
+               indent+lhs+'(4) = '+'M4T(2,4) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M4T(3,4) * '+u[2]+' &\n' + \
+               moreindent + ' + ' +'M4T(4,4) * '+u[3]+'\n'
+    else: 
+        print 'expand_matmul_4T: how did we get here?'
+        sys.exit(1)
 
 
 def expand_dot_product(line):
