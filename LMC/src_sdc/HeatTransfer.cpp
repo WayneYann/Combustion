@@ -5527,7 +5527,9 @@ HeatTransfer::advance (Real time,
     }
 #else
     setThermoPress(prev_time);
-    calc_divu(time, dt, get_old_data(Divu_Type));
+    // do not recalculate divu.  instead reuse divu from end of previous time step
+    // all the synchronization stuff messes up divu near C-F interfaces
+    // calc_divu(time, dt, get_old_data(Divu_Type));
     int havedivu = 1;
     create_mac_rhs(Forcing,time,dt,nGrowAdvForcing);
 
