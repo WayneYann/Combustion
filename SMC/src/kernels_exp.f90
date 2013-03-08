@@ -4528,8 +4528,8 @@ contains
                           + lam(i+1,j,k) * M4(4,4)
 !EXPAND                M4p = matmul(M4T,  q(i-2:i+1,j,k,qpres))
                 M4p(1) = M4T(1,1) * q(i-2,j,k,qpres) &
-                       + M4T(2,2) * q(i-1,j,k,qpres) &
-                       + M4T(3,2) * q(i  ,j,k,qpres)
+                       + M4T(2,1) * q(i-1,j,k,qpres) &
+                       + M4T(3,1) * q(i  ,j,k,qpres)
                 M4p(2) = M4T(1,2) * q(i-2,j,k,qpres) &
                        + M4T(2,2) * q(i-1,j,k,qpres) &
                        + M4T(3,2) * q(i  ,j,k,qpres) &
@@ -4556,8 +4556,8 @@ contains
 
 !EXPAND                   M4X = matmul(M4T, q(i-2:i+1,j,k,qxn))
                    M4X(1) = M4T(1,1) * q(i-2,j,k,qxn) &
-                          + M4T(2,2) * q(i-1,j,k,qxn) &
-                          + M4T(3,2) * q(i  ,j,k,qxn)
+                          + M4T(2,1) * q(i-1,j,k,qxn) &
+                          + M4T(3,1) * q(i  ,j,k,qxn)
                    M4X(2) = M4T(1,2) * q(i-2,j,k,qxn) &
                           + M4T(2,2) * q(i-1,j,k,qxn) &
                           + M4T(3,2) * q(i  ,j,k,qxn) &
@@ -5139,8 +5139,8 @@ contains
                           + lam(i+1,j,k) * M4(4,4)
 !EXPAND                M4p = matmul(M4T,  q(i-2:i+1,j,k,qpres))
                 M4p(1) = M4T(1,1) * q(i-2,j,k,qpres) &
-                       + M4T(2,2) * q(i-1,j,k,qpres) &
-                       + M4T(3,2) * q(i  ,j,k,qpres)
+                       + M4T(2,1) * q(i-1,j,k,qpres) &
+                       + M4T(3,1) * q(i  ,j,k,qpres)
                 M4p(2) = M4T(1,2) * q(i-2,j,k,qpres) &
                        + M4T(2,2) * q(i-1,j,k,qpres) &
                        + M4T(3,2) * q(i  ,j,k,qpres) &
@@ -5167,8 +5167,8 @@ contains
 
 !EXPAND                   M4X = matmul(M4T, q(i-2:i+1,j,k,qxn))
                    M4X(1) = M4T(1,1) * q(i-2,j,k,qxn) &
-                          + M4T(2,2) * q(i-1,j,k,qxn) &
-                          + M4T(3,2) * q(i  ,j,k,qxn)
+                          + M4T(2,1) * q(i-1,j,k,qxn) &
+                          + M4T(3,1) * q(i  ,j,k,qxn)
                    M4X(2) = M4T(1,2) * q(i-2,j,k,qxn) &
                           + M4T(2,2) * q(i-1,j,k,qxn) &
                           + M4T(3,2) * q(i  ,j,k,qxn) &
@@ -5557,8 +5557,8 @@ contains
                           + lam(i,j+1,k) * M4(4,4)
 !EXPAND                M4p = matmul(M4T,  q(i,j-2:j+1,k,qpres))
                 M4p(1) = M4T(1,1) * q(i,j-2,k,qpres) &
-                       + M4T(2,2) * q(i,j-1,k,qpres) &
-                       + M4T(3,2) * q(i,j  ,k,qpres)
+                       + M4T(2,1) * q(i,j-1,k,qpres) &
+                       + M4T(3,1) * q(i,j  ,k,qpres)
                 M4p(2) = M4T(1,2) * q(i,j-2,k,qpres) &
                        + M4T(2,2) * q(i,j-1,k,qpres) &
                        + M4T(3,2) * q(i,j  ,k,qpres) &
@@ -5585,8 +5585,8 @@ contains
 
 !EXPAND                   M4X = matmul(M4T, q(i,j-2:j+1,k,qxn))
                    M4X(1) = M4T(1,1) * q(i,j-2,k,qxn) &
-                          + M4T(2,2) * q(i,j-1,k,qxn) &
-                          + M4T(3,2) * q(i,j  ,k,qxn)
+                          + M4T(2,1) * q(i,j-1,k,qxn) &
+                          + M4T(3,1) * q(i,j  ,k,qxn)
                    M4X(2) = M4T(1,2) * q(i,j-2,k,qxn) &
                           + M4T(2,2) * q(i,j-1,k,qxn) &
                           + M4T(3,2) * q(i,j  ,k,qxn) &
@@ -6172,8 +6172,8 @@ contains
                           + lam(i,j+1,k) * M4(4,4)
 !EXPAND                M4p = matmul(M4T,  q(i,j-2:j+1,k,qpres))
                 M4p(1) = M4T(1,1) * q(i,j-2,k,qpres) &
-                       + M4T(2,2) * q(i,j-1,k,qpres) &
-                       + M4T(3,2) * q(i,j  ,k,qpres)
+                       + M4T(2,1) * q(i,j-1,k,qpres) &
+                       + M4T(3,1) * q(i,j  ,k,qpres)
                 M4p(2) = M4T(1,2) * q(i,j-2,k,qpres) &
                        + M4T(2,2) * q(i,j-1,k,qpres) &
                        + M4T(3,2) * q(i,j  ,k,qpres) &
@@ -6200,8 +6200,8 @@ contains
 
 !EXPAND                   M4X = matmul(M4T, q(i,j-2:j+1,k,qxn))
                    M4X(1) = M4T(1,1) * q(i,j-2,k,qxn) &
-                          + M4T(2,2) * q(i,j-1,k,qxn) &
-                          + M4T(3,2) * q(i,j  ,k,qxn)
+                          + M4T(2,1) * q(i,j-1,k,qxn) &
+                          + M4T(3,1) * q(i,j  ,k,qxn)
                    M4X(2) = M4T(1,2) * q(i,j-2,k,qxn) &
                           + M4T(2,2) * q(i,j-1,k,qxn) &
                           + M4T(3,2) * q(i,j  ,k,qxn) &
@@ -6600,8 +6600,8 @@ contains
                           + lam(i,j,k+1) * M4(4,4)
 !EXPAND                M4p = matmul(M4T,  q(i,j,k-2:k+1,qpres))
                 M4p(1) = M4T(1,1) * q(i,j,k-2,qpres) &
-                       + M4T(2,2) * q(i,j,k-1,qpres) &
-                       + M4T(3,2) * q(i,j,k  ,qpres)
+                       + M4T(2,1) * q(i,j,k-1,qpres) &
+                       + M4T(3,1) * q(i,j,k  ,qpres)
                 M4p(2) = M4T(1,2) * q(i,j,k-2,qpres) &
                        + M4T(2,2) * q(i,j,k-1,qpres) &
                        + M4T(3,2) * q(i,j,k  ,qpres) &
@@ -6628,8 +6628,8 @@ contains
 
 !EXPAND                   M4X = matmul(M4T, q(i,j,k-2:k+1,qxn))
                    M4X(1) = M4T(1,1) * q(i,j,k-2,qxn) &
-                          + M4T(2,2) * q(i,j,k-1,qxn) &
-                          + M4T(3,2) * q(i,j,k  ,qxn)
+                          + M4T(2,1) * q(i,j,k-1,qxn) &
+                          + M4T(3,1) * q(i,j,k  ,qxn)
                    M4X(2) = M4T(1,2) * q(i,j,k-2,qxn) &
                           + M4T(2,2) * q(i,j,k-1,qxn) &
                           + M4T(3,2) * q(i,j,k  ,qxn) &
@@ -7219,8 +7219,8 @@ contains
                           + lam(i,j,k+1) * M4(4,4)
 !EXPAND                M4p = matmul(M4T,  q(i,j,k-2:k+1,qpres))
                 M4p(1) = M4T(1,1) * q(i,j,k-2,qpres) &
-                       + M4T(2,2) * q(i,j,k-1,qpres) &
-                       + M4T(3,2) * q(i,j,k  ,qpres)
+                       + M4T(2,1) * q(i,j,k-1,qpres) &
+                       + M4T(3,1) * q(i,j,k  ,qpres)
                 M4p(2) = M4T(1,2) * q(i,j,k-2,qpres) &
                        + M4T(2,2) * q(i,j,k-1,qpres) &
                        + M4T(3,2) * q(i,j,k  ,qpres) &
@@ -7247,8 +7247,8 @@ contains
 
 !EXPAND                   M4X = matmul(M4T, q(i,j,k-2:k+1,qxn))
                    M4X(1) = M4T(1,1) * q(i,j,k-2,qxn) &
-                          + M4T(2,2) * q(i,j,k-1,qxn) &
-                          + M4T(3,2) * q(i,j,k  ,qxn)
+                          + M4T(2,1) * q(i,j,k-1,qxn) &
+                          + M4T(3,1) * q(i,j,k  ,qxn)
                    M4X(2) = M4T(1,2) * q(i,j,k-2,qxn) &
                           + M4T(2,2) * q(i,j,k-1,qxn) &
                           + M4T(3,2) * q(i,j,k  ,qxn) &

@@ -453,8 +453,8 @@ def expand_matmul_4T(line):
         x = args[4:]
         u = expand_fortran_slice(x)
         return indent+lhs+'(1) = '+'M4T(1,1) * '+u[0]+' &\n' + \
-               moreindent + ' + ' +'M4T(2,2) * '+u[1]+' &\n' + \
-               moreindent + ' + ' +'M4T(3,2) * '+u[2]+'\n'   + \
+               moreindent + ' + ' +'M4T(2,1) * '+u[1]+' &\n' + \
+               moreindent + ' + ' +'M4T(3,1) * '+u[2]+'\n'   + \
                indent+lhs+'(2) = '+'M4T(1,2) * '+u[0]+' &\n' + \
                moreindent + ' + ' +'M4T(2,2) * '+u[1]+' &\n' + \
                moreindent + ' + ' +'M4T(3,2) * '+u[2]+' &\n' + \
