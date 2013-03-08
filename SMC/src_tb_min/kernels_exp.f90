@@ -369,7 +369,7 @@ contains
 
     call diffterm_1(q,qlo,qhi,rhs,lo,hi,mu,xi, lo,hi,dlo,dhi,dxinv)
 
-    call diffterm_2(q,qlo,qhi,rhs,lo,hi,mu,xi,lam,dxy, lo,hi,dlo,dhi,dx2inv)
+    call diffterm_2(q,qlo,qhi,rhs,lo,hi,mu,xi,lam,dxy, lo,hi,dlo,dhi,dxinv,dx2inv)
 
     rhs_g(     lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
          rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
@@ -697,10 +697,11 @@ contains
 
   end subroutine diffterm_1
 
-  subroutine diffterm_2(q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy,lo,hi,dlo,dhi,dx2inv)
+  subroutine diffterm_2(q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy,lo,hi,dlo,dhi,dxinv,dx2inv)
+    use probin_module, only : reset_inactive_species
     integer,         intent(in):: lo(3),hi(3),dlo(3),dhi(3)
     integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3)
-    double precision,intent(in):: dx2inv(3)
+    double precision,intent(in):: dxinv(3),dx2inv(3)
     double precision,intent(in)   ::  q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
     double precision,intent(in)   :: mu(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
     double precision,intent(in)   :: xi(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
@@ -718,12 +719,17 @@ contains
     ! dxe: diffusion coefficient of X in equation for energy
     ! dpe: diffusion coefficient of p in equation for energy
 
-    integer          :: i,j,k,n, qxn, qyn, qhn
+    integer          :: i,j,k,n, qxn, qyn, qhn, iryn
 
-    double precision :: mmtmp(8,lo(1):hi(1)+1), Yhalf, hhalf
+    double precision :: mmtmp(8,lo(1):hi(1)+1)
     double precision :: M8p(8,lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1)
-    double precision :: Hry(  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1)
     double precision :: Hg (  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons)
+
+    double precision, dimension(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)) :: sumdrY, sumrYv, gradp
+    double precision :: ry_c, ene_c
+
+    logical :: add_v_correction
+    add_v_correction = .not. reset_inactive_species
 
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
@@ -1026,6 +1032,9 @@ contains
     end do
 
     do n = 1, nspecies
+
+       if (n .eq. iias) cycle  ! inactive speices
+
        qxn = qx1+n-1
 
        do k=lo(3),hi(3)
@@ -1115,37 +1124,9 @@ contains
        end do
     end do
 
-    ! correction
-    
-    Hry = 0.d0
-
-    do n = 1, nspecies
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)+1
-                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
-             end do
-          end do
-       end do
-    end do
-    
-    do n = 1, nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)+1
-                Yhalf = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
-                hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
-             end do
-          end do
-       end do
-    end do
-
     ! add x-direction rhs
-    do n=2,ncons
+
+    do n=2,iene
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -1154,6 +1135,112 @@ contains
           end do
        end do
     end do
+       
+    sumdrY = 0.d0
+    do n=iry1,ncons
+
+       if (n.eq.iry_ias) cycle
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                sumdry(i,j,k) = sumdry(i,j,k) + (Hg(i+1,j,k,n) - Hg(i,j,k,n)) * dx2inv(1)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hg(i+1,j,k,n) - Hg(i,j,k,n)) * dx2inv(1)
+             end do
+          end do
+       end do
+
+    end do
+
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             gradp(i,j,k) = dxinv(1) * first_deriv_8(q(i-4:i+4,j,k,qpres))
+             gradp(i,j,k) = dxinv(1) * &
+                ( D8(1)*(q(i+1,j,k,qpres)-q(i-1,j,k,qpres)) &
+                + D8(2)*(q(i+2,j,k,qpres)-q(i-2,j,k,qpres)) &
+                + D8(3)*(q(i+3,j,k,qpres)-q(i-3,j,k,qpres)) &
+                + D8(4)*(q(i+4,j,k,qpres)-q(i-4,j,k,qpres)) )
+          end do
+       end do
+    end do
+       
+    sumryv = 0.d0
+    do n = 1, nspecies
+
+       if (n.eq.iias) cycle
+
+       qxn = qx1+n-1
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+!EXPAND                sumryv(i,j,k) = sumryv(i,j,k) + dpy(i,j,k,n)*gradp(i,j,k)  &
+!EXPAND                     + dxy(i,j,k,n)*dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qxn))
+                sumryv(i,j,k) = sumryv(i,j,k)+dpy(i,j,k,n)*gradp(i,j,k)+dxy(i,j,k,n) * dxinv(1) * &
+                   ( D8(1)*(q(i+1,j,k,qxn)-q(i-1,j,k,qxn)) &
+                   + D8(2)*(q(i+2,j,k,qxn)-q(i-2,j,k,qxn)) &
+                   + D8(3)*(q(i+3,j,k,qxn)-q(i-3,j,k,qxn)) &
+                   + D8(4)*(q(i+4,j,k,qxn)-q(i-4,j,k,qxn)) )
+             end do
+          end do
+       end do
+
+    end do
+
+    if (add_v_correction) then
+
+       do n=1,nspecies
+          qyn = qy1+n-1
+          qhn = qh1+n-1
+          iryn = iry1+n-1
+          
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+!EXPAND                   ry_c = q(i,j,k,qyn)*sumdry(i,j,k) + sumryv(i,j,k)*dxinv(1) * &
+!EXPAND                        first_deriv_8(q(i-4:i+4,j,k,qyn))
+                   ry_c = q(i,j,k,qyn)*sumdry(i,j,k)+sumryv(i,j,k) * dxinv(1) * &
+                      ( D8(1)*(q(i+1,j,k,qyn)-q(i-1,j,k,qyn)) &
+                      + D8(2)*(q(i+2,j,k,qyn)-q(i-2,j,k,qyn)) &
+                      + D8(3)*(q(i+3,j,k,qyn)-q(i-3,j,k,qyn)) &
+                      + D8(4)*(q(i+4,j,k,qyn)-q(i-4,j,k,qyn)) )
+!EXPAND                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryv(i,j,k)*dxinv(1)* &
+!EXPAND                        first_deriv_8(q(i-4:i+4,j,k,qhn))
+                   ene_c = ry_c*q(i,j,k,qhn)+q(i,j,k,qyn)*sumryv(i,j,k) * dxinv(1) * &
+                      ( D8(1)*(q(i+1,j,k,qhn)-q(i-1,j,k,qhn)) &
+                      + D8(2)*(q(i+2,j,k,qhn)-q(i-2,j,k,qhn)) &
+                      + D8(3)*(q(i+3,j,k,qhn)-q(i-3,j,k,qhn)) &
+                      + D8(4)*(q(i+4,j,k,qhn)-q(i-4,j,k,qhn)) )
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+             end do
+          end do
+       end do
+
+    else
+    
+       n = iias
+       qhn = qh1+n-1
+       iryn = iry1+n-1
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+!EXPAND                ene_c = sumdry(i,j,k)*q(i,j,k,qhn) + sumryv(i,j,k)*dxinv(1)* &
+!EXPAND                     first_deriv_8(q(i-4:i+4,j,k,qhn))
+                ene_c = sumdry(i,j,k)*q(i,j,k,qhn)+sumryv(i,j,k) * dxinv(1) * &
+                   ( D8(1)*(q(i+1,j,k,qhn)-q(i-1,j,k,qhn)) &
+                   + D8(2)*(q(i+2,j,k,qhn)-q(i-2,j,k,qhn)) &
+                   + D8(3)*(q(i+3,j,k,qhn)-q(i-3,j,k,qhn)) &
+                   + D8(4)*(q(i+4,j,k,qhn)-q(i-4,j,k,qhn)) )
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdry(i,j,k)
+             end do
+          end do
+       end do
+       
+    end if
 
     ! ------- END x-direction -------
 
@@ -1433,6 +1520,9 @@ contains
     end do
 
     do n = 1, nspecies
+
+       if (n .eq. iias) cycle  ! inactive speices
+
        qxn = qx1+n-1
 
        do k=lo(3),hi(3)
@@ -1523,37 +1613,9 @@ contains
 
     end do
        
-    ! correction
-
-    Hry = 0.d0
-
-    do n = 1, nspecies
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)+1
-             do i=lo(1),hi(1)
-                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
-             end do
-          end do
-       end do
-    end do
-
-    do n = 1, nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       do k=lo(3),hi(3)
-          do j=lo(2),hi(2)+1
-             do i=lo(1),hi(1)
-                Yhalf = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
-                hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
-             end do
-          end do
-       end do
-    end do
-
     ! add y-direction rhs
-    do n=2,ncons
+
+    do n=2,iene
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -1562,6 +1624,112 @@ contains
           end do
        end do
     end do
+
+    sumdrY = 0.d0
+    do n=iry1,ncons
+
+       if (n.eq.iry_ias) cycle
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                sumdry(i,j,k) = sumdry(i,j,k) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
+             end do
+          end do
+       end do
+
+    end do
+
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             gradp(i,j,k) = dxinv(2) * first_deriv_8(q(i,j-4:j+4,k,qpres))
+             gradp(i,j,k) = dxinv(2) * &
+                ( D8(1)*(q(i,j+1,k,qpres)-q(i,j-1,k,qpres)) &
+                + D8(2)*(q(i,j+2,k,qpres)-q(i,j-2,k,qpres)) &
+                + D8(3)*(q(i,j+3,k,qpres)-q(i,j-3,k,qpres)) &
+                + D8(4)*(q(i,j+4,k,qpres)-q(i,j-4,k,qpres)) )
+          end do
+       end do
+    end do
+    
+    sumryv = 0.d0
+    do n = 1, nspecies
+
+       if (n.eq.iias) cycle
+
+       qxn = qx1+n-1
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+!EXPAND                sumryv(i,j,k) = sumryv(i,j,k) + dpy(i,j,k,n)*gradp(i,j,k)  &
+!EXPAND                     + dxy(i,j,k,n)*dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qxn))
+                sumryv(i,j,k) = sumryv(i,j,k)+dpy(i,j,k,n)*gradp(i,j,k)+dxy(i,j,k,n) * dxinv(2) * &
+                   ( D8(1)*(q(i,j+1,k,qxn)-q(i,j-1,k,qxn)) &
+                   + D8(2)*(q(i,j+2,k,qxn)-q(i,j-2,k,qxn)) &
+                   + D8(3)*(q(i,j+3,k,qxn)-q(i,j-3,k,qxn)) &
+                   + D8(4)*(q(i,j+4,k,qxn)-q(i,j-4,k,qxn)) )
+             end do
+          end do
+       end do
+
+    end do
+
+    if (add_v_correction) then
+
+       do n=1,nspecies
+          qyn = qy1+n-1
+          qhn = qh1+n-1
+          iryn = iry1+n-1
+
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+!EXPAND                   ry_c = q(i,j,k,qyn)*sumdry(i,j,k) + sumryv(i,j,k)*dxinv(2) * &
+!EXPAND                        first_deriv_8(q(i,j-4:j+4,k,qyn))
+                   ry_c = q(i,j,k,qyn)*sumdry(i,j,k)+sumryv(i,j,k) * dxinv(2) * &
+                      ( D8(1)*(q(i,j+1,k,qyn)-q(i,j-1,k,qyn)) &
+                      + D8(2)*(q(i,j+2,k,qyn)-q(i,j-2,k,qyn)) &
+                      + D8(3)*(q(i,j+3,k,qyn)-q(i,j-3,k,qyn)) &
+                      + D8(4)*(q(i,j+4,k,qyn)-q(i,j-4,k,qyn)) )
+!EXPAND                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryv(i,j,k)*dxinv(2)* &
+!EXPAND                        first_deriv_8(q(i,j-4:j+4,k,qhn))
+                   ene_c = ry_c*q(i,j,k,qhn)+q(i,j,k,qyn)*sumryv(i,j,k) * dxinv(2) * &
+                      ( D8(1)*(q(i,j+1,k,qhn)-q(i,j-1,k,qhn)) &
+                      + D8(2)*(q(i,j+2,k,qhn)-q(i,j-2,k,qhn)) &
+                      + D8(3)*(q(i,j+3,k,qhn)-q(i,j-3,k,qhn)) &
+                      + D8(4)*(q(i,j+4,k,qhn)-q(i,j-4,k,qhn)) )
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+             end do
+          end do
+       end do
+
+    else
+
+       n = iias
+       qhn = qh1+n-1
+       iryn = iry1+n-1
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+!EXPAND                ene_c = sumdry(i,j,k)*q(i,j,k,qhn) + sumryv(i,j,k)*dxinv(2)* &
+!EXPAND                     first_deriv_8(q(i,j-4:j+4,k,qhn))
+                ene_c = sumdry(i,j,k)*q(i,j,k,qhn)+sumryv(i,j,k) * dxinv(2) * &
+                   ( D8(1)*(q(i,j+1,k,qhn)-q(i,j-1,k,qhn)) &
+                   + D8(2)*(q(i,j+2,k,qhn)-q(i,j-2,k,qhn)) &
+                   + D8(3)*(q(i,j+3,k,qhn)-q(i,j-3,k,qhn)) &
+                   + D8(4)*(q(i,j+4,k,qhn)-q(i,j-4,k,qhn)) )
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdry(i,j,k)
+             end do
+          end do
+       end do
+
+    end if
 
     ! ------- END y-direction -------
 
@@ -1841,6 +2009,9 @@ contains
     end do
 
     do n = 1, nspecies
+
+       if (n .eq. iias) cycle  ! inactive speices
+
        qxn = qx1+n-1
 
        do k=lo(3),hi(3)+1
@@ -1930,37 +2101,9 @@ contains
        end do
     end do
 
-    ! correction
-
-    Hry = 0.d0
-
-    do n = 1, nspecies
-       do k=lo(3),hi(3)+1
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
-             end do
-          end do
-       end do
-    end do
-
-    do n = 1, nspecies
-       qyn = qy1+n-1
-       qhn = qh1+n-1
-       do k=lo(3),hi(3)+1
-          do j=lo(2),hi(2)
-             do i=lo(1),hi(1)
-                Yhalf = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
-                hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
-             end do
-          end do
-       end do
-    end do
-    
     ! add z-direction rhs
-    do n=2,ncons
+
+    do n=2,iene
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -1969,6 +2112,112 @@ contains
           end do
        end do
     end do
+    
+    sumdrY = 0.d0
+    do n=iry1,ncons
+
+       if (n.eq.iry_ias) cycle
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                sumdry(i,j,k) = sumdry(i,j,k) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+
+    end do
+    
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             gradp(i,j,k) = dxinv(3) * first_deriv_8(q(i,j,k-4:k+4,qpres))
+             gradp(i,j,k) = dxinv(3) * &
+                ( D8(1)*(q(i,j,k+1,qpres)-q(i,j,k-1,qpres)) &
+                + D8(2)*(q(i,j,k+2,qpres)-q(i,j,k-2,qpres)) &
+                + D8(3)*(q(i,j,k+3,qpres)-q(i,j,k-3,qpres)) &
+                + D8(4)*(q(i,j,k+4,qpres)-q(i,j,k-4,qpres)) )
+          end do
+       end do
+    end do
+    
+    sumryv = 0.d0
+    do n = 1, nspecies
+
+       if (n.eq.iias) cycle
+
+       qxn = qx1+n-1
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+!EXPAND                sumryv(i,j,k) = sumryv(i,j,k) + dpy(i,j,k,n)*gradp(i,j,k)  &
+!EXPAND                     + dxy(i,j,k,n)*dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qxn))
+                sumryv(i,j,k) = sumryv(i,j,k)+dpy(i,j,k,n)*gradp(i,j,k)+dxy(i,j,k,n) * dxinv(3) * &
+                   ( D8(1)*(q(i,j,k+1,qxn)-q(i,j,k-1,qxn)) &
+                   + D8(2)*(q(i,j,k+2,qxn)-q(i,j,k-2,qxn)) &
+                   + D8(3)*(q(i,j,k+3,qxn)-q(i,j,k-3,qxn)) &
+                   + D8(4)*(q(i,j,k+4,qxn)-q(i,j,k-4,qxn)) )
+             end do
+          end do
+       end do
+
+    end do
+
+    if (add_v_correction) then
+
+       do n=1,nspecies
+          qyn = qy1+n-1
+          qhn = qh1+n-1
+          iryn = iry1+n-1
+
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+!EXPAND                   ry_c = q(i,j,k,qyn)*sumdry(i,j,k) + sumryv(i,j,k)*dxinv(3) * &
+!EXPAND                        first_deriv_8(q(i,j,k-4:k+4,qyn))
+                   ry_c = q(i,j,k,qyn)*sumdry(i,j,k)+sumryv(i,j,k) * dxinv(3) * &
+                      ( D8(1)*(q(i,j,k+1,qyn)-q(i,j,k-1,qyn)) &
+                      + D8(2)*(q(i,j,k+2,qyn)-q(i,j,k-2,qyn)) &
+                      + D8(3)*(q(i,j,k+3,qyn)-q(i,j,k-3,qyn)) &
+                      + D8(4)*(q(i,j,k+4,qyn)-q(i,j,k-4,qyn)) )
+!EXPAND                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryv(i,j,k)*dxinv(3)* &
+!EXPAND                        first_deriv_8(q(i,j,k-4:k+4,qhn))
+                   ene_c = ry_c*q(i,j,k,qhn)+q(i,j,k,qyn)*sumryv(i,j,k) * dxinv(3) * &
+                      ( D8(1)*(q(i,j,k+1,qhn)-q(i,j,k-1,qhn)) &
+                      + D8(2)*(q(i,j,k+2,qhn)-q(i,j,k-2,qhn)) &
+                      + D8(3)*(q(i,j,k+3,qhn)-q(i,j,k-3,qhn)) &
+                      + D8(4)*(q(i,j,k+4,qhn)-q(i,j,k-4,qhn)) )
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+             end do
+          end do
+       end do
+
+    else
+
+       n = iias
+       qhn = qh1+n-1
+       iryn = iry1+n-1
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+!EXPAND                ene_c = sumdry(i,j,k)*q(i,j,k,qhn) + sumryv(i,j,k)*dxinv(3)* &
+!EXPAND                     first_deriv_8(q(i,j,k-4:k+4,qhn))
+                ene_c = sumdry(i,j,k)*q(i,j,k,qhn)+sumryv(i,j,k) * dxinv(3) * &
+                   ( D8(1)*(q(i,j,k+1,qhn)-q(i,j,k-1,qhn)) &
+                   + D8(2)*(q(i,j,k+2,qhn)-q(i,j,k-2,qhn)) &
+                   + D8(3)*(q(i,j,k+3,qhn)-q(i,j,k-3,qhn)) &
+                   + D8(4)*(q(i,j,k+4,qhn)-q(i,j,k-4,qhn)) )
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdry(i,j,k)
+             end do
+          end do
+       end do
+
+    end if
 
     ! ------- END z-direction -------
     

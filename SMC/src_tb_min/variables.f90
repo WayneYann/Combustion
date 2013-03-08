@@ -1,6 +1,6 @@
 module variables_module
 
-  use chemistry_module, only : nspecies
+  use chemistry_module, only : nspecies, get_species_index
   use multifab_module
 
   implicit none
@@ -24,6 +24,8 @@ module variables_module
   double precision, parameter :: OneQuarter    = 1.d0/4.d0
   double precision, parameter :: ThreeQuarters = 3.d0/4.d0
 
+  integer, save, public :: iN2, iO2, iH2, iCH4, iias, iry_ias
+
 contains
 
   ! 
@@ -31,7 +33,7 @@ contains
   !
   subroutine init_variables()
 
-    use probin_module, only: dm_in
+    use probin_module, only: dm_in, reset_inactive_species, inactive_species_name
 
     irho = 1
     imx = 2
@@ -67,6 +69,22 @@ contains
     qh1 = qx1 + nspecies
 
     nprim = qh1-1 + nspecies
+
+    iN2 = get_species_index("N2")
+    iH2 = get_species_index("H2")
+    iO2 = get_species_index("O2")
+    iCH4 = get_species_index("CH4")
+
+    if (reset_inactive_species) then
+       iias = get_species_index(inactive_species_name)
+       if (iias .le. 0) then
+          call bl_error("ERROR: invalid inactive_species_name "//inactive_species_name)
+       end if
+       iry_ias = iry1 + iias - 1
+    else
+       iias = -1
+       iry_ias = -1
+    end if
     
   end subroutine init_variables
 
