@@ -2141,11 +2141,10 @@ contains
     allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons))
 
     allocate(M8p(8,lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
-    if (add_v_correction) then
-       allocate(sumdrY(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
-       allocate(sumrYv(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
-       allocate(gradp (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
-    end if
+
+    allocate(sumdrY(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
+    allocate(sumrYv(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
+    allocate(gradp (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
 
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
@@ -3945,7 +3944,7 @@ contains
     end do
 
     deallocate(Hg,dpy,dxe,dpe,vsp,M8p)
-    if (add_v_correction) deallocate(sumdrY,sumryv,gradp)
+    deallocate(sumdrY,sumryv,gradp)
 
   end subroutine diffterm_2
 
