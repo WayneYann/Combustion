@@ -36,16 +36,18 @@ contains
     type(ctx_t),    intent(in), target :: ctx
     type(c_funptr), intent(in), value :: feval, post
 
+    integer :: err
+
     sdc%single_rate = .true.
     sdc%multi_rate  = .false.
 
     allocate(sdc%mfencap, sdc%encap, sdc%nset_adr, sdc%exp_adr, sdc%srset)
 
-    call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap))
-    call sdc_nset_build(sdc%nset_adr, nnodes, qtype, "ADR")
-    call sdc_exp_build(sdc%exp_adr, feval, "ADR")
+    call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
+    call sdc_nset_build(sdc%nset_adr, nnodes, qtype, "ADR", err)
+    call sdc_exp_build(sdc%exp_adr, feval, "ADR", err)
     call sdc_exp_set_post_step(sdc%exp_adr, post)
-    call sdc_srset_build(sdc%srset, sdc%nset_adr, c_loc(sdc%exp_adr), sdc%encap, c_loc(ctx), "ADR")
+    call sdc_srset_build(sdc%srset, sdc%nset_adr, c_loc(sdc%exp_adr), sdc%encap, c_loc(ctx), "ADR", err)
 
   end subroutine sdc_build_single_rate
 
@@ -68,14 +70,14 @@ contains
 
     allocate(sdc%mfencap, sdc%encap, sdc%nset_ad, sdc%nset_r, sdc%exp_ad, sdc%exp_r, sdc%mrset)
 
-    call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap))
-    call sdc_nset_build(sdc%nset_ad, nnodes(1), qtype, "AD")
-    call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, "R")
-    call sdc_exp_build(sdc%exp_ad, f1eval, "AD")
-    call sdc_exp_build(sdc%exp_r, f2eval, "R")
+    call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
+    call sdc_nset_build(sdc%nset_ad, nnodes(1), qtype, "AD", err)
+    call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, "R", err)
+    call sdc_exp_build(sdc%exp_ad, f1eval, "AD", err)
+    call sdc_exp_build(sdc%exp_r, f2eval, "R", err)
     call sdc_exp_set_post_step(sdc%exp_ad, post)
 
-    call sdc_mrset_build(sdc%mrset, 2, "ADR")
+    call sdc_mrset_build(sdc%mrset, 2, "ADR", err)
     call sdc_mrset_add_nset(sdc%mrset, sdc%nset_ad, c_loc(sdc%exp_ad), sdc%encap, c_loc(ctx), 0, err)
 
     select case(sdc_multirate_type)
