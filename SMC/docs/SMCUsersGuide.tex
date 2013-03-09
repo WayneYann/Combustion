@@ -132,8 +132,9 @@ has the following options:
   determines which version we use.
 \item {\tt NDEBUG :=}\\
   This option determines whether we compile with support for debugging
-  (usually also enabling some runtime checks). Setting NDEBUG := t
-  turns off debugging.
+  (usually also enabling some runtime checks) and turn off
+  optimization. Setting NDEBUG := t turns off debugging and turns on
+  optimization. 
 \item {\tt PROF :=}\\
   This option determines whether we compile with timers. Leaving this
   option empty disables timers.

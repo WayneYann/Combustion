@@ -2114,12 +2114,12 @@ contains
 
     integer          :: i,j,k,n, qxn, qyn, qhn, iryn
 
-    double precision :: hhalf
     double precision :: mmtmp8(8,lo(1):hi(1)+1)
     double precision, allocatable, dimension(:,:,:,:) :: M8p
     double precision, allocatable, dimension(:,:,:) :: sumdrY, sumrYv, gradp
     double precision :: ry_c, ene_c
 
+    double precision :: hhalf
     double precision :: Htot, Htmp(nspecies), Ytmp(nspecies)
     double precision :: M6p(6), M6X(6), mmtmp6(6)
     double precision :: M4p(4), M4X(4), mmtmp4(4)
