@@ -4118,7 +4118,7 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
-       iryn = iry+n-1
+       iryn = iry1+n-1
 
        do k=slo(3),shi(3)+1
           do j=lo(2),hi(2)
