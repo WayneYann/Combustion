@@ -3138,12 +3138,13 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)   
              do i=slo(1),shi(1)+1
-!EXPAND                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
-                Hg(i,j,k,iry1+n-1) =  &
+!EXPAND                Hg(i,j,k,iryn) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) =  &
                    ( dpy(i-4,j,k,n)*M8p(1,i,j,k) + dpy(i-3,j,k,n)*M8p(2,i,j,k) &
                    + dpy(i-2,j,k,n)*M8p(3,i,j,k) + dpy(i-1,j,k,n)*M8p(4,i,j,k) &
                    + dpy(i  ,j,k,n)*M8p(5,i,j,k) + dpy(i+1,j,k,n)*M8p(6,i,j,k) &
@@ -3214,9 +3215,9 @@ contains
                    + dxe(i-2,j,k,n)*mmtmp8(3,i) + dxe(i-1,j,k,n)*mmtmp8(4,i) &
                    + dxe(i  ,j,k,n)*mmtmp8(5,i) + dxe(i+1,j,k,n)*mmtmp8(6,i) &
                    + dxe(i+2,j,k,n)*mmtmp8(7,i) + dxe(i+3,j,k,n)*mmtmp8(8,i) )
-!EXPAND                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+!EXPAND                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
 !EXPAND                     + dot_product(dxy(i-4:i+3,j,k,n), mmtmp8(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)+ &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn)+ &
                    ( dxy(i-4,j,k,n)*mmtmp8(1,i) + dxy(i-3,j,k,n)*mmtmp8(2,i) &
                    + dxy(i-2,j,k,n)*mmtmp8(3,i) + dxy(i-1,j,k,n)*mmtmp8(4,i) &
                    + dxy(i  ,j,k,n)*mmtmp8(5,i) + dxy(i+1,j,k,n)*mmtmp8(6,i) &
@@ -3627,12 +3628,13 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)+1
              do i=lo(1),hi(1)
-!EXPAND                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
-                Hg(i,j,k,iry1+n-1) =  &
+!EXPAND                Hg(i,j,k,iryn) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) =  &
                    ( dpy(i,j-4,k,n)*M8p(1,i,j,k) + dpy(i,j-3,k,n)*M8p(2,i,j,k) &
                    + dpy(i,j-2,k,n)*M8p(3,i,j,k) + dpy(i,j-1,k,n)*M8p(4,i,j,k) &
                    + dpy(i,j  ,k,n)*M8p(5,i,j,k) + dpy(i,j+1,k,n)*M8p(6,i,j,k) &
@@ -3703,9 +3705,9 @@ contains
                    + dxe(i,j-2,k,n)*mmtmp8(3,i) + dxe(i,j-1,k,n)*mmtmp8(4,i) &
                    + dxe(i,j  ,k,n)*mmtmp8(5,i) + dxe(i,j+1,k,n)*mmtmp8(6,i) &
                    + dxe(i,j+2,k,n)*mmtmp8(7,i) + dxe(i,j+3,k,n)*mmtmp8(8,i) )
-!EXPAND                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+!EXPAND                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
 !EXPAND                     + dot_product(dxy(i,j-4:j+3,k,n), mmtmp8(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)+ &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn)+ &
                    ( dxy(i,j-4,k,n)*mmtmp8(1,i) + dxy(i,j-3,k,n)*mmtmp8(2,i) &
                    + dxy(i,j-2,k,n)*mmtmp8(3,i) + dxy(i,j-1,k,n)*mmtmp8(4,i) &
                    + dxy(i,j  ,k,n)*mmtmp8(5,i) + dxy(i,j+1,k,n)*mmtmp8(6,i) &
@@ -4116,12 +4118,13 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
+       iryn = iry+n-1
 
        do k=slo(3),shi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-!EXPAND                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
-                Hg(i,j,k,iry1+n-1) =  &
+!EXPAND                Hg(i,j,k,iryn) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) =  &
                    ( dpy(i,j,k-4,n)*M8p(1,i,j,k) + dpy(i,j,k-3,n)*M8p(2,i,j,k) &
                    + dpy(i,j,k-2,n)*M8p(3,i,j,k) + dpy(i,j,k-1,n)*M8p(4,i,j,k) &
                    + dpy(i,j,k  ,n)*M8p(5,i,j,k) + dpy(i,j,k+1,n)*M8p(6,i,j,k) &
@@ -4192,9 +4195,9 @@ contains
                    + dxe(i,j,k-2,n)*mmtmp8(3,i) + dxe(i,j,k-1,n)*mmtmp8(4,i) &
                    + dxe(i,j,k  ,n)*mmtmp8(5,i) + dxe(i,j,k+1,n)*mmtmp8(6,i) &
                    + dxe(i,j,k+2,n)*mmtmp8(7,i) + dxe(i,j,k+3,n)*mmtmp8(8,i) )
-!EXPAND                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+!EXPAND                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
 !EXPAND                     + dot_product(dxy(i,j,k-4:k+3,n), mmtmp8(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)+ &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn)+ &
                    ( dxy(i,j,k-4,n)*mmtmp8(1,i) + dxy(i,j,k-3,n)*mmtmp8(2,i) &
                    + dxy(i,j,k-2,n)*mmtmp8(3,i) + dxy(i,j,k-1,n)*mmtmp8(4,i) &
                    + dxy(i,j,k  ,n)*mmtmp8(5,i) + dxy(i,j,k+1,n)*mmtmp8(6,i) &
@@ -4553,7 +4556,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
                    
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
+                   iryn = iry1+n-1
 !EXPAND                   M4X = matmul(M4T, q(i-2:i+1,j,k,qxn))
                    M4X(1) = M4T(1,1) * q(i-2,j,k,qxn) &
                           + M4T(2,1) * q(i-1,j,k,qxn) &
@@ -4574,9 +4577,9 @@ contains
                    Hcell(iface,iene) = Hcell(iface,iene)+ &
                       ( dxe(i-2,j,k,n)*M4X(1) + dxe(i-1,j,k,n)*M4X(2) &
                       + dxe(i  ,j,k,n)*M4X(3) + dxe(i+1,j,k,n)*M4X(4) )
-!EXPAND                   Hcell(iface,iry1+n-1) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
+!EXPAND                   Hcell(iface,iryn) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
 !EXPAND                        + dot_product(dxy(i-2:i+1,j,k,n), M4X)
-                   Hcell(iface,iry1+n-1) =  &
+                   Hcell(iface,iryn) =  &
                       ( ( dpy(i-2,j,k,n)*M4p(1) + dpy(i-1,j,k,n)*M4p(2) &
                         + dpy(i  ,j,k,n)*M4p(3) + dpy(i+1,j,k,n)*M4p(4) ) &
                       + ( dxy(i-2,j,k,n)*M4X(1) + dxy(i-1,j,k,n)*M4X(2) &
@@ -4810,7 +4813,6 @@ contains
                 do n = 1, nspecies
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
                    iryn = iry1+n-1
 !EXPAND                   M6X = matmul(M6T, q(i-3:i+2,j,k,qxn))
                    M6X(1) = M6T(1,1) * q(i-3,j,k,qxn) &
@@ -5102,7 +5104,6 @@ contains
                 do n = 1, nspecies
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
                    iryn = iry1+n-1
 !EXPAND                   M6X = matmul(M6T, q(i-3:i+2,j,k,qxn))
                    M6X(1) = M6T(1,1) * q(i-3,j,k,qxn) &
@@ -5315,7 +5316,7 @@ contains
                 do n = 1, nspecies
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
+                   iryn = iry1+n-1
 
 !EXPAND                   M4X = matmul(M4T, q(i-2:i+1,j,k,qxn))
                    M4X(1) = M4T(1,1) * q(i-2,j,k,qxn) &
@@ -5781,7 +5782,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
 
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
+                   iryn = iry1+n-1
 !EXPAND                   M4X = matmul(M4T, q(i,j-2:j+1,k,qxn))
                    M4X(1) = M4T(1,1) * q(i,j-2,k,qxn) &
                           + M4T(2,1) * q(i,j-1,k,qxn) &
@@ -5802,9 +5803,9 @@ contains
                    Hcell(iface,iene) = Hcell(iface,iene)+ &
                       ( dxe(i,j-2,k,n)*M4X(1) + dxe(i,j-1,k,n)*M4X(2) &
                       + dxe(i,j  ,k,n)*M4X(3) + dxe(i,j+1,k,n)*M4X(4) )
-!EXPAND                   Hcell(iface,iry1+n-1) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
+!EXPAND                   Hcell(iface,iryn) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
 !EXPAND                        +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
-                   Hcell(iface,iry1+n-1) =  &
+                   Hcell(iface,iryn) =  &
                       ( ( dpy(i,j-2,k,n)*M4p(1) + dpy(i,j-1,k,n)*M4p(2) &
                         + dpy(i,j  ,k,n)*M4p(3) + dpy(i,j+1,k,n)*M4p(4) ) &
                       + ( dxy(i,j-2,k,n)*M4X(1) + dxy(i,j-1,k,n)*M4X(2) &
@@ -6040,7 +6041,6 @@ contains
                 do n = 1, nspecies
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
                    iryn = iry1+n-1
 !EXPAND                   M6X = matmul(M6T, q(i,j-3:j+2,k,qxn))
                    M6X(1) = M6T(1,1) * q(i,j-3,k,qxn) &
@@ -6331,7 +6331,6 @@ contains
                 do n = 1, nspecies
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
                    iryn = iry1+n-1
 !EXPAND                   M6X = matmul(M6T, q(i,j-3:j+2,k,qxn))
                    M6X(1) = M6T(1,1) * q(i,j-3,k,qxn) &
@@ -6547,7 +6546,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
 
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
+                   iryn = iry1+n-1
 !EXPAND                   M4X = matmul(M4T, q(i,j-2:j+1,k,qxn))
                    M4X(1) = M4T(1,1) * q(i,j-2,k,qxn) &
                           + M4T(2,1) * q(i,j-1,k,qxn) &
@@ -6568,9 +6567,9 @@ contains
                    Hcell(iface,iene) = Hcell(iface,iene)+ &
                       ( dxe(i,j-2,k,n)*M4X(1) + dxe(i,j-1,k,n)*M4X(2) &
                       + dxe(i,j  ,k,n)*M4X(3) + dxe(i,j+1,k,n)*M4X(4) )
-!EXPAND                   Hcell(iface,iry1+n-1) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
+!EXPAND                   Hcell(iface,iryn) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
 !EXPAND                        +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
-                   Hcell(iface,iry1+n-1) =  &
+                   Hcell(iface,iryn) =  &
                       ( ( dpy(i,j-2,k,n)*M4p(1) + dpy(i,j-1,k,n)*M4p(2) &
                         + dpy(i,j  ,k,n)*M4p(3) + dpy(i,j+1,k,n)*M4p(4) ) &
                       + ( dxy(i,j-2,k,n)*M4X(1) + dxy(i,j-1,k,n)*M4X(2) &
@@ -7022,7 +7021,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
 
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
+                   iryn = iry1+n-1
 !EXPAND                   M4X = matmul(M4T, q(i,j,k-2:k+1,qxn))
                    M4X(1) = M4T(1,1) * q(i,j,k-2,qxn) &
                           + M4T(2,1) * q(i,j,k-1,qxn) &
@@ -7043,9 +7042,9 @@ contains
                    Hcell(iface,iene) = Hcell(iface,iene)+ &
                       ( dxe(i,j,k-2,n)*M4X(1) + dxe(i,j,k-1,n)*M4X(2) &
                       + dxe(i,j,k  ,n)*M4X(3) + dxe(i,j,k+1,n)*M4X(4) )
-!EXPAND                   Hcell(iface,iry1+n-1) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
+!EXPAND                   Hcell(iface,iryn) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
 !EXPAND                        +    dot_product(dxy(i,j,k-2:k+1,n), M4X)
-                   Hcell(iface,iry1+n-1) =  &
+                   Hcell(iface,iryn) =  &
                       ( ( dpy(i,j,k-2,n)*M4p(1) + dpy(i,j,k-1,n)*M4p(2) &
                         + dpy(i,j,k  ,n)*M4p(3) + dpy(i,j,k+1,n)*M4p(4) ) &
                       + ( dxy(i,j,k-2,n)*M4X(1) + dxy(i,j,k-1,n)*M4X(2) &
@@ -7283,7 +7282,6 @@ contains
                 do n = 1, nspecies
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
                    iryn = iry1+n-1
 !EXPAND                   M6X = matmul(M6T, q(i,j,k-3:k+2,qxn))
                    M6X(1) = M6T(1,1) * q(i,j,k-3,qxn) &
@@ -7574,7 +7572,6 @@ contains
                 do n = 1, nspecies
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
                    iryn = iry1+n-1
 !EXPAND                   M6X = matmul(M6T, q(i,j,k-3:k+2,qxn))
                    M6X(1) = M6T(1,1) * q(i,j,k-3,qxn) &
@@ -7792,7 +7789,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
 
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
+                   iryn = iry1+n-1
 !EXPAND                   M4X = matmul(M4T, q(i,j,k-2:k+1,qxn))
                    M4X(1) = M4T(1,1) * q(i,j,k-2,qxn) &
                           + M4T(2,1) * q(i,j,k-1,qxn) &
@@ -7813,9 +7810,9 @@ contains
                    Hcell(iface,iene) = Hcell(iface,iene)+ &
                       ( dxe(i,j,k-2,n)*M4X(1) + dxe(i,j,k-1,n)*M4X(2) &
                       + dxe(i,j,k  ,n)*M4X(3) + dxe(i,j,k+1,n)*M4X(4) )
-!EXPAND                   Hcell(iface,iry1+n-1) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
+!EXPAND                   Hcell(iface,iryn) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
 !EXPAND                        +    dot_product(dxy(i,j,k-2:k+1,n), M4X)
-                   Hcell(iface,iry1+n-1) =  &
+                   Hcell(iface,iryn) =  &
                       ( ( dpy(i,j,k-2,n)*M4p(1) + dpy(i,j,k-1,n)*M4p(2) &
                         + dpy(i,j,k  ,n)*M4p(3) + dpy(i,j,k+1,n)*M4p(4) ) &
                       + ( dxy(i,j,k-2,n)*M4X(1) + dxy(i,j,k-1,n)*M4X(2) &

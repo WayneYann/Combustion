@@ -660,11 +660,12 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)+1 
-                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
              end do
           end do
        end do
@@ -674,7 +675,7 @@ contains
              do i=lo(1),hi(1)+1
                 mmtmp(1:8,i) = matmul(M8T, q(i-4:i+3,j,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i-4:i+3,j,k,n), mmtmp(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
                      + dot_product(dxy(i-4:i+3,j,k,n), mmtmp(1:8,i))
              end do
           end do
@@ -823,11 +824,12 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)+1
              do i=lo(1),hi(1) 
-                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
              end do
           end do
        end do
@@ -837,7 +839,7 @@ contains
              do i=lo(1),hi(1)
                 mmtmp(1:8,i) = matmul(M8T, q(i,j-4:j+3,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
                      + dot_product(dxy(i,j-4:j+3,k,n), mmtmp(1:8,i))
              end do
           end do
@@ -987,11 +989,12 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
              end do
           end do
        end do
@@ -1001,7 +1004,7 @@ contains
              do i=lo(1),hi(1)
                 mmtmp(1:8,i) = matmul(M8T, q(i,j,k-4:k+3,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
                      + dot_product(dxy(i,j,k-4:k+3,n), mmtmp(1:8,i))
              end do
           end do

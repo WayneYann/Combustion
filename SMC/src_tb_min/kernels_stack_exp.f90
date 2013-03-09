@@ -1036,12 +1036,13 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)+1 
-!EXPAND                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
-                Hg(i,j,k,iry1+n-1) =  &
+!EXPAND                Hg(i,j,k,iryn) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) =  &
                    ( dpy(i-4,j,k,n)*M8p(1,i,j,k) + dpy(i-3,j,k,n)*M8p(2,i,j,k) &
                    + dpy(i-2,j,k,n)*M8p(3,i,j,k) + dpy(i-1,j,k,n)*M8p(4,i,j,k) &
                    + dpy(i  ,j,k,n)*M8p(5,i,j,k) + dpy(i+1,j,k,n)*M8p(6,i,j,k) &
@@ -1112,9 +1113,9 @@ contains
                    + dxe(i-2,j,k,n)*mmtmp(3,i) + dxe(i-1,j,k,n)*mmtmp(4,i) &
                    + dxe(i  ,j,k,n)*mmtmp(5,i) + dxe(i+1,j,k,n)*mmtmp(6,i) &
                    + dxe(i+2,j,k,n)*mmtmp(7,i) + dxe(i+3,j,k,n)*mmtmp(8,i) )
-!EXPAND                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+!EXPAND                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
 !EXPAND                     + dot_product(dxy(i-4:i+3,j,k,n), mmtmp(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)+ &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn)+ &
                    ( dxy(i-4,j,k,n)*mmtmp(1,i) + dxy(i-3,j,k,n)*mmtmp(2,i) &
                    + dxy(i-2,j,k,n)*mmtmp(3,i) + dxy(i-1,j,k,n)*mmtmp(4,i) &
                    + dxy(i  ,j,k,n)*mmtmp(5,i) + dxy(i+1,j,k,n)*mmtmp(6,i) &
@@ -1524,12 +1525,13 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)+1
              do i=lo(1),hi(1) 
-!EXPAND                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
-                Hg(i,j,k,iry1+n-1) =  &
+!EXPAND                Hg(i,j,k,iryn) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) =  &
                    ( dpy(i,j-4,k,n)*M8p(1,i,j,k) + dpy(i,j-3,k,n)*M8p(2,i,j,k) &
                    + dpy(i,j-2,k,n)*M8p(3,i,j,k) + dpy(i,j-1,k,n)*M8p(4,i,j,k) &
                    + dpy(i,j  ,k,n)*M8p(5,i,j,k) + dpy(i,j+1,k,n)*M8p(6,i,j,k) &
@@ -1600,9 +1602,9 @@ contains
                    + dxe(i,j-2,k,n)*mmtmp(3,i) + dxe(i,j-1,k,n)*mmtmp(4,i) &
                    + dxe(i,j  ,k,n)*mmtmp(5,i) + dxe(i,j+1,k,n)*mmtmp(6,i) &
                    + dxe(i,j+2,k,n)*mmtmp(7,i) + dxe(i,j+3,k,n)*mmtmp(8,i) )
-!EXPAND                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+!EXPAND                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
 !EXPAND                     + dot_product(dxy(i,j-4:j+3,k,n), mmtmp(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)+ &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn)+ &
                    ( dxy(i,j-4,k,n)*mmtmp(1,i) + dxy(i,j-3,k,n)*mmtmp(2,i) &
                    + dxy(i,j-2,k,n)*mmtmp(3,i) + dxy(i,j-1,k,n)*mmtmp(4,i) &
                    + dxy(i,j  ,k,n)*mmtmp(5,i) + dxy(i,j+1,k,n)*mmtmp(6,i) &
@@ -2013,12 +2015,13 @@ contains
        if (n .eq. iias) cycle  ! inactive speices
 
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-!EXPAND                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
-                Hg(i,j,k,iry1+n-1) =  &
+!EXPAND                Hg(i,j,k,iryn) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) =  &
                    ( dpy(i,j,k-4,n)*M8p(1,i,j,k) + dpy(i,j,k-3,n)*M8p(2,i,j,k) &
                    + dpy(i,j,k-2,n)*M8p(3,i,j,k) + dpy(i,j,k-1,n)*M8p(4,i,j,k) &
                    + dpy(i,j,k  ,n)*M8p(5,i,j,k) + dpy(i,j,k+1,n)*M8p(6,i,j,k) &
@@ -2089,9 +2092,9 @@ contains
                    + dxe(i,j,k-2,n)*mmtmp(3,i) + dxe(i,j,k-1,n)*mmtmp(4,i) &
                    + dxe(i,j,k  ,n)*mmtmp(5,i) + dxe(i,j,k+1,n)*mmtmp(6,i) &
                    + dxe(i,j,k+2,n)*mmtmp(7,i) + dxe(i,j,k+3,n)*mmtmp(8,i) )
-!EXPAND                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+!EXPAND                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
 !EXPAND                     + dot_product(dxy(i,j,k-4:k+3,n), mmtmp(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)+ &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn)+ &
                    ( dxy(i,j,k-4,n)*mmtmp(1,i) + dxy(i,j,k-3,n)*mmtmp(2,i) &
                    + dxy(i,j,k-2,n)*mmtmp(3,i) + dxy(i,j,k-1,n)*mmtmp(4,i) &
                    + dxy(i,j,k  ,n)*mmtmp(5,i) + dxy(i,j,k+1,n)*mmtmp(6,i) &
