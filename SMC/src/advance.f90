@@ -191,6 +191,9 @@ contains
 
     call sdc_srset_get_qend(sdc%srset, mfptr(U))    
 
+    call reset_density(U)
+    call impose_hard_bc(U)
+
     if (sdc%tol_residual > 0.d0) then
        call destroy(R)
     end if
@@ -347,6 +350,9 @@ contains
     end do
 
     call sdc_mrset_get_qend(sdc%mrset, mfptr(U))
+
+    call reset_density(U)
+    call impose_hard_bc(U)
 
     if (sdc%tol_residual > 0.d0) then
        call destroy(R)

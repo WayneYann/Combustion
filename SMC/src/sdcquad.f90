@@ -46,7 +46,7 @@ contains
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
     call sdc_nset_build(sdc%nset_adr, nnodes, qtype, "ADR", err)
     call sdc_exp_build(sdc%exp_adr, feval, "ADR", err)
-    call sdc_exp_set_post_step(sdc%exp_adr, post)
+    call sdc_hook_add(sdc%exp_adr%hooks, SDC_HOOK_POST_STEP, post, err)
     call sdc_srset_build(sdc%srset, sdc%nset_adr, c_loc(sdc%exp_adr), sdc%encap, c_loc(ctx), "ADR", err)
 
   end subroutine sdc_build_single_rate
@@ -75,10 +75,11 @@ contains
     call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, "R", err)
     call sdc_exp_build(sdc%exp_ad, f1eval, "AD", err)
     call sdc_exp_build(sdc%exp_r, f2eval, "R", err)
-    call sdc_exp_set_post_step(sdc%exp_ad, post)
 
     call sdc_mrset_build(sdc%mrset, 2, "ADR", err)
     call sdc_mrset_add_nset(sdc%mrset, sdc%nset_ad, c_loc(sdc%exp_ad), sdc%encap, c_loc(ctx), 0, err)
+
+    call sdc_hook_add(sdc%mrset%hooks, SDC_HOOK_PRE_UPDATE, post, err)
 
     select case(sdc_multirate_type)
     case ("local")
